@@ -1,13 +1,13 @@
-//! `extract-lua --what curse-priority`：`data.cursePriority` 纯数据表抽取
-//! （M3 S1-C，蓝图 §6.3 C3 数据项）。
+//! `extract-lua --what curse-priority`: extraction of the plain `data.cursePriority` data table
 //!
-//! 职责切分（P13 抽取约定）：
-//! - Lua 引导脚本（`extract_curse_priority.lua`，编译期内嵌）截取
-//!   `Modules/Data.lua:274` 的表字面量并经 luajit 求值，平铺 `k=v` 以
-//!   JSONL 原样转发；
-//! - 本模块负责分类（per-curse 基值 / SocketPriorityBase / 槽名权重 /
-//!   CurseFromAura/CurseFromEquipment）、量级哨兵校验、`_meta` 组装与
-//!   byte-stable 序列化（BTreeMap 键序 + serde_json 统一格式）。
+//! Responsibility split (the deterministic-extraction convention):
+//! - The Lua bootstrap script (`extract_curse_priority.lua`, embedded at
+//!   compile time) slices out the table literal at `Modules/Data.lua:274`,
+//!   evaluates it via luajit, and forwards the flattened `k=v` pairs as-is over JSONL;
+//! - This module handles classification (per-curse base values /
+//!   SocketPriorityBase / slot-name weights / CurseFromAura /
+//!   CurseFromEquipment), magnitude sentinel checks, `_meta` assembly, and
+//!   byte-stable serialization (BTreeMap key order + uniform serde_json formatting).
 
 use std::io;
 
@@ -18,12 +18,14 @@ use crate::extract_lua::{
     ExtractLuaArgs, OverlayMeta, invoke_luajit_jsonl, read_vendor_version, resolve_version_file,
 };
 
-/// 引导脚本内容（经 stdin 注入 luajit）。
+/// Bootstrap script content (piped into luajit via stdin).
 const BOOTSTRAP_LUA: &str = include_str!("extract_curse_priority.lua");
 
-/// vendor 表中装备槽名段的闭集（撰写时 commit `2df5a74` 全量 10 槽）。
-/// vendor 新增槽名时须同步扩充此表——否则该槽的大权重值会落进 `curse_base`
-/// 并触发 [`classify`] 的量级哨兵报错（防静默错分类）。
+/// The closed set of equipment slot names in the vendor table (all 10 slots,
+/// as of commit `2df5a74` when this was written). When vendor adds a new
+/// slot name, this table must be extended too — otherwise that slot's large
+/// weight value would fall into `curse_base` and trip [`classify`]'s
+/// magnitude sentinel check (guarding against silent misclassification).
 const SLOT_NAMES: &[&str] = &[
     "Amulet",
     "Body Armour",
@@ -37,27 +39,27 @@ const SLOT_NAMES: &[&str] = &[
     "Weapon 2",
 ];
 
-/// 引导脚本 JSONL 行：vendor 平铺 `k=v` 原样转发（分类在 Rust 侧）。
+/// One JSONL line from the bootstrap script: a flattened vendor `k=v` pair, forwarded as-is (classification happens in Rust).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RawPriorityEntry {
-    /// vendor 表键（curse 名 / 槽名 / 特殊权重名）。
+    /// The vendor table key (curse name / slot name / special weight name).
     pub name: String,
-    /// 优先级整数值。
+    /// The priority integer value.
     pub priority: i64,
 }
 
-/// 完整 overlay 文档（生产侧；消费侧用 [`CursePriorityDef`] 忽略 `_meta`）。
+/// The full overlay document (production side; the consumption side uses [`CursePriorityDef`] and ignores `_meta`).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CursePriorityDoc {
-    /// 头部元信息。
+    /// Header metadata.
     #[serde(rename = "_meta")]
     pub meta: OverlayMeta,
-    /// 分类后的四段数据（与消费侧 schema 同形，顶层平铺）。
+    /// The four classified sections (same shape as the consumption-side schema, flattened at the top level).
     #[serde(flatten)]
     pub table: CursePriorityDef,
 }
 
-/// 执行抽取，返回最终（byte-stable 的）JSON 文本。
+/// Run the extraction, returning the final (byte-stable) JSON text.
 pub fn run_extract_curse_priority(args: &ExtractLuaArgs) -> io::Result<String> {
     if args.files != ["Data"] {
         return Err(io::Error::new(
@@ -74,10 +76,13 @@ pub fn run_extract_curse_priority(args: &ExtractLuaArgs) -> io::Result<String> {
     Ok(assemble_document(meta, table))
 }
 
-/// 平铺条目 → 四段分类。特殊键按名精确匹配；槽名走 [`SLOT_NAMES`] 闭集；
-/// 其余落 per-curse 基值。量级哨兵：curse 基值必须落在
-/// `0..socket_priority_base` 区间——vendor 新增槽名（大权重）误入 curse 段
-/// 时显式报错提示扩充闭集，而非静默产出错表。
+/// Flattened entries -> four classified sections. Special keys match by
+/// exact name; slot names go through the [`SLOT_NAMES`] closed set;
+/// everything else falls into per-curse base values. Magnitude sentinel:
+/// curse base values must fall in `0..socket_priority_base` — if a new
+/// vendor slot name (with a large weight) accidentally lands in the curse
+/// section, this errors explicitly to prompt extending the closed set
+/// instead of silently producing a wrong table.
 pub fn classify(entries: Vec<RawPriorityEntry>) -> io::Result<CursePriorityDef> {
     let mut def = CursePriorityDef::default();
     let mut socket_priority_base = None;
@@ -129,7 +134,7 @@ pub fn classify(entries: Vec<RawPriorityEntry>) -> io::Result<CursePriorityDef> 
     Ok(def)
 }
 
-/// 组装最终文档：BTreeMap 键序 + serde_json 统一序列化（同输入必然同输出）。
+/// Assemble the final document: BTreeMap key order + serde_json serialization (identical input always yields identical output).
 pub fn assemble_document(meta: OverlayMeta, table: CursePriorityDef) -> String {
     let doc = CursePriorityDoc { meta, table };
     let mut json = serde_json::to_string_pretty(&doc).expect("curse priority 文档序列化不应失败");
@@ -137,7 +142,7 @@ pub fn assemble_document(meta: OverlayMeta, table: CursePriorityDef) -> String {
     json
 }
 
-/// 构建 `_meta`（vendor commit + canonical 再生成命令）。
+/// Build `_meta` (vendor commit + canonical regen command).
 fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
     let (commit, subject) = read_vendor_version(&resolve_version_file(args))?;
     let mut regen = String::from(
@@ -180,7 +185,7 @@ mod tests {
         }
     }
 
-    /// 乱序平铺输入 → 四段正确分类（vendor 数值样例，Data.lua:274-300）。
+    /// Shuffled flattened input -> correct four-way classification (vendor sample values, Data.lua:274-300).
     #[test]
     fn classify_splits_four_sections() {
         let def = classify(vec![
@@ -202,7 +207,8 @@ mod tests {
         assert_eq!(def.curse_from_aura, 20000);
     }
 
-    /// 闭集外的大权重键（vendor 新增槽名）触发量级哨兵报错而非静默错分类。
+    /// A large-weight key outside the closed set (a new vendor slot name)
+    /// trips the magnitude sentinel error instead of silently misclassifying.
     #[test]
     fn classify_rejects_unknown_slot_magnitude() {
         let error = classify(vec![
@@ -217,7 +223,7 @@ mod tests {
         assert!(error.to_string().contains("SLOT_NAMES"), "{error}");
     }
 
-    /// 重复键（引导脚本异常）显式报错。
+    /// A duplicate key (bootstrap script malfunction) errors explicitly.
     #[test]
     fn classify_rejects_duplicate_key() {
         let error = classify(vec![
@@ -228,7 +234,7 @@ mod tests {
         assert!(error.to_string().contains("重复"), "{error}");
     }
 
-    /// 缺特殊键（vendor 表结构变化）显式报错。
+    /// A missing special key (vendor table structure changed) errors explicitly.
     #[test]
     fn classify_rejects_missing_special_key() {
         let error = classify(vec![
@@ -241,7 +247,7 @@ mod tests {
         assert!(error.to_string().contains("SocketPriorityBase"), "{error}");
     }
 
-    /// 组装 byte-stable（同输入两次组装逐字节一致）且 `_meta` 在顶层。
+    /// Assembly is byte-stable (two assemblies of the same input are byte-identical) and `_meta` sits at the top level.
     #[test]
     fn assemble_is_byte_stable() {
         let table = classify(vec![
@@ -259,7 +265,7 @@ mod tests {
         let doc: CursePriorityDoc = serde_json::from_str(&one).unwrap();
         assert_eq!(doc.meta.schema, CURSE_PRIORITY_SCHEMA);
         assert_eq!(doc.table.curse_base.len(), 2);
-        // 消费侧 schema 直接读同一文档（`_meta` 被忽略）
+        // The consumption-side schema reads the same document directly (`_meta` is ignored)
         let def: CursePriorityDef = serde_json::from_str(&one).unwrap();
         assert_eq!(def, doc.table);
     }

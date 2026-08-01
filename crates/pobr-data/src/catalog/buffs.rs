@@ -1,158 +1,174 @@
-//! 内建 buff 定义域 schema（`overlay/buff_definitions.json`，M3-T2）。
+//! Built-in buff definition domain schema (`overlay/buff_definitions.json`).
 //!
-//! 数据来源：vendor PoB2 `src/Modules/CalcPerform.lua` `doActorMisc`
-//! （:503-765，260 行过程式 if-chain）的**人工归纳**——该段无法 luajit
-//! 序列化抽取，按 00-index 裁决 §4.2-4 批准的 overlay 通道例外落库：
-//! 每条带 `vendor_ref`（行号 + 行段 hash）供 drift 告警（`sync-pob-catalog
-//! check-buff-refs` 对账），正确性以 oracle 对拍 / 逐 buff 数值单测为准。
+//! Data source: a **hand-curated distillation** of vendor PoB2
+//! `src/Modules/CalcPerform.lua`'s `doActorMisc` (:503-765, a 260-line
+//! procedural if-chain) — this section can't be extracted by serializing it
+//! through luajit, so it's stored via the overlay-channel exception
+//! approved by decision §4.2-4: each entry carries a `vendor_ref` (line
+//! numbers + a line-range hash) for drift alerts (reconciled by
+//! `sync-pob-catalog check-buff-refs`); correctness is established by
+//! oracle reconciliation / per-buff numeric unit tests.
 //!
-//! 效果公式（框架逻辑留 Rust，见 `pobr-core::rules::buff_expander`）：
+//! The effect formula (the framework logic stays in Rust, see
+//! `pobr-core::rules::buff_expander`):
 //!
 //! ```text
 //! scale  = (1 + Σ INC(inc_stats)/100) × Π MORE(more_stats)
 //! effect = clamp(rounding(base × scale), min, max)
-//! 每条 mod 值 = value 模板（Literal / coeff×effect / rounding(coeff×scale)）
+//! each mod's value = a value template (Literal / coeff×effect / rounding(coeff×scale))
 //! ```
 
 use serde::{Deserialize, Serialize};
 
 use super::value_expr::EffectTag;
 
-/// 当前 overlay 文档 schema 标识。
+/// Current overlay document schema identifier.
 pub const BUFF_DEFINITIONS_SCHEMA: &str = "buff_definitions/v1";
 
-/// `overlay/buff_definitions.json` 消费侧顶层（`_meta` 由 serde 忽略）。
+/// Top level of `overlay/buff_definitions.json` (the consumer ignores
+/// `_meta` by default via serde).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BuffDefinitionsDef {
-    /// 全部 buff 定义，按 `id` 升序。
+    /// All buff definitions, ascending by `id`.
     pub buffs: Vec<BuffDef>,
 }
 
-/// 单个内建 buff 定义。
+/// A single built-in buff definition.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BuffDef {
-    /// 稳定 ID（如 `Onslaught`）。
+    /// Stable ID (e.g. `Onslaught`).
     pub id: String,
-    /// 触发 flag 名（mod_db 的 FLAG 查询键，多数同 id）。
+    /// Trigger flag name (the mod_db FLAG query key; usually matches `id`).
     pub trigger_flag: String,
-    /// 模式门控（doActorMisc 整段 `env.mode_combat` 门控）。
+    /// Mode gate (the `env.mode_combat` gate that wraps the whole
+    /// doActorMisc section).
     pub mode_gate: BuffModeGate,
-    /// 效果量公式；纯字面量 buff（HerEmbrace 等）缺省。
+    /// The effect-magnitude formula; absent for buffs that are pure
+    /// literals (HerEmbrace, etc.).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub effect: Option<BuffEffectFormula>,
-    /// 展开产出的 mod 模板。
+    /// The mod templates the expansion produces.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub mods: Vec<BuffModTemplate>,
-    /// 附带置位的条件名（vendor `condList[...] = true`）。
+    /// Condition names set alongside this buff (vendor's
+    /// `condList[...] = true`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub conditions_set: Vec<String>,
-    /// 真逻辑条目的 handler 稳定 ID（与 effect/mods 互斥；buff 域预算 ≤8）。
+    /// Stable handler ID for entries with real logic (mutually exclusive
+    /// with effect/mods; the buff domain's budget is ≤8).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub handler_id: Option<String>,
-    /// 是否经 oracle 对拍验证。
+    /// Whether this has been verified via oracle reconciliation.
     #[serde(default)]
     pub verified: bool,
-    /// vendor 行段引用（人工归纳可追溯性 + drift 告警）。
+    /// Vendor line-range reference (traceability for the hand-curation,
+    /// plus drift alerts).
     pub vendor_ref: VendorRef,
-    /// 备注（已知差异 / 未覆盖分支说明）。
+    /// Notes (known discrepancies / uncovered-branch explanations).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
 }
 
-/// buff 的模式门控。
+/// A buff's mode gate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BuffModeGate {
-    /// 仅 `mode_combat` 下展开（doActorMisc :510 整段门控）。
+    /// Only expanded under `mode_combat` (doActorMisc's `:510` whole-section gate).
     Combat,
 }
 
-/// 效果量公式参数。
+/// Parameters for the effect-magnitude formula.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BuffEffectFormula {
-    /// 基础量（Onslaught=10 / Convergence=30 / Freeze=70…）。
+    /// Base magnitude (Onslaught=10 / Convergence=30 / Freeze=70…).
     pub base: f64,
-    /// 参与 INC 缩放的 stat 名（如 `["OnslaughtEffect","BuffEffectOnSelf"]`）。
+    /// Stat names that scale via INC (e.g.
+    /// `["OnslaughtEffect","BuffEffectOnSelf"]`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub inc_stats: Vec<String>,
-    /// 参与 MORE 连乘的 stat 名（calcLib.mod 语义）。
+    /// Stat names that scale via a MORE product (calcLib.mod semantics).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub more_stats: Vec<String>,
-    /// effect 取整方式（PoB2 多为 `m_floor`）。
+    /// How the effect value is rounded (PoB2 mostly uses `m_floor`).
     #[serde(default)]
     pub rounding: Rounding,
-    /// effect 下界（Freeze 的 `m_max(…, 0)`）。
+    /// Effect lower bound (Freeze's `m_max(…, 0)`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min: Option<f64>,
-    /// effect 上界。
+    /// Effect upper bound.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max: Option<f64>,
 }
 
-/// 取整方式。
+/// A rounding mode.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Rounding {
-    /// 不取整。
+    /// No rounding.
     #[default]
     None,
-    /// 向下取整（`m_floor`）。
+    /// Round down (`m_floor`).
     Floor,
 }
 
-/// 单条 mod 模板。
+/// A single mod template.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BuffModTemplate {
-    /// ModName。
+    /// ModName.
     pub name: String,
-    /// mod 类型 vendor 字面量（`BASE/INC/MORE/FLAG`）。
+    /// Mod type, vendor's raw literal (`BASE/INC/MORE/FLAG`).
     pub mod_type: String,
-    /// 数值模板。
+    /// Value template.
     pub value: BuffModValue,
-    /// ModFlag 名（vendor 渲染名，如 `Attack`/`Cast`/`Sword`；消费侧映射
-    /// 位枚举，未知名记 diagnostics 并跳过该 mod——保守不发错值）。
+    /// ModFlag names (vendor's display names, e.g. `Attack`/`Cast`/`Sword`;
+    /// the consumer maps them to the bit enum — an unknown name is logged
+    /// as diagnostics and that mod is skipped, conservatively avoiding
+    /// emitting a wrong value).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub flags: Vec<String>,
-    /// 受限 tag（复用 config DSL 白名单）。
+    /// Restricted tags (reuses the config DSL's whitelist).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<EffectTag>,
 }
 
-/// mod 数值模板（双取整形态：effect 级取整 vs 逐 mod 取整）。
+/// A mod's value template (two rounding shapes: effect-level rounding vs.
+/// per-mod rounding).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum BuffModValue {
-    /// 字面量（不吃 effect 缩放，如 HerEmbrace）。
+    /// A literal (doesn't scale with the effect, e.g. HerEmbrace).
     Literal {
-        /// 字面值。
+        /// The literal value.
         value: f64,
     },
-    /// `coeff × effect`（effect 已按公式取整——Onslaught 的 `2 × effect`）。
+    /// `coeff × effect` (effect is already rounded per the formula —
+    /// Onslaught's `2 × effect`).
     PerEffect {
-        /// 系数。
+        /// Coefficient.
         coeff: f64,
     },
-    /// `rounding(coeff × scale)`（逐 mod 取整——Adrenaline 的
-    /// `m_floor(25 × effectMod)`；scale = 未取整缩放系数）。
+    /// `rounding(coeff × scale)` (rounded per-mod — Adrenaline's
+    /// `m_floor(25 × effectMod)`; scale = the unrounded scaling factor).
     ScaledRounded {
-        /// 系数。
+        /// Coefficient.
         coeff: f64,
-        /// 取整方式。
+        /// Rounding mode.
         #[serde(default)]
         rounding: Rounding,
     },
 }
 
-/// vendor 行段引用。
+/// A vendor line-range reference.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VendorRef {
-    /// vendor src 相对路径（如 `Modules/CalcPerform.lua`）。
+    /// Vendor source path, relative (e.g. `Modules/CalcPerform.lua`).
     pub file: String,
-    /// 起始行（1-based，含）。
+    /// Start line (1-based, inclusive).
     pub line_start: u32,
-    /// 结束行（1-based，含）。
+    /// End line (1-based, inclusive).
     pub line_end: u32,
-    /// 行段 hash（`fnv1a64:<16hex>`，drift 告警对账；非加密用途）。
+    /// Hash of the line range (`fnv1a64:<16hex>`, for drift-alert
+    /// reconciliation; not for cryptographic use).
     pub segment_hash: String,
 }
 
@@ -205,7 +221,7 @@ mod tests {
         }
     }
 
-    /// BuffDef serde 往返。
+    /// BuffDef round-trips through serde.
     #[test]
     fn buff_def_round_trip() {
         let def = onslaught();
@@ -214,7 +230,7 @@ mod tests {
         assert_eq!(back, def);
     }
 
-    /// handler 条目最小形态 + 缺省回填。
+    /// Minimal handler-entry shape plus default backfill.
     #[test]
     fn handler_entry_defaults() {
         let json = r#"{
@@ -236,7 +252,7 @@ mod tests {
         assert_eq!(def.effect.and_then(|e| e.max), None);
     }
 
-    /// Rounding 缺省 = None；BuffModValue 三形态往返。
+    /// Rounding defaults to None; BuffModValue's three shapes round-trip.
     #[test]
     fn mod_value_variants_round_trip() {
         let values = vec![

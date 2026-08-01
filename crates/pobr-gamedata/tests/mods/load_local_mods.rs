@@ -1,9 +1,11 @@
-//! `overlay/local_mods.json` 加载测试。
+//! `overlay/local_mods.json` load tests.
 //!
-//! 搬迁不变式校验：JSON 内容必须与内建 fallback [`LocalModsDef::default`]
-//! （= `pobr-build::calc_orchestrator::is_weapon_local_mod` 原硬编码枚举的
-//! 镜像）**逐值相等**——两条路径（读文件 / 缺文件降级）行为恒一致，
-//! 接线切换零 parity 变化。
+//! Migration-invariant check: the JSON content must be **value-equal** to
+//! the built-in fallback [`LocalModsDef::default`] (= a mirror of
+//! `pobr-build::calc_orchestrator::is_weapon_local_mod`'s original
+//! hardcoded enum) — both paths (reading the file / degrading on a
+//! missing file) must behave identically, so the wiring switchover is
+//! zero parity change.
 
 use pobr_data::catalog::local_mods::LocalModsDef;
 use pobr_gamedata::{GameData, repo_data_root};
@@ -18,15 +20,17 @@ fn load() -> LocalModsDef {
         .expect("local_mods 可加载")
 }
 
-/// JSON 与内建 fallback 逐值相等（搬迁不变式的核心断言：文件路径与
-/// 降级路径必须给出同一份白名单）。
+/// The JSON is value-equal to the built-in fallback (the core assertion
+/// for the migration invariant: the file path and the degraded path must
+/// give the same whitelist).
 #[test]
 fn json_matches_builtin_fallback_mirror() {
     assert_eq!(load(), LocalModsDef::default());
 }
 
-/// 武器白名单逐值 = 原 `is_weapon_local_mod` 硬编码枚举（小写 clean 文本口径）：
-/// 两个 increased 后缀 + 一个 adds 伤害后缀。
+/// The weapon whitelist is value-equal to the original
+/// `is_weapon_local_mod` hardcoded enum (lowercase clean-text convention):
+/// two increased suffixes + one adds-damage suffix.
 #[test]
 fn weapon_whitelist_matches_original_hardcode() {
     let def = load();
@@ -43,7 +47,8 @@ fn weapon_whitelist_matches_original_hardcode() {
     );
 }
 
-/// 白名单条目必须全小写（`clean_item_text` 产物口径，大小写敏感匹配）。
+/// Whitelist entries must be all lowercase (matching `clean_item_text`'s
+/// output convention, case-sensitive matching).
 #[test]
 fn whitelist_entries_are_lowercase() {
     let def = load();

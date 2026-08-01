@@ -1,10 +1,13 @@
-//! M1-T4.5：持续保留型效果的 Spirit 预留聚合（`OutputTable::spirit_reserved`）。
+//! Spirit reservation aggregation for persistent-reservation effects
+//! (`OutputTable::spirit_reserved`).
 //!
-//! 口径对照 PoB2 `CalcDefence.lua:192-249` Reservation 段（Spirit 子集）：
-//! `reserved = max(round(flat_total × floor4(Π(1 + reservation_multiplier/100))), 0)`，
-//! flat/倍率含同组 support 贡献（`CalcActiveSkill.lua:692-700` / `:754-756`）。
-//! M1 只做技能侧聚合——`Reserved`/`ReservationEfficiency` 词条族与 Spirit 池本值
-//! /unreserved 归 M2 Track D（00-index 裁决 §4-12）；超载只报告不拦截。
+//! Matches PoB2's `CalcDefence.lua:192-249` Reservation section (Spirit subset):
+//! `reserved = max(round(flat_total × floor4(Π(1 + reservation_multiplier/100))), 0)`,
+//! where flat/multiplier include contributions from same-group supports
+//! (`CalcActiveSkill.lua:692-700` / `:754-756`). This test only exercises the
+//! skill-side aggregation — the `Reserved`/`ReservationEfficiency` mod family
+//! and the Spirit pool's own value/unreserved amount belong elsewhere;
+//! over-reservation is only reported, never blocked.
 
 use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
@@ -18,9 +21,11 @@ fn repo_data() -> BuildData {
     BuildData::load(&data).expect("加载仓库数据")
 }
 
-/// 构造合成 [`BuildData`]：一个持续保留型光环（Spirit 60，可带自身保留倍率）+
-/// 一个 support（可带 spirit flat / 保留倍率）。经 serde 构造，避免与并行 track
-/// 的 schema 字段追加耦合（serde default 吸收新增字段）。
+/// Builds a synthetic [`BuildData`]: a persistent-reservation aura (Spirit 60,
+/// optionally with its own reservation multiplier) plus a support (optionally
+/// with a spirit flat / reservation multiplier). Built through serde to avoid
+/// coupling to schema fields added by parallel tracks (serde default absorbs
+/// new fields).
 fn synthetic_data(
     aura_reservation_multiplier: Option<f64>,
     support_spirit_flat: Option<f64>,
@@ -80,8 +85,8 @@ fn calc(build: &Build, data: &BuildData) -> f64 {
         .spirit_reserved
 }
 
-/// 真实数据：Alchemist's Boon（HasReservation，spiritReservationFlat 30，无倍率）
-/// → spirit_reserved = 30。
+/// Real data: Alchemist's Boon (HasReservation, spiritReservationFlat 30, no
+/// multiplier) -> spirit_reserved = 30.
 #[test]
 fn real_aura_reserves_flat_spirit() {
     let data = repo_data();
@@ -89,7 +94,7 @@ fn real_aura_reserves_flat_spirit() {
     assert_eq!(calc(&build, &data), 30.0);
 }
 
-/// 无保留型技能（普通主动技能）不产生 Spirit 预留。
+/// A non-reservation skill (an ordinary active skill) produces no Spirit reservation.
 #[test]
 fn non_reserving_skill_reserves_nothing() {
     let data = repo_data();
@@ -97,7 +102,7 @@ fn non_reserving_skill_reserves_nothing() {
     assert_eq!(calc(&build, &data), 0.0);
 }
 
-/// 裸 flat：60 × 1.0 = 60。
+/// Bare flat: 60 × 1.0 = 60.
 #[test]
 fn flat_only_reservation() {
     let data = synthetic_data(None, None, None);
@@ -105,7 +110,7 @@ fn flat_only_reservation() {
     assert_eq!(calc(&build, &data), 60.0);
 }
 
-/// 自身负保留倍率（如 -50）：60 × 0.5 = 30（蓝图验收：spirit 含 multiplier 单测）。
+/// Own negative reservation multiplier (e.g. -50): 60 × 0.5 = 30.
 #[test]
 fn own_negative_reservation_multiplier_halves() {
     let data = synthetic_data(Some(-50.0), None, None);
@@ -113,8 +118,9 @@ fn own_negative_reservation_multiplier_halves() {
     assert_eq!(calc(&build, &data), 30.0);
 }
 
-/// 同组 support 正倍率 +20%（PoB2 `ReservationMultiplier` MORE）：60 × 1.2 = 72；
-/// support spirit flat（ExtraSpirit）+10 并入 base：(60+10) × 1.2 = 84。
+/// Same-group support positive multiplier +20% (PoB2 `ReservationMultiplier`
+/// MORE): 60 × 1.2 = 72; support spirit flat (ExtraSpirit) +10 folded into
+/// base: (60+10) × 1.2 = 84.
 #[test]
 fn support_multiplier_and_flat_apply() {
     let data = synthetic_data(None, None, Some(20.0));
@@ -134,8 +140,8 @@ fn support_multiplier_and_flat_apply() {
     assert_eq!(calc(&build, &data), 84.0);
 }
 
-/// 倍率叠乘 + 截断到 4 位小数 + round：自身 -50% × support +33% →
-/// floor4(0.5 × 1.33) = 0.665 → round(60 × 0.665) = round(39.9) = 40。
+/// Multiplier stacking + truncation to 4 decimal places + round: own -50% ×
+/// support +33% -> floor4(0.5 × 1.33) = 0.665 -> round(60 × 0.665) = round(39.9) = 40.
 #[test]
 fn multiplier_product_truncates_to_four_decimals_then_rounds() {
     let data = synthetic_data(Some(-50.0), None, Some(33.0));
@@ -147,7 +153,7 @@ fn multiplier_product_truncates_to_four_decimals_then_rounds() {
     assert_eq!(calc(&build, &data), 40.0);
 }
 
-/// -100% 保留倍率（如 Impurity 类免保留）→ 预留 0。
+/// -100% reservation multiplier (e.g. Impurity-style zero reservation) -> reservation of 0.
 #[test]
 fn full_negative_multiplier_zeroes_reservation() {
     let data = synthetic_data(Some(-100.0), None, None);
@@ -155,7 +161,7 @@ fn full_negative_multiplier_zeroes_reservation() {
     assert_eq!(calc(&build, &data), 0.0);
 }
 
-/// 同一效果出现在多个组按 id 去重（只计一次）；禁用组不参与。
+/// The same effect appearing in multiple groups is deduplicated by id (counted once); disabled groups don't participate.
 #[test]
 fn dedupes_across_groups_and_skips_disabled() {
     let data = synthetic_data(None, None, None);
@@ -175,15 +181,18 @@ fn dedupes_across_groups_and_skips_disabled() {
     assert_eq!(calc(&build, &data), 0.0, "禁用组不预留");
 }
 
-/// Blasphemy per-curse 预留（vendor CalcDefence.lua:229-239）：`IsBlasphemy` 效果按
-/// 同组 AppliesCurse 主动技能数各加 `blasphemy_base_spirit_reservation_per_socketed_curse`
-/// （constant stat 60）**先并入 baseFlat**，再统一缩放 round 一次（:236-238）。
-/// 品质效率（q20 Blasphemy = 20×0.5 = 10%）除在总量上：round(120/1.1) = 109
-/// （≠ 旧的单份 round(60/1.1)=55×2=110；essence-drain oracle 钉值同口径 164）。
+/// Blasphemy per-curse reservation (vendor CalcDefence.lua:229-239): the
+/// `IsBlasphemy` effect adds `blasphemy_base_spirit_reservation_per_socketed_curse`
+/// (constant stat 60) once per same-group AppliesCurse active skill,
+/// **folded into baseFlat first**, then scaled and rounded once as a whole
+/// (:236-238). Quality efficiency (q20 Blasphemy = 20×0.5 = 10%) divides the
+/// total: round(120/1.1) = 109 (not the old per-instance
+/// round(60/1.1)=55×2=110; the essence-drain oracle pin uses the same
+/// convention, 164).
 #[test]
 fn blasphemy_reserves_per_socketed_curse_with_quality_efficiency() {
     let data = repo_data();
-    // q20 Blasphemy + 2 条 curse → round(120/1.1) = 109（curse 自身预留 0）。
+    // q20 Blasphemy + 2 curses -> round(120/1.1) = 109 (curses themselves reserve 0).
     let build = build_with_group(
         SocketGroup::new()
             .with_gem_skill_quality("BlasphemyPlayer", 19, 20)
@@ -192,7 +201,7 @@ fn blasphemy_reserves_per_socketed_curse_with_quality_efficiency() {
     );
     assert_eq!(calc(&build, &data), 109.0);
 
-    // q0 Blasphemy + 1 条 curse → 60（无效率缩放）。
+    // q0 Blasphemy + 1 curse -> 60 (no efficiency scaling).
     let build = build_with_group(
         SocketGroup::new()
             .with_gem_skill("BlasphemyPlayer", 19)
@@ -200,19 +209,20 @@ fn blasphemy_reserves_per_socketed_curse_with_quality_efficiency() {
     );
     assert_eq!(calc(&build, &data), 60.0);
 
-    // 无 curse 的裸 Blasphemy → 0（per-curse 无实例、自身 flat 为空）。
+    // Bare Blasphemy with no curse -> 0 (no per-curse instances, own flat is empty).
     let build = build_with_group(SocketGroup::new().with_gem_skill("BlasphemyPlayer", 19));
     assert_eq!(calc(&build, &data), 0.0);
 }
 
-/// 宝石品质预留效率对普通预留技能同样生效（vendor :251 对每技能 skillCfg 求
-/// efficiency；此处数据源 = overlay/gem_quality_stats.json 的
-/// `base_reservation_efficiency_+%` 斜率）。Herald of Thunder q20 = 20×0.5 = 10%
-/// → round(30/1.1) = 27。
+/// Gem quality reservation efficiency also applies to ordinary reservation
+/// skills (vendor :251 computes efficiency per-skill via skillCfg; the data
+/// source here is the `base_reservation_efficiency_+%` slope in
+/// overlay/gem_quality_stats.json). Herald of Thunder q20 = 20×0.5 = 10% ->
+/// round(30/1.1) = 27.
 #[test]
 fn gem_quality_reservation_efficiency_scales_flat() {
     let data = repo_data();
-    // 数据前提自证：HeraldOfThunderPlayer 有 quality efficiency 斜率才断言缩放。
+    // Self-verifying data precondition: only assert scaling if HeraldOfThunderPlayer actually has a quality efficiency slope.
     let has_quality_eff = data
         .gem_quality_stats
         .get("HeraldOfThunderPlayer")

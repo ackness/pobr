@@ -1,10 +1,15 @@
-//! 多版本数据无关性 smoke——证明 calc **不强绑定某个数据版本**。
+//! Multi-version data-independence smoke test — proves calc **isn't hard-bound
+//! to any single data version**.
 //!
-//! 对 `data/` 下**每个**已入库版本目录，独立 `BuildData::load` + 同一真实 build
-//! 端到端计算，断言关键输出有限、非负、life>0。golden 数值是版本特定的（见
-//! `pobr_data::GOLDEN_PARITY_DATA_VERSION`，由 ninja_parity 钉定校验），故本 smoke
-//! **只断言"能在该版本数据上正确装配并算出合理量纲"**，不比对黄金值——这正是
-//! 「数据/计算分离」的回归保证：活动版本前进或新增版本目录时，calc 仍能在每个版本跑通。
+//! For **every** ingested version directory under `data/`, independently
+//! `BuildData::load`s and runs the same real build end-to-end, asserting key
+//! outputs are finite, non-negative, and life>0. Golden values are
+//! version-specific (see `pobr_data::GOLDEN_PARITY_DATA_VERSION`, pinned and
+//! checked by ninja_parity), so this smoke test **only asserts "assembles
+//! correctly and produces sane magnitudes on this version's data"** — it
+//! doesn't compare against golden values. That's exactly the regression
+//! guarantee of "data/calc separation": as the active version advances or new
+//! version directories are added, calc keeps running on every version.
 
 use std::fs;
 
@@ -15,7 +20,7 @@ use pobr_gamedata::{GameData, repo_data_root};
 
 const DEADEYE_CODE: &str = include_str!("../../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
 
-/// 发现 `data/` 下全部已入库版本目录（名首字符为数字 + 含 manifest.json），字典序。
+/// Discovers every ingested version directory under `data/` (name starts with a digit, contains manifest.json), lexicographically sorted.
 fn committed_data_versions() -> Vec<String> {
     let root = repo_data_root();
     let mut versions: Vec<String> = fs::read_dir(&root)
@@ -82,7 +87,7 @@ fn calc_runs_on_every_committed_data_version() {
     }
 }
 
-/// 确定性跨版本：同版本两次加载+计算结果一致（数据加载无随机/遍历序依赖）。
+/// Cross-version determinism: loading and calculating twice on the same version gives identical results (data loading has no randomness/iteration-order dependency).
 #[test]
 fn calc_is_deterministic_per_version() {
     let build = parse_build_from_code(DEADEYE_CODE).expect("parse");

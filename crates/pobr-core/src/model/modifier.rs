@@ -7,12 +7,14 @@ pub enum ModValue {
     Number(f64),
     Bool(bool),
     Text(String),
-    /// 嵌套 modifier 载荷（PoB2 LIST mod 的 table 值形态）。
+    /// A nested modifier payload (the table-value form of a PoB2 LIST mod).
     ///
-    /// 典型用途：`EnemyModifier` 词条——外层 mod 落在 player db 上，内层 mods 由
-    /// 编排层（env_finalize 的 `forward_enemy_modifiers`）经 [`crate::ModDb::list_nested`]
-    /// 透传转发到目标 db。数值/布尔/文本通道对该变体一律返回 `None`（不参与
-    /// sum/more/flag/override 聚合）。
+    /// Typical use: the `EnemyModifier` modifier — the outer mod lands on the
+    /// player db, and the inner mods get forwarded to the target db by the
+    /// orchestration layer (`env_finalize`'s `forward_enemy_modifiers`) via
+    /// [`crate::ModDb::list_nested`]. The number/bool/text accessors always
+    /// return `None` for this variant (it doesn't participate in sum/more/
+    /// flag/override aggregation).
     NestedMods(Vec<Modifier>),
 }
 
@@ -40,7 +42,7 @@ impl ModValue {
         }
     }
 
-    /// 嵌套 modifier 载荷（仅 [`Self::NestedMods`] 返回 `Some`）。
+    /// The nested modifier payload (only [`Self::NestedMods`] returns `Some`).
     pub fn as_nested_mods(&self) -> Option<&[Modifier]> {
         match self {
             Self::NestedMods(mods) => Some(mods),
@@ -49,24 +51,27 @@ impl ModValue {
     }
 }
 
-/// 跨 actor 取数引用（PoB2 ModStore.lua `getActor`：tag 上的 `actor`/`limitActor`
-/// 字段把 `Multiplier`/`Condition` 的读取上下文从「当前 actor」切到对方 actor）。
+/// A cross-actor value reference (PoB2 ModStore.lua's `getActor`: the tag's
+/// `actor`/`limitActor` field switches the read context for `Multiplier`/
+/// `Condition` from "the current actor" to the other actor).
 ///
-/// 求值通道是 [`CalcConfig::actor_multipliers`](crate::CalcConfig) 只读快照（键形如
-/// `"player.PowerCharge"`，由编排层在只读快照阶段回填，沿用 SummonedMinion 注入
-/// 玩家 multiplier 的先例一般化）。`key()` 给出快照键前缀。
+/// The evaluation channel is the [`CalcConfig::actor_multipliers`](crate::CalcConfig)
+/// read-only snapshot (keys look like `"player.PowerCharge"`, backfilled by the
+/// orchestration layer during the read-only snapshot stage — a generalization
+/// of the earlier precedent of SummonedMinion injecting player multipliers).
+/// `key()` gives the snapshot key prefix.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActorRef {
-    /// 顶层玩家（PoB2 `tag.actor == "player"`：minion 词条引用玩家侧数值）。
+    /// The top-level player (PoB2 `tag.actor == "player"`: a minion modifier referencing the player's values).
     Player,
-    /// 直接父 actor（PoB2 `tag.actor == "parent"`：如 Agony Crawler 引用玩家 virulence）。
+    /// The direct parent actor (PoB2 `tag.actor == "parent"`: e.g. Agony Crawler referencing the player's virulence).
     Parent,
-    /// 召唤物（PoB2 `tag.actor == "minion"`：玩家词条引用召唤物侧数值）。
+    /// A minion (PoB2 `tag.actor == "minion"`: a player modifier referencing a minion's values).
     Minion,
 }
 
 impl ActorRef {
-    /// [`CalcConfig::actor_multipliers`](crate::CalcConfig) 快照键前缀。
+    /// The snapshot key prefix for [`CalcConfig::actor_multipliers`](crate::CalcConfig).
     pub fn key(self) -> &'static str {
         match self {
             Self::Player => "player",
@@ -81,186 +86,238 @@ pub enum ModTag {
     Condition {
         var: String,
         negated: bool,
-        /// 跨 actor 条件（PoB2 `ActorCondition` tag 的 actor 维度）。`None`（缺省）＝
-        /// 读当前 `cfg.condition(var)`，行为与引入前逐字一致；`Some(actor)` ＝ 查
-        /// `cfg.actor_multipliers["<actor>.<var>"]` 真值（≠0 为真；快照缺键＝假）。
+        /// Cross-actor condition (the actor dimension of PoB2's
+        /// `ActorCondition` tag). `None` (default) reads the current
+        /// `cfg.condition(var)`, unchanged from before this field existed;
+        /// `Some(actor)` checks the truthiness of
+        /// `cfg.actor_multipliers["<actor>.<var>"]` (≠0 is true; missing key
+        /// is false).
         actor: Option<ActorRef>,
     },
-    /// OR 语义条件（PoB2 `Condition`/`ActorCondition` 的 `varList` 形态，
-    /// ModStore.lua:596-607/631-640：任一 var 为真即命中，再套 `neg`）。与
-    /// [`ModTag::Condition`] 分开建变体——`tags` 迭代是 AND 语义，多条单 var
-    /// Condition 无法表达 OR。enemy 侧 var 已在编译期经 `normalize_enemy_cond_var`
-    /// 归一进扁平键空间（`Enemy<X>` / 稀有度裸名），求值只读 `cfg.condition`。
+    /// An OR-semantics condition (the `varList` form of PoB2's `Condition`/
+    /// `ActorCondition`, ModStore.lua:596-607/631-640: matches if any var is
+    /// true, then `neg` applies). Built as a separate variant from
+    /// [`ModTag::Condition`] — iterating `tags` is AND semantics, so multiple
+    /// single-var Conditions can't express OR. Enemy-side vars are already
+    /// normalized at compile time by `normalize_enemy_cond_var` into a flat
+    /// key space (`Enemy<X>` / bare rarity names), so evaluation just reads
+    /// `cfg.condition`.
     ConditionAnyOf {
         vars: Vec<String>,
         negated: bool,
     },
-    /// 按某资源/属性数量线性缩放（PoB2 `Multiplier` / `PerStat` tag）。
+    /// Linear scaling by the amount of some resource/attribute (PoB2's
+    /// `Multiplier` / `PerStat` tags).
     ///
-    /// 有效值 = `cfg.multiplier(var) / div`（再受 `limit` 上限约束）。
-    /// - 充能数类（`per power charge`）：`div = 1`，`var = PowerCharge` 等。
-    /// - 资源/属性类（`per 1 Spirit`、`per 10 Intelligence`、`per 5 player levels`）：
-    ///   `div = N`，`var` 为资源名（`Spirit`/`Strength`/`Dexterity`/`Intelligence`/
-    ///   `Level`/`Armour`/`Evasion`/`EnergyShield`/`Mana`/`Life` 等）。
+    /// Effective value = `cfg.multiplier(var) / div` (further capped by `limit`).
+    /// - Charge-count style (`per power charge`): `div = 1`, `var = PowerCharge`, etc.
+    /// - Resource/attribute style (`per 1 Spirit`, `per 10 Intelligence`,
+    ///   `per 5 player levels`): `div = N`, `var` is the resource name
+    ///   (`Spirit`/`Strength`/`Dexterity`/`Intelligence`/`Level`/`Armour`/
+    ///   `Evasion`/`EnergyShield`/`Mana`/`Life`, etc.).
     Multiplier {
         var: String,
-        /// 每多少单位资源缩放一次（PoB2 `div`）。`per power charge` 等无除数时为 `1.0`。
+        /// How many units of the resource per scaling step (PoB2 `div`).
+        /// `1.0` for divisor-less forms like `per power charge`.
         div: f64,
         limit: Option<f64>,
-        /// 跨 actor 取数（PoB2 ModStore.lua:347-353 `tag.actor`）。`None`（缺省）＝读
-        /// 当前 `cfg.multiplier(var)`，行为与引入前逐字一致；`Some(actor)` ＝ 查
-        /// `cfg.actor_multipliers["<actor>.<var>"]`（快照缺键＝0）。
+        /// Cross-actor value read (PoB2 ModStore.lua:347-353 `tag.actor`).
+        /// `None` (default) reads the current `cfg.multiplier(var)`, unchanged
+        /// from before this field existed; `Some(actor)` reads
+        /// `cfg.actor_multipliers["<actor>.<var>"]` (missing key → 0).
         actor: Option<ActorRef>,
-        /// 动态上限变量（PoB2 ModStore.lua:369 `tag.limitVar`：`limit = tag.limit or
-        /// GetMultiplier(limitTarget, tag.limitVar)`——静态 `limit` 优先）。
+        /// Dynamic limit variable (PoB2 ModStore.lua:369 `tag.limitVar`:
+        /// `limit = tag.limit or GetMultiplier(limitTarget, tag.limitVar)` —
+        /// the static `limit` takes priority).
         limit_var: Option<String>,
-        /// 动态上限的取数 actor（PoB2 ModStore.lua:338-345 `tag.limitActor`，如 Agony
-        /// Crawler 以玩家 virulence 为上限）。`None` ＝ 当前 `cfg.multiplier(limit_var)`。
+        /// The actor to read the dynamic limit from (PoB2 ModStore.lua:338-345
+        /// `tag.limitActor`, e.g. Agony Crawler capping by the player's
+        /// virulence). `None` reads the current `cfg.multiplier(limit_var)`.
         limit_actor: Option<ActorRef>,
-        /// 倒数缩放（PoB2 ModStore.lua:378-380 `tag.invert`：limit 之后
-        /// `mult = 1/mult`，mult 为 0 时保持 0——如 Elemental Conflux 三元素
-        /// MORE 按 `Multiplier:ElementalConflux<El>Effect`（Average 档 = 3）
-        /// 取 1/3 均摊）。
+        /// Reciprocal scaling (PoB2 ModStore.lua:378-380 `tag.invert`: after
+        /// the limit, `mult = 1/mult`, staying 0 if mult is 0 — e.g. Elemental
+        /// Conflux's triple-element MORE splits evenly via
+        /// `Multiplier:ElementalConflux<El>Effect` (Average tier = 3),
+        /// taking 1/3).
         invert: bool,
-        /// 总量限幅（PoB2 ModStore.lua:370-371 + 402-404 `tag.limitTotal`）：为真时
-        /// `limit`/`limit_var` **不**截断乘数 `mult`，而是在 `value × mult` 之后对
-        /// **最终贡献**封顶（`value = min(value, limit)`）。如「每层中毒 +N% 伤害，
-        /// 至多 +M%」（`Multiplier{var, limit=M, limitTotal}`）。缺省 `false` ＝ 旧的
-        /// 计数封顶（`mult = min(mult, limit)`）。
+        /// Total-value capping (PoB2 ModStore.lua:370-371 + 402-404
+        /// `tag.limitTotal`): when true, `limit`/`limit_var` does **not**
+        /// clamp the multiplier `mult`, but instead caps the **final
+        /// contribution** after `value × mult` (`value = min(value, limit)`).
+        /// E.g. "+N% damage per poison stack, up to M%"
+        /// (`Multiplier{var, limit=M, limitTotal}`). Defaults to `false`,
+        /// meaning the old count-capping behavior (`mult = min(mult, limit)`).
         limit_total: bool,
     },
-    /// 按 actor **已算出 stat（output 表）**线性缩放（M4-T1 W-A3；PoB2 `PerStat`
-    /// tag，ModStore.lua:440-489）。与 [`ModTag::Multiplier`] 拆开：Multiplier 读
-    /// 编排层预灌的 `cfg.multipliers`，PerStat 读 [`EvalContext::stat_lookup`]
-    /// （actor output 快照；缺通道/缺键 → 0，保守等价 vendor GetStat 缺位）。
+    /// Linear scaling by an actor's **already-computed stat (the output
+    /// table)** (PoB2's `PerStat` tag, ModStore.lua:440-489). Kept separate
+    /// from [`ModTag::Multiplier`]: Multiplier reads `cfg.multipliers`
+    /// pre-filled by the orchestration layer, while PerStat reads
+    /// [`EvalContext::stat_lookup`] (an actor output snapshot; missing
+    /// channel/key → 0, conservatively matching a missing vendor GetStat).
     ///
-    /// 有效乘数 = `floor(stat / div + 0.0001)`，再受 `limit`（静态优先）或
-    /// `limit_var`（`cfg.multiplier(limit_var)`，vendor :462 GetMultiplier(self)）
-    /// 上限约束。vendor 的 `statList`/`divVar`/`limitTotal`/`base` 偏置形态
-    /// 本批不做（无消费方，登记 10-G3 余量）。
+    /// Effective multiplier = `floor(stat / div + 0.0001)`, further capped by
+    /// `limit` (static, priority) or `limit_var` (`cfg.multiplier(limit_var)`,
+    /// vendor :462 GetMultiplier(self)). Vendor's `statList`/`divVar`/
+    /// `limitTotal`/`base` forms aren't implemented in this batch (no
+    /// consumer yet; tracked as remaining work in 10-G3).
     PerStat {
-        /// output 表 stat 名（如 `Life`/`Mana`/`Armour`）。
+        /// The output-table stat name (e.g. `Life`/`Mana`/`Armour`).
         stat: String,
-        /// 每多少单位缩放一次（vendor `tag.div or 1`）。
+        /// Scaling step size (vendor `tag.div or 1`).
         div: f64,
-        /// 静态上限（vendor `tag.limit`，优先于 `limit_var`）。
+        /// Static limit (vendor `tag.limit`, takes priority over `limit_var`).
         limit: Option<f64>,
-        /// 动态上限变量（vendor `tag.limitVar` → `GetMultiplier(self, ·)`）。
+        /// Dynamic limit variable (vendor `tag.limitVar` → `GetMultiplier(self, ·)`).
         limit_var: Option<String>,
-        /// 跨 actor 读数（与 M3 落地的 Multiplier `actor` 形态统一：`Some` →
-        /// 查 `cfg.actor_multipliers["<actor>.<stat>"]` 快照，缺键＝0）。
+        /// Cross-actor read (unified with the landed Multiplier `actor` form:
+        /// `Some` reads the `cfg.actor_multipliers["<actor>.<stat>"]` snapshot,
+        /// missing key → 0).
         actor: Option<ActorRef>,
     },
-    /// 按 actor 已算出 stat 的**百分比**缩放（V2 slice 2；PoB2 `PercentStat`
-    /// tag，ModStore.lua:506-555）。与 [`ModTag::PerStat`] 同读
-    /// [`EvalContext::stat_lookup`]，区别在结算形状：
-    /// `value = ceil(value × stat × percent/100)`——**ceil 作用在最终贡献**
-    /// （vendor :549 `m_ceil(value * mult + (tag.base or 0))`），而 PerStat 是
-    /// floor 作用在乘数。vendor 的 `statList`/`percentVar`/`actor`/`base`/
-    /// `limit`/`floor` 形态本批不做（DSL 白名单挡在门外，故 base 恒 0）。
+    /// **Percentage** scaling by an actor's already-computed stat (V2 slice 2;
+    /// PoB2's `PercentStat` tag, ModStore.lua:506-555). Reads
+    /// [`EvalContext::stat_lookup`] the same way as [`ModTag::PerStat`], but
+    /// differs in how it's settled: `value = ceil(value × stat × percent/100)`
+    /// — **ceil applies to the final contribution** (vendor :549
+    /// `m_ceil(value * mult + (tag.base or 0))`), whereas PerStat floors the
+    /// multiplier instead. Vendor's `statList`/`percentVar`/`actor`/`base`/
+    /// `limit`/`floor` forms aren't implemented in this batch (blocked by the
+    /// DSL whitelist, so `base` is always 0).
     PercentStat {
-        /// output 表 stat 名（如 `Life`/`EnergyShield`）。
+        /// The output-table stat name (e.g. `Life`/`EnergyShield`).
         stat: String,
-        /// 百分比（vendor `tag.percent`）；缺省 = vendor `(percent and
-        /// percent/100 or 1)` 的 or-1 侧（mult = stat 本身）。
+        /// Percentage (vendor `tag.percent`); defaults to the or-1 side of
+        /// vendor's `(percent and percent/100 or 1)` (mult = the stat itself).
         percent: Option<f64>,
     },
-    /// 跨 mod 累计限幅（M4-T1 W-A3；PoB2 EvalMod 尾段 ModStore.lua:895-905
-    /// `tag.globalLimit`/`tag.globalLimitKey`）：同 `key` 的 mod 生效值在**单次
-    /// 聚合查询内**（vendor 每次 Sum/More/Tabulate 调用新建 `globalLimits` 表）
-    /// 累计封顶——超限部分截断，余额记账。
+    /// Cross-mod cumulative capping (the tail of PoB2's EvalMod,
+    /// ModStore.lua:895-905 `tag.globalLimit`/`tag.globalLimitKey`): mods
+    /// sharing the same `key` have their effective values capped cumulatively
+    /// **within a single aggregate query** (vendor creates a fresh
+    /// `globalLimits` table on every Sum/More/Tabulate call) — the excess is
+    /// clipped, and the running total is tracked.
     ///
-    /// vendor 把这两个字段挂在任意 tag 上；pobr 形态化为独立 tag（语义不变，
-    /// 由 [`crate::ModDb`] 聚合循环消费；对 [`Modifier::matches`] 透明）。
-    /// W-C1（chance-to-deal-Double-Damage DOUBLED form）是首个消费方。
+    /// Vendor attaches these two fields to any tag; pobr models it as an
+    /// independent tag instead (same semantics, consumed by
+    /// [`crate::ModDb`]'s aggregation loop; transparent to
+    /// [`Modifier::matches`]). The chance-to-deal-Double-Damage DOUBLED form
+    /// is the first consumer.
     GlobalLimit {
-        /// 累计上限（vendor `tag.globalLimit`）。
+        /// The cumulative cap (vendor `tag.globalLimit`).
         value: f64,
-        /// 记账桶键（vendor `tag.globalLimitKey`，如 `"DoubleDamage"`）。
+        /// The accounting bucket key (vendor `tag.globalLimitKey`, e.g. `"DoubleDamage"`).
         key: String,
     },
-    /// 按某 multiplier 是否越过阈值的二元 gate（PoB2 `MultiplierThreshold` tag，
-    /// ModStore.lua:559-573）。典型来源「against enemies within/further than N metres」
-    /// → `var = "enemyDistance"`，`threshold = N×10`（米→单位）。
+    /// A binary gate on whether some multiplier crosses a threshold (PoB2's
+    /// `MultiplierThreshold` tag, ModStore.lua:559-573). Typical source:
+    /// "against enemies within/further than N metres" → `var =
+    /// "enemyDistance"`, `threshold = N×10` (metres → units).
     ///
-    /// 生效判定（vendor `if (upper and stat>th) or (not upper and stat<th) then return`，
-    /// 落在错误一侧时跳过该 mod）：读 `cfg.multiplier(var)` 为 `stat`——
-    /// - `upper = true`（within，近）：`stat ≤ threshold` 时生效；
-    /// - `upper = false`（further，远）：`stat ≥ threshold` 时生效。
+    /// Applicability check (vendor `if (upper and stat>th) or (not upper and
+    /// stat<th) then return`, skipping the mod when it lands on the wrong
+    /// side): reads `cfg.multiplier(var)` as `stat` —
+    /// - `upper = true` (within, close): applies when `stat ≤ threshold`;
+    /// - `upper = false` (further, far): applies when `stat ≥ threshold`.
     ///
-    /// `enemyDistance` 由编排层从 `Multiplier:enemyDistance`（Condition:Effective，
-    /// 默认 20）折入 cfg.multipliers（effective＝20、panel＝0）。异常叠层形态
-    /// （`<X>Stacks`, threshold=1）仍由 parser 扁平化为 `Condition{Enemy<X>}`，不走本 tag。
+    /// `enemyDistance` is folded into `cfg.multipliers` by the orchestration
+    /// layer from `Multiplier:enemyDistance` (Condition:Effective, default
+    /// 20; effective = 20, panel = 0). Ailment stack forms (`<X>Stacks`,
+    /// threshold=1) are still flattened by the parser into
+    /// `Condition{Enemy<X>}` and don't go through this tag.
     MultiplierThreshold {
         var: String,
         threshold: f64,
-        /// `true` = within（`stat ≤ threshold` 生效）；`false` = further（`≥` 生效）。
+        /// `true` = within (applies when `stat ≤ threshold`); `false` = further (applies when `≥`).
         upper: bool,
     },
-    /// 按已算出 stat 是否越阈的二元 gate（V2s4；PoB2 `StatThreshold` tag，
-    /// ModStore.lua:556-573 经 GetStat 读 actor output）。与
-    /// [`ModTag::MultiplierThreshold`] 同构，读数换成 [`CalcConfig::stat`]
-    /// 快照（编排层回填；缺键＝0，与 vendor output 缺 stat 同语义——如
-    /// `EnergyShield≥1` gate 在无 ES 时 vendor 同样关闭）。vendor 的
-    /// `statList`/`thresholdStat`/`thresholdPercent(Var)`/`actor` 形态由
-    /// 抽取器白名单挡在门外。
+    /// A binary gate on whether an already-computed stat crosses a threshold
+    /// (V2s4; PoB2's `StatThreshold` tag,
+    /// ModStore.lua:556-573, reading actor output via GetStat). Structurally
+    /// mirrors [`ModTag::MultiplierThreshold`], but the read source is the
+    /// [`CalcConfig::stat`] snapshot (backfilled by the orchestration layer;
+    /// missing key → 0, matching the semantics of a missing stat in vendor
+    /// output — e.g. an `EnergyShield≥1` gate is likewise closed in vendor
+    /// when there's no ES). Vendor's `statList`/`thresholdStat`/
+    /// `thresholdPercent(Var)`/`actor` forms are blocked by the extractor
+    /// whitelist.
     StatThreshold {
         stat: String,
         threshold: f64,
-        /// vendor `tag.upper`：`true` = `stat ≤ threshold` 生效；`false`（缺省）
-        /// = `stat ≥ threshold` 生效。
+        /// Vendor `tag.upper`: `true` means applies when `stat ≤ threshold`;
+        /// `false` (default) means applies when `stat ≥ threshold`.
         upper: bool,
     },
     DamageType(DamageType),
     SkillTypes(SkillTypes),
-    /// 反选技能类型限定（vendor `SkillType` tag 的 `neg = true` 形态，
-    /// ModStore.lua:829-833：`match = skillTypes[tag.skillType]; if tag.neg then
-    /// match = not match`）：任一位命中即**不**生效。独立变体而非在
-    /// [`ModTag::SkillTypes`] 上加字段——后者的 Debug 形被预编译缓存
-    /// （`parsed_mods.json`）逐字节钉定，改形状会伪失效全部既有条目。
+    /// A negated skill-type restriction (the `neg = true` form of vendor's
+    /// `SkillType` tag, ModStore.lua:829-833: `match = skillTypes[tag.skillType];
+    /// if tag.neg then match = not match`): matching any bit means the mod
+    /// does **not** apply. Kept as a separate variant rather than adding a
+    /// field to [`ModTag::SkillTypes`] — the latter's Debug form is pinned
+    /// byte-for-byte in the precompiled cache (`parsed_mods.json`), and
+    /// changing its shape would silently invalidate every existing entry.
     SkillTypesNeg(SkillTypes),
-    /// 具名技能限定（PoB2 `SkillName` tag，ModStore.lua:752-780）：mod 仅在
-    /// 主技能名命中列表任一项时生效。vendor `skillName` 单名与 `skillNameList`
-    /// 列表统一收编为 `names`；两侧均按小写等值比较（vendor `:lower()` 双向）。
+    /// A named-skill restriction (PoB2's `SkillName` tag, ModStore.lua:752-780):
+    /// the mod applies only when the main skill's name matches any entry in
+    /// the list. Vendor's single `skillName` and list-form `skillNameList`
+    /// are both folded into `names`; both sides compare case-insensitively
+    /// (vendor `:lower()`s both).
     ///
-    /// vendor 的 `includeTransfigured` 走 gem name → gameId 等值——PoE2 无变体
-    /// 宝石（同名同 gameId），退化为名字等值，编译期直接忽略该字段。
-    /// `partialMatch`/`summonSkill`/`neg` 在 vendor PoE2 数据中零出现，不建模。
-    /// `cfg.skill_name == None`（防御侧 / 无主技能）→ 不匹配（保守，镜像
-    /// vendor 空串口径）。
+    /// Vendor's `includeTransfigured` compares gem name → gameId — PoE2 has
+    /// no gem variants (same name, same gameId), so this degenerates to plain
+    /// name equality and the field is simply ignored at compile time.
+    /// `partialMatch`/`summonSkill`/`neg` never appear in vendor's PoE2 data
+    /// and aren't modeled. `cfg.skill_name == None` (defence side / no main
+    /// skill) never matches (conservative, mirroring vendor's empty-string
+    /// behavior).
     SkillName {
-        /// 匹配名列表（小写），任一命中即生效。
+        /// The list of names to match (lowercase); matches if any hits.
         names: Vec<String>,
     },
-    /// 槽位限定（PoB2 `calcLib.mod({slotName=slot})`）：该 modifier 仅作用于匹配槽位的
-    /// per-slot 防御聚合（如 `80% increased Armour from Equipped Body Armour`）。
+    /// A slot restriction (PoB2's `calcLib.mod({slotName=slot})`): this
+    /// modifier only applies to per-slot defence aggregation for the matching
+    /// slot (e.g. `80% increased Armour from Equipped Body Armour`).
     ///
-    /// **不参与 [`Modifier::matches`] 的普通过滤**（对 `sum`/`more` 等全局查询透明）——
-    /// 由 [`crate::ModDb`] 的 per-slot 查询路径（`sum_for_slot`/`more_for_slot`）显式按槽位读取，
-    /// 避免影响进攻 / 其他全局查询语义。槽名为稳定槽位 ID（见 `EquipmentSlot::id`）。
+    /// **Does not participate in [`Modifier::matches`]'s normal filtering**
+    /// (transparent to global queries like `sum`/`more`) — instead
+    /// [`crate::ModDb`]'s per-slot query paths (`sum_for_slot`/
+    /// `more_for_slot`) explicitly read it by slot, avoiding any effect on
+    /// offence / other global query semantics. The slot name is a stable slot
+    /// ID (see `EquipmentSlot::id`).
     SlotName(String),
-    /// 按敌方距离线性插值缩放（PoB2 `DistanceRamp` tag，ModStore.lua:574-590）：
-    /// Close Combat / Far Combat / Point Blank / Far Shot 等「近/远战伤害随距离变化」
-    /// 的 MORE/INC 词条。生效值 = `base × interp(ramp, skillDist)`——`skillDist` 取
-    /// [`CalcConfig::skill_distance`]（vendor `skillCfg.skillDist = env.mode_effective
-    /// and configInput.enemyDistance`，**仅 effective 口径 + enemyDistance 的 `<Input>`
-    /// 显式值**，不含 `<Placeholder>` 占位值）。
+    /// Linear interpolation scaling by enemy distance (PoB2's `DistanceRamp`
+    /// tag, ModStore.lua:574-590): the MORE/INC modifiers behind Close Combat
+    /// / Far Combat / Point Blank / Far Shot and similar "melee/ranged damage
+    /// varies with distance" effects. Effective value = `base ×
+    /// interp(ramp, skillDist)` — `skillDist` comes from
+    /// [`CalcConfig::skill_distance`] (vendor `skillCfg.skillDist =
+    /// env.mode_effective and configInput.enemyDistance`, **only the
+    /// explicit `<Input>` value in effective mode**, not the `<Placeholder>`
+    /// display value).
     ///
-    /// `ramp` 为 `(距离, 倍率)` 升序点列：`skillDist ≤ 首点距离` → 取首点倍率；
-    /// `≥ 末点距离` → 取末点倍率；区间内线性插值。**panel 口径 / enemyDistance 仅
-    /// placeholder 未设 Input**（`skill_distance == None`）→ [`Modifier::effective_number`]
-    /// 返回 `None`（整条 mod 跳过），镜像 vendor `if not cfg.skillDist then return end`。
-    /// demo 套件 18 个 build 的 enemyDistance 全是 placeholder → 此 tag 全休眠，
-    /// 与 golden 一致（PoB2 同样不应用 Close Combat 距离 MORE）。
+    /// `ramp` is an ascending list of `(distance, multiplier)` points:
+    /// `skillDist ≤` the first point's distance takes the first point's
+    /// multiplier; `≥` the last point's distance takes the last point's
+    /// multiplier; interpolates linearly in between. **In panel mode, or when
+    /// enemyDistance is only a placeholder with no Input set**
+    /// (`skill_distance == None`), [`Modifier::effective_number`] returns
+    /// `None` (the whole mod is skipped), mirroring vendor's `if not
+    /// cfg.skillDist then return end`. All 18 demo-suite builds have
+    /// enemyDistance as a placeholder → this tag is entirely dormant,
+    /// matching golden (PoB2 likewise doesn't apply the Close Combat distance
+    /// MORE).
     DistanceRamp {
-        /// `(距离, 倍率)` 点列，按距离升序（如 Close Combat `[(10,1),(35,0)]`）。
+        /// A list of `(distance, multiplier)` points, ascending by distance
+        /// (e.g. Close Combat `[(10,1),(35,0)]`).
         ramp: Vec<(f64, f64)>,
     },
 }
 
 impl ModTag {
-    /// 同 actor 布尔条件（`actor: None`，行为与字段引入前逐字一致）。
-    /// 跨 actor 条件请用结构体字面量显式给 `actor`。
+    /// A same-actor boolean condition (`actor: None`, unchanged from before
+    /// this field existed). Use the struct literal directly for cross-actor
+    /// conditions with an explicit `actor`.
     pub fn condition(var: impl Into<String>, negated: bool) -> Self {
         Self::Condition {
             var: var.into(),
@@ -269,8 +326,9 @@ impl ModTag {
         }
     }
 
-    /// 同 actor 数量缩放（`actor`/`limit_var`/`limit_actor` 均 `None`，行为与字段
-    /// 引入前逐字一致）。跨 actor / 动态上限请用结构体字面量显式给字段。
+    /// Same-actor amount-based scaling (`actor`/`limit_var`/`limit_actor` all
+    /// `None`, unchanged from before these fields existed). Use the struct
+    /// literal directly for cross-actor or dynamic-limit forms.
     pub fn multiplier(var: impl Into<String>, div: f64, limit: Option<f64>) -> Self {
         Self::Multiplier {
             var: var.into(),
@@ -355,15 +413,19 @@ impl Modifier {
     }
 
     pub fn matches(&self, cfg: &CalcConfig) -> bool {
-        // PoB2 ModList.lua：`band(cfg.flags, mod.flags) == mod.flags` —— mod.flags 必须是
-        // cfg.flags 的子集（mod 上每个 flag 都被 cfg 满足才生效），而非任一重叠（intersects）。
-        // 空 flag（NONE）是任意集合子集 → 恒匹配，涵盖原 is_empty 短路。
+        // PoB2 ModList.lua: `band(cfg.flags, mod.flags) == mod.flags` — mod.flags
+        // must be a subset of cfg.flags (every flag on the mod must be satisfied
+        // by cfg for it to apply), not merely intersecting (`intersects`).
+        // An empty flag set (NONE) is a subset of everything → always matches,
+        // covering the original is_empty short-circuit.
         if !self.flags.is_subset_of(cfg.flags) {
             return false;
         }
 
-        // PoB2 Global.lua `MatchKeywordFlags`：mod 去掉 MatchAll 后为空 → 恒匹配；带 MatchAll →
-        // cfg 须含 mod 全部 keyword（ALL）；否则任一重叠即可（ANY）。当前全 NONE 下退化为恒真。
+        // PoB2 Global.lua's `MatchKeywordFlags`: after stripping MatchAll, an
+        // empty mod keyword set always matches; with MatchAll, cfg must contain
+        // every mod keyword (ALL); otherwise any overlap suffices (ANY).
+        // Currently degenerates to always-true since everything is NONE.
         if !self.keyword_flags.matches_context(cfg.keyword_flags) {
             return false;
         }
@@ -374,26 +436,30 @@ impl Modifier {
                 negated,
                 actor,
             } => {
-                // 跨 actor 条件（PoB2 ActorCondition）：查 actor_multipliers 快照真值
-                // （≠0 为真，缺键＝假——等价 PoB2 getActor 失败时 mod 不生效的保守口径）。
+                // Cross-actor condition (PoB2 ActorCondition): checks the
+                // truthiness of the actor_multipliers snapshot (≠0 is true,
+                // missing key is false — equivalent to PoB2's conservative
+                // behavior of the mod not applying when getActor fails).
                 let enabled = match actor {
                     None => cfg.condition(var),
                     Some(actor) => cfg.actor_multiplier(*actor, var) != 0.0,
                 };
                 if *negated { !enabled } else { enabled }
             }
-            // OR 条件（vendor varList）：任一 var 为真即命中，再套 neg。
+            // OR condition (vendor varList): matches if any var is true, then neg applies.
             ModTag::ConditionAnyOf { vars, negated } => {
                 let enabled = vars.iter().any(|v| cfg.condition(v));
                 if *negated { !enabled } else { enabled }
             }
-            // 数值缩放 / 累计限幅 / 距离插值 tag 不参与匹配过滤（求值期消费）。
+            // Value-scaling / cumulative-cap / distance-interpolation tags don't
+            // participate in match filtering (consumed during evaluation).
             ModTag::Multiplier { .. }
             | ModTag::PerStat { .. }
             | ModTag::PercentStat { .. }
             | ModTag::GlobalLimit { .. }
             | ModTag::DistanceRamp { .. } => true,
-            // 阈值 gate（vendor ModStore.lua:559-573）：stat 落在错误一侧 → 不生效。
+            // Threshold gate (vendor ModStore.lua:559-573): doesn't apply when
+            // the stat lands on the wrong side.
             ModTag::MultiplierThreshold {
                 var,
                 threshold,
@@ -406,7 +472,7 @@ impl Modifier {
                     stat >= *threshold
                 }
             }
-            // 同构 gate，读数换 stats 快照（vendor :556-573 GetStat 分支）。
+            // Structurally identical gate, reading from the stats snapshot instead (vendor :556-573 GetStat branch).
             ModTag::StatThreshold {
                 stat,
                 threshold,
@@ -423,21 +489,25 @@ impl Modifier {
             ModTag::SkillTypes(skill_types) => {
                 skill_types.is_empty() || skill_types.intersects(cfg.skill_types)
             }
-            // 反选：位集命中 cfg 即失配（vendor neg 反转；空位集 → 恒生效，
-            // 与 vendor `skillTypes[nil]=false → not false` 一致）。
+            // Negated: matching any bit against cfg means it does NOT apply
+            // (vendor inverts neg; an empty bitset always applies, matching
+            // vendor's `skillTypes[nil]=false → not false`).
             ModTag::SkillTypesNeg(skill_types) => !skill_types.intersects(cfg.skill_types),
-            // 具名技能限定（vendor ModStore.lua:752-780）：主技能名任一命中；
-            // cfg 无主技能名 → 不匹配（保守）。
+            // Named-skill restriction (vendor ModStore.lua:752-780): matches
+            // if the main skill name hits any entry; no main skill name on
+            // cfg → doesn't match (conservative).
             ModTag::SkillName { names } => cfg
                 .skill_name
                 .as_deref()
                 .is_some_and(|sn| names.iter().any(|n| n.eq_ignore_ascii_case(sn))),
-            // 槽位限定对普通过滤透明（由 ModDb 的 per-slot 查询路径显式处理）。
+            // Slot restriction is transparent to normal filtering (handled
+            // explicitly by ModDb's per-slot query paths).
             ModTag::SlotName(_) => true,
         })
     }
 
-    /// 该 modifier 的槽位限定（若有 [`ModTag::SlotName`]）。供 per-slot 防御聚合按槽过滤。
+    /// This modifier's slot restriction (if it has a [`ModTag::SlotName`]).
+    /// For per-slot defence aggregation to filter by slot.
     pub fn slot_name(&self) -> Option<&str> {
         self.tags.iter().find_map(|tag| match tag {
             ModTag::SlotName(slot) => Some(slot.as_str()),
@@ -445,19 +515,23 @@ impl Modifier {
         })
     }
 
-    /// 生效数值（应用 Multiplier / PerStat 缩放 tag）。
+    /// The effective value (with Multiplier / PerStat scaling tags applied).
     ///
-    /// （M4-T1 W-A3，契约 5）入参升级为 [`EvalContext`]；`impl Into` + `From<&CalcConfig>`
-    /// 使既有调用点（传 `&cfg`）零改动——仅 PerStat 消费方需显式构造带
-    /// `stat_lookup` 的上下文。[`ModTag::GlobalLimit`] 不在此结算（跨 mod 记账，
-    /// 归 [`crate::ModDb`] 聚合循环，vendor 同样在 EvalMod 尾段由聚合层传表）。
+    /// The parameter is upgraded to [`EvalContext`]; the `impl Into` +
+    /// `From<&CalcConfig>` signature lets every existing call site (which
+    /// passes `&cfg`) compile with zero changes — only PerStat consumers need
+    /// to explicitly construct a context with `stat_lookup`.
+    /// [`ModTag::GlobalLimit`] isn't settled here (it's cross-mod accounting,
+    /// handled by [`crate::ModDb`]'s aggregation loop — vendor likewise has
+    /// the aggregation layer pass the table in at the tail of EvalMod).
     #[inline]
     pub fn effective_number<'a>(&self, ctx: impl Into<EvalContext<'a>>) -> Option<f64> {
         self.effective_number_ref(&ctx.into())
     }
 
-    /// [`effective_number`](Self::effective_number) 的引用入参形态——mod_db 聚合
-    /// 热路径用（单指针传参，避免逐 mod 拷贝 [`EvalContext`]；bench 门禁敏感）。
+    /// The by-reference form of [`effective_number`](Self::effective_number) —
+    /// used on mod_db's aggregation hot path (a single pointer argument avoids
+    /// copying [`EvalContext`] per mod; bench-gate sensitive).
     #[inline]
     pub(crate) fn effective_number_ref(&self, ctx: &EvalContext<'_>) -> Option<f64> {
         let cfg = ctx.cfg;
@@ -475,12 +549,15 @@ impl Modifier {
                     invert,
                     limit_total,
                 } => {
-                    // 取数源按 actor 维度切换（PoB2 ModStore.lua:347-353 `tag.actor` →
-                    // getActor(self, ...).modDB）：None＝当前 cfg.multiplier；Some＝
-                    // actor_multipliers 快照（缺键＝0，保守等价 PoB2 actor 缺位不生效）。
-                    // `|` 连接的复合 var（vendor PerStat `statList` 归一产物，见
-                    // mod_parser template）：各分量取数求和后再 ÷div（vendor
-                    // ModStore.lua:445-452 对 statList 逐项 GetStat 累加）。
+                    // The read source switches on the actor dimension (PoB2
+                    // ModStore.lua:347-353 `tag.actor` → getActor(self, ...).modDB):
+                    // None reads the current cfg.multiplier; Some reads the
+                    // actor_multipliers snapshot (missing key → 0, conservatively
+                    // matching PoB2 not applying the mod when the actor is missing).
+                    // A `|`-joined compound var (produced by normalizing vendor
+                    // PerStat's `statList`, see the mod_parser template): sum the
+                    // per-component reads, then divide by div (vendor
+                    // ModStore.lua:445-452 accumulates statList entries via GetStat).
                     let lookup = |v: &str| match actor {
                         None => cfg.multiplier(v),
                         Some(actor) => cfg.actor_multiplier(*actor, v),
@@ -490,35 +567,42 @@ impl Modifier {
                     } else {
                         lookup(var)
                     };
-                    // PoB2 ModStore.lua EvalMod（Multiplier L365 / PerStat L460）：
-                    // `mult = m_floor(base / (tag.div or 1) + 0.0001)` —— 资源数除以 div 后向下取整
-                    // （+epsilon 抵消浮点误差）再作乘数，floor 先于 min(limit)。整倍场景（div=1、整数
-                    // 资源）floor 无影响；仅修正 `per 10 Strength` 在 95 力量等非整倍情形（旧值 9.5→9）。
+                    // PoB2 ModStore.lua EvalMod (Multiplier L365 / PerStat L460):
+                    // `mult = m_floor(base / (tag.div or 1) + 0.0001)` — the resource
+                    // count is divided by div and floored (+epsilon to absorb
+                    // floating-point error) before being used as a multiplier; floor
+                    // happens before min(limit). Exact-multiple cases (div=1,
+                    // integer resources) are unaffected by the floor; it only
+                    // corrects non-exact cases like `per 10 Strength` at 95
+                    // Strength (was 9.5→9 before).
                     let count = (base / div.max(f64::EPSILON) + 0.0001).floor();
-                    // 上限解析（PoB2 ModStore.lua:369 `local limit = tag.limit or
-                    // GetMultiplier(limitTarget, tag.limitVar, cfg)`——静态 limit 优先，
-                    // 动态 limit_var 按 limit_actor 维度取数）。
+                    // Limit resolution (PoB2 ModStore.lua:369 `local limit =
+                    // tag.limit or GetMultiplier(limitTarget, tag.limitVar, cfg)` —
+                    // the static limit takes priority; the dynamic limit_var is
+                    // read from the limit_actor dimension).
                     let effective_limit = limit.or_else(|| {
                         limit_var.as_ref().map(|lv| match limit_actor {
                             None => cfg.multiplier(lv),
                             Some(actor) => cfg.actor_multiplier(*actor, lv),
                         })
                     });
-                    // limitTotal（vendor :370-371）：limit 不截断 mult，留待 value×mult
-                    // 之后封顶最终贡献；否则计数封顶（:375 `mult = min(mult, limit)`）。
+                    // limitTotal (vendor :370-371): limit doesn't clamp mult, it
+                    // caps the final contribution after value×mult instead;
+                    // otherwise cap the count (:375 `mult = min(mult, limit)`).
                     let mut count = if *limit_total {
                         count
                     } else {
                         effective_limit.map_or(count, |max| count.min(max))
                     };
-                    // 倒数缩放（PoB2 ModStore.lua:378-380：limit 之后
-                    // `if tag.invert and mult ~= 0 then mult = 1 / mult end`）。
+                    // Reciprocal scaling (PoB2 ModStore.lua:378-380, after the
+                    // limit: `if tag.invert and mult ~= 0 then mult = 1 / mult end`).
                     if *invert && count != 0.0 {
                         count = 1.0 / count;
                     }
                     value *= count;
-                    // 总量封顶（vendor :402-404 `value = m_min(value, limitTotal)`）——
-                    // 作用于本 tag 乘算后的累计贡献。
+                    // Total-value capping (vendor :402-404 `value = m_min(value,
+                    // limitTotal)`) — applies to this tag's cumulative
+                    // contribution after multiplying.
                     if *limit_total && let Some(max) = effective_limit {
                         value = value.min(max);
                     }
@@ -530,42 +614,47 @@ impl Modifier {
                     limit_var,
                     actor,
                 } => {
-                    // （W-A3）读 actor output 快照（vendor ModStore.lua:440-455
-                    // PerStat 分支 → GetStat）；跨 actor 维度与 Multiplier 统一走
-                    // actor_multipliers 快照。
+                    // Reads the actor output snapshot (vendor ModStore.lua:440-455
+                    // PerStat branch → GetStat); the cross-actor dimension shares
+                    // the actor_multipliers snapshot with Multiplier.
                     let base = match actor {
                         None => ctx.stat(stat),
                         Some(actor) => cfg.actor_multiplier(*actor, stat),
                     };
-                    // vendor :460 `mult = m_floor(base / (tag.div or 1) + 0.0001)`。
+                    // vendor :460 `mult = m_floor(base / (tag.div or 1) + 0.0001)`.
                     let count = (base / div.max(f64::EPSILON) + 0.0001).floor();
-                    // vendor :461-468：limit = tag.limit or GetMultiplier(self, limitVar)
-                    // → mult = min(mult, limit)（limitTotal 形态本批不做，见 tag doc）。
+                    // vendor :461-468: limit = tag.limit or GetMultiplier(self, limitVar)
+                    // → mult = min(mult, limit) (limitTotal isn't implemented in this batch, see the tag doc).
                     let effective_limit =
                         limit.or_else(|| limit_var.as_ref().map(|lv| cfg.multiplier(lv)));
                     value *= effective_limit.map_or(count, |max| count.min(max));
                 }
                 ModTag::PercentStat { stat, percent } => {
-                    // vendor ModStore.lua:506-555：`mult = stat × (percent/100 or 1)`，
-                    // `value = m_ceil(value × mult + (tag.base or 0))`——base 由 DSL
-                    // 白名单挡在门外恒 0；ceil 作用于最终贡献（多 tag 串联时 vendor
-                    // 同样逐 tag 结算，本循环顺序一致）。
+                    // vendor ModStore.lua:506-555: `mult = stat × (percent/100 or 1)`,
+                    // `value = m_ceil(value × mult + (tag.base or 0))` — base is
+                    // always 0 since it's blocked by the DSL whitelist; ceil
+                    // applies to the final contribution (vendor likewise settles
+                    // tag by tag when multiple tags chain, and this loop preserves
+                    // that order).
                     let base = ctx.stat(stat);
                     let mult = base * percent.map_or(1.0, |p| p / 100.0);
                     value = (value * mult).ceil();
                 }
                 ModTag::DistanceRamp { ramp } => {
-                    // vendor ModStore.lua:574-590：`skillDist` 缺位 → 整条 mod 跳过
-                    // （`return`）。`cfg.skill_distance` = vendor `skillCfg.skillDist`
-                    // （`mode_effective and configInput.enemyDistance`，**仅 Input 值**，
-                    // 不含 placeholder——见 [`CalcConfig::skill_distance`]）。`None` →
-                    // 返回 None 让 ModDb 聚合跳过该 mod（区别于 Multiplier 的 0 倍率：
-                    // 距离 0 仍会按 ramp 首点倍率生效，故必须 None 跳过而非按 0 插值）。
+                    // vendor ModStore.lua:574-590: a missing `skillDist` skips the
+                    // whole mod (`return`). `cfg.skill_distance` = vendor
+                    // `skillCfg.skillDist` (`mode_effective and
+                    // configInput.enemyDistance`, **only the Input value**, never
+                    // the placeholder — see [`CalcConfig::skill_distance`]). `None`
+                    // returns None so ModDb's aggregation skips this mod (unlike
+                    // Multiplier's zero multiplier: distance 0 still applies the
+                    // ramp's first-point multiplier, so it must skip via None
+                    // rather than interpolate at 0).
                     let dist = cfg.skill_distance?;
                     value *= ramp_factor(ramp, dist)?;
                 }
-                // MultiplierThreshold / StatThreshold / SkillName 是二元 gate
-                //（在 matches 里求值），不缩放数值。
+                // MultiplierThreshold / StatThreshold / SkillName are binary
+                // gates (evaluated in matches), not value scaling.
                 ModTag::Condition { .. }
                 | ModTag::ConditionAnyOf { .. }
                 | ModTag::MultiplierThreshold { .. }
@@ -583,10 +672,14 @@ impl Modifier {
     }
 }
 
-/// 距离插值倍率（PoB2 ModStore.lua:578-589 `DistanceRamp` 分支逐句对译）。
+/// Distance interpolation multiplier (a line-by-line port of PoB2
+/// ModStore.lua:578-589's `DistanceRamp` branch).
 ///
-/// `ramp` 为 `(距离, 倍率)` 升序点列；`dist`（= skillDist）夹在两点之间时线性插值，
-/// 越过首/末点则取端点倍率（clamp）。空点列返回 `None`（防御，使整条 mod 跳过）。
+/// `ramp` is an ascending list of `(distance, multiplier)` points; `dist`
+/// (= skillDist) interpolates linearly between two bracketing points, and
+/// clamps to the endpoint multiplier past the first/last point. An empty
+/// point list returns `None` (defensive, causing the whole mod to be
+/// skipped).
 fn ramp_factor(ramp: &[(f64, f64)], dist: f64) -> Option<f64> {
     let first = *ramp.first()?;
     let last = *ramp.last()?;
@@ -596,7 +689,7 @@ fn ramp_factor(ramp: &[(f64, f64)], dist: f64) -> Option<f64> {
     if dist >= last.0 {
         return Some(last.1);
     }
-    // 找包夹 `dist` 的相邻点对线性插值（vendor :583-588 同序）。
+    // Find the pair of adjacent points bracketing `dist` and interpolate linearly (matches vendor :583-588's order).
     for pair in ramp.windows(2) {
         let (d0, m0) = pair[0];
         let (d1, m1) = pair[1];
@@ -604,7 +697,7 @@ fn ramp_factor(ramp: &[(f64, f64)], dist: f64) -> Option<f64> {
             return Some(m0 + (m1 - m0) * (dist - d0) / (d1 - d0));
         }
     }
-    // 理论不可达（dist < last.0 必落入某区间）；保守取末点。
+    // Theoretically unreachable (dist < last.0 must fall in some interval); conservatively take the last point.
     Some(last.1)
 }
 
@@ -612,8 +705,9 @@ fn ramp_factor(ramp: &[(f64, f64)], dist: f64) -> Option<f64> {
 mod tests {
     use super::*;
 
-    /// 锚点：`actor: None` 的 Multiplier/Condition 行为与字段引入前逐字一致
-    /// （E1 搬迁不变式，golden diff=0 的单元级对应）。
+    /// Anchor: `actor: None` Multiplier/Condition behavior is unchanged from
+    /// before these fields existed (the E1 migration invariant, the unit-level
+    /// counterpart of golden diff=0).
     #[test]
     fn none_actor_keeps_legacy_behavior() {
         let cfg = CalcConfig::new()
@@ -632,35 +726,37 @@ mod tests {
         assert!(cond.matches(&cfg));
     }
 
-    /// SkillName tag（vendor ModStore.lua:752-780）：主技能名任一命中即生效
-    /// （大小写不敏感）；cfg 无主技能名 → 不匹配（保守口径）。
+    /// SkillName tag (vendor ModStore.lua:752-780): matches when the main
+    /// skill name hits any entry (case-insensitive); no main skill name on
+    /// cfg → doesn't match (conservative).
     #[test]
     fn skill_name_tag_gates_on_main_skill_name() {
         let m = Modifier::number("Damage", ModType::Inc, 10.0).with_tag(ModTag::SkillName {
             names: vec!["flicker strike".into(), "shield wall".into()],
         });
 
-        // 命中（等值 / 大小写不敏感）。
+        // Matches (equal, case-insensitive).
         let hit = CalcConfig::new().with_skill_name(Some("Shield Wall".into()));
         assert!(m.matches(&hit));
 
-        // 名字不同 → 不匹配。
+        // Different name → doesn't match.
         let miss = CalcConfig::new().with_skill_name(Some("fireball".into()));
         assert!(!m.matches(&miss));
 
-        // cfg 无主技能名（防御侧 / 无主技能）→ 不匹配。
+        // No main skill name on cfg (defence side / no main skill) → doesn't match.
         assert!(!m.matches(&CalcConfig::new()));
 
-        // 求值期透明：不缩放数值。
+        // Transparent to evaluation: doesn't scale the value.
         assert_eq!(m.effective_number(&hit), Some(10.0));
     }
 
-    /// `actor: Some(_)` 的 Multiplier 改查 `cfg.actor_multipliers["<actor>.<var>"]`；
-    /// 快照缺键＝0（保守等价 PoB2 getActor 缺位）。
+    /// `actor: Some(_)` Multiplier reads `cfg.actor_multipliers["<actor>.<var>"]`
+    /// instead; missing key in the snapshot → 0 (conservatively matching PoB2's
+    /// missing getActor).
     #[test]
     fn actor_multiplier_reads_actor_snapshot() {
         let cfg = CalcConfig::new()
-            .with_multiplier("Virulence", 5.0) // 本 actor 值，不应被读到。
+            .with_multiplier("Virulence", 5.0) // This actor's value, shouldn't be read.
             .with_actor_multiplier(ActorRef::Parent, "Virulence", 12.0);
 
         let modifier = Modifier::number("Damage", ModType::Inc, 2.0).with_tag(ModTag::Multiplier {
@@ -675,7 +771,7 @@ mod tests {
         });
         assert_eq!(modifier.effective_number(&cfg), Some(24.0));
 
-        // 快照缺键 → 乘数 0。
+        // Missing key in snapshot → multiplier 0.
         let missing = Modifier::number("Damage", ModType::Inc, 2.0).with_tag(ModTag::Multiplier {
             var: "Virulence".into(),
             div: 1.0,
@@ -689,8 +785,9 @@ mod tests {
         assert_eq!(missing.effective_number(&cfg), Some(0.0));
     }
 
-    /// 动态上限：静态 `limit` 优先于 `limit_var`（PoB2 `tag.limit or GetMultiplier(...)`）；
-    /// `limit_var` 按 `limit_actor` 维度取数。
+    /// Dynamic limit: static `limit` takes priority over `limit_var` (PoB2
+    /// `tag.limit or GetMultiplier(...)`); `limit_var` reads from the
+    /// `limit_actor` dimension.
     #[test]
     fn limit_var_resolves_dynamic_limit() {
         let cfg = CalcConfig::new()
@@ -698,7 +795,7 @@ mod tests {
             .with_multiplier("MaxCharges", 4.0)
             .with_actor_multiplier(ActorRef::Player, "MaxCharges", 6.0);
 
-        // limit_var 走本 actor multipliers。
+        // limit_var reads from this actor's multipliers.
         let local = Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::Multiplier {
             var: "PowerCharge".into(),
             div: 1.0,
@@ -711,7 +808,7 @@ mod tests {
         });
         assert_eq!(local.effective_number(&cfg), Some(4.0));
 
-        // limit_actor 切到对方 actor 快照。
+        // limit_actor switches to the other actor's snapshot.
         let cross = Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::Multiplier {
             var: "PowerCharge".into(),
             div: 1.0,
@@ -724,7 +821,7 @@ mod tests {
         });
         assert_eq!(cross.effective_number(&cfg), Some(6.0));
 
-        // 静态 limit 优先于 limit_var。
+        // Static limit takes priority over limit_var.
         let static_wins =
             Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::Multiplier {
                 var: "PowerCharge".into(),
@@ -739,7 +836,7 @@ mod tests {
         assert_eq!(static_wins.effective_number(&cfg), Some(2.0));
     }
 
-    /// `actor: Some(_)` 的 Condition 改查 actor 快照真值（≠0 为真，缺键＝假）。
+    /// `actor: Some(_)` Condition reads the actor snapshot's truthiness instead (≠0 is true, missing key is false).
     #[test]
     fn actor_condition_reads_actor_snapshot() {
         let cfg = CalcConfig::new().with_actor_multiplier(ActorRef::Player, "Blind", 1.0);
@@ -758,7 +855,7 @@ mod tests {
         });
         assert!(!missing.matches(&cfg));
 
-        // negated 语义在 actor 维度同样适用。
+        // negated semantics apply equally in the actor dimension.
         let negated = Modifier::number("Damage", ModType::Inc, 10.0).with_tag(ModTag::Condition {
             var: "Maimed".into(),
             negated: true,
@@ -767,7 +864,8 @@ mod tests {
         assert!(negated.matches(&cfg));
     }
 
-    /// ConditionAnyOf（vendor varList）OR 语义：任一 var 为真即命中，neg 套在 OR 结果上。
+    /// ConditionAnyOf (vendor varList) OR semantics: matches if any var is
+    /// true, then neg applies to the OR result.
     #[test]
     fn condition_any_of_matches_on_any_var() {
         let make = |negated| {
@@ -776,46 +874,51 @@ mod tests {
                 negated,
             })
         };
-        // 任一为真 → 命中；全假 → 不命中。
+        // Any true → matches; all false → doesn't match.
         let one_true = CalcConfig::new().with_condition("EnemyChilled", true);
         assert!(make(false).matches(&one_true));
         assert!(!make(false).matches(&CalcConfig::new()));
-        // neg 作用于 OR 结果（vendor ModStore.lua:618-620）。
+        // neg applies to the OR result (vendor ModStore.lua:618-620).
         assert!(!make(true).matches(&one_true));
         assert!(make(true).matches(&CalcConfig::new()));
     }
 
-    /// DistanceRamp（Close Combat `[(10,1),(35,0)]`）按 `skill_distance` 线性插值：
-    /// 距离 20 → 倍率 0.6 → 30% MORE × 0.6 = 18%（vendor ModStore.lua:586 同算）。
+    /// DistanceRamp (Close Combat `[(10,1),(35,0)]`) interpolates linearly by
+    /// `skill_distance`: distance 20 → multiplier 0.6 → 30% MORE × 0.6 = 18%
+    /// (matches vendor ModStore.lua:586's calculation).
     #[test]
     fn distance_ramp_interpolates_with_skill_distance() {
         let modifier =
             Modifier::number("Damage", ModType::More, 30.0).with_tag(ModTag::DistanceRamp {
                 ramp: vec![(10.0, 1.0), (35.0, 0.0)],
             });
-        // 距离 20：插值 1 + (0-1)*(20-10)/(35-10) = 0.6 → 30 × 0.6 = 18。
+        // Distance 20: interpolation 1 + (0-1)*(20-10)/(35-10) = 0.6 → 30 × 0.6 = 18.
         let cfg = CalcConfig::new().with_skill_distance(Some(20.0));
         assert_eq!(modifier.effective_number(&cfg), Some(18.0));
     }
 
-    /// DistanceRamp 端点 clamp：≤ 首点距离取首点倍率，≥ 末点距离取末点倍率。
+    /// DistanceRamp endpoint clamping: ≤ the first point's distance takes the
+    /// first point's multiplier; ≥ the last point's distance takes the last
+    /// point's multiplier.
     #[test]
     fn distance_ramp_clamps_at_endpoints() {
         let modifier =
             Modifier::number("Damage", ModType::More, 30.0).with_tag(ModTag::DistanceRamp {
                 ramp: vec![(10.0, 1.0), (35.0, 0.0)],
             });
-        // 距离 5 ≤ 10 → 倍率 1.0 → 30。
+        // Distance 5 ≤ 10 → multiplier 1.0 → 30.
         let close = CalcConfig::new().with_skill_distance(Some(5.0));
         assert_eq!(modifier.effective_number(&close), Some(30.0));
-        // 距离 50 ≥ 35 → 倍率 0.0 → 0。
+        // Distance 50 ≥ 35 → multiplier 0.0 → 0.
         let far = CalcConfig::new().with_skill_distance(Some(50.0));
         assert_eq!(modifier.effective_number(&far), Some(0.0));
     }
 
-    /// DistanceRamp 无 `skill_distance`（panel 口径 / enemyDistance 仅 placeholder 未设
-    /// Input）→ 整条 mod 跳过（`effective_number` 返回 `None`，镜像 vendor
-    /// `if not cfg.skillDist then return`）。demo 套件全 build 走此路径，匹配 golden。
+    /// DistanceRamp without `skill_distance` (panel mode / enemyDistance only a
+    /// placeholder with no Input set) → the whole mod is skipped
+    /// (`effective_number` returns `None`, mirroring vendor's `if not
+    /// cfg.skillDist then return`). Every demo-suite build goes through this
+    /// path, matching golden.
     #[test]
     fn distance_ramp_skipped_without_skill_distance() {
         let modifier =
@@ -826,8 +929,9 @@ mod tests {
         assert_eq!(modifier.effective_number(&cfg), None);
     }
 
-    /// MultiplierThreshold（vendor ModStore.lua:559-573）：`within`（upper）在
-    /// `stat ≤ threshold` 生效；`further`（!upper）在 `stat ≥ threshold` 生效。
+    /// MultiplierThreshold (vendor ModStore.lua:559-573): `within` (upper)
+    /// applies when `stat ≤ threshold`; `further` (!upper) applies when
+    /// `stat ≥ threshold`.
     #[test]
     fn multiplier_threshold_within_and_further() {
         let within = Modifier::number("CriticalStrikeMultiplier", ModType::Inc, 40.0).with_tag(
@@ -844,13 +948,13 @@ mod tests {
                 upper: false,
             });
 
-        // within 2m（≤20）：敌距 20 → 生效；敌距 25 → 不生效。
+        // within 2m (≤20): enemy distance 20 → applies; enemy distance 25 → doesn't apply.
         assert!(within.matches(&CalcConfig::new().with_multiplier("enemyDistance", 20.0)));
         assert!(!within.matches(&CalcConfig::new().with_multiplier("enemyDistance", 25.0)));
-        // further 3m（≥30）：敌距 30 → 生效；敌距 20 → 不生效。
+        // further 3m (≥30): enemy distance 30 → applies; enemy distance 20 → doesn't apply.
         assert!(further.matches(&CalcConfig::new().with_multiplier("enemyDistance", 30.0)));
         assert!(!further.matches(&CalcConfig::new().with_multiplier("enemyDistance", 20.0)));
-        // 缺 enemyDistance（默认 0）：within ≤ threshold 恒真；further ≥ threshold 恒假。
+        // Missing enemyDistance (defaults to 0): within ≤ threshold is always true; further ≥ threshold is always false.
         assert!(within.matches(&CalcConfig::new()));
         assert!(!further.matches(&CalcConfig::new()));
     }

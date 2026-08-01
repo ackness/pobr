@@ -1,88 +1,115 @@
-//! 玩家固有基线 mod 域 schema（`base/base_player_mods.json`）。
+//! Player-inherent baseline mod domain schema (`base/base_player_mods.json`).
 //!
-//! 对应 PoB2 玩家 modDB 初始化注入的固有基线 mod：
-//! - `vendor/PathOfBuilding-PoE2/src/Modules/CalcSetup.lua:19-105`（`initModDB`，充能上限等）；
-//! - `vendor/PathOfBuilding-PoE2/src/Modules/CalcSetup.lua:608-678`（initEnv 玩家基线段）。
+//! Corresponds to the inherent baseline mods PoB2 injects when initializing
+//! the player modDB:
+//! - `vendor/PathOfBuilding-PoE2/src/Modules/CalcSetup.lua:19-105`
+//!   (`initModDB`, charge caps, etc.);
+//! - `vendor/PathOfBuilding-PoE2/src/Modules/CalcSetup.lua:608-678`
+//!   (initEnv's player-baseline section).
 //!
-//! **搬迁不变式（P8）**：本表只收录 pobr 现有 Rust 代码已有数值的条目，且 JSON 值必须
-//! 与 Rust 准源逐值相等；vendor 有而 pobr 没有的条目（如 `DotMultiplier`/`MaximumRage`/
-//! `ActiveTrapLimit`/Tailwind 段等约 60 条）**不入本表**，留待后续行为对齐 commit 补充。
-//! 各条目的 Rust 准源与 vendor 行号见 `data/<版本>/base/base_player_mods.json` 生成来源
-//! （逐条对照测试：`crates/pobr-gamedata/tests/load_base_player_mods.rs`）。
+//! **Migration invariant**: this table only carries entries pobr's existing
+//! Rust code already has a value for, and the JSON value must be
+//! value-equal to the Rust source of truth; entries vendor has that pobr
+//! doesn't (e.g. `DotMultiplier`/`MaximumRage`/`ActiveTrapLimit`/the
+//! Tailwind section, roughly 60 entries) **aren't stored here** — left for
+//! a later behavior-alignment commit to add. Each entry's Rust source of
+//! truth and vendor line number are recorded where
+//! `data/<version>/base/base_player_mods.json` is generated from (the
+//! entry-by-entry comparison test is
+//! `crates/pobr-gamedata/tests/load_base_player_mods.rs`).
 //!
-//! 类型复用说明：`mod_type` 直接复用 [`crate::modifier::ModType`]（已可 serde）；
-//! `flags`/`keyword_flags` 以位值（u64）序列化，位定义对齐
-//! [`crate::modifier::ModFlags`] / [`crate::modifier::KeywordFlags`]；tag 因
-//! pobr-core 的 `ModTag` 不在本 crate 且含非序列化变体，此处定义可序列化的最小子集
-//! [`BasePlayerModTag`]。
+//! Type-reuse note: `mod_type` directly reuses [`crate::modifier::ModType`]
+//! (already serde-able); `flags`/`keyword_flags` serialize as bit values
+//! (u64), with the bit definitions matching
+//! [`crate::modifier::ModFlags`] / [`crate::modifier::KeywordFlags`]; since
+//! pobr-core's `ModTag` isn't in this crate and has non-serializable
+//! variants, this module defines its own serializable minimal subset,
+//! [`BasePlayerModTag`].
 
 use serde::{Deserialize, Serialize};
 
 use crate::modifier::ModType;
 
-/// 玩家固有基线 mod 条目（加载后由 setup/编排层转为 `Modifier` 注入玩家 ModDb）。
+/// A player-inherent baseline mod entry (converted to a `Modifier` and
+/// injected into the player ModDb by the setup/orchestration layer after
+/// loading).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BasePlayerModDef {
-    /// 稳定条目 ID（小写下划线；用于归因 source id 与逐条对照测试定位）。
+    /// Stable entry ID (lowercase with underscores; used for the
+    /// attribution source id and to locate this entry in the
+    /// entry-by-entry comparison test).
     pub id: String,
-    /// ModName（计算内部稳定名，如 `MaximumLife` / `FireResistance`）。
+    /// ModName (calc's internal stable name, e.g. `MaximumLife` /
+    /// `FireResistance`).
     ///
-    /// 注意：部分条目与 vendor 命名有出入（pobr 用 `FireResistance`，vendor 用
-    /// `FireResist`；pobr 用 `MaximumLife`，vendor 用 `Life`）——按搬迁不变式保留
-    /// pobr 现有命名。
+    /// Note: some entries' names differ from vendor's (pobr uses
+    /// `FireResistance`, vendor uses `FireResist`; pobr uses
+    /// `MaximumLife`, vendor uses `Life`) — pobr's existing naming is kept,
+    /// per the migration invariant.
     pub mod_name: String,
-    /// modifier 类型（`Base` / `Inc` / `More` / `Flag` / `Override` / `List`）。
+    /// Modifier type (`Base` / `Inc` / `More` / `Flag` / `Override` / `List`).
     pub mod_type: ModType,
-    /// 数值（`Flag` 条目约定 `1.0` 为真）。
+    /// Value (a `Flag` entry uses `1.0` as true, by convention).
     pub value: f64,
-    /// ModFlags 位值（对齐 [`crate::modifier::ModFlags`]；0 = 无限定，序列化时省略）。
+    /// ModFlags bit value (matches [`crate::modifier::ModFlags`]; 0 = no
+    /// restriction, omitted when serialized).
     #[serde(default, skip_serializing_if = "is_zero_u64")]
     pub flags: u64,
-    /// KeywordFlags 位值（对齐 [`crate::modifier::KeywordFlags`]；0 = 无限定，序列化时省略）。
+    /// KeywordFlags bit value (matches [`crate::modifier::KeywordFlags`];
+    /// 0 = no restriction, omitted when serialized).
     #[serde(default, skip_serializing_if = "is_zero_u64")]
     pub keyword_flags: u64,
-    /// tag 列表（空 = 无条件生效，序列化时省略）。
+    /// Tag list (empty = applies unconditionally, omitted when serialized).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<BasePlayerModTag>,
 }
 
-/// 基线 mod 的可序列化 tag（pobr-core `ModTag` 的最小 serde 子集 + vendor 扩展字段）。
+/// A serializable tag for a baseline mod (a minimal serde subset of
+/// pobr-core's `ModTag` plus vendor's extension fields).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum BasePlayerModTag {
-    /// 按某变量数量线性缩放（PoB2 `Multiplier` tag，对应 pobr-core `ModTag::Multiplier`）。
+    /// Scales linearly with some variable's count (PoB2's `Multiplier`
+    /// tag, corresponds to pobr-core's `ModTag::Multiplier`).
     ///
-    /// 有效值 = `multiplier(var) / div × value + base`。`base` 为 vendor 扩展常量项
-    /// （如 `CalcSetup.lua:615` `Life BASE 12 {Multiplier, var=Level, base=16}`），
-    /// pobr-core `ModTag::Multiplier` 暂无此字段——当前由 `character.rs` 公式等价
-    /// 实现（`12×Level+16`），消费侧接线属后续行为对齐工作。
+    /// Effective value = `multiplier(var) / div × value + base`. `base` is
+    /// a vendor extension constant term (e.g. `CalcSetup.lua:615`'s
+    /// `Life BASE 12 {Multiplier, var=Level, base=16}`); pobr-core's
+    /// `ModTag::Multiplier` doesn't have this field yet — currently
+    /// implemented equivalently by a formula in `character.rs`
+    /// (`12×Level+16`); wiring up the consumer side is a follow-up
+    /// behavior-alignment task.
     Multiplier {
         var: String,
-        /// 每多少单位缩放一次（PoB2 `div`，缺省 1）。
+        /// How many units per scaling step (PoB2's `div`, default 1).
         #[serde(default = "default_div")]
         div: f64,
-        /// 缩放次数上限（PoB2 `limit`；无上限时省略）。
+        /// Cap on the number of scaling steps (PoB2's `limit`; omitted
+        /// when there's no cap).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         limit: Option<f64>,
-        /// 与缩放无关的附加常量项（vendor `base`；无时省略）。
+        /// An extra constant term unrelated to the scaling (vendor's
+        /// `base`; omitted when absent).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         base: Option<f64>,
     },
-    /// 布尔条件门控（PoB2 `Condition` tag，对应 pobr-core `ModTag::Condition`）。
+    /// A boolean condition gate (PoB2's `Condition` tag, corresponds to
+    /// pobr-core's `ModTag::Condition`).
     Condition {
         var: String,
-        /// 取反（PoB2 `neg`；false 时省略）。
+        /// Negation (PoB2's `neg`; omitted when false).
         #[serde(default, skip_serializing_if = "std::ops::Not::not")]
         negated: bool,
     },
 }
 
-/// `div` 缺省值（PoB2 Multiplier tag 无除数时为 1）。
+/// Default value for `div` (PoB2's Multiplier tag defaults to 1 when
+/// there's no divisor).
 fn default_div() -> f64 {
     1.0
 }
 
-/// serde 跳过零位值（diff 友好）。
+/// serde predicate to skip a zero bit value (keeps diffs clean).
 fn is_zero_u64(v: &u64) -> bool {
     *v == 0
 }

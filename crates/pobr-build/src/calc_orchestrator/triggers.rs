@@ -1,17 +1,19 @@
-//! triggers — 触发不动点 + support 适用性裁决（从 calc_orchestrator 纯搬迁，无逻辑改动）。
+//! triggers — trigger fixed point + support-applicability judgement (pure migration from calc_orchestrator, no logic change).
 
 use super::*;
 
-// ═════════════════════════ M4-T5 触发段（W-E1/W-E2）═════════════════════════
+// Trigger section
 
 thread_local! {
-    /// 触发子计算递归深度（W-E2 递归防护，蓝图 §5「触发子计算递归/循环」行）：
-    /// 源技能子计算进行中（>0）时 [`trigger_modifiers`] 整体早退——子计算 env
-    /// 强制剥离 trigger 关系（一层深度），杜绝触发链互指的无限递归。
+    /// Trigger sub-calculation recursion depth:
+    /// while a source skill's sub-calculation is in progress (>0), [`trigger_modifiers`]
+    /// bails out entirely — the sub-calc's env forcibly strips trigger relations (one
+    /// level of depth), preventing infinite recursion from triggers that reference each
+    /// other in a cycle.
     static TRIGGER_SUBCALC_DEPTH: std::cell::Cell<u8> = const { std::cell::Cell::new(0) };
 }
 
-/// 深度护栏 RAII（panic 安全：Drop 恢复计数）。
+/// RAII depth guard (panic-safe: Drop restores the count).
 pub(crate) struct TriggerDepthGuard;
 
 impl TriggerDepthGuard {
@@ -27,41 +29,51 @@ impl Drop for TriggerDepthGuard {
     }
 }
 
-/// 数据驱动识别结果（W-E1）：命中的触发配置 + 触发器宝石（组内 meta/support；
-/// 主技能自身命中 skill-kind key 时为 `None`）。
+/// The result of data-driven recognition: the matched trigger config + the trigger gem
+/// (a meta/support gem in the group; `None` when the main skill itself matched a
+/// skill-kind key).
 pub(crate) struct RecognizedTrigger<'a> {
     config: &'a pobr_data::catalog::TriggerConfigDef,
     trigger_gem: Option<&'a crate::build::GemSkillRef>,
 }
 
-/// 主技能触发链路 modifier（findings 03-01/03-02/03-06 的 build 层接线；
-/// M4-T5 W-E1/W-E2 扩展）。
+/// The main skill's trigger-chain modifiers (build-layer wiring for findings
+/// 03-01/03-02/03-06; expanded since).
 ///
-/// 两条识别路径（先数据驱动，后内建触发；命中前者即返回）：
+/// Two recognition paths (data-driven first, then built-in triggers; returns as soon as one matches):
 ///
-/// 1. **数据驱动识别（W-E1，`overlay/trigger_configs.json`）**：vendor
-///    `CalcTriggers.lua:1452-1455` 四级 key 查找的 PoBR 投影——条目的
-///    `match_effect_ids`（PoE2 授予效果 id）命中**组内宝石**（= triggeredBy
-///    关系，如 `MetaCastOnCritPlayer`）或**主技能自身**（= skill key）。命中后
-///    按条目声明性事实注入：触发冷却（覆盖值 > 触发宝石冷却 > 被触发冷却）、
-///    `TriggerRateCapOverride`、global 标记、源技能谓词匹配 + 子计算统计。
-/// 2. **内建触发**（`skill_types` 含 `Triggered`/`InbuiltTrigger`，对应 PoB2
-///    `isTriggered`：物品/升华自带的自动触发技能）：注入被触发冷却 + 组内源速率。
+/// 1. **Data-driven recognition (`overlay/trigger_configs.json`)**: PoBR's projection of
+///    vendor `CalcTriggers.lua:1452-1455`'s four-level key lookup — an entry's
+///    `match_effect_ids` (PoE2 granted effect ids) match either a **gem in the group**
+///    (a triggeredBy relation, e.g. `MetaCastOnCritPlayer`) or the **main skill itself**
+///    (a skill key). On a match, injects per the entry's declarative facts: trigger
+///    cooldown (override value > trigger gem's own cooldown > triggered skill's
+///    cooldown), `TriggerRateCapOverride`, a global marker, source-skill predicate
+///    matching + sub-calculation statistics.
+/// 2. **Built-in triggers** (`skill_types` includes `Triggered`/`InbuiltTrigger`,
+///    matching PoB2's `isTriggered`: an auto-triggered skill built into an item/ascendancy):
+///    injects the triggered skill's cooldown + in-group source rate.
 ///
-/// **源速率（W-E2，修 14-G2）**：源技能跑一次完整 [`calculate_with_data`] 子计算
-/// （PoB2 GlobalCache 等价物最小版，`CalcTriggers.lua:74-86`
-/// `cachedData[uuid].HitSpeed or Speed`），取其**计算后**有效行动速率注入
-/// `TriggerSourceRate` BASE——堆攻速的 CoC build 源速率随攻速乘区增长。命中/暴击
-/// 经 `TriggerSourceHitChance`/`TriggerSourceCritChance` BASE（百分数）注入，
-/// perform `fill_trigger` 构造 [`pobr_core::calc::TriggerSourceStats`]（契约 4）
-/// 折入触发几率（`:716-770`）。子计算护栏：深度 >0 即剥离（本函数顶部早退）、
-/// 源 = 被触发自身（循环）退回基础 `1/use_time`。
+/// **Source rate**: the source skill runs one full [`calculate_with_data`]
+/// sub-calculation (a minimal equivalent of PoB2's GlobalCache,
+/// `CalcTriggers.lua:74-86`'s `cachedData[uuid].HitSpeed or Speed`), taking its
+/// **post-calculation** effective action rate and injecting it as `TriggerSourceRate`
+/// BASE — a CoC build stacking attack speed sees its source rate grow with the attack
+/// speed multiplier zone. Hit/crit is injected via `TriggerSourceHitChance`/
+/// `TriggerSourceCritChance` BASE (as a percentage); perform's `fill_trigger` builds a
+/// [`pobr_core::calc::TriggerSourceStats`] (contract 4) and folds it into trigger chance
+/// (`:716-770`). Sub-calculation guards: stripped whenever depth >0 (this function's
+/// top-level early return), and source = the triggered skill itself (a cycle) falls back
+/// to the base `1/use_time`.
 ///
-/// **defer**：① `trigger_chance_stat`/`source_rate_stat` 的 stat 取值（值在
-/// build mod 域，注入来源未接）；② handler 条目真逻辑（registry 待接，计数监控
-/// <100）；③ 多被触发技能 per-skill 冷却轮转（需完整 gem-link 列表）；④ 跨调用
-/// 子计算缓存——既有 `CalcCache` 只包装 text-only `calculate`，(build hash,
-/// skill id) 键位扩展待缓存层改造（单次计算内子计算只跑一次，热路径可控）。
+/// **Deferred**: ① fetching the `trigger_chance_stat`/`source_rate_stat` stat values
+/// (the values live in the build mod domain, injection source not wired up yet); ②
+/// handler entries' real logic (the registry is pending, count monitored to stay <100);
+/// ③ per-skill cooldown rotation for multiple triggered skills (needs the full gem-link
+/// list); ④ cross-call sub-calculation caching — the existing `CalcCache` only wraps
+/// text-only `calculate`, extending it to a `(build hash, skill id)` key is pending a
+/// cache-layer overhaul (within a single calculation, a sub-calc only runs once, so the
+/// hot path is currently manageable).
 pub(crate) fn trigger_modifiers(
     build: &Build,
     data: &BuildData,
@@ -70,19 +82,20 @@ pub(crate) fn trigger_modifiers(
     group: &SocketGroup,
     main_skill_id: &str,
 ) -> Vec<Modifier> {
-    // W-E2 递归防护：源技能子计算 env 中不再识别/注入任何触发关系（一层深度剥离）。
+    // Recursion guard: no trigger relation is recognized/injected within a source
+    // skill's sub-calculation env (one level of depth stripped).
     if TRIGGER_SUBCALC_DEPTH.with(|d| d.get()) > 0 {
         return Vec::new();
     }
 
-    // —— 路径 1：W-E1 数据驱动识别（命中即返回，含「识别但门控不满足 → 空」）。
+    // — Path 1: data-driven recognition (returns as soon as it matches, including "recognized but the gate isn't satisfied → empty").
     if let Some(mods) =
         config_trigger_modifiers(build, data, options, main_skill, group, main_skill_id)
     {
         return mods;
     }
 
-    // —— 路径 2：内建触发（PoB2 isTriggered：skillTypes 含 Triggered 或 InbuiltTrigger）。
+    // — Path 2: built-in trigger (matching PoB2's isTriggered: skillTypes includes Triggered or InbuiltTrigger).
     let Some(effect) = data.granted_effects.get(main_skill_id) else {
         return Vec::new();
     };
@@ -96,8 +109,9 @@ pub(crate) fn trigger_modifiers(
 
     let mut mods = Vec::new();
 
-    // 被触发技能冷却 → 触发冷却 + 被触发冷却 BASE（同值；无独立触发宝石冷却数据时
-    // PoB2 `actionCooldown = max(triggerCD, triggeredCD)` 退化为该单一冷却）。
+    // Triggered skill's cooldown → trigger cooldown + triggered cooldown BASE (same
+    // value; without separate trigger-gem cooldown data, PoB2's
+    // `actionCooldown = max(triggerCD, triggeredCD)` degenerates to this single cooldown).
     if let Some(cd) = main_skill.cooldown_s
         && cd > 0.0
     {
@@ -113,8 +127,10 @@ pub(crate) fn trigger_modifiers(
         ));
     }
 
-    // 组内触发源技能 → 子计算统计（W-E2）→ TriggerSourceRate（计算后攻速）+
-    // 源命中折入。组内无候选时不注入——fill_trigger 回退主技能速率（占位语义）。
+    // The in-group trigger source skill → sub-calculation statistics → TriggerSourceRate
+    // (post-calculation attack speed) + source hit folded in. Nothing is injected when
+    // there's no candidate in the group — fill_trigger falls back to the main skill's
+    // rate (a placeholder semantics).
     if let Some(stats) = in_group_trigger_source_stats(build, data, options, group, main_skill_id) {
         push_source_stat_mods(
             &mut mods, &stats, /* fold_hit */ true, /* fold_crit */ false,
@@ -124,7 +140,7 @@ pub(crate) fn trigger_modifiers(
     mods
 }
 
-/// 触发 BASE 词条构造（SkillGem 归因，id 前缀 `trigger.`）。
+/// Builds a trigger BASE mod (SkillGem attribution, id prefix `trigger.`).
 pub(crate) fn mk_trigger_mod(stat: &str, value: f64, label: &str) -> Modifier {
     let origin = ModifierSource::new(SourceId::new(
         SourceKind::SkillGem,
@@ -134,7 +150,7 @@ pub(crate) fn mk_trigger_mod(stat: &str, value: f64, label: &str) -> Modifier {
     Modifier::number(stat, ModType::Base, value).with_origin(origin)
 }
 
-/// 触发 FLAG 词条构造（SkillGem 归因）。
+/// Builds a trigger FLAG mod (SkillGem attribution).
 pub(crate) fn mk_trigger_flag(name: &str, label: &str) -> Modifier {
     let origin = ModifierSource::new(SourceId::new(
         SourceKind::SkillGem,
@@ -144,8 +160,10 @@ pub(crate) fn mk_trigger_flag(name: &str, label: &str) -> Modifier {
     Modifier::flag(name).with_origin(origin)
 }
 
-/// 源统计注入（契约 4 传输面）：速率恒注入；命中/暴击按链路口径注入百分数
-/// （`fold_hit` = 非 triggerOnUse 的默认 handler 折命中；`fold_crit` = CoC 链路）。
+/// Source statistics injection (contract 4's transport surface): rate is always
+/// injected; hit/crit are injected as percentages per the chain's semantics (`fold_hit`
+/// = the default handler folds hit for anything other than triggerOnUse; `fold_crit` =
+/// the CoC chain).
 pub(crate) fn push_source_stat_mods(
     mods: &mut Vec<Modifier>,
     stats: &pobr_core::calc::TriggerSourceStats,
@@ -173,9 +191,10 @@ pub(crate) fn push_source_stat_mods(
     }
 }
 
-/// W-E1 数据驱动触发接线：识别命中返回注入词条（`Some(vec![])` = 识别命中但
-/// `requires_condition` 门控不满足，对齐 vendor disable——触发面板保持 0 且
-/// **不再落入**内建触发路径）；未命中返回 `None`（走路径 2）。
+/// Data-driven trigger wiring: on a recognition match, returns the injected mods
+/// (`Some(vec![])` = recognized but the `requires_condition` gate isn't satisfied,
+/// matching vendor's disable — the trigger panel stays at 0 and **does not fall through**
+/// to the built-in trigger path); returns `None` on no match (falls through to path 2).
 pub(crate) fn config_trigger_modifiers(
     build: &Build,
     data: &BuildData,
@@ -187,9 +206,9 @@ pub(crate) fn config_trigger_modifiers(
     let recognized = recognize_trigger_config(data, group, main_skill_id)?;
     let config = recognized.config;
 
-    // requires_condition 门控（vendor `modDB:Flag(nil, "Condition:X")`，如
-    // The Hidden Blade 需 Phasing、Cast on Melee Kill 需 KilledRecently；
-    // 不满足时 vendor 置 disable / 退化自施法）。
+    // The requires_condition gate (matching vendor's `modDB:Flag(nil, "Condition:X")`,
+    // e.g. The Hidden Blade needs Phasing, Cast on Melee Kill needs KilledRecently;
+    // when unsatisfied, vendor sets disable / degrades to self-cast).
     if let Some(cond_name) = &config.requires_condition {
         let build_cfg = build.config.to_calc_config();
         if !build_cfg.condition(cond_name) {
@@ -202,7 +221,7 @@ pub(crate) fn config_trigger_modifiers(
         "trigger relation recognized (trigger_configs)",
     )];
 
-    // 被触发技能冷却。
+    // Triggered skill's cooldown.
     if let Some(cd) = main_skill.cooldown_s
         && cd > 0.0
     {
@@ -212,8 +231,9 @@ pub(crate) fn config_trigger_modifiers(
             "triggered skill base cooldown",
         ));
     }
-    // 触发冷却：条目覆盖值（vendor `skillData.cooldown = N`）> 触发宝石自身冷却
-    // （`triggeredBy.grantedEffect.levels[lvl].cooldown`）> 被触发技能冷却。
+    // Trigger cooldown: entry override value (matching vendor's `skillData.cooldown = N`)
+    // > the trigger gem's own cooldown (`triggeredBy.grantedEffect.levels[lvl].cooldown`)
+    // > the triggered skill's cooldown.
     let trigger_gem_cd = recognized.trigger_gem.and_then(|gem| {
         resolve_skill_level_with_gem_bonus(
             build,
@@ -236,7 +256,7 @@ pub(crate) fn config_trigger_modifiers(
             "trigger base cooldown",
         ));
     }
-    // 速率上限覆盖（vendor `skillData.triggerRateCapOverride`，如 Hidden Blade 2/s）。
+    // Rate cap override (matching vendor's `skillData.triggerRateCapOverride`, e.g. Hidden Blade's 2/s).
     if let Some(cap) = config.trigger_rate_cap_override
         && cap > 0.0
     {
@@ -247,7 +267,7 @@ pub(crate) fn config_trigger_modifiers(
         ));
     }
 
-    // global / 源 = 自身：不依赖源技能速率（vendor `EffectiveSourceRate = TriggerRateCap`）。
+    // global / source = self: doesn't depend on a source skill's rate (matching vendor's `EffectiveSourceRate = TriggerRateCap`).
     if config.global_trigger || config.source_is_self {
         mods.push(mk_trigger_flag(
             "TriggerSourceGlobal",
@@ -263,9 +283,11 @@ pub(crate) fn config_trigger_modifiers(
         ));
     }
 
-    // 源技能：组内匹配受限谓词的非触发伤害技能（最高基础速率者，对齐 PoB2
-    // findTriggerSkill highest-APS）→ W-E2 子计算取计算后统计；子计算不可用
-    // （递归护栏/循环/失败）退回基础 `1/use_time`。
+    // Source skill: the group's non-triggered damaging skill matching the restricted
+    // predicate (the one with the highest base rate, matching PoB2's findTriggerSkill
+    // highest-APS) → sub-calculation fetches post-calculation statistics; falls back to
+    // the base `1/use_time` when the sub-calculation is unavailable (recursion
+    // guard/cycle/failure).
     if let Some(source_gem) =
         find_trigger_source_gem(build, data, group, main_skill_id, &recognized)
     {
@@ -279,7 +301,7 @@ pub(crate) fn config_trigger_modifiers(
                 })
             });
         if let Some(stats) = stats {
-            // triggerOnUse 链路不折命中/暴击（vendor :721 `not config.triggerOnUse`）。
+            // The triggerOnUse chain doesn't fold hit/crit (matching vendor :721's `not config.triggerOnUse`).
             let fold_hit = !config.trigger_on_use;
             let fold_crit = config.trigger_on_crit;
             push_source_stat_mods(&mut mods, &stats, fold_hit, fold_crit);
@@ -289,9 +311,10 @@ pub(crate) fn config_trigger_modifiers(
     Some(mods)
 }
 
-/// 识别触发关系（W-E1 四级 key 的 PoBR 投影，键 = `match_effect_ids`）：
-/// 先查主技能自身（skill-kind key，如 Tempest Shield），再扫组内其他宝石
-/// （triggeredBy / unique 触发器，如 `MetaCastOnCritPlayer`）。
+/// Recognizes a trigger relation (PoBR's projection of the four-level key, keyed by
+/// `match_effect_ids`): checks the main skill itself first (a skill-kind key, e.g.
+/// Tempest Shield), then scans the rest of the group's gems (a triggeredBy / unique
+/// trigger, e.g. `MetaCastOnCritPlayer`).
 pub(crate) fn recognize_trigger_config<'a>(
     data: &'a BuildData,
     group: &'a SocketGroup,
@@ -320,9 +343,11 @@ pub(crate) fn recognize_trigger_config<'a>(
     None
 }
 
-/// 组内触发源宝石选择（vendor `findTriggerSkill` 同槽语义 + 受限谓词过滤）：
-/// 非辅助、非触发、伤害技能、≠ 主技能、≠ 触发器宝石、过 `source_skill_cond`；
-/// 多候选取基础速率（`1/use_time`）最大者。
+/// Selects the trigger source gem within the group (matching vendor's `findTriggerSkill`
+/// same-socket semantics + the restricted predicate filter): non-support, non-triggered,
+/// a damaging skill, ≠ the main skill, ≠ the trigger gem, and passes
+/// `source_skill_cond`; among multiple candidates, takes the one with the highest base
+/// rate (`1/use_time`).
 pub(crate) fn find_trigger_source_gem<'b>(
     build: &Build,
     data: &BuildData,
@@ -367,9 +392,10 @@ pub(crate) fn find_trigger_source_gem<'b>(
     best.map(|(gem, _)| gem)
 }
 
-/// 受限谓词求值（R1 三字段：any_skill_types / all_mod_flags / not_skill_types）。
-/// mod flags 按主手武器类型位（`weapon_types` 表 flag + one_hand）近似——技能
-/// cfg flags 的武器位即由主手武器派生（vendor skillCfg.flags 同源）。
+/// Evaluates the restricted predicate (three fields: any_skill_types / all_mod_flags /
+/// not_skill_types). Mod flags are approximated by the main-hand weapon's type bits
+/// (`weapon_types` table's flag + one_hand) — the skill cfg flags' weapon bits are
+/// themselves derived from the main-hand weapon (matching vendor's skillCfg.flags source).
 pub(crate) fn source_cond_matches(
     build: &Build,
     data: &BuildData,
@@ -407,9 +433,11 @@ pub(crate) fn source_cond_matches(
     true
 }
 
-/// 源宝石基础速率（子计算回退口径 + 候选排序键）：`1/use_time`；攻击技能无
-/// 自带 use_time 时取武器基底攻速（含 attackSpeedMultiplier，与主装配路径
-/// `weapon_contribution` 同源——vendor 攻击源速率本就由武器决定）。
+/// The source gem's base rate (used both as the sub-calculation fallback and the
+/// candidate sort key): `1/use_time`; when an attack skill has no use_time of its own,
+/// takes the weapon base attack speed (including attackSpeedMultiplier, sourced the same
+/// way as the main assembly path `weapon_contribution` — vendor's attack source rate is
+/// determined by the weapon in the first place).
 pub(crate) fn base_rate_of(
     build: &Build,
     data: &BuildData,
@@ -437,15 +465,17 @@ pub(crate) fn base_rate_of(
     Some(weapon.attack_rate * asm)
 }
 
-/// W-E2 源技能完整子计算（PoB2 GlobalCache 等价物最小版）：同一 build / 同组，
-/// 主动技能换成源宝石（`main_active_skill` 指到其组内非 support 序号），跑完整
-/// [`calculate_with_data`] 取 `{effective_action_rate, hit_chance, crit_chance}`。
+/// The source skill's full sub-calculation (a minimal equivalent of PoB2's GlobalCache):
+/// same build / same group, swaps the active skill for the source gem
+/// (`main_active_skill` points to its ordinal in the group's non-support list), runs a
+/// full [`calculate_with_data`] to get `{effective_action_rate, hit_chance, crit_chance}`.
 ///
-/// 护栏（蓝图 §5）：
-/// - **循环检测**：源 = 被触发技能自身 → `None`（调用方退回基础 `1/use_time`）；
-/// - **一层深度**：深度 ≥1 直接 `None`（深层触发关系已在 [`trigger_modifiers`]
-///   顶部剥离，此处为直接调用的冗余护栏）；
-/// - 子计算失败（数据缺口等）→ `None`，不放大错误。
+/// Guards:
+/// - **Cycle detection**: source = the triggered skill itself → `None` (the caller falls back to base `1/use_time`);
+/// - **One level of depth**: depth ≥1 returns `None` directly (deep trigger relations
+///   are already stripped at the top of [`trigger_modifiers`]; this is a redundant guard
+///   for direct calls);
+/// - Sub-calculation failure (a data gap etc.) → `None`, doesn't amplify the error.
 pub(crate) fn trigger_source_stats(
     build: &Build,
     data: &BuildData,
@@ -455,7 +485,7 @@ pub(crate) fn trigger_source_stats(
     main_skill_id: &str,
 ) -> Option<pobr_core::calc::TriggerSourceStats> {
     if source_gem.skill_id == main_skill_id {
-        // 触发循环（源技能又是被触发技能）：退回基础 use_time 口径（蓝图 §5）。
+        // Trigger cycle (the source skill is also the triggered skill): falls back to base use_time semantics.
         return None;
     }
     if TRIGGER_SUBCALC_DEPTH.with(|d| d.get()) >= 1 {
@@ -466,7 +496,7 @@ pub(crate) fn trigger_source_stats(
         .socket_groups
         .iter()
         .position(|g| std::ptr::eq(g, group))?;
-    // 源宝石在组内**非 support** 序列的 1-based 序号（pick_group_main_skill 的选择键）。
+    // The source gem's 1-based ordinal in the group's **non-support** sequence (the selection key of pick_group_main_skill).
     let active_pos = group
         .gem_skills
         .iter()
@@ -501,9 +531,11 @@ pub(crate) fn trigger_source_stats(
     })
 }
 
-/// 内建触发的组内源技能统计（路径 2 的 W-E2 升级版）：按既有候选规则（非辅助、
-/// 非触发、伤害技能、≠ 主技能）选基础速率最高者，再子计算取**计算后**统计；
-/// 子计算不可用退回基础 `1/use_time`（修 14-G2 前的旧口径，作回退面）。
+/// Built-in trigger's in-group source skill statistics: selects the highest-base-rate
+/// candidate per the existing candidate rule (non-support, non-triggered, damaging
+/// skill, ≠ main skill), then fetches **post-calculation** statistics via
+/// sub-calculation; falls back to the base `1/use_time` when the sub-calculation is
+/// unavailable (the legacy semantics from before 14-G2 was fixed, kept as the fallback surface).
 pub(crate) fn in_group_trigger_source_stats(
     build: &Build,
     data: &BuildData,
@@ -546,38 +578,42 @@ pub(crate) fn in_group_trigger_source_stats(
     )
 }
 
-// ═══════════════════════ M4-T5 触发段结束 ═══════════════════════
+// End of trigger section
 
-/// 组级 support 适用性裁决结果（M1 蓝图契约 C2）。
+/// The result of a group-level support-applicability judgement.
 ///
-/// `compatible` 为**通过 PoB2 四段裁决**的 support 效果引用（保持插槽顺序）；
-/// `final_skill_types` 为 addSkillTypes 不动点收敛后的主动技能类型集合
-/// （种子 = 主动效果 `skill_types`，并入所有兼容 support 的 `add_skill_types`）。
+/// `compatible` is the list of support effect references that **passed PoB2's four-stage
+/// judgement** (slot order preserved); `final_skill_types` is the active skill's type
+/// set after the addSkillTypes fixed point converges (seeded from the active effect's
+/// `skill_types`, merged with every compatible support's `add_skill_types`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct GroupSupportJudgement {
-    /// 兼容 support（插槽顺序；含附加授予的 support 半身，见 [`CompatibleSupport`]）。
+    /// Compatible supports (slot order; includes the support half of an additionally-granted effect, see [`CompatibleSupport`]).
     pub(crate) compatible: Vec<CompatibleSupport>,
-    /// 不动点收敛后的技能类型集合（供后续 require 裁决 / T4 SupportManaMultiplier 复用）。
+    /// The skill type set after the fixed point converges.
     pub(crate) final_skill_types: std::collections::HashSet<String>,
 }
 
-/// 一个兼容 support 的效果引用：等级/品质/插槽序取宿主宝石实例（`gem_index`），
-/// stat 取数用 `effect_id`——普通 support 二者同源（effect_id = 宝石主效果）；
-/// meta 宝石（Blasphemy）主效果是主动技能，support 半身在附加授予位
-/// （`gem_effects` 外键 `additionalGrantedEffectId1..N`，vendor 对
-/// grantedEffectList 逐效果按 `support` 标志分流，CalcSetup.lua gemList 装配）。
+/// A reference to one compatible support's effect: level/quality/statSet index are
+/// taken from the host gem instance (`gem_index`), while stat fetching uses
+/// `effect_id` — for a normal support these come from the same source (effect_id = the
+/// gem's primary effect); for a meta gem (Blasphemy), the primary effect is an active
+/// skill, and the support half lives in an additional granted effect slot (the
+/// `gem_effects` foreign key `additionalGrantedEffectId1..N`; vendor routes each effect
+/// in grantedEffectList by its `support` flag, assembled in CalcSetup.lua's gemList).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CompatibleSupport {
-    /// 宿主宝石在 `group.gem_skills` 中的下标。
+    /// This support's index into the host gem in `group.gem_skills`.
     pub(crate) gem_index: usize,
-    /// support 授予效果 id（stat / manaMultiplier / set_key 取数键）。
+    /// The support's granted effect id (the fetch key for stat / manaMultiplier / set_key).
     pub(crate) effect_id: String,
 }
 
 impl CompatibleSupport {
-    /// 该 support 效果的 statSet 选择：宝石实例的 `statSetIndex` 只对**主效果**
-    /// 有意义；附加授予的 support 半身用默认 set（vendor 附加效果同 gemInstance
-    /// 但 set 选择不跨效果沿用）。
+    /// This support effect's statSet selection: the gem instance's `statSetIndex` is
+    /// only meaningful for the **primary effect**; an additionally-granted support half
+    /// uses the default set (vendor's additional effects share the gemInstance but the
+    /// set selection doesn't carry across effects).
     pub(crate) fn stat_set_index(&self, group: &SocketGroup) -> Option<u32> {
         let gem = &group.gem_skills[self.gem_index];
         (gem.skill_id == self.effect_id)
@@ -586,22 +622,27 @@ impl CompatibleSupport {
     }
 }
 
-/// 对一个 socket group 做 **support 适用性裁决 + addSkillTypes 不动点**
-/// （对照 PoB2 `Modules/CalcActiveSkill.lua:179-210`，契约 C2）：
+/// Runs **support-applicability judgement + the addSkillTypes fixed point** on a socket
+/// group (matching PoB2 `Modules/CalcActiveSkill.lua:179-210`, contract C2):
 ///
-/// 1. 种子：主动技能（`active_skill_id`）效果的 `skill_types` 集合；
-/// 2. pass1（:182-191）：按插槽顺序逐个 support 经 [`pobr_core::skill_source::can_support`]
-///    四段裁决——兼容者把 `add_skill_types`（普通 token 名单，非表达式）并入集合，
-///    不兼容者进被拒名单；
-/// 3. repeat-until 不动点（:193-208）：重扫被拒名单直到一轮无新增——保证裁决结果
-///    与 support 插槽顺序无关（「A 加类型、B require 该类型」的 BA 排列也能收敛）；
-/// 4. pass2（:210-214）：终态类型集合下**全量重裁决**产出兼容名单（与 PoB2 一致：
-///    pass1 接受的 support 若被后并入的类型 exclude 命中，此处会被拒；其已并入的
-///    add 类型保留，同 PoB2 不回滚）。
+/// 1. Seed: the active skill's (`active_skill_id`) effect's `skill_types` set;
+/// 2. pass1 (:182-191): each support in slot order goes through
+///    [`pobr_core::skill_source::can_support`]'s four-stage judgement — a compatible one
+///    merges its `add_skill_types` (a plain token list, not an expression) into the set;
+///    an incompatible one goes into the rejected list;
+/// 3. repeat-until fixed point (:193-208): rescans the rejected list until a pass adds
+///    nothing new — guaranteeing the judgement result is independent of support slot
+///    order (a BA arrangement of "A adds a type, B requires that type" also converges);
+/// 4. pass2 (:210-214): **fully re-judges** against the final type set to produce the
+///    compatible list (matching PoB2: a support pass1 accepted can be rejected here if
+///    it's hit by an exclude from a type merged in later; its already-merged add types
+///    are kept, matching PoB2's no-rollback behavior).
 ///
-/// 契约 C2 注：签名比蓝图原型多 `active_skill_id`——PoB2 的裁决以**单个主动技能**为
-/// 对象（meta 组里组首非 support 可能是 meta 壳，而非 `resolve_main_skill` 选中的真实
-/// 主技能），调用方已持有解析结果，传入避免在此重复/错误推导。
+/// Contract C2 note: this signature carries one extra parameter, `active_skill_id`,
+/// compared to the prototype — PoB2's judgement targets a **single active skill** (in a
+/// meta group, the first non-support slot might be a meta shell rather than the real
+/// main skill picked by `resolve_main_skill`), and since the caller already holds the
+/// resolution result, passing it in avoids re-deriving or mis-deriving it here.
 pub(crate) fn judge_group_supports(
     group: &SocketGroup,
     data: &BuildData,
@@ -616,11 +657,12 @@ pub(crate) fn judge_group_supports(
         .unwrap_or_default();
     let cannot_be_supported = active_effect.is_some_and(|e| e.cannot_be_supported);
 
-    // 组内 support 候选（保持插槽顺序）：每个宝石的主授予效果 + 附加授予效果
-    // （`gem_effects` 外键）中 `is_support` 者——vendor 对 grantedEffectList 逐
-    // 效果按 support 标志分流，meta 宝石（Blasphemy）的 support 半身在附加位
-    // （SupportBlasphemyPlayer，携带 `CurseEffect MORE` 等技能局部段）。
-    // active / 未知效果不参与裁决。
+    // In-group support candidates (slot order preserved): among each gem's primary
+    // granted effect + additional granted effects (the `gem_effects` foreign key),
+    // whichever are `is_support` — vendor routes each effect in grantedEffectList by its
+    // support flag, and a meta gem's (Blasphemy) support half lives in the additional
+    // slot (SupportBlasphemyPlayer, carrying skill-local segments like `CurseEffect MORE`).
+    // Active / unknown effects don't participate in the judgement.
     let support_candidates: Vec<(usize, &str)> = group
         .gem_skills
         .iter()
@@ -638,9 +680,10 @@ pub(crate) fn judge_group_supports(
         })
         .collect();
 
-    // 四段裁决（CalcTools.lua:84-110）：cannotBeSupported → supportGemsOnly →
-    // exclude 表达式 → require 表达式（空 = 接受）。socket group 内技能恒由宝石授予
-    // （from_gem=true）；fromItem 特例 M5c、minionTypes 第二集合 M5a（defer）。
+    // Four-stage judgement (matching CalcTools.lua:84-110): cannotBeSupported →
+    // supportGemsOnly → exclude expression → require expression (empty = accept). A
+    // skill in a socket group is always gem-granted (from_gem=true); the fromItem
+    // special case and the minionTypes secondary set are deferred.
     let judge = |effect_id: &str, types: &HashSet<String>| -> bool {
         data.granted_effects.get(effect_id).is_some_and(|effect| {
             can_support(
@@ -665,7 +708,7 @@ pub(crate) fn judge_group_supports(
         }
     };
 
-    // pass1：兼容 support 并入 addSkillTypes；不兼容进被拒名单。
+    // pass1: a compatible support merges addSkillTypes; an incompatible one goes into the rejected list.
     let mut rejected: Vec<&(usize, &str)> = Vec::new();
     for cand in &support_candidates {
         if judge(cand.1, &skill_types) {
@@ -674,7 +717,7 @@ pub(crate) fn judge_group_supports(
             rejected.push(cand);
         }
     }
-    // repeat-until 不动点：重扫被拒名单直到一轮无新增。
+    // repeat-until fixed point: rescans the rejected list until a pass adds nothing new.
     loop {
         let mut newly_accepted = false;
         let mut still_rejected = Vec::with_capacity(rejected.len());
@@ -691,7 +734,7 @@ pub(crate) fn judge_group_supports(
             break;
         }
     }
-    // pass2：终态集合下全量重裁决。
+    // pass2: fully re-judge against the final type set.
     let compatible: Vec<CompatibleSupport> = support_candidates
         .iter()
         .filter(|(_, id)| judge(id, &skill_types))
@@ -706,17 +749,21 @@ pub(crate) fn judge_group_supports(
     }
 }
 
-/// 把主技能组内**兼容的 support 宝石**的分等级 stat 经 [`map_skill_stat`] 映射为
-/// SupportGem 归因的 modifier，注入被支援技能（如「附加闪电伤害」→
-/// `LightningDamageMin/Max` BASE、「更多伤害」→ `Damage` MORE）。
+/// Maps the **compatible support gems'** per-level stats in the main skill's group
+/// through [`map_skill_stat`] into SupportGem-attributed modifiers, injected into the
+/// supported skill (e.g. "added lightning damage" → `LightningDamageMin/Max` BASE,
+/// "more damage" → `Damage` MORE).
 ///
-/// 注入前经 [`judge_group_supports`]（契约 C2，PoB2 四段裁决 + addSkillTypes 不动点）
-/// 产出兼容名单：**被拒 support 完全不参与**（数值 / manaMultiplier 全不吃，对齐 PoB2
-/// `CalcActiveSkill.lua:210-214` 只把兼容 support 放进 effectList 的拒收语义）。
+/// Before injection, [`judge_group_supports`] produces the compatible list: **a rejected
+/// support doesn't participate at all** (neither its numeric values nor its
+/// manaMultiplier applies, matching PoB2's `CalcActiveSkill.lua:210-214` semantics of
+/// only putting compatible supports into effectList).
 ///
-/// 当前作用域为**全局**（单主技能 build 下口径正确：所有 support 倍率作用于唯一计算技能）；
-/// 多主技能的按技能 tag 隔离（仅作用于被支援技能）待 flag 系统接入后细化。active 主技能
-/// 自身伤害已由 [`skill_base_modifiers`] 注入，此处只处理 support。
+/// The current scope is **global** (correct semantics under a single-main-skill build:
+/// every support's multiplier applies to the one skill being calculated); per-skill tag
+/// isolation for multiple main skills (applying only to the supported skill) is deferred
+/// until the flag system is wired up. The active main skill's own damage is already
+/// injected by [`skill_base_modifiers`]; this only handles supports.
 pub(crate) fn support_modifiers(
     group: &SocketGroup,
     data: &BuildData,
@@ -727,12 +774,15 @@ pub(crate) fn support_modifiers(
     for sup in &judgement.compatible {
         let gem = &group.gem_skills[sup.gem_index];
         let set_index = sup.stat_set_index(group);
-        // TODO(T1，T3.6 合并后 rebase 追加)：quality 传参改为 gem.quality——support 的
-        // 品质表条目不存在（PoB2 导出即跳过），当前恒空段，传 0 与传 gem.quality 等价。
+        // TODO(T1, add after rebasing post-T3.6 merge): change the quality argument to
+        // gem.quality — supports have no quality table entries (PoB2 skips them at
+        // export), so this segment is currently always empty and passing 0 is
+        // equivalent to passing gem.quality.
         let stats = data.effect_stats(&sup.effect_id, gem.gem_level, 0, set_index);
-        // support 的 set_key 取自身选中 set（per-set 覆盖以 support 效果 id 定位）。
-        // 注：vendor 对 support 效果不传 statSet（CalcActiveSkill.lua:130 全 set 全量
-        // merge）——多 set support 的附加 set 全量 merge 当前缺口见 m1 验收报告。
+        // A support's set_key is taken from its own selected set (per-set overrides are
+        // located by the support's effect id). Note: vendor doesn't pass a statSet for
+        // support effects (CalcActiveSkill.lua:130 does a full merge across all sets) —
+        // the full merge for a multi-set support's additional sets is a current gap.
         let set_key = data.selected_set_key(&sup.effect_id, set_index);
         mods.extend(mapped_stat_modifiers(
             &stats.base,
@@ -741,11 +791,13 @@ pub(crate) fn support_modifiers(
             &sup.effect_id,
             set_key.as_deref(),
         ));
-        // （M1-T4.4）兼容 support 的分等级 cost 倍率 → `SupportManaMultiplier` MORE
-        // （PoB2 `CalcActiveSkill.lua:689-691`：`NewMod("SupportManaMultiplier","MORE",
-        // level.manaMultiplier, modSource)`）。只对**兼容名单**注入——被拒 support
-        // 的倍率不吃，对齐 PoB2 拒收。消费侧 = `skill_mechanics::calc_skill_cost`
-        // （倍率连乘截断 4 位小数后，先于 inc/more 链作用于 base cost）。
+        // A compatible support's per-level cost multiplier → `SupportManaMultiplier`
+        // MORE (matching PoB2's `CalcActiveSkill.lua:689-691`:
+        // `NewMod("SupportManaMultiplier","MORE", level.manaMultiplier, modSource)`).
+        // Only injected for the **compatible list** — a rejected support's multiplier
+        // doesn't apply, matching PoB2's rejection. Consumed by
+        // `skill_mechanics::calc_skill_cost` (the multipliers are chained and truncated
+        // to 4 decimal places, then applied to base cost before the inc/more chain).
         if let Some(mm) = data
             .granted_effect_levels
             .get(&sup.effect_id)
@@ -772,14 +824,14 @@ pub(crate) fn support_modifiers(
 
 #[cfg(test)]
 mod support_judgement_tests {
-    //! T3.5 组级 support 裁决 + addSkillTypes 不动点单测
-    //! （对照 PoB2 `Modules/CalcActiveSkill.lua:179-210`）。
+    //! T3.5 unit tests for group-level support judgement + the addSkillTypes fixed
+    //! point (matching PoB2 `Modules/CalcActiveSkill.lua:179-210`).
 
     use super::{BuildData, GroupSupportJudgement, judge_group_supports, support_modifiers};
     use crate::build::SocketGroup;
     use std::collections::HashMap;
 
-    /// 构造一个最小 GrantedEffectDef（裁决相关字段可指定，其余默认）。
+    /// Constructs a minimal GrantedEffectDef (judgement-relevant fields configurable, rest default).
     fn effect(
         id: &str,
         is_support: bool,
@@ -811,7 +863,7 @@ mod support_judgement_tests {
         }
     }
 
-    /// 数据 + 组装：active 一个 + 给定顺序的若干 support。
+    /// Data + assembly: one active plus several supports in a given order.
     fn judge(
         effects: &[pobr_data::catalog::GrantedEffectDef],
         gem_order: &[&str],
@@ -831,13 +883,14 @@ mod support_judgement_tests {
         judge_group_supports(&group, &data, "MainSpell")
     }
 
-    /// 兼容名单换算回效果 id（断言可读性）。
+    /// Converts the compatible list back to effect ids (for assertion readability).
     fn compatible_ids(j: &GroupSupportJudgement, _gem_order: &[&str]) -> Vec<String> {
         j.compatible.iter().map(|c| c.effect_id.clone()).collect()
     }
 
-    /// 不动点顺序无关（CalcActiveSkill.lua:193-208）：「A 加 Triggered、B require
-    /// Triggered」在 AB 与 BA 两种插槽顺序下裁决结果一致（B 都被接受）。
+    /// The fixed point is independent of slot order (CalcActiveSkill.lua:193-208): "A
+    /// adds Triggered, B requires Triggered" produces the same judgement result under
+    /// both AB and BA slot orders (B is accepted either way).
     #[test]
     fn fixed_point_is_slot_order_independent() {
         let effects = vec![
@@ -870,8 +923,8 @@ mod support_judgement_tests {
         assert!(ab.final_skill_types.contains("Triggered"));
     }
 
-    /// 不兼容 support 被拒，且其 addSkillTypes **不并入**集合
-    /// （CalcActiveSkill.lua:182-191 仅兼容者 merge）。
+    /// An incompatible support is rejected, and its addSkillTypes are **not merged**
+    /// into the set (CalcActiveSkill.lua:182-191 only merges compatible ones).
     #[test]
     fn rejected_support_does_not_merge_add_types() {
         let effects = vec![
@@ -894,7 +947,7 @@ mod support_judgement_tests {
         );
     }
 
-    /// 主动效果 cannotBeSupported → 一切 support 被拒（裁决第一段，CalcTools.lua:86-88）。
+    /// Active effect cannotBeSupported → every support is rejected (the first stage of the four-stage judgement, `CalcTools.lua:86-88`).
     #[test]
     fn cannot_be_supported_rejects_everything() {
         let effects = vec![
@@ -905,9 +958,10 @@ mod support_judgement_tests {
         assert!(j.compatible.is_empty());
     }
 
-    /// pass2 终态重裁决（CalcActiveSkill.lua:210-214）：pass1 接受的 support 若被
-    /// 后并入的类型 exclude 命中则最终被拒；已并入的 add 类型保留（同 PoB2 不回滚）。
-    /// 两种插槽顺序结果一致。
+    /// pass2's final re-judgement (CalcActiveSkill.lua:210-214): a support pass1
+    /// accepted ends up rejected if it's hit by an exclude from a type merged in later;
+    /// already-merged add types are kept (matching PoB2's no-rollback behavior). Both
+    /// slot orders produce the same result.
     #[test]
     fn pass2_rejudges_against_final_type_set() {
         let effects = vec![
@@ -929,7 +983,7 @@ mod support_judgement_tests {
         }
     }
 
-    /// 全空门控 support（无 require/exclude）恒兼容（require 空 = 接受）。
+    /// An all-empty-gated support (no require/exclude) is always compatible (empty require = accept).
     #[test]
     fn empty_gating_always_compatible() {
         let effects = vec![
@@ -940,9 +994,11 @@ mod support_judgement_tests {
         assert_eq!(j.compatible.len(), 1);
     }
 
-    /// T3.6 注入侧：被拒 support 的 stat **不产生任何 modifier**（数值全不吃）。
-    /// 兼容性由 judge_group_supports 裁决；此处用空 stat 数据，仅验证名单过滤路径
-    /// 不 panic 且产出为空（数值注入的端到端断言见 tests/support_gating.rs）。
+    /// T3.6 injection side: a rejected support's stats **produce no modifier at all**
+    /// (none of its numeric values apply). Compatibility is judged by
+    /// judge_group_supports; this uses empty stat data, only verifying the list-filter
+    /// path doesn't panic and produces nothing (see tests/support_gating.rs for the
+    /// end-to-end assertion of numeric injection).
     #[test]
     fn support_modifiers_skips_rejected_supports() {
         let effects = vec![

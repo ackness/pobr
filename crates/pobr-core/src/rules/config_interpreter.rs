@@ -1,22 +1,29 @@
-//! config 解释器（M3-T1 A4 的**纯函数体**，不接 orchestrator/perform）。
+//! Config interpreter.
 //!
-//! 输入 = `config_options.json` 条目（[`ConfigOptionDef`]）+ 原始 XML 输入
-//! （[`RawConfigInputs`]）+ handler 注册表；输出 = [`ConfigOutcome`]
-//! （player/enemy/minion 三路 Modifier + conditions/multipliers 回填 +
-//! customMods 行通道 + 标量回显）。零 I/O、确定性；接线（xml_build 切换
-//! 双跑、ConfigCatalog 注入）属 M3 主波 T1-A5。
+//! Input = `config_options.json` entries ([`ConfigOptionDef`]) + raw XML input
+//! ([`RawConfigInputs`]) + a handler registry; output = [`ConfigOutcome`]
+//! (player/enemy/minion Modifier lanes + conditions/multipliers backfill +
+//! the customMods text lane + scalar echo). Pure, deterministic, no I/O;
+//! wiring it up (switching xml_build to dual-run, injecting a ConfigCatalog)
+//! is tracked under A5.
 //!
-//! 求值序（蓝图 m3-orchestration §4.4）：
-//! 1. 每条目取「显式输入 else default」；check=false/None 直接跳过；
-//!    count=0 跳过（vendor BuildModList 语义）；
-//! 2. effects 逐条实例化（数值走 `rules::value_expr` 唯一求值器；
-//!    `emit_if` 谓词不成立不发）；
-//! 3. target 分流 player/enemy/minion；`Condition:`/`Multiplier:` 前缀的
-//!    FLAG/BASE 同时回填 conditions/multipliers 表（保持现有 cfg 通道兼容）；
-//! 4. `imply_conditions` 展开（仅当条目值为真；不覆盖已有显式值）；
-//! 5. handler_id 条目查 registry，未注册记入 `unhandled` 报表（不 panic）；
-//! 6. text 型（customMods）按行 StripEscapes 后放 `custom_mod_lines`，
-//!    由 build 层喂 mod_parser（vendor ConfigOptions.lua:2278-2296）。
+//! Evaluation order:
+//! 1. For each entry, resolve "explicit input else default"; check=false/None
+//!    is skipped outright; count=0 is skipped (matches vendor BuildModList
+//!    semantics);
+//! 2. effects are instantiated one by one (numeric values go through the
+//!    single `rules::value_expr` evaluator; an effect whose `emit_if`
+//!    predicate fails is not emitted);
+//! 3. target routes to player/enemy/minion; FLAG/BASE effects whose name is
+//!    prefixed `Condition:`/`Multiplier:` also backfill the conditions/
+//!    multipliers tables (kept for compatibility with the existing cfg lanes);
+//! 4. `imply_conditions` are expanded (only when the entry's value is true;
+//!    never overrides an existing explicit value);
+//! 5. entries with a `handler_id` are looked up in the registry; unregistered
+//!    ones are recorded in the `unhandled` report instead of panicking;
+//! 6. text-type entries (customMods) are StripEscapes'd line by line into
+//!    `custom_mod_lines`, fed to mod_parser by the build layer (vendor
+//!    ConfigOptions.lua:2278-2296).
 
 use std::collections::BTreeMap;
 
@@ -31,20 +38,21 @@ use crate::modifier::{ActorRef, ModTag, ModValue, Modifier};
 use crate::rules::registry::{HandlerCtx, HandlerRegistry};
 use crate::rules::value_expr;
 
-/// 原始 config 输入值（xml_build 读出的 `<Input name bool|number|string>` 三型）。
+/// A raw config input value, as read from an xml_build `<Input name bool|number|string>`.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConfigInputValue {
-    /// 布尔输入。
+    /// Boolean input.
     Bool(bool),
-    /// 数值输入。
+    /// Numeric input.
     Number(f64),
-    /// 文本输入（list 选项值 / customMods）。
+    /// Text input (list option value / customMods).
     Text(String),
 }
 
 impl ConfigInputValue {
-    /// 数值视图（`Number` 原样；`Bool` → 1.0/0.0；`Text` → `None`）。供编排层读取
-    /// count/integer 型 config 输入（如 DistanceRamp 的 enemyDistance Input 值）。
+    /// Numeric view (`Number` as-is; `Bool` → 1.0/0.0; `Text` → `None`). Used by the
+    /// orchestration layer to read count/integer-type config inputs (e.g. DistanceRamp's
+    /// enemyDistance Input value).
     pub fn as_number(&self) -> Option<f64> {
         match self {
             Self::Number(value) => Some(*value),
@@ -54,75 +62,78 @@ impl ConfigInputValue {
     }
 }
 
-/// 原始 config 输入集合（var → 值）。
+/// A set of raw config inputs (var → value).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct RawConfigInputs {
-    /// 显式输入（XML `<Input>` 解析产物）。
+    /// Explicit inputs (parsed from XML `<Input>`).
     pub values: BTreeMap<String, ConfigInputValue>,
-    /// 占位输入（XML `<Placeholder>` 解析产物）。vendor 仅对个别标量按
-    /// 「Input 缺省 → Placeholder 兜底」消费（如 `enemyLevel`，
-    /// ConfigTab.lua:872-877）；解释器主流程不读本表，消费方按需取用。
+    /// Placeholder inputs (parsed from XML `<Placeholder>`). Vendor only consumes this for a
+    /// handful of scalars, as an "Input missing → fall back to Placeholder" path (e.g.
+    /// `enemyLevel`, ConfigTab.lua:872-877); the interpreter's main flow doesn't read this
+    /// table, it's up to individual consumers to use it as needed.
     pub placeholders: BTreeMap<String, ConfigInputValue>,
 }
 
 impl RawConfigInputs {
-    /// 空输入。
+    /// An empty input set.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// 插入一项输入（builder 风格，测试便利）。
+    /// Insert one input (builder style, for test convenience).
     pub fn with(mut self, var: impl Into<String>, value: ConfigInputValue) -> Self {
         self.values.insert(var.into(), value);
         self
     }
 }
 
-/// 解释结果。
+/// Result of interpreting a set of config entries.
 #[derive(Debug, Clone, Default)]
 pub struct ConfigOutcome {
-    /// 写入玩家 modDB 的 modifier。
+    /// Modifiers to write into the player modDB.
     pub player_mods: Vec<Modifier>,
-    /// 写入敌人 modDB 的 modifier。
+    /// Modifiers to write into the enemy modDB.
     pub enemy_mods: Vec<Modifier>,
-    /// 写入召唤物 modDB 的 modifier（MinionModifier LIST 嵌套 mod 展开）。
+    /// Modifiers to write into the minion modDB (from expanding MinionModifier LIST nested mods).
     pub minion_mods: Vec<Modifier>,
-    /// `Condition:` 前缀 FLAG 的回填表（现有 cfg.conditions 通道兼容）。
+    /// Backfill table for `Condition:`-prefixed FLAGs (kept for compatibility with the existing
+    /// cfg.conditions lane).
     pub conditions: BTreeMap<String, bool>,
-    /// `Multiplier:` 前缀 BASE 的回填表（现有 cfg.multipliers 通道兼容）。
+    /// Backfill table for `Multiplier:`-prefixed BASEs (kept for compatibility with the existing
+    /// cfg.multipliers lane).
     pub multipliers: BTreeMap<String, f64>,
-    /// SkillData LIST 键值载荷（消费方按需读取）。
+    /// SkillData LIST key/value payloads (read by consumers as needed).
     pub skill_data: Vec<SkillDataEntry>,
-    /// customMods 原文行（StripEscapes 后；build 层喂 mod_parser）。
+    /// Raw customMods text lines (after StripEscapes; fed to mod_parser by the build layer).
     pub custom_mod_lines: Vec<String>,
-    /// 全部激活条目的解析后标量回显（resistancePenalty/enemyLevel 等
-    /// 标量消费方从这里取值，含 default 解析）。
+    /// Resolved scalar echo for every activated entry (scalar consumers such as
+    /// resistancePenalty/enemyLevel read their value from here, including default resolution).
     pub scalars: BTreeMap<String, ConfigInputValue>,
-    /// handler_id 未注册的条目（覆盖率报表）。
+    /// Entries whose handler_id has no registered handler (coverage report).
     pub unhandled: Vec<UnhandledEntry>,
-    /// 非致命告警（未映射 flag / 未接通 tag 等，逐条人读）。
+    /// Non-fatal warnings (unmapped flags, unwired tags, etc.), meant for human review.
     pub diagnostics: Vec<String>,
 }
 
-/// SkillData 键值载荷。
+/// A SkillData key/value payload.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SkillDataEntry {
-    /// 载荷键（如 `corpseLife`）。
+    /// Payload key (e.g. `corpseLife`).
     pub key: String,
-    /// 载荷值。
+    /// Payload value.
     pub value: ConfigInputValue,
 }
 
-/// 未注册 handler 的条目记录。
+/// Record of an entry whose handler is not registered.
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnhandledEntry {
-    /// 条目 var。
+    /// The entry's var.
     pub var: String,
-    /// 数据声明的 handler_id。
+    /// The handler_id declared in data.
     pub handler_id: String,
 }
 
-/// 解释全部 config 条目（纯函数）。
+/// Interpret every config entry (pure function).
 pub fn interpret(
     options: &[ConfigOptionDef],
     inputs: &RawConfigInputs,
@@ -135,10 +146,11 @@ pub fn interpret(
     outcome
 }
 
-/// 解析单条目的「显式输入 else default」激活值。
+/// Resolve a single entry's "explicit input else default" activation value.
 ///
-/// 返回 `None` = 条目未激活（跳过）；`Some((回显值, 数值输入))` = 激活，
-/// 数值输入用于 effects 实例化（check 恒 1.0，list 用选项数值或 0）。
+/// `None` = the entry is not activated (skip it); `Some((echo value, numeric input))` = it's
+/// activated, where the numeric input feeds effect instantiation (check is always 1.0, list
+/// uses the option's number or 0).
 fn resolve_value(
     def: &ConfigOptionDef,
     inputs: &RawConfigInputs,
@@ -169,7 +181,7 @@ fn resolve_value(
                     .as_ref()
                     .and_then(|d| d.state_number.or(d.placeholder_number))?,
             };
-            // vendor BuildModList：count 型 0 视为未设置；其余类型 0 也应用。
+            // vendor BuildModList: for count, 0 counts as unset; other types apply at 0 too.
             if def.input_type == ConfigInputType::Count && number == 0.0 {
                 return None;
             }
@@ -204,7 +216,8 @@ fn resolve_value(
     }
 }
 
-/// list 数值选项的字符串化（与抽取器 `tostring(val)` 对齐：整数不带小数点）。
+/// Stringify a list option's numeric value (matches the extractor's `tostring(val)`: integers
+/// have no decimal point).
 fn format_list_number(value: f64) -> String {
     if value.fract() == 0.0 && value.abs() < 1e15 {
         format!("{}", value as i64)
@@ -223,12 +236,12 @@ fn interpret_entry(
         return;
     };
 
-    // 标量回显（所有激活条目；标量消费方如 resistancePenalty 从这里取）。
+    // Scalar echo (all activated entries; scalar consumers like resistancePenalty read from here).
     outcome
         .scalars
         .insert(def.var.clone(), display_value.clone());
 
-    // customMods 行通道（text 型唯一条目）。
+    // customMods text lane (the sole text-type entry).
     if def.input_type == ConfigInputType::Text {
         if let ConfigInputValue::Text(text) = &display_value {
             outcome.custom_mod_lines.extend(
@@ -241,8 +254,9 @@ fn interpret_entry(
         return;
     }
 
-    // handler_id 条目：查 registry，未注册记报表。四路产出按通道落位
-    // （registry::HandlerOutcome 文档；config 消费点 ctx 仅携带数值占位参数）。
+    // handler_id entries: look up the registry, record unregistered ones in the report. The
+    // four output lanes each land in their own bucket (see registry::HandlerOutcome docs; the
+    // config call site's ctx only carries the numeric placeholder argument).
     if let Some(handler_id) = &def.handler_id {
         match registry.get(handler_id) {
             Some(handler) => {
@@ -275,7 +289,7 @@ fn interpret_entry(
         return;
     }
 
-    // effects：list 型优先取逐选项 effects，否则共享 effects。
+    // effects: for list type, prefer per-option effects, otherwise fall back to shared effects.
     let effects: &[ConfigEffect] = if def.input_type == ConfigInputType::List {
         if let ConfigInputValue::Text(selected) = &display_value {
             def.option_effects
@@ -293,13 +307,13 @@ fn interpret_entry(
         apply_effect(def, effect, input_number, outcome);
     }
 
-    // implyCond 展开：条目激活即蕴含；不覆盖已有显式值。
+    // implyCond expansion: activating the entry implies these; never overrides an existing value.
     for cond in &def.imply_conditions {
         outcome.conditions.entry(cond.clone()).or_insert(true);
     }
 }
 
-/// 实例化单条效果并写入 outcome。
+/// Instantiate a single effect and write it into outcome.
 fn apply_effect(
     def: &ConfigOptionDef,
     effect: &ConfigEffect,
@@ -312,7 +326,7 @@ fn apply_effect(
         return;
     }
 
-    // LIST 结构化载荷：SkillData 键值 → skill_data；嵌套 mod → 对应桶。
+    // Structured LIST payload: SkillData key/value → skill_data; nested mod → its own bucket.
     if let Some(list_value) = &effect.list_value {
         match list_value {
             ListEffectValue::KeyValue { key, value } => {
@@ -361,8 +375,8 @@ fn apply_effect(
         return;
     };
 
-    // Condition:/Multiplier: 前缀回填（仅无 tag/flag 限定的裸效果——带限定的
-    // 条件性效果不能无条件落进全局表）。
+    // Condition:/Multiplier: prefix backfill (only for bare effects with no tag/flag
+    // qualifiers — a qualified, conditional effect can't unconditionally land in the global table).
     if effect.tags.is_empty() && effect.flags.is_empty() {
         if mod_type == ModType::Flag
             && let Some(cond) = effect.name.strip_prefix("Condition:")
@@ -385,7 +399,7 @@ fn apply_effect(
     }
 }
 
-/// 嵌套 mod（MinionModifier/EnemyModifier LIST）展开到对应桶。
+/// Expand a nested mod (MinionModifier/EnemyModifier LIST) into its target bucket.
 fn apply_nested_mod(
     def: &ConfigOptionDef,
     effect: &ConfigEffect,
@@ -414,8 +428,9 @@ fn apply_nested_mod(
         return;
     };
 
-    // 嵌套通道按外层 LIST 名分流：MinionModifier → minion、EnemyModifier → enemy。
-    // 先解析目标桶——actor tag 翻译（`enemy` 字面量的指向）依赖 mod 所在桶。
+    // The nested channel routes by outer LIST name: MinionModifier → minion, EnemyModifier →
+    // enemy. Resolve the target bucket first — actor tag translation (what the `enemy` literal
+    // points to) depends on the bucket the mod lives in.
     let bucket = match effect.name.as_str() {
         "MinionModifier" => EffectTarget::Minion,
         "EnemyModifier" => EffectTarget::Enemy,
@@ -455,7 +470,8 @@ fn apply_nested_mod(
     }
 }
 
-/// 把效果组装成 Modifier（flags/tags 映射，未知项保守跳过整条 mod）。
+/// Assemble an effect into a Modifier (mapping flags/tags; an unknown one conservatively drops
+/// the whole mod).
 fn build_modifier(
     def: &ConfigOptionDef,
     effect: &ConfigEffect,
@@ -481,13 +497,11 @@ fn build_modifier(
     Some(attach_origin(modifier, def, effect.target))
 }
 
-/// flags / tags 名称映射；未知项记 diagnostics 并放弃整条 mod
-/// （保守：宁缺勿错值——缺位的 ModFlags 在 M4-W-A1 扩位后回补）。
+/// Map flag/tag names; an unknown one is recorded in diagnostics and drops the whole mod.
 ///
-/// actor tag 翻译（M3-T5-E1 后回补，dualrun 报告 §3-⑦）：vendor
-/// `ActorCondition`/`Multiplier(actor=…)` 的 actor 字面量经
-/// [`map_vendor_actor`]（按 mod 所在桶 `bucket` 解析指向）落
-/// [`ModTag::Condition`]/[`ModTag::Multiplier`] 的 `actor` 字段。
+/// actor tag translation (backfilled later): the actor literal on vendor's
+/// `ActorCondition`/`Multiplier(actor=…)` goes through [`map_vendor_actor`] (resolved against the
+/// bucket the mod lives in) into the `actor` field of [`ModTag::Condition`]/[`ModTag::Multiplier`].
 fn apply_flags_and_tags(
     mut modifier: Modifier,
     flags: &[String],
@@ -522,8 +536,8 @@ fn apply_flags_and_tags(
                 limit,
                 actor,
             } => {
-                // 构造函数 + 字段更新：actor 维度（PoB2 ModStore.lua:347-353
-                // `tag.actor`）按桶翻译后写入 `ModTag::Multiplier::actor`。
+                // Constructor + field update: the actor dimension (PoB2 ModStore.lua:347-353
+                // `tag.actor`) is translated per-bucket and written into `ModTag::Multiplier::actor`.
                 let mut mod_tag = ModTag::multiplier(mult.clone(), *div, *limit);
                 if let Some(literal) = actor {
                     let Some(actor_ref) = map_vendor_actor(literal, bucket) else {
@@ -544,8 +558,8 @@ fn apply_flags_and_tags(
                 var: cond,
                 neg,
             } => {
-                // 跨 actor 条件（PoB2 ModStore.lua:607-624 `ActorCondition`：
-                // `getActor(self, tag.actor)` 取目标 actor 的 modDB 查条件）。
+                // Cross-actor condition (PoB2 ModStore.lua:607-624 `ActorCondition`:
+                // `getActor(self, tag.actor)` looks up the condition in the target actor's modDB).
                 let Some(actor_ref) = map_vendor_actor(actor, bucket) else {
                     outcome.diagnostics.push(format!(
                         "config.{var}: ActorCondition actor `{actor}`（桶 {bucket:?}）无 ActorRef 映射，mod {} 跳过",
@@ -564,14 +578,15 @@ fn apply_flags_and_tags(
     Some(modifier)
 }
 
-/// vendor actor 字面量 → [`ActorRef`]（按 mod 所在桶解析指向）。
+/// Vendor actor literal → [`ActorRef`] (resolved against the bucket the mod lives in).
 ///
-/// PoB2 的 actor 链（CalcSetup.lua:536-545）：`env.player.enemy = env.enemy`、
-/// `env.enemy.enemy = env.player`——故 **enemy 桶** mod 的 `actor = "enemy"`
-/// 指向玩家（如曝光条目的 `CanApply<X>Exposure` 玩家侧 flag，
-/// ConfigOptions.lua:1864-1872）。player/minion 桶的 `"enemy"` 指向敌人
-/// actor——pobr `ActorRef` 暂无 Enemy 变体（敌侧快照通道未建），返回
-/// `None` 保守跳过（当前 catalog 无此形态条目）。
+/// PoB2's actor chain (CalcSetup.lua:536-545): `env.player.enemy = env.enemy`,
+/// `env.enemy.enemy = env.player` — so on an **enemy-bucket** mod, `actor = "enemy"`
+/// actually points at the player (e.g. the exposure entries' player-side
+/// `CanApply<X>Exposure` flag, ConfigOptions.lua:1864-1872). On player/minion buckets,
+/// `"enemy"` points at the enemy actor — pobr's `ActorRef` has no Enemy variant yet (no
+/// enemy-side snapshot channel exists), so this conservatively returns `None` (no catalog
+/// entry currently takes this shape).
 fn map_vendor_actor(literal: &str, bucket: EffectTarget) -> Option<ActorRef> {
     match literal {
         "player" => Some(ActorRef::Player),
@@ -582,7 +597,8 @@ fn map_vendor_actor(literal: &str, bucket: EffectTarget) -> Option<ActorRef> {
     }
 }
 
-/// vendor ModFlag 渲染名 → pobr ModFlags 位（当前闭集；M4-W-A1 扩位后扩表）。
+/// Vendor ModFlag display name → pobr ModFlags bit (currently a closed set; extend the table
+/// when more bits are added).
 fn map_mod_flag(name: &str) -> Option<ModFlags> {
     match name {
         "Attack" => Some(ModFlags::ATTACK),
@@ -606,7 +622,7 @@ fn parse_mod_type(literal: &str) -> Option<ModType> {
     }
 }
 
-/// 归因：SourceKind::Config / EnemyConfig + `config.<var>`。
+/// Attribution: SourceKind::Config / EnemyConfig + `config.<var>`.
 fn attach_origin(modifier: Modifier, def: &ConfigOptionDef, target: EffectTarget) -> Modifier {
     let kind = match target {
         EffectTarget::Enemy => SourceKind::EnemyConfig,
@@ -616,7 +632,7 @@ fn attach_origin(modifier: Modifier, def: &ConfigOptionDef, target: EffectTarget
     modifier.with_origin(ModifierSource::new(source_id))
 }
 
-/// vendor `StripEscapes`：剥 `^x RRGGBB` 颜色码与 `^<digit>` 简码。
+/// Vendor `StripEscapes`: strips `^x RRGGBB` colour codes and `^<digit>` shorthand codes.
 fn strip_escapes(line: &str) -> String {
     let mut out = String::with_capacity(line.len());
     let mut chars = line.chars().peekable();
@@ -696,7 +712,7 @@ mod tests {
         }
     }
 
-    /// check 条目：显式 true 才发效果，并回填 conditions。
+    /// check entry: only emits the effect and backfills conditions when explicitly true.
     #[test]
     fn check_entry_emits_flag_and_condition() {
         let mut def = entry("conditionMoving", ConfigInputType::Check);
@@ -707,18 +723,18 @@ mod tests {
         assert_eq!(outcome.player_mods.len(), 1);
         assert_eq!(outcome.player_mods[0].name.as_str(), "Condition:Moving");
         assert_eq!(outcome.conditions.get("Moving"), Some(&true));
-        // 归因带 SourceKind::Config + config.<var>。
+        // Attribution carries SourceKind::Config + config.<var>.
         let origin = outcome.player_mods[0].origin.as_ref().unwrap();
         assert_eq!(origin.source_id.kind, SourceKind::Config);
         assert_eq!(origin.source_id.id, "config.conditionMoving");
 
-        // 未设置 → 零输出。
+        // Unset → no output.
         let outcome = interpret(&[def], &RawConfigInputs::new(), &HandlerRegistry::new());
         assert!(outcome.player_mods.is_empty());
         assert!(outcome.conditions.is_empty());
     }
 
-    /// check 的 defaultState=true：无输入也激活（DEFAULT_TRUE_CONDITIONS 数据化）。
+    /// check's defaultState=true: activates even without input (DEFAULT_TRUE_CONDITIONS made data-driven).
     #[test]
     fn check_default_state_true_activates() {
         let mut def = entry("conditionHitRecently", ConfigInputType::Check);
@@ -733,8 +749,8 @@ mod tests {
         assert_eq!(outcome.conditions.get("HitRecently"), Some(&true));
     }
 
-    /// conditionStationary 端到端：number=5 → Multiplier + FLAG；number=0 →
-    /// count 语义整条跳过（vendor BuildModList：count 的 0 视为未设置）。
+    /// conditionStationary end-to-end: number=5 → Multiplier + FLAG; number=0 → the whole entry
+    /// is skipped per count semantics (vendor BuildModList: 0 counts as unset for count).
     #[test]
     fn stationary_count_entry() {
         let mut def = entry("conditionStationary", ConfigInputType::Count);
@@ -769,7 +785,7 @@ mod tests {
         assert!(outcome.player_mods.is_empty(), "count=0 视为未设置");
     }
 
-    /// countAllowZero：0 也应用。
+    /// countAllowZero: applies at 0 too.
     #[test]
     fn count_allow_zero_applies_at_zero() {
         let mut def = entry("multiplierX", ConfigInputType::CountAllowZero);
@@ -780,7 +796,7 @@ mod tests {
         assert_eq!(outcome.player_mods.len(), 1);
     }
 
-    /// 数值默认（defaultState=100 的 multiplierCurrentManaPercentage 形态）。
+    /// Numeric default (the shape of multiplierCurrentManaPercentage with defaultState=100).
     #[test]
     fn count_default_number_used_when_missing() {
         let mut def = entry("multiplierCurrentManaPercentage", ConfigInputType::Count);
@@ -805,7 +821,7 @@ mod tests {
         );
     }
 
-    /// list 型：选项分流 option_effects + defaultIndex 回退 + 数值回显。
+    /// list type: option routing via option_effects + defaultIndex fallback + numeric echo.
     #[test]
     fn list_entry_with_option_effects_and_default_index() {
         let mut def = entry("lifeRegenMode", ConfigInputType::List);
@@ -833,13 +849,13 @@ mod tests {
         );
         def.option_effects.insert("MIN".to_string(), Vec::new());
 
-        // 显式选 AVERAGE。
+        // Explicitly selects AVERAGE.
         let inputs =
             RawConfigInputs::new().with("lifeRegenMode", ConfigInputValue::Text("AVERAGE".into()));
         let outcome = interpret(std::slice::from_ref(&def), &inputs, &HandlerRegistry::new());
         assert_eq!(outcome.conditions.get("LifeRegenBurstAvg"), Some(&true));
 
-        // 无输入 → defaultIndex=2 → AVERAGE。
+        // No input → defaultIndex=2 → AVERAGE.
         let outcome = interpret(
             std::slice::from_ref(&def),
             &RawConfigInputs::new(),
@@ -847,7 +863,7 @@ mod tests {
         );
         assert_eq!(outcome.conditions.get("LifeRegenBurstAvg"), Some(&true));
 
-        // 显式选 MIN → 零效果但标量回显。
+        // Explicitly selects MIN → no effects but still echoed as a scalar.
         let inputs =
             RawConfigInputs::new().with("lifeRegenMode", ConfigInputValue::Text("MIN".into()));
         let outcome = interpret(&[def], &inputs, &HandlerRegistry::new());
@@ -858,7 +874,7 @@ mod tests {
         );
     }
 
-    /// enemy 目标分流 + EnemyConfig 归因 + Condition:Effective tag 映射。
+    /// enemy target routing + EnemyConfig attribution + Condition:Effective tag mapping.
     #[test]
     fn enemy_effect_routes_to_enemy_bucket() {
         let mut def = entry("conditionEnemyShocked", ConfigInputType::Check);
@@ -880,16 +896,17 @@ mod tests {
             SourceKind::EnemyConfig
         );
         assert_eq!(modifier.tags, vec![ModTag::condition("Effective", false)]);
-        // 带 tag 的条件性 FLAG 不回填全局 conditions 表。
+        // A tagged, conditional FLAG does not backfill the global conditions table.
         assert!(outcome.conditions.is_empty());
     }
 
-    /// implyCond：激活时蕴含置位、不覆盖已有显式值。
+    /// implyCond: activation implies the condition is set, but never overrides an existing explicit value.
     #[test]
     fn imply_conditions_do_not_override_explicit() {
         let mut def_a = entry("a", ConfigInputType::Check);
         def_a.effects = vec![flag_effect("Condition:UsedSkillRecently")];
-        // 显式效果先写 false 进 conditions —— 构造对照：把显式值改为 false。
+        // The explicit effect first writes false into conditions — set up the contrast case by
+        // changing the explicit value to false.
         def_a.effects[0].value_bool = Some(false);
         let mut def_b = entry("b", ConfigInputType::Check);
         def_b.imply_conditions = vec!["UsedSkillRecently".to_string()];
@@ -905,7 +922,7 @@ mod tests {
         );
     }
 
-    /// handler 条目：未注册 → unhandled 报表；注册 → 产出注入。
+    /// handler entry: unregistered → unhandled report; registered → its output is injected.
     #[test]
     fn handler_entry_registered_and_unregistered() {
         let mut def = entry("enemyIsBoss", ConfigInputType::List);
@@ -941,7 +958,8 @@ mod tests {
             .unwrap();
         let outcome = interpret(&[def], &inputs, &registry);
         assert!(outcome.unhandled.is_empty());
-        // 四路产出按通道落位；归因由消费点统一附加（player=Config / enemy=EnemyConfig）。
+        // The four output lanes each land in their bucket; attribution is attached uniformly by
+        // the call site (player=Config / enemy=EnemyConfig).
         assert_eq!(outcome.player_mods.len(), 1);
         assert_eq!(
             outcome.player_mods[0]
@@ -966,7 +984,7 @@ mod tests {
         assert_eq!(outcome.multipliers.get("BossPresence"), Some(&1.0));
     }
 
-    /// customMods：按行 StripEscapes 入行通道。
+    /// customMods: each line goes through StripEscapes into the text lane.
     #[test]
     fn custom_mods_text_lines_stripped() {
         let def = entry("customMods", ConfigInputType::Text);
@@ -984,7 +1002,7 @@ mod tests {
         );
     }
 
-    /// SkillData LIST 键值载荷（detonateDeadCorpseLife 形态）。
+    /// SkillData LIST key/value payload (the shape of detonateDeadCorpseLife).
     #[test]
     fn skill_data_key_value_payload() {
         let mut def = entry("detonateDeadCorpseLife", ConfigInputType::Count);
@@ -1010,7 +1028,7 @@ mod tests {
         );
     }
 
-    /// MinionModifier 嵌套 mod → minion 桶。
+    /// MinionModifier nested mod → minion bucket.
     #[test]
     fn minion_modifier_nested_routes_to_minion_bucket() {
         let mut def = entry("minionsConditionFullLife", ConfigInputType::Check);
@@ -1039,10 +1057,10 @@ mod tests {
         assert_eq!(outcome.minion_mods[0].name.as_str(), "Condition:FullLife");
     }
 
-    /// actor tag 翻译（M3-T5-E1 回补，dualrun 报告 §3-⑦）：enemy 桶的
-    /// `ActorCondition{actor:"enemy"}` 指向玩家（PoB2 CalcSetup.lua:542
-    /// `env.enemy.enemy = env.player`）→ `ModTag::Condition{actor:Player}`。
-    /// 曝光条目形态（ConfigOptions.lua:1864-1866）。
+    /// actor tag translation: on the enemy bucket, `ActorCondition{actor:"enemy"}` points at the
+    /// player (PoB2 CalcSetup.lua:542 `env.enemy.enemy = env.player`) →
+    /// `ModTag::Condition{actor:Player}`. This is the shape of the exposure entries
+    /// (ConfigOptions.lua:1864-1866).
     #[test]
     fn actor_condition_translated_for_enemy_bucket() {
         let mut def = entry("conditionEnemyFireExposure", ConfigInputType::Check);
@@ -1078,8 +1096,8 @@ mod tests {
         }));
     }
 
-    /// player 桶的 `actor = "enemy"`：ActorRef 无 Enemy 变体 → 保守跳过 +
-    /// diagnostics（当前 catalog 无此形态，防御性口径）。
+    /// On the player bucket, `actor = "enemy"`: ActorRef has no Enemy variant → conservatively
+    /// skip + diagnostics (no catalog entry currently takes this shape; this is defensive coverage).
     #[test]
     fn actor_condition_unmappable_skips_with_diagnostic() {
         let mut def = entry("x", ConfigInputType::Check);
@@ -1098,8 +1116,8 @@ mod tests {
         assert!(outcome.diagnostics[0].contains("无 ActorRef 映射"));
     }
 
-    /// Multiplier tag 的 actor 维度（PoB2 ModStore.lua:347-353）翻译为
-    /// `ModTag::Multiplier::actor`（构造函数 + 字段更新）。
+    /// The Multiplier tag's actor dimension (PoB2 ModStore.lua:347-353) is translated into
+    /// `ModTag::Multiplier::actor` (constructor + field update).
     #[test]
     fn multiplier_actor_translated() {
         let mut def = entry("m", ConfigInputType::Check);
@@ -1124,7 +1142,7 @@ mod tests {
         )));
     }
 
-    /// 未映射 ModFlag → 保守跳过 + diagnostics。
+    /// Unmapped ModFlag → conservatively skip + diagnostics.
     #[test]
     fn unmapped_flag_skips_mod_with_diagnostic() {
         let mut def = entry("x", ConfigInputType::Check);
@@ -1139,7 +1157,7 @@ mod tests {
         assert!(outcome.diagnostics[0].contains("Cast"));
     }
 
-    /// strip_escapes 形态覆盖。
+    /// strip_escapes shape coverage.
     #[test]
     fn strip_escapes_variants() {
         assert_eq!(strip_escapes("^xE05030Life^7 left"), "Life left");

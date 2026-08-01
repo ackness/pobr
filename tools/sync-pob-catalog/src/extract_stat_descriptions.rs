@@ -1,18 +1,22 @@
-//! `extract-lua --what stat-descriptions`：vendor PoB2
-//! `Data/StatDescriptions/*.lua` → 每个 stat_id 的 canonical 显示文本 →
-//! `data/<版本>/overlay/stat_descriptions.json`（M6 E/F「stat_id → Modifier
-//! 第二通道」的数据面）。
+//! `extract-lua --what stat-descriptions`: extracts the canonical display
+//! text for every stat_id from vendor PoB2's `Data/StatDescriptions/*.lua`
+//! into `data/<version>/overlay/stat_descriptions.json` (the data plane for
+//! the "stat_id -> Modifier, second channel" pipeline).
 //!
-//! 职责切分与 [`crate::extract_stat_map`] 一致：Lua 引导脚本
-//! （`extract_stat_descriptions.lua`，编译期内嵌）在最小环境下加载描述表、对
-//! 每个 stat_id 喂代表值（V=1）渲染文本，以 JSONL 输出（每行一条 single 文本
-//! 行或一条 compound 模板）；Rust 侧统一做 scope 分段、行序归并（[`BTreeMap`]
-//! 字典序）与整体序列化，保证同输入重跑 **byte-stable**。
+//! Responsibility split matches [`crate::extract_stat_map`]: the Lua
+//! bootstrap script (`extract_stat_descriptions.lua`, embedded at compile
+//! time) loads the description tables in a minimal environment, feeds each
+//! stat_id a representative value (V=1) to render its text, and emits JSONL
+//! (one line per single text line or per compound template); the Rust side
+//! handles scope segmentation, line-order merging ([`BTreeMap`]
+//! lexicographic order), and whole-document serialization, guaranteeing
+//! **byte-stable** output on repeated runs with the same input.
 //!
-//! 消费侧 schema 单一来源 = [`pobr_data::catalog::stat_descriptions`]（生成 /
-//! 消费两侧共用同一 serde 形状，防字段漂移）；precedence（child scope 覆盖
-//! parent）与「哪条 stat_id 受支持」的判定是消费侧 §B 生成器 / `parse_mod_engine`
-//! 的职责，本模块不做。
+//! The single source of truth for the consumption-side schema is
+//! [`pobr_data::catalog::stat_descriptions`] (shared serde shape between
+//! generation and consumption, so fields can't drift); precedence (child
+//! scope overrides parent) and deciding which stat_id is actually supported
+//! belong to the consumption side's §B generator / `parse_mod_engine`, not this module.
 
 use std::collections::BTreeMap;
 use std::io;
@@ -24,78 +28,81 @@ use crate::extract_lua::{
     ExtractLuaArgs, OverlayMeta, invoke_luajit_jsonl, read_vendor_version, resolve_version_file,
 };
 
-/// 引导脚本内容（经 stdin 注入 luajit，二进制自包含、不依赖运行目录）。
+/// Bootstrap script content (piped into luajit via stdin; the binary is
+/// self-contained and doesn't depend on the working directory).
 const BOOTSTRAP_LUA: &str = include_str!("extract_stat_descriptions.lua");
 
-/// 当前 overlay 文档 schema 标识（字段演化时递增）。
+/// Current overlay document schema identifier (bumped when fields evolve).
 pub const STAT_DESCRIPTIONS_SCHEMA: &str = "stat_descriptions/v1";
 
-/// 默认抽取 scope（M6 E/F tree 通道最相关：root + passive + presence/aura）。
-/// 其余 StatDescriptions 文件（skill/gem/monster/advanced_mod）按需经 `--files` 加。
+/// Default extraction scope (most relevant to the tree channel: root + passive + presence/aura).
+/// Other StatDescriptions files (skill/gem/monster/advanced_mod) are added as needed via `--files`.
 pub const DEFAULT_STAT_DESC_FILES: &[&str] = &[
     "stat_descriptions",
     "passive_skill_stat_descriptions",
     "passive_skill_aura_stat_descriptions",
 ];
 
-/// 引导脚本输出的单行 JSONL：一条 single 文本行 或 一条 compound 模板。
+/// One JSONL line emitted by the bootstrap script: either a single text line or a compound template.
 ///
-/// - single 渲染：`{stat, scope, text, line, compound:false}`
-/// - single 无变体：`{stat, scope, compound:false, unrendered:true}`
-/// - compound：`{stat, scope, compound:true, member_stats, template}`
+/// - single, rendered: `{stat, scope, text, line, compound:false}`
+/// - single, no variant: `{stat, scope, compound:false, unrendered:true}`
+/// - compound: `{stat, scope, compound:true, member_stats, template}`
 #[derive(Debug, Clone, Deserialize)]
 pub struct StatDescRow {
-    /// stat 稳定 id（compound 行 = descriptor 首个 stat_id）。
+    /// The stable stat id (for a compound row, this is the descriptor's first stat_id).
     pub stat: String,
-    /// 来源 scope 名（StatDescriptions 文件名，不含 `.lua`）。
+    /// The source scope name (the StatDescriptions file name, without `.lua`).
     pub scope: String,
-    /// 是否多 stat（compound）描述符。
+    /// Whether this is a multi-stat (compound) descriptor.
     pub compound: bool,
-    /// 渲染出的单行文本（仅 single 且可渲染）。
+    /// The rendered single-line text (single only, when renderable).
     #[serde(default)]
     pub text: Option<String>,
-    /// 行序号（1-based；同一 stat 的多行描述按此排序）。
+    /// Line number (1-based; multi-line descriptions for the same stat are ordered by this).
     #[serde(default)]
     pub line: Option<u32>,
-    /// 无可渲染变体标记（仅 single）。
+    /// Marks a variant with no renderable text (single only).
     #[serde(default)]
     pub unrendered: bool,
-    /// compound 绑定的全部 stat_id（仅 compound）。
+    /// All stat_ids bound to a compound descriptor (compound only).
     #[serde(default)]
     pub member_stats: Vec<String>,
-    /// compound 原样模板（仅 compound）。
+    /// The compound template, verbatim (compound only).
     #[serde(default)]
     pub template: Option<String>,
 }
 
-/// 完整 overlay 文档（生成侧；`_meta` 头部 + 消费侧 [`StatDescriptionsDef`] 平铺）。
+/// The full overlay document (generation side; `_meta` header plus the flattened consumption-side [`StatDescriptionsDef`]).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StatDescriptionsDoc {
-    /// 头部元信息（serde 落为 `_meta`，置于文件最前）。
+    /// Header metadata (serialized as `_meta`, placed at the top of the file).
     #[serde(rename = "_meta")]
     pub meta: OverlayMeta,
-    /// 描述本体（按 scope 分段，BTreeMap 字典序保证确定性）。
+    /// The description body (segmented by scope; BTreeMap lexicographic order guarantees determinism).
     #[serde(flatten)]
     pub def: StatDescriptionsDef,
 }
 
-/// 执行抽取，返回最终（byte-stable 的）JSON 文本。
+/// Run the extraction, returning the final (byte-stable) JSON text.
 pub fn run_extract_stat_descriptions(args: &ExtractLuaArgs) -> io::Result<String> {
     let rows = invoke_luajit_jsonl::<StatDescRow>(args, BOOTSTRAP_LUA)?;
     let meta = build_meta(args)?;
     assemble_stat_descriptions_document(meta, rows)
 }
 
-/// 组装最终文档：JSONL 行 → 各 scope 的 single / compound / unrendered 三段。
+/// Assemble the final document: JSONL rows -> each scope's single / compound / unrendered sections.
 ///
-/// single 文本行先归并到 `BTreeMap<line, text>`（行序确定，与输入次序无关），再
-/// 展平为 `Vec<String>`——保证同输入 byte-stable。重复键（同 scope 同 stat 同
-/// line，或 compound 重复）报错不静默覆盖。
+/// Single text lines are first merged into a `BTreeMap<line, text>` (line
+/// order is deterministic, independent of input order), then flattened into
+/// a `Vec<String>` — guaranteeing byte-stable output for the same input.
+/// Duplicate keys (same scope, same stat, same line; or a duplicate
+/// compound) error out rather than silently overwriting.
 pub fn assemble_stat_descriptions_document(
     meta: OverlayMeta,
     rows: Vec<StatDescRow>,
 ) -> io::Result<String> {
-    // 中间态：scope → stat → line → text（行序归并）。
+    // Intermediate state: scope -> stat -> line -> text (line-order merging).
     let mut single_lines: BTreeMap<String, BTreeMap<String, BTreeMap<u32, String>>> =
         BTreeMap::new();
     let mut def = StatDescriptionsDef::default();
@@ -143,7 +150,7 @@ pub fn assemble_stat_descriptions_document(
         }
     }
 
-    // 行序归并展平到消费侧形状。
+    // Flatten the line-order-merged state into the consumption-side shape.
     for (scope_name, stats) in single_lines {
         let scope = def.scopes.entry(scope_name).or_default();
         for (stat, lines) in stats {
@@ -157,7 +164,7 @@ pub fn assemble_stat_descriptions_document(
     Ok(json)
 }
 
-/// 读取 vendor 版本文件并构建 `_meta`（与 `extract_lua::build_meta` 同约定）。
+/// Read the vendor version file and build `_meta` (same convention as `extract_lua::build_meta`).
 fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
     let (commit, subject) = read_vendor_version(&resolve_version_file(args))?;
 
@@ -215,7 +222,7 @@ mod tests {
         }
     }
 
-    /// single 多行按 line 序展平；多 scope 各归各段；键字典序（BTreeMap 保证）。
+    /// Multi-line single entries flatten in line order; multiple scopes go into their own sections; keys are lexicographic (BTreeMap guarantees this).
     #[test]
     fn assembles_single_lines_in_order() {
         let json = assemble_stat_descriptions_document(
@@ -227,7 +234,7 @@ mod tests {
                     "+1 to Strength",
                     1,
                 ),
-                // 故意乱序输入：line 2 在 line 1 之前。
+                // Deliberately shuffled input: line 2 comes before line 1.
                 single("stat_descriptions", "two_line", "second", 2),
                 single("stat_descriptions", "two_line", "first", 1),
                 single(
@@ -242,7 +249,7 @@ mod tests {
         let doc: StatDescriptionsDoc = serde_json::from_str(&json).unwrap();
         let root = &doc.def.scopes["stat_descriptions"];
         assert_eq!(root.single["additional_strength"], vec!["+1 to Strength"]);
-        // 乱序输入仍按 line 序展平。
+        // Shuffled input still flattens in line order.
         assert_eq!(root.single["two_line"], vec!["first", "second"]);
         assert!(
             doc.def
@@ -251,7 +258,7 @@ mod tests {
         );
     }
 
-    /// compound 行原样保留 template + member_stats。
+    /// A compound row keeps template + member_stats verbatim.
     #[test]
     fn keeps_compound_template_verbatim() {
         let row = StatDescRow {
@@ -271,7 +278,7 @@ mod tests {
         assert_eq!(c.template, "Deal {0} damage to {1} targets");
     }
 
-    /// unrendered 行进诊断集。
+    /// An unrendered row goes into the diagnostic set.
     #[test]
     fn records_unrendered_stats() {
         let row = StatDescRow {
@@ -293,7 +300,7 @@ mod tests {
         );
     }
 
-    /// 重复 single 行（同 scope 同 stat 同 line）→ 报错不静默覆盖。
+    /// A duplicate single row (same scope, same stat, same line) errors rather than silently overwriting.
     #[test]
     fn duplicate_single_line_errors_out() {
         let result = assemble_stat_descriptions_document(
@@ -306,7 +313,7 @@ mod tests {
         assert!(result.is_err());
     }
 
-    /// 字典序：a_stat 文本位置先于 z_stat（byte-stable 排序的可见证据）。
+    /// Lexicographic order: a_stat's text appears before z_stat's (visible evidence of byte-stable sorting).
     #[test]
     fn output_is_lexicographically_sorted() {
         let json = assemble_stat_descriptions_document(

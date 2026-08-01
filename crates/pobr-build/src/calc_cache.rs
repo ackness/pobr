@@ -1,13 +1,15 @@
-//! 计算结果缓存：以「[`BuildSnapshot::content_hash`] + [`OrchestratorOptions`] 哈希」
-//! 的组合为键缓存 [`OutputTable`]。
+//! Calculation result cache: keys [`OutputTable`] by the combination of
+//! [`BuildSnapshot::content_hash`] and an [`OrchestratorOptions`] hash.
 //!
-//! 计算编排昂贵；只要计算相关输入不变，就直接复用上次结果。**注意**：`calculate`
-//! 的输出不仅由 [`Build`] 决定，还由 `options`（`base_input` 的基础 MinimalInput +
-//! `extra_modifier_texts`）决定。因此缓存键必须同时覆盖二者——否则同一个 Build 配上
-//! 不同 options 会错误命中首次缓存结果（audit HIGH-4）。
+//! Calc orchestration is expensive; as long as the calc-relevant inputs don't change, we
+//! just reuse the previous result. **Note**: `calculate`'s output is determined not only
+//! by [`Build`] but also by `options` (the base MinimalInput in `base_input` plus
+//! `extra_modifier_texts`). The cache key must therefore cover both — otherwise the same
+//! Build with different options would incorrectly hit the first cached result (audit HIGH-4).
 //!
-//! 缓存是简单的内存 map（LRU 容量上限可选），确定性、无共享可变全局状态：
-//! 调用方持有 [`CalcCache`] 实例并显式 `get_or_compute`。
+//! The cache is a plain in-memory map (LRU capacity is optional), deterministic and with
+//! no shared mutable global state: the caller owns a [`CalcCache`] instance and calls
+//! `get_or_compute` explicitly.
 
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
@@ -20,11 +22,11 @@ use crate::calc_orchestrator::{OrchestratorOptions, calculate};
 use crate::error::BuildError;
 use crate::snapshot::BuildSnapshot;
 
-/// 内存计算缓存。键为内容哈希，值为已算出的 [`OutputTable`]。
+/// In-memory calculation cache. Keyed by content hash, values are computed [`OutputTable`]s.
 #[derive(Debug, Default)]
 pub struct CalcCache {
     entries: HashMap<u64, OutputTable>,
-    /// 命中 / 未命中统计，便于诊断缓存有效性。
+    /// Hit / miss counters, useful for diagnosing cache effectiveness.
     hits: u64,
     misses: u64,
 }
@@ -34,7 +36,7 @@ impl CalcCache {
         Self::default()
     }
 
-    /// 命中则返回缓存结果；否则计算、存入、再返回。
+    /// Returns the cached result on a hit; otherwise computes, stores, then returns it.
     pub fn get_or_compute(
         &mut self,
         build: &Build,
@@ -53,12 +55,13 @@ impl CalcCache {
         Ok(output)
     }
 
-    /// 直接按组合缓存键查缓存（不触发计算）。键由 build 内容哈希与 options 哈希合成。
+    /// Looks up the cache directly by the combined cache key, without triggering a
+    /// computation. The key is derived from the build content hash and the options hash.
     pub fn peek(&self, key: u64) -> Option<&OutputTable> {
         self.entries.get(&key)
     }
 
-    /// 清空缓存与统计。
+    /// Clears the cache and its stats.
     pub fn clear(&mut self) {
         self.entries.clear();
         self.hits = 0;
@@ -82,17 +85,19 @@ impl CalcCache {
     }
 }
 
-/// `OrchestratorOptions` 的确定性哈希。
+/// Deterministic hash of `OrchestratorOptions`.
 ///
-/// `OrchestratorOptions` / `MinimalInput` 都未派生 `Serialize` 或 `Hash`（后者含
-/// `f64` 字段无法直接派生），故逐字段手动喂入：
-/// - `extra_modifier_texts`（`Vec<String>` 已实现 `Hash`）直接 `hash`；
-/// - `base_input` 的每个 `f64` 字段取 `to_bits()` 后喂入（位级相等，规避 `f64`
-///   不实现 `Eq`/`Hash` 的限制）。
+/// Neither `OrchestratorOptions` nor `MinimalInput` derive `Serialize` or `Hash` (the
+/// latter can't be derived directly because of its `f64` fields), so we feed the hasher
+/// field by field:
+/// - `extra_modifier_texts` (`Vec<String>` already implements `Hash`) is hashed directly;
+/// - each `f64` field of `base_input` is fed via `to_bits()` (bitwise equality, working
+///   around `f64` not implementing `Eq`/`Hash`).
 ///
-/// **维护提示**：`MinimalInput` 新增字段时必须在此同步追加，否则新字段不会进入
-/// 缓存键、可能造成缓存别名。若将来这些类型派生了 `Serialize`，可改用稳定序列化
-/// （如 `serde_json::to_vec`）喂入哈希器，自动覆盖全部字段。
+/// **Maintenance note**: whenever `MinimalInput` gets a new field, it must be added here
+/// too, or the new field won't be part of the cache key and could cause cache aliasing.
+/// If these types ever derive `Serialize`, this could switch to feeding a stable
+/// serialization (e.g. `serde_json::to_vec`) into the hasher, covering all fields automatically.
 fn options_hash(options: &OrchestratorOptions) -> u64 {
     let mut hasher = DefaultHasher::new();
     options.extra_modifier_texts.hash(&mut hasher);
@@ -115,7 +120,7 @@ fn options_hash(options: &OrchestratorOptions) -> u64 {
     hasher.finish()
 }
 
-/// 把 build 内容哈希与 options 哈希合成最终缓存键。
+/// Combines the build content hash and the options hash into the final cache key.
 fn combined_key(snapshot_hash: u64, options_hash: u64) -> u64 {
     let mut hasher = DefaultHasher::new();
     hasher.write_u64(snapshot_hash);
@@ -172,8 +177,9 @@ mod tests {
 
     #[test]
     fn same_build_different_options_miss() {
-        // 同一 Build、不同 options（extra_modifier_texts 不同）必须各算各的，
-        // 不得错误命中首次缓存（audit HIGH-4 回归保护）。
+        // The same Build with different options (different extra_modifier_texts) must
+        // be computed separately and must not incorrectly hit the first cache entry
+        // (audit HIGH-4 regression guard).
         let mut cache = CalcCache::new();
         let b = build(90);
         let mut o2 = opts();

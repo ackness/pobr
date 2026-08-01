@@ -1,5 +1,5 @@
-//! M4-T3 W-C2（LuckyHits 掷骰平均）+ W-C3（canDeal / DealNo<Type> 门控）手算单测。
-//! vendor 对照：CalcOffence.lua:4036-4046（lucky）、:2226-2230（canDeal）。
+//! Hand-computed unit tests for LuckyHits average rolls and canDeal / DealNo<Type> gating.
+//! vendor cross-reference: CalcOffence.lua:4036-4046 (lucky), :2226-2230 (canDeal).
 
 use pobr_core::calc::{DamageComponent, apply_can_deal, convert_damage, lucky_hit_chance};
 use pobr_core::{CalcConfig, ModDb, Modifier};
@@ -7,25 +7,25 @@ use pobr_data::prelude::*;
 
 const EPS: f64 = 1e-9;
 
-// ---------------------------------------------------------------- W-C2 avg 函数族
+// ---------------------------------------------------------------- the avg function family
 
-/// 手算（蓝图 §2 W-C2 指定用例）：(min,max)=(10,100)——lucky avg = 70 vs 普通 55。
+/// Hand calc: (min,max)=(10,100) — lucky avg = 70 vs. normal 55.
 #[test]
 fn lucky_avg_hand_calc() {
     let comp = DamageComponent::new(DamageType::Physical, 10.0, 100.0);
-    // p=0 与旧 avg() 逐位一致（等价性锚点）。
+    // p=0 matches the old avg() bit for bit (an equivalence anchor).
     assert!((comp.avg_with_lucky(0.0) - comp.avg()).abs() < EPS);
     assert!((comp.avg() - 55.0).abs() < EPS);
-    // p=1：min/3 + 2max/3 = 10/3 + 200/3 = 70。
+    // p=1: min/3 + 2max/3 = 10/3 + 200/3 = 70.
     assert!((comp.avg_with_lucky(1.0) - 70.0).abs() < EPS);
-    // p=0.5：55×0.5 + 70×0.5 = 62.5。
+    // p=0.5: 55x0.5 + 70x0.5 = 62.5.
     assert!((comp.avg_with_lucky(0.5) - 62.5).abs() < EPS);
-    // 越界 clamp。
+    // out-of-range clamping.
     assert!((comp.avg_with_lucky(1.5) - 70.0).abs() < EPS);
     assert!((comp.avg_with_lucky(-0.5) - 55.0).abs() < EPS);
 }
 
-/// `LuckyHits` flag：所有 pass × 所有类型恒 lucky（p=1）。
+/// The `LuckyHits` flag: every pass x every damage type is always lucky (p=1).
 #[test]
 fn lucky_hits_flag_applies_everywhere() {
     let mut db = ModDb::new();
@@ -42,7 +42,7 @@ fn lucky_hits_flag_applies_everywhere() {
     }
 }
 
-/// `CritLucky` 只影响暴击 pass（蓝图指定用例；与 crit.rs 的 CritChanceLucky 是两个机制）。
+/// `CritLucky` only affects the crit pass.
 #[test]
 fn crit_lucky_only_affects_crit_pass() {
     let mut db = ModDb::new();
@@ -52,7 +52,7 @@ fn crit_lucky_only_affects_crit_pass() {
     assert!((lucky_hit_chance(&db, &cfg, DamageType::Physical, false) - 0.0).abs() < EPS);
 }
 
-/// `LightningNoCritLucky` 仅非暴击 pass 且 Lightning 分量。
+/// `LightningNoCritLucky` applies only to the non-crit pass and only the Lightning component.
 #[test]
 fn lightning_no_crit_lucky_scope() {
     let mut db = ModDb::new();
@@ -63,7 +63,8 @@ fn lightning_no_crit_lucky_scope() {
     assert!((lucky_hit_chance(&db, &cfg, DamageType::Cold, false) - 0.0).abs() < EPS);
 }
 
-/// `ElementalLuckHits` 仅三元素（Lightning/Cold/Fire），物理/混沌不享。
+/// `ElementalLuckHits` covers only the three elements (Lightning/Cold/Fire);
+/// Physical/Chaos don't get it.
 #[test]
 fn elemental_luck_hits_only_elements() {
     let mut db = ModDb::new();
@@ -76,7 +77,8 @@ fn elemental_luck_hits_only_elements() {
     assert!((lucky_hit_chance(&db, &cfg, DamageType::Chaos, false) - 0.0).abs() < EPS);
 }
 
-/// Sum 通道：`<Type>LuckyHitsChance + LuckyHitsChance` 求和、cap 100、/100 折分数。
+/// The Sum channel: `<Type>LuckyHitsChance + LuckyHitsChance` are summed, capped at
+/// 100, and divided by 100 into a fraction.
 #[test]
 fn lucky_chance_sums_typed_and_generic_with_cap() {
     let mut db = ModDb::new();
@@ -87,19 +89,21 @@ fn lucky_chance_sums_typed_and_generic_with_cap() {
     ));
     db.add_mod(Modifier::number("LuckyHitsChance", ModType::Base, 20.0));
     let cfg = CalcConfig::attack();
-    // Lightning：30 + 20 = 50 → 0.5；Cold：仅通用 20 → 0.2。
+    // Lightning: 30 + 20 = 50 -> 0.5; Cold: only the generic 20 -> 0.2.
     assert!((lucky_hit_chance(&db, &cfg, DamageType::Lightning, false) - 0.5).abs() < EPS);
     assert!((lucky_hit_chance(&db, &cfg, DamageType::Cold, false) - 0.2).abs() < EPS);
 
-    // cap 100：再加 90 → 30+20+90=140 → cap 100 → 1.0。
+    // cap 100: add 90 more -> 30+20+90=140 -> capped at 100 -> 1.0.
     db.add_mod(Modifier::number("LuckyHitsChance", ModType::Base, 90.0));
     assert!((lucky_hit_chance(&db, &cfg, DamageType::Lightning, false) - 1.0).abs() < EPS);
 }
 
-// ---------------------------------------------------------------- W-C3 canDeal
+// ---------------------------------------------------------------- canDeal
 
-/// 蓝图指定合成用例（Avatar of Fire 形态）：物理 50% 转火后 `DealNoPhysical`——
-/// 残留物理清零、已转出的火焰保留（转换先发生，清零的是转换后残留）。
+/// A specific composed scenario (the Avatar of Fire shape): after converting 50%
+/// physical to fire, `DealNoPhysical` zeroes the leftover physical but keeps the
+/// already-converted fire (conversion happens first; only the post-conversion
+/// leftover gets zeroed).
 #[test]
 fn avatar_of_fire_zeroes_residual_physical_keeps_converted_fire() {
     let components = vec![DamageComponent::new(DamageType::Physical, 100.0, 200.0)];
@@ -123,7 +127,7 @@ fn avatar_of_fire_zeroes_residual_physical_keeps_converted_fire() {
     assert!((fire.max - 100.0).abs() < EPS);
 }
 
-/// `DealNoDamage` 清零全部类型（5+1 名单中的通用项）。
+/// `DealNoDamage` zeroes every damage type (the generic entry among the 5+1 list).
 #[test]
 fn deal_no_damage_zeroes_all_components() {
     let mut components = vec![
@@ -140,7 +144,8 @@ fn deal_no_damage_zeroes_all_components() {
     }
 }
 
-/// 无 DealNo* 旗标时分量逐位不变（接线后零行为差的等价性锚点）。
+/// With no DealNo* flags, components are unchanged bit for bit (an equivalence
+/// anchor that the wiring introduces zero behavior change).
 #[test]
 fn no_flags_leaves_components_unchanged() {
     let original = vec![
@@ -152,7 +157,8 @@ fn no_flags_leaves_components_unchanged() {
     assert_eq!(components, original);
 }
 
-/// 逐类型门控互不串扰：`DealNoCold` 只清 Cold，其余类型保留。
+/// Per-type gating doesn't cross-contaminate: `DealNoCold` only clears Cold, other
+/// types are kept.
 #[test]
 fn per_type_gating_is_independent() {
     let mut components = vec![

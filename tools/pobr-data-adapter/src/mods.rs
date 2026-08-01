@@ -1,14 +1,17 @@
-//! Mods + Stats 数据域适配：原始 `Mods.json` / `Stats.json` → PoBR 最小 JSON。
+//! Mods + Stats domain adapter: raw `Mods.json` / `Stats.json` -> PoBR's minimal JSON.
 //!
-//! - `Stats.json` → `stats.json`（stat 注册表：id / is_local / semantic / category）。
-//! - `Mods.json`  → `mods.json`（词缀池：合并 Stat1..4 外键 + Stat1Value..4Value 掷值，
-//!   解析 Tags 外键，保留 domain / generation_type / mod_type / level）。
-//! - zh-TW 词缀名（若与英文不同）→ `i18n/zh-TW/mods.json` 边车。
+//! - `Stats.json` -> `stats.json` (the stat registry: id / is_local / semantic / category).
+//! - `Mods.json` -> `mods.json` (the affix pool: merges the Stat1..4 foreign
+//!   keys with the Stat1Value..4Value rolled ranges, resolves the Tags
+//!   foreign key, and keeps domain / generation_type / mod_type / level).
+//! - zh-TW affix names (when they differ from English) -> the `i18n/zh-TW/mods.json` sidecar.
 //!
-//! 过滤规则：
-//! - Stats：保留全部（注册表需完整，供 Mods 外键解析）。
-//! - Mods：跳过既无显示名（`Name` 空）**又**无任何 stat 槽位的纯占位/内部空壳条目；
-//!   只要有 stat 或有名称即入库（内部无名 mod 携带 stat 仍是计算所需，保留）。
+//! Filtering rules:
+//! - Stats: keep everything (the registry needs to be complete for Mods' foreign-key resolution).
+//! - Mods: skip pure placeholder/internal shell entries that have neither a
+//!   display name (`Name` empty) **nor** any stat slots; anything with a
+//!   stat or a name is kept (an unnamed internal mod that carries a stat is
+//!   still needed for calculation, so it stays).
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -18,7 +21,7 @@ use serde::Deserialize;
 
 use crate::{RawNamed, read_json, resolve, write_pretty};
 
-// ---- 原始 .dat JSON 行结构（只取需要的列）----
+// Raw .dat JSON row structures (only the columns we need)
 
 #[derive(Deserialize)]
 struct RawStat {
@@ -70,9 +73,10 @@ struct RawMod {
     spawn_weight_values: Vec<i64>,
 }
 
-/// 适配 Stats + Mods 域，写出 `base/stats.json` / `base/mods.json` /
-/// `i18n/zh-TW/mods.json`（i18n 边车留版本根 `version_dir`）。
-/// 返回 `(stats 条数, mods 入库条数, mods 过滤条数, zh-TW 名称条数)`。
+/// Adapts the Stats + Mods domains, writing `base/stats.json` /
+/// `base/mods.json` / `i18n/zh-TW/mods.json` (the i18n sidecar stays at the
+/// version root `version_dir`). Returns `(stats count, mods kept, mods
+/// filtered, zh-TW name count)`.
 pub fn adapt(
     en: &Path,
     tw: &Path,
@@ -86,8 +90,9 @@ pub fn adapt(
     Ok((stats, kept, filtered, zh))
 }
 
-/// `ModType.json`（`_index` + `Name`）→ 按位置索引的组名查表。
-/// 旧 tables 快照无此表时降级为空表（group 字段整列缺省，非致命）。
+/// Builds a position-indexed group-name lookup from `ModType.json`
+/// (`_index` + `Name`). Degrades to an empty table when older table
+/// snapshots lack this table (the group field is missing for the whole column; non-fatal).
 fn mod_type_lookup(en: &Path) -> Vec<String> {
     #[derive(Deserialize)]
     struct RawModType {
@@ -151,7 +156,7 @@ fn adapt_mods(
         let stats = build_stats(&raw, stat_lookup);
         let name = raw.name.filter(|n| !n.is_empty());
 
-        // 过滤：既无显示名又无任何 stat 槽位的纯占位空壳。
+        // Filter: a pure placeholder shell with neither a display name nor any stat slots.
         if name.is_none() && stats.is_empty() {
             continue;
         }
@@ -170,7 +175,7 @@ fn adapt_mods(
             .filter_map(|&i| resolve(tags_lookup, i))
             .collect();
 
-        // SpawnWeight_Tags/Values 是平行数组；顺序敏感（判定取第一个命中 tag）。
+        // SpawnWeight_Tags/Values are parallel arrays; order matters (resolution takes the first matching tag).
         let spawn_weights: Vec<SpawnWeight> = raw
             .spawn_weight_tags
             .iter()
@@ -207,7 +212,8 @@ fn adapt_mods(
     Ok((kept, filtered, i18n_zh.len()))
 }
 
-/// 合并 Stat1..4 外键 + StatNValue 掷值区间为 stats 数组，跳过空槽与无法解析的外键。
+/// Merges the Stat1..4 foreign keys plus their StatNValue rolled ranges into
+/// a stats array, skipping empty slots and unresolvable foreign keys.
 fn build_stats(raw: &RawMod, stat_lookup: &[String]) -> Vec<ModStat> {
     let slots = [
         (raw.stat1, raw.stat1_value),

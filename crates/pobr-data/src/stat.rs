@@ -40,14 +40,17 @@ pub struct StatDescription {
     pub text: String,
 }
 
-/// 描述某个 stat 的上下界规格，供 `pobr-core` 的 `stat_boundary` 消费。纯数据、无计算。
+/// The bounds a stat is clamped to. Consumed by `pobr-core`'s `stat_boundary`;
+/// pure data, no logic.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct BoundarySpec {
-    /// 下界（如抗性的 floor）；`None` 表示无下界。
+    /// Lower bound, such as the resistance floor. `None` means unbounded below.
     pub floor: Option<f64>,
-    /// 默认最大值（如抗性默认 75）；`None` 表示无最大值约束。
+    /// The maximum before any mods raise it — 75 for resistances. `None` means
+    /// there is no maximum.
     pub default_max: Option<f64>,
-    /// 最大值硬上限（如抗性 90）；`None` 表示最大值不再被截断。
+    /// Ceiling the maximum itself cannot exceed — 90 for resistances. `None`
+    /// means mods can raise the maximum without limit.
     pub hard_cap: Option<f64>,
 }
 
@@ -60,7 +63,8 @@ impl BoundarySpec {
         }
     }
 
-    /// 元素 / 混沌抗性的边界规格：默认最大 75、硬上限 90、无下界。
+    /// Bounds for elemental and chaos resistance: 75 by default, 90 at most,
+    /// no floor.
     pub fn resistance() -> Self {
         Self {
             floor: None,
@@ -69,13 +73,13 @@ impl BoundarySpec {
         }
     }
 
-    /// `resistance` 的别名（贴合机制蓝图命名）。
+    /// Alias for [`Self::resistance`] that reads better at some call sites.
     pub fn resist_element() -> Self {
         Self::resistance()
     }
 }
 
-/// `StatId` 到 i18n 翻译 key 的占位 newtype；映射表在 `pobr-i18n` 层维护。
+/// Translation key for a [`StatId`]. The key-to-text mapping lives in `pobr-i18n`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct StatTextKey(pub String);

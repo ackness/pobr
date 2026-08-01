@@ -1,25 +1,36 @@
-//! special 词条模板解释器（M5b 蓝图 §2.2）。
+//! Interpreter for special-mod templates.
 //!
-//! 输入 = `overlay/special_mods.json` + `generated/special_derived.json` 拼接后的
-//! [`SpecialTemplateDef`] 列表（schema 见 [`pobr_data::catalog::parser_rules`]）。
-//! 载入期编译（[`RegexSet`] 预筛 + 逐条 [`Regex`]，整行锚定 + 输入小写规范），
-//! 运行期对单行（已小写规范化）做整行匹配并实例化为 [`Modifier`]。
+//! Input = the concatenation of `overlay/special_mods.json` and
+//! `generated/special_derived.json` as a list of [`SpecialTemplateDef`]
+//! (schema in [`pobr_data::catalog::parser_rules`]). Compilation happens at
+//! load time ([`RegexSet`] prefilter + a per-entry [`Regex`], whole-line
+//! anchored, input lowercased); at runtime a single (already-lowercased)
+//! line is matched against the whole pattern and instantiated as a
+//! [`Modifier`].
 //!
-//! **求值器单点（00-index 裁决 §4-1）**：`$n` 数值占位 / 五算子 / 受限谓词的求值
-//! 复用 [`crate::rules::value_expr`]（config / special / parser 三处同一套受限语言，
-//! 禁三套方言）。本模块只负责：① 把 [`ValueOpDef`] 算子链编译为
-//! `value_expr::ValueExpr` 树后调 `value_expr::eval`；② enums 闭集查表（DSL 微扩展，
-//! 00-index §4.2-3 已批准——每个输出都是表内显式字面量，非字符串拼接）。
+//! **Single evaluator**: evaluation of `$n` numeric placeholders, the five
+//! operators, and restricted predicates is shared with
+//! [`crate::rules::value_expr`] (config / special / parser all use the same
+//! restricted language — no third dialect). This module is only responsible
+//! for (1) compiling a [`ValueOpDef`] operator chain into a
+//! `value_expr::ValueExpr` tree and calling `value_expr::eval`; (2) enum
+//! closed-set lookups (a small approved DSL extension — every output is an
+//! explicit literal from the table, never string concatenation).
 //!
-//! **DSL 硬边界**（20-target-architecture §5）：数值捕获 `(\d+(?:\.\d+)?)`、词类捕获
-//! 显式闭集、禁 `(.+)` 开放捕获（开放捕获条目走 `handler_id`）。本解释器不强制
-//! pattern 形态（编译只校验 regex 合法性），形态合规由策展 + 闸门测试（C-4）守。
+//! **DSL hard boundaries** (20-target-architecture §5): numeric captures are
+//! `(\d+(?:\.\d+)?)`, word captures are explicit closed sets, open captures
+//! `(.+)` are forbidden (entries that need those go through `handler_id`
+//! instead). This interpreter does not enforce pattern shape at compile time
+//! (compilation only checks that the regex itself is valid) — shape
+//! conformance is enforced by curation plus the gate test (C-4).
 //!
-//! **保守门控**：本批次条目携带的若干 PoB2 原生 tag 形态（`ItemCondition` /
-//! `GlobalEffect` / 复杂 LIST 载荷等）尚无 pobr `ModTag` 落点——
-//! 这类 tag 在实例化时被**跳过**（产出 mod 但不挂该 tag），对应条目保持
-//! `verified:false`，由 differential（Track D）与 parity 报表把关。能映射的清单见
-//! [`compile_tag`]。
+//! **Conservative gating**: this batch of entries carries a few native PoB2
+//! tag shapes (`ItemCondition` / `GlobalEffect` / complex LIST payloads,
+//! etc.) that have no pobr `ModTag` counterpart yet. Such tags are
+//! **skipped** at instantiation (the mod is still produced, just without
+//! that tag), and the entry stays `verified:false`, guarded by differential
+//! testing (Track D) and the parity report. See [`compile_tag`] for the
+//! list of what can be mapped.
 
 use std::collections::BTreeMap;
 
@@ -39,40 +50,42 @@ use crate::rules::registry::{HandlerCtx, HandlerRegistry};
 use crate::rules::stat_map_engine::damage_bound_mod_name;
 use crate::rules::value_expr::eval;
 
-/// 编译期错误（载入期 fail-fast，不静默）。
+/// Compile-time error (fail-fast at load time, never silent).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SpecialCompileError {
-    /// pattern 非法 regex。
+    /// Pattern is not a valid regex.
     BadPattern {
-        /// 条目 id。
+        /// Entry id.
         entry_id: String,
-        /// 原始 pattern。
+        /// Original pattern.
         pattern: String,
-        /// regex crate 报错。
+        /// Error reported by the regex crate.
         reason: String,
     },
-    /// `id` 重复（拼接两表后唯一性）。
+    /// Duplicate `id` (uniqueness is checked after concatenating both
+    /// tables).
     DuplicateId {
-        /// 冲突 id。
+        /// Conflicting id.
         entry_id: String,
     },
-    /// enums 引用越界（`{"enum": n}` 的 n 在条目 `enums` 表中无键）。
+    /// Out-of-range `enums` reference (the `n` in `{"enum": n}` has no key
+    /// in the entry's `enums` table).
     EnumRefMissing {
-        /// 条目 id。
+        /// Entry id.
         entry_id: String,
-        /// 引用的捕获序号。
+        /// Referenced capture index.
         capture_index: u32,
     },
-    /// 未知 mod_type 字面量。
+    /// Unknown mod_type literal.
     BadModType {
-        /// 条目 id。
+        /// Entry id.
         entry_id: String,
-        /// 原始字面量。
+        /// Original literal.
         literal: String,
     },
-    /// 模板 mods 与 handler_id 同时存在（互斥）。
+    /// Both template mods and handler_id are present (mutually exclusive).
     ModsAndHandler {
-        /// 条目 id。
+        /// Entry id.
         entry_id: String,
     },
 }
@@ -108,23 +121,23 @@ impl std::fmt::Display for SpecialCompileError {
 
 impl std::error::Error for SpecialCompileError {}
 
-/// 编译后的单条 special 条目。
+/// A compiled special entry.
 #[derive(Debug)]
 struct CompiledEntry {
     id: String,
     regex: Regex,
     verified: bool,
-    /// 实例化为模板 mods（与 `handler_id` 互斥）。
+    /// Instantiated as template mods (mutually exclusive with `handler_id`).
     template: Option<CompiledTemplate>,
-    /// handler 路由（与 template 互斥）。
+    /// Handler routing (mutually exclusive with template).
     handler_id: Option<String>,
-    /// handler 实参（`"$n"` 形）。
+    /// Handler arguments (in `"$n"` form).
     handler_args: Vec<String>,
-    /// enums 闭集（捕获序号 → 词 → 完整字面量）。
+    /// Enum closed sets (capture index → word → full literal).
     enums: BTreeMap<u32, BTreeMap<String, String>>,
 }
 
-/// 编译后的模板（mod 列表 + 已解析的 mod_type）。
+/// Compiled template (mod list + already-resolved mod_type).
 #[derive(Debug)]
 struct CompiledTemplate {
     mods: Vec<CompiledModTemplate>,
@@ -137,26 +150,29 @@ struct CompiledModTemplate {
     value: TemplateValueDef,
     flags: ModFlags,
     keyword_flags: KeywordFlags,
-    /// 已映射的 tag（无法映射的 tag 在编译期丢弃，见 `compile_tag`）。
+    /// Tags that were successfully mapped (unmappable tags are dropped at
+    /// compile time, see `compile_tag`).
     tags: Vec<ModTag>,
     #[allow(dead_code)]
     target: Option<ActorRef>,
 }
 
-/// 一次 special 命中（[`SpecialModRules::try_match`] 产出）。
+/// A single special match (produced by [`SpecialModRules::try_match`]).
 #[derive(Debug, Clone, PartialEq)]
 pub struct SpecialMatch {
-    /// 命中条目稳定 id。
+    /// Stable id of the matched entry.
     pub entry_id: String,
-    /// 已实例化的 modifier（已带 source 词条原文）。
+    /// The instantiated modifiers (already carrying the source mod text).
     pub mods: Vec<Modifier>,
-    /// 透传 parity 报表（`verified:false` 单列）。
+    /// Forwarded for the parity report (`verified:false` gets its own
+    /// column).
     pub verified: bool,
-    /// handler_id 未注册时记录（命中但产空 mods + 报表用，不 panic）。
+    /// Set when `handler_id` isn't registered (the match still hits but
+    /// produces empty mods; used for reporting, never panics).
     pub unregistered_handler: Option<String>,
 }
 
-/// 编译后的 special 规则集（载入期编译，运行期只读）。
+/// Compiled special rule set (compiled at load time, read-only at runtime).
 #[derive(Debug)]
 pub struct SpecialModRules {
     set: RegexSet,
@@ -164,8 +180,9 @@ pub struct SpecialModRules {
 }
 
 impl SpecialModRules {
-    /// 载入期编译。pattern 非法 / id 重复 / enums 越界 / mod_type 未知 →
-    /// `Err`（fail fast）。
+    /// Compiles at load time. Returns `Err` (fail fast) on an invalid
+    /// pattern, a duplicate id, an out-of-range enums reference, or an
+    /// unknown mod_type.
     pub fn compile(
         defs: &[SpecialTemplateDef],
         _registry: &HandlerRegistry,
@@ -186,8 +203,9 @@ impl SpecialModRules {
                 });
             }
 
-            // 整行锚定 + 输入小写规范（pattern 内部字面量已是小写，参照
-            // vendor :6155-6158）。pattern 已含 `^`/`$` 时不重复包。
+            // Whole-line anchor + lowercase input (pattern literals are
+            // already lowercase, per vendor :6155-6158). Doesn't double-wrap
+            // if the pattern already has `^`/`$`.
             let anchored = anchor_pattern(&def.pattern);
             let regex = Regex::new(&anchored).map_err(|e| SpecialCompileError::BadPattern {
                 entry_id: def.id.clone(),
@@ -196,7 +214,7 @@ impl SpecialModRules {
             })?;
             patterns.push(anchored);
 
-            // enums 表（键转 u32）。
+            // enums table (keys converted to u32).
             let mut enums = BTreeMap::new();
             for (key, table) in &def.enums {
                 if let Ok(idx) = key.parse::<u32>() {
@@ -230,7 +248,8 @@ impl SpecialModRules {
         Ok(Self { set, entries })
     }
 
-    /// 空规则集（无条目；`try_match` 恒 `None`）——「未加载数据」分支。
+    /// Empty rule set (no entries; `try_match` always returns `None`) — the
+    /// "no data loaded" branch.
     pub fn empty() -> Self {
         Self {
             set: RegexSet::empty(),
@@ -238,20 +257,23 @@ impl SpecialModRules {
         }
     }
 
-    /// 条目数。
+    /// Number of entries.
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
-    /// 是否为空。
+    /// Whether the rule set is empty.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
 
-    /// 对单行（已小写规范化）做整行匹配。命中且可实例化 → `Some`。
+    /// Matches a single (already-lowercased) line against the whole
+    /// pattern. Returns `Some` when it hits and can be instantiated.
     ///
-    /// 多条命中时取**首个**（条目顺序 = 数据文件序）——special 条目设计为整行
-    /// 互斥，重叠属策展问题（闸门测试 C-4 校验 pattern 唯一）。
+    /// When several entries match, takes the **first** one (entries are
+    /// ordered as in the data file) — special entries are designed to be
+    /// mutually exclusive per line; overlap is a curation issue (the gate
+    /// test C-4 checks pattern uniqueness).
     pub fn try_match(&self, line: &str, registry: &HandlerRegistry) -> Option<SpecialMatch> {
         let matches = self.set.matches(line);
         if !matches.matched_any() {
@@ -259,7 +281,8 @@ impl SpecialModRules {
         }
         for idx in matches.iter() {
             let entry = &self.entries[idx];
-            // RegexSet 预筛后用单条 Regex 取捕获组（RegexSet 不产捕获）。
+            // RegexSet only prefilters; grab the capture groups with the
+            // per-entry Regex (RegexSet itself produces no captures).
             let Some(caps) = entry.regex.captures(line) else {
                 continue;
             };
@@ -269,7 +292,7 @@ impl SpecialModRules {
                 .map(|m| m.map(|m| m.as_str().to_string()).unwrap_or_default())
                 .collect();
 
-            // handler 路径。
+            // Handler path.
             if let Some(handler_id) = &entry.handler_id {
                 let Some(handler) = registry.get(handler_id) else {
                     return Some(SpecialMatch {
@@ -299,9 +322,10 @@ impl SpecialModRules {
                 });
             }
 
-            // 模板路径。
+            // Template path.
             let Some(template) = &entry.template else {
-                // 纯识别条目（无 mods 无 handler）：命中但不产 mod。
+                // Pure-recognition entry (no mods, no handler): matches but
+                // produces no mod.
                 return Some(SpecialMatch {
                     entry_id: entry.id.clone(),
                     mods: Vec::new(),
@@ -321,7 +345,8 @@ impl SpecialModRules {
     }
 }
 
-/// 整行锚定（pattern 已含 `^`/`$` 时不重复包）。
+/// Anchors the whole line (doesn't double-wrap if the pattern already has
+/// `^`/`$`).
 fn anchor_pattern(pattern: &str) -> String {
     let head = if pattern.starts_with('^') { "" } else { "^" };
     let tail = if pattern.ends_with('$') { "" } else { "$" };
@@ -351,7 +376,7 @@ fn compile_template(
                 entry_id: def.id.clone(),
                 literal: m.mod_type.clone(),
             })?;
-        // enums 引用越界校验（name）。
+        // Validate that the enums reference isn't out of range (name).
         if let TemplateNameDef::Enum { capture_index } = &m.name
             && !enums.contains_key(capture_index)
         {
@@ -360,10 +385,11 @@ fn compile_template(
                 capture_index: *capture_index,
             });
         }
-        // 嵌套 mod 载荷的 fail-fast 校验（实例化期按需再编译，见
-        // `instantiate_mod_def`）。
+        // Fail-fast validation of the nested mod payload (recompiled on
+        // demand at instantiation time, see `instantiate_mod_def`).
         validate_nested_value(&def.id, &m.value, enums)?;
-        // vendor→PoBR mod 名翻译（Literal 名；enums 表已审计无受影响名）。
+        // vendor→PoBR mod name translation (literal names only; the enums
+        // table has been audited to contain no affected names).
         let (name, flag_names) = match &m.name {
             TemplateNameDef::Literal(n) => {
                 let (translated, remaining) = translate_vendor_name(n, &m.flags);
@@ -388,8 +414,9 @@ fn compile_template(
     Ok(CompiledTemplate { mods })
 }
 
-/// `TemplateValueDef::Nested` 编译期校验：内层 mod_type 已知、enums 引用不
-/// 越界（递归）。非嵌套值形态直接通过。
+/// Compile-time validation for `TemplateValueDef::Nested`: inner mod_type is
+/// known and enums references aren't out of range (recursive). Non-nested
+/// value shapes pass through unchecked.
 fn validate_nested_value(
     entry_id: &str,
     value: &TemplateValueDef,
@@ -416,7 +443,8 @@ fn validate_nested_value(
     Ok(())
 }
 
-/// ModFlags 名 → 位（伤害模式 / 武器类型公用 vendor 名）。未知名跳过（保守）。
+/// ModFlags name → bit (shared vendor names for damage mode / weapon type).
+/// Unknown names are skipped (conservative).
 fn flag_bit(name: &str) -> Option<ModFlags> {
     Some(match name {
         "Attack" => ModFlags::ATTACK,
@@ -452,7 +480,8 @@ fn keyword_bit(name: &str) -> Option<KeywordFlags> {
         "Poison" => KeywordFlags::POISON,
         "Bleed" => KeywordFlags::BLEED,
         "Ignite" => KeywordFlags::IGNITE,
-        // 未映射 keyword（如 Arrow）保守跳过——对应条目保持 verified:false。
+        // Unmapped keywords (e.g. Arrow) are conservatively skipped — the
+        // entry stays verified:false.
         _ => return None,
     })
 }
@@ -469,8 +498,10 @@ fn compile_keyword_flags(names: &[String]) -> KeywordFlags {
 
 fn parse_target(target: &str) -> Option<ActorRef> {
     match target {
-        // enemy 包装（EnemyModifier LIST）由消费侧 env_finalize 阶段 2 处理，
-        // 本批次 enemy-target 条目保持 verified:false（target 仅作元数据透传）。
+        // The enemy wrapper (EnemyModifier LIST) is handled by the consumer
+        // side in env_finalize stage 2; this batch's enemy-target entries
+        // stay verified:false (target is forwarded here purely as
+        // metadata).
         "minion" => Some(ActorRef::Minion),
         _ => None,
     }
@@ -487,31 +518,37 @@ fn damage_type_bit(name: &str) -> Option<DamageType> {
     })
 }
 
-/// 模板 tag → pobr `ModTag`。**可映射清单**：
-/// - `Condition` / `ActorCondition`（actor=enemy → `Enemy<Var>` 条件）；
-/// - `SkillType`（去 `SkillType:` 前缀，已知闭集）；
-/// - `DamageType`；
-/// - `Multiplier`（**字面** var/div/limit；按某资源/属性数量线性缩放，读
-///   `cfg.multiplier(var)`）；
-/// - `PerStat`（**字面** stat/div/limit；按 actor 已算出 stat 线性缩放，读
-///   `EvalContext::stat_lookup`——运行时 [`ModTag::PerStat`] M4-T1 已接通）；
-/// - `PercentStat`（V2 slice 2：**字面** stat/percent；按已算出 stat 的百分比
-///   缩放，`value = ceil(value × stat × percent/100)`，运行时
-///   [`ModTag::PercentStat`]。vendor 的 `statList`/`percentVar`/`actor`/
-///   `base`/`limit`/`floor` 形态由抽取器白名单挡在门外）；
-/// - `MultiplierThreshold`（**字面** var/threshold/upper 二元 gate，运行时
-///   [`ModTag::MultiplierThreshold`] 已接通）；
-/// - `StatThreshold`（V2s4：**字面** stat/threshold/upper 二元 gate，读
-///   [`CalcConfig::stat`] 快照，运行时 [`ModTag::StatThreshold`]）；
-/// - `SkillName`（V2：`skillName` 单名 / `skillNameList` 列表统一小写收编为
-///   [`ModTag::SkillName`]，按 `cfg.skill_name` 等值 gate；`includeTransfigured`
-///   忽略——PoE2 无变体宝石，vendor 的 gem name→gameId 等值退化为名字等值。
-///   `partialMatch`/`summonSkill`/`neg` 在 vendor PoE2 数据零出现，由抽取器
-///   白名单挡在门外）。
+/// Maps a template tag to a pobr `ModTag`. **Mappable list**:
+/// - `Condition` / `ActorCondition` (actor=enemy → `Enemy<Var>` condition);
+/// - `SkillType` (strips the `SkillType:` prefix, known closed set);
+/// - `DamageType`;
+/// - `Multiplier` (**literal** var/div/limit; linear scaling by some
+///   resource/attribute count, reads `cfg.multiplier(var)`);
+/// - `PerStat` (**literal** stat/div/limit; linear scaling by an actor's
+///   already-computed stat, reads `EvalContext::stat_lookup` — wired up at
+///   runtime via [`ModTag::PerStat`]);
+/// - `PercentStat` (V2 slice 2: **literal** stat/percent; scales by a
+///   percentage of an already-computed stat,
+///   `value = ceil(value × stat × percent/100)`, runtime
+///   [`ModTag::PercentStat`]. Vendor's `statList`/`percentVar`/`actor`/
+///   `base`/`limit`/`floor` shapes are kept out by the extractor's
+///   whitelist);
+/// - `MultiplierThreshold` (**literal** var/threshold/upper binary gate,
+///   wired up at runtime via [`ModTag::MultiplierThreshold`]);
+/// - `StatThreshold` (V2s4: **literal** stat/threshold/upper binary gate,
+///   reads the [`CalcConfig::stat`] snapshot, runtime
+///   [`ModTag::StatThreshold`]);
+/// - `SkillName` (V2: a single `skillName` or a `skillNameList` list is
+///   uniformly lowercased into [`ModTag::SkillName`], gated by equality
+///   against `cfg.skill_name`; `includeTransfigured` is ignored — PoE2 has
+///   no transfigured gems, so vendor's gem-name→gameId equality degenerates
+///   to plain name equality. `partialMatch`/`summonSkill`/`neg` never occur
+///   in vendor's PoE2 data and are kept out by the extractor's whitelist).
 ///
-/// **不可映射**（pobr 无落点）：`ItemCondition` / `GlobalEffect` /
-/// 带 `$n` 字段值的 `Multiplier`——返回 `None`，对应条目保持
-/// `verified:false`（保守门控，不误产可能错误的 tag）。
+/// **Unmappable** (no pobr counterpart): `ItemCondition` / `GlobalEffect` /
+/// a `Multiplier` with a `$n`-captured field value — returns `None`, and the
+/// entry stays `verified:false` (conservative gating, so we never produce a
+/// possibly-wrong tag).
 fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
     match tag.tag_type.as_str() {
         "Condition" => {
@@ -529,9 +566,11 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             }
         }
         "SkillType" => {
-            // 全量枚举表（数据驱动 A1，单源 `SkillTypes::from_pob2_name`）：
-            // special_vendor 的名来自 vendor 枚举反查，miss = 数据损坏——
-            // debug 构建炸出（A2 可见化），release 保守丢 tag。
+            // Full enum table (data-driven A1, single source of truth
+            // `SkillTypes::from_pob2_name`): special_vendor names come from
+            // a reverse lookup on vendor's enum, so a miss means corrupt
+            // data — panics in debug builds (visible per A2), conservatively
+            // drops the tag in release.
             let lookup = |name: &str| {
                 let bare = name.strip_prefix("SkillType:").unwrap_or(name);
                 let st = SkillTypes::from_pob2_name(bare);
@@ -541,9 +580,11 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             if let Some(v) = tag.fields.get("skillType") {
                 return lookup(&scalar_text(v)?).map(ModTag::SkillTypes);
             }
-            // `skillTypeList`（vendor 多类型 OR，ModStore SkillType 分支任一命中即
-            // 生效）→ 并入单个 SkillTypes 位集（ModTag::SkillTypes 的 intersects
-            // 匹配即 OR 语义）。任一名 miss → 整 tag 保守丢弃。
+            // `skillTypeList` (vendor OR over multiple types — the ModStore
+            // SkillType branch fires on any match) → folded into a single
+            // SkillTypes bitset (ModTag::SkillTypes matches via
+            // `intersects`, which is OR semantics). If any name misses, the
+            // whole tag is conservatively dropped.
             let TemplateScalarDef::TextList(items) = tag.fields.get("skillTypeList")? else {
                 return None;
             };
@@ -558,10 +599,13 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             damage_type_bit(&name).map(ModTag::DamageType)
         }
         "Multiplier" => {
-            // 字面 var/div/limit 的 Multiplier（资源/属性线性缩放，读 cfg.multiplier(var)）。
-            // 带 `$n` 捕获的 var 仍保守跳过（与文档门控一致，避免误产）。本批仅字面 var
-            //（如 Blood Mage 的 `EnergyShieldOnbodyarmour`，slot 倍率经 orchestrator
-            // per_slot_defence_multipliers 填充）。
+            // Multiplier with literal var/div/limit (linear scaling by a
+            // resource/attribute, reads cfg.multiplier(var)). A var with a
+            // `$n` capture is still conservatively skipped (consistent with
+            // the doc-level gating, to avoid misproducing it). This batch
+            // only has literal vars (e.g. Blood Mage's
+            // `EnergyShieldOnbodyarmour`; the per-slot multiplier is filled
+            // in by the orchestrator's per_slot_defence_multipliers).
             let var = scalar_text(tag.fields.get("var")?)?;
             if var.starts_with('$') {
                 None
@@ -572,8 +616,9 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             }
         }
         "PerStat" => {
-            // 字面 stat/div/limit（vendor `statList`/`base`/`actor` 形态无落点，
-            // 由调用方形态白名单挡在门外——本处 fields 只可能是这三键）。
+            // Literal stat/div/limit (vendor's `statList`/`base`/`actor`
+            // shapes have no counterpart and are kept out by the caller's
+            // shape whitelist — fields here can only be these three keys).
             let stat = scalar_text(tag.fields.get("stat")?)?;
             if stat.starts_with('$') {
                 return None;
@@ -590,16 +635,19 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             })
         }
         "PercentStat" => {
-            // 字面 stat/percent（vendor statList/percentVar/actor/base/limit/floor
-            // 形态由抽取器白名单挡在门外）。percent 缺省 = vendor `(percent and
-            // percent/100 or 1)` 的 or-1 侧（mult = stat 本身）。
+            // Literal stat/percent (vendor's statList/percentVar/actor/
+            // base/limit/floor shapes are kept out by the extractor's
+            // whitelist). A missing percent matches vendor's `(percent and
+            // percent/100 or 1)` or-1 branch (mult = the stat itself).
             let stat = scalar_text(tag.fields.get("stat")?)?;
             if stat.starts_with('$') {
                 return None;
             }
             let stat = normalize_stat_name(&stat);
-            // percent 出现但非数字（如手写 overlay 误填 `$n`）→ 整 tag 不可映射，
-            // 不能静默降级为 or-1 侧（mult 会差 100 倍）。
+            // percent present but not a number (e.g. a hand-written overlay
+            // mistakenly using `$n`) → the whole tag is unmappable; must not
+            // silently fall back to the or-1 branch (mult would be off by
+            // 100x).
             let percent = match tag.fields.get("percent") {
                 None => None,
                 Some(v) => Some(scalar_number(v)?),
@@ -607,8 +655,10 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             Some(ModTag::PercentStat { stat, percent })
         }
         "SkillName" => {
-            // skillName 单名或 skillNameList 列表二选一（vendor ModStore.lua:752-780），
-            // 小写收编；空列表 / 含 `$n` 捕获 → 不可映射（防御，抽取器同样拦截）。
+            // Either a single skillName or a skillNameList list (vendor
+            // ModStore.lua:752-780), lowercased. An empty list or a `$n`
+            // capture inside a name → unmappable (defensive; the extractor
+            // rejects these too).
             let names: Vec<String> =
                 match (tag.fields.get("skillName"), tag.fields.get("skillNameList")) {
                     (Some(single), None) => vec![scalar_text(single)?.to_lowercase()],
@@ -623,8 +673,9 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             Some(ModTag::SkillName { names })
         }
         "MultiplierThreshold" => {
-            // 字面 var/threshold/upper（vendor `thresholdVar`/`actor` 形态跳过）。
-            // upper 缺省 false = vendor `stat ≥ threshold` 生效侧。
+            // Literal var/threshold/upper (vendor's `thresholdVar`/`actor`
+            // shapes are skipped). upper defaults to false, matching
+            // vendor's `stat ≥ threshold` active side.
             let var = scalar_text(tag.fields.get("var")?)?;
             if var.starts_with('$') {
                 return None;
@@ -642,10 +693,11 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             })
         }
         "StatThreshold" => {
-            // 字面 stat/threshold/upper（vendor `statList`/`thresholdStat`/
-            // `thresholdPercent(Var)`/`actor` 形态由抽取器白名单挡在门外）。
-            // gate 在 matches 读 cfg.stats 快照——对 FLAG/LIST/OVERRIDE 全
-            // 查询路径生效（区别于求值期 tag）。
+            // Literal stat/threshold/upper (vendor's `statList`/
+            // `thresholdStat`/`thresholdPercent(Var)`/`actor` shapes are
+            // kept out by the extractor's whitelist). The gate reads the
+            // cfg.stats snapshot inside `matches`, so it applies across all
+            // FLAG/LIST/OVERRIDE query paths (unlike an eval-time tag).
             let stat = scalar_text(tag.fields.get("stat")?)?;
             if stat.starts_with('$') {
                 return None;
@@ -664,10 +716,13 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             })
         }
         "DistanceRamp" => {
-            // 距离插值（vendor ModStore.lua:574-590）。TemplateScalarDef 无嵌套
-            // 数组形态，ramp 点列以 `"距离 倍率"` 文本对转录（如 `["35 0.2",
-            // "70 0"]` = vendor `{ {35,0.2}, {70,0} }`）；语义与 statmap 引擎的
-            // DistanceRamp 分支一致（求值期按 `cfg.skill_distance` 线性插值）。
+            // Distance interpolation (vendor ModStore.lua:574-590).
+            // TemplateScalarDef has no nested-array shape, so ramp points
+            // are transcribed as `"distance multiplier"` text pairs (e.g.
+            // `["35 0.2", "70 0"]` = vendor's `{ {35,0.2}, {70,0} }`);
+            // semantics match the statmap engine's DistanceRamp branch
+            // (linear interpolation over `cfg.skill_distance` at eval
+            // time).
             let TemplateScalarDef::TextList(points) = tag.fields.get("ramp")? else {
                 return None;
             };
@@ -682,32 +737,40 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             }
             (!ramp.is_empty()).then_some(ModTag::DistanceRamp { ramp })
         }
-        // 未映射 tag 形态：保守跳过。
+        // Unmapped tag shape: conservatively skipped.
         _ => None,
     }
 }
 
-/// PerStat/PercentStat/StatThreshold 的 stat 名归一：vendor 短属性名
-/// （`Str`→`Strength`）+ `On<Slot>` 槽名后缀（`OnBoots`→`Onboots`），与
-/// statmap 引擎（`template.rs::compile_tag`）同口径——回填侧
-/// （orchestrator `inject_per_x_multipliers` 写 `cfg.stats`）的键空间是
-/// `Strength`/`<Stat>On<slot.id()>`，不归一则读数缺键恒 0。
+/// Normalizes stat names for PerStat/PercentStat/StatThreshold: expands
+/// vendor's short attribute names (`Str`→`Strength`) and normalizes the
+/// `On<Slot>` slot suffix (`OnBoots`→`Onboots`), matching the statmap
+/// engine's convention (`template.rs::compile_tag`) — the key space written
+/// back by the orchestrator (`inject_per_x_multipliers` writing
+/// `cfg.stats`) is `Strength`/`<Stat>On<slot.id()>`; without normalization
+/// the lookup key is missing and reads back as 0.
 fn normalize_stat_name(stat: &str) -> String {
     normalize_attribute_var(&normalize_perstat_slot_suffix(stat))
 }
 
-/// vendor→PoBR mod 名翻译（窄闭集，与 statmap 引擎 `translate_mod_name` 的
-/// 对应分派同口径）。special 条目名来自 vendor Lua 字面量，与 PoBR 消费名
-/// 错位的条目躺 db 无人查询（激活性修复，非行为改写）：
-/// - `<Type>Min/Max` → `<Type>DamageMin/Max`（消费方 `calc::damage`:236 附加
-///   伤害桶；[`damage_bound_mod_name`] 精确匹配，`FireResistMax` 等不误伤）；
+/// Translates vendor mod names to PoBR names (a narrow closed set, matching
+/// the corresponding dispatch in the statmap engine's `translate_mod_name`).
+/// special entry names come straight from vendor Lua literals; entries
+/// whose name doesn't match what PoBR's consumers expect just sit unqueried
+/// in the db — this is an activation fix, not a behaviour change:
+/// - `<Type>Min/Max` → `<Type>DamageMin/Max` (consumed by `calc::damage`:236
+///   for the additional damage bucket; [`damage_bound_mod_name`] matches
+///   exactly, so `FireResistMax` etc. aren't mistakenly affected);
 /// - `CritChance`/`CritMultiplier` → `CriticalStrike{Chance,Multiplier}`
-///   （消费方 `calc::crit`）；
-/// - `Speed` 按 flag 分派 `Attack→AttackSpeed`/`Cast→CastSpeed`/裸→`SkillSpeed`
-///   （消费方 `skill_use_time::SPEED_BUCKET`，bare `Speed` 无人查询），分派吃掉
-///   的 flag 从直译集合移除（statmap :1528-1539 同口径）。
+///   (consumed by `calc::crit`);
+/// - `Speed` is dispatched by flag: `Attack→AttackSpeed`/`Cast→CastSpeed`/
+///   bare→`SkillSpeed` (consumed by `skill_use_time::SPEED_BUCKET`; a bare
+///   `Speed` is never queried), and the flag consumed by the dispatch is
+///   removed from the passthrough set (same convention as statmap
+///   :1528-1539).
 ///
-/// 其余名字原样返回（PoBR 名直通 + 休眠 LIST 通道不动）。
+/// Every other name passes through unchanged (PoBR names go straight
+/// through, and the dormant LIST channel is left alone).
 fn translate_vendor_name(name: &str, flags: &[String]) -> (String, Vec<String>) {
     if let Some(bound) = damage_bound_mod_name(name) {
         return (bound, flags.to_vec());
@@ -732,20 +795,24 @@ fn translate_vendor_name(name: &str, flags: &[String]) -> (String, Vec<String>) 
     }
 }
 
-/// 供离线抽取器（`sync-pob-catalog extract-lua --what special-mods`）预检：
-/// tag 能否被 [`compile_tag`] 忠实映射。不可映射的 tag 在编译期会被静默丢弃——
-/// 批量抽取必须把这类条目**整条跳过**而不是丢 tag（否则条件词条变常驻）。
+/// Precheck for the offline extractor (`sync-pob-catalog extract-lua --what
+/// special-mods`): whether a tag can be faithfully mapped by
+/// [`compile_tag`]. Unmappable tags are silently dropped at compile time —
+/// bulk extraction must **skip these entries entirely** rather than drop
+/// the tag (otherwise a conditional mod turns into an always-on one).
 pub fn tag_is_mappable(tag: &TemplateTagDef) -> bool {
     compile_tag(tag).is_some()
 }
 
-/// 同上预检：ModFlags 位名是否可映射（[`flag_bit`]；未知名编译期静默跳过，
-/// 会拓宽 mod 适用范围）。
+/// Same precheck: whether a ModFlags bit name can be mapped ([`flag_bit`];
+/// an unknown name is silently skipped at compile time, which widens the
+/// mod's applicability).
 pub fn flag_name_is_mappable(name: &str) -> bool {
     flag_bit(name).is_some()
 }
 
-/// 同上预检：KeywordFlags 位名是否可映射（[`keyword_bit`]）。
+/// Same precheck: whether a KeywordFlags bit name can be mapped
+/// ([`keyword_bit`]).
 pub fn keyword_flag_name_is_mappable(name: &str) -> bool {
     keyword_bit(name).is_some()
 }
@@ -773,7 +840,8 @@ fn scalar_bool(scalar: &TemplateScalarDef) -> Option<bool> {
     }
 }
 
-/// `"$n"` → 第 n 个捕获的数值（1-based）；非捕获形当字面量解析；解析失败 → 0。
+/// `"$n"` → the nth capture's numeric value (1-based); a non-capture form
+/// is parsed as a literal; parse failure → 0.
 fn resolve_capture_number(arg: &str, captures: &[String]) -> f64 {
     if let Some(idx) = capture_index(arg) {
         captures
@@ -785,18 +853,22 @@ fn resolve_capture_number(arg: &str, captures: &[String]) -> f64 {
     }
 }
 
-/// `"$3"` → `Some(3)`；非此形 → `None`。
+/// `"$3"` → `Some(3)`; anything else → `None`.
 fn capture_index(s: &str) -> Option<usize> {
     s.strip_prefix('$').and_then(|n| n.parse::<usize>().ok())
 }
 
-/// 把 [`ValueOpDef`] 算子链编译为 `value_expr::ValueExpr` 树（求值器单点复用）。
+/// Compiles a [`ValueOpDef`] operator chain into a `value_expr::ValueExpr`
+/// tree (reusing the single evaluator).
 ///
-/// 首段连续线性算子（div/mult/base）折进 `Input` 节点；之后的包装算子
-/// （negate/clamp）逐层向外。包装算子之后再出现的线性算子无法用单点
-/// `ValueExpr` 表达（Input 只读原始 capture）——本批次条目算子链均为
-/// 「单段线性 + 可选 negate/clamp」满足该约束；越界形态保守忽略（由
-/// differential 兜底）。
+/// The leading run of linear operators (div/mult/base) is folded into the
+/// `Input` node; any wrapping operators (negate/clamp) that follow are
+/// layered outward from there. A linear operator appearing *after* a
+/// wrapping operator can't be expressed by the single `ValueExpr` (`Input`
+/// only reads the raw capture) — every entry in this batch has an operator
+/// chain of "one linear segment plus optional negate/clamp", which
+/// satisfies this constraint; out-of-scope shapes are conservatively
+/// ignored (caught by differential testing as a backstop).
 fn build_value_expr(ops: &[ValueOpDef]) -> ValueExpr {
     let mut mult = 1.0;
     let mut div = 1.0;
@@ -867,9 +939,11 @@ fn instantiate_template(
     out
 }
 
-/// 嵌套 mod 模板（`TemplateValueDef::Nested` 内层）实例化：mod_type / flags /
-/// tags 按需即时编译（编译期已由 [`validate_nested_value`] fail-fast 校验
-/// mod_type / enums；嵌套命中频率低，即时编译开销可忽略）。
+/// Instantiates a nested mod template (the inner payload of
+/// `TemplateValueDef::Nested`): mod_type / flags / tags are compiled on
+/// demand ([`validate_nested_value`] already fail-fast validates mod_type /
+/// enums at compile time; nested entries are rare, so the on-demand
+/// compilation cost is negligible).
 fn instantiate_mod_def(
     def: &pobr_data::catalog::parser_rules::ModTemplateDef,
     captures: &[String],
@@ -878,7 +952,8 @@ fn instantiate_mod_def(
 ) -> Option<Modifier> {
     let mod_type = parse_mod_type(&def.mod_type)?;
     let name = resolve_name(&def.name, captures, enums)?;
-    // 与 compile_template 同款 vendor→PoBR 名翻译（嵌套载荷即时编译路径）。
+    // Same vendor→PoBR name translation as compile_template (on-demand
+    // compile path for nested payloads).
     let (name, flag_names) = translate_vendor_name(&name, &def.flags);
     let value = instantiate_value(&def.value, captures, mod_type, enums, source)?;
     let mut modifier = Modifier::new(name, mod_type, value).with_source(source);
@@ -907,7 +982,8 @@ fn resolve_name(
     }
 }
 
-/// enums 闭集查表：用第 n 个捕获词在 `enums[n]` 表里查完整字面量。
+/// Enum closed-set lookup: looks up the full literal for the nth captured
+/// word in the `enums[n]` table.
 fn resolve_enum(
     capture_index: u32,
     captures: &[String],
@@ -937,14 +1013,17 @@ fn instantiate_value(
                     raw.parse::<f64>().ok().map(ModValue::Number)
                 }
             } else {
-                // 字面量字符串（LIST text 值，如 GrantedPassive 名）。
+                // Literal string (a LIST text value, e.g. a GrantedPassive
+                // name).
                 Some(ModValue::Text(s.clone()))
             }
         }
         TemplateValueDef::Expr(expr) => Some(ModValue::Number(eval_value_expr_def(expr, captures))),
-        // 嵌套 mod 载荷（`{ mod = mod(...) }` 形态）→ ModValue::NestedMods，
-        // 编排层经 `ModDb::list_nested` 转发（EnemyModifier/MinionModifier 等）。
-        // 内层全部实例化失败 → None（跳过外层 mod，不产空载荷）。
+        // Nested mod payload (the `{ mod = mod(...) }` shape) →
+        // ModValue::NestedMods, forwarded by the orchestration layer
+        // through `ModDb::list_nested` (EnemyModifier/MinionModifier,
+        // etc.). If every inner mod fails to instantiate → None (skip the
+        // outer mod rather than producing an empty payload).
         TemplateValueDef::Nested { mods } => {
             let nested: Vec<Modifier> = mods
                 .iter()
@@ -956,8 +1035,9 @@ fn instantiate_value(
                 Some(ModValue::NestedMods(nested))
             }
         }
-        // 复杂 LIST 载荷（explode/level grant 等 PoB2 table）尚无 pobr 落点——
-        // 跳过该 mod（条目保持 verified:false，由 handler_id 接管属后续）。
+        // Complex LIST payloads (PoB2 tables like explode/level grant) have
+        // no pobr counterpart yet — skip this mod (the entry stays
+        // verified:false; a handler_id can take over later).
         TemplateValueDef::List(_) => None,
     }
 }
@@ -975,7 +1055,8 @@ mod tests {
         SpecialModRules::compile(&defs, &HandlerRegistry::new()).unwrap()
     }
 
-    /// 数值捕获 + 算子链：`(\d+)% increased X` → INC，capture 直引。
+    /// Numeric capture + operator chain: `(\d+)% increased X` → INC,
+    /// capture referenced directly.
     #[test]
     fn number_capture_inc() {
         let d = def(r#"{"id":"t","pattern":"(\\d+)% increased buffs","mods":[
@@ -990,7 +1071,7 @@ mod tests {
         assert!(!m.verified);
     }
 
-    /// 算子链 negate：slower → MORE 负值。
+    /// Operator chain negate: "slower" → a negative MORE value.
     #[test]
     fn ops_negate() {
         let d = def(
@@ -1004,8 +1085,9 @@ mod tests {
         assert_eq!(m.mods[0].value.as_number(), Some(-30.0));
     }
 
-    /// 嵌套 mod 载荷：`{"mods":[...]}` 值 → ModValue::NestedMods（捕获在内层
-    /// 求值），编排层经 list_nested 转发。
+    /// Nested mod payload: a `{"mods":[...]}` value → ModValue::NestedMods
+    /// (captures are evaluated in the inner mods), forwarded by the
+    /// orchestration layer through list_nested.
     #[test]
     fn nested_mods_value() {
         let d = def(
@@ -1030,7 +1112,7 @@ mod tests {
         assert_eq!(inner[0].value.as_number(), Some(-20.0));
     }
 
-    /// PerStat tag 映射：按已算出 stat 缩放（M4-T1 运行时通道）。
+    /// PerStat tag mapping: scales by an already-computed stat.
     #[test]
     fn per_stat_tag_maps() {
         let d = def(
@@ -1052,8 +1134,10 @@ mod tests {
             }]
         );
 
-        // 槽名后缀归一（normalize_stat_name）：vendor `OnBoots` → `Onboots`，
-        // 对齐编排层 per_slot_defence_multipliers 回填的 `<Stat>On<slot.id()>` 键。
+        // Slot-suffix normalization (normalize_stat_name): vendor
+        // `OnBoots` → `Onboots`, matching the `<Stat>On<slot.id()>` key
+        // filled in by the orchestration layer's
+        // per_slot_defence_multipliers.
         let d = def(r#"{"id":"t2","pattern":"noop","mods":[
                 {"name":"X","type":"BASE","value":1,
                  "tags":[{"type":"PerStat","stat":"ArmourOnBoots","div":25.0}]}],"batch":"V2"}"#);
@@ -1071,9 +1155,11 @@ mod tests {
         );
     }
 
-    /// vendor→PoBR mod 名翻译（translate_vendor_name）：`<Type>Min/Max` 附加
-    /// 伤害族、CritChance/CritMultiplier、Speed 按 flag 分派（吃掉分派 flag）；
-    /// PoBR 名与休眠通道名原样直通。
+    /// vendor→PoBR mod name translation (translate_vendor_name):
+    /// `<Type>Min/Max` for the additional damage family,
+    /// CritChance/CritMultiplier, Speed dispatched by flag (consuming the
+    /// dispatch flag); PoBR names and dormant-channel names pass through
+    /// unchanged.
     #[test]
     fn vendor_mod_names_translate_to_pobr_names() {
         let d = def(
@@ -1098,20 +1184,22 @@ mod tests {
         assert_eq!(
             names,
             vec![
-                "ColdDamageMin",        // 附加伤害族改写（damage.rs:236 消费名）
-                "CriticalStrikeChance", // crit 族改写
-                "AttackSpeed",          // Speed+Attack 分派
-                "SkillSpeed",           // 裸 Speed 分派
-                "FireResistMax",        // strip 后非 Min/Max 整词，不误伤
-                "Armour",               // PoBR 名直通
+                "ColdDamageMin", // additional-damage family rewrite (name consumed by damage.rs:236)
+                "CriticalStrikeChance", // crit family rewrite
+                "AttackSpeed",   // Speed+Attack dispatch
+                "SkillSpeed",    // bare Speed dispatch
+                "FireResistMax", // not Min/Max after stripping, so untouched
+                "Armour",        // PoBR name passthrough
             ]
         );
-        // Speed→AttackSpeed 分派吃掉 Attack flag（statmap 同口径）。
+        // The Speed→AttackSpeed dispatch consumes the Attack flag (same
+        // convention as statmap).
         assert!(m.mods[2].flags.is_empty());
     }
 
-    /// PercentStat tag 映射（V2 slice 2）：按已算出 stat 的百分比缩放，
-    /// percent 可缺省（vendor or-1 侧）。
+    /// PercentStat tag mapping (V2 slice 2): scales by a percentage of an
+    /// already-computed stat; percent can be omitted (vendor's or-1
+    /// branch).
     #[test]
     fn percent_stat_tag_maps() {
         let d = def(
@@ -1124,8 +1212,9 @@ mod tests {
         let m = r
             .try_match("gain accuracy equal to 40% of dexterity", &reg)
             .unwrap();
-        // stat 名归一（normalize_stat_name）：短属性名 Dex → 全名 Dexterity，
-        // 对齐编排层 cfg.stats 回填键空间。
+        // Stat name normalization (normalize_stat_name): short attribute
+        // name Dex → full name Dexterity, matching the key space the
+        // orchestration layer fills into cfg.stats.
         assert_eq!(
             m.mods[0].tags,
             vec![ModTag::PercentStat {
@@ -1134,7 +1223,7 @@ mod tests {
             }]
         );
 
-        // percent 缺省 → None（运行时 mult = stat 本身）。
+        // percent omitted → None (at runtime, mult = the stat itself).
         let d = def(r#"{"id":"t2","pattern":"noop","mods":[
                 {"name":"X","type":"BASE","value":1,
                  "tags":[{"type":"PercentStat","stat":"Life"}]}],"batch":"V2"}"#);
@@ -1149,7 +1238,8 @@ mod tests {
         );
     }
 
-    /// StatThreshold tag 映射（V2s4）：读 cfg.stats 快照的二元 gate。
+    /// StatThreshold tag mapping (V2s4): a binary gate reading the
+    /// cfg.stats snapshot.
     #[test]
     fn stat_threshold_tag_maps() {
         let d = def(
@@ -1172,7 +1262,7 @@ mod tests {
         );
     }
 
-    /// MultiplierThreshold tag 映射：二元 gate。
+    /// MultiplierThreshold tag mapping: a binary gate.
     #[test]
     fn multiplier_threshold_tag_maps() {
         let d = def(
@@ -1194,8 +1284,10 @@ mod tests {
         );
     }
 
-    /// SkillName tag 映射：单名 / 列表统一小写收编；includeTransfigured 忽略
-    ///（PoE2 无变体宝石，等值退化）；缺名字段 → tag 跳过。
+    /// SkillName tag mapping: a single name or a list, both lowercased
+    /// uniformly; includeTransfigured is ignored (PoE2 has no transfigured
+    /// gems, so it degenerates to plain equality); a missing name field →
+    /// tag skipped.
     #[test]
     fn skill_name_tag_maps() {
         let d = def(r#"{"id":"t","pattern":"fireball explodes twice","mods":[
@@ -1223,7 +1315,8 @@ mod tests {
             }]
         );
 
-        // 名字段缺失 → tag 保守跳过（mod 保留、不挂 tag）。
+        // Missing name field → tag conservatively skipped (mod is kept,
+        // just without the tag).
         let d = def(r#"{"id":"t3","pattern":"noop","mods":[
                 {"name":"X","type":"BASE","value":1,
                  "tags":[{"type":"SkillName"}]}],"batch":"V2"}"#);
@@ -1232,7 +1325,8 @@ mod tests {
         assert!(m.mods[0].tags.is_empty());
     }
 
-    /// 嵌套 mod 载荷编译期校验：内层未知 mod_type fail-fast。
+    /// Compile-time validation of a nested mod payload: unknown inner
+    /// mod_type fails fast.
     #[test]
     fn nested_bad_mod_type_fails_compile() {
         let d = def(r#"{"id":"t","pattern":"x","mods":[
@@ -1242,7 +1336,7 @@ mod tests {
         assert!(matches!(err, SpecialCompileError::BadModType { .. }));
     }
 
-    /// 线性折叠 div：`$1 / 100`。
+    /// Linear-folded div: `$1 / 100`.
     #[test]
     fn ops_div_linear() {
         let d = def(r#"{"id":"t","pattern":"gain (\\d+) per cent","mods":[
@@ -1253,7 +1347,7 @@ mod tests {
         assert_eq!(m.mods[0].value.as_number(), Some(0.5));
     }
 
-    /// FLAG 字面量值。
+    /// FLAG literal value.
     #[test]
     fn flag_literal() {
         let d = def(r#"{"id":"t","pattern":"cannot be ignited","mods":[
@@ -1265,7 +1359,7 @@ mod tests {
         assert_eq!(m.mods[0].value.as_bool(), Some(true));
     }
 
-    /// LIST text 值（keystone/granted passive 名）。
+    /// LIST text value (keystone/granted-passive name).
     #[test]
     fn list_text_capture() {
         let d = def(r#"{"id":"t","pattern":"allocates (.+)","mods":[
@@ -1277,7 +1371,7 @@ mod tests {
         assert_eq!(m.mods[0].value.as_text(), Some("icebreaker"));
     }
 
-    /// 整行锚定：前后多字符不命中。
+    /// Whole-line anchoring: extra characters before/after don't match.
     #[test]
     fn anchored_no_partial_match() {
         let d = def(r#"{"id":"t","pattern":"cannot be ignited","mods":[
@@ -1288,7 +1382,7 @@ mod tests {
         assert!(r.try_match("cannot be ignited sometimes", &reg).is_none());
     }
 
-    /// enums 闭集映射：词 → 完整 ModName 字面量。
+    /// Enum closed-set mapping: word → full ModName literal.
     #[test]
     fn enums_name_mapping() {
         let d = def(
@@ -1301,7 +1395,7 @@ mod tests {
         assert_eq!(m.mods[0].name.as_str(), "ColdDamageTaken");
     }
 
-    /// Condition tag 映射。
+    /// Condition tag mapping.
     #[test]
     fn condition_tag() {
         let d = def(r#"{"id":"t","pattern":"never crit","mods":[
@@ -1316,7 +1410,8 @@ mod tests {
         );
     }
 
-    /// 字面 Multiplier tag 映射（fork-a：Blood Mage `MaximumLife BASE 1 × Multiplier`）。
+    /// Literal Multiplier tag mapping (fork-a: Blood Mage's
+    /// `MaximumLife BASE 1 × Multiplier`).
     #[test]
     fn multiplier_tag_literal() {
         let d = def(r#"{"id":"t","pattern":"life per es on body","mods":[
@@ -1333,7 +1428,8 @@ mod tests {
         ));
     }
 
-    /// 不可映射 tag（ItemCondition）静默跳过，mod 仍产出。
+    /// An unmappable tag (ItemCondition) is silently skipped; the mod is
+    /// still produced.
     #[test]
     fn unmapped_tag_skipped() {
         let d = def(r#"{"id":"t","pattern":"body armour grants x","mods":[
@@ -1346,7 +1442,8 @@ mod tests {
         assert!(m.mods[0].tags.is_empty());
     }
 
-    /// handler_id 未注册：命中但产空 mods + 标记。
+    /// handler_id not registered: matches but produces empty mods, and is
+    /// flagged.
     #[test]
     fn unregistered_handler_marked() {
         let d = def(
@@ -1359,7 +1456,7 @@ mod tests {
         assert_eq!(m.unregistered_handler.as_deref(), Some("special:explode"));
     }
 
-    /// 编译错误：重复 id。
+    /// Compile error: duplicate id.
     #[test]
     fn duplicate_id_errors() {
         let a = def(
@@ -1372,7 +1469,7 @@ mod tests {
         assert!(matches!(err, SpecialCompileError::DuplicateId { .. }));
     }
 
-    /// 编译错误：非法 regex。
+    /// Compile error: invalid regex.
     #[test]
     fn bad_pattern_errors() {
         let a = def(
@@ -1382,7 +1479,7 @@ mod tests {
         assert!(matches!(err, SpecialCompileError::BadPattern { .. }));
     }
 
-    /// 编译错误：未知 mod_type。
+    /// Compile error: unknown mod_type.
     #[test]
     fn bad_mod_type_errors() {
         let a = def(
@@ -1392,8 +1489,9 @@ mod tests {
         assert!(matches!(err, SpecialCompileError::BadModType { .. }));
     }
 
-    /// C-2 安全批次代表性条目（vendor 名表缺口的纯 INC/BASE 模板，verified:false）：
-    /// 实例化 → 期望 Modifier（name/type/value）。
+    /// Representative entries from the C-2 safe batch (plain INC/BASE
+    /// templates for gaps in vendor's name table, verified:false):
+    /// instantiation → expected Modifier (name/type/value).
     #[test]
     fn c2_safe_batch_representative() {
         let cases = [
@@ -1433,10 +1531,14 @@ mod tests {
         }
     }
 
-    /// 真实仓库数据全量编译成功（闸门冒烟，正式断言在 special_mods_gate.rs）。
-    /// special_mods 分两层：版本无关策展层 `data/overlay-common/`（P1-3）+ 版本层
-    /// `data/<ver>/overlay/`。这里读同一并集拼接后编译（pobr-core 不依赖 pobr-gamedata，
-    /// 故直读文件而非走 loader）。
+    /// Smoke gate: the full corpus of real repo data compiles successfully
+    /// (the formal assertions live in special_mods_gate.rs). special_mods
+    /// is split into two layers: a version-independent curation layer
+    /// `data/overlay-common/` (P1-3) plus a version layer
+    /// `data/<ver>/overlay/`. This test reads and concatenates the same
+    /// union before compiling (pobr-core doesn't depend on pobr-gamedata,
+    /// so it reads the files directly instead of going through the
+    /// loader).
     #[test]
     fn repo_special_mods_compile() {
         let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data");

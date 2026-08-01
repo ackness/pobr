@@ -1,10 +1,13 @@
-//! PoB2 测试套件移植（golden parity）。
+//! PoB2 test suite port (golden parity).
 //!
-//! 把 vendor PoB2 `spec/System/Test*_spec.lua` 中**孤立机制**用例的输入/期望值移植为
-//! PoBR 计算断言：每个用例锁定一个机制（暴击倍率、暴击均值公式、增伤聚合、最大承受
-//! 击中…），期望值取自 PoB2 测试（字面量）。目标：与 PoB2 偏差 < 10%（纯公式用例要求精确）。
+//! Ports the inputs/expected values of **isolated-mechanic** cases from vendor PoB2's
+//! `spec/System/Test*_spec.lua` into PoBR calculation assertions: each case pins down
+//! one mechanic (crit multiplier, crit-average formula, damage-increase aggregation,
+//! max hit taken, ...), with expected values taken from PoB2's tests (as literals).
+//! Target: within 10% of PoB2 (pure-formula cases require exactness).
 //!
-//! 来源映射记于每个用例。新增机制时优先在此补 golden 用例（比真实 ninja build 易调试）。
+//! Source mapping is noted per case. When adding a new mechanic, prefer adding a
+//! golden case here first (easier to debug than a real ninja build).
 
 use crate::support::parse_mod;
 use pobr_core::calc::{CalculationSession, MinimalInput, calculate_minimal};
@@ -12,7 +15,8 @@ use pobr_core::mod_parser::ParseStatus;
 use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
 
-/// 相对误差 < 10%（PoB2 parity 目标）。`golden` 为 0 时退化为绝对误差。
+/// Relative error < 10% (the PoB2 parity target). Falls back to absolute error when
+/// `golden` is 0.
 fn within_10pct(actual: f64, golden: f64) -> bool {
     if golden == 0.0 {
         actual.abs() < 1e-6
@@ -21,7 +25,8 @@ fn within_10pct(actual: f64, golden: f64) -> bool {
     }
 }
 
-/// 把 PoB 词条文本解析并注入 db（用于复现 PoB 测试的 customMods / 物品词条）。
+/// Parses PoB mod text and injects it into db (used to reproduce PoB tests'
+/// customMods / item mods).
 fn add_text(db: &mut ModDb, text: &str) {
     let outcome = parse_mod(text).unwrap_or_else(|e| panic!("parse {text:?}: {e}"));
     if outcome.status == ParseStatus::Parsed {
@@ -46,8 +51,8 @@ fn input_base_hit(min: f64, max: f64) -> MinimalInput {
     }
 }
 
-/// PoB2 TestAttacks「creates an item and has the correct crit multi」：
-/// 基础暴击倍率 2.0 + 「25% increased Critical Damage Bonus」→ 2.25。
+/// PoB2 TestAttacks "creates an item and has the correct crit multi":
+/// base crit multiplier 2.0 + "25% increased Critical Damage Bonus" -> 2.25.
 #[test]
 fn crit_multiplier_base_plus_increase() {
     let mut db = ModDb::new();
@@ -60,8 +65,8 @@ fn crit_multiplier_base_plus_increase() {
     );
 }
 
-/// PoB2 TestAttacks「correctly calculates critical hit damage with static values」：
-/// 基础击中 1、暴击率 10%、倍率 2 → 平均击中 = (1-0.1)*1 + 0.1*1*2 = 1.1。
+/// PoB2 TestAttacks "correctly calculates critical hit damage with static values":
+/// base hit 1, crit chance 10%, multiplier 2 -> average hit = (1-0.1)*1 + 0.1*1*2 = 1.1.
 #[test]
 fn crit_average_static() {
     let mut db = ModDb::new();
@@ -83,8 +88,8 @@ fn crit_average_static() {
     );
 }
 
-/// PoB2 TestAttacks「does not force critical hits when critical hit chance is zero」：
-/// 暴击率 0 → 暴击率 0、平均击中 = 基础（1）。
+/// PoB2 TestAttacks "does not force critical hits when critical hit chance is zero":
+/// crit chance 0 -> crit chance 0, average hit = base (1).
 #[test]
 fn no_crit_when_zero_chance() {
     let db = ModDb::new();
@@ -97,8 +102,8 @@ fn no_crit_when_zero_chance() {
     );
 }
 
-/// PoB2 TestAttacks「correctly converts spell damage per stat to attack damage」(节选)：
-/// 「10% increased attack damage」→ 攻击域 Damage INC = 10。
+/// PoB2 TestAttacks "correctly converts spell damage per stat to attack damage"
+/// (excerpt): "10% increased attack damage" -> attack-domain Damage INC = 10.
 #[test]
 fn attack_damage_increase_aggregation() {
     let mut db = ModDb::new();
@@ -112,9 +117,10 @@ fn attack_damage_increase_aggregation() {
     );
 }
 
-/// PoB2 TestDefence「no armour max hits」(基线)：默认角色 Life 60、四类抗性 -60%、
-/// 无护甲 → 物理最大承受击中 = Life 60；元素/混沌 = 60/(1+0.6) = 37.5（PoB2 取整 38）。
-/// 验证 PoBR `max_hit_for_type = pool/(1-res/100)` 与 PoB2 一致。
+/// PoB2 TestDefence "no armour max hits" (baseline): default character Life 60,
+/// all four resistances -60%, no armour -> physical max hit taken = Life 60;
+/// elemental/chaos = 60/(1+0.6) = 37.5 (PoB2 rounds to 38).
+/// Verifies PoBR's `max_hit_for_type = pool/(1-res/100)` matches PoB2.
 #[test]
 fn defence_no_armour_max_hits() {
     let input = MinimalInput {
@@ -130,7 +136,7 @@ fn defence_no_armour_max_hits() {
         base_action_rate: 1.0,
     };
     let mut session = CalculationSession::new(input).with_config(CalcConfig::attack());
-    // 混沌抗不在 MinimalInput，单独注入 -60%。
+    // Chaos resistance isn't in MinimalInput, so inject -60% separately.
     session.add_modifiers([Modifier::number("ChaosResistance", ModType::Base, -60.0)]);
     session.perform_minimal();
     let o = session.output();
@@ -150,10 +156,10 @@ fn defence_no_armour_max_hits() {
     }
 }
 
-/// PoB2 TestDefence「no armour max hits」(+200 抗 / +200% 物理减伤)：
-/// 元素/混沌抗 -60+200=140 → 上限 75% → 承受 0.25 → 60/0.25 = 240；
-/// 物理 200% 额外减伤 → 减伤上限 90% → 承受 0.1 → 60/0.1 = 600。
-/// 验证 PoBR 抗性上限（75）与物理减伤上限（90%）与 PoB2 一致。
+/// PoB2 TestDefence "no armour max hits" (+200 res / +200% physical DR):
+/// elemental/chaos res -60+200=140 -> capped at 75% -> takes 0.25 -> 60/0.25 = 240;
+/// physical +200% additional DR -> DR capped at 90% -> takes 0.1 -> 60/0.1 = 600.
+/// Verifies PoBR's resistance cap (75) and physical DR cap (90%) match PoB2.
 #[test]
 fn defence_capped_res_and_pdr() {
     let input = MinimalInput {
@@ -194,9 +200,9 @@ fn defence_capped_res_and_pdr() {
     }
 }
 
-/// PoB2 TestAttacks「correctly adds damage with oracle forced outcome」(inevitable)：
-/// base 1、暴击 10%、倍率 2、「inevitable critical hits」→ 平均击中
-/// = 1 + (2-1)*(1*0.1 + 0.7*0.9*0.1 + 0.4*0.9²*0.1 + 0.1*0.9³*0.1) = 1.20269。
+/// PoB2 TestAttacks "correctly adds damage with oracle forced outcome" (inevitable):
+/// base 1, crit 10%, multiplier 2, "inevitable critical hits" -> average hit
+/// = 1 + (2-1)*(1*0.1 + 0.7*0.9*0.1 + 0.4*0.9^2*0.1 + 0.1*0.9^3*0.1) = 1.20269.
 #[test]
 fn crit_inevitable_forced_outcome() {
     let mut db = ModDb::new();
@@ -218,9 +224,9 @@ fn crit_inevitable_forced_outcome() {
     );
 }
 
-/// PoB2 TestAttacks「correctly calculates forced outcome with bifurcated critical hits」：
-/// base 1、暴击 10%、倍率 2、bifurcate+inevitable → 平均击中
-/// = 1 + (2-1)*(2*0.1*(1 + 0.7*(1-0.1)² + 0.4*((1-0.1)²)² + 0.1*((1-0.1)²)³))。
+/// PoB2 TestAttacks "correctly calculates forced outcome with bifurcated critical hits":
+/// base 1, crit 10%, multiplier 2, bifurcate+inevitable -> average hit
+/// = 1 + (2-1)*(2*0.1*(1 + 0.7*(1-0.1)^2 + 0.4*((1-0.1)^2)^2 + 0.1*((1-0.1)^2)^3)).
 #[test]
 fn crit_bifurcate_inevitable() {
     let mut db = ModDb::new();
@@ -244,9 +250,10 @@ fn crit_bifurcate_inevitable() {
     );
 }
 
-/// PoB2 TestDefence「armoured max hits」：Life 1000、抗性 -60%、护甲 10000、无 PDR。
-/// 物理最大承受击中需**自洽**（护甲减伤依赖击中大小）：H 满足 H*taken(H)=pool →
-/// H²-1000H-10^6=0 → H≈1618（PoB2 PhysicalMaximumHitTaken）；元素 = 1000/1.6 = 625。
+/// PoB2 TestDefence "armoured max hits": Life 1000, resistances -60%, armour 10000,
+/// no PDR. Physical max hit taken must be **self-consistent** (armour DR depends on
+/// hit size): H satisfies H*taken(H)=pool -> H^2-1000H-10^6=0 -> H~=1618 (PoB2's
+/// PhysicalMaximumHitTaken); elemental = 1000/1.6 = 625.
 #[test]
 fn defence_armoured_max_hits() {
     let input = MinimalInput {
@@ -283,7 +290,8 @@ fn defence_armoured_max_hits() {
     }
 }
 
-/// 共用：无甲、Life 60、四类抗 -60% 基线 + 自定义防御词条 → (phys, fire, cold, lightning, chaos) 最大承受击中。
+/// Shared helper: no armour, Life 60, all four resistances at -60% baseline + custom
+/// defence mods -> (phys, fire, cold, lightning, chaos) max hit taken.
 fn defence_max_hits(mods: &[(&str, ModType, f64)]) -> (f64, f64, f64, f64, f64) {
     let input = MinimalInput {
         base_life: 60.0,
@@ -314,9 +322,10 @@ fn defence_max_hits(mods: &[(&str, ModType, f64)]) -> (f64, f64, f64, f64, f64) 
     )
 }
 
-/// PoB2 TestDefence「no armour max hits」(+200 抗 / +200 max 抗 / 50% reduced damage taken)：
-/// 元素抗 140→硬上限 90→承受 0.1，再 ×(1-0.5) reduced → 60/0.05 = 1200；物理 60/0.5 = 120。
-/// 验证最大抗性硬上限(90) + 玩家侧 DamageTaken(reduced=INC<0)。
+/// PoB2 TestDefence "no armour max hits" (+200 res / +200 max res / 50% reduced
+/// damage taken): elemental res 140 -> hard-capped at 90 -> takes 0.1, then
+/// x(1-0.5) reduced -> 60/0.05 = 1200; physical 60/0.5 = 120.
+/// Verifies the max-resistance hard cap (90) + player-side DamageTaken (reduced=INC<0).
 #[test]
 fn defence_max_res_and_reduced_taken() {
     let (p, f, c, l, ch) = defence_max_hits(&[
@@ -334,9 +343,9 @@ fn defence_max_res_and_reduced_taken() {
     }
 }
 
-/// PoB2 TestDefence「no armour max hits」(+ 再叠 50% less damage taken)：
-/// dt = (1-0.5) reduced × 0.5 less = 0.25 → 元素 60/(0.1*0.25)=2400；物理 60/0.25 = 240。
-/// 验证 DamageTaken less=MORE 与 reduced 叠乘。
+/// PoB2 TestDefence "no armour max hits" (+ stacking another 50% less damage taken):
+/// dt = (1-0.5) reduced x 0.5 less = 0.25 -> elemental 60/(0.1*0.25)=2400; physical
+/// 60/0.25 = 240. Verifies DamageTaken less=MORE multiplies with reduced.
 #[test]
 fn defence_reduced_and_less_taken() {
     let (p, f, c, l, ch) = defence_max_hits(&[
@@ -355,10 +364,11 @@ fn defence_reduced_and_less_taken() {
     }
 }
 
-/// PoB2 TestDefence「no armour max hits」(ES 血池 + 满叠减伤)：Life 60 + ES 60（pool 120）、
-/// max抗硬上限 90、reduced 50% + less 50% + nearby 20% less（dt = 0.5×0.5×0.8 = 0.2）。
-/// 元素 = 120/(0.1×0.2) = 6000；物理 = 120/0.2 = 600；混沌 pool = life + 0.5×ES = 90 →
-/// 90/(0.1×0.2) = 4500。验证 ES 血池 + 混沌半 ES + 多重 DamageTaken 叠乘。
+/// PoB2 TestDefence "no armour max hits" (ES pool + fully stacked DR): Life 60 + ES
+/// 60 (pool 120), max-res hard cap 90, reduced 50% + less 50% + nearby 20% less
+/// (dt = 0.5x0.5x0.8 = 0.2). Elemental = 120/(0.1x0.2) = 6000; physical = 120/0.2 =
+/// 600; chaos pool = life + 0.5xES = 90 -> 90/(0.1x0.2) = 4500. Verifies the ES pool
+/// + chaos half-ES + multiple stacked DamageTaken multipliers.
 #[test]
 fn defence_es_pool_and_chaos_half() {
     let input = MinimalInput {
@@ -408,8 +418,9 @@ fn defence_es_pool_and_chaos_half() {
     );
 }
 
-/// 伤害转换链（PoB2 processDamageConversion 口径）：基础物理 100、「100% of Physical
-/// Damage Converted to Fire Damage」→ 物理分量 0、火分量 100（守恒，类型转移）。
+/// Damage conversion chain (matching PoB2's processDamageConversion): base physical
+/// 100, "100% of Physical Damage Converted to Fire Damage" -> physical component 0,
+/// fire component 100 (conserved, just retyped).
 #[test]
 fn conversion_physical_to_fire_full() {
     let mut db = ModDb::new();
@@ -430,8 +441,9 @@ fn conversion_physical_to_fire_full() {
     );
 }
 
-/// gain-as-extra（不扣源）：基础物理 100、「Gain 50% of Physical Damage as Extra Fire
-/// Damage」→ 物理 100（保留）+ 火 50（额外）= 总 150。
+/// gain-as-extra (source not deducted): base physical 100, "Gain 50% of Physical
+/// Damage as Extra Fire Damage" -> physical 100 (retained) + fire 50 (extra) =
+/// total 150.
 #[test]
 fn gain_as_extra_physical_to_fire() {
     let mut db = ModDb::new();
@@ -444,10 +456,13 @@ fn gain_as_extra_physical_to_fire() {
     );
 }
 
-/// PoB2 TestDefence「armoured max hits」(Armour applies to elements instead of Physical)：
-/// Life 1000 + Armour 10000 + 元素抗 0（物理无护甲、火/冰/电改吃护甲）+ 混沌抗 -60。
-/// 物理 = 1000（=池，无护甲）；火/冰/电 = 物理带护甲口径 1618（ArmourRatio 10：H(1-A/(A+10H))=池）；
-/// 混沌 = 1000/1.6 = 625。验证 armour-applies-to-element 重定向 + 元素走护甲减伤。
+/// PoB2 TestDefence "armoured max hits" (Armour applies to elements instead of
+/// Physical): Life 1000 + Armour 10000 + elemental res 0 (physical gets no armour,
+/// fire/cold/lightning are redirected to armour instead) + chaos res -60.
+/// Physical = 1000 (= pool, no armour); fire/cold/lightning use the physical
+/// armour-DR formula = 1618 (ArmourRatio 10: H(1-A/(A+10H))=pool); chaos =
+/// 1000/1.6 = 625. Verifies the armour-applies-to-element redirect + elements
+/// going through armour DR.
 #[test]
 fn defence_armour_applies_to_element() {
     let input = MinimalInput {
@@ -463,8 +478,9 @@ fn defence_armour_applies_to_element() {
         base_action_rate: 1.0,
     };
     let mut session = CalculationSession::new(input).with_config(CalcConfig::attack());
-    // 「Armour applies to … instead of Physical Damage」文本不在当前引擎规则内——
-    // 按其数据展开（ModParser.lua:2519-2524）直接注入。
+    // The "Armour applies to ... instead of Physical Damage" text isn't covered by
+    // the current engine rules -- inject its data expansion directly
+    // (ModParser.lua:2519-2524).
     session.add_modifiers([
         Modifier::number("Armour", ModType::Base, 10000.0),
         Modifier::number("ChaosResistance", ModType::Base, -60.0),
@@ -497,9 +513,10 @@ fn defence_armour_applies_to_element() {
     );
 }
 
-/// PoB2 TestDefence「armoured max hits」(敌人物理压制 overwhelm)：Life 1000 + Armour 1e9
-/// （护甲减伤封顶 90%）+ enemyPhysicalOverwhelm 15 → 物理减伤 90%-15% = 75% → 承受 0.25 →
-/// 物理最大承受击中 = 1000/0.25 = 4000。元素/混沌抗 -60 → 625。验证 overwhelm 削减物理减伤。
+/// PoB2 TestDefence "armoured max hits" (enemy physical overwhelm): Life 1000 +
+/// Armour 1e9 (armour DR capped at 90%) + enemyPhysicalOverwhelm 15 -> physical DR
+/// 90%-15% = 75% -> takes 0.25 -> physical max hit taken = 1000/0.25 = 4000.
+/// Elemental/chaos res -60 -> 625. Verifies overwhelm reduces physical DR.
 #[test]
 fn defence_physical_overwhelm() {
     let input = MinimalInput {
@@ -539,9 +556,11 @@ fn defence_physical_overwhelm() {
     );
 }
 
-/// PoB2 TestSkills「cost efficiency modifiers」(Ball Lightning L1 mana cost = 9)：消耗效率
-/// 在 inc/more（取整后）**除以** `1 + 效率/100`，结果不取整；`Cost Efficiency` 通用与
-/// `Mana Cost Efficiency` 加法叠加。验证 PoBR calc_mana_cost 的消耗效率口径。
+/// PoB2 TestSkills "cost efficiency modifiers" (Ball Lightning L1 mana cost = 9):
+/// cost efficiency is applied **after** inc/more (rounding), by **dividing** by
+/// `1 + efficiency/100`, and the result is not rounded; the generic `Cost
+/// Efficiency` and `Mana Cost Efficiency` stack additively. Verifies PoBR's
+/// calc_mana_cost cost-efficiency semantics.
 #[test]
 fn cost_efficiency_modifiers() {
     use pobr_core::calc::skill_mechanics::calc_mana_cost;
@@ -583,12 +602,14 @@ fn cost_efficiency_modifiers() {
     );
 }
 
-/// per-charge 缩放（PoB2 Multiplier tag）：词条「N% increased/more Damage per <X> Charge」按
-/// 当前充能层数倍乘。cfg.multiplier 存当前层数（PoB2 `modDB.multipliers["PowerCharge"]` 同构）。
-/// 验证 PoBR Modifier Multiplier tag 在 sum/more 聚合中按层数生效。
+/// Per-charge scaling (PoB2's Multiplier tag): the mod "N% increased/more Damage
+/// per <X> Charge" scales by the current number of charge stacks. cfg.multiplier
+/// stores the current stack count (isomorphic to PoB2's
+/// `modDB.multipliers["PowerCharge"]`). Verifies PoBR's Modifier Multiplier tag
+/// takes effect proportionally to stack count in sum/more aggregation.
 #[test]
 fn per_charge_scaling() {
-    // 8% increased per power charge × 3 层 = 24% INC。
+    // 8% increased per power charge x 3 stacks = 24% INC.
     let mut db = ModDb::new();
     add_text(&mut db, "8% increased Damage per Power Charge");
     let cfg = CalcConfig::attack().with_multiplier("PowerCharge", 3.0);
@@ -597,7 +618,7 @@ fn per_charge_scaling() {
         (inc - 24.0).abs() < 1e-6,
         "3 power charges → Damage INC {inc} (expect 24)"
     );
-    // 0 层 → 0 INC。
+    // 0 stacks -> 0 INC.
     let cfg0 = CalcConfig::attack();
     let inc0 = db.sum(ModType::Inc, &cfg0, &[ModName::from("Damage")]);
     assert!(
@@ -605,7 +626,7 @@ fn per_charge_scaling() {
         "0 charges → Damage INC {inc0} (expect 0)"
     );
 
-    // 10% more per frenzy charge × 3 = ×1.3。
+    // 10% more per frenzy charge x 3 = x1.3.
     let mut db2 = ModDb::new();
     add_text(&mut db2, "10% more Damage per Frenzy Charge");
     let cfg3 = CalcConfig::attack().with_multiplier("FrenzyCharge", 3.0);

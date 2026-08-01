@@ -1,45 +1,46 @@
-//! 两份 [`OutputTable`] 的标量字段差异比较。
+//! Scalar field diff between two [`OutputTable`]s.
 //!
-//! 用于「改一件装备 / 一个配置后 DPS/EHP 变化多少」这类对比，也用于回归测试里与
-//! PoB 基准做容差比较。只比较 [`OutputTable`] 的标量数值字段（不含 `damage_components`
-//! 向量；那部分另行专门比较）。
+//! Used for questions like "how much did DPS/EHP change after swapping this item /
+//! flipping this config option", and for regression tests that compare against a PoB
+//! baseline within a tolerance. Only compares [`OutputTable`]'s scalar numeric fields
+//! (not the `damage_components` vector; that gets its own dedicated comparison).
 
 use pobr_core::calc::OutputTable;
 
-/// 单个标量字段的差异。
+/// Diff for a single scalar field.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldDiff {
-    /// 字段稳定名（用于显示 / 排序，显示文本走 i18n）。
+    /// Stable field name (for display / sorting; display text goes through i18n).
     pub field: &'static str,
     pub before: f64,
     pub after: f64,
     pub delta: f64,
-    /// 相对变化（`delta / before`）。`before` 为 0 时为 `None`。
+    /// Relative change (`delta / before`). `None` when `before` is 0.
     pub relative: Option<f64>,
 }
 
-/// 两份输出的比较结果：仅包含发生变化（超过容差）的字段。
+/// Comparison result for two outputs: only fields that changed beyond the tolerance.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct OutputComparison {
     pub diffs: Vec<FieldDiff>,
 }
 
 impl OutputComparison {
-    /// 是否完全一致（在容差内无差异）。
+    /// Whether nothing changed (no diffs beyond tolerance).
     pub fn is_unchanged(&self) -> bool {
         self.diffs.is_empty()
     }
 
-    /// 查找某字段的差异。
+    /// Looks up the diff for a given field.
     pub fn field(&self, name: &str) -> Option<&FieldDiff> {
         self.diffs.iter().find(|d| d.field == name)
     }
 }
 
-/// 默认浮点比较容差。
+/// Default float comparison tolerance.
 pub const DEFAULT_EPSILON: f64 = 1e-9;
 
-/// 比较两份 [`OutputTable`] 的标量字段，超过 `epsilon` 的差异收进结果。
+/// Compares the scalar fields of two [`OutputTable`]s, collecting diffs beyond `epsilon`.
 pub fn compare_outputs(
     before: &OutputTable,
     after: &OutputTable,

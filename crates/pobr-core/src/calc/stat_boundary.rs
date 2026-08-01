@@ -1,12 +1,16 @@
-//! 通用属性上下界解析（StatBoundary）。
+//! Generic stat floor/ceiling resolution (`StatBoundary`).
 //!
-//! 把 `pobr_data::BoundarySpec`（floor / default_max / hard_cap）应用到一个未截断的
-//! 属性值上，产出：截断后的最终值、生效的最大值、over-cap（超出最大值的浪费量）、
-//! missing（距最大值还差多少）。抗性 / 最大抗性 / 任何带边界的属性共用此原语。
+//! Applies a `pobr_data::BoundarySpec` (floor / default_max / hard_cap) to an
+//! uncapped stat value, producing: the clamped final value, the effective max,
+//! over-cap (how much of the uncapped value was wasted above the max), and
+//! missing (how far below the max the final value still is). Resistances,
+//! maximum resistances, and any other bounded stat share this primitive.
 //!
-//! 公式（与 `offence::resolve_resistance` 语义一致）：
-//! - `effective_max = min(default_max + max_bonus, hard_cap)`（任一为 None 时跳过该约束）
-//! - `final = clamp(uncapped, floor, effective_max)`（floor / max 为 None 时不约束该侧）
+//! Formulas (kept in sync with `offence::resolve_resistance`):
+//! - `effective_max = min(default_max + max_bonus, hard_cap)` (either side is
+//!   skipped when `None`)
+//! - `final = clamp(uncapped, floor, effective_max)` (floor / max leave that
+//!   side unconstrained when `None`)
 //! - `over_cap = max(uncapped - effective_max, 0)`
 //! - `missing = max(effective_max - final, 0)`
 
@@ -14,23 +18,25 @@ use pobr_data::prelude::*;
 
 use super::round;
 
-/// 属性边界解析结果。
+/// Result of resolving a stat's floor/ceiling.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct StatBoundary {
-    /// 未截断的原始值。
+    /// The raw, unclamped value.
     pub uncapped: f64,
-    /// 实际生效的最大值（含 max_bonus、受 hard_cap 约束）；无最大值约束时为 `f64::INFINITY`。
+    /// The effective max (default_max + max_bonus, constrained by hard_cap);
+    /// `f64::INFINITY` when there is no max constraint.
     pub max: f64,
-    /// 截断后的最终值。
+    /// The clamped final value.
     pub final_value: f64,
-    /// 超出最大值的浪费量（>= 0）。
+    /// How much of `uncapped` was wasted above the max (>= 0).
     pub over_cap: f64,
-    /// 距最大值还差的量（>= 0）；无最大值约束时为 0。
+    /// How far below the max the final value still is (>= 0); 0 when there
+    /// is no max constraint.
     pub missing: f64,
 }
 
-/// 按 `spec` 解析 `uncapped` 的上下界。`max_bonus` 是提高 default_max 的加成之和
-/// （如 `+5% to maximum Fire Resistance`）。
+/// Resolves the floor/ceiling of `uncapped` per `spec`. `max_bonus` is the sum
+/// of modifiers that raise `default_max` (e.g. `+5% to maximum Fire Resistance`).
 pub fn stat_boundary(uncapped: f64, max_bonus: f64, spec: &BoundarySpec) -> StatBoundary {
     let effective_max = spec.default_max.map(|default_max| {
         let raised = default_max + max_bonus;

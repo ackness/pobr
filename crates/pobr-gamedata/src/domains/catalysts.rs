@@ -1,18 +1,20 @@
-//! `overlay/catalysts.json` loader——催化剂品质标签匹配表（vendor
-//! `Classes/Item.lua:14-29` 三个 local 表字面量经
-//! `extract-lua --what catalysts` 抽取，schema 见
-//! [`pobr_data::catalog::item_overlay`]，M5c 蓝图 WI-B1/B2）。
+//! `overlay/catalysts.json` loader — the catalyst quality-tag matching
+//! table (extracted from vendor `Classes/Item.lua:14-29`'s three local
+//! table literals via `extract-lua --what catalysts`, schema in
+//! [`pobr_data::catalog::item_overlay`]).
 //!
-//! 消费侧（M5c 主波 WI-B3 `getCatalystScalar` 等价：catalystTags ∩ mod tags
-//! 匹配给 `(100+quality)/100`）经 RuleSet `ItemRules` 注入，本波次零接线。
+//! Consumer (equivalent to `getCatalystScalar`: a catalystTags ∩ mod tags
+//! match grants `(100+quality)/100`) injects it via RuleSet `ItemRules`,
+//! zero wiring here.
 
 use pobr_data::catalog::item_overlay::CatalystsDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载催化剂表（恒走 `overlay/` 定位）。文件缺失返回 `Ok(None)`
-    /// （R7 缺表容忍）；其余错误照常上抛。
+    /// Loads the catalyst table (always resolved under `overlay/`).
+    /// Returns `Ok(None)` when the file is missing (missing-table
+    /// tolerance); other errors still propagate as usual.
     pub fn catalysts(&self) -> Result<Option<CatalystsDef>, LoadError> {
         match self.load_json_at::<CatalystsDef>(self.overlay_path("catalysts.json")) {
             Ok(def) => Ok(Some(def)),

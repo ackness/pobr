@@ -1,7 +1,8 @@
-//! PoB2 golden 对照与展示字段目录。
+//! PoB2 golden comparison and the display-field catalog.
 //!
-//! 聚合二进制：原独立测试文件合并为子模块，减少链接二进制数（53→8）以加速构建。
-//! 各子模块即 `tests/golden/<name>.rs`，测试用例与断言逐一保留。
+//! Aggregated binary: previously separate test files were merged into submodules to
+//! cut the number of linked test binaries (53→8) and speed up builds. Each submodule
+//! maps to `tests/golden/<name>.rs`; test cases and assertions are preserved one-for-one.
 #![allow(clippy::all)]
 
 #[path = "support/parse.rs"]

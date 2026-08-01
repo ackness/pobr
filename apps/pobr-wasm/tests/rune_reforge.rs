@@ -1,5 +1,6 @@
-//! 符文槽编辑集成测试（真实数据）：目录带中文名边车；重插重写文本
-//! （命名行 + `{rune}` 词条行 + Implicits 计数）且引擎可直接消费。
+//! Integration tests for rune socket editing (real data): the catalog
+//! carries the Chinese name sidecar; re-socketing rewrites text (named
+//! lines plus `{rune}` mod lines plus the Implicits count), and the result is directly consumable by the engine.
 
 use pobr_gamedata::repo_data_root;
 use serde_json::{Value, json};
@@ -9,7 +10,8 @@ fn ensure_data() {
     pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).expect("init data");
 }
 
-/// 三符文位胸甲（PoB2 导出形状：Rune 命名行 + Implicits 窗口内 {rune} 词条行）。
+/// A 3-rune-socket body armour (PoB2 export shape: Rune named lines plus
+/// `{rune}` mod lines within the Implicits window).
 const ARMOUR_WITH_RUNES: &str = "\
 Rarity: RARE
 Dread Mantle
@@ -43,7 +45,7 @@ fn rune_catalog_has_names_and_zh() {
         "Iron Rune 应有简中名，实得 {:?}",
         iron["name_zh_cn"]
     );
-    // 给定物品上下文时应附对该基底（armour）适用的效果行。
+    // With an item context given, the effect lines applicable to that base (armour) should be attached.
     assert!(
         iron["lines"][0]
             .as_str()
@@ -52,7 +54,7 @@ fn rune_catalog_has_names_and_zh() {
         iron["lines"]
     );
 
-    // 无物品上下文：目录仍可用，lines 全空。
+    // No item context: the catalog still works, with lines all empty.
     let json = pobr_wasm::rune_catalog_json("").expect("catalog no item");
     let entries: Vec<Value> = serde_json::from_str(&json).expect("parse");
     assert!(
@@ -74,14 +76,15 @@ fn reforge_replaces_rune_lines_and_fixes_implicit_count() {
     let response: Value = serde_json::from_str(&out).expect("parse");
     let text = response["text"].as_str().unwrap();
 
-    // 旧符文命名行剔除、新命名行按序插入 Sockets 之后。
+    // The old rune named line is stripped, new named lines inserted in order after Sockets.
     assert!(
         !text.contains("Rune: Iron Rune\n"),
         "旧命名行应被替换：\n{text}"
     );
     assert!(text.contains("Rune: Greater Iron Rune"));
     assert!(text.contains("Rune: Adept Rune"));
-    // 旧 {rune} 词条（20%）剔除，新词条带 {rune} 前缀（Adept Rune armour = +9 敏捷）。
+    // The old {rune} mod line (20%) is stripped, new mod lines carry the
+    // {rune} prefix (Adept Rune's armour effect = +9 Dexterity).
     assert!(
         !text.contains("{rune}20% increased Armour"),
         "旧符文词条应剔除：\n{text}"
@@ -90,28 +93,29 @@ fn reforge_replaces_rune_lines_and_fixes_implicit_count() {
         text.contains("{rune}+9 to Dexterity"),
         "新符文词条应写入：\n{text}"
     );
-    // Implicits 计数 = 旧 1 - 旧 rune 行 1 + 新 rune 行 4（Greater Iron Rune 在
-    // armour + body armour 两键共 3 行，broad/specific 双命中同 PoB2；Adept 1 行）。
+    // Implicits count = old 1 - old rune line 1 + new rune lines 4 (Greater
+    // Iron Rune has 3 lines total across the armour + body armour keys,
+    // both broad/specific hitting, matching PoB2; Adept has 1 line).
     assert!(text.contains("{rune}Bonded: +20 to maximum Life"));
     assert!(
         text.contains("Implicits: 4"),
         "Implicits 计数应修正：\n{text}"
     );
-    // 非符文词条原样保留。
+    // Non-rune mod lines are preserved as-is.
     assert!(text.contains("+167 to Armour"));
 }
 
 #[test]
 fn reforge_resizes_sockets() {
     ensure_data();
-    // 3 孔 → 2 孔（带 1 颗符文），Sockets 行重写。
+    // 3 sockets -> 2 sockets (with 1 rune), the Sockets line is rewritten.
     let shrink = json!({ "text": ARMOUR_WITH_RUNES, "runes": ["Iron Rune"], "sockets": 2 });
     let out = pobr_wasm::reforge_runes_json(&shrink.to_string()).expect("shrink");
     let text: Value = serde_json::from_str(&out).unwrap();
     let text = text["text"].as_str().unwrap();
     assert!(text.contains("Sockets: S S\n"), "孔数应重写为 2：\n{text}");
 
-    // 无 Sockets 行的物品直接加 1 孔：新行插入且可镶嵌。
+    // An item with no Sockets line directly gains 1 socket: the new line is inserted, and it accepts a rune.
     let no_sockets =
         "Rarity: RARE\nApocalypse Pelt\nFalconer's Jacket\nItem Level: 81\n+190 to maximum Life";
     let grow = json!({ "text": no_sockets, "runes": ["Iron Rune"], "sockets": 1 });
@@ -121,7 +125,7 @@ fn reforge_resizes_sockets() {
     assert!(text.contains("Sockets: S\n"), "应新增 Sockets 行：\n{text}");
     assert!(text.contains("Rune: Iron Rune"));
 
-    // 减到 0 孔：Sockets 行与符文全部移除。
+    // Reduced to 0 sockets: the Sockets line and every rune are removed.
     let zero = json!({ "text": ARMOUR_WITH_RUNES, "runes": [], "sockets": 0 });
     let out = pobr_wasm::reforge_runes_json(&zero.to_string()).expect("zero");
     let text: Value = serde_json::from_str(&out).unwrap();

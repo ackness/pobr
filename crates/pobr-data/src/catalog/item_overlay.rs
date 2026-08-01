@@ -1,156 +1,167 @@
-//! 物品编辑态四张 overlay 表 schema（M5c 蓝图 WI-B1/B2）：
+//! Schema for the four item-editing-state overlay tables:
 //!
-//! | 表 | 路径 | vendor 来源 |
+//! | Table | Path | Vendor source |
 //! |---|---|---|
-//! | `mod_scalability.json` | overlay/ | `Data/ModScalability.lua`（15037 行，纯 `return {...}`） |
-//! | `catalysts.json`       | overlay/ | `Classes/Item.lua:14-29` 三个 local 表字面量 |
-//! | `runes.json`           | overlay/ | `Data/ModRunes.lua`（纯 `return {...}`） |
-//! | `uniques.json`         | overlay/ | `Data/Uniques/*.lua`（raw 文本块数组）+ `Special/race` |
+//! | `mod_scalability.json` | overlay/ | `Data/ModScalability.lua` (15037 lines, a bare `return {...}`) |
+//! | `catalysts.json`       | overlay/ | three local table literals at `Classes/Item.lua:14-29` |
+//! | `runes.json`           | overlay/ | `Data/ModRunes.lua` (a bare `return {...}`) |
+//! | `uniques.json`         | overlay/ | `Data/Uniques/*.lua` (arrays of raw text blocks) + `Special/race` |
 //!
-//! 全部由 `sync-pob-catalog extract-lua --what mod-scalability|catalysts|runes|uniques`
-//! 确定性抽取生成（P13：luajit 执行 vendor 序列化，产物 byte-stable、`_meta`
-//! 记 vendor commit、禁手改）。本模块只定义 serde 形状，零逻辑、零 I/O。
+//! All deterministically extracted by `sync-pob-catalog extract-lua --what
+//! mod-scalability|catalysts|runes|uniques` (luajit executes vendor's
+//! serialization; the output is byte-stable, `_meta` records the vendor
+//! commit, and hand edits are forbidden). This module only defines the
+//! serde shape, zero logic, zero I/O.
 //!
-//! 消费侧（M5c 主波，本波次零接线）：
-//! - `mod_scalability` / `catalysts` → `pobr-core::apply_range` 取值引擎（WI-B3）
-//!   经 RuleSet `ItemRules` 注入；
-//! - `runes` / `uniques` → pobr-item 编辑态（WI-A4），按需单独加载，不进 ItemRules。
+//! Consumers:
+//! - `mod_scalability` / `catalysts` → injected via RuleSet `ItemRules`
+//!   into `pobr-core::apply_range`'s value-resolution engine;
+//! - `runes` / `uniques` → pobr-item's editing state, loaded separately on
+//!   demand, not part of ItemRules.
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-// ---------------------------------------------------------------------------
-// mod_scalability —— `{range:x}` 词条取值的可缩放性 + 格式换算表
-// ---------------------------------------------------------------------------
+// mod_scalability — scalability + format-conversion table for `{range:x}` mod values
 
-/// 词条模板中一个数值槽的缩放规则（对应 vendor 条目数组的一项）。
+/// Scaling rule for one numeric slot in a mod template (corresponds to one
+/// entry of vendor's entry array).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModScalabilitySlotDef {
-    /// 该数值槽是否可随 `{range:x}` / catalyst 缩放（`isScalable`）。
+    /// Whether this numeric slot can scale with `{range:x}` / a catalyst
+    /// (`isScalable`).
     #[serde(default)]
     pub is_scalable: bool,
-    /// 数值格式换算枚举（`formats`，如 `divide_by_one_hundred` /
-    /// `per_minute_to_per_second`；消费侧对未知 format 载入期告警）。
+    /// Numeric-format conversion enum (`formats`, e.g.
+    /// `divide_by_one_hundred` / `per_minute_to_per_second`; the consumer
+    /// warns at load time for an unknown format).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub formats: Vec<String>,
 }
 
-/// 一条 `#`-模板化词条的缩放规则（vendor key = 数值已替换为 `#` 的词条文本）。
+/// Scaling rule for one `#`-templated mod (vendor's key is the mod text
+/// with its numbers replaced by `#`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModScalabilityEntryDef {
-    /// `#`-化词条文本（如 `# Armour per 2 Strength`）。
+    /// The `#`-templated mod text (e.g. `# Armour per 2 Strength`).
     pub template: String,
-    /// 逐数值槽的缩放规则（与模板中 `#` 出现序一一对应）。
+    /// Scaling rules per numeric slot (in 1:1 order with the `#`
+    /// occurrences in the template).
     pub slots: Vec<ModScalabilitySlotDef>,
 }
 
-/// `overlay/mod_scalability.json` 顶层（消费侧忽略 `_meta`）。
+/// Top level of `overlay/mod_scalability.json` (the consumer ignores `_meta`).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct ModScalabilityDef {
-    /// 条目列表，按 `template` 升序。
+    /// Entry list, ascending by `template`.
     pub entries: Vec<ModScalabilityEntryDef>,
 }
 
-// ---------------------------------------------------------------------------
-// catalysts —— 催化剂品质标签匹配表
-// ---------------------------------------------------------------------------
+// catalysts — catalyst quality-tag matching table
 
-/// 一种催化剂（vendor `Classes/Item.lua:14-29` 三个平行数组的按 index 合并）。
+/// A single catalyst (vendor `Classes/Item.lua:14-29`'s three parallel
+/// arrays merged by index).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CatalystDef {
-    /// 1-based 序号（= XML `Catalyst` 属性值；vendor `catalystList` 下标）。
+    /// 1-based index (= the XML `Catalyst` attribute value; vendor
+    /// `catalystList`'s index).
     pub id: u8,
-    /// 名称前缀（`catalystList`，如 `Carapace`）。
+    /// Name prefix (`catalystList`, e.g. `Carapace`).
     pub name: String,
-    /// 描述词（`catalystDescriptorList`，如 `Defence`；物品文本
-    /// `Quality (<descriptor> Modifiers)` 反查 id 用）。
+    /// Descriptor word (`catalystDescriptorList`, e.g. `Defence`; used to
+    /// reverse-look-up the id from an item's `Quality (<descriptor> Modifiers)` text).
     pub descriptor: String,
-    /// 匹配的 mod tag 集（`catalystTags`；`getCatalystScalar` 按
-    /// `catalystTags[id] ∩ mod.modTags ≠ ∅` 给 `(100+quality)/100`）。
+    /// The set of mod tags it matches (`catalystTags`; `getCatalystScalar`
+    /// grants `(100+quality)/100` when
+    /// `catalystTags[id] ∩ mod.modTags ≠ ∅`).
     pub tags: Vec<String>,
 }
 
-/// `overlay/catalysts.json` 顶层（消费侧忽略 `_meta`）。
+/// Top level of `overlay/catalysts.json` (the consumer ignores `_meta`).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct CatalystsDef {
-    /// 催化剂列表，按 `id` 升序（12 条）。
+    /// Catalyst list, ascending by `id` (12 entries).
     pub catalysts: Vec<CatalystDef>,
 }
 
-// ---------------------------------------------------------------------------
-// runes —— 符文 / 魂核镶嵌词条表
-// ---------------------------------------------------------------------------
+// runes — rune / soul core socketed-mod table
 
-/// 符文在某一槽类上的词条组（vendor `ModRunes.lua` 二级表）。
+/// A rune's mod group for one slot class (vendor `ModRunes.lua`'s
+/// second-level table).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RuneSlotDef {
-    /// 类别字面量（`type`：`Rune` / `SoulCore`）。
+    /// Category literal (`type`: `Rune` / `SoulCore`).
     pub kind: String,
-    /// 已渲染词条行（vendor 表的数组部分）。
+    /// Rendered mod lines (vendor table's array part).
     pub lines: Vec<String>,
-    /// 排序权重（`rank`）。
+    /// Sort weight (`rank`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub rank: Vec<f64>,
-    /// 词条 statOrder（与 `lines` 同序，编辑态合并排序用）。
+    /// The mods' statOrder (in the same order as `lines`; used when merging
+    /// and sorting in the editing state).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub stat_order: Vec<f64>,
 }
 
-/// 一种符文 / 魂核（vendor key = 符文名）。
+/// A single rune / soul core (vendor's key is the rune name).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RuneDef {
-    /// 符文名（如 `Desert Rune` / `Hayoxi's Soul Core of Heatproofing`）。
+    /// Rune name (e.g. `Desert Rune` / `Hayoxi's Soul Core of Heatproofing`).
     pub name: String,
-    /// 槽类 → 词条组（键如 `weapon`/`helmet`/`boots`，BTreeMap 保证键序）。
+    /// Slot class → mod group (keys like `weapon`/`helmet`/`boots`,
+    /// BTreeMap to keep key order stable).
     pub slots: BTreeMap<String, RuneSlotDef>,
 }
 
-/// `overlay/runes.json` 顶层（消费侧忽略 `_meta`）。
+/// Top level of `overlay/runes.json` (the consumer ignores `_meta`).
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct RunesDef {
-    /// 符文列表，按 `name` 升序。
+    /// Rune list, ascending by `name`.
     pub runes: Vec<RuneDef>,
 }
 
-// ---------------------------------------------------------------------------
-// uniques —— 传奇物品 raw 文本块 + 预解析索引（P15 双层）
-// ---------------------------------------------------------------------------
+// uniques — unique-item raw text blocks + a pre-parsed index (two layers)
 
-/// 一件传奇（P15 双层：`raw` 保留 vendor 原始文本块逐字节，索引列只做最小
-/// 预解析——name/base/variants/league/source；词条模板行解析由 pobr-item
-/// 运行时做，M5c WI-A4）。
+/// A single unique item (two layers: `raw` keeps vendor's original text
+/// block byte-for-byte; the index columns only do minimal pre-parsing —
+/// name/base/variants/league/source; parsing the mod template lines is
+/// done at runtime by pobr-item).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UniqueDef {
-    /// 物品名（raw 块第 1 行）。
+    /// Item name (line 1 of the raw block).
     pub name: String,
-    /// 基底名（raw 块第 2 行）。
+    /// Base name (line 2 of the raw block).
     pub base: String,
-    /// 来源文件域（vendor `Data/Uniques/<item_type>.lua` 的 `<item_type>`，
-    /// 如 `amulet`；`Special/race` 记为 `race`）。
+    /// The source file's domain (the `<item_type>` of vendor's
+    /// `Data/Uniques/<item_type>.lua`, e.g. `amulet`; `Special/race` is
+    /// recorded as `race`).
     pub item_type: String,
-    /// vendor 原始文本块（含 `Variant:`/`League:`/`{tags:...}` 标注，逐字节保留）。
+    /// Vendor's original text block (includes `Variant:`/`League:`/
+    /// `{tags:...}` annotations, kept byte-for-byte).
     pub raw: String,
-    /// `Variant:` 行列表（预解析索引；按出现序）。
+    /// `Variant:` line list (pre-parsed index; in appearance order).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub variants: Vec<String>,
-    /// `League:` 行值。
+    /// `League:` line value.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub league: Option<String>,
-    /// `Source:` 行值（多行时取首行，完整内容看 `raw`）。
+    /// `Source:` line value (the first line when there are several; see
+    /// `raw` for the full content).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
-    /// `Upgrade:` 行值。
+    /// `Upgrade:` line value.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub upgrade: Option<String>,
 }
 
-/// `overlay/uniques.json` 顶层（消费侧忽略 `_meta`）。
+/// Top level of `overlay/uniques.json` (the consumer ignores `_meta`).
 ///
-/// 范围注：`Data/Uniques/Special/Generated.lua`（程序化生成，依赖运行时
-/// itemMods）与 `Special/New.lua`（未定稿池）不在抽取范围，见 `_meta` 注记。
+/// Scope note: `Data/Uniques/Special/Generated.lua` (procedurally
+/// generated, depends on runtime itemMods) and `Special/New.lua` (an
+/// unfinalized pool) are out of extraction scope — see the `_meta` note.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct UniquesDef {
-    /// 传奇列表，按 `(item_type, name, 出现序)` 升序。
+    /// Unique list, ascending by `(item_type, name, appearance order)`.
     pub uniques: Vec<UniqueDef>,
 }

@@ -1,10 +1,12 @@
-//! 已装辅助宝石颜色计数 → `<Color>SupportGems` multiplier 端到端验证
-//! （PoB2 CalcSetup.lua:2015-2044；消费方 = a2-real-gaps 钉值条目的
-//! `MultiplierThreshold{<Color>SupportGems, 10}` 下界阈值）。
+//! End-to-end verification of socketed support gem color counting ->
+//! `<Color>SupportGems` multiplier (PoB2 CalcSetup.lua:2015-2044; consumed by a
+//! pinned-value entry from a2-real-gaps, the
+//! `MultiplierThreshold{<Color>SupportGems, 10}` lower-bound threshold).
 //!
-//! 断言：`5% increased Max Life if you have at least 10 Red Support Gems
-//! Socketed` 词条在 **10 颗红辅助已装**时生效（Life ×~1.05）、**0 颗**时不生效
-//! （下界缺键 = 不生效，欠算安全语义）。
+//! Asserts: the `5% increased Max Life if you have at least 10 Red Support
+//! Gems Socketed` mod activates (Life ×~1.05) with **10 red supports
+//! socketed**, and stays inactive with **0** (a missing lower-bound key means
+//! "not active" — a fail-safe under-count semantics).
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::MinimalInput;
@@ -30,8 +32,10 @@ fn opts_with_threshold_line() -> DataOrchestratorOptions {
     }
 }
 
-/// 最小 build：Fireball 主组 + 可选一组 N 颗红辅助（AncestralCall，gem_colour=1）。
-/// 辅助单独成组——计数遍历全部 enabled 组（vendor 同口径），且不干扰主技能。
+/// Minimal build: a Fireball main group plus an optional group of N red
+/// supports (AncestralCall, gem_colour=1). The supports form their own group —
+/// the count walks every enabled group (matching vendor behaviour) without
+/// interfering with the main skill.
 fn xml_with_red_supports(count: usize) -> String {
     let supports: String = (0..count)
         .map(|_| {
@@ -75,8 +79,8 @@ fn red_support_gem_count_activates_threshold_line() {
     let boosted = calculate_with_data(&ten, &build_data, &opts).expect("boosted calc");
 
     assert!(base.life > 0.0, "基线 Life 应非零");
-    // 0 颗：阈值下界缺 10 → 词条不生效（Life 不含 +5% INC）。
-    // 10 颗：RedSupportGems=10 ≥ 10 → +5% Life INC 生效。
+    // At 0: the count falls short of the lower bound (10), so the mod stays inactive (Life has no +5% INC).
+    // At 10: RedSupportGems=10 >= 10, so the +5% Life INC activates.
     assert!(
         boosted.life > base.life,
         "10 颗红辅助应激活 +5% Life 阈值词条：base {} vs boosted {}",

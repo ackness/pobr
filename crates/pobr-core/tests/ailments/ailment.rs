@@ -37,8 +37,9 @@ fn ignite_uses_fire_fraction_and_duration() {
 
 #[test]
 fn poison_magnitude_scales_with_ailment_magnitude() {
-    // PoE2：伤害异常 magnitude 仅由 `AilmentMagnitude` 缩放（PoB2 ailmentPercentBase 因子）。
-    // PoE1 的 PoisonDamage/DamageOverTime 在 PoE2 不存在、不再生效。
+    // PoE2: damaging ailment magnitude only scales with `AilmentMagnitude` (PoB2's
+    // ailmentPercentBase factor). PoE1's PoisonDamage/DamageOverTime mods don't exist
+    // in PoE2 and have no effect here.
     let gc = GameConstants::poe2();
     let mut db = ModDb::new();
     db.add_mod(Modifier::number("AilmentMagnitude", ModType::Inc, 100.0));
@@ -49,29 +50,29 @@ fn poison_magnitude_scales_with_ailment_magnitude() {
     assert_eq!(instance.magnitude_dps, base * 2.0);
     assert_eq!(instance.ailment, AilmentType::Poison);
 
-    // PoE1 幻影名不再缩放 PoE2 magnitude。
+    // The PoE1 mod name is a no-op in PoE2 — it must not scale the magnitude.
     let mut db_phantom = ModDb::new();
     db_phantom.add_mod(Modifier::number("PoisonDamage", ModType::Inc, 100.0));
     let phantom = poison_instance(1000.0, &db_phantom, &CalcConfig::attack());
     assert_eq!(phantom.magnitude_dps, base, "PoisonDamage 幻影名不生效");
 }
 
-/// PoE2 0.5.0 感电效果范围测试。
+/// Shock effect range for PoE2 0.5.0.
 ///
-/// **Bug#9 修正**：感电最小值 20%（非 PoE1 的 5%），最大值 100%（非 PoE1 的 50%）。
-/// 出处：agent-docs/ailments.md §感电 `BaseShockMagnitude=20, max=100`；
-///       PoB2 `nonDamagingAilmentsConfig.Shock, clamp [20, 100]`。
+/// **Bug#9 fix**: shock's minimum is 20% (not PoE1's 5%), max is 100% (not PoE1's 50%).
+/// Source: agent-docs/ailments.md §Shock `BaseShockMagnitude=20, max=100`;
+///         PoB2 `nonDamagingAilmentsConfig.Shock, clamp [20, 100]`.
 #[test]
 fn shock_effect_is_clamped_between_20_and_100_percent_poe2() {
-    // 无击中 → 返回 0（不施加感电）
+    // No hit → returns 0 (shock not applied)
     assert_eq!(shock_effect(0.0, 1000.0, SHOCK_MIN_EFFECT), 0.0);
-    // 极大击中 → 感电上限 100%（= 1.0 fraction）
+    // Huge hit → shock capped at 100% (= 1.0 fraction)
     let huge = shock_effect(1_000_000.0, 100.0, SHOCK_MIN_EFFECT);
     assert_eq!(huge, 1.0);
-    // 极小击中（相对阈值）→ 感电下限 20%（= 0.20 fraction）
+    // Tiny hit (relative to threshold) → shock floored at 20% (= 0.20 fraction)
     let tiny = shock_effect(1.0, 1_000_000.0, SHOCK_MIN_EFFECT);
     assert_eq!(tiny, 0.20);
-    // 满阈值击中（ratio=1）→ 50% 感电（0.5 * 1.0^0.4 = 0.5，fraction 0.50）
+    // Hit at full threshold (ratio=1) → 50% shock (0.5 * 1.0^0.4 = 0.5, fraction 0.50)
     let at_threshold = shock_effect(1000.0, 1000.0, SHOCK_MIN_EFFECT);
     assert_eq!(at_threshold, 0.50);
 }
@@ -92,11 +93,9 @@ fn ailment_total_damage_is_dps_times_duration() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Step 2: 施加几率 + effMult + 暴击加权 + 玩家阈值 + trace
-// ---------------------------------------------------------------------------
+// Step 2: apply chance + effMult + crit weighting + player threshold + trace
 
-/// 玩家异常阈值 = 最大生命 × 0.5（gap: player-ailment-threshold-bug）。
+/// Player ailment threshold = max life × 0.5 (gap: player-ailment-threshold-bug).
 #[test]
 fn player_ailment_threshold_is_half_of_max_life() {
     assert_eq!(player_ailment_threshold(1000.0), 500.0);
@@ -104,62 +103,65 @@ fn player_ailment_threshold_is_half_of_max_life() {
     assert_eq!(player_ailment_threshold(0.0), 0.0);
 }
 
-/// 内禀几率（流血/中毒）：base × (1+inc/100) × more，clamp 100。几率为 0 时不施加。
+/// Intrinsic chance (bleed/poison): base × (1+inc/100) × more, clamped to 100.
+/// A chance of 0 means the ailment is never applied.
 #[test]
 fn flat_chance_scales_and_clamps() {
-    // 25% base，无 inc/more
-    assert_eq!(flat_chance(25.0, 0.0, 0.0), 0.0); // more=0 → 0（more 以乘子语义，0 表示无 more 应传 1）
-    // 正确口径：more 为 1.0 表示无 more
+    // 25% base, no inc/more
+    assert_eq!(flat_chance(25.0, 0.0, 0.0), 0.0); // more=0 → 0 (more is a multiplier; pass 1.0 for "no more")
+    // Correct usage: more=1.0 means no more modifier
     assert_eq!(flat_chance(25.0, 0.0, 1.0), 25.0);
     // +100% inc → 50%
     assert_eq!(flat_chance(25.0, 100.0, 1.0), 50.0);
-    // 超 100 → clamp 100
+    // over 100 → clamped to 100
     assert_eq!(flat_chance(80.0, 100.0, 1.0), 100.0);
-    // base=0 → 0（不施加）
+    // base=0 → 0 (never applied)
     assert_eq!(flat_chance(0.0, 500.0, 2.0), 0.0);
 }
 
-/// 几率派生（点燃/感电）随 hit/threshold 单调上升：更高伤害或更低阈值 → 更高几率。
+/// Threshold-derived chance (ignite/shock) rises monotonically with hit/threshold:
+/// higher damage or a lower threshold → higher chance.
 #[test]
 fn threshold_derived_chance_increases_with_hit_and_decreases_with_threshold() {
     let mult = 20.0; // IgniteChanceMultiplier
-    // 满阈值伤害（hit=threshold=1000）：hit/thr*mult = 20% on hit
+    // Hit at full threshold (hit=threshold=1000): hit/thr*mult = 20% chance on hit
     let (on_hit, _) = threshold_derived_chance(1000.0, 1000.0, 1000.0, mult, 0.0, 0.0, 1.0);
     assert!((on_hit - 20.0).abs() < 1e-6);
 
-    // 双倍伤害 → 双倍几率（线性段，未 clamp）
+    // Double the damage → double the chance (linear region, not yet clamped)
     let (on_hit2, _) = threshold_derived_chance(2000.0, 2000.0, 1000.0, mult, 0.0, 0.0, 1.0);
     assert!(on_hit2 > on_hit);
     assert!((on_hit2 - 40.0).abs() < 1e-6);
 
-    // 更高阈值 → 更低几率
+    // Higher threshold → lower chance
     let (on_hit_high_thr, _) =
         threshold_derived_chance(1000.0, 1000.0, 2000.0, mult, 0.0, 0.0, 1.0);
     assert!(on_hit_high_thr < on_hit);
 
-    // 巨额伤害 → clamp 100
+    // Massive damage → clamped to 100
     let (capped, _) =
         threshold_derived_chance(1_000_000.0, 1_000_000.0, 1000.0, mult, 0.0, 0.0, 1.0);
     assert_eq!(capped, 100.0);
 }
 
-/// 暴击来源伤害比非暴击高（crit_avg = hit_avg × crit_mult），加权后 base > 纯非暴击。
+/// Crit source damage exceeds non-crit (crit_avg = hit_avg × crit_mult); weighting
+/// pushes the resulting base above the pure non-crit value.
 #[test]
 fn crit_weighting_raises_source_damage() {
-    // 50% 暴击，2x 爆伤
+    // 50% crit chance, 2x crit multiplier
     let source = AilmentSource::new(1000.0, 2.0, 0.5, false);
     assert_eq!(source.hit_avg, 1000.0);
     assert_eq!(source.crit_avg, 2000.0);
 
-    // 100% 命中几率，100% 暴击几率：base 应趋向暴击伤害
+    // 100% hit chance, 100% crit chance: base should trend toward crit damage
     let (_chance, base_high_crit) = weighted_source_damage(&source, 100.0, 100.0);
-    // 加权：hit*(1-0.5)*chanceOnHit + crit*0.5*chanceOnCrit，归一后 = 1500（中点）
+    // Weighted: hit*(1-0.5)*chanceOnHit + crit*0.5*chanceOnCrit, normalized = 1500 (midpoint)
     assert!(
         base_high_crit > 1000.0,
         "crit weighting should exceed non-crit hit"
     );
 
-    // AilmentsAreNeverFromCrit：暴击来源退化为非暴击，base = 非暴击伤害
+    // AilmentsAreNeverFromCrit: crit source degrades to non-crit, base = non-crit damage
     let no_crit = AilmentSource::new(1000.0, 2.0, 0.5, true);
     assert_eq!(no_crit.crit_avg, 1000.0);
     assert_eq!(no_crit.crit_chance, 0.0);
@@ -167,7 +169,7 @@ fn crit_weighting_raises_source_damage() {
     assert_eq!(base_no_crit, 1000.0);
 }
 
-/// effMult：敌方火抗 40% → 点燃 DPS effMult = 0.6（gap: ailment-effmult-missing）。
+/// effMult: 40% enemy fire resistance → ignite DPS effMult = 0.6 (gap: ailment-effmult-missing).
 #[test]
 fn effmult_reduced_by_enemy_resistance() {
     let cfg = CalcConfig::attack().with_mode_effective(true);
@@ -180,12 +182,12 @@ fn effmult_reduced_by_enemy_resistance() {
         "40% fire resist → effMult 0.6, got {eff}"
     );
 
-    // mode_effective=false → effMult 1.0（面板裸口径）
+    // mode_effective=false → effMult 1.0 (bare panel figure)
     let bare = effmult_for_ailment(&enemy, &cfg, DamageType::Fire, false);
     assert_eq!(bare, 1.0);
 }
 
-/// effMult：敌方 DamageTakenOverTime +50% → effMult 提升 1.5×。
+/// effMult: +50% enemy DamageTakenOverTime → effMult scales up by 1.5x.
 #[test]
 fn effmult_raised_by_damage_taken_over_time() {
     let cfg = CalcConfig::attack().with_mode_effective(true);
@@ -199,19 +201,20 @@ fn effmult_raised_by_damage_taken_over_time() {
     );
 }
 
-/// 物理异常（流血）无视抗性减伤：敌方物抗不影响 effMult（仅吃 taken 链）。
+/// Physical ailments (bleed) ignore resistance mitigation: enemy physical resistance
+/// does not affect effMult (only the "taken" chain applies).
 #[test]
 fn physical_ailment_ignores_resistance_in_effmult() {
     let cfg = CalcConfig::attack().with_mode_effective(true);
     let mut enemy = ModDb::new();
-    // 物理"抗性"对异常无意义；只 taken 链起作用
+    // Physical "resistance" is meaningless for ailments; only the taken chain matters
     enemy.add_mod(Modifier::number("PhysicalDamageTaken", ModType::Inc, 20.0));
 
     let eff = effmult_for_ailment(&enemy, &cfg, DamageType::Physical, true);
     assert!((eff - 1.2).abs() < 1e-6);
 }
 
-/// 流血面板：100% 几率 + effMult，可由 TraceGraph 回溯（gap: ailment-trace-attribution-missing）。
+/// Bleed panel: 100% chance + effMult, traceable via TraceGraph (gap: ailment-trace-attribution-missing).
 #[test]
 fn bleed_traced_writes_trace_and_applies_chance_effmult() {
     let cfg = CalcConfig::attack()
@@ -227,20 +230,20 @@ fn bleed_traced_writes_trace_and_applies_chance_effmult() {
     let (out, node): (DamagingAilmentOutput, _) =
         bleed_traced(&source, &player, &enemy, &cfg, &mut trace);
 
-    // 100% 几率
+    // 100% chance
     assert_eq!(out.chance, 1.0);
-    // effMult 1.5（+50% PhysicalDamageTaken）
+    // effMult 1.5 (+50% PhysicalDamageTaken)
     assert!((out.eff_mult - 1.5).abs() < 1e-6);
-    // expected_dps = magnitude × chance；magnitude 含 effMult
+    // expected_dps = magnitude × chance; magnitude already includes effMult
     let gc = GameConstants::poe2();
     let expected_mag = (1000.0 * gc.bleed_base_fraction) * 1.5;
     assert!((out.magnitude_dps - expected_mag).abs() < 1e-3);
     assert!((out.expected_dps - expected_mag).abs() < 1e-3); // chance=1.0
 
-    // trace 中应有节点，且输出节点存在
+    // trace should have nodes, and the output node should exist
     assert!(!trace.nodes().is_empty());
     assert!(trace.node(node).is_some());
-    // BleedChance BASE 贡献应作为 source node 进入图
+    // BleedChance BASE contribution should enter the graph as a source node
     let has_chance_source = trace
         .nodes()
         .iter()
@@ -250,14 +253,14 @@ fn bleed_traced_writes_trace_and_applies_chance_effmult() {
         "trace should contain bleed chance contribution"
     );
 
-    // DPS 输出节点应有 incoming 边（chance + magnitude + effMult 链入），即可回溯。
+    // DPS output node should have incoming edges (chance + magnitude + effMult), so it's traceable.
     let incoming = trace.incoming(node);
     assert!(
         incoming.len() >= 3,
         "DPS node should aggregate chance + magnitude + effMult (got {} edges)",
         incoming.len()
     );
-    // effMult 节点（带敌方 PhysicalDamageTaken 贡献）应存在于图中。
+    // effMult node (carrying the enemy PhysicalDamageTaken contribution) should exist in the graph.
     let has_effmult = trace
         .nodes()
         .iter()
@@ -268,7 +271,8 @@ fn bleed_traced_writes_trace_and_applies_chance_effmult() {
     );
 }
 
-/// 点燃几率派生：高火伤/低阈值 → 高几率 → 高期望 DPS（gap: no-ailment-chance-pipeline）。
+/// Ignite chance derivation: high fire damage/low threshold → high chance → high expected DPS
+/// (gap: no-ailment-chance-pipeline).
 #[test]
 fn ignite_traced_chance_scales_with_threshold() {
     let cfg = CalcConfig::attack().with_damage_type(DamageType::Fire);
@@ -281,37 +285,35 @@ fn ignite_traced_chance_scales_with_threshold() {
     let mut trace_high = TraceGraph::new();
     let (high_thr, _) = ignite_traced(&source, &player, &enemy, &cfg, 5000.0, &mut trace_high);
 
-    // 更低阈值 → 更高几率 → 更高期望 DPS
+    // Lower threshold → higher chance → higher expected DPS
     assert!(low_thr.chance > high_thr.chance);
     assert!(low_thr.expected_dps > high_thr.expected_dps);
 }
 
-// ---------------------------------------------------------------------------
-// Step 3 (Lane B): 冰缓 effect / 冰冻+电击 Poise buildup / 叠层权重平均
-// ---------------------------------------------------------------------------
+// Step 3 (Lane B): chill effect / freeze+electrocute poise buildup / stacked weighted average
 
-// --- 冰缓 effect (chill-effect-missing) ---
+// Chill effect (chill-effect-missing)
 
-/// 冰缓最小阈值：< 30% 强度时返回 0（丢弃），PoE2 0.5.0。
+/// Chill minimum threshold: returns 0 (discarded) below 30% magnitude, PoE2 0.5.0.
 ///
-/// 出处：agent-docs/ailments.md §冰缓、PoB2 `nonDamagingAilmentsConfig.Chill` clamp [30,50]、
-///   `chillMinimumThreshold = enemyThreshold / ChillEffectMultiplier`（< 30% 丢弃）。
+/// Source: agent-docs/ailments.md §Chill, PoB2 `nonDamagingAilmentsConfig.Chill` clamp [30,50],
+///   `chillMinimumThreshold = enemyThreshold / ChillEffectMultiplier` (discarded below 30%).
 #[test]
 fn chill_effect_below_min_is_discarded() {
-    // 命中 = 0 → 不施加
+    // hit = 0 → not applied
     assert_eq!(chill_effect(0.0, 1000.0), 0.0);
-    // threshold = 0 → 不施加
+    // threshold = 0 → not applied
     assert_eq!(chill_effect(500.0, 0.0), 0.0);
-    // 命中 < 30% 阈值 → 强度 < 30 → 丢弃
+    // hit < 30% of threshold → magnitude < 30 → discarded
     // ratio = 100/1000 = 0.1 → raw = 100 * 0.1 = 10 < 30 → 0
     assert_eq!(chill_effect(100.0, 1000.0), 0.0);
     // ratio = 0.29 → raw = 29 < 30 → 0
     assert_eq!(chill_effect(290.0, 1000.0), 0.0);
 }
 
-/// 冰缓下限：30% 命中/阈值 → 效果恰好 30%（最小施加阈值）。
+/// Chill floor: hit at exactly 30% of threshold → effect is exactly 30% (the minimum apply threshold).
 ///
-/// 出处：agent-docs/ailments.md §冰缓 `min=30`。
+/// Source: agent-docs/ailments.md §Chill `min=30`.
 #[test]
 fn chill_effect_at_minimum_threshold() {
     // ratio = 300/1000 = 0.3 → raw = 100 * 0.3 = 30.0 → clamp [30,50] → 30
@@ -322,10 +324,10 @@ fn chill_effect_at_minimum_threshold() {
     );
 }
 
-/// 冰缓上限：超过 50% 阈值伤害 → clamp 到 50%。
+/// Chill ceiling: damage above 50% of threshold clamps to 50%.
 ///
-/// 出处：agent-docs/ailments.md §冰缓 `max=50 (ChillMaxEffect)`、
-///   PoB2 `data.gameConstants["ChillMaxEffect"] = 50`。
+/// Source: agent-docs/ailments.md §Chill `max=50 (ChillMaxEffect)`,
+///   PoB2 `data.gameConstants["ChillMaxEffect"] = 50`.
 #[test]
 fn chill_effect_clamped_at_maximum() {
     // ratio ≥ 0.5 → raw ≥ 50 → clamp 50
@@ -341,12 +343,12 @@ fn chill_effect_clamped_at_maximum() {
     );
 }
 
-/// 冰缓线性缩放：伤害加倍 → 效果加倍（在 [30,50] 区间内）。
+/// Chill linear scaling: doubling the damage doubles the effect (within [30,50]).
 ///
-/// 出处：PoB2 `chillEffect = 100 * (damage/threshold)` 线性公式（非幂律）。
+/// Source: PoB2 `chillEffect = 100 * (damage/threshold)` is a linear formula (not a power law).
 #[test]
 fn chill_effect_linear_scaling() {
-    // ratio 0.35 → raw 35 → 35.0（在 [30,50] 区间内线性）
+    // ratio 0.35 → raw 35 → 35.0 (linear within [30,50])
     let e35 = chill_effect(350.0, 1000.0);
     assert!(
         (e35 - 35.0).abs() < 1e-6,
@@ -358,16 +360,16 @@ fn chill_effect_linear_scaling() {
         (e45 - 45.0).abs() < 1e-6,
         "ratio 0.45 → chill 45%, got {e45}"
     );
-    // 线性：e45 / e35 ≈ 45/35 ≈ 1.286
+    // linear: e45 / e35 ≈ 45/35 ≈ 1.286
     assert!(e45 > e35, "larger hit → larger chill");
 }
 
-/// 冰缓含 effectMod：+100% AilmentMagnitude → 效果加倍（若不超 cap）。
+/// Chill with effectMod: +100% AilmentMagnitude doubles the effect (if under the cap).
 ///
-/// 出处：agent-docs/ailments.md §`effectMod`。
+/// Source: agent-docs/ailments.md §`effectMod`.
 #[test]
 fn chill_effect_with_mods_scales_with_effect_mod() {
-    // base ratio = 0.30 → raw = 30，effectMod = 2.0 → raw = 60 → clamp 50
+    // base ratio = 0.30 → raw = 30, effectMod = 2.0 → raw = 60 → clamp 50
     let with_mod = chill_effect_with_mods(300.0, 1000.0, 2.0);
     assert!(
         (with_mod - 50.0).abs() < 1e-6,
@@ -381,7 +383,8 @@ fn chill_effect_with_mods_scales_with_effect_mod() {
     );
 }
 
-/// 冰缓 traced：归因节点正确写入 TraceGraph，效果值与非 traced 版一致。
+/// Chill traced: attribution nodes are written to TraceGraph correctly, and the effect
+/// value matches the non-traced version.
 #[test]
 fn chill_traced_writes_trace_and_matches_non_traced() {
     let cfg = CalcConfig::attack();
@@ -398,7 +401,8 @@ fn chill_traced_writes_trace_and_matches_non_traced() {
     assert!(!trace.nodes().is_empty(), "trace should have nodes");
 }
 
-/// 冰缓 traced 含 AilmentMagnitude mod：effectMod 通过 ModDb 聚合，效果值正确放大。
+/// Chill traced with an AilmentMagnitude mod: effectMod is aggregated through ModDb,
+/// scaling the effect value correctly.
 #[test]
 fn chill_traced_with_ailment_magnitude_mod() {
     let cfg = CalcConfig::attack();
@@ -412,7 +416,7 @@ fn chill_traced_with_ailment_magnitude_mod() {
         (effect - 50.0).abs() < 1e-6,
         "+50% AilmentMagnitude: ratio=0.35*1.5=0.525 → clamp 50, got {effect}"
     );
-    // trace 中应有 AilmentMagnitude inc 节点
+    // trace should have an AilmentMagnitude inc node
     let has_mag = trace
         .nodes()
         .iter()
@@ -423,16 +427,17 @@ fn chill_traced_with_ailment_magnitude_mod() {
     );
 }
 
-// --- 冰冻/电击 Poise 积累 (freeze-electrocute-buildup-missing) ---
+// Freeze/electrocute poise buildup (freeze-electrocute-buildup-missing)
 
-/// 冰冻 Poise 积累随姿态阈值单调递减：阈值越低→每次击中积累%越高。
+/// Freeze poise buildup decreases monotonically with the poise threshold: lower
+/// threshold → higher buildup % per hit.
 ///
-/// 出处：agent-docs/ailments.md §冰冻积累：
+/// Source: agent-docs/ailments.md §Freeze buildup:
 ///   `poiseBuildup = FREEZE_DAMAGE_SCALE / enemyPoiseThreshold * inc_more * 100`
-///   `FREEZE_DAMAGE_SCALE = 2.1`。
+///   `FREEZE_DAMAGE_SCALE = 2.1`.
 #[test]
 fn freeze_poise_buildup_decreases_with_poise_threshold() {
-    // threshold = 0 → 0（safety）
+    // threshold = 0 → 0 (safety)
     assert_eq!(freeze_poise_buildup(0.0, 0.0, 1.0), 0.0);
 
     // threshold = 210 → buildup = 2.1/210 * 100 = 1.0%
@@ -449,16 +454,16 @@ fn freeze_poise_buildup_decreases_with_poise_threshold() {
         "poise=2100 → freeze buildup 0.1%, got {high_thr}"
     );
 
-    // 单调递减验证
+    // verify monotonic decrease
     assert!(
         low_thr > high_thr,
         "lower threshold → higher buildup per hit"
     );
 }
 
-/// 冰冻 Poise 积累随 inc/more 线性放大。
+/// Freeze poise buildup scales linearly with inc/more.
 ///
-/// 出处：PoB2 `poiseBuildup = ... * (1 + inc/100) * more * 100`。
+/// Source: PoB2 `poiseBuildup = ... * (1 + inc/100) * more * 100`.
 #[test]
 fn freeze_poise_buildup_scales_with_inc_and_more() {
     let base = freeze_poise_buildup(1000.0, 0.0, 1.0);
@@ -478,9 +483,9 @@ fn freeze_poise_buildup_scales_with_inc_and_more() {
     );
 }
 
-/// 电击 Poise 积累基础值（ELECTROCUTE_DAMAGE_SCALE = 1.7）。
+/// Electrocute poise buildup base value (ELECTROCUTE_DAMAGE_SCALE = 1.7).
 ///
-/// 出处：PoB2 `data.gameConstants["ElectrocuteDamageScale"] = 1.7`。
+/// Source: PoB2 `data.gameConstants["ElectrocuteDamageScale"] = 1.7`.
 #[test]
 fn electrocute_poise_buildup_uses_correct_scale() {
     // threshold = 170 → buildup = 1.7/170 * 100 = 1.0%
@@ -490,7 +495,7 @@ fn electrocute_poise_buildup_uses_correct_scale() {
         "electrocute poise=170 → 1%, got {buildup}"
     );
 
-    // 电击 vs 冰冻的 scale 比 = 1.7/2.1（同等阈值下，电击积累率更低）
+    // electrocute vs freeze scale ratio = 1.7/2.1 (electrocute builds up slower at equal threshold)
     let freeze_b = freeze_poise_buildup(1000.0, 0.0, 1.0);
     let elec_b = electrocute_poise_buildup(1000.0, 0.0, 1.0);
     let ratio = elec_b / freeze_b;
@@ -500,7 +505,8 @@ fn electrocute_poise_buildup_uses_correct_scale() {
     );
 }
 
-/// 冰冻 Poise 积累 traced：节点写入 TraceGraph，积累值与 non-traced 版一致。
+/// Freeze poise buildup traced: nodes are written to TraceGraph, and the buildup
+/// value matches the non-traced version.
 #[test]
 fn freeze_poise_buildup_traced_writes_trace() {
     let cfg = CalcConfig::attack();
@@ -519,7 +525,8 @@ fn freeze_poise_buildup_traced_writes_trace() {
     );
 }
 
-/// 电击 Poise 积累 traced 含 mod：`EnemyElectrocuteBuildup` inc 正确缩放积累。
+/// Electrocute poise buildup traced with a mod: `EnemyElectrocuteBuildup` inc scales
+/// the buildup correctly.
 #[test]
 fn electrocute_poise_buildup_traced_with_mod() {
     let cfg = CalcConfig::attack();
@@ -547,11 +554,11 @@ fn electrocute_poise_buildup_traced_with_mod() {
     assert!(has_inc, "trace should record electrocute buildup inc");
 }
 
-// --- 叠层权重平均 DPS (ailment-stacking) ---
+// Stacked weighted-average DPS (ailment-stacking)
 
-/// 默认单层（StackConfig::single()）：DPS = single_layer_dps × 1。
+/// Default single stack (StackConfig::single()): DPS = single_layer_dps × 1.
 ///
-/// 出处：agent-docs/ailments.md §叠层 `ailmentDPS = baseVal * activeAilments * ...`。
+/// Source: agent-docs/ailments.md §Stacking `ailmentDPS = baseVal * activeAilments * ...`.
 #[test]
 fn stacking_ailment_dps_single_layer() {
     let cfg = StackConfig::single();
@@ -562,20 +569,21 @@ fn stacking_ailment_dps_single_layer() {
     );
 }
 
-/// 叠层 DPS 随 active_stacks 线性增长（替换 Wave1d 单层期望值简化）。
+/// Stacked DPS grows linearly with active_stacks (replaces the Wave1d single-layer
+/// expected-value simplification).
 ///
-/// 出处：agent-docs/ailments.md §叠层 `activeAilments` 乘子。
+/// Source: agent-docs/ailments.md §Stacking `activeAilments` multiplier.
 #[test]
 fn stacking_ailment_dps_scales_with_active_stacks() {
     let cfg = StackConfig::new(5, 3.0);
     let dps = stacking_ailment_dps(100.0, &cfg);
-    // 3 活跃层 × 100 DPS/层 = 300
+    // 3 active stacks × 100 DPS/stack = 300
     assert!(
         (dps - 300.0).abs() < 1e-6,
         "3 active stacks × 100 = 300, got {dps}"
     );
 
-    // active_stacks = 0 时退化到 max_stacks
+    // active_stacks = 0 degrades to max_stacks
     let cfg_no_active = StackConfig::new(4, 0.0);
     let dps_max = stacking_ailment_dps(100.0, &cfg_no_active);
     assert!(
@@ -584,33 +592,34 @@ fn stacking_ailment_dps_scales_with_active_stacks() {
     );
 }
 
-/// StackPotential = active/max，clamp [0,1]。
+/// StackPotential = active/max, clamped to [0,1].
 ///
-/// 出处：PoB2 `StackPotential = ailmentStacks / maxStacks`。
+/// Source: PoB2 `StackPotential = ailmentStacks / maxStacks`.
 #[test]
 fn stack_potential_is_ratio_of_active_to_max() {
     let cfg = StackConfig::new(10, 5.0);
     let sp = stack_potential(&cfg);
     assert!((sp - 0.5).abs() < 1e-6, "5/10 → potential 0.5, got {sp}");
 
-    // 溢出：active > max → SP = 8/5 = 1.6（PoB2 不 clamp，可 >1；触发 over-stacking 放大）
+    // Overflow: active > max → SP = 8/5 = 1.6 (PoB2 does not clamp; can exceed 1, triggering
+    // the over-stacking amplification)
     let cfg_over = StackConfig::new(5, 8.0);
     assert!(
         (stack_potential(&cfg_over) - 1.6).abs() < 1e-6,
         "overflow → potential 8/5 = 1.6 (PoB2 不 clamp)"
     );
 
-    // 默认单层
+    // default single stack
     let sp_single = stack_potential(&StackConfig::single());
     assert_eq!(sp_single, 1.0, "single stack → potential 1.0");
 }
 
-/// RollAverage：未溢出时固定 50%；溢出时偏向高端。
+/// RollAverage: fixed at 50% when not overflowing; skews toward the high end when overflowing.
 ///
-/// 出处：PoB2 `CalcOffence.lua` RollAverage 段。
+/// Source: PoB2 `CalcOffence.lua` RollAverage section.
 #[test]
 fn roll_average_at_midpoint_when_not_overflow() {
-    // active = max → 刚好不溢出 → 50
+    // active = max → exactly not overflowing → 50
     let cfg = StackConfig::new(5, 5.0);
     assert!(
         (roll_average(&cfg) - 50.0).abs() < 1e-6,
@@ -638,19 +647,20 @@ fn roll_average_shifted_high_when_overflow() {
     );
 }
 
-/// 05-01 活跃叠层估算：`stacks = hitChance × applyChance × duration × speed`。
+/// 05-01 active stack estimate: `stacks = hitChance × applyChance × duration × speed`.
 #[test]
 fn estimate_active_stacks_is_product_of_signals() {
-    // 1.0 命中 × 1.0 施加 × 5s 持续 × 4/s 速率 = 20 层。
+    // 1.0 hit × 1.0 apply × 5s duration × 4/s rate = 20 stacks.
     let s = estimate_active_stacks(1.0, 1.0, 5.0, 4.0);
     assert!((s - 20.0).abs() < 1e-6, "1×1×5×4 = 20, got {s}");
 
-    // 部分命中/施加按比例缩放：0.9 × 0.5 × 4 × 2 = 3.6。
+    // Partial hit/apply scales proportionally: 0.9 × 0.5 × 4 × 2 = 3.6.
     let s2 = estimate_active_stacks(0.9, 0.5, 4.0, 2.0);
     assert!((s2 - 3.6).abs() < 1e-6, "0.9×0.5×4×2 = 3.6, got {s2}");
 }
 
-/// 任一信号缺失（无速率 / 无持续 / 无命中 / 无施加几率）时返回 0（回退到 max_stacks 上界）。
+/// Returns 0 when any signal is missing (no rate / no duration / no hit / no apply
+/// chance), falling back to the max_stacks upper bound.
 #[test]
 fn estimate_active_stacks_zero_when_any_signal_missing() {
     assert_eq!(estimate_active_stacks(1.0, 1.0, 5.0, 0.0), 0.0, "no speed");
@@ -663,29 +673,30 @@ fn estimate_active_stacks_zero_when_any_signal_missing() {
     assert_eq!(estimate_active_stacks(1.0, 0.0, 5.0, 4.0), 0.0, "no chance");
 }
 
-/// 05-04 RollAverage 高位偏移：`cross_type_source_hit_at_roll` 在 [min,max] 上内插。
-/// roll=50 退化为区间中点（= `cross_type_source_hit`）；roll>50 向高端偏移。
+/// 05-04 RollAverage high-end shift: `cross_type_source_hit_at_roll` interpolates over
+/// [min,max]. roll=50 degenerates to the interval midpoint (= `cross_type_source_hit`);
+/// roll>50 shifts toward the high end.
 #[test]
 fn cross_type_source_hit_shifts_with_roll() {
     use pobr_core::calc::DamageComponent;
     let player = ModDb::new();
     let cfg = CalcConfig::attack();
-    // 物理分量 [600, 1400]，跨度 800。
+    // Physical component [600, 1400], span 800.
     let components = vec![DamageComponent::new(DamageType::Physical, 600.0, 1400.0)];
 
-    // roll=50 → 中点 1000（与 cross_type_source_hit 一致）。
+    // roll=50 → midpoint 1000 (matches cross_type_source_hit).
     let mid = cross_type_source_hit_at_roll(AilmentType::Bleed, &components, &player, &cfg, 50.0);
     let legacy = cross_type_source_hit(AilmentType::Bleed, &components, &player, &cfg);
     assert!((mid - 1000.0).abs() < 1e-6, "roll 50 → 1000, got {mid}");
     assert!((mid - legacy).abs() < 1e-6, "roll 50 == legacy avg");
 
-    // roll=75 → 600 + 800×0.75 = 1200（向高端偏移）。
+    // roll=75 → 600 + 800×0.75 = 1200 (shifted toward the high end).
     let high = cross_type_source_hit_at_roll(AilmentType::Bleed, &components, &player, &cfg, 75.0);
     assert!((high - 1200.0).abs() < 1e-6, "roll 75 → 1200, got {high}");
     assert!(high > mid, "high roll shifts source hit up");
 }
 
-/// 叠层 DPS traced：节点写入 TraceGraph，DPS 与 non-traced 一致。
+/// Stacked DPS traced: nodes are written to TraceGraph, and DPS matches the non-traced version.
 #[test]
 fn stacking_ailment_dps_traced_writes_trace() {
     let cfg = StackConfig::new(3, 3.0);
@@ -699,7 +710,7 @@ fn stacking_ailment_dps_traced_writes_trace() {
         trace.node(node).is_some(),
         "BleedStackedDPS node should exist"
     );
-    // ActiveStacks 节点应存在并连入 StackedDPS
+    // ActiveStacks node should exist and feed into StackedDPS
     let has_stacks = trace
         .nodes()
         .iter()
@@ -712,17 +723,19 @@ fn stacking_ailment_dps_traced_writes_trace() {
     );
 }
 
-/// 流血叠层 DPS 集成测试：从 bleed_instance + stacking 全链路验证（bleed/poison 叠层）。
+/// Bleed stacking DPS integration test: verifies the full chain from bleed_instance +
+/// stacking (bleed/poison stacking).
 ///
-/// 出处：agent-docs/ailments.md §叠层与权重平均（流血默认 5 层，3 活跃）。
+/// Source: agent-docs/ailments.md §Stacking and weighted average (bleed defaults to 5
+/// max stacks, 3 active).
 #[test]
 fn bleed_stacking_dps_integration() {
     let gc = GameConstants::poe2();
-    // 1000 物理命中 → 单层 150 DPS（bleed_base_fraction=0.15）
+    // 1000 physical hit → 150 DPS per stack (bleed_base_fraction=0.15)
     let instance = bleed_instance(1000.0, &ModDb::new(), &CalcConfig::attack());
     assert!((instance.magnitude_dps - 1000.0 * gc.bleed_base_fraction).abs() < 1e-6);
 
-    // 3 活跃层：DPS = 150 × 3 = 450
+    // 3 active stacks: DPS = 150 × 3 = 450
     let stack_cfg = StackConfig::new(5, 3.0);
     let stacked = stacking_ailment_dps(instance.magnitude_dps, &stack_cfg);
     assert!(
@@ -730,7 +743,7 @@ fn bleed_stacking_dps_integration() {
         "3-stack bleed DPS = 450, got {stacked}"
     );
 
-    // 中毒叠层：4 活跃层 × 200 DPS（poison_base_fraction=0.20, hit=1000）
+    // Poison stacking: 4 active stacks × 200 DPS (poison_base_fraction=0.20, hit=1000)
     let poison_inst =
         pobr_core::calc::ailment::poison_instance(1000.0, &ModDb::new(), &CalcConfig::attack());
     let p_stack = StackConfig::new(10, 4.0);
@@ -742,14 +755,12 @@ fn bleed_stacking_dps_integration() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Feature 1: AilmentEffect / Faster / Slower 三维度
-// ---------------------------------------------------------------------------
+// Feature 1: AilmentEffect / Faster / Slower dimensions
 
-/// `AilmentEffect` MORE 乘区：无 mod 时为 1.0（中性）。
+/// `AilmentEffect` MORE multiplier bucket: defaults to 1.0 (neutral) with no mods.
 ///
-/// 出处：PoB2 `CalcOffence.lua` l.5190
-///   `local effectMod = calcLib.mod(skillModList, dotCfg, "AilmentEffect")`（MORE 聚合）。
+/// Source: PoB2 `CalcOffence.lua` l.5190
+///   `local effectMod = calcLib.mod(skillModList, dotCfg, "AilmentEffect")` (MORE aggregation).
 #[test]
 fn ailment_effect_mod_defaults_to_one() {
     let cfg = CalcConfig::attack();
@@ -761,16 +772,17 @@ fn ailment_effect_mod_defaults_to_one() {
     );
 }
 
-/// `AilmentEffect` MORE 聚合：两个 more 词条连乘。
+/// `AilmentEffect` MORE aggregation: two more mods multiply together.
 ///
-/// 出处：PoB2 `calcLib.mod` = MORE 连乘语义。
+/// Source: PoB2 `calcLib.mod` = MORE multiplicative semantics.
 #[test]
 fn ailment_effect_mod_is_product_of_more_mods() {
     let cfg = CalcConfig::attack();
     let mut db = ModDb::new();
-    // 两个独立 AilmentEffect More：1.5 × 1.2 = 1.8（但 ModDb 用 Inc/More 口径：
-    // More mods 在 ModDb.more() 以"1 + value/100"连乘，0.5 = +50% more 词条）。
-    // 直接用 More type（value 为附加比例），0.5 → factor 1.5，0.2 → factor 1.2。
+    // Two independent AilmentEffect More mods: 1.5 × 1.2 = 1.8 (ModDb uses the Inc/More
+    // convention: More mods multiply in ModDb.more() as "1 + value/100", so 0.5 means
+    // a +50% more mod).
+    // Using More type directly (value is the added percentage): 0.5 → factor 1.5, 0.2 → factor 1.2.
     db.add_mod(Modifier::number("AilmentEffect", ModType::More, 50.0));
     db.add_mod(Modifier::number("AilmentEffect", ModType::More, 20.0));
     let eff = ailment_effect_mod(&db, &cfg);
@@ -781,10 +793,10 @@ fn ailment_effect_mod_is_product_of_more_mods() {
     );
 }
 
-/// `ailment_rate_mod`：无 Faster/Slower mod 时 → `faster / slower = 1.0/1.0 = 1.0`。
+/// `ailment_rate_mod`: with no Faster/Slower mods → `faster / slower = 1.0/1.0 = 1.0`.
 ///
-/// 出处：PoB2 `CalcOffence.lua` l.5035
-///   `rateMod = calcLib.mod(skillModList, cfg, ailment.."Faster") / calcLib.mod(..., ailment.."Slower")`。
+/// Source: PoB2 `CalcOffence.lua` l.5035
+///   `rateMod = calcLib.mod(skillModList, cfg, ailment.."Faster") / calcLib.mod(..., ailment.."Slower")`.
 #[test]
 fn ailment_rate_mod_defaults_to_one() {
     let cfg = CalcConfig::attack();
@@ -796,9 +808,9 @@ fn ailment_rate_mod_defaults_to_one() {
     );
 }
 
-/// `ailment_rate_mod` + Faster：`BleedFaster More 50% → faster=1.5, rateMod=1.5`。
+/// `ailment_rate_mod` + Faster: `BleedFaster More 50% → faster=1.5, rateMod=1.5`.
 ///
-/// 出处：PoB2 rateMod = mod(BleedFaster)（MORE） / mod(BleedSlower)（MORE = 1.0 默认）。
+/// Source: PoB2 rateMod = mod(BleedFaster) (MORE) / mod(BleedSlower) (MORE = 1.0 default).
 #[test]
 fn ailment_rate_mod_scales_with_faster() {
     let cfg = CalcConfig::attack();
@@ -812,10 +824,10 @@ fn ailment_rate_mod_scales_with_faster() {
     );
 }
 
-/// M4-m（k3）：`ailment_rate_mod` 的 INC 腿——vendor `calcLib.mod`（CalcTools.lua:16-18）
-/// = `(1 + ΣINC/100) × ΠMORE`；statmap `faster_burn_%` 族产 INC（SkillStatMap.lua:843-848）。
+/// (k3): the INC leg of `ailment_rate_mod` — vendor `calcLib.mod` (CalcTools.lua:16-18)
+/// = `(1 + ΣINC/100) × ΠMORE`; the statmap `faster_burn_%` family produces INC (SkillStatMap.lua:843-848).
 ///
-/// `IgniteFaster INC 50 + MORE 20 → faster = 1.5 × 1.2 = 1.8`。
+/// `IgniteFaster INC 50 + MORE 20 → faster = 1.5 × 1.2 = 1.8`.
 #[test]
 fn ailment_rate_mod_includes_inc_leg() {
     let cfg = CalcConfig::attack();
@@ -829,7 +841,7 @@ fn ailment_rate_mod_includes_inc_leg() {
         "IgniteFaster INC50 + MORE20 → rateMod=1.8, got {rm}"
     );
 
-    // Slower 的 INC 腿同形：BleedSlower INC 100 → slower=2.0 → rateMod=0.5。
+    // Slower's INC leg is symmetric: BleedSlower INC 100 → slower=2.0 → rateMod=0.5.
     let mut slower_player = ModDb::new();
     slower_player.add_mod(Modifier::number("BleedSlower", ModType::Inc, 100.0));
     let rm = ailment_rate_mod(&slower_player, &enemy, &cfg, "Bleed");
@@ -839,9 +851,9 @@ fn ailment_rate_mod_includes_inc_leg() {
     );
 }
 
-/// `ailment_rate_mod` + Slower：`BleedSlower More 25% → slower=1.25, rateMod = 1.0/1.25`。
+/// `ailment_rate_mod` + Slower: `BleedSlower More 25% → slower=1.25, rateMod = 1.0/1.25`.
 ///
-/// 出处：PoB2 `rateMod = faster / slower`；Slower 让 rateMod < 1。
+/// Source: PoB2 `rateMod = faster / slower`; Slower pulls rateMod below 1.
 #[test]
 fn ailment_rate_mod_reduced_by_slower() {
     let cfg = CalcConfig::attack();
@@ -856,9 +868,9 @@ fn ailment_rate_mod_reduced_by_slower() {
     );
 }
 
-/// `apply_rate_mod_to_instance`：DPS × rateMod，duration / rateMod（总伤害不变）。
+/// `apply_rate_mod_to_instance`: DPS × rateMod, duration / rateMod (total damage unchanged).
 ///
-/// 出处：PoB2 `ailmentDPS *= rateMod`；`duration /= rateMod`；总伤害守恒验证。
+/// Source: PoB2 `ailmentDPS *= rateMod`; `duration /= rateMod`; verifies total damage conservation.
 #[test]
 fn apply_rate_mod_scales_dps_and_shrinks_duration() {
     let inst = bleed_instance(1000.0, &ModDb::new(), &CalcConfig::attack());
@@ -879,7 +891,7 @@ fn apply_rate_mod_scales_dps_and_shrinks_duration() {
         inst.duration_secs,
         modified.duration_secs
     );
-    // 总伤害守恒：DPS × duration
+    // Total damage conservation: DPS × duration
     let total_before = inst.magnitude_dps * inst.duration_secs;
     let total_after = modified.magnitude_dps * modified.duration_secs;
     assert!(
@@ -888,9 +900,9 @@ fn apply_rate_mod_scales_dps_and_shrinks_duration() {
     );
 }
 
-/// `apply_effect_mod_to_instance`：magnitude_dps × effectMod，duration 不变。
+/// `apply_effect_mod_to_instance`: magnitude_dps × effectMod, duration unchanged.
 ///
-/// 出处：PoB2 `ailmentDPS = baseVal * effectMod * ...`；effectMod 不改时长。
+/// Source: PoB2 `ailmentDPS = baseVal * effectMod * ...`; effectMod does not affect duration.
 #[test]
 fn apply_effect_mod_scales_dps_not_duration() {
     let inst = bleed_instance(1000.0, &ModDb::new(), &CalcConfig::attack());
@@ -904,16 +916,16 @@ fn apply_effect_mod_scales_dps_not_duration() {
         inst.magnitude_dps,
         modified.magnitude_dps
     );
-    // duration 不变
+    // duration unchanged
     assert!(
         (modified.duration_secs - inst.duration_secs).abs() < 1e-9,
         "duration should not change with effectMod"
     );
 }
 
-/// `apply_effect_and_rate_mod` 组合：DPS × effectMod × rateMod，duration / rateMod。
+/// `apply_effect_and_rate_mod` combined: DPS × effectMod × rateMod, duration / rateMod.
 ///
-/// 出处：PoB2 `ailmentDPS = baseVal * effectMod * rateMod * activeAilments * effMult`。
+/// Source: PoB2 `ailmentDPS = baseVal * effectMod * rateMod * activeAilments * effMult`.
 #[test]
 fn apply_effect_and_rate_mod_combines_both() {
     let inst = bleed_instance(1000.0, &ModDb::new(), &CalcConfig::attack());
@@ -931,7 +943,7 @@ fn apply_effect_and_rate_mod_combines_both() {
         "DPS × effectMod × rateMod: expected {expected_dps:.2}, got {:.2}",
         modified.magnitude_dps
     );
-    // duration = base / rateMod（effectMod 不改时长）
+    // duration = base / rateMod (effectMod does not affect duration)
     let expected_dur = base_dur / rate_mod;
     assert!(
         (modified.duration_secs - expected_dur).abs() < 1e-3,
@@ -940,25 +952,26 @@ fn apply_effect_and_rate_mod_combines_both() {
     );
 }
 
-/// `apply_effect_and_rate_mod_traced` 写入 TraceGraph 节点。
+/// `apply_effect_and_rate_mod_traced` writes nodes to TraceGraph.
 ///
-/// 出处：归因要求 effectMod / rateMod 各有独立节点连入 magnitude 节点。
+/// Source: attribution requires effectMod / rateMod to each have their own node feeding
+/// into the magnitude node.
 #[test]
 fn apply_effect_and_rate_mod_traced_writes_nodes() {
     let mut trace = TraceGraph::new();
-    // 添加一个虚拟 magnitude 节点作为目标
+    // Add a dummy magnitude node as the target
     let mag_node = trace.add_node("BleedMagnitude", 100.0, TraceOperation::Multiply);
 
     let inst = bleed_instance(1000.0, &ModDb::new(), &CalcConfig::attack());
     let modified = apply_effect_and_rate_mod_traced(inst, 1.5, 2.0, "Bleed", mag_node, &mut trace);
 
-    // DPS 已修正
+    // DPS has been adjusted
     let expected_dps = inst.magnitude_dps * 1.5 * 2.0;
     assert!(
         (modified.magnitude_dps - expected_dps).abs() < 1e-2,
         "traced: DPS should be {expected_dps:.2}"
     );
-    // trace 中应有 EffectMod 和 RateMod 节点
+    // trace should have EffectMod and RateMod nodes
     let has_effect = trace
         .nodes()
         .iter()
@@ -969,7 +982,7 @@ fn apply_effect_and_rate_mod_traced_writes_nodes() {
         .any(|n| n.label.contains("BleedRateMod"));
     assert!(has_effect, "trace should have BleedEffectMod node");
     assert!(has_rate, "trace should have BleedRateMod node");
-    // 两个节点都应链入 mag_node
+    // Both nodes should feed into mag_node
     let incoming = trace.incoming(mag_node);
     assert!(
         incoming.len() >= 2,
@@ -977,22 +990,21 @@ fn apply_effect_and_rate_mod_traced_writes_nodes() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Feature 2: 跨类型施加 (<Type>Can<Ailment>)
-// ---------------------------------------------------------------------------
+// Feature 2: cross-type application (<Type>Can<Ailment>)
 
-/// 默认：火命中不施加流血，物理命中才算流血来源。
+/// Default: a fire hit does not apply bleed — only a physical hit counts as a bleed source.
 ///
-/// 出处：agent-docs/ailments.md §元素/非元素归类；Bleed 默认 ScalesFrom=Physical。
+/// Source: agent-docs/ailments.md §elemental/non-elemental classification; Bleed defaults
+/// to ScalesFrom=Physical.
 #[test]
 fn cross_type_source_hit_defaults_to_physical_for_bleed() {
     use pobr_core::calc::DamageComponent;
     let cfg = CalcConfig::attack();
-    let player = ModDb::new(); // 无 FireCanBleed flag
+    let player = ModDb::new(); // no FireCanBleed flag
 
     let components = vec![
         DamageComponent::new(DamageType::Physical, 800.0, 1200.0), // avg=1000
-        DamageComponent::new(DamageType::Fire, 400.0, 600.0),      // avg=500，不计入
+        DamageComponent::new(DamageType::Fire, 400.0, 600.0),      // avg=500, excluded
     ];
 
     let hit = cross_type_source_hit(AilmentType::Bleed, &components, &player, &cfg);
@@ -1002,10 +1014,11 @@ fn cross_type_source_hit_defaults_to_physical_for_bleed() {
     );
 }
 
-/// `FireCanBleed` 旗标：火伤也计入流血来源命中。
+/// `FireCanBleed` flag: fire damage now also counts toward the bleed source hit.
 ///
-/// 出处：agent-docs/ailments.md §改写施加规则的例外（Blood Barbs 等 FireCanBleed）、
-///   PoB2 `canDoAilment` l.4806 `skillModList:Flag(cfg, type.."Can"..damagingAilment)`。
+/// Source: agent-docs/ailments.md §exceptions that rewrite the application rules
+///   (Blood Barbs' FireCanBleed etc.), PoB2 `canDoAilment` l.4806
+///   `skillModList:Flag(cfg, type.."Can"..damagingAilment)`.
 #[test]
 fn cross_type_source_hit_fire_can_bleed_adds_fire_damage() {
     use pobr_core::calc::DamageComponent;
@@ -1015,7 +1028,7 @@ fn cross_type_source_hit_fire_can_bleed_adds_fire_damage() {
 
     let components = vec![
         DamageComponent::new(DamageType::Physical, 800.0, 1200.0), // avg=1000
-        DamageComponent::new(DamageType::Fire, 400.0, 600.0),      // avg=500，现在计入
+        DamageComponent::new(DamageType::Fire, 400.0, 600.0),      // avg=500, now included
     ];
 
     let hit = cross_type_source_hit(AilmentType::Bleed, &components, &player, &cfg);
@@ -1025,10 +1038,10 @@ fn cross_type_source_hit_fire_can_bleed_adds_fire_damage() {
     );
 }
 
-/// `ChaosCanShock` 旗标：混沌伤也计入感电来源。
+/// `ChaosCanShock` flag: chaos damage now also counts toward the shock source.
 ///
-/// 出处：agent-docs/ailments.md §例外（Voltaxic Rift：ChaosCanShock）、
-///   PoB2 l.4806 `type.."Can"..damagingAilment`。
+/// Source: agent-docs/ailments.md §exceptions (Voltaxic Rift: ChaosCanShock),
+///   PoB2 l.4806 `type.."Can"..damagingAilment`.
 #[test]
 fn cross_type_source_hit_chaos_can_shock() {
     use pobr_core::calc::DamageComponent;
@@ -1037,8 +1050,8 @@ fn cross_type_source_hit_chaos_can_shock() {
     player.add_mod(Modifier::flag("ChaosCanShock"));
 
     let components = vec![
-        DamageComponent::new(DamageType::Lightning, 500.0, 700.0), // avg=600，默认感电来���
-        DamageComponent::new(DamageType::Chaos, 200.0, 400.0),     // avg=300，now ChaosCanShock
+        DamageComponent::new(DamageType::Lightning, 500.0, 700.0), // avg=600, default shock source
+        DamageComponent::new(DamageType::Chaos, 200.0, 400.0),     // avg=300, now ChaosCanShock
     ];
 
     let hit = cross_type_source_hit(AilmentType::Shock, &components, &player, &cfg);
@@ -1048,7 +1061,7 @@ fn cross_type_source_hit_chaos_can_shock() {
     );
 }
 
-/// 无命中分量时返回 0。
+/// Returns 0 when there are no hit components.
 #[test]
 fn cross_type_source_hit_empty_components() {
     let cfg = CalcConfig::attack();
@@ -1058,13 +1071,11 @@ fn cross_type_source_hit_empty_components() {
     assert_eq!(hit, 0.0, "empty components → 0");
 }
 
-// ---------------------------------------------------------------------------
 // Feature 3: DotDpsCap
-// ---------------------------------------------------------------------------
 
-/// `apply_dot_dps_cap`：普通 DPS 低于 cap 时原样返回。
+/// `apply_dot_dps_cap`: returns the DPS unchanged when it's below the cap.
 ///
-/// 出处：PoB2 `ailmentDPSCapped = m_min(ailmentDPSUncapped, data.misc.DotDpsCap)`。
+/// Source: PoB2 `ailmentDPSCapped = m_min(ailmentDPSUncapped, data.misc.DotDpsCap)`.
 #[test]
 fn apply_dot_dps_cap_passthrough_below_cap() {
     let dps = 1_000_000.0;
@@ -1075,9 +1086,9 @@ fn apply_dot_dps_cap_passthrough_below_cap() {
     );
 }
 
-/// `apply_dot_dps_cap`：超出上限时截断为 DOT_DPS_CAP（35,791,394）。
+/// `apply_dot_dps_cap`: truncates to DOT_DPS_CAP (35,791,394) when the DPS exceeds it.
 ///
-/// 出处：PoB2 `Data.lua` `DotDpsCap = 35791394`。
+/// Source: PoB2 `Data.lua` `DotDpsCap = 35791394`.
 #[test]
 fn apply_dot_dps_cap_clamps_huge_dps() {
     use pobr_data::constants::DOT_DPS_CAP;
@@ -1089,14 +1100,17 @@ fn apply_dot_dps_cap_clamps_huge_dps() {
     );
 }
 
-/// 05-07 硬化：`apply_dot_dps_cap` 始终用常量 `DOT_DPS_CAP`，**忽略 modDB 中的
-/// `DotDpsCap`**（PoB2 中该 cap 是 `Data.lua` 硬编码常量，无 Override/modDB 机制）。
+/// 05-07 hardening: `apply_dot_dps_cap` always uses the constant `DOT_DPS_CAP`, **ignoring
+/// any `DotDpsCap` in modDB** (in PoB2 this cap is a `Data.lua` hardcoded constant with no
+/// Override/modDB mechanism).
 ///
-/// 出处：PoB2 全 src `m_min(_, data.misc.DotDpsCap)`，grep 无 `Override(..,"DotDpsCap")`。
+/// Source: across the PoB2 source, `m_min(_, data.misc.DotDpsCap)`; grep finds no
+/// `Override(..,"DotDpsCap")`.
 #[test]
 fn apply_dot_dps_cap_ignores_moddb_dotdpscap() {
-    // modDB 中即便写入低值 DotDpsCap，也不影响 cap（PoB2-faithful：始终用常量）。
-    let dps = 50_000.0; // 远低于 DOT_DPS_CAP
+    // Even writing a low DotDpsCap value into modDB does not affect the cap
+    // (PoB2-faithful: the constant is always used).
+    let dps = 50_000.0; // far below DOT_DPS_CAP
     let capped = apply_dot_dps_cap(dps, DOT_DPS_CAP);
     assert!(
         (capped - dps).abs() < 1.0,
@@ -1104,16 +1118,17 @@ fn apply_dot_dps_cap_ignores_moddb_dotdpscap() {
     );
 }
 
-/// `dps_with_effect_rate_cap`：effect + rate 同时作用后被 cap 截断。
+/// `dps_with_effect_rate_cap`: effect + rate apply together, then the result is
+/// truncated by the cap.
 ///
-/// 出处：PoB2 `ailmentDPS = m_min(baseVal * effectMod * rateMod * ..., DotDpsCap)`。
+/// Source: PoB2 `ailmentDPS = m_min(baseVal * effectMod * rateMod * ..., DotDpsCap)`.
 #[test]
 fn dps_with_effect_rate_cap_applies_cap() {
     use pobr_data::constants::DOT_DPS_CAP;
 
-    // 设置一个超大 base_dps，确保 effectMod × rateMod 后超过 cap
+    // Set an oversized base_dps to guarantee effectMod × rateMod exceeds the cap
     let base_dps = DOT_DPS_CAP * 0.6; // 60% of cap
-    let effect_mod = 2.0; // × 2.0 → 120% of cap → 超 cap
+    let effect_mod = 2.0; // × 2.0 → 120% of cap → exceeds the cap
     let rate_mod = 1.0;
 
     let result = dps_with_effect_rate_cap(base_dps, effect_mod, rate_mod, DOT_DPS_CAP);
@@ -1123,66 +1138,68 @@ fn dps_with_effect_rate_cap_applies_cap() {
     );
 }
 
-/// `dps_with_effect_rate_cap_traced`：DPS 被截断时，trace 中应有 DotDpsCap 节点。
+/// `dps_with_effect_rate_cap_traced`: when DPS gets truncated, trace should have a
+/// DotDpsCap node.
 ///
-/// 出处：DotDpsCap 截断信息应归因到 TraceGraph（增量归因价值）。
+/// Source: DotDpsCap truncation should be attributable via TraceGraph (incremental
+/// attribution value).
 #[test]
 fn dps_with_effect_rate_cap_traced_adds_cap_node_when_truncated() {
     use pobr_data::constants::DOT_DPS_CAP;
     let mut trace = TraceGraph::new();
 
-    // 超 cap 的情况
+    // Case where the cap is exceeded
     let base_dps = DOT_DPS_CAP * 0.7;
     let (result, node) =
         dps_with_effect_rate_cap_traced(base_dps, 2.0, 1.0, DOT_DPS_CAP, "Ignite", &mut trace);
 
-    // 结果截断到 cap
+    // Result truncated to the cap
     assert!(
         (result - DOT_DPS_CAP).abs() < 1.0,
         "capped result should be DOT_DPS_CAP, got {result}"
     );
-    // trace 中应存��� DotDpsCap 节点
+    // trace should have a DotDpsCap node
     let has_cap = trace.nodes().iter().any(|n| n.label.contains("DotDpsCap"));
     assert!(has_cap, "trace should have DotDpsCap node when truncated");
-    // 输出节点存在
+    // Output node exists
     assert!(trace.node(node).is_some(), "output node should exist");
 }
 
-/// `dps_with_effect_rate_cap_traced`：DPS 未被截断时，trace 中**不应**有 DotDpsCap 节点。
+/// `dps_with_effect_rate_cap_traced`: when DPS is not truncated, trace should **not**
+/// have a DotDpsCap node.
 #[test]
 fn dps_with_effect_rate_cap_traced_no_cap_node_when_not_truncated() {
     let mut trace = TraceGraph::new();
 
-    // 很小的 base_dps，不会超 cap
+    // A small base_dps that will not exceed the cap
     let (_, _) = dps_with_effect_rate_cap_traced(100.0, 1.0, 1.0, DOT_DPS_CAP, "Bleed", &mut trace);
 
     let has_cap = trace.nodes().iter().any(|n| n.label.contains("DotDpsCap"));
     assert!(!has_cap, "no cap node when DPS is below DOT_DPS_CAP");
 }
 
-// ---------------------------------------------------------------------------
-// 05-01：异常暴击 over-stacking 修正（PoB2 CalcOffence.lua L5144
-// ailmentCritChance = 100*(1-(1-c)^max(SP,1))）
-// ---------------------------------------------------------------------------
+// 05-01: ailment crit over-stacking correction (PoB2 CalcOffence.lua L5144
+// ailmentCritChance = 100*(1-(1-c)^max(SP,1)))
 
 #[test]
 fn ailment_crit_chance_applies_over_stacking_correction() {
-    let crit = 0.5_f64; // 50% 单次命中暴击率（fraction）
+    let crit = 0.5_f64; // 50% single-hit crit chance (fraction)
 
-    // SP <= 1：退化为裸暴击率（指数被 max(.,1) 抬到 1）。
+    // SP <= 1: degenerates to the bare crit chance (the exponent is floored to 1 by max(.,1)).
     assert!((ailment_crit_chance(crit, 1.0) - 0.5).abs() < 1e-9);
     assert!((ailment_crit_chance(crit, 0.4) - 0.5).abs() < 1e-9);
 
-    // SP > 1（叠层溢出）：放大。SP=2 → 1 - 0.5^2 = 0.75。
+    // SP > 1 (stack overflow): amplified. SP=2 → 1 - 0.5^2 = 0.75.
     let amplified = ailment_crit_chance(crit, 2.0);
     assert!((amplified - 0.75).abs() < 1e-9);
     assert!(amplified > crit, "over-stacking 应抬高暴击份额");
 
-    // 边界：0 暴击恒 0；满暴击恒 1。
+    // Boundaries: 0 crit chance always gives 0; full crit chance always gives 1.
     assert!((ailment_crit_chance(0.0, 3.0) - 0.0).abs() < 1e-9);
     assert!((ailment_crit_chance(1.0, 3.0) - 1.0).abs() < 1e-9);
 
-    // 端到端：放大后的暴击份额喂入 weighted_source_damage，base 高于 SP=1。
+    // End to end: the amplified crit share feeds into weighted_source_damage, giving
+    // a base higher than SP=1.
     let src_sp1 = AilmentSource::new(1000.0, 2.0, ailment_crit_chance(crit, 1.0), false);
     let (_c0, base_sp1) = weighted_source_damage(&src_sp1, 100.0, 100.0);
     assert!(
@@ -1199,9 +1216,7 @@ fn ailment_crit_chance_applies_over_stacking_correction() {
     assert!(base_over > base_sp1, "over-stacking 应抬高异常 base 伤害");
 }
 
-// ---------------------------------------------------------------------------
-// M4-G：Stored 族来源（stored_source_at_roll）+ CHANCE_AILMENT 合并
-// ---------------------------------------------------------------------------
+// Stored family sources (stored_source_at_roll) + CHANCE_AILMENT merge
 
 fn range(
     damage_type: DamageType,
@@ -1219,8 +1234,9 @@ fn range(
     }
 }
 
-/// 默认类型门控 + 区间中点：点燃只吃火分量；roll=50 → 两腿各取 (min+max)/2。
-/// 暴击腿独立取 Stored crit 区间（非 hit × CritMultiplier 近似）。
+/// Default type gating + interval midpoint: ignite only consumes the fire component;
+/// roll=50 → both legs take (min+max)/2. The crit leg independently takes the Stored
+/// crit interval (not an approximation of hit × CritMultiplier).
 #[test]
 fn stored_source_ignite_takes_fire_with_independent_crit_leg() {
     let ranges = vec![
@@ -1238,7 +1254,8 @@ fn stored_source_ignite_takes_fire_with_independent_crit_leg() {
     assert_eq!(crit, 600.0, "crit 腿独立取 Stored crit 区间中点");
 }
 
-/// 跨类型施加：`ColdCanIgnite` 旗标使冰分量计入点燃来源（vendor canDoAilment 覆写）。
+/// Cross-type application: the `ColdCanIgnite` flag makes the cold component count
+/// toward the ignite source (vendor canDoAilment override).
 #[test]
 fn stored_source_cross_type_flag_adds_component() {
     let ranges = vec![
@@ -1257,7 +1274,8 @@ fn stored_source_cross_type_flag_adds_component() {
     assert_eq!(hit, 150.0 + 1500.0, "ColdCanIgnite → 冰分量并入来源");
 }
 
-/// 逐类型 Buildup MORE（vendor `:4844`）：`PhysicalBleedBuildup` 只放大物理分量。
+/// Per-type Buildup MORE (vendor `:4844`): `PhysicalBleedBuildup` only amplifies the
+/// physical component.
 #[test]
 fn stored_source_applies_per_type_buildup_more() {
     let ranges = vec![range(DamageType::Physical, 100.0, 100.0, 100.0, 100.0)];
@@ -1278,7 +1296,7 @@ fn stored_source_applies_per_type_buildup_more() {
     assert_eq!(crit, 150.0);
 }
 
-/// RollAverage 内插（vendor `:5125`）：roll=75 → min + (max−min)×0.75。
+/// RollAverage interpolation (vendor `:5125`): roll=75 → min + (max−min)×0.75.
 #[test]
 fn stored_source_interpolates_at_roll() {
     let ranges = vec![range(DamageType::Fire, 100.0, 300.0, 400.0, 800.0)];
@@ -1293,25 +1311,23 @@ fn stored_source_interpolates_at_roll() {
     assert_eq!(crit, 700.0);
 }
 
-/// CHANCE_AILMENT 合并（vendor `:2498-2533`）：`max×s + min×(1−s)`，`s=min(1, stacks/max)`。
+/// CHANCE_AILMENT merge (vendor `:2498-2533`): `max×s + min×(1−s)`, `s=min(1, stacks/max)`.
 #[test]
 fn merge_hand_ailment_dps_weights_by_stack_fill() {
     use pobr_core::calc::ailment::merge_hand_ailment_dps;
-    // 叠层占满（stacks >= max）：全部按最大实例。
+    // Stacks fully filled (stacks >= max): everything uses the max instance.
     assert_eq!(merge_hand_ailment_dps(100.0, 60.0, 5.0, 1.0), 100.0);
-    // 半满（s=0.5）：100×0.5 + 60×0.5 = 80。
+    // Half filled (s=0.5): 100×0.5 + 60×0.5 = 80.
     assert_eq!(merge_hand_ailment_dps(100.0, 60.0, 1.0, 2.0), 80.0);
-    // 估算缺失（stacks=0）：保守 s=1（全按最大实例）。
+    // Missing estimate (stacks=0): conservatively s=1 (everything uses the max instance).
     assert_eq!(merge_hand_ailment_dps(100.0, 60.0, 0.0, 2.0), 100.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
-// M4-K：keyword 作用域（vendor dotCfg）+ duration MORE 腿
-// ─────────────────────────────────────────────────────────────────
+// Keyword scoping (vendor dotCfg) + duration MORE leg
 
-/// `AilmentMagnitude MORE kw=Poison`（Deadly Poison 实形）只放大中毒，
-/// 不进点燃（vendor dotCfg keywordFlags 含 KeywordFlag[ailment]，
-/// CalcOffence.lua:5005——PoBR `ailment_scoped_cfg` 同口径置位）。
+/// `AilmentMagnitude MORE kw=Poison` (modeled on Deadly Poison) only amplifies poison,
+/// not ignite (vendor dotCfg keywordFlags include KeywordFlag[ailment],
+/// CalcOffence.lua:5005 — PoBR's `ailment_scoped_cfg` sets the flag with the same semantics).
 #[test]
 fn keyword_scoped_magnitude_applies_only_to_matching_ailment() {
     let mut db = ModDb::new();
@@ -1336,8 +1352,8 @@ fn keyword_scoped_magnitude_applies_only_to_matching_ailment() {
     );
 }
 
-/// duration 聚合带 MORE 腿（vendor durationMod = calcLib.mod = (1+inc)×more，
-/// CalcOffence.lua:5037-5039）：Escalating Poison `PoisonDuration MORE -20`。
+/// Duration aggregation with a MORE leg (vendor durationMod = calcLib.mod = (1+inc)×more,
+/// CalcOffence.lua:5037-5039): Escalating Poison's `PoisonDuration MORE -20`.
 #[test]
 fn duration_applies_more_leg() {
     let mut db = ModDb::new();
@@ -1357,18 +1373,19 @@ fn duration_applies_more_leg() {
     );
 }
 
-/// debuffDurationMult（vendor CalcOffence.lua:1833-1835）：敌侧 BuffExpireFaster
-/// MORE 负值（Temporal Chains expire-slower）→ 乘区 > 1；下限
-/// BuffExpirationSlowCap=0.25（Data.lua:177，至多 4 倍）；面板口径恒 1。
+/// debuffDurationMult (vendor CalcOffence.lua:1833-1835): a negative enemy-side
+/// BuffExpireFaster MORE value (Temporal Chains' expire-slower) → multiplier > 1;
+/// floored at BuffExpirationSlowCap=0.25 (Data.lua:177, at most 4x); the panel figure
+/// is always 1.
 #[test]
 fn debuff_duration_mult_from_enemy_buff_expire_faster() {
     let cfg = CalcConfig::attack().with_mode_effective(true);
-    // 无词条 → 中性 1.0。
+    // No mods → neutral 1.0.
     assert_eq!(debuff_duration_mult(&ModDb::new(), &cfg), 1.0);
 
-    // druid-oracle-comet oracle 中间值：Temporal Chains 经 Pinnacle boss
-    // CurseEffectOnSelf 缩放后敌侧 BuffExpireFaster MORE -8 →
-    // 聚合 0.92 → mult = 1/0.92 ≈ 1.0870（vendor 同式）。
+    // druid-oracle-comet oracle intermediate value: after Temporal Chains is scaled by
+    // the Pinnacle boss's CurseEffectOnSelf, enemy-side BuffExpireFaster MORE -8 →
+    // aggregate 0.92 → mult = 1/0.92 ≈ 1.0870 (same formula as vendor).
     let mut enemy = ModDb::new();
     enemy.add_list(vec![Modifier::number(
         "BuffExpireFaster",
@@ -1381,7 +1398,7 @@ fn debuff_duration_mult_from_enemy_buff_expire_faster() {
         "MORE -8 → 1/0.92，实得 {mult}"
     );
 
-    // 下限：MORE -90 → 聚合 0.10 < 0.25 → cap 到 0.25 → mult = 4。
+    // Floor: MORE -90 → aggregate 0.10 < 0.25 → capped to 0.25 → mult = 4.
     let mut capped = ModDb::new();
     capped.add_list(vec![Modifier::number(
         "BuffExpireFaster",
@@ -1390,7 +1407,7 @@ fn debuff_duration_mult_from_enemy_buff_expire_faster() {
     )]);
     assert_eq!(debuff_duration_mult(&capped, &cfg), 4.0);
 
-    // 面板口径（mode_effective=false）恒 1（vendor :1834 门控）。
+    // Panel figure (mode_effective=false) is always 1 (vendor :1834 gate).
     let panel = CalcConfig::attack();
     assert_eq!(debuff_duration_mult(&enemy, &panel), 1.0);
 }

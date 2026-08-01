@@ -1,70 +1,87 @@
-//! StatId→Modifier 映射表 overlay 域 schema（`overlay/stat_id_map.json`，schema
-//! `stat_id_map/v1`）。
+//! StatId→Modifier mapping-table overlay domain schema
+//! (`overlay/stat_id_map.json`, schema `stat_id_map/v1`).
 //!
-//! M6 E/F「stat_id → Modifier 第二通道」的产物（段 B）：把段 A 抽取的
-//! `stat_descriptions.json`（stat_id → canonical 文本）逐条喂 `parse_mod_engine`，
-//! 把能解析的 stat_id 固化成 modifier 模板。由 `sync-pob-catalog gen-stat-id-map`
-//! 离线生成（消费两份 overlay：stat_descriptions + mod_parser_rules）。
+//! The output of the "second stat_id → Modifier channel" (stage B): feeds
+//! stage A's extracted `stat_descriptions.json` (stat_id → canonical text)
+//! through `parse_mod_engine` line by line, and bakes the stat_ids that
+//! parse successfully into modifier templates. Generated offline by
+//! `sync-pob-catalog gen-stat-id-map` (consuming two overlays:
+//! stat_descriptions + mod_parser_rules).
 //!
-//! 运行期用途：游戏数据给出 `(stat_id, 原始值)` 时，查本表拿预解析的 modifier
-//! 结构，按 `运行期值 = 原始值 × coefficient` 注入——免去文本往返（文本渲染要
-//! luajit，仅构建期可用）。这是与英文文本通道并行的第二条注入路径。
+//! Runtime purpose: when the game data gives a `(stat_id, raw value)` pair,
+//! look it up in this table to get the pre-parsed modifier structure, and
+//! inject it with `runtime value = raw value × coefficient` — skipping the
+//! text round trip entirely (rendering text needs luajit, so it's only
+//! available at build time). This is the second injection path running in
+//! parallel with the English-text channel.
 //!
-//! **设计约定**：
-//! - 模板把**结构**（name / mod_type / tags / flags）与**系数**（coefficient，
-//!   段 A 喂 V=1 解析得的每单位值，线性通用词条恒 1）分列——结构供 dual-run
-//!   逐字段比较，系数供运行期缩放。tag 用 `pobr_core::mod_parser::canonical_tags`
-//!   的单源串（文档禁两套序列化）；空串 = 无 tag（常见通用词条即此）。
-//! - 多 scope 各自分段（对齐 [`crate::catalog::stat_descriptions`]），precedence
-//!   交消费侧。
-//! - 无法解析的 stat_id 记入 `unsupported`（通道回退文本 / special），不静默丢弃。
+//! **Design conventions**:
+//! - A template separates **structure** (name / mod_type / tags / flags)
+//!   from **coefficient** (the per-unit value obtained by feeding stage A a
+//!   V=1 — always 1 for a linear, generic mod) — the structure is for
+//!   dual-run field-by-field comparison, the coefficient is for runtime
+//!   scaling. Tags use the single-source string from
+//!   `pobr_core::mod_parser::canonical_tags` (no second serialization
+//!   scheme is allowed); an empty string = no tag (the common case for
+//!   generic mods).
+//! - Multiple scopes are each kept in their own section (matching
+//!   [`crate::catalog::stat_descriptions`]), with precedence left to the
+//!   consumer.
+//! - A stat_id that can't be parsed is recorded in `unsupported` (that
+//!   channel falls back to text / special handling), not silently dropped.
 //!
-//! 本模块只定义 serde 形状，零逻辑。
+//! This module only defines the serde shape, zero logic.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
-/// StatId→Modifier 映射文档本体（`_meta` 头部之外的平铺部分）。
+/// The body of the StatId→Modifier mapping document (the flat part outside
+/// the `_meta` header).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct StatIdMapDef {
-    /// scope 名 → 该 scope 的映射（BTreeMap 字典序保证确定性）。
+    /// scope name → that scope's mapping (BTreeMap for deterministic dictionary order).
     #[serde(default)]
     pub scopes: BTreeMap<String, ScopeStatIdMap>,
 }
 
-/// 单个 scope 的 stat_id → modifier 模板映射。
+/// A single scope's stat_id → modifier-template mapping.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ScopeStatIdMap {
-    /// stat_id → 解析出的 modifier 模板（该 stat_id 全部文本行的 mod 顺序合并）。
+    /// stat_id → the parsed modifier templates (mods from every text line
+    /// of this stat_id, merged in order).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub mapped: BTreeMap<String, Vec<StatIdModTemplate>>,
-    /// 文本无法解析的 stat_id（通道回退文本 / special 处置）。
+    /// stat_ids whose text couldn't be parsed (handled by falling back to
+    /// text / special processing).
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub unsupported: BTreeSet<String>,
 }
 
-/// 单条 modifier 模板（结构 + 系数分列）。
+/// A single modifier template (structure and coefficient kept separate).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct StatIdModTemplate {
-    /// ModName（PoBR 内部稳定 ID）。
+    /// ModName (PoBR's internal stable ID).
     pub name: String,
-    /// 聚合类型：`Base` / `Inc` / `More` / `Flag` / `Override` / `List`。
+    /// Aggregation type: `Base` / `Inc` / `More` / `Flag` / `Override` / `List`.
     pub mod_type: String,
-    /// 段 A 喂 V=1 解析得的每单位值（运行期 modifier 值 = 原始 stat 值 ×
-    /// coefficient；线性通用词条恒 1.0）。非数值载荷时为 `None`，见 `value_kind`。
+    /// The per-unit value obtained by feeding stage A a V=1 (runtime
+    /// modifier value = raw stat value × coefficient; always 1.0 for a
+    /// linear, generic mod). `None` for a non-numeric payload — see `value_kind`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coefficient: Option<f64>,
-    /// 非数值载荷标记（`flag:true` / `text:...` / `nested`）；数值时省略。
+    /// Marks a non-numeric payload (`flag:true` / `text:...` / `nested`);
+    /// omitted for a numeric one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_kind: Option<String>,
-    /// canonical tag 串（`pobr_core::mod_parser::canonical_tags`；空 = 无 tag）。
+    /// The canonical tag string (`pobr_core::mod_parser::canonical_tags`;
+    /// empty = no tag).
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub tags: String,
-    /// ModFlag 位（0 = 无）。
+    /// ModFlag bits (0 = none).
     #[serde(default, skip_serializing_if = "is_zero_u64")]
     pub flags: u64,
-    /// KeywordFlag 位（0 = 无）。
+    /// KeywordFlag bits (0 = none).
     #[serde(default, skip_serializing_if = "is_zero_u64")]
     pub keyword_flags: u64,
 }

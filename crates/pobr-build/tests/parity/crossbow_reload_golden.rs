@@ -1,19 +1,24 @@
-//! 弩 reload golden fixture（M4-T4 W-D2）：语料 18 build 无非 grenade 弩手
-//! （mercenary/ranger explosive-grenade 是持弩者但 `Grenade` 类型不消耗弹药，
-//! vendor `CalcOffence.lua:1118` 同口径门控豁免——其速率/DPS 不变由
-//! `golden_regression.rs` deadeye 销钉与 `parity_no_regression` 共同钉住），
-//! 故按蓝图 §2 W-D2 用真实数据**构造**弩手 build 入 golden：
+//! Crossbow reload golden fixture: the 18-build corpus has no non-grenade
+//! crossbow user (mercenary/ranger explosive-grenade wields a crossbow, but
+//! the `Grenade` type doesn't consume ammo — vendor `CalcOffence.lua:1118`
+//! exempts it under the same gating; its speed/DPS staying unchanged is
+//! already pinned jointly by the deadeye anchor in `golden_regression.rs` and
+//! `parity_no_regression`), so this file **constructs** a crossbow-user build
+//! with real data and adds it to the golden set:
 //!
-//! - 武器 = Makeshift Crossbow（`reload_time_ms = 800`，overlay
-//!   `base_item_overrides.json` 经 gamedata merge——双路线兜底通道活体验证）；
-//! - 技能 = Armour Piercing Rounds（射击效果 `ArmourPiercingBoltsPlayer`
-//!   `CrossbowSkill` + ammo 效果 `ArmourPiercingBoltsAmmoPlayer` 弹匣
-//!   `base_number_of_crossbow_bolts` L1 = 12）。
+//! - Weapon = Makeshift Crossbow (`reload_time_ms = 800`, from overlay
+//!   `base_item_overrides.json` merged by gamedata — a live check of the
+//!   dual-route fallback channel);
+//! - Skill = Armour Piercing Rounds (firing effect `ArmourPiercingBoltsPlayer`
+//!   `CrossbowSkill` + ammo effect `ArmourPiercingBoltsAmmoPlayer`, magazine
+//!   `base_number_of_crossbow_bolts` L1 = 12).
 //!
-//! 已登记缺口：真实导入路径下 ammo-gem 的 XML `skillId` = ammo 效果 id，
-//! `pick_group_main_skill` 第 3 步会把 ammo 自身（含 Attack 类型）当主技能
-//! ——此时 reload 门控保守拒绝（`CrossbowAmmoSkill`），零行为；主技能解析
-//! 对 ammo 宝石的穿透留待弩 build 语料入集后对齐。
+//! Registered gap: under the real import path, an ammo gem's XML `skillId` is
+//! the ammo effect's id, and step 3 of `pick_group_main_skill` will pick the
+//! ammo effect itself (which has an Attack type) as the main skill — in that
+//! case the reload gate conservatively rejects it (`CrossbowAmmoSkill`), a
+//! zero-behaviour outcome. Fixing main-skill resolution's handling of the ammo
+//! gem is deferred until a real crossbow-build fixture is added to the corpus.
 
 use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
@@ -24,7 +29,7 @@ use pobr_data::monster::EnemyTier;
 use pobr_gamedata::{GameData, repo_data_root};
 
 fn load_build_data() -> BuildData {
-    // golden 钉定被校验的数据版本（与活动 DATA_VERSION 解耦）；见 pobr_data::GOLDEN_PARITY_DATA_VERSION。
+    // Pins the data version being checked against the golden values (decoupled from the active DATA_VERSION); see pobr_data::GOLDEN_PARITY_DATA_VERSION.
     let data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
     BuildData::load(&data).expect("load BuildData")
 }
@@ -54,7 +59,7 @@ fn crossbow_build() -> Build {
             SocketGroup::new()
                 .with_slot("weapon1")
                 .with_gem("Metadata/Items/Gem/SkillGemArmourPiercingRounds")
-                // 射击效果在前（主技能解析取首个伤害技能）；ammo 效果同组提供弹匣。
+                // Firing effect goes first (main-skill resolution picks the first damage skill); the ammo effect in the same group provides the magazine.
                 .with_gem_skill("ArmourPiercingBoltsPlayer", 1)
                 .with_gem_skill("ArmourPiercingBoltsAmmoPlayer", 1),
         )
@@ -73,10 +78,11 @@ fn opts() -> DataOrchestratorOptions {
     }
 }
 
-/// 端到端：弩 reload 折算进有效速率与 DPS（bolt=12、reload=0.8s）。
+/// End-to-end: crossbow reload folds into effective rate and DPS (bolt=12, reload=0.8s).
 ///
-/// 预期速率 = `B / (B/f + R)`，`f` 取折算前射速（`skill_use_time.tooltip_rate`，
-/// 本 fixture 无 action speed / 未触帧 cap，tooltip = cap 前速率）。
+/// Expected rate = `B / (B/f + R)`, where `f` is the pre-reload firing rate
+/// (`skill_use_time.tooltip_rate`; this fixture has no action speed and
+/// doesn't hit the frame cap, so tooltip = the pre-cap rate).
 #[test]
 fn constructed_crossbow_build_applies_reload_cycle() {
     let data = load_build_data();
@@ -97,8 +103,8 @@ fn constructed_crossbow_build_applies_reload_cycle() {
         "reload 必须降低有效速率：{} >= {firing_rate}",
         out.effective_action_rate
     );
-    // 面板速率（PoB2 output.Speed 改写口径）与 DPS 同因子折算，
-    // AverageDamage = dps / action_rate 恒等式保持。
+    // Panel rate (PoB2's output.Speed rewrite convention) folds by the same
+    // factor as DPS, keeping the AverageDamage = dps / action_rate identity.
     assert!(
         (out.action_rate - expected).abs() < 1e-2,
         "面板速率须为 reload 折算后值：{}",
@@ -107,8 +113,10 @@ fn constructed_crossbow_build_applies_reload_cycle() {
     assert!(out.dps > 0.0, "弩 build DPS 应非零：{}", out.dps);
 }
 
-/// 弩武器但 grenade 类技能（语料 deadeye/gemling explosive-grenade 同形态）：
-/// reload 门控豁免——同武器、同等级的 grenade 主技能输出不被 reload 折算。
+/// A crossbow weapon with a grenade-type skill (same shape as the
+/// deadeye/gemling explosive-grenade corpus builds): the reload gate is
+/// exempt — a grenade main skill's output on the same weapon and level isn't
+/// folded by reload.
 #[test]
 fn grenade_on_crossbow_is_exempt_from_reload() {
     let data = load_build_data();

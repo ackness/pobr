@@ -1,24 +1,30 @@
-//! 端到端集成测试：真实 PoB2 Ninja build code → 完整计算。
+//! End-to-end integration test: a real PoB2 ninja build code -> full calculation.
 //!
-//! 目标：验证 `decode → parse_build → calculate_with_data` 管线端到端可以跑通，关键
-//! 输出在合理范围内（不要求与 PoB2 数值逐字对齐）。
+//! Goal: verify the `decode -> parse_build -> calculate_with_data` pipeline
+//! runs end-to-end and key outputs land within a sane range (doesn't require
+//! matching PoB2's numbers exactly).
 //!
-//! 与早期版本不同：本测试**直接使用生产解析器** [`pobr_build::parse_build_from_code`]，
-//! 不再在测试内手写 XML 抽取。这同时把生产 XML→Build 解析路径纳入端到端回归。
+//! Unlike earlier versions: this test **uses the production parser directly**
+//! ([`pobr_build::parse_build_from_code`]), no more hand-written XML
+//! extraction inside the test. This also folds the production XML->Build
+//! parsing path into the end-to-end regression.
 //!
-//! 装配范围（由 `parse_build` 完成）：
-//! - 角色身份（等级 / 职业 / 升华）：完整解析。
-//! - 天赋树节点：`<Tree activeSpec>` 选中 `<Spec nodes>`。
-//! - 技能宝石组：`<Skills activeSkillSet>` 选中 `<SkillSet>` 下每个 `<Skill>`。
-//! - 装备：`<Item>` 文本块经 `parse_pob_xml_item` 解析，`<ItemSet>` 槽位映射到 `EquipmentSlot`。
-//! - 角色基础（CharacterBase）：通过 BuildData 职业属性表注入（`inject_character_base`）。
-//! - 敌人：Pinnacle level 80（有效 DPS 口径）。
+//! Assembly scope (handled by `parse_build`):
+//! - Character identity (level / class / ascendancy): fully parsed.
+//! - Passive tree nodes: `<Tree activeSpec>` picks the `<Spec nodes>`.
+//! - Skill gem groups: `<Skills activeSkillSet>` picks each `<Skill>` under the `<SkillSet>`.
+//! - Gear: `<Item>` text blocks are parsed via `parse_pob_xml_item`; `<ItemSet>` slots map to `EquipmentSlot`.
+//! - CharacterBase: injected via BuildData's per-class attribute table (`inject_character_base`).
+//! - Enemy: Pinnacle level 80 (effective-DPS convention).
 //!
-//! 缺口（记录为 deferred，不阻塞 e2e 通过）：
-//! - 宝石 → modifier 文本管线尚未导出（见 calc_orchestrator 模块文档）→ 宝石自身
-//!   不贡献 modifier，但 source 归因注册正常。
-//! - Charm / Flask / Ring 3 等 `EquipmentSlot` 枚举外槽位忽略（不进入当前计算）。
-//! - Mastery 效果（masteryEffects）暂未解析 → Mastery 节点词条不进入计算。
+//! Gaps (recorded as deferred, don't block e2e passing):
+//! - The gem -> modifier-text pipeline isn't exported yet (see the
+//!   calc_orchestrator module doc) -> gems themselves contribute no modifier,
+//!   but source attribution registration still works.
+//! - Slots outside the `EquipmentSlot` enum (Charm / Flask / Ring 3, etc.) are
+//!   ignored (not fed into the current calculation).
+//! - Mastery effects (masteryEffects) aren't parsed yet -> Mastery node mods
+//!   don't feed into the calculation.
 
 use pobr_build::{
     BuildData, DataOrchestratorOptions, calculate_full_dps, calculate_with_data,
@@ -29,29 +35,29 @@ use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::PassiveTreeSpec;
 use pobr_gamedata::{GameData, repo_data_root};
 
-// ── fixtures ────────────────────────────────────────────────────────────────
+// fixtures
 
 const DEADEYE_CODE: &str = include_str!("../../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
 
 const MARTIAL_ARTIST_CODE: &str =
     include_str!("../../../../examples/demo-bd-test/ninja-bd-marial-artist.txt");
 
-// ── 数据加载（每套测试共用同一 GameData + BuildData）────────────────────────
+// Data loading (shared GameData + BuildData across every test in this suite)
 
 fn load_game_data() -> BuildData {
     let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
     BuildData::load(&data).expect("load BuildData from repo data")
 }
 
-// ── 测试主体 ─────────────────────────────────────────────────────────────────
+// Test bodies
 
-/// Deadeye build：端到端完整管线（含装备 / 天赋树 / 宝石 / CharacterBase / 敌人）。
+/// Deadeye build: the full end-to-end pipeline (gear / passive tree / gems / CharacterBase / enemy).
 #[test]
 fn deadeye_e2e_full_pipeline_succeeds() {
     let build_data = load_game_data();
     let build = parse_build_from_code(DEADEYE_CODE).expect("parse deadeye build");
 
-    // 断言：生产解析器还原了装备 / 天赋树 / 宝石组。
+    // Assert: the production parser correctly reconstructs gear / passive tree / socket groups.
     assert!(
         !build.items.is_empty(),
         "expected items from deadeye build, got none"
@@ -64,7 +70,7 @@ fn deadeye_e2e_full_pipeline_succeeds() {
         !build.socket_groups.is_empty(),
         "expected socket groups from deadeye build, got none"
     );
-    // 角色身份解析正确。
+    // Character identity parses correctly.
     assert_eq!(build.character.level, 98);
     assert_eq!(build.character.class_name, "Ranger");
     assert!(build.character.ascendancy_name.contains("Deadeye"));
@@ -82,9 +88,9 @@ fn deadeye_e2e_full_pipeline_succeeds() {
     let out = calculate_with_data(&build, &build_data, &opts)
         .expect("calculate_with_data should succeed for deadeye build");
 
-    // ── 合理性断言 ──────────────────────────────────────────────────────────
-    // CharacterBase(level 98 Ranger: 28 + 12*98 + 2*7 = 1218) 来自职业属性表。
-    // 装备 / 天赋节点应进一步抬升 life。保守断言：life > CharacterBase 基础值。
+    // Sanity assertions
+    // CharacterBase (level 98 Ranger: 28 + 12*98 + 2*7 = 1218) comes from the per-class attribute table.
+    // Gear / passive nodes should push life higher still. Conservative assertion: life > CharacterBase's own value.
     let ranger_char_base_life = 28.0 + 12.0 * 98.0 + 2.0 * 7.0;
     assert!(
         out.life > ranger_char_base_life,
@@ -94,7 +100,7 @@ fn deadeye_e2e_full_pipeline_succeeds() {
     );
     assert!(out.life.is_finite(), "life must be finite");
 
-    // 有限值断言：防御字段。
+    // Finiteness assertions: defence fields.
     assert!(out.mana.is_finite(), "mana must be finite");
     assert!(out.armour.is_finite(), "armour must be finite");
     assert!(out.evasion.is_finite(), "evasion must be finite");
@@ -103,14 +109,14 @@ fn deadeye_e2e_full_pipeline_succeeds() {
         "energy_shield must be finite"
     );
 
-    // 命中率在有效口径下应在 (0, 1] 内。
+    // Under the effective convention, hit chance should be within (0, 1].
     assert!(
         out.hit_chance >= 0.0 && out.hit_chance <= 1.0,
         "hit_chance out of range: {}",
         out.hit_chance
     );
 
-    // 抗性应在合理范围内（百分比口径：最低无限制负数，最高 90 硬上限）。
+    // Resistances should be within a sane range (percent convention: no lower bound, hard cap at 90 on the top).
     for (label, res) in [
         ("fire", out.fire_resistance),
         ("cold", out.cold_resistance),
@@ -123,7 +129,7 @@ fn deadeye_e2e_full_pipeline_succeeds() {
     }
 }
 
-/// Deadeye build：分步验证各来源的贡献（基础 vs 天赋 vs 装备）。
+/// Deadeye build: verifies each source's contribution step by step (base vs passives vs gear).
 #[test]
 fn deadeye_e2e_contributions_are_additive() {
     let build_data = load_game_data();
@@ -136,12 +142,12 @@ fn deadeye_e2e_contributions_are_additive() {
         ..Default::default()
     };
 
-    // 步骤 1：仅 CharacterBase（无装备 / 无天赋）。
+    // Step 1: CharacterBase only (no gear / no passives).
     let build_base = pobr_build::Build::new().with_character(full.character.clone());
     let out_base =
         calculate_with_data(&build_base, &build_data, &base_opts).expect("base only calc");
 
-    // 步骤 2：CharacterBase + 天赋树。
+    // Step 2: CharacterBase + passive tree.
     let build_with_tree = build_base.clone().with_tree(PassiveTreeSpec {
         allocated_nodes: full.tree.allocated_nodes.clone(),
         ..Default::default()
@@ -149,10 +155,10 @@ fn deadeye_e2e_contributions_are_additive() {
     let out_with_tree =
         calculate_with_data(&build_with_tree, &build_data, &base_opts).expect("with tree calc");
 
-    // 步骤 3：完整 build（CharacterBase + 天赋树 + 装备 + 宝石）。
+    // Step 3: the full build (CharacterBase + passive tree + gear + gems).
     let out_full = calculate_with_data(&full, &build_data, &base_opts).expect("full calc");
 
-    // 断言：life 单调递增（CharacterBase ≤ +tree ≤ +items）。
+    // Assert: life increases monotonically (CharacterBase <= +tree <= +items).
     assert!(
         out_with_tree.life >= out_base.life,
         "adding passive tree should not decrease life: base={} tree={}",
@@ -167,7 +173,7 @@ fn deadeye_e2e_contributions_are_additive() {
     );
 }
 
-/// Martial Artist build：非 Ranger 职业端到端管线。
+/// Martial Artist build: end-to-end pipeline for a non-Ranger class.
 #[test]
 fn martial_artist_e2e_full_pipeline_succeeds() {
     let build_data = load_game_data();
@@ -197,7 +203,7 @@ fn martial_artist_e2e_full_pipeline_succeeds() {
     );
 }
 
-/// 确定性：相同输入两次调用结果完全一致。
+/// Determinism: two calls with identical input produce identical results.
 #[test]
 fn deadeye_e2e_is_deterministic() {
     let build_data = load_game_data();
@@ -224,7 +230,7 @@ fn deadeye_e2e_is_deterministic() {
     assert_eq!(out1.dps, out2.dps, "dps is not deterministic");
 }
 
-/// 解析确定性：同一 build code 两次解析得到等价 Build（装备槽位→基底映射 / 节点 / 宝石组）。
+/// Parse determinism: parsing the same build code twice yields equivalent Builds (item-slot->base mapping / nodes / socket groups).
 #[test]
 fn parse_build_is_deterministic() {
     let a = parse_build_from_code(DEADEYE_CODE).expect("parse a");
@@ -239,7 +245,7 @@ fn parse_build_is_deterministic() {
         "socket groups differ (slot / enabled / gem ids)"
     );
 
-    // 槽位→(基底, 词条) 映射逐项一致：证明 HashMap 遍历顺序不影响 item-slot 绑定。
+    // Slot -> (base, mods) mapping matches item-by-item: proves HashMap iteration order doesn't affect item-slot binding.
     let mapping = |build: &pobr_build::Build| -> Vec<(String, String, Vec<String>)> {
         build
             .equipped_items()
@@ -256,7 +262,7 @@ fn parse_build_is_deterministic() {
     assert_eq!(mapping(&a), mapping(&b), "slot→item mapping differs");
 }
 
-/// 有效口径 vs 面板口径：mode_effective=true 时命中率应 ≤ mode_effective=false（面板 = 100%）。
+/// Effective vs panel convention: with mode_effective=true, hit chance should be <= mode_effective=false (panel = 100%).
 #[test]
 fn deadeye_e2e_effective_dps_lower_hit_chance() {
     let build_data = load_game_data();
@@ -279,7 +285,7 @@ fn deadeye_e2e_effective_dps_lower_hit_chance() {
     let effective =
         calculate_with_data(&build, &build_data, &effective_opts).expect("effective calc");
 
-    // 面板口径命中率应 ≥ 有效口径（面板不计敌人闪避）。
+    // Panel-convention hit chance should be >= effective (panel doesn't account for enemy evasion).
     assert!(
         panel.hit_chance >= effective.hit_chance,
         "panel hit_chance ({}) should be >= effective ({})",
@@ -293,7 +299,7 @@ fn deadeye_e2e_effective_dps_lower_hit_chance() {
     );
 }
 
-/// FullDPS（M7 多技能脚手架）：遍历启用伤害技能组、各自整 build 复算后 CombinedDPS 求和。
+/// FullDPS (multi-skill scaffolding): iterates enabled damaging skill groups, recalculates the whole build per group, and sums the CombinedDPS.
 #[test]
 fn deadeye_full_dps_sums_enabled_damaging_skills() {
     let build_data = load_game_data();
@@ -311,7 +317,7 @@ fn deadeye_full_dps_sums_enabled_damaging_skills() {
     let report =
         calculate_full_dps(&build, &build_data, &opts).expect("calculate_full_dps should succeed");
 
-    // 不变式：full_dps == 各分项 CombinedDPS 求和。
+    // Invariant: full_dps == the sum of each entry's CombinedDPS.
     let sum: f64 = report.per_skill.iter().map(|s| s.combined_dps).sum();
     assert_eq!(
         report.full_dps, sum,
@@ -323,7 +329,7 @@ fn deadeye_full_dps_sums_enabled_damaging_skills() {
         report.full_dps
     );
 
-    // 每个分项：启用组、CombinedDPS>0、索引有效。
+    // Each entry: comes from an enabled group, has CombinedDPS>0, and has a valid index.
     for s in &report.per_skill {
         assert!(
             s.combined_dps > 0.0,
@@ -339,7 +345,7 @@ fn deadeye_full_dps_sums_enabled_damaging_skills() {
         );
     }
 
-    // primary 主技能的 DPS 贡献被计入（其有伤害且组启用时）→ full_dps ≥ primary CombinedDPS。
+    // The primary skill's DPS contribution is included (when it deals damage and its group is enabled) -> full_dps >= primary CombinedDPS.
     if report.primary.combined_dps > 0.0 {
         assert!(
             report.full_dps >= report.primary.combined_dps - 1e-6,
@@ -349,7 +355,7 @@ fn deadeye_full_dps_sums_enabled_damaging_skills() {
         );
     }
 
-    // 确定性：两次调用结果一致。
+    // Determinism: two calls give the same result.
     let report2 = calculate_full_dps(&build, &build_data, &opts).expect("second full_dps calc");
     assert_eq!(report.full_dps, report2.full_dps, "full_dps 非确定性");
     assert_eq!(

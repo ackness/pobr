@@ -1,15 +1,19 @@
-//! 受限模板 DSL 的 **schema 类型**（架构文档 20 §5 / 00-index 裁决 §4-1）。
+//! **Schema types** for the restricted template DSL.
 //!
-//! 全项目唯一的受限占位符语言：config effects（M3）/ special_mods（M5b）/
-//! parser 模板（M6）共用同一套表达式与谓词类型；**求值器唯一实现**在
-//! `pobr-core/src/rules/value_expr.rs`（禁三套方言）。本模块零逻辑，
-//! 仅承载 serde 形状。
+//! The one restricted placeholder language used project-wide: config
+//! effects / special_mods / parser templates all share the same expression
+//! and predicate types; the **single evaluator implementation** lives in
+//! `pobr-core/src/rules/value_expr.rs` (no three dialects). This module has
+//! zero logic, it only carries the serde shape.
 //!
-//! 硬边界（写入 review checklist，扩展闸门 = 新能力须 ≥20 条目受益）：
-//! - 允许：数值占位（input）、字面量、`negate / clamp(min,max) / div / mult /
-//!   base` 五种算子、`target(player|enemy|minion)`、受限谓词
-//!   （字段引用 + `eq/ne/gt/lt(+ge/le)` + `and/or`）；
-//! - 禁止：循环、递归、自由表达式、跨条目引用、字符串拼接求值。
+//! Hard limits (written into the review checklist; the extension gate: a
+//! new capability needs ≥20 entries to benefit from it):
+//! - Allowed: a numeric placeholder (input), literals, the five operators
+//!   `negate / clamp(min,max) / div / mult / base`,
+//!   `target(player|enemy|minion)`, restricted predicates (field
+//!   references + `eq/ne/gt/lt(+ge/le)` + `and/or`);
+//! - Forbidden: loops, recursion, free-form expressions, cross-entry
+//!   references, runtime string concatenation.
 
 use serde::{Deserialize, Serialize};
 
@@ -27,56 +31,58 @@ fn is_zero(value: &f64) -> bool {
     *value == 0.0
 }
 
-/// 数值表达式（五算子受限闭集）。
+/// A numeric expression (a restricted closed set of five operators).
 ///
-/// `Input` 把 `mult / div / base` 三个线性算子合并为标准形
-/// `input × mult ÷ div + base`；`Negate` / `Clamp` 为单层包装算子。
-/// 不存在循环 / 递归 / 跨条目引用的表达能力（架构 §5）。
+/// `Input` folds the three linear operators `mult / div / base` into the
+/// canonical form `input × mult ÷ div + base`; `Negate` / `Clamp` are
+/// single-layer wrapping operators. There's no way to express loops /
+/// recursion / cross-entry references (architecture doc §5).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ValueExpr {
-    /// 字面量。
+    /// A literal.
     Literal {
-        /// 字面值。
+        /// The literal value.
         value: f64,
     },
-    /// 输入线性组合：`input × mult ÷ div + base`。
+    /// A linear combination of the input: `input × mult ÷ div + base`.
     Input {
-        /// 乘数（缺省 1）。
+        /// Multiplier (default 1).
         #[serde(default = "one", skip_serializing_if = "is_one")]
         mult: f64,
-        /// 除数（缺省 1）。
+        /// Divisor (default 1).
         #[serde(default = "one", skip_serializing_if = "is_one")]
         div: f64,
-        /// 加数（缺省 0）。
+        /// Addend (default 0).
         #[serde(default, skip_serializing_if = "is_zero")]
         base: f64,
     },
-    /// 取负：`-inner`。
+    /// Negation: `-inner`.
     Negate {
-        /// 被取负的内层表达式。
+        /// The inner expression being negated.
         inner: Box<ValueExpr>,
     },
-    /// 上下界截断：`clamp(inner, min, max)`（任一界可缺省）。
+    /// Clamping to bounds: `clamp(inner, min, max)` (either bound may be absent).
     Clamp {
-        /// 下界（缺省无下界）。
+        /// Lower bound (absent = no lower bound).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         min: Option<f64>,
-        /// 上界（缺省无上界）。
+        /// Upper bound (absent = no upper bound).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         max: Option<f64>,
-        /// 被截断的内层表达式。
+        /// The inner expression being clamped.
         inner: Box<ValueExpr>,
     },
 }
 
 impl ValueExpr {
-    /// 字面量便捷构造。
+    /// Convenience constructor for a literal.
     pub fn literal(value: f64) -> Self {
         Self::Literal { value }
     }
 
-    /// 恒等输入（`input × 1 ÷ 1 + 0`）便捷构造。
+    /// Convenience constructor for the identity input
+    /// (`input × 1 ÷ 1 + 0`).
     pub fn input() -> Self {
         Self::Input {
             mult: 1.0,
@@ -86,62 +92,66 @@ impl ValueExpr {
     }
 }
 
-/// 受限谓词的比较算子（架构 §5：`eq/ne/gt/lt` 族）。
+/// Comparison operators for a restricted predicate (architecture doc §5:
+/// the `eq/ne/gt/lt` family).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CmpOp {
-    /// 等于。
+    /// Equal.
     Eq,
-    /// 不等于。
+    /// Not equal.
     Ne,
-    /// 大于。
+    /// Greater than.
     Gt,
-    /// 大于等于。
+    /// Greater than or equal.
     Ge,
-    /// 小于。
+    /// Less than.
     Lt,
-    /// 小于等于。
+    /// Less than or equal.
     Le,
 }
 
-/// 谓词字段引用（受限闭集）。
+/// A field reference for a predicate (a restricted closed set).
 ///
-/// M3 仅 `input`（config 条目单输入）；M5b enums / M6 `:cap` 等扩展按
-/// 00-index 裁决 §4 走本模块单点演化，禁止旁路新建字段引用形态。
+/// Only `input` (a config entry's single input) exists so far; extensions
+/// like enums / `:cap` evolve this module in one place per decision §4 —
+/// creating a new field-reference shape elsewhere is not allowed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FieldRef {
-    /// 条目输入值。
+    /// The entry's input value.
     Input,
 }
 
-/// 受限谓词：字段引用 + 比较 + `and/or` 组合（无递归自由组合之外的能力）。
+/// A restricted predicate: a field reference + comparison + `and/or`
+/// combination (no expressive power beyond this recursive-but-bounded
+/// combination).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Predicate {
-    /// 单比较：`on <op> rhs`。
+    /// A single comparison: `on <op> rhs`.
     Cmp {
-        /// 被比较的字段。
+        /// The field being compared.
         on: FieldRef,
-        /// 比较算子。
+        /// The comparison operator.
         op: CmpOp,
-        /// 右值（字面量；禁字段间比较）。
+        /// The right-hand side (a literal; comparing two fields is forbidden).
         rhs: f64,
     },
-    /// 合取：全部成立。
+    /// Conjunction: all must hold.
     And {
-        /// 子谓词列表。
+        /// The sub-predicates.
         all: Vec<Predicate>,
     },
-    /// 析取：任一成立。
+    /// Disjunction: any may hold.
     Or {
-        /// 子谓词列表。
+        /// The sub-predicates.
         any: Vec<Predicate>,
     },
 }
 
 impl Predicate {
-    /// `input > rhs` 便捷构造（emit_if 最常见形态）。
+    /// Convenience constructor for `input > rhs` (the most common emit_if shape).
     pub fn input_gt(rhs: f64) -> Self {
         Self::Cmp {
             on: FieldRef::Input,
@@ -151,58 +161,65 @@ impl Predicate {
     }
 }
 
-/// 效果写入目标 actor（`target(player|enemy|minion)`）。
+/// The actor an effect writes to (`target(player|enemy|minion)`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EffectTarget {
-    /// 玩家 modDB。
+    /// The player's modDB.
     Player,
-    /// 敌人 modDB。
+    /// The enemy's modDB.
     Enemy,
-    /// 召唤物 modDB。
+    /// A minion's modDB.
     Minion,
 }
 
-/// 受限 tag 白名单（对应 PoB2 mod tag 的可数据化子集）。
+/// The restricted tag whitelist (the data-representable subset of PoB2's
+/// mod tags).
 ///
-/// 白名单外的 tag 形态（`SkillType`/`GlobalEffect`/带额外字段等）一律在
-/// 抽取侧降级为 `handler_id` 条目，不进数据（架构 §5「白名单外字段 →
-/// 本条目标记 handler_id」）。
+/// Tag shapes outside the whitelist (`SkillType`/`GlobalEffect`/ones with
+/// extra fields, etc.) are always downgraded to a `handler_id` entry at
+/// extraction time and don't enter the data (architecture doc §5: "a field
+/// outside the whitelist → mark this entry with handler_id").
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum EffectTag {
-    /// 条件 tag（PoB2 `{ type = "Condition", var, neg }`）。
+    /// A condition tag (PoB2's `{ type = "Condition", var, neg }`).
     Condition {
-        /// 条件名。
+        /// Condition name.
         var: String,
-        /// 取反（`neg = true` 时条件不成立才生效）。
+        /// Negation (`neg = true` means it applies when the condition does
+        /// NOT hold).
         #[serde(default, skip_serializing_if = "std::ops::Not::not")]
         neg: bool,
     },
-    /// 倍率 tag（PoB2 `{ type = "Multiplier", var, div, limit, actor }`）。
+    /// A multiplier tag (PoB2's
+    /// `{ type = "Multiplier", var, div, limit, actor }`).
     Multiplier {
-        /// 倍率变量名。
+        /// Multiplier variable name.
         var: String,
-        /// 除数（缺省 1）。
+        /// Divisor (default 1).
         #[serde(default = "one", skip_serializing_if = "is_one")]
         div: f64,
-        /// 倍率上限（缺省无上限）。
+        /// Multiplier cap (absent = no cap).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         limit: Option<f64>,
-        /// actor 维度（M3-T5-E1 接通求值；数据先忠实转录）。
+        /// The actor dimension (wired up for evaluation later; the data is
+        /// transcribed faithfully for now).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         actor: Option<String>,
     },
-    /// 跨 actor 条件 tag（PoB2 `{ type = "ActorCondition", actor, var, neg }`）。
+    /// A cross-actor condition tag (PoB2's
+    /// `{ type = "ActorCondition", actor, var, neg }`).
     ///
-    /// pobr `ModTag` 当前无 actor 维度（M3-T5-E1 落地）；数据忠实转录，
-    /// 消费侧未接通前把携带本 tag 的 mod 记入 diagnostics 跳过。
+    /// pobr's `ModTag` currently has no actor dimension; the data is
+    /// transcribed faithfully, and until the consumer wires it up, any mod
+    /// carrying this tag is recorded in diagnostics and skipped.
     ActorCondition {
-        /// 目标 actor（`enemy`/`parent` 等 vendor 字面量）。
+        /// Target actor (vendor literals like `enemy`/`parent`).
         actor: String,
-        /// 条件名。
+        /// Condition name.
         var: String,
-        /// 取反。
+        /// Negation.
         #[serde(default, skip_serializing_if = "std::ops::Not::not")]
         neg: bool,
     },
@@ -212,7 +229,8 @@ pub enum EffectTag {
 mod tests {
     use super::*;
 
-    /// ValueExpr 各变体 serde 往返：缺省字段不落盘、可逆。
+    /// serde round-trip for every `ValueExpr` variant: default fields
+    /// aren't serialized, and the round trip is lossless.
     #[test]
     fn value_expr_serde_round_trip() {
         let exprs = vec![
@@ -239,14 +257,15 @@ mod tests {
         }
     }
 
-    /// 恒等输入序列化后只有 kind（mult/div/base 全缺省跳过）。
+    /// The identity input serializes to just its kind (mult/div/base all
+    /// default and get skipped).
     #[test]
     fn identity_input_serializes_minimal() {
         let json = serde_json::to_string(&ValueExpr::input()).unwrap();
         assert_eq!(json, r#"{"kind":"input"}"#);
     }
 
-    /// 谓词 serde 往返 + 嵌套 and/or。
+    /// Predicate serde round-trip, including nested and/or.
     #[test]
     fn predicate_serde_round_trip() {
         let pred = Predicate::And {
@@ -266,7 +285,8 @@ mod tests {
         assert_eq!(back, pred);
     }
 
-    /// EffectTag 白名单变体 serde 往返；Condition 缺省 neg 不落盘。
+    /// serde round-trip for the EffectTag whitelist variants; Condition's
+    /// default `neg` isn't serialized.
     #[test]
     fn effect_tag_serde_round_trip() {
         let cond = EffectTag::Condition {
@@ -287,7 +307,7 @@ mod tests {
         assert_eq!(back, mult);
     }
 
-    /// EffectTarget 序列化为 snake_case 字面量。
+    /// EffectTarget serializes to a snake_case literal.
     #[test]
     fn effect_target_snake_case() {
         assert_eq!(

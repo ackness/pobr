@@ -1,7 +1,8 @@
-//! Lane 2 防御扩展测试：ES 充能、规避几率、承受伤害乘数、暴击额外伤害减免。
+//! Lane 2 defence extension tests: ES recharge, avoidance chances, damage-taken multipliers,
+//! and crit extra damage reduction.
 //!
-//! 出处：agent-docs/energy-shield.md、active-defences.md、recovery-charges-buffs.md（PoE2 0.5.0）；
-//!       PoB2 `src/Modules/CalcDefence.lua`、`src/Data/Misc.lua`。
+//! Sources: agent-docs/energy-shield.md, active-defences.md, recovery-charges-buffs.md (PoE2 0.5.0);
+//!          PoB2 `src/Modules/CalcDefence.lua`, `src/Data/Misc.lua`.
 
 use pobr_core::calc::defence::{
     ANY_TAKEN_REFLECT_ENABLED, AVOID_AILMENT_CAP, AVOID_HIT_CAP, CritExtraReduction, EsRecharge,
@@ -12,12 +13,10 @@ use pobr_core::calc::defence::{
 use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
 
-// ─────────────────────────────────────────────────────────────────
-// ES 充能测试（gap: es-recharge-missing）
-// ─────────────────────────────────────────────────────────────────
+// ES recharge tests (gap: es-recharge-missing)
 
 /// PoB2 Misc.lua: `character_inherent_energy_shield_recharge_rate_per_minute_% = 750`
-/// → 12.5%/s。
+/// → 12.5%/s.
 #[test]
 fn es_recharge_default_rate_is_12_5_pct_per_second() {
     let db = ModDb::new();
@@ -32,7 +31,7 @@ fn es_recharge_default_rate_is_12_5_pct_per_second() {
     );
 }
 
-/// 默认充能延迟 4 秒（PoB2 CalcDefence.lua 确认）。
+/// Default recharge delay is 4 seconds (confirmed against PoB2 CalcDefence.lua).
 #[test]
 fn es_recharge_default_delay_is_4_seconds() {
     let db = ModDb::new();
@@ -45,8 +44,8 @@ fn es_recharge_default_delay_is_4_seconds() {
     );
 }
 
-/// `EnergyShieldRechargeRate` INC 词条提升速率。
-/// +100% INC → 速率翻倍（0.25/s）。
+/// `EnergyShieldRechargeRate` INC mods raise the recharge rate.
+/// +100% INC → rate doubles (0.25/s).
 #[test]
 fn es_recharge_rate_scales_with_inc_modifier() {
     let mut db = ModDb::new();
@@ -66,8 +65,8 @@ fn es_recharge_rate_scales_with_inc_modifier() {
     );
 }
 
-/// PoB2 CalcDefence.lua:1762-1763：**INC** `EnergyShieldRechargeFaster` 缩短延迟（分母）。
-/// delay = (4 + Sum(BASE)) / (1 + Sum(INC)/100) = 4 / (1 + 100/100) = 2.0s。
+/// PoB2 CalcDefence.lua:1762-1763: **INC** `EnergyShieldRechargeFaster` shortens the delay (denominator).
+/// delay = (4 + Sum(BASE)) / (1 + Sum(INC)/100) = 4 / (1 + 100/100) = 2.0s.
 #[test]
 fn es_recharge_delay_halved_with_faster_inc_100pct() {
     let mut db = ModDb::new();
@@ -81,8 +80,9 @@ fn es_recharge_delay_halved_with_faster_inc_100pct() {
     assert_eq!(result.delay_seconds, 2.0, "100% INC faster → delay 2s");
 }
 
-/// BASE `EnergyShieldRechargeFaster` 是「秒」，加到分子（4 + base），不缩放分母。
-/// delay = (4 + 2) / (1 + 0) = 6.0s。
+/// BASE `EnergyShieldRechargeFaster` is in seconds and adds to the numerator (4 + base);
+/// it does not scale the denominator.
+/// delay = (4 + 2) / (1 + 0) = 6.0s.
 #[test]
 fn es_recharge_delay_base_adds_seconds_to_numerator() {
     let mut db = ModDb::new();
@@ -96,7 +96,7 @@ fn es_recharge_delay_base_adds_seconds_to_numerator() {
     assert_eq!(result.delay_seconds, 6.0, "+2s BASE → delay 6s (4+2)");
 }
 
-/// Override('EnergyShieldRechargeBase') 直接替换基础，再除 INC：1.0 / (1+100/100) = 0.5s。
+/// Override('EnergyShieldRechargeBase') replaces the base directly, then divides by INC: 1.0 / (1+100/100) = 0.5s.
 #[test]
 fn es_recharge_delay_respects_override_base() {
     let mut db = ModDb::new();
@@ -115,7 +115,7 @@ fn es_recharge_delay_respects_override_base() {
     assert_eq!(result.delay_seconds, 0.5, "override base 1.0s / 2 = 0.5s");
 }
 
-/// ZealotsOath：ES 由再生驱动，充能禁用（rate_fraction = 0）。
+/// ZealotsOath: ES is driven by regen instead, so recharge is disabled (rate_fraction = 0).
 #[test]
 fn es_recharge_disabled_by_zealots_oath() {
     let db = ModDb::new();
@@ -128,7 +128,7 @@ fn es_recharge_disabled_by_zealots_oath() {
     );
 }
 
-/// ES 为 0 时无充能（rate = 0）。
+/// No recharge when ES is 0 (rate = 0).
 #[test]
 fn es_recharge_zero_when_no_energy_shield() {
     let db = ModDb::new();
@@ -138,7 +138,7 @@ fn es_recharge_zero_when_no_energy_shield() {
     assert_eq!(result.rate_fraction, 0.0);
 }
 
-/// es_recharge_per_second：1000 ES × 12.5%/s = 125/s。
+/// es_recharge_per_second: 1000 ES × 12.5%/s = 125/s.
 #[test]
 fn es_recharge_per_second_gives_absolute_value() {
     let recharge = EsRecharge {
@@ -148,11 +148,9 @@ fn es_recharge_per_second_gives_absolute_value() {
     assert_eq!(es_recharge_per_second(&recharge, 1000.0), 125.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
-// 规避（Avoidance）测试（gap: avoidance-ailment-missing）
-// ─────────────────────────────────────────────────────────────────
+// Avoidance tests (gap: avoidance-ailment-missing)
 
-/// 无词条 → 全部规避几率为 0（眩晕除外：ES > totalTakenHit 时 = 50%）。
+/// No mods → every avoidance chance is 0 (except stun: 50% when ES > totalTakenHit).
 #[test]
 fn avoidance_all_zero_without_modifiers_no_es() {
     let db = ModDb::new();
@@ -166,16 +164,16 @@ fn avoidance_all_zero_without_modifiers_no_es() {
     assert_eq!(result.avoid_freeze, 0.0);
     assert_eq!(result.avoid_poison, 0.0);
     assert_eq!(result.avoid_bleeding, 0.0);
-    // 无 ES 时眩晕规避 = 0
+    // Stun avoidance = 0 when there's no ES
     assert_eq!(result.avoid_stun, 0.0);
 }
 
-/// ES > totalTakenHit（且非 EB）→ 眩晕规避隐式 50%（PoB2 CalcDefence.lua:2554-2557）。
+/// ES > totalTakenHit (and not Eldritch Battery) → implicit 50% stun avoidance (PoB2 CalcDefence.lua:2554-2557).
 #[test]
 fn avoidance_stun_50pct_implicit_when_es_present() {
     let db = ModDb::new();
     let cfg = CalcConfig::default();
-    // M2-E2（CalcDefence.lua:2554-2557）：减半条件 = ES > totalTakenHit 且非 EB。
+    // (CalcDefence.lua:2554-2557): the halving condition is ES > totalTakenHit and not EB.
     let result = calc_avoidance(&db, &cfg, 500.0 /* ES > takenHit */, 100.0, false);
 
     // notAvoidChance = 100; with ES → notAvoidChance *= 0.5 = 50; effectiveAvoid = 50%
@@ -185,7 +183,7 @@ fn avoidance_stun_50pct_implicit_when_es_present() {
     );
 }
 
-/// AvoidStun 词条 70% + ES > totalTakenHit（隐式减半应用于 notAvoidChance）。
+/// AvoidStun mod at 70% + ES > totalTakenHit (the implicit halving applies to notAvoidChance).
 /// notAvoidChance = 100 - 70 = 30; × 0.5 = 15; effectiveAvoid = 85%.
 #[test]
 fn avoidance_stun_combines_explicit_mod_and_es_implicit() {
@@ -198,7 +196,7 @@ fn avoidance_stun_combines_explicit_mod_and_es_implicit() {
     assert_eq!(result.avoid_stun, 85.0);
 }
 
-/// AvoidAllDamageFromHitsChance 上限 75%（AVOID_HIT_CAP）。
+/// AvoidAllDamageFromHitsChance is capped at 75% (AVOID_HIT_CAP).
 #[test]
 fn avoidance_all_damage_capped_at_75() {
     let mut db = ModDb::new();
@@ -213,7 +211,7 @@ fn avoidance_all_damage_capped_at_75() {
     assert_eq!(result.avoid_all_damage_from_hits, AVOID_HIT_CAP);
 }
 
-/// 异常规避（点燃）上限 100%（AVOID_AILMENT_CAP）。
+/// Ailment avoidance (ignite) is capped at 100% (AVOID_AILMENT_CAP).
 #[test]
 fn avoidance_ailment_capped_at_100() {
     let mut db = ModDb::new();
@@ -224,7 +222,7 @@ fn avoidance_ailment_capped_at_100() {
     assert_eq!(result.avoid_ignite, AVOID_AILMENT_CAP);
 }
 
-/// `IgniteImmune` 旗标 → 直接置 100%。
+/// `IgniteImmune` flag → sets avoidance directly to 100%.
 #[test]
 fn avoidance_immune_flag_sets_100() {
     let mut db = ModDb::new();
@@ -235,7 +233,7 @@ fn avoidance_immune_flag_sets_100() {
     assert_eq!(result.avoid_ignite, 100.0);
 }
 
-/// `ElementalAilmentImmune` → 点燃/感电/冰缓/冰冻全部置 100%。
+/// `ElementalAilmentImmune` → sets ignite/shock/chill/freeze avoidance all to 100%.
 #[test]
 fn avoidance_elemental_immune_covers_all_elemental_ailments() {
     let mut db = ModDb::new();
@@ -249,8 +247,8 @@ fn avoidance_elemental_immune_covers_all_elemental_ailments() {
     assert_eq!(result.avoid_freeze, 100.0);
 }
 
-/// `ShockAvoidAppliesToElementalAilments`（Stormshroud）联动：
-/// 感电规避 50% 也作用于点燃/冰缓/冰冻。
+/// `ShockAvoidAppliesToElementalAilments` (Stormshroud) interaction:
+/// 50% shock avoidance also applies to ignite/chill/freeze.
 #[test]
 fn avoidance_stormshroud_shock_applies_to_elemental_ailments() {
     let mut db = ModDb::new();
@@ -260,17 +258,15 @@ fn avoidance_stormshroud_shock_applies_to_elemental_ailments() {
     let result = calc_avoidance(&db, &cfg, 0.0, 0.0, false);
 
     assert_eq!(result.avoid_shock, 50.0);
-    // 点燃 = AvoidIgnite(0) + AvoidElementalAilments(0) + shock_avoid_raw(50) = 50%
+    // ignite = AvoidIgnite(0) + AvoidElementalAilments(0) + shock_avoid_raw(50) = 50%
     assert_eq!(result.avoid_ignite, 50.0);
     assert_eq!(result.avoid_chill, 50.0);
     assert_eq!(result.avoid_freeze, 50.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
-// 承受伤害乘数（Taken multiplier）测试（gap: ehp-no-taken-multiplier）
-// ─────────────────────────────────────────────────────────────────
+// Taken-damage multiplier tests (gap: ehp-no-taken-multiplier)
 
-/// 无词条 → 承受乘数 = 1.0（基准）。
+/// No mods → taken multiplier = 1.0 (baseline).
 #[test]
 fn taken_mult_default_is_1() {
     let db = ModDb::new();
@@ -283,7 +279,7 @@ fn taken_mult_default_is_1() {
     assert_eq!(taken_mult_for_type(&db, &cfg, DamageType::Chaos), 1.0);
 }
 
-/// `DamageTaken` INC −20（Fortify 等效）→ 乘数 0.8。
+/// `DamageTaken` INC −20 (equivalent to Fortify) → multiplier 0.8.
 #[test]
 fn taken_mult_reduced_by_inc_modifier() {
     let mut db = ModDb::new();
@@ -298,7 +294,7 @@ fn taken_mult_reduced_by_inc_modifier() {
     );
 }
 
-/// `PhysicalDamageTakenWhenHit` INC 仅影响物理，不影响火焰。
+/// `PhysicalDamageTakenWhenHit` INC only affects physical, not fire.
 #[test]
 fn taken_mult_type_specific_mod_only_affects_that_type() {
     let mut db = ModDb::new();
@@ -319,7 +315,7 @@ fn taken_mult_type_specific_mod_only_affects_that_type() {
     assert_eq!(fire, 1.0, "fire mult should be unaffected");
 }
 
-/// `ElementalDamageTaken` INC 应作用于火/冰/电但不影响混沌。
+/// `ElementalDamageTaken` INC should apply to fire/cold/lightning but not chaos.
 #[test]
 fn taken_mult_elemental_mod_applies_to_elemental_types_only() {
     let mut db = ModDb::new();
@@ -340,7 +336,7 @@ fn taken_mult_elemental_mod_applies_to_elemental_types_only() {
     );
 }
 
-/// OverTime 版本：`DamageTakenOverTime` INC 仅影响 OverTime 乘数，不影响 WhenHit。
+/// OverTime variant: `DamageTakenOverTime` INC only affects the OverTime multiplier, not WhenHit.
 #[test]
 fn taken_mult_over_time_independent_from_when_hit() {
     let mut db = ModDb::new();
@@ -357,12 +353,12 @@ fn taken_mult_over_time_independent_from_when_hit() {
     assert_eq!(hit, 1.0, "WhenHit should be unaffected by OverTime mod");
 }
 
-/// MORE 词条（Fortify 实际注入 DamageTakenWhenHit MORE −10 per stack）。
-/// 10 stacks of Fortify = DamageTakenWhenHit MORE −10 → mult = 0.9。
+/// MORE mod (Fortify actually injects DamageTakenWhenHit MORE −10 per stack).
+/// 10 stacks of Fortify = DamageTakenWhenHit MORE −10 → mult = 0.9.
 #[test]
 fn taken_mult_more_modifier_multiplies_correctly() {
     let mut db = ModDb::new();
-    // MORE = -10 意味着 × (1 + -10/100) = × 0.9
+    // MORE = -10 means × (1 + -10/100) = × 0.9
     db.add_mod(Modifier::number("DamageTakenWhenHit", ModType::More, -10.0));
     let cfg = CalcConfig::default();
 
@@ -373,7 +369,7 @@ fn taken_mult_more_modifier_multiplies_correctly() {
     );
 }
 
-/// calc_taken_multi_suite：套件中各类型独立。
+/// calc_taken_multi_suite: each type in the suite is independent.
 #[test]
 fn taken_multi_suite_type_independent() {
     let mut db = ModDb::new();
@@ -391,11 +387,9 @@ fn taken_multi_suite_type_independent() {
     assert_eq!(suite.chaos_when_hit, 1.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
-// 暴击额外伤害减免（gap: crit-extra-damage-reduction-missing）
-// ─────────────────────────────────────────────────────────────────
+// Crit extra damage reduction tests (gap: crit-extra-damage-reduction-missing)
 
-/// 无词条 → reduction_pct = 0，EnemyCritEffect = 完整爆伤乘数。
+/// No mods → reduction_pct = 0, EnemyCritEffect = the full crit damage multiplier.
 #[test]
 fn crit_extra_reduction_default_zero() {
     let db = ModDb::new();
@@ -405,8 +399,8 @@ fn crit_extra_reduction_default_zero() {
     assert_eq!(result.reduction_pct, 0.0);
 }
 
-/// 50% ReduceCritExtraDamage + 敌人 50% 暴击几率 + 100% 爆伤加成：
-/// PoB2 公式：EnemyCritEffect = 1 + 0.5 * (100/100) * (1 − 50/100) = 1 + 0.5 * 0.5 = 1.25。
+/// 50% ReduceCritExtraDamage + enemy 50% crit chance + 100% crit damage bonus:
+/// PoB2 formula: EnemyCritEffect = 1 + 0.5 * (100/100) * (1 − 50/100) = 1 + 0.5 * 0.5 = 1.25.
 #[test]
 fn enemy_crit_effect_with_50pct_reduction() {
     let mut db = ModDb::new();
@@ -428,7 +422,7 @@ fn enemy_crit_effect_with_50pct_reduction() {
     );
 }
 
-/// 100% 减免 → EnemyCritEffect = 1.0（不承受暴击额外伤害）。
+/// 100% reduction → EnemyCritEffect = 1.0 (no extra crit damage taken).
 #[test]
 fn enemy_crit_effect_100pct_reduction_equals_no_extra() {
     let reduction = CritExtraReduction {
@@ -442,7 +436,7 @@ fn enemy_crit_effect_100pct_reduction_equals_no_extra() {
     );
 }
 
-/// 上限：ReduceCritExtraDamage 不能超过 100%（钳到 100）。
+/// Cap: ReduceCritExtraDamage cannot exceed 100% (clamped to 100).
 #[test]
 fn crit_extra_reduction_capped_at_100() {
     let mut db = ModDb::new();
@@ -457,7 +451,7 @@ fn crit_extra_reduction_capped_at_100() {
     assert_eq!(result.reduction_pct, 100.0);
 }
 
-/// 无暴击时 EnemyCritEffect = 1.0（enemy_crit_chance = 0）。
+/// EnemyCritEffect = 1.0 when there's no crit (enemy_crit_chance = 0).
 #[test]
 fn enemy_crit_effect_no_crit_chance_returns_1() {
     let reduction = CritExtraReduction { reduction_pct: 0.0 };
@@ -466,12 +460,10 @@ fn enemy_crit_effect_no_crit_chance_returns_1() {
     assert_eq!(effect, 1.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Attack/Spell takenMult 上下文 + 反射 defer（finding 06-06）
-// PoB2 CalcDefence.lua L2265-2269（hitSourceList={"Attack","Spell"}）。
-// ─────────────────────────────────────────────────────────────────
+// Attack/Spell takenMult context + reflect deferral (finding 06-06)
+// PoB2 CalcDefence.lua L2265-2269 (hitSourceList={"Attack","Spell"}).
 
-/// `source=None` 与 [`taken_mult_for_type`] 等价（基础 hit 口径，无 Attack/Spell 层）。
+/// `source=None` is equivalent to [`taken_mult_for_type`] (the base hit semantics, without an Attack/Spell layer).
 #[test]
 fn taken_mult_with_source_none_equals_base() {
     let mut db = ModDb::new();
@@ -483,7 +475,7 @@ fn taken_mult_with_source_none_equals_base() {
     assert!((base - none).abs() < 1e-9);
 }
 
-/// `AttackDamageTaken` 仅在 Attack 上下文叠加，Spell/None 不读。
+/// `AttackDamageTaken` only stacks in the Attack context; Spell/None don't read it.
 #[test]
 fn attack_damage_taken_only_in_attack_context() {
     let mut db = ModDb::new();
@@ -504,7 +496,7 @@ fn attack_damage_taken_only_in_attack_context() {
     assert_eq!(none, 1.0, "基础 hit 口径不读 AttackDamageTaken");
 }
 
-/// `SpellDamageTaken` 仅在 Spell 上下文叠加。
+/// `SpellDamageTaken` only stacks in the Spell context.
 #[test]
 fn spell_damage_taken_only_in_spell_context() {
     let mut db = ModDb::new();
@@ -523,8 +515,8 @@ fn spell_damage_taken_only_in_spell_context() {
     assert_eq!(attack, 1.0, "Attack 上下文不读 SpellDamageTaken");
 }
 
-/// base + WhenHit + Attack 层叠加：DamageTaken+10、PhysicalDamageTakenWhenHit+10、
-/// AttackDamageTaken+10 → (1 + 0.30) = 1.30（同一 INC 加法桶）。
+/// base + WhenHit + Attack layers stack: DamageTaken+10, PhysicalDamageTakenWhenHit+10,
+/// AttackDamageTaken+10 → (1 + 0.30) = 1.30 (same INC additive bucket).
 #[test]
 fn attack_context_stacks_with_base_and_when_hit() {
     let mut db = ModDb::new();
@@ -545,8 +537,8 @@ fn attack_context_stacks_with_base_and_when_hit() {
     );
 }
 
-/// PoB2 default（"Average"）= (Attack 层 + Spell 层) / 2。
-/// AttackDamageTaken+40 → Attack=1.4，Spell=1.0 → 默认 1.2。
+/// PoB2 default ("Average") = (Attack layer + Spell layer) / 2.
+/// AttackDamageTaken+40 → Attack=1.4, Spell=1.0 → default 1.2.
 #[test]
 fn taken_mult_default_is_average_of_attack_and_spell() {
     let mut db = ModDb::new();
@@ -560,7 +552,7 @@ fn taken_mult_default_is_average_of_attack_and_spell() {
     );
 }
 
-/// 无 Attack/Spell 词条时 default 退化为基础 hit 口径（对现有回归保持一致）。
+/// Without Attack/Spell mods, default degenerates to the base hit semantics (kept consistent with existing regressions).
 #[test]
 fn taken_mult_default_degenerates_to_base_without_source_mods() {
     let mut db = ModDb::new();
@@ -588,10 +580,10 @@ fn taken_mult_default_degenerates_to_base_without_source_mods() {
     }
 }
 
-/// 反射 takenMult 当前 defer（PoB2 自身 AnyTakenReflect 写死 false）。
+/// Reflect takenMult is currently deferred (PoB2 itself hardcodes AnyTakenReflect to false).
 #[test]
 fn any_taken_reflect_is_deferred_false() {
-    // 把 const 读进运行时变量，避免对编译期常量做平凡断言（clippy::assertions_on_constants）。
+    // Read the const into a runtime variable to avoid a trivial assertion on a compile-time constant (clippy::assertions_on_constants).
     let enabled = std::hint::black_box(ANY_TAKEN_REFLECT_ENABLED);
     assert!(!enabled, "反射受伤链 defer，与 PoB2 当前行为一致");
 }

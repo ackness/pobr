@@ -1,7 +1,8 @@
-//! lint-i18n：语言包完整性检查工具。
+//! lint-i18n: language bundle completeness checker.
 //!
-//! 打印每个非 canonical 语言相对 `en-US` 的缺失/多余 key 报告。发现 canonical
-//! 没有的多余 key 时以非零退出（缺失 key 仅作 warning）。
+//! Prints a missing/extra key report for each non-canonical language against
+//! `en-US`. Exits non-zero when a language has keys canonical doesn't
+//! (missing keys are only a warning).
 
 use std::process::ExitCode;
 

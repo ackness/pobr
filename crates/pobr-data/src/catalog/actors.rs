@@ -1,192 +1,224 @@
-//! 召唤物 / 魂灵（spectre）overlay 域 schema（`overlay/minions.json` /
-//! `overlay/spectres.json` / `overlay/granted_effect_minions.json`）。
+//! Minion / spectre overlay domain schema (`overlay/minions.json` /
+//! `overlay/spectres.json` / `overlay/granted_effect_minions.json`).
 //!
-//! 数据来源（M5a 蓝图 §1 路线 B 裁决）：vendor PoB2 `Data/Minions.lua`（32 条）/
-//! `Data/Spectres.lua`（593 条）——两文件头部自注 "automatically generated"，本身
-//! 即 `.dat` 的确定性投影、PoB2 计算引擎的实际输入；由
-//! `sync-pob-catalog extract-lua --what minions|spectres` 在最小 stub 环境用
-//! luajit 执行后逐字段忠实抽取（schema 标识 `minions/v1` / `spectres/v1`）。
-//! 物理层归 `overlay/`（00-index §4.2 裁决 1：生产工具定层——extract-lua 产物
-//! 落 overlay，后续 pipeline 补齐 `.dat` 表则迁 base，迁移 commit byte 等价）。
+//! Data source: vendor PoB2 `Data/Minions.lua` (32 entries) /
+//! `Data/Spectres.lua` (593 entries) — both files are headed
+//! "automatically generated" and are themselves a deterministic projection
+//! of the `.dat` files, the actual input to PoB2's calc engine; faithfully
+//! extracted field by field by `sync-pob-catalog extract-lua --what
+//! minions|spectres` running under luajit in a minimal stub environment
+//! (schema id `minions/v1` / `spectres/v1`). Physically they live under
+//! `overlay/` (decision 1: production tooling owns the layer — extract-lua
+//! output goes to overlay, and migrates to base once the pipeline gains
+//! `.dat` table support, as a byte-equivalent migration commit).
 //!
-//! 与既有 `pobr_data::minion::MinionDef`（手抄常量 + 计算消费形态）的关系：
-//! 本模块是**入库 serde 形状**（v2 字段全集，含 `mod_list` 结构化 modList）；
-//! M5a 主波 A1 将把消费侧统一迁到本类型并删除手抄常量（A6），当前两者并存、
-//! 由加载单测锁定逐值一致（搬迁不变式）。本模块零逻辑、零 I/O。
+//! Relationship to the existing `pobr_data::minion::MinionDef`
+//! (hand-transcribed constants + calc-consumption shape): this module is
+//! the **storage serde shape** (the full v2 field set, including the
+//! structured `mod_list` modList); the consumer side will eventually
+//! migrate entirely to this type and the hand-transcribed constants will be
+//! deleted (A6). For now the two coexist, with a load-time unit test
+//! locking them value-equal (a migration invariant). This module has zero
+//! logic, zero I/O.
 //!
-//! `overlay/granted_effect_minions.json` 是宝石→召唤物外键**边车**（00-index
-//! 裁决 §4-10 归 M5a）：`minionList` 不在 `.dat`，来自 PoB2 Export 模板手工指令
-//! `#minionList`（`Export/Scripts/skills.lua:771-776`），随 `Data/Skills/*.lua`
-//! 一起被 extract-lua 抽取；merge 进 `GrantedEffectDef` 属 M5a 主波接线，
-//! 此处只定义边车形状。
+//! `overlay/granted_effect_minions.json` is the gem → minion foreign-key
+//! **sidecar** (owned per decision §4-10): `minionList` isn't in the
+//! `.dat`s — it comes from PoB2's Export template's hand-written
+//! `#minionList` directive (`Export/Scripts/skills.lua:771-776`), extracted
+//! by extract-lua alongside `Data/Skills/*.lua`; merging it into
+//! `GrantedEffectDef` is a wiring concern — this module only defines the
+//! sidecar's shape.
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-/// Lua 标量值的忠实转录（mod 构造参数 / tag 字段值可为布尔、数字或字符串；
-/// R3 纪律：stub 把入参原样记录，消费侧不识别的形态显式 Unsupported）。
+/// A faithful transcription of a Lua scalar value (a mod's construction
+/// argument / tag field value can be a bool, number, or string; the stub
+/// records the argument as-is, and the consumer explicitly marks shapes it
+/// doesn't recognize as Unsupported).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum LuaValueDef {
-    /// 布尔（如 `flag(...)` 构造的 value=true）。
+    /// A boolean (e.g. the value=true from a `flag(...)` construction).
     Bool(bool),
-    /// 数字（Lua number，统一 f64）。
+    /// A number (a Lua number, uniformly f64).
     Number(f64),
-    /// 字符串（如 stub 环境下经 `__index` 自映射的 ModFlag 名）。
+    /// A string (e.g. a ModFlag name self-mapped through `__index` in the
+    /// stub environment).
     Text(String),
 }
 
-/// `modList` 中一条 `mod(...)` / `flag(...)` 构造的忠实序列化
-/// （对应 vendor `Modules/Data.lua:56 makeSkillMod` 的入参；蓝图 R3 警告：
-/// 构造参数必须完整序列化，丢参即静默错数据）。
+/// A faithful serialization of one `mod(...)` / `flag(...)` construction
+/// inside `modList` (corresponds to the arguments vendor
+/// `Modules/Data.lua:56 makeSkillMod` takes; dropped-argument warning:
+/// construction arguments must be serialized in full — dropping one
+/// silently corrupts the data).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MinionModDef {
-    /// mod 名（如 `StunDuration`）。
+    /// Mod name (e.g. `StunDuration`).
     pub name: String,
-    /// mod 类型字面量（`BASE`/`INC`/`MORE`/`OVERRIDE`/`FLAG`）。
+    /// Mod type literal (`BASE`/`INC`/`MORE`/`OVERRIDE`/`FLAG`).
     #[serde(rename = "type")]
     pub mod_type: String,
-    /// 数值/布尔值（`flag(...)` 为 true）。
+    /// Numeric/boolean value (`flag(...)` gives true).
     pub value: LuaValueDef,
-    /// flags 位（vendor 数据文件内为字面数字；stub 自映射环境下可能为名字
-    /// 字符串——忠实转录，位语义解释属消费接线）。
+    /// The flags bits (a literal number in vendor's data files; may be a
+    /// name string under the stub's self-mapping environment — transcribed
+    /// faithfully, with bit-semantics interpretation left to the consumer's
+    /// wiring).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub flags: Option<LuaValueDef>,
-    /// keywordFlags 位（同上）。
+    /// The keywordFlags bits (same as above).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keyword_flags: Option<LuaValueDef>,
-    /// 尾随 tag 表（如 `{ effectName = "ArmourBreak", effectType = "Buff" }`），
-    /// 每个 tag = 扁平 `键 → 标量` 映射，键序固定（BTreeMap）。
+    /// Trailing tag tables (e.g.
+    /// `{ effectName = "ArmourBreak", effectType = "Buff" }`), each tag a
+    /// flat `key → scalar` map with a fixed key order (BTreeMap).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<BTreeMap<String, LuaValueDef>>,
 }
 
-/// 一条召唤物 / 魂灵条目（对应 Lua `minions["<Id>"]`；字段名 = vendor 键
-/// snake_case 化）。可选字段缺省 = vendor 中该键缺失（忠实转录，不物化默认值；
-/// 消费侧默认语义见 `pobr_data::minion::MinionDef` 文档：armour/evasion 缺省按
-/// 1.0、energyShield 缺省按 0.0 处理）。
+/// A single minion / spectre entry (corresponds to Lua's
+/// `minions["<Id>"]`; field names are vendor's keys converted to
+/// snake_case). An optional field being absent means the key is absent in
+/// vendor (transcribed faithfully — no defaults materialized here; see
+/// `pobr_data::minion::MinionDef`'s doc for the consumer-side default
+/// semantics: armour/evasion default to 1.0, energyShield defaults to 0.0).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MinionEntryDef {
-    /// 稳定 ID（Lua key；spectre 为完整 metadata 路径如
-    /// `Metadata/Monsters/LeagueAbyss/Lightless/Cocoon3Spectre`）。
+    /// Stable ID (the Lua key; for a spectre this is the full metadata
+    /// path, e.g.
+    /// `Metadata/Monsters/LeagueAbyss/Lightless/Cocoon3Spectre`).
     pub id: String,
-    /// 英文 canonical 名称（`name`）。
+    /// English canonical name (`name`).
     pub name: String,
-    /// 怪物标签（`monsterTags`）。
+    /// Monster tags (`monsterTags`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub monster_tags: Vec<String>,
-    /// 生命归一化乘数（`life`）。
+    /// Life normalization multiplier (`life`).
     pub life: f64,
-    /// 伤害归一化乘数（`damage`）。
+    /// Damage normalization multiplier (`damage`).
     pub damage: f64,
-    /// 伤害区间宽度（`damageSpread`）。
+    /// Damage range width (`damageSpread`).
     pub damage_spread: f64,
-    /// 基础攻击间隔秒（`attackTime`）。
+    /// Base attack interval in seconds (`attackTime`).
     pub attack_time: f64,
-    /// 攻击距离（`attackRange`）。
+    /// Attack range (`attackRange`).
     pub attack_range: f64,
-    /// 命中归一化乘数（`accuracy`）。
+    /// Accuracy normalization multiplier (`accuracy`).
     pub accuracy: f64,
-    /// 暴击率（`critChance`，百分点）。
+    /// Crit chance (`critChance`, percentage points).
     pub crit_chance: f64,
-    /// 基础移动速度（`baseMovementSpeed`）。
+    /// Base movement speed (`baseMovementSpeed`).
     pub base_movement_speed: f64,
-    /// 火抗（`fireResist`，百分点）。
+    /// Fire resistance (`fireResist`, percentage points).
     pub fire_resist: f64,
-    /// 冰抗（`coldResist`）。
+    /// Cold resistance (`coldResist`).
     pub cold_resist: f64,
-    /// 电抗（`lightningResist`）。
+    /// Lightning resistance (`lightningResist`).
     pub lightning_resist: f64,
-    /// 混沌抗（`chaosResist`）。
+    /// Chaos resistance (`chaosResist`).
     pub chaos_resist: f64,
-    /// 基础伤害忽略攻速（`baseDamageIgnoresAttackSpeed`；vendor 缺失 = false）。
+    /// Base damage ignores attack speed (`baseDamageIgnoresAttackSpeed`;
+    /// absent in vendor = false).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub base_damage_ignores_attack_speed: bool,
-    /// 数量上限 stat 名原始字符串（`limit`，如 `ActiveZombieLimit`；枚举映射
-    /// 属消费接线，见 `pobr_data::minion::MinionLimitId::from_pob2`）。
+    /// Raw string for the count-cap stat name (`limit`, e.g.
+    /// `ActiveZombieLimit`; mapping it to an enum is the consumer's
+    /// concern, see `pobr_data::minion::MinionLimitId::from_pob2`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<String>,
-    /// 精神保留量（`spectreReservation`）。
+    /// Spirit reservation (`spectreReservation`).
     pub spectre_reservation: f64,
-    /// 伴侣保留量（`companionReservation`）。
+    /// Companion reservation (`companionReservation`).
     pub companion_reservation: f64,
-    /// 伴侣形态火抗覆盖（`companionFireResist`，PoB2 0.5.4 起；缺失 = 沿用本体）。
+    /// Fire-resist override for the companion form (`companionFireResist`,
+    /// added in PoB2 0.5.4; absent = falls back to the base form).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub companion_fire_resist: Option<f64>,
-    /// 伴侣形态冰抗覆盖（`companionColdResist`）。
+    /// Cold-resist override for the companion form (`companionColdResist`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub companion_cold_resist: Option<f64>,
-    /// 伴侣形态电抗覆盖（`companionLightningResist`）。
+    /// Lightning-resist override for the companion form
+    /// (`companionLightningResist`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub companion_lightning_resist: Option<f64>,
-    /// 伴侣形态混沌抗覆盖（`companionChaosResist`）。
+    /// Chaos-resist override for the companion form
+    /// (`companionChaosResist`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub companion_chaos_resist: Option<f64>,
-    /// 怪物类别（`monsterCategory`，如 `Undead`/`Demon`）。
+    /// Monster category (`monsterCategory`, e.g. `Undead`/`Demon`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub monster_category: Option<String>,
-    /// 护甲归一化乘数（`armour`；vendor 缺失 = 消费侧按 1.0）。
+    /// Armour normalization multiplier (`armour`; absent in vendor →
+    /// consumer treats it as 1.0).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub armour: Option<f64>,
-    /// 闪避归一化乘数（`evasion`；vendor 缺失 = 消费侧按 1.0）。
+    /// Evasion normalization multiplier (`evasion`; absent in vendor →
+    /// consumer treats it as 1.0).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub evasion: Option<f64>,
-    /// 生命转 ES 占比（`energyShield`；vendor 缺失 = 0.0）。
+    /// Life-to-ES conversion ratio (`energyShield`; absent in vendor = 0.0).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub energy_shield: Option<f64>,
-    /// 虚拟武器类型 1（`weaponType1`，ModFlags 派生用）。
+    /// Virtual weapon type 1 (`weaponType1`, used to derive ModFlags).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub weapon_type1: Option<String>,
-    /// 虚拟武器类型 2（`weaponType2`）。
+    /// Virtual weapon type 2 (`weaponType2`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub weapon_type2: Option<String>,
-    /// 出现区域（`spawnLocation`，spectre 专用；召唤物为空）。
+    /// Spawn location (`spawnLocation`, spectre-only; empty for minions).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub spawn_location: Vec<String>,
-    /// 技能列表（`skillList`，createMinionSkills 输入）。
+    /// Skill list (`skillList`, input to createMinionSkills).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub skill_list: Vec<String>,
-    /// 附加 flag（`extraFlags` 中值为 true 的键，升序；如 `recommendedSpectre`）。
+    /// Extra flags (keys with value true in `extraFlags`, ascending; e.g.
+    /// `recommendedSpectre`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub extra_flags: Vec<String>,
-    /// 结构化 modList（`mod(...)`/`flag(...)` 构造的完整转录）。
+    /// Structured modList (a full transcription of each `mod(...)`/
+    /// `flag(...)` construction).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub mod_list: Vec<MinionModDef>,
 }
 
-/// `overlay/minions.json` / `overlay/spectres.json` 顶层（消费侧视角：
-/// `_meta` 头部为生成溯源信息，serde 忽略未知字段，只取 `minions` 列表）。
+/// Top level of `overlay/minions.json` / `overlay/spectres.json` (from the
+/// consumer's perspective: the `_meta` header is provenance info, ignored
+/// by serde along with other unknown fields — only the `minions` list is used).
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct MinionsDef {
-    /// 条目列表，按 `id` 升序。
+    /// Entry list, ascending by `id`.
     pub minions: Vec<MinionEntryDef>,
 }
 
-/// 宝石授予效果 → 召唤物外键边车的一条记录（按 `effect_id` 键控）。
+/// A single record in the gem-granted-effect → minion foreign-key sidecar
+/// (keyed by `effect_id`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GrantedEffectMinionDef {
-    /// 授予效果 id（= `GrantedEffects.Id`，如 `RagingSpiritsPlayer`）。
+    /// Granted effect id (= `GrantedEffects.Id`, e.g. `RagingSpiritsPlayer`).
     pub effect_id: String,
-    /// 该技能召唤的 minion id 列表（`minionList`）。
+    /// Ids of minions this skill summons (`minionList`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub minion_list: Vec<String>,
-    /// support 追加的 minion id 列表（`addMinionList`；当前 vendor 数据无
-    /// 此键，字段预留，R7 纪律 `#[serde(default)]`）。
+    /// Minion ids a support adds (`addMinionList`; current vendor data has
+    /// no such key — the field is reserved, `#[serde(default)]`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub add_minion_list: Vec<String>,
-    /// 召唤物借用玩家装备槽位列表（`minionUses` 中值为 true 的键，升序；
-    /// 如 Manifest Weapon 的 `Weapon 1`）。
+    /// Player equipment slots the minion borrows from (keys with value true
+    /// in `minionUses`, ascending; e.g. Manifest Weapon's `Weapon 1`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub minion_uses: Vec<String>,
-    /// 召唤物使用独立 item set（`minionHasItemSet`）。
+    /// Whether the minion uses its own separate item set
+    /// (`minionHasItemSet`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub minion_has_item_set: bool,
 }
 
-/// `overlay/granted_effect_minions.json` 顶层。
+/// Top level of `overlay/granted_effect_minions.json`.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct GrantedEffectMinionsDef {
-    /// 边车记录，按 `effect_id` 升序。
+    /// Sidecar records, ascending by `effect_id`.
     pub entries: Vec<GrantedEffectMinionDef>,
 }

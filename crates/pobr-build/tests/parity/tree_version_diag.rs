@@ -1,8 +1,12 @@
-//! gap B：per-build 天赋树版本对账（capture `treeVersion` + 失配诊断）。
+//! Gap B: per-build passive-tree version reconciliation (captures
+//! `treeVersion` + mismatch diagnosis).
 //!
-//! 版本无关（B 组）：用活动数据。既验真实 build 能捕获 `<Spec treeVersion>` 且其已分配
-//! 节点都在已加载树中，又验**合成的越界节点被显性检出**——calc 现状对未知 id 静默跳过
-//! （`pobr_tree` node.rs filter_map 丢弃），`diagnose_tree_version` 把该失配症状显性化。
+//! Version-independent (group B): uses the active data. Verifies both that a
+//! real build can capture `<Spec treeVersion>` with all its allocated nodes
+//! present in the loaded tree, and that a **synthetic out-of-range node gets
+//! surfaced**: calc currently silently skips unknown ids (`pobr_tree`
+//! node.rs's filter_map drops them), and `diagnose_tree_version` makes that
+//! mismatch symptom visible.
 
 use pobr_build::{Build, BuildData, diagnose_tree_version, parse_build_from_code};
 use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
@@ -23,7 +27,7 @@ fn real_code() -> String {
         .to_string()
 }
 
-/// `<Spec treeVersion>` 不再被丢弃——解析后挂在 `build.tree_version`。
+/// `<Spec treeVersion>` is no longer discarded — after parsing it's attached to `build.tree_version`.
 #[test]
 fn captures_tree_version_from_real_build() {
     let build = parse_build_from_code(&real_code()).expect("parse build");
@@ -34,13 +38,18 @@ fn captures_tree_version_from_real_build() {
     );
 }
 
-/// 真实 build（treeVersion 0_5）的绝大多数已分配节点都解析到已加载树（证明加载的是对的
-/// 树族，非整体失配），少数未解析节点被诊断**显性检出**而非静默吞掉。
+/// The vast majority of a real build's (treeVersion 0_5) allocated nodes
+/// resolve against the loaded tree (proving the correct tree family was
+/// loaded, not a wholesale mismatch); the few unresolved nodes get
+/// **surfaced by diagnosis** rather than silently swallowed.
 ///
-/// 注：活动 golden 版本 4.5.0.3.4 的 passive_tree 实测漏掉本 build 分配的若干节点
-/// （如 skill 35387/17044/6554 = Cold Damage 类，存在于 4.5.2.1.3 却缺于 4.5.0.3.4）——
-/// 正是 gap B 要显性化的"calc 静默丢节点"。故此处断言"多数解析 + 诊断自洽"，
-/// 不钉精确 clean（那会把真实数据缺口当测试失败）。
+/// Note: the active golden version 4.5.0.3.4's passive_tree is measurably
+/// missing several nodes this build allocates (e.g. skill 35387/17044/6554,
+/// Cold Damage nodes present in 4.5.2.1.3 but missing from 4.5.0.3.4) — this
+/// is exactly the "calc silently drops nodes" behaviour gap B is meant to
+/// surface. So this test asserts "mostly resolves + diagnosis is
+/// self-consistent" rather than pinning exact cleanliness (which would treat
+/// a real data gap as a test failure).
 #[test]
 fn real_build_mostly_resolves_with_diagnosed_gaps() {
     let data = load_data();
@@ -49,11 +58,11 @@ fn real_build_mostly_resolves_with_diagnosed_gaps() {
     let report = diagnose_tree_version(&build, &data);
 
     assert_eq!(report.build_tree_version.as_deref(), Some("0_5"));
-    // 诊断自洽：未知节点确实是已分配集的子集。
+    // Diagnosis self-consistency: the unknown nodes are indeed a subset of the allocated set.
     let alloc_set: std::collections::HashSet<u32> =
         build.tree.allocated_nodes.iter().map(|n| n.0).collect();
     assert!(report.unknown_nodes.iter().all(|id| alloc_set.contains(id)));
-    // 加载的是对的树族：至少 90% 已分配节点解析到已加载树（整体失配会远低于此）。
+    // The correct tree family was loaded: at least 90% of allocated nodes resolve against the loaded tree (a wholesale mismatch would be far lower).
     let known = allocated - report.unknown_nodes.len();
     assert!(
         known * 10 >= allocated * 9,
@@ -62,11 +71,11 @@ fn real_build_mostly_resolves_with_diagnosed_gaps() {
     );
 }
 
-/// 越界节点（树版本失配的实际症状）被检出而非静默跳过；build 的 treeVersion 透传到报告。
+/// An out-of-range node (the real symptom of a tree-version mismatch) gets detected instead of silently skipped; the build's treeVersion passes through to the report.
 #[test]
 fn detects_unknown_allocated_node() {
     let data = load_data();
-    let bogus = 4_000_000_001; // 不存在于任何已加载树的节点 id
+    let bogus = 4_000_000_001; // a node id that doesn't exist in any loaded tree
     let build = Build::new()
         .with_tree(PassiveTreeSpec {
             allocated_nodes: vec![NodeId(bogus)],
@@ -79,15 +88,17 @@ fn detects_unknown_allocated_node() {
     assert_eq!(report.build_tree_version.as_deref(), Some("9_9"));
 }
 
-/// 多版本树适配（PoB2 `TreeData/<v>` 对位）：历史赛季树（vendor 抽取，
-/// `base/passive_trees/<v>.json`）已入库且按 `<Spec treeVersion>` 正确选择。
-/// 验收锚点 = 53853『Backup Plan』：0_3 是 50/50 两条条件词条，当前默认
-/// （0_5）是 20/40/40 三条——同一节点 id、不同赛季数值形态。
+/// Multi-version tree support (aligned with PoB2's `TreeData/<v>`): historic
+/// league trees (vendor-extracted, `base/passive_trees/<v>.json`) are
+/// ingested and correctly selected by `<Spec treeVersion>`.
+/// Acceptance anchor = node 53853 "Backup Plan": 0_3 has two 50/50 conditional
+/// mods, the current default (0_5) has three 20/40/40 mods — same node id,
+/// different per-league numeric form.
 #[test]
 fn versioned_tree_selects_historic_stats() {
     let data = load_data();
 
-    // 0_1..0_4 已抽取入库。
+    // 0_1..0_4 have already been extracted and ingested.
     for v in ["0_1", "0_2", "0_3", "0_4"] {
         assert!(
             data.versioned_passive_nodes.contains_key(v),
@@ -95,7 +106,7 @@ fn versioned_tree_selects_historic_stats() {
         );
     }
 
-    // 0_3 树：Backup Plan = 50/50 两条（历史形态）。
+    // 0_3 tree: Backup Plan = two 50/50 mods (the historic form).
     let n3 = data
         .passive_nodes_for(Some("0_3"))
         .get(&53853)
@@ -112,8 +123,8 @@ fn versioned_tree_selects_historic_stats() {
         n3.stats
     );
 
-    // 当前默认版本（0_5）不在 versioned 表 → 落回默认树（20/40/40 三条）；
-    // 未标注（None）同。
+    // The current default version (0_5) isn't in the versioned table -> falls back to the default tree (three 20/40/40 mods);
+    // same for unmarked (None).
     for tv in [Some("0_5"), None] {
         let n5 = data
             .passive_nodes_for(tv)
@@ -127,7 +138,7 @@ fn versioned_tree_selects_historic_stats() {
         );
     }
 
-    // 未知版本号（乱写/未抽取）安全落默认。
+    // An unknown version string (typo/not extracted) safely falls back to default.
     assert_eq!(
         data.passive_nodes_for(Some("9_9")).len(),
         data.passive_nodes.len(),

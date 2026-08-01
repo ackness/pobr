@@ -1,6 +1,6 @@
-//! 技能宝石表适配（`SkillGems` → `skill_gems.json`）。
+//! Skill gem table adapter (`SkillGems` -> `skill_gems.json`).
 //!
-//! 宝石身份取自 `SkillGems.BaseItemType` → `BaseItemTypes.Id`；开发占位条目过滤。
+//! Gem identity comes from `SkillGems.BaseItemType` -> `BaseItemTypes.Id`; dev placeholder entries are filtered out.
 
 use std::path::Path;
 
@@ -11,7 +11,7 @@ use crate::{is_placeholder, read_json};
 
 use super::clamp_u32;
 
-/// 辅助宝石的 `GemType` 枚举值（GGG 原始：0=主动，1=辅助）。
+/// The `GemType` enum value for a support gem (GGG's raw values: 0=active, 1=support).
 const GEM_TYPE_SUPPORT: u32 = 1;
 
 #[derive(Deserialize)]
@@ -32,7 +32,7 @@ struct RawSkillGem {
     int_pct: Option<i64>,
 }
 
-/// 适配 `SkillGems` 表为按 id 排序的宝石定义（返回 `(条目, 原始总行数)`）。
+/// Adapts the `SkillGems` table into id-sorted gem definitions (returns `(entries, raw row total)`).
 pub(super) fn adapt_gems(
     en: &Path,
     base_ids: &[(String, String)],
@@ -42,7 +42,7 @@ pub(super) fn adapt_gems(
     let mut gems = Vec::new();
     for raw in raw_gems {
         let Some(idx) = raw.base_item_type else {
-            continue; // 无基底 → 开发占位
+            continue; // No base item -> a dev placeholder
         };
         let Some((id, name)) = base_ids.get(idx).cloned() else {
             continue;
@@ -60,9 +60,10 @@ pub(super) fn adapt_gems(
             dex_pct: clamp_u32(raw.dex_pct),
             int_pct: clamp_u32(raw.int_pct),
             is_support,
-            // 宝石→效果连边不在 adapter 产物中（GemEffects 表不可下载，T5.1），
-            // 由 gamedata 加载期从 overlay/gem_effects.json merge（serde skip，
-            // base 产物 byte 不变）。
+            // The gem -> effect link isn't in the adapter's output
+            // (GemEffects table isn't downloadable, T5.1) — it's merged in
+            // from overlay/gem_effects.json during gamedata loading (serde
+            // skip, so the base artifact stays byte-identical).
             granted_effect_id: None,
             additional_granted_effect_ids: Vec::new(),
         });

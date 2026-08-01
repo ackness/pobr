@@ -1,6 +1,7 @@
-//! 数据加载：基底物品 / 武器类型 / 徒手 / 珠宝半径 / 天赋树。
+//! Data loading: base items / weapon types / unarmed / jewel radii / passive tree.
 //!
-//! 聚合二进制：原独立测试文件合并为子模块（26→4），减少链接二进制数以加速构建。
+//! An aggregated binary: formerly-separate test files merged into
+//! submodules (26→4), reducing the number of linked binaries to speed up builds.
 #![allow(clippy::all)]
 
 #[path = "items/load_base_items.rs"]

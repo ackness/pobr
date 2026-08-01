@@ -1,15 +1,21 @@
-//! 技能 DoT golden fixture（M4-T4 W-D1）：essence-drain build（语料现成的纯 DoT
-//! build）端到端走真实数据编排，对拍 PoB2 黄金值 `TotalDot`（meta.json::player_stats，
-//! 与 tools/pob2-oracle 同源的 Lua 侧导出）。
+//! Skill DoT golden fixture: an essence-drain build (a ready-made pure-DoT
+//! build in the corpus) run end-to-end through real data orchestration and
+//! compared against the PoB2 golden `TotalDot` (meta.json::player_stats, the
+//! same Lua-side export used by tools/pob2-oracle).
 //!
-//! 当前覆盖与已知缺口（验收报告登记，详见 commit message / skill_dot.rs 模块文档）：
-//! - `<Type>Dot` 基值链路（statmap `base_<type>_damage_to_deal_per_minute / 60`）
-//!   ✅ 已通——`skill_total_dot` 首次非零。
-//! - PoB2 全位表（M4-i1 切换后常驻）：本 build TotalDot 对 golden **逐值命中
-//!   （ratio = 1.0000）**——Swift Affliction `Damage MORE (Dot)` 经 DOT 位入桶。
-//! - dotIsSpell 数据缺口：`.dat` 入库不含 value-less 布尔 stat
-//!   （`spell_damage_modifiers_apply_to_skill_dot`），保守剥 Spell 位；本 build
-//!   逐值命中说明该缺口在此语料未表现，留待 dotIsSpell 消费 build 验证。
+//! Current coverage and known gaps (recorded in the acceptance report; see the
+//! commit message / skill_dot.rs module doc for details):
+//! - The `<Type>Dot` base-value chain (statmap
+//!   `base_<type>_damage_to_deal_per_minute / 60`) ✅ works — `skill_total_dot`
+//!   is non-zero for the first time.
+//! - The PoB2 full-bit table (permanently switched on): this build's TotalDot
+//!   **hits golden value-for-value (ratio = 1.0000)** — Swift Affliction's
+//!   `Damage MORE (Dot)` reaches the bucket via the DOT bit.
+//! - dotIsSpell data gap: the ingested `.dat` doesn't include the value-less
+//!   boolean stat (`spell_damage_modifiers_apply_to_skill_dot`), so the Spell
+//!   bit is conservatively stripped; this build hitting value-for-value shows
+//!   this gap doesn't manifest in this corpus, so it's left for a build that
+//!   actually consumes dotIsSpell to verify.
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::MinimalInput;
@@ -26,7 +32,7 @@ fn build_dir(name: &str) -> PathBuf {
 }
 
 fn load_data() -> BuildData {
-    // golden 钉定被校验的数据版本（与活动 DATA_VERSION 解耦）；见 pobr_data::GOLDEN_PARITY_DATA_VERSION。
+    // Pins the data version being checked against the golden values (decoupled from the active DATA_VERSION); see pobr_data::GOLDEN_PARITY_DATA_VERSION.
     let data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
     BuildData::load(&data).expect("load BuildData")
 }
@@ -49,14 +55,14 @@ fn run_build(dir: &Path, data: &BuildData) -> pobr_core::calc::OutputTable {
         inject_character_base: true,
         enemy_level: 0,
         enemy_tier: EnemyTier::Pinnacle,
-        mode_effective: true, // PoB2 主面板（golden 导出）恒 EFFECTIVE
+        mode_effective: true, // PoB2's main panel (golden export) is always EFFECTIVE
         extra_modifier_texts: vec![],
         ..Default::default()
     };
     calculate_with_data(&build, data, &opts).expect("calculate")
 }
 
-/// essence-drain：技能 DoT 链路活体 + PoB2 oracle `TotalDot` 对拍（回归销钉）。
+/// essence-drain: the skill DoT chain is live + compared against the PoB2 oracle's `TotalDot` (a regression pin).
 #[test]
 fn essence_drain_skill_dot_vs_pob2_golden() {
     let dir = build_dir("sorceress-chronomancer-essence-drain");
@@ -74,8 +80,9 @@ fn essence_drain_skill_dot_vs_pob2_golden() {
         out.skill_total_dot, golden_total_dot, ratio
     );
 
-    // 回归销钉：PoB2 全位表常驻（M4-i1 切换）下 DOT 位入桶，Swift Affliction
-    // `Damage MORE (Dot)` 经 DOT 位命中 dotCfg——实测 ratio = 1.0000，钉 5% 命中门。
+    // Regression pin: with the PoB2 full-bit table permanently switched on, the DOT bit
+    // reaches the bucket, and Swift Affliction's `Damage MORE (Dot)` hits dotCfg via the DOT bit --
+    // measured ratio = 1.0000, pinned at a 5% match gate.
     let pin = 0.95..=1.05;
     assert!(
         pin.contains(&ratio),
@@ -84,7 +91,7 @@ fn essence_drain_skill_dot_vs_pob2_golden() {
         golden_total_dot
     );
 
-    // 合并族口径自检：WithDotDPS = TotalDPS + TotalDot；CombinedDPS ≥ WithDotDPS。
+    // Self-check for the combined family: WithDotDPS = TotalDPS + TotalDot; CombinedDPS >= WithDotDPS.
     assert!(
         (out.with_dot_dps - (out.dps + out.skill_total_dot)).abs() < 1e-6,
         "WithDotDPS 恒等式失效：{out:#?}"
@@ -95,8 +102,9 @@ fn essence_drain_skill_dot_vs_pob2_golden() {
     );
 }
 
-/// 非 DoT build（comet）：技能 DoT 契约字段保持中性零（skill dot 不误触发），
-/// 合并族字段满足组合恒等式。
+/// A non-DoT build (comet): skill DoT contract fields stay neutrally zero
+/// (skill dot doesn't fire spuriously), and the combined-family fields satisfy
+/// the composition identity.
 #[test]
 fn non_dot_build_keeps_skill_dot_neutral() {
     let dir = build_dir("sorceress-stormweaver-comet");
@@ -108,7 +116,7 @@ fn non_dot_build_keeps_skill_dot_neutral() {
     );
     assert_eq!(out.skill_total_dot, 0.0);
     assert_eq!(out.with_dot_dps, 0.0, "无技能 dot：WithDotDPS 维持中性");
-    // CombinedDPS = TotalDPS + TotalDotDPS（异常 DoT 仍并入合并族）。
+    // CombinedDPS = TotalDPS + TotalDotDPS (ailment DoT still folds into the combined family).
     assert!(
         (out.combined_dps - (out.dps + out.total_dot_dps)).abs() < 1e-6,
         "CombinedDPS 恒等式失效：{out:#?}"

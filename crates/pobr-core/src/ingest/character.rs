@@ -1,62 +1,69 @@
-//! PoE2 角色基础值的 modifier 入口。
+//! Modifier ingest for PoE2 character base values.
 //!
-//! 把职业等级与属性派生的固有基础值（生命 / 魔力 / 精准）转换为带
-//! [`SourceKind::CharacterBase`] 归因的 `BASE` modifier，喂入 `ModDb` 后即可
-//! 参与标准属性管线 `(base + Σbase) * (1 + Σinc/100) * Π(1 + more/100)`。
+//! Converts the innate base values derived from class level and attributes
+//! (life / mana / accuracy) into `BASE` modifiers attributed with
+//! [`SourceKind::CharacterBase`], which then feed into `ModDb` and participate
+//! in the standard stat pipeline `(base + Σbase) * (1 + Σinc/100) * Π(1 + more/100)`.
 //!
-//! 公式来源：PoB2 `CalcSetup.lua`（`data.characterConstants`，ModStore Multiplier
-//! 语义 `value × Level + base`，oracle 实证 L99: Life base 1204 = 12×99+16、
-//! Mana base 426 = 4×99+30）。
+//! Formula source: PoB2 `CalcSetup.lua` (`data.characterConstants`, ModStore
+//! Multiplier semantics `value × Level + base`; oracle-verified at L99: Life
+//! base 1204 = 12×99+16, Mana base 426 = 4×99+30).
 //!
-//! 常量注入（M0-W3）：派生公式的**数值系数**自注入的
-//! [`CharacterConstantsDef`]（`base/character_constants.json` →
-//! `RuntimeConstants.character_constants`）读取，公式逻辑留在本模块；调用方
-//! （pobr-build orchestrator）从 `BuildData.constants` 取出后传入。无 GameData
-//! 的路径传 `CharacterConstantsDef::default()`（与 JSON 逐值相等，行为不变）。
+//! Constant injection: the derivation formulas' **numeric coefficients** are
+//! read from the injected [`CharacterConstantsDef`]
+//! (`base/character_constants.json` → `RuntimeConstants.character_constants`),
+//! while the formula logic stays in this module; the caller (pobr-build
+//! orchestrator) pulls it from `BuildData.constants` and passes it in. Paths
+//! without GameData pass `CharacterConstantsDef::default()` (value-equal to
+//! the JSON, so behavior is unchanged).
 
 use pobr_data::catalog::character_constants::CharacterConstantsDef;
 use pobr_data::prelude::*;
 
 use crate::Modifier;
 
-/// fallback 准源锚点（M0-W3 搬迁不变式，已降级、仅供锁定测试引用）。
+/// Fallback anchor for the source of truth (a migration invariant, now downgraded to test-only use).
 ///
-/// 数值已迁出至 `data/<版本>/base/character_constants.json`（schema =
-/// `pobr_data::catalog::character_constants::CharacterConstantsDef`），其
-/// `Default` 与本组常量逐值相等（由本文件 tests 锁定；pobr-data 依赖方向不允许
-/// 反向引用，故 Default 以字面量落值 + 此处测试锚定）。
-/// **禁止新增计算路径消费方**——派生公式一律读注入的 `CharacterConstantsDef`。
-#[allow(dead_code)] // 仅 cfg(test) 锁定测试消费，lib 目标无引用（有意保留）。
+/// The values have been moved out to `data/<version>/base/character_constants.json`
+/// (schema = `pobr_data::catalog::character_constants::CharacterConstantsDef`),
+/// whose `Default` is value-equal to this set of constants (locked by this
+/// file's tests; pobr-data's dependency direction disallows referencing back,
+/// so `Default` is hardcoded as literals and anchored by the test here).
+/// **Do not add new calc-path consumers** — derivation formulas must always
+/// read the injected `CharacterConstantsDef`.
+#[allow(dead_code)] // Only consumed by the cfg(test) lock test; no reference from the lib target (kept intentionally).
 mod legacy_anchor {
-    /// 角色固有基础生命常量项（PoB2 `Life BASE 12 × Level + 16`）。
+    /// Character's innate base life constant (PoB2 `Life BASE 12 × Level + 16`).
     pub(super) const BASE_LIFE_CONSTANT: f64 = 16.0;
-    /// 每个玩家等级提供的最大生命。
+    /// Max life granted per player level.
     pub(super) const LIFE_PER_LEVEL: f64 = 12.0;
-    /// 每 1 点力量提供的最大生命。
+    /// Max life granted per point of Strength.
     pub(super) const LIFE_PER_STRENGTH: f64 = 2.0;
 
-    /// 角色固有基础魔力常量项（PoB2 `Mana BASE 4 × Level + 30`）。
+    /// Character's innate base mana constant (PoB2 `Mana BASE 4 × Level + 30`).
     pub(super) const BASE_MANA_CONSTANT: f64 = 30.0;
-    /// 每个玩家等级提供的最大魔力。
+    /// Max mana granted per player level.
     pub(super) const MANA_PER_LEVEL: f64 = 4.0;
-    /// 每 1 点智力提供的最大魔力。
+    /// Max mana granted per point of Intelligence.
     pub(super) const MANA_PER_INTELLIGENCE: f64 = 2.0;
 
-    /// 角色固有精准常量项（PoB2 `Accuracy BASE 6 × Level − 6`）。
+    /// Character's innate accuracy constant (PoB2 `Accuracy BASE 6 × Level − 6`).
     pub(super) const BASE_ACCURACY_CONSTANT: f64 = -6.0;
-    /// 每个玩家等级提供的精准。
+    /// Accuracy granted per player level.
     pub(super) const ACCURACY_PER_LEVEL: f64 = 6.0;
-    /// 每 1 点敏捷提供的精准。
+    /// Accuracy granted per point of Dexterity.
     pub(super) const ACCURACY_PER_DEXTERITY: f64 = 6.0;
 
-    /// 角色固有基础闪避（PoB2 `characterConstants.base_evasion_rating`）。
+    /// Character's innate base evasion (PoB2 `characterConstants.base_evasion_rating`).
     pub(super) const BASE_EVASION: f64 = 7.0;
 }
 
-/// PoE2 角色基础值入口。
+/// PoE2 character base value entry point.
 ///
-/// 属性应传入总量（职业起始 + 树 + 装备等），由调用方在 modifier 聚合前先
-/// 确定；本入口只负责把当前已知的固有派生值落地为 modifier。
+/// Attributes should be passed in as totals (class starting values + tree +
+/// equipment, etc.), determined by the caller before modifier aggregation;
+/// this entry point only turns the currently known innate derived values into
+/// modifiers.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CharacterBase {
     pub level: u32,
@@ -70,31 +77,31 @@ impl CharacterBase {
         f64::from(self.level)
     }
 
-    /// 派生的固有最大生命：`life_per_level*level + base_life_constant +
-    /// life_per_strength*Strength`（默认值 `12*level + 16 + 2*Str`）。
+    /// Derived innate maximum life: `life_per_level*level + base_life_constant +
+    /// life_per_strength*Strength` (default `12*level + 16 + 2*Str`).
     pub fn base_life(&self, constants: &CharacterConstantsDef) -> f64 {
         constants.base_life_constant
             + constants.life_per_level * self.level()
             + constants.life_per_strength * self.strength
     }
 
-    /// 派生的固有最大魔力：`mana_per_level*level + base_mana_constant +
-    /// mana_per_intelligence*Intelligence`（默认值 `4*level + 30 + 2*Int`）。
+    /// Derived innate maximum mana: `mana_per_level*level + base_mana_constant +
+    /// mana_per_intelligence*Intelligence` (default `4*level + 30 + 2*Int`).
     pub fn base_mana(&self, constants: &CharacterConstantsDef) -> f64 {
         constants.base_mana_constant
             + constants.mana_per_level * self.level()
             + constants.mana_per_intelligence * self.intelligence
     }
 
-    /// 派生的固有精准：`accuracy_per_level*level + base_accuracy_constant +
-    /// accuracy_per_dexterity*Dexterity`（默认值 `6*level − 6 + 6*Dex`）。
+    /// Derived innate accuracy: `accuracy_per_level*level + base_accuracy_constant +
+    /// accuracy_per_dexterity*Dexterity` (default `6*level − 6 + 6*Dex`).
     pub fn base_accuracy(&self, constants: &CharacterConstantsDef) -> f64 {
         constants.base_accuracy_constant
             + constants.accuracy_per_level * self.level()
             + constants.accuracy_per_dexterity * self.dexterity
     }
 
-    /// 生成角色基础值的 `BASE` modifier 列表，全部带 `CharacterBase` 归因。
+    /// Generates the list of `BASE` modifiers for character base values, all attributed to `CharacterBase`.
     pub fn modifiers(&self, constants: &CharacterConstantsDef) -> Vec<Modifier> {
         vec![
             base_modifier(
@@ -135,8 +142,10 @@ mod tests {
     use super::legacy_anchor::*;
     use super::*;
 
-    /// 搬迁不变式锁：注入域的 `Default` fallback 必须与本模块准源常量逐值相等
-    /// （pobr-data 依赖方向无法反向引用准源，由本测试承担锁定——准源改值即红）。
+    /// Migration invariant lock: the injected domain's `Default` fallback must
+    /// be value-equal to this module's source-of-truth constants (pobr-data's
+    /// dependency direction can't reference the source of truth back, so this
+    /// test is what locks it — changing the source of truth fails this test).
     #[test]
     fn default_constants_match_legacy_character_source() {
         let c = CharacterConstantsDef::default();

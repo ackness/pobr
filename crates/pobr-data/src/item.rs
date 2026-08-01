@@ -28,27 +28,29 @@ pub struct Socket {
     pub group: u8,
 }
 
-/// 物品上**已掷出（rolled）**的防御基底数值（armour/evasion/energy shield），
-/// 取自 PoB 导出 item 文本里的 `Armour:` / `Evasion:` / `Energy Shield:` 行。
+/// Defence values as actually rolled on an item, read from the `Armour:`,
+/// `Evasion:` and `Energy Shield:` lines of its exported text.
 ///
-/// 这些是物品**实际**的防御底值——已含基底 % 增幅掷点 / 词缀 / 影响，
-/// 与「基底物品类型默认值」(catalog `ArmourBaseStats`) 不同。PoB2 `CalcDefence`
-/// 直接用这些行（`item.armourData`），随后再叠加 item **局部** `increased X` 与品质。
-/// `None` 表示该物品文本未给出对应行（退回基底物品默认值）。
+/// These already include the item's own percentage roll, affixes and influence,
+/// so they are not the base type's defaults (catalog `ArmourBaseStats`). PoB2's
+/// `CalcDefence` takes them as-is via `item.armourData` and only then applies
+/// the item's local `increased X` mods and quality. `None` means the item text
+/// had no such line, and the base type's default applies instead.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct RolledDefence {
     pub armour: Option<f64>,
     pub evasion: Option<f64>,
     pub energy_shield: Option<f64>,
-    /// 已掷出的 Spirit（权杖 `Spirit:` 行；PoB2 `item.spiritValue`，已含该件
-    /// 局部 `increased Spirit` / `+N to Spirit`，Item.lua:523/:1724-1727）。
+    /// Spirit as rolled, from the `Spirit:` line on a sceptre. Already includes
+    /// the item's local `increased Spirit` and `+N to Spirit`
+    /// (`item.spiritValue`, Item.lua:523/:1724-1727).
     pub spirit: Option<f64>,
-    /// 已掷出的 Ward（`Ward:` 行；PoB2 `armourData.Ward` 同口径）。
+    /// Ward as rolled, from the `Ward:` line (`armourData.Ward` in PoB2).
     pub ward: Option<f64>,
-    /// 已填充的 socket 数（`Rune:` / `Soul Core:` 命名行计数）。供
-    /// `per Socket filled` / `per socketed rune or soul core` 词条的
-    /// `RunesSocketedIn{SlotName}` Multiplier 取数（PoB2 同口径，
-    /// ModParser.lua:1477-1478）。`0` ＝ 无已镶嵌符文/魂核。
+    /// How many sockets hold something, counted from the `Rune:` and
+    /// `Soul Core:` lines. Feeds the `RunesSocketedIn{SlotName}` multiplier that
+    /// `per Socket filled` and `per socketed rune or soul core` mods scale on
+    /// (ModParser.lua:1477-1478). Zero means nothing is socketed.
     pub sockets_filled: u32,
 }
 
@@ -57,23 +59,26 @@ pub struct Item {
     pub base: ItemBaseId,
     pub rarity: ItemRarity,
     pub quality: u8,
-    /// 是否已腐化（item 文本的 `Corrupted` 标记行）。消费方：The Adorned 珠宝
-    /// 效果缩放（corrupted magic jewel 门控）等 vendor `item.corrupted` 语义。
+    /// Set by the `Corrupted` line in the item text. Gates things like The
+    /// Adorned's jewel-effect scaling, which only counts corrupted magic jewels.
     pub corrupted: bool,
-    /// implicit 词条文本（基底固有词缀），归因到 `SourceKind::ItemImplicit`。
+    /// Implicit mod lines — the ones inherent to the base type. Attributed to
+    /// `SourceKind::ItemImplicit`.
     pub implicit_texts: Vec<String>,
-    /// explicit 词条文本（前后缀），归因到 `SourceKind::ItemAffix`。
-    /// 沿用历史字段名 `modifier_texts` 以保持向后兼容。
+    /// Explicit mod lines — prefixes and suffixes. Attributed to
+    /// `SourceKind::ItemAffix`. The name is historical; it predates the split
+    /// into implicit/explicit/enchant and is kept for compatibility.
     pub modifier_texts: Vec<String>,
-    /// enchant 词条文本（铭刻/附魔），归因到 `SourceKind::ItemEnchant`。
+    /// Enchant mod lines. Attributed to `SourceKind::ItemEnchant`.
     pub enchant_texts: Vec<String>,
-    /// 物品已掷出的防御底值（`Armour:`/`Evasion:`/`Energy Shield:` 行）。
-    /// 防御件优先用此值作为 per-slot 基底（PoB2 `item.armourData` 口径）。
+    /// Defence values as rolled. Armour pieces use these as their per-slot base
+    /// in preference to the base type's defaults.
     pub rolled_defence: RolledDefence,
     pub parsed_stats: Vec<StatId>,
 }
 
-/// 装备槽。`id()` 给出稳定字符串 ID，用于 modifier 归因（`SourceId` / `slot`）。
+/// An equipment slot. [`Self::id`] gives the stable string used when attributing
+/// mods to a slot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EquipmentSlot {
     Weapon1,
@@ -85,15 +90,15 @@ pub enum EquipmentSlot {
     Amulet,
     Ring1,
     Ring2,
-    /// 第三戒指槽（Ritualist『Unfurled Finger』+1 Ring Slot；PoB2 `Ring 3`）。
-    /// 仅在树上分配 AdditionalRingSlot 词条节点时参与计算（PoB2
-    /// CalcSetup.lua:821 门控，由编排层执行）。
+    /// Third ring slot, granted by the Ritualist notable Unfurled Finger. Only
+    /// counts once a node carrying `AdditionalRingSlot` is allocated; the
+    /// orchestrator enforces that (CalcSetup.lua:821).
     Ring3,
     Belt,
 }
 
 impl EquipmentSlot {
-    /// 稳定槽位 ID（计算内部使用，显示文本走 i18n）。
+    /// Stable id used inside the engine. Display text comes from `pobr-i18n`.
     pub fn id(self) -> &'static str {
         match self {
             Self::Weapon1 => "weapon1",

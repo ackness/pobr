@@ -1,15 +1,20 @@
-//! `gen-mirage-configs` 子命令（pre-M5a 数据生产，M5a 蓝图 Track D2）：
-//! 产 `overlay/mirage_configs.json`（5 类 mirage 配置）。
+//! `gen-mirage-configs` subcommand:
+//! produces `overlay/mirage_configs.json` (5 mirage config entries).
 //!
-//! vendor `Modules/CalcMirages.lua` 的五个分支是过程闭包，无法 luajit 序列化
-//! ——配置数据**内嵌于本工具源码**，由工具落盘（满足「overlay 禁手改、只许
-//! 工具再生」的字面要求；此取舍列 M5a 蓝图 §6 开放问题 2）。每条配置带
-//! `vendor_ref` 行段锚点；vendor drift 由 `_meta.vendor_fingerprint`
-//! （CalcMirages.lua 行数+字节数的粗粒度指纹）提醒——vendor bump 后重跑本
-//! 命令，指纹变化即产生 byte diff，提示人工复核五分支语义。
+//! Vendor `Modules/CalcMirages.lua`'s five branches are procedural closures
+//! that luajit can't serialize — so the config data is **embedded in this
+//! tool's source code** instead, and the tool writes it out (satisfying the
+//! letter of "overlay files can't be hand-edited, only tool-regenerated";
+//! this tradeoff is tracked under open question 2). Each config carries a
+//! `vendor_ref` line-range anchor; vendor drift is flagged via
+//! `_meta.vendor_fingerprint` (a coarse fingerprint of CalcMirages.lua's
+//! line count + byte count) — after a vendor bump, rerunning this command
+//! produces a byte diff if the fingerprint changed, prompting a manual
+//! review of the five branches' semantics.
 //!
-//! 真特殊分支逻辑走 `handler_id`（M5a 主波注册进 `pobr-core::rules::registry`，
-//! 本波次零接线）。schema 见 [`pobr_data::catalog::triggers`]。
+//! Actual special-branch logic goes through `handler_id` (registered into
+//! `pobr-core::rules::registry`, zero extra wiring here). See
+//! [`pobr_data::catalog::triggers`] for the schema.
 
 use std::fs;
 use std::io;
@@ -22,13 +27,14 @@ use pobr_data::catalog::triggers::{MirageConfigDef, MirageSourceFilterDef, Mirag
 use crate::extract_lua::{ExtractLuaArgs, OverlayMeta, read_vendor_version, resolve_version_file};
 use crate::extract_minions::to_pretty_json;
 
-/// `_meta` 扩展：在通用 OverlayMeta 之上附加 vendor 粗粒度指纹。
+/// `_meta` extension: adds a coarse vendor fingerprint on top of the generic OverlayMeta.
 #[derive(Debug, Serialize)]
 struct MirageMeta {
     #[serde(flatten)]
     base: OverlayMeta,
-    /// `Modules/CalcMirages.lua` 粗粒度指纹（`<行数>L:<字节数>B`）——
-    /// vendor bump 后指纹变化 = 提示人工复核五分支语义（蓝图 D2 drift 提醒）。
+    /// Coarse fingerprint of `Modules/CalcMirages.lua` (`<lines>L:<bytes>B`)
+    /// — a changed fingerprint after a vendor bump signals that the five
+    /// branches' semantics need a manual review.
     vendor_fingerprint: String,
 }
 
@@ -39,13 +45,14 @@ struct MirageConfigsDoc {
     configs: Vec<MirageConfigDef>,
 }
 
-/// 5 条 mirage 配置（人工从 `Modules/CalcMirages.lua` 闭包转写，vendor commit
-/// `2df5a74` 时点；行段锚点见各 `vendor_ref`）。
+/// The 5 mirage configs (hand-transcribed from the `Modules/CalcMirages.lua`
+/// closures as of vendor commit `2df5a74`; see each `vendor_ref` for its line-range anchor).
 fn builtin_configs() -> Vec<MirageConfigDef> {
     let mut configs = vec![
-        // Mirage Archer（CalcMirages.lua:63-119）：skillData.triggeredByMirageArcher；
-        // 源 = 主技能本体（weaponData1.type == "Bow"）；count/less 三 stat 聚合；
-        // 主技能进攻面板照算（calcMainSkillOffence = true）。
+        // Mirage Archer (CalcMirages.lua:63-119): skillData.triggeredByMirageArcher;
+        // source = the main skill itself (weaponData1.type == "Bow"); count/less
+        // draw from three aggregated stats; the main skill's offence panel is
+        // computed as normal (calcMainSkillOffence = true).
         MirageConfigDef {
             mirage_id: "mirage_archer".to_string(),
             trigger: MirageTriggerDef {
@@ -67,9 +74,11 @@ fn builtin_configs() -> Vec<MirageConfigDef> {
             handler_id: None,
             vendor_ref: "Modules/CalcMirages.lua:63-119".to_string(),
         },
-        // Saviour Mirage Warriors（:120-179）：授予效果名 "Reflection"；源 = 单手剑
-        // 攻击技能里 DPS 最高者（GlobalCache 遍历）；双持同名武器时 count 减半
-        // （handler）；mirage 输出整体替换主技能输出。
+        // Saviour Mirage Warriors (:120-179): granted effect name "Reflection";
+        // source = whichever one-handed-sword attack skill has the highest DPS
+        // (found via a GlobalCache scan); count is halved when dual-wielding
+        // matching weapons (handled by a handler); the mirage's output
+        // entirely replaces the main skill's output.
         MirageConfigDef {
             mirage_id: "saviour_mirage_warriors".to_string(),
             trigger: MirageTriggerDef {
@@ -93,9 +102,11 @@ fn builtin_configs() -> Vec<MirageConfigDef> {
             handler_id: Some("mirage:saviour_dual_wield_halving".to_string()),
             vendor_ref: "Modules/CalcMirages.lua:120-179".to_string(),
         },
-        // Tawhoa's Chosen（:180-298）：授予效果名匹配；源 = Slam/Melee 攻击技能
-        // DPS 最高者；触发冷却模型（icdr / 服务器帧取整 / 触发速率覆盖攻速）
-        // 是真逻辑（handler）；less damage = ChieftainMirageChieftainMoreDamage。
+        // Tawhoa's Chosen (:180-298): matches by granted effect name; source =
+        // whichever Slam/Melee attack skill has the highest DPS; the trigger
+        // cooldown model (icdr / server-frame rounding / trigger rate
+        // overriding attack speed) is real logic, handled by a handler; less
+        // damage = ChieftainMirageChieftainMoreDamage.
         MirageConfigDef {
             mirage_id: "tawhoas_chosen".to_string(),
             trigger: MirageTriggerDef {
@@ -123,9 +134,10 @@ fn builtin_configs() -> Vec<MirageConfigDef> {
             handler_id: Some("mirage:tawhoa_trigger_rate".to_string()),
             vendor_ref: "Modules/CalcMirages.lua:180-298".to_string(),
         },
-        // Sacred Wisps（:299-364）：skillData.triggeredBySacredWisps；源 = 主技能
-        // 本体（weaponData1.type == "Wand"）；count/cast chance 取自 "Summon
-        // Sacred Wisps" 技能的 stat（跨技能取数 = handler）。
+        // Sacred Wisps (:299-364): skillData.triggeredBySacredWisps; source =
+        // the main skill itself (weaponData1.type == "Wand"); count/cast
+        // chance come from the "Summon Sacred Wisps" skill's stats
+        // (cross-skill lookup, handled by a handler).
         MirageConfigDef {
             mirage_id: "sacred_wisps".to_string(),
             trigger: MirageTriggerDef {
@@ -147,9 +159,11 @@ fn builtin_configs() -> Vec<MirageConfigDef> {
             handler_id: Some("mirage:sacred_wisps_source_skill".to_string()),
             vendor_ref: "Modules/CalcMirages.lua:299-364".to_string(),
         },
-        // General's Cry（:365-419）：skillData.triggeredByGeneralsCry；不走
-        // calculateMirage 子环境——主技能就地改造（冷却缩放 dpsMultiplier、
-        // exert 系 mod 转写 Damage、QuantityMultiplier 注入），全程 handler。
+        // General's Cry (:365-419): skillData.triggeredByGeneralsCry; doesn't
+        // go through the calculateMirage sub-environment — instead it
+        // transforms the main skill in place (scaling the cooldown via
+        // dpsMultiplier, rewriting exert-related mods to Damage, injecting
+        // QuantityMultiplier), all handled by a handler.
         MirageConfigDef {
             mirage_id: "generals_cry".to_string(),
             trigger: MirageTriggerDef {
@@ -175,7 +189,7 @@ fn builtin_configs() -> Vec<MirageConfigDef> {
     configs
 }
 
-/// 生成 `overlay/mirage_configs.json` 文本（byte-stable）。
+/// Generate `overlay/mirage_configs.json` text (byte-stable).
 pub fn run_gen_mirage_configs(args: &ExtractLuaArgs) -> io::Result<String> {
     let (commit, subject) = read_vendor_version(&resolve_version_file(args))?;
     let fingerprint = vendor_fingerprint(&args.vendor_root)?;
@@ -201,7 +215,7 @@ pub fn run_gen_mirage_configs(args: &ExtractLuaArgs) -> io::Result<String> {
     }))
 }
 
-/// CalcMirages.lua 粗粒度指纹：行数 + 字节数。
+/// Coarse fingerprint of CalcMirages.lua: line count + byte count.
 fn vendor_fingerprint(vendor_root: &Path) -> io::Result<String> {
     let path = vendor_root.join("Modules/CalcMirages.lua");
     let text = fs::read_to_string(&path).map_err(|error| {
@@ -217,8 +231,9 @@ fn vendor_fingerprint(vendor_root: &Path) -> io::Result<String> {
 mod tests {
     use super::builtin_configs;
 
-    /// 5 条配置、id 唯一且升序；handler 条目带 `mirage:` 前缀
-    /// （20-doc §5 handler 全局台账按前缀分域计数的约定）。
+    /// 5 configs, ids unique and ascending; handler entries carry the
+    /// `mirage:` prefix (per 20-doc §5's convention of the global handler
+    /// ledger counting by prefix domain).
     #[test]
     fn builtin_configs_shape() {
         let configs = builtin_configs();

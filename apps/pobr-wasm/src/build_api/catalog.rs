@@ -1,6 +1,8 @@
-//! 目录/文本类只读接口：物品逐行类别上色（`classify_item_lines_json`）、宝石
-//! 选择器目录（`gem_catalog_json`）、符文/魂核目录与重插重写（`rune_catalog_json`
-//! / `reforge_runes_json`）、英文 → 简中显示翻译（`translate_lines_to_zh_cn_json`）。
+//! Catalog/text-oriented read-only endpoints: per-line item coloring
+//! (`classify_item_lines_json`), the gem picker's catalog
+//! (`gem_catalog_json`), the rune/soul core catalog plus re-socketing
+//! (`rune_catalog_json` / `reforge_runes_json`), and English -> Simplified
+//! Chinese display translation (`translate_lines_to_zh_cn_json`).
 
 use std::collections::BTreeMap;
 
@@ -8,23 +10,21 @@ use serde::{Deserialize, Serialize};
 
 use crate::state;
 
-// ---------------------------------------------------------------------------
-// classify_item_lines_json（物品文本 → 逐行类别，供 Items 面板上色）
-// ---------------------------------------------------------------------------
+// classify_item_lines_json (item text -> per-line categories, for Items panel coloring)
 
-/// 单条展示行（`text` 已剥标注，`kind` 用于前端上色）。
+/// A single display line (`text` has annotations stripped; `kind` is used for frontend coloring).
 #[derive(Debug, Serialize)]
 struct ItemLineJson {
     text: String,
-    /// `name` / `base` / `struct` / `implicit` / `explicit` / `enchant` / `rune` / `class_req`。
+    /// `name` / `base` / `struct` / `implicit` / `explicit` / `enchant` / `rune` / `class_req`.
     kind: &'static str,
-    /// 词缀档位（1 = 同池最强；仅 rare/magic/normal 的 explicit 行且反查命中时给出）。
+    /// The affix tier (1 = strongest in its pool; only given for rare/magic/normal explicit lines with a reverse-lookup hit).
     #[serde(skip_serializing_if = "Option::is_none")]
     tier: Option<u32>,
-    /// 该基底可掷的同池总档数（与 `tier` 成对出现）。
+    /// The total number of tiers rollable on this base within the pool (paired with `tier`).
     #[serde(skip_serializing_if = "Option::is_none")]
     tier_total: Option<u32>,
-    /// 词缀性质：`prefix` / `suffix`（与 `tier` 成对出现）。
+    /// The affix kind: `prefix` / `suffix` (paired with `tier`).
     #[serde(skip_serializing_if = "Option::is_none")]
     affix: Option<&'static str>,
 }
@@ -43,14 +43,17 @@ fn display_line_kind_str(kind: pobr_item::DisplayLineKind) -> &'static str {
     }
 }
 
-/// 把一段 PoB 物品文本块拆成有序展示行 + 类别（解析本身不需游戏数据）。
+/// Splits a PoB item text block into ordered display lines plus categories
+/// (the parsing itself doesn't need game data).
 ///
-/// 复用 `pobr_item::classify_display_lines`（与编辑态解析同一套桶分类规则）；空/无法
-/// 解析的文本返回 `[]`，前端回落到无区分渲染。
+/// Reuses `pobr_item::classify_display_lines` (the same bucket
+/// classification rules as edit-view parsing); empty or unparseable text
+/// returns `[]`, and the frontend falls back to undifferentiated rendering.
 ///
-/// 词缀 tier（best-effort）：rare/magic/normal 物品的 explicit 行经
-/// [`crate::state::tier_index`] 反查（数据未初始化 / 旧数据包缺池数据 / 反查
-/// 未命中时静默省略 tier 字段——展示增强，不作为硬依赖）。
+/// Affix tier (best-effort): explicit lines on rare/magic/normal items are
+/// reverse-looked-up via [`crate::state::tier_index`] (the `tier` field is
+/// silently omitted when data isn't initialized / an old data pack lacks
+/// pool data / the lookup misses — this is a display enhancement, not a hard dependency).
 pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
     let tier_ctx = tier_context(text);
     let lines: Vec<ItemLineJson> = pobr_item::classify_display_lines(text)
@@ -76,10 +79,10 @@ pub fn classify_item_lines_json(text: &str) -> Result<String, String> {
     serde_json::to_string(&lines).map_err(|e| format!("serialize: {e}"))
 }
 
-/// tier 反查所需上下文：(索引, 基底 tags, 基底 mod_domain)。
+/// The context needed for tier reverse lookup: (index, base tags, base mod_domain).
 ///
-/// 独占（unique/relic）掷值固定无档位概念；基底未识别（自定义基底名）时同样
-/// 省略——宁缺勿错。
+/// Unique/relic items have fixed rolls with no tier concept, and an
+/// unrecognized base (a custom base name) is likewise omitted — better to skip than to be wrong.
 fn tier_context(text: &str) -> Option<(std::rc::Rc<pobr_item::TierIndex>, Vec<String>, u32)> {
     let draft = pobr_item::ItemDraft::parse(text).ok()?;
     if matches!(
@@ -93,33 +96,37 @@ fn tier_context(text: &str) -> Option<(std::rc::Rc<pobr_item::TierIndex>, Vec<St
     Some((index, tags, domain))
 }
 
-// ---------------------------------------------------------------------------
-// gem_catalog_json（手动技能编辑的宝石选择器目录）
-// ---------------------------------------------------------------------------
+// gem_catalog_json (the gem picker's catalog for manual skill editing)
 
 #[derive(Debug, Serialize)]
 struct GemCatalogEntry {
-    /// 授予效果 id（[`GemInput::skill_id`] 上行用的键）。
+    /// The granted effect id (the key sent up as [`GemInput::skill_id`]).
     skill_id: String,
-    /// 展示名（base_items canonical 名；缺失回退 gem id）。
+    /// The display name (base_items' canonical name; falls back to the gem id if missing).
     name: String,
-    /// 繁中名（`i18n/zh-TW/base_items.json` 边车；缺条目为 null）。
+    /// The Traditional Chinese name (the `i18n/zh-TW/base_items.json` sidecar; `null` if missing).
     name_zh_tw: Option<String>,
-    /// 简中名（`i18n/zh-CN/base_items.json` 边车，国服词典转录；缺条目为 null）。
+    /// The Simplified Chinese name (the `i18n/zh-CN/base_items.json`
+    /// sidecar, transcribed from the China-server dictionary; `null` if missing).
     name_zh_cn: Option<String>,
-    /// 宝石颜色（`"str"` 红 / `"dex"` 绿 / `"int"` 蓝；未知为 null），分类筛选用。
+    /// The gem's colour (`"str"` red / `"dex"` green / `"int"` blue; `null`
+    /// if unknown), used for category filtering.
     colour: Option<&'static str>,
     is_support: bool,
-    /// 血脉（Lineage）特殊辅助宝石（gem 基底 id 判定；前端徽标 + 优化器候选筛选）。
+    /// Whether it's a Lineage special support gem (determined from the gem
+    /// base id; used for the frontend badge plus optimizer candidate filtering).
     is_lineage: bool,
-    /// 技能标签（升序去重）。主动宝石取 granted effect 的 `skill_types`；辅助宝石取
-    /// `require_skill_types`（即「能辅助什么」），并滤掉 `AND`/`OR`/`NOT` 这类逻辑
-    /// 连接词——它们是门控表达式的算子，不是标签。前端按白名单挑可读项展示。
+    /// Skill tags (sorted, deduplicated). For active gems, taken from the
+    /// granted effect's `skill_types`; for support gems, taken from
+    /// `require_skill_types` (i.e. "what it can support"), with logical
+    /// connectives like `AND`/`OR`/`NOT` filtered out — those are gating-expression
+    /// operators, not tags. The frontend picks readable entries to display via an allowlist.
     tags: Vec<String>,
 }
 
-/// 宝石目录：`{skill_id, name, name_zh_tw, colour, is_support}` 按名称排序。
-/// 只收带主效果连边的玩家宝石（`gem_effects` overlay 即 vendor Gems.lua 的策展面）。
+/// The gem catalog: `{skill_id, name, name_zh_tw, colour, is_support}`,
+/// sorted by name. Only collects player gems with a linked primary effect
+/// (the `gem_effects` overlay is the curated surface of vendor Gems.lua).
 pub fn gem_catalog_json() -> Result<String, String> {
     gem_catalog_impl().map_err(super::ApiError::into_json)
 }
@@ -131,7 +138,8 @@ fn gem_catalog_impl() -> Result<String, super::ApiError> {
         .iter()
         .map(|(name, def)| (def.id.as_str(), name.as_str()))
         .collect();
-    // 中文名边车（gem 基底 id → 本地化名）；缺文件（数据包无该语言）降级为空表。
+    // The Chinese name sidecar (gem base id -> localized name); degrades to
+    // an empty table when the file is missing (the data pack lacks that language).
     let game = state::game_data()?;
     let zh_names = game.base_item_names("zh-TW").unwrap_or_default();
     let cn_names = game.base_item_names("zh-CN").unwrap_or_default();
@@ -182,24 +190,24 @@ fn gem_catalog_impl() -> Result<String, super::ApiError> {
     Ok(serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))?)
 }
 
-// ---------------------------------------------------------------------------
-// rune_catalog_json / reforge_runes_json（符文槽编辑：目录 + 重插重写文本）
-// ---------------------------------------------------------------------------
+// rune_catalog_json / reforge_runes_json (rune socket editing: catalog plus re-socketing text rewrite)
 
 #[derive(Debug, Serialize)]
 struct RuneCatalogEntry {
-    /// 符文名（canonical 英文，`Rune:` 行与 reforge 请求用的键）。
+    /// The rune name (canonical English; the key used in `Rune:` lines and reforge requests).
     name: String,
-    /// 繁中名（基底名边车；缺条目为 null）。
+    /// The Traditional Chinese name (the base-name sidecar; `null` if missing).
     name_zh_tw: Option<String>,
-    /// 简中名（同上）。
+    /// The Simplified Chinese name (same as above).
     name_zh_cn: Option<String>,
     is_soul_core: bool,
-    /// 对 `item_text` 基底适用的效果词条行（无物品上下文或不适用为空）。
+    /// The effect mod lines applicable to the `item_text` base (empty if no
+    /// item context or not applicable).
     lines: Vec<String>,
 }
 
-/// 符文对某基底槽类的适用词条行（broad 与 specific 两键都命中则都收，PoB2 同口径）。
+/// A rune's mod lines applicable to a given base slot type (collects both
+/// if both the broad and specific keys hit, matching PoB2's basis).
 fn applicable_rune_lines(
     def: &pobr_data::catalog::RuneDef,
     broad: &str,
@@ -212,8 +220,9 @@ fn applicable_rune_lines(
         .collect()
 }
 
-/// 符文/魂核目录：`overlay/runes.json` 全量，按名称排序（数据已有序）。
-/// `item_text` 非空且基底可识别时，逐符文附上对该物品适用的效果词条行。
+/// The rune/soul core catalog: the full `overlay/runes.json`, sorted by
+/// name (the data is already ordered). When `item_text` is non-empty and
+/// the base is recognized, each rune gets the effect mod lines applicable to that item attached.
 pub fn rune_catalog_json(item_text: &str) -> Result<String, String> {
     rune_catalog_impl(item_text).map_err(super::ApiError::into_json)
 }
@@ -227,7 +236,8 @@ fn rune_catalog_impl(item_text: &str) -> Result<String, super::ApiError> {
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let zh_tw = game.base_item_names("zh-TW").unwrap_or_default();
     let zh_cn = game.base_item_names("zh-CN").unwrap_or_default();
-    // 目标槽类：物品文本解析失败/基底未知时保持 None（lines 全空，不报错）。
+    // The target slot type: stays None when item text parsing fails or the
+    // base is unknown (lines end up all-empty, no error).
     let slot_types = pobr_item::ItemDraft::parse(item_text)
         .ok()
         .and_then(|d| data.base_items.get(&d.header.base_name))
@@ -252,9 +262,10 @@ fn rune_catalog_impl(item_text: &str) -> Result<String, super::ApiError> {
     Ok(serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))?)
 }
 
-/// 基底 item_class → 符文槽类 (broad, specific)。对齐 PoB2
-/// `Item.lua:GetSocketedAugmentTypes`：caster = 无武器数据的 wand/staff/sceptre；
-/// specific = 类名小写（Warstaff → quarterstaff，PoE2 战杖即武僧棍）。
+/// Base item_class -> rune slot type (broad, specific). Mirrors PoB2
+/// `Item.lua:GetSocketedAugmentTypes`: caster = wand/staff/sceptre (no
+/// weapon data); specific = the lowercased class name (Warstaff ->
+/// quarterstaff, since PoE2's warstaff is the monk's quarterstaff).
 fn rune_slot_types(item_class: &str) -> (String, String) {
     let specific = match item_class {
         "Warstaff" => "quarterstaff".to_string(),
@@ -272,12 +283,13 @@ fn rune_slot_types(item_class: &str) -> (String, String) {
 
 #[derive(Debug, Deserialize)]
 struct ReforgeRunesRequest {
-    /// 物品 PoB 原始文本。
+    /// The item's raw PoB text.
     text: String,
-    /// 目标镶嵌（按槽位顺序的符文名；数量 ≤ Sockets 容量）。
+    /// The target socketing (rune names in slot order; count must be <= socket capacity).
     runes: Vec<String>,
-    /// 目标孔数（直接加减孔，不模拟通货）：给定则重写/新增/移除 `Sockets:` 行；
-    /// 缺省沿用文本现有容量。
+    /// The target socket count (directly adds/removes sockets, not
+    /// simulating a currency item): when given, rewrites/adds/removes the
+    /// `Sockets:` line; defaults to keeping the text's current capacity.
     #[serde(default)]
     sockets: Option<usize>,
 }
@@ -287,10 +299,12 @@ struct ReforgeRunesResponse {
     text: String,
 }
 
-/// 重插符文：把物品文本的 `Rune:`/`Soul Core:` 命名行与 `{rune}` 词条行整体
-/// 替换为目标符文集（词条按基底 broad/specific 槽类取自 runes 表，PoB2
-/// `Item.lua:1169-1205` 同规则），`Implicits: N` 计数同步修正；`sockets`
-/// 给定时同步重写孔数（`Sockets:` 行新增/重写/移除）。
+/// Re-sockets runes: wholesale replaces the item text's `Rune:`/`Soul Core:`
+/// named lines and `{rune}` mod lines with the target rune set (the mod
+/// lines are taken from the runes table by the base's broad/specific slot
+/// type, matching PoB2 `Item.lua:1169-1205`'s rules), correcting the
+/// `Implicits: N` count in sync; when `sockets` is given, the socket count
+/// is rewritten in sync too (adding/rewriting/removing the `Sockets:` line).
 pub fn reforge_runes_json(request_json: &str) -> Result<String, String> {
     reforge_runes_impl(request_json).map_err(super::ApiError::into_json)
 }
@@ -312,7 +326,8 @@ fn reforge_runes_impl(request_json: &str) -> Result<String, super::ApiError> {
         .ok_or_else(|| format!("unknown base item: {}", draft.header.base_name))?;
     let (broad, specific) = rune_slot_types(&base.item_class);
 
-    // 逐符文取适用词条行（broad 与 specific 两键都命中则都收，PoB2 同口径）。
+    // For each rune, collect its applicable mod lines (both broad and
+    // specific hits are collected, matching PoB2's basis).
     let mut new_stat_lines: Vec<String> = Vec::new();
     for name in &req.runes {
         let def = runes_def
@@ -330,14 +345,17 @@ fn reforge_runes_impl(request_json: &str) -> Result<String, super::ApiError> {
         new_stat_lines.extend(lines);
     }
 
-    // 文本重写：剔除旧 Rune 命名行与 {rune} 词条行；记录 Sockets / Implicits 位置。
+    // Text rewrite: strips the old Rune named lines and {rune} mod lines;
+    // records the Sockets / Implicits positions.
     let mut out: Vec<String> = Vec::new();
     let mut sockets_idx: Option<usize> = None;
     let mut socket_capacity = 0usize;
     let mut implicits_idx: Option<usize> = None;
     let mut implicit_n = 0usize;
-    // Implicits 窗口余量（PoB 导出中 Implicits 行之后紧跟 N 条 implicit/enchant
-    // 区词条；被剔除的 {rune} 行若在窗口内需从计数扣除）。
+    // The Implicits window's remaining count (in a PoB export, the
+    // Implicits line is immediately followed by N implicit/enchant-section
+    // mod lines; any {rune} line stripped within this window must be
+    // subtracted from the count).
     let mut window_remaining = 0usize;
     let mut removed_in_window = 0usize;
     for line in req.text.lines() {
@@ -371,12 +389,13 @@ fn reforge_runes_impl(request_json: &str) -> Result<String, super::ApiError> {
         out.push(line.to_string());
     }
 
-    // 孔数归一：请求给定目标孔数则重写/新增/移除 `Sockets:` 行。
+    // Normalize the socket count: rewrites/adds/removes the `Sockets:` line
+    // if the request gives a target count.
     let capacity = req.sockets.unwrap_or(socket_capacity);
     let sockets_line = format!("Sockets: {}", vec!["S"; capacity].join(" "));
     let sockets_idx = match (sockets_idx, capacity) {
         (Some(idx), 0) => {
-            // 减到 0 孔：整行移除（后续无命名行可插）。
+            // Reduced to 0 sockets: remove the whole line (no named lines to insert afterward).
             out.remove(idx);
             if let Some(imp) = implicits_idx.as_mut()
                 && *imp > idx
@@ -391,8 +410,10 @@ fn reforge_runes_impl(request_json: &str) -> Result<String, super::ApiError> {
         }
         (None, 0) => None,
         (None, _) => {
-            // 无 Sockets 行的物品加孔：插在 Implicits 之前；无 Implicits 则插在
-            // `Item Level:` 行后（PoB 导出必有）；再退化插到基底行（第 3 行）后。
+            // An item with no Sockets line gaining sockets: inserted before
+            // Implicits; if there's no Implicits, inserted after the `Item
+            // Level:` line (always present in a PoB export); as a last
+            // resort, inserted after the base-type line (line 3).
             let idx = implicits_idx.unwrap_or_else(|| {
                 out.iter()
                     .position(|l| l.trim().starts_with("Item Level:"))
@@ -418,8 +439,8 @@ fn reforge_runes_impl(request_json: &str) -> Result<String, super::ApiError> {
         return Err(super::ApiError::bad_request("item has no rune sockets"));
     }
 
-    // 先插后段（Implicits 之后的词条行），再插前段（Sockets 之后的命名行），
-    // 避免下标位移。
+    // Insert the later section first (mod lines after Implicits), then the
+    // earlier section (named lines after Sockets), to avoid index shifting.
     if let Some(idx) = implicits_idx {
         out[idx] = format!(
             "Implicits: {}",
@@ -445,12 +466,12 @@ fn reforge_runes_impl(request_json: &str) -> Result<String, super::ApiError> {
     .map_err(|e| format!("serialize: {e}"))?)
 }
 
-// ---------------------------------------------------------------------------
-// translate_lines_json（英文 → 简中显示翻译：树词条 tooltip / 配置选项等）
-// ---------------------------------------------------------------------------
+// translate_lines_json (English -> Simplified Chinese display translation: tree mod tooltips / config options, etc)
 
-/// 批量把英文词条行翻译为简中显示文本（模板反查；不认识原样返回）。
-/// 入参/出参均为 JSON 字符串数组。数据包无 zh-CN 模板时原样全返。
+/// Batch-translates English mod lines into Simplified Chinese display text
+/// (template reverse lookup; unrecognized lines pass through unchanged).
+/// Both input and output are JSON string arrays. Everything passes through
+/// unchanged when the data pack has no zh-CN templates.
 pub fn translate_lines_to_zh_cn_json(lines_json: &str) -> Result<String, String> {
     translate_lines_impl(lines_json).map_err(super::ApiError::into_json)
 }
@@ -496,7 +517,7 @@ Implicits: 2
                 "explicit",
             ]
         );
-        // 词条行文本已剥标注前缀。
+        // Mod line text has had its annotation prefix stripped.
         assert_eq!(lines[5]["text"], "60% increased Armour");
         assert_eq!(lines[6]["text"], "Bonded: +60 to maximum Life");
     }

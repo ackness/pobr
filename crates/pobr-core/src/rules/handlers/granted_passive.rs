@@ -1,28 +1,36 @@
-//! `special:granted_passive` handler——vendor `["allocates (.+)"]` →
-//! `mod("GrantedPassive", "LIST", passive)`（ModParser.lua:5809）。
+//! `special:granted_passive` handler — equivalent to vendor
+//! `["allocates (.+)"]` -> `mod("GrantedPassive", "LIST", passive)`
+//! (ModParser.lua:5809).
 //!
-//! 油涂 / anoint 附魔「Allocates <Notable>」：把开放捕获的天赋名落为
-//! `GrantedPassive` LIST Text(名)，编排层 `append_granted_passives` 按名匹配
-//! Notable 节点追加为 AllocatedNode（CalcSetup.lua:1322-1331 notableMap）。
+//! Anoint enchants like "Allocates <Notable>": the open-captured passive
+//! name becomes `GrantedPassive` LIST Text(name); the orchestration layer's
+//! `append_granted_passives` matches it by name against Notable nodes and
+//! appends it as an AllocatedNode (CalcSetup.lua:1322-1331 notableMap).
 //!
-//! **走 handler 而非模板**：DSL 硬边界禁 `(.+)` 开放捕获（special_mods_gate
-//! `no_open_captures_in_patterns`）——开放捕获条目一律走 `handler_id`。文本名由
-//! [`HandlerCtx::raw_captures`] 透传（数值 inputs 无法承载名字）。
+//! **Handled via a handler rather than a template**: the DSL's hard boundary
+//! bans open `(.+)` captures (`special_mods_gate`'s
+//! `no_open_captures_in_patterns`) — any entry with an open capture must go
+//! through `handler_id`. The text name is passed through via
+//! [`HandlerCtx::raw_captures`] (numeric `inputs` can't carry a name).
 //!
-//! 与 legacy（mod_parser legacy.rs:1067）逐字节对齐：名取捕获原文 trim（special
-//! 通道输入已小写规范）。条件形「allocates X if you have the matching modifier on
-//! forbidden Y」（ModParser.lua:5808）legacy 归 Unsupported——本 handler 对该形
-//! 产空 mods（special 通道空 mods = 识别但无产出；该形不在 C1 语料，登记差异）。
+//! Byte-for-byte aligned with legacy (mod_parser legacy.rs:1067): the name
+//! is the trimmed capture text (special-channel input is already
+//! lowercase-normalized). The conditional form "allocates X if you have the
+//! matching modifier on forbidden Y" (ModParser.lua:5808) is classified
+//! Unsupported by legacy — this handler produces empty mods for that form
+//! instead (an empty-mods special-channel result means "recognized but
+//! produced nothing"; this form isn't in the C1 corpus, so the discrepancy
+//! is noted here rather than resolved).
 
 use pobr_data::modifier::ModType;
 
 use crate::modifier::{ModValue, Modifier};
 use crate::rules::registry::{DuplicateHandlerError, HandlerCtx, HandlerOutcome, HandlerRegistry};
 
-/// handler 稳定 id。
+/// The handler's stable id.
 pub const ID: &str = "special:granted_passive";
 
-/// 注册 granted_passive handler。
+/// Registers the granted_passive handler.
 pub fn register(registry: &mut HandlerRegistry) -> Result<(), DuplicateHandlerError> {
     registry.register(ID, Box::new(granted_passive_handler))
 }
@@ -32,7 +40,9 @@ fn granted_passive_handler(ctx: &HandlerCtx<'_>) -> HandlerOutcome {
         return HandlerOutcome::default();
     };
     let name = name.trim();
-    // 条件授予形（forbidden flame/flesh）未建模 → 不误当无条件授予（legacy 同款保守）。
+    // The conditional-grant form (forbidden flame/flesh) isn't modeled ->
+    // don't mistake it for an unconditional grant (matching legacy's
+    // conservative behavior).
     if name.is_empty() || name.contains("if you have the matching modifier") {
         return HandlerOutcome::default();
     }

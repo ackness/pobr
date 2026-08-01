@@ -24,12 +24,15 @@ impl ModCache {
         self.entries.get(&normalize_cache_key(text))
     }
 
-    /// 缓存命中即返回；未命中时经 `ctx` 解析（注入引擎规则时走数据驱动引擎，
-    /// `ctx` 空时整行 Unsupported——见 [`ParseCtx::parse`]）。
+    /// Returns the cached result on a hit; on a miss, parses via `ctx`
+    /// (goes through the data-driven engine when rules are injected; whole
+    /// line becomes Unsupported when `ctx` is empty — see [`ParseCtx::parse`]).
     ///
-    /// **缓存键不含 ctx**：调用方须保证同一 `ModCache` 实例的 `ctx` 在其生命周期内
-    /// 一致（编排层每次 build 的 session 持单一 parser_rules，满足此约束）；混用不同
-    /// `ctx` 会让先到的解析结果被缓存复用。
+    /// **The cache key doesn't include `ctx`**: callers must ensure `ctx`
+    /// stays consistent across the lifetime of a given `ModCache` instance
+    /// (the orchestration layer's session holds a single `parser_rules` per
+    /// build, satisfying this). Mixing different `ctx` values would let the
+    /// first parse result served get reused from the cache regardless.
     pub fn parse_or_insert_with_ctx(
         &mut self,
         text: &str,

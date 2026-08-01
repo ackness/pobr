@@ -1,14 +1,16 @@
-//! 尸体爆炸基伤通道端到端验证（M4-G；vendor `CalcOffence.lua:2211-2217`）。
+//! End-to-end verification of the corpse-explosion base damage channel
+//! (vendor `CalcOffence.lua:2211-2217`).
 //!
-//! Detonate Dead 的击中主体 = `monsterLifeTable[enemyLevel] ×
-//! corpseExplosionLifeMultiplier`（gem 分等级 stat
-//! `corpse_explosion_monster_life_permillage_physical`，statmap div=1000，
-//! `SkillStatMap.lua:313-316`），门控 = statSet baseMods `explodeCorpse`
-//! （act_int.lua:5287，经 skill_overrides overlay）。
+//! Detonate Dead's hit base = `monsterLifeTable[enemyLevel] ×
+//! corpseExplosionLifeMultiplier` (per-level gem stat
+//! `corpse_explosion_monster_life_permillage_physical`, statmap div=1000,
+//! `SkillStatMap.lua:313-316`); gated by the statSet baseMods `explodeCorpse`
+//! (act_int.lua:5287, via the skill_overrides overlay).
 //!
-//! 用真实入库数据走整条链：gem → statmap skill_data → 编排注入
-//! `PhysicalDamageMin/Max` BASE → 伤害分量。裸 build（无装备/天赋）下物理
-//! 分量应**精确**等于尸体基伤（无 inc/more 干扰）。
+//! Walks the full chain with real ingested data: gem -> statmap skill_data ->
+//! orchestration injects a `PhysicalDamageMin/Max` BASE -> damage component.
+//! On a bare build (no gear/passives), the physical component should equal
+//! the corpse base damage **exactly** (no inc/more interference).
 
 use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
@@ -61,10 +63,10 @@ fn physical_component(build_data: &BuildData, enemy_level: u32) -> (f64, f64) {
     (phys.min, phys.max)
 }
 
-/// DD L20：permillage 107 → 倍率 0.107。
-/// - 缺省敌人等级 = min(MaxEnemyLevel 85, 角色 90) = 85 → monsterLife 36012
-///   → 尸体基伤 3853.284（min = max，vendor BonusMin/Max 同值）；
-/// - 显式敌人等级 50 → monsterLife 2556 → 273.492（等级管道接通）。
+/// DD L20: permillage 107 -> multiplier 0.107.
+/// - Default enemy level = min(MaxEnemyLevel 85, character 90) = 85 -> monsterLife 36012
+///   -> corpse base damage 3853.284 (min = max, vendor BonusMin/Max share the same value);
+/// - Explicit enemy level 50 -> monsterLife 2556 -> 273.492 (proves the level pipeline is wired up).
 #[test]
 fn detonate_dead_physical_base_is_corpse_life_times_multiplier() {
     let build_data = load_build_data();
@@ -84,7 +86,7 @@ fn detonate_dead_physical_base_is_corpse_life_times_multiplier() {
     );
 }
 
-/// 非尸体技能（Fireball）不受影响：物理分量为零（门控 explodeCorpse 缺省 false）。
+/// A non-corpse skill (Fireball) is unaffected: the physical component is zero (explodeCorpse gate defaults to false).
 #[test]
 fn non_corpse_skill_gets_no_physical_injection() {
     let build_data = load_build_data();

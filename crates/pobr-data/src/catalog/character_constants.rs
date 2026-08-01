@@ -1,110 +1,130 @@
-//! 角色基础常量域 schema（`base/character_constants.json`，等级/属性派生常量）。
+//! Character base-constants domain schema
+//! (`base/character_constants.json`, level/attribute-derived constants).
 //!
-//! 数值常量自 `pobr-core::character` 迁出（**公式逻辑仍留 Rust**，本表只承载
-//! 数值；架构文档 20 §3.1）。pobr 没有的数值才从 vendor PoB2 抽取，逐字段在
-//! doc 注明 vendor 文件:行号（vendor commit `2df5a74`，见 `vendor/.pob2-version.txt`）。
+//! The numeric constants were migrated out of `pobr-core::character`
+//! (**the formula logic still lives in Rust** — this table only carries the
+//! numbers). Only values pobr doesn't already have are extracted from
+//! vendor PoB2, with the vendor file:line noted in each field's doc (vendor
+//! commit `2df5a74`, see `vendor/.pob2-version.txt`).
 //!
-//! 来源对照：
-//! - pobr 准源：`crates/pobr-core/src/character.rs`（10 个常量，f23e88f 已对齐 PoB2）；
-//! - vendor：`src/Data/Misc.lua:140` `data.characterConstants` 表 +
-//!   `src/Modules/CalcSetup.lua:615-622` 角色基础段 +
-//!   `src/Modules/CalcPerform.lua:420-443` 属性派生段 +
-//!   `src/Modules/Data.lua:174` `AccuracyPerDexBase`。
+//! Source cross-reference:
+//! - pobr's source of truth: `crates/pobr-core/src/character.rs` (10
+//!   constants, aligned with PoB2 as of f23e88f);
+//! - vendor: `src/Data/Misc.lua:140`'s `data.characterConstants` table +
+//!   `src/Modules/CalcSetup.lua:615-622`'s character-base section +
+//!   `src/Modules/CalcPerform.lua:420-443`'s attribute-derivation section +
+//!   `src/Modules/Data.lua:174`'s `AccuracyPerDexBase`.
 //!
-//! 边界说明：抗性上限 / 充能上限 / 暴伤基础等虽然在 vendor 同属
-//! `data.characterConstants`，但按架构文档 20 §3.1 归 `game_constants.json`
-//! 的 character 段，本表不收，避免双表重复定义。
+//! Scope note: resistance caps / charge caps / base crit damage etc. also
+//! live under vendor's `data.characterConstants`, but they're assigned to
+//! `game_constants.json`'s character section instead, and aren't stored
+//! here — to avoid defining them twice across two tables.
 //!
-//! TODO（仅记录，不在本任务处理）：架构文档 20 §3.2 把本表列在 `overlay/`，
-//! 而预注册的 `manifest.json` 把 `character_constants` 注册在 `base` 段；
-//! 本实现以 manifest 为准落 `base/`，归属争议留给后续裁决。
+//! TODO (recorded only, not handled by this task): this table is listed
+//! under `overlay/` by the pre-registered `manifest.json`, which registers
+//! `character_constants` in the `base` section instead. This implementation
+//! goes with the manifest and stores it under `base/`; the ownership
+//! discrepancy is left for a later decision.
 
 use serde::{Deserialize, Serialize};
 
-/// 角色等级/属性派生常量（单对象域，整文件就是一个本结构的 JSON object）。
+/// Character level/attribute-derived constants (a single-object domain —
+/// the whole file is one JSON object of this struct).
 ///
-/// 消费方为 `pobr-core::character`（`CharacterBase` 派生公式）：
-/// - 固有生命 = `base_life_constant + life_per_level*level + life_per_strength*Str`
-/// - 固有魔力 = `base_mana_constant + mana_per_level*level + mana_per_intelligence*Int`
-/// - 固有精准 = `base_accuracy_constant + accuracy_per_level*level + accuracy_per_dexterity*Dex`
-/// - 固有闪避 = `base_evasion`
+/// Consumed by `pobr-core::character` (the `CharacterBase` derivation formulas):
+/// - inherent life = `base_life_constant + life_per_level*level + life_per_strength*Str`
+/// - inherent mana = `base_mana_constant + mana_per_level*level + mana_per_intelligence*Int`
+/// - inherent accuracy = `base_accuracy_constant + accuracy_per_level*level + accuracy_per_dexterity*Dex`
+/// - inherent evasion = `base_evasion`
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct CharacterConstantsDef {
-    /// 固有生命常量项（pobr 准源 `BASE_LIFE_CONSTANT = 16`；vendor
-    /// `CalcSetup.lua:615` Multiplier 语义 `base = 16`）。
+    /// Inherent life's constant term (pobr's source of truth
+    /// `BASE_LIFE_CONSTANT = 16`; vendor `CalcSetup.lua:615`'s Multiplier
+    /// semantics, `base = 16`).
     pub base_life_constant: f64,
-    /// 每等级生命（pobr 准源 `LIFE_PER_LEVEL = 12`；vendor `Data/Misc.lua:152`
-    /// `life_per_level`）。
+    /// Life per level (pobr's source of truth `LIFE_PER_LEVEL = 12`; vendor
+    /// `Data/Misc.lua:152`'s `life_per_level`).
     pub life_per_level: f64,
-    /// 每 1 点力量生命（pobr 准源 `LIFE_PER_STRENGTH = 2`；vendor
-    /// `CalcPerform.lua:429` 字面量 `output.Str * 2`）。
+    /// Life per 1 point of strength (pobr's source of truth
+    /// `LIFE_PER_STRENGTH = 2`; vendor `CalcPerform.lua:429`'s literal
+    /// `output.Str * 2`).
     pub life_per_strength: f64,
-    /// 固有魔力常量项（pobr 准源 `BASE_MANA_CONSTANT = 30`；vendor
-    /// `CalcSetup.lua:616` `base = 30`）。
+    /// Inherent mana's constant term (pobr's source of truth
+    /// `BASE_MANA_CONSTANT = 30`; vendor `CalcSetup.lua:616`'s `base = 30`).
     pub base_mana_constant: f64,
-    /// 每等级魔力（pobr 准源 `MANA_PER_LEVEL = 4`；vendor `Data/Misc.lua:153`
-    /// `mana_per_level`）。
+    /// Mana per level (pobr's source of truth `MANA_PER_LEVEL = 4`; vendor
+    /// `Data/Misc.lua:153`'s `mana_per_level`).
     pub mana_per_level: f64,
-    /// 每 1 点智力魔力（pobr 准源 `MANA_PER_INTELLIGENCE = 2`；vendor
-    /// `CalcPerform.lua:440` 字面量 `output.Int * 2`）。
+    /// Mana per 1 point of intelligence (pobr's source of truth
+    /// `MANA_PER_INTELLIGENCE = 2`; vendor `CalcPerform.lua:440`'s literal
+    /// `output.Int * 2`).
     pub mana_per_intelligence: f64,
-    /// 固有精准常量项（pobr 准源 `BASE_ACCURACY_CONSTANT = -6`；vendor
-    /// `CalcSetup.lua:622` `base = -data.characterConstants["accuracy_rating_per_level"]`）。
+    /// Inherent accuracy's constant term (pobr's source of truth
+    /// `BASE_ACCURACY_CONSTANT = -6`; vendor `CalcSetup.lua:622`'s
+    /// `base = -data.characterConstants["accuracy_rating_per_level"]`).
     pub base_accuracy_constant: f64,
-    /// 每等级精准（pobr 准源 `ACCURACY_PER_LEVEL = 6`；vendor
-    /// `Data/Misc.lua:154` `accuracy_rating_per_level`）。
+    /// Accuracy per level (pobr's source of truth `ACCURACY_PER_LEVEL = 6`;
+    /// vendor `Data/Misc.lua:154`'s `accuracy_rating_per_level`).
     pub accuracy_per_level: f64,
-    /// 每 1 点敏捷精准（pobr 准源 `ACCURACY_PER_DEXTERITY = 6`；vendor
-    /// `Modules/Data.lua:174` `AccuracyPerDexBase = 6`）。
+    /// Accuracy per 1 point of dexterity (pobr's source of truth
+    /// `ACCURACY_PER_DEXTERITY = 6`; vendor `Modules/Data.lua:174`'s
+    /// `AccuracyPerDexBase = 6`).
     pub accuracy_per_dexterity: f64,
-    /// 固有基础闪避（pobr 准源 `BASE_EVASION = 7`；vendor `Data/Misc.lua:151`
-    /// `base_evasion_rating`）。
+    /// Inherent base evasion (pobr's source of truth `BASE_EVASION = 7`;
+    /// vendor `Data/Misc.lua:151`'s `base_evasion_rating`).
     pub base_evasion: f64,
-    /// 每等级力量（vendor-only：`Data/Misc.lua:157` `strength_per_level = 0`）。
+    /// Strength per level (vendor-only: `Data/Misc.lua:157`'s
+    /// `strength_per_level = 0`).
     pub strength_per_level: f64,
-    /// 每等级敏捷（vendor-only：`Data/Misc.lua:158` `dexterity_per_level = 0`）。
+    /// Dexterity per level (vendor-only: `Data/Misc.lua:158`'s
+    /// `dexterity_per_level = 0`).
     pub dexterity_per_level: f64,
-    /// 每等级智力（vendor-only：`Data/Misc.lua:159` `intelligence_per_level = 0`）。
+    /// Intelligence per level (vendor-only: `Data/Misc.lua:159`'s
+    /// `intelligence_per_level = 0`).
     pub intelligence_per_level: f64,
 }
 
-// ---------------------------------------------------------------------------
-// Default = fallback 值（M0-W3 注入管道，架构文档 20 §1 P8/P9）
+// Default = fallback values
 //
-// 语义：`Default` 即「无 GameData 注入时的回退常量集」，必须与
-// `data/<版本>/base/character_constants.json` 逐值相等。
+// Semantics: `Default` is "the fallback constant set used when no GameData
+// is injected", and must be value-equal field by field to
+// `data/<version>/base/character_constants.json`.
 //
-// 准源说明：本域准源是 `pobr-core/src/character.rs` 的 10 个私有常量，但依赖
-// 方向（pobr-core → pobr-data）不允许在此反向引用，故以字面量落值、逐字段注明
-// 准源常量名；逐值锁定由 `pobr-core/src/character.rs` 的
-// `default_constants_match_legacy_character_source` 测试承担（准源若改值即红）。
-// vendor-only 三个 per-level 字段（pobr 旧 Rust 无此值）出处见各字段 doc。
-// ---------------------------------------------------------------------------
+// Source-of-truth note: this domain's source of truth is the 10 private
+// constants in `pobr-core/src/character.rs`, but the dependency direction
+// (pobr-core → pobr-data) doesn't allow referencing it back from here, so
+// the values are stored as literals with each field's doc noting the
+// source-of-truth constant's name; value-locking is enforced by
+// `pobr-core/src/character.rs`'s
+// `default_constants_match_legacy_character_source` test (it goes red if
+// the source of truth's value changes). See each field's doc for the
+// source of the three vendor-only per-level fields (values pobr's old Rust
+// doesn't have).
 
 impl Default for CharacterConstantsDef {
     fn default() -> Self {
         Self {
-            // 准源 character.rs::BASE_LIFE_CONSTANT。
+            // Source of truth: character.rs::BASE_LIFE_CONSTANT.
             base_life_constant: 16.0,
-            // 准源 character.rs::LIFE_PER_LEVEL。
+            // Source of truth: character.rs::LIFE_PER_LEVEL.
             life_per_level: 12.0,
-            // 准源 character.rs::LIFE_PER_STRENGTH。
+            // Source of truth: character.rs::LIFE_PER_STRENGTH.
             life_per_strength: 2.0,
-            // 准源 character.rs::BASE_MANA_CONSTANT。
+            // Source of truth: character.rs::BASE_MANA_CONSTANT.
             base_mana_constant: 30.0,
-            // 准源 character.rs::MANA_PER_LEVEL。
+            // Source of truth: character.rs::MANA_PER_LEVEL.
             mana_per_level: 4.0,
-            // 准源 character.rs::MANA_PER_INTELLIGENCE。
+            // Source of truth: character.rs::MANA_PER_INTELLIGENCE.
             mana_per_intelligence: 2.0,
-            // 准源 character.rs::BASE_ACCURACY_CONSTANT。
+            // Source of truth: character.rs::BASE_ACCURACY_CONSTANT.
             base_accuracy_constant: -6.0,
-            // 准源 character.rs::ACCURACY_PER_LEVEL。
+            // Source of truth: character.rs::ACCURACY_PER_LEVEL.
             accuracy_per_level: 6.0,
-            // 准源 character.rs::ACCURACY_PER_DEXTERITY。
+            // Source of truth: character.rs::ACCURACY_PER_DEXTERITY.
             accuracy_per_dexterity: 6.0,
-            // 准源 character.rs::BASE_EVASION。
+            // Source of truth: character.rs::BASE_EVASION.
             base_evasion: 7.0,
-            // vendor-only（Data/Misc.lua:157-159，per-level 属性当前均为 0）。
+            // vendor-only (Data/Misc.lua:157-159, all per-level attributes are currently 0).
             strength_per_level: 0.0,
             dexterity_per_level: 0.0,
             intelligence_per_level: 0.0,

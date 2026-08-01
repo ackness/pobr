@@ -1,22 +1,25 @@
-//! BuildRaw 往返 golden 回归（P16 验收契约：编辑态无 parity 可依）。
+//! BuildRaw round-trip golden regression (the edit view has no parity target to check against).
 //!
-//! 强契约（门禁）：对真实 ninja build 全部 `<Item>` 文本块，
-//! `parse(build_raw(parse(x))) == parse(x)`（语义不动点）。
+//! Hard contract (gate): for every `<Item>` text block in real ninja builds,
+//! `parse(build_raw(parse(x))) == parse(x)` (a semantic fixed point).
 //!
-//! 语料 = `examples/demo-bd-test/builds/*/decoded.xml` 内嵌的全部 `<Item>` 块（~360 件），
-//! 覆盖 rare/unique/jewel、Implicits 头、`{enchant}{rune}`/`{fractured}`/`{desecrated}`
-//! 标注、Sockets/Rune、防御件、catalyst 等真实形态。
+//! Corpus = every `<Item>` block embedded in
+//! `examples/demo-bd-test/builds/*/decoded.xml` (~360 items), covering
+//! rare/unique/jewel, the Implicits header, `{enchant}{rune}`/`{fractured}`/`{desecrated}`
+//! annotations, Sockets/Rune, defence items, catalysts and other real-world shapes.
 //!
-//! 字节契约（报表，非门禁）：`build_raw(parse(x))` 与 x 规范化后的 byte-diff 计数打印，
-//! 趋零是 M6 前目标；PoB2 自身 BuildRaw 亦不保证 byte-stable，故不作硬断言。
+//! Byte contract (a report, not a gate): prints a byte-diff count between
+//! `build_raw(parse(x))` and normalized x; trending to zero is the aspiration,
+//! but PoB2's own BuildRaw doesn't guarantee byte-stability either, so this
+//! isn't hard-asserted.
 
 use pobr_item::ItemDraft;
 use std::path::PathBuf;
 
-/// 定位 `examples/demo-bd-test/builds`（从 crate manifest dir 上溯两级到 workspace root）。
+/// Locates `examples/demo-bd-test/builds` (two levels up from the crate manifest dir to the workspace root).
 fn builds_dir() -> PathBuf {
     let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    // crates/pobr-item → workspace root
+    // crates/pobr-item -> workspace root
     manifest
         .parent()
         .and_then(|p| p.parent())
@@ -24,29 +27,31 @@ fn builds_dir() -> PathBuf {
         .expect("workspace root")
 }
 
-/// 从 decoded.xml 抽取全部 `<Item ...>...</Item>` 内的物品文本块。
+/// Extracts every `<Item ...>...</Item>` item text block from decoded.xml.
 ///
-/// PoB XML 的 `<Item>` 内文是 HTML 转义的物品文本（`&apos;` 等）+ 末尾 `<ModRange/>`
-/// 子元素。抽取时：取 `<Item ...>` 后到首个 `<`（子元素或闭合标签）的纯文本段，解转义。
+/// A PoB XML `<Item>`'s body is HTML-escaped item text (`&apos;`, etc.) plus
+/// a trailing `<ModRange/>` child element. Extraction takes the plain-text
+/// span from `<Item ...>` up to the first `<` (a child element or closing
+/// tag) and unescapes it.
 fn extract_item_blocks(xml: &str) -> Vec<String> {
     let mut blocks = Vec::new();
     let mut rest = xml;
     while let Some(open) = rest.find("<Item ") {
         let after_open = &rest[open..];
-        // 跳过开标签自身到 `>`。
+        // Skip past the opening tag itself to `>`.
         let Some(gt) = after_open.find('>') else {
             break;
         };
         let body_start = open + gt + 1;
         let body_region = &rest[body_start..];
-        // 物品文本到首个内嵌子元素（`<ModRange`/`</Item`）为止。
+        // Item text runs up to the first embedded child element (`<ModRange`/`</Item`).
         let text_end = body_region.find('<').unwrap_or(body_region.len());
         let raw_text = &body_region[..text_end];
         let unescaped = unescape_xml(raw_text);
         if unescaped.contains("Rarity:") {
             blocks.push(unescaped);
         }
-        // 推进到本 Item 结束之后。
+        // Advance past the end of this Item.
         let Some(close) = body_region.find("</Item>") else {
             break;
         };
@@ -63,7 +68,7 @@ fn unescape_xml(s: &str) -> String {
         .replace("&amp;", "&")
 }
 
-/// 收集语料：全部 build 的全部 Item 块。
+/// Collects the corpus: every Item block from every build.
 fn corpus() -> Vec<(String, String)> {
     let dir = builds_dir();
     let mut out = Vec::new();
@@ -133,7 +138,7 @@ fn semantic_fixpoint_roundtrip_all_real_items() {
     }
 }
 
-/// 字节契约报表（非门禁）：build_raw 与原文规范化后逐行 diff 计数。
+/// Byte-contract report (not a gate): counts line-by-line diffs between build_raw and the normalized original.
 #[test]
 fn byte_diff_report() {
     let corpus = corpus();

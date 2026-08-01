@@ -1,29 +1,34 @@
-//! `special:mageblood_legacy` handler——vendor `ModParser.lua:5554-5557`
-//! `["legacy of (%w+)"]` 闭包等价。
+//! `special:mageblood_legacy` handler — equivalent to vendor
+//! `ModParser.lua:5554-5557`'s `["legacy of (%w+)"]` closure.
 //!
-//! Mageblood 腰带的每个选中变体渲染成一行 `Legacy of <X>`；vendor 用捕获组动态
-//! 拼出 mod 名 `mod("LegacyOf"..firstToUpper(flask), "BASE", 1)` 并加
-//! `flag("MagebloodEquipped")`。捕获驱动的 mod 名无法用受限模板 DSL 表达（同
-//! `special:granted_passive` 先例，DSL 名只支持 Literal / enums 闭集），故走
-//! handler：从 [`HandlerCtx::raw_captures`] 取 flask 名首字母大写拼 `LegacyOf<X>`。
+//! Each chosen variant on a Mageblood belt renders as a line `Legacy of
+//! <X>`; vendor builds the mod name dynamically from the capture group,
+//! `mod("LegacyOf"..firstToUpper(flask), "BASE", 1)`, plus
+//! `flag("MagebloodEquipped")`. A capture-driven mod name can't be expressed
+//! in the restricted template DSL (same precedent as
+//! `special:granted_passive` — DSL names only support Literal / a closed
+//! enum set), so this goes through a handler: it takes the flask name from
+//! [`HandlerCtx::raw_captures`], capitalizes its first letter, and builds
+//! `LegacyOf<X>`.
 //!
-//! 聚合应用（把 `LegacyOf*` stacks 折成护甲/闪避/抗性）在 calc 侧
-//! [`crate::calc::mageblood`]（vendor `CalcPerform.lua:1502-1528`）。
+//! Aggregate application (folding `LegacyOf*` stacks into armour/evasion/
+//! resistances) lives on the calc side, in
+//! [`crate::calc::mageblood`] (vendor `CalcPerform.lua:1502-1528`).
 
 use pobr_data::modifier::ModType;
 
 use crate::modifier::Modifier;
 use crate::rules::registry::{DuplicateHandlerError, HandlerCtx, HandlerOutcome, HandlerRegistry};
 
-/// handler 稳定 id。
+/// The handler's stable id.
 pub const ID: &str = "special:mageblood_legacy";
 
-/// 注册 mageblood_legacy handler。
+/// Registers the mageblood_legacy handler.
 pub fn register(registry: &mut HandlerRegistry) -> Result<(), DuplicateHandlerError> {
     registry.register(ID, Box::new(mageblood_legacy_handler))
 }
 
-/// Lua `firstToUpper`：首字母大写，其余不变。
+/// Lua's `firstToUpper`: capitalizes the first letter, leaves the rest unchanged.
 fn first_to_upper(s: &str) -> String {
     let mut chars = s.chars();
     match chars.next() {
@@ -53,7 +58,7 @@ mod tests {
 
     #[test]
     fn produces_legacy_stack_and_flag() {
-        // special 通道输入已小写（"legacy of granite" → 捕获 "granite"）。
+        // Special-channel input is already lowercase ("legacy of granite" -> captures "granite").
         let caps = vec!["granite".to_string()];
         let out = mageblood_legacy_handler(&HandlerCtx::with_inputs_and_captures(&[], &caps));
         assert_eq!(out.player_mods.len(), 2);

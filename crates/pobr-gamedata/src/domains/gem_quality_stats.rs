@@ -1,20 +1,24 @@
-//! `overlay/gem_quality_stats.json` loader——宝石品质 stat 斜率
-//! （`effect_id → [{stat, per_quality_rate}]`），schema 见
-//! [`pobr_data::catalog::skills`] 的 `GemQualityStatsDef` 段（M1-T1，缺口 18-G1/15-G5）。
+//! `overlay/gem_quality_stats.json` loader — gem quality-stat slopes
+//! (`effect_id → [{stat, per_quality_rate}]`), schema in
+//! [`pobr_data::catalog::skills`]'s `GemQualityStatsDef` section.
 //!
-//! 数据来源：vendor PoB2 `Data/Skills/*.lua` 的 `qualityStats` 字段，
-//! 由 `sync-pob-catalog extract-lua --what gem-quality` 确定性抽取生成
-//! （schema 标识 `gem_quality_stats/v1`）。本表是纯查表（无与 base 同形的
-//! merge 语义），按域整体加载，消费侧（pobr-build `BuildData`）建索引。
+//! Data source: vendor PoB2 `Data/Skills/*.lua`'s `qualityStats` field,
+//! deterministically extracted by
+//! `sync-pob-catalog extract-lua --what gem-quality` (schema id
+//! `gem_quality_stats/v1`). This table is a plain lookup table (no merge
+//! semantics against a base with the same shape), loaded as a whole
+//! domain, indexed by the consumer (pobr-build's `BuildData`).
 
 use pobr_data::catalog::GemQualityStatsDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载宝石品质 stat 表（恒走 `overlay/` 定位）。文件缺失（旧数据包无此
-    /// overlay 域）返回 `Ok(None)`——消费侧行为 = 品质不产生 stat（向后兼容）；
-    /// 其余 IO / 解析错误照常上抛，不静默。
+    /// Loads the gem quality-stat table (always resolved under
+    /// `overlay/`). Returns `Ok(None)` when the file is missing (an old
+    /// data pack without this overlay domain) — the consumer behaves as
+    /// "quality produces no stat" (backward compatible); other I/O /
+    /// parse errors still propagate, not silenced.
     pub fn gem_quality_stats(&self) -> Result<Option<GemQualityStatsDef>, LoadError> {
         match self.load_json_at::<GemQualityStatsDef>(self.overlay_path("gem_quality_stats.json")) {
             Ok(def) => Ok(Some(def)),
@@ -32,7 +36,7 @@ impl GameData {
 mod tests {
     use crate::GameData;
 
-    /// 创建带唯一名的临时版本目录。
+    /// Creates a temp version directory with a unique name.
     fn temp_dir(tag: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!(
             "pobr-gamedata-gem-quality-{tag}-{}",
@@ -43,7 +47,7 @@ mod tests {
         dir
     }
 
-    /// overlay 文件缺失（旧数据包）→ Ok(None)，不报错。
+    /// A missing overlay file (an old data pack) → Ok(None), no error.
     #[test]
     fn missing_overlay_file_yields_none() {
         let dir = temp_dir("missing");
@@ -51,7 +55,7 @@ mod tests {
         assert!(loaded.is_none());
     }
 
-    /// 正常加载：`_meta` 头部忽略，effects 列表按序读出。
+    /// Normal load: the `_meta` header is ignored, the effects list read out in order.
     #[test]
     fn loads_effects_and_ignores_meta() {
         let dir = temp_dir("loads");
@@ -77,7 +81,7 @@ mod tests {
         assert_eq!(def.effects[0].stats[0].per_quality_rate, 0.5);
     }
 
-    /// 非法 JSON → 报 Parse 错误，不静默。
+    /// Invalid JSON → a Parse error, not silenced.
     #[test]
     fn malformed_json_errors_out() {
         let dir = temp_dir("malformed");

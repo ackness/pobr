@@ -1,17 +1,24 @@
-//! `extract-lua --what gem-effects`：vendor PoB2 `Data/Gems.lua` 的宝石→授予效果
-//! 连边 → `data/<版本>/overlay/gem_effects.json`（M1-T5.1，缺口 18-G5 数据面 +
-//! 契约 C5 的 `SkillGemDef.granted_effect_id` 数据来源）。
+//! `extract-lua --what gem-effects`: extracts vendor PoB2 `Data/Gems.lua`'s
+//! gem -> granted-effect links into `data/<version>/overlay/gem_effects.json`
+//! (a data-plane source and the data source for contract C5's
+//! `SkillGemDef.granted_effect_id`).
 //!
-//! **通道说明**：蓝图原定从 `.dat` 表 `GemEffects` 走 adapter → `base/`，但该表
-//! 所在 bundle 在钉定补丁 4.5.0.3.4 已无法下载（M1-W0 核验，见 `pipeline/config.json`
-//! 的 `_tablesUnavailableForPinnedPatch`），按 owner 裁决「生产工具定层」
-//! （00-index §4.2-1）：extract-lua 抽取 → **overlay/**。vendor `Data/Gems.lua` 本就
-//! 是该表的导出产物（`Export/Scripts/skills.lua:898-925`），抽取为忠实转录。后续
-//! `.dat` 表通道恢复则迁回 `base/`（迁移 commit byte 等价）。
+//! **Channel note**: originally planned to come from the `.dat` table
+//! `GemEffects` via the adapter into `base/`, but the bundle containing that
+//! table is no longer downloadable at the pinned patch 4.5.0.3.4 (verified —
+//! see `_tablesUnavailableForPinnedPatch` in `pipeline/config.json`). Per the
+//! owner's call to "let the producing tool define the layer," it's extracted
+//! via extract-lua into **overlay/** instead. Vendor's `Data/Gems.lua` is
+//! itself an export of that table (`Export/Scripts/skills.lua:898-925`), so
+//! the extraction is a faithful transcription. If the `.dat` table channel
+//! comes back, this should migrate back to `base/` (a byte-equivalent
+//! migration commit).
 //!
-//! 职责切分与 [`crate::extract_lua`] 一致：Lua 引导脚本（`extract_gem_effects.lua`，
-//! 编译期内嵌）只负责忠实抽取并以 JSONL 输出；Rust 侧统一做排序（gem_id 升序）、
-//! 重复 gem_id 校验与整体文档序列化，保证同输入重跑 **byte-stable**。
+//! Responsibility split matches [`crate::extract_lua`]: the Lua bootstrap
+//! script (`extract_gem_effects.lua`, embedded at compile time) only does
+//! faithful extraction and emits JSONL; the Rust side handles sorting
+//! (ascending gem_id), duplicate gem_id validation, and whole-document
+//! serialization, guaranteeing **byte-stable** output on repeated runs with the same input.
 
 use std::io;
 
@@ -22,49 +29,53 @@ use crate::extract_lua::{
     ExtractLuaArgs, OverlayMeta, invoke_luajit_jsonl, read_vendor_version, resolve_version_file,
 };
 
-/// 引导脚本内容（经 stdin 注入 luajit，二进制自包含、不依赖运行目录）
+/// Bootstrap script content (piped into luajit via stdin; the binary is
+/// self-contained and doesn't depend on the working directory)
 const BOOTSTRAP_LUA: &str = include_str!("extract_gem_effects.lua");
 
-/// 当前 overlay 文档 schema 标识（字段演化时递增）
+/// Current overlay document schema identifier (bumped when fields evolve)
 pub const GEM_EFFECTS_SCHEMA: &str = "gem_effects/v1";
 
-/// 引导脚本输出的单行 JSONL：一个宝石变体的效果连边。
+/// One JSONL line emitted by the bootstrap script: one gem variant's effect link.
 #[derive(Debug, Clone, Deserialize)]
 pub struct GemEffectRow {
-    /// 宝石基底 id（vendor `gameId`）。
+    /// The gem base id (vendor `gameId`).
     pub gem_id: String,
-    /// 效果变体 id（vendor `variantId`）。
+    /// The effect variant id (vendor `variantId`).
     pub variant_id: String,
-    /// 授予的主效果 id。
+    /// The id of the primary granted effect.
     pub granted_effect: String,
-    /// 附加授予效果（`additionalGrantedEffectId1..N` 序）。
+    /// Additional granted effects (in `additionalGrantedEffectId1..N` order).
     #[serde(default)]
     pub additional_granted_effects: Vec<String>,
-    /// 主效果的附加 statSet（`additionalStatSet1..N` 序）。
+    /// Additional statSets for the primary effect (in `additionalStatSet1..N` order).
     #[serde(default)]
     pub additional_stat_sets: Vec<String>,
 }
 
-/// 完整 overlay 文档（生成侧；消费侧 schema 见
-/// [`pobr_data::catalog::GemEffectsDef`]，serde 形状一致防字段漂移）。
+/// The full overlay document (generation side; see
+/// [`pobr_data::catalog::GemEffectsDef`] for the consumption-side schema —
+/// matching serde shapes guard against field drift).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GemEffectsDoc {
-    /// 头部元信息（serde 落为 `_meta`，置于文件最前）
+    /// Header metadata (serialized as `_meta`, placed at the top of the file)
     #[serde(rename = "_meta")]
     pub meta: OverlayMeta,
-    /// 宝石→效果连边表，按 gem_id 升序。
+    /// The gem -> effect link table, ascending by gem_id.
     pub gems: Vec<GemEffectDef>,
 }
 
-/// 执行抽取，返回最终（byte-stable 的）JSON 文本。
+/// Run the extraction, returning the final (byte-stable) JSON text.
 pub fn run_extract_gem_effects(args: &ExtractLuaArgs) -> io::Result<String> {
     let rows: Vec<GemEffectRow> = invoke_luajit_jsonl(args, BOOTSTRAP_LUA)?;
     let meta = build_meta(args)?;
     assemble_gem_effects_document(meta, rows)
 }
 
-/// 组装最终文档：按 gem_id 升序 + 重复 gem_id 校验（当前数据 1 gem ↔ 1 变体；
-/// 出现重复说明 vendor 数据形态变化，报错而非静默取一）+ serde_json 统一序列化。
+/// Assemble the final document: sort ascending by gem_id + validate no
+/// duplicate gem_id (current data is 1 gem <-> 1 variant; a duplicate means
+/// the vendor data shape changed, so this errors rather than silently
+/// picking one) + serde_json serialization.
 pub fn assemble_gem_effects_document(
     meta: OverlayMeta,
     rows: Vec<GemEffectRow>,
@@ -93,7 +104,7 @@ pub fn assemble_gem_effects_document(
     Ok(json)
 }
 
-/// 构建 `_meta`（与公共层同约定：regen_command 写 canonical 相对路径）。
+/// Build `_meta` (same convention as the shared layer: regen_command writes a canonical relative path).
 fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
     let (commit, subject) = read_vendor_version(&resolve_version_file(args))?;
     let mut regen = "cargo run -p sync-pob-catalog -- extract-lua --what gem-effects \
@@ -108,7 +119,7 @@ fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
         vendor: "PathOfBuilding-PoE2".to_string(),
         vendor_commit: commit,
         vendor_commit_subject: subject,
-        // 本目标恒读单文件（公共调用层的 --files 仅占位，不参与定位）。
+        // This target always reads a single file (--files in the shared call layer is just a placeholder, not used for lookup).
         extracted_files: vec!["Data/Gems.lua".to_string()],
         regen_command: regen,
     })
@@ -140,7 +151,7 @@ mod tests {
         }
     }
 
-    /// 排序确定性：乱序输入 → gem_id 升序输出；同输入重跑 byte 一致。
+    /// Sort determinism: shuffled input -> gem_id ascending output; repeated runs with the same input are byte-identical.
     #[test]
     fn sorts_by_gem_id_and_is_byte_stable() {
         let rows = vec![row("B", "b", "BPlayer"), row("A", "a", "APlayer")];
@@ -153,14 +164,14 @@ mod tests {
         assert!(a < b);
     }
 
-    /// 重复 gem_id（vendor 1:1 假设破裂）→ 报错不静默。
+    /// Duplicate gem_id (vendor's 1:1 assumption broke) -> errors, doesn't silently swallow it.
     #[test]
     fn duplicate_gem_id_errors_out() {
         let rows = vec![row("A", "a1", "APlayer"), row("A", "a2", "APlayerTwo")];
         assert!(assemble_gem_effects_document(meta(), rows).is_err());
     }
 
-    /// 消费侧 schema（GemEffectsDef）能读回生成侧文档（serde 形状一致防漂移）。
+    /// The consumption-side schema (GemEffectsDef) can read back the generation-side document (matching serde shapes guard against drift).
     #[test]
     fn consumer_schema_roundtrip() {
         let mut entry = row("A", "a", "APlayer");

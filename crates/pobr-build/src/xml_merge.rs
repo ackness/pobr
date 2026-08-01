@@ -1,31 +1,39 @@
-//! 把「单套编辑结果」写回多套 build XML —— 导出时不丢其余 loadout。
+//! Writes a "single-set edit result" back into a multi-set build XML — so exporting
+//! doesn't lose the other loadouts.
 //!
-//! `xml_write::write_build_xml` 从编辑态**全量生成**一份单套 XML。若直接拿它当
-//! 导出产物，一个多套 build 导入后只要点一次导出，其余 Spec / SkillSet / ItemSet
-//! 连同它们的 `title`（= loadout 绑定的依据）就全没了。
+//! `xml_write::write_build_xml` **fully regenerates** a single-set XML from the edit
+//! state. If that were used as the export output directly, importing a multi-set build
+//! and exporting once would wipe out every other Spec / SkillSet / ItemSet, along with
+//! their `title` (the basis loadout binding relies on).
 //!
-//! [`merge_active_sets`] 因此反过来做：以**原始 XML 为底**，只把 active 指向的那
-//! 一套替换成编辑结果，其余字节不动。与 [`crate::loadout::select_sets`] 同一思路
-//! ——多套数据始终活在 XML 里，编辑态只是它的一个切片。
+//! [`merge_active_sets`] therefore works the other way around: it takes the **original
+//! XML as the base** and only replaces the set that active points to with the edit
+//! result, leaving every other byte untouched. Same idea as
+//! [`crate::loadout::select_sets`] — the multi-set data always lives in the XML, and the
+//! edit state is just one slice of it.
 //!
-//! # 物品池
+//! # Item pool
 //!
-//! `<Item id>` 是 `<Items>` 下的**全局池**，多个 ItemSet 靠 `itemId` 共享引用。所以
-//! 编辑结果的物品不能覆盖池子，而是整体**追加**到池尾并重新编号，再把该套 Slot 的
-//! `itemId` 重指过去。旧条目即便没人引用也留着——PoB2 自己的池同样只增不减，删除
-//! 会打乱其余 ItemSet 的引用。
+//! `<Item id>` is a **global pool** under `<Items>`, shared by reference (`itemId`)
+//! across multiple ItemSets. So the edited result's items can't overwrite the pool —
+//! they get **appended** to the end of the pool and renumbered, with that set's Slot
+//! `itemId` re-pointed accordingly. Old entries stay even if nothing references them
+//! anymore — PoB2's own pool is append-only too, and deleting entries would scramble the
+//! references of other ItemSets.
 
 use crate::loadout::active_selection;
 
-/// 把 `edited`（单套 XML）合并回 `base`（可能多套），只替换 `base` 里 active 的那套。
+/// Merges `edited` (a single-set XML) back into `base` (possibly multi-set), replacing
+/// only the set that `base` has as active.
 ///
-/// `base` 无对应元素时按原样跳过该类；两边都缺时退化为返回 `edited`（手搓 build
-/// 没有原始 XML 可合并）。
+/// If `base` has no matching element, that category is skipped as-is; if both sides
+/// lack it, this degrades to returning `edited` (a hand-built build has no original XML
+/// to merge into).
 pub fn merge_active_sets(base: &str, edited: &str) -> String {
     let sel = active_selection(base);
     let mut out = base.to_string();
 
-    // ── 天赋树 / 技能：自包含元素，整体替换，保留原 title/id 属性 ──
+    // Tree / skills: self-contained elements, replaced wholesale, keeping the original title/id attributes
     for (tag, idx) in [
         ("Spec", sel.tree.unwrap_or(1)),
         ("SkillSet", sel.skill.unwrap_or(1)),
@@ -38,7 +46,7 @@ pub fn merge_active_sets(base: &str, edited: &str) -> String {
         out.replace_range(old, &merged);
     }
 
-    // ── 物品：先追加物品池（重编号），再替换该套 ItemSet ──
+    // Items: append to the item pool (renumbered) first, then replace this ItemSet
     let base_max_id = max_item_id(&out);
     let renumbered = renumber_items(edited, base_max_id);
     if let Some(new_set) = nth_element(&renumbered, "ItemSet", 1)
@@ -47,12 +55,12 @@ pub fn merge_active_sets(base: &str, edited: &str) -> String {
         let merged = merge_attrs(&out[old.clone()], &renumbered[new_set], "ItemSet");
         out.replace_range(old, &merged);
     }
-    // 编辑结果的 `<Item>` 块整体追加到池尾（第一个 `<ItemSet` 之前）。
+    // Append the edited result's `<Item>` blocks to the end of the pool (right before the first `<ItemSet`).
     let blocks: String = item_blocks(&renumbered).concat();
     if !blocks.is_empty()
         && let Some(at) = out.find("<ItemSet")
     {
-        // 对齐插入点所在行的缩进。
+        // Match the indentation of the line at the insertion point.
         let indent = out[..at].rfind('\n').map_or(0, |nl| at - nl - 1);
         let pad = " ".repeat(indent);
         out.insert_str(at, &format!("{blocks}{pad}"));
@@ -61,10 +69,11 @@ pub fn merge_active_sets(base: &str, edited: &str) -> String {
     out
 }
 
-/// 定位第 `n` 个（1-based）`<tag …>…</tag>` 或自闭合 `<tag …/>` 的字节范围。
+/// Locates the byte range of the `n`-th (1-based) `<tag …>…</tag>` or self-closing `<tag …/>`.
 ///
-/// 这几个标签（Spec / SkillSet / ItemSet）都不自嵌套，故无需平衡计数；但
-/// `</SkillSet>` 与 `</Skill>` 是前缀关系，结束标签必须整名匹配。
+/// These tags (Spec / SkillSet / ItemSet) never self-nest, so there's no need for
+/// balanced-depth counting; but `</SkillSet>` and `</Skill>` share a prefix, so the
+/// closing tag must match the full name.
 fn nth_element(xml: &str, tag: &str, n: usize) -> Option<std::ops::Range<usize>> {
     let open = format!("<{tag}");
     let close = format!("</{tag}>");
@@ -73,7 +82,7 @@ fn nth_element(xml: &str, tag: &str, n: usize) -> Option<std::ops::Range<usize>>
     while let Some(rel) = xml[from..].find(&open) {
         let start = from + rel;
         let after = &xml[start + open.len()..];
-        // `<Spec` 不该命中 `<SpecFoo`。
+        // `<Spec` should not match `<SpecFoo`.
         if !after.starts_with([' ', '\t', '\r', '\n', '>', '/']) {
             from = start + open.len();
             continue;
@@ -94,8 +103,9 @@ fn nth_element(xml: &str, tag: &str, n: usize) -> Option<std::ops::Range<usize>>
     None
 }
 
-/// 用 `new_el` 的内容替换 `old_el`，但**保留 `old_el` 独有的属性**（`title` / `id`
-/// 等 loadout 绑定依据）——编辑态不携带这些，直接覆盖会切断绑定。
+/// Replaces `old_el`'s content with `new_el`'s, but **keeps the attributes only
+/// `old_el` has** (`title` / `id`, the basis for loadout binding) — the edit state
+/// doesn't carry these, and overwriting them outright would sever the binding.
 fn merge_attrs(old_el: &str, new_el: &str, tag: &str) -> String {
     let Some(old_end) = old_el.find('>') else {
         return new_el.to_string();
@@ -116,7 +126,8 @@ fn merge_attrs(old_el: &str, new_el: &str, tag: &str) -> String {
     format!("{merged}{}", &new_el[new_end..])
 }
 
-/// 拆开始标签的属性列表（`name="value"`，值内不含 `"`——PoB 写出时已转义）。
+/// Splits a start tag's attribute list (`name="value"`; values contain no `"` — PoB
+/// already escapes them on write).
 fn attrs(open_tag: &str) -> Vec<(String, String)> {
     let mut out = Vec::new();
     let mut rest = open_tag;
@@ -145,7 +156,7 @@ fn has_attr(open_tag: &str, name: &str) -> bool {
     open_tag.contains(&format!("{name}=\""))
 }
 
-/// `<Items>` 池里现有的最大 `<Item id>`（空池为 0）。
+/// The largest existing `<Item id>` in the `<Items>` pool (0 for an empty pool).
 fn max_item_id(xml: &str) -> usize {
     let mut max = 0;
     let mut from = 0;
@@ -160,8 +171,8 @@ fn max_item_id(xml: &str) -> usize {
     max
 }
 
-/// 把 `edited` 里的 `<Item id>` 与 `<Slot itemId>` 整体加上 `offset`，避免与底稿
-/// 池号冲突。
+/// Adds `offset` to every `<Item id>` and `<Slot itemId>` in `edited`, to avoid
+/// colliding with the base document's pool numbers.
 fn renumber_items(edited: &str, offset: usize) -> String {
     let mut out = edited.to_string();
     for (needle, _) in [("<Item id=\"", 0), ("itemId=\"", 0)] {
@@ -173,7 +184,7 @@ fn renumber_items(edited: &str, offset: usize) -> String {
             let raw = &out[vs..vs + ve];
             next.push_str(&out[from..vs]);
             match raw.parse::<usize>() {
-                // itemId="0" 是空槽哨兵，不参与重编号。
+                // itemId="0" is the empty-slot sentinel and is not renumbered.
                 Ok(0) | Err(_) => next.push_str(raw),
                 Ok(n) => next.push_str(&(n + offset).to_string()),
             }
@@ -185,7 +196,7 @@ fn renumber_items(edited: &str, offset: usize) -> String {
     out
 }
 
-/// 取出全部 `<Item id=…>…</Item>` 块（含结尾换行，便于直接拼接）。
+/// Extracts every `<Item id=…>…</Item>` block (with a trailing newline, ready to concatenate directly).
 fn item_blocks(xml: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut n = 1;
@@ -196,7 +207,7 @@ fn item_blocks(xml: &str) -> Vec<String> {
     out
 }
 
-/// 可成组的三类 set。
+/// The three set categories that can form a group.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SetKind {
     Tree,
@@ -214,16 +225,18 @@ impl SetKind {
     }
 }
 
-/// 复制第 `index` 套并追加到同类末尾，新套 `title` 设为 `title`。
+/// Duplicates the `index`-th set and appends it to the end of its category, setting the
+/// new set's `title` to `title`.
 ///
-/// 用于「基于当前组新建一个阶段」——复制而非新建空套，因为 PoB2 的 `CustomLoadout`
-/// 也是复制语义（`Build.lua:790 CopyTree` / `CopyItemSet`），且从零建的空树/空装备
-/// 集对用户没用。返回 `None` 表示源套不存在。
+/// Used for "create a new stage based on the current group" — duplicating rather than
+/// creating an empty set, because PoB2's `CustomLoadout` is also duplicate-based
+/// (`Build.lua:790 CopyTree` / `CopyItemSet`), and an empty tree/item set built from
+/// scratch isn't useful to the user. Returns `None` if the source set doesn't exist.
 pub fn duplicate_set(xml: &str, kind: SetKind, index: usize, title: &str) -> Option<String> {
     let tag = kind.tag();
     let src = nth_element(xml, tag, index)?;
     let copy = set_title(&xml[src], tag, title);
-    // 追加到最后一个同类元素之后，保持文档序 = 选中序。
+    // Append after the last element of the same category, keeping document order = selection order.
     let mut last = None;
     let mut n = 1;
     while let Some(r) = nth_element(xml, tag, n) {
@@ -236,7 +249,8 @@ pub fn duplicate_set(xml: &str, kind: SetKind, index: usize, title: &str) -> Opt
     Some(normalize_ids(&out, kind))
 }
 
-/// 改第 `index` 套的 `title`（缺该属性则插入）。返回 `None` 表示该套不存在。
+/// Changes the `index`-th set's `title` (inserts it if the attribute is missing).
+/// Returns `None` if that set doesn't exist.
 pub fn rename_set(xml: &str, kind: SetKind, index: usize, title: &str) -> Option<String> {
     let tag = kind.tag();
     let r = nth_element(xml, tag, index)?;
@@ -246,24 +260,28 @@ pub fn rename_set(xml: &str, kind: SetKind, index: usize, title: &str) -> Option
     Some(out)
 }
 
-/// 删掉第 `index` 套。最后一套不允许删（PoB2 同样保底留一套），返回 `None`。
+/// Removes the `index`-th set. Deleting the last remaining set isn't allowed (PoB2 also
+/// always keeps at least one), returns `None` in that case.
 pub fn remove_set(xml: &str, kind: SetKind, index: usize) -> Option<String> {
     let tag = kind.tag();
-    nth_element(xml, tag, 2)?; // 只剩一套时不允许删
+    nth_element(xml, tag, 2)?; // Not allowed to remove when only one set is left
     let r = nth_element(xml, tag, index)?;
     let mut out = xml.to_string();
     out.replace_range(r, "");
     Some(normalize_ids(&out, kind))
 }
 
-/// 把该类元素的 `id` 属性重排为文档序（1..n）。
+/// Renumbers the `id` attribute of this category's elements to match document order (1..n).
 ///
-/// **必须做**：`<SkillSet>` / `<ItemSet>` 的选中是按 `id` **属性**匹配的
-/// （`xml_build::parse_socket_groups`），而 loadout 清单按**文档序**编号。复制不改 id
-/// 会产生两个 `id="1"`，切到第二组时按 `id="2"` 查无此集，技能/装备直接空掉；删除则
-/// 会留下空洞，让其后各套的两种编号错位。重排后两种口径恒等。
+/// **Required**: `<SkillSet>` / `<ItemSet>` selection is matched by the `id`
+/// **attribute** (`xml_build::parse_socket_groups`), while the loadout list numbers by
+/// **document order**. Duplicating without renumbering the id would produce two
+/// `id="1"`s, so switching to the second group by `id="2"` would find no such set and
+/// skills/items would go blank; deleting would leave a gap, misaligning the two
+/// numbering schemes for every set after it. Renumbering keeps the two schemes
+/// permanently equal.
 ///
-/// `<Spec>` 没有 id 属性（本就按文档序选），原样返回。
+/// `<Spec>` has no id attribute (it's already selected by document order), so it's returned unchanged.
 fn normalize_ids(xml: &str, kind: SetKind) -> String {
     if kind == SetKind::Tree {
         return xml.to_string();
@@ -292,7 +310,7 @@ fn normalize_ids(xml: &str, kind: SetKind) -> String {
     out
 }
 
-/// 在元素的开始标签上设置 `title`（已有则替换）。
+/// Sets `title` on an element's start tag (replaces it if already present).
 fn set_title(element: &str, tag: &str, title: &str) -> String {
     let end = element.find('>').unwrap_or(element.len());
     let open = &element[..end];
@@ -317,7 +335,7 @@ fn set_title(element: &str, tag: &str, title: &str) -> String {
 mod tests {
     use super::*;
 
-    /// 两套 build 编辑一套后导出：另一套连同 title 必须原样保留。
+    /// Exporting after editing one of two sets: the other set, title included, must be kept unchanged.
     #[test]
     fn keeps_the_other_sets_and_their_titles() {
         // Arrange
@@ -335,7 +353,7 @@ mod tests {
         // Act
         let out = merge_active_sets(base, edited);
 
-        // Assert：其余套与全部 title 保留
+        // Assert: the other set and all titles are kept
         assert!(
             out.contains(r#"title="后期 {b}""#),
             "另一套的 title 丢了：{out}"
@@ -343,13 +361,13 @@ mod tests {
         assert_eq!(out.matches("<Spec").count(), 2, "Spec 应仍为两套");
         assert_eq!(out.matches("<SkillSet").count(), 2);
         assert_eq!(out.matches("<ItemSet").count(), 2);
-        // 编辑套已更新
+        // The edited set has been updated
         assert!(out.contains(r#"nodes="9,9,9""#), "第一套树未更新");
         assert!(
             out.contains(r#"title="早期 {a}""#),
             "编辑套的 title 也要保留"
         );
-        // 新物品追加、旧物品保留
+        // The new item is appended, the old item is kept
         assert!(out.contains("NEW") && out.contains("OLD"));
     }
 
@@ -360,7 +378,7 @@ mod tests {
 
         let out = merge_active_sets(base, edited);
 
-        // 底稿最大 id=2 → 编辑物品变成 3，槽位引用同步。
+        // Base document's max id=2 → the edited item becomes 3, and the slot reference follows.
         assert!(out.contains(r#"<Item id="3">C</Item>"#), "{out}");
         assert!(out.contains(r#"itemId="3""#), "{out}");
         assert!(out.contains(r#"<Item id="1">A</Item>"#), "旧池保留");
@@ -368,7 +386,7 @@ mod tests {
 
     #[test]
     fn switching_active_then_editing_writes_back_to_that_set() {
-        // active 指向第二套时，编辑结果要落到第二套而非第一套。
+        // When active points to the second set, the edited result must land on the second set, not the first.
         let base =
             r#"<Tree activeSpec="2"><Spec title="A" nodes="1"/><Spec title="B" nodes="2"/></Tree>"#;
         let edited = r#"<Tree activeSpec="1"><Spec nodes="7,7"/></Tree>"#;
@@ -387,7 +405,7 @@ mod tests {
 
     #[test]
     fn nth_element_does_not_confuse_skillset_with_skill() {
-        // `</SkillSet>` 与 `</Skill>` 前缀相同——结束标签必须整名匹配。
+        // `</SkillSet>` and `</Skill>` share the same prefix — the closing tag must match the full name.
         let xml = r#"<SkillSet id="1"><Skill a="1"></Skill><Skill b="2"></Skill></SkillSet>"#;
         let r = nth_element(xml, "SkillSet", 1).expect("found");
         assert_eq!(&xml[r], xml, "应覆盖整个 SkillSet");
@@ -408,7 +426,7 @@ mod tests {
         // Act
         let out = duplicate_set(TWO_SPECS, SetKind::Tree, 1, "C {c}").expect("dup");
 
-        // Assert：三套，副本内容同源、title 为新名，且排在末尾（文档序 = 选中序）。
+        // Assert: three sets now, the copy shares the source content, has the new title, and sits at the end (document order = selection order).
         assert_eq!(out.matches("<Spec").count(), 3, "{out}");
         assert!(out.contains(r#"title="C {c}" nodes="1""#), "{out}");
         assert!(
@@ -417,8 +435,10 @@ mod tests {
         );
     }
 
-    /// 回归钉子：SkillSet/ItemSet 的选中按 `id` **属性**匹配，复制不重排 id 会让
-    /// 第二组按 `id="2"` 查无此集 → 技能/装备整个空掉（实测表现为 DPS 归零）。
+    /// Regression pin: SkillSet/ItemSet selection matches by the `id` **attribute**;
+    /// duplicating without renumbering the id would make looking up the second group by
+    /// `id="2"` find no such set → skills/items go entirely blank (observed in practice
+    /// as DPS dropping to zero).
     #[test]
     fn duplicating_renumbers_ids_so_the_copy_is_selectable() {
         let xml =
@@ -435,7 +455,7 @@ mod tests {
 
     #[test]
     fn removing_closes_the_id_gap() {
-        // 删掉中间一套后，其后各套的 id 必须补位，否则文档序与 id 永久错位。
+        // After removing a set in the middle, the id of every following set must shift down, or document order and id would stay permanently misaligned.
         let xml = r#"<Items><ItemSet id="1" title="A"/><ItemSet id="2" title="B"/><ItemSet id="3" title="C"/></Items>"#;
 
         let out = remove_set(xml, SetKind::Item, 2).expect("remove");
@@ -450,7 +470,7 @@ mod tests {
 
     #[test]
     fn tree_specs_keep_no_id_attribute() {
-        // `<Spec>` 本就按文档序选中，不该被塞 id。
+        // `<Spec>` is already selected by document order and shouldn't get an id stuffed in.
         let out = duplicate_set(TWO_SPECS, SetKind::Tree, 1, "C").expect("dup");
         assert!(!out.contains("<Spec id="), "{out}");
     }
@@ -478,14 +498,14 @@ mod tests {
 
     #[test]
     fn refuses_to_remove_the_last_set() {
-        // PoB2 同样保底留一套——删光会让 build 失去树/技能/装备的载体。
+        // PoB2 also always keeps at least one set — removing them all would leave the build with no carrier for tree/skills/items.
         let one = r#"<Tree><Spec title="A" nodes="1"/></Tree>"#;
         assert!(remove_set(one, SetKind::Tree, 1).is_none());
     }
 
     #[test]
     fn empty_slot_sentinel_is_not_renumbered() {
-        // itemId="0" = 空槽，加偏移会变成一个不存在的引用。
+        // itemId="0" = an empty slot; adding an offset would turn it into a reference to a nonexistent item.
         let out = renumber_items(r#"<Slot name="Belt" itemId="0"/>"#, 5);
         assert_eq!(out, r#"<Slot name="Belt" itemId="0"/>"#);
     }

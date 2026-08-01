@@ -1,17 +1,21 @@
-//! 药剂/护符使用效果类词条经 special 表解析为正确机制语义，不再进未支持报表：
-//! 免疫 → *Immune flag、瞬时回魔/魔力溢出/附身 → 结构化 mod 登记（vendor 对照
-//! 与来源见 overlay source_note）。
+//! Flask/charm use-effect mod lines are parsed by the special table into
+//! their correct mechanical semantics, and no longer land in the
+//! unsupported report: immunity -> an *Immune flag, instant mana
+//! recovery/mana overflow/possession -> structured mod registration
+//! (vendor cross-reference and sourcing are in the overlay's source_note).
 //!
-//! 例外：`Also grants N Guard` 曾被策展条目 also_grants_guard 建模为承受层吸收，
-//! 但 vendor ModParser 根本不解析它——对 PoB2 golden 是幻影 Guard 池（存量 #7
-//! 摘除，ritualist EHP 1.10x→1.00x）。与 PoB2 对齐后它回到「未建模 → 响亮进
-//! unsupported 报表、不影响 hit pool」的口径。
+//! Exception: `Also grants N Guard` was once modeled by the curated entry
+//! also_grants_guard as an absorption layer, but vendor's ModParser doesn't
+//! parse it at all — against PoB2 golden, that was a phantom Guard pool
+//! (removed by an existing #7 cleanup, dropping ritualist EHP from 1.10x to
+//! 1.00x). Now aligned with PoB2, it's back to "unmodeled -> loudly land in
+//! the unsupported report, and doesn't affect the hit pool" basis.
 
 use pobr_gamedata::repo_data_root;
 use serde_json::{Value, json};
 
 const CHARM: &str = "Rarity: UNIQUE\nRite of Passage\nGolden Charm\nImplicits: 1\nUsed when you kill a Rare or Unique enemy\nPossessed by Spirit Of The Stag for 19 seconds on use\nImmune to Ignite\nRecover 295 Mana when Used\nMana Recovery from Flasks can Overflow maximum Mana during Effect\nImmune to Freeze\nAlso grants 481 Guard";
-/// charm 并入需要 CharmLimit 预算（无腰带 charm 槽时预算 0、charm 全不生效）。
+/// Merging in a charm needs a CharmLimit budget (with no belt charm slot, the budget is 0 and charms never take effect).
 const BELT: &str = "Rarity: NORMAL\nHeavy Belt\nHas 1 Charm Slot";
 
 fn calculate(with_charm: bool) -> Value {
@@ -64,7 +68,7 @@ fn charm_flask_use_effect_lines_are_recognized() {
             "`{line}` 仍在未支持列表: {unsupported:?}"
         );
     }
-    // guard 行未建模（vendor 同样不解析）——必须响亮上报而非静默丢弃。
+    // The guard line is unmodeled (vendor doesn't parse it either) — it must be loudly reported, not silently dropped.
     assert!(
         unsupported
             .iter()
@@ -80,8 +84,9 @@ fn guard_line_does_not_extend_hit_pool() {
 
     let without = calculate(false);
     let with = calculate(true);
-    // #7 摘除 also_grants_guard 幻影建模后，guard 行不得再扩大 hit pool
-    // （vendor 不解析该行；此前的 +481 是 PoBR 单方面多建模的幻影池）。
+    // After #7 removed the also_grants_guard phantom modeling, the guard
+    // line must no longer expand the hit pool (vendor doesn't parse this
+    // line; the previous +481 was a phantom pool PoBR had modeled unilaterally).
     let delta = stat(&with, "PhysicalMaxHit") - stat(&without, "PhysicalMaxHit");
     assert!(
         delta.abs() < 1.0,

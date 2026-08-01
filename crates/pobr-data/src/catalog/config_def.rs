@@ -1,13 +1,15 @@
-//! Config 选项目录域 schema（`overlay/config_options.json`，M3-T1）。
+//! Config options catalog domain schema (`overlay/config_options.json`).
 //!
-//! 数据来源：vendor PoB2 `src/Modules/ConfigOptions.lua`（542 静态条目 +
-//! questRewards 动态条目），经 `sync-pob-catalog extract-lua --what
-//! config-options` 用**调用拦截 + 多探针拟合**归纳 apply 闭包为声明式
-//! `effects[]`（蓝图 m3-orchestration §4.2）。无法模板化的真逻辑条目只携带
-//! `handler_id`（目标 ≤54，架构 §5）。
+//! Data source: vendor PoB2 `src/Modules/ConfigOptions.lua` (542 static
+//! entries + dynamic questRewards entries), reduced by
+//! `sync-pob-catalog extract-lua --what config-options` from apply closures
+//! into declarative `effects[]` using **call interception plus multi-probe
+//! fitting**. Entries with real logic that can't be templated only carry a
+//! `handler_id` (target ≤54, architecture doc §5).
 //!
-//! 表达式 / 谓词 / tag 类型复用 [`super::value_expr`]（受限 DSL 单点，
-//! 00-index 裁决 §4-1）；求值统一走 `pobr-core::rules::value_expr`。
+//! Expression / predicate / tag types are shared with [`super::value_expr`]
+//! (the single restricted DSL, per decision §4-1); evaluation always goes
+//! through `pobr-core::rules::value_expr`.
 
 use std::collections::BTreeMap;
 
@@ -15,147 +17,159 @@ use serde::{Deserialize, Serialize};
 
 use super::value_expr::{EffectTag, EffectTarget, Predicate, ValueExpr};
 
-/// 当前 overlay 文档 schema 标识（字段演化时递增）。
+/// Current overlay document schema identifier (bumped when the field shape evolves).
 pub const CONFIG_OPTIONS_SCHEMA: &str = "config_options/v1";
 
-/// `overlay/config_options.json` 消费侧顶层（`_meta` 由 serde 忽略）。
+/// Top level of `overlay/config_options.json` (the consumer ignores `_meta`
+/// by default via serde).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ConfigOptionsDef {
-    /// 全部条目，按 `var` 升序（byte-stable 排序键）。
+    /// All entries, ascending by `var` (a byte-stable sort key).
     pub options: Vec<ConfigOptionDef>,
 }
 
-/// 单个 config 条目（镜像 ConfigOptions schema + 声明式 effects DSL）。
+/// A single config entry (mirrors the ConfigOptions schema plus a
+/// declarative effects DSL).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ConfigOptionDef {
-    /// 稳定变量名（vendor `var`；XML `<Input name=...>` 对应键）。
+    /// Stable variable name (vendor's `var`; the key that
+    /// `<Input name=...>` in the build XML corresponds to).
     pub var: String,
-    /// 输入类型。
+    /// Input type.
     pub input_type: ConfigInputType,
-    /// 所属 section（General / Skill Options / Combat / …）。
+    /// The section it belongs to (General / Skill Options / Combat / …).
     pub section: String,
-    /// UI label（label 为函数的条目缺省）。
+    /// UI label (absent for entries whose label is a function).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
-    /// 默认值族（defaultState / defaultIndex / defaultPlaceholderState）。
+    /// Default-value family (defaultState / defaultIndex /
+    /// defaultPlaceholderState).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default: Option<ConfigDefault>,
-    /// list 型选项（`{val, label}`）。
+    /// list-type options (`{val, label}`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub list_options: Vec<ListOption>,
-    /// 可见性条件（M3 只入库不消费——UI 用）。
+    /// Visibility condition (stored but not consumed — for UI use).
     #[serde(default, skip_serializing_if = "ConfigVisibility::is_empty")]
     pub visibility: ConfigVisibility,
-    /// implyCond + implyCondList 展开（条目值为真时蕴含置位的条件名）。
+    /// Expanded implyCond + implyCondList (condition names implied to be
+    /// set when this entry's value is true).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub imply_conditions: Vec<String>,
-    /// 声明式效果（全选项共享；list 型结构随选项变化时空置、改走
-    /// [`Self::option_effects`]）。
+    /// Declarative effects (shared across all options; left empty and
+    /// [`Self::option_effects`] used instead when the structure varies with
+    /// a list-type option's value).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effects: Vec<ConfigEffect>,
-    /// list 型逐选项 effects（键 = 选项 `val` 的字符串化）。
+    /// Per-option effects for list-type entries (key = the stringified
+    /// option `val`).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub option_effects: BTreeMap<String, Vec<ConfigEffect>>,
-    /// 真逻辑条目的 handler 稳定 ID（与 effects 互斥；查
-    /// `pobr-core::rules::HandlerRegistry`）。
+    /// Stable handler ID for entries with real logic (mutually exclusive
+    /// with effects; looked up in `pobr-core::rules::HandlerRegistry`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub handler_id: Option<String>,
-    /// 降级为 handler 的原因（抽取器写入，报表用）。
+    /// Reason this entry was downgraded to a handler (written by the
+    /// extractor, for reporting).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub handler_reason: Option<String>,
-    /// 抽取期多探针对拍通过（蓝图 A2 正确性裁判；false 条目运行时照用、
-    /// parity 报告单列）。
+    /// Whether multi-probe reconciliation passed at extraction time (the
+    /// correctness verdict; entries marked false are still used as-is at
+    /// runtime, but listed separately in the parity report).
     #[serde(default)]
     pub verified: bool,
 }
 
-/// 输入类型（vendor `type` 字面量的稳定枚举）。
+/// Input type (a stable enum of vendor's `type` literal).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ConfigInputType {
-    /// 勾选框（值恒 true 才应用）。
+    /// A checkbox (applies only when its value is exactly true).
     Check,
-    /// 计数（0 视为未设置、不应用）。
+    /// A count (0 counts as unset and doesn't apply).
     Count,
-    /// 计数（0 也应用）。
+    /// A count that also applies when 0.
     CountAllowZero,
-    /// 整数。
+    /// An integer.
     Integer,
-    /// 浮点。
+    /// A float.
     Float,
-    /// 下拉列表。
+    /// A dropdown list.
     List,
-    /// 文本（仅 customMods）。
+    /// Text (customMods only).
     Text,
 }
 
-/// 默认值族（多形态并存，按输入类型取用）。
+/// The default-value family (multiple shapes coexist; which one is used
+/// depends on the input type).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ConfigDefault {
-    /// check 型 `defaultState`（布尔）。
+    /// The check type's `defaultState` (boolean).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub state_bool: Option<bool>,
-    /// count/integer/float 型 `defaultState`（数值）。
+    /// The count/integer/float types' `defaultState` (numeric).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub state_number: Option<f64>,
-    /// list 型 `defaultIndex`（**1-based**，忠实 vendor）。
+    /// The list type's `defaultIndex` (**1-based**, kept faithful to vendor).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub index: Option<u32>,
-    /// `defaultPlaceholderState`（数值占位默认）。
+    /// `defaultPlaceholderState` (a numeric placeholder default).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub placeholder_number: Option<f64>,
 }
 
-/// list 型单个选项。
+/// A single option of a list-type entry.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ListOption {
-    /// 选项值的字符串化（`option_effects` 的键；数值选项同时给出
-    /// [`Self::number`]）。
+    /// The option value, stringified (the key used in `option_effects`;
+    /// numeric options also give [`Self::number`]).
     pub value: String,
-    /// 数值选项的原始数值（如 resistancePenalty 的 `0/-10/…`）。
+    /// The raw numeric value for a numeric option (e.g.
+    /// resistancePenalty's `0/-10/…`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number: Option<f64>,
-    /// UI label（含 vendor 颜色码，忠实转录）。
+    /// UI label (includes vendor color codes, transcribed faithfully).
     pub label: String,
 }
 
-/// 可见性条件族（vendor `if*` 字段，单值归一为单元素数组）。
+/// The visibility-condition family (vendor's `if*` fields; a single value
+/// is normalized into a one-element array).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ConfigVisibility {
-    /// `ifCond`：玩家条件被计算使用时可见。
+    /// `ifCond`: visible when the player condition is used by the calc.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub if_cond: Vec<String>,
-    /// `ifMinionCond`。
+    /// `ifMinionCond`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub if_minion_cond: Vec<String>,
-    /// `ifEnemyCond`。
+    /// `ifEnemyCond`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub if_enemy_cond: Vec<String>,
-    /// `ifFlag`。
+    /// `ifFlag`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub if_flag: Vec<String>,
-    /// `ifMult`。
+    /// `ifMult`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub if_mult: Vec<String>,
-    /// `ifEnemyMult`。
+    /// `ifEnemyMult`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub if_enemy_mult: Vec<String>,
-    /// `ifSkill` / `ifSkillList`。
+    /// `ifSkill` / `ifSkillList`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub if_skill: Vec<String>,
-    /// `ifSkillData`。
+    /// `ifSkillData`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub if_skill_data: Vec<String>,
-    /// `ifMod`。
+    /// `ifMod`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub if_mod: Vec<String>,
-    /// `ifTagType`。
+    /// `ifTagType`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub if_tag_type: Vec<String>,
 }
 
 impl ConfigVisibility {
-    /// 是否全部为空（序列化跳过用）。
+    /// Whether every field is empty (used by the serialization skip predicate).
     pub fn is_empty(&self) -> bool {
         self.if_cond.is_empty()
             && self.if_minion_cond.is_empty()
@@ -170,111 +184,118 @@ impl ConfigVisibility {
     }
 }
 
-/// 单条声明式效果（对应一次 `modList:NewMod` / `AddMod` 调用）。
+/// A single declarative effect (corresponds to one `modList:NewMod` /
+/// `AddMod` call).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ConfigEffect {
-    /// 写入目标 actor。
+    /// The actor written to.
     pub target: EffectTarget,
-    /// ModName（如 `Condition:Moving` / `Multiplier:StationarySeconds`）。
+    /// ModName (e.g. `Condition:Moving` / `Multiplier:StationarySeconds`).
     pub name: String,
-    /// mod 类型 vendor 字面量（`FLAG/BASE/INC/MORE/OVERRIDE/LIST`）。
+    /// Mod type, vendor's raw literal (`FLAG/BASE/INC/MORE/OVERRIDE/LIST`).
     pub mod_type: String,
-    /// 数值载荷（受限 DSL 表达式）；FLAG / 文本 / LIST 载荷时缺省。
+    /// The numeric payload (a restricted DSL expression); absent for
+    /// FLAG / text / LIST payloads.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<ValueExpr>,
-    /// 布尔载荷（FLAG；缺省视为 true）。
+    /// The boolean payload (FLAG; treated as true when absent).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_bool: Option<bool>,
-    /// 文本载荷（少数 OVERRIDE/LIST 文本值）。
+    /// The text payload (a few OVERRIDE/LIST text values).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_text: Option<String>,
-    /// LIST 结构化载荷（SkillData 键值 / 嵌套 mod）。
+    /// The LIST structured payload (SkillData key/value or a nested mod).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub list_value: Option<ListEffectValue>,
-    /// 受限谓词：成立才发出本效果（如 conditionStationary 的 `input > 0`）。
+    /// Restricted predicate: only emit this effect when it holds (e.g.
+    /// conditionStationary's `input > 0`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub emit_if: Option<Predicate>,
-    /// 受限 tag 白名单。
+    /// Restricted tag whitelist.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<EffectTag>,
-    /// ModFlag 名（vendor `formatFlags` 渲染名，如 `Attack`/`Cast`；
-    /// 消费侧映射位枚举，未知名记 diagnostics）。
+    /// ModFlag names (vendor's `formatFlags` display names, e.g.
+    /// `Attack`/`Cast`; the consumer maps them to the bit enum, unknown
+    /// names get logged as diagnostics).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub flags: Vec<String>,
-    /// KeywordFlag 名（同上）。
+    /// KeywordFlag names (same as above).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keyword_flags: Vec<String>,
-    /// mod source 字符串（缺省 `Config`；quest 条目为 `Quest:…`）。
+    /// The mod source string (defaults to `Config`; quest entries use
+    /// `Quest:…`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
 }
 
-/// LIST 型 mod 的结构化载荷（受限闭集，白名单外形态降级 handler）。
+/// The structured payload for a LIST-type mod (a restricted closed set;
+/// shapes outside the whitelist fall back to a handler).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ListEffectValue {
-    /// `{ key = K, value = V }` 键值载荷（SkillData 等）。
+    /// A `{ key = K, value = V }` key/value payload (SkillData, etc.).
     KeyValue {
-        /// 载荷键（如 `corpseLife`）。
+        /// The payload key (e.g. `corpseLife`).
         key: String,
-        /// 载荷值。
+        /// The payload value.
         value: ListScalar,
     },
-    /// `{ mod = <嵌套 mod> }`（MinionModifier / EnemyModifier 等转发通道）。
+    /// `{ mod = <nested mod> }` (the MinionModifier / EnemyModifier
+    /// forwarding channel).
     NestedMod {
-        /// 嵌套 mod 定义。
+        /// The nested mod definition.
         #[serde(rename = "mod")]
         nested: NestedModDef,
     },
 }
 
-/// 键值载荷的值形态。
+/// The value shape for a key/value payload.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ListScalar {
-    /// 布尔字面量。
+    /// A boolean literal.
     Bool {
-        /// 字面值。
+        /// The literal value.
         value: bool,
     },
-    /// 文本字面量。
+    /// A text literal.
     Text {
-        /// 字面值。
+        /// The literal value.
         value: String,
     },
-    /// 数值表达式（含 `FromInput` = 恒等 `Input`）。
+    /// A numeric expression (includes `FromInput` = the identity `Input`).
     Expr {
-        /// 受限表达式。
+        /// The restricted expression.
         expr: ValueExpr,
     },
 }
 
-/// 嵌套 mod 定义（LIST 转发通道的内层 mod）。
+/// A nested mod definition (the inner mod of the LIST forwarding channel).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NestedModDef {
-    /// 内层 ModName。
+    /// Inner ModName.
     pub name: String,
-    /// 内层 mod 类型 vendor 字面量。
+    /// Inner mod type, vendor's raw literal.
     pub mod_type: String,
-    /// 数值载荷。
+    /// The numeric payload.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<ValueExpr>,
-    /// 布尔载荷（FLAG；缺省 true）。
+    /// The boolean payload (FLAG; default true).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_bool: Option<bool>,
-    /// 文本载荷。
+    /// The text payload.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value_text: Option<String>,
-    /// ModFlag 名。
+    /// ModFlag names.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub flags: Vec<String>,
-    /// KeywordFlag 名。
+    /// KeywordFlag names.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keyword_flags: Vec<String>,
-    /// 受限 tag。
+    /// Restricted tags.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<EffectTag>,
-    /// 内层 mod source。
+    /// Inner mod source.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
 }
@@ -284,7 +305,8 @@ mod tests {
     use super::*;
     use crate::catalog::value_expr::Predicate;
 
-    /// 典型 count 条目（conditionStationary 形态）serde 往返。
+    /// A typical count entry (the conditionStationary shape) round-trips
+    /// through serde.
     #[test]
     fn count_entry_round_trip() {
         let def = ConfigOptionDef {
@@ -343,7 +365,8 @@ mod tests {
         assert_eq!(back, def);
     }
 
-    /// handler 条目最小形态：未知字段（如 `_meta`）被忽略、缺省字段回填。
+    /// Minimal handler-entry shape: unknown fields (e.g. `_meta`) are
+    /// ignored and missing fields backfill their defaults.
     #[test]
     fn handler_entry_minimal_and_unknown_fields_ignored() {
         let json = r#"{
@@ -360,7 +383,8 @@ mod tests {
         assert!(def.visibility.is_empty());
     }
 
-    /// list 型逐选项 effects + 嵌套 mod 载荷往返。
+    /// Round-trip for a list-type entry's per-option effects plus a nested
+    /// mod payload.
     #[test]
     fn list_entry_with_nested_mod_round_trip() {
         let mut option_effects = BTreeMap::new();

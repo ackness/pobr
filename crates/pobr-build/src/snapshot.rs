@@ -1,40 +1,45 @@
-//! Build 的只读计算快照与内容哈希。
+//! Read-only calculation snapshot of a Build plus its content hash.
 //!
-//! [`BuildSnapshot`] 把一个 [`Build`] 中**影响计算结果**的输入收敛成一份确定性、
-//! 可哈希的视图。[`BuildSnapshot::content_hash`] 给出稳定的 64 位内容哈希，用作
-//! [`crate::calc_cache::CalcCache`] 的键：只要计算相关输入不变，哈希就不变，可命中缓存。
+//! [`BuildSnapshot`] collapses the parts of a [`Build`] that **affect the calculation
+//! result** into a deterministic, hashable view. [`BuildSnapshot::content_hash`] gives a
+//! stable 64-bit content hash used as the key for [`crate::calc_cache::CalcCache`]: as
+//! long as the calc-relevant inputs don't change, the hash doesn't change, so the cache hits.
 //!
-//! 哈希通过把规范化字段写入一个稳定字符串再做 FNV-1a 实现（无第三方哈希依赖，
-//! 跨平台 / 跨进程一致；不依赖 `HashMap` 的随机化遍历顺序）。
+//! The hash is implemented as FNV-1a over normalized fields written to a stable string
+//! (no third-party hashing dependency, consistent across platforms / processes; doesn't
+//! rely on `HashMap`'s randomized iteration order).
 
 use pobr_data::item::EquipmentSlot;
 
 use crate::build::Build;
 
-/// 计算输入的只读快照。字段顺序固定，遍历确定性，可安全用于内容哈希。
+/// Read-only snapshot of calculation input. Field order is fixed and iteration is
+/// deterministic, so it is safe to use for content hashing.
 ///
-/// **范围限定（勿误用）**：本快照只覆盖 **text-only `calculate`** 的输入
-/// （等级 / 职业 / 已分配节点 / 物品词条文本 / socket 组 gem id / config 键）。
-/// 它**不足以**作为 [`crate::calc_orchestrator::calculate_with_data`] 的缓存键——
-/// 后者还消费 gem 等级 / 品质、珠宝半径效果、运行时数据等本快照未捕获的输入。
-/// `calculate_with_data` 的缓存需要在 `(build_hash, options, data...)` 维度上自建键，
-/// 切勿直接拿 [`content_hash`](BuildSnapshot::content_hash) 当其缓存键。
+/// **Scope warning**: this snapshot only covers the inputs to **text-only `calculate`**
+/// (level / class / allocated nodes / item mod text / socket group gem ids / config
+/// keys). It is **not sufficient** as a cache key for
+/// [`crate::calc_orchestrator::calculate_with_data`] — that path also consumes gem
+/// level/quality, jewel radius effects, and other runtime data this snapshot doesn't
+/// capture. `calculate_with_data`'s cache needs its own key over
+/// `(build_hash, options, data...)`; never use
+/// [`content_hash`](BuildSnapshot::content_hash) directly as that cache key.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BuildSnapshot {
     pub level: u32,
     pub class_name: String,
     pub ascendancy_name: String,
     pub allocated_nodes: Vec<u32>,
-    /// 已装备物品的 (槽位 id, 规范化词条文本)，按槽位 id 字典序排序。
+    /// (slot id, normalized mod text) pairs of equipped items, sorted by slot id.
     pub items: Vec<(String, Vec<String>)>,
-    /// 已启用技能宝石组的 gem id 序列，按组保持原序。
+    /// gem id sequences of enabled skill socket groups, order preserved within each group.
     pub socket_groups: Vec<Vec<String>>,
-    /// Build 配置的规范化键值（攻击 / 法术 / 条件 / 乘子），稳定排序。
+    /// Normalized config key-values (attack / spell / conditions / multipliers), stably sorted.
     pub config_keys: Vec<String>,
 }
 
 impl BuildSnapshot {
-    /// 从 [`Build`] 抽取计算相关输入，规范化为确定性快照。
+    /// Extracts the calc-relevant inputs from a [`Build`] and normalizes them into a deterministic snapshot.
     pub fn from_build(build: &Build) -> Self {
         let mut allocated_nodes: Vec<u32> =
             build.tree.allocated_nodes.iter().map(|n| n.0).collect();
@@ -58,12 +63,14 @@ impl BuildSnapshot {
         }
     }
 
-    /// 64 位确定性内容哈希（FNV-1a，跨平台稳定）。
+    /// Deterministic 64-bit content hash (FNV-1a, stable across platforms).
     ///
-    /// 仅覆盖 text-only `calculate` 的输入；作 [`crate::calc_cache::CalcCache`] 键时
-    /// 必须再叠加 [`OrchestratorOptions`](crate::calc_orchestrator::OrchestratorOptions)
-    /// 的哈希（见 `calc_cache`）。**不要**单独拿它当 `calculate_with_data` 的缓存键
-    /// （gem 等级/品质、珠宝等未捕获）——详见 [`BuildSnapshot`] 上的范围限定说明。
+    /// Only covers the inputs to text-only `calculate`; when used as a
+    /// [`crate::calc_cache::CalcCache`] key it must be combined with the hash of
+    /// [`OrchestratorOptions`](crate::calc_orchestrator::OrchestratorOptions) (see
+    /// `calc_cache`). **Do not** use it alone as the cache key for
+    /// `calculate_with_data` (gem level/quality, jewels, etc. aren't captured) — see the
+    /// scope warning on [`BuildSnapshot`].
     pub fn content_hash(&self) -> u64 {
         let mut hasher = Fnv1a::new();
         hasher.write_u32(self.level);
@@ -137,9 +144,10 @@ fn collect_config_keys(build: &Build) -> Vec<String> {
         .collect();
     mults.sort();
     keys.extend(mults);
-    // 原始 config 输入（M3-T1 A5 主路径数据源）：解释器消费 raw_inputs 产出
-    // conditions/multipliers 之外的行为（enemy 覆盖 / customMods 等逐类打开），
-    // 须进内容哈希避免缓存别名。BTreeMap 遍历本身确定序。
+    // Raw config input (the primary data source): the interpreter consumes raw_inputs
+    // to drive behavior beyond conditions/multipliers (enemy overrides / customMods,
+    // enabled per-category, etc.), so it must go into the content hash to avoid cache
+    // aliasing. BTreeMap iteration is already deterministically ordered.
     keys.extend(
         cfg.raw_inputs
             .values
@@ -153,7 +161,7 @@ fn slot_tag(slot: EquipmentSlot) -> &'static str {
     slot.id()
 }
 
-/// 64 位 FNV-1a 哈希器（确定性，无随机种子）。
+/// 64-bit FNV-1a hasher (deterministic, no random seed).
 struct Fnv1a {
     state: u64,
 }
@@ -177,7 +185,7 @@ impl Fnv1a {
         for b in s.as_bytes() {
             self.write_byte(*b);
         }
-        // 长度分隔，避免拼接歧义（"ab"+"c" vs "a"+"bc"）。
+        // Length separator to avoid concatenation ambiguity ("ab"+"c" vs "a"+"bc").
         self.write_byte(0xff);
     }
 

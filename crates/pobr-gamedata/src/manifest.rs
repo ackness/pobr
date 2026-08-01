@@ -1,16 +1,19 @@
-//! manifest（数据包信封）加载：v1 / v2 两形兼容。
+//! Manifest (data-pack envelope) loading: compatible with both v1 / v2 shapes.
 //!
-//! v2（[`pobr_data::catalog::CATALOG_SCHEMA_VERSION`] = 2）的 `domains` 为
-//! `{base, overlay, generated}` 三段；v1 的扁平 `domains` 数组在反序列化层
-//! （[`pobr_data::catalog::DomainSections`] 的 serde 实现）被视为全部归 `base`。
-//! `manifest.json` 恒位于版本根，不参与 `base/` 定位。
+//! v2's ([`pobr_data::catalog::CATALOG_SCHEMA_VERSION`] = 2) `domains` is
+//! the three-section `{base, overlay, generated}`; v1's flat `domains`
+//! array is treated as entirely belonging to `base` at the deserialization
+//! layer ([`pobr_data::catalog::DomainSections`]'s serde impl).
+//! `manifest.json` always lives at the version root and doesn't
+//! participate in `base/` location.
 
 use pobr_data::catalog::DataManifest;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载数据包信封（v1 扁平 domains 自动归入 `base` 段）。
+    /// Loads the data-pack envelope (a v1 flat `domains` is automatically
+    /// filed under the `base` section).
     pub fn manifest(&self) -> Result<DataManifest, LoadError> {
         self.load_json_at(self.root().join("manifest.json"))
     }
@@ -31,7 +34,7 @@ mod tests {
         dir
     }
 
-    /// v1 manifest（扁平 domains）可加载，域全部归入 base 段。
+    /// A v1 manifest (flat domains) loads, with every domain filed under the base section.
     #[test]
     fn loads_v1_manifest() {
         let dir = temp_manifest(
@@ -45,7 +48,7 @@ mod tests {
         assert!(manifest.domains.generated.is_empty());
     }
 
-    /// v2 manifest（三段 domains）可加载。
+    /// A v2 manifest (three-section domains) loads.
     #[test]
     fn loads_v2_manifest() {
         let dir = temp_manifest(

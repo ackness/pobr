@@ -1,55 +1,60 @@
-//! M4-T3 乘区与 DPS 末端：Double/Triple Damage 乘区（W-C1）+ allMult 占位结构 +
-//! DPS 末端两因子（W-C4）。
+//! Multiplier groups and the DPS end factors: the Double/Triple Damage
+//! multiplier + the allMult placeholder struct + the two DPS end factors.
 //!
-//! **模块先行、接线最后**（蓝图 m4-offence-deep.md §2-T3 / §3.2）：本文件只提供独立计算
-//! 单元与冻结签名，`offence.rs` / `crit_pass` 的消费由 T2 接线（契约 2，§3.3）。接线点与
-//! 口径差异见 `audits/rearchitecture-2026-06-10/blueprints/m4-t3-wiring-notes.md`。
+//! **Modules first, wiring last**: this file only provides self-contained
+//! calculation units with a frozen signature; consumption by `offence.rs` /
+//! `crit_pass` happens via T2 wiring (contract 2, §3.3).
 
 use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb};
 
-/// Double/Triple Damage 乘区结算结果（PoB2 `CalcOffence.lua:3840-3861`）。
+/// Double/Triple Damage multiplier resolution result (PoB2 `CalcOffence.lua:3840-3861`).
 ///
-/// - [`double_chance`](Self::double_chance) / [`triple_chance`](Self::triple_chance)：
-///   **百分比 0..=100**（与 vendor `output.DoubleDamageChance` / `TripleDamageChance` 同位）。
-///   `double_chance` 已做 Triple 抵扣（`DD = max(DD − TD×DD/100, 0)`，`:3858`）。
-/// - [`effect`](Self::effect)：`ScaledDamageEffect = 1 × (1 + DD/100 + 2×TD/100)`（`:3861`）。
-///   vendor 初始化 `ScaledDamageEffect = 1` 后**只有** DD/TD 乘它（`:3840`，蓝图亲验）。
+/// - [`double_chance`](Self::double_chance) / [`triple_chance`](Self::triple_chance):
+///   **percentages 0..=100** (aligned with vendor `output.DoubleDamageChance` / `TripleDamageChance`).
+///   `double_chance` already has the Triple deduction applied
+///   (`DD = max(DD − TD×DD/100, 0)`, `:3858`).
+/// - [`effect`](Self::effect): `ScaledDamageEffect = 1 × (1 + DD/100 + 2×TD/100)` (`:3861`).
+///   Vendor initializes `ScaledDamageEffect = 1` and **only** DD/TD multiply into it (`:3840`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ScaledDamage {
-    /// `1 + DoubleDamageEffect + TripleDamageEffect`，乘入 allMult。
+    /// `1 + DoubleDamageEffect + TripleDamageEffect`, multiplied into allMult.
     pub effect: f64,
-    /// 最终 Double Damage 几率（百分比，已抵扣 Triple）。
+    /// Final Double Damage chance (percentage, Triple already deducted).
     pub double_chance: f64,
-    /// 最终 Triple Damage 几率（百分比）。
+    /// Final Triple Damage chance (percentage).
     pub triple_chance: f64,
 }
 
-/// Double/Triple Damage 乘区（蓝图 §3.3 契约 2 冻结签名；T2 在 crit_pass 内调用）。
+/// Double/Triple Damage multiplier.
 ///
-/// `crit_chance` 为**分数 0..=1**（即 [`crate::calc::resolve_crit`] 的 `chance`；等价
-/// vendor `output.CritChance / 100`——`:3844/:3849` 的 `OnCrit × CritChance / 100` 折算）。
+/// `crit_chance` is a **fraction 0..=1** (i.e. [`crate::calc::resolve_crit`]'s
+/// `chance`; equivalent to vendor `output.CritChance / 100` — the
+/// `OnCrit × CritChance / 100` folding at `:3844/:3849`).
 ///
-/// 逐行对照 PoB2 `CalcOffence.lua:3842-3861`：
+/// Line-by-line mirror of PoB2 `CalcOffence.lua:3842-3861`:
 ///
-/// - `TripleDamageChanceOnCrit = min(Sum(BASE), 100)`；`TripleDamageChance =
-///   min(Sum(BASE) + enemy.SelfTripleDamageChance(仅 effective) + OnCrit×crit, 100)`。
-/// - Double 同构（`:3848-3849`）。
-/// - Intimidate（`:3850-3854`）：`Condition:WarcryMaxHit` 时 DD=100，否则
-///   `+IntimidatingUpTimeRatio`——warcry 机制 M5+ 未实现，该输入恒缺省，整段跳过
-///   （TODO(M5+ warcry)：接入 `IntimidatingUpTimeRatio` 输入后补此分支）。
-/// - Triple 抵扣 Double（`:3855-3859`）：`DD = max(DD − TD×DD/100, 0)`。
-/// - `ScaledDamageEffect = 1 × (1 + DD/100 + 2×TD/100)`（`:3860-3861`）。
+/// - `TripleDamageChanceOnCrit = min(Sum(BASE), 100)`; `TripleDamageChance =
+///   min(Sum(BASE) + enemy.SelfTripleDamageChance(effective mode only) + OnCrit×crit, 100)`.
+/// - Double mirrors the same structure (`:3848-3849`).
+/// - Intimidate (`:3850-3854`): DD=100 under `Condition:WarcryMaxHit`,
+///   otherwise `+IntimidatingUpTimeRatio` — the warcry mechanic is not
+///   implemented, so this input is always absent and the whole section is
+///   skipped (TODO(warcry): fill in this branch once `IntimidatingUpTimeRatio` is wired up).
+/// - Triple deducts from Double (`:3855-3859`): `DD = max(DD − TD×DD/100, 0)`.
+/// - `ScaledDamageEffect = 1 × (1 + DD/100 + 2×TD/100)` (`:3860-3861`).
 ///
-/// 注：vendor `:3845`（Triple 行）原文 `Sum(...) or 0 + (...)` 受 Lua 算符优先级影响
-/// （`+` 高于 `or`）实际只取 `Sum(...)`，把敌方/OnCrit 两项丢掉——与相邻 Double 行
-/// （`:3849`，无 `or`）结构不一致，判为 vendor 笔误；本实现按蓝图 §2 W-C1 给出的
-/// **意图语义**（与 Double 同构）。
+/// Note: vendor `:3845` (the Triple line) reads `Sum(...) or 0 + (...)`; due
+/// to Lua operator precedence (`+` binds tighter than `or`) this actually
+/// only evaluates to `Sum(...)`, dropping the enemy/OnCrit terms — which is
+/// structurally inconsistent with the neighboring Double line (`:3849`, no
+/// `or`), so this is judged a vendor typo; this implementation follows the
+/// apparent **intended semantics** (mirroring Double).
 ///
-/// TODO(W-A3 globalLimit)：`chance to deal Double Damage` 的 DOUBLED form 词条带
-/// globalLimit（蓝图 §2 W-C1 末行）——依赖 T1 W-A3 的 limit 原语，就绪后在 Sum 侧生效，
-/// 本函数无需改动。
+/// TODO(globalLimit): the DOUBLED form of `chance to deal Double Damage` mods
+/// carries a globalLimit — this depends on the T1 limit primitive; once that
+/// lands it takes effect on the Sum side, and this function needs no changes.
 pub fn scaled_damage_effect(
     db: &ModDb,
     enemy_db: &ModDb,
@@ -98,7 +103,7 @@ pub fn scaled_damage_effect(
         + double_on_crit * crit_chance)
         .min(100.0);
 
-    // Triple 抵扣 Double：两者同时掷中时按 Triple 结算，扣掉重叠概率（:3855-3859）。
+    // Triple deducts from Double: when both roll, Triple takes precedence, so the overlapping probability is subtracted (:3855-3859).
     if triple_chance > 0.0 {
         double_chance = (double_chance - triple_chance * double_chance / 100.0).max(0.0);
     }
@@ -110,22 +115,23 @@ pub fn scaled_damage_effect(
     }
 }
 
-/// allMult 其余五因子的占位结构（PoB2 `CalcOffence.lua:4023-4025`）。
+/// Placeholder struct for allMult's remaining five factors (PoB2 `CalcOffence.lua:4023-4025`).
 ///
 /// `allMult = ScaledDamageEffect × FistOfWarDamageEffect × AncestralCallDamageEffect ×
 /// AncestralEmpowermentDamageEffect × AncestralEmpowermentCombinedDamageEffect ×
-/// OffensiveWarcryEffect(WarcryMaxHit 时换 Max 变体)`。
+/// OffensiveWarcryEffect (swaps to the Max variant under WarcryMaxHit)`.
 ///
-/// M4 范围只实现 ScaledDamageEffect；warcry / ancestral 是 M5+ 机制，本结构默认全 1.0
-/// 占位、留接口防返工（蓝图 §2 W-C1）。
+/// Only ScaledDamageEffect is implemented; warcry / ancestral are separate
+/// mechanics, so this struct defaults every factor to 1.0 as a placeholder,
+/// keeping the interface stable to avoid rework later.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AllMultExtras {
     pub fist_of_war: f64,
     pub ancestral_call: f64,
     pub ancestral_empowerment: f64,
     pub ancestral_empowerment_combined: f64,
-    /// `OffensiveWarcryEffect` 或（`Condition:WarcryMaxHit` 时）`MaxOffensiveWarcryEffect`，
-    /// 由未来的 warcry 实现选定后传入。
+    /// `OffensiveWarcryEffect`, or (under `Condition:WarcryMaxHit`)
+    /// `MaxOffensiveWarcryEffect`, to be selected and supplied by a future warcry implementation.
     pub offensive_warcry: f64,
 }
 
@@ -142,7 +148,7 @@ impl Default for AllMultExtras {
 }
 
 impl AllMultExtras {
-    /// 五因子连乘积。
+    /// Product of the five factors.
     pub fn product(&self) -> f64 {
         self.fist_of_war
             * self.ancestral_call
@@ -152,54 +158,60 @@ impl AllMultExtras {
     }
 }
 
-/// allMult 全量（`ScaledDamageEffect × 五因子`，PoB2 `CalcOffence.lua:4023-4025`）。
-/// extras 默认全 1.0 时退化为 `scaled.effect`。
+/// Full allMult (`ScaledDamageEffect × the five factors`, PoB2 `CalcOffence.lua:4023-4025`).
+/// Degenerates to `scaled.effect` when extras defaults to all 1.0.
 pub fn all_mult(scaled: &ScaledDamage, extras: &AllMultExtras) -> f64 {
     scaled.effect * extras.product()
 }
 
-/// DPS 末端两因子（W-C4，PoB2 `CalcOffence.lua:3128-3130` / `:3863` / `:4407`）。
+/// The two DPS end factors (PoB2 `CalcOffence.lua:3128-3130` / `:3863` / `:4407`).
 ///
-/// `TotalDPS = AverageDamage × (HitSpeed or Speed) × dps_multiplier × quantity_multiplier`。
+/// `TotalDPS = AverageDamage × (HitSpeed or Speed) × dps_multiplier × quantity_multiplier`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DpsEndFactors {
-    /// `skillData.dpsMultiplier × calcLib.mod(skillModList, cfg, "DPS")`（`:3863`）。
+    /// `skillData.dpsMultiplier × calcLib.mod(skillModList, cfg, "DPS")` (`:3863`).
     pub dps_multiplier: f64,
-    /// `max(Sum(BASE, cfg, "QuantityMultiplier"), 1)`（`:3128`，floor 1.0）。
+    /// `max(Sum(BASE, cfg, "QuantityMultiplier"), 1)` (`:3128`, floors at 1.0).
     pub quantity_multiplier: f64,
 }
 
-/// 结算 DPS 末端两因子。
+/// Resolves the two DPS end factors.
 ///
-/// - `skill_dps_multiplier`：技能数据携带的 `dpsMultiplier`（catalog
-///   `SkillStatSetDef/SkillLevelDef.dps_multiplier`，T4 数据侧透传；缺省视为 1.0——
-///   vendor `skillData.dpsMultiplier or 1`）。
-/// - `"DPS"` ModName 的 inc/more 在此消费（`calcLib.mod` =
-///   `(1 + Sum(INC)/100) × More`，CalcTools.lua:16-18）。
-/// - `QuantityMultiplier` 经 ModDb BASE 聚合、floor 1.0（vendor 仅在 >1 时写
-///   `output.QuantityMultiplier`，数值语义等价 floor）。
+/// - `skill_dps_multiplier`: the `dpsMultiplier` carried by skill data
+///   (catalog `SkillStatSetDef/SkillLevelDef.dps_multiplier`, passed through
+///   from the T4 data layer; defaults to 1.0 when absent — vendor
+///   `skillData.dpsMultiplier or 1`).
+/// - The `"DPS"` ModName's inc/more are consumed here (`calcLib.mod` =
+///   `(1 + Sum(INC)/100) × More`, CalcTools.lua:16-18).
+/// - `QuantityMultiplier` is aggregated via ModDb BASE and floored at 1.0
+///   (vendor only writes `output.QuantityMultiplier` when >1, which is
+///   numerically equivalent to a floor).
 pub fn dps_end_factors(
     db: &ModDb,
     cfg: &CalcConfig,
     skill_dps_multiplier: Option<f64>,
 ) -> DpsEndFactors {
     let dps_names = [ModName::from("DPS")];
-    // M4-G：grenade 二次起爆（vendor CalcOffence.lua:1124-1127）：
-    // `DPS MORE min(Sum(BASE,"GrenadeActivateTwice"),100)`。vendor 以
-    // skillTypes[Grenade] 门控该折算；PoBR 此处不再加门——该 ModName 仅由
-    // SupportPayload 的 statmap stat 产出（SkillStatMap.lua:2795-2797），而
-    // Payload 的 require_skill_types = Grenade（sup_dex.lua:3561）已在 support
-    // 适配裁决处把来源限定在 grenade 技能，非 grenade 技能 db 中恒无此名（=0）。
+    //  Grenade second detonation (vendor CalcOffence.lua:1124-1127):
+    // `DPS MORE min(Sum(BASE,"GrenadeActivateTwice"),100)`. Vendor gates this
+    // folding on skillTypes[Grenade]; PoBR doesn't add that gate here —
+    // this ModName is only produced by SupportPayload's statmap stat
+    // (SkillStatMap.lua:2795-2797), and Payload's
+    // require_skill_types = Grenade (sup_dex.lua:3561) already confines its
+    // source to grenade skills in the support adaptation decision, so
+    // non-grenade skills' db always has this name absent (=0).
     let activate_twice = db
         .sum(ModType::Base, cfg, &[ModName::from("GrenadeActivateTwice")])
         .min(100.0);
-    // Barrage repeats（vendor CalcOffence.lua:962-976）：Barrageable 技能被
-    // Barrage buff 授予 SequentialProjectiles + BarrageRepeats 时，写入
-    // `DPS MORE (1 + Σ BarrageRepeats) × mod(BarrageRepeatDamage)`。vendor 把
-    // 该值**原样**当 MORE 百分比（repeats=1 → MORE 2 → ×1.02，oracle 实证
-    // spirit-walker-twister DpsMultiplier=1.02）——忠实复刻，不换算为倍数。
-    // ponytail: vendor 同块的 else 分支（crossbow barrage 的 additionalProjectiles
-    // → 攻速惩罚 ReplaceMod）无 fixture 覆盖，暂不实现。
+    // Barrage repeats (vendor CalcOffence.lua:962-976): when a Barrageable
+    // skill is granted SequentialProjectiles + BarrageRepeats by the Barrage
+    // buff, it writes `DPS MORE (1 + Σ BarrageRepeats) × mod(BarrageRepeatDamage)`.
+    // Vendor treats this value **as-is** as a MORE percentage (repeats=1 →
+    // MORE 2 → ×1.02, confirmed by oracle on spirit-walker-twister
+    // DpsMultiplier=1.02) — faithfully reproduced, not converted to a multiplier.
+    // ponytail: the else branch of that same vendor block (crossbow barrage's
+    // additionalProjectiles → attack speed penalty ReplaceMod) has no fixture
+    // coverage and is not implemented for now.
     let barrage_repeats_more = {
         let barrageable = cfg.skill_types.intersects(SkillTypes::BARRAGEABLE)
             && db.flag(cfg, ModName::from("SequentialProjectiles"))
@@ -212,12 +224,15 @@ pub fn dps_end_factors(
             let repeat_damage = (1.0 + db.sum(ModType::Inc, cfg, &repeat_damage_names) / 100.0)
                 * db.more(cfg, &repeat_damage_names);
             let dps_multi = (1.0 + repeats) * repeat_damage;
-            // vendor MoreInternal 逐名桶百分比取整（ModList.lua:143
-            // `result * round(modResult, 2)`）：Barrage Repeats 的 DPS MORE 桶
-            // 折算后取整到 0.01（1.65 → ×1.0165 → ×1.02，oracle 实证
-            // spirit-walker DpsMultiplier=1.02）。
-            // ponytail: 与 db.more("DPS") 分桶各自取整——vendor 把二者并在同一
-            // "DPS" 名桶先乘后取整，语料中无并存场景，出现时再并桶。
+            // Vendor's MoreInternal rounds each named bucket's percentage
+            // (ModList.lua:143 `result * round(modResult, 2)`): the Barrage
+            // Repeats DPS MORE bucket is folded and then rounded to 0.01
+            // (1.65 → ×1.0165 → ×1.02, confirmed by oracle on spirit-walker
+            // DpsMultiplier=1.02).
+            // ponytail: rounds this separately from db.more("DPS")'s bucket —
+            // vendor merges both into the same "DPS" named bucket, multiplies,
+            // then rounds; no corpus case has them coexist, merge the buckets
+            // if one shows up.
             ((1.0 + dps_multi / 100.0) * 100.0).round() / 100.0
         } else {
             1.0

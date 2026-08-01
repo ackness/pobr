@@ -1,24 +1,32 @@
-//! `overlay/buff_definitions.json` loader——内建 buff 定义
-//! （doActorMisc 人工归纳，00-index 裁决 §4.2-4 批准的 overlay 例外），
-//! schema 见 [`pobr_data::catalog::buffs`]。
+//! `overlay/buff_definitions.json` loader — built-in buff definitions (a
+//! hand-curated overlay exception for doActorMisc), schema in
+//! [`pobr_data::catalog::buffs`].
 //!
-//! drift 防线在工具侧：`sync-pob-catalog check-buff-refs` 对账 vendor_ref
-//! 行段 hash；消费侧 = `pobr-core::rules::buff_expander`（M3 主波 T3 接线）。
+//! The drift guardrail lives on the tooling side:
+//! `sync-pob-catalog check-buff-refs` reconciles vendor_ref line-range
+//! hashes; consumer = `pobr-core::rules::buff_expander`.
 
 use pobr_data::catalog::buffs::BuffDefinitionsDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载内建 buff 定义，**两层合并**：版本无关策展层
-    /// `data/overlay-common/buff_definitions.json`（人工归纳，居先打底），叠版本层
-    /// `<root>/overlay/buff_definitions.json`（版本特有覆盖）。合并按 `id` 逐条覆盖/
-    /// 追加（[`crate::paths::merge_by_key`]，同 special_mods）——人工归纳的 buff 语义
-    /// 随游戏版本不变，放 common 层新版免费继承（`docs/version-bump-architecture.md`
-    /// P1-3）；`_meta` 由 serde 忽略。
+    /// Loads built-in buff definitions, **merging two layers**: the
+    /// version-independent curation layer
+    /// `data/overlay-common/buff_definitions.json` (hand-curated,
+    /// providing the baseline), with the version layer
+    /// `<root>/overlay/buff_definitions.json` (version-specific overrides)
+    /// layered on top. Merged entry by entry by `id`
+    /// ([`crate::paths::merge_by_key`], same as special_mods) — the
+    /// hand-curated buff semantics don't change with the game version, so
+    /// keeping them in the common layer lets new versions inherit them for
+    /// free (`docs/version-bump-architecture.md` P1-3); `_meta` is
+    /// ignored by serde.
     ///
-    /// 两层皆缺（旧数据包无此 overlay 域）返回 `Ok(None)`——消费侧行为 = 无内建 buff
-    /// 展开（向后兼容）；其余 IO / 解析错误照常上抛，不静默。
+    /// Both layers missing (an old data pack without this overlay domain)
+    /// returns `Ok(None)` — the consumer behaves as "no built-in buff
+    /// expansion" (backward compatible); other I/O / parse errors still
+    /// propagate, not silenced.
     pub fn buff_definitions(&self) -> Result<Option<BuffDefinitionsDef>, LoadError> {
         let common = match self.overlay_common_path("buff_definitions.json") {
             Some(path) => self.load_buff_definitions_at(path)?,
@@ -34,8 +42,9 @@ impl GameData {
         })
     }
 
-    /// 读一个 `buff_definitions` schema 文件为 `Option`：NotFound → `None`（软降级），
-    /// 其余错误上抛。`load_json_at` 仍叠加用户 patch 层。
+    /// Reads a `buff_definitions`-schema file as an `Option`: NotFound →
+    /// `None` (a soft degradation), other errors propagate.
+    /// `load_json_at` still layers the user patch on top.
     fn load_buff_definitions_at(
         &self,
         path: std::path::PathBuf,

@@ -28,7 +28,7 @@ fn skill_gems_load_with_identity_from_base_item() {
     let gems = game_data().skill_gems().expect("skill_gems 可加载");
     assert!(gems.len() > 500, "应有数百枚宝石，实得 {}", gems.len());
 
-    // 已知主动技能宝石：Fireball / Ice Nova。
+    // Known active-skill gems: Fireball / Ice Nova.
     let fireball = gems
         .iter()
         .find(|g| g.id.ends_with("SkillGemFireball"))
@@ -43,14 +43,14 @@ fn skill_gems_load_with_identity_from_base_item() {
     assert!(!ice_nova.is_support);
     assert!(ice_nova.int_pct > 0, "Ice Nova 应有智慧需求");
 
-    // 辅助宝石由 GemType==1 标记。
+    // A support gem is marked by GemType==1.
     let support = gems
         .iter()
         .find(|g| g.id.contains("SupportGem"))
         .expect("存在辅助宝石");
     assert!(support.is_support);
 
-    // 占位条目（[DNT/UNUSED] 等）已被过滤。
+    // Placeholder entries (e.g. [DNT/UNUSED]) are already filtered out.
     assert!(
         gems.iter().all(|g| !g.id.is_empty()),
         "不应包含空 id 占位条目"
@@ -76,17 +76,18 @@ fn granted_effects_load_with_resolved_active_skill() {
         effects.len()
     );
 
-    // 主动技能效果：ActiveSkill FK 解析为字符串 id（非整型索引）。
+    // An active-skill effect: the ActiveSkill FK resolves to a string id (not an integer index).
     let fireball = effects
         .iter()
         .find(|e| e.id == "FireballPlayer")
         .expect("存在 FireballPlayer 授予效果");
     assert!(!fireball.is_support);
     assert_eq!(fireball.active_skill.as_deref(), Some("fireball"));
-    // StatSet 外键索引已提取（伤害 stat 解析的入口，待 stat-set 表下载）。
+    // The StatSet foreign-key index is already extracted (the entry point
+    // for resolving damage stats, pending the stat-set table's download).
     assert!(fireball.stat_set.is_some(), "主动技能应有 StatSet 索引");
 
-    // 辅助效果无关联主动技能。
+    // A support effect has no linked active skill.
     let support = effects
         .iter()
         .find(|e| e.is_support)
@@ -113,7 +114,7 @@ fn granted_effect_levels_load_with_ascending_levels() {
         levels.len()
     );
 
-    // 已知技能：ExplosiveGrenadePlayer 应有多级，且按 level 升序。
+    // A known skill: ExplosiveGrenadePlayer should have multiple levels, ascending by level.
     let rows = levels
         .get("ExplosiveGrenadePlayer")
         .expect("存在 ExplosiveGrenadePlayer 分等级数据");
@@ -123,7 +124,7 @@ fn granted_effect_levels_load_with_ascending_levels() {
         "分等级数组应按 level 升序"
     );
 
-    // 该技能为冷却驱动（Cooldown 5000ms），消耗随等级递增。
+    // This skill is cooldown-driven (Cooldown 5000ms), with cost increasing by level.
     let l1 = rows.iter().find(|r| r.level == 1).expect("L1 存在");
     let l20 = rows.iter().find(|r| r.level == 20).expect("L20 存在");
     assert_eq!(l1.cooldown_ms, Some(5000));
@@ -140,7 +141,7 @@ fn skill_displayed_names_available_for_localization() {
         .skill_names("zh-TW")
         .expect("zh-TW 技能边车可加载");
     assert!(!names.is_empty());
-    // 裂地之擊 = Ground Slam
+    // 裂地之擊 (the zh-TW name) = Ground Slam
     assert_eq!(
         names.get("ground_slam").map(String::as_str),
         Some("裂地之擊")

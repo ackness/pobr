@@ -1,15 +1,18 @@
-//! `base/jewel_radii.json` loader——范围珠宝环形档（距离乘数 + 按树版本的
-//! label/inner/outer 档位），schema 见 [`pobr_data::catalog::jewel_radii`]。
+//! `base/jewel_radii.json` loader — radius-jewel ring bands (the distance
+//! multiplier + per-tree-version label/inner/outer bands), schema in
+//! [`pobr_data::catalog::jewel_radii`].
 //!
-//! 源 PoB2 `src/Modules/Data.lua:595-611` + `src/Data/Misc.lua:36`；
-//! pobr Rust 准源为 `crates/pobr-tree/src/radius_jewel.rs`（4 个具名档逐值一致）。
+//! Sourced from PoB2 `src/Modules/Data.lua:595-611` + `src/Data/Misc.lua:36`;
+//! pobr's Rust source of truth is `crates/pobr-tree/src/radius_jewel.rs`
+//! (the 4 named bands match value-for-value).
 
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载范围珠宝环形档表（走 `base/` 优先、版本根回退的域定位）。
+    /// Loads the radius-jewel ring-band table (via the `base/`-first,
+    /// version-root-fallback domain location).
     pub fn jewel_radii(&self) -> Result<JewelRadiiDef, LoadError> {
         self.load_domain("jewel_radii.json")
     }

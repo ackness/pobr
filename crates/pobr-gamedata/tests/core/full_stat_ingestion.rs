@@ -1,9 +1,13 @@
-//! M1-T5.3 全量 stat 入库验收：`granted_effect_stat_sets.json` 不再受
-//! adapter 白名单（原后缀谓词，T2.4 已随消费侧兜底一并删除）过滤——曾被过滤的非伤害 stat
-//! （范围/持续时间/弹道数等）必须出现在入库 JSON 中（蓝图 T5 验收项）。
+//! Full stat-ingestion acceptance: `granted_effect_stat_sets.json` is no
+//! longer filtered by the adapter's whitelist (a former suffix predicate,
+//! already deleted alongside its consumer-side backstop at T2.4) —
+//! non-damage stats that used to be filtered out (range/duration/
+//! projectile count, etc.) must now appear in the stored JSON.
 //!
-//! 搬迁不变式的另一半（消费侧 legacy 过滤保证 ninja 逐值不变）由
-//! `pobr-build::legacy_stat_filter` 的单测 + ninja_parity 回归门禁锁定。
+//! The other half of the migration invariant (the consumer-side legacy
+//! filter guaranteeing ninja stays value-for-value unchanged) is locked in
+//! by `pobr-build::legacy_stat_filter`'s unit tests plus the ninja_parity
+//! regression guardrail.
 
 use pobr_gamedata::{GameData, repo_data_root};
 
@@ -12,9 +16,11 @@ fn previously_filtered_stats_are_now_ingested() {
     let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
     let sets = data.skill_stat_sets().expect("load stat sets");
 
-    // IceNova 主 set 的 constantStats 含 `base_skill_effect_duration`（8000）与
-    // `active_skill_base_area_of_effect_radius`（32）——均为旧白名单排除的
-    // 非伤害 stat（vendor Data/Skills/act_int.lua IceNovaPlayer statSets[1]）。
+    // IceNova's primary set's constantStats contains
+    // `base_skill_effect_duration` (8000) and
+    // `active_skill_base_area_of_effect_radius` (32) — both non-damage
+    // stats the old whitelist excluded (vendor
+    // Data/Skills/act_int.lua's IceNovaPlayer statSets[1]).
     let ice = sets
         .iter()
         .find(|s| s.effect_id == "IceNovaPlayer")
@@ -30,8 +36,9 @@ fn previously_filtered_stats_are_now_ingested() {
         "曾被过滤的范围 stat 应入库"
     );
 
-    // 分等级行的非伤害 stat 同样入库（IceNova 每级含 freeze/chill multiplier，
-    // 其中 `active_skill_chill_effect_+%_final` 旧白名单不命中）。
+    // A per-level row's non-damage stats are likewise stored (each of
+    // IceNova's levels has a freeze/chill multiplier, and
+    // `active_skill_chill_effect_+%_final` didn't match the old whitelist).
     let level1 = ice
         .levels
         .iter()
@@ -44,7 +51,7 @@ fn previously_filtered_stats_are_now_ingested() {
             .any(|s| s.stat == "active_skill_chill_effect_+%_final"),
         "曾被过滤的分等级 stat 应入库"
     );
-    // 既有伤害 stat 不受影响（防回归锚点）。
+    // The existing damage stat is unaffected (a regression anchor).
     assert!(
         level1
             .stats

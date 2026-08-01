@@ -1,23 +1,24 @@
-//! pobr-tree 错误类型。
+//! Error type for pobr-tree.
 
 use thiserror::Error;
 
-/// 天赋树相关操作的错误。
+/// Errors from passive-tree operations.
 #[derive(Debug, Error)]
 pub enum TreeError {
-    /// JSON 解析失败（来自 serde_json，错误信息已转为 String 以避免泄漏内部类型）。
+    /// JSON parsing failed (from serde_json; the message is converted to a
+    /// `String` to avoid leaking internal types).
     #[error("failed to parse passive tree JSON: {0}")]
     Json(String),
 
-    /// 引用了不存在的节点 skill id（如 radius jewel 的 socket）。
+    /// Referenced a node skill id that doesn't exist (e.g. a radius jewel's socket).
     #[error("passive tree node not found: {0}")]
     NodeNotFound(u32),
 
-    /// 该节点没有可用坐标，无法做基于距离的范围计算。
+    /// The node has no coordinates, so distance-based radius calculations can't run.
     #[error("passive tree node has no position: {0}")]
     NodePositionMissing(u32),
 
-    /// 非法半径（负数或 NaN 等）。
+    /// An invalid radius (negative, NaN, etc).
     #[error("invalid jewel radius: {0}")]
     InvalidRadius(f64),
 }

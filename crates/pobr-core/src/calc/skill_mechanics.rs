@@ -1,20 +1,22 @@
-//! 技能功能面机制：AoE 半径、投射物、冷却、消耗/保留。
+//! Skill functionality-panel mechanics: AoE radius, projectiles, cooldown, cost/reservation.
 //!
-//! 实现参照 `agent-docs/skill-mechanics.md` + PoB2 `CalcOffence.lua`（calcRadius /
-//! calcSkillCooldown / ProjectileCount / cost 段），不依赖任何 I/O，
-//! 纯函数 + 确定性。
+//! Implemented per `agent-docs/skill-mechanics.md` + PoB2 `CalcOffence.lua`
+//! (the calcRadius / calcSkillCooldown / ProjectileCount / cost sections),
+//! with no I/O dependency, pure functions + determinism.
 //!
-//! ## 设计约束
-//! - **所有函数均为 `pub`**（不触碰 perform/output/offence；集成阶段由集成层负责写入 OutputTable）。
-//! - **不可变**：入参只读，出参为新值。
-//! - 涉及 ModDb 聚合时复用 `db.sum(Base/Inc)`、`db.more()`、`db.flag()` 原语。
+//! ## Design constraints
+//! - **Every function is `pub`** (doesn't touch perform/output/offence; the
+//!   integration layer is responsible for writing OutputTable during the integration stage).
+//! - **Immutable**: inputs are read-only, outputs are new values.
+//! - Reuses the `db.sum(Base/Inc)`, `db.more()`, `db.flag()` primitives for ModDb aggregation.
 //!
-//! ## 延迟 (defer)
-//! - 复杂投射物链交互的完整数值（DistanceRamp/PointBlank/FarShot 伤害修正）。
-//! - AreaEffect 对 DoT 的特例（`bleedDurationIsSkillDuration` 等时长转移）。
-//! - Spirit 保留池公式（见 recovery-charges-buffs.md；本模块仅计算技能侧保留量）。
+//! ## Deferred
+//! - Full numeric values for complex projectile-chain interactions
+//!   (DistanceRamp/PointBlank/FarShot damage adjustments).
+//! - AreaEffect's special case for DoT (duration transfer like `bleedDurationIsSkillDuration`).
+//! - The Spirit reservation pool formula (see recovery-charges-buffs.md; this module only computes the skill-side reservation amount).
 //!
-//! SupportManaMultiplier 已于 M1-T4.4 落地（见 §4 cost 公式），不再 defer。
+//! SupportManaMultiplier has already landed (see §4's cost formula), no longer deferred.
 
 use pobr_data::prelude::*;
 
@@ -22,32 +24,30 @@ use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation, TracedVa
 
 use super::round;
 
-// ---------------------------------------------------------------------------
-// §1  AoE（范围）
-// ---------------------------------------------------------------------------
+// §1  AoE (area of effect)
 
-/// AoE 计算结果。
+/// AoE calculation result.
 ///
-/// - `area_mod`：面积乘数（inc × more，标准聚合）。
-/// - `radius`：最终圆形技能半径（整数台阶，使用 PoB2 `calcRadius` 公式）。
-/// - `base_radius_input`：传入的基础半径（供 breakdown 回显）。
+/// - `area_mod`: the area multiplier (inc × more, standard aggregation).
+/// - `radius`: the final circular skill radius (integer steps, using PoB2's `calcRadius` formula).
+/// - `base_radius_input`: the base radius passed in (for breakdown display).
 ///
-/// 出处：`agent-docs/skill-mechanics.md` §范围；
-///       PoB2 `CalcOffence.lua::calcRadius`（`floor(baseRadius * floor(100 * sqrt(areaMod)) / 100)`）。
+/// Source: `agent-docs/skill-mechanics.md` §Radius;
+///       PoB2 `CalcOffence.lua::calcRadius` (`floor(baseRadius * floor(100 * sqrt(areaMod)) / 100)`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AoeResult {
-    /// 面积乘数（inc × more 组合）。
+    /// Area multiplier (the inc × more combination).
     pub area_mod: f64,
-    /// 最终半径（`calcRadius` 公式，内部坐标单位；/ 10 得米制）。
+    /// Final radius (the `calcRadius` formula, internal coordinate units; / 10 gives meters).
     pub radius: f64,
-    /// 传入的基础半径。
+    /// The base radius passed in.
     pub base_radius_input: f64,
 }
 
-/// PoB2 `calcRadius`：`floor(baseRadius × floor(100 × √areaMod) / 100)`。
+/// PoB2's `calcRadius`: `floor(baseRadius × floor(100 × √areaMod) / 100)`.
 ///
-/// `base_radius` 单位与 PoB2 一致（内部坐标，/ 10 为米）；`areaMod` 是面积乘数（≥0）。
-/// 出处：PoB2 `CalcOffence.lua` L161-162。
+/// `base_radius`'s unit matches PoB2 (internal coordinates, / 10 is meters);
+/// `areaMod` is the area multiplier (≥0). Source: PoB2 `CalcOffence.lua` L161-162.
 pub fn calc_radius(base_radius: f64, area_mod: f64) -> f64 {
     if base_radius <= 0.0 || area_mod <= 0.0 {
         return 0.0;
@@ -55,15 +55,17 @@ pub fn calc_radius(base_radius: f64, area_mod: f64) -> f64 {
     (base_radius * (100.0 * area_mod.sqrt()).floor() / 100.0).floor()
 }
 
-/// 从 ModDb 聚合 AreaOfEffect INC + MORE 并计算半径。
+/// Aggregates AreaOfEffect INC + MORE from the ModDb and computes the radius.
 ///
-/// `base_radius` 为技能/宝石基础半径；`extra_base` 为 `Sum("BASE","AreaOfEffect")` 的固定加值
-/// （此字段在 PoB2 中作为 skillData.radius + radiusExtra + BASE sum）。
+/// `base_radius` is the skill/gem's base radius; `extra_base` is
+/// `Sum("BASE","AreaOfEffect")`'s fixed addition (in PoB2 this field acts as
+/// skillData.radius + radiusExtra + the BASE sum).
 ///
-/// 聚合公式：`areaMod = (1 + Σinc/100) × Πmore`。`base_radius + extra_base` 为 calcRadius 的入参。
+/// Aggregation formula: `areaMod = (1 + Σinc/100) × Πmore`.
+/// `base_radius + extra_base` is calcRadius's input.
 ///
-/// 出处：PoB2 `CalcOffence.lua` L414-430（`calcAreaOfEffect`）、
-///       `agent-docs/skill-mechanics.md` §AoE。
+/// Source: PoB2 `CalcOffence.lua` L414-430 (`calcAreaOfEffect`),
+///       `agent-docs/skill-mechanics.md` §AoE.
 pub fn calc_aoe(db: &ModDb, cfg: &CalcConfig, base_radius: f64, extra_base: f64) -> AoeResult {
     let aoe_names = [
         ModName::from("AreaOfEffect"),
@@ -80,9 +82,10 @@ pub fn calc_aoe(db: &ModDb, cfg: &CalcConfig, base_radius: f64, extra_base: f64)
     }
 }
 
-/// `calc_aoe` 的追踪版本：把 INC/MORE 贡献写入 TraceGraph，返回 `(result, radius_node)`。
+/// Traced version of `calc_aoe`: writes INC/MORE contributions into the
+/// TraceGraph, returning `(result, radius_node)`.
 ///
-/// `radius_node` 承载最终半径值，调用方可继续连接下游节点。
+/// `radius_node` carries the final radius value; the caller can continue connecting downstream nodes.
 pub fn calc_aoe_traced(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -111,7 +114,7 @@ pub fn calc_aoe_traced(
     (result, radius_node)
 }
 
-/// `calc_aoe_traced` 的便捷变体，直接返回 `TracedValue`（radius + node）。
+/// Convenience variant of `calc_aoe_traced` that directly returns a `TracedValue` (radius + node).
 pub fn calc_aoe_traced_value(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -126,31 +129,31 @@ pub fn calc_aoe_traced_value(
     }
 }
 
-// ---------------------------------------------------------------------------
-// §2  投射物
-// ---------------------------------------------------------------------------
+// §2  Projectiles
 
-/// 投射物行为优先级（PoE2 固定顺序：Split → Pierce → Fork → Chain）。
+/// Projectile behavior priority (PoE2's fixed order: Split → Pierce → Fork → Chain).
 ///
-/// 一次碰撞只能触发一种行为；能穿透或分叉的投射物不从敌人连锁（但可从地形连锁）。
-/// 出处：`agent-docs/skill-mechanics.md` §投射物行为优先级；PoE2 wiki/chain。
+/// A single collision can only trigger one behavior; a piercing or forking
+/// projectile doesn't chain off enemies (but can still chain off terrain).
+/// Source: `agent-docs/skill-mechanics.md` §Projectile behavior priority; PoE2 wiki/chain.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProjectileBehavior {
-    /// 分裂：首次命中时分裂成 N 个新投射物。
+    /// Split: splits into N new projectiles on first hit.
     Split,
-    /// 穿透：穿过目标继续飞行。
+    /// Pierce: continues flying through the target.
     Pierce,
-    /// 分叉：首次命中一分为二（固定夹角）。
+    /// Fork: splits into two on first hit (a fixed angle).
     Fork,
-    /// 连锁：碰撞后重定向到最近未命中目标（6m 范围）。
+    /// Chain: redirects to the nearest unhit target after collision (6m range).
     Chain,
-    /// 无任何行为（仅着弹消失）。
+    /// No behavior at all (disappears on impact).
     None,
 }
 
-/// 投射物行为解析输入，来自 ModDb flags + 计数。
+/// Projectile behavior resolution input, sourced from ModDb flags + counts.
 ///
-/// 字段均为"是否激活"或"最大次数"，供 `resolve_projectile_behavior` 判定优先级链。
+/// Every field is either "is it active" or "max count", used by
+/// `resolve_projectile_behavior` to decide the priority chain.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct ProjectileBehaviorInput {
     // Split
@@ -159,54 +162,58 @@ pub struct ProjectileBehaviorInput {
     // Pierce
     pub cannot_pierce: bool,
     pub pierce_all_targets: bool,
-    pub pierce_count: u32,  // BASE pierce 次数
-    pub pierce_chance: u32, // BASE pierce 几率（0-100）
+    pub pierce_count: u32,  // BASE pierce count
+    pub pierce_chance: u32, // BASE pierce chance (0-100)
     // Fork
     pub cannot_fork: bool,
     pub fork_once: bool,     // ForkOnce flag
     pub fork_twice: bool,    // ForkTwice flag
-    pub fork_count_max: u32, // 额外 Fork 次数
+    pub fork_count_max: u32, // Extra Fork count
     // Chain
     pub cannot_chain: bool,
-    pub chain_count_max: u32, // BASE 最大连锁次数
-    // 特殊转换标志
+    pub chain_count_max: u32, // BASE max chain count
+    // Special conversion flags
     pub additional_projectiles_add_splits_instead: bool,
     pub additional_projectiles_add_chains_instead: bool,
 }
 
-/// 投射物行为解析结果：按优先级 Split→Pierce→Fork→Chain 确定生效链。
+/// Projectile behavior resolution result: determines the effective chain by priority Split→Pierce→Fork→Chain.
 ///
-/// `behaviors` 为按优先级排列的已激活行为列表（可能为空）；
-/// `effective_pierce_all` 表示无限穿透已激活（优先级最高的穿透模式，后续行为永不触发）。
+/// `behaviors` is the list of active behaviors in priority order (may be
+/// empty); `effective_pierce_all` indicates infinite pierce is active (the
+/// highest-priority pierce mode, after which no further behavior ever triggers).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectileBehaviorResult {
-    /// 按优先级 Split→Pierce→Fork→Chain 排列的生效行为。
+    /// Active behaviors in priority order Split→Pierce→Fork→Chain.
     pub behaviors: Vec<ProjectileBehavior>,
-    /// 是否激活了无限穿透（PierceAllTargets / 100 次穿透）。
+    /// Whether infinite pierce is active (PierceAllTargets / 100 pierces).
     pub effective_pierce_all: bool,
-    /// Split 次数（0 = 未激活）。
+    /// Split count (0 = not active).
     pub split_count: u32,
-    /// Pierce 有效次数（含几率折算，0 = 未激活；`u32::MAX` = 无限穿透）。
+    /// Effective pierce count (chance folded in; 0 = not active; `u32::MAX` = infinite pierce).
     pub pierce_count: u32,
-    /// Fork 最大次数（0 = 未激活）。
+    /// Fork max count (0 = not active).
     pub fork_count_max: u32,
-    /// Chain 最大次数（0 = 未激活）。
+    /// Chain max count (0 = not active).
     pub chain_count_max: u32,
 }
 
-/// 按优先级 Split→Pierce→Fork→Chain 解析投射物行为生效链（纯逻辑）。
+/// Resolves the effective projectile behavior chain by priority
+/// Split→Pierce→Fork→Chain (pure logic).
 ///
-/// 行为激活规则：
-/// - **Split**：`split_count > 0` 且 `!cannot_split`。
-/// - **Pierce**：`pierce_all_targets` 或 `pierce_count + pierce_chance/100 > 0` 且 `!cannot_pierce`。
-/// - **Fork**：`fork_once || fork_twice || fork_count_max > 0` 且 `!cannot_fork`。
-/// - **Chain**：`chain_count_max > 0` 且 `!cannot_chain`。
+/// Activation rules:
+/// - **Split**: `split_count > 0` and `!cannot_split`.
+/// - **Pierce**: `pierce_all_targets` or `pierce_count + pierce_chance/100 > 0`, and `!cannot_pierce`.
+/// - **Fork**: `fork_once || fork_twice || fork_count_max > 0`, and `!cannot_fork`.
+/// - **Chain**: `chain_count_max > 0` and `!cannot_chain`.
 ///
-/// 无限穿透（`pierce_all_targets` 或 pierce 次数 ≥ 100）激活时，其后的行为（Fork/Chain）
-/// **永不触发**（能穿透所有目标则不会从敌人连锁）。此约束只针对来自敌人的连锁；
-/// 地形连锁逻辑在本阶段 **defer**。
+/// When infinite pierce (`pierce_all_targets` or pierce count ≥ 100) is
+/// active, subsequent behaviors (Fork/Chain) **never trigger** (a projectile
+/// that can pierce every target never chains off enemies). This constraint
+/// only applies to chaining off enemies; terrain-chaining logic is
+/// **deferred** at this stage.
 ///
-/// 出处：`agent-docs/skill-mechanics.md` §投射物行为优先级；PoB2 `CalcOffence.lua` L1298-1344。
+/// Source: `agent-docs/skill-mechanics.md` §Projectile behavior priority; PoB2 `CalcOffence.lua` L1298-1344.
 pub fn resolve_projectile_behavior(
     input: &ProjectileBehaviorInput,
     additional_projectile_count: u32,
@@ -218,16 +225,16 @@ pub fn resolve_projectile_behavior(
     let mut chain_count_max = input.chain_count_max;
     let mut effective_pierce_all = false;
 
-    // 额外投射物转换（PoB2 L1307-1311）：
-    // AdditionalProjectilesAddSplitsInstead 或 AdditionalProjectilesAddChainsInstead
-    // 把额外投射物转为 Split / Chain 计数。
+    // Additional projectile conversion (PoB2 L1307-1311):
+    // AdditionalProjectilesAddSplitsInstead or AdditionalProjectilesAddChainsInstead
+    // converts additional projectiles into Split / Chain counts.
     let extra = if additional_projectile_count > 0 {
         additional_projectile_count
     } else {
         0
     };
 
-    // --- Split ---
+    // Split
     let raw_split = input.split_count
         + if input.additional_projectiles_add_splits_instead {
             extra
@@ -239,15 +246,15 @@ pub fn resolve_projectile_behavior(
         behaviors.push(ProjectileBehavior::Split);
     }
 
-    // --- Pierce ---
+    // Pierce
     if !input.cannot_pierce {
         if input.pierce_all_targets {
-            // 无限穿透：pierce_count 设为 100 表示"穿透所有"
+            // Infinite pierce: pierce_count is set to 100 to mean "pierces everything"
             pierce_count = 100;
             effective_pierce_all = true;
             behaviors.push(ProjectileBehavior::Pierce);
         } else {
-            // pierce_count BASE + pierce_chance/100 折算为有效次数
+            // pierce_count BASE + pierce_chance/100 folded into an effective count
             let effective_pc = input.pierce_count + input.pierce_chance / 100;
             if effective_pc > 0 {
                 pierce_count = effective_pc;
@@ -256,9 +263,9 @@ pub fn resolve_projectile_behavior(
         }
     }
 
-    // --- Fork（仅当未激活无限穿透时考虑）---
+    // Fork (only considered when infinite pierce isn't active)
     if !effective_pierce_all && !input.cannot_fork {
-        // ForkOnce → max=1；ForkTwice → max=2；额外 fork_count_max 叠加但 clamp 到 2（PoB2 L1320-1323）
+        // ForkOnce → max=1; ForkTwice → max=2; extra fork_count_max stacks but clamps to 2 (PoB2 L1320-1323)
         let raw_fork_max = if input.fork_twice {
             2u32
         } else if input.fork_once {
@@ -273,9 +280,9 @@ pub fn resolve_projectile_behavior(
         }
     }
 
-    // --- Chain（仅当未激活无限穿透时考虑）---
+    // Chain (only considered when infinite pierce isn't active)
     if !effective_pierce_all && !input.cannot_chain {
-        // AdditionalProjectilesAddChainsInstead 把额外投射物转为 chain
+        // AdditionalProjectilesAddChainsInstead converts additional projectiles into chains
         if input.additional_projectiles_add_chains_instead {
             chain_count_max += extra;
         }
@@ -294,33 +301,33 @@ pub fn resolve_projectile_behavior(
     }
 }
 
-/// 投射物数量计算结果。
+/// Projectile count calculation result.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ProjectileCountResult {
-    /// 总投射物数量（projBase × projMore）。
+    /// Total projectile count (projBase × projMore).
     pub projectile_count: f64,
-    /// 基础投射物数（Base 之和）。
+    /// Base projectile count (sum of Base).
     pub base_count: f64,
-    /// MORE 乘区（连乘积）。
+    /// The MORE factor (product).
     pub more_factor: f64,
-    /// 额外投射物数（base_count - 1，PoE2 约定 base=-1 表示"1 发基础"）。
+    /// Additional projectile count (base_count - 1; PoE2's convention of base=-1 meaning "1 base shot").
     pub additional_count: f64,
 }
 
-/// 计算投射物数量。
+/// Calculates the projectile count.
 ///
-/// PoB2 `CalcOffence.lua` L1286-1291：
+/// PoB2 `CalcOffence.lua` L1286-1291:
 /// ```lua
 /// projBase = Sum("BASE","ProjectileCount") + 2*TwoAdditionalProjectilesChance/100 + SurpassingProjectileChance/100
 /// projMore = More("ProjectileCount")
 /// output.ProjectileCount = projBase * projMore
 /// ```
 ///
-/// 当 `NoAdditionalProjectiles` flag 为真时，强制返回 1 发（PoB2 L1286-1287）。
+/// Forces a return of 1 shot when the `NoAdditionalProjectiles` flag is true (PoB2 L1286-1287).
 ///
-/// 出处：`agent-docs/skill-mechanics.md` §投射物数量；PoB2 `CalcOffence.lua` L1286-1291。
+/// Source: `agent-docs/skill-mechanics.md` §Projectile count; PoB2 `CalcOffence.lua` L1286-1291.
 pub fn calc_projectile_count(db: &ModDb, cfg: &CalcConfig) -> ProjectileCountResult {
-    // NoAdditionalProjectiles：锁定 1 发
+    // NoAdditionalProjectiles: locks to 1 shot
     if db.flag(cfg, ModName::from("NoAdditionalProjectiles")) {
         return ProjectileCountResult {
             projectile_count: 1.0,
@@ -349,7 +356,7 @@ pub fn calc_projectile_count(db: &ModDb, cfg: &CalcConfig) -> ProjectileCountRes
     }
 }
 
-/// `calc_projectile_count` 的追踪版本。
+/// Traced version of `calc_projectile_count`.
 pub fn calc_projectile_count_traced(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -377,43 +384,42 @@ pub fn calc_projectile_count_traced(
     (result, count_node)
 }
 
-// ---------------------------------------------------------------------------
-// §3  冷却
-// ---------------------------------------------------------------------------
+// §3  Cooldown
 
-/// 冷却计算结果。
+/// Cooldown calculation result.
 ///
-/// 出处：`agent-docs/skill-mechanics.md` §冷却；
-///       PoB2 `CalcOffence.lua::calcSkillCooldown`（L325-346）。
+/// Source: `agent-docs/skill-mechanics.md` §Cooldown;
+///       PoB2 `CalcOffence.lua::calcSkillCooldown` (L325-346).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CooldownResult {
-    /// 基础冷却（技能固有冷却 + Base 加减值，秒）。
+    /// Base cooldown (the skill's inherent cooldown + the Base addition, seconds).
     pub base_cooldown: f64,
-    /// 冷却恢复速率乘区（`(1 + Σinc/100) × Πmore`，作为除数）。
+    /// Cooldown recovery rate factor (`(1 + Σinc/100) × Πmore`, used as a divisor).
     pub recovery_rate: f64,
-    /// 实际冷却（`base / recovery_rate`，秒）。
+    /// Actual cooldown (`base / recovery_rate`, seconds).
     ///
-    /// - 无多次储存（`stored_uses ≤ 1`）：向上取整到服务器帧（≈ 1/30.3 s）。
-    /// - 有多次储存（`stored_uses > 1`）：**不取整**（PoB2 L340 注释明确）。
+    /// - No multiple storage (`stored_uses ≤ 1`): rounded up to the server tick (≈ 1/30.3 s).
+    /// - Multiple storage (`stored_uses > 1`): **not rounded** (per PoB2 L340's comment).
     pub cooldown: f64,
-    /// 最大可储存使用次数（`stored_uses_base + AdditionalCooldownUses BASE`）。
+    /// Maximum storable uses (`stored_uses_base + AdditionalCooldownUses BASE`).
     pub stored_uses: u32,
-    /// 冷却是否被服务器帧向上取整。
+    /// Whether the cooldown was rounded up to the server tick.
     pub rounded_to_tick: bool,
 }
 
-/// 计算技能冷却。
+/// Calculates skill cooldown.
 ///
-/// `base_cooldown_s`：技能固有冷却（秒，0 表示无冷却）。
-/// `base_stored_uses`：技能宝石内置储存次数（`skillData.storedUses`，0 或 1 表示无额外储存）。
+/// `base_cooldown_s`: the skill's inherent cooldown (seconds, 0 means no cooldown).
+/// `base_stored_uses`: the skill gem's built-in storage count
+/// (`skillData.storedUses`, 0 or 1 means no extra storage).
 ///
-/// 聚合公式：
+/// Aggregation formula:
 /// `cooldown = base / max(0, (1 + Σinc_CooldownRecovery/100) × Πmore_CooldownRecovery)`
 ///
-/// - 若有 Override(CooldownRecovery)，直接用 override 值（PoB2 L326）。
-/// - `stored_uses > 1` 时不取整到服务器帧（PoB2 L340）。
+/// - When there's an Override(CooldownRecovery), uses the override value directly (PoB2 L326).
+/// - Not rounded to the server tick when `stored_uses > 1` (PoB2 L340).
 ///
-/// 出处：PoB2 `CalcOffence.lua::calcSkillCooldown` L325-346。
+/// Source: PoB2 `CalcOffence.lua::calcSkillCooldown` L325-346.
 pub fn calc_cooldown(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -422,15 +428,15 @@ pub fn calc_cooldown(
 ) -> CooldownResult {
     let cd_recovery_names = [ModName::from("CooldownRecovery")];
 
-    // Base cooldown modifier（直接加减毫秒级值，PoB2 L327）
+    // Base cooldown modifier (adds/subtracts a millisecond-level value directly, PoB2 L327)
     let added_cooldown = db.sum(ModType::Base, cfg, &cd_recovery_names);
     let cooldown_base = base_cooldown_s + added_cooldown;
 
-    // Override 检查（PoB2 L326）
+    // Override check (PoB2 L326)
     let override_val = db.override_(cfg, ModName::from("CooldownRecovery"));
     let recovery_rate = if let Some(ov) = override_val {
-        // Override 直接给出最终冷却（秒），recovery_rate 设 1.0 表示无缩放
-        let _ = ov; // 用 override 值时直接返回
+        // Override gives the final cooldown directly (seconds); recovery_rate is set to 1.0 to mean no scaling
+        let _ = ov; // returns directly when using the override value
         // PoB2: cooldown = override
         let stored_uses = base_stored_uses
             + db.sum(
@@ -450,7 +456,7 @@ pub fn calc_cooldown(
     } else {
         let inc = db.sum(ModType::Inc, cfg, &cd_recovery_names);
         let more = db.more(cfg, &cd_recovery_names);
-        // 作为除数，不能为 0
+        // Used as a divisor, must not be 0
         ((1.0 + inc / 100.0) * more).max(f64::EPSILON)
     };
 
@@ -481,26 +487,26 @@ pub fn calc_cooldown(
     }
 }
 
-/// 根据储存次数决定是否取整到服务器帧，返回 `(cooldown, rounded_to_tick)`。
+/// Decides whether to round to the server tick based on the storage count, returning `(cooldown, rounded_to_tick)`.
 ///
-/// PoB2 L340：有多次储存时不取整（`it doesn't round the cooldown value to server ticks`）。
+/// PoB2 L340: not rounded when there's multiple storage (`it doesn't round the cooldown value to server ticks`).
 fn finalize_cooldown(raw_cd: f64, stored_uses: u32, tick_seconds: f64) -> (f64, bool) {
     if raw_cd <= 0.0 {
         return (0.0, false);
     }
-    // stored_uses > 1：不取整
+    // stored_uses > 1: not rounded
     if stored_uses > 1 {
         (round(raw_cd), false)
     } else {
-        // 向上取整到服务器帧：ceil(cd × ServerTickRate) / ServerTickRate
-        // （M0-W3：tick 改由调用方自注入常量包传入，fallback == 旧 const，值不变）
+        // Rounded up to the server tick: ceil(cd × ServerTickRate) / ServerTickRate
+        // (tick now comes from the injected constants pack via the caller; fallback == old const, value unchanged)
         let tick_rate = 1.0 / tick_seconds;
         let rounded = (raw_cd * tick_rate).ceil() / tick_rate;
         (round(rounded), true)
     }
 }
 
-/// `calc_cooldown` 的追踪版本。
+/// Traced version of `calc_cooldown`.
 pub fn calc_cooldown_traced(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -537,49 +543,49 @@ pub fn calc_cooldown_traced(
     (result, cd_node)
 }
 
-// ---------------------------------------------------------------------------
-// §4  消耗与保留
-// ---------------------------------------------------------------------------
+// §4  Cost and reservation
 
-/// 技能消耗计算结果（单一资源类型）。
+/// Skill cost calculation result (a single resource type).
 ///
-/// 公式（对照 PoB2 cost 段，通用路径，M1-T4.4 起含 SupportManaMultiplier）：
+/// Formula:
 /// `cost = floor(floor(base_cost × floor4(ΠSupportManaMultiplier)) × (1 + Σinc/100)) × Πmore`
-/// （辅助宝石 cost 倍率先于 inc/more 作用于 base 并取整；各乘区逐步取整，
-/// 对齐 PoB2 分步取整逻辑）。
+/// (the support gem cost multiplier is applied to the base and rounded
+/// before inc/more; each factor is rounded step by step, matching PoB2's stepwise rounding logic).
 ///
-/// 出处：`agent-docs/skill-mechanics.md` §消耗；
-///       PoB2 `CalcOffence.lua` L2040+（`ManaCost / LifeCost / ESCost`）。
+/// Source: `agent-docs/skill-mechanics.md` §Cost;
+///       PoB2 `CalcOffence.lua` L2040+ (`ManaCost / LifeCost / ESCost`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SkillCostResult {
-    /// 资源类型。
+    /// Resource type.
     pub kind: SkillCostKind,
-    /// 基础消耗（宝石/技能数据原始值，除以 Divisor 后）。
+    /// Base cost (the gem/skill data's raw value, after dividing by the Divisor).
     pub base_cost: f64,
-    /// 最终消耗（经 inc/more 聚合后，floor 到整数）。
+    /// Final cost (after inc/more aggregation, floored to an integer).
     pub final_cost: f64,
-    /// 消耗是否被 `HasNoCost` flag 免除。
+    /// Whether the cost is waived by the `HasNoCost` flag.
     pub no_cost: bool,
 }
 
-/// 计算技能资源消耗（Mana / Life / ES，不含 Spirit 保留——Spirit 走
-/// [`calc_spirit_reservation`]，辅助宝石通用 cost 倍率不增加 Spirit 保留）。
+/// Calculates skill resource cost (Mana / Life / ES, not including Spirit
+/// reservation -- Spirit goes through [`calc_spirit_reservation`]; the
+/// support gem's generic cost multiplier doesn't increase Spirit reservation).
 ///
-/// `resource_mod_prefix`：ModName 前缀（如 `"Mana"` 对应 `ManaCost` INC/MORE）。
-/// `base_cost`：宝石原始消耗值（已除以 Divisor）。
-/// `kind`：`SkillCostKind`（用于结果携带）。
+/// `resource_mod_prefix`: the ModName prefix (e.g. `"Mana"` corresponds to `ManaCost` INC/MORE).
+/// `base_cost`: the gem's raw cost value (already divided by the Divisor).
+/// `kind`: `SkillCostKind` (carried through to the result).
 ///
-/// 免消耗检查：`HasNoCost` flag → `final_cost = 0`。
+/// Free-cost check: the `HasNoCost` flag → `final_cost = 0`.
 ///
-/// 辅助宝石 cost 倍率（M1-T4.4）：`SupportManaMultiplier` MORE（来源 = 兼容
-/// support 的分等级 `mana_multiplier`，PoB2 `CalcActiveSkill.lua:689-691`）——
-/// 乘积**截断到 4 位小数**后先作用于 base 并 floor，再进 inc/more 链：
-/// PoB2 `CalcOffence.lua:2052` `mult = floor(More(skillCfg, "SupportManaMultiplier"), 4)`、
-/// `:2076-2077` `finalBaseCost = m_floor(baseCost × mult + baseCostNoMult)`。
-/// 通用路径对全部上述资源生效（PoB2 仅 Soul 标 `unaffectedByGenericCostMults`，
-/// 本函数不处理 Soul）。
+/// Support gem cost multiplier: `SupportManaMultiplier` MORE (sourced from a
+/// compatible support's per-level `mana_multiplier`, PoB2
+/// `CalcActiveSkill.lua:689-691`) -- the product is **truncated to 4 decimal
+/// places**, then applied to base and floored before entering the inc/more
+/// chain: PoB2 `CalcOffence.lua:2052`'s `mult = floor(More(skillCfg, "SupportManaMultiplier"), 4)`,
+/// `:2076-2077`'s `finalBaseCost = m_floor(baseCost × mult + baseCostNoMult)`.
+/// The generic path applies to every resource listed above (PoB2 only marks
+/// Soul as `unaffectedByGenericCostMults`; this function doesn't handle Soul).
 ///
-/// 出处：PoB2 `CalcOffence.lua` L2050-2160（通用路径）。
+/// Source: PoB2 `CalcOffence.lua` L2050-2160 (the generic path).
 pub fn calc_skill_cost(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -587,7 +593,7 @@ pub fn calc_skill_cost(
     resource_mod_prefix: &str,
     base_cost: f64,
 ) -> SkillCostResult {
-    // HasNoCost 全免
+    // HasNoCost waives it entirely
     if db.flag(cfg, ModName::from("HasNoCost")) {
         return SkillCostResult {
             kind,
@@ -597,8 +603,8 @@ pub fn calc_skill_cost(
         };
     }
 
-    // 辅助宝石 cost 倍率：连乘截断 4 位小数 → 作用于 base → floor
-    // （PoB2 CalcOffence.lua:2052/:2076-2077，先于 inc/more 链）。
+    // Support gem cost multiplier: the product truncated to 4 decimal places
+    // → applied to base → floored (PoB2 CalcOffence.lua:2052/:2076-2077, before the inc/more chain).
     let base_cost_after_support = (base_cost * support_cost_multiplier(db, cfg)).floor();
     let final_cost = apply_cost_chain(db, cfg, resource_mod_prefix, base_cost_after_support);
 
@@ -610,8 +616,8 @@ pub fn calc_skill_cost(
     }
 }
 
-/// 消耗 inc/more/efficiency 链（vendor CalcOffence.lua:2126-2160 第二循环），
-/// 入参 `final_base` = 已含 SupportManaMultiplier 的 finalBaseCost。
+/// The cost inc/more/efficiency chain (vendor CalcOffence.lua:2126-2160's
+/// second loop); the `final_base` parameter = finalBaseCost, already including SupportManaMultiplier.
 fn apply_cost_chain(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -624,15 +630,15 @@ fn apply_cost_chain(
         ModName::from(type_cost_name.as_str()),
         ModName::from(generic_cost_name),
     ];
-    // ManaCost / Cost INC（PoB2: `skillModList:Sum("INC", skillCfg, type.."Cost", "Cost")`）
+    // ManaCost / Cost INC (PoB2: `skillModList:Sum("INC", skillCfg, type.."Cost", "Cost")`)
     let inc = db.sum(ModType::Inc, cfg, &inc_names);
 
-    // ManaCost MORE (type) × Cost MORE (generic)（PoB2 两步 more 乘）
+    // ManaCost MORE (type) × Cost MORE (generic) (PoB2's two-step more multiplication)
     let more_type = db.more(cfg, &[ModName::from(type_cost_name.as_str())]);
     let more_generic = db.more(cfg, &[ModName::from(generic_cost_name)]);
 
-    // PoB2 分步取整：
-    //   1) `floor(finalBaseCost × (1+inc/100))` (inc 正 → floor，inc 负 → ceil)
+    // PoB2's stepwise rounding:
+    //   1) `floor(finalBaseCost × (1+inc/100))` (inc positive → floor, inc negative → ceil)
     //   2) `floor/ceil(step1 × moreType)` (more < 1 → ceil)
     //   3) `floor/ceil(step2 × moreGeneric)`
     let after_inc = if inc >= 0.0 {
@@ -652,9 +658,10 @@ fn apply_cost_chain(
     })
     .max(0.0);
 
-    // 消耗效率（Cost Efficiency）：在 inc/more（已取整）之后**除以** `1 + 效率/100`，结果不再取整。
-    // `{type}CostEfficiency` + 通用 `CostEfficiency` 加法叠加。PoB2: 9 mana, 50% eff → 6；
-    // 25% 通用 → 7.2；25%+25% → 6；50% inc + 50% eff → floor(9×1.5)/1.5 = 8.67。
+    // Cost Efficiency: **divides** by `1 + efficiency/100` after inc/more
+    // (already rounded), with the result no longer rounded.
+    // `{type}CostEfficiency` + generic `CostEfficiency` stack additively.
+    // PoB2: 9 mana, 50% eff → 6; 25% generic → 7.2; 25%+25% → 6; 50% inc + 50% eff → floor(9×1.5)/1.5 = 8.67.
     let efficiency = db.sum(
         ModType::Inc,
         cfg,
@@ -666,17 +673,18 @@ fn apply_cost_chain(
     after_more / (1.0 + efficiency / 100.0)
 }
 
-/// 辅助宝石 cost 倍率连乘，截断 4 位小数（PoB2 CalcOffence.lua:2062
-/// `mult = floor(More(skillCfg, "SupportManaMultiplier"), 4)`）。
+/// The support gem cost multiplier product, truncated to 4 decimal places
+/// (PoB2 CalcOffence.lua:2062's `mult = floor(More(skillCfg, "SupportManaMultiplier"), 4)`).
 fn support_cost_multiplier(db: &ModDb, cfg: &CalcConfig) -> f64 {
     let m = db.more(cfg, &[ModName::from("SupportManaMultiplier")]);
     (m * 10000.0).floor() / 10000.0
 }
 
-/// Hybrid mana→life 消耗份额（0..=1）。来源 = `HybridManaAndLifeCost_Life` BASE
-/// （vendor stat `base_skill_cost_life_instead_of_mana_%`，如 Atalui's Bloodletting
-/// constantStat 100；Blood-Magic 族树词条同名），vendor 封顶 100
-/// （CalcOffence.lua:2067 `m_min(Sum(...), 100) / 100`）。
+/// Hybrid mana→life cost share (0..=1). Sourced from
+/// `HybridManaAndLifeCost_Life` BASE (vendor stat
+/// `base_skill_cost_life_instead_of_mana_%`, e.g. Atalui's Bloodletting's
+/// constantStat 100; the same-named tree mod in the Blood-Magic family),
+/// vendor caps this at 100 (CalcOffence.lua:2067's `m_min(Sum(...), 100) / 100`).
 pub fn hybrid_life_cost_share(db: &ModDb, cfg: &CalcConfig) -> f64 {
     (db.sum(
         ModType::Base,
@@ -688,23 +696,25 @@ pub fn hybrid_life_cost_share(db: &ModDb, cfg: &CalcConfig) -> f64 {
         .max(0.0)
 }
 
-/// 方便的 Mana 消耗计算。
+/// Convenience Mana cost calculation.
 ///
-/// 注意：hybrid mana→life 转换（[`hybrid_life_cost_share`] > 0）时 vendor 在链尾
-/// 追加 `floor((1 - hybrid) × ManaCost)`（CalcOffence.lua:2160-2162）——由调用方
-/// （perform fill）执行，本函数保持单资源纯链。
+/// Note: under the hybrid mana→life conversion ([`hybrid_life_cost_share`] >
+/// 0), vendor appends `floor((1 - hybrid) × ManaCost)` at the end of the
+/// chain (CalcOffence.lua:2160-2162) -- performed by the caller (perform
+/// fill); this function keeps a pure single-resource chain.
 pub fn calc_mana_cost(db: &ModDb, cfg: &CalcConfig, base_mana_cost: f64) -> SkillCostResult {
     calc_skill_cost(db, cfg, SkillCostKind::Mana, "Mana", base_mana_cost)
 }
 
-/// 方便的 Life 消耗计算。
+/// Convenience Life cost calculation.
 pub fn calc_life_cost(db: &ModDb, cfg: &CalcConfig, base_life_cost: f64) -> SkillCostResult {
     calc_skill_cost(db, cfg, SkillCostKind::Life, "Life", base_life_cost)
 }
 
-/// Life 消耗（含 hybrid mana→life 转换，vendor CalcOffence.lua:2090-2104 Life 分支）：
-/// `life.finalBaseCost = round(base_life×mult + round(floor(base_mana×mult) × hybrid))`，
-/// 之后走 Life 消耗 inc/more/efficiency 链。hybrid = 0 时与 [`calc_life_cost`] 等价。
+/// Life cost (including hybrid mana→life conversion, vendor
+/// CalcOffence.lua:2090-2104's Life branch):
+/// `life.finalBaseCost = round(base_life×mult + round(floor(base_mana×mult) × hybrid))`,
+/// then runs the Life cost inc/more/efficiency chain. Equivalent to [`calc_life_cost`] when hybrid = 0.
 pub fn calc_life_cost_hybrid(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -734,17 +744,19 @@ pub fn calc_life_cost_hybrid(
     }
 }
 
-/// 方便的 Spirit（保留）消耗计算。
+/// Convenience Spirit (reservation) cost calculation.
 ///
-/// Spirit 保留量 = `ReservationMultiplier MORE`（宝石等级保留倍率）作用于宝石基础保留值，
-/// 再加上 `ExtraSpirit BASE`（`spiritReservationFlat`）。
-/// 辅助宝石的通用 cost multiplier **不**增加 Spirit 保留（除非有保留倍率词条）。
+/// Spirit reservation amount = `ReservationMultiplier MORE` (the gem-level
+/// reservation multiplier) applied to the gem's base reservation value, plus
+/// `ExtraSpirit BASE` (`spiritReservationFlat`). A support gem's generic
+/// cost multiplier does **not** increase Spirit reservation (unless there's a reservation-multiplier mod).
 ///
-/// PoB2 对应字段（CalcActiveSkill.lua / CalcOffence.lua 保留段）：
-/// `reservedFlat + floor(pool × reservedPercent/100)`（仅针对按百分比保留的情况）。
+/// The corresponding PoB2 fields (CalcActiveSkill.lua / CalcOffence.lua's
+/// reservation section): `reservedFlat + floor(pool × reservedPercent/100)`
+/// (only for the percentage-based reservation case).
 ///
-/// 本函数处理**扁平 Spirit 保留**（常见形式：宝石消耗固定 Spirit 数量）。
-/// `base_spirit_reservation`：宝石基础 Spirit 保留量（扁平）。
+/// This function handles **flat Spirit reservation** (the common form: a
+/// gem consumes a fixed Spirit amount). `base_spirit_reservation`: the gem's base Spirit reservation (flat).
 pub fn calc_spirit_reservation(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -764,17 +776,21 @@ pub fn calc_spirit_reservation(
     let more = db.more(cfg, &reservation_more_names);
     let extra_flat = db.sum(ModType::Base, cfg, &extra_spirit_names);
 
-    // ⚠️ Reservation Efficiency **不在此处**除——vendor 的 efficiency 是
-    // per-skill（CalcDefence.lua:240-243 对每个 activeSkill 以 skillCfg 求
-    // `Σinc(SpiritReservationEfficiency, ReservationEfficiency)`，域词条
-    // 「Meta Skills have N% …」只作用于匹配技能）。PoBR 的应用点在**注入侧**
-    // `pobr-build::spirit_reservation_modifiers`（per-gem cfg + 宝石品质项），
-    // 每条 `SkillSpiritReservationBase` 注入前已除完。旧实现曾在此对聚合总量
-    // 除全局 efficiency——与注入侧构成**双重应用**（frost-bomb 面板预留 148 vs
-    // 注入合计 166 的 18 差值根因），已迁移删除。
+    // ⚠️ Reservation Efficiency is **not** divided out here -- vendor's
+    // efficiency is per-skill (CalcDefence.lua:240-243 computes
+    // `Σinc(SpiritReservationEfficiency, ReservationEfficiency)` per
+    // activeSkill against its own skillCfg; a scoped mod like "Meta Skills
+    // have N% …" only applies to matching skills). PoBR's application point
+    // is on the **injection side**, `pobr-build::spirit_reservation_modifiers`
+    // (per-gem cfg + the gem quality term), where each
+    // `SkillSpiritReservationBase` injected has already been divided.
+    // A past implementation divided the aggregate total by global efficiency
+    // here too -- constituting **double application** with the injection
+    // side (the root cause of frost-bomb's panel reservation showing 148 vs
+    // an injected total of 166, an 18 discrepancy) -- and has since been removed.
     //
-    // Spirit 保留 = base × more + extra_flat
-    // （扁平加值，按 PoB2 CalcOffence.lua 保留段）
+    // Spirit reservation = base × more + extra_flat
+    // (a flat addition, per PoB2 CalcOffence.lua's reservation section)
     let reserved = (base_spirit_reservation * more + extra_flat)
         .floor()
         .max(0.0);
@@ -787,7 +803,7 @@ pub fn calc_spirit_reservation(
     }
 }
 
-/// `calc_skill_cost` 的追踪版本（以 Mana 为示例；其他资源类型同理）。
+/// Traced version of `calc_skill_cost` (using Mana as the example; other resource types work the same way).
 pub fn calc_skill_cost_traced(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -821,7 +837,7 @@ pub fn calc_skill_cost_traced(
         trace,
         format!("{type_cost_name} MORE factor"),
     );
-    // 辅助宝石 cost 倍率（M1-T4.4）：作为独立乘区节点入图（SupportGem 来源可回溯）。
+    // The support gem's cost multiplier: added to the graph as an independent factor node (traceable back to the SupportGem source).
     let support_mult_node = db.more_traced(
         cfg,
         &[ModName::from("SupportManaMultiplier")],

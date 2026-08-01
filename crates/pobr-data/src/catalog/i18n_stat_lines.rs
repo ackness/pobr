@@ -1,17 +1,21 @@
-//! 词条行输入翻译模板（`i18n/<lang>/stat_lines.json`，TODO Phase 7.1）。
+//! Mod-line input translation templates (`i18n/<lang>/stat_lines.json`, TODO Phase 7.1).
 //!
-//! 来源 = GGG stat descriptions 的本地化模板对（经 `pipeline/gen-zh-cn.mjs`
-//! 从国服客户端词典转录）。消费侧（pobr-wasm 契约层）把本地化词条行反查
-//! 模板、代回数值，得到英文 canonical 行喂现有 parser——引擎本身保持英文。
+//! Source = localized template pairs from GGG's stat descriptions
+//! (transcribed from the CN client's dictionary via `pipeline/gen-zh-cn.mjs`).
+//! The consumer (pobr-wasm's contract layer) reverse-looks-up a localized
+//! mod line against its template, substitutes the numbers back in, and gets
+//! an English canonical line to feed into the existing parser — the engine
+//! itself stays English-only.
 
 use serde::{Deserialize, Serialize};
 
-/// 一对词条行模板：`src` = 本地化模板（含 `{0}` / `{0:+d}` 占位符），
-/// `en` = 对应英文 canonical 模板。
+/// A pair of mod-line templates: `src` = the localized template (with
+/// `{0}` / `{0:+d}` placeholders), `en` = the corresponding English
+/// canonical template.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StatLineTemplate {
-    /// 本地化模板（如 `{0:+d} 生命上限`）。
+    /// The localized template (e.g. `{0:+d} 生命上限`).
     pub src: String,
-    /// 英文 canonical 模板（如 `{0:+d} to maximum Life`）。
+    /// The English canonical template (e.g. `{0:+d} to maximum Life`).
     pub en: String,
 }

@@ -1,15 +1,22 @@
-//! pobr-gamedata：运行时加载入库的适配 JSON（`data/<poe_version>/`）。
+//! pobr-gamedata: runtime loader for the stored, adapted JSON
+//! (`data/<poe_version>/`).
 //!
-//! 这是数据系统里**唯一持有文件 I/O 的层**——`pobr-data`（纯定义）与 `pobr-core`
-//! （纯计算）保持零 I/O。本 crate 用 serde 把 `data/<version>/` 的最小 JSON
-//! 反序列化为 [`pobr_data::catalog`] 类型，供上层按需取用。
+//! This is the data system's **sole layer that holds file I/O** —
+//! `pobr-data` (pure definitions) and `pobr-core` (pure calc) both stay
+//! zero-I/O. This crate uses serde to deserialize `data/<version>/`'s
+//! minimal JSON into [`pobr_data::catalog`] types, for the layers above to
+//! consume as needed.
 //!
-//! 模块划分（M0 重构，架构文档 20 §2.3）：
-//! - [`manifest`]：manifest v1/v2 加载；
-//! - [`paths`]：三层目录下的域文件定位（`base/` 优先，版本根回退兼容旧布局）；
-//! - [`overlay`]：base→overlay 确定性 merge 引擎；
-//! - [`ruleset`]：`RuleSet` 聚合入口骨架（供 pobr-build 注入 pobr-core，P9）；
-//! - [`domains`]：M0-W2 九表的按域 loader（当前为空壳）。
+//! Module breakdown:
+//! - [`manifest`]: manifest v1/v2 loading;
+//! - [`paths`]: locates a domain's file across the three directory layers
+//!   (`base/` first, falling back to the version root for compatibility
+//!   with the old layout);
+//! - [`overlay`]: the deterministic base→overlay merge engine;
+//! - [`ruleset`]: the `RuleSet` aggregation entry-point skeleton (for
+//!   pobr-build to inject into pobr-core);
+//! - [`domains`]: per-domain loaders for the nine tables (currently empty
+//!   shells).
 
 pub mod domains;
 pub mod manifest;
@@ -30,7 +37,7 @@ use pobr_data::catalog::{
 pub use overlay::{MergeError, merge};
 pub use ruleset::RuleSet;
 
-/// 加载错误。
+/// A load error.
 #[derive(Debug)]
 pub enum LoadError {
     Io {
@@ -41,7 +48,8 @@ pub enum LoadError {
         path: PathBuf,
         source: serde_json::Error,
     },
-    /// overlay merge 失败（如 `skill_overrides.json` 含消费侧未接线的 stat）。
+    /// An overlay merge failed (e.g. `skill_overrides.json` names a stat
+    /// the consumer hasn't wired up).
     Overlay { path: PathBuf, message: String },
 }
 
@@ -59,23 +67,27 @@ impl fmt::Display for LoadError {
 
 impl std::error::Error for LoadError {}
 
-/// 指向某个 PoE2 版本数据目录（`data/<poe_version>/`）的加载器。
+/// A loader pointed at a PoE2 version's data directory
+/// (`data/<poe_version>/`).
 ///
-/// 两种后端：
-/// - **文件系统**（[`GameData::new`]）：`root` 指向磁盘版本目录，默认路径；
-/// - **内存**（[`GameData::from_memory`]）：所有文件由调用方以
-///   `相对路径 -> bytes` 一次性注入，之后零文件 I/O——供 wasm 等无文件系统
-///   环境使用（JS 侧 fetch 数据文件后传入）。
+/// Two backends:
+/// - **filesystem** ([`GameData::new`]): `root` points at an on-disk
+///   version directory, the default;
+/// - **in-memory** ([`GameData::from_memory`]): every file is injected up
+///   front by the caller as `relative path -> bytes`, with zero file I/O
+///   after that — for filesystem-less environments like wasm (the JS side
+///   fetches the data files and passes them in).
 #[derive(Debug, Clone)]
 pub struct GameData {
     root: PathBuf,
-    /// 内存文件表（`Some` = 内存后端）。键为版本目录内的相对路径，
-    /// 恒用正斜杠分隔（如 `base/stats.json`、`overlay/uniques.json`）。
+    /// The in-memory file table (`Some` = the in-memory backend). Keys are
+    /// paths relative to the version directory, always using forward
+    /// slashes (e.g. `base/stats.json`, `overlay/uniques.json`).
     files: Option<std::sync::Arc<std::collections::BTreeMap<String, Vec<u8>>>>,
 }
 
 impl GameData {
-    /// 指向一个版本目录，如 `data/4.5.0.3.4`。
+    /// Points at a version directory, e.g. `data/4.5.0.3.4`.
     pub fn new(version_dir: impl Into<PathBuf>) -> Self {
         Self {
             root: version_dir.into(),
@@ -83,10 +95,13 @@ impl GameData {
         }
     }
 
-    /// 内存后端：`files` 为版本目录内 `相对路径（正斜杠）-> 文件内容` 的映射。
+    /// The in-memory backend: `files` maps a path relative to the version
+    /// directory (forward slashes) to its file contents.
     ///
-    /// 之后所有域加载都查此表，不触碰文件系统；表中缺文件与磁盘缺文件同语义
-    /// （[`LoadError::Io`] NotFound，消费侧的缺表降级照常生效）。
+    /// Every domain load afterward queries this table instead of touching
+    /// the filesystem; a file missing from the table has the same
+    /// semantics as a file missing from disk ([`LoadError::Io`]'s
+    /// NotFound — the consumer's missing-table degradation still applies).
     pub fn from_memory(files: std::collections::BTreeMap<String, Vec<u8>>) -> Self {
         Self {
             root: PathBuf::from("<memory>"),
@@ -94,13 +109,14 @@ impl GameData {
         }
     }
 
-    /// 把一个（可能带 `root` 前缀的）路径规约为内存表键。
+    /// Reduces a path (possibly carrying the `root` prefix) to an
+    /// in-memory table key.
     fn memory_key(&self, path: &Path) -> String {
         let rel = path.strip_prefix(&self.root).unwrap_or(path);
         rel.to_string_lossy().replace('\\', "/")
     }
 
-    /// 读取一个数据文件的字节（按后端分派）。
+    /// Reads a data file's bytes (dispatched by backend).
     pub(crate) fn read_bytes(&self, path: &Path) -> Result<Vec<u8>, std::io::Error> {
         match &self.files {
             Some(map) => map.get(&self.memory_key(path)).cloned().ok_or_else(|| {
@@ -110,7 +126,8 @@ impl GameData {
         }
     }
 
-    /// 判断一个数据文件是否存在（按后端分派；供 `domain_path` / patch 层探测）。
+    /// Checks whether a data file exists (dispatched by backend; used by
+    /// `domain_path` / the patch layer's probing).
     pub(crate) fn file_exists(&self, path: &Path) -> bool {
         match &self.files {
             Some(map) => map.contains_key(&self.memory_key(path)),
@@ -118,18 +135,23 @@ impl GameData {
         }
     }
 
-    /// 版本目录根（`manifest.json` / `i18n/` 所在层）。
+    /// The version directory root (where `manifest.json` / `i18n/` live).
     pub(crate) fn root(&self) -> &Path {
         &self.root
     }
 
-    /// 按绝对/已定位路径加载 JSON，并叠加**用户 patch 层**（若存在）。
+    /// Loads JSON from an absolute/already-resolved path, and layers the
+    /// **user patch layer** on top of it (if present).
     ///
-    /// 用户 patch：把自定义 JSON 放到 `data/<version>/patch/<与版本根同构的相对路径>`
-    /// （如 `patch/base/mods.json`、`patch/overlay/uniques.json`），加载期按
-    /// [`merge`] 规则（对象 key 覆盖 / 数组按 `id` 合并 / 标量覆盖）叠在官方数据之上。
-    /// 这是 base→overlay 之外面向**用户的扩展层**——加 JSON 即可加/改 mod、独占、配置，
-    /// 不碰代码、不碰官方数据；patch 目录缺失 = 纯官方数据（向后兼容）。
+    /// A user patch: put custom JSON under
+    /// `data/<version>/patch/<path relative to the version root, mirroring its structure>`
+    /// (e.g. `patch/base/mods.json`, `patch/overlay/uniques.json`); at load
+    /// time it's layered on top of the official data per [`merge`]'s rules
+    /// (object keys override / arrays merge by `id` / scalars override).
+    /// This is a **user-facing extension layer** on top of base→overlay —
+    /// adding a JSON file is enough to add/change a mod, exclusivity, or
+    /// config, without touching code or official data; a missing patch
+    /// directory means pure official data (backward compatible).
     pub(crate) fn load_json_at<T: for<'de> serde::Deserialize<'de>>(
         &self,
         path: PathBuf,
@@ -138,8 +160,9 @@ impl GameData {
             path: path.clone(),
             source,
         })?;
-        // 用户 patch：patch/<相对版本根路径>；按相对结构镜像避免文件名碰撞
-        // （base/ 与 i18n/ 都有 base_items.json）。
+        // User patch: patch/<path relative to the version root>; mirrored by
+        // relative structure to avoid filename collisions (both base/ and
+        // i18n/ have a base_items.json).
         if let Ok(rel) = path.strip_prefix(&self.root) {
             let patch_path = self.root.join("patch").join(rel);
             if self.file_exists(&patch_path) {
@@ -170,16 +193,18 @@ impl GameData {
         serde_json::from_slice(&bytes).map_err(|source| LoadError::Parse { path, source })
     }
 
-    /// 加载某个数据域 JSON（`base/` 优先，版本根回退，见 [`paths`]）。
+    /// Loads a data domain's JSON (`base/` first, falling back to the
+    /// version root, see [`paths`]).
     fn load_domain<T: for<'de> serde::Deserialize<'de>>(&self, rel: &str) -> Result<T, LoadError> {
         self.load_json_at(self.domain_path(rel))
     }
 
-    /// 加载物品基底定义（英文 canonical 名称），并把
-    /// `overlay/base_item_overrides.json` 的基底覆盖值（盾牌 `block_chance` /
-    /// 权杖 `spirit`——对应 `.dat` 表 bundle 被 CDN 剪除、由 vendor `Data/Bases`
-    /// 抽取兜底）merge 到纯 base 之上（overlay 缺失时 = 纯 base，见
-    /// [`domains::base_item_overrides`]）。
+    /// Loads base item definitions (English canonical names), and merges
+    /// `overlay/base_item_overrides.json`'s base overrides (a shield's
+    /// `block_chance` / a sceptre's `spirit` — the `.dat` table's bundle
+    /// was pruned by the CDN, so this falls back to vendor
+    /// `Data/Bases`-extracted data) onto the plain base data (absent
+    /// overlay = plain base, see [`domains::base_item_overrides`]).
     pub fn base_items(&self) -> Result<Vec<BaseItemDef>, LoadError> {
         let mut bases: Vec<BaseItemDef> = self.load_domain("base_items.json")?;
         if let Some(overrides) = self.base_item_overrides()? {
@@ -188,7 +213,7 @@ impl GameData {
         Ok(bases)
     }
 
-    /// 加载某语言的物品基底名称边车（`id -> 本地化名称`）。
+    /// Loads the item base-name sidecar for a language (`id -> localized name`).
     pub fn base_item_names(
         &self,
         lang: &str,
@@ -196,8 +221,10 @@ impl GameData {
         self.load_json_at(self.root.join(format!("i18n/{lang}/base_items.json")))
     }
 
-    /// 加载某语言的名词直译边车（`i18n/<lang>/<file>`，英文名 → 本地化名）。
-    /// 文件缺失（旧数据包）返回空表——消费侧按「无名词翻译」降级。
+    /// Loads a word-for-word translation sidecar for a language
+    /// (`i18n/<lang>/<file>`, English name → localized name). Returns an
+    /// empty map when the file is missing (an old data pack) — the
+    /// consumer degrades to "no word translation".
     fn name_sidecar(
         &self,
         lang: &str,
@@ -215,7 +242,8 @@ impl GameData {
         }
     }
 
-    /// 名词直译表（GGG Words 表转录：唯一物品名等专有名词）。
+    /// Word-for-word translation table (transcribed from GGG's Words
+    /// table: unique item names and other proper nouns).
     pub fn word_names(
         &self,
         lang: &str,
@@ -223,7 +251,8 @@ impl GameData {
         self.name_sidecar(lang, "words.json")
     }
 
-    /// 天赋节点名直译表（GGG PassiveSkills 表 Name 列转录）。
+    /// Passive-node-name translation table (transcribed from GGG's
+    /// PassiveSkills table's Name column).
     pub fn passive_node_names(
         &self,
         lang: &str,
@@ -231,7 +260,9 @@ impl GameData {
         self.name_sidecar(lang, "passive_names.json")
     }
 
-    /// 词缀名直译表（GGG Mods 表 Name 列转录；魔法物品名前后缀组合翻译用）。
+    /// Affix-name translation table (transcribed from GGG's Mods table's
+    /// Name column; used to compose translated magic-item names from
+    /// prefix + suffix).
     pub fn affix_names(
         &self,
         lang: &str,
@@ -239,7 +270,8 @@ impl GameData {
         self.name_sidecar(lang, "mods.json")
     }
 
-    /// RARE 随机名组成词表（前缀词/后缀词 → 短中文名词；双词组合翻译用）。
+    /// Word list for composing RARE random names (prefix word/suffix word
+    /// → a short localized noun; used for two-word name translation).
     pub fn rare_name_words(
         &self,
         lang: &str,
@@ -247,19 +279,21 @@ impl GameData {
         self.name_sidecar(lang, "rare_words.json")
     }
 
-    /// 加载 stat 注册表（id / is_local / semantic / category）。
+    /// Loads the stat registry (id / is_local / semantic / category).
     pub fn stats(&self) -> Result<Vec<StatDef>, LoadError> {
         self.load_domain("stats.json")
     }
 
-    /// 加载词缀池定义（Stat 外键已解析为稳定 stat id，掷值区间已合并）。
+    /// Loads mod pool definitions (Stat foreign keys already resolved to
+    /// stable stat ids, roll ranges already merged in).
     pub fn mods(&self) -> Result<Vec<ModDef>, LoadError> {
         self.load_domain("mods.json")
     }
 
-    /// 加载 StatDescriptions overlay（stat_id → canonical 英文模板行，
-    /// `overlay/stat_descriptions.json`）。overlay 缺失（旧数据包）返回
-    /// `Ok(None)`——消费侧（词缀 tier 推断等）按「无模板索引」降级。
+    /// Loads the StatDescriptions overlay (stat_id → canonical English
+    /// template lines, `overlay/stat_descriptions.json`). Returns `Ok(None)`
+    /// when the overlay is missing (an old data pack) — consumers (mod
+    /// tier inference, etc.) degrade to "no template index".
     pub fn stat_descriptions(
         &self,
     ) -> Result<Option<pobr_data::catalog::stat_descriptions::StatDescriptionsDef>, LoadError> {
@@ -270,7 +304,7 @@ impl GameData {
         self.load_json_at(path).map(Some)
     }
 
-    /// 加载某语言的词缀名称边车（`id -> 本地化名称`）。
+    /// Loads the mod-name sidecar for a language (`id -> localized name`).
     pub fn mod_names(
         &self,
         lang: &str,
@@ -278,10 +312,12 @@ impl GameData {
         self.load_json_at(self.root.join(format!("i18n/{lang}/mods.json")))
     }
 
-    /// 加载技能宝石定义（身份取自基底 id），并把 `overlay/gem_effects.json` 的
-    /// 宝石→授予效果连边（`granted_effect_id` / `additional_granted_effect_ids`，
-    /// vendor `Data/Gems.lua` 抽取——`.dat` `GemEffects` 表不可下载，M1-T5.1）按
-    /// `gem_id` merge 到纯 base 之上（overlay 缺失时 = 纯 base，连边字段保持空）。
+    /// Loads skill gem definitions (identity taken from the base id), and
+    /// merges `overlay/gem_effects.json`'s gem → granted-effect edges
+    /// (`granted_effect_id` / `additional_granted_effect_ids`, extracted
+    /// from vendor `Data/Gems.lua` — the `.dat`'s `GemEffects` table isn't
+    /// downloadable) onto the plain base data by `gem_id` (absent overlay
+    /// = plain base, with the edge fields left empty).
     pub fn skill_gems(&self) -> Result<Vec<SkillGemDef>, LoadError> {
         let mut gems: Vec<SkillGemDef> = self.load_domain("skill_gems.json")?;
         if let Some(effects) = self.gem_effects()? {
@@ -296,18 +332,22 @@ impl GameData {
                     gem.granted_effect_id = Some(link.granted_effect_id.clone());
                     gem.additional_granted_effect_ids = link.additional_granted_effect_ids.clone();
                 }
-                // overlay 中无该宝石（如纯怪物/废弃宝石）→ 连边字段保持空，不报错。
+                // The gem isn't in the overlay (e.g. a monster-only or
+                // deprecated gem) → the edge fields stay empty, no error.
             }
         }
         Ok(gems)
     }
 
-    /// 加载授予效果定义（含解析后的主动技能链接 + StatSet/CostTypes 索引）。
+    /// Loads granted-effect definitions (including the resolved
+    /// active-skill link plus the StatSet/CostTypes indices).
     ///
-    /// 加载期把 `overlay/granted_effect_minions.json`（宝石→召唤物外键边车，
-    /// M5a-A3）merge 到 base 之上：按 `effect_id` 匹配，拼入 `minion_list` /
-    /// `add_minion_list` / `minion_uses` / `minion_has_item_set`（base
-    /// `granted_effects.json` 不含这些字段，缺 overlay 文件 = 全空，向后兼容）。
+    /// At load time, merges `overlay/granted_effect_minions.json` (the
+    /// gem → minion foreign-key sidecar) onto the base data: matched by
+    /// `effect_id`, folding in `minion_list` / `add_minion_list` /
+    /// `minion_uses` / `minion_has_item_set` (the base
+    /// `granted_effects.json` doesn't have these fields; a missing overlay
+    /// file means they're all empty, backward compatible).
     pub fn granted_effects(&self) -> Result<Vec<GrantedEffectDef>, LoadError> {
         let mut effects: Vec<GrantedEffectDef> = self.load_domain("granted_effects.json")?;
         if let Some(minions) = self.granted_effect_minions()? {
@@ -327,10 +367,13 @@ impl GameData {
         Ok(effects)
     }
 
-    /// 加载授予效果的分等级参数（`granted_effect_id -> 升序等级数组`，cost/cooldown/attack time），
-    /// 并把 `overlay/skill_overrides.json` 的等级类覆盖值（crit_chance /
-    /// attack_speed_multiplier / base_multiplier，vendor PoB2 抽取、`.dat` 导出缺失列）
-    /// merge 到纯 base 之上（overlay 缺失时 = 纯 base，见 [`domains::skill_overrides`]）。
+    /// Loads granted effects' per-level parameters
+    /// (`granted_effect_id -> ascending level array`, cost/cooldown/attack
+    /// time), and merges `overlay/skill_overrides.json`'s per-level
+    /// override values (crit_chance / attack_speed_multiplier /
+    /// base_multiplier — extracted from vendor PoB2, columns missing from
+    /// the `.dat` export) onto the plain base data (absent overlay = plain
+    /// base, see [`domains::skill_overrides`]).
     pub fn granted_effect_levels(
         &self,
     ) -> Result<std::collections::BTreeMap<String, Vec<SkillLevelDef>>, LoadError> {
@@ -346,15 +389,19 @@ impl GameData {
         Ok(levels)
     }
 
-    /// 加载授予效果的**多 statSet 分等级 stat 集**（按 effect id 排序的数组，
-    /// 每项 = 主 set + 附加 set，M1-T5.2）。空缺（旧数据包无此域）时返回空 Vec，
-    /// 向后兼容。两个 overlay 在此 merge 到纯 base 之上：
-    /// - `skill_overrides.json` 的 statSet 级覆盖值（skill_attack_speed_more，
-    ///   PoB2 自带 baseMods 常量，不在 GGG `.dat` 中）；
-    /// - `stat_set_labels.json` 的形态 label / vendor 导出序号（`.dat` `Label`
-    ///   列的 FK 目标表不可下载，vendor 抽取）；
-    /// - `skill_overrides.json` 的 dotIs* 布尔（M4-T4 W-D1，labels 之后 merge，
-    ///   set 定位依赖 vendor 序号）。
+    /// Loads granted effects' **multi-statSet per-level stat sets** (an
+    /// array sorted by effect id, each item = the primary set plus
+    /// additional sets). Returns an empty Vec when absent (an old data
+    /// pack without this domain), backward compatible. Two overlays are
+    /// merged onto the plain base data here:
+    /// - `skill_overrides.json`'s statSet-level override values
+    ///   (skill_attack_speed_more, a constant baseMod built into PoB2, not
+    ///   in the GGG `.dat`);
+    /// - `stat_set_labels.json`'s form label / vendor export index (the
+    ///   `.dat` `Label` column's FK target table isn't downloadable, so
+    ///   this is extracted from vendor);
+    /// - `skill_overrides.json`'s dotIs* booleans (merged after labels,
+    ///   since locating the set depends on the vendor index).
     pub fn skill_stat_sets(&self) -> Result<Vec<SkillStatSetDef>, LoadError> {
         let mut sets =
             match self.load_domain::<Vec<SkillStatSetDef>>("granted_effect_stat_sets.json") {
@@ -372,7 +419,7 @@ impl GameData {
             )?;
         }
         if let Some(labels) = self.stat_set_labels()? {
-            // (skill, set_id) → (vendor 导出序号, label)。
+            // (skill, set_id) → (vendor export index, label).
             let by_key: std::collections::BTreeMap<(&str, &str), (u32, &str)> = labels
                 .labels
                 .iter()
@@ -391,14 +438,14 @@ impl GameData {
                         set.vendor_set_index = Some(idx);
                         set.label = Some(label.to_string());
                     }
-                    // vendor 未导出该 set（模板策展跳过）→ label/序号保持 None。
+                    // Vendor didn't export this set (curated out by the
+                    // template) → label/index stay None.
                 }
             }
         }
-        // dotIs* 布尔（M4-T4 W-D1）必须在 labels merge 之后——set 定位依赖
-        // 上面刚回填的 `vendor_set_index`（overlay 条目的 `stat_set` 是 vendor
-        // statSets 序号）。labels 边车缺失时仅 `stat_set = None`（主 set）条目
-        // 可命中，其余保守跳过（默认全 false 不剥 flag）。
+        // The dotIs* booleans must be merged after the labels merge — set
+        // lookup depends on the `vendor_set_index` just backfilled above
+        // (an overlay entry's `stat_set` is vendor's statSets index).
         if let Some(overrides) = &overrides {
             domains::skill_overrides::apply_dot_flag_overrides(&mut sets, overrides).map_err(
                 |message| LoadError::Overlay {
@@ -406,8 +453,9 @@ impl GameData {
                     message,
                 },
             )?;
-            // 隐式 stat（M4-H）：与 dotIs* 同 set 定位语义（vendor 序号依赖
-            // labels merge 回填），同样在 labels 之后。
+            // Implicit stats: same set-lookup semantics as dotIs* (depends
+            // on the vendor index backfilled by the labels merge), so also
+            // merged after labels.
             domains::skill_overrides::apply_implicit_stat_overrides(&mut sets, overrides).map_err(
                 |message| LoadError::Overlay {
                     path: self.overlay_path("skill_overrides.json"),
@@ -418,8 +466,9 @@ impl GameData {
         Ok(sets)
     }
 
-    /// 加载技能消耗资源类型表（按索引升序，[`GrantedEffectDef::cost_types`] 外键目标）。
-    /// 空缺（旧数据包无此域）时返回空 Vec，向后兼容。
+    /// Loads the skill cost-resource-type table (ascending by index, the
+    /// FK target of [`GrantedEffectDef::cost_types`]). Returns an empty Vec
+    /// when absent (an old data pack without this domain), backward compatible.
     pub fn cost_types(&self) -> Result<Vec<CostTypeDef>, LoadError> {
         match self.load_domain::<Vec<CostTypeDef>>("cost_types.json") {
             Ok(v) => Ok(v),
@@ -428,7 +477,8 @@ impl GameData {
         }
     }
 
-    /// 加载某语言的主动技能显示名边车（`active_skill_id -> 本地化名称`）。
+    /// Loads the active-skill display-name sidecar for a language
+    /// (`active_skill_id -> localized name`).
     pub fn skill_names(
         &self,
         lang: &str,
@@ -436,10 +486,12 @@ impl GameData {
         self.load_json_at(self.root.join(format!("i18n/{lang}/skills.json")))
     }
 
-    /// 加载某语言的**词条行输入翻译模板**（`i18n/<lang>/stat_lines.json`，
-    /// Phase 7.1：本地化词条 → 英文 canonical 的模板对）。文件缺失（该语言
-    /// 未入库）返回 `Ok(None)`——消费侧按「无该语言输入翻译」降级；其余
-    /// IO / 解析错误照常上抛。
+    /// Loads the **mod-line input translation templates** for a language
+    /// (`i18n/<lang>/stat_lines.json`, Phase 7.1: template pairs mapping a
+    /// localized mod line to its English canonical form). Returns
+    /// `Ok(None)` when the file is missing (that language isn't stored) —
+    /// consumers degrade to "no input translation for this language";
+    /// other I/O / parse errors still propagate as usual.
     pub fn stat_line_templates(
         &self,
         lang: &str,
@@ -456,27 +508,32 @@ impl GameData {
         }
     }
 
-    /// 加载被动天赋树节点（来自 GGG 官方树导出适配，按 `skill` id 排序）。
+    /// Loads passive tree nodes (from the adapted GGG official tree
+    /// export, sorted by `skill` id).
     pub fn passive_nodes(&self) -> Result<Vec<PassiveNodeDef>, LoadError> {
         self.load_domain("passive_tree.json")
     }
 
-    /// 加载被动天赋树元数据（职业 / 飞升摘要）。
+    /// Loads passive tree metadata (class / ascendancy summaries).
     pub fn passive_tree_meta(&self) -> Result<PassiveTreeMeta, LoadError> {
         self.load_domain("passive_tree_meta.json")
     }
 
-    /// 加载某历史赛季树版本的节点表（`base/passive_trees/<v>.json`，vendor
-    /// `TreeData/<v>/tree.lua` 经 `pobr-data-adapter --tree-full` 抽取——词条
-    /// 最小集：skill/name/kind/stats/ascendancy，无拓扑/坐标）。文件缺失（该
-    /// 版本未抽取 / 旧数据包）返回 `Ok(None)`——消费侧回退当前默认树；其余
-    /// IO / 解析错误照常上抛，不静默。
+    /// Loads a historical season's tree-version node table
+    /// (`base/passive_trees/<v>.json`, extracted from vendor
+    /// `TreeData/<v>/tree.lua` via `pobr-data-adapter --tree-full` — a
+    /// minimal mod field set: skill/name/kind/stats/ascendancy, no
+    /// topology/coordinates). Returns `Ok(None)` when the file is missing
+    /// (that version wasn't extracted / an old data pack) — the consumer
+    /// falls back to the current default tree; other I/O / parse errors
+    /// still propagate, not silenced.
     pub fn passive_nodes_versioned(
         &self,
         tree_version: &str,
     ) -> Result<Option<Vec<PassiveNodeDef>>, LoadError> {
-        // 版本号来自 build XML 的 `<Spec treeVersion>`，只允许保守字符集
-        //（字母数字/下划线），防路径拼接注入。
+        // The version string comes from the build XML's `<Spec treeVersion>`;
+        // only a conservative character set (alphanumeric/underscore) is
+        // allowed, to prevent path-concatenation injection.
         if !tree_version
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_')
@@ -498,11 +555,13 @@ impl GameData {
         }
     }
 
-    /// 枚举已入库的历史树版本号（`base/passive_trees/*.json` 文件名）。目录
-    /// 缺失 = 空表。
+    /// Enumerates the historical tree versions currently stored
+    /// (`base/passive_trees/*.json` filenames). A missing directory means
+    /// an empty list.
     pub fn available_tree_versions(&self) -> Vec<String> {
         if let Some(map) = &self.files {
-            // 内存后端：枚举 `base/passive_trees/*.json` 键（BTreeMap 已有序）。
+            // In-memory backend: enumerate `base/passive_trees/*.json` keys
+            // (a BTreeMap is already ordered).
             return map
                 .keys()
                 .filter_map(|k| k.strip_prefix("base/passive_trees/"))
@@ -526,25 +585,29 @@ impl GameData {
     }
 }
 
-/// 仓库内置数据目录的根（`<workspace>/data`）。用于测试与默认加载。
+/// The root of the repo's built-in data directory (`<workspace>/data`).
+/// Used for tests and the default load path.
 pub fn repo_data_root() -> PathBuf {
-    // crates/pobr-gamedata/ → 上两级是 workspace 根。
+    // crates/pobr-gamedata/ → two levels up is the workspace root.
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../data")
         .canonicalize()
         .unwrap_or_else(|_| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data"))
 }
 
-/// 编译期默认数据版本（[`pobr_data::DATA_VERSION`]）的 re-export。
+/// Re-export of the compile-time default data version
+/// ([`pobr_data::DATA_VERSION`]).
 pub use pobr_data::DATA_VERSION;
 
-/// 运行时数据版本（I/O 层完整发现）：
-/// 1. `POBR_DATA_VERSION` 环境变量；
-/// 2. `data/CURRENT` 标记文件（首行 trim，更新脚本写入）；
-/// 3. [`pobr_data::DATA_VERSION`] 编译期常量兜底。
+/// Runtime data version (fully discovered at the I/O layer):
+/// 1. the `POBR_DATA_VERSION` environment variable;
+/// 2. the `data/CURRENT` marker file (first line, trimmed, written by the
+///    update script);
+/// 3. falls back to the [`pobr_data::DATA_VERSION`] compile-time constant.
 ///
-/// 让"更新数据后零代码改动切版本"成立：更新脚本写 `data/CURRENT` 即可，
-/// 应用与读此函数的路径自动跟随。
+/// This is what makes "switch versions after updating data with zero code
+/// changes" work: the update script just writes `data/CURRENT`, and every
+/// path that reads this function follows automatically.
 pub fn data_version() -> String {
     if let Ok(v) = std::env::var("POBR_DATA_VERSION")
         && !v.trim().is_empty()
@@ -560,11 +623,12 @@ pub fn data_version() -> String {
     DATA_VERSION.to_string()
 }
 
-/// 当前活动版本的数据目录（`<workspace>/data/<data_version()>`）。
+/// The currently active version's data directory
+/// (`<workspace>/data/<data_version()>`).
 ///
-/// 「加载哪个版本」的唯一运行时入口：替代散落各处的
-/// `crate::current_data_dir()`。版本由 [`data_version`]
-/// 发现（env → `data/CURRENT` → 常量）。
+/// The single runtime entry point for "which version to load" — replaces
+/// the scattered `crate::current_data_dir()` calls. The version is
+/// discovered by [`data_version`] (env → `data/CURRENT` → the constant).
 pub fn current_data_dir() -> PathBuf {
     repo_data_root().join(data_version())
 }

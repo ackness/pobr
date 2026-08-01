@@ -1,52 +1,60 @@
-//! 天赋树（被动树）modifier 来源接入。
+//! Passive tree modifier source ingest.
 //!
-//! 把一组「已分配天赋节点」的英文词条文本解析为带 [`SourceKind::PassiveNode`]
-//! （或飞升节点 [`SourceKind::AscendancyNode`]）归因的 `Modifier`，并保留节点
-//! 稳定 `NodeId` 与原始词条文本（`raw_text`），从而让最终输出能够 source-level
-//! 回溯到具体天赋节点（PoBR 相对 PoB 的核心增量）。
+//! Parses the English modifier text of a set of "allocated passive nodes"
+//! into `Modifier`s attributed with [`SourceKind::PassiveNode`] (or
+//! [`SourceKind::AscendancyNode`] for ascendancy nodes), keeping each node's
+//! stable `NodeId` and raw modifier text (`raw_text`) so the final output can
+//! be traced source-level back to a specific passive node (PoBR's core
+//! value-add over PoB).
 //!
-//! 范式对称于 [`crate::item`]：来源（节点）→ 解析词条 → 带归因 modifier +
-//! unsupported 收集。天赋节点本身只是 modifier 容器，机制风险低，数值由词条
-//! 文本承载；无需在此实现额外公式。
+//! Mirrors the pattern in [`crate::item`]: source (node) → parse modifiers →
+//! attributed modifiers + unsupported collection. A passive node is just a
+//! modifier container with low mechanical risk — the numbers live in the
+//! modifier text, so no extra formula is needed here.
 //!
-//! `PassiveTreeSpec` 当前只持有 `allocated_nodes: Vec<NodeId>`，尚不承载每个
-//! 节点的 modifier 文本，因此本入口以独立的 [`AllocatedNode`] 作为输入（节点
-//! 稳定 ID + 词条文本 + 是否飞升），与 `Item` 作为 `ingest_item` 的输入对称。
-//! 待 `PassiveTreeSpec` 能承载节点词条与节点元数据后，调用方再行装配。
+//! `PassiveTreeSpec` currently only holds `allocated_nodes: Vec<NodeId>` and
+//! doesn't carry each node's modifier text yet, so this entry point takes the
+//! standalone [`AllocatedNode`] as input (stable node ID + modifier text +
+//! ascendancy flag), mirroring `Item` as the input to `ingest_item`. Once
+//! `PassiveTreeSpec` can carry node modifiers and metadata, callers can
+//! assemble from that instead.
 
 use pobr_data::prelude::*;
 
 use crate::Modifier;
 use crate::mod_parser::{ParseError, ParseStatus};
 
-/// 一个已分配天赋节点：稳定 `NodeId` + 词条文本 + 是否飞升节点。
+/// An allocated passive node: stable `NodeId` + modifier text + ascendancy flag.
 #[derive(Debug, Clone, Default)]
 pub struct AllocatedNode {
     pub node_id: NodeId,
-    /// 是否为飞升（Ascendancy）节点，决定归因 [`SourceKind`]。
+    /// Whether this is an Ascendancy node, which determines the attribution [`SourceKind`].
     pub ascendancy: bool,
-    /// 节点承载的英文 PoB 兼容词条文本（每行一条）。
+    /// The node's English PoB-compatible modifier text (one modifier per line).
     pub modifier_texts: Vec<String>,
 }
 
-/// 一组天赋节点接入计算的产物：解析出的 modifier + 无法解析的原始文本。
+/// Result of ingesting a set of passive nodes: parsed modifiers + raw text that couldn't be parsed.
 ///
-/// 对称于 [`crate::item::ItemIngest`]。
+/// Mirrors [`crate::item::ItemIngest`].
 #[derive(Debug, Clone, Default)]
 pub struct PassiveIngest {
     pub modifiers: Vec<Modifier>,
     pub unsupported: Vec<String>,
 }
 
-/// 把一组已分配天赋节点的词条文本解析为带节点归因的 modifier。
+/// Parses the modifier text of a set of allocated passive nodes into node-attributed modifiers.
 ///
-/// 解析失败（结构性错误）向上抛 [`ParseError`]；无法识别的词条（如 `mirrored`）
-/// 不报错，收集进 [`PassiveIngest::unsupported`]，与 `CalculationSession` 的语义
-/// 一致。
+/// Parse failures (structural errors) propagate as [`ParseError`]; unrecognized
+/// modifiers (e.g. `mirrored`) don't error, they're collected into
+/// [`PassiveIngest::unsupported`] instead, matching `CalculationSession`'s
+/// semantics.
 ///
-/// 归因约定：`SourceId.kind` = [`SourceKind::PassiveNode`] / [`SourceKind::AscendancyNode`]，
-/// `SourceId.id` = `node.<NodeId>`，`raw_text` 保留原始词条行；`stat_id` / `mod_type`
-/// 由 [`Modifier::with_origin`] 从 modifier 回填。词条解析走 `ctx`。
+/// Attribution convention: `SourceId.kind` = [`SourceKind::PassiveNode`] /
+/// [`SourceKind::AscendancyNode`], `SourceId.id` = `node.<NodeId>`, `raw_text`
+/// keeps the original modifier line; `stat_id` / `mod_type` are filled back
+/// from the modifier by [`Modifier::with_origin`]. Modifier parsing goes
+/// through `ctx`.
 pub fn ingest_passive_nodes_with_ctx(
     nodes: &[AllocatedNode],
     ctx: crate::mod_parser::ParseCtx<'_>,

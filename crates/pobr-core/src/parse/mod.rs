@@ -1,15 +1,22 @@
-//! 解析层——「自由文本 → 词条」。
+//! The parsing layer — "free text -> modifiers".
 //!
-//! 词条分层叙事的第 2 层之一（见 crate 根 `lib.rs` 的总览）：把人类可读的
-//! modifier 文本（`"25% increased Fire Damage"` 等）翻译成 [`Modifier`](crate::Modifier)。
-//! - [`mod_parser`]：数据驱动的 scan 引擎（消费 `overlay/mod_parser_rules.json`，
-//!   照搬 PoB2 `ModParser.lua` 的 `scan()` + `parseMod()`）+ 待删的 legacy 手写解析器。
-//! - [`apply_range`]：`+(40-50) to maximum Life` 类区间词条按 `range`（0..1）线性
-//!   具体化为单值文本后再喂解析器（对照 PoB2 `ItemTools.lua::applyRange`）。
-//! - [`mod_cache`]：`文本 → Vec<Modifier>` 解析缓存（热路径零重复解析）。
+//! One of the two layers in the modifier-lifecycle narrative (see the
+//! overview in the crate root `lib.rs`): translates human-readable modifier
+//! text (e.g. `"25% increased Fire Damage"`) into [`Modifier`](crate::Modifier).
+//! - [`mod_parser`]: the data-driven scan engine (consumes
+//!   `overlay/mod_parser_rules.json`, replicating PoB2 `ModParser.lua`'s
+//!   `scan()` + `parseMod()`) plus the legacy hand-written parser pending
+//!   removal.
+//! - [`apply_range`]: resolves range-bearing modifiers like `+(40-50) to
+//!   maximum Life` to a single-value string via `range` (0..1) before
+//!   feeding them to the parser (mirrors PoB2 `ItemTools.lua::applyRange`).
+//! - [`mod_cache`]: a `text -> Vec<Modifier>` parse cache (zero repeated
+//!   parsing on hot paths).
 //!
-//! 与 [`rules`](crate::rules) 的分工：本层处理**自由文本**，`rules` 处理**策展规则
-//! 数据**（JSON 规则表 + handler）；二者都产出词条，但输入形态不同。
+//! Division of labor with [`rules`](crate::rules): this layer handles
+//! **free text**, while `rules` handles **curated rule data** (JSON rule
+//! tables + handlers); both produce modifiers, but from different input
+//! shapes.
 
 pub mod apply_range;
 pub mod mod_cache;

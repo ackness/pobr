@@ -1,31 +1,39 @@
-//! pobr-desktop（库部分）：可测的「示例 Build 构造 + 计算摘要」逻辑。
+//! pobr-desktop (the library part): the testable "build an example Build,
+//! compute a summary" logic.
 //!
-//! GUI 框架（计划采用 [egui](https://github.com/emilk/egui) / `eframe`）尚未引入：
-//! headless CI 无法验证 GUI，且重 GUI 依赖会拖慢编译，故延后。当前 binary 仅作为
-//! 未来 GUI 的占位/烟雾测试 —— 构造一个内置示例 Build、跑一次 `pobr-build` 编排计算、
-//! 用 `pobr-i18n` 翻译窗口标题，并把核心结果摘要打印到 stdout。
+//! The GUI framework (planned to be [egui](https://github.com/emilk/egui) /
+//! `eframe`) hasn't been introduced yet: headless CI can't verify a GUI, and
+//! a heavy GUI dependency would slow down builds, so this is deferred. The
+//! current binary only serves as a placeholder/smoke test for the future GUI
+//! — it builds a built-in example Build, runs one `pobr-build` orchestrated
+//! calculation, translates the window title via `pobr-i18n`, and prints a
+//! core result summary to stdout.
 //!
-//! 这里把「构造示例 Build」「生成本地化摘要字符串」拆为纯函数，便于单元测试断言
-//! 摘要包含预期字段（如 `"DPS"`），而无需依赖 GUI 运行时。
+//! "Build the example Build" and "generate a localized summary string" are
+//! split out here as pure functions, so unit tests can assert the summary
+//! contains expected fields (e.g. `"DPS"`) without depending on the GUI runtime.
 
 use pobr_build::{Build, CharacterIdentity, OrchestratorOptions, calculate};
 use pobr_core::calc::MinimalInput;
 use pobr_data::prelude::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 use pobr_i18n::{CANONICAL_LANGUAGE, LanguageId, Translator};
 
-/// 示例 Build 的等级（与 [`example_build`] 一致，供测试断言）。
+/// The example Build's level (matches [`example_build`], for test assertions).
 pub const EXAMPLE_BUILD_LEVEL: u32 = 1;
 
-/// 示例 Build 的角色职业名。
+/// The example Build's character class name.
 const EXAMPLE_CLASS_NAME: &str = "Ranger";
 
-/// 示例 Build 的基础生命（来自角色装配，作为 [`MinimalInput`] 注入编排）。
+/// The example Build's base life (from character setup, injected into
+/// orchestration as [`MinimalInput`]).
 const EXAMPLE_BASE_LIFE: f64 = 50.0;
 
-/// 构造一个内置的最小示例 Build（等级 1，单件戒指附带可解析 modifier）。
+/// Builds a minimal built-in example Build (level 1, a single ring with a parseable modifier).
 ///
-/// 仅用于占位/演示：词条文本走英文 PoB 兼容解析路径，确保 `pobr-core` 能聚合出
-/// 非平凡的生命 / 抗性输出。采用 REAL `pobr_data` / `pobr_build` 权威类型。
+/// For placeholder/demo purposes only: the mod text goes through the
+/// PoB-compatible English parse path, ensuring `pobr-core` can aggregate a
+/// non-trivial life / resistance output. Uses the REAL authoritative
+/// `pobr_data` / `pobr_build` types.
 pub fn example_build() -> Build {
     let ring = Item {
         base: ItemBaseId::from("Iron Ring"),
@@ -51,9 +59,9 @@ pub fn example_build() -> Build {
         .set_item(EquipmentSlot::Ring1, ring)
 }
 
-/// 用给定语言的 [`Translator`] 翻译应用标题（`app.title` key）。
+/// Translates the app title (the `app.title` key) using a [`Translator`] for the given language.
 ///
-/// 解析失败时回退到规范语言（en-US）。
+/// Falls back to the canonical language (en-US) if parsing fails.
 pub fn app_title(language: &str) -> String {
     let translator = Translator::new(LanguageId::new(language))
         .or_else(|_| Translator::new(LanguageId::new(CANONICAL_LANGUAGE)))
@@ -61,13 +69,15 @@ pub fn app_title(language: &str) -> String {
     translator.text("app.title").into_owned()
 }
 
-/// 计算给定 Build 并生成可读的本地化摘要字符串。
+/// Computes the given Build and produces a readable, localized summary string.
 ///
-/// 摘要固定包含以下字段标签：`Life` / `Mana` / `Fire Res` / `Cold Res` /
-/// `Lightning Res` / `DPS`，以 `app.title` 作为表头，供 stdout 烟雾测试与未来 GUI 复用。
+/// The summary always includes these field labels: `Life` / `Mana` /
+/// `Fire Res` / `Cold Res` / `Lightning Res` / `DPS`, headed by `app.title`,
+/// for reuse by the stdout smoke test and the future GUI.
 ///
-/// 通过 [`pobr_build::calculate`] 编排：装配一个携带示例基础生命的 [`MinimalInput`]，
-/// 把 Build 装备词条注入 [`CalculationSession`]，产出标量 `OutputTable`。
+/// Orchestrated via [`pobr_build::calculate`]: assembles a [`MinimalInput`]
+/// carrying the example base life, injects the Build's equipment mod lines
+/// into a [`CalculationSession`], and produces a scalar `OutputTable`.
 ///
 /// [`CalculationSession`]: pobr_core::calc::CalculationSession
 pub fn build_summary(build: &Build, language: &str) -> Result<String, pobr_build::BuildError> {

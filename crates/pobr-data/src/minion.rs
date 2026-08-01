@@ -1,66 +1,74 @@
-//! 召唤物定义 (`MinionDef`) 入库 schema — 纯数据，零逻辑、零 I/O。
+//! `MinionDef` storage schema — pure data, zero logic, zero I/O.
 //!
-//! 与 `catalog.rs` 中其他域对齐；由 `pobr-data-adapter` 离线写入
-//! `data/<poe_version>/minions.json`，由 `pobr-gamedata` 运行时反序列化。
+//! Aligned with the other domains in `catalog.rs`; written offline to
+//! `data/<poe_version>/minions.json` by `pobr-data-adapter`, deserialized at
+//! runtime by `pobr-gamedata`.
 //!
-//! 设计对齐 PoB2 `src/Data/Minions.lua`：每个 `MinionDef` 对应 Lua 中的一个
-//! `minions["<Id>"]` 条目，字段名遵循 Lua 原始命名习惯（snake_case 化）。
+//! Design mirrors PoB2 `src/Data/Minions.lua`: each `MinionDef` corresponds
+//! to one `minions["<Id>"]` entry in Lua, with field names following the
+//! Lua originals (converted to snake_case).
 //!
-//! 出处：
-//! - PoB2 `src/Data/Minions.lua`（各召唤物归一化乘数 + limit + 保留量）。
-//! - agent-docs/minions.md §1（怪物式 scaling）、§4.1（数量上限）、§4.2（保留）。
-//! - PoB2 `src/Modules/CalcActiveSkill.lua`（virtualWeapon / limit / hiddenDamageFixup）。
-//! - PoB2 `src/Modules/CalcPerform.lua`（limit → Multiplier:SummonedMinion）。
+//! Sources:
+//! - PoB2 `src/Data/Minions.lua` (each minion's normalization multipliers +
+//!   limit + reservation amount).
+//! - agent-docs/minions.md §1 (monster-style scaling), §4.1 (count caps),
+//!   §4.2 (reservation).
+//! - PoB2 `src/Modules/CalcActiveSkill.lua` (virtualWeapon / limit /
+//!   hiddenDamageFixup).
+//! - PoB2 `src/Modules/CalcPerform.lua` (limit → Multiplier:SummonedMinion).
 
 use serde::{Deserialize, Serialize};
 
-// ---------------------------------------------------------------------------
-// 召唤物上限稳定 ID（对应 PoB2 Lua `data.minionLimitNames` / `Active<X>Limit`）
-// ---------------------------------------------------------------------------
+// Minion-count-cap stable IDs (correspond to PoB2 Lua's
+// `data.minionLimitNames` / `Active<X>Limit`)
 
-/// 召唤物数量上限的稳定 ID。
+/// Stable ID for a minion count cap.
 ///
-/// 每类召唤物技能有各自的 limit；数量上限通过 `base_number_of_<x>_allowed` stat
-/// 累加后暴露为 `Multiplier:SummonedMinion`（per-minion 词条引用）。
+/// Each minion-summoning skill has its own limit; the count cap is
+/// aggregated through the `base_number_of_<x>_allowed` stat and exposed as
+/// `Multiplier:SummonedMinion` (referenced by per-minion mods).
 ///
-/// 出处：PoB2 `src/Data/SkillStatMap.lua` / `CalcPerform.lua`；
-/// agent-docs/minions.md §4.1。
+/// Source: PoB2 `src/Data/SkillStatMap.lua` / `CalcPerform.lua`;
+/// agent-docs/minions.md §4.1.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MinionLimitId {
-    /// 僵尸（Raised Zombie）上限。
+    /// Raised Zombie cap.
     ActiveZombieLimit,
-    /// 骷髅系召唤物上限（所有 Raise Skeleton 变体共用）。
+    /// Skeleton-family cap (shared by all Raise Skeleton variants).
     ActiveSkeletonLimit,
-    /// 暴怒魂灵（Raging Spirit）上限。
+    /// Raging Spirit cap.
     ActiveRagingSpiritLimit,
-    /// 幽灵（Spectre）上限。
+    /// Spectre cap.
     ActiveSpectreLimit,
-    /// 活体闪电（Living Lightning）上限。
+    /// Living Lightning cap.
     ActiveLivingLightningLimit,
-    /// 地狱猎犬（Infernal Hound）上限（独立 companion 槽不占此限）。
+    /// Infernal Hound cap (a separate companion slot doesn't count against
+    /// this cap).
     ActiveHellhoundLimit,
-    /// 地狱猎犬伴侣上限（若技能数据有独立 companion limit 时使用）。
+    /// Companion cap for Infernal Hound (used when the skill data has its
+    /// own separate companion limit).
     ActiveCompanionLimit,
-    /// 战士亡灵（Bone Construct / Unearth 系）上限。
+    /// Bone Construct (Unearth family) cap.
     ActiveUnearthBoneConstructLimit,
-    /// Wardbound 上限（0.5.0 新增召唤技能）。
+    /// Wardbound cap (a new 0.5.0 summon skill).
     WardboundLimit,
-    /// Hyena 上限。
+    /// Hyena cap.
     HyenaLimit,
-    /// Wolf 上限（Wolfpack / Companion 共用）。
+    /// Wolf cap (shared by Wolfpack / Companion).
     WolfLimit,
-    /// Beetle 上限。
+    /// Beetle cap.
     BeetleLimit,
-    /// Azmerian Swarm 上限。
+    /// Azmerian Swarm cap.
     AzmerianSwarmLimit,
-    /// 无上限（如 Companion、Spirit Walker 的 Bear 等）。
+    /// No cap (e.g. Companion, Spirit Walker's Bear).
     None,
-    /// 自定义上限（不在枚举内的 limit ID，保持原始字符串以便扩展）。
+    /// A custom cap (a limit ID outside the enum, kept as the raw string so
+    /// it can still be extended).
     Custom(String),
 }
 
 impl MinionLimitId {
-    /// 将 PoB2 Lua 字符串形式的 limit 名称解析为枚举值。
+    /// Parses a PoB2 Lua limit-name string into the enum value.
     pub fn from_pob2(s: &str) -> Self {
         match s {
             "ActiveZombieLimit" => Self::ActiveZombieLimit,
@@ -81,7 +89,7 @@ impl MinionLimitId {
         }
     }
 
-    /// 返回 PoB2 Lua 原始字符串（供序列化 / 调试）。
+    /// Returns the raw PoB2 Lua string (for serialization / debugging).
     pub fn to_pob2_str(&self) -> &str {
         match self {
             Self::ActiveZombieLimit => "ActiveZombieLimit",
@@ -103,13 +111,12 @@ impl MinionLimitId {
     }
 }
 
-// ---------------------------------------------------------------------------
-// 召唤物类别（对应 PoB2 Lua `monsterCategory`）
-// ---------------------------------------------------------------------------
+// Minion category (corresponds to PoB2 Lua's `monsterCategory`)
 
-/// 召唤物怪物类别（影响异常状态 / 机制标签的条件判定）。
+/// A minion's monster category (affects condition checks for ailments /
+/// mechanic-tag matching).
 ///
-/// 出处：PoB2 `src/Data/Minions.lua` `monsterCategory` 字段。
+/// Source: PoB2 `src/Data/Minions.lua`'s `monsterCategory` field.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MinionCategory {
     Undead,
@@ -117,7 +124,7 @@ pub enum MinionCategory {
     Demon,
     Beast,
     Humanoid,
-    /// 未知 / 其他类别。
+    /// An unknown/other category.
     Other(String),
 }
 
@@ -134,96 +141,108 @@ impl MinionCategory {
     }
 }
 
-// ---------------------------------------------------------------------------
-// MinionDef — 召唤物入库定义（纯数据，供 pobr-gamedata 反序列化）
-// ---------------------------------------------------------------------------
+// MinionDef — the stored minion definition (pure data, deserialized by pobr-gamedata)
 
-/// 召唤物归一化乘数定义（对应 PoB2 `src/Data/Minions.lua` 的一个条目）。
+/// A minion's normalization-multiplier definition (corresponds to one entry
+/// of PoB2's `src/Data/Minions.lua`).
 ///
-/// **每个字段含义**：
-/// - `life` / `damage` / `armour` / `evasion` / `energy_shield`：
-///   与怪物等级基准表（`monsterAllyLifeTable` 等）相乘得到基础值。缺省为 1.0。
-/// - `damage_spread`：min/max 伤害区间宽度。0.0 = 无区间（min == max == avg）。
-/// - `attack_time`：基础攻击间隔（秒）；虚拟武器 `attack_rate = 1 / attack_time`。
-/// - `crit_chance`：虚拟武器暴击率（默认 5.0）。
-/// - `*_resist`：基础抗性（%），直接注入召唤物 `modDB.<Type>Resist BASE`。
-/// - `base_damage_ignores_attack_speed`：基础伤害是否忽略 `attack_time`；
-///   `true`（Zombie / RagingSpirit 等）：攻速仅影响 DPS，不影响每击伤害。
-/// - `limit`：召唤物数量上限稳定 ID；`None` 表示无明确上限（Companion 类）。
-/// - `spectre_reservation` / `companion_reservation`：单个召唤物消耗的精神/伴侣保留量。
+/// **What each field means**:
+/// - `life` / `damage` / `armour` / `evasion` / `energy_shield`: multiplied
+///   against the monster-level baseline tables (`monsterAllyLifeTable`,
+///   etc.) to get the base value. Defaults to 1.0.
+/// - `damage_spread`: width of the min/max damage range. 0.0 means no range
+///   (min == max == avg).
+/// - `attack_time`: base attack interval (seconds); the virtual weapon's
+///   `attack_rate = 1 / attack_time`.
+/// - `crit_chance`: the virtual weapon's crit chance (default 5.0).
+/// - `*_resist`: base resistance (%), injected directly as the minion's
+///   `modDB.<Type>Resist BASE`.
+/// - `base_damage_ignores_attack_speed`: whether base damage ignores
+///   `attack_time`; `true` (Zombie / RagingSpirit, etc.) means attack speed
+///   only affects DPS, not per-hit damage.
+/// - `limit`: stable ID for the minion count cap; `None` means no explicit
+///   cap (the Companion family).
+/// - `spectre_reservation` / `companion_reservation`: the Spirit/companion
+///   reservation a single minion consumes.
 ///
-/// 出处：PoB2 `src/Data/Minions.lua`；agent-docs/minions.md §1 / §4。
+/// Source: PoB2 `src/Data/Minions.lua`; agent-docs/minions.md §1 / §4.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MinionDef {
-    /// 稳定 ID（对应 Lua `minions["<Id>"]` 的 key，如 `RaisedZombie`）。
+    /// Stable ID (the key of Lua's `minions["<Id>"]`, e.g. `RaisedZombie`).
     pub id: String,
-    /// 英文 canonical 名称（对应 Lua `name`）。
+    /// English canonical name (Lua's `name`).
     pub name: String,
-    /// 怪物类别（对应 Lua `monsterCategory`）；无该字段时为 `None`。
+    /// Monster category (Lua's `monsterCategory`); `None` if the field is absent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub category: Option<MinionCategory>,
-    /// 生命归一化乘数（对应 Lua `life`；默认 1.0）。
+    /// Life normalization multiplier (Lua's `life`; default 1.0).
     #[serde(default = "default_one")]
     pub life: f64,
-    /// 伤害归一化乘数（对应 Lua `damage`；默认 1.0）。
+    /// Damage normalization multiplier (Lua's `damage`; default 1.0).
     #[serde(default = "default_one")]
     pub damage: f64,
-    /// 伤害区间宽度（对应 Lua `damageSpread`；默认 0.0）。
+    /// Damage range width (Lua's `damageSpread`; default 0.0).
     #[serde(default)]
     pub damage_spread: f64,
-    /// 基础攻击间隔秒（对应 Lua `attackTime`；默认 1.0）。
+    /// Base attack interval in seconds (Lua's `attackTime`; default 1.0).
     #[serde(default = "default_one")]
     pub attack_time: f64,
-    /// 虚拟武器暴击率（对应 Lua `critChance`；默认 5.0）。
+    /// Virtual weapon crit chance (Lua's `critChance`; default 5.0).
     #[serde(default = "default_five")]
     pub crit_chance: f64,
-    /// 护甲归一化乘数（对应 Lua `armour`；默认 1.0；部分召唤物缺省字段 = 1）。
+    /// Armour normalization multiplier (Lua's `armour`; default 1.0; some
+    /// minions omit this field, which also means 1).
     #[serde(default = "default_one")]
     pub armour: f64,
-    /// 闪避归一化乘数（对应 Lua `evasion`；默认 1.0）。
+    /// Evasion normalization multiplier (Lua's `evasion`; default 1.0).
     #[serde(default = "default_one")]
     pub evasion: f64,
-    /// 生命转 ES 占比（对应 Lua `energyShield`；0.15 → LifeConvertToEnergyShield BASE=15；默认 0.0）。
+    /// Life-to-ES conversion ratio (Lua's `energyShield`; 0.15 →
+    /// LifeConvertToEnergyShield BASE=15; default 0.0).
     #[serde(default)]
     pub energy_shield: f64,
-    /// 火焰抗性基础值（%；对应 Lua `fireResist`；默认 0.0）。
+    /// Base fire resistance (%; Lua's `fireResist`; default 0.0).
     #[serde(default)]
     pub fire_resist: f64,
-    /// 冰冷抗性基础值（%；默认 0.0）。
+    /// Base cold resistance (%; default 0.0).
     #[serde(default)]
     pub cold_resist: f64,
-    /// 闪电抗性基础值（%；默认 0.0）。
+    /// Base lightning resistance (%; default 0.0).
     #[serde(default)]
     pub lightning_resist: f64,
-    /// 混沌抗性基础值（%；默认 0.0）。
+    /// Base chaos resistance (%; default 0.0).
     #[serde(default)]
     pub chaos_resist: f64,
-    /// 基础伤害是否忽略攻速（对应 Lua `baseDamageIgnoresAttackSpeed`；默认 false）。
+    /// Whether base damage ignores attack speed (Lua's
+    /// `baseDamageIgnoresAttackSpeed`; default false).
     #[serde(default)]
     pub base_damage_ignores_attack_speed: bool,
-    /// 数量上限稳定 ID（对应 Lua `limit`）。
+    /// Stable ID for the count cap (Lua's `limit`).
     #[serde(default = "default_limit_none")]
     pub limit: MinionLimitId,
-    /// 单个召唤物消耗的精神保留量（对应 Lua `spectreReservation`；默认 50.0）。
+    /// Spirit reservation a single minion consumes (Lua's
+    /// `spectreReservation`; default 50.0).
     #[serde(default = "default_spectre_reservation")]
     pub spectre_reservation: f64,
-    /// 单个召唤物消耗的伴侣保留量（对应 Lua `companionReservation`；默认 30.0）。
+    /// Companion reservation a single minion consumes (Lua's
+    /// `companionReservation`; default 30.0).
     #[serde(default = "default_companion_reservation")]
     pub companion_reservation: f64,
-    /// 是否为敌对型召唤物（对应 Lua `hostile`；影响 MinionModifier vs EnemyModifier 传递）。
+    /// Whether this is a hostile minion (Lua's `hostile`; affects whether
+    /// MinionModifier or EnemyModifier mods are forwarded to it).
     #[serde(default)]
     pub hostile: bool,
-    /// 怪物标签列表（对应 Lua `monsterTags`；影响条件判定和 keyword 匹配）。
+    /// Monster tag list (Lua's `monsterTags`; affects condition checks and
+    /// keyword matching).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub monster_tags: Vec<String>,
-    /// 技能列表（对应 Lua `skillList`；法术型召唤物通过此列表获取技能基础伤害）。
+    /// Skill list (Lua's `skillList`; spell-casting minions get their base
+    /// skill damage through this list).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub skill_list: Vec<String>,
 }
 
-// ---------------------------------------------------------------------------
-// serde 默认值辅助函数（#[serde(default = "...")] 需要 fn() 签名）
-// ---------------------------------------------------------------------------
+// serde default-value helper functions (`#[serde(default = "...")]` needs a fn() signature)
 
 #[inline]
 fn default_one() -> f64 {
@@ -250,14 +269,13 @@ fn default_companion_reservation() -> f64 {
     30.0
 }
 
-// ---------------------------------------------------------------------------
-// 代表性召唤物常量（内置数据，供无 JSON 的单元测试 / 快速原型使用）
-// 数值来自 PoB2 src/Data/Minions.lua（dev 分支，2025-06）
-// ---------------------------------------------------------------------------
+// Representative minion constants (built-in data, for use by unit tests /
+// quick prototyping without JSON)
+// Values are from PoB2 src/Data/Minions.lua (dev branch, 2025-06)
 
-/// 僵尸（Raised Zombie）的 `MinionDef` 默认常量。
+/// Default `MinionDef` constant for the Raised Zombie.
 ///
-/// 出处：PoB2 Minions.lua `minions["RaisedZombie"]`。
+/// Source: PoB2 Minions.lua `minions["RaisedZombie"]`.
 pub fn minion_def_zombie() -> MinionDef {
     MinionDef {
         id: "RaisedZombie".into(),
@@ -290,9 +308,9 @@ pub fn minion_def_zombie() -> MinionDef {
     }
 }
 
-/// 暴怒魂灵（Raging Spirit）的 `MinionDef` 默认常量。
+/// Default `MinionDef` constant for the Raging Spirit.
 ///
-/// 出处：PoB2 Minions.lua `minions["SummonedRagingSpirit"]`。
+/// Source: PoB2 Minions.lua `minions["SummonedRagingSpirit"]`.
 pub fn minion_def_raging_spirit() -> MinionDef {
     MinionDef {
         id: "SummonedRagingSpirit".into(),
@@ -325,9 +343,9 @@ pub fn minion_def_raging_spirit() -> MinionDef {
     }
 }
 
-/// 骷髅战士（Skeletal Warrior）的 `MinionDef` 默认常量。
+/// Default `MinionDef` constant for the Skeletal Warrior.
 ///
-/// 出处：PoB2 Minions.lua `minions["RaisedSkeletonWarriors"]`。
+/// Source: PoB2 Minions.lua `minions["RaisedSkeletonWarriors"]`.
 pub fn minion_def_skeletal_warrior() -> MinionDef {
     MinionDef {
         id: "RaisedSkeletonWarriors".into(),
@@ -360,9 +378,9 @@ pub fn minion_def_skeletal_warrior() -> MinionDef {
     }
 }
 
-/// 骷髅法师·暴风（Skeletal Storm Mage）的 `MinionDef` 默认常量。
+/// Default `MinionDef` constant for the Skeletal Storm Mage.
 ///
-/// 出处：PoB2 Minions.lua `minions["RaisedSkeletonStormMage"]`。
+/// Source: PoB2 Minions.lua `minions["RaisedSkeletonStormMage"]`.
 pub fn minion_def_skeletal_storm_mage() -> MinionDef {
     MinionDef {
         id: "RaisedSkeletonStormMage".into(),
@@ -398,10 +416,13 @@ pub fn minion_def_skeletal_storm_mage() -> MinionDef {
     }
 }
 
-/// 幽灵（Spectre）的 `MinionDef` 占位常量（全量入库后替换为真实 Spectre 条目）。
+/// Placeholder `MinionDef` constant for the Spectre (to be replaced with a
+/// real Spectre entry once full data ingestion lands).
 ///
-/// Spectre 在 PoB2 中是「用区域等级锁定怪物等级」的特殊召唤物，
-/// 此处仅给出 schema 结构与占位数值，计算时需注意 level 来源不同（见 agent-docs §1.1）。
+/// In PoB2, the Spectre is a special minion whose level is locked to the
+/// area level rather than the character level; this only gives the schema
+/// shape with placeholder values — be aware the level source differs when
+/// computing with it (see agent-docs §1.1).
 pub fn minion_def_spectre_placeholder() -> MinionDef {
     MinionDef {
         id: "Spectre".into(),
@@ -429,12 +450,14 @@ pub fn minion_def_spectre_placeholder() -> MinionDef {
     }
 }
 
-/// 从 `MinionDef` 提取的归一化乘数快照（无 serde，内存内部使用）。
+/// A snapshot of normalization multipliers extracted from a `MinionDef` (no
+/// serde, used internally in memory).
 ///
-/// 由 [`MinionDef::scaling`] 返回，供 `pobr-core::calc::minion::MinionData::from_def` 消费。
-/// 不引入对 `pobr-core` 的依赖（data 层不依赖 core）。
+/// Returned by [`MinionDef::scaling`], consumed by
+/// `pobr-core::calc::minion::MinionData::from_def`. Doesn't introduce a
+/// dependency on `pobr-core` (the data layer doesn't depend on core).
 ///
-/// 出处：agent-docs/minions.md §1；PoB2 CalcActiveSkill.lua `minionData.*`。
+/// Source: agent-docs/minions.md §1; PoB2 CalcActiveSkill.lua `minionData.*`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MinionScaling {
     pub life: f64,
@@ -452,16 +475,16 @@ pub struct MinionScaling {
     pub base_damage_ignores_attack_speed: bool,
 }
 
-// ---------------------------------------------------------------------------
 // impl MinionDef
-// ---------------------------------------------------------------------------
 
 impl MinionDef {
-    /// 从 `MinionDef` 提取归一化乘数，返回 [`MinionScaling`]。
+    /// Extracts the normalization multipliers from a `MinionDef`, returning
+    /// [`MinionScaling`].
     ///
-    /// 调用方（`pobr-core` / `pobr-build`）负责把结构体字段填入 `MinionData`。
+    /// The caller (`pobr-core` / `pobr-build`) is responsible for copying
+    /// the struct's fields into `MinionData`.
     ///
-    /// 出处：agent-docs/minions.md §1；PoB2 CalcActiveSkill.lua `minionData.*`。
+    /// Source: agent-docs/minions.md §1; PoB2 CalcActiveSkill.lua `minionData.*`.
     pub fn scaling(&self) -> MinionScaling {
         MinionScaling {
             life: self.life,
@@ -480,24 +503,29 @@ impl MinionDef {
         }
     }
 
-    /// 是否有 energyShield（`energy_shield > 0`）。
+    /// Whether this minion has an energy shield (`energy_shield > 0`).
     pub fn has_energy_shield(&self) -> bool {
         self.energy_shield > 0.0
     }
 
-    /// 是否有明确的数量上限（`limit != None`）。
+    /// Whether this minion has an explicit count cap (`limit != None`).
     pub fn has_limit(&self) -> bool {
         !matches!(self.limit, MinionLimitId::None)
     }
 
-    /// 从入库 overlay 形态 [`crate::catalog::actors::MinionEntryDef`] 构造计算消费形态
-    /// `MinionDef`（M5a-A5 桥接：loader 产 `MinionEntryDef`，calc 消费 `MinionDef`）。
+    /// Builds the calc-consumption shape `MinionDef` from the stored
+    /// overlay shape [`crate::catalog::actors::MinionEntryDef`] (a bridge:
+    /// the loader produces `MinionEntryDef`, calc consumes `MinionDef`).
     ///
-    /// 字段对齐：`armour`/`evasion` 缺省按 1.0、`energy_shield` 缺省按 0.0（MinionEntryDef
-    /// 忠实转录 vendor 缺失语义，此处物化消费侧默认值，见 `MinionEntryDef` 文档）。
-    /// `limit` 字符串经 [`MinionLimitId::from_pob2`] 映射；`monster_category` 经
-    /// [`MinionCategory::from_pob2`]。`mod_list` 暂不转入（calc 侧 C3 装配从 entry
-    /// 直接读，避免重复建模）。
+    /// Field alignment: `armour`/`evasion` default to 1.0 and
+    /// `energy_shield` defaults to 0.0 when absent (`MinionEntryDef`
+    /// faithfully transcribes vendor's "field absent" semantics; this
+    /// function is where the consumer-side defaults get materialized — see
+    /// `MinionEntryDef`'s doc). The `limit` string is mapped through
+    /// [`MinionLimitId::from_pob2`]; `monster_category` through
+    /// [`MinionCategory::from_pob2`]. `mod_list` isn't carried over for now
+    /// (the calc-side C3 assembly reads it directly from the entry, to
+    /// avoid modeling it twice).
     pub fn from_entry(e: &crate::catalog::actors::MinionEntryDef) -> Self {
         Self {
             id: e.id.clone(),
@@ -530,9 +558,7 @@ impl MinionDef {
     }
 }
 
-// ---------------------------------------------------------------------------
-// 单测
-// ---------------------------------------------------------------------------
+// Unit tests
 
 #[cfg(test)]
 mod tests {

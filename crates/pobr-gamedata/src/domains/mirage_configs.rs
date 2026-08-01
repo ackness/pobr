@@ -1,18 +1,20 @@
-//! `overlay/mirage_configs.json` loader——5 类 mirage（幻影）配置
-//! （vendor `Modules/CalcMirages.lua` 五分支的人工转写，由
-//! `sync-pob-catalog gen-mirage-configs` 内嵌生成；schema 见
-//! [`pobr_data::catalog::triggers`]，M5a 蓝图 D2）。
+//! `overlay/mirage_configs.json` loader — the 5 kinds of mirage configs
+//! (a hand-transcription of vendor `Modules/CalcMirages.lua`'s five
+//! branches, generated embedded in `sync-pob-catalog gen-mirage-configs`;
+//! schema in [`pobr_data::catalog::triggers`]).
 //!
-//! 消费侧（M5a 主波 D1/D2，本波次零接线）：orchestrator 识别触发条件后调
-//! mirage 子环境重算框架；真特殊分支按 `handler_id` 查 rules registry。
+//! Consumer: once the orchestrator recognizes the trigger condition, it
+//! calls the mirage sub-environment recompute framework; genuinely special
+//! branches are looked up in the rules registry by `handler_id`.
 
 use pobr_data::catalog::triggers::MirageConfigsDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载 mirage 配置表（恒走 `overlay/` 定位）。文件缺失返回 `Ok(None)`
-    /// （R7 缺表容忍）；其余错误照常上抛。
+    /// Loads the mirage config table (always resolved under `overlay/`).
+    /// Returns `Ok(None)` when the file is missing (missing-table
+    /// tolerance); other errors still propagate as usual.
     pub fn mirage_configs(&self) -> Result<Option<MirageConfigsDef>, LoadError> {
         match self.load_json_at::<MirageConfigsDef>(self.overlay_path("mirage_configs.json")) {
             Ok(def) => Ok(Some(def)),

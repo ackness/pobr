@@ -1,18 +1,23 @@
-//! 完整编排热路径基准（M4 T0/W-F1，蓝图 m4-offence-deep.md §2-T0）。
+//! Full-orchestration hot-path benchmark.
 //!
-//! 双 pass（2 hand × 2 crit）让进攻热路径计算量理论 ×4——本基准是 R6 风险的
-//! 量化闸门：**M4 结束时单 build `calculate_with_data` 耗时 ≤ M4 开始基线的
-//! 2.5×**；超预算必须做惰性短路（非双持跳 OffHand、无暴击词条短路 crit pass），
-//! 且短路自带等价性测试。
+//! The dual pass (2 hand × 2 crit) theoretically multiplies the offence
+//! hot-path calculation cost by 4x — this benchmark is the quantitative gate
+//! against that risk: **per-build `calculate_with_data` at the end must stay
+//! within 2.5x of the starting baseline**. Going over budget requires lazy
+//! short-circuits (skip OffHand when not dual-wielding, skip the crit pass
+//! when there's no crit mod), and any short-circuit must ship with an
+//! equivalence test.
 //!
-//! 运行：`cargo bench -p pobr-build --bench perform_bench`。
-//! CI 不跑 criterion（时长）；门禁为合并前手动跑 + 结果贴 PR，与
-//! `mod_db_bench` 惯例一致。基线记录流程见 `devs/scripts/bench-baseline.md`。
+//! Run with: `cargo bench -p pobr-build --bench perform_bench`.
+//! CI doesn't run criterion (too slow); the gate is a manual run before merge
+//! with results posted to the PR, matching the `mod_db_bench` convention. See
+//! `devs/scripts/bench-baseline.md` for the baseline-recording process.
 //!
-//! 语料选择（对蓝图「1 个双持攻击 build」的偏离说明）：ninja 18-build 集中无
-//! 严格双持（dual-wield）build——取攻击侧最重的 monk flicker-strike（夺标
-//! 双 pass 的 hand/crit 主路径）+ 法术对照 sorceress comet（crit pass 路径、
-//! 无 hand pass 分叉），双持 fixture 落地（W-B2）后可补真双持 case。
+//! Corpus choice: the ninja 18-build set has no strict dual-wield build, so we
+//! use the heaviest attack-side build, monk flicker-strike (exercises the
+//! hand/crit main path of the dual pass), plus a spell control, sorceress
+//! comet (crit-pass path, no hand-pass branching). A real dual-wield case can
+//! be added once a dual-wield fixture lands.
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
@@ -37,7 +42,7 @@ fn load_build(name: &str) -> pobr_build::Build {
 }
 
 fn options() -> DataOrchestratorOptions {
-    // 与 ninja_parity 默认口径一致（effective，M3-W5 切换后的主口径）。
+    // Matches the default settings used by ninja_parity.
     DataOrchestratorOptions {
         base_input: MinimalInput::default(),
         inject_character_base: true,
@@ -58,7 +63,7 @@ fn bench_perform(c: &mut Criterion) {
     let spell = load_build("sorceress-stormweaver-comet");
     let opts = options();
 
-    // 攻击 build：hand pass + crit pass 的主受益/受损路径。
+    // Attack build: the main path exercised by both the hand pass and crit pass.
     c.bench_function("perform_attack_flicker", |b| {
         b.iter(|| {
             black_box(calculate_with_data(black_box(&attack), &data, &opts))
@@ -66,7 +71,7 @@ fn bench_perform(c: &mut Criterion) {
         })
     });
 
-    // 法术 build 对照：无 hand 分叉，隔离 crit pass 的单独贡献。
+    // Spell build control: no hand-pass branching, isolates the crit pass's individual contribution.
     c.bench_function("perform_spell_comet", |b| {
         b.iter(|| {
             black_box(calculate_with_data(black_box(&spell), &data, &opts))

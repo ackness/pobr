@@ -1,31 +1,36 @@
-//! MH/OH 双 pass 与 combineStat 合并（M4-T2 W-B2，蓝图 m4-offence-deep.md §2、
-//! RFC m4-rfc-attribution-passes §2.5/§3）。
+//! MH/OH dual pass and combineStat merging.
 //!
-//! PoB2 进攻外层按主/副手各跑一遍管线（`CalcOffence.lua:2369-2449` passList：
-//! `weapon1Attack`/`weapon2Attack` 各一 pass，label = "Main Hand"/"Off Hand"，
-//! 各带独立 weaponData source 与 weapon1Cfg/weapon2Cfg），末端 `combineStat`
-//! （`:2451-2545`，8 模式）按 [`COMBINE_TABLE`] 合并两手。
+//! PoB2's offence outer layer runs the pipeline once each for main hand and
+//! off hand (`CalcOffence.lua:2369-2449`'s passList: one pass each for
+//! `weapon1Attack`/`weapon2Attack`, labeled "Main Hand"/"Off Hand", each with
+//! its own weaponData source and weapon1Cfg/weapon2Cfg); at the end,
+//! `combineStat` (`:2451-2545`, 8 modes) merges the two hands per [`COMBINE_TABLE`].
 //!
-//! PoBR 形态：编排层（pobr-build `calc_orchestrator` 武器段）把武器基底装配成
-//! [`HandSource`]，本模块对每个 source 跑一遍 `calculate_minimal_vs_enemy`
-//! （per-hand 条件翻转 + 武器基底注入 [`MinimalInput`]），再按 vendor 模式合并。
+//! PoBR's shape: the orchestration layer (pobr-build's `calc_orchestrator`
+//! weapon section) assembles the weapon bases into [`HandSource`]s, this
+//! module runs `calculate_minimal_vs_enemy` once per source (per-hand
+//! condition flips plus weapon base injected into [`MinimalInput`]), then merges per the vendor modes.
 //!
-//! ## 单 pass 直通不变式（I3，回退开关的正确性证明）
+//! ## Single-pass passthrough invariant (I3, the correctness proof for the fallback switch)
 //!
-//! - `passes` 为空：等价于直接调用 `calculate_minimal_vs_enemy`（非攻击技能，
-//!   vendor 的 "Skill" 单 pass）。
-//! - 单 [`HandSource`]：vendor `not skillFlags.bothWeaponAttack` 时**全部** stat 走
-//!   OR 直通（`:2453` `if mode == "OR" or not skillFlags.bothWeaponAttack`），
-//!   输出与「武器基底折进 `MinimalInput` 后单跑」**逐值相等**——等价性测试钉死。
+//! - `passes` empty: equivalent to calling `calculate_minimal_vs_enemy`
+//!   directly (a non-attack skill, vendor's single "Skill" pass).
+//! - A single [`HandSource`]: when vendor's `not skillFlags.bothWeaponAttack`
+//!   holds, **every** stat takes the OR passthrough (`:2453`
+//!   `if mode == "OR" or not skillFlags.bothWeaponAttack`), and the output is
+//!   **value-for-value equal** to "the weapon base folded into
+//!   `MinimalInput` and run once" — pinned by the equivalence tests.
 //!
-//! ## per-hand 武器位（W-B2 接入，原 W-A1 断点）
+//! ## Per-hand weapon flags
 //!
-//! per-hand cfg 两路翻转（PoB2 weapon1Cfg/weapon2Cfg 等价）：
-//! 1. 条件（`MainHandAttack`/`OffHandAttack`）；
-//! 2. 武器位：`cfg.flags = cfg.flags.replace_weapon_flags(weapon.flags)`——
-//!    [`WeaponBase::flags`] 非空时把 cfg 的 `WEAPON_SEGMENT` 段整体替换为
-//!    **该手**武器位（`with Maces` 词条按位路由只进对应手），空（非武器攻击
-//!    source）时恒等沿用上游供给。等价性见 `ModFlags::replace_weapon_flags` doc。
+//! Per-hand cfg has two flip paths (equivalent to PoB2's weapon1Cfg/weapon2Cfg):
+//! 1. Condition (`MainHandAttack`/`OffHandAttack`);
+//! 2. Weapon flags: `cfg.flags = cfg.flags.replace_weapon_flags(weapon.flags)` —
+//!    when [`WeaponBase::flags`] is non-empty, the cfg's whole
+//!    `WEAPON_SEGMENT` is replaced with **that hand's** weapon flags (so a
+//!    `with Maces` mod's flag routing only reaches the matching hand); when
+//!    empty (a non-weapon-attack source), it identically passes through the
+//!    upstream flags unchanged. See the `ModFlags::replace_weapon_flags` docs for the equivalence proof.
 
 use pobr_data::prelude::ModFlags;
 
@@ -35,35 +40,41 @@ use super::offence::{MinimalInput, MinimalOutput, calculate_minimal_vs_enemy};
 use super::output::HandOutput;
 use super::{BreakdownStep, round};
 
-/// 一只手的武器基底贡献（编排层装配，已折算到与现 `MinimalInput` 注入完全相同的
-/// 口径：局部词条 × 品质 × 技能 baseMultiplier / attackSpeedMultiplier 均已乘入）。
+/// One hand's weapon base contribution (assembled by the orchestration
+/// layer, already folded to exactly the same semantics as the current
+/// `MinimalInput` injection: local mods × quality × skill baseMultiplier /
+/// attackSpeedMultiplier are all already multiplied in).
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct WeaponBase {
-    /// 击中基底伤害下/上界（加到 `MinimalInput::base_hit_min/max`）。
+    /// Base hit damage lower/upper bound (added to `MinimalInput::base_hit_min/max`).
     pub hit_min: f64,
     pub hit_max: f64,
-    /// 攻击速率覆盖（`Some` 时覆盖 `MinimalInput::base_action_rate`；
-    /// `None`/非正 = 沿用输入速率——与现编排 `w.attack_rate > 0.0` 门控同语义）。
+    /// Attack rate override (`Some` overrides
+    /// `MinimalInput::base_action_rate`; `None`/non-positive means the input
+    /// rate is used as-is — same semantics as the current orchestration's `w.attack_rate > 0.0` gate).
     pub attack_rate: Option<f64>,
-    /// 武器基底暴击率（百分点，如 5.0）。当前由编排层经全局
-    /// `CriticalStrikeChance BASE` 注入（保持现行为）；per-hand 暴击基底在
-    /// 双 pass 真启用时移到此处消费。
+    /// Weapon base crit chance (percentage points, e.g. 5.0). Currently
+    /// injected globally by the orchestration layer via `CriticalStrikeChance
+    /// BASE` (keeping current behavior); once the dual pass is truly enabled,
+    /// per-hand crit base will be consumed from here instead.
     pub crit_chance: f64,
-    /// 该手武器的 ModFlags 武器位（vendor `getWeaponFlags`，编排层由
-    /// `weapon_types.json` 经 `ModFlags::weapon_flags` 派生）。非空时 per-hand
-    /// cfg 的武器位段被替换为本值（见模块 doc）；非武器攻击 source 恒
-    /// `NONE`（恒等沿用上游 cfg）。
+    /// This hand's ModFlags weapon flags (vendor `getWeaponFlags`, derived by
+    /// the orchestration layer from `weapon_types.json` via
+    /// `ModFlags::weapon_flags`). When non-empty, the per-hand cfg's weapon
+    /// flag segment is replaced with this value (see the module docs); a
+    /// non-weapon-attack source always has `NONE` (identically passes
+    /// through the upstream cfg).
     pub flags: ModFlags,
 }
 
-/// per-hand 计算上下文覆盖（PoB2 weapon1Cfg/weapon2Cfg 等价面）。
+/// Per-hand calculation context override (equivalent to PoB2's weapon1Cfg/weapon2Cfg).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct HandCfg {
-    /// 条件翻转（如 `("MainHandAttack", true)`）。
+    /// Condition flips (e.g. `("MainHandAttack", true)`).
     pub conditions: Vec<(String, bool)>,
 }
 
-/// 单只手的 pass 输入（蓝图 §3.3 契约 1；编排层构造）。
+/// A single hand's pass input.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HandSource {
     pub label: HandTag,
@@ -72,7 +83,7 @@ pub struct HandSource {
 }
 
 impl HandSource {
-    /// 主手 pass：置 `MainHandAttack` 条件（PoB2 weapon1Cfg）。
+    /// Main hand pass: sets the `MainHandAttack` condition (PoB2's weapon1Cfg).
     pub fn main_hand(weapon: WeaponBase) -> Self {
         Self {
             label: HandTag::MainHand,
@@ -83,8 +94,8 @@ impl HandSource {
         }
     }
 
-    /// 副手 pass：置 `OffHandAttack` 条件（PoB2 weapon2Cfg；
-    /// 非武器攻击如 Shield Wall 的 source 也是 off-hand，`CalcOffence.lua:2418-2431`）。
+    /// Off hand pass: sets the `OffHandAttack` condition (PoB2's weapon2Cfg;
+    /// a non-weapon-attack source like Shield Wall is also off-hand, `CalcOffence.lua:2418-2431`).
     pub fn off_hand(weapon: WeaponBase) -> Self {
         Self {
             label: HandTag::OffHand,
@@ -96,11 +107,14 @@ impl HandSource {
     }
 }
 
-/// 末端合并大表（vendor `CalcOffence.lua` combineStat 调用面**照抄**；机制逻辑跨
-/// 版本稳定按 P2 判据留框架）。当前 PoBR 进攻模型覆盖的 stat 子集 + 已规划字段；
-/// vendor 其余条目（leech 族 `:4563-4587` 全 DPS、弩族 `:4602-4610` 全 AVERAGE、
-/// ailment 族 `:5737-5755` AVERAGE/CHANCE_AILMENT/CHANCE）随对应机制落地时按本表
-/// 同款方式补行。
+/// The end-of-pipeline merge table (a **verbatim copy** of vendor
+/// `CalcOffence.lua`'s combineStat call sites; kept as a framework since this
+/// mechanic's logic has been stable across versions). Currently covers the
+/// stat subset the PoBR offence model implements plus already-planned
+/// fields; vendor's remaining entries (the leech family `:4563-4587` all
+/// DPS, the crossbow family `:4602-4610` all AVERAGE, the ailment family
+/// `:5737-5755` AVERAGE/CHANCE_AILMENT/CHANCE) get added the same way once
+/// the corresponding mechanic lands.
 pub const COMBINE_TABLE: &[(&str, CombineMode)] = &[
     ("AccuracyHitChance", CombineMode::Average),      // :3023
     ("HitChance", CombineMode::Average),              // :3024
@@ -108,15 +122,16 @@ pub const COMBINE_TABLE: &[(&str, CombineMode)] = &[
     ("HitSpeed", CombineMode::Or),                    // :3027
     ("HitTime", CombineMode::Or),                     // :3028
     ("PreEffectiveCritChance", CombineMode::Average), // :4554
-    ("CritChance", CombineMode::Crit { double_hits: false }), // :4555（doubleHits 由技能数据翻转）
-    ("CritMultiplier", CombineMode::Average),         // :4557
+    ("CritChance", CombineMode::Crit { double_hits: false }), // :4555 (doubleHits flipped by skill data)
+    ("CritMultiplier", CombineMode::Average),                 // :4557
     ("AverageDamage", CombineMode::Dps { double_hits: false }), // :4559
-    ("TotalDPS", CombineMode::Dps { double_hits: false }), // :4561
-    ("StoredCombinedAvg", CombineMode::Dps { double_hits: false }), // :4588（逐伤害类型）
+    ("TotalDPS", CombineMode::Dps { double_hits: false }),    // :4561
+    ("StoredCombinedAvg", CombineMode::Dps { double_hits: false }), // :4588 (per damage type)
 ];
 
-/// 查 [`COMBINE_TABLE`]；表中模式的 `double_hits` 占位 false，按 `double_hits`
-/// 实参翻转（vendor 在 combineStat 内读 `skillData.doubleHitsWhenDualWielding`）。
+/// Looks up [`COMBINE_TABLE`]; the table's `double_hits` is a `false`
+/// placeholder, flipped by the `double_hits` argument (vendor reads
+/// `skillData.doubleHitsWhenDualWielding` inside combineStat).
 pub fn combine_mode_for(stat: &str, double_hits: bool) -> Option<CombineMode> {
     COMBINE_TABLE
         .iter()
@@ -128,21 +143,21 @@ pub fn combine_mode_for(stat: &str, double_hits: bool) -> Option<CombineMode> {
         })
 }
 
-/// 双 pass 运行结果：合并后输出 + per-hand 子表。
+/// Result of running the dual pass: the merged output plus per-hand sub-tables.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HandPassOutput {
-    /// combineStat 之后的输出（单手 build = OR 直通，与单 pass 逐值相等）。
+    /// Output after combineStat (a single-hand build = OR passthrough, value-for-value equal to a single pass).
     pub combined: MinimalOutput,
     pub main_hand: Option<HandOutput>,
     pub off_hand: Option<HandOutput>,
 }
 
-/// 攻击技能按 hand source 各跑一遍进攻管线并按 vendor combineStat 合并
-/// （蓝图 §3.3 契约 1 入口）。
+/// Runs the offence pipeline once per hand source for an attack skill, then
+/// merges per vendor combineStat.
 ///
-/// - `passes` 空 = 非攻击技能单 "Skill" pass：直通 `calculate_minimal_vs_enemy`。
-/// - `double_hits` = 技能数据 `doubleHitsWhenDualWielding`（W-D1 schema 顺带抽取；
-///   编排层未接线前传 `false`）。
+/// - `passes` empty = a non-attack skill's single "Skill" pass: passes through to `calculate_minimal_vs_enemy`.
+/// - `double_hits` = skill data's `doubleHitsWhenDualWielding` (extracted
+///   incidentally by the schema; `false` until the orchestration layer wires it up).
 pub fn run_hand_passes(
     db: &ModDb,
     enemy_db: &ModDb,
@@ -158,7 +173,7 @@ pub fn run_hand_passes(
             off_hand: None,
         },
         [single] => {
-            // 单手：vendor `not bothWeaponAttack` → 全部 stat OR 直通（:2453）。
+            // Single hand: vendor's `not bothWeaponAttack` → every stat takes the OR passthrough (:2453).
             let leg = run_single_pass(db, enemy_db, cfg, single, input);
             let hand = HandOutput::from_minimal(&leg);
             let (main_hand, off_hand) = match single.label {
@@ -185,8 +200,9 @@ pub fn run_hand_passes(
     }
 }
 
-/// 跑一只手：武器基底注入 `MinimalInput` 副本（与现编排折算完全同形）+
-/// per-hand 条件翻转后单跑管线。
+/// Runs a single hand: the weapon base is injected into a copy of
+/// `MinimalInput` (in exactly the same shape as the current orchestration
+/// folding), then the pipeline is run once with per-hand condition flips applied.
 fn run_single_pass(
     db: &ModDb,
     enemy_db: &ModDb,
@@ -198,10 +214,12 @@ fn run_single_pass(
     calculate_minimal_vs_enemy(db, enemy_db, &hand_cfg, &hand_input)
 }
 
-/// per-hand 计算域派生（武器基底注入 `MinimalInput` 副本 + per-hand 条件翻转 +
-/// 武器位段替换）。`run_single_pass` 与 warcry uptime 预算（`calc::warcry` 需按
-/// 主手域解析 Speed，vendor CalcOffence.lua:3235 读同一 pass 的
-/// `globalOutput.Speed`）共用，保证两处速率逐位一致。
+/// Derives the per-hand calculation scope (weapon base injected into a copy
+/// of `MinimalInput` + per-hand condition flips + weapon flag segment
+/// replacement). Shared between `run_single_pass` and the warcry uptime
+/// budget (`calc::warcry` needs to resolve Speed against the main-hand scope,
+/// since vendor CalcOffence.lua:3235 reads that same pass's `globalOutput.Speed`),
+/// guaranteeing the two rates agree bit-for-bit.
 pub(crate) fn hand_scope(
     hand: &HandSource,
     cfg: &CalcConfig,
@@ -219,16 +237,18 @@ pub(crate) fn hand_scope(
     for (name, enabled) in &hand.cfg_overrides.conditions {
         hand_cfg.conditions.insert(name.clone(), *enabled);
     }
-    // per-hand 武器位（W-B2）：非空时替换 cfg 的武器位段为该手武器位
-    // （空 = 恒等，legacy 位表 / 非武器攻击 source 零行为）。
+    // Per-hand weapon flags: when non-empty, replaces the cfg's weapon flag
+    // segment with that hand's weapon flags (empty = identity, zero behavior
+    // change for legacy flag tables / non-weapon-attack sources).
     hand_cfg.flags = hand_cfg.flags.replace_weapon_flags(hand.weapon.flags);
     (hand_cfg, hand_input)
 }
 
-/// combineStat：按 [`COMBINE_TABLE`] 合并两腿（vendor `:2451-2545` + 调用面）。
+/// combineStat: merges the two legs per [`COMBINE_TABLE`] (vendor `:2451-2545` + call sites).
 ///
-/// 防御/资源族（life/mana/抗性）不在 passList 内（vendor 在 hand pass 外全局算），
-/// 两腿值恒等——取 MH 腿值并 debug 断言一致。
+/// The defence/resource family (life/mana/resistances) isn't in passList
+/// (vendor computes it globally outside the hand pass), so both legs' values
+/// are always equal — takes the MH leg's value and debug-asserts they match.
 fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> MinimalOutput {
     debug_assert_eq!(mh.life, oh.life, "防御族不在 hand pass 维度内");
     debug_assert_eq!(mh.mana, oh.mana, "防御族不在 hand pass 维度内");
@@ -240,8 +260,9 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
             .expect("COMBINE_TABLE 内全部为自给模式")
     };
 
-    // CritChance 内部是 fraction（0..=1），vendor CRIT 模式公式按百分数定义
-    // （doubleHits 交叉项 /100）——换算到百分数空间合并再换回。
+    // CritChance is internally a fraction (0..=1), but vendor's CRIT mode
+    // formula is defined in percentage terms (the doubleHits cross term
+    // divides by 100) -- convert to percentage space, merge, then convert back.
     let crit_chance =
         round(combine("CritChance", mh.crit_chance * 100.0, oh.crit_chance * 100.0) / 100.0);
     let pre_effective_crit_chance = round(
@@ -262,7 +283,7 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
     let dps = round(combine("TotalDPS", mh.dps, oh.dps));
 
     MinimalOutput {
-        // 防御/资源族：pass 无关，取 MH 腿。
+        // Defence/resource family: pass-independent, takes the MH leg.
         life: mh.life,
         mana: mh.mana,
         fire_resistance: mh.fire_resistance,
@@ -277,20 +298,24 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
         crit_chance,
         pre_effective_crit_chance,
         crit_multiplier,
-        // 顶层分量向量：双持下暂取 MH 腿（per-hand 分量在 HandOutput；
-        // ailment magnitude 消费迁移到 Stored 族是 W-B3/T4 接线，
-        // 编排层在 W-A1 前不产生第二个 HandSource，本分支无生产消费）。
+        // Top-level component vector: currently takes the MH leg when dual
+        // wielding (per-hand components live in HandOutput; migrating
+        // ailment magnitude consumption to the Stored family is a wiring
+        // task, and since the orchestration layer never produces a second
+        // HandSource yet, there's no consumer exercising this branch).
         damage_components: mh.damage_components.clone(),
         total_hit_avg,
         hit_chance,
         action_rate,
         dps,
-        // Stored 族：CombinedAvg 按 vendor :4588 逐类型 DPS 模式合并；
-        // Crit/HitAvg 是 per-leg 诊断值（vendor 不跨手合并），顶层取 MH 腿。
+        // Stored family: CombinedAvg is merged with the DPS mode per damage
+        // type as vendor does at :4588; Crit/HitAvg are per-leg diagnostic
+        // values (vendor never merges these across hands), so the top level takes the MH leg.
         stored_crit_avg: mh.stored_crit_avg.clone(),
         stored_hit_avg: mh.stored_hit_avg.clone(),
-        // min/max 族同 Crit/HitAvg：per-leg 诊断值（vendor 不跨手合并 Stored
-        // min/max，ailment 在 per-hand 算完后按 CHANCE_AILMENT 合并 DPS），顶层取 MH 腿。
+        // min/max family, same as Crit/HitAvg: per-leg diagnostic values
+        // (vendor never merges Stored min/max across hands; ailments merge
+        // with the DPS CHANCE_AILMENT mode after computing per-hand), so the top level takes the MH leg.
         stored_ranges: mh.stored_ranges.clone(),
         stored_combined_avg: combine_stored_by_type(
             &mh.stored_combined_avg,
@@ -309,8 +334,8 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
     }
 }
 
-/// 合并后的 breakdown：沿用单 pass 的步骤名（display/CLI 消费按名取值），
-/// 进攻族用合并值、防御族沿用 MH 腿。
+/// Merged breakdown: reuses single-pass step names (display/CLI consumers
+/// look values up by name); offence-family steps use the merged value, defence-family steps keep the MH leg.
 #[allow(clippy::too_many_arguments)]
 fn combined_breakdown(
     mh: &MinimalOutput,
@@ -341,8 +366,8 @@ fn combined_breakdown(
         .collect()
 }
 
-/// `Stored<Type>CombinedAvg` 跨手合并（vendor `:4588` 逐伤害类型 DPS 模式）。
-/// 两腿类型集合按 MH 序对齐；OH 缺该类型按 0 折入（vendor `or 0` 语义）。
+/// Cross-hand merge for `Stored<Type>CombinedAvg` (vendor `:4588`'s per-damage-type DPS mode).
+/// The two legs' type sets are aligned in MH order; a type missing from OH is folded in as 0 (vendor's `or 0` semantics).
 fn combine_stored_by_type(
     mh: &[(pobr_data::prelude::DamageType, f64)],
     oh: &[(pobr_data::prelude::DamageType, f64)],
@@ -363,7 +388,7 @@ fn combine_stored_by_type(
 }
 
 impl HandOutput {
-    /// 从一腿的 `MinimalOutput` 提取 combineStat 入参面（蓝图 §1.4 / RFC §4.2）。
+    /// Extracts combineStat's input surface from one leg's `MinimalOutput`.
     pub fn from_minimal(leg: &MinimalOutput) -> Self {
         Self {
             hit_chance: leg.hit_chance,
@@ -373,11 +398,11 @@ impl HandOutput {
             speed: leg.action_rate,
             damage_components: leg.damage_components.clone(),
             average_hit: leg.total_hit_avg,
-            // vendor AverageDamage = AverageHit × HitChance（:4406 一带）；
-            // 面板口径用玩家侧 total_hit_avg（与顶层字段同源）。
+            // vendor AverageDamage = AverageHit × HitChance (around :4406);
+            // the panel view uses the player-side total_hit_avg (same source as the top-level field).
             average_damage: round(leg.total_hit_avg * leg.hit_chance),
             total_dps: leg.dps,
-            // W-B3：Stored 族（crit_pass 产出，ailment magnitude 的 vendor 口径输入）。
+            //  Stored family (produced by crit_pass; the vendor-view input for ailment magnitude).
             stored_crit_avg: leg.stored_crit_avg.clone(),
             stored_hit_avg: leg.stored_hit_avg.clone(),
             stored_combined_avg: leg.stored_combined_avg.clone(),

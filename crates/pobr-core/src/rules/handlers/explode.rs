@@ -1,26 +1,32 @@
-//! `special:explode_on_kill` handler——vendor `explodeFunc` 等价
-//! （ModParser.lua:2217-2230）。
+//! `special:explode_on_kill` handler — equivalent to vendor `explodeFunc`
+//! (ModParser.lua:2217-2230).
 //!
-//! vendor 产出 `mod("ExplodeMod", "LIST", { type, value=chance, amount, ... })`
-//! 加 `flag("CanExplode")`。PoBR calc 侧**尚无敌方爆炸消费点**——本 handler 按
-//! 蓝图 C-3 约定产出 PoB2 同款标记 mod（值进 ModDb、消费缺口另登记，不在 M5b
-//! 扩 calc）：`CanExplode` FLAG（与 vendor `flag("CanExplode")` 对齐）、
-//! `EnemyExplodeChance` BASE 取 `$1`（爆炸触发几率，承载 vendor `value=chance`）、
-//! `EnemyExplodeAmount` BASE 取 `$2`（最大生命百分比，承载 vendor `amount`）。
+//! Vendor produces `mod("ExplodeMod", "LIST", { type, value=chance, amount,
+//! ... })` plus `flag("CanExplode")`. The PoBR calc side **has no enemy
+//! explosion consumer yet** — per the C-3 convention, this handler produces
+//! the same marker mods as PoB2 (their value lands in the ModDb; the
+//! consumption gap is tracked separately, not filled in here):
+//! `CanExplode` FLAG (matches vendor's `flag("CanExplode")`),
+//! `EnemyExplodeChance` BASE from `$1` (the explosion trigger chance,
+//! carrying vendor's `value=chance`), and `EnemyExplodeAmount` BASE from
+//! `$2` (percentage of max life, carrying vendor's `amount`).
 //!
-//! handler_args 约定（special_mods.json 条目）：`["$1", "$2"]` =（chance, amount）。
-//! 元素类型（vendor `type`）走 DSL enums 无法表达爆炸 LIST 载荷，故整条走
-//! handler——但元素维度当前无消费点，本 handler 不再细分（保守，待 calc 爆炸通道）。
+//! handler_args convention (in the special_mods.json entry): `["$1", "$2"]`
+//! = (chance, amount). The element type (vendor `type`) can't be expressed
+//! by DSL enums for the explosion LIST payload, so the whole entry goes
+//! through a handler — but since the element dimension has no consumer yet,
+//! this handler doesn't break it out further (conservative, pending a calc
+//! explosion channel).
 
 use pobr_data::modifier::ModType;
 
 use crate::modifier::Modifier;
 use crate::rules::registry::{DuplicateHandlerError, HandlerCtx, HandlerOutcome, HandlerRegistry};
 
-/// handler 稳定 id。
+/// The handler's stable id.
 pub const ID: &str = "special:explode_on_kill";
 
-/// 注册 explode handler。
+/// Registers the explode handler.
 pub fn register(registry: &mut HandlerRegistry) -> Result<(), DuplicateHandlerError> {
     registry.register(ID, Box::new(explode_handler))
 }

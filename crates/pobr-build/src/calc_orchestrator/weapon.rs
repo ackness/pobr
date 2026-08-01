@@ -1,30 +1,34 @@
-//! weapon — 武器/徒手基底贡献 + 本地武器·防御局部词条解析 + clean_item_text。
+//! weapon — weapon/unarmed base contribution + local weapon/defence mod parsing + clean_item_text.
 
 use super::*;
 
-/// 攻击技能的武器基底贡献：物理击中伤害（已乘品质）+ 攻击速率 + 暴击率。
+/// An attack skill's weapon base contribution: physical hit damage (quality already
+/// applied) + attack rate + crit chance.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct WeaponContribution {
     pub(crate) phys_min: f64,
     pub(crate) phys_max: f64,
     pub(crate) attack_rate: f64,
     pub(crate) crit_chance: f64,
-    /// 该武器源的 ModFlags 武器位（vendor `getWeaponFlags`，由
-    /// `weapon_types.json` 经 [`ModFlags::weapon_flags`] 派生）。消费方 =
-    /// T2 W-B2 hand_pass 的 per-hand cfg 武器位替换
-    /// （`WeaponBase::flags` → `replace_weapon_flags`）。
+    /// This weapon source's ModFlags weapon bits (matching vendor's `getWeaponFlags`,
+    /// derived from `weapon_types.json` via [`ModFlags::weapon_flags`]). Consumed by T2
+    /// hand_pass's per-hand cfg weapon-bit replacement (`WeaponBase::flags` →
+    /// `replace_weapon_flags`).
     pub(crate) flags: ModFlags,
 }
 
-/// 解析主武器（Weapon1）对**攻击技能**的基底贡献，对照 PoB2 `CalcSetup.lua` weaponData
-/// 装配。法术技能 / 无装备武器 / 未知基底 → `None`（法术不使用武器伤害）。
+/// Resolves the main weapon's (Weapon1) base contribution to an **attack skill**,
+/// mirroring PoB2's `CalcSetup.lua` weaponData assembly. Returns `None` for a spell
+/// skill / no weapon equipped / unknown base (spells don't use weapon damage).
 ///
-/// - 物理伤害 = 基底 `DamageMin/Max` × `(1 + quality/100)`（品质仅作用物理，PoB 口径）;
-/// - 攻击速率 = `1000 / speed_ms`；暴击率 = `crit_chance / 100`（`.dat` 原始 ×100）。
+/// - Physical damage = base `DamageMin/Max` × `(1 + quality/100)` (quality only affects
+///   physical, matching PoB semantics);
+/// - Attack rate = `1000 / speed_ms`; crit chance = `crit_chance / 100` (`.dat` raw value ×100).
 ///
-/// 切片：局部词条（武器自身「增加%物理 / 附加 flat」）尚未单独作用于武器基底——
-/// 当前先打通**裸装基底**口径（roadmap 链 A #1 验收：裸装攻击 build DPS 对齐）；
-/// 局部 vs 全局词条隔离为后续切片。
+/// Slice boundary: local mods (the weapon's own "increased % physical / flat added")
+/// don't yet apply to the weapon base individually — this currently only establishes the
+/// **bare-item base** semantics (roadmap chain A #1 acceptance: bare-item attack build
+/// DPS aligned); local vs. global mod separation is a later slice.
 pub(crate) fn weapon_contribution(
     build: &Build,
     data: &BuildData,
@@ -32,34 +36,41 @@ pub(crate) fn weapon_contribution(
     skill: &ResolvedSkillLevel,
 ) -> Option<WeaponContribution> {
     let effect = data.granted_effects.get(main_skill_id)?;
-    // 仅攻击技能用武器伤害（法术用 stat-set 法术基础伤害）。
+    // Only attack skills use weapon damage (spells use stat-set spell base damage).
     if !effect.is_attack() {
         return None;
     }
-    // 非武器攻击（如 Shield Wall）：击中基础伤害来自技能自身 off-hand stat-set（而非主手武器），
-    // 攻击速率取技能自带攻击时间、暴击取技能 critChance。对应 PoB2 `skillFlags.shieldAttack`：
-    // source = off-hand，`setOffHandPhysical*` 提供 phys、`source.AttackRate = 1000/skillData.attackTime`。
+    // Non-weapon attack (e.g. Shield Wall): hit base damage comes from the skill's own
+    // off-hand stat-set (not the main-hand weapon), attack rate uses the skill's own
+    // attack time, crit uses the skill's own critChance. Matches PoB2's
+    // `skillFlags.shieldAttack`: source = off-hand, `setOffHandPhysical*` provides phys,
+    // `source.AttackRate = 1000/skillData.attackTime`.
     if effect.is_non_weapon_attack() {
         return Some(non_weapon_attack_contribution(skill, build, data));
     }
-    // 无主手武器 → 空手（PoB2 `data.unarmedWeaponData[classId]`）：物理 2–N（按职业）、
-    // 攻速 1.65、暴击 5%。使空手攻击/通道技能（如 Flame Breath、Monk）有非零基底伤害。
+    // No main-hand weapon → unarmed (PoB2's `data.unarmedWeaponData[classId]`): physical
+    // 2–N (per class), attack rate 1.65, crit 5%. Gives unarmed attack/channel skills
+    // (e.g. Flame Breath, Monk) a nonzero base damage.
     let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
         return Some(unarmed_contribution(build, data));
     };
     weapon_item_contribution(item, data)
 }
 
-/// 单件武器条目 → 武器源贡献（MH/OH 共用口径，对照 PoB2 `CalcSetup.lua` weaponData）。
+/// A single weapon entry → weapon source contribution (shared semantics for MH/OH,
+/// mirroring PoB2's `CalcSetup.lua` weaponData).
 ///
-/// - 物理伤害 = (基底 + 局部附加) × (1 + 局部增伤%) × (1 + quality/100)；
-/// - 攻击速率 = `1000 / speed_ms × (1 + 局部攻速%)`；暴击率 = `crit_chance / 100`；
-/// - 武器位按**本件**基底类别派生（vendor getWeaponFlags；与 cfg 侧
-///   [`weapon_cfg_flags`] 同一张 `weapon_types.json`，Weapon1 件与全局 cfg 位同值）。
+/// - Physical damage = (base + local adds) × (1 + local increased%) × (1 + quality/100);
+/// - Attack rate = `1000 / speed_ms × (1 + local attack-speed%)`; crit chance = `crit_chance / 100`;
+/// - Weapon bits derived from **this item's** own base category (matching vendor's
+///   getWeaponFlags; the same `weapon_types.json` table as the cfg side's
+///   [`weapon_cfg_flags`], so the Weapon1 item's bits match the global cfg bits).
 ///
-/// 局部物理/攻速词条是独立乘区（与全局相乘、不并入全局加法桶），消费本贡献的
-/// hand source 槽位须在 add_item 时剔除同名局部词条（见 calculate_with_data），
-/// 避免重复计入。非武器基底（盾/箭袋/法器等）→ `None`。
+/// Local physical/attack-speed mods form an independent multiplier zone (multiplied
+/// against global, not folded into the global additive bucket); the hand source slot
+/// that consumes this contribution must strip the same-named local mods at add_item time
+/// (see calculate_with_data) to avoid double-counting. Returns `None` for a non-weapon
+/// base (shield/quiver/foci etc.).
 pub(crate) fn weapon_item_contribution(
     item: &Item,
     data: &BuildData,
@@ -89,21 +100,26 @@ pub(crate) fn weapon_item_contribution(
     })
 }
 
-/// 双持副手（Weapon2）武器源（W-B2；vendor `CalcOffence.lua:2369-2449`
-/// weapon2Attack pass 的 source 装配）。产出条件（全部满足）：
+/// Dual-wielding off-hand (Weapon2) weapon source (matching vendor
+/// `CalcOffence.lua:2369-2449`'s weapon2Attack pass source assembly). Produced when
+/// all of the following hold:
 ///
-/// - 主技能是**持武攻击**（非法术、非 Shield Wall 类非武器攻击——后者的
-///   off-hand source 由 [`non_weapon_attack_contribution`] 专路装配）；
-/// - 主手装备了**单手**武器基底（vendor 双持前提；空手/双手武器不产）；
-/// - Weapon2 是武器基底（盾/箭袋/法器 → `None`，与 `weapon_type_conditions`
-///   的 `DualWielding` 判定同源）。
+/// - The main skill is a **weapon attack** (not a spell, not a non-weapon attack like
+///   Shield Wall — the latter's off-hand source is assembled separately by
+///   [`non_weapon_attack_contribution`]);
+/// - The main hand has a **one-handed** weapon base equipped (vendor's precondition for
+///   dual wielding; unarmed/two-handed weapons don't produce this);
+/// - Weapon2 is a weapon base (shield/quiver/foci → `None`, the same source as
+///   `weapon_type_conditions`'s `DualWielding` determination).
 ///
-/// 切片登记（TODO(parity)，vendor 行为差）：
-/// - vendor 还按技能武器限制（`weaponTypes` 白名单）裁剪 pass；PoBR 未建模
-///   武器限制，按「双持即产」近似；
-/// - per-hand 暴击基底：`WeaponBase::crit_chance` 暂未在 hand pass 内消费
-///   （全局 `CriticalStrikeChance BASE` 仍取主手值，见编排 1c 段），OH 腿
-///   暴击基底沿用 MH——per-hand 暴击消费随 W-B3 crit pass 口径收口。
+/// Slice notes (TODO(parity), a known vendor behavior difference):
+/// - vendor also trims this pass by the skill's weapon restrictions (a `weaponTypes`
+///   allowlist); PoBR doesn't model weapon restrictions, and approximates it as
+///   "dual wielding always produces one";
+/// - per-hand base crit: `WeaponBase::crit_chance` isn't consumed within the hand pass
+///   yet (the global `CriticalStrikeChance BASE` still takes the main-hand's value, see
+///   orchestration stage 1c), so the off-hand's base crit just reuses the main hand's —
+///   per-hand crit consumption will be closed out along with the crit pass semantics.
 pub(crate) fn dual_wield_off_hand_contribution(
     build: &Build,
     data: &BuildData,
@@ -115,7 +131,7 @@ pub(crate) fn dual_wield_off_hand_contribution(
     if !is_weapon_attack {
         return None;
     }
-    // 主手必须是已装备的单手武器（weapon_types 表口径）。
+    // The main hand must be an equipped one-handed weapon (per the weapon_types table).
     let mh = build.items.get(&EquipmentSlot::Weapon1)?;
     let mh_def = data.base_items.get(&mh.base.to_string())?;
     let mh_one_hand = weapon_type_info(data, &mh_def.item_class).is_some_and(|w| w.one_hand);
@@ -126,13 +142,16 @@ pub(crate) fn dual_wield_off_hand_contribution(
     weapon_item_contribution(off, data)
 }
 
-/// 非武器攻击（如 Shield Wall）的武器源贡献：基础物理伤害来自技能自身 off-hand stat-set
-/// （`off_hand_weapon_minimum/maximum_physical_damage`），攻击速率取技能攻击时间
-/// （`1/use_time_s`），暴击取技能 `crit_chance`。对应 PoB2 CalcOffence L2418-2431
-/// （`source.PhysicalMin = setOffHandPhysicalMin`、`source.AttackRate = 1000/attackTime`）。
+/// The weapon source contribution for a non-weapon attack (e.g. Shield Wall): base
+/// physical damage comes from the skill's own off-hand stat-set
+/// (`off_hand_weapon_minimum/maximum_physical_damage`), attack rate uses the skill's
+/// attack time (`1/use_time_s`), crit uses the skill's own `crit_chance`. Matches PoB2
+/// CalcOffence L2418-2431 (`source.PhysicalMin = setOffHandPhysicalMin`,
+/// `source.AttackRate = 1000/attackTime`).
 ///
-/// `baseMultiplier`（技能伤害倍率，如 Shield Wall 0.65）由调用方在 `phys × dmg_mult` 处应用，
-/// 与普通武器攻击同口径——故此处只返回**未乘倍率**的裸 off-hand 基础伤害。
+/// `baseMultiplier` (the skill's damage multiplier, e.g. Shield Wall's 0.65) is applied
+/// by the caller at `phys × dmg_mult`, the same semantics as a normal weapon attack —
+/// so this only returns the bare off-hand base damage **before** the multiplier.
 pub(crate) fn non_weapon_attack_contribution(
     skill: &ResolvedSkillLevel,
     build: &Build,
@@ -144,9 +163,11 @@ pub(crate) fn non_weapon_attack_contribution(
         match ds.stat.as_str() {
             "off_hand_weapon_minimum_physical_damage" => phys_min += ds.value,
             "off_hand_weapon_maximum_physical_damage" => phys_max += ds.value,
-            // per-X 缩放的附加物理（如 Shield Wall `off_hand_min/max_added_physical_damage_
-            // per_15_shield_armour`）：按 off-hand 盾的对应防御值 ÷ N 缩放后并入基础物理。
-            // 对应 PoB2 SkillStatMap `mod("PhysicalMin/Max","BASE",val,{PerStat,stat="ArmourOnWeapon 2",div=N})`。
+            // per-X scaled added physical (e.g. Shield Wall's
+            // `off_hand_min/max_added_physical_damage_per_15_shield_armour`): scaled by
+            // the off-hand shield's matching defence value ÷ N, then folded into base
+            // physical. Matches PoB2 SkillStatMap's
+            // `mod("PhysicalMin/Max","BASE",val,{PerStat,stat="ArmourOnWeapon 2",div=N})`.
             stat => {
                 if let Some((is_max, mult)) = per_shield_defence_scale(stat, build, data) {
                     if is_max {
@@ -167,18 +188,22 @@ pub(crate) fn non_weapon_attack_contribution(
         phys_max,
         attack_rate,
         crit_chance: skill.crit_chance.unwrap_or(0.0) / 100.0,
-        // 非武器攻击（shield attack）：伤害源是技能自身 off-hand stat-set 而非
-        // 武器条目，无武器类型位（vendor weaponData 2 走 shieldAttack 专路）。
+        // Non-weapon attack (shield attack): the damage source is the skill's own
+        // off-hand stat-set rather than a weapon item, so there's no weapon type bit
+        // (vendor's weaponData 2 goes through the dedicated shieldAttack path).
         flags: ModFlags::NONE,
     }
 }
 
-/// 解析 `off_hand_<minimum|maximum>_added_physical_damage_per_<N>_shield_<armour|evasion|...>`
-/// 形式的 per-X 附加物理 stat，返回 `(是否 maximum, 缩放系数 = 盾防御值 / N)`。非此形式返回 `None`。
+/// Parses a per-X added physical stat shaped like
+/// `off_hand_<minimum|maximum>_added_physical_damage_per_<N>_shield_<armour|evasion|...>`,
+/// returning `(whether it's maximum, scale factor = shield defence value / N)`. Returns
+/// `None` for any other form.
 ///
-/// 对应 PoB2 SkillStatMap 的 `{ type = "PerStat", stat = "ArmourOnWeapon 2", div = N }` ——
-/// 缩放源是 **off-hand（盾，Weapon2）自身**的护甲/闪避/能量盾（含其局部增益），非全局总防御。
-/// 通用：覆盖 per_5/per_15_shield_armour/evasion/energy_shield 等同族词条。
+/// Matches PoB2 SkillStatMap's `{ type = "PerStat", stat = "ArmourOnWeapon 2", div = N }`
+/// — the scaling source is the **off-hand's own** (the shield in Weapon2) armour/evasion/energy
+/// shield (including its local boosts), not the global total defence. Generic: covers
+/// the whole family of per_5/per_15_shield_armour/evasion/energy_shield mods.
 pub(crate) fn per_shield_defence_scale(
     stat: &str,
     build: &Build,
@@ -208,9 +233,11 @@ pub(crate) fn per_shield_defence_scale(
     Some((is_max, defence_value / div))
 }
 
-/// off-hand（盾，[`EquipmentSlot::Weapon2`]）自身的防御值（`idx` 0=护甲/1=闪避/2=能量盾），
-/// 与 [`defence_base_modifiers`] 的件级底值同口径：优先 rolled 件级值（含局部 increased + 品质），
-/// 缺失时 `基底默认 × (1+局部 increased) × (1+品质)`。对应 PoB2 `ArmourOnWeapon 2` 等。
+/// The off-hand's own (the shield in [`EquipmentSlot::Weapon2`]) defence value (`idx`
+/// 0=armour/1=evasion/2=energy shield), using the same semantics as
+/// [`defence_base_modifiers`]'s per-item base value: prefers the rolled per-item value
+/// (includes local increased + quality), falling back to `base default × (1+local
+/// increased) × (1+quality)` when missing. Matches PoB2's `ArmourOnWeapon 2` etc.
 pub(crate) fn off_hand_defence(build: &Build, data: &BuildData, idx: usize) -> f64 {
     let Some(item) = build.items.get(&EquipmentSlot::Weapon2) else {
         return 0.0;
@@ -239,15 +266,19 @@ pub(crate) fn off_hand_defence(build: &Build, data: &BuildData, idx: usize) -> f
     base * (1.0 + local_pct[idx] / 100.0) * (1.0 + f64::from(item.quality) / 100.0)
 }
 
-/// 空手武器贡献（PoB2 `data.unarmedWeaponData[classId]`）：无主手武器时的攻击技能基底。
+/// Unarmed weapon contribution (PoB2's `data.unarmedWeaponData[classId]`): the attack
+/// skill base when there's no main-hand weapon.
 ///
-/// M0-W3：从硬编码 match 切到注入的 per-class 空手基底表
-/// （`data.constants.unarmed_data` ← `base/unarmed_data.json`；无 GameData 走
-/// Default fallback，与 JSON 逐值相等——搬迁不变式，输出不变）。
+/// Switched from a hardcoded match to the injected per-class unarmed base table
+/// (`data.constants.unarmed_data` ← `base/unarmed_data.json`; falls back to Default
+/// when there's no GameData, which is value-for-value equal to the JSON — a pure
+/// migration, output unchanged).
 ///
-/// TODO(parity): 表中 `crit_chance = 0.05`（旧硬编码原值），与持武器路径
-/// （`weapon_contribution` 的 `raw crit / 100` 产出 `5.0`）单位口径相差 100 倍
-/// （schema doc 同款 TODO）——本切换只搬迁不改值，单位对齐留独立行为 commit。
+/// TODO(parity): the table's `crit_chance = 0.05` (the old hardcoded value) is off by a
+/// factor of 100 from the weapon-holding path's units (`weapon_contribution`'s
+/// `raw crit / 100` produces `5.0`) (same TODO as the schema doc) — this switch only
+/// migrated the code without changing the value; unit alignment is left for its own
+/// behavior commit.
 pub(crate) fn unarmed_contribution(build: &Build, data: &BuildData) -> WeaponContribution {
     if let Some(e) = data
         .constants
@@ -259,12 +290,13 @@ pub(crate) fn unarmed_contribution(build: &Build, data: &BuildData) -> WeaponCon
             phys_max: e.physical_max,
             attack_rate: e.attack_rate,
             crit_chance: e.crit_chance,
-            // 空手：vendor `weaponData.type = "None"` → 仅 Unarmed 位（feature 关恒 NONE）。
+            // Unarmed: matching vendor's `weaponData.type = "None"` → only the Unarmed bit (always NONE when the feature is off).
             flags: ModFlags::weapon_flags("None", "Unarmed", true, true),
         };
     }
-    // 未知职业 fallback：与旧 match 的「其余职业」分支同值（物理 2–5、攻速 1.65、
-    // 暴击 0.05）——9 个已知职业均在表内命中，此分支仅护未知职业名（行为与旧实现一致）。
+    // Unknown-class fallback: same values as the old match's "other classes" branch
+    // (physical 2–5, attack rate 1.65, crit 0.05) — all 9 known classes hit the table,
+    // this branch only guards against an unknown class name (behavior matches the old implementation).
     WeaponContribution {
         phys_min: 2.0,
         phys_max: 5.0,
@@ -274,7 +306,7 @@ pub(crate) fn unarmed_contribution(build: &Build, data: &BuildData) -> WeaponCon
     }
 }
 
-/// 剥离 PoB 物品词条 `{tag}` 标记（如 `{desecrated}{enchant}`），返回去标记小写文本。
+/// Strips PoB item mod `{tag}` markers (e.g. `{desecrated}{enchant}`), returning the untagged lowercase text.
 pub(crate) fn clean_item_text(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut depth = 0u32;
@@ -289,7 +321,7 @@ pub(crate) fn clean_item_text(text: &str) -> String {
     out.trim().to_lowercase()
 }
 
-/// 武器上「N% increased Physical Damage」（局部词条）之和。
+/// Sum of "N% increased Physical Damage" (local mod) on the weapon.
 pub(crate) fn weapon_local_phys_inc(item: &Item) -> f64 {
     weapon_mod_texts(item)
         .filter_map(|t| {
@@ -300,7 +332,7 @@ pub(crate) fn weapon_local_phys_inc(item: &Item) -> f64 {
         .sum()
 }
 
-/// 武器上「N% increased Attack Speed」（局部词条，无条件后缀）之和。
+/// Sum of "N% increased Attack Speed" (local mod, no condition suffix) on the weapon.
 pub(crate) fn weapon_local_attack_speed(item: &Item) -> f64 {
     weapon_mod_texts(item)
         .filter_map(|t| {
@@ -311,7 +343,7 @@ pub(crate) fn weapon_local_attack_speed(item: &Item) -> f64 {
         .sum()
 }
 
-/// 武器上「Adds N to M Physical Damage」（局部词条）的区间和。
+/// Range sum of "Adds N to M Physical Damage" (local mod) on the weapon.
 pub(crate) fn weapon_local_phys_adds(item: &Item) -> (f64, f64) {
     let mut min_sum = 0.0;
     let mut max_sum = 0.0;
@@ -324,13 +356,13 @@ pub(crate) fn weapon_local_phys_adds(item: &Item) -> (f64, f64) {
     (min_sum, max_sum)
 }
 
-/// 解析「adds N to M physical damage」→ (N, M)。非此形式返回 `None`。
+/// Parses "adds N to M physical damage" → (N, M). Returns `None` for any other form.
 pub(crate) fn parse_adds_physical(clean: &str) -> Option<(f64, f64)> {
     parse_adds_with_suffix(clean, "physical damage")
 }
 
-/// 解析「adds N to M <suffix>」→ (N, M)（suffix 为不含首空格的伤害后缀，
-/// 如 `physical damage`）。非此形式返回 `None`。
+/// Parses "adds N to M <suffix>" → (N, M) (suffix is a damage suffix with no leading
+/// space, e.g. `physical damage`). Returns `None` for any other form.
 pub(crate) fn parse_adds_with_suffix(clean: &str, suffix: &str) -> Option<(f64, f64)> {
     let body = clean
         .strip_prefix("adds ")?
@@ -340,7 +372,7 @@ pub(crate) fn parse_adds_with_suffix(clean: &str, suffix: &str) -> Option<(f64, 
     Some((lo.trim().parse().ok()?, hi.trim().parse().ok()?))
 }
 
-/// 主手武器全部词条文本（implicit + explicit + enchant）迭代器。
+/// Iterator over the main-hand weapon's mod text (implicit + explicit + enchant).
 pub(crate) fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
     item.implicit_texts
         .iter()
@@ -348,11 +380,14 @@ pub(crate) fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
         .chain(&item.enchant_texts)
 }
 
-/// 该词条是否为应从全局剔除的**武器局部**词条（已计入武器 source 乘区）：
-/// 局部物理增伤/附加 + 局部攻击速率（后者作用于武器攻速、不入全局加法桶）。
+/// Whether a mod is a **weapon-local** mod that should be stripped from the global set
+/// (already counted in the weapon source's multiplier zone): local physical
+/// increased/added + local attack speed (the latter applies to weapon attack speed, not
+/// the global additive bucket).
 ///
-/// 白名单经 `rules` 注入（`overlay/local_mods.json`，M0-W4d 数据化；
-/// fallback = [`WeaponLocalModsDef::default`]，与原硬编码枚举逐值一致）。
+/// The allowlist is injected via `rules` (`overlay/local_mods.json`, data-driven;
+/// falls back to [`WeaponLocalModsDef::default`], value-for-value matching the original
+/// hardcoded enum).
 pub(crate) fn is_weapon_local_mod(text: &str, rules: &WeaponLocalModsDef) -> bool {
     let clean = clean_item_text(text);
     rules
@@ -365,13 +400,14 @@ pub(crate) fn is_weapon_local_mod(text: &str, rules: &WeaponLocalModsDef) -> boo
             .any(|suffix| parse_adds_with_suffix(&clean, suffix).is_some())
 }
 
-/// 解析护甲件**局部**「N% increased <Armour/Evasion/Energy Shield 组合>」→ 每类型增幅
-/// `[armour, evasion, es]`（受影响类型得 N）。含 `global` 或非纯防御组合返回 `None`。
+/// Parses an armour item's **local** "N% increased <combination of Armour/Evasion/Energy
+/// Shield>" → per-type boost `[armour, evasion, es]` (affected types get N). Returns
+/// `None` for anything containing `global` or a non-pure-defence combination.
 pub(crate) fn parse_local_defence_inc(clean: &str) -> Option<[f64; 3]> {
     let (pct_str, rest) = clean.split_once("% increased ")?;
     let pct: f64 = pct_str.trim().parse().ok()?;
     if rest.contains("global") {
-        return None; // 全局防御增幅不作局部隔离
+        return None; // Global defence boosts aren't treated as local
     }
     let normalized = rest.replace(" rating", "").replace(" and ", ", ");
     let mut out = [0.0; 3];
@@ -381,14 +417,14 @@ pub(crate) fn parse_local_defence_inc(clean: &str) -> Option<[f64; 3]> {
             "armour" => out[0] = pct,
             "evasion" => out[1] = pct,
             "energy shield" | "maximum energy shield" => out[2] = pct,
-            _ => return None, // 含非防御项 → 非纯局部防御增幅
+            _ => return None, // Contains a non-defence term → not a pure local defence boost
         }
         any = true;
     }
     any.then_some(out)
 }
 
-/// 护甲件全部词条的局部防御增幅之和 `[armour, evasion, es]`（百分点）。
+/// Sum of local defence boosts across all mods on an armour item, `[armour, evasion, es]` (percentage points).
 pub(crate) fn item_local_defence_inc(item: &Item) -> [f64; 3] {
     let mut total = [0.0; 3];
     for t in weapon_mod_texts(item) {
@@ -401,7 +437,8 @@ pub(crate) fn item_local_defence_inc(item: &Item) -> [f64; 3] {
     total
 }
 
-/// 解析护甲件**局部**「+N to <Armour/Evasion Rating/maximum Energy Shield>」→ `[armour, evasion, es]`。
+/// Parses an armour item's **local** "+N to <Armour/Evasion Rating/maximum Energy
+/// Shield>" → `[armour, evasion, es]`.
 pub(crate) fn parse_local_defence_flat(clean: &str) -> Option<[f64; 3]> {
     let (num, rest) = clean.strip_prefix('+')?.split_once(" to ")?;
     let n: f64 = num.trim().parse().ok()?;
@@ -415,7 +452,7 @@ pub(crate) fn parse_local_defence_flat(clean: &str) -> Option<[f64; 3]> {
     Some(out)
 }
 
-/// 护甲件全部词条的局部防御 flat 之和 `[armour, evasion, es]`。
+/// Sum of local flat defence across all mods on an armour item, `[armour, evasion, es]`.
 pub(crate) fn item_local_defence_flat(item: &Item) -> [f64; 3] {
     let mut total = [0.0; 3];
     for t in weapon_mod_texts(item) {

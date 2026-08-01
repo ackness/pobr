@@ -1,16 +1,17 @@
-//! 防御面板族（M2 Track D）：Block / Spirit / Ward / Deflection 的
-//! 「基底数据 → 聚合 → OutputTable」纯函数计算。
+//! The defence panel family: Block / Spirit / Ward / Deflection's
+//! "base data → aggregation → OutputTable" pure-function calculations.
 //!
-//! 与 `defence.rs` 分文件（蓝图 m2-defence §2 Track D：避免与 Track C/E 抢
-//! defence.rs 的函数级分区）。各函数只读 `ModDb`/`CalcConfig`，不写 `Env`；
-//! 对 `Env` 的写入集中在 [`fill_defence_panels`]（perform 一行调用）。
+//! Kept in a separate file from `defence.rs` (Track D: avoids fighting Track
+//! C/E for function-level real estate in defence.rs). Each function only
+//! reads `ModDb`/`CalcConfig` and never writes `Env`; writes to `Env` are
+//! centralized in [`fill_defence_panels`] (a single call from perform).
 //!
-//! vendor 参照：`vendor/PathOfBuilding-PoE2/src/Modules/CalcDefence.lua`
-//! - Block：:961-1058（BlockChanceMax 体系 + 三分型 + lucky/unlucky 幂）
-//! - Ward：:1144-1273（per-slot 聚合 + EnergyShieldToWard）
-//! - Deflection：:48-54（`deflectChance` 公式）+ :1516-1522（rating 合成，
-//!   0.22.0 vendor 行号；0.5.4b 复核公式未变）
-//! - Spirit：:73-126（Life/Mana/Spirit 统一池公式）
+//! Vendor reference: `vendor/PathOfBuilding-PoE2/src/Modules/CalcDefence.lua`
+//! - Block: :961-1058 (the BlockChanceMax system, four variants, lucky/unlucky powers)
+//! - Ward: :1144-1273 (per-slot aggregation + EnergyShieldToWard)
+//! - Deflection: :48-54 (the `deflectChance` formula) + :1516-1522 (rating
+//!   composition, vendor line numbers from 0.22.0; re-verified against 0.5.4b with no formula change)
+//! - Spirit: :73-126 (the unified Life/Mana/Spirit pool formula)
 
 use crate::{CalcConfig, ModDb};
 use pobr_data::prelude::*;
@@ -18,47 +19,47 @@ use pobr_data::prelude::*;
 use super::env::Env;
 use super::round;
 
-/// `calcLib.mod` 等价：`(1 + Σinc/100) × Πmore`（vendor CalcTools.lua）。
+/// Equivalent to `calcLib.mod`: `(1 + Σinc/100) × Πmore` (vendor CalcTools.lua).
 fn scaling_mod(db: &ModDb, cfg: &CalcConfig, names: &[ModName]) -> f64 {
     (1.0 + db.sum(ModType::Inc, cfg, names) / 100.0) * db.more(cfg, names)
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Block（CalcDefence.lua:961-1058）
-// ─────────────────────────────────────────────────────────────────
+// Block (CalcDefence.lua:961-1058)
 
-/// Block 面板计算结果（攻击/投射物/法术/法术投射物四分型 + 上限 + 有效值 + 承伤）。
+/// Block panel calculation result (attack/projectile/spell/spell-projectile
+/// variants, plus ceilings, effective values, and damage taken).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct BlockResult {
-    /// 攻击格挡几率（%；cap 后）。
+    /// Attack block chance (%; after cap).
     pub block_chance: f64,
-    /// 攻击格挡上限（%）。
+    /// Attack block chance ceiling (%).
     pub block_chance_max: f64,
-    /// 投射物攻击格挡几率（%）。
+    /// Projectile attack block chance (%).
     pub projectile_block_chance: f64,
-    /// 法术格挡几率（%）。
+    /// Spell block chance (%).
     pub spell_block_chance: f64,
-    /// 法术格挡上限（%）。
+    /// Spell block chance ceiling (%).
     pub spell_block_chance_max: f64,
-    /// 法术投射物格挡几率（%）。
+    /// Spell projectile block chance (%).
     pub spell_projectile_block_chance: f64,
-    /// 有效攻击格挡（%；lucky/unlucky 幂后）。
+    /// Effective attack block chance (%; after the lucky/unlucky power).
     pub effective_block_chance: f64,
-    /// 有效法术格挡（%）。
+    /// Effective spell block chance (%).
     pub effective_spell_block_chance: f64,
-    /// 有效投射物攻击格挡（%）。EHP 平均格挡 = 四分型均值（vendor :1067）。
+    /// Effective projectile attack block chance (%). The EHP average block
+    /// chance is the mean of all four variants (vendor :1067).
     pub effective_projectile_block_chance: f64,
-    /// 有效法术投射物格挡（%）。
+    /// Effective spell projectile block chance (%).
     pub effective_spell_projectile_block_chance: f64,
-    /// 格挡承伤比例（%；被格挡命中仍承受的伤害份额 = Σ BASE BlockEffect，
-    /// vendor `DamageTakenOnBlock`；0 = 完全格挡）。
+    /// Block damage-taken share (%; the fraction of damage still taken from
+    /// a blocked hit = Σ BASE BlockEffect, vendor `DamageTakenOnBlock`; 0 = fully blocked).
     pub block_effect_taken_pct: f64,
 }
 
-/// lucky/unlucky 幂变换（CalcDefence.lua:1038-1052）：
-/// lucky（两次取优）→ `(1 − (1−p)²)`；unlucky（两次取劣）→ `p²`。
+/// The lucky/unlucky power transform (CalcDefence.lua:1038-1052): lucky
+/// (best of two rolls) → `(1 − (1−p)²)`; unlucky (worst of two rolls) → `p²`.
 fn luck_transform(chance_pct: f64, lucky: bool, unlucky: bool) -> f64 {
-    // vendor `luck = luck × (lucky and 2 or 1) / (unlucky and 2 or 1)`——同时成立时抵消。
+    // vendor `luck = luck × (lucky and 2 or 1) / (unlucky and 2 or 1)` -- cancels out when both hold.
     if lucky && !unlucky {
         (1.0 - (1.0 - chance_pct / 100.0).powi(2)) * 100.0
     } else if unlucky && !lucky {
@@ -68,37 +69,43 @@ fn luck_transform(chance_pct: f64, lucky: bool, unlucky: bool) -> f64 {
     }
 }
 
-/// Block 面板计算（CalcDefence.lua:961-1058 逐段对照）。
+/// Block panel calculation (mirrors CalcDefence.lua:961-1058 section by section).
 ///
-/// 输入约定：盾基底格挡已由 build 层注入 `ShieldBlockChance` BASE（vendor
-/// :975-979 读 Weapon 2/3 `armourData.BlockChance`；PoBR 由 calc_orchestrator
-/// 按 Weapon2 槽基底 catalog 值注入）。盾物品上的局部 block 词条留在全局桶
-/// 数学等价（`(base+ΣBASE)×mod` 对加法/乘法项的归属不敏感，仅差 vendor 件级
-/// `floor`，≤1% 级），不做 drop-local。
+/// Input convention: the shield's base block chance has already been
+/// injected by the build layer as `ShieldBlockChance` BASE (vendor :975-979
+/// reads Weapon 2/3's `armourData.BlockChance`; PoBR's `calc_orchestrator`
+/// injects it from the Weapon2 slot's base catalog value). Local block mods
+/// on the shield item are left in the global bucket, which is mathematically
+/// equivalent (`(base+ΣBASE)×mod` doesn't care which additive/multiplicative
+/// term an item's mod belongs to, differing from vendor only by the
+/// item-level `floor`, at the ≤1% level) — not worth splitting out per-item.
 ///
-/// 公式（vendor 行号）：
-/// - 上限（:961-965）：`BlockChanceMax = Override ‖ (ΣBASE BaseBlockChanceMax +
-///   ΣBASE BlockChanceMax)`，min `BlockChanceCap`(90)；角色固有 `BaseBlockChanceMax`
-///   50 走 `cfg.constants.game().base_block_chance_max`（vendor CalcSetup.lua:28
-///   注入，Misc.lua:147）。
-/// - 攻击（:989-991）：`(ShieldBlockChance + ΣBASE BlockChance) × calcLib.mod(BlockChance)`
-///   后 min 上限。
-/// - 投射物（:994）：`block + ΣBASE ProjectileBlockChance × mod(BlockChance)` 再 cap。
-/// - 法术上限（:995-998）：`SpellBlockChanceMaxIsBlockChanceMax` flag → 同攻击上限；
-///   否则 `Override ‖ (ΣBASE BaseSpellBlockChanceMax + ΣBASE SpellBlockChanceMax)` cap。
-/// - 法术（:1003-1014）：`SpellBlockChanceIsBlockChance` flag → 等同攻击分型；
-///   否则 `ΣBASE SpellBlockChance × mod(SpellBlockChance)` cap；法术投射物
-///   `max(spell + ΣBASE ProjectileSpellBlockChance × mod, projectile, 0)`。
-/// - `CannotBlockAttacks`/`CannotBlockSpells`（:1026-1033）→ 对应分型清零。
-/// - Effective（:1034-1052）：lucky/unlucky flag 幂变换（enemy `reduceEnemyBlock`
-///   归 0 略去——敌方 ModDb 无此来源）。
-/// - 承伤（:1054-1058）：`DamageTakenOnBlock = ΣBASE BlockEffect`
-///   （vendor `BlockEffect = 100 − Σ` 为防住份额，本结构直接给承伤份额）。
+/// Formulas (vendor line numbers):
+/// - Ceiling (:961-965): `BlockChanceMax = Override ‖ (ΣBASE BaseBlockChanceMax +
+///   ΣBASE BlockChanceMax)`, min with `BlockChanceCap`(90); the character's
+///   inherent `BaseBlockChanceMax` of 50 comes from
+///   `cfg.constants.game().base_block_chance_max` (injected by vendor
+///   CalcSetup.lua:28, sourced from Misc.lua:147).
+/// - Attack (:989-991): `(ShieldBlockChance + ΣBASE BlockChance) ×
+///   calcLib.mod(BlockChance)`, then min with the ceiling.
+/// - Projectile (:994): `block + ΣBASE ProjectileBlockChance × mod(BlockChance)`, then capped.
+/// - Spell ceiling (:995-998): the `SpellBlockChanceMaxIsBlockChanceMax` flag
+///   → same as the attack ceiling; otherwise `Override ‖ (ΣBASE
+///   BaseSpellBlockChanceMax + ΣBASE SpellBlockChanceMax)`, capped.
+/// - Spell (:1003-1014): the `SpellBlockChanceIsBlockChance` flag → mirrors
+///   the attack variants exactly; otherwise `ΣBASE SpellBlockChance ×
+///   mod(SpellBlockChance)`, capped; spell projectile =
+///   `max(spell + ΣBASE ProjectileSpellBlockChance × mod, projectile, 0)`.
+/// - `CannotBlockAttacks`/`CannotBlockSpells` (:1026-1033) → zeroes the corresponding variants.
+/// - Effective (:1034-1052): the lucky/unlucky flag power transform (enemy
+///   `reduceEnemyBlock` is always 0 and omitted -- the enemy ModDb has no source for it).
+/// - Damage taken (:1054-1058): `DamageTakenOnBlock = ΣBASE BlockEffect`
+///   (vendor's `BlockEffect = 100 − Σ` gives the blocked-off share; this struct gives the taken share directly).
 pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
     let cap = cfg.constants.game().block_chance_cap;
     let inherent_max = cfg.constants.game().base_block_chance_max;
 
-    // :961-965 攻击格挡上限。
+    // :961-965 attack block chance ceiling.
     let block_max = db
         .override_(cfg, ModName::from("BlockChanceMax"))
         .unwrap_or_else(|| {
@@ -108,16 +115,16 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
         })
         .min(cap);
 
-    // :975-980 盾基底（build 层注入；双持双盾 = 两槽求和，与 vendor 相加一致）。
+    // :975-980 shield base (injected by the build layer; dual-shield = sum of both slots, matching vendor's addition).
     let shield_base = db.sum(ModType::Base, cfg, &[ModName::from("ShieldBlockChance")]);
 
-    // :989-991 攻击格挡。
+    // :989-991 attack block chance.
     let block_names = [ModName::from("BlockChance")];
     let total_block = (shield_base + db.sum(ModType::Base, cfg, &block_names))
         * scaling_mod(db, cfg, &block_names);
     let mut block = total_block.min(block_max);
 
-    // :994 投射物攻击格挡（增量 BASE 也吃 BlockChance 乘区）。
+    // :994 projectile attack block chance (the incremental BASE also picks up the BlockChance factor).
     let mut projectile = (block
         + db.sum(
             ModType::Base,
@@ -126,7 +133,7 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
         ) * scaling_mod(db, cfg, &block_names))
     .min(block_max);
 
-    // :995-998 法术格挡上限。
+    // :995-998 spell block chance ceiling.
     let spell_max = if db.flag(cfg, ModName::from("SpellBlockChanceMaxIsBlockChanceMax")) {
         block_max
     } else {
@@ -143,7 +150,7 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
             .min(cap)
     };
 
-    // :1003-1014 法术 / 法术投射物格挡。
+    // :1003-1014 spell / spell projectile block chance.
     let spell_names = [ModName::from("SpellBlockChance")];
     let (mut spell, mut spell_projectile) = if db
         .flag(cfg, ModName::from("SpellBlockChanceIsBlockChance"))
@@ -164,7 +171,7 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
         (spell, spell_proj)
     };
 
-    // :1026-1033 禁格挡 flag。
+    // :1026-1033 cannot-block flags.
     if db.flag(cfg, ModName::from("CannotBlockAttacks")) {
         block = 0.0;
         projectile = 0.0;
@@ -174,7 +181,7 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
         spell_projectile = 0.0;
     }
 
-    // :1034-1052 有效值（lucky/unlucky 幂）。
+    // :1034-1052 effective values (the lucky/unlucky power).
     let effective = |v: f64, kind: &str| -> f64 {
         let lucky = db.flag(cfg, ModName::from(format!("{kind}IsLucky").as_str()));
         let unlucky = db.flag(cfg, ModName::from(format!("{kind}IsUnlucky").as_str()));
@@ -195,28 +202,30 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
             spell_projectile,
             "SpellProjectileBlockChance",
         ),
-        // :1054-1058 承伤份额（clamp 到 [0,100]，超额防住不为负）。
+        // :1054-1058 damage-taken share (clamped to [0,100]; overshoot mitigation never goes negative).
         block_effect_taken_pct: db
             .sum(ModType::Base, cfg, &[ModName::from("BlockEffect")])
             .clamp(0.0, 100.0),
     }
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Ward 池（CalcDefence.lua:1144-1273）
-// ─────────────────────────────────────────────────────────────────
+// Ward pool (CalcDefence.lua:1144-1273)
 
-/// Ward 池聚合（CalcDefence.lua:1158-1186 per-slot + :1275-1296 全局 BASE）。
+/// Ward pool aggregation (CalcDefence.lua:1158-1186's per-slot sum + :1275-1296's global BASE).
 ///
-/// `Ward = ΣBASE Ward × calcLib.mod(Ward, Defences)`；`EnergyShieldToWard`
-/// keystone（C-1 快照传入）时 inc 名集追加 `EnergyShield`（ES 的 inc 借给
-/// Ward，:1162-1163 `Sum("INC", slotCfg, "Ward", "Defences", "EnergyShield")`）。
+/// `Ward = ΣBASE Ward × calcLib.mod(Ward, Defences)`; under the
+/// `EnergyShieldToWard` keystone (passed in from the C-1 snapshot), the inc
+/// name set adds `EnergyShield` (ES's inc is lent to Ward, :1162-1163's
+/// `Sum("INC", slotCfg, "Ward", "Defences", "EnergyShield")`).
 ///
-/// 件级底值（rolled `Ward:` 行 / catalog 基底 ward）由 build 层注入 `Ward`
-/// BASE（SlotName tag），与全局 `+N to Ward` 同桶——「逐件乘全局后求和」与
-/// 「求和后乘全局」等价（同 defence_base_modifiers 的等价性论证；slot-scoped
-/// inc 词条与 `DoubleBodyArmourDefence` 的件级翻倍缺口同 armour 路径，后续补）。
-/// vendor 取整：per-slot 求和后无显式 round，沿用 round 到 1e-9。
+/// Item-level base values (rolled `Ward:` lines / catalog base ward) are
+/// injected by the build layer as `Ward` BASE (with a SlotName tag), sharing
+/// the same bucket as global `+N to Ward` mods -- "multiply each item by the
+/// global factor then sum" and "sum then multiply by the global factor" are
+/// equivalent (same equivalence argument as defence_base_modifiers; the gap
+/// for slot-scoped inc mods and `DoubleBodyArmourDefence`'s item-level
+/// doubling follows the same path as armour, to be filled in later).
+/// Vendor rounding: no explicit round after the per-slot sum, so this follows suit down to 1e-9.
 pub fn calc_ward(db: &ModDb, cfg: &CalcConfig, es_to_ward: bool) -> f64 {
     let base = db.sum(ModType::Base, cfg, &[ModName::from("Ward")]);
     if base <= 0.0 {
@@ -237,26 +246,24 @@ pub fn calc_ward(db: &ModDb, cfg: &CalcConfig, es_to_ward: bool) -> f64 {
     round(base * (1.0 + inc / 100.0) * more)
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Deflection（CalcDefence.lua:48-54 / :1516-1522）
-// ─────────────────────────────────────────────────────────────────
+// Deflection (CalcDefence.lua:48-54 / :1516-1522)
 
-/// Deflection 面板结果。
+/// Deflection panel result.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct DeflectionResult {
-    /// 偏斜等级（rating）。
+    /// Deflection rating.
     pub rating: f64,
-    /// 偏斜几率（%；DeflectIsLucky 幂后）。
+    /// Deflection chance (%; after the DeflectIsLucky power).
     pub chance: f64,
-    /// 偏斜减伤幅度（%；基础 40 + ΣBASE DeflectEffect，clamp [0,100]；
-    /// Track F 折入 mitigation 层）。
+    /// Deflection mitigation magnitude (%; base 40 + ΣBASE DeflectEffect,
+    /// clamped to [0,100]; folded into the mitigation layer by Track F).
     pub effect_pct: f64,
 }
 
-/// `calcs.deflectChance` 等价（CalcDefence.lua:48-54）：
-/// `chanceToNotDeflect = acc/(acc + deflection×0.12) × 150 − 50`，
-/// `chance = clamp(100 − round(notDeflect), 0, DeflectionChanceCap)`；
-/// `deflection < 1` → 0。
+/// Equivalent to `calcs.deflectChance` (CalcDefence.lua:48-54):
+/// `chanceToNotDeflect = acc/(acc + deflection×0.12) × 150 − 50`,
+/// `chance = clamp(100 − round(notDeflect), 0, DeflectionChanceCap)`;
+/// `deflection < 1` → 0.
 fn deflect_chance_pct(deflection: f64, accuracy: f64, cap: f64) -> f64 {
     if deflection < 1.0 {
         return 0.0;
@@ -265,15 +272,15 @@ fn deflect_chance_pct(deflection: f64, accuracy: f64, cap: f64) -> f64 {
     (100.0 - chance_to_not_deflect.round()).clamp(0.0, cap)
 }
 
-/// Deflection 合成（CalcDefence.lua:1516-1522）。
+/// Deflection composition (CalcDefence.lua:1516-1522).
 ///
 /// `DeflectionRating = ΣBASE DeflectionRating + (Evasion × ΣBASE
 /// EvasionGainAsDeflection/100 + Armour × ΣBASE ArmourGainAsDeflection/100)
-/// × calcLib.mod(DeflectionRating)`——vendor 括号语义：inc/more 乘区**只作用于
-/// GainAs 派生部分**（:1490 原文）。`DeflectChance = deflectChance(rating,
-/// enemyAccuracy)`；`DeflectIsLucky` → `(1−(1−p)²)`（:1518-1521）；
-/// `DeflectEffect = clamp(基础 40 + ΣBASE, 0, 100)`（:1522，常量
-/// `cfg.constants.game().deflect_effect`）。
+/// × calcLib.mod(DeflectionRating)` -- vendor's parenthesization means the
+/// inc/more factor **only applies to the GainAs-derived portion** (per the
+/// source at :1490). `DeflectChance = deflectChance(rating, enemyAccuracy)`;
+/// `DeflectIsLucky` → `(1−(1−p)²)` (:1518-1521); `DeflectEffect = clamp(base
+/// 40 + ΣBASE, 0, 100)` (:1522, constant `cfg.constants.game().deflect_effect`).
 pub fn calc_deflection(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -304,7 +311,7 @@ pub fn calc_deflection(
         enemy_accuracy,
         cfg.constants.game().deflection_chance_cap,
     );
-    // :1518-1521 DeflectIsLucky 幂。
+    // :1518-1521 the DeflectIsLucky power.
     if db.flag(cfg, ModName::from("DeflectIsLucky")) {
         chance = luck_transform(chance, true, false);
     }
@@ -319,20 +326,18 @@ pub fn calc_deflection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Spirit 池（CalcDefence.lua:73-126）
-// ─────────────────────────────────────────────────────────────────
+// Spirit pool (CalcDefence.lua:73-126)
 
-/// Spirit 池本值（CalcDefence.lua:87-95，Life/Mana/Spirit 统一公式）。
+/// Base Spirit pool value (CalcDefence.lua:87-95, the unified Life/Mana/Spirit formula).
 ///
 /// `Spirit = Override ‖ max(round((ΣBASE Spirit × (1−conv/100) + ΣBASE ExtraSpirit)
-/// × (1+Σinc/100) × Πmore), 1)`，其中
-/// `conv = min(ΣBASE SpiritConvertTo{EnergyShield,Armour,Evasion}, 100)`（:92）。
-/// 取整为 vendor `round`（最近整数）；下限 1 与 Life/Mana 一致（:95）。
+/// × (1+Σinc/100) × Πmore), 1)`, where
+/// `conv = min(ΣBASE SpiritConvertTo{EnergyShield,Armour,Evasion}, 100)` (:92).
+/// Rounded with vendor `round` (nearest integer); floors at 1, same as Life/Mana (:95).
 ///
-/// 来源：基底 Spirit（权杖 `Spirit:` 行 / catalog `spirit`，build 层注入
-/// `Spirit` BASE）+ 任务奖励 `+30/+30/+40 to Spirit`（xml_build 全局词条）+
-/// 树/装备 `+N to Spirit`。
+/// Source: base Spirit (sceptre `Spirit:` lines / catalog `spirit`, injected
+/// by the build layer as `Spirit` BASE), plus quest rewards' `+30/+30/+40 to
+/// Spirit` (a global mod from xml_build), plus tree/equipment `+N to Spirit`.
 pub fn calc_spirit_pool(db: &ModDb, cfg: &CalcConfig) -> f64 {
     let names = [ModName::from("Spirit")];
     if let Some(v) = db.override_(cfg, ModName::from("Spirit")) {
@@ -356,22 +361,21 @@ pub fn calc_spirit_pool(db: &ModDb, cfg: &CalcConfig) -> f64 {
         .max(1.0)
 }
 
-// ─────────────────────────────────────────────────────────────────
-// fill 编排（perform 一行调用，蓝图 §3.2 预登记）
-// ─────────────────────────────────────────────────────────────────
+// fill orchestration
 
-/// Track D fill 编排：Block / Spirit / Ward / Deflection 面板族写
-/// [`super::OutputTable`]。需在 `fill_skill_mechanics` 之后调用
-/// （spirit_unreserved 读取技能侧已写入的 `spirit_reserved`）。
+/// Track D fill orchestration: writes the Block / Spirit / Ward / Deflection
+/// panel family into [`super::OutputTable`]. Must be called after
+/// `fill_skill_mechanics` (spirit_unreserved reads `spirit_reserved`, already written by the skill side).
 ///
-/// keystone 开关经快照传入（C-1 契约，蓝图 §3.3，不散读 flag）。
+/// Keystone switches are passed in via the snapshot.
 pub fn fill_defence_panels(env: &mut Env, keystones: &crate::rules::DefenceKeystones) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
 
-    // --- Block（CalcDefence.lua:961-1058）---
-    // 覆写 fill_mechanics 早期的旧 Σ BASE clamp 口径（缺盾基底与 inc 乘区），
-    // 对齐 vendor `(shield_base + ΣBASE) × mod` 全公式。
+    // Block (CalcDefence.lua:961-1058)
+    // Overwrites fill_mechanics's earlier bare Σ BASE clamp (which lacked
+    // the shield base and the inc factor), aligning with vendor's full
+    // `(shield_base + ΣBASE) × mod` formula.
     let block = calc_block(db, cfg);
     env.player.output.block_chance = block.block_chance;
     env.player.output.spell_block_chance = block.spell_block_chance;
@@ -384,20 +388,21 @@ pub fn fill_defence_panels(env: &mut Env, keystones: &crate::rules::DefenceKeyst
         block.effective_spell_projectile_block_chance;
     env.player.output.block_effect = block.block_effect_taken_pct;
 
-    // --- Spirit 池本值 + 未预留余量（CalcDefence.lua:73-126 / :330-337）---
-    // 技能侧 spirit_reserved 由 fill_skill_mechanics（M1-T4.5 链路）先行写入，
-    // 本段只做池本值与差值（00-index 裁决 #12 分工）。
-    // vendor :337 `Unreserved = max − reserved` 无下限——超订（reserved > 池）
-    // 为负，与 golden（SpiritUnreserved 可为 −130 等）一致。
+    // Base Spirit pool value + unreserved remainder (CalcDefence.lua:73-126 / :330-337)
+    // The skill side's spirit_reserved is already written by
+    // fill_skill_mechanics beforehand; this section only computes the pool
+    // value and the difference.
+    // vendor :337's `Unreserved = max − reserved` has no floor -- over-reservation
+    // (reserved > pool) goes negative, matching golden (SpiritUnreserved can be −130, etc.).
     env.player.output.spirit = calc_spirit_pool(db, cfg);
     env.player.output.spirit_unreserved =
         env.player.output.spirit - env.player.output.spirit_reserved;
 
-    // --- Ward 池（CalcDefence.lua:1144-1296；EnergyShieldToWard 走 C-1 快照）---
+    // Ward pool (CalcDefence.lua:1144-1296; EnergyShieldToWard comes from the C-1 snapshot)
     env.player.output.ward = calc_ward(db, cfg, keystones.energy_shield_to_ward);
 
-    // --- Deflection（CalcDefence.lua:48-54 / :1516-1522）---
-    // 敌人命中读数同 Track E evade 路径（env.enemy.base.accuracy）。
+    // Deflection (CalcDefence.lua:48-54 / :1516-1522)
+    // Enemy accuracy is read the same way as Track E's evade path (env.enemy.base.accuracy).
     let deflect = calc_deflection(
         db,
         cfg,
@@ -413,8 +418,8 @@ pub fn fill_defence_panels(env: &mut Env, keystones: &crate::rules::DefenceKeyst
 mod tests {
     use super::*;
 
-    /// lucky 幂：50% → 75%；unlucky 幂：50% → 25%；双 flag 抵消。
-    /// （CalcDefence.lua:1038-1052 手算）
+    /// Lucky power: 50% → 75%; unlucky power: 50% → 25%; both flags cancel out.
+    /// (Hand-computed against CalcDefence.lua:1038-1052)
     #[test]
     fn luck_transform_powers() {
         assert_eq!(luck_transform(50.0, true, false), 75.0);

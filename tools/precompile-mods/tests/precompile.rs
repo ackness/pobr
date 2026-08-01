@@ -1,18 +1,19 @@
-//! 集成测试：重生一致（byte-stable）+ 覆盖率报表 golden（蓝图 §6 / §12.1-D）。
+//! Integration tests: regen consistency (byte-stable) plus a coverage-report golden.
 //!
-//! 策略：把仓库的真实版本数据目录（base + generated/special_derived）镜像到
-//! 临时目录的 `data/<patch>/` 布局下（保持 `examples` 可经 grandparent 定位失败
-//! 时退化为跳过 C1），在隔离副本上跑 precompile，断言：
-//! 1. 同输入两次运行 byte 完全一致（确定性 / regen 一致）；
-//! 2. 覆盖率报表三态计数自洽（parsed + unsupported + err == total）；
-//! 3. 已提交 `data/<patch>/generated/parse-coverage.json` 的 summary 与新鲜重跑
-//!    一致（golden：防止手改 / 漂移）。
+//! Strategy: mirror the repo's real version data directory (base +
+//! generated/special_derived) into a temp `data/<patch>/` layout (with
+//! `examples` reachable via the grandparent lookup, degrading to skipping C1
+//! if it can't be located), run precompile on the isolated copy, and assert:
+//! 1. two runs on identical input produce byte-identical output (determinism / regen consistency);
+//! 2. the coverage report's three-way counts are self-consistent (parsed + unsupported + err == total);
+//! 3. the committed `data/<patch>/generated/parse-coverage.json` summary
+//!    matches a fresh rerun (golden: catches hand edits / drift).
 
 use std::path::{Path, PathBuf};
 
 use precompile_mods::{corpus, parsed, report};
 
-/// 仓库根（tools/precompile-mods → 上两级）。
+/// Repo root (tools/precompile-mods → up two levels).
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -20,15 +21,15 @@ fn repo_root() -> PathBuf {
         .expect("canonicalize repo root")
 }
 
-// 钉 golden 校验版本（随 golden 切换自动跟进；byte-stable / 覆盖率 golden 均
-// 对这一版数据断言）。
+// Pin the golden verification version (follows automatically when golden
+// switches; both the byte-stable and coverage goldens assert against this version's data).
 const PATCH: &str = pobr_data::GOLDEN_PARITY_DATA_VERSION;
 
 fn data_dir() -> PathBuf {
     repo_root().join("data").join(PATCH)
 }
 
-/// 重生一致：同一隔离 data 副本上两次 precompile，产物 byte 完全相同。
+/// Regen consistency: two precompile runs on the same isolated data copy produce byte-identical output.
 #[test]
 fn precompile_is_byte_stable() {
     let src_data = data_dir();
@@ -63,7 +64,7 @@ fn precompile_is_byte_stable() {
     std::fs::remove_dir_all(&tmp).ok();
 }
 
-/// 三态计数自洽 + 覆盖率比值定义正确。
+/// Three-way counts are self-consistent, and the coverage ratio is defined correctly.
 #[test]
 fn coverage_counts_are_consistent() {
     let src_data = data_dir();
@@ -81,7 +82,7 @@ fn coverage_counts_are_consistent() {
     );
     assert_eq!(cov.total, corpus.lines.len(), "total 应等于去重语料行数");
     assert_eq!(outcome.entries, cov.total, "entries 应等于语料行数");
-    // gaps == unsupported + err（每个非 parsed 行各记一条缺口）。
+    // gaps == unsupported + err (every non-parsed line records exactly one gap).
     assert_eq!(
         cov.gaps.len(),
         cov.unsupported + cov.err,
@@ -93,13 +94,14 @@ fn coverage_counts_are_consistent() {
     std::fs::remove_dir_all(&tmp).ok();
 }
 
-/// golden：已提交的 parse-coverage.json summary 必须等于新鲜重跑结果。
-/// 同时校验已提交报表与 baseline 一致（棘轮基线随产物同步）。
+/// Golden: the committed parse-coverage.json summary must equal a fresh rerun.
+/// Also checks the committed report against the baseline (the ratchet baseline tracks the artifact).
 #[test]
 fn committed_coverage_matches_fresh_run() {
     let committed_path = data_dir().join("generated/parse-coverage.json");
     if !committed_path.is_file() {
-        // 首次提交前（产物尚未落盘）跳过——CI 在产物入库后即生效。
+        // Skip before the first commit (artifact not on disk yet) — this
+        // check becomes active as soon as the artifact is checked in.
         eprintln!("SKIP: 尚无已提交 parse-coverage.json");
         return;
     }
@@ -125,10 +127,13 @@ fn committed_coverage_matches_fresh_run() {
          请重跑 cargo run -p precompile-mods -- --data data/{PATCH} --report 并提交"
     );
 
-    // 覆盖率棘轮：已提交产物不得低于基线（与 devs/scripts/regen-check.sh 同语义）。
-    // 基线是人工决策闸门（同 parity_no_regression），不随 regen 自动刷新；覆盖率
-    // 提升后抬高基线是可选的 deliberate 动作，故这里断言方向而非相等——数据 regen
-    // 抬升覆盖率不再机械打碎本测试。
+    // Coverage ratchet: the committed artifact must not fall below the
+    // baseline (same semantics as devs/scripts/regen-check.sh). The baseline
+    // is a manual decision gate (like parity_no_regression) and doesn't
+    // auto-refresh with regen; raising the baseline after a coverage
+    // improvement is a deliberate, optional action, so we assert a
+    // direction rather than equality here — a data regen that raises
+    // coverage no longer mechanically breaks this test.
     let baseline_path = repo_root().join("devs/ci/parse-coverage-baseline.json");
     if baseline_path.is_file() {
         let baseline: serde_json::Value =
@@ -147,11 +152,12 @@ fn committed_coverage_matches_fresh_run() {
     std::fs::remove_dir_all(&tmp).ok();
 }
 
-/// 把版本数据目录镜像到一个唯一临时 `<tmp>/data/<patch>/` 布局。
-/// 复制 precompile 的输入（base/passive_tree.json + generated/special_derived.json）
-/// 并把 `examples/demo-bd-test/builds` 软链到临时根下，使 C1 build XML 语料经
-/// grandparent 定位可达——隔离副本上的全四层语料与真实 data 目录一致，golden
-/// 对照才成立。
+/// Mirror the version data directory into a unique temp `<tmp>/data/<patch>/`
+/// layout. Copies precompile's inputs
+/// (base/passive_tree.json + generated/special_derived.json) and symlinks
+/// `examples/demo-bd-test/builds` under the temp root so the C1 build XML
+/// corpus is reachable via the grandparent lookup — the golden comparison
+/// only holds if the isolated copy's four corpus layers match the real data directory.
 fn mirror_data_dir(src_data: &Path) -> PathBuf {
     let unique = format!(
         "pobr-precompile-test-{}-{:?}",
@@ -167,34 +173,38 @@ fn mirror_data_dir(src_data: &Path) -> PathBuf {
     std::fs::create_dir_all(tmp_data.join("generated")).unwrap();
     std::fs::create_dir_all(tmp_data.join("overlay")).unwrap();
 
-    // base/passive_tree.json（C2）。
+    // base/passive_tree.json (C2).
     let tree = src_data.join("base/passive_tree.json");
     if tree.is_file() {
         std::fs::copy(&tree, tmp_data.join("base/passive_tree.json")).unwrap();
     }
-    // base/manifest.json（gamedata loader 可能需要；存在即拷）。
+    // base/manifest.json (the gamedata loader may need it; copy if present).
     let manifest = src_data.join("manifest.json");
     if manifest.is_file() {
         std::fs::copy(&manifest, tmp_data.join("manifest.json")).unwrap();
     }
-    // generated/special_derived.json（SD）+ generated/special_vendor.json（V0 批量）
-    // ——ruleset 三源拼接进引擎 special 通道，缺任一源 fresh 重跑覆盖率会低于
-    // 已提交产物。存在即拷。
+    // generated/special_derived.json (SD) + generated/special_vendor.json (V0
+    // batch) — the ruleset splices three sources into the engine's special
+    // channel; missing any one of them makes a fresh rerun's coverage fall
+    // below the committed artifact. Copy if present.
     for name in ["special_derived.json", "special_vendor.json"] {
         let src = src_data.join("generated").join(name);
         if src.is_file() {
             std::fs::copy(&src, tmp_data.join("generated").join(name)).unwrap();
         }
     }
-    // overlay/special_mods.json（parser 引擎 special 通道输入，版本特有条目）。存在即拷。
+    // overlay/special_mods.json (parser engine's special-channel input, version-specific entries). Copy if present.
     let special_mods = src_data.join("overlay/special_mods.json");
     if special_mods.is_file() {
         std::fs::copy(&special_mods, tmp_data.join("overlay/special_mods.json")).unwrap();
     }
-    // overlay-common/special_mods.json（版本无关策展层，P1-3）：gamedata 加载期把它
-    // merge 到版本 overlay 之下，是引擎 special 规则的大头（133 条）。它是版本目录的
-    // **同级**兄弟，隔离镜像里也必须复刻到 <tmp>/data/overlay-common/，否则 fresh 重跑
-    // 只见版本层零头、覆盖率跌破已提交产物。存在即拷。
+    // overlay-common/special_mods.json (the version-independent curation
+    // layer, P1-3): the gamedata loader merges this under the version
+    // overlay, and it makes up most of the engine's special rules (133
+    // entries). It's a **sibling** of the version directory, not a child, so
+    // the isolated mirror must also replicate it to <tmp>/data/overlay-common/
+    // — otherwise a fresh rerun only sees the version layer's leftovers and
+    // coverage drops below the committed artifact. Copy if present.
     if let Some(src_common) = src_data
         .parent()
         .map(|p| p.join("overlay-common/special_mods.json"))
@@ -204,8 +214,8 @@ fn mirror_data_dir(src_data: &Path) -> PathBuf {
         std::fs::create_dir_all(&dst_common).unwrap();
         std::fs::copy(&src_common, dst_common.join("special_mods.json")).unwrap();
     }
-    // overlay/mod_parser_rules.json（引擎解析规则六表——删 legacy 后是唯一
-    // 解析器，缺它 precompile 直接报错）。存在即拷。
+    // overlay/mod_parser_rules.json (the engine's six parse-rule tables — the
+    // only parser now that legacy is removed; precompile errors out without it). Copy if present.
     let parser_rules = src_data.join("overlay/mod_parser_rules.json");
     if parser_rules.is_file() {
         std::fs::copy(
@@ -215,7 +225,7 @@ fn mirror_data_dir(src_data: &Path) -> PathBuf {
         .unwrap();
     }
 
-    // examples/demo-bd-test/builds（C1）：软链到临时根，使 grandparent 定位可达。
+    // examples/demo-bd-test/builds (C1): symlink into the temp root so the grandparent lookup can reach it.
     let src_builds = repo_root().join("examples/demo-bd-test/builds");
     if src_builds.is_dir() {
         let dst_examples = tmp.join("examples/demo-bd-test");
@@ -226,8 +236,9 @@ fn mirror_data_dir(src_data: &Path) -> PathBuf {
     tmp
 }
 
-/// 重新计算 coverage（precompile 已写 parsed_mods.json，但 Coverage 在 outcome 里；
-/// report::emit 需要 &Coverage——这里直接再跑一次 precompile 取 outcome.coverage）。
+/// Recompute coverage (precompile already wrote parsed_mods.json, but
+/// Coverage lives in its outcome; report::emit needs a &Coverage, so we just
+/// rerun precompile and take outcome.coverage).
 fn recompute_coverage(data_dir: &Path) -> parsed::Coverage {
     let corpus = corpus::collect(data_dir, None).expect("collect for coverage");
     parsed::precompile(&corpus, data_dir)

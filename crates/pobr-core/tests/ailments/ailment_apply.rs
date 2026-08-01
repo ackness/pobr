@@ -1,20 +1,21 @@
-//! 非伤害异常施加闭环集成测试（M3 T4 D1，蓝图 m3-orchestration.md §7.1 测试清单）：
-//! - 端到端：enemy `ShockVal` 20 → 有效 DPS ×1.20（DamageTaken 链经 offence
-//!   `mode_effective` 消费）；
-//! - override 与 Val 取 max；Maximum clamp + 精度截断（prec=0 → 整数 floor）逐值；
-//! - `Condition:Already<X>` 置位后二次施加无效；
-//! - 空转兼容（无来源词条 → env 逐值不变）；
-//! - Chill ActionSpeed / Bonechill 分支 / magnitude 缩放 / Multiplier 增量更新。
+//! Integration tests for the non-damaging-ailment application loop:
+//! - end-to-end: enemy `ShockVal` 20 → effective DPS ×1.20 (via the DamageTaken chain
+//!   consumed by offence's `mode_effective`);
+//! - override and Val take the max; Maximum clamp + precision truncation (prec=0 → integer
+//!   floor), value by value;
+//! - a second application is a no-op once `Condition:Already<X>` is set;
+//! - empty-spin compatibility (no source mods → env values unchanged);
+//! - Chill ActionSpeed / Bonechill branch / magnitude scaling / incremental Multiplier updates.
 //!
-//! 公式出处：vendor CalcPerform.lua:3076-3180（行号 0.18.0 实读）。
+//! Formula source: vendor CalcPerform.lua:3076-3180 (line numbers read against 0.18.0).
 
 use pobr_core::calc::ailment_apply::apply_nondamaging_ailments;
 use pobr_core::calc::{Actor, ActorBaseStats, Env, perform};
 use pobr_core::{CalcConfig, Modifier};
 use pobr_data::prelude::*;
 
-/// 标准攻击 Env：100~200 物理、1/s、满命中（敌人无闪避），有效 DPS 口径。
-/// 与 `enemy_mod_db.rs` 的 `attack_input` 同形：基线 DPS = 150。
+/// Standard attack Env: 100-200 physical, 1/s, full hit chance (enemy has no evasion),
+/// effective-DPS semantics. Shaped like `enemy_mod_db.rs`'s `attack_input`: baseline DPS = 150.
 fn effective_env() -> Env {
     let base = ActorBaseStats {
         life: 100.0,
@@ -30,34 +31,32 @@ fn effective_env() -> Env {
     env
 }
 
-/// 注入 enemy 条件 flag（config `conditionEnemyShocked` 等价产物的最小形）。
+/// Inject an enemy condition flag (the minimal shape equivalent to config `conditionEnemyShocked`).
 fn enemy_condition(env: &mut Env, condition: &str) {
     env.enemy
         .mod_db
         .add_mod(Modifier::flag(format!("Condition:{condition}")).with_source("Config"));
 }
 
-/// enemy db 某名字在给定 cfg 下的 INC 聚合。
+/// The INC aggregation of a given name in the enemy db, under the given cfg.
 fn enemy_inc(env: &Env, name: &str) -> f64 {
     env.enemy
         .mod_db
         .sum(ModType::Inc, &env.cfg, &[ModName::from(name)])
 }
 
-/// enemy db 某名字在给定 cfg 下的 BASE 聚合。
+/// The BASE aggregation of a given name in the enemy db, under the given cfg.
 fn enemy_base(env: &Env, name: &str) -> f64 {
     env.enemy
         .mod_db
         .sum(ModType::Base, &env.cfg, &[ModName::from(name)])
 }
 
-// ---------------------------------------------------------------------------
-// 1. 端到端：enemy ShockVal 20 → 有效 DPS ×1.20
-// ---------------------------------------------------------------------------
+// 1. End-to-end: enemy ShockVal 20 -> effective DPS x1.20
 
 #[test]
 fn shock_val_20_raises_effective_dps_by_20_percent() {
-    // 基线：无感电。
+    // Baseline: no shock.
     let mut base_env = effective_env();
     perform(&mut base_env).expect("baseline perform");
     let base_dps = base_env.player.output.dps;
@@ -66,7 +65,7 @@ fn shock_val_20_raises_effective_dps_by_20_percent() {
         "基线 150 平均 × 1/s × 100% 命中，got {base_dps}"
     );
 
-    // 感电：config 形状 = enemy `Condition:Shocked` flag + enemy `ShockVal` BASE 20。
+    // Shocked: the config shape = enemy `Condition:Shocked` flag + enemy `ShockVal` BASE 20.
     let mut env = effective_env();
     enemy_condition(&mut env, "Shocked");
     env.enemy
@@ -80,7 +79,7 @@ fn shock_val_20_raises_effective_dps_by_20_percent() {
         base_dps * 1.20,
         env.player.output.dps
     );
-    // 面板口径不受影响（DamageTaken 消费链 mode_effective 门控）。
+    // Panel semantics are unaffected (the DamageTaken consumer chain is gated by mode_effective).
     let mut panel = effective_env();
     panel.cfg.mode_effective = false;
     enemy_condition(&mut panel, "Shocked");
@@ -96,13 +95,11 @@ fn shock_val_20_raises_effective_dps_by_20_percent() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 2. override 与 Val 取 max（CalcPerform.lua:3164 的 m_max(override, ΣVal)）
-// ---------------------------------------------------------------------------
+// 2. override and Val take the max (CalcPerform.lua:3164's m_max(override, SumVal))
 
 #[test]
 fn override_and_val_take_max() {
-    // override(30) > Val(20) → 30。
+    // override(30) > Val(20) -> 30.
     let mut env = effective_env();
     env.enemy
         .mod_db
@@ -115,7 +112,7 @@ fn override_and_val_take_max() {
         (enemy_inc(&env, "DamageTaken") - 30.0).abs() < 1e-9,
         "override 30 胜出"
     );
-    // Override 来源 → 置 Condition:Shocked（vendor :3136-3138）+ cfg 桥接。
+    // An Override source -> sets Condition:Shocked (vendor :3136-3138) + bridges into cfg.
     assert!(
         env.enemy
             .mod_db
@@ -124,7 +121,7 @@ fn override_and_val_take_max() {
     );
     assert!(env.cfg.condition("Shocked"), "条件桥接回填 cfg");
 
-    // Val(40) > override(30) → 40。
+    // Val(40) > override(30) -> 40.
     let mut env = effective_env();
     enemy_condition(&mut env, "Shocked");
     env.enemy
@@ -140,13 +137,11 @@ fn override_and_val_take_max() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 3. Maximum clamp + 精度截断（prec=0 → 整数 floor）逐值
-// ---------------------------------------------------------------------------
+// 3. Maximum clamp + precision truncation (prec=0 -> integer floor), value by value
 
 #[test]
 fn maximum_clamp_and_precision_floor() {
-    // Shock 上限 = non_damaging_ailments.json Shock.max = 100：150 → 100。
+    // Shock cap = non_damaging_ailments.json Shock.max = 100: 150 -> 100.
     let mut env = effective_env();
     enemy_condition(&mut env, "Shocked");
     env.enemy
@@ -158,7 +153,7 @@ fn maximum_clamp_and_precision_floor() {
         "Shock clamp 到数据 max=100"
     );
 
-    // Chill 上限 = 50（cfg.constants.game().chill_max_effect）：80 → 50。
+    // Chill cap = 50 (cfg.constants.game().chill_max_effect): 80 -> 50.
     let mut env = effective_env();
     enemy_condition(&mut env, "Chilled");
     env.enemy
@@ -170,7 +165,7 @@ fn maximum_clamp_and_precision_floor() {
         "Chill clamp 到数据 max=50，ActionSpeed INC -50"
     );
 
-    // 精度截断：prec=0 → floor（33.7 → 33）。
+    // Precision truncation: prec=0 -> floor (33.7 -> 33).
     let mut env = effective_env();
     enemy_condition(&mut env, "Shocked");
     env.enemy
@@ -182,7 +177,7 @@ fn maximum_clamp_and_precision_floor() {
         "prec=0 整数 floor：33.7 → 33"
     );
 
-    // `<X>Max` BASE 词条抬高上限：max = 100 + 20 → ShockVal 110 → 110。
+    // A `<X>Max` BASE mod raises the cap: max = 100 + 20 -> ShockVal 110 -> 110.
     let mut env = effective_env();
     enemy_condition(&mut env, "Shocked");
     env.enemy
@@ -197,7 +192,7 @@ fn maximum_clamp_and_precision_floor() {
         "ShockMax BASE +20 抬高上限到 120"
     );
 
-    // `<X>Max` Override 直接覆盖上限：override 60 → ShockVal 110 → 60。
+    // A `<X>Max` Override directly overrides the cap: override 60 -> ShockVal 110 -> 60.
     let mut env = effective_env();
     enemy_condition(&mut env, "Shocked");
     env.enemy
@@ -213,9 +208,7 @@ fn maximum_clamp_and_precision_floor() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 4. Already 置位后二次施加无效（防 minion 双重施加，:3130/:3168）
-// ---------------------------------------------------------------------------
+// 4. A second application is a no-op once Already is set (guards against double application by minions, :3130/:3168)
 
 #[test]
 fn second_application_is_noop_after_already_flag() {
@@ -247,9 +240,7 @@ fn second_application_is_noop_after_already_flag() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 5. 空转兼容：无来源词条 → env 逐值不变
-// ---------------------------------------------------------------------------
+// 5. Empty-spin compatibility: no source mods -> env values unchanged
 
 #[test]
 fn empty_spin_leaves_env_unchanged() {
@@ -265,13 +256,11 @@ fn empty_spin_leaves_env_unchanged() {
     assert_eq!(env.cfg.conditions, conditions, "cfg.conditions 不被触碰");
 }
 
-// ---------------------------------------------------------------------------
-// 6. magnitude 缩放：Base/Minimum 乘 Enemy<X>Magnitude/AilmentMagnitude，Override 不乘
-// ---------------------------------------------------------------------------
+// 6. Magnitude scaling: Base/Minimum multiply by Enemy<X>Magnitude/AilmentMagnitude, Override doesn't
 
 #[test]
 fn magnitude_scales_base_and_minimum_but_not_override() {
-    // ShockBase 20 × (1 + 50%) = 30。
+    // ShockBase 20 x (1 + 50%) = 30.
     let mut env = effective_env();
     enemy_condition(&mut env, "Shocked");
     env.player
@@ -286,7 +275,7 @@ fn magnitude_scales_base_and_minimum_but_not_override() {
         "ShockBase 吃 EnemyShockMagnitude INC：20×1.5=30"
     );
 
-    // ShockOverride 20 不乘 magnitude → 20。
+    // ShockOverride 20 doesn't multiply by magnitude -> 20.
     let mut env = effective_env();
     enemy_condition(&mut env, "Shocked");
     env.player
@@ -301,7 +290,7 @@ fn magnitude_scales_base_and_minimum_but_not_override() {
         "Override 来源不乘 magnitude"
     );
 
-    // 敌侧 SelfShockMagnitude 同样参与（:3146）：20 × 1.5(skill) × 1.1(enemy) = 33。
+    // The enemy side's SelfShockMagnitude also participates (:3146): 20 x 1.5(skill) x 1.1(enemy) = 33.
     let mut env = effective_env();
     enemy_condition(&mut env, "Shocked");
     env.player
@@ -319,7 +308,7 @@ fn magnitude_scales_base_and_minimum_but_not_override() {
         "skill×enemy 双侧 magnitude：20×1.5×1.1=33"
     );
 
-    // Minimum 累加（:3148-3150）：ShockMinimum 10+15 → 25 高于各单项 → 25。
+    // Minimum accumulates (:3148-3150): ShockMinimum 10+15 -> 25, higher than either single value -> 25.
     let mut env = effective_env();
     enemy_condition(&mut env, "Shocked");
     env.player
@@ -335,13 +324,11 @@ fn magnitude_scales_base_and_minimum_but_not_override() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 7. Chill：ActionSpeed 负向 + Bonechill 分支
-// ---------------------------------------------------------------------------
+// 7. Chill: negative ActionSpeed + the Bonechill branch
 
 #[test]
 fn chill_writes_negative_action_speed_and_bonechill() {
-    // 无 Bonechill：仅 ActionSpeed INC -num。
+    // No Bonechill: only ActionSpeed INC -num.
     let mut env = effective_env();
     enemy_condition(&mut env, "Chilled");
     env.enemy
@@ -357,7 +344,7 @@ fn chill_writes_negative_action_speed_and_bonechill() {
         "无 HasBonechill 不写 ColdDamageTaken"
     );
 
-    // HasBonechill + enemy ChillVal > 0 → ColdDamageTaken INC num（:3092-3094）。
+    // HasBonechill + enemy ChillVal > 0 -> ColdDamageTaken INC num (:3092-3094).
     let mut env = effective_env();
     enemy_condition(&mut env, "Chilled");
     env.enemy
@@ -373,13 +360,11 @@ fn chill_writes_negative_action_speed_and_bonechill() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 8. Multiplier:ChillEffect/ShockEffect 增量更新（:3173-3180）
-// ---------------------------------------------------------------------------
+// 8. Incremental updates to Multiplier:ChillEffect/ShockEffect (:3173-3180)
 
 #[test]
 fn effect_multiplier_updates_incrementally() {
-    // 无既有 multiplier：补到 Current。
+    // No existing multiplier: top up to Current.
     let mut env = effective_env();
     enemy_condition(&mut env, "Shocked");
     env.enemy
@@ -391,7 +376,7 @@ fn effect_multiplier_updates_incrementally() {
         "Multiplier:ShockEffect 补到 20"
     );
 
-    // 既有 5 → 增量 15，总和 20。
+    // Existing 5 -> +15 increment, total 20.
     let mut env = effective_env();
     enemy_condition(&mut env, "Shocked");
     env.enemy
@@ -408,7 +393,7 @@ fn effect_multiplier_updates_incrementally() {
         "既有 5 + 增量 15 = 20"
     );
 
-    // 既有 30 ≥ Current 20 → 不更新（保持 30）。
+    // Existing 30 >= Current 20 -> no update (stays at 30).
     let mut env = effective_env();
     enemy_condition(&mut env, "Shocked");
     env.enemy

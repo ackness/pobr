@@ -1,6 +1,7 @@
-//! 召唤物域集成测试（greenfield，验证 build_minion_context 三通道 + 怪物式 scaling）。
+//! Minion-domain integration tests (greenfield, verifying build_minion_context's
+//! three channels + monster-style scaling).
 //!
-//! 出处：agent-docs/minions.md；PoB2 CalcPerform.lua / CalcActiveSkill.lua / Misc.lua。
+//! Source: agent-docs/minions.md; PoB2 CalcPerform.lua / CalcActiveSkill.lua / Misc.lua.
 
 use pobr_core::calc::minion::{
     AttributeInfusion, MinionData, MinionInput, MinionModifierEntry, build_minion_context,
@@ -34,9 +35,10 @@ fn gem_level_table_maps_per_pob2() {
 
 #[test]
 fn base_stats_use_ally_life_table_times_normalizer() {
-    // #12 起召唤物生命走盟友表 + floor（vendor CalcPerform.lua:1046
-    // `m_floor(monsterAllyLifeTable[level] × minionData.life)`），不再用敌方
-    // monsterLifeTable。armour/evasion 仍走敌方表（vendor 同源）。
+    // As of #12, minion life goes through the ally table + floor (vendor
+    // CalcPerform.lua:1046 `m_floor(monsterAllyLifeTable[level] x minionData.life)`),
+    // no longer the enemy monsterLifeTable. armour/evasion still use the enemy
+    // table (same source as vendor).
     let data = MinionData {
         life: 0.7,
         ..MinionData::default()
@@ -231,14 +233,13 @@ fn energy_shield_derived_from_life_fraction() {
     assert!(base.energy_shield > 0.0);
 }
 
-// ---------------------------------------------------------------------------
-// MinionDef 入库 schema 驱动的集成测试
-// 出处：PoB2 src/Data/Minions.lua；agent-docs/minions.md §1 / §4。
-// ---------------------------------------------------------------------------
+// Integration tests driven by the MinionDef catalog schema
+// Source: PoB2 src/Data/Minions.lua; agent-docs/minions.md §1 / §4.
 
 #[test]
 fn build_context_from_zombie_def_matches_manual() {
-    // build_minion_context_from_def(zombie, gem=20) 与手填 MinionData 结果一致。
+    // build_minion_context_from_def(zombie, gem=20) matches a manually filled
+    // MinionData.
     let def = minion_def_zombie();
     let ctx_def =
         build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
@@ -265,7 +266,7 @@ fn build_context_from_zombie_def_matches_manual() {
 
 #[test]
 fn build_context_from_storm_mage_def_has_es_and_lightning_resist() {
-    // 骷髅法师：energyShield=0.15，lightningResist=50。
+    // Skeletal storm mage: energyShield=0.15, lightningResist=50.
     let def = minion_def_skeletal_storm_mage();
     let ctx = build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
     assert!(ctx.base.energy_shield > 0.0);
@@ -281,10 +282,10 @@ fn build_context_from_storm_mage_def_has_es_and_lightning_resist() {
 
 #[test]
 fn build_context_from_raging_spirit_life_matches_pob2() {
-    // 暴怒魂灵：life=0.25，gem_level=20 → 怪物等级 40。
+    // Raging spirit: life=0.25, gem_level=20 -> monster level 40.
     let def = minion_def_raging_spirit();
     let ctx = build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
-    // #12：生命走盟友表 + floor（vendor CalcPerform.lua:1046）。
+    // #12: life goes through the ally table + floor (vendor CalcPerform.lua:1046).
     let expected = (pobr_data::monster::monster_ally_life(40) as f64 * 0.25).floor();
     assert!(
         (ctx.base.life - expected).abs() < 1e-6,
@@ -295,7 +296,7 @@ fn build_context_from_raging_spirit_life_matches_pob2() {
 
 #[test]
 fn build_context_from_skeletal_warrior_armour_normalizer() {
-    // 骷髅战士：armour=0.5。
+    // Skeletal warrior: armour=0.5.
     let def = minion_def_skeletal_warrior();
     let ctx = build_minion_context_from_def(&def, 20, vec![], vec![], AttributeInfusion::default());
     let row = MonsterScalingRow::at_level(40);
@@ -309,7 +310,8 @@ fn build_context_from_skeletal_warrior_armour_normalizer() {
 
 #[test]
 fn build_context_from_def_type_filter_works() {
-    // type 限定为 "RaisedSkeletonWarriors" → 骷髅战士注入，僵尸不注入。
+    // Type-scoped to "RaisedSkeletonWarriors" -> injected for the skeletal warrior,
+    // not for the zombie.
     let def_warrior = minion_def_skeletal_warrior();
     let def_zombie = minion_def_zombie();
     let entry = MinionModifierEntry {
@@ -351,7 +353,7 @@ fn build_context_from_def_type_filter_works() {
 
 #[test]
 fn summoned_minion_multipliers_integration() {
-    // limit=3 → 玩家 ModDb 里 SummonedMinion = MinionPresenceCount = 3。
+    // limit=3 -> in the player ModDb, SummonedMinion = MinionPresenceCount = 3.
     let mut player_db = ModDb::new();
     write_summoned_minion_multipliers(&mut player_db, 3, "RaisedSkeletonWarriors");
     let cfg = CalcConfig::attack();
@@ -374,7 +376,7 @@ fn summoned_minion_multipliers_integration() {
 
 #[test]
 fn summoned_minion_multipliers_stack_multiple_types() {
-    // 骷髅 limit=3 + 僵尸 limit=2 → SummonedMinion = 5（BASE 累加）。
+    // Skeleton limit=3 + zombie limit=2 -> SummonedMinion = 5 (BASE mods add up).
     let mut player_db = ModDb::new();
     write_summoned_minion_multipliers(&mut player_db, 3, "Skeleton");
     write_summoned_minion_multipliers(&mut player_db, 2, "Zombie");

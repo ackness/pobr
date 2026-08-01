@@ -1,14 +1,16 @@
-//! 运行时版本发现 + 用户 patch 层（数据/代码隔离收尾）。
+//! Runtime version discovery + the user patch layer (wrapping up the
+//! data/code separation).
 
 use pobr_gamedata::{GameData, current_data_dir, data_version};
 
-/// 运行时版本发现：无 env 时落到 `data/CURRENT` 标记（仓库内 = DATA_VERSION），
-/// `current_data_dir()` 指向该版本目录。
+/// Runtime version discovery: falls back to the `data/CURRENT` marker when
+/// there's no env var (in the repo, this equals DATA_VERSION);
+/// `current_data_dir()` points at that version's directory.
 #[test]
 fn data_version_resolves_and_dir_matches() {
     let v = data_version();
     assert!(!v.trim().is_empty(), "data_version 不应为空");
-    // 仓库 data/CURRENT 与编译期 DATA_VERSION 一致（行为不变）。
+    // The repo's data/CURRENT matches the compile-time DATA_VERSION (unchanged behavior).
     assert_eq!(v, pobr_gamedata::DATA_VERSION);
     assert!(
         current_data_dir().ends_with(&v),
@@ -17,8 +19,9 @@ fn data_version_resolves_and_dir_matches() {
     );
 }
 
-/// 用户 patch 层：`patch/<相对路径>` 按 merge 规则叠在官方数据上——
-/// 同 id 覆盖、新 id 追加；无 patch 目录 = 纯官方数据。
+/// The user patch layer: `patch/<relative path>` is layered on top of the
+/// official data per the merge rules — same id overrides, new id
+/// appends; no patch directory = pure official data.
 #[test]
 fn user_patch_layer_merges_over_base() {
     let tmp = std::env::temp_dir().join(format!("pobr-patch-test-{}", std::process::id()));
@@ -27,21 +30,21 @@ fn user_patch_layer_merges_over_base() {
     std::fs::create_dir_all(&base).unwrap();
     std::fs::create_dir_all(&patch_base).unwrap();
 
-    // 官方 base：Mana(divisor=1) + Life(divisor=1)
+    // Official base: Mana(divisor=1) + Life(divisor=1)
     std::fs::write(
         base.join("cost_types.json"),
         r#"[{"id":"Mana","divisor":1},{"id":"Life","divisor":1}]"#,
     )
     .unwrap();
 
-    // 无 patch：纯官方。
+    // No patch: pure official.
     let plain = GameData::new(&tmp)
         .cost_types()
         .expect("cost_types 无 patch");
     assert_eq!(plain.len(), 2);
     assert_eq!(plain.iter().find(|c| c.id == "Mana").unwrap().divisor, 1);
 
-    // 用户 patch：覆盖 Mana 的 divisor + 追加自定义资源 Custom。
+    // User patch: overrides Mana's divisor + appends a custom resource, Custom.
     std::fs::write(
         patch_base.join("cost_types.json"),
         r#"[{"id":"Mana","divisor":99},{"id":"Custom","divisor":7}]"#,

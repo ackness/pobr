@@ -1,0 +1,33 @@
+{
+  "minions.raised_zombie": {
+    "damage": 0.75,
+    "life": 0.7
+  },
+  "minions.spectre_cocoon3": {
+    "armour": 0.4,
+    "life": 2.2
+  },
+  "parser_rules.handler_fallbacks": 3,
+  "parser_rules.section_counts": {
+    "base_cost_types": 32,
+    "cost_types_map": 32,
+    "damage_types": 5,
+    "degen_types": 32,
+    "distinct_forms": 29,
+    "flag_phrases": 206,
+    "flag_types": 26,
+    "forms": 95,
+    "name_map": 789,
+    "pen_types": 6,
+    "pre_flags": 219,
+    "regen_types": 32,
+    "suffix_types": 40,
+    "tag_phrases": 691,
+    "unsupported": [
+      "mirrored"
+    ],
+    "unsupported_pobr_extra": [
+      "split"
+    ]
+  }
+}

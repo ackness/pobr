@@ -72,43 +72,46 @@ fn run() -> io::Result<()> {
     }
 }
 
-// ---- extract-lua / extract-bases：vendor Lua → overlay JSON（确定性抽取通道）----
+// extract-lua / extract-bases: vendor Lua -> overlay JSON (the deterministic extraction channel)
 
 fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io::Result<()> {
     let parsed = ExtractCliArgs::parse(args)?;
-    // 缺省 --files：extract-bases 取基底数据文件集（Data/Bases）；extract-lua 按
-    // `--what` 抽取目标取各自约定——stat-map 不含 minion/spectre（M1 蓝图 T2.1，
-    // 召唤物 statMap 留 M5a）；gem-effects 恒读 Data/Gems.lua（--files 仅为公共
-    // 调用层占位）；其余目标用全量技能文件。
+    // Default --files: extract-bases uses the base-item data file set
+    // (Data/Bases); extract-lua picks its own set per `--what` target —
+    // stat-map excludes minion/spectre (summons have their own statMap
+    // targets); gem-effects always reads Data/Gems.lua (--files is just a
+    // placeholder for the shared call layer); other targets use the full skill file set.
     let default_files: &[&str] = if command == "extract-bases" {
         DEFAULT_BASE_FILES
     } else {
         match parsed.what.as_deref() {
             Some("stat-map") => DEFAULT_STAT_MAP_SKILL_FILES,
-            // stat-descriptions：root + passive + presence/aura（M6 E/F tree 通道）
+            // stat-descriptions: root + passive + presence/aura (the tree channel)
             Some("stat-descriptions") => DEFAULT_STAT_DESC_FILES,
             Some("gem-effects") => &["Gems"],
-            // config-options 恒读 Modules/ConfigOptions.lua（headless 引导，--files 仅占位）
+            // config-options always reads Modules/ConfigOptions.lua (headless bootstrap, --files is a placeholder)
             Some("config-options") => &["ConfigOptions"],
-            // curse-priority 恒读 Modules/Data.lua 的 data.cursePriority 表字面量（M3 S1-C）
+            // curse-priority always reads the data.cursePriority table literal in Modules/Data.lua (-C)
             Some("curse-priority") => &["Data"],
-            // pre-M5 数据生产目标：minions/spectres/mod-scalability/runes/catalysts
-            // 抽取文件固定（runner 内校验）；uniques 用 itemTypes 全集；minion-list
-            // 复用全量技能文件（与 skill-overrides 同集）。
+            // Data-production targets: minions/spectres/mod-scalability/runes/catalysts
+            // have fixed extraction files (validated inside the runner);
+            // uniques uses the full itemTypes set; minion-list reuses the
+            // full skill file set (same as skill-overrides).
             Some("minions") => &["Minions"],
             Some("spectres") => &["Spectres"],
             Some("mod-scalability") => &["ModScalability"],
             Some("runes") => &["ModRunes"],
             Some("catalysts") => &["Item"],
             Some("uniques") => DEFAULT_UNIQUE_FILES,
-            // parser-rules / special-mods 恒读 Modules/ModParser.lua
-            //（headless 全量引导，--files 仅占位）
+            // parser-rules / special-mods always read Modules/ModParser.lua
+            // (full headless bootstrap, --files is a placeholder)
             Some("parser-rules") | Some("special-mods") => &["ModParser"],
             _ => DEFAULT_SKILL_FILES,
         }
     };
-    // F1：`_meta.regen_command` 的 `--out` 与实际入参解耦——按 what-target /
-    // 子命令归一化为 canonical 仓库相对路径（重放到临时路径不再产生自指差异）。
+    // F1: decouple `_meta.regen_command`'s `--out` from the actual argument —
+    // normalize it to a canonical repo-relative path per what-target /
+    // subcommand (replaying against a temp path no longer creates a self-referential diff).
     let meta_target = if command == "extract-bases" {
         "bases"
     } else {
@@ -128,11 +131,12 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
         version_file: parsed.version_file,
         out_for_meta,
     };
-    // 抽取目标分发：extract-bases（基底物品覆盖值，M2-D1）；extract-lua 按 `--what`
-    // ——skill-overrides（缺省，per-skill 覆盖值）/ gem-quality（宝石品质 stat 斜率，
-    // M1-T1）/ stat-map（SkillStatMap 全局 + per-set 覆盖，M1-T2）/ gem-effects
-    // （宝石→授予效果连边，M1-T5.1）/ stat-set-labels（M1-T5.2）/ config-options
-    // （ConfigOptions 目录，M3 前置）/ parser-rules（ModParser 解析规则六表，M6 前置）。
+    // Extraction target dispatch: extract-bases (base item overrides);
+    // extract-lua by `--what` — skill-overrides (default, per-skill
+    // overrides) / gem-quality (gem quality stat slopes) / stat-map
+    // (SkillStatMap global + per-set overrides) / gem-effects (gem ->
+    // granted-effect links) / stat-set-labels / config-options (the
+    // ConfigOptions catalog) / parser-rules (the six ModParser parse-rule tables).
     let json = if command == "extract-bases" {
         if let Some(what) = parsed.what.as_deref() {
             return Err(io::Error::new(
@@ -184,11 +188,11 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
     }
 }
 
-// ---- gen-mirage-configs：工具内嵌 5 条 mirage 配置 → overlay JSON ----
+// gen-mirage-configs: the tool's 5 embedded mirage configs -> overlay JSON
 
 fn run_gen_mirage_configs_command(args: impl Iterator<Item = String>) -> io::Result<()> {
     let parsed = ExtractCliArgs::parse(args)?;
-    // F1：同 run_extract_command——`--out` 归一化为 canonical 相对路径再入 _meta。
+    // F1: same as run_extract_command -- normalize `--out` to a canonical relative path before it goes into _meta.
     let out_for_meta = canonical_out_for_meta(
         parsed.out.as_deref(),
         "mirage-configs",
@@ -197,7 +201,7 @@ fn run_gen_mirage_configs_command(args: impl Iterator<Item = String>) -> io::Res
     let extract_args = ExtractLuaArgs {
         vendor_root: parsed.vendor_root,
         luajit: resolve_luajit(parsed.luajit.as_deref()),
-        // 仅为复用 ExtractLuaArgs 形状；本命令不执行 luajit。
+        // Only here to reuse ExtractLuaArgs' shape; this command doesn't run luajit.
         files: vec!["CalcMirages".to_string()],
         version_file: parsed.version_file,
         out_for_meta,
@@ -219,14 +223,15 @@ fn run_gen_mirage_configs_command(args: impl Iterator<Item = String>) -> io::Res
     }
 }
 
-// ---- gen-trigger-configs（M4-T5 W-E1）：工具内嵌 61 条触发配置 → overlay JSON ----
+// gen-trigger-configs: the tool's 61 embedded trigger configs -> overlay JSON
 
 fn run_gen_trigger_configs_command(args: impl Iterator<Item = String>) -> io::Result<()> {
     let parsed = ExtractCliArgs::parse(args)?;
     let extract_args = ExtractLuaArgs {
         vendor_root: parsed.vendor_root,
         luajit: resolve_luajit(parsed.luajit.as_deref()),
-        // 仅为复用 ExtractLuaArgs 形状；本命令不执行 luajit（直接扫源对账）。
+        // Only here to reuse ExtractLuaArgs' shape; this command doesn't run
+        // luajit (it reconciles directly against the source).
         files: vec!["CalcTriggers".to_string()],
         version_file: parsed.version_file,
         out_for_meta: parsed
@@ -251,7 +256,7 @@ fn run_gen_trigger_configs_command(args: impl Iterator<Item = String>) -> io::Re
     }
 }
 
-// ---- gen-stat-id-map（M6 E/F 段 B）：消费两份 overlay，跑引擎派生 stat_id → modifier ----
+// gen-stat-id-map: consumes two overlays and runs the engine to derive stat_id -> modifier
 
 fn run_gen_stat_id_map_command(mut args: impl Iterator<Item = String>) -> io::Result<()> {
     let mut overlay_dir = None;
@@ -274,7 +279,7 @@ fn run_gen_stat_id_map_command(mut args: impl Iterator<Item = String>) -> io::Re
             format!("gen-stat-id-map 缺少 --overlay-dir <path>\n{USAGE}"),
         ));
     };
-    // _meta.regen_command 的 --out 归一化为 canonical 相对路径（与其他目标一致）。
+    // Normalize _meta.regen_command's --out to a canonical relative path (consistent with the other targets).
     let out_for_meta = canonical_out_for_meta(out.as_deref(), "stat-id-map", None);
     let json = run_gen_stat_id_map(&overlay_dir, out_for_meta)?;
     match out {
@@ -293,7 +298,7 @@ fn run_gen_stat_id_map_command(mut args: impl Iterator<Item = String>) -> io::Re
     }
 }
 
-// ---- gen-skill-types（数据驱动 A1）：Global.lua SkillType 全量枚举 → pobr-data 静态表 ----
+// gen-skill-types (data-driven A1): the full SkillType enum from Global.lua -> a pobr-data static table
 
 fn run_gen_skill_types_command(mut args: impl Iterator<Item = String>) -> io::Result<()> {
     let mut vendor_root = None;
@@ -325,11 +330,11 @@ fn run_gen_skill_types_command(mut args: impl Iterator<Item = String>) -> io::Re
 struct ExtractCliArgs {
     vendor_root: PathBuf,
     out: Option<PathBuf>,
-    /// 显式 `--files` 列表；`None` = 按 `--what` 取各目标的缺省文件集。
+    /// Explicit `--files` list; `None` means use each target's default file set based on `--what`.
     files: Option<Vec<String>>,
     luajit: Option<PathBuf>,
     version_file: Option<PathBuf>,
-    /// 抽取目标（`None` = 缺省 skill-overrides）。
+    /// Extraction target (`None` defaults to skill-overrides).
     what: Option<String>,
 }
 
@@ -382,7 +387,7 @@ impl ExtractCliArgs {
     }
 }
 
-// ---- check-buff-refs：buff_definitions.json vendor 行段 hash 对账 ----
+// check-buff-refs: reconcile buff_definitions.json against vendor line-range hashes
 
 fn run_check_buff_refs_command(mut args: impl Iterator<Item = String>) -> io::Result<()> {
     let mut vendor_root = None;
@@ -435,7 +440,7 @@ fn run_check_buff_refs_command(mut args: impl Iterator<Item = String>) -> io::Re
     }
 }
 
-// ---- parser-rules drift diff：重抽 vs 已提交 byte-diff（M6 前置任务 3）----
+// parser-rules drift diff: byte-diff freshly re-extracted output against what's committed (task 3)
 
 fn run_parser_rules_drift_command(mut args: impl Iterator<Item = String>) -> io::Result<()> {
     let mut vendor_root = None;
@@ -475,8 +480,8 @@ fn run_parser_rules_drift_command(mut args: impl Iterator<Item = String>) -> io:
             format!("无法读取已提交文件 {}：{error}", committed.display()),
         )
     })?;
-    // _meta.regen_command 的 --out 以已提交文件自记的值为准（与 --committed 的
-    // 路径拼写解耦，避免绝对/相对路径差异造成假 drift）。
+    // Trust the committed file's own recorded _meta.regen_command --out value
+    // (decoupled from the --committed path spelling, to avoid absolute/relative path differences causing false drift).
     let committed_out = serde_json::from_str::<serde_json::Value>(&committed_text)
         .ok()
         .and_then(|doc| {
@@ -488,7 +493,7 @@ fn run_parser_rules_drift_command(mut args: impl Iterator<Item = String>) -> io:
             let (_, out) = regen.split_once(" --out ")?;
             Some(out.trim().to_string())
         });
-    // 回退（已提交文件缺 --out 自记值时）：从 --committed 路径归一化（F1）。
+    // Fallback (when the committed file lacks a recorded --out value): normalize from the --committed path (F1).
     let out_for_meta = committed_out.or_else(|| {
         canonical_out_for_meta(Some(&committed), "parser-rules", version_file.as_deref())
     });
@@ -518,7 +523,7 @@ fn run_parser_rules_drift_command(mut args: impl Iterator<Item = String>) -> io:
     )))
 }
 
-// ---- 既有 catalog 命令（scan/check/diff/fixture-check）----
+// The pre-existing catalog commands (scan/check/diff/fixture-check)
 
 fn run_catalog_command(command: &str, args: impl Iterator<Item = String>) -> io::Result<()> {
     let args = CatalogCliArgs::parse(args)?;

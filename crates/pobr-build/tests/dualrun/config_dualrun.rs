@@ -1,26 +1,35 @@
-//! M3-T1 A5 双跑对照（蓝图 D3 点 1）：旧 `parse_config` vs
-//! `parse_config_inputs` + `config_interpreter` 新路径。
+//! Dual-run comparison: the old `parse_config` vs the new
+//! `parse_config_inputs` + `config_interpreter` path.
 //!
-//! **持续回归**（commit ① 起）：主路径已切 interpreter（`config_resolve`），
-//! 本测试保持运行直至旧路径删除（dualrun 报告 §3-⑧）——任何让「旧 ⊆ 新且
-//! 交集逐值相等」失效的改动都会在此被拦下。
+//! **Ongoing regression** (since commit ①): the main path has switched to the
+//! interpreter (`config_resolve`); this test keeps running until the old
+//! path is deleted — any change that breaks "old ⊆ new, with the
+//! intersection equal value-for-value" is caught here.
 //!
-//! 口径：**旧路径能产出的 conditions / multipliers / global_texts / 标量项，
-//! 新路径必须逐值覆盖（旧 ⊆ 新）且交集逐值相等**。「覆盖」分两层：
-//! 1. **同名同值**：新路径 `conditions`/`multipliers` 回填表直接命中；
-//! 2. **mod 化覆盖**：vendor 忠实形态把条件落成带 tag（`Condition:Combat` 战斗
-//!    门控 / `Condition:Effective`）或 enemy actor 化的 Modifier——值在 mod
-//!    载荷中逐值相等，但**不再进全局表**（属新增覆盖语义，待行为 commit 逐类
-//!    打开，本波现网仍消费旧路径产出，行为逐值不变）。
-//! 3. **handler 缺口**：catalog 条目带 handler_id 且未注册产出——原始输入已被
-//!    RawConfigInputs 无损捕获（标量回显可查），解释产出待后续 handler 批次。
+//! Contract: **every conditions / multipliers / global_texts / scalar item the
+//! old path can produce must be covered value-for-value by the new path
+//! (old ⊆ new), and the intersection must be equal value-for-value**.
+//! "Covered" has two layers:
+//! 1. **Same name, same value**: the new path's `conditions`/`multipliers`
+//!    backfill tables hit directly;
+//! 2. **Covered via mod-ification**: vendor's faithful form turns a condition
+//!    into a tagged Modifier (`Condition:Combat` combat gate /
+//!    `Condition:Effective`) or an enemy-actor-ized one — the value matches
+//!    exactly inside the mod payload, but it **no longer lands in the global
+//!    table** (this is new coverage semantics, to be opened up per-category by
+//!    behaviour commits; right now production still consumes the old path's
+//!    output, so behaviour is unchanged value-for-value).
+//! 3. **Handler gap**: a catalog entry has a handler_id but no registered
+//!    producer — the raw input has already been losslessly captured by
+//!    RawConfigInputs (verifiable via scalar echo); interpreted output awaits
+//!    a later handler batch.
 //!
-//! 任何不落入上述三类的旧产出项 = 双跑失败（hard fail）。
+//! Any old-path output item that doesn't fall into one of the three
+//! categories above is a dual-run failure (hard fail).
 //!
-//! 数据源：`examples/demo-bd-test/builds/*/code.txt`（ninja 18-build）+
-//! `tests/fixtures/config_*.xml`。运行 `-- --nocapture` 打印逐类 diff 汇总
-//! （新增覆盖项清单），人工誊录至
-//! `audits/rearchitecture-2026-06-10/blueprints/m3-t1-dualrun-report.md`。
+//! Data sources: `examples/demo-bd-test/builds/*/code.txt` (the ninja
+//! 18-build set) + `tests/fixtures/config_*.xml`. Run with `-- --nocapture`
+//! to print the per-category diff summary (the list of newly-covered items).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -37,7 +46,7 @@ use pobr_data::modifier::ModType;
 use pobr_gamedata::ruleset::ConfigCatalog;
 use pobr_gamedata::{GameData, repo_data_root};
 
-/// engine 版单行解析（真实规则，签名对齐历史 `parse_mod`；引擎永不 `Err`）。
+/// Single-line parse via the engine (real rules, signature matches the historical `parse_mod`; the engine never returns `Err`).
 fn parse_mod(
     text: &str,
 ) -> Result<pobr_core::mod_parser::ParseOutcome, pobr_core::mod_parser::ParseError> {
@@ -47,8 +56,10 @@ fn parse_mod(
     Ok(pobr_core::mod_parser::parse_mod_engine(text, &RULES))
 }
 
-/// 旧路径 `DEFAULT_TRUE_CONDITIONS` 的反查表（条件变量名 → XML `<Input name>`）。
-/// 测试本地镜像 xml_build 私有常量——旧路径删除时本表随双跑测试一并退役。
+/// Reverse lookup table for the old path's `DEFAULT_TRUE_CONDITIONS`
+/// (condition variable name -> XML `<Input name>`).
+/// This test locally mirrors xml_build's private constant — this table
+/// retires together with the dual-run test when the old path is deleted.
 const DEFAULT_TRUE_REVERSE: &[(&str, &str)] = &[
     ("TargetingBrandedEnemy", "targetBrandedEnemy"),
     ("DemonForm", "inDemonForm"),
@@ -59,14 +70,14 @@ const DEFAULT_TRUE_REVERSE: &[(&str, &str)] = &[
     ("VigilantStrikeBypassCD", "VigilantStrikeBypassCD"),
 ];
 
-/// 旧路径充能条件反查表（条件变量名 → XML `<Input name>`）。
+/// Reverse lookup table for the old path's charge conditions (condition variable name -> XML `<Input name>`).
 const CHARGE_REVERSE: &[(&str, &str)] = &[
     ("UsePowerCharges", "usePowerCharges"),
     ("UseFrenzyCharges", "useFrenzyCharges"),
     ("UseEnduranceCharges", "useEnduranceCharges"),
 ];
 
-/// 旧路径 Stat 型任务奖励默认表（测试本地镜像）。
+/// The old path's default table for Stat-type quest rewards (locally mirrored in this test).
 const DEFAULT_QUEST_STAT_REWARDS: &[(&str, &str)] = &[
     ("questAct 1ClearfellBeira", "+10% to Cold Resistance"),
     ("questAct 1FreythornKing In The Mists", "+30 to Spirit"),
@@ -99,7 +110,7 @@ fn load_catalog() -> ConfigCatalog {
         .expect("config_catalog 域应已接通")
 }
 
-/// 双跑数据源：18 个 ninja build（code.txt → XML）+ 全部 config fixture。
+/// Dual-run data sources: the 18 ninja builds (code.txt -> XML) + every config fixture.
 fn xml_sources() -> Vec<(String, String)> {
     let mut sources = Vec::new();
     let builds = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/demo-bd-test/builds");
@@ -134,7 +145,7 @@ fn xml_sources() -> Vec<(String, String)> {
     sources
 }
 
-/// 全部产物桶里按归因 var 过滤 mod。
+/// Filters mods across every output bucket by attribution var.
 fn mods_from<'a>(outcome: &'a ConfigOutcome, var: &str) -> Vec<&'a Modifier> {
     let id = format!("config.{var}");
     outcome
@@ -150,12 +161,12 @@ fn mods_from<'a>(outcome: &'a ConfigOutcome, var: &str) -> Vec<&'a Modifier> {
         .collect()
 }
 
-/// 双跑分类汇总（跨全部数据源聚合；BTreeMap 保证打印确定序）。
+/// Dual-run category summary (aggregated across all data sources; BTreeMap keeps print order deterministic).
 #[derive(Default)]
 struct DualRunSummary {
-    /// 覆盖分类 → 条目集（`var` 或 `var=值`）。
+    /// Coverage category -> set of items (`var` or `var=value`).
     categories: BTreeMap<&'static str, BTreeSet<String>>,
-    /// 不可解释的旧产出项（→ hard fail）。
+    /// Old-path output items that couldn't be explained (-> hard fail).
     unexplained: BTreeSet<String>,
 }
 
@@ -165,7 +176,7 @@ impl DualRunSummary {
     }
 }
 
-/// 单条旧 condition 的覆盖判定。
+/// Coverage classification for a single old-path condition.
 fn classify_condition(
     var: &str,
     value: bool,
@@ -175,8 +186,8 @@ fn classify_condition(
     summary: &mut DualRunSummary,
 ) {
     if !value {
-        // 旧路径显式 false：新路径条目未激活（缺省即 false，语义等值）；
-        // 绝不允许新路径反向置 true。
+        // Old path explicitly false: the new path's entry is inactive (default is false, so semantically equal);
+        // the new path must never flip this to true.
         assert_ne!(
             outcome.conditions.get(var),
             Some(&true),
@@ -185,12 +196,12 @@ fn classify_condition(
         summary.record("旧显式 false（新路径未激活，语义等值）", var.to_string());
         return;
     }
-    // 同名同值：交集逐值相等。
+    // Same name, same value: the intersection is equal value-for-value.
     if outcome.conditions.get(var) == Some(&true) {
         summary.record("conditions 同名同值（交集逐值相等）", var.to_string());
         return;
     }
-    // 反查源 XML 输入名 → catalog 条目。
+    // Reverse-lookup the source XML input name -> catalog entry.
     let candidates = [
         format!("condition{var}"),
         CHARGE_REVERSE
@@ -245,8 +256,8 @@ fn classify_condition(
         );
         return;
     }
-    // vendor 命名与去前缀 var 不同（如 conditionEnemyCriticalWeakness →
-    // Condition:ApplyCriticalWeakness）：FLAG 真值等值，命名口径属 vendor 忠实化。
+    // vendor's naming differs from the prefix-stripped var (e.g. conditionEnemyCriticalWeakness ->
+    // Condition:ApplyCriticalWeakness): the FLAG truth value matches, and the naming difference is vendor faithfulness.
     if let Some(found) = mods.iter().find(|m| m.mod_type == ModType::Flag) {
         summary.record(
             "条件 vendor 命名口径（FLAG 真值等值，名取 vendor 忠实拼写）",
@@ -254,9 +265,9 @@ fn classify_condition(
         );
         return;
     }
-    // 条件 → 数值 mod 化（§3-⑦ 回补后形态）：vendor 把 checkbox 落成 enemy
-    // 数值 mod（如曝光三条 `<X>Exposure` BASE 20 + ActorCondition 门控，
-    // ConfigOptions.lua:1864-1872）——开关语义由数值 mod 承载，FLAG 不再产出。
+    // Condition -> numeric mod-ification (the shape after §3-⑦ backfill): vendor turns a checkbox
+    // into an enemy numeric mod (e.g. the three exposure `<X>Exposure` BASE 20 + ActorCondition gate,
+    // ConfigOptions.lua:1864-1872) -- the on/off semantics are carried by the numeric mod, and no FLAG is produced anymore.
     if !mods.is_empty() {
         summary.record(
             "条件→数值 mod 化（checkbox 落 enemy 数值 mod + actor 门控 tag）",
@@ -264,8 +275,8 @@ fn classify_condition(
         );
         return;
     }
-    // 条目效果带未映射 actor / 未接通 tag 维度：解释器保守跳过整条 mod 并记
-    // diagnostics——原始输入已捕获。
+    // The entry's effect carries an unmapped actor / an unwired tag dimension: the interpreter
+    // conservatively skips the whole mod and records it in diagnostics -- the raw input is still captured.
     let diag_prefix = format!("config.{}:", entry.var);
     if outcome
         .diagnostics
@@ -284,7 +295,7 @@ fn classify_condition(
     ));
 }
 
-/// 单条旧 multiplier 的覆盖判定。
+/// Coverage classification for a single old-path multiplier.
 fn classify_multiplier(
     var: &str,
     value: f64,
@@ -294,7 +305,7 @@ fn classify_multiplier(
     summary: &mut DualRunSummary,
 ) {
     if let Some(new_value) = outcome.multipliers.get(var) {
-        // 交集逐值相等（hard assert）。
+        // The intersection must be equal value-for-value (hard assert).
         assert!(
             (new_value - value).abs() < 1e-9,
             "[{source}] multiplier {var} 交集值不等：旧 {value} vs 新 {new_value}"
@@ -324,7 +335,7 @@ fn classify_multiplier(
         .iter()
         .find(|m| m.name.as_str().starts_with("Multiplier:"))
     {
-        // mod 化覆盖也必须逐值相等（identity 表达式口径）。
+        // Coverage via mod-ification must also be equal value-for-value (an identity-expression contract).
         assert_eq!(
             found.value.as_number(),
             Some(value),
@@ -354,7 +365,7 @@ fn classify_multiplier(
     ));
 }
 
-/// 旧 global_texts（任务奖励行）的覆盖判定——按 quest key 重建归属后逐 key 判。
+/// Coverage classification for the old path's global_texts (quest reward lines) -- rebuilds attribution per quest key, then classifies key by key.
 fn classify_quests(
     inputs: &RawConfigInputs,
     catalog: &ConfigCatalog,
@@ -362,7 +373,7 @@ fn classify_quests(
     source: &str,
     summary: &mut DualRunSummary,
 ) {
-    // 重建旧路径逐 key 的产出行（镜像旧 parse_config 的 quest 分支）。
+    // Rebuilds the old path's per-key output lines (mirrors the old parse_config's quest branch).
     let mut per_key: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for (name, value) in &inputs.values {
         if !name.starts_with("quest") {
@@ -441,8 +452,8 @@ fn classify_quests(
                     m.mod_type == old_mod.mod_type
                         && m.value.as_number() == old_mod.value.as_number()
                 }) {
-                    // parser 规范名与 vendor 名不同（ColdResistance vs ColdResist）：
-                    // 类型+值逐值相等，命名口径属 vendor 忠实化（M6 parser 规则统一）。
+                    // The parser's canonical name differs from vendor's (ColdResistance vs ColdResist):
+                    // type + value match exactly, and the naming difference is vendor faithfulness (parser rules are unified).
                     summary.record(
                         "quest 命名口径差异（parser 名 ≠ vendor 名，类型+值相等）",
                         format!(
@@ -463,7 +474,7 @@ fn classify_quests(
     }
 }
 
-/// 新路径独有覆盖（旧路径完全不消费的条目）——入报告的新增覆盖清单。
+/// Coverage unique to the new path (items the old path never consumed at all) -- feeds the newly-covered items list in the report.
 fn collect_new_coverage(
     old_conditions: &std::collections::HashMap<String, bool>,
     old_multipliers: &std::collections::HashMap<String, f64>,
@@ -508,7 +519,7 @@ fn collect_new_coverage(
     }
 }
 
-/// 双跑主断言：旧 ⊆ 新（按文件头口径分类），交集逐值相等；不可解释项 = fail。
+/// Main dual-run assertion: old ⊆ new (classified per the module-doc contract), intersection equal value-for-value; any unexplained item = fail.
 #[test]
 fn dual_run_old_subset_of_new() {
     let catalog = load_catalog();
@@ -524,12 +535,14 @@ fn dual_run_old_subset_of_new() {
             classify_condition(var, *value, &catalog, &outcome, &source, &mut summary);
         }
         for (var, value) in &old.multipliers {
-            // vendor 聚合口径（M3-W4 commit B，ConfigOptions.lua:1106-1111）：
-            // `multiplierNearbyRareOrUniqueEnemies` 的 apply **双写**
-            // `Multiplier:NearbyRareOrUniqueEnemies` 与 `Multiplier:NearbyEnemies`
-            // （:1108），modDB Sum 相加——旧路径前缀通道只记本 var、漏聚合。
-            // handler 已按 vendor 口径把 rare 计数加进 NearbyEnemies 标量，
-            // 故交集断言的期望值 = 旧值 + rare 计数（行为提升，非口径漂移）。
+            // vendor's aggregation contract (`ConfigOptions.lua:1106-1111`): applying
+            // `multiplierNearbyRareOrUniqueEnemies` **writes both**
+            // `Multiplier:NearbyRareOrUniqueEnemies` and `Multiplier:NearbyEnemies`
+            // (:1108), summed by modDB -- the old path's prefix channel only records
+            // this var and misses the aggregation. The handler already folds the rare
+            // count into the NearbyEnemies scalar per vendor's contract, so the
+            // intersection assertion's expected value = old value + rare count
+            // (a behaviour improvement, not a contract drift).
             let expected = if var == "NearbyEnemies" {
                 *value
                     + old
@@ -544,7 +557,7 @@ fn dual_run_old_subset_of_new() {
         }
         classify_quests(&inputs, &catalog, &outcome, &source, &mut summary);
 
-        // 标量项：enemyIsBoss / resistancePenalty 包装与旧路径逐值相等。
+        // Scalar items: the enemyIsBoss / resistancePenalty wrapper matches the old path value-for-value.
         if let Some(old_tier) = old.enemy_tier {
             assert_eq!(
                 enemy_tier_from_config(&outcome),
@@ -578,7 +591,7 @@ fn dual_run_old_subset_of_new() {
         collect_new_coverage(&old.conditions, &old.multipliers, &outcome, &mut summary);
     }
 
-    // 打印逐类汇总（--nocapture 时人工誊录至 m3-t1-dualrun-report.md）。
+    // Prints the per-category summary (when run with --nocapture).
     println!(
         "\n== M3-T1 双跑分类汇总（{} 类） ==",
         summary.categories.len()

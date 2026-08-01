@@ -89,7 +89,8 @@ pub struct DisplayStatDefinition {
 }
 
 impl DisplayStatDefinition {
-    /// 已实现（`Computed`）的展示字段定义，使用合理默认（可见、可比较、higher-is-better）。
+    /// A `Computed` (already implemented) display-stat definition, with
+    /// sensible defaults (visible, comparable, higher-is-better).
     pub fn computed(
         id: impl Into<DisplayStatId>,
         category: DisplayStatCategory,
@@ -110,7 +111,7 @@ impl DisplayStatDefinition {
         }
     }
 
-    /// 计划中（`Planned`）的展示字段定义（尚未计算）。
+    /// A `Planned` display-stat definition (not computed yet).
     pub fn planned(
         id: impl Into<DisplayStatId>,
         category: DisplayStatCategory,
@@ -133,7 +134,7 @@ impl DisplayStatDefinition {
     }
 }
 
-/// 一个展示字段的具体取值（计算结果 → UI 友好值）。
+/// A display stat's concrete value (a calc result → a UI-friendly value).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DisplayStatValue {
     pub id: DisplayStatId,

@@ -1,8 +1,9 @@
-//! 前端 mock fixture 生成器（`#[ignore]`，手动运行）：
+//! Frontend mock fixture generator (`#[ignore]`, run manually):
 //! `cargo test -p pobr-wasm --test gen_fixtures -- --ignored`
 //!
-//! 用真实契约入口产出 `web/src/fixtures/*.json`，保证 mock 后端形状与
-//! 真实 wasm 后端零漂移。契约变更后重跑一次并提交产物。
+//! Produces `web/src/fixtures/*.json` from the real contract entry points,
+//! guaranteeing the mock backend's shape has zero drift from the real wasm
+//! backend. Rerun once and commit the output after any contract change.
 
 use pobr_gamedata::repo_data_root;
 
@@ -40,7 +41,8 @@ fn generate_web_fixtures() {
     let attribution = pobr_wasm::attribution_json(&attr_req).expect("attribution");
     std::fs::write(out.join("attribution.json"), pretty(&attribution)).unwrap();
 
-    // 树 fixture：全量 1.6MB 过大，mock 只需渲染子集——取已加点节点 + 其邻接。
+    // Tree fixture: the full 1.6MB is too large, and mock rendering only
+    // needs a subset — take the allocated nodes plus their neighbors.
     let decode_json: serde_json::Value = serde_json::from_str(&decode).unwrap();
     let allocated: std::collections::BTreeSet<u64> = decode_json["tree"]["allocated_nodes"]
         .as_array()
@@ -68,11 +70,12 @@ fn generate_web_fixtures() {
     )
     .unwrap();
 
-    // 宝石目录（手动技能编辑选择器）。
+    // The gem catalog (used by the manual skill-editing picker).
     let catalog = pobr_wasm::gem_catalog_json().expect("gem catalog");
     std::fs::write(out.join("gem_catalog.json"), pretty(&catalog)).unwrap();
 
-    // 内置配置目录（Config 页）：mock 只需子集——每个 section 取前 5 项。
+    // The built-in config catalog (Config page): mock only needs a subset —
+    // take the first 5 entries per section.
     let config: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(dir.join("overlay/config_options.json")).unwrap(),
     )
@@ -95,7 +98,7 @@ fn generate_web_fixtures() {
     )
     .unwrap();
 
-    // 职业/升华元数据（新建 build 选择器用）：直接镜像数据文件。
+    // Class/ascendancy metadata (used by the new-build picker): mirrors the data file directly.
     std::fs::copy(
         dir.join("base/passive_tree_meta.json"),
         out.join("tree_meta.json"),

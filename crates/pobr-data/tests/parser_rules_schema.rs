@@ -1,8 +1,10 @@
-//! `mod_parser_rules/v1` schema 往返单测（M6 前置 / 蓝图 §11.3 契约 1）。
+//! `mod_parser_rules/v1` schema round-trip unit tests.
 //!
-//! fixture `tests/fixtures/mini_parser_rules.json` 是 A→B 契约的 mini 规则集：
-//! 每段 ≥3 条**逐字节取自真实抽取产物**的条目（含闭包推断模板与 handler 兜底
-//! 两形态），供 M6-B scan 引擎在真实抽取落盘前先行开发。
+//! The fixture `tests/fixtures/mini_parser_rules.json` is a mini rule set
+//! for the A→B contract: each section has ≥3 entries **taken byte-for-byte
+//! from real extraction output** (covering both the closure-inferred
+//! template shape and the handler-fallback shape), so the scan engine can
+//! be developed before real extraction output lands.
 
 use pobr_data::catalog::parser_rules::ModParserRulesDoc;
 use pobr_data::catalog::stat_map::StatMapValue;
@@ -13,8 +15,9 @@ fn load_mini() -> ModParserRulesDoc {
     serde_json::from_str(MINI_FIXTURE).expect("mini fixture 应可反序列化（_meta 被忽略）")
 }
 
-/// 反序列化 → 再序列化 → 再反序列化，结构等价（serde 形状自洽；
-/// `_meta` 头按消费侧约定被忽略）。
+/// Deserialize → re-serialize → re-deserialize, structurally equivalent
+/// (the serde shape is self-consistent; the `_meta` header is ignored per
+/// the consumer's convention).
 #[test]
 fn roundtrips_mini_fixture() {
     let doc = load_mini();
@@ -23,7 +26,8 @@ fn roundtrips_mini_fixture() {
     assert_eq!(back, doc);
 }
 
-/// 每段条目数满足契约（≥3；unsupported 两段各 1）。
+/// Each section's entry count satisfies the contract (≥3; the two
+/// unsupported sections each have 1).
 #[test]
 fn mini_fixture_section_sizes() {
     let doc = load_mini();
@@ -44,13 +48,13 @@ fn mini_fixture_section_sizes() {
     assert_eq!(doc.unsupported_pobr_extra, vec!["split"]);
 }
 
-/// 关键形态钉值：tag 模板（flatten 字段）/ 闭包推断占位符 / handler 兜底 /
-/// flagTypes 双形态。
+/// Pins the key shapes: tag templates (flattened fields) / closure-inferred
+/// placeholders / handler fallback / flagTypes' two shapes.
 #[test]
 fn mini_fixture_shape_pins() {
     let doc = load_mini();
 
-    // TagTemplate flatten：type 提取 + 其余字段入 BTreeMap
+    // TagTemplate flatten: type extracted out, the rest of the fields go into a BTreeMap
     let mana_cost = doc
         .name_map
         .iter()
@@ -63,7 +67,7 @@ fn mini_fixture_shape_pins() {
         Some(&StatMapValue::Text("Attack".into()))
     );
 
-    // 闭包推断模板：占位符落 StatMapValue::Text
+    // A closure-inferred template: the placeholder lands in StatMapValue::Text
     let per_rage = doc
         .tag_phrases
         .iter()
@@ -75,7 +79,7 @@ fn mini_fixture_shape_pins() {
         Some(&StatMapValue::Text("$1".into()))
     );
 
-    // 字符串拼接模板（:cap 算子，蓝图 §1.5 例）
+    // A string-concatenation template
     let effect = doc
         .tag_phrases
         .iter()
@@ -86,7 +90,7 @@ fn mini_fixture_shape_pins() {
         Some(&StatMapValue::Text("$2:cap+Effect".into()))
     );
 
-    // handler 兜底形态：handler_id 存在且 effects 为空
+    // The handler-fallback shape: handler_id present and effects empty
     let rampage = doc
         .tag_phrases
         .iter()
@@ -101,7 +105,7 @@ fn mini_fixture_shape_pins() {
     assert!(!rampage.inferred);
     assert!(rampage.effects.tags.is_empty());
 
-    // pre_flags 包装指令 + modSuffix
+    // pre_flags wrapping directive + modSuffix
     let take = doc
         .pre_flags
         .iter()
@@ -115,7 +119,7 @@ fn mini_fixture_shape_pins() {
         .unwrap();
     assert!(minions.effects.add_to_minion);
 
-    // flagTypes 双形态：condition 字符串 vs 内嵌 mod（hexproof）
+    // flagTypes' two shapes: a condition string vs. an embedded mod (hexproof)
     let phasing = doc
         .flag_types
         .iter()
@@ -140,7 +144,7 @@ fn mini_fixture_shape_pins() {
     );
 }
 
-/// 缺省字段（serde default / R7 纪律）：最小 JSON 也能反序列化。
+/// Default fields (serde default): minimal JSON still deserializes.
 #[test]
 fn defaults_tolerate_minimal_entries() {
     let json = r#"{

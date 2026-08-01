@@ -1,55 +1,73 @@
-//! 武器类型域 schema（`base/weapon_types.json`）。
+//! Weapon type domain schema (`base/weapon_types.json`).
 //!
-//! 源表：PoB2 `data.weaponTypeInfo`
-//! （`vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:532-551`，共 19 条）。
-//! 本表为**逐条搬迁**（搬迁不变式，架构文档 20 §1.1 / P8）：字段值与 vendor
-//! 完全一致；pobr 现有 Rust 侧的散落判定（见下）与 vendor 的出入只记录、不改值。
+//! Source table: PoB2's `data.weaponTypeInfo`
+//! (`vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:532-551`, 19 entries).
+//! This table is a **line-for-line migration** (a migration invariant):
+//! field values match vendor exactly; discrepancies between pobr's existing
+//! scattered Rust judgments (see below) and vendor are only recorded, not
+//! fixed here.
 //!
-//! 键空间说明：`id` 是 PoB base item 的 `type` 名（vendor `Data/Bases/*.lua` 的
-//! `type` 字段），**不是** GGG `ItemClasses.Id`（pobr `BaseItemDef::item_class`）。
-//! 两者大多同名，已知差异：
-//! - PoE2 长杖（quarterstaff）基底 `type = "Staff"`、`subType = "Warstaff"`
-//!   （`Data/Bases/staff.lua:159-167`），对应本表 `id = "Staff"`（`label =
-//!   "Quarterstaff"`）；而 GGG item_class 把长杖记为 `Warstaff`、把法杖记为
-//!   `Staff`。本表 `id = "Warstaff"` 条目在 vendor 基底数据中当前无基底使用
-//!   （遗留条目，仅 `subType` 出现 `Warstaff`）。
-//! - 钓竿：本表 `id = "Fishing Rod"`（有空格），GGG item_class 为 `FishingRod`。
+//! Key-space note: `id` is the PoB base item's `type` name (vendor
+//! `Data/Bases/*.lua`'s `type` field), **not** GGG's `ItemClasses.Id`
+//! (pobr's `BaseItemDef::item_class`). The two mostly share names; known
+//! discrepancies:
+//! - PoE2's quarterstaff base has `type = "Staff"`, `subType = "Warstaff"`
+//!   (`Data/Bases/staff.lua:159-167`), corresponding to this table's
+//!   `id = "Staff"` (`label = "Quarterstaff"`); whereas GGG's item_class
+//!   records the quarterstaff as `Warstaff` and the caster staff as
+//!   `Staff`. This table's `id = "Warstaff"` entry currently has no base
+//!   item using it in vendor's data (a legacy entry — `subType` only shows
+//!   up as `Warstaff`).
+//! - Fishing rod: this table's `id = "Fishing Rod"` (with a space), GGG's
+//!   item_class is `FishingRod`.
 //!
-//! 与 pobr 现有 Rust 判定的已知出入（仅记录，行为对齐属后续独立 commit）：
-//! - TODO(parity): `pobr-build::calc_orchestrator::weapon_type_conditions`
-//!   的近战类列表（matches! 分支）不含 `Talisman` / `FishingRod`，而 vendor 对
-//!   `Talisman` / `Fishing Rod` 均为 `melee = true`。
-//! - TODO(parity): 同函数的 `two_handed` 谓词（`starts_with("Two Hand") ||
-//!   "Warstaff" || "Staff"`）对 `Bow` / `Crossbow` / `Talisman` / `FishingRod`
-//!   求得 false（即视为单手），而 vendor 这些类型均为 `oneHand = false`。
+//! Known discrepancies with pobr's existing Rust judgments (recorded only;
+//! bringing behavior into alignment is a separate follow-up commit):
+//! - TODO(parity): `pobr-build::calc_orchestrator::weapon_type_conditions`'s
+//!   melee-class list (the `matches!` branch) doesn't include `Talisman` /
+//!   `FishingRod`, while vendor treats both `Talisman` and `Fishing Rod` as
+//!   `melee = true`.
+//! - TODO(parity): the same function's `two_handed` predicate
+//!   (`starts_with("Two Hand") || "Warstaff" || "Staff"`) evaluates to
+//!   false (i.e. treated as one-handed) for `Bow` / `Crossbow` /
+//!   `Talisman` / `FishingRod`, while vendor has `oneHand = false` for all
+//!   of these types.
 //!
-//! 远程（ranged）派生：vendor 无独立 range 字段，远程 = `!melee`；
-//! `flag` → `ModFlags` 位派生留代码侧（L4，架构文档 20 §2.2，feature-gated 切换）。
+//! Ranged derivation: vendor has no separate range field; ranged =
+//! `!melee`; deriving `ModFlags` bits from `flag` stays in code.
 
 use serde::{Deserialize, Serialize};
 
-/// 武器类型定义（对应 vendor `data.weaponTypeInfo` 一条）。
+/// A weapon type definition (corresponds to one entry of vendor's
+/// `data.weaponTypeInfo`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WeaponTypeDef {
-    /// 武器类型名（PoB base item `type`，如 `One Hand Axe`；`None` = 空手）。
+    /// Weapon type name (the PoB base item's `type`, e.g. `One Hand Axe`;
+    /// `None` = unarmed).
     pub id: String,
-    /// 是否单手（vendor `oneHand`；双持/持握条件判定用）。
+    /// Whether it's one-handed (vendor's `oneHand`; used for dual-wield /
+    /// grip condition checks).
     pub one_hand: bool,
-    /// 是否近战（vendor `melee`；远程 = `!melee`，vendor 无独立 range 字段）。
+    /// Whether it's melee (vendor's `melee`; ranged = `!melee`, vendor has
+    /// no separate range field).
     pub melee: bool,
-    /// ModFlag 名（vendor `flag`，如 `Bow`/`Axe`/`Unarmed`）——武器类型位
-    /// （`ModFlags` 扩位）由此派生，位枚举本身留代码（L4）。
+    /// ModFlag name (vendor's `flag`, e.g. `Bow`/`Axe`/`Unarmed`) — the
+    /// weapon-type bit (a `ModFlags` extension bit) is derived from this;
+    /// the bit enum itself stays in code (L4).
     pub flag: String,
-    /// 显示别名（vendor `label`；缺省时显示 `id`）。已知两条：
-    /// `Staff` → `Quarterstaff`、`Thrusting One Hand Sword` → `One Hand Sword`。
+    /// Display alias (vendor's `label`; defaults to displaying `id` when
+    /// absent). Two known entries: `Staff` → `Quarterstaff`,
+    /// `Thrusting One Hand Sword` → `One Hand Sword`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
 }
 
-/// 武器类型全表（[`crate::catalog::RuntimeConstants`] 的注入域，M0-W3 注入管道）。
+/// The full weapon-type table (the domain
+/// [`crate::catalog::RuntimeConstants`] injects).
 ///
-/// `#[serde(transparent)]`：JSON 形状与 `base/weapon_types.json`（数组）一致。
-/// `Default` = fallback 全表（与 JSON 逐值相等，搬迁不变式）。
+/// `#[serde(transparent)]`: the JSON shape matches
+/// `base/weapon_types.json` (an array). `Default` = the fallback full table
+/// (value-equal to the JSON, a migration invariant).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct WeaponTypeTable(pub Vec<WeaponTypeDef>);
@@ -61,25 +79,33 @@ impl Default for WeaponTypeTable {
 }
 
 impl WeaponTypeTable {
-    /// 按武器类型名（PoB base `type`，如 `One Hand Axe`）查条目；未知类型返回
-    /// `None`。键空间陷阱（模块 doc）：GGG `Warstaff`（长杖 item_class）对应本表
-    /// `Staff`、GGG `FishingRod` 对应 `Fishing Rod`——item_class → 表键的映射由
-    /// 调用方做（消费侧，见 pobr-build `calc_orchestrator`）。
+    /// Looks up an entry by weapon type name (the PoB base `type`, e.g.
+    /// `One Hand Axe`); returns `None` for an unknown type. Key-space trap
+    /// (see the module doc): GGG's `Warstaff` (the quarterstaff's
+    /// item_class) corresponds to this table's `Staff`, and GGG's
+    /// `FishingRod` corresponds to `Fishing Rod` — mapping item_class to a
+    /// table key is the caller's job (the consumer side, see pobr-build's
+    /// `calc_orchestrator`).
     pub fn get(&self, id: &str) -> Option<&WeaponTypeDef> {
         self.0.iter().find(|w| w.id == id)
     }
 }
 
 impl WeaponTypeDef {
-    /// 全表 fallback（M0-W3 注入管道）：无 GameData / 数据目录缺
-    /// `base/weapon_types.json` 时 [`crate::catalog::RuntimeConstants`] 的默认值。
+    /// The full-table fallback (the injection pipeline): the default value
+    /// [`crate::catalog::RuntimeConstants`] uses when there's no GameData /
+    /// the data directory is missing `base/weapon_types.json`.
     ///
-    /// 搬迁不变式：与 JSON 逐值相等（`pobr-gamedata` 测试锁定）。数值出处 =
-    /// vendor `data.weaponTypeInfo`（`Data.lua:532-551`，19 条逐条照搬）；
-    /// pobr 旧 Rust 侧无完整对应表（散落谓词，出入见模块 doc TODO(parity)），
-    /// 故此处为带出处 doc 的字面量。
+    /// Migration invariant: value-equal to the JSON (locked by a
+    /// `pobr-gamedata` test). Values sourced from vendor's
+    /// `data.weaponTypeInfo` (`Data.lua:532-551`, all 19 entries copied
+    /// verbatim); pobr's old Rust side has no complete equivalent table
+    /// (scattered predicates instead — see the module doc's
+    /// TODO(parity) for the discrepancies), so this is a literal table with
+    /// sourcing docs.
     pub fn default_table() -> Vec<Self> {
-        /// 单条目构造（label 见结构体字段 doc，仅两条非空）。
+        /// Builds a single entry (see the struct field docs for `label`;
+        /// only two entries have a non-empty one).
         fn entry(
             id: &str,
             one_hand: bool,
@@ -95,7 +121,7 @@ impl WeaponTypeDef {
                 label: label.map(str::to_string),
             }
         }
-        // 按 id 升序（与 JSON 排序口径一致，保证 Vec 逐值相等）。
+        // Ascending by id (matches the JSON's sort order, so the Vec stays value-equal).
         vec![
             entry("Bow", false, false, "Bow", None),
             entry("Claw", true, true, "Claw", None),

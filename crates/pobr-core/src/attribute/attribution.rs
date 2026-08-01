@@ -1,24 +1,29 @@
-//! 来源贡献总账（AttributionReport）。
+//! The source contribution ledger (AttributionReport).
 //!
-//! 在 [`TraceGraph`] 之上提供把某个最终输出（如 `TotalDPS` / `Life`）按来源
-//! （装备槽 / 天赋节点 / 宝石 / 配置）分解的 direct / marginal / interaction
-//! 贡献报告。这是 PoBR 相对 PoB 的核心增量"source-level 归因"的总账层。
+//! Builds on [`TraceGraph`] to break down a final output (e.g. `TotalDPS` /
+//! `Life`) by source (equipment slot / passive node / gem / config) into
+//! direct / marginal / interaction contribution reports. This is the ledger
+//! layer for "source-level attribution", PoBR's core value-add over PoB.
 //!
-//! 规格依据：`devs/docs/architecture/10-pob-parity-and-attribution.md` §6-7。
+//! Spec: `devs/docs/architecture/10-pob-parity-and-attribution.md` §6-7.
 //!
-//! # 与文档 §7 的差异（实现现状所致）
+//! # Differences from the doc's §7 (due to current implementation state)
 //!
-//! 文档 §7 的 [`AttributionRequest`] 含 `build: BuildSnapshot` 与
-//! `selected_skill: Option<SkillInstanceId>`，但 `BuildSnapshot` / `SkillInstanceId`
-//! 这两个高层类型尚未实现。在它们落地前，本模块用**纯函数 + 调用方提供的重算闭包**
-//! 表达同等语义：
+//! The doc's §7 [`AttributionRequest`] includes `build: BuildSnapshot` and
+//! `selected_skill: Option<SkillInstanceId>`, but `BuildSnapshot` /
+//! `SkillInstanceId` — these two higher-level types — aren't implemented yet.
+//! Until they land, this module expresses the same semantics with **pure
+//! functions + a recompute closure supplied by the caller**:
 //!
-//! - Direct contribution 由 [`AttributionReport::direct`] 消费一个 [`TraceGraph`]
-//!   + 输出节点产生（基于 `source_ancestors`，对应文档 §6.1）。
-//! - Marginal / Interaction 由 [`attribute`] 消费一个 `recompute: Fn(&[SourceId]) -> f64`
-//!   闭包产生：闭包对"剔除给定 source 集合后的 build"重算最终输出（文档 §6.2/§6.3）。
-//!   闭包让 attribution 保持纯函数 / 确定性，重算走只读快照（如 [`ModDb::filtered`]），
-//!   不引入共享可变状态。
+//! - Direct contribution is produced by [`AttributionReport::direct`], which
+//!   consumes a [`TraceGraph`] + output node (based on `source_ancestors`,
+//!   corresponding to the doc's §6.1).
+//! - Marginal / Interaction is produced by [`attribute`], which consumes a
+//!   `recompute: Fn(&[SourceId]) -> f64` closure: the closure recomputes the
+//!   final output for "the build with the given source set removed" (doc's
+//!   §6.2/§6.3). The closure keeps attribution a pure/deterministic function —
+//!   the recompute goes through a read-only snapshot (e.g. [`ModDb::filtered`]),
+//!   introducing no shared mutable state.
 //!
 //! [`ModDb::filtered`]: crate::ModDb::filtered
 
@@ -26,8 +31,9 @@ use pobr_data::prelude::*;
 
 use crate::{PassId, TraceGraph, TraceNodeId, TraceOperation};
 
-/// 归因分组维度（文档 §7 `AttributionGroup`）。当前总账按 [`SourceId`] 逐条聚合，
-/// 该枚举用于声明请求意图，更细的分组（按槽位 / 按词条）后续实现。
+/// The attribution grouping dimension (doc §7's `AttributionGroup`). The
+/// ledger currently aggregates per-[`SourceId`]; this enum declares request
+/// intent, and finer grouping (by slot / by affix) is implemented later.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum AttributionGroup {
     #[default]
@@ -41,16 +47,16 @@ pub enum AttributionGroup {
     Config,
 }
 
-/// 归因口径（文档 §7 `AttributionMode`）。
+/// The attribution mode (doc §7's `AttributionMode`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AttributionMode {
-    /// 仅直接贡献（§6.1）。
+    /// Direct contribution only (§6.1).
     Direct,
-    /// 仅边际贡献（§6.2）。
+    /// Marginal contribution only (§6.2).
     Marginal,
-    /// 直接 + 边际。
+    /// Direct + marginal.
     DirectAndMarginal,
-    /// 边际 + 交互桶（§6.3）。
+    /// Marginal + interaction bucket (§6.3).
     MarginalWithInteraction,
 }
 
@@ -67,27 +73,32 @@ impl AttributionMode {
     }
 }
 
-/// 归因请求（文档 §7 `AttributionRequest`）。
+/// An attribution request (doc §7's `AttributionRequest`).
 ///
-/// 字段名与文档对齐：`output`（文档作 `outputs: Vec<DisplayStatId>`，当前一次一个输出）、
-/// `group_by`、`mode`。`build` / `selected_skill` 见模块级差异说明，由重算闭包替代。
+/// Field names align with the doc: `output` (the doc has
+/// `outputs: Vec<DisplayStatId>`; currently one output at a time), `group_by`,
+/// `mode`. See the module-level differences note for `build` /
+/// `selected_skill`, which are replaced by the recompute closure.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AttributionRequest {
-    /// 被归因的最终输出。
+    /// The final output being attributed.
     pub output: DisplayStatId,
-    /// 待归因的来源集合。
+    /// The set of sources to attribute.
     pub sources: Vec<SourceId>,
-    /// 分组维度。
+    /// The grouping dimension.
     pub group_by: AttributionGroup,
-    /// 归因口径。
+    /// The attribution mode.
     pub mode: AttributionMode,
-    /// per-pass 过滤（M4-T2 W-B1，RFC §5.4）：`Some(p)` 时 direct 口径只累计
-    /// `node.pass == Some(p)` 的 Input 节点（回答"这件副手武器贡献了多少 OffHand DPS"）。
+    /// Per-pass filter: when `Some(p)`, direct mode only accumulates Input
+    /// nodes where `node.pass == Some(p)` (answers "how much OffHand DPS did
+    /// this off-hand weapon contribute").
     ///
-    /// **口径裁决（评审 C4）**：`pass_filter` 非 `None` 时 `marginal_delta` /
-    /// `marginal_percent` / `interaction` 一律置 `None`（拒绝混口径——剔除来源是
-    /// 全局动作，其 delta 是全局输出口径，与腿内 direct 并排展示会误读）。
-    /// 需要全局 marginal 时另发一个 `pass_filter = None` 的请求。
+    /// **Mode decision (review C4)**: when `pass_filter` is not `None`,
+    /// `marginal_delta` / `marginal_percent` / `interaction` are always set to
+    /// `None` (mixed modes are rejected — removing a source is a global
+    /// action, so its delta is in global-output terms, and displaying it
+    /// alongside per-leg direct values would be misread). Send a separate
+    /// request with `pass_filter = None` when global marginal is needed.
     pub pass_filter: Option<PassId>,
 }
 
@@ -102,7 +113,7 @@ impl AttributionRequest {
         }
     }
 
-    /// 设定 per-pass 过滤（见 [`AttributionRequest::pass_filter`] 的口径裁决）。
+    /// Sets the per-pass filter (see [`AttributionRequest::pass_filter`] for the semantics).
     pub fn with_pass_filter(mut self, pass: PassId) -> Self {
         self.pass_filter = Some(pass);
         self
@@ -124,25 +135,26 @@ impl AttributionRequest {
     }
 }
 
-/// 单个来源的贡献条目（文档 §7 `AttributionEntry`）。
+/// A single source's contribution entry (doc §7's `AttributionEntry`).
 ///
-/// 字段名与文档对齐。`value` / `percent_of_final` 承载 direct 口径；
-/// `marginal_delta` / `marginal_percent` 承载 marginal 口径；未计算的口径为 `None`。
+/// Field names align with the doc. `value` / `percent_of_final` carry direct
+/// mode; `marginal_delta` / `marginal_percent` carry marginal mode; a mode
+/// that wasn't computed is `None`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AttributionEntry {
-    /// 贡献来源。
+    /// The contributing source.
     pub source: SourceId,
-    /// 直接贡献绝对值（direct 口径，§6.1）。无 direct 口径时为 0.0。
+    /// The absolute direct contribution (direct mode, §6.1). 0.0 when direct mode wasn't computed.
     pub value: f64,
-    /// 直接贡献占最终值的比例（`value / final`）。
+    /// The direct contribution's share of the final value (`value / final`).
     pub percent_of_final: Option<f64>,
-    /// 边际贡献：`final - final_without_source`（§6.2）。
+    /// The marginal contribution: `final - final_without_source` (§6.2).
     pub marginal_delta: Option<f64>,
-    /// 边际占比：`marginal_delta / final`。
+    /// The marginal share: `marginal_delta / final`.
     pub marginal_percent: Option<f64>,
-    /// 该来源在 TraceGraph 中可达的输出路径节点（direct 口径时填充）。
+    /// The output-path nodes reachable from this source in the TraceGraph (filled in direct mode).
     pub path: Vec<TraceNodeId>,
-    /// i18n 解释 key（占位，i18n 落地前为稳定英文 key）。
+    /// The i18n explanation key (placeholder; a stable English key until i18n lands).
     pub explanation_key: String,
 }
 
@@ -160,28 +172,30 @@ impl AttributionEntry {
     }
 }
 
-/// 来源贡献报告（文档 §7 `AttributionReport`）。
+/// The source contribution report (doc §7's `AttributionReport`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct AttributionReport {
-    /// 被归因的输出。
+    /// The output being attributed.
     pub output: DisplayStatId,
-    /// 最终输出值。
+    /// The final output value.
     pub final_value: f64,
-    /// 逐来源贡献条目，顺序与请求 `sources` 一致。
+    /// Per-source contribution entries, in the same order as the request's `sources`.
     pub entries: Vec<AttributionEntry>,
-    /// 交互桶（§6.3）。仅 [`AttributionMode::MarginalWithInteraction`] 时填充。
+    /// The interaction bucket (§6.3). Only filled for
+    /// [`AttributionMode::MarginalWithInteraction`].
     ///
-    /// 复用 [`AttributionEntry`] 承载：`marginal_delta` =
-    /// `final - baseline - Σ(individual marginal deltas)`，
-    /// `source` 用 [`SourceKind::Derived`] 占位标记。
+    /// Reuses [`AttributionEntry`] to carry it: `marginal_delta` =
+    /// `final - baseline - Σ(individual marginal deltas)`, with `source`
+    /// marked by the [`SourceKind::Derived`] placeholder.
     pub interaction: Option<AttributionEntry>,
 }
 
 impl AttributionReport {
-    /// 计算 direct 口径报告（文档 §6.1）。
+    /// Computes the direct-mode report (doc §6.1).
     ///
-    /// 从 `trace` 中输出节点 `output_node` 的祖先里，累加每个 `request.source`
-    /// 直接贡献的输入节点值，`percent_of_final = value / final`。
+    /// Sums the input-node values directly contributed by each
+    /// `request.source` among `trace`'s ancestors of the output node
+    /// `output_node`, with `percent_of_final = value / final`.
     pub fn direct(
         request: &AttributionRequest,
         final_value: f64,
@@ -215,30 +229,41 @@ impl AttributionReport {
     }
 }
 
-/// 累加某来源在输出节点祖先链中的直接贡献输入值（M4-T2 W-B1 起为双 pass 感知版）。
+/// Sums the input-node values a source directly contributes among an output
+/// node's ancestor chain.
 ///
-/// 算法（RFC §5.1；**评审 C1 注记：这是对旧"单一全局 visited 扁平 DFS"的算法重写**，
-/// 不是"加字段不读即回退"——I2 零回归靠"无 Combine 图上递归分支不触发、行为逐字节
-/// 等价"保证，等价性由 `legacy_equivalence` 单测锁定；回退 = git revert 本文件改动，
-/// 旧实现副本保留于 `#[cfg(test)] direct_value_for_source_legacy`）：
+/// Algorithm (RFC §5.1; **review C1 note: this is an algorithm rewrite of the
+/// old "single global-visited flat DFS"**, not "add a field, ignore it,
+/// fallback" — I2's zero-regression guarantee rests on "the new recursive
+/// branch never triggers on Combine-free graphs, and behavior is bit-for-bit
+/// identical", locked by the `legacy_equivalence` unit test; rolling back
+/// means `git revert` on this file's changes, with the old implementation
+/// kept as a copy in `#[cfg(test)] direct_value_for_source_legacy`):
 ///
-/// - 输出节点为 [`TraceOperation::Combine`]：`total = Σᵢ weights[i] × direct(腿ᵢ)`（含腿自身）。
-/// - 腿内：维持旧 visited-DFS 语义，但 **visited 集合按腿独立**；遍历中再遇 Combine
-///   节点不展开其入边，改按权重递归（嵌套合并）。
-/// - `pass_filter = Some(p)` 时只累计 `node.pass == Some(p)` 的 Input 节点（§5.4）。
+/// - If the output node itself is a [`TraceOperation::Combine`]:
+///   `total = Σᵢ weights[i] × direct(legᵢ)` (including the leg root).
+/// - Within a leg: keeps the old visited-DFS semantics, but **the visited set
+///   is independent per leg**; encountering a nested Combine node during
+///   traversal doesn't expand its incoming edges, it recurses by weight
+///   instead (nested merging).
+/// - When `pass_filter = Some(p)`, only accumulates Input nodes where
+///   `node.pass == Some(p)` (§5.4).
 ///
-/// 正确性依赖不变式 I1（不同 pass 子图不共享带 pass 戳节点，
-/// [`TraceGraph::combine_partition_violations`]，debug 构建下逐 Combine 断言）；
-/// `pass == None` 的共享祖先在多腿内**各计一次再按腿权重加权**——这是有意语义
-/// （全局来源同时增益两手）。
+/// Correctness depends on invariant I1 (different pass subgraphs don't share
+/// pass-stamped nodes, see [`TraceGraph::combine_partition_violations`],
+/// asserted per-Combine in debug builds); a shared ancestor with `pass ==
+/// None` is **counted once per leg and then weighted by that leg's weight**
+/// across multiple legs — this is intentional (a global source boosts both
+/// hands simultaneously).
 fn direct_value_for_source(
     trace: &TraceGraph,
     output_node: TraceNodeId,
     source: &SourceId,
     pass_filter: Option<PassId>,
 ) -> f64 {
-    // 输出节点自身是 Combine：直接按权重递归各腿（与旧算法一致地不计输出节点自身——
-    // Combine 节点恒为算子节点，无 source）。
+    // The output node itself is a Combine: recurse by weight over its legs
+    // directly (matching the old algorithm, which never counted the output
+    // node itself — a Combine node is always an operator node with no source).
     if let Some(node) = trace.node(output_node)
         && let TraceOperation::Combine { weights, .. } = &node.operation
     {
@@ -247,7 +272,7 @@ fn direct_value_for_source(
     leg_direct(trace, trace.incoming(output_node), source, pass_filter)
 }
 
-/// Combine 节点处的加权摊销：`Σᵢ weights[i] × direct(腿ᵢ，含腿自身)`。
+/// Weighted amortization at a Combine node: `Σᵢ weights[i] × direct(legᵢ, including the leg root)`.
 fn combine_weighted_direct(
     trace: &TraceGraph,
     combine: TraceNodeId,
@@ -271,8 +296,10 @@ fn combine_weighted_direct(
         .sum()
 }
 
-/// 腿内 direct DFS：**visited 集合按腿独立**；`seeds` 含腿根自身（腿根可能本身就是
-/// 匹配的 Input 节点）。遇嵌套 Combine 节点按权重递归、不展开其入边。
+/// Within-leg direct DFS: **the visited set is independent per leg**; `seeds`
+/// includes the leg root itself (the leg root may itself be a matching Input
+/// node). Encountering a nested Combine node recurses by weight rather than
+/// expanding its incoming edges.
 fn leg_direct(
     trace: &TraceGraph,
     seeds: Vec<TraceNodeId>,
@@ -294,8 +321,10 @@ fn leg_direct(
             continue;
         };
         if let TraceOperation::Combine { weights, .. } = &node.operation {
-            // 嵌套合并节点：visited 已标记（同腿内经多路径到达只计一次），递归内各腿
-            // 再各自独立 visited。
+            // A nested merge node: visited is already marked (reached via
+            // multiple paths within the same leg counts once), and the
+            // recursive call gives each of its legs its own independent
+            // visited set.
             total += combine_weighted_direct(trace, current, weights, source, pass_filter);
             continue;
         }
@@ -310,17 +339,19 @@ fn leg_direct(
     total
 }
 
-/// 计算 marginal（+ 可选 interaction）口径报告（文档 §6.2 / §6.3）。
+/// Computes a marginal (+ optional interaction) mode report (doc §6.2 / §6.3).
 ///
-/// `recompute(excluded)` 必须返回"剔除 `excluded` 中全部 source 后"的最终输出。
-/// 对每个来源：`marginal_delta = final - recompute(&[source])`，
-/// `marginal_percent = marginal_delta / final`。
+/// `recompute(excluded)` must return the final output "with every source in
+/// `excluded` removed". For each source:
+/// `marginal_delta = final - recompute(&[source])`,
+/// `marginal_percent = marginal_delta / final`.
 ///
-/// `direct_trace` 可选；若提供则同时填充 direct 口径（与文档
-/// [`AttributionMode::DirectAndMarginal`] 对应）。
+/// `direct_trace` is optional; when provided, direct mode is also filled in
+/// (corresponding to the doc's [`AttributionMode::DirectAndMarginal`]).
 ///
-/// **C4 口径裁决**：`request.pass_filter` 非 `None` 时 marginal / interaction 一律
-/// 置 `None`（见 [`AttributionRequest::pass_filter`]），`recompute` 不被调用。
+/// **C4 mode decision**: when `request.pass_filter` is not `None`, marginal /
+/// interaction are always set to `None` (see
+/// [`AttributionRequest::pass_filter`]), and `recompute` is never called.
 pub fn attribute<F>(
     request: &AttributionRequest,
     final_value: f64,
@@ -330,8 +361,10 @@ pub fn attribute<F>(
 where
     F: FnMut(&[SourceId]) -> f64,
 {
-    // C4：pass 过滤请求拒绝混口径——marginal/interaction 是全局输出口径，与腿内
-    // direct 并排会误读；置 None，消费方需要全局 marginal 时另发无 filter 请求。
+    // C4: a pass-filtered request rejects mixed modes — marginal/interaction
+    // are in global-output terms and would be misread alongside per-leg
+    // direct values; set to None, and the consumer sends a separate
+    // filter-less request when global marginal is needed.
     let want_marginal = request.mode.wants_marginal() && request.pass_filter.is_none();
     let wants_direct = matches!(
         request.mode,
@@ -363,11 +396,11 @@ where
         entries.push(entry);
     }
 
-    // C4：interaction 基于全局 marginal 求和，pass_filter 下同样置 None。
+    // C4: interaction sums over global marginal values, so it's likewise set to None under pass_filter.
     let interaction = if request.mode.wants_interaction() && request.pass_filter.is_none() {
-        // baseline = 剔除全部来源后的输出（§6.3）。
+        // baseline = the output with every source removed (§6.3).
         let baseline = recompute(&request.sources);
-        // interaction = final - baseline - Σ(individual marginal deltas)。
+        // interaction = final - baseline - Σ(individual marginal deltas).
         let interaction_value = final_value - baseline - marginal_sum;
         let mut entry = AttributionEntry::new(SourceId::new(SourceKind::Derived, "interaction"));
         entry.marginal_delta = Some(interaction_value);
@@ -386,7 +419,7 @@ where
     }
 }
 
-/// `value / final`，`final == 0` 时返回 `None`（避免除零产生 NaN/Inf）。
+/// `value / final`, returning `None` when `final == 0` (avoids a division-by-zero NaN/Inf).
 fn percent(value: f64, final_value: f64) -> Option<f64> {
     if final_value == 0.0 {
         None
@@ -397,15 +430,18 @@ fn percent(value: f64, final_value: f64) -> Option<f64> {
 
 #[cfg(test)]
 mod direct_rewrite_tests {
-    //! W-B1 评审 C1：direct 是**算法重写**，旧实现按字节保留于此作等价性证物——
-    //! 无 Combine 图上新旧算法必须逐字节等价（I2 的内部镜像；外部镜像 =
-    //! `tests/attribution.rs` / `tests/trace.rs` 零改动通过）。
+    //! Review C1: direct is an **algorithm rewrite**; the old implementation
+    //! is kept here byte-for-byte as evidence of equivalence — the old and
+    //! new algorithms must be bit-for-bit identical on Combine-free graphs
+    //! (I2's internal mirror; the external mirror is `tests/attribution.rs` /
+    //! `tests/trace.rs` passing with zero changes).
 
     use super::*;
     use crate::{CombineMode, TraceOperation};
 
-    /// 旧实现原样副本（M4-T2 W-B1 重写前的 `direct_value_for_source`，
-    /// 单一全局 visited 扁平 DFS）。仅供等价性测试，勿在产品路径调用。
+    /// A verbatim copy of the old implementation (`direct_value_for_source`
+    /// before the rewrite, a single global-visited flat DFS). For
+    /// equivalence testing only — never call it on a production path.
     fn direct_value_for_source_legacy(
         trace: &TraceGraph,
         output_node: TraceNodeId,
@@ -437,7 +473,7 @@ mod direct_rewrite_tests {
         SourceId::new(SourceKind::Item, id)
     }
 
-    /// 菱形共享 + 多层算子的无 Combine 图：新旧算法逐字节等价（I2）。
+    /// A Combine-free graph with diamond sharing + multi-layer operators: old and new algorithms are bit-for-bit identical (I2).
     #[test]
     fn no_combine_graph_matches_legacy_bit_for_bit() {
         let mut trace = TraceGraph::new();
@@ -446,14 +482,14 @@ mod direct_rewrite_tests {
         let sum = trace.add_node("base sum", 100.0, TraceOperation::Add);
         trace.add_edge(a, sum);
         trace.add_edge(b, sum);
-        // 同一来源的第二个 Input（如同件装备的第二条词条）+ 菱形汇聚。
+        // A second Input from the same source (e.g. a second affix on the same item) + diamond convergence.
         let a2 = trace.add_source_node("weapon inc", 30.0, src("weapon"));
         let scaled = trace.add_node("scaled", 130.0, TraceOperation::Multiply);
         trace.add_edge(sum, scaled);
         trace.add_edge(a2, scaled);
         let out = trace.add_node("final", 130.0, TraceOperation::Multiply);
         trace.add_edge(scaled, out);
-        trace.add_edge(sum, out); // 菱形：sum 经两条路径可达 out
+        trace.add_edge(sum, out); // Diamond: sum reaches out via two paths
 
         for id in ["weapon", "helmet", "absent"] {
             let source = src(id);
@@ -465,7 +501,7 @@ mod direct_rewrite_tests {
         }
     }
 
-    /// OR 直通单腿 Combine（单手 build 形态）：等价于旧算法直读该腿（I3 归因侧镜像）。
+    /// An OR passthrough single-leg Combine (single-hand build shape): equivalent to the old algorithm reading the leg directly (I3's attribution-side mirror).
     #[test]
     fn single_leg_or_combine_matches_legacy_on_leg() {
         let mut trace = TraceGraph::new();

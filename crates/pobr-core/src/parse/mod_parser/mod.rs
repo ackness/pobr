@@ -1,21 +1,25 @@
-//! Modifier 文本解析。
+//! Modifier text parsing.
 //!
-//! - 数据驱动 scan 引擎（[`scan`] / [`compiled`] / [`forms`] / [`template`] /
-//!   [`engine`]）：消费 Track A 预交付的 `overlay/mod_parser_rules.json`
-//!   （schema `pobr_data::catalog::parser_rules`），照搬 vendor `ModParser.lua`
-//!   的 `scan()` + `parseMod()` 语义（蓝图 m6-parser-rules.md §2–§4）。引擎入口
-//!   [`engine::parse_mod_engine`] 是**唯一**解析器（M6 收尾已删 legacy 手写
-//!   解析器）——orchestrator 经 pobr-gamedata 恒 load `mod_parser_rules.json`
-//!   编译 [`CompiledParserRules`] 注入 session；未注入规则时 [`ParseCtx`] 对
-//!   每行返回整行 Unsupported（见 [`dispatch`] 模块文档）。
-//! - [`outcome`]：解析输出共享类型（[`ParseOutcome`] 等）。
-//! - [`dispatch`]：解析派发上下文 [`ParseCtx`]。
-//! - [`canonical`]：[`ParseOutcome`] 的规范序列化（precompile 的比较单位）。
+//! - The data-driven scan engine ([`scan`] / [`compiled`] / [`forms`] /
+//!   [`template`] / [`engine`]): consumes Track A's pre-delivered
+//!   `overlay/mod_parser_rules.json` (schema
+//!   `pobr_data::catalog::parser_rules`), replicating the semantics of
+//!   vendor `ModParser.lua`'s `scan()` + `parseMod()`. The engine entry
+//!   point [`engine::parse_mod_engine`] is the **only** parser (the legacy
+//!   hand-written parser was removed once the transition completed) — the
+//!   orchestrator always loads `mod_parser_rules.json` through pobr-gamedata,
+//!   compiles [`CompiledParserRules`], and injects it into the session; when
+//!   no rules are injected, [`ParseCtx`] returns whole-line Unsupported for
+//!   every line (see the [`dispatch`] module doc).
+//! - [`outcome`]: shared parser output types ([`ParseOutcome`] etc.).
+//! - [`dispatch`]: the parse dispatch context [`ParseCtx`].
+//! - [`canonical`]: canonical serialization of [`ParseOutcome`] (the
+//!   comparison unit for precompile).
 
-/// 解析输出共享类型。
+/// Shared parser output types.
 pub mod outcome;
 
-/// 解析派发上下文 [`ParseCtx`]。
+/// Parse dispatch context [`ParseCtx`].
 pub mod dispatch;
 
 pub mod canonical;
@@ -25,7 +29,8 @@ pub mod forms;
 pub mod scan;
 pub mod template;
 
-// 解析输出共享类型从 `outcome` 再导出（调用方路径 `pobr_core::mod_parser::*` 不变）。
+// Re-export the shared parser output types from `outcome` (keeps the
+// caller-facing path `pobr_core::mod_parser::*` unchanged).
 pub use dispatch::ParseCtx;
 pub use outcome::{ParseError, ParseOutcome, ParseStatus, SpecialMatchMeta};
 
@@ -33,8 +38,10 @@ pub use canonical::{canonical_outcome, canonical_tags};
 pub use compiled::{CompileError, CompiledParserRules};
 pub use engine::{EngineDiag, parse_mod_engine, parse_mod_engine_diag};
 
-// `test-rules` feature 供下游 crate 集成测试；`cfg(test)` 使 pobr-core 自身
-// 单测也能取真实规则（serde_json 走 dev-dependency，零 I/O 不变式只约束生产构建）。
+// The `test-rules` feature is for downstream crates' integration tests;
+// `cfg(test)` lets pobr-core's own unit tests get real rules too
+// (serde_json comes in as a dev-dependency; the zero-I/O invariant only
+// constrains production builds).
 #[cfg(any(test, feature = "test-rules"))]
 mod test_rules;
 #[cfg(any(test, feature = "test-rules"))]

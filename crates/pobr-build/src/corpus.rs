@@ -1,20 +1,23 @@
-//! 词条语料统计与 unsupported 分类（M5b 蓝图 A-1/A-2；M6 收尾后仅存 engine
-//! 生产口径）。
+//! Modifier text corpus statistics and unsupported-line classification (/A-2; after
+//! cleanup, only the engine production classification remains).
 //!
-//! 「按 ninja 命中频率分批迁移」的事实来源：对 build fixture 的全量词条文本走
-//! 数据驱动引擎分类，模板归一化后按频率排序。**绕开**
-//! `calc_orchestrator::filter_parseable`（它把不可解析词条静默丢弃），直接对
-//! 原始行分类，使缺口语料可见。
+//! Source of truth for "migrate in batches ordered by ninja hit frequency": runs the
+//! full modifier text of the build fixtures through the data-driven engine's
+//! classification, then sorts by normalized-template frequency. This **bypasses**
+//! `calc_orchestrator::filter_parseable` (which silently drops unparseable modifiers)
+//! and classifies the raw lines directly, so gaps in the corpus stay visible.
 //!
-//! 复用约定：本模块是 pobr-build 可达位置（ninja_parity 报表段直接调用）。
-//! 零 I/O——语料行由调用方收集传入。
+//! Reuse note: this module lives in pobr-build so it's reachable (the ninja_parity
+//! report section calls it directly). Zero I/O — corpus lines are collected and passed
+//! in by the caller.
 
 use std::collections::BTreeMap;
 
 use pobr_core::mod_parser::ParseStatus;
 
-/// 模板归一化：数字 → `#`、压缩空白、小写、剥离 PoB2 方括号标记 `[A|B]`→`B`。
-/// 同模板异数值的行合并计数。
+/// Template normalization: numbers → `#`, whitespace collapsed, lowercased, PoB2 bracket
+/// markers stripped (`[A|B]`→`B`). Lines with the same template but different values
+/// count as one.
 pub fn normalize_template(text: &str) -> String {
     let stripped = strip_brackets(text);
     let lower = stripped.to_ascii_lowercase();
@@ -23,7 +26,7 @@ pub fn normalize_template(text: &str) -> String {
     let mut prev_space = false;
     while let Some(c) = chars.next() {
         if c.is_ascii_digit() {
-            // 吞掉整个数字（含小数点）→ 单个 `#`。
+            // Consume the whole number (including a decimal point) as a single `#`.
             while let Some(&n) = chars.peek() {
                 if n.is_ascii_digit() || n == '.' {
                     chars.next();
@@ -46,8 +49,9 @@ pub fn normalize_template(text: &str) -> String {
     out.trim().to_string()
 }
 
-/// 剥离 PoB2 方括号标记：`[内部名|显示名]`→显示名、`[名]`→名。
-/// pub：报表侧对照 vendor ModCache golden（其 key 为展开后文本）时同一口径。
+/// Strips PoB2 bracket markers: `[internal name|display name]`→display name, `[name]`→name.
+/// Public because the report side needs the same normalization when comparing against
+/// the vendor ModCache golden data (whose keys are the expanded text).
 pub fn strip_brackets(text: &str) -> String {
     if !text.contains('[') {
         return text.to_string();
@@ -72,46 +76,46 @@ pub fn strip_brackets(text: &str) -> String {
     out
 }
 
-/// 词条来源（统计分桶用）。
+/// Modifier source (for statistics bucketing).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LineSource {
-    /// 装备词条（implicit / explicit / enchant）。
+    /// Item mod (implicit / explicit / enchant).
     Item,
-    /// 天赋节点 stat。
+    /// Passive node stat.
     Passive,
-    /// 珠宝授予行。
+    /// Jewel grant line.
     Jewel,
 }
 
-/// 单条语料输入（原文 + 来源 + 所属 build 标识）。
+/// One corpus input line (raw text + source + owning build id).
 #[derive(Debug, Clone)]
 pub struct CorpusLine {
-    /// 原始词条文本。
+    /// Raw modifier text.
     pub text: String,
-    /// 来源类别。
+    /// Source category.
     pub source: LineSource,
-    /// 所属 build 标识（统计 builds_hit 用）。
+    /// Owning build id (used to count builds_hit).
     pub build_id: String,
 }
 
-// ---------------------------------------------------------------------------
-// engine 生产口径（A2 静默降级可见化）
-// ---------------------------------------------------------------------------
+// Engine production classification (makes A2's silent degradation visible)
 
-/// engine 生产口径的行分类（B3 后闸门与 ingest 同一 parser——本分类即生产行为）。
+/// Line classification under the engine's production behavior (after B3, the gate uses
+/// the same parser as ingest — this classification *is* production behavior).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EngineLineClass {
-    /// `Parsed` 且无残留：生产保留并生效。
+    /// `Parsed` with no leftover: kept and takes effect in production.
     Parsed,
-    /// `Parsed` 但有 unparsed 残留：引擎已识别一部分，但 B3 闸门按 vendor
-    /// `list and not extra` 语义丢弃整行——**高价值迁移候选**（缺的往往只是
-    /// 一条 tag/name 数据条目）。
+    /// `Parsed` but with unparsed leftover: the engine recognized part of it, but the B3
+    /// gate drops the whole line, following vendor's `list and not extra` semantics —
+    /// a **high-value migration candidate** (usually missing just one tag/name data entry).
     Partial,
-    /// 无规则命中：生产丢弃。
+    /// No rule matched: dropped in production.
     Unsupported,
 }
 
-/// engine 口径单行分类 + 静默降级计数（丢 tag 数）。
+/// Classifies a single line under the engine's production semantics, plus a count of
+/// silently-dropped tags.
 pub fn classify_line_engine(
     text: &str,
     rules: &pobr_core::mod_parser::CompiledParserRules,
@@ -125,46 +129,49 @@ pub fn classify_line_engine(
     (class, diag.dropped_pre_flag_tags)
 }
 
-/// engine 口径的模板聚合（gap 榜与丢 tag 榜共用）。
+/// Per-template aggregate under the engine's classification (shared by the gap ranking
+/// and the dropped-tag ranking).
 #[derive(Debug, Clone)]
 pub struct EngineTemplateStat {
-    /// 归一化模板。
+    /// Normalized template.
     pub template: String,
-    /// 分类（同模板取首条）。
+    /// Classification (first line's class wins for a given template).
     pub class: EngineLineClass,
-    /// 命中的不同 build 数。
+    /// Number of distinct builds this template hit.
     pub builds_hit: usize,
-    /// 总出现次数。
+    /// Total occurrence count.
     pub total_count: usize,
-    /// 该模板累计丢弃的 pre_flag tag 数。
+    /// Total pre_flag tags dropped for this template.
     pub dropped_tags: u32,
-    /// 代表性原文样本（≤3）。
+    /// Representative raw-text samples (up to 3).
     pub samples: Vec<String>,
 }
 
-/// engine 生产口径聚合报表。
+/// Aggregate report under the engine's production classification.
 #[derive(Debug, Clone, Default)]
 pub struct EngineCorpusReport {
-    /// 词条总数。
+    /// Total line count.
     pub total_lines: usize,
-    /// 完整解析（生产生效）。
+    /// Fully parsed (takes effect in production).
     pub parsed: usize,
-    /// 部分解析（生产丢弃；迁移候选）。
+    /// Partially parsed (dropped in production; migration candidate).
     pub partial: usize,
-    /// 无命中（生产丢弃）。
+    /// No match at all (dropped in production).
     pub unsupported: usize,
-    /// 丢 tag 的行数（作用域放大 over-apply 风险面）。
+    /// Number of lines that dropped at least one tag (risk surface for over-apply due to
+    /// widened scope).
     pub lines_with_dropped_tags: usize,
-    /// 累计丢弃 tag 数。
+    /// Total dropped tag count.
     pub total_dropped_tags: u32,
-    /// 缺口模板榜（Partial + Unsupported，builds_hit desc / count desc）。
+    /// Gap template ranking (Partial + Unsupported, sorted by builds_hit desc / count desc).
     pub gap_templates: Vec<EngineTemplateStat>,
-    /// 丢 tag 模板榜（含 Parsed 行——解析成功但作用域被放大的近似）。
+    /// Dropped-tag template ranking (includes Parsed lines — an approximation of
+    /// "parsed successfully but scope was widened").
     pub dropped_tag_templates: Vec<EngineTemplateStat>,
 }
 
 impl EngineCorpusReport {
-    /// 生产缺口率（(partial + unsupported) / total）。
+    /// Production gap rate: (partial + unsupported) / total.
     pub fn gap_rate(&self) -> f64 {
         if self.total_lines == 0 {
             0.0
@@ -174,7 +181,8 @@ impl EngineCorpusReport {
     }
 }
 
-/// engine 生产口径报表：分类 + 丢 tag 计数按归一化模板聚合。
+/// Report under the engine's production classification: classification + dropped-tag
+/// counts aggregated by normalized template.
 pub fn build_report_engine(
     lines: &[CorpusLine],
     rules: &pobr_core::mod_parser::CompiledParserRules,
@@ -266,7 +274,7 @@ mod tests {
             normalize_template("12.5% increased  [Critical|Critical Hit] Chance"),
             "#% increased critical hit chance"
         );
-        // 同模板异数值归一一致。
+        // Same template with different values normalizes the same.
         assert_eq!(
             normalize_template("+50 to maximum Life"),
             normalize_template("+120 to maximum Life")
@@ -276,12 +284,12 @@ mod tests {
     #[test]
     fn classify_line_engine_distinguishes_classes() {
         let rules = pobr_core::mod_parser::test_compiled_rules();
-        // Parsed：标准 form。
+        // Parsed: standard form.
         assert_eq!(
             classify_line_engine("20% increased Fire Damage", &rules).0,
             EngineLineClass::Parsed
         );
-        // Unsupported：已知软不支持（mirrored）。
+        // Unsupported: a known, intentionally-unsupported case (mirrored).
         assert_eq!(
             classify_line_engine("Mirrored", &rules).0,
             EngineLineClass::Unsupported
@@ -316,14 +324,15 @@ mod tests {
         let report = build_report_engine(&lines, &rules);
         assert_eq!(report.total_lines, 4);
         assert_eq!(report.parsed, 1);
-        // 两个 frobnicate 行同模板（数字归一）→ builds_hit=2，排首位。
+        // Both frobnicate lines share a template after number normalization →
+        // builds_hit=2, ranked first.
         assert_eq!(
             report.gap_templates[0].template,
             "frobnicate the widget # times"
         );
         assert_eq!(report.gap_templates[0].builds_hit, 2);
         assert_eq!(report.gap_templates[0].total_count, 2);
-        // gap_rate = 3/4。
+        // gap_rate = 3/4.
         assert!((report.gap_rate() - 0.75).abs() < 1e-9);
     }
 

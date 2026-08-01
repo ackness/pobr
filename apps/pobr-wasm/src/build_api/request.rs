@@ -1,7 +1,10 @@
-//! 计算请求 DTO + 共享请求处理（解码/新建 build、覆盖项应用、编排选项、会话执行）。
+//! Calculation request DTOs plus shared request handling (decode/create a
+//! build, apply overrides, orchestration options, session execution).
 //!
-//! 这里的 DTO 字段与共享函数被 `calculate` / `analysis` / `encode` 子模块跨模块
-//! 复用，故标 `pub(crate)`（拆分前同处一个模块，字段私有即可）。
+//! The DTO fields and shared functions here are reused across the
+//! `calculate` / `analysis` / `encode` submodules, hence marked
+//! `pub(crate)` (before the split, this all lived in one module, where
+//! private fields would have sufficed).
 
 use std::collections::BTreeMap;
 
@@ -20,12 +23,15 @@ use serde::{Deserialize, Serialize};
 use super::{ApiError, localize_input_text, slot_from_id};
 use crate::state;
 
-/// 单件来源**文本**解析失败的降级记录：跳过该件继续算，进响应 `item_errors`，
-/// 前端据此标红该槽而不中断整次计算。结构性错误（未知槽名等客户端 bug）
-/// 仍走硬错误 [`ApiError::bad_request`]。
+/// A degraded record for a single source item's **text** failing to parse:
+/// that item is skipped and the calculation continues, with this going into
+/// the response's `item_errors`; the frontend uses it to flag that slot in
+/// red without aborting the whole calculation. Structural errors (an
+/// unknown slot name, etc. — client bugs) still go through the hard error
+/// [`ApiError::bad_request`].
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct SlotIssue {
-    /// 装备槽 id / `Flask N`·`Charm N` 槽名 / `Jewel@<socket_node>`。
+    /// The equipment slot id / `Flask N`·`Charm N` slot name / `Jewel@<socket_node>`.
     pub(crate) slot: String,
     pub(crate) message: String,
 }
@@ -39,7 +45,8 @@ pub(crate) fn parse_attribute_choice(s: &str) -> Result<AttributeChoice, String>
     }
 }
 
-/// 角色身份覆盖（白手起 build 的必要面 / 导入后改等级职业）。
+/// A character-identity override (the necessary surface for starting a
+/// build from scratch / changing level and class after import).
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CharacterOverride {
@@ -48,9 +55,10 @@ pub struct CharacterOverride {
     pub(crate) ascendancy_name: Option<String>,
 }
 
-/// 手动技能组的宝石条目（active 与 support 皆可；组内首个即主动技能，
-/// 与 XML 导入同语义）。`gem_id` 不上行——由 `gem_effects` 表按 `skill_id`
-/// 反查（support 分类依赖 gem id）。
+/// A gem entry for a manual skill group (either active or support; the
+/// first one in the group is the active skill, matching XML import
+/// semantics). `gem_id` isn't sent up — it's reverse-looked-up from the
+/// `gem_effects` table by `skill_id` (support classification depends on the gem id).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct GemInput {
@@ -69,13 +77,14 @@ impl Default for GemInput {
     }
 }
 
-/// 手动技能组（整份替换 build 的 socket_groups）。
+/// A manual skill group (wholesale replaces the build's socket_groups).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SocketGroupInput {
     pub(crate) slot: Option<String>,
     pub(crate) enabled: bool,
-    /// 装备授予技能组的来源标记（decode 透传回来；手动组为 `None`）。
+    /// The source marker for an equipment-granted skill group (passed
+    /// through from decode; `None` for a manual group).
     pub(crate) source: Option<String>,
     pub(crate) gems: Vec<GemInput>,
 }
@@ -91,7 +100,8 @@ impl Default for SocketGroupInput {
     }
 }
 
-/// 手动装备（PoB 原始文本块，与导入路径同一解析器；整份替换装备槽）。
+/// Manual equipment (a raw PoB text block, using the same parser as the
+/// import path; wholesale replaces the equipment slot).
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SlotItemInput {
@@ -99,7 +109,8 @@ pub struct SlotItemInput {
     pub(crate) text: String,
 }
 
-/// 手动树插槽珠宝（整份替换；只有插槽已加点的才生效，与 XML 导入同门控）。
+/// A manual tree-socket jewel (wholesale replaces them; only takes effect
+/// if the socket node is allocated, matching XML import gating).
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct JewelInput {
@@ -107,40 +118,49 @@ pub struct JewelInput {
     pub(crate) text: String,
 }
 
-/// 计算请求：`pob_code` 与 `character` 至少给一个——有 code 则解码为基线再套
-/// 覆盖项；无 code 时以 `character` 白手起一个空 build（PoB2 新建 build 语义）。
+/// A calculation request: at least one of `pob_code` and `character` must
+/// be given — with a code, it's decoded as the baseline and overrides are
+/// applied on top; without one, `character` starts an empty build from
+/// scratch (PoB2's "new build" semantics).
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CalculateBuildRequest {
     pub(crate) pob_code: String,
-    /// 角色身份覆盖（等级 / 职业 / 升华；逐字段可缺省）。
+    /// The character-identity override (level / class / ascendancy; each field optional).
     pub(crate) character: Option<CharacterOverride>,
-    /// 覆盖已加点集合（交互加点：整份替换 build 的 allocated_nodes）。
+    /// The allocated-node-set override (interactive point allocation:
+    /// wholesale replaces the build's allocated_nodes).
     pub(crate) allocated_nodes: Option<Vec<u32>>,
-    /// 覆盖属性小点三选一（node skill id → `"str"|"dex"|"int"`；整份替换）。
+    /// The attribute-choice small-node override (node skill id ->
+    /// `"str"|"dex"|"int"`; wholesale replaces them).
     pub(crate) attribute_choices: Option<BTreeMap<u32, String>>,
-    /// 覆盖技能组（手动编辑：整份替换；`None` = 保持 code 解码结果）。
+    /// The skill-group override (manual editing: wholesale replaces them;
+    /// `None` = keep the code's decoded result).
     pub(crate) socket_groups: Option<Vec<SocketGroupInput>>,
-    /// 覆盖装备（手动编辑：整份替换全部装备槽）。
+    /// The equipment override (manual editing: wholesale replaces every equipment slot).
     pub(crate) items: Option<Vec<SlotItemInput>>,
-    /// 覆盖激活态药剂/护符（整份替换 `utility_slots`；槽名 `Flask 1/2`、`Charm 1..3`）。
+    /// The active-flask/charm override (wholesale replaces
+    /// `utility_slots`; slot names are `Flask 1/2`, `Charm 1..3`).
     pub(crate) flasks: Option<Vec<SlotItemInput>>,
-    /// 覆盖树插槽珠宝（含范围珠宝：`in Radius also grant` 行经几何展开改天赋词条）。
+    /// The tree-socket jewel override (including radius jewels: `in Radius
+    /// also grant` lines rewrite passive mod lines via geometric expansion).
     pub(crate) jewels: Option<Vec<JewelInput>>,
-    /// 覆盖主技能组（0-based，Skills 页切换主技能用）。
+    /// The main-socket-group override (0-based, used for switching the main skill on the Skills page).
     pub(crate) main_socket_group: Option<usize>,
-    /// 有效 DPS 口径（默认 true，与 PoB2 主面板同口径）。
+    /// The effective-DPS basis (defaults to true, matching PoB2's main panel basis).
     pub(crate) mode_effective: Option<bool>,
-    /// 敌人档位覆盖（`"none" | "boss" | "pinnacle" | "uber"`）。
+    /// The enemy-tier override (`"none" | "boss" | "pinnacle" | "uber"`).
     pub(crate) enemy_tier: Option<String>,
-    /// 额外全局 modifier 文本（调试 / 假设分析）。
+    /// Extra global modifier text (for debugging / hypothetical analysis).
     pub(crate) extra_modifiers: Vec<String>,
-    /// `<Config>` 输入覆盖（Config 页开关；bool/number/string 三型）。
+    /// The `<Config>` input override (Config page toggles; bool/number/string).
     pub(crate) config_inputs: BTreeMap<String, serde_json::Value>,
-    /// 笔记（仅 `encode_build_json` 写进 `<Notes>`；计算路径忽略）。
+    /// Notes (only written into `<Notes>` by `encode_build_json`; ignored by the calculation path).
     pub(crate) notes: Option<String>,
-    /// 导入时的原始 build code（仅 `encode_build_json` 用）：产物以它为底，只替换
-    /// 当前 active 的那一套，其余 loadout 原样保留。缺省 = 全量生成单套。
+    /// The original build code at import time (used only by
+    /// `encode_build_json`): the output is based on it, replacing only the
+    /// currently active set, with every other loadout preserved as-is.
+    /// Defaults to generating a single set from scratch.
     #[serde(default)]
     pub(crate) base_code: Option<String>,
 }
@@ -164,9 +184,10 @@ fn json_to_config_value(v: &serde_json::Value) -> Result<ConfigInputValue, Strin
     }
 }
 
-/// 手动技能组 → [`SocketGroup`]：主动技能 = 组内首个非 support 宝石（查数据表，
-/// 比 XML 的「首个即 active」更鲁棒）；gem id 由 `gem_effects` 表按效果 id 反查
-/// （support 分类依赖它）。
+/// A manual skill group -> [`SocketGroup`]: the active skill is the first
+/// non-support gem in the group (determined by a data-table lookup, more
+/// robust than XML's "the first one is active"); the gem id is
+/// reverse-looked-up from the `gem_effects` table by effect id (support classification depends on it).
 fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData) -> SocketGroup {
     let mut group = SocketGroup {
         slot: input.slot.clone(),
@@ -205,7 +226,8 @@ fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData) -> Socket
     group
 }
 
-/// 把请求应用到解码/新建的 build（角色 / 树 / 技能组 / 装备 / 主技能组 / config 覆盖）。
+/// Applies the request's overrides to a decoded/newly-created build
+/// (character / tree / skill groups / equipment / main socket group / config).
 pub(crate) fn apply_request_overrides(
     build: &mut Build,
     req: &CalculateBuildRequest,
@@ -245,7 +267,8 @@ pub(crate) fn apply_request_overrides(
             let slot = slot_from_id(&item.slot)
                 .map_err(|e| ApiError::bad_request(e).with_slot(item.slot.as_str()))?;
             let text = localize_input_text(&item.text);
-            // 文本解析失败降级：跳过该件继续算，槽位与原因进 issues。
+            // Degrade on text parse failure: skip this item and keep
+            // calculating, recording the slot and reason into issues.
             match parse_pob_xml_item(&text) {
                 Ok(parsed) => {
                     build.items.insert(slot, parsed);
@@ -260,7 +283,8 @@ pub(crate) fn apply_request_overrides(
     if let Some(flasks) = &req.flasks {
         build.utility_slots.clear();
         for flask in flasks {
-            // 与 XML 导入同语义：只有激活槽进列表；槽名限 PoB 的 Flask/Charm 系。
+            // Same semantics as XML import: only active slots go into the
+            // list; slot names are restricted to PoB's Flask/Charm family.
             if !(flask.slot.starts_with("Flask ") || flask.slot.starts_with("Charm ")) {
                 return Err(ApiError::bad_request(format!(
                     "unknown flask/charm slot: {}",
@@ -279,7 +303,8 @@ pub(crate) fn apply_request_overrides(
         }
     }
     if let Some(jewels) = &req.jewels {
-        // 门控：只收插槽已加点的珠宝（与 XML 导入 parse_radius_jewels 同语义）。
+        // Gating: only jewels in an allocated socket are accepted (matching
+        // XML import's parse_radius_jewels semantics).
         let allocated: std::collections::HashSet<u32> =
             build.tree.allocated_nodes.iter().map(|n| n.0).collect();
         let mut plain = Vec::new();
@@ -308,7 +333,8 @@ pub(crate) fn apply_request_overrides(
         build.radius_jewels = radius;
     }
     if let Some(main) = req.main_socket_group {
-        // 契约是 0-based（web 下标），Build 内部与 PoB XML 同为 1-based。
+        // The contract is 0-based (web index semantics); Build's internal
+        // representation matches PoB XML's 1-based indexing.
         build.main_socket_group = Some(main + 1);
     }
     for (key, value) in &req.config_inputs {
@@ -318,12 +344,17 @@ pub(crate) fn apply_request_overrides(
         );
     }
 
-    // 任务奖励在合并后的 config 输入上整份重建（PoB2 defaultState=true 语义）：
-    // 有效值 = XML `<Input>` 捕获（raw_inputs）被请求 config_inputs 覆盖的结果；
-    // Stat 型省略 = 已领取、显式 false = 放弃，Options 型（string 值）注入所选
-    // 词条文本。这让导入 build 后在 Config 页切任务奖励也能生效（解码时 XML 路径
-    // 注入的行在此被覆盖）。global_modifier_texts 只承载 quest 行——config_resolve
-    // 的解释器通道显式排除 quest 防双计——整份替换是安全的。
+    // Quest rewards are wholesale rebuilt on top of the merged config
+    // inputs (matching PoB2's defaultState=true semantics): the effective
+    // value is the result of the XML `<Input>` capture (raw_inputs)
+    // overridden by the request's config_inputs; an omitted Stat-type value
+    // means it's been claimed, an explicit false means it's been given up,
+    // and an Options-type value (a string) injects the selected mod text.
+    // This lets switching quest rewards on the Config page after importing
+    // a build still take effect (the lines injected by the XML path at
+    // decode time get overridden here). global_modifier_texts only carries
+    // quest lines — config_resolve's interpreter channel explicitly
+    // excludes quest to avoid double-counting — so wholesale replacement is safe.
     let values = &build.config.raw_inputs.values;
     let mut quest_texts = pobr_build::default_quest_stat_reward_texts(|key| {
         values.get(key).and_then(|v| match v {
@@ -372,8 +403,9 @@ pub(crate) fn orchestrator_options(
 
 pub(crate) fn parse_build_from_request(req: &CalculateBuildRequest) -> Result<Build, ApiError> {
     if req.pob_code.trim().is_empty() {
-        // 白手起 build（PoB2 新建语义）：无装备/无技能组的空 build，
-        // 角色身份来自 character 覆盖（职业必填，等级缺省 1）。
+        // Starting a build from scratch (PoB2's "new build" semantics): an
+        // empty build with no equipment/skill groups, with character
+        // identity coming from the character override (class is required, level defaults to 1).
         let ch = req
             .character
             .as_ref()
@@ -381,8 +413,9 @@ pub(crate) fn parse_build_from_request(req: &CalculateBuildRequest) -> Result<Bu
         let class_name = ch.class_name.clone().ok_or_else(|| {
             ApiError::bad_request("character.class_name is required for a scratch build")
         })?;
-        // 任务奖励不在此注入：统一由 apply_request_overrides 按合并后的
-        // config 输入重建（XML 与直连两路径同一口径，导入后可在 Config 页改）。
+        // Quest rewards aren't injected here: they're uniformly rebuilt by
+        // apply_request_overrides from the merged config inputs (the XML
+        // and direct-construction paths share one basis, and rewards can be changed on the Config page after import).
         return Ok(Build::new().with_character(CharacterIdentity {
             level: ch.level.unwrap_or(1),
             class_name,

@@ -1,9 +1,10 @@
-//! 词缀 tier 标注集成测试（真实数据）。
+//! Integration tests for affix tier annotation (real data).
 //!
-//! - 当前数据版本（`data/CURRENT`，含 mods `group`/`spawn_weights` 与
-//!   StatDescriptions overlay）：rare 物品 explicit 行应携带 tier 字段；
-//! - golden 版本（4.5.0.3.4，无池数据）：tier 字段整体省略（向后兼容，
-//!   契约形状不变）。
+//! - The current data version (`data/CURRENT`, which has mods'
+//!   `group`/`spawn_weights` plus the StatDescriptions overlay): a rare
+//!   item's explicit lines should carry the `tier` field;
+//! - The golden version (4.5.0.3.4, no pool data): the `tier` field is
+//!   omitted entirely (backwards compatible, the contract shape doesn't change).
 
 use pobr_gamedata::repo_data_root;
 use serde_json::Value;
@@ -45,10 +46,13 @@ fn current_data_annotates_explicit_tiers() {
     }
 }
 
-/// 优雅降级：无 tier 池字段（group/spawn_weights）的数据包不标 tier。
-/// 显式钉 4.5.0.3.4——这是「早于 tier 数据通道的旧格式包」的 fixture 钉（非数据
-/// 内容计数钉，不进 test_pins 快照）；golden 版（4.5.4.3 起）已含池数据会标
-/// tier，故此降级用例不能借 `GOLDEN_PARITY_DATA_VERSION`。旧包被清理时跳过。
+/// Graceful degradation: a data pack lacking the tier pool fields
+/// (group/spawn_weights) doesn't get tiers labeled. Explicitly pinned to
+/// 4.5.0.3.4 — this is a fixture pin for "an old-format pack predating the
+/// tier data channel" (not a data-content-count pin, so it doesn't go into
+/// the test_pins snapshot); the golden version (4.5.4.3 onward) already has
+/// pool data and would label tiers, so this degradation test case can't
+/// borrow `GOLDEN_PARITY_DATA_VERSION`. Skipped once the old pack gets cleaned up.
 #[test]
 fn golden_data_without_pool_fields_omits_tiers() {
     let dir = repo_data_root().join("4.5.0.3.4");

@@ -1,7 +1,7 @@
-//! `extract-lua --what gem-quality` 子命令的集成测试（M1-T1）。
+//! Integration tests for the `extract-lua --what gem-quality` subcommand.
 //!
-//! 依赖 luajit 的用例在环境缺少 luajit 时**跳过**（CI 无 luajit 也不挂）；
-//! 文档组装的确定性用例为纯 Rust，不依赖外部进程。
+//! Cases that depend on luajit **skip** when the environment lacks it (so
+//! CI without luajit doesn't hang); the document-assembly determinism cases are pure Rust and don't depend on an external process.
 
 use std::path::{Path, PathBuf};
 
@@ -43,7 +43,7 @@ fn sample_meta() -> OverlayMeta {
     }
 }
 
-/// 同输入重跑两次，产物必须 byte 相等（确定性铁律）
+/// Rerun with the same input twice; the output must be byte-identical (an ironclad determinism rule)
 #[test]
 fn extract_is_byte_stable_across_runs() {
     let args = fixture_args();
@@ -56,8 +56,8 @@ fn extract_is_byte_stable_across_runs() {
     assert_eq!(first, second, "gem-quality 两次运行产物必须 byte 相等");
 }
 
-/// 抽取语义：qualityStats 忠实转录（保持 vendor 顺序）；空表 / 无字段（support
-/// 导出输出）不产条目。
+/// Extraction semantics: qualityStats is transcribed faithfully (preserving
+/// vendor order); an empty table / a missing field (support-gem export output) produces no entry.
 #[test]
 fn extract_captures_quality_stats_faithfully() {
     let args = fixture_args();
@@ -79,7 +79,7 @@ fn extract_captures_quality_stats_faithfully() {
         doc.meta.regen_command
     );
 
-    // 只有 MiniComet 有非空 qualityStats（MiniEmpty 空表 / MiniSupport 无字段）。
+    // Only MiniComet has non-empty qualityStats (MiniEmpty has an empty table / MiniSupport has no field).
     assert_eq!(doc.effects.len(), 1);
     let comet = &doc.effects[0];
     assert_eq!(comet.effect_id, "MiniComet");
@@ -98,8 +98,8 @@ fn extract_captures_quality_stats_faithfully() {
     );
 }
 
-/// 文档组装（纯 Rust）：effect 行输入乱序也必须产出同一份按 effect_id 排序的
-/// byte-stable 文本；效果内行保持到达顺序。
+/// Document assembly (pure Rust): shuffled effect-row input must still
+/// produce the same effect_id-sorted, byte-stable text; rows within an effect keep their arrival order.
 #[test]
 fn assemble_document_is_deterministic_and_sorted_by_effect() {
     let row = |effect: &str, stat: &str, rate: f64| QualityRow {
@@ -108,8 +108,9 @@ fn assemble_document_is_deterministic_and_sorted_by_effect() {
         rate,
         alt: false,
     };
-    // 两种到达顺序（effect 层乱序，单效果内顺序一致——对齐 Lua 侧 pairs 外层
-    // 不确定 / ipairs 内层连续的输出形态）。
+    // Two arrival orders (shuffled at the effect level, consistent within a
+    // single effect — matching the output shape of Lua's pairs having
+    // unordered iteration at the outer level while ipairs is sequential at the inner level).
     let a = vec![
         row("Zeta", "stat_z", 1.0),
         row("Alpha", "stat_b", 0.5),

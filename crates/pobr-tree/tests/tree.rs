@@ -1,7 +1,9 @@
-//! 集成测试：PassiveTree 的 JSON 解析、节点查找、allocated mod 收集与 JewelSocket/Mastery gating。
+//! Integration tests: `PassiveTree` JSON parsing, node lookup, allocated-mod
+//! collection, and JewelSocket/Mastery gating.
 //!
-//! 节点 fixture 为自构造（catalog `PassiveNodeDef` schema），仅用于验证逻辑，
-//! 不代表真实 PoE2 天赋树拓扑（见 blocked_by_missing_data）。
+//! Node fixtures are hand-constructed (following the catalog `PassiveNodeDef`
+//! schema) purely to exercise the logic, and don't represent real PoE2
+//! passive tree topology (see blocked_by_missing_data).
 
 use pobr_data::prelude::*;
 use pobr_tree::{
@@ -10,11 +12,12 @@ use pobr_tree::{
 };
 use std::collections::HashMap;
 
-/// 自构造 7 节点 fixture 的 JSON（`PassiveNodeDef` 数组）。
+/// Hand-constructed JSON for a 7-node fixture (an array of `PassiveNodeDef`).
 ///
-/// skill 1 Normal(有词条) / 2 Notable(2 条) / 3 JewelSocket(应被 gating) /
-/// 4 Keystone(2 条) / 5 Normal(无词条) / 6 Mastery(应被 gating) /
-/// 7 属性小点(`+5 to any Attribute`，三选一)。
+/// skill 1 Normal (has stats) / 2 Notable (2 stats) / 3 JewelSocket (should
+/// be gated) / 4 Keystone (2 stats) / 5 Normal (no stats) / 6 Mastery
+/// (should be gated) / 7 attribute-choice small node
+/// (`+5 to any Attribute`, one of three).
 fn fixture_json() -> &'static str {
     r#"[
       {
@@ -238,8 +241,10 @@ fn collect_allocated_mods_free_function_matches_tree_method() {
 
 #[test]
 fn compute_node_mods_splits_multiline_stats_into_separate_texts() {
-    // PoE2 关键石的单个 stats 元素常含 `\n`（如 CI 节点）。整条交给 parse_mod 必失败被
-    // 静默丢弃；逐行拆分后每行独立可解析。这是所有多行节点共享的通用修复。
+    // Some PoE2 keystones (e.g. CI) pack a single stats element with `\n`.
+    // Feeding the whole thing to parse_mod always fails and gets silently
+    // dropped; splitting into lines lets each parse independently. This is a
+    // generic fix shared by every multi-line node.
     let json = r#"[
       {
         "skill": 7,
@@ -315,9 +320,9 @@ fn from_nodes_round_trips_with_positions() {
     assert_eq!(tree.nodes_in_radius(NodeId(1), 100.0), vec![NodeId(2)]);
 }
 
-// --- Mastery selection tests ---
+// Mastery selection tests
 
-/// 当 mastery_effects 中包含对应节点的选择时，应只注入选定的单条词条。
+/// When `mastery_effects` has a selection for the node, only that single chosen effect is injected.
 #[test]
 fn mastery_with_selection_injects_chosen_effect() {
     // Arrange
@@ -344,7 +349,7 @@ fn mastery_with_selection_injects_chosen_effect() {
     assert_eq!(mods.len(), 2);
 }
 
-/// 当 mastery_effects 中选择了 effect b，应注入 effect b 而不是 a。
+/// When `mastery_effects` selects effect b, effect b is injected instead of a.
 #[test]
 fn mastery_selection_injects_second_effect() {
     // Arrange
@@ -371,14 +376,14 @@ fn mastery_selection_injects_second_effect() {
     assert_eq!(mods.len(), 1);
 }
 
-/// 当 mastery_effects 中没有对应节点的选择时，Mastery 节点整体 gating（向后兼容）。
+/// When `mastery_effects` has no selection for the node, the Mastery node is gated entirely (backwards-compatible).
 #[test]
 fn mastery_without_selection_is_still_gated() {
     // Arrange
     let tree = PassiveTree::from_json(fixture_json()).unwrap();
     let spec = PassiveTreeSpec {
         allocated_nodes: vec![NodeId(1), NodeId(6)],
-        mastery_effects: HashMap::new(), // 无任何选择
+        mastery_effects: HashMap::new(), // no selection at all
         attribute_overrides: HashMap::new(),
     };
 
@@ -390,7 +395,7 @@ fn mastery_without_selection_is_still_gated() {
     assert_eq!(mods.len(), 1);
 }
 
-/// 多个 Mastery 节点各自独立选择，互不干扰。
+/// Multiple Mastery nodes each pick independently, without interfering with each other.
 #[test]
 fn multiple_mastery_selections_are_independent() {
     // Arrange: fixture only has node 6 as mastery; build a tree with two mastery nodes
@@ -430,7 +435,7 @@ fn multiple_mastery_selections_are_independent() {
     assert_eq!(mod_b.modifier_texts, vec!["effect_b1"]);
 }
 
-/// Mastery 节点的 SourceId 与普通节点保持一致（PassiveNode, skill id 字符串）。
+/// A Mastery node's SourceId matches a regular node's (PassiveNode, skill id as a string).
 #[test]
 fn mastery_selection_source_id_is_passive_node() {
     // Arrange
@@ -457,7 +462,8 @@ fn mastery_selection_source_id_is_passive_node() {
     assert_eq!(m.source_id.id, "6");
 }
 
-/// 属性小点在 `attribute_overrides` 有选择时，词条改写为所选的具体属性。
+/// When `attribute_overrides` has a choice for an attribute-choice node, its
+/// text is rewritten to the chosen attribute.
 #[test]
 fn attribute_choice_node_rewrites_to_selected_attribute() {
     let tree = PassiveTree::from_json(fixture_json()).unwrap();
@@ -475,8 +481,10 @@ fn attribute_choice_node_rewrites_to_selected_attribute() {
     assert_eq!(mods[0].modifier_texts, vec!["+5 to Dexterity".to_string()]);
 }
 
-/// 属性小点未做选择时保留原文（下游 mod_parser 不识别 `any attribute`，
-/// 自然归入 Unsupported——与 PoB2 空映射一致，不贡献任何属性）。
+/// With no choice made for an attribute-choice node, the original text is
+/// kept as-is (mod_parser downstream doesn't recognize `any attribute`, so it
+/// naturally ends up Unsupported — matching PoB2's empty mapping, and
+/// contributes no attribute).
 #[test]
 fn attribute_choice_node_without_override_keeps_original_text() {
     let tree = PassiveTree::from_json(fixture_json()).unwrap();
@@ -494,9 +502,10 @@ fn attribute_choice_node_without_override_keeps_original_text() {
     );
 }
 
-// ---- isSwitchable 按职业/飞升变体（M4-J，对齐 PoB2 PassiveSpec.lua:1251-1256）----
+// isSwitchable variants selected by class/ascendancy (mirrors PoB2 PassiveSpec.lua:1251-1256)
 
-/// 自构造 isSwitchable 节点 fixture：基础版 + Witch 职业变体 + Abyssal Lich 飞升变体。
+/// Hand-constructed isSwitchable node fixture: base stats + a Witch class
+/// variant + an Abyssal Lich ascendancy variant.
 fn switchable_fixture() -> HashMap<u32, PassiveNodeDef> {
     let json = r#"[
       {
@@ -528,7 +537,8 @@ fn switchable_fixture() -> HashMap<u32, PassiveNodeDef> {
     PassiveTree::from_json(json).unwrap().nodes
 }
 
-/// 职业名命中变体时整体替换基础词条（PoB `ReplaceNode` 语义，不合并）。
+/// A class-name match on a variant wholesale replaces the base stats (PoB
+/// `ReplaceNode` semantics, not a merge).
 #[test]
 fn switchable_node_uses_class_variant_stats() {
     let nodes = switchable_fixture();
@@ -552,11 +562,13 @@ fn switchable_node_uses_class_variant_stats() {
         ],
         "Witch 变体词条须整体替换基础词条"
     );
-    // 归因仍指向基础节点 skill id（树连线 / Build Code 的稳定键）。
+    // Attribution still points at the base node's skill id (the stable key
+    // for tree connections / Build Code).
     assert_eq!(mods[0].source_id.id, "51335");
 }
 
-/// 职业名未命中时回退飞升名匹配（PoB options[curAscendClassName] 兜底）。
+/// When class name doesn't match, falls back to ascendancy name matching
+/// (mirrors PoB's `options[curAscendClassName]` fallback).
 #[test]
 fn switchable_node_falls_back_to_ascendancy_variant() {
     let nodes = switchable_fixture();
@@ -578,7 +590,8 @@ fn switchable_node_falls_back_to_ascendancy_variant() {
     );
 }
 
-/// 职业/飞升均未命中（或无上下文）时保持基础词条——旧入口零行为变化。
+/// With no class or ascendancy match (or no context at all), base stats are
+/// kept — zero behaviour change for the legacy entry point.
 #[test]
 fn switchable_node_without_matching_class_keeps_base_stats() {
     let nodes = switchable_fixture();
@@ -601,7 +614,7 @@ fn switchable_node_without_matching_class_keeps_base_stats() {
     );
     assert_eq!(unmatched[0].modifier_texts, base);
 
-    // 无上下文入口（collect_allocated_mods）等价于空 ClassContext。
+    // The no-context entry point (collect_allocated_mods) is equivalent to an empty ClassContext.
     let legacy = collect_allocated_mods(&spec, &nodes);
     assert_eq!(legacy[0].modifier_texts, base);
 }

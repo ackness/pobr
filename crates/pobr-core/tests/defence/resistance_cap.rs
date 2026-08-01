@@ -25,7 +25,7 @@ fn resistance_below_max_is_uncapped_with_zero_over_cap() {
 #[test]
 fn resistance_above_default_max_caps_at_75_and_reports_over_cap() {
     let mut db = ModDb::new();
-    // total = 90 → final 75, over 15。
+    // total = 90 → final 75, over 15.
     db.add_mod(Modifier::number("FireResistance", ModType::Base, 90.0));
 
     let output = calculate_minimal(&db, &CalcConfig::new(), &input_with_fire(0.0));
@@ -47,7 +47,7 @@ fn maximum_resistance_modifier_raises_cap() {
 
     let output = calculate_minimal(&db, &CalcConfig::new(), &input_with_fire(0.0));
 
-    // max = 75 + 5 = 80，total 90 → final 80，over 10。
+    // max = 75 + 5 = 80, total 90 → final 80, over 10.
     assert_eq!(output.max_fire_resistance, 80.0);
     assert_eq!(output.fire_resistance, 80.0);
     assert_eq!(output.fire_resistance_over_cap, 10.0);
@@ -81,7 +81,7 @@ fn maximum_resistance_cannot_exceed_hard_cap_of_90() {
 
     let output = calculate_minimal(&db, &CalcConfig::new(), &input_with_fire(0.0));
 
-    // 75 + 30 = 105，硬上限 90。total 100 → final 90，over 10。
+    // 75 + 30 = 105, hard cap 90. total 100 → final 90, over 10.
     assert_eq!(output.max_fire_resistance, 90.0);
     assert_eq!(output.fire_resistance, 90.0);
     assert_eq!(output.fire_resistance_over_cap, 10.0);

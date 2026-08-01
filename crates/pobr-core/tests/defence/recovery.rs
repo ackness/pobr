@@ -1,6 +1,7 @@
-//! 充能 / 偷取 / Recoup / 再生 拓展测试。
+//! Extended tests for charges / leech / recoup / regen.
 //!
-//! 对照：agent-docs/recovery-charges-buffs.md + PoB2 CalcSetup.lua / CalcDefence.lua / Data/Misc.lua。
+//! Cross-referenced against agent-docs/recovery-charges-buffs.md + PoB2 CalcSetup.lua /
+//! CalcDefence.lua / Data/Misc.lua.
 
 use pobr_core::{
     CalcConfig, ModDb, Modifier,
@@ -15,9 +16,7 @@ use pobr_core::{
 };
 use pobr_data::prelude::*;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 辅助函数
-// ─────────────────────────────────────────────────────────────────────────────
+// Helper functions
 
 fn make_modifier(name: &str, mod_type: ModType, value: f64) -> Modifier {
     Modifier::number(name, mod_type, value)
@@ -27,9 +26,7 @@ fn make_flag_modifier(name: &str) -> Modifier {
     Modifier::flag(name)
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 充能常量
-// ─────────────────────────────────────────────────────────────────────────────
+// Charge constants
 
 #[test]
 fn charge_defaults_are_correct() {
@@ -38,15 +35,13 @@ fn charge_defaults_are_correct() {
     assert_eq!(DEFAULT_CHARGE_DURATION_SECONDS, 15.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // charge_maximum
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn charge_maximum_returns_default_when_no_mods() {
     let db = ModDb::new();
     let cfg = CalcConfig::new();
-    // 没有词条 → 默认 3
+    // No mods -> default 3
     assert_eq!(charge_maximum(&db, &cfg, ChargeKind::Power), 3);
     assert_eq!(charge_maximum(&db, &cfg, ChargeKind::Frenzy), 3);
     assert_eq!(charge_maximum(&db, &cfg, ChargeKind::Endurance), 3);
@@ -56,10 +51,10 @@ fn charge_maximum_returns_default_when_no_mods() {
 fn charge_maximum_increased_by_mod() {
     let mut db = ModDb::new();
     let cfg = CalcConfig::new();
-    // +2 to Maximum Power Charges → 最大 5
+    // +2 to Maximum Power Charges -> max becomes 5
     db.add_mod(make_modifier("PowerChargesMax", ModType::Base, 2.0));
     assert_eq!(charge_maximum(&db, &cfg, ChargeKind::Power), 5);
-    // Frenzy 未加 → 仍为 3
+    // Frenzy wasn't added -> still 3
     assert_eq!(charge_maximum(&db, &cfg, ChargeKind::Frenzy), 3);
 }
 
@@ -67,14 +62,12 @@ fn charge_maximum_increased_by_mod() {
 fn charge_maximum_cannot_go_below_zero() {
     let mut db = ModDb::new();
     let cfg = CalcConfig::new();
-    // -5 会被钳到 0
+    // -5 gets clamped to 0
     db.add_mod(make_modifier("EnduranceChargesMax", ModType::Base, -10.0));
     assert_eq!(charge_maximum(&db, &cfg, ChargeKind::Endurance), 0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // charge_minimum
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn charge_minimum_returns_zero_when_no_mods() {
@@ -95,7 +88,7 @@ fn charge_minimum_set_by_mod() {
 fn charge_minimum_clamped_to_maximum() {
     let mut db = ModDb::new();
     let cfg = CalcConfig::new();
-    // 最小 = 5，但最大 = 3 → 钳到 3
+    // minimum = 5, but maximum = 3 -> clamped to 3
     db.add_mod(make_modifier("PowerChargesMin", ModType::Base, 5.0));
     assert_eq!(charge_minimum(&db, &cfg, ChargeKind::Power, 3), 3);
 }
@@ -107,18 +100,16 @@ fn charge_minimum_is_maximum_flag_pulls_min_to_cap() {
     db.add_mod(make_flag_modifier(
         "MinimumFrenzyChargesIsMaximumFrenzyCharges",
     ));
-    // 不管 FrenzyChargesMin 词条，最小 = 最大 = 3（常驻满层）
+    // Regardless of the FrenzyChargesMin mod, minimum = maximum = 3 (always full stacks)
     assert_eq!(charge_minimum(&db, &cfg, ChargeKind::Frenzy, 3), 3);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // resolve_charge_state
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn resolve_charge_state_reads_from_cfg_multipliers() {
     let db = ModDb::new();
-    // 当前 2 层 Power Charge
+    // Currently at 2 Power Charge stacks
     let cfg = CalcConfig::new().with_multiplier("PowerCharge", 2.0);
     let state = resolve_charge_state(&db, &cfg, ChargeKind::Power);
     assert_eq!(
@@ -134,7 +125,7 @@ fn resolve_charge_state_reads_from_cfg_multipliers() {
 #[test]
 fn resolve_charge_state_clamps_current_to_max() {
     let db = ModDb::new();
-    // 当前声称有 10 层（超过上限 3）→ 钳到 3
+    // Claims 10 stacks (over the cap of 3) -> clamped to 3
     let cfg = CalcConfig::new().with_multiplier("EnduranceCharge", 10.0);
     let state = resolve_charge_state(&db, &cfg, ChargeKind::Endurance);
     assert_eq!(state.current, 3);
@@ -144,7 +135,7 @@ fn resolve_charge_state_clamps_current_to_max() {
 #[test]
 fn resolve_charge_state_clamps_current_to_min() {
     let mut db = ModDb::new();
-    // 最小 1 层，但 cfg 里 FrenzyCharge = 0 → 钳到 1
+    // minimum 1 stack, but cfg has FrenzyCharge = 0 -> clamped to 1
     db.add_mod(make_modifier("FrenzyChargesMin", ModType::Base, 1.0));
     let cfg = CalcConfig::new().with_multiplier("FrenzyCharge", 0.0);
     let state = resolve_charge_state(&db, &cfg, ChargeKind::Frenzy);
@@ -152,9 +143,7 @@ fn resolve_charge_state_clamps_current_to_min() {
     assert_eq!(state.minimum, 1);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // resolve_all_charges & AllChargeStates::total
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn all_charges_total_sums_three_kinds() {
@@ -195,9 +184,7 @@ fn all_charges_zero_when_no_multipliers_set() {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // regen & regen_with_rate
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn regen_flat_plus_percent_of_pool() {
@@ -225,9 +212,7 @@ fn regen_with_rate_zero_when_rate_mod_zero() {
     assert_eq!(r, 0.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // calc_regen (ModDb-based)
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn calc_regen_life_no_mods_returns_zero() {
@@ -266,20 +251,20 @@ fn calc_regen_applies_recovery_rate_inc() {
     assert_eq!(calc_regen(&db, &cfg, 0.0, "LifeRegen"), 15.0);
 }
 
-/// 裸 `<stat>` 名 INC/MORE 同入聚合（vendor CalcDefence.lua:1642-1643
-/// `Sum("INC", nil, resource.."Regen", resource.."RecoveryRate")` /
-/// `More(nil, resource.."Regen", …)`——mod_parser「increased Mana/Life
-/// Regeneration Rate」与 statmap buff 域（Clarity `ManaRegen INC`，
-/// sup_int.txt:305-315）产的就是裸名）。
+/// Bare `<stat>`-named INC/MORE mods feed into the same aggregation (vendor
+/// CalcDefence.lua:1642-1643 `Sum("INC", nil, resource.."Regen", resource.."RecoveryRate")` /
+/// `More(nil, resource.."Regen", ...)` — mod_parser's "increased Mana/Life
+/// Regeneration Rate" and the statmap buff domain (Clarity's `ManaRegen INC`,
+/// sup_int.txt:305-315) both produce bare names).
 #[test]
 fn calc_regen_applies_bare_stat_inc_and_more() {
     let mut db = ModDb::new();
     let cfg = CalcConfig::new();
     db.add_mod(make_modifier("ManaRegen", ModType::Base, 10.0));
-    // 裸名 INC +50%（Clarity II 形态）→ ×1.5 → 15
+    // Bare-name INC +50% (the Clarity II shape) -> x1.5 -> 15
     db.add_mod(make_modifier("ManaRegen", ModType::Inc, 50.0));
     assert_eq!(calc_regen(&db, &cfg, 0.0, "ManaRegen"), 15.0);
-    // 裸名 MORE +20%（Arcane Surge 形态，CalcPerform.lua:1586）→ ×1.5×1.2 = 18
+    // Bare-name MORE +20% (the Arcane Surge shape, CalcPerform.lua:1586) -> x1.5x1.2 = 18
     db.add_mod(make_modifier("ManaRegen", ModType::More, 20.0));
     assert_eq!(calc_regen(&db, &cfg, 0.0, "ManaRegen"), 18.0);
 }
@@ -295,9 +280,7 @@ fn calc_regen_stacks_rate_and_recovery_rate_inc() {
     assert_eq!(calc_regen(&db, &cfg, 0.0, "LifeRegen"), 20.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 偷取常量
-// ─────────────────────────────────────────────────────────────────────────────
+// Leech constants
 
 #[test]
 fn leech_constants_match_pob2_data_misc() {
@@ -310,17 +293,15 @@ fn leech_constants_match_pob2_data_misc() {
     assert_eq!(LEECH_EFFECTIVE_MAX_HIT_DAMAGE, 40000.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// calc_leech 纯函数
-// ─────────────────────────────────────────────────────────────────────────────
+// calc_leech, the pure function
 
 #[test]
 fn calc_leech_zero_when_no_pct() {
     let r = calc_leech(1000.0, 0.0, 5000.0, LeechResource::Life);
     assert_eq!(r.instance_total, 0.0);
     assert_eq!(r.display_rate_per_second, 0.0);
-    // rate_cap 仍按池子计算（用于面板上限显示）
-    assert_eq!(r.rate_cap_per_second, 200.0); // 1000 × 20%
+    // rate_cap is still computed from the pool (used for the panel's displayed ceiling)
+    assert_eq!(r.rate_cap_per_second, 200.0); // 1000 x 20%
 }
 
 #[test]
@@ -372,9 +353,7 @@ fn calc_leech_small_instance_limits_display_rate() {
     assert_eq!(r.display_rate_per_second, 2.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // calc_leech_from_db
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn calc_leech_from_db_with_life_leech_mod() {
@@ -404,24 +383,20 @@ fn calc_leech_from_db_cannot_mana_does_not_block_life() {
     db.add_mod(make_modifier("LifeLeech", ModType::Base, 1.0));
     db.add_mod(make_flag_modifier("CannotLeechMana"));
     let r = calc_leech_from_db(&db, &cfg, 1000.0, 5000.0, LeechResource::Life);
-    // CannotLeechMana 不影响 Life 偷取
+    // CannotLeechMana doesn't affect Life leech
     assert!(r.instance_total > 0.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Recoup 常量
-// ─────────────────────────────────────────────────────────────────────────────
+// Recoup constants
 
 #[test]
 fn recoup_duration_constants_match_pob2() {
-    // PoB2 CalcPerform.lua: 默认 8s, 4SecondRecoup → 4s
+    // PoB2 CalcPerform.lua: default 8s, 4SecondRecoup -> 4s
     assert_eq!(RECOUP_DURATION_DEFAULT, 8.0);
     assert_eq!(RECOUP_DURATION_4S, 4.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// calc_recoup 纯函数
-// ─────────────────────────────────────────────────────────────────────────────
+// calc_recoup, the pure function
 
 #[test]
 fn calc_recoup_basic_8s() {
@@ -459,9 +434,7 @@ fn calc_recoup_applies_recovery_rate_mod() {
     assert_eq!(r.rate_per_second, 15.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // calc_recoup_from_db
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn calc_recoup_from_db_no_mods_returns_zero() {
@@ -487,7 +460,7 @@ fn calc_recoup_from_db_global_4s_flag() {
     let mut db = ModDb::new();
     let cfg = CalcConfig::new();
     db.add_mod(make_modifier("LifeRecoup", ModType::Base, 10.0));
-    db.add_mod(make_flag_modifier("4SecondRecoup")); // 全局 4s 旗标
+    db.add_mod(make_flag_modifier("4SecondRecoup")); // global 4s flag
     let r = calc_recoup_from_db(&db, &cfg, 800.0, RecoupResource::Life);
     assert_eq!(r.duration, 4.0);
     // total=80; rate=80/4=20/s
@@ -499,7 +472,7 @@ fn calc_recoup_from_db_single_resource_4s_flag() {
     let mut db = ModDb::new();
     let cfg = CalcConfig::new();
     db.add_mod(make_modifier("LifeRecoup", ModType::Base, 10.0));
-    db.add_mod(make_flag_modifier("4SecondLifeRecoup")); // 单资源 4s 旗标
+    db.add_mod(make_flag_modifier("4SecondLifeRecoup")); // single-resource 4s flag
     let r = calc_recoup_from_db(&db, &cfg, 800.0, RecoupResource::Life);
     assert_eq!(r.duration, 4.0);
 }
@@ -509,9 +482,9 @@ fn calc_recoup_from_db_4s_flag_does_not_affect_other_resource() {
     let mut db = ModDb::new();
     let cfg = CalcConfig::new();
     db.add_mod(make_modifier("ManaRecoup", ModType::Base, 10.0));
-    db.add_mod(make_flag_modifier("4SecondLifeRecoup")); // Life-only 旗标
+    db.add_mod(make_flag_modifier("4SecondLifeRecoup")); // Life-only flag
     let r = calc_recoup_from_db(&db, &cfg, 800.0, RecoupResource::Mana);
-    // Life 的 4s 旗标不影响 Mana → 仍为 8s
+    // Life's 4s flag doesn't affect Mana -> still 8s
     assert_eq!(r.duration, 8.0);
 }
 

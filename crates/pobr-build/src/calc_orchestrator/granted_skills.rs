@@ -1,17 +1,21 @@
-//! 装备授予技能（`Grants Skill: [Level N] <名字>`）→ 合成技能组。
+//! Item-granted skills (`Grants Skill: [Level N] <name>`) → synthesized skill groups.
 //!
-//! 对照 vendor：ModParser.lua:3553-3554 把该词条解析为 `ExtraSkill` LIST mod；
-//! Item.lua:2120-2132 收集为 `item.grantedSkills`；CalcSetup.lua:1414-1453 为每个
-//! 授予技能建一个归属装备槽的独立 socket group（`source` 标记、可复用已有组）。
+//! Against vendor: ModParser.lua:3553-3554 parses this mod into an `ExtraSkill` LIST
+//! mod; Item.lua:2120-2132 collects it into `item.grantedSkills`;
+//! CalcSetup.lua:1414-1453 builds an independent socket group owned by the equipment
+//! slot for each granted skill (marked with `source`, reusing an existing group when possible).
 //!
-//! PoBR 语义边界（v1）：
-//! - **判重键 = source + slot + skillId + level**：仅复用同一装备来源、槽位、
-//!   技能和等级的预展开 / 先前合成组；同技能的手动组或其它装备授予组保持独立。
-//! - 合成组不带辅助宝石（vendor 允许同槽其它组的 support 辅助授予技能，
-//!   CalcSetup.lua:1818-1834；PoBR 组模型自包含，跨组辅助不建模）。
-//! - 触发型授予（`Trigger level N X when …`）与 Kalandra 镜射的授予行不做。
-//! - 名字反查仅覆盖**宝石技能**（base_items 宝石名 → gem_effects 主效果）；
-//!   非宝石授予技能（如 Mirror of Refraction）查不到则跳过。
+//! PoBR's semantics boundary (v1):
+//! - **Dedup key = source + slot + skillId + level**: only reuses a pre-expanded /
+//!   previously synthesized group with the same item source, slot, skill, and level; a
+//!   manual group with the same skill, or another item's grant of the same skill, stays independent.
+//! - A synthesized group carries no support gems (vendor allows a support gem in
+//!   another group in the same slot to support a granted skill, CalcSetup.lua:1818-1834;
+//!   PoBR's group model is self-contained and doesn't model cross-group support).
+//! - Trigger-type grants (`Trigger level N X when …`) and Mirror-of-Kalandra-style
+//!   granted lines aren't handled.
+//! - Name lookup only covers **gem skills** (base_items gem name → gem_effects primary
+//!   effect); a non-gem granted skill (e.g. Mirror of Refraction) that can't be found is skipped.
 
 use std::collections::{HashMap, HashSet};
 
@@ -20,17 +24,19 @@ use crate::build_data::BuildData;
 
 use super::skill_resolve::clean_grant_text;
 
-/// PoBR 合成组没有 PoB item id/name，使用来源类别标记；同一 Build 的单个装备槽
-/// 只有一件物品，因此 `Item + slot` 与 vendor 的 `Item:<id>:<name> + slot` 等价。
+/// PoBR's synthesized groups have no PoB item id/name, so a source category marker is
+/// used instead; a single equipment slot in one Build only ever holds one item, so
+/// `Item + slot` is equivalent to vendor's `Item:<id>:<name> + slot`.
 const ITEM_SKILL_SOURCE: &str = "Item";
 
-/// 无 `Level N` 段时的回退等级：远超任何分等级表的行数，`resolve_skill_level`
-/// 的 `rfind(row.level <= gem_level)` 会 clamp 到最高行——即 vendor
-/// `Item.lua:2157` 的 `#skillDef.levels`（满级）语义。
+/// The fallback level when there's no `Level N` segment: far beyond any per-level
+/// table's row count, so `resolve_skill_level`'s `rfind(row.level <= gem_level)` clamps
+/// to the highest row — matching vendor `Item.lua:2157`'s `#skillDef.levels`
+/// (max level) semantics.
 const MAX_LEVEL_FALLBACK: u32 = 99;
 
-/// 解析一行授予技能词条：`grants skill: level 20 purity of fire` →
-/// `("purity of fire", Some(20))`；`grants skill: firebolt` → `("firebolt", None)`。
+/// Parses one granted-skill mod line: `grants skill: level 20 purity of fire` →
+/// `("purity of fire", Some(20))`; `grants skill: firebolt` → `("firebolt", None)`.
 fn parse_grants_skill(text: &str) -> Option<(String, Option<u32>)> {
     let cleaned = clean_grant_text(text);
     let rest = cleaned.trim().strip_prefix("grants skill:")?.trim();
@@ -47,8 +53,8 @@ fn parse_grants_skill(text: &str) -> Option<(String, Option<u32>)> {
     Some((rest.to_string(), None))
 }
 
-/// 宝石显示名（lowercase）→ 主效果 id 反查表（gem_catalog 同源：
-/// base_items 的宝石名 × gem_effects 的 gem_id 连边）。
+/// Gem display name (lowercase) → primary effect id lookup table (same source as
+/// gem_catalog: base_items' gem name × gem_effects' gem_id link).
 fn skill_id_by_name(data: &BuildData) -> HashMap<String, &str> {
     let gem_to_skill: HashMap<&str, &str> = data
         .gem_effects
@@ -69,7 +75,7 @@ fn is_item_skill_source(source: Option<&str>) -> bool {
     source.is_some_and(|source| source == ITEM_SKILL_SOURCE || source.starts_with("Item:"))
 }
 
-/// XML 使用 `Weapon 1` / `Weapon 1 Swap`，装备表使用 `weapon1`；统一为槽位稳定键。
+/// XML uses `Weapon 1` / `Weapon 1 Swap`, the equipment table uses `weapon1`; normalizes to the stable slot key.
 fn normalized_slot(slot: &str) -> String {
     let mut normalized = slot
         .chars()
@@ -82,10 +88,11 @@ fn normalized_slot(slot: &str) -> String {
     normalized
 }
 
-/// 扫描装备词条里的授予技能并合成技能组；无新增返回 `None`（零拷贝快路径）。
+/// Scans item mods for granted skills and synthesizes skill groups; returns `None` when
+/// there's nothing new (a zero-copy fast path).
 pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Option<Build> {
-    // 先便宜地探测是否存在授予词条，再构建反查表（绝大多数 build 无此词条）。
-    let mut grants: Vec<(String, String, Option<u32>)> = Vec::new(); // (槽 id, 名字, 等级)
+    // Cheaply probe for a granted-skill mod first, then build the lookup table (the vast majority of builds have no such mod).
+    let mut grants: Vec<(String, String, Option<u32>)> = Vec::new(); // (slot id, name, level)
     for (slot, item) in build.equipped_items() {
         for text in item
             .implicit_texts
@@ -120,7 +127,7 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
     let mut synthesized: Vec<SocketGroup> = Vec::new();
     for (slot, name, level) in grants {
         let Some(&skill_id) = by_name.get(&name) else {
-            continue; // 非宝石技能名（见模块注释），跳过。
+            continue; // A non-gem skill name (see module doc), skipped.
         };
         let gem_id = data
             .gem_effects
@@ -134,7 +141,7 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
             skill_id.to_string(),
             level,
         )) {
-            continue; // 同装备来源、槽位、技能、等级的组已存在。
+            continue; // A group with the same item source, slot, skill, and level already exists.
         }
         synthesized.push(SocketGroup {
             source: Some(ITEM_SKILL_SOURCE.to_string()),

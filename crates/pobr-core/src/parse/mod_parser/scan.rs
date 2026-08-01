@@ -1,50 +1,61 @@
-//! Lua pattern 子集匹配器 + vendor `scan()` 的「最早 + 最长」匹配语义
-//! （蓝图 §2.1 / §2.2；vendor `ModParser.lua:6362-6385`）。
+//! A Lua-pattern-subset matcher, plus vendor `scan()`'s "earliest + longest"
+//! matching semantics (vendor `ModParser.lua:6362-6385`).
 //!
-//! formList / preFlagList / tagList 的 pattern 实测只用到 Lua pattern 的一个
-//! 子集：`^`/`$` 锚、字面量、`%d %a %D %s` 类、`%%`/`%-`/`%.`/`%+` 等转义、
-//! 字符类 `[...]`（含字面量集合如 `[hd][ae][va][el]`）、量词 `+ - * ?`
-//! （`-` 是惰性最短匹配）、捕获 `(...)`（≤5 个，按 vendor cap1..cap5 上限）。
+//! In practice formList / preFlagList / tagList patterns only use a subset of
+//! Lua patterns: `^`/`$` anchors, literals, the `%d %a %D %s` classes,
+//! escapes like `%%`/`%-`/`%.`/`%+`, character sets `[...]` (including
+//! literal-only sets like `[hd][ae][va][el]`), quantifiers `+ - * ?` (`-` is
+//! the lazy shortest-match form), and captures `(...)` (at most 5, matching
+//! vendor's cap1..cap5 limit).
 //!
-//! **不引入 regex crate 做翻译**：Lua `-` 惰性量词与 regex 语义差异是静默错误
-//! 源；pattern 才 ~1300 条且行短，性能由上层 literal 预过滤兜住；匹配器本身是
-//! 跨版本稳定的框架语义（蓝图 §2.2 裁决）。输入在调用前已小写化。
+//! **We deliberately don't translate to the `regex` crate**: Lua's `-` lazy
+//! quantifier differs from regex semantics in ways that fail silently;
+//! there are only ~1300 patterns over short lines, and the upper-layer
+//! literal pre-filter covers performance — the matcher itself just needs to
+//! be stable framework semantics across data versions. Input is already
+//! lowercased before this is called.
 
-/// 编译后的 Lua pattern（一次解析，复用匹配）。
+/// A compiled Lua pattern (parsed once, matched repeatedly).
 #[derive(Debug, Clone)]
 pub struct LuaPattern {
     items: Vec<PatItem>,
-    /// `^` 锚定（只在位置 0 起匹配）。
+    /// `^` anchor (only matches starting at position 0).
     anchored: bool,
-    /// 末尾 `$` 锚定（匹配必须抵达字符串末尾）。
+    /// Trailing `$` anchor (the match must reach the end of the string).
     anchored_end: bool,
-    /// 原 pattern 字节长度（vendor tie-break 第三级 `#pattern` 用）。
+    /// Byte length of the original pattern (used for vendor tie-break level
+    /// three, `#pattern`).
     raw_len: usize,
 }
 
-/// 单个匹配单元 = 基础类 + 量词。
+/// A single match unit = a base class plus a quantifier.
 ///
-/// 捕获组（`(...)`）可跨多个 item（如 `([%+%-]?%d+)` = `[%+%-]?` 与 `%d+` 两
-/// item 同组）。组在 `cap_open` 标记的 item 起点处开始记录、在 `cap_close`
-/// 标记的 item 终点处结束（1-based 组号；同一 item 可同时 open+close = 单 item
-/// 捕获）。
+/// A capture group (`(...)`) can span multiple items (e.g. `([%+%-]?%d+)` is
+/// one group spanning the `[%+%-]?` and `%d+` items). A group starts
+/// recording at the item marked `cap_open` and closes at the item marked
+/// `cap_close` (1-based group numbers; a single item can both open and close
+/// = a single-item capture).
 #[derive(Debug, Clone)]
 struct PatItem {
     class: PatClass,
     quant: Quant,
-    /// 本 item 起点开启的捕获组号（1-based）；`None` = 不开启。
+    /// The capture group number (1-based) this item opens; `None` = opens
+    /// nothing.
     cap_open: Option<usize>,
-    /// 本 item 终点关闭的捕获组号（1-based）；`None` = 不关闭。
+    /// The capture group number (1-based) this item closes; `None` = closes
+    /// nothing.
     cap_close: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
 enum PatClass {
-    /// 字面字符（已小写）。
+    /// Literal character (already lowercased).
     Literal(char),
-    /// `%d` 数字 / `%a` 字母 / `%s` 空白 / `%D` 非数字 / `%w` 字母数字 / `.` 任意。
+    /// `%d` digit / `%a` letter / `%s` whitespace / `%D` non-digit / `%w`
+    /// alphanumeric / `.` any.
     Class(ClassKind),
-    /// `[...]` 字符集（含 `%d` 等类元素与字面量；`negated` = `[^...]`）。
+    /// `[...]` character set (mixing class elements like `%d` with literals;
+    /// `negated` = `[^...]`).
     Set {
         members: Vec<SetMember>,
         negated: bool,
@@ -59,7 +70,7 @@ enum ClassKind {
     NotAlpha, // %A
     Space,    // %s
     NotSpace, // %S
-    Word,     // %w (字母数字)
+    Word,     // %w (alphanumeric)
     NotWord,  // %W
     Any,      // .
 }
@@ -72,35 +83,38 @@ enum SetMember {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Quant {
-    /// 恰好一次（无量词）。
+    /// Exactly once (no quantifier).
     One,
-    /// `+` 一次或多次（贪婪）。
+    /// `+` one or more (greedy).
     Plus,
-    /// `*` 零次或多次（贪婪）。
+    /// `*` zero or more (greedy).
     Star,
-    /// `-` 零次或多次（惰性，Lua 语义：最短匹配）。
+    /// `-` zero or more (lazy, Lua semantics: shortest match).
     Lazy,
-    /// `?` 零次或一次。
+    /// `?` zero or one.
     Opt,
 }
 
-/// 一次成功匹配的结果：起止字节位置（半开 `[start, end)`，0-based）+ 捕获文本。
+/// The result of a successful match: start/end byte positions (half-open
+/// `[start, end)`, 0-based) plus captured text.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LuaMatch {
-    /// 匹配起点（字节 offset，0-based）。
+    /// Match start (byte offset, 0-based).
     pub start: usize,
-    /// 匹配终点（字节 offset，0-based，半开）。
+    /// Match end (byte offset, 0-based, half-open).
     pub end: usize,
-    /// 捕获文本（按出现序，最多 5 个；空捕获 = 空串）。
+    /// Captured text (in order of appearance, up to 5; an empty capture is
+    /// an empty string).
     pub captures: Vec<String>,
 }
 
-/// pattern 编译错误（pattern 数据固定、编译期一次性；运行时不应触发）。
+/// Pattern compile error (pattern data is fixed and compiled once; should
+/// never trigger at runtime).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PatternError {
-    /// 原 pattern 文本。
+    /// The original pattern text.
     pub pattern: String,
-    /// 失败原因。
+    /// Failure reason.
     pub reason: String,
 }
 
@@ -111,7 +125,8 @@ impl std::fmt::Display for PatternError {
 }
 
 impl LuaPattern {
-    /// 编译 Lua pattern（子集语法）。输入按小写规范化的同款大小写处理。
+    /// Compiles a Lua pattern (subset syntax). Input should use the same
+    /// lowercased casing convention as the matcher.
     pub fn compile(pattern: &str) -> Result<Self, PatternError> {
         let chars: Vec<char> = pattern.chars().collect();
         let mut i = 0;
@@ -121,10 +136,13 @@ impl LuaPattern {
         }
         let mut items: Vec<PatItem> = Vec::new();
         let mut capture_counter = 0usize;
-        // 开括号后等待被下一个 item 承接的捕获组号（支持嵌套子集：实测无嵌套，
-        // 但用栈记 open 组保证 `)` 关闭最近未闭组）。
+        // The capture group number waiting to be claimed by the next item
+        // after an open paren (supports nested groups in principle — in
+        // practice there's no nesting, but a stack tracks open groups so
+        // `)` always closes the most recently unclosed one).
         let mut open_groups: Vec<usize> = Vec::new();
-        // 下一个 push 的 item 要 open 的组号（`(` 紧接的 item）。
+        // The group number that the next pushed item should open (the item
+        // right after a `(`).
         let mut next_open: Option<usize> = None;
         let mut anchored_end = false;
 
@@ -142,14 +160,17 @@ impl LuaPattern {
                         return Err(err("more than 5 capture groups"));
                     }
                     open_groups.push(capture_counter);
-                    // 只有「最外层新开」的组由下一个 item 承接 open 标记；嵌套
-                    // 子集不出现，简化为：每个 `(` 都让下一个 item open 该组。
+                    // Only a freshly opened outermost group gets claimed by
+                    // the next item; since nesting never occurs in practice,
+                    // this simplifies to: every `(` makes the next item open
+                    // that group.
                     next_open = Some(capture_counter);
                     i += 1;
                 }
                 ')' => {
                     let group = open_groups.pop().ok_or_else(|| err("unmatched ')'"))?;
-                    // 关闭 = 把该组号标到最后一个已 push 的 item 上。
+                    // Closing means tagging the group number onto the last
+                    // pushed item.
                     let last = items.last_mut().ok_or_else(|| err("empty capture group"))?;
                     last.cap_close = Some(group);
                     i += 1;
@@ -183,18 +204,20 @@ impl LuaPattern {
         })
     }
 
-    /// 是否 `^` 锚定。
+    /// Whether the pattern is `^`-anchored.
     pub fn is_anchored(&self) -> bool {
         self.anchored
     }
 
-    /// 原 pattern 字节长度（vendor tie-break 第三级）。
+    /// Byte length of the original pattern (vendor tie-break level three).
     pub fn raw_len(&self) -> usize {
         self.raw_len
     }
 
-    /// 在 `text` 上查找**最早**的匹配（vendor `find` 同义：从位置 0 起逐位尝试，
-    /// 首个成功起点即返回；锚定 pattern 只在位置 0 试）。`text` 应已小写化。
+    /// Finds the **earliest** match in `text` (equivalent to vendor `find`:
+    /// tries each position starting at 0 and returns on the first
+    /// successful start; an anchored pattern only tries position 0). `text`
+    /// should already be lowercased.
     pub fn find(&self, text: &str) -> Option<LuaMatch> {
         let len = text.len();
         let mut start = 0usize;
@@ -225,8 +248,10 @@ impl LuaPattern {
         None
     }
 
-    /// 从 `pos` 起尝试匹配 `items[item_idx..]`，返回匹配终点（字节 offset）。
-    /// `st` 累积捕获组的起点 / 终点。回溯式（贪婪量词从最长回退、惰性从最短扩张）。
+    /// Tries to match `items[item_idx..]` starting at `pos`, returning the
+    /// match end (byte offset). `st` accumulates capture group start/end
+    /// positions. Backtracking-based (greedy quantifiers back off from the
+    /// longest match, lazy ones expand from the shortest).
     fn match_at(
         &self,
         text: &str,
@@ -235,14 +260,16 @@ impl LuaPattern {
         st: &mut MatchState,
     ) -> Option<usize> {
         if item_idx >= self.items.len() {
-            // 全部 item 消费完——若末尾锚定则要求抵达串末。
+            // All items consumed — if end-anchored, require reaching the end
+            // of the string.
             if self.anchored_end && pos != text.len() {
                 return None;
             }
             return Some(pos);
         }
         let item = &self.items[item_idx];
-        // item 起点开启捕获组（记录组起点；回溯时还原）。
+        // If this item opens a capture group, record the group's start
+        // (restored on backtrack).
         let saved_open = item.cap_open.map(|n| (n, st.starts[n - 1]));
         if let Some(n) = item.cap_open {
             st.starts[n - 1] = Some(pos);
@@ -252,7 +279,7 @@ impl LuaPattern {
             Quant::One => class_match_one(text, pos, &item.class)
                 .and_then(|next| self.consume_then(text, next, item, item_idx, st)),
             Quant::Opt => {
-                // 先试匹配一次（贪婪），失败再试零次。
+                // Try matching once first (greedy), fall back to zero times.
                 class_match_one(text, pos, &item.class)
                     .and_then(|next| self.consume_then(text, next, item, item_idx, st))
                     .or_else(|| self.consume_then(text, pos, item, item_idx, st))
@@ -291,7 +318,7 @@ impl LuaPattern {
             }
         };
 
-        // 回溯：还原本 item 的组起点。
+        // Backtrack: restore this item's group start.
         if result.is_none()
             && let Some((n, prev)) = saved_open
         {
@@ -300,8 +327,9 @@ impl LuaPattern {
         result
     }
 
-    /// 本 item 消费到 `consumed_end` 后：若该 item 关闭捕获组则定型组区间，再
-    /// 递归匹配后续 item。失败时还原组终点。
+    /// After this item consumes up to `consumed_end`: if it closes a capture
+    /// group, finalize the group's span, then recursively match the
+    /// remaining items. Restores the group's end on failure.
     fn consume_then(
         &self,
         text: &str,
@@ -325,16 +353,18 @@ impl LuaPattern {
     }
 }
 
-/// 匹配回溯状态：每组的起点（open 时记）与定型区间（close 时记）。
+/// Backtracking match state: each group's start (recorded on open) and
+/// finalized span (recorded on close).
 #[derive(Default)]
 struct MatchState {
-    /// 组起点（1-based 组号 → 字节 offset）。
+    /// Group starts (1-based group number -> byte offset).
     starts: [Option<usize>; 5],
-    /// 组定型区间（1-based 组号 → `[start, end)`）。
+    /// Finalized group spans (1-based group number -> `[start, end)`).
     spans: [Option<(usize, usize)>; 5],
 }
 
-/// 解析一个基础类（`%x` / `[...]` / 字面量），返回 (class, next_index)。
+/// Parses a single base class (`%x` / `[...]` / a literal), returning
+/// (class, next_index).
 fn parse_class(
     chars: &[char],
     i: usize,
@@ -347,7 +377,7 @@ fn parse_class(
             if let Some(kind) = class_kind(next) {
                 Ok((PatClass::Class(kind), i + 2))
             } else {
-                // %% %- %. %+ 等转义字面量。
+                // Escaped literals such as %% %- %. %+.
                 Ok((PatClass::Literal(next), i + 2))
             }
         }
@@ -357,13 +387,13 @@ fn parse_class(
     }
 }
 
-/// 解析 `[...]` 字符集。
+/// Parses a `[...]` character set.
 fn parse_set(
     chars: &[char],
     start: usize,
     err: &impl Fn(&str) -> PatternError,
 ) -> Result<(PatClass, usize), PatternError> {
-    let mut i = start + 1; // 跳过 '['
+    let mut i = start + 1; // skip '['
     let negated = chars.get(i) == Some(&'^');
     if negated {
         i += 1;
@@ -380,7 +410,7 @@ fn parse_set(
             }
             i += 2;
         } else if i + 2 < chars.len() && chars[i + 1] == '-' && chars[i + 2] != ']' {
-            // 区间 a-z。
+            // Range, e.g. a-z.
             let lo = c;
             let hi = chars[i + 2];
             for ch in lo..=hi {
@@ -398,7 +428,7 @@ fn parse_set(
     Ok((PatClass::Set { members, negated }, i + 1))
 }
 
-/// 解析量词后缀。
+/// Parses a trailing quantifier.
 fn parse_quant(chars: &[char], i: usize) -> (Quant, usize) {
     match chars.get(i) {
         Some('+') => (Quant::Plus, i + 1),
@@ -423,7 +453,8 @@ fn class_kind(c: char) -> Option<ClassKind> {
     })
 }
 
-/// 在 `pos` 处匹配单个 class（一个字符），成功返回消费后的位置。
+/// Matches a single class (one character) at `pos`, returning the position
+/// after consuming it on success.
 fn class_match_one(text: &str, pos: usize, class: &PatClass) -> Option<usize> {
     let c = text[pos..].chars().next()?;
     let ok = match class {
@@ -462,7 +493,7 @@ mod tests {
         LuaPattern::compile(pat).unwrap().find(text)
     }
 
-    // ---- 字面量 + 锚定 ----
+    // Literals + anchors
 
     #[test]
     fn anchored_literal_at_start_only() {
@@ -483,14 +514,14 @@ mod tests {
         assert!(m("damage$", "damage taken").is_none());
     }
 
-    // ---- %d / %a / 捕获 ----
+    // %d / %a / captures
 
     #[test]
     fn digit_capture() {
         let r = m("^(%d+)%% increased", "50% increased fire").unwrap();
         assert_eq!(r.captures, vec!["50"]);
         assert_eq!(r.start, 0);
-        // end 覆盖 "50% increased"
+        // end covers "50% increased"
         assert_eq!(r.end, "50% increased".len());
     }
 
@@ -520,7 +551,7 @@ mod tests {
         assert_eq!(r2.captures, vec!["5"]);
     }
 
-    // ---- 转义 ----
+    // Escapes
 
     #[test]
     fn percent_escape() {
@@ -530,17 +561,19 @@ mod tests {
 
     #[test]
     fn hyphen_range_escape() {
-        // vendor `(%d+)%-(%d+)` 区间写法。
+        // vendor's `(%d+)%-(%d+)` range notation.
         let r = m("(%d+)%-(%d+) added", "3-7 added").unwrap();
         assert_eq!(r.captures, vec!["3", "7"]);
     }
 
-    // ---- 字符类集合 `[hd][ae][va][el]` 类糅合 ----
+    // Character-set class blends, e.g. `[hd][ae][va][el]`
 
     #[test]
     fn char_set_class_blend_have_deal() {
-        // vendor `[cthd][ae][ukva][sel]e?` = deal/have/take 变体（"use" 的 'u'
-        // 不在首字符集 [cthd]，由另一条 `^minions ` pattern 兜——故此处不命中 "use"）。
+        // vendor `[cthd][ae][ukva][sel]e?` matches the deal/have/take
+        // variants ("use"'s 'u' is not in the first character set [cthd],
+        // it's covered by a separate `^minions ` pattern instead — so it
+        // doesn't match "use" here).
         let pat = LuaPattern::compile("^minions [cthd][ae][ukva][sel]e? ").unwrap();
         assert!(pat.find("minions deal increased ").is_some());
         assert!(pat.find("minions have increased ").is_some());
@@ -550,12 +583,12 @@ mod tests {
 
     #[test]
     fn negated_set() {
-        // [^%s] 非空白。
+        // [^%s] non-whitespace.
         let r = m("([^%s]+)", " abc").unwrap();
         assert_eq!(r.captures, vec!["abc"]);
     }
 
-    // ---- 量词语义 ----
+    // Quantifier semantics
 
     #[test]
     fn star_zero_or_more() {
@@ -567,7 +600,7 @@ mod tests {
 
     #[test]
     fn lazy_shortest_match() {
-        // Lua `-` 惰性：`a.-c` 在 "axcyc" 匹配到第一个 c（最短）。
+        // Lua's `-` is lazy: `a.-c` matches the first c in "axcyc" (shortest).
         let r = m("a(.-)c", "axcyc").unwrap();
         assert_eq!(r.captures, vec!["x"]);
         assert_eq!(r.end, 3);
@@ -575,7 +608,7 @@ mod tests {
 
     #[test]
     fn greedy_vs_lazy_distinction() {
-        // 贪婪 `.+` 吃到最后一个 c。
+        // Greedy `.+` eats up to the last c.
         let r = m("a(.+)c", "axcyc").unwrap();
         assert_eq!(r.captures, vec!["xcy"]);
     }
@@ -588,8 +621,9 @@ mod tests {
         assert_eq!(r2.end, 6);
     }
 
-    // ---- 最早+最长（tie-break）由 compiled.rs 的表级 scan 测；
-    //      此处验证单 pattern 的 find 返回最早起点 ----
+    // ---- Earliest + longest (tie-break) is tested at the table level in
+    //      compiled.rs::scan; here we just verify a single pattern's find
+    //      returns the earliest start ----
 
     #[test]
     fn find_returns_earliest_start() {

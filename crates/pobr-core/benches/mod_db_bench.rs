@@ -1,7 +1,8 @@
-//! ModDb 聚合基准：5000 个 modifier 上的 sum / more 查询吞吐。
+//! ModDb aggregation benchmark: sum / more query throughput over 5000 modifiers.
 //!
-//! 运行：`cargo bench -p pobr-core --bench mod_db_bench`。
-//! 验证大规模 Modifier 聚合（PoBR 的核心性能目标）不退化。
+//! Run with: `cargo bench -p pobr-core --bench mod_db_bench`.
+//! Guards against regressions in large-scale Modifier aggregation, which is PoBR's
+//! core performance target.
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
@@ -11,8 +12,8 @@ use pobr_data::prelude::*;
 
 const MOD_COUNT: usize = 5000;
 
-/// 构建一个含 5000 个 modifier 的库：Base / Inc / More 三类轮流，
-/// 全部挂在同一个 `Damage` 名下（最坏情况：单桶顺序扫描）。
+/// Builds a store with 5000 modifiers: Base / Inc / More cycled in turn, all attached
+/// to the same `Damage` name (the worst case: a sequential scan of a single bucket).
 fn build_db() -> ModDb {
     let mut db = ModDb::new();
     for index in 0..MOD_COUNT {

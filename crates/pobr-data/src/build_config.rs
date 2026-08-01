@@ -1,11 +1,12 @@
-//! Build 层所需的纯配置枚举。
+//! Config enums the build layer needs.
 //!
-//! `BuildConfig` 本体（含 `to_calc_config()`）归 `pobr-build`，因其依赖 `pobr-core`，
-//! 不允许出现在 `pobr-data`。这里只放语言无关、零逻辑的稳定枚举。
+//! `BuildConfig` itself lives in `pobr-build`, because `to_calc_config()` needs
+//! `pobr-core` and this crate may not depend on it. Only the stable, logic-free
+//! enums belong here.
 
 use serde::{Deserialize, Serialize};
 
-/// PoB Build 的当前视图状态。
+/// Which tab the build is currently showing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum ViewMode {
     Calcs,
@@ -17,7 +18,7 @@ pub enum ViewMode {
     Import,
 }
 
-/// 盗贼任务奖励选择（PoB Build XML 兼容字段）。
+/// Bandit quest reward. Round-trips through the PoB build XML.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum BanditChoice {
     #[default]

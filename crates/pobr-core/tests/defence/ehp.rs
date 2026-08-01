@@ -51,10 +51,10 @@ fn energy_shield_adds_to_elemental_pool_but_half_for_chaos() {
     assert_eq!(result.chaos_max_hit, 1500.0);
 }
 
-/// Bug#10 测试：Chaos Inoculation build EHP。
+/// Bug#10 test: Chaos Inoculation build EHP.
 ///
-/// CI：最大生命变 1，ES 用作生命池，混沌免疫。
-/// 出处：agent-docs/active-defences.md §五 Keystone 表。
+/// CI: maximum life becomes 1, ES is used as the life pool, and chaos immunity is granted.
+/// Source: agent-docs/active-defences.md §5 Keystone table.
 #[test]
 fn chaos_inoculation_uses_es_as_life_pool_and_grants_chaos_immunity() {
     use pobr_core::calc::ehp::{EhpOptions, ResistanceSuite, calc_ehp_with_opts};
@@ -64,19 +64,19 @@ fn chaos_inoculation_uses_es_as_life_pool_and_grants_chaos_immunity() {
         fire: 0.0,
         cold: 0.0,
         lightning: 0.0,
-        chaos: 0.0, // 在 CI 模式下忽略（免疫）
+        chaos: 0.0, // ignored under CI (immune)
     };
     let ci_opts = EhpOptions {
         chaos_inoculation: true,
         ..EhpOptions::default()
     };
-    // life=1（CI keystone），es=5000
+    // life=1 (CI keystone), es=5000
     let result = calc_ehp_with_opts(1.0, 5000.0, 0.0, &resistances, 0.0, 1000.0, ci_opts);
 
-    // ES 用作主池，ele pool = 5000（life=es=5000, effective_es=0）
+    // ES is used as the main pool, ele pool = 5000 (life=es=5000, effective_es=0)
     assert_eq!(result.fire_max_hit, 5000.0);
     assert_eq!(result.physical_max_hit, 5000.0);
-    // 混沌免疫 → 无限大
+    // Chaos immune → infinite
     assert!(result.chaos_max_hit.is_infinite());
     // total_ehp = min(ele types) = 5000
     assert_eq!(result.total_ehp, 5000.0);
@@ -94,7 +94,8 @@ fn non_ci_chaos_uses_life_plus_half_es_pool() {
     assert_eq!(result.chaos_max_hit, 1500.0);
 }
 
-/// 06-04：减伤上限可变（`+Maximum Damage Reduction`）。默认 0.9，提到 0.95 → max-hit 翻倍。
+/// 06-04: the damage reduction cap is variable (`+Maximum Damage Reduction`). Default 0.9;
+/// raising it to 0.95 doubles max hit.
 #[test]
 fn damage_reduction_cap_raised_by_mod() {
     use pobr_core::calc::ehp::{
@@ -123,7 +124,7 @@ fn damage_reduction_cap_raised_by_mod() {
         "raised ~20000, got {mh_raised}"
     );
 
-    // 旧签名 wrapper 等价 dr_max=0.9。
+    // The legacy-signature wrapper is equivalent to dr_max=0.9.
     let legacy = physical_taken_fraction_overwhelm(0.95, 0.0, 1000.0, 0.0);
     assert!(
         (legacy - frac_default).abs() < 1e-9,

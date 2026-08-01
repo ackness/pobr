@@ -1,18 +1,23 @@
-//! `overlay/trigger_configs.json` loader——vendor `Modules/CalcTriggers.lua`
-//! configTable 61 项触发配置（`sync-pob-catalog gen-trigger-configs` 内嵌生成
-//! + vendor key 扫描对账；schema 见 [`pobr_data::catalog::triggers`]，M4-T5 W-E1）。
+//! `overlay/trigger_configs.json` loader — the 61 trigger configs from
+//! vendor `Modules/CalcTriggers.lua`'s configTable (generated embedded in
+//! `sync-pob-catalog gen-trigger-configs` plus a vendor-key scan
+//! reconciliation; schema in [`pobr_data::catalog::triggers`]).
 //!
-//! 消费侧：`pobr-build` 的 `BuildData::load` 投影为按 `match_effect_ids` 索引的
-//! 识别表，orchestrator 触发段据此识别 gem-link/triggeredBy 关系（W-E1 接线）；
-//! 真逻辑条目按 `handler_id` 留待 registry（零接线，计数监控 <100）。
+//! Consumer: pobr-build's `BuildData::load` projects it into a recognition
+//! table indexed by `match_effect_ids`, which the orchestrator's trigger
+//! section uses to recognize gem-link/triggeredBy relationships; entries
+//! with real logic are looked up in the registry by `handler_id` (zero
+//! wiring here, count-monitored <100).
 
 use pobr_data::catalog::triggers::TriggerConfigsDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载触发配置表（恒走 `overlay/` 定位）。文件缺失返回 `Ok(None)`
-    /// （R7 缺表容忍；旧数据包识别面保持空 = 行为不变）；其余错误照常上抛。
+    /// Loads the trigger config table (always resolved under `overlay/`).
+    /// Returns `Ok(None)` when the file is missing (missing-table
+    /// tolerance; an old data pack's recognition surface stays empty =
+    /// unchanged behavior); other errors still propagate as usual.
     pub fn trigger_configs(&self) -> Result<Option<TriggerConfigsDef>, LoadError> {
         match self.load_json_at::<TriggerConfigsDef>(self.overlay_path("trigger_configs.json")) {
             Ok(def) => Ok(Some(def)),

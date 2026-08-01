@@ -1,17 +1,20 @@
-//! `overlay/spectres.json` loader——魂灵（spectre）条目（vendor
-//! `Data/Spectres.lua` 经 `extract-lua --what spectres` 抽取，与 minions 同
-//! schema，key 为完整 metadata 路径；M5a 蓝图 A2/A5）。
+//! `overlay/spectres.json` loader — spectre entries (extracted from vendor
+//! `Data/Spectres.lua` via `extract-lua --what spectres`, the same schema
+//! as minions, keyed by the full metadata path; /A5).
 //!
-//! 体积注（R6）：~700KB 级，懒加载域——只在消费方显式调用时读盘，不进默认
-//! 热路径；`BuildData` 接入（M5a 主波）约定 minions 优先、miss 落 spectres。
+//! Size note: on the order of ~700KB, a lazily-loaded domain — only read
+//! from disk when the consumer explicitly calls it, not on the default hot
+//! path; `BuildData`'s wiring convention is minions first, falling back to
+//! spectres on a miss.
 
 use pobr_data::catalog::actors::MinionsDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载魂灵条目表（恒走 `overlay/` 定位）。文件缺失返回 `Ok(None)`
-    /// （R7 缺表容忍）；其余错误照常上抛。
+    /// Loads the spectre entry table (always resolved under `overlay/`).
+    /// Returns `Ok(None)` when the file is missing (missing-table
+    /// tolerance); other errors still propagate as usual.
     pub fn spectres(&self) -> Result<Option<MinionsDef>, LoadError> {
         match self.load_json_at::<MinionsDef>(self.overlay_path("spectres.json")) {
             Ok(def) => Ok(Some(def)),

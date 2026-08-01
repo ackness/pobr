@@ -1,20 +1,21 @@
-//! `overlay/curse_priority.json` loader——curse 优先级数据表（vendor
-//! `Modules/Data.lua:274` 的 `data.cursePriority` 纯数据表经
-//! `extract-lua --what curse-priority` 抽取，schema 见
-//! [`pobr_data::catalog::curse_priority`]，M3 S1-C）。
+//! `overlay/curse_priority.json` loader — the curse priority data table
+//! (vendor `Modules/Data.lua:274`'s `data.cursePriority` plain data table,
+//! extracted via `extract-lua --what curse-priority`, schema in
+//! [`pobr_data::catalog::curse_priority`]).
 //!
-//! 消费侧（M3-T3 `calc/buff_pass.rs` 的 curse priority/limit，对照
-//! `determineCursePriority` CalcPerform.lua:454-485）经接线注入，
-//! 本 track 零接线。
+//! Consumer (`calc/buff_pass.rs`'s curse priority/limit, matching
+//! `determineCursePriority` in CalcPerform.lua:454-485) is wired in
+//! separately; this loader has zero wiring.
 
 use pobr_data::catalog::curse_priority::CursePriorityDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载 curse 优先级表（恒走 `overlay/` 定位；`_meta` 由 serde 忽略）。
-    /// 文件缺失返回 `Ok(None)`（R7 缺表容忍，消费方按旧路径回退）；
-    /// 其余错误照常上抛。
+    /// Loads the curse priority table (always resolved under `overlay/`;
+    /// `_meta` is ignored by serde). Returns `Ok(None)` when the file is
+    /// missing (missing-table tolerance, the consumer falls back to the
+    /// old path); other errors still propagate as usual.
     pub fn curse_priority(&self) -> Result<Option<CursePriorityDef>, LoadError> {
         match self.load_json_at::<CursePriorityDef>(self.overlay_path("curse_priority.json")) {
             Ok(def) => Ok(Some(def)),

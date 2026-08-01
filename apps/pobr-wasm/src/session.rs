@@ -1,17 +1,20 @@
-//! 计算入口的 JSON 包装：`calculate_json` 把一段 JSON（最小输入 + modifier 文本列表）
-//! 跑过 [`CalculationSession`]，返回 [`MinimalOutput`] 关键字段的 JSON 字符串。
+//! JSON wrapper for the calculation entry point: `calculate_json` runs a
+//! JSON payload (minimal input plus a list of modifier text) through
+//! [`CalculationSession`], returning a JSON string of [`MinimalOutput`]'s
+//! key fields.
 //!
-//! 设计目标：宿主（非 wasm）也能直接编译、测试，因此本模块只用 `serde_json`
-//! 处理边界，不引入 wasm-bindgen。错误统一收敛为 `Result<String, String>`，
-//! 便于在 wasm 边界透传为 JS 异常字符串。
+//! Design goal: the host (non-wasm) can compile and test this directly, so
+//! this module only uses `serde_json` for the boundary and doesn't pull in
+//! wasm-bindgen. Errors are all collapsed into `Result<String, String>`, so
+//! they can pass through the wasm boundary as a JS exception string.
 
 use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput};
 use serde::{Deserialize, Serialize};
 
-/// `calculate_json` 的输入信封。
+/// The input envelope for `calculate_json`.
 ///
-/// 数值字段全部带默认值（缺省即 0），`modifiers` 缺省为空列表，因此调用方
-/// 可以只提供关心的字段。
+/// Every numeric field has a default (defaulting to 0), and `modifiers`
+/// defaults to an empty list, so the caller only needs to supply the fields it cares about.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 struct CalculateRequest {
@@ -45,8 +48,9 @@ impl From<&CalculateRequest> for MinimalInput {
     }
 }
 
-/// `calculate_json` 的输出信封：[`MinimalOutput`] 的关键标量字段 + 未能解析的
-/// modifier 文本列表（便于前端提示）。`breakdown` 不在最小输出里暴露。
+/// The output envelope for `calculate_json`: [`MinimalOutput`]'s key scalar
+/// fields plus the list of modifier text that couldn't be parsed (for
+/// frontend hints). `breakdown` isn't exposed in this minimal output.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 struct CalculateResponse {
     life: f64,
@@ -82,14 +86,16 @@ impl CalculateResponse {
     }
 }
 
-/// 解析 `input_json` 为最小输入 + modifier 文本列表，跑一次最小计算，返回
-/// [`MinimalOutput`] 关键字段的 JSON 字符串。
+/// Parses `input_json` into minimal input plus a modifier text list, runs
+/// one minimal calculation, and returns a JSON string of [`MinimalOutput`]'s key fields.
 ///
-/// modifier 解析走已初始化数据（[`crate::state`]）里的引擎规则（唯一解析器，
-/// legacy 已删）。`modifiers` 非空但数据未初始化 → 显式报错（fail-fast，不把
-/// 词条静默当 Unsupported）；无 modifier 的纯 base 计算不需要数据。无法识别的
-/// modifier（`ParseStatus::Unsupported`）不会让本函数失败，而是收集进输出的
-/// `unsupported_modifiers`。
+/// Modifier parsing uses the engine rules from already-initialized data
+/// ([`crate::state`]) (the sole parser; the legacy one has been removed).
+/// Non-empty `modifiers` with uninitialized data -> an explicit error
+/// (fail-fast, never silently treating mod lines as Unsupported); a pure
+/// base calculation with no modifiers needs no data. Unrecognized modifiers
+/// (`ParseStatus::Unsupported`) never fail this function — they're collected
+/// into the output's `unsupported_modifiers` instead.
 pub fn calculate_json(input_json: &str) -> Result<String, String> {
     let request: CalculateRequest =
         serde_json::from_str(input_json).map_err(|err| format!("invalid input json: {err}"))?;

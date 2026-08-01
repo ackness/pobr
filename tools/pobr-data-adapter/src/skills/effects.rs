@@ -1,8 +1,10 @@
-//! 授予效果表适配（`GrantedEffects` → `granted_effects.json`）+ 繁中技能名边车 +
-//! 消耗资源类型（`CostTypes` → `cost_types.json`）。
+//! Granted effect table adapter (`GrantedEffects` -> `granted_effects.json`)
+//! plus a Traditional Chinese skill-name sidecar plus resource cost types
+//! (`CostTypes` -> `cost_types.json`).
 //!
-//! 授予效果的 `ActiveSkill` 整型索引 → `ActiveSkills.Id`；技能类型标志
-//! （Attack/Spell…）取自关联 ActiveSkills 行，索引经 `ActiveSkillType` 解析为名称。
+//! A granted effect's `ActiveSkill` integer index -> `ActiveSkills.Id`;
+//! skill-type flags (Attack/Spell...) come from the linked ActiveSkills row,
+//! whose indices resolve to names via `ActiveSkillType`.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -20,35 +22,38 @@ struct RawGrantedEffect {
     id: String,
     #[serde(rename = "IsSupport")]
     is_support: Option<bool>,
-    /// 整型索引 → `ActiveSkills`；辅助效果为负数/越界。
+    /// Integer index -> `ActiveSkills`; support effects have a negative/out-of-range value.
     #[serde(rename = "ActiveSkill")]
     active_skill: Option<i64>,
     #[serde(rename = "CastTime")]
     cast_time: Option<i64>,
-    /// require 后缀表达式（FK 索引序列 → `ActiveSkillType`；AND/OR/NOT 是特殊行）。
-    /// = PoB2 spec.lua grantedeffects 列 `SupportTypes`。
+    /// The require postfix expression (a sequence of FK indices ->
+    /// `ActiveSkillType`; AND/OR/NOT are special rows). = PoB2 spec.lua
+    /// grantedeffects's `SupportTypes` column.
     #[serde(rename = "AllowedActiveSkillTypes", default)]
     allowed_active_skill_types: Vec<u32>,
-    /// 兼容 support 并入主动技能的类型名单（= PoB2 spec `AddTypes`）。
+    /// The type list that lets a support merge compatibility into an active
+    /// skill (= PoB2 spec's `AddTypes`).
     #[serde(rename = "AddedActiveSkillTypes", default)]
     added_active_skill_types: Vec<u32>,
-    /// exclude 后缀表达式（= PoB2 spec `ExcludeTypes`）。
+    /// The exclude postfix expression (= PoB2 spec's `ExcludeTypes`).
     #[serde(rename = "ExcludedActiveSkillTypes", default)]
     excluded_active_skill_types: Vec<u32>,
-    /// 主动效果不可被任何 support 支援（spec 列 9）。
+    /// The active effect can't be supported by any support gem (spec column 9).
     #[serde(rename = "CannotBeSupported", default)]
     cannot_be_supported: bool,
-    /// 该 support 仅能支援宝石授予的技能（spec 列 7；社区 schema 列名带 s）。
+    /// This support can only support skills granted by a gem (spec column 7; the community schema's column name has a trailing s).
     #[serde(rename = "SupportsGemsOnly", default)]
     supports_gems_only: bool,
-    /// `GrantedEffectStatSets` 外键索引（负数/越界归一化为 None）。
+    /// `GrantedEffectStatSets` foreign-key index (negative/out-of-range normalizes to None).
     #[serde(rename = "StatSet")]
     stat_set: Option<i64>,
-    /// **附加** statSet 外键索引（M1-T5.2；FK → `GrantedEffectStatSets`，
-    /// W0 核验：目标是 statSet 表而非另一行 GrantedEffects）。列序保留。
+    /// **Additional** statSet foreign-key indices (FK -> `GrantedEffectStatSets`;
+    /// verified during W0 that the target is the statSet table, not another
+    /// GrantedEffects row). Column order is preserved.
     #[serde(rename = "AdditionalStatSets", default)]
     additional_stat_sets: Vec<i64>,
-    /// 消耗类型外键索引列表（如 `[0]`）。
+    /// The list of cost-type foreign-key indices (e.g. `[0]`).
     #[serde(rename = "CostTypes", default)]
     cost_types: Vec<u32>,
 }
@@ -61,10 +66,11 @@ struct RawActiveSkillTwName {
     displayed_name: Option<String>,
 }
 
-/// 适配 `GrantedEffects` 表为按 id 排序的效果定义。
+/// Adapts the `GrantedEffects` table into id-sorted effect definitions.
 ///
-/// 返回 `(条目, 原始总行数, _index → Id 查表)`——查表供 per-level 行解析
-/// `GrantedEffect` 外键（见 [`super::levels`]）。
+/// Returns `(entries, raw row total, _index -> Id lookup)` — the lookup is
+/// used by per-level rows to resolve the `GrantedEffect` foreign key (see
+/// [`super::levels`]).
 pub(super) fn adapt_effects(
     en: &Path,
     active_skills: &[RawActiveSkillName],
@@ -72,12 +78,12 @@ pub(super) fn adapt_effects(
 ) -> Result<(Vec<GrantedEffectDef>, usize, Vec<String>), String> {
     let active_ids: Vec<String> = active_skills.iter().map(|a| a.id.clone()).collect();
 
-    // raw_effects 按文件顺序即 `_index` 顺序；先建 `_index -> Id` 表供 per-level 行解析。
+    // raw_effects is in file order, which is `_index` order; build the `_index -> Id` table first for per-level rows to resolve.
     let raw_effects = read_json::<Vec<RawGrantedEffect>>(&en.join("GrantedEffects.json"))?;
     let effects_total = raw_effects.len();
     let effect_id_by_index: Vec<String> = raw_effects.iter().map(|r| r.id.clone()).collect();
 
-    // statSet `_index -> Id` 查表（AdditionalStatSets FK 解析为稳定 id，T5.2）。
+    // statSet `_index -> Id` lookup (resolves the AdditionalStatSets FK to a stable id, T5.2).
     #[derive(Deserialize)]
     struct RawStatSetId {
         #[serde(rename = "Id")]
@@ -89,9 +95,10 @@ pub(super) fn adapt_effects(
             .map(|r| r.id)
             .collect();
 
-    // 类型表达式 FK 解析：索引 → `ActiveSkillType.Id` 名称（AND/OR/NOT 即特殊行），
-    // 保留 token 顺序（后缀表达式语义依赖顺序）。悬空 FK 跳过并计数（外键质量报表，
-    // 见蓝图 §5：>0 时列入 commit message）。
+    // Type-expression FK resolution: index -> `ActiveSkillType.Id` name
+    // (AND/OR/NOT are special rows), preserving token order (postfix
+    // expression semantics depend on it). A dangling FK is skipped and
+    // counted (a foreign-key quality metric — see below: when >0, it goes into the commit message).
     let mut dangling_type_fk = 0usize;
     let mut dangling_statset_fk = 0usize;
     let mut resolve_type_tokens = |idxs: &[u32]| -> Vec<String> {
@@ -113,7 +120,7 @@ pub(super) fn adapt_effects(
         }
         let active_idx = raw.active_skill.filter(|&i| i >= 0).map(|i| i as usize);
         let active_skill = active_idx.and_then(|i| resolve(&active_ids, i));
-        // 技能类型标志（Attack/Spell…）取自关联 ActiveSkills 行，索引 → 名称。
+        // Skill-type flags (Attack/Spell...) come from the linked ActiveSkills row, index -> name.
         let skill_types = active_idx
             .and_then(|i| active_skills.get(i))
             .map(|a| {
@@ -126,7 +133,7 @@ pub(super) fn adapt_effects(
             .unwrap_or_default();
         let cast_time = raw.cast_time.filter(|&t| t > 0).map(|t| t as u32);
         let stat_set = raw.stat_set.filter(|&i| i >= 0).map(|i| i as u32);
-        // 附加 statSet：FK 索引 → 稳定 id（悬空 FK 跳过并计入外键质量报表）。
+        // Additional statSet: FK index -> stable id (a dangling FK is skipped and counted toward the foreign-key quality metric).
         let additional_stat_set_ids: Vec<String> = raw
             .additional_stat_sets
             .iter()
@@ -154,8 +161,9 @@ pub(super) fn adapt_effects(
             additional_stat_set_ids,
             skill_types,
             cost_types: raw.cost_types,
-            // minion 外键字段（M5a-A3）：base 产物恒空，由 gamedata 加载期从
-            // overlay/granted_effect_minions.json merge 拼入（adapter 不产）。
+            // Minion foreign-key fields: always empty in the base artifact,
+            // merged in from overlay/granted_effect_minions.json during
+            // gamedata loading (the adapter doesn't produce these).
             minion_list: Vec::new(),
             add_minion_list: Vec::new(),
             minion_uses: Vec::new(),
@@ -172,7 +180,7 @@ pub(super) fn adapt_effects(
     Ok((effects, effects_total, effect_id_by_index))
 }
 
-/// 繁中技能显示名边车（key = ActiveSkills.Id，按英文 canonical 去同名）。
+/// Traditional Chinese skill display-name sidecar (key = ActiveSkills.Id, deduplicated against the English canonical name).
 pub(super) fn adapt_zh_skill_names(
     tw: &Path,
     active_skills: &[RawActiveSkillName],
@@ -198,7 +206,7 @@ pub(super) fn adapt_zh_skill_names(
     Ok(zh_skill_names)
 }
 
-// ---- 消耗资源类型（CostTypes 域）----
+// Resource cost types (the CostTypes domain)
 
 #[derive(Deserialize)]
 struct RawCostType {
@@ -212,8 +220,8 @@ struct RawCostType {
     per_minute: bool,
 }
 
-/// 适配 `CostTypes.dat` 为按索引升序的资源类型数组（[`GrantedEffectDef::cost_types`]
-/// 外键的目标表）。索引连续，直接落位为有序 Vec。
+/// Adapts `CostTypes.dat` into an index-ascending resource-type array (the
+/// target table for the [`GrantedEffectDef::cost_types`] foreign key). Indices are contiguous, so this lands directly into an ordered Vec.
 pub fn adapt_cost_types(en: &Path) -> Result<Vec<CostTypeDef>, String> {
     let raw = read_json::<Vec<RawCostType>>(&en.join("CostTypes.json"))?;
     let max = raw.iter().map(|r| r.index).max().map_or(0, |m| m + 1);

@@ -1,56 +1,57 @@
-//! lint-i18n：语言包完整性检查。
+//! lint-i18n: completeness check for the language bundles.
 //!
-//! 规则（见 `pobr-i18n` 的契约）：`en-US` 是 canonical 语言，是所有 key 的
-//! 唯一真相来源与回退。每个非 canonical 语言的 key 集合 **必须是 en-US 的
-//! 子集**——不允许出现 en-US 没有的多余 key。缺失的 key 只是 warning（部分
-//! 翻译是允许的），多余的 key 才是错误并导致非零退出。
+//! Rule (per the `pobr-i18n` contract): `en-US` is the canonical language,
+//! the single source of truth and fallback for every key. Each non-canonical
+//! language's key set **must be a subset of en-US's** — no key may exist
+//! there that en-US doesn't have. Missing keys are only a warning (partial
+//! translations are fine); extra keys are an error and cause a non-zero exit.
 
 use std::collections::BTreeSet;
 
 use pobr_i18n::{CANONICAL_LANGUAGE, I18nError, LanguageId, Translator};
 
-/// 单个非 canonical 语言相对 canonical 的差异。
+/// One non-canonical language's diff against the canonical key set.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LanguageReport {
-    /// 被检查的非 canonical 语言。
+    /// The non-canonical language being checked.
     pub language: LanguageId,
-    /// canonical 有、但该语言缺失的 key（warning，不致命）。
+    /// Keys canonical has but this language is missing (warning, not fatal).
     pub missing_keys: Vec<String>,
-    /// 该语言有、但 canonical 没有的 key（错误，致命）。
+    /// Keys this language has but canonical doesn't (error, fatal).
     pub extra_keys: Vec<String>,
 }
 
 impl LanguageReport {
-    /// 是否存在 canonical 没有的多余 key。
+    /// Whether this language has keys canonical doesn't.
     pub fn has_extra_keys(&self) -> bool {
         !self.extra_keys.is_empty()
     }
 }
 
-/// 整个语言包集合的检查结果（不含 canonical 语言自身）。
+/// Check results for the whole language bundle set (excludes canonical itself).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LintReport {
-    /// canonical 语言标识。
+    /// The canonical language identifier.
     pub canonical: LanguageId,
-    /// canonical 定义的全部 key 数量。
+    /// Total number of keys defined by canonical.
     pub canonical_key_count: usize,
-    /// 每个非 canonical 语言的差异，按语言标识排序。
+    /// Per-language diffs, sorted by language identifier.
     pub languages: Vec<LanguageReport>,
 }
 
 impl LintReport {
-    /// 任何语言出现多余 key 即视为整体失败。
+    /// Any language with extra keys fails the whole report.
     pub fn has_extra_keys(&self) -> bool {
         self.languages.iter().any(LanguageReport::has_extra_keys)
     }
 
-    /// 进程退出码：发现多余 key 返回 1，否则 0。
+    /// Process exit code: 1 if any extra keys were found, otherwise 0.
     pub fn exit_code(&self) -> u8 {
         if self.has_extra_keys() { 1 } else { 0 }
     }
 }
 
-/// 对所有 shipped 语言执行完整性检查。
+/// Run the completeness check against every shipped language.
 pub fn lint_languages() -> Result<LintReport, I18nError> {
     let canonical = LanguageId::new(CANONICAL_LANGUAGE);
     let canonical_keys = Translator::all_keys(&canonical)?;
@@ -70,7 +71,7 @@ pub fn lint_languages() -> Result<LintReport, I18nError> {
     })
 }
 
-/// 计算单个语言相对 canonical key 集合的差异。
+/// Diff a single language's key set against the canonical key set.
 fn diff_language(
     language: &LanguageId,
     canonical_keys: &BTreeSet<String>,
@@ -87,7 +88,7 @@ fn diff_language(
     })
 }
 
-/// 把检查结果格式化为人类可读的报告文本。
+/// Format the check results as a human-readable report.
 pub fn format_report(report: &LintReport) -> String {
     let mut out = String::new();
     out.push_str(&format!(

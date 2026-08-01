@@ -1,31 +1,42 @@
-//! M0-W4b 搬迁不变式的**一次性逐值校验**（env 触发，CI 默认跳过）。
+//! A **one-off value-by-value check** for the migration invariant
+//! (env-triggered, skipped in CI by default).
 //!
-//! 用法：把搬迁前的手补 base 文件（`granted_effect_levels.json` /
-//! `granted_effect_stat_sets.json`）放进某目录，然后：
+//! Usage: put the pre-migration hand-patched base files
+//! (`granted_effect_levels.json` / `granted_effect_stat_sets.json`) in a
+//! directory, then:
 //!
 //! ```bash
 //! POBR_MIGRATION_OLD_BASE=/path/to/old_base \
 //!   cargo test -p pobr-gamedata --test skill_overrides_migration
 //! ```
 //!
-//! 断言「纯 base + overlay merge 后的生效值」与旧手补 base **逐行逐字段相等**，
-//! 唯一允许的例外是 FireRuneFireDjinn L2 的 `crit_chance: 7.0`——vendor PoB2
-//! 该级**无** critChance（导出器逐级独立写值，省略 = GGG 数据该级无值，见
-//! `vendor src/Export/Scripts/skills.lua` 的 `AttackCritChance ~= 0` 守卫），
-//! 旧值是历史手补时的填充伪影，本次搬迁一并修正。
-//!
-//! **历史适用范围**：本校验只对 **M1-T4 之前**的检出有效——T4.3 起 crit / attspd
-//! 改 `.dat` 表列直读（vendor 覆盖之外新增怪物/非 vendor 技能的值）、等级行新增
-//! T4.2 字段族，与旧手补 base 的逐字段相等必然出现预期差异。T4 通道切换自身的
-//! 逐值一致证明（3911 crit + 3578 attspd 零漂移、覆盖技能零新增）见 T4.3 搬迁
-//! commit 记录。
+//! Asserts "the value in effect after plain base + overlay merge" is
+//! **equal row for row, field for field** to the old hand-patched base;
+//! the only allowed exception is FireRuneFireDjinn L2's
+//! `crit_chance: 7.0` — vendor PoB2 has **no** critChance at that level
+//! (the exporter writes each level's value independently, so an omission
+//! means GGG's data has no value there, see the
+//! `AttackCritChance ~= 0` guard in `vendor src/Export/Scripts/skills.lua`);
+//! the old value was a fill-in artifact from when it was hand-patched,
+//! corrected by this migration.
+
+//! **Historical scope**: this check is only valid for a check-out made
+//! **before** T4.3 — starting at T4.3, crit / attspd switched to reading
+//! the `.dat` table columns directly (adding values for monster/non-vendor
+//! skills beyond vendor's coverage), and the level rows gained T4.2's
+//! field family, so an exact field-for-field match against the old
+//! hand-patched base necessarily shows expected differences now. The proof
+//! that the T4 channel switchover itself is value-for-value consistent
+//! (3911 crit + 3578 attspd entries with zero drift, zero additions for
+//! covered skills) is recorded in the T4.3 migration commit.
 
 use std::collections::BTreeMap;
 
 use pobr_data::catalog::{SkillLevelDef, SkillStatSetDef};
 use pobr_gamedata::GameData;
 
-/// 旧手补 base 中已知的填充伪影（搬迁时修正，不算漂移）。
+/// A known fill-in artifact in the old hand-patched base (corrected during
+/// the migration, not counted as drift).
 const KNOWN_ARTIFACT_SKILL: &str = "FireRuneFireDjinn";
 const KNOWN_ARTIFACT_LEVEL: u32 = 2;
 
@@ -39,7 +50,7 @@ fn merged_values_equal_old_hand_patched_base() {
 
     let data = GameData::new(pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version()));
 
-    // ---- granted_effect_levels：逐 effect、逐行、逐字段 ----
+    // granted_effect_levels: per effect, per row, per field.
     let old_levels: BTreeMap<String, Vec<SkillLevelDef>> = serde_json::from_slice(
         &std::fs::read(old_dir.join("granted_effect_levels.json")).expect("读旧等级域"),
     )
@@ -59,7 +70,8 @@ fn merged_values_equal_old_hand_patched_base() {
             if old_row == merged_row {
                 continue;
             }
-            // 唯一允许的差异：已知填充伪影（旧 Some(7.0) → 新 None，其余字段相等）。
+            // The only allowed difference: the known fill-in artifact (old
+            // Some(7.0) → new None, every other field equal).
             let is_known_artifact = id == KNOWN_ARTIFACT_SKILL
                 && old_row.level == KNOWN_ARTIFACT_LEVEL
                 && old_row.crit_chance == Some(7.0)
@@ -78,7 +90,7 @@ fn merged_values_equal_old_hand_patched_base() {
     }
     assert_eq!(artifact_hits, 1, "已知伪影应恰好命中一次");
 
-    // ---- granted_effect_stat_sets：整体逐值相等 ----
+    // granted_effect_stat_sets: value-equal as a whole.
     let old_sets: Vec<SkillStatSetDef> = serde_json::from_slice(
         &std::fs::read(old_dir.join("granted_effect_stat_sets.json")).expect("读旧 stat-set 域"),
     )

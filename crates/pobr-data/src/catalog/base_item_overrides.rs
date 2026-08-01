@@ -1,47 +1,63 @@
-//! 基底物品覆盖值 overlay 域 schema（`overlay/base_item_overrides.json`）。
+//! Base item override-value overlay domain schema
+//! (`overlay/base_item_overrides.json`).
 //!
-//! 数据来源：vendor PoB2 `Data/Bases/*.lua`（shield / sceptre 等）——GGG `.dat`
-//! 对应表（`ShieldTypes` 的 `Block` 列、`ItemSpirit` 的 `SpiritGranted` 列）所在
-//! bundle 已被 CDN 对钉定 patch 剪除，`.dat` 路线不可得，按蓝图 m2-defence §6
-//! 开放问题 1/2 的双路线裁决走 vendor 抽取兜底。由
-//! `sync-pob-catalog extract-bases` 确定性抽取生成（schema 标识
-//! `base_item_overrides/v1`，与 M0 的 `skill_overrides` 通道同构）。
+//! Data source: vendor PoB2 `Data/Bases/*.lua` (shield / sceptre etc.) — the
+//! bundle for the corresponding GGG `.dat` tables (`ShieldTypes`'s `Block`
+//! column, `ItemSpirit`'s `SpiritGranted` column) has been pruned from the
+//! CDN at the pinned patch, so the `.dat` route is unavailable; per the
+//! dual-route decision from open questions 1/2, this falls back to vendor
+//! extraction. Deterministically extracted by
+//! `sync-pob-catalog extract-bases` (schema id `base_item_overrides/v1`,
+//! shaped the same as the `skill_overrides` channel).
 //!
-//! 消费侧：`pobr-gamedata` 在加载 `base/base_items.json` 时把本表按**英文
-//! canonical 名称**merge 到 [`super::BaseItemDef`] 之上（merge 语义与单测见
-//! `pobr-gamedata::domains::base_item_overrides`）。本模块只定义 serde 形状，零逻辑。
+//! Consumer: `pobr-gamedata` merges this table onto [`super::BaseItemDef`]
+//! by **English canonical name** while loading `base/base_items.json`
+//! (merge semantics and unit tests in
+//! `pobr-gamedata::domains::base_item_overrides`). This module only
+//! defines the serde shape, zero logic.
 
 use serde::{Deserialize, Serialize};
 
-/// 单条基底覆盖值（vendor `itemBases["<name>"]` 的 `armour.BlockChance` / `spirit`）。
+/// A single base override entry (vendor's `itemBases["<name>"]`'s
+/// `armour.BlockChance` / `spirit`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BaseItemOverrideEntry {
-    /// 基底英文 canonical 名称（= vendor `itemBases` 键 = `BaseItemDef::name`）。
+    /// The base's English canonical name (= vendor's `itemBases` key =
+    /// `BaseItemDef::name`).
     pub name: String,
-    /// 盾牌基底格挡几率（%；vendor `armour.BlockChance`）。
+    /// A shield base's block chance (%; vendor's `armour.BlockChance`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub block_chance: Option<f64>,
-    /// 基底固有 Spirit（vendor `spirit`，如权杖 100）。
+    /// The base's inherent Spirit (vendor's `spirit`, e.g. 100 for a sceptre).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spirit: Option<u32>,
-    /// 弩装填时间（毫秒；vendor `weapon.ReloadTimeBase` 秒值 ×1000，源头 =
-    /// `WeaponTypes.ReloadTime`——M4-T4 W-D2，本地 `.dat` 快照缺失期间的
-    /// vendor 抽取兜底，消费侧写入 [`super::WeaponBaseStats::reload_time_ms`]）。
+    /// Crossbow reload time (milliseconds; vendor's
+    /// `weapon.ReloadTimeBase` seconds value ×1000, ultimately sourced from
+    /// `WeaponTypes.ReloadTime` — the vendor-extraction fallback while the
+    /// local `.dat` snapshot is missing it; the consumer writes it into
+    /// [`super::WeaponBaseStats::reload_time_ms`]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reload_time_ms: Option<u32>,
-    /// charm 基底固有 buff 词条（vendor `Data/Bases/flask.lua` 的 `charm.buff`，
-    /// 如 Ruby Charm `"+25% to Fire Resistance"`）；消费侧写入
-    /// [`super::BaseItemDef::charm_buff`]。GGG `.dat` 无此列，vendor 抽取兜底。
+    /// A charm base's inherent buff mod (vendor
+    /// `Data/Bases/flask.lua`'s `charm.buff`, e.g. a Ruby Charm's
+    /// `"+25% to Fire Resistance"`); the consumer writes it into
+    /// [`super::BaseItemDef::charm_buff`]. No GGG `.dat` column for this —
+    /// the vendor-extraction fallback.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub charm_buff: Option<Vec<String>>,
-    /// 完整基底 tag 集（vendor `itemBases[name].tags`——GGG `.it` 元数据继承链
-    /// 的合并产物）。`.dat` 的 `BaseItemTypes.Tags` 只有末端 tag（如
-    /// `dex_int_armour`），缺 `body_armour`/`armour` 等类目 tag，而词缀
-    /// spawn weight 判定（tier 反查）需要全集。消费侧与 base tags **并集** merge。
+    /// The base's full tag set (vendor's `itemBases[name].tags` — the
+    /// merged product of GGG `.it` metadata's inheritance chain). The
+    /// `.dat`'s `BaseItemTypes.Tags` only has the leaf tag (e.g.
+    /// `dex_int_armour`) and is missing category tags like
+    /// `body_armour`/`armour`, but mod spawn-weight checks (tier
+    /// reverse-lookup) need the full set. The consumer merges this as a
+    /// **union** with the base tags.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
-    /// 基底属性需求（vendor `req = { str/dex/int }`；消费侧写入
-    /// [`super::BaseItemDef::req_str`] 等，装备需求快照的取数源）。
+    /// The base's attribute requirements (vendor's
+    /// `req = { str/dex/int }`; the consumer writes it into
+    /// [`super::BaseItemDef::req_str`] etc., the data source for the
+    /// equipment-requirement snapshot).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub req_str: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -50,10 +66,12 @@ pub struct BaseItemOverrideEntry {
     pub req_int: Option<u32>,
 }
 
-/// `overlay/base_item_overrides.json` 顶层（消费侧视角：`_meta` 头部为生成溯源
-/// 信息，serde 默认忽略未知字段，消费侧只取 `overrides` 列表）。
+/// Top level of `overlay/base_item_overrides.json` (from the consumer's
+/// perspective: the `_meta` header is provenance info, ignored by default
+/// via serde along with other unknown fields; the consumer just takes the
+/// `overrides` list).
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct BaseItemOverridesDef {
-    /// 覆盖值列表，按 `name` 升序排序。
+    /// Override list, ascending by `name`.
     pub overrides: Vec<BaseItemOverrideEntry>,
 }

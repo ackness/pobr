@@ -1,13 +1,14 @@
-//! 集成测试：radius jewel 影响范围计算。
+//! Integration tests: radius jewel effect-range calculation.
 //!
-//! 常量基准：PoB2 `src/Modules/Data.lua` `data.jewelRadii["0_1"]`（outer 值）；
-//! 缩放因子：PoB2 `Data/Misc.lua` `data.gameConstants["PassiveTreeJewelDistanceMultiplier"] = 1.2`。
+//! Constant baseline: PoB2 `src/Modules/Data.lua` `data.jewelRadii["0_1"]`
+//! (outer values); scaling factor: PoB2 `Data/Misc.lua`
+//! `data.gameConstants["PassiveTreeJewelDistanceMultiplier"] = 1.2`.
 //!
-//! 实际有效半径 = outer * 1.2：
-//!   Small 1000 → 1200，Medium 1150 → 1380，Large 1300 → 1560，VeryLarge 1500 → 1800。
+//! Effective radius = outer * 1.2:
+//!   Small 1000 -> 1200, Medium 1150 -> 1380, Large 1300 -> 1560, VeryLarge 1500 -> 1800.
 //!
-//! fixture 节点按与 socket 距离排列：
-//!   11 → 600，12 → 1000，13 → 1300，14 → 1400，15 → 2000（均在 Small/Medium/Large 范围之外）。
+//! Fixture nodes are laid out by distance from the socket:
+//!   11 -> 600, 12 -> 1000, 13 -> 1300, 14 -> 1400, 15 -> 2000 (outside every band).
 
 use pobr_data::catalog::jewel_radii::JewelRadiiDef;
 use pobr_data::prelude::*;
@@ -18,15 +19,16 @@ use pobr_tree::{
 };
 use std::collections::HashMap;
 
-/// socket(skill 10) 在原点；节点按与 socket 距离递增排布。
+/// socket (skill 10) sits at the origin; nodes are placed at increasing
+/// distances from it.
 ///
-/// | skill | 距离      | 落在...         |
-/// |-------|-----------|-----------------|
-/// |  11   |   600     | Small(1200)内   |
-/// |  12   |  1000     | Small(1200)内   |
-/// |  13   |  1300     | Medium(1380)内  |
-/// |  14   |  1400     | Large(1560)内   |
-/// |  15   |  2000     | 全部范围外       |
+/// | skill | distance  | falls within...  |
+/// |-------|-----------|-------------------|
+/// |  11   |   600     | Small (1200)      |
+/// |  12   |  1000     | Small (1200)      |
+/// |  13   |  1300     | Medium (1380)     |
+/// |  14   |  1400     | Large (1560)      |
+/// |  15   |  2000     | outside all bands |
 fn fixture_positions() -> HashMap<u32, (f64, f64)> {
     let mut map = HashMap::new();
     map.insert(10u32, (0.0, 0.0)); // socket
@@ -69,7 +71,7 @@ fn fixture_tree() -> PassiveTree {
     PassiveTree::from_nodes(nodes).with_positions(fixture_positions())
 }
 
-/// PoE2 出处：PoB2 Data/Misc.lua gameConstants["PassiveTreeJewelDistanceMultiplier"] = 1.2
+/// PoE2 source: PoB2 Data/Misc.lua gameConstants["PassiveTreeJewelDistanceMultiplier"] = 1.2
 #[test]
 fn jewel_distance_multiplier_is_1_2() {
     assert_eq!(
@@ -78,7 +80,7 @@ fn jewel_distance_multiplier_is_1_2() {
     );
 }
 
-/// PoE2 出处：PoB2 Data.lua jewelRadii["0_1"] outer 值乘以 1.2 缩放因子。
+/// PoE2 source: PoB2 Data.lua jewelRadii["0_1"] outer values times the 1.2 scaling factor.
 #[test]
 fn radius_constants_match_pob2_outer_times_multiplier() {
     // PoB2 Data.lua: { inner=0, outer=1000, label="Small"  }  → 1000 * 1.2 = 1200
@@ -123,7 +125,8 @@ fn radius_constants_are_ordered() {
     );
 }
 
-/// Small 有效半径 1200：捕获距离 600 和 1000 的节点，排除距离 1300/1400/2000 的节点。
+/// Small's effective radius is 1200: captures the nodes at distance 600 and
+/// 1000, excludes the ones at 1300/1400/2000.
 #[test]
 fn small_radius_captures_nodes_within_1200() {
     let positions = fixture_positions();
@@ -133,12 +136,12 @@ fn small_radius_captures_nodes_within_1200() {
         compute_radius_jewel_effect(10, JewelRadius::Small, &positions, mods.clone()).unwrap();
 
     assert_eq!(effect.socket, 10);
-    // dist 600 和 1000 均在 1200 内；dist 1300/1400/2000 在外
+    // dist 600 and 1000 are both within 1200; dist 1300/1400/2000 are outside.
     assert_eq!(effect.affected_nodes, vec![11, 12]);
     assert_eq!(effect.mod_texts, mods);
 }
 
-/// Medium 有效半径 1380：比 Small 多捕获距离 1300 的节点。
+/// Medium's effective radius is 1380: captures one more node than Small, at distance 1300.
 #[test]
 fn medium_radius_captures_nodes_within_1380() {
     let positions = fixture_positions();
@@ -148,7 +151,7 @@ fn medium_radius_captures_nodes_within_1380() {
     assert_eq!(effect.affected_nodes, vec![11, 12, 13]);
 }
 
-/// Large 有效半径 1560：比 Medium 多捕获距离 1400 的节点。
+/// Large's effective radius is 1560: captures one more node than Medium, at distance 1400.
 #[test]
 fn large_radius_captures_nodes_within_1560() {
     let positions = fixture_positions();
@@ -158,7 +161,7 @@ fn large_radius_captures_nodes_within_1560() {
     assert_eq!(effect.affected_nodes, vec![11, 12, 13, 14]);
 }
 
-/// VeryLarge 有效半径 1800：仍不捕获距离 2000 的节点。
+/// VeryLarge's effective radius is 1800: still doesn't capture the node at distance 2000.
 #[test]
 fn very_large_radius_captures_nodes_within_1800() {
     let positions = fixture_positions();
@@ -166,7 +169,7 @@ fn very_large_radius_captures_nodes_within_1800() {
     let effect =
         compute_radius_jewel_effect(10, JewelRadius::VeryLarge, &positions, vec![]).unwrap();
 
-    // dist 2000 仍在 1800 外
+    // dist 2000 is still outside 1800.
     assert_eq!(effect.affected_nodes, vec![11, 12, 13, 14]);
 }
 
@@ -225,10 +228,12 @@ fn radius_to_units_matches_constants() {
     assert_eq!(JewelRadius::Custom(123.0).units(), 123.0);
 }
 
-/// 搬迁不变式（M0-W3）：`JewelRadiiDef::default()` 注入路径与旧硬编码常量路径
-/// **逐值相等**——`units_with_radii(Default)` == `units()`（4 具名档 + Custom）。
-/// 该测试把 pobr-data 的 Default fallback 锚定到本 crate 的旧 Rust 准源常量
-/// （pobr-data 依赖方向上无法直接引用本 crate 常量，由此处锁定）。
+/// Migration invariant: the `JewelRadiiDef::default()` injection path and the
+/// legacy hardcoded-constant path are **value-for-value equal** —
+/// `units_with_radii(Default)` == `units()` (all 4 named bands plus Custom).
+/// This test anchors pobr-data's `Default` fallback to this crate's old
+/// Rust-source constants (pobr-data's dependency direction can't reference
+/// this crate's constants directly, so this is pinned here instead).
 #[test]
 fn default_radii_data_matches_legacy_constants() {
     let radii = JewelRadiiDef::default();
@@ -251,7 +256,8 @@ fn default_radii_data_matches_legacy_constants() {
     );
 }
 
-/// 注入路径与 fallback 路径计算结果一致（Default 数据下整套影响范围逐值相等）。
+/// The injection path and fallback path produce the same result (under
+/// Default data, the whole effect range is value-for-value equal).
 #[test]
 fn with_radii_default_matches_fallback_function() {
     let positions = fixture_positions();
@@ -269,14 +275,15 @@ fn with_radii_default_matches_fallback_function() {
     }
 }
 
-/// 注入数据确实被消费：篡改 Small 档 outer 后影响集合随数据变化
-/// （证明计算读的是注入数据而非硬编码常量）。
+/// The injected data is actually consumed: tampering with the Small band's
+/// outer value shifts the affected set (proving the calculation reads the
+/// injected data, not hardcoded constants).
 #[test]
 fn injected_radii_data_is_actually_consumed() {
     let positions = fixture_positions();
     let mut radii = JewelRadiiDef::default();
-    // Small outer 1000 → 1100：有效半径 1200 → 1320，应多捕获 dist 1300 的节点 13
-    // （dist 1400 的节点 14 仍在外）。
+    // Small outer 1000 -> 1100: effective radius 1200 -> 1320, which should
+    // now capture node 13 at dist 1300 (node 14 at dist 1400 is still outside).
     let bands = radii.tree_versions.get_mut("0_1").unwrap();
     bands.iter_mut().find(|b| b.label == "Small").unwrap().outer = 1100;
 
@@ -290,7 +297,8 @@ fn injected_radii_data_is_actually_consumed() {
     );
 }
 
-/// 数据缺对应具名档（异常/裁剪数据）时回退硬编码常量，行为与 fallback 一致。
+/// When the data is missing the named band (malformed/truncated data), this
+/// falls back to the hardcoded constant, matching fallback behaviour.
 #[test]
 fn missing_band_falls_back_to_legacy_constant() {
     let positions = fixture_positions();
@@ -304,16 +312,18 @@ fn missing_band_falls_back_to_legacy_constant() {
     let effect =
         compute_radius_jewel_effect_with_radii(10, JewelRadius::Small, &radii, &positions, vec![])
             .unwrap();
-    // 回退 JEWEL_RADIUS_SMALL（1200）：捕获 dist 600/1000。
+    // Falls back to JEWEL_RADIUS_SMALL (1200): captures dist 600/1000.
     assert_eq!(effect.affected_nodes, vec![11, 12]);
 }
 
-/// 树版本选取：存在多组版本时取最大键（最新一组）。
+/// Tree version selection: with multiple version groups present, the max key
+/// (the newest group) is used.
 #[test]
 fn latest_tree_version_bands_are_used() {
     let positions = fixture_positions();
     let mut radii = JewelRadiiDef::default();
-    // 追加更新的 "0_2" 版本：Small outer 改为 1100（有效 1320，多捕获节点 13）。
+    // Add a newer "0_2" version: Small's outer changed to 1100 (effective
+    // 1320, now also captures node 13).
     let mut newer = radii.tree_versions["0_1"].clone();
     newer.iter_mut().find(|b| b.label == "Small").unwrap().outer = 1100;
     radii.tree_versions.insert("0_2".to_string(), newer);
@@ -328,7 +338,7 @@ fn latest_tree_version_bands_are_used() {
     );
 }
 
-/// PassiveTree 注入版方法与自由函数一致。
+/// The `PassiveTree` injection-aware method matches the free function.
 #[test]
 fn tree_method_with_radii_matches_free_function() {
     let tree = fixture_tree();
@@ -385,6 +395,7 @@ fn tree_method_matches_free_function() {
     .unwrap();
 
     assert_eq!(via_method, via_fn);
-    // Large 有效半径 1560：捕获 dist 600/1000/1300/1400 的节点（11/12/13/14）
+    // Large's effective radius is 1560: captures the nodes at dist
+    // 600/1000/1300/1400 (11/12/13/14).
     assert_eq!(via_method.affected_nodes, vec![11, 12, 13, 14]);
 }

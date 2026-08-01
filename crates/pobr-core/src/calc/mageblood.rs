@@ -1,34 +1,39 @@
-//! Mageblood legacies 应用（vendor `CalcPerform.lua:66-142` legacies 表 +
-//! `:1502-1528` 应用逻辑，行号实读）。
+//! Mageblood legacies application (vendor `CalcPerform.lua:66-142` legacies
+//! table + `:1502-1528` application logic; line numbers verified against source).
 //!
-//! Mageblood 腰带的每个选中变体渲染成一行 `Legacy of <X>` 词条，解析层经
-//! `special:mageblood_legacy` handler 产出 `LegacyOf<X>` BASE 1 + `MagebloodEquipped`
-//! FLAG（vendor `ModParser.lua:5554-5557`）；implicit「All Mage's Legacies have N%
-//! increased effect per duplicate...」→ `MagesLegacyEffect` INC N（special DSL）。
-//! 本阶段把这些标记词条聚合成真实的护甲/闪避/抗性等 mod。
+//! Each selected variant on a Mageblood belt renders as a `Legacy of <X>` line;
+//! the parse layer's `special:mageblood_legacy` handler turns it into a
+//! `LegacyOf<X>` BASE 1 mod plus a `MagebloodEquipped` FLAG (vendor
+//! `ModParser.lua:5554-5557`). The implicit "All Mage's Legacies have N%
+//! increased effect per duplicate..." becomes `MagesLegacyEffect` INC N (special
+//! DSL). This module aggregates those marker mods into real armour/evasion/
+//! resistance mods etc.
 //!
-//! vendor 逻辑（`:1502-1528`）：
-//! - `MagebloodEquipped` flag 未置 → 空转；
-//! - 逐 legacy 名 `Sum("BASE", LegacyOf<X>)` = 该变体装备份数（stacks）；
-//! - `totalDuplicates = Σ max(stacks-1, 0)`（每个变体超出 1 份的部分）；
-//! - `globalEffect = 1 + totalDuplicates × Sum("INC", MagesLegacyEffect)/100`；
-//! - 每个**在场**的 legacy 把它的效果**应用一次**（不乘 stacks——duplicate 只放大
-//!   globalEffect），值 = `floor(globalEffect × base)`，source = "Mageblood"。
+//! Vendor logic (`:1502-1528`):
+//! - No-op unless the `MagebloodEquipped` flag is set;
+//! - For each legacy name, `Sum("BASE", LegacyOf<X>)` gives how many copies of
+//!   that variant are equipped (stacks);
+//! - `totalDuplicates = Σ max(stacks-1, 0)` (the count above 1 for each variant);
+//! - `globalEffect = 1 + totalDuplicates × Sum("INC", MagesLegacyEffect)/100`;
+//! - Each **present** legacy applies its effect **once** (not multiplied by its
+//!   own stack count — duplicates only scale up `globalEffect`), with value
+//!   `floor(globalEffect × base)` and source = "Mageblood".
 //!
-//! 空转兼容：无 `MagebloodEquipped` / 无任何 `LegacyOf*` 时零写入。幂等：已注入
-//! （同一 Env 重复 perform）时按 source 判定跳过。
+//! No-op safe: writes nothing without `MagebloodEquipped` or any `LegacyOf*`
+//! mod present. Idempotent: skips re-injection (by checking source) if already
+//! applied to this `Env`.
 
 use pobr_data::prelude::*;
 
 use super::Env;
 use crate::Modifier;
 
-/// 单条 legacy 效果：(stat 名, mod 类型, base 值)。
+/// A single legacy effect: (stat name, mod type, base value).
 type LegacyEffect = (&'static str, ModType, f64);
-/// 一个 legacy：(`LegacyOf<X>` 名, 效果列表)。
+/// A legacy: (`LegacyOf<X>` name, list of effects).
 type LegacyDef = (&'static str, &'static [LegacyEffect]);
 
-/// vendor `legacies` 表逐条镜像（`CalcPerform.lua:66-142`）。
+/// Line-for-line mirror of the vendor `legacies` table (`CalcPerform.lua:66-142`).
 const LEGACIES: &[LegacyDef] = &[
     ("LegacyOfAmethyst", &[("ChaosResist", ModType::Base, 45.0)]),
     ("LegacyOfBasalt", &[("Armour", ModType::Inc, 150.0)]),
@@ -36,9 +41,12 @@ const LEGACIES: &[LegacyDef] = &[
         "LegacyOfBismuth",
         &[("ElementalResist", ModType::Base, 45.0)],
     ),
-    // vendor stat `CritChance` → PoBR 消费名 `CriticalStrikeChance`（calc::crit 读后者；
-    // 与 special_mod::translate_vendor_name 同口径。裸注入不过 parser 翻译，故表内直用
-    // PoBR 规范名，否则落死桶——同 Virtuous Barrier Life→MaximumLife 教训）。
+    // Vendor stat `CritChance` maps to the PoBR consumer name
+    // `CriticalStrikeChance` (calc::crit reads the latter; same mapping as
+    // special_mod::translate_vendor_name). Direct injection here bypasses the
+    // parser's translation, so the table must already use the PoBR canonical
+    // name or the value lands in a dead bucket — same lesson as the Virtuous
+    // Barrier Life→MaximumLife bug.
     (
         "LegacyOfDiamond",
         &[("CriticalStrikeChance", ModType::Inc, 75.0)],
@@ -67,8 +75,10 @@ const LEGACIES: &[LegacyDef] = &[
     (
         "LegacyOfSilver",
         &[
-            // vendor 裸 `Speed`（通用行动速度）→ PoBR 速度桶名 `SkillSpeed`（攻/施法通吃，
-            // SPEED_BUCKET；同 CritChance 死桶类，translate_vendor_name 裸 Speed→SkillSpeed）。
+            // Vendor's bare `Speed` (generic action speed) maps to the PoBR
+            // speed-bucket name `SkillSpeed` (covers both attack and cast,
+            // SPEED_BUCKET; same dead-bucket class as CritChance —
+            // translate_vendor_name maps bare Speed → SkillSpeed).
             ("SkillSpeed", ModType::Inc, 30.0),
             ("WarcrySpeed", ModType::Inc, 30.0),
             ("TotemPlacementSpeed", ModType::Inc, 30.0),
@@ -85,17 +95,18 @@ const LEGACIES: &[LegacyDef] = &[
     ),
 ];
 
-/// 注入 mod 的 source 串（vendor `NewMod(..., "Mageblood")`）——兼作幂等判据。
+/// Source string for injected mods (vendor `NewMod(..., "Mageblood")`) —
+/// doubles as the idempotency check.
 const MAGEBLOOD_SOURCE: &str = "Mageblood";
 
-/// env_finalize 阶段：应用 Mageblood legacies（vendor `CalcPerform.lua:1502-1528`）。
+/// env_finalize stage: applies Mageblood legacies (vendor `CalcPerform.lua:1502-1528`).
 pub fn apply_mageblood_legacies(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
     if !db.flag(cfg, ModName::from("MagebloodEquipped")) {
         return;
     }
-    // 幂等护栏：本 Env 已注入过（同一 Env 重复 perform）。
+    // Idempotency guard: already injected for this Env (repeated perform).
     if db
         .iter_mods()
         .any(|m| m.source.as_deref() == Some(MAGEBLOOD_SOURCE))
@@ -103,7 +114,7 @@ pub fn apply_mageblood_legacies(env: &mut Env) {
         return;
     }
 
-    // 逐 legacy 统计 stacks（`Sum("BASE", LegacyOf<X>)` = 装备份数）。
+    // Count stacks per legacy (`Sum("BASE", LegacyOf<X>)` = copies equipped).
     let found: Vec<(f64, &'static [LegacyEffect])> = LEGACIES
         .iter()
         .filter_map(|(name, effects)| {
@@ -144,7 +155,7 @@ mod tests {
     use super::*;
     use crate::calc::{Actor, ActorBaseStats};
 
-    /// 装 Mageblood + 若干 LegacyOf 标记词条，跑聚合后返回 Env。
+    /// Equips Mageblood plus some `LegacyOf*` marker mods, runs aggregation, and returns the `Env`.
     fn run(legacy_stacks: &[(&str, f64)], effect_per_dupe: f64) -> Env {
         let mut player = Actor::new(1, ActorBaseStats::default());
         player.mod_db.add_mod(Modifier::flag("MagebloodEquipped"));
@@ -185,7 +196,7 @@ mod tests {
         assert_eq!(base(&env, "Armour"), 0.0);
     }
 
-    /// ice-shot 档：Jade + Stibnite 无重复 → globalEffect=1，Evasion BASE 2000 + INC 150。
+    /// ice-shot build: Jade + Stibnite with no duplicates → globalEffect=1, Evasion BASE 2000 + INC 150.
     #[test]
     fn distinct_legacies_no_duplicate_bonus() {
         let env = run(&[("LegacyOfJade", 1.0), ("LegacyOfStibnite", 1.0)], 0.0);
@@ -193,8 +204,8 @@ mod tests {
         assert_eq!(inc(&env, "Evasion"), 150.0);
     }
 
-    /// titan 档：Silver×2 → totalDuplicates=1，globalEffect=1.46；Basalt Armour INC
-    /// floor(1.46×150)=219（钉住 vendor `defenceModList` 观测值）。
+    /// titan build: Silver×2 → totalDuplicates=1, globalEffect=1.46; Basalt Armour INC
+    /// floor(1.46×150)=219 (pinned against the observed vendor `defenceModList` value).
     #[test]
     fn duplicate_scales_global_effect() {
         let env = run(
@@ -207,11 +218,11 @@ mod tests {
         );
         assert_eq!(inc(&env, "Armour"), 219.0); // floor(1.46 × 150)
         assert_eq!(inc(&env, "MovementSpeed"), (1.46 * 30.0f64).floor()); // 43
-        // Silver 只应用一次（duplicate 只放大 globalEffect，不叠份数）。
-        assert_eq!(inc(&env, "SkillSpeed"), (1.46 * 30.0f64).floor()); // 43, 非 86
+        // Silver applies only once (duplicates only scale globalEffect, not stack count).
+        assert_eq!(inc(&env, "SkillSpeed"), (1.46 * 30.0f64).floor()); // 43, not 86
     }
 
-    /// 幂等：重复 perform 不重复注入。
+    /// Idempotent: repeated perform does not re-inject.
     #[test]
     fn idempotent_reapply() {
         let mut env = run(&[("LegacyOfGranite", 1.0)], 0.0);

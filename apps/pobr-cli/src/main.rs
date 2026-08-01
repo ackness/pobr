@@ -1,7 +1,9 @@
-//! pobr-cli：命令行入口（calculate / parse-mod / parse-item / decode-code / encode-code）。
+//! pobr-cli: the command-line entry point (calculate / parse-mod / parse-item / decode-code / encode-code).
 //!
-//! `main` 只做 IO 粘合：clap 解析参数、读文件 / stdin、调用 `pobr_cli` 库函数、打印 JSON。
-//! 所有命令逻辑（纯函数 + 可序列化输出）位于 `pobr_cli` 库层，便于单测。
+//! `main` only glues together IO: clap parses args, reads the file / stdin,
+//! calls into `pobr_cli` library functions, and prints JSON. All command
+//! logic (pure functions with serializable output) lives in the `pobr_cli`
+//! library layer, so it's easy to unit test.
 
 use std::fs;
 use std::io::Read;
@@ -25,141 +27,148 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// 从基础属性 + modifier 文本执行最小计算，输出关键字段 JSON。
+    /// Run a minimal calc from base stats plus mod text, printing the key fields as JSON.
     Calculate(CalculateArgs),
-    /// 从 PoB Build Code 端到端计算（装备 / 天赋 / 宝石 / 角色基础 / 敌人），输出 JSON。
+    /// Run a full calc from a PoB build code — gear, tree, gems, character base and
+    /// enemy — printing the result as JSON.
     CalculateBuild(CalculateBuildArgs),
-    /// 解析单条 modifier 文本，输出解析报告。
+    /// Parse one mod line and print what the parser made of it.
     ParseMod(ParseModArgs),
-    /// 解剖单条 modifier 文本：摊开 name/type/value + flags + tags（词条的条件与缩放灵魂），附人话解释。
+    /// Break one mod line all the way down: name, type and value plus the flags and
+    /// tags that decide when it applies and how it scales, each explained in prose.
     ExplainMod(ExplainModArgs),
-    /// 解析 raw item text（--text / --file / stdin）。当前为占位，返回未实现错误。
+    /// Parse raw item text from --text, --file or stdin. Not implemented yet; returns
+    /// an error.
     ParseItem(ParseItemArgs),
-    /// 解码 PoB Build Code → XML。
+    /// Decode a PoB build code into its XML.
     DecodeCode(CodeArgs),
-    /// 编码 XML（--text / --file / stdin）→ PoB Build Code。
+    /// Encode XML from --text, --file or stdin into a PoB build code.
     EncodeCode(TextSourceArgs),
 }
 
 #[derive(Debug, Args)]
 struct CalculateArgs {
-    /// 基础生命值。
+    /// Base life.
     #[arg(long, default_value_t = 0.0)]
     base_life: f64,
-    /// 基础魔力值。
+    /// Base mana.
     #[arg(long, default_value_t = 0.0)]
     base_mana: f64,
-    /// 基础火焰抗性。
+    /// Base fire resistance.
     #[arg(long, default_value_t = 0.0)]
     base_fire_resistance: f64,
-    /// 基础冰霜抗性。
+    /// Base cold resistance.
     #[arg(long, default_value_t = 0.0)]
     base_cold_resistance: f64,
-    /// 基础闪电抗性。
+    /// Base lightning resistance.
     #[arg(long, default_value_t = 0.0)]
     base_lightning_resistance: f64,
-    /// 基础命中值。
+    /// Base accuracy.
     #[arg(long, default_value_t = 0.0)]
     base_accuracy: f64,
-    /// 敌人闪避值。
+    /// The enemy's evasion.
     #[arg(long, default_value_t = 0.0)]
     enemy_evasion: f64,
-    /// 基础最小命中伤害。
+    /// Minimum base hit damage.
     #[arg(long, default_value_t = 0.0)]
     base_hit_min: f64,
-    /// 基础最大命中伤害。
+    /// Maximum base hit damage.
     #[arg(long, default_value_t = 0.0)]
     base_hit_max: f64,
-    /// 基础动作频率（每秒次数）。
+    /// Base action rate, in actions per second.
     #[arg(long, default_value_t = 0.0)]
     base_action_rate: f64,
-    /// 内联 modifier 文本（可重复）。
+    /// A mod line, given inline. Repeatable.
     #[arg(long = "mod", value_name = "TEXT")]
     mods: Vec<String>,
-    /// 从文件读取 modifier 文本（每行一条；与 --mod 合并）。
+    /// Read mod lines from a file, one per line. Merged with any --mod values.
     #[arg(long)]
     mods_file: Option<String>,
 }
 
 #[derive(Debug, Args)]
 struct CalculateBuildArgs {
-    /// PoB Build Code（内联）；与 --file 二选一，缺省从 stdin 读取。
+    /// The build code, given inline. Use this or --file; with neither, reads stdin.
     code: Option<String>,
-    /// 从文件读取 PoB Build Code。
+    /// Read the build code from a file.
     #[arg(long)]
     file: Option<String>,
-    /// 游戏数据版本目录（含入库 JSON）。缺省使用仓库内置 `data/4.5.0.3.4`。
+    /// Directory holding one version's game data JSON. Defaults to the copy
+    /// shipped in the repo.
     #[arg(long)]
     data_dir: Option<String>,
-    /// 敌人等级（0 = 跟随角色等级）。
+    /// Enemy level. 0 means match the character's level.
     #[arg(long, default_value_t = 0)]
     enemy_level: u32,
-    /// 敌人档位：none / boss / pinnacle / uber。
+    /// Enemy tier: none, boss, pinnacle or uber.
     #[arg(long, default_value = "pinnacle")]
     enemy_tier: String,
-    /// 面板口径（不计敌人交互）。缺省为有效 DPS 口径。
+    /// Report panel numbers, which ignore enemy interaction. Defaults to effective DPS.
     #[arg(long, default_value_t = false)]
     panel: bool,
 }
 
 #[derive(Debug, Args)]
 struct ParseModArgs {
-    /// 待解析的 modifier 文本。
+    /// The mod line to parse.
     text: String,
-    /// 版本数据目录（默认 `<repo>/data/4.5.0.3.4`）。从中编译 parser 规则。
+    /// Version data directory to compile the parser rules from. Defaults to the
+    /// copy shipped in the repo.
     #[arg(long)]
     data_dir: Option<String>,
 }
 
 #[derive(Debug, Args)]
 struct ExplainModArgs {
-    /// 待解剖的 modifier 文本。
+    /// The mod line to break down.
     text: String,
-    /// 版本数据目录（默认 `<repo>/data/4.5.0.3.4`）。从中编译 parser 规则。
+    /// Version data directory to compile the parser rules from. Defaults to the
+    /// copy shipped in the repo.
     #[arg(long)]
     data_dir: Option<String>,
-    /// 输出结构化 JSON（默认输出人类可读文本）。
+    /// Emit JSON instead of the default human-readable text.
     #[arg(long)]
     json: bool,
-    /// 在该 PoB Build Code 上额外计算这条词条的边际贡献（前后对比）。
+    /// Also compute what this mod is worth on the given build, by calculating with
+    /// and without it.
     #[arg(long)]
     build: Option<String>,
-    /// 从文件读取 build code（与 --build 二选一）。
+    /// Read the build code from a file instead of --build.
     #[arg(long)]
     build_file: Option<String>,
-    /// 边际计算用的敌人等级（0 = 跟随角色等级）。
+    /// Enemy level for the marginal calc. 0 means match the character's level.
     #[arg(long, default_value_t = 0)]
     enemy_level: u32,
-    /// 边际计算用的敌人档位：none / boss / pinnacle / uber。
+    /// Enemy tier for the marginal calc: none, boss, pinnacle or uber.
     #[arg(long, default_value = "pinnacle")]
     enemy_tier: String,
-    /// 边际计算用面板口径（不计敌人交互）。缺省为有效 DPS 口径。
+    /// Use panel numbers for the marginal calc. Defaults to effective DPS.
     #[arg(long, default_value_t = false)]
     panel: bool,
 }
 
 #[derive(Debug, Args)]
 struct ParseItemArgs {
-    /// 内联 raw item text。
+    /// The raw item text, given inline.
     #[arg(long)]
     text: Option<String>,
-    /// 从文件读取 raw item text。
+    /// Read the raw item text from a file.
     #[arg(long)]
     file: Option<String>,
 }
 
 #[derive(Debug, Args)]
 struct CodeArgs {
-    /// 待解码的 PoB Build Code。
+    /// The build code to decode.
     code: String,
 }
 
 #[derive(Debug, Args)]
 struct TextSourceArgs {
-    /// 内联文本。
+    /// The text, given inline.
     #[arg(long)]
     text: Option<String>,
-    /// 从文件读取文本。
+    /// Read the text from a file.
     #[arg(long)]
     file: Option<String>,
 }
@@ -183,7 +192,8 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
         Command::Calculate(args) => Ok(pobr_cli::calculate_json(&build_calculate_request(args)?)?),
         Command::CalculateBuild(args) => {
             let report = pobr_cli::calculate_build(&build_calc_build_request(args)?)?;
-            // gap B：树版本失配（已分配节点不在已加载树）不再静默——向 stderr 告警。
+            // gap B: tree-version mismatches (allocated nodes not in the
+            // loaded tree) are no longer silent — warn to stderr.
             let diag = &report.tree_version;
             if diag.unknown_node_count > 0 {
                 eprintln!(
@@ -216,7 +226,7 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
                     Ok(pobr_cli::explain_mod_text(&args.text, &data_dir)?)
                 };
             }
-            // has_build 保证 build / build_file 至少一个 Some → read_text_source 不会落到 stdin。
+            // has_build guarantees at least one of build / build_file is Some, so read_text_source never falls through to stdin.
             let build_code = read_text_source(args.build, args.build_file)?;
             let req = pobr_cli::MarginalRequest {
                 build_code,
@@ -297,7 +307,7 @@ fn build_calc_build_request(
     })
 }
 
-/// 敌人档位字符串 → [`EnemyTier`]（none / boss / pinnacle / uber）。
+/// Enemy tier string -> [`EnemyTier`] (none / boss / pinnacle / uber).
 fn parse_enemy_tier(tier: &str) -> Result<EnemyTier, Box<dyn std::error::Error>> {
     Ok(match tier.to_ascii_lowercase().as_str() {
         "none" => EnemyTier::None,
@@ -308,7 +318,7 @@ fn parse_enemy_tier(tier: &str) -> Result<EnemyTier, Box<dyn std::error::Error>>
     })
 }
 
-/// 文本来源优先级：`--text` > `--file` > stdin。
+/// Text source priority: `--text` > `--file` > stdin.
 fn read_text_source(
     text: Option<String>,
     file: Option<String>,

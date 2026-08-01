@@ -1,27 +1,32 @@
-//! 敌人 modDB 初始化（对齐 PoB2 `CalcSetup.lua` 的 `enemyDB` 注入段）。
+//! Enemy modDB initialization (mirrors PoB2 `CalcSetup.lua`'s `enemyDB` injection section).
 //!
-//! 把怪物等级缩放表 + [`EnemyTier`] 档位加成写入 `Env.enemy.mod_db`，归因到
-//! [`SourceKind::EnemyConfig`]。所有注入都是 BASE/MORE modifier，由进攻计算
-//! （`offence.rs`）在 `mode_effective` 口径下读取。
+//! Writes the monster level scaling table plus [`EnemyTier`] tier bonuses
+//! into `Env.enemy.mod_db`, attributed to [`SourceKind::EnemyConfig`]. All
+//! injected mods are BASE/MORE modifiers, read by offence calculations
+//! (`offence.rs`) under `mode_effective`.
 //!
-//! **数据来源（M0-W3）**：百级表与档位预设改读注入的
-//! [`RuntimeConstants`]（`cfg.constants.monster_scaling` / `.enemy_presets`，
-//! 来自 `base/monster_scaling.json` + `base/enemy_presets.json`）；无 GameData 时
-//! 走 `Default` fallback（与 JSON 逐值相等，引用旧 `pobr_data::monster` 准源）——
-//! 两条路径输出逐值一致（搬迁不变式）。
+//! **Data source**: the per-level table and tier presets are read from the
+//! injected [`RuntimeConstants`] (`cfg.constants.monster_scaling` /
+//! `.enemy_presets`, sourced from `base/monster_scaling.json` +
+//! `base/enemy_presets.json`); without GameData, falls back to `Default`
+//! (value-for-value equal to the JSON, referencing the old
+//! `pobr_data::monster` canonical source) -- both paths produce identical output (a migration invariant).
 //!
-//! 设计要点（doc12 §4.2 / §5、accuracy-and-enemy.md §四,§五,§六）：
-//! - **怪物缩放**：`accuracy/evasion/armour` 来自 [`EnemyTierDefaults`]（已含档位倍率）。
-//! - **抗性**：`{Fire/Cold/Lightning}Resist BASE`、`ChaosResist BASE`。
-//! - **Uber 受伤惩罚**：`DamageTaken MORE -70`。
-//! - **Boss 通用 debuff 抗性**：`CurseEffectOnSelf/ExposureEffectOnSelf/SlowEffectOnSelf
-//!   MORE -50` 等，削弱我方诅咒/曝光/减速对 Boss 的有效度。
-//! - **条件态**：Boss → `Condition:Unique`/`RareOrUnique`；Pinnacle/Uber → `Condition:PinnacleBoss`。
-//! - **穿透**：`tier.pen()` 仅注入 enemy modDB 的 `Enemy<Element>Pen BASE`（防御侧
-//!   EHP/受击消费，vendor CalcDefence.lua:2363）；**不**进玩家进攻穿透（M4-H S1）。
-//! - **玩家施加的 debuff（曝光/诅咒/破甲/凋萎）通道**：本步只提供归约 hook
-//!   [`reduce_enemy_exposure`]（曝光取最强 → 写入 `*Resist BASE` 减项），具体 debuff
-//!   注入由下游 wave 在调用 [`setup_enemy`] 后追加再调 [`reduce_enemy_exposure`]。
+//! Design highlights (doc12 §4.2 / §5, accuracy-and-enemy.md §4,§5,§6):
+//! - **Monster scaling**: `accuracy/evasion/armour` come from [`EnemyTierDefaults`] (tier multiplier already included).
+//! - **Resistances**: `{Fire/Cold/Lightning}Resist BASE`, `ChaosResist BASE`.
+//! - **Uber damage-taken penalty**: `DamageTaken MORE -70`.
+//! - **Boss common debuff resistance**: `CurseEffectOnSelf/ExposureEffectOnSelf/SlowEffectOnSelf
+//!   MORE -50` etc., weakening the effectiveness of our curses/exposure/slows against a Boss.
+//! - **Condition state**: Boss → `Condition:Unique`/`RareOrUnique`; Pinnacle/Uber → `Condition:PinnacleBoss`.
+//! - **Penetration**: `tier.pen()` only injects the enemy modDB's
+//!   `Enemy<Element>Pen BASE` (consumed on the defence side by EHP/damage
+//!   taken, vendor CalcDefence.lua:2363); it does **not** feed the player's offensive penetration.
+//! - **Player-applied debuff channel (exposure/curse/armour break/wither)**:
+//!   this step only provides the reduction hook [`reduce_enemy_exposure`]
+//!   (exposure takes the strongest → writes a `*Resist BASE` deduction);
+//!   actual debuff injection is appended by a downstream wave after calling
+//!   [`setup_enemy`], which then calls [`reduce_enemy_exposure`].
 
 use pobr_data::prelude::*;
 
@@ -29,12 +34,13 @@ use crate::{ModDb, ModTag, Modifier};
 
 use super::{Actor, Env};
 
-/// `EnemyConfig` 归因来源（统一 id 前缀，便于 TraceGraph 区分敌人天生属性 vs 我方 debuff）。
+/// `EnemyConfig` attribution source (a unified id prefix, so TraceGraph can
+/// tell an enemy's inherent stats apart from our applied debuffs).
 fn enemy_source(id: &str) -> ModifierSource {
     ModifierSource::new(SourceId::new(SourceKind::EnemyConfig, id))
 }
 
-/// 给 enemy modDB 注入一条带 `EnemyConfig` 归因的数值 modifier。
+/// Injects a numeric modifier attributed to `EnemyConfig` into the enemy modDB.
 fn push_enemy_number(db: &mut ModDb, name: &str, mod_type: ModType, value: f64, id: &str) {
     db.add_mod(
         Modifier::number(ModName::from(name), mod_type, value)
@@ -43,11 +49,13 @@ fn push_enemy_number(db: &mut ModDb, name: &str, mod_type: ModType, value: f64, 
     );
 }
 
-/// 给 enemy modDB 注入一条带 `EnemyConfig` 归因、且仅在有效 DPS 口径生效的数值 modifier。
+/// Injects a numeric modifier attributed to `EnemyConfig` into the enemy
+/// modDB that only takes effect under the effective-DPS view.
 ///
-/// 附 `Condition:Effective` 标签（由 [`CalcConfig::condition`](crate::CalcConfig::condition)
-/// 从 `mode_effective` 派生）：面板口径（`mode_effective == false`）下这些敌侧 debuff-抗
-/// （curse/exposure/slow effect-on-self）不参与聚合，避免污染裸 DPS。
+/// Tagged with `Condition:Effective` (derived from `mode_effective` by
+/// [`CalcConfig::condition`](crate::CalcConfig::condition)): in the panel
+/// view (`mode_effective == false`), these enemy-side debuff-resistance mods
+/// (curse/exposure/slow effect-on-self) don't participate in aggregation, avoiding contamination of the raw DPS.
 fn push_enemy_effective_number(
     db: &mut ModDb,
     name: &str,
@@ -63,7 +71,7 @@ fn push_enemy_effective_number(
     );
 }
 
-/// 给 enemy modDB 注入一个布尔条件态（`Condition:<name>`）。
+/// Injects a boolean condition state (`Condition:<name>`) into the enemy modDB.
 fn push_enemy_condition(db: &mut ModDb, condition: &str, id: &str) {
     db.add_mod(
         Modifier::number(
@@ -76,16 +84,20 @@ fn push_enemy_condition(db: &mut ModDb, condition: &str, id: &str) {
     );
 }
 
-/// 从注入的运行时常量包计算档位默认值（`cfg.constants` 的 `monster_scaling` +
-/// `enemy_presets`），替代旧 `EnemyTierDefaults::compute` 对 `pobr_data::monster`
-/// 硬编码表的直查。
+/// Computes tier defaults from the injected runtime constants pack
+/// (`cfg.constants`'s `monster_scaling` + `enemy_presets`), replacing the old
+/// `EnemyTierDefaults::compute`'s direct lookup into `pobr_data::monster`'s
+/// hardcoded table.
 ///
-/// 公式与旧路径**逐运算同序**（level 先档位下界后 MaxEnemyLevel 上界、倍率先除
-/// 100 再乘表值），且 `Default` fallback 与 JSON 逐值相等——两条路径输出逐 bit
-/// 一致（搬迁不变式，零 parity 变化）。
+/// The formula follows the **exact same operation order** as the old path
+/// (level is clamped to the tier's floor first, then the MaxEnemyLevel
+/// ceiling; multipliers divide by 100 first, then multiply the table value),
+/// and the `Default` fallback is value-for-value equal to the JSON -- both
+/// paths produce bit-identical output (a migration invariant, zero parity change).
 ///
-/// 注入数据缺档（损坏的 enemy_presets）时回退旧 Rust 准源 `compute`（与 Default
-/// 同值），保持零 I/O 可计算。
+/// Falls back to the old Rust canonical source `compute` (same values as
+/// Default) when the injected data is missing a tier (corrupted
+/// enemy_presets), staying computable with zero I/O.
 fn tier_defaults_from_constants(
     constants: &RuntimeConstants,
     config_level: u32,
@@ -96,7 +108,7 @@ fn tier_defaults_from_constants(
         return EnemyTierDefaults::compute(config_level, tier);
     };
     let scaling = &constants.monster_scaling;
-    // 保证等级满足档位最低要求，并 clamp 到 MaxEnemyLevel（与旧 compute 同序）。
+    // Ensures the level meets the tier's minimum requirement, and clamps it to MaxEnemyLevel (same order as the old compute).
     let level = config_level
         .max(preset.min_level)
         .min(presets.max_enemy_level);
@@ -118,16 +130,18 @@ fn tier_defaults_from_constants(
     }
 }
 
-/// 按 `(enemy_level, tier)` 初始化 `Env.enemy`：写 `enemy.base`（标量兼容入口）+
-/// `enemy.mod_db`（完整 modifier）。
+/// Initializes `Env.enemy` from `(enemy_level, tier)`: writes `enemy.base`
+/// (the scalar compatibility entry point) plus `enemy.mod_db` (full modifiers).
 ///
-/// `config_level`：用户配置的怪物等级（`0` 表示跟随角色等级，调用方先解析为具体值）。
-/// 当 `config_level == 0` 时回退为 `min(MaxEnemyLevel, player.level)`（上限读注入的
-/// `cfg.constants.enemy_presets.max_enemy_level`，Default fallback = 85）。
+/// `config_level`: the user-configured monster level (`0` means follow the
+/// character's level; the caller resolves this to a concrete value first).
+/// When `config_level == 0`, falls back to `min(MaxEnemyLevel, player.level)`
+/// (the ceiling reads the injected `cfg.constants.enemy_presets.max_enemy_level`, Default fallback = 85).
 ///
-/// 数据来源：百级表/档位预设读 `env.cfg.constants`（M0-W3 注入管道）——调用方须在
-/// `set_constants` **之后**调用本函数（`calculate_with_data` 已遵守此序；无注入时
-/// Default fallback 与 JSON 逐值相等，输出不变）。
+/// Data source: the per-level table/tier presets read from `env.cfg.constants`
+/// (the injection pipeline) -- the caller must call this function **after**
+/// `set_constants` (`calculate_with_data` already follows this order; without
+/// injection, the Default fallback is value-for-value equal to the JSON, so output is unchanged).
 pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     let constants = &env.cfg.constants;
     let resolved_level = if config_level == 0 {
@@ -137,9 +151,12 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     };
     let defaults = tier_defaults_from_constants(constants, resolved_level, tier);
 
-    // --- 就地更新 env.enemy（对齐 PoB2 CalcSetup.lua:682-691：enemyDB 是持久增量 db，
-    // 不整体替换 actor）。base 标量按档位缩放写入；档位 mod **追加**进现有 mod_db，从而
-    // 保留 setup_enemy 之前已注入的 enemy mod（曝光/物理减伤/用户自定义 enemy 词条等）。
+    // --- Updates env.enemy in place (mirrors PoB2 CalcSetup.lua:682-691:
+    // enemyDB is a persistent, incrementally-built db, not an actor that's
+    // replaced wholesale). base scalars are written from the tier scaling;
+    // tier mods are **appended** to the existing mod_db, preserving any
+    // enemy mods already injected before setup_enemy (exposure, physical
+    // damage reduction, custom enemy mods, etc.).
     env.enemy.level = defaults.level.max(1) as u8;
     env.enemy.base.accuracy = defaults.accuracy as f64;
     env.enemy.base.evasion = defaults.evasion;
@@ -150,11 +167,13 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     inject_enemy_mods(&mut env.enemy.mod_db, &defaults, tier);
     inject_ehp_damage_placeholder(&mut env.enemy.mod_db, constants, defaults.level, tier);
 
-    // 档位预设的**玩家侧** mod 组（数据驱动：`enemy_presets.json::tiers[].player_mods`；
-    // vendor ConfigOptions.lua L2007-2008 等 `modList:NewMod("WarcryPower","BASE",20,
-    // "Boss")` + `Multiplier:EnemyPower`，Boss/Pinnacle/Uber 共通）。首个消费方 =
-    // warcry uptime 机器（`calc::warcry` 的 WarcryPower 求和，CalcPerform.lua:2120）。
-    // effective_only 条目（当前 player_mods 无）按保守跳过，避免面板口径引入敌人交互。
+    // The tier preset's **player-side** mod group (data-driven:
+    // `enemy_presets.json::tiers[].player_mods`; vendor ConfigOptions.lua
+    // L2007-2008 etc.'s `modList:NewMod("WarcryPower","BASE",20, "Boss")` +
+    // `Multiplier:EnemyPower`, shared across Boss/Pinnacle/Uber). The first
+    // consumer is the warcry uptime engine (`calc::warcry`'s WarcryPower sum,
+    // CalcPerform.lua:2120). effective_only entries (none currently in
+    // player_mods) are conservatively skipped, avoiding introducing enemy interaction into the panel view.
     if let Some(preset) = env.cfg.constants.enemy_presets.tier_for(tier) {
         let player_mods: Vec<crate::Modifier> = preset
             .player_mods
@@ -165,7 +184,7 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
                     "BASE" => ModType::Base,
                     "INC" => ModType::Inc,
                     "MORE" => ModType::More,
-                    _ => return None, // 未知类型：保守跳过（数据损坏防御）。
+                    _ => return None, // Unknown type: conservatively skipped (defensive against data corruption).
                 };
                 Some(
                     crate::Modifier::number(m.name.as_str(), mod_type, m.value)
@@ -180,28 +199,34 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
         env.player.mod_db.add_list(player_mods);
     }
 
-    // 注意：Boss 自带元素穿透（Pinnacle 3 / Uber 8，vendor `pinnacleBossPen = 15/5` /
-    // `uberBossPen = 40/5`，Modules/Data.lua:231/:233）**只作用在防御侧**——
-    // `enemy{Fire,Cold,Lightning}Pen` config var 没有 apply 函数（ConfigOptions.lua:2269-2273，
-    // 不生成任何 mod），仅被 CalcDefence.lua:2363 读取折算玩家受击抗性
-    // （`resMult = 1 − max(resist − enemyPen, 0)/100`）。对应 PoBR 通道 =
-    // `inject_ehp_damage_placeholder` 注入的 `Enemy{Fire,Cold,Lightning}Pen`
-    // （`ehp::fill_ehp_pob2` 消费）。历史版本曾把它同时注入玩家 modDB 的
-    // `ElementalPenetration BASE`（提高我方进攻穿透）——vendor 进攻侧
-    // CalcOffence.lua:4143 的 pen 只读玩家 skillModList，无任何 boss 来源；
-    // 该注入是反向假补偿，已删除（M4-H S1）。
+    // Note: a Boss's inherent elemental penetration (Pinnacle 3 / Uber 8,
+    // vendor `pinnacleBossPen = 15/5` / `uberBossPen = 40/5`,
+    // Modules/Data.lua:231/:233) **only applies on the defence side** -- the
+    // `enemy{Fire,Cold,Lightning}Pen` config var has no apply function
+    // (ConfigOptions.lua:2269-2273, generates no mod), and is only read at
+    // CalcDefence.lua:2363 to fold into the player's damage-taken resistance
+    // (`resMult = 1 − max(resist − enemyPen, 0)/100`). The corresponding
+    // PoBR channel is the `Enemy{Fire,Cold,Lightning}Pen` injected by
+    // `inject_ehp_damage_placeholder` (consumed by `ehp::fill_ehp_pob2`). A
+    // past version also injected this into the player modDB's
+    // `ElementalPenetration BASE` (boosting our offensive penetration) --
+    // but vendor's offence-side penetration at CalcOffence.lua:4143 only
+    // reads the player's skillModList, with no boss source at all; that
+    // injection was a reversed, spurious compensation and has been removed.
 }
 
-/// 把 [`EnemyTierDefaults`] + 档位加成写入 enemy modDB（不触碰 base 标量）。
+/// Writes [`EnemyTierDefaults`] + tier bonuses into the enemy modDB (doesn't touch the base scalars).
 ///
-/// 注意：Boss 共通 mod 组（Curse/Exposure/Slow `-50`、`PoiseThreshold 500`、条件态）
-/// 此处仍按 pobr 现状硬编码注入——`enemy_presets.json` 的 `tiers[].enemy_mods` 里
-/// 额外含 vendor-only 条目（Knockback/MinimumMovementSpeed/附加 Poise/player_mods），
-/// 本 wave 为搬迁不变式（parity 零变化）**不**改为整组数据驱动；行为对齐
-/// （含 Effective 门控口径差异）见 `enemy_presets.rs` 模块 doc 的 TODO(parity)，
-/// 属后续独立 commit。
+/// Note: the Boss common mod group (Curse/Exposure/Slow `-50`,
+/// `PoiseThreshold 500`, condition states) is still hardcoded here as pobr
+/// currently stands -- `enemy_presets.json`'s `tiers[].enemy_mods` additionally
+/// contains vendor-only entries (Knockback/MinimumMovementSpeed/extra
+/// Poise/player_mods), and this pass **doesn't** convert the whole group to
+/// data-driven, per the migration invariant (zero parity change); behavior
+/// alignment (including the Effective-gating semantic gap) is tracked as
+/// TODO(parity) in the `enemy_presets.rs` module docs, belonging to a future, separate commit.
 fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTier) {
-    // 怪物缩放：精准 / 闪避 / 护甲（含档位倍率，已在 defaults 中乘好）。
+    // Monster scaling: accuracy / evasion / armour (tier multiplier already applied within defaults).
     push_enemy_number(
         db,
         "Accuracy",
@@ -212,7 +237,7 @@ fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTi
     push_enemy_number(db, "Evasion", ModType::Base, defaults.evasion, "evasion");
     push_enemy_number(db, "Armour", ModType::Base, defaults.armour, "armour");
 
-    // 元素抗性（Boss 档位加成）。
+    // Elemental resistances (Boss tier bonus).
     if defaults.elemental_resist != 0.0 {
         push_enemy_number(
             db,
@@ -246,7 +271,7 @@ fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTi
         );
     }
 
-    // Uber：DamageTaken MORE -70（受伤减少）。
+    // Uber: DamageTaken MORE -70 (reduced damage taken).
     if defaults.damage_taken_more != 0.0 {
         push_enemy_number(
             db,
@@ -257,9 +282,10 @@ fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTi
         );
     }
 
-    // Boss 通用 debuff 抗性（Boss/Pinnacle/Uber 共有；accuracy-and-enemy.md §五）。
-    // 这三项 effect-on-self 削弱我方诅咒/曝光/减速对 Boss 的有效度，仅在有效 DPS 口径
-    // （`mode_effective`）参与消费——故带 `Condition:Effective` 门控。
+    // Boss common debuff resistance (shared by Boss/Pinnacle/Uber; accuracy-and-enemy.md §5).
+    // These three effect-on-self mods weaken the effectiveness of our
+    // curses/exposure/slows against a Boss, and only take effect under the
+    // effective-DPS view (`mode_effective`) -- hence the `Condition:Effective` gate.
     if tier.is_boss() {
         push_enemy_effective_number(
             db,
@@ -296,12 +322,15 @@ fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTi
         push_enemy_condition(db, "PinnacleBoss", "pinnacle_boss");
     }
 
-    // 敌人 actor 基础条件态词条（vendor CalcSetup.lua:73-77 initModDB——每个 actor
-    // 的 modDB 都带的 Intimidated 条件对：受伤 +10% INC / 输出 −10% INC）。条件 var
-    // 用 cfg 键空间的 `EnemyIntimidated`（config `conditionEnemyIntimidated` 与
-    // env_finalize 的敌侧 `Condition:Intimidated` flag 桥接同置此键）。
-    // ponytail: 仅落敌方消费的 Intimidated 对；Maimed/Unnerved/Debilitated 等同表
-    // 条件在 18-build 语料无来源，parity 点名时再逐条补。
+    // Enemy actor's base condition state mods (vendor CalcSetup.lua:73-77
+    // initModDB -- the Intimidated condition pair every actor's modDB
+    // carries: +10% INC damage taken / −10% INC damage dealt). The condition
+    // var uses `EnemyIntimidated` in the cfg key space (both the
+    // `conditionEnemyIntimidated` config and env_finalize's enemy-side
+    // `Condition:Intimidated` flag bridge set this same key).
+    // ponytail: only implements the enemy-consumed Intimidated pair;
+    // Maimed/Unnerved/Debilitated and other conditions in the same table
+    // have no source in the 18-build corpus -- add them one by one when parity calls them out.
     for (name, value) in [("DamageTaken", 10.0), ("Damage", -10.0)] {
         db.add_mod(
             Modifier::number(ModName::from(name), ModType::Inc, value)
@@ -312,15 +341,18 @@ fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTi
     }
 }
 
-/// EHP 进伤 placeholder 注入（M2 F-1）：把 vendor ConfigOptions.lua:1982-1996 的
-/// 敌人单击伤害默认占位（`enemy<X>Damage` config placeholder）落成 enemy modDB 的
-/// `Enemy<X>Damage` BASE——`default = round(monsterDamageTable[lv] ×
-/// ehp_base_damage_mult × DPSMult)`，chaos 再 `round(/chaos_damage_div)`
-/// （数值装配在 `ehp::enemy_damage_placeholder`）。
+/// Injects the EHP incoming-damage placeholder: turns vendor
+/// ConfigOptions.lua:1982-1996's enemy single-hit damage default placeholder
+/// (the `enemy<X>Damage` config placeholder) into the enemy modDB's
+/// `Enemy<X>Damage` BASE -- `default = round(monsterDamageTable[lv] ×
+/// ehp_base_damage_mult × DPSMult)`, with chaos additionally `round(/chaos_damage_div)`
+/// (the value assembly lives in `ehp::enemy_damage_placeholder`).
 ///
-/// 行为中性：注入的 ModName 当前仅被 EHP 新管线（`ehp::assemble_enemy_damage`）
-/// 消费，全部产出挂新字段——既有输出 parity 逐值不变。M3 config_interpreter 接管
-/// `enemy<X>Damage` configInput 后，本注入退化为无 config 时的 placeholder 路径。
+/// Behaviorally neutral: the injected ModNames are currently only consumed
+/// by the new EHP pipeline (`ehp::assemble_enemy_damage`), and every output
+/// lands on new fields -- existing output parity is unchanged value-for-value.
+/// Once config_interpreter takes over the `enemy<X>Damage` configInput, this
+/// injection degenerates into the placeholder path used when there's no config.
 fn inject_ehp_damage_placeholder(
     db: &mut ModDb,
     constants: &RuntimeConstants,
@@ -339,13 +371,15 @@ fn inject_ehp_damage_placeholder(
             push_enemy_number(db, name, ModType::Base, value, "ehp_damage_placeholder");
         }
     }
-    // 敌方元素穿透 placeholder（vendor ConfigOptions.lua:2072-2074 / :2113-2115：
-    // Pinnacle/Uber 预设把 `enemy{Lightning,Cold,Fire}Pen` 的 config placeholder 置为
-    // `pinnacleBossPen = 15/5 = 3` / `uberBossPen = 40/5 = 8`，Modules/Data.lua:231/:233；
-    // 防御侧消费在 CalcDefence.lua:2328（EnemyCannotPen 门控）/:2363
-    // `resMult = 1 − max(resist − enemyPen, 0)/100`）。数据走 enemy_presets.json
-    // `tiers[].pen`；chaos/physical 无 pen（vendor 预设仅设三元素）。
-    // 仅 EHP 新管线（`ehp::fill_ehp_pob2`）消费本组 ModName。
+    // Enemy elemental penetration placeholder (vendor ConfigOptions.lua:2072-2074 / :2113-2115:
+    // the Pinnacle/Uber presets set the `enemy{Lightning,Cold,Fire}Pen`
+    // config placeholder to `pinnacleBossPen = 15/5 = 3` /
+    // `uberBossPen = 40/5 = 8`, Modules/Data.lua:231/:233; the defence-side
+    // consumption is at CalcDefence.lua:2328 (gated by EnemyCannotPen) / :2363
+    // `resMult = 1 − max(resist − enemyPen, 0)/100`). The data comes from
+    // enemy_presets.json's `tiers[].pen`; chaos/physical have no pen (vendor's
+    // presets only set the three elements). Only the new EHP pipeline
+    // (`ehp::fill_ehp_pob2`) consumes this ModName group.
     let presets = &constants.enemy_presets;
     let pen = presets.tier_for(tier).map_or(0.0, |preset| preset.pen);
     if pen != 0.0 {
@@ -355,31 +389,39 @@ fn inject_ehp_damage_placeholder(
     }
 }
 
-/// 曝光取最强 + 效果缩放（PoB2 CalcPerform.lua:3215-3247 "Apply exposures"）：
-/// 把 enemy modDB 内各元素的 `<Element>Exposure BASE` 多来源归约为**最强一份**，
-/// 经玩家侧效果缩放后写入对应 `<Element>Resist BASE -magnitude`：
+/// Exposure: strongest-wins + effect scaling (PoB2 CalcPerform.lua:3215-3247
+/// "Apply exposures"): reduces the multiple `<Element>Exposure BASE` sources
+/// in the enemy modDB for each element down to **the single strongest one**,
+/// then writes it, scaled by the player-side effect, into the corresponding
+/// `<Element>Resist BASE -magnitude`:
 ///
 /// ```text
-/// magnitude = floor( (value + extraExposure)                  -- :3222 玩家 ExtraExposure/Extra<El>Exposure BASE
-///                    × (1 + <El>ExposureEffect_inc / 100)     -- :3223 玩家曝光效果 INC（global+skill 合并近似）
-///                    × ExposureEffectOnSelf_more )            -- :3224 敌侧 effect-on-self（Boss MORE −50）
+/// magnitude = floor( (value + extraExposure)                  -- :3222 player's ExtraExposure/Extra<El>Exposure BASE
+///                    × (1 + <El>ExposureEffect_inc / 100)     -- :3223 player's exposure effect INC (approximated by merging global+skill)
+///                    × ExposureEffectOnSelf_more )            -- :3224 enemy-side effect-on-self (Boss MORE −50)
 /// magnitude = max(magnitude, Override(ExposureMin))           -- :3238-3241
 /// ```
 ///
-/// vendor 对每个曝光来源独立缩放后取 max（skill-scoped effect 只放大该技能的
-/// 曝光，:3226-3231）；PoBR 扁平 db 无 per-source skill 域，先 `max_of` 原始值
-/// 再统一缩放——多来源且效果系数不同的场景登记 TODO(parity)（样本单来源）。
+/// Vendor scales each exposure source independently before taking the max
+/// (a skill-scoped effect only amplifies that skill's exposure, :3226-3231);
+/// PoBR's flat db has no per-source skill scope, so it takes `max_of` the
+/// raw value first and then applies scaling uniformly -- scenarios with
+/// multiple sources with differing effect coefficients are tracked as
+/// TODO(parity) (the sample corpus only has single-source cases).
 ///
-/// 调用时机：下游 wave 把玩家施加的曝光 debuff（`FireExposure BASE 20` 等）注入
-/// enemy modDB **之后**调用本函数完成归约。曝光约定为正数 magnitude（如 `20`），
-/// 写入 `*Resist BASE` 时取负。归因记到 `EnemyConfig` 下的 exposure 子来源。
+/// Call timing: a downstream wave injects the player-applied exposure
+/// debuffs (`FireExposure BASE 20`, etc.) into the enemy modDB and **then**
+/// calls this function to perform the reduction. Exposure magnitude is
+/// convention-positive (e.g. `20`), negated when written to `*Resist BASE`.
+/// Attributed to an exposure sub-source under `EnemyConfig`.
 ///
-/// 出处：agent-docs/debuffs.md §曝光；PoB2 CalcPerform.lua:3215-3247；
-///       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2。
+/// Sources: agent-docs/debuffs.md §Exposure; PoB2 CalcPerform.lua:3215-3247;
+///       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2.
 pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &crate::CalcConfig) {
-    // `exposureEffectOnSelf = enemyDB:More(nil, "ExposureEffectOnSelf")`（:3224）：
-    // Boss `MORE -50` → 0.5。该 mod 带 `Condition:Effective` 门控，面板口径
-    // （`mode_effective == false`）不匹配 → 因子 1.0，与历史输出一致。
+    // `exposureEffectOnSelf = enemyDB:More(nil, "ExposureEffectOnSelf")` (:3224):
+    // a Boss's `MORE -50` → 0.5. This mod is gated by `Condition:Effective`,
+    // which doesn't match in the panel view (`mode_effective == false`) →
+    // factor 1.0, consistent with historical output.
     let exposure_effect_on_self = db.more(cfg, &[ModName::from("ExposureEffectOnSelf")]);
     for (element, exposure_name, resist_name) in [
         ("Fire", "FireExposure", "FireResist"),
@@ -390,7 +432,7 @@ pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &crate::Cal
         if raw <= 0.0 {
             continue;
         }
-        // :3222 玩家额外曝光量（BASE，加在缩放前）。
+        // :3222 the player's extra exposure amount (BASE, added before scaling).
         let extra = player_db.sum(
             ModType::Base,
             cfg,
@@ -399,17 +441,17 @@ pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &crate::Cal
                 ModName::from(format!("Extra{element}Exposure")),
             ],
         );
-        // :3223 玩家曝光效果 INC（vendor 分 global + skill 两路求和后相加；
-        // PoBR 扁平 db 单路求和近似）。
+        // :3223 the player's exposure effect INC (vendor sums global + skill
+        // separately then adds them; PoBR approximates this with a single flat-db sum).
         let effect_inc = player_db.sum(
             ModType::Inc,
             cfg,
             &[ModName::from(format!("{element}ExposureEffect"))],
         );
-        // :3227 m_floor((value + extra) × (1 + effect/100) × effectOnSelf)。
+        // :3227 m_floor((value + extra) × (1 + effect/100) × effectOnSelf).
         let mut magnitude =
             ((raw + extra) * (1.0 + effect_inc / 100.0) * exposure_effect_on_self).floor();
-        // :3238-3241 玩家 ExposureMin Override 抬底。
+        // :3238-3241 the player's ExposureMin Override raises the floor.
         if let Some(min) = player_db.override_(cfg, ModName::from("ExposureMin")) {
             magnitude = magnitude.max(min);
         }
@@ -426,10 +468,10 @@ pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &crate::Cal
     }
 }
 
-/// 便捷构造：从 player [`Actor`] 起一个完整 `Env`（player + enemy 缩放 + cfg）。
+/// Convenience constructor: builds a complete `Env` from a player [`Actor`] (player + enemy scaling + cfg).
 ///
-/// 注意：本函数构造 enemy 用 [`setup_enemy`]，仅在 boss 自带穿透时向玩家 modDB 注入
-/// `ElementalPenetration BASE`（见 [`setup_enemy`]），其余玩家来源（装备/天赋/宝石）不在此注入。
+/// Only the enemy side is populated, by [`setup_enemy`]. Nothing is written to
+/// the player modDB here — equipment, tree and gem sources are the caller's job.
 pub fn env_with_enemy(player: Actor, config_level: u32, tier: EnemyTier) -> Env {
     let mut env = Env::new(player);
     setup_enemy(&mut env, config_level, tier);

@@ -22,14 +22,16 @@ pub enum SourceKind {
     CampaignReward,
     GameConstant,
     Derived,
-    /// config 选项条目注入（M3 D4）。id 约定 `"config.<var>"`，如 `config.conditionMoving`。
+    /// A single config option. Ids look like `config.<var>`, e.g.
+    /// `config.conditionMoving`.
     ConfigOption,
-    /// buff/aura/curse 注入（M3 D4）。id 约定 `"buff.<id>"` / `"aura.<skill_id>"` /
-    /// `"curse.<skill_id>"`。
+    /// A buff, aura or curse. Ids look like `buff.<id>`, `aura.<skill_id>` or
+    /// `curse.<skill_id>`.
     Buff,
-    /// 药剂/护符词条合入（M3 D4）。id 约定 `"flask.<slot>"`。
+    /// Mods merged in from a flask or charm. Ids look like `flask.<slot>`.
     Flask,
-    /// 词条授予的 keystone（mergeKeystones 注入，M3 D4）。id 约定 `"keystone.<name>"`。
+    /// A keystone granted by a mod instead of allocated on the tree. Ids look
+    /// like `keystone.<name>`.
     GrantedKeystone,
 }
 

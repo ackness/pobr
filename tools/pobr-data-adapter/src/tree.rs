@@ -1,11 +1,12 @@
-//! 被动天赋树域适配：GGG 官方树导出 `data.json` → PoBR 最小树 JSON。
+//! Passive tree domain adapter: GGG's official tree export `data.json` -> PoBR's minimal tree JSON.
 //!
-//! 源 = `github.com/grindinggear/poe2-skilltree-export` 的 `data.json`（PoB 导出脚本
-//! 确认）。**只取结构化数据，不取任何 assets/图集**：忽略 `icon`/`x`/`y`/`edges` 等
-//! 显示冗余字段，输出按 `skill` id 排序、diff 友好的 `passive_tree.json` +
-//! `passive_tree_meta.json` 到 `data/<patch>/`。
+//! Source = the `data.json` from `github.com/grindinggear/poe2-skilltree-export`
+//! (confirmed by PoB's export script). **Only structured data is kept, no
+//! assets/atlases**: display-redundant fields like `icon`/`x`/`y`/`edges` are
+//! ignored, and the output is written as `skill`-id-sorted, diff-friendly
+//! `passive_tree.json` + `passive_tree_meta.json` under `data/<patch>/`.
 //!
-//! 原始 `data.json` 体积大（数 MB），落在 gitignore 路径，不入库。
+//! The raw `data.json` is large (several MB) and lives at a gitignored path — it isn't checked in.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -23,7 +24,7 @@ pub struct TreeArgs {
     pub patch: String,
 }
 
-// ---- 原始 data.json 结构（只取我们需要的字段）----
+// Raw data.json structure (only the fields we need)
 
 #[derive(Deserialize)]
 struct RawTree {
@@ -87,7 +88,7 @@ struct RawNode {
 }
 
 fn classify(n: &RawNode) -> PassiveNodeKind {
-    // 优先级：keystone > notable > mastery > jewel > ascendancy_start > normal。
+    // Priority: keystone > notable > mastery > jewel > ascendancy_start > normal.
     if n.is_keystone {
         PassiveNodeKind::Keystone
     } else if n.is_notable {
@@ -103,7 +104,7 @@ fn classify(n: &RawNode) -> PassiveNodeKind {
     }
 }
 
-/// 把出边的字符串节点 key 解析为目标 `skill` id（借助原始 nodes 表的 key→skill 映射）。
+/// Resolves an outgoing edge's string node key into a target `skill` id (via the raw nodes table's key -> skill mapping).
 fn resolve_connections(out: &[String], skill_by_key: &BTreeMap<&str, u32>) -> Vec<u32> {
     let mut conns: Vec<u32> = out
         .iter()
@@ -121,7 +122,7 @@ pub fn run(args: TreeArgs) -> Result<String, String> {
     let raw: RawTree = serde_json::from_slice(&bytes)
         .map_err(|e| format!("解析 {} 失败：{e}", args.data_json.display()))?;
 
-    // key（map 键，如 "18684" 或 "root"）→ skill id，用于解析连线。
+    // key (the map key, e.g. "18684" or "root") -> skill id, used to resolve connections.
     let skill_by_key: BTreeMap<&str, u32> = raw
         .nodes
         .iter()
@@ -131,7 +132,7 @@ pub fn run(args: TreeArgs) -> Result<String, String> {
     let total = raw.nodes.len();
     let mut nodes: Vec<PassiveNodeDef> = Vec::new();
     for n in raw.nodes.values() {
-        // 跳过 `root` 等无 skill/id 的布局占位节点。
+        // Skip layout placeholder nodes with no skill/id, like `root`.
         let (Some(skill), Some(id)) = (n.skill, n.id.clone()) else {
             continue;
         };
@@ -144,13 +145,14 @@ pub fn run(args: TreeArgs) -> Result<String, String> {
             group: n.group,
             orbit: n.orbit,
             orbit_index: n.orbit_index,
-            // 坐标由独立的 `--tree-coords <tree.lua>` 步骤回填（GGG data.json 不含 group 坐标）。
+            // Coordinates are backfilled by the separate `--tree-coords
+            // <tree.lua>` step (GGG's data.json has no group coordinates).
             x: None,
             y: None,
             connections: resolve_connections(&n.out, &skill_by_key),
             ascendancy_id: n.ascendancy_id.clone(),
-            // isSwitchable 变体由独立的 `--tree-variants <tree.lua>` 步骤回填
-            // （GGG data.json 不携带 options 变体）。
+            // isSwitchable variants are backfilled by the separate
+            // `--tree-variants <tree.lua>` step (GGG's data.json carries no options variants).
             variants: Vec::new(),
             apply_to_armour: false,
         });
@@ -168,7 +170,7 @@ pub fn run(args: TreeArgs) -> Result<String, String> {
             ascendancies: c
                 .ascendancies
                 .into_iter()
-                // 过滤无名 / 无 id 的占位飞升槽（GGG 导出含 null 占位）。
+                // Filter out nameless / idless placeholder ascendancy slots (GGG's export includes null placeholders).
                 .filter_map(|a| match (a.id, a.name) {
                     (Some(id), Some(name)) if !id.is_empty() && !name.is_empty() => {
                         Some(PassiveAscendancy { id, name })
@@ -185,7 +187,7 @@ pub fn run(args: TreeArgs) -> Result<String, String> {
         classes,
     };
 
-    // 三层布局：天赋树域 JSON 落 base/ 层。
+    // The three-layer layout: passive tree domain JSON goes in the base/ layer.
     let base_dir = args.out.join(&args.patch).join("base");
     std::fs::create_dir_all(&base_dir).map_err(|e| format!("创建输出目录失败：{e}"))?;
     write_pretty(&base_dir.join("passive_tree.json"), &nodes)?;

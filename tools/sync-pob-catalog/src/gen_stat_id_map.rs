@@ -1,16 +1,22 @@
-//! `gen-stat-id-map`：把段 A 的 `overlay/stat_descriptions.json`（stat_id →
-//! canonical 文本）逐条喂 `parse_mod_engine`，固化成 `overlay/stat_id_map.json`
-//! （M6 E/F 段 B：stat_id → Modifier 第二通道的 modifier 模板）。
+//! `gen-stat-id-map`: feeds each entry of Section A's
+//! `overlay/stat_descriptions.json` (stat_id -> canonical text) through
+//! `parse_mod_engine`, baking the result into `overlay/stat_id_map.json` (the
+//! modifier templates for the "stat_id -> Modifier, second channel" pipeline).
 //!
-//! 与 luajit 抽取目标不同：本命令**不执行 luajit**，纯消费两份已生成的 overlay
-//! （stat_descriptions + mod_parser_rules），跑引擎离线派生。引擎变更后需 regen
-//! （产物随引擎能力演化）。
+//! Unlike the luajit extraction targets: this command **doesn't run
+//! luajit** — it purely consumes two already-generated overlays
+//! (stat_descriptions + mod_parser_rules) and derives its output offline
+//! through the engine. It needs regenerating whenever the engine changes
+//! (the artifact evolves with engine capability).
 //!
-//! 职责切分：模板把**结构**（name/mod_type/tags/flags）与**系数**（coefficient，
-//! V=1 解析值）分列；tag 串走 `pobr_core::mod_parser::canonical_tags` 单源序列化。
-//! 一条 stat_id 的全部文本行须**全部**解析成功才入 `mapped`，否则整条入
-//! `unsupported`（通道回退文本 / special）。排序 / byte-stable 由 BTreeMap +
-//! serde_json 保证。
+//! Responsibility split: the template keeps **structure**
+//! (name/mod_type/tags/flags) and **coefficient** (the parsed value at V=1)
+//! in separate fields; the tag string goes through
+//! `pobr_core::mod_parser::canonical_tags` as the single serialization
+//! source. All text lines for a given stat_id must parse successfully for it
+//! to land in `mapped`; otherwise the whole entry goes to `unsupported`
+//! (falls back to text / special channels). Sorting / byte-stability is
+//! guaranteed by BTreeMap + serde_json.
 
 use std::fs;
 use std::io;
@@ -25,21 +31,21 @@ use serde::{Deserialize, Serialize};
 use crate::extract_lua::OverlayMeta;
 use crate::extract_stat_descriptions::StatDescriptionsDoc;
 
-/// 当前 overlay 文档 schema 标识。
+/// Current overlay document schema identifier.
 pub const STAT_ID_MAP_SCHEMA: &str = "stat_id_map/v1";
 
-/// 完整 overlay 文档（`_meta` 头部 + [`StatIdMapDef`] 平铺）。
+/// The full overlay document (`_meta` header plus the flattened [`StatIdMapDef`]).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StatIdMapDoc {
-    /// 头部元信息（serde 落为 `_meta`）。
+    /// Header metadata (serialized as `_meta`).
     #[serde(rename = "_meta")]
     pub meta: OverlayMeta,
-    /// 映射本体（按 scope 分段）。
+    /// The mapping body (segmented by scope).
     #[serde(flatten)]
     pub def: StatIdMapDef,
 }
 
-/// 把单条 [`Modifier`] 转成可序列化模板（结构 + 系数分列）。
+/// Convert a single [`Modifier`] into a serializable template (structure and coefficient split into separate fields).
 fn template(m: &Modifier) -> StatIdModTemplate {
     let (coefficient, value_kind) = match &m.value {
         ModValue::Number(n) => (Some(*n), None),
@@ -58,13 +64,13 @@ fn template(m: &Modifier) -> StatIdModTemplate {
     }
 }
 
-/// 执行生成，返回最终（byte-stable 的）JSON 文本。
+/// Run the generation, returning the final (byte-stable) JSON text.
 pub fn run_gen_stat_id_map(overlay_dir: &Path, out_for_meta: Option<String>) -> io::Result<String> {
-    // 源 1：stat_descriptions.json（含 _meta：vendor commit 透传）。
+    // Source 1: stat_descriptions.json (its _meta, including vendor commit, is passed through).
     let descs_text = fs::read_to_string(overlay_dir.join("stat_descriptions.json"))?;
     let descs: StatDescriptionsDoc = serde_json::from_str(&descs_text).map_err(io::Error::other)?;
 
-    // 源 2：mod_parser_rules.json（serde 忽略 _meta，编译为引擎规则）。
+    // Source 2: mod_parser_rules.json (serde ignores _meta, compiled into engine rules).
     let rules_text = fs::read_to_string(overlay_dir.join("mod_parser_rules.json"))?;
     let rules_doc: ModParserRulesDoc =
         serde_json::from_str(&rules_text).map_err(io::Error::other)?;
@@ -80,10 +86,11 @@ pub fn run_gen_stat_id_map(overlay_dir: &Path, out_for_meta: Option<String>) -> 
     Ok(json)
 }
 
-/// 逐 scope / stat_id 解析文本行 → modifier 模板，组装 [`StatIdMapDef`]。
+/// Parse text lines into modifier templates per scope / stat_id, assembling [`StatIdMapDef`].
 ///
-/// 一条 stat_id 的全部行须全部 Parsed 且各产出非空 mod，才入 `mapped`；任一行
-/// Unsupported / 空 → 整条入 `unsupported`（保守：通道宁回退不可错算）。
+/// All lines for a given stat_id must be Parsed and each produce a non-empty
+/// mod for it to land in `mapped`; if any line is Unsupported / empty, the
+/// whole entry goes to `unsupported` (conservative: better to fall back than to compute wrong values).
 pub fn build_map(
     descs: &pobr_data::catalog::stat_descriptions::StatDescriptionsDef,
     rules: &CompiledParserRules,
@@ -113,8 +120,9 @@ pub fn build_map(
     def
 }
 
-/// 构建 `_meta`：vendor commit 从源 stat_descriptions 的 _meta 透传（本表派生自
-/// 那次抽取）；extracted_files 记两份源 overlay；regen_command 记本命令。
+/// Build `_meta`: the vendor commit is passed through from source
+/// stat_descriptions' `_meta` (this table is derived from that extraction);
+/// extracted_files records the two source overlays; regen_command records this command.
 fn build_meta(source_meta: &OverlayMeta, out_for_meta: Option<String>) -> OverlayMeta {
     let mut regen =
         "cargo run -p sync-pob-catalog -- gen-stat-id-map --overlay-dir data/<version>/overlay"
@@ -159,7 +167,7 @@ mod tests {
         StatDescriptionsDef { scopes }
     }
 
-    /// 加载真实 overlay 规则（免 test-rules feature；与 stat_desc_parse_rate 同法）。
+    /// Load the real overlay rules (no test-rules feature needed; same approach as stat_desc_parse_rate).
     fn real_rules() -> CompiledParserRules {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../data/4.5.0.3.4/overlay/mod_parser_rules.json");
@@ -168,7 +176,7 @@ mod tests {
         CompiledParserRules::compile(&doc).expect("compile")
     }
 
-    /// 可解析文本 → mapped；不可解析 → unsupported（保守整条回退）。
+    /// Parseable text -> mapped; unparseable -> unsupported (conservatively falls back for the whole entry).
     #[test]
     fn maps_parseable_and_quarantines_rest() {
         let rules = real_rules();
@@ -181,16 +189,16 @@ mod tests {
         );
         let def = build_map(&descs, &rules);
         let scope = &def.scopes["stat_descriptions"];
-        // strength 必进 mapped（标准通用词条）。
+        // strength must land in mapped (a standard, generic mod).
         assert!(scope.mapped.contains_key("additional_strength"));
         let tmpl = &scope.mapped["additional_strength"][0];
         assert_eq!(tmpl.name, "Strength");
         assert_eq!(tmpl.mod_type, "Base");
-        // gibberish 必进 unsupported（无规则命中）。
+        // gibberish must land in unsupported (no rule matches it).
         assert!(scope.unsupported.contains("gibberish_stat"));
     }
 
-    /// 模板系数：V=1 数值词条 coefficient = 1.0。
+    /// Template coefficient: a numeric mod at V=1 has coefficient = 1.0.
     #[test]
     fn number_template_coefficient_is_one() {
         let m = Modifier::number("Strength", pobr_data::prelude::ModType::Base, 1.0);

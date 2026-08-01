@@ -1,6 +1,8 @@
-//! 数据加载：词条 / 局部 mod / special / 高精度 / 玩家基础 mod / 覆盖层 / 诅咒优先级。
+//! Data loading: mods / local mods / special / high-precision / base player
+//! mods / overlays / curse priority.
 //!
-//! 聚合二进制：原独立测试文件合并为子模块（26→4），减少链接二进制数以加速构建。
+//! An aggregated binary: formerly-separate test files merged into
+//! submodules (26→4), reducing the number of linked binaries to speed up builds.
 #![allow(clippy::all)]
 
 #[path = "mods/load_base_player_mods.rs"]

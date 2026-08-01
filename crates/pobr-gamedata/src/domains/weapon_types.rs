@@ -1,15 +1,17 @@
-//! `base/weapon_types.json` loader（武器类型→one_hand/melee/flag/label，
-//! 源 PoB2 `data.weaponTypeInfo`，`Modules/Data.lua:532-551`）。
+//! `base/weapon_types.json` loader (weapon type → one_hand/melee/flag/label,
+//! sourced from PoB2's `data.weaponTypeInfo`, `Modules/Data.lua:532-551`).
 //!
-//! 走 `base/` 优先、版本根回退的域定位（见 [`crate::paths`]）；无 i18n 边车
-//! （`label` 为 PoB 英文显示别名，本地化后续走 `pobr-i18n`）。
+//! Located via the `base/`-first, version-root-fallback domain location
+//! (see [`crate::paths`]); no i18n sidecar (`label` is PoB's English
+//! display alias — localization goes through `pobr-i18n` later).
 
 use pobr_data::catalog::weapon_types::WeaponTypeDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载武器类型表（按 `id` 排序，diff 友好；`None` = 空手条目）。
+    /// Loads the weapon type table (sorted by `id`, diff-friendly; `None`
+    /// = the unarmed entry).
     pub fn weapon_types(&self) -> Result<Vec<WeaponTypeDef>, LoadError> {
         self.load_json_at(self.domain_path("weapon_types.json"))
     }

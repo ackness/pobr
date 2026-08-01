@@ -1,8 +1,9 @@
-//! Step-2：enemy.mod_db 接线 + mode_effective + 受伤链 + 曝光取最强 + CannotBeEvaded
-//! + 敌人格挡 + 敌人贡献可 trace 的集成测试。
+//! Step-2: integration tests wiring enemy.mod_db into mode_effective — the damage-taken
+//! chain, strongest-of exposure, CannotBeEvaded, enemy block chance, and traceable
+//! enemy contributions.
 //!
-//! 来源：agent-docs/accuracy-and-enemy.md §二,§五,§六,§七；agent-docs/debuffs.md §曝光；
-//!       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2,§5。
+//! Sources: agent-docs/accuracy-and-enemy.md §二,§五,§六,§七; agent-docs/debuffs.md §曝光;
+//!       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2,§5.
 
 use pobr_core::calc::setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
 use pobr_core::calc::{
@@ -12,7 +13,7 @@ use pobr_core::calc::{
 use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
 
-/// 标准攻击输入：100~200 物理，1/s，满命中（敌人无闪避）。
+/// Standard attack input: 100-200 physical, 1/s, guaranteed hit (enemy has no evasion).
 fn attack_input() -> MinimalInput {
     MinimalInput {
         base_life: 1.0,
@@ -32,9 +33,7 @@ fn effective_attack() -> CalcConfig {
     CalcConfig::attack().with_mode_effective(true)
 }
 
-// ---------------------------------------------------------------------------
-// 1. 敌人 DamageTaken 提升有效 DPS（enemy-damage-taken-chain）
-// ---------------------------------------------------------------------------
+// 1. Enemy DamageTaken raises effective DPS (enemy-damage-taken-chain).
 
 #[test]
 fn enemy_damage_taken_inc_raises_effective_dps() {
@@ -43,9 +42,9 @@ fn enemy_damage_taken_inc_raises_effective_dps() {
     enemy.add_mod(Modifier::number("DamageTaken", ModType::Inc, 20.0));
 
     let input = attack_input();
-    // 面板口径（mode_effective=false）：DamageTaken 不生效。
+    // Panel mode (mode_effective=false): DamageTaken has no effect.
     let panel = calculate_minimal_vs_enemy(&player, &enemy, &CalcConfig::attack(), &input);
-    // 有效口径：受伤链 +20% 生效。
+    // Effective mode: the +20% damage-taken chain applies.
     let effective = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input);
 
     assert_eq!(
@@ -75,7 +74,7 @@ fn enemy_damage_taken_more_multiplies() {
 
 #[test]
 fn enemy_typed_damage_taken_only_affects_that_type() {
-    // FireDamageTaken 只作用火伤；纯物理击中不受影响。
+    // FireDamageTaken only affects fire damage; a pure physical hit is untouched.
     let player = ModDb::new();
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("FireDamageTaken", ModType::Inc, 100.0));
@@ -84,20 +83,18 @@ fn enemy_typed_damage_taken_only_affects_that_type() {
     assert_eq!(out.dps, 150.0, "纯物理不受 FireDamageTaken 影响");
 }
 
-// ---------------------------------------------------------------------------
-// 2. 敌人抗性/护甲减伤（仅 effective）
-// ---------------------------------------------------------------------------
+// 2. Enemy resistance / armour mitigation (effective mode only).
 
 #[test]
 fn enemy_fire_resist_reduces_fire_dps_only_in_effective() {
     let mut player = ModDb::new();
-    // 把 100 火伤加为分类型 flat added。
+    // Add 100 fire damage as a per-type flat.
     player.add_mod(Modifier::number("FireDamageMin", ModType::Base, 100.0));
     player.add_mod(Modifier::number("FireDamageMax", ModType::Base, 100.0));
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
 
-    // base_hit 0：仅火伤分量。
+    // base_hit 0: isolates the fire damage component.
     let input = MinimalInput {
         base_hit_min: 0.0,
         base_hit_max: 0.0,
@@ -131,7 +128,7 @@ fn enemy_armour_reduces_physical_dps_in_effective() {
     );
 }
 
-/// 纯火伤输入（base_hit 0，100 火伤平 roll）。
+/// Pure fire-damage input (base_hit 0, a flat 100 fire roll).
 fn fire_only_input() -> MinimalInput {
     MinimalInput {
         base_hit_min: 0.0,
@@ -147,12 +144,12 @@ fn fire_only_player() -> ModDb {
     player
 }
 
-// M4-H S2：final 抗性口径 = vendor calcResistForType（CalcOffence.lua:530-543）。
+// Final resistance semantics match vendor calcResistForType (CalcOffence.lua:530-543).
 
 #[test]
 fn enemy_shared_elemental_resist_applies_to_elements_not_chaos() {
-    // `ElementalResist BASE` 共享名对火/冰/电生效（vendor :539 isElemental 并名），
-    // 混沌不含（isElemental[Chaos]=false）。
+    // The shared name `ElementalResist BASE` applies to fire/cold/lightning (vendor :539
+    // merges names via isElemental); chaos is excluded (isElemental[Chaos]=false).
     let player = fire_only_player();
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("ElementalResist", ModType::Base, 40.0));
@@ -164,7 +161,7 @@ fn enemy_shared_elemental_resist_applies_to_elements_not_chaos() {
         out.dps
     );
 
-    // 混沌伤害不吃 ElementalResist。
+    // Chaos damage does not benefit from ElementalResist.
     let mut chaos_player = ModDb::new();
     chaos_player.add_mod(Modifier::number("ChaosDamageMin", ModType::Base, 100.0));
     chaos_player.add_mod(Modifier::number("ChaosDamageMax", ModType::Base, 100.0));
@@ -183,7 +180,7 @@ fn enemy_shared_elemental_resist_applies_to_elements_not_chaos() {
 
 #[test]
 fn enemy_resist_inc_scaling_applies_before_clamp() {
-    // 抗性自身的 INC 缩放（vendor :539 `× calcLib.mod(...)`）：30 BASE × (1+50%) = 45。
+    // INC scaling on the resist itself (vendor :539 `× calcLib.mod(...)`): 30 BASE × (1+50%) = 45.
     let player = fire_only_player();
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("FireResist", ModType::Base, 30.0));
@@ -199,7 +196,7 @@ fn enemy_resist_inc_scaling_applies_before_clamp() {
 
 #[test]
 fn enemy_resist_negative_scale_floors_at_zero() {
-    // 缩放因子 `max(..., 0)`（vendor :539 m_max(calcLib.mod, 0)）：-150% INC → 因子 0 → 抗性 0。
+    // Scaling factor floors at `max(..., 0)` (vendor :539 m_max(calcLib.mod, 0)): -150% INC → factor 0 → resist 0.
     let player = fire_only_player();
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
@@ -215,7 +212,7 @@ fn enemy_resist_negative_scale_floors_at_zero() {
 
 #[test]
 fn enemy_resist_override_wins_over_base_sum() {
-    // Override 优先（vendor :531 `enemyDB:Override(cfg, ..)`，config「视为 0 抗」类）。
+    // Override wins (vendor :531 `enemyDB:Override(cfg, ..)`; the config "treat as 0 resist" case).
     let player = fire_only_player();
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
@@ -231,7 +228,7 @@ fn enemy_resist_override_wins_over_base_sum() {
 
 #[test]
 fn enemy_resist_clamps_to_enemy_max_resist() {
-    // BASE 90 → clamp 到 EnemyMaxResist 75（Data.lua:200 = 75）。
+    // BASE 90 clamps to EnemyMaxResist 75 (Data.lua:200 = 75).
     let player = fire_only_player();
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("FireResist", ModType::Base, 90.0));
@@ -244,10 +241,9 @@ fn enemy_resist_clamps_to_enemy_max_resist() {
     );
 }
 
-/// M4-l（vendor CalcOffence.lua:532）：configInput `enemy<Type>Resist` 显式输入
-/// 可把 maxResist 从 EnemyMaxResist(75) 抬到 MaxResistCap(90)；
-/// `DoNotChangeMaxResFromConfig` FLAG（config「always 75%」，
-/// ConfigOptions.lua:2158-2159）置位时恒 75。
+/// (vendor CalcOffence.lua:532): an explicit `enemy<Type>Resist` config input can raise
+/// maxResist from EnemyMaxResist(75) up to MaxResistCap(90); the `DoNotChangeMaxResFromConfig`
+/// flag (config "always 75%", ConfigOptions.lua:2158-2159) pins it back to 75 when set.
 #[test]
 fn explicit_config_resist_raises_max_resist_cap() {
     let config_origin = || {
@@ -258,8 +254,8 @@ fn explicit_config_resist_raises_max_resist_cap() {
     };
     let player = fire_only_player();
 
-    // 显式 config 85（config_resolve 注入形态：BASE + EnemyConfig/config.<var> 归因）
-    // → maxResist = min(max(85, 75), 90) = 85 → 100×0.15 = 15。
+    // Explicit config 85 (injected as BASE with EnemyConfig/config.<var> origin, the
+    // config_resolve shape) → maxResist = min(max(85, 75), 90) = 85 → 100×0.15 = 15.
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("FireResist", ModType::Base, 85.0).with_origin(config_origin()));
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
@@ -269,7 +265,7 @@ fn explicit_config_resist_raises_max_resist_cap() {
         out.dps
     );
 
-    // 显式 config 95 → cap 到 MaxResistCap 90（Data.lua:181）→ 100×0.10 = 10。
+    // Explicit config 95 caps at MaxResistCap 90 (Data.lua:181) → 100×0.10 = 10.
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("FireResist", ModType::Base, 95.0).with_origin(config_origin()));
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
@@ -279,7 +275,7 @@ fn explicit_config_resist_raises_max_resist_cap() {
         out.dps
     );
 
-    // DoNotChangeMaxResFromConfig 置位 → 恒 75（vendor :532 第一分支）。
+    // DoNotChangeMaxResFromConfig set → pinned at 75 (vendor :532 first branch).
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("FireResist", ModType::Base, 85.0).with_origin(config_origin()));
     enemy.add_mod(Modifier::flag("DoNotChangeMaxResFromConfig"));
@@ -290,7 +286,7 @@ fn explicit_config_resist_raises_max_resist_cap() {
         out.dps
     );
 
-    // 非 config 来源（档位预设等 EnemyConfig 但 id 非 config.<var>）不抬 cap。
+    // A non-config origin (e.g. tier presets — EnemyConfig kind but id isn't config.<var>) doesn't raise the cap.
     let mut enemy = ModDb::new();
     enemy.add_mod(
         Modifier::number("FireResist", ModType::Base, 85.0).with_origin(ModifierSource::new(
@@ -305,11 +301,11 @@ fn explicit_config_resist_raises_max_resist_cap() {
     );
 }
 
-// M4-H S5：受伤链 INC-only 追加名（vendor CalcOffence.lua:4141/:4152-4156）。
+// Damage-taken chain: INC-only additional names (vendor CalcOffence.lua:4141/:4152-4156).
 
 #[test]
 fn elemental_damage_taken_applies_to_elements_only() {
-    // ElementalDamageTaken INC 只进元素类型的 takenInc（vendor :4141）；物理不吃。
+    // ElementalDamageTaken INC only feeds elemental types' takenInc (vendor :4141); physical is unaffected.
     let player = fire_only_player();
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("ElementalDamageTaken", ModType::Inc, 25.0));
@@ -321,7 +317,7 @@ fn elemental_damage_taken_applies_to_elements_only() {
         out.dps
     );
 
-    // 纯物理不吃。
+    // Pure physical is unaffected.
     let phys_out =
         calculate_minimal_vs_enemy(&ModDb::new(), &enemy, &effective_attack(), &attack_input());
     assert!(
@@ -333,7 +329,7 @@ fn elemental_damage_taken_applies_to_elements_only() {
 
 #[test]
 fn projectile_damage_taken_gated_by_projectile_flag() {
-    // ProjectileDamageTaken 只在投射物 cfg 下进 takenInc（vendor :4152-4153）。
+    // ProjectileDamageTaken only feeds takenInc under a projectile cfg (vendor :4152-4153).
     let player = ModDb::new();
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number(
@@ -342,7 +338,7 @@ fn projectile_damage_taken_gated_by_projectile_flag() {
         40.0,
     ));
 
-    // 非投射物攻击：不吃。
+    // Non-projectile attack: unaffected.
     let melee = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
     assert!(
         (melee.dps - 150.0).abs() < 1e-6,
@@ -350,7 +346,7 @@ fn projectile_damage_taken_gated_by_projectile_flag() {
         melee.dps
     );
 
-    // 投射物攻击：吃。
+    // Projectile attack: applies.
     let proj_cfg = effective_attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE);
     let proj = calculate_minimal_vs_enemy(&player, &enemy, &proj_cfg, &attack_input());
     assert!(
@@ -362,14 +358,14 @@ fn projectile_damage_taken_gated_by_projectile_flag() {
 
 #[test]
 fn trap_mine_damage_taken_gated_by_skill_types() {
-    // M4-m（h3）：TrapMineDamageTaken 只在 trap/mine 技能下进 takenInc
-    // （vendor CalcOffence.lua:4158-4159 `if skillFlags.trap or skillFlags.mine`；
-    // PoBR 以 cfg.skill_types 含 Trapped(33)/RemoteMined(36) 表达）。
+    // (h3): TrapMineDamageTaken only feeds takenInc for trap/mine skills (vendor
+    // CalcOffence.lua:4158-4159 `if skillFlags.trap or skillFlags.mine`; PoBR expresses
+    // this via cfg.skill_types containing Trapped(33)/RemoteMined(36)).
     let player = ModDb::new();
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("TrapMineDamageTaken", ModType::Inc, 30.0));
 
-    // 普通攻击：不吃。
+    // Plain attack: unaffected.
     let plain = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
     assert!(
         (plain.dps - 150.0).abs() < 1e-6,
@@ -377,7 +373,7 @@ fn trap_mine_damage_taken_gated_by_skill_types() {
         plain.dps
     );
 
-    // trap 技能：吃（mine 同位或逻辑）。
+    // Trap skill: applies (mine follows the same or-logic).
     let trap_cfg = effective_attack().with_skill_types(SkillTypes::ATTACK | SkillTypes::TRAPPED);
     let trap = calculate_minimal_vs_enemy(&player, &enemy, &trap_cfg, &attack_input());
     assert!(
@@ -396,12 +392,12 @@ fn trap_mine_damage_taken_gated_by_skill_types() {
     );
 }
 
-// M4-H S4：物理减伤 additive 公式（vendor CalcOffence.lua:4074-4096）。
+// Physical mitigation uses an additive formula (vendor CalcOffence.lua:4074-4096).
 
 #[test]
 fn enemy_physical_reduction_is_additive_not_multiplicative_union() {
-    // armour=1500/raw=150 → 护甲减免 50%；敌固定 PDR 20 → additive 70%
-    // （乘法并集会给 1-(1-0.5)(1-0.8)=60%，vendor :4095 是相加）。
+    // armour=1500/raw=150 → 50% armour mitigation; a flat enemy PDR 20 → additive 70%
+    // (a multiplicative union would give 1-(1-0.5)(1-0.8)=60%; vendor :4095 adds instead).
     let player = ModDb::new();
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("Armour", ModType::Base, 1500.0));
@@ -421,7 +417,7 @@ fn enemy_physical_reduction_is_additive_not_multiplicative_union() {
 
 #[test]
 fn enemy_physical_reduction_caps_at_75() {
-    // PDR 60 + 护甲 50% = 110 → clamp EnemyPhysicalDamageReductionCap 75。
+    // PDR 60 + armour 50% = 110 → clamped to EnemyPhysicalDamageReductionCap 75.
     let player = ModDb::new();
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("Armour", ModType::Base, 1500.0));
@@ -441,8 +437,8 @@ fn enemy_physical_reduction_caps_at_75() {
 
 #[test]
 fn enemy_negative_physical_reduction_amplifies_up_to_neg_cap() {
-    // 破甲过零（Armour Override −1500，raw 150）→ 护甲减免 −50%（增伤），
-    // 下界 −NegArmourDmgBonusCap(−100)（vendor :4095 m_max(-100, ..)）。
+    // Armour driven negative (Armour Override −1500, raw 150) → −50% mitigation (i.e. a
+    // damage bonus), floored at −NegArmourDmgBonusCap(−100) (vendor :4095 m_max(-100, ..)).
     let player = ModDb::new();
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("Armour", ModType::Override, -1500.0));
@@ -454,7 +450,7 @@ fn enemy_negative_physical_reduction_amplifies_up_to_neg_cap() {
         out.dps
     );
 
-    // 极端负减伤 clamp 在 −100（伤害至多 ×2）。
+    // Extreme negative mitigation clamps at −100 (damage capped at ×2).
     let mut enemy2 = ModDb::new();
     enemy2.add_mod(Modifier::number(
         "PhysicalDamageReduction",
@@ -471,7 +467,7 @@ fn enemy_negative_physical_reduction_amplifies_up_to_neg_cap() {
 
 #[test]
 fn ignore_enemy_armour_flag_zeroes_armour_component() {
-    // 玩家 IgnoreEnemyArmour flag（vendor :4084-4085）→ 敌甲按 0 计，仅剩固定 PDR。
+    // Player IgnoreEnemyArmour flag (vendor :4084-4085) → enemy armour counts as 0, leaving only the flat PDR.
     let mut player = ModDb::new();
     player.add_mod(Modifier::flag("IgnoreEnemyArmour"));
     let mut enemy = ModDb::new();
@@ -490,11 +486,11 @@ fn ignore_enemy_armour_flag_zeroes_armour_component() {
     );
 }
 
-// M4-H S3：穿透下界 minPen（vendor CalcOffence.lua:4140/:4163）。
+// Penetration floor minPen (vendor CalcOffence.lua:4140/:4163).
 
 #[test]
 fn penetration_minimum_caps_penetration_floor() {
-    // 抗 50、穿透 30、minPen 35 → max(50-30, 35) = 35 → 火伤 100*0.65 = 65。
+    // Resist 50, pen 30, minPen 35 → max(50-30, 35) = 35 → fire damage 100*0.65 = 65.
     let mut player = fire_only_player();
     player.add_mod(Modifier::number("FirePenetration", ModType::Base, 30.0));
     player.add_mod(Modifier::number(
@@ -515,7 +511,7 @@ fn penetration_minimum_caps_penetration_floor() {
 
 #[test]
 fn penetration_skipped_when_resist_at_or_below_min_pen() {
-    // 抗 30 ≤ minPen 30 → 穿透整段跳过（vendor `resist > minPen` 判定），抗性原样 30。
+    // Resist 30 ≤ minPen 30 → penetration is skipped entirely (vendor's `resist > minPen` gate), resist stays 30.
     let mut player = fire_only_player();
     player.add_mod(Modifier::number("FirePenetration", ModType::Base, 50.0));
     player.add_mod(Modifier::number(
@@ -534,14 +530,14 @@ fn penetration_skipped_when_resist_at_or_below_min_pen() {
     );
 }
 
-// M4-m：击中视敌元素抗性为反转（Rakiata's Flow
-// `treat_enemy_resistances_as_negated_…` → HitsInvertEleResChance CHANCE，
-// SkillStatMap.lua:941-944；消费 vendor CalcOffence.lua:4145-4148
-// `resist = resist - 2 * invertChance * resist`，clamp 后、穿透前）。
+// Hits treat enemy elemental resist as inverted (Rakiata's Flow
+// `treat_enemy_resistances_as_negated_…` → HitsInvertEleResChance CHANCE,
+// SkillStatMap.lua:941-944; consumed by vendor CalcOffence.lua:4145-4148
+// `resist = resist - 2 * invertChance * resist`, after clamp and before penetration).
 
 #[test]
 fn hits_invert_ele_res_chance_inverts_enemy_resist() {
-    // 抗 50、反转几率 1.0 → resist = 50 - 2*50 = -50 → 火伤 100 × 1.5 = 150。
+    // Resist 50, invert chance 1.0 → resist = 50 - 2*50 = -50 → fire damage 100 × 1.5 = 150.
     let mut player = fire_only_player();
     player.add_mod(Modifier::number(
         "HitsInvertEleResChance",
@@ -561,7 +557,7 @@ fn hits_invert_ele_res_chance_inverts_enemy_resist() {
 
 #[test]
 fn hits_invert_partial_chance_blends_resist() {
-    // 抗 50、几率 0.5 → resist = 50 - 2*0.5*50 = 0 → 火伤 100（vendor 线性混合）。
+    // Resist 50, chance 0.5 → resist = 50 - 2*0.5*50 = 0 → fire damage 100 (vendor's linear blend).
     let mut player = fire_only_player();
     player.add_mod(Modifier::number(
         "HitsInvertEleResChance",
@@ -581,8 +577,9 @@ fn hits_invert_partial_chance_blends_resist() {
 
 #[test]
 fn hits_invert_applies_before_penetration() {
-    // 反转先行（vendor :4145 在 :4163 effMult 扣 pen 之前）：抗 50 反转为 -50，
-    // 此时 resist ≤ minPen(0) → 穿透整段跳过（浪费），仍 1.5 倍。
+    // Inversion happens first (vendor :4145 runs before the :4163 effMult penetration step):
+    // resist 50 inverts to -50, so resist ≤ minPen(0) and penetration is skipped entirely
+    // (wasted), still yielding 1.5×.
     let mut player = fire_only_player();
     player.add_mod(Modifier::number(
         "HitsInvertEleResChance",
@@ -603,7 +600,7 @@ fn hits_invert_applies_before_penetration() {
 
 #[test]
 fn hits_invert_does_not_touch_chaos_or_panel_mode() {
-    // 仅三元素（vendor isElemental 门）：混沌抗不反转；面板口径不走敌减伤段。
+    // Elemental-only (vendor's isElemental gate): chaos resist is never inverted; panel mode skips the enemy mitigation stage entirely.
     let mut player = ModDb::new();
     player.add_mod(Modifier::number("ChaosDamageMin", ModType::Base, 100.0));
     player.add_mod(Modifier::number("ChaosDamageMax", ModType::Base, 100.0));
@@ -623,13 +620,11 @@ fn hits_invert_does_not_touch_chaos_or_panel_mode() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 3. 曝光取最强（exposure-min-of via ModDb::max_of + reduce_enemy_exposure）
-// ---------------------------------------------------------------------------
+// 3. Exposure takes the strongest source (via ModDb::max_of + reduce_enemy_exposure).
 
 #[test]
 fn exposure_takes_strongest_single_source() {
-    // 两条 FireExposure BASE 20 与 30 → 最终 FireResist BASE -30（取最大，非求和 50）。
+    // Two FireExposure BASE mods, 20 and 30 → final FireResist BASE -30 (max, not the 50 sum).
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("FireExposure", ModType::Base, 20.0));
     enemy.add_mod(Modifier::number("FireExposure", ModType::Base, 30.0));
@@ -648,12 +643,13 @@ fn exposure_takes_strongest_single_source() {
     );
 }
 
-// M4-H S6：曝光效果缩放（vendor CalcPerform.lua:3222-3227）。
+// Exposure effect scaling (vendor CalcPerform.lua:3222-3227).
 
 #[test]
 fn exposure_effect_inc_scales_magnitude_before_effect_on_self() {
-    // 玩家 FireExposureEffect INC 60（Potent Exposure 类）+ boss effect-on-self −50%：
-    // floor(20 × 1.6 × 0.5) = 16（vendor :3227；stormweaver-comet oracle 实测 −16）。
+    // Player FireExposureEffect INC 60 (a Potent Exposure-style mod) + boss effect-on-self
+    // −50%: floor(20 × 1.6 × 0.5) = 16 (vendor :3227; matches the stormweaver-comet oracle
+    // dump of −16).
     let actor = Actor::new(85, ActorBaseStats::default());
     let mut env = Env::new(actor);
     setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
@@ -670,7 +666,7 @@ fn exposure_effect_inc_scales_magnitude_before_effect_on_self() {
         .enemy
         .mod_db
         .sum(ModType::Base, &cfg, &[ModName::from("FireResist")]);
-    // Pinnacle base 50 − 16 = 34。
+    // Pinnacle base 50 − 16 = 34.
     assert!(
         (fire - 34.0).abs() < 1e-6,
         "曝光 20×1.6×0.5=16 → FireResist 50-16=34, got {fire}"
@@ -679,8 +675,8 @@ fn exposure_effect_inc_scales_magnitude_before_effect_on_self() {
 
 #[test]
 fn extra_exposure_adds_before_scaling() {
-    // 玩家 ExtraExposure BASE 10：先加量再缩放（vendor :3222/:3227）：
-    // floor((20+10) × 1.0 × 1.0) = 30。
+    // Player ExtraExposure BASE 10: the extra amount is added before scaling
+    // (vendor :3222/:3227): floor((20+10) × 1.0 × 1.0) = 30.
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("FireExposure", ModType::Base, 20.0));
     let mut player = ModDb::new();
@@ -699,13 +695,14 @@ fn extra_exposure_adds_before_scaling() {
     );
 }
 
-// 曝光消费侧：boss `ExposureEffectOnSelf MORE -50` 在有效口径下把曝光 magnitude 折半，
-// 面板口径下不生效（门控）。对照 PoB2 CalcPerform.lua:3225-3227。
+// Exposure-consuming side: the boss's `ExposureEffectOnSelf MORE -50` halves the exposure
+// magnitude in effective mode, and is gated off in panel mode. Cross-checked against
+// PoB2 CalcPerform.lua:3225-3227.
 #[test]
 fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
     let player = Actor::new(85, ActorBaseStats::default());
 
-    // 有效口径：setup_enemy(Pinnacle) 注入 ExposureEffectOnSelf MORE -50（带 Condition:Effective）。
+    // Effective mode: setup_enemy(Pinnacle) injects ExposureEffectOnSelf MORE -50 (gated by Condition:Effective).
     let mut env = Env::new(player.clone());
     setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
     env.enemy
@@ -717,15 +714,15 @@ fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
         .enemy
         .mod_db
         .sum(ModType::Base, &cfg_eff, &[ModName::from("FireResist")]);
-    // Pinnacle 火抗 base +50；曝光 floor(25 * 0.5) = 12 → FireResist 段含 -12。
-    // 取最终值：50 (boss base) + (-12) = 38。
+    // Pinnacle fire resist base is +50; exposure floor(25 * 0.5) = 12 contributes -12 to
+    // the FireResist bucket. Final value: 50 (boss base) + (-12) = 38.
     assert!(
         (fire_eff - 38.0).abs() < 1e-6,
         "有效口径：曝光 25 折半 floor=12，FireResist=50-12=38，got {}",
         fire_eff
     );
 
-    // 面板口径：ExposureEffectOnSelf 被 Condition:Effective 门控 → 因子 1.0，曝光不折半。
+    // Panel mode: ExposureEffectOnSelf is gated by Condition:Effective → factor 1.0, exposure isn't halved.
     let mut env2 = Env::new(player);
     setup_enemy(&mut env2, 0, EnemyTier::Pinnacle);
     env2.enemy
@@ -737,7 +734,7 @@ fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
         env2.enemy
             .mod_db
             .sum(ModType::Base, &cfg_panel, &[ModName::from("FireResist")]);
-    // 面板：曝光 25 不折半 → FireResist 50 + (-25) = 25。
+    // Panel: exposure 25 stays unhalved → FireResist 50 + (-25) = 25.
     assert!(
         (fire_panel - 25.0).abs() < 1e-6,
         "面板口径：曝光不折半，FireResist=50-25=25，got {}",
@@ -745,7 +742,7 @@ fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
     );
 }
 
-// boss debuff effect-on-self 门控：仅有效口径生效，面板口径恒 1.0。
+// Boss debuff effect-on-self is gated: only applies in effective mode, panel mode is always 1.0.
 #[test]
 fn boss_debuff_effect_on_self_gated_by_effective() {
     let player = Actor::new(85, ActorBaseStats::default());
@@ -782,9 +779,7 @@ fn max_of_empty_is_zero() {
     assert_eq!(m, 0.0);
 }
 
-// ---------------------------------------------------------------------------
-// 4. CannotBeEvaded / 敌方 CannotEvade（cannot-be-evaded-flag）
-// ---------------------------------------------------------------------------
+// 4. CannotBeEvaded / enemy CannotEvade (cannot-be-evaded-flag).
 
 #[test]
 fn cannot_be_evaded_flag_forces_full_hit() {
@@ -792,7 +787,7 @@ fn cannot_be_evaded_flag_forces_full_hit() {
     player.add_mod(Modifier::flag("CannotBeEvaded"));
     let enemy = ModDb::new();
 
-    // 高闪避敌人 + 0 精准 → 正常会命中下限；CannotBeEvaded 应置满命中。
+    // High-evasion enemy + 0 accuracy would normally hit the floor chance; CannotBeEvaded should force a guaranteed hit.
     let input = MinimalInput {
         enemy_evasion: 10_000.0,
         base_accuracy: 100.0,
@@ -814,10 +809,10 @@ fn enemy_cannot_evade_flag_forces_full_hit_in_effective() {
         base_accuracy: 100.0,
         ..attack_input()
     };
-    // 面板口径：CannotEvade 不生效（仍走精准公式，命中率 < 1）。
+    // Panel mode: CannotEvade has no effect (still runs the accuracy formula, hit chance < 1).
     let panel = calculate_minimal_vs_enemy(&player, &enemy, &CalcConfig::attack(), &input);
     assert!(panel.hit_chance < 1.0, "面板下敌方 CannotEvade 不生效");
-    // 有效口径：CannotEvade → 满命中。
+    // Effective mode: CannotEvade → guaranteed hit.
     let effective = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input);
     assert_eq!(
         effective.hit_chance, 1.0,
@@ -825,9 +820,7 @@ fn enemy_cannot_evade_flag_forces_full_hit_in_effective() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 5. 敌人格挡（enemy-block-chance-hit-chain）
-// ---------------------------------------------------------------------------
+// 5. Enemy block chance (enemy-block-chance-hit-chain).
 
 #[test]
 fn enemy_block_chance_reduces_hit_in_effective() {
@@ -852,13 +845,11 @@ fn enemy_block_chance_reduces_hit_in_effective() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 6. mode_effective 面板 vs 有效差异（mode-effective-missing）
-// ---------------------------------------------------------------------------
+// 6. mode_effective: panel vs. effective divergence (mode-effective-missing).
 
 #[test]
 fn panel_dps_not_lower_than_effective_dps() {
-    // Pinnacle Boss 默认场景：有效 DPS 应 <= 面板 DPS（面板不扣敌人减伤）。
+    // Default Pinnacle boss scenario: effective DPS should be <= panel DPS (panel mode doesn't deduct enemy mitigation).
     let mut player = ModDb::new();
     player.add_mod(Modifier::number("FireDamageMin", ModType::Base, 100.0));
     player.add_mod(Modifier::number("FireDamageMax", ModType::Base, 100.0));
@@ -884,7 +875,7 @@ fn panel_dps_not_lower_than_effective_dps() {
 
 #[test]
 fn legacy_three_arg_entry_equals_empty_enemy() {
-    // calculate_minimal（旧三参）应等价于空敌人 modDB（向后兼容）。
+    // calculate_minimal (the old 3-arg entry point) should behave like an empty enemy modDB (backward compatibility).
     let mut player = ModDb::new();
     player.add_mod(
         Modifier::number("PhysicalDamage", ModType::Inc, 50.0).with_flags(ModFlags::ATTACK),
@@ -895,34 +886,32 @@ fn legacy_three_arg_entry_equals_empty_enemy() {
     assert_eq!(legacy.dps, via_empty.dps, "空敌人 + effective 与旧入口一致");
 }
 
-// ---------------------------------------------------------------------------
-// 7. setup_enemy 注入 + Pinnacle 默认档位（setup-env-missing）
-// ---------------------------------------------------------------------------
+// 7. setup_enemy injection + Pinnacle default tier (setup-env-missing).
 
 #[test]
 fn setup_enemy_injects_pinnacle_defaults() {
     let player = Actor::new(85, ActorBaseStats::default());
     let mut env = Env::new(player);
-    setup_enemy(&mut env, 0, EnemyTier::Pinnacle); // level 0 → 跟随角色等级 min(85,85)=85
+    setup_enemy(&mut env, 0, EnemyTier::Pinnacle); // level 0 → follows the character level, min(85,85)=85
 
     let cfg = CalcConfig::attack();
     let db = &env.enemy.mod_db;
 
-    // 元素抗性 +50%（Pinnacle）。
+    // Elemental resist +50% (Pinnacle).
     let fire = db.sum(ModType::Base, &cfg, &[ModName::from("FireResist")]);
     assert_eq!(fire, 50.0, "Pinnacle 火抗 +50");
-    // 精准 = monsterAccuracyTable[85] = 2357。
+    // Accuracy = monsterAccuracyTable[85] = 2357.
     let acc = db.sum(ModType::Base, &cfg, &[ModName::from("Accuracy")]);
     assert_eq!(acc, monster_accuracy(85) as f64);
-    // 通用 Boss debuff 抗性（带 `Condition:Effective` 门控）：
-    // - 面板口径（mode_effective=false）不匹配 → 因子 1.0（不污染裸 DPS）。
+    // Generic boss debuff resistances (gated by `Condition:Effective`):
+    // - Panel mode (mode_effective=false) doesn't match → factor 1.0 (keeps raw DPS clean).
     let curse_panel = db.more(&cfg, &[ModName::from("CurseEffectOnSelf")]);
     assert!(
         (curse_panel - 1.0).abs() < 1e-9,
         "面板口径 CurseEffectOnSelf 被门控 → 1.0, got {}",
         curse_panel
     );
-    // - 有效 DPS 口径（mode_effective=true）匹配 → MORE -50 → 0.5。
+    // - Effective DPS mode (mode_effective=true) matches → MORE -50 → 0.5.
     let cfg_eff = effective_attack();
     let curse_eff = db.more(&cfg_eff, &[ModName::from("CurseEffectOnSelf")]);
     assert!(
@@ -930,17 +919,18 @@ fn setup_enemy_injects_pinnacle_defaults() {
         "有效口径 CurseEffectOnSelf MORE -50 → 0.5, got {}",
         curse_eff
     );
-    // Condition:PinnacleBoss 已设置。
+    // Condition:PinnacleBoss is set.
     assert!(
         db.flag(&cfg, ModName::from("Condition:PinnacleBoss")),
         "Pinnacle 设条件态"
     );
-    // 等级被 Pinnacle 抬到 >=82（这里 85）。
+    // Level is raised to >=82 by Pinnacle (85 here).
     assert_eq!(env.enemy.level, 85);
 
-    // Boss 自带元素穿透只走防御侧 `Enemy<El>Pen`（enemy modDB，EHP/受击消费）；
-    // **不得**注入玩家进攻穿透（vendor `enemy<El>Pen` config var 无 apply 函数，
-    // ConfigOptions.lua:2269-2273，仅 CalcDefence.lua:2363 消费——M4-H S1）。
+    // A boss's innate elemental penetration only flows into the defence-side `Enemy<El>Pen`
+    // (enemy modDB, consumed by EHP/hit-taken calc); it must **not** be injected into the
+    // player's offensive penetration (vendor `enemy<El>Pen` config var has no apply function,
+    // ConfigOptions.lua:2269-2273 — only CalcDefence.lua:2363 consumes it).
     let pen = env.player.mod_db.sum(
         ModType::Base,
         &cfg,
@@ -966,10 +956,10 @@ fn setup_enemy_uber_injects_damage_taken_penalty() {
         "Uber DamageTaken MORE -70 → 0.3, got {}",
         dt
     );
-    // Uber 最低等级 82（角色 80 被抬到 82）。
+    // Uber's minimum level is 82 (character level 80 is raised to 82).
     assert_eq!(env.enemy.level, 82);
-    // Uber 元素穿透 = uberBossPen 40/5 = 8——仅防御侧 `Enemy<El>Pen`（enemy db），
-    // 玩家进攻穿透不受影响（M4-H S1）。
+    // Uber elemental penetration = uberBossPen 40/5 = 8 — defence-side `Enemy<El>Pen`
+    // (enemy db) only, the player's offensive penetration is unaffected.
     let pen = env.player.mod_db.sum(
         ModType::Base,
         &cfg,
@@ -999,7 +989,7 @@ fn setup_enemy_none_tier_has_no_resist_or_boss_debuff() {
         "普通怪无 Unique 条件"
     );
     assert!(!db.flag(&cfg, ModName::from("Condition:PinnacleBoss")));
-    // 普通怪无自带穿透 → 玩家 db 不应被注入 ElementalPenetration。
+    // A plain monster has no innate penetration → the player db should not receive ElementalPenetration.
     assert_eq!(
         env.player.mod_db.sum(
             ModType::Base,
@@ -1011,16 +1001,14 @@ fn setup_enemy_none_tier_has_no_resist_or_boss_debuff() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 8. 敌人贡献可 trace（EnemyConfig 归因）+ perform 集成
-// ---------------------------------------------------------------------------
+// 8. Enemy contributions are traceable (EnemyConfig origin) + perform integration.
 
 #[test]
 fn enemy_mods_carry_enemy_config_origin() {
     let player = Actor::new(85, ActorBaseStats::default());
     let env = env_with_enemy(player, 0, EnemyTier::Pinnacle);
 
-    // 所有敌人 modifier 都应带 EnemyConfig 归因，便于 TraceGraph 区分敌人天生属性 vs 我方 debuff。
+    // Every enemy modifier should carry an EnemyConfig origin, so TraceGraph can distinguish innate enemy stats from our own debuffs on them.
     let mut count = 0;
     for modifier in env.enemy.mod_db.iter_mods() {
         count += 1;
@@ -1040,7 +1028,7 @@ fn enemy_mods_carry_enemy_config_origin() {
 
 #[test]
 fn perform_uses_enemy_damage_taken_in_effective_mode() {
-    // 通过 perform 端到端验证 enemy.mod_db 受伤链生效。
+    // End-to-end verification via perform that the enemy.mod_db damage-taken chain applies.
     let base = ActorBaseStats {
         hit_min: 100.0,
         hit_max: 200.0,
@@ -1048,7 +1036,7 @@ fn perform_uses_enemy_damage_taken_in_effective_mode() {
         ..ActorBaseStats::default()
     };
     let mut player = Actor::new(85, base);
-    // 玩家无额外 damage mod；纯物理 150 平均。
+    // Player has no extra damage mods; pure physical averages 150.
     let _ = &mut player;
 
     let mut env = Env::new(player).with_config(effective_attack());
@@ -1068,11 +1056,9 @@ fn perform_uses_enemy_damage_taken_in_effective_mode() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 9. 元素/混沌穿透（elemental-penetration-missing）：玩家穿透下调敌人有效抗性
-// ---------------------------------------------------------------------------
+// 9. Elemental/chaos penetration (elemental-penetration-missing): player penetration lowers the enemy's effective resist.
 
-/// 仅火伤分量的输入：base_hit 清零，玩家加 100 火 flat。
+/// Input isolating the fire component: base_hit zeroed, player adds 100 flat fire.
 fn fire_only_player_input() -> (ModDb, MinimalInput) {
     let mut player = ModDb::new();
     player.add_mod(Modifier::number("FireDamageMin", ModType::Base, 100.0));
@@ -1087,15 +1073,16 @@ fn fire_only_player_input() -> (ModDb, MinimalInput) {
 
 #[test]
 fn fire_penetration_raises_effective_dps_vs_high_resist_enemy() {
-    // 验收（gap elemental-penetration-missing）：FirePenetration 30 且敌火抗 75% →
-    // 等效火抗 45%，火伤分量 DPS 100*(1-0.45)=55（穿透前 100*0.25=25）。
+    // Acceptance for gap elemental-penetration-missing: FirePenetration 30 against 75%
+    // enemy fire resist → effective resist 45%, fire-component DPS 100*(1-0.45)=55
+    // (100*0.25=25 before penetration).
     let (mut player, input) = fire_only_player_input();
     player.add_mod(Modifier::number("FirePenetration", ModType::Base, 30.0));
 
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("FireResist", ModType::Base, 75.0));
 
-    // 无穿透基线：等效火抗 75% → 100*0.25 = 25。
+    // No-penetration baseline: effective fire resist 75% → 100*0.25 = 25.
     let baseline = {
         let (player_no_pen, _) = fire_only_player_input();
         calculate_minimal_vs_enemy(&player_no_pen, &enemy, &effective_attack(), &input).dps
@@ -1115,7 +1102,7 @@ fn fire_penetration_raises_effective_dps_vs_high_resist_enemy() {
 
 #[test]
 fn elemental_penetration_shared_applies_to_all_elements() {
-    // ElementalPenetration 共享组对火/冰/电同时生效。
+    // ElementalPenetration's shared group applies to fire/cold/lightning simultaneously.
     let (mut player, input) = fire_only_player_input();
     player.add_mod(Modifier::number(
         "ElementalPenetration",
@@ -1127,7 +1114,7 @@ fn elemental_penetration_shared_applies_to_all_elements() {
     enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
 
     let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input).dps;
-    // 等效火抗 50-25 = 25% → 100*0.75 = 75。
+    // Effective fire resist 50-25 = 25% → 100*0.75 = 75.
     assert!(
         (dps - 75.0).abs() < 1e-6,
         "ElementalPen25 vs 50%抗 → 等效25% → 75, got {dps}"
@@ -1136,7 +1123,7 @@ fn elemental_penetration_shared_applies_to_all_elements() {
 
 #[test]
 fn penetration_cannot_push_resist_below_zero() {
-    // 穿透不破 0：FirePen 100 vs 30% 抗 → 等效 0%（非 -70%），100*1.0 = 100。
+    // Penetration can't push resist below 0: FirePen 100 vs 30% resist → effective 0% (not -70%), 100*1.0 = 100.
     let (mut player, input) = fire_only_player_input();
     player.add_mod(Modifier::number("FirePenetration", ModType::Base, 100.0));
 
@@ -1152,7 +1139,7 @@ fn penetration_cannot_push_resist_below_zero() {
 
 #[test]
 fn penetration_wasted_against_negative_resist() {
-    // 负抗（如曝光后 -50%）时穿透全浪费：等效抗仍 -50%，100*1.5 = 150（不因穿透变化）。
+    // Against negative resist (e.g. -50% after exposure) penetration is entirely wasted: effective resist stays -50%, 100*1.5 = 150 (unchanged by penetration).
     let (mut player, input) = fire_only_player_input();
     player.add_mod(Modifier::number("FirePenetration", ModType::Base, 40.0));
 
@@ -1189,7 +1176,7 @@ fn chaos_penetration_uses_chaos_resist() {
     enemy.add_mod(Modifier::number("ChaosResist", ModType::Base, 60.0));
 
     let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input).dps;
-    // 等效混沌抗 60-20 = 40% → 100*0.6 = 60。
+    // Effective chaos resist 60-20 = 40% → 100*0.6 = 60.
     assert!(
         (dps - 60.0).abs() < 1e-6,
         "ChaosPen20 vs 60%抗 → 等效40% → 60, got {dps}"
@@ -1198,7 +1185,7 @@ fn chaos_penetration_uses_chaos_resist() {
 
 #[test]
 fn penetration_does_not_affect_panel_dps() {
-    // 面板口径（mode_effective=false）不读穿透/抗性，逐字向后兼容。
+    // Panel mode (mode_effective=false) ignores penetration/resist entirely, for exact backward compatibility.
     let (mut player, input) = fire_only_player_input();
     player.add_mod(Modifier::number("FirePenetration", ModType::Base, 30.0));
     let mut enemy = ModDb::new();
@@ -1213,7 +1200,7 @@ fn penetration_does_not_affect_panel_dps() {
 
 #[test]
 fn penetration_only_affects_its_element() {
-    // FirePenetration 不影响冷伤分量。
+    // FirePenetration doesn't affect the cold-damage component.
     let mut player = ModDb::new();
     player.add_mod(Modifier::number("ColdDamageMin", ModType::Base, 100.0));
     player.add_mod(Modifier::number("ColdDamageMax", ModType::Base, 100.0));
@@ -1227,7 +1214,7 @@ fn penetration_only_affects_its_element() {
     enemy.add_mod(Modifier::number("ColdResist", ModType::Base, 40.0));
 
     let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input).dps;
-    // 冷抗 40% 不被 FirePenetration 穿透 → 100*0.6 = 60。
+    // Cold resist 40% is not penetrated by FirePenetration → 100*0.6 = 60.
     assert!(
         (dps - 60.0).abs() < 1e-6,
         "FirePen 不影响冷伤：40%冷抗 → 60, got {dps}"
@@ -1236,7 +1223,7 @@ fn penetration_only_affects_its_element() {
 
 #[test]
 fn penetration_attribution_player_and_enemy_resist_traceable() {
-    // 穿透归因玩家来源；敌人抗性归因 EnemyConfig（task：穿透=player来源, 抗性=EnemyConfig）。
+    // Penetration attributes to the player source; enemy resist attributes to EnemyConfig.
     let mut player = ModDb::new();
     player.add_mod(
         Modifier::number("FirePenetration", ModType::Base, 30.0).with_origin(ModifierSource::new(
@@ -1266,14 +1253,13 @@ fn penetration_attribution_player_and_enemy_resist_traceable() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 10. Overwhelm（overwhelm-not-wired）：玩家 EnemyPhysicalDamageReduction 负值降敌人 PDR
-// ---------------------------------------------------------------------------
+// 10. Overwhelm (overwhelm-not-wired): a negative player EnemyPhysicalDamageReduction lowers the enemy's PDR.
 
 #[test]
 fn overwhelm_reduces_enemy_pdr_and_raises_physical_dps() {
-    // 验收（gap overwhelm-not-wired）：敌人 PDR 20%（PhysicalDamageReduction Base=20），
-    // 玩家 Overwhelm 20（EnemyPhysicalDamageReduction Base=-20）→ 净 PDR 0% → 物理 DPS 满。
+    // Acceptance for gap overwhelm-not-wired: enemy PDR 20% (PhysicalDamageReduction
+    // Base=20), player Overwhelm 20 (EnemyPhysicalDamageReduction Base=-20) → net PDR 0%
+    // → full physical DPS.
     let mut player = ModDb::new();
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number(
@@ -1282,7 +1268,7 @@ fn overwhelm_reduces_enemy_pdr_and_raises_physical_dps() {
         20.0,
     ));
 
-    // 基线（无 Overwhelm）：PDR 20% → 150*0.8 = 120。
+    // Baseline (no Overwhelm): PDR 20% → 150*0.8 = 120.
     let baseline =
         calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
     assert!(
@@ -1311,7 +1297,7 @@ fn overwhelm_reduces_enemy_pdr_and_raises_physical_dps() {
 
 #[test]
 fn overwhelm_against_armour_reduction() {
-    // 敌人 armour=1500 对 raw_hit=150 → 护甲减伤 50%；Overwhelm 20 → 净 30% → 150*0.7 = 105。
+    // Enemy armour=1500 against raw_hit=150 → 50% armour mitigation; Overwhelm 20 → net 30% → 150*0.7 = 105.
     let mut player = ModDb::new();
     player.add_mod(Modifier::number(
         "EnemyPhysicalDamageReduction",
@@ -1330,10 +1316,11 @@ fn overwhelm_against_armour_reduction() {
 
 #[test]
 fn overwhelm_can_push_pdr_negative_down_to_neg_cap() {
-    // vendor CalcOffence.lua:4095：additive 总和的下界是 −NegArmourDmgBonusCap(−100)，
-    // **没有**per-source 的 0 下界——敌人 PDR 10%，Overwhelm 50 → 净 −40% → 增伤 ×1.4。
-    // （wiki 口径"Overwhelm 不破 0"与 PoB2 实现不一致；parity 基准取 vendor，
-    // 见 agent-docs/damage-scaling.md §Overwhelm 备注。M4-H S4。）
+    // vendor CalcOffence.lua:4095: the additive sum floors at −NegArmourDmgBonusCap(−100),
+    // with **no** per-source 0 floor — enemy PDR 10%, Overwhelm 50 → net −40% → a ×1.4
+    // damage bonus. (The wiki's "Overwhelm can't go below 0" claim disagrees with the
+    // PoB2 implementation; parity is pinned to vendor — see agent-docs/damage-scaling.md
+    // §Overwhelm note.)
     let mut player = ModDb::new();
     player.add_mod(Modifier::number(
         "EnemyPhysicalDamageReduction",
@@ -1356,7 +1343,7 @@ fn overwhelm_can_push_pdr_negative_down_to_neg_cap() {
 
 #[test]
 fn overwhelm_only_affects_physical() {
-    // Overwhelm 不影响火伤分量。
+    // Overwhelm doesn't affect the fire-damage component.
     let (mut player, input) = fire_only_player_input();
     player.add_mod(Modifier::number(
         "EnemyPhysicalDamageReduction",
@@ -1367,7 +1354,7 @@ fn overwhelm_only_affects_physical() {
     enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
 
     let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input).dps;
-    // 火抗 50% 不受 Overwhelm 影响 → 100*0.5 = 50。
+    // Fire resist 50% is unaffected by Overwhelm → 100*0.5 = 50.
     assert!(
         (dps - 50.0).abs() < 1e-6,
         "Overwhelm 不影响火伤：50%火抗 → 50, got {dps}"
@@ -1376,7 +1363,7 @@ fn overwhelm_only_affects_physical() {
 
 #[test]
 fn overwhelm_does_not_affect_panel_dps() {
-    // 面板口径不读 Overwhelm/PDR，逐字向后兼容。
+    // Panel mode ignores Overwhelm/PDR entirely, for exact backward compatibility.
     let mut player = ModDb::new();
     player.add_mod(Modifier::number(
         "EnemyPhysicalDamageReduction",
@@ -1396,7 +1383,7 @@ fn overwhelm_does_not_affect_panel_dps() {
 
 #[test]
 fn perform_panel_mode_ignores_enemy_damage_taken() {
-    // 默认面板口径（mode_effective=false）：enemy.mod_db 受伤链不改变 DPS（向后兼容）。
+    // Default panel mode (mode_effective=false): the enemy.mod_db damage-taken chain doesn't change DPS (backward compatibility).
     let base = ActorBaseStats {
         hit_min: 100.0,
         hit_max: 200.0,
@@ -1404,7 +1391,7 @@ fn perform_panel_mode_ignores_enemy_damage_taken() {
         ..ActorBaseStats::default()
     };
     let player = Actor::new(85, base);
-    let mut env = Env::new(player); // 默认 CalcConfig::attack(), mode_effective=false
+    let mut env = Env::new(player); // Default CalcConfig::attack(), mode_effective=false
     env.enemy
         .mod_db
         .add_mod(Modifier::number("DamageTaken", ModType::Inc, 20.0));
@@ -1416,18 +1403,17 @@ fn perform_panel_mode_ignores_enemy_damage_taken() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 02-02：setup_enemy 把 enemy.mod_db 当持久增量 db（PoB2 CalcSetup.lua:682-691），
-// 不整体替换 actor、不清空此前已注入的 enemy mod
-// ---------------------------------------------------------------------------
+// 02-02: setup_enemy treats enemy.mod_db as a persistent, incremental db (PoB2
+// CalcSetup.lua:682-691) — it must not wholesale-replace the actor or clear enemy
+// mods injected earlier.
 
 #[test]
 fn setup_enemy_preserves_preexisting_enemy_mods() {
     let player = Actor::new(85, ActorBaseStats::default());
     let mut env = Env::new(player);
 
-    // 在 setup_enemy 之前注入一条自定义 enemy mod（模拟 config enemyPhysicalReduction /
-    // 用户自定义 enemy 词条先于档位装配注入的情形）。
+    // Inject a custom enemy mod before setup_enemy runs (simulating a config
+    // enemyPhysicalReduction / user-defined enemy modifier injected ahead of tier setup).
     env.enemy.mod_db.add_mod(Modifier::number(
         "PhysicalDamageReduction",
         ModType::Base,
@@ -1436,7 +1422,7 @@ fn setup_enemy_preserves_preexisting_enemy_mods() {
 
     setup_enemy(&mut env, 0, EnemyTier::Pinnacle);
 
-    // 旧实现（env.enemy = Actor::new(...) 整体替换）会读到 0；新实现增量追加 → 仍为 12。
+    // The old implementation (env.enemy = Actor::new(...), a wholesale replace) would read 0 here; the new incremental-append implementation keeps it at 12.
     let cfg = CalcConfig::attack();
     let pdr = env.enemy.mod_db.sum(
         ModType::Base,
@@ -1445,7 +1431,7 @@ fn setup_enemy_preserves_preexisting_enemy_mods() {
     );
     assert_eq!(pdr, 12.0, "setup_enemy 不应清空已注入的 enemy mod");
 
-    // 档位 mod 也正常注入（增量装配，二者共存）。
+    // Tier mods are still injected normally (incremental assembly, both coexist).
     let fire = env
         .enemy
         .mod_db
@@ -1453,13 +1439,13 @@ fn setup_enemy_preserves_preexisting_enemy_mods() {
     assert_eq!(fire, 50.0, "Pinnacle 档位 FireResist 仍正常注入");
 }
 
-// ---------------------------------------------------------------------------
-// 05-05：traced DPS 路径串入 enemy_db，与非 traced panel 同口径
-// （命中×(1-enemy_block)、分类型减伤、resolve_crit_traced 用 enemy_db）。
-// ---------------------------------------------------------------------------
+// 05-05: the traced DPS path threads enemy_db through and matches the non-traced
+// panel semantics (hit × (1-enemy_block), per-type mitigation, resolve_crit_traced
+// using enemy_db).
 
-/// 有效口径下，traced DPS 与非 traced `calculate_minimal_vs_enemy` 完全一致——
-/// 敌人受伤链生效时不再分叉（finding 05-05）。
+/// In effective mode, traced DPS matches non-traced `calculate_minimal_vs_enemy`
+/// exactly — the two paths no longer diverge once the enemy damage-taken chain
+/// applies (finding 05-05).
 #[test]
 fn traced_vs_enemy_dps_matches_panel_with_damage_taken() {
     let player = ModDb::new();
@@ -1478,11 +1464,11 @@ fn traced_vs_enemy_dps_matches_panel_with_damage_taken() {
         traced.output.dps,
         panel.dps
     );
-    // 受伤链 +20% 生效：150 * 1.2 = 180。
+    // Damage-taken chain +20% applies: 150 * 1.2 = 180.
     assert!((traced.output.dps - 180.0).abs() < 1e-6);
 }
 
-/// 有效口径下敌方格挡从 traced 命中里扣，与非 traced 一致。
+/// In effective mode, enemy block is deducted from the traced hit chance the same way as non-traced.
 #[test]
 fn traced_vs_enemy_dps_matches_panel_with_block() {
     let player = ModDb::new();
@@ -1501,21 +1487,21 @@ fn traced_vs_enemy_dps_matches_panel_with_block() {
         traced.output.dps,
         panel.dps
     );
-    // 40% 格挡：150 * (1 - 0.4) = 90。
+    // 40% block: 150 * (1 - 0.4) = 90.
     assert!((traced.output.dps - 90.0).abs() < 1e-6);
 }
 
-/// 有效口径下敌方抗性减伤（火）从 traced 火伤里扣，与非 traced 一致。
+/// In effective mode, enemy resist mitigation (fire) is deducted from traced fire damage the same way as non-traced.
 #[test]
 fn traced_vs_enemy_dps_matches_panel_with_resist() {
     let mut player = ModDb::new();
-    // 100 火伤分量（与 enemy_fire_resist_reduces_fire_dps_only_in_effective 同构造）。
+    // A 100 fire-damage component (same setup as enemy_fire_resist_reduces_fire_dps_only_in_effective).
     player.add_mod(Modifier::number("FireDamageMin", ModType::Base, 100.0));
     player.add_mod(Modifier::number("FireDamageMax", ModType::Base, 100.0));
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("FireResist", ModType::Base, 50.0));
 
-    // base_hit 0：仅火伤分量，满命中。
+    // base_hit 0: isolates the fire component, guaranteed hit.
     let input = MinimalInput {
         base_hit_min: 0.0,
         base_hit_max: 0.0,
@@ -1532,19 +1518,20 @@ fn traced_vs_enemy_dps_matches_panel_with_resist() {
         traced.output.dps,
         panel.dps
     );
-    // 50% 火抗：100 * 0.5 = 50。
+    // 50% fire resist: 100 * 0.5 = 50.
     assert!((traced.output.dps - 50.0).abs() < 1e-6);
 }
 
-/// `calculate_minimal_traced`（旧四参）等价于对空 enemy_db 调用——面板/非有效口径下
-/// 输出与历史一致（5 个旧 traced 测试口径不变）。
+/// `calculate_minimal_traced` (the old 4-arg entry point) behaves like calling with
+/// an empty enemy_db — panel/non-effective output matches history (the 5 legacy
+/// traced tests keep their old semantics).
 #[test]
 fn traced_empty_enemy_equals_legacy_entry() {
     let mut player = ModDb::new();
     player.add_mod(Modifier::number("PhysicalDamage", ModType::Inc, 50.0));
     let input = attack_input();
 
-    // 即便提供 enemy mod，但 mode_effective=false（面板口径），两路径 DPS 一致且不引入敌人交互。
+    // Even with an enemy mod supplied, mode_effective=false (panel mode) keeps both paths' DPS equal and introduces no enemy interaction.
     let mut enemy = ModDb::new();
     enemy.add_mod(Modifier::number("DamageTaken", ModType::Inc, 99.0));
     let cfg = CalcConfig::attack(); // 非有效

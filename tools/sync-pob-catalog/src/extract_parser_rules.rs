@@ -1,20 +1,23 @@
-//! `extract-lua --what parser-rules`：vendor `Modules/ModParser.lua` 解析规则
-//! 六表（special 除外）→ `data/<版本>/overlay/mod_parser_rules.json`
-//! （M6 前置，蓝图 m6-parser-rules.md §1）。
+//! `extract-lua --what parser-rules`: extracts vendor `Modules/ModParser.lua`'s
+//! six parse-rule tables (excluding special) into `data/<version>/overlay/mod_parser_rules.json`
 //!
-//! 职责切分（与既有抽取目标同形）：
-//! - Lua 引导脚本（`extract_parser_rules.lua`）负责 headless 加载 + upvalue
-//!   取表 + 掩码/枚举反查 + 闭包探针推断，JSONL 输出；
-//! - Rust 侧负责派生字段（[`derive_pattern_meta`]：literal / anchored）、
-//!   排序、计数自检（钉定 vendor commit 时容差 0）与 byte-stable 序列化。
+//! Responsibility split (matches the existing extraction targets):
+//! - The Lua bootstrap script (`extract_parser_rules.lua`) handles headless
+//!   loading, pulling tables via upvalues, mask/enum reverse-lookup, and
+//!   closure-probe inference, then emits JSONL;
+//! - The Rust side handles derived fields ([`derive_pattern_meta`]: literal /
+//!   anchored), sorting, count self-checks (zero tolerance at the pinned
+//!   vendor commit), and byte-stable serialization.
 //!
-//! 与其它 `--what` 目标不同：ModParser.lua 依赖完整 PoB2 环境（ModTools /
-//! Data 全量），引导走 **pob2-oracle 同款 headless 方式**——子进程 cwd 必须是
-//! vendor `src/`、`LUA_PATH` 指向 `runtime/lua`，故不复用
-//! [`crate::extract_lua::invoke_luajit_jsonl`]（其不设 cwd/env）。
+//! Unlike the other `--what` targets: ModParser.lua needs the full PoB2
+//! environment (all of ModTools / Data), so it's bootstrapped the **same
+//! headless way as pob2-oracle** — the child process's cwd must be vendor
+//! `src/` with `LUA_PATH` pointing at `runtime/lua`, so this doesn't reuse
+//! [`crate::extract_lua::invoke_luajit_jsonl`] (which sets neither cwd nor env).
 //!
-//! 另含 parser-rules drift diff（`sync-pob-catalog parser-rules-drift`）：
-//! 重抽 vs 已提交 byte-diff + 分段差异摘要（M6 前置任务 3）。
+//! Also includes the parser-rules drift diff (`sync-pob-catalog
+//! parser-rules-drift`): byte-diffs a fresh re-extraction against what's
+//! committed, plus a per-section diff summary (task 3).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, Write};
@@ -28,26 +31,29 @@ use serde::{Deserialize, Serialize};
 
 use crate::extract_lua::{ExtractLuaArgs, OverlayMeta, read_vendor_version, resolve_version_file};
 
-/// 引导脚本内容（经 stdin 注入 luajit，二进制自包含、不依赖运行目录）。
+/// Bootstrap script content (piped into luajit via stdin; the binary is
+/// self-contained and doesn't depend on the working directory).
 const BOOTSTRAP_LUA: &str = include_str!("extract_parser_rules.lua");
 
-/// 计数自检钉定的 vendor commit（`.pob2-version.txt`）。该 commit 下各段条目数
-/// 必须与 [`PINNED_SECTION_COUNTS`] 完全一致（蓝图 §1.9 自检，容差 0）；其它
-/// commit（version-bump 演练）只告警不报错，保证抽取器可吸收 vendor 漂移。
+/// The vendor commit (`.pob2-version.txt`) the count self-check is pinned
+/// to. At this commit, every section's entry count must match
+/// [`PINNED_SECTION_COUNTS`] exactly; at any other commit (version-bump
+/// drills) mismatches only warn instead of erroring, so the extractor can absorb vendor drift.
 pub const PINNED_VENDOR_COMMIT: &str = "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f";
 
-/// 钉定 commit 下的各段条目数（2026-06 实测；蓝图 §1 的 776/684 为估值，
-/// 以实测为准——偏差记录见 blueprints/m6-extraction-report.md）。
+/// Per-section entry counts at the pinned commit (measured 2026-06; earlier
+/// estimates of 776/684 were superseded by these measured values).
 ///
-/// `flag_types` = 24（vendor 主表）+ 1（路线 B 抽取期补回的 legacy `hindered`
-/// 特例，见 [`normalize_legacy_consistency`]）= 25。
+/// `flag_types` = 24 (vendor's main table) + 1 (the legacy `hindered`
+/// special case restored during route-B extraction, see
+/// [`normalize_legacy_consistency`]) = 25.
 pub const PINNED_SECTION_COUNTS: &[(&str, usize)] = &[
     ("forms", 91),
     ("name_map", 775),
-    // 202 抽取 − 死条目剔除（[`VENDOR_DEAD_FLAG_PHRASES`]）。
+    // 202 extracted minus dead entries removed ([`VENDOR_DEAD_FLAG_PHRASES`]).
     ("flag_phrases", 202 - VENDOR_DEAD_FLAG_PHRASES.len()),
     ("pre_flags", 219),
-    // 682 抽取 + pobr 自加（[`POBR_EXTRA_TAG_PHRASES`]）。
+    // 682 extracted plus pobr's own additions ([`POBR_EXTRA_TAG_PHRASES`]).
     ("tag_phrases", 682 + POBR_EXTRA_TAG_PHRASES.len()),
     ("suffix_types", 40),
     ("damage_types", 5),
@@ -60,7 +66,7 @@ pub const PINNED_SECTION_COUNTS: &[(&str, usize)] = &[
     ("unsupported", 1),
 ];
 
-/// 钉定 commit 下 formList 的 form id 全集（28 种，蓝图 §1.1）。
+/// The full set of form ids in formList at the pinned commit.
 pub const PINNED_FORM_IDS: &[&str] = &[
     "BASE",
     "BASECOST",
@@ -92,21 +98,29 @@ pub const PINNED_FORM_IDS: &[&str] = &[
     "TOTALCOST",
 ];
 
-/// pobr 自加的 unsupported 项（vendor 仅 `mirrored`；`split` 来自现
-/// `pobr-core::mod_parser` 硬编码，蓝图 §1.6 要求迁表保留并注明来源）。
+/// pobr's own extra unsupported entries (vendor only has `mirrored`; `split`
+/// comes from the current hardcoded `pobr-core::mod_parser` and must be
+/// carried over with its source noted when migrating to the table).
 ///
-/// B3 闸门切换暂缓行。历史欠条已**全部**解冻（与 overlay JSON 手术同步，此表是
-/// regen 的单源）：deadeye 两条随 gain-as fallback 修复解冻（PR#50）；gemling
-/// grenade 行随「grenade 短语 skillNameList 抢先」修复解冻（PR#53）；blood-mage
-/// curse 行随 curse 机制全链验证 + 同组辅助授予等级修复解冻（诚实显形其
-/// per-hit 存量低估,见 ninja_parity dot 基线注）。冻结榜只剩 legacy `split`。
+/// This line survived the B3 gate switch. All historical debt on it has
+/// **fully** cleared (kept in sync with the overlay JSON surgery — this
+/// table is the single source for regen): the two deadeye entries cleared
+/// with the gain-as fallback fix (PR#50); the gemling grenade entry cleared
+/// with the "grenade phrase preempted by skillNameList" fix (PR#53); the
+/// blood-mage curse entry cleared once the curse mechanism was fully
+/// verified end-to-end plus the same-group support granted-level fix
+/// (honestly exposing its per-hit undercount, see the ninja_parity dot
+/// baseline note). The only thing left on the frozen list is legacy `split`.
 const POBR_EXTRA_UNSUPPORTED: &[&str] = &["split"];
 
-/// B3 迁表：legacy 硬写的具名 herald 条件短语（`legacy.rs` herald buff 条件族）
-/// 的 engine 数据等价。vendor ModParser.lua:6437 对 aura/herald 宝石名**运行时
-/// 动态**注册 `while affected by <skillname>` → `Condition AffectedBy<名去空格>`
-/// ——静态抽取拿不到（headless 抽取不引导 gem 数据）。当前按 legacy 集合静态
-/// 枚举；系统化 = 从 gem catalog 全量生成（C5 范畴）。
+/// B3 table migration: the engine-data equivalent of the named herald
+/// condition phrases hardcoded in legacy (`legacy.rs`'s herald buff
+/// condition family). Vendor's ModParser.lua:6437 registers `while affected
+/// by <skillname>` -> `Condition AffectedBy<name without spaces>`
+/// **dynamically at runtime** for aura/herald gem names — static extraction
+/// can't reach this (headless extraction doesn't bootstrap gem data). For
+/// now this is a static enumeration of the legacy set; a systematic fix
+/// would generate this from the full gem catalog (C5 territory).
 const POBR_EXTRA_TAG_PHRASES: &[(&str, &str)] = &[
     ("while affected by herald of ash", "AffectedByHeraldofAsh"),
     (
@@ -124,39 +138,46 @@ const POBR_EXTRA_TAG_PHRASES: &[(&str, &str)] = &[
     ),
 ];
 
-/// vendor 死条目（B3 裁决）：modFlagList 里存在、但 vendor `parseMod` 运行时**永不
-/// 命中**的 flag 短语——skillNameList 的 SkillName 剥离（order=1，在 flag scan
-/// 之前）抢先吃掉短语中的技能名，残留非空 → 整行不生效。裁决方法：
-/// `tools/pob2-oracle/run-parsemod.sh` 实喂词条看 leftover；版本升级后 parity
-/// 出现同型 over/under-apply 时用同一方法重审。
+/// Vendor dead entries: flag phrases that exist in modFlagList but that
+/// vendor's `parseMod` **never actually matches** at runtime —
+/// skillNameList's SkillName stripping (order=1, runs before the flag scan)
+/// preemptively eats the skill name out of the phrase, and a non-empty
+/// leftover means the whole line doesn't apply. Verification method: feed
+/// the real mod text through `tools/pob2-oracle/run-parsemod.sh` and check
+/// the leftover; re-run the same method whenever a version upgrade produces
+/// a similar over/under-apply in parity.
 ///
-/// **0.5.4b（vendor 0.22.0）清空 grenade 项**：vendor gem 名注册循环新增
-/// `not grantedEffect.fromItem` 排除（ModParser.lua:6423，0.21→0.22 delta），
-/// `MeleeGrenadeLauncherPlayer`（name "Grenade"，fromItem）不再注册
-/// skillNameList → `grenade` / `for grenade skills` 恢复为 modFlagList 的
-/// **live** `SkillType.Grenade` tag（run-parsemod 实证：`15% increased
-/// Cooldown Recovery Rate for Grenade Skills` → CooldownRecovery INC 15 +
-/// SkillType 159，leftover 空）。0.21 时代的死条目/抢先改写（PR#53）随之撤销；
-/// deadeye 3×15 CDR 树词条 under-apply（Speed 0.164 vs oracle 0.254）即此根因。
+/// **0.5.4b (vendor 0.22.0) emptied the grenade entry**: vendor's gem-name
+/// registration loop gained a `not grantedEffect.fromItem` exclusion
+/// (ModParser.lua:6423, the 0.21->0.22 delta), so
+/// `MeleeGrenadeLauncherPlayer` (name "Grenade", fromItem) no longer
+/// registers a skillNameList entry -> `grenade` / `for grenade skills`
+/// reverts to being matched by modFlagList's **live** `SkillType.Grenade`
+/// tag (confirmed via run-parsemod: `15% increased Cooldown Recovery Rate
+/// for Grenade Skills` -> CooldownRecovery INC 15 + SkillType 159, empty
+/// leftover). The 0.21-era dead entry / preempted rewrite (PR#53) is
+/// reverted accordingly; this is the root cause of deadeye's 3x15 CDR
+/// tree-mod under-apply (Speed 0.164 vs oracle 0.254).
 const VENDOR_DEAD_FLAG_PHRASES: &[&str] = &[];
 
-/// vendor skillNameList 抢先条目（机制说明见 [`VENDOR_DEAD_FLAG_PHRASES`]——
-/// 「保留行 + 惰性 SkillName tag」改写变体）。0.5.4b 起清空（同上 fromItem 排除）。
+/// Entries preempted by vendor's skillNameList (mechanism explained in
+/// [`VENDOR_DEAD_FLAG_PHRASES`] — the "keep the line, rewrite to an inert
+/// SkillName tag" variant). Emptied as of 0.5.4b (same fromItem exclusion above).
 const VENDOR_SKILLNAME_PREEMPTED_FLAG_PHRASES: &[(&str, &str)] = &[];
 
-/// 完整 overlay 文档（生成侧；消费侧 schema =
-/// [`pobr_data::catalog::parser_rules::ModParserRulesDoc`]，serde 形状一致）。
+/// The full overlay document (generation side; the consumption-side schema
+/// is [`pobr_data::catalog::parser_rules::ModParserRulesDoc`], with a matching serde shape).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ParserRulesDoc {
-    /// 头部元信息（serde 落为 `_meta`，置于文件最前）。
+    /// Header metadata (serialized as `_meta`, placed at the top of the file).
     #[serde(rename = "_meta")]
     pub meta: OverlayMeta,
-    /// 规则各段（蓝图 §1.8 顺序）。
+    /// The rule sections.
     #[serde(flatten)]
     pub rules: ModParserRulesDoc,
 }
 
-/// 执行抽取，返回最终（byte-stable 的）JSON 文本。
+/// Run the extraction, returning the final (byte-stable) JSON text.
 pub fn run_extract_parser_rules(args: &ExtractLuaArgs) -> io::Result<String> {
     let rows = invoke_headless_jsonl(args)?;
     let mut rules = assemble_rules(rows)?;
@@ -171,13 +192,13 @@ pub fn run_extract_parser_rules(args: &ExtractLuaArgs) -> io::Result<String> {
     Ok(json)
 }
 
-/// headless 引导调用：cwd = vendor `src/`、`LUA_PATH` 指向 `runtime/lua`、
-/// `CI=true`（与 `tools/pob2-oracle/run.sh` 同款约定）。
+/// Headless bootstrap invocation: cwd = vendor `src/`, `LUA_PATH` points at
+/// `runtime/lua`, `CI=true` (the same convention as `tools/pob2-oracle/run.sh`).
 fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<serde_json::Value>> {
     let runtime = args.vendor_root.join("../runtime/lua");
     let lua_path = format!("{r}/?.lua;{r}/?/init.lua;./?.lua;;", r = runtime.display());
     let mut child = Command::new(&args.luajit)
-        .arg("-") // 从 stdin 读脚本
+        .arg("-") // read the script from stdin
         .arg(&args.vendor_root)
         .current_dir(&args.vendor_root)
         .env("LUA_PATH", lua_path)
@@ -232,7 +253,7 @@ fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<serde_json::Va
     Ok(rows)
 }
 
-/// JSONL 行按 `section` 分发反序列化为各段 typed defs。
+/// Dispatch JSONL rows by `section` and deserialize into each section's typed defs.
 fn assemble_rules(rows: Vec<serde_json::Value>) -> io::Result<ModParserRulesDoc> {
     let mut doc = ModParserRulesDoc::default();
     for mut row in rows {
@@ -294,7 +315,7 @@ fn from_row<T: serde::de::DeserializeOwned>(row: serde_json::Value) -> serde_jso
     serde_json::from_value(row)
 }
 
-/// 派生字段（literal / anchored）+ 各段排序 + pobr 自加 unsupported 项。
+/// Derived fields (literal / anchored) + per-section sorting + pobr's own extra unsupported entries.
 fn finalize_rules(doc: &mut ModParserRulesDoc) {
     for form in &mut doc.forms {
         let (literal, anchored) = derive_pattern_meta(&form.pattern);
@@ -306,8 +327,9 @@ fn finalize_rules(doc: &mut ModParserRulesDoc) {
         entry.literal = literal;
         entry.anchored = anchored;
     }
-    // pobr 自加 tag 短语（B3 迁表，见 [`POBR_EXTRA_TAG_PHRASES`]）——在 derive
-    // 循环前插入，literal/anchored 与抽取条目走同一派生。
+    // pobr's own extra tag phrases (B3 table migration, see
+    // [`POBR_EXTRA_TAG_PHRASES`]) — inserted before the derive loop so
+    // literal/anchored go through the same derivation as extracted entries.
     for (phrase, var) in POBR_EXTRA_TAG_PHRASES {
         let mut fields = std::collections::BTreeMap::new();
         fields.insert("var".to_string(), StatMapValue::Text((*var).to_string()));
@@ -332,13 +354,15 @@ fn finalize_rules(doc: &mut ModParserRulesDoc) {
         entry.anchored = anchored;
     }
 
-    // vendor 死条目剔除（B3，见 [`VENDOR_DEAD_FLAG_PHRASES`]）：engine 对这些短语
-    // 不再产 flag/tag → 词条残留 unparsed → 与 vendor「extra 非空整行不生效」对齐。
+    // Remove vendor dead entries (B3, see [`VENDOR_DEAD_FLAG_PHRASES`]): the
+    // engine no longer produces a flag/tag for these phrases -> the mod text
+    // is left unparsed, matching vendor's "extra non-empty leftover means the whole line doesn't apply".
     doc.flag_phrases
         .retain(|e| !VENDOR_DEAD_FLAG_PHRASES.contains(&e.phrase.as_str()));
 
-    // skillNameList 抢先改写（见 [`VENDOR_SKILLNAME_PREEMPTED_FLAG_PHRASES`]）：
-    // payload 由 SkillType 改为惰性 SkillName（vendor 运行时实际产物）。
+    // skillNameList preemption rewrite (see
+    // [`VENDOR_SKILLNAME_PREEMPTED_FLAG_PHRASES`]): the payload changes from
+    // SkillType to an inert SkillName (vendor's actual runtime output).
     for entry in &mut doc.flag_phrases {
         if let Some((_, skill_name)) = VENDOR_SKILLNAME_PREEMPTED_FLAG_PHRASES
             .iter()
@@ -356,7 +380,7 @@ fn finalize_rules(doc: &mut ModParserRulesDoc) {
         }
     }
 
-    // 排序纪律（蓝图 §1.8）：Lua pairs 无序 → 每段按 pattern/phrase 字典序。
+    // Sort discipline: Lua's pairs() has no defined order -> every section is sorted lexicographically by pattern/phrase.
     doc.forms.sort_by(|a, b| a.pattern.cmp(&b.pattern));
     doc.name_map.sort_by(|a, b| a.phrase.cmp(&b.phrase));
     doc.flag_phrases.sort_by(|a, b| a.phrase.cmp(&b.phrase));
@@ -376,21 +400,25 @@ fn finalize_rules(doc: &mut ModParserRulesDoc) {
         .map(|s| s.to_string())
         .collect();
 
-    // M6.3 路线 B：抽取期 vendor→PoBR 词表归一（别名 rename + 聚合展开 +
-    // DamageType tag）。引擎直接产 PoBR StatId，下游零改动、无运行期翻译层。
+    // .3 route B: normalize the vendor->PoBR name table during extraction
+    // (alias rename + aggregate expansion + DamageType tag). The engine
+    // produces PoBR StatIds directly, so downstream needs zero changes and there's no runtime translation layer.
     normalize_name_map_to_pobr(doc);
 }
 
-/// M6.3 路线 B 抽取期归一：把 `name_map` 的 vendor ModName 归一为 PoBR canonical
-/// StatId（别名表 [`VENDOR_NAME_ALIASES`]）+ 按短语展开聚合名
-/// （[`AGGREGATE_EXPANSION`]）。**源真理 =
-/// `data/overlay-common/vendor_name_aliases.json`**（本表的 real-rename 子集
-/// 与之一致）；结构归一规格见 `blueprints/m6-alias-table.md` §3。
+/// .3 route B extraction-time normalization: normalizes `name_map`'s vendor
+/// ModNames into PoBR canonical StatIds (alias table
+/// [`VENDOR_NAME_ALIASES`]) and expands aggregate names by phrase
+/// ([`AGGREGATE_EXPANSION`]). **The source of truth is
+/// `data/overlay-common/vendor_name_aliases.json`** (this table's
+/// real-rename subset matches it).
 ///
-/// 设计：仅改 `names`，不增删条目（保 [`PINNED_SECTION_COUNTS`] 计数）。
-/// DamageType tag（C5，按最终名挂、避免被 suffix 形变名误挂）、DMG 族名
-/// （`PhysicalMin`→`PhysicalDamageMin`）、damage flag→专名（C3）、
-/// PerStat→Multiplier（C2）由引擎归一（组合期产物，非静态 name_map 可表达）。
+/// Design: only mutates `names`, never adds or removes entries (keeps
+/// [`PINNED_SECTION_COUNTS`] counts intact). The DamageType tag (C5,
+/// attached by final name to avoid mis-attaching to suffix-transformed
+/// names), DMG-family names (`PhysicalMin` -> `PhysicalDamageMin`), damage
+/// flag -> special name (C3), and PerStat -> Multiplier (C2) are all
+/// normalized by the engine instead (a compose-time artifact that a static name_map can't express).
 fn normalize_name_map_to_pobr(doc: &mut ModParserRulesDoc) {
     let alias: std::collections::HashMap<&str, &str> =
         VENDOR_NAME_ALIASES.iter().copied().collect();
@@ -398,25 +426,28 @@ fn normalize_name_map_to_pobr(doc: &mut ModParserRulesDoc) {
         AGGREGATE_EXPANSION.iter().copied().collect();
 
     for entry in &mut doc.name_map {
-        // 1. 聚合短语展开优先（整组替换 names）。
+        // 1. Aggregate phrase expansion takes priority (replaces the whole names group).
         if let Some(children) = aggregate.get(entry.phrase.as_str()) {
             entry.names = children.iter().map(|s| s.to_string()).collect();
         } else {
-            // 2. 逐名别名归一（real-rename 生效、identity 恒等）。
+            // 2. Per-name alias normalization (real-renames apply, identity entries are no-ops).
             for n in &mut entry.names {
                 if let Some(pobr) = alias.get(n.as_str()) {
                     *n = (*pobr).to_string();
                 }
             }
         }
-        // 3. 内嵌作用域词被专名吸收的短语：清 vendor 残留 flag（legacy parse_name
-        //    把 `critical spell damage bonus` 整体映射为 `CriticalStrikeMultiplier`
-        //    不带 Spell flag；vendor 把 `spell` 拆为 flag）。仅这一确证短语。
+        // 3. Phrases whose embedded scope word got absorbed into a special
+        //    name: clear the leftover vendor flag (legacy's parse_name maps
+        //    `critical spell damage bonus` as a whole to
+        //    `CriticalStrikeMultiplier` with no Spell flag, whereas vendor
+        //    splits out `spell` as a flag). Only this one confirmed phrase.
         if FLAGLESS_NAME_PHRASES.contains(&entry.phrase.as_str()) {
             entry.effects.flags.clear();
         }
-        // 4. 专名归一（C3）：legacy parse_name 把 `attack damage` 整体映射为专名
-        //    `AttackDamage`（vendor `Damage`+Attack flag）。改名清 flag。
+        // 4. Special-name normalization (C3): legacy's parse_name maps
+        //    `attack damage` as a whole to the special name `AttackDamage`
+        //    (vendor: `Damage` + Attack flag). Rename and clear the flag.
         if let Some(special) = SPECIAL_NAME_PHRASES
             .iter()
             .find(|(p, _)| *p == entry.phrase.as_str())
@@ -426,10 +457,12 @@ fn normalize_name_map_to_pobr(doc: &mut ModParserRulesDoc) {
         }
     }
 
-    // 武器作用域 keyword→flag（C3）：vendor flag_phrases 把 `with bow skills` 记为
-    // keywordFlags Bow（PoBR 无武器 keyword 位会被丢），legacy 折为 ModFlag(Hit,Bow)
-    // 并由专名吸收。归一为 `flags:[Hit,<Weapon>]`（与 `with bows` 同形），引擎 C3
-    // 据此产 BowDamage 等专名。
+    // Weapon-scope keyword -> flag (C3): vendor's flag_phrases record `with
+    // bow skills` as keywordFlags Bow (PoBR has no weapon keyword bit, so it
+    // would be dropped), while legacy folds it into ModFlag(Hit,Bow) which
+    // then gets absorbed into a special name. Normalize to
+    // `flags:[Hit,<Weapon>]` (matching the shape of `with bows`), and the
+    // engine's C3 derives special names like BowDamage from that.
     for entry in &mut doc.flag_phrases {
         let weapon = entry
             .effects
@@ -446,20 +479,25 @@ fn normalize_name_map_to_pobr(doc: &mut ModParserRulesDoc) {
     normalize_legacy_consistency(doc);
 }
 
-/// M6.3 路线 B（D-T8 第二波 2a）：把三处 vendor↔legacy 形态差异从抽取期归一，
-/// 使引擎产 legacy-一致值（dual-run C1 DIFF=0/OLD_ONLY=0），并保留 `data/` 由工具
-/// 再生的不变式（不再手改 `mod_parser_rules.json`）。三处均为「4 真 bug」收敛项：
+/// .3 route B (D-T8 second wave 2a): normalizes three vendor<->legacy shape
+/// discrepancies during extraction, so the engine produces legacy-consistent
+/// values (dual-run C1 DIFF=0/OLD_ONLY=0) while preserving the invariant
+/// that `data/` is tool-regenerated (no more hand-editing
+/// `mod_parser_rules.json`). All three are convergence items for "4 real bugs":
 ///
-/// 1. `from equipped focus`（flag_phrases）：vendor 额外挂 `Condition(UsingFocus)`，
-///    legacy 仅按 `SlotName(Weapon 2)` 作用域生效——去掉冗余 UsingFocus 条件。
-/// 2. helmet PerStat/StatThreshold 的 `stat` 字段（tag_phrases）：vendor 写
-///    `*OnHelmet`（大写 H），legacy 注册的统计名是 `*Onhelmet`（小写 h，源自
-///    slotName 小写化路径）——降为小写 h 与统计名对齐。
-/// 3. `hindered`（flag_types）：legacy `parseEnemyInner` 特例把它当 `Condition:Hindered`
-///    flag_type，vendor 主表无此条——补回（与 2a 收敛同口径，保段计数靠
-///    [`PINNED_SECTION_COUNTS`] 钉值同步）。
+/// 1. `from equipped focus` (flag_phrases): vendor additionally attaches
+///    `Condition(UsingFocus)`, while legacy only applies the
+///    `SlotName(Weapon 2)` scope — drop the redundant UsingFocus condition.
+/// 2. The `stat` field of helmet PerStat/StatThreshold (tag_phrases): vendor
+///    writes `*OnHelmet` (capital H), but the stat name legacy registers is
+///    `*Onhelmet` (lowercase h, from the slotName-lowercasing path) —
+///    lowercase the h to match the registered stat name.
+/// 3. `hindered` (flag_types): legacy's `parseEnemyInner` special-cases it as
+///    a `Condition:Hindered` flag_type, but vendor's main table has no such
+///    entry — restore it (same convergence scope as 2a; keeping the section
+///    count in sync with the [`PINNED_SECTION_COUNTS`] pinned values).
 fn normalize_legacy_consistency(doc: &mut ModParserRulesDoc) {
-    // 1. focus：去 Condition(UsingFocus)，仅留 SlotName 作用域。
+    // 1. focus: drop Condition(UsingFocus), keep only the SlotName scope.
     for entry in &mut doc.flag_phrases {
         if entry.phrase == FOCUS_PHRASE {
             entry.effects.tags.retain(|t| {
@@ -472,8 +510,8 @@ fn normalize_legacy_consistency(doc: &mut ModParserRulesDoc) {
         }
     }
 
-    // 2. helmet stat：`*OnHelmet` → `*Onhelmet`（仅末段 `OnHelmet`，避免误改
-    //    `OnBody Armour` 等其它 slot 名）。
+    // 2. helmet stat: `*OnHelmet` -> `*Onhelmet` (only the trailing
+    //    `OnHelmet` segment, to avoid mangling other slot names like `OnBody Armour`).
     for entry in &mut doc.tag_phrases {
         for tag in &mut entry.effects.tags {
             if let Some(StatMapValue::Text(stat)) = tag.fields.get_mut("stat")
@@ -484,7 +522,7 @@ fn normalize_legacy_consistency(doc: &mut ModParserRulesDoc) {
         }
     }
 
-    // 3. hindered flag_type：补回 legacy 特例（vendor 主表缺，2a 收敛同口径）。
+    // 3. hindered flag_type: restore the legacy special case (missing from vendor's main table; same convergence scope as 2a).
     if !doc
         .flag_types
         .iter()
@@ -499,13 +537,13 @@ fn normalize_legacy_consistency(doc: &mut ModParserRulesDoc) {
     }
 }
 
-/// focus 作用域短语（去 UsingFocus 冗余条件）。
+/// The focus-scope phrase (drops the redundant UsingFocus condition).
 const FOCUS_PHRASE: &str = "from equipped focus";
 
-/// legacy `parseEnemyInner` 特例补回的 flag_type 短语。
+/// The flag_type phrase restored from legacy's `parseEnemyInner` special case.
 const HINDERED_FLAG_TYPE_PHRASE: &str = "hindered";
 
-/// 武器类型名（在 flag_phrases 的 keyword_flags 里出现时归一为 ModFlag）。
+/// Weapon type names (normalized to a ModFlag when they appear in flag_phrases' keyword_flags).
 const WEAPON_KEYWORDS: &[&str] = &[
     "Bow",
     "Crossbow",
@@ -519,16 +557,18 @@ const WEAPON_KEYWORDS: &[&str] = &[
     "Staff",
 ];
 
-/// vendor name_map 带作用域 flag、但 legacy 把作用域内嵌进专名（无 flag）的短语。
-/// 抽取期清其 flag 以与 legacy 对齐（C3 内嵌作用域子类）。
+/// Phrases where vendor's name_map carries a scope flag, but legacy embeds
+/// the scope into the special name instead (no flag). Cleared during
+/// extraction to match legacy (a C3 embedded-scope subcase).
 const FLAGLESS_NAME_PHRASES: &[&str] = &["critical spell damage bonus"];
 
-/// vendor `Damage`+作用域 flag、legacy 用独立专名的短语（C3）：抽取期改名清 flag。
+/// Phrases where vendor uses `Damage` + a scope flag, but legacy uses a standalone special name (C3): renamed and flag-cleared during extraction.
 const SPECIAL_NAME_PHRASES: &[(&str, &str)] = &[("attack damage", "AttackDamage")];
 
-/// vendor→PoBR 别名表（real-rename 20 + identity 56，源真理 =
-/// `vendor_name_aliases.json`）。抽取期对 `name_map` 每个 ModName 套此表。
-/// identity 项可省略（套表恒等），此处仅列 20 real-rename。
+/// The vendor -> PoBR alias table (20 real-renames + 56 identity entries;
+/// the source of truth is `vendor_name_aliases.json`). Applied to every
+/// ModName in `name_map` during extraction. Identity entries can be omitted
+/// (applying the table is a no-op for them), so only the 20 real-renames are listed here.
 const VENDOR_NAME_ALIASES: &[(&str, &str)] = &[
     ("ChaosResist", "ChaosResistance"),
     ("ChaosResistMax", "MaximumChaosResistance"),
@@ -552,18 +592,23 @@ const VENDOR_NAME_ALIASES: &[(&str, &str)] = &[
     ("Str", "Strength"),
 ];
 
-/// 聚合短语 → PoBR 子名集（C1，legacy `resolve_names` 同表）。vendor name_map
-/// 把这些短语解析为单一聚合名 / 含 vendor 组合名（`All`/`StrInt`），PoBR 下游无
-/// ModStore 展开层，故抽取期展开为 PoBR 子名。
+/// Aggregate phrase -> PoBR child-name set (C1, matches legacy's
+/// `resolve_names` table). Vendor's name_map resolves these phrases to a
+/// single aggregate name, or one containing a vendor combined name
+/// (`All`/`StrInt`); PoBR's downstream has no ModStore expansion layer, so
+/// they're expanded into PoBR child names during extraction instead.
 const AGGREGATE_EXPANSION: &[(&str, &[&str])] = &[
     (
         "all elemental resistances",
         &["FireResistance", "ColdResistance", "LightningResistance"],
     ),
-    // vendor `["all resistances"] = { "ElementalResist", "ChaosResist" }`（ModParser.lua:288）。
-    // PoBR 玩家侧抗性 calc 只读离散 `FireResistance`/`ColdResistance`/`LightningResistance`
-    // （+ChaosResistance），不识别聚合名 `ElementalResist`（仅敌侧消费）→ 不展开则元素
-    // 抗部分静默丢弃。含混沌：vendor 的 `ChaosResist` → PoBR `ChaosResistance`。
+    // Vendor: `["all resistances"] = { "ElementalResist", "ChaosResist" }`
+    // (ModParser.lua:288). PoBR's player-side resistance calc only reads the
+    // discrete `FireResistance`/`ColdResistance`/`LightningResistance` (plus
+    // ChaosResistance) and doesn't recognize the aggregate name
+    // `ElementalResist` (that's only consumed on the enemy side) -> without
+    // expansion the elemental-resistance part would silently drop. Includes
+    // chaos: vendor's `ChaosResist` -> PoBR's `ChaosResistance`.
     (
         "all resistances",
         &[
@@ -578,20 +623,21 @@ const AGGREGATE_EXPANSION: &[(&str, &[&str])] = &[
     ("strength and intelligence", &["Strength", "Intelligence"]),
     ("strength and dexterity", &["Strength", "Dexterity"]),
     ("dexterity and intelligence", &["Dexterity", "Intelligence"]),
-    // vendor `["skill speed"] = { "Speed", "WarcrySpeed", "TotemPlacementSpeed" }`
-    // （ModParser.lua:770）。裸 `Speed` → PoBR 速度桶名 `SkillSpeed`；WarcrySpeed /
-    // TotemPlacementSpeed 保留原名扇出（存量 #9 起 WarcrySpeed 有真消费方 =
-    // `pobr-core::calc::warcry` 的喊叫时间，CalcOffence.lua:350-359；
-    // TotemPlacementSpeed 仍为惰性作用域名）。此前只落 `SkillSpeed` 单名，
-    // 「N% increased Skill Speed」文本对 warcry 喊叫速度静默丢失。
+    // Vendor: `["skill speed"] = { "Speed", "WarcrySpeed", "TotemPlacementSpeed" }`
+    // (ModParser.lua:770). Bare `Speed` -> PoBR's speed-bucket name
+    // `SkillSpeed`; WarcrySpeed / TotemPlacementSpeed fan out under their own
+    // names (since backlog item #9, WarcrySpeed has a real consumer —
+    // `pobr-core::calc::warcry`'s warcry cast time, CalcOffence.lua:350-359;
+    // TotemPlacementSpeed is still an inert scope name). Previously this only
+    // produced a single `SkillSpeed` name, so "N% increased Skill Speed" text silently didn't affect warcry cast speed.
     (
         "skill speed",
         &["SkillSpeed", "WarcrySpeed", "TotemPlacementSpeed"],
     ),
 ];
 
-/// 抽取自检（蓝图 §1.9）：钉定 commit 下计数 / form id 集容差 0（Err）；
-/// 其它 commit 只产出告警（演练时吸收 vendor 漂移）。各段键唯一性恒检查。
+/// Extraction self-check: at the pinned commit, count / form-id-set mismatches are zero-tolerance (Err);
+/// at any other commit they only produce warnings (absorbing vendor drift during drills). Per-section key uniqueness is always checked.
 fn self_check(doc: &ModParserRulesDoc, vendor_commit: &str) -> io::Result<Vec<String>> {
     let mut warnings = Vec::new();
     let counts: &[(&str, usize)] = &[
@@ -639,7 +685,7 @@ fn self_check(doc: &ModParserRulesDoc, vendor_commit: &str) -> io::Result<Vec<St
         warnings.push(message);
     }
 
-    // 键唯一性（任何 commit 下都硬性）
+    // Key uniqueness (mandatory at any commit)
     for (section, keys) in [
         (
             "forms",
@@ -673,7 +719,7 @@ fn self_check(doc: &ModParserRulesDoc, vendor_commit: &str) -> io::Result<Vec<St
         }
     }
 
-    // 闭包推断统计（报告输入；handler 预算监控走全局台账，这里仅提示）
+    // Closure-inference stats (reporting input only; handler budget monitoring goes through the global ledger, this is just an FYI)
     let inferred = doc.pre_flags.iter().filter(|e| e.inferred).count()
         + doc.tag_phrases.iter().filter(|e| e.inferred).count();
     let handlers = doc
@@ -697,12 +743,15 @@ fn self_check(doc: &ModParserRulesDoc, vendor_commit: &str) -> io::Result<Vec<St
     Ok(warnings)
 }
 
-/// 从 Lua pattern 派生（最长字面量片段, 是否 `^` 锚定）。
+/// Derives (the longest literal run, whether it's `^`-anchored) from a Lua pattern.
 ///
-/// 字面量片段语义：去掉锚、捕获括号、字符类（`[...]`、`%d` 等单字符类）与
-/// 被量词（`+ - * ?`）作用的可变字符后，剩余连续字面字符的最长一段
-/// （aho-corasick 预过滤用；引擎对 `None`/过短 literal 走 always-check 桶）。
-/// pattern 均为小写 ASCII（vendor scan 对输入 `lower()` 后匹配）。
+/// Literal-run semantics: after stripping the anchor, capture parens,
+/// character classes (`[...]`, single-char classes like `%d`), and variable
+/// characters governed by a quantifier (`+ - * ?`), take the longest
+/// remaining run of consecutive literal characters (used for aho-corasick
+/// pre-filtering; the engine falls back to an always-check bucket for
+/// `None`/too-short literals). Patterns are all lowercase ASCII (vendor's
+/// scan matches against `lower()`-ed input).
 pub fn derive_pattern_meta(pattern: &str) -> (Option<String>, bool) {
     let bytes = pattern.as_bytes();
     let anchored = pattern.starts_with('^');
@@ -725,24 +774,26 @@ pub fn derive_pattern_meta(pattern: &str) -> (Option<String>, bool) {
                 }
                 let escaped = bytes[i + 1];
                 if escaped.is_ascii_alphanumeric() {
-                    // 类元素（%d / %a / %D…）：单字符通配，断开字面 run
+                    // A class element (%d / %a / %D...): single-char wildcard, breaks the literal run
                     flush(&mut cur, &mut runs);
                     i += 2;
                     if i < n && is_quantifier(bytes[i]) {
                         i += 1;
                     }
                 } else if i + 2 < n && is_quantifier(bytes[i + 2]) {
-                    // 转义标点带量词：该字符出现次数可变，不入 run
+                    // An escaped punctuation char with a quantifier: its
+                    // occurrence count varies, so it doesn't join a run
                     flush(&mut cur, &mut runs);
                     i += 3;
                 } else {
-                    // 转义标点（%% / %- / %.）= 字面字符
+                    // Escaped punctuation (%% / %- / %.) = a literal character
                     cur.push(escaped as char);
                     i += 2;
                 }
             }
             b'[' => {
-                // 字符类：跳到配对 `]`（含 `%]` 转义），断开 run，吞后续量词
+                // A character class: skip to the matching `]` (accounting
+                // for `%]` escapes), breaking the run and consuming any trailing quantifier
                 flush(&mut cur, &mut runs);
                 i += 1;
                 while i < n {
@@ -775,7 +826,7 @@ pub fn derive_pattern_meta(pattern: &str) -> (Option<String>, bool) {
                 i += 1;
             }
             b if is_quantifier(b) && !cur.is_empty() => {
-                // 量词作用于前一个字面字符：弹出该字符并断开 run
+                // A quantifier governs the previous literal character: pop it and break the run
                 cur.pop();
                 flush(&mut cur, &mut runs);
                 i += 1;
@@ -787,7 +838,7 @@ pub fn derive_pattern_meta(pattern: &str) -> (Option<String>, bool) {
         }
     }
     flush(&mut cur, &mut runs);
-    // 最长 run；等长取最先出现者（确定性 tie-break）
+    // The longest run; ties are broken by taking whichever appeared first (deterministic tie-break)
     let literal = runs
         .into_iter()
         .fold(None::<String>, |best, run| match best {
@@ -798,7 +849,7 @@ pub fn derive_pattern_meta(pattern: &str) -> (Option<String>, bool) {
     (literal.filter(|l| !l.is_empty()), anchored)
 }
 
-/// 读取 vendor 版本文件并构建 `_meta`。
+/// Read the vendor version file and build `_meta`.
 fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
     let (commit, subject) = read_vendor_version(&resolve_version_file(args))?;
     let mut regen = String::from(
@@ -818,19 +869,20 @@ fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
     })
 }
 
-// ---- parser-rules drift diff（重抽 vs 已提交）----
+// parser-rules drift diff (fresh re-extraction vs what's committed)
 
-/// drift diff 结果：byte 等价与人类可读差异摘要。
+/// Drift diff results: byte equivalence plus a human-readable diff summary.
 #[derive(Debug)]
 pub struct ParserRulesDrift {
-    /// 重抽产物与已提交文件 byte 等价。
+    /// Whether the fresh re-extraction is byte-equivalent to the committed file.
     pub identical: bool,
-    /// 差异摘要行（byte 等价时为空）。
+    /// Diff summary lines (empty when byte-equivalent).
     pub lines: Vec<String>,
 }
 
-/// 已提交文本 vs 重抽文本的 drift diff：先 byte 比较，不等时按段给出
-/// 增/删/改计数与样例键（每类至多 5 个）。
+/// Drift diff between the committed text and the freshly re-extracted text:
+/// compares bytes first, and when they differ, gives per-section
+/// added/removed/changed counts plus sample keys (up to 5 per category).
 pub fn diff_parser_rules(committed: &str, regenerated: &str) -> io::Result<ParserRulesDrift> {
     if committed == regenerated {
         return Ok(ParserRulesDrift {
@@ -936,7 +988,7 @@ pub fn diff_parser_rules(committed: &str, regenerated: &str) -> io::Result<Parse
 mod tests {
     use super::derive_pattern_meta;
 
-    /// 蓝图 §1.1 例：`^` 锚 + `%%` 转义的 literal 派生。
+    /// Example: literal derivation with a `^` anchor plus a `%%` escape.
     #[test]
     fn literal_for_increased_form() {
         let (literal, anchored) = derive_pattern_meta("^(%d+)%% increased");
@@ -944,7 +996,7 @@ mod tests {
         assert!(anchored);
     }
 
-    /// 量词作用的字面字符（`s?`）不入 run；非锚定 pattern。
+    /// A literal character governed by a quantifier (`s?`) doesn't join the run; an unanchored pattern.
     #[test]
     fn literal_drops_quantified_char() {
         let (literal, anchored) = derive_pattern_meta("costs? ([%+%-]?%d+)");
@@ -952,7 +1004,7 @@ mod tests {
         assert!(!anchored);
     }
 
-    /// 纯字面 pattern：整体即 literal。
+    /// A pure literal pattern: the whole thing is the literal.
     #[test]
     fn literal_for_plain_pattern() {
         let (literal, anchored) = derive_pattern_meta("is doubled");
@@ -960,7 +1012,7 @@ mod tests {
         assert!(!anchored);
     }
 
-    /// 字符类（`[...]`）断开 run；蓝图 §1.4 例。
+    /// A character class (`[...]`) breaks the run; example.
     #[test]
     fn literal_breaks_on_char_class() {
         let (literal, anchored) = derive_pattern_meta("^minions [cthd][ae][ukva][sel]e? ");
@@ -968,7 +1020,7 @@ mod tests {
         assert!(anchored);
     }
 
-    /// 全类元素 pattern（无任何字面段）→ None。
+    /// A pattern made entirely of class elements (no literal segment at all) -> None.
     #[test]
     fn literal_none_for_all_class_pattern() {
         let (literal, anchored) = derive_pattern_meta("^(%d+)");
@@ -976,14 +1028,14 @@ mod tests {
         assert!(anchored);
     }
 
-    /// `.`/`.-` 通配断开 run；`$` 尾锚不入 literal。
+    /// `.`/`.-` wildcards break the run; a trailing `$` anchor doesn't join the literal.
     #[test]
     fn literal_handles_wildcard_and_tail_anchor() {
         let (literal, _) = derive_pattern_meta("^regenerate ([%d%.]+) (.-) per second$");
         assert_eq!(literal.as_deref(), Some("regenerate "));
     }
 
-    /// drift diff：byte 等价 → identical；条目变更 → 分段摘要。
+    /// Drift diff: byte-equivalent -> identical; changed entries -> a per-section summary.
     #[test]
     fn drift_diff_reports_sections() {
         let committed = r#"{"_meta":{"schema":"mod_parser_rules/v1"},"forms":[{"pattern":"a","form":"INC"},{"pattern":"b","form":"RED"}]}"#;

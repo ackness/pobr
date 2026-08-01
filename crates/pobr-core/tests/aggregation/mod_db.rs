@@ -249,50 +249,46 @@ fn sum_traced_links_matching_contributions_to_query_node() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// 01-02：ModFlags 子集匹配语义（PoB2 ModList.lua `band(cfg.flags, mod.flags) == mod.flags`）
-// ---------------------------------------------------------------------------
+// ModFlags matching is subset, not intersection (PoB2 ModList.lua `band(cfg.flags, mod.flags) == mod.flags`).
 
 #[test]
 fn mod_flags_match_requires_subset_not_intersection() {
-    // mod.flags = ATTACK|PROJECTILE：只有当 cfg.flags 是其超集时才命中。
+    // mod.flags = ATTACK|PROJECTILE: only matches when cfg.flags is a superset.
     let m = Modifier::number("Damage", ModType::Inc, 10.0)
         .with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE);
 
-    // cfg = ATTACK 单独：band(ATTACK, ATTACK|PROJECTILE)=ATTACK ≠ mod.flags → 拒绝（子集语义）。
+    // cfg = ATTACK alone: band(ATTACK, ATTACK|PROJECTILE)=ATTACK != mod.flags → rejected (subset semantics).
     let cfg_attack_only = CalcConfig::new().with_flags(ModFlags::ATTACK);
     assert!(
         !m.matches(&cfg_attack_only),
         "纯 Attack（非投射）不应命中 Attack|Projectile mod"
     );
 
-    // cfg = ATTACK|PROJECTILE：等于 → 命中。
+    // cfg = ATTACK|PROJECTILE: equal → matches.
     let cfg_ap = CalcConfig::new().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE);
     assert!(m.matches(&cfg_ap), "Attack|Projectile cfg 命中");
 
-    // cfg = ATTACK|PROJECTILE|MELEE：超集 → 命中。
+    // cfg = ATTACK|PROJECTILE|MELEE: superset → matches.
     let cfg_super =
         CalcConfig::new().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::MELEE);
     assert!(m.matches(&cfg_super), "超集 cfg 命中");
 
-    // 单 flag mod：子集与 intersects 等价，行为不变。
+    // Single-flag mod: subset and intersects are equivalent here, behaviour unchanged.
     let single = Modifier::number("Damage", ModType::Inc, 10.0).with_flags(ModFlags::ATTACK);
     assert!(single.matches(&cfg_attack_only));
     assert!(!single.matches(&CalcConfig::new().with_flags(ModFlags::SPELL)));
 
-    // 空 flag mod：对任意 cfg 恒命中（NONE 是任意集合子集）。
+    // Empty-flag mod: matches any cfg (NONE is a subset of every set).
     let no_flags = Modifier::number("Damage", ModType::Inc, 10.0);
     assert!(no_flags.matches(&CalcConfig::new()));
     assert!(no_flags.matches(&cfg_attack_only));
 }
 
-// ---------------------------------------------------------------------------
-// 01-01：MORE 逐 modName round(modResult, 2)（PoB2 ModList.lua MoreInternal）
-// ---------------------------------------------------------------------------
+// MORE aggregation rounds per modName to 2 decimals (PoB2 ModList.lua MoreInternal).
 
 #[test]
 fn more_rounds_per_name_product_to_two_decimals() {
-    // 同名两条 MORE：10% + 13% → 1.10*1.13 = 1.243 → round2 = 1.24（非 1.243）。
+    // Two MORE mods with the same name: 10% + 13% → 1.10*1.13 = 1.243 → round2 = 1.24 (not 1.243).
     let mut db = ModDb::new();
     db.add_mod(Modifier::number("Damage", ModType::More, 10.0));
     db.add_mod(Modifier::number("Damage", ModType::More, 13.0));
@@ -306,8 +302,8 @@ fn more_rounds_per_name_product_to_two_decimals() {
 
 #[test]
 fn more_rounds_each_name_separately_then_multiplies() {
-    // 两个不同名各两条 MORE：Damage 10%+13% → round2(1.243)=1.24；
-    // AttackDamage 7%+7% → round2(1.1449)=1.14。总 = 1.24 * 1.14 = 1.4136。
+    // Two MORE mods each on two different names: Damage 10%+13% → round2(1.243)=1.24;
+    // AttackDamage 7%+7% → round2(1.1449)=1.14. Total = 1.24 * 1.14 = 1.4136.
     let mut db = ModDb::new();
     db.add_mod(Modifier::number("Damage", ModType::More, 10.0));
     db.add_mod(Modifier::number("Damage", ModType::More, 13.0));
@@ -324,27 +320,27 @@ fn more_rounds_each_name_separately_then_multiplies() {
     );
 }
 
-/// 01-05：ModDb::get_multiplier 对齐 PoB2 GetMultiplier（Override 优先，否则 cfg + Sum(BASE, Multiplier:var)）。
+/// `ModDb::get_multiplier` matches PoB2 `GetMultiplier` (Override wins, else cfg + Sum(BASE, Multiplier:var)).
 #[test]
 fn get_multiplier_matches_pob2_getmultiplier_semantics() {
-    // (a) 纯 cfg.multipliers。
+    // (a) cfg.multipliers only.
     let db_empty = ModDb::new();
     let cfg_a = CalcConfig::attack().with_multiplier("Rage", 30.0);
     assert_eq!(db_empty.get_multiplier("Rage", &cfg_a), 30.0);
 
-    // (b) modDB Multiplier:X BASE 累加进 cfg 基线（0 + 7 + 5 = 12）。
+    // (b) modDB Multiplier:X BASE mods accumulate onto the cfg baseline (0 + 7 + 5 = 12).
     let mut db_base = ModDb::new();
     db_base.add_mod(Modifier::number("Multiplier:Virulence", ModType::Base, 7.0));
     db_base.add_mod(Modifier::number("Multiplier:Virulence", ModType::Base, 5.0));
     let cfg_b = CalcConfig::attack();
     assert_eq!(db_base.get_multiplier("Virulence", &cfg_b), 12.0);
-    // 名称用 "Multiplier:"+var（裸 var 不命中）。
+    // The mod name is "Multiplier:"+var; the bare var name does not match.
     assert_eq!(
         db_base.sum(ModType::Base, &cfg_b, &[ModName::from("Virulence")]),
         0.0
     );
 
-    // (c) Override 短路覆盖。
+    // (c) Override short-circuits.
     let mut db_ovr = ModDb::new();
     db_ovr.add_mod(Modifier::number("Multiplier:Virulence", ModType::Base, 7.0));
     db_ovr.add_mod(Modifier::number(
@@ -358,8 +354,8 @@ fn get_multiplier_matches_pob2_getmultiplier_semantics() {
 
 #[test]
 fn list_nested_passes_through_nested_mods_without_evaluating() {
-    // M3 C4-1：`EnemyModifier` 类嵌套 LIST 载荷——`list_nested` 只透传内层 mods，
-    // 不参与数值聚合；文本 List 通道（`list`）对嵌套载荷保持不可见。
+    // `EnemyModifier`-style nested LIST payloads: `list_nested` only passes inner mods
+    // through without evaluating them; the text List channel (`list`) stays blind to nested payloads.
     let mut db = ModDb::new();
     let inner = Modifier::number("DamageTaken", ModType::Inc, 10.0)
         .with_tag(ModTag::condition("Effective", false));
@@ -368,7 +364,7 @@ fn list_nested_passes_through_nested_mods_without_evaluating() {
         ModType::List,
         ModValue::NestedMods(vec![inner.clone()]),
     ));
-    // 同名文本 List 条目：两条通道互不串扰。
+    // Same-name text List entry: the two channels must not cross-contaminate.
     db.add_mod(Modifier::text(
         "EnemyModifier",
         ModType::List,
@@ -380,7 +376,7 @@ fn list_nested_passes_through_nested_mods_without_evaluating() {
 
     assert_eq!(db.list_nested(&cfg, name.clone()), vec![inner]);
     assert_eq!(db.list(&cfg, name.clone()), vec!["placeholder".to_string()]);
-    // 嵌套载荷不进入任何标量聚合通道。
+    // Nested payloads never enter any scalar aggregation channel.
     assert_eq!(
         db.sum(ModType::List, &cfg, std::slice::from_ref(&name)),
         0.0
@@ -397,12 +393,10 @@ fn nested_mods_value_has_no_scalar_views() {
     assert_eq!(value.as_nested_mods().map(<[Modifier]>::len), Some(1));
 }
 
-// ===========================================================================
-// M4-T1 W-A2：写侧原语 ReplaceMod / ConvertMod / ScaleAddMod
-// ===========================================================================
+// Write-side primitives ReplaceMod / ConvertMod / ScaleAddMod.
 
-/// ReplaceMod 命中（vendor ModDB.lua:38-66）：同 name+type+flags+keywordFlags+source
-/// → 原位替换（桶内数量不变、顺序保持）；不同 source → append。
+/// ReplaceMod hit (vendor ModDB.lua:38-66): same name+type+flags+keywordFlags+source
+/// → replaced in place (bucket count unchanged, order preserved); different source → append.
 #[test]
 fn replace_mod_replaces_on_full_param_match_else_appends() {
     let cfg = CalcConfig::new();
@@ -415,21 +409,21 @@ fn replace_mod_replaces_on_full_param_match_else_appends() {
         Modifier::number("Multiplier:BoltsReloaded", ModType::Base, 1.0).with_source("Other"),
     );
 
-    // 命中：同 name+type+flags+kw+source → 值被替换，桶内仍 2 条。
+    // Hit: same name+type+flags+kw+source → value replaced, bucket still holds 2 entries.
     let replaced = db.replace_mod(
         Modifier::number("Multiplier:BoltsReloaded", ModType::Base, 5.0).with_source("Reload"),
     );
     assert!(replaced);
     assert_eq!(db.sum(ModType::Base, &cfg, &names), 6.0, "5 + 1（Other）");
 
-    // 未命中（source 不同）→ append。
+    // Miss (different source) → append.
     let replaced = db.replace_mod(
         Modifier::number("Multiplier:BoltsReloaded", ModType::Base, 2.0).with_source("Third"),
     );
     assert!(!replaced);
     assert_eq!(db.sum(ModType::Base, &cfg, &names), 8.0, "5 + 1 + 2");
 
-    // flags 不同也算未命中（vendor 比对含 flags/keywordFlags）。
+    // Different flags also count as a miss (vendor comparison includes flags/keywordFlags).
     let replaced = db.replace_mod(
         Modifier::number("Multiplier:BoltsReloaded", ModType::Base, 4.0)
             .with_source("Reload")
@@ -438,8 +432,8 @@ fn replace_mod_replaces_on_full_param_match_else_appends() {
     assert!(!replaced);
 }
 
-/// ConvertMod 跨桶（vendor ModDB.lua:75-105）：旧名桶移除 + 新名桶落地；
-/// 未命中 → 直接 append 新 mod。
+/// ConvertMod moves a mod between buckets (vendor ModDB.lua:75-105): removed from the
+/// old-name bucket and landed in the new-name bucket; on a miss it just appends the new mod.
 #[test]
 fn convert_mod_moves_between_buckets() {
     let cfg = CalcConfig::new();
@@ -461,7 +455,7 @@ fn convert_mod_moves_between_buckets() {
     );
     assert_eq!(db.sum(ModType::Inc, &cfg, &new_names), 30.0, "落入新桶");
 
-    // 未命中（source 无匹配）→ append 新 mod（vendor :129-131）。
+    // Miss (no matching source) → append the new mod (vendor :129-131).
     let converted = db.convert_mod(
         &ModName::from("ColdDamage"),
         Modifier::number("FireDamage", ModType::Inc, 5.0).with_source("Nowhere"),
@@ -471,18 +465,19 @@ fn convert_mod_moves_between_buckets() {
     assert_eq!(db.sum(ModType::Inc, &cfg, &old_names), 10.0, "旧桶不动");
 }
 
-/// ScaleAddMod 取整 oracle 对拍（12 条，蓝图 W-A2 门禁 ≥10 全中）。
+/// ScaleAddMod rounding oracle diff (12 samples, gate requires ≥10 to match).
 ///
-/// 期望值由 vendor 公式（ModStore.lua:55-80 数值分支 + Common.lua:648 round）
-/// 在 luajit 下逐条求得（脚本见 commit message；精度表 = 入库
-/// `overlay/high_precision_mods.json`，与 vendor Data.lua:413-530 逐值一致，
-/// 有独立加载测试）。LuaJIT 与 Rust 同为 IEEE754 double，浮点逐位可比。
+/// Expected values were computed sample-by-sample under luajit from the vendor formula
+/// (ModStore.lua:55-80 numeric branch + Common.lua:648 round; script in the commit message).
+/// The precision table = the ingested `overlay/high_precision_mods.json`, which matches
+/// vendor Data.lua:413-530 value-for-value (has its own load test). LuaJIT and Rust are both
+/// IEEE754 double, so floating-point results are bit-comparable.
 #[test]
 fn scale_add_mod_rounding_matches_pob2_oracle() {
     use pobr_core::HighPrecisionRules;
     let cfg = CalcConfig::new();
-    // 与 data/4.5.0.3.4/overlay/high_precision_mods.json 一致的最小子集
-    // （样本涉及条目；全表等价性由 gamedata 加载测试钉住）。
+    // Minimal subset consistent with data/4.5.0.3.4/overlay/high_precision_mods.json
+    // (only the entries the samples touch; full-table equivalence is pinned by the gamedata load test).
     let mut mods = std::collections::BTreeMap::new();
     for (name, mod_type, p) in [
         ("CritChance", "BASE", 2u32),
@@ -503,9 +498,9 @@ fn scale_add_mod_rounding_matches_pob2_oracle() {
         },
     );
 
-    // (name, type, value, scale, oracle 期望)——luajit 实跑输出，2026-06-12。
+    // (name, type, value, scale, oracle expected) — real luajit output, 2026-06-12.
     let samples: &[(&str, ModType, f64, f64, f64)] = &[
-        // 例外表命中（精度 2/1/4，floor 截位）：
+        // Exception-table hit (precision 2/1/4, floor truncation):
         ("CritChance", ModType::Base, 7.0, 0.5, 3.5),
         ("CritChance", ModType::Base, 7.77, 1.2, 9.32),
         ("LifeRegen", ModType::Base, 2.5, 0.3, 0.7),
@@ -517,7 +512,7 @@ fn scale_add_mod_rounding_matches_pob2_oracle() {
             1.1111,
             27.7775,
         ),
-        // 负值 floor（向 −∞）：
+        // Negative value floors toward -infinity:
         (
             "ReservationMultiplier",
             ModType::More,
@@ -525,14 +520,14 @@ fn scale_add_mod_rounding_matches_pob2_oracle() {
             0.6667,
             -20.001,
         ),
-        // 未命中 + 小数原值 → defaultHighPrecision = 1：
+        // Miss + fractional original value → defaultHighPrecision = 1:
         ("Damage", ModType::Base, 2.5, 0.5, 1.2),
-        // 未命中 + 整数原值 → m_modf(round(·, 2)) 截整：
+        // Miss + integer original value → m_modf(round(·, 2)) truncates to integer:
         ("Damage", ModType::Base, 7.0, 0.5, 3.0),
-        // 负值截整向零（m_modf 语义，区别于 floor）：
+        // Negative value truncates toward zero (m_modf semantics, distinct from floor):
         ("Damage", ModType::Base, -7.0, 0.5, -3.0),
         ("Damage", ModType::Inc, 33.0, 0.3, 9.0),
-        // scale == 1 → 原值直返（含小数也不取整，vendor :54）：
+        // scale == 1 → original value returned as-is (not rounded even if fractional, vendor :54):
         ("Damage", ModType::Base, 7.77, 1.0, 7.77),
         ("Damage", ModType::Base, 19.0, 1.37, 26.0),
     ];
@@ -542,7 +537,7 @@ fn scale_add_mod_rounding_matches_pob2_oracle() {
         let names = [ModName::from(name)];
         let got = match mod_type {
             ModType::More => {
-                // MORE 聚合是 Π(1+v/100)，直接读贡献值对拍缩放结果。
+                // MORE aggregation is Π(1+v/100); read the contribution value directly to diff the scaled result.
                 db.contributions(ModType::More, &cfg, &names)[0].value
             }
             t => db.sum(t, &cfg, &names),
@@ -554,7 +549,8 @@ fn scale_add_mod_rounding_matches_pob2_oracle() {
     }
 }
 
-/// ScaleAddMod 非数值载荷：Bool/Text 原样入库；NestedMods 逐内层 Number 同规则缩放。
+/// ScaleAddMod on non-numeric payloads: Bool/Text pass through unchanged; NestedMods scales
+/// each inner Number by the same rules.
 #[test]
 fn scale_add_mod_non_number_payloads() {
     use pobr_core::HighPrecisionRules;
@@ -582,8 +578,8 @@ fn scale_add_mod_non_number_payloads() {
     );
 }
 
-/// HighPrecisionRules 默认 fallback（未注入数据）：无例外表，仅默认精度
-/// （default_high_precision = 1，与入库 JSON 同值——搬迁不变式）。
+/// HighPrecisionRules default fallback (no data injected): no exception table, just the
+/// default precision (default_high_precision = 1, matching the ingested JSON — a migration invariant).
 #[test]
 fn high_precision_rules_default_has_no_exceptions() {
     use pobr_core::HighPrecisionRules;
@@ -592,11 +588,12 @@ fn high_precision_rules_default_has_no_exceptions() {
     assert_eq!(rules.default_high_precision(), 1);
 }
 
-/// MORE 聚合精度例外（M4-T1 W-A2 行为修复，10-G6；vendor ModDB.lua:156-190）。
+/// MORE aggregation precision exceptions (vendor `ModDB.lua:156-190`).
 ///
-/// 期望值 = vendor MoreInternal 在 luajit 下逐字复刻实跑（脚本见 commit
-/// message；样本 S1-S6）。未注入规则（Default）时走默认 round(·,2)——
-/// 与例外分支引入前逐字一致（S2 同时是该锚点）。
+/// Expected values = a literal port of vendor MoreInternal run under luajit (script in the
+/// commit message; samples S1-S6). With no rules injected (Default), it falls back to the
+/// default round(·,2) — identical to the behaviour before the exception branch existed
+/// (S2 doubles as that anchor).
 #[test]
 fn more_precision_exception_matches_more_internal_oracle() {
     use pobr_core::HighPrecisionRules;
@@ -623,25 +620,28 @@ fn more_precision_exception_matches_more_internal_oracle() {
         }
     };
 
-    // S1：例外条目多 mod 连乘 → floor(累计积, 4) = 2.1839（默认 round2 会给 2.18）。
+    // S1: exception-entry with multiple mods chained → floor(running product, 4) = 2.1839
+    // (default round2 would give 2.18).
     let mut db = ModDb::new();
     db.set_high_precision_rules(rules());
     more_mods(&mut db, "SupportManaMultiplier", &[40.0, 30.0, 20.0]);
     let names = [ModName::from("SupportManaMultiplier")];
     assert_eq!(db.more(&cfg, &names), 2.1839, "S1");
 
-    // S2：普通条目同输入 → 默认 round2（= 未注入规则的旧口径锚点）。
+    // S2: a plain entry with the same inputs → default round2 (the anchor for the old
+    // behaviour with no rules injected).
     let mut db = ModDb::new();
     db.set_high_precision_rules(rules());
     more_mods(&mut db, "Damage", &[40.0, 30.0, 20.0]);
     let names = [ModName::from("Damage")];
     assert_eq!(db.more(&cfg, &names), 2.18, "S2");
-    let mut plain = ModDb::new(); // Default 规则（未注入）同值。
+    let mut plain = ModDb::new(); // Default rules (not injected) give the same value.
     more_mods(&mut plain, "Damage", &[40.0, 30.0, 20.0]);
     assert_eq!(plain.more(&cfg, &names), 2.18, "S2 未注入锚点");
 
-    // S3/S4：vendor quirk——modPrecision 跨名持留：例外名在前则后续普通名也
-    // floor4（1.4444）；普通名在前则先 round2 再 floor4（1.443）。
+    // S3/S4: vendor quirk — modPrecision persists across names. If the exception name comes
+    // first, subsequent plain names also floor4 (1.4444); if the plain name comes first, it
+    // round2's then floor4's (1.443).
     let mut db = ModDb::new();
     db.set_high_precision_rules(rules());
     more_mods(&mut db, "SupportManaMultiplier", &[30.0]);
@@ -651,7 +651,7 @@ fn more_precision_exception_matches_more_internal_oracle() {
     assert_eq!(db.more(&cfg, &[smm.clone(), dmg.clone()]), 1.4444, "S3");
     assert_eq!(db.more(&cfg, &[dmg, smm]), 1.443, "S4");
 
-    // S5：精度置位后缺桶名（modResult = 1）也被 re-floor。
+    // S5: once precision is latched, even a missing bucket name (modResult = 1) gets re-floored.
     let mut db = ModDb::new();
     db.set_high_precision_rules(rules());
     more_mods(&mut db, "ReservationMultiplier", &[-29.97]);
@@ -661,31 +661,29 @@ fn more_precision_exception_matches_more_internal_oracle() {
     ];
     assert_eq!(db.more(&cfg, &names), 0.7003, "S5");
 
-    // S6：负 more 例外条目（floor 向 −∞ 截位）。
+    // S6: negative MORE on an exception entry (floors toward -infinity).
     let mut db = ModDb::new();
     db.set_high_precision_rules(rules());
     more_mods(&mut db, "ReservationMultiplier", &[-50.0, 33.333]);
     let names = [ModName::from("ReservationMultiplier")];
     assert_eq!(db.more(&cfg, &names), 0.6666, "S6");
 
-    // traced 与非 traced 同口径（共用实现）。
+    // traced and non-traced share the same behaviour (common implementation).
     let mut trace = TraceGraph::new();
     let traced = db.more_traced(&cfg, &names, &mut trace, "more");
     assert_eq!(traced.value, 0.6666, "traced 同值");
 }
 
-// ===========================================================================
-// M4-T1 W-A3：EvalMod tag 第二批——PerStat 读 output + GlobalLimit 累计限幅
-// ===========================================================================
+// Second EvalMod-tag batch: PerStat reads output, GlobalLimit does cumulative clamping.
 
-/// PerStat 读 actor output 快照（vendor ModStore.lua:440-489 PerStat 分支 +
-/// :280-325 GetStat）：经 EvalContext::stat_lookup 取数；无快照 → 0（保守）。
-/// `per 100 maximum Life` 形态端到端（mod 构造 → 聚合查询）。
+/// PerStat reads the actor output snapshot (vendor ModStore.lua:440-489 PerStat branch +
+/// :280-325 GetStat), via EvalContext::stat_lookup; with no snapshot it's conservatively 0.
+/// End-to-end for the `per 100 maximum Life` shape (mod construction → aggregation query).
 #[test]
 fn per_stat_reads_output_snapshot_via_eval_context() {
     use pobr_core::EvalContext;
     let mut db = ModDb::new();
-    // 「1% increased Damage per 100 maximum Life」形态。
+    // "1% increased Damage per 100 maximum Life" shape.
     db.add_mod(
         Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::PerStat {
             stat: "Life".into(),
@@ -698,18 +696,19 @@ fn per_stat_reads_output_snapshot_via_eval_context() {
     let cfg = CalcConfig::new();
     let names = [ModName::from("Damage")];
 
-    // 无 output 快照（既有调用形态，&cfg 直传）→ stat = 0 → 乘数 0。
+    // No output snapshot (the legacy call shape, &cfg passed directly) → stat = 0 → multiplier 0.
     assert_eq!(db.sum(ModType::Inc, &cfg, &names), 0.0);
 
-    // 带 output 快照：Life = 5430 → floor(5430/100 + ε) = 54 → 1 × 54。
+    // With an output snapshot: Life = 5430 → floor(5430/100 + eps) = 54 → 1 × 54.
     let lookup = |stat: &str| (stat == "Life").then_some(5430.0);
     let ctx = EvalContext::with_stat_lookup(&cfg, &lookup);
     assert_eq!(db.sum(ModType::Inc, ctx, &names), 54.0);
 }
 
-/// EvalContext::stat 无 lookup 时回退 cfg.stats 快照（生产接线通道：编排层 6c
-/// 回填 cfg.stats，mod_db 内部 `EvalContext::new(cfg)` 查询即取到值——
-/// PerStat/PercentStat 不再依赖消费方显式构造 stat_lookup）。lookup 命中仍优先。
+/// When EvalContext::stat has no lookup, it falls back to the cfg.stats snapshot (the
+/// production wiring: orchestration stage 6c backfills cfg.stats, so an internal
+/// `EvalContext::new(cfg)` query picks it up — PerStat/PercentStat no longer require the
+/// caller to explicitly build a stat_lookup). A lookup hit still takes priority.
 #[test]
 fn eval_context_stat_falls_back_to_cfg_stats_snapshot() {
     use pobr_core::EvalContext;
@@ -725,38 +724,39 @@ fn eval_context_stat_falls_back_to_cfg_stats_snapshot() {
     );
     let names = [ModName::from("Damage")];
 
-    // 仅 cfg.stats 快照（&cfg 直传 → EvalContext::new，无 lookup）→ 回退取到值。
+    // cfg.stats snapshot only (&cfg passed directly → EvalContext::new, no lookup) → falls back and finds it.
     let cfg = CalcConfig::new().with_stat("Life", 5430.0);
     assert_eq!(db.sum(ModType::Inc, &cfg, &names), 54.0);
 
-    // lookup 优先于快照（lookup Life=200 覆盖快照 5430）。
+    // lookup takes priority over the snapshot (lookup Life=200 overrides snapshot 5430).
     let lookup = |stat: &str| (stat == "Life").then_some(200.0);
     let ctx = EvalContext::with_stat_lookup(&cfg, &lookup);
     assert_eq!(db.sum(ModType::Inc, ctx, &names), 2.0);
 }
 
-/// PercentStat 按已算出 stat 的百分比缩放（V2 slice 2；vendor ModStore.lua:506-555）：
-/// `value = ceil(value × stat × percent/100)`——ceil 作用在最终贡献（区别 PerStat
-/// 的 floor 作用在乘数）；无快照 → stat=0 → 贡献 0（保守）；percent 缺省 → mult=stat。
+/// PercentStat scales by a percentage of an already-computed stat (V2 slice 2; vendor
+/// ModStore.lua:506-555): `value = ceil(value × stat × percent/100)` — ceil applies to the
+/// final contribution (unlike PerStat, where floor applies to the multiplier); no snapshot
+/// → stat=0 → contribution 0 (conservative); missing percent → mult=stat.
 #[test]
 fn percent_stat_scales_by_stat_percentage_with_ceil() {
     use pobr_core::EvalContext;
     let cfg = CalcConfig::new();
-    // 「gain Accuracy equal to 40% of Dexterity」形态：value=1 × Dex×40%。
+    // "gain Accuracy equal to 40% of Dexterity" shape: value=1 × Dex×40%.
     let m = Modifier::number("Accuracy", ModType::Base, 1.0).with_tag(ModTag::PercentStat {
         stat: "Dex".into(),
         percent: Some(40.0),
     });
 
-    // 无 output 快照 → stat=0 → ceil(0)=0。
+    // No output snapshot → stat=0 → ceil(0)=0.
     assert_eq!(m.effective_number(&cfg), Some(0.0));
 
-    // Dex=333 → 1 × 333×0.4 = 133.2 → ceil = 134（vendor m_ceil 作用最终值）。
+    // Dex=333 → 1 × 333×0.4 = 133.2 → ceil = 134 (vendor m_ceil applies to the final value).
     let lookup = |stat: &str| (stat == "Dex").then_some(333.0);
     let ctx = EvalContext::with_stat_lookup(&cfg, &lookup);
     assert_eq!(m.effective_number(ctx), Some(134.0));
 
-    // percent 缺省（vendor `(percent and percent/100 or 1)` 的 or-1 侧）→ mult=stat。
+    // Missing percent (the or-1 side of vendor `(percent and percent/100 or 1)`) → mult=stat.
     let plain = Modifier::number("X", ModType::Base, 2.0).with_tag(ModTag::PercentStat {
         stat: "Dex".into(),
         percent: None,
@@ -765,13 +765,14 @@ fn percent_stat_scales_by_stat_percentage_with_ceil() {
     assert_eq!(plain.effective_number(ctx), Some(666.0));
 }
 
-/// StatThreshold 二元 gate（V2s4；vendor ModStore.lua:556-573）：读 cfg.stats
-/// 快照在 matches 判定——FLAG 查询路径同样过闸（gate 在 matches 而非求值期，
-/// 这是与 MultiplierThreshold 同构、与 PerStat 求值期消费的关键差别）。
+/// StatThreshold is a binary gate (V2s4; vendor ModStore.lua:556-573): it reads the cfg.stats
+/// snapshot during matches — the FLAG query path is gated the same way (the gate lives in
+/// matches, not at evaluation time, which is the key difference from PerStat's evaluation-time
+/// consumption, though it's structurally the same as MultiplierThreshold).
 #[test]
 fn stat_threshold_gates_in_matches_for_all_query_paths() {
     let mut db = ModDb::new();
-    // 「cannot be stunned if you have at least 5 crab barriers」形态（FLAG）。
+    // "cannot be stunned if you have at least 5 crab barriers" shape (FLAG).
     db.add_mod(
         Modifier::flag("StunImmune").with_tag(ModTag::StatThreshold {
             stat: "CrabBarriers".into(),
@@ -779,7 +780,7 @@ fn stat_threshold_gates_in_matches_for_all_query_paths() {
             upper: false,
         }),
     );
-    // 数值路径：「30% more damage while energy shield is at most 100」（upper）。
+    // Numeric path: "30% more damage while energy shield is at most 100" (upper).
     db.add_mod(
         Modifier::number("Damage", ModType::More, 30.0).with_tag(ModTag::StatThreshold {
             stat: "EnergyShield".into(),
@@ -789,13 +790,13 @@ fn stat_threshold_gates_in_matches_for_all_query_paths() {
     );
     let names = [ModName::from("Damage")];
 
-    // 无快照（缺键=0）：lower gate 关（0 < 5），upper gate 开（0 ≤ 100）——
-    // 与 vendor output 缺 stat（GetStat=0）逐值一致。
+    // No snapshot (missing key = 0): lower gate is closed (0 < 5), upper gate is open (0 <= 100) —
+    // matches vendor value-for-value when output is missing the stat (GetStat=0).
     let cfg = CalcConfig::new();
     assert!(!db.flag(&cfg, ModName::from("StunImmune")));
     assert_eq!(db.more(&cfg, &names), 1.3);
 
-    // 快照越阈：lower 开、upper 关。
+    // Snapshot crosses the threshold: lower opens, upper closes.
     let cfg = CalcConfig::new()
         .with_stat("CrabBarriers", 5.0)
         .with_stat("EnergyShield", 250.0);
@@ -803,7 +804,7 @@ fn stat_threshold_gates_in_matches_for_all_query_paths() {
     assert_eq!(db.more(&cfg, &names), 1.0);
 }
 
-/// PerStat 的 limit / limit_var / actor 维度（与 M3 Multiplier 形态统一）。
+/// PerStat's limit / limit_var / actor dimensions (unified with the Multiplier shape).
 #[test]
 fn per_stat_applies_limits_and_actor_dimension() {
     use pobr_core::{ActorRef, EvalContext};
@@ -813,7 +814,7 @@ fn per_stat_applies_limits_and_actor_dimension() {
     let lookup = |stat: &str| (stat == "EnergyShield").then_some(1250.0);
     let ctx = EvalContext::with_stat_lookup(&cfg, &lookup);
 
-    // 静态 limit 优先（vendor :461-468 tag.limit）。
+    // Static limit takes priority (vendor :461-468 tag.limit).
     let limited = Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::PerStat {
         stat: "EnergyShield".into(),
         div: 25.0,
@@ -823,7 +824,7 @@ fn per_stat_applies_limits_and_actor_dimension() {
     });
     assert_eq!(limited.effective_number(ctx), Some(40.0), "50 → min(·,40)");
 
-    // 动态 limit_var → cfg.multiplier（vendor :462 GetMultiplier(self, limitVar)）。
+    // Dynamic limit_var → cfg.multiplier (vendor :462 GetMultiplier(self, limitVar)).
     let dyn_limited = Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::PerStat {
         stat: "EnergyShield".into(),
         div: 25.0,
@@ -833,8 +834,8 @@ fn per_stat_applies_limits_and_actor_dimension() {
     });
     assert_eq!(dyn_limited.effective_number(ctx), Some(30.0));
 
-    // actor 维度：读 actor_multipliers 快照（与 Multiplier actor 通道统一），
-    // 不读本 actor 的 output lookup。
+    // actor dimension: reads the actor_multipliers snapshot (unified with the Multiplier
+    // actor channel), not this actor's own output lookup.
     let cross = Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::PerStat {
         stat: "EnergyShield".into(),
         div: 100.0,
@@ -845,8 +846,9 @@ fn per_stat_applies_limits_and_actor_dimension() {
     assert_eq!(cross.effective_number(ctx), Some(8.0), "800/100 = 8");
 }
 
-/// GlobalLimit 累计限幅（vendor ModStore.lua:895-905）：同 key 两 mod 在单次
-/// 聚合内累计封顶；不同查询各自记账（vendor 每次 Sum 新建 globalLimits 表）。
+/// GlobalLimit does cumulative clamping (vendor ModStore.lua:895-905): two mods sharing a key
+/// are capped cumulatively within a single aggregation; separate queries account independently
+/// (vendor allocates a fresh globalLimits table on every Sum).
 #[test]
 fn global_limit_accumulates_and_truncates_within_one_query() {
     let cfg = CalcConfig::new();
@@ -859,19 +861,19 @@ fn global_limit_accumulates_and_truncates_within_one_query() {
     db.add_mod(Modifier::number("DoubleDamageChance", ModType::Base, 30.0).with_tag(tag()));
     db.add_mod(Modifier::number("DoubleDamageChance", ModType::Base, 35.0).with_tag(tag()));
 
-    // 30 + min(35, 50-30) = 30 + 20 = 50。
+    // 30 + min(35, 50-30) = 30 + 20 = 50.
     assert_eq!(db.sum(ModType::Base, &cfg, &names), 50.0);
-    // 第二次查询独立记账（不跨查询累计）。
+    // The second query accounts independently (no accumulation across queries).
     assert_eq!(db.sum(ModType::Base, &cfg, &names), 50.0);
 
-    // 贡献口径：第二条 clamped_from = Some(35)，截断后 20；Σ == sum()。
+    // Contribution view: the second entry has clamped_from = Some(35), truncated to 20; Σ == sum().
     let contributions = db.contributions(ModType::Base, &cfg, &names);
     assert_eq!(contributions[0].value, 30.0);
     assert_eq!(contributions[0].clamped_from, None);
     assert_eq!(contributions[1].value, 20.0);
     assert_eq!(contributions[1].clamped_from, Some(35.0));
 
-    // 不同 key 不互相记账。
+    // Different keys don't share accounting.
     let mut db2 = ModDb::new();
     db2.add_mod(Modifier::number("DoubleDamageChance", ModType::Base, 30.0).with_tag(tag()));
     db2.add_mod(
@@ -883,8 +885,9 @@ fn global_limit_accumulates_and_truncates_within_one_query() {
     assert_eq!(db2.sum(ModType::Base, &cfg, &names), 65.0);
 }
 
-/// GlobalLimit 在 MORE 聚合同样记账（vendor ModDB.lua:159-169 MoreInternal
-/// 传 globalLimits；限幅作用于百分比值，先于乘区折算）。
+/// GlobalLimit also accounts within MORE aggregation (vendor ModDB.lua:159-169 MoreInternal
+/// passes globalLimits; the clamp applies to the percentage value, before it's folded into
+/// the multiplier).
 #[test]
 fn global_limit_applies_to_more_aggregation() {
     let cfg = CalcConfig::new();
@@ -896,12 +899,13 @@ fn global_limit_applies_to_more_aggregation() {
     let mut db = ModDb::new();
     db.add_mod(Modifier::number("SomeMore", ModType::More, 20.0).with_tag(tag()));
     db.add_mod(Modifier::number("SomeMore", ModType::More, 25.0).with_tag(tag()));
-    // 20 全额 + min(25, 30-20)=10 → 1.20 × 1.10 = 1.32（round2 不变）。
+    // 20 in full + min(25, 30-20)=10 → 1.20 × 1.10 = 1.32 (round2 unchanged).
     assert_eq!(db.more(&cfg, &names), 1.32);
 }
 
-/// GlobalLimit 的 traced 路径：被截断贡献经 Clamp 节点入图（源节点带原值，
-/// Clamp 节点带实际计入值），未截断贡献直连（蓝图 W-A3：限幅显式入归因图）。
+/// GlobalLimit's traced path: a clamped contribution enters the graph through a Clamp node
+/// (the source node carries the original value, the Clamp node the actual counted value);
+/// an unclamped contribution connects directly (the clamp is explicit in the attribution graph).
 #[test]
 fn global_limit_traced_inserts_clamp_node() {
     let cfg = CalcConfig::new();

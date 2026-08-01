@@ -1,28 +1,37 @@
-//! 词条授予 keystone 的合并（M3 T5-E2，蓝图 m3-orchestration.md §8.2）。
+//! Merging keystones granted by mods.
 //!
-//! 对照 PoB2 `CalcPerform.lua:66-76 mergeKeystones`：Tabulate player db 的
-//! `Keystone` LIST mod（装备/珠宝词条「You have \<Keystone\>」/ 裸 keystone 名行，
-//! 由 mod_parser 产出 `Modifier{name:"Keystone", List, Text(名)}`）→ 未注入过的查
-//! [`Env::keystone_mods`]（pobr-build 从天赋树 keystone 节点构造、经
-//! `session.set_keystone_mods` 注入）把该 keystone 的 mods 写进玩家 modDB，归因
-//! SourceId = (`GrantedKeystone`, `"keystone.<名>"`)。
+//! Mirrors PoB2 `CalcPerform.lua:66-76 mergeKeystones`: tabulates the player
+//! db's `Keystone` LIST mod (item/jewel affixes like "You have \<Keystone\>" or
+//! a bare keystone name line, produced by mod_parser as
+//! `Modifier{name:"Keystone", List, Text(name)}`) and, for each not yet
+//! injected, looks it up in [`Env::keystone_mods`] (built by pobr-build from
+//! the passive tree's keystone nodes and injected via
+//! `session.set_keystone_mods`) to write that keystone's mods into the player
+//! modDB, attributed to SourceId = (`GrantedKeystone`, `"keystone.<name>"`).
 //!
-//! 去重语义（等价 PoB2 `env.keystonesAdded`）：
-//! - **阶段间幂等**（env_finalize 阶段 1 与 5 各跑一次）：注入产物携带
-//!   `GrantedKeystone` SourceId，本函数注入前扫 player db 同 SourceId 即跳过——
-//!   不需要 Env 携带额外状态字段。
-//! - **树已点同名不重复**：PoB2 树上已点 keystone 也只发 `Keystone` LIST mod、
-//!   经同一 merge 注入一次；pobr 的树路径（passive ingest）直接注入节点 mods，
-//!   故由 pobr-build 在构造 keystone_mods map 时**排除已点 keystone**（map 缺键
-//!   ＝ 此处静默跳过，等价 PoB2 `keystoneMap[name]` nil 检查分支）。
-//! - 同名 LIST mod 多条（多件装备授予同一 keystone）：本次调用内 HashSet 去重。
+//! Deduplication semantics (equivalent to PoB2's `env.keystonesAdded`):
+//! - **Idempotent across passes** (env_finalize stages 1 and 5 both run this):
+//!   injected mods carry a `GrantedKeystone` SourceId, so this function skips
+//!   any keystone already present with that SourceId in the player db — no
+//!   extra state field is needed on `Env`.
+//! - **No duplicate for an already-allocated tree node**: on PoB2's tree, an
+//!   allocated keystone node also only emits a `Keystone` LIST mod and is
+//!   injected once through this same merge; pobr's tree path (passive ingest)
+//!   injects the node's mods directly instead, so pobr-build **excludes
+//!   already-allocated keystones** when building the `keystone_mods` map (a
+//!   missing map key is silently skipped here, equivalent to PoB2's
+//!   `keystoneMap[name]` nil-check branch).
+//! - Multiple `Keystone` LIST mods with the same name (several items granting
+//!   the same keystone) are deduplicated with a `HashSet` within one call.
 //!
-//! 与 M2 `rules/keystone_registry.rs` 的关系：本模块只负责「词条→keystone 的
-//! mod 注入」；CI/EB 等机制开关仍由 keystone_registry 读 flag 裁决（注入的 mods
-//! 里含对应 flag 即自动接通）。
+//! Relationship to `rules/keystone_registry.rs`: this module only handles
+//! "mod → keystone mod injection"; mechanism gates like CI/EB are still
+//! decided by keystone_registry reading flags (having the corresponding flag
+//! among the injected mods wires it up automatically).
 //!
-//! 空转兼容（D1 搬迁不变式锚点）：无 `Keystone` LIST 词条 / `keystone_mods` 空
-//! map 时 player db 零写入，输出逐值不变。
+//! No-op safe (this is the invariant anchor for the D1 migration): with no
+//! `Keystone` LIST mod or an empty `keystone_mods` map, the player db gets no
+//! writes and every output value is unchanged.
 
 use std::collections::HashSet;
 
@@ -30,15 +39,15 @@ use pobr_data::prelude::*;
 
 use super::Env;
 
-/// `Keystone` LIST 通道的 ModName（PoB2 `Tabulate("LIST", nil, "Keystone")`）。
+/// ModName for the `Keystone` LIST channel (PoB2 `Tabulate("LIST", nil, "Keystone")`).
 const KEYSTONE_LIST_NAME: &str = "Keystone";
 
-/// keystone 注入归因 SourceId（蓝图 D4：`GrantedKeystone, "keystone.<name>"`）。
+/// Attribution SourceId for a keystone injection (`GrantedKeystone, "keystone.<name>"`).
 fn keystone_source_id(name: &str) -> SourceId {
     SourceId::new(SourceKind::GrantedKeystone, format!("keystone.{name}"))
 }
 
-/// env_finalize 阶段 1/5 的实现体（对照 CalcPerform.lua:66-76）。
+/// Implementation body for env_finalize stages 1/5 (mirrors CalcPerform.lua:66-76).
 pub fn merge_keystones(env: &mut Env) {
     if env.keystone_mods.is_empty() {
         return;
@@ -52,7 +61,8 @@ pub fn merge_keystones(env: &mut Env) {
         return;
     }
 
-    // 已注入集合（阶段间幂等）：player db 中已有 GrantedKeystone 归因的 keystone 名。
+    // Set of already-injected names (cross-stage idempotency): keystones already
+    // present in the player db with GrantedKeystone attribution.
     let mut added: HashSet<String> = env
         .player
         .mod_db
@@ -65,18 +75,21 @@ pub fn merge_keystones(env: &mut Env) {
 
     let mut to_inject: Vec<crate::Modifier> = Vec::new();
     for name in granted {
-        // 等价 `if not env.keystonesAdded[modObj.value]`；本次调用内同名多条也去重。
+        // Equivalent to `if not env.keystonesAdded[modObj.value]`; also
+        // deduplicates multiple mods with the same name within this call.
         if !added.insert(name.clone()) {
             continue;
         }
-        // 等价 `env.spec.tree.keystoneMap[modObj.value]` nil 检查：map 缺键（含
-        // pobr-build 已排除的「树已点」keystone）静默跳过。
+        // Equivalent to the `env.spec.tree.keystoneMap[modObj.value]` nil
+        // check: a missing map key (including "already allocated on the
+        // tree" keystones excluded by pobr-build) is silently skipped.
         let Some(mods) = env.keystone_mods.get(&name) else {
             continue;
         };
         let source_id = keystone_source_id(&name);
         for modifier in mods {
-            // 归因统一覆写为 GrantedKeystone（raw_text 保留 map 构造侧已带的原词条行）。
+            // Attribution is always overwritten to GrantedKeystone (raw_text
+            // keeps the original mod line already carried by the map).
             let raw_text = modifier
                 .origin
                 .as_ref()
@@ -121,7 +134,7 @@ mod tests {
         )])
     }
 
-    /// 装备词条授予 keystone → 其 mods 注入一次，归因 GrantedKeystone。
+    /// An item mod grants a keystone → its mods are injected once, attributed to GrantedKeystone.
     #[test]
     fn grants_keystone_mods_once_with_granted_keystone_source() {
         let mut env = env_with_grant("Iron Reflexes");
@@ -154,12 +167,12 @@ mod tests {
         );
     }
 
-    /// 阶段 1 与阶段 5 各跑一次（PoB2 keystonesAdded 幂等）→ 不重复注入；
-    /// 同名 LIST mod 多条同样去重。
+    /// Running stage 1 and stage 5 each once (PoB2 keystonesAdded idempotency)
+    /// does not double-inject; multiple LIST mods with the same name are also deduplicated.
     #[test]
     fn second_pass_and_duplicate_grants_are_idempotent() {
         let mut env = env_with_grant("Iron Reflexes");
-        // 第二件装备授予同一 keystone。
+        // A second item grants the same keystone.
         env.player.mod_db.add_mod(Modifier::new(
             KEYSTONE_LIST_NAME,
             ModType::List,
@@ -167,8 +180,8 @@ mod tests {
         ));
         env.keystone_mods = iron_reflexes_map();
 
-        merge_keystones(&mut env); // 阶段 1
-        merge_keystones(&mut env); // 阶段 5
+        merge_keystones(&mut env); // stage 1
+        merge_keystones(&mut env); // stage 5
 
         assert_eq!(
             env.player
@@ -179,8 +192,9 @@ mod tests {
         );
     }
 
-    /// map 缺键（pobr-build 已排除「树已点同名」keystone）→ 静默跳过，零写入
-    /// （等价 PoB2 keystoneMap[name] nil 分支）。
+    /// A missing map key (pobr-build has already excluded "already allocated
+    /// on the tree" keystones) is silently skipped with no writes
+    /// (equivalent to PoB2's keystoneMap[name] nil branch).
     #[test]
     fn missing_map_entry_is_silently_skipped() {
         let mut env = env_with_grant("Iron Reflexes");
@@ -195,7 +209,7 @@ mod tests {
         assert_eq!(env.player.mod_db.iter_mods().count(), before);
     }
 
-    /// 空 map → 逐值不变（D1 空转兼容锚点，经 env_finalize 全调度验证）。
+    /// An empty map leaves every value unchanged (D1 no-op-safe anchor, verified through the full env_finalize dispatch).
     #[test]
     fn empty_map_keeps_db_unchanged_through_env_finalize() {
         let mut env = env_with_grant("Iron Reflexes");

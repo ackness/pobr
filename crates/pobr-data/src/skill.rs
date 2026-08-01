@@ -2,19 +2,24 @@ use std::ops::{BitOr, BitOrAssign};
 
 use crate::stat::StatId;
 
-/// 位掩码字数（320 位，覆盖 PoB2 SkillType 枚举全域——当前最大 id=290，
-/// 见 `Global.lua` SkillType 表；Companion=198、Grenade=159 等高位 id 都在域内）。
+/// Bitmask word count (320 bits, covering PoB2's whole SkillType enum
+/// range — the current max id is 290, see `Global.lua`'s SkillType table;
+/// high ids like Companion=198 and Grenade=159 are all within range).
 const SKILL_TYPE_WORDS: usize = 5;
 
-/// PoE2 技能类型位掩码（对照 PoB2 `src/Data/Global.lua::SkillType`）。
+/// PoE2 skill-type bitmask (matches PoB2 `src/Data/Global.lua::SkillType`).
 ///
-/// 每个常量对应 PoB2 枚举值对应的位（`bit(enum_value - 1)`）。
-/// 未在此列出的较冷门类型可用 [`SkillTypes::from_pob2_index`] 构造。
+/// Each constant corresponds to the bit for that PoB2 enum value
+/// (`bit(enum_value - 1)`). Less common types not listed here can be
+/// constructed with [`SkillTypes::from_pob2_index`].
 ///
-/// 内部为 `[u64; SKILL_TYPE_WORDS]`（320 位）——历史 u64 版本装不下 id > 64 的
-/// 类型（Meta=122、Grenade=159、Companion=198 等，旧实现对其静默归 NONE）。
-/// [`Debug`] 输出对高位全零的值保持旧 newtype 格式（`SkillTypes(2)`），预编译
-/// 缓存（`parsed_mods.json` 以 Debug 字符串存 tag）对既有条目逐字节不变。
+/// Internally a `[u64; SKILL_TYPE_WORDS]` (320 bits) — the historical u64
+/// version couldn't hold types with id > 64 (Meta=122, Grenade=159,
+/// Companion=198, etc.; the old implementation silently mapped those to
+/// NONE). [`Debug`] output keeps the old newtype format
+/// (`SkillTypes(2)`) when the high words are all zero, so the
+/// precompiled-mods cache (`parsed_mods.json`, which stores tags as their
+/// Debug string) stays byte-identical for existing entries.
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct SkillTypes([u64; SKILL_TYPE_WORDS]);
 
@@ -42,15 +47,15 @@ impl SkillTypes {
     pub const CHAINS: Self = Self::bit(18);
     /// PoB2 SkillType.Melee = 20
     pub const MELEE: Self = Self::bit(19);
-    /// PoB2 SkillType.Multicastable = 22（可被 Spell Echo 重复）
+    /// PoB2 SkillType.Multicastable = 22 (can be repeated by Spell Echo)
     pub const MULTICASTABLE: Self = Self::bit(21);
     /// PoB2 SkillType.Triggerable = 31
     pub const TRIGGERABLE: Self = Self::bit(30);
     /// PoB2 SkillType.Triggers = 32
     pub const TRIGGERS: Self = Self::bit(31);
-    /// PoB2 SkillType.Trapped = 33（陷阱投掷技能）
+    /// PoB2 SkillType.Trapped = 33 (a trap-throw skill)
     pub const TRAPPED: Self = Self::bit(32);
-    /// PoB2 SkillType.RemoteMined = 36（地雷技能）
+    /// PoB2 SkillType.RemoteMined = 36 (a mine skill)
     pub const REMOTE_MINED: Self = Self::bit(35);
     /// PoB2 SkillType.Triggered = 37
     pub const TRIGGERED: Self = Self::bit(36);
@@ -62,33 +67,36 @@ impl SkillTypes {
     pub const WARCRY: Self = Self::bit(62);
     /// PoB2 SkillType.Herald = 52
     pub const HERALD: Self = Self::bit(51);
-    /// PoB2 SkillType.SummonsTotem = 25（Ancestral Bond「Totems reserve N
-    /// Spirit each」的 ExtraSpirit tag 作用域 + 预留循环入选位）
+    /// PoB2 SkillType.SummonsTotem = 25 (the scope for Ancestral Bond's
+    /// "Totems reserve N Spirit each" ExtraSpirit tag, plus a reserved slot
+    /// for the future reservation loop)
     pub const SUMMONS_TOTEM: Self = Self::bit(24);
-    /// PoB2 SkillType.Banner = 89（「Banner Skills have N% increased Aura
-    /// Magnitudes」等 banner 域词条的作用域）
+    /// PoB2 SkillType.Banner = 89 (the scope for banner-domain mods like
+    /// "Banner Skills have N% increased Aura Magnitudes")
     pub const BANNER: Self = Self::bit(88);
-    /// PoB2 SkillType.Meta = 122（Blasphemy / Spellslinger / Archmage /
-    /// Cast-on-X 等 meta gem；「Meta Skills have N% increased Reservation
-    /// Efficiency」词条的作用域）
+    /// PoB2 SkillType.Meta = 122 (meta gems like Blasphemy / Spellslinger /
+    /// Archmage / Cast-on-X; the scope for "Meta Skills have N% increased
+    /// Reservation Efficiency")
     pub const META: Self = Self::bit(121);
-    /// PoB2 SkillType.Persistent = 140（banner/herald/aura 等持续预留效果；
-    /// 「Persistent Buffs have N% less Reservation」（Tactician『A Solid
-    /// Plan』）以 Persistent+Buff 双 tag AND 限定作用域）
+    /// PoB2 SkillType.Persistent = 140 (sustained-reservation effects like
+    /// banner/herald/aura; "Persistent Buffs have N% less Reservation"
+    /// (Tactician's "A Solid Plan") scopes itself with a Persistent+Buff
+    /// AND of both tags)
     pub const PERSISTENT: Self = Self::bit(139);
-    /// PoB2 SkillType.Barrageable = 70（Barrage buff 的 repeats DPS 乘区
-    /// 门控，vendor CalcOffence.lua:962-976）
+    /// PoB2 SkillType.Barrageable = 70 (the gate for Barrage buff's repeats
+    /// DPS multiplier, vendor CalcOffence.lua:962-976)
     pub const BARRAGEABLE: Self = Self::bit(69);
 
-    /// 第 `index` 位（0-based）置 1 的掩码（const 构造）。
+    /// A mask with bit `index` (0-based) set (const-constructible).
     const fn bit(index: u32) -> Self {
         let mut words = [0u64; SKILL_TYPE_WORDS];
         words[(index / 64) as usize] = 1u64 << (index % 64);
         Self(words)
     }
 
-    /// 从 PoB2 枚举值（1-based）构造 `SkillTypes`，允许使用尚未命名为常量的类型。
-    /// 超出位域容量（>320）归 NONE（保守）。
+    /// Builds a `SkillTypes` from a PoB2 enum value (1-based), for types
+    /// that don't have a named constant yet. Out-of-range values (>320)
+    /// map to NONE (conservative).
     pub fn from_pob2_index(index: u32) -> Self {
         if index == 0 || index > (SKILL_TYPE_WORDS as u32) * 64 {
             Self::NONE
@@ -97,11 +105,15 @@ impl SkillTypes {
         }
     }
 
-    /// 从 PoB2 枚举名构造（`Global.lua::SkillType` **全量** 290 名，生成边车
-    /// `skill_type_names.txt`，vendor 升级后 regen）——SkillType 名→位映射的
-    /// **单一入口**，parser tag 侧与编排 cfg 侧共用（数据驱动 A1：取代
-    /// template.rs / special_mod.rs / conditions.rs 的手工白名单副本）。
-    /// 未知名（vendor 枚举外）→ `None`，由调用侧决定丢弃语义。
+    /// Builds from a PoB2 enum name (all 290 names of
+    /// `Global.lua::SkillType`, generated into the `skill_type_names.txt`
+    /// sidecar, regenerated on vendor upgrades) — the **single entry
+    /// point** for the SkillType name→bit mapping, shared by both the
+    /// parser's tag side and the orchestration cfg side (data-driven per
+    /// A1: replaces the hand-written whitelist copies that used to live in
+    /// template.rs / special_mod.rs / conditions.rs). An unknown name
+    /// (outside vendor's enum) → `None`; the caller decides how to handle
+    /// the drop.
     pub fn from_pob2_name(name: &str) -> Option<Self> {
         crate::skill_type_names::lookup(name).map(Self::from_pob2_index)
     }
@@ -132,21 +144,26 @@ impl SkillTypes {
         true
     }
 
-    /// 低 64 位窗口（id 1-64 的类型）。仅供旧格式序列化 / 断言用；高位类型
-    /// （Meta 等）不在此窗口——完整位域走 [`Debug`] / [`SkillTypes::words`]。
+    /// The low-64-bit window (types with id 1-64). For legacy-format
+    /// serialization / assertions only; high-id types (Meta, etc.) aren't
+    /// in this window — use [`Debug`] / [`SkillTypes::words`] for the full
+    /// bit field.
     pub fn bits(self) -> u64 {
         self.0[0]
     }
 
-    /// 完整位域字数组（低位在前）。
+    /// The full bit-field word array (low word first).
     pub fn words(self) -> [u64; SKILL_TYPE_WORDS] {
         self.0
     }
 }
 
-/// 高位全零时保持历史 u64 newtype 的 Debug 形（`SkillTypes(2)`）——预编译缓存
-/// （`parsed_mods.json`）以 Debug 字符串存既有 tag，格式漂移会伪失效全部缓存。
-/// 高位非零时输出全字数组形（`SkillTypes([lo, mid, hi])`）。
+/// Keeps the historical u64 newtype's Debug shape (`SkillTypes(2)`) when
+/// the high words are all zero — the precompiled-mods cache
+/// (`parsed_mods.json`) stores existing tags as their Debug string, and a
+/// format drift would spuriously invalidate the whole cache. Outputs the
+/// full word-array shape (`SkillTypes([lo, mid, hi])`) when a high word is
+/// non-zero.
 impl std::fmt::Debug for SkillTypes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.0[1..] == [0; SKILL_TYPE_WORDS - 1] {

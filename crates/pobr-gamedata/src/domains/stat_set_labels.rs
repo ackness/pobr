@@ -1,23 +1,28 @@
-//! `overlay/stat_set_labels.json` loader——statSet 形态 label + vendor 导出序号
-//! （`(skill, set_id) → {set_index, label}`），schema 见
-//! [`pobr_data::catalog::skills`] 的 `StatSetLabelDef` 段（M1-T5.2 多 statSet）。
+//! `overlay/stat_set_labels.json` loader — a statSet's form label + vendor
+//! export index (`(skill, set_id) → {set_index, label}`), schema in
+//! [`pobr_data::catalog::skills`]'s `StatSetLabelDef` section.
 //!
-//! 数据来源：vendor `Data/Skills/*.lua`（label 文本）join `Export/Skills/*.txt`
-//! 模板（set id / 导出序号），由 `sync-pob-catalog extract-lua --what
-//! stat-set-labels` 确定性抽取（`.dat` `Label` 列的 FK 目标表
-//! `GrantedEffectLabels` 在钉定补丁不可下载）。
+//! Data source: vendor `Data/Skills/*.lua` (label text) joined with
+//! `Export/Skills/*.txt` templates (set id / export index),
+//! deterministically extracted by
+//! `sync-pob-catalog extract-lua --what stat-set-labels` (the `.dat`
+//! `Label` column's FK target table `GrantedEffectLabels` isn't
+//! downloadable at the pinned patch).
 //!
-//! 消费方式：[`crate::GameData::skill_stat_sets`] 在加载 base 多 set 域后按
-//! `(effect_id, set_id)` merge 填充 `StatSetDef::label` / `vendor_set_index`。
+//! Consumption: [`crate::GameData::skill_stat_sets`] merges this by
+//! `(effect_id, set_id)` after loading the base multi-set domain, filling
+//! in `StatSetDef::label` / `vendor_set_index`.
 
 use pobr_data::catalog::StatSetLabelsDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载 statSet label 表（恒走 `overlay/` 定位）。文件缺失（旧数据包无此
-    /// overlay 域）返回 `Ok(None)`——消费侧行为 = label / 导出序号保持空（向后
-    /// 兼容）；其余 IO / 解析错误照常上抛，不静默。
+    /// Loads the statSet label table (always resolved under `overlay/`).
+    /// Returns `Ok(None)` when the file is missing (an old data pack
+    /// without this overlay domain) — the consumer behaves as "label /
+    /// export index stay empty" (backward compatible); other I/O / parse
+    /// errors still propagate, not silenced.
     pub fn stat_set_labels(&self) -> Result<Option<StatSetLabelsDef>, LoadError> {
         match self.load_json_at::<StatSetLabelsDef>(self.overlay_path("stat_set_labels.json")) {
             Ok(def) => Ok(Some(def)),
@@ -45,14 +50,14 @@ mod tests {
         dir
     }
 
-    /// overlay 文件缺失（旧数据包）→ Ok(None)，不报错。
+    /// A missing overlay file (an old data pack) → Ok(None), no error.
     #[test]
     fn missing_overlay_file_yields_none() {
         let dir = temp_dir("missing");
         assert!(GameData::new(&dir).stat_set_labels().unwrap().is_none());
     }
 
-    /// 正常加载：`_meta` 头部忽略，labels 列表按序读出。
+    /// Normal load: the `_meta` header is ignored, the labels list read out in order.
     #[test]
     fn loads_labels_and_ignores_meta() {
         let dir = temp_dir("loads");

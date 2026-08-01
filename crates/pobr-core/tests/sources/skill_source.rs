@@ -6,7 +6,7 @@ use pobr_core::skill_source::{
 };
 use std::collections::HashSet;
 
-/// engine 版 ingest（签名对齐历史无 ctx 入口，注入真实规则）。
+/// Engine-backed ingest (signature matches the historical ctx-less entry points, but wired to the real rules).
 fn ingest_gem(gem: &GemModSource) -> Result<GemIngest, pobr_core::mod_parser::ParseError> {
     ingest_gem_with_ctx(gem, crate::support::ctx())
 }
@@ -23,16 +23,14 @@ fn ingest_support_gem(
     ingest_support_gem_with_ctx(spec, active_skill_types, crate::support::ctx())
 }
 
-/// 构造主动技能类型集合（测试便捷）。
+/// Builds a set of active skill types (test convenience helper).
 fn type_set(types: &[&str]) -> HashSet<String> {
     types.iter().map(|s| s.to_string()).collect()
 }
 use pobr_core::{CalcConfig, ModDb, ModTag};
 use pobr_data::prelude::*;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 原始测试（向后兼容 GemModSource）
-// ─────────────────────────────────────────────────────────────────────────────
+// Original tests (backward compatibility with GemModSource)
 
 #[test]
 fn ingest_active_gem_attributes_to_skill_gem_source() {
@@ -53,7 +51,7 @@ fn ingest_active_gem_attributes_to_skill_gem_source() {
     assert_eq!(origin.source_id.kind, SourceKind::SkillGem);
     assert_eq!(origin.source_id.id, "gem.fireball");
     assert!(origin.raw_text.is_some());
-    // 主动宝石没有父技能来源。
+    // Active gems have no parent skill source.
     assert!(origin.parent_source_id.is_none());
 }
 
@@ -69,7 +67,7 @@ fn ingest_support_gem_attributes_to_support_gem_source_with_parent() {
     assert_eq!(origin.source_id.kind, SourceKind::SupportGem);
     assert_eq!(origin.source_id.id, "support.added_fire");
 
-    // support gem 的 modifier 关联到所支援的主动技能 source。
+    // A support gem's modifier links to the active-skill source it supports.
     let parent = origin
         .parent_source_id
         .as_ref()
@@ -148,11 +146,9 @@ fn session_add_support_gem_feeds_minimal_calc() {
     assert_eq!(output.life, 150.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TODO(mana-multiplier)：SupportManaMultiplier 注入测试
-// ─────────────────────────────────────────────────────────────────────────────
+// TODO(mana-multiplier): SupportManaMultiplier injection tests
 
-/// 辅助宝石携带 mana_multiplier = 40 → 注入 SupportManaMultiplier More +40。
+/// A support gem carrying mana_multiplier = 40 → injects SupportManaMultiplier More +40.
 #[test]
 fn support_gem_mana_multiplier_injects_modifier() {
     let spec = SupportGemSpec::new("multistrike", [] as [&str; 0])
@@ -161,31 +157,31 @@ fn support_gem_mana_multiplier_injects_modifier() {
 
     let ingest = ingest_support_gem(&spec, &type_set(&[])).unwrap();
 
-    // 只有 mana multiplier modifier，无词条文本 modifier。
+    // Only the mana multiplier modifier, no mod-text modifier.
     assert_eq!(ingest.modifiers.len(), 1);
     let m = &ingest.modifiers[0];
     assert_eq!(m.name, ModName::from("SupportManaMultiplier"));
     assert_eq!(m.mod_type, ModType::More);
     assert_eq!(m.value.as_number(), Some(40.0));
 
-    // 归因到辅助宝石 source。
+    // Attributed to the support gem source.
     let origin = m.origin.as_ref().unwrap();
     assert_eq!(origin.source_id.kind, SourceKind::SupportGem);
     assert_eq!(origin.source_id.id, "support.multistrike");
-    // parent 关联到被支援主动技能。
+    // parent links to the supported active skill.
     let parent = origin.parent_source_id.as_ref().unwrap();
     assert_eq!(parent.kind, SourceKind::SkillGem);
     assert_eq!(parent.id, "gem.cleave");
 }
 
-/// 不设置 mana_multiplier → 不注入 SupportManaMultiplier modifier。
+/// Without mana_multiplier set → no SupportManaMultiplier modifier is injected.
 #[test]
 fn support_gem_without_mana_multiplier_no_extra_mod() {
     let spec = SupportGemSpec::new("added_fire", ["20% increased Fire Damage"]);
 
     let ingest = ingest_support_gem(&spec, &type_set(&[])).unwrap();
 
-    // 只有一个词条 modifier，没有 SupportManaMultiplier。
+    // Only one mod-text modifier, no SupportManaMultiplier.
     let mana_mods: Vec<_> = ingest
         .modifiers
         .iter()
@@ -194,7 +190,7 @@ fn support_gem_without_mana_multiplier_no_extra_mod() {
     assert!(mana_mods.is_empty(), "expected no SupportManaMultiplier");
 }
 
-/// mana_multiplier 在 ModDb 中正确参与 More 乘积。
+/// mana_multiplier correctly participates in the More product inside ModDb.
 #[test]
 fn support_mana_multiplier_contributes_to_more_product() {
     let spec = SupportGemSpec::new("multistrike", [] as [&str; 0]).with_mana_multiplier(50.0);
@@ -209,15 +205,13 @@ fn support_mana_multiplier_contributes_to_more_product() {
     assert!((factor - 1.5).abs() < 1e-9, "expected 1.5, got {factor}");
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TODO(more-multiplier 隔离)：supported_skill_types tag 测试
-// ─────────────────────────────────────────────────────────────────────────────
+// TODO(more-multiplier isolation): supported_skill_types tag tests
 
-/// 设置 supported_skill_types 后，More modifier 附加 SkillTypes tag，
-/// 在不匹配的 CalcConfig 下不生效。
+/// Once supported_skill_types is set, the More modifier carries a SkillTypes tag
+/// and doesn't apply under a non-matching CalcConfig.
 #[test]
 fn support_more_multiplier_isolated_by_skill_types() {
-    // 辅助宝石只作用于 ATTACK 技能，并提供 30% more Damage。
+    // The support gem applies only to ATTACK skills and grants 30% more Damage.
     let spec = SupportGemSpec::new("brutality", ["30% more Damage"])
         .with_supported_skill_types(SkillTypes::ATTACK);
 
@@ -230,7 +224,7 @@ fn support_more_multiplier_isolated_by_skill_types() {
         .collect();
     assert_eq!(more_mods.len(), 1);
 
-    // 在 SPELL 配置下不生效（无交集）。
+    // Doesn't apply under a SPELL config (no overlap).
     let spell_cfg = CalcConfig::spell();
     let mut db = ModDb::new();
     db.add_list(ingest.modifiers.clone());
@@ -240,7 +234,7 @@ fn support_more_multiplier_isolated_by_skill_types() {
         "spell config should not trigger attack-only more, got {factor_spell}"
     );
 
-    // 在 ATTACK 配置下生效（有交集）。
+    // Applies under an ATTACK config (overlaps).
     let attack_cfg = CalcConfig::attack();
     let mut db2 = ModDb::new();
     db2.add_list(ingest.modifiers);
@@ -251,7 +245,7 @@ fn support_more_multiplier_isolated_by_skill_types() {
     );
 }
 
-/// supported_skill_types 为 NONE → More modifier 不附加 tag，全局生效。
+/// supported_skill_types = NONE → the More modifier carries no tag and applies globally.
 #[test]
 fn support_more_multiplier_without_skill_types_tag_is_global() {
     let spec = SupportGemSpec::new("elemental_focus", ["30% more Fire Damage"]);
@@ -263,7 +257,7 @@ fn support_more_multiplier_without_skill_types_tag_is_global() {
         .iter()
         .filter(|m| m.mod_type == ModType::More)
         .collect();
-    // 不应该有 SkillTypes tag。
+    // Should not carry a SkillTypes tag.
     for m in &more_mods {
         let has_skill_types_tag = m.tags.iter().any(|t| matches!(t, ModTag::SkillTypes(_)));
         assert!(
@@ -273,10 +267,10 @@ fn support_more_multiplier_without_skill_types_tag_is_global() {
     }
 }
 
-/// more modifier 不被 supported_skill_types 过滤（非 More 不附加 tag）。
+/// Non-More modifiers aren't filtered by supported_skill_types (only More gets the tag).
 #[test]
 fn support_inc_modifier_never_gets_skill_types_tag() {
-    // 即使设置 supported_skill_types，Inc modifier 不应附加 SkillTypes tag。
+    // Even with supported_skill_types set, Inc modifiers should not carry a SkillTypes tag.
     let spec = SupportGemSpec::new("concentrated_effect", ["40% increased Fire Damage"])
         .with_supported_skill_types(SkillTypes::SPELL);
 
@@ -297,16 +291,14 @@ fn support_inc_modifier_never_gets_skill_types_tag() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// skill-type-gating：PoB2 四段裁决测试（CalcTools.lua:84-110）
-// ─────────────────────────────────────────────────────────────────────────────
+// skill-type-gating: PoB2's four-stage gating tests (CalcTools.lua:84-110)
 
-/// 构造 require 表达式 token 流（测试便捷）。
+/// Builds a require-expression token stream (test convenience helper).
 fn tokens(list: &[&str]) -> Vec<String> {
     list.iter().map(|s| s.to_string()).collect()
 }
 
-/// 默认主动侧输入：宝石授予、可被支援。
+/// Default active-side input: granted by a gem, supportable.
 fn active_input(types: &HashSet<String>) -> ActiveSkillJudgeInput<'_> {
     ActiveSkillJudgeInput {
         cannot_be_supported: false,
@@ -315,7 +307,7 @@ fn active_input(types: &HashSet<String>) -> ActiveSkillJudgeInput<'_> {
     }
 }
 
-/// 第四段：空 require → 始终允许（无论主动技能类型集合如何）。
+/// Stage 4: an empty require → always allowed (regardless of the active skill's type set).
 #[test]
 fn judge_support_empty_require_always_ok() {
     let support = SupportJudgeInput::default();
@@ -324,9 +316,9 @@ fn judge_support_empty_require_always_ok() {
     }
 }
 
-/// 第四段：require 表达式匹配 → 允许；不匹配 → IncompatibleTypes。
-/// 用真实 token 流：SupportAncestralWarriorTotemPlayer require =
-/// `["Attack","Totemable","AND"]`（后缀 AND，两者皆备才通过）。
+/// Stage 4: require expression matches → allowed; doesn't match → IncompatibleTypes.
+/// Uses a real token stream: SupportAncestralWarriorTotemPlayer's require =
+/// `["Attack","Totemable","AND"]` (postfix AND — both must be present to pass).
 #[test]
 fn judge_support_require_expression() {
     let require = tokens(&["Attack", "Totemable", "AND"]);
@@ -335,11 +327,11 @@ fn judge_support_require_expression() {
         ..SupportJudgeInput::default()
     };
 
-    // Attack + Totemable → 匹配。
+    // Attack + Totemable → matches.
     let both = type_set(&["Attack", "Totemable", "Melee"]);
     assert!(judge_support(&support, &active_input(&both)).is_ok());
 
-    // 仅 Attack（缺 Totemable）→ AND 不成立 → 拒。
+    // Only Attack (missing Totemable) → AND doesn't hold → rejected.
     let only_attack = type_set(&["Attack"]);
     assert!(matches!(
         judge_support(&support, &active_input(&only_attack)),
@@ -347,11 +339,12 @@ fn judge_support_require_expression() {
     ));
 }
 
-/// 第三段：exclude 表达式命中 → Excluded（优先于 require 判定）。
-/// 用真实 token 流：SupportArcaneSurgePlayer exclude =
+/// Stage 3: an exclude expression hit → Excluded (takes priority over the require verdict).
+/// Uses a real token stream: SupportArcaneSurgePlayer exclude =
 /// `["UsedByProxy","Triggered","Persistent","HasReservation",
-///   "ReservationBecomesCost","NOT","AND"]`——栈机语义：前四项任一真即命中
-/// （残留隐式 OR），末段 `ReservationBecomesCost NOT AND` 仅约束最后一项。
+///   "ReservationBecomesCost","NOT","AND"]` — stack-machine semantics: a hit if any of the
+/// first four items is true (an implicit residual OR); the trailing `ReservationBecomesCost NOT AND`
+/// only constrains the last item.
 #[test]
 fn judge_support_exclude_expression_hits() {
     let require = tokens(&["Spell"]);
@@ -370,11 +363,11 @@ fn judge_support_exclude_expression_hits() {
         ..SupportJudgeInput::default()
     };
 
-    // 普通法术：不命中 exclude，require 匹配 → 通过。
+    // A plain spell: doesn't hit exclude, require matches → passes.
     let spell = type_set(&["Spell", "Damage"]);
     assert!(judge_support(&support, &active_input(&spell)).is_ok());
 
-    // 触发法术：exclude 残留栈含 Triggered=true → 命中 → 拒（即使 require 也匹配）。
+    // A triggered spell: the exclude residual stack has Triggered=true → hit → rejected (even though require also matches).
     let triggered = type_set(&["Spell", "Triggered"]);
     assert!(matches!(
         judge_support(&support, &active_input(&triggered)),
@@ -382,7 +375,7 @@ fn judge_support_exclude_expression_hits() {
     ));
 }
 
-/// 第一段：主动效果 cannotBeSupported → 无条件拒绝（即使 support 无任何限制）。
+/// Stage 1: active-effect cannotBeSupported → unconditional rejection (even if support has no restrictions at all).
 #[test]
 fn judge_support_cannot_be_supported_rejects_first() {
     let support = SupportJudgeInput::default();
@@ -398,7 +391,7 @@ fn judge_support_cannot_be_supported_rejects_first() {
     );
 }
 
-/// 第二段：supportGemsOnly 且主动技能非宝石授予 → 拒；宝石授予 → 通过。
+/// Stage 2: supportGemsOnly and the active skill isn't granted by a gem → rejected; granted by a gem → passes.
 #[test]
 fn judge_support_support_gems_only() {
     let support = SupportJudgeInput {
@@ -407,7 +400,7 @@ fn judge_support_support_gems_only() {
     };
     let types = type_set(&["Attack"]);
 
-    // 非宝石授予（如物品授予技能）→ 拒。
+    // Not granted by a gem (e.g. an item-granted skill) → rejected.
     let from_item = ActiveSkillJudgeInput {
         cannot_be_supported: false,
         from_gem: false,
@@ -418,12 +411,13 @@ fn judge_support_support_gems_only() {
         Err(SkillGatingError::SupportGemsOnly)
     );
 
-    // 宝石授予 → 通过。
+    // Granted by a gem → passes.
     assert!(judge_support(&support, &active_input(&types)).is_ok());
 }
 
-/// 裁决顺序：四段按 cannotBeSupported → supportGemsOnly → exclude → require，
-/// 同时满足多个拒绝条件时报最先命中的段（对齐 CalcTools.lua:84-110 早退顺序）。
+/// Gating order: the four stages run cannotBeSupported → supportGemsOnly → exclude → require;
+/// when multiple rejection conditions hold at once, the earliest-hit stage is reported
+/// (matches CalcTools.lua:84-110's early-exit order).
 #[test]
 fn judge_support_stage_order() {
     let require = tokens(&["Totemable"]);
@@ -433,7 +427,7 @@ fn judge_support_stage_order() {
         exclude_skill_types: &exclude,
         require_skill_types: &require,
     };
-    // 同时触发段 2/3/4 → 报段 2（SupportGemsOnly）。
+    // Triggers stages 2/3/4 at once → reports stage 2 (SupportGemsOnly).
     let types = type_set(&["Triggered"]);
     let active = ActiveSkillJudgeInput {
         cannot_be_supported: false,
@@ -444,7 +438,7 @@ fn judge_support_stage_order() {
         judge_support(&support, &active),
         Err(SkillGatingError::SupportGemsOnly)
     );
-    // 段 1 优先于一切。
+    // Stage 1 takes priority over everything.
     let active1 = ActiveSkillJudgeInput {
         cannot_be_supported: true,
         ..active
@@ -455,13 +449,13 @@ fn judge_support_stage_order() {
     );
 }
 
-/// ingest_support_gem 门控：require 表达式不匹配则报 Gating 错误。
+/// ingest_support_gem gating: a mismatched require expression reports a Gating error.
 #[test]
 fn ingest_support_gem_gates_incompatible_active_skill() {
     let spec = SupportGemSpec::new("melee_physical", ["20% more Physical Damage"])
         .with_require_skill_types(["Attack", "Melee", "AND"]);
 
-    // 对纯法术主动技能失败。
+    // Fails for a pure-spell active skill.
     let result = ingest_support_gem(&spec, &type_set(&["Spell"]));
     assert!(
         result.is_err(),
@@ -469,7 +463,7 @@ fn ingest_support_gem_gates_incompatible_active_skill() {
     );
 }
 
-/// ingest_support_gem 门控：兼容时不报错。
+/// ingest_support_gem gating: no error when compatible.
 #[test]
 fn ingest_support_gem_allows_compatible_active_skill() {
     let spec = SupportGemSpec::new("added_fire", ["20% more Fire Damage"])
@@ -479,7 +473,7 @@ fn ingest_support_gem_allows_compatible_active_skill() {
     assert!(result.is_ok(), "should allow attack active skill");
 }
 
-/// ingest_support_gem 门控：exclude 命中时拒收（数值全不吃）。
+/// ingest_support_gem gating: rejects when exclude hits (none of the values apply).
 #[test]
 fn ingest_support_gem_gates_excluded_active_skill() {
     let spec = SupportGemSpec::new("arcane_surge", ["10% more Cast Speed"])
@@ -490,7 +484,7 @@ fn ingest_support_gem_gates_excluded_active_skill() {
     assert!(result.is_err(), "excluded active skill should be rejected");
 }
 
-/// ingest_support_gem 门控：require 为空时无论 active skill types 如何都通过。
+/// ingest_support_gem gating: passes regardless of active skill types when require is empty.
 #[test]
 fn ingest_support_gem_no_require_always_ok() {
     let spec = SupportGemSpec::new("faster_casting", ["20% more Cast Speed"]);
@@ -503,11 +497,9 @@ fn ingest_support_gem_no_require_always_ok() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TODO(level/quality 缩放)：等级/品质归因测试
-// ─────────────────────────────────────────────────────────────────────────────
+// TODO(level/quality scaling): level/quality attribution tests
 
-/// ingest_support_gem 等级 modifier 归因到 SourceKind::SkillLevel。
+/// ingest_support_gem attributes level modifiers to SourceKind::SkillLevel.
 #[test]
 fn support_gem_level_mods_attributed_to_skill_level_source() {
     let spec = SupportGemSpec::new("added_fire", [] as [&str; 0])
@@ -532,11 +524,11 @@ fn support_gem_level_mods_attributed_to_skill_level_source() {
 
     let origin = level_mods[0].origin.as_ref().unwrap();
     assert_eq!(origin.source_id.id, "support.added_fire.level20");
-    // parent 关联到被支援主动技能。
+    // parent links to the supported active skill.
     assert_eq!(origin.parent_source_id.as_ref().unwrap().id, "gem.cleave");
 }
 
-/// ingest_support_gem 品质 modifier 归因到 SourceKind::GemQuality。
+/// ingest_support_gem attributes quality modifiers to SourceKind::GemQuality.
 #[test]
 fn support_gem_quality_mods_attributed_to_gem_quality_source() {
     let spec = SupportGemSpec::new("added_fire", [] as [&str; 0])
@@ -563,7 +555,7 @@ fn support_gem_quality_mods_attributed_to_gem_quality_source() {
     );
 }
 
-/// ingest_gem_leveled 主动宝石等级归因测试。
+/// ingest_gem_leveled active-gem level attribution test.
 #[test]
 fn ingest_gem_leveled_active_gem() {
     let level_mods = vec![
@@ -574,7 +566,7 @@ fn ingest_gem_leveled_active_gem() {
 
     let ingest = ingest_gem_leveled("fireball", 15, 20, &level_mods, &quality_mods);
 
-    // 2 个等级 modifier + 1 个品质 modifier。
+    // 2 level modifiers + 1 quality modifier.
     assert_eq!(ingest.modifiers.len(), 3);
 
     let lvl: Vec<_> = ingest
@@ -591,7 +583,7 @@ fn ingest_gem_leveled_active_gem() {
     for m in &lvl {
         let origin = m.origin.as_ref().unwrap();
         assert_eq!(origin.source_id.id, "gem.fireball.level15");
-        // parent 为宝石 source。
+        // parent is the gem source.
         assert_eq!(origin.parent_source_id.as_ref().unwrap().id, "gem.fireball");
     }
 
@@ -612,7 +604,7 @@ fn ingest_gem_leveled_active_gem() {
     );
 }
 
-/// level/quality 不设置 → 无对应 modifier。
+/// Without level/quality set → no corresponding modifiers.
 #[test]
 fn support_gem_without_level_quality_no_extra_mods() {
     let spec = SupportGemSpec::new("added_fire", ["20% more Fire Damage"]);
@@ -637,18 +629,16 @@ fn support_gem_without_level_quality_no_extra_mods() {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SkillTypes 扩展位标志测试
-// ─────────────────────────────────────────────────────────────────────────────
+// SkillTypes extended bit-flag tests
 
-/// SkillTypes 的 ATTACK 和 SPELL 保持不变（向后兼容）。
+/// SkillTypes's ATTACK and SPELL bits remain unchanged (backward compatibility).
 #[test]
 fn skill_types_attack_spell_bits_unchanged() {
     assert_eq!(SkillTypes::ATTACK.bits(), 1 << 0);
     assert_eq!(SkillTypes::SPELL.bits(), 1 << 1);
 }
 
-/// SkillTypes 的新常量对应正确的 bit（从 PoB2 枚举值 - 1）。
+/// SkillTypes's new constants map to the correct bits (PoB2 enum value minus 1).
 #[test]
 fn skill_types_new_constants_correct_bits() {
     assert_eq!(SkillTypes::PROJECTILE.bits(), 1 << 2); // PoB2 index 3
@@ -656,7 +646,7 @@ fn skill_types_new_constants_correct_bits() {
     assert_eq!(SkillTypes::MELEE.bits(), 1 << 19); // PoB2 index 20
 }
 
-/// from_pob2_index 正确映射。
+/// from_pob2_index maps correctly.
 #[test]
 fn skill_types_from_pob2_index() {
     assert_eq!(SkillTypes::from_pob2_index(1), SkillTypes::ATTACK);
@@ -665,7 +655,7 @@ fn skill_types_from_pob2_index() {
     assert_eq!(SkillTypes::from_pob2_index(0), SkillTypes::NONE);
 }
 
-/// BitOr 组合。
+/// BitOr combination.
 #[test]
 fn skill_types_bitor_works() {
     let combined = SkillTypes::ATTACK | SkillTypes::PROJECTILE;
@@ -674,11 +664,9 @@ fn skill_types_bitor_works() {
     assert!(!combined.intersects(SkillTypes::SPELL));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 综合测试：mana-multiplier + skill-type-gating + level/quality 联合
-// ─────────────────────────────────────────────────────────────────────────────
+// Combined test: mana-multiplier + skill-type-gating + level/quality together
 
-/// 完整辅助宝石规格（mana mult + 门控 + 等级/品质）端到端验证。
+/// End-to-end verification of a full support-gem spec (mana mult + gating + level/quality).
 #[test]
 fn full_support_gem_spec_end_to_end() {
     let spec = SupportGemSpec::new("multistrike", ["20% more Attack Damage"])
@@ -689,10 +677,10 @@ fn full_support_gem_spec_end_to_end() {
         .with_level(10, [("ManaCost".to_string(), ModType::Base, 8.0)])
         .with_quality(20, [("AttackSpeed".to_string(), ModType::Inc, 4.0)]);
 
-    // Attack 主动技能通过门控。
+    // An Attack active skill passes gating.
     let ingest = ingest_support_gem(&spec, &type_set(&["Attack", "Melee"])).unwrap();
 
-    // 应有：1 SupportManaMultiplier + 1 攻击词条 more + 1 等级 + 1 品质 = 4 modifier。
+    // Expect: 1 SupportManaMultiplier + 1 attack-mod more + 1 level + 1 quality = 4 modifiers.
     assert_eq!(
         ingest.modifiers.len(),
         4,
@@ -700,12 +688,12 @@ fn full_support_gem_spec_end_to_end() {
         ingest.modifiers.len()
     );
 
-    // 纯法术主动技能被门控拒绝（数值/manaMultiplier 全不吃）。
+    // A pure-spell active skill is rejected by gating (neither the values nor manaMultiplier apply).
     let rejected = ingest_support_gem(&spec, &type_set(&["Spell"]));
     assert!(rejected.is_err(), "Spell should be rejected by gating");
 }
 
-/// ingest_active_gem（新 API）主动宝石正确归因。
+/// ingest_active_gem (new API) attributes the active gem correctly.
 #[test]
 fn ingest_active_gem_spec_attribution() {
     let spec = ActiveSkillSpec::new(

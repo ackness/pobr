@@ -13,8 +13,9 @@ fn catalog_defines_core_display_stats() {
     assert!(ids.contains(&"BlockChance"));
 }
 
-/// 条目状态与 pob_key 完整性：M2-W0.2 起目录含 Computed（已接线）+ Planned（M2 防御
-/// 扩展，待 track 接线）两类；两类都必须带 pob_key（golden 对照键）。
+/// Entry status and pob_key completeness: the starting catalog has two kinds — Computed
+/// (wired up) and Planned (defense extensions, wiring pending a track); both kinds must
+/// carry a pob_key (the golden comparison key).
 #[test]
 fn catalog_entries_have_pob_keys_and_known_status() {
     let catalog = display_catalog();
@@ -31,8 +32,8 @@ fn catalog_entries_have_pob_keys_and_known_status() {
     }
 }
 
-/// 条目数锁定（M2-W0.2 / F-3 更新）：M2 防御扩展批 24 个字段已于 F-3 全部翻
-/// Computed → Planned = 0、Computed = 105；新增条目须显式更新本断言。
+/// Entry count pinned: F-3 flipped all 24 fields in the defense-extension batch to
+/// Computed -> Planned = 0, Computed = 105; new entries must explicitly update this assertion.
 #[test]
 fn catalog_entry_counts_locked() {
     let catalog = display_catalog();
@@ -51,7 +52,7 @@ fn catalog_entry_counts_locked() {
     );
 }
 
-/// M2 防御扩展字段批：F-3 后全部为 Computed，golden key 与 meta.json 对齐。
+/// Defense-extension field batch: all Computed after F-3, golden keys aligned with meta.json.
 #[test]
 fn catalog_defines_m2_defence_extension_stats_computed() {
     let catalog = display_catalog();
@@ -88,7 +89,7 @@ fn catalog_defines_m2_defence_extension_stats_computed() {
     ] {
         assert!(computed_ids.contains(&id), "missing computed entry {id}");
     }
-    // PoB2 golden key 对齐抽查（NumberOfMitigatedHits → NumberOfMitigatedDamagingHits）。
+    // Spot-check PoB2 golden key alignment (NumberOfMitigatedHits -> NumberOfMitigatedDamagingHits).
     let entry = |id: &str| {
         catalog
             .iter()
@@ -100,13 +101,14 @@ fn catalog_defines_m2_defence_extension_stats_computed() {
         Some("NumberOfMitigatedDamagingHits")
     );
     assert_eq!(entry("Spirit").pob_key.as_deref(), Some("Spirit"));
-    // 承伤/受眩晕类：越低越好。
+    // Damage-taken / stun-taken stats: lower is better.
     assert_eq!(entry("BlockEffect").higher_is_better, Some(false));
     assert_eq!(entry("SelfStunChance").higher_is_better, Some(false));
     assert_eq!(entry("StunDuration").higher_is_better, Some(false));
 }
 
-/// M2 防御扩展条目 F-3 翻 Computed 后进 extract（对外可见，默认 0 中性值）。
+/// After F-3 flips the defense-extension entries to Computed, they show up in extract
+/// (externally visible, defaulting to a neutral value of 0).
 #[test]
 fn m2_defence_extension_entries_included_in_extract() {
     let values = extract_display_values(&OutputTable::default());
@@ -152,9 +154,7 @@ fn extract_covers_every_computed_catalog_entry() {
     assert_eq!(values.len(), computed);
 }
 
-// ---------------------------------------------------------------------------
 // Wave 2 field coverage tests
-// ---------------------------------------------------------------------------
 
 /// Verify all Wave 2 defense extension fields land in the catalog.
 #[test]

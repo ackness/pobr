@@ -1,22 +1,26 @@
-//! `overlay/mod_parser_rules.json` loader——ModParser 解析规则六表（special
-//! 除外）+ §1.7 小查找表，schema 见 [`pobr_data::catalog::parser_rules`]
-//! （M6 前置，蓝图 m6-parser-rules.md §1）。
+//! `overlay/mod_parser_rules.json` loader — the ModParser rule six-table
+//! set (special excluded) + the §1.7 small lookup tables, schema in
+//! [`pobr_data::catalog::parser_rules`]
 //!
-//! 数据来源：vendor PoB2 `Modules/ModParser.lua`，由
-//! `sync-pob-catalog extract-lua --what parser-rules` headless 引导抽取
-//! （schema 标识 `mod_parser_rules/v1`）。消费侧 = M6-B 数据驱动 scan 引擎
-//! （`CompiledParserRules::compile` 在 pobr-core，本 loader 零语义、零编译，
-//! 保 P9 边界：gamedata 只 load）。`RuleSet.parser_rules` 的填实属 M6-T8
-//! 接线范围，本 loader 先随数据落地。
+//! Data source: vendor PoB2 `Modules/ModParser.lua`, extracted by
+//! `sync-pob-catalog extract-lua --what parser-rules` bootstrapping
+//! headless (schema id `mod_parser_rules/v1`). Consumer = the data-driven
+//! scan engine (`CompiledParserRules::compile` lives in pobr-core; this
+//! loader has zero semantics, zero compilation, keeping the I/O boundary —
+//! gamedata only loads). Actually populating `RuleSet.parser_rules` is a
+//! wiring-up concern; this loader lands with the data first.
 
 use pobr_data::catalog::parser_rules::ModParserRulesDoc;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载 ModParser 解析规则表（恒走 `overlay/` 定位）。文件缺失（旧数据包
-    /// 无此 overlay 域）返回 `Ok(None)`——消费侧行为 = 数据引擎不可用（双跑
-    /// 框架只能走 Legacy，向后兼容）；其余 IO / 解析错误照常上抛，不静默。
+    /// Loads the ModParser rule tables (always resolved under `overlay/`).
+    /// Returns `Ok(None)` when the file is missing (an old data pack
+    /// without this overlay domain) — the consumer behaves as "the data
+    /// engine is unavailable" (the dual-run framework can only use
+    /// Legacy, backward compatible); other I/O / parse errors still
+    /// propagate, not silenced.
     pub fn mod_parser_rules(&self) -> Result<Option<ModParserRulesDoc>, LoadError> {
         match self.load_json_at::<ModParserRulesDoc>(self.overlay_path("mod_parser_rules.json")) {
             Ok(doc) => Ok(Some(doc)),
@@ -41,15 +45,20 @@ mod tests {
     }
 
     fn real_data() -> GameData {
-        // 本模块测试钉定段计数 / vendor-commit 实测样本（版本特定，随抽取增长），故加载
-        // golden 校验版本而非活动版本（数据/计算解耦，见 pobr_data::GOLDEN_PARITY_DATA_VERSION）。
+        // This module's tests pin section counts / vendor-commit real
+        // samples (version-specific, growing with extraction), so it loads
+        // the golden verification version rather than the active version
+        // (decoupling data from calc, see
+        // pobr_data::GOLDEN_PARITY_DATA_VERSION).
         GameData::new(golden_version_dir())
     }
 
-    /// 仓库真实数据：各段条目数与 blessed 快照一致（蓝图 §1.9 计数自检的消费侧
-    /// 镜像）。计数随 vendor 抽取增长——具体数值进 `generated/test_pins.json`
-    /// （regen 后 `POBR_BLESS_PINS=1` 刷新，见 [`crate::test_pins`]）；本函数只
-    /// 保留结构性守卫（核心 form id 必须在场）。
+    /// Repo real data: every section's entry count matches the blessed
+    /// snapshot (a consumer-side mirror of the count self-check). Counts
+    /// grow with vendor extraction — the actual numbers live in
+    /// `generated/test_pins.json` (refreshed with `POBR_BLESS_PINS=1`
+    /// after a regen, see [`crate::test_pins`]); this function only keeps
+    /// the structural guard (core form ids must be present).
     #[test]
     fn real_data_section_counts() {
         let doc = real_data()
@@ -58,8 +67,8 @@ mod tests {
             .expect("仓库数据包应含 mod_parser_rules 域");
         let forms: std::collections::BTreeSet<&str> =
             doc.forms.iter().map(|f| f.form.as_str()).collect();
-        // flag_types 含 pobr 自增条目 `hindered`→`Condition:Hindered`（M6-conv2，
-        // 见 m6-dualrun-report §2.5），计数恒 = vendor + 1。
+        // flag_types includes a pobr-added entry `hindered`→`Condition:Hindered`,
+        // so the count is always vendor + 1.
         crate::test_pins::assert_pin(
             &golden_version_dir(),
             "parser_rules.section_counts",
@@ -82,7 +91,8 @@ mod tests {
                 "unsupported_pobr_extra": doc.unsupported_pobr_extra,
             }),
         );
-        // 结构性守卫：核心 form id 缺失 = 抽取通道坏，不随数据漂移。
+        // Structural guard: a missing core form id means the extraction
+        // channel is broken — it shouldn't drift with the data.
         for id in [
             "INC", "RED", "MORE", "LESS", "BASE", "PEN", "DMG", "DOUBLED",
         ] {
@@ -90,12 +100,13 @@ mod tests {
         }
     }
 
-    /// 抽样钉值：逐字段对照 vendor ModParser.lua 原文（搬迁不变式抽检）。
+    /// Spot-check pins: field-by-field comparison against vendor
+    /// ModParser.lua's original text (a migration-invariant sample check).
     #[test]
     fn real_data_sample_pins() {
         let doc = real_data().mod_parser_rules().unwrap().unwrap();
 
-        // formList：`["^(%d+)%% increased"] = "INC"`（ModParser.lua:63）
+        // formList: `["^(%d+)%% increased"] = "INC"` (ModParser.lua:63)
         let inc = doc
             .forms
             .iter()
@@ -105,8 +116,9 @@ mod tests {
         assert_eq!(inc.literal.as_deref(), Some("% increased"));
         assert!(inc.anchored);
 
-        // modNameList：`["attributes"]` vendor `{ "Str", "Dex", "Int", "All" }`（:161），
-        // 经 M6.3 路线 B 抽取期归一展开为 PoBR 子名（聚合短语展开，去 vendor `All`）。
+        // modNameList: `["attributes"]` is vendor's `{ "Str", "Dex", "Int", "All" }`
+        // (:161), already expanded at extraction time via route B into
+        // PoBR sub-names (an aggregate-phrase expansion, dropping vendor's `All`).
         let attributes = doc
             .name_map
             .iter()
@@ -117,7 +129,8 @@ mod tests {
             vec!["Strength", "Dexterity", "Intelligence"]
         );
 
-        // modNameList 带 tag：`["mana cost of attacks"]`（SkillType.Attack 反查名）
+        // modNameList with a tag: `["mana cost of attacks"]` (SkillType.Attack
+        // reverse-looked-up name)
         let mana_cost = doc
             .name_map
             .iter()
@@ -131,8 +144,8 @@ mod tests {
             Some(&StatMapValue::Text("Attack".into()))
         );
 
-        // modFlagList：`["with maces"] = { flags = bor(ModFlag.Mace, ModFlag.Hit) }`
-        // （掩码分解为 bit 升序名数组）
+        // modFlagList: `["with maces"] = { flags = bor(ModFlag.Mace, ModFlag.Hit) }`
+        // (the mask decomposed into a bit-ascending name array)
         let with_maces = doc
             .flag_phrases
             .iter()
@@ -140,7 +153,7 @@ mod tests {
             .expect("with maces 应存在");
         assert_eq!(with_maces.effects.flags, vec!["Hit", "Mace"]);
 
-        // preFlagList：`["^minions [cthd][ae][ukva][sel]e? "] = { addToMinion = true }`
+        // preFlagList: `["^minions [cthd][ae][ukva][sel]e? "] = { addToMinion = true }`
         let minions = doc
             .pre_flags
             .iter()
@@ -150,7 +163,7 @@ mod tests {
         assert_eq!(minions.literal.as_deref(), Some("minions "));
         assert!(minions.anchored);
 
-        // modTagList 纯表条目：`["per power charge"]`
+        // modTagList plain-table entry: `["per power charge"]`
         let per_power = doc
             .tag_phrases
             .iter()
@@ -163,7 +176,8 @@ mod tests {
         );
         assert!(!per_power.inferred);
 
-        // modTagList 闭包条目（探针推断模板）：`["per (%d+) rage"] = function(num)
+        // modTagList closure entry (a probe-inferred template):
+        // `["per (%d+) rage"] = function(num)
         // return { tag = { type = "Multiplier", var = "Rage", div = num } } end`
         let per_rage = doc
             .tag_phrases
@@ -180,8 +194,8 @@ mod tests {
             Some(&StatMapValue::Text("Rage".into()))
         );
 
-        // 字符串拼接模板：`per (%d+)%% (%a+) effect on enemy` 的 var =
-        // firstToUpper(effectName) .. "Effect" → "$2:cap+Effect"
+        // A string-concatenation template: `per (%d+)%% (%a+) effect on enemy`'s
+        // var = firstToUpper(effectName) .. "Effect" → "$2:cap+Effect"
         let effect = doc
             .tag_phrases
             .iter()
@@ -192,7 +206,8 @@ mod tests {
             Some(&StatMapValue::Text("$2:cap+Effect".into()))
         );
 
-        // 推断失败兜底：`per (%d+) rampage kills`（limit = 1000/num 超出 DSL）
+        // A failed-inference fallback: `per (%d+) rampage kills`
+        // (limit = 1000/num is beyond the DSL)
         let rampage = doc
             .tag_phrases
             .iter()
@@ -206,7 +221,7 @@ mod tests {
         );
         assert!(rampage.effects.tags.is_empty());
 
-        // flagTypes hexproof 特例（内嵌 mod 形态）
+        // flagTypes' hexproof special case (the embedded-mod shape)
         let hexproof = doc
             .flag_types
             .iter()
@@ -217,21 +232,22 @@ mod tests {
         assert_eq!(mod_def.mod_type, "MORE");
         assert_eq!(mod_def.value, -100.0);
 
-        // regen 派生表（vendor 加载期 appendMod 展开）：多资源名集
+        // The regen derived table (expanded at vendor load time via
+        // appendMod): a multi-resource-name set
         let life_mana = doc
             .regen_types
             .iter()
             .find(|e| e.phrase == "life and mana")
             .expect("life and mana 应存在");
         assert_eq!(life_mana.names, vec!["LifeRegen", "ManaRegen"]);
-        // maximum 变体由 vendor 加载期补入（蓝图 §1.7）
+        // The "maximum" variant is added in by vendor at load time
         assert!(
             doc.regen_types.iter().any(|e| e.phrase == "maximum life"),
             "regen_types 应含 maximum 变体"
         );
     }
 
-    /// 文件缺失（旧数据包）→ `Ok(None)` 向后兼容。
+    /// A missing file (an old data pack) → `Ok(None)`, backward compatible.
     #[test]
     fn missing_file_returns_none() {
         let dir = std::env::temp_dir().join(format!(
@@ -244,8 +260,9 @@ mod tests {
         assert!(loaded.is_none());
     }
 
-    /// 探针推断条目的 handler 兜底数量在蓝图预算内（≤15，结构性守卫）；具体
-    /// 条数随 vendor 漂移，进 blessed 快照。
+    /// The number of handler fallbacks from probe-inferred entries stays
+    /// within budget (≤15, a structural guard); the exact count drifts
+    /// with vendor and lives in the blessed snapshot.
     #[test]
     fn handler_fallback_within_budget() {
         let doc = real_data().mod_parser_rules().unwrap().unwrap();

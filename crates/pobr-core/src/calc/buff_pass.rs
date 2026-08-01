@@ -1,67 +1,91 @@
-//! buff 九类分发（env_finalize 阶段 4，M3 T3-C2/C3，蓝图 m3-orchestration.md §6.2-§6.3）。
+//! The nine-way buff dispatch.
 //!
-//! 对照 PoB2 `Modules/CalcPerform.lua`（vendor commit `2df5a74`，实读核对）：
-//! - **aura 自身路径** :2085-2120（`buff.type == "Aura"`，自身乘区 :2102-2105）；
-//! - **debuff 路径** :2219-2285（`buff.type == "Debuff"`，DebuffEffect 乘区 :2274-2278）；
-//! - **curse 路径** :2286-2337（curse 表项构造 + CurseEffect 乘区）；
-//! - **curse priority** :454-485（`determineCursePriority`，数据表 =
-//!   `overlay/curse_priority.json`，schema [`CursePriorityDef`]）；
-//! - **curse limit + 分槽** :2829-2920（`output.EnemyCurseLimit` :2830、槽位填充
-//!   :2853-2876、`ignoreCurseLimit` 槽外追加 :2882-2896、敌侧应用 :2969-2984）；
-//! - **ScaleAddList 取整** `Classes/ModStore.lua:45-79`（`ScaleAddMod`，见
-//!   [`scale_value`]）+ `Modules/Data.lua:413-530`（`defaultHighPrecision` /
-//!   `highPrecisionMods`）；
-//! - **mergeBuff 同名取强** `Modules/CalcPerform.lua:41-63`。
+//! Mirrors PoB2 `Modules/CalcPerform.lua` (verified against vendor commit `2df5a74`):
+//! - **The aura self path** `:2085-2120` (`buff.type == "Aura"`, the self factor `:2102-2105`);
+//! - **The debuff path** `:2219-2285` (`buff.type == "Debuff"`, the DebuffEffect factor `:2274-2278`);
+//! - **The curse path** `:2286-2337` (curse table entry construction + the CurseEffect factor);
+//! - **Curse priority** `:454-485` (`determineCursePriority`, data table =
+//!   `overlay/curse_priority.json`, schema [`CursePriorityDef`]);
+//! - **Curse limit + slot assignment** `:2829-2920` (`output.EnemyCurseLimit`
+//!   `:2830`, slot filling `:2853-2876`, `ignoreCurseLimit` appending beyond
+//!   slots `:2882-2896`, enemy-side application `:2969-2984`);
+//! - **ScaleAddList rounding** `Classes/ModStore.lua:45-79` (`ScaleAddMod`,
+//!   see [`scale_value`]) + `Modules/Data.lua:413-530`
+//!   (`defaultHighPrecision` / `highPrecisionMods`);
+//! - **mergeBuff same-name strongest-wins** `Modules/CalcPerform.lua:41-63`.
 //!
-//! 门控（D5）：整段吃 `cfg.mode_buffs`（pobr-build 编排入口对 MAIN 口径恒置 true，
-//! 对应 vendor 非 CALCS 模式 buffMode 恒 `"EFFECTIVE"`，CalcSetup.lua:583-597；
-//! 默认仍 false——未显式置位的既有调用方逐值不变）；curse/debuff 段内再按 vendor 吃
-//! `cfg.mode_effective`。
+//! Gating (D5): the whole section is gated on `cfg.mode_buffs` (pobr-build's
+//! orchestration entry point always sets this true for the MAIN view,
+//! matching vendor's non-CALCS-mode buffMode always being `"EFFECTIVE"`,
+//! CalcSetup.lua:583-597; still defaults to false -- every existing caller
+//! that doesn't explicitly set it is unaffected value-for-value); the
+//! curse/debuff sections are additionally gated on `cfg.mode_effective`, matching vendor.
 //!
-//! C5 切换（M3-T3，双跑报告 `m3-c5-dualrun-report.md`：18-build display 全列逐值
-//! 持平）后本路径是 aura 的唯一通道——编排层 `aura_buff_modifiers` 静态直注与
-//! feature `buff-pass-aura` 守门均已删除；回退通道 = revert 切换/删码 commit。
+//! After the C5 switchover (every value across the 18-build display was
+//! unchanged), this path is the sole channel for aura -- the orchestration
+//! layer's static direct-injection of `aura_buff_modifiers` and the
+//! `buff-pass-aura` feature gate have both been removed; the fallback
+//! channel would be to revert the switchover/deletion commit.
 //!
-//! ## M3 口径简化清单（与 PoB2 差异显式记录，蓝图 §6.2 要求）
+//! ## Semantic simplification checklist
 //!
-//! - (a) `skill_db` = `player.mod_db` 全局聚合（pobr 无 per-skill modlist 分层）。
-//!   差异面 =「只对某 aura 生效的 AuraEffect」词条（少见，命中时按 build 修）。
-//! - (b) ally 取强分支（`allyBuffs`，:2105）恒空——party 未落地，分支不实现。
-//! - (c) `auraCannotAffectSelf`（:2102）：granted_effect 数据列未落，恒按 false。
-//! - (d) `ExtraAuraEffect` 附加词条列表（:2089-2101）未迁——pobr 解析层暂无该
-//!   ModName 产出，命中时随 C5 diff 报告补。
-//! - (e) `highPrecisionMods`（Data.lua:415-530）：M4-I 去重后**数据驱动**——
-//!   [`scale_value`] 直接消费 T1 写原语 [`crate::ModDb::scale_add_mod`]，精度
-//!   例外查 `Env::high_precision`（`overlay/high_precision_mods.json` 经编排层
-//!   注入；未注入 = 无例外表 fallback）。先期硬编码命名族镜像表已删除。
-//!   `mod.unscalable`（ModStore.lua:46-52）pobr 词条模型无此位，不实现
-//!   （T1 原语侧同口径登记）。
-//! - (f) Debuff 的 `stackVar`/`stackLimit`（:2221-2230）：`BuffSpec` 契约（T0 冻结）
-//!   无 stack 字段，M3 按 `stackCount = 1`（vendor `skillData.stackCount or 1` 缺省）。
-//! - (g) curse priority 的来源权重：pobr 未建模「装备隐式诅咒 / aura 施加诅咒」
-//!   （`socketGroup.source` / Blasphemy 类），编排层恒 [`CurseSourceWeight::None`]；
-//!   [`determine_curse_priority`] 保留参数，表驱动测试按 vendor 数值样例覆盖。
-//! - (h) `SelfCast<名>` 条件（:2288）、`socketedCursesHexLimit`（:2294/:2899-2914）、
-//!   `CurseBuff` 的 buffModList 二次缩放（:2318-2330）不在 M3 范围——`CurseBuff`
-//!   与其余未消费 kind 走「原值直注」兼容路径。
-//! - (i) buff 名表：curse 名经编排层从 `active_skill` 蛇形名派生（`snipers_mark` →
-//!   `Snipers Mark`），与 vendor 撇号名（`Sniper's Mark`）不一致时 `curse_base`
-//!   查不到 → 基值 0（vendor `data.cursePriority[curseName] or 0` 同口径回退）。
-//! - (j) curse 效果词条（M3-W4，原「mods 恒空」简化**已实现**）：编排层
-//!   `buff_skill_specs` 经 statmap curse 域（`stat_map_engine::map_curse_stat`，
-//!   vendor 各 curse statSet 的 `GlobalEffect effectType=Curse` 条目）把 statset
-//!   stat 映射为敌侧 modifier 填入 `spec.mods`，本路径施 CurseEffect 乘区
-//!   （:2295-2305）+ `Condition:Effective` 后随入槽 curse 写 enemy db
-//!   （:2969-2984）。**残余口径**：敌侧 ModName 允收名单 = pobr 现有消费方
-//!   （`<Type>Resist` / `Damage` / `SelfCritMultiplier` / `BuffExpireFaster`；
-//!   `ElementalResist` 展开火/冰/电三条等值），无消费方的名
-//!   （`TemporalChainsActionSpeed` / `FreezeBuildup` / `ElectrocuteBuildup` /
-//!   `IgnoreArmour` / `Dummy`）整条 Unsupported 落 Compare 可见性报表不注入；`GlobalEffect` 带
-//!   `effectCond`/`modCond` 等额外门控键的条目同样跳过上报。
+//! - (a) `skill_db` = `player.mod_db`'s global aggregate (pobr has no
+//!   per-skill modlist layering). The gap: an "AuraEffect that only applies
+//!   to a specific aura" mod (rare, fix per-build when it comes up).
+//! - (b) The ally-strongest-wins branch (`allyBuffs`, `:2105`) is always
+//!   empty -- party isn't implemented, this branch isn't implemented.
+//! - (c) `auraCannotAffectSelf` (`:2102`): the granted_effect data column
+//!   isn't landed, always treated as false.
+//! - (d) The `ExtraAuraEffect` extra mod list (`:2089-2101`) isn't migrated
+//!   -- pobr's parse layer doesn't produce this ModName yet, add per the C5
+//!   diff report when it comes up.
+//! - (e) `highPrecisionMods` (Data.lua:415-530): after deduplication, this
+//!   is **data-driven** -- [`scale_value`] directly consumes the T1 write
+//!   primitive [`crate::ModDb::scale_add_mod`], with precision exceptions
+//!   looked up via `Env::high_precision` (injected from
+//!   `overlay/high_precision_mods.json` by the orchestration layer; not
+//!   injected = falls back to no exception table). The earlier hardcoded
+//!   name-family mirror table has been removed. `mod.unscalable`
+//!   (ModStore.lua:46-52) has no corresponding bit in pobr's mod model, not
+//!   implemented (recorded with the same semantics on the T1 primitive side).
+//! - (f) Debuff's `stackVar`/`stackLimit` (`:2221-2230`): the `BuffSpec`
+//!   contract (frozen at T0) has no stack field, treated as `stackCount = 1`
+//!   (vendor's `skillData.stackCount or 1` default).
+//! - (g) Curse priority's source weight: pobr doesn't model "equipment
+//!   implicit curse / aura-applied curse" (`socketGroup.source` / the
+//!   Blasphemy family), the orchestration layer always passes
+//!   [`CurseSourceWeight::None`]; [`determine_curse_priority`] keeps the
+//!   parameter, and the table-driven tests cover it with vendor's numeric samples.
+//! - (h) The `SelfCast<name>` condition (`:2288`), `socketedCursesHexLimit`
+//!   (`:2294`/`:2899-2914`), and `CurseBuff`'s buffModList secondary scaling
+//!   (`:2318-2330`) are absent -- `CurseBuff` and every other unconsumed kind
+//!   take the "inject raw value directly" compatibility path.
+//! - (i) The buff name table: curse names are derived by the orchestration
+//!   layer from the `active_skill`'s snake_case name (`snipers_mark` →
+//!   `Snipers Mark`); when this doesn't match vendor's apostrophe name
+//!   (`Sniper's Mark`), `curse_base` fails to look it up → base value 0
+//!   (matching vendor's `data.cursePriority[curseName] or 0` fallback semantics).
+//! - (j) Curse effect mods (the original "mods always empty" simplification
+//!   **has since been implemented**): the orchestration layer's
+//!   `buff_skill_specs` maps statset stats to enemy-side modifiers into
+//!   `spec.mods` via the statmap curse domain
+//!   (`stat_map_engine::map_curse_stat`, mirroring each curse statSet's
+//!   `GlobalEffect effectType=Curse` entries in vendor); this path applies
+//!   the CurseEffect factor (`:2295-2305`) plus `Condition:Effective`, and
+//!   then writes the slotted curse into the enemy db (`:2969-2984`).
+//!   **Remaining gap**: the enemy-side ModName allowlist = pobr's existing
+//!   consumers (`<Type>Resist` / `Damage` / `SelfCritMultiplier` /
+//!   `BuffExpireFaster`; `ElementalResist` expands into equal-value fire/cold/
+//!   lightning entries), and names with no consumer
+//!   (`TemporalChainsActionSpeed` / `FreezeBuildup` / `ElectrocuteBuildup` /
+//!   `IgnoreArmour` / `Dummy`) are recorded as whole-line Unsupported in the
+//!   Compare visibility report and not injected; `GlobalEffect` entries
+//!   carrying extra gating keys like `effectCond`/`modCond` are likewise skipped from reporting.
 //!
-//! 归因：aura/curse/debuff 缩放产物保留原 `origin`（trace 不丢弃）；无 origin 的
-//! 词条回退 `(SourceKind::Buff, "aura.<skill_id>" / "curse.<skill_id>" /
-//! "buff.<skill_id>")`；缩放倍率记入 `raw_text`。
+//! Attribution: aura/curse/debuff scaled output preserves its original
+//! `origin` (never dropped from the trace); a mod with no origin falls back
+//! to `(SourceKind::Buff, "aura.<skill_id>" / "curse.<skill_id>" /
+//! "buff.<skill_id>")`; the scaling multiplier is recorded in `raw_text`.
 
 use std::collections::BTreeMap;
 
@@ -75,21 +99,21 @@ use super::Env;
 use super::session::BuffKind;
 use super::survivability::{ChargeKind, charge_maximum};
 
-/// 玩家固有诅咒上限基线（vendor `CalcSetup.lua:648`
-/// `NewMod("EnemyCurseLimit","BASE",1,"Base")`；数据镜像 =
-/// `base/base_player_mods.json::enemy_curse_limit`，逐值对照测试见
-/// `pobr-gamedata/tests/load_base_player_mods.rs`）。
+/// Player's inherent curse limit baseline (vendor `CalcSetup.lua:648`'s
+/// `NewMod("EnemyCurseLimit","BASE",1,"Base")`; data mirror =
+/// `base/base_player_mods.json::enemy_curse_limit`, value-for-value tested
+/// in `pobr-gamedata/tests/load_base_player_mods.rs`).
 pub const DEFAULT_ENEMY_CURSE_LIMIT: f64 = 1.0;
 
-/// 玩家固有标记上限基线（vendor `CalcSetup.lua:649`；数据镜像 =
-/// `base_player_mods.json::enemy_mark_limit`）。
+/// Player's inherent mark limit baseline (vendor `CalcSetup.lua:649`; data mirror = `base_player_mods.json::enemy_mark_limit`).
 pub const DEFAULT_ENEMY_MARK_LIMIT: f64 = 1.0;
 
-/// socket 序入 priority 的上限（vendor `CalcPerform.lua:465`
-/// `m_min(k, 8)`——避免与 `CurseFromEquipment` 权重段碰撞）。
+/// The ceiling on socket order entering priority (vendor `CalcPerform.lua:465`'s
+/// `m_min(k, 8)` -- avoids colliding with the `CurseFromEquipment` weight range).
 const SOCKET_INDEX_CAP: u32 = 8;
 
-/// aura 自身乘区聚合的 ModName 集（vendor `CalcPerform.lua:2103-2104`，INC/MORE 同名集）。
+/// The ModName set aggregated for the aura self factor (vendor
+/// `CalcPerform.lua:2103-2104`, INC/MORE share the same name set).
 const AURA_SELF_EFFECT_NAMES: [&str; 6] = [
     "AuraEffect",
     "BuffEffect",
@@ -99,32 +123,35 @@ const AURA_SELF_EFFECT_NAMES: [&str; 6] = [
     "SkillAuraEffectOnSelf",
 ];
 
-/// curse priority 的来源权重维度（vendor `determineCursePriority` :473-478：aura 源 →
-/// `CurseFromAura`、装备源 → `CurseFromEquipment`）。M3 编排层未建模两类来源，恒
-/// [`Self::None`]（简化 (g)）；保留维度供表驱动测试按 vendor 数值样例覆盖。
+/// Curse priority's source weight dimension (vendor
+/// `determineCursePriority` `:473-478`: an aura source → `CurseFromAura`, an
+/// equipment source → `CurseFromEquipment`). The orchestration layer doesn't
+/// model either source, always passing [`Self::None`] (simplification (g));
+/// the dimension is kept so table-driven tests can cover it with vendor's numeric samples.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CurseSourceWeight {
-    /// 普通宝石施放（vendor `source == "" 且非 aura`，权重 0）。
+    /// Cast by an ordinary gem (vendor `source == ""` and not an aura, weight 0).
     None,
-    /// aura 施加（Blasphemy 类，恒最高段权重）。
+    /// Applied by an aura (the Blasphemy family, always the highest weight tier).
     Aura,
-    /// 装备隐式诅咒（Ring 2/3 槽位权重折回 Ring 1，:480-483）。
+    /// Equipment implicit curse (Ring 2/3 slot weight folds back to Ring 1, `:480-483`).
     Equipment,
 }
 
-/// curse 面板输出（`buff_pass` 产出，经 [`Env::curse_pass_output`] 由 `perform` 末端
-/// 回填 [`super::OutputTable`] 的 `enemy_curse_limit` / `curse_slots`；蓝图 §6.3
-/// 「display_catalog 不扩，仅 OutputTable 字段」）。
+/// Curse panel output (produced by `buff_pass`, copied back into
+/// [`super::OutputTable`]'s `enemy_curse_limit` / `curse_slots` at the end
+/// of `perform` via [`Env::curse_pass_output`]; "not extending
+/// display_catalog, only OutputTable fields").
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CursePassOutput {
-    /// `output.EnemyCurseLimit`（vendor :2830）。
+    /// `output.EnemyCurseLimit` (vendor `:2830`).
     pub enemy_curse_limit: f64,
-    /// curse 槽占用列表（顺序 = vendor `curseSlots` 合并序：hex 槽 → mark 槽 →
-    /// `ignoreCurseLimit` 槽外追加，:2878-2896）。
+    /// Curse slot occupancy list (order = vendor `curseSlots`'s merge order:
+    /// hex slots → mark slots → `ignoreCurseLimit` appended beyond slots, `:2878-2896`).
     pub curse_slots: Vec<String>,
 }
 
-/// 一个已通过 gate 的 curse 候选（vendor :2290-2298 `curse` 表项的 pobr 等价）。
+/// A curse candidate that has passed the gate (pobr's equivalent of vendor `:2290-2298`'s `curse` table entry).
 #[derive(Debug, Clone)]
 struct CurseEntry {
     name: String,
@@ -134,14 +161,17 @@ struct CurseEntry {
     mods: Vec<Modifier>,
 }
 
-/// priority 计算（vendor `determineCursePriority`，CalcPerform.lua:454-485）：
-/// `base + min(socket_index, 8) × SocketPriorityBase + slot_weight + source_weight`。
+/// Priority calculation (vendor `determineCursePriority`, CalcPerform.lua:454-485):
+/// `base + min(socket_index, 8) × SocketPriorityBase + slot_weight + source_weight`.
 ///
-/// - `slot` 查表前去 `" (Swap)"` / `" Swap"` 后缀（vendor :471 `slot:gsub(" (Swap)","")`，
-///   Lua 模式中括号为捕获、实际匹配字面 `" Swap"`；两种写法都剥以兼容）；查不到 = 0。
-/// - `socket_index` 1-based（vendor `ipairs` 序，缺省 1）；钳到 `[1, 8]`。
-/// - 装备源且槽位权重为 Ring 2/Ring 3 时折回 Ring 1（:480-483，装备隐式诅咒不分环）。
-/// - `curse_base` 查不到 = 0（vendor `data.cursePriority[curseName] or 0`）。
+/// - `slot` has its `" (Swap)"` / `" Swap"` suffix stripped before the table
+///   lookup (vendor `:471`'s `slot:gsub(" (Swap)","")`; the parentheses in
+///   the Lua pattern are a capture group, so it actually matches the literal
+///   `" Swap"` -- both spellings are stripped for compatibility); a failed lookup = 0.
+/// - `socket_index` is 1-based (vendor's `ipairs` order, defaults to 1); clamped to `[1, 8]`.
+/// - When the source is equipment and the slot weight is Ring 2/Ring 3, it
+///   folds back to Ring 1 (`:480-483`, equipment implicit curses don't distinguish rings).
+/// - A failed `curse_base` lookup = 0 (vendor `data.cursePriority[curseName] or 0`).
 pub fn determine_curse_priority(
     data: &CursePriorityDef,
     curse_name: &str,
@@ -173,16 +203,22 @@ pub fn determine_curse_priority(
     base + socket + slot_weight + source_weight
 }
 
-/// ScaleAddMod 的数值缩放语义（vendor `ModStore.lua:45-79`）——M4-I 去重：
-/// **直接消费 T1 写原语** [`ModDb::scale_add_mod`]（同段 vendor 的唯一实现，
-/// 含精度例外查表 / 非整数原值 `defaultHighPrecision` floor / 默认
-/// `m_modf(round(·,2))` 截整三分支）。`rules` = `overlay/high_precision_mods.json`
-/// 数据驱动例外表（经 [`Env::high_precision`] 注入；替代先期硬编码命名族镜像）。
+/// ScaleAddMod's value scaling semantics (vendor `ModStore.lua:45-79`) --
+/// deduplicated: **directly consumes the T1 write primitive**
+/// [`ModDb::scale_add_mod`] (the single implementation of this vendor
+/// section, covering the precision exception lookup / non-integer raw value
+/// `defaultHighPrecision` floor / default `m_modf(round(·,2))` truncation
+/// three branches). `rules` = `overlay/high_precision_mods.json`'s
+/// data-driven exception table (injected via [`Env::high_precision`];
+/// replaces the earlier hardcoded name-family mirror).
 ///
-/// 实现：经单 mod scratch db 走原语后读回数值——禁动约束下 mod_db 的取整内核
-/// 不公开值级入口，scratch db 是「只消费不改」的复用通道（单桶单 mod，读回
-/// 确定性；buff/flask 缩放非热路径，开销可忽略）。`scale == 1` 原值直返
-/// （:54，与原语同语义的早退，免 scratch 开销）。
+/// Implementation: goes through a single-mod scratch db running the
+/// primitive, then reads the value back -- under the no-code-movement
+/// constraint, mod_db's rounding kernel exposes no value-level entry point,
+/// so a scratch db is a "consume only, never mutate" reuse channel (a single
+/// bucket, single mod, deterministic read-back; buff/flask scaling isn't a
+/// hot path, so the overhead is negligible). `scale == 1` returns the raw
+/// value directly (`:54`, an early exit with the same semantics as the primitive, avoiding the scratch overhead).
 pub fn scale_value(
     rules: &HighPrecisionRules,
     name: &str,
@@ -201,10 +237,12 @@ pub fn scale_value(
         .unwrap_or(value)
 }
 
-/// 对一条 buff 词条施加效果乘区（ScaleAddMod 等价）并整理归因：保留原 `origin`
-/// （trace 不丢弃），无 origin 时回退 `(SourceKind::Buff, fallback_source_id)`；
-/// 缩放倍率记入 `raw_text`。非数值载荷（Flag/Text/NestedMods）原样透传
-/// （vendor 对 table 载荷只缩放 `value.mod`，pobr buff 词条均为数值/Flag）。
+/// Applies the effect factor (equivalent to ScaleAddMod) to a buff mod and
+/// sorts out its attribution: preserves the original `origin` (never dropped
+/// from the trace), falling back to `(SourceKind::Buff, fallback_source_id)`
+/// when there's no origin; the scaling multiplier is recorded in `raw_text`.
+/// Non-numeric payloads (Flag/Text/NestedMods) pass through unchanged
+/// (vendor only scales `value.mod` for table payloads; pobr buff mods are always numeric/Flag).
 fn scale_buff_mod(
     rules: &HighPrecisionRules,
     modifier: &Modifier,
@@ -238,9 +276,10 @@ fn scale_buff_mod(
     out
 }
 
-/// mergeBuff 同名取强合并（vendor `CalcPerform.lua:41-63`）：同 buff 名桶内，
-/// 「mod 参数相同」（name/type/flags/keyword_flags/tags）且皆为数值时取大者；
-/// LIST 载荷恒追加（:48 `mod.type ~= "LIST"`）。
+/// mergeBuff's same-name strongest-wins merge (vendor `CalcPerform.lua:41-63`):
+/// within the same buff-name bucket, when "the mod's params match"
+/// (name/type/flags/keyword_flags/tags) and both are numeric, takes the
+/// larger; LIST payloads are always appended (`:48`'s `mod.type ~= "LIST"`).
 fn merge_buff(dest: &mut Vec<Modifier>, src: Vec<Modifier>) {
     for incoming in src {
         if incoming.mod_type != ModType::List
@@ -263,7 +302,7 @@ fn merge_buff(dest: &mut Vec<Modifier>, src: Vec<Modifier>) {
     }
 }
 
-/// 确保词条带 `Condition:Effective` tag（敌侧 debuff 口径对齐，蓝图 §6.3；已带则不重复）。
+/// Ensures a mod carries the `Condition:Effective` tag.
 fn ensure_effective_tag(modifier: &mut Modifier) {
     let already = modifier.tags.iter().any(|tag| {
         matches!(tag, ModTag::Condition { var, negated: false, actor: None } if var == "Effective")
@@ -273,31 +312,32 @@ fn ensure_effective_tag(modifier: &mut Modifier) {
     }
 }
 
-/// buff 名 → `AffectedBy<去空格名>` 条件名（vendor :2110 `buff.name:gsub(" ","")`）。
+/// Buff name → `AffectedBy<name with spaces stripped>` condition name (vendor `:2110`'s `buff.name:gsub(" ","")`).
 fn affected_by_condition(name: &str) -> String {
     format!("AffectedBy{}", name.replace(' ', ""))
 }
 
-/// env_finalize 阶段 4 实现体：`Env::buff_skills` 九类分发。
+/// env_finalize stage 4 implementation body: `Env::buff_skills`'s nine-way dispatch.
 ///
-/// M3 消费 Aura / Curse / Debuff 三类；其余 kind 走「原值直注」兼容路径（词条不
-/// 缩放、不置条件）。`cfg.mode_buffs == false`（默认）或无 spec 时整段空转
-/// （逐值不变）。
+/// Consumes the Aura / Curse / Debuff kinds; the remaining kinds take the
+/// "inject raw value directly" compatibility path (no mod scaling, no
+/// condition set). A no-op for the whole section (every value unchanged)
+/// when `cfg.mode_buffs == false` (default) or there's no spec.
 pub fn buff_pass(env: &mut Env) {
     if !env.cfg.mode_buffs || env.buff_skills.is_empty() {
         return;
     }
     let specs = env.buff_skills.clone();
     let priority_data = env.curse_priority.clone().unwrap_or_default();
-    // 取整精度规则（M4-I：ScaleAddMod 原语的例外表，编排层注入；未注入 = 默认）。
+    // Rounding precision rules (the ScaleAddMod primitive's exception table, injected by the orchestration layer; not injected = default).
     let rules = env.high_precision.clone();
 
-    // —— 收集阶段（只读 env）——
-    // 玩家侧 buff（aura 等）按 buff 名分桶（mergeBuff 同名取强）；BTreeMap 保证确定性序。
+    // Collection stage (read-only env)
+    // Player-side buffs (aura, etc.) bucketed by buff name (mergeBuff's same-name strongest-wins); BTreeMap keeps a deterministic order.
     let mut player_buffs: BTreeMap<String, Vec<Modifier>> = BTreeMap::new();
-    // 敌侧 debuff 按 buff 名分桶（vendor `debuffs` 表）。
+    // Enemy-side debuffs bucketed by buff name (vendor's `debuffs` table).
     let mut enemy_debuffs: BTreeMap<String, Vec<Modifier>> = BTreeMap::new();
-    // 未消费 kind 的原值直注兼容路径。
+    // The "inject raw value directly" compatibility path for unconsumed kinds.
     let mut passthrough: Vec<Modifier> = Vec::new();
     let mut curses: Vec<CurseEntry> = Vec::new();
     let mut conditions: Vec<String> = Vec::new();
@@ -305,11 +345,14 @@ pub fn buff_pass(env: &mut Env) {
     for spec in &specs {
         match spec.kind {
             BuffKind::Aura => {
-                // vendor :2204-2205：自身乘区（简化 (a)：skill_db = player.mod_db 全局聚合；
-                // (b) ally 取强恒空；(c) auraCannotAffectSelf 恒 false）。
-                // per-skill cfg：spec 携带来源效果的技能类型位（vendor skillCfg），
-                // 使域限定词条（「Banner Skills have N% increased Aura Magnitudes」
-                // 的 SkillTypes(Banner) tag）只命中对应 aura。
+                // vendor :2204-2205: the self factor (simplification (a):
+                // skill_db = player.mod_db's global aggregate;
+                // (b) ally-strongest-wins is always empty;
+                // (c) auraCannotAffectSelf is always false).
+                // Per-skill cfg: the spec carries the source effect's skill
+                // type bits (vendor's skillCfg), so scoped mods (e.g.
+                // "Banner Skills have N% increased Aura Magnitudes"'s
+                // SkillTypes(Banner) tag) only match the corresponding aura.
                 let aura_cfg = env.cfg.clone().with_skill_types(spec.skill_types);
                 let names: Vec<ModName> = AURA_SELF_EFFECT_NAMES
                     .iter()
@@ -317,16 +360,18 @@ pub fn buff_pass(env: &mut Env) {
                     .collect();
                 let inc = env.player.mod_db.sum(ModType::Inc, &aura_cfg, &names);
                 let more = env.player.mod_db.more(&aura_cfg, &names) * spec.magnitude;
-                // `Magnitude` 独立乘区（vendor :2205 尾部 `× calcLib.mod(skillCfg,
-                // "Magnitude")`——与 AuraEffect 名集**分桶各成 (1+Σinc/100)×Πmore
-                // 后相乘**，非同桶相加。词条如「Aura Skills have N% increased
-                // Magnitudes」→ Magnitude INC + SkillTypes(Aura) tag）。
+                // `Magnitude` is an independent factor (vendor `:2205`'s
+                // trailing `× calcLib.mod(skillCfg, "Magnitude")` -- kept in
+                // its own bucket separate from the AuraEffect name set, each
+                // forming `(1+Σinc/100)×Πmore` and then **multiplied
+                // together**, not summed into the same bucket. E.g. the mod
+                // "Aura Skills have N% increased Magnitudes" → Magnitude INC + a SkillTypes(Aura) tag).
                 let mag_names = [ModName::from("Magnitude")];
                 let mag_mult = (1.0
                     + env.player.mod_db.sum(ModType::Inc, &aura_cfg, &mag_names) / 100.0)
                     * env.player.mod_db.more(&aura_cfg, &mag_names);
                 let mult = (1.0 + inc / 100.0) * more * mag_mult;
-                // vendor :2107-2110：条件置位。
+                // vendor :2107-2110: sets the conditions.
                 conditions.push("AffectedByAura".to_string());
                 conditions.push(affected_by_condition(&spec.name));
                 let source_id = format!("aura.{}", spec.skill_id);
@@ -338,12 +383,16 @@ pub fn buff_pass(env: &mut Env) {
                 merge_buff(player_buffs.entry(spec.name.clone()).or_default(), scaled);
             }
             BuffKind::Buff => {
-                // vendor :1949-1962（Buff 分支，M4-G）：玩家自身 buff（Precision 系
-                // support 等）经 BuffEffect 乘区入 player db + AffectedBy 条件。
-                // 简化（与 Aura (a) 同口径）：modStore = player.mod_db 全局聚合；
-                // `skillModList:Sum(INC, <名>Effect)`（:1957 按 buff 名的专属乘区，
-                // 如 `PrecisionIIEffect`）pobr 解析层无该 ModName 产出，不实现；
-                // `applyNotPlayer` / totem 门（:1950-1953）未建模，恒按作用于玩家。
+                // vendor :1949-1962: a player self-buff (e.g. the Precision
+                // family of supports) enters the player db through the
+                // BuffEffect factor, plus an AffectedBy condition.
+                // Simplification (same semantics as Aura's (a)): modStore =
+                // player.mod_db's global aggregate;
+                // `skillModList:Sum(INC, <name>Effect)` (`:1957`'s dedicated
+                // per-buff-name factor, e.g. `PrecisionIIEffect`) has no
+                // corresponding ModName produced by pobr's parse layer, not implemented;
+                // `applyNotPlayer` / the totem gate (`:1950-1953`) isn't
+                // modeled, always treated as applying to the player.
                 let inc_names = [
                     ModName::from("BuffEffect"),
                     ModName::from("BuffEffectOnSelf"),
@@ -356,7 +405,7 @@ pub fn buff_pass(env: &mut Env) {
                 let inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &inc_names);
                 let more = env.player.mod_db.more(&env.cfg, &more_names) * spec.magnitude;
                 let mult = (1.0 + inc / 100.0) * more;
-                // vendor :1955：`modDB.conditions["AffectedBy"..buff.name] = true`。
+                // vendor :1955: `modDB.conditions["AffectedBy"..buff.name] = true`.
                 conditions.push(affected_by_condition(&spec.name));
                 let source_id = format!("buff.{}", spec.skill_id);
                 let scaled = spec
@@ -367,7 +416,7 @@ pub fn buff_pass(env: &mut Env) {
                 merge_buff(player_buffs.entry(spec.name.clone()).or_default(), scaled);
             }
             BuffKind::Curse => {
-                // vendor :2289 gate：`(mode_effective and (not Hexproof or 豁免)) or mark`。
+                // vendor :2289's gate: `(mode_effective and (not Hexproof or exempt)) or mark`.
                 let hexproof = env.enemy.mod_db.flag(&env.cfg, ModName::from("Hexproof"));
                 let ignores_hexproof = env
                     .player
@@ -377,15 +426,18 @@ pub fn buff_pass(env: &mut Env) {
                 if !((env.cfg.mode_effective && (!hexproof || ignores_hexproof)) || spec.is_mark) {
                     continue;
                 }
-                // vendor :2295-2305：CurseEffect 乘区。蓝图 §6.3 原文记
-                // `INC(CurseEffect, BuffEffect)`，实读 :2295 为
+                // vendor :2295-2305: the CurseEffect factor. Originally
+                // documented as `INC(CurseEffect, BuffEffect)`, but a direct
+                // reading of `:2295` shows
                 // `Sum(INC, CurseEffect) + enemyDB Sum(INC, CurseEffectOnSelf)`
-                // （无 BuffEffect），按 vendor 实读对齐；aura 源附加 AuraEffect INC
-                // （:2296-2298）不实现（简化 (g)：无 aura 源建模）。
+                // (no BuffEffect), aligned with the actual vendor source;
+                // the aura source's extra AuraEffect INC (`:2296-2298`) isn't
+                // implemented (simplification (g): no aura source modeled).
                 let curse_effect = [ModName::from("CurseEffect")];
                 let curse_effect_on_self = [ModName::from("CurseEffectOnSelf")];
-                // spec.local_effect_inc/more = vendor skillModList 的技能局部
-                // CurseEffect 段（宝石品质 / 组内 support，编排层预折）。
+                // spec.local_effect_inc/more = vendor skillModList's
+                // skill-local CurseEffect section (gem quality / in-group
+                // support, pre-folded by the orchestration layer).
                 let inc = env.player.mod_db.sum(ModType::Inc, &env.cfg, &curse_effect)
                     + spec.local_effect_inc
                     + env
@@ -396,7 +448,7 @@ pub fn buff_pass(env: &mut Env) {
                     * spec.local_effect_more
                     * spec.magnitude;
                 if !spec.is_mark {
-                    // vendor :2303-2305：非 mark 再乘敌侧 CurseEffectOnSelf MORE。
+                    // vendor :2303-2305: non-marks additionally multiply by the enemy-side CurseEffectOnSelf MORE.
                     more *= env.enemy.mod_db.more(&env.cfg, &curse_effect_on_self);
                 }
                 let mult = (1.0 + inc / 100.0) * more;
@@ -419,12 +471,12 @@ pub fn buff_pass(env: &mut Env) {
                     .iter()
                     .map(|m| {
                         let mut scaled = scale_buff_mod(&rules, m, mult, &source_id);
-                        // 敌侧写入带 Condition:Effective 门控（蓝图 §6.3，对齐现有敌侧口径）。
+                        // Enemy-side writes are gated on Condition:Effective (matching the existing enemy-side semantics).
                         ensure_effective_tag(&mut scaled);
                         scaled
                     })
                     .collect();
-                // vendor :2294 `ignoreCurseLimit = (...) and not mark or false`。
+                // vendor :2294's `ignoreCurseLimit = (...) and not mark or false`.
                 let ignore_curse_limit = (env
                     .player
                     .mod_db
@@ -438,7 +490,7 @@ pub fn buff_pass(env: &mut Env) {
                         &spec.name,
                         spec.slot.as_deref(),
                         spec.socket_index,
-                        CurseSourceWeight::None, // 简化 (g)：aura/装备源未建模。
+                        CurseSourceWeight::None, // Simplification (g): aura/equipment sources not modeled.
                     ),
                     is_mark: spec.is_mark,
                     ignore_curse_limit,
@@ -446,8 +498,8 @@ pub fn buff_pass(env: &mut Env) {
                 });
             }
             BuffKind::Debuff => {
-                // vendor :2219-2285（Debuff 分支）：mode_effective 门控 + DebuffEffect
-                // 乘区；stackCount = 1（简化 (f)）。
+                // vendor :2219-2285 (the Debuff branch): gated on
+                // mode_effective + the DebuffEffect factor; stackCount = 1 (simplification (f)).
                 if !env.cfg.mode_effective {
                     continue;
                 }
@@ -464,9 +516,11 @@ pub fn buff_pass(env: &mut Env) {
                     .collect();
                 merge_buff(enemy_debuffs.entry(spec.name.clone()).or_default(), scaled);
             }
-            // 其余 kind（Guard/Warcry/AuraDebuff/CurseBuff/Link）：M3 框架内
-            // 「原值直注」兼容路径（不缩放、不置条件；当前编排层不构造这些 kind，
-            // 行为与现状一致）。
+            // Every other kind (Guard/Warcry/AuraDebuff/CurseBuff/Link):
+            // takes the framework's "inject raw value directly"
+            // compatibility path (no scaling, no condition set; the
+            // orchestration layer doesn't currently construct these kinds,
+            // so behavior matches the current state).
             _ => {
                 let source_id = format!("buff.{}", spec.skill_id);
                 passthrough.extend(
@@ -478,9 +532,9 @@ pub fn buff_pass(env: &mut Env) {
         }
     }
 
-    // —— curse limit + 分槽（vendor :2829-2896）——
-    // limit：override(CurseLimitIsMaximumPowerCharges → PowerChargesMax) else
-    // 基线 1（CalcSetup.lua:648，数据镜像 base_player_mods.json）+ Σ BASE。
+    // Curse limit + slot assignment (vendor :2829-2896)
+    // limit: override(CurseLimitIsMaximumPowerCharges → PowerChargesMax) else
+    // baseline 1 (CalcSetup.lua:648, mirrored in base_player_mods.json) + Σ BASE.
     let curse_limit = if env
         .player
         .mod_db
@@ -504,8 +558,9 @@ pub fn buff_pass(env: &mut Env) {
             .mod_db
             .sum(ModType::Base, &env.cfg, &[ModName::from("EnemyMarkLimit")]);
 
-    // 分槽填充（vendor :2845-2876）：curse/mark 槽**分开**，同名高 priority 替换、
-    // 低者跳过；异名时替换「扫描中最后一个更低 priority 槽」（vendor 循环语义逐字）。
+    // Slot filling (vendor :2845-2876): curse/mark slots are **separate**;
+    // same-name higher priority replaces, lower is skipped; a different name
+    // replaces "the last lower-priority slot found while scanning" (a literal mirror of vendor's loop semantics).
     let mut curse_slots: Vec<Option<CurseEntry>> = vec![None; curse_limit.max(0.0) as usize];
     let mut mark_slots: Vec<Option<CurseEntry>> = vec![None; mark_limit.max(0.0) as usize];
     for curse in curses.iter().filter(|c| !c.ignore_curse_limit) {
@@ -536,13 +591,13 @@ pub fn buff_pass(env: &mut Env) {
             slots[i] = Some(curse.clone());
         }
     }
-    // 合并（vendor :2879 `tableConcat(curseSlots, markSlots)`）。
+    // Merge (vendor `:2879`'s `tableConcat(curseSlots, markSlots)`).
     let mut occupied: Vec<CurseEntry> = curse_slots
         .into_iter()
         .chain(mark_slots)
         .flatten()
         .collect();
-    // `ignoreCurseLimit` 槽外追加（vendor :2882-2896：同名高者替换、否则跳过；异名追加）。
+    // Appended beyond the slots for `ignoreCurseLimit` (vendor :2882-2896: same-name higher replaces, else skipped; a different name is appended).
     for curse in curses.iter().filter(|c| c.ignore_curse_limit) {
         match occupied.iter_mut().find(|c| c.name == curse.name) {
             Some(existing) => {
@@ -554,13 +609,13 @@ pub fn buff_pass(env: &mut Env) {
         }
     }
 
-    // —— 写入阶段（只写 player/enemy mod_db + cfg.conditions/multipliers + 输出桥）——
+    // Write stage (only writes player/enemy mod_db + cfg.conditions/multipliers + the output bridge)
     let buff_on_self = player_buffs.len() as f64;
     for (_, mods) in player_buffs {
         env.player.mod_db.add_list(mods);
     }
     if buff_on_self > 0.0 {
-        // vendor :2949-2951：每个生效 buff 计入 multipliers["BuffOnSelf"]。
+        // vendor :2949-2951: each effective buff counts toward multipliers["BuffOnSelf"].
         *env.cfg
             .multipliers
             .entry("BuffOnSelf".to_string())
@@ -570,7 +625,7 @@ pub fn buff_pass(env: &mut Env) {
     for (_, mods) in enemy_debuffs {
         env.enemy.mod_db.add_list(mods);
     }
-    // curse 槽应用（vendor :2969-2984）：敌侧条件 + modList 注入 + CurseOnEnemy 乘数。
+    // Curse slot application (vendor :2969-2984): enemy-side conditions + modList injection + the CurseOnEnemy multiplier.
     env.cfg
         .multipliers
         .insert("CurseOnEnemy".to_string(), occupied.len() as f64);
@@ -607,8 +662,8 @@ mod tests {
     use crate::CalcConfig;
     use crate::calc::{Actor, ActorBaseStats, BuffSpec};
 
-    /// vendor `Modules/Data.lua:274` `data.cursePriority` 数值镜像（与
-    /// `overlay/curse_priority.json` 逐值一致；pobr-core 零 I/O，测试内联构造）。
+    /// A numeric mirror of vendor `Modules/Data.lua:274`'s `data.cursePriority`
+    /// (value-for-value matching `overlay/curse_priority.json`; pobr-core is zero-I/O, so the test builds this inline).
     fn vendor_priority_data() -> CursePriorityDef {
         CursePriorityDef {
             curse_base: BTreeMap::from(
@@ -700,10 +755,10 @@ mod tests {
         }
     }
 
-    // ===== ScaleAddMod 取整语义（vendor ModStore.lua:45-79，经 T1 原语复用） =====
+    // ScaleAddMod rounding semantics (vendor ModStore.lua:45-79, reused via the T1 primitive)
 
-    /// 构造与 `overlay/high_precision_mods.json` 相关条目逐值一致的规则表
-    /// （Data.lua:415-530 节选：本测试触及的名字）。
+    /// Builds a rule table matching `overlay/high_precision_mods.json`'s
+    /// relevant entries value-for-value (an excerpt of Data.lua:415-530: only the names this test touches).
     fn vendor_precision_rules() -> HighPrecisionRules {
         use pobr_data::catalog::high_precision_mods::HighPrecisionModsDef;
         let entry = |ty: &str, p: u32| BTreeMap::from([(ty.to_string(), p)]);
@@ -720,50 +775,51 @@ mod tests {
         })
     }
 
-    /// 整数原值走 `m_modf(round(x, 2))`（向零截断）；高精度条目走 floor 截位。
-    /// 数值期望与去重前硬编码镜像表逐值一致（搬迁不变式锚点）。
+    /// Integer raw values take `m_modf(round(x, 2))` (truncated toward
+    /// zero); high-precision entries take floor truncation. Expected values
+    /// match the pre-deduplication hardcoded mirror table value-for-value (a migration invariant anchor).
     #[test]
     fn scale_value_matches_vendor_rounding() {
         let rules = vendor_precision_rules();
-        // scale == 1 → 原值直返（含非整数，:54）。
+        // scale == 1 → returns the raw value directly (including non-integers, :54).
         assert_eq!(
             scale_value(&rules, "EnergyShield", ModType::Base, 1.5, 1.0),
             1.5
         );
-        // 整数原值：100 × 1.2 = 120（恰整）；33 × 1.1 = 36.3 → round(…,2) → trunc 36。
+        // Integer raw value: 100 × 1.2 = 120 (exact); 33 × 1.1 = 36.3 → round(…,2) → trunc 36.
         assert_eq!(
             scale_value(&rules, "EnergyShield", ModType::Base, 100.0, 1.2),
             120.0
         );
         assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 33.0, 1.1), 36.0);
-        // 负值向零截断（m_modf 语义）：-33 × 1.1 = -36.3 → -36。
+        // Negative values truncate toward zero (m_modf semantics): -33 × 1.1 = -36.3 → -36.
         assert_eq!(
             scale_value(&rules, "ActionSpeed", ModType::Inc, -33.0, 1.1),
             -36.0
         );
-        // 非整数原值 → defaultHighPrecision = 1（Data.lua:413）：1.5 × 1.3 = 1.95 → 1.9。
+        // Non-integer raw value → defaultHighPrecision = 1 (Data.lua:413): 1.5 × 1.3 = 1.95 → 1.9.
         assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 1.5, 1.3), 1.9);
-        // CritChance BASE → 精度 2（Data.lua:416-418）：5 × 1.234 = 6.17。
+        // CritChance BASE → precision 2 (Data.lua:416-418): 5 × 1.234 = 6.17.
         assert_eq!(
             scale_value(&rules, "CritChance", ModType::Base, 5.0, 1.234),
             6.17
         );
-        // LifeRegen BASE → 精度 1：7 × 1.15 = 8.05 → 8.0（floor 截位）。
+        // LifeRegen BASE → precision 1: 7 × 1.15 = 8.05 → 8.0 (floor truncation).
         assert_eq!(
             scale_value(&rules, "LifeRegen", ModType::Base, 7.0, 1.15),
             8.0
         );
-        // LifeRegenPercent BASE → 精度 2。
+        // LifeRegenPercent BASE → precision 2.
         assert_eq!(
             scale_value(&rules, "LifeRegenPercent", ModType::Base, 1.0, 1.155),
             1.15
         );
-        // Damage*Leech 族 BASE → 精度 2（Data.lua:460-523）。
+        // The Damage*Leech family BASE → precision 2 (Data.lua:460-523).
         assert_eq!(
             scale_value(&rules, "PhysicalDamageLifeLeech", ModType::Base, 2.0, 1.333),
             2.66
         );
-        // MORE SupportManaMultiplier → 精度 4（Data.lua:524-526）。
+        // MORE SupportManaMultiplier → precision 4 (Data.lua:524-526).
         assert_eq!(
             scale_value(
                 &rules,
@@ -776,29 +832,30 @@ mod tests {
         );
     }
 
-    /// 未注入规则（`HighPrecisionRules::default`，无例外表）：默认分支与
-    /// 非整数原值 fallback 不变；例外条目退回默认 `round(·,2)` 截整。
+    /// Without injected rules (`HighPrecisionRules::default`, no exception
+    /// table): the default branch and non-integer raw value fallback are
+    /// unchanged; exception entries fall back to the default `round(·,2)` truncation.
     #[test]
     fn scale_value_default_rules_fallback() {
         let rules = HighPrecisionRules::default();
-        // 默认分支：整数原值 round-trunc。
+        // Default branch: integer raw value round-trunc.
         assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 33.0, 1.1), 36.0);
-        // 非整数原值仍走 default_high_precision = 1（与例外表无关）。
+        // Non-integer raw values still take default_high_precision = 1 (independent of the exception table).
         assert_eq!(scale_value(&rules, "Damage", ModType::Inc, 1.5, 1.3), 1.9);
-        // 无例外表 → CritChance 整数原值落默认分支（5 × 1.234 = 6.17 → trunc 6）。
+        // No exception table → CritChance's integer raw value falls to the default branch (5 × 1.234 = 6.17 → trunc 6).
         assert_eq!(
             scale_value(&rules, "CritChance", ModType::Base, 5.0, 1.234),
             6.0
         );
     }
 
-    // ===== curse priority（vendor determineCursePriority :454-485，表驱动） =====
+    // Curse priority (vendor determineCursePriority :454-485, table-driven)
 
-    /// vendor 数值样例：`base + min(socket,8)×100 + slot_weight + source_weight`。
+    /// Vendor's numeric samples: `base + min(socket,8)×100 + slot_weight + source_weight`.
     #[test]
     fn curse_priority_matches_vendor_samples() {
         let data = vendor_priority_data();
-        // Temporal Chains（1），Ring 1（8000），socket 2：1 + 200 + 8000。
+        // Temporal Chains (1), Ring 1 (8000), socket 2: 1 + 200 + 8000.
         assert_eq!(
             determine_curse_priority(
                 &data,
@@ -809,7 +866,7 @@ mod tests {
             ),
             8201
         );
-        // Despair（8），"Weapon 1 Swap" 去后缀 → Weapon 1（1000），aura 源（20000）。
+        // Despair (8), "Weapon 1 Swap" with the suffix stripped → Weapon 1 (1000), an aura source (20000).
         assert_eq!(
             determine_curse_priority(
                 &data,
@@ -820,7 +877,7 @@ mod tests {
             ),
             8 + 100 + 1000 + 20000
         );
-        // 装备隐式源 + Ring 2 → 槽位权重折回 Ring 1（:480-483）。
+        // An equipment implicit source + Ring 2 → slot weight folds back to Ring 1 (:480-483).
         assert_eq!(
             determine_curse_priority(
                 &data,
@@ -831,7 +888,7 @@ mod tests {
             ),
             2 + 100 + 8000 + 11000
         );
-        // socket 序钳到 8（:465）；未知槽 / 未知 curse 名 → 0 回退。
+        // Socket order clamps to 8 (:465); an unknown slot / unknown curse name → falls back to 0.
         assert_eq!(
             determine_curse_priority(&data, "Vulnerability", None, 12, CurseSourceWeight::None),
             3 + 800
@@ -848,13 +905,14 @@ mod tests {
         );
     }
 
-    // ===== 门控不变式（D5 / 本波锚点） =====
+    // Gating invariant (D5 / this pass's anchor)
 
-    /// `mode_buffs == false`（默认）→ 有 spec 也整段空转：双 db / 条件 / 输出桥逐值不变。
+    /// `mode_buffs == false` (default) → the whole section is a no-op even
+    /// with a spec present: both dbs / conditions / the output bridge are unchanged value-for-value.
     #[test]
     fn mode_buffs_off_is_value_identical_noop() {
         let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
-        env.cfg = CalcConfig::attack().with_mode_effective(true); // mode_buffs 默认 false
+        env.cfg = CalcConfig::attack().with_mode_effective(true); // mode_buffs defaults to false
         env.curse_priority = Some(vendor_priority_data());
         env.buff_skills.push(aura_spec("Discipline", 100.0));
         env.buff_skills.push(curse_spec(
@@ -875,14 +933,14 @@ mod tests {
         assert_eq!(env.curse_pass_output, None);
     }
 
-    // ===== curse limit / 分槽（vendor :2829-2896） =====
+    // Curse limit / slot assignment (vendor :2829-2896)
 
-    /// 3 hex 入 1 limit → priority 最高者独占槽；败者词条不入敌 db。
+    /// 3 hexes into a 1-slot limit → the highest priority takes the slot exclusively; losing mods don't enter the enemy db.
     #[test]
     fn curse_limit_keeps_highest_priority() {
         let mut env = buffed_env();
-        // priority：Despair(Boots,socket1)=8+100+7000 < Enfeeble(Ring 1)=2+100+8000
-        // < Temporal Chains(Ring 1, socket 3)=1+300+8000。
+        // priority: Despair(Boots,socket1)=8+100+7000 < Enfeeble(Ring 1)=2+100+8000
+        // < Temporal Chains(Ring 1, socket 3)=1+300+8000.
         env.buff_skills
             .push(curse_spec("Despair", "Boots", 1, 5.0, false, false));
         env.buff_skills
@@ -916,7 +974,7 @@ mod tests {
         assert!(!env.cfg.condition("EnemyMarked"));
     }
 
-    /// `+1 EnemyCurseLimit` BASE 词条扩槽：两 hex 并存。
+    /// A `+1 EnemyCurseLimit` BASE mod extends the slot count: both hexes coexist.
     #[test]
     fn curse_limit_extends_with_base_mods() {
         let mut env = buffed_env();
@@ -941,7 +999,7 @@ mod tests {
         );
     }
 
-    /// `CurseLimitIsMaximumPowerCharges` override：limit = PowerChargesMax（vendor :2830）。
+    /// `CurseLimitIsMaximumPowerCharges` override: limit = PowerChargesMax (vendor :2830).
     #[test]
     fn curse_limit_override_uses_power_charges_max() {
         let mut env = buffed_env();
@@ -960,7 +1018,7 @@ mod tests {
         );
     }
 
-    /// mark 与 hex 分槽（vendor :2835/:2852-2853）：各占各的 limit，互不挤占。
+    /// Marks and hexes use separate slots (vendor :2835/:2852-2853): each has its own limit, neither crowds out the other.
     #[test]
     fn marks_and_hexes_use_separate_slots() {
         let mut env = buffed_env();
@@ -978,7 +1036,7 @@ mod tests {
         buff_pass(&mut env);
 
         let out = env.curse_pass_output.as_ref().unwrap();
-        // 合并序 = hex 槽 → mark 槽（vendor tableConcat :2879）。
+        // Merge order = hex slots → mark slots (vendor's tableConcat :2879).
         assert_eq!(
             out.curse_slots,
             vec!["Temporal Chains".to_string(), "Sniper's Mark".to_string()]
@@ -993,7 +1051,7 @@ mod tests {
         assert_eq!(env.cfg.multiplier("CurseOnEnemy"), 2.0);
     }
 
-    /// `ignore_curse_limit` 槽外追加（vendor :2882-2896）：limit 1 被占满后仍追加。
+    /// `ignore_curse_limit` appends beyond the slots (vendor :2882-2896): still appended even after a limit-1 slot is full.
     #[test]
     fn ignore_curse_limit_appends_beyond_slots() {
         let mut env = buffed_env();
@@ -1017,10 +1075,10 @@ mod tests {
         );
     }
 
-    // ===== CurseEffect 乘区 + Condition:Effective 口径（vendor :2295-2316） =====
+    // The CurseEffect factor + Condition:Effective semantics (vendor :2295-2316)
 
-    /// 20% inc CurseEffect → hex 词条 ×1.2；敌侧 CurseEffectOnSelf MORE 只作用于
-    /// hex（非 mark，:2303-2305）；缩放产物带 Condition:Effective（面板口径不命中）。
+    /// 20% inc CurseEffect → hex mods ×1.2; the enemy-side CurseEffectOnSelf
+    /// MORE only applies to hexes (not marks, :2303-2305); scaled output carries Condition:Effective (doesn't match the panel view).
     #[test]
     fn curse_effect_scales_hex_not_mark() {
         let mut env = buffed_env();
@@ -1043,9 +1101,9 @@ mod tests {
                 .contributions(ModType::Inc, &env.cfg, &[ModName::from("DamageTaken")]);
         let mut values: Vec<f64> = contributions.iter().map(|c| c.value).collect();
         values.sort_by(f64::total_cmp);
-        // hex：10 × (1.2 × 0.5) = 6；mark：10 × 1.2 = 12。
+        // hex: 10 × (1.2 × 0.5) = 6; mark: 10 × 1.2 = 12.
         assert_eq!(values, vec![6.0, 12.0]);
-        // 面板口径（mode_effective=false）不命中（Condition:Effective 门控）。
+        // The panel view (mode_effective=false) doesn't match (gated on Condition:Effective).
         let panel_cfg = CalcConfig::attack().with_mode_buffs(true);
         assert_eq!(
             env.enemy
@@ -1053,13 +1111,13 @@ mod tests {
                 .sum(ModType::Inc, &panel_cfg, &[ModName::from("DamageTaken")]),
             0.0
         );
-        // 归因：无 origin 的 curse 词条回退 (Buff, "curse.<skill_id>")。
+        // Attribution: a curse mod with no origin falls back to (Buff, "curse.<skill_id>").
         let origin = contributions[0].origin.as_ref().expect("回退归因已附");
         assert_eq!(origin.source_id.kind, pobr_data::source::SourceKind::Buff);
         assert!(origin.source_id.id.starts_with("curse."));
     }
 
-    /// 敌方 Hexproof：hex 整条跳过（vendor :2289 gate），mark 不受影响。
+    /// Enemy Hexproof: the whole hex is skipped (vendor :2289's gate), marks are unaffected.
     #[test]
     fn hexproof_blocks_hex_but_not_mark() {
         let mut env = buffed_env();
@@ -1077,10 +1135,10 @@ mod tests {
         );
     }
 
-    // ===== BuffSpec 兼容路径 / 双计防护（§6.1） =====
+    // BuffSpec compatibility path / double-count guard (§6.1)
 
-    /// Buff 分支（M4-G，vendor :1949-1962）：BuffEffect 乘区缩放 + AffectedBy 条件。
-    /// 50% inc BuffEffect + buff 给 20% INC → 30% INC。
+    /// The Buff branch: BuffEffect factor scaling + an AffectedBy condition.
+    /// 50% inc BuffEffect + a buff giving 20% INC → 30% INC.
     #[test]
     fn buff_kind_scales_with_buff_effect_and_sets_condition() {
         let mut env = buffed_env();
@@ -1114,7 +1172,7 @@ mod tests {
         assert!(env.cfg.condition("AffectedByOnslaught"), "vendor :1955");
     }
 
-    /// 未消费 kind（如 Guard）走原值直注：词条不缩放、无条件置位（行为与现状一致）。
+    /// An unconsumed kind (e.g. Guard) takes the inject-raw-value path: mods aren't scaled, no condition is set (behavior matches the current state).
     #[test]
     fn unconsumed_kinds_pass_through_unscaled() {
         let mut env = buffed_env();
@@ -1148,9 +1206,9 @@ mod tests {
         assert!(!env.cfg.condition("AffectedBySteelskin"));
     }
 
-    // ===== aura 乘区（vendor :2102-2110） =====
+    // The aura factor (vendor :2102-2110)
 
-    /// 20% inc AuraEffect + aura 给 100 ES → 120（蓝图 §6.5 fixture，单元级）。
+    /// 20% inc AuraEffect + an aura giving 100 ES → 120.
     #[test]
     fn aura_effect_scales_buff_mods() {
         let mut env = buffed_env();
@@ -1172,7 +1230,7 @@ mod tests {
         assert_eq!(env.cfg.multiplier("BuffOnSelf"), 1.0);
     }
 
-    /// 同上 fixture 的端到端口径：CalculationSession → perform → 防御输出 ES = 120。
+    /// Same fixture, end-to-end: CalculationSession → perform → the defence output's ES = 120.
     #[test]
     fn aura_fixture_end_to_end_session() {
         use crate::calc::{CalculationSession, MinimalInput};
@@ -1190,7 +1248,7 @@ mod tests {
         assert_eq!(session.output().energy_shield, 120.0);
     }
 
-    /// MORE 乘区与 magnitude 一并进 mult（vendor :2104 `More(...) × calcLib.mod Magnitude`）。
+    /// The MORE factor and magnitude both enter mult (vendor :2104's `More(...) × calcLib.mod Magnitude`).
     #[test]
     fn aura_more_and_magnitude_multiply() {
         let mut env = buffed_env();
@@ -1203,7 +1261,7 @@ mod tests {
 
         buff_pass(&mut env);
 
-        // mult = 1.5 × 1.1 = 1.65 → 100 × 1.65 = 165。
+        // mult = 1.5 × 1.1 = 1.65 → 100 × 1.65 = 165.
         assert_eq!(
             env.player
                 .mod_db
@@ -1212,7 +1270,7 @@ mod tests {
         );
     }
 
-    /// mergeBuff 同名取强（vendor :41-63）：同名 aura 两份 spec 不叠加，取数值大者。
+    /// mergeBuff's same-name strongest-wins (vendor :41-63): two specs for the same-named aura don't stack, the larger value is taken.
     #[test]
     fn same_name_auras_merge_take_strongest() {
         let mut env = buffed_env();

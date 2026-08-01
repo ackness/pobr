@@ -65,9 +65,7 @@ fn stat_text_by_key_returns_key_when_unknown() {
     assert_eq!(t.stat_text_by_key(&key), "stat.not_a_stat");
 }
 
-// ---------------------------------------------------------------------------
 // display_stat_text: DisplayStatId → localized output-stat label
-// ---------------------------------------------------------------------------
 
 #[test]
 fn display_stat_text_returns_en_us_labels() {

@@ -1,20 +1,24 @@
-//! i18n 入口的薄包装：把 [`pobr_i18n::Translator`] 的按键查找暴露为
-//! `(lang, key) -> String` 的纯函数，便于 wasm 边界以字符串入/出调用。
+//! A thin wrapper around the i18n entry point: exposes [`pobr_i18n::Translator`]'s
+//! key lookup as a pure `(lang, key) -> String` function, easy to call
+//! across the wasm boundary with plain string in/out.
 
 use pobr_i18n::{LanguageId, Translator};
 
-/// 在 `lang` 语言下查找 `key` 的显示文本。
+/// Looks up the display text for `key` in the `lang` language.
 ///
-/// 行为遵循 [`Translator`] 的回退链：active → 规范语言（en-US）→ key 本身。
-/// 若 `lang` 没有内嵌词条包（未知语言），则回退到规范语言再查 `key`；
-/// 这样前端传入任意标签都不会得到错误，最差也会拿到 en-US 文本或 key 原文。
+/// Follows [`Translator`]'s fallback chain: active -> the canonical language
+/// (en-US) -> the key itself. If `lang` has no embedded language pack
+/// (unknown language), falls back to the canonical language before looking
+/// up `key`; this way the frontend never gets an error for passing an
+/// arbitrary tag — worst case it gets en-US text or the raw key.
 pub fn translate(lang: &str, key: &str) -> String {
     let translator = Translator::new(LanguageId::new(lang))
         .or_else(|_| Translator::new(LanguageId::new(pobr_i18n::CANONICAL_LANGUAGE)));
 
     match translator {
         Ok(translator) => translator.text(key).into_owned(),
-        // 规范语言始终内嵌可用；走到这里说明 pobr-i18n 自身异常，退回 key 原文。
+        // The canonical language is always embedded and available; reaching
+        // here means pobr-i18n itself is broken, so fall back to the raw key.
         Err(_) => key.to_string(),
     }
 }

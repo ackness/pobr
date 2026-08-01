@@ -1,25 +1,36 @@
-//! **降级说明（M0-W3，架构文档 20 §1 P8）**：本文件已从「计算常量准源」降级为
-//! **fallback 层**——数值准源迁移至 `data/<poe_version>/base/game_constants.json`
-//! （schema 见 [`crate::catalog::game_constants`]，由 W2 逐值对照测试锁定与本文件相等）。
+//! **Deprecation note**: this file has been downgraded from the source of
+//! truth for calc constants to a **fallback layer** — the source of truth
+//! has moved to `data/<poe_version>/base/game_constants.json` (schema in
+//! [`crate::catalog::game_constants`], locked equal to this file by the W2
+//! value-by-value comparison test).
 //!
-//! - calc 消费侧（pobr-core）已切换为读注入的 [`crate::catalog::RuntimeConstants`]
-//!   （经 `CalcConfig.constants`），**禁止新增对本文件常量的计算路径消费方**；
-//! - 本文件保留的唯一职责：为 catalog Def 类型的 `Default`（无 GameData 时的
-//!   fallback）提供单一数值出处（`Default` 直接引用这里的 const，避免字面量双权威）；
-//!   枚举与结构类型（`DamageType` / `AilmentType` 等）属 L4 框架语义，长期留此。
-//! - 待 M0 后续 wave 清空全部 fallback 依赖后整体删除数值常量段。
+//! - The calc consumer side (pobr-core) has switched to reading the
+//!   injected [`crate::catalog::RuntimeConstants`] (via
+//!   `CalcConfig.constants`); **no new calc-path consumers of this file's
+//!   constants are allowed**;
+//! - What this file still does, and only this: provide the single numeric
+//!   source of truth for the catalog Def types' `Default` (the fallback
+//!   used when there's no GameData) — `Default` refers directly to the
+//!   consts here, so there's no double authority of literals. The enum and
+//!   struct types (`DamageType` / `AilmentType`, etc.) are L4 framework
+//!   semantics and live here long-term.
+//! - The numeric-constant section will be deleted entirely once all
+//!   fallback dependents are cleared out.
 
 use serde::{Deserialize, Serialize};
 
-/// 默认最大元素 / 混沌抗性（百分比）。超过此值的抗性记为 over-cap。
+/// Default max elemental / chaos resistance (percent). Resistance above
+/// this is recorded as over-cap.
 pub const DEFAULT_MAX_RESISTANCE: f64 = 75.0;
-/// 抗性硬上限（百分比）；任何最大抗性提升都不能突破。
+/// Resistance hard cap (percent); no maximum-resistance increase can push past it.
 pub const HARD_MAX_RESISTANCE: f64 = 90.0;
-/// 抗性下界（负抗性允许堆叠到的下限）。
+/// Resistance floor (the lowest negative resistance can stack to).
 pub const RESIST_FLOOR: f64 = -200.0;
-/// PoE2 护甲系数（护甲减伤 `armour/(armour + ARMOUR_RATIO*raw_hit)`；PoE1 为 5）。
+/// PoE2's armour coefficient (armour damage reduction =
+/// `armour/(armour + ARMOUR_RATIO*raw_hit)`; PoE1 used 5).
 pub const ARMOUR_RATIO: f64 = 10.0;
-/// 非吟唱动作的服务器帧时间（约 33ms → 30.3 actions/s 上限），skill-speed.md。
+/// Server tick time for non-channelling actions (~33ms → a 30.3 actions/s
+/// cap), see skill-speed.md.
 pub const SERVER_TICK_SECONDS: f64 = 0.033;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -32,11 +43,12 @@ pub enum DamageType {
 }
 
 impl DamageType {
-    /// 元素伤害三种类型（`ElementalDamage` modifier 匹配这三者，不含混沌）。
+    /// The three elemental damage types (what the `ElementalDamage`
+    /// modifier matches — excludes chaos).
     pub const ELEMENTAL: [DamageType; 3] =
         [DamageType::Fire, DamageType::Cold, DamageType::Lightning];
 
-    /// 是否属于元素伤害（火/冰/电）。
+    /// Whether this is an elemental damage type (fire/cold/lightning).
     pub fn is_elemental(self) -> bool {
         matches!(
             self,
@@ -56,7 +68,7 @@ pub enum ClassId {
     Scion,
 }
 
-/// 元素子类型，辅助 `ElementalDamage` 聚合（火/冰/电）。
+/// An elemental sub-type, used to aggregate `ElementalDamage` (fire/cold/lightning).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ElementalType {
     Fire,
@@ -74,7 +86,8 @@ impl ElementalType {
     }
 }
 
-/// 伤害来源桶：区分击中伤害与各类持续 / 次级伤害（08-mechanics §2.3）。
+/// Damage-source bucket: distinguishes hit damage from the various
+/// damage-over-time / secondary damage kinds (08-mechanics §2.3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DamageSource {
     Attack,
@@ -85,16 +98,18 @@ pub enum DamageSource {
     Debuff,
 }
 
-/// 击中 vs 持续：DoT 不能暴击，ailment magnitude 基于 pre-mitigation Hit。
+/// Hit vs. sustained: DoT can't crit, and ailment magnitude is based on the
+/// pre-mitigation Hit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DamageKind {
     Hit,
     Dot,
 }
 
-/// 异常状态类型。与 [`DamageType`] 分离以支持 Corrupted Blood 等不属于 bleeding 的物理 DoT。
+/// An ailment type. Kept separate from [`DamageType`] to support physical
+/// DoTs like Corrupted Blood that aren't bleeding.
 ///
-/// 资料：`agent-docs/ailments.md` + `agent-docs/damage-types.md`（PoE2 0.5.0）。
+/// Reference: `agent-docs/ailments.md` + `agent-docs/damage-types.md` (PoE2 0.5.0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AilmentType {
     Bleed,
@@ -107,7 +122,8 @@ pub enum AilmentType {
     CorruptedBlood,
 }
 
-/// 异常状态是否造成伤害（用于快速分组，避免上层 match 臃肿）。
+/// Whether an ailment deals damage (for quick grouping, so higher-level
+/// matches don't get bloated).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AilmentCategory {
     Damaging,
@@ -115,7 +131,7 @@ pub enum AilmentCategory {
 }
 
 impl AilmentType {
-    /// 是否为造成伤害的异常状态。
+    /// Whether this ailment deals damage.
     pub fn category(self) -> AilmentCategory {
         match self {
             AilmentType::Bleed
@@ -129,9 +145,12 @@ impl AilmentType {
         }
     }
 
-    /// 造成伤害的异常状态对应的伤害类型；非伤害类返回 `None`。
+    /// The damage type a damaging ailment corresponds to; `None` for
+    /// non-damaging ones.
     ///
-    /// 流血 / 腐化之血为物理，点燃为火，中毒为混沌（基于命中的物理+混沌生成 magnitude）。
+    /// Bleed / Corrupted Blood are physical, Ignite is fire, Poison is
+    /// chaos (its magnitude is generated from the hit's physical + chaos
+    /// damage).
     pub fn damage_type(self) -> Option<DamageType> {
         match self {
             AilmentType::Bleed | AilmentType::CorruptedBlood => Some(DamageType::Physical),
@@ -145,25 +164,30 @@ impl AilmentType {
     }
 }
 
-/// PoE2 玩家/召唤物暴击伤害加成基础值（+100%；即爆伤乘区 base=0 时为 2.0）。
-/// 出处：agent-docs/critical-hits.md §爆伤、PoE2 wiki Critical hit、
-/// CalcOffence.lua `Sum("BASE","CritMultiplier")` 默认含 +100%。
+/// PoE2's base crit damage bonus for player/minions (+100%; i.e. the crit
+/// damage multiplier is 2.0 when its base is 0).
+/// Source: agent-docs/critical-hits.md §crit damage, the PoE2 wiki's
+/// Critical hit page, and CalcOffence.lua's `Sum("BASE","CritMultiplier")`
+/// defaulting to +100%.
 pub const PLAYER_BASE_CRIT_DAMAGE_BONUS: f64 = 100.0;
 
-/// 格挡几率硬上限（PoB2 `data.misc.BlockChanceCap = 90`，agent-docs/block.md）。
+/// Block chance hard cap (PoB2's `data.misc.BlockChanceCap = 90`,
+/// agent-docs/block.md).
 pub const BLOCK_CHANCE_CAP: f64 = 90.0;
 
-/// 感电最小有效强度（PoE2 0.5.0：BaseShockMagnitude = 20，agent-docs/ailments.md §感电）。
+/// Shock's minimum effective magnitude (PoE2 0.5.0: BaseShockMagnitude =
+/// 20, agent-docs/ailments.md §Shock).
 pub const SHOCK_MIN_EFFECT: f64 = 20.0;
 
-/// 全局 DoT DPS 上限（`(2^31 - 1) / 60`，约 3.579×10^7）。
+/// Global DoT DPS cap (`(2^31 - 1) / 60`, roughly 3.579×10^7).
 ///
-/// 出处：PoB2 `src/Modules/Data.lua`
-///   `DotDpsCap = 35791394, -- (2 ^ 31 - 1) / 60 (int max / 60 seconds)`。
-/// 所有异常/DoT 面板 DPS 均须 clamp 到此值（含 TotalDotDPS）。
+/// Source: PoB2 `src/Modules/Data.lua`:
+///   `DotDpsCap = 35791394, -- (2 ^ 31 - 1) / 60 (int max / 60 seconds)`.
+/// Every ailment/DoT panel's DPS must be clamped to this (including TotalDotDPS).
 pub const DOT_DPS_CAP: f64 = 35_791_394.0;
 
-/// 集中存放 PoE2 计算常量，避免在公式中散落 magic number。
+/// Central home for PoE2 calc constants, so magic numbers don't scatter
+/// across the formulas.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct GameConstants {
     pub resist_default_max: f64,
@@ -171,26 +195,31 @@ pub struct GameConstants {
     pub resist_floor: f64,
     pub server_tick_seconds: f64,
     pub armour_ratio: f64,
-    /// 流血基础 magnitude 占 pre-mitigation 物理命中的比例（每秒）。
+    /// Bleed's base magnitude as a fraction of pre-mitigation physical hit
+    /// damage (per second).
     pub bleed_base_fraction: f64,
-    /// 流血基础持续时间（秒）。
+    /// Bleed's base duration (seconds).
     pub bleed_base_duration: f64,
-    /// 点燃基础 magnitude 占 pre-mitigation 火命中的比例（每秒）。
+    /// Ignite's base magnitude as a fraction of pre-mitigation fire hit
+    /// damage (per second).
     pub ignite_base_fraction: f64,
     pub ignite_base_duration: f64,
-    /// 中毒基础 magnitude 占 pre-mitigation 命中的比例（每秒）。
+    /// Poison's base magnitude as a fraction of pre-mitigation hit damage
+    /// (per second).
     pub poison_base_fraction: f64,
     pub poison_base_duration: f64,
-    /// 默认感电增伤幅度（agent-docs/ailments.md BaseShockMagnitude=20，0.5.0）。
+    /// Default shock increased-damage-taken magnitude
+    /// (agent-docs/ailments.md's BaseShockMagnitude=20, 0.5.0).
     pub shock_default_effect: f64,
-    /// 玩家/召唤物暴击伤害加成基础值（PoE2 +100%；见 PLAYER_BASE_CRIT_DAMAGE_BONUS）。
+    /// Base crit damage bonus for player/minions (PoE2 +100%; see
+    /// PLAYER_BASE_CRIT_DAMAGE_BONUS).
     pub player_base_crit_damage_bonus: f64,
-    /// 格挡几率硬上限（PoE2 90%；见 BLOCK_CHANCE_CAP）。
+    /// Block chance hard cap (PoE2 90%; see BLOCK_CHANCE_CAP).
     pub block_chance_cap: f64,
 }
 
 impl GameConstants {
-    /// PoE2 0.5.0 默认常量集。
+    /// The default PoE2 0.5.0 constant set.
     pub fn poe2() -> Self {
         Self {
             resist_default_max: DEFAULT_MAX_RESISTANCE,
@@ -210,7 +239,7 @@ impl GameConstants {
         }
     }
 
-    /// 非吟唱动作的服务器帧上限速率（actions/s）。
+    /// The server-tick rate cap for non-channelling actions (actions/s).
     pub fn server_tick_rate(&self) -> f64 {
         1.0 / self.server_tick_seconds
     }
@@ -222,7 +251,7 @@ impl Default for GameConstants {
     }
 }
 
-/// 一段伤害区间（技能等级表 base damage 的元素）。
+/// A damage range (an element of a skill's per-level base damage table).
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct DamageRange {
     pub min: f64,
@@ -234,13 +263,13 @@ impl DamageRange {
         Self { min, max }
     }
 
-    /// 区间平均值。
+    /// The range's average value.
     pub fn avg(&self) -> f64 {
         (self.min + self.max) / 2.0
     }
 }
 
-/// 技能消耗类型。
+/// A skill's cost type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SkillCostKind {
     Mana,
@@ -250,7 +279,7 @@ pub enum SkillCostKind {
     NoCost,
 }
 
-/// 技能消耗（类型 + 数值）。
+/// A skill's cost (type + amount).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SkillCost {
     pub kind: SkillCostKind,

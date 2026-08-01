@@ -1,108 +1,136 @@
-//! 敌人档位预设 schema（`base/enemy_presets.json`）。
+//! Enemy tier preset schema (`base/enemy_presets.json`).
 //!
-//! 对应 PoB2 `src/Modules/ConfigOptions.lua` 的 `enemyIsBoss` 四档配置
-//! （vendor commit `2df5a74`，段落 L1963-2121）：每档一组 enemy/player modifier
-//! 注入 + per-type damage/pen/resist 默认列；倍率常量来自 `src/Modules/Data.lua`
-//! `data.misc`/`data.bossStats`。
+//! Corresponds to PoB2 `src/Modules/ConfigOptions.lua`'s four-tier
+//! `enemyIsBoss` config (vendor commit `2df5a74`, L1963-2121): each tier is
+//! a group of enemy/player modifier injections plus per-type
+//! damage/pen/resist default columns; the multiplier constants come from
+//! `src/Modules/Data.lua`'s `data.misc`/`data.bossStats`.
 //!
-//! pobr 准源（迁出前，搬迁不变式——JSON 与下列 Rust 值逐值相等）：
+//! pobr's source of truth (pre-migration; a migration invariant — the JSON
+//! is value-equal to the Rust values below):
 //!
-//! | JSON 字段 | pobr 准源 | vendor 来源 |
+//! | JSON field | pobr source of truth | vendor source |
 //! |---|---|---|
 //! | `max_enemy_level` | `monster.rs::MAX_ENEMY_LEVEL` (85) | Data.lua `data.misc.MaxEnemyLevel` |
-//! | `ehp_base_damage_mult` | `monster.rs::EnemyTierDefaults::compute` 内联 `1.5` | ConfigOptions.lua L1982/L2023/L2065/L2106 `monsterDamageTable[lv] * 1.5 * DPSMult` |
-//! | `default_enemy_crit_damage_bonus` | `monster.rs::MONSTER_BASE_CRIT_DAMAGE_BONUS` (30) | ConfigOptions.lua L1967（`data.monsterConstants["base_critical_hit_damage_bonus"]`） |
-//! | `tiers[].min_level` | `EnemyTier::min_level()`（Pinnacle/Uber = `PINNACLE_MIN_LEVEL` 82） | ConfigOptions.lua `defaultLevel = 82` + `m_max(...)` |
-//! | `tiers[].elemental_resist_bonus` | `EnemyTier::elemental_resist_bonus()` (0/30/50/50) | ConfigOptions.lua 各档 `defaultEleResist` |
-//! | `tiers[].chaos_resist_bonus` | `EnemyTier::chaos_resist_bonus()` (恒 0) | ConfigOptions.lua 各档 `enemyChaosResist` 占位 0 |
-//! | `tiers[].armour_mult_pct` | `EnemyTier::armour_mult_pct()`（含 `PINNACLE_ARMOUR_MEAN`/`UBER_ARMOUR_MEAN`，PoE1 Bosses.lua 均值占位） | Data.lua `data.bossStats.*ArmourMean` |
-//! | `tiers[].evasion_mult_pct` | `EnemyTier::evasion_mult_pct()`（同上均值占位） | Data.lua `data.bossStats.*EvasionMean` |
-//! | `tiers[].pen` | `EnemyTier::pen()` (0/0/3/8) | Data.lua `pinnacleBossPen = 15/5`、`uberBossPen = 40/5` |
-//! | `tiers[].dps_mult` | `EnemyTier::dps_mult()` (1/4.40, 4/4.40, 8/4.40, 10/4.25) | Data.lua `normalEnemyDPSMult` 等四常量 |
-//! | `tiers[].enemy_mods` 中 pobr 已注入条目 | `setup_env.rs::inject_enemy_mods`（Curse/Exposure/Slow -50、PoiseThreshold 500、Uber DamageTaken -70） | ConfigOptions.lua L2000-2006 / L2042-2048 / L2082-2089 |
-//! | `tiers[].conditions` | `setup_env.rs`（Unique/RareOrUnique；Pinnacle/Uber 加 PinnacleBoss） | ConfigOptions.lua L1998-1999 / L2039-2041 / L2079-2081 |
+//! | `ehp_base_damage_mult` | the inline `1.5` in `monster.rs::EnemyTierDefaults::compute` | ConfigOptions.lua L1982/L2023/L2065/L2106 `monsterDamageTable[lv] * 1.5 * DPSMult` |
+//! | `default_enemy_crit_damage_bonus` | `monster.rs::MONSTER_BASE_CRIT_DAMAGE_BONUS` (30) | ConfigOptions.lua L1967 (`data.monsterConstants["base_critical_hit_damage_bonus"]`) |
+//! | `tiers[].min_level` | `EnemyTier::min_level()` (Pinnacle/Uber = `PINNACLE_MIN_LEVEL` 82) | ConfigOptions.lua `defaultLevel = 82` + `m_max(...)` |
+//! | `tiers[].elemental_resist_bonus` | `EnemyTier::elemental_resist_bonus()` (0/30/50/50) | ConfigOptions.lua each tier's `defaultEleResist` |
+//! | `tiers[].chaos_resist_bonus` | `EnemyTier::chaos_resist_bonus()` (always 0) | ConfigOptions.lua each tier's `enemyChaosResist` placeholder 0 |
+//! | `tiers[].armour_mult_pct` | `EnemyTier::armour_mult_pct()` (includes `PINNACLE_ARMOUR_MEAN`/`UBER_ARMOUR_MEAN`, PoE1 Bosses.lua mean placeholders) | Data.lua `data.bossStats.*ArmourMean` |
+//! | `tiers[].evasion_mult_pct` | `EnemyTier::evasion_mult_pct()` (same mean placeholders) | Data.lua `data.bossStats.*EvasionMean` |
+//! | `tiers[].pen` | `EnemyTier::pen()` (0/0/3/8) | Data.lua `pinnacleBossPen = 15/5`, `uberBossPen = 40/5` |
+//! | `tiers[].dps_mult` | `EnemyTier::dps_mult()` (1/4.40, 4/4.40, 8/4.40, 10/4.25) | Data.lua `normalEnemyDPSMult` and three sibling constants |
+//! | entries pobr already injects in `tiers[].enemy_mods` | `setup_env.rs::inject_enemy_mods` (Curse/Exposure/Slow -50, PoiseThreshold 500, Uber DamageTaken -70) | ConfigOptions.lua L2000-2006 / L2042-2048 / L2082-2089 |
+//! | `tiers[].conditions` | `setup_env.rs` (Unique/RareOrUnique; Pinnacle/Uber add PinnacleBoss) | ConfigOptions.lua L1998-1999 / L2039-2041 / L2079-2081 |
 //!
-//! vendor-only 字段（pobr 此前未实现，自 vendor 抽取，行号见各字段 doc）：
-//! - `default_enemy_speed`（700，L1965）、`default_enemy_crit_chance`（5，L1966）；
-//! - `tiers[].chaos_damage_div`（None/Boss/Pinnacle = 2.5（L1987/L2028/L2070），Uber = 4（L2111））
-//!   ——per-type damage 默认列中混沌伤害对 `defaultDamage` 的除数；
-//! - `enemy_mods` 中 `KnockbackDistanceOnSelf MORE -75`、`MinimumMovementSpeed BASE 20`、
-//!   `PoiseThreshold MORE 213 (Map Boss)` / `838 (Xesht)`；
-//! - `player_mods`（`WarcryPower BASE 20`、`Multiplier:EnemyPower BASE 20`，L2007-2008 等）。
+//! vendor-only fields (not previously implemented in pobr, extracted from
+//! vendor; see each field's doc for the line number):
+//! - `default_enemy_speed` (700, L1965), `default_enemy_crit_chance` (5, L1966);
+//! - `tiers[].chaos_damage_div` (None/Boss/Pinnacle = 2.5 (L1987/L2028/L2070),
+//!   Uber = 4 (L2111)) — the divisor applied to `defaultDamage` for chaos
+//!   damage in the per-type damage default column;
+//! - `enemy_mods` entries `KnockbackDistanceOnSelf MORE -75`,
+//!   `MinimumMovementSpeed BASE 20`, `PoiseThreshold MORE 213 (Map Boss)` /
+//!   `838 (Xesht)`;
+//! - `player_mods` (`WarcryPower BASE 20`, `Multiplier:EnemyPower BASE 20`,
+//!   L2007-2008, etc.).
 //!
-//! 已知 pobr ↔ vendor 行为出入（**本表只记录、不改值**，行为对齐是后续独立 commit）：
-//! - TODO(parity): vendor 给 `Condition:Unique/RareOrUnique/PinnacleBoss` 与
-//!   `PoiseThreshold MORE 500` 均挂 `Condition:Effective` 门控；pobr `setup_env.rs`
-//!   当前对这两类**不带** Effective 门控（仅 Curse/Exposure/Slow 三项带）。
-//!   `effective_only` 字段按 pobr 现状落值（PoiseThreshold 500 = false），
-//!   vendor-only 条目按 vendor 落值。
-//! - TODO(parity): vendor 的 per-type damage 默认 `round(damageTable[lv] * 1.5 * DPSMult)`
-//!   有取整；pobr `EnemyTierDefaults::base_damage_for_ehp` 不取整。
-//! - TODO(parity): vendor 把档位穿透注入 per-element `enemy{Fire,Cold,Lightning}Pen`；
-//!   pobr 合并注入 player modDB 单一 `ElementalPenetration BASE`（语义等价，结构不同）。
+//! Known pobr ↔ vendor behavior discrepancies (**this table only records
+//! them, it doesn't change the values** — bringing behavior into alignment
+//! is a separate follow-up commit):
+//! - TODO(parity): vendor gates `Condition:Unique/RareOrUnique/PinnacleBoss`
+//!   and `PoiseThreshold MORE 500` behind `Condition:Effective`; pobr's
+//!   `setup_env.rs` currently does **not** gate these two behind Effective
+//!   (only the Curse/Exposure/Slow trio are gated). The `effective_only`
+//!   field is set per pobr's current behavior (PoiseThreshold 500 = false);
+//!   vendor-only entries are set per vendor's behavior.
+//! - TODO(parity): vendor's per-type damage default is
+//!   `round(damageTable[lv] * 1.5 * DPSMult)` — rounded; pobr's
+//!   `EnemyTierDefaults::base_damage_for_ehp` doesn't round.
+//! - TODO(parity): vendor injects tier penetration per-element into
+//!   `enemy{Fire,Cold,Lightning}Pen`; pobr merges it into a single
+//!   `ElementalPenetration BASE` on the player modDB (semantically
+//!   equivalent, structurally different).
 
 use serde::{Deserialize, Serialize};
 
 use crate::monster::{EnemyTier, MAX_ENEMY_LEVEL, MONSTER_BASE_CRIT_DAMAGE_BONUS};
 
-/// 以「偏移 + 分子/分母」表达的精确 f64 值：`value = base + num / den`。
+/// An exact f64 value expressed as offset + numerator/denominator:
+/// `value = base + num / den`.
 ///
-/// 两个动机：
-/// 1. **vendor 同构**——PoB2 源码即以分数书写这些常量（Data.lua
-///    `stdBossDPSMult = 4/4.40`；bossStats 均值 = `100 + Σmult/数量`，
-///    见 `monster.rs` 常量注释的推导）；
-/// 2. **bit 级精确**——`1/4.4` 等值的最短十进制表示需 17 位有效数字，
-///    serde_json 默认浮点解析（未开 `float_roundtrip` feature）对其有 1-ulp
-///    误差；分量（4.0 / 4.4 / 548.0 / 22.0 …）均为短十进制，解析无损，
-///    [`Self::value`] 在 Rust 侧重算除法即得与 pobr 准源逐 bit 相等的 f64。
+/// Two motivations:
+/// 1. **matches vendor's shape** — PoB2's source writes these constants as
+///    fractions too (Data.lua `stdBossDPSMult = 4/4.40`; bossStats means =
+///    `100 + Σmult/count`, see the derivation in `monster.rs`'s constant
+///    comments);
+/// 2. **bit-exact** — the shortest decimal representation of a value like
+///    `1/4.4` needs 17 significant digits, and serde_json's default float
+///    parsing (without the `float_roundtrip` feature) is off by 1 ulp for
+///    it; the components (4.0 / 4.4 / 548.0 / 22.0, …) are all short
+///    decimals that parse losslessly, so recomputing the division on the
+///    Rust side in [`Self::value`] gives an f64 bit-identical to pobr's
+///    source of truth.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ExactRatio {
-    /// 加法偏移（无偏移时为 0）。
+    /// Additive offset (0 when there's no offset).
     pub base: f64,
-    /// 分子。
+    /// Numerator.
     pub num: f64,
-    /// 分母（不得为 0）。
+    /// Denominator (must not be 0).
     pub den: f64,
 }
 
 impl ExactRatio {
-    /// 求值：`base + num / den`（与 pobr 准源常量的定义表达式同序，bit 级一致）。
+    /// Evaluates `base + num / den` (in the same order as pobr's source
+    /// constant's defining expression, for bit-level agreement).
     pub fn value(&self) -> f64 {
         self.base + self.num / self.den
     }
 }
 
-/// 敌人档位预设表（`enemyIsBoss` 四档 + 全档位公共默认）。
+/// The enemy tier preset table (the four `enemyIsBoss` tiers plus defaults
+/// shared across all tiers).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EnemyPresetsTable {
-    /// 普通怪/Boss 的最大敌人等级（PoB2 `data.misc.MaxEnemyLevel`；pobr `MAX_ENEMY_LEVEL`）。
+    /// Max enemy level for normal monsters/bosses (PoB2
+    /// `data.misc.MaxEnemyLevel`; pobr `MAX_ENEMY_LEVEL`).
     pub max_enemy_level: u32,
-    /// EHP 用基础伤害倍率：`damage = monsterDamageTable[lv] * ehp_base_damage_mult * dps_mult`
-    /// （ConfigOptions.lua L1982 等内联 `1.5`；pobr `EnemyTierDefaults::compute` 同值内联）。
+    /// Base damage multiplier for EHP:
+    /// `damage = monsterDamageTable[lv] * ehp_base_damage_mult * dps_mult`
+    /// (the inline `1.5` at ConfigOptions.lua L1982 etc.; pobr's
+    /// `EnemyTierDefaults::compute` inlines the same value).
     pub ehp_base_damage_mult: f64,
-    /// 敌人攻击间隔默认占位（ConfigOptions.lua L1965 `enemySpeed` placeholder = 700，
-    /// 单位 ms；vendor-only，pobr 暂无消费）。
+    /// Default placeholder for the enemy's attack interval
+    /// (ConfigOptions.lua L1965 `enemySpeed` placeholder = 700, in ms;
+    /// vendor-only, nothing consumes it in pobr yet).
     pub default_enemy_speed: f64,
-    /// 敌人暴击几率默认占位（%；ConfigOptions.lua L1966 `enemyCritChance` placeholder = 5；
-    /// vendor-only，pobr 从 enemy modDB 聚合、无写死默认）。
+    /// Default placeholder for the enemy's crit chance (%;
+    /// ConfigOptions.lua L1966 `enemyCritChance` placeholder = 5;
+    /// vendor-only — pobr aggregates this from the enemy modDB instead of
+    /// hardcoding a default).
     pub default_enemy_crit_chance: f64,
-    /// 敌人基础爆伤加成默认（%；ConfigOptions.lua L1967 ←
-    /// `data.monsterConstants["base_critical_hit_damage_bonus"]`；
-    /// pobr 准源 `monster.rs::MONSTER_BASE_CRIT_DAMAGE_BONUS = 30`）。
+    /// Default base crit damage bonus for enemies (%; ConfigOptions.lua
+    /// L1967 ← `data.monsterConstants["base_critical_hit_damage_bonus"]`;
+    /// pobr's source of truth is `monster.rs::MONSTER_BASE_CRIT_DAMAGE_BONUS = 30`).
     pub default_enemy_crit_damage_bonus: f64,
-    /// 四档预设，顺序固定 None → Boss → Pinnacle → Uber
-    /// （与 vendor list 顺序及 pobr `EnemyTier` 枚举序一致）。
+    /// The four tier presets, in a fixed order: None → Boss → Pinnacle →
+    /// Uber (matching both the vendor list order and pobr's `EnemyTier`
+    /// enum order).
     pub tiers: Vec<EnemyTierPreset>,
 }
 
 impl EnemyPresetsTable {
-    /// 按档位稳定 ID 查预设（`None`/`Boss`/`Pinnacle`/`Uber`，与
-    /// [`EnemyTier`] 变体名一致）。损坏/缺档数据返回 `None`（消费方自行回退）。
+    /// Looks up a preset by its stable tier ID (`None`/`Boss`/`Pinnacle`/`Uber`,
+    /// matching the [`EnemyTier`] variant names). Returns `None` for
+    /// corrupt/missing tier data (the caller falls back on its own).
     pub fn tier(&self, id: &str) -> Option<&EnemyTierPreset> {
         self.tiers.iter().find(|p| p.id == id)
     }
 
-    /// 按 [`EnemyTier`] 枚举查预设（`tier(枚举 Debug 名)` 的便捷封装）。
+    /// Looks up a preset by the [`EnemyTier`] enum (a convenience wrapper
+    /// around `tier(<enum's Debug name>)`).
     pub fn tier_for(&self, tier: EnemyTier) -> Option<&EnemyTierPreset> {
         let id = match tier {
             EnemyTier::None => "None",
@@ -115,10 +143,12 @@ impl EnemyPresetsTable {
 }
 
 impl EnemyTierPreset {
-    /// 从 `enemy_mods` 提取 `DamageTaken MORE` 值（Uber = -70，其余档无此条 → 0）。
+    /// Extracts the `DamageTaken MORE` value from `enemy_mods` (Uber = -70,
+    /// other tiers have no such entry → 0).
     ///
-    /// 与旧 Rust 准源 `EnemyTier::damage_taken_more()` 逐值相等
-    /// （`load_enemy_presets.rs::uber_damage_taken_matches_rust_source` 已锁）。
+    /// Value-equal to the old Rust source of truth
+    /// `EnemyTier::damage_taken_more()` (locked by
+    /// `load_enemy_presets.rs::uber_damage_taken_matches_rust_source`).
     pub fn damage_taken_more(&self) -> f64 {
         self.enemy_mods
             .iter()
@@ -128,65 +158,80 @@ impl EnemyTierPreset {
     }
 }
 
-/// 单个敌人档位预设（`enemyIsBoss` 的一档）。
+/// A single enemy tier preset (one tier of `enemyIsBoss`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EnemyTierPreset {
-    /// 档位稳定 ID（vendor list `val`：`None`/`Boss`/`Pinnacle`/`Uber`，
-    /// 与 pobr `EnemyTier` 变体名一致）。
+    /// Stable tier ID (the vendor list's `val`: `None`/`Boss`/`Pinnacle`/`Uber`,
+    /// matching the pobr `EnemyTier` variant names).
     pub id: String,
-    /// vendor list 显示标签（如 `Guardian/Pinnacle Boss`）。
+    /// The vendor list's display label (e.g. `Guardian/Pinnacle Boss`).
     pub label: String,
-    /// 是否为默认档位（vendor `defaultIndex = 3` → Pinnacle；pobr `EnemyTier::default()`）。
+    /// Whether this is the default tier (vendor `defaultIndex = 3` →
+    /// Pinnacle; pobr `EnemyTier::default()`).
     pub is_default: bool,
-    /// 默认/最低怪物等级下界（Pinnacle/Uber = 82，其余 1；pobr `EnemyTier::min_level()`）。
+    /// Default/minimum monster level floor (Pinnacle/Uber = 82, others 1;
+    /// pobr `EnemyTier::min_level()`).
     pub min_level: u32,
-    /// 元素抗性加成（%，BASE；pobr `EnemyTier::elemental_resist_bonus()`）。
+    /// Elemental resistance bonus (%, BASE; pobr
+    /// `EnemyTier::elemental_resist_bonus()`).
     pub elemental_resist_bonus: f64,
-    /// 混沌抗性加成（%；vendor 占位 0，pobr `EnemyTier::chaos_resist_bonus()` 恒 0）。
+    /// Chaos resistance bonus (%; vendor placeholder 0, pobr
+    /// `EnemyTier::chaos_resist_bonus()` is always 0).
     pub chaos_resist_bonus: f64,
-    /// 护甲倍率（%，100 = 不加成；pobr `EnemyTier::armour_mult_pct()`，
-    /// Pinnacle/Uber 为 PoE1 Bosses.lua 均值占位：`100 + 1100/22`、`100 + 175/7`，
-    /// 推导见 `monster.rs` 常量注释）。
+    /// Armour multiplier (%, 100 = no bonus; pobr
+    /// `EnemyTier::armour_mult_pct()`; for Pinnacle/Uber this is a PoE1
+    /// Bosses.lua mean placeholder: `100 + 1100/22`, `100 + 175/7` — see the
+    /// derivation in `monster.rs`'s constant comments).
     pub armour_mult_pct: ExactRatio,
-    /// 闪避倍率（%；pobr `EnemyTier::evasion_mult_pct()`；
-    /// Pinnacle/Uber 均值 `100 + 548/22`、`100 + 116/7`）。
+    /// Evasion multiplier (%; pobr `EnemyTier::evasion_mult_pct()`;
+    /// Pinnacle/Uber means `100 + 548/22`, `100 + 116/7`).
     pub evasion_mult_pct: ExactRatio,
-    /// 元素穿透（%；pobr `EnemyTier::pen()`，注入口径差异见模块 doc TODO）。
+    /// Elemental penetration (%; pobr `EnemyTier::pen()` — see the module
+    /// doc's TODO for the injection-shape difference).
     pub pen: f64,
-    /// EHP 用 DPS 倍率（pobr `EnemyTier::dps_mult()`；vendor `data.misc.*DPSMult`，
-    /// 分数书写 `1/4.40`、`4/4.40`、`8/4.40`、`10/4.25`）。
+    /// DPS multiplier for EHP (pobr `EnemyTier::dps_mult()`; vendor
+    /// `data.misc.*DPSMult`, written as fractions `1/4.40`, `4/4.40`,
+    /// `8/4.40`, `10/4.25`).
     pub dps_mult: ExactRatio,
-    /// per-type damage 默认列中混沌伤害除数：`chaosDamage = round(defaultDamage / 此值)`
-    /// （vendor-only：None/Boss/Pinnacle = 2.5，Uber = 4，L1987/L2028/L2070/L2111；
-    /// 物理/火/冰/雷四类直接取 `defaultDamage` 不除）。
+    /// Chaos-damage divisor for the per-type damage default column:
+    /// `chaosDamage = round(defaultDamage / this value)` (vendor-only:
+    /// None/Boss/Pinnacle = 2.5, Uber = 4, L1987/L2028/L2070/L2111;
+    /// physical/fire/cold/lightning take `defaultDamage` directly, no
+    /// division).
     pub chaos_damage_div: f64,
-    /// 注入 enemy modDB 的档位 mod 组（含 pobr 已实现与 vendor-only 条目，见模块 doc）。
+    /// The tier's mod group injected into the enemy modDB (includes both
+    /// entries pobr already implements and vendor-only entries — see the
+    /// module doc).
     pub enemy_mods: Vec<EnemyPresetMod>,
-    /// 注入 player modDB 的档位 mod 组（vendor-only：WarcryPower/Multiplier:EnemyPower）。
+    /// The tier's mod group injected into the player modDB (vendor-only:
+    /// WarcryPower/Multiplier:EnemyPower).
     pub player_mods: Vec<EnemyPresetMod>,
-    /// 注入 enemy modDB 的布尔条件态（`Condition:<名>`；pobr `setup_env.rs` 同名注入）。
+    /// Boolean condition states injected into the enemy modDB
+    /// (`Condition:<name>`; pobr's `setup_env.rs` injects the same names).
     pub conditions: Vec<String>,
 }
 
-/// 档位 mod 组中的一条 modifier。
+/// A single modifier in a tier's mod group.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EnemyPresetMod {
-    /// ModName（如 `CurseEffectOnSelf`）。
+    /// ModName (e.g. `CurseEffectOnSelf`).
     pub name: String,
-    /// mod 类型（`BASE` / `MORE`，沿用 vendor 字面）。
+    /// Mod type (`BASE` / `MORE`, kept verbatim from vendor).
     pub mod_type: String,
-    /// 数值。
+    /// Numeric value.
     pub value: f64,
-    /// vendor 来源标签（NewMod 第 4 参：`Unique`/`Map Boss`/`Xesht`/`Boss`），
-    /// 仅溯源用，不参与计算。
+    /// Vendor source label (NewMod's 4th argument: `Unique`/`Map Boss`/
+    /// `Xesht`/`Boss`), for provenance only — not used in computation.
     pub source_label: String,
-    /// 是否仅在有效 DPS 口径（`Condition:Effective`）下生效。
-    /// pobr 已实现条目按 `setup_env.rs` 现状落值，vendor-only 条目按 vendor 落值
-    /// （两侧门控口径差异见模块 doc TODO）。
+    /// Whether this only applies under the effective-DPS accounting
+    /// (`Condition:Effective`). Entries pobr already implements are set per
+    /// `setup_env.rs`'s current behavior; vendor-only entries are set per
+    /// vendor's behavior (see the module doc's TODO for the gating
+    /// discrepancy between the two).
     pub effective_only: bool,
 }
 
-/// `Default` 构造用：拼一条档位 mod。
+/// Used to build `Default`: assembles a single tier mod.
 fn preset_mod(
     name: &str,
     mod_type: &str,
@@ -203,14 +248,17 @@ fn preset_mod(
     }
 }
 
-/// Boss/Pinnacle/Uber 三档共通 enemy mod 组（顺序与 `base/enemy_presets.json` 一致）：
-/// - Curse/Exposure/Slow `MORE -50`（pobr `setup_env.rs` 已注入，Effective 门控）；
-/// - Knockback `MORE -75`、MinimumMovementSpeed `BASE 20`（vendor-only，
-///   ConfigOptions.lua L2002/L2004 等）；
-/// - `uber_damage_taken`：Uber 专属 `DamageTaken MORE -70`（pobr
-///   `EnemyTier::damage_taken_more()`；vendor L2087）；
-/// - `PoiseThreshold MORE 500`（pobr 注入，无门控——pobr 现状口径，见模块 doc TODO）
-///   + 档位附加 poise 条目（Boss=213 "Map Boss" / Pinnacle/Uber=838 "Xesht"，vendor-only）。
+/// The enemy mod group shared by the Boss/Pinnacle/Uber tiers (in the same
+/// order as `base/enemy_presets.json`):
+/// - Curse/Exposure/Slow `MORE -50` (already injected by pobr's
+///   `setup_env.rs`, Effective-gated);
+/// - Knockback `MORE -75`, MinimumMovementSpeed `BASE 20` (vendor-only,
+///   ConfigOptions.lua L2002/L2004 etc.);
+/// - `uber_damage_taken`: Uber-only `DamageTaken MORE -70` (pobr
+///   `EnemyTier::damage_taken_more()`; vendor L2087);
+/// - `PoiseThreshold MORE 500` (injected by pobr, ungated — pobr's current
+///   behavior, see the module doc's TODO) plus a per-tier extra poise entry
+///   (Boss=213 "Map Boss" / Pinnacle/Uber=838 "Xesht", vendor-only).
 fn boss_enemy_mods(uber_damage_taken: bool, extra_poise: (f64, &str)) -> Vec<EnemyPresetMod> {
     let mut mods = vec![
         preset_mod("CurseEffectOnSelf", "MORE", -50.0, "Unique", true),
@@ -234,7 +282,8 @@ fn boss_enemy_mods(uber_damage_taken: bool, extra_poise: (f64, &str)) -> Vec<Ene
     mods
 }
 
-/// Boss/Pinnacle/Uber 三档共通 player mod 组（vendor-only，L2007-2008 等）。
+/// The player mod group shared by the Boss/Pinnacle/Uber tiers
+/// (vendor-only, L2007-2008 etc.).
 fn boss_player_mods() -> Vec<EnemyPresetMod> {
     vec![
         preset_mod("WarcryPower", "BASE", 20.0, "Boss", false),
@@ -242,8 +291,10 @@ fn boss_player_mods() -> Vec<EnemyPresetMod> {
     ]
 }
 
-/// `Default` 构造用：单档预设骨架（pobr 准源标量引用 [`EnemyTier`] 各方法，
-/// 零字面量复制；ExactRatio 分量为 vendor 分数书写形，与 JSON 同构）。
+/// Used to build `Default`: the skeleton for a single tier preset (scalar
+/// fields reference the relevant [`EnemyTier`] method — no literal
+/// duplication; ExactRatio components use vendor's fraction notation,
+/// matching the JSON shape).
 #[allow(clippy::too_many_arguments)]
 fn tier_preset(
     tier: EnemyTier,
@@ -275,29 +326,34 @@ fn tier_preset(
     }
 }
 
-/// 无加成倍率（100%；None/Boss 档护甲/闪避）。
+/// No-bonus multiplier (100%; None/Boss tier armour/evasion).
 const RATIO_100: ExactRatio = ExactRatio {
     base: 100.0,
     num: 0.0,
     den: 1.0,
 };
 
-/// fallback（无 GameData 注入时使用）：与 `base/enemy_presets.json` **逐值相等**
-/// （搬迁不变式，W2 测试已锁 JSON == Rust 准源）。
+/// The fallback (used when no GameData is injected): **value-equal** to
+/// `base/enemy_presets.json` field by field (a migration invariant; the W2
+/// test already locks JSON == this Rust source of truth).
 ///
-/// - pobr 准源字段引用 `crate::monster`（`MAX_ENEMY_LEVEL` /
-///   `MONSTER_BASE_CRIT_DAMAGE_BONUS` / [`EnemyTier`] 各方法）；
-/// - ExactRatio 分量为 vendor 分数书写形（`1/4.40`、`100 + 1100/22` 等，
-///   见 [`ExactRatio`] doc——`value()` 与旧 const 逐 bit 相等）；
-/// - vendor-only 字段（speed/crit 占位、chaos_damage_div、Knockback/MMS/
-///   附加 Poise/player_mods）字面量抄录自 ConfigOptions.lua（行号见各处 doc）。
+/// - The pobr-source-of-truth fields reference `crate::monster`
+///   (`MAX_ENEMY_LEVEL` / `MONSTER_BASE_CRIT_DAMAGE_BONUS` / the [`EnemyTier`]
+///   methods);
+/// - The ExactRatio components use vendor's fraction notation (`1/4.40`,
+///   `100 + 1100/22`, etc. — see the [`ExactRatio`] doc: `value()` is
+///   bit-identical to the old const);
+/// - vendor-only fields (speed/crit placeholders, chaos_damage_div,
+///   Knockback/MMS/extra Poise/player_mods) are literals transcribed from
+///   ConfigOptions.lua (see each site's doc for the line number).
 impl Default for EnemyPresetsTable {
     fn default() -> Self {
         Self {
             max_enemy_level: MAX_ENEMY_LEVEL,
-            // pobr 准源：`EnemyTierDefaults::compute` 内联 `damage * 1.5 * dps_mult` 的 1.5。
+            // pobr source of truth: the 1.5 inlined in
+            // `EnemyTierDefaults::compute`'s `damage * 1.5 * dps_mult`.
             ehp_base_damage_mult: 1.5,
-            // vendor-only：ConfigOptions.lua L1965 / L1966 占位。
+            // vendor-only: ConfigOptions.lua L1965 / L1966 placeholders.
             default_enemy_speed: 700.0,
             default_enemy_crit_chance: 5.0,
             default_enemy_crit_damage_bonus: MONSTER_BASE_CRIT_DAMAGE_BONUS,
@@ -340,7 +396,7 @@ impl Default for EnemyPresetsTable {
                     EnemyTier::Pinnacle,
                     "Pinnacle",
                     "Guardian/Pinnacle Boss",
-                    // PinnacleArmourMean = 100 + 1100/22（推导见 monster.rs 常量注释）
+                    // PinnacleArmourMean = 100 + 1100/22 (derivation in monster.rs's constant comments)
                     ExactRatio {
                         base: 100.0,
                         num: 1100.0,
@@ -399,9 +455,11 @@ impl Default for EnemyPresetsTable {
 mod tests {
     use super::*;
 
-    /// fallback 不变式：Default 各档标量与旧 Rust 准源（`EnemyTier` 各方法）逐值相等，
-    /// ExactRatio `value()` 与旧 const 逐 bit 相等
-    /// （Default == JSON 的完整对照在 `pobr-gamedata` ruleset 测试）。
+    /// Fallback invariant: `Default`'s per-tier scalars are value-equal to
+    /// the old Rust source of truth (the [`EnemyTier`] methods), and
+    /// ExactRatio's `value()` is bit-identical to the old consts (the full
+    /// comparison of Default == JSON lives in the `pobr-gamedata` ruleset
+    /// tests).
     #[test]
     fn default_tier_scalars_match_enemy_tier_methods() {
         let t = EnemyPresetsTable::default();
@@ -457,7 +515,8 @@ mod tests {
         }
     }
 
-    /// Default 档位顺序与 vendor list / `EnemyTier` 枚举序一致。
+    /// The `Default` tier order matches both the vendor list and the
+    /// `EnemyTier` enum order.
     #[test]
     fn default_tiers_in_canonical_order() {
         let t = EnemyPresetsTable::default();

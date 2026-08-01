@@ -1,29 +1,36 @@
-//! 注入计算引擎的运行时常量包（M0-W3 注入管道，架构文档 20 §1 P8/P9、§2.2）。
+//! The runtime constants bundle injected into the calc engine.
 //!
-//! # 管道形状（阶段 2 各域 agent 的接口契约）
+//! # Pipeline shape (the interface contract for each domain's phase-2 agent)
 //!
-//! [`RuntimeConstants`] 聚合「calc 消费的入库数据域」（pobr-data catalog 类型），
-//! 沿以下路径注入，pobr-core 保持零 I/O：
+//! [`RuntimeConstants`] aggregates "the stored data domains calc consumes"
+//! (pobr-data catalog types), injected along this path, with pobr-core
+//! staying zero-I/O:
 //!
 //! ```text
-//! data/<版本>/base/*.json
-//!   →（pobr-gamedata `GameData::load_ruleset()`，唯一 I/O 点）RuleSet { Option<各域 Def> }
-//!   →（pobr-build `BuildData::load` 合并：Some=数据，None=Default fallback）RuntimeConstants
-//!   →（pobr-build `calculate_with_data` → `CalculationSession::set_constants`）
-//!   → pobr-core `CalcConfig.constants`（随 cfg 线程化到全部 calc 函数）
+//! data/<version>/base/*.json
+//!   → (pobr-gamedata's `GameData::load_ruleset()`, the sole I/O point) RuleSet { Option<each domain's Def> }
+//!   → (pobr-build's `BuildData::load` merges: Some=data, None=Default fallback) RuntimeConstants
+//!   → (pobr-build's `calculate_with_data` → `CalculationSession::set_constants`)
+//!   → pobr-core's `CalcConfig.constants` (threaded through `cfg` to every calc function)
 //! ```
 //!
-//! # 不变式
+//! # Invariants
 //!
-//! - **`Default` = fallback**：各域字段的 `Default` 必须与对应 JSON 逐值相等
-//!   （W2 已锁 JSON == 旧 Rust 硬编码；`Default` 引用旧 Rust 常量而非复制字面量），
-//!   因此「无 GameData 走 Default」与「有 GameData 走注入」输出逐值一致——
-//!   搬迁不变式（parity 零变化）的结构保证。
-//! - **扩展方式（阶段 2）**：每接入一个新数据域，在本结构体**追加一个字段**
-//!   （类型 = `catalog` 对应 Def，`Default` 实现落 pobr-data、引用既有 Rust 准源），
-//!   并在 `pobr-gamedata::RuleSet` / `pobr-build::BuildData::load` 各补一行合并；
-//!   消费侧经 `cfg.constants.<域>` 读取。表型大域（百级表等）如经测量 clone 成本
-//!   过高，再考虑改挂 `Env`（setup 期一次性消费），勿提前优化。
+//! - **`Default` = the fallback**: each domain field's `Default` must be
+//!   value-equal to its corresponding JSON (W2 already locked JSON == the
+//!   old hardcoded Rust; `Default` references the old Rust constants rather
+//!   than duplicating literals), so "no GameData → Default" and "GameData
+//!   present → injected" produce value-identical output — the structural
+//!   guarantee behind the migration invariant (zero parity change).
+//! - **How to extend (phase 2)**: for each new data domain wired in, **add
+//!   a field** to this struct (typed as the corresponding catalog Def, with
+//!   the `Default` impl living in pobr-data and referencing the existing
+//!   Rust source of truth), and add a matching merge line to both
+//!   `pobr-gamedata::RuleSet` and `pobr-build::BuildData::load`; the
+//!   consumer reads it via `cfg.constants.<domain>`. For a large tabular
+//!   domain (a per-level table, etc.) where cloning turns out too costly
+//!   under measurement, consider hanging it off `Env` instead (consumed
+//!   once at setup) — don't optimize preemptively.
 
 use serde::{Deserialize, Serialize};
 
@@ -35,41 +42,53 @@ use super::monster_scaling::MonsterScalingTable;
 use super::unarmed_data::UnarmedDataTable;
 use super::weapon_types::WeaponTypeTable;
 
-/// 注入 calc 的运行时常量包。`Default` = 无 GameData 时的 fallback（与 JSON 逐值相等）。
+/// The runtime constants bundle injected into calc. `Default` = the
+/// fallback used when there's no GameData (value-equal to the JSON).
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct RuntimeConstants {
-    /// 全局游戏常数三段表（`base/game_constants.json`）。
+    /// The three-section global game constants table (`base/game_constants.json`).
     pub game_constants: GameConstantsDef,
-    /// 角色等级/属性派生常量（`base/character_constants.json`，消费方
-    /// `pobr-core::character` 的 `CharacterBase` 派生公式）。注意与
-    /// [`Self::character`]（game_constants 的 character 段，玩家基线魔数）区分：
-    /// 本域承载的是 life/mana/accuracy 的 per-level / per-attribute 派生系数。
+    /// Character level/attribute-derived constants
+    /// (`base/character_constants.json`, consumed by
+    /// `pobr-core::character`'s `CharacterBase` derivation formulas). Don't
+    /// confuse this with [`Self::character`] (game_constants's character
+    /// section, player-baseline magic numbers) — this domain carries the
+    /// per-level / per-attribute derivation coefficients for life/mana/accuracy.
     pub character_constants: super::character_constants::CharacterConstantsDef,
-    /// 怪物百级缩放表（`base/monster_scaling.json`；`setup_env` 敌人装配消费）。
+    /// Monster per-level scaling table (`base/monster_scaling.json`;
+    /// consumed by `setup_env`'s enemy assembly).
     pub monster_scaling: MonsterScalingTable,
-    /// 敌人档位预设（`base/enemy_presets.json`；`setup_env` 档位加成/穿透消费）。
+    /// Enemy tier presets (`base/enemy_presets.json`; consumed by
+    /// `setup_env`'s tier bonuses/penetration).
     pub enemy_presets: EnemyPresetsTable,
-    /// per-class 空手基底表（`base/unarmed_data.json`，源 PoB2 `data.unarmedWeaponData`）。
-    /// 无主手武器时攻击技能的 weaponData 来源（pobr-build `unarmed_contribution` 消费）。
+    /// Per-class unarmed base table (`base/unarmed_data.json`, sourced from
+    /// PoB2's `data.unarmedWeaponData`). The weaponData source for attack
+    /// skills when there's no main-hand weapon (consumed by pobr-build's
+    /// `unarmed_contribution`).
     pub unarmed_data: UnarmedDataTable,
-    /// 武器类型表（`base/weapon_types.json`，源 PoB2 `data.weaponTypeInfo`）。
-    /// 武器持握/近战条件与武器类伤害关键词判定的查表来源（pobr-build 消费；
-    /// 键空间 = PoB base `type` 名，GGG `item_class` → 表键的映射留消费侧）。
+    /// Weapon type table (`base/weapon_types.json`, sourced from PoB2's
+    /// `data.weaponTypeInfo`). The lookup source for weapon-grip/melee
+    /// conditions and weapon-class damage keyword checks (consumed by
+    /// pobr-build; the key space is the PoB base `type` name — mapping
+    /// GGG's `item_class` to a table key is the consumer's job).
     pub weapon_types: WeaponTypeTable,
 }
 
 impl RuntimeConstants {
-    /// 机制公式魔数段（抗性边界 / 护甲系数 / 服务器帧 / 异常基线 / 各类 cap）。
+    /// The mechanic-formula magic-numbers section (resistance boundary /
+    /// armour coefficient / server tick / ailment baseline / various caps).
     pub fn game(&self) -> &GameMechanicsConstantsDef {
         &self.game_constants.game
     }
 
-    /// 玩家固有常数段（默认最大抗性 / 玩家基础爆伤加成等）。
+    /// The player-inherent constants section (default max resistance /
+    /// player base crit damage bonus, etc.).
     pub fn character(&self) -> &CharacterConstantsDef {
         &self.game_constants.character
     }
 
-    /// 怪物固有常数段（怪物最大抗性 / 怪物基础爆伤加成等）。
+    /// The monster-inherent constants section (monster max resistance /
+    /// monster base crit damage bonus, etc.).
     pub fn monster(&self) -> &MonsterConstantsDef {
         &self.game_constants.monster
     }
@@ -79,8 +98,9 @@ impl RuntimeConstants {
 mod tests {
     use super::RuntimeConstants;
 
-    /// fallback 不变式抽查：`Default` 与旧 Rust 准源逐值相等
-    /// （完整 Default == JSON 对照在 `pobr-gamedata/tests/load_game_constants.rs`）。
+    /// Fallback-invariant spot check: `Default` is value-equal to the old
+    /// Rust source of truth (the full Default == JSON comparison lives in
+    /// `pobr-gamedata/tests/load_game_constants.rs`).
     #[test]
     fn default_matches_legacy_rust_constants() {
         let c = RuntimeConstants::default();
@@ -121,9 +141,11 @@ mod tests {
         assert_eq!(c.game().shock_default_effect, legacy.shock_default_effect);
     }
 
-    /// fallback 不变式抽查（monster-scaling 域）：百级表/档位预设的 `Default`
-    /// 与旧 Rust 准源逐值相等（完整对照在各自 catalog 模块测试 +
-    /// `pobr-gamedata/tests/load_monster_scaling.rs` / `load_enemy_presets.rs`）。
+    /// Fallback-invariant spot check (monster-scaling domain): the per-level
+    /// table / tier presets' `Default` is value-equal to the old Rust
+    /// source of truth (the full comparison lives in each catalog module's
+    /// own tests plus `pobr-gamedata/tests/load_monster_scaling.rs` /
+    /// `load_enemy_presets.rs`).
     #[test]
     fn default_monster_domains_match_legacy_rust_sources() {
         let c = RuntimeConstants::default();

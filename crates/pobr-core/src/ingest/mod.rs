@@ -1,16 +1,21 @@
-//! 来源接入层——「来源对象 → 词条」。
+//! Source ingest layer — "source object → modifier".
 //!
-//! 词条分层叙事的第 2 层之一（见 crate 根 `lib.rs` 的总览）：把游戏里的各类
-//! 来源对象转成带 [`SourceId`](pobr_data::source::SourceId) 归因的 [`Modifier`](crate::Modifier)，
-//! 注入 [`ModDb`](crate::ModDb)。SourceId 让聚合结果可经 [`attribute`](crate::attribute)
-//! 层回溯到「是哪件装备 / 哪个天赋 / 哪颗宝石贡献的」。
-//! - [`item`] / [`item_text`]：装备（含 flask/charm 词条分支）；raw 文本 → calc 视图。
-//! - [`passive`]：天赋树已分配节点的 mod 收集。
-//! - [`skill_source`]：主动 / 辅助宝石 → 技能词条与伤害基值。
-//! - [`character`]：职业 / 等级 / 属性派生的固有基础值。
-//! - [`campaign`]：战役进度惩罚与永久奖励。
+//! One of layer 2's stops in the modifier lifecycle narrative (see the
+//! overview in the crate root `lib.rs`): converts the game's various source
+//! objects into [`Modifier`](crate::Modifier)s attributed with a
+//! [`SourceId`](pobr_data::source::SourceId), and injects them into
+//! [`ModDb`](crate::ModDb). The SourceId lets aggregated results be traced back
+//! through the [`attribute`](crate::attribute) layer to "which item / which
+//! passive / which gem contributed this".
+//! - [`item`] / [`item_text`]: equipment (including the flask/charm modifier
+//!   branch); raw text → calc view.
+//! - [`passive`]: mod collection from allocated passive tree nodes.
+//! - [`skill_source`]: active / support gems → skill modifiers and base damage
+//!   values.
+//! - [`character`]: innate base values derived from class / level / attributes.
+//! - [`campaign`]: campaign progress penalties and permanent rewards.
 //!
-//! 对照 PoB2 `Modules/CalcSetup.lua` 的来源装配。
+//! Mirrors the source assembly in PoB2's `Modules/CalcSetup.lua`.
 
 pub mod campaign;
 pub mod character;

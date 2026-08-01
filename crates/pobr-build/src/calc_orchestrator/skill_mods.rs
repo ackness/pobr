@@ -1,4 +1,4 @@
-//! skill_mods — 技能 base mod/DoT/尸爆/弩上膛/品质/未选 set 的 modifier 注入。
+//! skill_mods — modifier injection for skill base mods / DoT / corpse explosion / crossbow reload / quality / unselected sets.
 
 use super::*;
 
@@ -11,13 +11,15 @@ use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
 
-/// 把主技能分等级参数（cost / cooldown / **stat 集**）构造为 SkillGem 归因的 modifier：
-/// cost/cooldown 供 `fill_skill_mechanics` 经 `SkillManaCostBase` / `SkillCooldownBase` 读取；
-/// stat 集经 [`map_skill_stat`] 映射（基础伤害 BASE、`damage_+%` INC、`_final` MORE），
-/// 进入 offence 的伤害分量管线。
+/// Builds the main skill's per-level parameters (cost / cooldown / **stat set**) into
+/// SkillGem-attributed modifiers: cost/cooldown are read by `fill_skill_mechanics` via
+/// `SkillManaCostBase` / `SkillCooldownBase`; the stat set is mapped via
+/// [`map_skill_stat`] (base damage BASE, `damage_+%` INC, `_final` MORE), feeding into
+/// offence's damage component pipeline.
 ///
-/// 使用时间不在此处（它走 `base_input.base_action_rate`，见 [`calculate_with_data`]）。
-/// `set_key` = 选中 statSet 的 per-set 覆盖键（W-J 接线，见 [`mapped_stat_modifiers`]）。
+/// Use time isn't handled here (it goes through `base_input.base_action_rate`, see
+/// [`calculate_with_data`]). `set_key` = the selected statSet's per-set override key
+/// (wired through, see [`mapped_stat_modifiers`]).
 pub(crate) fn skill_base_modifiers(
     skill: &ResolvedSkillLevel,
     skill_id: &str,
@@ -35,9 +37,10 @@ pub(crate) fn skill_base_modifiers(
     {
         mods.push(mk("SkillCooldownBase", cd, "main skill base cooldown"));
     }
-    // 可储存使用次数（PoB `skillData.storedUses`，如 grenade=3）→ SkillStoredUsesBase
-    // BASE。消费方 = `calc_cooldown` / `apply_cooldown_cap`：储存 >1 时冷却**不**向上
-    // 取整到服务器帧（vendor CalcOffence.lua:338-345）。
+    // Number of stored uses (PoB's `skillData.storedUses`, e.g. grenade=3) →
+    // SkillStoredUsesBase BASE. Consumed by `calc_cooldown` / `apply_cooldown_cap`: when
+    // stored uses > 1, cooldown does **not** round up to a server frame (vendor
+    // CalcOffence.lua:338-345).
     if let Some(stored) = skill.stored_uses
         && stored > 1
     {
@@ -52,19 +55,23 @@ pub(crate) fn skill_base_modifiers(
     {
         mods.push(mk("SkillManaCostBase", mc, "main skill base mana cost"));
     }
-    // 技能固有基础暴击率（百分点，如 Comet 13.0）→ SkillBaseCritChance BASE（**底材桶**，
-    // 区别于词条桶 CriticalStrikeChance——vendor `baseCrit = source.CritChance` 与
-    // `Sum BASE CritChance` 两桶分立，CalcOffence.lua:3665-3689；CritChanceBase
-    // OVERRIDE 只替换底材桶）。法术的基础暴击来自技能本身（非武器）；攻击技能此字段
-    // 为 None，改由武器底材暴击注入（见 calc 主流程 1c）。
+    // The skill's inherent base crit chance (percentage points, e.g. Comet 13.0) →
+    // SkillBaseCritChance BASE (the **base-material bucket**, distinct from the mod
+    // bucket CriticalStrikeChance — vendor keeps `baseCrit = source.CritChance` and
+    // `Sum BASE CritChance` as two separate buckets, CalcOffence.lua:3665-3689;
+    // CritChanceBase OVERRIDE only replaces the base-material bucket). A spell's base
+    // crit comes from the skill itself (not the weapon); for attack skills this field is
+    // None, and base crit is instead injected from the weapon (see calc's main flow 1c).
     if let Some(cc) = skill.crit_chance
         && cc > 0.0
     {
         mods.push(mk("SkillBaseCritChance", cc, "main skill base crit chance"));
     }
-    // statSet baseMods 固有攻击速度 MORE（PoB2 `mod("Speed","MORE",N,ModFlag.Attack)`；如 Flicker 285）。
-    // 注入 `AttackSpeed` MORE——攻击速度乘区按 ModName 取 AttackSpeed（仅攻击链路），与 PoB2
-    // `skillModList:More(cfg,"Speed")` 对齐。法术不取 AttackSpeed，故天然不受影响。
+    // statSet baseMods' inherent attack speed MORE (PoB2's
+    // `mod("Speed","MORE",N,ModFlag.Attack)`; e.g. Flicker 285). Injected as
+    // `AttackSpeed` MORE — the attack speed multiplier zone reads AttackSpeed by
+    // ModName (attack chain only), matching PoB2's `skillModList:More(cfg,"Speed")`.
+    // Spells never read AttackSpeed, so they're naturally unaffected.
     if let Some(more) = skill.skill_attack_speed_more
         && more != 0.0
     {
@@ -73,10 +80,11 @@ pub(crate) fn skill_base_modifiers(
                 .with_raw_text("main skill statSet base attack speed MORE");
         mods.push(Modifier::number("AttackSpeed", ModType::More, more).with_origin(origin));
     }
-    // 技能 stat（基础伤害 + 自带 damage% 缩放）经 SkillStatMap 映射注入。
-    // 例外：`off_hand_weapon_*physical_damage`（非武器攻击的击中基础伤害）已作为**武器 source**
-    // 由 `non_weapon_attack_contribution` 计入 `base_hit_min/max`（× baseMultiplier），
-    // 不能再经 stat-map 注入 `PhysicalDamageMin/Max` BASE（否则重复计入）。
+    // The skill's stats (base damage + its own damage% scaling) are injected via
+    // SkillStatMap mapping. Exception: `off_hand_weapon_*physical_damage` (base hit
+    // damage for a non-weapon attack) is already counted into `base_hit_min/max` as a
+    // **weapon source** by `non_weapon_attack_contribution` (× baseMultiplier), and must
+    // not also be injected as `PhysicalDamageMin/Max` BASE via stat-map (or it would be double-counted).
     let base_damage: Vec<_> = skill
         .base_damage
         .iter()
@@ -93,14 +101,16 @@ pub(crate) fn skill_base_modifiers(
     mods
 }
 
-/// 主技能选中 statSet 的 dotIs* 旗标 → `DotIs<X>` FLAG modifier（M4-T4 W-D1）。
+/// The main skill's selected statSet's dotIs* flags → `DotIs<X>` FLAG modifiers.
 ///
-/// vendor 语义：statSet `baseMods` 的 `skill("dotIsArea", true)` 类条目直挂在
-/// skillData 上（4.5.0.3.4 全量仅 TornadoShot "Tornado" set 一处）；PoBR 经
-/// catalog [`pobr_data::catalog::DotFlags`]（skill_overrides overlay merge）
-/// 取出，注入与 stat 驱动通道（`stat_map_engine::collect_skill_data` 的
-/// dotIs* skill_data 键）同名的 FLAG——`calc::skill_dot::DotIsFlags::from_db`
-/// 是两路的合一消费点。全 false（未核验/无旗标）时返回空，零注入。
+/// Vendor semantics: entries like statSet `baseMods`'s `skill("dotIsArea", true)` hang
+/// directly on skillData (in the full 4.5.0.3.4 data, only TornadoShot's "Tornado" set
+/// has one). PoBR fetches them via catalog [`pobr_data::catalog::DotFlags`] (merged in
+/// through the skill_overrides overlay), and injects a FLAG under the same name as the
+/// stat-driven channel (the dotIs* skill_data keys from
+/// `stat_map_engine::collect_skill_data`) — `calc::skill_dot::DotIsFlags::from_db` is
+/// the unified consumption point for both paths. Returns empty (zero injection) when
+/// all flags are false (unverified/no flags).
 pub(crate) fn dot_flag_modifiers(
     group: &SocketGroup,
     data: &BuildData,
@@ -133,7 +143,7 @@ pub(crate) fn dot_flag_modifiers(
         .collect()
 }
 
-/// 尸体爆炸基伤（M4-G；vendor `CalcOffence.lua:2211-2217`）：
+/// Corpse explosion base damage (vendor `CalcOffence.lua:2211-2217`):
 ///
 /// ```lua
 /// local monsterLife = skillData.corpseLife or data.monsterLifeTable[env.enemyLevel]
@@ -141,22 +151,23 @@ pub(crate) fn dot_flag_modifiers(
 ///     skillData[type.."BonusMin"] = monsterLife * skillData.corpseExplosionLifeMultiplier
 /// ```
 ///
-/// - 门控 = 选中 statSet 的 `explodeCorpse` baseMod（catalog
-///   `StatSetDef::explode_corpse`，skill_overrides overlay merge；如
-///   DetonateDeadPlayer，act_int.lua:5287）；
-/// - 倍率 = 选中 set 分等级 stat 经 statmap skill_data 通道
-///   （`corpse_explosion_monster_life_%` div=100 /
+/// - Gate = the selected statSet's `explodeCorpse` baseMod (catalog
+///   `StatSetDef::explode_corpse`, merged in via the skill_overrides overlay; e.g.
+///   DetonateDeadPlayer, act_int.lua:5287);
+/// - Multiplier = the selected set's per-level stat, via the statmap skill_data channel
+///   (`corpse_explosion_monster_life_%` div=100 /
 ///   `corpse_explosion_monster_life_permillage_physical` div=1000 →
-///   `corpseExplosionLifeMultiplier`，SkillStatMap.lua:309-316）；
-/// - 怪物生命 = `monster_scaling.life_at(敌人等级)`（敌人等级解析与
-///   setup_enemy 同序：编排选项 → config enemyLevel → min(MaxEnemyLevel,
-///   角色等级)，CalcSetup.lua:529）；
-/// - 注入 = `PhysicalDamageMin/Max` BASE（vendor `corpseExplosionDamageType`
-///   缺省 Physical，4.5.0.3.4 statmap 无 damage type 覆盖条目），与 vendor
-///   `source[type.."BonusMin"]` 直加 base 的口径一致（CalcOffence.lua:3910-3911；
-///   DD 族 baseMultiplier=1，无 added-mult 交互）。
+///   `corpseExplosionLifeMultiplier`, SkillStatMap.lua:309-316);
+/// - Monster life = `monster_scaling.life_at(enemy level)` (enemy level resolved in the
+///   same order as setup_enemy: orchestrator option → config enemyLevel →
+///   min(MaxEnemyLevel, character level), CalcSetup.lua:529);
+/// - Injection = `PhysicalDamageMin/Max` BASE (vendor's `corpseExplosionDamageType`
+///   defaults to Physical, and the 4.5.0.3.4 statmap has no damage-type override
+///   entry), matching vendor's semantics of directly adding to base via
+///   `source[type.."BonusMin"]` (CalcOffence.lua:3910-3911; the Detonate Dead family has
+///   baseMultiplier=1, so there's no added-mult interaction).
 ///
-/// 非尸体技能 / 无倍率 stat / 无 catalog → 返回空，零注入。
+/// Returns empty (zero injection) for a non-corpse skill / no multiplier stat / no catalog.
 pub(crate) fn corpse_explosion_modifiers(
     build: &Build,
     data: &BuildData,
@@ -177,10 +188,11 @@ pub(crate) fn corpse_explosion_modifiers(
         .with(|ctx| ctx.borrow().catalog.clone())
         .or_else(|| data.stat_map_catalog.clone());
     let Some(catalog) = catalog else {
-        return Vec::new(); // 无 catalog（旧数据包）：倍率不可得，保守零注入。
+        return Vec::new(); // No catalog (old data pack): the multiplier is unavailable, conservatively zero injection.
     };
-    // 倍率取数：选中 set 的分等级 stat 走与 skill_base_modifiers 同一映射引擎，
-    // 仅收割 skill_data 产物（Modifier 产物已由主通道注入，此处不重复）。
+    // Fetching the multiplier: the selected set's per-level stat goes through the same
+    // mapping engine as skill_base_modifiers, only harvesting skill_data output (the
+    // Modifier output is already injected by the primary channel, not duplicated here).
     let set_key = data.selected_set_key(skill_id, set_index);
     let mut multiplier = 0.0;
     for ds in &skill.base_damage {
@@ -218,9 +230,9 @@ pub(crate) fn corpse_explosion_modifiers(
     vec![mk("PhysicalDamageMin"), mk("PhysicalDamageMax")]
 }
 
-/// 敌人等级解析（与 `calculate_with_data` 步骤 5 setup_enemy 同序，vendor
-/// CalcSetup.lua:529）：编排选项显式等级 → build config `enemyLevel`
-/// （Input/Placeholder）→ `min(MaxEnemyLevel, 角色等级)`。
+/// Resolves the enemy level (in the same order as `calculate_with_data` step 5's
+/// setup_enemy, vendor CalcSetup.lua:529): orchestrator option's explicit level → build
+/// config's `enemyLevel` (Input/Placeholder) → `min(MaxEnemyLevel, character level)`.
 pub(crate) fn resolved_enemy_level(
     build: &Build,
     data: &BuildData,
@@ -236,20 +248,26 @@ pub(crate) fn resolved_enemy_level(
     }
 }
 
-/// 弩 reload 数据通道（M4-T4 W-D2；vendor `CalcOffence.lua:1118-1122` skillData
-/// 装配 + `:283-320` calcCrossbowAmmoStats/calcCrossbowReloadTime 取数对照）：
+/// Crossbow reload data channel (matching vendor `CalcOffence.lua:1118-1122`'s
+/// skillData assembly + `:283-320`'s calcCrossbowAmmoStats/calcCrossbowReloadTime data
+/// fetching):
 ///
-/// - 门控 = 主技能 `skill_types` 含 `CrossbowSkill` 且不含 `Grenade` /
-///   `CrossbowAmmoSkill`（vendor `:1118` 同三谓词；grenade 不消耗弹药）；
-/// - `CrossbowReloadTimeBase` BASE（秒）← 主手武器 `weapon.reload_time_ms`
-///   （WeaponTypes ReloadTime；overlay base_item_overrides 兜底，33 条弩已入库）。
-///   武器无 reload 数据（非弩持械）→ 整体返回空（vendor baseReloadTime nil 同口径）；
-/// - `CrossbowBoltCount` BASE ← 同组 ammo 技能（直接在组内 / 经 gem_effects
-///   附加效果连边）的 stat `base_number_of_crossbow_bolts`（vendor ammo skill
-///   modList 转移 `:303-307`）。无 ammo 数据时不注入（calc 侧弹匣下限 1 兜底）。
+/// - Gate = main skill's `skill_types` includes `CrossbowSkill` and excludes `Grenade` /
+///   `CrossbowAmmoSkill` (matching vendor `:1118`'s same three predicates; grenades
+///   don't consume ammo);
+/// - `CrossbowReloadTimeBase` BASE (seconds) ← the main-hand weapon's
+///   `weapon.reload_time_ms` (WeaponTypes' ReloadTime; falls back to the overlay's
+///   base_item_overrides, 33 crossbows already cataloged). When the weapon has no
+///   reload data (not holding a crossbow) → returns empty entirely (matching vendor's
+///   baseReloadTime nil semantics);
+/// - `CrossbowBoltCount` BASE ← the stat `base_number_of_crossbow_bolts` from the
+///   sibling ammo skill in the same group (either directly in the group, or linked via
+///   gem_effects' additional effects) (matching vendor's ammo skill modList transfer
+///   `:303-307`). Not injected when there's no ammo data (the calc side falls back to a
+///   minimum magazine of 1).
 ///
-/// `ReloadSpeed`/`ChanceToNotConsumeAmmo`/`InstantReloadChance` 词条走通用
-/// modifier 总线，calc 侧聚合（`fill_crossbow_reload`）。
+/// `ReloadSpeed`/`ChanceToNotConsumeAmmo`/`InstantReloadChance` mods go through the
+/// generic modifier bus, aggregated on the calc side (`fill_crossbow_reload`).
 pub(crate) fn crossbow_reload_modifiers(
     build: &Build,
     data: &BuildData,
@@ -263,7 +281,7 @@ pub(crate) fn crossbow_reload_modifiers(
     if !has_type("CrossbowSkill") || has_type("Grenade") || has_type("CrossbowAmmoSkill") {
         return Vec::new();
     }
-    // 武器 reload 基值（仅主手；vendor `actor.weaponData1.ReloadTime`）。
+    // Weapon reload base value (main-hand only; matching vendor's `actor.weaponData1.ReloadTime`).
     let Some(reload_ms) = build
         .items
         .get(&EquipmentSlot::Weapon1)
@@ -286,8 +304,9 @@ pub(crate) fn crossbow_reload_modifiers(
         f64::from(reload_ms) / 1000.0,
         format!("crossbow weapon reload {reload_ms}ms"),
     )];
-    // ammo 兄弟技能的弹匣容量：组内宝石自身或其附加授予效果中第一个
-    // `CrossbowAmmoSkill`，取其选中等级 stat `base_number_of_crossbow_bolts`。
+    // Magazine capacity from the sibling ammo skill: the first `CrossbowAmmoSkill`
+    // among the group's own gems or their additional granted effects, taking its
+    // selected level's `base_number_of_crossbow_bolts` stat.
     let ammo = group.gem_skills.iter().find_map(|g| {
         let mut candidates: Vec<&str> = vec![g.skill_id.as_str()];
         if let Some(link) = data.gem_effects.get(&g.skill_id) {
@@ -325,21 +344,24 @@ pub(crate) fn crossbow_reload_modifiers(
     mods
 }
 
-/// 把主技能宝石的**品质 stat 段**经 [`mapped_stat_modifiers`] 映射为 `SourceKind::GemQuality`
-/// 归因的 modifier（T1.7，对应 PoB2 `buildSkillInstanceStats` 的品质前置叠加，
-/// CalcTools.lua:140-145：`stats[stat] += math.modf(rate × quality)`）。
+/// Maps the main skill gem's **quality stat segment** into `SourceKind::GemQuality`
+/// attributed modifiers via [`mapped_stat_modifiers`] (T1.7, matching PoB2's
+/// `buildSkillInstanceStats` up-front quality stacking, CalcTools.lua:140-145:
+/// `stats[stat] += math.modf(rate × quality)`).
 ///
-/// 主技能的品质从该组 `gem_skills` 中按效果 id 反查（`resolve_main_skill` 的选择
-/// 结果即来自其中一项）。归因 id 前缀 `gem.<效果 id>.q<Q>`，与 `skill_source.rs`
-/// 既有约定一致（`quality_source_id`）；[`mapped_stat_modifiers`] 再追加 `.<stat>`
-/// 细分到单条 stat。品质 0 / 无品质表条目（如 support，导出即跳过）返回空。
+/// The main skill's quality is looked up from this group's `gem_skills` by effect id
+/// (the result of `resolve_main_skill`'s selection is one of these entries). The
+/// attribution id prefix is `gem.<effect id>.q<Q>`, matching `skill_source.rs`'s
+/// existing convention (`quality_source_id`); [`mapped_stat_modifiers`] appends
+/// `.<stat>` to further split it to a single stat. Returns empty for quality 0 / no
+/// quality table entry (e.g. supports, which are skipped at export).
 pub(crate) fn main_skill_quality_modifiers(
     group: &SocketGroup,
     data: &BuildData,
     skill_id: &str,
 ) -> Vec<Modifier> {
     let Some(gem) = group.gem_skills.iter().find(|g| g.skill_id == skill_id) else {
-        return Vec::new(); // builder 路径（with_active_skill）无 gem_skills：无品质来源。
+        return Vec::new(); // The builder path (with_active_skill) has no gem_skills: no quality source.
     };
     if gem.quality == 0 {
         return Vec::new();
@@ -350,7 +372,8 @@ pub(crate) fn main_skill_quality_modifiers(
         gem.quality,
         gem.stat_set_index,
     );
-    // 品质段属于选中 set 的 stats 表（PoB2 先叠后映），per-set 覆盖键同主路径。
+    // The quality segment belongs to the selected set's stats table (PoB2 stacks then
+    // maps), the per-set override key matches the primary path.
     let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
     mapped_stat_modifiers(
         &stats.quality,
@@ -361,27 +384,31 @@ pub(crate) fn main_skill_quality_modifiers(
     )
 }
 
-/// （M1-W-J）主技能**未选 statSet** 的 global-only merge（PoB2
-/// `calcs.mergeSkillInstanceMods`，`Modules/CalcActiveSkill.lua:124-140`）：
-/// 选中 set 之外的每个 vendor 导出 set，其 stats 仅注入 statmap 条目中带
-/// `GlobalEffect` tag 的 modOrGroup（`isGlobalEffect`，`:68-80`）；选中 set 已按
-/// global 记账的 stat 整条跳过（`selectedGlobalStats`，`:104-107`）。
+/// The main skill's **unselected statSet** global-only merge (matching PoB2's
+/// `calcs.mergeSkillInstanceMods`, `Modules/CalcActiveSkill.lua:124-140`): for every
+/// vendor-exported set other than the selected one, only its stats' statmap entries
+/// carrying a `GlobalEffect` tag (`isGlobalEffect`, `:68-80`) get injected as a
+/// modOrGroup; a stat that's already accounted for globally by the selected set is
+/// skipped entirely (`selectedGlobalStats`, `:104-107`).
 ///
-/// 取数源 = [`BuildData::unselected_set_stats`]（buildSkillInstanceStats 表语义，
-/// 品质逐 set 叠加、同 stat 合并）；映射 = `stat_map_engine::map_stat_global_only`
-/// （per-set 覆盖链按**该未选 set** 的 set_key 查）。
+/// Data source = [`BuildData::unselected_set_stats`] (matching buildSkillInstanceStats
+/// table semantics, quality stacked per set, same stats merged); mapping =
+/// `stat_map_engine::map_stat_global_only` (the per-set override chain is looked up by
+/// **this unselected set's** set_key).
 ///
-/// **第一批边界**：`GlobalEffect` tag 本身仍在 tag 翻译边界外（buff 域随 M3
-/// buff_pass 接入，切换日志 §5）——当前 global 条目整条 Unsupported、注入为零，
-/// 本接线为结构就位；M3 接通后自动产出注入项（FlameWall 投射物 buff 等，
-/// Q3 影响面实测见 m1-acceptance-report.md）。零值跳过（与各取数点同口径）。
+/// **First-batch boundary**: the `GlobalEffect` tag itself is still outside the tag
+/// translation boundary (the buff domain gets wired up with buff_pass) —
+/// currently a global entry is entirely Unsupported and injects nothing; this
+/// wiring is the structural groundwork. Once it's connected, injections will
+/// automatically be produced (FlameWall's projectile buff etc.). Zero values
+/// are skipped (matching every other fetch point's semantics).
 pub(crate) fn unselected_set_global_modifiers(
     group: &SocketGroup,
     data: &BuildData,
     skill_id: &str,
 ) -> Vec<Modifier> {
     let Some(gem) = group.gem_skills.iter().find(|g| g.skill_id == skill_id) else {
-        return Vec::new(); // builder 路径（with_active_skill）无 gem_skills：无 statSet 上下文。
+        return Vec::new(); // The builder path (with_active_skill) has no gem_skills: no statSet context.
     };
     let unselected = data.unselected_set_stats(
         &gem.skill_id,
@@ -393,10 +420,12 @@ pub(crate) fn unselected_set_global_modifiers(
         return Vec::new();
     }
     let Some(catalog) = STAT_MAP_CTX.with(|ctx| ctx.borrow().catalog.clone()) else {
-        return Vec::new(); // 无 catalog：数据通道全 miss，与 mapped_stat_modifiers 同口径。
+        return Vec::new(); // No catalog: the data channel misses entirely, matching mapped_stat_modifiers's semantics.
     };
-    // selectedGlobalStats 记账（:104-106）：选中 set 的 stats 表中按 global 记账的
-    // stat，未选 set 不再重复注入（onlyGlobals 阶段记账不变，stat 级跳过等价 :107）。
+    // selectedGlobalStats accounting (:104-106): a stat in the selected set's stats
+    // table that's already accounted for globally isn't re-injected from the
+    // unselected sets (the onlyGlobals stage's accounting is unchanged, the stat-level
+    // skip is equivalent to :107).
     let selected_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
     let selected_stats = data.effect_stats(
         &gem.skill_id,
@@ -429,11 +458,11 @@ pub(crate) fn unselected_set_global_modifiers(
                 &ds.stat,
                 ds.value,
             ) else {
-                continue; // Unsupported（含 GlobalEffect tag 第一批边界）/ Unknown：跳过。
+                continue; // Unsupported (including the GlobalEffect tag's first-batch boundary) / Unknown: skipped.
             };
             for item in items {
                 let MappedItem::Modifier(modifier) = item else {
-                    continue; // SkillData：无消费方。
+                    continue; // SkillData: no consumer.
                 };
                 let origin = ModifierSource::new(SourceId::new(
                     SourceKind::SkillGem,
@@ -450,8 +479,9 @@ pub(crate) fn unselected_set_global_modifiers(
     mods
 }
 
-/// 是否为非武器攻击的 off-hand 武器基础伤害 stat（由 `non_weapon_attack_contribution` 作为
-/// 武器 source 消费，故从 stat-map 注入路径剔除以避免重复计入）。
+/// Whether this is a non-weapon-attack off-hand weapon base damage stat (consumed as a
+/// weapon source by `non_weapon_attack_contribution`, so excluded from the stat-map
+/// injection path to avoid double-counting).
 pub(crate) fn is_off_hand_weapon_base_stat(stat: &str) -> bool {
     matches!(
         stat,

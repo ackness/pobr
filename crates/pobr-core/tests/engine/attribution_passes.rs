@@ -1,9 +1,9 @@
-//! M4-T2 W-B1：双 pass × 归因模型集成测试。
+//! Dual-pass x attribution model integration tests.
 //!
-//! 对照 RFC `audits/rearchitecture-2026-06-10/blueprints/m4-rfc-attribution-passes.md`
-//! §2（PassId 分区）/ §3（Combine 权重表）/ §5（direct/marginal 兼容性）与评审报告
-//! `m4-rfc-review.md` 条件 C2（I4 分三组断言）/ C3（I1 强不变式）/ C4（pass_filter
-//! 口径）。不变量编号 I1–I6 与 RFC §5.5 表一致。
+//! Covers PassId partitioning, the combine weight table, and direct/marginal
+//! compatibility, organized around invariants I1-I6 and conditions C2
+//! (I4 assertions split into three groups) / C3 (I1 hard invariant) / C4
+//! (pass_filter semantics).
 
 use pobr_core::attribution::{AttributionMode, AttributionRequest, attribute};
 use pobr_core::{CombineMode, CritTag, HandTag, PassId, TraceGraph, TraceOperation};
@@ -16,16 +16,15 @@ fn src(id: &str) -> SourceId {
 const MH_PASS: PassId = PassId::hand_blended(HandTag::MainHand);
 const OH_PASS: PassId = PassId::hand_blended(HandTag::OffHand);
 
-// =========================================================================
-// I4 组 1：线性模式（OR / ADD / AVERAGE / DPS / CRIT-非doubleHits）——
-// 「Σ weights×leg == 合并值」严格成立（权重为常数，合并是腿的线性组合）。
-// =========================================================================
+// I4 group 1: linear modes (OR / ADD / AVERAGE / DPS / CRIT-non-doubleHits) —
+// "Σ weights×leg == combined value" holds exactly (weights are constants, the combine is a
+// linear combination of the legs).
 
-/// 线性模式逐一断言：`combine(legs) == Σ linearized_weights×legs`（手算值）。
+/// Linear modes checked one by one: `combine(legs) == Σ linearized_weights×legs` (hand-computed).
 #[test]
 fn i4_linear_modes_weighted_sum_equals_combined_value() {
     let legs = [30.0, 40.0];
-    // (mode, 手算合并值)；vendor CalcOffence.lua:2453-2545。
+    // (mode, hand-computed combined value); vendor CalcOffence.lua:2453-2545.
     let cases: &[(CombineMode, f64)] = &[
         (CombineMode::Or, 30.0),                          // MH or OH = MH
         (CombineMode::Add, 70.0),                         // MH + OH
@@ -46,8 +45,9 @@ fn i4_linear_modes_weighted_sum_equals_combined_value() {
     }
 }
 
-/// 线性模式（DPS-doubleHits=ADD 形）在真实图上的端到端守恒：
-/// 各来源 direct 之和 == 顶层合并输出（腿内为纯加法链时严格成立）。
+/// End-to-end conservation on a real graph for a linear mode (DPS-doubleHits, an ADD shape):
+/// the sum of per-source direct contributions equals the top-level combined output (holds
+/// exactly when each leg is a pure addition chain).
 #[test]
 fn i4_linear_graph_direct_sums_to_output() {
     let mut trace = TraceGraph::new();
@@ -89,8 +89,9 @@ fn i4_linear_graph_direct_sums_to_output() {
         combined,
     );
 
-    // per-hand 词条只进对应腿；全局来源两腿各计一次再加权（ADD 权重 (1,1) 下计两次
-    // = 它对「两手之和」的真实直接贡献，RFC §5.1）。
+    // A per-hand mod only enters its own leg; a global source is counted once per leg then
+    // weighted (under ADD weights (1,1), counting it twice = its true direct contribution to
+    // "the sum of both hands", RFC §5.1).
     assert_eq!(report.entries[0].value, 30.0, "weapon1 只进 MH 腿");
     assert_eq!(report.entries[1].value, 20.0, "weapon2 只进 OH 腿");
     assert_eq!(report.entries[2].value, 20.0, "global 两腿各 10×1.0");
@@ -98,11 +99,10 @@ fn i4_linear_graph_direct_sums_to_output() {
     assert_eq!(total, combined_value, "线性模式 direct 全来源之和守恒");
 }
 
-// =========================================================================
-// I4 组 2：HARMONICMEAN——非线性，但调和平均是 1 次齐次函数，欧拉定理使
-// 「Σ偏导×leg == 值」**恰好成立**（齐次巧合，评审 C2 要求单独注明；
-// 不要据此推广到其它非线性模式）。
-// =========================================================================
+// I4 group 2: HARMONICMEAN — nonlinear, but the harmonic mean is degree-1 homogeneous, so
+// Euler's theorem makes "Σ partial-derivative×leg == value" hold **exactly** (a homogeneity
+// coincidence; review condition C2 requires this to be called out separately — don't
+// generalize it to other nonlinear modes).
 
 #[test]
 fn i4_harmonic_mean_weighted_sum_homogeneity_coincidence() {
@@ -112,17 +112,18 @@ fn i4_harmonic_mean_weighted_sum_homogeneity_coincidence() {
     assert!((combined - 4.8).abs() < 1e-12, "2/(1/4+1/6) = 4.8");
 
     let weights = mode.linearized_weights(&legs).unwrap();
-    // 解析偏导：∂/∂MH [2·MH·OH/(MH+OH)] = 2·OH²/(MH+OH)²。
+    // Analytic partial derivative: ∂/∂MH [2·MH·OH/(MH+OH)] = 2·OH²/(MH+OH)².
     assert!((weights[0] - 2.0 * 36.0 / 100.0).abs() < 1e-12);
     assert!((weights[1] - 2.0 * 16.0 / 100.0).abs() < 1e-12);
 
-    // 齐次巧合（Euler，1 次齐次）：加权和 == 值。仅此模式如此，勿推广。
+    // Homogeneity coincidence (Euler, degree 1): weighted sum == value. Only this mode; don't generalize.
     let weighted_sum: f64 = weights.iter().zip(legs.iter()).map(|(w, l)| w * l).sum();
     assert!((weighted_sum - combined).abs() < 1e-12);
 }
 
-/// HARMONICMEAN 零腿边角（vendor :2466-2467）：任一腿 0 → 输出 0、权重 (0,0)，
-/// direct 得 0 与输出一致；真实敏感度由 marginal 兜底。
+/// HARMONICMEAN's zero-leg edge case (vendor :2466-2467): either leg being 0 → output 0,
+/// weights (0,0), so direct gives 0 consistent with the output; the real sensitivity is
+/// covered by marginal instead.
 #[test]
 fn i4_harmonic_mean_zero_leg_yields_zero_weights() {
     let legs = [0.0, 6.0];
@@ -131,27 +132,26 @@ fn i4_harmonic_mean_zero_leg_yields_zero_weights() {
     assert_eq!(mode.linearized_weights(&legs), Some(vec![0.0, 0.0]));
 }
 
-// =========================================================================
-// I4 组 3：CRIT-doubleHits / CHANCE / CHANCE_AILMENT / CritBlend——
-// **仅断言权重 == 解析偏导**。direct 在这些模式下**不守恒**
-// （doubleHits 的交叉项被偏导重复扣减：Σw×leg = MH+OH−2·MH·OH/100 ≠ 合并值
-// MH+OH−MH·OH/100），守恒语义由 marginal 整管线重算兜底（RFC §5.2、评审 C2）。
-// =========================================================================
+// I4 group 3: CRIT-doubleHits / CHANCE / CHANCE_AILMENT / CritBlend —
+// **only assert that weights == analytic partial derivatives**. direct is **not conserving**
+// under these modes (doubleHits' cross term gets double-counted by the partial derivatives:
+// Σw×leg = MH+OH-2·MH·OH/100 != the combined value MH+OH-MH·OH/100); conservation is
+// instead guaranteed by a full marginal pipeline recompute (RFC §5.2, review condition C2).
 
 #[test]
 fn i4_crit_double_hits_weights_are_partial_derivatives_not_conserving() {
     let legs = [30.0, 40.0];
     let mode = CombineMode::Crit { double_hits: true };
-    // vendor :2461：MH + OH − MH×OH/100 = 70 − 12 = 58。
+    // vendor :2461: MH + OH - MH×OH/100 = 70 - 12 = 58.
     let combined = mode.combine(&legs).unwrap();
     assert!((combined - 58.0).abs() < 1e-12);
 
-    // 解析偏导：∂/∂MH = 1 − OH/100 = 0.6；∂/∂OH = 1 − MH/100 = 0.7。
+    // Analytic partial derivatives: ∂/∂MH = 1 - OH/100 = 0.6; ∂/∂OH = 1 - MH/100 = 0.7.
     let weights = mode.linearized_weights(&legs).unwrap();
     assert!((weights[0] - 0.6).abs() < 1e-12);
     assert!((weights[1] - 0.7).abs() < 1e-12);
 
-    // 显式记录不守恒（差值 = 交叉项 MH·OH/100 = 12，被偏导计了两次）：
+    // Explicitly record the non-conservation (the gap = cross term MH·OH/100 = 12, double-counted by the partials):
     let weighted_sum: f64 = weights.iter().zip(legs.iter()).map(|(w, l)| w * l).sum();
     assert!((weighted_sum - 46.0).abs() < 1e-12);
     assert!(
@@ -160,9 +160,11 @@ fn i4_crit_double_hits_weights_are_partial_derivatives_not_conserving() {
     );
 }
 
-/// CHANCE / CHANCE_AILMENT / CritBlend 是系数模式：合并值与权重由外生系数冻结
-/// （RFC §3.3），`combine`/`linearized_weights` 拒绝（None），权重由构图侧给出。
-/// 此处验证「冻结系数 == 解析偏导」的形状（以 CritBlend 为例 + Chance portion 公式）。
+/// CHANCE / CHANCE_AILMENT / CritBlend are coefficient modes: the combined value and weights
+/// are frozen by an exogenous coefficient (RFC §3.3), so `combine`/`linearized_weights` refuse
+/// (return None) and the weights are supplied by the graph-building side instead. This checks
+/// the shape of "frozen coefficient == analytic partial derivative" (using CritBlend and the
+/// Chance portion formula as examples).
 #[test]
 fn i4_coefficient_modes_frozen_weights_match_partials() {
     for mode in [
@@ -174,16 +176,16 @@ fn i4_coefficient_modes_frozen_weights_match_partials() {
         assert_eq!(mode.linearized_weights(&[1.0, 2.0]), None);
     }
 
-    // CritBlend（vendor :4395）：blend = hit×(1−c) + crit×c；
-    // ∂blend/∂hit = 1−c、∂blend/∂crit = c —— 冻结权重 [1−c, c] 即偏导。
+    // CritBlend (vendor :4395): blend = hit×(1-c) + crit×c;
+    // dblend/dhit = 1-c, dblend/dcrit = c — the frozen weights [1-c, c] are exactly the partials.
     let c: f64 = 0.3;
     let (hit, crit) = (100.0, 250.0);
     let blend = hit * (1.0 - c) + crit * c;
     assert!((blend - 145.0).abs() < 1e-12);
-    // （c 自身的来源解释走 c 节点的入边 / marginal，weights 冻结为常数——RFC §3.3。）
+    // (Explaining c's own source goes through c's node inputs / marginal; weights are frozen constants — RFC §3.3.)
 
-    // CHANCE（vendor :2471-2480）：portion = chance×HitChance 占比；
-    // 输出 = MH×mainPortion + OH×offPortion，∂/∂MH = mainPortion（portion 冻结）。
+    // CHANCE (vendor :2471-2480): portion = chance×HitChance share;
+    // output = MH×mainPortion + OH×offPortion, d/dMH = mainPortion (portion is frozen).
     let (mh_chance, oh_chance): (f64, f64) = (25.0 * 0.9, 15.0 * 0.8);
     let main_portion = mh_chance / (mh_chance + oh_chance);
     let off_portion = oh_chance / (mh_chance + oh_chance);
@@ -191,18 +193,16 @@ fn i4_coefficient_modes_frozen_weights_match_partials() {
     assert!(main_portion > off_portion);
 }
 
-// =========================================================================
-// I6：marginal 在非线性（doubleHits）样例上 ≠ direct 且符合手算。
-// =========================================================================
+// I6: on a nonlinear (doubleHits) sample, marginal != direct, and both match hand computation.
 
 #[test]
 fn i6_marginal_differs_from_direct_on_double_hits_cross_term() {
-    // 场景：MH = 20(基底) + 10(global)，OH = 30(基底) + 10(global)；
-    // combined = MH + OH − MH·OH/100。
-    // final = 30 + 40 − 12 = 58。
-    // direct(global) = w_mh×10 + w_oh×10 = (1−0.40)×10 + (1−0.30)×10 = 13。
-    // marginal(global)：去掉 global → MH=20, OH=30 → 20+30−6 = 44；delta = 58−44 = 14。
-    // 13 ≠ 14（差 = 交叉项二阶效应 10×10/100 = 1），符合手算。
+    // Scenario: MH = 20 (base) + 10 (global), OH = 30 (base) + 10 (global);
+    // combined = MH + OH - MH·OH/100.
+    // final = 30 + 40 - 12 = 58.
+    // direct(global) = w_mh×10 + w_oh×10 = (1-0.40)×10 + (1-0.30)×10 = 13.
+    // marginal(global): drop global → MH=20, OH=30 → 20+30-6 = 44; delta = 58-44 = 14.
+    // 13 != 14 (the gap = second-order cross term effect 10×10/100 = 1), matching hand computation.
     let combine = |mh: f64, oh: f64| mh + oh - mh * oh / 100.0;
     let final_value = combine(30.0, 40.0);
 
@@ -236,7 +236,8 @@ fn i6_marginal_differs_from_direct_on_double_hits_cross_term() {
         .with_mode(AttributionMode::DirectAndMarginal)
         .with_sources([global.clone()]);
 
-    // recompute 闭包重跑「整管线」（这里 = 重算两腿与合并），权重不冻结。
+    // The recompute closure reruns "the whole pipeline" (here: recomputing both legs and the
+    // combine); weights are not frozen.
     let report = attribute(
         &request,
         final_value,
@@ -263,14 +264,12 @@ fn i6_marginal_differs_from_direct_on_double_hits_cross_term() {
     );
 }
 
-// =========================================================================
-// §5.4 pass_filter：per-pass direct 查询 + C4 口径（marginal 置 None）。
-// =========================================================================
+// §5.4 pass_filter: per-pass direct queries + C4 semantics (marginal set to None).
 
 #[test]
 fn pass_filter_restricts_direct_to_matching_pass_inputs() {
     let mut trace = TraceGraph::new();
-    // 同一 SourceId 的 Input 在两个 pass 内各落一次（RFC §2.4 条款 3）。
+    // The same SourceId's Input lands once in each of the two passes (RFC §2.4 clause 3).
     trace.begin_pass(MH_PASS);
     let mh_in = trace.add_source_node("ring (MH pass)", 12.0, src("ring"));
     let mh = trace.add_node("MH dps", 12.0, TraceOperation::Multiply);
@@ -308,8 +307,8 @@ fn pass_filter_restricts_direct_to_matching_pass_inputs() {
     assert_eq!(oh_only.entries[0].value, 8.0, "OH filter 只计 OH Input");
 }
 
-/// C4：pass_filter 非 None 时 marginal / interaction 置 None（拒绝混口径），
-/// recompute 闭包不被调用。
+/// C4: when pass_filter is not None, marginal / interaction are set to None (refusing to mix
+/// semantics), and the recompute closure is never called.
 #[test]
 fn c4_pass_filter_disables_marginal_and_interaction() {
     let mut trace = TraceGraph::new();
@@ -333,12 +332,10 @@ fn c4_pass_filter_disables_marginal_and_interaction() {
     assert!(report.interaction.is_none());
 }
 
-// =========================================================================
-// I1 / C3：pass 分区结构不变式 + begin_pass 作用域栈行为。
-// =========================================================================
+// I1 / C3: pass-partition structural invariant + begin_pass scope-stack behaviour.
 
-/// begin_pass/end_pass 作用域栈：盖戳、嵌套覆盖、栈空回 None（既有调用点零改动保持
-/// `pass: None`——RFC §2.6）。
+/// begin_pass/end_pass scope stack: stamping, nested overrides, empty stack returns None
+/// (existing call sites keep `pass: None` with zero changes — RFC §2.6).
 #[test]
 fn pass_scope_stack_stamps_and_nests() {
     let mut trace = TraceGraph::new();
@@ -349,7 +346,7 @@ fn pass_scope_stack_stamps_and_nests() {
     let hand_level = trace.add_node("hand level", 1.0, TraceOperation::Add);
     assert_eq!(trace.node(hand_level).unwrap().pass, Some(MH_PASS));
 
-    // 嵌套：hand 作用域内进入 crit 维度，栈顶生效。
+    // Nesting: entering the crit dimension inside the hand scope, the stack top applies.
     let crit_pass = PassId::new(HandTag::MainHand, CritTag::Crit);
     trace.begin_pass(crit_pass);
     let crit_level = trace.add_source_node("crit input", 2.0, src("amulet"));
@@ -372,11 +369,12 @@ fn end_pass_on_empty_stack_panics_in_debug() {
     trace.end_pass();
 }
 
-/// I1（C3 强化版）：合并节点各入腿的带 pass 戳祖先集合两两不相交；
-/// 违例图被 `combine_partition_violations` 检出。
+/// I1 (a stronger version of C3): a combine node's incoming legs must have pairwise-disjoint
+/// pass-stamped ancestor sets; a violating graph is caught by `combine_partition_violations`.
 #[test]
 fn i1_combine_partition_violations_detects_shared_stamped_node() {
-    // 合法图：两腿各自独立带戳子图，跨腿共享只有 pass==None 的结构常量。
+    // Valid graph: each leg has its own independently stamped subgraph; the only thing
+    // shared across legs is a structural constant with pass==None.
     let mut trace = TraceGraph::new();
     let shared_const = trace.add_node("structural constant", 1.0, TraceOperation::Input);
     trace.begin_pass(MH_PASS);
@@ -393,7 +391,7 @@ fn i1_combine_partition_violations_detects_shared_stamped_node() {
         "pass==None 共享祖先合法（按腿各计一次再加权）"
     );
 
-    // 违例图：带戳 Input 被两腿共享（构图 bug 形态）。
+    // Violating graph: a stamped Input is shared by both legs (a graph-construction bug shape).
     let mut bad = TraceGraph::new();
     bad.begin_pass(MH_PASS);
     let stamped_shared = bad.add_source_node("stamped shared", 5.0, src("ring"));
@@ -404,7 +402,8 @@ fn i1_combine_partition_violations_detects_shared_stamped_node() {
     bad.end_pass();
     bad.add_edge(stamped_shared, mh2);
     bad.add_edge(stamped_shared, oh2);
-    // 注意不能走 add_combine_node + direct（debug 断言会 panic）；直接查诊断 API。
+    // Can't go through add_combine_node + direct here (the debug assertion would panic);
+    // query the diagnostic API directly instead.
     let bad_combine = bad.add_node(
         "bad",
         30.0,
@@ -422,40 +421,38 @@ fn i1_combine_partition_violations_detects_shared_stamped_node() {
     );
 }
 
-// =========================================================================
-// 嵌套 Combine（2×2 同构）：内层 CritBlend per 手、外层 hand-combine，
-// direct 沿两层权重正确摊销。
-// =========================================================================
+// Nested Combine (a 2x2 shape): inner CritBlend per hand, outer hand-combine —
+// direct correctly amortizes through both layers' weights.
 
 #[test]
 fn nested_crit_blend_inside_hand_combine_amortizes_through_both_layers() {
     let mut trace = TraceGraph::new();
-    let c = 0.2; // MH 暴击率（冻结系数）
+    let c = 0.2; // MH crit chance (frozen coefficient)
 
-    // MH 手：NonCrit 腿 100（来自 weapon1）、Crit 腿 300（同来源，crit 腿被词条放大）。
+    // MH hand: NonCrit leg is 100 (from weapon1), Crit leg is 300 (same source, amplified by a mod on the crit leg).
     trace.begin_pass(PassId::new(HandTag::MainHand, CritTag::NonCrit));
     let mh_hit = trace.add_source_node("mh hit avg", 100.0, src("weapon1"));
     trace.end_pass();
     trace.begin_pass(PassId::new(HandTag::MainHand, CritTag::Crit));
     let mh_crit = trace.add_source_node("mh crit avg", 300.0, src("weapon1"));
     trace.end_pass();
-    // CritBlend 节点属该手子图（pass = MH·Blended，RFC §2.3）。
+    // The CritBlend node belongs to this hand's subgraph (pass = MH·Blended, RFC §2.3).
     trace.begin_pass(MH_PASS);
     let mh_blend_value = 100.0 * (1.0 - c) + 300.0 * c; // 140
     let mh_blend = trace.add_combine_node(
         "MH AverageHit",
         mh_blend_value,
         CombineMode::CritBlend,
-        &[(mh_hit, 1.0 - c), (mh_crit, c)], // NonCrit 先、Crit 后（§3.1 约定）
+        &[(mh_hit, 1.0 - c), (mh_crit, c)], // NonCrit first, then Crit (§3.1 convention)
     );
     trace.end_pass();
 
-    // OH 手：无暴击双 pass（Blended 单值 60）。
+    // OH hand: no crit split (single Blended value of 60).
     trace.begin_pass(OH_PASS);
     let oh_avg = trace.add_source_node("oh hit avg", 60.0, src("weapon2"));
     trace.end_pass();
 
-    // 外层 DPS 合并（pass = None）。
+    // Outer DPS combine (pass = None).
     let legs = [mh_blend_value, 60.0];
     let mode = CombineMode::Dps { double_hits: false };
     let combined_value = mode.combine(&legs).unwrap(); // (140+60)/2 = 100
@@ -478,22 +475,23 @@ fn nested_crit_blend_inside_hand_combine_amortizes_through_both_layers() {
         combined,
     );
 
-    // weapon1 经两层：0.5 × (0.8×100 + 0.2×300) = 0.5 × 140 = 70。
+    // weapon1 through both layers: 0.5 × (0.8×100 + 0.2×300) = 0.5 × 140 = 70.
     assert!((report.entries[0].value - 70.0).abs() < 1e-12);
-    // weapon2：0.5 × 60 = 30。
+    // weapon2: 0.5 × 60 = 30.
     assert!((report.entries[1].value - 30.0).abs() < 1e-12);
-    // 全线性层 → 守恒。
+    // Every layer is linear → conserving.
     assert!((report.entries[0].value + report.entries[1].value - combined_value).abs() < 1e-12);
 
-    // node_for_pass 形态留 W-B2（offence 侧）；此处验证 pass 戳可按子图过滤。
+    // node_for_pass shape reserved for the offence side; here we just verify pass stamps can filter by subgraph.
     let mh_scoped = pobr_core::attribution::AttributionReport::direct(
         &request.clone().with_pass_filter(MH_PASS),
         combined_value,
         &trace,
         combined,
     );
-    // MH·Blended filter 只命中带该戳的 Input——本图 MH 的 Input 在 Crit/NonCrit 子 pass，
-    // Blended 层无 Input，故为 0（per-pass 查询按精确 PassId 分桶）。
+    // The MH·Blended filter only matches Inputs carrying that exact stamp. In this graph
+    // MH's Inputs live in the Crit/NonCrit sub-passes; the Blended layer has no Input of its
+    // own, so this is 0 (per-pass queries bucket by exact PassId).
     assert_eq!(mh_scoped.entries[0].value, 0.0);
     let mh_crit_scoped = pobr_core::attribution::AttributionReport::direct(
         &request
@@ -503,6 +501,6 @@ fn nested_crit_blend_inside_hand_combine_amortizes_through_both_layers() {
         &trace,
         combined,
     );
-    // crit 腿 Input 300，经 CritBlend 权重 c=0.2、外层 0.5 → 30。
+    // Crit leg Input 300, through CritBlend weight c=0.2 and the outer 0.5 → 30.
     assert!((mh_crit_scoped.entries[0].value - 30.0).abs() < 1e-12);
 }

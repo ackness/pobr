@@ -1,8 +1,10 @@
-//! M2 Track D 专项 golden fixture：Block / Spirit / Ward / Deflection 面板族
-//! 对 ninja build 黄金值（`meta.json::player_stats`）@5% 断言。
+//! Dedicated golden fixtures: asserts the Block / Spirit / Ward / Deflection
+//! panel family against ninja build golden values (`meta.json::player_stats`)
+//! at @5%.
 //!
-//! 蓝图 m2-defence §2 Track D 门禁：新列尚未进 ninja_parity defensive_rows
-//! （W2/F 才扩列），以本文件的专项断言 + 旧基线不倒退做双保险。
+//! Track D gate: these new columns aren't in ninja_parity's defensive_rows yet
+//! (that expansion lands with W2/F); this file's dedicated assertions plus
+//! "the old baseline doesn't regress" serve as a double safety net.
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::{MinimalInput, OutputTable};
@@ -18,8 +20,8 @@ fn builds_dir() -> PathBuf {
 }
 
 fn load_data() -> BuildData {
-    // golden 钉定其被校验的数据版本（与活动 DATA_VERSION 解耦）；见
-    // pobr_data::GOLDEN_PARITY_DATA_VERSION。
+    // Pins the data version being checked against the golden values (decoupled from the active DATA_VERSION); see
+    // pobr_data::GOLDEN_PARITY_DATA_VERSION.
     let data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
     BuildData::load(&data).expect("load BuildData")
 }
@@ -50,7 +52,7 @@ fn run_build(name: &str, data: &BuildData) -> OutputTable {
     calculate_with_data(&build, data, &opts).expect("calculate")
 }
 
-/// @5% 相对容差断言（golden=0 时要求恰为 0，verify 零值不误报）。
+/// @5% relative-tolerance assertion (requires exactly 0 when golden=0, to verify no false positives at zero).
 fn assert_within_5pct(label: &str, build: &str, pobr: f64, golden: f64) {
     if golden == 0.0 {
         assert_eq!(pobr, 0.0, "{build} {label}: golden=0 而 PoBR={pobr}");
@@ -63,8 +65,8 @@ fn assert_within_5pct(label: &str, build: &str, pobr: f64, golden: f64) {
     );
 }
 
-/// 盾 build 的 `EffectiveBlockChance` @5%（13-G8）：warrior 双盾系 ninja build
-/// 是现成 fixture（蓝图 §2 Track D 测试计划）。
+/// `EffectiveBlockChance` @5% for shield builds (13-G8): the warrior
+/// dual-shield ninja builds are ready-made fixtures.
 #[test]
 fn block_chance_matches_golden_on_shield_builds() {
     let data = load_data();
@@ -85,7 +87,7 @@ fn block_chance_matches_golden_on_shield_builds() {
     }
 }
 
-/// 无盾 build 的格挡保持 0（verify 零值不误报）。
+/// Block stays 0 for non-shield builds (verifies no false positive at zero).
 #[test]
 fn block_chance_zero_on_non_shield_builds() {
     let data = load_data();
@@ -94,15 +96,18 @@ fn block_chance_zero_on_non_shield_builds() {
     assert_eq!(out.block_chance, 0.0);
 }
 
-/// `DeflectChance`/`DeflectionRating` @5%（13-G10）：huntress/monk 系
-/// `Gain Deflection Rating equal to N% of Evasion` build 是现成 fixture；
-/// 无 deflect 来源的 build 双值保持 0（verify 零值不误报）。
+/// `DeflectChance`/`DeflectionRating` @5% (13-G10): the huntress/monk
+/// `Gain Deflection Rating equal to N% of Evasion` builds are ready-made
+/// fixtures; builds with no deflect source keep both values at 0 (verifies no
+/// false positive at zero).
 ///
-/// 0.5.4b 适配注：Phase 0 曾以「DeflectionRating ~0.60x」ignore 本 canary；
-/// 复盘（oracle 复跑 2026-07-17）确认该缺口整体是 Evasion 缺口（Mageblood，
-/// 6685c30）的下游——rating 派生自 `Evasion × GainAsDeflection%`，公式本身
-/// （CalcDefence.lua:48-54 / :1516-1522）与 vendor 一致，Evasion 闭合后
-/// monk rating 22267.8 vs golden 22312.08（0.998x），无需公式改动。
+/// 0.5.4b adaptation note: Phase 0 once ignored this canary as "DeflectionRating
+/// ~0.60x". A follow-up review (oracle re-run 2026-07-17) confirmed this gap
+/// was entirely downstream of the Evasion gap (Mageblood, 6685c30) — rating is
+/// derived from `Evasion × GainAsDeflection%`, and the formula itself
+/// (CalcDefence.lua:48-54 / :1516-1522) already matches vendor. Once Evasion
+/// was closed, monk rating landed at 22267.8 vs golden 22312.08 (0.998x), with
+/// no formula change needed.
 #[test]
 fn deflection_matches_golden() {
     let data = load_data();
@@ -116,7 +121,7 @@ fn deflection_matches_golden() {
         let golden_rating = golden_stat(&dir, "DeflectionRating").expect("golden DeflectionRating");
         let golden_chance = golden_stat(&dir, "DeflectChance").expect("golden DeflectChance");
         let out = run_build(name, &data);
-        // rating < 1 时 vendor 给 0 几率（CalcDefence.lua:49-51），rating 本身按 @5% 比对。
+        // When rating < 1, vendor gives a 0 chance (CalcDefence.lua:49-51); the rating itself is still compared at @5%.
         if golden_rating >= 1.0 {
             assert_within_5pct(
                 "DeflectionRating",
@@ -129,15 +134,16 @@ fn deflection_matches_golden() {
     }
 }
 
-/// `Spirit` 池本值 @5%（13-G11）：覆盖纯任务奖励（100）、权杖 rolled `Spirit:`
-/// 行（druid 433）、`+N to Spirit` 装备/树词条（mercenary 336）三类来源形态。
+/// `Spirit` pool value @5% (13-G11): covers three source shapes — a pure
+/// quest reward (100), a sceptre's rolled `Spirit:` line (druid 433), and
+/// `+N to Spirit` gear/tree mods (mercenary 336).
 #[test]
 fn spirit_pool_matches_golden() {
     let data = load_data();
     for name in [
-        "warrior-titan-shield-wall",     // 100（仅任务奖励）
+        "warrior-titan-shield-wall",     // 100 (quest reward only)
         "huntress-ritualist-bow-shot",   // 100
-        "druid-oracle-comet",            // 433（权杖 213 + 任务 100 + 树/装备）
+        "druid-oracle-comet",            // 433 (sceptre 213 + quest 100 + tree/gear)
         "mercenary-tactician-wolf-pack", // 336
         "monk-invoker-frost-bomb",       // 343
     ] {

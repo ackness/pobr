@@ -1,18 +1,21 @@
-//! M1-T3.6 support 适用性裁决端到端验证（18-G2）。
+//! End-to-end verification of support-applicability gating (18-G2).
 //!
-//! 经 **XML fixture → parse_build → calculate_with_data** 全链路，断言：
-//! 1. **不兼容 support 拒收**：`SupportFerociousRoarPlayer`（require `[Warcry]`，
-//!    PoB2 `Data/Skills/sup_str.lua` Ferocious Roar `requireSkillTypes`）塞进
-//!    Fireball（法术，无 `Warcry` 类型）组后，其 `damage_+%` **不进** 击中/DPS——
-//!    对照 PoB2 `Modules/CalcActiveSkill.lua:210-214`：只有
-//!    `canGrantedEffectSupportActiveSkill`（CalcTools.lua:84-110）通过的 support
-//!    才进 `effectList`。
-//! 2. **兼容 support 正常注入**：`SupportMetaCastFireSpellOnHitPlayer`（require
-//!    `[Spell, Triggerable, Fire, AND, AND]`，Fireball 全部具备；exclude
-//!    `[InbuiltTrigger]` 不命中）的 `damage_+%` 照常抬升击中（INC 通道未误伤）。
+//! Via the full **XML fixture -> parse_build -> calculate_with_data** chain, asserts:
+//! 1. **Incompatible support is rejected**: `SupportFerociousRoarPlayer`
+//!    (requires `[Warcry]`, PoB2 `Data/Skills/sup_str.lua` Ferocious Roar
+//!    `requireSkillTypes`) socketed into a Fireball group (a spell, no
+//!    `Warcry` type) must have its `damage_+%` **excluded** from hit/DPS —
+//!    matching PoB2 `Modules/CalcActiveSkill.lua:210-214`: only a support that
+//!    passes `canGrantedEffectSupportActiveSkill` (CalcTools.lua:84-110) makes
+//!    it into `effectList`.
+//! 2. **Compatible support still injects**: `SupportMetaCastFireSpellOnHitPlayer`
+//!    (requires `[Spell, Triggerable, Fire, AND, AND]`, all satisfied by
+//!    Fireball; exclude `[InbuiltTrigger]` doesn't match) has its `damage_+%`
+//!    boost hit as normal (the INC channel isn't collateral damage).
 //!
-//! 数据为真实入库 `data/4.5.0.3.4/`（granted_effects.json 的 require/exclude token
-//! 流由 GrantedEffects .dat 类型列解析，见 M1-T3.1/T3.2）。
+//! Uses real ingested data from `data/4.5.0.3.4/` (granted_effects.json's
+//! require/exclude token stream is parsed from the GrantedEffects .dat type
+//! columns).
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::MinimalInput;
@@ -36,7 +39,7 @@ fn panel_opts() -> DataOrchestratorOptions {
     }
 }
 
-/// 最小 Fireball build XML（可选追加一个 support gem）。
+/// Minimal Fireball build XML (with an optional additional support gem).
 fn fireball_xml(support: Option<(&str, &str)>) -> String {
     let support_gem = support
         .map(|(gem_id, skill_id)| {
@@ -61,15 +64,17 @@ fn fireball_xml(support: Option<(&str, &str)>) -> String {
     )
 }
 
-/// 不兼容 support（require `[Warcry]` vs 法术）被拒：倍率不进击中/DPS。
+/// Incompatible support (requires `[Warcry]` vs a spell) is rejected: its
+/// multiplier does not reach hit/DPS.
 ///
-/// 修复前（按 `is_support` 全量注入）该 support 的 `damage_+%`（L20 ≈ +30）会被
-/// 误注入 Fireball——PoB2 中 Ferocious Roar 只能支援 Warcry 技能。
+/// Before the fix (injecting unconditionally based on `is_support`), this
+/// support's `damage_+%` (L20 ≈ +30) would be wrongly injected into Fireball —
+/// in PoB2, Ferocious Roar can only support Warcry skills.
 #[test]
 fn incompatible_support_is_rejected_end_to_end() {
     let build_data = load_build_data();
 
-    // 前置：该 support 确实带可映射的 damage_+%（数据通道未断，拒收不是「没数值」的假阳性）。
+    // Precondition: this support does carry a mappable damage_+% (the data channel isn't broken — rejection isn't a false positive from "no value").
     let sup = build_data.effect_stats("SupportFerociousRoarPlayer", 20, 0, None);
     let inc = sup
         .base
@@ -104,8 +109,9 @@ fn incompatible_support_is_rejected_end_to_end() {
     );
 }
 
-/// 兼容 support（require `[Spell, Triggerable, Fire, AND, AND]` 全命中）正常注入：
-/// `damage_+%`（L20 = 200）按 INC 通道抬升击中 ×3——裁决不误伤兼容名单。
+/// Compatible support (requires `[Spell, Triggerable, Fire, AND, AND]`, all
+/// matched) injects normally: `damage_+%` (L20 = 200) boosts hit x3 through the
+/// INC channel — gating doesn't collateral-damage the compatible list.
 #[test]
 fn compatible_support_still_injects() {
     let build_data = load_build_data();

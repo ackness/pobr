@@ -1,52 +1,62 @@
-//! Parser 输出的共享类型（[`ParseOutcome`] / [`ParseStatus`] / [`SpecialMatchMeta`]
-//! / [`ParseError`]）——legacy 与数据驱动引擎共用。
+//! Shared parser output types ([`ParseOutcome`] / [`ParseStatus`] /
+//! [`SpecialMatchMeta`] / [`ParseError`]) — used by both legacy and the
+//! data-driven engine.
 //!
-//! 从 `legacy.rs` 抽出（D-T8 删 legacy 前置）：引擎（`engine.rs` / `canonical.rs`）
-//! 的产物类型不应依赖 legacy 模块，故独立成模块；legacy 删除后这些类型随引擎留存。
+//! Extracted out of `legacy.rs` (a prerequisite for D-T8's legacy removal):
+//! the engine's (`engine.rs` / `canonical.rs`) output types shouldn't depend
+//! on the legacy module, so they were split into their own module; these
+//! types stay alongside the engine after legacy is removed.
 
 use std::fmt;
 
 use crate::Modifier;
 
-/// 单行 modifier 的解析状态。
+/// Parse status of a single modifier line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseStatus {
-    /// 至少识别出结构（可能产 0 个 mod，如纯识别条目）。
+    /// At least the structure was recognized (may still produce 0 mods,
+    /// e.g. a pure-recognition entry).
     Parsed,
-    /// 无任何规则命中——整行未支持。
+    /// No rule matched — the whole line is unsupported.
     Unsupported,
 }
 
-/// 单行解析产物：mod 列表 + 状态 + 未解析残文 + special 命中元数据。
+/// The result of parsing a single line: the mod list + status + unparsed
+/// leftover text + special-match metadata.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParseOutcome {
-    /// 解析出的 modifier。
+    /// The parsed-out modifiers.
     pub mods: Vec<Modifier>,
-    /// 解析状态。
+    /// Parse status.
     pub status: ParseStatus,
-    /// 未消费的剩余文本（诊断 / 覆盖率报表用）。
+    /// Leftover text that wasn't consumed (used for diagnostics / coverage
+    /// reports).
     pub unparsed: Option<String>,
-    /// special 词条规则命中元数据（M5b §2.3）。`None` = 走通用解析路径；
-    /// `Some` = 由 [`crate::rules::SpecialModRules`] 整行命中产出（entry_id +
-    /// verified 透传归因与 parity 报表）。
+    /// Metadata for a special-modifier rule hit (§2.3). `None` means the
+    /// line went through the general parsing path; `Some` means
+    /// [`crate::rules::SpecialModRules`] produced it from a whole-line match
+    /// (entry_id + verified, passed through for attribution and parity
+    /// reports).
     pub special_meta: Option<SpecialMatchMeta>,
 }
 
-/// special 命中元数据（[`ParseOutcome::special_meta`]）。
+/// Metadata for a special-channel match ([`ParseOutcome::special_meta`]).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpecialMatchMeta {
-    /// 命中的 special 条目稳定 id。
+    /// The stable id of the matched special entry.
     pub entry_id: String,
-    /// 该条目是否经 oracle 对拍验证（`verified:false` 在 parity 报表单列）。
+    /// Whether this entry has been verified against the oracle
+    /// (`verified:false` entries are listed separately in parity reports).
     pub verified: bool,
 }
 
-/// 解析失败（保留输入与原因，供调用方诊断）。
+/// A parse failure (keeps the input and the reason, for the caller to
+/// diagnose).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseError {
-    /// 原始输入文本。
+    /// The original input text.
     pub input: String,
-    /// 失败原因。
+    /// Failure reason.
     pub reason: String,
 }
 

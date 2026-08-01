@@ -1,10 +1,14 @@
-//! EHP 与 max hit（09-player-facing §3.2、§4.3）。
+//! EHP and max hit (09-player-facing §3.2, §4.3).
 //!
-//! 每种伤害类型按其有效血池与减伤算出可承受的单次最大命中；EHP 取最低 max hit
-//! （短板决定生存）。物理走护甲 + 固定 PDR，元素/混沌走抗性；ES 对混沌按半效计入。
+//! For each damage type, computes the maximum single hit that can be
+//! survived based on its effective health pool and mitigation; EHP takes the
+//! lowest max hit (the weakest link determines survival). Physical goes
+//! through armour + flat PDR, elemental/chaos through resistances; ES counts
+//! for chaos at half effectiveness.
 //!
-//! 注：armour reduction 需要 incoming hit 估计值（`reference_hit`），无真实敌人伤害时
-//! 用 display 基准；EHP 加权口径（lowest vs 类型加权）取 lowest，标注待 product 决策。
+//! Note: armour reduction needs an incoming hit estimate (`reference_hit`);
+//! without a real enemy damage value, the display baseline is used; EHP's
+//! weighting scheme (lowest vs type-weighted) takes lowest, flagged as pending a product decision.
 
 use pobr_data::prelude::*;
 
@@ -25,10 +29,10 @@ use super::pool_setup::{
 use super::round;
 use super::taken::{MitigationCtx, MitigationInputs, build_mitigation_ctx, taken_hit_from_damage};
 
-/// 各伤害类型的最终减伤参数。
+/// Final mitigation parameters per damage type.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct ResistanceSuite {
-    /// 物理减伤固定加成（来自护甲以外的来源），fraction [0,1)。
+    /// Physical damage reduction flat bonus (from sources other than armour), fraction [0,1).
     pub physical_pdr: f64,
     pub fire: f64,
     pub cold: f64,
@@ -36,12 +40,12 @@ pub struct ResistanceSuite {
     pub chaos: f64,
 }
 
-/// 减伤上限（fraction，默认 0.9）。对齐 PoB2
+/// Damage reduction ceiling (fraction, default 0.9). Mirrors PoB2's
 /// `output.DamageReductionMax = Max('DamageReductionMax') or DamageReductionCap(=90)`
-/// （CalcDefence.lua:1862）。`+Maximum Damage Reduction` 词条可提升此值。
+/// (CalcDefence.lua:1862). `+Maximum Damage Reduction` mods can raise this.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DamageReductionCaps {
-    /// 全局减伤上限 fraction（默认 0.9 = 90%）。
+    /// Global damage reduction ceiling as a fraction (default 0.9 = 90%).
     pub global: f64,
 }
 
@@ -64,18 +68,19 @@ pub struct EhpResult {
     pub total_ehp: f64,
 }
 
-/// 元素/混沌承受比例：`1 - resist%/100`，下限 0。
+/// Elemental/chaos damage-taken fraction: `1 - resist%/100`, floored at 0.
 fn resist_taken_fraction(resist_pct: f64) -> f64 {
     (1.0 - resist_pct / 100.0).max(0.0)
 }
 
-/// 物理承受比例：`1 - (pdr_flat + 护甲减伤)`，clamp 到 [0.1, 1.0]（PoE 物理减伤上限 90%）。
+/// Physical damage-taken fraction: `1 - (pdr_flat + armour mitigation)`, clamped to [0.1, 1.0] (PoE's physical mitigation ceiling is 90%).
 pub fn physical_taken_fraction(pdr_flat: f64, armour: f64, reference_hit: f64) -> f64 {
     physical_taken_fraction_overwhelm(pdr_flat, armour, reference_hit, 0.0)
 }
 
-/// 物理承受比例，含敌人**压制**（overwhelm，fraction）：先按 90% 上限算总减伤，再被
-/// overwhelm 削减（提高承受）。PoB2：armour 1e9（90% DR）+ 15% overwhelm → 75% DR → 承受 0.25。
+/// Physical damage-taken fraction, including enemy **overwhelm** (fraction):
+/// first computes total mitigation against the 90% ceiling, then reduces it
+/// by overwhelm (raising the taken fraction). PoB2: armour 1e9 (90% DR) + 15% overwhelm → 75% DR → 0.25 taken.
 pub fn physical_taken_fraction_overwhelm(
     pdr_flat: f64,
     armour: f64,
@@ -85,8 +90,9 @@ pub fn physical_taken_fraction_overwhelm(
     physical_taken_fraction_overwhelm_cap(pdr_flat, armour, reference_hit, overwhelm, 0.9)
 }
 
-/// 同 [`physical_taken_fraction_overwhelm`]，减伤上限改为可变 `dr_max`（fraction）。
-/// 对齐 PoB2：armour+flat 求和后 clamp 到 `DamageReductionMax`（CalcDefence.lua:396）。
+/// Same as [`physical_taken_fraction_overwhelm`], but with the mitigation
+/// ceiling switched to a variable `dr_max` (fraction). Mirrors PoB2: armour+flat
+/// is summed then clamped to `DamageReductionMax` (CalcDefence.lua:396).
 pub fn physical_taken_fraction_overwhelm_cap(
     pdr_flat: f64,
     armour: f64,
@@ -98,7 +104,7 @@ pub fn physical_taken_fraction_overwhelm_cap(
     (1.0 - (reduction - overwhelm)).clamp(0.0, 1.0)
 }
 
-/// 元素/混沌类型的最大可承受命中：`pool / (1 - resist%/100)`。
+/// Maximum survivable hit for an elemental/chaos type: `pool / (1 - resist%/100)`.
 pub fn max_hit_for_type(pool: f64, resist_pct: f64) -> f64 {
     let taken = resist_taken_fraction(resist_pct);
     if taken <= 0.0 {
@@ -108,18 +114,23 @@ pub fn max_hit_for_type(pool: f64, resist_pct: f64) -> f64 {
     }
 }
 
-/// 物理最大可承受命中。
+/// Physical maximum survivable hit.
 ///
-/// 护甲减伤随击中大小变化（`armour/(armour+10*hit)`），故最大承受击中 `H` 须**自洽**：
-/// `H * taken(H) = pool`（被该击中打中、过减伤后恰好等于血池）。PoB2 同此口径
-/// （`takenHitFromDamage(MaxHit) == pool`）。用定点迭代求解（`taken` 随 `H` 单调，收敛快）；
-/// 无护甲时 `taken` 与 `H` 无关，一步收敛 → 退化为 `pool/taken`。`reference_hit` 作初值。
+/// Armour mitigation varies with hit size (`armour/(armour+10*hit)`), so the
+/// maximum survivable hit `H` must be **self-consistent**:
+/// `H * taken(H) = pool` (getting hit by exactly this much, after
+/// mitigation, exactly equals the health pool). PoB2 uses the same
+/// semantics (`takenHitFromDamage(MaxHit) == pool`). Solved via fixed-point
+/// iteration (`taken` is monotonic in `H`, converges fast); without armour,
+/// `taken` is independent of `H` and converges in one step → degenerates to
+/// `pool/taken`. `reference_hit` seeds the initial value.
 pub fn physical_max_hit(pool: f64, pdr_flat: f64, armour: f64, reference_hit: f64) -> f64 {
     physical_max_hit_overwhelm(pool, pdr_flat, armour, reference_hit, 0.0)
 }
 
-/// 物理最大承受击中（含敌人 overwhelm）。同 [`physical_max_hit`] 的自洽迭代，承受比例改用
-/// [`physical_taken_fraction_overwhelm`]。
+/// Physical maximum survivable hit (including enemy overwhelm). The same
+/// self-consistent iteration as [`physical_max_hit`], with the taken
+/// fraction switched to [`physical_taken_fraction_overwhelm`].
 pub fn physical_max_hit_overwhelm(
     pool: f64,
     pdr_flat: f64,
@@ -130,7 +141,7 @@ pub fn physical_max_hit_overwhelm(
     physical_max_hit_overwhelm_cap(pool, pdr_flat, armour, reference_hit, overwhelm, 0.9)
 }
 
-/// 同 [`physical_max_hit_overwhelm`]，减伤上限改为可变 `dr_max`（fraction）。
+/// Same as [`physical_max_hit_overwhelm`], but with the mitigation ceiling switched to a variable `dr_max` (fraction).
 pub fn physical_max_hit_overwhelm_cap(
     pool: f64,
     pdr_flat: f64,
@@ -155,10 +166,13 @@ pub fn physical_max_hit_overwhelm_cap(
     round(hit)
 }
 
-/// 元素类型走护甲的最大承受击中（「Armour applies to <Element> instead of Physical」）：
-/// 护甲减伤作用于**抗性前（raw）**伤害（PoB2 `armourReductionF(armour, RAW)`，
-/// CalcDefence.lua:56/393/427/3626），与抗性层独立相乘。故 `taken = res_taken × (1 - armour_dr(H))`，
-/// armour_dr 上限 90%。同样自洽迭代求 `H × taken(H) = pool`。
+/// Maximum survivable hit for an elemental type routed through armour
+/// ("Armour applies to <Element> instead of Physical"): armour mitigation
+/// applies to the **pre-resistance (raw)** damage (PoB2's
+/// `armourReductionF(armour, RAW)`, CalcDefence.lua:56/393/427/3626),
+/// multiplied independently with the resistance layer. So
+/// `taken = res_taken × (1 - armour_dr(H))`, with armour_dr capped at 90%.
+/// Likewise solved via self-consistent iteration for `H × taken(H) = pool`.
 fn element_max_hit_with_armour(
     pool: f64,
     resist_pct: f64,
@@ -172,8 +186,9 @@ fn element_max_hit_with_armour(
     }
     let mut hit = reference_hit.max(pool).max(1.0);
     for _ in 0..50 {
-        // PoB2：armour DR 基于 RAW（抗性前）伤害，即迭代当前 hit H，而非 post-resist。
-        // 减伤上限可变（默认 0.9），承受下限 = 1 - dr_max。
+        // PoB2: armour DR is based on RAW (pre-resistance) damage, i.e. the
+        // currently-iterated hit H, not post-resist. Mitigation ceiling is
+        // variable (default 0.9), taken-fraction floor = 1 - dr_max.
         let armour_part = (1.0 - armour_reduction(armour, hit)).clamp(1.0 - dr_max, 1.0);
         let taken = res_taken * armour_part;
         let next = pool / taken;
@@ -186,29 +201,32 @@ fn element_max_hit_with_armour(
     round(hit)
 }
 
-/// 元素血池（life + es）。
+/// Elemental health pool (life + es).
 fn elemental_pool(life: f64, es: f64) -> f64 {
     life + es
 }
 
-/// 混沌血池（ES 对混沌半效：life + es*0.5）。
+/// Chaos health pool (ES at half effectiveness against chaos: life + es*0.5).
 fn chaos_pool(life: f64, es: f64) -> f64 {
     life + es * 0.5
 }
 
-/// Chaos Inoculation (CI) keystone 选项。
-/// 出处：agent-docs/active-defences.md §五 Keystone 表；
-///       PoB2 CalcDefence.lua：CI → maxLife=1，ES 作为生命池，混沌伤害免疫（chaos_resist = 100%）。
+/// Chaos Inoculation (CI) keystone options.
+/// Source: agent-docs/active-defences.md §5's Keystone table;
+///       PoB2 CalcDefence.lua: CI → maxLife=1, ES acts as the life pool, chaos damage immunity (chaos_resist = 100%).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EhpOptions {
-    /// Chaos Inoculation：最大生命变 1，ES 作生命池（`es` 用于所有伤害池），混沌伤害免疫。
+    /// Chaos Inoculation: max life becomes 1, ES acts as the life pool
+    /// (`es` used for every damage pool), chaos damage immunity.
     pub chaos_inoculation: bool,
-    /// 敌人物理压制（overwhelm，fraction）：削减玩家物理总减伤（提高承受）。
+    /// Enemy physical overwhelm (fraction): reduces the player's total physical mitigation (raising taken damage).
     pub physical_overwhelm: f64,
-    /// 「Armour applies to <Element> instead of Physical」：火/冰/电是否改走护甲减伤；
-    /// 任一为真时物理不再吃护甲（仅 PDR）。对应 PoB2 同名词条。
+    /// "Armour applies to <Element> instead of Physical": whether fire/cold/
+    /// lightning is routed through armour mitigation instead; when any is
+    /// true, physical no longer benefits from armour (PDR only).
+    /// Corresponds to PoB2's same-named mod.
     pub armour_applies_to_element: [bool; 3],
-    /// 减伤上限（可被 `+Maximum Damage Reduction` 词条提升）。默认 90%。
+    /// Damage reduction ceiling (can be raised by `+Maximum Damage Reduction` mods). Default 90%.
     pub damage_reduction_caps: DamageReductionCaps,
 }
 
@@ -223,7 +241,7 @@ impl Default for EhpOptions {
     }
 }
 
-/// 计算 EHP 与各类型 max hit。`reference_hit` 为物理护甲减伤的 incoming hit 估计基准。
+/// Calculates EHP and each type's max hit. `reference_hit` is the incoming hit estimate baseline for physical armour mitigation.
 pub fn calc_ehp(
     life: f64,
     es: f64,
@@ -243,12 +261,12 @@ pub fn calc_ehp(
     )
 }
 
-/// `calc_ehp` 的完整版本，支持 Chaos Inoculation 等 keystone 选项。
+/// The full version of `calc_ehp`, supporting keystone options like Chaos Inoculation.
 ///
-/// **Bug#10 修正（ehp-chaos-inoculation-wrong）**：
-/// CI build 中 ES 成为生命池（`life_pool = es`），混沌伤害免疫（`chaos_max_hit = ∞`）。
-/// 出处：agent-docs/active-defences.md §五 Keystone：
-///   `Chaos Inoculation: 最大生命变 1；免疫混沌伤害与流血`。
+/// **Bug#10 fix (ehp-chaos-inoculation-wrong)**:
+/// in a CI build, ES becomes the life pool (`life_pool = es`), with chaos
+/// damage immunity (`chaos_max_hit = ∞`). Source: agent-docs/active-defences.md
+///   §5 Keystone: `Chaos Inoculation: max life becomes 1; immune to chaos damage and bleed`.
 pub fn calc_ehp_with_opts(
     life: f64,
     es: f64,
@@ -259,8 +277,8 @@ pub fn calc_ehp_with_opts(
     opts: EhpOptions,
 ) -> EhpResult {
     let (effective_life, effective_es) = if opts.chaos_inoculation {
-        // CI：life = 1（已在 actor 层处理），ES 用作所有伤害池
-        // 这里把 es 放入 effective_life 以复用 elemental_pool/chaos_pool 函数
+        // CI: life = 1 (already handled at the actor layer), ES acts as every damage pool
+        // Here es is placed into effective_life to reuse the elemental_pool/chaos_pool functions
         (es, 0.0)
     } else {
         (life, es)
@@ -272,7 +290,8 @@ pub fn calc_ehp_with_opts(
         ele_pool.max(1.0)
     };
 
-    // 「Armour applies to <Element> instead of Physical」：物理改吃护甲与否取决于是否有重定向。
+    // "Armour applies to <Element> instead of Physical": whether physical
+    // still benefits from armour depends on whether any redirect is active.
     let any_redirect = opts.armour_applies_to_element.iter().any(|&x| x);
     let phys_armour = if any_redirect { 0.0 } else { armour };
     let dr_max = opts.damage_reduction_caps.global;
@@ -284,7 +303,7 @@ pub fn calc_ehp_with_opts(
         opts.physical_overwhelm,
         dr_max,
     );
-    // 各元素：重定向时走护甲（抗性后），否则纯抗性。
+    // Each element: routed through armour (post-resistance) when redirected, otherwise pure resistance.
     let elem_max_hit = |resist_pct: f64, idx: usize| -> f64 {
         if opts.armour_applies_to_element[idx] {
             element_max_hit_with_armour(ele_pool, resist_pct, armour, ref_hit, dr_max)
@@ -295,7 +314,7 @@ pub fn calc_ehp_with_opts(
     let fire_max_hit = elem_max_hit(resistances.fire, 0);
     let cold_max_hit = elem_max_hit(resistances.cold, 1);
     let lightning_max_hit = elem_max_hit(resistances.lightning, 2);
-    // CI：混沌伤害免疫 → 无限大 max hit
+    // CI: chaos damage immunity → infinite max hit
     let chaos_max_hit = if opts.chaos_inoculation {
         f64::INFINITY
     } else {
@@ -331,7 +350,7 @@ pub fn calc_ehp_with_opts(
     }
 }
 
-/// `calc_ehp` 的追踪版本：为火与物理 max hit 各记录一个 Mitigate 节点，total 记录 Clamp。
+/// Traced version of `calc_ehp`: records a Mitigate node each for fire and physical max hit, and a Clamp node for the total.
 pub fn calc_ehp_traced(
     life: f64,
     es: f64,
@@ -364,20 +383,14 @@ pub fn calc_ehp_traced(
     result
 }
 
-// ═════════════════════════════════════════════════════════════════
-// M2 Track F（F-1）：EHP PoB2 口径新管线——双跑并行产出
+// The PoB2-view EHP: vendor `CalcDefence.lua`'s numberOfHitsToDie × per-hit incoming damage.
 //
-// 本节实现 vendor `CalcDefence.lua` 的 numberOfHitsToDie × 单击进伤口径
-// （13-G4/G5，裁决 P11）。F-1 阶段 `total_ehp` 仍保持旧 lowest-max-hit 口径，
-// 新口径值全部挂**新字段**（`total_ehp_pob2` / `*_max_hit_pob2` /
-// `number_of_damaging_hits` / `number_of_mitigated_hits`）——parity 逐值不变；
-// 口径切换（含 defensive_rows 扩列 + baseline 重记）在 F-3 独立显式审查 commit。
-//
-// P17 红线：本节不新增 TraceOperation / SourceKind / 归因结构；trace 仅沿用
-// 既有 calc_ehp_traced 的 Mitigate/Clamp 节点（新管线 F-1 不挂 trace）。
-// ═════════════════════════════════════════════════════════════════
+// `total_ehp` is still the old lowest-max-hit view; this section's values
+// live on `total_ehp_pob2` / `*_max_hit_pob2` / `number_of_damaging_hits` /
+// `number_of_mitigated_hits`. This pipeline attaches no trace -- attribution
+// only reuses calc_ehp_traced's Mitigate/Clamp nodes.
 
-/// per-type 数组下标序（= `DamageType as usize`，与 pool_damage/taken 同约定）。
+/// Per-type array index order (= `DamageType as usize`, the same convention as pool_damage/taken).
 const DAMAGE_TYPE_BY_INDEX: [DamageType; 5] = [
     DamageType::Physical,
     DamageType::Fire,
@@ -386,12 +399,12 @@ const DAMAGE_TYPE_BY_INDEX: [DamageType; 5] = [
     DamageType::Chaos,
 ];
 
-/// vendor `round`（Modules/Common.lua：`m_floor(val + 0.5)`）。
+/// Vendor's `round` (Modules/Common.lua: `m_floor(val + 0.5)`).
 fn vendor_round(value: f64) -> f64 {
     (value + 0.5).floor()
 }
 
-/// 伤害向量数乘（vendor `Damage[t] = DamageIn[t] × k` 形）。
+/// Scalar multiplication of a damage vector (vendor's `Damage[t] = DamageIn[t] × k` shape).
 fn scale_damage(damage: &TypedDamage, factor: f64) -> TypedDamage {
     TypedDamage {
         physical: damage.physical * factor,
@@ -402,15 +415,16 @@ fn scale_damage(damage: &TypedDamage, factor: f64) -> TypedDamage {
     }
 }
 
-/// 敌人单击进伤 placeholder（vendor ConfigOptions.lua:1982-1996）：
-/// `default = round(monsterDamageTable[lv] × ehp_base_damage_mult × DPSMult)`，
-/// 物理/火/冰/电四类同值，chaos 再 `round(default / chaos_damage_div)`（除数
-/// per-tier，None/Boss/Pinnacle = 2.5、Uber = 4，L1987/L2028/L2070/L2111）。
+/// Enemy single-hit incoming damage placeholder (vendor ConfigOptions.lua:1982-1996):
+/// `default = round(monsterDamageTable[lv] × ehp_base_damage_mult × DPSMult)`,
+/// same value for physical/fire/cold/lightning, with chaos additionally
+/// `round(default / chaos_damage_div)` (a per-tier divisor,
+/// None/Boss/Pinnacle = 2.5, Uber = 4, L1987/L2028/L2070/L2111).
 ///
-/// 数据全部入库：`monster_scaling.json::damage` + `enemy_presets.json`
-/// （`ehp_base_damage_mult` / per-tier `dps_mult`/`chaos_damage_div`）。
-/// per-type config 覆盖（`enemy<X>Damage` configInput）留 M3 config_interpreter。
-/// 预设缺档（损坏数据）→ 全 0（消费侧 0 进伤 → 致死击数 ∞ 中性短路）。
+/// All data is catalogued: `monster_scaling.json::damage` + `enemy_presets.json`
+/// (`ehp_base_damage_mult` / per-tier `dps_mult`/`chaos_damage_div`).
+/// Per-type config overrides (the `enemy<X>Damage` configInput) are left for config_interpreter.
+/// A missing preset (corrupted data) → all 0 (a 0 incoming-damage consumer → an infinite, neutral short-circuit for the lethal hit count).
 pub fn enemy_damage_placeholder(
     constants: &RuntimeConstants,
     level: u32,
@@ -434,23 +448,24 @@ pub fn enemy_damage_placeholder(
     }
 }
 
-/// 敌人进伤装配结果（vendor CalcDefence.lua:2040-2168 敌伤段）。
+/// Enemy incoming-damage assembly result (vendor CalcDefence.lua:2040-2168's enemy-damage section).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct EnemyDamageIn {
-    /// per-type 终值 `<X>EnemyDamage = enemyDamage × enemyDamageMult × EnemyCritEffect`
-    /// （:2137；敌方 Conversion :2098-2128 无词条来源、留 M3）。
+    /// Per-type final value `<X>EnemyDamage = enemyDamage × enemyDamageMult × EnemyCritEffect`
+    /// (`:2137`; enemy Conversion `:2098-2128` has no mod source, left as-is).
     pub damage: TypedDamage,
-    /// `totalEnemyDamageIn = Σ enemyDamage`（mult/crit **之前**，:2136；
-    /// TotalEHP 末端乘数 :3322）。
+    /// `totalEnemyDamageIn = Σ enemyDamage` (**before** mult/crit, `:2136`;
+    /// the end-of-pipeline TotalEHP multiplier `:3322`).
     pub total_in: f64,
-    /// per-type `<X>EnemyDamageMult`（max-hit 末端除数，:3660/:3696）。
+    /// Per-type `<X>EnemyDamageMult` (the max-hit end-of-pipeline divisor, `:3660`/`:3696`).
     pub mult_by_type: [f64; 5],
 }
 
-/// 敌人进伤装配（vendor CalcDefence.lua:2065-2137）：placeholder（setup_enemy 注入的
-/// `Enemy<X>Damage` BASE）+ enemyDB `<X>Min`/`<X>Max` 词条均值（:2098）→ per-type ×
-/// `enemyDamageMult`（`calcLib.mod(enemyDB, "Damage", "<X>Damage"[, "ElementalDamage"])`，
-/// :2133）× `EnemyCritEffect`。
+/// Enemy incoming-damage assembly (vendor CalcDefence.lua:2065-2137): the
+/// placeholder (`Enemy<X>Damage` BASE injected by setup_enemy) + the enemy
+/// db's `<X>Min`/`<X>Max` mod average (`:2098`) → per-type ×
+/// `enemyDamageMult` (`calcLib.mod(enemyDB, "Damage", "<X>Damage"[, "ElementalDamage"])`,
+/// `:2133`) × `EnemyCritEffect`.
 pub fn assemble_enemy_damage(
     enemy_db: &ModDb,
     cfg: &CalcConfig,
@@ -461,18 +476,18 @@ pub fn assemble_enemy_damage(
     for dtype in DAMAGE_TYPE_BY_INDEX {
         let i = dtype as usize;
         let name = type_prefix(dtype);
-        // placeholder（setup_enemy 注入；无敌人配置的裸 Env 下为 0 → 中性）。
+        // Placeholder (injected by setup_enemy; 0 under a bare Env with no enemy config → neutral).
         let placeholder = enemy_db.sum(
             ModType::Base,
             cfg,
             &[ModName::from(format!("Enemy{name}Damage"))],
         );
-        // :2098 敌方 Min/Max 词条均值。
+        // :2098 the enemy Min/Max mod average.
         let min_max = (enemy_db.sum(ModType::Base, cfg, &[ModName::from(format!("{name}Min"))])
             + enemy_db.sum(ModType::Base, cfg, &[ModName::from(format!("{name}Max"))]))
             / 2.0;
         let enemy_damage = placeholder + min_max;
-        // :2133 enemyDamageMult。
+        // :2133 enemyDamageMult.
         let mut names = vec![
             ModName::from("Damage"),
             ModName::from(format!("{name}Damage")),
@@ -496,7 +511,7 @@ pub fn assemble_enemy_damage(
     result
 }
 
-/// DamageType → 词条名前缀。
+/// DamageType → mod name prefix.
 fn type_prefix(dtype: DamageType) -> &'static str {
     match dtype {
         DamageType::Physical => "Physical",
@@ -507,17 +522,17 @@ fn type_prefix(dtype: DamageType) -> &'static str {
     }
 }
 
-/// 敌人暴击效果（EHP 口径，vendor CalcDefence.lua:2065-2071）：
+/// Enemy crit effect (the EHP view, vendor CalcDefence.lua:2065-2071):
 ///
 /// ```text
-/// chance = clamp(placeholder(5) × (1 + (玩家 EnemyCritChance INC + 敌 CritChance INC)/100)
-///                × (1 − ConfiguredEvadeChance/100), 0, 100)   （NeverCrit→0 / AlwaysCrit→100）
-/// damage = max((placeholder(30) + 敌 CritMultiplier BASE) × (1 + 敌 CritMultiplier INC/100), 0)
+/// chance = clamp(placeholder(5) × (1 + (player's EnemyCritChance INC + enemy's CritChance INC)/100)
+///                × (1 − ConfiguredEvadeChance/100), 0, 100)   (NeverCrit→0 / AlwaysCrit→100)
+/// damage = max((placeholder(30) + enemy's CritMultiplier BASE) × (1 + enemy's CritMultiplier INC/100), 0)
 /// effect = 1 + chance/100 × damage/100 × (1 − CritExtraDamageReduction/100)
 /// ```
 ///
-/// placeholder 走 `enemy_presets.json`（`default_enemy_crit_chance` /
-/// `default_enemy_crit_damage_bonus`；configInput 覆盖留 M3）。
+/// The placeholder comes from `enemy_presets.json` (`default_enemy_crit_chance` /
+/// `default_enemy_crit_damage_bonus`; a configInput override is left for later).
 pub fn enemy_crit_effect_ehp(
     player_db: &ModDb,
     enemy_db: &ModDb,
@@ -538,7 +553,7 @@ pub fn enemy_crit_effect_ehp(
             * (1.0 - configured_evade_pct / 100.0))
             .clamp(0.0, 100.0)
     };
-    // :2066 EnemyUnluckyCrit → 两次取劣幂。
+    // :2066 EnemyUnluckyCrit → the worst-of-two power.
     if player_db.flag(cfg, ModName::from("EnemyUnluckyCrit")) {
         chance = chance / 100.0 * chance;
     }
@@ -549,18 +564,20 @@ pub fn enemy_crit_effect_ehp(
     1.0 + chance / 100.0 * (crit_damage / 100.0) * (1.0 - crit_extra_reduction_pct / 100.0)
 }
 
-/// per-type 承受命中（vendor「panel 路径」：taken-as shift 聚合 :2214-2227 +
-/// per-type 减伤 :2326-2444）。返回 `(per-type TakenHit, per-type 面板 DR%)`。
+/// Per-type damage taken (vendor's "panel path": taken-as shift aggregation
+/// `:2214-2227` + per-type mitigation `:2326-2444`). Returns `(per-type TakenHit, per-type panel DR%)`.
 ///
-/// 与 [`taken_hit_from_damage`]（单源 raw 入口，:422-455）的差异：本函数对**全部
-/// 源类型**的进伤先做 shift 聚合再 per-dest 减伤（takenFlat 只加一次、armour DR
-/// 以聚合后伤害求值）——与 vendor `<X>TakenDamage → <X>TakenHit` 链一致；
-/// `:2442` 不取整（takenHitFromDamage 的 round 是另一入口）。
+/// Difference from [`taken_hit_from_damage`] (a single-source raw entry
+/// point, `:422-455`): this function first shift-aggregates incoming damage
+/// across **every source type**, then applies per-destination mitigation
+/// (takenFlat is added only once, and armour DR is evaluated against the
+/// aggregated damage) -- matching vendor's `<X>TakenDamage → <X>TakenHit`
+/// chain; `:2442` isn't rounded (round in takenHitFromDamage is a separate entry point).
 pub fn taken_hit_per_type(
     enemy_damage: &TypedDamage,
     mit: &MitigationCtx,
 ) -> (TypedDamage, [f64; 5]) {
-    // 1. taken-as shift 聚合（:2214-2227）：taken[dst] = Σ_src enemyDamage[src] × shift[src][dst]。
+    // 1. taken-as shift aggregation (:2214-2227): taken[dst] = Σ_src enemyDamage[src] × shift[src][dst].
     let mut taken = [0.0_f64; 5];
     for src in DAMAGE_TYPE_BY_INDEX {
         let s = src as usize;
@@ -572,25 +589,25 @@ pub fn taken_hit_per_type(
             *taken_slot += raw * mit.shift[s][d];
         }
     }
-    // 2. per-type 减伤（:2371-2383 + :2442）。
+    // 2. Per-type mitigation (:2371-2383 + :2442).
     let mut hits = [0.0_f64; 5];
     let mut dr_pct = [0.0_f64; 5];
     for i in 0..5 {
         let damage = taken[i];
-        // :2402 armourReduct = min(drMax, armourReduction(effArmour, damage))——
-        // 注意这是**取整**变体（Common.lua round=floor(x+0.5)；armourReductionF 才是
-        // 小数变体，仅 takenHitFromDamage/:437 用）。golden PhysicalDamageReduction
-        // 恒为整数即由此来。
+        // :2402 armourReduct = min(drMax, armourReduction(effArmour, damage)) --
+        // note this is the **rounded** variant (Common.lua's round=floor(x+0.5);
+        // armourReductionF is the fractional variant, only used by
+        // takenHitFromDamage/`:437`). That's why golden's PhysicalDamageReduction is always an integer.
         let armour_dr =
             vendor_round(armour_reduction(mit.effective_applied_armour[i], damage) * 100.0)
                 .min(mit.dr_max_pct[i]);
-        // :2382 totalReduct = min(drMax, armourReduct + flatDR)。
+        // :2382 totalReduct = min(drMax, armourReduct + flatDR).
         let total_dr = (armour_dr + mit.flat_dr_pct[i]).min(mit.dr_max_pct[i]);
-        // :2383 reductMult = 1 − clamp(totalReduct − overwhelm, 0, drMax)/100。
+        // :2383 reductMult = 1 − clamp(totalReduct − overwhelm, 0, drMax)/100.
         let reduct_mult =
             1.0 - (total_dr - mit.overwhelm_pct[i]).clamp(0.0, mit.dr_max_pct[i]) / 100.0;
         dr_pct[i] = 100.0 - reduct_mult * 100.0;
-        // :2442 TakenHit = max(damage × resMult × reductMult + takenFlat, 0) × afterReductionMulti。
+        // :2442 TakenHit = max(damage × resMult × reductMult + takenFlat, 0) × afterReductionMulti.
         let base_mult = mit.resist_taken_multi[i] * reduct_mult;
         hits[i] = (damage * base_mult + mit.taken_flat[i]).max(0.0) * mit.after_reduction_multi[i];
     }
@@ -606,24 +623,26 @@ pub fn taken_hit_per_type(
     )
 }
 
-/// EHP 循环参数（vendor Data.lua:235-239 + :3094 的 LimitEHPSpeedup 收紧）。
+/// EHP loop parameters (vendor Data.lua:235-239 + `:3094`'s LimitEHPSpeedup tightening).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EhpLoopParams {
-    /// 单击伤害上限（超限仍存活 → 致死击数 ∞）。`ehp_calc_max_damage`。
+    /// Single-hit damage ceiling (still alive above this → infinite lethal
+    /// hit count). `ehp_calc_max_damage`.
     pub max_damage: f64,
-    /// 全递归共享的迭代预算。`ehp_calc_max_iterations`。
+    /// The iteration budget shared across all recursion. `ehp_calc_max_iterations`.
     pub max_iterations: f64,
-    /// 递归加速因子。`ehp_calc_speed_up`（=8）；loss-prevention/recoup/gain 跟踪时
-    /// 收紧为 [`LIMITED_EHP_SPEED_UP`]（vendor :3094 字面量 4——MoM/损失防止会把
-    /// 多击坍缩成一击导致 eHP 跳变，故放慢加速）。
+    /// Recursion acceleration factor. `ehp_calc_speed_up` (=8); tightened to
+    /// [`LIMITED_EHP_SPEED_UP`] when tracking loss-prevention/recoup/gain
+    /// (vendor `:3094`'s literal 4 -- MoM/loss-prevention would collapse
+    /// multiple hits into one, causing EHP to jump discontinuously, so acceleration is slowed).
     pub speed_up: f64,
 }
 
-/// vendor CalcDefence.lua:3094：`speedUp = DamageIn["LimitEHPSpeedup"] and 4 or ehpCalcSpeedUp`。
+/// Vendor CalcDefence.lua:3094: `speedUp = DamageIn["LimitEHPSpeedup"] and 4 or ehpCalcSpeedUp`.
 const LIMITED_EHP_SPEED_UP: f64 = 4.0;
 
 impl EhpLoopParams {
-    /// 从注入常量包构造（`limit_speedup` = vendor `LimitEHPSpeedup`）。
+    /// Builds from the injected constants pack (`limit_speedup` = vendor's `LimitEHPSpeedup`).
     pub fn from_constants(constants: &RuntimeConstants, limit_speedup: bool) -> Self {
         let game = constants.game();
         Self {
@@ -638,13 +657,17 @@ impl EhpLoopParams {
     }
 }
 
-/// 致死所需命中数（vendor CalcDefence.lua:2979-3145 `numberOfHitsToDie` 逐行）。
+/// Number of hits needed to be lethal (vendor CalcDefence.lua:2979-3145's
+/// `numberOfHitsToDie`, mirrored line by line).
 ///
-/// 循环调 Track A [`reduce_pools`]；递归加速（`speed_up` 倍伤害从**满池**重算一次
-/// 估出跳跃步长 :3105-3119）；overkill 小数折算（:3133-3135，仅顶层 cycles=1）；
-/// `max_damage` / `max_iterations` 上限保证终止；`WardNotBreak && Σ伤害 < Ward` → ∞
-/// （:2990）。GainWhenHit（格挡/压制回复钩子）本阶段置 0（蓝图 F-1 允许），
-/// 接入后在本函数加恢复步（:3074-3090）。
+/// Loops calling Track A's [`reduce_pools`]; recursion acceleration
+/// (recomputes once at `speed_up`× damage from the **full pool** to estimate
+/// a jump step size, `:3105-3119`); fractional overkill folding
+/// (`:3133-3135`, top level only, cycles=1); `max_damage` / `max_iterations`
+/// ceilings guarantee termination; `WardNotBreak && Σdamage < Ward` → ∞
+/// (`:2990`). GainWhenHit (the block/overwhelm recovery hook) is set to 0 at
+/// this stage; once wired up, add a recovery step to this function
+/// (`:3074-3090`).
 pub fn number_of_hits_to_die(
     damage_in: &TypedDamage,
     pools_full: &PoolState,
@@ -654,15 +677,17 @@ pub fn number_of_hits_to_die(
     number_of_hits_to_die_tracked(damage_in, pools_full, ctx, params).0
 }
 
-/// 致死击数 + per-type recoupable 累计（M2 F-4，13-G15 部分）。
+/// Lethal hit count + per-type recoupable accumulation (part of 13-G15).
 ///
-/// vendor `DamageIn.TrackRecoupable` 路径（CalcDefence.lua:3232-3236 置位、
-/// :3119-3123 把 `poolTable.damageTakenThatCanBeRecouped`（reducePoolsByDamage
-/// :489/:537 在 allies 层之后、aegis/guard/ward/ES 之前记录的 per-type
-/// damageRemainder）累计进 `<X>RecoupableDamageTaken`）。与 vendor 同口径：
-/// **仅顶层（cycles==1）循环累计**——加速递归（cycles>1）置 TrackRecoupable=false
-/// （:3046-3049）；顶层放大击（iterationMultiplier 缩放后的 hit）按缩放后伤害
-/// 记入，与 vendor 行为一致。
+/// Vendor's `DamageIn.TrackRecoupable` path (set at CalcDefence.lua:3232-3236,
+/// `:3119-3123` accumulates `poolTable.damageTakenThatCanBeRecouped`
+/// (reducePoolsByDamage `:489`/`:537`'s per-type damageRemainder, recorded
+/// after the allies layer but before aegis/guard/ward/ES) into
+/// `<X>RecoupableDamageTaken`). Matching vendor's semantics: **accumulated
+/// only in the top-level loop** (cycles==1) -- accelerated recursion
+/// (cycles>1) sets TrackRecoupable=false (`:3046-3049`); a top-level
+/// amplified hit (the iterationMultiplier-scaled hit) is recorded using its
+/// scaled damage, matching vendor's behavior.
 pub fn number_of_hits_to_die_tracked(
     damage_in: &TypedDamage,
     pools_full: &PoolState,
@@ -683,8 +708,8 @@ pub fn number_of_hits_to_die_tracked(
     (hits, recoupable)
 }
 
-/// `numberOfHitsToDie` 递归本体（`cycles`/`iterations` 对应 vendor DamageIn 同名键，
-/// iterations 跨递归共享预算）。
+/// `numberOfHitsToDie`'s recursive body (`cycles`/`iterations` correspond to
+/// vendor DamageIn's same-named keys; `iterations`'s budget is shared across recursion).
 #[allow(clippy::too_many_arguments)]
 fn hits_to_die_inner(
     damage_in: &TypedDamage,
@@ -695,7 +720,7 @@ fn hits_to_die_inner(
     iterations: &mut f64,
     recoupable: &mut [f64; 5],
 ) -> f64 {
-    // :2984-2994 进伤为 0 → ∞；WardNotBreak 且单击总伤低于 Ward → ∞。
+    // :2984-2994 zero incoming damage → ∞; WardNotBreak and per-hit total below Ward → ∞.
     let per_hit_total = damage_in.total();
     if per_hit_total <= 0.0 {
         return f64::INFINITY;
@@ -703,7 +728,7 @@ fn hits_to_die_inner(
     if ctx.ward_not_break && pools_full.ward > 0.0 && per_hit_total < pools_full.ward {
         return f64::INFINITY;
     }
-    // :2996-3000 非永续 ward 在加速递归（cycles>1）中清零（每击归零无法正确建模）。
+    // :2996-3000 a non-persistent ward is zeroed during accelerated recursion (cycles>1) (zeroing it every hit can't be modeled correctly).
     let mut pool = pools_full.clone();
     if !ctx.ward_not_break && cycles > 1.0 {
         pool.ward = 0.0;
@@ -713,25 +738,25 @@ fn hits_to_die_inner(
     let mut iteration_multiplier = 1.0_f64;
     let mut cycles_ran = false;
     let mut last_overkill = 0.0_f64;
-    // :3063 while 主循环。
+    // :3063 the main while loop.
     while pool.life > 0.0 && *iterations < params.max_iterations {
         *iterations += 1.0;
         let hit = scale_damage(damage_in, iteration_multiplier);
         let after = reduce_pools(&pool, &hit, ctx);
         last_overkill = after.overkill;
-        // F-4：recoupable 累计（仅顶层 cycles==1，vendor :3046-3049/:3119-3123）。
+        // F-4: recoupable accumulation (top level only, cycles==1, vendor :3046-3049/:3119-3123).
         if cycles <= 1.0 {
             for (acc, v) in recoupable.iter_mut().zip(after.recoupable_by_type) {
                 *acc += v;
             }
         }
         pool = after.pools;
-        // :3084 存活且单击伤害已超上限 → 视为可承受无限击。
+        // :3084 still alive and the single-hit damage already exceeds the ceiling → treated as surviving unlimited hits.
         if pool.life > 0.0 && per_hit_total >= params.max_damage {
             return f64::INFINITY;
         }
         iteration_multiplier = 1.0;
-        // :3095-3119 递归加速：speed_up 倍伤害从满池重算，估出可安全跳过的击数。
+        // :3095-3119 recursion acceleration: recomputes at speed_up× damage from the full pool, estimating a safe number of hits to skip.
         if !cycles_ran && pool.life > 0.0 && *iterations < params.max_iterations {
             let accelerated = scale_damage(damage_in, params.speed_up);
             let recursive_hits = hits_to_die_inner(
@@ -743,7 +768,7 @@ fn hits_to_die_inner(
                 iterations,
                 recoupable,
             );
-            // :3112 递归已知无限存活 → 直接 ∞。
+            // :3112 recursion already knows it survives forever → straight to ∞.
             if recursive_hits.is_infinite() {
                 return f64::INFINITY;
             }
@@ -752,24 +777,25 @@ fn hits_to_die_inner(
         }
         num_hits += iteration_multiplier;
     }
-    // :3133-3135 overkill 小数折算（仅顶层 cycles=1，避免破坏加速估计）。
+    // :3133-3135 fractional overkill folding (top level only, cycles=1, to avoid corrupting the acceleration estimate).
     if pool.life <= 0.0 && cycles <= 1.0 {
         num_hits -= last_overkill / per_hit_total;
     }
-    // :3137-3140 终检：总承受伤害超上限仍存活 → ∞。
+    // :3137-3140 final check: total damage taken exceeds the ceiling but still alive → ∞.
     let damage_total = per_hit_total * num_hits;
     if pool.life >= 0.0 && damage_total >= params.max_damage {
         return f64::INFINITY;
     }
-    // :3141-3143 NaN → 0。
+    // :3141-3143 NaN → 0.
     if num_hits.is_nan() {
         return 0.0;
     }
     num_hits.max(0.0)
 }
 
-/// per-type TotalHitPool（vendor :2942-2960 MoM/ES 基底 + :3540-3596 ward/aegis/
-/// guard/allies 扩展层；Track A 原语 [`total_hit_pool_base`] / [`extend_total_hit_pool`]）。
+/// Per-type TotalHitPool (vendor `:2942-2960`'s MoM/ES base + `:3540-3596`'s
+/// ward/aegis/guard/allies expansion layer; Track A primitives
+/// [`total_hit_pool_base`] / [`extend_total_hit_pool`]).
 pub fn total_hit_pools(
     mom: &MomHitPools,
     energy_shield_recovery_cap: f64,
@@ -790,32 +816,37 @@ pub fn total_hit_pools(
     out
 }
 
-/// 新口径 max-hit 求解输入（per-actor 一次整备，逐类型复用）。
+/// Inputs for the new-view max-hit solver (assembled once per actor, reused per type).
 #[derive(Debug, Clone, Copy)]
 pub struct MaxHitInputs<'a> {
     pub mit: &'a MitigationCtx,
-    /// 满池快照（conversion smoothing 的 reduce_pools 基准，vendor :3670 传 nil = 满池）。
+    /// The full-pool snapshot (conversion smoothing's reduce_pools baseline,
+    /// vendor `:3670` passes nil = the full pool).
     pub pools_full: &'a PoolState,
     pub ctx: &'a PoolCtx,
-    /// per-type TotalHitPool（[`total_hit_pools`] 产出）。
+    /// Per-type TotalHitPool (produced by [`total_hit_pools`]).
     pub total_hit_pool: [f64; 5],
-    /// 护甲系数（`armour_ratio`，Data.lua:193）。
+    /// Armour coefficient (`armour_ratio`, Data.lua:193).
     pub armour_ratio: f64,
-    /// 多转换平滑迭代上限（`max_hit_smoothing_passes`，Data.lua:241）。
+    /// Multi-conversion smoothing iteration ceiling (`max_hit_smoothing_passes`, Data.lua:241).
     pub smoothing_passes: u32,
 }
 
-/// 新口径 per-type 最大承受命中（vendor CalcDefence.lua:3601-3697）。
+/// New-view per-type maximum survivable hit (vendor CalcDefence.lua:3601-3697).
 ///
-/// 对 `shift[dtype]` 的每个转换目标独立求「恰好打穿该目标 TotalHitPool 的 RAW」：
-/// - `convert ≤ 0`：takenFlat 单独判定（:3611-3613）；
-/// - 无护甲且全额转换：闭式解（:3614-3617）；
-/// - 其余：vendor 二次方程解（:3608-3641——armour DR 随击中大小变化的自洽条件
-///   `takenHit(RAW) = TotalHitPool` 的代数解，与定点迭代数学等价），再以
-///   noDR/maxDR 上下界 clamp + floor；
-/// - `partMin = min(各目标)`；存在部分转换时走平滑迭代（:3663-3692，
-///   [`taken_hit_from_damage`] + [`reduce_pools`] 实测 overkill 收敛）；
-/// - 末端 `round(partMin / enemyDamageMult)`（:3660/:3696）。
+/// For each conversion target in `shift[dtype]`, independently solves for
+/// "the RAW value that exactly depletes that target's TotalHitPool":
+/// - `convert ≤ 0`: takenFlat is judged on its own (`:3611-3613`);
+/// - No armour and full conversion: a closed-form solution (`:3614-3617`);
+/// - Otherwise: vendor's quadratic-equation solution (`:3608-3641` -- an
+///   algebraic solution of the self-consistent condition
+///   `takenHit(RAW) = TotalHitPool` where armour DR varies with hit size,
+///   mathematically equivalent to fixed-point iteration), then clamped to
+///   the noDR/maxDR bounds + floored;
+/// - `partMin = min(each target)`; when partial conversion exists, runs
+///   smoothing iteration (`:3663-3692`, using [`taken_hit_from_damage`] +
+///   [`reduce_pools`] to measure overkill until it converges);
+/// - Finally `round(partMin / enemyDamageMult)` (`:3660`/`:3696`).
 pub fn max_hit_pob2(dtype: DamageType, inputs: &MaxHitInputs, enemy_damage_mult: f64) -> f64 {
     let mit = inputs.mit;
     let src = dtype as usize;
@@ -830,11 +861,11 @@ pub fn max_hit_pob2(dtype: DamageType, inputs: &MaxHitInputs, enemy_damage_mult:
         }
         let eff_armour = mit.effective_applied_armour[c];
         let total_pool = inputs.total_hit_pool[c];
-        // :3607 totalTakenMulti = AfterReductionTakenHitMulti ×(1−VAA)（VAA 无来源 → 1）。
+        // :3607 totalTakenMulti = AfterReductionTakenHitMulti ×(1−VAA) (VAA has no source → 1).
         let total_taken_multi = mit.after_reduction_multi[c];
         let resist_mult = mit.resist_taken_multi[c];
         let hit_taken = if convert <= 0.0 {
-            // :3611-3613 仅 takenFlat：flat 即打穿池 → 0，否则该目标不约束（∞）。
+            // :3611-3613 takenFlat only: if flat alone depletes the pool → 0, otherwise this target imposes no constraint (∞).
             let taken_without_incoming = taken_flat.max(0.0) * total_taken_multi;
             if taken_without_incoming >= total_pool {
                 0.0
@@ -842,17 +873,18 @@ pub fn max_hit_pob2(dtype: DamageType, inputs: &MaxHitInputs, enemy_damage_mult:
                 f64::INFINITY
             }
         } else if total_taken_multi <= 0.0 {
-            // 承受乘数 0（如 CI 的 ChaosDamageTaken MORE −100）→ 免疫：vendor 在
-            // Lua 中 x/0 = inf 自然得 ∞；此处显式短路避免 0×∞ 的 NaN 分支。
+            // A taken multiplier of 0 (e.g. CI's ChaosDamageTaken MORE −100)
+            // → immunity: in Lua, x/0 = inf naturally gives ∞; this is an
+            // explicit short-circuit here to avoid a 0×∞ NaN branch.
             f64::INFINITY
         } else if eff_armour == 0.0 && convert >= 1.0 {
-            // :3614-3617 无护甲 DR 的简化闭式（此时面板 DR = clamp(min(drMax, flat) − ow)）。
+            // :3614-3617 a simplified closed form with no armour DR (here panel DR = clamp(min(drMax, flat) − ow)).
             let dr_pct = (mit.flat_dr_pct[c].min(mit.dr_max_pct[c]) - mit.overwhelm_pct[c])
                 .clamp(0.0, mit.dr_max_pct[c]);
             let dr_multi = resist_mult * (1.0 - dr_pct / 100.0);
             (total_pool / convert / dr_multi - taken_flat).max(0.0) / total_taken_multi
         } else {
-            // :3620-3641 二次方程解 + noDR/maxDR 边界 + floor。
+            // :3620-3641 the quadratic-equation solution + noDR/maxDR bounds + floor.
             let flat_dr = mit.flat_dr_pct[c] / 100.0;
             let overwhelm = mit.overwhelm_pct[c];
             let one_minus_flat_plus_ow = 1.0 - flat_dr + overwhelm / 100.0;
@@ -867,11 +899,12 @@ pub fn max_hit_pob2(dtype: DamageType, inputs: &MaxHitInputs, enemy_damage_mult:
             } else {
                 f64::INFINITY
             };
-            // :3637-3639 上下界（无 DR / 满 DR）；上限按**源类型** drMax（:3638 vendor 同）。
+            // :3637-3639 the bounds (no DR / full DR); the ceiling uses the
+            // **source** type's drMax (matching vendor's `:3638`).
             let no_dr_max_hit = total_pool / convert / resist_mult / total_taken_multi
                 * (1.0 - taken_flat * total_taken_multi / total_pool);
             let max_dr_max_hit = no_dr_max_hit / (1.0 - (mit.dr_max_pct[src] - overwhelm) / 100.0);
-            // :3641 部分转换时启用平滑（仅二次方程分支置位，vendor 同）。
+            // :3641 smoothing is enabled under partial conversion (set only in the quadratic-equation branch, matching vendor).
             use_smoothing = use_smoothing || (convert - 1.0).abs() > f64::EPSILON;
             raw.min(max_dr_max_hit).max(no_dr_max_hit).floor()
         };
@@ -882,11 +915,12 @@ pub fn max_hit_pob2(dtype: DamageType, inputs: &MaxHitInputs, enemy_damage_mult:
         return f64::INFINITY;
     }
     if !use_smoothing {
-        // :3696 无转换：直接折算敌伤乘数。
+        // :3696 no conversion: fold directly by the enemy damage multiplier.
         return vendor_round(part_min / enemy_damage_mult);
     }
-    // :3663-3692 conversion smoothing：以 partMin 起步，实测 takenHit → reducePools
-    // 的 overkill，按 overkill 比例逐步逼近（|overkill| < 1 收敛）。
+    // :3663-3692 conversion smoothing: starting from partMin, measures the
+    // overkill from actually running takenHit → reducePools, then converges
+    // step by step per the overkill ratio (converges when |overkill| < 1).
     let mut pass_incoming = part_min;
     let mut previous_overkill = f64::NAN;
     for n in 1..=inputs.smoothing_passes {
@@ -900,7 +934,7 @@ pub fn max_hit_pob2(dtype: DamageType, inputs: &MaxHitInputs, enemy_damage_mult:
         };
         let pass_pools = reduce_pools(inputs.pools_full, &pass_damage, inputs.ctx);
         let pass_overkill = pass_pools.overkill - pass_pools.hit_pool_remaining;
-        // :3672-3679 passRatio：各受击池的 (overkill+pool)/pool 取最大（≤0 → 1）。
+        // :3672-3679 passRatio: takes the max of each impacted pool's (overkill+pool)/pool (≤0 → 1).
         let mut pass_ratio = 0.0_f64;
         for conv in DAMAGE_TYPE_BY_INDEX {
             let c = conv as usize;
@@ -914,7 +948,7 @@ pub fn max_hit_pob2(dtype: DamageType, inputs: &MaxHitInputs, enemy_damage_mult:
         if pass_ratio <= 0.0 {
             pass_ratio = 1.0;
         }
-        // :3682-3686 步长：相邻两轮 overkill 比值（cap 2）决定调整方向与幅度。
+        // :3682-3686 step size: the ratio between two consecutive rounds' overkill (capped at 2) decides the adjustment direction and magnitude.
         let mut step_size = 1.0_f64;
         if n > 1 && previous_overkill != 0.0 && !previous_overkill.is_nan() {
             step_size = ((pass_overkill - previous_overkill) / previous_overkill)
@@ -937,25 +971,28 @@ pub fn max_hit_pob2(dtype: DamageType, inputs: &MaxHitInputs, enemy_damage_mult:
     vendor_round(pass_incoming / enemy_damage_mult)
 }
 
-/// 四分型「未被命中」几率（vendor CalcDefence.lua:2018-2026）。
+/// The "not hit" chance for all four hit variants (vendor CalcDefence.lua:2018-2026).
 ///
-/// PoE2 无 dodge（vendor 该乘项恒 1），specificTypeAvoidance 无来源 → AvoidProjectiles
-/// 计入 Projectile/SpellProjectile 分型。`average_evade` 为 :2025 原式
-/// （melee/proj 取 Evade、spell/spellProj 取 NotHit——vendor 字面语义照抄）。
+/// PoE2 has no dodge (vendor's factor for it is always 1); specificTypeAvoidance
+/// has no source → AvoidProjectiles counts toward the Projectile/SpellProjectile
+/// variants. `average_evade` is `:2025`'s original formula (melee/proj takes
+/// Evade, spell/spellProj takes NotHit -- a literal copy of vendor's semantics).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct NotHitSuite {
     pub melee: f64,
     pub projectile: f64,
     pub spell: f64,
     pub spell_projectile: f64,
-    /// `AverageNotHitChance`（四分型均值，damageCategory=Average 的 Configured 值）。
+    /// `AverageNotHitChance` (the mean of all four variants, the Configured
+    /// value for damageCategory=Average).
     pub average: f64,
-    /// `AverageEvadeChance`（:2025；敌暴击几率的闪避折减项）。
+    /// `AverageEvadeChance` (`:2025`; the evade-discount term for enemy crit chance).
     pub average_evade: f64,
 }
 
-/// 由防御面板输出（Track D/E 经 OutputTable 解耦的字段）合成 [`NotHitSuite`]。
-/// D/E 未接线时各输入为 0 → 全部 NotHit = 0（中性）。
+/// Composes a [`NotHitSuite`] from the defence panel output (fields
+/// decoupled through OutputTable by Track D/E). When D/E aren't wired up,
+/// each input is 0 → every NotHit = 0 (neutral).
 pub fn not_hit_suite(out: &OutputTable) -> NotHitSuite {
     let avoid_all = out.avoid_all_damage_from_hits / 100.0;
     let avoid_proj = out.avoid_projectile_damage / 100.0;
@@ -981,25 +1018,30 @@ pub fn not_hit_suite(out: &OutputTable) -> NotHitSuite {
     }
 }
 
-/// EHP PoB2 口径 fill（M2 F-1 产出 / F-3 口径切换；perform `fill_mechanics` 末尾
-/// 一行调用，须在 `fill_evade_stun` / `fill_defence_panels` **之后**——
-/// not-hit/block/deflect 层读它们写入的 OutputTable 字段，未接线字段默认 0 → 中性 1.0）。
+/// EHP PoB2-view fill (produces the output / the F-3 semantic switchover;
+/// called as a single line at the end of perform's `fill_mechanics`, must
+/// come **after** `fill_evade_stun` / `fill_defence_panels` -- the not-hit/
+/// block/deflect layer reads the OutputTable fields they write; fields not
+/// yet wired up default to 0 → neutral 1.0).
 ///
-/// **F-3 口径切换**（蓝图 m2-defence §2 Track F commit 3，裁决 P11）：
-/// - `total_ehp` = 新口径（`mitigatedHits / (1−notHit) × totalEnemyDamageIn`，
-///   CalcDefence.lua:3271/:3322）；旧 lowest-max-hit 值保留在
-///   `total_ehp_lowest_max_hit`（perform 旧管线照常写入，不删码——revert 本函数
-///   末尾的切换段即回旧口径，蓝图 §5 R2 行）。
-/// - `*_max_hit` = 新口径（TotalHitPool 池扩展层 + taken-as，:3540-3697）；
-///   `*_max_hit_pob2` 保留为同值别名（双跑报告/下游兼容）。
-/// - `avoid_stun` / Stun 体系换**真值** totalTakenHit（per-hit taken 伤害，
-///   :2444 聚合 → :2554-2557 ES 减半条件 / :2525-2643 阈值几率）——替换
-///   Track E 接线期的 reference_hit 近似。
+/// **F-3 semantic switchover**:
+/// - `total_ehp` = the new view (`mitigatedHits / (1−notHit) × totalEnemyDamageIn`,
+///   CalcDefence.lua:3271/:3322); the old lowest-max-hit value is kept in
+///   `total_ehp_lowest_max_hit` (perform's old pipeline still writes it as
+///   before, no code removed -- reverting this function's switchover section
+///   at the end restores the old view).
+/// - `*_max_hit` = the new view (the TotalHitPool pool-expansion layer +
+///   taken-as, :3540-3697); `*_max_hit_pob2` is kept as a same-value alias.
+/// - `avoid_stun` / the Stun system switches to the **real value**
+///   totalTakenHit (per-hit taken damage, aggregated at :2444 → the ES
+///   halving condition :2554-2557 / the threshold chance :2525-2643) --
+///   replacing the reference_hit approximation from the Track E wiring period.
 ///
-/// 返回值（M2 F-4，13-G15 部分）：mitigated EHP 循环累计的 recoupable 伤害总量
-/// （vendor `Σ <X>RecoupableDamageTaken`，:3347-3357）——perform 以此作 recoup
-/// 面板速率的承伤基数（替换旧 life×10% 估算）。无 recoup 词条 / 未重算
-/// mitigated 循环时为 0（消费侧 recoup pct 同为 0 → 速率 0，语义一致）。
+/// Return value (part of 13-G15): the total recoupable damage accumulated by
+/// the mitigated EHP loop (vendor `Σ <X>RecoupableDamageTaken`, :3347-3357)
+/// -- perform uses this as the damage-taken base for the recoup panel rate
+/// (replacing the old life×10% estimate). 0 when there's no recoup mod / the
+/// mitigated loop wasn't recomputed (the consumer's recoup pct is likewise 0 → rate 0, consistent semantics).
 pub fn fill_ehp_pob2(
     env: &mut Env,
     keystones: &DefenceKeystones,
@@ -1026,8 +1068,8 @@ pub fn fill_ehp_pob2(
         let cfg = &env.cfg;
         let out = &env.player.output;
 
-        // ---- 池口径（:1411 ES 恢复上限 / :2644-2657 可恢复生命）----
-        // CappingES（ArmourESRecoveryCap 等 flag）与 lowLife/lowES config 留 M3。
+        // Pool view (:1411 the ES recovery cap / :2644-2657 recoverable life)
+        // CappingES (flags like ArmourESRecoveryCap) and the lowLife/lowES config are left for later.
         let life_recoverable = out.life_unreserved.max(1.0);
         let es_recovery_cap = out.energy_shield;
         let base = PoolBaseStats {
@@ -1041,11 +1083,13 @@ pub fn fill_ehp_pob2(
         let pools = build_pool_state(db, cfg, &base);
         let mom = mom_hit_pools(&ctx, &base);
 
-        // ---- 减伤快照（Track B 契约；deflect 折入 Track D 输出，:2433）----
-        // 敌方元素穿透（vendor CalcDefence.lua:2328/:2363）：`resMult = 1 −
-        // max(resist − enemyPen, 0)/100`（仅 resist > 0 时扣减；负抗不受 pen 影响）。
-        // pen 来源 = setup_enemy 注入的 `Enemy<X>Pen` placeholder（Pinnacle 3 / Uber 8，
-        // ConfigOptions.lua:2072-2074、Modules/Data.lua:231）；物理/混沌无 pen。
+        // Mitigation snapshot (the Track B contract; deflect is folded into Track D's output, :2433)
+        // Enemy elemental penetration (vendor CalcDefence.lua:2328/:2363):
+        // `resMult = 1 − max(resist − enemyPen, 0)/100` (only deducted when
+        // resist > 0; negative resistance is unaffected by pen). pen's
+        // source = the `Enemy<X>Pen` placeholder injected by setup_enemy
+        // (Pinnacle 3 / Uber 8, ConfigOptions.lua:2072-2074, Modules/Data.lua:231);
+        // physical/chaos have no pen.
         let enemy_pen = |name: &str| enemy_db.sum(ModType::Base, cfg, &[ModName::from(name)]);
         let resist_after_pen = |resist: f64, pen: f64| -> f64 {
             if resist > 0.0 {
@@ -1075,17 +1119,19 @@ pub fn fill_ehp_pob2(
                 deflect_effect_pct,
             },
         );
-        // CI 混沌免疫：vendor keystone 词组含 `ChaosDamageTaken MORE -100`
-        // （ModParser.lua:2356/2360）→ ChaosTakenHitMult = 0。pobr 解析侧暂未发该
-        // 数值词条（避免扰动旧口径输出），新管线经 C-1 keystone 快照等价施加。
+        // CI chaos immunity: vendor's keystone mod set includes
+        // `ChaosDamageTaken MORE -100` (ModParser.lua:2356/2360) →
+        // ChaosTakenHitMult = 0. pobr's parse side doesn't emit this numeric
+        // mod yet (to avoid disturbing the old view's output), so the new
+        // pipeline applies the equivalent via the C-1 keystone snapshot instead.
         if keystones.chaos_inoculation {
             mit.after_reduction_multi[DamageType::Chaos as usize] = 0.0;
         }
 
-        // ---- not-hit 层（:2018-2026，读 Track E evade 四分型 + avoid 输出）----
+        // The not-hit layer (:2018-2026, reads Track E's evade for all four variants + the avoid output)
         let nh = not_hit_suite(out);
 
-        // ---- 敌人进伤（:2040-2137；placeholder 经 setup_enemy 注入 enemy modDB）----
+        // Enemy incoming damage (:2040-2137; the placeholder is injected into the enemy modDB by setup_enemy)
         let crit_effect = enemy_crit_effect_ehp(
             db,
             enemy_db,
@@ -1095,13 +1141,13 @@ pub fn fill_ehp_pob2(
         );
         let enemy_in = assemble_enemy_damage(enemy_db, cfg, crit_effect);
 
-        // ---- per-type TakenHit + 面板 DR（:2171-2444）----
+        // Per-type TakenHit + panel DR (:2171-2444)
         let (taken_hit, dr_pct) = taken_hit_per_type(&enemy_in.damage, &mit);
 
-        // ---- avoid_stun / Stun 真值接线（F-3；蓝图 Track E「F 接线后换真值」）----
-        // vendor totalTakenHit = Σ <X>TakenHit（:2444）；ES 减半条件
-        // `ES > totalTakenHit && !EnergyShieldProtectsMana`（:2554-2557）；
-        // SelfStunChance 的有效伤用 totalTakenHit/PhysicalTakenHit（:2525-2643）。
+        // avoid_stun / Stun real-value wiring
+        // vendor totalTakenHit = Σ <X>TakenHit (:2444); the ES halving condition
+        // `ES > totalTakenHit && !EnergyShieldProtectsMana` (:2554-2557);
+        // SelfStunChance's effective damage uses totalTakenHit/PhysicalTakenHit (:2525-2643).
         let total_taken_hit = taken_hit.total();
         let avoidance = crate::calc::defence::calc_avoidance(
             db,
@@ -1125,38 +1171,43 @@ pub fn fill_ehp_pob2(
             },
         );
 
-        // ---- 致死击数（:3148-3153）----
-        // preventedLifeLossTotal > 0 → LimitEHPSpeedup（:3151）。
+        // Lethal hit count (:3148-3153)
+        // preventedLifeLossTotal > 0 → LimitEHPSpeedup (:3151).
         let below_half_effective =
             (1.0 - ctx.prevented_life_loss / 100.0) * ctx.life_loss_below_half_prevented;
         let prevented_total = ctx.prevented_life_loss > 0.0 || below_half_effective > 0.0;
         let params = EhpLoopParams::from_constants(&cfg.constants, prevented_total);
         let n_hits = number_of_hits_to_die(&taken_hit, &pools, &ctx, &params);
 
-        // ---- mitigation 概率层（:3155-3247）----
-        // 平均格挡 = 四分型均值（vendor :1067 EffectiveAverageBlockChance）。旧
-        // 二分型均值把 SpellProjectileBlock = max(spellBlock, projBlock)（:1013）
-        // 漏掉——盾 build（spellBlock 0、projBlock = block）被低估：smith 13.65
-        // vs vendor 20.475（TotalEHP 0.92x 根因）。
+        // The mitigation probability layer (:3155-3247)
+        // Average block = the mean of all four variants (vendor `:1067`'s
+        // EffectiveAverageBlockChance). The old two-variant mean missed
+        // SpellProjectileBlock = max(spellBlock, projBlock) (`:1013`) --
+        // underestimating shield builds (spellBlock 0, projBlock = block):
+        // smith 13.65 vs vendor 20.475 (the root cause of TotalEHP being 0.92x).
         let avg_block_frac = (out.effective_block_chance
             + out.effective_projectile_block_chance
             + out.effective_spell_block_chance
             + out.effective_spell_projectile_block_chance)
             / 4.0
             / 100.0;
-        // vendor BlockEffect（防住份额%）= 100 − ΣBASE = 100 − out.block_effect（承伤份额）。
+        // vendor's BlockEffect (blocked-off share %) = 100 − ΣBASE = 100 − out.block_effect (the damage-taken share).
         let block_effect_mult = 1.0 - avg_block_frac * (100.0 - out.block_effect) / 100.0;
-        // :3195 deflect 乘数（chance<100 口径；=100 时已折入 afterReductionMulti）。
+        // :3195 the deflect multiplier (the chance<100 view; already folded
+        // into afterReductionMulti when =100).
         let deflect_mult = if out.deflect_chance < 100.0 {
             1.0 - out.deflect_chance * deflect_effect_pct / 10_000.0
         } else {
             1.0
         };
-        // 分类型击中规避（vendor CalcDefence.lua:3262/:3277-3300）：有 `Avoid<Type>
-        // DamageChance` 来源时，averageAvoidChance = 五类型规避均值，折入
-        // configured_damage_chance；每类型另享 "Average" damageCategory 的
-        // ExtraAvoidChance = 投射物规避/2（:3262），再 clamp 75。无分类型规避时
-        // averageAvoidChance = 0，与旧值逐位一致（其余 build 零行为）。
+        // Per-type hit avoidance (vendor CalcDefence.lua:3262/:3277-3300):
+        // when there's an `Avoid<Type>DamageChance` source, averageAvoidChance
+        // = the mean across the five types, folded into
+        // configured_damage_chance; each type additionally gets the
+        // "Average" damageCategory's ExtraAvoidChance = projectile
+        // avoidance/2 (`:3262`), then clamped to 75. Without per-type
+        // avoidance, averageAvoidChance = 0, unchanged bit-for-bit from the
+        // old value (zero behavior change for every other build).
         let specific_type_avoidance = avoidance.avoid_typed_damage.iter().any(|&a| a > 0.0);
         let extra_avoid = avoidance.avoid_projectile_damage / 2.0;
         let avoid_cap = crate::calc::defence::AVOID_HIT_CAP;
@@ -1170,8 +1221,9 @@ pub fn fill_ehp_pob2(
         let average_avoid_chance = avoid.iter().sum::<f64>() / 5.0;
         let configured_damage_chance =
             100.0 * block_effect_mult * deflect_mult * (1.0 - average_avoid_chance / 100.0);
-        // F-4：anyRecoup 改读词条本体（vendor :1795-1812 `Σ <Resource>Recoup` BASE；
-        // recoup 速率字段此时尚未写入——其基数正来自本段的 mitigated 循环累计）。
+        // F-4: anyRecoup now reads the mod itself (vendor `:1795-1812`'s
+        // `Σ <Resource>Recoup` BASE; the recoup rate field hasn't been
+        // written yet at this point -- its base value comes precisely from this section's mitigated loop accumulation).
         let any_recoup = ["LifeRecoup", "ManaRecoup", "EnergyShieldRecoup"]
             .iter()
             .any(|name| db.sum(ModType::Base, cfg, &[ModName::from(*name)]) > 0.0);
@@ -1180,9 +1232,11 @@ pub fn fill_ehp_pob2(
             || any_recoup
             || prevented_total
         {
-            // 逐类型缩减（vendor :3277-3300 DamageIn[type] × (1 - avoid_type/100)）——
-            // 分类型规避不能走 scale_damage 的统一因子（那条在 hits_to_die 迭代里另有
-            // 复用，须保持 uniform）。无分类型规避时 avoid 全 0，与旧 uniform 缩逐位一致。
+            // Per-type reduction (vendor :3277-3300's DamageIn[type] × (1 - avoid_type/100)) --
+            // per-type avoidance can't go through scale_damage's uniform
+            // factor (that's reused elsewhere in the hits_to_die iteration
+            // and must stay uniform). With no per-type avoidance, avoid is
+            // entirely 0, matching the old uniform scaling bit-for-bit.
             let base_mult = block_effect_mult * deflect_mult;
             let mitigated_in = super::pool_damage::TypedDamage {
                 physical: taken_hit.physical * base_mult * (1.0 - avoid[0] / 100.0),
@@ -1193,9 +1247,10 @@ pub fn fill_ehp_pob2(
             };
             let m_params =
                 EhpLoopParams::from_constants(&cfg.constants, any_recoup || prevented_total);
-            // F-4（13-G15 部分）：mitigated 循环同步累计 recoupable（vendor
-            // :3232-3236 TrackRecoupable 置位于 NumberOfMitigatedDamagingHits 重算前；
-            // :3347-3361 totalDamage = Σ <X>RecoupableDamageTaken 作 recoup 基数）。
+            // F-4 (part of 13-G15): the mitigated loop simultaneously
+            // accumulates recoupable (vendor's TrackRecoupable is set at
+            // `:3232-3236` before NumberOfMitigatedDamagingHits is recomputed;
+            // `:3347-3361`'s totalDamage = Σ <X>RecoupableDamageTaken serves as the recoup base value).
             let (hits, recoupable) =
                 number_of_hits_to_die_tracked(&mitigated_in, &pools, &ctx, &m_params);
             (hits, recoupable.iter().sum::<f64>())
@@ -1203,24 +1258,24 @@ pub fn fill_ehp_pob2(
             (n_hits, 0.0)
         };
 
-        // ---- TotalEHP（:3271 TotalNumberOfHits + :3322）----
+        // TotalEHP (`:3271`'s TotalNumberOfHits + `:3322`)
         let not_hit_frac = (nh.average / 100.0).clamp(0.0, 1.0);
         let total_hits = if not_hit_frac >= 1.0 {
             f64::INFINITY
         } else {
             n_mitigated / (1.0 - not_hit_frac)
         };
-        // 裸 Env（无敌人进伤）下 total_in = 0、total_hits = ∞ → 0 中性（避免 ∞×0 NaN）。
+        // Under a bare Env (no enemy incoming damage), total_in = 0, total_hits = ∞ → neutral 0 (avoiding an ∞×0 NaN).
         let total_ehp_pob2 = if enemy_in.total_in > 0.0 {
             round(total_hits * enemy_in.total_in)
         } else {
             0.0
         };
 
-        // ---- 新口径 max hit（:3540-3697）----
+        // New-view max hit (:3540-3697)
         let pool_by_type = total_hit_pools(&mom, es_recovery_cap, &pools, &ctx);
-        // 诊断：POBR_DBG_EHPPOOL=1 时 dump 池分解（与 oracle <Type>TotalHitPool /
-        // MoMHitPool / Ward 对照）。
+        // Diagnostics: dumps the pool breakdown when POBR_DBG_EHPPOOL=1 (for
+        // comparison against the oracle's <Type>TotalHitPool / MoMHitPool / Ward).
         if dbg_env!("POBR_DBG_EHPPOOL").is_some() {
             eprintln!(
                 "[POBR_EHPPOOL] pools={pool_by_type:?} mom={mom:?} es_cap={es_recovery_cap:.2} ward={:.2} guard=({:.2},{:.2}) aegis_shared={:.2}",
@@ -1272,16 +1327,17 @@ pub fn fill_ehp_pob2(
     out.lightning_max_hit_pob2 = computed.max_hits[DamageType::Lightning as usize];
     out.chaos_max_hit_pob2 = computed.max_hits[DamageType::Chaos as usize];
 
-    // ═══ F-3 口径切换段（revert 本段即回旧口径，蓝图 §5 R2 行）═══
-    // canonical 字段改挂新口径值；旧 lowest-max-hit 口径已由 perform 旧管线写入
-    // `total_ehp_lowest_max_hit` 保留（不删码）。
+    // F-3 semantic switchover section
+    // The canonical fields now hold the new-view values; the old
+    // lowest-max-hit view is kept in `total_ehp_lowest_max_hit`, already
+    // written by perform's old pipeline (code not removed).
     out.total_ehp = computed.total_ehp_pob2;
     out.physical_max_hit = computed.max_hits[DamageType::Physical as usize];
     out.fire_max_hit = computed.max_hits[DamageType::Fire as usize];
     out.cold_max_hit = computed.max_hits[DamageType::Cold as usize];
     out.lightning_max_hit = computed.max_hits[DamageType::Lightning as usize];
     out.chaos_max_hit = computed.max_hits[DamageType::Chaos as usize];
-    // avoid_stun / Stun 体系真值（覆盖 fill_evade_stun 的 reference_hit 近似产出）。
+    // avoid_stun / the Stun system's real values (overwriting fill_evade_stun's reference_hit approximation).
     out.avoid_stun = computed.avoid_stun;
     out.stun_threshold = computed.stun_threshold;
     out.self_stun_chance = computed.self_stun_chance;

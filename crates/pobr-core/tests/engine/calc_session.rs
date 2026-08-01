@@ -65,9 +65,10 @@ fn session_preserves_accuracy_inputs_for_hit_chance_and_dps() {
     assert_eq!(output.dps, 100.0 * expected_hit_chance);
 }
 
-/// 属性最终总量（PoB2 `calculateAttributes`，CalcPerform.lua:381-388）：
-/// `round((class_base + Σbase) × (1 + Σinc/100) × Πmore)`，下限 0。
-/// `N% increased Dexterity` 类词条必须缩放含职业起始在内的全部 BASE。
+/// Final attribute total (PoB2's `calculateAttributes`, CalcPerform.lua:381-388):
+/// `round((class_base + sum_base) x (1 + sum_inc/100) x prod_more)`, floored at 0.
+/// `N% increased Dexterity`-style mods must scale the full BASE amount, including
+/// the class starting value.
 #[test]
 fn attribute_total_applies_increased_attribute_modifiers() {
     // Arrange
@@ -76,15 +77,18 @@ fn attribute_total_applies_increased_attribute_modifiers() {
         .add_modifier_texts(["+100 to Dexterity", "8% increased Dexterity"])
         .unwrap();
 
-    // Act + Assert：round((20 + 100) × 1.08) = round(129.6) = 130。
+    // Act + Assert: round((20 + 100) x 1.08) = round(129.6) = 130.
     assert_eq!(session.attribute_total("Dexterity", 20.0), 130.0);
-    // 无 INC 词条的属性 = class_base + Σbase 直通（Strength 无任何词条）。
+    // An attribute with no INC mods passes through as class_base + sum_base
+    // (Strength has no mods at all).
     assert_eq!(session.attribute_total("Strength", 7.0), 7.0);
 }
 
-/// 资源池最终总量（vendor PerStat 分母 = actor output，ModStore.lua:440-460）：
-/// `pool_total` 必须吃满 base×(1+inc)×more 全管线，与 perform 内 offence 池值
-/// 同源——BASE-only（`base_sum`）会漏掉 inc/more 缩放。
+/// Final resource pool total (vendor's PerStat denominator = actor output,
+/// ModStore.lua:440-460): `pool_total` must go through the full
+/// base x (1+inc) x more pipeline, sourced identically to the offence pool values
+/// computed inside perform -- a BASE-only value (`base_sum`) would miss the
+/// inc/more scaling.
 #[test]
 fn pool_total_applies_full_pool_pipeline() {
     // Arrange
@@ -97,11 +101,12 @@ fn pool_total_applies_full_pool_pipeline() {
         .add_modifier_texts(["+200 to maximum Mana", "50% increased maximum Mana"])
         .unwrap();
 
-    // Act + Assert：(100 + 200) × 1.5 = 450（base_sum 只会给 200）。
+    // Act + Assert: (100 + 200) x 1.5 = 450 (base_sum alone would give 200).
     assert_eq!(session.pool_total("MaximumMana"), 450.0);
     assert_eq!(session.base_sum("MaximumMana"), 200.0);
 
-    // 池值与 perform 输出同源（同一 scaled_pool 管线）。
+    // The pool value shares its source with perform's output (the same scaled_pool
+    // pipeline).
     let output = session.perform_minimal();
     assert_eq!(output.mana, 450.0);
 }
@@ -114,8 +119,10 @@ fn session_preserves_unsupported_modifier_texts() {
     assert_eq!(session.unsupported_modifier_texts(), ["Mirrored"]);
 }
 
-/// tag 后缀从句（阈值/条件）合法地消费尾巴并给 mod 挂 tag，即使留装饰性残留，
-/// mod 仍须注入——不得被「Parsed+残留」一刀切降级（曾致 RedSupportGems 阈值失效）。
+/// A tag-suffix clause (threshold/condition) legitimately consumes the tail and
+/// attaches a tag to the mod; even if a cosmetic residue remains, the mod must
+/// still be injected -- it must not be blanket-downgraded just because of
+/// "Parsed+residue" (this previously broke the RedSupportGems threshold).
 #[test]
 fn session_injects_tag_suffixed_mod_despite_leftover() {
     let mut session = session(MinimalInput::default());
@@ -125,7 +132,8 @@ fn session_injects_tag_suffixed_mod_despite_leftover() {
         ])
         .expect("engine never errors");
 
-    // 阈值 mod 已注入（带 MultiplierThreshold tag，非空聚合）；残留碎片不阻断注入。
+    // The threshold mod was injected (carrying a MultiplierThreshold tag, non-empty
+    // aggregation); leftover fragments don't block injection.
     assert!(
         !session.mods_named("Life").is_empty() || !session.mods_named("MaximumLife").is_empty(),
         "tag-suffixed threshold mod must be injected"
@@ -134,7 +142,8 @@ fn session_injects_tag_suffixed_mod_despite_leftover() {
 
 #[test]
 fn session_collects_unknown_modifier_text_as_unsupported() {
-    // 引擎对无法识别的文本永不报错——整行进 unsupported 收集面。
+    // The engine never errors on unrecognized text -- the whole line goes into the
+    // unsupported collection.
     let mut session = session(MinimalInput::default());
 
     session
@@ -147,9 +156,10 @@ fn session_collects_unknown_modifier_text_as_unsupported() {
     );
 }
 
-/// 投射物速度 → 投射物伤害转换（vendor CalcOffence.lua:840-845）：
-/// `ProjectileSpeedAppliesToProjectileDamage` flag 激活时，INC ProjectileSpeed
-/// 逐条复制为 Damage INC（flags 替换为 Projectile）；flag 缺位零行为。
+/// Projectile Speed -> Projectile Damage conversion (vendor CalcOffence.lua:840-845):
+/// when the `ProjectileSpeedAppliesToProjectileDamage` flag is active, each INC
+/// ProjectileSpeed mod is copied into a Damage INC mod (with flags replaced by
+/// Projectile); absent the flag, this is a no-op.
 #[test]
 fn projectile_speed_applies_to_projectile_damage_conversion() {
     use pobr_core::{CalcConfig, Modifier};
@@ -164,7 +174,7 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
     let cfg =
         CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT);
 
-    // 无 flag：ProjectileSpeed 无消费方，零行为。
+    // No flag: ProjectileSpeed has no consumer, so this is a no-op.
     let mut without = session(input).with_config(cfg.clone());
     without
         .add_modifier_texts(["8% increased Projectile Speed"])
@@ -172,7 +182,7 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
     let base = without.perform_minimal();
     assert_eq!(base.total_hit_avg, 100.0);
 
-    // flag 激活：8% Projectile Speed → 8% increased Damage (Projectile)。
+    // Flag active: 8% Projectile Speed -> 8% increased Damage (Projectile).
     let mut with = session(input).with_config(cfg);
     with.add_modifier_texts(["8% increased Projectile Speed"])
         .unwrap();
@@ -180,7 +190,8 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
     let converted = with.perform_minimal();
     assert_eq!(converted.total_hit_avg, 108.0);
 
-    // 带 flags 限定的源 mod（如 for Spell Skills）不参与转换（vendor Tabulate 空 cfg 口径）。
+    // A source mod scoped by flags (e.g. "for Spell Skills") doesn't participate in
+    // the conversion (matching vendor Tabulate's empty-cfg semantics).
     let mut scoped = session(MinimalInput {
         base_hit_min: 100.0,
         base_hit_max: 100.0,
@@ -198,10 +209,11 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
     assert_eq!(scoped_out.total_hit_avg, 100.0);
 }
 
-/// （M4-m）弓变体（树 notable『Feathered Fletching』，ModParser.lua:3648 →
-/// `ProjectileSpeedAppliesToBowDamage`；消费 CalcOffence.lua:796-802）：INC
-/// ProjectileSpeed 复制为 Damage INC（flags 替换为 Bow|Hit，vendor Tabulate
-/// `{ flags = ModFlag.Bow }`）；非弓 cfg（无 BOW 位）副本不命中。
+/// Bow variant (tree notable "Feathered Fletching", ModParser.lua:3648 ->
+/// `ProjectileSpeedAppliesToBowDamage`; consumed at CalcOffence.lua:796-802): INC
+/// ProjectileSpeed mods are copied into Damage INC mods (with flags replaced by
+/// Bow|Hit, matching vendor Tabulate's `{ flags = ModFlag.Bow }`); the copy doesn't
+/// match against a non-bow cfg (no BOW bit).
 #[test]
 fn projectile_speed_applies_to_bow_damage_conversion() {
     use pobr_core::{CalcConfig, Modifier};
@@ -216,7 +228,8 @@ fn projectile_speed_applies_to_bow_damage_conversion() {
     let bow_cfg = CalcConfig::attack()
         .with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT | ModFlags::BOW);
 
-    // 解析链端到端：notable 原文 → flag → 转换生效（46% 投速 → +46% Damage）。
+    // End-to-end through the parser: notable text -> flag -> conversion applies
+    // (46% proj speed -> +46% Damage).
     let mut with = session(input).with_config(bow_cfg.clone());
     with.add_modifier_texts([
         "46% increased Projectile Speed",
@@ -226,7 +239,8 @@ fn projectile_speed_applies_to_bow_damage_conversion() {
     let converted = with.perform_minimal();
     assert_eq!(converted.total_hit_avg, 146.0);
 
-    // 非弓技能 cfg（无 BOW 位）：副本 flags=Bow|Hit 不是 cfg 子集 → 不命中。
+    // Non-bow skill cfg (no BOW bit): the copy's flags=Bow|Hit are not a subset of
+    // cfg -> no match.
     let mut non_bow = session(input).with_config(
         CalcConfig::attack().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::HIT),
     );

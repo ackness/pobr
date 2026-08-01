@@ -1,7 +1,7 @@
-//! extract-lua 子命令的集成测试。
+//! Integration tests for the extract-lua subcommand.
 //!
-//! 依赖 luajit 的用例在环境缺少 luajit 时**跳过**（CI 无 luajit 也不挂）；
-//! 文档组装的确定性用例为纯 Rust，不依赖外部进程。
+//! Cases that depend on luajit **skip** when the environment lacks it (so
+//! CI without luajit doesn't hang); the document-assembly determinism cases are pure Rust and don't depend on an external process.
 
 use std::path::{Path, PathBuf};
 
@@ -39,7 +39,7 @@ fn sample_meta() -> OverlayMeta {
     }
 }
 
-/// 同输入重跑两次，产物必须 byte 相等（确定性铁律）
+/// Rerun with the same input twice; the output must be byte-identical (an ironclad determinism rule)
 #[test]
 fn extract_is_byte_stable_across_runs() {
     let args = fixture_args();
@@ -52,7 +52,7 @@ fn extract_is_byte_stable_across_runs() {
     assert_eq!(first, second, "extract-lua 两次运行产物必须 byte 相等");
 }
 
-/// 抽取语义：常量压缩为 value、变值保留 per_level、baseMods Speed MORE 带 stat_set
+/// Extraction semantics: constants collapse into value, varying values keep per_level, baseMods Speed MORE carries a stat_set
 #[test]
 fn extract_captures_expected_overrides() {
     let args = fixture_args();
@@ -69,8 +69,9 @@ fn extract_captures_expected_overrides() {
         "0000000000000000000000000000000000000000"
     );
 
-    // 排序契约：(skill, stat, stat_set) 升序；M1-T4.3 通道收窄——critChance /
-    // attackSpeedMultiplier（夹具中仍存在）不得被抽取（已改 `.dat` 表列直读）。
+    // Sort contract: ascending (skill, stat, stat_set); the channel has
+    // narrowed — critChance / attackSpeedMultiplier (still present in the
+    // fixture) must NOT be extracted (they now read directly from `.dat` table columns).
     let keys: Vec<(&str, &str)> = doc
         .overrides
         .iter()
@@ -103,7 +104,7 @@ fn extract_captures_expected_overrides() {
     assert_eq!(flicker_more.value, Some(285.0));
 }
 
-/// luajit 不存在时必须给出清晰错误（不 panic、不静默）
+/// A missing luajit must produce a clear error (no panic, no silent failure)
 #[test]
 fn missing_luajit_yields_clear_error() {
     let args = ExtractLuaArgs {
@@ -122,7 +123,7 @@ fn missing_luajit_yields_clear_error() {
     );
 }
 
-/// 文档组装（纯 Rust）：输入乱序也必须产出同一份排序后的 byte-stable 文本
+/// Document assembly (pure Rust): shuffled input must still produce the same sorted, byte-stable text
 #[test]
 fn assemble_document_is_deterministic_and_sorted() {
     let entry = |skill: &str, stat: &str, stat_set: Option<u32>| SkillOverride {

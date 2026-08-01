@@ -1,16 +1,16 @@
-//! `extract-lua --what mod-scalability|runes|uniques|catalysts`
-//! （pre-M5c 数据生产，M5c 蓝图 WI-B1）：物品编辑态四张 overlay 表。
+//! `extract-lua --what mod-scalability|runes|uniques|catalysts`: the four
+//! item-editing-state overlay tables.
 //!
-//! - `mod-scalability`：`Data/ModScalability.lua`（纯 return 表）→
-//!   `overlay/mod_scalability.json`；
-//! - `runes`：`Data/ModRunes.lua` → `overlay/runes.json`；
-//! - `uniques`：`Data/Uniques/*.lua`（raw 文本块）→ `overlay/uniques.json`
-//!   （P15 双层：raw 逐字节保留 + name/base/variants 最小预解析索引）；
-//! - `catalysts`：`Classes/Item.lua:14-29` 三个 local 表字面量（`%b{}` 截取 +
-//!   load 执行）→ `overlay/catalysts.json`。
+//! - `mod-scalability`: `Data/ModScalability.lua` (a plain return table) ->
+//!   `overlay/mod_scalability.json`;
+//! - `runes`: `Data/ModRunes.lua` -> `overlay/runes.json`;
+//! - `uniques`: `Data/Uniques/*.lua` (raw text blocks) -> `overlay/uniques.json`
+//!   (two layers: byte-exact raw text plus a minimal pre-parsed name/base/variants index);
+//! - `catalysts`: the three local table literals at `Classes/Item.lua:14-29`
+//!   (sliced with `%b{}` and evaluated with `load`) -> `overlay/catalysts.json`.
 //!
-//! schema 见 [`pobr_data::catalog::item_overlay`]；公共层复用
-//! [`crate::extract_lua`]。
+//! See [`pobr_data::catalog::item_overlay`] for the schemas; the shared
+//! layer reuses [`crate::extract_lua`].
 
 use std::io;
 
@@ -28,9 +28,10 @@ const RUNES_BOOTSTRAP_LUA: &str = include_str!("extract_runes.lua");
 const UNIQUES_BOOTSTRAP_LUA: &str = include_str!("extract_uniques.lua");
 const CATALYSTS_BOOTSTRAP_LUA: &str = include_str!("extract_catalysts.lua");
 
-/// uniques 抽取的缺省文件集 = vendor `Modules/Data.lua:26` itemTypes 列表
-/// （27 项，按 vendor 数组序）+ `Special/race`（Data.lua:1058）。
-/// `Special/Generated`（程序化生成）与 `Special/New`（未定稿池）显式排除。
+/// Default uniques extraction file set = vendor `Modules/Data.lua:26`'s
+/// itemTypes list (27 entries, in vendor array order) plus `Special/race`
+/// (Data.lua:1058). `Special/Generated` (procedurally generated) and
+/// `Special/New` (unfinalized pool) are explicitly excluded.
 pub const DEFAULT_UNIQUE_FILES: &[&str] = &[
     "axe",
     "bow",
@@ -62,9 +63,7 @@ pub const DEFAULT_UNIQUE_FILES: &[&str] = &[
     "Special/race",
 ];
 
-// ---------------------------------------------------------------------------
 // mod-scalability
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize)]
 struct ModScalabilityDoc {
@@ -73,7 +72,7 @@ struct ModScalabilityDoc {
     entries: Vec<ModScalabilityEntryDef>,
 }
 
-/// 执行 ModScalability 抽取，返回 byte-stable JSON 文本。
+/// Run the ModScalability extraction, returning byte-stable JSON text.
 pub fn run_extract_mod_scalability(args: &ExtractLuaArgs) -> io::Result<String> {
     expect_files(args, &["ModScalability"], "mod-scalability")?;
     let mut entries: Vec<ModScalabilityEntryDef> =
@@ -88,9 +87,7 @@ pub fn run_extract_mod_scalability(args: &ExtractLuaArgs) -> io::Result<String> 
     Ok(to_pretty_json(&ModScalabilityDoc { meta, entries }))
 }
 
-// ---------------------------------------------------------------------------
 // runes
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize)]
 struct RunesDoc {
@@ -99,7 +96,7 @@ struct RunesDoc {
     runes: Vec<RuneDef>,
 }
 
-/// 执行 ModRunes 抽取，返回 byte-stable JSON 文本。
+/// Run the ModRunes extraction, returning byte-stable JSON text.
 pub fn run_extract_runes(args: &ExtractLuaArgs) -> io::Result<String> {
     expect_files(args, &["ModRunes"], "runes")?;
     let mut runes: Vec<RuneDef> = invoke_luajit_jsonl(args, RUNES_BOOTSTRAP_LUA)?;
@@ -113,11 +110,9 @@ pub fn run_extract_runes(args: &ExtractLuaArgs) -> io::Result<String> {
     Ok(to_pretty_json(&RunesDoc { meta, runes }))
 }
 
-// ---------------------------------------------------------------------------
 // uniques
-// ---------------------------------------------------------------------------
 
-/// 引导脚本输出行（raw 层；索引列由本模块预解析）。
+/// Row emitted by the bootstrap script (raw layer; the index columns are pre-parsed by this module).
 #[derive(Debug, Deserialize)]
 struct RawUniqueBlock {
     item_type: String,
@@ -131,14 +126,15 @@ struct UniquesDoc {
     uniques: Vec<UniqueDef>,
 }
 
-/// 执行 Uniques 抽取，返回 byte-stable JSON 文本。
+/// Run the Uniques extraction, returning byte-stable JSON text.
 pub fn run_extract_uniques(args: &ExtractLuaArgs) -> io::Result<String> {
     let blocks: Vec<RawUniqueBlock> = invoke_luajit_jsonl(args, UNIQUES_BOOTSTRAP_LUA)?;
     let mut uniques: Vec<UniqueDef> = blocks
         .into_iter()
         .map(|block| parse_unique_block(block.item_type, block.raw))
         .collect::<io::Result<_>>()?;
-    // 同 (item_type, name) 可能多块（变体拆条目）——稳定排序保留 vendor 出现序。
+    // The same (item_type, name) may have multiple blocks (variants split
+    // into separate entries) — a stable sort preserves vendor's original order.
     uniques.sort_by(|a, b| {
         a.item_type
             .cmp(&b.item_type)
@@ -153,9 +149,10 @@ pub fn run_extract_uniques(args: &ExtractLuaArgs) -> io::Result<String> {
     Ok(to_pretty_json(&UniquesDoc { meta, uniques }))
 }
 
-/// raw 文本块 → 双层 UniqueDef：前两行 = name/base，`Variant:`/`League:`/
-/// `Source:`/`Upgrade:` 行进最小索引（词条模板行解析留 pobr-item 运行时，
-/// M5c WI-A4——P15 裁决的「预解析索引最小化」）。
+/// Raw text block -> a two-layer UniqueDef: the first two lines are
+/// name/base, and `Variant:`/`League:`/`Source:`/`Upgrade:` lines feed a
+/// minimal index (parsing the mod-template lines themselves is left to the
+/// pobr-item runtime — "keep the pre-parsed index minimal").
 fn parse_unique_block(item_type: String, raw: String) -> io::Result<UniqueDef> {
     let mut lines = raw.lines().filter(|l| !l.trim().is_empty());
     let name = lines
@@ -196,9 +193,7 @@ fn parse_unique_block(item_type: String, raw: String) -> io::Result<UniqueDef> {
     })
 }
 
-// ---------------------------------------------------------------------------
 // catalysts
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize)]
 struct CatalystsDoc {
@@ -207,8 +202,8 @@ struct CatalystsDoc {
     catalysts: Vec<CatalystDef>,
 }
 
-/// 执行 catalysts 抽取（`Classes/Item.lua` 表字面量截取），返回 byte-stable
-/// JSON 文本。
+/// Run the catalysts extraction (slicing table literals out of
+/// `Classes/Item.lua`), returning byte-stable JSON text.
 pub fn run_extract_catalysts(args: &ExtractLuaArgs) -> io::Result<String> {
     expect_files(args, &["Item"], "catalysts")?;
     let mut catalysts: Vec<CatalystDef> = invoke_luajit_jsonl(args, CATALYSTS_BOOTSTRAP_LUA)?;
@@ -222,11 +217,9 @@ pub fn run_extract_catalysts(args: &ExtractLuaArgs) -> io::Result<String> {
     Ok(to_pretty_json(&CatalystsDoc { meta, catalysts }))
 }
 
-// ---------------------------------------------------------------------------
-// 公共
-// ---------------------------------------------------------------------------
+// Shared helpers
 
-/// 校验固定文件集目标的 --files（防误用）。
+/// Validate --files for a target with a fixed file set (guards against misuse).
 fn expect_files(args: &ExtractLuaArgs, expected: &[&str], what: &str) -> io::Result<()> {
     if args.files != expected {
         return Err(io::Error::new(

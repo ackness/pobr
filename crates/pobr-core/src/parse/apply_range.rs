@@ -1,40 +1,59 @@
-//! `{range:x}` 词条取值引擎（WI-B3）：把 `+(40-50) to maximum Life` 类带区间词条按
-//! `range`（0..1）线性具体化为单一数值文本，喂 `mod_parser`。
+//! The `{range:x}` value-substitution engine: takes range-bearing modifier
+//! text like `+(40-50) to maximum Life` and linearly resolves it to a
+//! single-value string (via `range` in 0..1) for `mod_parser` to consume.
 //!
-//! 对照 PoB2 `Modules/ItemTools.lua::applyRange`（77-326）。
+//! Mirrors PoB2 `Modules/ItemTools.lua::applyRange` (77-326).
 //!
-//! **当前实现 = 朴素线性档（无 modScalability 表消费）**，对应蓝图 §3.B3 钉死的「无表降级」
-//! 方向：`value = min + range*(max-min)`，含负号翻转与 increased/reduced 等 antonym 处理。
-//! 这覆盖绝大多数单数值槽词条（PoB 导出物品 + ninja 语料里的 `(min-max)` 形态）。
+//! **Current implementation is the naive linear tier** (no modScalability
+//! table lookup) — this is the "no-table fallback" direction pinned down in
+//! B3: `value = min + range*(max-min)`, including sign flipping and
+//! increased/reduced-style antonym handling. This covers the vast majority
+//! of single-value-slot modifiers (the `(min-max)` shape found in PoB
+//! exported items and the ninja corpus).
 //!
-//! 未实现（待后续接 `mod_scalability.json`）：多数值槽的 modScalability 组合反查、
-//! `divide_by_*` / `per_minute_to_per_second` 等 30 余种 format 换算、catalyst scalar
-//! 的 per-tag 缩放、corruptedRange。这些走 [`apply_range`] 的 `scalability` 参数（当前恒
-//! 传 None → 线性档）。接表后此处只新增 format 分发，不动线性兜底。
+//! Not yet implemented (pending `mod_scalability.json` integration):
+//! reverse lookup through modScalability combinations for multi-value-slot
+//! modifiers, the 30+ `divide_by_*` / `per_minute_to_per_second`-style
+//! format conversions, per-tag catalyst scalar scaling, and corruptedRange.
+//! These are routed through [`apply_range`]'s `scalability` parameter
+//! (currently always `None`, i.e. the linear tier). Once the table is wired
+//! in, this module only needs to add format dispatch — the linear fallback
+//! stays as-is.
 //!
-//! 取值后的文本带 `approx` 语义（无表时严格说是中值近似而非游戏精确值），但**不丢词条**
-//! ——这正是审计修复方向（区间词条不再静默丢失）。
+//! Resolved text carries `approx` semantics (strictly speaking a
+//! midpoint approximation rather than the exact in-game value when no table
+//! is consulted), but **the modifier is never dropped** — that's the point
+//! of this fix: range modifiers no longer disappear silently.
 
-/// 把 `line` 中所有 `(min-max)` 区间按 `range`（0..1）线性具体化。
+/// Linearly resolves every `(min-max)` range in `line` using `range` (0..1).
 ///
-/// - `+`/`-` 前缀保留：正值结果且原带 `+` 时保留 `+`；负号区间（`-(min-max)`）整体取负。
-/// - `-N% increased` → `N% reduced` 等 antonym 改写（对照 ItemTools.lua:67-72 antonymFunc，
-///   先于区间取值的负百分比场景）。
-/// - 无区间时原样返回。
+/// - The `+`/`-` prefix is preserved: `+` is kept when the result is
+///   positive and the original had `+`; a negative-sign range
+///   (`-(min-max)`) negates the whole result.
+/// - `-N% increased` -> `N% reduced` and similar antonym rewrites (mirrors
+///   ItemTools.lua:67-72 `antonymFunc`, for the negative-percentage case
+///   that precedes range resolution).
+/// - Text with no range is returned unchanged.
 ///
-/// `scalability`：modScalability 表（当前未消费，预留接口；None = 朴素线性）。
-/// `value_scalar`：modifier magnitude 乘子（当前线性档不施加，预留）。
+/// `scalability`: the modScalability table (not consumed yet; reserved for
+/// future use — `None` means the naive linear tier).
+/// `value_scalar`: the modifier magnitude multiplier (not applied by the
+/// current linear tier; reserved).
 pub fn apply_range(line: &str, range: f64, scalability: Option<&()>, value_scalar: f64) -> String {
-    // 接表前：忽略 scalability/value_scalar（线性兜底），但保留签名供后续扩展。
+    // Before the table is wired in: scalability/value_scalar are ignored
+    // (linear fallback), but the parameters stay in the signature for later
+    // extension.
     let _ = (scalability, value_scalar);
     let antonymed = apply_antonyms(line);
     substitute_ranges(&antonymed, range)
 }
 
-/// `increased`↔`reduced`、`more`↔`less` antonym 改写：把 `-N% increased X` 规范为
-/// `N% reduced X`（对照 ItemTools.lua antonymFunc + `:gsub("%-(%d+%.?%d*%%) (%a+)")`）。
+/// Rewrites `increased`<->`reduced` and `more`<->`less` antonyms: normalizes
+/// `-N% increased X` to `N% reduced X` (mirrors ItemTools.lua's
+/// `antonymFunc` + `:gsub("%-(%d+%.?%d*%%) (%a+)")`).
 fn apply_antonyms(line: &str) -> String {
-    // 匹配 `-<num>% <word>`，word ∈ {increased,reduced,more,less} → 翻转词、去负号。
+    // Matches `-<num>% <word>` where word is one of
+    // increased/reduced/more/less -> flips the word and drops the sign.
     let mut out = String::with_capacity(line.len());
     let bytes = line.as_bytes();
     let mut i = 0;
@@ -46,7 +65,7 @@ fn apply_antonyms(line: &str) -> String {
             i += consumed;
             continue;
         }
-        // push 当前字符（按 UTF-8 字符推进）。
+        // Push the current character (advance by UTF-8 char width).
         let ch_len = utf8_len(bytes[i]);
         out.push_str(&line[i..i + ch_len]);
         i += ch_len;
@@ -54,11 +73,12 @@ fn apply_antonyms(line: &str) -> String {
     out
 }
 
-/// 尝试在 `s`（以 `-` 开头）匹配 `-<num>% <antonym-word>`；命中返回 (消费字节数, 替换串)。
+/// Tries to match `-<num>% <antonym-word>` at `s` (which starts with `-`);
+/// on a hit returns (bytes consumed, replacement string).
 fn try_antonym_at(s: &str) -> Option<(usize, String)> {
     debug_assert!(s.starts_with('-'));
     let rest = &s[1..];
-    // 解析 num（含小数）。
+    // Parse num (may include a decimal point).
     let num_end = rest
         .find(|c: char| !(c.is_ascii_digit() || c == '.'))
         .unwrap_or(rest.len());
@@ -67,9 +87,9 @@ fn try_antonym_at(s: &str) -> Option<(usize, String)> {
     }
     let num = &rest[..num_end];
     let after_num = &rest[num_end..];
-    // 要求紧跟 `% `。
+    // Requires `% ` immediately after.
     let after_pct = after_num.strip_prefix("% ")?;
-    // 取词。
+    // Take the word.
     let word_end = after_pct
         .find(|c: char| !c.is_ascii_alphabetic())
         .unwrap_or(after_pct.len());
@@ -81,15 +101,16 @@ fn try_antonym_at(s: &str) -> Option<(usize, String)> {
         "less" => "more",
         _ => return None,
     };
-    // 消费 `-` + num + `% ` + word。
+    // Consumes `-` + num + `% ` + word.
     let consumed = 1 + num_end + 2 + word_end;
     Some((consumed, format!("{num}% {antonym}")))
 }
 
-/// 替换全部 `(min-max)` 区间为 `min + range*(max-min)` 的具体值，保留 `+`/`-` 前缀语义。
+/// Replaces every `(min-max)` range with the concrete value
+/// `min + range*(max-min)`, preserving `+`/`-` prefix semantics.
 ///
-/// 对照 ItemTools.lua:80-84 的首个 gsub：
-/// `([%+-]?)%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)`。
+/// Mirrors the first gsub in ItemTools.lua:80-84:
+/// `([%+-]?)%((%-?%d+%.?%d*)%-(%-?%d+%.?%d*)%)`.
 fn substitute_ranges(line: &str, range: f64) -> String {
     let mut out = String::with_capacity(line.len());
     let bytes = line.as_bytes();
@@ -107,7 +128,8 @@ fn substitute_ranges(line: &str, range: f64) -> String {
     out
 }
 
-/// 在 `s` 处尝试匹配 `[+-]?(min-max)`；命中返回 (消费字节数, 具体值文本)。
+/// Tries to match `[+-]?(min-max)` at `s`; on a hit returns (bytes consumed,
+/// resolved value text).
 fn try_range_at(s: &str, range: f64) -> Option<(usize, String)> {
     let mut idx = 0;
     let sign = match s.as_bytes().first() {
@@ -125,7 +147,8 @@ fn try_range_at(s: &str, range: f64) -> Option<(usize, String)> {
     let inner = after_sign.strip_prefix('(')?;
     let close = inner.find(')')?;
     let body = &inner[..close];
-    // body = "min-max"（min/max 可含负号、小数）。拆分中间的连字符（非首字符的 `-`）。
+    // body = "min-max" (min/max may include a sign or decimal). Split on the
+    // separating hyphen (not min's own leading `-`).
     let (min_str, max_str) = split_range_body(body)?;
     let min: f64 = min_str.parse().ok()?;
     let max: f64 = max_str.parse().ok()?;
@@ -134,7 +157,8 @@ fn try_range_at(s: &str, range: f64) -> Option<(usize, String)> {
         value = -value;
     }
     let consumed = idx + 1 + close + 1; // sign + '(' + body + ')'
-    // `+` 前缀：仅当结果为正才保留 `+`（对照 vendor `(sign == "+" and value > 0)`）。
+    // `+` prefix: only kept when the result is positive (mirrors vendor
+    // `(sign == "+" and value > 0)`).
     let text = if sign == Some('+') && value > 0.0 {
         format!("+{}", fmt_value(value))
     } else {
@@ -143,17 +167,19 @@ fn try_range_at(s: &str, range: f64) -> Option<(usize, String)> {
     Some((consumed, text))
 }
 
-/// 拆 `min-max`：从首字符之后找第一个 `-`（min 自身的前导负号不算分隔符）。
+/// Splits `min-max`: finds the first `-` after the leading character (min's
+/// own leading negative sign doesn't count as the separator).
 fn split_range_body(body: &str) -> Option<(&str, &str)> {
     let bytes = body.as_bytes();
-    // 跳过 min 的可选前导负号。
+    // Skip min's optional leading minus sign.
     let start = if bytes.first() == Some(&b'-') { 1 } else { 0 };
     let sep_rel = body[start..].find('-')?;
     let sep = start + sep_rel;
     Some((&body[..sep], &body[sep + 1..]))
 }
 
-/// 数值 → 文本：整数省略小数；否则保留（去尾零），对标 Lua `tostring`。
+/// Number -> text: integers drop the decimal point; otherwise keep it
+/// (trimming trailing zeros), matching Lua's `tostring`.
 fn fmt_value(v: f64) -> String {
     if v.fract().abs() < f64::EPSILON {
         format!("{}", v as i64)
@@ -171,7 +197,7 @@ fn fmt_value(v: f64) -> String {
     }
 }
 
-/// UTF-8 首字节 → 该字符字节长度。
+/// UTF-8 leading byte -> that character's byte length.
 fn utf8_len(first: u8) -> usize {
     match first {
         0x00..=0x7F => 1,
@@ -213,7 +239,7 @@ mod tests {
 
     #[test]
     fn two_ranges_in_one_line() {
-        // adds (1-2) to (3-5) physical: 两个区间各自具体化。
+        // adds (1-2) to (3-5) physical: each range resolves independently.
         assert_eq!(
             ar("Adds (1-2) to (3-5) Physical Damage", 0.5),
             "Adds 1.5 to 4 Physical Damage"
@@ -227,7 +253,7 @@ mod tests {
 
     #[test]
     fn negative_range_prefix_negates() {
-        // -(10-20)% → 取负：range 0.5 → -(15) = -15。
+        // -(10-20)% negates the result: range 0.5 -> -(15) = -15.
         assert_eq!(
             ar("-(10-20)% to Fire Resistance", 0.5),
             "-15% to Fire Resistance"
@@ -236,7 +262,8 @@ mod tests {
 
     #[test]
     fn plus_sign_dropped_when_result_non_positive() {
-        // +(0-0) → value 0，非正 → 不保留 `+`（对照 vendor `value > 0`）。
+        // +(0-0) -> value 0, not positive -> `+` is dropped (mirrors vendor
+        // `value > 0`).
         assert_eq!(ar("+(0-0) to Strength", 0.5), "0 to Strength");
     }
 

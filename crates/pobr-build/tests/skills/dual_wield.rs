@@ -1,17 +1,20 @@
-//! M4-I W-B2：双持（Weapon1 + Weapon2 均为武器基底）端到端测试。
+//! End-to-end test for dual wield (both Weapon1 and Weapon2 are weapon bases).
 //!
-//! 覆盖编排装配（`dual_wield_off_hand_contribution` → 第二个 off-hand
-//! `HandSource`）→ hand pass → combineStat 整链：
-//! - 双持产出 MH/OH 两张子表，合并值按 vendor 模式（DPS=均值、Speed=调和平均，
-//!   `CalcOffence.lua:2451-2545`）；
-//! - Weapon2 局部词条折入 OH 武器源（不再泄漏进全局加法桶）；
-//! - `with maces` 词条按 per-hand 武器位只进 MH 腿（vendor 口径；M4-I 切换
-//!   commit 起唯一行为，legacy `UsingMace` 全局条件近似的两腿同吃锚点已随
-//!   feature 退役）。
+//! Covers the full orchestration chain: assembly
+//! (`dual_wield_off_hand_contribution` -> a second off-hand `HandSource`) ->
+//! hand pass -> combineStat:
+//! - Dual wield produces two sub-tables (MH/OH); the combined value follows
+//!   vendor's mode (DPS = average, Speed = harmonic mean, `CalcOffence.lua:2451-2545`);
+//! - Weapon2's local mods fold into the OH weapon source (no longer leak into
+//!   the global additive bucket);
+//! - the `with maces` mod routes to the MH leg only, per-hand weapon slot
+//!   (vendor behaviour; this is the sole behaviour since the switch commit —
+//!   the legacy `UsingMace` global-condition approximation, which applied to
+//!   both legs, has been retired along with that feature).
 //!
-//! 基底数值（`data/4.5.0.3.4/base/base_items.json`）：
-//! Wooden Club（One Hand Mace）物理 6–10、690ms、暴击 5%；
-//! Shortsword（One Hand Sword）物理 6–9、645ms、暴击 5%。
+//! Base values (`data/4.5.0.3.4/base/base_items.json`):
+//! Wooden Club (One Hand Mace): physical 6-10, 690ms, 5% crit;
+//! Shortsword (One Hand Sword): physical 6-9, 645ms, 5% crit.
 
 use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
@@ -40,8 +43,9 @@ fn weapon(base_name: &str, mods: &[&str]) -> Item {
     }
 }
 
-/// MH 锤 + 可选 OH 武器的基本攻击 build（AxeChopPlayer 无武器限制建模，
-/// 与 skill_damage_dps.rs 同款 harness）。
+/// A basic attack build with an MH mace plus an optional OH weapon
+/// (AxeChopPlayer models no weapon restriction; same harness as
+/// skill_damage_dps.rs).
 fn dual_build(off_hand: Option<Item>) -> Build {
     let mut b = Build::new()
         .with_character(CharacterIdentity {
@@ -73,8 +77,9 @@ fn opts(extra: &[&str]) -> DataOrchestratorOptions {
     }
 }
 
-/// 双持装配 + combineStat：MH/OH 两张子表齐备，合并 DPS = (MH+OH)/2、
-/// Speed = 调和平均（vendor :2541-2545 / :3026）；单手 build 无 OH 子表。
+/// Dual-wield assembly + combineStat: both MH/OH sub-tables present, combined
+/// DPS = (MH+OH)/2, Speed = harmonic mean (vendor :2541-2545 / :3026); a
+/// single-hand build has no OH sub-table.
 #[test]
 fn dual_wield_produces_both_hands_and_combines_per_vendor_modes() {
     let data = load_build_data();
@@ -92,14 +97,14 @@ fn dual_wield_produces_both_hands_and_combines_per_vendor_modes() {
     let mh = dual.main_hand.as_ref().expect("双持 MH 子表");
     let oh = dual.off_hand.as_ref().expect("双持 OH 子表");
 
-    // 两手基底不同（6–10@690ms vs 6–9@645ms）→ 两腿速率/击中不同。
+    // Different bases per hand (6-10@690ms vs 6-9@645ms) -> the two legs' speed/hit differ.
     assert!(
         (mh.speed - oh.speed).abs() > 1e-6,
         "两手攻速基底不同：MH={} OH={}",
         mh.speed,
         oh.speed
     );
-    // combineStat：DPS 均值（非 doubleHits）、Speed 调和平均。
+    // combineStat: DPS is averaged (not doubleHits), Speed is the harmonic mean.
     let eps = 1e-6;
     assert!(
         (dual.dps - (mh.total_dps + oh.total_dps) / 2.0).abs() < eps,
@@ -114,12 +119,14 @@ fn dual_wield_produces_both_hands_and_combines_per_vendor_modes() {
         "Speed 调和平均：{} vs {harmonic}",
         dual.action_rate
     );
-    // OH 腿吃到 Shortsword 基底（平均 7.5 < Wooden Club 8）→ 两腿击中均非零。
+    // The OH leg uses the Shortsword base (average 7.5 < Wooden Club 8) -> both legs' hit are non-zero.
     assert!(mh.average_hit > 0.0 && oh.average_hit > 0.0);
 }
 
-/// Weapon2 局部词条折入 OH 武器源（独立乘区），不泄漏进全局加法桶：
-/// OH 件局部「increased Physical Damage」只放大 OH 腿，MH 腿不动。
+/// Weapon2's local mod folds into the OH weapon source (an independent
+/// multiplier bucket) without leaking into the global additive bucket: a
+/// local "increased Physical Damage" on the OH item only scales the OH leg,
+/// leaving MH untouched.
 #[test]
 fn offhand_local_phys_mod_scales_only_offhand_leg() {
     let data = load_build_data();
@@ -149,14 +156,14 @@ fn offhand_local_phys_mod_scales_only_offhand_leg() {
         boosted.off_hand.as_ref().unwrap(),
     );
 
-    // MH 腿逐值不动（局部词条没进全局桶）。
+    // MH leg's values are unchanged (the local mod didn't reach the global bucket).
     assert!(
         (b_mh.average_hit - p_mh.average_hit).abs() < 1e-9,
         "OH 局部词条不得影响 MH 腿：{} vs {}",
         b_mh.average_hit,
         p_mh.average_hit
     );
-    // OH 腿按局部独立乘区 ×1.4。
+    // OH leg scales ×1.4 via its own local multiplier bucket.
     let ratio = b_oh.average_hit / p_oh.average_hit;
     assert!(
         (ratio - 1.4).abs() < 1e-6,
@@ -164,8 +171,9 @@ fn offhand_local_phys_mod_scales_only_offhand_leg() {
     );
 }
 
-/// per-hand 武器位路由：`with maces` 词条只进 MH（锤）腿，OH（剑）腿攻速不动
-/// （vendor weapon1Cfg/weapon2Cfg flags 按手隔离）。
+/// Per-hand weapon-slot routing: the `with maces` mod only reaches the MH
+/// (mace) leg, leaving the OH (sword) leg's attack speed unchanged (vendor
+/// isolates weapon1Cfg/weapon2Cfg flags per hand).
 #[test]
 fn with_maces_mod_routes_to_main_hand_only_under_pob2_bits() {
     let data = load_build_data();
@@ -193,17 +201,20 @@ fn with_maces_mod_routes_to_main_hand_only_under_pob2_bits() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Golden 基线（M4 §4.2 验收条目 2：双持异种武器 fixture 入 golden 门禁）
+// Golden baseline (§4.2 acceptance item 2: dual-wield mismatched-weapon
+// fixture added to the golden gate).
 //
-// 语料 18 build 无双持装备（Weapon2 全为 sceptre/focus/quiver/shield），故用
-// 本文件的合成 fixture（Warrior L50 + AxeChopPlayer L1 + MH Wooden Club +
-// OH Shortsword，真实入库数据）建基线。基线值 = 建立时（ModFlags 切换 commit
-// 后）的实际输出；行为修复改变这些值时按 baseline 纪律以独立 commit 显式更新。
+// The 18-build corpus has no dual-wielding gear (Weapon2 is always
+// sceptre/focus/quiver/shield), so this file's synthetic fixture (Warrior
+// L50 + AxeChopPlayer L1 + MH Wooden Club + OH Shortsword, real ingested
+// data) establishes the baseline. The baseline values are the actual output
+// at establishment time (after the ModFlags switch commit); if a behaviour
+// fix changes these values, update them explicitly in a dedicated commit per
+// baseline discipline.
 //
-// 手算锚点：MH avg_hit = (6+10)/2 × 1.4(baseMultiplier) × 1.05(crit 5%×2.0)
-// = 11.76；combined DPS = (MH+OH)/2（非 doubleHits）；Speed = 调和平均。
-// ---------------------------------------------------------------------------
+// Hand-calculated anchor: MH avg_hit = (6+10)/2 × 1.4(baseMultiplier) ×
+// 1.05(crit 5%×2.0) = 11.76; combined DPS = (MH+OH)/2 (not doubleHits);
+// Speed = harmonic mean.
 
 const GOLDEN_COMBINED_DPS: f64 = 17.068_250_757;
 const GOLDEN_COMBINED_ACTION_RATE: f64 = 1.498_127_341;
@@ -216,7 +227,7 @@ const GOLDEN_OH_SPEED: f64 = 1.550_387_597;
 const GOLDEN_OH_AVG_HIT: f64 = 11.025;
 const GOLDEN_CRIT_CHANCE: f64 = 0.05;
 
-/// 双持 golden：合并值与 per-hand 子表逐字段锁定（相对容差 1e-6）。
+/// Dual-wield golden: combined and per-hand sub-table fields are pinned field-by-field (relative tolerance 1e-6).
 #[test]
 fn dual_wield_golden_baseline() {
     let near = |label: &str, expected: f64, actual: f64| {

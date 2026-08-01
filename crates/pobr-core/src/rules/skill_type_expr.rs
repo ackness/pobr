@@ -1,20 +1,27 @@
-//! 技能类型**后缀表达式**求值器（support 适用性裁决的原子件）。
+//! Evaluator for the skill type **postfix expression** (the atomic unit of
+//! support-applicability decisions).
 //!
-//! 对照 PoB2 `Modules/CalcTools.lua:61-82 doesTypeExpressionMatch`：
-//! GrantedEffects 的 require/exclude 类型列是后缀 token 流（FK → `ActiveSkillType.Id`，
-//! `"AND"/"OR"/"NOT"` 是该表的特殊行）。求值规则：
-//! - `OR`/`AND`：弹出一个值与新栈顶就地合并（或 / 与）；
-//! - `NOT`：栈顶取反；
-//! - 普通 token：压入「主动技能类型集合是否含该 token」；
-//! - 收尾：栈内**任一**为真即匹配（残留多值 = 隐式 OR）。
+//! Mirrors PoB2 `Modules/CalcTools.lua:61-82 doesTypeExpressionMatch`:
+//! a GrantedEffect's require/exclude type list is a postfix token stream (an
+//! FK into `ActiveSkillType.Id`, with `"AND"/"OR"/"NOT"` as special rows in
+//! that table). Evaluation rules:
+//! - `OR`/`AND`: pop one value and merge it into the new top of stack (or /
+//!   and) in place;
+//! - `NOT`: negate the top of stack;
+//! - an ordinary token: push whether the active skill type set contains
+//!   that token;
+//! - finally: a match if **any** value left on the stack is true (leftover
+//!   multiple values = implicit OR).
 //!
-//! 空栈防御按蓝图裁决（m1-skills-gems §T3.3）：弹空按 `false`。
-//! `minionTypes` 第二集合（CalcTools.lua:73）defer M5a（minion 技能链路）。
+//! Empty-stack defense: popping an empty stack yields `false`.
+//! `minionTypes`, the second set (CalcTools.lua:73), is deferred (minion
+//! skill pipeline).
 
 use std::collections::HashSet;
 
-/// 后缀表达式 `expr` 是否匹配主动技能类型集合 `active`。空表达式恒不匹配
-/// （require 列「空 = 接受」的判定在调用方 `can_support`，不在本函数）。
+/// Whether postfix expression `expr` matches the active skill type set
+/// `active`. An empty expression never matches — the "empty require list =
+/// accept" rule lives in the caller (`can_support`), not here.
 pub fn matches(expr: &[String], active: &HashSet<String>) -> bool {
     let mut stack: Vec<bool> = Vec::new();
     for token in expr {
@@ -52,8 +59,8 @@ mod tests {
         types.iter().map(|s| s.to_string()).collect()
     }
 
-    /// 真实 token 流：`SupportAncestralWarriorTotemPlayer` require =
-    /// `[Attack, Totemable, AND]`（来自入库 granted_effects.json）。
+    /// A real token stream: `SupportAncestralWarriorTotemPlayer` require =
+    /// `[Attack, Totemable, AND]` (taken from ingested granted_effects.json).
     #[test]
     fn real_require_and_expression() {
         let e = expr(&["Attack", "Totemable", "AND"]);
@@ -62,10 +69,11 @@ mod tests {
         assert!(!matches(&e, &active(&["Totemable"])));
     }
 
-    /// 真实 token 流：`SupportMetaTotemBallistaPlayer` exclude =
+    /// A real token stream: `SupportMetaTotemBallistaPlayer` exclude =
     /// `[Meta, HasUsageCondition, Cooldown, Triggered, Persistent, UsedByProxy,
-    ///   SupportedByBallistaTotem, NOT, AND]`——语义 = `Meta ∨ … ∨ Persistent ∨
-    /// (UsedByProxy ∧ ¬SupportedByBallistaTotem)`（残留栈隐式 OR）。
+    ///   SupportedByBallistaTotem, NOT, AND]` — semantics = `Meta ∨ … ∨
+    /// Persistent ∨ (UsedByProxy ∧ ¬SupportedByBallistaTotem)` (leftover
+    /// stack = implicit OR).
     #[test]
     fn real_exclude_not_and_expression() {
         let e = expr(&[
@@ -79,23 +87,26 @@ mod tests {
             "NOT",
             "AND",
         ]);
-        // 普通远程攻击技能：无任一排除类型 → 不命中。
+        // A plain ranged-attack skill: none of the exclude types apply -> no match.
         assert!(!matches(
             &e,
             &active(&["Attack", "RangedAttack", "Projectile"])
         ));
-        // 含 Triggered（残留栈成员）→ 命中。
+        // Has Triggered (a leftover stack member) -> matches.
         assert!(matches(&e, &active(&["Attack", "Triggered"])));
-        // UsedByProxy 且未被弩炮图腾支援 → AND 段真 → 命中。
+        // UsedByProxy and not supported by a ballista totem -> the AND
+        // segment is true -> matches.
         assert!(matches(&e, &active(&["UsedByProxy"])));
-        // UsedByProxy 但已被弩炮图腾支援 → AND 段假，其余皆假 → 不命中。
+        // UsedByProxy but already supported by a ballista totem -> the AND
+        // segment is false, and everything else is false too -> no match.
         assert!(!matches(
             &e,
             &active(&["UsedByProxy", "SupportedByBallistaTotem"])
         ));
     }
 
-    /// 残留多值隐式 OR：`[Attack, Spell]` 任一在集合即匹配。
+    /// Leftover-stack implicit OR: `[Attack, Spell]` matches if either is in
+    /// the set.
     #[test]
     fn residual_stack_any_true() {
         let e = expr(&["Attack", "Spell"]);
@@ -104,7 +115,7 @@ mod tests {
         assert!(!matches(&e, &active(&["Minion"])));
     }
 
-    /// OR 操作符与残留隐式 OR 等价。
+    /// The OR operator is equivalent to leftover implicit OR.
     #[test]
     fn explicit_or_operator() {
         let e = expr(&["Attack", "Spell", "OR"]);
@@ -112,7 +123,7 @@ mod tests {
         assert!(!matches(&e, &active(&["Buff"])));
     }
 
-    /// 纯 NOT：`[Triggered, NOT]` 在不含 Triggered 时匹配。
+    /// Pure NOT: `[Triggered, NOT]` matches when Triggered is absent.
     #[test]
     fn pure_not() {
         let e = expr(&["Triggered", "NOT"]);
@@ -120,21 +131,23 @@ mod tests {
         assert!(!matches(&e, &active(&["Triggered"])));
     }
 
-    /// 边界：空表达式恒不匹配（「空 require = 接受」由调用方裁决）。
+    /// Edge case: an empty expression never matches ("empty require =
+    /// accept" is the caller's decision).
     #[test]
     fn empty_expression_never_matches() {
         assert!(!matches(&[], &active(&["Attack"])));
         assert!(!matches(&[], &active(&[])));
     }
 
-    /// 边界：弹空按 false（蓝图裁决）——孤立操作符不 panic。
+    /// Edge case: popping an empty stack yields false — a lone operator
+    /// doesn't panic.
     #[test]
     fn pop_on_empty_stack_is_false() {
-        // [AND]：false ∧ false = false。
+        // [AND]: false ∧ false = false.
         assert!(!matches(&expr(&["AND"]), &active(&["Attack"])));
-        // [OR]：false ∨ false = false。
+        // [OR]: false ∨ false = false.
         assert!(!matches(&expr(&["OR"]), &active(&["Attack"])));
-        // [NOT]：¬false = true（压回栈 → 匹配）。
+        // [NOT]: ¬false = true (pushed back onto the stack -> matches).
         assert!(matches(&expr(&["NOT"]), &active(&["Attack"])));
     }
 }

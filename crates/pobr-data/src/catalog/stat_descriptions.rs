@@ -1,66 +1,86 @@
-//! StatDescriptions overlay 域 schema（`overlay/stat_descriptions.json`，schema
-//! `stat_descriptions/v1`）。
+//! StatDescriptions overlay domain schema
+//! (`overlay/stat_descriptions.json`, schema `stat_descriptions/v1`).
 //!
-//! 数据来源：vendor PoB2 `Data/StatDescriptions/*.lua`——每个 stat_id 的 canonical
-//! 显示文本模板（GGG `stat_descriptions.txt` 编译产物）。由
-//! `sync-pob-catalog extract-lua --what stat-descriptions` 确定性抽取生成：luajit
-//! 在最小环境下加载描述表、对每个 stat_id 喂代表值（V=1）渲染一段文本，Rust 侧
-//! 按 scope 分段 + BTreeMap 字典序序列化保证 byte-stable。
+//! Data source: vendor PoB2 `Data/StatDescriptions/*.lua` — the canonical
+//! display-text template for each stat_id (compiled from GGG's
+//! `stat_descriptions.txt`). Deterministically extracted by
+//! `sync-pob-catalog extract-lua --what stat-descriptions`: luajit loads
+//! the description tables in a minimal environment, feeds each stat_id a
+//! representative value (V=1) and renders a line of text; the Rust side
+//! groups the result by scope and serializes with a BTreeMap for
+//! byte-stable dictionary order.
 //!
-//! 用途（M6 E/F，缺口「stat_id → Modifier 第二通道」）：游戏数据里 tree 节点 /
-//! 物品隐式 / 宝石词条很多以 **stat_id** 形式给出（而非英文文本）。本表把 stat_id
-//! 还原成 canonical 英文文本，再经 `parse_mod_engine` 解析为 Modifier——与现行
-//! 英文文本通道并行的第二条注入路径，差异收敛后按域切换。
+//! Purpose (the gap this fills — "a second stat_id → Modifier channel"): a
+//! lot of the game's tree nodes / item implicits / gem mods are given in
+//! **stat_id** form (rather than English text) in the game data. This
+//! table turns a stat_id back into canonical English text, which then goes
+//! through `parse_mod_engine` to become a Modifier — a second injection
+//! path running in parallel with the existing English-text channel; once
+//! the two paths' output converges, consumers can switch over domain by domain.
 //!
-//! **抽取保真原则**（对齐 [`crate::catalog::stat_map`]）：
-//! - 渲染文本**原样**落 JSON，抽取期不做任何语义筛选——「哪条 stat_id 受支持」是
-//!   引擎（`parse_mod_engine`）的职责。
-//! - 多 scope（root `stat_descriptions` + `passive_skill_*` 等）**各自分段**，不在
-//!   抽取期决定 precedence——「child 覆盖 parent」由消费侧 §B 生成器决定，这样
-//!   vendor 更新时 overlay 的 drift diff 才逐 scope 可读。
-//! - 多 stat 的 compound 描述符**不强解**（一句话挂多个 stat_id），原样保留模板
-//!   + member 列表供 §B 处置。
-//! - 无可渲染变体（仅负向 limit 等）的 stat_id 记入 `unrendered` 诊断集，不静默丢弃。
+//! **Extraction-fidelity principle** (matches [`crate::catalog::stat_map`]):
+//! - Rendered text is stored in JSON **as-is** — extraction does no
+//!   semantic filtering; deciding "which stat_id is supported" is the
+//!   engine's (`parse_mod_engine`'s) job.
+//! - Multiple scopes (the root `stat_descriptions` plus
+//!   `passive_skill_*`, etc.) are **each kept in their own section**;
+//!   precedence isn't decided at extraction time — "child overrides
+//!   parent" is decided by the consumer's §B generator, so the overlay's
+//!   drift diff stays readable scope by scope when vendor updates.
+//! - A compound descriptor spanning multiple stats **isn't force-parsed**
+//!   (one sentence tied to several stat_ids) — the template and its member
+//!   list are kept as-is for §B to handle.
+//! - A stat_id with no renderable variant (e.g. only a negative limit) is
+//!   recorded in the `unrendered` diagnostic set, not silently dropped.
 //!
-//! 本模块只定义 serde 形状，零逻辑。
+//! This module only defines the serde shape, zero logic.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
-/// StatDescriptions overlay 文档本体（`_meta` 头部之外的平铺部分）。
+/// The body of the StatDescriptions overlay document (the flat part
+/// outside the `_meta` header).
 ///
-/// 按 scope 名分段（root `stat_descriptions` + 各专域如
-/// `passive_skill_stat_descriptions`）；每段独立持有 single / compound /
-/// unrendered 三类，precedence 由消费侧决定。
+/// Grouped by scope name (the root `stat_descriptions` plus each dedicated
+/// domain like `passive_skill_stat_descriptions`); each section
+/// independently holds the single / compound / unrendered three
+/// categories, with precedence decided by the consumer.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct StatDescriptionsDef {
-    /// scope 名 → 该 scope 的描述集（BTreeMap 字典序保证确定性）。
+    /// scope name → that scope's description set (BTreeMap for deterministic dictionary order).
     #[serde(default)]
     pub scopes: BTreeMap<String, ScopeDescriptions>,
 }
 
-/// 单个 scope（一个 StatDescriptions 文件的 own keys）的描述集。
+/// The description set for a single scope (the "own keys" of one
+/// StatDescriptions file).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ScopeDescriptions {
-    /// 单 stat 描述符 → 渲染出的 canonical 文本行（多行描述按行序保留）。
-    /// 这是 §B 生成器的主输入：逐行喂 `parse_mod_engine`。
+    /// Single-stat descriptor → the rendered canonical text lines (a
+    /// multi-line description keeps line order). This is the primary input
+    /// to the §B generator: feed each line into `parse_mod_engine`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub single: BTreeMap<String, Vec<String>>,
-    /// 多 stat（compound）描述符 → 原样模板 + member 列表（不强解）。
-    /// 键 = descriptor 的首个 stat_id（vendor `stats[1]`）。
+    /// A multi-stat (compound) descriptor → the template as-is plus its
+    /// member list (not force-parsed). Key = the descriptor's first
+    /// stat_id (vendor's `stats[1]`).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub compound: BTreeMap<String, CompoundDescription>,
-    /// 无可渲染变体的 stat_id（诊断用；§B 跳过，留待人工 overlay 补）。
+    /// stat_ids with no renderable variant (for diagnostics; §B skips
+    /// these, left for a manual overlay addition).
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub unrendered: BTreeSet<String>,
 }
 
-/// 多 stat 描述符的原样保留（一句模板文本绑定多个 stat_id）。
+/// A multi-stat descriptor kept as-is (one template sentence bound to
+/// several stat_ids).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CompoundDescription {
-    /// 该描述符绑定的全部 stat_id（vendor `descriptor.stats`，原序）。
+    /// All the stat_ids this descriptor is bound to (vendor's
+    /// `descriptor.stats`, original order).
     pub member_stats: Vec<String>,
-    /// 原样模板文本（含 `{0}`/`{1}` 占位符与字面 `\n` 换行；§B 自行处置）。
+    /// The template text as-is (includes `{0}`/`{1}` placeholders and
+    /// literal `\n` newlines; §B handles it on its own).
     pub template: String,
 }

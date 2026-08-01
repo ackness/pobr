@@ -1,11 +1,12 @@
-//! 物品 modifier 来源接入。
+//! Item modifier source ingest.
 //!
-//! 把一件装备的英文词条文本解析为带归因的 `Modifier`，按 section（implicit /
-//! explicit / enchant）细分 [`SourceKind`]，并记录装备槽（`slot`）与原始词条文本
-//! （`raw_text`），从而让最终输出能够 source-level 回溯到具体装备槽及词条类型
-//! （PoBR 相对 PoB 的核心增量）。
+//! Parses an item's English modifier text into attributed `Modifier`s,
+//! choosing the [`SourceKind`] based on section (implicit / explicit /
+//! enchant), and records the equipment slot (`slot`) and raw modifier text
+//! (`raw_text`) so the final output can be traced source-level back to a
+//! specific slot and modifier type (PoBR's core value-add over PoB).
 //!
-//! section 与归因的对应关系：
+//! The mapping from section to attribution:
 //!
 //! | section  | [`SourceKind`]              | `SourceId.id`             |
 //! |----------|-----------------------------|---------------------------|
@@ -13,37 +14,44 @@
 //! | explicit | [`SourceKind::ItemAffix`]   | `item.<slot>.explicit`    |
 //! | enchant  | [`SourceKind::ItemEnchant`] | `item.<slot>.enchant`     |
 //!
-//! `slot` 始终为槽位稳定 ID（如 `helmet`），无法解析的行收集进
-//! [`ItemIngest::unsupported`]（不报错），与 `CalculationSession` 的语义一致。
+//! `slot` is always the slot's stable ID (e.g. `helmet`); lines that can't be
+//! parsed are collected into [`ItemIngest::unsupported`] (no error), matching
+//! `CalculationSession`'s semantics.
 //!
-//! ## 品质（quality）—— 不在此处建模
+//! ## Quality — not modeled here
 //!
-//! PoB2 的物品品质**不是**一个全局 `more` modifier，而是逐属性 **base 缩放**：
+//! PoB2's item quality is **not** a global `more` modifier, it's a per-stat
+//! **base scaling**:
 //!
-//! - 武器：物理伤害 `min/max = base × (1 + physInc/100) × (1 + quality/100)`
-//!   （`src/Classes/Item.lua` `BuildModListForSlotNum` 1751-1756，仅作用物理）。
-//! - 护甲：armour/evasion/ES **各自** `value = base × (1 + inc/100) × (1 + quality/100)`
-//!   （同文件 1812-1819，每个属性独立缩放，互不波及）。
-//! - 首饰 / 腰带：品质通过**催化剂**（catalyst）按词缀 tag 缩放词条强度
-//!   （`getCatalystScalar`），非整体 base 缩放。
+//! - Weapons: physical damage `min/max = base × (1 + physInc/100) × (1 + quality/100)`
+//!   (`src/Classes/Item.lua`'s `BuildModListForSlotNum` 1751-1756, physical only).
+//! - Armour: armour/evasion/ES **each** get `value = base × (1 + inc/100) × (1 + quality/100)`
+//!   (same file, 1812-1819 — each stat scales independently, with no crosstalk).
+//! - Jewellery / belts: quality scales affix strength by tag via a
+//!   **catalyst** (`getCatalystScalar`), not an overall base scaling.
 //!
-//! 因此品质若作为全局 `LocalPhysicalDamageMore` / `LocalDefencesMore` `More` modifier
-//! 注入 ModDb，会错误地作用于**全局**伤害 / 全部防御（跨槽、跨伤害类型），与 PoB2 的
-//! 「逐件、逐属性 base 缩放」语义不符。实际的品质缩放由编排层
-//! [`pobr-build::calc_orchestrator`] 在算件级底值时直接处理
-//! （`item_rolled_defence` / 武器 `physical_min/max` × `(1 + quality/100)`，逐属性、逐件），
-//! 与 PoB2 对齐。故本模块**不再**注入品质 modifier。
+//! So if quality were injected into ModDb as a global `LocalPhysicalDamageMore`
+//! / `LocalDefencesMore` `More` modifier, it would incorrectly apply to
+//! **global** damage / all defences (across slots, across damage types),
+//! contradicting PoB2's "per-item, per-stat base scaling" semantics. The
+//! actual quality scaling is handled directly by the orchestration layer
+//! ([`pobr-build::calc_orchestrator`]) when computing per-item base values
+//! (`item_rolled_defence` / weapon `physical_min/max` × `(1 + quality/100)`,
+//! per stat, per item), matching PoB2. So this module **no longer** injects a
+//! quality modifier.
 //!
-//! 催化剂（accessory quality → catalyst）尚未建模：PoBR 的解析 modifier 不携带 GGG
-//! 词缀 tag（life/mana/defences/physical/attack/caster…），`getCatalystScalar` 无从匹配；
-//! 且 [`Item`] 当前无 `catalyst` / `catalystQuality` 字段。详见模块测试中的 defer 说明。
+//! Catalysts (accessory quality → catalyst) aren't modeled yet: PoBR's parsed
+//! modifiers don't carry GGG affix tags (life/mana/defences/physical/attack/
+//! caster…), so `getCatalystScalar` has nothing to match against; and
+//! [`Item`] currently has no `catalyst` / `catalystQuality` field. See the
+//! deferral note in this module's tests for details.
 
 use pobr_data::prelude::*;
 
 use crate::mod_parser::{ParseCtx, ParseError, ParseStatus};
 use crate::{ModTag, Modifier};
 
-/// 物品词条的 section，决定归因的 [`SourceKind`] 与 `SourceId` 后缀。
+/// An item modifier's section, which determines the attributed [`SourceKind`] and `SourceId` suffix.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ItemModSection {
     Implicit,
@@ -52,7 +60,7 @@ pub enum ItemModSection {
 }
 
 impl ItemModSection {
-    /// 该 section 对应的归因来源类别。
+    /// This section's attribution source category.
     pub fn source_kind(self) -> SourceKind {
         match self {
             Self::Implicit => SourceKind::ItemImplicit,
@@ -61,7 +69,7 @@ impl ItemModSection {
         }
     }
 
-    /// 该 section 在 `SourceId.id` 中的稳定后缀（`item.<slot>.<suffix>`）。
+    /// This section's stable suffix in `SourceId.id` (`item.<slot>.<suffix>`).
     pub fn id_suffix(self) -> &'static str {
         match self {
             Self::Implicit => "implicit",
@@ -71,25 +79,29 @@ impl ItemModSection {
     }
 }
 
-/// 一件装备接入计算的产物：解析出的 modifier + 无法解析的原始文本。
+/// Result of ingesting an item: parsed modifiers + raw text that couldn't be parsed.
 #[derive(Debug, Clone, Default)]
 pub struct ItemIngest {
     pub modifiers: Vec<Modifier>,
     pub unsupported: Vec<String>,
 }
 
-/// 把一件装备的词条文本解析为带槽位 + section 归因的 modifier。
+/// Parses an item's modifier text into modifiers attributed with slot + section.
 ///
-/// 解析失败（结构性错误）向上抛 [`ParseError`]；无法识别的词条（如 `mirrored`）
-/// 不报错，收集进 [`ItemIngest::unsupported`]，与 `CalculationSession` 的语义一致。
+/// Parse failures (structural errors) propagate as [`ParseError`]; unrecognized
+/// modifiers (e.g. `mirrored`) don't error, they're collected into
+/// [`ItemIngest::unsupported`] instead, matching `CalculationSession`'s
+/// semantics.
 ///
-/// 接入顺序为 implicit → explicit → enchant，与 PoB 物品文本块的展示顺序一致。
+/// Ingest order is implicit → explicit → enchant, matching how PoB displays
+/// an item's text block.
 ///
-/// 品质（quality）**不在此处**转为 modifier——其逐属性 base 缩放由编排层处理，
-/// 见模块级文档「品质」一节。
+/// Quality is **not** turned into a modifier here — its per-stat base scaling
+/// is handled by the orchestration layer; see the "Quality" section of the
+/// module-level docs.
 ///
-/// 词条解析走 `ctx`（未注入引擎规则的 `ctx` 会把全部词条按 Unsupported 收集，
-/// 见 [`ParseCtx::parse`]）。
+/// Modifier parsing goes through `ctx` (a `ctx` with no engine rules injected
+/// collects every modifier as Unsupported, see [`ParseCtx::parse`]).
 pub fn ingest_item_with_ctx(
     slot: EquipmentSlot,
     item: &Item,
@@ -122,7 +134,7 @@ pub fn ingest_item_with_ctx(
     Ok(ingest)
 }
 
-/// 解析单个 section 的词条文本，追加到 `ingest`。
+/// Parses one section's modifier text and appends it to `ingest`.
 fn ingest_section(
     slot: EquipmentSlot,
     section: ItemModSection,
@@ -162,21 +174,26 @@ fn ingest_section(
     Ok(())
 }
 
-/// 武器件上的「转局部」词条：无 flag 的 `CriticalStrikeMultiplier`（vendor
-/// `CritMultiplier`）加 `Condition:{Main,Off}HandAttack` tag，使其只作用于
-/// **用该武器攻击**的 hand pass（非武器攻击如 Shield Wall / 法术不吃）。
+/// The "convert to local" modifier on weapons: an unflagged
+/// `CriticalStrikeMultiplier` (vendor `CritMultiplier`) gets a
+/// `Condition:{Main,Off}HandAttack` tag so it only applies to the hand pass
+/// **attacking with that weapon** (non-weapon attacks like Shield Wall or
+/// spells don't get it).
 ///
-/// 对照 vendor `Item.lua:1954-1961`（"Convert accuracy, crit damage bonus, …
-/// to local"）：0.22.0（0.5.4b）把 `CritMultiplier and mod.flags == 0` 加进
-/// 转换清单。守卫与 vendor 逐条对应：`mod.flags == 0`、
-/// `keywordFlags == 0 or KeywordFlag.Attack`、`not mod[1]`（无既有 tag）。
+/// Mirrors vendor `Item.lua:1954-1961` ("Convert accuracy, crit damage bonus,
+/// … to local"): 0.22.0 (0.5.4b) added `CritMultiplier and mod.flags == 0` to
+/// the conversion list. The guard matches vendor's condition-by-condition:
+/// `mod.flags == 0`, `keywordFlags == 0 or KeywordFlag.Attack`, `not mod[1]`
+/// (no existing tag).
 ///
-/// 仅由编排层对**武器**件调用（Weapon2 的盾/箭袋/法器不转换——vendor 该转换在
-/// `self.base.weapon` 分支内）。
+/// Only called by the orchestration layer on **weapon** items (Weapon2's
+/// shields/quivers/foci aren't converted — vendor's conversion is inside the
+/// `self.base.weapon` branch).
 ///
-/// ponytail: vendor 同清单还有 Accuracy/ImpaleChance/OnHit/leech 的转换
-/// （0.22.0 之前就有、PoBR 未建模的存量项）；此处只落地 0.5.4b 增量
-/// CritMultiplier，其余待各自 oracle 钉值后按同一入口补。
+/// ponytail: vendor's list also converts Accuracy/ImpaleChance/OnHit/leech
+/// (pre-0.22.0 entries that PoBR hasn't modeled yet); only the 0.5.4b
+/// CritMultiplier addition lands here, the rest wait for their own oracle
+/// pinning before being added through the same entry point.
 pub fn apply_weapon_hand_conditions(modifiers: &mut [Modifier], slot: EquipmentSlot) {
     let var = match slot {
         EquipmentSlot::Weapon1 => "MainHandAttack",
@@ -196,13 +213,15 @@ pub fn apply_weapon_hand_conditions(modifiers: &mut [Modifier], slot: EquipmentS
     }
 }
 
-/// 把物品词条 Multiplier tag 里的 `{SlotName}` 占位符替换为本件槽位 ID。
+/// Replaces the `{SlotName}` placeholder in an item modifier's Multiplier tag with this item's slot ID.
 ///
-/// PoB2 在合并物品 mod 时按所在槽展开 `{SlotName}`（`calcLib.mod`）。典型来源
-/// `per Socket filled` / `per socketed rune or soul core` →
-/// `Multiplier{var:"RunesSocketedIn{SlotName}"}`（ModParser.lua:1477-1478）。替换后
-/// 由编排层预灌的 `RunesSocketedIn<slot>` multiplier 取数；缺替换则 var 永不命中、
-/// 静默 0 贡献（per-socket 缩放失效）。
+/// PoB2 expands `{SlotName}` when merging item mods, based on the item's slot
+/// (`calcLib.mod`). A typical source is `per Socket filled` / `per socketed
+/// rune or soul core` → `Multiplier{var:"RunesSocketedIn{SlotName}"}`
+/// (ModParser.lua:1477-1478). After substitution, the value is read from the
+/// `RunesSocketedIn<slot>` multiplier pre-filled by the orchestration layer;
+/// without substitution the var never matches and silently contributes 0
+/// (the per-socket scaling would be broken).
 fn substitute_slot_placeholder(modifier: &mut Modifier, slot_id: &str) {
     const PLACEHOLDER: &str = "{SlotName}";
     for tag in &mut modifier.tags {
@@ -219,36 +238,44 @@ fn substitute_slot_placeholder(modifier: &mut Modifier, slot_id: &str) {
     }
 }
 
-// ── flask / charm 词条接入（M3-T4 D2，蓝图 m3-orchestration.md §7.2）───────────
+// Flask / charm modifier ingest
 //
-// flask/charm 词条**不直接**进入聚合：解析产物包进一个 List 型「载荷 mod」
-// （[`FLASK_BUFF_LIST_NAME`] / [`CHARM_BUFF_LIST_NAME`]，`ModValue::NestedMods`），
-// 由 `calc/env_finalize.rs` 阶段 3 `merge_flasks_charms` 在 `mode_combat` 门控下
-// 按 effect 乘区缩放后并入 player db（对照 vendor CalcPerform.lua:1429-1663
-// mergeFlasks/mergeCharms 的「收集 → ScaleAddList → AddList」两段式）。
-// List mod 不参与 sum/more/flag 聚合 → 载荷在未合并前对输出零影响（搬迁不变式）。
+// Flask/charm modifiers **don't directly** enter aggregation: the parsed
+// output is packed into a List-type "payload mod"
+// ([`FLASK_BUFF_LIST_NAME`] / [`CHARM_BUFF_LIST_NAME`], `ModValue::NestedMods`),
+// which `calc/env_finalize.rs` stage 3's `merge_flasks_charms` scales by the
+// effect multiplier bucket and merges into the player db, gated by
+// `mode_combat` (mirroring vendor CalcPerform.lua:1429-1663's
+// mergeFlasks/mergeCharms two-stage "collect → ScaleAddList → AddList").
+// A List mod doesn't participate in sum/more/flag aggregation → the payload
+// has zero effect on output before merging (a migration invariant).
 //
-// 范围声明（M3）：只覆盖「词条进计算 + 吃 effect 乘区」；充能/持续时间/恢复模型
-// （vendor flaskData.duration/charges、calcFlaskRecovery）不建。
+// Scope: only covers "modifiers enter calc + apply the effect multiplier
+// bucket"; charge/duration/recovery modeling (vendor
+// flaskData.duration/charges, calcFlaskRecovery) isn't built.
 
-/// flask 词条载荷 List mod 名（`merge_flasks_charms` 消费）。
+/// The List mod name for a flask's modifier payload (consumed by `merge_flasks_charms`).
 pub const FLASK_BUFF_LIST_NAME: &str = "FlaskBuff";
-/// charm 词条载荷 List mod 名（`merge_flasks_charms` 消费）。
+/// The List mod name for a charm's modifier payload (consumed by `merge_flasks_charms`).
 pub const CHARM_BUFF_LIST_NAME: &str = "CharmBuff";
-/// 载荷内「本件局部 effect inc」词条名（vendor `item.flaskData.effectInc` 等价，
-/// 来自本件 `N% increased/reduced effect` 行）。merge 阶段读出后**不注入**。
+/// The name of the "this item's local effect inc" modifier inside the
+/// payload (equivalent to vendor `item.flaskData.effectInc`, sourced from
+/// this item's `N% increased/reduced effect` line). Read out at merge time
+/// but **not injected**.
 pub const LOCAL_UTILITY_EFFECT_NAME: &str = "LocalUtilityEffect";
 
-/// flask / charm 分类。PoE2 charm 在 .dat 的 item_class 同为 `UtilityFlask`
-/// （基底 id `Metadata/Items/Flasks/FourCharm*`），按基底名判别。
+/// Flask / charm classification. PoE2 charms share the `.dat` item_class
+/// `UtilityFlask` with flasks (base id `Metadata/Items/Flasks/FourCharm*`),
+/// so classification goes by base name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UtilityItemKind {
     Flask,
     Charm,
 }
 
-/// 按基底名判别 flask/charm（PoE2 charm 基底名恒含 "Charm"：Thawing/Ruby/… Charm；
-/// magic 名形如 "Sapphire Charm of Lightning" 亦命中 contains）。
+/// Classifies flask/charm by base name (PoE2 charm base names always contain
+/// "Charm": Thawing/Ruby/… Charm; magic names like "Sapphire Charm of
+/// Lightning" also match via `contains`).
 pub fn classify_utility_item(item: &Item) -> UtilityItemKind {
     if item.base.to_string().contains("Charm") {
         UtilityItemKind::Charm
@@ -257,19 +284,24 @@ pub fn classify_utility_item(item: &Item) -> UtilityItemKind {
     }
 }
 
-/// 把一件**激活态** flask/charm 的词条解析为载荷 List mod（零直接聚合影响）。
+/// Parses an **active** flask/charm's modifiers into a payload List mod (zero direct aggregation effect).
 ///
-/// - 归因：`SourceId(SourceKind::Flask, "flask.<slot_key>")`（蓝图 D4），
-///   `slot_key` = 槽名小写去空格（`"Charm 1"` → `charm1`）；内层 mod 各自带
-///   origin（slot + raw_text），merge 注入后可逐词条回溯。
-/// - `N% increased/reduced effect` → 载荷内 [`LOCAL_UTILITY_EFFECT_NAME`] Inc。
-/// - `Grants Onslaught [during effect]` → `Onslaught` Flag（merge 后由
-///   env_finalize 阶段 6 buff_definitions `OnslaughtFlask` 消费）。
-/// - 其余行剥 `... during effect` 后缀复用 [`parse_mod`]（激活态语义已由槽位
-///   `active` 门控承担）；不可解析行（含解析硬错误——flask 文本多为触发/恢复行，
-///   按编排层 skip-and-collect 容错口径）收集进 [`ItemIngest::unsupported`]。
-/// - 全部行不可解析时**仍产出空载荷**（M4-m：vendor 条件置位与 modList 无关，
-///   CalcPerform.lua:1634-1643——`UsingCharm`/`UsingFlask` 按激活槽位置真）。
+/// - Attribution: `SourceId(SourceKind::Flask, "flask.<slot_key>")`, where
+///   `slot_key` = the slot name lowercased with whitespace stripped
+///   (`"Charm 1"` → `charm1`); inner mods each carry their own origin (slot +
+///   raw_text), so they're traceable modifier-by-modifier once merged.
+/// - `N% increased/reduced effect` → the payload's [`LOCAL_UTILITY_EFFECT_NAME`] Inc.
+/// - `Grants Onslaught [during effect]` → an `Onslaught` Flag (consumed after
+///   merging by env_finalize stage 6's buff_definitions `OnslaughtFlask`).
+/// - Other lines strip the `... during effect` suffix and reuse [`parse_mod`]
+///   (the active-state semantics are already handled by the slot's `active`
+///   gate); unparseable lines (including hard parse errors — flask text is
+///   often trigger/recovery lines, following the orchestration layer's
+///   skip-and-collect tolerance) are collected into [`ItemIngest::unsupported`].
+/// - When every line fails to parse, an empty payload is **still produced**
+///   (vendor's condition setting is independent of modList content,
+///   CalcPerform.lua:1634-1643 — `UsingCharm`/`UsingFlask` is set true based
+///   on the active slot).
 pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'_>) -> ItemIngest {
     let slot_key: String = slot_name
         .to_lowercase()
@@ -308,16 +340,20 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
                     nested.push(modifier.with_origin(make_origin(text)));
                 }
             }
-            // Unsupported 或硬错误：报告原行（含后缀），与物品文本逐行可对照。
+            // Unsupported or a hard error: report the original line (with
+            // suffix), so it can be matched line-by-line against the item text.
             Ok(_) | Err(_) => ingest.unsupported.push(text.clone()),
         }
     }
 
-    // （M4-m）空载荷**仍产出**载荷 mod：vendor 对每个进预算的激活 flask/charm
-    // 无条件置 `UsingFlask`/`UsingCharm` + `Using<Base名>` 条件（CalcPerform.lua
-    // :1634-1643 charmConditions / flask 同构），与 modList 是否有可解析词条无关
-    // ——「while you have an active Charm」族词条依赖该条件。空 NestedMods 在
-    // merge 阶段缩放循环天然空转，条件置位照常。
+    // An empty payload **still produces** a payload mod: vendor
+    // unconditionally sets the `UsingFlask`/`UsingCharm` + `Using<BaseName>`
+    // conditions for every active flask/charm in the loadout
+    // (CalcPerform.lua:1634-1643 charmConditions / the flask counterpart),
+    // independent of whether modList has any parseable modifiers — the
+    // "while you have an active Charm" family of modifiers depends on this
+    // condition. An empty NestedMods list is naturally a no-op in the merge
+    // stage's scaling loop, and the condition is still set as usual.
     let list_name = match classify_utility_item(item) {
         UtilityItemKind::Flask => FLASK_BUFF_LIST_NAME,
         UtilityItemKind::Charm => CHARM_BUFF_LIST_NAME,
@@ -328,22 +364,23 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
             ModType::List,
             crate::ModValue::NestedMods(nested),
         )
-        // source = 基底名：merge 阶段 `Using<BaseName>` 条件的来源
-        // （vendor CalcPerform.lua:1536/:1647 `Using..baseName:gsub("%s+","")`）。
+        // source = the base name: the source for the merge stage's
+        // `Using<BaseName>` condition (vendor CalcPerform.lua:1536/:1647
+        // `Using..baseName:gsub("%s+","")`).
         .with_source(item.base.to_string())
         .with_origin(ModifierSource::new(source_id).with_slot(slot_key)),
     );
     ingest
 }
 
-/// flask/charm 的触发条件是基底固有描述，静默跳过不进 unsupported。
-/// 效果行（如 `Also grants N Guard` 和 `Possessed by ...`）仍走解析流程，
-/// 当前未建模时保留在 unsupported 报告中。
+/// A flask/charm's trigger condition is inherent base text, silently skipped rather than reported as unsupported.
+/// Effect lines (e.g. `Also grants N Guard` and `Possessed by ...`) still go
+/// through parsing, and stay in the unsupported report while unmodeled.
 fn is_trigger_line(text: &str) -> bool {
     text.trim().to_lowercase().starts_with("used when ")
 }
 
-/// `N% increased effect` / `N% reduced effect`（大小写不敏感）→ 本件局部 effect inc。
+/// `N% increased effect` / `N% reduced effect` (case-insensitive) → this item's local effect inc.
 fn parse_local_effect_inc(text: &str) -> Option<f64> {
     let lower = text.trim().to_lowercase();
     let (number, sign) = lower
@@ -353,18 +390,24 @@ fn parse_local_effect_inc(text: &str) -> Option<f64> {
     number.parse::<f64>().ok().map(|value| value * sign)
 }
 
-// 注：`Grants Onslaught during effect`（Silver Charm 唯一词条 The Fall of the Axe 等）
-// **刻意不再特判解析**。PoB2 ModParser 对该行返回 `unsupported`（无 mod 产出，
-// 经 `tools/pob2-oracle/run-parsemod.sh` 核实）——其 Onslaught 不进 modDB，golden
-// 不含该 Onslaught 速度。早前 `parse_granted_buff_flag` 越过 PoB2 解析能力无条件发
-// `flag("Onslaught")`，使 Speed 相对 golden 偏高（detonate-dead 2.87 vs 2.62 = 1.09x、
-// coiling 1.08x、flicker 1.15x；冷却/触发限速的 grenade/frost-bomb 不受影响故 1.00x）。
-// 移除后该行落入下方 `ctx.parse` → Unsupported，与 PoB2 逐行一致（PoBR 设计哲学亦同：
-// 不可解析文本归 Unsupported）。Silver **Flask** 的 Onslaught（CalcPerform.lua:618-648
-// `item.baseName:match("Silver Flask")` 主动形）是另一通道，与此文本词条无关；待该真实
-// 机制落地时再于对应来源接入，而非靠文本特判。
+// Note: `Grants Onslaught during effect` (the sole modifier on Silver Charm
+// The Fall of the Axe, etc.) is **deliberately no longer special-cased**.
+// PoB2's ModParser returns `unsupported` for this line (no mod is produced,
+// verified via `tools/pob2-oracle/run-parsemod.sh`) — its Onslaught never
+// enters modDB, and golden doesn't include that Onslaught speed boost. An
+// earlier `parse_granted_buff_flag` exceeded PoB2's parsing capability by
+// unconditionally emitting `flag("Onslaught")`, inflating Speed relative to
+// golden (detonate-dead 2.87 vs 2.62 = 1.09x, coiling 1.08x, flicker 1.15x;
+// cooldown/trigger-rate-capped grenade/frost-bomb were unaffected, hence
+// 1.00x). After removal, this line falls through to `ctx.parse` below →
+// Unsupported, matching PoB2 line-for-line (also consistent with PoBR's
+// design philosophy: unparseable text is Unsupported). Silver **Flask**'s
+// Onslaught (CalcPerform.lua:618-648's `item.baseName:match("Silver Flask")`
+// active form) is a separate channel unrelated to this text modifier; it
+// should be wired up through its own source when that real mechanic lands,
+// not via text special-casing.
 
-/// 剥 `... during [flask] effect` 后缀（大小写不敏感），返回正文切片。
+/// Strips the `... during [flask] effect` suffix (case-insensitive), returning the remaining slice.
 fn strip_during_effect(text: &str) -> &str {
     let trimmed = text.trim();
     let lower = trimmed.to_lowercase();
