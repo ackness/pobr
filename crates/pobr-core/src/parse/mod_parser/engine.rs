@@ -814,14 +814,14 @@ mod tests {
             o.mods
                 .iter()
                 .any(|m| m.name.as_str() == "LifeConvertToEnergyShield"),
-            "应产 LifeConvertToEnergyShield: {:?}",
+            "should produce LifeConvertToEnergyShield: {:?}",
             o.mods
         );
         assert!(
             !o.mods
                 .iter()
                 .any(|m| m.name.as_str() == "MaximumLifeConvertToEnergyShield"),
-            "不应残留 MaximumLifeConvertToEnergyShield: {:?}",
+            "should not leave MaximumLifeConvertToEnergyShield behind: {:?}",
             o.mods
         );
     }
@@ -839,19 +839,19 @@ mod tests {
             o.mods.iter().any(|m| m.name.as_str() == "AttackSpeed"
                 && m.mod_type == ModType::Inc
                 && m.value == ModValue::Number(8.0)),
-            "应产 AttackSpeed Inc 8: {:?}",
+            "should produce AttackSpeed Inc 8: {:?}",
             o.mods
         );
         assert!(
             o.mods
                 .iter()
                 .any(|m| m.name.as_str() == "CastSpeed" && m.value == ModValue::Number(8.0)),
-            "应产 CastSpeed Inc 8: {:?}",
+            "should produce CastSpeed Inc 8: {:?}",
             o.mods
         );
         assert!(
             !o.mods.iter().any(|m| m.name.as_str() == "Speed"),
-            "不应残留 bare Speed: {:?}",
+            "should not leave a bare Speed behind: {:?}",
             o.mods
         );
     }

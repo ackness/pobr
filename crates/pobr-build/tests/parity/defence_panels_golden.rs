@@ -55,13 +55,13 @@ fn run_build(name: &str, data: &BuildData) -> OutputTable {
 /// @5% relative-tolerance assertion (requires exactly 0 when golden=0, to verify no false positives at zero).
 fn assert_within_5pct(label: &str, build: &str, pobr: f64, golden: f64) {
     if golden == 0.0 {
-        assert_eq!(pobr, 0.0, "{build} {label}: golden=0 而 PoBR={pobr}");
+        assert_eq!(pobr, 0.0, "{build} {label}: golden=0 but PoBR={pobr}");
         return;
     }
     let ratio = pobr / golden;
     assert!(
         (0.95..=1.05).contains(&ratio),
-        "{build} {label}: PoBR={pobr} vs golden={golden}（ratio={ratio:.4}，超出 @5%）"
+        "{build} {label}: PoBR={pobr} vs golden={golden} (ratio={ratio:.4}, exceeds @5%)"
     );
 }
 

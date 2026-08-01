@@ -12,11 +12,11 @@ use pobr_data::prelude::*;
 fn db_from_texts(texts: &[&str]) -> ModDb {
     let mut db = ModDb::new();
     for text in texts {
-        let outcome =
-            crate::support::parse_mod(text).unwrap_or_else(|e| panic!("解析 `{text}` 失败：{e:?}"));
+        let outcome = crate::support::parse_mod(text)
+            .unwrap_or_else(|e| panic!("failed to parse `{text}`: {e:?}"));
         assert!(
             !outcome.mods.is_empty(),
-            "`{text}` 应解析出词条（Unsupported 会静默丢失覆盖）"
+            "`{text}` should parse into a mod (Unsupported silently drops coverage)"
         );
         db.add_list(outcome.mods);
     }
@@ -43,7 +43,10 @@ fn block_defaults_without_sources() {
     assert_eq!(block.block_chance_max, 50.0);
     assert_eq!(block.spell_block_chance_max, 50.0);
     assert_eq!(block.effective_block_chance, 0.0);
-    assert_eq!(block.block_effect_taken_pct, 0.0, "默认完全格挡（承伤 0%）");
+    assert_eq!(
+        block.block_effect_taken_pct, 0.0,
+        "default is full block (0% damage taken)"
+    );
 }
 
 /// Shield base + the inc multiplier: `(26 + 0) x 1.07 = 27.82` (CalcDefence.lua:989-991;
@@ -59,12 +62,12 @@ fn block_shield_base_times_increased() {
 
     assert!(
         (block.block_chance - 27.82).abs() < 1e-9,
-        "(26+0)×1.07 = 27.82，得 {}",
+        "(26+0)x1.07 = 27.82, got {}",
         block.block_chance
     );
     assert_eq!(
         block.effective_block_chance, 27.82,
-        "无 luck flag 时有效值 = 原值"
+        "without the luck flag, the effective value equals the raw value"
     );
 }
 
@@ -79,8 +82,8 @@ fn block_capped_by_max_chain() {
 
     let block = calc::calc_block(&db, &cfg);
 
-    assert_eq!(block.block_chance_max, 55.0, "50 固有 + 5 词条");
-    assert_eq!(block.block_chance, 55.0, "70 被上限 55 截断");
+    assert_eq!(block.block_chance_max, 55.0, "50 innate + 5 from the mod");
+    assert_eq!(block.block_chance, 55.0, "70 clamped by the cap 55");
 }
 
 /// Spell block (:1003-1014): has its own independent BASE/multipliers; with the
@@ -183,11 +186,15 @@ fn ward_es_to_ward_borrows_es_increases() {
     )]);
     let cfg = CalcConfig::new();
 
-    assert_eq!(calc::calc_ward(&db, &cfg, false), 120.0, "无 keystone 不借");
+    assert_eq!(
+        calc::calc_ward(&db, &cfg, false),
+        120.0,
+        "without the keystone, nothing is borrowed"
+    );
     assert_eq!(
         calc::calc_ward(&db, &cfg, true),
         150.0,
-        "keystone 借入 ES inc"
+        "the keystone borrows the ES inc"
     );
 }
 
@@ -213,7 +220,7 @@ fn deflection_chance_formula() {
 
     assert_eq!(d.rating, 5000.0);
     assert_eq!(d.chance, 35.0);
-    assert_eq!(d.effect_pct, 40.0, "基础 DeflectEffect 40（Misc.lua:111）");
+    assert_eq!(d.effect_pct, 40.0, "base DeflectEffect 40 (Misc.lua:111)");
 }
 
 /// GainAs composition (:1490): rating = 0 + (evasion x 30% + armour x 20%) x (1+inc);

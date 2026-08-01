@@ -47,7 +47,7 @@ impl fmt::Display for MergeError {
                 overlay_kind,
             } => write!(
                 f,
-                "overlay merge 类型冲突（路径 `{path}`）：base 为 {base_kind}，overlay 为 {overlay_kind}"
+                "overlay merge type conflict (path `{path}`): base is {base_kind}, overlay is {overlay_kind}"
             ),
         }
     }
@@ -144,7 +144,7 @@ fn merge_id_arrays(
             .as_object()
             .and_then(|obj| obj.get("id"))
             .and_then(Value::as_str)
-            .expect("is_id_array 已保证元素含字符串 id")
+            .expect("is_id_array already guarantees the element has a string id")
     }
 
     let mut merged = base_arr;

@@ -74,7 +74,7 @@ mod tests {
         let def = GameData::new(&dir)
             .gem_quality_stats()
             .unwrap()
-            .expect("overlay 存在应加载");
+            .expect("overlay exists, should load");
         assert_eq!(def.effects.len(), 1);
         assert_eq!(def.effects[0].effect_id, "CometPlayer");
         assert_eq!(def.effects[0].stats[0].stat, "base_spell_%_chance_to_echo");

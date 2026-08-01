@@ -188,11 +188,14 @@ impl ParseModRules {
     /// path, so failing fast beats silently marking everything Unsupported.
     pub fn from_game_data(data: &GameData) -> Result<Self, CliError> {
         let doc = data.mod_parser_rules()?.ok_or_else(|| {
-            CliError::ModParse("数据目录缺 overlay/mod_parser_rules.json（解析规则表）".into())
+            CliError::ModParse(
+                "data directory is missing overlay/mod_parser_rules.json (parse rule tables)"
+                    .into(),
+            )
         })?;
         let special_entries = data.load_ruleset()?.special_mods.unwrap_or_default();
         let rules = CompiledParserRules::compile_with_special(&doc, &special_entries)
-            .map_err(|e| CliError::ModParse(format!("parser 规则编译失败: {e:?}")))?;
+            .map_err(|e| CliError::ModParse(format!("parser rule compilation failed: {e:?}")))?;
         Ok(Self {
             rules: std::sync::Arc::new(rules),
         })
@@ -217,7 +220,7 @@ fn default_rules() -> Result<&'static ParseModRules, CliError> {
     });
     RULES
         .as_ref()
-        .map_err(|e| CliError::ModParse(format!("默认解析规则加载失败：{e}")))
+        .map_err(|e| CliError::ModParse(format!("failed to load default parse rules: {e}")))
 }
 
 /// Parses a single modifier text (using the default data directory's rules).
@@ -357,7 +360,7 @@ fn anatomy_of(m: &Modifier) -> ModAnatomy {
         ModValue::Number(n) => (Some(*n), None),
         ModValue::Bool(b) => (Some(if *b { 1.0 } else { 0.0 }), None),
         ModValue::Text(t) => (None, Some(t.clone())),
-        ModValue::NestedMods(_) => (None, Some("<嵌套 modifier 载荷>".to_string())),
+        ModValue::NestedMods(_) => (None, Some("<nested modifier payload>".to_string())),
     };
     let tags: Vec<TagExplain> = m.tags.iter().map(explain_tag).collect();
     let plain = plain_summary(m, &tags);
@@ -451,9 +454,9 @@ fn keyword_flag_names(flags: KeywordFlags) -> Vec<String> {
 fn actor_label(actor: Option<ActorRef>) -> &'static str {
     match actor {
         None => "",
-        Some(ActorRef::Player) => "玩家侧 ",
-        Some(ActorRef::Parent) => "父 actor 侧 ",
-        Some(ActorRef::Minion) => "召唤物侧 ",
+        Some(ActorRef::Player) => "player-side ",
+        Some(ActorRef::Parent) => "parent-actor-side ",
+        Some(ActorRef::Minion) => "minion-side ",
     }
 }
 
@@ -467,29 +470,22 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
         } => TagExplain {
             kind: "Condition".to_string(),
             detail: format!(
-                "仅当{}条件 `{}` {}",
+                "only in effect when the {}condition `{}` is {}",
                 actor_label(*actor),
                 var,
-                if *negated {
-                    "不成立时生效"
-                } else {
-                    "成立时生效"
-                }
+                if *negated { "false" } else { "true" }
             ),
         },
         ModTag::ConditionAnyOf { vars, negated } => TagExplain {
             kind: "ConditionAnyOf".to_string(),
             detail: format!(
-                "仅当条件 {} 中任一{}",
+                "only in effect when {} of the conditions {} {}",
+                if *negated { "none" } else { "any" },
                 vars.iter()
                     .map(|v| format!("`{v}`"))
                     .collect::<Vec<_>>()
                     .join("/"),
-                if *negated {
-                    "都不成立时生效"
-                } else {
-                    "成立时生效"
-                }
+                if *negated { "hold" } else { "holds" }
             ),
         },
         ModTag::Multiplier {
@@ -503,21 +499,26 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
             limit_total,
         } => {
             let mut detail = if *div == 1.0 {
-                format!("每点{}`{}` 缩放数值", actor_label(*actor), var)
+                format!("scales per point of {}`{}`", actor_label(*actor), var)
             } else {
-                format!("每 {} 点{}`{}` 缩放数值", div, actor_label(*actor), var)
+                format!(
+                    "scales per {} point(s) of {}`{}`",
+                    div,
+                    actor_label(*actor),
+                    var
+                )
             };
-            let cap = if *limit_total { "总量" } else { "计数" };
+            let cap = if *limit_total { "total" } else { "count" };
             if let Some(l) = limit {
-                detail.push_str(&format!("，{cap}上限 {l}"));
+                detail.push_str(&format!(", {cap} capped at {l}"));
             } else if let Some(lv) = limit_var {
                 detail.push_str(&format!(
-                    "，{cap}上限取 {}`{lv}`",
+                    ", {cap} capped at {}`{lv}`",
                     actor_label(*limit_actor)
                 ));
             }
             if *invert {
-                detail.push_str("，取倒数(1/n)");
+                detail.push_str(", inverted (1/n)");
             }
             TagExplain {
                 kind: "Multiplier".to_string(),
@@ -532,19 +533,23 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
             actor,
         } => {
             let mut detail = if *div == 1.0 {
-                format!("按{}已算出属性 `{}` 缩放数值", actor_label(*actor), stat)
+                format!(
+                    "scales by the {}computed stat `{}`",
+                    actor_label(*actor),
+                    stat
+                )
             } else {
                 format!(
-                    "按{}已算出属性 `{}` / {} 缩放数值",
+                    "scales by the {}computed stat `{}` / {}",
                     actor_label(*actor),
                     stat,
                     div
                 )
             };
             if let Some(l) = limit {
-                detail.push_str(&format!("，上限 {l}"));
+                detail.push_str(&format!(", capped at {l}"));
             } else if let Some(lv) = limit_var {
-                detail.push_str(&format!("，上限取 `{lv}`"));
+                detail.push_str(&format!(", capped at `{lv}`"));
             }
             TagExplain {
                 kind: "PerStat".to_string(),
@@ -554,8 +559,10 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
         ModTag::PercentStat { stat, percent } => TagExplain {
             kind: "PercentStat".to_string(),
             detail: match percent {
-                Some(p) => format!("按已算出属性 `{stat}` 的 {p}% 缩放数值（结果向上取整）"),
-                None => format!("按已算出属性 `{stat}` 缩放数值（结果向上取整）"),
+                Some(p) => {
+                    format!("scales by {p}% of the computed stat `{stat}` (result rounded up)")
+                }
+                None => format!("scales by the computed stat `{stat}` (result rounded up)"),
             },
         },
         ModTag::MultiplierThreshold {
@@ -565,9 +572,9 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
         } => TagExplain {
             kind: "MultiplierThreshold".to_string(),
             detail: format!(
-                "仅当 `{}` {} {} 时生效",
+                "only in effect when `{}` {} {}",
                 var,
-                if *upper { "≤" } else { "≥" },
+                if *upper { "<=" } else { ">=" },
                 threshold
             ),
         },
@@ -578,39 +585,44 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
         } => TagExplain {
             kind: "StatThreshold".to_string(),
             detail: format!(
-                "仅当已算出属性 `{}` {} {} 时生效",
+                "only in effect when the computed stat `{}` {} {}",
                 stat,
-                if *upper { "≤" } else { "≥" },
+                if *upper { "<=" } else { ">=" },
                 threshold
             ),
         },
         ModTag::GlobalLimit { value, key } => TagExplain {
             kind: "GlobalLimit".to_string(),
-            detail: format!("全局累计上限 {value}（记账桶 `{key}`）"),
+            detail: format!("global cumulative cap {value} (accounting bucket `{key}`)"),
         },
         ModTag::DamageType(dt) => TagExplain {
             kind: "DamageType".to_string(),
-            detail: format!("限 {dt:?} 伤害"),
+            detail: format!("limited to {dt:?} damage"),
         },
         ModTag::SkillTypes(st) => TagExplain {
             kind: "SkillTypes".to_string(),
-            detail: format!("限技能类型 {st:?}"),
+            detail: format!("limited to skill types {st:?}"),
         },
         ModTag::SkillTypesNeg(st) => TagExplain {
             kind: "SkillTypesNeg".to_string(),
-            detail: format!("排除技能类型 {st:?}"),
+            detail: format!("excludes skill types {st:?}"),
         },
         ModTag::SkillName { names } => TagExplain {
             kind: "SkillName".to_string(),
-            detail: format!("仅当主技能是 `{}` 时生效", names.join("` / `")),
+            detail: format!(
+                "only in effect when the main skill is `{}`",
+                names.join("` / `")
+            ),
         },
         ModTag::SlotName(slot) => TagExplain {
             kind: "SlotName".to_string(),
-            detail: format!("仅作用于装备槽 `{slot}`"),
+            detail: format!("only applies to equipment slot `{slot}`"),
         },
         ModTag::DistanceRamp { ramp } => TagExplain {
             kind: "DistanceRamp".to_string(),
-            detail: format!("随与敌人距离插值缩放（(距离,倍率) 点列：{ramp:?}）"),
+            detail: format!(
+                "interpolated by distance to enemy ((distance, multiplier) points: {ramp:?})"
+            ),
         },
     }
 }
@@ -618,84 +630,84 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
 /// A one-line plain-language summary: strings the aggregation bucket, value, and conditions into natural language.
 fn plain_summary(m: &Modifier, tags: &[TagExplain]) -> String {
     let bucket = match m.mod_type {
-        ModType::Base => "基础值(BASE)桶",
-        ModType::Inc => "增加(INC)加算桶",
-        ModType::More => "更多(MORE)连乘桶",
-        ModType::Flag => "开关(FLAG)",
-        ModType::Override => "覆盖(OVERRIDE)",
-        ModType::List => "列表(LIST)",
+        ModType::Base => "base value (BASE) bucket",
+        ModType::Inc => "additive increase (INC) bucket",
+        ModType::More => "multiplicative more (MORE) bucket",
+        ModType::Flag => "flag (FLAG)",
+        ModType::Override => "override (OVERRIDE)",
+        ModType::List => "list (LIST)",
     };
     let val = match &m.value {
         ModValue::Number(n) => format!("{n:+}"),
         ModValue::Bool(b) => b.to_string(),
         ModValue::Text(t) => t.clone(),
-        ModValue::NestedMods(_) => "<嵌套>".to_string(),
+        ModValue::NestedMods(_) => "<nested>".to_string(),
     };
     let cond = if tags.is_empty() {
         String::new()
     } else {
         format!(
-            "（{}）",
+            " ({})",
             tags.iter()
                 .map(|t| t.detail.clone())
                 .collect::<Vec<_>>()
-                .join("；")
+                .join("; ")
         )
     };
-    format!("给属性 `{}` 的{bucket} {val}{cond}", m.name)
+    format!("{bucket} of stat `{}`: {val}{cond}", m.name)
 }
 
 /// Renders an [`ExplainModReport`] as human-readable text (the CLI's default output).
 pub fn render_explain(report: &ExplainModReport) -> String {
     use std::fmt::Write as _;
     let mut s = String::new();
-    let _ = writeln!(s, "词条原文: {}", report.input);
-    let _ = writeln!(s, "状态:     {}", report.status);
+    let _ = writeln!(s, "Raw text: {}", report.input);
+    let _ = writeln!(s, "Status:   {}", report.status);
     if let Some(un) = &report.unparsed {
-        let _ = writeln!(s, "未识别:   {un}");
+        let _ = writeln!(s, "Unrecognized: {un}");
     }
     if report.mods.is_empty() {
-        let _ = writeln!(s, "\n（没有解析出任何 modifier）");
+        let _ = writeln!(s, "\n(no modifier was parsed)");
         return s;
     }
     for (i, m) in report.mods.iter().enumerate() {
         let _ = writeln!(s, "\n→ Modifier #{}", i + 1);
-        let _ = writeln!(s, "   名字 (ModName): {}", m.name);
+        let _ = writeln!(s, "   Name (ModName): {}", m.name);
         match (m.value, &m.text_value) {
             (Some(v), _) => {
-                let _ = writeln!(s, "   类型 / 值:      {} = {v}", m.mod_type);
+                let _ = writeln!(s, "   Type / value:   {} = {v}", m.mod_type);
             }
             (None, Some(t)) => {
-                let _ = writeln!(s, "   类型 / 值:      {} = {t}", m.mod_type);
+                let _ = writeln!(s, "   Type / value:   {} = {t}", m.mod_type);
             }
             (None, None) => {
-                let _ = writeln!(s, "   类型:           {}", m.mod_type);
+                let _ = writeln!(s, "   Type:           {}", m.mod_type);
             }
         }
         let flags = if m.flags.is_empty() {
-            "(无)".to_string()
+            "(none)".to_string()
         } else {
             m.flags.join(" | ")
         };
         let _ = writeln!(s, "   flags:          {flags}");
         let kw = if m.keyword_flags.is_empty() {
-            "(无)".to_string()
+            "(none)".to_string()
         } else {
             m.keyword_flags.join(" | ")
         };
         let _ = writeln!(s, "   keyword:        {kw}");
         if m.tags.is_empty() {
-            let _ = writeln!(s, "   tags:           (无——任何情境下恒定生效)");
+            let _ = writeln!(s, "   tags:           (none -- always in effect)");
         } else {
-            let _ = writeln!(s, "   tags（条件与缩放灵魂）:");
+            let _ = writeln!(s, "   tags (the soul of conditions and scaling):");
             for t in &m.tags {
                 let _ = writeln!(s, "     • {:<14} {}", t.kind, t.detail);
             }
         }
         if let Some(src) = &m.source {
-            let _ = writeln!(s, "   来源文本:       {src}");
+            let _ = writeln!(s, "   Source text:    {src}");
         }
-        let _ = writeln!(s, "   人话:           {}", m.plain);
+        let _ = writeln!(s, "   Plain language: {}", m.plain);
     }
     s
 }
@@ -1165,11 +1177,14 @@ fn fmt_num(n: f64) -> String {
 pub fn render_marginal(report: &MarginalReport) -> String {
     use std::fmt::Write as _;
     let mut s = String::new();
-    let _ = writeln!(s, "\n═══ 边际贡献（加到 build 上前后对比）═══");
+    let _ = writeln!(
+        s,
+        "\n=== Marginal contribution (before/after comparison on the build) ==="
+    );
     let b = &report.build;
     let _ = writeln!(
         s,
-        "build: Lv{} {}/{} · {} 天赋节点 · {} 装备 · {} 技能组",
+        "build: Lv{} {}/{} · {} passive node(s) · {} item(s) · {} skill group(s)",
         b.level,
         b.class_name,
         b.ascendancy_name,
@@ -1177,11 +1192,12 @@ pub fn render_marginal(report: &MarginalReport) -> String {
         b.equipped_item_count,
         b.socket_group_count
     );
-    let _ = writeln!(s, "加入词条: {}", report.added_mod_texts.join(" / "));
+    let _ = writeln!(s, "Added mod: {}", report.added_mod_texts.join(" / "));
     if report.deltas.is_empty() {
         let _ = writeln!(
             s,
-            "（该词条对当前 build 的关键输出无可见影响——可能条件未满足、不适用主技能，或词条未被解析支持）"
+            "(this mod has no visible impact on the current build's key outputs -- the condition may not be \
+             met, it may not apply to the main skill, or the mod text may not be parseable)"
         );
         return s;
     }
@@ -1255,7 +1271,7 @@ mod explain_tests {
         assert_eq!(m.name, "MaximumLife");
         assert_eq!(m.mod_type, "BASE");
         assert_eq!(m.value, Some(50.0));
-        assert!(m.tags.is_empty(), "平凡词条不应有 tag");
+        assert!(m.tags.is_empty(), "a plain mod should have no tags");
         assert!(m.flags.is_empty());
     }
 
@@ -1273,18 +1289,18 @@ mod explain_tests {
             .mods
             .iter()
             .find(|m| m.name == "FireDamage")
-            .expect("应解析出 FireDamage modifier");
+            .expect("should have parsed a FireDamage modifier");
         assert_eq!(m.mod_type, "INC");
         assert!(
             m.tags
                 .iter()
                 .any(|t| t.kind == "Condition" && t.detail.contains("FullLife")),
-            "应有 Condition(FullLife) tag，实际 tags = {:?}",
+            "should have a Condition(FullLife) tag, actual tags = {:?}",
             m.tags
         );
         assert!(
             m.tags.iter().any(|t| t.kind == "DamageType"),
-            "应有 DamageType tag"
+            "should have a DamageType tag"
         );
         // The plain-language summary strings the condition in.
         assert!(m.plain.contains("FullLife"));
@@ -1303,12 +1319,12 @@ mod explain_tests {
             .mods
             .iter()
             .find(|m| m.name == "AttackDamage")
-            .expect("应解析出 AttackDamage modifier");
+            .expect("should have parsed an AttackDamage modifier");
         assert!(
             m.tags
                 .iter()
                 .any(|t| t.kind == "Multiplier" && t.detail.contains("Strength")),
-            "应有 Multiplier(Strength) tag，实际 tags = {:?}",
+            "should have a Multiplier(Strength) tag, actual tags = {:?}",
             m.tags
         );
     }
@@ -1332,7 +1348,7 @@ mod explain_tests {
         )
         .unwrap();
         let text = render_explain(&report);
-        assert!(text.contains("词条原文:"));
+        assert!(text.contains("Raw text:"));
         assert!(text.contains("Parsed"));
         assert!(text.contains("Condition"));
         assert!(text.contains("FullLife"));
@@ -1368,13 +1384,13 @@ mod marginal_tests {
             .deltas
             .iter()
             .find(|d| d.key == "Life")
-            .expect("Life 应有变化");
-        assert!(life.after > life.before, "Life 应上升");
+            .expect("Life should have changed");
+        assert!(life.after > life.before, "Life should rise");
         // The base +500 gets amplified by the increased Life% multiplier ->
         // the actual delta is >= 500 (proving it went through the real aggregation pipeline).
         assert!(
             life.delta >= 500.0,
-            "Life 增量应被 increased% 乘区放大，实际 {}",
+            "Life delta should be amplified by the increased% multiplier, actual {}",
             life.delta
         );
     }
@@ -1389,8 +1405,8 @@ mod marginal_tests {
             .deltas
             .iter()
             .find(|d| d.key == "DPS (hit)")
-            .expect("DPS 应有变化");
-        assert!(dps.delta > 0.0, "增伤词条应提升 DPS");
+            .expect("DPS should have changed");
+        assert!(dps.delta > 0.0, "a damage-increasing mod should raise DPS");
         assert!(dps.pct.unwrap() > 0.0);
     }
 
@@ -1411,7 +1427,7 @@ mod marginal_tests {
             deltas: Vec::new(),
         };
         let text = render_marginal(&report);
-        assert!(text.contains("边际贡献"));
-        assert!(text.contains("无可见影响"));
+        assert!(text.contains("Marginal contribution"));
+        assert!(text.contains("no visible impact"));
     }
 }

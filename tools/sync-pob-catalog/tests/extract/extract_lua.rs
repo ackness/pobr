@@ -44,12 +44,18 @@ fn sample_meta() -> OverlayMeta {
 fn extract_is_byte_stable_across_runs() {
     let args = fixture_args();
     if !luajit_available(&args.luajit) {
-        eprintln!("skip: 环境中无可用 luajit（{}）", args.luajit.display());
+        eprintln!(
+            "skip: no luajit available in this environment ({})",
+            args.luajit.display()
+        );
         return;
     }
     let first = run_extract_lua(&args).expect("first run");
     let second = run_extract_lua(&args).expect("second run");
-    assert_eq!(first, second, "extract-lua 两次运行产物必须 byte 相等");
+    assert_eq!(
+        first, second,
+        "extract-lua output must be byte-identical across two runs"
+    );
 }
 
 /// Extraction semantics: constants collapse into value, varying values keep per_level, baseMods Speed MORE carries a stat_set
@@ -57,11 +63,15 @@ fn extract_is_byte_stable_across_runs() {
 fn extract_captures_expected_overrides() {
     let args = fixture_args();
     if !luajit_available(&args.luajit) {
-        eprintln!("skip: 环境中无可用 luajit（{}）", args.luajit.display());
+        eprintln!(
+            "skip: no luajit available in this environment ({})",
+            args.luajit.display()
+        );
         return;
     }
     let json = run_extract_lua(&args).expect("run");
-    let doc: SkillOverridesDoc = serde_json::from_str(&json).expect("产物必须是合法 JSON 文档");
+    let doc: SkillOverridesDoc =
+        serde_json::from_str(&json).expect("output must be a valid JSON document");
 
     assert_eq!(doc.meta.schema, SKILL_OVERRIDES_SCHEMA);
     assert_eq!(
@@ -88,16 +98,31 @@ fn extract_captures_expected_overrides() {
     );
 
     let arc = &doc.overrides[0];
-    assert_eq!(arc.value, None, "变值 stat 不应压缩为单值");
+    assert_eq!(
+        arc.value, None,
+        "a varying stat should not collapse into a single value"
+    );
     assert_eq!(arc.per_level, Some(vec![(1, 2.0), (2, 2.65)]));
 
     let flicker_bm = &doc.overrides[1];
-    assert_eq!(flicker_bm.value, Some(1.2), "常量 stat 应压缩为单值");
+    assert_eq!(
+        flicker_bm.value,
+        Some(1.2),
+        "a constant stat should collapse into a single value"
+    );
     assert_eq!(flicker_bm.per_level, None);
 
     let flicker_dot = &doc.overrides[2];
-    assert_eq!(flicker_dot.stat_set, Some(1), "dotIs* 恒带 statSet 序号");
-    assert_eq!(flicker_dot.value, Some(1.0), "dotIs* 布尔以 value 1 入库");
+    assert_eq!(
+        flicker_dot.stat_set,
+        Some(1),
+        "dotIs* always carries a statSet index"
+    );
+    assert_eq!(
+        flicker_dot.value,
+        Some(1.0),
+        "dotIs* booleans are stored as value 1"
+    );
 
     let flicker_more = &doc.overrides[3];
     assert_eq!(flicker_more.stat_set, Some(1));
@@ -111,15 +136,15 @@ fn missing_luajit_yields_clear_error() {
         luajit: PathBuf::from("/nonexistent/path/to/luajit"),
         ..fixture_args()
     };
-    let error = run_extract_lua(&args).expect_err("不存在的 luajit 必须报错");
+    let error = run_extract_lua(&args).expect_err("a nonexistent luajit must produce an error");
     let message = error.to_string();
     assert!(
         message.contains("luajit"),
-        "错误信息应提到 luajit：{message}"
+        "error message should mention luajit: {message}"
     );
     assert!(
         message.contains("--luajit") || message.contains("POBR_LUAJIT"),
-        "错误信息应提示修复途径：{message}"
+        "error message should hint at how to fix it: {message}"
     );
 }
 
@@ -148,9 +173,12 @@ fn assemble_document_is_deterministic_and_sorted() {
     ];
     let from_shuffled = assemble_overrides_document(sample_meta(), shuffled);
     let from_ordered = assemble_overrides_document(sample_meta(), ordered.clone());
-    assert_eq!(from_shuffled, from_ordered, "输入顺序不得影响产物");
+    assert_eq!(
+        from_shuffled, from_ordered,
+        "input order must not affect the output"
+    );
 
-    let doc: SkillOverridesDoc = serde_json::from_str(&from_shuffled).expect("合法 JSON");
+    let doc: SkillOverridesDoc = serde_json::from_str(&from_shuffled).expect("valid JSON");
     assert_eq!(doc.overrides, ordered);
-    assert!(from_shuffled.ends_with('\n'), "产物以换行结尾");
+    assert!(from_shuffled.ends_with('\n'), "output ends with a newline");
 }

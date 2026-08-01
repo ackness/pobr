@@ -17,7 +17,7 @@ fn version() -> String {
 fn load() -> LocalModsDef {
     GameData::new(repo_data_root().join(version()))
         .local_mods()
-        .expect("local_mods 可加载")
+        .expect("local_mods should load")
 }
 
 /// The JSON is value-equal to the built-in fallback (the core assertion
@@ -61,7 +61,7 @@ fn whitelist_entries_are_lowercase() {
         assert_eq!(
             entry,
             &entry.to_lowercase(),
-            "白名单条目 {entry:?} 含大写字符"
+            "whitelist entry {entry:?} contains uppercase characters"
         );
     }
 }

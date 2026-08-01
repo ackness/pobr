@@ -98,7 +98,7 @@ impl CombineMode {
                 _ => Some(legs[0]),
             };
         }
-        debug_assert_eq!(legs.len(), 2, "combineStat 是双腿算子（MH/OH）");
+        debug_assert_eq!(legs.len(), 2, "combineStat is a two-leg operator (MH/OH)");
         let (mh, oh) = (legs[0], legs[1]);
         match self {
             Self::Or => Some(mh),
@@ -135,7 +135,7 @@ impl CombineMode {
                 _ => Some(vec![1.0]),
             };
         }
-        debug_assert_eq!(legs.len(), 2, "combineStat 是双腿算子（MH/OH）");
+        debug_assert_eq!(legs.len(), 2, "combineStat is a two-leg operator (MH/OH)");
         let (mh, oh) = (legs[0], legs[1]);
         match self {
             Self::Or => Some(vec![1.0, 0.0]),
@@ -251,7 +251,7 @@ impl TraceGraph {
     pub fn end_pass(&mut self) {
         debug_assert!(
             !self.pass_stack.is_empty(),
-            "end_pass 在空 pass 栈上调用（begin/end 不配对）"
+            "end_pass called on an empty pass stack (begin/end not paired)"
         );
         self.pass_stack.pop();
     }

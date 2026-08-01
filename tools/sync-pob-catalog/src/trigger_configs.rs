@@ -606,7 +606,7 @@ fn scan_vendor_config_keys(vendor_root: &Path) -> io::Result<BTreeSet<String>> {
     let text = fs::read_to_string(&path).map_err(|error| {
         io::Error::new(
             io::ErrorKind::NotFound,
-            format!("无法读取 {}：{error}", path.display()),
+            format!("failed to read {}: {error}", path.display()),
         )
     })?;
 
@@ -648,12 +648,12 @@ fn check_key_drift(vendor_root: &Path) -> io::Result<usize> {
         let missing: Vec<&String> = vendor_keys.difference(&embedded_keys).collect();
         let extra: Vec<&String> = embedded_keys.difference(&vendor_keys).collect();
         return Err(io::Error::other(format!(
-            "trigger configTable key 对账失败（vendor drift，须更新内嵌转写）：\n  vendor 有而转写缺 {missing:?}\n  转写有而 vendor 无 {extra:?}"
+            "trigger configTable key reconciliation failed (vendor drift, embedded transcription needs updating):\n  present in vendor but missing from transcription {missing:?}\n  present in transcription but missing from vendor {extra:?}"
         )));
     }
     if vendor_keys.len() != VENDOR_CONFIG_TABLE_COUNT {
         return Err(io::Error::other(format!(
-            "trigger configTable 条目数 {} ≠ 预期 {VENDOR_CONFIG_TABLE_COUNT}",
+            "trigger configTable entry count {} != expected {VENDOR_CONFIG_TABLE_COUNT}",
             vendor_keys.len()
         )));
     }
@@ -696,7 +696,7 @@ fn vendor_fingerprint(vendor_root: &Path) -> io::Result<String> {
     let text = fs::read_to_string(&path).map_err(|error| {
         io::Error::new(
             io::ErrorKind::NotFound,
-            format!("无法读取 {}：{error}", path.display()),
+            format!("failed to read {}: {error}", path.display()),
         )
     })?;
     Ok(format!("{}L:{}B", text.lines().count(), text.len()))
@@ -715,7 +715,7 @@ mod tests {
         let mut sorted = names.clone();
         sorted.sort();
         sorted.dedup();
-        assert_eq!(names, sorted, "key.name 必须唯一且升序");
+        assert_eq!(names, sorted, "key.name must be unique and ascending");
     }
 
     /// handler entries carry the `trigger:` prefix (20-doc §5's global ledger
@@ -730,11 +730,18 @@ mod tests {
         for handler in &handlers {
             assert!(
                 handler.starts_with("trigger:"),
-                "handler id {handler} 缺 trigger: 前缀"
+                "handler id {handler} is missing the trigger: prefix"
             );
         }
-        assert_eq!(handlers.len(), 15, "handler 条目数变化须同步监控台账");
-        assert!(handlers.len() < 100, "handler 总数超 20 号 §5 监控闸");
+        assert_eq!(
+            handlers.len(),
+            15,
+            "handler entry count changes must be synced to the monitoring ledger"
+        );
+        assert!(
+            handlers.len() < 100,
+            "total handler count exceeds doc-20 §5's monitoring gate"
+        );
     }
 
     /// Every entry has a key category plus a vendor line-range anchor;
@@ -748,20 +755,24 @@ mod tests {
                     config.key.kind.as_str(),
                     "skill" | "triggered_by" | "unique_item"
                 ),
-                "{} 的 kind 非法：{}",
+                "{}'s kind is invalid: {}",
                 config.key.name,
                 config.key.kind
             );
             assert!(
                 config.vendor_ref.starts_with("Modules/CalcTriggers.lua:"),
-                "{} 缺 vendor 行段锚点",
+                "{} is missing a vendor line-range anchor",
                 config.key.name
             );
             for cond in [&config.source_skill_cond, &config.triggered_skill_cond]
                 .into_iter()
                 .flatten()
             {
-                assert!(!cond.is_empty(), "{} 带空谓词", config.key.name);
+                assert!(
+                    !cond.is_empty(),
+                    "{} carries an empty predicate",
+                    config.key.name
+                );
             }
         }
     }
@@ -786,7 +797,7 @@ mod tests {
         let coc = configs
             .iter()
             .find(|c| c.key.name == "cast on critical strike")
-            .expect("缺 CoC 条目");
+            .expect("missing CoC entry");
         assert!(coc.trigger_on_crit);
         assert!(coc.source_skill_cond.is_some());
     }

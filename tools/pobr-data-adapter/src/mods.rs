@@ -102,7 +102,9 @@ fn mod_type_lookup(en: &Path) -> Vec<String> {
         name: Option<String>,
     }
     let Ok(rows) = read_json::<Vec<RawModType>>(&en.join("ModType.json")) else {
-        eprintln!("⚠ pobr-data-adapter：ModType.json 缺失/不可读——mods.json 的 group 字段整列缺省");
+        eprintln!(
+            "warning: pobr-data-adapter: ModType.json missing/unreadable -- the entire group field column in mods.json will default"
+        );
         return Vec::new();
     };
     let max = rows.iter().map(|r| r.index).max().map_or(0, |m| m + 1);

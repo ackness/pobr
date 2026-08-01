@@ -60,7 +60,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(err) => {
-            eprintln!("pobr-data-adapter 失败：{err}");
+            eprintln!("pobr-data-adapter failed: {err}");
             ExitCode::FAILURE
         }
     }
@@ -105,7 +105,10 @@ fn parse_args() -> Result<Mode, String> {
     let mut strict_columns = false;
     let mut it = std::env::args().skip(1);
     while let Some(flag) = it.next() {
-        let mut take = |name: &str| it.next().ok_or_else(|| format!("{name} 缺少参数值"));
+        let mut take = |name: &str| {
+            it.next()
+                .ok_or_else(|| format!("{name} is missing a value"))
+        };
         match flag.as_str() {
             "--raw" => raw = Some(PathBuf::from(take("--raw")?)),
             "--tree" => tree = Some(PathBuf::from(take("--tree")?)),
@@ -122,11 +125,11 @@ fn parse_args() -> Result<Mode, String> {
             // Resilience: by default, a missing column only warns and
             // continues (keeping data and code decoupled); CI can add this flag to turn it into a hard failure.
             "--strict-columns" => strict_columns = true,
-            other => return Err(format!("未知参数：{other}")),
+            other => return Err(format!("unknown argument: {other}")),
         }
     }
-    let out = out.ok_or("缺少 --out <data>")?;
-    let patch = patch.ok_or("缺少 --patch <version>")?;
+    let out = out.ok_or("missing --out <data>")?;
+    let patch = patch.ok_or("missing --patch <version>")?;
     let mode_count = [
         raw.is_some(),
         tree.is_some(),
@@ -142,7 +145,7 @@ fn parse_args() -> Result<Mode, String> {
     if mode_count > 1 {
         return Err(
             "--raw / --tree / --tree-coords / --tree-variants / --tree-anoints / \
-             --emit-special-derived 互斥，请分别运行"
+             --emit-special-derived are mutually exclusive, run them separately"
                 .into(),
         );
     }
@@ -187,12 +190,12 @@ fn parse_args() -> Result<Mode, String> {
     } else if let Some(tree_lua) = tree_full {
         Ok(Mode::TreeVersions(tree_versions::TreeVersionsArgs {
             tree_lua,
-            tree_version: tree_version.ok_or("--tree-full 需要 --tree-version <如 0_3>")?,
+            tree_version: tree_version.ok_or("--tree-full requires --tree-version <e.g. 0_3>")?,
             out,
             patch,
         }))
     } else {
-        Err("缺少 --raw <pipeline/tables> / --tree <data.json> / \
+        Err("missing --raw <pipeline/tables> / --tree <data.json> / \
              --tree-coords <tree.lua> / --tree-variants <tree.lua> / \
              --tree-anoints <tree.lua>"
             .into())
@@ -344,8 +347,8 @@ fn weapon_armour_lookups(en: &Path) -> Result<BaseStatsLookups, String> {
 }
 
 pub(crate) fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T, String> {
-    let bytes = fs::read(path).map_err(|e| format!("读取 {} 失败：{e}", path.display()))?;
-    serde_json::from_slice(&bytes).map_err(|e| format!("解析 {} 失败：{e}", path.display()))
+    let bytes = fs::read(path).map_err(|e| format!("failed to read {}: {e}", path.display()))?;
+    serde_json::from_slice(&bytes).map_err(|e| format!("failed to parse {}: {e}", path.display()))
 }
 
 /// Builds a position-indexed lookup table from `_index -> Id` (`_index` is contiguous; out-of-range returns None).
@@ -378,8 +381,8 @@ fn run(args: Args) -> Result<String, String> {
     let column_drift = required_columns::check_required_columns(&en, &tw)?;
     if !column_drift.is_empty() {
         eprintln!(
-            "⚠ pobr-data-adapter：检测到 {} 处列漂移（按 serde 默认降级，相关字段将缺失/为空，\
-             不中止；如需严格门禁用 --strict-columns）：",
+            "warning: pobr-data-adapter: detected {} column drift(s) (degrading via serde defaults, \
+             affected fields will be missing/empty, not aborting; use --strict-columns for a hard gate):",
             column_drift.len()
         );
         for m in &column_drift {
@@ -387,7 +390,7 @@ fn run(args: Args) -> Result<String, String> {
         }
         if args.strict_columns {
             return Err(format!(
-                "--strict-columns：列漂移 {} 处，拒绝继续：\n  - {}",
+                "--strict-columns: {} column drift(s) detected, refusing to continue:\n  - {}",
                 column_drift.len(),
                 column_drift.join("\n  - ")
             ));
@@ -467,9 +470,9 @@ fn run(args: Args) -> Result<String, String> {
     // Write out: domain JSON goes in the base/ layer; manifest and the i18n sidecar stay at the version root.
     let version_dir = args.out.join(&args.patch);
     let base_dir = version_dir.join("base");
-    fs::create_dir_all(&base_dir).map_err(|e| format!("创建输出目录失败：{e}"))?;
+    fs::create_dir_all(&base_dir).map_err(|e| format!("failed to create output directory: {e}"))?;
     fs::create_dir_all(version_dir.join("i18n").join("zh-TW"))
-        .map_err(|e| format!("创建输出目录失败：{e}"))?;
+        .map_err(|e| format!("failed to create output directory: {e}"))?;
 
     // Column drift report: if there's drift, write `_drift.json` (machine
     // readable, for regen/CI review); if not, clean up any stale file (keeps the directory clean and reproducible).
@@ -487,7 +490,7 @@ fn run(args: Args) -> Result<String, String> {
             "missing_columns": column_drift,
         });
         write_pretty(&drift_path, &drift)?;
-        eprintln!("   列漂移报告 → {}", drift_path.display());
+        eprintln!("   column drift report -> {}", drift_path.display());
     }
 
     write_pretty(&base_dir.join("base_items.json"), &bases)?;
@@ -556,11 +559,11 @@ fn run(args: Args) -> Result<String, String> {
     write_pretty(&manifest_path, &manifest)?;
 
     Ok(format!(
-        "适配完成：base_items {}/{} 条（过滤 {} 个占位），zh-TW 名称 {} 条；\
-         stats {} 条；mods {} 条（过滤 {} 个空壳），mods zh-TW 名称 {} 条；\
-         skill_gems {}/{} 条，granted_effects {}/{} 条，\
-         granted_effect_levels {} 个效果 / {} 行，zh-TW 技能名 {} 条，\
-         granted_effect_stat_sets {} 个伤害效果 / {} 级（共 {} stat-set） → {}",
+        "adaptation complete: base_items {}/{} (filtered {} placeholder(s)), zh-TW names {}; \
+         stats {}; mods {} (filtered {} empty shell(s)), mods zh-TW names {}; \
+         skill_gems {}/{}, granted_effects {}/{}, \
+         granted_effect_levels {} effect(s) / {} row(s), zh-TW skill names {}, \
+         granted_effect_stat_sets {} damage effect(s) / {} level(s) ({} stat-set total) -> {}",
         bases.len(),
         total,
         total - bases.len(),
@@ -585,6 +588,7 @@ fn run(args: Args) -> Result<String, String> {
 
 pub(crate) fn write_pretty<T: serde::Serialize>(path: &Path, value: &T) -> Result<(), String> {
     let json = serde_json::to_string_pretty(value)
-        .map_err(|e| format!("序列化 {} 失败：{e}", path.display()))?;
-    fs::write(path, format!("{json}\n")).map_err(|e| format!("写入 {} 失败：{e}", path.display()))
+        .map_err(|e| format!("failed to serialize {}: {e}", path.display()))?;
+    fs::write(path, format!("{json}\n"))
+        .map_err(|e| format!("failed to write {}: {e}", path.display()))
 }

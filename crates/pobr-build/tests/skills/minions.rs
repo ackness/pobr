@@ -25,7 +25,7 @@ fn version() -> String {
 
 fn load_data() -> BuildData {
     let data = GameData::new(repo_data_root().join(version()));
-    BuildData::load(&data).expect("加载 golden parity 版本数据")
+    BuildData::load(&data).expect("load golden parity version data")
 }
 
 fn default_opts() -> DataOrchestratorOptions {
@@ -56,7 +56,9 @@ fn zombie_build(gem_level: u32) -> Build {
 #[test]
 fn build_data_minion_def_zombie() {
     let data = load_data();
-    let zombie = data.minion_def("RaisedZombie").expect("RaisedZombie 在库");
+    let zombie = data
+        .minion_def("RaisedZombie")
+        .expect("RaisedZombie is in the data pack");
     // Values come from Minions.lua and drift with balance patches -> blessed snapshot (refresh with POBR_BLESS_PINS=1).
     pobr_gamedata::test_pins::assert_pin(
         &repo_data_root().join(version()),
@@ -72,7 +74,7 @@ fn build_data_minion_def_spectre_falls_back() {
     // spectre key = full metadata path (minions.json miss -> falls through to spectres.json)
     let c = data
         .minion_def("Metadata/Monsters/LeagueAbyss/Lightless/Cocoon3Spectre")
-        .expect("Lightless Abomination 在库（落 spectres）");
+        .expect("Lightless Abomination is in the data pack (falls into spectres)");
     // Values come from Spectres.lua and drift with balance patches (0.5.4b: life 3.0->2.2) -> blessed snapshot.
     pobr_gamedata::test_pins::assert_pin(
         &repo_data_root().join(version()),
@@ -106,14 +108,18 @@ fn summon_build_populates_output_minions() {
     // A summon gem is recognized -> OutputTable.minions non-empty (one of the G4 closure criteria).
     assert!(
         !out.minions.is_empty(),
-        "Raise Zombie build 应产出召唤物快照"
+        "a Raise Zombie build should produce a minion snapshot"
     );
     let zombie = &out.minions[0];
     // Minion level = minionLevelTable[gem_level=20] = 40 (CalcActiveSkill.lua:896 default rule).
     assert_eq!(zombie.level, minion_level_from_gem_level(20));
     assert_eq!(zombie.level, 40);
     // Life > 0 (derived from the monster-level base table × the 0.7 normalization multiplier).
-    assert!(zombie.life > 0.0, "召唤物生命应 > 0，实测 {}", zombie.life);
+    assert!(
+        zombie.life > 0.0,
+        "minion life should be > 0, measured {}",
+        zombie.life
+    );
 }
 
 #[test]
@@ -133,7 +139,10 @@ fn non_summon_build_has_empty_minions() {
                 .with_gem_skill("FireballPlayer", 20),
         );
     let out = calculate_with_data(&build, &data, &default_opts()).expect("calculate");
-    assert!(out.minions.is_empty(), "非召唤 build minions 应为空");
+    assert!(
+        out.minions.is_empty(),
+        "a non-summon build's minions should be empty"
+    );
 }
 
 /// Minion life = monster-ally life table(level) × the life normalization
@@ -146,7 +155,9 @@ fn summon_zombie_life_matches_core_derivation() {
     let zombie_out = &out.minions[0];
 
     // Derives the same minion directly via core's pure function and compares against the life it produces after the defence pipeline.
-    let def = data.minion_def("RaisedZombie").expect("RaisedZombie 在库");
+    let def = data
+        .minion_def("RaisedZombie")
+        .expect("RaisedZombie is in the data pack");
     let ctx = build_minion_context_from_def(def, 20, vec![], vec![], AttributeInfusion::default());
     let core_life = ctx.base.life;
     assert_eq!(zombie_out.level, resolve_minion_level(20));
@@ -154,7 +165,7 @@ fn summon_zombie_life_matches_core_derivation() {
     // B2 doesn't add any minion mod, so they should match.
     assert!(
         (zombie_out.life - core_life).abs() < 1.0,
-        "orchestrator minion life {} 应 ≈ core 派生 {}",
+        "orchestrator minion life {} should ≈ core-derived {}",
         zombie_out.life,
         core_life
     );
@@ -174,7 +185,7 @@ fn minion_increased_damage_raises_minion_dps() {
 
     let base = calculate_with_data(&zombie_build(20), &data, &default_opts()).expect("base calc");
     let base_dps = base.minions[0].dps;
-    assert!(base_dps > 0.0, "基线召唤物 DPS 应 > 0");
+    assert!(base_dps > 0.0, "baseline minion DPS should be > 0");
 
     // Ring carries a minion mod (attributed via collect_item_texts -> parse_minion_modifier).
     let ring = Item {
@@ -195,8 +206,11 @@ fn minion_increased_damage_raises_minion_dps() {
     // Minion DPS should increase with +50% increased Damage (the exact multiplier depends on other stacked inc mods).
     assert!(
         buffed_dps > base_dps,
-        "minion DPS 应随 Minions deal 50% increased Damage 增长：base {base_dps} → buffed {buffed_dps}"
+        "minion DPS should grow with Minions deal 50% increased Damage: base {base_dps} → buffed {buffed_dps}"
     );
     // Player's own DPS isn't affected by the minion mod (a minion mod doesn't feed the player's aggregation).
-    assert_eq!(buffed.dps, base.dps, "玩家自身 DPS 不应被 minion 词条改变");
+    assert_eq!(
+        buffed.dps, base.dps,
+        "the player's own DPS should not be changed by a minion mod"
+    );
 }

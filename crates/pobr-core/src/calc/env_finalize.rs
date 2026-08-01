@@ -622,13 +622,13 @@ mod forward_enemy_modifiers_tests {
                 .mod_db
                 .sum(ModType::Inc, &effective_cursed_cfg(), &names),
             6.0,
-            "EnemyCursed + Effective → 敌侧受伤链命中"
+            "EnemyCursed + Effective -> enemy-side damage-taken chain matches"
         );
         let panel_cfg = CalcConfig::new().with_condition("EnemyCursed", true);
         assert_eq!(
             env.enemy.mod_db.sum(ModType::Inc, &panel_cfg, &names),
             0.0,
-            "面板口径（无 Effective）→ 不命中"
+            "panel scope (no Effective) -> doesn't match"
         );
     }
 
@@ -648,7 +648,10 @@ mod forward_enemy_modifiers_tests {
             &[ModName::from("DamageTaken")],
         );
         assert_eq!(contributions.len(), 1);
-        let origin = contributions[0].origin.as_ref().expect("origin 回退外层");
+        let origin = contributions[0]
+            .origin
+            .as_ref()
+            .expect("origin should fall back to the outer entry");
         assert_eq!(
             origin.source_id,
             SourceId::new(SourceKind::ItemEnchant, "item.helmet.enchant")
@@ -678,7 +681,7 @@ mod forward_enemy_modifiers_tests {
         assert_eq!(
             contributions[0].origin.as_ref().unwrap().source_id,
             own_origin.source_id,
-            "inner 自带 origin 优先（vendor `mod.source or ...` 短路语义）"
+            "inner's own origin takes priority (vendor's `mod.source or ...` short-circuit semantics)"
         );
     }
 
@@ -697,7 +700,7 @@ mod forward_enemy_modifiers_tests {
         assert_eq!(
             env.enemy.mod_db.sum(ModType::Inc, &cfg, &names),
             12.0,
-            "值相等的两份来源各自保留（vendor 按实例缓存，不按值合并）"
+            "two equal-valued source entries are each kept (vendor caches by instance, not merged by value)"
         );
 
         // Repeated calls (vendor's applyEnemyModifiers triggers at multiple points within perform) → no re-injection.
@@ -706,7 +709,7 @@ mod forward_enemy_modifiers_tests {
         assert_eq!(
             env.enemy.mod_db.sum(ModType::Inc, &cfg, &names),
             12.0,
-            "幂等：已转发条目按指纹多重集抵扣"
+            "idempotent: already-forwarded entries are deducted by a fingerprint multiset"
         );
         assert_eq!(env.enemy.mod_db.iter_mods().count(), 2);
     }
@@ -763,10 +766,13 @@ mod forward_enemy_modifiers_tests {
 
         let base = dps(false);
         let cursed = dps(true);
-        assert!(base > 0.0, "fixture 有非零 DPS 基线");
+        assert!(
+            base > 0.0,
+            "the fixture should have a non-zero DPS baseline"
+        );
         assert!(
             (cursed / base - 1.06).abs() < 1e-9,
-            "敌侧 DamageTaken INC 6 → 有效 DPS ×1.06（实测 {:.6}）",
+            "enemy-side DamageTaken INC 6 -> effective DPS x1.06 (measured {:.6})",
             cursed / base
         );
     }

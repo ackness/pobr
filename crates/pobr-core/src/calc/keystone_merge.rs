@@ -152,7 +152,11 @@ mod tests {
                     .is_some_and(|o| o.source_id.kind == SourceKind::GrantedKeystone)
             })
             .collect();
-        assert_eq!(injected.len(), 2, "keystone 的 2 条 mod 各注入一次");
+        assert_eq!(
+            injected.len(),
+            2,
+            "keystone's 2 mods are each injected once"
+        );
         for m in &injected {
             assert_eq!(
                 m.origin.as_ref().unwrap().source_id.id,
@@ -188,7 +192,7 @@ mod tests {
                 .mod_db
                 .sum(ModType::Inc, &env.cfg, &[ModName::from("Armour")],),
             20.0,
-            "幂等：重复授予/二次合并不得叠加"
+            "idempotent: repeated grants / a second merge must not stack"
         );
     }
 

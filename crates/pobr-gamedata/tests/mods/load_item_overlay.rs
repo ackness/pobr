@@ -20,23 +20,23 @@ fn mod_scalability_samples() {
     let def = game_data()
         .mod_scalability()
         .unwrap()
-        .expect("mod_scalability.json 在库");
+        .expect("mod_scalability.json should be present");
     assert!(
         def.entries.len() >= 15000,
-        "ModScalability.lua 约 15037 行条目（实测 {}）",
+        "ModScalability.lua has ~15037 line entries (got {})",
         def.entries.len()
     );
     assert!(
         def.entries
             .windows(2)
             .all(|w| w[0].template < w[1].template),
-        "template 严格升序（key 唯一）"
+        "templates should be strictly ascending (unique key)"
     );
     let find = |t: &str| {
         def.entries
             .iter()
             .find(|e| e.template == t)
-            .unwrap_or_else(|| panic!("模板 {t:?} 缺失"))
+            .unwrap_or_else(|| panic!("template {t:?} missing"))
     };
     let armour = find("# Armour per 2 Strength");
     assert_eq!(armour.slots.len(), 1);
@@ -57,10 +57,10 @@ fn catalysts_thirteen_entries() {
     let def = game_data()
         .catalysts()
         .unwrap()
-        .expect("catalysts.json 在库");
+        .expect("catalysts.json should be present");
     assert_eq!(def.catalysts.len(), 13);
     for (i, c) in def.catalysts.iter().enumerate() {
-        assert_eq!(c.id as usize, i + 1, "id 1-based 连续");
+        assert_eq!(c.id as usize, i + 1, "id should be 1-based and contiguous");
     }
     let third = &def.catalysts[2];
     assert_eq!(third.name, "Carapace");
@@ -80,13 +80,19 @@ fn catalysts_thirteen_entries() {
 /// (ModRunes.lua:5-13) and Desert Rune's weapon slot (:660-666).
 #[test]
 fn runes_samples() {
-    let def = game_data().runes().unwrap().expect("runes.json 在库");
-    assert!(def.runes.len() >= 250, "符文条目量级（实测 283）");
+    let def = game_data()
+        .runes()
+        .unwrap()
+        .expect("runes.json should be present");
+    assert!(
+        def.runes.len() >= 250,
+        "rune entry count order of magnitude (measured 283)"
+    );
     let find = |name: &str| {
         def.runes
             .iter()
             .find(|r| r.name == name)
-            .unwrap_or_else(|| panic!("符文 {name:?} 缺失"))
+            .unwrap_or_else(|| panic!("rune {name:?} missing"))
     };
     let hayoxi = find("Hayoxi's Soul Core of Heatproofing");
     let helmet = &hayoxi.slots["helmet"];
@@ -111,13 +117,19 @@ fn runes_samples() {
 /// block kept byte-for-byte + the pre-parsed index (name/base/variants).
 #[test]
 fn uniques_double_layer() {
-    let def = game_data().uniques().unwrap().expect("uniques.json 在库");
-    assert!(def.uniques.len() >= 350, "传奇条目量级（实测 392）");
+    let def = game_data()
+        .uniques()
+        .unwrap()
+        .expect("uniques.json should be present");
+    assert!(
+        def.uniques.len() >= 350,
+        "unique entry count order of magnitude (measured 392)"
+    );
     let anvil = def
         .uniques
         .iter()
         .find(|u| u.name == "The Anvil")
-        .expect("The Anvil 在库");
+        .expect("The Anvil should be present");
     assert_eq!(anvil.base, "Bloodstone Amulet");
     assert_eq!(anvil.item_type, "amulet");
     assert_eq!(anvil.variants, ["Pre 0.2.0", "Pre 0.4.0", "Current"]);
@@ -128,17 +140,17 @@ fn uniques_double_layer() {
     // The index layer is minimal: League/Source lines (stored when present)
     assert!(
         def.uniques.iter().any(|u| u.league.is_some()),
-        "League 行预解析存在"
+        "League line pre-parsing should be present"
     );
     assert!(
         def.uniques.iter().any(|u| u.source.is_some()),
-        "Source 行预解析存在"
+        "Source line pre-parsing should be present"
     );
     // item_type covers vendor's main itemTypes domains
     for ty in ["amulet", "body", "helmet", "ring", "bow", "flask", "jewel"] {
         assert!(
             def.uniques.iter().any(|u| u.item_type == ty),
-            "item_type {ty} 缺失"
+            "item_type {ty} missing"
         );
     }
 }

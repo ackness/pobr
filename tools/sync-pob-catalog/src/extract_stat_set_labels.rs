@@ -86,7 +86,7 @@ fn parse_templates(
         let text = fs::read_to_string(&path).map_err(|error| {
             io::Error::new(
                 io::ErrorKind::NotFound,
-                format!("无法读取 vendor 模板 {}：{error}", path.display()),
+                format!("failed to read vendor template {}: {error}", path.display()),
             )
         })?;
         let mut current_skill: Option<String> = None;
@@ -127,7 +127,7 @@ pub fn assemble_labels_document(
                 }),
                 None => {
                     eprintln!(
-                        "stat_set_labels: 技能 {} 的 statSets[{}] 无对应模板 #set 行（丢弃）",
+                        "stat_set_labels: skill {}'s statSets[{}] has no matching template #set line (dropped)",
                         row.skill, row.set_index
                     );
                     None
@@ -141,7 +141,8 @@ pub fn assemble_labels_document(
             .then_with(|| a.set_index.cmp(&b.set_index))
     });
     let doc = StatSetLabelsDoc { meta, labels };
-    let mut json = serde_json::to_string_pretty(&doc).expect("stat set labels 文档序列化不应失败");
+    let mut json = serde_json::to_string_pretty(&doc)
+        .expect("stat set labels document serialization should not fail");
     json.push('\n');
     json
 }

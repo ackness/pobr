@@ -57,10 +57,10 @@ fn max_literal_run(source: &str) -> usize {
 
 /// Recursively collects every `.rs` file under a directory.
 fn collect_rs_files(dir: &Path, out: &mut Vec<PathBuf>) {
-    let entries =
-        fs::read_dir(dir).unwrap_or_else(|e| panic!("读取目录 {} 失败：{e}", dir.display()));
+    let entries = fs::read_dir(dir)
+        .unwrap_or_else(|e| panic!("failed to read directory {}: {e}", dir.display()));
     for entry in entries {
-        let path = entry.expect("读取目录项失败").path();
+        let path = entry.expect("failed to read directory entry").path();
         if path.is_dir() {
             collect_rs_files(&path, out);
         } else if path.extension().is_some_and(|ext| ext == "rs") {
@@ -77,7 +77,10 @@ fn pobr_data_src_has_no_embedded_data_tables() {
     let mut files = Vec::new();
     collect_rs_files(&src_dir, &mut files);
     files.sort();
-    assert!(!files.is_empty(), "src/ 下没有发现 .rs 文件，扫描路径异常");
+    assert!(
+        !files.is_empty(),
+        "no .rs files found under src/, scan path is wrong"
+    );
 
     let mut violations = Vec::new();
     for path in &files {
@@ -86,11 +89,11 @@ fn pobr_data_src_has_no_embedded_data_tables() {
             .and_then(|n| n.to_str())
             .unwrap_or_default();
         let source = fs::read_to_string(path)
-            .unwrap_or_else(|e| panic!("读取 {} 失败：{e}", path.display()));
+            .unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
         let run = max_literal_run(&source);
         if run > MAX_CONSECUTIVE_LITERAL_LINES && !ALLOWLIST.contains(&file_name) {
             violations.push(format!(
-                "{}：连续字面量元素行 {run} 行（阈值 {MAX_CONSECUTIVE_LITERAL_LINES}）",
+                "{}: {run} consecutive literal-element lines (threshold {MAX_CONSECUTIVE_LITERAL_LINES})",
                 path.display()
             ));
         }
@@ -98,8 +101,8 @@ fn pobr_data_src_has_no_embedded_data_tables() {
 
     assert!(
         violations.is_empty(),
-        "pobr-data 源码内嵌了大数组数据表（应迁到 data/<ver>/ 走数据管线，\
-         见 devs/docs/architecture/06-development-workflow.md §5.1）：\n{}",
+        "pobr-data source embeds large array data tables (should migrate to data/<ver>/ via the data pipeline, \
+         see devs/docs/architecture/06-development-workflow.md §5.1):\n{}",
         violations.join("\n")
     );
 }

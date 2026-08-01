@@ -164,7 +164,7 @@ mod tests {
         let pinnacle = c
             .enemy_presets
             .tier_for(crate::monster::EnemyTier::Pinnacle)
-            .expect("Pinnacle 档存在");
+            .expect("Pinnacle tier exists");
         assert_eq!(
             pinnacle.armour_mult_pct.value(),
             crate::monster::EnemyTier::Pinnacle.armour_mult_pct()

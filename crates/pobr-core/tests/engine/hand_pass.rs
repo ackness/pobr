@@ -51,7 +51,10 @@ fn empty_passes_passthrough_is_identity() {
     let direct = calculate_minimal_vs_enemy(&db, &enemy, &cfg, &input);
     let via_pass = run_hand_passes(&db, &enemy, &cfg, &[], &input, false);
 
-    assert_eq!(via_pass.combined, direct, "空 passes 必须逐值直通");
+    assert_eq!(
+        via_pass.combined, direct,
+        "empty passes must pass through value-for-value"
+    );
     assert!(via_pass.main_hand.is_none());
     assert!(via_pass.off_hand.is_none());
 }
@@ -91,8 +94,11 @@ fn single_hand_source_equals_legacy_input_fold_per_value() {
     );
 
     // Value-for-value equal (MinimalOutput derives PartialEq, including breakdown and damage_components).
-    assert_eq!(out.combined, legacy, "单手 OR 直通必须与旧折算逐值相等");
-    let mh = out.main_hand.expect("MainHand 子表");
+    assert_eq!(
+        out.combined, legacy,
+        "single-hand OR pass-through must equal the legacy fold value-for-value"
+    );
+    let mh = out.main_hand.expect("MainHand sub-table");
     assert!(out.off_hand.is_none());
     assert_eq!(mh.total_dps, legacy.dps);
     assert_eq!(mh.speed, legacy.action_rate);
@@ -110,7 +116,7 @@ fn single_hand_source_equals_legacy_input_fold_per_value() {
         let c = legacy.crit_chance;
         assert!(
             (combined - (crit * c + hit * (1.0 - c))).abs() < 1e-9,
-            "{ty:?} StoredCombinedAvg 加权恒等"
+            "{ty:?} StoredCombinedAvg weighted identity"
         );
     }
 }
@@ -153,7 +159,7 @@ fn main_hand_condition_mod_applies_inside_main_hand_pass() {
     );
     assert!(
         with_condition.combined.total_hit_avg > without_condition.combined.total_hit_avg,
-        "MainHandAttack 条件词条必须在主手 pass 内生效"
+        "the MainHandAttack conditional mod must take effect inside the main-hand pass"
     );
 }
 
@@ -195,14 +201,14 @@ fn dual_wield_combines_per_vendor_modes_hand_calculated() {
         &input,
         false,
     );
-    let mh = out.main_hand.as_ref().expect("MH 子表");
-    let oh = out.off_hand.as_ref().expect("OH 子表");
+    let mh = out.main_hand.as_ref().expect("MH sub-table");
+    let oh = out.off_hand.as_ref().expect("OH sub-table");
 
     // Per-hand mod routing: the MH leg gets the extra +100% inc (150%+100%), the OH leg only 150%.
     // MH base avg = 15 × 2.5 = 37.5… (×crit factor); OH base avg = 35 × 1.5.
     assert!(
         mh.average_hit / 15.0 > oh.average_hit / 35.0,
-        "MainHandAttack 词条只得进 MH 腿（MH={} OH={}）",
+        "a MainHandAttack mod must only enter the MH leg (MH={} OH={})",
         mh.average_hit,
         oh.average_hit
     );
@@ -225,7 +231,10 @@ fn dual_wield_combines_per_vendor_modes_hand_calculated() {
         (out.combined.crit_multiplier - avg(mh.crit_multiplier, oh.crit_multiplier)).abs() < eps
     );
     // Defence stats are hand-agnostic: match the single-pass run.
-    assert_eq!(out.combined.life, 140.0, "100+40，防御族与 hand pass 无关");
+    assert_eq!(
+        out.combined.life, 140.0,
+        "100+40, the defence family is unrelated to hand pass"
+    );
 }
 
 /// doubleHits (test plan ④): for `doubleHitsWhenDualWielding` skills, DPS = MH + OH,
@@ -261,7 +270,7 @@ fn double_hits_dps_is_sum_not_halved() {
     assert!((double.combined.dps - (mh.total_dps + oh.total_dps)).abs() < eps);
     assert!(
         (normal.combined.dps - (mh.total_dps + oh.total_dps) / 2.0).abs() < eps,
-        "非 doubleHits 除 2"
+        "non-doubleHits divides by 2"
     );
     // CritChance doubleHits: MH% + OH% − MH%×OH%/100 (in percentage space).
     let mh_pct = mh.crit_chance * 100.0;
@@ -313,8 +322,8 @@ fn weapon_flag_mod_routes_to_matching_hand_only() {
         &input,
         false,
     );
-    let mh = out.main_hand.as_ref().expect("MH 子表");
-    let oh = out.off_hand.as_ref().expect("OH 子表");
+    let mh = out.main_hand.as_ref().expect("MH sub-table");
+    let oh = out.off_hand.as_ref().expect("OH sub-table");
 
     // Both hands share the same base (10-20, average 15): MH leg inc = 50% (flagless base)
     // + 100% (MACE flag), OH leg only 50% → hit ratio = 2.5/1.5.
@@ -322,7 +331,7 @@ fn weapon_flag_mod_routes_to_matching_hand_only() {
     let expected = 2.5 / 1.5;
     assert!(
         (ratio - expected).abs() < 1e-9,
-        "MACE 位词条只得进 MH 腿：MH/OH = {ratio}（应 {expected}）"
+        "a MACE-flagged mod must only enter the MH leg: MH/OH = {ratio} (expected {expected})"
     );
 }
 
@@ -367,7 +376,7 @@ fn empty_weapon_flags_keep_upstream_cfg_flags() {
     );
     assert!(
         boosted.combined.total_hit_avg > baseline,
-        "ATTACK 位词条须在空武器位供给下照常生效"
+        "an ATTACK-flagged mod must still take effect when the weapon-flag supply is empty"
     );
 }
 

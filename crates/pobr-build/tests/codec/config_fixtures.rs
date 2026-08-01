@@ -41,7 +41,7 @@ fn load_catalog() -> ConfigCatalog {
         .load_ruleset()
         .expect("load ruleset")
         .config_catalog
-        .expect("config_catalog 域应已接通")
+        .expect("the config_catalog domain should be wired up")
 }
 
 fn run_fixture(name: &str) -> (ConfigOutcome, ConfigCatalog) {
@@ -74,14 +74,14 @@ fn count_stationary_fixture() {
     assert_eq!(
         inputs.values.get("conditionStationary"),
         Some(&ConfigInputValue::Number(5.0)),
-        "number 属性应判读为 Number"
+        "a number attribute should be read as Number"
     );
 
     let (outcome, _) = run_fixture("config_count_stationary.xml");
     assert_eq!(outcome.multipliers.get("StationarySeconds"), Some(&5.0));
     assert_eq!(outcome.conditions.get("Stationary"), Some(&true));
     let mods = mods_from(&outcome.player_mods, "conditionStationary");
-    assert_eq!(mods.len(), 2, "Multiplier + Condition 两条产出");
+    assert_eq!(mods.len(), 2, "produces two mods, Multiplier + Condition");
 
     // number=0 -> count semantics treats it as unset, so zero output.
     let catalog = load_catalog();
@@ -110,7 +110,7 @@ fn implycond_chain_fixture() {
             .any(|m| m.name.as_str() == "Condition:AttackedRecently"
                 && m.mod_type == ModType::Flag
                 && !m.tags.is_empty()),
-        "主 FLAG 应为带 Combat 门控 tag 的 mod 化产出"
+        "the main FLAG should be a mod-ified output carrying a Combat-gated tag"
     );
 }
 
@@ -136,13 +136,13 @@ fn enemy_overrides_fixture() {
         shocked
             .iter()
             .any(|m| m.name.as_str() == "Condition:Shocked"),
-        "enemy 条件应 mod 化落 enemy 桶"
+        "an enemy condition should be mod-ified into the enemy bucket"
     );
 
     // enemyIsBoss=None: handler is already registered, so it doesn't land in unhandled; the scalar channel maps it to a tier.
     assert!(
         !outcome.unhandled.iter().any(|u| u.var == "enemyIsBoss"),
-        "config:enemyIsBoss 已注册，不应入 unhandled 报表"
+        "config:enemyIsBoss is already registered, should not land in the unhandled report"
     );
     assert_eq!(enemy_tier_from_config(&outcome), Some(EnemyTier::None));
 }
@@ -162,7 +162,7 @@ fn custom_mods_fixture() {
         ]
     );
 
-    let parsed = parse_mod(&outcome.custom_mod_lines[0]).expect("首行可解析");
+    let parsed = parse_mod(&outcome.custom_mod_lines[0]).expect("the first line should parse");
     assert_eq!(parsed.status, ParseStatus::Parsed);
     assert!(!parsed.mods.is_empty());
 
@@ -183,7 +183,7 @@ fn list_options_fixture() {
     assert_eq!(
         outcome.scalars.get("resistancePenalty"),
         Some(&ConfigInputValue::Text("-30".to_string())),
-        "number 输入按选项值字符串化回显"
+        "a number input echoes back stringified as the option value"
     );
     let progress = campaign_progress_from_config(&outcome);
     assert_eq!(progress, CampaignProgress::from_resistance_penalty(-30.0));
@@ -193,7 +193,11 @@ fn list_options_fixture() {
         &outcome.player_mods,
         "questAct 2Valley of the TitansMedallion",
     );
-    assert_eq!(quest.len(), 2, "多行选项应展开两条 mod");
+    assert_eq!(
+        quest.len(),
+        2,
+        "a multi-line option should expand into two mods"
+    );
     assert!(quest.iter().any(|m| m.name.as_str() == "CharmChargesGained"
         && m.mod_type == ModType::Inc
         && m.value.as_number() == Some(30.0)));
@@ -204,7 +208,7 @@ fn list_options_fixture() {
         quest
             .iter()
             .all(|m| m.source.as_deref() == Some("Quest:Act 2: Valley of the Titans")),
-        "任务奖励 mod 应带 Quest source"
+        "a quest-reward mod should carry a Quest source"
     );
 }
 
@@ -248,7 +252,7 @@ fn custom_mods_feed_calculation_end_to_end() {
     assert_eq!(
         with_custom.life - without.life,
         52.5,
-        "customMods 的 +50 Life 应进计算（with={} without={}）",
+        "customMods' +50 Life should enter the calculation (with={} without={})",
         with_custom.life,
         without.life
     );
@@ -258,6 +262,6 @@ fn custom_mods_feed_calculation_end_to_end() {
     let empty_plain = calculate_with_data(&plain, &BuildData::empty(), &opts).expect("calc empty");
     assert_eq!(
         empty_with.life, empty_plain.life,
-        "缺 catalog 回退旧路径，customMods 不生效"
+        "missing catalog falls back to the legacy path, customMods has no effect"
     );
 }

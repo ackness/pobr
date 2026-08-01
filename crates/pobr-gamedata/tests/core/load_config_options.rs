@@ -17,14 +17,14 @@ fn version() -> String {
 fn load() -> ConfigOptionsDef {
     GameData::new(repo_data_root().join(version()))
         .config_options()
-        .expect("config_options 可加载")
+        .expect("config_options should load")
 }
 
 fn find<'a>(doc: &'a ConfigOptionsDef, var: &str) -> &'a ConfigOptionDef {
     doc.options
         .iter()
         .find(|o| o.var == var)
-        .unwrap_or_else(|| panic!("缺条目 {var}"))
+        .unwrap_or_else(|| panic!("missing entry {var}"))
 }
 
 /// Volume and sort order: ≥550 entries (542 static + quest-dynamic ones), ascending by var.
@@ -33,11 +33,15 @@ fn volume_and_sorted_by_var() {
     let doc = load();
     assert!(
         doc.options.len() >= 550,
-        "条目数 {} 异常偏少",
+        "entry count {} is suspiciously low",
         doc.options.len()
     );
     for pair in doc.options.windows(2) {
-        assert!(pair[0].var <= pair[1].var, "未按 var 排序：{}", pair[1].var);
+        assert!(
+            pair[0].var <= pair[1].var,
+            "not sorted by var: {}",
+            pair[1].var
+        );
     }
 }
 
@@ -53,14 +57,18 @@ fn handler_budget_within_estimate() {
         .collect();
     assert!(
         handlers.len() <= 60,
-        "handler 条目 {} 超出预估（数据切分回看裁决 P4/P6）",
+        "handler entry count {} exceeds the estimate for the data-driven split",
         handlers.len()
     );
     // Every templated entry must be verified (only entries that pass
     // multi-point probe re-verification become templates).
     for option in &doc.options {
         if option.handler_id.is_none() {
-            assert!(option.verified, "模板条目 {} 未验证", option.var);
+            assert!(
+                option.verified,
+                "templated entry {} is unverified",
+                option.var
+            );
         }
     }
 }
@@ -92,12 +100,12 @@ fn current_mana_percentage_clamp_shape() {
     );
     let effect = &def.effects[0];
     assert_eq!(effect.name, "Multiplier:CurrentManaPercentage");
-    match effect.value.as_ref().expect("有数值表达式") {
+    match effect.value.as_ref().expect("has a value expression") {
         ValueExpr::Clamp { max, inner, .. } => {
             assert_eq!(*max, Some(100.0));
             assert_eq!(**inner, ValueExpr::input());
         }
-        other => panic!("期望 clamp 包裹，实际 {other:?}"),
+        other => panic!("expected clamp wrapper, got {other:?}"),
     }
 }
 
@@ -114,7 +122,7 @@ fn whirlwind_stages_small_knee_clamp_slope() {
     assert_eq!(def.effects.len(), 2);
     let after_first = &def.effects[0];
     assert_eq!(after_first.name, "Multiplier:WhirlwindStageAfterFirst");
-    match after_first.value.as_ref().expect("有数值表达式") {
+    match after_first.value.as_ref().expect("has a value expression") {
         ValueExpr::Clamp { max, inner, .. } => {
             assert_eq!(*max, Some(3.0));
             // The linear segment must be val - 1 (mult=1), not the
@@ -128,16 +136,16 @@ fn whirlwind_stages_small_knee_clamp_slope() {
                 }
             );
         }
-        other => panic!("期望 clamp 包裹，实际 {other:?}"),
+        other => panic!("expected clamp wrapper, got {other:?}"),
     }
     let stages = &def.effects[1];
     assert_eq!(stages.name, "Multiplier:WhirlwindStages");
-    match stages.value.as_ref().expect("有数值表达式") {
+    match stages.value.as_ref().expect("has a value expression") {
         ValueExpr::Clamp { max, inner, .. } => {
             assert_eq!(*max, Some(4.0));
             assert_eq!(**inner, ValueExpr::input());
         }
-        other => panic!("期望 clamp 包裹，实际 {other:?}"),
+        other => panic!("expected clamp wrapper, got {other:?}"),
     }
 }
 
@@ -160,9 +168,9 @@ fn detonate_dead_skill_data_payload() {
     let def = find(&doc, "detonateDeadCorpseLife");
     let effect = &def.effects[0];
     assert_eq!(effect.mod_type, "LIST");
-    match effect.list_value.as_ref().expect("有 LIST 载荷") {
+    match effect.list_value.as_ref().expect("has a LIST payload") {
         ListEffectValue::KeyValue { key, .. } => assert_eq!(key, "corpseLife"),
-        other => panic!("期望 key_value，实际 {other:?}"),
+        other => panic!("expected key_value, got {other:?}"),
     }
 }
 
@@ -239,7 +247,7 @@ fn known_real_logic_entries_are_handlers() {
         let def = find(&doc, var);
         assert!(
             def.handler_id.is_some(),
-            "{var} 应为 handler 条目（真逻辑）"
+            "{var} should be a handler entry (real logic)"
         );
         assert!(!def.verified);
     }
@@ -262,5 +270,8 @@ fn default_true_checks_present() {
                     .unwrap_or(false)
         })
         .count();
-    assert!(default_true > 0, "应存在 defaultState=true 的 check 条目");
+    assert!(
+        default_true > 0,
+        "should have a check entry with defaultState=true"
+    );
 }

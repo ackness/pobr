@@ -34,13 +34,13 @@ fn i4_linear_modes_weighted_sum_equals_combined_value() {
         (CombineMode::Crit { double_hits: false }, 35.0), // (MH+OH)/2
     ];
     for (mode, expected) in cases {
-        let combined = mode.combine(&legs).expect("自给模式");
-        assert_eq!(combined, *expected, "{mode:?} 合并值手算");
-        let weights = mode.linearized_weights(&legs).expect("自给模式");
+        let combined = mode.combine(&legs).expect("self-computing mode");
+        assert_eq!(combined, *expected, "{mode:?} combined value hand-computed");
+        let weights = mode.linearized_weights(&legs).expect("self-computing mode");
         let weighted_sum: f64 = weights.iter().zip(legs.iter()).map(|(w, l)| w * l).sum();
         assert!(
             (weighted_sum - combined).abs() < 1e-12,
-            "{mode:?} 线性模式必须守恒：Σw×leg={weighted_sum} != {combined}"
+            "{mode:?} linear mode must conserve: Σw×leg={weighted_sum} != {combined}"
         );
     }
 }
@@ -92,11 +92,23 @@ fn i4_linear_graph_direct_sums_to_output() {
     // A per-hand mod only enters its own leg; a global source is counted once per leg then
     // weighted (under ADD weights (1,1), counting it twice = its true direct contribution to
     // "the sum of both hands", RFC §5.1).
-    assert_eq!(report.entries[0].value, 30.0, "weapon1 只进 MH 腿");
-    assert_eq!(report.entries[1].value, 20.0, "weapon2 只进 OH 腿");
-    assert_eq!(report.entries[2].value, 20.0, "global 两腿各 10×1.0");
+    assert_eq!(
+        report.entries[0].value, 30.0,
+        "weapon1 only enters the MH leg"
+    );
+    assert_eq!(
+        report.entries[1].value, 20.0,
+        "weapon2 only enters the OH leg"
+    );
+    assert_eq!(
+        report.entries[2].value, 20.0,
+        "global contributes 10×1.0 to each leg"
+    );
     let total: f64 = report.entries.iter().map(|entry| entry.value).sum();
-    assert_eq!(total, combined_value, "线性模式 direct 全来源之和守恒");
+    assert_eq!(
+        total, combined_value,
+        "linear mode: direct sums across all sources conserve"
+    );
 }
 
 // I4 group 2: HARMONICMEAN — nonlinear, but the harmonic mean is degree-1 homogeneous, so
@@ -156,7 +168,7 @@ fn i4_crit_double_hits_weights_are_partial_derivatives_not_conserving() {
     assert!((weighted_sum - 46.0).abs() < 1e-12);
     assert!(
         (combined - weighted_sum - 12.0).abs() < 1e-12,
-        "doubleHits direct 不守恒是固有性质，由 marginal 兜底"
+        "doubleHits direct non-conservation is an inherent property, backstopped by marginal"
     );
 }
 
@@ -172,7 +184,11 @@ fn i4_coefficient_modes_frozen_weights_match_partials() {
         CombineMode::ChanceAilment,
         CombineMode::CritBlend,
     ] {
-        assert_eq!(mode.combine(&[1.0, 2.0]), None, "{mode:?} 是系数模式");
+        assert_eq!(
+            mode.combine(&[1.0, 2.0]),
+            None,
+            "{mode:?} is a coefficient mode"
+        );
         assert_eq!(mode.linearized_weights(&[1.0, 2.0]), None);
     }
 
@@ -253,14 +269,17 @@ fn i6_marginal_differs_from_direct_on_double_hits_cross_term() {
     );
 
     let entry = &report.entries[0];
-    assert!((entry.value - 13.0).abs() < 1e-12, "direct 手算 = 13");
+    assert!(
+        (entry.value - 13.0).abs() < 1e-12,
+        "direct hand-computed = 13"
+    );
     assert!(
         (entry.marginal_delta.unwrap() - 14.0).abs() < 1e-12,
-        "marginal 手算 = 14"
+        "marginal hand-computed = 14"
     );
     assert!(
         (entry.marginal_delta.unwrap() - entry.value).abs() > 1e-9,
-        "非线性样例上 marginal 必须 ≠ direct"
+        "on a nonlinear sample, marginal must differ from direct"
     );
 }
 
@@ -288,7 +307,10 @@ fn pass_filter_restricts_direct_to_matching_pass_inputs() {
         .with_sources([src("ring")]);
 
     let all = pobr_core::attribution::AttributionReport::direct(&base, 20.0, &trace, combined);
-    assert_eq!(all.entries[0].value, 20.0, "无 filter：两 pass 都累计");
+    assert_eq!(
+        all.entries[0].value, 20.0,
+        "no filter: both passes accumulate"
+    );
 
     let mh_only = pobr_core::attribution::AttributionReport::direct(
         &base.clone().with_pass_filter(MH_PASS),
@@ -296,7 +318,10 @@ fn pass_filter_restricts_direct_to_matching_pass_inputs() {
         &trace,
         combined,
     );
-    assert_eq!(mh_only.entries[0].value, 12.0, "MH filter 只计 MH Input");
+    assert_eq!(
+        mh_only.entries[0].value, 12.0,
+        "MH filter counts only the MH Input"
+    );
 
     let oh_only = pobr_core::attribution::AttributionReport::direct(
         &base.clone().with_pass_filter(OH_PASS),
@@ -304,7 +329,10 @@ fn pass_filter_restricts_direct_to_matching_pass_inputs() {
         &trace,
         combined,
     );
-    assert_eq!(oh_only.entries[0].value, 8.0, "OH filter 只计 OH Input");
+    assert_eq!(
+        oh_only.entries[0].value, 8.0,
+        "OH filter counts only the OH Input"
+    );
 }
 
 /// C4: when pass_filter is not None, marginal / interaction are set to None (refusing to mix
@@ -325,7 +353,7 @@ fn c4_pass_filter_disables_marginal_and_interaction() {
         .with_pass_filter(MH_PASS);
 
     let report = attribute(&request, 12.0, Some((&trace, combined)), |_| {
-        panic!("C4：pass_filter 请求不得触发 recompute（全局口径动作）")
+        panic!("C4: a pass_filter request must not trigger recompute (a global-scope action)")
     });
     assert_eq!(report.entries[0].marginal_delta, None);
     assert_eq!(report.entries[0].marginal_percent, None);
@@ -388,7 +416,7 @@ fn i1_combine_partition_violations_detects_shared_stamped_node() {
     let ok_combine = trace.add_combine_node("ok", 30.0, CombineMode::Add, &[(mh, 1.0), (oh, 1.0)]);
     assert!(
         trace.combine_partition_violations(ok_combine).is_empty(),
-        "pass==None 共享祖先合法（按腿各计一次再加权）"
+        "pass==None shared ancestor is legal (counted once per leg then weighted)"
     );
 
     // Violating graph: a stamped Input is shared by both legs (a graph-construction bug shape).
@@ -417,7 +445,7 @@ fn i1_combine_partition_violations_detects_shared_stamped_node() {
     assert_eq!(
         bad.combine_partition_violations(bad_combine),
         vec![stamped_shared],
-        "带戳节点跨腿共享必须被检出（I1 违例）"
+        "a stamped node shared across legs must be detected (I1 violation)"
     );
 }
 

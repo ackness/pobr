@@ -490,10 +490,16 @@ fn attack_damage_taken_only_in_attack_context() {
 
     assert!(
         (attack - 1.25).abs() < 1e-9,
-        "Attack 上下文 +25% → 1.25, got {attack}"
+        "Attack context +25% -> 1.25, got {attack}"
     );
-    assert_eq!(spell, 1.0, "Spell 上下文不读 AttackDamageTaken");
-    assert_eq!(none, 1.0, "基础 hit 口径不读 AttackDamageTaken");
+    assert_eq!(
+        spell, 1.0,
+        "the Spell context doesn't read AttackDamageTaken"
+    );
+    assert_eq!(
+        none, 1.0,
+        "the base hit scope doesn't read AttackDamageTaken"
+    );
 }
 
 /// `SpellDamageTaken` only stacks in the Spell context.
@@ -510,9 +516,12 @@ fn spell_damage_taken_only_in_spell_context() {
 
     assert!(
         (spell - 0.6).abs() < 1e-9,
-        "Spell 上下文 -40% → 0.6, got {spell}"
+        "Spell context -40% -> 0.6, got {spell}"
     );
-    assert_eq!(attack, 1.0, "Attack 上下文不读 SpellDamageTaken");
+    assert_eq!(
+        attack, 1.0,
+        "the Attack context doesn't read SpellDamageTaken"
+    );
 }
 
 /// base + WhenHit + Attack layers stack: DamageTaken+10, PhysicalDamageTakenWhenHit+10,
@@ -575,7 +584,7 @@ fn taken_mult_default_degenerates_to_base_without_source_mods() {
         let def = taken_mult_for_type_default(&db, &cfg, dt);
         assert!(
             (base - def).abs() < 1e-9,
-            "{dt:?}: default {def} 应等于基础 hit 口径 {base}（无 Attack/Spell 词条）"
+            "{dt:?}: default {def} should equal the base hit scope {base} (no Attack/Spell mods)"
         );
     }
 }
@@ -585,5 +594,8 @@ fn taken_mult_default_degenerates_to_base_without_source_mods() {
 fn any_taken_reflect_is_deferred_false() {
     // Read the const into a runtime variable to avoid a trivial assertion on a compile-time constant (clippy::assertions_on_constants).
     let enabled = std::hint::black_box(ANY_TAKEN_REFLECT_ENABLED);
-    assert!(!enabled, "反射受伤链 defer，与 PoB2 当前行为一致");
+    assert!(
+        !enabled,
+        "the reflect damage-taken chain is deferred, matching PoB2's current behaviour"
+    );
 }

@@ -61,8 +61,8 @@ fn load_entries() -> Vec<SpecialTemplateDef> {
         .join("data")
         .join(pobr_gamedata::data_version())
         .join("overlay/special_mods.json");
-    let raw = std::fs::read_to_string(&path).expect("special_mods.json 可读");
-    let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json 可解析");
+    let raw = std::fs::read_to_string(&path).expect("special_mods.json should be readable");
+    let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json should parse");
     doc.entries
 }
 
@@ -108,12 +108,12 @@ fn instantiate_sample(entry: &SpecialTemplateDef) -> Option<String> {
 }
 
 #[test]
-#[ignore = "依赖 vendor PoB2 + luajit；手动 --ignored 运行"]
+#[ignore = "depends on vendor PoB2 + luajit; run manually with --ignored"]
 fn special_parsemod_differential() {
     if !oracle_available() {
         eprintln!(
-            "[special_oracle_differential] SKIP——vendor PoB2 / luajit 不可用\
-             （隔离 worktree 无 vendor；登记：Track D-2 对拍需在含 vendor 的环境跑）"
+            "[special_oracle_differential] SKIP -- vendor PoB2 / luajit unavailable\
+             (an isolated worktree has no vendor; note: Track D-2's comparison must run in an environment with vendor)"
         );
         return;
     }
@@ -133,7 +133,7 @@ fn special_parsemod_differential() {
         }
     }
     eprintln!(
-        "[special_oracle_differential] {} 条目，{} 条可实例化样本",
+        "[special_oracle_differential] {} entries, {} instantiable samples",
         entries.len(),
         samples.len()
     );
@@ -159,10 +159,10 @@ fn special_parsemod_differential() {
                 .write_all(lines_blob.as_bytes())?;
             child.wait_with_output()
         })
-        .expect("run-parsemod.sh 启动");
+        .expect("run-parsemod.sh should launch");
     if !output.status.success() {
         eprintln!(
-            "[special_oracle_differential] oracle 退出码 {:?}——skip（vendor/luajit 环境问题）",
+            "[special_oracle_differential] oracle exit code {:?} -- skip (vendor/luajit environment issue)",
             output.status.code()
         );
         return;
@@ -217,7 +217,7 @@ fn special_parsemod_differential() {
         }
     }
     eprintln!(
-        "[special_oracle_differential] name-set 一致 {agree}/{total}（{:.1}%）",
+        "[special_oracle_differential] name-set agreement {agree}/{total} ({:.1}%)",
         100.0 * agree as f64 / total.max(1) as f64
     );
     for m in &mismatches {

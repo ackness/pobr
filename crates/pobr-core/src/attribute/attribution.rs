@@ -284,11 +284,11 @@ fn combine_weighted_direct(
     debug_assert_eq!(
         weights.len(),
         legs.len(),
-        "Combine 权重数必须等于入边数（构图侧用 add_combine_node 锁定顺序）"
+        "the Combine weight count must equal the incoming-edge count (the graph-building side locks the order via add_combine_node)"
     );
     debug_assert!(
         trace.combine_partition_violations(combine).is_empty(),
-        "不变式 I1 违例：Combine 节点 {combine:?} 的入腿共享带 pass 戳节点（RFC §2.4 / 评审 C3）"
+        "invariant I1 violation: Combine node {combine:?}'s incoming legs share a pass-stamped node (RFC §2.4 / review C3)"
     );
     legs.iter()
         .zip(weights)
@@ -496,7 +496,7 @@ mod direct_rewrite_tests {
             assert_eq!(
                 direct_value_for_source(&trace, out, &source, None),
                 direct_value_for_source_legacy(&trace, out, &source),
-                "no-Combine 图上新旧 direct 必须逐字节等价（source={id}）"
+                "on a no-Combine graph, new and old direct must be bit-for-bit equal (source={id})"
             );
         }
     }

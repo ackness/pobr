@@ -261,17 +261,17 @@ fn mod_flags_match_requires_subset_not_intersection() {
     let cfg_attack_only = CalcConfig::new().with_flags(ModFlags::ATTACK);
     assert!(
         !m.matches(&cfg_attack_only),
-        "纯 Attack（非投射）不应命中 Attack|Projectile mod"
+        "pure Attack (non-projectile) should not match an Attack|Projectile mod"
     );
 
     // cfg = ATTACK|PROJECTILE: equal → matches.
     let cfg_ap = CalcConfig::new().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE);
-    assert!(m.matches(&cfg_ap), "Attack|Projectile cfg 命中");
+    assert!(m.matches(&cfg_ap), "Attack|Projectile cfg matches");
 
     // cfg = ATTACK|PROJECTILE|MELEE: superset → matches.
     let cfg_super =
         CalcConfig::new().with_flags(ModFlags::ATTACK | ModFlags::PROJECTILE | ModFlags::MELEE);
-    assert!(m.matches(&cfg_super), "超集 cfg 命中");
+    assert!(m.matches(&cfg_super), "a superset cfg matches");
 
     // Single-flag mod: subset and intersects are equivalent here, behaviour unchanged.
     let single = Modifier::number("Damage", ModType::Inc, 10.0).with_flags(ModFlags::ATTACK);
@@ -296,7 +296,7 @@ fn more_rounds_per_name_product_to_two_decimals() {
     let m = db.more(&cfg, &[ModName::from("Damage")]);
     assert!(
         (m - 1.24).abs() < 1e-9,
-        "同名 more 逐名 round2 → 1.24, got {m}"
+        "same-name more rounds per-name to 2dp -> 1.24, got {m}"
     );
 }
 
@@ -316,7 +316,7 @@ fn more_rounds_each_name_separately_then_multiplies() {
     );
     assert!(
         (m - 1.4136).abs() < 1e-9,
-        "逐名 round2 后跨名连乘 → 1.4136, got {m}"
+        "per-name round2 then cross-name multiply -> 1.4136, got {m}"
     );
 }
 
@@ -451,9 +451,13 @@ fn convert_mod_moves_between_buckets() {
     assert_eq!(
         db.sum(ModType::Inc, &cfg, &old_names),
         10.0,
-        "Tree 条已移走"
+        "the Tree entry has moved out"
     );
-    assert_eq!(db.sum(ModType::Inc, &cfg, &new_names), 30.0, "落入新桶");
+    assert_eq!(
+        db.sum(ModType::Inc, &cfg, &new_names),
+        30.0,
+        "lands in the new bucket"
+    );
 
     // Miss (no matching source) → append the new mod (vendor :129-131).
     let converted = db.convert_mod(
@@ -462,7 +466,11 @@ fn convert_mod_moves_between_buckets() {
     );
     assert!(!converted);
     assert_eq!(db.sum(ModType::Inc, &cfg, &new_names), 35.0);
-    assert_eq!(db.sum(ModType::Inc, &cfg, &old_names), 10.0, "旧桶不动");
+    assert_eq!(
+        db.sum(ModType::Inc, &cfg, &old_names),
+        10.0,
+        "the old bucket is unchanged"
+    );
 }
 
 /// ScaleAddMod rounding oracle diff (12 samples, gate requires ≥10 to match).
@@ -544,7 +552,7 @@ fn scale_add_mod_rounding_matches_pob2_oracle() {
         };
         assert_eq!(
             got, expected,
-            "ScaleAddMod({name}, {mod_type:?}, {value}, ×{scale}) oracle 不中"
+            "ScaleAddMod({name}, {mod_type:?}, {value}, x{scale}) doesn't match the oracle"
         );
     }
 }
@@ -559,7 +567,10 @@ fn scale_add_mod_non_number_payloads() {
     let mut db = ModDb::new();
 
     db.scale_add_mod(Modifier::flag("SomeFlag"), 0.5, &rules);
-    assert!(db.flag(&cfg, ModName::from("SomeFlag")), "Bool 载荷不缩放");
+    assert!(
+        db.flag(&cfg, ModName::from("SomeFlag")),
+        "a Bool payload is not scaled"
+    );
 
     db.scale_add_mod(
         Modifier::new(
@@ -574,7 +585,7 @@ fn scale_add_mod_non_number_payloads() {
     assert_eq!(
         nested[0].value,
         ModValue::Number(3.0),
-        "嵌套 Number 同规则缩放（7 × 0.5 → round2 → 截整 = 3）"
+        "a nested Number scales under the same rule (7 x 0.5 -> round2 -> truncate to integer = 3)"
     );
 }
 
@@ -637,7 +648,11 @@ fn more_precision_exception_matches_more_internal_oracle() {
     assert_eq!(db.more(&cfg, &names), 2.18, "S2");
     let mut plain = ModDb::new(); // Default rules (not injected) give the same value.
     more_mods(&mut plain, "Damage", &[40.0, 30.0, 20.0]);
-    assert_eq!(plain.more(&cfg, &names), 2.18, "S2 未注入锚点");
+    assert_eq!(
+        plain.more(&cfg, &names),
+        2.18,
+        "S2 anchor without injected rules"
+    );
 
     // S3/S4: vendor quirk — modPrecision persists across names. If the exception name comes
     // first, subsequent plain names also floor4 (1.4444); if the plain name comes first, it
@@ -671,7 +686,7 @@ fn more_precision_exception_matches_more_internal_oracle() {
     // traced and non-traced share the same behaviour (common implementation).
     let mut trace = TraceGraph::new();
     let traced = db.more_traced(&cfg, &names, &mut trace, "more");
-    assert_eq!(traced.value, 0.6666, "traced 同值");
+    assert_eq!(traced.value, 0.6666, "traced matches");
 }
 
 // Second EvalMod-tag batch: PerStat reads output, GlobalLimit does cumulative clamping.
@@ -920,13 +935,20 @@ fn global_limit_traced_inserts_clamp_node() {
 
     let mut trace = TraceGraph::new();
     let traced = db.sum_traced(ModType::Base, &cfg, &names, &mut trace, "ddc");
-    assert_eq!(traced.value, 50.0, "traced 与非 traced 同值");
+    assert_eq!(traced.value, 50.0, "traced matches non-traced");
 
     let clamp_nodes: Vec<_> = trace
         .nodes()
         .iter()
         .filter(|n| n.operation == TraceOperation::Clamp)
         .collect();
-    assert_eq!(clamp_nodes.len(), 1, "仅被截断的贡献挂 Clamp 节点");
-    assert_eq!(clamp_nodes[0].value, 20.0, "Clamp 节点值 = 实际计入值");
+    assert_eq!(
+        clamp_nodes.len(),
+        1,
+        "only the clamped contribution attaches a Clamp node"
+    );
+    assert_eq!(
+        clamp_nodes[0].value, 20.0,
+        "Clamp node value = the actually counted value"
+    );
 }

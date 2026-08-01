@@ -100,7 +100,7 @@ fn level_field<'row>(
         OVERRIDE_STAT_ATTACK_SPEED_MULTIPLIER => Ok(&mut row.attack_speed_multiplier),
         OVERRIDE_STAT_BASE_MULTIPLIER => Ok(&mut row.base_multiplier),
         other => Err(format!(
-            "skill_overrides 含未知等级 stat `{other}`（消费侧未接线，拒绝静默丢弃）"
+            "skill_overrides has an unknown level stat `{other}` (not wired up on the consumer side, refusing to silently drop it)"
         )),
     }
 }
@@ -145,7 +145,7 @@ pub fn apply_level_overrides(
             }
             _ => {
                 return Err(format!(
-                    "skill_overrides 条目（skill `{}`，stat `{}`）必须且只能有 value / per_level 之一",
+                    "skill_overrides entry (skill `{}`, stat `{}`) must have exactly one of value / per_level",
                     entry.skill, entry.stat
                 ));
             }
@@ -173,7 +173,7 @@ pub fn apply_stat_set_overrides(
         }
         let Some(value) = entry.value else {
             return Err(format!(
-                "skill_overrides 条目（skill `{}`，stat `{}`）缺 value（statSet 级覆盖值恒为单值）",
+                "skill_overrides entry (skill `{}`, stat `{}`) is missing value (statSet-level override values are always single-valued)",
                 entry.skill, entry.stat
             ));
         };
@@ -256,7 +256,7 @@ pub fn apply_dot_flag_overrides(
         }
         let Some(value) = entry.value else {
             return Err(format!(
-                "skill_overrides 条目（skill `{}`，stat `{}`）缺 value（statSet 布尔恒为单值）",
+                "skill_overrides entry (skill `{}`, stat `{}`) is missing value (statSet booleans are always single-valued)",
                 entry.skill, entry.stat
             ));
         };
@@ -286,7 +286,7 @@ pub fn apply_dot_flag_overrides(
                 continue; // Doesn't touch dot_flags.verified (the dot
                 // verification marker has independent semantics).
             }
-            _ => unreachable!("statSet 布尔清单已过滤"),
+            _ => unreachable!("statSet boolean list already filtered"),
         }
         set.dot_flags.verified = true;
     }
@@ -311,7 +311,7 @@ pub fn apply_implicit_stat_overrides(
         }
         let Some(stat_id) = &entry.stat_id else {
             return Err(format!(
-                "skill_overrides 条目（skill `{}`，stat `{}`）缺 stat_id",
+                "skill_overrides entry (skill `{}`, stat `{}`) is missing stat_id",
                 entry.skill, entry.stat
             ));
         };
@@ -431,7 +431,10 @@ mod tests {
         )]);
         apply_level_overrides(&mut levels, &ov).unwrap();
         assert_eq!(levels["Snipe"][0].base_multiplier, Some(2.65));
-        assert_eq!(levels["Snipe"][1].base_multiplier, None, "L2 不得被填充");
+        assert_eq!(
+            levels["Snipe"][1].base_multiplier, None,
+            "L2 must not be filled in"
+        );
     }
 
     /// Rule 2: trivial-value normalization — asm 0 / base_multiplier ≈1.0
@@ -447,7 +450,11 @@ mod tests {
         apply_level_overrides(&mut levels, &ov).unwrap();
         assert_eq!(levels["S"][0].attack_speed_multiplier, None);
         assert_eq!(levels["S"][0].base_multiplier, None);
-        assert_eq!(levels["S"][0].crit_chance, Some(0.0), "crit 0 区别于缺失");
+        assert_eq!(
+            levels["S"][0].crit_chance,
+            Some(0.0),
+            "crit 0 is distinct from missing"
+        );
     }
 
     /// Rule 4: an unknown stat name errors out, not silenced; violating
@@ -481,13 +488,16 @@ mod tests {
         apply_stat_set_overrides(&mut sets, &ov).unwrap();
 
         assert_eq!(sets.len(), 2);
-        assert_eq!(sets[0].effect_id, "Aardvark", "追加后按 effect id 排序");
+        assert_eq!(
+            sets[0].effect_id, "Aardvark",
+            "sorted by effect id after appending"
+        );
         assert_eq!(sets[0].sets[0].skill_attack_speed_more, Some(50.0));
         assert!(sets[0].sets[0].levels.is_empty());
         assert_eq!(
             sets[1].sets[0].skill_attack_speed_more,
             Some(285.0),
-            "同 skill 多条时首条生效（写入主 set）"
+            "with multiple entries for the same skill, the first one wins (written to the primary set)"
         );
     }
 
@@ -515,12 +525,21 @@ mod tests {
 
         apply_dot_flag_overrides(&mut sets, &ov).unwrap();
         let main = &sets[0].sets[0];
-        assert!(!main.dot_flags.area, "主 set 不得被误写");
+        assert!(
+            !main.dot_flags.area,
+            "the primary set must not be miswritten"
+        );
         assert!(!main.dot_flags.verified);
         let nova = &sets[0].sets[1];
-        assert!(nova.dot_flags.area, "vendor 序号 2 的 set 应命中");
-        assert!(nova.dot_flags.verified, "命中即核验");
-        assert!(!nova.dot_flags.spell, "未列出的位保持保守 false");
+        assert!(
+            nova.dot_flags.area,
+            "the set with vendor index 2 should match"
+        );
+        assert!(nova.dot_flags.verified, "a match implies verified");
+        assert!(
+            !nova.dot_flags.spell,
+            "unlisted bits stay conservatively false"
+        );
     }
 
     /// dotIs* merge rule 2: a vendor-only skill / unmatched index →
@@ -537,7 +556,10 @@ mod tests {
         let mut miss_index = entry("Known", "dot_is_hit", Some(1.0), None);
         miss_index.stat_set = Some(9);
         apply_dot_flag_overrides(&mut sets, &doc(vec![miss_skill, miss_index])).unwrap();
-        assert!(sets[0].sets[0].dot_flags.is_default(), "未命中不得写入");
+        assert!(
+            sets[0].sets[0].dot_flags.is_default(),
+            "no match must not write anything"
+        );
 
         let bad = entry("Known", "dot_is_hit", None, None);
         assert!(apply_dot_flag_overrides(&mut sets, &doc(vec![bad])).is_err());
@@ -571,7 +593,7 @@ mod tests {
         assert_eq!(
             sets[0].sets[0].implicit_stats,
             vec!["attacks_roll_crits_twice".to_string()],
-            "去重后单条"
+            "single entry after dedup"
         );
 
         let bad = entry("SupportGarukhansResolvePlayer", "implicit_stat", None, None);

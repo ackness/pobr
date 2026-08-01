@@ -100,8 +100,8 @@ pub fn assemble_base_overrides_document(
         meta,
         overrides: entries,
     };
-    let mut json =
-        serde_json::to_string_pretty(&doc).expect("base item overrides 文档序列化不应失败");
+    let mut json = serde_json::to_string_pretty(&doc)
+        .expect("base item overrides document serialization should not fail");
     json.push('\n');
     json
 }
@@ -111,7 +111,7 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<BaseItemOverrideEntry>
     if args.files.is_empty() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            "extract-bases: --files 不能为空",
+            "extract-bases: --files must not be empty",
         ));
     }
     let mut child = Command::new(&args.luajit)
@@ -126,7 +126,7 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<BaseItemOverrideEntry>
             io::Error::new(
                 io::ErrorKind::NotFound,
                 format!(
-                    "无法启动 luajit（{}）：{error}；请安装 luajit 或用 --luajit / POBR_LUAJIT 指定路径",
+                    "failed to launch luajit ({}): {error}; install luajit or specify the path via --luajit / POBR_LUAJIT",
                     args.luajit.display()
                 ),
             )
@@ -135,14 +135,14 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<BaseItemOverrideEntry>
     child
         .stdin
         .take()
-        .expect("stdin 已配置为 piped")
+        .expect("stdin was configured as piped")
         .write_all(BOOTSTRAP_LUA.as_bytes())?;
 
     let output = child.wait_with_output()?;
     let stderr_text = String::from_utf8_lossy(&output.stderr);
     if !output.status.success() {
         return Err(io::Error::other(format!(
-            "luajit 引导脚本执行失败（exit: {:?}）：{}",
+            "luajit bootstrap script failed (exit: {:?}): {}",
             output.status.code(),
             stderr_text.trim()
         )));
@@ -161,7 +161,7 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<BaseItemOverrideEntry>
         }
         let entry: BaseItemOverrideEntry = serde_json::from_str(line).map_err(|error| {
             io::Error::other(format!(
-                "引导脚本输出了非法 JSONL 行：{error}；行内容：{line}"
+                "bootstrap script emitted an invalid JSONL line: {error}; line content: {line}"
             ))
         })?;
         entries.push(entry);

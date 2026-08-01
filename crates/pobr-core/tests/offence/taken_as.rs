@@ -79,7 +79,7 @@ fn shift_table_over_100_truncates_source_only() {
     add_text(&mut db, "60% of Physical Damage taken as Fire Damage");
     add_text(&mut db, "60% of Physical Damage taken as Lightning Damage");
     let shift = damage_shift_table(&db, &CalcConfig::attack());
-    assert_eq!(shift[PHYS][PHYS], 0.0, "源保留 max(1-1.2, 0) = 0");
+    assert_eq!(shift[PHYS][PHYS], 0.0, "source retention max(1-1.2, 0) = 0");
     assert_eq!(shift[PHYS][FIRE], 0.6);
     assert_eq!(shift[PHYS][LIGHT], 0.6);
 }
@@ -145,7 +145,7 @@ fn effective_armour_partial_pct_keeps_physical() {
     assert_eq!(
         effective_applied_armour(&db, &cfg, 1000.0, 0.0, 0.0, DamageType::Physical),
         1000.0,
-        "无 instead flag → 物理隐式 100 保留"
+        "without the instead flag -> physical implicitly retains 100"
     );
 }
 
@@ -291,8 +291,11 @@ fn taken_hit_lightning_coil_end_to_end() {
     assert_eq!(ctx.effective_applied_armour[LIGHT], 0.0);
 
     let (sum, parts) = taken_hit_from_damage(1000.0, DamageType::Physical, &ctx);
-    assert_eq!(parts[PHYS], 357.0, "物理半经护甲减伤");
-    assert_eq!(parts[LIGHT], 125.0, "电半经抗性");
+    assert_eq!(
+        parts[PHYS], 357.0,
+        "the physical half after armour mitigation"
+    );
+    assert_eq!(parts[LIGHT], 125.0, "the lightning half after resistance");
     assert_eq!(sum, 482.0);
 
     // For comparison: under the same conditions without conversion, taken would be 833 —
@@ -356,7 +359,10 @@ fn builder_instead_of_physical_flag() {
         ..MitigationInputs::default()
     };
     let ctx = build_mitigation_ctx(&db, &cfg, &inputs);
-    assert_eq!(ctx.armour_applies_pct[PHYS], 0.0, "flag 清零物理份额");
+    assert_eq!(
+        ctx.armour_applies_pct[PHYS], 0.0,
+        "the flag zeroes the physical share"
+    );
     assert_eq!(ctx.effective_applied_armour[PHYS], 0.0);
     assert_eq!(ctx.effective_applied_armour[FIRE], 2000.0);
 

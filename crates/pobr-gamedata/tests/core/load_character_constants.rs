@@ -25,14 +25,14 @@ fn game_data() -> GameData {
 /// manifest v2 already registers this domain in the base section.
 #[test]
 fn manifest_registers_character_constants_in_base() {
-    let manifest = game_data().manifest().expect("manifest 可加载");
+    let manifest = game_data().manifest().expect("manifest should load");
     assert!(
         manifest
             .domains
             .base
             .iter()
             .any(|d| d == "character_constants"),
-        "manifest.domains.base 应包含 character_constants"
+        "manifest.domains.base should include character_constants"
     );
 }
 
@@ -43,7 +43,7 @@ fn manifest_registers_character_constants_in_base() {
 fn values_match_pobr_core_character_rs_constants() {
     let c = game_data()
         .character_constants()
-        .expect("character_constants 可加载");
+        .expect("character_constants should load");
 
     // Life: character.rs's BASE_LIFE_CONSTANT / LIFE_PER_LEVEL / LIFE_PER_STRENGTH
     assert_eq!(c.base_life_constant, 16.0);
@@ -87,13 +87,13 @@ fn derived_formulas_reproduce_documented_oracle_values() {
     let c = game_data().character_constants().unwrap();
 
     let life_l99 = c.base_life_constant + c.life_per_level * 99.0;
-    assert_eq!(life_l99, 1204.0, "L99 固有生命应为 1204");
+    assert_eq!(life_l99, 1204.0, "L99 base Life should be 1204");
 
     let mana_l99 = c.base_mana_constant + c.mana_per_level * 99.0;
-    assert_eq!(mana_l99, 426.0, "L99 固有魔力应为 426");
+    assert_eq!(mana_l99, 426.0, "L99 base Mana should be 426");
 
     let accuracy_l1 = c.base_accuracy_constant + c.accuracy_per_level * 1.0;
-    assert_eq!(accuracy_l1, 0.0, "L1 固有精准应为 0");
+    assert_eq!(accuracy_l1, 0.0, "L1 base Accuracy should be 0");
 }
 
 /// The JSON round-trips through the schema (no serde fields missing / extra).

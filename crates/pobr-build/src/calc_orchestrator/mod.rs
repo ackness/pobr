@@ -184,16 +184,18 @@ fn default_parser_rules()
             let data = pobr_gamedata::GameData::new(pobr_gamedata::current_data_dir());
             let doc = data
                 .mod_parser_rules()
-                .map_err(|e| format!("加载 mod_parser_rules.json 失败：{e}"))?
-                .ok_or_else(|| "数据目录缺 overlay/mod_parser_rules.json".to_string())?;
+                .map_err(|e| format!("failed to load mod_parser_rules.json: {e}"))?
+                .ok_or_else(|| {
+                    "data directory is missing overlay/mod_parser_rules.json".to_string()
+                })?;
             let special = data
                 .load_ruleset()
-                .map_err(|e| format!("加载 ruleset 失败：{e}"))?
+                .map_err(|e| format!("failed to load ruleset: {e}"))?
                 .special_mods
                 .unwrap_or_default();
             pobr_core::mod_parser::CompiledParserRules::compile_with_special(&doc, &special)
                 .map(Arc::new)
-                .map_err(|e| format!("parser 规则编译失败：{e:?}"))
+                .map_err(|e| format!("parser rule compilation failed: {e:?}"))
         })
         .clone()
         .map_err(BuildError::Parse)
@@ -1556,7 +1558,10 @@ mod ring3_tests {
     fn ring3_ignored_without_additional_ring_slot() {
         let build = Build::new().set_item(EquipmentSlot::Ring3, life_ring());
         let out = calculate_with_data(&build, &ring_slot_data(), &base_opts()).expect("calc");
-        assert_eq!(out.life, 100.0, "未分配 +1 Ring Slot 时 Ring 3 不参与计算");
+        assert_eq!(
+            out.life, 100.0,
+            "Ring 3 is ignored when +1 Ring Slot has not been allocated"
+        );
     }
 
     /// Ring 3 mods take effect once the "+1 Ring Slot" node is allocated.
@@ -1569,7 +1574,10 @@ mod ring3_tests {
                 ..Default::default()
             });
         let out = calculate_with_data(&build, &ring_slot_data(), &base_opts()).expect("calc");
-        assert_eq!(out.life, 130.0, "分配 +1 Ring Slot 后 Ring 3 词条生效");
+        assert_eq!(
+            out.life, 130.0,
+            "Ring 3 mods take effect once +1 Ring Slot is allocated"
+        );
     }
 }
 
@@ -1672,7 +1680,7 @@ mod tests {
         assert_eq!(
             defs.iter().map(|d| d.skill).collect::<Vec<_>>(),
             vec![20686],
-            "Allocates Paragon 应解析到油涂池节点 20686"
+            "Allocates Paragon should resolve to anoint-pool node 20686"
         );
 
         // GemProperty scan: +5% Quality (bare "all Skills", no attribute requirement).
@@ -1684,7 +1692,7 @@ mod tests {
                 category: String::new(),
                 attr_req: None,
             }),
-            "授予 Paragon 应产出 Quality +5 全匹配词条，实得 {bonuses:?}"
+            "granting Paragon should produce a catch-all Quality +5 mod, got {bonuses:?}"
         );
 
         // Idempotency: allocating the same node on the tree must not double-count it.
@@ -1702,7 +1710,10 @@ mod tests {
             .iter()
             .filter(|b| b.kind == GemPropertyKind::Quality && b.value == 5)
             .count();
-        assert_eq!(quality_count, 1, "已分配 + 授予应只计一次");
+        assert_eq!(
+            quality_count, 1,
+            "allocated + granted should only count once"
+        );
     }
 
     fn repo_data() -> BuildData {
@@ -1807,7 +1818,10 @@ mod tests {
         };
         let out_off = calculate_with_data(&build, &data, &opts_off).expect("calc");
         assert_eq!(out_off.life, 0.0);
-        assert!(out.life > out_off.life, "CharacterBase 生效抬升生命");
+        assert!(
+            out.life > out_off.life,
+            "CharacterBase in effect raises life"
+        );
     }
 
     #[test]
@@ -1851,7 +1865,10 @@ mod tests {
             ..Default::default()
         };
         let out = calculate_with_data(&build, &data, &opts).expect("calc");
-        assert_eq!(out.life, 130.0, "节点 +30 生命经节点归因路径生效");
+        assert_eq!(
+            out.life, 130.0,
+            "node's +30 life takes effect via the node attribution path"
+        );
     }
 
     /// Build a Normal node with coordinates (defaults to a +5 to maximum Life mod; overridable).
@@ -1944,7 +1961,7 @@ mod tests {
             .count();
         assert_eq!(
             count, 1,
-            "属性三选一小点不应计入 Small grant 份数；得到 {texts:?}"
+            "attribute-choice nodes should not count toward the Small grant tally, got {texts:?}"
         );
     }
 
@@ -2055,7 +2072,7 @@ mod tests {
             .expect("calc");
             assert_eq!(
                 out.hit_chance, 1.0,
-                "非攻击必中（vendor :2611）：mode_effective={mode_effective}"
+                "non-attacks always hit (vendor :2611): mode_effective={mode_effective}"
             );
         }
 
@@ -2068,7 +2085,7 @@ mod tests {
         let out = session.perform_minimal();
         assert!(
             out.hit_chance < 1.0,
-            "攻击应做精准/闪避检定：hit_chance={}",
+            "attacks should run the accuracy/evasion check: hit_chance={}",
             out.hit_chance
         );
     }
@@ -2109,11 +2126,11 @@ mod tests {
         assert_eq!(
             run("FireballPlayer").hit_chance,
             1.0,
-            "法术必中（vendor :2611）"
+            "spells always hit (vendor :2611)"
         );
         assert!(
             run("ArmourBreakerPlayer").hit_chance < 1.0,
-            "攻击应做精准/闪避检定"
+            "attacks should run the accuracy/evasion check"
         );
     }
 
@@ -2239,7 +2256,7 @@ mod tests {
 
         assert!(
             pinnacle.total_enemy_damage_in > none.total_enemy_damage_in,
-            "Pinnacle 档敌伤（dps_mult 8/4.4）应高于普通怪档（1/4.4）：none={} pinnacle={}",
+            "Pinnacle-tier enemy damage (dps_mult 8/4.4) should exceed normal-tier (1/4.4): none={} pinnacle={}",
             none.total_enemy_damage_in,
             pinnacle.total_enemy_damage_in,
         );
@@ -2295,7 +2312,7 @@ mod tests {
         // Precondition: Freezing Mark is not an aura (it's a Mark/Buff, no Aura tag), and its stat-set contains the target buff stat.
         assert!(
             !data.is_aura("FreezingMarkPlayer"),
-            "Freezing Mark 非光环（Mark/Buff）"
+            "Freezing Mark is not an aura (it's a Mark/Buff)"
         );
 
         let build = Build::new()
@@ -2314,7 +2331,7 @@ mod tests {
             .sum();
         assert_eq!(
             cold, 30.0,
-            "Freezing Mark 应给 30% gain-as-cold，实得 {cold}"
+            "Freezing Mark should give 30% gain-as-cold, got {cold}"
         );
 
         // A build without a Mark produces no offensive self-buff.
@@ -2325,7 +2342,7 @@ mod tests {
         });
         assert!(
             self_buff_offensive_modifiers(&bare, &data).is_empty(),
-            "无 Mark build 不应产出 gain-as buff"
+            "a build without a Mark should not produce a gain-as buff"
         );
     }
 
@@ -2353,16 +2370,16 @@ mod tests {
         // q19: trunc(0.55 × 19) = trunc(10.45) = 10 (math.modf semantics, not round).
         let group = SocketGroup::new().with_gem_skill_quality("FireballPlayer", 20, 19);
         let mods = main_skill_quality_modifiers(&group, &data, "FireballPlayer");
-        assert_eq!(mods.len(), 1, "damage_+% 应映射为一条 Damage INC");
+        assert_eq!(mods.len(), 1, "damage_+% should map to a single Damage INC");
         let m = &mods[0];
         assert_eq!(m.name.as_str(), "Damage");
         assert_eq!(m.mod_type, ModType::Inc);
         assert_eq!(m.value.as_number(), Some(10.0), "trunc(0.55×19)=10");
-        let origin = m.origin.as_ref().expect("带归因");
+        let origin = m.origin.as_ref().expect("has attribution");
         assert_eq!(origin.source_id.kind, SourceKind::GemQuality);
         assert!(
             origin.source_id.id.starts_with("gem.FireballPlayer.q19"),
-            "归因 id 前缀 gem.<id>.q<Q>，实得 {}",
+            "attribution id prefix gem.<id>.q<Q>, got {}",
             origin.source_id.id
         );
 
@@ -2399,7 +2416,7 @@ mod tests {
                       { "kind": "mod", "name": "ColdDamage", "mod_type": "INC" } ] } } } }
                 }"#,
             )
-            .expect("合成 statmap 合法"),
+            .expect("synthetic statmap is valid"),
         );
         let _guard =
             install_stat_map_context(StatMapMode::default(), Some(std::sync::Arc::new(catalog)));
@@ -2420,7 +2437,7 @@ mod tests {
             .filter(|m| m.mod_type == ModType::Inc)
             .map(|m| m.name.as_str())
             .collect();
-        assert_eq!(mapped, vec!["ColdDamage"], "set 2 覆盖应命中");
+        assert_eq!(mapped, vec!["ColdDamage"], "set 2 override should hit");
         // Default (primary set, key "1", no override) → falls back to global (Damage).
         let set_key = data.selected_set_key("SynthEff", None);
         assert_eq!(set_key.as_deref(), Some("1"));
@@ -2430,7 +2447,7 @@ mod tests {
             .filter(|m| m.mod_type == ModType::Inc)
             .map(|m| m.name.as_str())
             .collect();
-        assert_eq!(mapped, vec!["Damage"], "缺省应落回 global");
+        assert_eq!(mapped, vec!["Damage"], "default should fall back to global");
     }
 
     /// A synthetic stat set (shared across tests): a single level row of `synth_stat_+%`.
@@ -2468,7 +2485,7 @@ mod tests {
         let unsel = data.unselected_set_stats("FlameWallPlayer", 20, 0, None);
         assert!(
             !unsel.is_empty(),
-            "FlameWallPlayer 应有未选 set（set 2 = 投射物 buff 形态）"
+            "FlameWallPlayer should have an unselected set (set 2 = projectile buff form)"
         );
         let _guard =
             install_stat_map_context(StatMapMode::default(), data.stat_map_catalog.clone());
@@ -2476,7 +2493,7 @@ mod tests {
         let mods = unselected_set_global_modifiers(&group, &data, "FlameWallPlayer");
         assert!(
             mods.is_empty(),
-            "M3 接通 GlobalEffect tag 前未选 set 注入应为零，实得 {mods:?}"
+            "before M3 wires up the GlobalEffect tag, unselected-set injection should be zero, got {mods:?}"
         );
         // Builder path (no gem_skills): no statSet context → empty.
         let empty_group = SocketGroup::new();
@@ -2490,10 +2507,13 @@ mod tests {
         // build without auras (no stats) is unaffected. Never hardcoded against gem names.
         let data = repo_data();
         // Precondition check: both are actually auras (skill_types contains Aura), and their per-level stats are non-empty (data is present).
-        assert!(data.is_aura("DisciplinePlayer"), "Discipline 应判定为光环");
+        assert!(
+            data.is_aura("DisciplinePlayer"),
+            "Discipline should be recognized as an aura"
+        );
         assert!(
             data.is_aura("PurityOfFirePlayer"),
-            "Purity of Fire 应判定为光环"
+            "Purity of Fire should be recognized as an aura"
         );
 
         let base_build = Build::new().with_character(CharacterIdentity {
@@ -2516,13 +2536,13 @@ mod tests {
 
         assert!(
             aura.energy_shield > base.energy_shield,
-            "Discipline 应抬升 ES: base={} aura={}",
+            "Discipline should raise ES: base={} aura={}",
             base.energy_shield,
             aura.energy_shield,
         );
         assert!(
             aura.fire_resistance > base.fire_resistance,
-            "Purity of Fire 应抬升火抗: base={} aura={}",
+            "Purity of Fire should raise fire resistance: base={} aura={}",
             base.fire_resistance,
             aura.fire_resistance,
         );
@@ -2556,7 +2576,7 @@ mod tests {
         assert_eq!(
             specs.len(),
             1,
-            "Persistent Buff 宿主：注入一条 support buff"
+            "Persistent Buff host: injects one support buff"
         );
         let spec = &specs[0];
         assert_eq!(spec.kind, BuffKind::Buff);
@@ -2569,7 +2589,7 @@ mod tests {
 
         assert!(
             support_buff_specs(&host("FireballPlayer"), &data).is_empty(),
-            "非 Persistent Buff 宿主：require 裁决拒收，不注入"
+            "non-Persistent-Buff host: require check rejects it, nothing injected"
         );
     }
 
@@ -2600,7 +2620,7 @@ mod tests {
             let m = mods
                 .iter()
                 .find(|m| m.name.as_str() == name)
-                .unwrap_or_else(|| panic!("{name} 应全局注入（实得 {names:?}）"));
+                .unwrap_or_else(|| panic!("{name} should be injected globally (got {names:?})"));
             assert_eq!(m.mod_type, ModType::Inc);
             assert_eq!(m.value.as_number(), Some(20.0), "Potent Exposure lv1 = 20");
         }
@@ -2612,7 +2632,7 @@ mod tests {
         );
         assert!(
             exposure_support_modifiers(&plain, &data, None).is_empty(),
-            "无曝光源宿主：Potent 效果词条不全局泄漏"
+            "host with no exposure source: the Potent effect mod does not leak globally"
         );
     }
 
@@ -2631,7 +2651,7 @@ mod tests {
         let banner = specs
             .iter()
             .find(|s| s.skill_id == "WarBannerPlayer")
-            .expect("War Banner spec（Aura 类）");
+            .expect("War Banner spec (Aura kind)");
         assert_eq!(banner.kind, BuffKind::Aura);
 
         let expected: f64 = data
@@ -2640,18 +2660,18 @@ mod tests {
             .into_iter()
             .find(|ds| ds.stat == "base_skill_buff_banner_accuracy_+%_to_apply")
             .map(|ds| ds.value)
-            .expect("banner accuracy stat 应在 statset 数据中");
+            .expect("banner accuracy stat should be in the statset data");
         let acc = banner
             .mods
             .iter()
             .find(|m| m.name.as_str() == "Accuracy")
-            .expect("Accuracy INC 应经 statmap buff 域入 spec.mods");
+            .expect("Accuracy INC should reach spec.mods via the statmap buff domain");
         assert_eq!(acc.mod_type, ModType::Inc);
         assert_eq!(acc.value.as_number(), Some(expected));
         assert!(
             acc.tags
                 .contains(&pobr_core::ModTag::condition("BannerPlanted", false)),
-            "Condition:BannerPlanted 直译保留，实得 {:?}",
+            "Condition:BannerPlanted is preserved as a literal translation, got {:?}",
             acc.tags
         );
     }
@@ -2672,7 +2692,7 @@ mod tests {
         let pinnacle = specs
             .iter()
             .find(|s| s.skill_id == "PinnacleOfPowerPlayer")
-            .expect("Pinnacle of Power spec（Buff 类）");
+            .expect("Pinnacle of Power spec (Buff kind)");
         assert_eq!(pinnacle.kind, BuffKind::Buff);
 
         let flags: Vec<&str> = pinnacle
@@ -2691,7 +2711,7 @@ mod tests {
         ] {
             assert!(
                 flags.contains(&expected),
-                "缺 {expected} flag，实得 {flags:?}"
+                "missing {expected} flag, got {flags:?}"
             );
         }
     }
@@ -2753,13 +2773,13 @@ mod tests {
         assert_eq!(
             scales,
             vec![(EquipmentSlot::Weapon2, 0.2)],
-            "箭袋在副手 → Weapon2 槽 0.20 缩放"
+            "a quiver in the off-hand → Weapon2 slot scales by 0.20"
         );
 
         let without_quiver = Build::new().with_tree(tree);
         assert!(
             slot_bonus_effect_scales(&without_quiver, &data).is_empty(),
-            "副手非箭袋时不收集（vendor type == \"Quiver\" 门控）"
+            "not collected when the off-hand isn't a quiver (vendor type == \"Quiver\" gate)"
         );
     }
 
@@ -2780,7 +2800,7 @@ mod tests {
         assert_eq!(
             names,
             vec!["Herald of Ice".to_string(), "Herald of Plague".to_string()],
-            "去重 + of 小写（AffectedBy 拼接后 = AffectedByHeraldofIce/Plague）"
+            "deduplicated + lowercase 'of' (concatenated AffectedBy = AffectedByHeraldofIce/Plague)"
         );
         assert!(herald_skill_names(&Build::new(), &data).is_empty());
     }
@@ -2803,7 +2823,7 @@ mod tests {
             );
 
         let specs = buff_skill_specs(&build, &data);
-        assert_eq!(specs.len(), 3, "aura + hex + mark 各一条 spec");
+        assert_eq!(specs.len(), 3, "one spec each for aura + hex + mark");
 
         let aura = specs
             .iter()
@@ -2812,7 +2832,7 @@ mod tests {
         assert_eq!(aura.kind, BuffKind::Aura);
         assert_eq!(aura.name, "Discipline");
         assert_eq!(aura.slot.as_deref(), Some("Body Armour"));
-        assert_eq!(aura.socket_index, 1, "组内宝石序 1-based");
+        assert_eq!(aura.socket_index, 1, "in-group gem order is 1-based");
         assert!(!aura.is_mark);
         // mods value convention: the per-level buff stat (verified independently —
         // the raw ES apply-stat value from effect_stats, not routed back through
@@ -2829,10 +2849,10 @@ mod tests {
             .filter(|m| m.name.as_str() == "EnergyShieldTotal")
             .filter_map(|m| m.value.as_number())
             .sum();
-        assert!(spec_es > 0.0, "Discipline 应携带 ES buff 词条");
+        assert!(spec_es > 0.0, "Discipline should carry an ES buff mod");
         assert_eq!(
             spec_es, expected_es,
-            "BuffSpec mods = 分等级 buff stat 原值"
+            "BuffSpec mods = raw per-level buff stat value"
         );
 
         let hex = specs
@@ -2840,10 +2860,10 @@ mod tests {
             .find(|s| s.skill_id == "TemporalChainsPlayer")
             .expect("Temporal Chains spec");
         assert_eq!(hex.kind, BuffKind::Curse);
-        assert!(!hex.is_mark, "AppliesCurse（非 Mark）→ hex");
+        assert!(!hex.is_mark, "AppliesCurse (not Mark) → hex");
         assert_eq!(
             hex.name, "Temporal Chains",
-            "active_skill 蛇形名派生（curse_base 查表键）"
+            "name derived from active_skill's snake_case (curse_base lookup key)"
         );
         assert_eq!(hex.socket_index, 2);
 
@@ -2891,16 +2911,18 @@ mod tests {
         let specs = buff_skill_specs(&build, &data);
         assert!(
             data.granted_effects.contains_key("CurseOfRepulsionPlayer"),
-            "前置：Repulsion 效果应在数据包中（否则本测试退化）"
+            "precondition: the Repulsion effect should be in the data pack (otherwise this test degenerates)"
         );
         assert!(
             !specs.iter().any(|s| s.skill_id == "CurseOfRepulsionPlayer"),
-            "Repulsion 无 curse 载荷 → 不注册（vendor buffList 空）"
+            "Repulsion has no curse payload → not registered (vendor buffList is empty)"
         );
         let hex = specs
             .iter()
             .find(|s| s.skill_id == "TemporalChainsPlayer")
-            .expect("Temporal Chains 载荷存在（允收名单外亦计）→ 注册");
+            .expect(
+                "Temporal Chains has a payload (counts even outside the allow-list) → registered",
+            );
         assert_eq!(hex.kind, BuffKind::Curse);
     }
 
@@ -2966,10 +2988,13 @@ mod tests {
             manual.perform_minimal();
             manual.output().energy_shield
         };
-        assert!(manual_es > 0.0, "Discipline 经 buff_pass 有非零 ES 贡献");
+        assert!(
+            manual_es > 0.0,
+            "Discipline should have a non-zero ES contribution via buff_pass"
+        );
         assert_eq!(
             through_orchestrator.energy_shield, manual_es,
-            "aura 词条只经 buff_pass 单通道计入一次（无静态直注残留）"
+            "aura mods count only once via the single buff_pass channel (no leftover static direct-inject)"
         );
     }
 
@@ -3005,11 +3030,14 @@ mod tests {
         };
 
         let base = es_with_aura_effect(0.0);
-        assert!(base > 0.0, "新路径下 Discipline 经 buff_pass 抬升 ES");
+        assert!(
+            base > 0.0,
+            "on the new path, Discipline raises ES via buff_pass"
+        );
         let boosted = es_with_aura_effect(20.0);
         assert!(
             boosted > base,
-            "20% inc AuraEffect 放大 aura buff：base={base} boosted={boosted}"
+            "20% inc AuraEffect amplifies the aura buff: base={base} boosted={boosted}"
         );
     }
 
@@ -3049,16 +3077,23 @@ mod tests {
             .filter(|ds| ds.stat == "base_skill_buff_chaos_damage_resistance_%_to_apply")
             .map(|ds| ds.value)
             .sum();
-        assert!(expected_res < 0.0, "Despair 减抗 stat 应为负值");
+        assert!(
+            expected_res < 0.0,
+            "Despair's resist-reduction stat should be negative"
+        );
         let chaos_res: Vec<&Modifier> = despair
             .mods
             .iter()
             .filter(|m| m.name.as_str() == "ChaosResist")
             .collect();
-        assert_eq!(chaos_res.len(), 1, "Despair → 敌侧 ChaosResist 单条");
+        assert_eq!(
+            chaos_res.len(),
+            1,
+            "Despair → a single enemy-side ChaosResist"
+        );
         assert_eq!(chaos_res[0].mod_type, ModType::Base);
         assert_eq!(chaos_res[0].value.as_number(), Some(expected_res));
-        let origin = chaos_res[0].origin.as_ref().expect("SkillGem 归因");
+        let origin = chaos_res[0].origin.as_ref().expect("SkillGem attribution");
         assert_eq!(origin.source_id.kind, SourceKind::SkillGem);
         assert!(origin.source_id.id.starts_with("curse.DespairPlayer."));
 
@@ -3070,7 +3105,7 @@ mod tests {
             mark.mods
                 .iter()
                 .any(|m| m.name.as_str() == "SelfCritMultiplier" && m.mod_type == ModType::Base),
-            "Sniper's Mark → 敌侧 SelfCritMultiplier BASE"
+            "Sniper's Mark → enemy-side SelfCritMultiplier BASE"
         );
 
         let chains = specs
@@ -3082,7 +3117,7 @@ mod tests {
                 .mods
                 .iter()
                 .any(|m| m.name.as_str() == "TemporalChainsActionSpeed"),
-            "载荷名无 pobr 消费方（TemporalChainsActionSpeed）→ 不注入（落 Compare 报表）"
+            "no pobr consumer for the payload name (TemporalChainsActionSpeed) → not injected (falls into the Compare report)"
         );
         // BuffExpireFaster is allow-listed (consumer = ailment::debuff_duration_mult,
         // CalcOffence.lua:1833-1835 / :5040) → a negative enemy-side MORE goes into spec.mods.
@@ -3090,11 +3125,11 @@ mod tests {
             .mods
             .iter()
             .find(|m| m.name.as_str() == "BuffExpireFaster")
-            .expect("Temporal Chains → 敌侧 BuffExpireFaster MORE");
+            .expect("Temporal Chains → enemy-side BuffExpireFaster MORE");
         assert_eq!(expire.mod_type, ModType::More);
         assert!(
             expire.value.as_number().is_some_and(|v| v < 0.0),
-            "expire slower = MORE 负值，实得 {:?}",
+            "expire slower = a negative MORE value, got {:?}",
             expire.value
         );
     }
@@ -3126,7 +3161,7 @@ mod tests {
             records.iter().any(|r| r.label == "curse.DespairPlayer"
                 && r.classification == "mapped"
                 && r.detail.contains("ChaosResist")),
-            "Despair 映射成功行入报表：{records:?}"
+            "Despair's successfully mapped row lands in the report: {records:?}"
         );
         assert!(
             records
@@ -3134,7 +3169,7 @@ mod tests {
                 .any(|r| r.label == "curse.TemporalChainsPlayer"
                     && r.classification == "unsupported"
                     && r.detail.contains("unknown_mod_name")),
-            "Temporal Chains 未映射载荷上报 unknown_mod_name：{records:?}"
+            "Temporal Chains' unmapped payload reports unknown_mod_name: {records:?}"
         );
     }
 
@@ -3172,10 +3207,13 @@ mod tests {
         // Effective mode: enemy fire resist -59 (EW lv20) enters the enemy db through the CurseEffect multiplier zone → DPS rises.
         let eff_base = calc(&base_build, true);
         let eff_cursed = calc(&cursed_build, true);
-        assert!(eff_base.dps > 0.0, "火系主技能基线 DPS 非零");
+        assert!(
+            eff_base.dps > 0.0,
+            "the fire main-skill baseline DPS should be non-zero"
+        );
         assert!(
             eff_cursed.dps > eff_base.dps,
-            "Elemental Weakness 减敌火抗应抬升有效 DPS：base={} cursed={}",
+            "Elemental Weakness lowering enemy fire resist should raise effective DPS: base={} cursed={}",
             eff_base.dps,
             eff_cursed.dps,
         );
@@ -3188,10 +3226,16 @@ mod tests {
         // (mode_effective=false) → attaching a curse gem leaves every output value unchanged.
         let panel_base = calc(&base_build, false);
         let panel_cursed = calc(&cursed_build, false);
-        assert_eq!(panel_cursed.dps, panel_base.dps, "面板 DPS 逐值不变");
+        assert_eq!(
+            panel_cursed.dps, panel_base.dps,
+            "panel-mode DPS is unchanged value-for-value"
+        );
         assert_eq!(panel_cursed.life, panel_base.life);
         assert_eq!(panel_cursed.fire_resistance, panel_base.fire_resistance);
-        assert!(panel_cursed.curse_slots.is_empty(), "面板口径 hex 不入槽");
+        assert!(
+            panel_cursed.curse_slots.is_empty(),
+            "in panel mode, hexes don't occupy a slot"
+        );
     }
 
     /// End to end (effective mode): CurseEffect inc amplifies the mapped result;
@@ -3265,11 +3309,11 @@ mod tests {
         assert_eq!(slots_despair, vec!["Despair".to_string()]);
         assert!(
             dps_despair > dps_bare,
-            "Despair 减敌混沌抗 → DPS 上升：bare={dps_bare} despair={dps_despair}"
+            "Despair lowering enemy chaos resist → DPS rises: bare={dps_bare} despair={dps_despair}"
         );
         assert!(
             dps_amplified > dps_despair,
-            "20% inc CurseEffect 放大减抗：despair={dps_despair} amplified={dps_amplified}"
+            "20% inc CurseEffect amplifies the resist reduction: despair={dps_despair} amplified={dps_amplified}"
         );
         // limit=1 truncation: Enfeeble (higher priority) takes the slot alone,
         // Despair's mods never enter the enemy db — Enfeeble's payload (enemy
@@ -3277,7 +3321,7 @@ mod tests {
         assert_eq!(slots_truncated, vec!["Enfeeble".to_string()]);
         assert_eq!(
             dps_truncated, dps_bare,
-            "败者 Despair 词条不产生 DPS 影响（Enfeeble 载荷 DPS 中性）"
+            "the losing Despair mods have no DPS effect (Enfeeble's payload is DPS-neutral)"
         );
     }
 
@@ -3304,7 +3348,7 @@ mod tests {
                 ModFlags::ATTACK | ModFlags::SPELL
             ),
             vec!["AttackedRecently"],
-            "attack elseif spell（:249-253 互斥）"
+            "attack elseif spell (:249-253 are mutually exclusive)"
         );
         // Movement / Channel stack on top of attack/spell.
         assert_eq!(
@@ -3323,13 +3367,13 @@ mod tests {
         assert_eq!(
             combat_conditions(&types(&["Spell", "Minion", "Duration"]), ModFlags::SPELL),
             vec!["CastSpellRecently"],
-            "Duration 抑制 UsedMinionSkillRecently"
+            "Duration suppresses UsedMinionSkillRecently"
         );
         // Exemptions (:248): triggered / mine / totem clear the whole set.
         for exempt in ["Triggered", "InbuiltTrigger", "RemoteMined", "SummonsTotem"] {
             assert!(
                 combat_conditions(&types(&["Attack", exempt]), ModFlags::ATTACK).is_empty(),
-                "{exempt} 应豁免战斗条件"
+                "{exempt} should be exempt from combat conditions"
             );
         }
     }
@@ -3364,7 +3408,7 @@ mod tests {
         let channel_sut = channel.skill_use_time.expect("skill_use_time filled");
         assert!(
             !channel_sut.capped_by_server_tick && channel.effective_action_rate > server_cap,
-            "Channel 主技能应自动置 Channelling（不受帧 cap）：rate={} capped={}",
+            "a Channel main skill should auto-set Channelling (exempt from the tick cap): rate={} capped={}",
             channel.effective_action_rate,
             channel_sut.capped_by_server_tick
         );
@@ -3373,7 +3417,7 @@ mod tests {
         let spell_sut = spell.skill_use_time.expect("skill_use_time filled");
         assert!(
             spell_sut.capped_by_server_tick && spell.effective_action_rate <= server_cap + 1e-9,
-            "非 Channel 法术不置 Channelling（帧 cap 生效）：rate={} capped={}",
+            "a non-Channel spell doesn't set Channelling (the tick cap applies): rate={} capped={}",
             spell.effective_action_rate,
             spell_sut.capped_by_server_tick
         );
@@ -3406,17 +3450,17 @@ mod tests {
         // cd 3s → cap = 1/ceil_tick(3.0) ≈ 0.333/s.
         assert!(
             out.trigger_rate_cap > 0.0,
-            "内建触发应写出非零 trigger_rate_cap，实得 {}",
+            "a built-in trigger should write a non-zero trigger_rate_cap, got {}",
             out.trigger_rate_cap
         );
         assert!(
             (out.trigger_rate_cap - 0.333).abs() < 0.05,
-            "cd 3s 触发上限应 ≈0.333/s，实得 {}",
+            "a 3s cd trigger cap should be ≈0.333/s, got {}",
             out.trigger_rate_cap
         );
         assert!(
             out.skill_trigger_rate > 0.0,
-            "skill_trigger_rate 应非占位 0，实得 {}",
+            "skill_trigger_rate should not be the placeholder 0, got {}",
             out.skill_trigger_rate
         );
     }
@@ -3479,7 +3523,7 @@ mod tests {
         assert_eq!(
             picked,
             Some(("ShellQuakePlayer", 12, None)),
-            "附加授予效果应被正向展开为主技能（等级沿用宿主宝石）"
+            "an additional granted effect should be expanded into the main skill (level follows the host gem)"
         );
 
         // Missing foreign key (an old data pack without the overlay) → stays None (a pure summon group has no main skill, backward compatible).
@@ -3510,11 +3554,11 @@ mod tests {
 
         assert_eq!(
             out.trigger_rate_cap, 0.0,
-            "非触发技能 trigger_rate_cap 应保持 0"
+            "a non-triggered skill's trigger_rate_cap should stay 0"
         );
         assert_eq!(
             out.skill_trigger_rate, 0.0,
-            "非触发技能 skill_trigger_rate 应保持 0"
+            "a non-triggered skill's skill_trigger_rate should stay 0"
         );
     }
 
@@ -3593,7 +3637,10 @@ mod tests {
             ..ResolvedSkillLevel::default()
         };
         let mods_none = trigger_modifiers(&build, &data, &opts, &normal, &group, "NormalSkill");
-        assert!(mods_none.is_empty(), "非触发技能不应注入触发词条");
+        assert!(
+            mods_none.is_empty(),
+            "a non-triggered skill should not inject trigger mods"
+        );
     }
 
     // trigger_configs recognition + source-rate sub-calc
@@ -3607,7 +3654,7 @@ mod tests {
         let data = repo_data();
         assert!(
             data.trigger_configs.contains_key("MetaCastOnCritPlayer"),
-            "trigger_configs overlay 应含 CoC join 键"
+            "trigger_configs overlay should include the CoC join key"
         );
         let build = Build::new()
             .with_character(CharacterIdentity {
@@ -3628,7 +3675,7 @@ mod tests {
 
         assert!(
             out.skill_trigger_rate > 0.0,
-            "CoC 识别后触发速率应非占位 0，实得 {}",
+            "after CoC recognition, the trigger rate should not be the placeholder 0, got {}",
             out.skill_trigger_rate
         );
         // Crit folded in (trigger_on_crit): the trigger rate should be noticeably lower than the source's attack rate (source crit chance ≪ 100%).
@@ -3643,7 +3690,7 @@ mod tests {
         .expect("source sub-calc");
         assert!(
             out.skill_trigger_rate < source_stats.action_rate,
-            "CoC 触发速率 {} 应被源暴击率折减到低于源速率 {}",
+            "CoC trigger rate {} should be discounted by the source's crit chance to below source rate {}",
             out.skill_trigger_rate,
             source_stats.action_rate
         );
@@ -3680,7 +3727,7 @@ mod tests {
         let fast_out = calculate_with_data(&mk_build(), &data, &fast_opts).expect("coc fast");
         assert!(
             fast_out.skill_trigger_rate > base_out.skill_trigger_rate * 1.5,
-            "+100% 攻速应近乎翻倍触发速率（14-G2 修复）：{} → {}",
+            "+100% attack speed should nearly double the trigger rate (14-G2 fix): {} → {}",
             base_out.skill_trigger_rate,
             fast_out.skill_trigger_rate
         );
@@ -3718,7 +3765,7 @@ mod tests {
                 "ArmourBreakerPlayer"
             )
             .is_none(),
-            "源 = 被触发自身应退回 None（基础 use_time 口径）"
+            "source == the triggered skill itself should fall back to None (base use_time convention)"
         );
 
         // ② Depth guard: a sub-calc already in progress won't expand another one.
@@ -3734,7 +3781,7 @@ mod tests {
                     "FireballPlayer"
                 )
                 .is_none(),
-                "深度 ≥1 应拒绝再展开子计算"
+                "depth ≥1 should reject expanding another sub-calc"
             );
             // ③ Inside the guard, the trigger relationship is stripped entirely.
             let resolved = ResolvedSkillLevel {
@@ -3751,7 +3798,7 @@ mod tests {
                     "ElementalStormPlayer"
                 )
                 .is_empty(),
-                "子计算 env 中 trigger 关系应被剥离"
+                "the trigger relationship should be stripped in the sub-calc env"
             );
         }
         // After the guard exits, normal expansion resumes.
@@ -3765,7 +3812,7 @@ mod tests {
                 "FireballPlayer"
             )
             .is_some(),
-            "护栏退出后子计算应恢复可用"
+            "after the guard exits, sub-calc should be usable again"
         );
     }
 
@@ -3846,7 +3893,7 @@ mod tests {
         );
         assert!(
             mods.is_empty(),
-            "Phasing 未置真时应不注入（vendor disable）"
+            "should not inject when Phasing isn't set (vendor disable)"
         );
 
         // Condition met → injects the cap override + the global marker.
@@ -4009,8 +4056,12 @@ mod tests {
         assert_eq!(
             bits,
             ModFlags::MACE | ModFlags::WEAPON | ModFlags::WEAPON_1H | ModFlags::WEAPON_MELEE,
-            "单手锤 → vendor getWeaponFlags 位集"
+            "one-handed mace → vendor getWeaponFlags bitset"
         );
-        assert_eq!(unarmed, ModFlags::UNARMED, "空主手 → 仅 Unarmed 位");
+        assert_eq!(
+            unarmed,
+            ModFlags::UNARMED,
+            "empty main hand → only the Unarmed bit"
+        );
     }
 }

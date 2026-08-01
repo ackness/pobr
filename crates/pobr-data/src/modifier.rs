@@ -552,11 +552,11 @@ mod keyword_flags_tests {
         assert!(ab_all.matches_context(KeywordFlags(A.0 | B.0)));
         assert!(
             !ab_all.matches_context(A),
-            "仅 A 不是 {{A,B}} 的超集 → ALL 拒绝"
+            "A alone is not a superset of {{A,B}} → ALL rejects it"
         );
         assert!(
             ab_all.matches_context(KeywordFlags(A.0 | B.0 | (1 << 2))),
-            "超集命中"
+            "superset matches"
         );
 
         // Only MatchAll set, no actual keyword bits → empty after clearing

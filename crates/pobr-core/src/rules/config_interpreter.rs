@@ -351,7 +351,7 @@ fn apply_effect(
 
     let Some(mod_type) = parse_mod_type(&effect.mod_type) else {
         outcome.diagnostics.push(format!(
-            "config.{}: 未知 mod_type `{}`（效果 {} 跳过）",
+            "config.{}: unknown mod_type `{}` (effect {} skipped)",
             def.var, effect.mod_type, effect.name
         ));
         return;
@@ -365,7 +365,7 @@ fn apply_effect(
         ModValue::Number(value_expr::eval(expr, input))
     } else {
         outcome.diagnostics.push(format!(
-            "config.{}: 效果 {} 缺数值载荷，跳过",
+            "config.{}: effect {} is missing a numeric payload, skipped",
             def.var, effect.name
         ));
         return;
@@ -409,7 +409,7 @@ fn apply_nested_mod(
 ) {
     let Some(mod_type) = parse_mod_type(&nested.mod_type) else {
         outcome.diagnostics.push(format!(
-            "config.{}: 嵌套 mod 未知 mod_type `{}`，跳过",
+            "config.{}: nested mod has unknown mod_type `{}`, skipped",
             def.var, nested.mod_type
         ));
         return;
@@ -422,7 +422,7 @@ fn apply_nested_mod(
         ModValue::Number(value_expr::eval(expr, input))
     } else {
         outcome.diagnostics.push(format!(
-            "config.{}: 嵌套 mod {} 缺数值载荷，跳过",
+            "config.{}: nested mod {} is missing a numeric payload, skipped",
             def.var, nested.name
         ));
         return;
@@ -437,7 +437,7 @@ fn apply_nested_mod(
         "PlayerModifier" => EffectTarget::Player,
         other => {
             outcome.diagnostics.push(format!(
-                "config.{}: 未知嵌套转发通道 `{other}`，跳过",
+                "config.{}: unknown nested forwarding channel `{other}`, skipped",
                 def.var
             ));
             return;
@@ -516,7 +516,7 @@ fn apply_flags_and_tags(
             Some(bit) => mod_flags |= bit,
             None => {
                 outcome.diagnostics.push(format!(
-                    "config.{var}: ModFlag `{flag}` 未映射（pobr ModFlags 缺位），mod {} 跳过",
+                    "config.{var}: ModFlag `{flag}` has no mapping (missing in pobr ModFlags), mod {} skipped",
                     modifier.name
                 ));
                 return None;
@@ -542,7 +542,7 @@ fn apply_flags_and_tags(
                 if let Some(literal) = actor {
                     let Some(actor_ref) = map_vendor_actor(literal, bucket) else {
                         outcome.diagnostics.push(format!(
-                            "config.{var}: Multiplier tag actor `{literal}`（桶 {bucket:?}）无 ActorRef 映射，mod {} 跳过",
+                            "config.{var}: Multiplier tag actor `{literal}` (bucket {bucket:?}) has no ActorRef mapping, mod {} skipped",
                             modifier.name
                         ));
                         return None;
@@ -562,7 +562,7 @@ fn apply_flags_and_tags(
                 // `getActor(self, tag.actor)` looks up the condition in the target actor's modDB).
                 let Some(actor_ref) = map_vendor_actor(actor, bucket) else {
                     outcome.diagnostics.push(format!(
-                        "config.{var}: ActorCondition actor `{actor}`（桶 {bucket:?}）无 ActorRef 映射，mod {} 跳过",
+                        "config.{var}: ActorCondition actor `{actor}` (bucket {bucket:?}) has no ActorRef mapping, mod {} skipped",
                         modifier.name
                     ));
                     return None;
@@ -782,7 +782,10 @@ mod tests {
         let inputs =
             RawConfigInputs::new().with("conditionStationary", ConfigInputValue::Number(0.0));
         let outcome = interpret(&[def], &inputs, &HandlerRegistry::new());
-        assert!(outcome.player_mods.is_empty(), "count=0 视为未设置");
+        assert!(
+            outcome.player_mods.is_empty(),
+            "count=0 is treated as unset"
+        );
     }
 
     /// countAllowZero: applies at 0 too.
@@ -918,7 +921,7 @@ mod tests {
         assert_eq!(
             outcome.conditions.get("UsedSkillRecently"),
             Some(&false),
-            "imply 不覆盖显式 false"
+            "imply must not override an explicit false"
         );
     }
 
@@ -1113,7 +1116,7 @@ mod tests {
         let outcome = interpret(&[def], &inputs, &HandlerRegistry::new());
         assert!(outcome.player_mods.is_empty());
         assert_eq!(outcome.diagnostics.len(), 1);
-        assert!(outcome.diagnostics[0].contains("无 ActorRef 映射"));
+        assert!(outcome.diagnostics[0].contains("has no ActorRef mapping"));
     }
 
     /// The Multiplier tag's actor dimension (PoB2 ModStore.lua:347-353) is translated into

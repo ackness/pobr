@@ -19,7 +19,7 @@ fn version() -> String {
 fn load() -> GameConstantsDef {
     GameData::new(repo_data_root().join(version()))
         .game_constants()
-        .expect("game_constants 可加载")
+        .expect("game_constants should load")
 }
 
 /// pobr's source of truth (constants.rs's top-level constants) is value-equal.

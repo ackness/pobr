@@ -916,10 +916,10 @@ mod support_judgement_tests {
             compatible_ids(&ba, &["MainSpell", "SupNeed", "SupAdd"])
                 .iter()
                 .collect::<std::collections::BTreeSet<_>>(),
-            "AB 与 BA 插槽顺序的兼容名单应一致"
+            "AB and BA socket order should produce the same compatibility list"
         );
         assert_eq!(ab.final_skill_types, ba.final_skill_types);
-        assert_eq!(ab.compatible.len(), 2, "两个 support 都应兼容");
+        assert_eq!(ab.compatible.len(), 2, "both supports should be compatible");
         assert!(ab.final_skill_types.contains("Triggered"));
     }
 
@@ -940,10 +940,13 @@ mod support_judgement_tests {
             effect("SupMelee", true, &[], &["Melee"], &["Area"], &[], false),
         ];
         let j = judge(&effects, &["MainSpell", "SupMelee"]);
-        assert!(j.compatible.is_empty(), "require Melee 对法术应被拒");
+        assert!(
+            j.compatible.is_empty(),
+            "require Melee should reject a spell"
+        );
         assert!(
             !j.final_skill_types.contains("Area"),
-            "被拒 support 的 addSkillTypes 不得并入"
+            "a rejected support's addSkillTypes must not be merged in"
         );
     }
 
@@ -977,9 +980,12 @@ mod support_judgement_tests {
             assert_eq!(
                 compatible_ids(&j, &order),
                 vec!["SupAddMinion"],
-                "exclude 被终态集合命中的 support 应被拒（顺序 {order:?}）"
+                "a support hit by exclude from the final type set should be rejected (order {order:?})"
             );
-            assert!(j.final_skill_types.contains("Minion"), "已并入类型不回滚");
+            assert!(
+                j.final_skill_types.contains("Minion"),
+                "already-merged types don't roll back"
+            );
         }
     }
 
@@ -1017,6 +1023,9 @@ mod support_judgement_tests {
             .with_gem_skill("MainSpell", 20)
             .with_gem_skill("SupMelee", 20);
         let mods = support_modifiers(&group, &data, "MainSpell");
-        assert!(mods.is_empty(), "被拒 support 不得注入任何 modifier");
+        assert!(
+            mods.is_empty(),
+            "a rejected support must not inject any modifier"
+        );
     }
 }

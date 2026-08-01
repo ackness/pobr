@@ -37,7 +37,7 @@ pub struct TreeVariantsArgs {
 
 pub fn run(args: TreeVariantsArgs) -> Result<String, String> {
     let lua = std::fs::read_to_string(&args.tree_lua)
-        .map_err(|e| format!("读取 {} 失败：{e}", args.tree_lua.display()))?;
+        .map_err(|e| format!("failed to read {}: {e}", args.tree_lua.display()))?;
     let variants = parse_switchable_variants(&lua)?;
     let switchable_total = variants.len();
     let variant_total: usize = variants.values().map(Vec::len).sum();
@@ -52,10 +52,10 @@ pub fn run(args: TreeVariantsArgs) -> Result<String, String> {
     } else {
         version_dir.join("passive_tree.json")
     };
-    let bytes =
-        std::fs::read(&tree_path).map_err(|e| format!("读取 {} 失败：{e}", tree_path.display()))?;
+    let bytes = std::fs::read(&tree_path)
+        .map_err(|e| format!("failed to read {}: {e}", tree_path.display()))?;
     let mut nodes: Vec<PassiveNodeDef> = serde_json::from_slice(&bytes)
-        .map_err(|e| format!("解析 {} 失败：{e}", tree_path.display()))?;
+        .map_err(|e| format!("failed to parse {}: {e}", tree_path.display()))?;
 
     let mut filled = 0usize;
     let mut remaining = variants;
@@ -71,8 +71,8 @@ pub fn run(args: TreeVariantsArgs) -> Result<String, String> {
     write_pretty(&tree_path, &nodes)?;
 
     Ok(format!(
-        "isSwitchable 变体回填完成：tree.lua 含变体节点 {switchable_total} 个 / 变体 {variant_total} 条，\
-         回填 {filled} 个节点（未匹配 skill：{unmatched:?}）→ {}",
+        "isSwitchable variant backfill complete: tree.lua has {switchable_total} variant node(s) / {variant_total} variant(s), \
+         backfilled {filled} node(s) (unmatched skill: {unmatched:?}) -> {}",
         tree_path.display(),
     ))
 }
@@ -83,10 +83,11 @@ pub fn run(args: TreeVariantsArgs) -> Result<String, String> {
 fn parse_switchable_variants(lua: &str) -> Result<BTreeMap<u32, Vec<PassiveNodeVariant>>, String> {
     // The top-level nodes block comes after groups; search starting from the
     // end of the groups block to avoid a group's nested `nodes=`.
-    let groups_block = balanced_block(lua, "\tgroups={").ok_or("tree.lua 未找到顶层 groups 块")?;
+    let groups_block =
+        balanced_block(lua, "\tgroups={").ok_or("tree.lua: top-level groups block not found")?;
     let groups_end = block_offset(lua, groups_block);
-    let nodes_block =
-        balanced_block(&lua[groups_end..], "\tnodes={").ok_or("tree.lua 未找到顶层 nodes 块")?;
+    let nodes_block = balanced_block(&lua[groups_end..], "\tnodes={")
+        .ok_or("tree.lua: top-level nodes block not found")?;
 
     let mut out: BTreeMap<u32, Vec<PassiveNodeVariant>> = BTreeMap::new();
     for (skill, node_block) in iter_keyed_blocks(nodes_block) {
@@ -126,7 +127,7 @@ fn parse_switchable_variants(lua: &str) -> Result<BTreeMap<u32, Vec<PassiveNodeV
         }
     }
     if out.is_empty() {
-        return Err("tree.lua 未解析出任何 isSwitchable 变体".into());
+        return Err("tree.lua: no isSwitchable variants were parsed".into());
     }
     Ok(out)
 }
@@ -365,7 +366,11 @@ mod tests {
     #[test]
     fn extracts_class_keyed_variant_with_stats() {
         let map = parse_switchable_variants(sample_lua()).unwrap();
-        assert_eq!(map.len(), 1, "仅带自有 stats 的字符串键 option 入库");
+        assert_eq!(
+            map.len(),
+            1,
+            "only string-keyed options with their own stats are stored"
+        );
         let v = &map[&51335];
         assert_eq!(v.len(), 1);
         assert_eq!(v[0].class, "Witch");
@@ -385,9 +390,12 @@ mod tests {
         let map = parse_switchable_variants(sample_lua()).unwrap();
         assert!(
             !map.contains_key(&59),
-            "无自有 stats 的飞升外观 option 跳过"
+            "an ascendancy cosmetic option with no stats of its own is skipped"
         );
-        assert!(!map.contains_key(&51299), "属性小点数值键 options 跳过");
+        assert!(
+            !map.contains_key(&51299),
+            "numeric-keyed attribute-node options are skipped"
+        );
     }
 
     #[test]

@@ -34,7 +34,7 @@ fn captures_tree_version_from_real_build() {
     assert_eq!(
         build.tree_version.as_deref(),
         Some("0_5"),
-        "应从 <Spec treeVersion> 捕获树版本（gap B：不再丢弃）"
+        "should capture the tree version from <Spec treeVersion> (gap B: no longer discarded)"
     );
 }
 
@@ -66,7 +66,7 @@ fn real_build_mostly_resolves_with_diagnosed_gaps() {
     let known = allocated - report.unknown_nodes.len();
     assert!(
         known * 10 >= allocated * 9,
-        "仅 {known}/{allocated} 节点解析——疑加载了错误树族；未知={:?}",
+        "only {known}/{allocated} nodes resolved -- possibly the wrong tree family was loaded; unknown={:?}",
         report.unknown_nodes
     );
 }
@@ -83,7 +83,10 @@ fn detects_unknown_allocated_node() {
         })
         .with_tree_version(Some("9_9".to_string()));
     let report = diagnose_tree_version(&build, &data);
-    assert!(!report.is_clean(), "越界节点应被检出而非静默跳过");
+    assert!(
+        !report.is_clean(),
+        "an out-of-range node should be detected, not silently skipped"
+    );
     assert_eq!(report.unknown_nodes, vec![bogus]);
     assert_eq!(report.build_tree_version.as_deref(), Some("9_9"));
 }
@@ -102,7 +105,7 @@ fn versioned_tree_selects_historic_stats() {
     for v in ["0_1", "0_2", "0_3", "0_4"] {
         assert!(
             data.versioned_passive_nodes.contains_key(v),
-            "历史树 {v} 应已入库（base/passive_trees/{v}.json）"
+            "historic tree {v} should already be in the data pack (base/passive_trees/{v}.json)"
         );
     }
 
@@ -110,16 +113,16 @@ fn versioned_tree_selects_historic_stats() {
     let n3 = data
         .passive_nodes_for(Some("0_3"))
         .get(&53853)
-        .expect("0_3 树含 53853");
+        .expect("0_3 tree contains 53853");
     assert_eq!(
         n3.stats.len(),
         2,
-        "0_3 Backup Plan 两条词条: {:?}",
+        "0_3 Backup Plan should have two mods: {:?}",
         n3.stats
     );
     assert!(
         n3.stats[0].starts_with("50% increased Evasion Rating"),
-        "0_3 形态应为 50%：{:?}",
+        "0_3's form should be 50%: {:?}",
         n3.stats
     );
 
@@ -129,11 +132,11 @@ fn versioned_tree_selects_historic_stats() {
         let n5 = data
             .passive_nodes_for(tv)
             .get(&53853)
-            .expect("默认树含 53853");
+            .expect("the default tree contains 53853");
         assert_eq!(
             n5.stats.len(),
             3,
-            "默认树 Backup Plan 三条词条（tv={tv:?}）: {:?}",
+            "the default tree's Backup Plan should have three mods (tv={tv:?}): {:?}",
             n5.stats
         );
     }
@@ -142,6 +145,6 @@ fn versioned_tree_selects_historic_stats() {
     assert_eq!(
         data.passive_nodes_for(Some("9_9")).len(),
         data.passive_nodes.len(),
-        "未知版本落回默认树"
+        "an unknown version falls back to the default tree"
     );
 }

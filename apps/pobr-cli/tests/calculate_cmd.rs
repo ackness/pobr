@@ -217,12 +217,12 @@ fn calculate_build_summarizes_and_computes_from_code() {
     let diag = &report.tree_version;
     assert!(
         diag.build_tree_version.is_some(),
-        "应捕获 build 的 treeVersion"
+        "build's treeVersion should be captured"
     );
     assert_eq!(
         diag.unknown_node_count,
         diag.unknown_nodes.len(),
-        "unknown_node_count 与 unknown_nodes 自洽"
+        "unknown_node_count should be self-consistent with unknown_nodes"
     );
 }
 

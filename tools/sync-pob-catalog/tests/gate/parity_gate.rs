@@ -68,7 +68,7 @@ fn all_computed_display_stats_have_known_pob_key() {
 
     assert!(
         missing.is_empty(),
-        "PoBR 声明的 {} 个 Computed 字段在 PoB fixture 中找不到对应 pob_key:\n{}",
+        "{} Computed field(s) declared by PoBR have no matching pob_key in the PoB fixture:\n{}",
         missing.len(),
         missing
             .iter()

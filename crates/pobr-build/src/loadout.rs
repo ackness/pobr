@@ -349,7 +349,7 @@ mod tests {
         assert!(out.contains(r#"activeSkillSet="4""#));
         assert!(
             out.contains(r#"showStatDifferences="true""#),
-            "同标签其余属性保留"
+            "the tag's other attributes are preserved"
         );
     }
 
@@ -400,7 +400,7 @@ mod tests {
         );
         assert!(
             out.contains(r#"<TreeView activeSpec="9""#),
-            "TreeView 不该被改：{out}"
+            "TreeView should not be changed: {out}"
         );
         assert!(out.contains(r#"<Tree activeSpec="7""#));
     }
@@ -478,7 +478,10 @@ mod tests {
         let loadouts = derive_loadouts(&sets);
 
         assert_eq!(loadouts.len(), 2);
-        assert_eq!(loadouts[0].skill, None, "单套豁免：不指定技能集");
+        assert_eq!(
+            loadouts[0].skill, None,
+            "single-set exemption: no skill set specified"
+        );
         assert_eq!(loadouts[0].item, Some(1));
     }
 
@@ -534,10 +537,10 @@ mod xml_tests {
             env!("CARGO_MANIFEST_DIR"),
             "/../../examples/demo-bd-test/builds/witch-blood-mage-coiling-bolts/decoded.xml"
         ))
-        .expect("读取真实 build XML");
+        .expect("read the real build XML");
 
         // Act
-        let sets = parse_build_sets(&xml).expect("解析 set 清单");
+        let sets = parse_build_sets(&xml).expect("parse the set list");
         let loadouts = derive_loadouts(&sets);
 
         // Assert
@@ -547,7 +550,7 @@ mod xml_tests {
         );
         assert_eq!(
             sets.items[0].title, "Default",
-            "ItemSet 自带 title=\"Default\""
+            "ItemSet has its own title=\"Default\""
         );
         assert_eq!(loadouts.len(), 1);
         assert_eq!(loadouts[0].tree, 1);
@@ -571,7 +574,7 @@ mod xml_tests {
   </Items>
 </PathOfBuilding2>"#;
 
-        let sets = parse_build_sets(xml).expect("解析");
+        let sets = parse_build_sets(xml).expect("parse");
         let loadouts = derive_loadouts(&sets);
 
         assert_eq!(loadouts.len(), 2);

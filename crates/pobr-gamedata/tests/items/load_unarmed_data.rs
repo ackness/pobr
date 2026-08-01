@@ -32,8 +32,14 @@ fn rust_source_expectation(class_name: &str) -> (f64, f64, f64, f64) {
 /// migration invariant: the values don't change within this commit).
 #[test]
 fn values_match_existing_rust_table() {
-    let entries = game_data().unarmed_data().expect("unarmed_data 可加载");
-    assert_eq!(entries.len(), 9, "vendor unarmedWeaponData 共 9 个职业条目");
+    let entries = game_data()
+        .unarmed_data()
+        .expect("unarmed_data should load");
+    assert_eq!(
+        entries.len(),
+        9,
+        "vendor unarmedWeaponData has 9 class entries"
+    );
 
     for e in &entries {
         let (min, max, rate, crit) = rust_source_expectation(&e.class_name);
@@ -72,7 +78,7 @@ fn vendor_only_fields_sampled() {
         .collect();
     assert_eq!(
         actual, expected_ids,
-        "classId↔职业名应与 vendor 一致且按 class_id 升序"
+        "classId↔class name should match vendor and be ascending by class_id"
     );
 
     // Spot check: Warrior (Data.lua:557) has PhysicalMax = 8; type = "None".
@@ -97,5 +103,8 @@ fn sorted_by_class_id_for_stable_diffs() {
     let entries = game_data().unarmed_data().unwrap();
     let mut sorted = entries.clone();
     sorted.sort_by_key(|e| e.class_id);
-    assert_eq!(entries, sorted, "unarmed_data.json 应按 class_id 排序");
+    assert_eq!(
+        entries, sorted,
+        "unarmed_data.json should be sorted by class_id"
+    );
 }

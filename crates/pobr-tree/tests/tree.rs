@@ -560,7 +560,7 @@ fn switchable_node_uses_class_variant_stats() {
             "20% increased Critical Hit Chance for Spells".to_string(),
             "20% increased Physical Damage".to_string(),
         ],
-        "Witch 变体词条须整体替换基础词条"
+        "the Witch variant mods must wholesale replace the base mods"
     );
     // Attribution still points at the base node's skill id (the stable key
     // for tree connections / Build Code).

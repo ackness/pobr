@@ -19,8 +19,8 @@ fn game_data() -> GameData {
 fn curse_priority_sections_and_samples() {
     let def = game_data()
         .curse_priority()
-        .expect("curse_priority 可加载")
-        .expect("curse_priority.json 在库");
+        .expect("curse_priority should load")
+        .expect("curse_priority.json should be present");
 
     // Per-curse base values: 13 entries as of writing (Temporal Chains=1 … Poacher's Mark=13)
     assert_eq!(def.curse_base.len(), 13);
@@ -51,7 +51,7 @@ fn curse_priority_tolerates_missing_table() {
     assert!(
         missing
             .curse_priority()
-            .expect("缺表应容忍为 Ok(None)")
+            .expect("a missing table should be tolerated as Ok(None)")
             .is_none()
     );
 }

@@ -37,13 +37,13 @@ fn ingest_substitutes_slotname_in_per_socket_multiplier() {
         .modifiers
         .iter()
         .find(|m| m.name.as_str() == "Spirit")
-        .expect("Spirit mod 应被解析");
+        .expect("Spirit mod should be parsed");
     assert!(
         spirit.tags.iter().any(|t| matches!(
             t,
             ModTag::Multiplier { var, .. } if var == "RunesSocketedInbodyarmour"
         )),
-        "{{SlotName}} 应替换为槽位 ID: {:?}",
+        "{{SlotName}} should be replaced with the slot ID: {:?}",
         spirit.tags
     );
 }
@@ -109,7 +109,7 @@ fn ingest_item_parses_texts_into_modifiers_with_item_affix_source() {
     });
     assert!(
         quality_mod.is_none(),
-        "品质不再作为 modifier 注入（逐属性 base 缩放在编排层处理）"
+        "quality no longer injects as a modifier (per-attribute base scaling is handled by the orchestration layer)"
     );
 }
 
@@ -300,7 +300,7 @@ fn assert_no_quality_modifier(slot: EquipmentSlot, item: &Item) {
     });
     assert!(
         quality_mod.is_none(),
-        "{} 品质不应作为 modifier 注入（逐属性 base 缩放在编排层处理）",
+        "{} quality should not inject as a modifier (per-attribute base scaling is handled by the orchestration layer)",
         slot.id()
     );
 }
@@ -370,7 +370,7 @@ fn catalyst_scaling_is_deferred_no_field_in_model() {
     let ingest = ingest_item(EquipmentSlot::Ring1, &ring).unwrap();
     assert!(
         ingest.modifiers.is_empty(),
-        "催化剂未建模：accessory 不应因品质产生任何额外 modifier"
+        "catalyst is not modeled: an accessory should not produce any extra modifier from quality"
     );
 }
 
@@ -417,9 +417,9 @@ fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
     let ingest = ingest_flask_charm("Charm 1", &charm);
     assert!(
         ingest.unsupported.is_empty(),
-        "触发条件行是基底固有描述，不进 unsupported 报表"
+        "the trigger-condition line is an inherent description of the base, it doesn't land in the unsupported report"
     );
-    assert_eq!(ingest.modifiers.len(), 1, "仅一个载荷 mod");
+    assert_eq!(ingest.modifiers.len(), 1, "only one payload mod");
     let carrier = &ingest.modifiers[0];
     assert_eq!(carrier.name, ModName::from(CHARM_BUFF_LIST_NAME));
     assert_eq!(carrier.mod_type, ModType::List);
@@ -439,7 +439,7 @@ fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
     assert_eq!(
         nested[0].origin.as_ref().unwrap().source_id,
         SourceId::new(SourceKind::Flask, "flask.charm1"),
-        "内层 mod 各自带 Flask 归因"
+        "each inner mod carries its own Flask attribution"
     );
 
     // The List payload has zero effect on aggregation (values unchanged before merge).
@@ -483,7 +483,7 @@ fn ingest_charm_parses_guard_and_possession_effects_via_engine() {
     assert_eq!(
         ingest.unsupported,
         vec!["Also grants 435 Guard".to_string()],
-        "guard 行未建模应上报（与 PoB2 口径一致）、possession 行应解析，实际 unsupported: {:?}",
+        "the guard line is unmodeled and should be reported (matching PoB2), the possession line should parse; actual unsupported: {:?}",
         ingest.unsupported
     );
 }
@@ -501,13 +501,17 @@ fn ingest_charm_with_no_parseable_mods_still_emits_empty_carrier() {
         &["40% increased Quantity of Gold Dropped by Slain Enemies"],
     );
     let ingest = ingest_flask_charm("Charm 3", &charm);
-    assert_eq!(ingest.modifiers.len(), 1, "空载荷仍产出");
+    assert_eq!(
+        ingest.modifiers.len(),
+        1,
+        "an empty payload still produces output"
+    );
     let carrier = &ingest.modifiers[0];
     assert_eq!(carrier.name, ModName::from(CHARM_BUFF_LIST_NAME));
     assert_eq!(carrier.source.as_deref(), Some("Golden Charm"));
     assert!(
         carrier.value.as_nested_mods().is_some_and(<[_]>::is_empty),
-        "载荷为空 NestedMods"
+        "the payload is an empty NestedMods"
     );
 }
 
@@ -537,7 +541,7 @@ fn ingest_flask_onslaught_during_effect_is_unsupported_local_effect_still_parses
     assert_eq!(
         ingest.unsupported,
         vec!["Grants Onslaught during effect".to_string()],
-        "Onslaught 行与 PoB2 一致归 Unsupported（不发 Onslaught flag）"
+        "the Onslaught line is Unsupported, matching PoB2 (no Onslaught flag emitted)"
     );
     let carrier = &ingest.modifiers[0];
     assert_eq!(carrier.name, ModName::from(FLASK_BUFF_LIST_NAME));
@@ -547,7 +551,7 @@ fn ingest_flask_onslaught_during_effect_is_unsupported_local_effect_still_parses
     assert_eq!(nested.len(), 2);
     assert!(
         nested.iter().all(|m| m.name != ModName::from("Onslaught")),
-        "不得有 Onslaught flag"
+        "must not have an Onslaught flag"
     );
     assert_eq!(nested[0].name, ModName::from(LOCAL_UTILITY_EFFECT_NAME));
     assert_eq!(nested[0].value.as_number(), Some(25.0));

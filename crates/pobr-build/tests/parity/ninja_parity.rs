@@ -1585,13 +1585,13 @@ fn corpus_unsupported_report() {
             er.gap_templates.len(),
             er.dropped_tag_templates.len(),
         );
-        assert!(er.total_lines > 0, "engine 语料为空");
+        assert!(er.total_lines > 0, "engine corpus is empty");
     }
 
     // Weak assertion: the corpus isn't empty (guards against a broken fixture/collection chain silently going to zero).
     assert!(
         !all_lines.is_empty(),
-        "corpus 收集为空——检查 build 装备词条收集链"
+        "corpus collection is empty -- check the build equipment mod collection chain"
     );
 }
 
@@ -1712,7 +1712,7 @@ fn effective_switch_dual_run_report() {
             pct(e.hit10, e.total),
         );
     }
-    eprintln!("\n-- 口径间逐值变化（panel ≠ effective 或命中带迁移） --");
+    eprintln!("\n-- per-value convention changes (panel ≠ effective, or hit-band migration) --");
     for m in &moved {
         eprintln!("  {m}");
     }
@@ -1756,7 +1756,9 @@ fn ehp_dual_run_report() {
         }
     };
 
-    eprintln!("\n========== M2 F-2 EHP 双跑对照（旧 lowest-max-hit vs 新 PoB2 口径） ==========");
+    eprintln!(
+        "\n========== M2 F-2 EHP dual-run comparison (old lowest-max-hit vs new PoB2 convention) =========="
+    );
     for dir in &builds {
         let name = dir.file_name().unwrap().to_string_lossy();
         let g = golden_stats(dir);
@@ -1805,7 +1807,7 @@ fn ehp_dual_run_report() {
         }
     }
     eprintln!(
-        "\n（F-3 已切换：total_ehp/*_max_hit = PoB2 口径；旧 lowest-max-hit 口径保留在 total_ehp_lowest_max_hit）"
+        "\n(F-3 has switched over: total_ehp/*_max_hit = PoB2 convention; the old lowest-max-hit convention is kept in total_ehp_lowest_max_hit)"
     );
 }
 
@@ -1835,15 +1837,15 @@ fn m2_f3_specialty_fixtures() {
     let run = |name: &str| -> (OutputTable, serde_json::Map<String, serde_json::Value>) {
         let d = dir.join(name);
         let g = golden_stats(&d);
-        let out = run_build(&d, &data).unwrap_or_else(|| panic!("{name} 计算失败"));
+        let out = run_build(&d, &data).unwrap_or_else(|| panic!("{name} calculation failed"));
         (out, g)
     };
     let assert_5pct = |build: &str, stat: &str, pobr: f64, golden_v: Option<f64>| {
-        let gv = golden_v.unwrap_or_else(|| panic!("{build} golden 缺 {stat}"));
+        let gv = golden_v.unwrap_or_else(|| panic!("{build} golden is missing {stat}"));
         let rt = ratio(pobr, gv);
         assert!(
             (rt - 1.0).abs() < TOL,
-            "{build} {stat}: pobr {pobr:.1} vs golden {gv:.1} = {rt:.3}x（超 5% 容差）"
+            "{build} {stat}: pobr {pobr:.1} vs golden {gv:.1} = {rt:.3}x (exceeds the 5% tolerance)"
         );
     };
 
@@ -1874,7 +1876,7 @@ fn m2_f3_specialty_fixtures() {
     assert!(
         is_inf_like(out.chaos_max_hit)
             && golden(&g, "ChaosMaximumHitTaken").is_some_and(is_inf_like),
-        "CI 混沌免疫应双 ∞"
+        "CI chaos immunity should be ∞ on both sides"
     );
 
     // Shield block category (the block-chance layer for the two warrior builds).

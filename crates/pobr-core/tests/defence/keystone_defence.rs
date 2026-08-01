@@ -18,7 +18,7 @@ fn keystones_from_parsed_mod_texts() {
     // Arrange
     let mut db = ModDb::new();
     for text in ["Maximum Life is 1", "Converts all Energy Shield to Mana"] {
-        let outcome = crate::support::parse_mod(text).expect("解析失败");
+        let outcome = crate::support::parse_mod(text).expect("parse failed");
         db.add_list(outcome.mods);
     }
     let cfg = CalcConfig::new();
@@ -27,10 +27,13 @@ fn keystones_from_parsed_mod_texts() {
     let ks = DefenceKeystones::from_db(&db, &cfg);
 
     // Assert
-    assert!(ks.chaos_inoculation, "CI 词条应驱动 chaos_inoculation");
+    assert!(
+        ks.chaos_inoculation,
+        "the CI mod should drive chaos_inoculation"
+    );
     assert!(
         ks.eldritch_battery_es_to_mana,
-        "全转换词条应驱动 eldritch_battery_es_to_mana"
+        "a full-conversion mod should drive eldritch_battery_es_to_mana"
     );
     // Keystones that don't appear stay off.
     assert!(!ks.unbreakable);
@@ -55,7 +58,7 @@ fn eb_flag_from_injected_flag() {
     assert!(ks.energy_shield_protects_mana);
     assert!(
         !ks.eldritch_battery_es_to_mana,
-        "EB flag 不等于 ES→Mana 全转换"
+        "the EB flag is not the same as a full ES->Mana conversion"
     );
 }
 
@@ -151,11 +154,11 @@ fn ci_build_ehp_uses_es_pool_and_chaos_immunity() {
     let output = session.output().clone();
 
     // Assert: CI -> Life Override 1; chaos immunity; fire max hit = ES pool / (1-0%) = 500.
-    assert_eq!(output.life, 1.0, "CI 应把最大生命覆盖为 1");
+    assert_eq!(output.life, 1.0, "CI should override max life to 1");
     assert_eq!(output.energy_shield, 500.0);
     assert!(
         output.chaos_max_hit.is_infinite(),
-        "CI 应使混沌 max hit = ∞（实际 {}）",
+        "CI should make chaos max hit = infinity (actual {})",
         output.chaos_max_hit
     );
     // After the F-3 switch, max hit follows PoB2's TotalHitPool: under CI that's
@@ -163,7 +166,7 @@ fn ci_build_ehp_uses_es_pool_and_chaos_immunity() {
     // the old reading of 500 was an ES-only-pool approximation).
     assert_eq!(
         output.fire_max_hit, 501.0,
-        "CI 下命中池 = Life(1) + ES(500)"
+        "under CI, the hit pool = Life(1) + ES(500)"
     );
     assert!(output.total_ehp.is_finite());
 }
@@ -290,7 +293,7 @@ fn gain_as_does_not_reduce_source() {
     let res = calc_defence_resources(&db, &cfg, &base, &ks);
 
     // Assert
-    assert_eq!(res.armour, 100.0, "GainAs 不减源");
+    assert_eq!(res.armour, 100.0, "GainAs doesn't deduct the source");
     assert_eq!(res.evasion, 25.0);
 }
 
@@ -332,7 +335,7 @@ fn non_defence_source_gain_uses_ceil() {
     let mut db = ModDb::new();
     let outcome =
         crate::support::parse_mod("Gain 25% of Maximum Life as Extra Maximum Energy Shield")
-            .expect("解析失败");
+            .expect("parse failed");
     db.add_list(outcome.mods);
     let cfg = CalcConfig::new();
     let base = ActorBaseStats {

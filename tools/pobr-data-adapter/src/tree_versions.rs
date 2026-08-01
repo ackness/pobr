@@ -45,18 +45,19 @@ pub struct TreeVersionsArgs {
 
 pub fn run(args: TreeVersionsArgs) -> Result<String, String> {
     let lua = std::fs::read_to_string(&args.tree_lua)
-        .map_err(|e| format!("读取 {} 失败：{e}", args.tree_lua.display()))?;
+        .map_err(|e| format!("failed to read {}: {e}", args.tree_lua.display()))?;
 
     let nodes = parse_all_nodes(&lua)?;
     let count = nodes.len();
 
     let out_dir = args.out.join(&args.patch).join("base/passive_trees");
-    std::fs::create_dir_all(&out_dir).map_err(|e| format!("建目录 {out_dir:?} 失败：{e}"))?;
+    std::fs::create_dir_all(&out_dir)
+        .map_err(|e| format!("failed to create directory {out_dir:?}: {e}"))?;
     let out_path = out_dir.join(format!("{}.json", args.tree_version));
     write_pretty(&out_path, &nodes)?;
 
     Ok(format!(
-        "树版本 {} 抽取完成：{count} 个节点 → {}",
+        "tree version {} extraction complete: {count} node(s) -> {}",
         args.tree_version,
         out_path.display(),
     ))
@@ -67,10 +68,11 @@ fn parse_all_nodes(lua: &str) -> Result<Vec<PassiveNodeDef>, String> {
     // The top-level nodes block comes after groups; search starting from the
     // end of the groups block to avoid a group's nested `nodes=`
     // (same technique as tree_anoints / tree_variants).
-    let groups_block = balanced_block(lua, "\tgroups={").ok_or("tree.lua 未找到顶层 groups 块")?;
+    let groups_block =
+        balanced_block(lua, "\tgroups={").ok_or("tree.lua: top-level groups block not found")?;
     let groups_end = block_offset(lua, groups_block);
-    let nodes_block =
-        balanced_block(&lua[groups_end..], "\tnodes={").ok_or("tree.lua 未找到顶层 nodes 块")?;
+    let nodes_block = balanced_block(&lua[groups_end..], "\tnodes={")
+        .ok_or("tree.lua: top-level nodes block not found")?;
 
     let mut out: Vec<PassiveNodeDef> = Vec::new();
     for (key, node_block) in iter_keyed_blocks(nodes_block) {
@@ -118,7 +120,7 @@ fn parse_all_nodes(lua: &str) -> Result<Vec<PassiveNodeDef>, String> {
         });
     }
     if out.is_empty() {
-        return Err("tree.lua 未解析出任何节点（解析失败？）".into());
+        return Err("tree.lua: no nodes were parsed (parse failure?)".into());
     }
     out.sort_by_key(|n| n.skill);
     Ok(out)

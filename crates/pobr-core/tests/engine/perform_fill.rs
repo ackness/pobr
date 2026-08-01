@@ -504,7 +504,7 @@ fn perform_fills_life_recoup_rate() {
     perform(&mut env).unwrap();
     assert!(
         (env.player.output.life_recoup_rate - 107.74225).abs() < 1e-6,
-        "life_recoup_rate = {}（期望 107.74225 = 4246×1.015×20%/8s）",
+        "life_recoup_rate = {} (expected 107.74225 = 4246x1.015x20%/8s)",
         env.player.output.life_recoup_rate
     );
 }
@@ -993,7 +993,7 @@ fn perform_fills_cwc_trigger_rate() {
     // With no cooldown it's ≈ cap (finding 03-06: CWC uses calcMultiSpellRotationImpact).
     assert!(
         (env.player.output.skill_trigger_rate - env.player.output.trigger_rate_cap).abs() < 0.2,
-        "CWC 无冷却 skill_trigger_rate≈cap: rate={} cap={}",
+        "CWC with no cooldown: skill_trigger_rate ≈ cap: rate={} cap={}",
         env.player.output.skill_trigger_rate,
         env.player.output.trigger_rate_cap
     );
@@ -1020,14 +1020,14 @@ fn perform_cwc_trigger_rate_limited_by_triggered_cooldown() {
     // Cooldown 0.5s rate-limits → cap = 1/ceil_tick(0.5) ≈ 1.96/s, well below the cast frequency ~9.9/s.
     assert!(
         env.player.output.trigger_rate_cap < 3.0,
-        "被触发冷却应压低 cap: {}",
+        "the triggered cooldown should lower the cap: {}",
         env.player.output.trigger_rate_cap
     );
     // The rotation steady-state rate must not exceed the cap, and must be positive (the triggered skill is actually firing).
     assert!(env.player.output.skill_trigger_rate > 0.0);
     assert!(
         env.player.output.skill_trigger_rate <= env.player.output.trigger_rate_cap + 1e-6,
-        "skill_trigger_rate {} 不得超过 cap {}",
+        "skill_trigger_rate {} must not exceed cap {}",
         env.player.output.skill_trigger_rate,
         env.player.output.trigger_rate_cap
     );
@@ -1057,7 +1057,7 @@ fn perform_trigger_chance_folds_source_hit_and_crit() {
     perform(&mut env).unwrap();
     assert!(
         (env.player.output.skill_trigger_rate - 0.56).abs() < 1e-6,
-        "2/s × 0.8 hit × 0.35 crit = 0.56，实得 {}",
+        "2/s x 0.8 hit x 0.35 crit = 0.56, got {}",
         env.player.output.skill_trigger_rate
     );
 }
@@ -1085,7 +1085,7 @@ fn perform_trigger_rate_rises_with_source_crit() {
     };
     assert!(
         run(50.0) > run(20.0),
-        "源暴击率↑应使触发速率↑（CoC 方向性）"
+        "higher source crit rate should raise the trigger rate (CoC directionality)"
     );
 }
 
@@ -1130,7 +1130,7 @@ fn perform_trigger_no_cooldown_uses_source_rate() {
     assert_eq!(env.player.output.trigger_rate_cap, 0.0);
     assert!(
         (env.player.output.skill_trigger_rate - 1.5).abs() < 1e-6,
-        "3/s × 0.5 hit = 1.5，实得 {}",
+        "3/s x 0.5 hit = 1.5, got {}",
         env.player.output.skill_trigger_rate
     );
 }
@@ -1155,7 +1155,7 @@ fn perform_global_trigger_rate_equals_cap() {
     perform(&mut env).unwrap();
     assert!(
         (env.player.output.skill_trigger_rate - env.player.output.trigger_rate_cap).abs() < 1e-9,
-        "global 触发速率应 = cap：rate={} cap={}",
+        "global trigger rate should equal the cap: rate={} cap={}",
         env.player.output.skill_trigger_rate,
         env.player.output.trigger_rate_cap
     );
@@ -1372,13 +1372,13 @@ fn perform_max_hit_includes_damage_taken_when_hit() {
     perform(&mut env).unwrap();
     assert!(
         (env.player.output.fire_max_hit - 1250.0).abs() < 1e-6,
-        "fire_max_hit = {} (期望 1250 = 1000/0.8)",
+        "fire_max_hit = {} (expected 1250 = 1000/0.8)",
         env.player.output.fire_max_hit
     );
     // Cold has no WhenHit mod → unaffected (type isolation).
     assert!(
         (env.player.output.cold_max_hit - 1000.0).abs() < 1e-6,
-        "cold_max_hit = {} (期望 1000)",
+        "cold_max_hit = {} (expected 1000)",
         env.player.output.cold_max_hit
     );
 
@@ -1397,7 +1397,7 @@ fn perform_max_hit_includes_damage_taken_when_hit() {
     let expected = 1000.0 / 0.72;
     assert!(
         (env2.player.output.physical_max_hit - expected).abs() < 1.0,
-        "physical_max_hit = {} (期望 ≈{} = 1000/0.72，vendor round)",
+        "physical_max_hit = {} (expected ≈{} = 1000/0.72, vendor round)",
         env2.player.output.physical_max_hit,
         expected
     );
@@ -1422,16 +1422,16 @@ fn perform_trigger_uses_injected_source_rate_not_main_skill_rate() {
     perform(&mut env).unwrap();
     assert!(
         env.player.output.trigger_rate_cap > 5.0,
-        "0.05s 冷却 → cap 应较高，got {}",
+        "0.05s cooldown -> cap should be high, got {}",
         env.player.output.trigger_rate_cap
     );
     assert!(
         env.player.output.skill_trigger_rate < env.player.output.trigger_rate_cap,
-        "低注入源速率须把触发速率门控到 cap 以下"
+        "a low injected source rate must gate the trigger rate below the cap"
     );
     assert!(
         (env.player.output.skill_trigger_rate - 1.0).abs() < 0.2,
-        "skill_trigger_rate 应跟随注入源速率 1/s，got {}",
+        "skill_trigger_rate should follow the injected source rate 1/s, got {}",
         env.player.output.skill_trigger_rate
     );
 }
@@ -1454,7 +1454,7 @@ fn perform_trigger_rate_folds_explicit_trigger_chance() {
     let cap = env_base.player.output.trigger_rate_cap;
     assert!(
         (env_base.player.output.skill_trigger_rate - cap).abs() < 1e-9,
-        "无触发上下文不应折算：skill_trigger_rate={} cap={}",
+        "no trigger context should not fold: skill_trigger_rate={} cap={}",
         env_base.player.output.skill_trigger_rate,
         cap
     );
@@ -1472,11 +1472,11 @@ fn perform_trigger_rate_folds_explicit_trigger_chance() {
     perform(&mut env_half).unwrap();
     assert!(
         (env_half.player.output.trigger_rate_cap - cap).abs() < 1e-9,
-        "triggerChance 不改 cap"
+        "triggerChance doesn't change the cap"
     );
     assert!(
         (env_half.player.output.skill_trigger_rate - cap * 0.5).abs() < 1e-6,
-        "50% 触发几率应使触发速率减半：got {} expect {}",
+        "50% trigger chance should halve the trigger rate: got {} expect {}",
         env_half.player.output.skill_trigger_rate,
         cap * 0.5
     );
@@ -1508,11 +1508,11 @@ fn perform_ailment_uptime_saturates_chance() {
     };
     let full = run(100.0);
     let half = run(50.0);
-    assert!(full > 0.0, "100% 几率应有流血 DPS");
+    assert!(full > 0.0, "100% chance should have bleed DPS");
     // stacks(50%) = 1 × 0.5 × 5s × 2/s = 5 ≥ max(1) → uptime saturates, DPS matches the 100% case.
     assert!(
         (half - full).abs() < 1e-6,
-        "uptime 饱和后几率不得线性折减 DPS：half={half} full={full}"
+        "once uptime saturates, chance must not linearly reduce DPS: half={half} full={full}"
     );
 }
 
@@ -1549,11 +1549,11 @@ fn perform_ignite_source_uses_real_crit_leg() {
         Modifier::number("FireDamage", ModType::Inc, 100.0)
             .with_tag(ModTag::condition("CriticalStrike", false)),
     ]);
-    assert!(plain > 0.0, "100% 暴击的火击中应点燃");
+    assert!(plain > 0.0, "a 100% crit fire hit should ignite");
     // Crit leg ×2 (on-crit inc) → ignite source (all-crit) ≈ ×2; chance is already clamped to 100 and can't amplify further.
     assert!(
         with_on_crit > plain * 1.5,
-        "on-crit 词条应放大点燃 magnitude：plain={plain} on_crit={with_on_crit}"
+        "an on-crit tag should amplify ignite magnitude: plain={plain} on_crit={with_on_crit}"
     );
 }
 
@@ -1607,6 +1607,6 @@ fn perform_snapshots_defence_output_stats_before_offence() {
     assert!(base_hit > 0.0);
     assert!(
         (scaled_hit / base_hit - 1.1).abs() < 1e-9,
-        "per-ES 增伤应在 offence 生效：base={base_hit} scaled={scaled_hit}"
+        "per-ES increased damage should take effect in offence: base={base_hit} scaled={scaled_hit}"
     );
 }

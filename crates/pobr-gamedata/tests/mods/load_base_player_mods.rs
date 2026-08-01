@@ -36,14 +36,14 @@ fn version() -> String {
 fn load() -> Vec<BasePlayerModDef> {
     GameData::new(repo_data_root().join(version()))
         .base_player_mods()
-        .expect("base_player_mods 可加载")
+        .expect("base_player_mods should load")
 }
 
 /// Gets an entry by id (fails if absent).
 fn entry<'a>(mods: &'a [BasePlayerModDef], id: &str) -> &'a BasePlayerModDef {
     mods.iter()
         .find(|m| m.id == id)
-        .unwrap_or_else(|| panic!("缺少条目 {id}"))
+        .unwrap_or_else(|| panic!("missing entry {id}"))
 }
 
 /// A `CharacterBase` with zero attributes (isolates the pure level-derived term).
@@ -59,19 +59,28 @@ fn bare_character(level: u32) -> CharacterBase {
 #[test]
 fn loads_fourteen_entries_with_unique_ids_and_base_type() {
     let mods = load();
-    assert_eq!(mods.len(), 14, "当前收录 14 条有 Rust 准源的基线 mod");
+    assert_eq!(
+        mods.len(),
+        14,
+        "currently 14 baseline mods have a Rust source of truth"
+    );
 
     let mut ids: Vec<&str> = mods.iter().map(|m| m.id.as_str()).collect();
     ids.sort_unstable();
     ids.dedup();
-    assert_eq!(ids.len(), 14, "条目 id 应唯一");
+    assert_eq!(ids.len(), 14, "entry ids should be unique");
 
     for m in &mods {
-        assert_eq!(m.mod_type, ModType::Base, "{}: 基线条目均为 BASE", m.id);
-        assert_eq!(m.flags, 0, "{}: 当前收录条目均无 ModFlags 限定", m.id);
+        assert_eq!(
+            m.mod_type,
+            ModType::Base,
+            "{}: baseline entries are all BASE",
+            m.id
+        );
+        assert_eq!(m.flags, 0, "{}: currently no entry has ModFlags set", m.id);
         assert_eq!(
             m.keyword_flags, 0,
-            "{}: 当前收录条目均无 KeywordFlags",
+            "{}: currently no entry has KeywordFlags set",
             m.id
         );
     }
@@ -96,7 +105,7 @@ fn charge_baselines_match_survivability_constants() {
         let e = entry(&mods, id);
         assert_eq!(e.mod_name, name);
         assert_eq!(e.value, f64::from(DEFAULT_MAX_CHARGES)); // = 3.0
-        assert!(e.tags.is_empty(), "{id}: 充能上限无 tag");
+        assert!(e.tags.is_empty(), "{id}: charge caps have no tags");
     }
 }
 
@@ -164,11 +173,14 @@ fn level_derived_baselines_match_character_base_formulas() {
     ];
     for (id, name, f) in cases {
         let e = entry(&mods, id);
-        assert_eq!(e.mod_name, name, "{id}: ModName 对齐 character.rs 注入名");
+        assert_eq!(
+            e.mod_name, name,
+            "{id}: ModName matches character.rs's injected name"
+        );
         assert_eq!(
             e.value,
             f(&c2, &cc) - f(&c1, &cc),
-            "{id}: per-level 值 == 公式差分"
+            "{id}: per-level value == formula difference"
         );
         match e.tags.as_slice() {
             [
@@ -179,12 +191,16 @@ fn level_derived_baselines_match_character_base_formulas() {
                     base,
                 },
             ] => {
-                assert_eq!(var, "Level", "{id}: 按等级缩放");
-                assert_eq!(*div, 1.0, "{id}: 每 1 级缩放一次");
-                assert_eq!(*limit, None, "{id}: 无缩放上限");
-                assert_eq!(*base, Some(f(&c0, &cc)), "{id}: base 常量 == 公式截距");
+                assert_eq!(var, "Level", "{id}: scales by level");
+                assert_eq!(*div, 1.0, "{id}: scales once per 1 level");
+                assert_eq!(*limit, None, "{id}: no scaling cap");
+                assert_eq!(
+                    *base,
+                    Some(f(&c0, &cc)),
+                    "{id}: base constant == formula intercept"
+                );
             }
-            other => panic!("{id}: 应恰有一个 Multiplier:Level tag，实得 {other:?}"),
+            other => panic!("{id}: expected exactly one Multiplier:Level tag, got {other:?}"),
         }
     }
 
@@ -192,12 +208,15 @@ fn level_derived_baselines_match_character_base_formulas() {
     // `CharacterBase::modifiers()` injects.
     let evasion = entry(&mods, "base_evasion");
     assert_eq!(evasion.mod_name, "Evasion");
-    assert!(evasion.tags.is_empty(), "固有闪避与等级无关");
+    assert!(
+        evasion.tags.is_empty(),
+        "inherent evasion is level-independent"
+    );
     let injected = c1
         .modifiers(&cc)
         .into_iter()
         .find(|m| m.name == "Evasion".into())
-        .expect("CharacterBase::modifiers() 注入 Evasion BASE");
+        .expect("CharacterBase::modifiers() injects Evasion BASE");
     assert_eq!(ModValue::Number(evasion.value), injected.value); // = 7.0
 }
 
@@ -226,7 +245,11 @@ fn crit_multiplier_baseline_matches_constant() {
 fn resistance_penalty_matches_campaign_endgame_modifiers() {
     let mods = load();
     let injected = CampaignProgress::Endgame.modifiers();
-    assert_eq!(injected.len(), 3, "Endgame 注入三元素惩罚");
+    assert_eq!(
+        injected.len(),
+        3,
+        "Endgame injects a penalty for three elements"
+    );
 
     for (id, name) in [
         ("resist_penalty_fire", "FireResistance"),
@@ -239,7 +262,11 @@ fn resistance_penalty_matches_campaign_endgame_modifiers() {
         let matched = injected
             .iter()
             .find(|m| m.name == name.into())
-            .unwrap_or_else(|| panic!("campaign.rs 应注入 {name}"));
-        assert_eq!(ModValue::Number(e.value), matched.value, "{id}: 逐值相等");
+            .unwrap_or_else(|| panic!("campaign.rs should inject {name}"));
+        assert_eq!(
+            ModValue::Number(e.value),
+            matched.value,
+            "{id}: values should be equal"
+        );
     }
 }

@@ -103,9 +103,9 @@ fn regex_escape_lower(name: &str) -> String {
 
 pub fn run(args: SpecialDerivedArgs) -> Result<String, String> {
     let bytes = std::fs::read(&args.tree_json)
-        .map_err(|e| format!("读取 {} 失败：{e}", args.tree_json.display()))?;
+        .map_err(|e| format!("failed to read {}: {e}", args.tree_json.display()))?;
     let nodes: Vec<PassiveNodeDef> = serde_json::from_slice(&bytes)
-        .map_err(|e| format!("解析 {} 失败：{e}", args.tree_json.display()))?;
+        .map_err(|e| format!("failed to parse {}: {e}", args.tree_json.display()))?;
 
     let mut entries: Vec<DerivedEntry> = nodes
         .iter()
@@ -151,11 +151,11 @@ pub fn run(args: SpecialDerivedArgs) -> Result<String, String> {
         .join("special_derived.json");
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
-            .map_err(|e| format!("创建 {} 失败：{e}", parent.display()))?;
+            .map_err(|e| format!("failed to create {}: {e}", parent.display()))?;
     }
     write_pretty(&path, &doc)?;
     Ok(format!(
-        "special_derived: {count} keystone 条目 → {}",
+        "special_derived: {count} keystone entry(ies) -> {}",
         path.display()
     ))
 }

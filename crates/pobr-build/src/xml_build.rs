@@ -1793,8 +1793,15 @@ Item Level: 80
             build.equipped_items().into_iter().map(|(s, _)| s).collect();
         assert!(slots.contains(&EquipmentSlot::Ring1));
         assert!(slots.contains(&EquipmentSlot::Weapon1));
-        assert!(!slots.contains(&EquipmentSlot::Ring2), "空槽不应分配");
-        assert_eq!(slots.len(), 2, "Charm 等枚举外槽位被忽略");
+        assert!(
+            !slots.contains(&EquipmentSlot::Ring2),
+            "an empty slot should not be assigned"
+        );
+        assert_eq!(
+            slots.len(),
+            2,
+            "slots outside the enum, like Charm, are ignored"
+        );
     }
 
     /// Flask/Charm slot round trip — only slots with `active="true"` enter
@@ -1844,7 +1851,7 @@ Implicits: 0
                     "Undiluted Ultimate Life Flask".to_string()
                 ),
             ],
-            "仅激活且非空槽进入；非激活 Flask 2 与空槽 Charm 2 被忽略"
+            "only active, non-empty slots are included; inactive Flask 2 and empty Charm 2 are ignored"
         );
     }
 
@@ -1860,7 +1867,7 @@ Implicits: 0
             ring.modifier_texts
                 .iter()
                 .any(|t| t == "+50 to maximum Life"),
-            "戒指 explicit 词条应解析: {:?}",
+            "the ring's explicit mod should parse: {:?}",
             ring.modifier_texts
         );
         assert_eq!(ring.implicit_texts, vec!["+30% to Lightning Resistance"]);
@@ -1872,14 +1879,14 @@ Implicits: 0
         // Two Skills: the first is enabled (2 enabled gems, 1 disabled gem skipped), the second is disabled.
         assert_eq!(build.socket_groups.len(), 2);
         let enabled: Vec<&SocketGroup> = build.enabled_socket_groups().collect();
-        assert_eq!(enabled.len(), 1, "仅首个 Skill 启用");
+        assert_eq!(enabled.len(), 1, "only the first Skill is enabled");
         assert_eq!(
             enabled[0].gem_ids,
             vec![
                 "Metadata/Items/Gem/Active".to_string(),
                 "Metadata/Items/Gems/Support".to_string()
             ],
-            "禁用 gem 应被跳过"
+            "a disabled gem should be skipped"
         );
         // The first enabled gem's skillId + level is captured as the active skill (the key for resolving per-level parameters).
         assert_eq!(
@@ -1890,7 +1897,7 @@ Implicits: 0
         assert_eq!(
             enabled[0].source.as_deref(),
             Some("Item:2:Dragon Wand"),
-            "授予来源需保留，供装备技能组精确判重"
+            "the grant source must be preserved, for precise de-duplication of item-granted skill groups"
         );
         assert_eq!(enabled[0].slot.as_deref(), Some("Weapon 1"));
     }
@@ -1915,9 +1922,16 @@ Implicits: 0
 </PathOfBuilding2>"#;
         let build = parse_build(xml).expect("parse");
         let gems = &build.socket_groups[0].gem_skills;
-        assert_eq!(gems[0].stat_set_index, Some(2), "数字属性解析为 Some");
-        assert_eq!(gems[1].stat_set_index, None, "字面量 nil 归一化为 None");
-        assert_eq!(gems[2].stat_set_index, None, "缺失属性为 None");
+        assert_eq!(
+            gems[0].stat_set_index,
+            Some(2),
+            "a numeric attribute parses as Some"
+        );
+        assert_eq!(
+            gems[1].stat_set_index, None,
+            "the literal nil normalizes to None"
+        );
+        assert_eq!(gems[2].stat_set_index, None, "a missing attribute is None");
     }
 
     #[test]
@@ -1945,7 +1959,7 @@ Implicits: 0
             assert_eq!(
                 build.config.conditions.get(*cond_var).copied(),
                 Some(true),
-                "省略的 defaultState=true 条件 {cond_var} 应补 true"
+                "an omitted defaultState=true condition {cond_var} should be backfilled true"
             );
         }
     }
@@ -2004,7 +2018,7 @@ Implicits: 0
         let build = parse_build(SAMPLE).expect("parse");
         assert!(
             !build.config.conditions.contains_key("EnemyChilled"),
-            "普通条件省略时不应被填默认值"
+            "an ordinary condition should not be backfilled with a default when omitted"
         );
     }
 }

@@ -74,7 +74,7 @@ pub fn run_extract_minions(args: &ExtractLuaArgs, kind: MinionsKind) -> io::Resu
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             format!(
-                "--what {} 固定抽取 Data/{}.lua，不接受 --files 自定义（收到 {:?}）",
+                "--what {} always extracts Data/{}.lua and does not accept a custom --files (got {:?})",
                 kind.what(),
                 kind.vendor_file(),
                 args.files
@@ -155,7 +155,8 @@ fn build_meta(
 
 /// Uniform serde_json pretty serialization (identical input always yields identical output, with a trailing newline).
 pub(crate) fn to_pretty_json<T: Serialize>(doc: &T) -> String {
-    let mut json = serde_json::to_string_pretty(doc).expect("overlay 文档序列化不应失败");
+    let mut json =
+        serde_json::to_string_pretty(doc).expect("overlay document serialization should not fail");
     json.push('\n');
     json
 }

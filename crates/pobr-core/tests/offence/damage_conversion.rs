@@ -259,10 +259,13 @@ fn component_uses_own_type_inc_not_path_last() {
     let cold = component(&output, DamageType::Cold);
     // Cold base = physical gain(100-200) + fire gain(10-20) = 110-220, takes ColdDamage inc 100
     // → ×2 = 220-440. If the buggy path-last FireDamage inc 999 were used → ×10.99 (assertion would fail).
-    assert!(cold.type_path.contains(&DamageType::Fire), "path 应含 Fire");
+    assert!(
+        cold.type_path.contains(&DamageType::Fire),
+        "path should contain Fire"
+    );
     assert_eq!(
         cold.min, 220.0,
-        "Cold 须按 ColdDamage inc 聚合，非 path 末位 Fire"
+        "Cold must aggregate via ColdDamage inc, not the path's final Fire"
     );
     assert_eq!(cold.max, 440.0);
 }

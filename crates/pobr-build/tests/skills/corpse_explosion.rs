@@ -109,5 +109,8 @@ fn non_corpse_skill_gets_no_physical_injection() {
         .filter(|c| c.damage_type == DamageType::Physical)
         .map(|c| (c.min + c.max) / 2.0)
         .sum();
-    assert_eq!(phys_avg, 0.0, "Fireball 不应获得尸体物理基伤");
+    assert_eq!(
+        phys_avg, 0.0,
+        "Fireball should not gain corpse physical base damage"
+    );
 }

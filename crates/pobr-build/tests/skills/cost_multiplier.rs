@@ -19,7 +19,7 @@ use std::path::Path;
 
 fn repo_data() -> BuildData {
     let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("加载仓库数据")
+    BuildData::load(&data).expect("load repo data")
 }
 
 /// Oracle comparison: druid-oracle-comet — Comet + a compatible cost-multiplier
@@ -71,8 +71,8 @@ fn oracle_druid_comet_mana_cost_with_support_multipliers() {
     });
     assert!(
         matched.is_some(),
-        "mana cost {} 必须 = floor(base × 1.43)（现行兼容集倍率链），且 base 是 \
-         Comet 某等级行的 cost——倍率链或兼容裁决漂移",
+        "mana cost {} must = floor(base × 1.43) (the current compatible-set multiplier chain), and base must be \
+         some Comet level row's cost -- the multiplier chain or compatibility ruling has drifted",
         out.mana_cost
     );
     // The concrete value is pinned to the PoB2 golden (meta.json
@@ -80,7 +80,7 @@ fn oracle_druid_comet_mana_cost_with_support_multipliers() {
     // explicitly and re-verify against the oracle if level/chain logic changes).
     assert_eq!(
         out.mana_cost, 577.0,
-        "Comet L29 base 404 × 1.43 → floor = 577（= PoB2 golden）"
+        "Comet L29 base 404 × 1.43 → floor = 577 (= PoB2 golden)"
     );
 }
 
@@ -160,7 +160,10 @@ fn incompatible_support_multiplier_is_not_applied() {
     let opts = DataOrchestratorOptions::default();
     let out = calculate_with_data(&build, &data, &opts).expect("calc");
     // Only the compatible +30% applies: floor(100 × 1.3) = 130. Wrongly including the rejected +100% would give 260.
-    assert_eq!(out.mana_cost, 130.0, "只有兼容 support 的 cost 倍率生效");
+    assert_eq!(
+        out.mana_cost, 130.0,
+        "only the compatible support's cost multiplier applies"
+    );
 }
 
 /// Synthetic end-to-end: a negative multiplier (Impurity-style -100% doesn't
@@ -218,5 +221,8 @@ fn negative_support_multiplier_reduces_cost() {
 
     let opts = DataOrchestratorOptions::default();
     let out = calculate_with_data(&build, &data, &opts).expect("calc");
-    assert_eq!(out.mana_cost, 50.0, "负倍率减费 floor(100 × 0.5) = 50");
+    assert_eq!(
+        out.mana_cost, 50.0,
+        "a negative multiplier reduces cost: floor(100 × 0.5) = 50"
+    );
 }

@@ -76,7 +76,7 @@ impl TreeLayout {
 
 pub fn run(args: TreeCoordsArgs) -> Result<String, String> {
     let lua = std::fs::read_to_string(&args.tree_lua)
-        .map_err(|e| format!("读取 {} 失败：{e}", args.tree_lua.display()))?;
+        .map_err(|e| format!("failed to read {}: {e}", args.tree_lua.display()))?;
     let layout = parse_layout(&lua)?;
 
     // The three-layer layout: prefer reading the existing passive_tree.json
@@ -88,10 +88,10 @@ pub fn run(args: TreeCoordsArgs) -> Result<String, String> {
     } else {
         version_dir.join("passive_tree.json")
     };
-    let bytes =
-        std::fs::read(&tree_path).map_err(|e| format!("读取 {} 失败：{e}", tree_path.display()))?;
+    let bytes = std::fs::read(&tree_path)
+        .map_err(|e| format!("failed to read {}: {e}", tree_path.display()))?;
     let mut nodes: Vec<PassiveNodeDef> = serde_json::from_slice(&bytes)
-        .map_err(|e| format!("解析 {} 失败：{e}", tree_path.display()))?;
+        .map_err(|e| format!("failed to parse {}: {e}", tree_path.display()))?;
 
     // Off-graph nodes (the anointable pool: DeliriumAnoint / voices etc. —
     // no connections and referenced by nothing) don't participate in the
@@ -137,8 +137,8 @@ pub fn run(args: TreeCoordsArgs) -> Result<String, String> {
     write_pretty(&tree_path, &nodes)?;
 
     Ok(format!(
-        "节点坐标回填完成：{filled}/{} 节点写入 x/y（{missing} 个在 tree.lua 无 orbit 数据，\
-         {off_graph} 个图外节点跳过）；groups {} 组，orbit 档 {} 个，tree.lua nodes {} 条 → {}",
+        "node coordinate backfill complete: {filled}/{} node(s) got x/y written ({missing} have no orbit data \
+         in tree.lua, {off_graph} off-graph node(s) skipped); {} group(s), {} orbit tier(s), {} tree.lua node(s) -> {}",
         nodes.len(),
         layout.groups.len(),
         layout.orbit_radii.len(),
@@ -155,24 +155,26 @@ fn round6(v: f64) -> f64 {
 /// Extracts `constants.orbitRadii` / `constants.orbitAnglesByOrbit` / the
 /// top-level `groups` / the top-level `nodes` (each node's group/orbit/orbitIndex) from `tree.lua`'s text.
 fn parse_layout(lua: &str) -> Result<TreeLayout, String> {
-    let const_block = balanced_block(lua, "constants={").ok_or("tree.lua 未找到 constants 块")?;
-    let orbit_radii =
-        parse_number_array(const_block, "orbitRadii={").ok_or("tree.lua 未找到 orbitRadii 块")?;
+    let const_block =
+        balanced_block(lua, "constants={").ok_or("tree.lua: constants block not found")?;
+    let orbit_radii = parse_number_array(const_block, "orbitRadii={")
+        .ok_or("tree.lua: orbitRadii block not found")?;
     let orbit_angles = parse_nested_number_arrays(const_block, "orbitAnglesByOrbit={")
-        .ok_or("tree.lua 未找到 orbitAnglesByOrbit 块")?;
+        .ok_or("tree.lua: orbitAnglesByOrbit block not found")?;
 
     // The top-level groups / nodes blocks (indented with `\t`), distinguished from a group's nested `nodes=`.
-    let groups_block = balanced_block(lua, "\tgroups={").ok_or("tree.lua 未找到顶层 groups 块")?;
-    let groups = parse_groups(groups_block).ok_or("groups 块解析为空")?;
+    let groups_block =
+        balanced_block(lua, "\tgroups={").ok_or("tree.lua: top-level groups block not found")?;
+    let groups = parse_groups(groups_block).ok_or("groups block parsed to empty")?;
 
     // The top-level nodes block comes after groups; search starting from the
     // end of the groups block to avoid a group's nested `nodes=`.
     let groups_end = block_offset(lua, groups_block);
-    let nodes_block =
-        balanced_block(&lua[groups_end..], "\tnodes={").ok_or("tree.lua 未找到顶层 nodes 块")?;
+    let nodes_block = balanced_block(&lua[groups_end..], "\tnodes={")
+        .ok_or("tree.lua: top-level nodes block not found")?;
     let node_orbits = parse_node_orbits(nodes_block);
     if node_orbits.is_empty() {
-        return Err("nodes 块未解析出任何 orbit 槽位".into());
+        return Err("nodes block: no orbit slots were parsed".into());
     }
 
     Ok(TreeLayout {

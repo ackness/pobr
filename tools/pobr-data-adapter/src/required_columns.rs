@@ -205,8 +205,10 @@ const REQUIRED_TW: &[(&str, &[&str])] = &[
 /// - An empty table (zero rows) -> columns can't be validated, so it's allowed through (not counted as drift).
 pub(crate) fn check_required_columns(en: &Path, tw: &Path) -> Result<Vec<String>, String> {
     let mut missing = Vec::new();
-    for (dir_label, dir, tables) in [("English", en, REQUIRED_EN), ("繁中边车", tw, REQUIRED_TW)]
-    {
+    for (dir_label, dir, tables) in [
+        ("English", en, REQUIRED_EN),
+        ("Traditional Chinese sidecar", tw, REQUIRED_TW),
+    ] {
         for (file, columns) in tables {
             check_table_columns(&dir.join(file), dir_label, file, columns, &mut missing)?;
         }
@@ -229,7 +231,9 @@ fn check_table_columns(
     };
     for column in columns {
         if !first.contains_key(*column) {
-            missing.push(format!("{dir_label}/{file} 缺必需列 `{column}`"));
+            missing.push(format!(
+                "{dir_label}/{file} is missing required column `{column}`"
+            ));
         }
     }
     Ok(())
@@ -269,8 +273,9 @@ mod tests {
         assert_eq!(
             missing,
             vec![
-                "English/ArmourTypes.json 缺必需列 `IncreasedMovementSpeed`".to_string(),
-                "English/ArmourTypes.json 缺必需列 `Ward`".to_string(),
+                "English/ArmourTypes.json is missing required column `IncreasedMovementSpeed`"
+                    .to_string(),
+                "English/ArmourTypes.json is missing required column `Ward`".to_string(),
             ]
         );
     }
@@ -345,9 +350,8 @@ mod tests {
         .unwrap();
         let missing = check_required_columns(&en, &tw).unwrap();
         assert!(
-            missing
-                .iter()
-                .any(|m| m.contains("ArmourTypes.json 缺必需列 `IncreasedMovementSpeed`")),
+            missing.iter().any(|m| m
+                .contains("ArmourTypes.json is missing required column `IncreasedMovementSpeed`")),
             "missing = {missing:?}"
         );
     }

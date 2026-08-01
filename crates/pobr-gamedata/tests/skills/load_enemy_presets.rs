@@ -20,7 +20,7 @@ fn version() -> String {
 fn load() -> EnemyPresetsTable {
     GameData::new(repo_data_root().join(version()))
         .enemy_presets()
-        .expect("enemy_presets 可加载")
+        .expect("enemy_presets should load")
 }
 
 /// Gets a given tier (also checks the JSON tier order = None → Boss → Pinnacle → Uber).
@@ -28,7 +28,7 @@ fn tier<'a>(t: &'a EnemyPresetsTable, id: &str) -> &'a EnemyTierPreset {
     t.tiers
         .iter()
         .find(|p| p.id == id)
-        .unwrap_or_else(|| panic!("缺少档位 {id}"))
+        .unwrap_or_else(|| panic!("missing tier {id}"))
 }
 
 /// Finds an entry in a tier's mod group (matched by name + value, since
@@ -40,7 +40,7 @@ fn find_mod<'a>(
 ) -> &'a pobr_data::catalog::enemy_presets::EnemyPresetMod {
     mods.iter()
         .find(|m| m.name == name && m.value == value)
-        .unwrap_or_else(|| panic!("缺少 mod {name} = {value}"))
+        .unwrap_or_else(|| panic!("missing mod {name} = {value}"))
 }
 
 /// All four tiers present, in an order matching vendor's list / pobr's
@@ -53,7 +53,12 @@ fn four_tiers_in_canonical_order() {
     // Default tier = Pinnacle (vendor defaultIndex = 3; pobr's `EnemyTier::default()`).
     let default_id = format!("{:?}", EnemyTier::default());
     for p in &t.tiers {
-        assert_eq!(p.is_default, p.id == default_id, "档位 {} 默认位", p.id);
+        assert_eq!(
+            p.is_default,
+            p.id == default_id,
+            "tier {} is_default flag",
+            p.id
+        );
     }
 }
 
@@ -141,7 +146,10 @@ fn conditions_match_setup_env_injection() {
 #[test]
 fn boss_common_mods_match_setup_env_values() {
     let t = load();
-    assert!(tier(&t, "None").enemy_mods.is_empty(), "None 档无 mod 组");
+    assert!(
+        tier(&t, "None").enemy_mods.is_empty(),
+        "the None tier has no mod group"
+    );
     for id in ["Boss", "Pinnacle", "Uber"] {
         let mods = &tier(&t, id).enemy_mods;
         for name in [
@@ -150,21 +158,21 @@ fn boss_common_mods_match_setup_env_values() {
             "SlowEffectOnSelf",
         ] {
             let m = find_mod(mods, name, -50.0);
-            assert_eq!(m.mod_type, "MORE", "{id} {name} 类型");
+            assert_eq!(m.mod_type, "MORE", "{id} {name} type");
             assert!(
                 m.effective_only,
-                "{id} {name} 应带 Effective 门控（pobr 现状）"
+                "{id} {name} should carry the Effective gate (pobr's current behavior)"
             );
         }
         let poise = find_mod(mods, "PoiseThreshold", 500.0);
-        assert_eq!(poise.mod_type, "MORE", "{id} PoiseThreshold 类型");
+        assert_eq!(poise.mod_type, "MORE", "{id} PoiseThreshold type");
         // pobr's setup_env.rs injects via push_enemy_number (no Effective
         // gate); vendor L2005 has the gate — the discrepancy is already
         // recorded in the schema doc's TODO(parity); asserted here per
         // pobr's current behavior.
         assert!(
             !poise.effective_only,
-            "{id} PoiseThreshold 500 按 pobr 现状不带门控"
+            "{id} PoiseThreshold 500 has no gate per pobr's current behavior"
         );
     }
 }
@@ -192,9 +200,13 @@ fn uber_damage_taken_matches_rust_source() {
                 .enemy_mods
                 .iter()
                 .any(|m| m.name == "DamageTaken"),
-            "{id} 档不应有 DamageTaken"
+            "{id} tier should not have DamageTaken"
         );
-        assert_eq!(rust_tier.damage_taken_more(), 0.0, "{id} Rust 准源亦为 0");
+        assert_eq!(
+            rust_tier.damage_taken_more(),
+            0.0,
+            "{id}'s Rust source of truth is also 0"
+        );
     }
 }
 
@@ -223,7 +235,7 @@ fn vendor_only_enemy_mods_sampled() {
         assert_eq!(xesht.source_label, "Xesht", "{id} Xesht poise");
         assert!(
             !tier(&t, id).enemy_mods.iter().any(|m| m.value == 213.0),
-            "{id} 不应有 Map Boss 213"
+            "{id} should not have Map Boss 213"
         );
     }
 }
@@ -237,12 +249,12 @@ fn vendor_only_player_mods_sampled() {
     assert!(tier(&t, "None").player_mods.is_empty());
     for id in ["Boss", "Pinnacle", "Uber"] {
         let mods = &tier(&t, id).player_mods;
-        assert_eq!(mods.len(), 2, "{id} player_mods 条数");
+        assert_eq!(mods.len(), 2, "{id} player_mods count");
         for name in ["WarcryPower", "Multiplier:EnemyPower"] {
             let m = find_mod(mods, name, 20.0);
-            assert_eq!(m.mod_type, "BASE", "{id} {name} 类型");
-            assert_eq!(m.source_label, "Boss", "{id} {name} 来源标签");
-            assert!(!m.effective_only, "{id} {name} 无 Effective 门控");
+            assert_eq!(m.mod_type, "BASE", "{id} {name} type");
+            assert_eq!(m.source_label, "Boss", "{id} {name} source label");
+            assert!(!m.effective_only, "{id} {name} has no Effective gate");
         }
     }
 }

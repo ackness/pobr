@@ -72,7 +72,7 @@ fn essence_drain_skill_dot_vs_pob2_golden() {
 
     assert!(
         out.skill_total_dot > 0.0,
-        "DoT 链路必须活体（<Type>Dot 基值 → instance → TotalDot）：{out:#?}"
+        "the DoT chain must be live (<Type>Dot base → instance → TotalDot): {out:#?}"
     );
     let ratio = out.skill_total_dot / golden_total_dot;
     println!(
@@ -86,7 +86,7 @@ fn essence_drain_skill_dot_vs_pob2_golden() {
     let pin = 0.95..=1.05;
     assert!(
         pin.contains(&ratio),
-        "TotalDot 对 golden 比值超出销钉区间 {pin:?}：ratio={ratio:.4}（pobr={} golden={}）",
+        "TotalDot's ratio to golden is outside the pinned range {pin:?}: ratio={ratio:.4} (pobr={} golden={})",
         out.skill_total_dot,
         golden_total_dot
     );
@@ -94,11 +94,11 @@ fn essence_drain_skill_dot_vs_pob2_golden() {
     // Self-check for the combined family: WithDotDPS = TotalDPS + TotalDot; CombinedDPS >= WithDotDPS.
     assert!(
         (out.with_dot_dps - (out.dps + out.skill_total_dot)).abs() < 1e-6,
-        "WithDotDPS 恒等式失效：{out:#?}"
+        "WithDotDPS identity is violated: {out:#?}"
     );
     assert!(
         out.total_dot_dps >= out.skill_total_dot,
-        "TotalDotDPS 必须 ≥ 技能 TotalDot：{out:#?}"
+        "TotalDotDPS must be ≥ the skill's TotalDot: {out:#?}"
     );
 }
 
@@ -112,13 +112,16 @@ fn non_dot_build_keeps_skill_dot_neutral() {
     let out = run_build(&dir, &data);
     assert_eq!(
         out.skill_dot_instance, 0.0,
-        "非 DoT 技能不得产生技能 DoT instance：{out:#?}"
+        "a non-DoT skill must not produce a skill DoT instance: {out:#?}"
     );
     assert_eq!(out.skill_total_dot, 0.0);
-    assert_eq!(out.with_dot_dps, 0.0, "无技能 dot：WithDotDPS 维持中性");
+    assert_eq!(
+        out.with_dot_dps, 0.0,
+        "no skill dot: WithDotDPS stays neutral"
+    );
     // CombinedDPS = TotalDPS + TotalDotDPS (ailment DoT still folds into the combined family).
     assert!(
         (out.combined_dps - (out.dps + out.total_dot_dps)).abs() < 1e-6,
-        "CombinedDPS 恒等式失效：{out:#?}"
+        "CombinedDPS identity is violated: {out:#?}"
     );
 }

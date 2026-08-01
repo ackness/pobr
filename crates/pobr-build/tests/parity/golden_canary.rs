@@ -48,7 +48,7 @@ fn golden_stat(name: &str, key: &str) -> f64 {
     json.get("player_stats")
         .and_then(|p| p.get(key))
         .and_then(|v| v.as_f64())
-        .unwrap_or_else(|| panic!("{name}: golden 缺 {key}"))
+        .unwrap_or_else(|| panic!("{name}: golden is missing {key}"))
 }
 
 fn run(name: &str, data: &BuildData) -> OutputTable {
@@ -71,12 +71,12 @@ fn run(name: &str, data: &BuildData) -> OutputTable {
 fn within(name: &str, label: &str, pobr: f64, golden: f64, tol: f64) {
     assert!(
         golden > 0.0,
-        "{name} {label}: golden={golden}（canary 应只选有效 golden 值的 stat）"
+        "{name} {label}: golden={golden} (the canary should only pick stats with a valid golden value)"
     );
     let r = pobr / golden;
     assert!(
         (1.0 - tol..=1.0 + tol).contains(&r),
-        "{name} {label}: PoBR={pobr:.1} vs golden={golden:.1}（ratio {r:.3}，超 ±{:.0}% 标定带）",
+        "{name} {label}: PoBR={pobr:.1} vs golden={golden:.1} (ratio {r:.3}, exceeds the ±{:.0}% calibration band)",
         tol * 100.0
     );
 }

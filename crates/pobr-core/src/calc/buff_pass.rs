@@ -956,10 +956,13 @@ mod tests {
 
         buff_pass(&mut env);
 
-        let out = env.curse_pass_output.as_ref().expect("buff_pass 已运行");
+        let out = env
+            .curse_pass_output
+            .as_ref()
+            .expect("buff_pass should have run");
         assert_eq!(
             out.enemy_curse_limit, 1.0,
-            "基线 limit = 1（CalcSetup.lua:648）"
+            "baseline limit = 1 (CalcSetup.lua:648)"
         );
         assert_eq!(out.curse_slots, vec!["Temporal Chains".to_string()]);
         assert_eq!(
@@ -967,7 +970,7 @@ mod tests {
                 .mod_db
                 .sum(ModType::Inc, &env.cfg, &[ModName::from("DamageTaken")]),
             11.0,
-            "仅 priority 最高者的词条入敌 db"
+            "only the highest-priority mod enters the enemy db"
         );
         assert_eq!(env.cfg.multiplier("CurseOnEnemy"), 1.0);
         assert!(env.cfg.condition("EnemyCursed"));
@@ -1014,7 +1017,7 @@ mod tests {
         assert_eq!(
             env.curse_pass_output.as_ref().unwrap().enemy_curse_limit,
             3.0,
-            "默认最大充能 3（survivability::DEFAULT_MAX_CHARGES）"
+            "default max charges 3 (survivability::DEFAULT_MAX_CHARGES)"
         );
     }
 
@@ -1112,7 +1115,10 @@ mod tests {
             0.0
         );
         // Attribution: a curse mod with no origin falls back to (Buff, "curse.<skill_id>").
-        let origin = contributions[0].origin.as_ref().expect("回退归因已附");
+        let origin = contributions[0]
+            .origin
+            .as_ref()
+            .expect("fallback attribution should be attached");
         assert_eq!(origin.source_id.kind, pobr_data::source::SourceKind::Buff);
         assert!(origin.source_id.id.starts_with("curse."));
     }
@@ -1201,7 +1207,7 @@ mod tests {
                 .mod_db
                 .sum(ModType::Inc, &env.cfg, &[ModName::from("ActionSpeed")]),
             20.0,
-            "原值直注：BuffEffect 乘区不施加"
+            "raw value injected directly: the BuffEffect multiplier zone doesn't apply"
         );
         assert!(!env.cfg.condition("AffectedBySteelskin"));
     }
@@ -1284,7 +1290,7 @@ mod tests {
                 .mod_db
                 .sum(ModType::Base, &env.cfg, &[ModName::from("EnergyShield")]),
             100.0,
-            "同名 buff 同参数词条取强不叠加"
+            "same-name buff, same-parameter mods take the strongest, not stacked"
         );
     }
 }

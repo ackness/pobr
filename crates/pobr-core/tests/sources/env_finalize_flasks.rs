@@ -74,7 +74,7 @@ fn charm_mods_merge_and_scale_with_charm_effect() {
     assert_eq!(
         lightning_res(&env.player.mod_db, &env.cfg),
         18.0,
-        "+15% 雷抗 × (1 + 20/100) = 18（整数截断）"
+        "+15% lightning resist x (1 + 20/100) = 18 (integer-truncated)"
     );
     assert_eq!(env.cfg.conditions.get("UsingCharm"), Some(&true));
     assert_eq!(
@@ -121,11 +121,11 @@ fn flask_local_and_global_effect_inc_stack_additively() {
             .mod_db
             .sum(ModType::Inc, &env.cfg, &[ModName::from("MovementSpeed")]),
         14.0,
-        "10 × 1.45 = 14.5 → m_modf(round(…,2)) 截断 14"
+        "10 x 1.45 = 14.5 -> m_modf(round(...,2)) truncates to 14"
     );
     assert!(
         !env.player.mod_db.flag(&env.cfg, ModName::from("Onslaught")),
-        "Grants Onslaught during effect 与 PoB2 一致归 Unsupported，不置 Onslaught flag"
+        "Grants Onslaught during effect is Unsupported matching PoB2, no Onslaught flag set"
     );
     assert_eq!(env.cfg.conditions.get("UsingFlask"), Some(&true));
     assert_eq!(env.cfg.conditions.get("UsingQuicksilverFlask"), Some(&true));
@@ -181,17 +181,21 @@ fn charm_limit_caps_number_of_active_charms() {
         )
     };
 
-    assert_eq!(two_charms(None), (0.0, 0.0), "无 CharmLimit → charm 不生效");
+    assert_eq!(
+        two_charms(None),
+        (0.0, 0.0),
+        "no CharmLimit -> the charm has no effect"
+    );
     assert_eq!(
         two_charms(Some(1.0)),
         (15.0, 0.0),
-        "limit 1 → 仅首个 charm（插入序）"
+        "limit 1 -> only the first charm (insertion order)"
     );
-    assert_eq!(two_charms(Some(2.0)), (15.0, 25.0), "limit 2 → 两个都进");
+    assert_eq!(two_charms(Some(2.0)), (15.0, 25.0), "limit 2 -> both enter");
     assert_eq!(
         two_charms(Some(5.0)),
         (15.0, 25.0),
-        "Base 5 被 cap=3 截断后仍覆盖两个"
+        "Base 5 truncated by cap=3 still covers both"
     );
 }
 
@@ -217,7 +221,7 @@ fn merge_buff_takes_max_for_same_base_same_params() {
     assert_eq!(
         lightning_res(&env.player.mod_db, &env.cfg),
         15.0,
-        "同 base 同参数：取最大（15），不叠加（27）"
+        "same base, same parameters: takes the max (15), not stacked (27)"
     );
 }
 
@@ -303,12 +307,12 @@ fn end_to_end_charm_resistance_reaches_output_under_mode_combat() {
     assert_eq!(
         run(false, true),
         baseline,
-        "mode_combat=false：载荷在场输出逐值不变"
+        "mode_combat=false: output is value-for-value unchanged whether the payload is present"
     );
     assert_eq!(
         run(true, true),
         baseline + 15.0,
-        "mode_combat=true：charm 雷抗进入输出"
+        "mode_combat=true: the charm's lightning resist reaches the output"
     );
 }
 
@@ -342,6 +346,6 @@ fn end_to_end_belt_charm_slots_text_unlocks_charm_budget() {
     assert_eq!(
         run(true) - run(false),
         15.0,
-        "「Has 1 Charm Slot」解析为 CharmLimit BASE → charm 预算解锁"
+        "'Has 1 Charm Slot' parses to CharmLimit BASE -> unlocks the charm budget"
     );
 }

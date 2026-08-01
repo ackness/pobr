@@ -112,7 +112,7 @@ pub fn assemble_stat_descriptions_document(
         if row.compound {
             let template = row.template.clone().ok_or_else(|| {
                 io::Error::other(format!(
-                    "stat-descriptions compound 行缺 template：{}",
+                    "stat-descriptions compound row is missing template: {}",
                     row.stat
                 ))
             })?;
@@ -122,7 +122,7 @@ pub fn assemble_stat_descriptions_document(
             };
             if scope.compound.insert(row.stat.clone(), entry).is_some() {
                 return Err(io::Error::other(format!(
-                    "stat-descriptions 抽取重复 compound 键：{}::{}",
+                    "stat-descriptions extraction has a duplicate compound key: {}::{}",
                     row.scope, row.stat
                 )));
             }
@@ -131,7 +131,7 @@ pub fn assemble_stat_descriptions_document(
         } else {
             let text = row.text.clone().ok_or_else(|| {
                 io::Error::other(format!(
-                    "stat-descriptions single 行缺 text：{}::{}",
+                    "stat-descriptions single row is missing text: {}::{}",
                     row.scope, row.stat
                 ))
             })?;
@@ -143,7 +143,7 @@ pub fn assemble_stat_descriptions_document(
                 .or_default();
             if slot.insert(line, text).is_some() {
                 return Err(io::Error::other(format!(
-                    "stat-descriptions 抽取重复 single 行：{}::{} line {line}",
+                    "stat-descriptions extraction has a duplicate single row: {}::{} line {line}",
                     row.scope, row.stat
                 )));
             }

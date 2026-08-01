@@ -81,7 +81,7 @@ mod tests {
         let def = GameData::new(&dir)
             .gem_effects()
             .unwrap()
-            .expect("overlay 存在应加载");
+            .expect("overlay exists, should load");
         assert_eq!(def.gems.len(), 1);
         assert_eq!(def.gems[0].granted_effect_id, "IceNovaPlayer");
         assert!(def.gems[0].additional_granted_effect_ids.is_empty());

@@ -85,8 +85,14 @@ fn dual_wield_produces_both_hands_and_combines_per_vendor_modes() {
     let data = load_build_data();
 
     let single = calculate_with_data(&dual_build(None), &data, &opts(&[])).expect("single calc");
-    assert!(single.main_hand.is_some(), "单手攻击 build 须有 MH 子表");
-    assert!(single.off_hand.is_none(), "无 Weapon2 武器不得产 OH pass");
+    assert!(
+        single.main_hand.is_some(),
+        "a single-hand attack build must have an MH sub-table"
+    );
+    assert!(
+        single.off_hand.is_none(),
+        "no Weapon2 weapon means no OH pass should be produced"
+    );
 
     let dual = calculate_with_data(
         &dual_build(Some(weapon("Shortsword", &[]))),
@@ -94,13 +100,13 @@ fn dual_wield_produces_both_hands_and_combines_per_vendor_modes() {
         &opts(&[]),
     )
     .expect("dual calc");
-    let mh = dual.main_hand.as_ref().expect("双持 MH 子表");
-    let oh = dual.off_hand.as_ref().expect("双持 OH 子表");
+    let mh = dual.main_hand.as_ref().expect("dual-wield MH sub-table");
+    let oh = dual.off_hand.as_ref().expect("dual-wield OH sub-table");
 
     // Different bases per hand (6-10@690ms vs 6-9@645ms) -> the two legs' speed/hit differ.
     assert!(
         (mh.speed - oh.speed).abs() > 1e-6,
-        "两手攻速基底不同：MH={} OH={}",
+        "the two hands' attack speed bases should differ: MH={} OH={}",
         mh.speed,
         oh.speed
     );
@@ -108,7 +114,7 @@ fn dual_wield_produces_both_hands_and_combines_per_vendor_modes() {
     let eps = 1e-6;
     assert!(
         (dual.dps - (mh.total_dps + oh.total_dps) / 2.0).abs() < eps,
-        "TotalDPS = (MH+OH)/2：{} vs ({}+{})/2",
+        "TotalDPS = (MH+OH)/2: {} vs ({}+{})/2",
         dual.dps,
         mh.total_dps,
         oh.total_dps
@@ -116,7 +122,7 @@ fn dual_wield_produces_both_hands_and_combines_per_vendor_modes() {
     let harmonic = 2.0 / (1.0 / mh.speed + 1.0 / oh.speed);
     assert!(
         (dual.action_rate - harmonic).abs() < 1e-4,
-        "Speed 调和平均：{} vs {harmonic}",
+        "Speed harmonic mean: {} vs {harmonic}",
         dual.action_rate
     );
     // The OH leg uses the Shortsword base (average 7.5 < Wooden Club 8) -> both legs' hit are non-zero.
@@ -159,7 +165,7 @@ fn offhand_local_phys_mod_scales_only_offhand_leg() {
     // MH leg's values are unchanged (the local mod didn't reach the global bucket).
     assert!(
         (b_mh.average_hit - p_mh.average_hit).abs() < 1e-9,
-        "OH 局部词条不得影响 MH 腿：{} vs {}",
+        "an OH local mod must not affect the MH leg: {} vs {}",
         b_mh.average_hit,
         p_mh.average_hit
     );
@@ -167,7 +173,7 @@ fn offhand_local_phys_mod_scales_only_offhand_leg() {
     let ratio = b_oh.average_hit / p_oh.average_hit;
     assert!(
         (ratio - 1.4).abs() < 1e-6,
-        "OH 局部 40% inc 应 ×1.4，实得 ×{ratio}"
+        "OH local 40% inc should be ×1.4, got ×{ratio}"
     );
 }
 
@@ -193,11 +199,11 @@ fn with_maces_mod_routes_to_main_hand_only_under_pob2_bits() {
         routed.off_hand.as_ref().unwrap().speed / plain.off_hand.as_ref().unwrap().speed;
     assert!(
         (speed_ratio_mh - 1.2).abs() < 1e-6,
-        "MH（锤）腿吃 with-maces 攻速：×{speed_ratio_mh}"
+        "MH (mace) leg picks up with-maces attack speed: ×{speed_ratio_mh}"
     );
     assert!(
         (speed_ratio_oh - 1.0).abs() < 1e-9,
-        "OH（剑）腿不得吃 with-maces 攻速：×{speed_ratio_oh}"
+        "OH (sword) leg must not pick up with-maces attack speed: ×{speed_ratio_oh}"
     );
 }
 
@@ -234,7 +240,7 @@ fn dual_wield_golden_baseline() {
         let rel = (actual - expected).abs() / expected.abs().max(1e-12);
         assert!(
             rel < 1e-6,
-            "{label}: expected {expected}, got {actual}（相对误差 {rel:.2e}）"
+            "{label}: expected {expected}, got {actual} (relative error {rel:.2e})"
         );
     };
     let data = load_build_data();
@@ -244,8 +250,8 @@ fn dual_wield_golden_baseline() {
         &opts(&[]),
     )
     .expect("dual wield golden calc");
-    let mh = out.main_hand.as_ref().expect("MH 子表");
-    let oh = out.off_hand.as_ref().expect("OH 子表");
+    let mh = out.main_hand.as_ref().expect("MH sub-table");
+    let oh = out.off_hand.as_ref().expect("OH sub-table");
 
     near("combined.dps", GOLDEN_COMBINED_DPS, out.dps);
     near(

@@ -90,7 +90,7 @@ fn quality_segment_truncates_toward_zero() {
     assert_eq!(
         get("synth_neg"),
         -10.0,
-        "负斜率 toward zero：trunc(-10.45)=-10（floor 会得 -11）"
+        "negative slope truncates toward zero: trunc(-10.45)=-10 (floor would give -11)"
     );
 
     // quality=0 -> empty segment; unknown skill -> empty segment.
@@ -155,7 +155,7 @@ fn stormweaver_comet_q20_fixture_dual_run() {
         .count();
     assert_eq!(
         q20_count, 15,
-        "decoded.xml 的 15 个 q20 宝石应全部进入 build 模型"
+        "all 15 q20 gems in decoded.xml should enter the build model"
     );
 
     // Dual run: a copy with quality zeroed out (everything else identical).
@@ -174,12 +174,12 @@ fn stormweaver_comet_q20_fixture_dual_run() {
     // Directional assertion: quality can only help (every quality stat in this build is positive), so DPS/defence must not decrease.
     assert!(
         with_q.dps >= no_q.dps,
-        "quality 生效后 DPS 不得下降：{} < {}",
+        "DPS must not decrease once quality applies: {} < {}",
         with_q.dps,
         no_q.dps
     );
     assert!(
         with_q.life >= no_q.life && with_q.energy_shield >= no_q.energy_shield,
-        "quality 生效后防御不得下降"
+        "defence must not decrease once quality applies"
     );
 }

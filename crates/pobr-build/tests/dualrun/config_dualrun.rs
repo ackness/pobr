@@ -107,7 +107,7 @@ fn load_catalog() -> ConfigCatalog {
         .load_ruleset()
         .expect("load ruleset")
         .config_catalog
-        .expect("config_catalog 域应已接通")
+        .expect("the config_catalog domain should be wired up")
 }
 
 /// Dual-run data sources: the 18 ninja builds (code.txt -> XML) + every config fixture.
@@ -191,14 +191,20 @@ fn classify_condition(
         assert_ne!(
             outcome.conditions.get(var),
             Some(&true),
-            "[{source}] 旧显式 false 的条件 {var} 在新路径被置 true"
+            "[{source}] condition {var}, explicitly false on the old path, was set true on the new path"
         );
-        summary.record("旧显式 false（新路径未激活，语义等值）", var.to_string());
+        summary.record(
+            "old explicit false (new path inactive, semantically equal)",
+            var.to_string(),
+        );
         return;
     }
     // Same name, same value: the intersection is equal value-for-value.
     if outcome.conditions.get(var) == Some(&true) {
-        summary.record("conditions 同名同值（交集逐值相等）", var.to_string());
+        summary.record(
+            "conditions: same name same value (intersection equal value-for-value)",
+            var.to_string(),
+        );
         return;
     }
     // Reverse-lookup the source XML input name -> catalog entry.
@@ -223,13 +229,13 @@ fn classify_condition(
     let Some(entry) = entry else {
         summary
             .unexplained
-            .insert(format!("condition {var} @ {source}（无 catalog 条目）"));
+            .insert(format!("condition {var} @ {source} (no catalog entry)"));
         return;
     };
     if entry.handler_id.is_some() {
         summary.record(
-            "handler 缺口（原始输入已捕获，解释待后续 handler 批次）",
-            format!("{}（{}）", entry.var, entry.handler_id.as_deref().unwrap()),
+            "handler gap (raw input captured, explanation awaits a later handler batch)",
+            format!("{} ({})", entry.var, entry.handler_id.as_deref().unwrap()),
         );
         return;
     }
@@ -240,7 +246,7 @@ fn classify_condition(
         .any(|m| m.mod_type == ModType::Flag && m.name.as_str() == expected)
     {
         summary.record(
-            "条件 mod 化（带 Combat/Effective 等门控 tag，值相等；待行为 commit）",
+            "condition mod-ified (carries a Combat/Effective-style gating tag, value equal; behavior change pending a commit)",
             format!("{var} ← {}", entry.var),
         );
         return;
@@ -251,7 +257,7 @@ fn classify_condition(
             .any(|m| m.name.as_str() == format!("Condition:{stripped}"))
     {
         summary.record(
-            "enemy 条件 actor 化（Condition:Enemy<X> → enemy 桶 Condition:<X>）",
+            "enemy condition actor-ized (Condition:Enemy<X> → enemy-bucket Condition:<X>)",
             format!("{var} ← {}", entry.var),
         );
         return;
@@ -260,7 +266,7 @@ fn classify_condition(
     // Condition:ApplyCriticalWeakness): the FLAG truth value matches, and the naming difference is vendor faithfulness.
     if let Some(found) = mods.iter().find(|m| m.mod_type == ModType::Flag) {
         summary.record(
-            "条件 vendor 命名口径（FLAG 真值等值，名取 vendor 忠实拼写）",
+            "condition follows vendor naming (FLAG truth value equal, name matches vendor's faithful spelling)",
             format!("{var} ← {} as {}", entry.var, found.name.as_str()),
         );
         return;
@@ -270,7 +276,7 @@ fn classify_condition(
     // ConfigOptions.lua:1864-1872) -- the on/off semantics are carried by the numeric mod, and no FLAG is produced anymore.
     if !mods.is_empty() {
         summary.record(
-            "条件→数值 mod 化（checkbox 落 enemy 数值 mod + actor 门控 tag）",
+            "condition→numeric mod-ification (checkbox becomes an enemy numeric mod + actor gating tag)",
             format!("{var} ← {} as {}", entry.var, mods[0].name.as_str()),
         );
         return;
@@ -284,13 +290,13 @@ fn classify_condition(
         .any(|d| d.starts_with(&diag_prefix))
     {
         summary.record(
-            "tag 维度未接通（未映射 actor 等），保守跳过待回补",
+            "tag dimension not wired up (e.g. unmapped actor), conservatively skipped pending backfill",
             format!("{var} ← {}", entry.var),
         );
         return;
     }
     summary.unexplained.insert(format!(
-        "condition {var} @ {source}（条目 {} 无对应产出）",
+        "condition {var} @ {source} (entry {} produced no corresponding output)",
         entry.var
     ));
 }
@@ -308,10 +314,10 @@ fn classify_multiplier(
         // The intersection must be equal value-for-value (hard assert).
         assert!(
             (new_value - value).abs() < 1e-9,
-            "[{source}] multiplier {var} 交集值不等：旧 {value} vs 新 {new_value}"
+            "[{source}] multiplier {var} intersection value mismatch: old {value} vs new {new_value}"
         );
         summary.record(
-            "multipliers 同名同值（交集逐值相等）",
+            "multipliers: same name same value (intersection equal value-for-value)",
             format!("{var}={value}"),
         );
         return;
@@ -320,13 +326,13 @@ fn classify_multiplier(
     let Some(entry) = catalog.get(&xml_name) else {
         summary
             .unexplained
-            .insert(format!("multiplier {var} @ {source}（无 catalog 条目）"));
+            .insert(format!("multiplier {var} @ {source} (no catalog entry)"));
         return;
     };
     if entry.handler_id.is_some() {
         summary.record(
-            "handler 缺口（原始输入已捕获，解释待后续 handler 批次）",
-            format!("{}（{}）", entry.var, entry.handler_id.as_deref().unwrap()),
+            "handler gap (raw input captured, explanation awaits a later handler batch)",
+            format!("{} ({})", entry.var, entry.handler_id.as_deref().unwrap()),
         );
         return;
     }
@@ -339,10 +345,10 @@ fn classify_multiplier(
         assert_eq!(
             found.value.as_number(),
             Some(value),
-            "[{source}] multiplier {var} mod 化值不等（vendor 表达式非恒等？需逐条审查）"
+            "[{source}] multiplier {var} mod-ified value mismatch (a non-identity vendor expression? needs a manual review)"
         );
         summary.record(
-            "multiplier mod 化（带 Effective tag / 命名口径修正，值相等；待行为 commit）",
+            "multiplier mod-ified (carries an Effective tag / naming fixed to match vendor, value equal; behavior change pending a commit)",
             format!("{var} ← {} as {}", entry.var, found.name.as_str()),
         );
         return;
@@ -354,13 +360,13 @@ fn classify_multiplier(
         .any(|d| d.starts_with(&diag_prefix))
     {
         summary.record(
-            "tag 维度未接通（T5-E1 ActorCondition/actor Multiplier），保守跳过待回补",
+            "tag dimension not wired up (T5-E1 ActorCondition/actor Multiplier), conservatively skipped pending backfill",
             format!("{var} ← {}", entry.var),
         );
         return;
     }
     summary.unexplained.insert(format!(
-        "multiplier {var} @ {source}（条目 {} 无对应产出）",
+        "multiplier {var} @ {source} (entry {} produced no corresponding output)",
         entry.var
     ));
 }
@@ -408,13 +414,13 @@ fn classify_quests(
         let Some(entry) = catalog.get(&key) else {
             summary
                 .unexplained
-                .insert(format!("quest {key} @ {source}（无 catalog 条目）"));
+                .insert(format!("quest {key} @ {source} (no catalog entry)"));
             continue;
         };
         if entry.handler_id.is_some() {
             summary.record(
-                "handler 缺口（原始输入已捕获，解释待后续 handler 批次）",
-                format!("{}（{}）", entry.var, entry.handler_id.as_deref().unwrap()),
+                "handler gap (raw input captured, explanation awaits a later handler batch)",
+                format!("{} ({})", entry.var, entry.handler_id.as_deref().unwrap()),
             );
             continue;
         }
@@ -425,14 +431,14 @@ fn classify_quests(
             }
             let Ok(parsed) = parse_mod(&line) else {
                 summary.record(
-                    "quest 行 parser 不支持（旧路径同样落 Unsupported 通道，等值）",
+                    "quest line unsupported by parser (old path also falls into the Unsupported channel, equal)",
                     format!("{key}: {line}"),
                 );
                 continue;
             };
             if parsed.status != ParseStatus::Parsed {
                 summary.record(
-                    "quest 行 parser 不支持（旧路径同样落 Unsupported 通道，等值）",
+                    "quest line unsupported by parser (old path also falls into the Unsupported channel, equal)",
                     format!("{key}: {line}"),
                 );
                 continue;
@@ -445,7 +451,7 @@ fn classify_quests(
                 });
                 if matched.is_some() {
                     summary.record(
-                        "quest 奖励逐值相等（旧文本经 parser == 新声明式 effects）",
+                        "quest reward equal value-for-value (old text via parser == new declarative effects)",
                         format!("{key}: {}", old_mod.name.as_str()),
                     );
                 } else if let Some(renamed) = quest_mods.iter().find(|m| {
@@ -455,7 +461,7 @@ fn classify_quests(
                     // The parser's canonical name differs from vendor's (ColdResistance vs ColdResist):
                     // type + value match exactly, and the naming difference is vendor faithfulness (parser rules are unified).
                     summary.record(
-                        "quest 命名口径差异（parser 名 ≠ vendor 名，类型+值相等）",
+                        "quest naming differs (parser name ≠ vendor name, type+value equal)",
                         format!(
                             "{key}: {} → {}",
                             old_mod.name.as_str(),
@@ -464,7 +470,7 @@ fn classify_quests(
                     );
                 } else {
                     summary.unexplained.insert(format!(
-                        "quest {key} @ {source}：旧行 `{line}` 解析出 {}={:?} 在新产出中无匹配",
+                        "quest {key} @ {source}: old line `{line}` parsed to {}={:?} with no match in the new output",
                         old_mod.name.as_str(),
                         old_mod.value.as_number(),
                     ));
@@ -484,36 +490,39 @@ fn collect_new_coverage(
     for (var, enabled) in &outcome.conditions {
         if *enabled && !old_conditions.contains_key(var) {
             summary.record(
-                "新增覆盖：condition（count 型 / implyCond / 非前缀条目）",
+                "newly-added coverage: condition (count type / implyCond / unprefixed entries)",
                 var.clone(),
             );
         }
     }
     for var in outcome.multipliers.keys() {
         if !old_multipliers.contains_key(var) {
-            summary.record("新增覆盖：multiplier", var.clone());
+            summary.record("newly-added coverage: multiplier", var.clone());
         }
     }
     for m in &outcome.enemy_mods {
         if m.mod_type != ModType::Flag {
             summary.record(
-                "新增覆盖：enemy 数值覆盖（抗性/穿透/伤害等 BASE 直注）",
+                "newly-added coverage: enemy numeric override (resist/penetration/damage etc. direct BASE injection)",
                 m.name.as_str().to_string(),
             );
         }
     }
     if !outcome.custom_mod_lines.is_empty() {
         summary.record(
-            "新增覆盖：customMods 行通道",
-            format!("{} 行", outcome.custom_mod_lines.len()),
+            "newly-added coverage: customMods line channel",
+            format!("{} lines", outcome.custom_mod_lines.len()),
         );
     }
     for entry in &outcome.skill_data {
-        summary.record("新增覆盖：SkillData 键值载荷", entry.key.clone());
+        summary.record(
+            "newly-added coverage: SkillData key-value payload",
+            entry.key.clone(),
+        );
     }
     for u in &outcome.unhandled {
         summary.record(
-            "unhandled（handler_id 未注册，覆盖率报表）",
+            "unhandled (handler_id not registered, coverage report)",
             u.handler_id.clone(),
         );
     }
@@ -562,12 +571,15 @@ fn dual_run_old_subset_of_new() {
             assert_eq!(
                 enemy_tier_from_config(&outcome),
                 Some(old_tier),
-                "[{source}] enemyIsBoss 标量口径不等"
+                "[{source}] enemyIsBoss scalar mismatch"
             );
-            summary.record("标量逐值相等：enemyIsBoss", format!("{old_tier:?}"));
+            summary.record(
+                "scalar equal value-for-value: enemyIsBoss",
+                format!("{old_tier:?}"),
+            );
         } else if let Some(tier) = enemy_tier_from_config(&outcome) {
             summary.record(
-                "新增覆盖：标量 default 实体化（XML 省略 → catalog defaultIndex）",
+                "newly-added coverage: scalar default materialized (XML omission → catalog defaultIndex)",
                 format!("enemyIsBoss={tier:?}"),
             );
         }
@@ -575,15 +587,15 @@ fn dual_run_old_subset_of_new() {
             assert_eq!(
                 campaign_progress_from_config(&outcome),
                 Some(old_progress),
-                "[{source}] resistancePenalty 标量口径不等"
+                "[{source}] resistancePenalty scalar mismatch"
             );
             summary.record(
-                "标量逐值相等：resistancePenalty",
+                "scalar equal value-for-value: resistancePenalty",
                 format!("{old_progress:?}"),
             );
         } else if campaign_progress_from_config(&outcome).is_some() {
             summary.record(
-                "新增覆盖：标量 default 实体化（XML 省略 → catalog defaultIndex）",
+                "newly-added coverage: scalar default materialized (XML omission → catalog defaultIndex)",
                 "resistancePenalty=-60(Endgame)".to_string(),
             );
         }
@@ -593,7 +605,7 @@ fn dual_run_old_subset_of_new() {
 
     // Prints the per-category summary (when run with --nocapture).
     println!(
-        "\n== M3-T1 双跑分类汇总（{} 类） ==",
+        "\n== M3-T1 dual-run category summary ({} categories) ==",
         summary.categories.len()
     );
     for (category, items) in &summary.categories {
@@ -605,7 +617,7 @@ fn dual_run_old_subset_of_new() {
 
     assert!(
         summary.unexplained.is_empty(),
-        "存在不可解释的旧产出项（旧 ⊄ 新）：\n{}",
+        "unexplained old-path output items exist (old ⊄ new):\n{}",
         summary
             .unexplained
             .iter()

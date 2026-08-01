@@ -41,14 +41,14 @@ fn calc_runs_on_every_committed_data_version() {
     let versions = committed_data_versions();
     assert!(
         versions.len() >= 2,
-        "期望 ≥2 个已入库数据版本以覆盖多版本无关性，实得 {versions:?}"
+        "expected ≥2 committed data versions to cover multi-version independence, got {versions:?}"
     );
 
     let build = parse_build_from_code(DEADEYE_CODE).expect("parse deadeye build");
 
     for ver in &versions {
         let data = BuildData::load(&GameData::new(repo_data_root().join(ver)))
-            .unwrap_or_else(|e| panic!("BuildData::load 在版本 {ver} 失败：{e}"));
+            .unwrap_or_else(|e| panic!("BuildData::load failed on version {ver}: {e}"));
 
         let opts = DataOrchestratorOptions {
             base_input: MinimalInput::default(),
@@ -59,11 +59,11 @@ fn calc_runs_on_every_committed_data_version() {
             ..Default::default()
         };
         let out = calculate_with_data(&build, &data, &opts)
-            .unwrap_or_else(|e| panic!("calc 在版本 {ver} 失败：{e}"));
+            .unwrap_or_else(|e| panic!("calc failed on version {ver}: {e}"));
 
         assert!(
             out.life.is_finite() && out.life > 0.0,
-            "版本 {ver}: life 非法（{}）——CharacterBase/装备/天赋应注入正值",
+            "version {ver}: life is invalid ({}) -- CharacterBase/equipment/passives should inject a positive value",
             out.life
         );
         for (label, v) in [
@@ -73,11 +73,14 @@ fn calc_runs_on_every_committed_data_version() {
             ("energy_shield", out.energy_shield),
             ("combined_dps", out.combined_dps),
         ] {
-            assert!(v.is_finite() && v >= 0.0, "版本 {ver}: {label} 非法（{v}）");
+            assert!(
+                v.is_finite() && v >= 0.0,
+                "version {ver}: {label} is invalid ({v})"
+            );
         }
         assert!(
             (0.0..=1.0).contains(&out.hit_chance),
-            "版本 {ver}: hit_chance 越界（{}）",
+            "version {ver}: hit_chance out of bounds ({})",
             out.hit_chance
         );
         eprintln!(
@@ -102,7 +105,10 @@ fn calc_is_deterministic_per_version() {
             calculate_with_data(&build, &d, &opts).expect("calc")
         };
         let (a, b) = (load(), load());
-        assert_eq!(a.life, b.life, "版本 {ver}: life 非确定性");
-        assert_eq!(a.combined_dps, b.combined_dps, "版本 {ver}: dps 非确定性");
+        assert_eq!(a.life, b.life, "version {ver}: life is non-deterministic");
+        assert_eq!(
+            a.combined_dps, b.combined_dps,
+            "version {ver}: dps is non-deterministic"
+        );
     }
 }

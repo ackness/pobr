@@ -18,7 +18,7 @@ use serde_json::json;
 
 fn repo_data() -> BuildData {
     let data = GameData::new(pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version()));
-    BuildData::load(&data).expect("加载仓库数据")
+    BuildData::load(&data).expect("load repo data")
 }
 
 /// Builds a synthetic [`BuildData`]: a persistent-reservation aura (Spirit 60,
@@ -167,7 +167,11 @@ fn dedupes_across_groups_and_skips_disabled() {
     let data = synthetic_data(None, None, None);
     let build = build_with_group(SocketGroup::new().with_gem_skill("TestAura", 1))
         .add_socket_group(SocketGroup::new().with_gem_skill("TestAura", 1));
-    assert_eq!(calc(&build, &data), 60.0, "重复组去重");
+    assert_eq!(
+        calc(&build, &data),
+        60.0,
+        "duplicate groups are deduplicated"
+    );
 
     let mut disabled = SocketGroup::new().with_gem_skill("TestAura", 1);
     disabled.enabled = false;
@@ -178,7 +182,7 @@ fn dedupes_across_groups_and_skips_disabled() {
             ascendancy_name: String::new(),
         })
         .add_socket_group(disabled);
-    assert_eq!(calc(&build, &data), 0.0, "禁用组不预留");
+    assert_eq!(calc(&build, &data), 0.0, "a disabled group doesn't reserve");
 }
 
 /// Blasphemy per-curse reservation (vendor CalcDefence.lua:229-239): the

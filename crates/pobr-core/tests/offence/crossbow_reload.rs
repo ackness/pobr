@@ -39,25 +39,25 @@ fn reload_cycle_average_scales_rate_and_dps() {
     let expected_rate = 5.0 / (5.0 / 3.0 + 0.8); // ≈ 2.027027
     assert!(
         (out.effective_action_rate - expected_rate).abs() < 1e-2,
-        "循环平均速率：{} vs {expected_rate}",
+        "cycle-average rate: {} vs {expected_rate}",
         out.effective_action_rate
     );
     assert!(
         (out.action_rate - expected_rate).abs() < 1e-2,
-        "面板速率（PoB2 output.Speed 改写口径）：{}",
+        "panel rate (PoB2's output.Speed rewrite semantics): {}",
         out.action_rate
     );
     // DPS = avg(150) × cycle-average rate.
     assert!(
         (out.dps - 150.0 * expected_rate).abs() < 1.0,
-        "DPS 等比折算：{} vs {}",
+        "DPS scales proportionally: {} vs {}",
         out.dps,
         150.0 * expected_rate
     );
     // The AverageDamage identity (parity semantics) is unaffected: dps / action_rate == 150.
     assert!(
         (out.dps / out.action_rate - 150.0).abs() < 1e-6,
-        "dps/action_rate 恒等式破坏：{}",
+        "the dps/action_rate identity is broken: {}",
         out.dps / out.action_rate
     );
 }
@@ -75,10 +75,14 @@ fn not_consume_ammo_100_keeps_firing_rate() {
     let out = session.output();
     assert!(
         (out.effective_action_rate - 3.0).abs() < 1e-9,
-        "不消耗弹药必须退化为纯射速：{}",
+        "not consuming ammo must degenerate to the pure fire rate: {}",
         out.effective_action_rate
     );
-    assert!((out.dps - 450.0).abs() < 1e-6, "DPS 不得折算：{}", out.dps);
+    assert!(
+        (out.dps - 450.0).abs() < 1e-6,
+        "DPS must not be scaled: {}",
+        out.dps
+    );
 }
 
 /// No reload mods (non-crossbow): entirely zero-behavior, output matches history value for value.
@@ -117,7 +121,7 @@ fn attack_speed_scales_reload_too() {
     let expected = 5.0 / (5.0 / 4.5 + 0.8 / 1.5);
     assert!(
         (out.effective_action_rate - expected).abs() < 1e-2,
-        "攻速须同时加快装填：{} vs {expected}",
+        "attack speed must also speed up reloading: {} vs {expected}",
         out.effective_action_rate
     );
 }

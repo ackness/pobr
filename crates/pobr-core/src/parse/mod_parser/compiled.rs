@@ -428,7 +428,7 @@ impl CompiledParserRules {
     ) -> Result<Self, CompileError> {
         let mut special_handlers = HandlerRegistry::new();
         register_special_handlers(&mut special_handlers)
-            .map_err(|e| CompileError::Index(format!("special handler 注册: {e}")))?;
+            .map_err(|e| CompileError::Index(format!("special handler registration: {e}")))?;
         let special = SpecialModRules::compile(special_defs, &special_handlers)
             .map_err(|e| CompileError::Index(format!("special compile: {e}")))?;
         Ok(Self {
@@ -660,7 +660,8 @@ mod tests {
         let path = crate::mod_parser::engine::test_support::real_rules_path();
         let json = std::fs::read_to_string(path).unwrap();
         let doc: ModParserRulesDoc = serde_json::from_str(&json).unwrap();
-        let c = CompiledParserRules::compile(&doc).expect("真实规则表应全部编译成功");
+        let c = CompiledParserRules::compile(&doc)
+            .expect("the real rule table should compile completely");
         assert!(c.forms.len() >= 85, "forms={}", c.forms.len());
         assert!(c.name_map.len() >= 750, "name_map={}", c.name_map.len());
         assert!(

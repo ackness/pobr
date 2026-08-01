@@ -94,7 +94,7 @@ pub fn collect(data_dir: &Path, corpus_extra: Option<&Path>) -> Result<Corpus, S
         collect_build_xml(&examples, &mut map)?;
     } else {
         eprintln!(
-            "precompile-mods: 警告 —— 未定位到 examples/demo-bd-test/builds（跳过 C1 build XML 语料）"
+            "precompile-mods: warning -- examples/demo-bd-test/builds not found (skipping C1 build XML corpus)"
         );
     }
 
@@ -126,7 +126,7 @@ fn collect_passive_tree(
     let game = GameData::new(data_dir.to_path_buf());
     let nodes = game
         .passive_nodes()
-        .map_err(|e| format!("加载 passive_tree.json 失败：{e}"))?;
+        .map_err(|e| format!("failed to load passive_tree.json: {e}"))?;
     let src = SourceSet {
         c2_tree: true,
         ..Default::default()
@@ -156,7 +156,7 @@ fn collect_build_xml(
         ..Default::default()
     };
     let mut build_dirs: Vec<PathBuf> = std::fs::read_dir(builds_dir)
-        .map_err(|e| format!("读取 {} 失败：{e}", builds_dir.display()))?
+        .map_err(|e| format!("failed to read {}: {e}", builds_dir.display()))?
         .filter_map(|e| e.ok().map(|e| e.path()))
         .filter(|p| p.is_dir())
         .collect();
@@ -168,7 +168,7 @@ fn collect_build_xml(
             continue;
         }
         let content = std::fs::read_to_string(&xml)
-            .map_err(|e| format!("读取 {} 失败：{e}", xml.display()))?;
+            .map_err(|e| format!("failed to read {}: {e}", xml.display()))?;
         for line in extract_item_mod_lines(&content) {
             add_line(map, &line, src);
         }
@@ -283,10 +283,10 @@ fn collect_special_derived(
     if !path.is_file() {
         return Ok(());
     }
-    let content =
-        std::fs::read_to_string(&path).map_err(|e| format!("读取 {} 失败：{e}", path.display()))?;
+    let content = std::fs::read_to_string(&path)
+        .map_err(|e| format!("failed to read {}: {e}", path.display()))?;
     let doc: serde_json::Value = serde_json::from_str(&content)
-        .map_err(|e| format!("解析 special_derived.json 失败：{e}"))?;
+        .map_err(|e| format!("failed to parse special_derived.json: {e}"))?;
     let src = SourceSet {
         sd_derived: true,
         ..Default::default()
@@ -303,7 +303,7 @@ fn collect_special_derived(
 
 fn collect_extra(extra: &Path, map: &mut BTreeMap<String, SourceSet>) -> Result<(), String> {
     let content = std::fs::read_to_string(extra)
-        .map_err(|e| format!("读取 {} 失败：{e}", extra.display()))?;
+        .map_err(|e| format!("failed to read {}: {e}", extra.display()))?;
     let src = SourceSet {
         cx_extra: true,
         ..Default::default()

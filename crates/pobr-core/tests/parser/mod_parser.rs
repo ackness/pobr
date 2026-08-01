@@ -261,13 +261,13 @@ fn strips_pob_bracket_markup() {
     let o = parse_mod("+5 to any [Attributes|Attribute]").unwrap();
     assert!(
         o.mods.is_empty() || o.unparsed.is_some(),
-        "any attribute 原文不得产出净贡献（零 mod 或留残丢弃）：{:?}",
+        "the 'any attribute' source text must not produce a net contribution (zero mods, or a discarded residue): {:?}",
         o.mods
     );
     for attr in ["Strength", "Dexterity", "Intelligence"] {
         assert!(
             o.mods.iter().all(|m| m.name != ModName::from(attr)),
-            "any attribute 不直接贡献属性 {attr}"
+            "'any attribute' should not directly contribute to attribute {attr}"
         );
     }
     let o = parse_mod("+10 to all Attributes").unwrap();
@@ -299,14 +299,17 @@ fn parses_multi_source_converted_to_fire() {
     let o =
         parse_mod("30% of Physical, Cold and Lightning Damage Converted to Fire Damage").unwrap();
     assert_eq!(o.status, ParseStatus::Parsed);
-    assert!(o.unparsed.is_none(), "整行须被吃净，不得留残");
+    assert!(
+        o.unparsed.is_none(),
+        "the whole line must be fully consumed, no residue"
+    );
     assert_eq!(o.mods.len(), 3);
     for src in ["Physical", "Lightning", "Cold"] {
         let m = o
             .mods
             .iter()
             .find(|m| m.name == ModName::from(format!("{src}DamageConvertToFire")))
-            .unwrap_or_else(|| panic!("缺 {src}DamageConvertToFire"));
+            .unwrap_or_else(|| panic!("missing {src}DamageConvertToFire"));
         assert_eq!(m.mod_type, ModType::Base);
         assert_eq!(m.value, ModValue::Number(30.0));
     }
@@ -325,7 +328,7 @@ fn parses_all_elemental_converted_to_chaos() {
             .mods
             .iter()
             .find(|m| m.name == ModName::from(format!("{src}DamageConvertToChaos")))
-            .unwrap_or_else(|| panic!("缺 {src}DamageConvertToChaos"));
+            .unwrap_or_else(|| panic!("missing {src}DamageConvertToChaos"));
         assert_eq!(m.value, ModValue::Number(100.0));
     }
 }
@@ -363,7 +366,10 @@ fn parses_bare_target_taken_as_lightning() {
     ] {
         let o = parse_mod(text).unwrap();
         assert_eq!(o.status, ParseStatus::Parsed);
-        assert!(o.unparsed.is_none(), "{text}: 整行须被吃净");
+        assert!(
+            o.unparsed.is_none(),
+            "{text}: the whole line must be fully consumed"
+        );
         assert_eq!(o.mods.len(), 1);
         assert_eq!(
             o.mods[0].name,
@@ -388,11 +394,11 @@ fn parses_flask_fire_lightning_from_hits_taken_as_cold() {
             .mods
             .iter()
             .find(|m| m.name == ModName::from(format!("{src}DamageFromHitsTakenAsCold")))
-            .unwrap_or_else(|| panic!("缺 {src}DamageFromHitsTakenAsCold"));
+            .unwrap_or_else(|| panic!("missing {src}DamageFromHitsTakenAsCold"));
         assert_eq!(m.value, ModValue::Number(20.0));
         assert!(
             m.tags.contains(&ModTag::condition("UsingFlask", false)),
-            "{src}: 缺 UsingFlask 条件"
+            "{src}: missing UsingFlask condition"
         );
     }
 }
@@ -415,7 +421,7 @@ fn parses_phys_from_hits_taken_as_random_element() {
             .mods
             .iter()
             .find(|m| m.name == ModName::from(format!("PhysicalDamageFromHitsTakenAs{dst}")))
-            .unwrap_or_else(|| panic!("缺 PhysicalDamageFromHitsTakenAs{dst}"));
+            .unwrap_or_else(|| panic!("missing PhysicalDamageFromHitsTakenAs{dst}"));
         assert_eq!(m.value, ModValue::Number(5.0 / 3.0));
     }
 }
@@ -471,7 +477,7 @@ fn parses_gain_as_per_curse_with_spell_hits_prefix() {
         m.tags
             .iter()
             .any(|t| matches!(t, ModTag::Multiplier { var, .. } if var == "CurseOnEnemy")),
-        "应携带 Multiplier:CurseOnEnemy tag"
+        "should carry a Multiplier:CurseOnEnemy tag"
     );
 
     // Multiplier evaluation: 5 curse slots -> 30 x 5 = 150 (pinned to the vendor witch
@@ -502,7 +508,7 @@ fn parses_gain_as_per_different_grenade_fired() {
             ModTag::Multiplier { var, limit_var: Some(lv), .. }
                 if var == "DifferentGrenadeFired" && lv == "GrenadeTypes"
         )),
-        "应携带 Multiplier:DifferentGrenadeFired（limitVar=GrenadeTypes）tag"
+        "should carry a Multiplier:DifferentGrenadeFired (limitVar=GrenadeTypes) tag"
     );
 }
 
@@ -795,7 +801,7 @@ fn bonded_prefix_gates_mod_behind_condition() {
             t,
             ModTag::Condition { var, negated: false, .. } if var == "CanUseBondedModifiers"
         )),
-        "Bonded 词条须挂 CanUseBondedModifiers 条件"
+        "a Bonded mod must carry the CanUseBondedModifiers condition"
     );
 
     // Condition unset -> excluded from aggregation; set true -> takes effect.
@@ -857,7 +863,7 @@ fn charm_slots_implicit_parses_to_charm_limit_base() {
                 .mods
                 .iter()
                 .all(|m| m.name != ModName::from("CharmLimit")),
-        "非 charm slot 词条不应产出 CharmLimit"
+        "a non-charm-slot mod should not produce CharmLimit"
     );
 }
 

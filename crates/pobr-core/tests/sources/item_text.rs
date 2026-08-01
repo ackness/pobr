@@ -235,26 +235,26 @@ Implicits: 1
     assert_eq!(
         item.implicit_texts,
         vec!["+30% to Fire Resistance"],
-        "implicit 行的 {{range:0.8}} 应被剥离"
+        "the implicit line's {{range:0.8}} should be stripped"
     );
     assert_eq!(
         item.modifier_texts,
         vec!["+40 to maximum Life", "20% increased maximum Life"],
-        "explicit 行的 {{range:0.5}} 和 (augmented) 应被剥离"
+        "the explicit line's {{range:0.5}} and (augmented) should be stripped"
     );
 
     // Once fed into ingest_item, it should parse successfully rather than landing in unsupported.
     let ingest = ingest_item(EquipmentSlot::Helmet, &item).expect("ingest succeeds");
     assert!(
         ingest.unsupported.is_empty(),
-        "含注释的行在剥离后应能被 mod_parser 解析，不应归入 unsupported：{:?}",
+        "an annotated line should parse via mod_parser after stripping, not land in unsupported: {:?}",
         ingest.unsupported
     );
     // 1 implicit + 2 explicit (quality no longer injects a modifier; per-attribute base scaling is handled by the orchestration layer).
     assert_eq!(
         ingest.modifiers.len(),
         3,
-        "应解析出 3 个 modifier（1 implicit + 2 explicit）"
+        "should parse 3 modifiers (1 implicit + 2 explicit)"
     );
 }
 
@@ -280,13 +280,13 @@ Implicits: 0
     assert_eq!(
         item.modifier_texts,
         vec!["20% increased Fire Damage", "+30% to Cold Resistance"],
-        "tier 注释应被剥离"
+        "the tier annotation should be stripped"
     );
 
     let ingest = ingest_item(EquipmentSlot::Helmet, &item).expect("ingest succeeds");
     assert!(
         ingest.unsupported.is_empty(),
-        "tier 注释剥离后应能解析：{:?}",
+        "should parse after the tier annotation is stripped: {:?}",
         ingest.unsupported
     );
 }
@@ -311,7 +311,7 @@ Item Level: 60
     assert_eq!(
         item.enchant_texts,
         vec!["+25% to Cold Resistance"],
-        "{{crafted}} 行应归入 enchant section，且 {{range:0.9}} 被剥离"
+        "a {{crafted}} line should land in the enchant section, and {{range:0.9}} should be stripped"
     );
     assert_eq!(item.modifier_texts, vec!["+40 to maximum Life"]);
 }
@@ -357,7 +357,7 @@ fn xml_item_strips_brace_prefixes_and_collects_all_mods() {
         item.enchant_texts
             .iter()
             .any(|t| t == "20% increased Physical Damage"),
-        "rune enchant 应保留干净文本: {:?}",
+        "a rune enchant should keep clean text: {:?}",
         item.enchant_texts
     );
 
@@ -372,18 +372,18 @@ fn xml_item_strips_brace_prefixes_and_collects_all_mods() {
         all.iter().all(|t| !t.starts_with("Rune:")
             && !t.starts_with("Sockets:")
             && !t.starts_with("Unique ID:")),
-        "元数据行泄漏到词条段: {all:?}"
+        "a metadata line leaked into a modifier section: {all:?}"
     );
 
     // The {fractured} / {desecrated} prefixes are stripped, leaving parseable text.
     assert!(
         all.iter()
             .any(|t| t.as_str() == "Adds 1 to 356 Lightning Damage"),
-        "fractured 词条应保留干净文本: {all:?}"
+        "a fractured modifier should keep clean text: {all:?}"
     );
     assert!(
         all.iter().any(|t| t.as_str() == "+26 to Strength"),
-        "末尾普通词条应保留: {all:?}"
+        "a trailing plain modifier should be kept: {all:?}"
     );
 }
 
@@ -425,12 +425,12 @@ fn xml_item_counts_five_filled_sockets() {
         .collect();
     assert!(
         all.iter().all(|t| !t.starts_with("Rune:")),
-        "Rune: 元数据行不得进入词条段: {all:?}"
+        "a Rune: metadata line must not enter a modifier section: {all:?}"
     );
     assert!(
         all.iter()
             .any(|t| t.as_str() == "+14 to Spirit per Socket filled"),
-        "per-socket 词条应保留: {all:?}"
+        "a per-socket modifier should be kept: {all:?}"
     );
 }
 
@@ -505,6 +505,6 @@ Implicits: 1
     let ingest = ingest_item(EquipmentSlot::Ring1, &item).expect("ingest");
     assert!(
         !ingest.modifiers.is_empty(),
-        "ingest 应产出 modifier（含可解析词条）"
+        "ingest should produce a modifier (with parseable text)"
     );
 }

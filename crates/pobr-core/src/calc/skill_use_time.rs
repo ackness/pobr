@@ -350,6 +350,9 @@ mod crossbow_reload_tests {
         ]);
         let cfg = CalcConfig::attack();
         let t = crossbow_reload_time(&db, &cfg, 0.8);
-        assert!((t - 0.8 / 1.5).abs() < 1e-9, "INC 同桶相加：{t}");
+        assert!(
+            (t - 0.8 / 1.5).abs() < 1e-9,
+            "INC sums within the same bucket: {t}"
+        );
     }
 }

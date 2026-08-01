@@ -1108,7 +1108,7 @@ mod kalandra_tests {
             .set_item(EquipmentSlot::Ring1, kalandra.clone())
             .set_item(EquipmentSlot::Ring2, other.clone());
         let reflected = kalandra_reflected_ring(&build, EquipmentSlot::Ring1, &kalandra)
-            .expect("应镜射对侧戒指");
+            .expect("should mirror the other ring");
         assert_eq!(reflected.modifier_texts, other.modifier_texts);
         // A non-Kalandra ring is unaffected.
         assert!(kalandra_reflected_ring(&build, EquipmentSlot::Ring2, &other).is_none());

@@ -65,7 +65,7 @@ pub fn run_extract_curse_priority(args: &ExtractLuaArgs) -> io::Result<String> {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             format!(
-                "--what curse-priority 的抽取文件固定为 [\"Data\"]，不接受 --files 自定义（收到 {:?}）",
+                "--what curse-priority extraction file is fixed to [\"Data\"] and does not accept a custom --files (got {:?})",
                 args.files
             ),
         ));
@@ -104,14 +104,14 @@ pub fn classify(entries: Vec<RawPriorityEntry>) -> io::Result<CursePriorityDef> 
         };
         if duplicated {
             return Err(io::Error::other(format!(
-                "cursePriority 键 `{}` 重复（引导脚本输出异常）",
+                "cursePriority key `{}` is duplicated (bootstrap script output anomaly)",
                 entry.name
             )));
         }
     }
     let missing = |key: &str| {
         io::Error::other(format!(
-            "cursePriority 缺少特殊键 `{key}`（vendor 表结构变化）"
+            "cursePriority is missing special key `{key}` (vendor table structure changed)"
         ))
     };
     def.socket_priority_base = socket_priority_base.ok_or_else(|| missing("SocketPriorityBase"))?;
@@ -119,14 +119,14 @@ pub fn classify(entries: Vec<RawPriorityEntry>) -> io::Result<CursePriorityDef> 
     def.curse_from_equipment = curse_from_equipment.ok_or_else(|| missing("CurseFromEquipment"))?;
     if def.curse_base.is_empty() || def.slot_weights.is_empty() {
         return Err(io::Error::other(
-            "cursePriority 分类后 curse_base / slot_weights 为空（vendor 表结构变化）",
+            "cursePriority curse_base / slot_weights are empty after classification (vendor table structure changed)",
         ));
     }
     for (name, value) in &def.curse_base {
         if *value < 0 || *value >= def.socket_priority_base {
             return Err(io::Error::other(format!(
-                "cursePriority 条目 `{name}`={value} 超出 curse 基值量级（应 < SocketPriorityBase={}）；\
-                 若为 vendor 新增槽名，请扩充 extract_curse_priority.rs 的 SLOT_NAMES 闭集",
+                "cursePriority entry `{name}`={value} exceeds the curse base magnitude (should be < SocketPriorityBase={}); \
+                 if this is a new vendor slot name, extend the SLOT_NAMES closed set in extract_curse_priority.rs",
                 def.socket_priority_base
             )));
         }
@@ -137,7 +137,8 @@ pub fn classify(entries: Vec<RawPriorityEntry>) -> io::Result<CursePriorityDef> 
 /// Assemble the final document: BTreeMap key order + serde_json serialization (identical input always yields identical output).
 pub fn assemble_document(meta: OverlayMeta, table: CursePriorityDef) -> String {
     let doc = CursePriorityDoc { meta, table };
-    let mut json = serde_json::to_string_pretty(&doc).expect("curse priority 文档序列化不应失败");
+    let mut json = serde_json::to_string_pretty(&doc)
+        .expect("curse priority document serialization should not fail");
     json.push('\n');
     json
 }
@@ -231,7 +232,7 @@ mod tests {
             entry("SocketPriorityBase", 100),
         ])
         .unwrap_err();
-        assert!(error.to_string().contains("重复"), "{error}");
+        assert!(error.to_string().contains("duplicated"), "{error}");
     }
 
     /// A missing special key (vendor table structure changed) errors explicitly.

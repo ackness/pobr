@@ -50,7 +50,7 @@ fn i5_no_crit_conditional_mods_equals_single_factor_formula() {
     assert!((out.crit_multiplier - 3.0).abs() < 1e-9);
     assert!(
         (out.total_hit_avg - non_crit_avg * effect).abs() < 1e-9,
-        "I5 恒等：got {}",
+        "I5 identity: got {}",
         out.total_hit_avg
     );
 
@@ -84,11 +84,11 @@ fn crit_conditional_mod_only_amplifies_crit_leg() {
     // (crit mult) = 900.
     assert!(
         (hit_avg - 150.0).abs() < 1e-9,
-        "非暴击腿不得吃 on-crit 词条"
+        "the non-crit leg must not be affected by the on-crit mod"
     );
     assert!(
         (crit_avg - 900.0).abs() < 1e-9,
-        "暴击腿吃 on-crit 词条 + 爆伤"
+        "the crit leg is affected by the on-crit mod + crit multiplier"
     );
 
     // Genuine dual-leg blend (:4395): 150×0.6 + 900×0.4 = 450.
@@ -117,8 +117,14 @@ fn negated_crit_condition_routes_to_non_crit_leg() {
 
     let (_, hit_avg) = out.stored_hit_avg[0];
     let (_, crit_avg) = out.stored_crit_avg[0];
-    assert!((hit_avg - 300.0).abs() < 1e-9, "非暴击腿吃 negated 词条");
-    assert!((crit_avg - 450.0).abs() < 1e-9, "暴击腿不吃（仅爆伤 ×3）");
+    assert!(
+        (hit_avg - 300.0).abs() < 1e-9,
+        "the non-crit leg is affected by the negated mod"
+    );
+    assert!(
+        (crit_avg - 450.0).abs() < 1e-9,
+        "the crit leg is unaffected (only crit multiplier x3)"
+    );
     // blend: 300×0.6 + 450×0.4 = 360.
     assert!((out.total_hit_avg - 360.0).abs() < 1e-9);
 }

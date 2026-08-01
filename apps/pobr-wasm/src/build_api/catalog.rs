@@ -338,7 +338,7 @@ fn reforge_runes_impl(request_json: &str) -> Result<String, super::ApiError> {
         let lines = applicable_rune_lines(def, &broad, &specific);
         if lines.is_empty() {
             return Err(super::ApiError::bad_request(format!(
-                "{name} 不适用于 {}",
+                "{name} does not apply to {}",
                 base.item_class
             )));
         }

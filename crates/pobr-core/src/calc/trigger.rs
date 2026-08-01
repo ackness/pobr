@@ -1388,6 +1388,9 @@ mod tests {
         let r = resolve_trigger_rate(0.05, 0.0, 1.0, 2.0, SERVER_TICK_SECONDS);
         let low = r.skill_trigger_rate * low_crit.chance_multiplier(true);
         let high = r.skill_trigger_rate * high_crit.chance_multiplier(true);
-        assert!(high > low, "crit↑ 应使触发速率↑（{high} vs {low}）");
+        assert!(
+            high > low,
+            "crit up should raise the trigger rate ({high} vs {low})"
+        );
     }
 }

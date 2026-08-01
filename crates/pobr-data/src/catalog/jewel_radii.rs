@@ -127,7 +127,7 @@ mod tests {
         let def = JewelRadiiDef::default();
         assert_eq!(def.distance_multiplier, 1.2);
         let bands = &def.tree_versions["0_1"];
-        assert_eq!(bands.len(), 12, "4 具名档 + 8 Variable 档");
+        assert_eq!(bands.len(), 12, "4 named tiers + 8 Variable tiers");
         assert_eq!(bands[0].label, "Small");
         assert_eq!(bands[0].outer, 1000);
         assert_eq!(bands[3].label, "Very Large");

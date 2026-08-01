@@ -171,10 +171,12 @@ pub(super) fn adapt_effects(
         });
     }
     if dangling_type_fk > 0 {
-        eprintln!("granted_effects: 类型表达式悬空 FK {dangling_type_fk} 处（已跳过）");
+        eprintln!("granted_effects: {dangling_type_fk} dangling type-expression FK(s) (skipped)");
     }
     if dangling_statset_fk > 0 {
-        eprintln!("granted_effects: AdditionalStatSets 悬空 FK {dangling_statset_fk} 处（已跳过）");
+        eprintln!(
+            "granted_effects: {dangling_statset_fk} dangling AdditionalStatSets FK(s) (skipped)"
+        );
     }
     effects.sort_by(|a, b| a.id.cmp(&b.id));
     Ok((effects, effects_total, effect_id_by_index))

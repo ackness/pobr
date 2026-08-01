@@ -63,8 +63,8 @@ mod tests {
     fn real_data_section_counts() {
         let doc = real_data()
             .mod_parser_rules()
-            .expect("加载 mod_parser_rules.json 不应失败")
-            .expect("仓库数据包应含 mod_parser_rules 域");
+            .expect("loading mod_parser_rules.json should not fail")
+            .expect("the repo data pack should have a mod_parser_rules domain");
         let forms: std::collections::BTreeSet<&str> =
             doc.forms.iter().map(|f| f.form.as_str()).collect();
         // flag_types includes a pobr-added entry `hindered`→`Condition:Hindered`,
@@ -96,7 +96,7 @@ mod tests {
         for id in [
             "INC", "RED", "MORE", "LESS", "BASE", "PEN", "DMG", "DOUBLED",
         ] {
-            assert!(forms.contains(id), "form id 集应含 {id}");
+            assert!(forms.contains(id), "form id set should contain {id}");
         }
     }
 
@@ -111,7 +111,7 @@ mod tests {
             .forms
             .iter()
             .find(|f| f.pattern == "^(%d+)%% increased")
-            .expect("INC form 应存在");
+            .expect("INC form should exist");
         assert_eq!(inc.form, "INC");
         assert_eq!(inc.literal.as_deref(), Some("% increased"));
         assert!(inc.anchored);
@@ -123,7 +123,7 @@ mod tests {
             .name_map
             .iter()
             .find(|e| e.phrase == "attributes")
-            .expect("attributes 应存在");
+            .expect("attributes should exist");
         assert_eq!(
             attributes.names,
             vec!["Strength", "Dexterity", "Intelligence"]
@@ -135,7 +135,7 @@ mod tests {
             .name_map
             .iter()
             .find(|e| e.phrase == "mana cost of attacks")
-            .expect("mana cost of attacks 应存在");
+            .expect("mana cost of attacks should exist");
         assert_eq!(mana_cost.names, vec!["ManaCost"]);
         assert_eq!(mana_cost.effects.tags.len(), 1);
         assert_eq!(mana_cost.effects.tags[0].tag_type, "SkillType");
@@ -150,7 +150,7 @@ mod tests {
             .flag_phrases
             .iter()
             .find(|e| e.phrase == "with maces")
-            .expect("with maces 应存在");
+            .expect("with maces should exist");
         assert_eq!(with_maces.effects.flags, vec!["Hit", "Mace"]);
 
         // preFlagList: `["^minions [cthd][ae][ukva][sel]e? "] = { addToMinion = true }`
@@ -158,7 +158,7 @@ mod tests {
             .pre_flags
             .iter()
             .find(|e| e.pattern == "^minions [cthd][ae][ukva][sel]e? ")
-            .expect("minions pre-flag 应存在");
+            .expect("minions pre-flag should exist");
         assert!(minions.effects.add_to_minion);
         assert_eq!(minions.literal.as_deref(), Some("minions "));
         assert!(minions.anchored);
@@ -168,7 +168,7 @@ mod tests {
             .tag_phrases
             .iter()
             .find(|e| e.pattern == "per power charge")
-            .expect("per power charge 应存在");
+            .expect("per power charge should exist");
         assert_eq!(per_power.effects.tags[0].tag_type, "Multiplier");
         assert_eq!(
             per_power.effects.tags[0].fields.get("var"),
@@ -183,7 +183,7 @@ mod tests {
             .tag_phrases
             .iter()
             .find(|e| e.pattern == "per (%d+) rage")
-            .expect("per (%d+) rage 应存在");
+            .expect("per (%d+) rage should exist");
         assert!(per_rage.inferred);
         assert_eq!(
             per_rage.effects.tags[0].fields.get("div"),
@@ -200,7 +200,7 @@ mod tests {
             .tag_phrases
             .iter()
             .find(|e| e.pattern == "per (%d+)%% (%a+) effect on enemy")
-            .expect("effect on enemy 应存在");
+            .expect("effect on enemy should exist");
         assert_eq!(
             effect.effects.tags[0].fields.get("var"),
             Some(&StatMapValue::Text("$2:cap+Effect".into()))
@@ -212,7 +212,7 @@ mod tests {
             .tag_phrases
             .iter()
             .find(|e| e.pattern == "per (%d+) rampage kills")
-            .expect("rampage kills 应存在");
+            .expect("rampage kills should exist");
         assert!(
             rampage
                 .handler_id
@@ -226,8 +226,11 @@ mod tests {
             .flag_types
             .iter()
             .find(|e| e.phrase == "hexproof")
-            .expect("hexproof 应存在");
-        let mod_def = hexproof.mod_def.as_ref().expect("hexproof 应为 mod 形态");
+            .expect("hexproof should exist");
+        let mod_def = hexproof
+            .mod_def
+            .as_ref()
+            .expect("hexproof should be in mod form");
         assert_eq!(mod_def.name, "CurseEffectOnSelf");
         assert_eq!(mod_def.mod_type, "MORE");
         assert_eq!(mod_def.value, -100.0);
@@ -238,12 +241,12 @@ mod tests {
             .regen_types
             .iter()
             .find(|e| e.phrase == "life and mana")
-            .expect("life and mana 应存在");
+            .expect("life and mana should exist");
         assert_eq!(life_mana.names, vec!["LifeRegen", "ManaRegen"]);
         // The "maximum" variant is added in by vendor at load time
         assert!(
             doc.regen_types.iter().any(|e| e.phrase == "maximum life"),
-            "regen_types 应含 maximum 变体"
+            "regen_types should contain the maximum variant"
         );
     }
 
@@ -276,7 +279,10 @@ mod tests {
                 .iter()
                 .filter(|e| e.handler_id.is_some())
                 .count();
-        assert!(handlers <= 15, "handler 兜底 {handlers} 超出蓝图预算 ≤15");
+        assert!(
+            handlers <= 15,
+            "handler fallbacks {handlers} exceed the blueprint budget of ≤15"
+        );
         crate::test_pins::assert_pin(
             &golden_version_dir(),
             "parser_rules.handler_fallbacks",

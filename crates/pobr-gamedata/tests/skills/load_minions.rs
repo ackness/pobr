@@ -26,7 +26,7 @@ fn find<'a>(def: &'a MinionsDef, id: &str) -> &'a MinionEntryDef {
     def.minions
         .iter()
         .find(|m| m.id == id)
-        .unwrap_or_else(|| panic!("条目 {id} 缺失"))
+        .unwrap_or_else(|| panic!("entry {id} missing"))
 }
 
 /// Compares the extracted entry (overlay) against the hand-transcribed
@@ -114,12 +114,15 @@ fn assert_matches_handwritten(entry: &MinionEntryDef, hand: &MinionDef) {
 /// minions.json: 32 entries (vendor Data/Minions.lua in full), ascending by id.
 #[test]
 fn minions_count_and_order() {
-    let def = game_data().minions().unwrap().expect("minions.json 在库");
-    assert_eq!(def.minions.len(), 32, "Minions.lua 条目数");
+    let def = game_data()
+        .minions()
+        .unwrap()
+        .expect("minions.json should be present");
+    assert_eq!(def.minions.len(), 32, "Minions.lua entry count");
     let ids: Vec<&str> = def.minions.iter().map(|m| m.id.as_str()).collect();
     let mut sorted = ids.clone();
     sorted.sort();
-    assert_eq!(ids, sorted, "id 升序");
+    assert_eq!(ids, sorted, "ascending by id");
 }
 
 /// Value-for-value check of the 4 hand-transcribed constants (a migration invariant).
@@ -151,7 +154,7 @@ fn zombie_fields_from_vendor() {
     assert_eq!(z.damage, 0.75); // :18
     assert_eq!(z.attack_time, 1.25); // :21
     assert!(z.base_damage_ignores_attack_speed); // :13
-    assert_eq!(z.monster_tags.len(), 10, "vendor 全量 10 个 tag（:11）");
+    assert_eq!(z.monster_tags.len(), 10, "vendor has 10 tags in full (:11)");
     assert_eq!(z.weapon_type1.as_deref(), Some("One Hand Axe"));
 }
 
@@ -179,7 +182,10 @@ fn raging_spirit_mod_list_full_args() {
 /// faithful to that runtime semantics.
 #[test]
 fn spectres_count() {
-    let def = game_data().spectres().unwrap().expect("spectres.json 在库");
+    let def = game_data()
+        .spectres()
+        .unwrap()
+        .expect("spectres.json should be present");
     assert_eq!(def.minions.len(), 617);
 }
 
@@ -213,17 +219,20 @@ fn granted_effect_minions_samples() {
     let def = game_data()
         .granted_effect_minions()
         .unwrap()
-        .expect("granted_effect_minions.json 在库");
-    assert!(def.entries.len() >= 25, "外键边车条目数（实测 31）");
+        .expect("granted_effect_minions.json should be present");
+    assert!(
+        def.entries.len() >= 25,
+        "foreign-key sidecar entry count (measured 31)"
+    );
     let ids: Vec<&str> = def.entries.iter().map(|e| e.effect_id.as_str()).collect();
     let mut sorted = ids.clone();
     sorted.sort();
-    assert_eq!(ids, sorted, "effect_id 升序");
+    assert_eq!(ids, sorted, "ascending by effect_id");
     let find = |id: &str| {
         def.entries
             .iter()
             .find(|e| e.effect_id == id)
-            .unwrap_or_else(|| panic!("{id} 缺失"))
+            .unwrap_or_else(|| panic!("{id} missing"))
     };
     // act_int.lua:16180-16186 RagingSpiritsPlayer.minionList
     assert_eq!(
@@ -245,14 +254,14 @@ fn granted_effect_minions_samples() {
         def.entries
             .iter()
             .any(|e| e.minion_list.iter().any(|m| m == "RaisedZombie")),
-        "RaisedZombie 外键存在"
+        "RaisedZombie foreign key should exist"
     );
     assert!(
         def.entries.iter().any(|e| e
             .minion_list
             .iter()
             .any(|m| m.starts_with("RaisedSkeleton"))),
-        "骷髅系外键存在"
+        "skeleton-family foreign key should exist"
     );
 }
 
@@ -267,26 +276,29 @@ fn granted_effects_merge_minion_list() {
     // RaiseZombiePlayer → [RaisedZombie]
     let zombie = by_id
         .get("RaiseZombiePlayer")
-        .expect("RaiseZombiePlayer 在库");
+        .expect("RaiseZombiePlayer should be present");
     assert_eq!(zombie.minion_list, ["RaisedZombie"]);
     // RagingSpiritsPlayer → [SummonedRagingSpirit]
     assert_eq!(
         by_id
             .get("RagingSpiritsPlayer")
-            .expect("RagingSpiritsPlayer 在库")
+            .expect("RagingSpiritsPlayer should be present")
             .minion_list,
         ["SummonedRagingSpirit"]
     );
     // Manifest Weapon: minion_uses + item set are also merged in
     let manifest = by_id
         .get("ManifestWeaponPlayer")
-        .expect("ManifestWeaponPlayer 在库");
+        .expect("ManifestWeaponPlayer should be present");
     assert_eq!(manifest.minion_uses, ["Weapon 1"]);
     assert!(manifest.minion_has_item_set);
     // A non-summon skill's (e.g. Fireball) minion_list should be empty
     // (backward compatible)
     if let Some(fb) = by_id.get("FireballPlayer") {
-        assert!(fb.minion_list.is_empty(), "非召唤技能 minion_list 空");
+        assert!(
+            fb.minion_list.is_empty(),
+            "non-summon skill minion_list should be empty"
+        );
     }
 }
 
@@ -297,7 +309,7 @@ fn mirage_configs_five_branches() {
     let def = game_data()
         .mirage_configs()
         .unwrap()
-        .expect("mirage_configs.json 在库");
+        .expect("mirage_configs.json should be present");
     assert_eq!(def.configs.len(), 5);
     let ids: Vec<&str> = def.configs.iter().map(|c| c.mirage_id.as_str()).collect();
     assert_eq!(

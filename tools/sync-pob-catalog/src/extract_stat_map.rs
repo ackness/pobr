@@ -82,7 +82,7 @@ pub fn assemble_stat_map_document(meta: OverlayMeta, rows: Vec<StatMapRow>) -> i
             "global" => {
                 if def.global.insert(row.stat.clone(), row.entry).is_some() {
                     return Err(io::Error::other(format!(
-                        "stat-map 抽取重复 global 键：{}",
+                        "stat-map extraction has a duplicate global key: {}",
                         row.stat
                     )));
                 }
@@ -90,7 +90,7 @@ pub fn assemble_stat_map_document(meta: OverlayMeta, rows: Vec<StatMapRow>) -> i
             "set" => {
                 let (Some(effect), Some(set)) = (row.effect.clone(), row.stat_set) else {
                     return Err(io::Error::other(format!(
-                        "stat-map 抽取 set 行缺 effect/stat_set 字段：stat={}",
+                        "stat-map extraction: set row is missing effect/stat_set field: stat={}",
                         row.stat
                     )));
                 };
@@ -102,14 +102,14 @@ pub fn assemble_stat_map_document(meta: OverlayMeta, rows: Vec<StatMapRow>) -> i
                     .or_default();
                 if slot.insert(row.stat.clone(), row.entry).is_some() {
                     return Err(io::Error::other(format!(
-                        "stat-map 抽取重复 per-set 键：{effect}#{set} {}",
+                        "stat-map extraction has a duplicate per-set key: {effect}#{set} {}",
                         row.stat
                     )));
                 }
             }
             other => {
                 return Err(io::Error::other(format!(
-                    "stat-map 抽取未知 scope：{other}"
+                    "stat-map extraction: unknown scope: {other}"
                 )));
             }
         }

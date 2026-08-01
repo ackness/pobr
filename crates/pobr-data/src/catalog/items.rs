@@ -163,15 +163,21 @@ mod m4_t4_reload_tests {
         let json = serde_json::to_string(&weapon).unwrap();
         assert!(json.contains(r#""reload_time_ms":800"#));
         let parsed: WeaponBaseStats = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, weapon, "serde 往返必须无损");
+        assert_eq!(parsed, weapon, "serde round trip must be lossless");
 
         let none = WeaponBaseStats {
             reload_time_ms: None,
             ..weapon
         };
         let json = serde_json::to_string(&none).unwrap();
-        assert!(!json.contains("reload_time_ms"), "None 不落盘：{json}");
+        assert!(
+            !json.contains("reload_time_ms"),
+            "None must not be serialized: {json}"
+        );
         let legacy: WeaponBaseStats = serde_json::from_str(&json).unwrap();
-        assert_eq!(legacy.reload_time_ms, None, "旧 JSON 缺键回退 None");
+        assert_eq!(
+            legacy.reload_time_ms, None,
+            "missing key in legacy JSON must fall back to None"
+        );
     }
 }

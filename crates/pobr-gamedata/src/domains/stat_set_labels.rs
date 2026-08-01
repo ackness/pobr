@@ -76,7 +76,7 @@ mod tests {
         let def = GameData::new(&dir)
             .stat_set_labels()
             .unwrap()
-            .expect("overlay 存在应加载");
+            .expect("overlay exists, should load");
         assert_eq!(def.labels.len(), 1);
         assert_eq!(def.labels[0].set_index, 2);
         assert_eq!(def.labels[0].label, "Cold-Infused");

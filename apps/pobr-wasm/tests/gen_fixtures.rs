@@ -18,7 +18,7 @@ fn fixtures_dir() -> std::path::PathBuf {
 }
 
 #[test]
-#[ignore = "手动 fixture 再生成入口，不进常规测试"]
+#[ignore = "manual fixture regeneration entry point, not part of regular tests"]
 fn generate_web_fixtures() {
     let dir = repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION);
     pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).expect("init data");

@@ -10,7 +10,7 @@ fn game_data() -> GameData {
 
 #[test]
 fn manifest_describes_committed_bundle() {
-    let manifest = game_data().manifest().expect("manifest 可加载");
+    let manifest = game_data().manifest().expect("manifest should load");
     assert_eq!(manifest.poe_version, version());
     assert_eq!(manifest.schema_version, 2);
     assert!(manifest.domains.base.iter().any(|d| d == "base_items"));
@@ -19,13 +19,17 @@ fn manifest_describes_committed_bundle() {
 
 #[test]
 fn base_items_load_with_resolved_foreign_keys() {
-    let bases = game_data().base_items().expect("base_items 可加载");
-    assert!(bases.len() > 1000, "应有数千条基底，实得 {}", bases.len());
+    let bases = game_data().base_items().expect("base_items should load");
+    assert!(
+        bases.len() > 1000,
+        "should have thousands of bases, got {}",
+        bases.len()
+    );
 
     let hatchet = bases
         .iter()
         .find(|b| b.name == "Dull Hatchet")
-        .expect("存在 Dull Hatchet 基底");
+        .expect("Dull Hatchet base should exist");
     // The foreign key is already resolved to a stable string ID (not an integer index).
     assert_eq!(hatchet.item_class, "One Hand Axe");
     assert!(hatchet.id.starts_with("Metadata/Items/Weapons/"));
@@ -34,7 +38,7 @@ fn base_items_load_with_resolved_foreign_keys() {
     // Placeholder entries (e.g. [DNT-UNUSED]) are already filtered out.
     assert!(
         !bases.iter().any(|b| b.name.contains("[DNT")),
-        "不应包含开发占位条目"
+        "should not contain dev placeholder entries"
     );
 }
 
@@ -43,20 +47,26 @@ fn base_items_load_with_resolved_foreign_keys() {
 /// `ReloadTimeBase = 0.8`); non-crossbow weapons stay `None`.
 #[test]
 fn crossbow_reload_time_merged_from_overlay() {
-    let bases = game_data().base_items().expect("base_items 可加载");
+    let bases = game_data().base_items().expect("base_items should load");
     let crossbow = bases
         .iter()
         .find(|b| b.name == "Makeshift Crossbow")
-        .expect("存在 Makeshift Crossbow 基底");
-    let weapon = crossbow.weapon.as_ref().expect("弩必有 weapon 段");
+        .expect("Makeshift Crossbow base should exist");
+    let weapon = crossbow
+        .weapon
+        .as_ref()
+        .expect("a crossbow must have a weapon section");
     assert_eq!(weapon.reload_time_ms, Some(800));
-    assert!(weapon.physical_min > 0, "merge 不得扰动既有 weapon 数值");
+    assert!(
+        weapon.physical_min > 0,
+        "merge must not disturb existing weapon values"
+    );
 
     let hatchet = bases.iter().find(|b| b.name == "Dull Hatchet").unwrap();
     assert_eq!(
         hatchet.weapon.as_ref().and_then(|w| w.reload_time_ms),
         None,
-        "非弩武器无 reload"
+        "non-crossbow weapons have no reload"
     );
 }
 
@@ -65,14 +75,14 @@ fn base_items_sorted_by_id_for_stable_diffs() {
     let bases = game_data().base_items().unwrap();
     let mut sorted = bases.clone();
     sorted.sort_by(|a, b| a.id.cmp(&b.id));
-    assert_eq!(bases, sorted, "base_items.json 应按 id 排序");
+    assert_eq!(bases, sorted, "base_items.json should be sorted by id");
 }
 
 #[test]
 fn traditional_chinese_names_available_for_localization() {
     let names = game_data()
         .base_item_names("zh-TW")
-        .expect("zh-TW 边车可加载");
+        .expect("zh-TW sidecar should load");
     assert!(names.len() > 1000);
     // 磨刀石 (the zh-TW name) = Blacksmith's Whetstone
     let whetstone_id = "Metadata/Items/Currency/CurrencyWeaponQuality";

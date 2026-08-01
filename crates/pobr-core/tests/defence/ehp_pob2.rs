@@ -278,7 +278,7 @@ fn accelerated_path_bounded_deviation_on_mixed_chaos_es() {
     );
     assert!(
         fast <= naive + 1e-9,
-        "加速路径不应高估生存：{fast} > {naive}"
+        "the fast path should not overestimate survivability: {fast} > {naive}"
     );
 }
 

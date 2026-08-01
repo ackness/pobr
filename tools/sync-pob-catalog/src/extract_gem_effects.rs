@@ -93,13 +93,14 @@ pub fn assemble_gem_effects_document(
     gems.sort_by(|a, b| a.gem_id.cmp(&b.gem_id));
     if let Some(dup) = gems.windows(2).find(|w| w[0].gem_id == w[1].gem_id) {
         return Err(io::Error::other(format!(
-            "gem_effects 抽取发现重复 gem_id `{}`（变体 {} / {}）——vendor 数据形态已变化，\
-             消费侧 1:1 merge 假设失效，需要先调整 schema",
+            "gem_effects extraction found duplicate gem_id `{}` (variants {} / {}) — vendor data shape has \
+             changed and the consumer's 1:1 merge assumption no longer holds; schema needs adjusting first",
             dup[0].gem_id, dup[0].variant_id, dup[1].variant_id
         )));
     }
     let doc = GemEffectsDoc { meta, gems };
-    let mut json = serde_json::to_string_pretty(&doc).expect("gem effects 文档序列化不应失败");
+    let mut json = serde_json::to_string_pretty(&doc)
+        .expect("gem effects document serialization should not fail");
     json.push('\n');
     Ok(json)
 }

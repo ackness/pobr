@@ -651,10 +651,16 @@ mod m4_t4_dot_flags_tests {
     #[test]
     fn default_dot_flags_are_skipped_and_backward_compatible() {
         let json = serde_json::to_string(&bare_set()).unwrap();
-        assert!(!json.contains("dot_flags"), "全 false 不得落盘：{json}");
+        assert!(
+            !json.contains("dot_flags"),
+            "all-false must not be serialized: {json}"
+        );
         let parsed: StatSetDef = serde_json::from_str(&json).unwrap();
-        assert!(parsed.dot_flags.is_default(), "缺键 = 保守默认（全 false）");
-        assert!(!parsed.dot_flags.verified, "缺键 = 未核验");
+        assert!(
+            parsed.dot_flags.is_default(),
+            "missing key = conservative default (all false)"
+        );
+        assert!(!parsed.dot_flags.verified, "missing key = unverified");
     }
 
     /// A non-default dot_flags round-trips through serde losslessly, and
@@ -670,9 +676,12 @@ mod m4_t4_dot_flags_tests {
         let json = serde_json::to_string(&set).unwrap();
         assert!(json.contains(r#""area":true"#));
         assert!(json.contains(r#""verified":true"#));
-        assert!(!json.contains(r#""spell""#), "false 位不落盘：{json}");
+        assert!(
+            !json.contains(r#""spell""#),
+            "false bits must not be serialized: {json}"
+        );
         let parsed: StatSetDef = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed, set, "serde 往返必须无损");
+        assert_eq!(parsed, set, "serde round trip must be lossless");
     }
 }
 

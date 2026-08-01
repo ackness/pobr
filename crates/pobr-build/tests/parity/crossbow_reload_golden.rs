@@ -90,27 +90,34 @@ fn constructed_crossbow_build_applies_reload_cycle() {
 
     let sut = out.skill_use_time.expect("skill use time present");
     let firing_rate = sut.tooltip_rate;
-    assert!(firing_rate > 0.0, "弩攻击须有非零射速：{sut:?}");
+    assert!(
+        firing_rate > 0.0,
+        "a crossbow attack must have a non-zero firing rate: {sut:?}"
+    );
 
     let expected = 12.0 / (12.0 / firing_rate + 0.8);
     assert!(
         (out.effective_action_rate - expected).abs() < 1e-2,
-        "reload 循环平均速率：{} vs {expected}（firing_rate={firing_rate}）",
+        "reload-cycle average rate: {} vs {expected} (firing_rate={firing_rate})",
         out.effective_action_rate
     );
     assert!(
         out.effective_action_rate < firing_rate,
-        "reload 必须降低有效速率：{} >= {firing_rate}",
+        "reload must lower the effective rate: {} >= {firing_rate}",
         out.effective_action_rate
     );
     // Panel rate (PoB2's output.Speed rewrite convention) folds by the same
     // factor as DPS, keeping the AverageDamage = dps / action_rate identity.
     assert!(
         (out.action_rate - expected).abs() < 1e-2,
-        "面板速率须为 reload 折算后值：{}",
+        "the panel rate must be the reload-folded value: {}",
         out.action_rate
     );
-    assert!(out.dps > 0.0, "弩 build DPS 应非零：{}", out.dps);
+    assert!(
+        out.dps > 0.0,
+        "the crossbow build's DPS should be non-zero: {}",
+        out.dps
+    );
 }
 
 /// A crossbow weapon with a grenade-type skill (same shape as the
@@ -137,7 +144,7 @@ fn grenade_on_crossbow_is_exempt_from_reload() {
     if let Some(sut) = out.skill_use_time {
         assert_eq!(
             out.effective_action_rate, sut.effective_rate,
-            "grenade 不进 reload 模型：有效速率须与 use-time 解析一致"
+            "a grenade should not enter the reload model: the effective rate must match the use-time resolution"
         );
     }
 }

@@ -141,7 +141,7 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
         if let Some(what) = parsed.what.as_deref() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                format!("extract-bases 不支持 --what {what}\n{USAGE}"),
+                format!("extract-bases does not support --what {what}\n{USAGE}"),
             ));
         }
         run_extract_bases(&extract_args)?
@@ -167,7 +167,7 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
             Some(other) => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
-                    format!("extract-lua 未知抽取目标 --what {other}\n{USAGE}"),
+                    format!("extract-lua unknown extraction target --what {other}\n{USAGE}"),
                 ));
             }
         }
@@ -276,7 +276,7 @@ fn run_gen_stat_id_map_command(mut args: impl Iterator<Item = String>) -> io::Re
     let Some(overlay_dir) = overlay_dir else {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            format!("gen-stat-id-map 缺少 --overlay-dir <path>\n{USAGE}"),
+            format!("gen-stat-id-map is missing --overlay-dir <path>\n{USAGE}"),
         ));
     };
     // Normalize _meta.regen_command's --out to a canonical relative path (consistent with the other targets).
@@ -318,7 +318,7 @@ fn run_gen_skill_types_command(mut args: impl Iterator<Item = String>) -> io::Re
     let (Some(vendor_root), Some(out)) = (vendor_root, out) else {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            format!("gen-skill-types 需要 --vendor-root <path> 与 --out <path>\n{USAGE}"),
+            format!("gen-skill-types requires --vendor-root <path> and --out <path>\n{USAGE}"),
         ));
     };
     let message = run_gen_skill_types(&vendor_root, &out)?;
@@ -373,7 +373,7 @@ impl ExtractCliArgs {
         let Some(vendor_root) = vendor_root else {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                format!("extract-lua 缺少 --vendor-root <path>\n{USAGE}"),
+                format!("extract-lua is missing --vendor-root <path>\n{USAGE}"),
             ));
         };
         Ok(Self {
@@ -409,32 +409,35 @@ fn run_check_buff_refs_command(mut args: impl Iterator<Item = String>) -> io::Re
     let (Some(vendor_root), Some(defs)) = (vendor_root, defs) else {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            format!("check-buff-refs 需要 --vendor-root <path> 与 --defs <path>\n{USAGE}"),
+            format!("check-buff-refs requires --vendor-root <path> and --defs <path>\n{USAGE}"),
         ));
     };
     let drifts = run_check_buff_refs(&vendor_root, &defs, write)?;
     if drifts.is_empty() {
-        eprintln!("check-buff-refs: 全部 vendor_ref 行段 hash 一致");
+        eprintln!("check-buff-refs: all vendor_ref line-range hashes match");
         return Ok(());
     }
     for drift in &drifts {
         eprintln!(
-            "check-buff-refs: DRIFT `{}` 登记 {} 实算 {}",
+            "check-buff-refs: DRIFT `{}` recorded {} actual {}",
             drift.id,
             drift.recorded,
-            drift.actual.as_deref().unwrap_or("<行号越界>")
+            drift
+                .actual
+                .as_deref()
+                .unwrap_or("<line range out of bounds>")
         );
     }
     if write {
         eprintln!(
-            "check-buff-refs: 已回写 {} 条 hash 到 {}（请人工复核归纳内容仍忠实 vendor）",
+            "check-buff-refs: wrote back {} hash(es) to {} (please manually verify the summary still matches vendor)",
             drifts.len(),
             defs.display()
         );
         Ok(())
     } else {
         Err(io::Error::other(format!(
-            "check-buff-refs: {} 条 vendor_ref 行段漂移（vendor 升级后须人工复核 + --write 刷新）",
+            "check-buff-refs: {} vendor_ref line-range drift(s) (after a vendor upgrade, manually review + refresh with --write)",
             drifts.len()
         )))
     }
@@ -464,20 +467,23 @@ fn run_parser_rules_drift_command(mut args: impl Iterator<Item = String>) -> io:
     let Some(vendor_root) = vendor_root else {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            format!("parser-rules-drift 缺少 --vendor-root <path>\n{USAGE}"),
+            format!("parser-rules-drift is missing --vendor-root <path>\n{USAGE}"),
         ));
     };
     let Some(committed) = committed else {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            format!("parser-rules-drift 缺少 --committed <path>\n{USAGE}"),
+            format!("parser-rules-drift is missing --committed <path>\n{USAGE}"),
         ));
     };
 
     let committed_text = fs::read_to_string(&committed).map_err(|error| {
         io::Error::new(
             io::ErrorKind::NotFound,
-            format!("无法读取已提交文件 {}：{error}", committed.display()),
+            format!(
+                "failed to read committed file {}: {error}",
+                committed.display()
+            ),
         )
     })?;
     // Trust the committed file's own recorded _meta.regen_command --out value
@@ -517,7 +523,7 @@ fn run_parser_rules_drift_command(mut args: impl Iterator<Item = String>) -> io:
         println!("{line}");
     }
     Err(io::Error::other(format!(
-        "parser-rules drift detected against {}（{} 处差异摘要）",
+        "parser-rules drift detected against {} ({} difference summary line(s))",
         committed.display(),
         drift.lines.len()
     )))
@@ -577,7 +583,7 @@ fn run_catalog_command(command: &str, args: impl Iterator<Item = String>) -> io:
             let diffs = check_against_fixture(&catalog_path, &catalog)?;
             report_diffs(&diffs, &catalog_path)
         }
-        _ => unreachable!("run() 已过滤合法命令"),
+        _ => unreachable!("run() already filtered valid commands"),
     }
 }
 

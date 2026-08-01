@@ -48,12 +48,18 @@ fn sample_meta() -> OverlayMeta {
 fn extract_is_byte_stable_across_runs() {
     let args = fixture_args();
     if !luajit_available(&args.luajit) {
-        eprintln!("skip: 环境中无可用 luajit（{}）", args.luajit.display());
+        eprintln!(
+            "skip: no luajit available in this environment ({})",
+            args.luajit.display()
+        );
         return;
     }
     let first = run_extract_gem_quality(&args).expect("first run");
     let second = run_extract_gem_quality(&args).expect("second run");
-    assert_eq!(first, second, "gem-quality 两次运行产物必须 byte 相等");
+    assert_eq!(
+        first, second,
+        "gem-quality output must be byte-identical across two runs"
+    );
 }
 
 /// Extraction semantics: qualityStats is transcribed faithfully (preserving
@@ -62,11 +68,15 @@ fn extract_is_byte_stable_across_runs() {
 fn extract_captures_quality_stats_faithfully() {
     let args = fixture_args();
     if !luajit_available(&args.luajit) {
-        eprintln!("skip: 环境中无可用 luajit（{}）", args.luajit.display());
+        eprintln!(
+            "skip: no luajit available in this environment ({})",
+            args.luajit.display()
+        );
         return;
     }
     let json = run_extract_gem_quality(&args).expect("run");
-    let doc: GemQualityDoc = serde_json::from_str(&json).expect("产物必须是合法 JSON 文档");
+    let doc: GemQualityDoc =
+        serde_json::from_str(&json).expect("output must be a valid JSON document");
 
     assert_eq!(doc.meta.schema, GEM_QUALITY_SCHEMA);
     assert_eq!(
@@ -75,7 +85,7 @@ fn extract_captures_quality_stats_faithfully() {
     );
     assert!(
         doc.meta.regen_command.contains("--what gem-quality"),
-        "regen 命令应可直接重跑：{}",
+        "regen command should be directly rerunnable: {}",
         doc.meta.regen_command
     );
 
@@ -94,7 +104,7 @@ fn extract_captures_quality_stats_faithfully() {
             ("base_spell_%_chance_to_echo", 0.5),
             ("aaa_extra_stat", 1.5),
         ],
-        "效果内保持 vendor 顺序（不按字典序重排）"
+        "vendor order is preserved within an effect (not re-sorted lexically)"
     );
 }
 
@@ -123,11 +133,14 @@ fn assemble_document_is_deterministic_and_sorted_by_effect() {
     ];
     let from_a = assemble_quality_document(sample_meta(), a);
     let from_b = assemble_quality_document(sample_meta(), b);
-    assert_eq!(from_a, from_b, "effect 层输入顺序不得影响产物");
+    assert_eq!(
+        from_a, from_b,
+        "input order at the effect level must not affect the output"
+    );
 
-    let doc: GemQualityDoc = serde_json::from_str(&from_a).expect("合法 JSON");
+    let doc: GemQualityDoc = serde_json::from_str(&from_a).expect("valid JSON");
     assert_eq!(doc.effects.len(), 2);
-    assert_eq!(doc.effects[0].effect_id, "Alpha", "effect_id 升序");
+    assert_eq!(doc.effects[0].effect_id, "Alpha", "effect_id ascending");
     assert_eq!(
         doc.effects[0]
             .stats
@@ -135,7 +148,7 @@ fn assemble_document_is_deterministic_and_sorted_by_effect() {
             .map(|s| s.stat.as_str())
             .collect::<Vec<_>>(),
         vec!["stat_b", "stat_a"],
-        "效果内保持到达顺序"
+        "arrival order is preserved within an effect"
     );
-    assert!(from_a.ends_with('\n'), "产物以换行结尾");
+    assert!(from_a.ends_with('\n'), "output ends with a newline");
 }
