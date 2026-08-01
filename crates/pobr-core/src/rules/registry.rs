@@ -160,7 +160,7 @@ pub struct DuplicateHandlerError {
 
 impl fmt::Display for DuplicateHandlerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "handler_id 重复注册：`{}`", self.id)
+        write!(f, "duplicate handler_id registration: `{}`", self.id)
     }
 }
 
@@ -254,7 +254,9 @@ mod tests {
             )
             .unwrap();
 
-        let handler = registry.get("test:scaled_life").expect("已注册");
+        let handler = registry
+            .get("test:scaled_life")
+            .expect("should be registered");
         let out = handler(&HandlerCtx::with_inputs(&[50.0]));
         assert_eq!(out.player_mods.len(), 1);
         assert_eq!(out.player_mods[0].value.as_number(), Some(50.0));

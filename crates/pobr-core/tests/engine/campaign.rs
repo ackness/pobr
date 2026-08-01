@@ -33,8 +33,8 @@ fn from_resistance_penalty_roundtrips_all_tiers() {
     // PoB2's `resistancePenalty` list has seven tiers → progress → penalty value
     // round-trips consistently.
     for value in [0.0, -10.0, -20.0, -30.0, -40.0, -50.0, -60.0] {
-        let progress =
-            CampaignProgress::from_resistance_penalty(value).expect("档位表内的值应可反查");
+        let progress = CampaignProgress::from_resistance_penalty(value)
+            .expect("a value inside the tier table should be reverse-lookupable");
         assert_eq!(progress.resistance_penalty(), value);
     }
 }

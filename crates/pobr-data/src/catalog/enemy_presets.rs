@@ -474,7 +474,7 @@ mod tests {
             EnemyTier::Pinnacle,
             EnemyTier::Uber,
         ] {
-            let p = t.tier_for(tier).expect("四档齐全");
+            let p = t.tier_for(tier).expect("all four tiers present");
             assert_eq!(p.min_level, tier.min_level(), "{tier:?} min_level");
             assert_eq!(
                 p.elemental_resist_bonus,
@@ -489,18 +489,18 @@ mod tests {
             assert_eq!(
                 p.armour_mult_pct.value(),
                 tier.armour_mult_pct(),
-                "{tier:?} armour_mult_pct 逐 bit"
+                "{tier:?} armour_mult_pct bit-exact"
             );
             assert_eq!(
                 p.evasion_mult_pct.value(),
                 tier.evasion_mult_pct(),
-                "{tier:?} evasion_mult_pct 逐 bit"
+                "{tier:?} evasion_mult_pct bit-exact"
             );
             assert_eq!(p.pen, tier.pen(), "{tier:?} pen");
             assert_eq!(
                 p.dps_mult.value(),
                 tier.dps_mult(),
-                "{tier:?} dps_mult 逐 bit"
+                "{tier:?} dps_mult bit-exact"
             );
             assert_eq!(
                 p.damage_taken_more(),
@@ -510,7 +510,7 @@ mod tests {
             assert_eq!(
                 p.is_default,
                 tier == EnemyTier::default(),
-                "{tier:?} 默认位"
+                "{tier:?} is_default flag"
             );
         }
     }

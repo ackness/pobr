@@ -61,7 +61,7 @@ fn load_stat_map_catalog(data: &GameData) -> StatMapCatalog {
     StatMapCatalog::new(
         data.skill_stat_map()
             .expect("load skill_stat_map.json")
-            .expect("overlay/skill_stat_map.json 应已落库（M1-T2.1）"),
+            .expect("overlay/skill_stat_map.json should already be in the data pack (M1-T2.1)"),
     )
 }
 
@@ -160,19 +160,19 @@ fn compare_mode_is_pure_observation() {
     {
         assert!(
             (dv - cv).abs() < 1e-12,
-            "Compare 模式改变了输出字段 {label}：data={dv} compare={cv}"
+            "Compare mode changed output field {label}: data={dv} compare={cv}"
         );
     }
     let records = pobr_build::take_stat_map_compare_records();
     assert!(
         !records.is_empty(),
-        "Compare 模式应记录映射级 outcome（主技能/品质/support 取数点至少其一）"
+        "Compare mode should record mapping-level outcomes (at least one of main-skill/quality/support sampling points)"
     );
     assert!(
         records
             .iter()
             .all(|r| matches!(r.classification, "mapped" | "unsupported" | "unknown")),
-        "观测记录分类应为 mapped/unsupported/unknown"
+        "an observation record's classification should be mapped/unsupported/unknown"
     );
     // Records have been taken -> taking again should be empty (take semantics).
     assert!(pobr_build::take_stat_map_compare_records().is_empty());
@@ -184,7 +184,7 @@ fn compare_mode_is_pure_observation() {
 /// sampling-point context) — a root-cause locator for field-level deviations
 /// (which stat is unmapped/Unsupported at which sampling point).
 #[test]
-#[ignore = "观测定位（手动跑）：POBR_L2_BUILD=<build目录名> cargo test … runtime_compare_records"]
+#[ignore = "observation locator (manual run): POBR_L2_BUILD=<build-dir-name> cargo test … runtime_compare_records"]
 fn l2_runtime_compare_records() {
     let build_name =
         std::env::var("POBR_L2_BUILD").unwrap_or_else(|_| "sorceress-stormweaver-comet".into());
@@ -199,7 +199,7 @@ fn l2_runtime_compare_records() {
         .expect("compare run");
     let records = pobr_build::take_stat_map_compare_records();
     println!(
-        "== {build_name} 运行时映射级 outcome 观测（{} 条）==",
+        "== {build_name} runtime mapping-level outcome observations ({} records) ==",
         records.len()
     );
     for r in &records {
@@ -376,10 +376,10 @@ fn oracle_mod_comparable(mod_json: &serde_json::Value) -> Result<ComparableItem,
                     let mut tags = Vec::new();
                     for tag_json in mod_json["tags"].as_array().cloned().unwrap_or_default() {
                         let StatMapValue::Table(map) = json_to_stat_map_value(&tag_json) else {
-                            return Err("tag 非对象".to_string());
+                            return Err("tag is not an object".to_string());
                         };
-                        let tag =
-                            translate_tag(&map).map_err(|e| format!("tag 翻译失败: {e:?}"))?;
+                        let tag = translate_tag(&map)
+                            .map_err(|e| format!("tag translation failed: {e:?}"))?;
                         tags.push(tag_comparable(&tag));
                     }
                     tags.sort();
@@ -402,13 +402,13 @@ fn oracle_mod_comparable(mod_json: &serde_json::Value) -> Result<ComparableItem,
     let flag_tokens = decode_bits(flags_bits, &POB2_MOD_FLAG_BITS);
     let kw_tokens = decode_bits(kw_bits, &POB2_KEYWORD_FLAG_BITS);
     let translated = translate_mod_name(name, &flag_tokens, &kw_tokens)
-        .map_err(|e| format!("名字翻译失败 {name}: {e:?}"))?;
+        .map_err(|e| format!("name translation failed for {name}: {e:?}"))?;
     let mut tags = Vec::new();
     for tag_json in mod_json["tags"].as_array().cloned().unwrap_or_default() {
         let StatMapValue::Table(map) = json_to_stat_map_value(&tag_json) else {
-            return Err("tag 非对象".to_string());
+            return Err("tag is not an object".to_string());
         };
-        let tag = translate_tag(&map).map_err(|e| format!("tag 翻译失败: {e:?}"))?;
+        let tag = translate_tag(&map).map_err(|e| format!("tag translation failed: {e:?}"))?;
         tags.push(tag_comparable(&tag));
     }
     tags.sort();
@@ -444,7 +444,7 @@ fn vendor_src_dir() -> PathBuf {
 /// gain-as / skill_data / per-set variants, compared against PoB2's real
 /// `mergeSkillInstanceMods`.
 #[test]
-#[ignore = "需要 vendor PoB2 + luajit：POBR_POB2_SRC=<…>/src cargo test -p pobr-build --test statmap_dual_run -- --ignored oracle"]
+#[ignore = "needs vendor PoB2 + luajit: POBR_POB2_SRC=<…>/src cargo test -p pobr-build --test statmap_dual_run -- --ignored oracle"]
 fn oracle_statmap_sampling() {
     const PROBE_VALUE: f64 = 240.0;
     let game_data = load_game_data();
@@ -579,7 +579,7 @@ fn oracle_statmap_sampling() {
     probes.extend(per_set_samples);
     assert!(
         probes.len() >= 50,
-        "oracle 样本应 ≥50 条（实际 {}；各桶：plain={} div={} mult={} base={} value={} multi={} cond={} actor={} multplr={} flags={} conv={} sdata={} per_set={}）",
+        "oracle sample count should be ≥50 (actual {}; buckets: plain={} div={} mult={} base={} value={} multi={} cond={} actor={} multplr={} flags={} conv={} sdata={} per_set={})",
         probes.len(),
         buckets.plain.len(),
         buckets.div.len(),
@@ -600,13 +600,13 @@ fn oracle_statmap_sampling() {
     let vendor_src = vendor_src_dir();
     assert!(
         vendor_src.join("HeadlessWrapper.lua").exists(),
-        "vendor PoB2 src 不存在：{}（设 POBR_POB2_SRC 指向 PathOfBuilding-PoE2/src）",
+        "vendor PoB2 src does not exist: {} (set POBR_POB2_SRC to point at PathOfBuilding-PoE2/src)",
         vendor_src.display()
     );
     let oracle_script = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../tools/pob2-oracle/statmap_oracle.lua")
         .canonicalize()
-        .expect("statmap_oracle.lua 存在");
+        .expect("statmap_oracle.lua exists");
     let luajit = std::env::var("LUAJIT").unwrap_or_else(|_| "luajit".to_string());
     let mut cmd = std::process::Command::new(&luajit);
     cmd.current_dir(&vendor_src)
@@ -619,44 +619,50 @@ fn oracle_statmap_sampling() {
     for (effect, stat) in &probes {
         cmd.arg(effect).arg(stat).arg(PROBE_VALUE.to_string());
     }
-    let output = cmd.output().expect("运行 luajit oracle");
+    let output = cmd.output().expect("run luajit oracle");
     assert!(
         output.status.success(),
-        "oracle 进程失败：{}",
+        "oracle process failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     let oracle_json: serde_json::Value =
-        serde_json::from_slice(&output.stdout).expect("oracle JSON 可解析");
-    let oracle_rows = oracle_json.as_array().expect("oracle JSON 是数组");
-    assert_eq!(oracle_rows.len(), probes.len(), "oracle 行数与探针数一致");
+        serde_json::from_slice(&output.stdout).expect("oracle JSON should parse");
+    let oracle_rows = oracle_json.as_array().expect("oracle JSON is an array");
+    assert_eq!(
+        oracle_rows.len(),
+        probes.len(),
+        "oracle row count matches probe count"
+    );
 
     // Per-sample comparison
     let mut report = String::new();
-    report.push_str("# statmap oracle 抽样对拍（M1-T2b，蓝图 T2.3）\n\n");
+    report.push_str("# statmap oracle sampling comparison (M1-T2b, blueprint T2.3)\n\n");
     report.push_str(&format!(
-        "- 样本数：{}（global {} + per-set {}）；探针值 {PROBE_VALUE}\n",
+        "- sample count: {} (global {} + per-set {}); probe value {PROBE_VALUE}\n",
         probes.len(),
         probes.iter().filter(|(e, _)| e == "GLOBAL").count(),
         probes.iter().filter(|(e, _)| e != "GLOBAL").count(),
     ));
-    report.push_str("- oracle = vendor `calcs.mergeSkillInstanceMods`（CalcActiveSkill.lua:82，受控值经 extraStats 注入合成 statSet）\n");
-    report.push_str("- 归一 = oracle 的 PoB2 名/flags/keyword/tag 经 `stat_map_engine::translate_mod_name`/`translate_tag` 翻译后与引擎输出逐项比对\n\n");
-    report.push_str("| # | effect | stat | 结果 | 备注 |\n|---|---|---|---|---|\n");
+    report.push_str("- oracle = vendor `calcs.mergeSkillInstanceMods` (CalcActiveSkill.lua:82, controlled values injected via extraStats into a synthetic statSet)\n");
+    report.push_str("- normalization = oracle's PoB2 names/flags/keyword/tag are translated via `stat_map_engine::translate_mod_name`/`translate_tag` and compared item-by-item against the engine's output\n\n");
+    report.push_str("| # | effect | stat | result | notes |\n|---|---|---|---|---|\n");
     let mut failures = Vec::new();
     for (i, ((effect, stat), row)) in probes.iter().zip(oracle_rows).enumerate() {
         let engine_effect = if effect == "GLOBAL" { "" } else { effect };
         let outcome = stat_map_engine::map_stat(&catalog, engine_effect, None, stat, PROBE_VALUE);
         let MappedOutcome::Mapped(items) = outcome else {
-            failures.push(format!("{effect}::{stat} 引擎非 Mapped：{outcome:?}"));
+            failures.push(format!(
+                "{effect}::{stat} engine is not Mapped: {outcome:?}"
+            ));
             report.push_str(&format!(
-                "| {i} | {effect} | {stat} | FAIL | 引擎非 Mapped |\n"
+                "| {i} | {effect} | {stat} | FAIL | engine is not Mapped |\n"
             ));
             continue;
         };
         if let Some(err) = row.get("error").and_then(|e| e.as_str()) {
-            failures.push(format!("{effect}::{stat} oracle 报错：{err}"));
+            failures.push(format!("{effect}::{stat} oracle error: {err}"));
             report.push_str(&format!(
-                "| {i} | {effect} | {stat} | FAIL | oracle 报错：{err} |\n"
+                "| {i} | {effect} | {stat} | FAIL | oracle error: {err} |\n"
             ));
             continue;
         }
@@ -690,19 +696,19 @@ fn oracle_statmap_sampling() {
         }
     }
     report.push_str(&format!(
-        "\n**结果：{}/{} PASS**\n",
+        "\n**Result: {}/{} PASS**\n",
         probes.len() - failures.len(),
         probes.len()
     ));
     std::fs::write(report_dir().join("oracle-report.md"), &report).expect("write oracle-report.md");
     println!(
-        "== oracle 抽样：{}/{} PASS（报告 target/statmap-diff/oracle-report.md）==",
+        "== oracle sampling: {}/{} PASS (report at target/statmap-diff/oracle-report.md) ==",
         probes.len() - failures.len(),
         probes.len()
     );
     assert!(
         failures.is_empty(),
-        "oracle 对拍失败 {} 条：\n{}",
+        "oracle comparison failed {} entries:\n{}",
         failures.len(),
         failures.join("\n")
     );

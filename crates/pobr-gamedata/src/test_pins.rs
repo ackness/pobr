@@ -73,8 +73,9 @@ pub fn assert_pin(version_dir: &Path, name: &str, actual: impl Into<Value>) {
             let expected = found.map_or("<missing>".to_string(), Value::to_string);
             panic!(
                 "test pin `{name}` out of date in {}:\n  blessed: {expected}\n  actual:  {actual}\n\
-                 数据内容变了（regen 后属预期）。刷新：POBR_BLESS_PINS=1 重跑本测试\
-                 （pipeline/regen-all.sh 末步会批量刷新并提交快照）。",
+                 The data content changed (expected after a regen). To refresh: rerun this test \
+                 with POBR_BLESS_PINS=1 (the last step of pipeline/regen-all.sh already batches \
+                 the refresh and commits the snapshot).",
                 path.display()
             );
         }

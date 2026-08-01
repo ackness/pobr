@@ -31,7 +31,7 @@ pub struct TreeAnointsArgs {
 
 pub fn run(args: TreeAnointsArgs) -> Result<String, String> {
     let lua = std::fs::read_to_string(&args.tree_lua)
-        .map_err(|e| format!("读取 {} 失败：{e}", args.tree_lua.display()))?;
+        .map_err(|e| format!("failed to read {}: {e}", args.tree_lua.display()))?;
 
     // The three-layer layout: prefer reading the existing passive_tree.json
     // from base/, falling back to the old layout (version root); write the
@@ -43,10 +43,10 @@ pub fn run(args: TreeAnointsArgs) -> Result<String, String> {
     } else {
         version_dir.join("passive_tree.json")
     };
-    let bytes =
-        std::fs::read(&tree_path).map_err(|e| format!("读取 {} 失败：{e}", tree_path.display()))?;
+    let bytes = std::fs::read(&tree_path)
+        .map_err(|e| format!("failed to read {}: {e}", tree_path.display()))?;
     let mut nodes: Vec<PassiveNodeDef> = serde_json::from_slice(&bytes)
-        .map_err(|e| format!("解析 {} 失败：{e}", tree_path.display()))?;
+        .map_err(|e| format!("failed to parse {}: {e}", tree_path.display()))?;
 
     let existing: std::collections::BTreeSet<u32> = nodes.iter().map(|n| n.skill).collect();
     let missing = parse_missing_notables(&lua, &existing)?;
@@ -58,7 +58,7 @@ pub fn run(args: TreeAnointsArgs) -> Result<String, String> {
     write_pretty(&tree_path, &nodes)?;
 
     Ok(format!(
-        "油涂 notable 池回填完成：追加 {added} 个缺失 notable（skill：{added_skills:?}）→ {}",
+        "anoint notable pool backfill complete: added {added} missing notable(s) (skill: {added_skills:?}) -> {}",
         tree_path.display(),
     ))
 }
@@ -75,10 +75,11 @@ fn parse_missing_notables(
     // The top-level nodes block comes after groups; search starting from
     // the end of the groups block to avoid a group's nested `nodes=`
     // (same technique as tree_variants).
-    let groups_block = balanced_block(lua, "\tgroups={").ok_or("tree.lua 未找到顶层 groups 块")?;
+    let groups_block =
+        balanced_block(lua, "\tgroups={").ok_or("tree.lua: top-level groups block not found")?;
     let groups_end = block_offset(lua, groups_block);
-    let nodes_block =
-        balanced_block(&lua[groups_end..], "\tnodes={").ok_or("tree.lua 未找到顶层 nodes 块")?;
+    let nodes_block = balanced_block(&lua[groups_end..], "\tnodes={")
+        .ok_or("tree.lua: top-level nodes block not found")?;
 
     let mut out: Vec<PassiveNodeDef> = Vec::new();
     for (key, node_block) in iter_keyed_blocks(nodes_block) {
@@ -120,7 +121,10 @@ fn parse_missing_notables(
         });
     }
     if out.is_empty() {
-        return Err("tree.lua 未解析出任何缺失 notable（数据已齐或解析失败）".into());
+        return Err(
+            "tree.lua: no missing notables were parsed (data already complete, or parse failed)"
+                .into(),
+        );
     }
     Ok(out)
 }

@@ -12,7 +12,7 @@ use pobr_data::catalog::stat_map::StatMapValue;
 const MINI_FIXTURE: &str = include_str!("fixtures/mini_parser_rules.json");
 
 fn load_mini() -> ModParserRulesDoc {
-    serde_json::from_str(MINI_FIXTURE).expect("mini fixture 应可反序列化（_meta 被忽略）")
+    serde_json::from_str(MINI_FIXTURE).expect("mini fixture should deserialize (_meta ignored)")
 }
 
 /// Deserialize → re-serialize → re-deserialize, structurally equivalent

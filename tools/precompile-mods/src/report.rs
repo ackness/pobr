@@ -63,12 +63,12 @@ pub fn emit(cov: &Coverage, top_n: usize, data_dir: &Path) -> Result<(), String>
     let ratio = round6(cov.coverage_ratio());
 
     // stderr summary
-    eprintln!("─── parse 覆盖率报表 ───");
+    eprintln!("--- parse coverage report ---");
     eprintln!(
-        "总计 {} | parsed {} | unsupported {} | err {} | 覆盖率 {:.4}",
+        "total {} | parsed {} | unsupported {} | err {} | coverage {:.4}",
         cov.total, cov.parsed, cov.unsupported, cov.err, ratio
     );
-    eprintln!("按来源：");
+    eprintln!("by source:");
     for (src, [p, u, e]) in &cov.by_source {
         let t = p + u + e;
         let r = if t == 0 { 1.0 } else { *p as f64 / t as f64 };
@@ -77,7 +77,7 @@ pub fn emit(cov: &Coverage, top_n: usize, data_dir: &Path) -> Result<(), String>
             r * 100.0
         );
     }
-    eprintln!("缺口 top-{top_n}（字典序）：");
+    eprintln!("gaps top-{top_n} (lexicographic order):");
     for gap in cov.gaps.iter().take(top_n) {
         eprintln!("  [{}/{}] {}", gap.source, gap.status, gap.text);
     }
@@ -116,10 +116,11 @@ pub fn emit(cov: &Coverage, top_n: usize, data_dir: &Path) -> Result<(), String>
 
     let generated_dir = data_dir.join("generated");
     std::fs::create_dir_all(&generated_dir)
-        .map_err(|e| format!("创建 {} 失败：{e}", generated_dir.display()))?;
+        .map_err(|e| format!("failed to create {}: {e}", generated_dir.display()))?;
     let out_path = generated_dir.join("parse-coverage.json");
     let json = serialize_pretty_stable(&report)?;
-    std::fs::write(&out_path, &json).map_err(|e| format!("写 {} 失败：{e}", out_path.display()))?;
-    eprintln!("precompile-mods: 写出 {}", out_path.display());
+    std::fs::write(&out_path, &json)
+        .map_err(|e| format!("failed to write {}: {e}", out_path.display()))?;
+    eprintln!("precompile-mods: wrote {}", out_path.display());
     Ok(())
 }

@@ -20,7 +20,7 @@ fn load() -> SpecialModsDef {
     GameData::new(repo_data_root().join(version()))
         .special_mods()
         .unwrap()
-        .expect("special_mods.json 在库")
+        .expect("special_mods.json should be present")
 }
 
 /// The first batch's shape **invariants** (not a snapshot): non-empty and
@@ -36,7 +36,7 @@ fn first_batch_shape() {
     let def = load();
     assert!(
         def.entries.len() >= 50,
-        "special_mods 条目数 {} 偏低(疑加载截断)",
+        "special_mods entry count {} is suspiciously low (possible load truncation)",
         def.entries.len()
     );
     // The invariant is that ids are **unique** (a duplicate id ⇒ lookup
@@ -46,11 +46,11 @@ fn first_batch_shape() {
     // falsely fail.
     let mut seen = std::collections::HashSet::new();
     for e in &def.entries {
-        assert!(seen.insert(e.id.as_str()), "{}: 重复 id", e.id);
+        assert!(seen.insert(e.id.as_str()), "{}: duplicate id", e.id);
     }
     assert!(
         def.entries.iter().any(|e| e.batch == "S0"),
-        "应含 S0 keystone 段"
+        "should include the S0 keystone section"
     );
     for e in &def.entries {
         // The batch invariant is a **non-empty provenance label** (marking
@@ -60,7 +60,7 @@ fn first_batch_shape() {
         // falsely fail.
         assert!(
             !e.batch.trim().is_empty(),
-            "{}: batch provenance 标签不得为空",
+            "{}: batch provenance label must not be empty",
             e.id
         );
         // No longer asserting verified is always false: the curation
@@ -71,7 +71,7 @@ fn first_batch_shape() {
         if let Some(id) = &e.handler_id {
             assert!(
                 id.starts_with("special:"),
-                "{}: handler_id 命名应为 `special:<name>`（实 {id}）",
+                "{}: handler_id should be named `special:<name>` (got {id})",
                 e.id
             );
         }
@@ -88,7 +88,7 @@ fn s0_crit_override_entry() {
         .entries
         .iter()
         .find(|e| e.id == "your_critical_damage_bonus_override")
-        .expect("S0 条目在库");
+        .expect("S0 entry should be present");
     assert_eq!(
         e.vendor_pattern.as_deref(),
         Some("your critical damage bonus is (%d+)%%")
@@ -115,9 +115,12 @@ fn s0_recognition_only_entries() {
         let e = def.entries.iter().find(|e| e.id == id).unwrap();
         assert!(
             e.mods.is_empty() && e.handler_id.is_none(),
-            "{id}: 纯识别形态"
+            "{id}: recognition-only shape"
         );
-        assert!(e.source_note.is_some(), "{id}: 必须注明 vendor 实际语义");
+        assert!(
+            e.source_note.is_some(),
+            "{id}: must annotate vendor's actual semantics"
+        );
     }
 }
 
@@ -131,9 +134,9 @@ fn value_expr_negate_entry() {
         .entries
         .iter()
         .find(|e| e.id == "reduced_movement_speed_penalty_from_using_skills_while_moving")
-        .expect("negate 条目在库");
+        .expect("negate entry should be present");
     let TemplateValueDef::Expr(expr) = &e.mods[0].value else {
-        panic!("应为带算子链表达式");
+        panic!("expected an operator-chain expression");
     };
     assert_eq!(expr.capture, "$1");
     assert_eq!(expr.ops, vec![ValueOpDef::Negate {}]);
@@ -153,12 +156,16 @@ fn value_expr_negate_entry() {
 fn non_s0_has_vendor_provenance() {
     let def = load();
     for e in def.entries.iter().filter(|e| e.batch != "S0") {
-        assert!(e.vendor_pattern.is_some(), "{}: 缺 vendor_pattern", e.id);
+        assert!(
+            e.vendor_pattern.is_some(),
+            "{}: missing vendor_pattern",
+            e.id
+        );
         assert!(
             e.source_note
                 .as_deref()
                 .is_some_and(|n| !n.trim().is_empty()),
-            "{}: 缺 source_note provenance",
+            "{}: missing source_note provenance",
             e.id
         );
         // A template entry must produce a mod; a handler entry (an open
@@ -166,7 +173,7 @@ fn non_s0_has_vendor_provenance() {
         // side (HandlerOutcome), with data mods empty — exempted from this check.
         assert!(
             !e.mods.is_empty() || e.handler_id.is_some(),
-            "{}: 自动转写条目必须产 mod 或挂 handler_id",
+            "{}: an auto-transcribed entry must produce a mod or attach a handler_id",
             e.id
         );
     }
@@ -189,7 +196,7 @@ fn no_open_captures_in_patterns() {
         }
         assert!(
             !e.pattern.contains("(.+)") && !e.pattern.contains("(.*)"),
-            "{}: 开放捕获越界（应走 handler_id）",
+            "{}: open capture out of bounds (should go through handler_id)",
             e.id
         );
     }

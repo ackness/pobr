@@ -117,10 +117,10 @@ fn resolve_connections(out: &[String], skill_by_key: &BTreeMap<&str, u32>) -> Ve
 
 pub fn run(args: TreeArgs) -> Result<String, String> {
     let bytes = std::fs::read(&args.data_json)
-        .map_err(|e| format!("读取 {} 失败：{e}", args.data_json.display()))?;
+        .map_err(|e| format!("failed to read {}: {e}", args.data_json.display()))?;
     let raw_mb = bytes.len() as f64 / (1024.0 * 1024.0);
     let raw: RawTree = serde_json::from_slice(&bytes)
-        .map_err(|e| format!("解析 {} 失败：{e}", args.data_json.display()))?;
+        .map_err(|e| format!("failed to parse {}: {e}", args.data_json.display()))?;
 
     // key (the map key, e.g. "18684" or "root") -> skill id, used to resolve connections.
     let skill_by_key: BTreeMap<&str, u32> = raw
@@ -189,12 +189,13 @@ pub fn run(args: TreeArgs) -> Result<String, String> {
 
     // The three-layer layout: passive tree domain JSON goes in the base/ layer.
     let base_dir = args.out.join(&args.patch).join("base");
-    std::fs::create_dir_all(&base_dir).map_err(|e| format!("创建输出目录失败：{e}"))?;
+    std::fs::create_dir_all(&base_dir)
+        .map_err(|e| format!("failed to create output directory: {e}"))?;
     write_pretty(&base_dir.join("passive_tree.json"), &nodes)?;
     write_pretty(&base_dir.join("passive_tree_meta.json"), &meta)?;
 
     Ok(format!(
-        "天赋树适配完成：节点 {}/{} 条（跳过 {} 个布局占位），职业 {} → {}（源 {:.1}MB）",
+        "passive tree adaptation complete: {}/{} node(s) (skipped {} layout placeholder(s)), {} class(es) -> {} (source {:.1}MB)",
         nodes.len(),
         total,
         total - nodes.len(),

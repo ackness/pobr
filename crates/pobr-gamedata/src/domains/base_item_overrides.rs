@@ -208,11 +208,22 @@ mod tests {
         assert_eq!(
             bases[0].armour.as_ref().unwrap().block_chance,
             Some(26.0),
-            "盾基底 block 应 merge 进 armour 段"
+            "shield base's block should merge into the armour section"
         );
-        assert_eq!(bases[0].armour.as_ref().unwrap().armour, 18, "原值不受扰动");
-        assert_eq!(bases[1].spirit, Some(100), "权杖基底 spirit 应写入顶层");
-        assert!(bases[1].armour.is_none(), "无 block 覆盖时不虚构 armour 段");
+        assert_eq!(
+            bases[0].armour.as_ref().unwrap().armour,
+            18,
+            "original value should be undisturbed"
+        );
+        assert_eq!(
+            bases[1].spirit,
+            Some(100),
+            "sceptre base's spirit should be written at the top level"
+        );
+        assert!(
+            bases[1].armour.is_none(),
+            "no armour section should be fabricated without a block override"
+        );
     }
 
     /// Rule 2 fallback: when base's side has no armour section, insert a
@@ -305,12 +316,15 @@ mod tests {
         apply_base_item_overrides(&mut bases, &overrides);
         let weapon = bases[0].weapon.as_ref().unwrap();
         assert_eq!(weapon.reload_time_ms, Some(800));
-        assert_eq!(weapon.physical_min, 7, "原值不受扰动");
+        assert_eq!(
+            weapon.physical_min, 7,
+            "original value should be undisturbed"
+        );
         let synthesized = bases[1].weapon.as_ref().unwrap();
         assert_eq!(
             synthesized.reload_time_ms,
             Some(750),
-            "无 weapon 段时补结构"
+            "missing weapon section should be synthesized"
         );
         assert_eq!(synthesized.physical_min, 0);
     }
@@ -375,13 +389,16 @@ mod tests {
         assert_eq!(
             bases[1].charm_buff,
             vec!["+25% to Lightning Resistance".to_string()],
-            "Some 覆盖旧值"
+            "Some overrides the old value"
         );
-        assert!(bases[2].charm_buff.is_empty(), "charm_buff None 不写入");
+        assert!(
+            bases[2].charm_buff.is_empty(),
+            "charm_buff None must not write anything"
+        );
         assert_eq!(
             bases[2].armour.as_ref().unwrap().block_chance,
             Some(26.0),
-            "其它字段照常 merge"
+            "other fields merge as usual"
         );
     }
 }

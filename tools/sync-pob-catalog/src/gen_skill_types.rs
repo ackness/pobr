@@ -45,7 +45,7 @@ pub fn parse_skill_types(lua_source: &str) -> io::Result<Vec<(String, u32)>> {
     if entries.is_empty() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            "Global.lua 未找到 SkillType 表条目（表头或行格式漂移？）",
+            "no SkillType table entries found in Global.lua (header or line format drifted?)",
         ));
     }
     entries.sort();
@@ -55,7 +55,7 @@ pub fn parse_skill_types(lua_source: &str) -> io::Result<Vec<(String, u32)>> {
         if w[0].0 == w[1].0 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                format!("SkillType 名重复：{}", w[0].0),
+                format!("duplicate SkillType name: {}", w[0].0),
             ));
         }
     }

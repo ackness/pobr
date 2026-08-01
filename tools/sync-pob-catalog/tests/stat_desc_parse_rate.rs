@@ -36,13 +36,13 @@ fn load_descriptions() -> StatDescriptionsDef {
 }
 
 #[test]
-#[ignore = "探索性测量，非门禁；用 --ignored 跑"]
+#[ignore = "exploratory measurement, not a gate; run with --ignored"]
 fn measure_single_stat_parse_rate() {
     let rules = load_rules();
     let descs = load_descriptions();
 
     let mut sample_unsupported: Vec<String> = Vec::new();
-    println!("\n===== stat_descriptions 单 stat 文本解析率（parse_mod_engine）=====");
+    println!("\n===== stat_descriptions single-stat text parse rate (parse_mod_engine) =====");
     println!(
         "{:<42}{:>10}{:>10}{:>9}",
         "scope", "parsed", "total", "rate"
@@ -90,14 +90,14 @@ fn measure_single_stat_parse_rate() {
         "TOTAL"
     );
 
-    println!("\n===== 命中 ModName Top 25（解析成功的文本里）=====");
+    println!("\n===== Top 25 matched ModNames (from successfully parsed text) =====");
     let mut freq: Vec<_> = name_freq.into_iter().collect();
     freq.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     for (name, count) in freq.iter().take(25) {
         println!("  {count:>6}  {name}");
     }
 
-    println!("\n===== 未解析样本（前 40 条）=====");
+    println!("\n===== Unparsed samples (first 40) =====");
     for s in &sample_unsupported {
         println!("  {s}");
     }

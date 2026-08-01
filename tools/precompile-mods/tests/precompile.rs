@@ -33,7 +33,11 @@ fn data_dir() -> PathBuf {
 #[test]
 fn precompile_is_byte_stable() {
     let src_data = data_dir();
-    assert!(src_data.is_dir(), "缺测试数据目录 {}", src_data.display());
+    assert!(
+        src_data.is_dir(),
+        "missing test data directory {}",
+        src_data.display()
+    );
 
     let tmp = mirror_data_dir(&src_data);
     let tmp_data = tmp.join("data").join(PATCH);
@@ -54,11 +58,11 @@ fn precompile_is_byte_stable() {
 
     assert_eq!(
         parsed1, parsed2,
-        "parsed_mods.json 两次运行不一致（非确定性）"
+        "parsed_mods.json differs across two runs (non-determinism)"
     );
     assert_eq!(
         report1, report2,
-        "parse-coverage.json 两次运行不一致（非确定性）"
+        "parse-coverage.json differs across two runs (non-determinism)"
     );
 
     std::fs::remove_dir_all(&tmp).ok();
@@ -78,18 +82,28 @@ fn coverage_counts_are_consistent() {
     assert_eq!(
         cov.parsed + cov.unsupported + cov.err,
         cov.total,
-        "三态计数和不等于 total"
+        "the three-way count sum does not equal total"
     );
-    assert_eq!(cov.total, corpus.lines.len(), "total 应等于去重语料行数");
-    assert_eq!(outcome.entries, cov.total, "entries 应等于语料行数");
+    assert_eq!(
+        cov.total,
+        corpus.lines.len(),
+        "total should equal the deduplicated corpus line count"
+    );
+    assert_eq!(
+        outcome.entries, cov.total,
+        "entries should equal the corpus line count"
+    );
     // gaps == unsupported + err (every non-parsed line records exactly one gap).
     assert_eq!(
         cov.gaps.len(),
         cov.unsupported + cov.err,
-        "gaps 数应等于 unsupported + err"
+        "gaps count should equal unsupported + err"
     );
     let ratio = cov.coverage_ratio();
-    assert!((0.0..=1.0).contains(&ratio), "覆盖率应在 [0,1]：{ratio}");
+    assert!(
+        (0.0..=1.0).contains(&ratio),
+        "coverage ratio should be in [0,1]: {ratio}"
+    );
 
     std::fs::remove_dir_all(&tmp).ok();
 }
@@ -102,7 +116,7 @@ fn committed_coverage_matches_fresh_run() {
     if !committed_path.is_file() {
         // Skip before the first commit (artifact not on disk yet) — this
         // check becomes active as soon as the artifact is checked in.
-        eprintln!("SKIP: 尚无已提交 parse-coverage.json");
+        eprintln!("SKIP: no committed parse-coverage.json yet");
         return;
     }
     let committed: serde_json::Value =
@@ -123,8 +137,8 @@ fn committed_coverage_matches_fresh_run() {
 
     assert_eq!(
         committed_summary, &fresh["summary"],
-        "已提交 parse-coverage.json summary 与新鲜重跑不一致——手改 data/generated/ 或产物过期，\
-         请重跑 cargo run -p precompile-mods -- --data data/{PATCH} --report 并提交"
+        "committed parse-coverage.json summary does not match a fresh rerun -- data/generated/ was \
+         hand-edited or the artifact is stale; rerun cargo run -p precompile-mods -- --data data/{PATCH} --report and commit"
     );
 
     // Coverage ratchet: the committed artifact must not fall below the
@@ -144,8 +158,8 @@ fn committed_coverage_matches_fresh_run() {
             .expect("committed ratio");
         assert!(
             cur + 5e-7 >= base,
-            "覆盖率棘轮失败：已提交 {cur} < 基线 {base}——解析覆盖率不得降低；\
-             若属预期（语料扩面）请同 PR 更新 devs/ci/parse-coverage-baseline.json"
+            "coverage ratchet failed: committed {cur} < baseline {base} -- parse coverage must not decrease; \
+             if this is expected (corpus expansion), update devs/ci/parse-coverage-baseline.json in the same PR"
         );
     }
 

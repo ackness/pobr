@@ -47,7 +47,7 @@ fn assert_keys(value: &Value, expected: &[&str], label: &str) {
     want.sort_unstable();
     assert_eq!(
         actual, want,
-        "{label}: JSON 键集合变化 = 契约破坏，需同步 web/src/api/types.ts"
+        "{label}: JSON key set changed = contract broken, sync web/src/api/types.ts"
     );
 }
 
@@ -236,7 +236,7 @@ fn calculate_build_json_main_group_override_changes_output() {
     };
     assert!(
         es(&overridden) > es(&base),
-        "extra modifier 应改变输出（base={} overridden={}）",
+        "extra modifier should change the output (base={} overridden={})",
         es(&base),
         es(&overridden)
     );
@@ -966,11 +966,14 @@ fn chinese_mod_lines_translate_to_english() {
     let en = calc(&en_req);
     assert!(
         (life(&zh) - life(&en)).abs() < f64::EPSILON,
-        "中文物品应与英文等价（zh={} en={}）",
+        "the Chinese item should be equivalent to the English one (zh={} en={})",
         life(&zh),
         life(&en)
     );
-    assert!(life(&zh) > life(&baseline), "中文词条应实际生效");
+    assert!(
+        life(&zh) > life(&baseline),
+        "the Chinese mod should actually take effect"
+    );
 
     // Simplified Chinese extra_modifiers get translated too.
     let mut extra_req = base_req.clone();
@@ -993,7 +996,7 @@ fn chinese_mod_lines_translate_to_english() {
             .unwrap()
             .iter()
             .any(|v| v.as_str().unwrap_or_default().contains("能量护盾")),
-        "已知中文词条不应落 unsupported"
+        "a known Chinese mod should not land in unsupported"
     );
     let _ = es(&extra);
 
@@ -1008,7 +1011,7 @@ fn chinese_mod_lines_translate_to_english() {
     let unknown = calc(&unknown_req);
     assert!(
         (life(&unknown) - life(&baseline)).abs() < f64::EPSILON,
-        "未知中文行应静默跳过不影响数值"
+        "an unknown Chinese line should be silently skipped without affecting values"
     );
 }
 
@@ -1036,7 +1039,7 @@ fn attribute_choice_changes_derived_stats() {
     let str_ = accuracy_with("str");
     assert!(
         dex > str_,
-        "dex 三选一应提升命中派生（dex={dex} str={str_}）"
+        "the dex choice should raise the derived accuracy (dex={dex} str={str_})"
     );
 }
 
@@ -1091,7 +1094,7 @@ fn decode_cn_build_file_and_calculate() {
     assert!(stat("Life") > 0.0, "Life={}", stat("Life"));
     assert!(
         stat("EnergyShield") > 0.0,
-        "ES build 应有能量护盾（简中装备词条经翻译层生效），ES={}",
+        "an ES build should have energy shield (Simplified Chinese item mods take effect through the translation layer), ES={}",
         stat("EnergyShield")
     );
 }
@@ -1131,7 +1134,7 @@ fn manual_jewels_respect_socket_allocation() {
     let without = life(false);
     assert!(
         (with - without - 50.0).abs() < 0.5,
-        "已加点插槽的珠宝应 +50 Life（with={with} without={without}）"
+        "a jewel in an allocated socket should give +50 Life (with={with} without={without})"
     );
 }
 
@@ -1159,7 +1162,7 @@ fn attribution_json_shape() {
             && fields
                 .iter()
                 .any(|f| e["deltas"][f].as_f64().unwrap_or(0.0).abs() > f64::EPSILON)),
-        "应有装备对至少一个字段产生贡献: {entries:?}"
+        "an item should contribute to at least one field: {entries:?}"
     );
 }
 
@@ -1202,7 +1205,7 @@ fn memory_backend_matches_dir_backend() {
     let from_memory = pobr_wasm::calculate_build_json(&request).expect("memory backend");
     assert_eq!(
         from_dir, from_memory,
-        "内存后端与目录后端计算结果应逐字节一致"
+        "the memory backend and directory backend should produce byte-identical results"
     );
 
     // Restore the directory backend, to avoid affecting later tests on the same thread.
@@ -1413,7 +1416,7 @@ fn real_build_exposes_a_single_default_loadout() {
     assert_eq!(loadouts.len(), 1);
     assert_keys(&loadouts[0], &["name", "tree", "item", "skill"], "loadout");
     assert_eq!(loadouts[0]["tree"], 1);
-    assert!(loadouts[0]["item"].is_null(), "单套豁免");
+    assert!(loadouts[0]["item"].is_null(), "single-set exemption");
     assert_eq!(json["active_loadout"], 0);
 }
 
@@ -1442,7 +1445,7 @@ fn switching_loadout_changes_tree_and_skills() {
     let first: Value =
         serde_json::from_str(&pobr_wasm::decode_build_json(&code).expect("decode")).unwrap();
     let loadouts = first["loadouts"].as_array().expect("loadouts");
-    assert_eq!(loadouts.len(), 2, "两个标识符绑定组");
+    assert_eq!(loadouts.len(), 2, "two identifier-bound groups");
     assert_eq!(first["active_loadout"], 0);
     assert_eq!(
         first["tree"]["allocated_nodes"].as_array().unwrap().len(),
@@ -1468,7 +1471,10 @@ fn switching_loadout_changes_tree_and_skills() {
     );
     assert_eq!(second["active_loadout"], 1);
     let gem = &second["socket_groups"][0]["gems"][0]["skill_id"];
-    assert_eq!(gem, "Firestorm", "技能集应随组切换");
+    assert_eq!(
+        gem, "Firestorm",
+        "the skill set should switch with the group"
+    );
 }
 
 /// Exporting a multi-set build after editing: the other loadouts and each
@@ -1510,18 +1516,29 @@ fn exporting_a_multi_loadout_build_keeps_the_other_sets() {
     let out_xml = pobr_build::decode_pob_code(out_code.trim()).expect("decode result");
 
     // Both sets are present, titles preserved.
-    assert_eq!(out_xml.matches("<Spec").count(), 2, "Spec 少了：{out_xml}");
-    assert_eq!(out_xml.matches("<SkillSet").count(), 2, "SkillSet 少了");
-    assert_eq!(out_xml.matches("<ItemSet").count(), 2, "ItemSet 少了");
+    assert_eq!(
+        out_xml.matches("<Spec").count(),
+        2,
+        "Spec is missing: {out_xml}"
+    );
+    assert_eq!(
+        out_xml.matches("<SkillSet").count(),
+        2,
+        "SkillSet is missing"
+    );
+    assert_eq!(out_xml.matches("<ItemSet").count(), 2, "ItemSet is missing");
     for title in ["早期 {a}", "后期 {b}"] {
-        assert!(out_xml.contains(title), "title `{title}` 丢了");
+        assert!(out_xml.contains(title), "title `{title}` was lost");
     }
     // The edit landed on the active set.
     assert!(
         out_xml.contains(r#"nodes="9,9,9""#),
-        "编辑未写回：{out_xml}"
+        "the edit was not written back: {out_xml}"
     );
-    assert!(out_xml.contains(r#"nodes="3,4,5""#), "另一套树被覆盖了");
+    assert!(
+        out_xml.contains(r#"nodes="3,4,5""#),
+        "the other tree set was overwritten"
+    );
 
     // Round trip: the exported code still derives two loadouts.
     let redecoded: Value =
@@ -1575,7 +1592,11 @@ fn managing_loadouts_duplicates_renames_and_removes() {
     // Duplicate: an extra group appears, and the original is preserved.
     let dup = manage(&code, "duplicate", Some("后期 {b}"));
     let names = loadout_names(&dup);
-    assert_eq!(names.len(), 2, "复制后应有两组：{names:?}");
+    assert_eq!(
+        names.len(),
+        2,
+        "should have two groups after duplication: {names:?}"
+    );
     assert!(names.iter().any(|n| n.contains("早期")));
     assert!(names.iter().any(|n| n.contains("后期")));
 

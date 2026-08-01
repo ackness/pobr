@@ -48,6 +48,7 @@ mod tests {
     #[test]
     fn registers_without_conflict() {
         let mut registry = HandlerRegistry::new();
-        register_special_handlers(&mut registry).expect("special handler 注册不冲突");
+        register_special_handlers(&mut registry)
+            .expect("special handler registration should not conflict");
     }
 }

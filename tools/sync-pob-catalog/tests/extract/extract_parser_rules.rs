@@ -45,20 +45,23 @@ fn vendor_available() -> bool {
 /// the parity golden data, not just syncing the parser rules. Remove this
 /// `#[ignore]` and re-enable the drift guard once that unified upgrade lands.
 #[test]
-#[ignore = "vendor 已升 a82a33b；mod_parser_rules 待与 parity golden 统一重标后重启（见上方 doc）"]
+#[ignore = "vendor bumped to a82a33b; mod_parser_rules awaits a unified re-baseline with parity golden data before re-enabling (see doc above)"]
 fn regenerated_matches_committed_artifact() {
     let luajit = resolve_luajit(None);
     if !luajit_available(&luajit) {
-        eprintln!("skip: 环境中无可用 luajit（{}）", luajit.display());
+        eprintln!(
+            "skip: no luajit available in this environment ({})",
+            luajit.display()
+        );
         return;
     }
     if !vendor_available() {
-        eprintln!("skip: vendor 检出不完整（缺 ModParser.lua / runtime/lua）");
+        eprintln!("skip: incomplete vendor checkout (missing ModParser.lua / runtime/lua)");
         return;
     }
     let committed_path = repo_root().join("data/4.5.0.3.4/overlay/mod_parser_rules.json");
     let committed = std::fs::read_to_string(&committed_path)
-        .expect("仓库应已提交 mod_parser_rules.json（工具产物，禁手改）");
+        .expect("mod_parser_rules.json should already be committed to the repo (tool-generated artifact, do not hand-edit)");
 
     let args = ExtractLuaArgs {
         vendor_root: vendor_src(),
@@ -77,14 +80,16 @@ fn regenerated_matches_committed_artifact() {
             // `SkillType`), so extraction can't run — treat this as
             // "environment unsupported" and skip (same tier as missing
             // luajit/vendor), not misreported as drift.
-            eprintln!("skip: extract-lua 在本 vendor 检出不可用（headless 引导不兼容）：{e}");
+            eprintln!(
+                "skip: extract-lua is unavailable for this vendor checkout (headless bootstrap incompatible): {e}"
+            );
             return;
         }
     };
-    let drift = diff_parser_rules(&committed, &regenerated).expect("diff 不应失败");
+    let drift = diff_parser_rules(&committed, &regenerated).expect("diff should not fail");
     assert!(
         drift.identical,
-        "parser-rules 重抽与已提交产物 byte 不等：\n{}",
+        "re-extracted parser-rules differ byte-for-byte from the committed artifact:\n{}",
         drift.lines.join("\n")
     );
 }

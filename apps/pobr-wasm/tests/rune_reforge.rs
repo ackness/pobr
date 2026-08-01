@@ -33,16 +33,16 @@ fn rune_catalog_has_names_and_zh() {
     let entries: Vec<Value> = serde_json::from_str(&json).expect("parse");
     assert!(
         entries.len() > 200,
-        "符文目录应有全量条目，实得 {}",
+        "the rune catalog should have the full entry set, got {}",
         entries.len()
     );
     let iron = entries
         .iter()
         .find(|e| e["name"] == "Iron Rune")
-        .expect("Iron Rune 应在目录");
+        .expect("Iron Rune should be in the catalog");
     assert!(
         iron["name_zh_cn"].as_str().is_some_and(|s| !s.is_empty()),
-        "Iron Rune 应有简中名，实得 {:?}",
+        "Iron Rune should have a Simplified Chinese name, got {:?}",
         iron["name_zh_cn"]
     );
     // With an item context given, the effect lines applicable to that base (armour) should be attached.
@@ -50,7 +50,7 @@ fn rune_catalog_has_names_and_zh() {
         iron["lines"][0]
             .as_str()
             .is_some_and(|s| s.contains("Armour")),
-        "Iron Rune 对护甲应有 Armour 效果行，实得 {:?}",
+        "Iron Rune should have an Armour effect line for armour, got {:?}",
         iron["lines"]
     );
 
@@ -61,7 +61,7 @@ fn rune_catalog_has_names_and_zh() {
         entries
             .iter()
             .all(|e| e["lines"].as_array().is_some_and(|a| a.is_empty())),
-        "无物品上下文时 lines 应全空"
+        "lines should all be empty with no item context"
     );
 }
 
@@ -79,7 +79,7 @@ fn reforge_replaces_rune_lines_and_fixes_implicit_count() {
     // The old rune named line is stripped, new named lines inserted in order after Sockets.
     assert!(
         !text.contains("Rune: Iron Rune\n"),
-        "旧命名行应被替换：\n{text}"
+        "the old named line should have been replaced:\n{text}"
     );
     assert!(text.contains("Rune: Greater Iron Rune"));
     assert!(text.contains("Rune: Adept Rune"));
@@ -87,11 +87,11 @@ fn reforge_replaces_rune_lines_and_fixes_implicit_count() {
     // {rune} prefix (Adept Rune's armour effect = +9 Dexterity).
     assert!(
         !text.contains("{rune}20% increased Armour"),
-        "旧符文词条应剔除：\n{text}"
+        "the old rune mod line should have been stripped:\n{text}"
     );
     assert!(
         text.contains("{rune}+9 to Dexterity"),
-        "新符文词条应写入：\n{text}"
+        "the new rune mod line should have been written:\n{text}"
     );
     // Implicits count = old 1 - old rune line 1 + new rune lines 4 (Greater
     // Iron Rune has 3 lines total across the armour + body armour keys,
@@ -99,7 +99,7 @@ fn reforge_replaces_rune_lines_and_fixes_implicit_count() {
     assert!(text.contains("{rune}Bonded: +20 to maximum Life"));
     assert!(
         text.contains("Implicits: 4"),
-        "Implicits 计数应修正：\n{text}"
+        "the Implicits count should have been fixed up:\n{text}"
     );
     // Non-rune mod lines are preserved as-is.
     assert!(text.contains("+167 to Armour"));
@@ -113,7 +113,10 @@ fn reforge_resizes_sockets() {
     let out = pobr_wasm::reforge_runes_json(&shrink.to_string()).expect("shrink");
     let text: Value = serde_json::from_str(&out).unwrap();
     let text = text["text"].as_str().unwrap();
-    assert!(text.contains("Sockets: S S\n"), "孔数应重写为 2：\n{text}");
+    assert!(
+        text.contains("Sockets: S S\n"),
+        "socket count should be rewritten to 2:\n{text}"
+    );
 
     // An item with no Sockets line directly gains 1 socket: the new line is inserted, and it accepts a rune.
     let no_sockets =
@@ -122,7 +125,10 @@ fn reforge_resizes_sockets() {
     let out = pobr_wasm::reforge_runes_json(&grow.to_string()).expect("grow");
     let text: Value = serde_json::from_str(&out).unwrap();
     let text = text["text"].as_str().unwrap();
-    assert!(text.contains("Sockets: S\n"), "应新增 Sockets 行：\n{text}");
+    assert!(
+        text.contains("Sockets: S\n"),
+        "a new Sockets line should have been added:\n{text}"
+    );
     assert!(text.contains("Rune: Iron Rune"));
 
     // Reduced to 0 sockets: the Sockets line and every rune are removed.
@@ -132,12 +138,12 @@ fn reforge_resizes_sockets() {
     let text = text["text"].as_str().unwrap();
     assert!(
         !text.contains("Sockets:"),
-        "0 孔应移除 Sockets 行：\n{text}"
+        "0 sockets should remove the Sockets line:\n{text}"
     );
     assert!(!text.contains("Rune:"));
     assert!(
         text.contains("Implicits: 0"),
-        "rune 词条清空后计数归零：\n{text}"
+        "count should reset to zero once the rune mods are cleared:\n{text}"
     );
 }
 

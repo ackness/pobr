@@ -187,7 +187,8 @@ pub fn run_extract_parser_rules(args: &ExtractLuaArgs) -> io::Result<String> {
         eprintln!("extract-parser-rules: {warning}");
     }
     let doc = ParserRulesDoc { meta, rules };
-    let mut json = serde_json::to_string_pretty(&doc).expect("parser rules 文档序列化不应失败");
+    let mut json = serde_json::to_string_pretty(&doc)
+        .expect("parser rules document serialization should not fail");
     json.push('\n');
     Ok(json)
 }
@@ -211,7 +212,7 @@ fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<serde_json::Va
             io::Error::new(
                 io::ErrorKind::NotFound,
                 format!(
-                    "无法启动 luajit（{}）：{error}；请安装 luajit 或用 --luajit / POBR_LUAJIT 指定路径",
+                    "failed to launch luajit ({}): {error}; install luajit or specify the path via --luajit / POBR_LUAJIT",
                     args.luajit.display()
                 ),
             )
@@ -220,14 +221,14 @@ fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<serde_json::Va
     child
         .stdin
         .take()
-        .expect("stdin 已配置为 piped")
+        .expect("stdin was configured as piped")
         .write_all(BOOTSTRAP_LUA.as_bytes())?;
 
     let output = child.wait_with_output()?;
     let stderr_text = String::from_utf8_lossy(&output.stderr);
     if !output.status.success() {
         return Err(io::Error::other(format!(
-            "parser-rules 引导脚本执行失败（exit: {:?}）：{}",
+            "parser-rules bootstrap script failed (exit: {:?}): {}",
             output.status.code(),
             stderr_text.trim()
         )));
@@ -245,7 +246,7 @@ fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<serde_json::Va
         }
         let row: serde_json::Value = serde_json::from_str(line).map_err(|error| {
             io::Error::other(format!(
-                "引导脚本输出了非法 JSONL 行：{error}；行内容：{line}"
+                "bootstrap script emitted an invalid JSONL line: {error}; line content: {line}"
             ))
         })?;
         rows.push(row);
@@ -258,16 +259,18 @@ fn assemble_rules(rows: Vec<serde_json::Value>) -> io::Result<ModParserRulesDoc>
     let mut doc = ModParserRulesDoc::default();
     for mut row in rows {
         let Some(object) = row.as_object_mut() else {
-            return Err(io::Error::other("JSONL 行不是对象"));
+            return Err(io::Error::other("JSONL line is not an object"));
         };
         let Some(section) = object.remove("section").and_then(|s| match s {
             serde_json::Value::String(s) => Some(s),
             _ => None,
         }) else {
-            return Err(io::Error::other("JSONL 行缺少 section 字段"));
+            return Err(io::Error::other("JSONL line is missing the section field"));
         };
         let context = |error: serde_json::Error| {
-            io::Error::other(format!("section `{section}` 行反序列化失败：{error}"))
+            io::Error::other(format!(
+                "section `{section}` row failed to deserialize: {error}"
+            ))
         };
         match section.as_str() {
             "forms" => doc.forms.push(from_row::<FormDef>(row).map_err(context)?),
@@ -304,7 +307,7 @@ fn assemble_rules(rows: Vec<serde_json::Value>) -> io::Result<ModParserRulesDoc>
                     .push(from_row::<Row>(row).map_err(context)?.phrase);
             }
             other => {
-                return Err(io::Error::other(format!("未知 JSONL section：{other}")));
+                return Err(io::Error::other(format!("unknown JSONL section: {other}")));
             }
         }
     }
@@ -662,10 +665,12 @@ fn self_check(doc: &ModParserRulesDoc, vendor_commit: &str) -> io::Result<Vec<St
         let expected = pinned[section];
         if *actual != expected {
             let message = format!(
-                "section `{section}` 条目数 {actual} ≠ 钉定值 {expected}（vendor {vendor_commit}）"
+                "section `{section}` entry count {actual} != pinned value {expected} (vendor {vendor_commit})"
             );
             if is_pinned_commit {
-                return Err(io::Error::other(format!("抽取自检失败：{message}")));
+                return Err(io::Error::other(format!(
+                    "extraction self-check failed: {message}"
+                )));
             }
             warnings.push(message);
         }
@@ -675,12 +680,14 @@ fn self_check(doc: &ModParserRulesDoc, vendor_commit: &str) -> io::Result<Vec<St
     let pinned_forms: BTreeSet<&str> = PINNED_FORM_IDS.iter().copied().collect();
     if form_ids != pinned_forms {
         let message = format!(
-            "form id 集与钉定集不一致：多出 {:?}，缺少 {:?}",
+            "form id set does not match the pinned set: extra {:?}, missing {:?}",
             form_ids.difference(&pinned_forms).collect::<Vec<_>>(),
             pinned_forms.difference(&form_ids).collect::<Vec<_>>()
         );
         if is_pinned_commit {
-            return Err(io::Error::other(format!("抽取自检失败：{message}")));
+            return Err(io::Error::other(format!(
+                "extraction self-check failed: {message}"
+            )));
         }
         warnings.push(message);
     }
@@ -714,7 +721,7 @@ fn self_check(doc: &ModParserRulesDoc, vendor_commit: &str) -> io::Result<Vec<St
         let unique: BTreeSet<&&str> = keys.iter().collect();
         if unique.len() != keys.len() {
             return Err(io::Error::other(format!(
-                "抽取自检失败：section `{section}` 存在重复键"
+                "extraction self-check failed: section `{section}` has duplicate keys"
             )));
         }
     }
@@ -733,11 +740,11 @@ fn self_check(doc: &ModParserRulesDoc, vendor_commit: &str) -> io::Result<Vec<St
             .filter(|e| e.handler_id.is_some())
             .count();
     warnings.push(format!(
-        "闭包条目统计：探针推断成功 {inferred} / handler 兜底 {handlers}（预算 ≤15，全局 <100 台账见 00-index §3.3）"
+        "closure entry stats: probe inference succeeded {inferred} / handler fallback {handlers} (budget <=15, global <100 ledger see 00-index §3.3)"
     ));
     if handlers > 15 {
         warnings.push(format!(
-            "警告：handler 兜底条目 {handlers} 超出蓝图预估 ≤15"
+            "warning: handler fallback entries {handlers} exceed the blueprint estimate of <=15"
         ));
     }
     Ok(warnings)
@@ -892,14 +899,14 @@ pub fn diff_parser_rules(committed: &str, regenerated: &str) -> io::Result<Parse
     }
     let parse = |text: &str, label: &str| -> io::Result<serde_json::Value> {
         serde_json::from_str(text)
-            .map_err(|error| io::Error::other(format!("{label} 不是合法 JSON：{error}")))
+            .map_err(|error| io::Error::other(format!("{label} is not valid JSON: {error}")))
     };
-    let committed_doc = parse(committed, "已提交文件")?;
-    let regenerated_doc = parse(regenerated, "重抽产物")?;
+    let committed_doc = parse(committed, "committed file")?;
+    let regenerated_doc = parse(regenerated, "re-extracted output")?;
 
     let mut lines = Vec::new();
     if committed_doc.get("_meta") != regenerated_doc.get("_meta") {
-        lines.push("[_meta] 头部不一致（vendor commit / regen_command 漂移？）".to_string());
+        lines.push("[_meta] header mismatch (vendor commit / regen_command drift?)".to_string());
     }
 
     let empty = serde_json::Map::new();
@@ -961,22 +968,22 @@ pub fn diff_parser_rules(committed: &str, regenerated: &str) -> io::Result<Parse
             if added.is_empty() {
                 String::new()
             } else {
-                format!("；新增 {}", sample(&added))
+                format!("; added {}", sample(&added))
             },
             if removed.is_empty() {
                 String::new()
             } else {
-                format!("；删除 {}", sample(&removed))
+                format!("; removed {}", sample(&removed))
             },
             if changed.is_empty() {
                 String::new()
             } else {
-                format!("；变更 {}", sample(&changed))
+                format!("; changed {}", sample(&changed))
             },
         ));
     }
     if lines.is_empty() {
-        lines.push("byte 不等但结构 diff 为空（空白/键序差异？请直接 diff 文件）".to_string());
+        lines.push("bytes differ but the structural diff is empty (whitespace/key-order difference? diff the files directly)".to_string());
     }
     Ok(ParserRulesDrift {
         identical: false,
@@ -1046,8 +1053,14 @@ mod tests {
         let drift = super::diff_parser_rules(committed, regenerated).unwrap();
         assert!(!drift.identical);
         let joined = drift.lines.join("\n");
-        assert!(joined.contains("[forms]"), "应有 forms 段摘要：{joined}");
-        assert!(joined.contains("+1 -1 ~1"), "增删改计数应各为 1：{joined}");
+        assert!(
+            joined.contains("[forms]"),
+            "should have a forms section summary: {joined}"
+        );
+        assert!(
+            joined.contains("+1 -1 ~1"),
+            "added/removed/changed counts should each be 1: {joined}"
+        );
         assert!(joined.contains("`c`") && joined.contains("`b`") && joined.contains("`a`"));
     }
 }

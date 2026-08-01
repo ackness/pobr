@@ -49,7 +49,7 @@ fn enemy_damage_taken_inc_raises_effective_dps() {
 
     assert_eq!(
         panel.dps, 150.0,
-        "无 effective：物理 150 平均 × 1/s × 100%命中"
+        "no effective: physical 150 average x 1/s x 100% hit chance"
     );
     assert!(
         (effective.dps - 180.0).abs() < 1e-6,
@@ -80,7 +80,10 @@ fn enemy_typed_damage_taken_only_affects_that_type() {
     enemy.add_mod(Modifier::number("FireDamageTaken", ModType::Inc, 100.0));
 
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
-    assert_eq!(out.dps, 150.0, "纯物理不受 FireDamageTaken 影响");
+    assert_eq!(
+        out.dps, 150.0,
+        "pure physical is unaffected by FireDamageTaken"
+    );
 }
 
 // 2. Enemy resistance / armour mitigation (effective mode only).
@@ -104,10 +107,13 @@ fn enemy_fire_resist_reduces_fire_dps_only_in_effective() {
     let panel = calculate_minimal_vs_enemy(&player, &enemy, &CalcConfig::attack(), &input);
     let effective = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input);
 
-    assert_eq!(panel.dps, 100.0, "面板：100 火伤不减抗");
+    assert_eq!(
+        panel.dps, 100.0,
+        "panel: 100 fire damage, resist not deducted"
+    );
     assert!(
         (effective.dps - 50.0).abs() < 1e-6,
-        "effective 50% 火抗 → 100*0.5 = 50, got {}",
+        "effective 50% fire resist -> 100*0.5 = 50, got {}",
         effective.dps
     );
 }
@@ -123,7 +129,7 @@ fn enemy_armour_reduces_physical_dps_in_effective() {
         calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
     assert!(
         (effective.dps - 75.0).abs() < 1e-6,
-        "armour 减伤 50% → 150*0.5 = 75, got {}",
+        "armour 50% mitigation -> 150*0.5 = 75, got {}",
         effective.dps
     );
 }
@@ -157,7 +163,7 @@ fn enemy_shared_elemental_resist_applies_to_elements_not_chaos() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
     assert!(
         (out.dps - 60.0).abs() < 1e-6,
-        "ElementalResist 40 → 火伤 100*0.6 = 60, got {}",
+        "ElementalResist 40 -> fire damage 100*0.6 = 60, got {}",
         out.dps
     );
 
@@ -173,7 +179,7 @@ fn enemy_shared_elemental_resist_applies_to_elements_not_chaos() {
     );
     assert!(
         (chaos_out.dps - 100.0).abs() < 1e-6,
-        "混沌不吃 ElementalResist, got {}",
+        "chaos damage is not affected by ElementalResist, got {}",
         chaos_out.dps
     );
 }
@@ -189,7 +195,7 @@ fn enemy_resist_inc_scaling_applies_before_clamp() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
     assert!(
         (out.dps - 55.0).abs() < 1e-6,
-        "30×1.5=45 抗 → 100*0.55 = 55, got {}",
+        "30x1.5=45 resist -> 100*0.55 = 55, got {}",
         out.dps
     );
 }
@@ -205,7 +211,7 @@ fn enemy_resist_negative_scale_floors_at_zero() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
     assert!(
         (out.dps - 100.0).abs() < 1e-6,
-        "缩放 floor 0 → 抗性 0 → 100, got {}",
+        "scale floors at 0 -> resist 0 -> 100, got {}",
         out.dps
     );
 }
@@ -221,7 +227,7 @@ fn enemy_resist_override_wins_over_base_sum() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
     assert!(
         (out.dps - 100.0).abs() < 1e-6,
-        "Override 0 抗 → 100, got {}",
+        "Override 0 resist -> 100, got {}",
         out.dps
     );
 }
@@ -261,7 +267,7 @@ fn explicit_config_resist_raises_max_resist_cap() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
     assert!(
         (out.dps - 15.0).abs() < 1e-6,
-        "config 85 抬 cap → 100*0.15 = 15, got {}",
+        "config 85 raises the cap -> 100*0.15 = 15, got {}",
         out.dps
     );
 
@@ -296,7 +302,7 @@ fn explicit_config_resist_raises_max_resist_cap() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
     assert!(
         (out.dps - 25.0).abs() < 1e-6,
-        "预设来源不抬 cap → clamp 75 → 25, got {}",
+        "a preset origin doesn't raise the cap -> clamp 75 -> 25, got {}",
         out.dps
     );
 }
@@ -313,7 +319,7 @@ fn elemental_damage_taken_applies_to_elements_only() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
     assert!(
         (out.dps - 125.0).abs() < 1e-6,
-        "火伤吃 ElementalDamageTaken 25% → 125, got {}",
+        "fire damage is affected by ElementalDamageTaken 25% -> 125, got {}",
         out.dps
     );
 
@@ -322,7 +328,7 @@ fn elemental_damage_taken_applies_to_elements_only() {
         calculate_minimal_vs_enemy(&ModDb::new(), &enemy, &effective_attack(), &attack_input());
     assert!(
         (phys_out.dps - 150.0).abs() < 1e-6,
-        "物理不吃 ElementalDamageTaken, got {}",
+        "physical is not affected by ElementalDamageTaken, got {}",
         phys_out.dps
     );
 }
@@ -342,7 +348,7 @@ fn projectile_damage_taken_gated_by_projectile_flag() {
     let melee = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
     assert!(
         (melee.dps - 150.0).abs() < 1e-6,
-        "非投射物不吃 ProjectileDamageTaken, got {}",
+        "non-projectile is not affected by ProjectileDamageTaken, got {}",
         melee.dps
     );
 
@@ -351,7 +357,7 @@ fn projectile_damage_taken_gated_by_projectile_flag() {
     let proj = calculate_minimal_vs_enemy(&player, &enemy, &proj_cfg, &attack_input());
     assert!(
         (proj.dps - 210.0).abs() < 1e-6,
-        "投射物 +40% taken → 150*1.4 = 210, got {}",
+        "projectile +40% taken -> 150*1.4 = 210, got {}",
         proj.dps
     );
 }
@@ -369,7 +375,7 @@ fn trap_mine_damage_taken_gated_by_skill_types() {
     let plain = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
     assert!(
         (plain.dps - 150.0).abs() < 1e-6,
-        "非 trap/mine 不吃 TrapMineDamageTaken, got {}",
+        "non trap/mine is not affected by TrapMineDamageTaken, got {}",
         plain.dps
     );
 
@@ -446,7 +452,7 @@ fn enemy_negative_physical_reduction_amplifies_up_to_neg_cap() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
     assert!(
         (out.dps - 225.0).abs() < 1e-6,
-        "负甲 −50% 减伤 → 150*1.5 = 225, got {}",
+        "negative armour −50% mitigation -> 150*1.5 = 225, got {}",
         out.dps
     );
 
@@ -460,7 +466,7 @@ fn enemy_negative_physical_reduction_amplifies_up_to_neg_cap() {
     let out2 = calculate_minimal_vs_enemy(&player, &enemy2, &effective_attack(), &attack_input());
     assert!(
         (out2.dps - 300.0).abs() < 1e-6,
-        "负减伤 clamp −100 → 150*2 = 300, got {}",
+        "negative mitigation clamps at −100 -> 150*2 = 300, got {}",
         out2.dps
     );
 }
@@ -481,7 +487,7 @@ fn ignore_enemy_armour_flag_zeroes_armour_component() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
     assert!(
         (out.dps - 120.0).abs() < 1e-6,
-        "无视敌甲 → 仅 PDR 20% → 150*0.8 = 120, got {}",
+        "ignore enemy armour -> only PDR 20% -> 150*0.8 = 120, got {}",
         out.dps
     );
 }
@@ -504,7 +510,7 @@ fn penetration_minimum_caps_penetration_floor() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
     assert!(
         (out.dps - 65.0).abs() < 1e-6,
-        "minPen 35 抬底 → 100*0.65 = 65, got {}",
+        "minPen 35 raises the floor -> 100*0.65 = 65, got {}",
         out.dps
     );
 }
@@ -525,7 +531,7 @@ fn penetration_skipped_when_resist_at_or_below_min_pen() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
     assert!(
         (out.dps - 70.0).abs() < 1e-6,
-        "resist ≤ minPen → 穿透不生效 → 100*0.7 = 70, got {}",
+        "resist <= minPen -> penetration has no effect -> 100*0.7 = 70, got {}",
         out.dps
     );
 }
@@ -550,7 +556,7 @@ fn hits_invert_ele_res_chance_inverts_enemy_resist() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
     assert!(
         (out.dps - 150.0).abs() < 1e-6,
-        "反转后抗 -50 → 100*1.5 = 150, got {}",
+        "resist inverted to -50 -> 100*1.5 = 150, got {}",
         out.dps
     );
 }
@@ -570,7 +576,7 @@ fn hits_invert_partial_chance_blends_resist() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
     assert!(
         (out.dps - 100.0).abs() < 1e-6,
-        "几率 0.5 → 抗 0 → 100, got {}",
+        "chance 0.5 -> resist 0 -> 100, got {}",
         out.dps
     );
 }
@@ -593,7 +599,7 @@ fn hits_invert_applies_before_penetration() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
     assert!(
         (out.dps - 150.0).abs() < 1e-6,
-        "负抗下穿透跳过 → 100*1.5 = 150, got {}",
+        "penetration skipped under negative resist -> 100*1.5 = 150, got {}",
         out.dps
     );
 }
@@ -615,7 +621,7 @@ fn hits_invert_does_not_touch_chaos_or_panel_mode() {
     let out = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &fire_only_input());
     assert!(
         (out.dps - 60.0).abs() < 1e-6,
-        "混沌不反转 → 100*0.6 = 60, got {}",
+        "chaos is not inverted -> 100*0.6 = 60, got {}",
         out.dps
     );
 }
@@ -638,7 +644,7 @@ fn exposure_takes_strongest_single_source() {
     );
     assert!(
         (fire_resist + 30.0).abs() < 1e-6,
-        "曝光取最强 30 → FireResist BASE -30, got {}",
+        "exposure takes the strongest 30 -> FireResist BASE -30, got {}",
         fire_resist
     );
 }
@@ -669,7 +675,7 @@ fn exposure_effect_inc_scales_magnitude_before_effect_on_self() {
     // Pinnacle base 50 − 16 = 34.
     assert!(
         (fire - 34.0).abs() < 1e-6,
-        "曝光 20×1.6×0.5=16 → FireResist 50-16=34, got {fire}"
+        "exposure 20x1.6x0.5=16 -> FireResist 50-16=34, got {fire}"
     );
 }
 
@@ -718,7 +724,7 @@ fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
     // the FireResist bucket. Final value: 50 (boss base) + (-12) = 38.
     assert!(
         (fire_eff - 38.0).abs() < 1e-6,
-        "有效口径：曝光 25 折半 floor=12，FireResist=50-12=38，got {}",
+        "effective scope: exposure 25 halved floor=12, FireResist=50-12=38, got {}",
         fire_eff
     );
 
@@ -737,7 +743,7 @@ fn exposure_effect_on_self_halves_magnitude_only_in_effective() {
     // Panel: exposure 25 stays unhalved → FireResist 50 + (-25) = 25.
     assert!(
         (fire_panel - 25.0).abs() < 1e-6,
-        "面板口径：曝光不折半，FireResist=50-25=25，got {}",
+        "panel scope: exposure not halved, FireResist=50-25=25, got {}",
         fire_panel
     );
 }
@@ -758,12 +764,12 @@ fn boss_debuff_effect_on_self_gated_by_effective() {
         let panel = db.more(&CalcConfig::attack(), &[ModName::from(name)]);
         assert!(
             (panel - 1.0).abs() < 1e-9,
-            "{name} 面板口径被门控 → 1.0, got {panel}"
+            "{name} panel scope is gated -> 1.0, got {panel}"
         );
         let eff = db.more(&effective_attack(), &[ModName::from(name)]);
         assert!(
             (eff - 0.5).abs() < 1e-9,
-            "{name} 有效口径 MORE -50 → 0.5, got {eff}"
+            "{name} effective scope MORE -50 -> 0.5, got {eff}"
         );
     }
 }
@@ -794,7 +800,7 @@ fn cannot_be_evaded_flag_forces_full_hit() {
         ..attack_input()
     };
     let out = calculate_minimal_vs_enemy(&player, &enemy, &CalcConfig::attack(), &input);
-    assert_eq!(out.hit_chance, 1.0, "CannotBeEvaded → 满命中");
+    assert_eq!(out.hit_chance, 1.0, "CannotBeEvaded -> full hit chance");
     assert_eq!(out.dps, 150.0);
 }
 
@@ -811,12 +817,15 @@ fn enemy_cannot_evade_flag_forces_full_hit_in_effective() {
     };
     // Panel mode: CannotEvade has no effect (still runs the accuracy formula, hit chance < 1).
     let panel = calculate_minimal_vs_enemy(&player, &enemy, &CalcConfig::attack(), &input);
-    assert!(panel.hit_chance < 1.0, "面板下敌方 CannotEvade 不生效");
+    assert!(
+        panel.hit_chance < 1.0,
+        "enemy CannotEvade has no effect in panel mode"
+    );
     // Effective mode: CannotEvade → guaranteed hit.
     let effective = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input);
     assert_eq!(
         effective.hit_chance, 1.0,
-        "effective 下敌方 CannotEvade → 满命中"
+        "enemy CannotEvade in effective mode -> full hit chance"
     );
 }
 
@@ -832,10 +841,10 @@ fn enemy_block_chance_reduces_hit_in_effective() {
     let effective =
         calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
 
-    assert_eq!(panel.hit_chance, 1.0, "面板不扣格挡");
+    assert_eq!(panel.hit_chance, 1.0, "panel mode doesn't deduct block");
     assert!(
         (effective.hit_chance - 0.75).abs() < 1e-6,
-        "25% 格挡 → 命中 ×0.75, got {}",
+        "25% block -> hit chance x0.75, got {}",
         effective.hit_chance
     );
     assert!(
@@ -867,7 +876,7 @@ fn panel_dps_not_lower_than_effective_dps() {
 
     assert!(
         panel.dps >= effective.dps,
-        "面板 DPS({}) 应 >= 有效 DPS({})",
+        "panel DPS ({}) should be >= effective DPS ({})",
         panel.dps,
         effective.dps
     );
@@ -883,7 +892,10 @@ fn legacy_three_arg_entry_equals_empty_enemy() {
     let input = attack_input();
     let legacy = calculate_minimal(&player, &CalcConfig::attack(), &input);
     let via_empty = calculate_minimal_vs_enemy(&player, &ModDb::new(), &effective_attack(), &input);
-    assert_eq!(legacy.dps, via_empty.dps, "空敌人 + effective 与旧入口一致");
+    assert_eq!(
+        legacy.dps, via_empty.dps,
+        "empty enemy + effective matches the legacy entry point"
+    );
 }
 
 // 7. setup_enemy injection + Pinnacle default tier (setup-env-missing).
@@ -899,7 +911,7 @@ fn setup_enemy_injects_pinnacle_defaults() {
 
     // Elemental resist +50% (Pinnacle).
     let fire = db.sum(ModType::Base, &cfg, &[ModName::from("FireResist")]);
-    assert_eq!(fire, 50.0, "Pinnacle 火抗 +50");
+    assert_eq!(fire, 50.0, "Pinnacle fire resist +50");
     // Accuracy = monsterAccuracyTable[85] = 2357.
     let acc = db.sum(ModType::Base, &cfg, &[ModName::from("Accuracy")]);
     assert_eq!(acc, monster_accuracy(85) as f64);
@@ -908,7 +920,7 @@ fn setup_enemy_injects_pinnacle_defaults() {
     let curse_panel = db.more(&cfg, &[ModName::from("CurseEffectOnSelf")]);
     assert!(
         (curse_panel - 1.0).abs() < 1e-9,
-        "面板口径 CurseEffectOnSelf 被门控 → 1.0, got {}",
+        "panel scope CurseEffectOnSelf is gated -> 1.0, got {}",
         curse_panel
     );
     // - Effective DPS mode (mode_effective=true) matches → MORE -50 → 0.5.
@@ -916,13 +928,13 @@ fn setup_enemy_injects_pinnacle_defaults() {
     let curse_eff = db.more(&cfg_eff, &[ModName::from("CurseEffectOnSelf")]);
     assert!(
         (curse_eff - 0.5).abs() < 1e-9,
-        "有效口径 CurseEffectOnSelf MORE -50 → 0.5, got {}",
+        "effective scope CurseEffectOnSelf MORE -50 -> 0.5, got {}",
         curse_eff
     );
     // Condition:PinnacleBoss is set.
     assert!(
         db.flag(&cfg, ModName::from("Condition:PinnacleBoss")),
-        "Pinnacle 设条件态"
+        "Pinnacle sets the condition flag"
     );
     // Level is raised to >=82 by Pinnacle (85 here).
     assert_eq!(env.enemy.level, 85);
@@ -936,11 +948,14 @@ fn setup_enemy_injects_pinnacle_defaults() {
         &cfg,
         &[ModName::from("ElementalPenetration")],
     );
-    assert_eq!(pen, 0.0, "boss 穿透不得进玩家进攻穿透");
+    assert_eq!(
+        pen, 0.0,
+        "boss penetration must not leak into the player's offensive penetration"
+    );
     let def_pen = db.sum(ModType::Base, &cfg, &[ModName::from("EnemyFirePen")]);
     assert_eq!(
         def_pen, 3.0,
-        "Pinnacle 防御侧 EnemyFirePen +3 注入 enemy db"
+        "Pinnacle defence-side EnemyFirePen +3 injected into enemy db"
     );
 }
 
@@ -965,12 +980,18 @@ fn setup_enemy_uber_injects_damage_taken_penalty() {
         &cfg,
         &[ModName::from("ElementalPenetration")],
     );
-    assert_eq!(pen, 0.0, "boss 穿透不得进玩家进攻穿透");
+    assert_eq!(
+        pen, 0.0,
+        "boss penetration must not leak into the player's offensive penetration"
+    );
     let def_pen = env
         .enemy
         .mod_db
         .sum(ModType::Base, &cfg, &[ModName::from("EnemyColdPen")]);
-    assert_eq!(def_pen, 8.0, "Uber 防御侧 EnemyColdPen +8 注入 enemy db");
+    assert_eq!(
+        def_pen, 8.0,
+        "Uber defence-side EnemyColdPen +8 injected into enemy db"
+    );
 }
 
 #[test]
@@ -986,7 +1007,7 @@ fn setup_enemy_none_tier_has_no_resist_or_boss_debuff() {
     );
     assert!(
         !db.flag(&cfg, ModName::from("Condition:Unique")),
-        "普通怪无 Unique 条件"
+        "a plain monster has no Unique condition"
     );
     assert!(!db.flag(&cfg, ModName::from("Condition:PinnacleBoss")));
     // A plain monster has no innate penetration → the player db should not receive ElementalPenetration.
@@ -997,7 +1018,7 @@ fn setup_enemy_none_tier_has_no_resist_or_boss_debuff() {
             &[ModName::from("ElementalPenetration")]
         ),
         0.0,
-        "普通怪不注入穿透"
+        "a plain monster doesn't inject penetration"
     );
 }
 
@@ -1019,11 +1040,11 @@ fn enemy_mods_carry_enemy_config_origin() {
         assert_eq!(
             origin.source_id.kind,
             SourceKind::EnemyConfig,
-            "enemy mod {:?} 归因应为 EnemyConfig",
+            "enemy mod {:?} should attribute to EnemyConfig",
             modifier.name
         );
     }
-    assert!(count > 0, "Pinnacle enemy modDB 非空");
+    assert!(count > 0, "Pinnacle enemy modDB should not be empty");
 }
 
 #[test]
@@ -1091,13 +1112,13 @@ fn fire_penetration_raises_effective_dps_vs_high_resist_enemy() {
 
     assert!(
         (baseline - 25.0).abs() < 1e-6,
-        "无穿透 75%抗 → 25, got {baseline}"
+        "no penetration, 75% resist -> 25, got {baseline}"
     );
     assert!(
         (with_pen - 55.0).abs() < 1e-6,
-        "FirePen30 vs 75%抗 → 等效45% → 100*0.55 = 55, got {with_pen}"
+        "FirePen30 vs 75% resist -> effective 45% -> 100*0.55 = 55, got {with_pen}"
     );
-    assert!(with_pen > baseline, "穿透提升有效 DPS");
+    assert!(with_pen > baseline, "penetration raises effective DPS");
 }
 
 #[test]
@@ -1117,7 +1138,7 @@ fn elemental_penetration_shared_applies_to_all_elements() {
     // Effective fire resist 50-25 = 25% → 100*0.75 = 75.
     assert!(
         (dps - 75.0).abs() < 1e-6,
-        "ElementalPen25 vs 50%抗 → 等效25% → 75, got {dps}"
+        "ElementalPen25 vs 50% resist -> effective 25% -> 75, got {dps}"
     );
 }
 
@@ -1133,7 +1154,7 @@ fn penetration_cannot_push_resist_below_zero() {
     let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &input).dps;
     assert!(
         (dps - 100.0).abs() < 1e-6,
-        "穿透不破 0 → 等效 0% → 100, got {dps}"
+        "penetration can't break 0 -> effective 0% -> 100, got {dps}"
     );
 }
 
@@ -1153,11 +1174,11 @@ fn penetration_wasted_against_negative_resist() {
     };
     assert!(
         (with_pen - 150.0).abs() < 1e-6,
-        "负抗 -50% → 150, got {with_pen}"
+        "negative resist -50% -> 150, got {with_pen}"
     );
     assert!(
         (with_pen - no_pen).abs() < 1e-6,
-        "负抗时穿透无效：有穿透 {with_pen} == 无穿透 {no_pen}"
+        "penetration has no effect under negative resist: with penetration {with_pen} == without penetration {no_pen}"
     );
 }
 
@@ -1179,7 +1200,7 @@ fn chaos_penetration_uses_chaos_resist() {
     // Effective chaos resist 60-20 = 40% → 100*0.6 = 60.
     assert!(
         (dps - 60.0).abs() < 1e-6,
-        "ChaosPen20 vs 60%抗 → 等效40% → 60, got {dps}"
+        "ChaosPen20 vs 60% resist -> effective 40% -> 60, got {dps}"
     );
 }
 
@@ -1194,7 +1215,7 @@ fn penetration_does_not_affect_panel_dps() {
     let panel = calculate_minimal_vs_enemy(&player, &enemy, &CalcConfig::attack(), &input).dps;
     assert!(
         (panel - 100.0).abs() < 1e-6,
-        "面板：100 火伤不减抗不穿透, got {panel}"
+        "panel: 100 fire damage, neither resist nor penetration applied, got {panel}"
     );
 }
 
@@ -1217,7 +1238,7 @@ fn penetration_only_affects_its_element() {
     // Cold resist 40% is not penetrated by FirePenetration → 100*0.6 = 60.
     assert!(
         (dps - 60.0).abs() < 1e-6,
-        "FirePen 不影响冷伤：40%冷抗 → 60, got {dps}"
+        "FirePen doesn't affect cold damage: 40% cold resist -> 60, got {dps}"
     );
 }
 
@@ -1243,13 +1264,13 @@ fn penetration_attribution_player_and_enemy_resist_traceable() {
     assert_eq!(
         pen_contribs[0].origin.as_ref().unwrap().source_id.kind,
         SourceKind::PassiveNode,
-        "穿透归因玩家来源"
+        "penetration attributes to the player source"
     );
     let resist_contribs = enemy.contributions(ModType::Base, &cfg, &[ModName::from("FireResist")]);
     assert_eq!(
         resist_contribs[0].origin.as_ref().unwrap().source_id.kind,
         SourceKind::EnemyConfig,
-        "敌人抗性归因 EnemyConfig"
+        "enemy resist attributes to EnemyConfig"
     );
 }
 
@@ -1273,7 +1294,7 @@ fn overwhelm_reduces_enemy_pdr_and_raises_physical_dps() {
         calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
     assert!(
         (baseline.dps - 120.0).abs() < 1e-6,
-        "敌人 PDR20% → 150*0.8 = 120, got {}",
+        "enemy PDR20% -> 150*0.8 = 120, got {}",
         baseline.dps
     );
 
@@ -1286,12 +1307,12 @@ fn overwhelm_reduces_enemy_pdr_and_raises_physical_dps() {
         calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input());
     assert!(
         (with_overwhelm.dps - 150.0).abs() < 1e-6,
-        "Overwhelm20 抵消 PDR20% → 净 0% → 150, got {}",
+        "Overwhelm20 offsets PDR20% -> net 0% -> 150, got {}",
         with_overwhelm.dps
     );
     assert!(
         with_overwhelm.dps > baseline.dps,
-        "Overwhelm 提升物理有效 DPS"
+        "Overwhelm raises effective physical DPS"
     );
 }
 
@@ -1310,7 +1331,7 @@ fn overwhelm_against_armour_reduction() {
     let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input()).dps;
     assert!(
         (dps - 105.0).abs() < 1e-6,
-        "护甲50% - Overwhelm20 → 净30% → 150*0.7 = 105, got {dps}"
+        "armour 50% - Overwhelm20 -> net 30% -> 150*0.7 = 105, got {dps}"
     );
 }
 
@@ -1337,7 +1358,7 @@ fn overwhelm_can_push_pdr_negative_down_to_neg_cap() {
     let dps = calculate_minimal_vs_enemy(&player, &enemy, &effective_attack(), &attack_input()).dps;
     assert!(
         (dps - 210.0).abs() < 1e-6,
-        "净 −40% 减伤 → 150*1.4 = 210, got {dps}"
+        "net −40% mitigation -> 150*1.4 = 210, got {dps}"
     );
 }
 
@@ -1357,7 +1378,7 @@ fn overwhelm_only_affects_physical() {
     // Fire resist 50% is unaffected by Overwhelm → 100*0.5 = 50.
     assert!(
         (dps - 50.0).abs() < 1e-6,
-        "Overwhelm 不影响火伤：50%火抗 → 50, got {dps}"
+        "Overwhelm doesn't affect fire damage: 50% fire resist -> 50, got {dps}"
     );
 }
 
@@ -1378,7 +1399,7 @@ fn overwhelm_does_not_affect_panel_dps() {
     ));
 
     let panel = calculate_minimal_vs_enemy(&player, &enemy, &CalcConfig::attack(), &attack_input());
-    assert_eq!(panel.dps, 150.0, "面板口径忽略 Overwhelm/PDR");
+    assert_eq!(panel.dps, 150.0, "panel scope ignores Overwhelm/PDR");
 }
 
 #[test]
@@ -1399,7 +1420,7 @@ fn perform_panel_mode_ignores_enemy_damage_taken() {
     perform(&mut env).expect("perform succeeds");
     assert_eq!(
         env.player.output.dps, 150.0,
-        "面板口径忽略 enemy DamageTaken"
+        "panel scope ignores enemy DamageTaken"
     );
 }
 
@@ -1429,14 +1450,20 @@ fn setup_enemy_preserves_preexisting_enemy_mods() {
         &cfg,
         &[ModName::from("PhysicalDamageReduction")],
     );
-    assert_eq!(pdr, 12.0, "setup_enemy 不应清空已注入的 enemy mod");
+    assert_eq!(
+        pdr, 12.0,
+        "setup_enemy should not clear already-injected enemy mods"
+    );
 
     // Tier mods are still injected normally (incremental assembly, both coexist).
     let fire = env
         .enemy
         .mod_db
         .sum(ModType::Base, &cfg, &[ModName::from("FireResist")]);
-    assert_eq!(fire, 50.0, "Pinnacle 档位 FireResist 仍正常注入");
+    assert_eq!(
+        fire, 50.0,
+        "Pinnacle tier FireResist is still injected normally"
+    );
 }
 
 // 05-05: the traced DPS path threads enemy_db through and matches the non-traced
@@ -1460,7 +1487,7 @@ fn traced_vs_enemy_dps_matches_panel_with_damage_taken() {
 
     assert!(
         (traced.output.dps - panel.dps).abs() < 1e-6,
-        "traced DPS {} 应等于 panel DPS {}",
+        "traced DPS {} should equal panel DPS {}",
         traced.output.dps,
         panel.dps
     );
@@ -1483,7 +1510,7 @@ fn traced_vs_enemy_dps_matches_panel_with_block() {
 
     assert!(
         (traced.output.dps - panel.dps).abs() < 1e-6,
-        "traced DPS {} 应等于 panel DPS {}（含格挡）",
+        "traced DPS {} should equal panel DPS {} (with block)",
         traced.output.dps,
         panel.dps
     );
@@ -1514,7 +1541,7 @@ fn traced_vs_enemy_dps_matches_panel_with_resist() {
 
     assert!(
         (traced.output.dps - panel.dps).abs() < 1e-6,
-        "traced DPS {} 应等于 panel DPS {}（含火抗）",
+        "traced DPS {} should equal panel DPS {} (with fire resist)",
         traced.output.dps,
         panel.dps
     );
@@ -1543,6 +1570,6 @@ fn traced_empty_enemy_equals_legacy_entry() {
     assert!((legacy.output.dps - vs_empty.output.dps).abs() < 1e-9);
     assert!(
         (legacy.output.dps - vs_enemy_panel.output.dps).abs() < 1e-9,
-        "面板口径下敌人 DamageTaken 不应影响 traced DPS"
+        "panel scope: enemy DamageTaken should not affect traced DPS"
     );
 }

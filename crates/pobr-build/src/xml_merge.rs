@@ -356,16 +356,23 @@ mod tests {
         // Assert: the other set and all titles are kept
         assert!(
             out.contains(r#"title="后期 {b}""#),
-            "另一套的 title 丢了：{out}"
+            "the other set's title was lost: {out}"
         );
-        assert_eq!(out.matches("<Spec").count(), 2, "Spec 应仍为两套");
+        assert_eq!(
+            out.matches("<Spec").count(),
+            2,
+            "there should still be two Spec sets"
+        );
         assert_eq!(out.matches("<SkillSet").count(), 2);
         assert_eq!(out.matches("<ItemSet").count(), 2);
         // The edited set has been updated
-        assert!(out.contains(r#"nodes="9,9,9""#), "第一套树未更新");
+        assert!(
+            out.contains(r#"nodes="9,9,9""#),
+            "the first set's tree wasn't updated"
+        );
         assert!(
             out.contains(r#"title="早期 {a}""#),
-            "编辑套的 title 也要保留"
+            "the edited set's title should also be preserved"
         );
         // The new item is appended, the old item is kept
         assert!(out.contains("NEW") && out.contains("OLD"));
@@ -381,7 +388,10 @@ mod tests {
         // Base document's max id=2 → the edited item becomes 3, and the slot reference follows.
         assert!(out.contains(r#"<Item id="3">C</Item>"#), "{out}");
         assert!(out.contains(r#"itemId="3""#), "{out}");
-        assert!(out.contains(r#"<Item id="1">A</Item>"#), "旧池保留");
+        assert!(
+            out.contains(r#"<Item id="1">A</Item>"#),
+            "the old pool is preserved"
+        );
     }
 
     #[test]
@@ -395,7 +405,7 @@ mod tests {
 
         assert!(
             out.contains(r#"<Spec title="A" nodes="1"/>"#),
-            "第一套不该被动：{out}"
+            "the first set should not be touched: {out}"
         );
         assert!(
             out.contains(r#"nodes="7,7""#) && out.contains(r#"title="B""#),
@@ -408,7 +418,7 @@ mod tests {
         // `</SkillSet>` and `</Skill>` share the same prefix — the closing tag must match the full name.
         let xml = r#"<SkillSet id="1"><Skill a="1"></Skill><Skill b="2"></Skill></SkillSet>"#;
         let r = nth_element(xml, "SkillSet", 1).expect("found");
-        assert_eq!(&xml[r], xml, "应覆盖整个 SkillSet");
+        assert_eq!(&xml[r], xml, "should span the whole SkillSet");
     }
 
     #[test]
@@ -431,7 +441,7 @@ mod tests {
         assert!(out.contains(r#"title="C {c}" nodes="1""#), "{out}");
         assert!(
             out.rfind("C {c}") > out.rfind(r#"title="B""#),
-            "副本应在末尾"
+            "the copy should be at the end"
         );
     }
 
@@ -449,7 +459,7 @@ mod tests {
         assert!(out.contains(r#"<SkillSet id="1" title="A""#), "{out}");
         assert!(
             out.contains(r#"<SkillSet id="2" title="B""#),
-            "副本必须拿到新 id：{out}"
+            "the copy must get a new id: {out}"
         );
     }
 
@@ -463,7 +473,7 @@ mod tests {
         assert!(out.contains(r#"<ItemSet id="1" title="A"/>"#), "{out}");
         assert!(
             out.contains(r#"<ItemSet id="2" title="C"/>"#),
-            "C 应补位到 id=2：{out}"
+            "C should shift into id=2: {out}"
         );
         assert!(!out.contains(r#"id="3""#));
     }
@@ -479,7 +489,7 @@ mod tests {
     fn renaming_sets_the_title_and_escapes_it() {
         let out = rename_set(TWO_SPECS, SetKind::Tree, 2, r#"Q&A "x""#).expect("rename");
         assert!(out.contains(r#"title="Q&amp;A &quot;x&quot;""#), "{out}");
-        assert!(out.contains(r#"title="A""#), "另一套不动");
+        assert!(out.contains(r#"title="A""#), "the other set is untouched");
     }
 
     #[test]

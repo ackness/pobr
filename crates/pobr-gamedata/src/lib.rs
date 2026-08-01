@@ -56,10 +56,12 @@ pub enum LoadError {
 impl fmt::Display for LoadError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Io { path, source } => write!(f, "读取 {} 失败：{source}", path.display()),
-            Self::Parse { path, source } => write!(f, "解析 {} 失败：{source}", path.display()),
+            Self::Io { path, source } => write!(f, "failed to read {}: {source}", path.display()),
+            Self::Parse { path, source } => {
+                write!(f, "failed to parse {}: {source}", path.display())
+            }
             Self::Overlay { path, message } => {
-                write!(f, "应用 overlay {} 失败：{message}", path.display())
+                write!(f, "failed to apply overlay {}: {message}", path.display())
             }
         }
     }

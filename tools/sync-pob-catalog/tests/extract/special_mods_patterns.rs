@@ -35,7 +35,7 @@ fn load_entries() -> Vec<serde_json::Value> {
         entries.extend(
             doc["entries"]
                 .as_array()
-                .expect("entries 数组")
+                .expect("entries array")
                 .iter()
                 .cloned(),
         );
@@ -54,7 +54,7 @@ fn all_patterns_compile_and_captures_cover_refs() {
         let id = entry["id"].as_str().unwrap();
         let pattern = entry["pattern"].as_str().unwrap();
         let re = Regex::new(&format!("^{pattern}$"))
-            .unwrap_or_else(|e| panic!("{id}: pattern 编译失败：{e}"));
+            .unwrap_or_else(|e| panic!("{id}: pattern failed to compile: {e}"));
         // The largest $n appearing in the mods JSON text must not exceed the capture-group count
         let mods_text = entry["mods"].to_string();
         let max_ref = (1..=9)
@@ -65,7 +65,7 @@ fn all_patterns_compile_and_captures_cover_refs() {
             .unwrap_or(0);
         assert!(
             re.captures_len() > max_ref,
-            "{id}: 捕获组 {} 个，引用了 ${max_ref}",
+            "{id}: {} capture group(s), but ${max_ref} is referenced",
             re.captures_len() - 1
         );
     }
@@ -108,7 +108,7 @@ fn captures_are_numeric_or_closed_sets() {
                 let is_numeric = NUMERIC_FORMS.contains(&group);
                 assert!(
                     is_numeric || !group.contains("\\d"),
-                    "{id}: 捕获组 {group:?} 既非统一数值形态也非闭集"
+                    "{id}: capture group {group:?} is neither a standard numeric form nor a closed set"
                 );
                 i = j;
             } else {

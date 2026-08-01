@@ -17,7 +17,7 @@ fn version() -> String {
 fn load() -> HighPrecisionModsDef {
     GameData::new(repo_data_root().join(version()))
         .high_precision_mods()
-        .expect("high_precision_mods 可加载")
+        .expect("high_precision_mods should load")
 }
 
 /// Gets the precision digit count for a given mod name + mod type (panics
@@ -25,9 +25,9 @@ fn load() -> HighPrecisionModsDef {
 fn precision(def: &HighPrecisionModsDef, name: &str, mod_type: &str) -> u32 {
     *def.mods
         .get(name)
-        .unwrap_or_else(|| panic!("存在 {name} 条目"))
+        .unwrap_or_else(|| panic!("{name} entry should exist"))
         .get(mod_type)
-        .unwrap_or_else(|| panic!("{name} 存在 {mod_type} 精度"))
+        .unwrap_or_else(|| panic!("{name} should have {mod_type} precision"))
 }
 
 /// Default values, value-for-value: `defaultHighPrecision = 1` (vendor
@@ -76,13 +76,16 @@ fn vendor_entries_spot_checks() {
 fn entries_are_structurally_valid() {
     let def = load();
     for (name, by_type) in &def.mods {
-        assert!(!by_type.is_empty(), "{name} 条目不应为空");
+        assert!(!by_type.is_empty(), "{name} entry should not be empty");
         for (mod_type, p) in by_type {
             assert!(
                 mod_type == "BASE" || mod_type == "MORE",
-                "{name} 的 mod type {mod_type} 不在 BASE/MORE"
+                "{name}'s mod type {mod_type} is not BASE/MORE"
             );
-            assert!((1..=4).contains(p), "{name} {mod_type} 精度 {p} 超出 1..=4");
+            assert!(
+                (1..=4).contains(p),
+                "{name} {mod_type} precision {p} is out of range 1..=4"
+            );
         }
     }
 }

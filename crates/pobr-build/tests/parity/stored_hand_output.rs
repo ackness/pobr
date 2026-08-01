@@ -67,11 +67,11 @@ fn stored_family_holds_vendor_identities_on_three_real_builds() {
         let hand = out
             .main_hand
             .as_ref()
-            .unwrap_or_else(|| panic!("{name}: 攻击 build 必须有 main_hand 子表"));
+            .unwrap_or_else(|| panic!("{name}: an attack build must have a main_hand sub-table"));
 
         assert!(
             !hand.stored_combined_avg.is_empty(),
-            "{name}: Stored 族必须落 HandOutput（ailment 链输入）"
+            "{name}: the Stored family must land in HandOutput (ailment-chain input)"
         );
         assert_eq!(hand.stored_crit_avg.len(), hand.stored_hit_avg.len());
         assert_eq!(hand.stored_crit_avg.len(), hand.stored_combined_avg.len());
@@ -91,16 +91,19 @@ fn stored_family_holds_vendor_identities_on_three_real_builds() {
                 let ratio = crit_avg / hit_avg;
                 assert!(
                     (ratio - m).abs() < 1e-6,
-                    "{name} {ty:?}: CritAvg/HitAvg={ratio} 应 == CritMultiplier={m}"
+                    "{name} {ty:?}: CritAvg/HitAvg={ratio} should == CritMultiplier={m}"
                 );
             }
             // Identity 2 (the weighted accumulation from vendor :4048/:4053).
             let blend = crit_avg * c + hit_avg * (1.0 - c);
             assert!(
                 (combined - blend).abs() < 1e-6 * blend.abs().max(1.0),
-                "{name} {ty:?}: CombinedAvg={combined} 应 == blend={blend}"
+                "{name} {ty:?}: CombinedAvg={combined} should == blend={blend}"
             );
         }
-        assert!(any_nonzero, "{name}: 至少一个伤害类型非零");
+        assert!(
+            any_nonzero,
+            "{name}: at least one damage type should be non-zero"
+        );
     }
 }

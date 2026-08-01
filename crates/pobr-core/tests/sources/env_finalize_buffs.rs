@@ -163,7 +163,10 @@ fn conditions_set_activates_condition_tagged_mods() {
     ]);
     session.set_buff_definitions(vec![def]);
     let out = session.perform_minimal();
-    assert_eq!(out.action_rate, 2.2, "HerEmbrace 条件应被置位并激活该词条");
+    assert_eq!(
+        out.action_rate, 2.2,
+        "the HerEmbrace condition should be set and activate the mod"
+    );
 }
 
 /// Idempotency guard: repeated perform calls on the same session must not double-count buff expansion.

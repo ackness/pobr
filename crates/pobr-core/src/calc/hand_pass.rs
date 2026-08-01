@@ -187,7 +187,7 @@ pub fn run_hand_passes(
             }
         }
         [first, second, ..] => {
-            debug_assert_eq!(passes.len(), 2, "passList 至多 MH/OH 两个 pass");
+            debug_assert_eq!(passes.len(), 2, "passList has at most two passes, MH/OH");
             let mh_leg = run_single_pass(db, enemy_db, cfg, first, input);
             let oh_leg = run_single_pass(db, enemy_db, cfg, second, input);
             let combined = combine_legs(&mh_leg, &oh_leg, double_hits);
@@ -250,14 +250,21 @@ pub(crate) fn hand_scope(
 /// (vendor computes it globally outside the hand pass), so both legs' values
 /// are always equal — takes the MH leg's value and debug-asserts they match.
 fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> MinimalOutput {
-    debug_assert_eq!(mh.life, oh.life, "防御族不在 hand pass 维度内");
-    debug_assert_eq!(mh.mana, oh.mana, "防御族不在 hand pass 维度内");
+    debug_assert_eq!(
+        mh.life, oh.life,
+        "the defence family isn't part of the hand-pass dimension"
+    );
+    debug_assert_eq!(
+        mh.mana, oh.mana,
+        "the defence family isn't part of the hand-pass dimension"
+    );
 
     let combine = |stat: &str, mh_v: f64, oh_v: f64| -> f64 {
-        let mode = combine_mode_for(stat, double_hits)
-            .unwrap_or_else(|| unreachable!("combine_legs 只对 COMBINE_TABLE 内 stat 调用"));
+        let mode = combine_mode_for(stat, double_hits).unwrap_or_else(|| {
+            unreachable!("combine_legs is only called for stats inside COMBINE_TABLE")
+        });
         mode.combine(&[mh_v, oh_v])
-            .expect("COMBINE_TABLE 内全部为自给模式")
+            .expect("every mode in COMBINE_TABLE is self-computing")
     };
 
     // CritChance is internally a fraction (0..=1), but vendor's CRIT mode
@@ -374,14 +381,16 @@ fn combine_stored_by_type(
     double_hits: bool,
 ) -> Vec<(pobr_data::prelude::DamageType, f64)> {
     let mode = combine_mode_for("StoredCombinedAvg", double_hits)
-        .expect("StoredCombinedAvg 在 COMBINE_TABLE 内");
+        .expect("StoredCombinedAvg is in COMBINE_TABLE");
     mh.iter()
         .map(|(ty, mh_v)| {
             let oh_v = oh
                 .iter()
                 .find(|(oh_ty, _)| oh_ty == ty)
                 .map_or(0.0, |(_, v)| *v);
-            let combined = mode.combine(&[*mh_v, oh_v]).expect("DPS 是自给模式");
+            let combined = mode
+                .combine(&[*mh_v, oh_v])
+                .expect("DPS is a self-computing mode");
             (*ty, combined)
         })
         .collect()

@@ -595,7 +595,7 @@ mod m2_default_neutral_tests {
             ("lightning_max_hit_pob2", out.lightning_max_hit_pob2),
             ("chaos_max_hit_pob2", out.chaos_max_hit_pob2),
         ] {
-            assert_eq!(v, 0.0, "{name} 默认应为 0（中性）");
+            assert_eq!(v, 0.0, "{name} should default to 0 (neutral)");
         }
     }
 }
@@ -616,7 +616,7 @@ mod m4_t4_default_neutral_tests {
             ("with_dot_dps", out.with_dot_dps),
             ("combined_dps", out.combined_dps),
         ] {
-            assert_eq!(v, 0.0, "{name} 默认应为 0（中性）");
+            assert_eq!(v, 0.0, "{name} should default to 0 (neutral)");
         }
     }
 }

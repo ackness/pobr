@@ -25,15 +25,15 @@ fn previously_filtered_stats_are_now_ingested() {
         .iter()
         .find(|s| s.effect_id == "IceNovaPlayer")
         .and_then(|s| s.sets.first())
-        .expect("IceNovaPlayer 主 stat set present");
+        .expect("IceNovaPlayer primary stat set present");
     let has_const = |stat: &str| ice.constant_stats.iter().any(|c| c.stat == stat);
     assert!(
         has_const("base_skill_effect_duration"),
-        "曾被过滤的持续时间 stat 应入库"
+        "the previously filtered duration stat should be ingested"
     );
     assert!(
         has_const("active_skill_base_area_of_effect_radius"),
-        "曾被过滤的范围 stat 应入库"
+        "the previously filtered radius stat should be ingested"
     );
 
     // A per-level row's non-damage stats are likewise stored (each of
@@ -49,7 +49,7 @@ fn previously_filtered_stats_are_now_ingested() {
             .stats
             .iter()
             .any(|s| s.stat == "active_skill_chill_effect_+%_final"),
-        "曾被过滤的分等级 stat 应入库"
+        "the previously filtered per-level stat should be ingested"
     );
     // The existing damage stat is unaffected (a regression anchor).
     assert!(
@@ -57,6 +57,6 @@ fn previously_filtered_stats_are_now_ingested() {
             .stats
             .iter()
             .any(|s| s.stat == "spell_minimum_base_cold_damage" && s.value == 6.0),
-        "既有伤害 stat 保持不变"
+        "the existing damage stat should be unchanged"
     );
 }

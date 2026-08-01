@@ -37,7 +37,7 @@ fn load_special(rel: &str) -> Vec<SpecialTemplateDef> {
     let Ok(json) = std::fs::read_to_string(&path) else {
         return Vec::new();
     };
-    let def: SpecialModsDef = serde_json::from_str(&json).expect("反序列化 special_mods");
+    let def: SpecialModsDef = serde_json::from_str(&json).expect("deserialize special_mods");
     def.entries
 }
 
@@ -56,10 +56,10 @@ fn load_special(rel: &str) -> Vec<SpecialTemplateDef> {
 /// package is always present).
 pub fn test_compiled_rules() -> CompiledParserRules {
     let path = data_root().join("overlay/mod_parser_rules.json");
-    let json = std::fs::read_to_string(&path).expect("读取 mod_parser_rules.json");
-    let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("反序列化规则表");
+    let json = std::fs::read_to_string(&path).expect("read mod_parser_rules.json");
+    let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("deserialize the rule table");
     let mut special = load_special("overlay/special_mods.json");
     special.extend(load_special("generated/special_derived.json"));
     special.extend(load_special("generated/special_vendor.json"));
-    CompiledParserRules::compile_with_special(&doc, &special).expect("编译规则表")
+    CompiledParserRules::compile_with_special(&doc, &special).expect("compile the rule table")
 }

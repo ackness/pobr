@@ -29,14 +29,14 @@ fn load_special(rel: &str) -> Vec<SpecialTemplateDef> {
     let Ok(json) = std::fs::read_to_string(&path) else {
         return Vec::new();
     };
-    let def: SpecialModsDef = serde_json::from_str(&json).expect("反序列化 special_mods");
+    let def: SpecialModsDef = serde_json::from_str(&json).expect("deserialize special_mods");
     def.entries
 }
 
 static RULES: LazyLock<std::sync::Arc<CompiledParserRules>> = LazyLock::new(|| {
     let path = data_root().join("overlay/mod_parser_rules.json");
-    let json = std::fs::read_to_string(&path).expect("读取 mod_parser_rules.json");
-    let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("反序列化规则表");
+    let json = std::fs::read_to_string(&path).expect("read mod_parser_rules.json");
+    let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("deserialize the rule table");
     // special_mods has two layers (same order as pobr-gamedata's `load_ruleset`): the
     // version-agnostic curated layer `data/overlay-common/` (relative to the version
     // directory as `../overlay-common/`) forms the base, the version layer overrides /
@@ -51,7 +51,7 @@ static RULES: LazyLock<std::sync::Arc<CompiledParserRules>> = LazyLock::new(|| {
     special.extend(load_special("generated/special_derived.json"));
     special.extend(load_special("generated/special_vendor.json"));
     std::sync::Arc::new(
-        CompiledParserRules::compile_with_special(&doc, &special).expect("编译规则表"),
+        CompiledParserRules::compile_with_special(&doc, &special).expect("compile the rule table"),
     )
 });
 

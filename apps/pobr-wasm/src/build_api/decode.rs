@@ -572,7 +572,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
             }
             if file.passives.iter().any(|p| p.id.starts_with("jewel_slot")) {
                 note.push_str(
-                    "\n[import] .build 不含珠宝本体（只有插槽加点）——请在天赋树页手动补珠宝",
+                    "\n[import] .build has no jewel body (only socket allocations) -- add jewels manually on the passive tree page",
                 );
             }
             note

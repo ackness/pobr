@@ -78,18 +78,18 @@ fn red_support_gem_count_activates_threshold_line() {
     let base = calculate_with_data(&bare, &build_data, &opts).expect("bare calc");
     let boosted = calculate_with_data(&ten, &build_data, &opts).expect("boosted calc");
 
-    assert!(base.life > 0.0, "基线 Life 应非零");
+    assert!(base.life > 0.0, "baseline Life should be non-zero");
     // At 0: the count falls short of the lower bound (10), so the mod stays inactive (Life has no +5% INC).
     // At 10: RedSupportGems=10 >= 10, so the +5% Life INC activates.
     assert!(
         boosted.life > base.life,
-        "10 颗红辅助应激活 +5% Life 阈值词条：base {} vs boosted {}",
+        "10 red supports should activate the +5% Life threshold mod: base {} vs boosted {}",
         base.life,
         boosted.life
     );
     let ratio = boosted.life / base.life;
     assert!(
         (1.0..1.06).contains(&ratio),
-        "Life 提升应来自单条 5% INC（池内稀释后 ≤5%）：ratio {ratio}"
+        "the Life increase should come from a single 5% INC (diluted in the pool to ≤5%): ratio {ratio}"
     );
 }

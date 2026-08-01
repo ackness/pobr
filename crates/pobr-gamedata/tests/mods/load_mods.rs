@@ -10,24 +10,24 @@ fn game_data() -> GameData {
 
 #[test]
 fn manifest_lists_mods_and_stats_domains() {
-    let manifest = game_data().manifest().expect("manifest 可加载");
+    let manifest = game_data().manifest().expect("manifest should load");
     assert!(manifest.domains.base.iter().any(|d| d == "mods"));
     assert!(manifest.domains.base.iter().any(|d| d == "stats"));
 }
 
 #[test]
 fn stats_registry_loads_with_stable_ids() {
-    let stats = game_data().stats().expect("stats 可加载");
+    let stats = game_data().stats().expect("stats should load");
     assert!(
         stats.len() > 10000,
-        "stat 注册表应有上万条，实得 {}",
+        "the stat registry should have tens of thousands of entries, got {}",
         stats.len()
     );
 
     let str_stat = stats
         .iter()
         .find(|s| s.id == "additional_strength")
-        .expect("存在 additional_strength stat");
+        .expect("additional_strength stat should exist");
     assert!(!str_stat.is_local);
     assert_eq!(str_stat.semantic, Some(3));
 }
@@ -37,18 +37,22 @@ fn stats_sorted_by_id_for_stable_diffs() {
     let stats = game_data().stats().unwrap();
     let mut sorted = stats.clone();
     sorted.sort_by(|a, b| a.id.cmp(&b.id));
-    assert_eq!(stats, sorted, "stats.json 应按 id 排序");
+    assert_eq!(stats, sorted, "stats.json should be sorted by id");
 }
 
 #[test]
 fn mods_load_with_resolved_stat_foreign_keys() {
-    let mods = game_data().mods().expect("mods 可加载");
-    assert!(mods.len() > 10000, "应有上万条词缀，实得 {}", mods.len());
+    let mods = game_data().mods().expect("mods should load");
+    assert!(
+        mods.len() > 10000,
+        "should have tens of thousands of mods, got {}",
+        mods.len()
+    );
 
     let brute = mods
         .iter()
         .find(|m| m.id == "Strength1")
-        .expect("存在 Strength1 词缀");
+        .expect("Strength1 mod should exist");
     assert_eq!(brute.name.as_deref(), Some("of the Brute"));
     assert_eq!(brute.domain, 1);
     assert_eq!(brute.generation_type, Some(2));
@@ -75,7 +79,7 @@ fn every_mod_stat_id_resolves_against_registry() {
         for s in &m.stats {
             assert!(
                 registry.contains(s.stat_id.as_str()),
-                "词缀 {} 的 stat_id {} 不在 stat 注册表中",
+                "mod {}'s stat_id {} is not in the stat registry",
                 m.id,
                 s.stat_id
             );
@@ -88,17 +92,17 @@ fn mods_sorted_by_id_for_stable_diffs() {
     let mods = game_data().mods().unwrap();
     let mut sorted = mods.clone();
     sorted.sort_by(|a, b| a.id.cmp(&b.id));
-    assert_eq!(mods, sorted, "mods.json 应按 id 排序");
+    assert_eq!(mods, sorted, "mods.json should be sorted by id");
 }
 
 #[test]
 fn traditional_chinese_mod_names_available() {
     let names = game_data()
         .mod_names("zh-TW")
-        .expect("zh-TW 词缀边车可加载");
+        .expect("zh-TW mod name sidecar should load");
     assert!(
         names.len() > 1000,
-        "应有数千条本地化词缀名，实得 {}",
+        "should have thousands of localized mod names, got {}",
         names.len()
     );
     // Strength1 = "of the Brute" → "野蠻之" (the zh-TW export switched from

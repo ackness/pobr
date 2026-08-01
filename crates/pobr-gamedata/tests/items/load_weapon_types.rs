@@ -22,14 +22,16 @@ fn game_data() -> GameData {
 }
 
 fn load() -> Vec<WeaponTypeDef> {
-    game_data().weapon_types().expect("weapon_types 可加载")
+    game_data()
+        .weapon_types()
+        .expect("weapon_types should load")
 }
 
 fn find<'a>(table: &'a [WeaponTypeDef], id: &str) -> &'a WeaponTypeDef {
     table
         .iter()
         .find(|w| w.id == id)
-        .unwrap_or_else(|| panic!("存在武器类型 {id}"))
+        .unwrap_or_else(|| panic!("weapon type {id} should exist"))
 }
 
 /// The full table is value-equal to vendor's `data.weaponTypeInfo`
@@ -65,7 +67,7 @@ fn full_table_matches_vendor_weapon_type_info() {
     assert_eq!(
         table.len(),
         expected.len(),
-        "vendor weaponTypeInfo 共 19 条"
+        "vendor weaponTypeInfo has 19 entries"
     );
     for (id, one_hand, melee, flag, label) in expected {
         let w = find(&table, id);
@@ -82,7 +84,7 @@ fn sorted_by_id_for_stable_diffs() {
     let table = load();
     let mut sorted = table.clone();
     sorted.sort_by(|a, b| a.id.cmp(&b.id));
-    assert_eq!(table, sorted, "weapon_types.json 应按 id 排序");
+    assert_eq!(table, sorted, "weapon_types.json should be sorted by id");
 }
 
 /// The subset consistent with pobr's existing melee check: the melee
@@ -110,11 +112,17 @@ fn melee_subset_consistent_with_pobr_weapon_type_conditions() {
         "Claw",
         "Flail",
     ] {
-        assert!(find(&table, id).melee, "{id} 应为近战（与 pobr 判定一致）");
+        assert!(
+            find(&table, id).melee,
+            "{id} should be melee (consistent with pobr's judgment)"
+        );
     }
     // pobr's non-melee: casting implements/bows/crossbows.
     for id in ["Wand", "Bow", "Crossbow"] {
-        assert!(!find(&table, id).melee, "{id} 应为远程（与 pobr 判定一致）");
+        assert!(
+            !find(&table, id).melee,
+            "{id} should be ranged (consistent with pobr's judgment)"
+        );
     }
 }
 

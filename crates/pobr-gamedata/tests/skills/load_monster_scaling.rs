@@ -25,23 +25,23 @@ fn game_data() -> GameData {
 fn all_tables_have_100_levels() {
     let t = game_data()
         .monster_scaling()
-        .expect("monster_scaling 可加载");
-    assert_eq!(t.accuracy.len(), MONSTER_TABLE_LEN, "accuracy 长度");
-    assert_eq!(t.evasion.len(), MONSTER_TABLE_LEN, "evasion 长度");
-    assert_eq!(t.armour.len(), MONSTER_TABLE_LEN, "armour 长度");
-    assert_eq!(t.life.len(), MONSTER_TABLE_LEN, "life 长度");
-    assert_eq!(t.ally_life.len(), MONSTER_TABLE_LEN, "ally_life 长度");
-    assert_eq!(t.damage.len(), MONSTER_TABLE_LEN, "damage 长度");
-    assert_eq!(t.ally_damage.len(), MONSTER_TABLE_LEN, "ally_damage 长度");
+        .expect("monster_scaling should load");
+    assert_eq!(t.accuracy.len(), MONSTER_TABLE_LEN, "accuracy length");
+    assert_eq!(t.evasion.len(), MONSTER_TABLE_LEN, "evasion length");
+    assert_eq!(t.armour.len(), MONSTER_TABLE_LEN, "armour length");
+    assert_eq!(t.life.len(), MONSTER_TABLE_LEN, "life length");
+    assert_eq!(t.ally_life.len(), MONSTER_TABLE_LEN, "ally_life length");
+    assert_eq!(t.damage.len(), MONSTER_TABLE_LEN, "damage length");
+    assert_eq!(t.ally_damage.len(), MONSTER_TABLE_LEN, "ally_damage length");
     assert_eq!(
         t.ailment_threshold.len(),
         MONSTER_TABLE_LEN,
-        "ailment_threshold 长度"
+        "ailment_threshold length"
     );
     assert_eq!(
         t.poise_threshold.len(),
         MONSTER_TABLE_LEN,
-        "poise_threshold 长度"
+        "poise_threshold length"
     );
 }
 
@@ -55,27 +55,27 @@ fn integer_tables_match_rust_source_at_every_level() {
         let i = lv - 1;
         assert_eq!(
             t.accuracy[i], MONSTER_ACCURACY_TABLE[i],
-            "lv{lv} accuracy 与 MONSTER_ACCURACY_TABLE 不等"
+            "lv{lv} accuracy differs from MONSTER_ACCURACY_TABLE"
         );
         assert_eq!(
             t.evasion[i], MONSTER_EVASION_TABLE[i],
-            "lv{lv} evasion 与 MONSTER_EVASION_TABLE 不等"
+            "lv{lv} evasion differs from MONSTER_EVASION_TABLE"
         );
         assert_eq!(
             t.armour[i], MONSTER_ARMOUR_TABLE[i],
-            "lv{lv} armour 与 MONSTER_ARMOUR_TABLE 不等"
+            "lv{lv} armour differs from MONSTER_ARMOUR_TABLE"
         );
         assert_eq!(
             t.life[i], MONSTER_LIFE_TABLE[i],
-            "lv{lv} life 与 MONSTER_LIFE_TABLE 不等"
+            "lv{lv} life differs from MONSTER_LIFE_TABLE"
         );
         assert_eq!(
             t.ailment_threshold[i], MONSTER_AILMENT_THRESHOLD_TABLE[i],
-            "lv{lv} ailment_threshold 与 MONSTER_AILMENT_THRESHOLD_TABLE 不等"
+            "lv{lv} ailment_threshold differs from MONSTER_AILMENT_THRESHOLD_TABLE"
         );
         assert_eq!(
             t.poise_threshold[i], MONSTER_POISE_THRESHOLD_TABLE[i],
-            "lv{lv} poise_threshold 与 MONSTER_POISE_THRESHOLD_TABLE 不等"
+            "lv{lv} poise_threshold differs from MONSTER_POISE_THRESHOLD_TABLE"
         );
     }
 }
@@ -93,7 +93,7 @@ fn damage_table_matches_rust_source_at_every_level() {
         let i = lv - 1;
         assert_eq!(
             t.damage[i], MONSTER_DAMAGE_TABLE[i],
-            "lv{lv} damage 与 MONSTER_DAMAGE_TABLE 不等"
+            "lv{lv} damage differs from MONSTER_DAMAGE_TABLE"
         );
     }
 }
@@ -146,12 +146,12 @@ fn ally_tables_strictly_increasing() {
         let i = lv - 1;
         assert!(
             t.ally_life[i] > t.ally_life[i - 1],
-            "ally_life lv{} -> lv{lv} 应递增",
+            "ally_life lv{} -> lv{lv} should increase",
             lv - 1
         );
         assert!(
             t.ally_damage[i] > t.ally_damage[i - 1],
-            "ally_damage lv{} -> lv{lv} 应递增",
+            "ally_damage lv{} -> lv{lv} should increase",
             lv - 1
         );
     }
@@ -175,7 +175,7 @@ fn hidden_damage_fixup_inputs_are_derivable() {
         let fixup = (ratio * SPECTRE_BEAST_DAMAGE_FIXUP * 100.0).round() / 100.0 - 1.0;
         assert!(
             fixup.is_finite(),
-            "lv{lv} hiddenDamageFixup 派生输入应有限，得 {fixup}"
+            "lv{lv} hiddenDamageFixup derivation inputs should be finite, got {fixup}"
         );
     }
     // Spot check: lv100's ratio = 4661.93 / 584.05 ≈ 7.982, fixup = round(9.98, 2) - 1 ≈ 8.98
@@ -184,6 +184,6 @@ fn hidden_damage_fixup_inputs_are_derivable() {
             - 1.0;
     assert!(
         (lv100_fixup - 8.98).abs() < 0.01,
-        "lv100 hiddenDamageFixup ≈ 8.98，得 {lv100_fixup}"
+        "lv100 hiddenDamageFixup ≈ 8.98, got {lv100_fixup}"
     );
 }

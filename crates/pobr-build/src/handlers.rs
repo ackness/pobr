@@ -62,7 +62,7 @@ pub fn build_registry() -> HandlerRegistry {
     register_config_handlers_batch2(&mut registry);
     // T2 append point: buff handlers
     pobr_core::rules::buff_expander::register_handlers(&mut registry)
-        .expect("启动期 buff handler 注册不冲突");
+        .expect("startup-time buff handler registration should not conflict");
     registry
 }
 
@@ -78,7 +78,7 @@ pub fn build_registry() -> HandlerRegistry {
 pub fn build_special_registry() -> HandlerRegistry {
     let mut registry = HandlerRegistry::new();
     pobr_core::rules::register_special_handlers(&mut registry)
-        .expect("启动期 special handler 注册不冲突");
+        .expect("startup-time special handler registration should not conflict");
     registry
 }
 
@@ -105,13 +105,13 @@ fn register_config_handlers(registry: &mut HandlerRegistry) {
             "config:enemyIsBoss",
             Box::new(|_| HandlerOutcome::default()),
         )
-        .expect("启动期注册不重复");
+        .expect("startup-time registration should not duplicate");
     registry
         .register(
             "config:presetBossSkills",
             Box::new(|_| HandlerOutcome::default()),
         )
-        .expect("启动期注册不重复");
+        .expect("startup-time registration should not duplicate");
 }
 
 /// Second batch of config handlers (commit B, covering the 8 gaps hit across
@@ -159,19 +159,19 @@ fn register_config_handlers_batch2(registry: &mut HandlerRegistry) {
             "config:ConcPathBypassCD",
             bypass_cd_handler("Consecrated Path of Endurance"),
         )
-        .expect("启动期注册不重复");
+        .expect("startup-time registration should not duplicate");
     registry
         .register(
             "config:FlickerStrikeBypassCD",
             bypass_cd_handler("Flicker Strike"),
         )
-        .expect("启动期注册不重复");
+        .expect("startup-time registration should not duplicate");
     registry
         .register(
             "config:VigilantStrikeBypassCD",
             bypass_cd_handler("Vigilant Strike"),
         )
-        .expect("启动期注册不重复");
+        .expect("startup-time registration should not duplicate");
     registry
         .register(
             "config:inDemonForm",
@@ -181,7 +181,7 @@ fn register_config_handlers_batch2(registry: &mut HandlerRegistry) {
                 ..HandlerOutcome::default()
             }),
         )
-        .expect("启动期注册不重复");
+        .expect("startup-time registration should not duplicate");
     registry
         .register(
             "config:multiplierNearbyEnemies",
@@ -205,7 +205,7 @@ fn register_config_handlers_batch2(registry: &mut HandlerRegistry) {
                 }
             }),
         )
-        .expect("启动期注册不重复");
+        .expect("startup-time registration should not duplicate");
     registry
         .register(
             "config:multiplierNearbyRareOrUniqueEnemies",
@@ -242,7 +242,7 @@ fn register_config_handlers_batch2(registry: &mut HandlerRegistry) {
                 }
             }),
         )
-        .expect("启动期注册不重复");
+        .expect("startup-time registration should not duplicate");
     registry
         .register(
             "config:elementalConfluxElement",
@@ -274,19 +274,19 @@ fn register_config_handlers_batch2(registry: &mut HandlerRegistry) {
                 }
             }),
         )
-        .expect("启动期注册不重复");
+        .expect("startup-time registration should not duplicate");
     registry
         .register(
             "config:questAct 4Eye of HinekoraTribal Medicine",
             Box::new(|_| HandlerOutcome::default()),
         )
-        .expect("启动期注册不重复");
+        .expect("startup-time registration should not duplicate");
     registry
         .register(
             "config:questInterlude 2QimahSeven Pillars",
             Box::new(|_| HandlerOutcome::default()),
         )
-        .expect("启动期注册不重复");
+        .expect("startup-time registration should not duplicate");
 }
 
 /// Factory for the `*BypassCD` handler family (vendor shape:
@@ -371,23 +371,23 @@ mod tests {
         let config_count = count_with_prefix(&registry, "config:");
         let buff_count = count_with_prefix(&registry, "buff:");
         println!(
-            "[A6] handler 计数：config = {config_count}/{CONFIG_HANDLER_BUDGET}，\
-             buff = {buff_count}/{BUFF_HANDLER_BUDGET}，总数 = {}/{TOTAL_HANDLER_CAP}（stub = {}）",
+            "[A6] handler count: config = {config_count}/{CONFIG_HANDLER_BUDGET}, \
+             buff = {buff_count}/{BUFF_HANDLER_BUDGET}, total = {}/{TOTAL_HANDLER_CAP} (stub = {})",
             registry.len(),
             STUB_HANDLER_IDS.len()
         );
 
         assert!(
             config_count <= CONFIG_HANDLER_BUDGET,
-            "config 域 handler 数 {config_count} 超预算 {CONFIG_HANDLER_BUDGET}（DSL 切分失败信号，回看裁决 P4/P6）"
+            "config-domain handler count {config_count} exceeds budget {CONFIG_HANDLER_BUDGET} (a signal the DSL split failed)"
         );
         assert!(
             buff_count <= BUFF_HANDLER_BUDGET,
-            "buff 域 handler 数 {buff_count} 超预算 {BUFF_HANDLER_BUDGET}"
+            "buff-domain handler count {buff_count} exceeds budget {BUFF_HANDLER_BUDGET}"
         );
         assert!(
             registry.len() < TOTAL_HANDLER_CAP,
-            "handler 总数 {} 达到硬上限 {TOTAL_HANDLER_CAP}",
+            "total handler count {} hit the hard cap {TOTAL_HANDLER_CAP}",
             registry.len()
         );
     }
@@ -399,7 +399,10 @@ mod tests {
         assert!(registry.get("config:enemyIsBoss").is_some());
         assert!(registry.get("config:presetBossSkills").is_some());
         for stub in STUB_HANDLER_IDS {
-            assert!(registry.get(stub).is_some(), "stub `{stub}` 应已注册");
+            assert!(
+                registry.get(stub).is_some(),
+                "stub `{stub}` should already be registered"
+            );
         }
         // The first batch of handlers all produce zero output (real consumption goes through the scalar channel / a later stage).
         let handler = registry.get("config:enemyIsBoss").unwrap();
@@ -424,10 +427,16 @@ mod tests {
             "config:questAct 4Eye of HinekoraTribal Medicine",
             "config:questInterlude 2QimahSeven Pillars",
         ] {
-            assert!(registry.get(id).is_some(), "`{id}` 应已注册");
+            assert!(
+                registry.get(id).is_some(),
+                "`{id}` should already be registered"
+            );
         }
         for id in CTX_GATED_HANDLER_IDS {
-            assert!(registry.get(id).is_some(), "ctx 门控 `{id}` 应已注册");
+            assert!(
+                registry.get(id).is_some(),
+                "ctx-gated `{id}` should already be registered"
+            );
         }
     }
 
@@ -504,7 +513,11 @@ mod tests {
         assert_eq!(out.scalars, vec![("NearbyEnemies".to_string(), 3.0)]);
 
         let out = handler(&pobr_core::rules::HandlerCtx::with_inputs(&[1.0]));
-        assert_eq!(out.player_mods[1].value, ModValue::Bool(true), "恰一个");
+        assert_eq!(
+            out.player_mods[1].value,
+            ModValue::Bool(true),
+            "exactly one"
+        );
     }
 
     /// multiplierNearbyRareOrUniqueEnemies (vendor :1106-1111): this var + a dual write
@@ -569,7 +582,7 @@ mod tests {
                 ("ElementalConfluxColdEffect".to_string(), 3.0),
                 ("ElementalConfluxFireEffect".to_string(), 3.0),
             ],
-            "Average 档全 3"
+            "the Average tier is all 3s"
         );
         assert!(out.player_mods.is_empty());
 
@@ -581,7 +594,7 @@ mod tests {
                 ("ElementalConfluxColdEffect".to_string(), 1.0),
                 ("ElementalConfluxFireEffect".to_string(), 0.0),
             ],
-            "锁 Cold 档"
+            "locked to the Cold tier"
         );
     }
 
@@ -639,7 +652,7 @@ mod tests {
         assert_eq!(
             campaign_progress_from_config(&outcome),
             None,
-            "表外值回 None"
+            "a value outside the table falls back to None"
         );
 
         assert_eq!(

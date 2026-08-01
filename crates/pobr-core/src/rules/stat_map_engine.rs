@@ -669,7 +669,7 @@ fn collect_curse_element(
                     Some(StatMapValue::Number(v)) => Some(*v),
                     Some(_) => {
                         return Err(UnsupportedReason::UnsupportedKind(
-                            "group 非数值 value".to_string(),
+                            "group has a non-numeric value".to_string(),
                         ));
                     }
                     None => None,
@@ -682,7 +682,7 @@ fn collect_curse_element(
         }
         "mod" => collect_curse_mod(element, params.merge(stat_value), items),
         other => Err(UnsupportedReason::UnsupportedKind(format!(
-            "curse 非 mod 载荷：{other}"
+            "curse payload is not a mod: {other}"
         ))),
     }
 }
@@ -732,7 +732,7 @@ fn collect_curse_mod(
                 .all(|k| matches!(k.as_str(), "type" | "effectType"))
             {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "GlobalEffect 含约定外键：{:?}",
+                    "GlobalEffect has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
@@ -1000,7 +1000,7 @@ fn collect_player_buff_element(
                     Some(StatMapValue::Number(v)) => Some(*v),
                     Some(_) => {
                         return Err(UnsupportedReason::UnsupportedKind(
-                            "group 非数值 value".to_string(),
+                            "group has a non-numeric value".to_string(),
                         ));
                     }
                     None => None,
@@ -1014,7 +1014,7 @@ fn collect_player_buff_element(
         "mod" => collect_player_buff_mod(element, params.merge(stat_value), items),
         "flag" => collect_player_buff_flag(element, items),
         other => Err(UnsupportedReason::UnsupportedKind(format!(
-            "player buff 非 mod 载荷：{other}"
+            "player buff payload is not a mod: {other}"
         ))),
     }
 }
@@ -1064,7 +1064,7 @@ fn collect_player_buff_flag(
                 .all(|k| matches!(k.as_str(), "type" | "effectType" | "effectName"))
             {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "GlobalEffect 含约定外键：{:?}",
+                    "GlobalEffect has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
@@ -1150,7 +1150,7 @@ fn collect_player_buff_mod(
                 )
             }) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "GlobalEffect 含约定外键：{:?}",
+                    "GlobalEffect has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
@@ -1379,7 +1379,7 @@ fn collect_debuff_element(
                     Some(StatMapValue::Number(v)) => Some(*v),
                     Some(_) => {
                         return Err(UnsupportedReason::UnsupportedKind(
-                            "group 非数值 value".to_string(),
+                            "group has a non-numeric value".to_string(),
                         ));
                     }
                     None => None,
@@ -1392,7 +1392,7 @@ fn collect_debuff_element(
         }
         "mod" => collect_debuff_mod(element, params.merge(stat_value), items),
         other => Err(UnsupportedReason::UnsupportedKind(format!(
-            "debuff 非 mod 载荷：{other}"
+            "debuff payload is not a mod: {other}"
         ))),
     }
 }
@@ -1441,7 +1441,7 @@ fn collect_debuff_mod(
                 .all(|k| matches!(k.as_str(), "type" | "effectType"))
             {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "GlobalEffect 含约定外键：{:?}",
+                    "GlobalEffect has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
@@ -1515,7 +1515,7 @@ fn collect_element(
                 },
                 Some(_) => {
                     return Err(UnsupportedReason::UnsupportedKind(
-                        "group 非数值 value".to_string(),
+                        "group has a non-numeric value".to_string(),
                     ));
                 }
                 None => group_params,
@@ -1645,13 +1645,13 @@ fn collect_skill_data(
             Some(StatMapValue::Text(k)) => k.as_str(),
             _ => {
                 return Err(UnsupportedReason::UnsupportedKind(
-                    "skill_data 缺 key".into(),
+                    "skill_data is missing key".into(),
                 ));
             }
         },
         _ => {
             return Err(UnsupportedReason::UnsupportedKind(
-                "skill_data 缺 key".into(),
+                "skill_data is missing key".into(),
             ));
         }
     };
@@ -1700,7 +1700,7 @@ fn collect_skill_data(
     if let Some(flag_name) = dot_is_flag_mod_name(key) {
         if !tags.is_empty() {
             return Err(UnsupportedReason::UnsupportedTag(
-                "skill_data 带 tag".into(),
+                "skill_data has a tag".into(),
             ));
         }
         items.push(MappedItem::Modifier(Box::new(Modifier::flag(flag_name))));
@@ -1719,7 +1719,7 @@ fn collect_skill_data(
     if matches!(key, "duration" | "corpseExplosionLifeMultiplier") {
         if !tags.is_empty() {
             return Err(UnsupportedReason::UnsupportedTag(
-                "skill_data 带 tag".into(),
+                "skill_data has a tag".into(),
             ));
         }
         items.push(MappedItem::SkillData {
@@ -2174,13 +2174,15 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
         "Condition" => {
             if !keys_subset_of(&["type", "var", "neg"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "Condition 含约定外键：{:?}",
+                    "Condition has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
             let Some(var) = text("var") else {
                 // Variants like varList aren't supported in the first batch.
-                return Err(UnsupportedReason::UnsupportedTag("Condition 缺 var".into()));
+                return Err(UnsupportedReason::UnsupportedTag(
+                    "Condition is missing var".into(),
+                ));
             };
             let negated = matches!(tag.get("neg"), Some(StatMapValue::Bool(true)));
             Ok(ModTag::condition(var, negated))
@@ -2196,18 +2198,18 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
         "ActorCondition" => {
             if !keys_subset_of(&["type", "actor", "var", "neg"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "ActorCondition 含约定外键：{:?}",
+                    "ActorCondition has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
             if text("actor").as_deref() != Some("enemy") {
                 return Err(UnsupportedReason::UnsupportedTag(
-                    "ActorCondition 非 enemy actor".into(),
+                    "ActorCondition actor is not enemy".into(),
                 ));
             }
             let Some(var) = text("var") else {
                 return Err(UnsupportedReason::UnsupportedTag(
-                    "ActorCondition 缺 var".into(),
+                    "ActorCondition is missing var".into(),
                 ));
             };
             let negated = matches!(tag.get("neg"), Some(StatMapValue::Bool(true)));
@@ -2224,13 +2226,13 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 "limitTotal",
             ]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "Multiplier 含约定外键：{:?}",
+                    "Multiplier has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
             let Some(var) = text("var") else {
                 return Err(UnsupportedReason::UnsupportedTag(
-                    "Multiplier 缺 var".into(),
+                    "Multiplier is missing var".into(),
                 ));
             };
             // limitVar (vendor ModStore.lua:369's dynamic cap, e.g. Sigil of
@@ -2265,13 +2267,13 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
         "MultiplierThreshold" => {
             if !keys_subset_of(&["type", "var", "threshold", "thresholdVar", "upper"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "MultiplierThreshold 含约定外键：{:?}",
+                    "MultiplierThreshold has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
             let Some(var) = text("var") else {
                 return Err(UnsupportedReason::UnsupportedTag(
-                    "MultiplierThreshold 缺 var".into(),
+                    "MultiplierThreshold is missing var".into(),
                 ));
             };
             let threshold = match (number("threshold"), text("thresholdVar")) {
@@ -2283,12 +2285,12 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 (None, Some(v)) if v == "RefractionMinimumValour" => 0.0,
                 (None, Some(v)) => {
                     return Err(UnsupportedReason::UnsupportedTag(format!(
-                        "MultiplierThreshold thresholdVar 非零 setter 未核实：{v}"
+                        "MultiplierThreshold thresholdVar has an unverified non-zero setter: {v}"
                     )));
                 }
                 _ => {
                     return Err(UnsupportedReason::UnsupportedTag(
-                        "MultiplierThreshold 缺 threshold".into(),
+                        "MultiplierThreshold is missing threshold".into(),
                     ));
                 }
             };
@@ -2301,12 +2303,14 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
         "PerStat" => {
             if !keys_subset_of(&["type", "stat", "div", "limit", "limitTotal"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "PerStat 含约定外键：{:?}",
+                    "PerStat has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
             let Some(stat) = text("stat") else {
-                return Err(UnsupportedReason::UnsupportedTag("PerStat 缺 stat".into()));
+                return Err(UnsupportedReason::UnsupportedTag(
+                    "PerStat is missing stat".into(),
+                ));
             };
             // PoB2's PerStat reads an actor output stat; PoBR injects the
             // same-named variable through cfg.multipliers (abbreviations are
@@ -2344,14 +2348,14 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
         "SkillType" => {
             if !keys_subset_of(&["type", "skillType", "neg"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "SkillType 含约定外键：{:?}",
+                    "SkillType has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
             let name = text("skillType");
             let Some(bits) = name.as_deref().and_then(SkillTypes::from_pob2_name) else {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "SkillType 未支持类型：{name:?}"
+                    "SkillType has an unsupported type: {name:?}"
                 )));
             };
             if matches!(tag.get("neg"), Some(StatMapValue::Bool(true))) {
@@ -2368,13 +2372,13 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
         "DistanceRamp" => {
             if !keys_subset_of(&["type", "ramp"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
-                    "DistanceRamp 含约定外键：{:?}",
+                    "DistanceRamp has keys outside the convention: {:?}",
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
             let Some(StatMapValue::List(points)) = tag.get("ramp") else {
                 return Err(UnsupportedReason::UnsupportedTag(
-                    "DistanceRamp 缺 ramp 点列".into(),
+                    "DistanceRamp is missing the ramp point list".into(),
                 ));
             };
             let mut ramp = Vec::with_capacity(points.len());
@@ -2382,21 +2386,22 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 // Each point must be a `[distance, multiplier]` pair.
                 let StatMapValue::List(pair) = point else {
                     return Err(UnsupportedReason::UnsupportedTag(
-                        "DistanceRamp ramp 点非数组".into(),
+                        "DistanceRamp ramp point is not an array".into(),
                     ));
                 };
                 let (Some(StatMapValue::Number(d)), Some(StatMapValue::Number(m))) =
                     (pair.first(), pair.get(1))
                 else {
                     return Err(UnsupportedReason::UnsupportedTag(
-                        "DistanceRamp ramp 点非 [距离,倍率] 数对".into(),
+                        "DistanceRamp ramp point is not a [distance, multiplier] number pair"
+                            .into(),
                     ));
                 };
                 ramp.push((*d, *m));
             }
             if ramp.is_empty() {
                 return Err(UnsupportedReason::UnsupportedTag(
-                    "DistanceRamp ramp 点列为空".into(),
+                    "DistanceRamp ramp point list is empty".into(),
                 ));
             }
             Ok(ModTag::DistanceRamp { ramp })
@@ -2412,11 +2417,11 @@ mod tests {
 
     /// Convenience constructor: a single-mod entry.
     fn entry_json(json: &str) -> StatMapEntry {
-        serde_json::from_str(json).expect("测试条目 JSON 合法")
+        serde_json::from_str(json).expect("test entry JSON should be valid")
     }
 
     fn catalog_json(json: &str) -> StatMapCatalog {
-        StatMapCatalog::new(serde_json::from_str(json).expect("测试 catalog JSON 合法"))
+        StatMapCatalog::new(serde_json::from_str(json).expect("test catalog JSON should be valid"))
     }
 
     fn expect_modifiers(outcome: MappedOutcome) -> Vec<Modifier> {
@@ -2425,10 +2430,10 @@ mod tests {
                 .into_iter()
                 .map(|item| match item {
                     MappedItem::Modifier(m) => *m,
-                    other => panic!("期望 Modifier，得到 {other:?}"),
+                    other => panic!("expected Modifier, got {other:?}"),
                 })
                 .collect(),
-            other => panic!("期望 Mapped，得到 {other:?}"),
+            other => panic!("expected Mapped, got {other:?}"),
         }
     }
 
@@ -2520,7 +2525,11 @@ mod tests {
                 r#"{{ "mods": [ {{ "kind": "mod", "name": "{name}", "mod_type": "BASE" }} ] }}"#
             ));
             let mods = expect_modifiers(map_entry(&entry, 60.0));
-            assert_eq!(mods[0].name.as_str(), name, "{name} 应直通");
+            assert_eq!(
+                mods[0].name.as_str(),
+                name,
+                "{name} should pass through unchanged"
+            );
         }
     }
 
@@ -2534,7 +2543,11 @@ mod tests {
                 r#"{{ "mods": [ {{ "kind": "mod", "name": "{name}", "mod_type": "INC" }} ] }}"#
             ));
             let mods = expect_modifiers(map_entry(&entry, 25.0));
-            assert_eq!(mods[0].name.as_str(), name, "{name} 应直通");
+            assert_eq!(
+                mods[0].name.as_str(),
+                name,
+                "{name} should pass through unchanged"
+            );
             assert_eq!(mods[0].mod_type, ModType::Inc);
         }
     }
@@ -2553,7 +2566,7 @@ mod tests {
         assert_eq!(mods.len(), 1);
         assert_eq!(mods[0].name.as_str(), "HitsInvertEleResChance");
         assert_eq!(mods[0].mod_type, ModType::Base);
-        assert_eq!(mods[0].value.as_number(), Some(1.0), "div=100 → 分数");
+        assert_eq!(mods[0].value.as_number(), Some(1.0), "div=100 -> fraction");
     }
 
     /// A flag outside the whitelist is still reported as unknown; a
@@ -3164,7 +3177,7 @@ mod tests {
                     value: 4.0
                 }]
             ),
-            other => panic!("期望 Mapped，得到 {other:?}"),
+            other => panic!("expected Mapped, got {other:?}"),
         }
     }
 
@@ -3285,7 +3298,9 @@ mod tests {
     /// global; flag/skill_data shapes are judged by tags the same way.
     #[test]
     fn is_global_effect_matches_vendor_predicate() {
-        let m = |json: &str| -> StatMapMod { serde_json::from_str(json).expect("mod JSON 合法") };
+        let m = |json: &str| -> StatMapMod {
+            serde_json::from_str(json).expect("mod JSON should be valid")
+        };
         // A single mod: with / without the GlobalEffect tag.
         assert!(is_global_effect(&m(
             r#"{ "kind": "mod", "name": "Damage", "mod_type": "INC",
@@ -3376,7 +3391,7 @@ mod tests {
                     map_stat_global_only(&catalog, "Foo", Some("2"), stat, 10.0),
                     MappedOutcome::Unsupported(UnsupportedReason::UnsupportedTag(_))
                 ),
-                "global 元素应整条上报（M3 前注入为零）：{stat}"
+                "global element should be reported wholesale (injects zero before M3): {stat}"
             );
         }
         // (4) The caller's bookkeeping-skip semantics: alpha was already
@@ -3407,7 +3422,7 @@ mod tests {
                        "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] } ] },
                  { "kind": "mod", "name": "ColdDamage", "mod_type": "MORE" } ] }"#,
         )
-        .expect("条目 JSON 合法");
+        .expect("entry JSON should be valid");
         // A global hit on any group member -> the whole group is retained;
         // a sibling ordinary mod is unaffected.
         assert!(is_global_effect(&entry.mods[0]));
@@ -3450,16 +3465,19 @@ mod tests {
             "base_skill_buff_chaos_damage_resistance_%_to_apply",
             -35.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         assert_eq!(items.len(), 1);
         let MappedItem::Modifier(m) = &items[0] else {
-            panic!("期望 Modifier");
+            panic!("expected Modifier");
         };
         assert_eq!(m.name.as_str(), "ChaosResist");
         assert_eq!(m.mod_type, ModType::Base);
         assert_eq!(m.value.as_number(), Some(-35.0));
-        assert!(m.tags.is_empty(), "GlobalEffect 路由 tag 已剥除");
+        assert!(
+            m.tags.is_empty(),
+            "GlobalEffect routing tag should be stripped"
+        );
     }
 
     /// Mirrors Elemental Weakness's shape: `ElementalResist` expands to the
@@ -3480,13 +3498,13 @@ mod tests {
             "base_skill_buff_all_elements_resistance_%_to_apply",
             -59.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         let names: Vec<&str> = items
             .iter()
             .map(|i| match i {
                 MappedItem::Modifier(m) => m.name.as_str(),
-                other => panic!("期望 Modifier，得到 {other:?}"),
+                other => panic!("expected Modifier, got {other:?}"),
             })
             .collect();
         assert_eq!(names, vec!["FireResist", "ColdResist", "LightningResist"]);
@@ -3511,10 +3529,10 @@ mod tests {
             "base_skill_buff_damage_+%_final_to_apply",
             -21.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         let MappedItem::Modifier(m) = &items[0] else {
-            panic!("期望 Modifier");
+            panic!("expected Modifier");
         };
         assert_eq!(m.name.as_str(), "Damage");
         assert_eq!(m.mod_type, ModType::More);
@@ -3522,7 +3540,7 @@ mod tests {
         assert_eq!(
             m.tags,
             vec![crate::ModTag::condition("Unique", true)],
-            "Condition Unique(neg) 直译保留，GlobalEffect 剥除"
+            "Condition Unique(neg) is translated directly and kept, GlobalEffect is stripped"
         );
     }
 
@@ -3570,16 +3588,19 @@ mod tests {
             "base_temporal_chains_other_buff_time_passed_+%_to_apply",
             -25.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         assert_eq!(items.len(), 1);
         let MappedItem::Modifier(m) = &items[0] else {
-            panic!("期望 Modifier");
+            panic!("expected Modifier");
         };
         assert_eq!(m.name.as_str(), "BuffExpireFaster");
         assert_eq!(m.mod_type, ModType::More);
         assert_eq!(m.value.as_number(), Some(-25.0));
-        assert!(m.tags.is_empty(), "GlobalEffect 路由 tag 已剥除");
+        assert!(
+            m.tags.is_empty(),
+            "GlobalEffect routing tag should be stripped"
+        );
     }
 
     /// A non-curse payload (a global entry with no Curse tag, e.g. a skill's
@@ -3737,13 +3758,13 @@ mod tests {
             "active_skill_all_elemental_exposure_magnitude",
             20.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         let mods: Vec<(&str, ModType, Option<f64>)> = items
             .iter()
             .map(|i| match i {
                 MappedItem::Modifier(m) => (m.name.as_str(), m.mod_type, m.value.as_number()),
-                other => panic!("期望 Modifier，得到 {other:?}"),
+                other => panic!("expected Modifier, got {other:?}"),
             })
             .collect();
         assert_eq!(
@@ -3758,7 +3779,10 @@ mod tests {
             let MappedItem::Modifier(m) = item else {
                 unreachable!()
             };
-            assert!(m.tags.is_empty(), "GlobalEffect Debuff tag 剥除");
+            assert!(
+                m.tags.is_empty(),
+                "GlobalEffect Debuff tag should be stripped"
+            );
         }
     }
 
@@ -3863,16 +3887,19 @@ mod tests {
             "support_precision_accuracy_rating_+%",
             50.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         assert_eq!(items.len(), 1);
         let MappedItem::Modifier(m) = &items[0] else {
-            panic!("期望 Modifier");
+            panic!("expected Modifier");
         };
         assert_eq!(m.name.as_str(), "Accuracy");
         assert_eq!(m.mod_type, ModType::Inc);
         assert_eq!(m.value.as_number(), Some(50.0));
-        assert!(m.tags.is_empty(), "GlobalEffect（含 effectName）剥除");
+        assert!(
+            m.tags.is_empty(),
+            "GlobalEffect (with effectName) should be stripped"
+        );
     }
 
     /// Mirrors War Banner's shape (GlobalEffect effectType=Aura + Condition
@@ -3894,17 +3921,17 @@ mod tests {
             "base_skill_buff_banner_accuracy_+%_to_apply",
             130.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         let MappedItem::Modifier(m) = &items[0] else {
-            panic!("期望 Modifier");
+            panic!("expected Modifier");
         };
         assert_eq!(m.name.as_str(), "Accuracy");
         assert_eq!(m.value.as_number(), Some(130.0));
         assert_eq!(
             m.tags,
             vec![crate::ModTag::condition("BannerPlanted", false)],
-            "Condition 直译保留，GlobalEffect 剥除"
+            "Condition is translated directly and kept, GlobalEffect is stripped"
         );
     }
 
@@ -3931,16 +3958,19 @@ mod tests {
             "support_clarity_mana_regeneration_rate_+%",
             50.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         assert_eq!(items.len(), 1);
         let MappedItem::Modifier(m) = &items[0] else {
-            panic!("期望 Modifier");
+            panic!("expected Modifier");
         };
         assert_eq!(m.name.as_str(), "ManaRegen");
         assert_eq!(m.mod_type, ModType::Inc);
         assert_eq!(m.value.as_number(), Some(50.0));
-        assert!(m.tags.is_empty(), "GlobalEffect（含 effectName）剥除");
+        assert!(
+            m.tags.is_empty(),
+            "GlobalEffect (with effectName) should be stripped"
+        );
     }
 
     /// Mirrors Vitality II's shape (vendor sup_str.txt:1791-1802:
@@ -3966,11 +3996,11 @@ mod tests {
             "support_vitality_life_regeneration_rate_per_minute_%",
             120.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         assert_eq!(items.len(), 1);
         let MappedItem::Modifier(m) = &items[0] else {
-            panic!("期望 Modifier");
+            panic!("expected Modifier");
         };
         assert_eq!(m.name.as_str(), "LifeRegenPercent");
         assert_eq!(m.mod_type, ModType::Base);
@@ -4041,15 +4071,18 @@ mod tests {
             "elemental_power_elemental_damage_+%_final_per_power_charge",
             15.0,
         ) else {
-            panic!("期望 Mapped（scalar 元素不连坐 flag）");
+            panic!("expected Mapped (scalar element should not drag flag along)");
         };
         let flags: Vec<(&str, ModType)> = items
             .iter()
             .map(|item| {
                 let MappedItem::Modifier(m) = item else {
-                    panic!("期望 Modifier");
+                    panic!("expected Modifier");
                 };
-                assert!(m.tags.is_empty(), "GlobalEffect Buff tag 剥除");
+                assert!(
+                    m.tags.is_empty(),
+                    "GlobalEffect Buff tag should be stripped"
+                );
                 (m.name.as_str(), m.mod_type)
             })
             .collect();
@@ -4063,7 +4096,7 @@ mod tests {
                 ("LightningCanFreeze", ModType::Flag),
                 ("LightningCanIgnite", ModType::Flag),
             ],
-            "六枚 <El>Can<Ailment> flag 全部产出；scalar Damage MORE 零注入"
+            "all six <El>Can<Ailment> flags should be produced; scalar Damage MORE injects zero"
         );
     }
 
@@ -4111,15 +4144,19 @@ mod tests {
             "circle_of_power_spell_damage_+%_final_per_stage",
             17.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         let MappedItem::Modifier(m) = &items[0] else {
-            panic!("期望 Modifier");
+            panic!("expected Modifier");
         };
         assert_eq!(m.name.as_str(), "Damage");
         assert_eq!(m.mod_type, ModType::More);
         assert_eq!(m.value.as_number(), Some(17.0));
-        assert_eq!(m.flags, ModFlags::SPELL, "Spell flag 直译");
+        assert_eq!(
+            m.flags,
+            ModFlags::SPELL,
+            "Spell flag is translated directly"
+        );
         assert_eq!(
             m.tags,
             vec![crate::ModTag::Multiplier {
@@ -4132,7 +4169,7 @@ mod tests {
                 invert: false,
                 limit_total: false,
             }],
-            "Multiplier limitVar 直译，GlobalEffect 剥除"
+            "Multiplier limitVar is translated directly, GlobalEffect is stripped"
         );
         // Evaluation: stage=1, maxStages=4 -> ×1; stage=9 is capped to 4 by
         // maxStages.
@@ -4174,10 +4211,10 @@ mod tests {
             "support_tempered_valour_deflection_rating_%_of_evasion_rating",
             20.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         let MappedItem::Modifier(m) = &items[0] else {
-            panic!("期望 Modifier");
+            panic!("expected Modifier");
         };
         assert_eq!(m.name.as_str(), "EvasionGainAsDeflection");
         assert_eq!(m.mod_type, ModType::Base);
@@ -4189,7 +4226,7 @@ mod tests {
                 threshold: 0.0,
                 upper: false,
             }],
-            "thresholdVar 静态折 0，GlobalEffect 剥除"
+            "thresholdVar is statically folded to 0, GlobalEffect is stripped"
         );
         // Under the default cfg (ValourStacks not injected = 0): 0 ≥ 0 ->
         // active, matching vendor's default.
@@ -4234,13 +4271,13 @@ mod tests {
             "support_tempered_valour_%_armour_to_apply_to_elemental_damage",
             30.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         let names: Vec<&str> = items
             .iter()
             .map(|item| {
                 let MappedItem::Modifier(m) = item else {
-                    panic!("期望 Modifier");
+                    panic!("expected Modifier");
                 };
                 assert_eq!(m.mod_type, ModType::Base);
                 assert_eq!(m.value.as_number(), Some(30.0));
@@ -4308,15 +4345,18 @@ mod tests {
             "circle_of_power_max_stages",
             4.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         let MappedItem::Modifier(m) = &items[0] else {
-            panic!("期望 Modifier");
+            panic!("expected Modifier");
         };
         assert_eq!(m.name.as_str(), "Multiplier:SigilOfPowerMaxStages");
         assert_eq!(m.mod_type, ModType::Base);
         assert_eq!(m.value.as_number(), Some(4.0));
-        assert!(m.tags.is_empty(), "GlobalEffect（含 unscalable 键）剥除");
+        assert!(
+            m.tags.is_empty(),
+            "GlobalEffect (with unscalable key) should be stripped"
+        );
     }
 
     /// Mirrors Elemental Conflux's shape (vendor SkillStatMap's
@@ -4351,11 +4391,11 @@ mod tests {
             "skill_elemental_conflux_active_element_damage_+%_final",
             73.0,
         ) else {
-            panic!("期望 Mapped");
+            panic!("expected Mapped");
         };
         assert_eq!(items.len(), 2);
         let MappedItem::Modifier(lightning) = &items[0] else {
-            panic!("期望 Modifier");
+            panic!("expected Modifier");
         };
         assert_eq!(lightning.name.as_str(), "LightningDamage");
         assert_eq!(lightning.mod_type, ModType::More);
@@ -4363,8 +4403,11 @@ mod tests {
         // Average setting: multiplier 3 -> invert ×1/3 = 24.33 (matches
         // vendor's Tabulate).
         let avg = crate::CalcConfig::new().with_multiplier("ElementalConfluxLightningEffect", 3.0);
-        let v = lightning.effective_number(&avg).expect("数值");
-        assert!((v - 73.0 / 3.0).abs() < 1e-9, "invert 1/3 均摊，得 {v}");
+        let v = lightning.effective_number(&avg).expect("numeric value");
+        assert!(
+            (v - 73.0 / 3.0).abs() < 1e-9,
+            "invert splits evenly by 1/3, got {v}"
+        );
         // Locked to another element: multiplier 0 -> invert stays 0 -> this
         // element's payload is 0.
         let locked =

@@ -41,7 +41,7 @@ mod tests {
 
         // Assert
         assert_eq!(first, second);
-        assert!(first.is_none(), "未设置的变量应为 None");
+        assert!(first.is_none(), "an unset variable should be None");
     }
 
     /// Value-reading usage gets the variable's contents, not just presence.

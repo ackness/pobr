@@ -99,21 +99,24 @@ impl std::fmt::Display for SpecialCompileError {
                 reason,
             } => write!(
                 f,
-                "special `{entry_id}` pattern 非法 regex `{pattern}`：{reason}"
+                "special `{entry_id}` pattern is not a valid regex `{pattern}`: {reason}"
             ),
-            Self::DuplicateId { entry_id } => write!(f, "special id 重复：`{entry_id}`"),
+            Self::DuplicateId { entry_id } => write!(f, "duplicate special id: `{entry_id}`"),
             Self::EnumRefMissing {
                 entry_id,
                 capture_index,
             } => write!(
                 f,
-                "special `{entry_id}` enums 引用越界：${capture_index} 无映射表"
+                "special `{entry_id}` enums reference out of range: ${capture_index} has no mapping table"
             ),
             Self::BadModType { entry_id, literal } => {
-                write!(f, "special `{entry_id}` 未知 mod_type `{literal}`")
+                write!(f, "special `{entry_id}` has unknown mod_type `{literal}`")
             }
             Self::ModsAndHandler { entry_id } => {
-                write!(f, "special `{entry_id}` mods 与 handler_id 互斥")
+                write!(
+                    f,
+                    "special `{entry_id}` mods and handler_id are mutually exclusive"
+                )
             }
         }
     }
@@ -1522,7 +1525,7 @@ mod tests {
             let r = rules(vec![def(json)]);
             let m = r
                 .try_match(line, &reg)
-                .unwrap_or_else(|| panic!("命中 {line}"));
+                .unwrap_or_else(|| panic!("should match {line}"));
             assert_eq!(m.mods.len(), 1, "{line}");
             assert_eq!(m.mods[0].name.as_str(), name, "{line}");
             assert_eq!(m.mods[0].mod_type, mod_type, "{line}");
@@ -1554,12 +1557,13 @@ mod tests {
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
                 Err(e) => panic!("{}: {e}", path.display()),
             };
-            let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json 可解析");
+            let doc: SpecialModsDef =
+                serde_json::from_str(&raw).expect("special_mods.json should parse");
             entries.extend(doc.entries);
         }
-        assert!(!entries.is_empty(), "special_mods 两层皆空？");
+        assert!(!entries.is_empty(), "special_mods both layers empty?");
         let rules = SpecialModRules::compile(&entries, &HandlerRegistry::new())
-            .expect("仓库 special_mods 全量编译成功");
+            .expect("all repo special_mods should compile successfully");
         assert_eq!(rules.len(), entries.len());
     }
 }

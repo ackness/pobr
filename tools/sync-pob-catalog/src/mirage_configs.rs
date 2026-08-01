@@ -221,7 +221,7 @@ fn vendor_fingerprint(vendor_root: &Path) -> io::Result<String> {
     let text = fs::read_to_string(&path).map_err(|error| {
         io::Error::new(
             io::ErrorKind::NotFound,
-            format!("无法读取 {}：{error}", path.display()),
+            format!("failed to read {}: {error}", path.display()),
         )
     })?;
     Ok(format!("{}L:{}B", text.lines().count(), text.len()))
@@ -242,18 +242,18 @@ mod tests {
         let mut sorted = ids.clone();
         sorted.sort();
         sorted.dedup();
-        assert_eq!(ids, sorted, "mirage_id 必须唯一且升序");
+        assert_eq!(ids, sorted, "mirage_id must be unique and ascending");
         for config in &configs {
             if let Some(handler) = &config.handler_id {
                 assert!(
                     handler.starts_with("mirage:"),
-                    "handler id {handler} 缺 mirage: 前缀"
+                    "handler id {handler} is missing the mirage: prefix"
                 );
             }
             assert!(
                 config.trigger.skill_data_flag.is_some()
                     || config.trigger.granted_effect_name.is_some(),
-                "{} 缺触发判定",
+                "{} is missing a trigger condition",
                 config.mirage_id
             );
         }

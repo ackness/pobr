@@ -354,7 +354,7 @@ fn expand_one(
     for template in &def.mods {
         let Some(mod_type) = parse_mod_type(&template.mod_type) else {
             out.diagnostics.push(format!(
-                "buff.{}: 未知 mod_type `{}`（mod {} 跳过）",
+                "buff.{}: unknown mod_type `{}` (mod {} skipped)",
                 def.id, template.mod_type, template.name
             ));
             continue;
@@ -398,7 +398,7 @@ fn expand_one(
         }
         if let Some(flag) = unmapped {
             out.diagnostics.push(format!(
-                "buff.{}: ModFlag `{flag}` 未映射（pobr ModFlags 缺位），mod {} 跳过",
+                "buff.{}: ModFlag `{flag}` has no mapping (missing in pobr ModFlags), mod {} skipped",
                 def.id, template.name
             ));
             continue;
@@ -421,7 +421,7 @@ fn expand_one(
                 }
                 EffectTag::Multiplier { actor: Some(_), .. } | EffectTag::ActorCondition { .. } => {
                     out.diagnostics.push(format!(
-                        "buff.{}: actor 系 tag 未接通（M3-T5-E1），mod {} 跳过",
+                        "buff.{}: actor-family tag not wired up (M3-T5-E1), mod {} skipped",
                         def.id, template.name
                     ));
                     tag_ok = false;
@@ -635,7 +635,10 @@ mod tests {
                 "buff:onslaught_flask"
             ]
         );
-        assert!(register_handlers(&mut registry).is_err(), "重复注册应报错");
+        assert!(
+            register_handlers(&mut registry).is_err(),
+            "duplicate registration should error"
+        );
     }
 
     fn registry_with_buff_handlers() -> HandlerRegistry {
@@ -722,7 +725,11 @@ mod tests {
             std::slice::from_ref(&def),
             &registry,
         );
-        assert_eq!(out.mods.len(), 1, "5 < 20 不发满层 FLAG");
+        assert_eq!(
+            out.mods.len(),
+            1,
+            "5 < 20 should not emit the full-stack FLAG"
+        );
         assert_eq!(out.mods[0].value.as_number(), Some(-5.0));
 
         // MinimumFortification > 0 with no Override → takes the min stacks
@@ -881,7 +888,10 @@ mod tests {
             &registry_with_buff_handlers(),
         );
         assert!(out.mods.is_empty());
-        assert!(out.unhandled.is_empty(), "stub 已注册，不入 unhandled");
+        assert!(
+            out.unhandled.is_empty(),
+            "stub is registered, should not land in unhandled"
+        );
         assert!(out.multipliers.is_empty());
     }
 
@@ -915,7 +925,10 @@ mod tests {
             &[onslaught_def()],
             &HandlerRegistry::new(),
         );
-        assert!(out.mods.is_empty(), "mode_combat=false 整段门控");
+        assert!(
+            out.mods.is_empty(),
+            "mode_combat=false gates the whole section"
+        );
 
         let empty_db = ModDb::new();
         let out = expand_misc_buffs(
@@ -923,7 +936,7 @@ mod tests {
             &[onslaught_def()],
             &HandlerRegistry::new(),
         );
-        assert!(out.mods.is_empty(), "trigger flag 未置位");
+        assert!(out.mods.is_empty(), "the trigger flag is not set");
     }
 
     /// Adrenaline's per-mod rounding (ScaledRounded): BuffEffectOnSelf 10%
@@ -1089,7 +1102,11 @@ mod tests {
         db.add_mod(Modifier::flag("HerEmbrace"));
         let cfg = CalcConfig::new();
         let out = expand_misc_buffs(&state(&db, &cfg, true), &[def], &HandlerRegistry::new());
-        assert_eq!(out.mods.len(), 1, "Sword flag 未映射的 mod 跳过");
+        assert_eq!(
+            out.mods.len(),
+            1,
+            "a mod with an unmapped Sword flag is skipped"
+        );
         assert_eq!(out.conditions_set, vec!["HerEmbrace".to_string()]);
         assert_eq!(out.diagnostics.len(), 1);
     }

@@ -24,10 +24,13 @@ fn ice_nova_has_additional_sets_with_labels() {
     // The primary set + ≥2 additional sets.
     assert!(
         ice.sets.len() >= 3,
-        "IceNova 应含主 set + ≥2 附加 set，实得 {}",
+        "IceNova should have a primary set + ≥2 additional sets, got {}",
         ice.sets.len()
     );
-    assert_eq!(ice.sets[0].set_id, "IceNovaPlayer", "sets[0] 恒为主 set");
+    assert_eq!(
+        ice.sets[0].set_id, "IceNovaPlayer",
+        "sets[0] is always the primary set"
+    );
     let set_ids: Vec<&str> = ice.sets.iter().map(|s| s.set_id.as_str()).collect();
     assert!(set_ids.contains(&"IceNovaPlayerOnFrostbolt"));
     assert!(set_ids.contains(&"IceNovaColdInfusedPlayer"));
@@ -46,7 +49,7 @@ fn ice_nova_has_additional_sets_with_labels() {
     assert_eq!(
         cold.vendor_set_index,
         Some(2),
-        "vendor 模板序号 = PoB2 statSetIndex 语义（OnFrostbolt 被策展跳过）"
+        "vendor template index = PoB2's statSetIndex semantics (OnFrostbolt is curated out)"
     );
     let frostbolt = ice
         .sets
@@ -55,20 +58,20 @@ fn ice_nova_has_additional_sets_with_labels() {
         .expect("OnFrostbolt set");
     assert!(
         frostbolt.vendor_set_index.is_none(),
-        "vendor 未导出的 set 不可被 statSetIndex 选中"
+        "a set not exported by vendor must not be selectable via statSetIndex"
     );
 
     // An additional set has already gone through vendor's base-merge:
     // constants = the primary set's constants ++ this set's constants.
     assert!(
         cold.constant_stats.len() >= ice.sets[0].constant_stats.len(),
-        "附加 set 常量应含主 set 拼接"
+        "an additional set's constants should include the primary set's concatenated in"
     );
     assert!(
         cold.constant_stats
             .iter()
             .any(|c| c.stat == "base_skill_effect_duration"),
-        "主 set 常量拼接进附加 set（skills.lua:502-504）"
+        "the primary set's constants are concatenated into the additional set (skills.lua:502-504)"
     );
 }
 
@@ -83,6 +86,6 @@ fn granted_effect_additional_stat_set_ids_align() {
     assert_eq!(
         ice.additional_stat_set_ids,
         ["IceNovaPlayerOnFrostbolt", "IceNovaColdInfusedPlayer"],
-        "AdditionalStatSets 外键解析为稳定 id（列序保留）"
+        "AdditionalStatSets foreign key resolves to stable ids (column order preserved)"
     );
 }

@@ -28,19 +28,22 @@ fn current_data_annotates_explicit_tiers() {
     let dir = repo_data_root().join(pobr_gamedata::data_version());
     let lines = classify(dir.to_str().unwrap());
     let explicits: Vec<&Value> = lines.iter().filter(|l| l["kind"] == "explicit").collect();
-    assert_eq!(explicits.len(), 2, "两条 explicit 行");
+    assert_eq!(explicits.len(), 2, "should be two explicit lines");
     let tiered: Vec<&&Value> = explicits
         .iter()
         .filter(|l| l.get("tier").is_some())
         .collect();
     assert!(
         !tiered.is_empty(),
-        "当前数据版本应至少给一条 explicit 行标出 tier：{explicits:?}"
+        "the current data version should have tagged at least one explicit line with a tier: {explicits:?}"
     );
     for l in &tiered {
         let tier = l["tier"].as_u64().unwrap();
         let total = l["tier_total"].as_u64().unwrap();
-        assert!(tier >= 1 && tier <= total, "tier {tier} 应落在 1..={total}");
+        assert!(
+            tier >= 1 && tier <= total,
+            "tier {tier} should fall within 1..={total}"
+        );
         let affix = l["affix"].as_str().unwrap();
         assert!(affix == "prefix" || affix == "suffix");
     }
@@ -57,12 +60,12 @@ fn current_data_annotates_explicit_tiers() {
 fn golden_data_without_pool_fields_omits_tiers() {
     let dir = repo_data_root().join("4.5.0.3.4");
     if !dir.is_dir() {
-        eprintln!("SKIP: 旧格式 fixture 数据包 4.5.0.3.4 不在仓库（已清理）");
+        eprintln!("SKIP: legacy-format fixture data pack 4.5.0.3.4 not in the repo (cleaned up)");
         return;
     }
     let lines = classify(dir.to_str().unwrap());
     assert!(
         lines.iter().all(|l| l.get("tier").is_none()),
-        "无池字段的数据包不应标 tier"
+        "a data pack without pool fields should not have tiers tagged"
     );
 }

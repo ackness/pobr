@@ -247,7 +247,7 @@ fn default_radii_data_matches_legacy_constants() {
         assert_eq!(
             r.units_with_radii(&radii),
             r.units(),
-            "{r:?} 注入 Default 数据与旧常量路径必须逐值相等"
+            "{r:?}: injecting Default data must equal the legacy constant path value-for-value"
         );
     }
     assert_eq!(
@@ -271,7 +271,10 @@ fn with_radii_default_matches_fallback_function() {
         let injected =
             compute_radius_jewel_effect_with_radii(10, r, &radii, &positions, vec![]).unwrap();
         let fallback = compute_radius_jewel_effect(10, r, &positions, vec![]).unwrap();
-        assert_eq!(injected, fallback, "{r:?} 注入/回退两条路径输出必须一致");
+        assert_eq!(
+            injected, fallback,
+            "{r:?}: the injection and fallback paths must produce identical output"
+        );
     }
 }
 
@@ -293,7 +296,7 @@ fn injected_radii_data_is_actually_consumed() {
     assert_eq!(
         effect.affected_nodes,
         vec![11, 12, 13],
-        "篡改后的 Small 档（1320）应捕获 dist 600/1000/1300"
+        "the tampered Small band (1320) should capture dist 600/1000/1300"
     );
 }
 
@@ -334,7 +337,7 @@ fn latest_tree_version_bands_are_used() {
     assert_eq!(
         effect.affected_nodes,
         vec![11, 12, 13],
-        "应消费最新树版本（0_2）的档位表"
+        "should use the band table from the latest tree version (0_2)"
     );
 }
 

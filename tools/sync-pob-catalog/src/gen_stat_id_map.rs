@@ -75,7 +75,7 @@ pub fn run_gen_stat_id_map(overlay_dir: &Path, out_for_meta: Option<String>) -> 
     let rules_doc: ModParserRulesDoc =
         serde_json::from_str(&rules_text).map_err(io::Error::other)?;
     let rules = CompiledParserRules::compile(&rules_doc)
-        .map_err(|e| io::Error::other(format!("编译 mod_parser_rules 失败：{e:?}")))?;
+        .map_err(|e| io::Error::other(format!("failed to compile mod_parser_rules: {e:?}")))?;
 
     let def = build_map(&descs.def, &rules);
     let meta = build_meta(&descs.meta, out_for_meta);

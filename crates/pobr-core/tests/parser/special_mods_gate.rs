@@ -52,11 +52,12 @@ fn load_entries() -> Vec<SpecialTemplateDef> {
     let mut entries: Vec<SpecialTemplateDef> = Vec::new();
     if let Ok(raw) = std::fs::read_to_string(overlay_common_special_mods_path()) {
         let doc: SpecialModsDef =
-            serde_json::from_str(&raw).expect("overlay-common/special_mods.json 可解析");
+            serde_json::from_str(&raw).expect("overlay-common/special_mods.json should parse");
         entries = doc.entries;
     }
-    let raw = std::fs::read_to_string(special_mods_path()).expect("special_mods.json 可读");
-    let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json 可解析");
+    let raw =
+        std::fs::read_to_string(special_mods_path()).expect("special_mods.json should be readable");
+    let doc: SpecialModsDef = serde_json::from_str(&raw).expect("special_mods.json should parse");
     for v in doc.entries {
         match entries.iter_mut().find(|e| e.id == v.id) {
             Some(slot) => *slot = v,
@@ -65,12 +66,12 @@ fn load_entries() -> Vec<SpecialTemplateDef> {
     }
     if let Ok(raw) = std::fs::read_to_string(special_derived_path()) {
         let derived: SpecialModsDef =
-            serde_json::from_str(&raw).expect("special_derived.json 可解析");
+            serde_json::from_str(&raw).expect("special_derived.json should parse");
         entries.extend(derived.entries);
     }
     if let Ok(raw) = std::fs::read_to_string(special_vendor_path()) {
         let vendor: SpecialModsDef =
-            serde_json::from_str(&raw).expect("special_vendor.json 可解析");
+            serde_json::from_str(&raw).expect("special_vendor.json should parse");
         entries.extend(vendor.entries);
     }
     entries
@@ -80,7 +81,8 @@ fn load_entries() -> Vec<SpecialTemplateDef> {
 /// Used by the `all_handler_ids_registered` gate to check every `handler_id` entry is registered.
 fn special_registry() -> HandlerRegistry {
     let mut registry = HandlerRegistry::new();
-    pobr_core::rules::register_special_handlers(&mut registry).expect("special handler 注册不冲突");
+    pobr_core::rules::register_special_handlers(&mut registry)
+        .expect("special handler registration should not conflict");
     registry
 }
 
@@ -89,8 +91,12 @@ fn special_mods_compile_clean() {
     let entries = load_entries();
     let registry = special_registry();
     let rules = SpecialModRules::compile(&entries, &registry)
-        .expect("仓库 special 条目全量编译成功（pattern/mod_type/enums/id 闸门）");
-    assert_eq!(rules.len(), entries.len(), "编译后条目数应等于输入条目数");
+        .expect("all repo special entries should compile cleanly (pattern/mod_type/enums/id gate)");
+    assert_eq!(
+        rules.len(),
+        entries.len(),
+        "compiled entry count should equal the input entry count"
+    );
 }
 
 #[test]
@@ -104,7 +110,7 @@ fn all_handler_ids_registered() {
         .collect();
     assert!(
         unmapped.is_empty(),
-        "未映射 handler_id（需在 register_special_handlers 注册）：{unmapped:?}"
+        "unmapped handler_id (needs registering in register_special_handlers): {unmapped:?}"
     );
 }
 
@@ -113,7 +119,7 @@ fn handler_registry_under_monitoring_line() {
     let registry = special_registry();
     assert!(
         registry.len() < 100,
-        "handler 条目数 {} 应 < 100（架构 §5 监控线）",
+        "handler entry count {} should be < 100 (architecture §5 monitoring line)",
         registry.len()
     );
 }
@@ -126,7 +132,7 @@ fn handler_ratio_under_ten_percent() {
     let ratio = handler_count as f64 / total as f64;
     assert!(
         ratio < 0.10,
-        "handler 占比 {ratio:.3}（{handler_count}/{total}）应 < 10%（逼近即判切分失败，回看 P4）"
+        "handler ratio {ratio:.3} ({handler_count}/{total}) should be < 10% (approaching it counts as a split failure)"
     );
 }
 
@@ -149,8 +155,11 @@ fn ids_and_patterns_unique() {
         .filter(|(_, c)| **c > 1)
         .map(|(k, _)| k)
         .collect::<Vec<_>>();
-    assert!(dup_ids.is_empty(), "重复 id：{dup_ids:?}");
-    assert!(dup_patterns.is_empty(), "重复 pattern：{dup_patterns:?}");
+    assert!(dup_ids.is_empty(), "duplicate id: {dup_ids:?}");
+    assert!(
+        dup_patterns.is_empty(),
+        "duplicate pattern: {dup_patterns:?}"
+    );
 }
 
 /// A report of the `verified:false` count (not an assertion — acceptance is judged by the

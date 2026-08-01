@@ -65,7 +65,10 @@ mod tests {
     fn real_require_and_expression() {
         let e = expr(&["Attack", "Totemable", "AND"]);
         assert!(matches(&e, &active(&["Attack", "Totemable", "Melee"])));
-        assert!(!matches(&e, &active(&["Attack"])), "AND 需两者同真");
+        assert!(
+            !matches(&e, &active(&["Attack"])),
+            "AND requires both to be true"
+        );
         assert!(!matches(&e, &active(&["Totemable"])));
     }
 

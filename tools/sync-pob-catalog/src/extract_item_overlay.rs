@@ -157,12 +157,16 @@ fn parse_unique_block(item_type: String, raw: String) -> io::Result<UniqueDef> {
     let mut lines = raw.lines().filter(|l| !l.trim().is_empty());
     let name = lines
         .next()
-        .ok_or_else(|| io::Error::other(format!("空 unique 文本块（{item_type}）")))?
+        .ok_or_else(|| io::Error::other(format!("empty unique text block ({item_type})")))?
         .trim()
         .to_string();
     let base = lines
         .next()
-        .ok_or_else(|| io::Error::other(format!("unique `{name}` 缺基底行（{item_type}）")))?
+        .ok_or_else(|| {
+            io::Error::other(format!(
+                "unique `{name}` is missing a base line ({item_type})"
+            ))
+        })?
         .trim()
         .to_string();
     let mut variants = Vec::new();
@@ -225,7 +229,7 @@ fn expect_files(args: &ExtractLuaArgs, expected: &[&str], what: &str) -> io::Res
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             format!(
-                "--what {what} 的抽取文件固定为 {expected:?}，不接受 --files 自定义（收到 {:?}）",
+                "--what {what} extraction file is fixed to {expected:?} and does not accept a custom --files (got {:?})",
                 args.files
             ),
         ));

@@ -9,12 +9,12 @@ use pobr_gamedata::{GameData, current_data_dir, data_version};
 #[test]
 fn data_version_resolves_and_dir_matches() {
     let v = data_version();
-    assert!(!v.trim().is_empty(), "data_version 不应为空");
+    assert!(!v.trim().is_empty(), "data_version should not be empty");
     // The repo's data/CURRENT matches the compile-time DATA_VERSION (unchanged behavior).
     assert_eq!(v, pobr_gamedata::DATA_VERSION);
     assert!(
         current_data_dir().ends_with(&v),
-        "current_data_dir 应以发现的版本结尾：{:?}",
+        "current_data_dir should end with the discovered version: {:?}",
         current_data_dir()
     );
 }
@@ -40,7 +40,7 @@ fn user_patch_layer_merges_over_base() {
     // No patch: pure official.
     let plain = GameData::new(&tmp)
         .cost_types()
-        .expect("cost_types 无 patch");
+        .expect("cost_types without patch");
     assert_eq!(plain.len(), 2);
     assert_eq!(plain.iter().find(|c| c.id == "Mana").unwrap().divisor, 1);
 
@@ -53,21 +53,25 @@ fn user_patch_layer_merges_over_base() {
 
     let patched = GameData::new(&tmp)
         .cost_types()
-        .expect("cost_types 含 patch");
-    assert_eq!(patched.len(), 3, "应为 Mana/Life/Custom 三条");
+        .expect("cost_types with patch");
+    assert_eq!(
+        patched.len(),
+        3,
+        "should be three entries: Mana/Life/Custom"
+    );
     assert_eq!(
         patched.iter().find(|c| c.id == "Mana").unwrap().divisor,
         99,
-        "patch 应覆盖 Mana divisor"
+        "patch should override Mana's divisor"
     );
     assert_eq!(
         patched.iter().find(|c| c.id == "Life").unwrap().divisor,
         1,
-        "未 patch 的 Life 保持"
+        "unpatched Life should be unchanged"
     );
     assert!(
         patched.iter().any(|c| c.id == "Custom" && c.divisor == 7),
-        "patch 应追加自定义 Custom"
+        "patch should append the custom Custom entry"
     );
 
     std::fs::remove_dir_all(&tmp).ok();

@@ -25,7 +25,7 @@ fn catalog_entries_have_pob_keys_and_known_status() {
                 def.parity_status,
                 ParityStatus::Computed | ParityStatus::Planned
             ),
-            "{} 状态异常",
+            "{} has an unexpected status",
             def.id.as_str()
         );
         assert!(def.pob_key.is_some(), "{} missing pob_key", def.id.as_str());
@@ -43,12 +43,12 @@ fn catalog_entry_counts_locked() {
         .count();
     assert_eq!(
         planned, 0,
-        "Planned 条目数应为 0（M2 防御扩展批已全部接线）"
+        "Planned entry count should be 0 (the M2 defense-extension batch is fully wired up)"
     );
     assert_eq!(
         catalog.len() - planned,
         105,
-        "Computed 条目数变化须显式审查"
+        "a change in Computed entry count needs explicit review"
     );
 }
 
@@ -115,7 +115,7 @@ fn m2_defence_extension_entries_included_in_extract() {
     for id in ["Spirit", "EffectiveBlockChance", "NumberOfDamagingHits"] {
         assert!(
             values.iter().any(|v| v.id == DisplayStatId::from(id)),
-            "Computed 条目 {id} 应出现在 extract 输出"
+            "Computed entry {id} should appear in extract output"
         );
     }
 }

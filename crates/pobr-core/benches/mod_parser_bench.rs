@@ -23,8 +23,8 @@ fn load_doc() -> ModParserRulesDoc {
         .join("data")
         .join(pobr_data::data_version())
         .join("overlay/mod_parser_rules.json");
-    let json = std::fs::read_to_string(&path).expect("读取 mod_parser_rules.json");
-    serde_json::from_str(&json).expect("反序列化规则表")
+    let json = std::fs::read_to_string(&path).expect("read mod_parser_rules.json");
+    serde_json::from_str(&json).expect("deserialize the rule table")
 }
 
 /// Fixed mixed corpus (sampled from the item text blocks of the 18-build set, deduplicated,
@@ -75,9 +75,9 @@ fn corpus() -> Vec<String> {
 
 fn bench_parse(c: &mut Criterion) {
     let doc = load_doc();
-    let rules = CompiledParserRules::compile(&doc).expect("编译规则表");
+    let rules = CompiledParserRules::compile(&doc).expect("compile the rule table");
     let lines = corpus();
-    assert!(!lines.is_empty(), "bench 语料不应为空");
+    assert!(!lines.is_empty(), "bench corpus should not be empty");
 
     let mut group = c.benchmark_group("mod_parser");
     group.bench_function("parse_corpus_engine", |b| {

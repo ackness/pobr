@@ -89,7 +89,7 @@ mod tests {
         let def = GameData::new(&dir)
             .skill_stat_map()
             .unwrap()
-            .expect("overlay 存在应加载");
+            .expect("overlay exists, should load");
         let entry = &def.global["total_cast_time_+_ms"];
         assert_eq!(entry.div, Some(1000.0));
         assert_eq!(entry.mods[0].name.as_deref(), Some("TotalCastTime"));
@@ -120,7 +120,7 @@ mod tests {
         let def = GameData::new(&root)
             .skill_stat_map()
             .unwrap()
-            .expect("repo overlay 存在");
+            .expect("repo overlay exists");
         assert!(def.global.len() >= 950, "global={}", def.global.len());
         assert!(
             def.per_stat_set.len() >= 300,

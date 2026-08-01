@@ -319,7 +319,7 @@ mod tests {
             .load_ruleset()
             .expect("load ruleset")
             .config_catalog
-            .expect("config_catalog 域应已接通")
+            .expect("the config_catalog domain should be wired up")
     }
 
     fn build_with_inputs(inputs: RawConfigInputs) -> Build {
@@ -427,7 +427,10 @@ mod tests {
         );
 
         let omitted = resolve_config(&Build::new(), Some(&catalog));
-        assert_eq!(omitted.config.enemy_tier, None, "省略时维持既有回退链");
+        assert_eq!(
+            omitted.config.enemy_tier, None,
+            "when omitted, keeps the existing fallback chain"
+        );
         assert_eq!(omitted.config.campaign_progress, None);
     }
 
@@ -442,7 +445,7 @@ mod tests {
         let resolved = resolve_config(&build, Some(&catalog));
         assert!(
             resolved.player_mods.iter().all(|m| !is_quest_mod(m)),
-            "quest 归因 mod 不应进注入列表"
+            "quest-attributed mods should not enter the injection list"
         );
     }
 
@@ -464,17 +467,17 @@ mod tests {
         assert_eq!(
             resolved.config.conditions.get("Stationary"),
             Some(&true),
-            "count>0 → 条件置真"
+            "count>0 → the condition is set true"
         );
         assert_eq!(
             resolved.config.multipliers.get("StationarySeconds"),
             Some(&5.0),
-            "count 数值化为 Multiplier"
+            "count is converted to a Multiplier"
         );
         assert_eq!(
             resolved.config.conditions.get("SkillCritRecently"),
             Some(&true),
-            "implyCond 展开"
+            "implyCond is expanded"
         );
         assert_eq!(
             resolved.config.conditions.get("CritInPast8Sec"),
@@ -497,7 +500,7 @@ mod tests {
         assert_eq!(
             resolved.config.conditions.get("CritRecently"),
             Some(&true),
-            "Combat 门控主条件经桥落 cfg（不依赖 legacy 字段）"
+            "the Combat-gated main condition lands in cfg via the bridge (independent of the legacy field)"
         );
 
         // count=0 → skipped entirely per vendor's BuildModList semantics (produces neither a condition nor a multiplier).
@@ -557,7 +560,7 @@ mod tests {
             .enemy_mods
             .iter()
             .find(|m| m.name.as_str() == "FireResist")
-            .expect("FireResist BASE 应进 enemy 注入列表");
+            .expect("FireResist BASE should enter the enemy injection list");
         assert_eq!(fire.mod_type, ModType::Base);
         assert_eq!(fire.value.as_number(), Some(75.0));
         assert_eq!(
@@ -570,9 +573,12 @@ mod tests {
             .enemy_mods
             .iter()
             .find(|m| m.name.as_str() == "SelfCritChance")
-            .expect("SelfCritChance 应进 enemy 注入列表");
-        assert_eq!(crit.value.as_number(), Some(5.0), "10 层 × 0.5%");
-        assert!(!crit.tags.is_empty(), "保留 ApplyCriticalWeakness 门控 tag");
+            .expect("SelfCritChance should enter the enemy injection list");
+        assert_eq!(crit.value.as_number(), Some(5.0), "10 stacks × 0.5%");
+        assert!(
+            !crit.tags.is_empty(),
+            "keeps the ApplyCriticalWeakness gating tag"
+        );
     }
 
     /// Enemy-side unprefixed condition bridge: `conditionEnemyCriticalWeakness` →
@@ -597,25 +603,25 @@ mod tests {
         assert_eq!(
             resolved.config.conditions.get("EnemyApplyCriticalWeakness"),
             Some(&true),
-            "既有 Enemy 前缀桥保持"
+            "the existing Enemy-prefixed bridge still holds"
         );
         assert_eq!(
             resolved.config.conditions.get("ApplyCriticalWeakness"),
             Some(&true),
-            "被 SelfCritChance tag 引用 → 未前缀条件落位"
+            "referenced by a SelfCritChance tag → the unprefixed condition is set"
         );
         assert_eq!(resolved.config.conditions.get("EnemyChilled"), Some(&true));
         assert_eq!(
             resolved.config.conditions.get("Chilled"),
             None,
-            "未被敌侧数值 mod 引用 → 不落未前缀名（防玩家侧 Chilled 污染）"
+            "not referenced by an enemy-side numeric mod → the unprefixed name isn't set (protects the player-side Chilled namespace)"
         );
         // What the unprefixed bridge feeds downstream: SelfCritChance BASE 10 (placeholder 20 stacks × 0.5).
         let crit = resolved
             .enemy_mods
             .iter()
             .find(|m| m.name.as_str() == "SelfCritChance")
-            .expect("placeholder 默认 20 层 → SelfCritChance 应在 enemy 注入列表");
+            .expect("placeholder default of 20 stacks → SelfCritChance should be in the enemy injection list");
         assert_eq!(crit.value.as_number(), Some(10.0));
     }
 
@@ -638,7 +644,7 @@ mod tests {
         assert_eq!(
             resolved.config.multipliers.get("NearbyEnemies"),
             Some(&4.0),
-            "3（普通）+ 1（rare 聚合，vendor :1108）"
+            "3 (normal) + 1 (rare aggregate, vendor :1108)"
         );
         assert_eq!(
             resolved.config.multipliers.get("NearbyRareOrUniqueEnemies"),
@@ -656,7 +662,7 @@ mod tests {
             .enemy_mods
             .iter()
             .find(|m| m.name.as_str() == "Condition:NearbyRareOrUniqueEnemy")
-            .expect("enemy 桶 FLAG 应注入");
+            .expect("the enemy bucket FLAG should be injected");
         assert_eq!(
             enemy_flag.origin.as_ref().unwrap().source_id.kind,
             SourceKind::EnemyConfig

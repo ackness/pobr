@@ -14,8 +14,8 @@ fn version() -> String {
 fn load() -> BuffDefinitionsDef {
     GameData::new(repo_data_root().join(version()))
         .buff_definitions()
-        .expect("buff_definitions 可加载")
-        .expect("仓库数据包含 overlay/buff_definitions.json")
+        .expect("buff_definitions should load")
+        .expect("repo data pack should contain overlay/buff_definitions.json")
 }
 
 /// A missing file (an old data pack) = `Ok(None)`, no error (backward compatible).
@@ -25,10 +25,10 @@ fn missing_overlay_file_is_none() {
         "pobr-gamedata-buff-defs-missing-{}",
         std::process::id()
     ));
-    std::fs::create_dir_all(&dir).expect("建临时版本目录");
+    std::fs::create_dir_all(&dir).expect("create temp version directory");
     let loaded = GameData::new(&dir)
         .buff_definitions()
-        .expect("缺文件不应报错");
+        .expect("a missing file should not error");
     assert!(loaded.is_none());
 }
 
@@ -36,7 +36,7 @@ fn find<'a>(doc: &'a BuffDefinitionsDef, id: &str) -> &'a BuffDef {
     doc.buffs
         .iter()
         .find(|b| b.id == id)
-        .unwrap_or_else(|| panic!("缺 buff {id}"))
+        .unwrap_or_else(|| panic!("missing buff {id}"))
 }
 
 /// Sort order + first-batch coverage.
@@ -44,7 +44,7 @@ fn find<'a>(doc: &'a BuffDefinitionsDef, id: &str) -> &'a BuffDef {
 fn sorted_and_first_batch_coverage() {
     let doc = load();
     for pair in doc.buffs.windows(2) {
-        assert!(pair[0].id <= pair[1].id, "未按 id 排序：{}", pair[1].id);
+        assert!(pair[0].id <= pair[1].id, "not sorted by id: {}", pair[1].id);
     }
     for id in [
         "Onslaught",
@@ -71,7 +71,10 @@ fn handler_budget() {
         .iter()
         .filter_map(|b| b.handler_id.as_deref())
         .collect();
-    assert!(handlers.len() <= 8, "buff handler 超预算：{handlers:?}");
+    assert!(
+        handlers.len() <= 8,
+        "buff handler exceeds budget: {handlers:?}"
+    );
     assert!(handlers.contains(&"buff:fortify"));
     assert!(handlers.contains(&"buff:onslaught_flask"));
 }
@@ -82,7 +85,7 @@ fn onslaught_formula() {
     let doc = load();
     let def = find(&doc, "Onslaught");
     assert_eq!(def.trigger_flag, "Onslaught");
-    let effect = def.effect.as_ref().expect("有公式");
+    let effect = def.effect.as_ref().expect("has a formula");
     assert_eq!(effect.base, 10.0);
     assert_eq!(
         effect.inc_stats,
@@ -109,7 +112,7 @@ fn adrenaline_per_mod_rounding() {
             BuffModValue::ScaledRounded { rounding, .. } => {
                 assert_eq!(*rounding, Rounding::Floor);
             }
-            other => panic!("Adrenaline mod 应为 scaled_rounded，实际 {other:?}"),
+            other => panic!("Adrenaline mod should be scaled_rounded, got {other:?}"),
         }
     }
     assert_eq!(
@@ -160,7 +163,7 @@ fn vendor_refs_well_formed() {
                 .any(|(file, lo, hi)| buff.vendor_ref.file == *file
                     && buff.vendor_ref.line_start >= *lo
                     && buff.vendor_ref.line_end <= *hi),
-            "{} 行段 {}:{}–{} 超出允许范围",
+            "{} line range {}:{}–{} is out of the allowed range",
             buff.id,
             buff.vendor_ref.file,
             buff.vendor_ref.line_start,
@@ -169,7 +172,7 @@ fn vendor_refs_well_formed() {
         assert!(
             buff.vendor_ref.segment_hash.starts_with("fnv1a64:")
                 && buff.vendor_ref.segment_hash.len() == 8 + 16,
-            "{} 行段 hash 格式非法：{}",
+            "{} line-segment hash has an invalid format: {}",
             buff.id,
             buff.vendor_ref.segment_hash
         );
@@ -185,11 +188,15 @@ fn handler_entries_have_no_templates() {
         if buff.handler_id.is_some() {
             assert!(
                 buff.mods.is_empty() && buff.effect.is_none(),
-                "{} 同时携带 handler 与模板",
+                "{} carries both a handler and a template",
                 buff.id
             );
         } else {
-            assert!(!buff.mods.is_empty(), "{} 模板条目无 mods", buff.id);
+            assert!(
+                !buff.mods.is_empty(),
+                "{} template entry has no mods",
+                buff.id
+            );
         }
     }
 }

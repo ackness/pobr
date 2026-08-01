@@ -155,7 +155,8 @@ pub fn assemble_overrides_document(meta: OverlayMeta, mut entries: Vec<SkillOver
         meta,
         overrides: entries,
     };
-    let mut json = serde_json::to_string_pretty(&doc).expect("skill overrides 文档序列化不应失败");
+    let mut json = serde_json::to_string_pretty(&doc)
+        .expect("skill overrides document serialization should not fail");
     json.push('\n');
     json
 }
@@ -177,7 +178,7 @@ pub fn invoke_luajit_jsonl<T: serde::de::DeserializeOwned>(
     if args.files.is_empty() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            "extract-lua: --files 不能为空",
+            "extract-lua: --files must not be empty",
         ));
     }
     let mut child = Command::new(&args.luajit)
@@ -192,7 +193,7 @@ pub fn invoke_luajit_jsonl<T: serde::de::DeserializeOwned>(
             io::Error::new(
                 io::ErrorKind::NotFound,
                 format!(
-                    "无法启动 luajit（{}）：{error}；请安装 luajit 或用 --luajit / POBR_LUAJIT 指定路径",
+                    "failed to launch luajit ({}): {error}; install luajit or specify the path via --luajit / POBR_LUAJIT",
                     args.luajit.display()
                 ),
             )
@@ -201,14 +202,14 @@ pub fn invoke_luajit_jsonl<T: serde::de::DeserializeOwned>(
     child
         .stdin
         .take()
-        .expect("stdin 已配置为 piped")
+        .expect("stdin was configured as piped")
         .write_all(bootstrap.as_bytes())?;
 
     let output = child.wait_with_output()?;
     let stderr_text = String::from_utf8_lossy(&output.stderr);
     if !output.status.success() {
         return Err(io::Error::other(format!(
-            "luajit 引导脚本执行失败（exit: {:?}）：{}",
+            "luajit bootstrap script failed (exit: {:?}): {}",
             output.status.code(),
             stderr_text.trim()
         )));
@@ -227,7 +228,7 @@ pub fn invoke_luajit_jsonl<T: serde::de::DeserializeOwned>(
         }
         let entry: T = serde_json::from_str(line).map_err(|error| {
             io::Error::other(format!(
-                "引导脚本输出了非法 JSONL 行：{error}；行内容：{line}"
+                "bootstrap script emitted an invalid JSONL line: {error}; line content: {line}"
             ))
         })?;
         entries.push(entry);
@@ -332,7 +333,7 @@ pub fn read_vendor_version(version_path: &Path) -> io::Result<(String, String)> 
         io::Error::new(
             io::ErrorKind::NotFound,
             format!(
-                "无法读取 vendor 版本文件 {}：{error}；可用 --version-file 显式指定",
+                "failed to read vendor version file {}: {error}; specify explicitly via --version-file",
                 version_path.display()
             ),
         )
@@ -346,7 +347,7 @@ pub fn read_vendor_version(version_path: &Path) -> io::Result<(String, String)> 
         .to_string();
     if commit.is_empty() {
         return Err(io::Error::other(format!(
-            "vendor 版本文件 {} 中未找到 40 位 commit hash",
+            "no 40-character commit hash found in vendor version file {}",
             version_path.display()
         )));
     }

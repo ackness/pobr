@@ -93,7 +93,8 @@ pub fn assemble_quality_document(meta: OverlayMeta, rows: Vec<QualityRow>) -> St
         .map(|(effect_id, stats)| GemQualityStatDef { effect_id, stats })
         .collect();
     let doc = GemQualityDoc { meta, effects };
-    let mut json = serde_json::to_string_pretty(&doc).expect("gem quality 文档序列化不应失败");
+    let mut json = serde_json::to_string_pretty(&doc)
+        .expect("gem quality document serialization should not fail");
     json.push('\n');
     json
 }
@@ -103,7 +104,7 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<QualityRow>> {
     if args.files.is_empty() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            "extract-lua --what gem-quality: --files 不能为空",
+            "extract-lua --what gem-quality: --files must not be empty",
         ));
     }
     let mut child = Command::new(&args.luajit)
@@ -118,7 +119,7 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<QualityRow>> {
             io::Error::new(
                 io::ErrorKind::NotFound,
                 format!(
-                    "无法启动 luajit（{}）：{error}；请安装 luajit 或用 --luajit / POBR_LUAJIT 指定路径",
+                    "failed to launch luajit ({}): {error}; install luajit or specify the path via --luajit / POBR_LUAJIT",
                     args.luajit.display()
                 ),
             )
@@ -127,14 +128,14 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<QualityRow>> {
     child
         .stdin
         .take()
-        .expect("stdin 已配置为 piped")
+        .expect("stdin was configured as piped")
         .write_all(BOOTSTRAP_LUA.as_bytes())?;
 
     let output = child.wait_with_output()?;
     let stderr_text = String::from_utf8_lossy(&output.stderr);
     if !output.status.success() {
         return Err(io::Error::other(format!(
-            "luajit 引导脚本执行失败（exit: {:?}）：{}",
+            "luajit bootstrap script failed (exit: {:?}): {}",
             output.status.code(),
             stderr_text.trim()
         )));
@@ -153,7 +154,7 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<QualityRow>> {
         }
         let row: QualityRow = serde_json::from_str(line).map_err(|error| {
             io::Error::other(format!(
-                "引导脚本输出了非法 JSONL 行：{error}；行内容：{line}"
+                "bootstrap script emitted an invalid JSONL line: {error}; line content: {line}"
             ))
         })?;
         rows.push(row);
@@ -203,7 +204,7 @@ fn read_vendor_version(version_path: &Path) -> io::Result<(String, String)> {
         io::Error::new(
             io::ErrorKind::NotFound,
             format!(
-                "无法读取 vendor 版本文件 {}：{error}；可用 --version-file 显式指定",
+                "failed to read vendor version file {}: {error}; specify explicitly via --version-file",
                 version_path.display()
             ),
         )
@@ -217,7 +218,7 @@ fn read_vendor_version(version_path: &Path) -> io::Result<(String, String)> {
         .to_string();
     if commit.is_empty() {
         return Err(io::Error::other(format!(
-            "vendor 版本文件 {} 中未找到 40 位 commit hash",
+            "no 40-character commit hash found in vendor version file {}",
             version_path.display()
         )));
     }

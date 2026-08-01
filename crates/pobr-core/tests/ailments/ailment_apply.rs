@@ -62,7 +62,7 @@ fn shock_val_20_raises_effective_dps_by_20_percent() {
     let base_dps = base_env.player.output.dps;
     assert!(
         (base_dps - 150.0).abs() < 1e-9,
-        "基线 150 平均 × 1/s × 100% 命中，got {base_dps}"
+        "baseline 150 average x 1/s x 100% hit chance, got {base_dps}"
     );
 
     // Shocked: the config shape = enemy `Condition:Shocked` flag + enemy `ShockVal` BASE 20.
@@ -90,7 +90,7 @@ fn shock_val_20_raises_effective_dps_by_20_percent() {
     perform(&mut panel).expect("panel perform");
     assert!(
         (panel.player.output.dps - base_dps).abs() < 1e-9,
-        "面板口径不吃敌人 DamageTaken：expect {base_dps}, got {}",
+        "panel scope is not affected by enemy DamageTaken: expect {base_dps}, got {}",
         panel.player.output.dps
     );
 }
@@ -110,16 +110,19 @@ fn override_and_val_take_max() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_inc(&env, "DamageTaken") - 30.0).abs() < 1e-9,
-        "override 30 胜出"
+        "override 30 wins"
     );
     // An Override source -> sets Condition:Shocked (vendor :3136-3138) + bridges into cfg.
     assert!(
         env.enemy
             .mod_db
             .flag(&env.cfg, ModName::from("Condition:Shocked")),
-        "Override 来源置 enemy Condition:Shocked"
+        "an Override source sets enemy Condition:Shocked"
     );
-    assert!(env.cfg.condition("Shocked"), "条件桥接回填 cfg");
+    assert!(
+        env.cfg.condition("Shocked"),
+        "condition bridges back into cfg"
+    );
 
     // Val(40) > override(30) -> 40.
     let mut env = effective_env();
@@ -133,7 +136,7 @@ fn override_and_val_take_max() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_inc(&env, "DamageTaken") - 40.0).abs() < 1e-9,
-        "Val 40 胜出"
+        "Val 40 wins"
     );
 }
 
@@ -150,7 +153,7 @@ fn maximum_clamp_and_precision_floor() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_inc(&env, "DamageTaken") - 100.0).abs() < 1e-9,
-        "Shock clamp 到数据 max=100"
+        "Shock clamps to the data max=100"
     );
 
     // Chill cap = 50 (cfg.constants.game().chill_max_effect): 80 -> 50.
@@ -162,7 +165,7 @@ fn maximum_clamp_and_precision_floor() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_inc(&env, "ActionSpeed") - (-50.0)).abs() < 1e-9,
-        "Chill clamp 到数据 max=50，ActionSpeed INC -50"
+        "Chill clamps to the data max=50, ActionSpeed INC -50"
     );
 
     // Precision truncation: prec=0 -> floor (33.7 -> 33).
@@ -174,7 +177,7 @@ fn maximum_clamp_and_precision_floor() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_inc(&env, "DamageTaken") - 33.0).abs() < 1e-9,
-        "prec=0 整数 floor：33.7 → 33"
+        "prec=0 integer floor: 33.7 -> 33"
     );
 
     // A `<X>Max` BASE mod raises the cap: max = 100 + 20 -> ShockVal 110 -> 110.
@@ -189,7 +192,7 @@ fn maximum_clamp_and_precision_floor() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_inc(&env, "DamageTaken") - 110.0).abs() < 1e-9,
-        "ShockMax BASE +20 抬高上限到 120"
+        "ShockMax BASE +20 raises the cap to 120"
     );
 
     // A `<X>Max` Override directly overrides the cap: override 60 -> ShockVal 110 -> 60.
@@ -204,7 +207,7 @@ fn maximum_clamp_and_precision_floor() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_inc(&env, "DamageTaken") - 60.0).abs() < 1e-9,
-        "ShockMax Override=60 优先于数据 max"
+        "ShockMax Override=60 takes priority over the data max"
     );
 }
 
@@ -225,18 +228,18 @@ fn second_application_is_noop_after_already_flag() {
         env.enemy
             .mod_db
             .flag(&env.cfg, ModName::from("Condition:AlreadyShocked")),
-        "首次施加置 Condition:AlreadyShocked"
+        "the first application sets Condition:AlreadyShocked"
     );
 
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_inc(&env, "DamageTaken") - taken_after_first).abs() < 1e-12,
-        "二次施加不叠加 DamageTaken"
+        "a second application doesn't stack DamageTaken"
     );
     assert_eq!(
         env.enemy.mod_db.iter_mods().count(),
         mods_after_first,
-        "二次施加不写入任何新 mod"
+        "a second application writes no new mod"
     );
 }
 
@@ -253,7 +256,10 @@ fn empty_spin_leaves_env_unchanged() {
 
     assert_eq!(env.player.mod_db.iter_mods().count(), player_mods);
     assert_eq!(env.enemy.mod_db.iter_mods().count(), enemy_mods);
-    assert_eq!(env.cfg.conditions, conditions, "cfg.conditions 不被触碰");
+    assert_eq!(
+        env.cfg.conditions, conditions,
+        "cfg.conditions is left untouched"
+    );
 }
 
 // 6. Magnitude scaling: Base/Minimum multiply by Enemy<X>Magnitude/AilmentMagnitude, Override doesn't
@@ -272,7 +278,7 @@ fn magnitude_scales_base_and_minimum_but_not_override() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_inc(&env, "DamageTaken") - 30.0).abs() < 1e-9,
-        "ShockBase 吃 EnemyShockMagnitude INC：20×1.5=30"
+        "ShockBase is affected by EnemyShockMagnitude INC: 20x1.5=30"
     );
 
     // ShockOverride 20 doesn't multiply by magnitude -> 20.
@@ -287,7 +293,7 @@ fn magnitude_scales_base_and_minimum_but_not_override() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_inc(&env, "DamageTaken") - 20.0).abs() < 1e-9,
-        "Override 来源不乘 magnitude"
+        "an Override source is not multiplied by magnitude"
     );
 
     // The enemy side's SelfShockMagnitude also participates (:3146): 20 x 1.5(skill) x 1.1(enemy) = 33.
@@ -305,7 +311,7 @@ fn magnitude_scales_base_and_minimum_but_not_override() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_inc(&env, "DamageTaken") - 33.0).abs() < 1e-9,
-        "skill×enemy 双侧 magnitude：20×1.5×1.1=33"
+        "skill x enemy both-side magnitude: 20x1.5x1.1=33"
     );
 
     // Minimum accumulates (:3148-3150): ShockMinimum 10+15 -> 25, higher than either single value -> 25.
@@ -320,7 +326,7 @@ fn magnitude_scales_base_and_minimum_but_not_override() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_inc(&env, "DamageTaken") - 25.0).abs() < 1e-9,
-        "Minimum 累加 25 作为下界"
+        "Minimum accumulates to 25 as the floor"
     );
 }
 
@@ -341,7 +347,7 @@ fn chill_writes_negative_action_speed_and_bonechill() {
     );
     assert!(
         enemy_inc(&env, "ColdDamageTaken").abs() < 1e-12,
-        "无 HasBonechill 不写 ColdDamageTaken"
+        "without HasBonechill, ColdDamageTaken is not written"
     );
 
     // HasBonechill + enemy ChillVal > 0 -> ColdDamageTaken INC num (:3092-3094).
@@ -373,7 +379,7 @@ fn effect_multiplier_updates_incrementally() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_base(&env, "Multiplier:ShockEffect") - 20.0).abs() < 1e-9,
-        "Multiplier:ShockEffect 补到 20"
+        "Multiplier:ShockEffect tops up to 20"
     );
 
     // Existing 5 -> +15 increment, total 20.
@@ -390,7 +396,7 @@ fn effect_multiplier_updates_incrementally() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_base(&env, "Multiplier:ShockEffect") - 20.0).abs() < 1e-9,
-        "既有 5 + 增量 15 = 20"
+        "existing 5 + increment 15 = 20"
     );
 
     // Existing 30 >= Current 20 -> no update (stays at 30).
@@ -407,6 +413,6 @@ fn effect_multiplier_updates_incrementally() {
     apply_nondamaging_ailments(&mut env);
     assert!(
         (enemy_base(&env, "Multiplier:ShockEffect") - 30.0).abs() < 1e-9,
-        "既有 30 ≥ 20 不更新"
+        "existing 30 >= 20, no update"
     );
 }

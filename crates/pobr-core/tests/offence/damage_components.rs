@@ -343,8 +343,8 @@ fn min_max_type_more_scales_only_one_end() {
 
     let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
     let phys = component(&output, DamageType::Physical);
-    assert_eq!(phys.min, 65.0, "min 只被 MinPhysicalDamage 缩放");
-    assert_eq!(phys.max, 270.0, "max 只被 MaxPhysicalDamage 缩放");
+    assert_eq!(phys.min, 65.0, "min is only scaled by MinPhysicalDamage");
+    assert_eq!(phys.max, 270.0, "max is only scaled by MaxPhysicalDamage");
     assert_eq!(phys.avg(), 167.5);
 }
 

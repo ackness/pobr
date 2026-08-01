@@ -22,16 +22,15 @@ pub(crate) static SKILL_TYPE_IDS: LazyLock<Vec<(&'static str, u32)>> = LazyLock:
         .map(|l| {
             let (name, id) = l
                 .split_once(' ')
-                .unwrap_or_else(|| panic!("skill_type_names.txt 行格式错误：{l}"));
-            let id: u32 = id
-                .trim()
-                .parse()
-                .unwrap_or_else(|e| panic!("skill_type_names.txt id 解析失败（{l}）：{e}"));
+                .unwrap_or_else(|| panic!("malformed line in skill_type_names.txt: {l}"));
+            let id: u32 = id.trim().parse().unwrap_or_else(|e| {
+                panic!("failed to parse id in skill_type_names.txt ({l}): {e}")
+            });
             (name, id)
         })
         .collect();
     entries.sort_unstable();
-    assert!(!entries.is_empty(), "skill_type_names.txt 为空");
+    assert!(!entries.is_empty(), "skill_type_names.txt is empty");
     entries
 });
 

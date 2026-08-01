@@ -1057,7 +1057,10 @@ pub(crate) fn enemy_resist_final(
     type_cfg: &CalcConfig,
     damage_type: DamageType,
 ) -> f64 {
-    debug_assert!(damage_type != DamageType::Physical, "物理无抗性路径");
+    debug_assert!(
+        damage_type != DamageType::Physical,
+        "physical has no resistance path"
+    );
     let type_prefix = match damage_type {
         DamageType::Physical => "Physical",
         DamageType::Fire => "Fire",

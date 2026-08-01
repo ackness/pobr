@@ -244,10 +244,12 @@ mod tests {
     fn repo_data_ruleset_loads_special_mods() {
         let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
-        let entries = ruleset.special_mods.expect("special_mods 域应已接通");
+        let entries = ruleset
+            .special_mods
+            .expect("special_mods domain should be wired up");
         assert!(
             entries.len() >= 60,
-            "special 条目数 {} 应 ≥ overlay 首批基数",
+            "special entry count {} should be ≥ the overlay's first-batch baseline",
             entries.len()
         );
     }
@@ -260,9 +262,13 @@ mod tests {
         let ruleset = data.load_ruleset().unwrap();
         let loaded = ruleset
             .high_precision_mods
-            .expect("high_precision_mods 域应已接通");
+            .expect("high_precision_mods domain should be wired up");
         assert_eq!(loaded.default_high_precision, 1);
-        assert_eq!(loaded.mods.len(), 38, "vendor highPrecisionMods 38 条");
+        assert_eq!(
+            loaded.mods.len(),
+            38,
+            "vendor highPrecisionMods has 38 entries"
+        );
     }
 
     /// The repo data directory: the game_constants domain is wired up
@@ -272,11 +278,13 @@ mod tests {
     fn repo_data_ruleset_loads_game_constants_equal_to_default() {
         let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
-        let loaded = ruleset.game_constants.expect("game_constants 域应已接通");
+        let loaded = ruleset
+            .game_constants
+            .expect("game_constants domain should be wired up");
         assert_eq!(
             loaded,
             pobr_data::catalog::game_constants::GameConstantsDef::default(),
-            "JSON 与 Default fallback 必须逐值相等（搬迁不变式）",
+            "JSON must equal the Default fallback value-for-value (migration invariant)",
         );
     }
 
@@ -289,11 +297,11 @@ mod tests {
         let ruleset = data.load_ruleset().unwrap();
         let loaded = ruleset
             .character_constants
-            .expect("character_constants 域应已接通");
+            .expect("character_constants domain should be wired up");
         assert_eq!(
             loaded,
             pobr_data::catalog::character_constants::CharacterConstantsDef::default(),
-            "JSON 与 Default fallback 必须逐值相等（搬迁不变式）",
+            "JSON must equal the Default fallback value-for-value (migration invariant)",
         );
     }
 
@@ -304,11 +312,13 @@ mod tests {
     fn repo_data_ruleset_loads_jewel_radii_equal_to_default() {
         let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
-        let loaded = ruleset.jewel_radii.expect("jewel_radii 域应已接通");
+        let loaded = ruleset
+            .jewel_radii
+            .expect("jewel_radii domain should be wired up");
         assert_eq!(
             loaded,
             pobr_data::catalog::jewel_radii::JewelRadiiDef::default(),
-            "JSON 与 Default fallback 必须逐值相等（搬迁不变式）",
+            "JSON must equal the Default fallback value-for-value (migration invariant)",
         );
     }
 
@@ -320,11 +330,13 @@ mod tests {
     fn repo_data_ruleset_loads_monster_scaling_equal_to_default() {
         let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
-        let loaded = ruleset.monster_scaling.expect("monster_scaling 域应已接通");
+        let loaded = ruleset
+            .monster_scaling
+            .expect("monster_scaling domain should be wired up");
         assert_eq!(
             loaded,
             pobr_data::catalog::monster_scaling::MonsterScalingTable::default(),
-            "JSON 与 Default fallback 必须逐值相等（搬迁不变式）",
+            "JSON must equal the Default fallback value-for-value (migration invariant)",
         );
     }
 
@@ -336,11 +348,13 @@ mod tests {
     fn repo_data_ruleset_loads_unarmed_data_equal_to_default() {
         let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
-        let loaded = ruleset.unarmed_data.expect("unarmed_data 域应已接通");
+        let loaded = ruleset
+            .unarmed_data
+            .expect("unarmed_data domain should be wired up");
         assert_eq!(
             loaded,
             pobr_data::catalog::unarmed_data::UnarmedDataTable::default(),
-            "JSON 与 Default fallback 必须逐值相等（搬迁不变式）",
+            "JSON must equal the Default fallback value-for-value (migration invariant)",
         );
     }
 
@@ -352,11 +366,13 @@ mod tests {
     fn repo_data_ruleset_loads_weapon_types_equal_to_default() {
         let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
-        let loaded = ruleset.weapon_types.expect("weapon_types 域应已接通");
+        let loaded = ruleset
+            .weapon_types
+            .expect("weapon_types domain should be wired up");
         assert_eq!(
             loaded,
             pobr_data::catalog::weapon_types::WeaponTypeTable::default(),
-            "JSON 与 Default fallback 必须逐值相等（搬迁不变式）",
+            "JSON must equal the Default fallback value-for-value (migration invariant)",
         );
     }
 
@@ -368,10 +384,12 @@ mod tests {
     fn repo_data_ruleset_loads_config_catalog() {
         let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
-        let catalog = ruleset.config_catalog.expect("config_catalog 域应已接通");
+        let catalog = ruleset
+            .config_catalog
+            .expect("config_catalog domain should be wired up");
         assert!(
             catalog.options.len() >= 542,
-            "config 条目数 {} 低于 vendor 静态条目数 542",
+            "config entry count {} is below vendor's static entry count of 542",
             catalog.options.len()
         );
         // Vendor's ConfigOptions.lua has one place with a shared var
@@ -383,30 +401,33 @@ mod tests {
         assert_eq!(
             catalog.by_var.len(),
             unique_vars.len(),
-            "by_var 索引必须与去重后的 var 集一一对应"
+            "by_var indices must correspond 1:1 with the deduplicated var set"
         );
         for (var, &index) in &catalog.by_var {
-            assert_eq!(&catalog.options[index].var, var, "by_var 索引指向错误条目");
+            assert_eq!(
+                &catalog.options[index].var, var,
+                "by_var index points at the wrong entry"
+            );
         }
         let stationary = catalog
             .get("conditionStationary")
-            .expect("conditionStationary 条目存在");
+            .expect("conditionStationary entry exists");
         assert_eq!(
             stationary.input_type,
             pobr_data::catalog::config_def::ConfigInputType::Count
         );
-        assert!(catalog.get("不存在的var").is_none());
+        assert!(catalog.get("nonexistent_var").is_none());
 
         // A6 monitoring: the count of verified:false entries (used as-is at
         // runtime, listed separately in the parity report).
         let unverified = catalog.unverified_count();
         println!(
-            "config_catalog verified:false 条目数 = {unverified} / {}",
+            "config_catalog verified:false entry count = {unverified} / {}",
             catalog.options.len()
         );
         assert!(
             unverified <= 54,
-            "verified:false 条目数 {unverified} 超过 handler 预算口径 54（DSL 切分失败信号）"
+            "verified:false entry count {unverified} exceeds the handler budget of 54 (a DSL-splitting failure signal)"
         );
     }
 
@@ -418,11 +439,13 @@ mod tests {
     fn repo_data_ruleset_loads_enemy_presets_equal_to_default() {
         let data = GameData::new(crate::current_data_dir());
         let ruleset = data.load_ruleset().unwrap();
-        let loaded = ruleset.enemy_presets.expect("enemy_presets 域应已接通");
+        let loaded = ruleset
+            .enemy_presets
+            .expect("enemy_presets domain should be wired up");
         assert_eq!(
             loaded,
             pobr_data::catalog::enemy_presets::EnemyPresetsTable::default(),
-            "JSON 与 Default fallback 必须逐值相等（搬迁不变式）",
+            "JSON must equal the Default fallback value-for-value (migration invariant)",
         );
     }
 }

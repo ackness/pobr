@@ -17,7 +17,7 @@ use pobr_data::monster::EnemyTier;
 #[derive(Debug, Parser)]
 #[command(
     name = "pobr",
-    about = "Path of Building in Rust — 计算 / 解析 CLI",
+    about = "Path of Building in Rust — calculation / parsing CLI",
     version
 )]
 struct Cli {
@@ -197,8 +197,8 @@ fn run(cli: Cli) -> Result<String, Box<dyn std::error::Error>> {
             let diag = &report.tree_version;
             if diag.unknown_node_count > 0 {
                 eprintln!(
-                    "warning: {} 个已分配天赋节点不在已加载树中（build treeVersion={}），\
-                     其贡献被静默跳过：{:?}",
+                    "warning: {} allocated passive node(s) not in the loaded tree (build treeVersion={}), \
+                     their contribution was silently skipped: {:?}",
                     diag.unknown_node_count,
                     diag.build_tree_version.as_deref().unwrap_or("?"),
                     diag.unknown_nodes,

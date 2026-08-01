@@ -253,7 +253,7 @@ mod tests {
         for expr in exprs {
             let json = serde_json::to_string(&expr).unwrap();
             let back: ValueExpr = serde_json::from_str(&json).unwrap();
-            assert_eq!(back, expr, "round trip 失败：{json}");
+            assert_eq!(back, expr, "round trip failed: {json}");
         }
     }
 

@@ -333,15 +333,15 @@ fn deadeye_full_dps_sums_enabled_damaging_skills() {
     for s in &report.per_skill {
         assert!(
             s.combined_dps > 0.0,
-            "per_skill 分项须 CombinedDPS>0：{s:?}"
+            "per_skill entries must have CombinedDPS>0: {s:?}"
         );
         assert!(
             s.group_index < build.socket_groups.len(),
-            "group_index 越界：{s:?}"
+            "group_index out of bounds: {s:?}"
         );
         assert!(
             build.socket_groups[s.group_index].enabled,
-            "per_skill 分项须来自启用组：{s:?}"
+            "per_skill entries must come from an enabled group: {s:?}"
         );
     }
 
@@ -349,7 +349,7 @@ fn deadeye_full_dps_sums_enabled_damaging_skills() {
     if report.primary.combined_dps > 0.0 {
         assert!(
             report.full_dps >= report.primary.combined_dps - 1e-6,
-            "full_dps ({}) 应包含 primary CombinedDPS ({})",
+            "full_dps ({}) should include the primary CombinedDPS ({})",
             report.full_dps,
             report.primary.combined_dps
         );
@@ -357,10 +357,13 @@ fn deadeye_full_dps_sums_enabled_damaging_skills() {
 
     // Determinism: two calls give the same result.
     let report2 = calculate_full_dps(&build, &build_data, &opts).expect("second full_dps calc");
-    assert_eq!(report.full_dps, report2.full_dps, "full_dps 非确定性");
+    assert_eq!(
+        report.full_dps, report2.full_dps,
+        "full_dps is non-deterministic"
+    );
     assert_eq!(
         report.per_skill.len(),
         report2.per_skill.len(),
-        "per_skill 数量非确定性"
+        "per_skill count is non-deterministic"
     );
 }

@@ -259,7 +259,7 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
         if let Err(error) = SpecialModRules::compile(std::slice::from_ref(&entry), &registry) {
             bump(&mut stats, "skip_compile_failed");
             eprintln!(
-                "extract-special-mods: compile failed `{}`：{error}",
+                "extract-special-mods: compile failed `{}`: {error}",
                 entry.id
             );
             continue;
@@ -274,10 +274,12 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
     entries.sort_by(|a, b| a.id.cmp(&b.id));
     // Recompile everything once more: a final backstop for within-batch id/pattern uniqueness (same function as the consumption-side gate).
     SpecialModRules::compile(&entries, &registry).map_err(|error| {
-        io::Error::other(format!("special_vendor 全量编译失败（不应发生）：{error}"))
+        io::Error::other(format!(
+            "special_vendor full compile failed (should not happen): {error}"
+        ))
     })?;
 
-    eprintln!("extract-special-mods: ---- 统计 ----");
+    eprintln!("extract-special-mods: ---- stats ----");
     for (key, count) in &stats {
         eprintln!("extract-special-mods:   {key}: {count}");
     }
@@ -286,7 +288,8 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
         meta: build_meta(args)?,
         entries,
     };
-    let mut json = serde_json::to_string_pretty(&doc).expect("special_vendor 文档序列化不应失败");
+    let mut json = serde_json::to_string_pretty(&doc)
+        .expect("special_vendor document serialization should not fail");
     json.push('\n');
     Ok(json)
 }
@@ -312,7 +315,7 @@ fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<RawRow>> {
             io::Error::new(
                 io::ErrorKind::NotFound,
                 format!(
-                    "无法启动 luajit（{}）：{error}；请安装 luajit 或用 --luajit / POBR_LUAJIT 指定路径",
+                    "failed to launch luajit ({}): {error}; install luajit or specify the path via --luajit / POBR_LUAJIT",
                     args.luajit.display()
                 ),
             )
@@ -321,14 +324,14 @@ fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<RawRow>> {
     child
         .stdin
         .take()
-        .expect("stdin 已配置为 piped")
+        .expect("stdin was configured as piped")
         .write_all(BOOTSTRAP_LUA.as_bytes())?;
 
     let output = child.wait_with_output()?;
     let stderr_text = String::from_utf8_lossy(&output.stderr);
     if !output.status.success() {
         return Err(io::Error::other(format!(
-            "special-mods 引导脚本执行失败（exit: {:?}）：{}",
+            "special-mods bootstrap script failed (exit: {:?}): {}",
             output.status.code(),
             stderr_text.trim()
         )));
@@ -346,7 +349,7 @@ fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<RawRow>> {
         }
         let row: RawRow = serde_json::from_str(line).map_err(|error| {
             io::Error::other(format!(
-                "引导脚本输出了非法 JSONL 行：{error}；行内容：{line}"
+                "bootstrap script emitted an invalid JSONL line: {error}; line content: {line}"
             ))
         })?;
         rows.push(row);
@@ -385,8 +388,9 @@ fn load_existing_keys() -> io::Result<(BTreeSet<String>, BTreeSet<String>)> {
             Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
             Err(e) => return Err(e),
         };
-        let doc: SpecialModsDef = serde_json::from_str(&text)
-            .map_err(|error| io::Error::other(format!("{} 解析失败：{error}", path.display())))?;
+        let doc: SpecialModsDef = serde_json::from_str(&text).map_err(|error| {
+            io::Error::other(format!("{} failed to parse: {error}", path.display()))
+        })?;
         for entry in doc.entries {
             if let Some(vp) = entry.vendor_pattern {
                 raw_keys.insert(vp);

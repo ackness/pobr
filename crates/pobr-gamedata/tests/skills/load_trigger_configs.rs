@@ -13,7 +13,7 @@ fn load() -> TriggerConfigsDef {
     GameData::new(repo_data_root().join(version()))
         .trigger_configs()
         .unwrap()
-        .expect("trigger_configs.json 在库")
+        .expect("trigger_configs.json should be present")
 }
 
 /// The 61-entry count assertion (a drift guardrail: vendor's configTable
@@ -21,12 +21,16 @@ fn load() -> TriggerConfigsDef {
 #[test]
 fn sixty_one_entries_sorted_unique() {
     let def = load();
-    assert_eq!(def.configs.len(), 61, "vendor configTable 61 项全量入库");
+    assert_eq!(
+        def.configs.len(),
+        61,
+        "vendor configTable's 61 entries fully ingested"
+    );
     assert!(
         def.configs
             .windows(2)
             .all(|w| w[0].key.name < w[1].key.name),
-        "key.name 严格升序（唯一）"
+        "key.name should be strictly ascending (unique)"
     );
 }
 
@@ -41,10 +45,20 @@ fn handler_discipline() {
         .iter()
         .filter_map(|c| c.handler_id.as_deref())
         .collect();
-    assert_eq!(handlers.len(), 15, "handler 条目数变化须同步监控台账");
-    assert!(handlers.len() < 100, "handler 总数超 20 号 §5 监控闸");
+    assert_eq!(
+        handlers.len(),
+        15,
+        "a change in handler entry count must be synced to the tracking ledger"
+    );
+    assert!(
+        handlers.len() < 100,
+        "handler total exceeds doc 20 §5's monitoring gate"
+    );
     for h in handlers {
-        assert!(h.starts_with("trigger:"), "handler id {h} 缺 trigger: 前缀");
+        assert!(
+            h.starts_with("trigger:"),
+            "handler id {h} is missing the trigger: prefix"
+        );
     }
 }
 
@@ -56,10 +70,14 @@ fn handler_discipline() {
 fn curation_discipline() {
     let def = load();
     for c in &def.configs {
-        assert!(!c.verified, "{}: W-E1 落库必须 verified:false", c.key.name);
+        assert!(
+            !c.verified,
+            "{}: stored entries must be verified:false",
+            c.key.name
+        );
         assert!(
             c.vendor_ref.starts_with("Modules/CalcTriggers.lua:"),
-            "{}: 缺 vendor 锚点",
+            "{}: missing vendor anchor",
             c.key.name
         );
         assert!(
@@ -67,7 +85,7 @@ fn curation_discipline() {
                 c.key.kind.as_str(),
                 "skill" | "triggered_by" | "unique_item"
             ),
-            "{}: 非法 kind {}",
+            "{}: invalid kind {}",
             c.key.name,
             c.key.kind
         );
@@ -75,7 +93,11 @@ fn curation_discipline() {
             .into_iter()
             .flatten()
         {
-            assert!(!cond.is_empty(), "{}: 空谓词应省略字段", c.key.name);
+            assert!(
+                !cond.is_empty(),
+                "{}: an empty predicate should omit the field",
+                c.key.name
+            );
         }
     }
 }
@@ -90,14 +112,17 @@ fn coc_entry_shape() {
         .configs
         .iter()
         .find(|c| c.key.name == "cast on critical strike")
-        .expect("缺 CoC 条目");
+        .expect("missing CoC entry");
     assert!(coc.trigger_on_crit);
     assert!(
         coc.match_effect_ids
             .iter()
             .any(|id| id == "MetaCastOnCritPlayer")
     );
-    let cond = coc.source_skill_cond.as_ref().expect("CoC 源谓词");
+    let cond = coc
+        .source_skill_cond
+        .as_ref()
+        .expect("CoC source predicate");
     assert!(cond.any_skill_types.iter().any(|t| t == "Attack"));
 }
 
@@ -109,8 +134,8 @@ fn law_of_the_wilds_predicate() {
         .configs
         .iter()
         .find(|c| c.key.name == "law of the wilds")
-        .expect("缺 law of the wilds");
-    let cond = entry.source_skill_cond.as_ref().expect("源谓词");
+        .expect("missing law of the wilds");
+    let cond = entry.source_skill_cond.as_ref().expect("source predicate");
     assert_eq!(cond.any_skill_types, vec!["Melee", "Attack"]);
     assert_eq!(cond.all_mod_flags, vec!["Claw"]);
     assert_eq!(cond.not_skill_types, vec!["SummonsTotem"]);

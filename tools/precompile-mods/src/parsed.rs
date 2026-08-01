@@ -152,10 +152,11 @@ pub fn precompile(corpus: &Corpus, data_dir: &Path) -> Result<PrecompileOutcome,
 
     let generated_dir = data_dir.join("generated");
     std::fs::create_dir_all(&generated_dir)
-        .map_err(|e| format!("创建 {} 失败：{e}", generated_dir.display()))?;
+        .map_err(|e| format!("failed to create {}: {e}", generated_dir.display()))?;
     let out_path = generated_dir.join("parsed_mods.json");
     let json = serialize_pretty_stable(&doc)?;
-    std::fs::write(&out_path, &json).map_err(|e| format!("写 {} 失败：{e}", out_path.display()))?;
+    std::fs::write(&out_path, &json)
+        .map_err(|e| format!("failed to write {}: {e}", out_path.display()))?;
 
     Ok(PrecompileOutcome {
         parsed_mods_path: out_path,
@@ -177,26 +178,27 @@ fn compile_parser_rules(data_dir: &Path) -> Result<CompiledParserRules, String> 
 
     let doc = data
         .mod_parser_rules()
-        .map_err(|e| format!("加载 mod_parser_rules.json 失败：{e}"))?
+        .map_err(|e| format!("failed to load mod_parser_rules.json: {e}"))?
         .ok_or_else(|| {
             format!(
-                "{} 缺 overlay/mod_parser_rules.json——无解析规则无法预编译",
+                "{} is missing overlay/mod_parser_rules.json -- cannot precompile without parse rules",
                 data_dir.display()
             )
         })?;
     let special_entries = data
         .load_ruleset()
-        .map_err(|e| format!("加载 ruleset（special 条目）失败：{e}"))?
+        .map_err(|e| format!("failed to load ruleset (special entries): {e}"))?
         .special_mods
         .unwrap_or_default();
     CompiledParserRules::compile_with_special(&doc, &special_entries)
-        .map_err(|e| format!("parser 规则编译失败：{e:?}"))
+        .map_err(|e| format!("parser rule compilation failed: {e:?}"))
 }
 
 /// Stable pretty JSON with two-space indent and a trailing newline (matches
 /// the repo's existing generated-artifact style).
 pub fn serialize_pretty_stable<T: Serialize>(value: &T) -> Result<String, String> {
-    let mut json = serde_json::to_string_pretty(value).map_err(|e| format!("序列化失败：{e}"))?;
+    let mut json =
+        serde_json::to_string_pretty(value).map_err(|e| format!("serialization failed: {e}"))?;
     json.push('\n');
     Ok(json)
 }

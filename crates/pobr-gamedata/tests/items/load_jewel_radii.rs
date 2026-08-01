@@ -21,7 +21,7 @@ fn version() -> String {
 fn load() -> JewelRadiiDef {
     GameData::new(repo_data_root().join(version()))
         .jewel_radii()
-        .expect("jewel_radii 可加载")
+        .expect("jewel_radii should load")
 }
 
 /// Gets a named band from the `0_1` tree version (a named band's label is unique).
@@ -29,7 +29,7 @@ fn named_band<'a>(def: &'a JewelRadiiDef, label: &str) -> &'a JewelRadiusBandDef
     def.tree_versions["0_1"]
         .iter()
         .find(|b| b.label == label)
-        .unwrap_or_else(|| panic!("存在 {label} 档"))
+        .unwrap_or_else(|| panic!("{label} tier should exist"))
 }
 
 /// Migration invariant: `JewelRadiiDef::default()` (the fallback used when
@@ -41,7 +41,7 @@ fn default_fallback_equals_loaded_json() {
     assert_eq!(
         load(),
         JewelRadiiDef::default(),
-        "Default fallback 必须与 JSON 逐值相等（搬迁不变式）"
+        "Default fallback must equal the JSON value-for-value (migration invariant)"
     );
 }
 
@@ -79,11 +79,11 @@ fn named_bands_match_pobr_tree_radius_constants() {
         assert_eq!(
             f64::from(band.outer) * m,
             expect_units,
-            "{label} 档 outer×乘数应等于 pobr-tree 常量"
+            "{label} tier's outer × multiplier should equal the pobr-tree constant"
         );
         assert_eq!(f64::from(band.outer) * m, radius.units());
         // Named bands are solid circles, inner=0 (vendor Data.lua:597-600 is also 0).
-        assert_eq!(band.inner, 0, "{label} 档 inner 应为 0");
+        assert_eq!(band.inner, 0, "{label} tier's inner should be 0");
     }
 }
 
@@ -106,7 +106,7 @@ fn named_band_outer_base_values() {
 fn variable_bands_match_vendor_data_lua() {
     let def = load();
     let bands = &def.tree_versions["0_1"];
-    assert_eq!(bands.len(), 12, "0_1 共 4 具名档 + 8 Variable 档");
+    assert_eq!(bands.len(), 12, "0_1 has 4 named tiers + 8 Variable tiers");
 
     let variables: Vec<(u32, u32)> = bands
         .iter()
@@ -125,7 +125,7 @@ fn variable_bands_match_vendor_data_lua() {
             (1650, 1950),
             (1800, 2100),
         ],
-        "Variable 档 inner/outer 应与 vendor Data.lua:602-609 逐值一致（保持书写顺序）"
+        "Variable tier inner/outer should match vendor Data.lua:602-609 value-for-value (in source order)"
     );
     // A Variable band's ring width is always 300 (structural to vendor's
     // table, guards against a fat-fingered value change).

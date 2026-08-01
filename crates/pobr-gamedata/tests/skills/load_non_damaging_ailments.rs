@@ -28,15 +28,15 @@ fn game_data() -> GameData {
 fn chill_and_shock_bounds_match_rust_source_constants() {
     let table = game_data()
         .non_damaging_ailments()
-        .expect("non_damaging_ailments 可加载");
+        .expect("non_damaging_ailments should load");
 
-    let chill = table.ailments.get("Chill").expect("存在 Chill");
+    let chill = table.ailments.get("Chill").expect("Chill should exist");
     // Source of truth: pobr-data/src/monster.rs's CHILL_MIN_EFFECT=30 / CHILL_MAX_EFFECT=50.
     assert_eq!(chill.default, Some(CHILL_MIN_EFFECT));
     assert_eq!(chill.min, CHILL_MIN_EFFECT);
     assert_eq!(chill.max, CHILL_MAX_EFFECT);
 
-    let shock = table.ailments.get("Shock").expect("存在 Shock");
+    let shock = table.ailments.get("Shock").expect("Shock should exist");
     // Source of truth: pobr-data/src/monster.rs's BASE_SHOCK_MAGNITUDE=20 /
     // SHOCK_MAX_EFFECT=100; pobr-data/src/constants.rs's SHOCK_MIN_EFFECT=20
     // (the two consts share a value, both are sources of truth).
@@ -51,7 +51,11 @@ fn chill_and_shock_bounds_match_rust_source_constants() {
 #[test]
 fn vendor_only_fields_match_pob2_data_lua() {
     let table = game_data().non_damaging_ailments().unwrap();
-    assert_eq!(table.ailments.len(), 3, "nonDamagingAilment 恰三项");
+    assert_eq!(
+        table.ailments.len(),
+        3,
+        "nonDamagingAilment has exactly three entries"
+    );
 
     // Modules/Data.lua:348 (the Chill row) + Data/Misc.lua:91's BaseChillDuration=8.
     let chill = &table.ailments["Chill"];
@@ -124,7 +128,7 @@ fn default_ailment_damage_types_match_rust_source_and_vendor() {
         assert_eq!(
             table.default_ailment_damage_types[key].damage_type,
             ailment.damage_type(),
-            "{key} 的 DoT 伤害类型应与 AilmentType::damage_type() 一致"
+            "{key}'s DoT damage type should match AilmentType::damage_type()"
         );
     }
     // Non-damaging ailments have no DoT type (vendor's row has no
@@ -158,12 +162,12 @@ fn committed_json_is_serde_pretty_roundtrip_stable() {
     let path = repo_data_root()
         .join(version())
         .join("base/non_damaging_ailments.json");
-    let committed = std::fs::read_to_string(&path).expect("读取已提交 JSON");
+    let committed = std::fs::read_to_string(&path).expect("failed to read the committed JSON");
     let table = game_data().non_damaging_ailments().unwrap();
-    let regenerated = serde_json::to_string_pretty(&table).expect("序列化");
+    let regenerated = serde_json::to_string_pretty(&table).expect("serialize");
     assert_eq!(
         committed.trim_end(),
         regenerated,
-        "non_damaging_ailments.json 应与 serde pretty 输出字节一致（含键序）"
+        "non_damaging_ailments.json should be byte-identical to serde pretty output (including key order)"
     );
 }

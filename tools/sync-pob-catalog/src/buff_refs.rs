@@ -80,7 +80,7 @@ pub fn run_check_buff_refs(
 ) -> io::Result<Vec<RefDrift>> {
     let defs_text = fs::read_to_string(defs_path)?;
     let mut doc: BuffDefinitionsDoc = serde_json::from_str(&defs_text)
-        .map_err(|error| io::Error::other(format!("buff_definitions 解析失败：{error}")))?;
+        .map_err(|error| io::Error::other(format!("buff_definitions failed to parse: {error}")))?;
 
     let mut drifts = Vec::new();
     for buff in &mut doc.buffs {
@@ -88,7 +88,10 @@ pub fn run_check_buff_refs(
         let file_text = fs::read_to_string(&vendor_file).map_err(|error| {
             io::Error::new(
                 io::ErrorKind::NotFound,
-                format!("无法读取 vendor 文件 {}：{error}", vendor_file.display()),
+                format!(
+                    "failed to read vendor file {}: {error}",
+                    vendor_file.display()
+                ),
             )
         })?;
         let actual = segment_hash(
@@ -109,8 +112,8 @@ pub fn run_check_buff_refs(
     }
 
     if write && !drifts.is_empty() {
-        let mut json =
-            serde_json::to_string_pretty(&doc).expect("buff definitions 文档序列化不应失败");
+        let mut json = serde_json::to_string_pretty(&doc)
+            .expect("buff definitions document serialization should not fail");
         json.push('\n');
         fs::write(defs_path, json)?;
     }

@@ -473,7 +473,7 @@ impl BuildData {
                 )
                 .map_err(|e| LoadError::Overlay {
                     path: "overlay/mod_parser_rules.json".into(),
-                    message: format!("parser 规则编译失败：{e}"),
+                    message: format!("parser rule compilation failed: {e}"),
                 })?,
             )),
             None => None,

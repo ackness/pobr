@@ -34,16 +34,22 @@ fn repo_game_data() -> GameData {
 fn loads_skill_overrides_overlay() {
     let overrides = repo_game_data()
         .skill_overrides()
-        .expect("加载 skill_overrides overlay")
-        .expect("仓库数据包应包含 overlay/skill_overrides.json");
+        .expect("skill_overrides overlay should load")
+        .expect("repo data pack should include overlay/skill_overrides.json");
     let has = |stat: &str| overrides.overrides.iter().any(|o| o.stat == stat);
     assert!(has("base_multiplier"));
     assert!(has("skill_attack_speed_more"));
-    assert!(has("dot_is_area"), "M4-T4 W-D1 dotIs* 抽取段不得回退");
-    assert!(!has("crit_chance"), "crit 已表列直读，不得回流 overlay");
+    assert!(
+        has("dot_is_area"),
+        "the dotIs* extraction section must not regress"
+    );
+    assert!(
+        !has("crit_chance"),
+        "crit is already table-column direct-read, must not flow back into overlay"
+    );
     assert!(
         !has("attack_speed_multiplier"),
-        "attspd 已表列直读，不得回流 overlay"
+        "attspd is already table-column direct-read, must not flow back into overlay"
     );
 }
 
@@ -59,7 +65,7 @@ fn loads_skill_overrides_overlay() {
 fn merged_levels_match_historical_coverage() {
     let levels = repo_game_data()
         .granted_effect_levels()
-        .expect("加载 + merge granted_effect_levels");
+        .expect("load + merge granted_effect_levels");
 
     let count = |f: fn(&pobr_data::catalog::SkillLevelDef) -> bool| {
         levels.values().flatten().filter(|r| f(r)).count()
@@ -85,7 +91,7 @@ fn merged_levels_match_historical_coverage() {
 #[test]
 fn merged_levels_spot_values() {
     let data = repo_game_data();
-    let levels = data.granted_effect_levels().expect("加载等级域");
+    let levels = data.granted_effect_levels().expect("load the level domain");
 
     // Flicker Strike: attackSpeedMultiplier -50 (same value at every level).
     let flicker = &levels["FlickerStrikePlayer"];
@@ -122,12 +128,12 @@ fn merged_levels_spot_values() {
 
     // statSet-level: Flicker's inherent attack speed MORE 285 (a PoB2
     // baseMods constant).
-    let sets = data.skill_stat_sets().expect("加载 stat-set 域");
+    let sets = data.skill_stat_sets().expect("load the stat-set domain");
     let flicker_set = sets
         .iter()
         .find(|s| s.effect_id == "FlickerStrikePlayer")
         .and_then(|def| def.sets.first())
-        .expect("FlickerStrikePlayer 主 stat-set 存在");
+        .expect("FlickerStrikePlayer primary stat-set should exist");
     assert_eq!(flicker_set.skill_attack_speed_more, Some(285.0));
 
     //  dotIs* boolean — vendor's only full-data entry, TornadoShotPlayer's
@@ -137,17 +143,20 @@ fn merged_levels_spot_values() {
     let tornado = sets
         .iter()
         .find(|s| s.effect_id == "TornadoShotPlayer")
-        .expect("TornadoShotPlayer stat-set 存在");
+        .expect("TornadoShotPlayer stat-set should exist");
     let nova = tornado
         .sets
         .iter()
         .find(|s| s.set_id == "TornadoShotNovaPlayer")
-        .expect("Tornado 形态 set 存在");
-    assert!(nova.dot_flags.area, "dotIsArea 应命中 vendor statSets[2]");
+        .expect("Tornado-form set should exist");
+    assert!(
+        nova.dot_flags.area,
+        "dotIsArea should match vendor statSets[2]"
+    );
     assert!(nova.dot_flags.verified);
     assert!(
         tornado.sets[0].dot_flags.is_default(),
-        "主 set（Impact）未核验，保守默认"
+        "the primary set (Impact) is unverified, conservative default"
     );
 
     //  explodeCorpse boolean (vendor statSet baseMods, act_int.lua:5287;
@@ -157,9 +166,12 @@ fn merged_levels_spot_values() {
     let dd = sets
         .iter()
         .find(|s| s.effect_id == "DetonateDeadPlayer")
-        .expect("DetonateDeadPlayer stat-set 存在");
-    assert!(dd.sets[0].explode_corpse, "DD 主 set explodeCorpse");
-    assert!(!flicker_set.explode_corpse, "无 baseMod 的技能缺省 false");
+        .expect("DetonateDeadPlayer stat-set should exist");
+    assert!(dd.sets[0].explode_corpse, "DD's primary set explodeCorpse");
+    assert!(
+        !flicker_set.explode_corpse,
+        "a skill with no baseMod defaults to false"
+    );
 }
 
 /// Plain base doesn't contain overlay-exclusive fields — ensures these
@@ -192,31 +204,35 @@ fn pure_base_has_no_overlay_fields() {
     let data = GameData::new(&dir);
     assert!(
         data.skill_overrides().unwrap().is_none(),
-        "无 overlay 文件时应返回 None（行为 = 纯 base）"
+        "should return None when there's no overlay file (behavior = plain base)"
     );
-    let levels = data.granted_effect_levels().expect("纯 base 可加载");
+    let levels = data
+        .granted_effect_levels()
+        .expect("plain base should load");
     assert!(
         levels
             .values()
             .flatten()
             .all(|r| r.base_multiplier.is_none()),
-        "纯 base 不得含 base_multiplier（该列在 .dat 导出中不存在，值只来自 overlay merge）"
+        "plain base must not contain base_multiplier (that column doesn't exist in the .dat export, the value only comes from the overlay merge)"
     );
     // The table-column-direct-read fields **should** exist in plain base
     // (unrelated to overlay) — anchors that the channel switchover can't
     // regress.
     assert!(
         levels.values().flatten().any(|r| r.crit_chance.is_some()),
-        "crit_chance 是表列直读的 base 字段（M1-T4.3），纯 base 不得为空"
+        "crit_chance is a table-column direct-read base field (M1-T4.3), plain base must not be empty"
     );
     assert!(
         levels
             .values()
             .flatten()
             .any(|r| r.attack_speed_multiplier.is_some()),
-        "attack_speed_multiplier 是表列直读的 base 字段（M1-T4.3），纯 base 不得为空"
+        "attack_speed_multiplier is a table-column direct-read base field (M1-T4.3), plain base must not be empty"
     );
-    let sets = data.skill_stat_sets().expect("纯 base stat-set 可加载");
+    let sets = data
+        .skill_stat_sets()
+        .expect("plain base stat-set should load");
     assert!(
         sets.iter()
             .flat_map(|s| &s.sets)

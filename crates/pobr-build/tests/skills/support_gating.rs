@@ -94,16 +94,19 @@ fn incompatible_support_is_rejected_end_to_end() {
     let gated =
         calculate_with_data(&with_incompatible, &build_data, &panel_opts()).expect("gated calc");
 
-    assert!(base.total_hit_avg > 0.0, "Fireball 基线击中应非零");
+    assert!(
+        base.total_hit_avg > 0.0,
+        "Fireball's baseline hit should be non-zero"
+    );
     assert!(
         (gated.total_hit_avg - base.total_hit_avg).abs() < 1e-9,
-        "不兼容 support 的 damage_+% 不得进击中：base {} vs gated {}",
+        "an incompatible support's damage_+% must not reach hit: base {} vs gated {}",
         base.total_hit_avg,
         gated.total_hit_avg
     );
     assert!(
         (gated.dps - base.dps).abs() < 1e-9,
-        "不兼容 support 不得改变 DPS：base {} vs gated {}",
+        "an incompatible support must not change DPS: base {} vs gated {}",
         base.dps,
         gated.dps
     );
@@ -138,7 +141,7 @@ fn compatible_support_still_injects() {
     let expected = base.total_hit_avg * (1.0 + inc.value / 100.0);
     assert!(
         (boosted.total_hit_avg - expected).abs() < 1.0,
-        "兼容 support damage_+% ({}) 应缩放击中：base {} → 期望 {}（实得 {}）",
+        "a compatible support's damage_+% ({}) should scale hit: base {} → expected {} (got {})",
         inc.value,
         base.total_hit_avg,
         expected,

@@ -65,7 +65,7 @@ fn charm_flask_use_effect_lines_are_recognized() {
     ] {
         assert!(
             !unsupported.iter().any(|u| u.contains(line)),
-            "`{line}` 仍在未支持列表: {unsupported:?}"
+            "`{line}` is still in the unsupported list: {unsupported:?}"
         );
     }
     // The guard line is unmodeled (vendor doesn't parse it either) — it must be loudly reported, not silently dropped.
@@ -73,7 +73,7 @@ fn charm_flask_use_effect_lines_are_recognized() {
         unsupported
             .iter()
             .any(|u| u.contains("Also grants 481 Guard")),
-        "`Also grants 481 Guard` 应进未支持列表（#7 摘除幻影建模后与 PoB2 口径一致）: {unsupported:?}"
+        "`Also grants 481 Guard` should be in the unsupported list (consistent with PoB2 after #7 removed the phantom modeling): {unsupported:?}"
     );
 }
 
@@ -90,6 +90,6 @@ fn guard_line_does_not_extend_hit_pool() {
     let delta = stat(&with, "PhysicalMaxHit") - stat(&without, "PhysicalMaxHit");
     assert!(
         delta.abs() < 1.0,
-        "guard 行不应改变物理 max hit（实际增量 {delta}）"
+        "the guard line should not change physical max hit (actual delta {delta})"
     );
 }

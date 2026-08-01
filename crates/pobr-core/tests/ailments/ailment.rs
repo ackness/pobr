@@ -54,7 +54,10 @@ fn poison_magnitude_scales_with_ailment_magnitude() {
     let mut db_phantom = ModDb::new();
     db_phantom.add_mod(Modifier::number("PoisonDamage", ModType::Inc, 100.0));
     let phantom = poison_instance(1000.0, &db_phantom, &CalcConfig::attack());
-    assert_eq!(phantom.magnitude_dps, base, "PoisonDamage 幻影名不生效");
+    assert_eq!(
+        phantom.magnitude_dps, base,
+        "PoisonDamage phantom name should have no effect"
+    );
 }
 
 /// Shock effect range for PoE2 0.5.0.
@@ -606,7 +609,7 @@ fn stack_potential_is_ratio_of_active_to_max() {
     let cfg_over = StackConfig::new(5, 8.0);
     assert!(
         (stack_potential(&cfg_over) - 1.6).abs() < 1e-6,
-        "overflow → potential 8/5 = 1.6 (PoB2 不 clamp)"
+        "overflow -> potential 8/5 = 1.6 (PoB2 does not clamp)"
     );
 
     // default single stack
@@ -1114,7 +1117,7 @@ fn apply_dot_dps_cap_ignores_moddb_dotdpscap() {
     let capped = apply_dot_dps_cap(dps, DOT_DPS_CAP);
     assert!(
         (capped - dps).abs() < 1.0,
-        "50k < DOT_DPS_CAP → 原样返回（modDB DotDpsCap 不生效），got {capped}"
+        "50k < DOT_DPS_CAP -> returned unchanged (modDB DotDpsCap has no effect), got {capped}"
     );
 }
 
@@ -1192,7 +1195,10 @@ fn ailment_crit_chance_applies_over_stacking_correction() {
     // SP > 1 (stack overflow): amplified. SP=2 → 1 - 0.5^2 = 0.75.
     let amplified = ailment_crit_chance(crit, 2.0);
     assert!((amplified - 0.75).abs() < 1e-9);
-    assert!(amplified > crit, "over-stacking 应抬高暴击份额");
+    assert!(
+        amplified > crit,
+        "over-stacking should raise the crit share"
+    );
 
     // Boundaries: 0 crit chance always gives 0; full crit chance always gives 1.
     assert!((ailment_crit_chance(0.0, 3.0) - 0.0).abs() < 1e-9);
@@ -1213,7 +1219,10 @@ fn ailment_crit_chance_applies_over_stacking_correction() {
         (base_over - 1750.0).abs() < 1.0,
         "SP=2: 1000*0.25+2000*0.75=1750"
     );
-    assert!(base_over > base_sp1, "over-stacking 应抬高异常 base 伤害");
+    assert!(
+        base_over > base_sp1,
+        "over-stacking should raise the ailment base damage"
+    );
 }
 
 // Stored family sources (stored_source_at_roll) + CHANCE_AILMENT merge
@@ -1250,8 +1259,11 @@ fn stored_source_ignite_takes_fire_with_independent_crit_leg() {
         &CalcConfig::attack(),
         50.0,
     );
-    assert_eq!(hit, 150.0, "hit 腿 = 火分量中点");
-    assert_eq!(crit, 600.0, "crit 腿独立取 Stored crit 区间中点");
+    assert_eq!(hit, 150.0, "hit leg = the fire component midpoint");
+    assert_eq!(
+        crit, 600.0,
+        "the crit leg independently takes the Stored crit interval midpoint"
+    );
 }
 
 /// Cross-type application: the `ColdCanIgnite` flag makes the cold component count
@@ -1271,7 +1283,11 @@ fn stored_source_cross_type_flag_adds_component() {
         &CalcConfig::attack(),
         50.0,
     );
-    assert_eq!(hit, 150.0 + 1500.0, "ColdCanIgnite → 冰分量并入来源");
+    assert_eq!(
+        hit,
+        150.0 + 1500.0,
+        "ColdCanIgnite -> the cold component merges into the source"
+    );
 }
 
 /// Per-type Buildup MORE (vendor `:4844`): `PhysicalBleedBuildup` only amplifies the
@@ -1342,13 +1358,13 @@ fn keyword_scoped_magnitude_applies_only_to_matching_ailment() {
     let bare_ignite = ignite_instance(1000.0, &ModDb::new(), &cfg);
     assert!(
         (poison.magnitude_dps - bare_poison.magnitude_dps * 1.75).abs() < 1e-6,
-        "kw=Poison 量级词条应作用于中毒：{} vs {}",
+        "kw=Poison magnitude mod should apply to poison: {} vs {}",
         poison.magnitude_dps,
         bare_poison.magnitude_dps
     );
     assert_eq!(
         ignite.magnitude_dps, bare_ignite.magnitude_dps,
-        "kw=Poison 量级词条不得作用于点燃"
+        "kw=Poison magnitude mod must not apply to ignite"
     );
 }
 
@@ -1367,7 +1383,7 @@ fn duration_applies_more_leg() {
     let bare = poison_instance(1000.0, &ModDb::new(), &cfg);
     assert!(
         (with_more.duration_secs - bare.duration_secs * 0.8).abs() < 1e-6,
-        "MORE -20% 应缩短持续：{} vs {}",
+        "MORE -20% should shorten duration: {} vs {}",
         with_more.duration_secs,
         bare.duration_secs
     );
@@ -1395,7 +1411,7 @@ fn debuff_duration_mult_from_enemy_buff_expire_faster() {
     let mult = debuff_duration_mult(&enemy, &cfg);
     assert!(
         (mult - 1.0 / 0.92).abs() < 1e-9,
-        "MORE -8 → 1/0.92，实得 {mult}"
+        "MORE -8 -> 1/0.92, got {mult}"
     );
 
     // Floor: MORE -90 → aggregate 0.10 < 0.25 → capped to 0.25 → mult = 4.

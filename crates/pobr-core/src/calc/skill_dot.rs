@@ -368,7 +368,11 @@ mod tests {
         let enemy = ModDb::new();
         let cfg = CalcConfig::attack();
         let out = calc_skill_dot(&db, &enemy, &cfg, &SkillDotInputs::default());
-        assert_eq!(out, SkillDotOutput::default(), "无 DoT 来源必须全零中性");
+        assert_eq!(
+            out,
+            SkillDotOutput::default(),
+            "with no DoT source, output must be all-zero/neutral"
+        );
     }
 
     /// Contract field transfer: each of the five values lands in the same-named OutputTable field.
@@ -406,10 +410,13 @@ mod tests {
         assert!((out.skill_dot_instance - 234.0).abs() < 1e-9, "{out:?}");
         assert_eq!(
             out.skill_total_dot, out.skill_dot_instance,
-            "非叠加 = instance"
+            "non-stacked = instance"
         );
         assert_eq!(out.total_dot_dps, 234.0);
-        assert_eq!(out.with_dot_dps, 234.0, "baseDPS=0 时 WithDot = TotalDot");
+        assert_eq!(
+            out.with_dot_dps, 234.0,
+            "when baseDPS=0, WithDot = TotalDot"
+        );
     }
 
     /// DotMultiplier's Override priority: when Override is present, both Sum channels are ignored entirely (:5897).
@@ -458,7 +465,7 @@ mod tests {
         let out = calc_skill_dot(&db, &enemy, &cfg, &SkillDotInputs::default());
         assert!(
             (out.skill_dot_instance - 100.0).abs() < 1e-9,
-            "无 dotIsArea：Area 位被剥，AreaDamage 不得作用于 DoT：{out:?}"
+            "without dotIsArea: the Area bit is stripped, AreaDamage must not apply to DoT: {out:?}"
         );
 
         let mut with_flag = base;
@@ -467,7 +474,7 @@ mod tests {
         let out = calc_skill_dot(&db, &enemy, &cfg, &SkillDotInputs::default());
         assert!(
             (out.skill_dot_instance - 200.0).abs() < 1e-9,
-            "DotIsArea 在场：保留 Area 位，AreaDamage 生效：{out:?}"
+            "DotIsArea present: the Area bit is kept, AreaDamage takes effect: {out:?}"
         );
     }
 
@@ -483,7 +490,7 @@ mod tests {
         let out = calc_skill_dot(&db, &enemy, &cfg, &SkillDotInputs::default());
         assert_eq!(
             out.skill_dot_instance, 0.0,
-            "DealNoChaos 必须门控掉混沌 DoT"
+            "DealNoChaos must gate off chaos DoT"
         );
     }
 
@@ -539,7 +546,10 @@ mod tests {
             ..Default::default()
         };
         let out = calc_skill_dot(&db, &enemy, &cfg, &inputs);
-        assert_eq!(out.skill_total_dot, 100.0, "duration 缺失必须保守退化");
+        assert_eq!(
+            out.skill_total_dot, 100.0,
+            "missing duration must conservatively degenerate"
+        );
     }
 
     /// effMult (mode_effective): enemy resistance + the DamageTakenOverTime chain apply to skill DoT.
@@ -590,7 +600,10 @@ mod tests {
         };
         let out = calc_skill_dot(&db, &enemy, &cfg, &inputs);
         assert_eq!(out.skill_dot_instance, 0.0);
-        assert_eq!(out.with_dot_dps, 0.0, "无技能 dot：WithDotDPS 维持中性");
+        assert_eq!(
+            out.with_dot_dps, 0.0,
+            "no skill dot: WithDotDPS stays neutral"
+        );
         assert_eq!(out.total_dot_dps, 80.0);
         assert_eq!(out.combined_dps, 580.0);
     }
