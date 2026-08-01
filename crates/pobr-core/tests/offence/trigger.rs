@@ -19,9 +19,7 @@ use pobr_core::calc::{
 };
 use pobr_data::prelude::SERVER_TICK_SECONDS;
 
-// ---------------------------------------------------------------------------
 // §一  冷却驱动基础（回归：与原有测试保持严格一致）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn server_tick_rate_is_inverse_of_constant() {
@@ -116,9 +114,7 @@ fn higher_icdr_raises_trigger_rate_cap() {
     assert!(high.trigger_rate_cap > low.trigger_rate_cap);
 }
 
-// ---------------------------------------------------------------------------
 // §二  能量驱动元宝石模型
-// ---------------------------------------------------------------------------
 
 /// 能量上限公式的基础验证：每 0.1s 施法时间 = 10 能量。
 /// 出处：agent-docs/triggers.md §2.1；PoB2 other.lua `generic_ongoing_trigger_1_maximum_energy_per_Xms_total_cast_time=10`。
@@ -257,9 +253,7 @@ fn energy_trigger_rate_monotone_with_source_rate() {
     assert!(r_high.effective_trigger_rate >= r_low.effective_trigger_rate);
 }
 
-// ---------------------------------------------------------------------------
 // §三  多技能轮转
-// ---------------------------------------------------------------------------
 
 /// 单技能：无冷却瓶颈时速率近似源速率。
 /// 出处：agent-docs/triggers.md §五；PoB2 calcMultiSpellRotationImpact。
@@ -351,9 +345,7 @@ fn more_skills_dilute_individual_rates() {
     assert!(r1.rates[0] >= r2.rates[0] - 1e-6);
 }
 
-// ---------------------------------------------------------------------------
 // §四  CWC（Cast While Channelling）
-// ---------------------------------------------------------------------------
 
 /// CWC 基础：triggerTime 取整到服务器帧，基准频率正确。
 /// 出处：agent-docs/triggers.md §4.2；PoB2 CWCHandler `adjTriggerInterval`。
@@ -417,9 +409,7 @@ fn spell_cast_time_to_cooldown_no_bonus() {
     assert!((added - 0.8).abs() < 1e-9);
 }
 
-// ---------------------------------------------------------------------------
 // §五  归因 TraceGraph
-// ---------------------------------------------------------------------------
 
 /// 冷却驱动归因：结果节点值与无 trace 版本一致，且有足够输入节点。
 /// 出处：agent-docs/triggers.md §对 pobr 实现的启示 #5。

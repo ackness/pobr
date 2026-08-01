@@ -1,7 +1,7 @@
-//! M4-T3 乘区与 DPS 末端：Double/Triple Damage 乘区（W-C1）+ allMult 占位结构 +
-//! DPS 末端两因子（W-C4）。
+//! 乘区与 DPS 末端：Double/Triple Damage 乘区+ allMult 占位结构 +
+//! DPS 末端两因子。
 //!
-//! **模块先行、接线最后**（蓝图 m4-offence-deep.md §2-T3 / §3.2）：本文件只提供独立计算
+//! **模块先行、接线最后**：本文件只提供独立计算
 //! 单元与冻结签名，`offence.rs` / `crit_pass` 的消费由 T2 接线（契约 2，§3.3）。接线点与
 //! 口径差异见 `audits/rearchitecture-2026-06-10/blueprints/m4-t3-wiring-notes.md`。
 
@@ -15,7 +15,7 @@ use crate::{CalcConfig, ModDb};
 ///   **百分比 0..=100**（与 vendor `output.DoubleDamageChance` / `TripleDamageChance` 同位）。
 ///   `double_chance` 已做 Triple 抵扣（`DD = max(DD − TD×DD/100, 0)`，`:3858`）。
 /// - [`effect`](Self::effect)：`ScaledDamageEffect = 1 × (1 + DD/100 + 2×TD/100)`（`:3861`）。
-///   vendor 初始化 `ScaledDamageEffect = 1` 后**只有** DD/TD 乘它（`:3840`，蓝图亲验）。
+///   vendor 初始化 `ScaledDamageEffect = 1` 后**只有** DD/TD 乘它（`:3840`）。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ScaledDamage {
     /// `1 + DoubleDamageEffect + TripleDamageEffect`，乘入 allMult。
@@ -26,7 +26,7 @@ pub struct ScaledDamage {
     pub triple_chance: f64,
 }
 
-/// Double/Triple Damage 乘区（蓝图 §3.3 契约 2 冻结签名；T2 在 crit_pass 内调用）。
+/// Double/Triple Damage 乘区。
 ///
 /// `crit_chance` 为**分数 0..=1**（即 [`crate::calc::resolve_crit`] 的 `chance`；等价
 /// vendor `output.CritChance / 100`——`:3844/:3849` 的 `OnCrit × CritChance / 100` 折算）。
@@ -37,18 +37,18 @@ pub struct ScaledDamage {
 ///   min(Sum(BASE) + enemy.SelfTripleDamageChance(仅 effective) + OnCrit×crit, 100)`。
 /// - Double 同构（`:3848-3849`）。
 /// - Intimidate（`:3850-3854`）：`Condition:WarcryMaxHit` 时 DD=100，否则
-///   `+IntimidatingUpTimeRatio`——warcry 机制 M5+ 未实现，该输入恒缺省，整段跳过
-///   （TODO(M5+ warcry)：接入 `IntimidatingUpTimeRatio` 输入后补此分支）。
+///   `+IntimidatingUpTimeRatio`——warcry 机制未实现，该输入恒缺省，整段跳过
+///   （TODO(warcry)：接入 `IntimidatingUpTimeRatio` 输入后补此分支）。
 /// - Triple 抵扣 Double（`:3855-3859`）：`DD = max(DD − TD×DD/100, 0)`。
 /// - `ScaledDamageEffect = 1 × (1 + DD/100 + 2×TD/100)`（`:3860-3861`）。
 ///
 /// 注：vendor `:3845`（Triple 行）原文 `Sum(...) or 0 + (...)` 受 Lua 算符优先级影响
 /// （`+` 高于 `or`）实际只取 `Sum(...)`，把敌方/OnCrit 两项丢掉——与相邻 Double 行
-/// （`:3849`，无 `or`）结构不一致，判为 vendor 笔误；本实现按蓝图 §2 W-C1 给出的
+/// （`:3849`，无 `or`）结构不一致，判为 vendor 笔误；本实现按给出的
 /// **意图语义**（与 Double 同构）。
 ///
-/// TODO(W-A3 globalLimit)：`chance to deal Double Damage` 的 DOUBLED form 词条带
-/// globalLimit（蓝图 §2 W-C1 末行）——依赖 T1 W-A3 的 limit 原语，就绪后在 Sum 侧生效，
+/// TODO(globalLimit)：`chance to deal Double Damage` 的 DOUBLED form 词条带
+/// globalLimit——依赖 T1的 limit 原语，就绪后在 Sum 侧生效，
 /// 本函数无需改动。
 pub fn scaled_damage_effect(
     db: &ModDb,
@@ -116,8 +116,8 @@ pub fn scaled_damage_effect(
 /// AncestralEmpowermentDamageEffect × AncestralEmpowermentCombinedDamageEffect ×
 /// OffensiveWarcryEffect(WarcryMaxHit 时换 Max 变体)`。
 ///
-/// M4 范围只实现 ScaledDamageEffect；warcry / ancestral 是 M5+ 机制，本结构默认全 1.0
-/// 占位、留接口防返工（蓝图 §2 W-C1）。
+/// 只实现 ScaledDamageEffect；warcry / ancestral 是机制，本结构默认全 1.0
+/// 占位、留接口防返工。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AllMultExtras {
     pub fist_of_war: f64,
@@ -158,7 +158,7 @@ pub fn all_mult(scaled: &ScaledDamage, extras: &AllMultExtras) -> f64 {
     scaled.effect * extras.product()
 }
 
-/// DPS 末端两因子（W-C4，PoB2 `CalcOffence.lua:3128-3130` / `:3863` / `:4407`）。
+/// DPS 末端两因子（PoB2 `CalcOffence.lua:3128-3130` / `:3863` / `:4407`）。
 ///
 /// `TotalDPS = AverageDamage × (HitSpeed or Speed) × dps_multiplier × quantity_multiplier`。
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -184,7 +184,7 @@ pub fn dps_end_factors(
     skill_dps_multiplier: Option<f64>,
 ) -> DpsEndFactors {
     let dps_names = [ModName::from("DPS")];
-    // M4-G：grenade 二次起爆（vendor CalcOffence.lua:1124-1127）：
+    //  grenade 二次起爆（vendor CalcOffence.lua:1124-1127）：
     // `DPS MORE min(Sum(BASE,"GrenadeActivateTwice"),100)`。vendor 以
     // skillTypes[Grenade] 门控该折算；PoBR 此处不再加门——该 ModName 仅由
     // SupportPayload 的 statmap stat 产出（SkillStatMap.lua:2795-2797），而

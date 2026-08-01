@@ -26,7 +26,7 @@ pub struct ParseOutcome {
     pub status: ParseStatus,
     /// 未消费的剩余文本（诊断 / 覆盖率报表用）。
     pub unparsed: Option<String>,
-    /// special 词条规则命中元数据（M5b §2.3）。`None` = 走通用解析路径；
+    /// special 词条规则命中元数据（§2.3）。`None` = 走通用解析路径；
     /// `Some` = 由 [`crate::rules::SpecialModRules`] 整行命中产出（entry_id +
     /// verified 透传归因与 parity 报表）。
     pub special_meta: Option<SpecialMatchMeta>,

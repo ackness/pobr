@@ -7,14 +7,14 @@
 //! - `data.defaultAilmentDamageTypes`（Data.lua:378-410）——各异常默认的
 //!   伤害缩放来源 + 伤害型异常的 DoT 伤害类型。
 //!
-//! 数值与 pobr 现有 Rust 准源逐值相等（搬迁不变式，架构文档 20 §1.1）：
+//! 数值与 pobr 现有 Rust 准源逐值相等（搬迁不变式）：
 //! chill/shock 边界对应 `pobr_data::monster` 的
 //! `CHILL_MIN_EFFECT`/`CHILL_MAX_EFFECT`/`BASE_SHOCK_MAGNITUDE`/`SHOCK_MAX_EFFECT`
 //! 与 `pobr_data::constants::SHOCK_MIN_EFFECT`；伤害型异常的 `damage_type` 对应
 //! `pobr_data::constants::AilmentType::damage_type()`。pobr 没有的字段
 //! （associated_type/alt/precision/duration、freeze 边界、scales_from）从
 //! vendor 抽取，来源行号见各字段 doc。计算公式仍留 `pobr-core::calc::ailment`，
-//! 本表只迁数值（M0 不接线，W3 再消费）。
+//! 本表只迁数值（不接线，W3 再消费）。
 
 use std::collections::BTreeMap;
 

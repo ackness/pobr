@@ -8,7 +8,7 @@
 //! 语义 `value × Level + base`，oracle 实证 L99: Life base 1204 = 12×99+16、
 //! Mana base 426 = 4×99+30）。
 //!
-//! 常量注入（M0-W3）：派生公式的**数值系数**自注入的
+//! 常量注入：派生公式的**数值系数**自注入的
 //! [`CharacterConstantsDef`]（`base/character_constants.json` →
 //! `RuntimeConstants.character_constants`）读取，公式逻辑留在本模块；调用方
 //! （pobr-build orchestrator）从 `BuildData.constants` 取出后传入。无 GameData
@@ -19,7 +19,7 @@ use pobr_data::prelude::*;
 
 use crate::Modifier;
 
-/// fallback 准源锚点（M0-W3 搬迁不变式，已降级、仅供锁定测试引用）。
+/// fallback 准源锚点（搬迁不变式，已降级、仅供锁定测试引用）。
 ///
 /// 数值已迁出至 `data/<版本>/base/character_constants.json`（schema =
 /// `pobr_data::catalog::character_constants::CharacterConstantsDef`），其

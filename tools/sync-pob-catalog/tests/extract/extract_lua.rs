@@ -69,7 +69,7 @@ fn extract_captures_expected_overrides() {
         "0000000000000000000000000000000000000000"
     );
 
-    // 排序契约：(skill, stat, stat_set) 升序；M1-T4.3 通道收窄——critChance /
+    // 排序契约：(skill, stat, stat_set) 升序；通道收窄——critChance /
     // attackSpeedMultiplier（夹具中仍存在）不得被抽取（已改 `.dat` 表列直读）。
     let keys: Vec<(&str, &str)> = doc
         .overrides

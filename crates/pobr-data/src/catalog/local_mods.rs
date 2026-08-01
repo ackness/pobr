@@ -11,8 +11,8 @@
 //! vendor 对照（差异仅记录、不改值——见 audits/rearchitecture-2026-06-10/16-items.md
 //! 「pobr 当前混合点的自查」）：PoB2 的局部性判定是 `src/Classes/Item.lua:1655-1682`
 //! `calcLocal` 的**结构化规则**（mod name + flag 精确匹配、keywordFlags == 0、
-//! 无 tag 或仅 InSlot tag），并非文本枚举；架构文档 20 §2.4 的终局方向是
-//! 「local_mods.json 白名单 + 结构化局部结算」。M0 阶段先把现有文本枚举
+//! 无 tag 或仅 InSlot tag），并非文本枚举；的终局方向是
+//! 「local_mods.json 白名单 + 结构化局部结算」。先把现有文本枚举
 //! 原样数据化（值不变 = parity 不变），结构化迁移留后续波次。
 //!
 //! 注意 clean 文本 = `clean_item_text` 产物（剥 `{...}` 标记 + trim + **小写**），

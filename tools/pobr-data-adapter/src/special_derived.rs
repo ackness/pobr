@@ -1,4 +1,4 @@
-//! keystone 派生 special 表生成（M5b 蓝图 C-1）。
+//! keystone 派生 special 表生成。
 //!
 //! 从 `data/<patch>/base/passive_tree.json` 的 keystone 节点确定性派生
 //! `generated/special_derived.json`（schema = `special_derived/v1`，与
@@ -12,9 +12,9 @@
 //! （超集无害：多识别几行；差异记 `_meta`）。
 //!
 //! **byte-stable 纪律**：条目按 keystone 名字典序排序，序列化走统一 pretty
-//! 写入（[`crate::write_pretty`]）；同输入重跑 byte-diff 零（纳入 M0 regen-check）。
+//! 写入（[`crate::write_pretty`]）；同输入重跑 byte-diff 零（纳入regen-check）。
 //!
-//! **M6 衔接**：本步骤产物迁入 `tools/precompile-mods` 时 keystone 段须 byte 等价。
+//! **衔接**：本步骤产物迁入 `tools/precompile-mods` 时 keystone 段须 byte 等价。
 
 use std::path::PathBuf;
 

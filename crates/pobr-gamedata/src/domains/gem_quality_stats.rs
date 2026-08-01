@@ -1,6 +1,6 @@
 //! `overlay/gem_quality_stats.json` loader——宝石品质 stat 斜率
 //! （`effect_id → [{stat, per_quality_rate}]`），schema 见
-//! [`pobr_data::catalog::skills`] 的 `GemQualityStatsDef` 段（M1-T1，缺口 18-G1/15-G5）。
+//! [`pobr_data::catalog::skills`] 的 `GemQualityStatsDef` 段。
 //!
 //! 数据来源：vendor PoB2 `Data/Skills/*.lua` 的 `qualityStats` 字段，
 //! 由 `sync-pob-catalog extract-lua --what gem-quality` 确定性抽取生成

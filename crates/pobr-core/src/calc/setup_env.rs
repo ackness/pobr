@@ -4,7 +4,7 @@
 //! [`SourceKind::EnemyConfig`]。所有注入都是 BASE/MORE modifier，由进攻计算
 //! （`offence.rs`）在 `mode_effective` 口径下读取。
 //!
-//! **数据来源（M0-W3）**：百级表与档位预设改读注入的
+//! **数据来源**：百级表与档位预设改读注入的
 //! [`RuntimeConstants`]（`cfg.constants.monster_scaling` / `.enemy_presets`，
 //! 来自 `base/monster_scaling.json` + `base/enemy_presets.json`）；无 GameData 时
 //! 走 `Default` fallback（与 JSON 逐值相等，引用旧 `pobr_data::monster` 准源）——
@@ -18,7 +18,7 @@
 //!   MORE -50` 等，削弱我方诅咒/曝光/减速对 Boss 的有效度。
 //! - **条件态**：Boss → `Condition:Unique`/`RareOrUnique`；Pinnacle/Uber → `Condition:PinnacleBoss`。
 //! - **穿透**：`tier.pen()` 仅注入 enemy modDB 的 `Enemy<Element>Pen BASE`（防御侧
-//!   EHP/受击消费，vendor CalcDefence.lua:2363）；**不**进玩家进攻穿透（M4-H S1）。
+//!   EHP/受击消费，vendor CalcDefence.lua:2363）；**不**进玩家进攻穿透。
 //! - **玩家施加的 debuff（曝光/诅咒/破甲/凋萎）通道**：本步只提供归约 hook
 //!   [`reduce_enemy_exposure`]（曝光取最强 → 写入 `*Resist BASE` 减项），具体 debuff
 //!   注入由下游 wave 在调用 [`setup_enemy`] 后追加再调 [`reduce_enemy_exposure`]。
@@ -125,7 +125,7 @@ fn tier_defaults_from_constants(
 /// 当 `config_level == 0` 时回退为 `min(MaxEnemyLevel, player.level)`（上限读注入的
 /// `cfg.constants.enemy_presets.max_enemy_level`，Default fallback = 85）。
 ///
-/// 数据来源：百级表/档位预设读 `env.cfg.constants`（M0-W3 注入管道）——调用方须在
+/// 数据来源：百级表/档位预设读 `env.cfg.constants`（注入管道）——调用方须在
 /// `set_constants` **之后**调用本函数（`calculate_with_data` 已遵守此序；无注入时
 /// Default fallback 与 JSON 逐值相等，输出不变）。
 pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
@@ -189,7 +189,7 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
     // （`ehp::fill_ehp_pob2` 消费）。历史版本曾把它同时注入玩家 modDB 的
     // `ElementalPenetration BASE`（提高我方进攻穿透）——vendor 进攻侧
     // CalcOffence.lua:4143 的 pen 只读玩家 skillModList，无任何 boss 来源；
-    // 该注入是反向假补偿，已删除（M4-H S1）。
+    // 该注入是反向假补偿，已删除。
 }
 
 /// 把 [`EnemyTierDefaults`] + 档位加成写入 enemy modDB（不触碰 base 标量）。
@@ -312,14 +312,14 @@ fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTi
     }
 }
 
-/// EHP 进伤 placeholder 注入（M2 F-1）：把 vendor ConfigOptions.lua:1982-1996 的
+/// EHP 进伤 placeholder 注入：把 vendor ConfigOptions.lua:1982-1996 的
 /// 敌人单击伤害默认占位（`enemy<X>Damage` config placeholder）落成 enemy modDB 的
 /// `Enemy<X>Damage` BASE——`default = round(monsterDamageTable[lv] ×
 /// ehp_base_damage_mult × DPSMult)`，chaos 再 `round(/chaos_damage_div)`
 /// （数值装配在 `ehp::enemy_damage_placeholder`）。
 ///
 /// 行为中性：注入的 ModName 当前仅被 EHP 新管线（`ehp::assemble_enemy_damage`）
-/// 消费，全部产出挂新字段——既有输出 parity 逐值不变。M3 config_interpreter 接管
+/// 消费，全部产出挂新字段——既有输出 parity 逐值不变。config_interpreter 接管
 /// `enemy<X>Damage` configInput 后，本注入退化为无 config 时的 placeholder 路径。
 fn inject_ehp_damage_placeholder(
     db: &mut ModDb,

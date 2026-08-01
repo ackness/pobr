@@ -1,4 +1,4 @@
-//! `extract-lua --what parser-rules` 集成测试（M6 前置）。
+//! `extract-lua --what parser-rules` 集成测试。
 //!
 //! headless 引导依赖 luajit + 完整 vendor 检出（runtime/lua + Modules 全量），
 //! 环境缺任一即**跳过**（CI 无 vendor 也不挂）；drift diff 与派生字段用例为
@@ -35,7 +35,7 @@ fn vendor_available() -> bool {
 /// evasion name_map = 修了 PoB 旧版对 `20% more Global Evasion Rating and Energy
 /// Shield` 的漏算），与**用旧 PoB2 导出的** parity golden（canary_evasion_melee /
 /// deflection_matches_golden / ninja parity_no_regression）冲突。即 vendor 升级
-/// 须与 parity golden 重标定（owner 双指标裁决 + oracle 配置对齐重导出）**一并**
+/// 须与 parity golden 重标定**一并**
 /// 进行，不能只同步 parser 规则。待统一升级后移除本 `#[ignore]` 重启 drift 防线。
 #[test]
 #[ignore = "vendor 已升 a82a33b；mod_parser_rules 待与 parity golden 统一重标后重启（见上方 doc）"]

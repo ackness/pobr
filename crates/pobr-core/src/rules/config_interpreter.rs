@@ -1,12 +1,12 @@
-//! config 解释器（M3-T1 A4 的**纯函数体**，不接 orchestrator/perform）。
+//! config 解释器。
 //!
 //! 输入 = `config_options.json` 条目（[`ConfigOptionDef`]）+ 原始 XML 输入
 //! （[`RawConfigInputs`]）+ handler 注册表；输出 = [`ConfigOutcome`]
 //! （player/enemy/minion 三路 Modifier + conditions/multipliers 回填 +
 //! customMods 行通道 + 标量回显）。零 I/O、确定性；接线（xml_build 切换
-//! 双跑、ConfigCatalog 注入）属 M3 主波 T1-A5。
+//! 双跑、ConfigCatalog 注入）属-A5。
 //!
-//! 求值序（蓝图 m3-orchestration §4.4）：
+//! 求值序：
 //! 1. 每条目取「显式输入 else default」；check=false/None 直接跳过；
 //!    count=0 跳过（vendor BuildModList 语义）；
 //! 2. effects 逐条实例化（数值走 `rules::value_expr` 唯一求值器；
@@ -482,9 +482,8 @@ fn build_modifier(
 }
 
 /// flags / tags 名称映射；未知项记 diagnostics 并放弃整条 mod
-/// （保守：宁缺勿错值——缺位的 ModFlags 在 M4-W-A1 扩位后回补）。
 ///
-/// actor tag 翻译（M3-T5-E1 后回补，dualrun 报告 §3-⑦）：vendor
+/// actor tag 翻译（后回补，dualrun 报告 §3-⑦）：vendor
 /// `ActorCondition`/`Multiplier(actor=…)` 的 actor 字面量经
 /// [`map_vendor_actor`]（按 mod 所在桶 `bucket` 解析指向）落
 /// [`ModTag::Condition`]/[`ModTag::Multiplier`] 的 `actor` 字段。
@@ -582,7 +581,7 @@ fn map_vendor_actor(literal: &str, bucket: EffectTarget) -> Option<ActorRef> {
     }
 }
 
-/// vendor ModFlag 渲染名 → pobr ModFlags 位（当前闭集；M4-W-A1 扩位后扩表）。
+/// vendor ModFlag 渲染名 → pobr ModFlags 位（当前闭集，扩位后扩表）。
 fn map_mod_flag(name: &str) -> Option<ModFlags> {
     match name {
         "Attack" => Some(ModFlags::ATTACK),
@@ -1039,7 +1038,7 @@ mod tests {
         assert_eq!(outcome.minion_mods[0].name.as_str(), "Condition:FullLife");
     }
 
-    /// actor tag 翻译（M3-T5-E1 回补，dualrun 报告 §3-⑦）：enemy 桶的
+    /// actor tag 翻译：enemy 桶的
     /// `ActorCondition{actor:"enemy"}` 指向玩家（PoB2 CalcSetup.lua:542
     /// `env.enemy.enemy = env.player`）→ `ModTag::Condition{actor:Player}`。
     /// 曝光条目形态（ConfigOptions.lua:1864-1866）。

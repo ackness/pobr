@@ -2,7 +2,7 @@
 //!
 //! `parsed_mods.json` 的 `mods[]` 必须 byte-stable，且能让运行时（D-T8）无损
 //! 还原为 `Vec<Modifier>` 供热路径直接注入。pobr-core 的 `Modifier`/`ModTag`
-//! 当前**未派生 Serialize**（蓝图 §11.2 把 canonical 序列化划归 B-track 的
+//! 当前**未派生 Serialize**（把 canonical 序列化划归 B-track 的
 //! `mod_parser/canonical.rs`，尚未交付）。本工具用一份**自包含**的 canonical
 //! 形态：
 //!
@@ -12,7 +12,7 @@
 //! - `tags`：`ModTag` 的 `Debug` 表示（确定性、byte-stable）。
 //!
 //! `origin`（SourceId）**剔除**：precompile 阶段无构建上下文，归因由运行时注入。
-//! B-track 的 `canonical.rs` 交付后，本模块改为转发到那份共享实现（蓝图禁止两套
+//! B-track 的 `canonical.rs` 交付后，本模块改为转发到那份共享实现（禁止两套
 //! 序列化），届时 `parsed_mods.json` 形态会随之统一——schema 版本号 bump 区分。
 
 use serde::Serialize;

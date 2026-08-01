@@ -1,6 +1,6 @@
-//! M1-T5.3 全量 stat 入库验收：`granted_effect_stat_sets.json` 不再受
+//! 全量 stat 入库验收：`granted_effect_stat_sets.json` 不再受
 //! adapter 白名单（原后缀谓词，T2.4 已随消费侧兜底一并删除）过滤——曾被过滤的非伤害 stat
-//! （范围/持续时间/弹道数等）必须出现在入库 JSON 中（蓝图 T5 验收项）。
+//! （范围/持续时间/弹道数等）必须出现在入库 JSON 中。
 //!
 //! 搬迁不变式的另一半（消费侧 legacy 过滤保证 ninja 逐值不变）由
 //! `pobr-build::legacy_stat_filter` 的单测 + ninja_parity 回归门禁锁定。

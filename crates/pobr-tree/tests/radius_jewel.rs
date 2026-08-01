@@ -225,7 +225,7 @@ fn radius_to_units_matches_constants() {
     assert_eq!(JewelRadius::Custom(123.0).units(), 123.0);
 }
 
-/// 搬迁不变式（M0-W3）：`JewelRadiiDef::default()` 注入路径与旧硬编码常量路径
+/// 搬迁不变式：`JewelRadiiDef::default()` 注入路径与旧硬编码常量路径
 /// **逐值相等**——`units_with_radii(Default)` == `units()`（4 具名档 + Custom）。
 /// 该测试把 pobr-data 的 Default fallback 锚定到本 crate 的旧 Rust 准源常量
 /// （pobr-data 依赖方向上无法直接引用本 crate 常量，由此处锁定）。

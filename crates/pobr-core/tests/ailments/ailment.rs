@@ -92,9 +92,7 @@ fn ailment_total_damage_is_dps_times_duration() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // Step 2: 施加几率 + effMult + 暴击加权 + 玩家阈值 + trace
-// ---------------------------------------------------------------------------
 
 /// 玩家异常阈值 = 最大生命 × 0.5（gap: player-ailment-threshold-bug）。
 #[test]
@@ -286,11 +284,9 @@ fn ignite_traced_chance_scales_with_threshold() {
     assert!(low_thr.expected_dps > high_thr.expected_dps);
 }
 
-// ---------------------------------------------------------------------------
 // Step 3 (Lane B): 冰缓 effect / 冰冻+电击 Poise buildup / 叠层权重平均
-// ---------------------------------------------------------------------------
 
-// --- 冰缓 effect (chill-effect-missing) ---
+// 冰缓 effect (chill-effect-missing)
 
 /// 冰缓最小阈值：< 30% 强度时返回 0（丢弃），PoE2 0.5.0。
 ///
@@ -423,7 +419,7 @@ fn chill_traced_with_ailment_magnitude_mod() {
     );
 }
 
-// --- 冰冻/电击 Poise 积累 (freeze-electrocute-buildup-missing) ---
+// 冰冻/电击 Poise 积累 (freeze-electrocute-buildup-missing)
 
 /// 冰冻 Poise 积累随姿态阈值单调递减：阈值越低→每次击中积累%越高。
 ///
@@ -547,7 +543,7 @@ fn electrocute_poise_buildup_traced_with_mod() {
     assert!(has_inc, "trace should record electrocute buildup inc");
 }
 
-// --- 叠层权重平均 DPS (ailment-stacking) ---
+// 叠层权重平均 DPS (ailment-stacking)
 
 /// 默认单层（StackConfig::single()）：DPS = single_layer_dps × 1。
 ///
@@ -742,9 +738,7 @@ fn bleed_stacking_dps_integration() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // Feature 1: AilmentEffect / Faster / Slower 三维度
-// ---------------------------------------------------------------------------
 
 /// `AilmentEffect` MORE 乘区：无 mod 时为 1.0（中性）。
 ///
@@ -812,7 +806,7 @@ fn ailment_rate_mod_scales_with_faster() {
     );
 }
 
-/// M4-m（k3）：`ailment_rate_mod` 的 INC 腿——vendor `calcLib.mod`（CalcTools.lua:16-18）
+/// （k3）：`ailment_rate_mod` 的 INC 腿——vendor `calcLib.mod`（CalcTools.lua:16-18）
 /// = `(1 + ΣINC/100) × ΠMORE`；statmap `faster_burn_%` 族产 INC（SkillStatMap.lua:843-848）。
 ///
 /// `IgniteFaster INC 50 + MORE 20 → faster = 1.5 × 1.2 = 1.8`。
@@ -977,9 +971,7 @@ fn apply_effect_and_rate_mod_traced_writes_nodes() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // Feature 2: 跨类型施加 (<Type>Can<Ailment>)
-// ---------------------------------------------------------------------------
 
 /// 默认：火命中不施加流血，物理命中才算流血来源。
 ///
@@ -1058,9 +1050,7 @@ fn cross_type_source_hit_empty_components() {
     assert_eq!(hit, 0.0, "empty components → 0");
 }
 
-// ---------------------------------------------------------------------------
 // Feature 3: DotDpsCap
-// ---------------------------------------------------------------------------
 
 /// `apply_dot_dps_cap`：普通 DPS 低于 cap 时原样返回。
 ///
@@ -1160,10 +1150,8 @@ fn dps_with_effect_rate_cap_traced_no_cap_node_when_not_truncated() {
     assert!(!has_cap, "no cap node when DPS is below DOT_DPS_CAP");
 }
 
-// ---------------------------------------------------------------------------
 // 05-01：异常暴击 over-stacking 修正（PoB2 CalcOffence.lua L5144
 // ailmentCritChance = 100*(1-(1-c)^max(SP,1))）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn ailment_crit_chance_applies_over_stacking_correction() {
@@ -1199,9 +1187,7 @@ fn ailment_crit_chance_applies_over_stacking_correction() {
     assert!(base_over > base_sp1, "over-stacking 应抬高异常 base 伤害");
 }
 
-// ---------------------------------------------------------------------------
-// M4-G：Stored 族来源（stored_source_at_roll）+ CHANCE_AILMENT 合并
-// ---------------------------------------------------------------------------
+//  Stored 族来源（stored_source_at_roll）+ CHANCE_AILMENT 合并
 
 fn range(
     damage_type: DamageType,
@@ -1305,9 +1291,7 @@ fn merge_hand_ailment_dps_weights_by_stack_fill() {
     assert_eq!(merge_hand_ailment_dps(100.0, 60.0, 0.0, 2.0), 100.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
-// M4-K：keyword 作用域（vendor dotCfg）+ duration MORE 腿
-// ─────────────────────────────────────────────────────────────────
+//  keyword 作用域（vendor dotCfg）+ duration MORE 腿
 
 /// `AilmentMagnitude MORE kw=Poison`（Deadly Poison 实形）只放大中毒，
 /// 不进点燃（vendor dotCfg keywordFlags 含 KeywordFlag[ailment]，

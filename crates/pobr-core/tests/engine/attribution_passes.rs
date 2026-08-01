@@ -1,4 +1,4 @@
-//! M4-T2 W-B1：双 pass × 归因模型集成测试。
+//!  双 pass × 归因模型集成测试。
 //!
 //! 对照 RFC `audits/rearchitecture-2026-06-10/blueprints/m4-rfc-attribution-passes.md`
 //! §2（PassId 分区）/ §3（Combine 权重表）/ §5（direct/marginal 兼容性）与评审报告
@@ -16,10 +16,8 @@ fn src(id: &str) -> SourceId {
 const MH_PASS: PassId = PassId::hand_blended(HandTag::MainHand);
 const OH_PASS: PassId = PassId::hand_blended(HandTag::OffHand);
 
-// =========================================================================
 // I4 组 1：线性模式（OR / ADD / AVERAGE / DPS / CRIT-非doubleHits）——
 // 「Σ weights×leg == 合并值」严格成立（权重为常数，合并是腿的线性组合）。
-// =========================================================================
 
 /// 线性模式逐一断言：`combine(legs) == Σ linearized_weights×legs`（手算值）。
 #[test]
@@ -98,11 +96,9 @@ fn i4_linear_graph_direct_sums_to_output() {
     assert_eq!(total, combined_value, "线性模式 direct 全来源之和守恒");
 }
 
-// =========================================================================
 // I4 组 2：HARMONICMEAN——非线性，但调和平均是 1 次齐次函数，欧拉定理使
 // 「Σ偏导×leg == 值」**恰好成立**（齐次巧合，评审 C2 要求单独注明；
 // 不要据此推广到其它非线性模式）。
-// =========================================================================
 
 #[test]
 fn i4_harmonic_mean_weighted_sum_homogeneity_coincidence() {
@@ -131,12 +127,10 @@ fn i4_harmonic_mean_zero_leg_yields_zero_weights() {
     assert_eq!(mode.linearized_weights(&legs), Some(vec![0.0, 0.0]));
 }
 
-// =========================================================================
 // I4 组 3：CRIT-doubleHits / CHANCE / CHANCE_AILMENT / CritBlend——
 // **仅断言权重 == 解析偏导**。direct 在这些模式下**不守恒**
 // （doubleHits 的交叉项被偏导重复扣减：Σw×leg = MH+OH−2·MH·OH/100 ≠ 合并值
 // MH+OH−MH·OH/100），守恒语义由 marginal 整管线重算兜底（RFC §5.2、评审 C2）。
-// =========================================================================
 
 #[test]
 fn i4_crit_double_hits_weights_are_partial_derivatives_not_conserving() {
@@ -191,9 +185,7 @@ fn i4_coefficient_modes_frozen_weights_match_partials() {
     assert!(main_portion > off_portion);
 }
 
-// =========================================================================
 // I6：marginal 在非线性（doubleHits）样例上 ≠ direct 且符合手算。
-// =========================================================================
 
 #[test]
 fn i6_marginal_differs_from_direct_on_double_hits_cross_term() {
@@ -263,9 +255,7 @@ fn i6_marginal_differs_from_direct_on_double_hits_cross_term() {
     );
 }
 
-// =========================================================================
 // §5.4 pass_filter：per-pass direct 查询 + C4 口径（marginal 置 None）。
-// =========================================================================
 
 #[test]
 fn pass_filter_restricts_direct_to_matching_pass_inputs() {
@@ -333,9 +323,7 @@ fn c4_pass_filter_disables_marginal_and_interaction() {
     assert!(report.interaction.is_none());
 }
 
-// =========================================================================
 // I1 / C3：pass 分区结构不变式 + begin_pass 作用域栈行为。
-// =========================================================================
 
 /// begin_pass/end_pass 作用域栈：盖戳、嵌套覆盖、栈空回 None（既有调用点零改动保持
 /// `pass: None`——RFC §2.6）。
@@ -422,10 +410,8 @@ fn i1_combine_partition_violations_detects_shared_stamped_node() {
     );
 }
 
-// =========================================================================
 // 嵌套 Combine（2×2 同构）：内层 CritBlend per 手、外层 hand-combine，
 // direct 沿两层权重正确摊销。
-// =========================================================================
 
 #[test]
 fn nested_crit_blend_inside_hand_combine_amortizes_through_both_layers() {
@@ -485,7 +471,7 @@ fn nested_crit_blend_inside_hand_combine_amortizes_through_both_layers() {
     // 全线性层 → 守恒。
     assert!((report.entries[0].value + report.entries[1].value - combined_value).abs() < 1e-12);
 
-    // node_for_pass 形态留 W-B2（offence 侧）；此处验证 pass 戳可按子图过滤。
+    // node_for_pass 形态留（offence 侧）；此处验证 pass 戳可按子图过滤。
     let mh_scoped = pobr_core::attribution::AttributionReport::direct(
         &request.clone().with_pass_filter(MH_PASS),
         combined_value,

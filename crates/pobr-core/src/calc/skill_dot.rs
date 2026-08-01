@@ -1,4 +1,4 @@
-//! 技能 DoT（damage over time）计算模块——M4-T4 W-D1（蓝图
+//! 技能 DoT（damage over time）计算模块——（
 //! `audits/rearchitecture-2026-06-10/blueprints/m4-offence-deep.md` §2-T4）。
 //!
 //! vendor 参照 `CalcOffence.lua`（逐行亲验）：
@@ -11,18 +11,18 @@
 //!      `rules::stat_map_engine::collect_skill_data` 译出；
 //!   2. statSet baseMods 直挂布尔（[`pobr_data::catalog::DotFlags`]，4.5.0.3.4
 //!      vendor 全量仅 TornadoShot 一处）——编排层按选中 statSet 注入。
-//!      未注入（数据缺失/保守默认）= 全剥，对齐蓝图 §5 风险行的保守口径。
+//!      未注入（数据缺失/保守默认）= 全剥，对齐风险行的保守口径。
 //! - 逐类型（`:5870-5929`）：`baseVal = skillData[type.."Dot"]`（canDeal 门控，
-//!   W-C3 同源 flag 口径）；`total = baseVal × (1+inc/100) × more ×
+//!   同源 flag 口径）；`total = baseVal × (1+inc/100) × more ×
 //!   (1 + (Override(DotMultiplier) or Sum(DotMultiplier)+Sum(<type>DotMultiplier))/100)
 //!   × aura × effMult`；`TotalDotInstance` 累计 clamp `DotDpsCap`。
 //!   `<Type>Dot` BASE 经 statmap `base_<type>_damage_to_deal_per_minute / 60`
-//!   注入 ModDb（W-D1 数据通道）。aura 因子：pobr 无 aura-DoT 消费 build，
-//!   按 1.0 跳过（TODO(M5+ aura-dot)：接 `AuraEffect × Magnitude`）。
+//!   注入 ModDb。aura 因子：pobr 无 aura-DoT 消费 build，
+//!   按 1.0 跳过（TODO(aura-dot)：接 `AuraEffect × Magnitude`）。
 //! - `DotCanStack`（`:5931`）：`TotalDot = min(instance × speed × Duration ×
 //!   dpsMultiplier × quantityMultiplier, DotDpsCap)`；速率按 keywordFlags
 //!   Mine/Trap 换 `MineLayingSpeed/TrapThrowingSpeed`——pobr 无图腾/陷阱吞吐
-//!   （12-G11，M4 不做），KeywordFlags 暂无 Mine/Trap 位，留分支注释 + 退
+//!   （12-G11，不做），KeywordFlags 暂无 Mine/Trap 位，留分支注释 + 退
 //!   Speed。`duration == 0`（编排层未接 skill duration）时保守退化为
 //!   instance（不放大）。dotIsBurningGround/CausticGround/CorruptingBlood
 //!   三分支（`:5947-5967`）依赖 ground-dot 旗标数据，未建模——走 else 分支
@@ -34,7 +34,7 @@
 //!   decay 未建模恒 0）；`CombinedDPS = baseDPS + TotalDotDPS`（culling /
 //!   reservation 乘子未建模，按 1.0——vendor `:6238-6241`）。
 //!
-//! 字段命名契约（蓝图 §3.3 条目 6，合入 display_catalog 后不再改）：
+//! 字段命名契约：
 //! `skill_dot_instance` / `skill_total_dot` / `total_dot_dps` /
 //! `with_dot_dps` / `combined_dps`。
 
@@ -47,7 +47,7 @@ use super::output::OutputTable;
 use super::round;
 use super::scaled_damage::dps_end_factors;
 
-/// 技能 DoT 计算结果（OutputTable `// === M4-T4 ===` 区块的来源值）。
+/// 技能 DoT 计算结果（OutputTable 对应区块的来源值）。
 ///
 /// 全零 = 中性（无技能 DoT 且无异常 DoT）。
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -113,7 +113,7 @@ impl DotIsFlags {
 /// 构造 dotCfg（PoB2 `CalcOffence.lua:5832-5856`）：置 Dot 位 + 按 dotIs* 剥
 /// Area/Projectile/Spell/Attack/Hit 位 + keyword 去 Hit。
 ///
-/// （历史：实施期按 `modflags-pob2` feature 双态编写；M4-i1 已切换 PoB2 全位表
+/// （历史：实施期按 `modflags-pob2` feature 双态编写；已切换 PoB2 全位表
 /// 常驻并删除该 feature，合并适配时去门控——Dot/Hit 位逻辑常驻，与 vendor
 /// 位表逐位一致。）
 pub fn dot_config(cfg: &CalcConfig, dot_is: DotIsFlags) -> CalcConfig {
@@ -244,7 +244,7 @@ pub fn calc_skill_dot(
             .clone()
             .with_damage_type(damage_type)
             .with_keyword_flags(dot_cfg.keyword_flags | dot_keyword(damage_type));
-        // canDeal 门控（W-C3 契约 3 同源 flag：`DealNoDamage` / `DealNo<Type>`）。
+        // canDeal 门控（同源 flag：`DealNoDamage` / `DealNo<Type>`）。
         let can_deal =
             !deal_no_damage && !db.flag(&dot_type_cfg, ModName::from(format!("DealNo{prefix}")));
         if !can_deal {
@@ -280,7 +280,7 @@ pub fn calc_skill_dot(
                     &[ModName::from(format!("{prefix}DotMultiplier"))],
                 )
             });
-        // aura 因子（`:5898`）：aura-DoT 未建模，按 1.0（TODO(M5+ aura-dot)）。
+        // aura 因子（`:5898`）：aura-DoT 未建模，按 1.0（TODO(aura-dot)）。
         let total = base_val * (1.0 + inc / 100.0) * more * (1.0 + mult / 100.0) * eff_mult;
         instance = (instance + total).min(cap);
     }
@@ -290,7 +290,7 @@ pub fn calc_skill_dot(
     let total_dot = if db.flag(cfg, ModName::from("DotCanStack")) && inputs.duration > 0.0 {
         // 速率分支（`:5934-5940`）：keywordFlags 带 Mine/Trap 时换
         // MineLayingSpeed/TrapThrowingSpeed——pobr 无图腾/陷阱吞吐（12-G11，
-        // M4 不做）且 KeywordFlags 暂无 Mine/Trap 位，恒走 Speed。
+        // 不做）且 KeywordFlags 暂无 Mine/Trap 位，恒走 Speed。
         let speed = inputs.speed;
         let end = dps_end_factors(db, cfg, None);
         (instance * speed * inputs.duration * end.dps_multiplier * end.quantity_multiplier).min(cap)
@@ -318,9 +318,9 @@ pub fn calc_skill_dot(
     }
 }
 
-/// 把技能 DoT 结果写入 [`OutputTable`] 的 M4-T4 契约字段（纯字段搬运，零计算）。
+/// 把技能 DoT 结果写入 [`OutputTable`] 的契约字段（纯字段搬运，零计算）。
 ///
-/// 调用点：`perform.rs` fill 段 `fill_skill_dot_stage`（函数级新增，蓝图 §3.2
+/// 调用点：`perform.rs` fill 段 `fill_skill_dot_stage`（函数级新增，
 /// 共享文件规则），在 `fill_ailments` 之后（消费异常 DoT 现值）。
 pub fn fill_skill_dot(output: &mut OutputTable, dot: &SkillDotOutput) {
     output.skill_dot_instance = dot.skill_dot_instance;
@@ -450,7 +450,7 @@ mod tests {
         );
     }
 
-    /// canDeal 门控：`DealNoChaos` 清零混沌 DoT 基值（W-C3 契约 3 同源 flag）。
+    /// canDeal 门控：`DealNoChaos` 清零混沌 DoT 基值。
     #[test]
     fn deal_no_type_gates_dot_base() {
         let db = db_with(vec![

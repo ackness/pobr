@@ -1,8 +1,7 @@
-//! 防御 keystone 开关注册表（M2 Track C，13-G6 / 13-G16）。
+//! 防御 keystone 开关注册表（13-G6 / 13-G16）。
 //!
 //! 把「数据 flag → 有限稳定分支」的开关集中为一个一次性快照结构
 //! [`DefenceKeystones`]：calc 各处只读本结构、不再各自散读 keystone flag
-//! （蓝图 m2-defence §3.3 契约 2——E/D/B/F 以参数形式消费本结构）。
 //!
 //! 数据 vs 逻辑切分（13-defence §5 结论）：开关本身是数据（树词条 →
 //! `Modifier::flag`，由 mod_parser / passive ingest 落入 ModDb）；行为是逻辑
@@ -21,7 +20,7 @@
 //! - `DoubleBodyArmourDefence`：:1150-1290（Body Armour 的 ward/ES/armour/evasion 皆 ×2）。
 //! - `EnergyShieldToWard`：:1160-1192（ES 的 inc 借给 Ward、ES 本体不再聚合）。
 //! - `WardNotBreak`：:560-575（ward 扣减后返还）/ :3030（EHP ∞ 分支）。
-//! - `BloodMagic`：:172-350（预留改走生命，M3 接 reservation，本阶段仅预留字段）。
+//! - `BloodMagic`：:172-350（预留改走生命，接 reservation，本阶段仅预留字段）。
 
 use crate::{CalcConfig, ModDb};
 use pobr_data::prelude::*;
@@ -57,7 +56,7 @@ pub struct DefenceKeystones {
     pub energy_shield_to_ward: bool,
     /// Ward 扣减后返还（不破盾，CalcDefence.lua:560-575，Track A/F 消费）。
     pub ward_not_break: bool,
-    /// Blood Magic：预留改走生命（预留字段，M3 接 reservation）。
+    /// Blood Magic：预留改走生命（预留字段，接 reservation）。
     pub blood_magic: bool,
 }
 

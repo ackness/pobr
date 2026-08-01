@@ -81,7 +81,7 @@ pub struct AttributionRequest {
     pub group_by: AttributionGroup,
     /// 归因口径。
     pub mode: AttributionMode,
-    /// per-pass 过滤（M4-T2 W-B1，RFC §5.4）：`Some(p)` 时 direct 口径只累计
+    /// per-pass 过滤：`Some(p)` 时 direct 口径只累计
     /// `node.pass == Some(p)` 的 Input 节点（回答"这件副手武器贡献了多少 OffHand DPS"）。
     ///
     /// **口径裁决（评审 C4）**：`pass_filter` 非 `None` 时 `marginal_delta` /
@@ -102,7 +102,7 @@ impl AttributionRequest {
         }
     }
 
-    /// 设定 per-pass 过滤（见 [`AttributionRequest::pass_filter`] 的口径裁决）。
+    /// 设定 per-pass 过滤（见 [`AttributionRequest::pass_filter`] 的口径）。
     pub fn with_pass_filter(mut self, pass: PassId) -> Self {
         self.pass_filter = Some(pass);
         self
@@ -215,7 +215,7 @@ impl AttributionReport {
     }
 }
 
-/// 累加某来源在输出节点祖先链中的直接贡献输入值（M4-T2 W-B1 起为双 pass 感知版）。
+/// 累加某来源在输出节点祖先链中的直接贡献输入值。
 ///
 /// 算法（RFC §5.1；**评审 C1 注记：这是对旧"单一全局 visited 扁平 DFS"的算法重写**，
 /// 不是"加字段不读即回退"——I2 零回归靠"无 Combine 图上递归分支不触发、行为逐字节
@@ -397,14 +397,14 @@ fn percent(value: f64, final_value: f64) -> Option<f64> {
 
 #[cfg(test)]
 mod direct_rewrite_tests {
-    //! W-B1 评审 C1：direct 是**算法重写**，旧实现按字节保留于此作等价性证物——
+    //! 评审 C1：direct 是**算法重写**，旧实现按字节保留于此作等价性证物——
     //! 无 Combine 图上新旧算法必须逐字节等价（I2 的内部镜像；外部镜像 =
     //! `tests/attribution.rs` / `tests/trace.rs` 零改动通过）。
 
     use super::*;
     use crate::{CombineMode, TraceOperation};
 
-    /// 旧实现原样副本（M4-T2 W-B1 重写前的 `direct_value_for_source`，
+    /// 旧实现原样副本（重写前的 `direct_value_for_source`，
     /// 单一全局 visited 扁平 DFS）。仅供等价性测试，勿在产品路径调用。
     fn direct_value_for_source_legacy(
         trace: &TraceGraph,

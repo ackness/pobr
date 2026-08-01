@@ -81,13 +81,13 @@ pub struct MinimalOutput {
     pub hit_chance: f64,
     pub action_rate: f64,
     pub dps: f64,
-    // === M4-T2 W-B3：Stored 族（vendor CalcOffence.lua:4047-4057，pre-resist、
+    // ===：Stored 族（vendor CalcOffence.lua:4047-4057，pre-resist、
     // 含 allMult；crit 腿额外 ×CritMultiplier）。ailment magnitude 的 vendor 口径
     // 输入；经 HandOutput 暴露 per-hand 值。===
     pub stored_crit_avg: Vec<(DamageType, f64)>,
     pub stored_hit_avg: Vec<(DamageType, f64)>,
     pub stored_combined_avg: Vec<(DamageType, f64)>,
-    /// `Stored<Type>{Hit,Crit}{Min,Max}` 族（M4-G append，vendor `:4050-4056`）：
+    /// `Stored<Type>{Hit,Crit}{Min,Max}` 族（append，vendor `:4050-4056`）：
     /// damaging ailment 来源伤害的 min/max 输入面（RollAverage 内插在区间上进行）。
     pub stored_ranges: Vec<super::output::StoredDamageRange>,
     pub breakdown: Vec<BreakdownStep>,
@@ -174,7 +174,7 @@ pub(crate) struct ResistanceResolution {
 ///   "fire resistance is N%" 走 override，"reduced fire resistance" 走 INC 乘区）
 /// - max   = Override(`Maximum<X>Resistance`/`<X>ResistMax`)，缺位时
 ///   `min(75 + Σ BASE, 90)`（:875/:914——max 的 override **不过** hard_cap）
-/// - final = max(min(total, max), −200)（M2-E3：负抗下界 `resist_floor`，
+/// - final = max(min(total, max), −200)（负抗下界 `resist_floor`，
 ///   :890 `min = data.misc.ResistFloor` / :924 `final = m_max(m_min(total, max), min)`）
 /// - over  = max(total - max, 0)
 ///
@@ -216,7 +216,7 @@ pub(crate) fn resolve_resistance(
         .override_(cfg, max_long)
         .or_else(|| db.override_(cfg, max_short))
         .unwrap_or_else(|| {
-            // M0-W3：默认最大抗性 / 硬上限改读注入常量包（fallback == 旧 const，值不变）。
+            //  默认最大抗性 / 硬上限改读注入常量包（fallback == 旧 const，值不变）。
             (cfg.constants.character().base_maximum_all_resistances_pct
                 + db.sum(ModType::Base, cfg, &max_names))
             .min(cfg.constants.game().resist_hard_cap)
@@ -303,7 +303,7 @@ pub fn calculate_minimal_vs_enemy(
     let accuracy_names = [ModName::from("Accuracy")];
     let accuracy = scaled_numeric_stat(db, cfg, input.base_accuracy, &accuracy_names);
     // PoE2 命中率（agent-docs/accuracy-and-enemy.md §二,§三）：
-    // - 非攻击必中（M3-W5 对齐 vendor CalcOffence.lua:2611-2612 `if not isAttack
+    // - 非攻击必中（对齐 vendor CalcOffence.lua:2611-2612 `if not isAttack
     //   then output.AccuracyHitChance = 100`）：法术/DoT/召唤等一切非攻击不做精准检定。
     //   旧口径 `is_spell()` 在 skill_types 缺 Spell 位时把法术也卷进精准公式。
     // - `CannotBeEvaded`（玩家旗标）/ effective 下敌方 `CannotEvade` → 置 100% 跳过精准公式。
@@ -338,7 +338,7 @@ pub fn calculate_minimal_vs_enemy(
     let crit_chance = crit.chance;
     let crit_multiplier = crit.multiplier;
 
-    // --- 伤害主体：暴击/非暴击双 pass（M4-T2 W-B3，crit_pass.rs）+ T3 乘区接线 ---
+    // 伤害主体：暴击/非暴击双 pass+ T3 乘区接线
     // 击中口径 cfg：补 `KeywordFlags::HIT`（击中本就是 hit）——使 `with Hits` 类
     // keyword 词条（kw=HIT）在击中聚合中命中。kw=NONE 词条恒匹配不受影响（legacy
     // 多产 NONE，逐值不变）；ailment 缩放另经 `ailment_scoped_cfg` 剥 Hit，ignite/
@@ -346,10 +346,10 @@ pub fn calculate_minimal_vs_enemy(
     let hit_cfg = cfg
         .clone()
         .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
-    // W-C1 ScaledDamageEffect（DD/TD 乘区；无词条时 effect == 1.0 逐位不变，
+    // ScaledDamageEffect（DD/TD 乘区；无词条时 effect == 1.0 逐位不变，
     // m4-t3-wiring-notes §2；crit_chance 是分数入参）。
     let scaled = scaled_damage_effect(db, enemy_db, &hit_cfg, crit.chance);
-    // 两腿聚合 + canDeal（W-C3）+ lucky（W-C2）+ CritBlend（vendor :4395）。
+    // 两腿聚合 + canDeal+ lucky+ CritBlend（vendor :4395）。
     // 无 CriticalStrike 条件词条时短路走旧单因子公式（取整顺序复刻，逐字节等价）。
     let crit_pass = run_crit_passes(
         db,
@@ -369,7 +369,7 @@ pub fn calculate_minimal_vs_enemy(
     // DPS 用：有效口径下含敌人受伤链/抗性/护甲减伤的总击中。
     let total_hit_avg_for_dps = crit_pass.total_hit_avg_mitigated;
 
-    // W-C4 DPS 末端两因子（vendor :4407；无词条且技能 dpsMultiplier 未接线（None）
+    // DPS 末端两因子（vendor :4407；无词条且技能 dpsMultiplier 未接线（None）
     // 时两因子均 1.0，逐值不变；T4 落 catalog 字段后由编排层透传）。
     let end = dps_end_factors(db, cfg, None);
     let dps = round(
@@ -579,7 +579,7 @@ fn total_dps_traced(
     input: &MinimalInput,
     trace: &mut TraceGraph,
 ) -> TracedValue {
-    // --- accuracy & hit chance（提前到暴击之前：mode_effective 暴击降级需命中率） ---
+    // accuracy & hit chance（提前到暴击之前：mode_effective 暴击降级需命中率）
     let accuracy_names = [ModName::from("Accuracy")];
     let base_accuracy_node = trace.add_source_node(
         "base accuracy",
@@ -657,12 +657,12 @@ fn total_dps_traced(
         trace,
     );
 
-    // --- 伤害主体：暴击/非暴击双腿子图 + CritBlend 合并（M4-T2 W-B3，RFC §2.5）---
-    // 数值与非 traced 路径同源（run_crit_passes，含 W-C1/C2/C3 接线与等价性短路）；
+    // 伤害主体：暴击/非暴击双腿子图 + CritBlend 合并
+    // 数值与非 traced 路径同源（run_crit_passes，含等价性短路）；
     // 图形状 = 每腿独立子图（pass 戳 Single·Crit / Single·NonCrit，per-pass 的
     // sum_traced 各落 Input 节点——RFC §2.4 条款 3）+ CritBlend Combine 节点
     // （pass = Single·Blended，weights = [1−c, c] 冻结系数，§3.3）。
-    // TODO(W-C1 归因面)：DD/TD 词条暂无 Input 节点（direct 缺失、marginal 兜底）。
+    // TODO(归因面)：DD/TD 词条暂无 Input 节点（direct 缺失、marginal 兜底）。
     // 击中口径 cfg：补 `KeywordFlags::HIT`（与非 traced 路径同源，见该处注释）。
     let hit_cfg = cfg
         .clone()
@@ -787,7 +787,7 @@ fn total_dps_traced(
     );
     trace.add_edge(blend_node, total_hit_node);
 
-    // --- action rate ---
+    // action rate
     // 速度族（攻击取 AttackSpeed / 法术取 CastSpeed，SkillSpeed 始终）一个 inc/more 乘区；
     // ActionSpeed 独立乘区单独相乘；末端按固有冷却限速（min(rate, 1/effective_cooldown)）——
     // 对齐非 traced 路径。
@@ -824,7 +824,7 @@ fn total_dps_traced(
     trace.add_edge(inc_speed.node_id, action_rate_node);
     trace.add_edge(more_speed.node_id, action_rate_node);
 
-    // --- TotalDPS final（W-C4：末端两因子，无词条时均 1.0 逐值不变）---
+    // TotalDPS final
     let end = dps_end_factors(db, cfg, None);
     let end_factor = end.dps_multiplier * end.quantity_multiplier;
     let dps = round(total_hit_avg * action_rate * hit_chance_value * end_factor);
@@ -889,7 +889,7 @@ fn enemy_damage_multiplier(
     };
     let type_cfg = cfg.clone().with_damage_type(damage_type);
 
-    // --- 受伤链：通用 + 分类型 DamageTaken（INC + MORE） ---
+    // 受伤链：通用 + 分类型 DamageTaken（INC + MORE）
     let taken_names = [
         ModName::from("DamageTaken"),
         ModName::from(format!("{type_prefix}DamageTaken")),
@@ -900,7 +900,7 @@ fn enemy_damage_multiplier(
     // - 投射物技能 += ProjectileDamageTaken（:4152-4153）、攻击投射物再加
     //   ProjectileAttackDamageTaken（:4155-4156）——PoBR 以 cfg 的
     //   ModFlags::PROJECTILE / 攻击判定近似 vendor skillFlags.projectile/attack；
-    // - trap/mine += TrapMineDamageTaken（:4158-4159）——M4-m（h3 登记）接线：
+    // - trap/mine += TrapMineDamageTaken（:4158-4159）——（h3 登记）接线：
     //   以 `cfg.skill_types` 含 Trapped(33)/RemoteMined(36) 近似 vendor
     //   skillFlags.trap/mine（statSet.baseFlags 主通道；support addFlags
     //   授予通道（如 Remote Mine support 加 'mine'）PoBR 未建模，保持登记）。
@@ -938,12 +938,12 @@ fn enemy_damage_multiplier(
     let taken_more = enemy_db.more(&type_cfg, &taken_names);
     let taken_mult = (1.0 + taken_inc / 100.0) * taken_more;
 
-    // --- 抗性减伤（元素/混沌，含玩家穿透）/ 护甲减伤 + Overwhelm（物理） ---
+    // 抗性减伤（元素/混沌，含玩家穿透）/ 护甲减伤 + Overwhelm（物理）
     let mitigation = if damage_type == DamageType::Physical {
         enemy_physical_multiplier(player_db, enemy_db, &type_cfg, raw_hit)
     } else {
         let mut resist = enemy_resist_final(enemy_db, &type_cfg, damage_type);
-        // （M4-m）击中视敌元素抗性为反转（Rakiata's Flow 等，vendor
+        // 击中视敌元素抗性为反转（Rakiata's Flow 等，vendor
         // CalcOffence.lua:4145-4148）：`invertChance = clamp(Sum(CHANCE,
         // "HitsInvertEleResChance"), 0, 1)`，仅三元素；
         // `resist = (1-c)*resist + c*(-resist) = resist - 2*c*resist`。
@@ -992,7 +992,7 @@ fn enemy_damage_multiplier(
 ///    （抗性自身的 INC/MORE 缩放，`calcLib.mod` 同式、负缩放 floor 0）；
 /// 3. clamp 到 `[ResistFloor(−200), maxResist]`（Data.lua:180/:200）。
 ///
-/// maxResist（M4-l，vendor :532）：基线 `EnemyMaxResist(75)`；configInput
+/// maxResist（vendor :532）：基线 `EnemyMaxResist(75)`；configInput
 /// `enemy<Type>Resist` **显式输入**时抬到 `min(max(输入, 75), MaxResistCap(90))`
 /// ——pobr 等价取数 = enemy db 中归因 `(EnemyConfig, "config.enemy<Type>Resist")`
 /// 的 BASE 条目（`config_resolve` 显式数值的唯一注入形态；档位预设/曝光等其余
@@ -1313,7 +1313,7 @@ fn apply_total_time(db: &ModDb, cfg: &CalcConfig, scaled_rate: f64) -> f64 {
 /// 此时不限速、按攻速出手。无 `SkillCooldownBase` 词条（base_cd≤0）时也不限速。
 ///
 /// `pub(crate)`：perform 的 fill 阶段（`effective_action_rate`，ailment/reload 消费）
-/// 与 offence 主链共用同一冷却 cap（M4-J 整链单一来源）。
+/// 与 offence 主链共用同一冷却 cap（整链单一来源）。
 pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f64) -> f64 {
     if db.flag(cfg, ModName::from("CooldownBypass")) {
         return uncapped_rate;

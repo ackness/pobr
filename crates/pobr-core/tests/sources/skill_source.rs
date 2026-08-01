@@ -30,9 +30,7 @@ fn type_set(types: &[&str]) -> HashSet<String> {
 use pobr_core::{CalcConfig, ModDb, ModTag};
 use pobr_data::prelude::*;
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 原始测试（向后兼容 GemModSource）
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn ingest_active_gem_attributes_to_skill_gem_source() {
@@ -148,9 +146,7 @@ fn session_add_support_gem_feeds_minimal_calc() {
     assert_eq!(output.life, 150.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // TODO(mana-multiplier)：SupportManaMultiplier 注入测试
-// ─────────────────────────────────────────────────────────────────────────────
 
 /// 辅助宝石携带 mana_multiplier = 40 → 注入 SupportManaMultiplier More +40。
 #[test]
@@ -209,9 +205,7 @@ fn support_mana_multiplier_contributes_to_more_product() {
     assert!((factor - 1.5).abs() < 1e-9, "expected 1.5, got {factor}");
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // TODO(more-multiplier 隔离)：supported_skill_types tag 测试
-// ─────────────────────────────────────────────────────────────────────────────
 
 /// 设置 supported_skill_types 后，More modifier 附加 SkillTypes tag，
 /// 在不匹配的 CalcConfig 下不生效。
@@ -297,9 +291,7 @@ fn support_inc_modifier_never_gets_skill_types_tag() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // skill-type-gating：PoB2 四段裁决测试（CalcTools.lua:84-110）
-// ─────────────────────────────────────────────────────────────────────────────
 
 /// 构造 require 表达式 token 流（测试便捷）。
 fn tokens(list: &[&str]) -> Vec<String> {
@@ -503,9 +495,7 @@ fn ingest_support_gem_no_require_always_ok() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // TODO(level/quality 缩放)：等级/品质归因测试
-// ─────────────────────────────────────────────────────────────────────────────
 
 /// ingest_support_gem 等级 modifier 归因到 SourceKind::SkillLevel。
 #[test]
@@ -637,9 +627,7 @@ fn support_gem_without_level_quality_no_extra_mods() {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // SkillTypes 扩展位标志测试
-// ─────────────────────────────────────────────────────────────────────────────
 
 /// SkillTypes 的 ATTACK 和 SPELL 保持不变（向后兼容）。
 #[test]
@@ -674,9 +662,7 @@ fn skill_types_bitor_works() {
     assert!(!combined.intersects(SkillTypes::SPELL));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 综合测试：mana-multiplier + skill-type-gating + level/quality 联合
-// ─────────────────────────────────────────────────────────────────────────────
 
 /// 完整辅助宝石规格（mana mult + 门控 + 等级/品质）端到端验证。
 #[test]

@@ -120,7 +120,7 @@ fn resolve_crit_impl(
     let crit_chance_names = [ModName::from("CriticalStrikeChance")];
     let self_crit_chance = [ModName::from("SelfCritChance")];
 
-    // --- 0) 底材基础暴击（vendor CalcOffence.lua:3665-3676 baseCrit 段）---
+    // 0) 底材基础暴击（vendor CalcOffence.lua:3665-3676 baseCrit 段）
     // vendor `baseCrit = critOverride or source.CritChance`：**底材**基础暴击（武器
     // 底材 / 法术 skillData.critChance）与词条 `Sum BASE CritChance` 是两个桶。
     // PoBR 对应：底材经编排层注入 `SkillBaseCritChance` BASE（区别于词条桶
@@ -136,7 +136,7 @@ fn resolve_crit_impl(
         .override_(cfg, ModName::from("CritChanceBase"))
         .unwrap_or(source_base_pct);
 
-    // --- 1) 基础求和（含敌方暴击弱点 SelfCritChance，仅 mode_effective） ---
+    // 1) 基础求和（含敌方暴击弱点 SelfCritChance，仅 mode_effective）
     let player_base = player.sum(ModType::Base, cfg, &crit_chance_names);
     let enemy_base = if mode_effective {
         enemy.sum(ModType::Base, cfg, &self_crit_chance)
@@ -156,7 +156,7 @@ fn resolve_crit_impl(
     let inc = player_inc + enemy_inc;
     let mut crit_pct = base_pct * (1.0 + inc / 100.0) * chance_more;
 
-    // --- 2) cap（默认 100，可 Override 或 Sum BASE 覆盖） ---
+    // 2) cap（默认 100，可 Override 或 Sum BASE 覆盖）
     let cap = crit_chance_cap(player, cfg);
     crit_pct = crit_pct.min(cap);
     if base_pct > 0.0 {
@@ -164,18 +164,18 @@ fn resolve_crit_impl(
     }
     let pre_effective_pct = crit_pct;
 
-    // --- 3) mode_effective：命中率降级（闪避二次检定） ---
+    // 3) mode_effective：命中率降级（闪避二次检定）
     if mode_effective {
         crit_pct *= hit_chance;
     }
 
-    // --- 4) 幸运暴击 ---
+    // 4) 幸运暴击
     if mode_effective && player.flag(cfg, ModName::from("CritChanceLucky")) {
         let c = crit_pct / 100.0;
         crit_pct = (1.0 - (1.0 - c).powi(2)) * 100.0;
     }
 
-    // --- 5) 分岔暴击（记 PreBifurcate 供额外爆伤） ---
+    // 5) 分岔暴击（记 PreBifurcate 供额外爆伤）
     let pre_bifurcate_pct = crit_pct;
     let bifurcate = mode_effective && player.flag(cfg, ModName::from("BifurcateCrit"));
     if bifurcate {
@@ -183,7 +183,7 @@ fn resolve_crit_impl(
         crit_pct = (1.0 - (1.0 - c).powi(2)) * 100.0;
     }
 
-    // --- 6) 必然暴击：置 100% + 几何级数 less 爆伤 ---
+    // 6) 必然暴击：置 100% + 几何级数 less 爆伤
     let mut inevitable_less_more: Option<f64> = None;
     let inevitable = mode_effective
         && player.flag(cfg, ModName::from("InevitableCriticalHits"))
@@ -200,7 +200,7 @@ fn resolve_crit_impl(
     let crit_chance = round((crit_pct / 100.0).clamp(0.0, 1.0));
     let pre_effective_chance = round((pre_effective_pct / 100.0).clamp(0.0, 1.0));
 
-    // --- 7) 爆伤 ---
+    // 7) 爆伤
     let crit_multiplier = resolve_crit_multiplier(
         player,
         enemy,
@@ -213,7 +213,7 @@ fn resolve_crit_impl(
         inevitable_less_more,
     );
 
-    // --- 8) 平均暴击效果 ---
+    // 8) 平均暴击效果
     let crit_effect = round(1.0 - crit_chance + crit_chance * crit_multiplier);
 
     if let Some(sink) = sink {
@@ -285,7 +285,7 @@ fn resolve_crit_multiplier(
         if let Some(ov) = player.override_(cfg, ModName::from("CriticalStrikeMultiplier")) {
             ov / 100.0
         } else {
-            // M0-W3：玩家基础爆伤加成改读注入常量包（fallback == 旧 const，值不变）。
+            //  玩家基础爆伤加成改读注入常量包（fallback == 旧 const，值不变）。
             (cfg.constants.character().base_critical_hit_damage_bonus + base) / 100.0
                 * (1.0 + inc / 100.0)
                 * more

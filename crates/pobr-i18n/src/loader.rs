@@ -19,7 +19,7 @@ use crate::language::LanguageId;
 /// `BTreeMap` so iteration (and thus the completeness lint) is deterministic.
 pub type Bundle = BTreeMap<String, String>;
 
-// --- Embedded sources (canonical en-US + zh-TW). -------------------------
+// Embedded sources (canonical en-US + zh-TW).
 
 const EN_UI: &str = include_str!("../locales/en-US/ui.toml");
 const EN_STATS: &str = include_str!("../locales/en-US/stats.toml");

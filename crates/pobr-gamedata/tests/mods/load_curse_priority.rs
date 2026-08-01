@@ -1,7 +1,7 @@
-//! `overlay/curse_priority.json` 加载测试（M3 S1-C）。
+//! `overlay/curse_priority.json` 加载测试（-C）。
 //!
 //! 抽样断言对照 vendor `Modules/Data.lua:274-300` 的 `data.cursePriority`
-//! 表（commit `2df5a74`）；缺表容忍走 R7（消费侧回退）。
+//! 表（commit `2df5a74`）；缺表容忍（消费侧回退）。
 
 use pobr_gamedata::{GameData, repo_data_root};
 
@@ -42,7 +42,7 @@ fn curse_priority_sections_and_samples() {
     assert!(def.curse_from_aura > def.curse_from_equipment);
 }
 
-/// 缺表容忍（R7）：版本目录无 overlay 表时返回 `Ok(None)` 而非报错。
+/// 缺表容忍（缺表容忍）：版本目录无 overlay 表时返回 `Ok(None)` 而非报错。
 #[test]
 fn curse_priority_tolerates_missing_table() {
     let missing = GameData::new(repo_data_root().join("no-such-version"));

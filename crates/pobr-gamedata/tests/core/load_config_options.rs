@@ -1,7 +1,7 @@
-//! `overlay/config_options.json` 加载测试（M3 前置）。
+//! `overlay/config_options.json` 加载测试。
 //!
 //! 锚点 = vendor ConfigOptions.lua 的代表性条目（探针法抽取产物的入库形态）；
-//! 数值与结构断言对应蓝图 m3-orchestration §4.2 的归纳模板例。
+//! 数值与结构断言对应的归纳模板例。
 
 use pobr_data::catalog::config_def::{
     ConfigInputType, ConfigOptionDef, ConfigOptionsDef, ListEffectValue,
@@ -41,7 +41,7 @@ fn volume_and_sorted_by_var() {
 }
 
 /// handler 预算：handler_id 条目 ≤60（架构 §5 预估 ~10%；
-/// 注册侧 ≤54 的断言在 M3 主波 handlers.rs 落地）。
+/// 注册侧 ≤54 的断言在handlers.rs 落地）。
 #[test]
 fn handler_budget_within_estimate() {
     let doc = load();

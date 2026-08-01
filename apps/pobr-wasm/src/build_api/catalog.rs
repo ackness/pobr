@@ -8,9 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::state;
 
-// ---------------------------------------------------------------------------
 // classify_item_lines_json（物品文本 → 逐行类别，供 Items 面板上色）
-// ---------------------------------------------------------------------------
 
 /// 单条展示行（`text` 已剥标注，`kind` 用于前端上色）。
 #[derive(Debug, Serialize)]
@@ -93,9 +91,7 @@ fn tier_context(text: &str) -> Option<(std::rc::Rc<pobr_item::TierIndex>, Vec<St
     Some((index, tags, domain))
 }
 
-// ---------------------------------------------------------------------------
 // gem_catalog_json（手动技能编辑的宝石选择器目录）
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize)]
 struct GemCatalogEntry {
@@ -182,9 +178,7 @@ fn gem_catalog_impl() -> Result<String, super::ApiError> {
     Ok(serde_json::to_string(&entries).map_err(|e| format!("serialize: {e}"))?)
 }
 
-// ---------------------------------------------------------------------------
 // rune_catalog_json / reforge_runes_json（符文槽编辑：目录 + 重插重写文本）
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize)]
 struct RuneCatalogEntry {
@@ -445,9 +439,7 @@ fn reforge_runes_impl(request_json: &str) -> Result<String, super::ApiError> {
     .map_err(|e| format!("serialize: {e}"))?)
 }
 
-// ---------------------------------------------------------------------------
 // translate_lines_json（英文 → 简中显示翻译：树词条 tooltip / 配置选项等）
-// ---------------------------------------------------------------------------
 
 /// 批量把英文词条行翻译为简中显示文本（模板反查；不认识原样返回）。
 /// 入参/出参均为 JSON 字符串数组。数据包无 zh-CN 模板时原样全返。

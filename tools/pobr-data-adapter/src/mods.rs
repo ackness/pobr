@@ -18,7 +18,7 @@ use serde::Deserialize;
 
 use crate::{RawNamed, read_json, resolve, write_pretty};
 
-// ---- 原始 .dat JSON 行结构（只取需要的列）----
+// 原始 .dat JSON 行结构（只取需要的列）
 
 #[derive(Deserialize)]
 struct RawStat {

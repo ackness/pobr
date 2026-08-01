@@ -1,4 +1,4 @@
-//! M4-T3 W-C2（LuckyHits 掷骰平均）+ W-C3（canDeal / DealNo<Type> 门控）手算单测。
+//! （LuckyHits 掷骰平均）+（canDeal / DealNo<Type> 门控）手算单测。
 //! vendor 对照：CalcOffence.lua:4036-4046（lucky）、:2226-2230（canDeal）。
 
 use pobr_core::calc::{DamageComponent, apply_can_deal, convert_damage, lucky_hit_chance};
@@ -7,9 +7,9 @@ use pobr_data::prelude::*;
 
 const EPS: f64 = 1e-9;
 
-// ---------------------------------------------------------------- W-C2 avg 函数族
+// ---------------------------------------------------------------- avg 函数族
 
-/// 手算（蓝图 §2 W-C2 指定用例）：(min,max)=(10,100)——lucky avg = 70 vs 普通 55。
+/// 手算：(min,max)=(10,100)——lucky avg = 70 vs 普通 55。
 #[test]
 fn lucky_avg_hand_calc() {
     let comp = DamageComponent::new(DamageType::Physical, 10.0, 100.0);
@@ -42,7 +42,7 @@ fn lucky_hits_flag_applies_everywhere() {
     }
 }
 
-/// `CritLucky` 只影响暴击 pass（蓝图指定用例；与 crit.rs 的 CritChanceLucky 是两个机制）。
+/// `CritLucky` 只影响暴击 pass。
 #[test]
 fn crit_lucky_only_affects_crit_pass() {
     let mut db = ModDb::new();
@@ -96,9 +96,9 @@ fn lucky_chance_sums_typed_and_generic_with_cap() {
     assert!((lucky_hit_chance(&db, &cfg, DamageType::Lightning, false) - 1.0).abs() < EPS);
 }
 
-// ---------------------------------------------------------------- W-C3 canDeal
+// ---------------------------------------------------------------- canDeal
 
-/// 蓝图指定合成用例（Avatar of Fire 形态）：物理 50% 转火后 `DealNoPhysical`——
+/// 指定合成用例（Avatar of Fire 形态）：物理 50% 转火后 `DealNoPhysical`——
 /// 残留物理清零、已转出的火焰保留（转换先发生，清零的是转换后残留）。
 #[test]
 fn avatar_of_fire_zeroes_residual_physical_keeps_converted_fire() {

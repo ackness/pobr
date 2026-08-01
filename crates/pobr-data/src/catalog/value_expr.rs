@@ -1,7 +1,7 @@
-//! 受限模板 DSL 的 **schema 类型**（架构文档 20 §5 / 00-index 裁决 §4-1）。
+//! 受限模板 DSL 的 **schema 类型**。
 //!
-//! 全项目唯一的受限占位符语言：config effects（M3）/ special_mods（M5b）/
-//! parser 模板（M6）共用同一套表达式与谓词类型；**求值器唯一实现**在
+//! 全项目唯一的受限占位符语言：config effects / special_mods /
+//! parser 模板共用同一套表达式与谓词类型；**求值器唯一实现**在
 //! `pobr-core/src/rules/value_expr.rs`（禁三套方言）。本模块零逻辑，
 //! 仅承载 serde 形状。
 //!
@@ -106,8 +106,8 @@ pub enum CmpOp {
 
 /// 谓词字段引用（受限闭集）。
 ///
-/// M3 仅 `input`（config 条目单输入）；M5b enums / M6 `:cap` 等扩展按
-/// 00-index 裁决 §4 走本模块单点演化，禁止旁路新建字段引用形态。
+/// 仅 `input`（config 条目单输入）；enums / `:cap` 等扩展按
+/// 裁决 §4 走本模块单点演化，禁止旁路新建字段引用形态。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FieldRef {
@@ -189,13 +189,13 @@ pub enum EffectTag {
         /// 倍率上限（缺省无上限）。
         #[serde(default, skip_serializing_if = "Option::is_none")]
         limit: Option<f64>,
-        /// actor 维度（M3-T5-E1 接通求值；数据先忠实转录）。
+        /// actor 维度（接通求值；数据先忠实转录）。
         #[serde(default, skip_serializing_if = "Option::is_none")]
         actor: Option<String>,
     },
     /// 跨 actor 条件 tag（PoB2 `{ type = "ActorCondition", actor, var, neg }`）。
     ///
-    /// pobr `ModTag` 当前无 actor 维度（M3-T5-E1 落地）；数据忠实转录，
+    /// pobr `ModTag` 当前无 actor 维度；数据忠实转录，
     /// 消费侧未接通前把携带本 tag 的 mod 记入 diagnostics 跳过。
     ActorCondition {
         /// 目标 actor（`enemy`/`parent` 等 vendor 字面量）。

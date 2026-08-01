@@ -1,8 +1,8 @@
 //! `extract-bases` 子命令：用 luajit 在最小 stub 环境下执行 vendor PoB2 的
 //! `Data/Bases/*.lua`，把 GGG `.dat` 路线不可得的基底列（`ShieldTypes.Block` →
 //! `block_chance`、`ItemSpirit.SpiritGranted` → `spirit`）固化为**确定性 JSON**
-//! 落到 `data/<版本>/overlay/base_item_overrides.json`——蓝图 m2-defence §6
-//! 开放问题 1/2 的 vendor 抽取兜底路线（与 M0 的 `skill_overrides` 通道同构）。
+//! 落到 `data/<版本>/overlay/base_item_overrides.json`——
+//! 开放问题 1/2 的 vendor 抽取兜底路线（与的 `skill_overrides` 通道同构）。
 //!
 //! 职责切分（同 [`crate::extract_lua`]）：
 //! - Lua 引导脚本（`extract_base_overrides.lua`，编译期内嵌）只负责忠实抽取

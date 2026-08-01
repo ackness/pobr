@@ -1,9 +1,9 @@
-//! `{range:x}` 词条取值引擎（WI-B3）：把 `+(40-50) to maximum Life` 类带区间词条按
+//! `{range:x}` 词条取值引擎：把 `+(40-50) to maximum Life` 类带区间词条按
 //! `range`（0..1）线性具体化为单一数值文本，喂 `mod_parser`。
 //!
 //! 对照 PoB2 `Modules/ItemTools.lua::applyRange`（77-326）。
 //!
-//! **当前实现 = 朴素线性档（无 modScalability 表消费）**，对应蓝图 §3.B3 钉死的「无表降级」
+//! **当前实现 = 朴素线性档（无 modScalability 表消费）**，对应.B3 钉死的「无表降级」
 //! 方向：`value = min + range*(max-min)`，含负号翻转与 increased/reduced 等 antonym 处理。
 //! 这覆盖绝大多数单数值槽词条（PoB 导出物品 + ninja 语料里的 `(min-max)` 形态）。
 //!

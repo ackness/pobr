@@ -32,9 +32,7 @@ fn effective_attack() -> CalcConfig {
     CalcConfig::attack().with_mode_effective(true)
 }
 
-// ---------------------------------------------------------------------------
 // 1. 敌人 DamageTaken 提升有效 DPS（enemy-damage-taken-chain）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn enemy_damage_taken_inc_raises_effective_dps() {
@@ -84,9 +82,7 @@ fn enemy_typed_damage_taken_only_affects_that_type() {
     assert_eq!(out.dps, 150.0, "纯物理不受 FireDamageTaken 影响");
 }
 
-// ---------------------------------------------------------------------------
 // 2. 敌人抗性/护甲减伤（仅 effective）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn enemy_fire_resist_reduces_fire_dps_only_in_effective() {
@@ -147,7 +143,7 @@ fn fire_only_player() -> ModDb {
     player
 }
 
-// M4-H S2：final 抗性口径 = vendor calcResistForType（CalcOffence.lua:530-543）。
+//  final 抗性口径 = vendor calcResistForType（CalcOffence.lua:530-543）。
 
 #[test]
 fn enemy_shared_elemental_resist_applies_to_elements_not_chaos() {
@@ -244,7 +240,7 @@ fn enemy_resist_clamps_to_enemy_max_resist() {
     );
 }
 
-/// M4-l（vendor CalcOffence.lua:532）：configInput `enemy<Type>Resist` 显式输入
+/// （vendor CalcOffence.lua:532）：configInput `enemy<Type>Resist` 显式输入
 /// 可把 maxResist 从 EnemyMaxResist(75) 抬到 MaxResistCap(90)；
 /// `DoNotChangeMaxResFromConfig` FLAG（config「always 75%」，
 /// ConfigOptions.lua:2158-2159）置位时恒 75。
@@ -305,7 +301,7 @@ fn explicit_config_resist_raises_max_resist_cap() {
     );
 }
 
-// M4-H S5：受伤链 INC-only 追加名（vendor CalcOffence.lua:4141/:4152-4156）。
+//  受伤链 INC-only 追加名（vendor CalcOffence.lua:4141/:4152-4156）。
 
 #[test]
 fn elemental_damage_taken_applies_to_elements_only() {
@@ -362,7 +358,7 @@ fn projectile_damage_taken_gated_by_projectile_flag() {
 
 #[test]
 fn trap_mine_damage_taken_gated_by_skill_types() {
-    // M4-m（h3）：TrapMineDamageTaken 只在 trap/mine 技能下进 takenInc
+    // （h3）：TrapMineDamageTaken 只在 trap/mine 技能下进 takenInc
     // （vendor CalcOffence.lua:4158-4159 `if skillFlags.trap or skillFlags.mine`；
     // PoBR 以 cfg.skill_types 含 Trapped(33)/RemoteMined(36) 表达）。
     let player = ModDb::new();
@@ -396,7 +392,7 @@ fn trap_mine_damage_taken_gated_by_skill_types() {
     );
 }
 
-// M4-H S4：物理减伤 additive 公式（vendor CalcOffence.lua:4074-4096）。
+//  物理减伤 additive 公式（vendor CalcOffence.lua:4074-4096）。
 
 #[test]
 fn enemy_physical_reduction_is_additive_not_multiplicative_union() {
@@ -490,7 +486,7 @@ fn ignore_enemy_armour_flag_zeroes_armour_component() {
     );
 }
 
-// M4-H S3：穿透下界 minPen（vendor CalcOffence.lua:4140/:4163）。
+//  穿透下界 minPen（vendor CalcOffence.lua:4140/:4163）。
 
 #[test]
 fn penetration_minimum_caps_penetration_floor() {
@@ -534,7 +530,7 @@ fn penetration_skipped_when_resist_at_or_below_min_pen() {
     );
 }
 
-// M4-m：击中视敌元素抗性为反转（Rakiata's Flow
+//  击中视敌元素抗性为反转（Rakiata's Flow
 // `treat_enemy_resistances_as_negated_…` → HitsInvertEleResChance CHANCE，
 // SkillStatMap.lua:941-944；消费 vendor CalcOffence.lua:4145-4148
 // `resist = resist - 2 * invertChance * resist`，clamp 后、穿透前）。
@@ -623,9 +619,7 @@ fn hits_invert_does_not_touch_chaos_or_panel_mode() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 3. 曝光取最强（exposure-min-of via ModDb::max_of + reduce_enemy_exposure）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn exposure_takes_strongest_single_source() {
@@ -648,7 +642,7 @@ fn exposure_takes_strongest_single_source() {
     );
 }
 
-// M4-H S6：曝光效果缩放（vendor CalcPerform.lua:3222-3227）。
+//  曝光效果缩放（vendor CalcPerform.lua:3222-3227）。
 
 #[test]
 fn exposure_effect_inc_scales_magnitude_before_effect_on_self() {
@@ -782,9 +776,7 @@ fn max_of_empty_is_zero() {
     assert_eq!(m, 0.0);
 }
 
-// ---------------------------------------------------------------------------
 // 4. CannotBeEvaded / 敌方 CannotEvade（cannot-be-evaded-flag）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn cannot_be_evaded_flag_forces_full_hit() {
@@ -825,9 +817,7 @@ fn enemy_cannot_evade_flag_forces_full_hit_in_effective() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 5. 敌人格挡（enemy-block-chance-hit-chain）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn enemy_block_chance_reduces_hit_in_effective() {
@@ -852,9 +842,7 @@ fn enemy_block_chance_reduces_hit_in_effective() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 6. mode_effective 面板 vs 有效差异（mode-effective-missing）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn panel_dps_not_lower_than_effective_dps() {
@@ -895,9 +883,7 @@ fn legacy_three_arg_entry_equals_empty_enemy() {
     assert_eq!(legacy.dps, via_empty.dps, "空敌人 + effective 与旧入口一致");
 }
 
-// ---------------------------------------------------------------------------
 // 7. setup_enemy 注入 + Pinnacle 默认档位（setup-env-missing）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn setup_enemy_injects_pinnacle_defaults() {
@@ -940,7 +926,7 @@ fn setup_enemy_injects_pinnacle_defaults() {
 
     // Boss 自带元素穿透只走防御侧 `Enemy<El>Pen`（enemy modDB，EHP/受击消费）；
     // **不得**注入玩家进攻穿透（vendor `enemy<El>Pen` config var 无 apply 函数，
-    // ConfigOptions.lua:2269-2273，仅 CalcDefence.lua:2363 消费——M4-H S1）。
+    // ConfigOptions.lua:2269-2273，仅 CalcDefence.lua:2363 消费——）。
     let pen = env.player.mod_db.sum(
         ModType::Base,
         &cfg,
@@ -969,7 +955,7 @@ fn setup_enemy_uber_injects_damage_taken_penalty() {
     // Uber 最低等级 82（角色 80 被抬到 82）。
     assert_eq!(env.enemy.level, 82);
     // Uber 元素穿透 = uberBossPen 40/5 = 8——仅防御侧 `Enemy<El>Pen`（enemy db），
-    // 玩家进攻穿透不受影响（M4-H S1）。
+    // 玩家进攻穿透不受影响。
     let pen = env.player.mod_db.sum(
         ModType::Base,
         &cfg,
@@ -1011,9 +997,7 @@ fn setup_enemy_none_tier_has_no_resist_or_boss_debuff() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 8. 敌人贡献可 trace（EnemyConfig 归因）+ perform 集成
-// ---------------------------------------------------------------------------
 
 #[test]
 fn enemy_mods_carry_enemy_config_origin() {
@@ -1068,9 +1052,7 @@ fn perform_uses_enemy_damage_taken_in_effective_mode() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 9. 元素/混沌穿透（elemental-penetration-missing）：玩家穿透下调敌人有效抗性
-// ---------------------------------------------------------------------------
 
 /// 仅火伤分量的输入：base_hit 清零，玩家加 100 火 flat。
 fn fire_only_player_input() -> (ModDb, MinimalInput) {
@@ -1266,9 +1248,7 @@ fn penetration_attribution_player_and_enemy_resist_traceable() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 10. Overwhelm（overwhelm-not-wired）：玩家 EnemyPhysicalDamageReduction 负值降敌人 PDR
-// ---------------------------------------------------------------------------
 
 #[test]
 fn overwhelm_reduces_enemy_pdr_and_raises_physical_dps() {
@@ -1333,7 +1313,7 @@ fn overwhelm_can_push_pdr_negative_down_to_neg_cap() {
     // vendor CalcOffence.lua:4095：additive 总和的下界是 −NegArmourDmgBonusCap(−100)，
     // **没有**per-source 的 0 下界——敌人 PDR 10%，Overwhelm 50 → 净 −40% → 增伤 ×1.4。
     // （wiki 口径"Overwhelm 不破 0"与 PoB2 实现不一致；parity 基准取 vendor，
-    // 见 agent-docs/damage-scaling.md §Overwhelm 备注。M4-H S4。）
+    // 见 agent-docs/damage-scaling.md §Overwhelm 备注。。）
     let mut player = ModDb::new();
     player.add_mod(Modifier::number(
         "EnemyPhysicalDamageReduction",
@@ -1416,10 +1396,8 @@ fn perform_panel_mode_ignores_enemy_damage_taken() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 02-02：setup_enemy 把 enemy.mod_db 当持久增量 db（PoB2 CalcSetup.lua:682-691），
 // 不整体替换 actor、不清空此前已注入的 enemy mod
-// ---------------------------------------------------------------------------
 
 #[test]
 fn setup_enemy_preserves_preexisting_enemy_mods() {
@@ -1453,10 +1431,8 @@ fn setup_enemy_preserves_preexisting_enemy_mods() {
     assert_eq!(fire, 50.0, "Pinnacle 档位 FireResist 仍正常注入");
 }
 
-// ---------------------------------------------------------------------------
 // 05-05：traced DPS 路径串入 enemy_db，与非 traced panel 同口径
 // （命中×(1-enemy_block)、分类型减伤、resolve_crit_traced 用 enemy_db）。
-// ---------------------------------------------------------------------------
 
 /// 有效口径下，traced DPS 与非 traced `calculate_minimal_vs_enemy` 完全一致——
 /// 敌人受伤链生效时不再分叉（finding 05-05）。

@@ -1,4 +1,4 @@
-//! 池整备（M2 Track A，13-G3）——从 ModDb 读出 bypass / MoM / guard / aegis 等，
+//! 池整备（13-G3）——从 ModDb 读出 bypass / MoM / guard / aegis 等，
 //! 固化为 [`PoolCtx`] / [`PoolState`]，并产出 MoM/EB 命中池（`<X>MoMHitPool`）。
 //!
 //! vendor 对照（`vendor/PathOfBuilding-PoE2/src/Modules/CalcDefence.lua`，行号
@@ -13,7 +13,7 @@
 //! - loss-prevention：:2662-2665（`min(Σ LifeLossPrevented, 100)` 与
 //!   `Σ LifeLossBelowHalfPrevented`）。
 //!
-//! 设计约束（蓝图 §0 约束 2）：整备与求值分离——本文件是**唯一**读 ModDb 的一侧，
+//! 设计约束：整备与求值分离——本文件是**唯一**读 ModDb 的一侧，
 //! `pool_damage.rs` 状态机只消费固化后的值类型；本文件同样不写 `Env`。
 
 use crate::calc::pool_damage::{
@@ -46,9 +46,9 @@ pub struct PoolBaseStats {
 
 /// 构造扣池上下文（CalcDefence.lua:2707-2722 / :2728 / :2773 / :2662-2665 / :572）。
 ///
-/// keystone flag（EternalLife / EB / WardNotBreak）经 [`DefenceKeystones`] 注入
-/// （蓝图 §3.3 契约 2——不散读 keystone flag）；`ChaosNotDoubleESDamage` 非注册表
-/// 字段（非 keystone 开关），按 vendor :582 直接读 flag。
+/// keystone flag（EternalLife / EB / WardNotBreak）经 [`DefenceKeystones`] 注入；
+/// `ChaosNotDoubleESDamage` 非注册表字段（非 keystone 开关），按 vendor `:582`
+/// 直接读 flag。
 pub fn build_pool_ctx(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -253,7 +253,7 @@ pub fn mom_hit_pools(ctx: &PoolCtx, base: &PoolBaseStats) -> MomHitPools {
     );
     let minimum_bypass = minimum_es_bypass(ctx);
 
-    // ---- shared 段（:2728-2771）----
+    // shared 段（:2728-2771）
     let (shared_effective_life, shared_hit_pool) = if ctx.mom_shared > 0.0 {
         let mut source_pool = base.mana_unreserved.max(0.0);
         let mut source_hit_pool = source_pool;
@@ -286,7 +286,7 @@ pub fn mom_hit_pools(ctx: &PoolCtx, base: &PoolBaseStats) -> MomHitPools {
         (base.life_recoverable, life_hit_pool)
     };
 
-    // ---- per-type 段（:2772-2819）----
+    // per-type 段（:2772-2819）
     let mut effective_life_by_type = [0.0_f64; 5];
     let mut hit_pool_by_type = [0.0_f64; 5];
     for dtype in [
@@ -456,7 +456,7 @@ mod tests {
         assert_eq!(ctx.mom_by_type[DamageType::Fire as usize], 70.0);
     }
 
-    /// keystone 注入（蓝图 §3.3 契约 2）+ ChaosNotDoubleESDamage 直读 +
+    /// keystone 注入+ ChaosNotDoubleESDamage 直读 +
     /// loss-prevention 聚合（:2662 cap 100 / :2664 原始和）。
     #[test]
     fn build_pool_ctx_flags_and_loss_prevention() {

@@ -92,7 +92,7 @@ impl EffectStats {
     }
 }
 
-/// 某授予效果一个**未选 statSet** 的 stat 快照（W-J global-only merge 取数源，
+/// 某授予效果一个**未选 statSet** 的 stat 快照（global-only merge 取数源，
 /// 见 [`BuildData::unselected_set_stats`]）。
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnselectedSetStats {
@@ -147,7 +147,7 @@ pub struct BuildData {
     /// 宝石品质 stat 斜率（`overlay/gem_quality_stats.json`），以 `GrantedEffects.Id`
     /// 为键。旧数据包无此 overlay 域时为空表（品质不产生 stat，向后兼容）。
     pub gem_quality_stats: HashMap<String, Vec<QualityStat>>,
-    /// 宝石→授予效果连边（`overlay/gem_effects.json`，M1-T5.1），以**主效果 id**
+    /// 宝石→授予效果连边（`overlay/gem_effects.json`），以**主效果 id**
     /// （`granted_effect_id`）为键——meta/复合宝石展开（T5.6）按 socket group 里
     /// 宝石的 `skill_id`（= 主效果 id）正向查附加效果。旧数据包无此 overlay 域时
     /// 为空表（无展开，向后兼容）。
@@ -156,7 +156,7 @@ pub struct BuildData {
     pub cost_types: Vec<CostTypeDef>,
     /// 物品基底表，以英文 canonical 名称为键（供装备 `Item.base` 名称 → 武器/护甲基底数值）。
     pub base_items: HashMap<String, BaseItemDef>,
-    /// 注入 calc 的运行时常量包（M0-W3 注入管道）：由 `GameData::load_ruleset()`
+    /// 注入 calc 的运行时常量包（注入管道）：由 `GameData::load_ruleset()`
     /// 已数据化的域合并而成；未数据化/缺文件的域回退 `Default`（与 JSON 逐值相等）。
     /// `calculate_with_data` 经 `CalculationSession::set_constants` 注入 pobr-core。
     pub constants: RuntimeConstants,
@@ -165,46 +165,46 @@ pub struct BuildData {
     /// `compute_radius_jewel_effect_with_radii`），不经 `RuntimeConstants` 进 pobr-core。
     /// 数据缺失回退 `Default`（与 JSON 逐值相等）。
     pub jewel_radii: JewelRadiiDef,
-    /// 局部词条白名单（`overlay/local_mods.json`，M0-W4d 数据化）。
+    /// 局部词条白名单（`overlay/local_mods.json`）。
     /// 数据包缺该 overlay 文件时为内建 fallback [`LocalModsDef::default`]
     /// （与 JSON 逐值一致的镜像，行为不变）。
     pub local_mods: LocalModsDef,
     /// statmap 数据目录（`overlay/skill_stat_map.json` → [`StatMapCatalog`]，
-    /// M1-T2.4 切换后默认 [`crate::StatMapMode::Data`] 通道的数据源）。
+    /// 切换后默认 [`crate::StatMapMode::Data`] 通道的数据源）。
     /// `calculate_with_data` 在编排选项未显式注入 catalog 时回退此处；
     /// 缺 overlay 文件（旧数据包）= `None`（数据通道全 miss，不注入任何映射）。
     pub stat_map_catalog: Option<Arc<StatMapCatalog>>,
-    /// 内建 buff 定义表（`overlay/buff_definitions.json`，M3-T2 B3）。
+    /// 内建 buff 定义表（`overlay/buff_definitions.json`）。
     /// `calculate_with_data` 经 `CalculationSession::set_buff_definitions` 注入，
     /// env_finalize 阶段 6（doActorMisc 等价）消费——整段 `cfg.mode_combat`
     /// 门控（默认 false），注入本身零行为变化。缺 overlay 文件（旧数据包）
     /// = 空表（无内建 buff 展开，向后兼容）。
     pub buff_definitions: Vec<BuffDef>,
-    /// curse 优先级数据表（`overlay/curse_priority.json`，M3-T3 C3）。
+    /// curse 优先级数据表（`overlay/curse_priority.json`）。
     /// `calculate_with_data` 经 `CalculationSession::set_curse_priority` 注入，
     /// env_finalize 阶段 4（buff_pass）的 curse priority/limit 消费——整段
     /// `cfg.mode_buffs` 门控（默认 false），注入本身零行为变化。缺 overlay
-    /// 文件（旧数据包）= `None`（消费侧权重全 0 回退，R7 缺表容忍）。
+    /// 文件（旧数据包）= `None`（消费侧权重全 0 回退，缺表容忍）。
     pub curse_priority: Option<CursePriorityDef>,
-    /// config 选项目录（`overlay/config_options.json`，M3-T1 A5 主路径切换）。
+    /// config 选项目录（`overlay/config_options.json`）。
     /// `calculate_with_data` 经 `crate::config_resolve::resolve_config` 消费——
     /// `Some` 走 `config_interpreter::interpret` 主路径；`None`（旧数据包 /
-    /// [`BuildData::empty`]）回退旧 parse_config 产出（R7 缺表容忍）。
+    /// [`BuildData::empty`]）回退旧 parse_config 产出（缺表容忍）。
     pub config_catalog: Option<Arc<ConfigCatalog>>,
-    /// 触发配置识别索引（M4-T5 W-E1）：`match_effect_ids` 的授予效果 id →
+    /// 触发配置识别索引：`match_effect_ids` 的授予效果 id →
     /// `overlay/trigger_configs.json` 条目（vendor CalcTriggers.lua configTable
     /// 转写）。orchestrator 触发段按 socket group 内宝石 / 主技能 id 查此表识别
     /// gem-link/triggeredBy 关系。缺 overlay 文件（旧数据包）= 空表（识别面为空，
     /// 行为不变）；未映射 PoE2 id 的条目（多为 PoE1 unique）不入索引。
     pub trigger_configs: HashMap<String, TriggerConfigDef>,
     /// 取整精度规则（`overlay/high_precision_mods.json` → `RuleSet` →
-    /// pobr-core [`HighPrecisionRules`]，M4-I 去重接线）。`calculate_with_data`
+    /// pobr-core [`HighPrecisionRules`]，去重接线）。`calculate_with_data`
     /// 经 `CalculationSession::set_high_precision_rules` 注入，buff_pass /
     /// merge_flasks_charms 的 ScaleAddMod 缩放消费（T1 写原语同一份规则）。
     /// 缺 overlay 文件（旧数据包）= [`HighPrecisionRules::default`]
     /// （无例外表 fallback）。
     pub high_precision: HighPrecisionRules,
-    /// 召唤物 / 魂灵定义表（M5a-A5），以 minion id 为键。`minions.json` 优先，
+    /// 召唤物 / 魂灵定义表，以 minion id 为键。`minions.json` 优先，
     /// miss 落 `spectres.json`（spectre key = 完整 metadata 路径）。缺 overlay
     /// 文件（旧数据包）= 空表（无召唤物，向后兼容）。消费侧只经
     /// [`Self::minion_def`] 查询。
@@ -313,7 +313,7 @@ impl BuildData {
             .map(|b| (b.name.clone(), b))
             .collect();
 
-        // M0-W3：RuleSet 已数据化的域合并进常量包；None 域保持 Default fallback
+        //  RuleSet 已数据化的域合并进常量包；None 域保持 Default fallback
         // （与 JSON 逐值相等，注入/回退两条路径输出一致）。
         let ruleset = data.load_ruleset()?;
         let mut constants = RuntimeConstants::default();
@@ -337,7 +337,7 @@ impl BuildData {
         }
         // 范围珠宝档位表：数据化域 Some 则覆盖、None 回退 Default（与 JSON 逐值相等）。
         let jewel_radii = ruleset.jewel_radii.unwrap_or_default();
-        // 取整精度例外表（M4-I 去重接线）：缺 overlay 文件 = Default（无例外表）。
+        // 取整精度例外表：缺 overlay 文件 = Default（无例外表）。
         let high_precision = ruleset
             .high_precision_mods
             .map(HighPrecisionRules::from_def)
@@ -355,28 +355,28 @@ impl BuildData {
             Err(e) => return Err(e),
         };
 
-        // statmap 数据目录（M1-T2.4 切换：默认 Data 通道的数据源）。缺 overlay
+        // statmap 数据目录（默认 Data 通道的数据源）。缺 overlay
         // 文件（旧数据包）= `None`（数据通道全 miss），其余加载/解析错误照常上抛。
         let stat_map_catalog = data
             .skill_stat_map()?
             .map(|def| Arc::new(StatMapCatalog::new(def)));
 
-        // 内建 buff 定义（overlay 域，M3-T2）：缺文件 = 空表（无内建 buff 展开，
+        // 内建 buff 定义：缺文件 = 空表（无内建 buff 展开，
         // 向后兼容），其余加载/解析错误照常上抛。
         let buff_definitions = data
             .buff_definitions()?
             .map(|def| def.buffs)
             .unwrap_or_default();
 
-        // curse 优先级表（overlay 域，M3-T3）：缺文件 = None（消费侧权重全 0 回退），
+        // curse 优先级表：缺文件 = None（消费侧权重全 0 回退），
         // 其余加载/解析错误照常上抛。
         let curse_priority = data.curse_priority()?;
 
-        // config 选项目录（overlay 域，M3-T1 A5）：缺文件 = `None`（消费方回退
-        // 旧 parse_config 产出，R7 容忍），其余加载/解析错误照常上抛。
+        // config 选项目录：缺文件 = `None`（消费方回退
+        // 旧 parse_config 产出，缺表容忍），其余加载/解析错误照常上抛。
         let config_catalog = ruleset.config_catalog.map(Arc::new);
 
-        // 触发配置识别索引（W-E1）：按 match_effect_ids 展开为 effect id → 条目。
+        // 触发配置识别索引：按 match_effect_ids 展开为 effect id → 条目。
         // 缺 overlay 文件（旧数据包）= 空表（识别面为空，行为不变）。
         let trigger_configs = data
             .trigger_configs()?
@@ -395,7 +395,7 @@ impl BuildData {
             })
             .unwrap_or_default();
 
-        // 召唤物 / 魂灵定义（overlay 域，M5a-A5）：minions 优先建索引，spectres
+        // 召唤物 / 魂灵定义：minions 优先建索引，spectres
         // 补充缺位（spectre key = metadata 路径，与 minion id 不冲突）。缺文件 =
         // 空表（无召唤物，向后兼容），其余加载/解析错误照常上抛。
         let mut minions: HashMap<String, MinionDef> = HashMap::new();
@@ -414,7 +414,7 @@ impl BuildData {
         let special_entries = ruleset.special_mods.unwrap_or_default();
 
         // 数据驱动 ModParser 引擎规则编译（唯一解析器）。
-        // gamedata 只 load `mod_parser_rules.json` doc，编译在 core（P9 边界）。
+        // gamedata 只 load `mod_parser_rules.json` doc，编译在 core（I/O 边界）。
         // 缺 doc（旧数据包）= None（无解析器：词条按整行 Unsupported 收集）；
         // 编译失败照常上抛。
         let parser_rules = match data.mod_parser_rules()? {
@@ -487,13 +487,13 @@ impl BuildData {
         }
     }
 
-    /// 按 minion id 查召唤物 / 魂灵定义（M5a-A5）；未知 id 返回 `None`。
+    /// 按 minion id 查召唤物 / 魂灵定义；未知 id 返回 `None`。
     /// `minions.json` 优先，miss 落 `spectres.json`（spectre key = metadata 路径）。
     pub fn minion_def(&self, id: &str) -> Option<&MinionDef> {
         self.minions.get(id)
     }
 
-    /// 按授予效果 id 查该技能召唤的 minion 列表（merge 后的 `minion_list`，M5a-A5）；
+    /// 按授予效果 id 查该技能召唤的 minion 列表（merge 后的 `minion_list`）；
     /// 非召唤技能 / 未知 id 返回空切片。
     pub fn effect_minion_list(&self, effect_id: &str) -> &[String] {
         self.granted_effects
@@ -518,8 +518,8 @@ impl BuildData {
 
     /// 按 statSet 形态选择（`<Gem statSetIndex>`，1-based **vendor 导出序号**）取
     /// 选中 set；`None` / 序号未命中（vendor 未导出该序号、旧数据包无序号边车）
-    /// 回退**主 set**——宁可缺省不可错选（蓝图 T5.5 保守口径；未选 set 的
-    /// global-only merge 留 W-J）。
+    /// 回退**主 set**——宁可缺省不可错选（保守口径；未选 set 的
+    /// global-only merge 留）。
     fn select_stat_set(&self, skill_id: &str, set_index: Option<u32>) -> Option<&StatSetDef> {
         let def = self.skill_stat_sets.get(skill_id)?;
         match set_index {
@@ -533,7 +533,7 @@ impl BuildData {
     }
 
     /// 选中 statSet 的 statmap **per-set 覆盖定位键**（vendor 1-based 导出序号的
-    /// 十进制字符串，W-J 接线）：选中规则与 [`Self::select_stat_set`] 一致
+    /// 十进制字符串，接线）：选中规则与 [`Self::select_stat_set`] 一致
     /// （`set_index` 命中 vendor 序号否则回退主 set）。无 stat-set 数据 / 选中 set
     /// 无 vendor 序号（未导出）→ `None`（调用方落引擎默认 set `"1"`，与 PoB2 缺省
     /// `statSetIndex=1` 等价，vendor `SkillsTab.lua:354`）。
@@ -543,7 +543,7 @@ impl BuildData {
             .map(|i| i.to_string())
     }
 
-    /// 选中 statSet 的 dotIs* 旗标（M4-T4 W-D1；statSet `baseMods` 直挂布尔，
+    /// 选中 statSet 的 dotIs* 旗标（statSet `baseMods` 直挂布尔，
     /// catalog [`pobr_data::catalog::DotFlags`]，经 skill_overrides overlay merge）。
     /// 选中规则与 [`Self::select_stat_set`] 一致；无数据时返回默认全 false
     /// （保守剥全部 dotCfg 位）。
@@ -557,7 +557,7 @@ impl BuildData {
             .unwrap_or_default()
     }
 
-    /// 选中 statSet 的尸体爆炸门控（M4-G；statSet `baseMods` 的
+    /// 选中 statSet 的尸体爆炸门控（statSet `baseMods` 的
     /// `skill("explodeCorpse", true)`，经 skill_overrides overlay merge——见
     /// [`pobr_data::catalog::StatSetDef::explode_corpse`]）。选中规则与
     /// [`Self::select_stat_set`] 一致；无数据时 false（不注入尸体基伤）。
@@ -705,7 +705,7 @@ impl BuildData {
     /// [`pobr_data::catalog::StatSetDef::vendor_set_index`]）；`None` / 未命中
     /// 回退主 set。**未选 set 的 global-only merge 本签名不做**（PoB2
     /// `CalcActiveSkill.lua:124-140` 依赖 statmap mod 的 GlobalEffect tag）——
-    /// 未选 set 的取数走 [`Self::unselected_set_stats`]（W-J），由调用方经
+    /// 未选 set 的取数走 [`Self::unselected_set_stats`]，由调用方经
     /// `stat_map_engine::map_stat_global_only` 过滤注入。
     ///
     /// 品质语义对齐 PoB2 `CalcTools.lua:140-145`（`buildSkillInstanceStats`）：
@@ -735,7 +735,7 @@ impl BuildData {
                     .map(|level| level.stats.clone())
                     .unwrap_or_default();
                 stats.extend(set.constant_stats.iter().cloned());
-                // 隐式 stat（M4-H，策展白名单经 overlay merge 入库）：vendor 对
+                // 隐式 stat：vendor 对
                 // statSet `stats` 中无每级数值的条目按值 1 并入
                 // （CalcTools.lua:152 `statSetLevel[index] or 1`，如 Garukhan's
                 // Resolve 的 `attacks_roll_crits_twice` → statmap BifurcateCrit）。
@@ -800,7 +800,7 @@ impl BuildData {
     }
 
     /// 取某授予效果在某 (宝石等级, 品质, statSet 形态) 下**未选 set** 的 stat 快照
-    /// （W-J global-only merge 的取数源，PoB2 `CalcActiveSkill.lua:124-140`：
+    /// （global-only merge 的取数源，PoB2 `CalcActiveSkill.lua:124-140`：
     /// 选中 set 之外的每个 statSet 以 `onlyGlobals=true` 参与 merge）。
     ///
     /// - 选中 set 判定与 [`Self::effect_stats`] 同规则（[`Self::select_stat_set`]：
@@ -986,7 +986,7 @@ mod tests {
         );
     }
 
-    /// W-J：未选 set 快照——选中判定与 effect_stats 同规则；vendor 未导出 set 剔除；
+    ///  未选 set 快照——选中判定与 effect_stats 同规则；vendor 未导出 set 剔除；
     /// 品质段逐 set 叠加（trunc）；同 stat 加法合并、字典序确定性。
     #[test]
     fn unselected_set_stats_snapshot_semantics() {
@@ -1088,7 +1088,7 @@ mod tests {
         assert!(bd.unselected_set_stats("NoSuch", 1, 20, None).is_empty());
     }
 
-    /// M1-T5.1：宝石→效果连边经 overlay/gem_effects.json merge 进 SkillGemDef，
+    ///  宝石→效果连边经 overlay/gem_effects.json merge 进 SkillGemDef，
     /// 并按主效果 id 建 meta 展开索引（gem_effects）。
     #[test]
     fn gem_effect_links_loaded_from_overlay() {

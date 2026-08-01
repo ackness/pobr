@@ -1,4 +1,4 @@
-//! 扣池状态机 + 池整备集成测试（M2 Track A，13-G2/G3/G5）。
+//! 扣池状态机 + 池整备集成测试（13-G2/G3/G5）。
 //!
 //! 每个 fixture 的期望值**手算自 PoB2 公式**，注释标注
 //! `vendor/PathOfBuilding-PoE2/src/Modules/CalcDefence.lua` 行号。
@@ -49,9 +49,7 @@ fn lost(after: &pobr_core::calc::pool_damage::PoolsAfter, dtype: DamageType, lay
         .sum()
 }
 
-// ---------------------------------------------------------------------------
 // 逐层独立 fixture
-// ---------------------------------------------------------------------------
 
 /// 纯 life：部分扣减（:651-655）。手算：life 1000 − 400 = 600；recoupable = 400
 /// （:531，allies 后全额计入）；hit_pool_remaining = floor(600)（:659，无 MoM/ES）。
@@ -396,9 +394,7 @@ fn es_consumed_in_reverse_type_order_chaos_first() {
     assert!((after.pools.life - 1550.0).abs() < EPS);
 }
 
-// ---------------------------------------------------------------------------
 // loss-prevention 分段（:611-651）
-// ---------------------------------------------------------------------------
 
 /// 仅 above-half 防止（:643-647 else 分支）。手算：prev 20%、life 1000/1000、
 /// hit 400：转入延迟损失 400×0.2 = 80、生命实扣 320 → life 680。
@@ -460,9 +456,7 @@ fn loss_prevention_both_segments_with_overkill_clamp() {
     assert_eq!(after.hit_pool_remaining, 0.0);
 }
 
-// ---------------------------------------------------------------------------
 // max-hit TotalHitPool 池层（:2942-2960 基底 + :3540-3596 扩展）
-// ---------------------------------------------------------------------------
 
 /// ward bypass 的池扩展（:3544-3553）。手算：base 1000、ward 600、bypass 40%：
 /// protected = 600/0.6×0.4 = 400；pool = max(1000−400,0) + min(1000,400)/0.4 =
@@ -541,9 +535,7 @@ fn extend_pool_aegis_takes_strongest() {
     assert!((physical - 1200.0).abs() < EPS);
 }
 
-// ---------------------------------------------------------------------------
 // pob2-oracle 对拍（中间值锚定真实 build）
-// ---------------------------------------------------------------------------
 
 /// sorceress-stormweaver-comet（MoM 系）oracle 中间值对拍。
 /// oracle mainOutput（2026-06-11）：Life=1581 / ManaUnreserved=2367 /

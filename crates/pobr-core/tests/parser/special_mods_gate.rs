@@ -1,4 +1,4 @@
-//! special_mods 闸门测试（M5b 蓝图 C-4，§0.3 监控线落成 CI 原生门禁）。
+//! special_mods 闸门测试。
 //!
 //! 读仓库 `data/overlay-common/special_mods.json`（版本无关策展层，P1-3）+
 //! `data/<ver>/{overlay/special_mods.json, generated/special_derived.json}`，断言：
@@ -7,11 +7,11 @@
 //! 2. 所有 `handler_id` 均已注册（未注册 = 测试失败 + 打印未映射清单，
 //!    「未映射告警」落成硬门禁）；
 //! 3. `registry.len() < 100`（架构 §5 监控线）；
-//! 4. handler 条目数 / special 总条目 < 10%（逼近即判切分失败，回看 P4）；
+//! 4. handler 条目数 / special 总条目 < 10%（逼近即判切分失败）；
 //! 5. id 唯一 + pattern 编译唯一（两条等价 pattern 字符串视为冲突）；
 //! 6. `verified:false` 计数打印（报表，不断言）。
 //!
-//! special_derived.json 缺表时跳过其拼接（M5b C-1 落地后纳入）。
+//! special_derived.json 缺表时跳过其拼接（落地后纳入）。
 
 use std::collections::BTreeMap;
 
@@ -73,7 +73,7 @@ fn load_entries() -> Vec<SpecialTemplateDef> {
     entries
 }
 
-/// 全部已注册的 special handler（M5b C-3：`register_special_handlers`）。
+/// 全部已注册的 special handler（`register_special_handlers`）。
 /// 闸门 `all_handler_ids_registered` 用它校验每个 `handler_id` 条目均已注册。
 fn special_registry() -> HandlerRegistry {
     let mut registry = HandlerRegistry::new();
@@ -150,7 +150,7 @@ fn ids_and_patterns_unique() {
     assert!(dup_patterns.is_empty(), "重复 pattern：{dup_patterns:?}");
 }
 
-/// `verified:false` 计数报表（不断言；M5b 验收口径是曲线/抽样，不是百分比硬指标）。
+/// `verified:false` 计数报表（不断言；验收口径是曲线/抽样，不是百分比硬指标）。
 #[test]
 fn report_verified_distribution() {
     let entries = load_entries();

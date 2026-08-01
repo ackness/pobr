@@ -231,10 +231,8 @@ fn energy_shield_derived_from_life_fraction() {
     assert!(base.energy_shield > 0.0);
 }
 
-// ---------------------------------------------------------------------------
 // MinionDef 入库 schema 驱动的集成测试
 // 出处：PoB2 src/Data/Minions.lua；agent-docs/minions.md §1 / §4。
-// ---------------------------------------------------------------------------
 
 #[test]
 fn build_context_from_zombie_def_matches_manual() {

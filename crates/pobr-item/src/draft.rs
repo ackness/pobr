@@ -1,11 +1,11 @@
-//! [`ItemDraft`]：物品编辑态的**全保真**结构化草稿（P16）。
+//! [`ItemDraft`]：物品编辑态的**全保真**结构化草稿。
 //!
 //! 对照 PoB2 `Classes/Item.lua::ParseRaw`（294-1253）的结构化产物，但**不丢任何信息**：
 //! calc 视图（`pobr-core::item_text`）刻意丢弃的 variant 名列表、行级 `{range}`/`{variant}`
 //! 标注、未建模标注（`{tags:…}`）在本草稿里全部保留，以支持 BuildRaw 往返
 //! （[`crate::build_raw`]）。
 //!
-//! 往返契约（P16，编辑态无 parity 可依）：`parse(build_raw(parse(x))) == parse(x)`
+//! 往返契约（编辑态无 parity 可依）：`parse(build_raw(parse(x))) == parse(x)`
 //! ——语义不动点。字节级 byte-stable 不作硬约束（PoB2 自身 BuildRaw 亦不保证）。
 //!
 //! 注：本草稿是**编辑态**结构，calc 路径仍由 `pobr-core::item_text` 承担；二者的 variant
@@ -193,7 +193,7 @@ impl ItemDraft {
         let mut draft = ItemDraft::default();
         let mut idx = 0;
 
-        // --- 头部：Rarity / 标题 / 基底 ---
+        // 头部：Rarity / 标题 / 基底
         if let Some(rarity) = lines[idx].strip_prefix("Rarity: ") {
             draft.header.rarity = rarity.trim().to_string();
             idx += 1;

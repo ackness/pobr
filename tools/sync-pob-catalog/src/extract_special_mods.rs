@@ -276,7 +276,7 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
     Ok(json)
 }
 
-// ---- headless 调用（同 extract_parser_rules 约定：stdin 注入、JSONL 回收）----
+// headless 调用（同 extract_parser_rules 约定：stdin 注入、JSONL 回收）
 
 fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<RawRow>> {
     // 绝对化：cwd 会切到 vendor src/，相对 vendor_root 会让 LUA_PATH 失效。
@@ -339,7 +339,7 @@ fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<RawRow>> {
     Ok(rows)
 }
 
-// ---- 去重输入：已有 overlay / derived 覆盖的 vendor key 与 pattern ----
+// 去重输入：已有 overlay / derived 覆盖的 vendor key 与 pattern
 
 fn repo_data_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -381,7 +381,7 @@ fn load_existing_keys() -> io::Result<(BTreeSet<String>, BTreeSet<String>)> {
     Ok((raw_keys, patterns))
 }
 
-// ---- Lua pattern → Rust regex（严格白名单子集）----
+// Lua pattern → Rust regex（严格白名单子集）
 
 /// 数字捕获内容闭集 → 忠实 regex 体（不放宽：`%d+` 不接受小数）。
 fn numeric_capture_body(content: &str) -> Option<&'static str> {
@@ -593,7 +593,7 @@ fn lua_pattern_to_regex(
     Ok((out, caps))
 }
 
-// ---- V2s5：kind:"enum" 行 → 带 enums 闭集的模板条目 ----
+// V2s5：kind:"enum" 行 → 带 enums 闭集的模板条目
 
 /// 词类探针行的统一化：
 /// - 逐词组合的推断 mods 做结构 diff——全组合相等的叶子按字面量保留；
@@ -989,7 +989,7 @@ fn collect_diffs(
     Ok(())
 }
 
-// ---- raw mod JSON → ModTemplateDef（忠实性白名单）----
+// raw mod JSON → ModTemplateDef（忠实性白名单）
 
 fn transform_mods(v: &serde_json::Value) -> Result<Vec<ModTemplateDef>, String> {
     let arr = v.as_array().ok_or("mods_not_array")?;
@@ -1303,7 +1303,7 @@ fn transform_tag(v: &serde_json::Value) -> Result<TemplateTagDef, String> {
     Ok(tag)
 }
 
-// ---- 捕获引用越界校验 ----
+// 捕获引用越界校验
 
 fn validate_refs(mods: &[ModTemplateDef], caps: usize) -> Result<(), String> {
     let check = |s: &str| -> Result<(), String> {
@@ -1334,7 +1334,7 @@ fn validate_refs(mods: &[ModTemplateDef], caps: usize) -> Result<(), String> {
     Ok(())
 }
 
-// ---- id / meta ----
+// id / meta
 
 fn slug(s: &str) -> String {
     let mut out = String::new();

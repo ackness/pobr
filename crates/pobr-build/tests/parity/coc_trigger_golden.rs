@@ -1,4 +1,4 @@
-//! CoC（Cast on Critical Strike）触发链路 golden fixture（M4-I，蓝图 §4.2 验收条目 2）。
+//! CoC（Cast on Critical Strike）触发链路 golden fixture。
 //!
 //! T5 已交付方向性断言（calc_orchestrator 单测：识别命中 / 攻速→触发速率单调）；
 //! 本套件补**固定数值 golden**：PoB2 XML fixture（`fixtures/coc_cast_on_crit.xml`：
@@ -10,7 +10,7 @@
 //! 链路对照（vendor `Modules/CalcTriggers.lua`）：
 //! - 识别：`overlay/trigger_configs.json` 的 `MetaCastOnCritPlayer` 条目
 //!   （`triggered_by`，`trigger_on_crit = true`，源谓词 = Attack；:1089-1092）；
-//! - 源速率：W-E2 子计算取源技能计算后有效速率（GlobalCache 等价，:74-86）；
+//! - 源速率：子计算取源技能计算后有效速率（GlobalCache 等价，:74-86）；
 //! - 触发几率：源命中 × 源暴击折入（trigger_on_crit，:716-770）；CoC 条目无
 //!   冷却覆盖、触发宝石无冷却数据 → `trigger_rate_cap` 面板保持 0（无冷却 cap），
 //!   触发速率 = 源速率 × 源命中 × 源暴击（纯源速率驱动分支）。
@@ -38,9 +38,7 @@ use pobr_gamedata::{GameData, repo_data_root};
 /// 主技能 = Fireball（mainActiveSkill=3，组内非 support 序）。
 const COC_XML: &str = include_str!("../fixtures/coc_cast_on_crit.xml");
 
-// ---------------------------------------------------------------------------
 // Golden 基线（首次建立：本套件落地 commit，worktree 基线 761ebb5）
-// ---------------------------------------------------------------------------
 
 /// 实际触发速率（次/秒）= 源速率 × 源命中 × 源暴击（trigger_on_crit 折入）：
 /// `1.15942029 × 0.742558559 × 0.05`。
@@ -56,7 +54,7 @@ const GOLDEN_MAIN_HIT_CHANCE: f64 = 1.0;
 const GOLDEN_MAIN_ACTION_RATE: f64 = 0.833333333;
 const GOLDEN_MAIN_TOTAL_HIT_AVG: f64 = 78.645;
 
-/// 源技能（Armour Breaker @ Wooden Club）口径：W-E2 子计算注入
+/// 源技能（Armour Breaker @ Wooden Club）口径：子计算注入
 /// `TriggerSourceRate`/`TriggerSourceHitChance`/`TriggerSourceCritChance` 的来源。
 const GOLDEN_SRC_EFFECTIVE_ACTION_RATE: f64 = 1.15942029;
 const GOLDEN_SRC_HIT_CHANCE: f64 = 0.742558559;
@@ -121,7 +119,7 @@ fn coc_golden_triggered_skill_output() {
 }
 
 /// 源技能 golden（TriggerRate 的中间值）：同组主技能切到 Armour Breaker，即
-/// W-E2 源子计算的统计口径（vendor oracle 对拍点：Speed 1.16 / PreEffectiveCrit 5%）。
+/// 源子计算的统计口径（vendor oracle 对拍点：Speed 1.16 / PreEffectiveCrit 5%）。
 #[test]
 fn coc_golden_trigger_source_stats() {
     let data = load_build_data();

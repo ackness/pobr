@@ -1,4 +1,4 @@
-//! config 消费收口（M3-T1 A5「xml_build 切换 interpreter 主路径」，蓝图
+//! config 消费收口（「xml_build 切换 interpreter 主路径」，
 //! m3-orchestration §4.5 / D3 双跑点 1）。
 //!
 //! [`resolve_config`] 是 `calculate_with_data` 消费 build config 的**唯一入口**：
@@ -8,7 +8,7 @@
 //!   conditions / multipliers / 标量（enemyIsBoss、resistancePenalty 包装）/
 //!   player·enemy modifier / customMods 行通道；
 //! - 缺 catalog（旧数据包 / [`BuildData::empty`](crate::BuildData::empty)）→
-//!   回退旧 `parse_config` 产出（`build.config` 既有字段，R7 缺表容忍）。
+//!   回退旧 `parse_config` 产出（`build.config` 既有字段，缺表容忍）。
 //!
 //! ## 双跑期口径（commit 簇逐类打开，dualrun 报告 §3）
 //!
@@ -23,8 +23,8 @@
 //!   条件——纯命名空间换算、零行为增量（旧路径删除前与 legacy 值逐项相等）。
 //! - **quest 奖励**：仍走旧 text 通道（`global_modifier_texts`）——解释器的
 //!   声明式 quest mod 沿 vendor 拼写（`Life`/`Str`/`ColdResist`），与 parser
-//!   名空间（`MaximumLife`/`Strength`/`ColdResistance`）的统一属报告 §3-⑤
-//!   （与 M6 parser 规则、M1 statmap 名空间一并裁决），此前不切换以免双名分裂。
+//!   名空间（`MaximumLife`/`Strength`/`ColdResistance`）尚未统一，切换会造成
+//!   双名分裂。
 //! - **标量**：enemyIsBoss / resistancePenalty 仅在 XML **显式给出**时走
 //!   handler 包装（[`enemy_tier_from_config`] / [`campaign_progress_from_config`]）；
 //!   省略时维持既有回退链（编排选项档位 / Endgame -60），与 catalog
@@ -85,7 +85,7 @@ pub(crate) struct ResolvedConfig {
 /// 解析 build config 的消费视图（详见模块注释）。
 pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> ResolvedConfig {
     let Some(catalog) = catalog else {
-        // R7 缺表容忍：回退旧 parse_config 产出（build.config 既有字段）。
+        // 缺表容忍：回退旧 parse_config 产出（build.config 既有字段）。
         return ResolvedConfig {
             config: build.config.clone(),
             player_mods: Vec::new(),
@@ -168,7 +168,7 @@ fn merge_multipliers(multipliers: &mut HashMap<String, f64>, outcome: &ConfigOut
 /// enemy 桶 FLAG `Condition:<X>` → cfg 条件 `Enemy<X>` 反桥（见模块注释）。
 /// `or_insert` 不覆盖显式值（XML `boolean="false"` 在解释侧本就不激活）。
 ///
-/// （M4-L）额外**未前缀**桥：敌侧数值 mod 的 `Condition` tag 按敌方自身状态名
+/// 额外**未前缀**桥：敌侧数值 mod 的 `Condition` tag 按敌方自身状态名
 /// （无 Enemy 前缀）查 cfg 条件——curse 域同约定（`stat_map_engine::map_curse_stat`
 /// doc：「var 即敌方自身状态，不加 Enemy 前缀」；vendor 等价 = enemyDB 内 mod 的
 /// Condition tag 查 enemyDB 自身 conditions）。pobr 单条件命名空间下不能盲目
@@ -212,13 +212,13 @@ fn bridge_enemy_conditions(conditions: &mut HashMap<String, bool>, outcome: &Con
     }
 }
 
-/// （M4-m）玩家桶 **Combat 门控** `Condition:<X>` FLAG → cfg 条件桥。
+/// 玩家桶 **Combat 门控** `Condition:<X>` FLAG → cfg 条件桥。
 ///
 /// 解释器的裸效果回填（config_interpreter `apply_effect`）只收**无 tag** 条目；
 /// `Condition:CritRecently`/`Condition:UsingCharm` 等 config 主效果带
 /// `{type=condition, var=Combat}` tag（vendor ConfigOptions 的 Combat 门控形态，
 /// `Condition:Combat` ≡ buffMode "EFFECTIVE" → mode_combat，CalcSetup.lua:583-597
-/// ——本编排路径恒置 mode_combat=true，M3-T2 B4），落进 player_mods 后无 cfg
+/// ——本编排路径恒置 mode_combat=true），落进 player_mods 后无 cfg
 /// 消费方（`Modifier::matches` 的 Condition tag 只查 cfg.conditions），使同名
 /// imply 条件（CritInPast8Sec）生效而**主条件自身**（CritRecently）失活。
 /// 此桥把「tag 全部 = Condition:Combat（未否定、无 actor）」的玩家 FLAG
@@ -429,7 +429,7 @@ mod tests {
                 .with("conditionStationary", ConfigInputValue::Number(5.0))
                 .with("conditionCritRecently", ConfigInputValue::Bool(true)),
         );
-        // 模拟旧路径产出（parse_build 双跑期仍填 legacy 字段）。
+        // 模拟旧路径产出。
         build.config.conditions.insert("CritRecently".into(), true);
         let resolved = resolve_config(&build, Some(&catalog));
         assert_eq!(
@@ -458,7 +458,7 @@ mod tests {
                 .iter()
                 .any(|m| m.name.as_str() == "Condition:CritRecently")
         );
-        // （M4-m）Combat 门控桥：主条件自身（CritRecently）同步落 cfg
+        // Combat 门控桥：主条件自身（CritRecently）同步落 cfg
         // （本编排路径恒置 mode_combat=true，vendor Condition:Combat ≡ true）。
         let no_legacy = build_with_inputs(
             RawConfigInputs::new().with("conditionCritRecently", ConfigInputValue::Bool(true)),
@@ -543,7 +543,7 @@ mod tests {
         assert!(!crit.tags.is_empty(), "保留 ApplyCriticalWeakness 门控 tag");
     }
 
-    /// （M4-L）敌侧条件未前缀桥：`conditionEnemyCriticalWeakness` →
+    /// 敌侧条件未前缀桥：`conditionEnemyCriticalWeakness` →
     /// `EnemyApplyCriticalWeakness`（既有前缀桥）+ `ApplyCriticalWeakness`
     /// （未前缀，因 `enemyCriticalWeaknessStacks` 的 SelfCritChance mod tag
     /// 引用它——vendor ConfigOptions.lua:1893 `{type="Condition",
@@ -586,7 +586,7 @@ mod tests {
         assert_eq!(crit.value.as_number(), Some(10.0));
     }
 
-    /// M3-W4 commit B 端到端：multiplierNearby* handler 经主路径生效——
+    /// commit B 端到端：multiplierNearby* handler 经主路径生效——
     /// 标量加法回填（rare 计数聚合进 NearbyEnemies，vendor
     /// ConfigOptions.lua:1108 双写口径）+ Combat 门控 mod 注入 + enemy 桶 FLAG。
     #[test]
@@ -629,7 +629,7 @@ mod tests {
         );
     }
 
-    /// M3-W4 commit B：inDemonForm handler 经主路径置 DemonForm 条件
+    /// commit B：inDemonForm handler 经主路径置 DemonForm 条件
     /// （defaultState=true 缺省激活，与旧 DEFAULT_TRUE_CONDITIONS 口径一致）。
     #[test]
     fn in_demon_form_resolves_condition() {

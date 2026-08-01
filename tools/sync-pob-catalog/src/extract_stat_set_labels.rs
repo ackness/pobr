@@ -1,5 +1,5 @@
 //! `extract-lua --what stat-set-labels`：vendor statSet 形态 label + 导出序号 →
-//! `data/<版本>/overlay/stat_set_labels.json`（M1-T5.2 多 statSet 的 label 边车）。
+//! `data/<版本>/overlay/stat_set_labels.json`。
 //!
 //! **双源 join**（`.dat` `GrantedEffectStatSets.Label` 的 FK 目标表
 //! `GrantedEffectLabels` 在钉定补丁不可下载，label 文本只存在于 vendor 导出产物）：

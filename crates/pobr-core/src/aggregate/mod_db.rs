@@ -21,11 +21,11 @@ fn pob_round(value: f64, dec: i32) -> f64 {
     (value * mult + 0.5).floor() / mult
 }
 
-/// 取整精度规则（M4-T1 W-A2）：vendor `data.highPrecisionMods` +
+/// 取整精度规则：vendor `data.highPrecisionMods` +
 /// `data.defaultHighPrecision`（`Data.lua:413-530`，入库为
 /// `overlay/high_precision_mods.json`，经 pobr-gamedata `RuleSet` 注入）。
 ///
-/// `Default`（未注入数据）= **无例外表** fallback（蓝图 W-A2：默认
+/// `Default`（未注入数据）= **无例外表** fallback（默认
 /// `round(·,2)` 截整；小数原值仍走 `default_high_precision = 1`——该常量与
 /// 入库 JSON 逐值相等，搬迁不变式）。消费方：[`ModDb::scale_add_mod`] 与
 /// MORE 聚合精度例外分支。
@@ -81,7 +81,7 @@ fn scale_mod_value(
     }
 }
 
-/// 单次聚合查询内的 GlobalLimit 记账表（M4-T1 W-A3；vendor 每次
+/// 单次聚合查询内的 GlobalLimit 记账表（vendor 每次
 /// Sum/More/Tabulate 调用新建 `local globalLimits = { }`，ModDB.lua:133/159/269）。
 /// 懒分配：无 [`ModTag::GlobalLimit`] mod 时零开销（热路径不建表）。
 type GlobalLimits = Option<HashMap<String, f64>>;
@@ -124,7 +124,7 @@ pub struct ModContribution {
     pub value: f64,
     pub origin: Option<ModifierSource>,
     pub raw_text: Option<String>,
-    /// （M4-T1 W-A3）[`ModTag::GlobalLimit`] 截断前的原生效值
+    /// [`ModTag::GlobalLimit`] 截断前的原生效值
     /// （`Some` = 本条被累计限幅截断；traced 路径据此挂 Clamp 节点）。
     pub clamped_from: Option<f64>,
 }
@@ -132,12 +132,12 @@ pub struct ModContribution {
 #[derive(Debug, Clone, Default)]
 pub struct ModDb {
     mods: HashMap<ModName, Vec<Modifier>>,
-    /// 取整精度规则（M4-T1 W-A2）：vendor 把 `data.highPrecisionMods` 当全局
+    /// 取整精度规则：vendor 把 `data.highPrecisionMods` 当全局
     /// 环境数据消费，pobr 收口在 db 实例上（计算核心零 I/O，由编排层经
     /// [`Self::set_high_precision_rules`] 注入）。`Default` = 无例外表 →
     /// MORE 聚合走默认 `round(·,2)` 分支，行为与字段引入前逐字一致。
     high_precision: HighPrecisionRules,
-    /// 含 [`ModTag::GlobalLimit`] mod 的名字桶（W-A3 性能分流：[`Self::sum`]
+    /// 含 [`ModTag::GlobalLimit`] mod 的名字桶（性能分流：[`Self::sum`]
     /// 仅在查询名命中此集合时走记账慢路径——记账闭包会破坏纯求和链的优化，
     /// 实测 bench +50%）。写入时维护（`add_mod`/`replace_mod`）；移除侧不回收
     /// （stale 正例只影响性能不影响语义）。
@@ -190,14 +190,14 @@ impl ModDb {
         }
     }
 
-    /// 写侧原语 ReplaceMod（M4-T1 W-A2；vendor `ModStore.lua:114-118` +
+    /// 写侧原语 ReplaceMod（vendor `ModStore.lua:114-118` +
     /// `ModDB.lua:38-66` `ReplaceModInternal`）：同 `name + type + flags +
     /// keywordFlags + source` 的既有 mod **原位替换**（保持桶内顺序），无匹配则
     /// append（= [`add_mod`](Self::add_mod)）。
     ///
     /// 返回是否发生替换（`false` = 走了 append 分支）。典型消费方：弩 reload 的
     /// `Multiplier:BoltsReloadedPastSixSeconds` 回写（`CalcOffence.lua:2890-2894`，
-    /// T4 W-D2）。注：pobr `ModDb` 无 parent 链（vendor 的 parent 递归不适用）。
+    /// T4）。注：pobr `ModDb` 无 parent 链（vendor 的 parent 递归不适用）。
     pub fn replace_mod(&mut self, modifier: Modifier) -> bool {
         self.note_global_limit(&modifier);
         if let Some(bucket) = self.mods.get_mut(&modifier.name)
@@ -215,7 +215,7 @@ impl ModDb {
         false
     }
 
-    /// 写侧原语 ConvertMod（M4-T1 W-A2；vendor `ModStore.lua:120-132` +
+    /// 写侧原语 ConvertMod（vendor `ModStore.lua:120-132` +
     /// `ModDB.lua:75-105` `ConvertModInternal`）：在 `from` 桶内找同
     /// `type + flags + keywordFlags + source`（与 `to` 比对）的既有 mod，
     /// **从旧名桶移除、`to` 落新名桶**（跨桶搬迁）；无匹配则直接 append `to`。
@@ -241,7 +241,7 @@ impl ModDb {
         false
     }
 
-    /// 写侧原语 ScaleAddMod（M4-T1 W-A2；vendor `ModStore.lua:45-81`）：按
+    /// 写侧原语 ScaleAddMod（vendor `ModStore.lua:45-81`）：按
     /// `scale` 缩放数值后入库，取整走 [`HighPrecisionRules`]（见
     /// [`scale_mod_value`] 的逐字分支）。`scale == 1` 直接入库（vendor :54）。
     ///
@@ -319,7 +319,7 @@ impl ModDb {
         }
     }
 
-    /// （M4-T1 W-A3）入参升级 `impl Into<EvalContext>`：既有调用点传 `&cfg`
+    /// 入参升级 `impl Into<EvalContext>`：既有调用点传 `&cfg`
     /// 零改动；PerStat 消费方传带 `stat_lookup` 的 [`EvalContext`]。聚合循环内
     /// 消费 [`ModTag::GlobalLimit`]（vendor SumInternal 传 `globalLimits` 表，
     /// ModDB.lua:131-154）。
@@ -387,7 +387,7 @@ impl ModDb {
             .fold(0.0_f64, f64::max)
     }
 
-    /// （M4-T1 W-A3）与 [`sum`](Self::sum) 同口径：GlobalLimit 记账后逐条产出
+    /// 与 [`sum`](Self::sum) 同口径：GlobalLimit 记账后逐条产出
     /// （`clamped_from` 携带截断前原值）；`Σ value == sum()` 恒等。
     pub fn contributions<'a>(
         &self,
@@ -459,7 +459,7 @@ impl ModDb {
                 )
             });
             // 源节点带截断前原值；被 GlobalLimit 截断的贡献经 Clamp 节点入图
-            // （W-A3：限幅在归因图上显式可见，clamp 值 = 实际计入聚合的值）。
+            // （限幅在归因图上显式可见，clamp 值 = 实际计入聚合的值）。
             let raw_value = contribution.clamped_from.unwrap_or(contribution.value);
             let input_node = trace.add_source_node(label, raw_value, source);
             let feed_node = if contribution.clamped_from.is_some() {
@@ -482,7 +482,7 @@ impl ModDb {
         }
     }
 
-    /// （M4-T1 W-A3）入参升级 `impl Into<EvalContext>`（同 [`sum`](Self::sum)）。
+    /// 入参升级 `impl Into<EvalContext>`（同 [`sum`](Self::sum)）。
     pub fn more<'a>(&self, ctx: impl Into<EvalContext<'a>>, names: &[ModName]) -> f64 {
         self.more_rounded(ctx.into(), names, |_| true)
     }
@@ -491,7 +491,7 @@ impl ModDb {
     /// 先连乘该名下所有 MORE mod 得 `modResult`，按精度取整后跨 modName 连乘。
     /// 逐名取整避免多 more 乘区的浮点末位漂移。`extra` 施加额外筛选（如槽位）。
     ///
-    /// 取整分支（M4-T1 W-A2 例外修复，10-G6；vendor :175-186 逐字）：
+    /// 取整分支（vendor `ModDB.lua:175-186` 逐字）：
     /// - 默认（无精度例外命中）：`result *= round(modResult, 2)`——与例外分支
     ///   引入前逐字一致（[`round_more`] 不动，搬迁不变式）；
     /// - 命中 [`HighPrecisionRules`] 的 MORE 例外（`SupportManaMultiplier` /
@@ -509,7 +509,7 @@ impl ModDb {
         let cfg = ctx.cfg;
         let mut result = 1.0;
         let mut mod_precision: Option<u32> = None;
-        // （W-A3）GlobalLimit 记账（vendor MoreInternal 同样传 globalLimits 表，
+        // GlobalLimit 记账（vendor MoreInternal 同样传 globalLimits 表，
         // ModDB.lua:159-169——限幅作用于百分比值，先于乘区折算）。
         let mut limits: GlobalLimits = None;
         for name in names {
@@ -554,7 +554,7 @@ impl ModDb {
     ) -> TracedValue {
         let ctx = ctx.into();
         let contributions = self.contributions(ModType::More, ctx, names);
-        // 取整口径与 [`more`](Self::more) 共用同一实现（含 W-A2 精度例外分支），
+        // 取整口径与 [`more`](Self::more) 共用同一实现（含精度例外分支），
         // traced / 非 traced 值恒等（此前为重复实现，易漂移）。
         let factor = self.more(ctx, names);
         let factor_node = trace.add_node(label, factor, TraceOperation::MoreProduct);
@@ -828,7 +828,7 @@ impl ModDb {
     /// [`ModValue::NestedMods`] 载荷（按桶内插入序克隆展开）。
     ///
     /// 供编排层把 `EnemyModifier` 等「外层落 player db、内层转发目标 db」的嵌套词条
-    /// 取出转发（M3 env_finalize `forward_enemy_modifiers`）；本方法只透传不求值，
+    /// 取出转发（env_finalize `forward_enemy_modifiers`）；本方法只透传不求值，
     /// 内层 mod 的 `matches`/`effective_number` 由目标 db 聚合时按目标上下文结算。
     pub fn list_nested(&self, cfg: &CalcConfig, name: ModName) -> Vec<Modifier> {
         self.mods

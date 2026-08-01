@@ -1,7 +1,6 @@
 //! `extract-lua --what curse-priority`：`data.cursePriority` 纯数据表抽取
-//! （M3 S1-C，蓝图 §6.3 C3 数据项）。
 //!
-//! 职责切分（P13 抽取约定）：
+//! 职责切分（确定性抽取约定）：
 //! - Lua 引导脚本（`extract_curse_priority.lua`，编译期内嵌）截取
 //!   `Modules/Data.lua:274` 的表字面量并经 luajit 求值，平铺 `k=v` 以
 //!   JSONL 原样转发；

@@ -12,12 +12,12 @@
 //! - `src/Classes/ModList.lua:118-147` `MoreInternal`：MORE 连乘逐 modName
 //!   取整——命中本表 `floor(result·10^p)/10^p`，未命中 `round(modResult, 2)`。
 //!
-//! pobr 现状（搬迁不变式说明，2026-06 M0-W4d 核查）：
+//! pobr 现状：
 //! - `pobr-core::mod_db::round_more` 固定 `round(·, 2)`，**无例外查表分支**
 //!   （与 vendor `MoreInternal` 的默认分支逐值一致）；
 //! - ScaleAddMod 原语整体未实现（audits/rearchitecture-2026-06-10/10-mod-system.md
-//!   Gap 6）。因此本表**当前零消费方、零 parity 影响**——按架构文档 20 §2.2 先落库，
-//!   待 ScaleAddMod / MORE 例外分支落地（M 后续波次）时作为注入数据接线。
+//!   Gap 6）。因此本表**当前零消费方、零 parity 影响**——按先落库，
+//!   待 ScaleAddMod / MORE 例外分支落地时作为注入数据接线。
 //! - `more_default_round_decimals` 是唯一有 pobr 准源的字段（= round_more 的 2）。
 
 use std::collections::BTreeMap;

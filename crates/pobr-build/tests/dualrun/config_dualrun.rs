@@ -1,4 +1,4 @@
-//! M3-T1 A5 双跑对照（蓝图 D3 点 1）：旧 `parse_config` vs
+//! 双跑对照：旧 `parse_config` vs
 //! `parse_config_inputs` + `config_interpreter` 新路径。
 //!
 //! **持续回归**（commit ① 起）：主路径已切 interpreter（`config_resolve`），
@@ -442,7 +442,7 @@ fn classify_quests(
                         && m.value.as_number() == old_mod.value.as_number()
                 }) {
                     // parser 规范名与 vendor 名不同（ColdResistance vs ColdResist）：
-                    // 类型+值逐值相等，命名口径属 vendor 忠实化（M6 parser 规则统一）。
+                    // 类型+值逐值相等，命名口径属 vendor 忠实化（parser 规则统一）。
                     summary.record(
                         "quest 命名口径差异（parser 名 ≠ vendor 名，类型+值相等）",
                         format!(
@@ -524,7 +524,7 @@ fn dual_run_old_subset_of_new() {
             classify_condition(var, *value, &catalog, &outcome, &source, &mut summary);
         }
         for (var, value) in &old.multipliers {
-            // vendor 聚合口径（M3-W4 commit B，ConfigOptions.lua:1106-1111）：
+            // vendor 聚合口径（`ConfigOptions.lua:1106-1111`）：
             // `multiplierNearbyRareOrUniqueEnemies` 的 apply **双写**
             // `Multiplier:NearbyRareOrUniqueEnemies` 与 `Multiplier:NearbyEnemies`
             // （:1108），modDB Sum 相加——旧路径前缀通道只记本 var、漏聚合。

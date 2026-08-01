@@ -4,7 +4,7 @@
 //! - `vendor/PathOfBuilding-PoE2/src/Modules/CalcSetup.lua:19-105`（`initModDB`，充能上限等）；
 //! - `vendor/PathOfBuilding-PoE2/src/Modules/CalcSetup.lua:608-678`（initEnv 玩家基线段）。
 //!
-//! **搬迁不变式（P8）**：本表只收录 pobr 现有 Rust 代码已有数值的条目，且 JSON 值必须
+//! **搬迁不变式**：本表只收录 pobr 现有 Rust 代码已有数值的条目，且 JSON 值必须
 //! 与 Rust 准源逐值相等；vendor 有而 pobr 没有的条目（如 `DotMultiplier`/`MaximumRage`/
 //! `ActiveTrapLimit`/Tailwind 段等约 60 条）**不入本表**，留待后续行为对齐 commit 补充。
 //! 各条目的 Rust 准源与 vendor 行号见 `data/<版本>/base/base_player_mods.json` 生成来源

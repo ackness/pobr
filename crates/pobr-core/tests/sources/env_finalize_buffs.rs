@@ -1,4 +1,4 @@
-//! env_finalize 阶段 6（M3-T2 B3）端到端：session → perform → 输出。
+//! env_finalize 阶段 6端到端：session → perform → 输出。
 //!
 //! 逐 buff 数值已由 `rules::buff_expander` 单测锚定（PoB2 公式 + floor 行为），
 //! 本文件验证**接线**：buff 定义经 `set_buff_definitions` 入 Env，
@@ -97,7 +97,7 @@ fn onslaught_expands_through_perform() {
     assert_eq!(out.action_rate, 2.4);
 }
 
-/// 蓝图 B3 数值锚点（端到端口径）：OnslaughtEffect 23% + BuffEffectOnSelf 10%
+/// B3 数值锚点（端到端口径）：OnslaughtEffect 23% + BuffEffectOnSelf 10%
 /// → effect = floor(10×1.33) = 13 → Speed INC 26 → action_rate 2.52。
 #[test]
 fn onslaught_effect_scaling_floor_end_to_end() {

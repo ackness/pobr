@@ -17,7 +17,7 @@
 //! 3. `spirit` 写入 `BaseItemDef::spirit`。
 //! 4. overlay 名称在 base 中不存在 → 跳过（vendor-only / 已移除基底），与
 //!    `skill_overrides` 的规则 3 一致。
-//! 5. `reload_time_ms`（M4-T4 W-D2，弩装填）写入 `BaseItemDef::weapon
+//! 5. `reload_time_ms`（弩装填）写入 `BaseItemDef::weapon
 //!    .reload_time_ms`；base 侧无 `weapon` 段（理论上弩必有 `WeaponTypes` 行）
 //!    时补零值 [`WeaponBaseStats`] 再写，不丢值（与规则 2 同构）。
 //! 6. `charm_buff`（charm 基底固有 buff 词条，vendor `flask.lua` `charm.buff`）
@@ -240,7 +240,7 @@ mod tests {
         assert_eq!(bases[0].armour.as_ref().unwrap().block_chance, None);
     }
 
-    /// 规则 5（M4-T4 W-D2）：reload_time_ms 写入 weapon 段，原值不受扰动；
+    /// 规则 5：reload_time_ms 写入 weapon 段，原值不受扰动；
     /// base 侧无 weapon 段时补零值结构再写，不丢值。
     #[test]
     fn merges_reload_time_into_weapon_section() {

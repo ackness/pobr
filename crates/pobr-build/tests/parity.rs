@@ -14,7 +14,7 @@
 //! B 用 `data_version()` 或不加载数据）为准。
 #![allow(clippy::all)]
 
-// ── A) 版本钉定 golden 参考（pin pobr_data::GOLDEN_PARITY_DATA_VERSION）──────────
+// A) 版本钉定 golden 参考（pin pobr_data::GOLDEN_PARITY_DATA_VERSION）
 #[path = "parity/coc_trigger_golden.rs"]
 mod coc_trigger_golden;
 #[path = "parity/crossbow_reload_golden.rs"]
@@ -32,7 +32,7 @@ mod skill_dot_golden;
 #[path = "parity/stored_hand_output.rs"]
 mod stored_hand_output;
 
-// ── B) 版本无关 logic / smoke / 自快照回归（活动版本 / 全版本）──────────────────
+// B) 版本无关 logic / smoke / 自快照回归（活动版本 / 全版本）
 #[path = "parity/e2e_real_build.rs"] // 真实 build 端到端：仅断言范围/确定性/导入正确性
 mod e2e_real_build;
 #[path = "parity/golden_regression.rs"] // 用 calculate()，零数据加载 → 纯 calc-CODE 回归锁

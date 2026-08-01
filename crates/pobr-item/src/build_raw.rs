@@ -7,7 +7,7 @@
 //! Sockets/Rune → LevelReq → Radius → Limited to → Requires Class →
 //! `Implicits: N` → rune/enchant/classReq/implicit/explicit 行 → 状态行。
 //!
-//! 往返契约（P16）：`parse(build_raw(parse(x))) == parse(x)`（语义不动点）。字节级不保证。
+//! 往返契约：`parse(build_raw(parse(x))) == parse(x)`（语义不动点）。字节级不保证。
 
 use crate::draft::{ItemDraft, LineBucket, ModLineDraft};
 

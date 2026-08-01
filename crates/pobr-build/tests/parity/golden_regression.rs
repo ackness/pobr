@@ -39,9 +39,7 @@ const DEADEYE_CODE: &str = include_str!("../../../../examples/demo-bd-test/ninja
 const MARTIAL_ARTIST_CODE: &str =
     include_str!("../../../../examples/demo-bd-test/ninja-bd-marial-artist.txt");
 
-// ---------------------------------------------------------------------------
 // 容差工具
-// ---------------------------------------------------------------------------
 
 /// 整数字段容差：|delta| < 0.5（允许舍入偏差）。
 const INTEGER_TOL: f64 = 0.5;
@@ -73,9 +71,7 @@ fn assert_near_float(label: &str, expected: f64, actual: f64) {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 从 build code 构造 Build（最小路径）
-// ---------------------------------------------------------------------------
 
 fn build_from_code(code: &str) -> Build {
     let xml = decode_pob_code(code.trim()).expect("decode build code");
@@ -95,7 +91,6 @@ fn default_opts() -> OrchestratorOptions {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Deadeye 中性空 build 基线
 //
 // 使用全零 MinimalInput（无装备/天赋词条注入；CalcOrchestrator 只收集
@@ -105,7 +100,6 @@ fn default_opts() -> OrchestratorOptions {
 // 不是真实 PoB2 黄金数值。
 //
 // 若将来添加装备/天赋词条注入，在此更新基线。
-// ---------------------------------------------------------------------------
 
 /// Deadeye build 解码后的角色等级期望值（来自 XML `<Build level="...">`）。
 const DEADEYE_EXPECTED_LEVEL: u32 = 98;
@@ -121,9 +115,7 @@ const DEADEYE_NEUTRAL_COLD_RES: f64 = 0.0;
 const DEADEYE_NEUTRAL_LIGHTNING_RES: f64 = 0.0;
 const DEADEYE_NEUTRAL_DPS: f64 = 0.0;
 
-// ---------------------------------------------------------------------------
 // 测试：Deadeye build 端对端 golden
-// ---------------------------------------------------------------------------
 
 #[test]
 fn deadeye_golden_decode_and_identity() {
@@ -209,9 +201,7 @@ fn deadeye_golden_snapshot_is_deterministic() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // Martial Artist golden 基线（第二个 fixture，验证非 Ranger 职业解码正常）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn martial_artist_golden_decode_and_calc() {
@@ -238,9 +228,7 @@ fn martial_artist_golden_decode_and_calc() {
     assert_near_int("martial_artist_life", 0.0, out.life);
 }
 
-// ---------------------------------------------------------------------------
 // 回归守卫：确保 decode → Build → Calc 管线不因重构而静默崩溃
-// ---------------------------------------------------------------------------
 
 #[test]
 fn pipeline_smoke_test_both_fixtures() {
@@ -262,7 +250,6 @@ fn pipeline_smoke_test_both_fixtures() {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Wave 1 / Wave 2 新增字段快照（空 Build + 空 MinimalInput → 全为默认中性值）
 //
 // 目的：锁定 Wave1/2 新增 OutputTable 字段在默认（无词条）状态下的基准值，
@@ -271,7 +258,6 @@ fn pipeline_smoke_test_both_fixtures() {
 //   - 大多数字段 0.0（无词条时无效果）
 //   - taken_multi_* = 1.0（乘数中性，不减伤也不增伤）
 //   - enemy_crit_effect = 1.0（中性）
-// ---------------------------------------------------------------------------
 
 /// Wave 1 暴击字段快照（crit_chance / crit_multiplier / pre_effective_crit_chance）。
 ///

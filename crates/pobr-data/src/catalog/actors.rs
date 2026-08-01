@@ -1,23 +1,23 @@
 //! 召唤物 / 魂灵（spectre）overlay 域 schema（`overlay/minions.json` /
 //! `overlay/spectres.json` / `overlay/granted_effect_minions.json`）。
 //!
-//! 数据来源（M5a 蓝图 §1 路线 B 裁决）：vendor PoB2 `Data/Minions.lua`（32 条）/
+//! 数据来源：vendor PoB2 `Data/Minions.lua`（32 条）/
 //! `Data/Spectres.lua`（593 条）——两文件头部自注 "automatically generated"，本身
 //! 即 `.dat` 的确定性投影、PoB2 计算引擎的实际输入；由
 //! `sync-pob-catalog extract-lua --what minions|spectres` 在最小 stub 环境用
 //! luajit 执行后逐字段忠实抽取（schema 标识 `minions/v1` / `spectres/v1`）。
-//! 物理层归 `overlay/`（00-index §4.2 裁决 1：生产工具定层——extract-lua 产物
+//! 物理层归 `overlay/`（裁决 1：生产工具定层——extract-lua 产物
 //! 落 overlay，后续 pipeline 补齐 `.dat` 表则迁 base，迁移 commit byte 等价）。
 //!
 //! 与既有 `pobr_data::minion::MinionDef`（手抄常量 + 计算消费形态）的关系：
 //! 本模块是**入库 serde 形状**（v2 字段全集，含 `mod_list` 结构化 modList）；
-//! M5a 主波 A1 将把消费侧统一迁到本类型并删除手抄常量（A6），当前两者并存、
+//! 将把消费侧统一迁到本类型并删除手抄常量（A6），当前两者并存、
 //! 由加载单测锁定逐值一致（搬迁不变式）。本模块零逻辑、零 I/O。
 //!
-//! `overlay/granted_effect_minions.json` 是宝石→召唤物外键**边车**（00-index
-//! 裁决 §4-10 归 M5a）：`minionList` 不在 `.dat`，来自 PoB2 Export 模板手工指令
+//! `overlay/granted_effect_minions.json` 是宝石→召唤物外键**边车**（
+//! 裁决 §4-10 归）：`minionList` 不在 `.dat`，来自 PoB2 Export 模板手工指令
 //! `#minionList`（`Export/Scripts/skills.lua:771-776`），随 `Data/Skills/*.lua`
-//! 一起被 extract-lua 抽取；merge 进 `GrantedEffectDef` 属 M5a 主波接线，
+//! 一起被 extract-lua 抽取；merge 进 `GrantedEffectDef` 属接线，
 //! 此处只定义边车形状。
 
 use std::collections::BTreeMap;
@@ -25,7 +25,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 /// Lua 标量值的忠实转录（mod 构造参数 / tag 字段值可为布尔、数字或字符串；
-/// R3 纪律：stub 把入参原样记录，消费侧不识别的形态显式 Unsupported）。
+/// stub 把入参原样记录，消费侧不识别的形态显式 Unsupported）。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum LuaValueDef {
@@ -38,7 +38,7 @@ pub enum LuaValueDef {
 }
 
 /// `modList` 中一条 `mod(...)` / `flag(...)` 构造的忠实序列化
-/// （对应 vendor `Modules/Data.lua:56 makeSkillMod` 的入参；蓝图 R3 警告：
+/// （对应 vendor `Modules/Data.lua:56 makeSkillMod` 的入参；丢参警告：
 /// 构造参数必须完整序列化，丢参即静默错数据）。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MinionModDef {
@@ -172,7 +172,7 @@ pub struct GrantedEffectMinionDef {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub minion_list: Vec<String>,
     /// support 追加的 minion id 列表（`addMinionList`；当前 vendor 数据无
-    /// 此键，字段预留，R7 纪律 `#[serde(default)]`）。
+    /// 此键，字段预留，`#[serde(default)]`）。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub add_minion_list: Vec<String>,
     /// 召唤物借用玩家装备槽位列表（`minionUses` 中值为 true 的键，升序；

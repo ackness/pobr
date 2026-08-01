@@ -11,7 +11,7 @@ pub(crate) struct WeaponContribution {
     pub(crate) crit_chance: f64,
     /// 该武器源的 ModFlags 武器位（vendor `getWeaponFlags`，由
     /// `weapon_types.json` 经 [`ModFlags::weapon_flags`] 派生）。消费方 =
-    /// T2 W-B2 hand_pass 的 per-hand cfg 武器位替换
+    /// T2 hand_pass 的 per-hand cfg 武器位替换
     /// （`WeaponBase::flags` → `replace_weapon_flags`）。
     pub(crate) flags: ModFlags,
 }
@@ -89,7 +89,7 @@ pub(crate) fn weapon_item_contribution(
     })
 }
 
-/// 双持副手（Weapon2）武器源（W-B2；vendor `CalcOffence.lua:2369-2449`
+/// 双持副手（Weapon2）武器源（vendor `CalcOffence.lua:2369-2449`
 /// weapon2Attack pass 的 source 装配）。产出条件（全部满足）：
 ///
 /// - 主技能是**持武攻击**（非法术、非 Shield Wall 类非武器攻击——后者的
@@ -103,7 +103,7 @@ pub(crate) fn weapon_item_contribution(
 ///   武器限制，按「双持即产」近似；
 /// - per-hand 暴击基底：`WeaponBase::crit_chance` 暂未在 hand pass 内消费
 ///   （全局 `CriticalStrikeChance BASE` 仍取主手值，见编排 1c 段），OH 腿
-///   暴击基底沿用 MH——per-hand 暴击消费随 W-B3 crit pass 口径收口。
+///   暴击基底沿用 MH——per-hand 暴击消费随crit pass 口径收口。
 pub(crate) fn dual_wield_off_hand_contribution(
     build: &Build,
     data: &BuildData,
@@ -241,7 +241,7 @@ pub(crate) fn off_hand_defence(build: &Build, data: &BuildData, idx: usize) -> f
 
 /// 空手武器贡献（PoB2 `data.unarmedWeaponData[classId]`）：无主手武器时的攻击技能基底。
 ///
-/// M0-W3：从硬编码 match 切到注入的 per-class 空手基底表
+///  从硬编码 match 切到注入的 per-class 空手基底表
 /// （`data.constants.unarmed_data` ← `base/unarmed_data.json`；无 GameData 走
 /// Default fallback，与 JSON 逐值相等——搬迁不变式，输出不变）。
 ///
@@ -351,7 +351,7 @@ pub(crate) fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
 /// 该词条是否为应从全局剔除的**武器局部**词条（已计入武器 source 乘区）：
 /// 局部物理增伤/附加 + 局部攻击速率（后者作用于武器攻速、不入全局加法桶）。
 ///
-/// 白名单经 `rules` 注入（`overlay/local_mods.json`，M0-W4d 数据化；
+/// 白名单经 `rules` 注入（`overlay/local_mods.json`，数据化；
 /// fallback = [`WeaponLocalModsDef::default`]，与原硬编码枚举逐值一致）。
 pub(crate) fn is_weapon_local_mod(text: &str, rules: &WeaponLocalModsDef) -> bool {
     let clean = clean_item_text(text);

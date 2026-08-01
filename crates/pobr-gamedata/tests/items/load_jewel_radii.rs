@@ -30,7 +30,7 @@ fn named_band<'a>(def: &'a JewelRadiiDef, label: &str) -> &'a JewelRadiusBandDef
         .unwrap_or_else(|| panic!("存在 {label} 档"))
 }
 
-/// 搬迁不变式（M0-W3 注入）：`JewelRadiiDef::default()`（注入缺失时的 fallback）
+/// 搬迁不变式：`JewelRadiiDef::default()`（注入缺失时的 fallback）
 /// 与 `base/jewel_radii.json` **全等**——保证「无数据走 Default」与「有数据走注入」
 /// 两条路径输出逐值一致。
 #[test]

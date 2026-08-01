@@ -89,9 +89,9 @@ fn fireball_base_damage_drives_nonzero_dps() {
     assert!(out.action_rate > 0.0, "action_rate should be > 0");
 }
 
-/// P0-2 support 宝石注入：同组**兼容**的「增加伤害」support 宝石的 `damage_+%` 应抬升击中。
+/// support 宝石注入：同组**兼容**的「增加伤害」support 宝石的 `damage_+%` 应抬升击中。
 ///
-/// M1-T3.6 起注入前经组级适用性裁决（PoB2 CalcTools.lua:84-110 +
+/// 起注入前经组级适用性裁决（PoB2 CalcTools.lua:84-110 +
 /// CalcActiveSkill.lua:179-210）：本测试原用 `SupportFerociousRoarPlayer`（require
 /// `[Warcry]`——PoB2 中 Ferocious Roar 只能支援战吼），对 Fireball（法术）属误注入，
 /// 裁决后正确拒收（拒收断言见 tests/support_gating.rs）。改用
@@ -236,7 +236,7 @@ fn spell_skill_ignores_weapon() {
     );
 }
 
-/// CostTypes 解析（P2-6/P2-5）：Fireball L20 法力消耗 104，资源名 = Mana（瞬时）。
+/// CostTypes 解析：Fireball L20 法力消耗 104，资源名 = Mana（瞬时）。
 #[test]
 fn fireball_cost_resolves_to_mana_resource() {
     let build_data = load_build_data();

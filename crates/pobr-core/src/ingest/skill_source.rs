@@ -37,9 +37,9 @@
 //! 授予 → 拒；③ `excludeSkillTypes` 后缀表达式命中 → 拒；④ `requireSkillTypes`
 //! 后缀表达式（空 = 接受）。表达式求值走 [`crate::rules::skill_type_expr`]。
 //!
-//! **defer**（蓝图 T3.4 裁决）：`fromItem` 特例（CalcTools.lua:93，物品授予 support，
-//! M5c）、`isTrigger` 且非玩家 actor（CalcTools.lua:106，玩家 build 恒不触发，M5a）、
-//! `minionTypes` 第二集合（CalcTools.lua:98-103，M5a minion 链路）。
+//! **defer**：`fromItem` 特例（CalcTools.lua:93，物品授予 support）、
+//! `isTrigger` 且非玩家 actor（CalcTools.lua:106，玩家 build 恒不触发）、
+//! `minionTypes` 第二集合（CalcTools.lua:98-103，minion 链路）。
 //!
 //! [`can_support`]/[`judge_support`] 供调用方在注入前裁决；[`ingest_support_gem`]
 //! 被拒时返回 `Err(SupportIngestError::Gating)`。组级 addSkillTypes 不动点
@@ -56,7 +56,7 @@
 //! reservationMultiplier / spiritReservationFlat 等）注入 `skillModList`。
 //! PoBR 不维护等级表，数值由调用方提供；归因 id = `gem.<id>.level<N>` / `gem.<id>.q<Q>`。
 //!
-//! **品质数值口径（M1-T1）**：品质 stat 的数据源是
+//! **品质数值口径**：品质 stat 的数据源是
 //! `overlay/gem_quality_stats.json`（`effect_id → [{stat, per_quality_rate}]`），
 //! 叠加值 = `trunc(per_quality_rate × quality)`——**截断取整**（toward zero），对齐
 //! PoB2 `CalcTools.lua:142` `math.modf(stat[2] * skillInstance.quality)`，非 floor。
@@ -72,9 +72,7 @@ use crate::mod_parser::{ParseError, ParseStatus};
 use crate::rules::skill_type_expr;
 use crate::{ModTag, Modifier};
 
-// ────────────────────────────────────────────────────
 // Public error type
-// ────────────────────────────────────────────────────
 
 /// 辅助宝石兼容性门控失败（PoB2 四段裁决的拒绝原因，按裁决顺序）。
 #[derive(Debug, Clone, PartialEq)]
@@ -85,7 +83,7 @@ pub enum SkillGatingError {
     SupportGemsOnly,
     /// exclude 后缀表达式命中（裁决第三段）。
     Excluded { exclude: Vec<String> },
-    /// require 后缀表达式未命中（裁决第四段；空 require 恒接受）。
+    /// require 后缀表达式未命中（四段裁决第四段：空 require 恒接受）。
     IncompatibleTypes {
         required: Vec<String>,
         active: Vec<String>,
@@ -114,9 +112,7 @@ impl std::fmt::Display for SkillGatingError {
 
 impl std::error::Error for SkillGatingError {}
 
-// ────────────────────────────────────────────────────
 // GemModSource（原始词条文本载体，向后兼容）
-// ────────────────────────────────────────────────────
 
 /// 一颗宝石接入计算的最小输入：稳定宝石 id + 一组 modifier 文本 + 是否辅助宝石。
 ///
@@ -187,9 +183,7 @@ impl GemModSource {
     }
 }
 
-// ────────────────────────────────────────────────────
 // SupportGemSpec — 辅助宝石完整规格（含 4 个 TODO 扩展）
-// ────────────────────────────────────────────────────
 
 /// 一颗**辅助宝石**的完整接入规格，覆盖 4 个扩展点。
 ///
@@ -204,7 +198,7 @@ pub struct SupportGemSpec {
     /// `None` → 不关联父 source。
     pub supported_gem_id: Option<String>,
 
-    // ── TODO(mana-multiplier) ──────────────────────
+    // TODO(mana-multiplier)
     /// 辅助宝石的法力倍乘（PoB2 `SupportManaMultiplier` More 区间）。
     ///
     /// 取值语义与 PoB2 `level.manaMultiplier` 一致：以 **百分比 more** 表示，
@@ -212,7 +206,7 @@ pub struct SupportGemSpec {
     /// `None` → 不注入 `SupportManaMultiplier` modifier。
     pub mana_multiplier: Option<f64>,
 
-    // ── TODO(more-multiplier 隔离) ─────────────────
+    // TODO(more-multiplier 隔离)
     /// 辅助宝石 more/less 倍率作用的目标 skill types（用于 `ModTag::SkillTypes` 隔离）。
     ///
     /// 若非空，解析出的所有 `More` modifier 将附加 `ModTag::SkillTypes(supported_skill_types)`，
@@ -220,7 +214,7 @@ pub struct SupportGemSpec {
     /// `SkillTypes::NONE` → 不附加 tag（全局生效，与原行为兼容）。
     pub supported_skill_types: SkillTypes,
 
-    // ── skill-type-gating（PoB2 四段裁决的 support 侧输入）─────────
+    // skill-type-gating
     /// require 后缀表达式 token 流（兼容性门控第四段）。
     ///
     /// 对照 PoB2 `CalcTools.lua:84-110 canGrantedEffectSupportActiveSkill`：
@@ -232,7 +226,7 @@ pub struct SupportGemSpec {
     /// 仅能支援宝石授予的技能（兼容性门控第二段，PoB2 `supportGemsOnly`）。
     pub support_gems_only: bool,
 
-    // ── TODO(level/quality 归因) ──────────────────
+    // TODO(level/quality 归因)
     /// 当前宝石等级（用于 `SourceKind::SkillLevel` 归因）。
     /// `None` → 不分等级归因，统一归到宝石级 source（原行为）。
     pub level: Option<u8>,
@@ -369,9 +363,7 @@ impl SupportGemSpec {
     }
 }
 
-// ────────────────────────────────────────────────────
 // ActiveSkillSpec — 主动技能规格（用于门控检查）
-// ────────────────────────────────────────────────────
 
 /// 主动技能的简要规格（skill-type-gating 时传入）。
 #[derive(Debug, Clone)]
@@ -404,9 +396,7 @@ impl ActiveSkillSpec {
     }
 }
 
-// ────────────────────────────────────────────────────
 // GemIngest — 解析产物
-// ────────────────────────────────────────────────────
 
 /// 一颗宝石接入计算的产物：解析出的 modifier + 无法解析的原始文本。
 ///
@@ -417,9 +407,7 @@ pub struct GemIngest {
     pub unsupported: Vec<String>,
 }
 
-// ────────────────────────────────────────────────────
 // Public helpers — skill-type-gating check（PoB2 全语义四段）
-// ────────────────────────────────────────────────────
 
 /// 辅助效果侧的裁决输入（数据来自 `GrantedEffectDef` 的 support 行）。
 #[derive(Debug, Clone, Copy, Default)]
@@ -435,10 +423,10 @@ pub struct SupportJudgeInput<'a> {
 /// 主动技能侧的裁决输入。
 #[derive(Debug, Clone, Copy)]
 pub struct ActiveSkillJudgeInput<'a> {
-    /// 主动效果自身不可被支援（PoB2 `cannotBeSupported`，裁决第一段）。
+    /// 主动效果自身不可被支援（PoB2 `cannotBeSupported`，四段裁决第一段）。
     pub cannot_be_supported: bool,
     /// 主动技能是否来自宝石（PoB2 `activeEffect.gemData` 存在）。socket group 内
-    /// 宝石技能恒为 `true`；物品授予技能（fromItem）M5c 接入时为 `false`。
+    /// 宝石技能恒为 `true`；物品授予技能（fromItem）接入时为 `false`。
     pub from_gem: bool,
     /// 当前技能类型集合（组级裁决不动点过程中含已并入的 addSkillTypes）。
     pub skill_types: &'a HashSet<String>,
@@ -452,8 +440,8 @@ pub struct ActiveSkillJudgeInput<'a> {
 /// 3. `excludeSkillTypes` 后缀表达式命中 → 拒（:104-105）；
 /// 4. `requireSkillTypes` 后缀表达式：空 = 接受，否则须匹配（:109）。
 ///
-/// **defer**：`fromItem` 特例（:93，M5c）、`isTrigger` 非玩家 actor（:106-108，
-/// 玩家 build 恒不触发，M5a）、`minionTypes` 第二集合（:98-103，M5a）。
+/// **defer**：`fromItem` 特例（:93）、`isTrigger` 非玩家 actor（:106-108，
+/// 玩家 build 恒不触发）、`minionTypes` 第二集合（:98-103）。
 pub fn judge_support(
     support: &SupportJudgeInput<'_>,
     active: &ActiveSkillJudgeInput<'_>,
@@ -490,9 +478,7 @@ pub fn can_support(support: &SupportJudgeInput<'_>, active: &ActiveSkillJudgeInp
     judge_support(support, active).is_ok()
 }
 
-// ────────────────────────────────────────────────────
 // ingest_gem_with_ctx — 宝石词条接入（GemModSource）
-// ────────────────────────────────────────────────────
 
 /// 把一颗宝石的词条文本解析为带宝石归因的 modifier。
 ///
@@ -530,9 +516,7 @@ pub fn ingest_gem_with_ctx(
     Ok(ingest)
 }
 
-// ────────────────────────────────────────────────────
 // ingest_active_gem — 主动技能宝石接入
-// ────────────────────────────────────────────────────
 
 /// 把一颗主动技能宝石接入计算，产出带 `SourceKind::SkillGem` 归因的 modifier。
 /// 词条解析走 `ctx`。
@@ -563,9 +547,7 @@ pub fn ingest_active_gem_with_ctx(
     Ok(ingest)
 }
 
-// ────────────────────────────────────────────────────
 // ingest_support_gem — 辅助宝石完整接入（4 TODO）
-// ────────────────────────────────────────────────────
 
 /// 辅助宝石接入计算的错误。
 #[derive(Debug)]
@@ -610,7 +592,7 @@ impl std::error::Error for SupportIngestError {
 ///    `ModName("SupportManaMultiplier")` More modifier（归因到辅助宝石 source）。
 /// 2. **more-multiplier 隔离**：若 `spec.supported_skill_types` 非空，给所有 `More`
 ///    modifier 附加 `ModTag::SkillTypes`，使其只对匹配的技能生效。
-/// 3. **skill-type-gating**：经 [`judge_support`]（PoB2 四段裁决）检查与
+/// 3. **skill-type-gating**：经 [`judge_support`]检查与
 ///    `active_skill_types` 的兼容性，被拒返回 `Err(SupportIngestError::Gating(...))`。
 ///    本最小路径假定主动技能来自宝石且可被支援（`cannot_be_supported=false`、
 ///    `from_gem=true`）；完整主动侧输入 + 组级 addSkillTypes 不动点在 orchestrator
@@ -622,7 +604,7 @@ pub fn ingest_support_gem_with_ctx(
     active_skill_types: &HashSet<String>,
     ctx: crate::mod_parser::ParseCtx<'_>,
 ) -> Result<GemIngest, SupportIngestError> {
-    // ── skill-type-gating（PoB2 四段裁决，CalcTools.lua:84-110）────────────
+    // skill-type-gating（PoB2 四段裁决，CalcTools.lua:84-110）
     judge_support(
         &SupportJudgeInput {
             support_gems_only: spec.support_gems_only,
@@ -640,7 +622,7 @@ pub fn ingest_support_gem_with_ctx(
     let parent_source_id = spec.parent_source_id();
     let mut ingest = GemIngest::default();
 
-    // ── TODO(mana-multiplier) ────────────────────────────────────────────────
+    // TODO(mana-multiplier)
     // 对照 PoB2 CalcActiveSkill.lua:
     //   skillModList:NewMod("SupportManaMultiplier", "MORE", level.manaMultiplier, ...)
     // "MORE" 区间，数值单位为百分比（如 40 = +40% more = ×1.4）。
@@ -655,7 +637,7 @@ pub fn ingest_support_gem_with_ctx(
         ingest.modifiers.push(modifier);
     }
 
-    // ── 词条文本解析（含 more-multiplier 隔离）──────────────────────────────
+    // 词条文本解析（含 more-multiplier 隔离）
     for text in &spec.modifier_texts {
         let outcome = ctx.parse(text)?;
         match outcome.status {
@@ -668,7 +650,7 @@ pub fn ingest_support_gem_with_ctx(
                     }
                     let modifier = modifier.with_origin(origin);
 
-                    // ── TODO(more-multiplier 隔离) ─────────────────────────
+                    // TODO(more-multiplier 隔离)
                     // 若辅助宝石指定了目标 skill types，在 More modifier 上附加
                     // SkillTypes tag，保证只作用于被支援技能（当 CalcConfig 中
                     // skill_types 与之有交集时才 matches）。
@@ -691,7 +673,7 @@ pub fn ingest_support_gem_with_ctx(
         }
     }
 
-    // ── TODO(level/quality 缩放) ─────────────────────────────────────────────
+    // TODO(level/quality 缩放)
     // level_mods → SourceKind::SkillLevel 归因
     if let Some(level_source) = spec.level_source_id() {
         for (name, mod_type, value) in &spec.level_mods {
@@ -723,9 +705,7 @@ pub fn ingest_support_gem_with_ctx(
     Ok(ingest)
 }
 
-// ────────────────────────────────────────────────────
 // ingest_gem_leveled — 主动技能宝石等级/品质归因版
-// ────────────────────────────────────────────────────
 
 /// 主动技能宝石携带的等级/品质 modifier 接入。
 ///

@@ -1,4 +1,4 @@
-//! `precompile-mods`：M6-T7 离线预编译工具。
+//! `precompile-mods`：离线预编译工具。
 //!
 //! 把四层语料（§5.1：C1 build XML / C2 passive_tree / special_derived 展开
 //! / `--corpus-extra` 外挂）去重收集后，逐行过 `pobr-core` 数据驱动 scan 引擎
@@ -6,11 +6,11 @@
 //!
 //! - `generated/parsed_mods.json`：`{ _meta, entries: [{ text, status, mods }] }`
 //!   （text 字典序、byte-stable）。运行时（D-T8）由 gamedata 懒加载为
-//!   `text → Vec<Modifier>` 缓存，热路径零解析（蓝图 §6.2）。
+//!   `text → Vec<Modifier>` 缓存，热路径零解析。
 //! - 覆盖率报表（`--report` 时打印 + 写 `parse-coverage.json`）：parsed /
-//!   unsupported / err 三态计数 + 按命中频率排序的缺口 top-N（蓝图 §6.3）。
+//!   unsupported / err 三态计数 + 按命中频率排序的缺口 top-N。
 //!
-//! 用法（蓝图 §6.1）：
+//! 用法：
 //! ```text
 //! cargo run -p precompile-mods -- --data data/4.5.0.3.4 [--corpus-extra <file>] [--report]
 //! ```

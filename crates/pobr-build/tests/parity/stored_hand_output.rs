@@ -1,4 +1,4 @@
-//! M4-T2 W-B3：`Stored<Type>*` 族（HandOutput）真实 build 对拍。
+//!  `Stored<Type>*` 族（HandOutput）真实 build 对拍。
 //!
 //! vendor `CalcOffence.lua:4047-4057`：`Stored<Type>CritAvg/HitAvg/CombinedAvg`
 //! 是 ailment magnitude 的输入，必须满足两条结构恒等式（oracle 亲验，2026-06-12，

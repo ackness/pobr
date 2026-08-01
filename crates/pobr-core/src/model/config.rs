@@ -5,7 +5,7 @@ use pobr_data::prelude::*;
 /// PerStat 的 actor output 读数函数（`stat 名 → output 值`；缺键 `None`）。
 pub type StatLookup<'a> = &'a dyn Fn(&str) -> Option<f64>;
 
-/// EvalMod 求值上下文（M4-T1 W-A3，蓝图 m4-offence-deep.md §3.3 契约 5）。
+/// EvalMod 求值上下文。
 ///
 /// [`crate::Modifier::effective_number`] 的入参从 `&CalcConfig` 升级为本类型；
 /// `From<&CalcConfig>` + `impl Into` 签名使全部既有调用点（传 `&cfg`）**零改动**
@@ -108,13 +108,12 @@ pub struct CalcConfig {
     ///
     /// 默认 **false**（与 `mode_effective` 默认一致）——未显式置位的既有调用方逐值不变；
     /// pobr-build 编排入口对 MAIN 口径显式置 true（PoB2 非 CALCS 模式恒 EFFECTIVE）。
-    /// 蓝图 m3-orchestration.md §1 D5。
     pub mode_buffs: bool,
     /// buffMode 三态之 combat 维度（PoB2 CalcSetup.lua:582-605：COMBAT/EFFECTIVE 含
     /// combat）。门控 doActorMisc 等价段（expand_misc_buffs）、战斗条件自动置位
     /// （CalcPerform.lua:242-260）、flask/charm 合并。
     ///
-    /// 默认 **false**，语义与 [`CalcConfig::mode_buffs`] 同步引入（M3 T0-2，蓝图 D5）。
+    /// 默认 **false**，语义与 [`CalcConfig::mode_buffs`] 同步引入。
     pub mode_combat: bool,
     /// 距离 ramp 的 skillDist（PoB2 `skillCfg.skillDist = env.mode_effective and
     /// env.configInput.enemyDistance`，CalcActiveSkill.lua:655）：[`ModTag::DistanceRamp`]
@@ -136,14 +135,14 @@ pub struct CalcConfig {
     /// `None`（默认 / 防御侧 / 无主技能）→ [`ModTag::SkillName`] 恒不匹配（镜像
     /// vendor `cfg.skillName or ""` 空串不等于任何 tag 名的保守口径）。
     pub skill_name: Option<String>,
-    /// 跨 actor multiplier 快照（M3 T0 为 S2-D 预留，本阶段零消费）。
+    /// 跨 actor multiplier 快照（为 S2-D 预留，本阶段零消费）。
     ///
     /// 对应 PoB2 ModStore EvalMod 的 `actor`/`limitActor` tag：`Multiplier`/`PerStat`
     /// 读取上下文切到 `env.player`/`env.minion`/parent 时，从此表按
     /// `"<actor>.<var>"`（如 `"player.PowerCharges"`）取对方 actor 的值。
     /// 由编排层在只读快照阶段回填；空表 = 行为与引入前逐值一致。
     pub actor_multipliers: HashMap<String, f64>,
-    /// 注入的运行时常量包（M0-W3，架构文档 20 §1 P8/P9）。
+    /// 注入的运行时常量包。
     ///
     /// calc 公式中的全部游戏常量魔数（抗性边界 / 服务器帧 / 异常基线 / 各类 cap…）
     /// 改读此包；`Default` = fallback（与 `base/game_constants.json` 逐值相等，

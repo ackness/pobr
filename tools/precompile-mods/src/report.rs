@@ -1,4 +1,4 @@
-//! 覆盖率报表（蓝图 §6.3）：打印 + 写 `generated/parse-coverage.json`。
+//! 覆盖率报表：打印 + 写 `generated/parse-coverage.json`。
 //!
 //! 报表是 special 长尾收尾（10-G2）与覆盖率棘轮 CI 的共同输入。`parse-coverage.json`
 //! 是 byte-stable 产物（进 regen-check generated 段校验）；缺口 top-N 按字典序
@@ -59,7 +59,7 @@ pub fn round6(v: f64) -> f64 {
 pub fn emit(cov: &Coverage, top_n: usize, data_dir: &Path) -> Result<(), String> {
     let ratio = round6(cov.coverage_ratio());
 
-    // --- stderr 摘要 ---
+    // stderr 摘要
     eprintln!("─── parse 覆盖率报表 ───");
     eprintln!(
         "总计 {} | parsed {} | unsupported {} | err {} | 覆盖率 {:.4}",
@@ -79,7 +79,7 @@ pub fn emit(cov: &Coverage, top_n: usize, data_dir: &Path) -> Result<(), String>
         eprintln!("  [{}/{}] {}", gap.source, gap.status, gap.text);
     }
 
-    // --- JSON 产物 ---
+    // JSON 产物
     let by_source: Vec<SourceRow> = cov
         .by_source
         .iter()

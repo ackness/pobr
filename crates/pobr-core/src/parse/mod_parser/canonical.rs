@@ -1,5 +1,5 @@
 //! [`ParseOutcome`] 的规范序列化——双跑 diff（Track C）与 precompile（Track D）
-//! 的**共用比较单位**（蓝图 §5.2 / 契约 §11.3-2，禁两套序列化）。
+//! 的**共用比较单位**（禁两套序列化）。
 //!
 //! 比较单位：排序后的 `Vec<Modifier>` 的规范字符串。Modifier 按
 //! `(name, mod_type, tags, flags, kw, value)` 排序；f64 用最短往返表示；

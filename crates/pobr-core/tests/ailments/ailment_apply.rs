@@ -1,4 +1,4 @@
-//! 非伤害异常施加闭环集成测试（M3 T4 D1，蓝图 m3-orchestration.md §7.1 测试清单）：
+//! 非伤害异常施加闭环集成测试：
 //! - 端到端：enemy `ShockVal` 20 → 有效 DPS ×1.20（DamageTaken 链经 offence
 //!   `mode_effective` 消费）；
 //! - override 与 Val 取 max；Maximum clamp + 精度截断（prec=0 → 整数 floor）逐值；
@@ -51,9 +51,7 @@ fn enemy_base(env: &Env, name: &str) -> f64 {
         .sum(ModType::Base, &env.cfg, &[ModName::from(name)])
 }
 
-// ---------------------------------------------------------------------------
 // 1. 端到端：enemy ShockVal 20 → 有效 DPS ×1.20
-// ---------------------------------------------------------------------------
 
 #[test]
 fn shock_val_20_raises_effective_dps_by_20_percent() {
@@ -96,9 +94,7 @@ fn shock_val_20_raises_effective_dps_by_20_percent() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 2. override 与 Val 取 max（CalcPerform.lua:3164 的 m_max(override, ΣVal)）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn override_and_val_take_max() {
@@ -140,9 +136,7 @@ fn override_and_val_take_max() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 3. Maximum clamp + 精度截断（prec=0 → 整数 floor）逐值
-// ---------------------------------------------------------------------------
 
 #[test]
 fn maximum_clamp_and_precision_floor() {
@@ -213,9 +207,7 @@ fn maximum_clamp_and_precision_floor() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 4. Already 置位后二次施加无效（防 minion 双重施加，:3130/:3168）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn second_application_is_noop_after_already_flag() {
@@ -247,9 +239,7 @@ fn second_application_is_noop_after_already_flag() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 5. 空转兼容：无来源词条 → env 逐值不变
-// ---------------------------------------------------------------------------
 
 #[test]
 fn empty_spin_leaves_env_unchanged() {
@@ -265,9 +255,7 @@ fn empty_spin_leaves_env_unchanged() {
     assert_eq!(env.cfg.conditions, conditions, "cfg.conditions 不被触碰");
 }
 
-// ---------------------------------------------------------------------------
 // 6. magnitude 缩放：Base/Minimum 乘 Enemy<X>Magnitude/AilmentMagnitude，Override 不乘
-// ---------------------------------------------------------------------------
 
 #[test]
 fn magnitude_scales_base_and_minimum_but_not_override() {
@@ -335,9 +323,7 @@ fn magnitude_scales_base_and_minimum_but_not_override() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 7. Chill：ActionSpeed 负向 + Bonechill 分支
-// ---------------------------------------------------------------------------
 
 #[test]
 fn chill_writes_negative_action_speed_and_bonechill() {
@@ -373,9 +359,7 @@ fn chill_writes_negative_action_speed_and_bonechill() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 8. Multiplier:ChillEffect/ShockEffect 增量更新（:3173-3180）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn effect_multiplier_updates_incrementally() {

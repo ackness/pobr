@@ -26,7 +26,7 @@ fn player_with_base_crit(pct: f64) -> ModDb {
     db
 }
 
-// ─────────────────────────── 基线 / cap ───────────────────────────
+// 基线 / cap
 
 /// 无任何旗标 / 敌方 / mode_effective 时，resolve_crit 与历史逐字一致：
 /// crit_chance = base/100，cap=100%，crit_mult = 1 + (100+0)/100 = 2.0。
@@ -95,7 +95,7 @@ fn crit_chance_base_override_replaces_weapon_base() {
     approx(crit.chance, 0.14);
 }
 
-// ─────────────────────────── mode_effective 命中降级 ───────────────────────────
+// mode_effective 命中降级
 
 /// mode_effective=true 时有效暴击 = 暴击几率 × 命中率；PreEffective 保留降级前值。
 #[test]
@@ -122,7 +122,7 @@ fn non_effective_skips_hit_downgrade() {
     approx(crit.chance, 0.50);
 }
 
-// ─────────────────────────── NoCritMultiplier ───────────────────────────
+// NoCritMultiplier
 
 /// NoCritMultiplier flag → 爆伤 = 1.0，任何暴击几率下 crit_effect = 1（总击中 == 非暴击）。
 #[test]
@@ -158,7 +158,7 @@ fn no_crit_multiplier_end_to_end_total_hit_equals_non_crit() {
     approx(out.total_hit_avg, non_crit);
 }
 
-// ─────────────────────────── Lucky ───────────────────────────
+// Lucky
 
 /// CritChanceLucky flag（mode_effective）：30% → 1-(1-0.3)² = 0.51。
 #[test]
@@ -185,7 +185,7 @@ fn lucky_inactive_without_mode_effective() {
     approx(crit.chance, 0.30);
 }
 
-// ─────────────────────────── Bifurcate ───────────────────────────
+// Bifurcate
 
 /// BifurcateCrit flag（mode_effective）：50% → 1-(1-0.5)² = 0.75。
 #[test]
@@ -215,7 +215,7 @@ fn bifurcate_adds_extra_crit_multiplier() {
     approx(crit.multiplier, 1.0 + 1.0 + 25.0 / 75.0);
 }
 
-// ─────────────────────────── Inevitable ───────────────────────────
+// Inevitable
 
 /// InevitableCriticalHits flag（mode_effective）：crit 置 100%，且按几何级数折算 less 爆伤。
 /// effective crit=50%（spell, hit 1.0）→ lessMore = round((1 - m)*-100) = -27（见 PoB2 4 项截断）。
@@ -252,7 +252,7 @@ fn inevitable_at_full_crit_no_penalty() {
     approx(crit.multiplier, 2.0);
 }
 
-// ─────────────────────────── enemy SelfCrit ───────────────────────────
+// enemy SelfCrit
 
 /// 敌方 SelfCritChance（暴击弱点）加在基础暴击上（mode_effective）：
 /// 玩家 base 20% + enemy 10% = 30% → chance 0.30。
@@ -311,7 +311,7 @@ fn enemy_self_crit_chance_increases_total_hit_end_to_end() {
     approx(out.total_hit_avg, 200.0);
 }
 
-// ─────────────────────────── traced 归因 ───────────────────────────
+// traced 归因
 
 /// traced 路径把 CritChance / CritMultiplier 的 inc/more 贡献接入 TraceGraph：
 /// source_ancestors(crit_node) 应能找到 inc 与 more 的来源。

@@ -1,4 +1,4 @@
-//! M1-T1 gem quality 四层链路集成测试（18-G1 / 15-G5）。
+//! gem quality 四层链路集成测试（18-G1 / 15-G5）。
 //!
 //! 覆盖：XML `<Gem quality>` 解析 → `BuildData::effect_stats` 品质段（trunc 语义）
 //! → 双跑方向断言（stormweaver-comet 15×q20 fixture）。
@@ -51,7 +51,7 @@ fn opts() -> DataOrchestratorOptions {
     }
 }
 
-/// trunc 语义单测（蓝图 T1 门禁指定用例）：rate=0.55, q19 → trunc(10.45)=10；
+/// trunc 语义单测：rate=0.55, q19 → trunc(10.45)=10；
 /// 负斜率 toward zero（区别于 floor）；q0 → 空段。合成数据，不依赖真实表。
 #[test]
 fn quality_segment_truncates_toward_zero() {

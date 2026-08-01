@@ -1,4 +1,4 @@
-//! env_finalize 阶段 3（M3-T4 D2）：flask/charm 词条合并端到端。
+//! env_finalize 阶段 3：flask/charm 词条合并端到端。
 //!
 //! 载荷构造已由 `item::ingest_flask_charm` 单测锚定（tests/item_source.rs），
 //! 本文件验证**合并语义**（vendor CalcPerform.lua:1429-1663）：
@@ -304,7 +304,7 @@ fn end_to_end_charm_resistance_reaches_output_under_mode_combat() {
     );
 }
 
-/// 端到端（M3-W4）：charm 预算来源不再手搓 `CharmLimit` modifier，而是经 mod_parser
+/// 端到端：charm 预算来源不再手搓 `CharmLimit` modifier，而是经 mod_parser
 /// 解析腰带 implicit「Has 1 Charm Slot」（vendor ModParser.lua:5453）注入——预算
 /// 解锁后 charm 抗性进入输出；无该词条（预算 0，:1589）时 charm 全不生效。
 #[test]

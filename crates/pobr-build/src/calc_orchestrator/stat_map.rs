@@ -1,6 +1,6 @@
 //! stat_map — StatMap/curse/debuff/exposure/player_buff 映射 + STAT_MAP_CTX 双跑收集器。
 //!
-//! **双跑上下文（M1-T2.3）**：[`mapped_stat_modifiers`] 是自由函数、三个取数点
+//! **双跑上下文**：[`mapped_stat_modifiers`] 是自由函数、三个取数点
 //! （skill_base / quality / support）不持有编排选项——按 §3.2 共享规则（只改
 //! `mapped_stat_modifiers` + `OrchestratorOptions` 字段、主流程接线 ≤3 行），
 //! 模式与 catalog 经线程局部上下文 [`STAT_MAP_CTX`] 传递：`calculate_with_data`
@@ -76,16 +76,14 @@ pub fn take_stat_map_compare_records() -> Vec<StatMapCompareRecord> {
     STAT_MAP_CTX.with(|ctx| std::mem::take(&mut ctx.borrow_mut().compare_records))
 }
 
-/// 把一组已解析 stat 映射为带 `source_kind` 归因的 modifier——statmap 通道分发点
-/// （蓝图 T2.3 接缝，T2.4 后 Legacy 启发式已删除）：Data 走
-/// [`stat_map_engine::map_stat`] 数据引擎；Compare = Data 计算 + 逐 stat 记录
-/// 映射 outcome 观测（**输出与 Data 一致**，纯观测不改结果，记录经
-/// [`take_stat_map_compare_records`] 取出——长期对照工具，M3 config / M6 parser
-/// 双跑复用同模式，蓝图 §6 Q4 裁决）。无法映射的 stat（Unsupported / Unknown）
-/// 静默跳过；零值跳过。
+/// 把一组已解析 stat 映射为带 `source_kind` 归因的 modifier——statmap 通道分发
+/// 点：Data 走 [`stat_map_engine::map_stat`] 数据引擎；Compare = Data 计算 + 逐
+/// stat 记录映射 outcome 观测（**输出与 Data 一致**，纯观测不改结果，记录经
+/// [`take_stat_map_compare_records`] 取出）。无法映射的 stat（Unsupported /
+/// Unknown）静默跳过；零值跳过。
 ///
-/// `effect_id`（M1-T2b 接线）：stat 所属 granted effect，per-statSet 覆盖定位。
-/// `set_key`（M1-W-J 接线）：**选中** statSet 的 vendor 1-based 导出序号十进制
+/// `effect_id`：stat 所属 granted effect，per-statSet 覆盖定位。
+/// `set_key`：**选中** statSet 的 vendor 1-based 导出序号十进制
 /// 字符串（[`BuildData::selected_set_key`]）；`None` = 引擎自动取默认 set "1"
 /// 覆盖（PoB2 缺省 statSetIndex=1，vendor `SkillsTab.lua:354`；18 个 ninja build
 /// 的 statSetIndex 全为 nil = 与 None 等价）。未选 set 的 global-only merge 走
@@ -128,8 +126,8 @@ pub(crate) fn mapped_stat_modifiers(
     }
 }
 
-/// Data 通道：statmap 数据引擎。effect 上下文 + 选中 set 覆盖键（T2b/W-J 接线，
-/// 见 [`mapped_stat_modifiers`] 文档）；`SkillData` 项暂无消费方，忽略（不参与
+/// Data 通道：statmap 数据引擎。effect 上下文 + 选中 set 覆盖键见
+/// [`mapped_stat_modifiers`] 文档；`SkillData` 项暂无消费方，忽略（不参与
 /// 计算，不会错算）；Unsupported / Unknown 静默跳过（分类观测走 Compare 模式）。
 pub(crate) fn data_mapped_stat_modifiers(
     stats: &[pobr_data::catalog::SkillDamageStat],
@@ -176,7 +174,7 @@ pub(crate) fn resolve_stat_map_catalog(data: &BuildData) -> Option<std::sync::Ar
         .or_else(|| data.stat_map_catalog.clone())
 }
 
-/// curse 效果词条取数点（M3-W4）：把一个 curse 技能 statset 的全部 stat 经
+/// curse 效果词条取数点：把一个 curse 技能 statset 的全部 stat 经
 /// [`stat_map_engine::map_curse_stat`]（curse 域数据通道）映射为**敌侧**
 /// modifier 列表（BuffSpec.mods 载荷，buff_pass curse 路径消费）。
 ///
@@ -258,7 +256,7 @@ pub(crate) fn curse_stat_modifiers(
     mods
 }
 
-/// （M4-L）debuff 效果词条取数点：把一个 debuff 技能 statset 的全部 stat 经
+/// debuff 效果词条取数点：把一个 debuff 技能 statset 的全部 stat 经
 /// [`stat_map_engine::map_debuff_stat`]（debuff 域数据通道，敌侧允收名单 =
 /// 元素曝光族第一批）映射为**敌侧** modifier 列表（BuffSpec.mods 载荷，
 /// buff_pass Debuff 路径消费）。与 [`curse_stat_modifiers`] 同构：
@@ -335,7 +333,7 @@ pub(crate) fn debuff_stat_modifiers(
     mods
 }
 
-/// （M4-L）组内是否存在 debuff 曝光载荷（[`exposure_support_modifiers`] 的
+/// 组内是否存在 debuff 曝光载荷（[`exposure_support_modifiers`] 的
 /// 宿主探测）：与 [`debuff_stat_modifiers`] 同一取数链但**纯只读**（不落
 /// Compare 记录——同一 stat 已由 buff_skill_specs 的 Debuff 分支记录，
 /// 探测重复记录即噪声）。
@@ -358,7 +356,7 @@ pub(crate) fn has_debuff_payload(
     })
 }
 
-/// （M4-m）效果 statset 是否含**曝光施加能力**载荷（`InflictExposure` flag /
+/// 效果 statset 是否含**曝光施加能力**载荷（`InflictExposure` flag /
 /// `<El>ExposureChance` BASE，[`stat_map_engine::has_exposure_inflict_payload`]
 /// 存在性判定）——[`exposure_support_modifiers`] 宿主探测的第二判据：宿主曝光
 /// 能力来自 support（Fire Exposure `inflict_exposure_for_x_ms_on_ignite` →
@@ -382,7 +380,7 @@ pub(crate) fn has_exposure_inflict_stats(
     })
 }
 
-/// （M4-L）非主组的曝光效果 support 注入面（h3 登记 Potent Exposure 同根）。
+/// 非主组的曝光效果 support 注入面（h3 登记 Potent Exposure 同根）。
 ///
 /// vendor：support mod 并入宿主技能 skillModList（CalcActiveSkill.lua:210-214
 /// effectList），曝光应用时按**来源技能**取 `<El>ExposureEffect` INC
@@ -396,7 +394,7 @@ pub(crate) fn has_exposure_inflict_stats(
 ///   生效，保持 vendor 作用域语义的最小外延）：
 ///   1. 主动技能自身产出 debuff 曝光载荷（[`has_debuff_payload`]，Frost Bomb
 ///      `active_skill_all_elemental_exposure_magnitude` 形）；
-///   2. （M4-m）主动技能或其兼容 support 含曝光施加能力载荷
+///   2. 主动技能或其兼容 support 含曝光施加能力载荷
 ///      （[`has_exposure_inflict_stats`]：`InflictExposure` flag /
 ///      `<El>ExposureChance`，Fire Exposure support
 ///      `inflict_exposure_for_x_ms_on_ignite` 形——vendor Config 曝光源判据
@@ -423,7 +421,7 @@ pub(crate) fn exposure_support_modifiers(
         if main_group.is_some_and(|mg| std::ptr::eq(mg, group)) {
             continue;
         }
-        // 曝光源宿主：组内主动技能自身产 debuff 曝光载荷，或（M4-m）自身/兼容
+        // 曝光源宿主：组内主动技能自身产 debuff 曝光载荷，或自身/兼容
         // support 含曝光施加能力载荷 → 其兼容 support 名单。
         let mut support_entries: BTreeSet<(usize, String)> = BTreeSet::new();
         for gem in &group.gem_skills {
@@ -482,7 +480,7 @@ pub(crate) fn exposure_support_modifiers(
     mods
 }
 
-/// （M4-G）玩家侧 buff 词条取数点：把一个 buff 授予效果（support / aura 技能）
+/// 玩家侧 buff 词条取数点：把一个 buff 授予效果（support / aura 技能）
 /// statset 的全部 stat 经 [`stat_map_engine::map_player_buff_stat`]（buff 域数据
 /// 通道，玩家侧允收名单）映射为**玩家侧** modifier 列表（BuffSpec.mods 载荷，
 /// buff_pass Buff/Aura 路径消费）。与 [`curse_stat_modifiers`] 同构：
@@ -573,8 +571,8 @@ pub(crate) fn player_buff_stat_modifiers(
 
 /// Compare 模式：逐 stat 记录数据通道映射 outcome 观测（分类
 /// `mapped` / `unsupported:<类别>` / `unknown`），进线程局部缓冲。Legacy 启发式
-/// 已删除（T2.4），本函数保留为长期对照/观测框架——M3 config / M6 parser 双跑
-/// 复用同模式（蓝图 §6 Q4 裁决：保留枚举与报告框架）。
+/// 已删除（T2.4），本函数保留为长期对照/观测框架——config / parser 双跑
+/// 复用同模式（裁决：保留枚举与报告框架）。
 pub(crate) fn record_stat_map_observation(
     stats: &[pobr_data::catalog::SkillDamageStat],
     label_prefix: &str,

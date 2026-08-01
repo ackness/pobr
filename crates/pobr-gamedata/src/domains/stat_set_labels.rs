@@ -1,6 +1,6 @@
 //! `overlay/stat_set_labels.json` loader——statSet 形态 label + vendor 导出序号
 //! （`(skill, set_id) → {set_index, label}`），schema 见
-//! [`pobr_data::catalog::skills`] 的 `StatSetLabelDef` 段（M1-T5.2 多 statSet）。
+//! [`pobr_data::catalog::skills`] 的 `StatSetLabelDef` 段。
 //!
 //! 数据来源：vendor `Data/Skills/*.lua`（label 文本）join `Export/Skills/*.txt`
 //! 模板（set id / 导出序号），由 `sync-pob-catalog extract-lua --what

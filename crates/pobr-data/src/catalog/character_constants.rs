@@ -1,7 +1,7 @@
 //! 角色基础常量域 schema（`base/character_constants.json`，等级/属性派生常量）。
 //!
 //! 数值常量自 `pobr-core::character` 迁出（**公式逻辑仍留 Rust**，本表只承载
-//! 数值；架构文档 20 §3.1）。pobr 没有的数值才从 vendor PoB2 抽取，逐字段在
+//! 数值；）。pobr 没有的数值才从 vendor PoB2 抽取，逐字段在
 //! doc 注明 vendor 文件:行号（vendor commit `2df5a74`，见 `vendor/.pob2-version.txt`）。
 //!
 //! 来源对照：
@@ -12,10 +12,10 @@
 //!   `src/Modules/Data.lua:174` `AccuracyPerDexBase`。
 //!
 //! 边界说明：抗性上限 / 充能上限 / 暴伤基础等虽然在 vendor 同属
-//! `data.characterConstants`，但按架构文档 20 §3.1 归 `game_constants.json`
+//! `data.characterConstants`，但按归 `game_constants.json`
 //! 的 character 段，本表不收，避免双表重复定义。
 //!
-//! TODO（仅记录，不在本任务处理）：架构文档 20 §3.2 把本表列在 `overlay/`，
+//! TODO（仅记录，不在本任务处理）：把本表列在 `overlay/`，
 //! 而预注册的 `manifest.json` 把 `character_constants` 注册在 `base` 段；
 //! 本实现以 manifest 为准落 `base/`，归属争议留给后续裁决。
 
@@ -68,8 +68,7 @@ pub struct CharacterConstantsDef {
     pub intelligence_per_level: f64,
 }
 
-// ---------------------------------------------------------------------------
-// Default = fallback 值（M0-W3 注入管道，架构文档 20 §1 P8/P9）
+// Default = fallback 值
 //
 // 语义：`Default` 即「无 GameData 注入时的回退常量集」，必须与
 // `data/<版本>/base/character_constants.json` 逐值相等。
@@ -79,7 +78,6 @@ pub struct CharacterConstantsDef {
 // 准源常量名；逐值锁定由 `pobr-core/src/character.rs` 的
 // `default_constants_match_legacy_character_source` 测试承担（准源若改值即红）。
 // vendor-only 三个 per-level 字段（pobr 旧 Rust 无此值）出处见各字段 doc。
-// ---------------------------------------------------------------------------
 
 impl Default for CharacterConstantsDef {
     fn default() -> Self {

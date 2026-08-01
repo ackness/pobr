@@ -1,18 +1,18 @@
 //! mirage（幻影）配置域 schema（`overlay/mirage_configs.json`）。
 //!
-//! 数据来源（M5a 蓝图 Track D，缺口 14-#7）：vendor PoB2
+//! 数据来源：vendor PoB2
 //! `Modules/CalcMirages.lua` 的五个分支（Mirage Archer / Saviour Mirage
 //! Warriors / Tawhoa's Chosen / Sacred Wisps / General's Cry）——分支体是
 //! 过程闭包无法 luajit 序列化，5 条配置由 `sync-pob-catalog gen-mirage-configs`
 //! **内嵌于工具源码**后落盘（满足「overlay 禁手改、只许工具再生」；vendor drift
-//! 由 `_meta` 内记录的 CalcMirages.lua 粗粒度指纹提醒，M5a 蓝图 §6 开放问题 2）。
+//! 由 `_meta` 内记录的 CalcMirages.lua 粗粒度指纹提醒，开放问题 2）。
 //!
 //! 真特殊分支逻辑（Tawhoa 的触发冷却模型 / General's Cry 的 exert 转写等）走
 //! `handler_id`（注册进 `pobr-core::rules::registry`，遵守 20-doc §5 handler
 //! 总数 <100 监控）；本模块只定义 serde 形状，零逻辑。
 //!
-//! 本文件同时是 M4-T5 `trigger_configs.json` 的 schema 落点（届时扩展同文件，
-//! M5a 蓝图 §2 D2：schema 统一归 catalog 守门）。
+//! 本文件同时是`trigger_configs.json` 的 schema 落点（届时扩展同文件，
+//!  schema 统一归 catalog 守门）。
 
 use serde::{Deserialize, Serialize};
 
@@ -96,9 +96,7 @@ pub struct MirageConfigsDef {
     pub configs: Vec<MirageConfigDef>,
 }
 
-// ===========================================================================
-// M4-T5 W-E1：trigger_configs（vendor CalcTriggers.lua configTable 61 项）
-// ===========================================================================
+//  trigger_configs（vendor CalcTriggers.lua configTable 61 项）
 
 /// 触发配置的匹配键（vendor `CalcTriggers.lua:1452-1455` 四级查找：
 /// 技能名 → triggeredBy 名 → awakened 归一名 → unique 物品名，全部 lowercase）。
@@ -114,7 +112,7 @@ pub struct TriggerKeyDef {
     pub name: String,
 }
 
-/// 受限技能谓词（R1 纪律：**三字段封顶**，字段引用 + any/all/not，禁自由表达式；
+/// 受限技能谓词（**三字段封顶**，字段引用 + any/all/not，禁自由表达式；
 /// 扩能力需 ≥20 条目受益——20 号 §5 闸门，否则落 `handler_id`）。
 ///
 /// 语义对照 vendor 闭包：
@@ -238,7 +236,7 @@ pub struct TriggerConfigDef {
     pub note: Option<String>,
     /// vendor 出处（`Modules/CalcTriggers.lua` 行段）。
     pub vendor_ref: String,
-    /// 是否已对照 vendor 行为人工核验（W-E1 落库默认 false，核验后翻 true）。
+    /// 是否已对照 vendor 行为人工核验（落库默认 false，核验后翻 true）。
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub verified: bool,
 }

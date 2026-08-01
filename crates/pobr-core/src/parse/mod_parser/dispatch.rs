@@ -1,7 +1,7 @@
 //! 解析派发上下文 [`ParseCtx`]——把可选的数据驱动引擎规则打包，沿 ingest 链
 //! （item / passive / gem）传递，决定每行词条是否可解析。
 //!
-//! M6 收尾后引擎（[`parse_mod_engine`]）是唯一解析器：`engine = Some` 走数据驱动
+//! 收尾后引擎（[`parse_mod_engine`]）是唯一解析器：`engine = Some` 走数据驱动
 //! 引擎；`engine = None`（未注入规则，如旧数据包 / 纯文本回退）**不再有 legacy
 //! 回退**——每行按整行 [`ParseStatus::Unsupported`](super::ParseStatus::Unsupported)
 //! 返回（词条不生效但被收集进 unsupported 报表，绝不静默丢失或误算）。

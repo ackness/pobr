@@ -1,5 +1,5 @@
 //! `check-buff-refs`：`overlay/buff_definitions.json` 的 vendor 行段对账
-//! （M3-T2 / 00-index 裁决 §4.2-4 批准的人工归纳例外通道的 drift 防线）。
+//! （人工归纳例外通道的 drift 防线）。
 //!
 //! `buff_definitions.json` 由人工从 `CalcPerform.lua doActorMisc` if-chain
 //! 归纳（过程代码无法 luajit 序列化），每条带 `vendor_ref`（文件 + 行段 +

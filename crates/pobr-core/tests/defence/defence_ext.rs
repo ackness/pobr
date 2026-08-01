@@ -12,9 +12,7 @@ use pobr_core::calc::defence::{
 use pobr_core::{CalcConfig, ModDb, Modifier};
 use pobr_data::prelude::*;
 
-// ─────────────────────────────────────────────────────────────────
 // ES 充能测试（gap: es-recharge-missing）
-// ─────────────────────────────────────────────────────────────────
 
 /// PoB2 Misc.lua: `character_inherent_energy_shield_recharge_rate_per_minute_% = 750`
 /// → 12.5%/s。
@@ -148,9 +146,7 @@ fn es_recharge_per_second_gives_absolute_value() {
     assert_eq!(es_recharge_per_second(&recharge, 1000.0), 125.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 规避（Avoidance）测试（gap: avoidance-ailment-missing）
-// ─────────────────────────────────────────────────────────────────
 
 /// 无词条 → 全部规避几率为 0（眩晕除外：ES > totalTakenHit 时 = 50%）。
 #[test]
@@ -175,7 +171,7 @@ fn avoidance_all_zero_without_modifiers_no_es() {
 fn avoidance_stun_50pct_implicit_when_es_present() {
     let db = ModDb::new();
     let cfg = CalcConfig::default();
-    // M2-E2（CalcDefence.lua:2554-2557）：减半条件 = ES > totalTakenHit 且非 EB。
+    // （CalcDefence.lua:2554-2557）：减半条件 = ES > totalTakenHit 且非 EB。
     let result = calc_avoidance(&db, &cfg, 500.0 /* ES > takenHit */, 100.0, false);
 
     // notAvoidChance = 100; with ES → notAvoidChance *= 0.5 = 50; effectiveAvoid = 50%
@@ -266,9 +262,7 @@ fn avoidance_stormshroud_shock_applies_to_elemental_ailments() {
     assert_eq!(result.avoid_freeze, 50.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 承受伤害乘数（Taken multiplier）测试（gap: ehp-no-taken-multiplier）
-// ─────────────────────────────────────────────────────────────────
 
 /// 无词条 → 承受乘数 = 1.0（基准）。
 #[test]
@@ -391,9 +385,7 @@ fn taken_multi_suite_type_independent() {
     assert_eq!(suite.chaos_when_hit, 1.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 暴击额外伤害减免（gap: crit-extra-damage-reduction-missing）
-// ─────────────────────────────────────────────────────────────────
 
 /// 无词条 → reduction_pct = 0，EnemyCritEffect = 完整爆伤乘数。
 #[test]
@@ -466,10 +458,8 @@ fn enemy_crit_effect_no_crit_chance_returns_1() {
     assert_eq!(effect, 1.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Attack/Spell takenMult 上下文 + 反射 defer（finding 06-06）
 // PoB2 CalcDefence.lua L2265-2269（hitSourceList={"Attack","Spell"}）。
-// ─────────────────────────────────────────────────────────────────
 
 /// `source=None` 与 [`taken_mult_for_type`] 等价（基础 hit 口径，无 Attack/Spell 层）。
 #[test]

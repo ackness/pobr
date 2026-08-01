@@ -69,7 +69,7 @@ pub struct PassiveNodeDef {
     pub name: Option<String>,
     /// 节点种类。
     pub kind: PassiveNodeKind,
-    /// 节点授予的词条文本行（英文 canonical；i18n 边车后续切片）。
+    /// 节点授予的词条文本行。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub stats: Vec<String>,
     /// 所属节点组（GGG `group`，用于坐标/布局；计算无关，保留以便和 PoB2 对比）。

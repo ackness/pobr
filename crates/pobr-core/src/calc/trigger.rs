@@ -43,14 +43,12 @@
 
 use super::round;
 
-// ---------------------------------------------------------------------------
 // §一  服务器帧工具 & 冷却驱动基础
-// ---------------------------------------------------------------------------
 
 /// 服务器帧速率（actions/s），`1 / tick_seconds ≈ 30.3`。
 /// 出处：PoB2 Data.lua `ServerTickRate = 1/0.033`。
 ///
-/// M0-W3：`tick_seconds` 由调用方自注入常量包传入
+///  `tick_seconds` 由调用方自注入常量包传入
 /// （`cfg.constants.game().server_tick_seconds`，fallback == 旧 const，值不变）。
 pub fn server_tick_rate(tick_seconds: f64) -> f64 {
     1.0 / tick_seconds
@@ -150,9 +148,7 @@ pub fn resolve_trigger_rate(
     }
 }
 
-// ---------------------------------------------------------------------------
 // §二  能量（Energy）驱动元宝石模型
-// ---------------------------------------------------------------------------
 
 /// 触发条件类型——决定 centienergy 基数与产能计算方式。
 ///
@@ -396,9 +392,7 @@ pub fn calc_energy_trigger_rate(
     }
 }
 
-// ---------------------------------------------------------------------------
 // §三  多技能轮转（Multi-Skill Rotation）
-// ---------------------------------------------------------------------------
 
 /// 轮转中单个技能的参数。
 ///
@@ -552,9 +546,7 @@ pub fn calc_multi_spell_rotation(
     }
 }
 
-// ---------------------------------------------------------------------------
 // §四  CWC（Cast While Channelling）
-// ---------------------------------------------------------------------------
 
 /// CWC（Cast While Channelling）触发速率结算结果。
 ///
@@ -660,9 +652,7 @@ pub fn spell_cast_time_added_to_cooldown(base_cast_time: f64, cast_speed_multipl
     round(base_cast_time / cast_speed_multiplier)
 }
 
-// ---------------------------------------------------------------------------
 // §五  TraceGraph 归因扩展（触发速率拆解到来源）
-// ---------------------------------------------------------------------------
 
 use crate::{TraceGraph, TraceNodeId, TraceOperation};
 use pobr_data::prelude::{SourceId, SourceKind};
@@ -868,11 +858,9 @@ pub fn calc_cwc_trigger_rate_traced(
     (result, rate_cap_node)
 }
 
-// ---------------------------------------------------------------------------
-// §六  触发源统计（M4-T5 W-E2，契约 4）
-// ---------------------------------------------------------------------------
+// §六 触发源统计
 
-/// 触发**源技能**的完整子计算统计（M4 蓝图 §3.3 契约 4；缺口 14-G2/14-G8）。
+/// 触发**源技能**的完整子计算统计。
 ///
 /// 由 build 层（orchestrator）对源技能跑一次完整子计算后构造（PoB2 GlobalCache
 /// 等价物最小版，`CalcTriggers.lua:74-86` `cachedData[uuid].HitSpeed or Speed`），
@@ -902,7 +890,7 @@ impl TriggerSourceStats {
     /// - `triggerOnCrit` 时再乘 `sourceCritChance`（:744-769）。
     ///
     /// 双武器独立 roll 的 effective hit/crit（:725-731 doubleHitsWhenDualWielding）
-    /// 待 per-hand 输出（M4-T2 W-B2）接入后折算，当前取整体值。
+    /// 待 per-hand 输出接入后折算，当前取整体值。
     pub fn chance_multiplier(&self, trigger_on_crit: bool) -> f64 {
         let mut chance = 1.0_f64;
         if self.hit_chance > 0.0 && self.hit_chance < 1.0 {
@@ -915,9 +903,7 @@ impl TriggerSourceStats {
     }
 }
 
-// ---------------------------------------------------------------------------
 // §一  内部单元测试（冷却驱动基础）
-// ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
@@ -978,9 +964,7 @@ mod tests {
         assert!((r.skill_trigger_rate - r.trigger_rate_cap).abs() < 1e-9);
     }
 
-    // ---------------------------------------------------------------------------
     // §二  能量模型测试
-    // ---------------------------------------------------------------------------
 
     #[test]
     fn max_energy_single_spell_0_5s() {
@@ -1114,9 +1098,7 @@ mod tests {
         assert_eq!(r.effective_trigger_rate, 0.0);
     }
 
-    // ---------------------------------------------------------------------------
     // §三  多技能轮转测试
-    // ---------------------------------------------------------------------------
 
     #[test]
     fn single_skill_rotation_no_waste() {
@@ -1197,9 +1179,7 @@ mod tests {
         assert!(r_with.rates[0] <= r_no.rates[0] + 1e-9);
     }
 
-    // ---------------------------------------------------------------------------
     // §四  CWC 测试
-    // ---------------------------------------------------------------------------
 
     #[test]
     fn cwc_basic_trigger_rate() {
@@ -1251,9 +1231,7 @@ mod tests {
         assert!((added - 0.8).abs() < 1e-9);
     }
 
-    // ---------------------------------------------------------------------------
     // §五  归因测试
-    // ---------------------------------------------------------------------------
 
     #[test]
     fn trace_graph_nodes_created_for_trigger_rate() {
@@ -1300,11 +1278,9 @@ mod tests {
         assert!(trace.nodes().len() >= 4);
     }
 
-    // ---------------------------------------------------------------------------
-    // §六  触发源统计测试（W-E2 契约 4）
-    // ---------------------------------------------------------------------------
+    // §六 触发源统计测试
 
-    /// 手算对拍（蓝图 §2 W-E2 测试行）：triggerChance = 源命中 × 源暴击
+    /// 手算对拍：triggerChance = 源命中 × 源暴击
     /// （CoC：hit 80% × crit 35% = 28%）。
     #[test]
     fn source_stats_chance_folds_hit_and_crit() {
@@ -1331,7 +1307,7 @@ mod tests {
         assert_eq!(full.chance_multiplier(true), 1.0);
     }
 
-    /// CoC 方向性（蓝图 §4.1 T5 门禁）：触发几率↑ → 触发速率↑（源速率门控段）。
+    /// CoC 方向性：触发几率↑ → 触发速率↑（源速率门控段）。
     #[test]
     fn coc_directional_higher_crit_higher_rate() {
         let low_crit = TriggerSourceStats {

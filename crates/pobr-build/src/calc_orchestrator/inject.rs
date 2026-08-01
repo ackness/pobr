@@ -20,16 +20,16 @@ pub(super) fn inject_defence_base(
     // 1d. 装备基底防御（armour/evasion/ES）→ Item 归因的 BASE 词条（× 品质）。装备的
     //     `increased Armour/Evasion/EnergyShield` 词条经 add_item 注入 INC，于此 base 上缩放。
     session.add_modifiers(defence_base_modifiers(build, data));
-    // 1d'. 盾牌基底格挡 → `ShieldBlockChance` BASE（M2 Track D，13-G8）。
+    // 1d'. 盾牌基底格挡 → `ShieldBlockChance` BASE（13-G8）。
     //      PoB2 CalcDefence.lua:975-980 读 Weapon 2/3 `armourData.BlockChance`
     //      作为盾基底；catalog 值经 overlay/base_item_overrides merge 注入。
     session.add_modifiers(shield_block_modifiers(build, data));
     // 1d''. 件级 Spirit（权杖 rolled `Spirit:` 行 / catalog 基底 spirit）→
-    //       `Spirit` BASE（M2 Track D，13-G11；PoB2 CalcSetup.lua:1275-1277
+    //       `Spirit` BASE（13-G11；PoB2 CalcSetup.lua:1275-1277
     //       `item.spiritValue → NewMod("Spirit","BASE")` 等价）。
     session.add_modifiers(item_spirit_modifiers(build, data));
     // 1d'''. 件级 Ward（rolled `Ward:` 行 / catalog 基底 ward）→ `Ward` BASE
-    //        （M2 Track D，13-G14；PoB2 CalcDefence.lua:1158-1186 armourData.Ward
+    //        （13-G14；PoB2 CalcDefence.lua:1158-1186 armourData.Ward
     //        per-slot 聚合等价）。
     session.add_modifiers(item_ward_modifiers(build, data));
 }
@@ -43,7 +43,7 @@ pub(super) fn inject_flasks_charms(
     // 2b''. 激活态药剂/护符（PoB `<Slot name="Flask N|Charm N" active="true">`，
     //       xml_build 已按 `active` 门控——vendor CalcSetup.lua:1014-1028 `slot.active`
     //       决定 env.flasks/charms）：经 `ingest_flask_charm` 打包为 FlaskBuff/
-    //       CharmBuff 载荷注入 session（M3-T4 通道切换，替代旧「原值直注」路径），
+    //       CharmBuff 载荷注入 session（通道切换，替代旧「原值直注」路径），
     //       由 env_finalize 阶段 3 merge_flasks_charms 在 mode_combat 门控下按
     //       effect 乘区合并 + UsingFlask/UsingCharm 条件置位（vendor
     //       CalcPerform.lua:1429-1663）。charm 需 CharmLimit 来源（腰带 implicit
@@ -109,9 +109,9 @@ pub(super) fn inject_buffs_and_heralds(
     //     aura 防御 buff（Discipline→EnergyShield、Purity of Fire→FireResistance…）
     //     吃 AuraEffect 系乘区（CalcPerform.lua:2102-2105）后并入 player db；curse
     //     走 priority/limit/分槽（:2829-2896）。C5-2 切换前的 `aura_buff_modifiers`
-    //     静态直注已关（双跑依据 m3-c5-dualrun-report.md，删函数属 C5-3）。
+    //     静态直注已关。
     for spec in buff_skill_specs(build, data) {
-        // （M4-n）buff 载荷中的 `Multiplier:<X>` BASE → cfg.multipliers 桥
+        // buff 载荷中的 `Multiplier:<X>` BASE → cfg.multipliers 桥
         // （vendor GetMultiplier 对 modDB `Multiplier:<X>` 全局求和取数，
         // ModStore.lua:369；PoBR 的 ModTag::Multiplier 读 cfg.multipliers
         // 预灌表，需在此显式回填）。首个消费方 = Sigil of Power
@@ -127,7 +127,7 @@ pub(super) fn inject_buffs_and_heralds(
         }
         session.add_buff_skill(spec);
     }
-    // 4b'.（M4-G）support 授予的玩家侧 buff（Precision I/II → Accuracy INC，
+    // 4b'.support 授予的玩家侧 buff（Precision I/II → Accuracy INC，
     //     sup_dex.lua:4181-4250）→ BuffSpec(kind=Buff)，buff_pass Buff 分支
     //     （CalcPerform.lua:1949-1962）施 BuffEffect 乘区后并入 player db。
     for spec in support_buff_specs(build, data) {
@@ -142,7 +142,7 @@ pub(super) fn inject_buffs_and_heralds(
         session.add_warcry_skill(spec);
     }
 
-    // 4b''.（M4-m）herald 在场计数/条件（vendor CalcPerform.lua:1792-1805，
+    // 4b''.herald 在场计数/条件（vendor CalcPerform.lua:1792-1805，
     //     mode_buffs 段——本编排路径恒置 mode_buffs=true）：已启用组中
     //     skill_types 含 Herald 的主动技能按显示名去重 → `Multiplier:Herald`
     //     = 数量 + `Condition:AffectedByHerald`；并逐 herald 置
@@ -175,7 +175,7 @@ pub(super) fn inject_attribute_derivation(
     //     vendor :424-441 Life/Accuracy/Mana from Str/Dex/Int），须在全部来源注入后。
     if options.inject_character_base {
         // PoE2 属性派生系数（每点力量 +2 生命、每点智力 +2 魔力、每点敏捷 +6 精准）：
-        // M0-W3 起自注入的 character_constants 域读取，与 CharacterBase 派生同一来源。
+        // 起自注入的 character_constants 域读取，与 CharacterBase 派生同一来源。
         let cc = &data.constants.character_constants;
         // 职业起始属性（CharacterBase 烘焙部分；未知职业 = 未注入 CharacterBase → 0）。
         let cls = character_base(build, data);
@@ -315,7 +315,7 @@ pub(super) fn inject_per_x_multipliers(
     for (var, value) in per_slot_socket_multipliers(build) {
         session.set_multiplier(var, value);
     }
-    // GrenadeTypes（M4-H；vendor CalcPerform.lua:1238-1242：去重统计已启用
+    // GrenadeTypes（vendor CalcPerform.lua:1238-1242：去重统计已启用
     // 主动技能中 `SkillType.Grenade` 的不同授予效果数）——Demolitionist
     // 「… for every different Grenade fired …」的 Multiplier limitVar 分母。
     session.set_multiplier("GrenadeTypes", grenade_type_count(build, data));
@@ -464,7 +464,7 @@ pub(super) fn inject_enemy(
     };
     session.setup_enemy(enemy_level, enemy_tier);
 
-    // 5a'. config 解释器的 enemy 桶产物（M3-T1 A5 主路径）：enemy 条件 actor 化
+    // 5a'. config 解释器的 enemy 桶产物：enemy 条件 actor 化
     //      条目（vendor `enemyModList:NewMod("Condition:<X>", FLAG, ...)`，带
     //      `Condition:Effective` tag + EnemyConfig 归因）。`mode_effective=false`
     //      下天然惰性；cfg 侧 `Enemy<X>` 条件由 `config_resolve` 反桥维持既有语义。
@@ -514,7 +514,7 @@ pub(super) fn inject_main_skill_mods(
     // 攻速/施法速度全部走通用链路（充能 / support more / 技能 quality / attackSpeedMultiplier），
     // 不再有单技能硬编码。
     if let Some((skill, group, skill_id)) = main_skill {
-        // 选中 statSet 的 per-set 覆盖键（W-J：statSetIndex 显式选择接进引擎 set_key）。
+        // 选中 statSet 的 per-set 覆盖键（statSetIndex 显式选择接进引擎 set_key）。
         let main_set_key = group
             .gem_skills
             .iter()
@@ -528,24 +528,24 @@ pub(super) fn inject_main_skill_mods(
         // 1b-i-q. 主技能宝石品质 stat（T1.7）：quality 段经 stat-map 映射注入，
         //         SourceKind::GemQuality 归因（id 前缀 gem.<效果 id>.q<Q>）。
         session.add_modifiers(main_skill_quality_modifiers(group, data, skill_id));
-        // 1b-i-g. 主技能未选 statSet 的 global-only merge（W-J，CalcActiveSkill.lua:124-140）。
+        // 1b-i-g. 主技能未选 statSet 的 global-only merge（CalcActiveSkill.lua:124-140）。
         session.add_modifiers(unselected_set_global_modifiers(group, data, skill_id));
-        // 1b-i-d. 选中 statSet 的 dotIs* 旗标 → `DotIs<X>` FLAG（M4-T4 W-D1；
+        // 1b-i-d. 选中 statSet 的 dotIs* 旗标 → `DotIs<X>` FLAG（
         //         statSet baseMods 直挂布尔，calc::skill_dot 据此保留 dotCfg 位）。
         session.add_modifiers(dot_flag_modifiers(group, data, skill_id));
-        // 1b-i-c. 尸体爆炸基伤（M4-G）：explodeCorpse 门控 statSet 的
+        // 1b-i-c. 尸体爆炸基伤：explodeCorpse 门控 statSet 的
         //         `monsterLife × corpseExplosionLifeMultiplier` → Physical
         //         BASE（vendor CalcOffence.lua:2211-2217；如 Detonate Dead）。
         session.add_modifiers(corpse_explosion_modifiers(
             build, data, options, group, skill, skill_id,
         ));
-        // 1b-i-x. 弩 reload 数据通道（M4-T4 W-D2）：CrossbowReloadTimeBase（武器
+        // 1b-i-x. 弩 reload 数据通道：CrossbowReloadTimeBase（武器
         //         reload_time_ms）+ CrossbowBoltCount（ammo 兄弟技能 stat），
         //         perform `fill_crossbow_reload` 消费。非弩/grenade 返回空。
         session.add_modifiers(crossbow_reload_modifiers(build, data, group, skill_id));
         session.add_modifiers(support_modifiers(group, data, skill_id));
 
-        // 1b-iii. 触发链路（findings 03-01/03-02/03-06；M4-T5 W-E1/W-E2 扩展）：
+        // 1b-iii. 触发链路：
         // ① 数据驱动识别（trigger_configs.json 四级 key → 组内宝石/主技能 id 匹配）；
         // ② 内建触发（`skill_types` 含 `Triggered`/`InbuiltTrigger`，PoB2 `isTriggered`）。
         // 注入触发冷却 + 触发源**子计算**统计（计算后攻速/命中/暴击）BASE，驱动 perform
@@ -599,7 +599,7 @@ pub(super) fn inject_character_base(
     if options.inject_character_base
         && let Some(base) = character_base(build, data)
     {
-        // M0-W3：派生系数自注入的 character_constants 域读取（与 Default 逐值相等）。
+        //  派生系数自注入的 character_constants 域读取（与 Default 逐值相等）。
         session.add_modifiers(base.modifiers(&data.constants.character_constants));
         // 元素抗性惩罚（火/冰/电；混沌无惩罚）：XML Config `resistancePenalty` 显式档位
         // 优先；省略时按 PoB2 CalcSetup.lua `configInput.resistancePenalty or -60`（即
@@ -634,7 +634,7 @@ pub(super) fn inject_items(
         let mut filtered = filter_item_parseable(item, engine_ctx(data));
         // 主手武器：剔除局部物理增伤/附加（已作为武器 source 独立乘区 × baseMultiplier 计入
         // weapon_contribution）；留在全局会重复且错误地并入加法桶（PoB 是独立乘区）。
-        // 双持副手（W-B2）：Weapon2 作为 off-hand 武器源消费时同样剔除——其局部词条
+        // 双持副手：Weapon2 作为 off-hand 武器源消费时同样剔除——其局部词条
         // 已折入 off-hand WeaponContribution（未消费时维持现状，不动全局注入）。
         if slot == EquipmentSlot::Weapon1 || (slot == EquipmentSlot::Weapon2 && off_weapon_active) {
             let drop_local = |texts: Vec<String>| -> Vec<String> {
@@ -710,7 +710,7 @@ pub(super) fn inject_items(
         }
         // 带 Spirit 基底的件（权杖）：剔除局部 `increased Spirit` / `+N to Spirit`
         // ——已折入 rolled `Spirit:` 行（Item.lua:1724-1727 calcLocal 折算）或由
-        // item_spirit_modifiers 按基底重算；留在全局会双计（M2 Track D，13-G11）。
+        // item_spirit_modifiers 按基底重算；留在全局会双计（13-G11）。
         let has_spirit_base = item.rolled_defence.spirit.is_some()
             || data
                 .base_items
@@ -789,11 +789,11 @@ pub(super) fn inject_self_buff_exposure_spirit(
     //     数据驱动：已启用宝石的 stat 含 `*_damage_buff_damage_%_to_gain_as_<type>`（Freezing
     //     Mark→Cold、Voltaic Mark→Lightning），映射 `DamageGainAs<Type>` BASE，注入 gain 矩阵。
     session.add_modifiers(self_buff_offensive_modifiers(build, data));
-    // 4c'.（M4-L）非主组曝光效果 support：曝光源所在副组的兼容 support 的
+    // 4c'.非主组曝光效果 support：曝光源所在副组的兼容 support 的
     //     `<El>ExposureEffect` INC 全局注入。主组 support 已由 support_modifiers
     //     全量注入，函数内跳过防双注入。
     session.add_modifiers(exposure_support_modifiers(build, data, main_skill_group));
-    // 4d.（M1-T4.5）持续保留型效果的 Spirit 预留聚合 → `SkillSpiritReservationBase` BASE，
+    // 4d.持续保留型效果的 Spirit 预留聚合 → `SkillSpiritReservationBase` BASE，
     //     perform fill 落 OutputTable::spirit_reserved（超载只报告不拦截）。
     //     db 传只读视图取树/装备的 ReservationEfficiency 词条（此时点树/装备已
     //     ingest）；先算后注避免同语句可变/不可变借用冲突。

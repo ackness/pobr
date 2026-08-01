@@ -45,7 +45,7 @@ pub(crate) fn resolve_passive_nodes(build: &Build, data: &BuildData) -> Vec<Allo
         .collect()
 }
 
-/// （M4-H）油涂授予的 notable：扫描全部装备/珠宝词条行，解析出 `GrantedPassive`
+/// 油涂授予的 notable：扫描全部装备/珠宝词条行，解析出 `GrantedPassive`
 /// LIST（vendor `Allocates <name>` enchant，ModParser.lua:5809），按名称
 /// （ASCII 不区分大小写——解析侧已小写归一）匹配 **Notable** 节点（vendor
 /// `spec.tree.notableMap`，CalcSetup.lua:1322-1331 只查 notable），追加为
@@ -152,7 +152,7 @@ pub(crate) fn granted_passive_defs<'d>(
     out
 }
 
-/// 树节点词条的「折行合并」解析（M4-H；vendor `PassiveTree.lua:445-462`：单行
+/// 树节点词条的「折行合并」解析（vendor `PassiveTree.lua:445-462`：单行
 /// parse 失败时与后续行逐次拼接重试，成功则消耗被并入的行，全部失败则按原样
 /// 丢弃该行、后续行继续独立解析）。
 ///
@@ -197,7 +197,7 @@ pub(crate) fn combine_wrapped_then_filter(texts: Vec<String>, ctx: ParseCtx<'_>)
     out
 }
 
-/// （M3 T5-E2）keystone 名 → 该 keystone 的 modifier 列表（树 keystone 节点 stats
+/// keystone 名 → 该 keystone 的 modifier 列表（树 keystone 节点 stats
 /// 经 passive ingest 解析）。供「You have \<Keystone\>」类授予词条在 env_finalize
 /// `merge_keystones`（CalcPerform.lua:66-76 等价）阶段注入。
 ///
@@ -350,7 +350,7 @@ pub(crate) fn radius_jewel_expansions<'a>(
         let mut pos = positions.clone();
         pos.insert(jewel.socket_node, socket_pos);
 
-        // 档位有效半径由注入的 jewel_radii 数据解析（M0-W3；无数据时 BuildData
+        // 档位有效半径由注入的 jewel_radii 数据解析（无数据时 BuildData
         // 已回退 Default，与 JSON 逐值相等，输出不变）。
         let effect = match compute_radius_jewel_effect_with_radii(
             jewel.socket_node,
@@ -451,7 +451,7 @@ pub(crate) fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<S
     out
 }
 
-/// （M4-n）范围珠宝 Notable 效果对**节点自身词条**的缩放副本。
+/// 范围珠宝 Notable 效果对**节点自身词条**的缩放副本。
 ///
 /// vendor CalcSetup.lua:246-275：对半径内每个『Notable 且非属性且非飞升』节点的
 /// modList 整体 `ScaleAddList ×(1+inc/100)`（数值 = [`vendor_scale_mod_value`]

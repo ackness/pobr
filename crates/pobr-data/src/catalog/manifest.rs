@@ -1,7 +1,7 @@
 //! 数据包信封（manifest）schema：描述某个 PoE2 版本下入库了哪些域与语言。
 //!
 //! v2 起 `domains` 按三层物理目录分段（`base`/`overlay`/`generated`，
-//! 见架构文档 20 §1 P1）；反序列化兼容 v1 的扁平数组形（视为全部归 `base`）。
+//! 见P1）；反序列化兼容 v1 的扁平数组形（视为全部归 `base`）。
 
 use serde::{Deserialize, Serialize};
 

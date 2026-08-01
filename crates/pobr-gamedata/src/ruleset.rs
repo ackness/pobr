@@ -1,4 +1,4 @@
-//! RuleSet 聚合入口（架构文档 20 §2.3，P9 注入方式；M0-W3 起逐域接通）。
+//! RuleSet 聚合入口。
 //!
 //! `GameData::load_ruleset()` 一次性加载计算引擎需要的规则/常量域，由 pobr-build
 //! 合并为 [`pobr_data::catalog::RuntimeConstants`] 注入 pobr-core
@@ -24,12 +24,12 @@ use pobr_data::catalog::weapon_types::WeaponTypeTable;
 
 use crate::{GameData, LoadError};
 
-/// 解析规则占位（M6 起由 `overlay/mod_parser_rules.json` 等填充，
+/// 解析规则占位（起由 `overlay/mod_parser_rules.json` 等填充，
 /// 真实类型落 `pobr_data::catalog`）。
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ParserRules;
 
-/// config 选项目录（M3-T1 A3：`overlay/config_options.json` 实体化）。
+/// config 选项目录（`overlay/config_options.json`）。
 ///
 /// `options` 保持文件序（`var` 升序，byte-stable）；`by_var` 为 var → 下标
 /// 索引，供 `config_interpreter` 消费方按 XML `<Input name>` 直查条目。
@@ -59,7 +59,7 @@ impl ConfigCatalog {
     }
 
     /// 未通过抽取期 oracle 对拍的条目数（`verified:false`，parity 报表单列，
-    /// 蓝图 §4.6 A6 监控口径）。
+    /// 监控口径）。
     pub fn unverified_count(&self) -> usize {
         self.options.iter().filter(|o| !o.verified).count()
     }
@@ -71,37 +71,37 @@ impl ConfigCatalog {
 /// 回退 `Default` fallback（与硬编码路径逐值一致）。
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct RuleSet {
-    /// modifier 文本解析规则（forms/name_map/flag_phrases/tag_phrases…，M6）。
+    /// modifier 文本解析规则（forms/name_map/flag_phrases/tag_phrases…）。
     pub parser_rules: Option<ParserRules>,
-    /// 机制公式消费的游戏常量（抗性边界/护甲系数/服务器帧率…，M0-W3 起接通）。
+    /// 机制公式消费的游戏常量。
     pub game_constants: Option<GameConstantsDef>,
-    /// 角色等级/属性派生常量（life/mana/accuracy 派生系数，M0-W3 阶段 2 接通）。
+    /// 角色等级/属性派生常量。
     pub character_constants: Option<CharacterConstantsDef>,
-    /// 范围珠宝环形档（距离乘数 + 按树版本档位表，M0-W3 阶段 2 接通）。
+    /// 范围珠宝环形档。
     /// 消费侧在 pobr-build（树几何，pobr-core 不消费此域，不入 `RuntimeConstants`）。
     pub jewel_radii: Option<JewelRadiiDef>,
-    /// 怪物百级缩放表（enemy 装配查表，M0-W3 阶段 2 接通）。
+    /// 怪物百级缩放表。
     pub monster_scaling: Option<MonsterScalingTable>,
-    /// 敌人档位预设（enemyIsBoss 四档加成，M0-W3 阶段 2 接通）。
+    /// 敌人档位预设。
     pub enemy_presets: Option<EnemyPresetsTable>,
-    /// per-class 空手基底表（空手攻击 weaponData，M0-W3 阶段 2 接通）。
+    /// per-class 空手基底表。
     pub unarmed_data: Option<UnarmedDataTable>,
-    /// 武器类型表（持握/近战条件与武器类伤害关键词查表，M0-W3 阶段 2 接通）。
+    /// 武器类型表（持握/近战条件与武器类伤害关键词查表）。
     pub weapon_types: Option<WeaponTypeTable>,
-    /// config 选项目录（声明式 effects + imply_conditions，M3）。
+    /// config 选项目录（声明式 effects + imply_conditions）。
     pub config_catalog: Option<ConfigCatalog>,
-    /// 取整精度例外表（ScaleAddMod / MORE 聚合精度，M4-T1 W-A2 接通；
+    /// 取整精度例外表（ScaleAddMod / MORE 聚合精度，接通；
     /// 消费侧 = pobr-core `HighPrecisionRules`）。
     pub high_precision_mods: Option<HighPrecisionModsDef>,
     /// special 词条模板（`overlay/special_mods.json` + `generated/special_derived.json`
-    /// 拼接，M5b B-4 接通数据面）。消费侧（orchestrator）`SpecialModRules::compile`
+    /// 拼接，接通数据面）。消费侧（orchestrator）`SpecialModRules::compile`
     /// 一次后经 `parse_mod_with_rules` 整行查表；缺表 → `None`（消费方走纯通用解析，
     /// 行为不变）。两表 entries 顺序拼接、id 冲突由 compile 期 fail-fast。
     pub special_mods: Option<Vec<SpecialTemplateDef>>,
 }
 
 impl GameData {
-    /// 加载 RuleSet 聚合：逐域加载已数据化的 JSON（M0-W3：`game_constants`）。
+    /// 加载 RuleSet 聚合：逐域加载已数据化的 JSON（`game_constants`）。
     ///
     /// 缺文件（`LoadError::Io`，如旧数据包/测试目录）按「该域未数据化」处理返回
     /// `None`（消费方回退 `Default`）；JSON 解析错误（`LoadError::Parse`）则向上
@@ -143,7 +143,7 @@ impl GameData {
             Err(LoadError::Io { .. }) => None,
             Err(e) => return Err(e),
         };
-        // R7 缺表容忍：表不存在 → None，消费方回退旧 parse_config 路径。
+        // 缺表容忍：表不存在 → None，消费方回退旧 parse_config 路径。
         let config_catalog = match self.config_options() {
             Ok(v) => Some(ConfigCatalog::new(v.options)),
             Err(LoadError::Io { .. }) => None,
@@ -209,7 +209,7 @@ mod tests {
     }
 
     /// 仓库数据目录：special_mods 域已接通（overlay 策展条目 + generated keystone
-    /// 派生拼接，M5b B-4 消费激活后过滤掉降级 shadow 条目）。仅断言非空且条数
+    /// 派生拼接，消费激活后过滤掉降级 shadow 条目）。仅断言非空且条数
     /// ≥ overlay 基数——具体计数随策展批次增长，不钉死。
     #[test]
     fn repo_data_ruleset_loads_special_mods() {
@@ -223,7 +223,7 @@ mod tests {
         );
     }
 
-    /// 仓库数据目录：high_precision_mods 域已接通（M4-T1 W-A2，
+    /// 仓库数据目录：high_precision_mods 域已接通（
     /// `overlay/high_precision_mods.json` ← vendor Data.lua:413-530）。
     #[test]
     fn repo_data_ruleset_loads_high_precision_mods() {
@@ -322,9 +322,8 @@ mod tests {
         );
     }
 
-    /// 仓库数据目录：config_catalog 域已接通（M3-T1 A3）——条目数覆盖 vendor 542+、
+    /// 仓库数据目录：config_catalog 域已接通——条目数覆盖 vendor 542+、
     /// `by_var` 索引与条目一一对应、典型条目可查；并打印 `verified:false` 条目数
-    /// （蓝图 §4.6 A6：未对拍条目入 parity 报表口径）。
     #[test]
     fn repo_data_ruleset_loads_config_catalog() {
         let data = GameData::new(crate::current_data_dir());

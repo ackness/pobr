@@ -1,4 +1,4 @@
-//! M6 E/F §B 可行性测量（探索性，`#[ignore]`，非 CI 门禁）。
+//! §B 可行性测量（探索性，`#[ignore]`，非 CI 门禁）。
 //!
 //! 问题：`overlay/stat_descriptions.json`（段 A 抽取的 stat_id → canonical 文本）
 //! 里，有多少条能被现行 `parse_mod_engine` 成功解析成 Modifier？这个解析率决定

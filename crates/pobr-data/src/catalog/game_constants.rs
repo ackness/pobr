@@ -1,4 +1,4 @@
-//! 全局游戏常数域 schema（`base/game_constants.json`，架构文档 20 §3.1）。
+//! 全局游戏常数域 schema（`base/game_constants.json`）。
 //!
 //! 三段结构：`character`（玩家固有常数）/ `monster`（怪物固有常数）/
 //! `game`（机制公式魔数）。
@@ -11,7 +11,7 @@
 //!   Character.ot / Monster.ot 自动导出）与 `src/Modules/Data.lua`
 //!   （`data.misc` 魔数表，L171-250），逐字段注明文件:行号。
 //!
-//! 注意 L4 刹车（架构 §1 P1）：`constants.rs` 里的枚举与结构类型
+//! 注意 L4 刹车：`constants.rs` 里的枚举与结构类型
 //! （DamageType / AilmentType / DamageRange / SkillCost 等）是 PoB 内部语义，
 //! 留 Rust 不迁；本表只迁纯数值。
 
@@ -79,7 +79,7 @@ pub struct MonsterConstantsDef {
 /// game 段：机制公式魔数（抗性边界 / 护甲 / 服务器帧 / 异常基线 / 眩晕 / 上限族）。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GameMechanicsConstantsDef {
-    // ---- pobr 准源（constants.rs，逐值相等）----
+    // pobr 准源（constants.rs，逐值相等）
     /// 抗性硬上限（%）。pobr `HARD_MAX_RESISTANCE` = 90；vendor Data.lua:181 MaxResistCap。
     pub resist_hard_cap: f64,
     /// 抗性下界。pobr `RESIST_FLOOR` = -200；vendor Data.lua:180 ResistFloor。
@@ -119,7 +119,7 @@ pub struct GameMechanicsConstantsDef {
     /// 中毒基础持续（秒）。pobr 2.0；vendor Misc.lua:95 BasePoisonDuration = 2。
     pub poison_base_duration: f64,
 
-    // ---- vendor-only（pobr 现有 Rust 无此值）----
+    // vendor-only（pobr 现有 Rust 无此值）
     /// 闪避（evade）几率上限（%）。Misc.lua:110 DefaultMaxEvadeChancePercent = 95
     /// （Data.lua:182 EvadeChanceCap）。
     pub evade_chance_cap: f64,
@@ -192,8 +192,8 @@ pub struct GameMechanicsConstantsDef {
     /// 负护甲增伤上限（%）。Data.lua:194 NegArmourDmgBonusCap = 100。
     pub neg_armour_dmg_bonus_cap: f64,
 
-    // ---- M2-W0.4：EHP 循环魔数 + 普通怪 DPS 乘数（vendor-only，Data.lua:228-239）。
-    //      `#[serde(default)]`：旧 JSON 缺字段时回退 Default 同值（schema 兼容 R7）。----
+    // ----：EHP 循环魔数 + 普通怪 DPS 乘数（vendor-only，Data.lua:228-239）。
+    //      `#[serde(default)]`：旧 JSON 缺字段时回退 Default 同值（schema 向后兼容）。----
     /// EHP 循环单击伤害上限（精度上界）。Data.lua:237 ehpCalcMaxDamage = 100000000。
     #[serde(default = "default_ehp_calc_max_damage")]
     pub ehp_calc_max_damage: f64,
@@ -213,27 +213,27 @@ pub struct GameMechanicsConstantsDef {
     #[serde(default = "default_normal_enemy_dps_mult")]
     pub normal_enemy_dps_mult: f64,
 
-    // ---- M2-F：max-hit 转换平滑迭代数（vendor-only，Data.lua:241）。----
+    //  max-hit 转换平滑迭代数（vendor-only，Data.lua:241）。
     /// max-hit 多转换分支（`useConversionSmoothing`）的平滑迭代上限。
     /// Data.lua:241 maxHitSmoothingPasses = 8（CalcDefence.lua:3669 消费）。
     #[serde(default = "default_max_hit_smoothing_passes")]
     pub max_hit_smoothing_passes: f64,
 
-    // ---- M2-D：Block 面板族（vendor-only）。----
+    //  Block 面板族（vendor-only）。
     /// 基础格挡上限（%，`BaseBlockChanceMax` 的角色固有 BASE）。
     /// Misc.lua:147 `object_inherent_base_maximum_block_%_from_ot` = 50
     /// （CalcSetup.lua:28 注入 `BaseBlockChanceMax` BASE）。
     #[serde(default = "default_base_block_chance_max")]
     pub base_block_chance_max: f64,
 
-    // ---- M3-T4 D2：charm 合并（vendor-only）。----
+    //  charm 合并（vendor-only）。
     /// 护符同时生效数上限（charm limit cap）。CalcPerform.lua:1589
     /// `m_min(Override(CharmLimit) or Sum(BASE CharmLimit), 3)` 的字面 3
     /// （`merge_flasks_charms` 消费）。
     #[serde(default = "default_charm_limit_cap")]
     pub charm_limit_cap: f64,
 
-    // ---- M4-l：debuff 持续乘区（vendor-only）。----
+    //  debuff 持续乘区（vendor-only）。
     /// 敌侧 `BuffExpireFaster` 聚合的下限（Data.lua:177
     /// `BuffExpirationSlowCap = 0.25`）：`debuffDurationMult =
     /// 1 / max(cap, calcLib.mod(enemyDB, "BuffExpireFaster"))`
@@ -269,8 +269,7 @@ fn default_max_hit_smoothing_passes() -> f64 {
     8.0
 }
 
-// ---------------------------------------------------------------------------
-// Default = fallback 值（M0-W3 注入管道，架构文档 20 §1 P8/P9）
+// Default = fallback 值
 //
 // 语义：`Default` 即「无 GameData 注入时的回退常量集」，必须与
 // `data/<版本>/base/game_constants.json` 逐值相等（由
@@ -278,7 +277,6 @@ fn default_max_hit_smoothing_passes() -> f64 {
 // 有 pobr Rust 准源的字段**直接引用** `crate::constants` / `crate::monster` 的
 // const / `GameConstants::poe2()` 字段（单一数值出处，不复制字面量）；
 // vendor-only 字段（pobr 旧 Rust 无此值）以字面量落值，出处见各字段 doc。
-// ---------------------------------------------------------------------------
 
 impl Default for CharacterConstantsDef {
     fn default() -> Self {
@@ -332,7 +330,7 @@ impl Default for GameMechanicsConstantsDef {
             ignite_base_duration: legacy.ignite_base_duration,
             poison_base_fraction: legacy.poison_base_fraction,
             poison_base_duration: legacy.poison_base_duration,
-            // ---- 以下为 vendor-only 字段（出处见上方各字段 doc 的 Lua 行号）----
+            // 以下为 vendor-only 字段（出处见上方各字段 doc 的 Lua 行号）
             evade_chance_cap: 95.0,
             deflection_chance_cap: 95.0,
             deflect_effect: 40.0,
@@ -366,16 +364,16 @@ impl Default for GameMechanicsConstantsDef {
             heavy_stun_threshold_modifier: 500.0,
             heavy_stun_modifier_duration: 16.5,
             neg_armour_dmg_bonus_cap: 100.0,
-            // M2-W0.4：EHP 循环魔数 + 普通怪 DPS 乘数（Data.lua:228/235/237/239）。
+            //  EHP 循环魔数 + 普通怪 DPS 乘数（Data.lua:228/235/237/239）。
             ehp_calc_max_damage: default_ehp_calc_max_damage(),
             ehp_calc_max_iterations: default_ehp_calc_max_iterations(),
             ehp_calc_speed_up: default_ehp_calc_speed_up(),
             normal_enemy_dps_mult: default_normal_enemy_dps_mult(),
-            // M2-F：max-hit 转换平滑迭代数（Data.lua:241）。
+            //  max-hit 转换平滑迭代数（Data.lua:241）。
             max_hit_smoothing_passes: default_max_hit_smoothing_passes(),
-            // M2-D：Block 面板族（Misc.lua:147 / CalcSetup.lua:28）。
+            //  Block 面板族（Misc.lua:147 / CalcSetup.lua:28）。
             base_block_chance_max: default_base_block_chance_max(),
-            // M3-T4 D2：charm limit cap（CalcPerform.lua:1589）。
+            //  charm limit cap（CalcPerform.lua:1589）。
             charm_limit_cap: default_charm_limit_cap(),
             buff_expiration_slow_cap: default_buff_expiration_slow_cap(),
         }

@@ -13,9 +13,9 @@ use crate::{CalcConfig, Modifier};
 
 use super::{Actor, ActorBaseStats, Env, MinimalInput, MinimalOutput, OutputTable, perform};
 
-/// buff 技能九类分发类别（M3 T0 接口契约，蓝图 m3-orchestration.md §2.4）。
+/// buff 技能九类分发类别。
 ///
-/// 对应 PoB2 CalcPerform.lua:1831-2984 的 buff 分发九类。M3 实际实现
+/// 对应 PoB2 CalcPerform.lua:1831-2984 的 buff 分发九类。实际实现
 /// Aura/Curse/Debuff 三类的消费（T3 buff_pass），其余 kind 进框架但暂走
 /// 「原值直注」兼容路径（行为与现状一致）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -31,10 +31,10 @@ pub enum BuffKind {
     Link,
 }
 
-/// 一个 buff 技能的注入规格（M3 T0 接口契约，蓝图 §2.4；字段语义对照 PoB2 buff 表）。
+/// 一个 buff 技能的注入规格。
 ///
 /// pobr-build（T3）从 granted_effects 数据构造；分类规则：`skill_types` 含 Aura→Aura、
-/// 含 Mark→Curse(is_mark)、granted_effect 的 buff 语义列（M1 statmap 边车）→其余类。
+/// 含 Mark→Curse(is_mark)、granted_effect 的 buff 语义列（statmap 边车）→其余类。
 #[derive(Debug, Clone)]
 pub struct BuffSpec {
     /// buff 名（PoB2 buff.name，`AffectedBy<名>` 条件用）。
@@ -71,7 +71,7 @@ pub struct CalculationSession {
     env: Env,
     unsupported_modifier_texts: Vec<String>,
     /// 数据驱动 parser 引擎规则：注入后全部 ingest（item/passive/gem/flask/
-    /// `add_modifier_texts`）解析走 [`parse_mod_engine`]（唯一解析器，M6 收尾
+    /// `add_modifier_texts`）解析走 [`parse_mod_engine`]（唯一解析器，收尾
     /// 已删 legacy）。`None` = 未注入规则，所有词条文本按整行 Unsupported 处理
     /// （进入 [`unsupported_modifier_texts`] 收集面，不生效也不静默丢失）。
     ///
@@ -128,7 +128,7 @@ impl CalculationSession {
         self
     }
 
-    /// 注入运行时常量包（M0-W3 注入管道）：写入 `env.cfg.constants`，随 cfg 线程化
+    /// 注入运行时常量包（注入管道）：写入 `env.cfg.constants`，随 cfg 线程化
     /// 到全部 calc 函数。未调用时为 `Default`（fallback，与入库 JSON 逐值相等）。
     ///
     /// **顺序约束**：[`with_config`](Self::with_config) 会整体覆盖 cfg（含本字段），
@@ -285,7 +285,7 @@ impl CalculationSession {
         Ok(())
     }
 
-    /// 接入一件**激活态**药剂/护符（M3-T4 通道切换）：词条经
+    /// 接入一件**激活态**药剂/护符：词条经
     /// [`crate::item::ingest_flask_charm`] 打包为 `FlaskBuff`/`CharmBuff` 载荷
     /// List mod 注入（List 不参与 sum/more/flag 聚合 → 未合并前零直接影响），由
     /// env_finalize 阶段 3 `merge_flasks_charms` 在 `mode_combat` 门控下按 effect
@@ -333,7 +333,7 @@ impl CalculationSession {
         self.add_gem(gem)
     }
 
-    /// 注入一个 buff 技能规格（M3 T0-4 接口契约，蓝图 §2.4）。
+    /// 注入一个 buff 技能规格。
     ///
     /// **本阶段只存不消费**：spec 入 `Env::buff_skills`，等 T3 的 `buff_pass`
     /// （env_finalize 阶段 4）落地后才参与计算——在此之前调用本 API 对输出逐值无影响。
@@ -350,7 +350,7 @@ impl CalculationSession {
         self.env.warcry_skills.push(spec);
     }
 
-    /// 接入一个召唤物（M5a-B2）：从 [`MinionDef`](super::MinionDef) 真实底材 + 召唤
+    /// 接入一个召唤物：从 [`MinionDef`](super::MinionDef) 真实底材 + 召唤
     /// 宝石等级 + 数量上限派生召唤物 `Actor` 接入 `Env.minions`，并把上限写为玩家
     /// `Multiplier:SummonedMinion` / `Multiplier:MinionPresenceCount`（供「per Minion」
     /// 族词条引用）。`Env::add_minion_from_def` 的 session 直通封装。
@@ -380,8 +380,8 @@ impl CalculationSession {
         );
     }
 
-    /// 注入「keystone 名 → 该 keystone 的 modifier 列表」映射（M3 T0-4 接口契约，
-    /// 蓝图 §2.4，T5 mergeKeystones 消费）。
+    /// 注入「keystone 名 → 该 keystone 的 modifier 列表」映射（接口契约，
+    ///  T5 mergeKeystones 消费）。
     ///
     /// **本阶段只存不消费**：map 入 `Env::keystone_mods`，等 T5 的 `merge_keystones`
     /// （env_finalize 阶段 1/5）落地后，词条授予的 keystone 才据此注入 modDB。
@@ -389,11 +389,11 @@ impl CalculationSession {
         self.env.keystone_mods = map;
     }
 
-    /// 注入 curse 优先级数据表（M3-T3 C3；`overlay/curse_priority.json` 经
+    /// 注入 curse 优先级数据表（`overlay/curse_priority.json` 经
     /// pobr-gamedata 加载后由编排层喂入，照 [`set_buff_definitions`] 先例）。
     /// env_finalize 阶段 4 `buff_pass` 的 curse priority 计算消费——整段吃
     /// `cfg.mode_buffs` 门控（默认 false），故未显式置位时注入与否输出逐值不变。
-    /// 未注入/缺表 = 权重全 0 回退（R7 缺表容忍）。
+    /// 未注入/缺表 = 权重全 0 回退（缺表容忍）。
     ///
     /// [`set_buff_definitions`]: Self::set_buff_definitions
     pub fn set_curse_priority(
@@ -403,7 +403,7 @@ impl CalculationSession {
         self.env.curse_priority = Some(def);
     }
 
-    /// 注入内建 buff 定义表（M3-T2 B3；`overlay/buff_definitions.json` 经
+    /// 注入内建 buff 定义表（`overlay/buff_definitions.json` 经
     /// pobr-gamedata 加载后由编排层喂入）。env_finalize 阶段 6
     /// `expand_misc_buffs` 消费——整段吃 `cfg.mode_combat` 门控（默认 false），
     /// 故未显式置位 mode_combat 时注入与否输出逐值不变。
@@ -418,7 +418,7 @@ impl CalculationSession {
         self.env.buff_handler_registry = registry;
     }
 
-    /// 注入取整精度规则（M4-I 去重；`overlay/high_precision_mods.json` 经
+    /// 注入取整精度规则（去重；`overlay/high_precision_mods.json` 经
     /// pobr-gamedata `RuleSet::high_precision_mods` 加载后由编排层喂入，照
     /// [`set_curse_priority`](Self::set_curse_priority) 先例）。消费点 =
     /// buff_pass / merge_flasks_charms 的 ScaleAddMod 数值缩放（与 T1 写原语
@@ -432,10 +432,10 @@ impl CalculationSession {
         self.env.high_precision = rules;
     }
 
-    /// 注入 MH/OH hand pass 输入（M4-T2 W-B2，蓝图 §3.3 契约 1；编排层武器段构造
+    /// 注入 MH/OH hand pass 输入（契约 1；编排层武器段构造
     /// [`HandSource`](super::hand_pass::HandSource)）。未调用 = 空，`perform` 走与
     /// 历史完全一致的单管线路径（回退态）。`double_hits` = 技能数据
-    /// `doubleHitsWhenDualWielding`（W-D1 数据通道落地前恒 false）。
+    /// `doubleHitsWhenDualWielding`（数据通道落地前恒 false）。
     pub fn set_hand_sources(
         &mut self,
         sources: Vec<super::hand_pass::HandSource>,
@@ -458,7 +458,7 @@ impl CalculationSession {
 
     /// 直接向**敌人** modDB 注入已构造好的 modifier（保留 `SourceId` 归因）。
     ///
-    /// M3-T1 A5 config 主路径入口：config 解释器把 `conditionEnemy<X>` 等条目
+    /// config 主路径入口：config 解释器把 `conditionEnemy<X>` 等条目
     /// 落成 enemy 桶产物（vendor `enemyModList:NewMod` 语义，ConfigOptions.lua
     /// 各 enemy 条目；`SourceKind::EnemyConfig` 归因），编排层经此注入。
     /// 须在 [`setup_enemy`](Self::setup_enemy) 之后调用（与 vendor enemy modDB
@@ -470,7 +470,7 @@ impl CalculationSession {
     /// 注入玩家施加的元素**曝光**（`[fire, cold, lightning]`，PoB2 config 默认每点 -20%
     /// 抗）：只写 enemy modDB 的 `<Element>Exposure BASE`；折算为 `<Element>Resist`
     /// 减项的归约统一发生在 `env_finalize` 阶段 8（[`reduce_enemy_exposure`]，
-    /// vendor CalcPerform.lua:3214-3247——M4-L 起 buff_pass Debuff 路径（如
+    /// vendor CalcPerform.lua:3214-3247——起 buff_pass Debuff 路径（如
     /// Frost Bomb）也产曝光，归约收口单点防双扣）。仅在有效口径
     /// （`mode_effective`）下对伤害生效。须在 [`setup_enemy`](Self::setup_enemy)
     /// 之后调用。
@@ -590,7 +590,7 @@ impl CalculationSession {
     }
 
     /// 玩家 ModDb 全部 modifier（诊断用，`POBR_DBG_ALLMODS`）：用于 engine vs legacy
-    /// ingest 路径的逐 mod 全集 diff（M6 fork(a) 定位 ingest 分歧）。
+    /// ingest 路径的逐 mod 全集 diff（fork(a) 定位 ingest 分歧）。
     pub fn all_mods(&self) -> Vec<&Modifier> {
         self.env.player.mod_db.iter_mods().collect()
     }

@@ -19,7 +19,7 @@ use crate::error::TreeError;
 /// 转录自 `GameConstants.dat`。`outer` 值乘以该系数后再与节点欧氏距离比较，等价于
 /// `outerSquared = outer * outer * 1.2 * 1.2`（PoB2 Data.lua setJewelRadiiGlobally）。
 ///
-/// **降级说明（M0-W3）**：本常量与 `JEWEL_RADIUS_*` 已切换为 **fallback 专用**——
+/// **降级说明**：本常量与 `JEWEL_RADIUS_*` 已切换为 **fallback 专用**——
 /// 计算路径经 [`compute_radius_jewel_effect_with_radii`] 消费注入的
 /// [`JewelRadiiDef`]（`base/jewel_radii.json`，与本组常量逐值相等，测试锁定）；
 /// **禁止新增计算路径消费方**，保留供无数据路径（[`JewelRadius::units`]）与
@@ -38,7 +38,7 @@ pub const PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER: f64 = 1.2;
 /// | Large      | 1300  | 1560.0          |
 /// | Very Large | 1500  | 1800.0          |
 ///
-/// **降级说明（M0-W3）**：fallback 专用，禁止新增计算路径消费方
+/// **降级说明**：fallback 专用，禁止新增计算路径消费方
 /// （见 [`PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER`] 的说明）。
 pub const JEWEL_RADIUS_SMALL: f64 = 1000.0 * PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER;
 pub const JEWEL_RADIUS_MEDIUM: f64 = 1150.0 * PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER;
@@ -143,7 +143,7 @@ pub fn compute_radius_jewel_effect(
     )
 }
 
-/// 计算 radius jewel 影响范围（数据注入版，M0-W3 计算路径主入口）。
+/// 计算 radius jewel 影响范围（数据注入版，计算路径主入口）。
 ///
 /// 以 `socket` 节点的坐标为圆心，按欧氏距离筛出落在有效半径内的**其它**节点
 /// （socket 自身始终排除）。有效半径由注入的 `radii`（`base/jewel_radii.json`）按

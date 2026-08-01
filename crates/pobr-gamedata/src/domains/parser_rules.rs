@@ -1,12 +1,11 @@
 //! `overlay/mod_parser_rules.json` loader——ModParser 解析规则六表（special
 //! 除外）+ §1.7 小查找表，schema 见 [`pobr_data::catalog::parser_rules`]
-//! （M6 前置，蓝图 m6-parser-rules.md §1）。
 //!
 //! 数据来源：vendor PoB2 `Modules/ModParser.lua`，由
 //! `sync-pob-catalog extract-lua --what parser-rules` headless 引导抽取
-//! （schema 标识 `mod_parser_rules/v1`）。消费侧 = M6-B 数据驱动 scan 引擎
+//! （schema 标识 `mod_parser_rules/v1`）。消费侧 =数据驱动 scan 引擎
 //! （`CompiledParserRules::compile` 在 pobr-core，本 loader 零语义、零编译，
-//! 保 P9 边界：gamedata 只 load）。`RuleSet.parser_rules` 的填实属 M6-T8
+//! 保 I/O 边界：gamedata 只 load）。`RuleSet.parser_rules` 的填实属
 //! 接线范围，本 loader 先随数据落地。
 
 use pobr_data::catalog::parser_rules::ModParserRulesDoc;
@@ -46,7 +45,7 @@ mod tests {
         GameData::new(golden_version_dir())
     }
 
-    /// 仓库真实数据：各段条目数与 blessed 快照一致（蓝图 §1.9 计数自检的消费侧
+    /// 仓库真实数据：各段条目数与 blessed 快照一致（计数自检的消费侧
     /// 镜像）。计数随 vendor 抽取增长——具体数值进 `generated/test_pins.json`
     /// （regen 后 `POBR_BLESS_PINS=1` 刷新，见 [`crate::test_pins`]）；本函数只
     /// 保留结构性守卫（核心 form id 必须在场）。
@@ -58,7 +57,7 @@ mod tests {
             .expect("仓库数据包应含 mod_parser_rules 域");
         let forms: std::collections::BTreeSet<&str> =
             doc.forms.iter().map(|f| f.form.as_str()).collect();
-        // flag_types 含 pobr 自增条目 `hindered`→`Condition:Hindered`（M6-conv2，
+        // flag_types 含 pobr 自增条目 `hindered`→`Condition:Hindered`（
         // 见 m6-dualrun-report §2.5），计数恒 = vendor + 1。
         crate::test_pins::assert_pin(
             &golden_version_dir(),
@@ -106,7 +105,7 @@ mod tests {
         assert!(inc.anchored);
 
         // modNameList：`["attributes"]` vendor `{ "Str", "Dex", "Int", "All" }`（:161），
-        // 经 M6.3 路线 B 抽取期归一展开为 PoBR 子名（聚合短语展开，去 vendor `All`）。
+        // 经.3 路线 B 抽取期归一展开为 PoBR 子名（聚合短语展开，去 vendor `All`）。
         let attributes = doc
             .name_map
             .iter()
@@ -224,7 +223,7 @@ mod tests {
             .find(|e| e.phrase == "life and mana")
             .expect("life and mana 应存在");
         assert_eq!(life_mana.names, vec!["LifeRegen", "ManaRegen"]);
-        // maximum 变体由 vendor 加载期补入（蓝图 §1.7）
+        // maximum 变体由 vendor 加载期补入
         assert!(
             doc.regen_types.iter().any(|e| e.phrase == "maximum life"),
             "regen_types 应含 maximum 变体"
@@ -244,7 +243,7 @@ mod tests {
         assert!(loaded.is_none());
     }
 
-    /// 探针推断条目的 handler 兜底数量在蓝图预算内（≤15，结构性守卫）；具体
+    /// 探针推断条目的 handler 兜底数量在预算内（≤15，结构性守卫）；具体
     /// 条数随 vendor 漂移，进 blessed 快照。
     #[test]
     fn handler_fallback_within_budget() {

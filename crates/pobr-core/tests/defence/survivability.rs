@@ -35,7 +35,7 @@ fn capped_chance_clamps_to_cap() {
 ///       PoB2 DeepWiki `data.misc.BlockChanceCap = 90`。
 #[test]
 fn block_caps_at_90_poe2() {
-    // PoE2 格挡上限 90%（M0-W3：cap 由调用方传入，注入默认值与旧 const 相等）
+    // PoE2 格挡上限 90%（cap 由调用方传入，注入默认值与旧 const 相等）
     let cap = pobr_data::catalog::RuntimeConstants::default()
         .game()
         .block_chance_cap;

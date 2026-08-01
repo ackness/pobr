@@ -11,7 +11,7 @@ use pobr_gamedata::GameData;
 use crate::canonical::CanonMod;
 use crate::corpus::Corpus;
 
-/// 三态计数 + 分组覆盖率（蓝图 §6.3）。
+/// 三态计数 + 分组覆盖率。
 pub struct Coverage {
     pub total: usize,
     pub parsed: usize,
@@ -40,7 +40,7 @@ impl Coverage {
     }
 }
 
-/// `parsed_mods.json` 顶层 schema（蓝图 §6.1）。
+/// `parsed_mods.json` 顶层 schema。
 #[derive(Serialize)]
 struct ParsedModsDoc<'a> {
     #[serde(rename = "_meta")]
@@ -55,7 +55,7 @@ struct Meta<'a> {
     note: &'a str,
     /// 语料行总数（去重后）。
     corpus_lines: usize,
-    /// parse 引擎标识（M6-A2 数据驱动穿线后 = `engine`，schema 版本随之 bump）。
+    /// parse 引擎标识（数据驱动穿线后 = `engine`，schema 版本随之 bump）。
     engine: &'a str,
 }
 
@@ -76,7 +76,7 @@ pub struct PrecompileOutcome {
 
 const SCHEMA: &str = "parsed_mods/v2";
 const GENERATOR: &str = "precompile-mods --data";
-// M6 收尾（删 legacy）：预解析走数据驱动 scan 引擎（special 通道编译在内），
+// 收尾（删 legacy）：预解析走数据驱动 scan 引擎（special 通道编译在内），
 // 与运行时（orchestrator / session）同一解析器。
 const ENGINE: &str = "scan_engine+special";
 const NOTE: &str =

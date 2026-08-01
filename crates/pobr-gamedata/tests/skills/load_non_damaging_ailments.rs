@@ -1,6 +1,6 @@
 //! `base/non_damaging_ailments.json` 加载测试。
 //!
-//! 搬迁不变式（架构文档 20 §1.1）：凡 pobr 现有 Rust 准源已有的数值，JSON
+//! 搬迁不变式：凡 pobr 现有 Rust 准源已有的数值，JSON
 //! 必须与之逐值相等——chill/shock 边界对照 `pobr_data::monster` 与
 //! `pobr_data::constants` 的 pub 常量；伤害型异常 DoT 类型对照
 //! `AilmentType::damage_type()`。pobr 没有的字段（vendor-only）按

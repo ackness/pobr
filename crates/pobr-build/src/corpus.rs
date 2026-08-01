@@ -1,4 +1,4 @@
-//! 词条语料统计与 unsupported 分类（M5b 蓝图 A-1/A-2；M6 收尾后仅存 engine
+//! 词条语料统计与 unsupported 分类（/A-2；收尾后仅存 engine
 //! 生产口径）。
 //!
 //! 「按 ninja 命中频率分批迁移」的事实来源：对 build fixture 的全量词条文本走
@@ -94,9 +94,7 @@ pub struct CorpusLine {
     pub build_id: String,
 }
 
-// ---------------------------------------------------------------------------
 // engine 生产口径（A2 静默降级可见化）
-// ---------------------------------------------------------------------------
 
 /// engine 生产口径的行分类（B3 后闸门与 ingest 同一 parser——本分类即生产行为）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -1,5 +1,5 @@
 //! Lua pattern 子集匹配器 + vendor `scan()` 的「最早 + 最长」匹配语义
-//! （蓝图 §2.1 / §2.2；vendor `ModParser.lua:6362-6385`）。
+//! （vendor `ModParser.lua:6362-6385`）。
 //!
 //! formList / preFlagList / tagList 的 pattern 实测只用到 Lua pattern 的一个
 //! 子集：`^`/`$` 锚、字面量、`%d %a %D %s` 类、`%%`/`%-`/`%.`/`%+` 等转义、
@@ -8,7 +8,7 @@
 //!
 //! **不引入 regex crate 做翻译**：Lua `-` 惰性量词与 regex 语义差异是静默错误
 //! 源；pattern 才 ~1300 条且行短，性能由上层 literal 预过滤兜住；匹配器本身是
-//! 跨版本稳定的框架语义（蓝图 §2.2 裁决）。输入在调用前已小写化。
+//! 跨版本稳定的框架语义。输入在调用前已小写化。
 
 /// 编译后的 Lua pattern（一次解析，复用匹配）。
 #[derive(Debug, Clone)]
@@ -462,7 +462,7 @@ mod tests {
         LuaPattern::compile(pat).unwrap().find(text)
     }
 
-    // ---- 字面量 + 锚定 ----
+    // 字面量 + 锚定
 
     #[test]
     fn anchored_literal_at_start_only() {
@@ -483,7 +483,7 @@ mod tests {
         assert!(m("damage$", "damage taken").is_none());
     }
 
-    // ---- %d / %a / 捕获 ----
+    // %d / %a / 捕获
 
     #[test]
     fn digit_capture() {
@@ -520,7 +520,7 @@ mod tests {
         assert_eq!(r2.captures, vec!["5"]);
     }
 
-    // ---- 转义 ----
+    // 转义
 
     #[test]
     fn percent_escape() {
@@ -535,7 +535,7 @@ mod tests {
         assert_eq!(r.captures, vec!["3", "7"]);
     }
 
-    // ---- 字符类集合 `[hd][ae][va][el]` 类糅合 ----
+    // 字符类集合 `[hd][ae][va][el]` 类糅合
 
     #[test]
     fn char_set_class_blend_have_deal() {
@@ -555,7 +555,7 @@ mod tests {
         assert_eq!(r.captures, vec!["abc"]);
     }
 
-    // ---- 量词语义 ----
+    // 量词语义
 
     #[test]
     fn star_zero_or_more() {

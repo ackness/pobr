@@ -49,7 +49,7 @@ pub(crate) fn defence_base_modifiers(build: &Build, data: &BuildData) -> Vec<Mod
     mods
 }
 
-/// 盾牌基底格挡 → `ShieldBlockChance` BASE 词条（M2 Track D，13-G8；PoB2
+/// 盾牌基底格挡 → `ShieldBlockChance` BASE 词条（13-G8；PoB2
 /// CalcDefence.lua:975-980 `Weapon 2/3 armourData.BlockChance` 等价注入）。
 ///
 /// 基底值取 catalog `ArmourBaseStats::block_chance`（overlay merge 后的 vendor
@@ -104,7 +104,7 @@ pub(crate) fn is_local_spirit_mod(clean: &str) -> bool {
     false
 }
 
-/// 件级 Spirit → `Spirit` BASE 词条（M2 Track D，13-G11）。
+/// 件级 Spirit → `Spirit` BASE 词条（13-G11）。
 ///
 /// 取值口径（PoB2 Item.lua:523/:818/:1724-1727）：
 /// - 物品文本带 rolled `Spirit: N` 行 → 直接采用（已含该件局部
@@ -154,7 +154,7 @@ pub(crate) fn item_spirit_modifiers(build: &Build, data: &BuildData) -> Vec<Modi
     mods
 }
 
-/// 件级 Ward → `Ward` BASE 词条（M2 Track D，13-G14）。
+/// 件级 Ward → `Ward` BASE 词条（13-G14）。
 ///
 /// 取值口径（PoB2 `armourData.Ward`，CalcDefence.lua:1158-1186 per-slot 聚合）：
 /// - 物品文本带 rolled `Ward: N` 行 → 直接采用（PoB 已逐件折好局部增幅/品质）；

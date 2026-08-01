@@ -24,7 +24,7 @@ struct RawGrantedEffectStatSetLink {
     /// `GrantedEffectStatSets` 行索引（负数/缺失 → 无 stat set）。
     #[serde(rename = "StatSet")]
     stat_set: Option<i64>,
-    /// **附加** statSet 行索引（M1-T5.2 多 set；FK → `GrantedEffectStatSets`，列序保留）。
+    /// **附加** statSet 行索引（多 set，FK → `GrantedEffectStatSets`，列序保留）。
     #[serde(rename = "AdditionalStatSets", default)]
     additional_stat_sets: Vec<i64>,
 }
@@ -83,7 +83,7 @@ pub struct StatSetsBundle {
     pub damage_levels_total: usize,
 }
 
-/// （M1-T4，蓝图 §1.2）从 `GrantedEffectStatSetsPerLevel` 直读技能基础暴击率：
+/// 从 `GrantedEffectStatSetsPerLevel` 直读技能基础暴击率：
 /// `effect id → gem level → 暴击率（百分点）`，供 [`super::levels::adapt_levels`] 落
 /// `SkillLevelDef::crit_chance`（替代 `overlay/skill_overrides.json` 的 crit merge 来源）。
 ///
@@ -97,7 +97,7 @@ pub struct StatSetsBundle {
 /// 取第一个有暴击的附加 set（如 GalvanicFieldBuffPlayer 主 set 164 无暴击、附加 set 900
 /// 有 9.0——W0 对拍 201/201 与 vendor 一致的规则）。
 ///
-/// 独立函数边界（蓝图 §3.2）：T4 在本文件（T5 owner）内仅新增此函数，不动既有逻辑；
+/// 独立函数边界：T4 在本文件（T5 owner）内仅新增此函数，不动既有逻辑；
 /// T5 多 statSet 改造时对齐调用点。
 pub(super) fn crit_from_statset_levels(
     en: &Path,
@@ -172,12 +172,12 @@ pub(super) fn crit_from_statset_levels(
 }
 
 /// 适配 `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel`（+ `Stats` / `GrantedEffects`
-/// 外键）为「effect id → 多 statSet 分等级 stat」域（M1-T5.2 多 set 建模）。
+/// 外键）为「effect id → 多 statSet 分等级 stat」域。
 ///
 /// 解析方式（对照 PoB2 `Export/Scripts/skills.lua` 的 statSets 处理）：
 /// - 主 set：`GrantedEffects.StatSet` 行索引 → `GrantedEffectStatSets` 行；
 /// - 附加 set：`GrantedEffects.AdditionalStatSets` 列序（W0 核验：FK 目标是
-///   `GrantedEffectStatSets`，蓝图 §1.4「指向另一行 GrantedEffects」有误已修正）；
+///   `GrantedEffectStatSets`，「指向另一行 GrantedEffects」有误已修正）；
 /// - 每行 `FloatStats[i]`↔`BaseResolvedValues[i]`、`AdditionalStats[i]`↔
 ///   `AdditionalStatsValues[i]` 位置配对，stat 行索引经 `Stats` 解析为稳定 id；
 /// - 附加 set 按 vendor 导出语义与主 set **合并入库**（`skills.lua:498-553`）：
@@ -185,7 +185,7 @@ pub(super) fn crit_from_statset_levels(
 ///   `BaseEffectiveness` 为默认 1 时回退主 set、`BaseMultiplier ≠ 0` 取本行否则
 ///   回退主配对行——消费侧选中即用，无需运行时 merge。
 ///
-/// **全量 stat 入库（M1-T5.3，蓝图 15-G2 修复方向）**：数据层不再施加任何 stat 白名单
+/// **全量 stat 入库**：数据层不再施加任何 stat 白名单
 /// （原 adapter 端白名单后缀谓词已删除）——statmap 数据引擎（`pobr-core::rules::
 /// stat_map_engine`，T2）需要看到全部 stat 才能穷举对照。**搬迁不变式保障**：同一谓词
 /// 已平移到消费侧 legacy 路径（`pobr-build::legacy_stat_filter`，在 `mapped_stat_modifiers`
@@ -321,7 +321,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             // statSet baseMods（如 Flicker `Speed MORE 285`）不在 GGG `.dat` 表中，是 PoB2
             // 自带常量，由 overlay/skill_overrides.json 加载期 merge，适配阶段留空。
             skill_attack_speed_more: None,
-            // dotIs* 同为 vendor baseMods 布尔（M4-T4 W-D1），`.dat` 无列，
+            // dotIs* 同为 vendor baseMods 布尔，`.dat` 无列，
             // overlay 加载期 merge，适配阶段保持保守默认（全 false）。
             dot_flags: Default::default(),
             explode_corpse: false,

@@ -1,4 +1,4 @@
-//! buff 九类分发（env_finalize 阶段 4，M3 T3-C2/C3，蓝图 m3-orchestration.md §6.2-§6.3）。
+//! buff 九类分发。
 //!
 //! 对照 PoB2 `Modules/CalcPerform.lua`（vendor commit `2df5a74`，实读核对）：
 //! - **aura 自身路径** :2085-2120（`buff.type == "Aura"`，自身乘区 :2102-2105）；
@@ -18,11 +18,11 @@
 //! 默认仍 false——未显式置位的既有调用方逐值不变）；curse/debuff 段内再按 vendor 吃
 //! `cfg.mode_effective`。
 //!
-//! C5 切换（M3-T3，双跑报告 `m3-c5-dualrun-report.md`：18-build display 全列逐值
+//! C5 切换（双跑报告 `m3-c5-dualrun-report.md`：18-build display 全列逐值
 //! 持平）后本路径是 aura 的唯一通道——编排层 `aura_buff_modifiers` 静态直注与
 //! feature `buff-pass-aura` 守门均已删除；回退通道 = revert 切换/删码 commit。
 //!
-//! ## M3 口径简化清单（与 PoB2 差异显式记录，蓝图 §6.2 要求）
+//! ##口径简化清单
 //!
 //! - (a) `skill_db` = `player.mod_db` 全局聚合（pobr 无 per-skill modlist 分层）。
 //!   差异面 =「只对某 aura 生效的 AuraEffect」词条（少见，命中时按 build 修）。
@@ -30,24 +30,24 @@
 //! - (c) `auraCannotAffectSelf`（:2102）：granted_effect 数据列未落，恒按 false。
 //! - (d) `ExtraAuraEffect` 附加词条列表（:2089-2101）未迁——pobr 解析层暂无该
 //!   ModName 产出，命中时随 C5 diff 报告补。
-//! - (e) `highPrecisionMods`（Data.lua:415-530）：M4-I 去重后**数据驱动**——
+//! - (e) `highPrecisionMods`（Data.lua:415-530）：去重后**数据驱动**——
 //!   [`scale_value`] 直接消费 T1 写原语 [`crate::ModDb::scale_add_mod`]，精度
 //!   例外查 `Env::high_precision`（`overlay/high_precision_mods.json` 经编排层
 //!   注入；未注入 = 无例外表 fallback）。先期硬编码命名族镜像表已删除。
 //!   `mod.unscalable`（ModStore.lua:46-52）pobr 词条模型无此位，不实现
 //!   （T1 原语侧同口径登记）。
 //! - (f) Debuff 的 `stackVar`/`stackLimit`（:2221-2230）：`BuffSpec` 契约（T0 冻结）
-//!   无 stack 字段，M3 按 `stackCount = 1`（vendor `skillData.stackCount or 1` 缺省）。
+//!   无 stack 字段，按 `stackCount = 1`（vendor `skillData.stackCount or 1` 缺省）。
 //! - (g) curse priority 的来源权重：pobr 未建模「装备隐式诅咒 / aura 施加诅咒」
 //!   （`socketGroup.source` / Blasphemy 类），编排层恒 [`CurseSourceWeight::None`]；
 //!   [`determine_curse_priority`] 保留参数，表驱动测试按 vendor 数值样例覆盖。
 //! - (h) `SelfCast<名>` 条件（:2288）、`socketedCursesHexLimit`（:2294/:2899-2914）、
-//!   `CurseBuff` 的 buffModList 二次缩放（:2318-2330）不在 M3 范围——`CurseBuff`
+//!   `CurseBuff` 的 buffModList 二次缩放（:2318-2330）不在——`CurseBuff`
 //!   与其余未消费 kind 走「原值直注」兼容路径。
 //! - (i) buff 名表：curse 名经编排层从 `active_skill` 蛇形名派生（`snipers_mark` →
 //!   `Snipers Mark`），与 vendor 撇号名（`Sniper's Mark`）不一致时 `curse_base`
 //!   查不到 → 基值 0（vendor `data.cursePriority[curseName] or 0` 同口径回退）。
-//! - (j) curse 效果词条（M3-W4，原「mods 恒空」简化**已实现**）：编排层
+//! - (j) curse 效果词条（原「mods 恒空」简化**已实现**）：编排层
 //!   `buff_skill_specs` 经 statmap curse 域（`stat_map_engine::map_curse_stat`，
 //!   vendor 各 curse statSet 的 `GlobalEffect effectType=Curse` 条目）把 statset
 //!   stat 映射为敌侧 modifier 填入 `spec.mods`，本路径施 CurseEffect 乘区
@@ -100,7 +100,7 @@ const AURA_SELF_EFFECT_NAMES: [&str; 6] = [
 ];
 
 /// curse priority 的来源权重维度（vendor `determineCursePriority` :473-478：aura 源 →
-/// `CurseFromAura`、装备源 → `CurseFromEquipment`）。M3 编排层未建模两类来源，恒
+/// `CurseFromAura`、装备源 → `CurseFromEquipment`）。编排层未建模两类来源，恒
 /// [`Self::None`]（简化 (g)）；保留维度供表驱动测试按 vendor 数值样例覆盖。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CurseSourceWeight {
@@ -113,7 +113,7 @@ pub enum CurseSourceWeight {
 }
 
 /// curse 面板输出（`buff_pass` 产出，经 [`Env::curse_pass_output`] 由 `perform` 末端
-/// 回填 [`super::OutputTable`] 的 `enemy_curse_limit` / `curse_slots`；蓝图 §6.3
+/// 回填 [`super::OutputTable`] 的 `enemy_curse_limit` / `curse_slots`；
 /// 「display_catalog 不扩，仅 OutputTable 字段」）。
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct CursePassOutput {
@@ -173,7 +173,7 @@ pub fn determine_curse_priority(
     base + socket + slot_weight + source_weight
 }
 
-/// ScaleAddMod 的数值缩放语义（vendor `ModStore.lua:45-79`）——M4-I 去重：
+/// ScaleAddMod 的数值缩放语义（vendor `ModStore.lua:45-79`）——去重：
 /// **直接消费 T1 写原语** [`ModDb::scale_add_mod`]（同段 vendor 的唯一实现，
 /// 含精度例外查表 / 非整数原值 `defaultHighPrecision` floor / 默认
 /// `m_modf(round(·,2))` 截整三分支）。`rules` = `overlay/high_precision_mods.json`
@@ -263,7 +263,7 @@ fn merge_buff(dest: &mut Vec<Modifier>, src: Vec<Modifier>) {
     }
 }
 
-/// 确保词条带 `Condition:Effective` tag（敌侧 debuff 口径对齐，蓝图 §6.3；已带则不重复）。
+/// 确保词条带 `Condition:Effective` tag。
 fn ensure_effective_tag(modifier: &mut Modifier) {
     let already = modifier.tags.iter().any(|tag| {
         matches!(tag, ModTag::Condition { var, negated: false, actor: None } if var == "Effective")
@@ -280,7 +280,7 @@ fn affected_by_condition(name: &str) -> String {
 
 /// env_finalize 阶段 4 实现体：`Env::buff_skills` 九类分发。
 ///
-/// M3 消费 Aura / Curse / Debuff 三类；其余 kind 走「原值直注」兼容路径（词条不
+/// 消费 Aura / Curse / Debuff 三类；其余 kind 走「原值直注」兼容路径（词条不
 /// 缩放、不置条件）。`cfg.mode_buffs == false`（默认）或无 spec 时整段空转
 /// （逐值不变）。
 pub fn buff_pass(env: &mut Env) {
@@ -289,10 +289,10 @@ pub fn buff_pass(env: &mut Env) {
     }
     let specs = env.buff_skills.clone();
     let priority_data = env.curse_priority.clone().unwrap_or_default();
-    // 取整精度规则（M4-I：ScaleAddMod 原语的例外表，编排层注入；未注入 = 默认）。
+    // 取整精度规则（ScaleAddMod 原语的例外表，编排层注入，未注入 = 默认）。
     let rules = env.high_precision.clone();
 
-    // —— 收集阶段（只读 env）——
+    // 收集阶段（只读 env）
     // 玩家侧 buff（aura 等）按 buff 名分桶（mergeBuff 同名取强）；BTreeMap 保证确定性序。
     let mut player_buffs: BTreeMap<String, Vec<Modifier>> = BTreeMap::new();
     // 敌侧 debuff 按 buff 名分桶（vendor `debuffs` 表）。
@@ -338,7 +338,7 @@ pub fn buff_pass(env: &mut Env) {
                 merge_buff(player_buffs.entry(spec.name.clone()).or_default(), scaled);
             }
             BuffKind::Buff => {
-                // vendor :1949-1962（Buff 分支，M4-G）：玩家自身 buff（Precision 系
+                // vendor :1949-1962：玩家自身 buff（Precision 系
                 // support 等）经 BuffEffect 乘区入 player db + AffectedBy 条件。
                 // 简化（与 Aura (a) 同口径）：modStore = player.mod_db 全局聚合；
                 // `skillModList:Sum(INC, <名>Effect)`（:1957 按 buff 名的专属乘区，
@@ -377,7 +377,7 @@ pub fn buff_pass(env: &mut Env) {
                 if !((env.cfg.mode_effective && (!hexproof || ignores_hexproof)) || spec.is_mark) {
                     continue;
                 }
-                // vendor :2295-2305：CurseEffect 乘区。蓝图 §6.3 原文记
+                // vendor :2295-2305：CurseEffect 乘区。原文记
                 // `INC(CurseEffect, BuffEffect)`，实读 :2295 为
                 // `Sum(INC, CurseEffect) + enemyDB Sum(INC, CurseEffectOnSelf)`
                 // （无 BuffEffect），按 vendor 实读对齐；aura 源附加 AuraEffect INC
@@ -419,7 +419,7 @@ pub fn buff_pass(env: &mut Env) {
                     .iter()
                     .map(|m| {
                         let mut scaled = scale_buff_mod(&rules, m, mult, &source_id);
-                        // 敌侧写入带 Condition:Effective 门控（蓝图 §6.3，对齐现有敌侧口径）。
+                        // 敌侧写入带 Condition:Effective 门控（对齐现有敌侧口径）。
                         ensure_effective_tag(&mut scaled);
                         scaled
                     })
@@ -464,7 +464,7 @@ pub fn buff_pass(env: &mut Env) {
                     .collect();
                 merge_buff(enemy_debuffs.entry(spec.name.clone()).or_default(), scaled);
             }
-            // 其余 kind（Guard/Warcry/AuraDebuff/CurseBuff/Link）：M3 框架内
+            // 其余 kind（Guard/Warcry/AuraDebuff/CurseBuff/Link）：框架内
             // 「原值直注」兼容路径（不缩放、不置条件；当前编排层不构造这些 kind，
             // 行为与现状一致）。
             _ => {
@@ -478,7 +478,7 @@ pub fn buff_pass(env: &mut Env) {
         }
     }
 
-    // —— curse limit + 分槽（vendor :2829-2896）——
+    // curse limit + 分槽（vendor :2829-2896）
     // limit：override(CurseLimitIsMaximumPowerCharges → PowerChargesMax) else
     // 基线 1（CalcSetup.lua:648，数据镜像 base_player_mods.json）+ Σ BASE。
     let curse_limit = if env
@@ -554,7 +554,7 @@ pub fn buff_pass(env: &mut Env) {
         }
     }
 
-    // —— 写入阶段（只写 player/enemy mod_db + cfg.conditions/multipliers + 输出桥）——
+    // 写入阶段（只写 player/enemy mod_db + cfg.conditions/multipliers + 输出桥）
     let buff_on_self = player_buffs.len() as f64;
     for (_, mods) in player_buffs {
         env.player.mod_db.add_list(mods);
@@ -700,7 +700,7 @@ mod tests {
         }
     }
 
-    // ===== ScaleAddMod 取整语义（vendor ModStore.lua:45-79，经 T1 原语复用） =====
+    // ScaleAddMod 取整语义（vendor ModStore.lua:45-79，经 T1 原语复用）
 
     /// 构造与 `overlay/high_precision_mods.json` 相关条目逐值一致的规则表
     /// （Data.lua:415-530 节选：本测试触及的名字）。
@@ -792,7 +792,7 @@ mod tests {
         );
     }
 
-    // ===== curse priority（vendor determineCursePriority :454-485，表驱动） =====
+    // curse priority（vendor determineCursePriority :454-485，表驱动）
 
     /// vendor 数值样例：`base + min(socket,8)×100 + slot_weight + source_weight`。
     #[test]
@@ -848,7 +848,7 @@ mod tests {
         );
     }
 
-    // ===== 门控不变式（D5 / 本波锚点） =====
+    // 门控不变式（D5 / 本波锚点）
 
     /// `mode_buffs == false`（默认）→ 有 spec 也整段空转：双 db / 条件 / 输出桥逐值不变。
     #[test]
@@ -875,7 +875,7 @@ mod tests {
         assert_eq!(env.curse_pass_output, None);
     }
 
-    // ===== curse limit / 分槽（vendor :2829-2896） =====
+    // curse limit / 分槽（vendor :2829-2896）
 
     /// 3 hex 入 1 limit → priority 最高者独占槽；败者词条不入敌 db。
     #[test]
@@ -1017,7 +1017,7 @@ mod tests {
         );
     }
 
-    // ===== CurseEffect 乘区 + Condition:Effective 口径（vendor :2295-2316） =====
+    // CurseEffect 乘区 + Condition:Effective 口径（vendor :2295-2316）
 
     /// 20% inc CurseEffect → hex 词条 ×1.2；敌侧 CurseEffectOnSelf MORE 只作用于
     /// hex（非 mark，:2303-2305）；缩放产物带 Condition:Effective（面板口径不命中）。
@@ -1077,9 +1077,9 @@ mod tests {
         );
     }
 
-    // ===== BuffSpec 兼容路径 / 双计防护（§6.1） =====
+    // BuffSpec 兼容路径 / 双计防护（§6.1）
 
-    /// Buff 分支（M4-G，vendor :1949-1962）：BuffEffect 乘区缩放 + AffectedBy 条件。
+    /// Buff 分支：BuffEffect 乘区缩放 + AffectedBy 条件。
     /// 50% inc BuffEffect + buff 给 20% INC → 30% INC。
     #[test]
     fn buff_kind_scales_with_buff_effect_and_sets_condition() {
@@ -1148,9 +1148,9 @@ mod tests {
         assert!(!env.cfg.condition("AffectedBySteelskin"));
     }
 
-    // ===== aura 乘区（vendor :2102-2110） =====
+    // aura 乘区（vendor :2102-2110）
 
-    /// 20% inc AuraEffect + aura 给 100 ES → 120（蓝图 §6.5 fixture，单元级）。
+    /// 20% inc AuraEffect + aura 给 100 ES → 120。
     #[test]
     fn aura_effect_scales_buff_mods() {
         let mut env = buffed_env();

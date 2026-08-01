@@ -219,7 +219,7 @@ fn substitute_slot_placeholder(modifier: &mut Modifier, slot_id: &str) {
     }
 }
 
-// ── flask / charm 词条接入（M3-T4 D2，蓝图 m3-orchestration.md §7.2）───────────
+// flask / charm 词条接入
 //
 // flask/charm 词条**不直接**进入聚合：解析产物包进一个 List 型「载荷 mod」
 // （[`FLASK_BUFF_LIST_NAME`] / [`CHARM_BUFF_LIST_NAME`]，`ModValue::NestedMods`），
@@ -228,7 +228,7 @@ fn substitute_slot_placeholder(modifier: &mut Modifier, slot_id: &str) {
 // mergeFlasks/mergeCharms 的「收集 → ScaleAddList → AddList」两段式）。
 // List mod 不参与 sum/more/flag 聚合 → 载荷在未合并前对输出零影响（搬迁不变式）。
 //
-// 范围声明（M3）：只覆盖「词条进计算 + 吃 effect 乘区」；充能/持续时间/恢复模型
+// 范围声明：只覆盖「词条进计算 + 吃 effect 乘区」；充能/持续时间/恢复模型
 // （vendor flaskData.duration/charges、calcFlaskRecovery）不建。
 
 /// flask 词条载荷 List mod 名（`merge_flasks_charms` 消费）。
@@ -259,7 +259,7 @@ pub fn classify_utility_item(item: &Item) -> UtilityItemKind {
 
 /// 把一件**激活态** flask/charm 的词条解析为载荷 List mod（零直接聚合影响）。
 ///
-/// - 归因：`SourceId(SourceKind::Flask, "flask.<slot_key>")`（蓝图 D4），
+/// - 归因：`SourceId(SourceKind::Flask, "flask.<slot_key>")`，
 ///   `slot_key` = 槽名小写去空格（`"Charm 1"` → `charm1`）；内层 mod 各自带
 ///   origin（slot + raw_text），merge 注入后可逐词条回溯。
 /// - `N% increased/reduced effect` → 载荷内 [`LOCAL_UTILITY_EFFECT_NAME`] Inc。
@@ -268,7 +268,7 @@ pub fn classify_utility_item(item: &Item) -> UtilityItemKind {
 /// - 其余行剥 `... during effect` 后缀复用 [`parse_mod`]（激活态语义已由槽位
 ///   `active` 门控承担）；不可解析行（含解析硬错误——flask 文本多为触发/恢复行，
 ///   按编排层 skip-and-collect 容错口径）收集进 [`ItemIngest::unsupported`]。
-/// - 全部行不可解析时**仍产出空载荷**（M4-m：vendor 条件置位与 modList 无关，
+/// - 全部行不可解析时**仍产出空载荷**（vendor 条件置位与 modList 无关，
 ///   CalcPerform.lua:1634-1643——`UsingCharm`/`UsingFlask` 按激活槽位置真）。
 pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'_>) -> ItemIngest {
     let slot_key: String = slot_name
@@ -313,7 +313,7 @@ pub fn ingest_flask_charm_with_ctx(slot_name: &str, item: &Item, ctx: ParseCtx<'
         }
     }
 
-    // （M4-m）空载荷**仍产出**载荷 mod：vendor 对每个进预算的激活 flask/charm
+    // 空载荷**仍产出**载荷 mod：vendor 对每个进预算的激活 flask/charm
     // 无条件置 `UsingFlask`/`UsingCharm` + `Using<Base名>` 条件（CalcPerform.lua
     // :1634-1643 charmConditions / flask 同构），与 modList 是否有可解析词条无关
     // ——「while you have an active Charm」族词条依赖该条件。空 NestedMods 在

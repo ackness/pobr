@@ -1,9 +1,9 @@
-//! M3-T1 A5：config fixture 集成测试。
+//!  config fixture 集成测试。
 //!
-//! 口径（蓝图 §4.5）：断言「输入解析正确产出 RawConfigInputs + interpreter
+//! 口径：断言「输入解析正确产出 RawConfigInputs + interpreter
 //! 产出 ConfigOutcome 正确」。现网 `calculate_with_data` 已切 interpreter 主
 //! 路径（`config_resolve`，commit ①）；旧 parse_config 保留为回退/对照
-//! （双跑持续回归见 `config_dualrun.rs`）。
+//! （持续回归见 `config_dualrun.rs`）。
 //!
 //! fixture 覆盖（`tests/fixtures/config_*.xml`）：count 型 stationary、
 //! implyCond 链、enemy 抗性覆盖 + enemyIsBoss=None、customMods 多行
@@ -245,7 +245,7 @@ fn custom_mods_feed_calculation_end_to_end() {
         without.life
     );
 
-    // 缺 catalog（BuildData::empty）→ R7 回退：customMods 不消费，与对照组等值。
+    // 缺 catalog（BuildData::empty）→ 缺表容忍回退：customMods 不消费，与对照组等值。
     let empty_with = calculate_with_data(&build, &BuildData::empty(), &opts).expect("calc empty");
     let empty_plain = calculate_with_data(&plain, &BuildData::empty(), &opts).expect("calc empty");
     assert_eq!(

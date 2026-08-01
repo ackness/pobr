@@ -2,7 +2,7 @@
 
 use super::*;
 
-/// 识别召唤宝石 → 接入 `Env.minions`（M5a-B2）。
+/// 识别召唤宝石 → 接入 `Env.minions`。
 ///
 /// 遍历启用的 socket group，对每个**主动技能**（非 support）的授予效果，查
 /// [`BuildData::effect_minion_list`]：非空即为召唤技能。对列表中每个 minion id
@@ -17,7 +17,7 @@ use super::*;
 /// **数量上限**：按 vendor `CalcPerform.lua:1183-1187` 取召唤物 `limit` stat 在玩家
 /// modList 的 BASE 之和（[`CalculationSession::base_sum`]），缺则兜底 1（至少一个
 /// 召唤物，使 life/DPS 可见）。`ActiveMinionLimit` MORE 乘区与 Override 口径属
-/// 后续细化（蓝图 §6 开放问题 3）。
+/// 后续细化。
 ///
 /// **MinionModifier 通道（B3）**：`Minions deal/have …` 族词条经引擎
 /// `MinionModifier` LIST 产物 +
@@ -416,9 +416,9 @@ pub fn resolve_main_skill_selection(build: &Build, data: &BuildData) -> Option<(
 /// 等级越界由 [`BuildData::resolve_skill_level`] 的 `rfind(level ≤ gem_level)` 自然 clamp
 /// （分等级数据通常覆盖到 ~40 级）。通用：按 `skill_types` 标签匹配，绝不按 build/skill id 特化。
 ///
-/// 历史：M4 Wave9 曾对 `skill_types[Grenade]` 暂关此加成（当时 Speed ×1.95 双计 +
-/// GrenadeActivateTwice 形成吞吐过算，正确 +N 等级会进一步放大）；M4-j3 冷却管辖速率
-/// 修复 Speed 后该过算消失、per-hit 低估暴露为主缺口，M4-k 解除 gating（vendor
+/// 历史：Wave9 曾对 `skill_types[Grenade]` 暂关此加成（当时 Speed ×1.95 双计 +
+/// GrenadeActivateTwice 形成吞吐过算，正确 +N 等级会进一步放大）；冷却管辖速率
+/// 修复 Speed 后该过算消失、per-hit 低估暴露为主缺口，解除 gating（vendor
 /// CalcSetup.lua 宝石等级段对所有技能一致叠加，无 grenade 特例）。
 pub(crate) fn resolve_skill_level_with_gem_bonus(
     build: &Build,
@@ -626,7 +626,7 @@ pub(crate) fn additional_gem_levels(build: &Build, data: &BuildData, skill_id: &
         .sum()
 }
 
-/// 宝石品质加成应用（M4-H；vendor `applyGemMods` 对**每个** gem effect 叠加
+/// 宝石品质加成应用（vendor `applyGemMods` 对**每个** gem effect 叠加
 /// `effect.quality`，CalcSetup.lua:410-435 + :1697/:1788——active 与 support
 /// 一致享受）。PoBR 等价：入口处克隆 build，把每个启用宝石组里每个宝石的
 /// `quality` 预先加上适用的 GemProperty Quality 加成，下游全部 quality 消费点
@@ -698,7 +698,7 @@ pub(crate) fn slot_bonus_effect_scales(
             }
         }
     };
-    // （M4-m）quiver 变体（vendor CalcSetup.lua:1366-1373：`itemList["Weapon 2"]
+    // quiver 变体（vendor CalcSetup.lua:1366-1373：`itemList["Weapon 2"]
     // .type == "Quiver"` 时把箭袋 modList 逐条 ScaleAddMod；oracle 来源记
     // "Many Sources:N% Quiver Bonus Effect"）——仅副手槽实为箭袋时收集。
     let weapon2_is_quiver = build
@@ -706,7 +706,7 @@ pub(crate) fn slot_bonus_effect_scales(
         .get(&Weapon2)
         .and_then(|item| data.base_items.get(&item.base.to_string()))
         .is_some_and(|def| def.item_class == "Quiver");
-    // （M4-n）focus 变体（vendor CalcSetup.lua:1209-1220：`item.type == "Focus"`
+    // focus 变体（vendor CalcSetup.lua:1209-1220：`item.type == "Focus"`
     // 时对该件全局 modList 整体 ScaleAddList(scale-1)，scale 来自
     // `EffectOfBonusesFromFocus`，ModParser.lua:4867『N% reduced bonuses gained
     // from equipped focus』→ INC -N；Disciple of Varashta『Instruments of
@@ -901,7 +901,7 @@ pub(crate) struct GemPropertyBonus {
     pub(crate) attr_req: Option<&'static str>,
 }
 
-/// 解析 GemProperty 词条（M4-H 扩展；vendor ModParser.lua:3468
+/// 解析 GemProperty 词条（扩展；vendor ModParser.lua:3468
 /// `([%+%-]%d+)%%? to (%a+) of all ?([%a%-' ]*) skills? ?w?i?t?h? ?a?n?
 /// ?(%a+) ?r?e?q?u?i?r?e?m?e?n?t?`）：
 /// - `+N to Level of all [<category> ]Skills` → Level
@@ -1060,7 +1060,7 @@ mod gem_level_tests {
         list.iter().map(|s| s.to_string()).collect()
     }
 
-    /// 品质维度 + 属性需求尾缀（M4-H；vendor ModParser.lua:3468 GemProperty 形：
+    /// 品质维度 + 属性需求尾缀（vendor ModParser.lua:3468 GemProperty 形：
     /// 树「Skill Gem Quality」小点 / Motoric Implants；mercenary-gemling 实例
     /// vendor 实测 q20+2+2+2(+5 升华) = 31、lv20+2+2 = 24）。
     #[test]

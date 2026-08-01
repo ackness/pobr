@@ -3,8 +3,8 @@
 //! - 数据驱动 scan 引擎（[`scan`] / [`compiled`] / [`forms`] / [`template`] /
 //!   [`engine`]）：消费 Track A 预交付的 `overlay/mod_parser_rules.json`
 //!   （schema `pobr_data::catalog::parser_rules`），照搬 vendor `ModParser.lua`
-//!   的 `scan()` + `parseMod()` 语义（蓝图 m6-parser-rules.md §2–§4）。引擎入口
-//!   [`engine::parse_mod_engine`] 是**唯一**解析器（M6 收尾已删 legacy 手写
+//!   的 `scan()` + `parseMod()` 语义。引擎入口
+//!   [`engine::parse_mod_engine`] 是**唯一**解析器（收尾已删 legacy 手写
 //!   解析器）——orchestrator 经 pobr-gamedata 恒 load `mod_parser_rules.json`
 //!   编译 [`CompiledParserRules`] 注入 session；未注入规则时 [`ParseCtx`] 对
 //!   每行返回整行 Unsupported（见 [`dispatch`] 模块文档）。

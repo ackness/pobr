@@ -150,7 +150,7 @@ Item Level: 1
     assert!(item.modifier_texts.is_empty());
 }
 
-// ── Bug Fix: item-text-range-tier-marker-not-stripped ──────────────────────
+// Bug Fix: item-text-range-tier-marker-not-stripped
 //
 // PoB 导出的词条行常带 `{range:0.5}` / `(tier: 3)` / `[augmented]` 等元注释。
 // 修复后这些注释在喂给 mod_parser 前被剥离，解析不再归入 Unsupported。
@@ -314,9 +314,7 @@ Item Level: 60
     assert_eq!(item.modifier_texts, vec!["+40 to maximum Life"]);
 }
 
-// ---------------------------------------------------------------------------
 // PoB Build XML 内嵌 <Item> 文本块解析（无 -------- 段分隔，按 Implicits: N 计数）
-// ---------------------------------------------------------------------------
 
 /// 真实 PoB2 Build XML 的 RARE 武器块（无段分隔，含 Rune: / {enchant}{rune} / {fractured}）。
 const XML_RARE_CROSSBOW: &str = "\

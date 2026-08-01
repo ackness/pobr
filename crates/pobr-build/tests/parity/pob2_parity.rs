@@ -148,15 +148,15 @@ fn deadeye_parity_report() {
     // 过算耦合，单边修复会让 DPS 反向跑飞），不在本 wave 凑值范围。容差按当前真实偏差放宽，
     // 待 grenade 链路数据补齐后收紧。
     //
-    // M1-T2.4 statmap 切换（Legacy→Data）后再放宽：Data 通道补上 legacy 漏注入的
+    // statmap 切换（Legacy→Data）后再放宽：Data 通道补上 legacy 漏注入的
     // Multishot −25% more（`sup_dex.lua:3154-3156`，修对）后，本旧样本 AverageDamage
     // 0.817x→0.613x、TotalDPS 同步下移——legacy 假性命中的又一层「过算抵消欠算」
     // 被拆除，真实 base/吞吐缺口完整暴露（与 ninja deadeye 行同一补偿结，切换审查
     // 记录 §3）。
     //
-    // M2 补刀（武器集专属点过滤，vendor CalcSetup.lua:209-233/:791-792）同向放宽：
+    // 补刀（武器集专属点过滤，vendor CalcSetup.lua:209-233/:791-792）同向放宽：
     // 此前非激活 WeaponSet2 的 22 个专属点（含伤害节点）被错误计入，假性收敛；按
-    // vendor 语义剔除后偏差全部归属上述已记录的 grenade base/吞吐缺口。M1+M2 合并后
+    // vendor 语义剔除后偏差全部归属上述已记录的 grenade base/吞吐缺口。+合并后
     // 两层「过算抵消欠算」**叠乘**拆除（0.613x × 0.647/0.817 ≈ 0.485x，实测吻合），
     // 容差按合并后真实偏差放宽，只防进一步倒退；待 grenade 冷却吞吐 / Mirage 数据
     // 补齐后收紧。

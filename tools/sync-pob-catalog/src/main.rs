@@ -72,27 +72,27 @@ fn run() -> io::Result<()> {
     }
 }
 
-// ---- extract-lua / extract-bases：vendor Lua → overlay JSON（确定性抽取通道）----
+// extract-lua / extract-bases：vendor Lua → overlay JSON（确定性抽取通道）
 
 fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io::Result<()> {
     let parsed = ExtractCliArgs::parse(args)?;
     // 缺省 --files：extract-bases 取基底数据文件集（Data/Bases）；extract-lua 按
-    // `--what` 抽取目标取各自约定——stat-map 不含 minion/spectre（M1 蓝图 T2.1，
-    // 召唤物 statMap 留 M5a）；gem-effects 恒读 Data/Gems.lua（--files 仅为公共
+    // `--what` 抽取目标取各自约定——stat-map 不含 minion/spectre（召唤物
+    // statMap 走各自的抽取目标）；gem-effects 恒读 Data/Gems.lua（--files 仅为公共
     // 调用层占位）；其余目标用全量技能文件。
     let default_files: &[&str] = if command == "extract-bases" {
         DEFAULT_BASE_FILES
     } else {
         match parsed.what.as_deref() {
             Some("stat-map") => DEFAULT_STAT_MAP_SKILL_FILES,
-            // stat-descriptions：root + passive + presence/aura（M6 E/F tree 通道）
+            // stat-descriptions：root + passive + presence/aura（tree 通道）
             Some("stat-descriptions") => DEFAULT_STAT_DESC_FILES,
             Some("gem-effects") => &["Gems"],
             // config-options 恒读 Modules/ConfigOptions.lua（headless 引导，--files 仅占位）
             Some("config-options") => &["ConfigOptions"],
-            // curse-priority 恒读 Modules/Data.lua 的 data.cursePriority 表字面量（M3 S1-C）
+            // curse-priority 恒读 Modules/Data.lua 的 data.cursePriority 表字面量（-C）
             Some("curse-priority") => &["Data"],
-            // pre-M5 数据生产目标：minions/spectres/mod-scalability/runes/catalysts
+            // 数据生产目标：minions/spectres/mod-scalability/runes/catalysts
             // 抽取文件固定（runner 内校验）；uniques 用 itemTypes 全集；minion-list
             // 复用全量技能文件（与 skill-overrides 同集）。
             Some("minions") => &["Minions"],
@@ -128,11 +128,11 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
         version_file: parsed.version_file,
         out_for_meta,
     };
-    // 抽取目标分发：extract-bases（基底物品覆盖值，M2-D1）；extract-lua 按 `--what`
-    // ——skill-overrides（缺省，per-skill 覆盖值）/ gem-quality（宝石品质 stat 斜率，
-    // M1-T1）/ stat-map（SkillStatMap 全局 + per-set 覆盖，M1-T2）/ gem-effects
-    // （宝石→授予效果连边，M1-T5.1）/ stat-set-labels（M1-T5.2）/ config-options
-    // （ConfigOptions 目录，M3 前置）/ parser-rules（ModParser 解析规则六表，M6 前置）。
+    // 抽取目标分发：extract-bases（基底物品覆盖值）；extract-lua 按 `--what`
+    // ——skill-overrides（缺省，per-skill 覆盖值）/ gem-quality（宝石品质 stat
+    // 斜率）/ stat-map（SkillStatMap 全局 + per-set 覆盖）/ gem-effects（宝石→
+    // 授予效果连边）/ stat-set-labels / config-options（ConfigOptions 目录）/
+    // parser-rules（ModParser 解析规则六表）。
     let json = if command == "extract-bases" {
         if let Some(what) = parsed.what.as_deref() {
             return Err(io::Error::new(
@@ -184,7 +184,7 @@ fn run_extract_command(command: &str, args: impl Iterator<Item = String>) -> io:
     }
 }
 
-// ---- gen-mirage-configs：工具内嵌 5 条 mirage 配置 → overlay JSON ----
+// gen-mirage-configs：工具内嵌 5 条 mirage 配置 → overlay JSON
 
 fn run_gen_mirage_configs_command(args: impl Iterator<Item = String>) -> io::Result<()> {
     let parsed = ExtractCliArgs::parse(args)?;
@@ -219,7 +219,7 @@ fn run_gen_mirage_configs_command(args: impl Iterator<Item = String>) -> io::Res
     }
 }
 
-// ---- gen-trigger-configs（M4-T5 W-E1）：工具内嵌 61 条触发配置 → overlay JSON ----
+// gen-trigger-configs：工具内嵌 61 条触发配置 → overlay JSON
 
 fn run_gen_trigger_configs_command(args: impl Iterator<Item = String>) -> io::Result<()> {
     let parsed = ExtractCliArgs::parse(args)?;
@@ -251,7 +251,7 @@ fn run_gen_trigger_configs_command(args: impl Iterator<Item = String>) -> io::Re
     }
 }
 
-// ---- gen-stat-id-map（M6 E/F 段 B）：消费两份 overlay，跑引擎派生 stat_id → modifier ----
+// gen-stat-id-map：消费两份 overlay，跑引擎派生 stat_id → modifier
 
 fn run_gen_stat_id_map_command(mut args: impl Iterator<Item = String>) -> io::Result<()> {
     let mut overlay_dir = None;
@@ -293,7 +293,7 @@ fn run_gen_stat_id_map_command(mut args: impl Iterator<Item = String>) -> io::Re
     }
 }
 
-// ---- gen-skill-types（数据驱动 A1）：Global.lua SkillType 全量枚举 → pobr-data 静态表 ----
+// gen-skill-types（数据驱动 A1）：Global.lua SkillType 全量枚举 → pobr-data 静态表
 
 fn run_gen_skill_types_command(mut args: impl Iterator<Item = String>) -> io::Result<()> {
     let mut vendor_root = None;
@@ -382,7 +382,7 @@ impl ExtractCliArgs {
     }
 }
 
-// ---- check-buff-refs：buff_definitions.json vendor 行段 hash 对账 ----
+// check-buff-refs：buff_definitions.json vendor 行段 hash 对账
 
 fn run_check_buff_refs_command(mut args: impl Iterator<Item = String>) -> io::Result<()> {
     let mut vendor_root = None;
@@ -435,7 +435,7 @@ fn run_check_buff_refs_command(mut args: impl Iterator<Item = String>) -> io::Re
     }
 }
 
-// ---- parser-rules drift diff：重抽 vs 已提交 byte-diff（M6 前置任务 3）----
+// parser-rules drift diff：重抽 vs 已提交 byte-diff（任务 3）
 
 fn run_parser_rules_drift_command(mut args: impl Iterator<Item = String>) -> io::Result<()> {
     let mut vendor_root = None;
@@ -518,7 +518,7 @@ fn run_parser_rules_drift_command(mut args: impl Iterator<Item = String>) -> io:
     )))
 }
 
-// ---- 既有 catalog 命令（scan/check/diff/fixture-check）----
+// 既有 catalog 命令（scan/check/diff/fixture-check）
 
 fn run_catalog_command(command: &str, args: impl Iterator<Item = String>) -> io::Result<()> {
     let args = CatalogCliArgs::parse(args)?;

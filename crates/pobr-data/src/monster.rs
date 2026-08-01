@@ -1,6 +1,6 @@
 //! PoE2 怪物等级缩放表与 Boss 档位枚举。
 //!
-//! **降级说明（M0-W3，架构文档 20 §1 P8）**：本文件的**数值段**（百级表 +
+//! **降级说明**：本文件的**数值段**（百级表 +
 //! 倍率/均值常量 + `EnemyTierDefaults::compute` 查表路径）已从「计算数据准源」
 //! 降级为 **fallback 层**——数值准源迁移至 `data/<poe_version>/base/` 的
 //! `monster_scaling.json` + `enemy_presets.json`（schema 见
@@ -17,7 +17,7 @@
 //! - 尚未切换的存量消费点（后续 wave 处理）：`perform.rs` 的异常/姿态阈值查表
 //!   （`enemy_ailment_threshold`/`enemy_poise_threshold`）、`minion.rs` 的
 //!   `MonsterScalingRow`（召唤物基线，函数签名无 cfg 通道）。
-//! - 待 M0 后续 wave 清空全部 fallback 依赖后删除数值段。
+//! - 待清空全部 fallback 依赖后删除数值段。
 //!
 //! 数据来源：
 //! - `src/Data/Misc.lua`（PathOfBuilding-PoE2 dev 分支）—— `data.monsterAccuracyTable` /
@@ -39,9 +39,7 @@
 
 use serde::{Deserialize, Serialize};
 
-// ---------------------------------------------------------------------------
 // 常量
-// ---------------------------------------------------------------------------
 
 /// 默认最大怪物等级上限（PoB2 `data.misc.MaxEnemyLevel = 85`）。
 /// `enemyLevel` 默认值 = `min(MAX_ENEMY_LEVEL, char_level)`。
@@ -104,9 +102,7 @@ pub const UBER_ARMOUR_MEAN: f64 = 125.0;
 /// Uber Boss 闪避倍率（百分比；PoB2 `bossStats.UberEvasionMean`）。
 pub const UBER_EVASION_MEAN: f64 = 116.571_428_571_428_57;
 
-// ---------------------------------------------------------------------------
 // 异常阈值相关游戏常量（来自 src/Data/Misc.lua data.gameConstants）
-// ---------------------------------------------------------------------------
 
 /// 感电几率倍率：`hitChance = hitAvg / enemyThreshold * SHOCK_CHANCE_MULTIPLIER`。
 ///
@@ -177,11 +173,9 @@ pub const BOSS_POISE_THRESHOLD_MORE: f64 = 500.0;
 /// 来源：PoB2 `src/Data/Misc.lua::data.gameConstants["PlayerAilmentThresholdLifeFactor"] = 0.5`。
 pub const PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR: f64 = 0.5;
 
-// ---------------------------------------------------------------------------
 // 查表：怪物精准（monsterAccuracyTable，100 项，来自 DefaultMonsterStats.dat）
 // 索引 i 对应怪物等级 i+1；表中已按等级 1-indexed。
 // 来源：src/Data/Misc.lua data.monsterAccuracyTable
-// ---------------------------------------------------------------------------
 
 /// 怪物精准值查表（等级 1..=100）。
 ///
@@ -288,14 +282,12 @@ pub const MONSTER_DAMAGE_TABLE: [f64; MONSTER_TABLE_LEN] = [
     584.05, // lv91-100
 ];
 
-// ---------------------------------------------------------------------------
 // 查表：怪物异常阈值（monsterAilmentThresholdTable，100 项）
 // 用于几率派生型异常（点燃 Ignite / 感电 Shock / 冰缓 Chill 最小阈值）。
 // 注：与怪物生命**无关**，独立按等级索引。lv65+ 出现大幅跳升（终局/boss 区间）。
 // 来源：src/Data/Misc.lua data.monsterAilmentThresholdTable（PathOfBuilding-PoE2 dev）
 // PoB2 CalcOffence.lua:
 //   enemyThreshold = data.monsterAilmentThresholdTable[env.enemyLevel] * mod(EnemyAilmentThreshold)
-// ---------------------------------------------------------------------------
 
 /// 怪物异常阈值查表（等级 1..=100）。
 ///
@@ -316,7 +308,6 @@ pub const MONSTER_AILMENT_THRESHOLD_TABLE: [u32; MONSTER_TABLE_LEN] = [
     97295, 100183, 103071, 105959, 108847, 111735, 114623, 117511, 120399, 123287, // lv91-100
 ];
 
-// ---------------------------------------------------------------------------
 // 查表：怪物姿态阈值（monsterPoiseThresholdTable，100 项）
 // 用于积累型 debuff（冰冻 Freeze / 电击 Electrocute / 重眩晕 HeavyStun / 钉刺 Pin）。
 // Boss 在此基础上通过 mod_db PoiseThreshold MORE 500 乘以 5 倍（已在 setup_env.rs 注入）。
@@ -324,7 +315,6 @@ pub const MONSTER_AILMENT_THRESHOLD_TABLE: [u32; MONSTER_TABLE_LEN] = [
 // PoB2 CalcOffence.lua:
 //   enemyPoiseThreshold = floor(monsterPoiseThresholdTable[enemyLevel]
 //       * mod(PoiseThreshold, ailment.."Threshold", ...EnemyAilmentThreshold))
-// ---------------------------------------------------------------------------
 
 /// 怪物姿态阈值查表（等级 1..=100）。
 ///
@@ -347,9 +337,7 @@ pub const MONSTER_POISE_THRESHOLD_TABLE: [u32; MONSTER_TABLE_LEN] = [
     446335, // lv91-100
 ];
 
-// ---------------------------------------------------------------------------
 // 查表辅助函数
-// ---------------------------------------------------------------------------
 
 /// 将用户输入等级 clamp 到 `[1, MAX_ENEMY_LEVEL]`，返回有效等级。
 ///
@@ -469,9 +457,7 @@ pub fn chill_minimum_threshold(effective_threshold: f64) -> f64 {
     effective_threshold / CHILL_EFFECT_MULTIPLIER
 }
 
-// ---------------------------------------------------------------------------
 // 一行缩放数据的聚合结构（供 Step-2 setup_env 消费）
-// ---------------------------------------------------------------------------
 
 /// 怪物某等级的基础属性快照（精准/闪避/护甲/生命/伤害）。
 ///
@@ -514,9 +500,7 @@ impl MonsterScalingRow {
     }
 }
 
-// ---------------------------------------------------------------------------
 // EnemyTier 枚举
-// ---------------------------------------------------------------------------
 
 /// 敌人档位（对应 PoB2 ConfigOptions.lua `enemyIsBoss` 四档）。
 ///
@@ -712,15 +696,13 @@ impl EnemyTierDefaults {
     }
 }
 
-// ---------------------------------------------------------------------------
 // 单测
-// ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // --- 查表边界 ---
+    // 查表边界
 
     #[test]
     fn accuracy_table_lv1() {
@@ -800,7 +782,7 @@ mod tests {
         assert!((d - 385.42).abs() < 0.1, "lv85 damage ≈ 385.42, got {}", d);
     }
 
-    // --- 默认等级推导 ---
+    // 默认等级推导
 
     #[test]
     fn clamp_enemy_level_above_max() {
@@ -822,7 +804,7 @@ mod tests {
         assert_eq!(row.accuracy, monster_accuracy(60));
     }
 
-    // --- EnemyTier 默认值 ---
+    // EnemyTier 默认值
 
     #[test]
     fn enemy_tier_default_is_pinnacle() {
@@ -895,7 +877,7 @@ mod tests {
         assert!((EnemyTier::Uber.evasion_mult_pct() - 116.571).abs() < 0.001);
     }
 
-    // --- EnemyTierDefaults 聚合 ---
+    // EnemyTierDefaults 聚合
 
     #[test]
     fn tier_defaults_pinnacle_lv85() {
@@ -960,10 +942,8 @@ mod tests {
         assert_eq!(row.level, MAX_ENEMY_LEVEL);
     }
 
-    // -----------------------------------------------------------------------
     // 异常阈值（Ailment Threshold）查表测试
     // 参考：PoB2 src/Data/Misc.lua data.monsterAilmentThresholdTable（Lua 1-indexed）
-    // -----------------------------------------------------------------------
 
     #[test]
     fn ailment_threshold_lv1() {
@@ -1028,10 +1008,8 @@ mod tests {
         assert_eq!(enemy_ailment_threshold(0), enemy_ailment_threshold(1));
     }
 
-    // -----------------------------------------------------------------------
     // 姿态阈值（Poise Threshold）查表测试
     // 参考：PoB2 src/Data/Misc.lua data.monsterPoiseThresholdTable（Lua 1-indexed）
-    // -----------------------------------------------------------------------
 
     #[test]
     fn poise_threshold_lv1() {
@@ -1091,11 +1069,9 @@ mod tests {
         assert_eq!(enemy_poise_threshold(0), enemy_poise_threshold(1));
     }
 
-    // -----------------------------------------------------------------------
     // 姿态阈值 > 异常阈值（Boss 区间合理性）
     // PoB2 中 poise threshold 用于冰冻/电击等积累型 debuff，
     // 在 boss 区间（EndgameStartLevel 之后）大幅高于 ailment threshold。
-    // -----------------------------------------------------------------------
 
     #[test]
     fn poise_gt_ailment_at_endgame() {
@@ -1110,9 +1086,7 @@ mod tests {
         }
     }
 
-    // -----------------------------------------------------------------------
     // chill_minimum_threshold 辅助函数
-    // -----------------------------------------------------------------------
 
     #[test]
     fn chill_minimum_threshold_lv85() {
@@ -1138,9 +1112,7 @@ mod tests {
         );
     }
 
-    // -----------------------------------------------------------------------
     // 游戏常量验证
-    // -----------------------------------------------------------------------
 
     #[test]
     fn game_constants_values() {
@@ -1160,9 +1132,7 @@ mod tests {
         assert_eq!(PLAYER_AILMENT_THRESHOLD_LIFE_FACTOR, 0.5);
     }
 
-    // -----------------------------------------------------------------------
     // EnemyTier ↔ PoB2 enemyIsBoss 字符串
-    // -----------------------------------------------------------------------
 
     #[test]
     fn enemy_tier_parses_pob2_config_strings() {

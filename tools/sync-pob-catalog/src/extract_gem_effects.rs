@@ -1,11 +1,11 @@
 //! `extract-lua --what gem-effects`：vendor PoB2 `Data/Gems.lua` 的宝石→授予效果
-//! 连边 → `data/<版本>/overlay/gem_effects.json`（M1-T5.1，缺口 18-G5 数据面 +
+//! 连边 → `data/<版本>/overlay/gem_effects.json`（数据面 +
 //! 契约 C5 的 `SkillGemDef.granted_effect_id` 数据来源）。
 //!
-//! **通道说明**：蓝图原定从 `.dat` 表 `GemEffects` 走 adapter → `base/`，但该表
-//! 所在 bundle 在钉定补丁 4.5.0.3.4 已无法下载（M1-W0 核验，见 `pipeline/config.json`
+//! **通道说明**：原定从 `.dat` 表 `GemEffects` 走 adapter → `base/`，但该表
+//! 所在 bundle 在钉定补丁 4.5.0.3.4 已无法下载（核验，见 `pipeline/config.json`
 //! 的 `_tablesUnavailableForPinnedPatch`），按 owner 裁决「生产工具定层」
-//! （00-index §4.2-1）：extract-lua 抽取 → **overlay/**。vendor `Data/Gems.lua` 本就
+//!  extract-lua 抽取 → **overlay/**。vendor `Data/Gems.lua` 本就
 //! 是该表的导出产物（`Export/Scripts/skills.lua:898-925`），抽取为忠实转录。后续
 //! `.dat` 表通道恢复则迁回 `base/`（迁移 commit byte 等价）。
 //!

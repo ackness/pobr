@@ -69,7 +69,7 @@ impl BoundarySpec {
         }
     }
 
-    /// `resistance` 的别名（贴合机制蓝图命名）。
+    /// `resistance` 的别名（贴合机制命名）。
     pub fn resist_element() -> Self {
         Self::resistance()
     }

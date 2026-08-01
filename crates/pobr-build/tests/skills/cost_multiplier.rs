@@ -1,4 +1,4 @@
-//! M1-T4.4：辅助宝石 cost 倍率（SupportManaMultiplier）端到端验证。
+//!  辅助宝石 cost 倍率（SupportManaMultiplier）端到端验证。
 //!
 //! PoB2 一手依据：注入 `CalcActiveSkill.lua:689-691`（兼容 support 的
 //! `level.manaMultiplier` → `SupportManaMultiplier` MORE）；消费
@@ -20,7 +20,7 @@ fn repo_data() -> BuildData {
     BuildData::load(&data).expect("加载仓库数据")
 }
 
-/// oracle 对拍（蓝图 T4.4 验收）：druid-oracle-comet——Comet + 兼容 cost 倍率
+/// oracle 对拍：druid-oracle-comet——Comet + 兼容 cost 倍率
 /// support（当前兼容集 = Magnified Area II(+30%)）。
 ///
 /// **PoB2 golden**：headless oracle（`tools/pob2-oracle/run.sh`，与 meta.json

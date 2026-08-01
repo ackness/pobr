@@ -1,6 +1,5 @@
 //! `extract-lua --what parser-rules`：vendor `Modules/ModParser.lua` 解析规则
 //! 六表（special 除外）→ `data/<版本>/overlay/mod_parser_rules.json`
-//! （M6 前置，蓝图 m6-parser-rules.md §1）。
 //!
 //! 职责切分（与既有抽取目标同形）：
 //! - Lua 引导脚本（`extract_parser_rules.lua`）负责 headless 加载 + upvalue
@@ -14,7 +13,7 @@
 //! [`crate::extract_lua::invoke_luajit_jsonl`]（其不设 cwd/env）。
 //!
 //! 另含 parser-rules drift diff（`sync-pob-catalog parser-rules-drift`）：
-//! 重抽 vs 已提交 byte-diff + 分段差异摘要（M6 前置任务 3）。
+//! 重抽 vs 已提交 byte-diff + 分段差异摘要（任务 3）。
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, Write};
@@ -32,11 +31,11 @@ use crate::extract_lua::{ExtractLuaArgs, OverlayMeta, read_vendor_version, resol
 const BOOTSTRAP_LUA: &str = include_str!("extract_parser_rules.lua");
 
 /// 计数自检钉定的 vendor commit（`.pob2-version.txt`）。该 commit 下各段条目数
-/// 必须与 [`PINNED_SECTION_COUNTS`] 完全一致（蓝图 §1.9 自检，容差 0）；其它
+/// 必须与 [`PINNED_SECTION_COUNTS`] 完全一致；其它
 /// commit（version-bump 演练）只告警不报错，保证抽取器可吸收 vendor 漂移。
 pub const PINNED_VENDOR_COMMIT: &str = "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f";
 
-/// 钉定 commit 下的各段条目数（2026-06 实测；蓝图 §1 的 776/684 为估值，
+/// 钉定 commit 下的各段条目数（2026-06 实测；的 776/684 为估值，
 /// 以实测为准——偏差记录见 blueprints/m6-extraction-report.md）。
 ///
 /// `flag_types` = 24（vendor 主表）+ 1（路线 B 抽取期补回的 legacy `hindered`
@@ -60,7 +59,7 @@ pub const PINNED_SECTION_COUNTS: &[(&str, usize)] = &[
     ("unsupported", 1),
 ];
 
-/// 钉定 commit 下 formList 的 form id 全集（28 种，蓝图 §1.1）。
+/// 钉定 commit 下 formList 的 form id 全集。
 pub const PINNED_FORM_IDS: &[&str] = &[
     "BASE",
     "BASECOST",
@@ -93,7 +92,7 @@ pub const PINNED_FORM_IDS: &[&str] = &[
 ];
 
 /// pobr 自加的 unsupported 项（vendor 仅 `mirrored`；`split` 来自现
-/// `pobr-core::mod_parser` 硬编码，蓝图 §1.6 要求迁表保留并注明来源）。
+/// `pobr-core::mod_parser` 硬编码，要求迁表保留并注明来源）。
 ///
 /// B3 闸门切换暂缓行。历史欠条已**全部**解冻（与 overlay JSON 手术同步，此表是
 /// regen 的单源）：deadeye 两条随 gain-as fallback 修复解冻（PR#50）；gemling
@@ -124,7 +123,7 @@ const POBR_EXTRA_TAG_PHRASES: &[(&str, &str)] = &[
     ),
 ];
 
-/// vendor 死条目（B3 裁决）：modFlagList 里存在、但 vendor `parseMod` 运行时**永不
+/// vendor 死条目：modFlagList 里存在、但 vendor `parseMod` 运行时**永不
 /// 命中**的 flag 短语——skillNameList 的 SkillName 剥离（order=1，在 flag scan
 /// 之前）抢先吃掉短语中的技能名，残留非空 → 整行不生效。裁决方法：
 /// `tools/pob2-oracle/run-parsemod.sh` 实喂词条看 leftover；版本升级后 parity
@@ -151,7 +150,7 @@ pub struct ParserRulesDoc {
     /// 头部元信息（serde 落为 `_meta`，置于文件最前）。
     #[serde(rename = "_meta")]
     pub meta: OverlayMeta,
-    /// 规则各段（蓝图 §1.8 顺序）。
+    /// 规则各段。
     #[serde(flatten)]
     pub rules: ModParserRulesDoc,
 }
@@ -356,7 +355,7 @@ fn finalize_rules(doc: &mut ModParserRulesDoc) {
         }
     }
 
-    // 排序纪律（蓝图 §1.8）：Lua pairs 无序 → 每段按 pattern/phrase 字典序。
+    // 排序纪律：Lua pairs 无序 → 每段按 pattern/phrase 字典序。
     doc.forms.sort_by(|a, b| a.pattern.cmp(&b.pattern));
     doc.name_map.sort_by(|a, b| a.phrase.cmp(&b.phrase));
     doc.flag_phrases.sort_by(|a, b| a.phrase.cmp(&b.phrase));
@@ -376,12 +375,12 @@ fn finalize_rules(doc: &mut ModParserRulesDoc) {
         .map(|s| s.to_string())
         .collect();
 
-    // M6.3 路线 B：抽取期 vendor→PoBR 词表归一（别名 rename + 聚合展开 +
+    // .3 路线 B：抽取期 vendor→PoBR 词表归一（别名 rename + 聚合展开 +
     // DamageType tag）。引擎直接产 PoBR StatId，下游零改动、无运行期翻译层。
     normalize_name_map_to_pobr(doc);
 }
 
-/// M6.3 路线 B 抽取期归一：把 `name_map` 的 vendor ModName 归一为 PoBR canonical
+/// .3 路线 B 抽取期归一：把 `name_map` 的 vendor ModName 归一为 PoBR canonical
 /// StatId（别名表 [`VENDOR_NAME_ALIASES`]）+ 按短语展开聚合名
 /// （[`AGGREGATE_EXPANSION`]）。**源真理 =
 /// `data/overlay-common/vendor_name_aliases.json`**（本表的 real-rename 子集
@@ -446,7 +445,7 @@ fn normalize_name_map_to_pobr(doc: &mut ModParserRulesDoc) {
     normalize_legacy_consistency(doc);
 }
 
-/// M6.3 路线 B（D-T8 第二波 2a）：把三处 vendor↔legacy 形态差异从抽取期归一，
+/// .3 路线 B（D-T8 第二波 2a）：把三处 vendor↔legacy 形态差异从抽取期归一，
 /// 使引擎产 legacy-一致值（dual-run C1 DIFF=0/OLD_ONLY=0），并保留 `data/` 由工具
 /// 再生的不变式（不再手改 `mod_parser_rules.json`）。三处均为「4 真 bug」收敛项：
 ///
@@ -590,7 +589,7 @@ const AGGREGATE_EXPANSION: &[(&str, &[&str])] = &[
     ),
 ];
 
-/// 抽取自检（蓝图 §1.9）：钉定 commit 下计数 / form id 集容差 0（Err）；
+/// 抽取自检：钉定 commit 下计数 / form id 集容差 0（Err）；
 /// 其它 commit 只产出告警（演练时吸收 vendor 漂移）。各段键唯一性恒检查。
 fn self_check(doc: &ModParserRulesDoc, vendor_commit: &str) -> io::Result<Vec<String>> {
     let mut warnings = Vec::new();
@@ -818,7 +817,7 @@ fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
     })
 }
 
-// ---- parser-rules drift diff（重抽 vs 已提交）----
+// parser-rules drift diff（重抽 vs 已提交）
 
 /// drift diff 结果：byte 等价与人类可读差异摘要。
 #[derive(Debug)]
@@ -936,7 +935,7 @@ pub fn diff_parser_rules(committed: &str, regenerated: &str) -> io::Result<Parse
 mod tests {
     use super::derive_pattern_meta;
 
-    /// 蓝图 §1.1 例：`^` 锚 + `%%` 转义的 literal 派生。
+    /// 例：`^` 锚 + `%%` 转义的 literal 派生。
     #[test]
     fn literal_for_increased_form() {
         let (literal, anchored) = derive_pattern_meta("^(%d+)%% increased");
@@ -960,7 +959,7 @@ mod tests {
         assert!(!anchored);
     }
 
-    /// 字符类（`[...]`）断开 run；蓝图 §1.4 例。
+    /// 字符类（`[...]`）断开 run；例。
     #[test]
     fn literal_breaks_on_char_class() {
         let (literal, anchored) = derive_pattern_meta("^minions [cthd][ae][ukva][sel]e? ");

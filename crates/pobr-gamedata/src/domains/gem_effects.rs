@@ -1,6 +1,6 @@
 //! `overlay/gem_effects.json` loader——宝石→授予效果连边
 //! （`gem_id → {granted_effect_id, additional_granted_effect_ids, additional_stat_set_ids}`），
-//! schema 见 [`pobr_data::catalog::skills`] 的 `GemEffectDef` 段（M1-T5.1，缺口 18-G5
+//! schema 见 [`pobr_data::catalog::skills`] 的 `GemEffectDef` 段（
 //! 数据面 + 契约 C5 的 `SkillGemDef` 连边来源）。
 //!
 //! 数据来源：vendor PoB2 `Data/Gems.lua`（`.dat` `GemEffects` 表的导出产物，该表

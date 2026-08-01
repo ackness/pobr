@@ -1,6 +1,6 @@
 //! `base/character_constants.json` 加载 + 搬迁不变式回归。
 //!
-//! 断言策略（架构文档 20 §1.1 搬迁不变式）：
+//! 断言策略：
 //! - 有 pobr Rust 准源的 10 个值（`crates/pobr-core/src/character.rs` 常量），
 //!   逐值断言与准源字面量相等——pobr-gamedata 不依赖 pobr-core，无法直接引用
 //!   私有常量，故把准源值写死在测试里并注明常量名；准源若改值本测试即红。

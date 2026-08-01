@@ -1,4 +1,4 @@
-//! base → overlay 确定性 merge 引擎（架构文档 20 §4 要点 2）。
+//! base → overlay 确定性 merge 引擎。
 //!
 //! merge 语义在 gamedata **一处收口**（adapter 构建期的 skill_overrides merge 是
 //! 等价物，两处规则共享本文档）。规则（全部由单测锁定）：

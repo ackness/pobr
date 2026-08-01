@@ -3,7 +3,7 @@
 //! 扫描 `crates/pobr-data/src/` 下所有 `.rs` 文件：若出现连续字面量元素行超过
 //! [`MAX_CONSECUTIVE_LITERAL_LINES`] 的数组/常量表，即判定为「数据内嵌进框架代码」，
 //! 测试失败。游戏数据应走数据管线落到 `data/<ver>/`，由 pobr-gamedata 运行时加载，
-//! 而不是写死在 Rust 源码里（架构文档「数据-框架分离」硬目标）。
+//! 而不是写死在 Rust 源码里。
 //!
 //! 随 `cargo test --workspace` 自动执行，无需单独接 CI 步骤。
 
@@ -13,11 +13,11 @@ use std::path::{Path, PathBuf};
 /// 连续字面量元素行阈值：超过即视为内嵌数据表。
 const MAX_CONSECUTIVE_LITERAL_LINES: usize = 200;
 
-/// 按文件名的 allowlist：M0 期间尚未迁出的存量内嵌表。
+/// 按文件名的 allowlist：期间尚未迁出的存量内嵌表。
 ///
-/// TODO(M0 W2/W3)：monster.rs / minion.rs / constants.rs 的内嵌表迁入
+/// TODO(/W3)：monster.rs / minion.rs / constants.rs 的内嵌表迁入
 /// `data/<ver>/` L1 常量 JSON（monster_scaling / game_constants 等，见
-/// audits/rearchitecture-2026-06-10/21-roadmap.md M0 节）后，本列表必须清空。
+/// audits/rearchitecture-2026-06-10/21-roadmap.md节）后，本列表必须清空。
 /// 新文件**不得**加入本列表。
 const ALLOWLIST: &[&str] = &["monster.rs", "minion.rs", "constants.rs"];
 

@@ -8,8 +8,8 @@
 //! - 普通 token：压入「主动技能类型集合是否含该 token」；
 //! - 收尾：栈内**任一**为真即匹配（残留多值 = 隐式 OR）。
 //!
-//! 空栈防御按蓝图裁决（m1-skills-gems §T3.3）：弹空按 `false`。
-//! `minionTypes` 第二集合（CalcTools.lua:73）defer M5a（minion 技能链路）。
+//! 空栈防御按裁决（m1-skills-gems §T3.3）：弹空按 `false`。
+//! `minionTypes` 第二集合（CalcTools.lua:73）defer（minion 技能链路）。
 
 use std::collections::HashSet;
 
@@ -120,14 +120,14 @@ mod tests {
         assert!(!matches(&e, &active(&["Triggered"])));
     }
 
-    /// 边界：空表达式恒不匹配（「空 require = 接受」由调用方裁决）。
+    /// 边界：空表达式恒不匹配（「空 require = 接受」由调用方决定）。
     #[test]
     fn empty_expression_never_matches() {
         assert!(!matches(&[], &active(&["Attack"])));
         assert!(!matches(&[], &active(&[])));
     }
 
-    /// 边界：弹空按 false（蓝图裁决）——孤立操作符不 panic。
+    /// 边界：弹空按 false——孤立操作符不 panic。
     #[test]
     fn pop_on_empty_stack_is_false() {
         // [AND]：false ∧ false = false。

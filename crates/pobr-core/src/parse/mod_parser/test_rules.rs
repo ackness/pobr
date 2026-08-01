@@ -1,4 +1,4 @@
-//! 测试专用规则加载 helper（M6 D-T8 A2，`feature = "test-rules"`）。
+//! 测试专用规则加载 helper（-T8 A2，`feature = "test-rules"`）。
 //!
 //! pobr-core 本体零 I/O / 不依赖 serde_json（CLAUDE.md：I/O 收口在 pobr-gamedata
 //! 一处）。本模块**仅在 `test-rules` feature 下编译**，破例引入 serde_json + fs

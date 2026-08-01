@@ -268,7 +268,7 @@ fn session_add_item_feeds_minimal_calc() {
     assert_eq!(session.unsupported_modifier_texts(), ["mirrored"]);
 }
 
-// ── 品质不作为 More modifier 注入（finding 02-05 修正）─────────────────────
+// 品质不作为 More modifier 注入（finding 02-05 修正）
 //
 // PoB2 的物品品质是**逐属性 base 缩放**（武器仅物理；护甲 armour/evasion/ES 各自
 // 独立 × (1 + quality/100)），不是一个全局 `more` modifier。把品质作为
@@ -332,7 +332,7 @@ fn zero_quality_does_not_inject_modifier() {
     assert_no_quality_modifier(EquipmentSlot::Helmet, &bare_item("Iron Helmet", 0));
 }
 
-// ── Defer: 催化剂（accessory quality → catalyst）尚未建模 ───────────────────
+// Defer: 催化剂（accessory quality → catalyst）尚未建模
 //
 // PoB2 `getCatalystScalar(catalystId, mod, quality)`（src/Classes/Item.lua 33-58）
 // 按催化剂的 tag 集（catalystTags：life/mana/defences/physical/attack/caster…）与
@@ -358,7 +358,7 @@ fn catalyst_scaling_is_deferred_no_field_in_model() {
     );
 }
 
-// ── flask / charm 载荷接入（M3-T4 D2，item.rs flask 分支）────────────────────
+// flask / charm 载荷接入
 
 use pobr_core::item::{
     CHARM_BUFF_LIST_NAME, FLASK_BUFF_LIST_NAME, LOCAL_UTILITY_EFFECT_NAME, UtilityItemKind,
@@ -465,7 +465,7 @@ fn ingest_charm_parses_guard_and_possession_effects_via_engine() {
     );
 }
 
-/// M4-m：全部行不可解析的激活 charm **仍产出空载荷**（vendor 对进预算的激活
+///  全部行不可解析的激活 charm **仍产出空载荷**（vendor 对进预算的激活
 /// charm 无条件置 UsingCharm/Using<Base> 条件，CalcPerform.lua:1634-1643——
 /// 条件置位与 modList 无关；空 NestedMods 在 merge 缩放循环空转）。
 #[test]
@@ -528,7 +528,7 @@ fn ingest_flask_onslaught_during_effect_is_unsupported_local_effect_still_parses
     assert_eq!(nested[1].value.as_number(), Some(10.0));
 }
 
-/// 全部行不可解析 → **仍产出空载荷**（M4-m 行为切换：vendor 条件置位与
+/// 全部行不可解析 → **仍产出空载荷**（行为切换：vendor 条件置位与
 /// modList 无关，CalcPerform.lua:1634-1643）；unsupported 照常逐行收集。
 #[test]
 fn ingest_flask_charm_emits_empty_payload_when_nothing_parses() {

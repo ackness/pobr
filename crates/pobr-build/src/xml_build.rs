@@ -117,10 +117,10 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
         build = build.add_socket_group(group);
     }
 
-    // 战斗配置：原始 `<Input>` 三型键值无损捕获进 `raw_inputs`（M3-T1 A5 主
+    // 战斗配置：原始 `<Input>` 三型键值无损捕获进 `raw_inputs`（主
     // 路径数据源——编排层在 ConfigCatalog 可用时经 `config_resolve::resolve_config`
     // 走 `config_interpreter::interpret` 消费）；同时保留旧 parse_config 产出
-    // 填充既有字段，作（a）缺 catalog 的 R7 回退、（b）quest text 通道
+    // 填充既有字段，作（a）缺 catalog 的缺表容忍回退、（b）quest text 通道
     // （§3-⑤ 命名口径统一前不切换）、（c）config_dualrun 持续回归参照。
     // 新增覆盖逐类打开、报告复核后删除旧路径（独立 commit，报告 §3-⑧）。
     build.config.raw_inputs = parse_config_inputs(xml);
@@ -189,9 +189,9 @@ pub fn default_quest_stat_reward_texts(
 
 /// `<Config>` 解析产物：条件 / 倍率 / 全局词条 + 顶层标量配置项。
 ///
-/// **双跑期临时导出**（M3-T1 A5，蓝图 D3 点 1）：主路径已切换至
+/// **双跑期临时导出**：主路径已切换至
 /// `parse_config_inputs` + `config_interpreter`（经编排层 `config_resolve`，
-/// commit ①）；旧路径产出保留为（a）缺 catalog 的 R7 回退、（b）quest text
+/// commit ①）；旧路径产出保留为（a）缺 catalog 的缺表容忍回退、（b）quest text
 /// 通道（报告 §3-⑤）、（c）`config_dualrun` 持续回归参照。新增覆盖逐类打开、
 /// 报告复核后，本结构与旧路径一并删除（独立 commit，报告 §3-⑧）。
 #[doc(hidden)]
@@ -212,7 +212,7 @@ pub struct ParsedConfig {
 }
 
 /// 抽取 `<Config>` 全部 `<Input name bool|number|string>` 为类型化原始键值
-/// （M3-T1 A5 新产线：本函数**不做任何语义判读**，解释统一走
+/// （新产线：本函数**不做任何语义判读**，解释统一走
 /// `pobr_core::rules::config_interpreter::interpret` + `ConfigCatalog`）。
 ///
 /// 与旧 [`parse_config`] 的扫描范围一致：遍历整份 XML 的 `Input` 元素（PoB2
@@ -269,7 +269,7 @@ pub fn parse_config_inputs(xml: &str) -> RawConfigInputs {
 /// **双跑期临时导出**：旧 `<Config>` 解析路径（现网行为参照）。
 ///
 /// 仅供集成测试对照 `parse_config_inputs` + config_interpreter 新路径
-/// （断言「旧 ⊆ 新且交集逐值相等」，蓝图 D3 点 1）；禁止新增业务消费方。
+/// （断言「旧 ⊆ 新且交集逐值相等」）；禁止新增业务消费方。
 #[doc(hidden)]
 pub fn parse_config_legacy(xml: &str) -> ParsedConfig {
     parse_config(xml)
@@ -282,7 +282,7 @@ pub fn parse_config_legacy(xml: &str) -> ParsedConfig {
 /// **省略=默认值**（PoB2 `defaultState`）：XML 中出现的 `<Input>` 按其值；未出现的
 /// 布尔条件中，[`DEFAULT_TRUE_CONDITIONS`] 列出的项补 `true`（其余仍由计算侧回退 false）。
 ///
-/// **双跑期临时保留**（M3-T1 A5）：本函数为现网行为参照，逻辑冻结；新产线见
+/// **双跑期临时保留**：本函数为现网行为参照，逻辑冻结；新产线见
 /// [`parse_config_inputs`]。双跑报告审查后删除（独立 commit）。
 fn parse_config(xml: &str) -> ParsedConfig {
     let mut parsed = ParsedConfig::default();
@@ -448,7 +448,7 @@ fn parse_main_socket_group(xml: &str) -> Option<usize> {
     }
 }
 
-// ── 天赋树 ────────────────────────────────────────────────────────────────────
+// 天赋树
 
 /// 单个 `<Spec>` 的节点集：全量 `nodes` + 两个武器集专属点列表
 /// （`<WeaponSet1 nodes>` / `<WeaponSet2 nodes>`，PoB2 PassiveSpec.lua:104-144
@@ -617,7 +617,7 @@ fn parse_attribute_overrides(xml: &str) -> Result<HashMap<NodeId, AttributeChoic
     Ok(specs.swap_remove(idx))
 }
 
-// ── 装备 + 槽位映射 ───────────────────────────────────────────────────────────
+// 装备 + 槽位映射
 
 /// 抽取 `<Item id>` 文本块并按 `<Items activeItemSet>` 选中的 `<ItemSet>` 槽位映射，
 /// 返回 `(EquipmentSlot, Item)` 列表（按槽位 id 字典序，确定性）。
@@ -1171,7 +1171,7 @@ fn slot_from_pob_name(name: &str, use_second_weapon_set: bool) -> Option<Equipme
     }
 }
 
-// ── 技能宝石组 ────────────────────────────────────────────────────────────────
+// 技能宝石组
 
 /// 解析 `<Skills activeSkillSet>` 选中 `<SkillSet>` 下每个 `<Skill>` 为一个
 /// [`SocketGroup`]（启用态来自 `Skill.enabled`，gem id 取启用的 `<Gem gemId>`）。
@@ -1240,7 +1240,7 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                                 // statSet 形态选择（T5.4，PoB2 SkillsTab.lua:354 读 /
                                 // :489 写）：非法/缺失/字面量 "nil"（PoB2 缺省序列化
                                 // 产物）→ None（缺省主 set）。`statSetIndexCalcs`
-                                // （calcs 页独立选择）M1 不做，忽略。
+                                // （calcs 页独立选择）不做，忽略。
                                 let stat_set_index = attr_value(&e, b"statSetIndex")
                                     .and_then(|v| v.parse::<u32>().ok());
                                 // 组内首个带 skillId 的启用 gem 视为主动技能
@@ -1268,7 +1268,7 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                         }
                     }
                     "StatSetIndex" if in_target_set => {
-                        // PoB2 新版 statSet 序列化（M4-T4 实查 ninja 真码；vendor
+                        // PoB2 新版 statSet 序列化（实查 ninja 真码；vendor
                         // SkillsTab.lua:375 读 / :508 写）：per-grantedEffect 子元素
                         // `<StatSetIndex grantedEffect="X" index="2"/>`，此时 Gem 的
                         // `statSetIndex` 属性为字面量 `"nil"`。子元素先于 Gem End 到达，
@@ -1327,7 +1327,7 @@ fn active_skill_set_id(xml: &str) -> Result<Option<String>, XmlError> {
     }
 }
 
-// ── quick-xml 小工具 ──────────────────────────────────────────────────────────
+// quick-xml 小工具
 
 fn element_name(e: &BytesStart<'_>) -> String {
     String::from_utf8_lossy(e.name().as_ref()).into_owned()
@@ -1598,7 +1598,7 @@ Item Level: 80
         assert!(texts.iter().any(|t| t == "+10% to Cold Resistance"));
     }
 
-    // ── Config resistancePenalty → CampaignProgress（19-G5 接线）─────────────
+    // Config resistancePenalty → CampaignProgress（19-G5 接线）
 
     #[test]
     fn resistance_penalty_number_maps_to_campaign_progress() {
@@ -1634,7 +1634,7 @@ Item Level: 80
         assert_eq!(build.config.campaign_progress, None);
     }
 
-    // ── Config enemyIsBoss → EnemyTier（19-G3 接线）─────────────────────────
+    // Config enemyIsBoss → EnemyTier（19-G3 接线）
 
     #[test]
     fn enemy_is_boss_string_maps_to_enemy_tier() {
@@ -1675,7 +1675,7 @@ Item Level: 80
 </PathOfBuilding2>"#;
         let build = parse_build(xml).expect("parse");
         assert_eq!(build.config.enemy_tier, None);
-        // M4-G：`<Placeholder>` 落 raw_inputs.placeholders（不混入 values——
+        //  `<Placeholder>` 落 raw_inputs.placeholders（不混入 values——
         // 解释器激活语义只认 Input）；enemyLevel 消费方按
         // 「Input 缺省 → Placeholder 兜底」读取（vendor ConfigTab.lua:872-877）。
         assert!(!build.config.raw_inputs.values.contains_key("enemyLevel"));
@@ -1697,7 +1697,7 @@ Item Level: 80
         assert_eq!(slots.len(), 2, "Charm 等枚举外槽位被忽略");
     }
 
-    /// M3-T4：Flask/Charm 槽位往返——仅 `active="true"` 的槽进入
+    ///  Flask/Charm 槽位往返——仅 `active="true"` 的槽进入
     /// `utility_slots`（槽名 + 物品）。
     #[test]
     fn utility_slots_keep_slot_names_for_active_flask_charm() {
@@ -1834,7 +1834,7 @@ Implicits: 0
         ));
     }
 
-    // ── Config defaultState 导入（finding 01-06）─────────────────────────────
+    // Config defaultState 导入（finding 01-06）
 
     #[test]
     fn omitted_default_true_conditions_fill_to_true() {

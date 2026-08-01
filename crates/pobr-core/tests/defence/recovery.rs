@@ -15,9 +15,7 @@ use pobr_core::{
 };
 use pobr_data::prelude::*;
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 辅助函数
-// ─────────────────────────────────────────────────────────────────────────────
 
 fn make_modifier(name: &str, mod_type: ModType, value: f64) -> Modifier {
     Modifier::number(name, mod_type, value)
@@ -27,9 +25,7 @@ fn make_flag_modifier(name: &str) -> Modifier {
     Modifier::flag(name)
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 充能常量
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn charge_defaults_are_correct() {
@@ -38,9 +34,7 @@ fn charge_defaults_are_correct() {
     assert_eq!(DEFAULT_CHARGE_DURATION_SECONDS, 15.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // charge_maximum
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn charge_maximum_returns_default_when_no_mods() {
@@ -72,9 +66,7 @@ fn charge_maximum_cannot_go_below_zero() {
     assert_eq!(charge_maximum(&db, &cfg, ChargeKind::Endurance), 0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // charge_minimum
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn charge_minimum_returns_zero_when_no_mods() {
@@ -111,9 +103,7 @@ fn charge_minimum_is_maximum_flag_pulls_min_to_cap() {
     assert_eq!(charge_minimum(&db, &cfg, ChargeKind::Frenzy, 3), 3);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // resolve_charge_state
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn resolve_charge_state_reads_from_cfg_multipliers() {
@@ -152,9 +142,7 @@ fn resolve_charge_state_clamps_current_to_min() {
     assert_eq!(state.minimum, 1);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // resolve_all_charges & AllChargeStates::total
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn all_charges_total_sums_three_kinds() {
@@ -195,9 +183,7 @@ fn all_charges_zero_when_no_multipliers_set() {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // regen & regen_with_rate
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn regen_flat_plus_percent_of_pool() {
@@ -225,9 +211,7 @@ fn regen_with_rate_zero_when_rate_mod_zero() {
     assert_eq!(r, 0.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // calc_regen (ModDb-based)
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn calc_regen_life_no_mods_returns_zero() {
@@ -295,9 +279,7 @@ fn calc_regen_stacks_rate_and_recovery_rate_inc() {
     assert_eq!(calc_regen(&db, &cfg, 0.0, "LifeRegen"), 20.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // 偷取常量
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn leech_constants_match_pob2_data_misc() {
@@ -310,9 +292,7 @@ fn leech_constants_match_pob2_data_misc() {
     assert_eq!(LEECH_EFFECTIVE_MAX_HIT_DAMAGE, 40000.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // calc_leech 纯函数
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn calc_leech_zero_when_no_pct() {
@@ -372,9 +352,7 @@ fn calc_leech_small_instance_limits_display_rate() {
     assert_eq!(r.display_rate_per_second, 2.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // calc_leech_from_db
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn calc_leech_from_db_with_life_leech_mod() {
@@ -408,9 +386,7 @@ fn calc_leech_from_db_cannot_mana_does_not_block_life() {
     assert!(r.instance_total > 0.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Recoup 常量
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn recoup_duration_constants_match_pob2() {
@@ -419,9 +395,7 @@ fn recoup_duration_constants_match_pob2() {
     assert_eq!(RECOUP_DURATION_4S, 4.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // calc_recoup 纯函数
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn calc_recoup_basic_8s() {
@@ -459,9 +433,7 @@ fn calc_recoup_applies_recovery_rate_mod() {
     assert_eq!(r.rate_per_second, 15.0);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // calc_recoup_from_db
-// ─────────────────────────────────────────────────────────────────────────────
 
 #[test]
 fn calc_recoup_from_db_no_mods_returns_zero() {

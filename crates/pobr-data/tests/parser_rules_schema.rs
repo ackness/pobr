@@ -1,8 +1,8 @@
-//! `mod_parser_rules/v1` schema 往返单测（M6 前置 / 蓝图 §11.3 契约 1）。
+//! `mod_parser_rules/v1` schema 往返单测。
 //!
 //! fixture `tests/fixtures/mini_parser_rules.json` 是 A→B 契约的 mini 规则集：
 //! 每段 ≥3 条**逐字节取自真实抽取产物**的条目（含闭包推断模板与 handler 兜底
-//! 两形态），供 M6-B scan 引擎在真实抽取落盘前先行开发。
+//! 两形态），供scan 引擎在真实抽取落盘前先行开发。
 
 use pobr_data::catalog::parser_rules::ModParserRulesDoc;
 use pobr_data::catalog::stat_map::StatMapValue;
@@ -75,7 +75,7 @@ fn mini_fixture_shape_pins() {
         Some(&StatMapValue::Text("$1".into()))
     );
 
-    // 字符串拼接模板（:cap 算子，蓝图 §1.5 例）
+    // 字符串拼接模板
     let effect = doc
         .tag_phrases
         .iter()
@@ -140,7 +140,7 @@ fn mini_fixture_shape_pins() {
     );
 }
 
-/// 缺省字段（serde default / R7 纪律）：最小 JSON 也能反序列化。
+/// 缺省字段（serde default）：最小 JSON 也能反序列化。
 #[test]
 fn defaults_tolerate_minimal_entries() {
     let json = r#"{

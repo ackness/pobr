@@ -1,11 +1,11 @@
-//! 内建 buff 展开器（M3-T2 B3 的**纯函数体**，不接 perform/env_finalize）。
+//! 内建 buff 展开器。
 //!
 //! 对应 PoB2 `CalcPerform.lua doActorMisc`（:503-765）的数据化等价：
 //! 输入 = `buff_definitions.json` 定义 + ModDb/CalcConfig 只读状态，输出 =
-//! 展开的 Modifier 列表（由 M3 主波 T3 在 env_finalize 阶段 6 写回
+//! 展开的 Modifier 列表（由在 env_finalize 阶段 6 写回
 //! player.mod_db）。零 I/O、确定性、不修改输入。
 //!
-//! 效果公式（蓝图 m3-orchestration §5.1）：
+//! 效果公式：
 //!
 //! ```text
 //! scale  = (1 + Σ db.sum(INC, inc_stats)/100) × db.more(more_stats)
@@ -13,7 +13,7 @@
 //! mod 值 = Literal | coeff × effect | rounding(coeff × scale)
 //! ```
 //!
-//! 归因：SourceId = `(SourceKind::Buff, "buff.<id>")`（蓝图 D4）。
+//! 归因：SourceId = `(SourceKind::Buff, "buff.<id>")`。
 
 use pobr_data::catalog::buffs::{BuffDef, BuffModValue, BuffModeGate, Rounding};
 use pobr_data::catalog::value_expr::EffectTag;
@@ -28,10 +28,10 @@ use crate::rules::registry::{
     DuplicateHandlerError, Handler, HandlerCtx, HandlerOutcome, HandlerRegistry, MainSkillCtx,
 };
 
-/// buff 域 handler 注册（蓝图 §2.4 契约 3；聚合点 = pobr-build
+/// buff 域 handler 注册（契约 3；聚合点 = pobr-build
 /// `handlers::build_registry()` 逐行 append 调用本函数）。
 ///
-/// M3-W4 commit C 回补 `buff_definitions.json` 的四个 handler 条目
+/// commit C 回补 `buff_definitions.json` 的四个 handler 条目
 /// （vendor 行号 = 各 def 的 `vendor_ref`，撰写时实读核对）：
 ///
 /// - **`buff:fortify`**（CalcPerform.lua:523-539，实现）：stacks 模型——
@@ -183,15 +183,15 @@ fn fanaticism_handler() -> Handler {
 pub struct BuffExpandState<'a> {
     /// 玩家 modDB（trigger flag 与 effect INC/MORE 聚合来源）。
     pub db: &'a ModDb,
-    /// 敌人 modDB 只读（M3-W4 handler 上下文按需透传；doActorMisc 的
+    /// 敌人 modDB 只读（handler 上下文按需透传；doActorMisc 的
     /// Wither/Incision 形态写 enemyDB——`None` 时依赖它的 handler 保守零输出）。
     pub enemy_db: Option<&'a ModDb>,
     /// 计算上下文（flag/sum 查询用）。
     pub cfg: &'a CalcConfig,
     /// 战斗模式门控（PoB2 `env.mode_combat`；CalcConfig 的 `mode_combat`
-    /// 字段属 M3-T0，落地前由调用方显式传入）。
+    /// 字段属，落地前由调用方显式传入）。
     pub mode_combat: bool,
-    /// 主技能上下文（M3-W4；vendor `mainSkill.…selfCast` 门控用——env/session
+    /// 主技能上下文（vendor `mainSkill.…selfCast` 门控用——env/session
     /// 接线前为 `None`，依赖它的 handler（fanaticism）保守零输出）。
     pub main_skill: Option<&'a MainSkillCtx>,
 }
@@ -199,9 +199,9 @@ pub struct BuffExpandState<'a> {
 /// 展开结果。
 #[derive(Debug, Clone, Default)]
 pub struct BuffExpansion {
-    /// 展开产出的 modifier（写回 player.mod_db 由主波接线）。
+    /// 展开产出的 modifier。
     pub mods: Vec<Modifier>,
-    /// handler 产出的敌侧 modifier（写回 enemy.mod_db 由主波接线；M3-W4
+    /// handler 产出的敌侧 modifier（写回 enemy.mod_db 由主波接线；
     /// 管道扩展，当前注册集合零产出）。
     pub enemy_mods: Vec<Modifier>,
     /// 附带置位的条件名（vendor `condList[...] = true`；写 cfg.conditions
@@ -209,7 +209,7 @@ pub struct BuffExpansion {
     pub conditions_set: Vec<String>,
     /// handler 产出的 multiplier 标量（`(var, value)` 加法合并进
     /// cfg.multipliers，对应 vendor `modDB.multipliers[var] += v` 形态；
-    /// M3-W4 管道扩展）。
+    /// 管道扩展）。
     pub multipliers: Vec<(String, f64)>,
     /// handler_id 未注册的 buff（覆盖率报表）。
     pub unhandled: Vec<String>,
@@ -352,7 +352,7 @@ fn expand_one(
         .with_source(def.id.clone());
 
         // flags 名称映射：未知名保守跳过整条 mod（宁缺勿错值；缺位在
-        // M4-W-A1 ModFlags 扩位后回补）。
+        // ModFlags 扩位后回补）。
         let mut flags = ModFlags::NONE;
         let mut unmapped = None;
         for flag in &template_flags {
@@ -458,7 +458,7 @@ fn parse_mod_type(literal: &str) -> Option<ModType> {
     }
 }
 
-/// 归因：`(Buff, "buff.<id>")`（蓝图 D4；`buff.` 前缀是 doActorMisc 等价段的
+/// 归因：`(Buff, "buff.<id>")`（`buff.` 前缀是 doActorMisc 等价段的
 /// 专属命名空间——aura/curse 走 `aura.`/`curse.` 前缀）。
 fn attach_origin(modifier: Modifier, def: &BuffDef) -> Modifier {
     modifier.with_origin(ModifierSource::new(SourceId::new(
@@ -550,7 +550,7 @@ mod tests {
         assert_eq!(out.mods[0].flags, ModFlags::NONE);
         assert_eq!(out.mods[1].name.as_str(), "MovementSpeed");
         assert_eq!(out.mods[1].value.as_number(), Some(10.0));
-        // 归因：SourceKind::Buff + "buff.<id>"（蓝图 D4）。
+        // 归因：SourceKind::Buff + "buff.<id>"。
         let origin = out.mods[0].origin.as_ref().unwrap();
         assert_eq!(origin.source_id.kind, SourceKind::Buff);
         assert_eq!(origin.source_id.id, "buff.Onslaught");
@@ -581,7 +581,7 @@ mod tests {
         );
     }
 
-    /// 契约 3 注册函数（M3-W4 commit C）：四个 handler 全部注册（预算 ≤8）；
+    /// 契约 3 注册函数：四个 handler 全部注册（预算 ≤8）；
     /// 重复注册按注册表语义报 Duplicate（不静默覆盖）。
     #[test]
     fn register_handlers_registers_four() {
@@ -836,7 +836,7 @@ mod tests {
         assert!(out.multipliers.is_empty());
     }
 
-    /// 蓝图 B3 数值锚点：OnslaughtEffect 23% + BuffEffectOnSelf 10% →
+    /// B3 数值锚点：OnslaughtEffect 23% + BuffEffectOnSelf 10% →
     /// effect = floor(10 × 1.33) = 13 → Speed INC 26。
     #[test]
     fn onslaught_effect_scaling_floor() {

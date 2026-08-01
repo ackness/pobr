@@ -14,7 +14,7 @@
 //! - AreaEffect 对 DoT 的特例（`bleedDurationIsSkillDuration` 等时长转移）。
 //! - Spirit 保留池公式（见 recovery-charges-buffs.md；本模块仅计算技能侧保留量）。
 //!
-//! SupportManaMultiplier 已于 M1-T4.4 落地（见 §4 cost 公式），不再 defer。
+//! SupportManaMultiplier 已于落地（见 §4 cost 公式），不再 defer。
 
 use pobr_data::prelude::*;
 
@@ -22,9 +22,7 @@ use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation, TracedVa
 
 use super::round;
 
-// ---------------------------------------------------------------------------
 // §1  AoE（范围）
-// ---------------------------------------------------------------------------
 
 /// AoE 计算结果。
 ///
@@ -126,9 +124,7 @@ pub fn calc_aoe_traced_value(
     }
 }
 
-// ---------------------------------------------------------------------------
 // §2  投射物
-// ---------------------------------------------------------------------------
 
 /// 投射物行为优先级（PoE2 固定顺序：Split → Pierce → Fork → Chain）。
 ///
@@ -227,7 +223,7 @@ pub fn resolve_projectile_behavior(
         0
     };
 
-    // --- Split ---
+    // Split
     let raw_split = input.split_count
         + if input.additional_projectiles_add_splits_instead {
             extra
@@ -239,7 +235,7 @@ pub fn resolve_projectile_behavior(
         behaviors.push(ProjectileBehavior::Split);
     }
 
-    // --- Pierce ---
+    // Pierce
     if !input.cannot_pierce {
         if input.pierce_all_targets {
             // 无限穿透：pierce_count 设为 100 表示"穿透所有"
@@ -256,7 +252,7 @@ pub fn resolve_projectile_behavior(
         }
     }
 
-    // --- Fork（仅当未激活无限穿透时考虑）---
+    // Fork（仅当未激活无限穿透时考虑）
     if !effective_pierce_all && !input.cannot_fork {
         // ForkOnce → max=1；ForkTwice → max=2；额外 fork_count_max 叠加但 clamp 到 2（PoB2 L1320-1323）
         let raw_fork_max = if input.fork_twice {
@@ -273,7 +269,7 @@ pub fn resolve_projectile_behavior(
         }
     }
 
-    // --- Chain（仅当未激活无限穿透时考虑）---
+    // Chain（仅当未激活无限穿透时考虑）
     if !effective_pierce_all && !input.cannot_chain {
         // AdditionalProjectilesAddChainsInstead 把额外投射物转为 chain
         if input.additional_projectiles_add_chains_instead {
@@ -377,9 +373,7 @@ pub fn calc_projectile_count_traced(
     (result, count_node)
 }
 
-// ---------------------------------------------------------------------------
 // §3  冷却
-// ---------------------------------------------------------------------------
 
 /// 冷却计算结果。
 ///
@@ -493,7 +487,7 @@ fn finalize_cooldown(raw_cd: f64, stored_uses: u32, tick_seconds: f64) -> (f64, 
         (round(raw_cd), false)
     } else {
         // 向上取整到服务器帧：ceil(cd × ServerTickRate) / ServerTickRate
-        // （M0-W3：tick 改由调用方自注入常量包传入，fallback == 旧 const，值不变）
+        // （tick 改由调用方自注入常量包传入，fallback == 旧 const，值不变）
         let tick_rate = 1.0 / tick_seconds;
         let rounded = (raw_cd * tick_rate).ceil() / tick_rate;
         (round(rounded), true)
@@ -537,13 +531,11 @@ pub fn calc_cooldown_traced(
     (result, cd_node)
 }
 
-// ---------------------------------------------------------------------------
 // §4  消耗与保留
-// ---------------------------------------------------------------------------
 
 /// 技能消耗计算结果（单一资源类型）。
 ///
-/// 公式（对照 PoB2 cost 段，通用路径，M1-T4.4 起含 SupportManaMultiplier）：
+/// 公式：
 /// `cost = floor(floor(base_cost × floor4(ΠSupportManaMultiplier)) × (1 + Σinc/100)) × Πmore`
 /// （辅助宝石 cost 倍率先于 inc/more 作用于 base 并取整；各乘区逐步取整，
 /// 对齐 PoB2 分步取整逻辑）。
@@ -571,7 +563,7 @@ pub struct SkillCostResult {
 ///
 /// 免消耗检查：`HasNoCost` flag → `final_cost = 0`。
 ///
-/// 辅助宝石 cost 倍率（M1-T4.4）：`SupportManaMultiplier` MORE（来源 = 兼容
+/// 辅助宝石 cost 倍率：`SupportManaMultiplier` MORE（来源 = 兼容
 /// support 的分等级 `mana_multiplier`，PoB2 `CalcActiveSkill.lua:689-691`）——
 /// 乘积**截断到 4 位小数**后先作用于 base 并 floor，再进 inc/more 链：
 /// PoB2 `CalcOffence.lua:2052` `mult = floor(More(skillCfg, "SupportManaMultiplier"), 4)`、
@@ -821,7 +813,7 @@ pub fn calc_skill_cost_traced(
         trace,
         format!("{type_cost_name} MORE factor"),
     );
-    // 辅助宝石 cost 倍率（M1-T4.4）：作为独立乘区节点入图（SupportGem 来源可回溯）。
+    // 辅助宝石 cost 倍率：作为独立乘区节点入图（SupportGem 来源可回溯）。
     let support_mult_node = db.more_traced(
         cfg,
         &[ModName::from("SupportManaMultiplier")],

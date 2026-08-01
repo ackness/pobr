@@ -1,8 +1,8 @@
-//! 弩 reload golden fixture（M4-T4 W-D2）：语料 18 build 无非 grenade 弩手
+//! 弩 reload golden fixture：语料 18 build 无非 grenade 弩手
 //! （mercenary/ranger explosive-grenade 是持弩者但 `Grenade` 类型不消耗弹药，
 //! vendor `CalcOffence.lua:1118` 同口径门控豁免——其速率/DPS 不变由
 //! `golden_regression.rs` deadeye 销钉与 `parity_no_regression` 共同钉住），
-//! 故按蓝图 §2 W-D2 用真实数据**构造**弩手 build 入 golden：
+//! 故按用真实数据**构造**弩手 build 入 golden：
 //!
 //! - 武器 = Makeshift Crossbow（`reload_time_ms = 800`，overlay
 //!   `base_item_overrides.json` 经 gamedata merge——双路线兜底通道活体验证）；

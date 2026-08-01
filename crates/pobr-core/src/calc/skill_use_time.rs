@@ -92,7 +92,7 @@ pub fn calc_skill_use_time(
     let action_factor = 1.0 + total_action_speed / 100.0;
     let uncapped_rate = tooltip_rate * action_factor;
 
-    // M0-W3：服务器帧时间改读注入常量包（fallback == 旧 const，值不变）。
+    //  服务器帧时间改读注入常量包（fallback == 旧 const，值不变）。
     let server_rate = 1.0 / cfg.constants.game().server_tick_seconds;
     let (effective_rate, capped_by_server_tick) = if !is_channelling && uncapped_rate > server_rate
     {
@@ -113,9 +113,7 @@ pub fn calc_skill_use_time(
     }
 }
 
-// ---------------------------------------------------------------------------
-// 弩 reload 模型（M4-T4 W-D2，PoB2 CalcOffence.lua:2867-2897 逐行对照）
-// ---------------------------------------------------------------------------
+// 弩 reload 模型（PoB2 CalcOffence.lua:2867-2897 逐行对照）
 
 /// 弩 reload 折算结果（vendor `output.FiringRate/EffectiveBoltCount/
 /// TotalFiringTime/EffectiveReloadTime/Speed`）。
@@ -142,10 +140,10 @@ pub struct CrossbowReload {
 /// - `EffectiveReloadTime = reloadTime × (1 − min(InstantReloadChance,100)/100)`；
 /// - `Speed = EffectiveBoltCount / (TotalFiringTime + EffectiveReloadTime)`。
 ///
-/// 顺序约定（蓝图 §2 W-D2，vendor `:2864-2867`）：先服务器帧 cap、后 reload
+/// 顺序约定（vendor `:2864-2867`）：先服务器帧 cap、后 reload
 /// 折算——调用方传入的 `firing_rate` 须是 cap 后的速率。
 /// `Multiplier:BoltsReloadedPastSix/EightSeconds` 回写（Fresh Clip support）
-/// 依赖 W-A2 ReplaceMod，本波不做（登记）。
+/// 依赖ReplaceMod，本波不做（登记）。
 pub fn apply_crossbow_reload(
     firing_rate: f64,
     bolt_count: f64,
@@ -268,7 +266,7 @@ mod crossbow_reload_tests {
     use super::*;
     use crate::Modifier;
 
-    /// 蓝图 W-D2 手算用例：boltCount=5, reload=0.8s, FiringRate=3 →
+    /// 手算用例：boltCount=5, reload=0.8s, FiringRate=3 →
     /// EffectiveBoltCount=5, TotalFiringTime=5/3≈1.6667,
     /// Speed = 5 / (1.6667 + 0.8) ≈ 2.0270。
     #[test]

@@ -1,4 +1,4 @@
-//! BuildRaw 往返 golden 回归（P16 验收契约：编辑态无 parity 可依）。
+//! BuildRaw 往返 golden 回归（编辑态无 parity 可依）。
 //!
 //! 强契约（门禁）：对真实 ninja build 全部 `<Item>` 文本块，
 //! `parse(build_raw(parse(x))) == parse(x)`（语义不动点）。
@@ -8,7 +8,7 @@
 //! 标注、Sockets/Rune、防御件、catalyst 等真实形态。
 //!
 //! 字节契约（报表，非门禁）：`build_raw(parse(x))` 与 x 规范化后的 byte-diff 计数打印，
-//! 趋零是 M6 前目标；PoB2 自身 BuildRaw 亦不保证 byte-stable，故不作硬断言。
+//! 趋零是前目标；PoB2 自身 BuildRaw 亦不保证 byte-stable，故不作硬断言。
 
 use pobr_item::ItemDraft;
 use std::path::PathBuf;

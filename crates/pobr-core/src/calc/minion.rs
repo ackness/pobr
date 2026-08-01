@@ -189,7 +189,7 @@ pub struct MinionModifierEntry {
     pub minion_type: Option<String>,
 }
 
-/// 从一组已解析 modifier 中抽取召唤物词条包裹（M6 D-T8 A2 minion 语义迁移）。
+/// 从一组已解析 modifier 中抽取召唤物词条包裹（-T8 A2 minion 语义迁移）。
 ///
 /// **背景（B 项契约）**：legacy `parse_minion_modifier(text) -> Vec<MinionModifierEntry>`
 /// 与数据驱动引擎的 `MinionModifier LIST` 产物是两套形态。引擎（`mod_parser::engine`
@@ -421,9 +421,7 @@ pub fn build_minion_context(input: &MinionInput) -> MinionContext {
     MinionContext { base, mod_db: db }
 }
 
-// ---------------------------------------------------------------------------
 // 数量上限 / per-minion multiplier（agent-docs/minions.md §4.1）
-// ---------------------------------------------------------------------------
 
 /// 从 `MinionDef` 读取 limit 上限并暴露为 `Multiplier:SummonedMinion` + `MinionPresenceCount`。
 ///
@@ -524,9 +522,7 @@ mod tests {
         );
     }
 
-    // ---------------------------------------------------------------------------
     // MinionData::from_def 测试
-    // ---------------------------------------------------------------------------
 
     #[test]
     fn miniondata_from_def_zombie() {
@@ -551,9 +547,7 @@ mod tests {
         assert!((data.lightning_resist - 50.0).abs() < 1e-9);
     }
 
-    // ---------------------------------------------------------------------------
     // build_minion_context_from_def 测试
-    // ---------------------------------------------------------------------------
 
     #[test]
     fn build_context_from_def_zombie_crit_is_100() {
@@ -621,9 +615,7 @@ mod tests {
         assert_eq!(inc, 0.0);
     }
 
-    // ---------------------------------------------------------------------------
     // write_summoned_minion_multipliers 测试
-    // ---------------------------------------------------------------------------
 
     #[test]
     fn summoned_minion_multipliers_written_to_player_db() {

@@ -1,4 +1,4 @@
-//! M1-T3.6 support 适用性裁决端到端验证（18-G2）。
+//! support 适用性裁决端到端验证（18-G2）。
 //!
 //! 经 **XML fixture → parse_build → calculate_with_data** 全链路，断言：
 //! 1. **不兼容 support 拒收**：`SupportFerociousRoarPlayer`（require `[Warcry]`，
@@ -12,7 +12,7 @@
 //!    `[InbuiltTrigger]` 不命中）的 `damage_+%` 照常抬升击中（INC 通道未误伤）。
 //!
 //! 数据为真实入库 `data/4.5.0.3.4/`（granted_effects.json 的 require/exclude token
-//! 流由 GrantedEffects .dat 类型列解析，见 M1-T3.1/T3.2）。
+//! 流由 GrantedEffects .dat 类型列解析，见）。
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
 use pobr_core::calc::MinimalInput;

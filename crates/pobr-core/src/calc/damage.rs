@@ -101,7 +101,7 @@ impl DamageComponent {
         (self.min + self.max) / 2.0
     }
 
-    /// 带 lucky 掷骰的平均击中伤害（M4-T3 W-C2，PoB2 `CalcOffence.lua:4043-4046`）。
+    /// 带 lucky 掷骰的平均击中伤害（PoB2 `CalcOffence.lua:4043-4046`）。
     ///
     /// `avg = (min/2 + max/2) × (1 − p) + (min/3 + 2×max/3) × p`，其中 `p` 为 lucky
     /// 几率（分数 0..=1，越界 clamp）。lucky = 掷两次取高，均值偏向 max。
@@ -115,7 +115,7 @@ impl DamageComponent {
     }
 }
 
-/// 单分量的 lucky 几率（分数 0..=1；M4-T3 W-C2，PoB2 `CalcOffence.lua:4036-4042`）。
+/// 单分量的 lucky 几率（分数 0..=1，PoB2 `CalcOffence.lua:4036-4042`）。
 ///
 /// 全额 lucky（=1）的旗标来源（任一命中即 1）：
 /// - `LuckyHits`：恒 lucky；
@@ -148,17 +148,17 @@ pub fn lucky_hit_chance(
     db.sum(ModType::Base, cfg, &names).min(100.0) / 100.0
 }
 
-/// canDeal / `DealNo<Type>` 门控（M4-T3 W-C3，蓝图 §3.3 契约 3 冻结签名；
+/// canDeal / `DealNo<Type>` 门控（契约 3 冻结签名；
 /// PoB2 `CalcOffence.lua:2226-2230`，消费点 `:3989/:4793/:5451`——hit / ailment / DoT 共用）。
 ///
 /// `canDeal[type] = not Flag("DealNo"..type, "DealNoDamage")`；不能造成的类型分量
 /// **就地清零**（min/max → 0，分量保留——下游求和/分桶语义等价 vendor 的跳过）。
 ///
-/// **顺序关键**（蓝图 §2 W-C3）：转换先发生，清零的是**转换后残留**——本函数必须在
+/// **顺序关键**：转换先发生，清零的是**转换后残留**——本函数必须在
 /// 转换链（[`calculate_components`] / [`convert_damage`]）之后调用。如 Avatar of Fire
 /// 形态：物理转火后残留物理被 `DealNoPhysical` 清零、已转出的火焰保留。
 ///
-/// 签名说明：蓝图契约 3 写作 `&mut Vec<DamageComponent>`；本实现取更通用的
+/// 签名说明：契约 3 写作 `&mut Vec<DamageComponent>`；本实现取更通用的
 /// `&mut [DamageComponent]`（clippy `ptr_arg`），调用方传 `&mut vec` 经 deref 直接兼容、
 /// 调用形状不变。
 pub fn apply_can_deal(components: &mut [DamageComponent], db: &ModDb, cfg: &CalcConfig) {
@@ -221,7 +221,7 @@ fn type_prefix(damage_type: DamageType) -> &'static str {
 ///       "Added"..damageType.."Damage", "AddedDamage")`
 ///       仅乘 `addedMin * addedMult`，不乘 `source[...]`（武器/技能自带伤害）。
 ///
-/// **M4-m 补全（addedMult INC 腿）**：vendor `calcLib.mod`（CalcTools.lua:16-18）=
+/// **补全（addedMult INC 腿）**：vendor `calcLib.mod`（CalcTools.lua:16-18）=
 /// `(1 + Sum(INC, cfg, names...)/100) × More(cfg, names...)`——INC 与 MORE 两腿
 /// 同名集（`Added<Type>Damage` + `AddedDamage`）。旧实现仅有 MORE 腿；现按 vendor
 /// 名序单次多名查询补 INC 腿（多名 `more` 的逐名取整语义与 vendor 单次调用一致）。

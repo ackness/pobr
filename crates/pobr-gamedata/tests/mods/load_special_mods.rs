@@ -1,9 +1,9 @@
-//! pre-M5b 数据前置的加载测试：`overlay/special_mods.json`
-//! （schema 见 [`pobr_data::catalog::parser_rules`]，M5b 蓝图 §2.1 契约）。
+//! 数据前置的加载测试：`overlay/special_mods.json`
+//! （schema 见 [`pobr_data::catalog::parser_rules`]）。
 //!
-//! 本波次只验数据形状与策展纪律（id 唯一 / verified:false / batch 标记 /
+//! 只验数据形状与策展纪律（id 唯一 / verified:false / batch 标记 /
 //! mods 与 handler 互斥形态）；regex 编译校验在 sync-pob-catalog 测试侧
-//! （该 crate 有 regex 依赖），解释器接入归 M5b 主波 B-2/B-3。
+//! （该 crate 有 regex 依赖），解释器接入归B-2/B-3。
 
 use pobr_data::catalog::parser_rules::{
     SpecialModsDef, TemplateNameDef, TemplateValueDef, ValueOpDef,
@@ -169,7 +169,7 @@ fn no_open_captures_in_patterns() {
     }
 }
 
-// ===== 版本无关策展层（data/overlay-common/）两层合并行为（P1-3）=====
+// 版本无关策展层（data/overlay-common/）两层合并行为（P1-3）
 //
 // 在临时目录里手搭两层，精确验证合并语义（repo 真数据两层 id 互斥，无 override 样本）：
 //   <tmp>/overlay-common/special_mods.json  ← 版本无关基底

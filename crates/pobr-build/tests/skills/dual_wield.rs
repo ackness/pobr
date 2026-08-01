@@ -1,11 +1,11 @@
-//! M4-I W-B2：双持（Weapon1 + Weapon2 均为武器基底）端到端测试。
+//!  双持（Weapon1 + Weapon2 均为武器基底）端到端测试。
 //!
 //! 覆盖编排装配（`dual_wield_off_hand_contribution` → 第二个 off-hand
 //! `HandSource`）→ hand pass → combineStat 整链：
 //! - 双持产出 MH/OH 两张子表，合并值按 vendor 模式（DPS=均值、Speed=调和平均，
 //!   `CalcOffence.lua:2451-2545`）；
 //! - Weapon2 局部词条折入 OH 武器源（不再泄漏进全局加法桶）；
-//! - `with maces` 词条按 per-hand 武器位只进 MH 腿（vendor 口径；M4-I 切换
+//! - `with maces` 词条按 per-hand 武器位只进 MH 腿（vendor 口径；切换
 //!   commit 起唯一行为，legacy `UsingMace` 全局条件近似的两腿同吃锚点已随
 //!   feature 退役）。
 //!
@@ -193,8 +193,7 @@ fn with_maces_mod_routes_to_main_hand_only_under_pob2_bits() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Golden 基线（M4 §4.2 验收条目 2：双持异种武器 fixture 入 golden 门禁）
+// Golden 基线（§4.2 验收条目 2：双持异种武器 fixture 入 golden 门禁）
 //
 // 语料 18 build 无双持装备（Weapon2 全为 sceptre/focus/quiver/shield），故用
 // 本文件的合成 fixture（Warrior L50 + AxeChopPlayer L1 + MH Wooden Club +
@@ -203,7 +202,6 @@ fn with_maces_mod_routes_to_main_hand_only_under_pob2_bits() {
 //
 // 手算锚点：MH avg_hit = (6+10)/2 × 1.4(baseMultiplier) × 1.05(crit 5%×2.0)
 // = 11.76；combined DPS = (MH+OH)/2（非 doubleHits）；Speed = 调和平均。
-// ---------------------------------------------------------------------------
 
 const GOLDEN_COMBINED_DPS: f64 = 17.068_250_757;
 const GOLDEN_COMBINED_ACTION_RATE: f64 = 1.498_127_341;

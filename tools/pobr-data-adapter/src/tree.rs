@@ -23,7 +23,7 @@ pub struct TreeArgs {
     pub patch: String,
 }
 
-// ---- 原始 data.json 结构（只取我们需要的字段）----
+// 原始 data.json 结构（只取我们需要的字段）
 
 #[derive(Deserialize)]
 struct RawTree {

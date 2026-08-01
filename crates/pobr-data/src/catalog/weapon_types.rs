@@ -2,7 +2,7 @@
 //!
 //! 源表：PoB2 `data.weaponTypeInfo`
 //! （`vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:532-551`，共 19 条）。
-//! 本表为**逐条搬迁**（搬迁不变式，架构文档 20 §1.1 / P8）：字段值与 vendor
+//! 本表为**逐条搬迁**（搬迁不变式）：字段值与 vendor
 //! 完全一致；pobr 现有 Rust 侧的散落判定（见下）与 vendor 的出入只记录、不改值。
 //!
 //! 键空间说明：`id` 是 PoB base item 的 `type` 名（vendor `Data/Bases/*.lua` 的
@@ -24,7 +24,7 @@
 //!   求得 false（即视为单手），而 vendor 这些类型均为 `oneHand = false`。
 //!
 //! 远程（ranged）派生：vendor 无独立 range 字段，远程 = `!melee`；
-//! `flag` → `ModFlags` 位派生留代码侧（L4，架构文档 20 §2.2，feature-gated 切换）。
+//! `flag` → `ModFlags` 位派生留代码侧。
 
 use serde::{Deserialize, Serialize};
 
@@ -46,7 +46,7 @@ pub struct WeaponTypeDef {
     pub label: Option<String>,
 }
 
-/// 武器类型全表（[`crate::catalog::RuntimeConstants`] 的注入域，M0-W3 注入管道）。
+/// 武器类型全表（[`crate::catalog::RuntimeConstants`] 的注入域）。
 ///
 /// `#[serde(transparent)]`：JSON 形状与 `base/weapon_types.json`（数组）一致。
 /// `Default` = fallback 全表（与 JSON 逐值相等，搬迁不变式）。
@@ -71,7 +71,7 @@ impl WeaponTypeTable {
 }
 
 impl WeaponTypeDef {
-    /// 全表 fallback（M0-W3 注入管道）：无 GameData / 数据目录缺
+    /// 全表 fallback（注入管道）：无 GameData / 数据目录缺
     /// `base/weapon_types.json` 时 [`crate::catalog::RuntimeConstants`] 的默认值。
     ///
     /// 搬迁不变式：与 JSON 逐值相等（`pobr-gamedata` 测试锁定）。数值出处 =

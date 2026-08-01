@@ -7,7 +7,7 @@
 //! 在最小环境下加载描述表、对每个 stat_id 喂代表值（V=1）渲染一段文本，Rust 侧
 //! 按 scope 分段 + BTreeMap 字典序序列化保证 byte-stable。
 //!
-//! 用途（M6 E/F，缺口「stat_id → Modifier 第二通道」）：游戏数据里 tree 节点 /
+//! 用途（缺口「stat_id → Modifier 第二通道」）：游戏数据里 tree 节点 /
 //! 物品隐式 / 宝石词条很多以 **stat_id** 形式给出（而非英文文本）。本表把 stat_id
 //! 还原成 canonical 英文文本，再经 `parse_mod_engine` 解析为 Modifier——与现行
 //! 英文文本通道并行的第二条注入路径，差异收敛后按域切换。

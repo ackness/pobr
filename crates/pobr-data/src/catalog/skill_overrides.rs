@@ -25,7 +25,7 @@ pub const OVERRIDE_STAT_BASE_MULTIPLIER: &str = "base_multiplier";
 /// [`SkillOverrideEntry::stat`] 取值：statSet 固有攻击速度 MORE（百分点，对应
 /// `SkillStatSetDef::skill_attack_speed_more`）。
 pub const OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE: &str = "skill_attack_speed_more";
-/// [`SkillOverrideEntry::stat`] 取值：技能 DoT 配置布尔（M4-T4 W-D1，vendor
+/// [`SkillOverrideEntry::stat`] 取值：技能 DoT 配置布尔（vendor
 /// statSet `baseMods` 的 `skill("dotIs*", true)`；value 1.0 = true，对应
 /// `StatSetDef::dot_flags` 的同名位）。statSet 级条目（恒带 `stat_set`）。
 pub const OVERRIDE_STAT_DOT_IS_AREA: &str = "dot_is_area";
@@ -37,12 +37,12 @@ pub const OVERRIDE_STAT_DOT_IS_SPELL: &str = "dot_is_spell";
 pub const OVERRIDE_STAT_DOT_IS_ATTACK: &str = "dot_is_attack";
 /// 同 [`OVERRIDE_STAT_DOT_IS_AREA`]（dotIsHit）。
 pub const OVERRIDE_STAT_DOT_IS_HIT: &str = "dot_is_hit";
-/// [`SkillOverrideEntry::stat`] 取值：尸体爆炸门控布尔（M4-G，vendor statSet
+/// [`SkillOverrideEntry::stat`] 取值：尸体爆炸门控布尔（vendor statSet
 /// `baseMods` 的 `skill("explodeCorpse", true)`，CalcOffence.lua:2213 据此把
 /// `monsterLife × corpseExplosionLifeMultiplier` 注入物理基伤；value 1.0 = true，
 /// 对应 `StatSetDef::explode_corpse`）。statSet 级条目（恒带 `stat_set`）。
 pub const OVERRIDE_STAT_EXPLODE_CORPSE: &str = "explode_corpse";
-/// [`SkillOverrideEntry::stat`] 取值：statSet 隐式 stat（M4-H，vendor statSet
+/// [`SkillOverrideEntry::stat`] 取值：statSet 隐式 stat（vendor statSet
 /// `stats` 列表中任何等级行都没有数值的条目 = `.dat` `ImplicitStats` 列，适配器
 /// 未下载；vendor 消费值恒 1，`CalcTools.lua:152` `statSetLevel[index] or 1`）。
 /// statSet 级条目（恒带 `stat_set`），stat id 落 [`SkillOverrideEntry::stat_id`]，

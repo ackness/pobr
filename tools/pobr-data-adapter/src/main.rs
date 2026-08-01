@@ -1,9 +1,8 @@
 //! pobr-data-adapter：把 pathofexile-dat 的原始 `.dat` JSON 适配为 PoBR 最小 JSON。
 //!
 //! 解析整型外键（ItemClass / Tags / Implicit_Mods → 稳定字符串 ID）、反范式化、
-//! 过滤开发用占位条目，输出按 id 排序的 diff 友好 JSON 到 `data/<patch>/base/`
-//! （三层布局的 base 层，见架构文档 20 §1 P1）；`manifest.json` 与 `i18n/`
-//! 边车留在版本根。
+//! 过滤开发用占位条目，输出按 id 排序的 diff 友好 JSON 到 `data/<patch>/base/`；
+//! `manifest.json` 与 `i18n/` 边车留在版本根。
 //!
 //! 用法：
 //! ```text
@@ -88,7 +87,7 @@ enum Mode {
     /// `base/passive_trees/<v>.json`，旧 build 的 treeVersion 适配）。
     TreeVersions(tree_versions::TreeVersionsArgs),
     /// 从既有 `passive_tree.json` keystone 节点派生
-    /// `generated/special_derived.json`（M5b C-1）。
+    /// `generated/special_derived.json`。
     SpecialDerived(special_derived::SpecialDerivedArgs),
 }
 
@@ -199,7 +198,7 @@ fn parse_args() -> Result<Mode, String> {
     }
 }
 
-// ---- 原始 .dat JSON 行结构（只取我们需要的列）----
+// 原始 .dat JSON 行结构（只取我们需要的列）
 
 #[derive(Deserialize)]
 pub(crate) struct RawIndexed {
@@ -254,7 +253,7 @@ struct RawWeaponType {
     crit_chance: Option<i64>,
     #[serde(rename = "RangeMax")]
     range_max: Option<i64>,
-    /// 弩装填时间（毫秒，M4-T4 W-D2；vendor `Export/spec.lua:62483`、
+    /// 弩装填时间（毫秒，；vendor `Export/spec.lua:62483`、
     /// `bases.lua:268-269` 仅 >0 导出）。旧导出（无此列的 tables 快照）回退
     /// `None`，产物字段保持缺省（schema 兼容；当前由 overlay
     /// `base_item_overrides.json` 兜底填充）。
@@ -325,7 +324,6 @@ fn weapon_armour_lookups(en: &Path) -> Result<BaseStatsLookups, String> {
                     // 盾牌格挡（`ShieldTypes.Block`）：对应 bundle 已被 CDN 对钉定
                     // patch 剪除，`.dat` 路线不可得 → 恒 None，由 overlay
                     // `base_item_overrides.json` 在 gamedata 加载侧 merge 填充
-                    // （蓝图 m2-defence §6 开放问题 1 的双路线兜底）。
                     block_chance: None,
                     // 移速惩罚：PoB2 口径 `-raw/10000`（Export/Scripts/bases.lua:298），
                     // 如 raw=-300 → 0.03（3% 减速）；raw=0 → None（diff 友好）。

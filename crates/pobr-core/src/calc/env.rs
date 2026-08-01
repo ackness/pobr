@@ -20,9 +20,9 @@ pub struct Env {
     /// 玩家召唤物（Lane4）。每个召唤物是独立 `Actor`，复用 player 的 offence/defence
     /// 管线。无召唤物时为空（向后兼容：行为与无此字段时一致）。
     pub minions: Vec<Actor>,
-    /// 玩家的 buff 技能规格（M3 T0-4，蓝图 §2.4 契约；`session::add_buff_skill` 写入）。
+    /// 玩家的 buff 技能规格（`session::add_buff_skill` 写入）。
     ///
-    /// 蓝图原文记为 `player.buff_skills`——因 `Actor` 定义在 T0 归属外的 actor.rs
+    /// 原文记为 `player.buff_skills`——因 `Actor` 定义在 T0 归属外的 actor.rs
     /// 且 minion buff 未落地，本波收在 `Env` 顶层（语义即玩家侧）；T3 消费时如需
     /// per-actor 再迁。**本阶段零消费**：空与否输出逐值不变。
     pub buff_skills: Vec<BuffSpec>,
@@ -33,10 +33,10 @@ pub struct Env {
     /// warcry uptime 增益已注入（幂等防重，vendor `InfernalActive` flag 同责，
     /// CalcPerform.lua:1365）。
     pub warcry_gain_injected: bool,
-    /// keystone 名 → modifier 列表（M3 T0-4；`session::set_keystone_mods` 写入，
+    /// keystone 名 → modifier 列表（`session::set_keystone_mods` 写入，
     /// T5 `merge_keystones`（env_finalize 阶段 1/5）消费）。**本阶段零消费**。
     pub keystone_mods: BTreeMap<String, Vec<crate::Modifier>>,
-    /// 内建 buff 定义表（M3-T2 B3；`overlay/buff_definitions.json` 经
+    /// 内建 buff 定义表（`overlay/buff_definitions.json` 经
     /// `session::set_buff_definitions` 注入，env_finalize 阶段 6
     /// `expand_misc_buffs` 消费）。`cfg.mode_combat` 默认 false →
     /// 注入与否输出逐值不变（B4 置位是独立行为 commit）。
@@ -45,25 +45,25 @@ pub struct Env {
     /// `handlers::build_registry()` 经 `session::set_buff_handler_registry`
     /// 注入）。缺省空注册表 = handler 条目保守零输出（进 unhandled 报表）。
     pub buff_handler_registry: Arc<HandlerRegistry>,
-    /// curse 优先级数据表（M3-T3 C3；`overlay/curse_priority.json` 经 pobr-gamedata
+    /// curse 优先级数据表（`overlay/curse_priority.json` 经 pobr-gamedata
     /// 加载、`session::set_curse_priority` 注入——照 `buff_definitions` 先例）。
     /// env_finalize 阶段 4 `buff_pass` 的 curse priority 计算消费；`None`（缺表/
-    /// 未注入）= 权重全 0 的 [`CursePriorityDef::default`] 回退（R7 缺表容忍）。
+    /// 未注入）= 权重全 0 的 [`CursePriorityDef::default`] 回退（缺表容忍）。
     pub curse_priority: Option<CursePriorityDef>,
     /// curse 面板输出桥（`buff_pass` 写入，`perform` 末端回填
     /// [`super::OutputTable`] 的 `enemy_curse_limit`/`curse_slots`——env_finalize
     /// 先于 `OutputTable::from` 整表覆盖，故经此字段中转）。`None` = buff_pass
     /// 未运行（mode_buffs 关 / 无 spec），输出字段维持 Default 0。
     pub curse_pass_output: Option<CursePassOutput>,
-    /// MH/OH hand pass 输入（M4-T2 W-B2，蓝图 §3.3 契约 1；编排层武器段经
+    /// MH/OH hand pass 输入（契约 1；编排层武器段经
     /// `session::set_hand_sources` 写入）。空 = 非攻击技能 / 旧入口，`perform`
     /// 走与历史完全一致的单管线路径（回退态，行为逐值不变）。
     pub hand_sources: Vec<super::hand_pass::HandSource>,
-    /// 技能数据 `doubleHitsWhenDualWielding`（W-B2；combineStat DPS/CRIT 模式翻转，
-    /// vendor CalcOffence.lua:2459-2545）。数据通道 = W-D1 的 skill_overrides 抽取，
+    /// 技能数据 `doubleHitsWhenDualWielding`（combineStat DPS/CRIT 模式翻转，
+    /// vendor CalcOffence.lua:2459-2545）。数据通道 =的 skill_overrides 抽取，
     /// 编排层未接线前恒 false。
     pub double_hits_when_dual_wielding: bool,
-    /// 取整精度规则（M4-I 去重；`overlay/high_precision_mods.json` 经 pobr-gamedata
+    /// 取整精度规则（去重；`overlay/high_precision_mods.json` 经 pobr-gamedata
     /// `RuleSet` 加载、`session::set_high_precision_rules` 注入——照
     /// `curse_priority` 先例）。消费点 = buff_pass / merge_flasks_charms 的
     /// ScaleAddMod 数值缩放（T1 写原语 [`crate::ModDb::scale_add_mod`] 同一份规则）。

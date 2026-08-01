@@ -388,14 +388,14 @@ fn accumulate_rolled_defence(line: &str, out: &mut RolledDefence) -> bool {
     } else if let Some(rest) = line.strip_prefix("Spirit:") {
         if let Some(n) = parse_num(rest) {
             // 权杖 `Spirit: N` 行（PoB2 `item.spiritValue`，Item.lua:523）——
-            // 已含该件局部 Spirit 词条折算（M2 Track D，13-G11）。
+            // 已含该件局部 Spirit 词条折算（13-G11）。
             out.spirit = Some(out.spirit.unwrap_or(0.0) + n);
             return true;
         }
     } else if let Some(rest) = line.strip_prefix("Ward:")
         && let Some(n) = parse_num(rest)
     {
-        // `Ward: N` 行（PoB2 `armourData.Ward` 同口径；M2 Track D，13-G14）。
+        // `Ward: N` 行（PoB2 `armourData.Ward` 同口径；，13-G14）。
         out.ward = Some(out.ward.unwrap_or(0.0) + n);
         return true;
     } else if line.starts_with("Rune:") || line.starts_with("Soul Core:") {

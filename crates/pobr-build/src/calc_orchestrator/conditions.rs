@@ -20,7 +20,7 @@ pub(crate) fn damage_keywords(
     if skill_types.iter().any(|t| t == "Grenade") {
         names.push("GrenadeDamage".to_string());
     }
-    // 主武器类别 → 武器类型伤害（M0-W3：经注入的 weapon_types 表按 flag 查表）。
+    // 主武器类别 → 武器类型伤害。
     if let Some(item) = build.items.get(&EquipmentSlot::Weapon1)
         && let Some(def) = data.base_items.get(&item.base.to_string())
     {
@@ -66,7 +66,7 @@ pub(crate) fn weapon_type_info<'a>(
 }
 
 /// 主手武器 → cfg 武器位（vendor `getWeaponFlags`，`CalcActiveSkill.lua:274-309`；
-/// W-A1 commit-2 引入，切换 commit 起常驻）：供 mod 侧武器位通道命中
+/// commit-2 引入，切换 commit 起常驻）：供 mod 侧武器位通道命中
 /// （mod.flags ⊆ cfg.flags 子集匹配）。
 ///
 /// 派生源 = [`weapon_type_info`]（与 [`weapon_type_conditions`] 同一张
@@ -121,7 +121,7 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
         return Vec::new();
     };
     let cls = def.item_class.as_str();
-    // M0-W3：持握/近战判定从散落的字符串谓词切到注入的 weapon_types 表
+    //  持握/近战判定从散落的字符串谓词切到注入的 weapon_types 表
     // （`data.constants.weapon_types` ← `base/weapon_types.json`，源 vendor
     // `data.weaponTypeInfo`；GGG item_class → 表键映射见 [`weapon_type_info`]）。
     let info = weapon_type_info(data, cls);
@@ -173,7 +173,7 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
 
 /// 技能类型名（`ActiveSkillType.Id`）→ `cfg.skill_types`（攻击/法术判别位）。
 ///
-/// （M3-W5 修复）编排此前只设 `ModFlags` 而从未填 `CalcConfig::skill_types`，导致
+/// 编排此前只设 `ModFlags` 而从未填 `CalcConfig::skill_types`，导致
 /// `cfg.is_attack()`/`cfg.is_spell()` 对全部 build 恒 false——法术被错误地施加
 /// 精准/闪避命中检定（vendor `CalcOffence.lua:2611-2612`：`if not isAttack then
 /// output.AccuracyHitChance = 100`，法术/非攻击必中），有效口径下还连带错误降级
@@ -210,7 +210,7 @@ pub(crate) fn skill_type_flags(skill_types: &[String]) -> ModFlags {
             _ => {}
         }
     }
-    // hit 技能 → ModFlag.Hit（M4-H；vendor CalcActiveSkill.lua:176
+    // hit 技能 → ModFlag.Hit（vendor CalcActiveSkill.lua:176
     // `skillFlags.hit = … or skillTypes[Attack] or skillTypes[Damage] or
     // skillTypes[Projectile]` + :523-525 `skillModFlags |= ModFlag.Hit`）。
     // 使带 HIT flag 的词条（如「Spell Hits Gain …」族）对击中技能生效；
@@ -237,7 +237,7 @@ pub(crate) fn build_has_companion_skill(build: &Build, data: &BuildData) -> bool
     })
 }
 
-/// 去重统计已启用主动技能中 `SkillType.Grenade` 的不同授予效果数（M4-H；vendor
+/// 去重统计已启用主动技能中 `SkillType.Grenade` 的不同授予效果数（vendor
 /// `CalcPerform.lua:1238-1242`：遍历 activeSkillList，按 grantedEffect.id 去重
 /// 计数 → `env.modDB.multipliers["GrenadeTypes"]`）。Demolitionist
 /// 「for every different Grenade fired …」的 Multiplier limitVar 分母。
@@ -259,7 +259,7 @@ pub(crate) fn grenade_type_count(build: &Build, data: &BuildData) -> f64 {
     seen.len() as f64
 }
 
-/// （M3-T2 B4）主技能派生的战斗条件（vendor `CalcPerform.lua:242-266` 实读，
+/// 主技能派生的战斗条件（vendor `CalcPerform.lua:242-266` 实读，
 /// `if env.mode_combat` 段）。
 ///
 /// vendor 逐行对照：

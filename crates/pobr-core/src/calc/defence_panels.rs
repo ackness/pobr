@@ -1,7 +1,7 @@
-//! 防御面板族（M2 Track D）：Block / Spirit / Ward / Deflection 的
+//! 防御面板族：Block / Spirit / Ward / Deflection 的
 //! 「基底数据 → 聚合 → OutputTable」纯函数计算。
 //!
-//! 与 `defence.rs` 分文件（蓝图 m2-defence §2 Track D：避免与 Track C/E 抢
+//! 与 `defence.rs` 分文件（Track D：避免与 Track C/E 抢
 //! defence.rs 的函数级分区）。各函数只读 `ModDb`/`CalcConfig`，不写 `Env`；
 //! 对 `Env` 的写入集中在 [`fill_defence_panels`]（perform 一行调用）。
 //!
@@ -23,9 +23,7 @@ fn scaling_mod(db: &ModDb, cfg: &CalcConfig, names: &[ModName]) -> f64 {
     (1.0 + db.sum(ModType::Inc, cfg, names) / 100.0) * db.more(cfg, names)
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Block（CalcDefence.lua:961-1058）
-// ─────────────────────────────────────────────────────────────────
 
 /// Block 面板计算结果（攻击/投射物/法术/法术投射物四分型 + 上限 + 有效值 + 承伤）。
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -202,9 +200,7 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Ward 池（CalcDefence.lua:1144-1273）
-// ─────────────────────────────────────────────────────────────────
 
 /// Ward 池聚合（CalcDefence.lua:1158-1186 per-slot + :1275-1296 全局 BASE）。
 ///
@@ -237,9 +233,7 @@ pub fn calc_ward(db: &ModDb, cfg: &CalcConfig, es_to_ward: bool) -> f64 {
     round(base * (1.0 + inc / 100.0) * more)
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Deflection（CalcDefence.lua:48-54 / :1516-1522）
-// ─────────────────────────────────────────────────────────────────
 
 /// Deflection 面板结果。
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -319,9 +313,7 @@ pub fn calc_deflection(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Spirit 池（CalcDefence.lua:73-126）
-// ─────────────────────────────────────────────────────────────────
 
 /// Spirit 池本值（CalcDefence.lua:87-95，Life/Mana/Spirit 统一公式）。
 ///
@@ -356,20 +348,18 @@ pub fn calc_spirit_pool(db: &ModDb, cfg: &CalcConfig) -> f64 {
         .max(1.0)
 }
 
-// ─────────────────────────────────────────────────────────────────
-// fill 编排（perform 一行调用，蓝图 §3.2 预登记）
-// ─────────────────────────────────────────────────────────────────
+// fill 编排
 
 /// Track D fill 编排：Block / Spirit / Ward / Deflection 面板族写
 /// [`super::OutputTable`]。需在 `fill_skill_mechanics` 之后调用
 /// （spirit_unreserved 读取技能侧已写入的 `spirit_reserved`）。
 ///
-/// keystone 开关经快照传入（C-1 契约，蓝图 §3.3，不散读 flag）。
+/// keystone 开关经快照传入。
 pub fn fill_defence_panels(env: &mut Env, keystones: &crate::rules::DefenceKeystones) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
 
-    // --- Block（CalcDefence.lua:961-1058）---
+    // Block（CalcDefence.lua:961-1058）
     // 覆写 fill_mechanics 早期的旧 Σ BASE clamp 口径（缺盾基底与 inc 乘区），
     // 对齐 vendor `(shield_base + ΣBASE) × mod` 全公式。
     let block = calc_block(db, cfg);
@@ -384,19 +374,19 @@ pub fn fill_defence_panels(env: &mut Env, keystones: &crate::rules::DefenceKeyst
         block.effective_spell_projectile_block_chance;
     env.player.output.block_effect = block.block_effect_taken_pct;
 
-    // --- Spirit 池本值 + 未预留余量（CalcDefence.lua:73-126 / :330-337）---
-    // 技能侧 spirit_reserved 由 fill_skill_mechanics（M1-T4.5 链路）先行写入，
-    // 本段只做池本值与差值（00-index 裁决 #12 分工）。
+    // Spirit 池本值 + 未预留余量（CalcDefence.lua:73-126 / :330-337）
+    // 技能侧 spirit_reserved 由 fill_skill_mechanics先行写入，
+    // 本段只做池本值与差值。
     // vendor :337 `Unreserved = max − reserved` 无下限——超订（reserved > 池）
     // 为负，与 golden（SpiritUnreserved 可为 −130 等）一致。
     env.player.output.spirit = calc_spirit_pool(db, cfg);
     env.player.output.spirit_unreserved =
         env.player.output.spirit - env.player.output.spirit_reserved;
 
-    // --- Ward 池（CalcDefence.lua:1144-1296；EnergyShieldToWard 走 C-1 快照）---
+    // Ward 池（CalcDefence.lua:1144-1296；EnergyShieldToWard 走 C-1 快照）
     env.player.output.ward = calc_ward(db, cfg, keystones.energy_shield_to_ward);
 
-    // --- Deflection（CalcDefence.lua:48-54 / :1516-1522）---
+    // Deflection（CalcDefence.lua:48-54 / :1516-1522）
     // 敌人命中读数同 Track E evade 路径（env.enemy.base.accuracy）。
     let deflect = calc_deflection(
         db,

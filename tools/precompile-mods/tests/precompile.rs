@@ -1,4 +1,4 @@
-//! 集成测试：重生一致（byte-stable）+ 覆盖率报表 golden（蓝图 §6 / §12.1-D）。
+//! 集成测试：重生一致（byte-stable）+ 覆盖率报表 golden。
 //!
 //! 策略：把仓库的真实版本数据目录（base + generated/special_derived）镜像到
 //! 临时目录的 `data/<patch>/` 布局下（保持 `examples` 可经 grandparent 定位失败

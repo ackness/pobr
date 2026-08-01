@@ -1,4 +1,4 @@
-//! 暴击/非暴击双 pass（M4-T2 W-B3，蓝图 m4-offence-deep.md §2、12-G3）。
+//! 暴击/非暴击双 pass。
 //!
 //! PoB2 在每个 hand pass 内按 `CriticalStrike` 条件分别聚合伤害主体
 //! （`CalcOffence.lua:3978-3980`：`for pass = 1, 2 do cfg.skillCond["CriticalStrike"]
@@ -18,11 +18,11 @@
 //!
 //! ## T3 乘区接线（契约 2/3，m4-t3-wiring-notes.md §2）
 //!
-//! - W-C1 `ScaledDamageEffect`：两腿共用（vendor `:4023-4025` allMult），由调用方
+//! - `ScaledDamageEffect`：两腿共用（vendor `:4023-4025` allMult），由调用方
 //!   传入（`scaled_damage_effect(db, enemy_db, cfg, crit.chance)`）。
-//! - W-C2 lucky：min/max ×allMult **之后**按 (pass, damageType) 求 lucky 几率折
+//! - lucky：min/max ×allMult **之后**按 (pass, damageType) 求 lucky 几率折
 //!   avg（`:4035-4046`）。
-//! - W-C3 canDeal：转换链之后、聚合之前就地清零（`:3989` 消费点）。
+//! - canDeal：转换链之后、聚合之前就地清零（`:3989` 消费点）。
 //!
 //! ## 保守口径（登记，独立行为 commit 再修）
 //!
@@ -41,7 +41,7 @@ use super::output::StoredDamageRange;
 use super::round;
 use super::scaled_damage::{AllMultExtras, ScaledDamage, all_mult};
 
-/// 暴击双 pass 结果（蓝图 §2 W-B3 契约形态）。
+/// 暴击双 pass 结果。
 #[derive(Debug, Clone, PartialEq)]
 pub struct CritPassOutput {
     /// 非暴击腿分量（canDeal 门控 + allMult 缩放后；顶层 `damage_components`
@@ -57,7 +57,7 @@ pub struct CritPassOutput {
     pub stored_combined_avg: Vec<(DamageType, f64)>,
     /// `Stored<Type>{Hit,Crit}{Min,Max}`（`:4050-4056`；min/max **不做** lucky 折算
     /// （vendor lucky 只折 `*Avg` 族），damaging ailment 来源伤害与 RollAverage
-    /// 内插的输入面，M4-G append）。
+    /// 内插的输入面，append）。
     pub stored_ranges: Vec<StoredDamageRange>,
     /// CritBlend 后玩家侧总均值（不含敌减伤；`total_hit_avg` 字段口径）。
     pub total_hit_avg: f64,
@@ -81,7 +81,7 @@ struct Leg {
 ///
 /// `mitigation(pass_cfg, type, raw_hit)` = 敌方对该类型的受伤总乘子（仅
 /// `mode_effective` 下被调用；由 offence 闭包提供，保持 `enemy_damage_multiplier`
-/// 私有）。`scaled` = W-C1 乘区（T3 契约 2，两腿共用、暴击腿额外 ×CritMultiplier）。
+/// 私有）。`scaled` =乘区（T3 契约 2，两腿共用、暴击腿额外 ×CritMultiplier）。
 #[allow(clippy::too_many_arguments)]
 pub fn run_crit_passes<F>(
     db: &ModDb,
@@ -205,7 +205,7 @@ where
     }
 }
 
-/// 完成一条腿：×allMult（`:4033-4034`）→ lucky 折 avg（W-C2，`:4035-4046`）。
+/// 完成一条腿：×allMult（`:4033-4034`）→ lucky 折 avg（`:4035-4046`）。
 /// `mult == 1.0` 时跳过缩放，保持与替换前实现逐位一致。
 fn finish_leg(
     db: &ModDb,

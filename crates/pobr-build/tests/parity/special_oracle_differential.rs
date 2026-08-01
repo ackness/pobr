@@ -1,4 +1,4 @@
-//! special_mods 与 PoB2 parseMod 的 differential 对拍（M5b Track D-2）。
+//! special_mods 与 PoB2 parseMod 的 differential 对拍。
 //!
 //! 对 `overlay/special_mods.json` 的每条模板条目，用样本数值/enum 值实例化其
 //! pattern 为具体词条行，同一行喂两侧——PoB2 headless `parseMod`

@@ -1,7 +1,7 @@
 //! StatId→Modifier 映射表 overlay 域 schema（`overlay/stat_id_map.json`，schema
 //! `stat_id_map/v1`）。
 //!
-//! M6 E/F「stat_id → Modifier 第二通道」的产物（段 B）：把段 A 抽取的
+//! 「stat_id → Modifier 第二通道」的产物（段 B）：把段 A 抽取的
 //! `stat_descriptions.json`（stat_id → canonical 文本）逐条喂 `parse_mod_engine`，
 //! 把能解析的 stat_id 固化成 modifier 模板。由 `sync-pob-catalog gen-stat-id-map`
 //! 离线生成（消费两份 overlay：stat_descriptions + mod_parser_rules）。

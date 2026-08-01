@@ -1,11 +1,10 @@
 //! `extract-lua --what gem-quality`：vendor PoB2 `Data/Skills/*.lua` 的
 //! `qualityStats` 字段 → `data/<版本>/overlay/gem_quality_stats.json`
-//! （M1-T1，缺口 18-G1 / 15-G5 的数据面）。
 //!
-//! **通道说明**：蓝图原定从 `.dat` 表 `GrantedEffectQualityStats` 走 adapter →
-//! `base/`，但该表所在 bundle 在钉定补丁 4.5.0.3.4 已无法下载（M1-W0 核验，见
+//! **通道说明**：原定从 `.dat` 表 `GrantedEffectQualityStats` 走 adapter →
+//! `base/`，但该表所在 bundle 在钉定补丁 4.5.0.3.4 已无法下载（核验，见
 //! `pipeline/config.json` 的 `_tablesUnavailableForPinnedPatch`），按 owner 裁决
-//! 「生产工具定层」（00-index §4.2-1）：extract-lua 抽取 → **overlay/**。vendor
+//! 「生产工具定层」：extract-lua 抽取 → **overlay/**。vendor
 //! 数据文件本就是导出产物（rate 已 `/1000`、辅助宝石已按导出条件跳过，
 //! `Export/Scripts/skills.lua:304-313`），抽取为忠实转录。后续若 `.dat` 表通道
 //! 恢复则迁回 `base/`（迁移 commit byte 等价）。

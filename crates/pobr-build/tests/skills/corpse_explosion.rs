@@ -1,4 +1,4 @@
-//! 尸体爆炸基伤通道端到端验证（M4-G；vendor `CalcOffence.lua:2211-2217`）。
+//! 尸体爆炸基伤通道端到端验证（vendor `CalcOffence.lua:2211-2217`）。
 //!
 //! Detonate Dead 的击中主体 = `monsterLifeTable[enemyLevel] ×
 //! corpseExplosionLifeMultiplier`（gem 分等级 stat

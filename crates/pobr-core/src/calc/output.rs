@@ -30,7 +30,7 @@ pub struct OutputTable {
     pub action_rate: f64,
     pub dps: f64,
 
-    // --- 追加机制字段（perform 的 fill 阶段写入；Default 0/None） ---
+    // 追加机制字段（perform 的 fill 阶段写入；Default 0/None）
     /// 技能使用时间 / 行动速率解析结果。
     pub skill_use_time: Option<SkillUseTime>,
     /// 应用服务器帧上限后的有效行动速率（actions/s）。
@@ -41,14 +41,14 @@ pub struct OutputTable {
     pub poison_dps: f64,
     /// 感电增伤幅度（fraction，如 0.20）。
     pub shock_effect: f64,
-    /// 各伤害类型最大可承受单次命中（M2 F-3 起 = PoB2 口径：TotalHitPool 池扩展层 +
+    /// 各伤害类型最大可承受单次命中（起 = PoB2 口径：TotalHitPool 池扩展层 +
     /// taken-as，CalcDefence.lua:3540-3697；`*_max_hit_pob2` 为同值别名）。
     pub physical_max_hit: f64,
     pub fire_max_hit: f64,
     pub cold_max_hit: f64,
     pub lightning_max_hit: f64,
     pub chaos_max_hit: f64,
-    /// 综合 EHP（M2 F-3 起 = PoB2 口径：`TotalNumberOfHits × totalEnemyDamageIn`，
+    /// 综合 EHP（起 = PoB2 口径：`TotalNumberOfHits × totalEnemyDamageIn`，
     /// CalcDefence.lua:3322；无敌人进伤时 0 中性。旧 lowest-max-hit 口径保留在
     /// `total_ehp_lowest_max_hit`）。
     pub total_ehp: f64,
@@ -65,7 +65,7 @@ pub struct OutputTable {
     pub block_chance: f64,
     pub spell_block_chance: f64,
 
-    // --- 防御扩展（Lane2：ES 充能 / 规避 / 承受乘数 / 暴击减免；perform fill 写入） ---
+    // 防御扩展（Lane2：ES 充能 / 规避 / 承受乘数 / 暴击减免；perform fill 写入）
     /// ES 充能速率（每秒恢复比例，fraction；ZealotsOath 或 es=0 时为 0）。
     pub es_recharge_rate: f64,
     /// ES 充能开始延迟（秒；默认 4.0）。
@@ -93,17 +93,17 @@ pub struct OutputTable {
     /// 敌人暴击效果乘数（加权平均伤害倍率，≥ 1.0）。
     pub enemy_crit_effect: f64,
 
-    // --- 召唤物快照（Lane4：每个召唤物各自 offence/defence 输出；perform 多 Actor 写入） ---
+    // 召唤物快照（Lane4：每个召唤物各自 offence/defence 输出；perform 多 Actor 写入）
     /// 各召唤物的关键输出快照（无召唤物时为空）。
     pub minions: Vec<MinionOutput>,
 
-    // --- 触发（Lane4：触发速率上限/实际触发速率；perform 写入，未涉及时为 0） ---
+    // 触发（Lane4：触发速率上限/实际触发速率；perform 写入，未涉及时为 0）
     /// 触发速率上限（次/秒）。
     pub trigger_rate_cap: f64,
     /// 实际触发速率（次/秒）= min(上限, 有效源速率)。
     pub skill_trigger_rate: f64,
 
-    // --- 防御恢复扩展（Lane A：充能状态 / 偷取 / Recoup；perform fill 写入，无来源时中性 0） ---
+    // 防御恢复扩展（Lane A：充能状态 / 偷取 / Recoup；perform fill 写入，无来源时中性 0）
     /// 充能当前/最大层数（Power / Frenzy / Endurance）。
     pub charge_power_current: u32,
     pub charge_power_maximum: u32,
@@ -119,7 +119,7 @@ pub struct OutputTable {
     pub life_recoup_rate: f64,
     pub es_recoup_rate: f64,
 
-    // --- 异常扩展（Lane B：冰缓 / 冰冻·电击姿态积累 / 流血·中毒叠层；perform fill_ailments 写入） ---
+    // 异常扩展（Lane B：冰缓 / 冰冻·电击姿态积累 / 流血·中毒叠层；perform fill_ailments 写入）
     /// 冰缓行动速度降低（%，如 30.0 = 30%；0 = 不施加）。
     pub chill_effect: f64,
     /// 冰冻姿态积累（% per hit；0 = 不积累）。
@@ -138,7 +138,7 @@ pub struct OutputTable {
     pub poison_max_stacks: f64,
     pub ignite_max_stacks: f64,
 
-    // --- 技能功能（Lane C：AoE / 投射物 / 冷却 / 消耗；perform fill 写入，无 base 时 0） ---
+    // 技能功能（Lane C：AoE / 投射物 / 冷却 / 消耗；perform fill 写入，无 base 时 0）
     /// AoE 最终半径（内部坐标单位）与面积乘数。
     pub aoe_radius: f64,
     pub aoe_area_mod: f64,
@@ -152,7 +152,7 @@ pub struct OutputTable {
     pub life_cost: f64,
     pub spirit_reserved: f64,
 
-    // --- M2 防御扩展（W0.2 契约字段：默认 0 中性；A–F track 分批接线写入。
+    // ---防御扩展（W0.2 契约字段：默认 0 中性；A–F track 分批接线写入。
     //     golden 参照 = examples/demo-bd-test/builds/*/meta.json::player_stats 同名键） ---
     /// Spirit 池本值（base × inc × more + Override，PoB2 doActorLifeManaSpirit 同构）。
     pub spirit: f64,
@@ -217,10 +217,10 @@ pub struct OutputTable {
     pub number_of_mitigated_hits: f64,
     /// 旧口径综合 EHP（各类型 max hit 取 min）。F-3 已切换 `total_ehp` 语义为
     /// PoB2 口径（mitigatedHits × totalEnemyDamageIn，:3322），旧值保留于此作
-    /// 附加指标（旧管线不删码，revert F-3 切换段即回旧口径——蓝图 §5 R2 行）。
+    /// 附加指标。
     pub total_ehp_lowest_max_hit: f64,
 
-    // --- M2 Track F：PoB2 口径字段（F-1 双跑并行产出 → F-3 切换后与 canonical
+    // ---：PoB2 口径字段（F-1 双跑并行产出 → F-3 切换后与 canonical
     //     `total_ehp`/`*_max_hit` 同值，保留为别名供双跑报告/下游兼容消费）。 ---
     /// 新口径综合 EHP（PoB2 `TotalEHP = TotalNumberOfHits × totalEnemyDamageIn`，
     /// CalcDefence.lua:3322；无敌人进伤时 0 中性）。
@@ -236,8 +236,8 @@ pub struct OutputTable {
     pub lightning_max_hit_pob2: f64,
     pub chaos_max_hit_pob2: f64,
 
-    // --- M3 T3：curse 面板字段（buff_pass 产出经 Env::curse_pass_output 回填；
-    //     蓝图 §6.3「display_catalog 不扩，仅 OutputTable 字段」；默认 0/空 中性） ---
+    // ---：curse 面板字段（buff_pass 产出经 Env::curse_pass_output 回填；
+    //     「display_catalog 不扩，仅 OutputTable 字段」；默认 0/空 中性） ---
     /// 敌方诅咒上限（PoB2 `output.EnemyCurseLimit`，CalcPerform.lua:2830）。
     /// buff_pass 未运行（mode_buffs 关 / 无 buff spec）时维持 0。
     pub enemy_curse_limit: f64,
@@ -245,9 +245,8 @@ pub struct OutputTable {
     /// `ignoreCurseLimit` 槽外追加，CalcPerform.lua:2878-2896）。
     pub curse_slots: Vec<String>,
 
-    // === M4-T4 ===
-    // 技能 DoT / 合并 DPS 族契约字段（蓝图 m4-offence-deep §3.3 条目 6，命名
-    // 冻结）。骨架阶段默认 0 中性；W-D1 calc 接线后由 perform fill 段经
+    // 技能 DoT / 合并 DPS 族契约字段（条目 6，命名
+    // 冻结）。骨架阶段默认 0 中性；calc 接线后由 perform fill 段经
     // `skill_dot::fill_skill_dot` 写入。
     /// 单实例技能 DoT DPS（PoB2 `TotalDotInstance`，CalcOffence.lua:5831-5929）。
     pub skill_dot_instance: f64,
@@ -260,8 +259,7 @@ pub struct OutputTable {
     pub with_dot_dps: f64,
     /// 综合 DPS（PoB2 `CombinedDPS`）。
     pub combined_dps: f64,
-    // === M4-T2 ===
-    // per-hand 子表（W-B2，RFC m4-rfc-attribution-passes §4 裁决 D4：强类型子表，
+    // per-hand 子表（RFC m4-rfc-attribution-passes §4 裁决 D4：强类型子表，
     // 扁平 PoB 键 `MainHand.X` 收口在 display_catalog 的 pob_key）。
     // 顶层既有字段语义 = combineStat 之后（单手 build 走 OR 直通数值不变）。
     /// 主手 pass 子结果。非攻击技能 = None；攻击 = Some（单手攻击 off_hand=None）。
@@ -291,11 +289,11 @@ pub struct StoredDamageRange {
     pub crit_max: f64,
 }
 
-/// 单只手的 pass 输出（M4-T2 W-B2；字段集 = combineStat 入参面，**冻结**——
+/// 单只手的 pass 输出（字段集 = combineStat 入参面，**冻结**——
 /// 评审 C6c：弩（FiringRate/ReloadTime 族）与 ailment 扩展字段用独立后续 commit
 /// append，避免 display_catalog 反复改 pob_key。`accuracy` 不在当前 MinimalOutput
 /// 面上，待 display 需要时随独立 commit 一并 append。
-/// M4-G：按 C6c 约定 append `stored_ranges`——ailment magnitude 的 min/max 输入面）。
+///  按 C6c 约定 append `stored_ranges`——ailment magnitude 的 min/max 输入面）。
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct HandOutput {
     /// 该手命中率（fraction；vendor `HitChance`，AVERAGE 入参）。
@@ -316,14 +314,14 @@ pub struct HandOutput {
     pub average_damage: f64,
     /// 该手单独 DPS（合并前；vendor `TotalDPS`，DPS 入参）。
     pub total_dps: f64,
-    /// `Stored<Type>CritAvg` 族（W-B3 落值；vendor `:4047-4057`，ailment magnitude
+    /// `Stored<Type>CritAvg` 族（落值；vendor `:4047-4057`，ailment magnitude
     /// 输入——pre-resist、含 allMult 与暴击腿 ×CritMultiplier）。
     pub stored_crit_avg: Vec<(DamageType, f64)>,
     /// `Stored<Type>HitAvg` 族（非暴击腿）。
     pub stored_hit_avg: Vec<(DamageType, f64)>,
     /// `Stored<Type>CombinedAvg` 族（两腿按暴击率加权累计；外层按 DPS 模式合并，:4588）。
     pub stored_combined_avg: Vec<(DamageType, f64)>,
-    /// `Stored<Type>{Hit,Crit}{Min,Max}` 族（M4-G append；damaging ailment 来源
+    /// `Stored<Type>{Hit,Crit}{Min,Max}` 族（append；damaging ailment 来源
     /// 伤害输入，vendor `:4050-4056` 落值 / `:4833-4857` 消费）。
     pub stored_ranges: Vec<StoredDamageRange>,
 }
@@ -449,7 +447,7 @@ impl Default for OutputTable {
             mana_cost: 0.0,
             life_cost: 0.0,
             spirit_reserved: 0.0,
-            // M2 防御扩展（W0.2）：未接线前全部 0 中性（ParityStatus=Planned，
+            // 防御扩展（W0.2）：未接线前全部 0 中性（ParityStatus=Planned，
             // 不进 extract_display_values）。
             spirit: 0.0,
             spirit_unreserved: 0.0,
@@ -477,7 +475,7 @@ impl Default for OutputTable {
             number_of_damaging_hits: 0.0,
             number_of_mitigated_hits: 0.0,
             total_ehp_lowest_max_hit: 0.0,
-            // M2 Track F（F-1）：双跑并行字段，默认 0 中性。
+            // （F-1）：双跑并行字段，默认 0 中性。
             total_ehp_pob2: 0.0,
             total_enemy_damage_in: 0.0,
             physical_max_hit_pob2: 0.0,
@@ -485,16 +483,16 @@ impl Default for OutputTable {
             cold_max_hit_pob2: 0.0,
             lightning_max_hit_pob2: 0.0,
             chaos_max_hit_pob2: 0.0,
-            // M3 T3：curse 面板默认中性（buff_pass 未运行时不影响任何既有输出）。
+            //  curse 面板默认中性（buff_pass 未运行时不影响任何既有输出）。
             enemy_curse_limit: 0.0,
             curse_slots: Vec::new(),
-            // M4-T4：技能 DoT / 合并 DPS 族骨架字段，接线前恒 0 中性。
+            //  技能 DoT / 合并 DPS 族骨架字段，接线前恒 0 中性。
             skill_dot_instance: 0.0,
             skill_total_dot: 0.0,
             total_dot_dps: 0.0,
             with_dot_dps: 0.0,
             combined_dps: 0.0,
-            // M4-T2：per-hand 子表默认 None（回退态恒 None，消费方按 None 跳过）。
+            //  per-hand 子表默认 None（回退态恒 None，消费方按 None 跳过）。
             main_hand: None,
             off_hand: None,
         }
@@ -532,7 +530,7 @@ impl From<&MinimalOutput> for OutputTable {
 mod m2_default_neutral_tests {
     use super::OutputTable;
 
-    /// M2-W0.2 中性不变式：新防御扩展字段在 `Default` 下全部为 0（未接线前不影响
+    /// 中性不变式：新防御扩展字段在 `Default` 下全部为 0（未接线前不影响
     /// 任何既有输出/比较；A–F track 接线后由 perform fill 写入）。
     #[test]
     fn m2_defence_extension_fields_default_to_zero() {
@@ -585,8 +583,8 @@ mod m2_default_neutral_tests {
 mod m4_t4_default_neutral_tests {
     use super::OutputTable;
 
-    /// M4-T4 中性不变式：技能 DoT / 合并 DPS 族契约字段在 `Default` 下全 0
-    /// （W-D1 calc 接线前不影响任何既有输出/比较）。
+    /// 中性不变式：技能 DoT / 合并 DPS 族契约字段在 `Default` 下全 0
+    /// （calc 接线前不影响任何既有输出/比较）。
     #[test]
     fn m4_t4_skill_dot_fields_default_to_zero() {
         let out = OutputTable::default();

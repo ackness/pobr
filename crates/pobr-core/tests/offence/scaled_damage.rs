@@ -1,5 +1,5 @@
-//! M4-T3 乘区与 DPS 末端（scaled_damage.rs）：W-C1 Double/Triple Damage 乘区 +
-//! W-C4 DPS 末端两因子。每乘区手算单测 + W-C1 oracle 中间值对拍（蓝图 §4.1 T3 门禁）。
+//! 乘区与 DPS 末端（scaled_damage.rs）：Double/Triple Damage 乘区 +
+//! DPS 末端两因子。每乘区手算单测 + oracle 中间值对拍。
 
 use pobr_core::calc::{AllMultExtras, all_mult, dps_end_factors, scaled_damage_effect};
 use pobr_core::{CalcConfig, ModDb, Modifier};
@@ -11,7 +11,7 @@ fn base(name: &str, value: f64) -> Modifier {
     Modifier::number(name, ModType::Base, value)
 }
 
-// ---------------------------------------------------------------- W-C1
+// ----------------------------------------------------------------
 
 /// 手算：仅 DoubleDamageChance 30 → DD=30、TD=0、effect = 1 + 30/100 = 1.3。
 #[test]
@@ -105,7 +105,7 @@ fn no_mods_yields_identity_effect() {
     assert!((out.triple_chance - 0.0).abs() < EPS);
 }
 
-/// Oracle 中间值对拍（蓝图 §4.1 T3 门禁：≥1 条带 DD 词条 build）。
+/// Oracle 中间值对拍（门禁：≥1 条带 DD 词条 build）。
 ///
 /// 来源：`tools/pob2-oracle` 跑 monk-martial-artist-flicker-strike build，在 Sapphire Ring
 /// 上加三行词条后 dump `mainOutput.MainHand`（2026-06-12，vendor 0.18.0）：
@@ -137,7 +137,7 @@ fn oracle_parity_flicker_strike_with_dd_mods() {
     assert!((out.effect - 1.8015528).abs() < 1e-6);
 }
 
-/// AllMultExtras 默认全 1.0：`all_mult` 退化为 ScaledDamageEffect（M4 范围）。
+/// AllMultExtras 默认全 1.0：`all_mult` 退化为 ScaledDamageEffect。
 #[test]
 fn all_mult_defaults_to_scaled_damage_effect() {
     let mut db = ModDb::new();
@@ -156,7 +156,7 @@ fn all_mult_defaults_to_scaled_damage_effect() {
     assert!((all_mult(&scaled, &extras) - scaled.effect * 1.8).abs() < EPS);
 }
 
-// ---------------------------------------------------------------- W-C4
+// ----------------------------------------------------------------
 
 /// 手算：QuantityMultiplier BASE 聚合，floor 1.0（vendor :3128 `max(Sum, 1)`）。
 #[test]
@@ -196,7 +196,7 @@ fn dps_multiplier_folds_skill_data_and_dps_modname() {
     assert!((out.dps_multiplier - 1.8).abs() < EPS);
 }
 
-/// 手算：grenade 二次起爆折算（M4-G，vendor CalcOffence.lua:1124-1127
+/// 手算：grenade 二次起爆折算（vendor CalcOffence.lua:1124-1127
 /// `DPS MORE min(Sum(BASE,"GrenadeActivateTwice"),100)`）：
 /// Payload 50 → ×1.5；叠加超 100 时 cap（50+80=130 → ×2.0）。
 #[test]

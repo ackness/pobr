@@ -1,4 +1,4 @@
-//! 弩 reload 端到端（M4-T4 W-D2）：perform `fill_crossbow_reload` 把弹匣循环平均
+//! 弩 reload 端到端：perform `fill_crossbow_reload` 把弹匣循环平均
 //! （bolt_count 发 × 攻速 + reload 间隔）折进有效速率与 DPS。
 //!
 //! vendor 参照 `CalcOffence.lua:2867-2887`；数据通道 = `CrossbowReloadTimeBase` /
@@ -23,7 +23,7 @@ fn crossbow_input() -> MinimalInput {
     }
 }
 
-/// 蓝图手算用例：bolt=5、reload=0.8s、射速 3/s →
+/// 手算用例：bolt=5、reload=0.8s、射速 3/s →
 /// 循环平均 = 5 / (5/3 + 0.8) ≈ 2.027/s；DPS 等比缩放（avg 150 × 2.027 ≈ 304.05）。
 #[test]
 fn reload_cycle_average_scales_rate_and_dps() {

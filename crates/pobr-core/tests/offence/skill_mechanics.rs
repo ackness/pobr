@@ -10,9 +10,7 @@ use pobr_core::calc::skill_mechanics::{
 use pobr_core::{CalcConfig, ModDb, Modifier, TraceGraph};
 use pobr_data::prelude::*;
 
-// ---------------------------------------------------------------------------
 // §1  AoE 半径
-// ---------------------------------------------------------------------------
 
 /// PoB2 `calcRadius` 参考值：baseRadius=12（120/10），无 AoE 修饰词 → areaMod=1.0 → radius=12。
 #[test]
@@ -99,9 +97,7 @@ fn aoe_traced_matches_non_traced() {
     assert!((plain.radius - traced.value).abs() < 1e-9);
 }
 
-// ---------------------------------------------------------------------------
 // §2  投射物数量
-// ---------------------------------------------------------------------------
 
 /// 无修饰词：ProjectileCount BASE=1（或 0 时 more 结果为 0）。
 /// PoB2 约定：ProjectileCount BASE = -1 + 技能本身 base（SkillStatMap `base=-1`），
@@ -152,9 +148,7 @@ fn projectile_count_no_additional_projectiles_flag() {
     assert!((result.projectile_count - 1.0).abs() < 1e-9);
 }
 
-// ---------------------------------------------------------------------------
 // §3  投射物行为优先级
-// ---------------------------------------------------------------------------
 
 /// 无任何行为激活 → behaviors 为空。
 #[test]
@@ -277,9 +271,7 @@ fn projectile_behavior_fork_once_and_twice() {
     assert_eq!(r_twice.fork_count_max, 2);
 }
 
-// ---------------------------------------------------------------------------
 // §4  冷却
-// ---------------------------------------------------------------------------
 
 /// 无修饰词、基础 0.5s 冷却 → 向上取整到服务器帧。
 /// 服务器帧率 ≈ 30.303/s；0.5 × 30.303 = 15.15 → ceil = 16 帧 → 16/30.303 ≈ 0.528s。
@@ -345,9 +337,7 @@ fn cooldown_zero_when_no_cooldown() {
     assert_eq!(result.cooldown, 0.0);
 }
 
-// ---------------------------------------------------------------------------
 // §5  消耗/保留
-// ---------------------------------------------------------------------------
 
 /// 无修饰词 Mana 消耗：base=20 → final=20。
 #[test]
@@ -415,7 +405,7 @@ fn mana_cost_generic_cost_inc() {
     assert!((result.final_cost - 24.0).abs() < 1e-9);
 }
 
-/// 辅助宝石 cost 正倍率（M1-T4.4）：SupportManaMultiplier MORE +30 →
+/// 辅助宝石 cost 正倍率：SupportManaMultiplier MORE +30 →
 /// finalBase = floor(10 × 1.3) = 13（PoB2 CalcOffence.lua:2052/:2076-2077，
 /// 先于 inc/more 链作用于 base）。
 #[test]
@@ -431,7 +421,7 @@ fn mana_cost_support_multiplier_positive() {
     assert!((result.final_cost - 13.0).abs() < 1e-9);
 }
 
-/// 辅助宝石 cost 负倍率（M1-T4.4）：SupportManaMultiplier MORE -50 →
+/// 辅助宝石 cost 负倍率：SupportManaMultiplier MORE -50 →
 /// finalBase = floor(9 × 0.5) = 4（mult 截断 4 位小数后 floor，**不**走
 /// inc/more 链的负值 ceil 分支——base 段恒 floor，对齐 PoB2 m_floor）。
 #[test]

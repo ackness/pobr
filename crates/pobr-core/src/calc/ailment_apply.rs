@@ -1,4 +1,4 @@
-//! 非伤害异常施加闭环（M3 T4 D1，env_finalize 阶段 7；蓝图 m3-orchestration.md §7.1）。
+//! 非伤害异常施加闭环。
 //!
 //! 对照 vendor `CalcPerform.lua:3076-3180`「Calculate maximum and apply the strongest
 //! non-damaging ailments」：把 Chill/Shock 的来源词条折算成 `Current<X>` 强度并写入
@@ -35,7 +35,7 @@
 //!   注入，= `non_damaging_ailments.json` Chill.max = 50）；
 //! - Shock max = `pobr_data::monster::SHOCK_MAX_EFFECT`（既有 Rust 准源，=
 //!   `non_damaging_ailments.json` Shock.max = 100；该域尚未进 `RuntimeConstants`
-//!   注入包，接入属 runtime.rs/RuleSet 扩列，归 T4 后续/M5 数据化清单）；
+//!   注入包，接入属 runtime.rs/RuleSet 扩列，归 T4 后续/数据化清单）；
 //! - precision：`non_damaging_ailments.json` Chill/Shock 均为 0 → 整数 `floor`，
 //!   同上暂无注入通道（数据若改非 0 需先扩 RuntimeConstants）。
 //!
@@ -46,7 +46,7 @@
 //! `fill_ailments` 是**面板口径**的 magnitude 估算（冷伤命中/阈值 → `chill_effect`、
 //! `shock_effect` 输出字段），只写 `OutputTable` 不写 enemy db——两者无重复施加。
 //!
-//! ## 已知差异（M3 范围声明）
+//! ## 已知差异（声明）
 //!
 //! - `ChillCanStack`/`ShockCanStack` 叠层分支（:3084-3088 / :3105-3112）不实现
 //!   （按 build 命中再补）；
@@ -58,7 +58,7 @@
 //!   统一聚合（pobr 无 per-skill modList 通道）；
 //! - vendor 把 Base/Minimum 折算值写回 `modDB:NewMod(<X>Override, …)`（:3147）——
 //!   该写回仅服务 PoB UI/config 联动，pobr 无消费者，不写；
-//! - enemy `ActionSpeed` 的消费点 M3 缺（敌方出手速度只影响 EHP 估算）；
+//! - enemy `ActionSpeed` 的消费点缺（敌方出手速度只影响 EHP 估算）；
 //! - vendor 外层 gate 第二操作数因 Lua `0` 为 truthy 恒真（:3128-3129），等效行为是
 //!   「无来源时写零值 mod + Already flag」；pobr 用显式存在性 gate（enemy `<X>Val`
 //!   聚合 > 0 或 player 存在 Base/Override/Minimum 词条），保证空转兼容
@@ -188,7 +188,7 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> f64 {
         && player.flag(&cfg, ModName::from("HasBonechill"))
         && (enemy_val > 0.0 || override_seen);
 
-    // ---- 写阶段（读借用结束后统一落 enemy db / cfg.conditions）----
+    // 写阶段（读借用结束后统一落 enemy db / cfg.conditions）
     let origin_id = format!("ailment.{}", spec.name.to_lowercase());
     let origin = || ModifierSource::new(SourceId::new(SourceKind::Derived, origin_id.clone()));
     let cond_tag = || ModTag::condition(spec.condition, false);

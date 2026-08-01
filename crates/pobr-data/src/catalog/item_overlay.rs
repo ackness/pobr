@@ -1,4 +1,4 @@
-//! 物品编辑态四张 overlay 表 schema（M5c 蓝图 WI-B1/B2）：
+//! 物品编辑态四张 overlay 表 schema：
 //!
 //! | 表 | 路径 | vendor 来源 |
 //! |---|---|---|
@@ -8,21 +8,19 @@
 //! | `uniques.json`         | overlay/ | `Data/Uniques/*.lua`（raw 文本块数组）+ `Special/race` |
 //!
 //! 全部由 `sync-pob-catalog extract-lua --what mod-scalability|catalysts|runes|uniques`
-//! 确定性抽取生成（P13：luajit 执行 vendor 序列化，产物 byte-stable、`_meta`
+//! 确定性抽取生成（luajit 执行 vendor 序列化，产物 byte-stable、`_meta`
 //! 记 vendor commit、禁手改）。本模块只定义 serde 形状，零逻辑、零 I/O。
 //!
-//! 消费侧（M5c 主波，本波次零接线）：
-//! - `mod_scalability` / `catalysts` → `pobr-core::apply_range` 取值引擎（WI-B3）
+//! 消费侧：
+//! - `mod_scalability` / `catalysts` → `pobr-core::apply_range` 取值引擎
 //!   经 RuleSet `ItemRules` 注入；
-//! - `runes` / `uniques` → pobr-item 编辑态（WI-A4），按需单独加载，不进 ItemRules。
+//! - `runes` / `uniques` → pobr-item 编辑态，按需单独加载，不进 ItemRules。
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-// ---------------------------------------------------------------------------
 // mod_scalability —— `{range:x}` 词条取值的可缩放性 + 格式换算表
-// ---------------------------------------------------------------------------
 
 /// 词条模板中一个数值槽的缩放规则（对应 vendor 条目数组的一项）。
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -52,9 +50,7 @@ pub struct ModScalabilityDef {
     pub entries: Vec<ModScalabilityEntryDef>,
 }
 
-// ---------------------------------------------------------------------------
 // catalysts —— 催化剂品质标签匹配表
-// ---------------------------------------------------------------------------
 
 /// 一种催化剂（vendor `Classes/Item.lua:14-29` 三个平行数组的按 index 合并）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -78,9 +74,7 @@ pub struct CatalystsDef {
     pub catalysts: Vec<CatalystDef>,
 }
 
-// ---------------------------------------------------------------------------
 // runes —— 符文 / 魂核镶嵌词条表
-// ---------------------------------------------------------------------------
 
 /// 符文在某一槽类上的词条组（vendor `ModRunes.lua` 二级表）。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -113,13 +107,11 @@ pub struct RunesDef {
     pub runes: Vec<RuneDef>,
 }
 
-// ---------------------------------------------------------------------------
-// uniques —— 传奇物品 raw 文本块 + 预解析索引（P15 双层）
-// ---------------------------------------------------------------------------
+// uniques —— 传奇物品 raw 文本块 + 预解析索引（双层）
 
-/// 一件传奇（P15 双层：`raw` 保留 vendor 原始文本块逐字节，索引列只做最小
+/// 一件传奇（双层：`raw` 保留 vendor 原始文本块逐字节，索引列只做最小
 /// 预解析——name/base/variants/league/source；词条模板行解析由 pobr-item
-/// 运行时做，M5c WI-A4）。
+/// 运行时做）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UniqueDef {
     /// 物品名（raw 块第 1 行）。

@@ -14,9 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::state;
 
-// ---------------------------------------------------------------------------
 // 0.1 decode_build_json
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize)]
 struct CharacterJson {
@@ -335,9 +333,7 @@ fn decode_selected(code: &str, sel: &SetSelection) -> Result<String, super::ApiE
     Ok(serde_json::to_string(&json).map_err(|e| format!("serialize: {e}"))?)
 }
 
-// ---------------------------------------------------------------------------
 // decode_build_file_json（国服导出 `.build` 文件 → BuildJson）
-// ---------------------------------------------------------------------------
 
 /// 国服 `.build` 文件形状（poe2 国服市集导出：JSON，天赋为字符串 slug、
 /// 装备只有简中词条行、宝石为基底 metadata id 且无等级/品质）。

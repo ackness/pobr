@@ -249,9 +249,7 @@ fn sum_traced_links_matching_contributions_to_query_node() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 01-02：ModFlags 子集匹配语义（PoB2 ModList.lua `band(cfg.flags, mod.flags) == mod.flags`）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn mod_flags_match_requires_subset_not_intersection() {
@@ -286,9 +284,7 @@ fn mod_flags_match_requires_subset_not_intersection() {
     assert!(no_flags.matches(&cfg_attack_only));
 }
 
-// ---------------------------------------------------------------------------
 // 01-01：MORE 逐 modName round(modResult, 2)（PoB2 ModList.lua MoreInternal）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn more_rounds_per_name_product_to_two_decimals() {
@@ -358,7 +354,7 @@ fn get_multiplier_matches_pob2_getmultiplier_semantics() {
 
 #[test]
 fn list_nested_passes_through_nested_mods_without_evaluating() {
-    // M3 C4-1：`EnemyModifier` 类嵌套 LIST 载荷——`list_nested` 只透传内层 mods，
+    //  `EnemyModifier` 类嵌套 LIST 载荷——`list_nested` 只透传内层 mods，
     // 不参与数值聚合；文本 List 通道（`list`）对嵌套载荷保持不可见。
     let mut db = ModDb::new();
     let inner = Modifier::number("DamageTaken", ModType::Inc, 10.0)
@@ -397,9 +393,7 @@ fn nested_mods_value_has_no_scalar_views() {
     assert_eq!(value.as_nested_mods().map(<[Modifier]>::len), Some(1));
 }
 
-// ===========================================================================
-// M4-T1 W-A2：写侧原语 ReplaceMod / ConvertMod / ScaleAddMod
-// ===========================================================================
+//  写侧原语 ReplaceMod / ConvertMod / ScaleAddMod
 
 /// ReplaceMod 命中（vendor ModDB.lua:38-66）：同 name+type+flags+keywordFlags+source
 /// → 原位替换（桶内数量不变、顺序保持）；不同 source → append。
@@ -471,7 +465,7 @@ fn convert_mod_moves_between_buckets() {
     assert_eq!(db.sum(ModType::Inc, &cfg, &old_names), 10.0, "旧桶不动");
 }
 
-/// ScaleAddMod 取整 oracle 对拍（12 条，蓝图 W-A2 门禁 ≥10 全中）。
+/// ScaleAddMod 取整 oracle 对拍（12 条，门禁 ≥10 全中）。
 ///
 /// 期望值由 vendor 公式（ModStore.lua:55-80 数值分支 + Common.lua:648 round）
 /// 在 luajit 下逐条求得（脚本见 commit message；精度表 = 入库
@@ -592,7 +586,7 @@ fn high_precision_rules_default_has_no_exceptions() {
     assert_eq!(rules.default_high_precision(), 1);
 }
 
-/// MORE 聚合精度例外（M4-T1 W-A2 行为修复，10-G6；vendor ModDB.lua:156-190）。
+/// MORE 聚合精度例外（vendor `ModDB.lua:156-190`）。
 ///
 /// 期望值 = vendor MoreInternal 在 luajit 下逐字复刻实跑（脚本见 commit
 /// message；样本 S1-S6）。未注入规则（Default）时走默认 round(·,2)——
@@ -674,9 +668,7 @@ fn more_precision_exception_matches_more_internal_oracle() {
     assert_eq!(traced.value, 0.6666, "traced 同值");
 }
 
-// ===========================================================================
-// M4-T1 W-A3：EvalMod tag 第二批——PerStat 读 output + GlobalLimit 累计限幅
-// ===========================================================================
+//  EvalMod tag 第二批——PerStat 读 output + GlobalLimit 累计限幅
 
 /// PerStat 读 actor output 快照（vendor ModStore.lua:440-489 PerStat 分支 +
 /// :280-325 GetStat）：经 EvalContext::stat_lookup 取数；无快照 → 0（保守）。
@@ -803,7 +795,7 @@ fn stat_threshold_gates_in_matches_for_all_query_paths() {
     assert_eq!(db.more(&cfg, &names), 1.0);
 }
 
-/// PerStat 的 limit / limit_var / actor 维度（与 M3 Multiplier 形态统一）。
+/// PerStat 的 limit / limit_var / actor 维度（与Multiplier 形态统一）。
 #[test]
 fn per_stat_applies_limits_and_actor_dimension() {
     use pobr_core::{ActorRef, EvalContext};
@@ -901,7 +893,7 @@ fn global_limit_applies_to_more_aggregation() {
 }
 
 /// GlobalLimit 的 traced 路径：被截断贡献经 Clamp 节点入图（源节点带原值，
-/// Clamp 节点带实际计入值），未截断贡献直连（蓝图 W-A3：限幅显式入归因图）。
+/// Clamp 节点带实际计入值），未截断贡献直连（限幅显式入归因图）。
 #[test]
 fn global_limit_traced_inserts_clamp_node() {
     let cfg = CalcConfig::new();

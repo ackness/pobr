@@ -1,7 +1,7 @@
-//! M2 Track D 集成测试：Block / Spirit / Ward / Deflection 面板族 + 预留 efficiency。
+//! 集成测试：Block / Spirit / Ward / Deflection 面板族 + 预留 efficiency。
 //!
 //! 期望值全部手算自 PoB2 公式，注释标注 CalcDefence.lua 行号
-//! （蓝图 m2-defence §4.1 门禁 6：公式单测带 vendor 行号 + 手算期望值）。
+//! （公式单测带 vendor 行号 + 手算期望值）。
 
 use pobr_core::{CalcConfig, ModDb, calc};
 use pobr_data::prelude::*;
@@ -26,9 +26,7 @@ fn add_base(db: &mut ModDb, name: &str, value: f64) {
     db.add_list([pobr_core::Modifier::number(name, ModType::Base, value)]);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Block（CalcDefence.lua:961-1058）
-// ─────────────────────────────────────────────────────────────────
 
 /// 无任何词条：格挡 0，上限 = 角色固有 BaseBlockChanceMax 50
 /// （Misc.lua:147；CalcSetup.lua:28）。
@@ -118,9 +116,7 @@ fn block_effect_taken_share() {
     assert_eq!(block.block_effect_taken_pct, 30.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Spirit 池（CalcDefence.lua:73-126）
-// ─────────────────────────────────────────────────────────────────
 
 /// 池公式（:87-95）：`(ΣBASE × (1−conv) + extra) × (1+inc) × more`，round 取整。
 /// 手算：(100+30) × 1.20 = 156。
@@ -154,9 +150,7 @@ fn spirit_pool_conversion_reduces_base() {
     assert_eq!(calc::calc_spirit_pool(&db, &cfg), 70.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Ward 池（CalcDefence.lua:1144-1296）
-// ─────────────────────────────────────────────────────────────────
 
 /// 聚合公式（:1158/:1286）：`ΣBASE Ward × (1 + Σinc(Ward,Defences)/100) × more`。
 /// 手算：(34+241+50) × 1.20 = 390。
@@ -199,9 +193,7 @@ fn ward_zero_without_sources() {
     assert_eq!(calc::calc_ward(&db, &cfg, false), 0.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Deflection（CalcDefence.lua:48-54 / :1487-1506）
-// ─────────────────────────────────────────────────────────────────
 
 /// `deflectChance` 公式手算（:48-54）：rating=5000、acc=2000 →
 /// notDeflect = 2000/(2000+600)×150−50 = 65.3846…，chance = 100−round(65) = 35。
@@ -255,9 +247,7 @@ fn deflection_zero_and_lucky() {
     assert!((d.chance - 57.75).abs() < 1e-9, "got {}", d.chance);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Reservation Efficiency（CalcDefence.lua:172-350）
-// ─────────────────────────────────────────────────────────────────
 
 /// 效率除法（:240-241/:249-258）：`reserved = (flat + pool×pct) × mult ÷
 /// (1+eff/100) ÷ effMore`。手算：pool 1000、50% 预留、20% 效率 →

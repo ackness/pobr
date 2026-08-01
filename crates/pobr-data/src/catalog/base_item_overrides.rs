@@ -2,10 +2,10 @@
 //!
 //! 数据来源：vendor PoB2 `Data/Bases/*.lua`（shield / sceptre 等）——GGG `.dat`
 //! 对应表（`ShieldTypes` 的 `Block` 列、`ItemSpirit` 的 `SpiritGranted` 列）所在
-//! bundle 已被 CDN 对钉定 patch 剪除，`.dat` 路线不可得，按蓝图 m2-defence §6
+//! bundle 已被 CDN 对钉定 patch 剪除，`.dat` 路线不可得，按
 //! 开放问题 1/2 的双路线裁决走 vendor 抽取兜底。由
 //! `sync-pob-catalog extract-bases` 确定性抽取生成（schema 标识
-//! `base_item_overrides/v1`，与 M0 的 `skill_overrides` 通道同构）。
+//! `base_item_overrides/v1`，与的 `skill_overrides` 通道同构）。
 //!
 //! 消费侧：`pobr-gamedata` 在加载 `base/base_items.json` 时把本表按**英文
 //! canonical 名称**merge 到 [`super::BaseItemDef`] 之上（merge 语义与单测见
@@ -25,7 +25,7 @@ pub struct BaseItemOverrideEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spirit: Option<u32>,
     /// 弩装填时间（毫秒；vendor `weapon.ReloadTimeBase` 秒值 ×1000，源头 =
-    /// `WeaponTypes.ReloadTime`——M4-T4 W-D2，本地 `.dat` 快照缺失期间的
+    /// `WeaponTypes.ReloadTime`——，本地 `.dat` 快照缺失期间的
     /// vendor 抽取兜底，消费侧写入 [`super::WeaponBaseStats::reload_time_ms`]）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reload_time_ms: Option<u32>,

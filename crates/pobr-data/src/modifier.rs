@@ -57,20 +57,20 @@ impl ModFlags {
     }
 
     /// 位差集：去掉 `other` 中的全部置位（PoB2 `band(self, bnot(other))`）。
-    /// M4-T4 W-D1 dotCfg 的 flag 剥除原语（`CalcOffence.lua:5839-5856`）。
+    /// dotCfg 的 flag 剥除原语（`CalcOffence.lua:5839-5856`）。
     pub fn without(self, other: Self) -> Self {
         Self(self.0 & !other.0)
     }
 }
 
-/// PoB2 全位表（M4-T1 W-A1 引入，M4-I 切换 commit 起常驻——旧 5 位表与
+/// PoB2 全位表（引入，切换 commit 起常驻——旧 5 位表与
 /// `modflags-pob2` feature 双写通道已删，两次双跑 diff=0 报告见
 /// `audits/rearchitecture-2026-06-10/m4-t1-modflags-dualrun-report.md`）。
 ///
 /// 位值**逐位等于** vendor `Data/Global.lua:222-259` `ModFlag.*`（u64 字面量
 /// 直接照搬，便于对拍调试）。逐常量断言见本文件 `modflags_pob2_tests`。
 impl ModFlags {
-    // -- Damage modes（ATTACK/SPELL 与旧表同值，定义在公共块）--
+    // Damage modes（ATTACK/SPELL 与旧表同值，定义在公共块）
     /// `ModFlag.Hit = 0x0000000000000004`
     pub const HIT: Self = Self(0x4);
     /// `ModFlag.Dot = 0x0000000000000008`
@@ -79,7 +79,7 @@ impl ModFlags {
     pub const CAST: Self = Self(0x10);
     /// `ModFlag.Thorns = 0x0000000000000020`
     pub const THORNS: Self = Self(0x20);
-    // -- Damage sources --
+    // Damage sources
     /// `ModFlag.Melee = 0x0000000000000100`（旧表 `1 << 2`，位值搬家）
     pub const MELEE: Self = Self(0x100);
     /// `ModFlag.Area = 0x0000000000000200`（旧表 `1 << 4`，位值搬家）
@@ -94,7 +94,7 @@ impl ModFlags {
     pub const MELEE_HIT: Self = Self(0x1000);
     /// `ModFlag.Weapon = 0x0000000000002000`
     pub const WEAPON: Self = Self(0x2000);
-    // -- Weapon types --
+    // Weapon types
     /// `ModFlag.Axe = 0x0000000000010000`
     pub const AXE: Self = Self(0x10000);
     /// `ModFlag.Bow = 0x0000000000020000`
@@ -125,7 +125,7 @@ impl ModFlags {
     pub const WARSTAFF: Self = Self(0x20000000);
     /// `ModFlag.Talisman = 0x0000000040000000`
     pub const TALISMAN: Self = Self(0x40000000);
-    // -- Weapon classes --
+    // Weapon classes
     /// `ModFlag.WeaponMelee = 0x0000000100000000`
     pub const WEAPON_MELEE: Self = Self(0x1_0000_0000);
     /// `ModFlag.WeaponRanged = 0x0000000200000000`
@@ -139,14 +139,14 @@ impl ModFlags {
     /// [`weapon_flags`](Self::weapon_flags)（vendor getWeaponFlags）可产出的全部
     /// 位段并集 = `WEAPON_MASK ∪ WARSTAFF ∪ WEAPON`（vendor `WeaponMask` 字面量
     /// 不含 Warstaff 与 Weapon 位，见 `masks_are_unions_of_member_bits`）。供
-    /// per-hand cfg 武器位替换（T2 W-B2）整段清位用——非 vendor 字面量，PoBR 派生。
+    /// per-hand cfg 武器位替换整段清位用——非 vendor 字面量，PoBR 派生。
     pub const WEAPON_SEGMENT: Self = Self(Self::WEAPON_MASK.0 | Self::WARSTAFF.0 | Self::WEAPON.0);
 }
 
-/// 武器位派生（W-A1 commit-2 引入，切换 commit 起常驻）。
+/// 武器位派生。
 impl ModFlags {
     /// `weapon_types.json` 的 `flag` 名 → 武器类型位（vendor `ModFlag[info.flag]`，
-    /// `CalcActiveSkill.lua:291`）。名称→位映射表留代码侧（P1 L4 刹车：位枚举是
+    /// `CalcActiveSkill.lua:291`）。名称→位映射表留代码侧（L4 刹车：位枚举是
     /// 框架语义）；未知 flag 名 → `None`。
     pub fn weapon_type_bit(flag: &str) -> Option<Self> {
         Some(match flag {
@@ -176,9 +176,8 @@ impl ModFlags {
     ///   （`info.oneHand`）+ `WeaponMelee`/`WeaponRanged`（`info.melee`）。
     ///
     /// 入参对应 `weapon_types.json` 条目字段（`WeaponTypeDef` 的
-    /// id/flag/one_hand/melee）。`countsAsAll1H`/`asThoughUsing` 分支本阶段不做
-    /// （无消费 build，登记 M5+，蓝图 W-A1）；`MeleeHit` 不在 getWeaponFlags 内
-    /// （vendor 由技能侧 `:537` 另并，归 T2 per-hand cfg）。
+    /// id/flag/one_hand/melee）。`countsAsAll1H`/`asThoughUsing` 分支不做；
+    /// `MeleeHit` 不在 getWeaponFlags 内（vendor 由技能侧 `:537` 另并）。
     pub fn weapon_flags(type_id: &str, flag: &str, one_hand: bool, melee: bool) -> Self {
         let Some(mut flags) = Self::weapon_type_bit(flag) else {
             return Self::NONE;
@@ -199,7 +198,7 @@ impl ModFlags {
         flags
     }
 
-    /// per-hand cfg 武器位替换（T2 W-B2；vendor `CalcOffence.lua:2369-2449`
+    /// per-hand cfg 武器位替换（T2；vendor `CalcOffence.lua:2369-2449`
     /// weapon1Cfg/weapon2Cfg 语义：per-hand flags 由「技能位 + **该手**武器位」
     /// 构造，不继承另一手 / 全局的武器位）。
     ///
@@ -248,11 +247,11 @@ impl KeywordFlags {
     pub const AURA: Self = Self(0x0000_0001);
     /// `KeywordFlag.Curse = 0x00000002`
     pub const CURSE: Self = Self(0x0000_0002);
-    /// `KeywordFlag.Totem = 0x00004000`（M6-B parser 引擎 flag_phrases 需要）
+    /// `KeywordFlag.Totem = 0x00004000`
     pub const TOTEM: Self = Self(0x0000_4000);
-    /// `KeywordFlag.Attack = 0x00010000`（M6-B：DMGATTACKS 默认补位 / flag_phrases）
+    /// `KeywordFlag.Attack = 0x00010000`（DMGATTACKS 默认补位 / flag_phrases）
     pub const ATTACK: Self = Self(0x0001_0000);
-    /// `KeywordFlag.Spell = 0x00020000`（M6-B：DMGSPELLS 默认补位 / flag_phrases）
+    /// `KeywordFlag.Spell = 0x00020000`（DMGSPELLS 默认补位 / flag_phrases）
     pub const SPELL: Self = Self(0x0002_0000);
     /// `KeywordFlag.Hit = 0x00040000`
     pub const HIT: Self = Self(0x0004_0000);
@@ -302,7 +301,7 @@ impl KeywordFlags {
     }
 
     /// 位差集：去掉 `other` 中的全部置位（PoB2 `band(self, bnot(other))`）。
-    /// M4-T4 W-D1 dotCfg 的 `keywordFlags &= ~KeywordFlag.Hit`（`CalcOffence.lua:5838`）。
+    /// dotCfg 的 `keywordFlags &= ~KeywordFlag.Hit`（`CalcOffence.lua:5838`）。
     pub fn without(self, other: Self) -> Self {
         Self(self.0 & !other.0)
     }
@@ -340,7 +339,7 @@ impl fmt::Debug for KeywordFlags {
     }
 }
 
-/// 位值断言（W-A1 commit-1 门禁）：逐常量 == vendor `Data/Global.lua:222-259`
+/// 位值断言：逐常量 == vendor `Data/Global.lua:222-259`
 /// 的 `ModFlag.*` 字面量（vendor commit 见 `vendor/.pob2-version.txt`）。
 #[cfg(test)]
 mod modflags_pob2_tests {
@@ -453,7 +452,7 @@ mod modflags_pob2_tests {
         );
     }
 
-    /// per-hand 武器位替换（W-B2）：非空 → 清 WEAPON_SEGMENT 段再并入；
+    /// per-hand 武器位替换：非空 → 清 WEAPON_SEGMENT 段再并入；
     /// 空 → 恒等（非武器攻击 source 沿用上游供给）。
     #[test]
     fn replace_weapon_flags_swaps_weapon_segment_only() {

@@ -1,13 +1,13 @@
-//! Config 选项目录域 schema（`overlay/config_options.json`，M3-T1）。
+//! Config 选项目录域 schema（`overlay/config_options.json`）。
 //!
 //! 数据来源：vendor PoB2 `src/Modules/ConfigOptions.lua`（542 静态条目 +
 //! questRewards 动态条目），经 `sync-pob-catalog extract-lua --what
 //! config-options` 用**调用拦截 + 多探针拟合**归纳 apply 闭包为声明式
-//! `effects[]`（蓝图 m3-orchestration §4.2）。无法模板化的真逻辑条目只携带
+//! `effects[]`。无法模板化的真逻辑条目只携带
 //! `handler_id`（目标 ≤54，架构 §5）。
 //!
 //! 表达式 / 谓词 / tag 类型复用 [`super::value_expr`]（受限 DSL 单点，
-//! 00-index 裁决 §4-1）；求值统一走 `pobr-core::rules::value_expr`。
+//! 裁决 §4-1）；求值统一走 `pobr-core::rules::value_expr`。
 
 use std::collections::BTreeMap;
 
@@ -43,7 +43,7 @@ pub struct ConfigOptionDef {
     /// list 型选项（`{val, label}`）。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub list_options: Vec<ListOption>,
-    /// 可见性条件（M3 只入库不消费——UI 用）。
+    /// 可见性条件（只入库不消费——UI 用）。
     #[serde(default, skip_serializing_if = "ConfigVisibility::is_empty")]
     pub visibility: ConfigVisibility,
     /// implyCond + implyCondList 展开（条目值为真时蕴含置位的条件名）。
@@ -63,7 +63,7 @@ pub struct ConfigOptionDef {
     /// 降级为 handler 的原因（抽取器写入，报表用）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub handler_reason: Option<String>,
-    /// 抽取期多探针对拍通过（蓝图 A2 正确性裁判；false 条目运行时照用、
+    /// 抽取期多探针对拍通过（正确性裁判；false 条目运行时照用、
     /// parity 报告单列）。
     #[serde(default)]
     pub verified: bool,

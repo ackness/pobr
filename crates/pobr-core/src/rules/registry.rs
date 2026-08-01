@@ -1,12 +1,12 @@
 //! handler 注册表：数据条目里 `handler_id` → Rust 真逻辑的裁决通道。
 //!
 //! `overlay/special_mods.json` / `overlay/config_options.json` 等数据表中，
-//! 无法用受限模板 DSL 表达的条目（约 10%，见架构文档 20 §5 的 DSL 硬边界）
+//! 无法用受限模板 DSL 表达的条目（约 10%，DSL 硬边界）
 //! 只携带一个稳定字符串 `handler_id`；运行时经本注册表查到对应 Rust 闭包执行，
 //! 产出 [`HandlerOutcome`]。注册表本身零 I/O、注册集合在启动期固定。
 //!
-//! 监控约束（架构文档 20 §5）：handler 条目数应 <100；逼近 special 总量 10%
-//! 即判数据切分失败、回看裁决 P4。
+//! 监控约束：handler 条目数应 <100；逼近 special 总量 10%
+//! 即判数据切分失败。
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -15,7 +15,7 @@ use crate::config::CalcConfig;
 use crate::mod_db::ModDb;
 use crate::modifier::Modifier;
 
-/// handler 输入上下文（M3-W4 签名扩展，蓝图 m3-orchestration §11 Q3）。
+/// handler 输入上下文。
 ///
 /// 各字段「按需」可用——同一 handler 在不同消费点拿到的上下文不同：
 /// - **config 消费点**（`config_interpreter::interpret`，build 层解释原始
@@ -84,7 +84,7 @@ pub struct MainSkillCtx {
     pub self_cast: bool,
 }
 
-/// handler 产出（M3-W4 签名扩展）。
+/// handler 产出。
 ///
 /// 四路输出由消费点按各自通道落位：
 /// - `player_mods` / `enemy_mods` → 对应 actor 的 modDB（config 消费点经
@@ -119,8 +119,8 @@ impl HandlerOutcome {
 /// handler 闭包：输入 [`HandlerCtx`]（数值占位参数 + 按需只读上下文），
 /// 输出 [`HandlerOutcome`]（player/enemy mods + 条件 + 标量）。
 ///
-/// M3-W4 起的正式签名（前身 `Fn(&[f64]) -> Vec<Modifier>` 为 M0 骨架，
-/// 蓝图 §11 Q3 裁决扩展——enemyIsBoss 等条目需写 enemy 侧 / 读 db 状态）。
+/// 起的正式签名（前身 `Fn(&[f64]) -> Vec<Modifier>` 为骨架，
+/// 裁决扩展——enemyIsBoss 等条目需写 enemy 侧 / 读 db 状态）。
 pub type Handler = Box<dyn Fn(&HandlerCtx<'_>) -> HandlerOutcome + Send + Sync>;
 
 /// 重复注册同一 `handler_id` 的错误（注册集合必须唯一且启动期确定）。

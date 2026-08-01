@@ -1,7 +1,7 @@
-//! M2 Track E 集成测试：Evade 四分型 + Stun 体系（13-G9 / 13-G12）。
+//! 集成测试：Evade 四分型 + Stun 体系（13-G9 / 13-G12）。
 //!
 //! 期望值全部按 PoB2 公式手算，逐用例注明 `vendor/PathOfBuilding-PoE2/src/Modules/
-//! CalcDefence.lua` 行号（蓝图 m2-defence §4.1-6 公式单测惯例）。
+//! CalcDefence.lua` 行号。
 
 use pobr_core::calc::actor::{Actor, ActorBaseStats};
 use pobr_core::calc::defence::{EvadeSuite, calc_evade_suite};
@@ -23,9 +23,7 @@ fn suite(db: &ModDb, evasion: f64, accuracy: f64) -> EvadeSuite {
     calc_evade_suite(db, &CalcConfig::default(), evasion, accuracy, 1.0, false)
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Evade 四分型（CalcDefence.lua:1394-1456）
-// ─────────────────────────────────────────────────────────────────
 
 /// 基线：Evasion=4000, enemyAccuracy=1000。
 /// monsterHitChance（:40-46）= round((1 − 0.95×4000/(4000+4000))×100) = round(52.5) = 53。
@@ -240,9 +238,7 @@ fn perform_fills_evade_suite_into_output() {
     assert!((env.player.output.spell_projectile_evade_chance - 47.0).abs() < EPS);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Stun 体系（CalcDefence.lua:2525-2643）+ avoid_stun ES 条件修复（:2554-2557）
-// ─────────────────────────────────────────────────────────────────
 
 use pobr_core::calc::defence::calc_avoidance;
 use pobr_core::calc::stun::{StunInputs, calc_stun, calc_stun_threshold};
@@ -456,7 +452,7 @@ fn stun_chance_physical_weighted_quarter() {
     );
 }
 
-// --- avoid_stun ES 条件修复（CalcDefence.lua:2554-2557，M2-E2）---
+// avoid_stun ES 条件修复（CalcDefence.lua:2554-2557）
 
 /// ES > totalTakenHit 且非 EB → notAvoid ×0.5 → 隐式 50% 规避。
 #[test]
@@ -479,8 +475,8 @@ fn avoid_stun_eb_disables_es_halving() {
     assert_eq!(r.avoid_stun, 0.0);
 }
 
-/// perform 端到端：stun 三字段产出（M2 F-3 起 totalTakenHit 用扣池管线真值，
-/// 蓝图 Track E「F 接线后换真值」）。
+/// perform 端到端：stun 三字段产出（起 totalTakenHit 用扣池管线真值，
+/// Track E「F 接线后换真值」）。
 ///
 /// 裸 Env（无 setup_enemy → 进伤 0）：阈值 1000 不变；有效眩晕伤害 0 →
 /// SelfStunChance 0（中性）；时长仍按公式 0.528s（given-stunned 口径，:2584-2595）。
@@ -517,9 +513,7 @@ fn perform_fills_stun_with_enemy_taken_hit() {
     assert!((env.player.output.stun_duration - 0.528).abs() < EPS);
 }
 
-// ─────────────────────────────────────────────────────────────────
-// 抗性下界 −200（M2-E3 选做，13-G13；CalcDefence.lua:886/:919，Data.lua:180）
-// ─────────────────────────────────────────────────────────────────
+// 抗性下界 −200（`CalcDefence.lua:886`/`:919`，`Data.lua:180`）
 
 use pobr_core::calc::{MinimalInput, calculate_minimal};
 

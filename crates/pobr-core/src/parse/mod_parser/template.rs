@@ -1,10 +1,10 @@
-//! 占位符模板实例化（蓝图 §3 / §4）——把规则表里带 `$n` / `:cap` 占位符的
+//! 占位符模板实例化——把规则表里带 `$n` / `:cap` 占位符的
 //! tag 模板、flag 名数组实例化为 pobr [`ModTag`] / [`ModFlags`] / [`KeywordFlags`]。
 //!
-//! 占位符方言与 M5b `rules::special_mod` **同源**（`$n` 捕获、`:cap` 首字母
+//! 占位符方言与`rules::special_mod` **同源**（`$n` 捕获、`:cap` 首字母
 //! 大写拼接、`negate/div/mult/base` 算子）；数值算子链复用单点求值器
-//! `rules::value_expr`（蓝图 §3 裁决：禁第二套方言）。本模块只新增 `:cap`
-//! 字符串拼接的展开（M6-B 受限扩展，~139 闭包受益 >> 20 条目闸门）。
+//! `rules::value_expr`（禁第二套方言）。本模块只新增 `:cap`
+//! 字符串拼接的展开（受限扩展，~139 闭包受益 >> 20 条目闸门）。
 
 use pobr_data::catalog::parser_rules::TagTemplate;
 use pobr_data::catalog::stat_map::StatMapValue;
@@ -124,7 +124,7 @@ fn field_number_capop(value: &StatMapValue, captures: &[String]) -> Option<f64> 
     Some(v)
 }
 
-/// 把 [`TagTemplate`] 实例化为 pobr [`ModTag`]（蓝图 §3 / §1.5）。
+/// 把 [`TagTemplate`] 实例化为 pobr [`ModTag`]。
 ///
 /// **可映射清单**（与 special_mod::compile_tag 同口径，扩展 Multiplier/PerStat/
 /// ActorCondition 的 `$n` 字段）：
@@ -189,14 +189,14 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             }
         }
         "ActorCondition" => {
-            // M6.3 归一：vendor `ActorCondition{actor=enemy,var=X}` → PoBR 扁平条件
+            // .3 归一：vendor `ActorCondition{actor=enemy,var=X}` → PoBR 扁平条件
             // `Condition{var=Enemy<X>}`（actor=None），与 legacy + 编排层 cfg 键空间一致
             // （orchestrator 据 build config `conditionEnemy<X>` 置 `Enemy<X>` 真）。
             // 例外（[`normalize_enemy_cond_var`]）：var 已含 `Enemy` 前缀（EnemyInPresence）
             // 或为敌人**稀有度**（Rare/Unique/RareOrUnique/Normal/Magic，legacy 用裸名）
             // 不加前缀，避免双前缀 / 与 legacy 偏离。
             //
-            // 修复（M6 fork-a）：早前一律用裸名会让 `against ignited enemies` 产
+            // 修复（fork-a）：早前一律用裸名会让 `against ignited enemies` 产
             // `Condition{Ignited}`（查玩家自身 Ignited，恒假）而非 legacy 的 `EnemyIgnited`
             // （查敌方异常，编排层置真）——player 侧「against <ailment> enemies」增伤全失效。
             //
@@ -261,7 +261,7 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             Some(ModTag::SlotName(slot_name_to_id(&name)))
         }
         "PerStat" | "PercentStat" => {
-            // M6.3 归一（C2）：vendor `PerStat{stat,div,limit}` ↔ PoBR `Multiplier
+            // .3 归一（C2）：vendor `PerStat{stat,div,limit}` ↔ PoBR `Multiplier
             // {var=stat,div,limit}` 字段一一对应（计算侧 effective_number 只识别
             // Multiplier；legacy 也统一产 Multiplier）。归一为 Multiplier。
             //

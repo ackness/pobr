@@ -1,15 +1,15 @@
-//! `gen-mirage-configs` 子命令（pre-M5a 数据生产，M5a 蓝图 Track D2）：
+//! `gen-mirage-configs` 子命令：
 //! 产 `overlay/mirage_configs.json`（5 类 mirage 配置）。
 //!
 //! vendor `Modules/CalcMirages.lua` 的五个分支是过程闭包，无法 luajit 序列化
 //! ——配置数据**内嵌于本工具源码**，由工具落盘（满足「overlay 禁手改、只许
-//! 工具再生」的字面要求；此取舍列 M5a 蓝图 §6 开放问题 2）。每条配置带
+//! 工具再生」的字面要求；此取舍列开放问题 2）。每条配置带
 //! `vendor_ref` 行段锚点；vendor drift 由 `_meta.vendor_fingerprint`
 //! （CalcMirages.lua 行数+字节数的粗粒度指纹）提醒——vendor bump 后重跑本
 //! 命令，指纹变化即产生 byte diff，提示人工复核五分支语义。
 //!
-//! 真特殊分支逻辑走 `handler_id`（M5a 主波注册进 `pobr-core::rules::registry`，
-//! 本波次零接线）。schema 见 [`pobr_data::catalog::triggers`]。
+//! 真特殊分支逻辑走 `handler_id`（注册进 `pobr-core::rules::registry`，
+//! 零接线）。schema 见 [`pobr_data::catalog::triggers`]。
 
 use std::fs;
 use std::io;
@@ -28,7 +28,7 @@ struct MirageMeta {
     #[serde(flatten)]
     base: OverlayMeta,
     /// `Modules/CalcMirages.lua` 粗粒度指纹（`<行数>L:<字节数>B`）——
-    /// vendor bump 后指纹变化 = 提示人工复核五分支语义（蓝图 D2 drift 提醒）。
+    /// vendor bump 后指纹变化 = 提示人工复核五分支语义。
     vendor_fingerprint: String,
 }
 

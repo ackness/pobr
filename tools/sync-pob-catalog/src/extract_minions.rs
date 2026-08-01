@@ -1,12 +1,12 @@
-//! `extract-lua --what minions|spectres|minion-list`（pre-M5a 数据生产）：
+//! `extract-lua --what minions|spectres|minion-list`（数据生产）：
 //!
 //! - `minions` / `spectres`：执行 vendor `Data/Minions.lua` / `Data/Spectres.lua`
 //!   （引导脚本 `extract_minions.lua`，stub 完整序列化 `mod(...)`/`flag(...)`
-//!   构造参数——蓝图 R3 警告的丢参问题在 stub 层规避），产
+//!   构造参数——丢参警告的丢参问题在 stub 层规避），产
 //!   `overlay/minions.json` / `overlay/spectres.json`；
 //! - `minion-list`：执行 vendor `Data/Skills/*.lua`（引导脚本
 //!   `extract_minion_list.lua`），抽 `minionList`/`minionUses`/`minionHasItemSet`
-//!   外键边车，产 `overlay/granted_effect_minions.json`（00-index 裁决 §4-10）。
+//!   外键边车，产 `overlay/granted_effect_minions.json`。
 //!
 //! 公共层（luajit JSONL 调用 / vendor 版本解析 / byte-stable 序列化约定）
 //! 复用 [`crate::extract_lua`]。

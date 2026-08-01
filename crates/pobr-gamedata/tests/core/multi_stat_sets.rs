@@ -1,4 +1,4 @@
-//! M1-T5.2 多 statSet 入库验收（蓝图 T5 验收项）：
+//! 多 statSet 入库验收：
 //! - IceNova effect 含 ≥2 个**附加** set（`IceNovaPlayerOnFrostbolt` /
 //!   `IceNovaColdInfusedPlayer`，`.dat` `GrantedEffects.AdditionalStatSets` 列）；
 //! - vendor 导出的 set 带非空 label（`overlay/stat_set_labels.json` merge）；
@@ -18,7 +18,7 @@ fn ice_nova_has_additional_sets_with_labels() {
         .find(|s| s.effect_id == "IceNovaPlayer")
         .expect("IceNovaPlayer present");
 
-    // 主 set + ≥2 附加 set（蓝图验收：IceNova ≥2 附加 set）。
+    // 主 set + ≥2 附加 set。
     assert!(
         ice.sets.len() >= 3,
         "IceNova 应含主 set + ≥2 附加 set，实得 {}",

@@ -29,21 +29,21 @@ use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::PassiveTreeSpec;
 use pobr_gamedata::{GameData, repo_data_root};
 
-// ── fixtures ────────────────────────────────────────────────────────────────
+// fixtures
 
 const DEADEYE_CODE: &str = include_str!("../../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
 
 const MARTIAL_ARTIST_CODE: &str =
     include_str!("../../../../examples/demo-bd-test/ninja-bd-marial-artist.txt");
 
-// ── 数据加载（每套测试共用同一 GameData + BuildData）────────────────────────
+// 数据加载（每套测试共用同一 GameData + BuildData）
 
 fn load_game_data() -> BuildData {
     let data = GameData::new(repo_data_root().join(pobr_gamedata::data_version()));
     BuildData::load(&data).expect("load BuildData from repo data")
 }
 
-// ── 测试主体 ─────────────────────────────────────────────────────────────────
+// 测试主体
 
 /// Deadeye build：端到端完整管线（含装备 / 天赋树 / 宝石 / CharacterBase / 敌人）。
 #[test]
@@ -82,7 +82,7 @@ fn deadeye_e2e_full_pipeline_succeeds() {
     let out = calculate_with_data(&build, &build_data, &opts)
         .expect("calculate_with_data should succeed for deadeye build");
 
-    // ── 合理性断言 ──────────────────────────────────────────────────────────
+    // 合理性断言
     // CharacterBase(level 98 Ranger: 28 + 12*98 + 2*7 = 1218) 来自职业属性表。
     // 装备 / 天赋节点应进一步抬升 life。保守断言：life > CharacterBase 基础值。
     let ranger_char_base_life = 28.0 + 12.0 * 98.0 + 2.0 * 7.0;
@@ -293,7 +293,7 @@ fn deadeye_e2e_effective_dps_lower_hit_chance() {
     );
 }
 
-/// FullDPS（M7 多技能脚手架）：遍历启用伤害技能组、各自整 build 复算后 CombinedDPS 求和。
+/// FullDPS（多技能脚手架）：遍历启用伤害技能组、各自整 build 复算后 CombinedDPS 求和。
 #[test]
 fn deadeye_full_dps_sums_enabled_damaging_skills() {
     let build_data = load_game_data();

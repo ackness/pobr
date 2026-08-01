@@ -1,7 +1,7 @@
 //! 共享测试支撑：从仓库数据目录加载真实解析规则（一次编译、全测试复用），
 //! 提供 engine 版 `parse_mod` / `ctx`。
 //!
-//! M6 收尾删除 legacy 手写解析器后，测试与生产同走数据驱动引擎；本模块与
+//! 收尾删除 legacy 手写解析器后，测试与生产同走数据驱动引擎；本模块与
 //! `pobr-core` 的 `test-rules` feature helper 同源（加载逻辑一致），因 crate
 //! 自身集成测试无法启用自身 feature 而独立存在（dev-deps 已有 serde_json）。
 

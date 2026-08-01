@@ -3,10 +3,10 @@
 //!
 //! 数据来源：vendor PoB2 `Data/SkillStatMap.lua`（954 条全局 stat → modifier
 //! 构造器映射）+ `Data/Skills/{act_*,sup_*,other}.lua` 各 statSet 的 `statMap`
-//! 字段（per-set 覆盖；minion/spectre 留 M5a）。由
+//! 字段（per-set 覆盖；minion/spectre 留）。由
 //! `sync-pob-catalog extract-lua --what stat-map` 确定性抽取生成。
 //!
-//! **抽取保真原则**（M1 蓝图 T2.1）：mod 构造器的 tags / 嵌套表**原样**纯表化
+//! **抽取保真原则**：mod 构造器的 tags / 嵌套表**原样**纯表化
 //! 落 JSON，抽取期不做任何语义筛选——「哪些 tag/字段受支持」的判定是引擎
 //! （`pobr-core::rules::stat_map_engine`）的职责。这样 vendor 更新时 overlay
 //! 的 drift diff 才有意义。遇 Lua 函数值等不可序列化字段时整条标
@@ -14,7 +14,7 @@
 //!
 //! merge 语义（消费侧，vendor `Modules/CalcActiveSkill.lua:112` 逐字对齐）：
 //! `注入值 = entry.value or stat值 × (entry.mult or 1) × scalar / (entry.div or 1) + (entry.base or 0)`
-//! （group 元素用 group 级参数替代 entry 级参数；scalar M1 固定 1.0）。
+//! （group 元素用 group 级参数替代 entry 级参数；scalar固定 1.0）。
 //! 本模块只定义 serde 形状，零逻辑。
 
 use std::collections::BTreeMap;
@@ -72,7 +72,7 @@ pub struct StatMapMod {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<BTreeMap<String, StatMapValue>>,
     /// group 级 scalar 变量名（vendor `checkForScalarMultiplier` 反查
-    /// `Multiplier:<scalar>`；M1 引擎固定 scalar=1.0 并把含 scalar 条目归
+    /// `Multiplier:<scalar>`；引擎固定 scalar=1.0 并把含 scalar 条目归
     /// Unsupported）。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scalar: Option<String>,

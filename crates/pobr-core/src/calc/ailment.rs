@@ -208,7 +208,7 @@ fn ailment_keyword(ailment: AilmentType) -> KeywordFlags {
 /// （[`estimate_active_stacks`] 的 `duration_secs` 参数）在构造实例前取用。
 /// 仅支持伤害异常（Bleed/Ignite/Poison）；其余类型返回 0。
 pub fn ailment_duration(ailment: AilmentType, db: &ModDb, cfg: &CalcConfig) -> f64 {
-    // M0-W3：异常基线常量改读注入常量包（fallback == 旧 GameConstants::poe2()，值不变）。
+    //  异常基线常量改读注入常量包（fallback == 旧 GameConstants::poe2()，值不变）。
     let gc = cfg.constants.game();
     let (base, specific) = match ailment {
         AilmentType::Bleed => (gc.bleed_base_duration, "BleedDuration"),
@@ -344,7 +344,7 @@ pub fn poison_instance(pre_mitigation_hit: f64, db: &ModDb, cfg: &CalcConfig) ->
 /// 最大值为 100%（`ShockMaxEffect = 100`，远超通常可达的 50%）。
 /// 出处：agent-docs/ailments.md §感电、PoB2 `nonDamagingAilmentsConfig.Shock`：
 ///   `Shock.effect = 50 * (damage/enemyThreshold)^0.4 * effectMod, clamp [min=20, max=100]`
-/// M0-W3：`min_effect_pct` 由调用方自注入常量包传入
+///  `min_effect_pct` 由调用方自注入常量包传入
 /// （`cfg.constants.game().shock_min_effect`，fallback == 旧 const = 20，值不变）。
 pub fn shock_effect(
     pre_mitigation_lightning_hit: f64,
@@ -376,7 +376,7 @@ pub fn shock_effect_with_mods(
     }
     let ratio = pre_mitigation_lightning_hit / target_ailment_threshold;
     // 50 * ratio^0.4 * effectMod → 以百分点计；min_effect_pct 以整数百分点（20）传入，
-    // 末端转小数比例（M0-W3：值来自注入常量包 `shock_min_effect`，fallback == 旧 const）。
+    // 末端转小数比例（值来自注入常量包 `shock_min_effect`，fallback == 旧 const）。
     let effect_pct = 50.0 * ratio.powf(0.4) * effect_mod;
     let min_pct = min_effect_pct; // 20.0 (percent)
     let max_pct = 100.0;
@@ -403,9 +403,7 @@ pub fn corrupted_blood_instance(dps_per_stack: f64) -> DebuffInstance {
     }
 }
 
-// ---------------------------------------------------------------------------
 // effMult：敌方抗性 + DamageTaken/DamageTakenOverTime 对异常 DoT 的修正
-// ---------------------------------------------------------------------------
 
 /// 异常 DoT 的 effMult（仅 `mode_effective` 时 < 1 才有意义）：
 /// `effMult = (1 - resist/100) * (1 + takenInc/100) * takenMore`。
@@ -472,9 +470,7 @@ fn type_prefix(damage_type: DamageType) -> &'static str {
     }
 }
 
-// ---------------------------------------------------------------------------
 // 高层：几率 + 暴击加权 + magnitude + effMult（含 TraceGraph 归因）
-// ---------------------------------------------------------------------------
 
 /// 一类伤害异常的完整面板结果。
 #[derive(Debug, Clone, Copy)]
@@ -852,9 +848,7 @@ fn record_effmult_trace(
     eff_node
 }
 
-// ---------------------------------------------------------------------------
 // 冰缓 (Chill) 效果计算
-// ---------------------------------------------------------------------------
 
 /// 冰缓效果（行动速度降低百分比，整数量级）：
 /// `chillEffect = ChillEffectMultiplier × (damage / enemyThreshold) × effectMod`。
@@ -931,9 +925,7 @@ pub fn chill_traced(
     (effect, node)
 }
 
-// ---------------------------------------------------------------------------
 // 冰冻 / 电击 Poise 积累 (Poise Buildup)
-// ---------------------------------------------------------------------------
 
 /// Poise 积累百分比（每单位伤害对姿态积累的贡献，以百分比表示）：
 /// `poiseBuildup% = DamageScale / enemyPoiseThreshold × (1 + inc/100) × more × 100`。
@@ -1059,9 +1051,7 @@ fn poise_buildup_traced(
     (buildup, node)
 }
 
-// ---------------------------------------------------------------------------
 // 叠层与权重平均 DPS (Ailment Stacking)
-// ---------------------------------------------------------------------------
 
 /// 叠层配置：决定某类 damaging ailment 的最大叠层数与活跃叠层数。
 ///
@@ -1245,9 +1235,7 @@ pub fn stacking_ailment_dps_traced(
     (stacked, node)
 }
 
-// ---------------------------------------------------------------------------
 // Feature 1: AilmentEffect / Faster / Slower 三维度
-// ---------------------------------------------------------------------------
 
 /// 异常 Effect 乘区：`calcLib.mod(skillModList, dotCfg, "AilmentEffect")`。
 ///
@@ -1265,7 +1253,7 @@ pub fn ailment_effect_mod(db: &ModDb, cfg: &CalcConfig) -> f64 {
 /// `rateMod` 同时放大 DPS 并**等比缩短**持续时间，使总伤害不变但 DPS 提升。
 /// 分别读攻击方 `<Ailment>Faster`/`<Ailment>Slower`（calcLib.mod 口径 =
 /// INC+MORE 两腿，CalcTools.lua:16-18；statmap `faster_burn_%` 族产 INC，
-/// M4-m k3 接入）与敌方 `Self<Ailment>Faster`（INC 累加后除以 100，加入
+/// k3 接入）与敌方 `Self<Ailment>Faster`（INC 累加后除以 100，加入
 /// faster 分子）。
 ///
 /// 出处：PoB2 `CalcOffence.lua` l.5036
@@ -1378,9 +1366,7 @@ pub fn apply_effect_and_rate_mod_traced(
     apply_effect_and_rate_mod(inst, effect_mod, rate_mod)
 }
 
-// ---------------------------------------------------------------------------
 // Feature 2: 跨类型施加（<Type>Can<Ailment>）
-// ---------------------------------------------------------------------------
 
 /// 为某 damaging ailment 计算有效来源命中（含跨类型施加 `<Type>Can<Ailment>` 旗标）。
 ///
@@ -1529,9 +1515,7 @@ fn ailment_mod_name(ailment: AilmentType) -> &'static str {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Feature 3: DotDpsCap
-// ---------------------------------------------------------------------------
 
 /// 应用全局 DoT DPS 上限：`min(dps, cap)`（cap = `DotDpsCap`）。
 ///
@@ -1545,7 +1529,7 @@ fn ailment_mod_name(ailment: AilmentType) -> &'static str {
 ///   `local ailmentDPSCapped = m_min(ailmentDPSUncapped, data.misc.DotDpsCap)`
 ///   + `Data.lua` `DotDpsCap = 35791394`（grep 全 src 无 `Override(..,"DotDpsCap")`）。
 ///
-/// M0-W3：`cap` 由调用方自注入常量包传入（`cfg.constants.game().dot_dps_cap`，
+///  `cap` 由调用方自注入常量包传入（`cfg.constants.game().dot_dps_cap`，
 /// fallback == 旧 const = 35791394，值不变）。
 pub fn apply_dot_dps_cap(dps: f64, cap: f64) -> f64 {
     round(dps.min(cap))

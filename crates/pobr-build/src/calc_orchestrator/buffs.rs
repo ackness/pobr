@@ -2,7 +2,7 @@
 
 use super::*;
 
-/// （M4-m）已启用组中全部 **herald 主动技能**的 buff 显示名（按名去重、排序确定）。
+/// 已启用组中全部 **herald 主动技能**的 buff 显示名（按名去重、排序确定）。
 ///
 /// vendor 等价（CalcPerform.lua:1792-1805）：遍历 activeSkillList，
 /// `skillTypes[SkillType.Herald]` 且 skillName 未计数 → heraldList 记名。
@@ -66,7 +66,7 @@ pub(crate) fn buff_skill_name(data: &BuildData, skill_id: &str) -> String {
         .join(" ")
 }
 
-/// （M3-T3 C1）把所有**已启用 aura / curse 技能**构造为 [`BuffSpec`]（蓝图 §2.4
+/// 把所有**已启用 aura / curse 技能**构造为 [`BuffSpec`]（
 /// 契约），经 `session.add_buff_skill` 注入、由 pobr-core buff_pass（env_finalize
 /// 阶段 4）消费。
 ///
@@ -74,19 +74,19 @@ pub(crate) fn buff_skill_name(data: &BuildData, skill_id: &str) -> String {
 /// - `skill_types` 含 `Aura` → [`BuffKind::Aura`]，mods = [`map_aura_buff_stat`]
 ///   映射的防御 buff（与 C5 切换前的 `aura_buff_modifiers` 静态直注同一取数/
 ///   归因口径——双跑已证两条通道对同一来源等值）；
-/// - `skill_types` 含 Mark/Curse 系 token（`Mark` / `AppliesCurse`，M1 token
+/// - `skill_types` 含 Mark/Curse 系 token（`Mark` / `AppliesCurse`，token
 ///   表达式列实查）→ [`BuffKind::Curse`]（`is_mark` = 含 `Mark`）。curse 携带
-///   词条（M3-W4）：granted_effect statset 的 curse 载荷 stat 经 statmap 数据
+///   词条：granted_effect statset 的 curse 载荷 stat 经 statmap 数据
 ///   通道（[`stat_map_engine::map_curse_stat`]，vendor 各 curse statSet 的
 ///   `GlobalEffect effectType=Curse` 条目）映射为**敌侧** modifier，由 buff_pass
 ///   curse 路径施 CurseEffect 乘区后写 enemy db（CalcPerform.lua:2286-2316 /
 ///   :2969-2984）。映射不到的 curse 载荷 stat 经 Compare 模式落可见性报表
 ///   （[`curse_stat_modifiers`]）。
-/// - （M4-L）其余主动技能：statset stat 经 [`debuff_stat_modifiers`]（debuff 域
+/// - 其余主动技能：statset stat 经 [`debuff_stat_modifiers`]（debuff 域
 ///   `GlobalEffect effectType=Debuff`）映射出敌侧载荷非空 →
 ///   [`BuffKind::Debuff`]（vendor buff 循环遍历**全部** activeSkillList，
 ///   CalcPerform.lua:1847 / Debuff 分支 :2219-2285——非主技能同样对敌注入）；
-///   （M4-n）同一扫描下经 [`player_buff_stat_modifiers`]（buff 域
+///   同一扫描下经 [`player_buff_stat_modifiers`]（buff 域
 ///   `GlobalEffect effectType=Buff`）映射出**玩家侧**载荷非空 →
 ///   [`BuffKind::Buff`]（vendor Buff 分支 :1949-1962；典型 = 武器授予的
 ///   Pinnacle of Power `<El>Can<Ailment>` flag 族 + 数值允收名单）。两类载荷
@@ -127,7 +127,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                 let is_curse = is_mark || has_type("AppliesCurse");
                 let socket_index = (idx + 1) as u32;
                 if !is_aura && !is_curse {
-                    // （M4-L）Debuff 分支：非 aura/curse 主动技能的敌侧 debuff 载荷
+                    // Debuff 分支：非 aura/curse 主动技能的敌侧 debuff 载荷
                     // （GlobalEffect effectType=Debuff，vendor CalcActiveSkill.lua:976-1046
                     // 搬入 buff.modList → CalcPerform.lua:2219-2285 Debuff 分支写 enemyDB）。
                     // 如 Frost Bomb `active_skill_all_elemental_exposure_magnitude` →
@@ -141,7 +141,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
                     let debuff_mods =
                         debuff_stat_modifiers(data, &es, skill_id, set_key.as_deref());
-                    // （M4-n）玩家侧 Buff 载荷：buff 授予类主动技能（武器授予的
+                    // 玩家侧 Buff 载荷：buff 授予类主动技能（武器授予的
                     // Pinnacle of Power（other.lua:12503，fromItem）等——PoB 把
                     // `Grants Skill` 写成带 `source="Item:…"` 的 socket group，
                     // 与显式组同走本扫描，seen 去重）statSet 的 GlobalEffect
@@ -151,7 +151,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                     // （CalcPerform.lua:1949-1962）施 BuffEffect 乘区后并入 player db
                     // （vendor buff 循环写全局，对位 GlobalEffect/Buff 全局作用域）。
                     // 与 support_buff_specs 的 support 路无交集（此处仅主动技能）。
-                    // （M4-n）玩家侧 Buff 分支：非 aura/curse 主动技能的玩家侧 buff
+                    // 玩家侧 Buff 分支：非 aura/curse 主动技能的玩家侧 buff
                     // 载荷（GlobalEffect effectType=Buff，vendor 同一 buff 循环
                     // CalcPerform.lua:1949-1962 Buff 分支写 player db）。如 Sigil of
                     // Power `circle_of_power_spell_damage_+%_final_per_stage` →
@@ -238,7 +238,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                             );
                         }
                     }
-                    // （M4-G）statmap buff 域补充通道：玩家侧允收名单（Accuracy）
+                    // statmap buff 域补充通道：玩家侧允收名单（Accuracy）
                     // 的 GlobalEffect Buff/Aura 载荷（如 War Banner
                     // `base_skill_buff_banner_accuracy_+%_to_apply` → Accuracy INC +
                     // Condition:BannerPlanted 直译保留），与 map_aura_buff_stat 的
@@ -268,7 +268,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                         skill_types: super::conditions::skill_type_bits(&effect.skill_types),
                     });
                 } else {
-                    // curse 效果词条（M3-W4）：statset stat 经 statmap curse 域映射
+                    // curse 效果词条：statset stat 经 statmap curse 域映射
                     // 为敌侧 modifier（Despair→ChaosResist 减抗、Enfeeble→Damage MORE…），
                     // buff_pass 施 CurseEffect 乘区 + Condition:Effective 后入 enemy db。
                     // （存量 #7-1）取数等级 = 宝石等级 + 适用的 `+N to Level of all
@@ -278,7 +278,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                     let es =
                         data.effect_stats(skill_id, curse_level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
-                    // vendor 注册前置（M4-l）：buffList 仅由 GlobalEffect 载荷构成
+                    // vendor 注册前置：buffList 仅由 GlobalEffect 载荷构成
                     // （CalcActiveSkill.lua:976-1041），curse 表项只从 buffList 构造
                     // （CalcPerform.lua:2286-2316）——statMap 数据上**无任何** curse
                     // 载荷的技能（Repulsion `CurseOfRepulsionPlayer`，per-set statMap
@@ -382,7 +382,7 @@ fn curse_local_effect_scale(
     (inc, more)
 }
 
-/// （M4-G）support 授予的**玩家侧 buff** → [`BuffSpec`]（kind = [`BuffKind::Buff`]，
+/// support 授予的**玩家侧 buff** → [`BuffSpec`]（kind = [`BuffKind::Buff`]，
 /// buff_pass Buff 分支 CalcPerform.lua:1949-1962 施 BuffEffect 乘区后并入 player db）。
 ///
 /// vendor 语义：Precision I/II（`sup_dex.lua:4181-4250`）等 support 自身 statSet 的
@@ -511,10 +511,10 @@ pub(crate) fn self_buff_offensive_modifiers(build: &Build, data: &BuildData) -> 
     mods
 }
 
-/// （M1-T4.5）把所有**已启用持续保留型效果**的 Spirit 预留聚合为
+/// 把所有**已启用持续保留型效果**的 Spirit 预留聚合为
 /// `SkillSpiritReservationBase` BASE modifier（每效果一条，SkillGem 归因），由
 /// perform `fill_skill_mechanics` 汇总落 [`pobr_core::OutputTable`] 的
-/// `spirit_reserved`。超载只**报告不拦截**（与 PoB2 一致：照算并标红，M1 不做
+/// `spirit_reserved`。超载只**报告不拦截**（与 PoB2 一致：照算并标红，不做
 /// 池侧钳制）。
 ///
 /// 口径（对照 PoB2 `CalcDefence.lua:192-249` Reservation 段）：
@@ -528,9 +528,9 @@ pub(crate) fn self_buff_offensive_modifiers(build: &Build, data: &BuildData) -> 
 ///   `ReservationMultiplier` MORE，乘积**截断到 4 位小数**
 ///   （`CalcDefence.lua:197` `floor(More("ReservationMultiplier"), 4)`）；
 /// - 每效果 `reserved = max(round(flat_total × 倍率), 0)`
-///   （`CalcDefence.lua:246-249` 的 M1 子集——`Reserved`/`ReservationEfficiency`
-///   inc/more 词条族与 Spirit 池本值/unreserved 归 M2 Track D，
-///   00-index 裁决 §4-12）。
+///   （`CalcDefence.lua:246-249` 的子集——`Reserved`/`ReservationEfficiency`
+///   inc/more 词条族与 Spirit 池本值/unreserved 归，
+///   裁决 §4-12）。
 ///
 /// 同一效果在多组重复出现按 id 去重（与 [`aura_buff_modifiers`] 同口径）；support
 /// 贡献现按组内全量取（T3.6 兼容名单合并后随 `support_modifiers` 同口径收紧）。

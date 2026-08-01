@@ -17,7 +17,7 @@ use crate::build_data::{BuildData, ResolvedSkillLevel};
 /// 进入 offence 的伤害分量管线。
 ///
 /// 使用时间不在此处（它走 `base_input.base_action_rate`，见 [`calculate_with_data`]）。
-/// `set_key` = 选中 statSet 的 per-set 覆盖键（W-J 接线，见 [`mapped_stat_modifiers`]）。
+/// `set_key` = 选中 statSet 的 per-set 覆盖键（接线，见 [`mapped_stat_modifiers`]）。
 pub(crate) fn skill_base_modifiers(
     skill: &ResolvedSkillLevel,
     skill_id: &str,
@@ -93,7 +93,7 @@ pub(crate) fn skill_base_modifiers(
     mods
 }
 
-/// 主技能选中 statSet 的 dotIs* 旗标 → `DotIs<X>` FLAG modifier（M4-T4 W-D1）。
+/// 主技能选中 statSet 的 dotIs* 旗标 → `DotIs<X>` FLAG modifier。
 ///
 /// vendor 语义：statSet `baseMods` 的 `skill("dotIsArea", true)` 类条目直挂在
 /// skillData 上（4.5.0.3.4 全量仅 TornadoShot "Tornado" set 一处）；PoBR 经
@@ -133,7 +133,7 @@ pub(crate) fn dot_flag_modifiers(
         .collect()
 }
 
-/// 尸体爆炸基伤（M4-G；vendor `CalcOffence.lua:2211-2217`）：
+/// 尸体爆炸基伤（vendor `CalcOffence.lua:2211-2217`）：
 ///
 /// ```lua
 /// local monsterLife = skillData.corpseLife or data.monsterLifeTable[env.enemyLevel]
@@ -236,7 +236,7 @@ pub(crate) fn resolved_enemy_level(
     }
 }
 
-/// 弩 reload 数据通道（M4-T4 W-D2；vendor `CalcOffence.lua:1118-1122` skillData
+/// 弩 reload 数据通道（vendor `CalcOffence.lua:1118-1122` skillData
 /// 装配 + `:283-320` calcCrossbowAmmoStats/calcCrossbowReloadTime 取数对照）：
 ///
 /// - 门控 = 主技能 `skill_types` 含 `CrossbowSkill` 且不含 `Grenade` /
@@ -361,7 +361,7 @@ pub(crate) fn main_skill_quality_modifiers(
     )
 }
 
-/// （M1-W-J）主技能**未选 statSet** 的 global-only merge（PoB2
+/// 主技能**未选 statSet** 的 global-only merge（PoB2
 /// `calcs.mergeSkillInstanceMods`，`Modules/CalcActiveSkill.lua:124-140`）：
 /// 选中 set 之外的每个 vendor 导出 set，其 stats 仅注入 statmap 条目中带
 /// `GlobalEffect` tag 的 modOrGroup（`isGlobalEffect`，`:68-80`）；选中 set 已按
@@ -371,9 +371,9 @@ pub(crate) fn main_skill_quality_modifiers(
 /// 品质逐 set 叠加、同 stat 合并）；映射 = `stat_map_engine::map_stat_global_only`
 /// （per-set 覆盖链按**该未选 set** 的 set_key 查）。
 ///
-/// **第一批边界**：`GlobalEffect` tag 本身仍在 tag 翻译边界外（buff 域随 M3
+/// **第一批边界**：`GlobalEffect` tag 本身仍在 tag 翻译边界外（buff 域随
 /// buff_pass 接入，切换日志 §5）——当前 global 条目整条 Unsupported、注入为零，
-/// 本接线为结构就位；M3 接通后自动产出注入项（FlameWall 投射物 buff 等，
+/// 本接线为结构就位；接通后自动产出注入项（FlameWall 投射物 buff 等，
 /// Q3 影响面实测见 m1-acceptance-report.md）。零值跳过（与各取数点同口径）。
 pub(crate) fn unselected_set_global_modifiers(
     group: &SocketGroup,

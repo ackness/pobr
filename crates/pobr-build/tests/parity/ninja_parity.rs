@@ -10,7 +10,7 @@
 //! 防御/属性按 PoB2 PlayerStat 口径比较；DPS 类（与技能管线完整度强相关）单列报告，
 //! 不计入防御命中率，避免未完成的 offence 管线掩盖防御侧 parity 信号。
 //!
-//! **默认口径 = `mode_effective=true`（M3-W5 切换）**：PoB2 主面板（即 golden 导出）
+//! **默认口径 = `mode_effective=true`**：PoB2 主面板（即 golden 导出）
 //! 在非 CALCS 模式下恒为 EFFECTIVE（vendor `CalcSetup.lua:583-588`），与 golden 对齐。
 //! 面板口径（`mode_effective=false`）保留 [`panel_mode_no_regression`] 守卫，防口径
 //! 回归无感知。切换依据与逐 build 归因：
@@ -97,7 +97,7 @@ fn run_build_mode(dir: &Path, data: &BuildData, mode_effective: bool) -> Option<
     calculate_with_data(&build, data, &opts).ok()
 }
 
-/// 默认口径：effective（与 PoB2 golden 同口径，M3-W5 切换）。
+/// 默认口径：effective。
 fn run_build(dir: &Path, data: &BuildData) -> Option<OutputTable> {
     run_build_mode(dir, data, true)
 }
@@ -129,7 +129,7 @@ fn ratio(pobr: f64, golden: f64) -> f64 {
 }
 
 /// 防御/属性面板**核心列**（W1 全程的旧 8 列基线口径；扩列稀释防护的子集指标，
-/// 蓝图 §4.2-1 / 00-index §4 owner 双指标裁决）。
+/// -index §4 owner 双指标裁决）。
 fn defensive_core_rows(
     out: &OutputTable,
     g: &serde_json::Map<String, serde_json::Value>,
@@ -178,8 +178,8 @@ fn defensive_core_rows(
     ]
 }
 
-/// 防御扩展列（M2 F-3 扩列 8→25：EHP/max-hit 新口径 + Block/Spirit/Evade/
-/// Deflect/池口径面板，蓝图 §2 Track F「defensive_rows 扩列」清单）。
+/// 防御扩展列（扩列 8→25：EHP/max-hit 新口径 + Block/Spirit/Evade/
+/// Deflect/池口径面板，Track F「defensive_rows 扩列」清单）。
 fn defensive_extended_rows(
     out: &OutputTable,
     g: &serde_json::Map<String, serde_json::Value>,
@@ -273,7 +273,7 @@ fn defensive_extended_rows(
     ]
 }
 
-/// 全量防御列 = 核心 8 列 + 扩展 17 列（≈ 蓝图「8→~24 列」）。
+/// 全量防御列 = 核心 8 列 + 扩展 17 列。
 fn defensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Value>) -> Vec<Row> {
     let mut rows = defensive_core_rows(out, g);
     rows.extend(defensive_extended_rows(out, g));
@@ -282,7 +282,7 @@ fn defensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Val
 
 /// 进攻列（技能管线完整度强相关，单列报告）。
 fn offensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Value>) -> Vec<Row> {
-    // M4-m（k2 登记）：vendor 恒等式实为 `TotalDPS = AverageDamage × Speed ×
+    // （k2 登记）：vendor 恒等式实为 `TotalDPS = AverageDamage × Speed ×
     // dpsMultiplier × quantityMultiplier`（CalcOffence.lua:4407）——golden 的
     // `AverageDamage` 不含端因子，而 PoBR `dps`（与 golden `TotalDPS` 同口径）含。
     // 旧读数 `dps / action_rate` 对 grenade 等 build 带结构性偏置（deadeye ×1.5、
@@ -321,7 +321,7 @@ fn offensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Val
             // PoB2 恒等式 `TotalDPS = AverageDamage × Speed × 端因子`（golden 的平均
             // 伤害已含命中率/暴击/敌方减伤，不含端因子）。PoBR 侧用同一恒等式取
             // `dps / action_rate / 端因子`；旧值 `total_hit_avg`（玩家侧未减伤、不含
-            // 命中率）在 effective 口径下与 golden 结构性错配（切换报告 §3-R4）。
+            // 命中率）在 effective 口径下与 golden 结构性错配。
             pobr: if out.action_rate > 0.0 {
                 out.dps / out.action_rate / golden_end_factor
             } else {
@@ -336,7 +336,7 @@ fn offensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Val
     ]
 }
 
-/// DoT 合并族列（M4-G 扩列：技能 DoT + 异常 DoT 的末端合并面板，PoB2
+/// DoT 合并族列（扩列：技能 DoT + 异常 DoT 的末端合并面板，PoB2
 /// `TotalDotDPS`/`WithDotDPS`/`CombinedDPS`，CalcOffence.lua:6093-6234）。
 /// 与技能管线完整度强相关，独立于既有进攻 5 列单独计数（新列单独基线常量，
 /// 不稀释/不挪动 BASELINE_OFF_*）。golden 键已在 meta.json（WithDotDPS 仅
@@ -496,27 +496,27 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 /// 已记录的 parity 基线（命中数）——回归门禁的下限。**仅在确认改动整体提升 parity 时上调**，
 /// 永不下调（防止改动悄悄倒退）。对应 commit 当时的 ninja_parity 输出。
 ///
-/// M2 F-3 扩列重记（蓝图 §2 Track F commit 3 / §4.2 / 00-index §4 owner 双指标裁决）：
-/// - `DEF_CORE`：旧 8 列子集（扩列稀释防护指标，裁决下限 111——W1 全程冻结基线）；
+/// 扩列重记：
+/// - `DEF_CORE`：旧 8 列子集（扩列稀释防护指标，下限 111 全程冻结）；
 /// - `DEF`：扩列后全量 25 列（分母 = golden 可比项总数）。
 ///
-/// **已审查例外**（M1-T2.4 statmap 切换，独立 baseline commit 显式登记）：
+/// **已审查例外**：
 /// OFF_HIT5 23→22——deadeye-explosive-grenade 的 TotalDPS 由 Legacy「过算抵消
 /// 欠算」假命中（1.02x）回归真实 0.77x（Multishot −25% less `sup_dex.lua:3154-3156`
 /// 与 LightningPen +30 `SkillStatMap.lua:929-931`，均为修对）。补偿清单与逐 build
 /// 依据见 `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md` §3。
 ///
-/// M1+M2 合并重记（merge commit）：在 M1（statmap 切换 + quality + support
-/// 裁决）与 M2（扣池 + EHP 口径 + 25 列扩列 + 补刀 1-3）合并后的代码上实测重记。
-/// 防御 369→374（83.1%，两分支改进叠加）/ @10% 385→390；核心 130（=M2，90.3%）/
-/// @10% 132→133；进攻 27（=M2）/ @10% 32→33。与两分支基线对比见 merge commit message。
+/// +合并重记（merge commit）：在（statmap 切换 + quality + support
+/// 裁决）与（扣池 + EHP 口径 + 25 列扩列 + 补刀 1-3）合并后的代码上实测重记。
+/// 防御 369→374（83.1%，两分支改进叠加）/ @10% 385→390；核心 130（=，90.3%）/
+/// @10% 132→133；进攻 27（=）/ @10% 32→33。与两分支基线对比见 merge commit message。
 ///
-/// **M3-W5 effective 口径切换重记**（独立 baseline commit，显式审查；逐 build 归因
+/// **effective 口径切换重记**（独立 baseline commit，显式审查；逐 build 归因
 /// 见 `m3-effective-switch-report.md` §2-§5）：默认口径 panel→effective（与 golden
 /// 对齐），防御 425 行逐值不变；进攻 @5% 27→26、@10% 33→35。
 /// **已审查例外（−1 @5%）**：smith-of-kitava CritChance 1.00x→0.93x——golden
 /// `HitChance`=100（PoB2 玩家精准足额过 cap）而 PoBR 精准聚合低估（≈1015 vs 1438，
-/// 装备/天赋精准词条与武器局部精准未入聚合，登记 M4），effective 下暴击二次命中检定
+/// 装备/天赋精准词条与武器局部精准未入聚合，登记），effective 下暴击二次命中检定
 /// （vendor CalcOffence.lua:3700）放大该缺口。面板口径水平由
 /// [`panel_mode_no_regression`]（PANEL_OFF_*）继续守住 27/35。
 // **Mageblood legacies 重记（Phase 1 #1，+17 @5% core-8 118→135）**：9/18 fixture 全戴
@@ -584,8 +584,8 @@ const BASELINE_DEF_CORE_HIT5: usize = 144; // #14 长尾分诊后 144/144（存�
 // ② Blasphemy per-curse 预留（:273-284 `blasphemy_base_spirit_reservation_per_socketed_curse`
 //   =60 × 同组 AppliesCurse 数，**单份缩放 round 后 ×count**——essence-drain
 //   60→55×3=165，SpiritUnres 28.5x→1.00x 精确翻正）。
-// 剩余：druid-comet 1.26x/coiling（Spell Totem 化预留 + ReservationEfficiency 词条族，
-// M2 Track D）、wolf-pack（companion 管线）。
+// 剩余：druid-comet 1.26x/coiling（Spell Totem 化预留 + ReservationEfficiency
+// 词条族）、wolf-pack（companion 管线）。
 // **域限定预留效率 + Ancestral Bond totem 预留重记（+2 @5% / +3 @10%）**：
 // ① SkillTypes 位掩码 u64→[u64;5]（320 位，Meta=122/SummonsTotem=25 等全域可表达，
 //   Debug/canonical 高位全零保旧格式→缓存 byte-stable）；
@@ -701,7 +701,7 @@ const BASELINE_DEF_HIT10: usize = 450; // #13+#14 合并实测 450/450 = 100%（
 // EHP 0.28→0.37。到 1.00x 还差 banner valour 缩放（AuraEffect MORE per-resource
 // ×Multiplier:BannerValour，vendor :1186/:2783——见记忆 companion 管线路线）。
 // Dread Banner 的 `..._additional_maximum_all_elemental_resistances_%_to_apply`
-// 静态映射按 vendor 口径删除（PoB2 丢弃该 stat，M4-I 实查）。
+// 静态映射按 vendor 口径删除。
 // **进攻 parity 修复簇累计重记（Onslaught + CI→FullLife + MultiplierThreshold 三修复合并）**：
 // - Onslaught 幻影（移除 item.rs `parse_granted_buff_flag`，PoB2 ModParser 对
 //   `Grants Onslaught during effect` 返回 unsupported）：detonate-dead/coiling/flicker
@@ -828,24 +828,24 @@ const BASELINE_DEF_HIT10: usize = 450; // #13+#14 合并实测 450/450 = 100%（
 const BASELINE_OFF_HIT5: usize = 80; // #15 满分 80/80（#10 后 78；#8 后 76；#6+#7 合并 73；迁移基线 39）
 const BASELINE_OFF_HIT10: usize = 80; // #15 满分 80/80（#10 后 78；#8 后 76；迁移基线 47；0.5.0=74）
 
-/// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（M4-G 扩列时实测；
+/// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（扩列时实测；
 /// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
 /// （TotalDotDPS/CombinedDPS golden=0）+ essence-drain TotalDotDPS 1.0000；
 /// 分母 37 = 18 build × (TotalDotDPS + CombinedDPS) + essence-drain WithDotDPS。
 ///
-/// **M4-J 已审查例外 ×2（两处伪命中被修复揭示，叠加 −1 @5% / −2 @10%）**：
+/// **已审查例外 ×2（两处伪命中被修复揭示，叠加 −1 @5% / −2 @10%）**：
 /// 1. druid-oracle-comet TotalDotDPS 1.08x→1.17x——旧 1.08x 是伪命中：
 ///    isSwitchable 树变体缺失（druid 6898 误用基础版、缺 `Gain 5% of Damage as
 ///    Extra Damage of a random Element`）恰好部分抵消既有 ignite 高估。变体修复
 ///    后（解析/展开与 vendor CalcOffence.lua:1175-1200 同口径：三元素均分 n/3）
-///    真实偏差 ~1.17x 暴露。**M4-K 后续**：1.17x 高估根因（ailment 堆叠速率源
+///    真实偏差 ~1.17x 暴露。**后续**：1.17x 高估根因（ailment 堆叠速率源
 ///    2.54x 过记）已修复 → 0.45x；剩余低估逐因子归属暴击量级/curse duration/
 ///    副技能 debuff 线（m4-skill-gaps.md §7.1，逐因子乘积闭合）。
 /// 2. deadeye grenade CombinedDPS 1.02x——偶然命中：旧「攻速补偿吞吐」近似把
 ///    Speed 高估 ×1.95，与 GrenadeActivateTwice ×1.5 形成吞吐双重计入，恰好
-///    抵消 per-hit 低估（0.52x）。M4-J 按 vendor CalcOffence.lua:2852-2856 切
+///    抵消 per-hit 低估（0.52x）。按 vendor CalcOffence.lua:2852-2856 切
 ///    冷却管辖速率（Speed 1.00x ✓ 入 off 列）后双计消失。
-///    **M4-K 进展**：grenade 宝石等级 gating 已解除（等级链 oracle 双证
+///    **进展**：grenade 宝石等级 gating 已解除（等级链 oracle 双证
 ///    deadeye 27=vendor、gemling 24=vendor）+ 油涂 Paragon 品质接通，
 ///    CombinedDPS 0.52x → 0.82x 收敛但未回带。剩余 per-hit ~0.82x 缺口
 ///    登记 m4-skill-gaps §7（含「attack/spell area damage」暂缓短语——其
@@ -942,9 +942,9 @@ const BASELINE_DOT_HIT5: usize = 37; // #15 满分 37/37（gemling TotalDotDPS �
 const BASELINE_DOT_HIT10: usize = 37; // #15 满分 37/37（#10+#11 合并 36；迁移基线 11；0.5.0=28）
 
 /// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
-/// panel 在防御侧逐值相同，故只守进攻）。M3-W5 切换 commit 实测。
+/// panel 在防御侧逐值相同，故只守进攻）。切换 commit 实测。
 ///
-/// **M4-K 已审查例外（−1 @10%）**：witch-abyssal-lich-detonate-dead panel
+/// **已审查例外（−1 @10%）**：witch-abyssal-lich-detonate-dead panel
 /// TotalDPS 1.09x→1.12x——`CritInPast8Sec` 短语族接入（vendor
 /// ModParser.lua:1904-1906，oracle 证实 vendor 计入）使 panel 口径既有
 /// 9% 过记（panel 无敌方减伤）越过 10% 带沿。effective 主口径同一改动为
@@ -1145,8 +1145,8 @@ fn collect_corpus_lines(dir: &Path, data: &BuildData) -> Vec<CorpusLine> {
     lines
 }
 
-/// unsupported 词条率曲线报表（M5b A-2，roadmap「unsupported 词条率下降曲线纳入
-/// 报表」）。**report-only，不进门禁断言**——M5b 验收口径是曲线不是百分比。
+/// unsupported 词条率曲线报表（roadmap「unsupported 词条率下降曲线纳入
+/// 报表」）。**report-only，不进门禁断言**——验收口径是曲线不是百分比。
 /// 逐 build + 聚合的 词条总数 / parsed / unsupported / err 计数与百分比，附 Top-20
 /// 缺口模板（C-2 选批的事实来源）。
 ///
@@ -1165,7 +1165,7 @@ fn corpus_unsupported_report() {
     if let Some(rules) = data.parser_rules.as_deref() {
         use pobr_build::corpus::build_report_engine;
         let er = build_report_engine(&all_lines, rules);
-        // vendor 裁决源：ModCache golden（vendor 全语料预解析缓存落盘，M6-C）。
+        // vendor 裁决源：ModCache golden（vendor 全语料预解析缓存落盘）。
         // gap 模板按样本（strip 方括号后小写）精查——「vendor 同款不支持」= 伪缺口
         // （不用修，slowing-potency 教训：vendor 空 mods + 全残留 = PoB2 不生效）；
         // 「vendor parsed」= 真缺口（迁移目标清单）。
@@ -1346,7 +1346,7 @@ fn corpus_unsupported_report() {
     );
 }
 
-/// M3-W5 口径切换双跑报告：同一 build 以 `mode_effective=false`（面板口径）与
+/// 口径切换双跑报告：同一 build 以 `mode_effective=false`（面板口径）与
 /// `mode_effective=true`（PoB2 主面板 EFFECTIVE 口径，vendor `CalcSetup.lua:583-588`）
 /// 各算一遍，逐 stat 三列输出（panel / effective / PoB2 golden）+ 收敛/恶化标记。
 ///
@@ -1469,10 +1469,10 @@ fn effective_switch_dual_run_report() {
     }
 }
 
-/// M2 F-2/F-3：EHP 新旧口径 18-build 双跑对照报告（蓝图 m2-defence §2 Track F）。
+/// /F-3：EHP 新旧口径 18-build 双跑对照报告。
 ///
 /// F-3 口径切换后：canonical `total_ehp`/`*_max_hit` 即新口径，「old」列取
-/// `total_ehp_lowest_max_hit`（旧管线仍双跑产出，revert 通道保留）；per-type
+/// `total_ehp_lowest_max_hit`（旧管线仍并行产出，revert 通道保留）；per-type
 /// max hit 旧值不再单列（新旧在中性输入下数学等价，见 F-2 报告 §3.1）。
 /// 打印型仪表盘（不设门禁）：
 /// `cargo test -p pobr-build --test ninja_parity -- ehp_dual_run_report --nocapture`
@@ -1558,7 +1558,7 @@ fn ehp_dual_run_report() {
     );
 }
 
-/// M2 阶段验收专项 fixture（蓝图 §4.2-3「MoM/CI/taken-as/盾 block 四类」，@5% 对 golden）。
+/// 验收专项 fixture（「MoM/CI/taken-as/盾 block 四类」，@5% 对 golden）。
 ///
 /// 四类覆盖方式：
 /// - **MoM**：sorceress-stormweaver-comet（`DamageTakenFromManaBeforeLife` 来源；

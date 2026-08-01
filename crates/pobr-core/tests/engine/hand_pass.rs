@@ -1,6 +1,6 @@
-//! M4-T2 W-B2：MH/OH hand pass 集成测试。
+//!  MH/OH hand pass 集成测试。
 //!
-//! 重点 = I3 单手等价性（蓝图 §2 W-B2 测试计划①：单 HandSource 输出与
+//! 重点 = I3 单手等价性（测试计划①：单 HandSource 输出与
 //! 「武器基底折进 MinimalInput 后单跑」**逐值相等**——这是双 pass 回退开关的
 //! 正确性证明）+ 双持合成 fixture 手算对拍（②）+ doubleHits 不除 2（④）。
 //! vendor 参照 CalcOffence.lua:2369-2449（passList）/ :2451-2545（combineStat）。
@@ -96,7 +96,7 @@ fn single_hand_source_equals_legacy_input_fold_per_value() {
     assert_eq!(mh.crit_chance, legacy.crit_chance);
     assert_eq!(mh.average_hit, legacy.total_hit_avg);
     assert_eq!(mh.damage_components, legacy.damage_components);
-    // Stored 族（W-B3 落值）：combined = crit×c + hit×(1−c)，与腿值一致。
+    // Stored 族：combined = crit×c + hit×(1−c)，与腿值一致。
     assert_eq!(mh.stored_combined_avg.len(), mh.stored_hit_avg.len());
     for (((ty, combined), (_, hit)), (_, crit)) in mh
         .stored_combined_avg
@@ -154,12 +154,12 @@ fn main_hand_condition_mod_applies_inside_main_hand_pass() {
     );
 }
 
-/// 双持合成 fixture（蓝图测试计划②）：MH 锤 + OH 剑、per-hand 词条只进对应手，
+/// 双持合成 fixture（测试计划②）：MH 锤 + OH 剑、per-hand 词条只进对应手，
 /// 合并值逐模式手算对拍（AVERAGE 命中 / HARMONICMEAN 速度 / DPS 伤害 / CRIT 暴击）。
 #[test]
 fn dual_wield_combines_per_vendor_modes_hand_calculated() {
     let mut db = attack_db();
-    // per-hand 词条：只放大主手（条件路由——W-A1 武器位落地前的通道）。
+    // per-hand 词条：只放大主手。
     db.add_mod(
         Modifier::number("PhysicalDamage", ModType::Inc, 100.0)
             .with_tag(ModTag::condition("MainHandAttack", false)),
@@ -224,7 +224,7 @@ fn dual_wield_combines_per_vendor_modes_hand_calculated() {
     assert_eq!(out.combined.life, 140.0, "100+40，防御族与 hand pass 无关");
 }
 
-/// doubleHits（蓝图测试计划④）：`doubleHitsWhenDualWielding` 技能 DPS = MH + OH
+/// doubleHits（测试计划④）：`doubleHitsWhenDualWielding` 技能 DPS = MH + OH
 /// 不除 2（:2541-2545）；CritChance 走 doubleHits 交叉项公式（:2459-2461）。
 #[test]
 fn double_hits_dps_is_sum_not_halved() {
@@ -266,7 +266,7 @@ fn double_hits_dps_is_sum_not_halved() {
     assert!((double.combined.crit_chance - expected).abs() < 1e-9);
 }
 
-/// per-hand 武器位路由（W-B2）：带武器位的词条（`with Maces` 双写产出的
+/// per-hand 武器位路由：带武器位的词条（`with Maces` 双写产出的
 /// MACE 位）只进武器位匹配的那只手——MH 锤腿吃增伤、OH 剑腿不吃
 /// （vendor weapon1Cfg/weapon2Cfg flags 按手隔离）。
 #[test]

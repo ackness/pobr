@@ -198,7 +198,7 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
     assert_eq!(scoped_out.total_hit_avg, 100.0);
 }
 
-/// （M4-m）弓变体（树 notable『Feathered Fletching』，ModParser.lua:3648 →
+/// 弓变体（树 notable『Feathered Fletching』，ModParser.lua:3648 →
 /// `ProjectileSpeedAppliesToBowDamage`；消费 CalcOffence.lua:796-802）：INC
 /// ProjectileSpeed 复制为 Damage INC（flags 替换为 Bow|Hit，vendor Tabulate
 /// `{ flags = ModFlag.Bow }`）；非弓 cfg（无 BOW 位）副本不命中。

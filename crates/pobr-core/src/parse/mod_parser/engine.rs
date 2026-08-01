@@ -1,4 +1,4 @@
-//! 数据驱动 parseMod 编排（蓝图 §4；vendor `ModParser.lua:6389-6755`）。
+//! 数据驱动 parseMod 编排（vendor `ModParser.lua:6389-6755`）。
 //!
 //! 签名 [`parse_mod_engine`]`(text, &CompiledParserRules) -> ParseOutcome`。
 //! 引擎已是 calc 主路径：编排层经 pobr-gamedata 恒 load `mod_parser_rules.json`
@@ -17,8 +17,8 @@
 //! 10. 剩余文本非空白 → unparsed。
 //!
 //! special 通道 / skillNameList / order=1/2 双 pass 的接入随双跑覆盖率推进
-//! （蓝图 §4 步 3/5；本批先实现 form 主路径以达成 C1 语料 diff=0 的形态对齐，
-//! special 接入降级为 M6 内迭代项，见报告 §2.4）。
+//! （步 3/5；本批先实现 form 主路径以达成 C1 语料 diff=0 的形态对齐，
+//! special 接入降级为内迭代项，见报告 §2.4）。
 
 use pobr_data::catalog::parser_rules::RuleEffectsDef;
 use pobr_data::prelude::ModType;
@@ -92,7 +92,7 @@ fn parse_mod_engine_impl(
         };
     }
 
-    // 2b. specialModList 通道（M6-conv2；vendor `parseMod` 在 formList 之前查
+    // 2b. specialModList 通道（vendor `parseMod` 在 formList 之前查
     //     specialModList 整行表，ModParser.lua:6151-6160）。命中 → 直接返回已
     //     实例化 mods（统一补 source 原文），对齐 vendor specialModList 锚定优先级。
     //     未注入数据时 rules.special 恒空，此分支恒不命中（行为 = conv1 引擎）。
@@ -187,7 +187,7 @@ fn parse_mod_engine_impl(
     work = form_result.remaining.clone();
 
     // 6b. name_map 命中条目自带效果（keyword_flags / flags / tags）注入累加器
-    //     （M6.3 归一：vendor modNameList 条目的 keywordFlags/tag——如各伤害专名
+    //     （.3 归一：vendor modNameList 条目的 keywordFlags/tag——如各伤害专名
     //     的 DamageType tag、`magnitude of poison you inflict` 的 Poison kw）。
     if let Some(name_eff) = &form_result.name_effects {
         effects_acc.absorb_effects(name_eff, &[]);
@@ -211,7 +211,7 @@ fn parse_mod_engine_impl(
     } else {
         effects_acc.keyword_flags
     };
-    // M6.3 归一（C3）：legacy 无 Attack/Spell keyword 位，统一折为 ModFlag
+    // .3 归一（C3）：legacy 无 Attack/Spell keyword 位，统一折为 ModFlag
     //（legacy parse 约定，见 legacy.rs:1904 / :397）。把 keyword ATTACK/SPELL
     // 折进 flags，清 keyword 对应位——子集匹配语义等价、与 legacy 逐字节对齐。
     if keyword_flags.intersects(KeywordFlags::ATTACK) {
@@ -225,7 +225,7 @@ fn parse_mod_engine_impl(
 
     let tags = effects_acc.tags.clone();
 
-    // M6-conv2（bug #3 收敛）：`Triggered Spells deal …` 前缀的 SPELL flag 与
+    // （bug #3 收敛）：`Triggered Spells deal …` 前缀的 SPELL flag 与
     // `Spell Damage` 作用域 SPELL 在 legacy 是两个独立来源——legacy 专名 `SpellDamage`
     // 仍带前缀 SPELL 位（flags=0x2）。引擎单 flag 通道下 C3 归一会把 `Damage`+SPELL
     // 折名后清 SPELL；当存在 triggered SkillType tag（= 前缀来源）时保留 SPELL 位，
@@ -245,7 +245,7 @@ fn parse_mod_engine_impl(
         // you curse take ` → `"Taken"`，inner 名 `Damage` → `DamageTaken`，
         // ModParser.lua:6683 `name .. misc.modSuffix`）。
         let full_name = format!("{}{}{}", name, form_result.suffix, effects_acc.mod_suffix);
-        // M6.3 路线 B 引擎归一：把 vendor「泛名 + flag/kw」组合归一为 PoBR 专名
+        // .3 路线 B 引擎归一：把 vendor「泛名 + flag/kw」组合归一为 PoBR 专名
         //（C3 damage flag→专名 / Speed flag→AttackSpeed,CastSpeed），并按最终名
         // 补 DamageType tag（C5）+ 收吸被专名吸收的 flag/kw。
         let norm = normalize_pobr_name(&full_name, flags, keyword_flags, has_triggered);
@@ -315,7 +315,7 @@ fn parse_mod_engine_impl(
 /// enemy 包装）。
 ///
 /// 已实现 LIST 包装：`addToMinion`（MinionModifier）、`applyToEnemy`
-/// （EnemyModifier，M6-conv2）、`newAura`+`newAuraOnlyAllies`（ExtraAura，仅盟友
+/// （EnemyModifier）、`newAura`+`newAuraOnlyAllies`（ExtraAura，仅盟友
 /// 时玩家不消费——vendor `ModParser.lua:6877` + `CalcPerform.lua:3104`）。其余 misc
 /// 包装（addToAura / addToSkill）暂不接（对应行产物原样返回）。
 #[derive(Default)]
@@ -480,7 +480,7 @@ struct NormalizedName {
     extra_conditions: Vec<&'static str>,
 }
 
-/// M6.3 路线 B 引擎归一（C3 + C5）：把 vendor「泛名 + flag」组合归一为 PoBR 专名，
+/// .3 路线 B 引擎归一（C3 + C5）：把 vendor「泛名 + flag」组合归一为 PoBR 专名，
 /// 收吸被专名吸收的 flag 位；并按最终名补 DamageType tag。
 ///
 /// - **C3 Damage 族**：`Damage` + 武器/作用域 flag → 专名（`SpellDamage` /
@@ -502,7 +502,7 @@ fn normalize_pobr_name(
     let mut out_flags = flags;
     let out_kw = kw;
 
-    // M6-conv2（bug #4 收敛）+ fork-a：池资源**前缀**的后缀拼接族（`GainAs<Dst>` /
+    // （bug #4 收敛）+ fork-a：池资源**前缀**的后缀拼接族（`GainAs<Dst>` /
     // `ConvertTo<Dst>`）的源池名须用 vendor 短名（`Life`/`Mana`），而非抽取期别名化的
     // `MaximumLife`/`MaximumMana`。vendor `CalcDefence.lua:92,1316` 与 pobr 消费侧
     // `calc/defence.rs` `format!("{src}ConvertTo{dst}")`（src=`Life`）都按短名重建查询
@@ -648,7 +648,7 @@ fn tail_unparsed(work: &str) -> Option<String> {
     }
 }
 
-// ---- pre-pass 复用 legacy 同款语义（蓝图 §4 步 1，禁两套实现——这两个函数
+// ---- pre-pass 复用 legacy 同款语义（步 1，禁两套实现——这两个函数
 //      legacy 私有，引擎侧复刻同款逻辑并保持逐字节一致；双跑会兜住差异）----
 
 fn strip_pob_brackets(text: &str) -> String {
@@ -681,7 +681,7 @@ fn normalize_spaces(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// 测试辅助：真实规则表路径（compiled.rs / 双跑测试共用）。
+/// 测试辅助：真实规则表路径。
 #[cfg(test)]
 pub mod test_support {
     use std::path::PathBuf;
@@ -724,7 +724,7 @@ mod tests {
         let r = real_rules();
         let o = parse_mod_engine("+50 to maximum Life", &r);
         assert_eq!(o.status, ParseStatus::Parsed, "unparsed={:?}", o.unparsed);
-        // M6.3 路线 B：抽取期归一后引擎产 PoBR StatId `MaximumLife`（非 vendor `Life`）。
+        // .3 路线 B：抽取期归一后引擎产 PoBR StatId `MaximumLife`（非 vendor `Life`）。
         assert!(o.mods.iter().any(|m| m.name.as_str() == "MaximumLife"
             && m.mod_type == ModType::Base
             && m.value == ModValue::Number(50.0)));

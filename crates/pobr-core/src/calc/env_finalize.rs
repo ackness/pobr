@@ -1,18 +1,18 @@
-//! 环境终结阶段调度框架（M3 T0-3，蓝图 m3-orchestration.md §1 D1）。
+//! 环境终结阶段调度框架。
 //!
 //! PoB2 模型是「perform 前半段持续写 modDB，后半段 defence→offence 只读聚合」
 //! （CalcPerform.lua 阶段树）。本模块在 `perform` 开头、offence/defence 之前提供
-//! 固定的 7 阶段位调度：buff/aura/curse/敌方异常等机制按蓝图归属 track 在各自
+//! 固定的 7 阶段位调度：buff/aura/curse/敌方异常等机制按归属 track 在各自
 //! 独占模块实现后挂入对应阶段位；本文件只负责**顺序**。
 //!
 //! 框架约束（D1）：
 //! - 每个阶段是 `pub fn xxx(env: &mut Env)` 的局部纯过程（只写
 //!   `env.player.mod_db` / `env.enemy.mod_db` / `env.cfg.conditions`），不引共享可变状态；
 //!   写入的 modifier 一律带 `SourceId` 归因（SourceKind 见 pobr-data source.rs 的
-//!   `ConfigOption`/`Buff`/`Flask`/`GrantedKeystone`，M3 D4）。
+//!   `ConfigOption`/`Buff`/`Flask`/`GrantedKeystone`）。
 //! - 各阶段默认**空转兼容**：无 buff spec / 无 flask / 无 EnemyModifier 时输出逐值
 //!   不变（搬迁不变式锚点）。
-//! - 不在 M3 调整 offence/defence 先后序；所有新机制发生在两者之前。
+//! - 不在调整 offence/defence 先后序；所有新机制发生在两者之前。
 //!
 //! T0 落地时全部阶段为 no-op stub；各 track 在自己的模块里实现后改此处调用体。
 
@@ -25,7 +25,7 @@ use crate::Modifier;
 use super::Env;
 
 /// 环境终结调度入口（`perform` 开头唯一调用点）。阶段顺序对照 PoB2 perform
-/// 阶段树（省略 M3 不做的 Banner/Warcry/party），**禁止重排**。
+/// 阶段树（省略不做的 Banner/Warcry/party），**禁止重排**。
 pub fn env_finalize(env: &mut Env) {
     // 阶段 1（T5）：词条授予 keystone 合并（含 flask/buff 授予，幂等去重）。
     merge_keystones(env);
@@ -52,7 +52,7 @@ pub fn env_finalize(env: &mut Env) {
     // ponytail: 允收名单只有 Intimidated（消费方 = setup_enemy 注入的敌人基础
     // 条件对）；其余 Condition:* flag 已各有专用桥（config/异常），需要时逐条扩。
     bridge_enemy_condition_flags(env);
-    // 阶段 8（M4-L）：曝光归约（vendor CalcPerform.lua:3214-3247 "Apply
+    // 阶段 8：曝光归约（vendor CalcPerform.lua:3214-3247 "Apply
     // exposures"，buff 循环之后 / offence 之前）——enemy db 内全部
     // `<El>Exposure BASE`（config 注入 + buff_pass Debuff 路径，如 Frost Bomb）
     // 取最强一份折成 `<El>Resist BASE -magnitude`。**唯一归约点**：
@@ -63,7 +63,7 @@ pub fn env_finalize(env: &mut Env) {
 
 /// 阶段 1/5（T5 实现）：`Env::keystone_mods` 中被词条授予的 keystone 注入玩家
 /// modDB（对照 CalcPerform.lua:66-76 mergeKeystones，`env.keystonesAdded` 去重语义）。
-/// 实现体见 [`super::keystone_merge`]（M3 T5-E2）；空 map / 无授予词条时零写入。
+/// 实现体见 [`super::keystone_merge`]；空 map / 无授予词条时零写入。
 pub fn merge_keystones(env: &mut Env) {
     super::keystone_merge::merge_keystones(env);
 }
@@ -196,7 +196,7 @@ fn dedup_seed(m: &Modifier) -> DedupSeed {
     }
 }
 
-/// 阶段 3（M3-T4 D2）：flask/charm 词条合并——载荷 List mod 经 effect 乘区缩放后
+/// 阶段 3：flask/charm 词条合并——载荷 List mod 经 effect 乘区缩放后
 /// 并入 player db（对照 vendor `CalcPerform.lua:1429-1663` mergeFlasks/mergeCharms，
 /// 行号实读）。
 ///
@@ -212,7 +212,7 @@ fn dedup_seed(m: &Modifier) -> DedupSeed {
 ///   `cfg.constants.game().charm_limit_cap` 注入（禁新魔数）；:1640-1643 超限 charm
 ///   不并入（按载荷插入序扣减——vendor `pairs()` 序本身未定义，此处取确定性序）；
 /// - :1493-1530 `ScaleAddList(modList, effectMod)`：数值 mod 缩放走
-///   [`super::buff_pass::scale_value`]（M4-I 去重：复用 T1 写原语
+///   [`super::buff_pass::scale_value`]（去重：复用 T1 写原语
 ///   `ModDb::scale_add_mod` 的同一取整内核——精度例外查
 ///   `Env::high_precision`，非整数原值 `defaultHighPrecision` floor，默认
 ///   `m_modf(round(v×scale, 2))` 截断，ModStore.lua:69-76），flag 不缩放；
@@ -222,10 +222,10 @@ fn dedup_seed(m: &Modifier) -> DedupSeed {
 ///   `UsingManaFlask`；
 /// - :1561 `FlasksDoNotApplyToPlayer` → flask 的 buff 与条件整体不落 player。
 ///
-/// 已知差异（M3 范围声明，蓝图 §7.2）：充能/持续/恢复模型（flaskData.duration/charges、
+/// 已知差异：充能/持续/恢复模型（flaskData.duration/charges、
 /// calcFlaskRecovery、Mageblood 特判 :1387-1403）不建；`MagicUtilityFlaskEffect`/
 /// `MagicCharmEffect`（:1406/:1588，需 rarity 通道）、minion 侧应用（:1568-1586）
-/// 不实现（原「highPrecisionMods 按词条覆盖精度表不实现」差异已在 M4-I 去重时
+/// 不实现（原「highPrecisionMods 按词条覆盖精度表不实现」差异已在去重时
 /// 消除——vendor ScaleAddMod 本就查表，先期 name-blind 缩放是偏差方）；
 /// charm 基底常驻 buff
 /// （vendor `item.base.charm.buff`，如 Ruby Charm `+25% to Fire Resistance`）依赖
@@ -304,7 +304,7 @@ pub fn merge_flasks_charms(env: &mut Env) {
     // `charm_limit_caps_number_of_active_charms` 测试钉住此插入序语义。
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
-    // 取整精度规则（M4-I 去重：ScaleAddMod 原语的例外表；vendor ScaleAddList →
+    // 取整精度规则（去重：ScaleAddMod 原语的例外表；vendor ScaleAddList →
     // ScaleAddMod 本就按词条查 highPrecisionMods，ModStore.lua:69）。
     let rules = &env.high_precision;
     let flask_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("FlaskEffect")]);
@@ -386,13 +386,13 @@ pub fn merge_flasks_charms(env: &mut Env) {
 
 /// 阶段 4（T3 实现）：`Env::buff_skills` 九类分发（对照 CalcPerform.lua:1831-2984；
 /// aura 乘区 :2102-2105 / curse priority :454-485 + limit :2829-2833），整段吃
-/// `cfg.mode_buffs` 门控（D5）。实现体见 [`super::buff_pass`]（M3 T3-C2/C3）；
+/// `cfg.mode_buffs` 门控。实现体见 [`super::buff_pass`]；
 /// `mode_buffs == false`（默认）或无 buff spec 时空转（逐值不变）。
 pub fn buff_pass(env: &mut Env) {
     super::buff_pass::buff_pass(env);
 }
 
-/// 阶段 6（T2 实现，蓝图 §5.3 B3）：doActorMisc 等价——内建 buff flag 经
+/// 阶段 6：doActorMisc 等价——内建 buff flag 经
 /// `Env::buff_definitions`（`overlay/buff_definitions.json` 注入）展开为 mods
 /// 写回 `env.player.mod_db`，附带条件写 `env.cfg.conditions`（对照
 /// CalcPerform.lua:503-765，整段 `cfg.mode_combat` 门控——默认 false 即 no-op，
@@ -434,7 +434,7 @@ pub fn expand_misc_buffs(env: &mut Env) {
             enemy_db: Some(&env.enemy.mod_db),
             cfg: &env.cfg,
             mode_combat: env.cfg.mode_combat,
-            // 主技能上下文（M3-W4 HandlerCtx 维度）：Env 暂无主技能快照字段，
+            // 主技能上下文：Env 暂无主技能快照字段，
             // 接线前 None——依赖它的 handler（buff:fanaticism）保守零输出。
             main_skill: None,
         },

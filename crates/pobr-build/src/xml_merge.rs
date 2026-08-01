@@ -25,7 +25,7 @@ pub fn merge_active_sets(base: &str, edited: &str) -> String {
     let sel = active_selection(base);
     let mut out = base.to_string();
 
-    // ── 天赋树 / 技能：自包含元素，整体替换，保留原 title/id 属性 ──
+    // 天赋树 / 技能：自包含元素，整体替换，保留原 title/id 属性
     for (tag, idx) in [
         ("Spec", sel.tree.unwrap_or(1)),
         ("SkillSet", sel.skill.unwrap_or(1)),
@@ -38,7 +38,7 @@ pub fn merge_active_sets(base: &str, edited: &str) -> String {
         out.replace_range(old, &merged);
     }
 
-    // ── 物品：先追加物品池（重编号），再替换该套 ItemSet ──
+    // 物品：先追加物品池（重编号），再替换该套 ItemSet
     let base_max_id = max_item_id(&out);
     let renumbered = renumber_items(edited, base_max_id);
     if let Some(new_set) = nth_element(&renumbered, "ItemSet", 1)

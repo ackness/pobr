@@ -27,7 +27,7 @@
 #[macro_use]
 mod dbg_env;
 
-// ── 词条分层（目录即叙事）──
+// 词条分层（目录即叙事）
 pub mod aggregate;
 pub mod attribute;
 pub mod calc;
@@ -38,7 +38,7 @@ pub mod rules;
 
 pub mod display_catalog;
 
-// ── 向后兼容别名：保留搬迁前的 `pobr_core::<module>::` / `crate::<module>::` 路径 ──
+// 向后兼容别名：保留搬迁前的 `pobr_core::<module>::` / `crate::<module>::` 路径
 // 下游 crate / 集成测试 / benches 大量按老的扁平模块路径引用（modifier::、mod_db::、
 // mod_parser:: 等）；这些根别名让其零改动继续解析，同时新的分层路径（model::modifier::
 // 等）也可达。`calc` / `rules` 未搬迁，本就在根，无需别名。
@@ -48,7 +48,7 @@ pub use ingest::{campaign, character, item, item_text, passive, skill_source};
 pub use model::{config, modifier};
 pub use parse::{apply_range, mod_cache, mod_parser};
 
-// ── 公共 API item 再导出（名字与搬迁前逐一致；路径指向新分层）──
+// 公共 API item 再导出（名字与搬迁前逐一致；路径指向新分层）
 pub use aggregate::mod_db::{HighPrecisionRules, ModContribution, ModDb, ModList};
 pub use attribute::attribution::{
     AttributionEntry, AttributionGroup, AttributionMode, AttributionReport, AttributionRequest,

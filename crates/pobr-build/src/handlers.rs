@@ -1,17 +1,16 @@
-//! handler 注册聚合点（M3 T0 骨架，蓝图 m3-orchestration.md §2.4 契约 3 / §4.6 A6）。
+//! handler 注册聚合点。
 //!
 //! 数据表（`overlay/config_options.json` / `overlay/buff_definitions.json` …）里
 //! 无法用受限模板 DSL 表达的条目只携带稳定字符串 `handler_id`；运行时由本聚合点
 //! 构造的 [`HandlerRegistry`] 裁决执行。注册集合在启动期固定、零 I/O。
 //!
-//! 聚合约定（蓝图 §2.2）：T1/T2 各自在**自己模块**里暴露
+//! 聚合约定：T1/T2 各自在**自己模块**里暴露
 //! `pub fn register_xxx_handlers(&mut HandlerRegistry)`，本文件 `build_registry`
 //! 内逐行 append 调用（append-only，把共享文件冲突压到最小）。
 //!
 //! handler_id 命名约定：`config:<name>`（config 域，预算 ≤54；`<name>` 沿用
 //! overlay 产物里的 vendor var 原拼写）、`buff:<name>`（buff 域，预算 ≤8）；
-//! 总数 <100（架构文档 20 §5 DSL 硬边界监控，逼近上限即判数据切分失败、
-//! 回看裁决 P4/P6）。
+//! 总数 <100（DSL 硬边界监控，逼近上限即判数据切分失败）。
 
 use pobr_core::CampaignProgress;
 use pobr_core::modifier::{ModTag, ModValue, Modifier};
@@ -20,16 +19,16 @@ use pobr_core::rules::{Handler, HandlerOutcome, HandlerRegistry};
 use pobr_data::modifier::ModType;
 use pobr_data::monster::EnemyTier;
 
-/// config 域 handler 预算上限（蓝图 §1 D2：542 条目 × 10% ≈ 54）。
+/// config 域 handler 预算上限（542 条目 × 10% ≈ 54）。
 pub const CONFIG_HANDLER_BUDGET: usize = 54;
-/// buff 域 handler 预算上限（蓝图 §5.2 B2：buff handler 预算 ≤8）。
+/// buff 域 handler 预算上限。
 pub const BUFF_HANDLER_BUDGET: usize = 8;
-/// 全部 handler 总数硬上限（架构文档 20 §5：<100）。
+/// 全部 handler 总数硬上限。
 pub const TOTAL_HANDLER_CAP: usize = 100;
 
 /// 已注册但当前为占位 stub 的 handler（消费方应把命中条目以告警口径上报，
 /// 不静默视为已覆盖）：
-/// - `config:presetBossSkills`：boss 技能预设表 `boss_skills.json` 属 M5+。
+/// - `config:presetBossSkills`：boss 技能预设表 `boss_skills.json` 属。
 /// - `buff:onslaught_flask`：Silver Flask 来源 effect 需 flask 基底数据列
 ///   `effectInc`（F8 缺口）+ rarity 通道；且 PoE2 基底表无 Silver Flask
 ///   （vendor CalcPerform.lua:541-573 残留 PoE1 分支）。
@@ -47,23 +46,23 @@ pub const CTX_GATED_HANDLER_IDS: &[&str] = &[
 
 /// 构造全量 handler 注册表（append-only，占位注释即插入点，每行一个
 /// register 调用）：
-/// - config 域：第一批见 [`register_config_handlers`]，第二批（M3-W4
+/// - config 域：第一批见 [`register_config_handlers`]，第二批（
 ///   commit B）见 [`register_config_handlers_batch2`]。
 /// - buff 域：`pobr_core::rules::buff_expander::register_handlers`
-///   （M3-W4 commit C：fortify/elusive/fanaticism 实现 + onslaught_flask
-///   stub，蓝图 §5.2 B2）。
+///   （commit C：fortify/elusive/fanaticism 实现 + onslaught_flask
+///   stub，B2）。
 pub fn build_registry() -> HandlerRegistry {
     let mut registry = HandlerRegistry::new();
-    // ── T1 append 点：config handlers ──
+    // T1 append 点：config handlers
     register_config_handlers(&mut registry);
     register_config_handlers_batch2(&mut registry);
-    // ── T2 append 点：buff handlers ──
+    // T2 append 点：buff handlers
     pobr_core::rules::buff_expander::register_handlers(&mut registry)
         .expect("启动期 buff handler 注册不冲突");
     registry
 }
 
-/// 构造 special 词条 handler 注册表（M5b C-3）——`overlay/special_mods.json` 里
+/// 构造 special 词条 handler 注册表——`overlay/special_mods.json` 里
 /// `handler_id: "special:<name>"` 条目的运行期裁决执行点。`BuildData` 在载入期
 /// 用它编译 [`pobr_core::rules::SpecialModRules`]，与 buff/config 域的
 /// [`build_registry`] 分立（special 是独立解析面）。
@@ -77,7 +76,7 @@ pub fn build_special_registry() -> HandlerRegistry {
     registry
 }
 
-/// 第一批 config handlers（M3-T1 A5，蓝图 §4.4 末段）。
+/// 第一批 config handlers。
 ///
 /// 约定：handler 的真实消费若走**标量通道**（list/数值选项由 build 层从
 /// [`ConfigOutcome::scalars`] 读出、接既有逻辑），则注册零 Modifier 产出的
@@ -85,8 +84,8 @@ pub fn build_special_registry() -> HandlerRegistry {
 /// - `config:enemyIsBoss`：既有 EnemyTier 接线的包装（标量消费走
 ///   [`enemy_tier_from_config`]；敌档加成本体在 `enemy_presets` 域 +
 ///   orchestrator，handler 自身不产 Modifier）。
-/// - `config:presetBossSkills`：M3 stub 告警（boss 技能预设表 `boss_skills.json`
-///   属 M5+），见 [`STUB_HANDLER_IDS`]。
+/// - `config:presetBossSkills`：stub 告警（boss 技能预设表 `boss_skills.json`
+///   属），见 [`STUB_HANDLER_IDS`]。
 ///
 /// `resistancePenalty` 在 overlay 数据中是纯 list 条目（不带 handler_id），
 /// 其「包装既有逻辑」落在 [`campaign_progress_from_config`]（CampaignProgress
@@ -106,7 +105,7 @@ fn register_config_handlers(registry: &mut HandlerRegistry) {
         .expect("启动期注册不重复");
 }
 
-/// 第二批 config handlers（M3-W4 commit B，dualrun 报告 §2.4 命中 18-build
+/// 第二批 config handlers（commit B，dualrun 报告 §2.4 命中 18-build
 /// 的 8 个缺口；vendor 行号均实读 `vendor/PathOfBuilding-PoE2/src/Modules/
 /// ConfigOptions.lua`）。分级口径：
 ///
@@ -304,7 +303,7 @@ fn combat_gated(modifier: Modifier) -> Modifier {
     modifier.with_tag(ModTag::condition("Combat", false))
 }
 
-/// 包装既有 EnemyTier 接线（蓝图「config:enemy_is_boss 包装既有逻辑」）：从
+/// 包装既有 EnemyTier 接线：从
 /// 解释产物标量取 `enemyIsBoss`（list 型，选项值 `None/Boss/Pinnacle/Uber`）。
 ///
 /// 返回 `None` = 条目未激活或表外字符串，消费方回退编排选项档位
@@ -317,7 +316,7 @@ pub fn enemy_tier_from_config(outcome: &ConfigOutcome) -> Option<EnemyTier> {
     }
 }
 
-/// 包装既有 CampaignProgress 接线（蓝图「config:resistance_penalty 包装既有
+/// 包装既有 CampaignProgress 接线（「config:resistance_penalty 包装既有
 /// 逻辑」）：从解释产物标量取 `resistancePenalty`（list 型，数值选项
 /// `0/-10/…/-60` 七档），查 CampaignProgress 既有档位表。
 ///
@@ -345,7 +344,7 @@ mod tests {
         registry.ids().filter(|id| id.starts_with(prefix)).count()
     }
 
-    /// A6 监控断言（蓝图 §4.6）：config 域 handler ≤54、buff 域 ≤8、总数 <100。
+    /// A6 监控断言：config 域 handler ≤54、buff 域 ≤8、总数 <100。
     /// 任何 track 给注册表 append 后此测试自动复核预算；逼近上限即为架构告警信号。
     #[test]
     fn handler_counts_within_budget() {

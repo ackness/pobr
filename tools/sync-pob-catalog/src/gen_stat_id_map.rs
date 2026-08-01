@@ -1,6 +1,6 @@
 //! `gen-stat-id-map`：把段 A 的 `overlay/stat_descriptions.json`（stat_id →
 //! canonical 文本）逐条喂 `parse_mod_engine`，固化成 `overlay/stat_id_map.json`
-//! （M6 E/F 段 B：stat_id → Modifier 第二通道的 modifier 模板）。
+//! （stat_id → Modifier 第二通道的 modifier 模板）。
 //!
 //! 与 luajit 抽取目标不同：本命令**不执行 luajit**，纯消费两份已生成的 overlay
 //! （stat_descriptions + mod_parser_rules），跑引擎离线派生。引擎变更后需 regen

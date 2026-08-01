@@ -9,7 +9,7 @@ impl TraceNodeId {
     }
 }
 
-// === M4-T2 W-B1：pass 分区与合并节点（RFC m4-rfc-attribution-passes §2-§3） ===
+//  pass 分区与合并节点（RFC m4-rfc-attribution-passes §2-§3）
 
 /// 手分区。`Single` = 法术/非攻击技能（PoB2 passList 的 "Skill" pass）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -52,7 +52,7 @@ impl PassId {
 ///
 /// 注意：`Chance` / `ChanceAilment` / `CritBlend` 是**系数模式**——合并值与权重依赖
 /// 外生系数（portion / stacks 占比 / 该手暴击率 c），由构图侧冻结为常数写进
-/// [`TraceOperation::Combine`] 的 `weights`（RFC §3.3 裁决）；
+/// [`TraceOperation::Combine`] 的 `weights`；
 /// [`CombineMode::combine`] / [`CombineMode::linearized_weights`] 对它们返回 `None`。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CombineMode {
@@ -148,7 +148,7 @@ impl CombineMode {
     }
 }
 
-/// 注：W-B1 起 `Combine` 变体携带 `Vec<f64>` 权重，故本枚举不再可derive `Eq`
+/// 注：起 `Combine` 变体携带 `Vec<f64>` 权重，故本枚举不再可derive `Eq`
 /// （f64 无全序相等）。全仓核查（评审 C6a）：无穷尽 `match TraceOperation` 点、
 /// 无依赖 `Eq` 的消费（仅 `==` 比较，`PartialEq` 足够）。
 #[derive(Debug, Clone, PartialEq)]
@@ -171,7 +171,7 @@ pub enum TraceOperation {
     SelectMax,
     Stack,
     Aggregate,
-    /// combineStat / CritBlend 合并节点（M4-T2 W-B1，RFC §3）。
+    /// combineStat / CritBlend 合并节点。
     /// `weights[i]` 对应第 i 条入边（与 `add_edge` 插入顺序一致；约定 MH 先、OH 后，
     /// CritBlend 为 NonCrit 先、Crit 后）。
     Combine {
@@ -187,7 +187,7 @@ pub struct TraceNode {
     pub value: f64,
     pub operation: TraceOperation,
     pub source: Option<SourceId>,
-    /// 所属 pass 分区（M4-T2 W-B1）。`None` = pass 无关节点（全局输入、防御、
+    /// 所属 pass 分区。`None` = pass 无关节点（全局输入、防御、
     /// 外层 hand-combine 输出）。由 [`TraceGraph::begin_pass`] 作用域栈自动盖戳。
     pub pass: Option<PassId>,
 }
@@ -214,7 +214,7 @@ pub struct TraceOutput {
 pub struct TraceGraph {
     nodes: Vec<TraceNode>,
     edges: Vec<TraceEdge>,
-    /// pass 作用域栈（M4-T2 W-B1，RFC §2.6）。构图期瞬态状态；图建完应为空。
+    /// pass 作用域栈。构图期瞬态状态；图建完应为空。
     pass_stack: Vec<PassId>,
 }
 
@@ -281,7 +281,7 @@ impl TraceGraph {
         id
     }
 
-    /// 添加合并节点并按 `legs` 顺序连边（M4-T2 W-B1）：保证 `weights[i]` 与第 i 条
+    /// 添加合并节点并按 `legs` 顺序连边：保证 `weights[i]` 与第 i 条
     /// 入边一一对应（权重/边顺序锁死在单一构造点，RFC §3.1 约定 MH 先、OH 后）。
     pub fn add_combine_node(
         &mut self,
@@ -346,7 +346,7 @@ impl TraceGraph {
         sources
     }
 
-    /// 不变式 I1 / 评审 C3 诊断（M4-T2 W-B1）：合并节点各入腿的**带 pass 戳**祖先
+    /// 不变式 I1 / 评审 C3 诊断：合并节点各入腿的**带 pass 戳**祖先
     /// 集合必须两两不相交（跨腿共享只允许发生在 `pass == None` 的结构性祖先上——
     /// 这是 direct 算法逐腿独立遍历正确性的前提，RFC §2.4 / §5.1）。
     ///

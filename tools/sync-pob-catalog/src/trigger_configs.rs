@@ -1,16 +1,16 @@
-//! `gen-trigger-configs` 子命令（M4-T5 W-E1，缺口 14-G1）：
+//! `gen-trigger-configs` 子命令：
 //! 产 `overlay/trigger_configs.json`（vendor `Modules/CalcTriggers.lua:881-1417`
 //! configTable 的 61 项触发配置）。
 //!
 //! configTable 条目是**返回配置表的 Lua 闭包**（约 90% 声明性事实 + 少数真逻辑），
 //! luajit 执行需完整 env mock 且 `triggerSkillCond` 等字段本身仍是闭包、无法序列化
-//! ——故沿用 mirage_configs（M5a-D2）先例：**配置数据内嵌于本工具源码**、由工具落盘。
+//! ——故沿用 mirage_configs先例：**配置数据内嵌于本工具源码**、由工具落盘。
 //! 与 mirage 不同的增强：生成时对 vendor 源做 **configTable key 扫描对账**（正则抽取
 //! `["<key>"] = function` 的 61 个 key，与内嵌转写的 key 集合做集合相等断言），
 //! key 增删改 = 生成即失败，比单一指纹更细的 drift 防线；指纹（行数+字节数）仍落
 //! `_meta` 提醒条目体语义漂移。
 //!
-//! 受限谓词遵守 20 号 §5 硬边界（any/all/not 三字段封顶，R1 纪律）；表达不了的
+//! 受限谓词遵守 20 号 §5 硬边界（any/all/not 三字段封顶）；表达不了的
 //! 真逻辑落 `handler_id`（`trigger:` 前缀，全阶段 <100 总闸计数监控）。
 //! schema 见 [`pobr_data::catalog::triggers`]。
 
@@ -623,7 +623,7 @@ fn scan_vendor_config_keys(vendor_root: &Path) -> io::Result<BTreeSet<String>> {
     Ok(keys)
 }
 
-/// key 对账（drift 防线，蓝图 §4.1 T5「61 项抽取计数断言」的生成时刻面）：
+/// key 对账（drift 防线：61 项抽取计数断言的生成时刻面）：
 /// 内嵌转写 key 集合必须与 vendor 源扫描结果**集合相等**且 = 61。
 fn check_key_drift(vendor_root: &Path) -> io::Result<usize> {
     let vendor_keys = scan_vendor_config_keys(vendor_root)?;
@@ -694,7 +694,7 @@ fn vendor_fingerprint(vendor_root: &Path) -> io::Result<String> {
 mod tests {
     use super::{VENDOR_CONFIG_TABLE_COUNT, builtin_configs};
 
-    /// 61 条、key 唯一且升序（蓝图 §4.1 T5：61 项抽取计数断言的内嵌侧）。
+    /// 61 条、key 唯一且升序（61 项抽取计数断言的内嵌侧）。
     #[test]
     fn builtin_configs_count_and_order() {
         let configs = builtin_configs();
@@ -766,7 +766,7 @@ mod tests {
         assert!(mapped.contains(&"MetaCastWhileChannellingPlayer"));
     }
 
-    /// CoC 条目方向性事实：trigger_on_crit 置位（W-E2 暴击折入的数据前提）。
+    /// CoC 条目方向性事实：trigger_on_crit 置位（暴击折入的数据前提）。
     #[test]
     fn coc_entry_folds_crit() {
         let configs = builtin_configs();

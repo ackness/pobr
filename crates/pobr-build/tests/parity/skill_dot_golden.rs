@@ -1,11 +1,11 @@
-//! 技能 DoT golden fixture（M4-T4 W-D1）：essence-drain build（语料现成的纯 DoT
+//! 技能 DoT golden fixture：essence-drain build（语料现成的纯 DoT
 //! build）端到端走真实数据编排，对拍 PoB2 黄金值 `TotalDot`（meta.json::player_stats，
 //! 与 tools/pob2-oracle 同源的 Lua 侧导出）。
 //!
 //! 当前覆盖与已知缺口（验收报告登记，详见 commit message / skill_dot.rs 模块文档）：
 //! - `<Type>Dot` 基值链路（statmap `base_<type>_damage_to_deal_per_minute / 60`）
 //!   ✅ 已通——`skill_total_dot` 首次非零。
-//! - PoB2 全位表（M4-i1 切换后常驻）：本 build TotalDot 对 golden **逐值命中
+//! - PoB2 全位表（切换后常驻）：本 build TotalDot 对 golden **逐值命中
 //!   （ratio = 1.0000）**——Swift Affliction `Damage MORE (Dot)` 经 DOT 位入桶。
 //! - dotIsSpell 数据缺口：`.dat` 入库不含 value-less 布尔 stat
 //!   （`spell_damage_modifiers_apply_to_skill_dot`），保守剥 Spell 位；本 build
@@ -74,7 +74,7 @@ fn essence_drain_skill_dot_vs_pob2_golden() {
         out.skill_total_dot, golden_total_dot, ratio
     );
 
-    // 回归销钉：PoB2 全位表常驻（M4-i1 切换）下 DOT 位入桶，Swift Affliction
+    // 回归销钉：PoB2 全位表常驻（切换）下 DOT 位入桶，Swift Affliction
     // `Damage MORE (Dot)` 经 DOT 位命中 dotCfg——实测 ratio = 1.0000，钉 5% 命中门。
     let pin = 0.95..=1.05;
     assert!(

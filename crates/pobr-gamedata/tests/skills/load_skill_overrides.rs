@@ -1,11 +1,11 @@
 //! `overlay/skill_overrides.json` 加载 + merge 的集成测试（真实仓库数据）。
 //!
-//! M0-W4a/W4b 搬迁不变式：`base/granted_effect_levels.json` /
+//! 搬迁不变式：`base/granted_effect_levels.json` /
 //! `base/granted_effect_stat_sets.json` 为**纯 adapter 产物**，`.dat` 拿不到的
 //! vendor 值由 overlay 在加载期 merge——本测试锁定「纯 base + merge 后的生效值」
 //! 与历史手补 base 的逐值等价（聚合行数 + 代表性技能点值）。
 //!
-//! M1-T4.3 通道收窄：critChance / attackSpeedMultiplier 改为 `.dat` 表列直读落
+//! 通道收窄：critChance / attackSpeedMultiplier 改为 `.dat` 表列直读落
 //! base/（GrantedEffectStatSetsPerLevel 暴击两列 / GrantedEffectsPerLevel
 //! `AttackSpeedMultiplier`），历史 overlay 值 3911 + 3578 条逐值一致验收后切换；
 //! overlay 边车仅余 base_multiplier（分等级）+ skill_attack_speed_more（statSet
@@ -18,7 +18,7 @@ fn repo_game_data() -> GameData {
     GameData::new(pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version()))
 }
 
-/// overlay 文档可加载，且已收窄为两类 stat（M1-T4.3：crit/attspd 改表列直读，
+/// overlay 文档可加载，且已收窄为两类 stat（crit/attspd 改表列直读，
 /// 不得再出现在边车里——出现即说明 extract 脚本回退）。
 #[test]
 fn loads_skill_overrides_overlay() {
@@ -39,12 +39,10 @@ fn loads_skill_overrides_overlay() {
 
 /// 等级域 merge 后的聚合行数。
 ///
-/// crit / attspd（M1-T4.3 表列直读）：vendor 覆盖的历史值 3911 / 3578 条逐值保留
-/// （原 3912 中 FireRuneFireDjinn L2 的 7.0 是历史填充伪影，M0-W4b 已修正），表列
-/// 直读额外带来怪物/非 vendor 技能的值 → 总数 6091 / 4256；base_multiplier 仍走
-/// overlay merge（6821 不变）。M1-T4.2 新增的等级字段族覆盖数取自 W0 下载报告
-/// （CostMultiplier≠100 = 542 / Reservation≠0 = 3166 / EffectOnPlayer≠100 = 169 /
-/// StoredUses≠0 = 6721）。
+/// crit / attspd：vendor 覆盖的历史值 3911 / 3578 条逐值保留，表列直读额外带来
+/// 怪物/非 vendor 技能的值 → 总数 6091 / 4256；base_multiplier 仍走 overlay
+/// merge（6821 不变）。等级字段族覆盖数：CostMultiplier≠100 = 542 /
+/// Reservation≠0 = 3166 / EffectOnPlayer≠100 = 169 / StoredUses≠0 = 6721。
 #[test]
 fn merged_levels_match_historical_coverage() {
     let levels = repo_game_data()
@@ -59,12 +57,12 @@ fn merged_levels_match_historical_coverage() {
     assert_eq!(count(|r| r.crit_chance.is_some()), 6294);
     assert_eq!(count(|r| r.attack_speed_multiplier.is_some()), 4256);
     assert_eq!(count(|r| r.base_multiplier.is_some()), 6850);
-    // M1-T4.2 等级字段族（adapter 直读，平凡值归一化为 None）。
+    // 等级字段族（adapter 直读，平凡值归一化为 None）。
     assert_eq!(count(|r| r.mana_multiplier.is_some()), 542);
     assert_eq!(count(|r| r.spirit_reservation_flat.is_some()), 3166);
     assert_eq!(count(|r| r.reservation_multiplier.is_some()), 169);
     assert_eq!(count(|r| r.stored_uses.is_some()), 6734);
-    // level_requirement：PoE2 `.dat` 无列（真源表不可下载），M1 恒 None、M5a 落库。
+    // level_requirement：PoE2 `.dat` 无列（真源表不可下载），恒 None、落库。
     assert_eq!(count(|r| r.level_requirement.is_some()), 0);
 }
 
@@ -92,7 +90,7 @@ fn merged_levels_spot_values() {
     assert_eq!(snipe[0].base_multiplier, Some(2.65));
     assert!(snipe[1..].iter().all(|r| r.base_multiplier.is_none()));
 
-    // M1-T4.2 等级字段族点值（与 vendor Data/Skills/*.lua 逐字对照）：
+    // 等级字段族点值（与 vendor Data/Skills/*.lua 逐字对照）：
     // Acrimony support：manaMultiplier 10（sup_int.lua `manaMultiplier = 10`）。
     let acrimony = &levels["SupportAcrimonyPlayer"];
     assert_eq!(acrimony[0].mana_multiplier, Some(10.0));
@@ -113,7 +111,7 @@ fn merged_levels_spot_values() {
         .expect("FlickerStrikePlayer 主 stat-set 存在");
     assert_eq!(flicker_set.skill_attack_speed_more, Some(285.0));
 
-    // M4-T4 W-D1：dotIs* 布尔——vendor 全量唯一条目 TornadoShotPlayer
+    //  dotIs* 布尔——vendor 全量唯一条目 TornadoShotPlayer
     // statSets[2]（"Tornado"）的 dotIsArea，按 vendor 序号命中
     // TornadoShotNovaPlayer set；主 set 保持保守默认（未核验全 false）。
     let tornado = sets
@@ -132,7 +130,7 @@ fn merged_levels_spot_values() {
         "主 set（Impact）未核验，保守默认"
     );
 
-    // M4-G：explodeCorpse 布尔（vendor statSet baseMods，act_int.lua:5287；
+    //  explodeCorpse 布尔（vendor statSet baseMods，act_int.lua:5287；
     // CalcOffence.lua:2213 尸体爆炸基伤门控）——DetonateDeadPlayer 主 set
     // 命中；无该 baseMod 的技能保持缺省 false。
     let dd = sets
@@ -144,7 +142,7 @@ fn merged_levels_spot_values() {
 }
 
 /// 纯 base 不含 overlay 专属字段——确保这些值只来自 merge，不再有手补漂移
-/// （regen-check byte-diff 零的语义对应）。M1-T4.3 后 overlay 专属字段收窄为
+/// （regen-check byte-diff 零的语义对应）。后 overlay 专属字段收窄为
 /// base_multiplier（等级域）+ skill_attack_speed_more（statSet 域）；crit /
 /// attspd 已是表列直读的 base 字段，不在断言范围。
 #[test]

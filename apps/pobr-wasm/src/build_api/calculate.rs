@@ -13,9 +13,7 @@ use super::request::{
 };
 use crate::state;
 
-// ---------------------------------------------------------------------------
 // 0.2 + 0.3 calculate_build_json（display_catalog 全量 + breakdown）
-// ---------------------------------------------------------------------------
 
 /// breakdown 面向的聚合 ModName（PoB2 侧边栏常驻属性；派生量如 TotalDPS 无
 /// 单一聚合名，不在此列——其构成经归因接口看）。
@@ -210,9 +208,7 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     Ok(serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))?)
 }
 
-// ---------------------------------------------------------------------------
 // full_dps_json（逐技能组 DPS + FullDPS 汇总）
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize)]
 struct SkillDpsJson {

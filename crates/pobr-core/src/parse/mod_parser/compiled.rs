@@ -1,5 +1,5 @@
 //! [`CompiledParserRules`]——把 Track A 的 [`ModParserRulesDoc`]（serde 数据）
-//! 编译为带索引的运行时形态（蓝图 §2.3）。
+//! 编译为带索引的运行时形态。
 //!
 //! - **plain 表**（name_map / flag_phrases / suffix / pen / damage / regen /
 //!   degen / cost / base_cost / flag_types）：纯子串匹配，用
@@ -11,7 +11,7 @@
 //!   的进 always-check 桶。最终在候选集合上跑 vendor §2.1 的「最早 + 最长 +
 //!   `#pattern` 长 + 字典序」四级 tie-break。
 //!
-//! **编译在 core**（gamedata 只 load + merge，保 P9）：`CompiledParserRules::
+//! **编译在 core**（gamedata 只 load + merge，保 I/O 收口）：`CompiledParserRules::
 //! compile(&ModParserRulesDoc)`。
 
 use aho_corasick::{AhoCorasick, MatchKind};
@@ -143,7 +143,7 @@ impl<T> PatternTable<T> {
             std::collections::HashMap::new();
         for (i, lit) in literals.iter().enumerate() {
             match lit {
-                // literal 长度 <3 的退化为 always-check（蓝图 §2.3：短 literal 过滤
+                // literal 长度 <3 的退化为 always-check（短 literal 过滤
                 // 效益低反增误命中）。
                 Some(l) if l.len() >= 3 => {
                     let owner = *literal_index.entry(l.clone()).or_insert_with(|| {
@@ -300,8 +300,8 @@ pub struct CompiledParserRules {
     pub flag_types: PatternTable<FlagTypePayload>,
     /// unsupportedModList（vendor + pobr 自加，小写整行查）。
     pub unsupported: std::collections::HashSet<String>,
-    /// specialModList 通道（M5b `overlay/special_mods.json` +
-    /// `generated/special_derived.json`，M6-conv2 接入）。vendor `parseMod` 在
+    /// specialModList 通道（`overlay/special_mods.json` +
+    /// `generated/special_derived.json`，接入）。vendor `parseMod` 在
     /// formList 之前查 specialModList 整行表（`ModParser.lua:6151-6160`）——引擎
     /// 在 form 扫描前查本表，命中即返回，对齐 vendor specialModList 锚定优先级。
     /// 未注入数据时 [`SpecialModRules::empty`]（query 恒 `None`，行为 = 旧引擎）。
@@ -310,7 +310,7 @@ pub struct CompiledParserRules {
     pub special_handlers: HandlerRegistry,
     /// 运行时解析 memo（text → outcome）。解析对（text, 规则集）纯函数，同一
     /// 行文本（装备逐次重算重新 ingest / 树 stat / per-gem GemProperty 扫描等
-    /// 热路径的大量重复行）直接命中缓存，跳过 scan 引擎——这是 M6 预编译语料
+    /// 热路径的大量重复行）直接命中缓存，跳过 scan 引擎——这是预编译语料
     /// 「运行时 text→mods 缓存」的在线实现（覆盖任意用户文本，不限语料）。
     pub memo: ParseMemo,
 }
@@ -383,16 +383,16 @@ pub struct FlagTypePayload {
 
 impl CompiledParserRules {
     /// 编译全部规则表（不含 special 通道——special 表恒空，query 恒 `None`，
-    /// 行为 = M6-conv1 引擎）。pattern 子集语法越界 → `Err`（数据固定、不应触发）。
+    /// 行为 =引擎）。pattern 子集语法越界 → `Err`（数据固定、不应触发）。
     pub fn compile(doc: &ModParserRulesDoc) -> Result<Self, CompileError> {
         Self::compile_with_special(doc, &[])
     }
 
-    /// 编译全部规则表 + special 通道（M6-conv2）。`special_defs` =
+    /// 编译全部规则表 + special 通道。`special_defs` =
     /// `overlay/special_mods.json` + `generated/special_derived.json` 的
     /// 拼接条目（id 冲突在 [`SpecialModRules::compile`] fail-fast）。
     ///
-    /// **编译在 core**（P9）：gamedata 只 load + merge，注入拼接后的条目数组。
+    /// **编译在 core**：gamedata 只 load + merge，注入拼接后的条目数组。
     pub fn compile_with_special(
         doc: &ModParserRulesDoc,
         special_defs: &[SpecialTemplateDef],

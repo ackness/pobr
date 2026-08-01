@@ -54,9 +54,7 @@ pub enum CliError {
     NotImplemented(&'static str),
 }
 
-// ---------------------------------------------------------------------------
 // calculate
-// ---------------------------------------------------------------------------
 
 /// `calculate` 子命令输入。
 #[derive(Debug, Clone)]
@@ -137,9 +135,7 @@ pub fn calculate_json(req: &CalculateRequest) -> Result<String, CliError> {
     Ok(serde_json::to_string_pretty(&result)?)
 }
 
-// ---------------------------------------------------------------------------
 // parse-mod
-// ---------------------------------------------------------------------------
 
 /// 单条 modifier 的可序列化摘要。
 #[derive(Debug, Clone, Serialize)]
@@ -264,14 +260,12 @@ pub fn parse_mod_json(text: &str, data_dir: &std::path::Path) -> Result<String, 
     Ok(serde_json::to_string_pretty(&report)?)
 }
 
-// ---------------------------------------------------------------------------
 // explain-mod（词条解剖）
 //
 // 与 parse-mod 的区别：parse-mod 只给 name/type/value/source，**丢掉了 flags 和
 // tags**——而 tags（Condition / Multiplier / PerStat / SkillTypes / SlotName …）正是
 // 一条词条「在什么情境下生效、按什么缩放」的灵魂（PoB2「一切皆带 tag 的 Mod」那一层）。
 // explain-mod 把这些摊开并用人话解释，让「词条是怎么运作的」在命令行直接看得见。
-// ---------------------------------------------------------------------------
 
 /// 单个 tag 的人话解释。
 #[derive(Debug, Clone, Serialize)]
@@ -704,9 +698,7 @@ pub fn explain_mod_text(text: &str, data_dir: &std::path::Path) -> Result<String
     Ok(render_explain(&report))
 }
 
-// ---------------------------------------------------------------------------
 // parse-item
-// ---------------------------------------------------------------------------
 
 /// `parse-item` 子命令输入。
 #[derive(Debug, Clone)]
@@ -814,9 +806,7 @@ pub fn parse_item_json(req: &ParseItemRequest) -> Result<String, CliError> {
     Ok(serde_json::to_string_pretty(&report)?)
 }
 
-// ---------------------------------------------------------------------------
 // decode-code / encode-code
-// ---------------------------------------------------------------------------
 
 /// 解码 PoB Build Code → XML。
 pub fn decode_code(code: &str) -> Result<String, CliError> {
@@ -828,9 +818,7 @@ pub fn encode_code(xml: &str) -> Result<String, CliError> {
     Ok(pobr_build::encode_pob_code(xml)?)
 }
 
-// ---------------------------------------------------------------------------
 // calculate-build（PoB Build Code → 完整 Build → 端到端归因计算）
-// ---------------------------------------------------------------------------
 
 /// `calculate-build` 子命令输入。
 #[derive(Debug, Clone)]
@@ -996,13 +984,11 @@ fn build_summary(build: &Build) -> BuildSummary {
     }
 }
 
-// ---------------------------------------------------------------------------
 // 边际贡献（explain-mod --build）
 //
 // 「在我现有的 build 上加这条词条，会怎样？」把候选词条文本作为 extra_modifier_texts
 // 注入玩家侧管线，重算一遍，与基线逐字段对比——复用 calculate_with_data 既有机制
 // （extra_modifier_texts 经 session.add_modifier_texts 入玩家 ModDb）。
-// ---------------------------------------------------------------------------
 
 /// 单个输出字段的边际变化（加入候选词条前后）。
 #[derive(Debug, Clone, Serialize)]

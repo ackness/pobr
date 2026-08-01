@@ -1,8 +1,7 @@
-//! M2 Track B（13-G1 / 13-G7）：taken-as 管线 + effectiveAppliedArmour 集成测试。
+//! （13-G1 / 13-G7）：taken-as 管线 + effectiveAppliedArmour 集成测试。
 //!
-//! 期望值均按 PoB2 公式手算，注释标注 `Modules/CalcDefence.lua` 行号
-//! （蓝图 m2-defence §4.1 第 6 条惯例）。词条文本走 mod_parser（W0.1 覆盖表契约），
-//! 无解析来源的中间量（如 ArmourDefense）直接注入 Modifier。
+//! 期望值均按 PoB2 公式手算，注释标注 `Modules/CalcDefence.lua` 行号。词条文本
+//! 走 mod_parser；无解析来源的中间量（如 ArmourDefense）直接注入 Modifier。
 
 use crate::support::parse_mod;
 use pobr_core::calc::{
@@ -37,9 +36,7 @@ fn add_text(db: &mut ModDb, text: &str) {
     db.add_list(outcome.mods);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // damage_shift_table（CalcDefence.lua:2171-2190）
-// ─────────────────────────────────────────────────────────────────
 
 /// 无词条 → 恒等矩阵（每类型 100% 保留自身）。
 #[test]
@@ -97,9 +94,7 @@ fn shift_table_sums_hits_variant() {
     assert_eq!(shift[PHYS][PHYS], 0.5);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // effectiveAppliedArmour（CalcDefence.lua:2336-2362、:1862-1863）
-// ─────────────────────────────────────────────────────────────────
 
 /// 物理隐式 BASE 100（:1862-1863）：空 db 时物理吃全额护甲、元素不吃。
 #[test]
@@ -195,9 +190,7 @@ fn effective_armour_armour_defense_and_evasion_share() {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────
 // taken_hit_from_damage（CalcDefence.lua:422-455）
-// ─────────────────────────────────────────────────────────────────
 
 /// 纯抗性：火 raw 1000、火抗 75% → 承受 250（resMult = 1−75/100，:2363/:432）。
 #[test]
@@ -254,9 +247,7 @@ fn taken_hit_floors_at_zero() {
     assert_eq!(parts[COLD], 0.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 端到端（builder + 词条文本）
-// ─────────────────────────────────────────────────────────────────
 
 /// Lightning Coil 型「50% of Physical Damage from Hits taken as Lightning」端到端：
 /// armour 2000、电抗 75%，物理 raw 1000——

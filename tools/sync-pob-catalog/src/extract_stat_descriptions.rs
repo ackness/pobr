@@ -1,6 +1,6 @@
 //! `extract-lua --what stat-descriptions`：vendor PoB2
 //! `Data/StatDescriptions/*.lua` → 每个 stat_id 的 canonical 显示文本 →
-//! `data/<版本>/overlay/stat_descriptions.json`（M6 E/F「stat_id → Modifier
+//! `data/<版本>/overlay/stat_descriptions.json`（「stat_id → Modifier
 //! 第二通道」的数据面）。
 //!
 //! 职责切分与 [`crate::extract_stat_map`] 一致：Lua 引导脚本
@@ -30,7 +30,7 @@ const BOOTSTRAP_LUA: &str = include_str!("extract_stat_descriptions.lua");
 /// 当前 overlay 文档 schema 标识（字段演化时递增）。
 pub const STAT_DESCRIPTIONS_SCHEMA: &str = "stat_descriptions/v1";
 
-/// 默认抽取 scope（M6 E/F tree 通道最相关：root + passive + presence/aura）。
+/// 默认抽取 scope（tree 通道最相关：root + passive + presence/aura）。
 /// 其余 StatDescriptions 文件（skill/gem/monster/advanced_mod）按需经 `--files` 加。
 pub const DEFAULT_STAT_DESC_FILES: &[&str] = &[
     "stat_descriptions",

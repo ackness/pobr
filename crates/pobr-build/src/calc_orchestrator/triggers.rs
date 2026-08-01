@@ -2,10 +2,10 @@
 
 use super::*;
 
-// ═════════════════════════ M4-T5 触发段（W-E1/W-E2）═════════════════════════
+// 触发段
 
 thread_local! {
-    /// 触发子计算递归深度（W-E2 递归防护，蓝图 §5「触发子计算递归/循环」行）：
+    /// 触发子计算递归深度：
     /// 源技能子计算进行中（>0）时 [`trigger_modifiers`] 整体早退——子计算 env
     /// 强制剥离 trigger 关系（一层深度），杜绝触发链互指的无限递归。
     static TRIGGER_SUBCALC_DEPTH: std::cell::Cell<u8> = const { std::cell::Cell::new(0) };
@@ -27,7 +27,7 @@ impl Drop for TriggerDepthGuard {
     }
 }
 
-/// 数据驱动识别结果（W-E1）：命中的触发配置 + 触发器宝石（组内 meta/support；
+/// 数据驱动识别结果：命中的触发配置 + 触发器宝石（组内 meta/support；
 /// 主技能自身命中 skill-kind key 时为 `None`）。
 pub(crate) struct RecognizedTrigger<'a> {
     config: &'a pobr_data::catalog::TriggerConfigDef,
@@ -35,11 +35,11 @@ pub(crate) struct RecognizedTrigger<'a> {
 }
 
 /// 主技能触发链路 modifier（findings 03-01/03-02/03-06 的 build 层接线；
-/// M4-T5 W-E1/W-E2 扩展）。
+/// 扩展）。
 ///
 /// 两条识别路径（先数据驱动，后内建触发；命中前者即返回）：
 ///
-/// 1. **数据驱动识别（W-E1，`overlay/trigger_configs.json`）**：vendor
+/// 1. **数据驱动识别（`overlay/trigger_configs.json`）**：vendor
 ///    `CalcTriggers.lua:1452-1455` 四级 key 查找的 PoBR 投影——条目的
 ///    `match_effect_ids`（PoE2 授予效果 id）命中**组内宝石**（= triggeredBy
 ///    关系，如 `MetaCastOnCritPlayer`）或**主技能自身**（= skill key）。命中后
@@ -48,7 +48,7 @@ pub(crate) struct RecognizedTrigger<'a> {
 /// 2. **内建触发**（`skill_types` 含 `Triggered`/`InbuiltTrigger`，对应 PoB2
 ///    `isTriggered`：物品/升华自带的自动触发技能）：注入被触发冷却 + 组内源速率。
 ///
-/// **源速率（W-E2，修 14-G2）**：源技能跑一次完整 [`calculate_with_data`] 子计算
+/// **源速率**：源技能跑一次完整 [`calculate_with_data`] 子计算
 /// （PoB2 GlobalCache 等价物最小版，`CalcTriggers.lua:74-86`
 /// `cachedData[uuid].HitSpeed or Speed`），取其**计算后**有效行动速率注入
 /// `TriggerSourceRate` BASE——堆攻速的 CoC build 源速率随攻速乘区增长。命中/暴击
@@ -70,12 +70,12 @@ pub(crate) fn trigger_modifiers(
     group: &SocketGroup,
     main_skill_id: &str,
 ) -> Vec<Modifier> {
-    // W-E2 递归防护：源技能子计算 env 中不再识别/注入任何触发关系（一层深度剥离）。
+    // 递归防护：源技能子计算 env 中不再识别/注入任何触发关系（一层深度剥离）。
     if TRIGGER_SUBCALC_DEPTH.with(|d| d.get()) > 0 {
         return Vec::new();
     }
 
-    // —— 路径 1：W-E1 数据驱动识别（命中即返回，含「识别但门控不满足 → 空」）。
+    // —— 路径 1：数据驱动识别（命中即返回，含「识别但门控不满足 → 空」）。
     if let Some(mods) =
         config_trigger_modifiers(build, data, options, main_skill, group, main_skill_id)
     {
@@ -113,7 +113,7 @@ pub(crate) fn trigger_modifiers(
         ));
     }
 
-    // 组内触发源技能 → 子计算统计（W-E2）→ TriggerSourceRate（计算后攻速）+
+    // 组内触发源技能 → 子计算统计→ TriggerSourceRate（计算后攻速）+
     // 源命中折入。组内无候选时不注入——fill_trigger 回退主技能速率（占位语义）。
     if let Some(stats) = in_group_trigger_source_stats(build, data, options, group, main_skill_id) {
         push_source_stat_mods(
@@ -173,7 +173,7 @@ pub(crate) fn push_source_stat_mods(
     }
 }
 
-/// W-E1 数据驱动触发接线：识别命中返回注入词条（`Some(vec![])` = 识别命中但
+/// 数据驱动触发接线：识别命中返回注入词条（`Some(vec![])` = 识别命中但
 /// `requires_condition` 门控不满足，对齐 vendor disable——触发面板保持 0 且
 /// **不再落入**内建触发路径）；未命中返回 `None`（走路径 2）。
 pub(crate) fn config_trigger_modifiers(
@@ -264,7 +264,7 @@ pub(crate) fn config_trigger_modifiers(
     }
 
     // 源技能：组内匹配受限谓词的非触发伤害技能（最高基础速率者，对齐 PoB2
-    // findTriggerSkill highest-APS）→ W-E2 子计算取计算后统计；子计算不可用
+    // findTriggerSkill highest-APS）→子计算取计算后统计；子计算不可用
     // （递归护栏/循环/失败）退回基础 `1/use_time`。
     if let Some(source_gem) =
         find_trigger_source_gem(build, data, group, main_skill_id, &recognized)
@@ -289,7 +289,7 @@ pub(crate) fn config_trigger_modifiers(
     Some(mods)
 }
 
-/// 识别触发关系（W-E1 四级 key 的 PoBR 投影，键 = `match_effect_ids`）：
+/// 识别触发关系（四级 key 的 PoBR 投影，键 = `match_effect_ids`）：
 /// 先查主技能自身（skill-kind key，如 Tempest Shield），再扫组内其他宝石
 /// （triggeredBy / unique 触发器，如 `MetaCastOnCritPlayer`）。
 pub(crate) fn recognize_trigger_config<'a>(
@@ -367,7 +367,7 @@ pub(crate) fn find_trigger_source_gem<'b>(
     best.map(|(gem, _)| gem)
 }
 
-/// 受限谓词求值（R1 三字段：any_skill_types / all_mod_flags / not_skill_types）。
+/// 受限谓词求值（三字段：any_skill_types / all_mod_flags / not_skill_types）。
 /// mod flags 按主手武器类型位（`weapon_types` 表 flag + one_hand）近似——技能
 /// cfg flags 的武器位即由主手武器派生（vendor skillCfg.flags 同源）。
 pub(crate) fn source_cond_matches(
@@ -437,11 +437,11 @@ pub(crate) fn base_rate_of(
     Some(weapon.attack_rate * asm)
 }
 
-/// W-E2 源技能完整子计算（PoB2 GlobalCache 等价物最小版）：同一 build / 同组，
+/// 源技能完整子计算（PoB2 GlobalCache 等价物最小版）：同一 build / 同组，
 /// 主动技能换成源宝石（`main_active_skill` 指到其组内非 support 序号），跑完整
 /// [`calculate_with_data`] 取 `{effective_action_rate, hit_chance, crit_chance}`。
 ///
-/// 护栏（蓝图 §5）：
+/// 护栏：
 /// - **循环检测**：源 = 被触发技能自身 → `None`（调用方退回基础 `1/use_time`）；
 /// - **一层深度**：深度 ≥1 直接 `None`（深层触发关系已在 [`trigger_modifiers`]
 ///   顶部剥离，此处为直接调用的冗余护栏）；
@@ -455,7 +455,7 @@ pub(crate) fn trigger_source_stats(
     main_skill_id: &str,
 ) -> Option<pobr_core::calc::TriggerSourceStats> {
     if source_gem.skill_id == main_skill_id {
-        // 触发循环（源技能又是被触发技能）：退回基础 use_time 口径（蓝图 §5）。
+        // 触发循环（源技能又是被触发技能）：退回基础 use_time 口径。
         return None;
     }
     if TRIGGER_SUBCALC_DEPTH.with(|d| d.get()) >= 1 {
@@ -501,7 +501,7 @@ pub(crate) fn trigger_source_stats(
     })
 }
 
-/// 内建触发的组内源技能统计（路径 2 的 W-E2 升级版）：按既有候选规则（非辅助、
+/// 内建触发的组内源技能统计：按既有候选规则（非辅助、
 /// 非触发、伤害技能、≠ 主技能）选基础速率最高者，再子计算取**计算后**统计；
 /// 子计算不可用退回基础 `1/use_time`（修 14-G2 前的旧口径，作回退面）。
 pub(crate) fn in_group_trigger_source_stats(
@@ -546,9 +546,9 @@ pub(crate) fn in_group_trigger_source_stats(
     )
 }
 
-// ═══════════════════════ M4-T5 触发段结束 ═══════════════════════
+// 触发段结束
 
-/// 组级 support 适用性裁决结果（M1 蓝图契约 C2）。
+/// 组级 support 适用性裁决结果。
 ///
 /// `compatible` 为**通过 PoB2 四段裁决**的 support 效果引用（保持插槽顺序）；
 /// `final_skill_types` 为 addSkillTypes 不动点收敛后的主动技能类型集合
@@ -557,7 +557,7 @@ pub(crate) fn in_group_trigger_source_stats(
 pub(crate) struct GroupSupportJudgement {
     /// 兼容 support（插槽顺序；含附加授予的 support 半身，见 [`CompatibleSupport`]）。
     pub(crate) compatible: Vec<CompatibleSupport>,
-    /// 不动点收敛后的技能类型集合（供后续 require 裁决 / T4 SupportManaMultiplier 复用）。
+    /// 不动点收敛后的技能类型集合。
     pub(crate) final_skill_types: std::collections::HashSet<String>,
 }
 
@@ -599,7 +599,7 @@ impl CompatibleSupport {
 ///    pass1 接受的 support 若被后并入的类型 exclude 命中，此处会被拒；其已并入的
 ///    add 类型保留，同 PoB2 不回滚）。
 ///
-/// 契约 C2 注：签名比蓝图原型多 `active_skill_id`——PoB2 的裁决以**单个主动技能**为
+/// 契约 C2 注：签名比原型多 `active_skill_id`——PoB2 的裁决以**单个主动技能**为
 /// 对象（meta 组里组首非 support 可能是 meta 壳，而非 `resolve_main_skill` 选中的真实
 /// 主技能），调用方已持有解析结果，传入避免在此重复/错误推导。
 pub(crate) fn judge_group_supports(
@@ -640,7 +640,7 @@ pub(crate) fn judge_group_supports(
 
     // 四段裁决（CalcTools.lua:84-110）：cannotBeSupported → supportGemsOnly →
     // exclude 表达式 → require 表达式（空 = 接受）。socket group 内技能恒由宝石授予
-    // （from_gem=true）；fromItem 特例 M5c、minionTypes 第二集合 M5a（defer）。
+    // （from_gem=true）；fromItem 特例、minionTypes 第二集合（defer）。
     let judge = |effect_id: &str, types: &HashSet<String>| -> bool {
         data.granted_effects.get(effect_id).is_some_and(|effect| {
             can_support(
@@ -710,7 +710,7 @@ pub(crate) fn judge_group_supports(
 /// SupportGem 归因的 modifier，注入被支援技能（如「附加闪电伤害」→
 /// `LightningDamageMin/Max` BASE、「更多伤害」→ `Damage` MORE）。
 ///
-/// 注入前经 [`judge_group_supports`]（契约 C2，PoB2 四段裁决 + addSkillTypes 不动点）
+/// 注入前经 [`judge_group_supports`]
 /// 产出兼容名单：**被拒 support 完全不参与**（数值 / manaMultiplier 全不吃，对齐 PoB2
 /// `CalcActiveSkill.lua:210-214` 只把兼容 support 放进 effectList 的拒收语义）。
 ///
@@ -741,7 +741,7 @@ pub(crate) fn support_modifiers(
             &sup.effect_id,
             set_key.as_deref(),
         ));
-        // （M1-T4.4）兼容 support 的分等级 cost 倍率 → `SupportManaMultiplier` MORE
+        // 兼容 support 的分等级 cost 倍率 → `SupportManaMultiplier` MORE
         // （PoB2 `CalcActiveSkill.lua:689-691`：`NewMod("SupportManaMultiplier","MORE",
         // level.manaMultiplier, modSource)`）。只对**兼容名单**注入——被拒 support
         // 的倍率不吃，对齐 PoB2 拒收。消费侧 = `skill_mechanics::calc_skill_cost`
@@ -894,7 +894,7 @@ mod support_judgement_tests {
         );
     }
 
-    /// 主动效果 cannotBeSupported → 一切 support 被拒（裁决第一段，CalcTools.lua:86-88）。
+    /// 主动效果 cannotBeSupported → 一切 support 被拒（四段裁决第一段，`CalcTools.lua:86-88`）。
     #[test]
     fn cannot_be_supported_rejects_everything() {
         let effects = vec![

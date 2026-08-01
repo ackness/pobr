@@ -1,5 +1,5 @@
 //! `base/game_constants.json` 加载测试：
-//! - pobr 准源字段逐值断言等于 `pobr_data::constants`（搬迁不变式，架构 §1.1 P8）；
+//! - pobr 准源字段逐值断言等于 `pobr_data::constants`（搬迁不变式）；
 //! - vendor-only 字段抽样断言写死期望值，并引用 vendor 文件:行号。
 
 use pobr_data::catalog::game_constants::GameConstantsDef;
@@ -153,7 +153,7 @@ fn vendor_only_values_pinned_to_pob2_source() {
     assert_eq!(gc.game.neg_armour_dmg_bonus_cap, 100.0);
 }
 
-/// M2-W0.4：EHP 循环魔数 + 普通怪 DPS 乘数逐值锁定
+///  EHP 循环魔数 + 普通怪 DPS 乘数逐值锁定
 /// （vendor Modules/Data.lua:228 / :235 / :237 / :239）。
 #[test]
 fn m2_ehp_calc_constants_pinned_to_pob2_source() {
@@ -169,7 +169,7 @@ fn m2_ehp_calc_constants_pinned_to_pob2_source() {
     assert_eq!(gc.game.normal_enemy_dps_mult, 1.0 / 4.40);
 }
 
-/// M2-F：max-hit 转换平滑迭代数锁定（vendor Modules/Data.lua:241
+///  max-hit 转换平滑迭代数锁定（vendor Modules/Data.lua:241
 /// maxHitSmoothingPasses = 8，CalcDefence.lua:3669 消费）。
 #[test]
 fn m2_max_hit_smoothing_passes_pinned_to_pob2_source() {
@@ -178,7 +178,7 @@ fn m2_max_hit_smoothing_passes_pinned_to_pob2_source() {
     assert_eq!(gc.game.max_hit_smoothing_passes, 8.0);
 }
 
-/// M2-D：Block 面板族常量锁定——基础格挡上限 50%
+///  Block 面板族常量锁定——基础格挡上限 50%
 /// （vendor Data/Misc.lua:147 `object_inherent_base_maximum_block_%_from_ot`，
 /// CalcSetup.lua:28 注入 `BaseBlockChanceMax` BASE）。
 #[test]
@@ -204,9 +204,9 @@ fn ailment_fractions_consistent_with_vendor_per_minute_form() {
     );
 }
 
-/// M0-W3 fallback 不变式：`GameConstantsDef::default()`（无 GameData 时的回退常量集）
+/// fallback 不变式：`GameConstantsDef::default()`（无 GameData 时的回退常量集）
 /// 与入库 JSON **整结构逐值相等**——保证「注入」与「回退」两条 calc 路径输出一致
-/// （搬迁不变式的结构锁，架构文档 20 §1 P8）。
+/// （搬迁不变式的结构锁）。
 #[test]
 fn default_fallback_equals_loaded_json_exactly() {
     assert_eq!(load(), GameConstantsDef::default());

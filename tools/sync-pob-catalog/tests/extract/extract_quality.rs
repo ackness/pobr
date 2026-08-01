@@ -1,4 +1,4 @@
-//! `extract-lua --what gem-quality` 子命令的集成测试（M1-T1）。
+//! `extract-lua --what gem-quality` 子命令的集成测试。
 //!
 //! 依赖 luajit 的用例在环境缺少 luajit 时**跳过**（CI 无 luajit 也不挂）；
 //! 文档组装的确定性用例为纯 Rust，不依赖外部进程。

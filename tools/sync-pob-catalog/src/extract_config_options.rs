@@ -1,4 +1,4 @@
-//! `extract-lua --what config-options`：ConfigOptions.lua 探针法抽取（M3-T1 A2）。
+//! `extract-lua --what config-options`：ConfigOptions.lua 探针法抽取。
 //!
 //! 与其它 `--what` 目标不同，本目标需要**完整 PoB2 headless 环境**
 //! （HeadlessWrapper：真实 `data` / `modLib` / `LoadModule`），因此 luajit
@@ -6,7 +6,7 @@
 //! （与 `tools/pob2-oracle/run.sh` 同款引导），而非走
 //! [`crate::extract_lua::invoke_luajit_jsonl`] 的无 cwd 通道。
 //!
-//! 职责切分（P13 抽取约定）：
+//! 职责切分（确定性抽取约定）：
 //! - Lua 引导脚本（`extract_config_options.lua`，编译期内嵌）做探针归纳并
 //!   逐行输出 serde 形状的条目 JSON（JSONL）；
 //! - 本模块负责启动 / 解析 / 按 `var` 排序 / `_meta` 组装 / byte-stable

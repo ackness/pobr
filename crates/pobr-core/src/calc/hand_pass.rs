@@ -1,4 +1,4 @@
-//! MH/OH 双 pass 与 combineStat 合并（M4-T2 W-B2，蓝图 m4-offence-deep.md §2、
+//! MH/OH 双 pass 与 combineStat 合并（
 //! RFC m4-rfc-attribution-passes §2.5/§3）。
 //!
 //! PoB2 进攻外层按主/副手各跑一遍管线（`CalcOffence.lua:2369-2449` passList：
@@ -18,7 +18,7 @@
 //!   OR 直通（`:2453` `if mode == "OR" or not skillFlags.bothWeaponAttack`），
 //!   输出与「武器基底折进 `MinimalInput` 后单跑」**逐值相等**——等价性测试钉死。
 //!
-//! ## per-hand 武器位（W-B2 接入，原 W-A1 断点）
+//! ## per-hand 武器位
 //!
 //! per-hand cfg 两路翻转（PoB2 weapon1Cfg/weapon2Cfg 等价）：
 //! 1. 条件（`MainHandAttack`/`OffHandAttack`）；
@@ -63,7 +63,7 @@ pub struct HandCfg {
     pub conditions: Vec<(String, bool)>,
 }
 
-/// 单只手的 pass 输入（蓝图 §3.3 契约 1；编排层构造）。
+/// 单只手的 pass 输入。
 #[derive(Debug, Clone, PartialEq)]
 pub struct HandSource {
     pub label: HandTag,
@@ -97,7 +97,7 @@ impl HandSource {
 }
 
 /// 末端合并大表（vendor `CalcOffence.lua` combineStat 调用面**照抄**；机制逻辑跨
-/// 版本稳定按 P2 判据留框架）。当前 PoBR 进攻模型覆盖的 stat 子集 + 已规划字段；
+/// 版本稳定按判据留框架）。当前 PoBR 进攻模型覆盖的 stat 子集 + 已规划字段；
 /// vendor 其余条目（leech 族 `:4563-4587` 全 DPS、弩族 `:4602-4610` 全 AVERAGE、
 /// ailment 族 `:5737-5755` AVERAGE/CHANCE_AILMENT/CHANCE）随对应机制落地时按本表
 /// 同款方式补行。
@@ -138,10 +138,9 @@ pub struct HandPassOutput {
 }
 
 /// 攻击技能按 hand source 各跑一遍进攻管线并按 vendor combineStat 合并
-/// （蓝图 §3.3 契约 1 入口）。
 ///
 /// - `passes` 空 = 非攻击技能单 "Skill" pass：直通 `calculate_minimal_vs_enemy`。
-/// - `double_hits` = 技能数据 `doubleHitsWhenDualWielding`（W-D1 schema 顺带抽取；
+/// - `double_hits` = 技能数据 `doubleHitsWhenDualWielding`（schema 顺带抽取；
 ///   编排层未接线前传 `false`）。
 pub fn run_hand_passes(
     db: &ModDb,
@@ -219,7 +218,7 @@ pub(crate) fn hand_scope(
     for (name, enabled) in &hand.cfg_overrides.conditions {
         hand_cfg.conditions.insert(name.clone(), *enabled);
     }
-    // per-hand 武器位（W-B2）：非空时替换 cfg 的武器位段为该手武器位
+    // per-hand 武器位：非空时替换 cfg 的武器位段为该手武器位
     // （空 = 恒等，legacy 位表 / 非武器攻击 source 零行为）。
     hand_cfg.flags = hand_cfg.flags.replace_weapon_flags(hand.weapon.flags);
     (hand_cfg, hand_input)
@@ -278,8 +277,8 @@ fn combine_legs(mh: &MinimalOutput, oh: &MinimalOutput, double_hits: bool) -> Mi
         pre_effective_crit_chance,
         crit_multiplier,
         // 顶层分量向量：双持下暂取 MH 腿（per-hand 分量在 HandOutput；
-        // ailment magnitude 消费迁移到 Stored 族是 W-B3/T4 接线，
-        // 编排层在 W-A1 前不产生第二个 HandSource，本分支无生产消费）。
+        // ailment magnitude 消费迁移到 Stored 族是接线，
+        // 编排层在前不产生第二个 HandSource，本分支无生产消费）。
         damage_components: mh.damage_components.clone(),
         total_hit_avg,
         hit_chance,
@@ -363,7 +362,7 @@ fn combine_stored_by_type(
 }
 
 impl HandOutput {
-    /// 从一腿的 `MinimalOutput` 提取 combineStat 入参面（蓝图 §1.4 / RFC §4.2）。
+    /// 从一腿的 `MinimalOutput` 提取 combineStat 入参面。
     pub fn from_minimal(leg: &MinimalOutput) -> Self {
         Self {
             hit_chance: leg.hit_chance,
@@ -377,7 +376,7 @@ impl HandOutput {
             // 面板口径用玩家侧 total_hit_avg（与顶层字段同源）。
             average_damage: round(leg.total_hit_avg * leg.hit_chance),
             total_dps: leg.dps,
-            // W-B3：Stored 族（crit_pass 产出，ailment magnitude 的 vendor 口径输入）。
+            //  Stored 族（crit_pass 产出，ailment magnitude 的 vendor 口径输入）。
             stored_crit_avg: leg.stored_crit_avg.clone(),
             stored_hit_avg: leg.stored_hit_avg.clone(),
             stored_combined_avg: leg.stored_combined_avg.clone(),

@@ -1,7 +1,7 @@
 //! `extract-lua` 子命令：用 luajit 在最小 stub 环境下执行 vendor PoB2 的 Lua
 //! 数据文件，把人工策展层（Export 模板 #baseMod / per-skill 覆盖值等）固化为
 //! **确定性 JSON** 落到 `data/<版本>/overlay/`，替代"绕过适配器手改产物 JSON"
-//! 的一次性补丁（架构裁决 P13，缺口 15-data-pipeline Gap3）。
+//! 的一次性补丁。
 //!
 //! 职责切分：
 //! - Lua 引导脚本（`extract_skill_overrides.lua`，编译期内嵌）只负责忠实抽取
@@ -11,8 +11,8 @@
 //!
 //! 本模块同时承载各 `--what` 抽取目标的**公共层**（luajit JSONL 调用
 //! [`invoke_luajit_jsonl`] / vendor 版本解析 [`read_vendor_version`]）；
-//! 其它目标见 [`crate::extract_stat_map`]（M1-T2）与
-//! [`crate::extract_quality`]（M1-T1）。
+//! 其它目标见 [`crate::extract_stat_map`]与
+//! [`crate::extract_quality`]。
 
 use std::fs;
 use std::io::{self, Write};
@@ -30,7 +30,7 @@ const DEFAULT_LUAJIT_HOMEBREW: &str = "/opt/homebrew/bin/luajit";
 /// 默认抽取的 vendor 技能数据文件：玩家主动三系 + 召唤物 / 魂灵 / 其它 +
 /// 辅助三系——覆盖 `.dat` 通道拿不到的 per-skill 值（baseMultiplier 分等级值 /
 /// statSet baseMods Speed MORE）涉及的全部技能来源（消费侧 merge 需要全量，缺一系
-/// 即丢值）。M1-T4.3 起 critChance / attackSpeedMultiplier 已改 `.dat` 表列直读，
+/// 即丢值）。起 critChance / attackSpeedMultiplier 已改 `.dat` 表列直读，
 /// 不再经本通道（见 `extract_skill_overrides.lua` 头注）。
 pub const DEFAULT_SKILL_FILES: &[&str] = &[
     "act_dex", "act_int", "act_str", "minion", "other", "spectre", "sup_dex", "sup_int", "sup_str",
@@ -38,7 +38,7 @@ pub const DEFAULT_SKILL_FILES: &[&str] = &[
 
 /// `--what stat-map`（[`crate::extract_stat_map`]）默认抽取的 `Data/Skills/`
 /// 文件：玩家主动三系 + 辅助三系 + 其它。**不含** minion / spectre——
-/// 召唤物 statMap 留 M5a（M1 蓝图 T2.1 范围）。
+/// 召唤物 statMap 留。
 pub const DEFAULT_STAT_MAP_SKILL_FILES: &[&str] = &[
     "act_dex", "act_int", "act_str", "other", "sup_dex", "sup_int", "sup_str",
 ];

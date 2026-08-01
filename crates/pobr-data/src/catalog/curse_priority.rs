@@ -1,11 +1,11 @@
-//! `overlay/curse_priority.json` schema（`curse_priority/v1`，M3 S1-C）。
+//! `overlay/curse_priority.json` schema（`curse_priority/v1`，-C）。
 //!
 //! vendor 来源：`Modules/Data.lua:274` 起的 `data.cursePriority` 纯数据表，
 //! 经 `sync-pob-catalog extract-lua --what curse-priority` 确定性抽取
-//! （P13：luajit 求值表字面量，产物 byte-stable、`_meta` 记 vendor commit、
+//! （luajit 求值表字面量，产物 byte-stable、`_meta` 记 vendor commit、
 //! 禁手改）。vendor 平铺 `k=v` 表按语义拆为四段，便于消费侧按途查表。
 //!
-//! 消费侧（M3-T3 `calc/buff_pass.rs`，本 track 零接线）= PoB2
+//! 消费侧（`calc/buff_pass.rs`）= PoB2
 //! `determineCursePriority`（CalcPerform.lua:454-485）等价：
 //! `priority = curse_base + min(socket_index, 8) × socket_priority_base
 //!           + slot_weight(槽名去 " (Swap)" 后缀) + source_weight`，

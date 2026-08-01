@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 /// （形如 `Metadata/Items/Gems/SkillGemFireball`）。`name` 走 base_items 域，
 /// 此处只存与宝石机制相关的字段。
 ///
-/// 宝石→授予效果的连边（M1-T5.1，契约 C5）：`granted_effect_id` /
+/// 宝石→授予效果的连边：`granted_effect_id` /
 /// `additional_granted_effect_ids` 不在 base 产物中（`GemEffects` 表所在 bundle
 /// 在钉定补丁不可下载，见 `pipeline/config.json` `_tablesUnavailableForPinnedPatch`），
 /// 由 `pobr-gamedata` 在加载时从 `overlay/gem_effects.json`（[`GemEffectDef`]，
@@ -89,7 +89,7 @@ pub struct GrantedEffectDef {
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub cannot_be_supported: bool,
     /// 该 support **仅能支援宝石授予**的技能（`SupportsGemsOnly` 列）。对应 PoB2
-    /// `grantedEffect.supportGemsOnly`（无 gemData 的技能拒收，裁决第二段）。
+    /// `grantedEffect.supportGemsOnly`（无 gemData 的技能拒收，四段裁决第二段）。
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub support_gems_only: bool,
     /// `GrantedEffectStatSets` 表的外键索引（原始 `StatSet` 列）。分等级伤害 stat 值
@@ -99,7 +99,7 @@ pub struct GrantedEffectDef {
     /// **附加** statSet 的稳定 id（`AdditionalStatSets` 列，FK → `GrantedEffectStatSets.Id`
     /// ——W0 核验修正：FK 目标是 statSet 表而非另一行 GrantedEffects；列序保留）。
     /// 技能形态变体（如 IceNova → `IceNovaPlayerOnFrostbolt` / `IceNovaColdInfusedPlayer`），
-    /// 与 [`SkillStatSetDef::sets`] 的 `sets[1..]` 一一对应（M1-T5.2）。
+    /// 与 [`SkillStatSetDef::sets`] 的 `sets[1..]` 一一对应。
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub additional_stat_set_ids: Vec<String>,
     /// 消耗类型外键索引（原始 `CostTypes` 列，如 `[0]`=法力）。与
@@ -112,7 +112,7 @@ pub struct GrantedEffectDef {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub skill_types: Vec<String>,
     /// 该技能召唤的 minion id 列表（PoB2 Export 模板手工指令 `#minionList`，
-    /// 不在 `.dat`——M5a-A3）。**merge 后内存形态**：base `granted_effects.json`
+    /// 不在 `.dat`——）。**merge 后内存形态**：base `granted_effects.json`
     /// 不含此字段，由 `pobr-gamedata` 在加载期从 `overlay/granted_effect_minions.json`
     /// （[`crate::catalog::actors::GrantedEffectMinionDef`]）按 `id` 拼入。
     /// 空 = 非召唤技能（向后兼容）。出处：vendor `Export/Scripts/skills.lua:771-776`。
@@ -206,14 +206,14 @@ pub struct SkillLevelDef {
     /// 等级需求（PoB `levelRequirement`）。**PoE2 `.dat` 无 `PlayerLevelReq` 列**——真源
     /// 是 `SkillGems.ItemExperienceType → ItemExperiencePerLevel.PlayerLevel`（vendor
     /// `skills.lua:239-240`），该表在钉定补丁 4.5.0.3.4 的 bundle 不可下载（见
-    /// `pipeline/config.json` `_tablesUnavailableForPinnedPatch`）。M1 仅留 schema 席位
-    /// （adapter 恒写 `None`、不消费）；数据由 M5a（createMinionSkills 选级）经
+    /// `pipeline/config.json` `_tablesUnavailableForPinnedPatch`）。仅留 schema 席位
+    /// （adapter 恒写 `None`、不消费）；数据由（createMinionSkills 选级）经
     /// extract-lua 兜底通道落库。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub level_requirement: Option<u32>,
 }
 
-/// 某授予效果（技能）的**全部 statSet**（主 set + 附加 set，M1-T5.2 多 set 建模）。
+/// 某授予效果（技能）的**全部 statSet**。
 ///
 /// 主 set = `GrantedEffects.StatSet` 指向的 `GrantedEffectStatSets` 行；附加 set =
 /// `GrantedEffects.AdditionalStatSets` 列序指向的各行（如 IceNova →
@@ -269,21 +269,21 @@ pub struct StatSetDef {
     /// 由 vendor Lua 抽取合并。作为 `AttackSpeed` MORE 注入（仅攻击技能链路消费）。`None`=无。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub skill_attack_speed_more: Option<f64>,
-    /// 技能 DoT 配置布尔族（M4-T4 W-D1）：vendor skillData `dotIs*`（statSet
+    /// 技能 DoT 配置布尔族：vendor skillData `dotIs*`（statSet
     /// `baseMods` 的 `skill("dotIsArea", true)` 类条目，PoB2 据此从 dotCfg 剥除
     /// 对应 ModFlag 位，`CalcOffence.lua:5831-5860`）。GGG `.dat` 无对应列——
     /// 经 extract-lua skill_overrides 通道在加载期 merge。缺省全 false =
-    /// 保守不剥 flag（蓝图 m4-offence-deep §5 风险行）。
+    /// 保守不剥 flag。
     #[serde(default, skip_serializing_if = "DotFlags::is_default")]
     pub dot_flags: DotFlags,
-    /// 尸体爆炸门控（M4-G）：vendor statSet `baseMods` 的
+    /// 尸体爆炸门控：vendor statSet `baseMods` 的
     /// `skill("explodeCorpse", true)`（如 DetonateDeadPlayer，act_int.lua:5287）。
     /// PoB2 据此把 `monsterLife × skillData.corpseExplosionLifeMultiplier` 注入
     /// 物理基伤（`CalcOffence.lua:2211-2217`）。GGG `.dat` 无对应列——经
     /// extract-lua skill_overrides 通道在加载期 merge。缺省 false = 不注入。
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub explode_corpse: bool,
-    /// 隐式（无每级数值）stat（M4-H）：vendor statSet `stats` 列表中**任何等级行
+    /// 隐式（无每级数值）stat：vendor statSet `stats` 列表中**任何等级行
     /// 都没有数值**的条目（= GGG `.dat` `GrantedEffectStatSets.ImplicitStats` 列，
     /// 适配器未下载该列）。vendor 消费值恒 1（`CalcTools.lua:152`
     /// `statSetLevel[index] or 1`），多为行为 flag stat（如 Garukhan's Resolve 的
@@ -323,7 +323,7 @@ pub struct DotFlags {
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub hit: bool,
     /// 是否经 vendor 抽取核验（true = overlay 有该 statSet 的 dotIs* 条目；
-    /// false = 未核验的保守默认——蓝图 §5 `verified:false` 元数据，
+    /// false = 未核验的保守默认——`verified:false` 元数据，
     /// parity 报告单列）。
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub verified: bool,
@@ -372,7 +372,7 @@ fn is_zero_f64(v: &f64) -> bool {
     *v == 0.0
 }
 
-// ---- M1-T1 宝石品质 stat 域（`overlay/gem_quality_stats.json`）----
+// 宝石品质 stat 域（`overlay/gem_quality_stats.json`）
 
 /// 单条宝石品质 stat 斜率。
 ///
@@ -425,7 +425,7 @@ pub struct GemQualityStatsDef {
     pub effects: Vec<GemQualityStatDef>,
 }
 
-// ---- M1-T5.1 宝石↔效果外键域（`overlay/gem_effects.json`）----
+// 宝石↔效果外键域（`overlay/gem_effects.json`）
 
 /// 单个宝石变体的授予效果连边（`overlay/gem_effects.json` 的单条）。
 ///
@@ -462,7 +462,7 @@ pub struct GemEffectsDef {
     pub gems: Vec<GemEffectDef>,
 }
 
-// ---- M1-T5.2 statSet label 边车（`overlay/stat_set_labels.json`）----
+// statSet label 边车（`overlay/stat_set_labels.json`）
 
 /// 单条 statSet 的 vendor 导出序号 + label 文本（`overlay/stat_set_labels.json` 的单条）。
 ///

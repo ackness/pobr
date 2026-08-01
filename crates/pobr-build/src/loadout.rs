@@ -118,7 +118,7 @@ pub fn derive_loadouts(sets: &BuildSets) -> Vec<Loadout> {
 
     let mut out = Vec::new();
 
-    // ── 1) 精确同名：无标识符的 tree spec，要求各类存在同名 set（豁免类除外）──
+    // 1) 精确同名：无标识符的 tree spec，要求各类存在同名 set（豁免类除外）
     for spec in &sets.trees {
         let (ids, _) = split_link_ids(&spec.title);
         if !ids.is_empty() {
@@ -138,7 +138,7 @@ pub fn derive_loadouts(sets: &BuildSets) -> Vec<Loadout> {
         }
     }
 
-    // ── 2) 标识符绑定：按 tree spec 的标识符逐个匹配 ──
+    // 2) 标识符绑定：按 tree spec 的标识符逐个匹配
     for spec in &sets.trees {
         let (ids, name) = split_link_ids(&spec.title);
         for link_id in ids {

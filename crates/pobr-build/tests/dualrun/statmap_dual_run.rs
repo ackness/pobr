@@ -1,9 +1,9 @@
-//! statmap 数据通道观测 + oracle 对拍（M1-T2.3/T2.4 收尾形态）。
+//! statmap 数据通道观测 + oracle 对拍。
 //!
 //! Legacy 后缀启发式与双跑 L1/L2 diff 已随 T2.4 删除（历史报告与逐行裁决归档
 //! `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md`）；
-//! 本文件保留 **Compare 观测框架回归门禁** 与 **oracle 抽样对拍**（蓝图 §6 Q4
-//! 裁决：Compare 枚举与报告框架长期保留，M3 config / M6 parser 双跑复用同模式）：
+//! 本文件保留 **Compare 观测框架回归门禁** 与 **oracle 抽样对拍**（
+//! 裁决：Compare 枚举与报告框架长期保留，config / parser 双跑复用同模式）：
 //!
 //! ```bash
 //! # Compare 纯观测契约（常跑，非 ignore）：
@@ -40,7 +40,7 @@ use pobr_data::modifier::ModType;
 use pobr_data::monster::EnemyTier;
 use pobr_gamedata::{GameData, repo_data_root};
 
-/// 报告输出目录（`target/statmap-diff/`，与蓝图 T2.3 约定一致）。
+/// 报告输出目录（`target/statmap-diff/`）。
 fn report_dir() -> PathBuf {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/statmap-diff");
     std::fs::create_dir_all(&dir).expect("create target/statmap-diff");
@@ -59,7 +59,7 @@ fn load_stat_map_catalog(data: &GameData) -> StatMapCatalog {
     )
 }
 
-// ---- Compare 观测框架 ----
+// Compare 观测框架
 
 fn builds_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -199,7 +199,7 @@ fn l2_runtime_compare_records() {
     }
 }
 
-// ---- oracle 抽样对拍（蓝图 T2.3：≥50 条 stat，PoB2 mergeSkillInstanceMods）----
+// oracle 抽样对拍（≥50 条 stat，PoB2 mergeSkillInstanceMods）
 
 /// PoB2 `ModFlag` 位 → 抽取层 token 名（vendor `Data/Global.lua:213-249`；
 /// 仅解码 oracle 样本可能出现的位，未知位保留为 `?0x…` 让翻译层拒绝上报）。
@@ -448,7 +448,7 @@ fn oracle_statmap_sampling() {
         }
     }
 
-    // —— 选样（确定性：BTreeMap 序 + 每桶配额）——
+    // 选样（确定性：BTreeMap 序 + 每桶配额）
     #[derive(Default)]
     struct Buckets {
         plain: Vec<String>,
@@ -578,7 +578,7 @@ fn oracle_statmap_sampling() {
         probes.iter().filter(|(e, _)| e != "GLOBAL").count(),
     );
 
-    // —— 跑 oracle（一次进程调用，参数 = 三元组重复序列）——
+    // 跑 oracle（一次进程调用，参数 = 三元组重复序列）
     let vendor_src = vendor_src_dir();
     assert!(
         vendor_src.join("HeadlessWrapper.lua").exists(),
@@ -612,7 +612,7 @@ fn oracle_statmap_sampling() {
     let oracle_rows = oracle_json.as_array().expect("oracle JSON 是数组");
     assert_eq!(oracle_rows.len(), probes.len(), "oracle 行数与探针数一致");
 
-    // —— 逐样本对拍 ——
+    // 逐样本对拍
     let mut report = String::new();
     report.push_str("# statmap oracle 抽样对拍（M1-T2b，蓝图 T2.3）\n\n");
     report.push_str(&format!(

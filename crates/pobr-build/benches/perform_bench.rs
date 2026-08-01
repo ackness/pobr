@@ -1,7 +1,7 @@
-//! 完整编排热路径基准（M4 T0/W-F1，蓝图 m4-offence-deep.md §2-T0）。
+//! 完整编排热路径基准。
 //!
-//! 双 pass（2 hand × 2 crit）让进攻热路径计算量理论 ×4——本基准是 R6 风险的
-//! 量化闸门：**M4 结束时单 build `calculate_with_data` 耗时 ≤ M4 开始基线的
+//! 双 pass（2 hand × 2 crit）让进攻热路径计算量理论 ×4——本基准是该风险的
+//! 量化闸门：**结束时单 build `calculate_with_data` 耗时 ≤开始基线的
 //! 2.5×**；超预算必须做惰性短路（非双持跳 OffHand、无暴击词条短路 crit pass），
 //! 且短路自带等价性测试。
 //!
@@ -9,10 +9,10 @@
 //! CI 不跑 criterion（时长）；门禁为合并前手动跑 + 结果贴 PR，与
 //! `mod_db_bench` 惯例一致。基线记录流程见 `devs/scripts/bench-baseline.md`。
 //!
-//! 语料选择（对蓝图「1 个双持攻击 build」的偏离说明）：ninja 18-build 集中无
+//! 语料选择：ninja 18-build 集中无
 //! 严格双持（dual-wield）build——取攻击侧最重的 monk flicker-strike（夺标
 //! 双 pass 的 hand/crit 主路径）+ 法术对照 sorceress comet（crit pass 路径、
-//! 无 hand pass 分叉），双持 fixture 落地（W-B2）后可补真双持 case。
+//! 无 hand pass 分叉），双持 fixture 落地后可补真双持 case。
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use std::hint::black_box;
@@ -37,7 +37,7 @@ fn load_build(name: &str) -> pobr_build::Build {
 }
 
 fn options() -> DataOrchestratorOptions {
-    // 与 ninja_parity 默认口径一致（effective，M3-W5 切换后的主口径）。
+    // 与 ninja_parity 默认口径一致。
     DataOrchestratorOptions {
         base_input: MinimalInput::default(),
         inject_character_base: true,

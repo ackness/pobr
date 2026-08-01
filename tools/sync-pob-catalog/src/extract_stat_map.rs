@@ -1,7 +1,7 @@
 //! `extract-lua --what stat-map`：vendor PoB2 `Data/SkillStatMap.lua`（954 条
 //! 全局 stat → modifier 构造器映射）+ `Data/Skills/{act_*,sup_*,other}.lua` 各
 //! statSet 的 `statMap` 字段（per-set 覆盖）→
-//! `data/<版本>/overlay/skill_stat_map.json`（M1-T2.1，缺口 18-G3 / 15-G2 的
+//! `data/<版本>/overlay/skill_stat_map.json`（的
 //! 数据面）。
 //!
 //! 职责切分与 [`crate::extract_lua`] 一致：Lua 引导脚本

@@ -364,18 +364,11 @@ pub fn calc_ehp_traced(
     result
 }
 
-// ═════════════════════════════════════════════════════════════════
-// M2 Track F（F-1）：EHP PoB2 口径新管线——双跑并行产出
+// EHP PoB2 口径：vendor `CalcDefence.lua` 的 numberOfHitsToDie × 单击进伤。
 //
-// 本节实现 vendor `CalcDefence.lua` 的 numberOfHitsToDie × 单击进伤口径
-// （13-G4/G5，裁决 P11）。F-1 阶段 `total_ehp` 仍保持旧 lowest-max-hit 口径，
-// 新口径值全部挂**新字段**（`total_ehp_pob2` / `*_max_hit_pob2` /
-// `number_of_damaging_hits` / `number_of_mitigated_hits`）——parity 逐值不变；
-// 口径切换（含 defensive_rows 扩列 + baseline 重记）在 F-3 独立显式审查 commit。
-//
-// P17 红线：本节不新增 TraceOperation / SourceKind / 归因结构；trace 仅沿用
-// 既有 calc_ehp_traced 的 Mitigate/Clamp 节点（新管线 F-1 不挂 trace）。
-// ═════════════════════════════════════════════════════════════════
+// `total_ehp` 仍是旧 lowest-max-hit 口径；本节的值挂在 `total_ehp_pob2` /
+// `*_max_hit_pob2` / `number_of_damaging_hits` / `number_of_mitigated_hits`。
+// 本管线不挂 trace——归因只沿用 calc_ehp_traced 的 Mitigate/Clamp 节点。
 
 /// per-type 数组下标序（= `DamageType as usize`，与 pool_damage/taken 同约定）。
 const DAMAGE_TYPE_BY_INDEX: [DamageType; 5] = [
@@ -409,7 +402,7 @@ fn scale_damage(damage: &TypedDamage, factor: f64) -> TypedDamage {
 ///
 /// 数据全部入库：`monster_scaling.json::damage` + `enemy_presets.json`
 /// （`ehp_base_damage_mult` / per-tier `dps_mult`/`chaos_damage_div`）。
-/// per-type config 覆盖（`enemy<X>Damage` configInput）留 M3 config_interpreter。
+/// per-type config 覆盖（`enemy<X>Damage` configInput）留config_interpreter。
 /// 预设缺档（损坏数据）→ 全 0（消费侧 0 进伤 → 致死击数 ∞ 中性短路）。
 pub fn enemy_damage_placeholder(
     constants: &RuntimeConstants,
@@ -438,7 +431,7 @@ pub fn enemy_damage_placeholder(
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct EnemyDamageIn {
     /// per-type 终值 `<X>EnemyDamage = enemyDamage × enemyDamageMult × EnemyCritEffect`
-    /// （:2137；敌方 Conversion :2098-2128 无词条来源、留 M3）。
+    /// （:2137；敌方 Conversion :2098-2128 无词条来源、留）。
     pub damage: TypedDamage,
     /// `totalEnemyDamageIn = Σ enemyDamage`（mult/crit **之前**，:2136；
     /// TotalEHP 末端乘数 :3322）。
@@ -517,7 +510,7 @@ fn type_prefix(dtype: DamageType) -> &'static str {
 /// ```
 ///
 /// placeholder 走 `enemy_presets.json`（`default_enemy_crit_chance` /
-/// `default_enemy_crit_damage_bonus`；configInput 覆盖留 M3）。
+/// `default_enemy_crit_damage_bonus`；configInput 覆盖留）。
 pub fn enemy_crit_effect_ehp(
     player_db: &ModDb,
     enemy_db: &ModDb,
@@ -643,7 +636,7 @@ impl EhpLoopParams {
 /// 循环调 Track A [`reduce_pools`]；递归加速（`speed_up` 倍伤害从**满池**重算一次
 /// 估出跳跃步长 :3105-3119）；overkill 小数折算（:3133-3135，仅顶层 cycles=1）；
 /// `max_damage` / `max_iterations` 上限保证终止；`WardNotBreak && Σ伤害 < Ward` → ∞
-/// （:2990）。GainWhenHit（格挡/压制回复钩子）本阶段置 0（蓝图 F-1 允许），
+/// （:2990）。GainWhenHit（格挡/压制回复钩子）本阶段置 0，
 /// 接入后在本函数加恢复步（:3074-3090）。
 pub fn number_of_hits_to_die(
     damage_in: &TypedDamage,
@@ -654,7 +647,7 @@ pub fn number_of_hits_to_die(
     number_of_hits_to_die_tracked(damage_in, pools_full, ctx, params).0
 }
 
-/// 致死击数 + per-type recoupable 累计（M2 F-4，13-G15 部分）。
+/// 致死击数 + per-type recoupable 累计（13-G15 部分）。
 ///
 /// vendor `DamageIn.TrackRecoupable` 路径（CalcDefence.lua:3232-3236 置位、
 /// :3119-3123 把 `poolTable.damageTakenThatCanBeRecouped`（reducePoolsByDamage
@@ -981,22 +974,22 @@ pub fn not_hit_suite(out: &OutputTable) -> NotHitSuite {
     }
 }
 
-/// EHP PoB2 口径 fill（M2 F-1 产出 / F-3 口径切换；perform `fill_mechanics` 末尾
+/// EHP PoB2 口径 fill（产出 / F-3 口径切换；perform `fill_mechanics` 末尾
 /// 一行调用，须在 `fill_evade_stun` / `fill_defence_panels` **之后**——
 /// not-hit/block/deflect 层读它们写入的 OutputTable 字段，未接线字段默认 0 → 中性 1.0）。
 ///
-/// **F-3 口径切换**（蓝图 m2-defence §2 Track F commit 3，裁决 P11）：
+/// **F-3 口径切换**：
 /// - `total_ehp` = 新口径（`mitigatedHits / (1−notHit) × totalEnemyDamageIn`，
 ///   CalcDefence.lua:3271/:3322）；旧 lowest-max-hit 值保留在
 ///   `total_ehp_lowest_max_hit`（perform 旧管线照常写入，不删码——revert 本函数
-///   末尾的切换段即回旧口径，蓝图 §5 R2 行）。
+///   末尾的切换段即回旧口径）。
 /// - `*_max_hit` = 新口径（TotalHitPool 池扩展层 + taken-as，:3540-3697）；
-///   `*_max_hit_pob2` 保留为同值别名（双跑报告/下游兼容）。
+///   `*_max_hit_pob2` 保留为同值别名。
 /// - `avoid_stun` / Stun 体系换**真值** totalTakenHit（per-hit taken 伤害，
 ///   :2444 聚合 → :2554-2557 ES 减半条件 / :2525-2643 阈值几率）——替换
 ///   Track E 接线期的 reference_hit 近似。
 ///
-/// 返回值（M2 F-4，13-G15 部分）：mitigated EHP 循环累计的 recoupable 伤害总量
+/// 返回值（13-G15 部分）：mitigated EHP 循环累计的 recoupable 伤害总量
 /// （vendor `Σ <X>RecoupableDamageTaken`，:3347-3357）——perform 以此作 recoup
 /// 面板速率的承伤基数（替换旧 life×10% 估算）。无 recoup 词条 / 未重算
 /// mitigated 循环时为 0（消费侧 recoup pct 同为 0 → 速率 0，语义一致）。
@@ -1026,8 +1019,8 @@ pub fn fill_ehp_pob2(
         let cfg = &env.cfg;
         let out = &env.player.output;
 
-        // ---- 池口径（:1411 ES 恢复上限 / :2644-2657 可恢复生命）----
-        // CappingES（ArmourESRecoveryCap 等 flag）与 lowLife/lowES config 留 M3。
+        // 池口径（:1411 ES 恢复上限 / :2644-2657 可恢复生命）
+        // CappingES（ArmourESRecoveryCap 等 flag）与 lowLife/lowES config 留。
         let life_recoverable = out.life_unreserved.max(1.0);
         let es_recovery_cap = out.energy_shield;
         let base = PoolBaseStats {
@@ -1041,7 +1034,7 @@ pub fn fill_ehp_pob2(
         let pools = build_pool_state(db, cfg, &base);
         let mom = mom_hit_pools(&ctx, &base);
 
-        // ---- 减伤快照（Track B 契约；deflect 折入 Track D 输出，:2433）----
+        // 减伤快照（Track B 契约；deflect 折入 Track D 输出，:2433）
         // 敌方元素穿透（vendor CalcDefence.lua:2328/:2363）：`resMult = 1 −
         // max(resist − enemyPen, 0)/100`（仅 resist > 0 时扣减；负抗不受 pen 影响）。
         // pen 来源 = setup_enemy 注入的 `Enemy<X>Pen` placeholder（Pinnacle 3 / Uber 8，
@@ -1082,10 +1075,10 @@ pub fn fill_ehp_pob2(
             mit.after_reduction_multi[DamageType::Chaos as usize] = 0.0;
         }
 
-        // ---- not-hit 层（:2018-2026，读 Track E evade 四分型 + avoid 输出）----
+        // not-hit 层（:2018-2026，读 Track E evade 四分型 + avoid 输出）
         let nh = not_hit_suite(out);
 
-        // ---- 敌人进伤（:2040-2137；placeholder 经 setup_enemy 注入 enemy modDB）----
+        // 敌人进伤（:2040-2137；placeholder 经 setup_enemy 注入 enemy modDB）
         let crit_effect = enemy_crit_effect_ehp(
             db,
             enemy_db,
@@ -1095,10 +1088,10 @@ pub fn fill_ehp_pob2(
         );
         let enemy_in = assemble_enemy_damage(enemy_db, cfg, crit_effect);
 
-        // ---- per-type TakenHit + 面板 DR（:2171-2444）----
+        // per-type TakenHit + 面板 DR（:2171-2444）
         let (taken_hit, dr_pct) = taken_hit_per_type(&enemy_in.damage, &mit);
 
-        // ---- avoid_stun / Stun 真值接线（F-3；蓝图 Track E「F 接线后换真值」）----
+        // avoid_stun / Stun 真值接线
         // vendor totalTakenHit = Σ <X>TakenHit（:2444）；ES 减半条件
         // `ES > totalTakenHit && !EnergyShieldProtectsMana`（:2554-2557）；
         // SelfStunChance 的有效伤用 totalTakenHit/PhysicalTakenHit（:2525-2643）。
@@ -1125,7 +1118,7 @@ pub fn fill_ehp_pob2(
             },
         );
 
-        // ---- 致死击数（:3148-3153）----
+        // 致死击数（:3148-3153）
         // preventedLifeLossTotal > 0 → LimitEHPSpeedup（:3151）。
         let below_half_effective =
             (1.0 - ctx.prevented_life_loss / 100.0) * ctx.life_loss_below_half_prevented;
@@ -1133,7 +1126,7 @@ pub fn fill_ehp_pob2(
         let params = EhpLoopParams::from_constants(&cfg.constants, prevented_total);
         let n_hits = number_of_hits_to_die(&taken_hit, &pools, &ctx, &params);
 
-        // ---- mitigation 概率层（:3155-3247）----
+        // mitigation 概率层（:3155-3247）
         // 平均格挡 = 四分型均值（vendor :1067 EffectiveAverageBlockChance）。旧
         // 二分型均值把 SpellProjectileBlock = max(spellBlock, projBlock)（:1013）
         // 漏掉——盾 build（spellBlock 0、projBlock = block）被低估：smith 13.65
@@ -1203,7 +1196,7 @@ pub fn fill_ehp_pob2(
             (n_hits, 0.0)
         };
 
-        // ---- TotalEHP（:3271 TotalNumberOfHits + :3322）----
+        // TotalEHP（:3271 TotalNumberOfHits + :3322）
         let not_hit_frac = (nh.average / 100.0).clamp(0.0, 1.0);
         let total_hits = if not_hit_frac >= 1.0 {
             f64::INFINITY
@@ -1217,7 +1210,7 @@ pub fn fill_ehp_pob2(
             0.0
         };
 
-        // ---- 新口径 max hit（:3540-3697）----
+        // 新口径 max hit（:3540-3697）
         let pool_by_type = total_hit_pools(&mom, es_recovery_cap, &pools, &ctx);
         // 诊断：POBR_DBG_EHPPOOL=1 时 dump 池分解（与 oracle <Type>TotalHitPool /
         // MoMHitPool / Ward 对照）。
@@ -1272,7 +1265,7 @@ pub fn fill_ehp_pob2(
     out.lightning_max_hit_pob2 = computed.max_hits[DamageType::Lightning as usize];
     out.chaos_max_hit_pob2 = computed.max_hits[DamageType::Chaos as usize];
 
-    // ═══ F-3 口径切换段（revert 本段即回旧口径，蓝图 §5 R2 行）═══
+    // F-3 口径切换段
     // canonical 字段改挂新口径值；旧 lowest-max-hit 口径已由 perform 旧管线写入
     // `total_ehp_lowest_max_hit` 保留（不删码）。
     out.total_ehp = computed.total_ehp_pob2;

@@ -195,7 +195,7 @@ pub fn apply_stat_set_overrides(
     Ok(())
 }
 
-/// 把 overlay 的 statSet 级 **dotIs\* 布尔**（M4-T4 W-D1，`dot_is_area` 等）
+/// 把 overlay 的 statSet 级 **dotIs\* 布尔**（`dot_is_area` 等）
 /// merge 进 `granted_effect_stat_sets` 域，并打 `verified` 核验标记。
 ///
 /// 必须在 stat_set_labels merge **之后**调用（set 定位依赖
@@ -208,7 +208,7 @@ pub fn apply_stat_set_overrides(
 /// 1. 定位：`stat_set = Some(i)` → 匹配 `vendor_set_index == i` 的 set；
 ///    `None` → 主 set（`sets[0]`）。
 /// 2. 未命中（base 无该 effect / 无对应 vendor 序号的 set）→ **跳过**——
-///    保守默认（全 false 不剥 flag）正是蓝图 §5 的回退语义，不合成空 set。
+///    保守默认（全 false 不剥 flag）正是的回退语义，不合成空 set。
 /// 3. 命中 set 写入对应布尔（value ≠ 0 = true）并置 `verified = true`
 ///    （parity 报告据此单列未核验技能）。
 /// 4. 未知 dot stat 名不会到达此处（清单驱动：仅消费
@@ -219,7 +219,7 @@ pub fn apply_dot_flag_overrides(
 ) -> Result<(), String> {
     for entry in &overrides.overrides {
         let is_dot_flag = OVERRIDE_DOT_FLAG_STATS.contains(&entry.stat.as_str());
-        // explode_corpse（M4-G）与 dotIs* 同通道（statSet baseMods 布尔，
+        // explode_corpse与 dotIs* 同通道（statSet baseMods 布尔，
         // 同一 set 定位语义），仅落点字段不同。
         if !is_dot_flag && entry.stat != OVERRIDE_STAT_EXPLODE_CORPSE {
             continue;
@@ -261,7 +261,7 @@ pub fn apply_dot_flag_overrides(
     Ok(())
 }
 
-/// 把 overlay 的 statSet 级**隐式 stat**（M4-H，`implicit_stat` 条目）merge 进
+/// 把 overlay 的 statSet 级**隐式 stat**（`implicit_stat` 条目）merge 进
 /// `granted_effect_stat_sets` 域。
 ///
 /// 与 [`apply_dot_flag_overrides`] 同一 set 定位语义（vendor 序号优先，`None` →
@@ -500,7 +500,7 @@ mod tests {
         assert!(apply_dot_flag_overrides(&mut sets, &doc(vec![bad])).is_err());
     }
 
-    /// implicit_stat merge（M4-H）：按 vendor 序号定位、push 去重排序；
+    /// implicit_stat merge：按 vendor 序号定位、push 去重排序；
     /// 未命中跳过；缺 stat_id 报错；等级域 merge 对该 stat 跳过不报错。
     #[test]
     fn implicit_stat_merge_targets_set_and_dedupes() {

@@ -1,4 +1,4 @@
-//! ModCache golden differential（M6 蓝图 §5.3 / T6 / §11.3 契约 5）。
+//! ModCache golden differential。
 //!
 //! 把数据驱动引擎（`parse_mod_engine` + 真实规则）的输出，对照从 vendor
 //! PoB2 `Data/ModCache.lua` 离线落盘的 golden（`tests/fixtures/modcache_golden.json`，
@@ -57,9 +57,7 @@ const GOLDEN_PATH: &str = concat!(
     "/tests/fixtures/modcache_golden.json"
 );
 
-// ---------------------------------------------------------------------------
 // golden fixture（oracle.lua --mode modcache-dump 产物）——serde_json::Value 视图
-// ---------------------------------------------------------------------------
 
 struct GoldenDoc {
     meta_total: usize,
@@ -122,9 +120,7 @@ fn load_golden() -> GoldenDoc {
     }
 }
 
-// ---------------------------------------------------------------------------
-// canonical mod（两侧统一形态，参与 EQ/DIFF 裁决）
-// ---------------------------------------------------------------------------
+// canonical mod
 
 /// `(name, type, value, flags[], keywordFlags[])` 规范形态。`tag_count` 旁挂，
 /// 不参与相等判定（见模块文档「canonical 比较口径」）。
@@ -342,9 +338,7 @@ fn canon_lists_eq(a: &[CanonMod], b: &[CanonMod]) -> bool {
     a.len() == b.len() && a.iter().zip(b).all(|(x, y)| x.core_eq(y))
 }
 
-// ---------------------------------------------------------------------------
 // 五态报告（§11.3 契约 5：B 的 diff 修复与 F 验收的共同输入）
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
@@ -467,9 +461,7 @@ impl DiffReport {
     }
 }
 
-// ---------------------------------------------------------------------------
 // 对拍主流程
-// ---------------------------------------------------------------------------
 
 fn run_differential(doc: &GoldenDoc) -> DiffReport {
     let mut counts = StateCounts::default();
@@ -552,9 +544,7 @@ fn write_report(report: &DiffReport) -> PathBuf {
     path
 }
 
-// ---------------------------------------------------------------------------
 // 测试
-// ---------------------------------------------------------------------------
 
 /// golden fixture 自洽：meta 计数与 entries 状态一致（落盘正确性守门）。
 #[test]

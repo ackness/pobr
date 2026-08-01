@@ -1,8 +1,8 @@
-//! 内建 buff 定义域 schema（`overlay/buff_definitions.json`，M3-T2）。
+//! 内建 buff 定义域 schema（`overlay/buff_definitions.json`）。
 //!
 //! 数据来源：vendor PoB2 `src/Modules/CalcPerform.lua` `doActorMisc`
 //! （:503-765，260 行过程式 if-chain）的**人工归纳**——该段无法 luajit
-//! 序列化抽取，按 00-index 裁决 §4.2-4 批准的 overlay 通道例外落库：
+//! 序列化抽取，按裁决 §4.2-4 批准的 overlay 通道例外落库：
 //! 每条带 `vendor_ref`（行号 + 行段 hash）供 drift 告警（`sync-pob-catalog
 //! check-buff-refs` 对账），正确性以 oracle 对拍 / 逐 buff 数值单测为准。
 //!

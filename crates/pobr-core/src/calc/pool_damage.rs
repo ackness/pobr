@@ -1,15 +1,15 @@
-//! 扣池状态机（M2 Track A，13-G2/G5）——对应 PoB2 `CalcDefence.lua:461-678
+//! 扣池状态机（13-G2/G5）——对应 PoB2 `CalcDefence.lua:461-678
 //! reducePoolsByDamage`（顺序：allies → aegis → guard → ward → ES(bypass) → MoM →
 //! loss-prevention → life → overkill）与 :3540-3601 的 max-hit TotalHitPool 扩展层。
 //!
-//! 模块切分（蓝图 m2-defence §2 Track A）：
+//! 模块切分：
 //! - 本文件 = 状态机求值（[`reduce_pools`]）+ 池公式原语（[`pool_protected`] /
 //!   [`life_hit_pool_with_loss_prevention`] / [`apply_protected_layer`]）+ max-hit
 //!   池层（[`total_hit_pool_base`] / [`extend_total_hit_pool`]）；
 //! - 整备（从 ModDb 读 bypass/MoM/guard/aegis 等构造 [`PoolCtx`]/[`PoolState`]）在
 //!   `pool_setup.rs`——**本文件不读 ModDb**（整备与求值分离）。
 //!
-//! 纯函数约定（蓝图 §0 约束 2 / P17）：输入输出皆值类型，**不写 `Env`**、不持共享
+//! 纯函数约定：输入输出皆值类型，**不写 `Env`**、不持共享
 //! 可变状态；对 `Env`/`OutputTable` 的写入仍集中在 `perform.rs`（Track F）。
 
 use pobr_data::constants::DamageType;
@@ -224,7 +224,7 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
         }
     };
 
-    // ---- 前半段：正序 allies → aegis → guard → ward（:524-575）----
+    // 前半段：正序 allies → aegis → guard → ward（:524-575）
     let mut remainder_before_es = [0.0_f64; 5];
     for dtype in POB2_DAMAGE_ORDER {
         let idx = dtype as usize;
@@ -289,7 +289,7 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
         remainder_before_es[idx] = rem;
     }
 
-    // ---- 后半段：逆序（Chaos 先）ES → MoM → loss-prevention → life → overkill（:578-657）----
+    // 后半段：逆序（Chaos 先）ES → MoM → loss-prevention → life → overkill（:578-657）
     for dtype in POB2_DAMAGE_ORDER.into_iter().rev() {
         let idx = dtype as usize;
         let mut rem = remainder_before_es[idx];

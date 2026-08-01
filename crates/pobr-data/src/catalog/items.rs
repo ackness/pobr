@@ -36,7 +36,7 @@ pub struct BaseItemDef {
     ///
     /// 该表对应 bundle 已被 CDN 对钉定 patch 剪除（.dat 路线不可得），当前由
     /// `overlay/base_item_overrides.json`（vendor `Data/Bases/*.lua` 确定性抽取，
-    /// `sync-pob-catalog extract-bases`）经 gamedata merge 填充——蓝图 m2-defence
+    /// `sync-pob-catalog extract-bases`）经 gamedata merge 填充——
     /// §6 开放问题 2 的双路线兜底。无 Spirit 的基底为 `None`。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spirit: Option<u32>,
@@ -79,7 +79,7 @@ pub struct WeaponBaseStats {
     /// 攻击射程（`RangeMax`）。
     #[serde(default, skip_serializing_if = "is_zero_u32")]
     pub range: u32,
-    /// 弩装填时间（毫秒；M4-T4 W-D2）。真源 = `WeaponTypes.dat` 的 `ReloadTime`
+    /// 弩装填时间（毫秒；）。真源 = `WeaponTypes.dat` 的 `ReloadTime`
     /// 列（vendor `Export/spec.lua:62483`、`Export/Scripts/bases.lua:268-269`
     /// `ReloadTimeBase = ReloadTime/1000`，仅 >0 时导出）。本地 pipeline/tables
     /// 快照缺失（drill F3/F8）期间由 `overlay/base_item_overrides.json`

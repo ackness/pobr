@@ -1,8 +1,8 @@
-//! `overlay/special_mods.json` 的 pattern 编译校验（pre-M5b）。
+//! `overlay/special_mods.json` 的 pattern 编译校验。
 //!
-//! schema 契约（M5b 蓝图 §2.1）：pattern 是 Rust regex 语法子集，载入期编译
+//! schema 契约：pattern 是 Rust regex 语法子集，载入期编译
 //! 失败 = fail fast。本 crate 持有 regex 依赖，故编译校验落在这里；
-//! 解释器（`SpecialModRules::compile` 的完整错误路径）归 M5b 主波 B-2。
+//! 解释器（`SpecialModRules::compile` 的完整错误路径）归B-2。
 
 use std::path::Path;
 

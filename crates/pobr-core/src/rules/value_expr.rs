@@ -1,12 +1,12 @@
-//! 受限模板 DSL 的**唯一求值器**（架构文档 20 §5 / 00-index 裁决 §4-1）。
+//! 受限模板 DSL 的**唯一求值器**。
 //!
 //! schema 类型在 `pobr_data::catalog::value_expr`（零逻辑层）；本模块是
-//! config effects（M3）/ special_mods（M5b）/ parser 模板（M6）共用的
+//! config effects / special_mods / parser 模板共用的
 //! 五算子 + 受限谓词求值实现——三处是同一套受限语言，**禁止三套方言**。
-//! M5b 的 enums 闭集、M6 的 `:cap` 算子均为本模块的受限扩展（各自走
+//! special_mods 的 enums 闭集、parser 的 `:cap` 算子均为本模块的受限扩展（各自走
 //! ≥20 条目受益闸门 + 架构 review）。
 //!
-//! 求值上下文 M3 仅单输入 `input`（config 条目单输入值）；字段引用扩展
+//! 求值上下文仅单输入 `input`（config 条目单输入值）；字段引用扩展
 //! 沿 [`FieldRef`] 单点演化。
 
 use pobr_data::catalog::value_expr::{CmpOp, FieldRef, Predicate, ValueExpr};
@@ -62,7 +62,7 @@ pub fn eval_predicate(pred: &Predicate, input: f64) -> bool {
     }
 }
 
-/// 字段引用解析（M3 闭集 = `input`）。
+/// 字段引用解析（闭集 = `input`）。
 fn resolve_field(field: FieldRef, input: f64) -> f64 {
     match field {
         FieldRef::Input => input,

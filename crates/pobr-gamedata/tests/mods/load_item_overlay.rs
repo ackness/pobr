@@ -1,6 +1,6 @@
-//! pre-M5c 数据前置的加载测试：`overlay/mod_scalability.json` /
+//! 数据前置的加载测试：`overlay/mod_scalability.json` /
 //! `overlay/catalysts.json` / `overlay/runes.json` / `overlay/uniques.json`
-//! （M5c 蓝图 WI-B1 的抽样断言，vendor 行号注明来源，commit `2df5a74`）。
+//! （抽样断言，vendor 行号注明来源，commit `2df5a74`）。
 
 use pobr_gamedata::{GameData, repo_data_root};
 
@@ -51,7 +51,7 @@ fn mod_scalability_samples() {
 
 /// catalysts：13 条平行数组合并（Classes/Item.lua:14-29，0.5.4 新增
 /// Necrotic/Minion），第 3 条 = Carapace / Defence /
-/// {defences, armour, evasion, energyshield}（M5c 蓝图 WI-B1 指定抽样）。
+/// {defences, armour, evasion, energyshield}。
 #[test]
 fn catalysts_thirteen_entries() {
     let def = game_data()
@@ -107,7 +107,7 @@ fn runes_samples() {
     assert_eq!(weapon.stat_order, [832.0, 1077.0]);
 }
 
-/// uniques：P15 双层——The Anvil（Data/Uniques/amulet.lua:5-15）的 raw 块
+/// uniques：双层——The Anvil（Data/Uniques/amulet.lua:5-15）的 raw 块
 /// 逐字节保留 + 预解析索引（name/base/variants）。
 #[test]
 fn uniques_double_layer() {
@@ -142,7 +142,7 @@ fn uniques_double_layer() {
     }
 }
 
-/// 缺表容忍（R7）：空目录下四个新域返回 Ok(None) 不 panic。
+/// 缺表容忍（缺表容忍）：空目录下四个新域返回 Ok(None) 不 panic。
 #[test]
 fn missing_overlay_files_yield_none() {
     let dir = std::env::temp_dir().join(format!("pobr-pre-m5c-missing-{}", std::process::id()));

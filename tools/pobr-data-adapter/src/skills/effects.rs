@@ -44,7 +44,7 @@ struct RawGrantedEffect {
     /// `GrantedEffectStatSets` 外键索引（负数/越界归一化为 None）。
     #[serde(rename = "StatSet")]
     stat_set: Option<i64>,
-    /// **附加** statSet 外键索引（M1-T5.2；FK → `GrantedEffectStatSets`，
+    /// **附加** statSet 外键索引（FK → `GrantedEffectStatSets`，
     /// W0 核验：目标是 statSet 表而非另一行 GrantedEffects）。列序保留。
     #[serde(rename = "AdditionalStatSets", default)]
     additional_stat_sets: Vec<i64>,
@@ -91,7 +91,7 @@ pub(super) fn adapt_effects(
 
     // 类型表达式 FK 解析：索引 → `ActiveSkillType.Id` 名称（AND/OR/NOT 即特殊行），
     // 保留 token 顺序（后缀表达式语义依赖顺序）。悬空 FK 跳过并计数（外键质量报表，
-    // 见蓝图 §5：>0 时列入 commit message）。
+    // 见：>0 时列入 commit message）。
     let mut dangling_type_fk = 0usize;
     let mut dangling_statset_fk = 0usize;
     let mut resolve_type_tokens = |idxs: &[u32]| -> Vec<String> {
@@ -154,7 +154,7 @@ pub(super) fn adapt_effects(
             additional_stat_set_ids,
             skill_types,
             cost_types: raw.cost_types,
-            // minion 外键字段（M5a-A3）：base 产物恒空，由 gamedata 加载期从
+            // minion 外键字段：base 产物恒空，由 gamedata 加载期从
             // overlay/granted_effect_minions.json merge 拼入（adapter 不产）。
             minion_list: Vec::new(),
             add_minion_list: Vec::new(),
@@ -198,7 +198,7 @@ pub(super) fn adapt_zh_skill_names(
     Ok(zh_skill_names)
 }
 
-// ---- 消耗资源类型（CostTypes 域）----
+// 消耗资源类型（CostTypes 域）
 
 #[derive(Deserialize)]
 struct RawCostType {

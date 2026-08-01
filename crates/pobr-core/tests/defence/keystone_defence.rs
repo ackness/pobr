@@ -1,7 +1,7 @@
-//! M2 Track C 集成测试：keystone_registry + CI 接线 + 防御资源转换矩阵。
+//! 集成测试：keystone_registry + CI 接线 + 防御资源转换矩阵。
 //!
 //! C-1：`DefenceKeystones::from_db` 契约（一次性快照、词条名即接口）。
-//! 蓝图 m2-defence §2 Track C / §3.3 契约 2：E/D/B/F 以参数消费本结构，
+//! Track C / §3.3 契约 2：E/D/B/F 以参数消费本结构，
 //! 禁止各 track 散读 keystone flag。
 
 use pobr_core::{CalcConfig, DefenceKeystones, ModDb, Modifier};
@@ -109,9 +109,7 @@ fn keystones_from_injected_flags() {
     assert!(!ks.chaos_inoculation);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // C-2：CI 接线（perform.rs EhpOptions.chaos_inoculation 不再写死 false）
-// ─────────────────────────────────────────────────────────────────
 
 /// CI build 端到端：`Maximum Life is 1` → Life=1 + ChaosInoculation flag →
 /// EHP 走 ES 池、混沌 max hit = ∞。
@@ -163,10 +161,8 @@ fn ci_build_ehp_uses_es_pool_and_chaos_immunity() {
     assert!(output.total_ehp.is_finite());
 }
 
-// ─────────────────────────────────────────────────────────────────
 // C-3：五元防御资源转换矩阵 + Body Armour 翻倍 flag
 // vendor：CalcDefence.lua:1301-1390（矩阵）、:1150-1290 / :806-808（翻倍 flag）
-// ─────────────────────────────────────────────────────────────────
 
 use pobr_core::ModTag;
 use pobr_core::calc::ActorBaseStats;
@@ -230,7 +226,7 @@ fn convert_to_moves_slot_base_into_target_slot_bucket() {
 }
 
 /// ConvertTo 行总和 >100 → 按比例归一化（cap 100，CalcDefence.lua:1315-1320 意图；
-/// vendor 的归一化循环因 `ipairs` 误用不生效，按蓝图裁决实现真归一化）。
+/// vendor 的归一化循环因 `ipairs` 误用不生效，按裁决实现真归一化）。
 #[test]
 fn conversion_rates_over_100_are_normalised() {
     // Arrange：全局 armour 底 100；Armour→Evasion 80 + Armour→ES 40（总 120 → ×5/6）。

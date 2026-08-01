@@ -2,9 +2,9 @@
 //!
 //! `GrantedEffectsPerLevel.GrantedEffect` 整型 `_index` → `GrantedEffects.Id`
 //! （查表由 [`super::effects`] 产出）；已接入分等级 cost / cooldown / attack time
-//! 以及（M1-T4）cost 倍率 / Spirit 保留族 / 储存次数 / 攻速乘数 / 暴击率表列直读。
+//! 以及cost 倍率 / Spirit 保留族 / 储存次数 / 攻速乘数 / 暴击率表列直读。
 //!
-//! 列值换算（蓝图 m1-skills-gems §1.2，对照 vendor `Export/Scripts/skills.lua:226-295`；
+//! 列值换算（对照 vendor `Export/Scripts/skills.lua:226-295`；
 //! 社区 schema 与 vendor spec 的列名错位见 `pipeline/README.md` 对照表）：
 //!
 //! | 入库字段 | 社区列名 | 换算 |
@@ -15,7 +15,7 @@
 //! | `stored_uses` | `StoredUses` | 原值（== 0 → None） |
 //! | `attack_speed_multiplier` | `AttackSpeedMultiplier` | 原值（== 0 → None） |
 //! | `crit_chance` | stat-set 表两暴击列（见 [`super::stat_sets::crit_from_statset_levels`]） | `/100`，Offhand 覆盖 |
-//! | `level_requirement` | **无 `.dat` 列**（真源 `ItemExperiencePerLevel` 不可下载） | 恒 None，M5a 经 extract-lua 落库 |
+//! | `level_requirement` | **无 `.dat` 列**（真源 `ItemExperiencePerLevel` 不可下载） | 恒 None，经 extract-lua 落库 |
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -39,7 +39,7 @@ struct RawGrantedEffectPerLevel {
     #[serde(rename = "CostAmounts", default)]
     cost_amounts: Vec<i64>,
     /// 攻击速度乘数（百分点，可负；vendor `attackSpeedMultiplier`，如 Flicker -50）。
-    /// M1-T4 起表列直读（T4.3 已对 overlay 历史值 3578 条逐值一致验收）。
+    /// 起表列直读（T4.3 已对 overlay 历史值 3578 条逐值一致验收）。
     #[serde(rename = "AttackSpeedMultiplier")]
     attack_speed_multiplier: Option<f64>,
     /// 伤害基础倍率（PoB `baseMultiplier`，stat-set BaseMultiplier 缺失时的回退源）。
@@ -118,7 +118,7 @@ pub(super) fn adapt_levels(
                 .filter(|&v| v != 100.0)
                 .map(|v| v - 100.0),
             stored_uses: raw.stored_uses.filter(|&v| v != 0).map(|v| v.max(0) as u32),
-            // PoE2 `.dat` 无 PlayerLevelReq 列（W0 核验）；M5a 经 extract-lua 落库。
+            // PoE2 `.dat` 无 PlayerLevelReq 列（W0 核验）；经 extract-lua 落库。
             level_requirement: None,
         });
     }

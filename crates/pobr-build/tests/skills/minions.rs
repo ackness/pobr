@@ -1,4 +1,4 @@
-//! 召唤物链路端到端集成测试（M5a Track A/B/C）。
+//! 召唤物链路端到端集成测试（/B/C）。
 //!
 //! 覆盖：BuildData 召唤物查询 API（A5）、orchestrator 识别召唤宝石 →
 //! `OutputTable.minions` 非空（B2）、createMinionSkills + 主技能喂 offence（C1/C2）、
@@ -48,9 +48,7 @@ fn zombie_build(gem_level: u32) -> Build {
         )
 }
 
-// ---------------------------------------------------------------------------
 // A5：BuildData 召唤物查询 API
-// ---------------------------------------------------------------------------
 
 #[test]
 fn build_data_minion_def_zombie() {
@@ -96,9 +94,7 @@ fn build_data_effect_minion_list() {
     assert!(data.effect_minion_list("NonexistentSkill").is_empty());
 }
 
-// ---------------------------------------------------------------------------
 // B2：orchestrator 识别召唤宝石 → OutputTable.minions 非空
-// ---------------------------------------------------------------------------
 
 #[test]
 fn summon_build_populates_output_minions() {
@@ -160,9 +156,7 @@ fn summon_zombie_life_matches_core_derivation() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // B3：MinionModifier 通道——`Minions deal X% increased Damage` 进召唤物 ModDb
-// ---------------------------------------------------------------------------
 
 /// 玩家装备挂 `Minions deal 50% increased Damage`（装备词条来源）→ 召唤物 DPS
 /// 增长；玩家自身不受影响（minion 词条在玩家主流程走 Unsupported，进召唤物 ModDb）。

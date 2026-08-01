@@ -1,5 +1,5 @@
-//! M4-T5 W-E1 的加载测试：`overlay/trigger_configs.json`
-//! （schema 见 [`pobr_data::catalog::triggers`]；蓝图 §4.1 T5 门禁
+//! 的加载测试：`overlay/trigger_configs.json`
+//! （schema 见 [`pobr_data::catalog::triggers`]；门禁
 //! 「61 项抽取计数断言」的入库侧 + handler 计数监控）。
 
 use pobr_data::catalog::triggers::TriggerConfigsDef;
@@ -47,7 +47,7 @@ fn handler_discipline() {
     }
 }
 
-/// 策展纪律：W-E1 落库全部 verified:false；每条带 vendor 行段锚点 +
+/// 策展纪律：落库全部 verified:false；每条带 vendor 行段锚点 +
 /// 合法 kind；受限谓词三字段封顶（schema 即三字段，此处断言非空谓词有约束）。
 #[test]
 fn curation_discipline() {
@@ -77,7 +77,7 @@ fn curation_discipline() {
     }
 }
 
-/// CoC 条目抽查（W-E2 暴击折入的数据前提）：trigger_on_crit + 攻击源谓词 +
+/// CoC 条目抽查（暴击折入的数据前提）：trigger_on_crit + 攻击源谓词 +
 /// PoE2 join 键 `MetaCastOnCritPlayer`。
 #[test]
 fn coc_entry_shape() {
@@ -97,7 +97,7 @@ fn coc_entry_shape() {
     assert!(cond.any_skill_types.iter().any(|t| t == "Attack"));
 }
 
-/// 受限谓词抽查（蓝图 §2 W-E1 示例条目）：Law of the Wilds 的 any/all/not 三段。
+/// 受限谓词抽查：Law of the Wilds 的 any/all/not 三段。
 #[test]
 fn law_of_the_wilds_predicate() {
     let def = load();
@@ -112,7 +112,7 @@ fn law_of_the_wilds_predicate() {
     assert_eq!(cond.not_skill_types, vec!["SummonsTotem"]);
 }
 
-/// 缺表容忍（R7）：不存在的版本目录返回 Ok(None) 而非错误。
+/// 缺表容忍（缺表容忍）：不存在的版本目录返回 Ok(None) 而非错误。
 #[test]
 fn missing_overlay_tolerated() {
     let missing = GameData::new(repo_data_root().join("0.0.0.0-nonexistent"))

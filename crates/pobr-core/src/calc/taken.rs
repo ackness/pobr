@@ -1,4 +1,4 @@
-//! taken-as 管线 + effectiveAppliedArmour（M2 Track B，13-G1 / 13-G7）。
+//! taken-as 管线 + effectiveAppliedArmour（13-G1 / 13-G7）。
 //!
 //! vendor PoB2 对照（`Modules/CalcDefence.lua`，行号 2026-06-11 核实）：
 //! - `:2171-2190` 防御侧 `actor.damageShiftTable` 装配（`<Src>DamageTakenAs<Dst>` /
@@ -14,7 +14,7 @@
 //!   （clamp per-type `DamageReductionMax`）× 抗性承受乘数 + takenFlat，再 ×
 //!   `AfterReductionTakenHitMulti`）。
 //!
-//! 设计（蓝图 m2-defence §2 Track B / §3.3 契约 3）：
+//! 设计：
 //! - [`MitigationCtx`] 是「不随单次击中变化」的减伤快照——整备（[`build_mitigation_ctx`]
 //!   读 ModDb）与求值（[`taken_hit_from_damage`] 纯算术）分离，与 `pool_damage` 的
 //!   PoolCtx/求值切分同构；消费者为 Track F 的新 max-hit / EHP 管线。
@@ -61,9 +61,7 @@ fn vendor_round(value: f64) -> f64 {
     (value + 0.5).floor()
 }
 
-// ─────────────────────────────────────────────────────────────────
 // damage shift table（13-G1）
-// ─────────────────────────────────────────────────────────────────
 
 /// 构建防御侧 taken-as 转换矩阵 `shift[src][dst]`（fraction，0-1）。
 ///
@@ -105,9 +103,7 @@ pub fn damage_shift_table(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
     shift
 }
 
-// ─────────────────────────────────────────────────────────────────
 // effectiveAppliedArmour（13-G7 百分比模型）
-// ─────────────────────────────────────────────────────────────────
 
 /// 某伤害类型的「护甲适用百分比」（`ArmourAppliesTo<X>DamageTaken` 口径，%）。
 ///
@@ -131,7 +127,7 @@ pub fn armour_applies_pct(db: &ModDb, cfg: &CalcConfig, dtype: DamageType) -> f6
             cfg,
             &[ModName::from(format!("ArmourAppliesTo{name}DamageTaken"))],
         );
-        // 物理隐式 BASE 100（:1862-1863）：在函数内实现、不写 ModDb（蓝图 Track B 约定）。
+        // 物理隐式 BASE 100（:1862-1863）：在函数内实现、不写 ModDb。
         if dtype == DamageType::Physical {
             base + 100.0
         } else {
@@ -196,9 +192,7 @@ pub fn effective_applied_armour(
     round(from_armour + from_evasion + from_es)
 }
 
-// ─────────────────────────────────────────────────────────────────
 // MitigationCtx：per-actor 减伤快照（整备与求值分离）
-// ─────────────────────────────────────────────────────────────────
 
 /// 不随单次击中变化的减伤上下文（per-type 数组下标 = `DamageType as usize`）。
 ///
@@ -222,7 +216,7 @@ pub struct MitigationCtx {
     /// `Enemy<X>Overwhelm` BASE 建模）。
     pub overwhelm_pct: [f64; 5],
     /// per-type 抗性承受乘数（`<X>ResistTakenHitMulti = 1 − resist/100`，:2363/:2435；
-    /// 物理无抗性恒 1。敌人穿透项留 M3 config_interpreter）。
+    /// 物理无抗性恒 1。敌人穿透项留config_interpreter）。
     pub resist_taken_multi: [f64; 5],
     /// per-type 受击固定承受加量（`<X>takenFlat`，:2365-2373，Average 口径）。
     pub taken_flat: [f64; 5],
@@ -332,7 +326,7 @@ pub fn build_mitigation_ctx(
             cfg,
             &[ModName::from(format!("Enemy{name}Overwhelm"))],
         );
-        // 抗性承受乘数（:2363；敌穿透项留 M3 config）。
+        // 抗性承受乘数（:2363；敌穿透项留config）。
         ctx.resist_taken_multi[i] = 1.0 - inputs.resist_pct[i] / 100.0;
         // takenFlat（Average 口径，:2365-2372）：基础 hit 族 + Attack/Spell 各半、
         // 投射物变体各 1/4。
@@ -392,9 +386,7 @@ pub fn build_mitigation_ctx(
     ctx
 }
 
-// ─────────────────────────────────────────────────────────────────
 // takenHitFromDamage 等价入口
-// ─────────────────────────────────────────────────────────────────
 
 /// 单类型 raw 进伤 → 经 taken-as 转换 + 减伤后的实际承受（总量, per-type 分量）。
 ///

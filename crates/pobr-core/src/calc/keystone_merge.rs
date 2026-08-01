@@ -1,4 +1,4 @@
-//! 词条授予 keystone 的合并（M3 T5-E2，蓝图 m3-orchestration.md §8.2）。
+//! 词条授予 keystone 的合并。
 //!
 //! 对照 PoB2 `CalcPerform.lua:66-76 mergeKeystones`：Tabulate player db 的
 //! `Keystone` LIST mod（装备/珠宝词条「You have \<Keystone\>」/ 裸 keystone 名行，
@@ -17,7 +17,7 @@
 //!   ＝ 此处静默跳过，等价 PoB2 `keystoneMap[name]` nil 检查分支）。
 //! - 同名 LIST mod 多条（多件装备授予同一 keystone）：本次调用内 HashSet 去重。
 //!
-//! 与 M2 `rules/keystone_registry.rs` 的关系：本模块只负责「词条→keystone 的
+//! 与`rules/keystone_registry.rs` 的关系：本模块只负责「词条→keystone 的
 //! mod 注入」；CI/EB 等机制开关仍由 keystone_registry 读 flag 裁决（注入的 mods
 //! 里含对应 flag 即自动接通）。
 //!
@@ -33,7 +33,7 @@ use super::Env;
 /// `Keystone` LIST 通道的 ModName（PoB2 `Tabulate("LIST", nil, "Keystone")`）。
 const KEYSTONE_LIST_NAME: &str = "Keystone";
 
-/// keystone 注入归因 SourceId（蓝图 D4：`GrantedKeystone, "keystone.<name>"`）。
+/// keystone 注入归因 SourceId（`GrantedKeystone, "keystone.<name>"`）。
 fn keystone_source_id(name: &str) -> SourceId {
     SourceId::new(SourceKind::GrantedKeystone, format!("keystone.{name}"))
 }

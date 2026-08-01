@@ -43,7 +43,7 @@ fn perform_fills_ehp_from_pools_and_resistances() {
     assert_eq!(env.player.output.life, 1000.0);
     // F-3 口径切换：`total_ehp` = PoB2 口径（致死击数 × 单击进伤）；裸 Env 无
     // setup_enemy → 无进伤 placeholder → 0 中性。旧 lowest-max-hit 口径保留在
-    // `total_ehp_lowest_max_hit`（CalcDefence.lua:3322 / 蓝图 m2-defence §2 F-3）。
+    // `total_ehp_lowest_max_hit`（`CalcDefence.lua:3322`）。
     assert_eq!(env.player.output.total_ehp, 0.0);
     assert!(env.player.output.total_ehp_lowest_max_hit > 0.0);
     // With 0% resist, an element max hit equals the life pool.
@@ -77,7 +77,7 @@ fn perform_fills_bleed_dps_only_with_bleed_chance() {
     assert!(with_chance.player.output.bleed_dps > 0.0);
 }
 
-/// PoE2 格挡上限测试（M2 Track D 后走 BlockChanceMax 体系）。
+/// PoE2 格挡上限测试（后走 BlockChanceMax 体系）。
 ///
 /// 角色固有格挡上限 = 50%（`BaseBlockChanceMax`，Misc.lua:147 /
 /// CalcSetup.lua:28），硬上限 `BlockChanceCap` = 90 仅对堆了
@@ -186,9 +186,7 @@ fn perform_does_not_disturb_base_outputs() {
     assert_eq!(env.player.output.mana, 200.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Lane2 集成：防御扩展字段（ES 充能 / 规避 / 承受乘数 / 暴击减免）
-// ─────────────────────────────────────────────────────────────────
 
 /// 防御新字段默认中性：无 ES → 充能 0、延迟 4；无规避词条 → 0；承受乘数默认 1.0；
 /// 敌人暴击效果默认 1.0（无敌人暴击）。
@@ -320,9 +318,7 @@ fn perform_enemy_crit_effect_scales_with_reduction() {
     assert!((with_reduce.player.output.enemy_crit_effect - 1.25).abs() < 1e-9);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Lane4 集成：召唤物多 Actor（offence/defence 复用玩家管线）
-// ─────────────────────────────────────────────────────────────────
 
 /// 无召唤物时 minions 输出为空，玩家行为不变（向后兼容）。
 #[test]
@@ -412,9 +408,7 @@ fn perform_minion_modifier_channel_scales_minion_life() {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Lane A 集成：防御恢复（充能 / 偷取 / Recoup / regen 超集）
-// ─────────────────────────────────────────────────────────────────
 
 /// 防御恢复新字段默认中性：无来源 → 充能 current=0/maximum=3、偷取 0、Recoup 0。
 #[test]
@@ -485,7 +479,7 @@ fn perform_fills_life_leech_from_physical_hit() {
     assert!(with_leech.player.output.life_leech_rate > 0.0);
 }
 
-/// Recoup 接入（M2 F-4 基数替换，13-G15 部分）：基数 = mitigated EHP 循环累计的
+/// Recoup 接入（基数替换，13-G15 部分）：基数 = mitigated EHP 循环累计的
 /// recoupable 伤害（vendor CalcDefence.lua:489/:537/:3119-3123/:3347-3361），
 /// 不再用 life×10% 估算。
 ///
@@ -548,9 +542,7 @@ fn perform_regen_picks_up_global_recovery_rate() {
     assert!((env.player.output.life_regen - 20.0).abs() < 1e-6);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Lane B 集成：异常扩展（冰缓 / 冰冻·电击姿态积累 / 流血·中毒叠层）
-// ─────────────────────────────────────────────────────────────────
 
 fn cold_hit_env(extra: Vec<Modifier>) -> Env {
     let base = ActorBaseStats {
@@ -633,7 +625,7 @@ fn perform_fills_electrocute_buildup_from_lightning_hit() {
 }
 
 /// 叠层接入：`BleedCanStack` flag + BleedStacks BASE → bleed_stacked_dps =
-/// 单层 × 活跃层数；默认单层时相等。（M4-K 对齐 vendor CalcOffence.lua:5021-5025：
+/// 单层 × 活跃层数；默认单层时相等。（对齐 vendor CalcOffence.lua:5021-5025：
 /// maxStacks 仅在 `<Ailment>CanStack` flag 在场时展开，词条与 flag 成对注入——
 /// statmap 来源如 Escalating Poison 即 `PoisonStacks BASE + PoisonCanStack`。）
 #[test]
@@ -741,7 +733,7 @@ fn perform_overstacking_amplifies_bleed_dps_with_speed_and_crit() {
     );
 }
 
-/// 点燃叠层接入（P1-2）：默认 max_stacks=1（stacked==单层）；`IgniteStacks` BASE → 叠层翻倍。
+/// 点燃叠层接入：默认 max_stacks=1（stacked==单层）；`IgniteStacks` BASE → 叠层翻倍。
 #[test]
 fn perform_ignite_stacking_multiplies_dps() {
     let base = ActorBaseStats {
@@ -771,7 +763,7 @@ fn perform_ignite_stacking_multiplies_dps() {
     assert_eq!(single.player.output.ignite_active_stacks, 1.0);
 
     // IgniteCanStack + 2 IgniteStacks → max_stacks=3 → stacked ≈ 单层 × 3
-    // （M4-K：flag 门对齐 vendor CalcOffence.lua:5021-5025，词条与 flag 成对）。
+    // （flag 门对齐 vendor CalcOffence.lua:5021-5025，词条与 flag 成对）。
     let mut stacked = fire_skill(vec![
         Modifier::number("IgniteStacks", ModType::Base, 2.0),
         Modifier::flag("IgniteCanStack"),
@@ -781,9 +773,7 @@ fn perform_ignite_stacking_multiplies_dps() {
     assert!((stacked.player.output.ignite_stacked_dps - one_layer * 3.0).abs() < 1e-3);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // Lane C 集成：技能功能（AoE / 投射物 / 冷却 / 消耗）
-// ─────────────────────────────────────────────────────────────────
 
 /// 技能功能默认中性：无 base 词条 → AoE/cooldown/cost 全 0；投射物 0（无投射物来源）。
 #[test]
@@ -886,9 +876,7 @@ fn perform_fills_mana_and_spirit_cost() {
     assert!(env.player.output.spirit_reserved > 0.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 集成阶段：触发速率（冷却驱动 / CWC）
-// ─────────────────────────────────────────────────────────────────
 
 /// 触发默认中性：无触发词条 → trigger_rate_cap / skill_trigger_rate 保持 0（向后兼容）。
 #[test]
@@ -1034,11 +1022,9 @@ fn perform_cwc_trigger_rate_limited_by_triggered_cooldown() {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────
-// 集成阶段：触发源统计折算（M4-T5 W-E2，契约 4）
-// ─────────────────────────────────────────────────────────────────
+// 集成阶段：触发源统计折算
 
-/// 手算对拍（蓝图 §2 W-E2 测试行）：triggerChance = 源命中 × 源暴击。
+/// 手算对拍：triggerChance = 源命中 × 源暴击。
 /// 源速率 2/s（< cap），hit 80%，crit 35%，TriggerOnCrit →
 /// skill_trigger_rate = 2 × 0.8 × 0.35 = 0.56。
 #[test]
@@ -1065,7 +1051,7 @@ fn perform_trigger_chance_folds_source_hit_and_crit() {
     );
 }
 
-/// CoC 方向性断言（蓝图 §4.1 T5 门禁）：源暴击率↑ → 触发几率↑ → 触发速率↑。
+/// CoC 方向性断言：源暴击率↑ → 触发几率↑ → 触发速率↑。
 #[test]
 fn perform_trigger_rate_rises_with_source_crit() {
     let base = ActorBaseStats {
@@ -1092,7 +1078,7 @@ fn perform_trigger_rate_rises_with_source_crit() {
     );
 }
 
-/// 速率上限覆盖（W-E1 trigger_rate_cap_override，如 The Hidden Blade = 2/s）：
+/// 速率上限覆盖（trigger_rate_cap_override，如 The Hidden Blade = 2/s）：
 /// cap 取覆盖值，源速率 10/s 被截到 2/s。
 #[test]
 fn perform_trigger_rate_cap_override() {
@@ -1163,9 +1149,7 @@ fn perform_global_trigger_rate_equals_cap() {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 集成阶段：异常维度（AilmentEffect / Faster / DotDpsCap / 跨类型施加）
-// ─────────────────────────────────────────────────────────────────
 
 fn bleed_env(extra: Vec<Modifier>) -> Env {
     let base = ActorBaseStats {
@@ -1270,9 +1254,7 @@ fn perform_cross_type_fire_can_bleed() {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 集成阶段：召唤物从 MinionDef 真实底材 + 数量上限
-// ─────────────────────────────────────────────────────────────────
 
 /// add_minion_from_def 端到端：真实 MinionDef（僵尸）底材 + 数量上限注入玩家 multiplier。
 #[test]
@@ -1357,10 +1339,8 @@ fn perform_minion_damage_per_summoned_minion_uses_limit() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 06-01：EHP/max-hit 计入 DamageTakenWhenHit 受击专属承受乘数
 // （PoB2 CalcDefence.lua:2250-2263 TakenHitMult）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn perform_max_hit_includes_damage_taken_when_hit() {
@@ -1410,9 +1390,7 @@ fn perform_max_hit_includes_damage_taken_when_hit() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 03-02：触发源速率取注入的 TriggerSourceRate（PoB2 EffectiveSourceRate = 触发源技能速率）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn perform_trigger_uses_injected_source_rate_not_main_skill_rate() {
@@ -1445,9 +1423,7 @@ fn perform_trigger_uses_injected_source_rate_not_main_skill_rate() {
     );
 }
 
-// ---------------------------------------------------------------------------
 // 03-01：触发速率末端乘 triggerChance（显式触发几率折算，PoB2 CalcTriggers L715-777）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn perform_trigger_rate_folds_explicit_trigger_chance() {
@@ -1492,9 +1468,7 @@ fn perform_trigger_rate_folds_explicit_trigger_chance() {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────
-// M4-G：异常 magnitude 接 Stored 族 + vendor uptime 口径
-// ─────────────────────────────────────────────────────────────────
+//  异常 magnitude 接 Stored 族 + vendor uptime 口径
 
 /// vendor uptime 口径（CalcOffence.lua:5189-5193）：施加几率只经 ailmentStacks
 /// （uptime）进入 DPS——叠层估算饱和（stacks ≥ maxStacks）后，几率减半不再线性

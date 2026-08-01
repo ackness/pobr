@@ -15,9 +15,7 @@ use pobr_data::prelude::*;
 
 use super::round;
 
-// ─────────────────────────────────────────────────────────────────
 // 预留 (Reservation)
-// ─────────────────────────────────────────────────────────────────
 
 /// 预留结果：预留量 + 剩余可用量。
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -36,7 +34,7 @@ pub fn reservation(pool: f64, flat: f64, percent: f64) -> Reservation {
 }
 
 /// 预留量计算——含 `ReservationMultiplier` 与 Reservation Efficiency
-/// （M2 Track D，13-G11；PoB2 CalcDefence.lua:172-350
+/// （13-G11；PoB2 CalcDefence.lua:172-350
 /// `doActorLifeManaSpiritReservation`）。
 ///
 /// vendor 逐技能公式（:249-258）：
@@ -84,9 +82,7 @@ pub fn reservation_with_efficiency(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 再生 (Regeneration)
-// ─────────────────────────────────────────────────────────────────
 
 /// 计算每秒恢复（regen）。
 ///
@@ -158,9 +154,7 @@ fn recovery_rate_mod_name(stat: &str) -> ModName {
     ModName::from(format!("{prefix}RecoveryRate"))
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 几率类 (Capped Chance)
-// ─────────────────────────────────────────────────────────────────
 
 /// 几率类聚合：求和后钳到 `[0, cap]`（cap 通常 75% 或 100%）。
 pub fn capped_chance(percent_sum: f64, cap: f64) -> f64 {
@@ -172,15 +166,13 @@ pub fn capped_chance(percent_sum: f64, cap: f64) -> f64 {
 /// **Bug#11 修正（block-chance-cap-wrong）**：PoE2 格挡上限为 90%，非 PoE1 的 75%。
 /// 出处：agent-docs/block.md §被动格挡、PoB2 DeepWiki `BlockChanceCap = 90`。
 ///
-/// M0-W3：cap 改由调用方自注入常量包传入
+///  cap 改由调用方自注入常量包传入
 /// （`cfg.constants.game().block_chance_cap`，fallback == 旧 const，值不变）。
 pub fn block_chance(percent_sum: f64, cap: f64) -> f64 {
     capped_chance(percent_sum, cap)
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 充能 (Charges) — PoE2：充能无固有属性，仅供 per-charge 词条引用
-// ─────────────────────────────────────────────────────────────────
 
 /// 充能默认最大层数（Power / Frenzy / Endurance；PoB2 `Data/Misc.lua`）。
 ///
@@ -364,9 +356,7 @@ pub fn charge_multipliers_panel_default(db: &ModDb, cfg: &CalcConfig) -> CalcCon
     out
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 偷取 (Leech) — 0.5.0 重制
-// ─────────────────────────────────────────────────────────────────
 
 /// 偷取速率上限（生命/法力：池子的 20%；ES：池子的 10%）。
 ///
@@ -520,9 +510,7 @@ impl LeechResult {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 返还 (Recoup)
-// ─────────────────────────────────────────────────────────────────
 
 /// Recoup 默认返还持续时间（秒）。
 ///

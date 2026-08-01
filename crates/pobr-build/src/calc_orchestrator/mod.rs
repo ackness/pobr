@@ -109,7 +109,7 @@ pub struct DataOrchestratorOptions {
     pub enemy_tier: EnemyTier,
     /// 有效 DPS 口径开关（`true` → 计入命中 / 敌人减伤；`false` → 面板口径）。
     pub mode_effective: bool,
-    /// statmap 映射通道（M1-T2.3/T2.4，契约 C3）。默认 [`StatMapMode::Data`]；
+    /// statmap 映射通道。默认 [`StatMapMode::Data`]；
     /// `Compare` 纯观测（输出与 Data 一致，outcome 记录经
     /// [`take_stat_map_compare_records`] 取出）。
     pub stat_map_mode: StatMapMode,
@@ -134,21 +134,21 @@ impl Default for DataOrchestratorOptions {
     }
 }
 
-/// statmap 映射通道选择（M1-T2.3 双跑框架，契约 C3；蓝图 §6 Q4 裁决：Compare
-/// 作为长期对照工具保留——M3 config / M6 parser 双跑复用同模式）。
+/// statmap 映射通道选择（双跑框架，契约 C3；裁决：Compare
+/// 作为长期对照工具保留——config / parser 双跑复用同模式）。
 ///
 /// 运行时枚举而非 cargo feature：18 build 双跑在同一进程内完成，报告好做。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum StatMapMode {
     /// 数据引擎（`overlay/skill_stat_map.json` + `rules/stat_map_engine`）。
-    /// **默认**（M1-T2.4 切换 commit；四前置条件核对单见
+    /// **默认**（切换 commit；四前置条件核对单见
     /// `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md`）。
     #[default]
     Data,
     /// 观测对照：Data 计算 + 逐 stat 记录映射 outcome（**输出与 Data 一致**，
     /// 纯观测不改变任何计算结果；记录经 [`take_stat_map_compare_records`] 取出）。
-    /// Legacy 启发式删除（T2.4）后保留为长期对照框架——M3 config / M6 parser
-    /// 双跑复用同模式（蓝图 §6 Q4 裁决）。删旧码后的切换回退 = revert 删除 commit。
+    /// Legacy 启发式删除（T2.4）后保留为长期对照框架——config / parser
+    /// 双跑复用同模式。删旧码后的切换回退 = revert 删除 commit。
     Compare,
 }
 
@@ -258,7 +258,7 @@ pub struct SkillDps {
     pub combined_dps: f64,
 }
 
-/// FullDPS 报告（PoB2 `FullDPS`，M7 多技能脚手架）。
+/// FullDPS 报告（PoB2 `FullDPS`，多技能脚手架）。
 #[derive(Debug, Clone)]
 pub struct FullDpsReport {
     /// 全部启用伤害技能的 CombinedDPS 之和（= `per_skill` 各项求和）。
@@ -269,7 +269,7 @@ pub struct FullDpsReport {
     pub primary: OutputTable,
 }
 
-/// 计算 FullDPS（M7 多技能脚手架）——PoB2 的「全部技能 DPS 求和」。
+/// 计算 FullDPS（多技能脚手架）——PoB2 的「全部技能 DPS 求和」。
 ///
 /// 遍历每个**启用且有可解析伤害主技能**的 socket 组，各自经 [`calculate_with_data`]
 /// 独立计算（临时把该组设为 `mainSocketGroup`，**其余组保持启用**以保留光环/增益
@@ -378,7 +378,7 @@ pub fn calculate_with_data_session(
     data: &BuildData,
     options: &DataOrchestratorOptions,
 ) -> Result<CalculationSession, BuildError> {
-    // （M1-T2.3/T2.4）statmap 通道上下文：guard 作用域 = 本次计算；默认 Data
+    // statmap 通道上下文：guard 作用域 = 本次计算；默认 Data
     // （T2.4 切换）。catalog 优先取编排选项显式注入，缺省回退 BuildData 随数据包
     // 加载的目录；Compare 纯观测（diff 记录由调用方 take 取出）。
     let _stat_map_guard = install_stat_map_context(
@@ -389,18 +389,18 @@ pub fn calculate_with_data_session(
             .or_else(|| data.stat_map_catalog.clone()),
     );
 
-    // ---- 阶段 0：build 视图变换（Ring3 门控 → 装备授予技能合成 → 品质折算）----
+    // 阶段 0：build 视图变换（Ring3 门控 → 装备授予技能合成 → 品质折算）
     let build = stage_build_view(build, data);
     let build: &Build = &build;
 
-    // ---- 阶段 1-4：session 前解析（顺序即依赖：主技能 → config → cfg → 武器基底）----
+    // 阶段 1-4：session 前解析（顺序即依赖：主技能 → config → cfg → 武器基底）
     let mut ctx = StageCtx::new(build, data, options);
     stage_resolve_main_skill(&mut ctx);
     stage_resolve_config(&mut ctx);
     stage_build_cfg(&mut ctx);
     stage_weapon_bases(&mut ctx);
 
-    // ---- 阶段 5+：session 装配 + 来源注入（编号沿用既有装配顺序文档）----
+    // 阶段 5+：session 装配 + 来源注入（编号沿用既有装配顺序文档）
     let mut session = stage_create_session(&mut ctx);
     stage_hand_sources(&mut session, &ctx);
     stage_cooldown_bypass(&mut session, &ctx);
@@ -496,7 +496,7 @@ pub fn calculate_with_data_session(
     // 诊断 dump（POBR_DBG_UNSUPPORTED / ALLMODS / STAT，parity 排查用）。
     stage_debug_dumps(&session);
 
-    // 召唤物接线（M5a-B2）：在全部玩家来源注入后、perform 前，识别召唤宝石
+    // 召唤物接线：在全部玩家来源注入后、perform 前，识别召唤宝石
     // （`effect_minion_list` 非空）并接入 `Env.minions`。perform 末尾 `perform_minions`
     // 对每个召唤物跑同一套 offence/defence，结果落 `OutputTable.minions`。
     // gate：仅当某主动技能解析出非空 minion_list 才接入——非召唤 build 永不触发，
@@ -600,7 +600,7 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
         build = Cow::Owned(augmented);
     }
 
-    // 宝石品质加成（M4-H）：「+N% to Quality of all <X> Skills」（树小点/装备）
+    // 宝石品质加成：「+N% to Quality of all <X> Skills」（树小点/装备）
     // 预先折进每个宝石的 quality（vendor applyGemMods 对每个 gem effect 叠加
     // effect.quality，CalcSetup.lua:410-435），使下游全部品质消费点一致生效。
     if let Some(adjusted) = apply_gem_quality_bonuses(&build, data) {
@@ -680,7 +680,7 @@ fn stage_resolve_main_skill(ctx: &mut StageCtx<'_>) {
         .main_skill
         .as_ref()
         .and_then(|(_, _, skill_id)| data.granted_effects.get(*skill_id));
-    // （M4-m）主技能**终态**类型集合 = 自身 skill_types + 兼容 support 的
+    // 主技能**终态**类型集合 = 自身 skill_types + 兼容 support 的
     // addSkillTypes 不动点（vendor CalcActiveSkill.lua:179-214 把 addSkillTypes
     // 并进 activeSkill.skillTypes，后续 flag/条件派生均以终态为准——如 Cast on
     // Critical 给被触发法术加 `Triggered`，使「Triggered Spells deal …」族词条
@@ -711,7 +711,7 @@ fn stage_resolve_main_skill(ctx: &mut StageCtx<'_>) {
         .main_effect
         .map(|_| skill_type_flags(&ctx.main_skill_types))
         .unwrap_or(ModFlags::NONE);
-    // （M3-W5 修复）主技能类型 → `cfg.skill_types` 判别位：`is_attack()` 驱动命中
+    // 主技能类型 → `cfg.skill_types` 判别位：`is_attack()` 驱动命中
     // 检定（攻击才做精准/闪避检定，vendor CalcOffence.lua:2611）；见 skill_type_bits doc。
     ctx.skill_type_bits = ctx
         .main_effect
@@ -726,16 +726,16 @@ fn stage_resolve_main_skill(ctx: &mut StageCtx<'_>) {
     );
 }
 
-/// 阶段 2：config 消费收口（M3-T1 A5 主路径切换）——ConfigCatalog 可用时走
+/// 阶段 2：config 消费收口（主路径切换）——ConfigCatalog 可用时走
 /// `config_interpreter::interpret`（raw_inputs → conditions/multipliers/标量
-/// 包装/Config 归因 modifier）；缺 catalog 回退旧 parse_config 产出（R7）。
+/// 包装/Config 归因 modifier）；缺 catalog 回退旧 parse_config 产出（缺表容忍）。
 /// 产出 base cfg（含 Effective 门控的 config 乘数桥回填），stage_build_cfg
 /// 在其上叠加技能派生。
 fn stage_resolve_config(ctx: &mut StageCtx<'_>) {
     ctx.resolved_config =
         crate::config_resolve::resolve_config(ctx.build, ctx.data.config_catalog.as_deref());
     let mut base_cfg = ctx.resolved_config.config.to_calc_config();
-    // Effective 门控的 config 乘数桥（M4-H）：interpreter 的 Condition 裸效果桥
+    // Effective 门控的 config 乘数桥：interpreter 的 Condition 裸效果桥
     // 只收"无 tag"条目，`Multiplier:<X>` 带 `Condition:Effective` tag 的 count 型
     // placeholder（vendor ConfigOptions.lua:1642 `multiplierDifferentGrenadeFired`
     // defaultPlaceholderState=1 等）落不进 cfg.multipliers。vendor 语义 =
@@ -746,7 +746,7 @@ fn stage_resolve_config(ctx: &mut StageCtx<'_>) {
         for m in &ctx.resolved_config.player_mods {
             // 仅收「带 tag 且全为 Effective」的形态——**空 tag 条目必须排除**：
             // 裸 `Multiplier:` 效果已由 interpreter 裸效果回填进 cfg.multipliers
-            // （config_interpreter.rs:362-377），此处再加即双计（M4-n 实查：
+            // （config_interpreter.rs:362-377），此处再加即双计（实查：
             // sigilOfPowerStages placeholder 1 在 eff 口径被加成 2，Sigil of
             // Power per-stage MORE 17→34 伪高）。
             // `Combat` 与 `Effective` 同门控（vendor 主输出 env 两者恒真，
@@ -789,18 +789,13 @@ fn stage_build_cfg(ctx: &mut StageCtx<'_>) {
         )
         .with_damage_keywords(std::mem::take(&mut ctx.dmg_keywords))
         .with_mode_effective(options.mode_effective)
-        // （M3-T3 C5-2 切换，D5 MAIN 口径）：vendor 非 CALCS 模式 buffMode 恒
-        // "EFFECTIVE"（CalcSetup.lua:583-597 → env.mode_buffs = true），编排入口
-        // 对应恒置 mode_buffs——buff_pass（aura 乘区 / curse priority+limit）启用。
-        // mode_effective 维持调用方选项（D5：敌侧 debuff/curse 既有口径不动）。
-        // 双跑依据 m3-c5-dualrun-report.md（18-build display 全列逐值持平 +
-        // curse 面板加法型）。
+        // vendor 非 CALCS 模式 buffMode 恒 "EFFECTIVE"（CalcSetup.lua:583-597 →
+        // env.mode_buffs = true），故此处恒置 mode_buffs——启用 buff_pass（aura
+        // 乘区 / curse priority+limit）。mode_effective 维持调用方选项。
         .with_mode_buffs(true)
-        // （M3-T2 B4，D5 MAIN 口径）：同上 vendor 裁决（CalcSetup.lua:583-597
-        // buffMode "EFFECTIVE" → env.mode_combat = true）。激活面：战斗条件自动
-        // 置位（下方 combat_conditions）+ env_finalize 阶段 3 flask/charm 合并
-        // （编排路径暂无 FlaskBuff/CharmBuff 载荷，T4 槽位接线后生效）+ 阶段 6
-        // buff_expander（trigger flag 未置仍零输出）。
+        // 同上（CalcSetup.lua:583-597 buffMode "EFFECTIVE" → env.mode_combat =
+        // true）。激活面：战斗条件自动置位（下方 combat_conditions）+
+        // env_finalize 阶段 3 flask/charm 合并 + 阶段 6 buff_expander。
         .with_mode_combat(true);
     // DistanceRamp 的 skillDist（vendor CalcActiveSkill.lua:671+684，0.22.0）：
     // `effectiveRange = env.configInput.enemyDistance or env.configPlaceholder.enemyDistance`，
@@ -827,9 +822,9 @@ fn stage_build_cfg(ctx: &mut StageCtx<'_>) {
         })
         .flatten();
     cfg = cfg.with_skill_distance(skill_distance);
-    // （M3-T2 B4）主技能派生战斗条件（vendor CalcPerform.lua:242-266 实读，
+    // 主技能派生战斗条件（vendor CalcPerform.lua:242-266 实读，
     // `if env.mode_combat` 段）：attack/spell/Movement/Minion/Vaal/Channel →
-    // "...Recently"/Channelling 条件；triggered/trap/mine/totem 豁免（M4-m：
+    // "...Recently"/Channelling 条件；triggered/trap/mine/totem 豁免（
     // 用**终态**类型集合——meta support 的 addSkillTypes `Triggered` 使豁免
     // 按 vendor :248 生效）。
     if ctx.main_effect.is_some() {
@@ -893,13 +888,13 @@ fn stage_build_cfg(ctx: &mut StageCtx<'_>) {
         cfg = cfg.with_condition("NormalBodyArmourEquipped", true);
     }
     // 主手武器类别 → 持握条件（使「... with Quarterstaves」「while Dual Wielding」等树/词条生效）。
-    // M4-J：冷却限速主技能（grenade）不再例外——旧「攻速补偿吞吐」近似已删除，
+    //  冷却限速主技能（grenade）不再例外——旧「攻速补偿吞吐」近似已删除，
     // 速度链末端统一 `min(rate, repeats/effective_cooldown)`（vendor 同序），武器类
     // 攻速词条不会再错误放大 grenade rate，按 vendor 全量启用武器类条件 / 武器位 flags。
     for var in weapon_type_conditions(build, data) {
         cfg = cfg.with_condition(var, true);
     }
-    // 主手武器位 → cfg.flags（W-A1 commit-2 引入，切换 commit 起常驻）：
+    // 主手武器位 → cfg.flags：
     // 与上面的 Using* 条件**同源**（weapon_type_info 表）**同 gating** 派生——
     // mod 侧双写的武器位通道不在 condition 通道之外另开生效口径。
     let weapon_bits = weapon_cfg_flags(build, data);
@@ -936,8 +931,8 @@ fn stage_weapon_bases(ctx: &mut StageCtx<'_>) {
     // 武器基底贡献（仅攻击技能）：击中物理伤害（× 技能倍率）+ 攻击速率覆盖。
     // 用解析出的真实主技能 id（跳过 meta 壳），确保攻击/法术判定与权重正确。
     //
-    // M4-T2 W-B2：武器基底不再直接折进 `base_input`，改装配为 `HandSource`
-    // （pobr-core::calc::hand_pass，蓝图 §3.3 契约 1）经 `set_hand_sources` 注入，
+    //  武器基底不再直接折进 `base_input`，改装配为 `HandSource`
+    // 经 `set_hand_sources` 注入，
     // `perform` 内 `run_hand_passes` 把同一组值注入 per-hand `MinimalInput` 副本——
     // 单 HandSource 与旧折算逐值等价（OR 直通，等价性测试钉死）。折算口径不变：
     // phys × dmg_mult、attack_rate × attackSpeedMultiplier（CalcOffence L2721-2723）。
@@ -945,7 +940,7 @@ fn stage_weapon_bases(ctx: &mut StageCtx<'_>) {
         .main_skill
         .as_ref()
         .and_then(|(skill, _, skill_id)| weapon_contribution(build, data, skill_id, skill));
-    // 双持副手（W-B2）：主手是单手真武器且 Weapon2 也是武器基底时，装配第二个
+    // 双持副手：主手是单手真武器且 Weapon2 也是武器基底时，装配第二个
     // off-hand 武器源（vendor weapon2Attack pass，CalcOffence.lua:2369-2449）。
     ctx.off_weapon = ctx
         .weapon
@@ -971,7 +966,7 @@ fn stage_weapon_bases(ctx: &mut StageCtx<'_>) {
     // （effective_cooldown 经 `CooldownRecovery` 缩短）。该 min 下沉到 offence.rs
     // `apply_cooldown_cap`，读 `SkillCooldownBase` BASE（由 `skill_base_modifiers` 注入）+
     // `CooldownRecovery`（statmap/quality/树/任务全链聚合）+ `SkillStoredUsesBase`
-    // （储存 >1 不取整到帧）。法术与冷却攻击（grenade）统一走此口径（M4-J：
+    // （储存 >1 不取整到帧）。法术与冷却攻击（grenade）统一走此口径（
     // 旧「攻速补偿吞吐」预截近似已删除——吞吐倍率由 GrenadeActivateTwice →
     // dps_end_factors 承担，vendor CalcOffence.lua:2852-2856 同序）。
     //
@@ -996,7 +991,7 @@ fn stage_create_session(ctx: &mut StageCtx<'_>) -> CalculationSession {
     let data = ctx.data;
     let mut session =
         CalculationSession::new(ctx.base_input).with_config(std::mem::take(&mut ctx.cfg));
-    // M0-W3 注入管道：把 GameData 加载的运行时常量包注入 calc（必须在 with_config
+    // 注入管道：把 GameData 加载的运行时常量包注入 calc（必须在 with_config
     // 之后——with_config 整体覆盖 cfg）。数据与 Default fallback 逐值相等，零行为变化。
     session.set_constants(data.constants.clone());
     // 数据驱动 ModParser 引擎规则注入（唯一解析器，special 通道已编译在内）。
@@ -1006,19 +1001,19 @@ fn stage_create_session(ctx: &mut StageCtx<'_>) -> CalculationSession {
     if let Some(parser_rules) = &data.parser_rules {
         session.set_parser_rules(parser_rules.clone());
     }
-    // M3-T2 B3：内建 buff 定义 + handler 注册表注入（env_finalize 阶段 6
+    //  内建 buff 定义 + handler 注册表注入（env_finalize 阶段 6
     // doActorMisc 等价展开的数据/裁决来源）。整段吃 `cfg.mode_combat` 门控——
     // 默认 false（B4 自动置位是独立行为 commit），故本注入零行为变化。
     session.set_buff_definitions(data.buff_definitions.clone());
     session.set_buff_handler_registry(std::sync::Arc::new(crate::handlers::build_registry()));
-    // M3-T3 C3：curse 优先级数据注入（env_finalize 阶段 4 buff_pass 的 curse
+    //  curse 优先级数据注入（env_finalize 阶段 4 buff_pass 的 curse
     // priority/limit 数据来源，照 buff_definitions 通道先例）。整段吃
     // `cfg.mode_buffs` 门控——默认 false，故本注入零行为变化；缺 overlay 文件
     // （旧数据包）= None 不注入（消费侧权重全 0 回退）。
     if let Some(curse_priority) = &data.curse_priority {
         session.set_curse_priority(curse_priority.clone());
     }
-    // M4-I 去重接线：取整精度例外表注入（buff_pass / merge_flasks_charms 的
+    // 去重接线：取整精度例外表注入（buff_pass / merge_flasks_charms 的
     // ScaleAddMod 缩放消费，T1 写原语同一份规则；overlay 数据与先期硬编码命名族
     // 镜像在全部入库条目上逐值相等，ninja_parity 逐值验证）。
     session.set_high_precision_rules(data.high_precision.clone());
@@ -1027,10 +1022,10 @@ fn stage_create_session(ctx: &mut StageCtx<'_>) -> CalculationSession {
 
 /// 阶段 6：武器基底经 HandSource 注入——依赖阶段 4 折算的 WeaponBase。
 ///
-/// M4-T2 W-B2：武器基底经 HandSource 注入（单 pass 直通——OR 模式逐值等价于
+///  武器基底经 HandSource 注入（单 pass 直通——OR 模式逐值等价于
 /// 旧 base_input 折算）。双持（Weapon2 为武器基底）装配第二个 off-hand
 /// HandSource，per-hand 武器位随 WeaponBase::flags 进 hand pass；
-/// doubleHitsWhenDualWielding 等 W-D1 数据通道（恒 false）。
+/// doubleHitsWhenDualWielding 等数据通道（恒 false）。
 /// 非武器攻击（Shield Wall 类）的 source 是 off-hand（PoB2 CalcOffence L2418-2431）。
 fn stage_hand_sources(session: &mut CalculationSession, ctx: &StageCtx<'_>) {
     if let Some(wb) = ctx.hand_weapon {
@@ -1186,15 +1181,15 @@ fn stage_inject_config_mods(
         }
     }
 
-    // 2d. config 解释器产物（M3-T1 A5 主路径）：`SourceKind::Config` 归因的玩家
+    // 2d. config 解释器产物：`SourceKind::Config` 归因的玩家
     //     modifier。Combat 门控条目（`Condition:Combat` tag）在 mode_combat=false
-    //     下天然惰性（D5）；缺 catalog 时列表为空（R7 回退，conditions 仍经
+    //     下天然惰性（D5）；缺 catalog 时列表为空（缺表容忍回退，conditions 仍经
     //     `resolved_config.config` 走旧通道）。
     if !resolved_config.player_mods.is_empty() {
         session.add_modifiers(resolved_config.player_mods.clone());
     }
 
-    // 2e. customMods 行通道（M3 commit ④，vendor ConfigOptions.lua:2278-2296：
+    // 2e. customMods 行通道（commit ④，vendor ConfigOptions.lua:2278-2296：
     //     逐行 StripEscapes + parseMod，source=Custom）：解释器剥色码后按行
     //     喂 add_modifier_texts——不可解析行自然落 `ParseStatus::Unsupported`
     //     可见性通道（session.unsupported_modifier_texts）；结构性硬失败行
@@ -1220,7 +1215,7 @@ fn stage_inject_passives(
     let (build, data) = (ctx.build, ctx.data);
     // 3. 天赋树：NodeId → 节点 mod 文本（节点级归因）。
     let mut passive_nodes = resolve_passive_nodes(build, data);
-    // 3a'. 油涂授予 notable（M4-H，vendor `Allocates <name>` enchant →
+    // 3a'. 油涂授予 notable（vendor `Allocates <name>` enchant →
     //      `GrantedPassive` LIST，ModParser.lua:5809 → CalcSetup.lua:1322-1331
     //      notableMap 并入 allocNodes）：按名匹配 Notable 节点追加为
     //      AllocatedNode（同节点级归因）。
@@ -1278,7 +1273,7 @@ fn stage_inject_passives(
             }
         }
 
-        // 3b'. 范围珠宝 Notable 效果缩放（M4-n，Time-Lost『N% increased Effect of
+        // 3b'. 范围珠宝 Notable 效果缩放（Time-Lost『N% increased Effect of
         //      Notable Passive Skills in Radius』）：对半径内已分配 notable 的自身
         //      词条追加缩放差额副本（vendor CalcSetup.lua:246-275 ScaleAddList；
         //      授予词条侧的同名缩放在 radius_jewel_grant_texts 内联处理）。
@@ -1288,7 +1283,7 @@ fn stage_inject_passives(
         }
     }
 
-    // 3c.（M3 T5-E2）词条授予 keystone 的 mod 映射：树上 keystone 节点（**排除已点**）
+    // 3c. 词条授予 keystone 的 mod 映射：树上 keystone 节点（**排除已点**）
     //     的 stats 解析为 keystone 名 → mods，经 `session.set_keystone_mods` 注入；
     //     env_finalize 阶段 1/5 的 merge_keystones 按 player db 的 `Keystone` LIST
     //     词条（「You have <X>」/ 裸名行）消费。已点 keystone 的 mods 已由上方
@@ -1320,7 +1315,7 @@ fn stage_debug_dumps(session: &CalculationSession) {
         }
     }
     // 诊断：POBR_DBG_ALLMODS=1 时 dump 玩家 ModDb 全部 modifier（engine vs legacy ingest
-    // 逐 mod 全集 diff 用；M6 fork(a) 定位 ingest 分歧）。排序前缀 name 便于 sort+diff。
+    // 逐 mod 全集 diff 用；fork(a) 定位 ingest 分歧）。排序前缀 name 便于 sort+diff。
     if pobr_core::dbg_env!("POBR_DBG_ALLMODS").is_some() {
         for m in session.all_mods() {
             eprintln!(
@@ -1472,7 +1467,7 @@ mod tests {
         ParseCtx::with_engine(&RULES)
     }
 
-    /// 树折行词条合并（M4-H；vendor PassiveTree.lua:445-462）：单行 parse 失败
+    /// 树折行词条合并（vendor PassiveTree.lua:445-462）：单行 parse 失败
     /// → 与后续行拼接重试；全部失败 → 丢弃该行、后续行独立继续。
     #[test]
     fn combine_wrapped_then_filter_joins_wrapped_tree_lines() {
@@ -1524,7 +1519,7 @@ mod tests {
         }
     }
 
-    /// 油涂授予 notable 进 GemProperty 扫描（M4-K；vendor 授予节点 modList 与
+    /// 油涂授予 notable 进 GemProperty 扫描（vendor 授予节点 modList 与
     /// 已分配节点一样进全局 modDB，CalcSetup.lua:1322-1331 + applyGemMods）：
     /// 项链 enchant『Allocates Paragon』→ 油涂池节点 20686（--tree-anoints 回填）
     /// 的 `+5% to Quality of all Skills` 应产出 Quality +5 全匹配词条。
@@ -1587,7 +1582,7 @@ mod tests {
         BuildData::load(&data).expect("load repo build data")
     }
 
-    // ── text-only 路径（向后兼容，保持既有断言）────────────────────────────
+    // text-only 路径（向后兼容，保持既有断言）
 
     #[test]
     fn calculates_with_life_modifier() {
@@ -1625,7 +1620,7 @@ mod tests {
         assert_eq!(out.life, 80.0);
     }
 
-    // ── 端到端归因路径（calculate_with_data）──────────────────────────────
+    // 端到端归因路径（calculate_with_data）
 
     #[test]
     fn data_path_item_life_matches_text_path() {
@@ -1756,7 +1751,7 @@ mod tests {
         }
     }
 
-    /// 属性小点判定专项单测（WI-E4 的谓词层）。
+    /// 属性小点判定专项单测（的谓词层）。
     #[test]
     fn is_attribute_node_matches_any_attribute_choice() {
         let attr = normal_node_at(1, 0.0, 0.0, vec!["+5 to any Attribute".into()]);
@@ -1767,7 +1762,7 @@ mod tests {
         assert!(!super::is_attribute_node(&life));
     }
 
-    /// **radius 珠宝 attribute 误计数专项回归**（roadmap M5 验收点名 / WI-E4）。
+    /// **radius 珠宝 attribute 误计数专项回归**（roadmap验收点名 /）。
     ///
     /// `Small Passive Skills in Radius also grant <mod>` 的 Small 计数必须排除属性
     /// 小点（vendor ModParser.lua:6855-6857 `node.type=="Normal" and not node.isAttribute`）。
@@ -1899,7 +1894,7 @@ mod tests {
 
     #[test]
     fn mode_effective_changes_hit_chance_vs_panel() {
-        // （M3-W5 语义更新）非攻击必中：无主技能（非攻击）build 不做精准/闪避检定，
+        // （语义更新）非攻击必中：无主技能（非攻击）build 不做精准/闪避检定，
         // 两口径 hit_chance 均为 1（vendor CalcOffence.lua:2611-2612
         // `if not isAttack then output.AccuracyHitChance = 100`）。
         let data = BuildData::empty();
@@ -1946,7 +1941,7 @@ mod tests {
         );
     }
 
-    /// （M3-W5 回归钉）主技能类型驱动命中检定：Spell 主技能必中（hit_chance=1，
+    /// （回归钉）主技能类型驱动命中检定：Spell 主技能必中（hit_chance=1，
     /// vendor CalcOffence.lua:2611-2612），Attack 主技能做精准/闪避检定（<1）。
     /// 钉死「编排未填 cfg.skill_types → 法术被卷入精准公式」的修复。
     #[test]
@@ -2076,7 +2071,7 @@ mod tests {
     fn xml_enemy_tier_overrides_orchestrator_option() {
         // enemyIsBoss 接线（19-G3）：build XML Config 显式 None 档应覆盖调用方传入的
         // Pinnacle——普通怪 dps_mult（1/4.4）远低于 Pinnacle（8/4.4）→ EHP 敌伤
-        // 装配的单击总进伤更低。（M3-W5 起无主技能 build 为非攻击、必中，
+        // 装配的单击总进伤更低。（无主技能 build 为非攻击、必中，
         // hit_chance 不再区分档位；物理减伤两档同触 DR cap，故改用敌伤作观测点。）
         let data = BuildData::empty();
         let base = MinimalInput {
@@ -2234,7 +2229,7 @@ mod tests {
         assert!(main_skill_quality_modifiers(&group0, &data, "FireballPlayer").is_empty());
     }
 
-    /// W-J：选中 statSet 的 per-set 覆盖键接进引擎 set_key——statSetIndex=2 时
+    ///  选中 statSet 的 per-set 覆盖键接进引擎 set_key——statSetIndex=2 时
     /// 同一 stat 走 set "2" 的覆盖条目（合成目录），缺省走 set "1"/global。
     #[test]
     fn selected_set_key_threads_per_set_override() {
@@ -2295,7 +2290,7 @@ mod tests {
         assert_eq!(mapped, vec!["Damage"], "缺省应落回 global");
     }
 
-    /// 合成 stat set（W-J 测试共用）：单等级行 `synth_stat_+%`。
+    /// 合成 stat set（测试共用）：单等级行 `synth_stat_+%`。
     fn synth_stat_set(set_id: &str, vendor_idx: Option<u32>) -> pobr_data::catalog::StatSetDef {
         pobr_data::catalog::StatSetDef {
             set_id: set_id.into(),
@@ -2318,8 +2313,8 @@ mod tests {
         }
     }
 
-    /// W-J：主技能未选 statSet 的 global-only merge——真实数据（FlameWall 多 set
-    /// 载体）路径全程可达；GlobalEffect tag 在 M3 前为翻译边界（切换日志 §5），
+    ///  主技能未选 statSet 的 global-only merge——真实数据（FlameWall 多 set
+    /// 载体）路径全程可达；GlobalEffect tag 在前为翻译边界（切换日志 §5），
     /// 当前注入恒为零（结构就位、不错算）。非 global stat 永不从未选 set 注入。
     #[test]
     fn unselected_set_global_only_zero_injection_before_m3() {
@@ -2390,12 +2385,12 @@ mod tests {
         assert_eq!(aura.lightning_resistance, base.lightning_resistance);
     }
 
-    // ── M3-T3 C1：BuffSpec 提取（aura/curse 分类 + 双计防护）────────────────
+    //  BuffSpec 提取（aura/curse 分类 + 双计防护）
 
-    /// aura/curse 技能 → BuffSpec 分类（蓝图 §2.4 契约 1）：`Aura` token → Aura kind
+    /// aura/curse 技能 → BuffSpec 分类：`Aura` token → Aura kind
     /// （mods = 与 aura_buff_modifiers 同口径的防御 buff）；`Mark`/`AppliesCurse`
     /// token → Curse kind（is_mark 按 Mark token）；slot/socket_index 透传。
-    /// （M4-G）Precision II support 在 Persistent Buff 宿主组 → BuffSpec(kind=Buff,
+    /// Precision II support 在 Persistent Buff 宿主组 → BuffSpec(kind=Buff,
     /// Accuracy INC 50，sup_dex.lua:4216-4250 constantStats)；不兼容宿主
     /// （require_skill_types=Persistent+Buff+AND 四段裁决拒收，如 Fireball）→ 不注入。
     #[test]
@@ -2430,7 +2425,7 @@ mod tests {
         );
     }
 
-    /// （M4-m）非主组曝光宿主探测扩展：宿主自身无曝光 debuff 载荷、曝光能力
+    /// 非主组曝光宿主探测扩展：宿主自身无曝光 debuff 载荷、曝光能力
     /// 来自 support（Fire Exposure `inflict_exposure_for_x_ms_on_ignite` →
     /// `flag("InflictExposure", on-Ignited)`，vendor SkillStatMap.lua:1701-1703）
     /// 时，组内 Potent Exposure 的 `<El>ExposureEffect` 同样全局注入（vendor
@@ -2471,7 +2466,7 @@ mod tests {
         );
     }
 
-    /// （M4-G）Aura 类 buff 技能的 statmap buff 域补充通道：War Banner 的
+    /// Aura 类 buff 技能的 statmap buff 域补充通道：War Banner 的
     /// `base_skill_buff_banner_accuracy_+%_to_apply`（GlobalEffect Aura +
     /// Condition BannerPlanted）→ spec.mods 含 Accuracy INC（条件 tag 直译保留），
     /// 数值 = 该宝石等级的 statset 原值（数据侧独立期望）。
@@ -2510,7 +2505,7 @@ mod tests {
         );
     }
 
-    /// （M4-n）Pinnacle of Power（武器 Adonia's Ego 授予，other.lua:12503，
+    /// Pinnacle of Power（武器 Adonia's Ego 授予，other.lua:12503，
     /// fromItem buff 技能）→ BuffSpec(kind=Buff)：statmap buff 域 flag 通道产出
     /// 六枚 `<El>Can<Ailment>` FLAG（GlobalEffect/Buff 载荷）；同条目首元素
     /// scalar `Damage MORE` 不连坐（逐元素独立处置，零数值注入）。
@@ -2549,7 +2544,7 @@ mod tests {
         }
     }
 
-    /// （M4-m）quiver 加成效果（vendor `EffectOfBonusesFromQuiver`，
+    /// quiver 加成效果（vendor `EffectOfBonusesFromQuiver`，
     /// ModParser.lua:4866；消费 = CalcSetup.lua:1366-1373 Weapon 2 箭袋特例）：
     /// 树点『N% increased bonuses gained from Equipped Quiver』→ Weapon2 槽
     /// scale；副手非箭袋时不收集。
@@ -2616,7 +2611,7 @@ mod tests {
         );
     }
 
-    /// （M4-m）herald 在场名收集（vendor CalcPerform.lua:1792-1805 heraldList +
+    /// herald 在场名收集（vendor CalcPerform.lua:1792-1805 heraldList +
     /// buff 分支命名 `gsub(" ","")`——连接词 of 保持小写，oracle condVars
     /// `AffectedByHeraldofPlague` 同形）。按名去重；support/非 herald 不计。
     #[test]
@@ -2717,7 +2712,7 @@ mod tests {
         assert!(buff_skill_specs(&bare, &data).is_empty());
     }
 
-    /// （M4-l）vendor curse 注册前置：statMap 无任何 GlobalEffect Curse 载荷的
+    /// vendor curse 注册前置：statMap 无任何 GlobalEffect Curse 载荷的
     /// curse 技能（Repulsion，per-set statMap 全空 → buffList 恒空，
     /// CalcActiveSkill.lua:976-1041）不产出 BuffSpec——不入 curse 槽、不计
     /// `Multiplier:CurseOnEnemy`（CalcPerform.lua:2969 `#curseSlots`）；
@@ -2753,7 +2748,7 @@ mod tests {
         assert_eq!(hex.kind, BuffKind::Curse);
     }
 
-    /// （M4-L）Debuff 分类：Frost Bomb（非 aura/curse 主动技能）的
+    /// Debuff 分类：Frost Bomb（非 aura/curse 主动技能）的
     /// `active_skill_all_elemental_exposure_magnitude`（GlobalEffect Debuff，
     /// SkillStatMap.lua:1721-1725）→ BuffSpec(kind=Debuff)，mods = 三元素
     /// `<El>Exposure BASE 20`（statset 常量原值）。vendor 对全部 activeSkillList
@@ -2858,7 +2853,7 @@ mod tests {
         );
     }
 
-    // ── M3-W4：curse 效果词条 stat→mod 映射（statmap curse 域）─────────────
+    //  curse 效果词条 stat→mod 映射（statmap curse 域）
 
     /// curse spec 的 mods 经 statmap curse 域填充：Despair → 敌侧 `ChaosResist`
     /// BASE（负值减抗，SkillGem 归因）；Sniper's Mark → `SelfCritMultiplier`
@@ -2928,7 +2923,7 @@ mod tests {
                 .any(|m| m.name.as_str() == "TemporalChainsActionSpeed"),
             "载荷名无 pobr 消费方（TemporalChainsActionSpeed）→ 不注入（落 Compare 报表）"
         );
-        // M4-l：BuffExpireFaster 允收（消费方 = ailment::debuff_duration_mult，
+        //  BuffExpireFaster 允收（消费方 = ailment::debuff_duration_mult，
         // CalcOffence.lua:1833-1835 / :5040）→ 敌侧 MORE 负值入 spec.mods。
         let expire = chains
             .mods
@@ -3123,7 +3118,7 @@ mod tests {
         );
     }
 
-    // ── M3-T2 B4：mode_combat 战斗条件自动置位 ──────────────────────────────
+    //  mode_combat 战斗条件自动置位
 
     /// combat_conditions 逐分支对照 vendor CalcPerform.lua:242-266：attack/spell
     /// 互斥、Movement/Minion/Channel 叠加、Duration 抑制 minion、豁免清空。
@@ -3219,7 +3214,7 @@ mod tests {
         );
     }
 
-    // ── 触发链路 build 层接线（findings 03-01/03-02/03-06）──────────────────
+    // 触发链路 build 层接线（findings 03-01/03-02/03-06）
 
     /// 内建触发主技能（`ElementalStormPlayer`：Spell/Damage，cd 3s，Triggered/InbuiltTrigger）
     /// → orchestrator 注入触发冷却 → perform fill_trigger 写出非占位 trigger_rate_cap /
@@ -3265,7 +3260,7 @@ mod tests {
     /// additionalGrantedEffects 一并加入 socketGroupSkillList）。
     #[test]
     fn meta_gem_expands_additional_granted_effect_as_main_skill() {
-        // 本测试模块无共享 effect 构造器（support 裁决测试模块私有），就地构造。
+        // 本测试模块无共享 effect 构造器，就地构造。
         let mk_effect = |id: &str, skill_types: &[&str]| pobr_data::catalog::GrantedEffectDef {
             id: id.into(),
             is_support: false,
@@ -3433,11 +3428,11 @@ mod tests {
         assert!(mods_none.is_empty(), "非触发技能不应注入触发词条");
     }
 
-    // ── M4-T5 W-E1/W-E2：trigger_configs 识别 + 源速率子计算 ─────────────────
+    //  trigger_configs 识别 + 源速率子计算
 
-    /// CoC fixture（蓝图 §4.1 T5 门禁点名）：组 = [攻击, MetaCastOnCritPlayer, 法术]，
-    /// 主技能 = 法术。W-E1 经 trigger_configs 的 `match_effect_ids` 识别出 CoC 触发
-    /// 关系（trigger 面板不再退化为自施法 0），W-E2 折入源命中/暴击。
+    /// CoC fixture（门禁点名）：组 = [攻击, MetaCastOnCritPlayer, 法术]，
+    /// 主技能 = 法术。经 trigger_configs 的 `match_effect_ids` 识别出 CoC 触发
+    /// 关系（trigger 面板不再退化为自施法 0），折入源命中/暴击。
     #[test]
     fn coc_group_recognized_and_trigger_rate_filled() {
         let data = repo_data();
@@ -3485,7 +3480,7 @@ mod tests {
         );
     }
 
-    /// CoC 方向性断言（蓝图 §4.1 T5 门禁）：源技能 +100% 攻速 → 触发速率（与 DPS
+    /// CoC 方向性断言：源技能 +100% 攻速 → 触发速率（与 DPS
     /// 的速率因子）同步上升——14-G2「源速率不随攻速增长」的回归防线。
     #[test]
     fn coc_directional_attack_speed_raises_trigger_rate() {
@@ -3521,7 +3516,7 @@ mod tests {
         );
     }
 
-    /// W-E2 递归防护（蓝图 §5）：① 循环（源 = 被触发自身）→ None（退基础口径）；
+    /// 递归防护：① 循环（源 = 被触发自身）→ None（退基础口径）；
     /// ② 深度护栏内（子计算进行中）→ None；③ 护栏内 trigger_modifiers 整体剥离。
     #[test]
     fn trigger_subcalc_recursion_guards() {
@@ -3701,7 +3696,7 @@ mod tests {
         assert!(names.contains(&"TriggerSourceGlobal"));
     }
 
-    // ── M0-W3：空手基底 / 武器类型查表切换（搬迁不变式回归）──────────────────
+    //  空手基底 / 武器类型查表切换（搬迁不变式回归）
 
     /// 空手基底切到注入表后与旧硬编码 match 逐值一致（`BuildData::empty()` 走
     /// Default fallback，= JSON 逐值；9 个职业 + 未知职业 fallback 全覆盖）。
@@ -3809,7 +3804,7 @@ mod tests {
         }
     }
 
-    /// cfg 武器位供给（W-A1 commit-2 引入，切换 commit 起常驻）：按 vendor
+    /// cfg 武器位供给：按 vendor
     /// getWeaponFlags 派生（与 Using* 条件同源同 gating）。
     #[test]
     fn weapon_cfg_flags_dual_write_channel() {

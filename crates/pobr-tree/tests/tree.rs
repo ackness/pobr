@@ -315,7 +315,7 @@ fn from_nodes_round_trips_with_positions() {
     assert_eq!(tree.nodes_in_radius(NodeId(1), 100.0), vec![NodeId(2)]);
 }
 
-// --- Mastery selection tests ---
+// Mastery selection tests
 
 /// 当 mastery_effects 中包含对应节点的选择时，应只注入选定的单条词条。
 #[test]
@@ -494,7 +494,7 @@ fn attribute_choice_node_without_override_keeps_original_text() {
     );
 }
 
-// ---- isSwitchable 按职业/飞升变体（M4-J，对齐 PoB2 PassiveSpec.lua:1251-1256）----
+// isSwitchable 按职业/飞升变体（对齐 PoB2 PassiveSpec.lua:1251-1256）
 
 /// 自构造 isSwitchable 节点 fixture：基础版 + Witch 职业变体 + Abyssal Lich 飞升变体。
 fn switchable_fixture() -> HashMap<u32, PassiveNodeDef> {

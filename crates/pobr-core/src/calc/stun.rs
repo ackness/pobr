@@ -1,12 +1,12 @@
-//! Stun 体系（M2 Track E，13-G12；PoB2 `CalcDefence.lua:2525-2643` stun 段）。
+//! Stun 体系（13-G12；PoB2 `CalcDefence.lua:2525-2643` stun 段）。
 //!
 //! 产出三件：`StunThreshold`（基底切换 + AddESToStunThreshold + BASE/INC/MORE 聚合）、
 //! `SelfStunChance`（`StunBaseMult × 有效伤 / 阈值`，物理 ×0.25 加权）、
 //! `StunDuration`（按服务器帧上取整）。
 //!
-//! 常量全部经 `cfg.constants` 注入（game_constants 已有 stun 全套，蓝图明令勿再加）；
+//! 常量全部经 `cfg.constants` 注入；
 //! keystone flag（ChaosInoculation）由调用方从 C-1 `DefenceKeystones` 快照经
-//! [`StunInputs`] 传入，本模块不散读 keystone（蓝图 §3.3 契约 2）。
+//! [`StunInputs`] 传入，本模块不散读 keystone。
 
 use pobr_data::prelude::*;
 
@@ -38,7 +38,7 @@ pub struct StunInputs {
     /// `notAvoidChance = 100 − avoid_stun`，:2554-2558）。
     pub avoid_stun: f64,
     /// CI keystone（阈值基底取「CI 前 Life」，:2537-2539）；
-    /// 调用方从 C-1 `DefenceKeystones::chaos_inoculation` 快照传入（蓝图 §3.3 契约 2）。
+    /// 调用方从 C-1 `DefenceKeystones::chaos_inoculation` 快照传入。
     pub chaos_inoculation: bool,
 }
 
@@ -116,7 +116,7 @@ pub fn calc_stun_threshold(db: &ModDb, cfg: &CalcConfig, inp: &StunInputs) -> f6
 ///   damageCategoryConfig 默认 "Average" 分支再 `× PhysicalStunMult`（:2620-2621，
 ///   `monster.physical_hit_stun_multiplier_pct/100 = 1.0`）。非 Average 的
 ///   `× PhysicalStunMult × (1 + MeleeStunMult×3)/4` 分支（:2618-2619）依赖 config
-///   输入，M3 config_interpreter 接入后扩参，公式骨架不变。
+///   输入，config_interpreter 接入后扩参，公式骨架不变。
 /// - 几率（:2623-2624）：`baseStunChance = min(StunBaseMult × 有效伤 / 阈值, 100)`；
 ///   低于 `MinStunChanceNeeded`(20) 归 0；再 `× notAvoidChance / 100`。
 pub fn calc_stun(db: &ModDb, cfg: &CalcConfig, inp: &StunInputs) -> StunResult {
@@ -126,7 +126,7 @@ pub fn calc_stun(db: &ModDb, cfg: &CalcConfig, inp: &StunInputs) -> StunResult {
     // :2554-2558 notAvoidChance 由上游 avoid_stun 还原（已含 StunImmune/ES 隐式减半）。
     let not_avoid = (100.0 - inp.avoid_stun).max(0.0);
 
-    // --- 时长（:2584-2595）---
+    // 时长（:2584-2595）
     let stun_duration = if not_avoid <= 0.0 {
         // :2584-2586 「Cannot be Stunned」→ 0。
         0.0
@@ -139,7 +139,7 @@ pub fn calc_stun(db: &ModDb, cfg: &CalcConfig, inp: &StunInputs) -> StunResult {
         round((raw / tick).ceil() * tick)
     };
 
-    // --- 受眩晕几率（:2617-2624）---
+    // 受眩晕几率（:2617-2624）
     // :2617 物理 ×0.25 加权；:2620-2621 默认 "Average" 口径 × PhysicalStunMult。
     let effective_damage = (inp.total_taken_hit + inp.physical_taken_hit * 0.25)
         * (cfg.constants.monster().physical_hit_stun_multiplier_pct / 100.0);

@@ -371,7 +371,7 @@ fn skill_conversion_chains_into_global_conversion() {
     assert!(fire.type_path.contains(&DamageType::Fire));
 }
 
-/// random element 档折叠（M4-H；vendor CalcOffence.lua:1175-1200：
+/// random element 档折叠（vendor CalcOffence.lua:1175-1200：
 /// `DamageGainAsRandom BASE n` 在 physMode=AVERAGE（configInput 缺省）下展开为
 /// `DamageGainAs{Fire,Cold,Lightning} BASE n/3`——PoBR 在 build_gain_matrix 折叠
 /// 同口径；druid-oracle ember-fusillade 的 Relentless Vindicator 树点实例）。

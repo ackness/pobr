@@ -4,12 +4,12 @@
 //! （纯计算）保持零 I/O。本 crate 用 serde 把 `data/<version>/` 的最小 JSON
 //! 反序列化为 [`pobr_data::catalog`] 类型，供上层按需取用。
 //!
-//! 模块划分（M0 重构，架构文档 20 §2.3）：
+//! 模块划分：
 //! - [`manifest`]：manifest v1/v2 加载；
 //! - [`paths`]：三层目录下的域文件定位（`base/` 优先，版本根回退兼容旧布局）；
 //! - [`overlay`]：base→overlay 确定性 merge 引擎；
-//! - [`ruleset`]：`RuleSet` 聚合入口骨架（供 pobr-build 注入 pobr-core，P9）；
-//! - [`domains`]：M0-W2 九表的按域 loader（当前为空壳）。
+//! - [`ruleset`]：`RuleSet` 聚合入口骨架（供 pobr-build 注入 pobr-core）；
+//! - [`domains`]：九表的按域 loader（当前为空壳）。
 
 pub mod domains;
 pub mod manifest;
@@ -280,7 +280,7 @@ impl GameData {
 
     /// 加载技能宝石定义（身份取自基底 id），并把 `overlay/gem_effects.json` 的
     /// 宝石→授予效果连边（`granted_effect_id` / `additional_granted_effect_ids`，
-    /// vendor `Data/Gems.lua` 抽取——`.dat` `GemEffects` 表不可下载，M1-T5.1）按
+    /// vendor `Data/Gems.lua` 抽取——`.dat` `GemEffects` 表不可下载）按
     /// `gem_id` merge 到纯 base 之上（overlay 缺失时 = 纯 base，连边字段保持空）。
     pub fn skill_gems(&self) -> Result<Vec<SkillGemDef>, LoadError> {
         let mut gems: Vec<SkillGemDef> = self.load_domain("skill_gems.json")?;
@@ -304,8 +304,8 @@ impl GameData {
 
     /// 加载授予效果定义（含解析后的主动技能链接 + StatSet/CostTypes 索引）。
     ///
-    /// 加载期把 `overlay/granted_effect_minions.json`（宝石→召唤物外键边车，
-    /// M5a-A3）merge 到 base 之上：按 `effect_id` 匹配，拼入 `minion_list` /
+    /// 加载期把 `overlay/granted_effect_minions.json`（宝石→召唤物外键边车）
+    /// merge 到 base 之上：按 `effect_id` 匹配，拼入 `minion_list` /
     /// `add_minion_list` / `minion_uses` / `minion_has_item_set`（base
     /// `granted_effects.json` 不含这些字段，缺 overlay 文件 = 全空，向后兼容）。
     pub fn granted_effects(&self) -> Result<Vec<GrantedEffectDef>, LoadError> {
@@ -347,13 +347,13 @@ impl GameData {
     }
 
     /// 加载授予效果的**多 statSet 分等级 stat 集**（按 effect id 排序的数组，
-    /// 每项 = 主 set + 附加 set，M1-T5.2）。空缺（旧数据包无此域）时返回空 Vec，
+    /// 每项 = 主 set + 附加 set）。空缺（旧数据包无此域）时返回空 Vec，
     /// 向后兼容。两个 overlay 在此 merge 到纯 base 之上：
     /// - `skill_overrides.json` 的 statSet 级覆盖值（skill_attack_speed_more，
     ///   PoB2 自带 baseMods 常量，不在 GGG `.dat` 中）；
     /// - `stat_set_labels.json` 的形态 label / vendor 导出序号（`.dat` `Label`
     ///   列的 FK 目标表不可下载，vendor 抽取）；
-    /// - `skill_overrides.json` 的 dotIs* 布尔（M4-T4 W-D1，labels 之后 merge，
+    /// - `skill_overrides.json` 的 dotIs* 布尔（labels 之后 merge，
     ///   set 定位依赖 vendor 序号）。
     pub fn skill_stat_sets(&self) -> Result<Vec<SkillStatSetDef>, LoadError> {
         let mut sets =
@@ -395,7 +395,7 @@ impl GameData {
                 }
             }
         }
-        // dotIs* 布尔（M4-T4 W-D1）必须在 labels merge 之后——set 定位依赖
+        // dotIs* 布尔必须在 labels merge 之后——set 定位依赖
         // 上面刚回填的 `vendor_set_index`（overlay 条目的 `stat_set` 是 vendor
         // statSets 序号）。labels 边车缺失时仅 `stat_set = None`（主 set）条目
         // 可命中，其余保守跳过（默认全 false 不剥 flag）。
@@ -406,7 +406,7 @@ impl GameData {
                     message,
                 },
             )?;
-            // 隐式 stat（M4-H）：与 dotIs* 同 set 定位语义（vendor 序号依赖
+            // 隐式 stat：与 dotIs* 同 set 定位语义（vendor 序号依赖
             // labels merge 回填），同样在 labels 之后。
             domains::skill_overrides::apply_implicit_stat_overrides(&mut sets, overrides).map_err(
                 |message| LoadError::Overlay {

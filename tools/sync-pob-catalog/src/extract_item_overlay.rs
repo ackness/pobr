@@ -1,11 +1,11 @@
-//! `extract-lua --what mod-scalability|runes|uniques|catalysts`
-//! （pre-M5c 数据生产，M5c 蓝图 WI-B1）：物品编辑态四张 overlay 表。
+//! `extract-lua --what mod-scalability|runes|uniques|catalysts`：物品编辑态
+//! 四张 overlay 表。
 //!
 //! - `mod-scalability`：`Data/ModScalability.lua`（纯 return 表）→
 //!   `overlay/mod_scalability.json`；
 //! - `runes`：`Data/ModRunes.lua` → `overlay/runes.json`；
 //! - `uniques`：`Data/Uniques/*.lua`（raw 文本块）→ `overlay/uniques.json`
-//!   （P15 双层：raw 逐字节保留 + name/base/variants 最小预解析索引）；
+//!   （双层：raw 逐字节保留 + name/base/variants 最小预解析索引）；
 //! - `catalysts`：`Classes/Item.lua:14-29` 三个 local 表字面量（`%b{}` 截取 +
 //!   load 执行）→ `overlay/catalysts.json`。
 //!
@@ -62,9 +62,7 @@ pub const DEFAULT_UNIQUE_FILES: &[&str] = &[
     "Special/race",
 ];
 
-// ---------------------------------------------------------------------------
 // mod-scalability
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize)]
 struct ModScalabilityDoc {
@@ -88,9 +86,7 @@ pub fn run_extract_mod_scalability(args: &ExtractLuaArgs) -> io::Result<String> 
     Ok(to_pretty_json(&ModScalabilityDoc { meta, entries }))
 }
 
-// ---------------------------------------------------------------------------
 // runes
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize)]
 struct RunesDoc {
@@ -113,9 +109,7 @@ pub fn run_extract_runes(args: &ExtractLuaArgs) -> io::Result<String> {
     Ok(to_pretty_json(&RunesDoc { meta, runes }))
 }
 
-// ---------------------------------------------------------------------------
 // uniques
-// ---------------------------------------------------------------------------
 
 /// 引导脚本输出行（raw 层；索引列由本模块预解析）。
 #[derive(Debug, Deserialize)]
@@ -155,7 +149,7 @@ pub fn run_extract_uniques(args: &ExtractLuaArgs) -> io::Result<String> {
 
 /// raw 文本块 → 双层 UniqueDef：前两行 = name/base，`Variant:`/`League:`/
 /// `Source:`/`Upgrade:` 行进最小索引（词条模板行解析留 pobr-item 运行时，
-/// M5c WI-A4——P15 裁决的「预解析索引最小化」）。
+/// ——「预解析索引最小化」）。
 fn parse_unique_block(item_type: String, raw: String) -> io::Result<UniqueDef> {
     let mut lines = raw.lines().filter(|l| !l.trim().is_empty());
     let name = lines
@@ -196,9 +190,7 @@ fn parse_unique_block(item_type: String, raw: String) -> io::Result<UniqueDef> {
     })
 }
 
-// ---------------------------------------------------------------------------
 // catalysts
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize)]
 struct CatalystsDoc {
@@ -222,9 +214,7 @@ pub fn run_extract_catalysts(args: &ExtractLuaArgs) -> io::Result<String> {
     Ok(to_pretty_json(&CatalystsDoc { meta, catalysts }))
 }
 
-// ---------------------------------------------------------------------------
 // 公共
-// ---------------------------------------------------------------------------
 
 /// 校验固定文件集目标的 --files（防误用）。
 fn expect_files(args: &ExtractLuaArgs, expected: &[&str], what: &str) -> io::Result<()> {

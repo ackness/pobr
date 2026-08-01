@@ -1,15 +1,15 @@
-//! special 词条模板解释器（M5b 蓝图 §2.2）。
+//! special 词条模板解释器。
 //!
 //! 输入 = `overlay/special_mods.json` + `generated/special_derived.json` 拼接后的
 //! [`SpecialTemplateDef`] 列表（schema 见 [`pobr_data::catalog::parser_rules`]）。
 //! 载入期编译（[`RegexSet`] 预筛 + 逐条 [`Regex`]，整行锚定 + 输入小写规范），
 //! 运行期对单行（已小写规范化）做整行匹配并实例化为 [`Modifier`]。
 //!
-//! **求值器单点（00-index 裁决 §4-1）**：`$n` 数值占位 / 五算子 / 受限谓词的求值
+//! **求值器单点**：`$n` 数值占位 / 五算子 / 受限谓词的求值
 //! 复用 [`crate::rules::value_expr`]（config / special / parser 三处同一套受限语言，
 //! 禁三套方言）。本模块只负责：① 把 [`ValueOpDef`] 算子链编译为
 //! `value_expr::ValueExpr` 树后调 `value_expr::eval`；② enums 闭集查表（DSL 微扩展，
-//! 00-index §4.2-3 已批准——每个输出都是表内显式字面量，非字符串拼接）。
+//! 已批准——每个输出都是表内显式字面量，非字符串拼接）。
 //!
 //! **DSL 硬边界**（20-target-architecture §5）：数值捕获 `(\d+(?:\.\d+)?)`、词类捕获
 //! 显式闭集、禁 `(.+)` 开放捕获（开放捕获条目走 `handler_id`）。本解释器不强制
@@ -494,7 +494,7 @@ fn damage_type_bit(name: &str) -> Option<DamageType> {
 /// - `Multiplier`（**字面** var/div/limit；按某资源/属性数量线性缩放，读
 ///   `cfg.multiplier(var)`）；
 /// - `PerStat`（**字面** stat/div/limit；按 actor 已算出 stat 线性缩放，读
-///   `EvalContext::stat_lookup`——运行时 [`ModTag::PerStat`] M4-T1 已接通）；
+///   `EvalContext::stat_lookup`——运行时 [`ModTag::PerStat`]已接通）；
 /// - `PercentStat`（V2 slice 2：**字面** stat/percent；按已算出 stat 的百分比
 ///   缩放，`value = ceil(value × stat × percent/100)`，运行时
 ///   [`ModTag::PercentStat`]。vendor 的 `statList`/`percentVar`/`actor`/
@@ -1030,7 +1030,7 @@ mod tests {
         assert_eq!(inner[0].value.as_number(), Some(-20.0));
     }
 
-    /// PerStat tag 映射：按已算出 stat 缩放（M4-T1 运行时通道）。
+    /// PerStat tag 映射：按已算出 stat 缩放。
     #[test]
     fn per_stat_tag_maps() {
         let d = def(

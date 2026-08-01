@@ -3,7 +3,7 @@
 //!
 //! vendor 产出 `mod("ExplodeMod", "LIST", { type, value=chance, amount, ... })`
 //! 加 `flag("CanExplode")`。PoBR calc 侧**尚无敌方爆炸消费点**——本 handler 按
-//! 蓝图 C-3 约定产出 PoB2 同款标记 mod（值进 ModDb、消费缺口另登记，不在 M5b
+//! C-3 约定产出 PoB2 同款标记 mod（值进 ModDb、消费缺口另登记，不在
 //! 扩 calc）：`CanExplode` FLAG（与 vendor `flag("CanExplode")` 对齐）、
 //! `EnemyExplodeChance` BASE 取 `$1`（爆炸触发几率，承载 vendor `value=chance`）、
 //! `EnemyExplodeAmount` BASE 取 `$2`（最大生命百分比，承载 vendor `amount`）。

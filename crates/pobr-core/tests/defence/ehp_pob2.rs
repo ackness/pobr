@@ -1,4 +1,4 @@
-//! M2 Track F（F-1）：EHP PoB2 口径新管线集成测试。
+//! （F-1）：EHP PoB2 口径新管线集成测试。
 //!
 //! vendor 对照：`vendor/PathOfBuilding-PoE2/src/Modules/CalcDefence.lua`
 //! - `numberOfHitsToDie`：:2979-3145（循环扣池 + 递归加速 + overkill 折算）；
@@ -7,7 +7,7 @@
 //! - not-hit 层：:2015-2026；mitigation 层：:3155-3247；TotalEHP：:3322。
 //!
 //! F-3 口径切换后：canonical `total_ehp`/`*_max_hit` = 新口径值（`*_pob2` 为同值
-//! 别名），旧 lowest-max-hit 口径保留在 `total_ehp_lowest_max_hit`（蓝图 §5 R2 行）。
+//! 别名），旧 lowest-max-hit 口径保留在 `total_ehp_lowest_max_hit`。
 
 use pobr_core::calc::actor::{Actor, ActorBaseStats};
 use pobr_core::calc::env::Env;
@@ -57,9 +57,7 @@ fn naive_hits_to_die(damage_in: &TypedDamage, pools_full: &PoolState, ctx: &Pool
     hits
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 敌人进伤 placeholder（ConfigOptions.lua:1982-1996）
-// ─────────────────────────────────────────────────────────────────
 
 /// 手算锁值：`monsterDamageTable[82] = 353.67`（monster_scaling.json）。
 /// Pinnacle（DPSMult = 8/4.4）：round(353.67 × 1.5 × 8/4.4) = round(964.55) = 965；
@@ -83,9 +81,7 @@ fn enemy_damage_placeholder_matches_vendor_formula() {
     assert_eq!(none.chaos, 48.0);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // numberOfHitsToDie（CalcDefence.lua:2979-3145）
-// ─────────────────────────────────────────────────────────────────
 
 /// 纯生命池整除：1000 life / 100 per hit = 10 击（overkill 0，无小数折算）。
 #[test]
@@ -162,7 +158,7 @@ fn hits_to_die_infinite_branches() {
     assert!(number_of_hits_to_die(&small, &pools, &ctx, &default_params()).is_infinite());
 }
 
-/// 加速路径 vs 朴素逐击路径等价（蓝图 Track F 测试计划；加速只是跳步优化，
+/// 加速路径 vs 朴素逐击路径等价（Track F 测试计划；加速只是跳步优化，
 /// 对线性消耗的池形态结果必须一致）。覆盖三类池形态：
 /// ① life+ES（单伤害类型，分层线性消耗）；② MoM 30%；③ guard 比例吸收层。
 #[test]
@@ -271,9 +267,7 @@ fn accelerated_path_bounded_deviation_on_mixed_chaos_es() {
     );
 }
 
-// ─────────────────────────────────────────────────────────────────
 // taken_hit_per_type（panel 路径 :2171-2444）
-// ─────────────────────────────────────────────────────────────────
 
 /// 中性快照恒等：shift 恒等、乘数 1 → TakenHit = 进伤原值、面板 DR = 0。
 #[test]
@@ -322,9 +316,7 @@ fn taken_hit_per_type_applies_resist_and_armour() {
     assert!((taken.fire - 125.0).abs() < 1e-9);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // max_hit_pob2（:3540-3697）
-// ─────────────────────────────────────────────────────────────────
 
 fn max_hit_inputs<'a>(
     mit: &'a MitigationCtx,
@@ -397,9 +389,7 @@ fn max_hit_zero_taken_multi_is_immune() {
     assert!(max_hit_pob2(DamageType::Chaos, &inputs, 1.0).is_infinite());
 }
 
-// ─────────────────────────────────────────────────────────────────
 // not-hit 层（:2015-2026）
-// ─────────────────────────────────────────────────────────────────
 
 /// 四分型 NotHit 合成：evade 30% + avoidAll 20% →
 /// melee NotHit = 100 − 0.7 × 0.8 × 100 = 44%（手算）；
@@ -428,9 +418,7 @@ fn not_hit_suite_combines_evade_and_avoidance() {
     assert!((nh.average - (44.0 + 49.6 + 20.0 + 28.0) / 4.0).abs() < 1e-9);
 }
 
-// ─────────────────────────────────────────────────────────────────
 // 端到端：perform 双跑不变式 + 新字段产出
-// ─────────────────────────────────────────────────────────────────
 
 /// 端到端（setup_enemy 注入 placeholder → perform）：新字段全部产出，
 /// 且 F-3 切换不变式成立——canonical `total_ehp` == `total_ehp_pob2`。

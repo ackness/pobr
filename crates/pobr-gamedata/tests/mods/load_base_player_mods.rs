@@ -1,10 +1,10 @@
-//! base_player_mods.json 加载 + 与 pobr 现有 Rust 准源逐值对照（搬迁不变式 P8）。
+//! base_player_mods.json 加载 + 与 pobr 现有 Rust 准源逐值对照（搬迁不变式）。
 //!
 //! 准源分布（本表收录的 14 条均有 Rust 准源，JSON 值必须与之逐值相等）：
 //! - 充能：`pobr-core/src/calc/survivability.rs`（`DEFAULT_MAX_CHARGES` /
 //!   `DEFAULT_CHARGE_DURATION_SECONDS`）；
 //! - 诅咒/标记上限：`pobr-core/src/calc/buff_pass.rs`
-//!   （`DEFAULT_ENEMY_CURSE_LIMIT` / `DEFAULT_ENEMY_MARK_LIMIT`，M3-T3）；
+//!   （`DEFAULT_ENEMY_CURSE_LIMIT` / `DEFAULT_ENEMY_MARK_LIMIT`）；
 //! - 等级派生基线：`pobr-core/src/character.rs`（`CharacterBase` 公式常量）；
 //! - 暴击伤害基线：`pobr-data/src/constants.rs`（`PLAYER_BASE_CRIT_DAMAGE_BONUS`）；
 //! - 终局抗性惩罚：`pobr-core/src/campaign.rs`（`CampaignProgress::Endgame`，与
@@ -92,7 +92,7 @@ fn charge_baselines_match_survivability_constants() {
     }
 }
 
-/// 诅咒/标记上限基线 == buff_pass.rs 现有常量（M3-T3 curse limit 的基线项：
+/// 诅咒/标记上限基线 == buff_pass.rs 现有常量（curse limit 的基线项：
 /// `EnemyCurseLimit = 基线 1 + Σ BASE 词条`，buff_pass 以常量形式加在 Sum 之上，
 /// 本表迁成同值 mod 条目）。
 /// vendor：CalcSetup.lua:648（`NewMod("EnemyCurseLimit","BASE",1,"Base")`）/
@@ -127,7 +127,7 @@ fn level_derived_baselines_match_character_base_formulas() {
     let c0 = bare_character(0);
     let c1 = bare_character(1);
     let c2 = bare_character(2);
-    // M0-W3 起公式系数走注入；此处取 Default fallback（与 JSON 逐值相等）。
+    // 起公式系数走注入；此处取 Default fallback（与 JSON 逐值相等）。
     let cc = CharacterConstantsDef::default();
 
     // 形如「value/级 + base」的条目：与对应公式的 (差分, 截距) 逐值对照。

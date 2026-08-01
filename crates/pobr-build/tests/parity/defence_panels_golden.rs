@@ -1,7 +1,7 @@
-//! M2 Track D 专项 golden fixture：Block / Spirit / Ward / Deflection 面板族
+//! 专项 golden fixture：Block / Spirit / Ward / Deflection 面板族
 //! 对 ninja build 黄金值（`meta.json::player_stats`）@5% 断言。
 //!
-//! 蓝图 m2-defence §2 Track D 门禁：新列尚未进 ninja_parity defensive_rows
+//! Track D 门禁：新列尚未进 ninja_parity defensive_rows
 //! （W2/F 才扩列），以本文件的专项断言 + 旧基线不倒退做双保险。
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
@@ -64,7 +64,7 @@ fn assert_within_5pct(label: &str, build: &str, pobr: f64, golden: f64) {
 }
 
 /// 盾 build 的 `EffectiveBlockChance` @5%（13-G8）：warrior 双盾系 ninja build
-/// 是现成 fixture（蓝图 §2 Track D 测试计划）。
+/// 是现成 fixture。
 #[test]
 fn block_chance_matches_golden_on_shield_builds() {
     let data = load_data();

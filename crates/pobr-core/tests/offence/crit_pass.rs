@@ -1,4 +1,4 @@
-//! M4-T2 W-B3：暴击/非暴击双 pass 集成测试。
+//!  暴击/非暴击双 pass 集成测试。
 //!
 //! I5 等价性（无 CriticalStrike 条件词条 → 短路走旧单因子，数学恒等
 //! `blend(c, x×m, x) == x×crit.effect`）+ 暴击腿专属词条只放大 crit 腿 +

@@ -1,4 +1,4 @@
-//! `overlay/buff_definitions.json` 加载测试（M3 前置）。
+//! `overlay/buff_definitions.json` 加载测试。
 //!
 //! 人工归纳表的入库锚点：逐 buff 公式参数对照 vendor
 //! `CalcPerform.lua doActorMisc`（行号见各 vendor_ref）。
@@ -38,7 +38,7 @@ fn find<'a>(doc: &'a BuffDefinitionsDef, id: &str) -> &'a BuffDef {
         .unwrap_or_else(|| panic!("缺 buff {id}"))
 }
 
-/// 排序 + 首批覆盖面（蓝图 B2 清单的 PoE2 实存子集）。
+/// 排序 + 首批覆盖面。
 #[test]
 fn sorted_and_first_batch_coverage() {
     let doc = load();
@@ -60,7 +60,7 @@ fn sorted_and_first_batch_coverage() {
     }
 }
 
-/// buff handler 预算 ≤8（蓝图 B2；当前 4：fortify/fanaticism/elusive/
+/// buff handler 预算 ≤8（B2；当前 4：fortify/fanaticism/elusive/
 /// onslaught_flask）。
 #[test]
 fn handler_budget() {
@@ -144,7 +144,7 @@ fn vendor_refs_well_formed() {
     let doc = load();
     // 允许的 vendor 行段：doActorMisc（CalcPerform :578-850，主体）+
     // Arcane Surge 注入段（CalcDefence :1606-1617，vendor 把该 buff 写在
-    // doActorLifeManaSpirit 之后、recovery 之前——M4-n 条目）。
+    // doActorLifeManaSpirit 之后、recovery 之前——条目）。
     let allowed: &[(&str, u32, u32)] = &[
         ("Modules/CalcPerform.lua", 578, 850),
         ("Modules/CalcDefence.lua", 1606, 1617),

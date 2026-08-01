@@ -272,7 +272,7 @@ fn added_damage_effectiveness_only_scales_flat_added_not_weapon_base() {
     assert_eq!(phys.avg(), 150.0);
 }
 
-/// M4-m 测试：addedMult 含 INC 腿——vendor `calcLib.mod`（CalcTools.lua:16-18）=
+/// 测试：addedMult 含 INC 腿——vendor `calcLib.mod`（CalcTools.lua:16-18）=
 /// `(1 + Sum(INC, "Added<Type>Damage", "AddedDamage")/100) × More(...)`。
 ///
 /// 出处：PoB2 CalcOffence.lua:3909 + CalcTools.lua:16-18。
@@ -301,7 +301,7 @@ fn added_damage_effectiveness_includes_inc_leg() {
     assert_eq!(phys.avg(), 150.0);
 }
 
-/// M4-m 测试：`Added<Type>Damage` 分类型 INC 只作用于对应类型的 flat added。
+/// 测试：`Added<Type>Damage` 分类型 INC 只作用于对应类型的 flat added。
 #[test]
 fn added_type_damage_inc_is_type_scoped() {
     let mut db = ModDb::new();
@@ -320,10 +320,8 @@ fn added_type_damage_inc_is_type_scoped() {
     assert_eq!(component(&output, DamageType::Cold).avg(), 10.0);
 }
 
-// ---------------------------------------------------------------------------
 // 04-01：Min<Type>Damage / Max<Type>Damage 分 min/max 独立 MORE 乘区
 // （PoB2 CalcOffence.lua:138-139,153-154）
-// ---------------------------------------------------------------------------
 
 #[test]
 fn min_max_type_more_scales_only_one_end() {

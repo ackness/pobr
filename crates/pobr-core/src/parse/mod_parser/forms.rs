@@ -1,4 +1,4 @@
-//! 27~28 种 form 求值（蓝图 §3；vendor `ModParser.lua:6460-6655` dispatch）。
+//! 27~28 种 form 求值（vendor `ModParser.lua:6460-6655` dispatch）。
 //!
 //! 输入 = form id + 捕获 + 当前剩余文本（小写 + 原大小写双视图）+ 编译规则表；
 //! 输出 [`FormResult`]：mod 名集 + 类型 + 值集 + suffix + 额外 tag + keyword/flag
@@ -27,7 +27,7 @@ pub struct FormResult {
     pub default_keyword: KeywordFlags,
     /// GRANTS/REMOVES 的 local `{Hand}Attack` 条件标记（消费侧 item ingest 实例化）。
     pub hand_attack_condition: bool,
-    /// name_map 命中条目附带的效果（keyword_flags / flags / tags）——M6.3 归一：
+    /// name_map 命中条目附带的效果（keyword_flags / flags / tags）——.3 归一：
     /// 引擎需把 name_map `effects` 注入产物（vendor `modNameList` 条目自带的
     /// keywordFlags/tag，如 `magnitude of poison you inflict` 的 Poison kw、
     /// 各伤害专名的 DamageType tag）。engine 侧 absorb 进累加器。
@@ -218,7 +218,7 @@ pub fn eval_form(
             // modName + {Name} MORE 100 + Multiplier:{Name}Doubled OVERRIDE 1
             // （vendor :6618-6655，依赖 globalLimit 聚合）。简化：产 MORE 100
             // 主 mod；Multiplier mod 的 globalLimit 形态留 engine 处置（本批
-            // 仅产主 mod，覆盖率报表单列——见蓝图 §3 表注 DOUBLED）。
+            // 仅产主 mod，覆盖率报表单列——见表注 DOUBLED）。
             let (idx, rest) = scan_name(name_lower, name_original, rules)?;
             let names = rules.name_map.payload(idx).names.clone();
             result.remaining = rest;
@@ -335,10 +335,10 @@ fn dmg_form(
         .get(1)
         .and_then(|c| c.parse::<f64>().ok())
         .ok_or(FormReject::Nil)?;
-    // M6.3 归一：PoBR added-damage 名为 `{Type}DamageMin/Max`（legacy 同名），
+    // .3 归一：PoBR added-damage 名为 `{Type}DamageMin/Max`（legacy 同名），
     // 而非 vendor `{Type}Min/Max`；附 DamageType tag（与 legacy 一致）。
     push_added_damage(result, &dt, min, max);
-    // M6.3 归一：「to Attacks/Spells」作用域 legacy 用 ModFlag（ATTACK 0x1 等），
+    // .3 归一：「to Attacks/Spells」作用域 legacy 用 ModFlag（ATTACK 0x1 等），
     // 非 keyword——直接补 extra_flags（vendor keyword 体系差异，对齐 legacy）。
     match form {
         "DMGATTACKS" => result.extra_flags |= ModFlags::ATTACK,

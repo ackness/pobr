@@ -1,9 +1,9 @@
-//! pre-M5a 数据前置的加载测试：`overlay/minions.json` / `overlay/spectres.json` /
+//! 数据前置的加载测试：`overlay/minions.json` / `overlay/spectres.json` /
 //! `overlay/granted_effect_minions.json` / `overlay/mirage_configs.json`。
 //!
 //! 抽样断言全部注明 vendor 行号来源（commit `2df5a74`，见
 //! `vendor/.pob2-version.txt`）；搬迁不变式校验对照
-//! `pobr_data::minion::minion_def_*` 手抄常量（M5a 蓝图 A2 测试 1）。
+//! `pobr_data::minion::minion_def_*` 手抄常量。
 
 use pobr_data::catalog::actors::{LuaValueDef, MinionEntryDef, MinionsDef};
 use pobr_data::minion::{
@@ -28,7 +28,7 @@ fn find<'a>(def: &'a MinionsDef, id: &str) -> &'a MinionEntryDef {
 }
 
 /// 抽取条目（overlay）与手抄常量（`pobr_data::minion`，2025-06 手抄）的
-/// **数值字段**逐值比对——搬迁不变式的逐值校验（M5a 蓝图 A2 测试 1）。
+/// **数值字段**逐值比对——搬迁不变式的逐值校验。
 ///
 /// 已知差异（以 vendor 为准，记录于此）：
 /// - 手抄 `monster_tags` 是缩减子集（如 zombie 手抄 4 条 vs vendor
@@ -148,7 +148,7 @@ fn zombie_fields_from_vendor() {
     assert_eq!(z.weapon_type1.as_deref(), Some("One Hand Axe"));
 }
 
-/// SummonedRagingSpirit 的 modList 完整序列化（R3：mod() 构造全部入参；
+/// SummonedRagingSpirit 的 modList 完整序列化（mod() 构造全部入参；
 /// vendor Minions.lua:68 `mod("Speed", "MORE", 40, 1, 0)`）。
 #[test]
 fn raging_spirit_mod_list_full_args() {
@@ -197,7 +197,7 @@ fn spectre_lightless_abomination() {
     assert_eq!(m.value, LuaValueDef::Number(3.0));
 }
 
-/// granted_effect_minions.json：外键边车抽样（M5a 蓝图 A3 测试，≥5 条）。
+/// granted_effect_minions.json：外键边车抽样。
 #[test]
 fn granted_effect_minions_samples() {
     let def = game_data()
@@ -247,7 +247,7 @@ fn granted_effect_minions_samples() {
 }
 
 /// A3 merge：`granted_effects()` 加载期把 `granted_effect_minions.json` 边车
-/// 拼进 `GrantedEffectDef.minion_list` 等字段（M5a-A3）。
+/// 拼进 `GrantedEffectDef.minion_list` 等字段。
 #[test]
 fn granted_effects_merge_minion_list() {
     let effects = game_data().granted_effects().unwrap();
@@ -320,7 +320,7 @@ fn mirage_configs_five_branches() {
     assert!(archer.handler_id.is_none());
 }
 
-/// 缺表容忍（R7）：空目录下全部新域返回 Ok(None) 不 panic。
+/// 缺表容忍（缺表容忍）：空目录下全部新域返回 Ok(None) 不 panic。
 #[test]
 fn missing_overlay_files_yield_none() {
     let dir = std::env::temp_dir().join(format!("pobr-pre-m5a-missing-{}", std::process::id()));

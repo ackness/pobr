@@ -129,7 +129,7 @@ pub enum ModTag {
         /// 计数封顶（`mult = min(mult, limit)`）。
         limit_total: bool,
     },
-    /// 按 actor **已算出 stat（output 表）**线性缩放（M4-T1 W-A3；PoB2 `PerStat`
+    /// 按 actor **已算出 stat（output 表）**线性缩放（PoB2 `PerStat`
     /// tag，ModStore.lua:440-489）。与 [`ModTag::Multiplier`] 拆开：Multiplier 读
     /// 编排层预灌的 `cfg.multipliers`，PerStat 读 [`EvalContext::stat_lookup`]
     /// （actor output 快照；缺通道/缺键 → 0，保守等价 vendor GetStat 缺位）。
@@ -147,7 +147,7 @@ pub enum ModTag {
         limit: Option<f64>,
         /// 动态上限变量（vendor `tag.limitVar` → `GetMultiplier(self, ·)`）。
         limit_var: Option<String>,
-        /// 跨 actor 读数（与 M3 落地的 Multiplier `actor` 形态统一：`Some` →
+        /// 跨 actor 读数（与落地的 Multiplier `actor` 形态统一：`Some` →
         /// 查 `cfg.actor_multipliers["<actor>.<stat>"]` 快照，缺键＝0）。
         actor: Option<ActorRef>,
     },
@@ -165,14 +165,14 @@ pub enum ModTag {
         /// percent/100 or 1)` 的 or-1 侧（mult = stat 本身）。
         percent: Option<f64>,
     },
-    /// 跨 mod 累计限幅（M4-T1 W-A3；PoB2 EvalMod 尾段 ModStore.lua:895-905
+    /// 跨 mod 累计限幅（PoB2 EvalMod 尾段 ModStore.lua:895-905
     /// `tag.globalLimit`/`tag.globalLimitKey`）：同 `key` 的 mod 生效值在**单次
     /// 聚合查询内**（vendor 每次 Sum/More/Tabulate 调用新建 `globalLimits` 表）
     /// 累计封顶——超限部分截断，余额记账。
     ///
     /// vendor 把这两个字段挂在任意 tag 上；pobr 形态化为独立 tag（语义不变，
     /// 由 [`crate::ModDb`] 聚合循环消费；对 [`Modifier::matches`] 透明）。
-    /// W-C1（chance-to-deal-Double-Damage DOUBLED form）是首个消费方。
+    /// （chance-to-deal-Double-Damage DOUBLED form）是首个消费方。
     GlobalLimit {
         /// 累计上限（vendor `tag.globalLimit`）。
         value: f64,
@@ -447,7 +447,7 @@ impl Modifier {
 
     /// 生效数值（应用 Multiplier / PerStat 缩放 tag）。
     ///
-    /// （M4-T1 W-A3，契约 5）入参升级为 [`EvalContext`]；`impl Into` + `From<&CalcConfig>`
+    /// 入参升级为 [`EvalContext`]；`impl Into` + `From<&CalcConfig>`
     /// 使既有调用点（传 `&cfg`）零改动——仅 PerStat 消费方需显式构造带
     /// `stat_lookup` 的上下文。[`ModTag::GlobalLimit`] 不在此结算（跨 mod 记账，
     /// 归 [`crate::ModDb`] 聚合循环，vendor 同样在 EvalMod 尾段由聚合层传表）。
@@ -530,7 +530,7 @@ impl Modifier {
                     limit_var,
                     actor,
                 } => {
-                    // （W-A3）读 actor output 快照（vendor ModStore.lua:440-455
+                    // 读 actor output 快照（vendor ModStore.lua:440-455
                     // PerStat 分支 → GetStat）；跨 actor 维度与 Multiplier 统一走
                     // actor_multipliers 快照。
                     let base = match actor {

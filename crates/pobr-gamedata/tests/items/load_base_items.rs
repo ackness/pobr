@@ -38,7 +38,7 @@ fn base_items_load_with_resolved_foreign_keys() {
     );
 }
 
-/// M4-T4 W-D2：弩装填时间经 overlay merge 进 weapon 段（vendor
+///  弩装填时间经 overlay merge 进 weapon 段（vendor
 /// `Data/Bases/crossbow.lua` Makeshift Crossbow `ReloadTimeBase = 0.8`），
 /// 非弩武器保持 `None`。
 #[test]

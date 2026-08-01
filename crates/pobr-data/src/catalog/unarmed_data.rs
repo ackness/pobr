@@ -6,7 +6,7 @@
 //! （`characterConstants["unarmed_base_critical_strike_chance"] = 500`，
 //! vendor 侧 `/ 100` 得百分数 `5`）。
 //!
-//! 搬迁不变式（架构文档 20 §1.1 / P8）：数值以 pobr 现有 Rust 准源
+//! 搬迁不变式：数值以 pobr 现有 Rust 准源
 //! `pobr-build::calc_orchestrator::unarmed_contribution` 为准逐值搬迁
 //! （`phys_min` / `phys_max` / `attack_rate` / `crit_chance`）；
 //! `class_id` / `weapon_type` 为 vendor-only 字段（pobr 现按 `class_name` 匹配）。
@@ -44,7 +44,7 @@ pub struct UnarmedWeaponDef {
     pub physical_max: f64,
 }
 
-/// 空手基底全表（[`crate::catalog::RuntimeConstants`] 的注入域，M0-W3 注入管道）。
+/// 空手基底全表（[`crate::catalog::RuntimeConstants`] 的注入域）。
 ///
 /// `#[serde(transparent)]`：JSON 形状与 `base/unarmed_data.json`（数组）一致。
 /// `Default` = fallback 全表（与 JSON 逐值相等，搬迁不变式）。
@@ -66,7 +66,7 @@ impl UnarmedDataTable {
 }
 
 impl UnarmedWeaponDef {
-    /// 全表 fallback（M0-W3 注入管道）：无 GameData / 数据目录缺
+    /// 全表 fallback（注入管道）：无 GameData / 数据目录缺
     /// `base/unarmed_data.json` 时 [`crate::catalog::RuntimeConstants`] 的默认值。
     ///
     /// 搬迁不变式：与 JSON 逐值相等（`pobr-gamedata` 测试锁定），数值出处 =

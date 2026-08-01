@@ -1,11 +1,11 @@
 //! vendor PoB2 ModName → PoBR canonical StatId 别名表 schema
 //! （`overlay/vendor_name_aliases.json`，`vendor_name_aliases/v1`）。
 //!
-//! M6.3 切换前置**数据资产**（见
+//! .3 切换前置**数据资产**（见
 //! `audits/rearchitecture-2026-06-10/blueprints/m6-switch-decision.md`）。
 //!
-//! 背景（M6-B 双跑，`m6-dualrun-report.md` §3）：legacy 手写 parser 产 **PoBR
-//! 自有词表**（`MaximumLife`/`Strength`/`ColdResistance`…），新引擎按蓝图 §1.2
+//! 背景：legacy 手写 parser 产 **PoBR
+//! 自有词表**（`MaximumLife`/`Strength`/`ColdResistance`…），新引擎按
 //! 忠实落 **vendor PoB2 词表**（`Life`/`Str`/`ColdResist`…），全部下游消费 PoBR
 //! 词表。本表用一张 `vendor_name → pobr_stat_id` 别名把两侧词表桥接起来，自举来源
 //! = legacy `parse_name` 短语映射 ∩ engine `name_map`（同一触发短语对齐）。
@@ -17,7 +17,7 @@
 //!
 //! 消费侧视角：serde 默认忽略顶层 `_meta` 与 `structural_deferrals`（生成溯源 /
 //! 结构性分歧登记，备查不入计算，与既有 overlay schema 同款）。本模块零逻辑、
-//! 零 I/O；新字段 `#[serde(default)]`（R7 纪律）。
+//! 零 I/O；新字段 `#[serde(default)]`。
 
 use serde::{Deserialize, Serialize};
 

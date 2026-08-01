@@ -170,9 +170,7 @@ fn decode_errors_on_invalid_code() {
     assert!(!format!("{err}").is_empty());
 }
 
-// ---------------------------------------------------------------------------
 // calculate-build：PoB Build Code → 完整 Build → 端到端归因计算
-// ---------------------------------------------------------------------------
 
 const DEADEYE_CODE: &str = include_str!("../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
 

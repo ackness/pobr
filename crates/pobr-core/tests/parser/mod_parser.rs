@@ -409,7 +409,7 @@ fn parses_phys_from_hits_taken_as_random_element() {
     }
 }
 
-/// 聚合源 gain-as（M4-H；vendor ModParser.lua:702 `["elemental damage"] =
+/// 聚合源 gain-as（vendor ModParser.lua:702 `["elemental damage"] =
 /// "ElementalDamage"` + 后缀表 `:6173` → `ElementalDamageGainAsCold`，ModCache
 /// 实证 `Gain 10% of Elemental Damage as Extra Cold Damage`；druid-oracle
 /// ember-fusillade 的 Storm Bane/Blood Barrier 词条）。
@@ -422,7 +422,7 @@ fn parses_elemental_source_gain_as_extra() {
     assert_eq!(o.mods[0].value, ModValue::Number(16.0));
 }
 
-/// random element 档（M4-H；vendor ModParser.lua:6182 `["as extra damage of a
+/// random element 档（vendor ModParser.lua:6182 `["as extra damage of a
 /// random element"] = "GainAsRandom"`，ModCache.lua:5257 `Gain 5% of Damage as
 /// Extra Damage of a random Element` → `DamageGainAsRandom BASE 5`；消费 =
 /// CalcOffence.lua:1175-1200 physMode 展开）。
@@ -439,7 +439,7 @@ fn parses_random_element_gain_as() {
     assert_eq!(o.mods[0].name, ModName::from("PhysicalDamageGainAsRandom"));
 }
 
-/// per-curse 数值缩放尾缀（M4-H；vendor ModParser.lua:1507-1510 →
+/// per-curse 数值缩放尾缀（vendor ModParser.lua:1507-1510 →
 /// `Multiplier:CurseOnEnemy`，乘数 = `#curseSlots`（CalcPerform.lua:2969）；
 /// witch-blood-mage Liminal Coil 词条 `Spell Hits Gain 30% of Damage as Extra
 /// Physical Damage per Curse on target` → raw 30 × 5 curse = vendor 实测 150）。
@@ -469,7 +469,7 @@ fn parses_gain_as_per_curse_with_spell_hits_prefix() {
     assert_eq!(m.effective_number(&cfg), Some(150.0));
 }
 
-/// per-different-grenade 尾缀（M4-H；vendor ModParser.lua:1528 →
+/// per-different-grenade 尾缀（vendor ModParser.lua:1528 →
 /// `Multiplier:DifferentGrenadeFired`，limitVar=GrenadeTypes；mercenary
 /// Demolitionist 树点 `Gain 4% of Damage as Extra Fire Damage for every
 /// different Grenade fired in the past 8 seconds`）。
@@ -836,12 +836,10 @@ fn charm_slots_implicit_parses_to_charm_limit_base() {
     );
 }
 
-// ===========================================================================
-// M4-T1 W-A1 commit-2 / M4-I 切换：武器后缀位通道（condition + 武器位双写）
-// ===========================================================================
+// commit-2 /切换：武器后缀位通道（condition + 武器位双写）
 
 /// `with Maces` / `with One Handed Melee Weapons` / `with Unarmed Attacks`
-/// 三条词条的解析→匹配端到端（蓝图 W-A1 测试计划；切换 commit 起常驻）。
+/// 三条词条的解析→匹配端到端。
 mod weapon_bits_e2e {
     use super::*;
     use pobr_core::CalcConfig;
@@ -924,7 +922,7 @@ mod weapon_bits_e2e {
     }
 }
 
-/// 诅咒无视上限（M4-H；vendor ModParser.lua:4275 → `EnemyCurseLimit BASE 99`，
+/// 诅咒无视上限（vendor ModParser.lua:4275 → `EnemyCurseLimit BASE 99`，
 /// 消费 = buff_pass 槽位预算 DEFAULT 1 + Σ，vendor CalcPerform.lua:2832 同式；
 /// witch-blood-mage 的 Doedre's Undoing 词条，vendor EnemyCurseLimit 实测 100）。
 #[test]
@@ -1084,10 +1082,8 @@ fn parses_single_element_exposure_effect() {
     assert_eq!(o.mods[0].value, ModValue::Number(25.0));
 }
 
-// ---------------------------------------------------------------------------
-// M5a-B3：召唤物词条包裹（engine MinionModifier LIST 通道 +
+//  召唤物词条包裹（engine MinionModifier LIST 通道 +
 // extract_minion_modifier_entries 消费端）
-// ---------------------------------------------------------------------------
 
 /// engine 解析 + MinionModifier 抽取的组合（生产消费路径同款）。
 fn minion_entries(text: &str) -> Vec<pobr_core::calc::minion::MinionModifierEntry> {
@@ -1131,11 +1127,9 @@ fn minion_unparsable_remainder_yields_no_entries() {
     assert!(minion_entries("Minions wibble wobble zorp").is_empty());
 }
 
-// ---------------------------------------------------------------------------
 // wave2-defence：防御向特殊词条（special_mods `wave2-defence` 批；原 legacy-only
 // 覆盖 mod_parser_m2_defence.rs 删除后回填的 engine 形态钉，产出对齐 vendor
 // ModParser.lua specialModList）
-// ---------------------------------------------------------------------------
 
 /// 断言 outcome 恰为一组 FLAG mods（顺序一致）。
 fn assert_flags(text: &str, names: &[&str]) {

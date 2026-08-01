@@ -18,9 +18,7 @@ use super::request::{
 use super::{localize_input_text, slot_from_id};
 use crate::state;
 
-// ---------------------------------------------------------------------------
 // node_power_json（树节点威力热力图：PoB2 CalcsTab:PowerBuilder 的移植面）
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize)]
 struct NodePowerRequest {
@@ -150,9 +148,7 @@ fn node_power_impl(request_json: &str) -> Result<String, super::ApiError> {
         .map_err(|e| format!("serialize: {e}"))?)
 }
 
-// ---------------------------------------------------------------------------
 // optimize_variants_json（通用变体评估：寻优框架的计算面）
-// ---------------------------------------------------------------------------
 //
 // 分工契约：Rust 只做贵的部分——每个变体在基线 build 上叠一组增量修改后完整
 // 重算，返回展示属性值；打分/约束/排序在前端 `web/src/lib/optimize.ts` 做，
@@ -356,9 +352,7 @@ fn optimize_variants_impl(request_json: &str) -> Result<String, super::ApiError>
     )
 }
 
-// ---------------------------------------------------------------------------
 // 0.4 attribution_json（重算差值口径的来源贡献）
-// ---------------------------------------------------------------------------
 
 /// 归因请求：对每个来源（装备槽 / 技能组 / 药剂）做「移除后重算」，报告其对
 /// 指定展示字段的边际贡献（marginal via recompute——复用完整管线，零新计算逻辑）。

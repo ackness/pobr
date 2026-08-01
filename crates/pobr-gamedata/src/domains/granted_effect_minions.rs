@@ -1,9 +1,9 @@
 //! `overlay/granted_effect_minions.json` loader——宝石授予效果 → 召唤物
-//! 外键边车（00-index 裁决 §4-10 归 M5a；vendor `Data/Skills/*.lua` 的
+//! 外键边车（裁决 §4-10 归；vendor `Data/Skills/*.lua` 的
 //! `minionList`/`minionUses`/`minionHasItemSet`，经
 //! `extract-lua --what minion-list` 抽取）。
 //!
-//! merge 进 `GrantedEffectDef`（内存形态补 `minion_list` 等字段）属 M5a 主波
+//! merge 进 `GrantedEffectDef`（内存形态补 `minion_list` 等字段）属
 //! A3 接线；本 loader 先随数据落地，零接线。
 
 use pobr_data::catalog::actors::GrantedEffectMinionsDef;

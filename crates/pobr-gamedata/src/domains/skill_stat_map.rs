@@ -1,6 +1,5 @@
 //! `overlay/skill_stat_map.json` loader——SkillStatMap 全局 + per-statSet 覆盖
 //! （stat id → modifier 构造器映射），schema 见 [`pobr_data::catalog::stat_map`]
-//! （M1-T2，缺口 18-G3 / 15-G2）。
 //!
 //! 数据来源：vendor PoB2 `Data/SkillStatMap.lua` + `Data/Skills/*.lua` 各
 //! statSet 的 `statMap` 字段，由 `sync-pob-catalog extract-lua --what stat-map`

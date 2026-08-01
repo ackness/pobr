@@ -48,7 +48,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // 未启用该充能时保持 0（PoB2 面板 current=0），避免错误施加 per-charge 增益/罚减。
     env.cfg = super::survivability::charge_multipliers_panel_default(&env.player.mod_db, &env.cfg);
 
-    // 五元防御资源转换矩阵（M2 C-3，PoB2 CalcDefence.lua:1301-1390）：defence 源
+    // 五元防御资源转换矩阵（PoB2 CalcDefence.lua:1301-1390）：defence 源
     // （Armour/Evasion/ES）→ 非 defence 目标（Life/Mana）的转入量在 minimal 计算前
     // 注入为 MaximumLife/MaximumMana BASE（对应 PoB2 `NewMod("Extra"..name, "BASE", …)`
     // :1383，享 Life/Mana 全局乘区）。既有 ES→Mana 专用通道（es_to_mana_rate）已并入
@@ -142,7 +142,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     } else {
         env.enemy.base.evasion
     };
-    // M4-T2 W-B2：hand pass 入口。`hand_sources` 空（非攻击技能 / 旧入口）时
+    //  hand pass 入口。`hand_sources` 空（非攻击技能 / 旧入口）时
     // `run_hand_passes` 内部直通 `calculate_minimal_vs_enemy`，行为逐值不变；
     // 编排层装配 HandSource 后走 per-hand 管线 + combineStat 合并。
     let hand_pass = super::hand_pass::run_hand_passes(
@@ -154,14 +154,14 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
         env.double_hits_when_dual_wielding,
     );
     let output = hand_pass.combined;
-    // M4-G：无 hand pass（法术/旧入口单 "Skill" pass）时 ailment 的 Stored 族回退源
+    //  无 hand pass（法术/旧入口单 "Skill" pass）时 ailment 的 Stored 族回退源
     // ——crit_pass 对法术同样产出 Stored（vendor 法术也走 `:4047-4057` 落值），但
     // `OutputTable::from` 不平铺该族且 main_hand=None，故在此截留传给 fill_ailments。
     let ailment_fallback_ranges = output.stored_ranges.clone();
     env.player.output = OutputTable::from(&output);
     env.player.output.main_hand = hand_pass.main_hand;
     env.player.output.off_hand = hand_pass.off_hand;
-    // M3 T3：curse 面板回填（buff_pass 在 env_finalize 阶段 4 产出，先于上行整表
+    //  curse 面板回填（buff_pass 在 env_finalize 阶段 4 产出，先于上行整表
     // 覆盖，经 Env::curse_pass_output 中转；None = buff_pass 未运行，维持 Default 0）。
     if let Some(curse) = &env.curse_pass_output {
         env.player.output.enemy_curse_limit = curse.enemy_curse_limit;
@@ -179,16 +179,16 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     inject_companion_life(env);
 
     fill_mechanics(env);
-    // 弩 reload 折算（M4-T4 W-D2）：紧跟 fill_mechanics——vendor 顺序先服务器帧
+    // 弩 reload 折算：紧跟 fill_mechanics——vendor 顺序先服务器帧
     // cap（calc_skill_use_time 内）后 reload（CalcOffence.lua:2864-2867）；下游
     // fill_ailments 的叠层速率估算 / fill_skill_dot_stage 的 DPS 基底消费折算后值。
     fill_crossbow_reload(env);
     // 异常状态：几率 + 暴击加权 + magnitude + effMult。伤害异常（流血/点燃/中毒）
-    // 走 Stored 族 per-pass 管线（M4-G，vendor :4833-4857/:5096-5193）；非伤害异常
+    // 走 Stored 族 per-pass 管线；非伤害异常
     // （冰缓/感电/姿态）沿用分量近似。单独成段，避免与 fill_mechanics 内
     // player.mod_db 的不可变借用冲突。
     fill_ailments(env, &ailment_fallback_ranges);
-    // 技能 DoT + 合并 DPS 族（M4-T4 W-D1）：在 fill_ailments 之后——TotalDotDPS
+    // 技能 DoT + 合并 DPS 族：在 fill_ailments 之后——TotalDotDPS
     // 只读消费异常侧 bleed/poison/ignite 现值（ailment.rs 不改，T4 一波约定）。
     fill_skill_dot_stage(env);
 
@@ -313,13 +313,13 @@ fn fill_mechanics(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
 
-    // --- keystone 开关快照（M2 Track C：集中构造一次，下游各机制段只读本结构）---
+    // keystone 开关快照（集中构造一次，下游各机制段只读本结构）
     let keystones = crate::rules::DefenceKeystones::from_db(db, cfg);
 
-    // --- 技能使用时间 / 有效行动速率 ---
-    // M4-T2 W-B2：武器速率迁到 HandSource 后，面板基础速率从首个 hand source 读
+    // 技能使用时间 / 有效行动速率
+    //  武器速率迁到 HandSource 后，面板基础速率从首个 hand source 读
     // （单 MainHand source = 旧 base_input 折算值，逐值不变；双持的合并口径
-    // 等 W-A1 后随 combineStat Speed 对齐）。无 hand source 沿用 base.action_rate。
+    // 等后随 combineStat Speed 对齐）。无 hand source 沿用 base.action_rate。
     let panel_base_rate = env
         .hand_sources
         .first()
@@ -333,7 +333,7 @@ fn fill_mechanics(env: &mut Env) {
     };
     let is_channelling = cfg.condition("Channelling");
     let mut skill_use_time = calc_skill_use_time(db, cfg, base_use_time, 0.0, is_channelling);
-    // 冷却限速（M4-J 整链）：有固有冷却的技能（grenade 等）有效速率被
+    // 冷却限速：有固有冷却的技能（grenade 等）有效速率被
     // `min(rate, repeats/effective_cooldown)` 截断（vendor CalcOffence.lua:2852-2856，
     // 与 offence 主链同一 `apply_cooldown_cap`）。ailment 堆叠/弩 reload 等下游
     // 消费 `effective_action_rate` 的机制由此拿到冷却管辖后的真实出手速率。
@@ -342,7 +342,7 @@ fn fill_mechanics(env: &mut Env) {
         cfg,
         skill_use_time.effective_rate,
     ));
-    // M4-K：有效出手速率改读 offence 合并产物 `output.action_rate`（= vendor
+    //  有效出手速率改读 offence 合并产物 `output.action_rate`（= vendor
     // `globalOutput.Speed`，CalcOffence.lua:5051-5053 ailmentStacks 的速率源）。
     // 本地 `calc_skill_use_time` 链缺 TotalCastTime/TotalAttackTime 段（apply_total_time）
     // 与速度 MORE/typed bucket——法术 build（comet 等）会把宝石施法时间整段丢掉
@@ -357,7 +357,7 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.effective_action_rate = skill_use_time.effective_rate;
     env.player.output.skill_use_time = Some(skill_use_time);
 
-    // --- EHP / max hit ---
+    // EHP / max hit
     let resistances = ResistanceSuite {
         physical_pdr: physical_pdr_fraction(db, cfg),
         fire: env.player.output.fire_resistance,
@@ -368,7 +368,7 @@ fn fill_mechanics(env: &mut Env) {
         chaos: super::offence::resolve_resistance(db, cfg, 0.0, "Chaos", false).final_value,
     };
     let reference_hit = (env.player.output.life + env.player.output.energy_shield).max(1.0);
-    // M2 Track B-2（13-G7）：减伤侧统一整备 MitigationCtx——ArmourAppliesTo 改百分比模型
+    // -2（13-G7）：减伤侧统一整备 MitigationCtx——ArmourAppliesTo 改百分比模型
     // （词条单一来源：ModParser.lua:2519-2544 三变体 → ArmourAppliesTo<X>DamageTaken BASE
     // + ArmourDoesNotApplyToPhysicalDamageTaken flag；合成 CalcDefence.lua:2336-2362、
     // 物理隐式 BASE 100 见 :1862-1863），DamageReductionMax / overwhelm 一并入 ctx
@@ -397,7 +397,7 @@ fn fill_mechanics(env: &mut Env) {
     // armour_applies_pct 把物理份额归 0）。旧 EhpOptions 的 [bool;3] 只能表达该形态：
     // 元素吃全额护甲 + 物理清零；百分比/also 变体在旧 max-hit 口径下维持原行为
     // （物理保留护甲、元素暂不吃护甲），完整百分比口径由 Track F 消费
-    // taken_hit_from_damage 后生效（蓝图 m2-defence §2 Track B 过渡语义）。
+    // taken_hit_from_damage 后生效。
     let instead_redirect = mit_ctx.armour_applies_pct[phys] <= 0.0;
     // CI 接线（13-G16）：keystone 快照驱动，不再写死 false。CI build 的 ES 作生命池、
     // 混沌免疫（EhpOptions 语义）。vendor：CalcDefence.lua:85（flag 读出）/:120-123
@@ -447,11 +447,11 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.total_ehp = ehp.total_ehp;
     // 旧 lowest-max-hit 口径附加指标（F-3 后唯一权威出口：上面写入的 canonical
     // `total_ehp`/`*_max_hit` 会在 `fill_ehp_pob2` 末尾被新口径覆盖；本段旧管线
-    // 不删码，revert fill_ehp_pob2 的切换段即回旧口径——蓝图 §5 R2 行）。
+    // 不删码，revert fill_ehp_pob2 的切换段即回旧口径）。
     env.player.output.total_ehp_lowest_max_hit = ehp.total_ehp;
 
-    // --- 预留 / 剩余 ---
-    // M2 Track D（13-G11）：补 ReservationMultiplier more 与 Reservation
+    // 预留 / 剩余
+    // （13-G11）：补 ReservationMultiplier more 与 Reservation
     // Efficiency 除法语义（CalcDefence.lua:197/:240-241/:249-258）——
     // mult = floor(More(ReservationMultiplier), 4)；efficiency inc/more 为**除数**；
     // 除数下界钳极小正数：efficiency −100% 时 raw 发散，由 reservation 的
@@ -483,7 +483,7 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.mana_reserved = mana_res.reserved;
     env.player.output.mana_unreserved = mana_res.unreserved;
 
-    // --- 每秒恢复（Lane A：calc_regen 行为超集，含 XRecoveryRate 全局恢复速率）---
+    // 每秒恢复（Lane A：calc_regen 行为超集，含 XRecoveryRate 全局恢复速率）
     env.player.output.life_regen = calc_regen(db, cfg, env.player.output.life, "LifeRegen");
     env.player.output.mana_regen = calc_regen(db, cfg, env.player.output.mana, "ManaRegen");
     env.player.output.energy_shield_regen = calc_regen(
@@ -493,7 +493,7 @@ fn fill_mechanics(env: &mut Env) {
         "EnergyShieldRegen",
     );
 
-    // --- 防御几率类 ---
+    // 防御几率类
     env.player.output.block_chance = super::block_chance(
         db.sum(ModType::Base, cfg, &[ModName::from("BlockChance")]),
         cfg.constants.game().block_chance_cap,
@@ -503,7 +503,7 @@ fn fill_mechanics(env: &mut Env) {
         cfg.constants.game().block_chance_cap,
     );
 
-    // --- ES 充能（Lane2：充能与再生独立；energy_shield_regen 字段保持现有逻辑）---
+    // ES 充能（Lane2：充能与再生独立；energy_shield_regen 字段保持现有逻辑）
     let zealots_oath = db.flag(cfg, ModName::from("ZealotsOath"));
     let es_recharge = calc_es_recharge(db, cfg, env.player.output.energy_shield, zealots_oath);
     env.player.output.es_recharge_rate = es_recharge.rate_fraction;
@@ -511,11 +511,11 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.es_recharge_per_second =
         es_recharge_per_second(&es_recharge, env.player.output.energy_shield);
 
-    // --- 规避几率（Lane2：击中/投射物/各异常）---
-    // M2-E2（CalcDefence.lua:2554-2557）：眩晕规避的 ES 减半条件改为
+    // 规避几率（Lane2：击中/投射物/各异常）
+    // （CalcDefence.lua:2554-2557）：眩晕规避的 ES 减半条件改为
     // 「ES > totalTakenHit 且非 EB」；totalTakenHit 在 Track F 接线前用
     // reference_hit（= life + ES，与 EhpOptions 同源）近似。
-    // EB flag 走 C-1 keystone 快照（蓝图 §3.3 契约 2，不散读 flag）。
+    // EB flag 走 C-1 keystone 快照。
     let avoidance = calc_avoidance(
         db,
         cfg,
@@ -533,7 +533,7 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.avoid_poison = avoidance.avoid_poison;
     env.player.output.avoid_bleeding = avoidance.avoid_bleeding;
 
-    // --- 承受伤害乘数（Lane2：受击口径，按类型）---
+    // 承受伤害乘数（Lane2：受击口径，按类型）
     let taken = calc_taken_multi_suite(db, cfg);
     env.player.output.taken_multi_physical = taken.physical_when_hit;
     env.player.output.taken_multi_fire = taken.fire_when_hit;
@@ -541,13 +541,13 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.taken_multi_lightning = taken.lightning_when_hit;
     env.player.output.taken_multi_chaos = taken.chaos_when_hit;
 
-    // --- 暴击额外伤害减免 + 敌人暴击效果（Lane2）---
+    // 暴击额外伤害减免 + 敌人暴击效果（Lane2）
     let crit_red = calc_crit_extra_reduction(db, cfg);
     env.player.output.crit_extra_damage_reduction = crit_red.reduction_pct;
     env.player.output.enemy_crit_effect =
         enemy_crit_effect(enemy_crit_chance, enemy_crit_damage, &crit_red);
 
-    // --- 充能状态（Lane A：供 per-charge 词条引用与面板显示；无来源时 current=0, maximum=3）---
+    // 充能状态（Lane A：供 per-charge 词条引用与面板显示；无来源时 current=0, maximum=3）
     let charges = resolve_all_charges(db, cfg);
     env.player.output.charge_power_current = charges.power.current;
     env.player.output.charge_power_maximum = charges.power.maximum;
@@ -556,7 +556,7 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.charge_endurance_current = charges.endurance.current;
     env.player.output.charge_endurance_maximum = charges.endurance.maximum;
 
-    // --- 偷取（Lane A：传入物理平均命中作为 hit_damage；PoE2 默认仅物理偷取）---
+    // 偷取（Lane A：传入物理平均命中作为 hit_damage；PoE2 默认仅物理偷取）
     // 无偷取词条时各 display_rate 为 0（calc_leech_from_db 短路），不影响面板。
     let phys_hit = component_avg(&env.player.output.damage_components, DamageType::Physical);
     env.player.output.life_leech_rate = calc_leech_from_db(
@@ -584,25 +584,25 @@ fn fill_mechanics(env: &mut Env) {
     )
     .display_rate_per_second;
 
-    // --- 技能功能（Lane C：AoE / 投射物 / 冷却 / 消耗）---
+    // 技能功能（Lane C：AoE / 投射物 / 冷却 / 消耗）
     fill_skill_mechanics(env);
 
-    // --- 触发速率（Lane B：冷却驱动 / CWC；无触发词条时保持 0）---
+    // 触发速率（Lane B：冷却驱动 / CWC；无触发词条时保持 0）
     fill_trigger(env);
 
-    // --- Evade 四分型 + Stun（M2 Track E，蓝图 §3.2 预登记的一行调用）---
+    // Evade 四分型 + Stun
     super::defence::fill_evade_stun(env, &keystones);
 
-    // --- Block/Spirit/Ward/Deflection 面板族（M2 Track D，蓝图 §3.2 预登记的一行调用）---
+    // Block/Spirit/Ward/Deflection 面板族
     super::defence_panels::fill_defence_panels(env, &keystones);
 
-    // --- EHP PoB2 口径管线（M2 Track F；须在 D/E 两个 fill 之后——not-hit/block/
+    // --- EHP PoB2 口径管线（须在 D/E 两个 fill 之后——not-hit/block/
     //     deflect 层读其 OutputTable 输出，缺省 0 → 中性 1.0）。F-3 起在末尾把
     //     canonical `total_ehp`/`*_max_hit` 切换为新口径值，并以真值 totalTakenHit
     //     覆盖 avoid_stun / Stun 体系。---
     let recoupable_total = super::ehp::fill_ehp_pob2(env, &keystones, &resistances);
 
-    // --- Recoup（M2 F-4，13-G15 部分：基数替换）---
+    // Recoup（13-G15 部分：基数替换）
     // 旧口径 = life × 10% 估算（与受击管线脱钩）；新口径 = reduce_pools 在
     // mitigated EHP 循环上累计的 recoupable 伤害（vendor reducePoolsByDamage
     // :489/:537 记录 damageTakenThatCanBeRecouped → :3119-3123 累计 →
@@ -645,14 +645,14 @@ fn fill_mechanics(env: &mut Env) {
 /// 出处：agent-docs/triggers.md §三 / §4.2；Lane B integration_spec；PoB2 CalcTriggers.lua
 /// L74-86 findTriggerSkill / L702-707 EffectiveSourceRate / L715-777 triggerChance；
 /// CWCHandler L262-263（finding 03-06：CWC 经 calcMultiSpellRotationImpact）。
-/// 技能 DoT fill（M4-T4 W-D1，函数级新增）：从既有输出读面板信号（有效速率 /
+/// 技能 DoT fill（函数级新增）：从既有输出读面板信号（有效速率 /
 /// 击中 DPS / 异常 DoT 三值），跑 [`super::skill_dot::calc_skill_dot`]，把
-/// `// === M4-T4 ===` 契约五字段落表。
+/// `// === ===` 契约五字段落表。
 ///
 /// 异常 DoT 取值口径 = vendor `TotalXDPS or XDPS`（`CalcOffence.lua:6226-6231`）：
 /// 叠层值（`*_stacked_dps`，fill_ailments 仅叠层配置在场时写入）优先，否则单层
 /// 期望 DPS。无技能 DoT 且无异常 DoT 时输出全零，契约字段维持 Default 中性。
-/// 弩 reload fill（M4-T4 W-D2，函数级新增）：把弹匣循环平均（bolt_count 发 ×
+/// 弩 reload fill（函数级新增）：把弹匣循环平均（bolt_count 发 ×
 /// 攻速 + reload 间隔）折进有效速率与 DPS。
 ///
 /// 数据通道：`CrossbowReloadTimeBase` BASE（秒，编排层按 weapon
@@ -744,7 +744,7 @@ fn fill_trigger(env: &mut Env) {
     let icdr = cooldown_recovery_multiplier(db, cfg);
     // 触发源速率：PoB2 EffectiveSourceRate 取自触发源技能（findTriggerSkill 命中的源技能
     // HitSpeed/Speed，CalcTriggers.lua L74-86/L702-707），而非被触发的主技能自身速率。build 层
-    // 对源技能跑完整子计算（W-E2，GlobalCache 等价物最小版），把**计算后**有效 cast/attack
+    // 对源技能跑完整子计算（GlobalCache 等价物最小版），把**计算后**有效 cast/attack
     // rate 写入 `TriggerSourceRate` BASE 注入（修 14-G2：源速率随攻速乘区增长）；未注入(=0)
     // 时回退到主技能 `effective_action_rate`（向后兼容；回退值仅为占位语义）。
     let injected_source_rate = db.sum(ModType::Base, cfg, &[ModName::from("TriggerSourceRate")]);
@@ -753,7 +753,7 @@ fn fill_trigger(env: &mut Env) {
     } else {
         env.player.output.effective_action_rate
     };
-    // 触发源命中/暴击（W-E2 契约 4 `TriggerSourceStats`）：build 层子计算结果经百分数
+    // 触发源命中/暴击（`TriggerSourceStats`）：build 层子计算结果经百分数
     // BASE 词条注入（0 = 未注入，折算跳过；triggerOnUse 链路注入侧不注入命中）。
     let source_stats = TriggerSourceStats {
         action_rate: source_rate,
@@ -770,7 +770,7 @@ fn fill_trigger(env: &mut Env) {
     };
     let has_source_stats = source_stats.hit_chance > 0.0 || source_stats.crit_chance > 0.0;
     // triggerOnCrit（CoC 链路）：cfg 条件（历史通道）或 build 层数据驱动识别注入的
-    // `TriggerOnCrit` FLAG（W-E1 trigger_configs 接线）。
+    // `TriggerOnCrit` FLAG。
     let trigger_on_crit =
         cfg.condition("TriggerOnCrit") || db.flag(cfg, ModName::from("TriggerOnCrit"));
     // 触发几率折算（PoB2 CalcTriggers.lua defaultTriggerHandler L715-777）：默认 1.0（=100%），
@@ -782,7 +782,7 @@ fn fill_trigger(env: &mut Env) {
         has_source_stats.then_some(&source_stats),
         trigger_on_crit,
     );
-    // 数据驱动识别注入的触发上下文（W-E1）：
+    // 数据驱动识别注入的触发上下文：
     // - `TriggerSourceGlobal` FLAG：vendor skillFlags.globalTrigger——不依赖源速率，
     //   EffectiveSourceRate = TriggerRateCap（CalcTriggers.lua:705-707）。
     // - `TriggerRateCapOverride` BASE：vendor skillData.triggerRateCapOverride
@@ -870,7 +870,7 @@ fn cooldown_recovery_multiplier(db: &ModDb, cfg: &CalcConfig) -> f64 {
 /// 触发几率乘子（fraction，0.0–1.0）：移植 PoB2 `CalcTriggers.lua` `defaultTriggerHandler`
 /// 的 triggerChance（L715-777）。
 ///
-/// - **源命中率**（W-E2 契约 4）：build 层注入触发源子计算统计时，乘**源**命中率
+/// - **源命中率**：build 层注入触发源子计算统计时，乘**源**命中率
 ///   （vendor :721 `GlobalCache.cachedData[uuid].HitChance`——折的是源技能的命中，
 ///   非被触发主技能）；未注入时退回历史口径——触发源是攻击技能（`cfg.is_attack()`，
 ///   对齐 L720 `source.skillTypes[Melee] or [Attack]`）且命中率≠100% 时乘
@@ -892,7 +892,7 @@ fn trigger_chance_multiplier(
 ) -> f64 {
     let mut chance = 1.0_f64;
     match source_stats {
-        // W-E2：源子计算统计在场 → 命中/暴击折算全取源口径（contract 4）。
+        //  源子计算统计在场 → 命中/暴击折算全取源口径（contract 4）。
         Some(stats) => {
             chance *= stats.chance_multiplier(trigger_on_crit);
         }
@@ -985,7 +985,7 @@ fn fill_skill_mechanics(env: &mut Env) {
 }
 
 /// 单 pass 的 ailment 计算上下文（vendor per-pass `output` 面的子集：Stored 族 +
-/// 该 pass 的暴击/命中/速率；M4-G）。
+/// 该 pass 的暴击/命中/速率；）。
 ///
 /// - 攻击技能：每个 hand 子表一个 ctx（vendor passList per-hand）；
 /// - 法术/旧入口：单 "Skill" pass，Stored 族来自 offence 合并输出（perform 截留）。
@@ -1012,7 +1012,7 @@ struct AilmentPassResult {
     max_stacks: f64,
 }
 
-/// 单 pass 单 ailment 的完整 vendor 管线（M4-G，CalcOffence.lua 实读对照）：
+/// 单 pass 单 ailment 的完整 vendor 管线：
 ///
 /// 1. Stored 族 50% roll 探针（`:4833-4857` + `:5125`）→ 施加几率（几率派生/内禀）；
 /// 2. 活跃叠层估算（`ailmentStacks`，`:5046-5053`）→ StackPotential（`:5096`）；
@@ -1072,7 +1072,7 @@ fn damaging_ailment_for_pass(
     let (probe_out, _) = run(&probe, trace);
     // 叠层词条用 ailment 作用域 cfg（vendor :5024 的 cfg = 该异常 dotCfg）。
     let scoped_cfg = super::ailment::ailment_scoped_cfg(cfg, kind);
-    // M4-l：异常持续折入 debuffDurationMult（vendor :5040 `durationBase *
+    //  异常持续折入 debuffDurationMult（vendor :5040 `durationBase *
     // durationMod / rateMod * debuffDurationMult`——Temporal Chains 系敌侧
     // `BuffExpireFaster MORE` 负值把持续拉长，经活跃叠层估算进 DPS）。
     let stack = resolve_stack_config(
@@ -1168,7 +1168,7 @@ fn merge_ailment_passes(results: &[AilmentPassResult]) -> Option<(f64, f64, f64,
     }
 }
 
-/// 异常 fill：伤害异常（流血/点燃/中毒）走 Stored 族 per-pass 管线（M4-G）——
+/// 异常 fill：伤害异常（流血/点燃/中毒）走 Stored 族 per-pass 管线——
 /// 来源命中取 vendor `Stored<Type>{Hit,Crit}{Min,Max}`（pre-resist、含 allMult、
 /// 暴击腿真实聚合 ×CritMultiplier），按 hand pass 各算一遍后 CHANCE_AILMENT 合并；
 /// 无 hand 输出（法术单 "Skill" pass）回退到 offence 合并输出的同款 Stored 族。
@@ -1197,7 +1197,7 @@ fn apply_projectile_speed_to_damage(env: &mut Env) {
         ModFlags::NONE,
         ModFlags::PROJECTILE,
     );
-    // （M4-m）弓变体（vendor CalcOffence.lua:796-802，树 notable『Feathered
+    // 弓变体（vendor CalcOffence.lua:796-802，树 notable『Feathered
     // Fletching』）：Tabulate `{ flags = ModFlag.Bow }` → 源 mod flags ⊆ Bow
     // （无旗 + Bow 限定均参与）；副本 flags **整体替换**为 Bow|Hit
     // （vendor `NewMod(..., bor(ModFlag.Bow, ModFlag.Hit), ...)`）。
@@ -1328,7 +1328,7 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
     // 完整 trace 由 traced offence/归因路径统一收口（本函数构建并保留贡献节点拓扑）。
     let mut trace = TraceGraph::new();
 
-    // --- 伤害异常：流血 / 点燃 / 中毒（Stored 族 per-pass + CHANCE_AILMENT 合并） ---
+    // 伤害异常：流血 / 点燃 / 中毒（Stored 族 per-pass + CHANCE_AILMENT 合并）
     for kind in [AilmentType::Bleed, AilmentType::Ignite, AilmentType::Poison] {
         let results: Vec<AilmentPassResult> = passes
             .iter()
@@ -1372,7 +1372,7 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
         }
     }
 
-    // --- 非伤害异常：冰缓 / 感电 / 姿态积累（沿用非暴击分量近似来源） ---
+    // 非伤害异常：冰缓 / 感电 / 姿态积累（沿用非暴击分量近似来源）
     // Lane C 跨类型施加：来源命中按 `<Type>Can<Ailment>` 旗标聚合非默认类型分量；
     // 无旗标时退化为默认类型（感电=闪电、冰缓=冰），与旧硬编码分量口径一致。
     let components = &env.player.output.damage_components;
@@ -1446,7 +1446,7 @@ fn resolve_stack_config(
 ) -> StackConfig {
     // vendor 公式（CalcOffence.lua:5021-5025）：`maxStacks = 1`；仅
     // `<Ailment>CanStack` flag 在场时 `maxStacks = Override(<Ailment>Stacks) or
-    // ((1 + ΣBASE) × More)`。M4-K 把旧「<Ailment>Stacks 词条存在即叠层」近似
+    // ((1 + ΣBASE) × More)`。把旧「<Ailment>Stacks 词条存在即叠层」近似
     // 换成 flag 门 + Override/MORE 腿（Escalating Poison 等 statmap 来源
     // `PoisonStacks BASE + PoisonCanStack flag` 成对注入）。
     let stacks_name = ModName::from(format!("{ailment}Stacks"));

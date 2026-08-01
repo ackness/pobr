@@ -19,7 +19,7 @@ use crate::build_config::BuildConfig;
 /// 一个宝石的授予效果引用（`<Gem skillId>` + `<Gem level>` + `<Gem quality>` +
 /// `<Gem statSetIndex>`），active/support 皆可。由计算侧按数据表（`is_support`）分类。
 ///
-/// 契约 C4（M1 蓝图 §3.3）收口：`quality` 为 T1 份额（default 0 = 无品质），
+/// 契约 C4收口：`quality` 为 T1 份额（default 0 = 无品质），
 /// `stat_set_index` 为 T5 份额（形态选择）。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GemSkillRef {
@@ -35,7 +35,7 @@ pub struct GemSkillRef {
     /// statSets 列表 = `StatSetDef::vendor_set_index` 语义；vendor SkillsTab.lua:354
     /// 读 / :489 写）。`None` = 未指定（缺省主 set；PoB2 序列化缺省态为字面量
     /// `"nil"`，解析归一化为 `None`）。`statSetIndexCalcs`（calcs 页独立选择）
-    /// M1 不做，解析忽略。
+    /// 不做，解析忽略。
     pub stat_set_index: Option<u32>,
     /// PoB `<Gem nameSpec>` 显示名——仅当 XML 缺 `skillId`/`gemId`（lineage
     /// support 如 Atziri's Communion 的序列化形态）时携带，`skill_id` 此时为空串。
@@ -219,7 +219,7 @@ pub struct Build {
     /// `jewels` 注入珠宝**自身**的全局词条，本列表额外按半径几何把 `also grant` 展开为
     /// 「半径内已分配对应种类节点数 × 授予」的全局 mod（见 `calc_orchestrator`）。
     pub radius_jewels: Vec<RadiusJewel>,
-    /// **激活态**药剂/护符的「槽名 + 物品」（M3-T4，蓝图 §7.2-2）：
+    /// **激活态**药剂/护符的「槽名 + 物品」：
     /// `("Flask 1"|"Charm 1..3", Item)`，XML 文档序，仅 `active="true"` 的槽进入
     /// （vendor CalcSetup.lua:1014-1028 `slot.active` 门控）。槽名供 flask/charm
     /// 结构化通道做 `SourceId(Flask, "flask.<slot>")` 归因与 flask/charm 分类，

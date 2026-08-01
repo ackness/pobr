@@ -1,4 +1,4 @@
-//! M0-W4b 搬迁不变式的**一次性逐值校验**（env 触发，CI 默认跳过）。
+//! 搬迁不变式的**一次性逐值校验**（env 触发，CI 默认跳过）。
 //!
 //! 用法：把搬迁前的手补 base 文件（`granted_effect_levels.json` /
 //! `granted_effect_stat_sets.json`）放进某目录，然后：
@@ -14,7 +14,7 @@
 //! `vendor src/Export/Scripts/skills.lua` 的 `AttackCritChance ~= 0` 守卫），
 //! 旧值是历史手补时的填充伪影，本次搬迁一并修正。
 //!
-//! **历史适用范围**：本校验只对 **M1-T4 之前**的检出有效——T4.3 起 crit / attspd
+//! **历史适用范围**：本校验只对 **之前**的检出有效——T4.3 起 crit / attspd
 //! 改 `.dat` 表列直读（vendor 覆盖之外新增怪物/非 vendor 技能的值）、等级行新增
 //! T4.2 字段族，与旧手补 base 的逐字段相等必然出现预期差异。T4 通道切换自身的
 //! 逐值一致证明（3911 crit + 3578 attspd 零漂移、覆盖技能零新增）见 T4.3 搬迁
@@ -39,7 +39,7 @@ fn merged_values_equal_old_hand_patched_base() {
 
     let data = GameData::new(pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version()));
 
-    // ---- granted_effect_levels：逐 effect、逐行、逐字段 ----
+    // granted_effect_levels：逐 effect、逐行、逐字段
     let old_levels: BTreeMap<String, Vec<SkillLevelDef>> = serde_json::from_slice(
         &std::fs::read(old_dir.join("granted_effect_levels.json")).expect("读旧等级域"),
     )
@@ -78,7 +78,7 @@ fn merged_values_equal_old_hand_patched_base() {
     }
     assert_eq!(artifact_hits, 1, "已知伪影应恰好命中一次");
 
-    // ---- granted_effect_stat_sets：整体逐值相等 ----
+    // granted_effect_stat_sets：整体逐值相等
     let old_sets: Vec<SkillStatSetDef> = serde_json::from_slice(
         &std::fs::read(old_dir.join("granted_effect_stat_sets.json")).expect("读旧 stat-set 域"),
     )

@@ -12,7 +12,7 @@
 //! 已接入分等级 cost / cooldown / attack time（`granted_effect_levels.json`）
 //! 及分等级**伤害 stat 值**（`granted_effect_stat_sets.json`，见 [`adapt_stat_sets`]）。
 //!
-//! 模块边界（M1 蓝图契约 C5）：本文件只做**编排与共享 Raw 类型**；域逻辑按表族
+//! 模块边界：本文件只做**编排与共享 Raw 类型**；域逻辑按表族
 //! 拆分在 [`gems`] / [`effects`] / [`levels`] / [`stat_sets`] / [`quality`] 五个子模块。
 
 mod effects;
@@ -32,7 +32,7 @@ use crate::read_json;
 pub use effects::adapt_cost_types;
 pub use stat_sets::adapt_stat_sets;
 
-// ---- 跨子模块共享的原始 .dat JSON 行结构（只取需要的列）----
+// 跨子模块共享的原始 .dat JSON 行结构（只取需要的列）
 
 /// `_index` + `Id`（+ 可选 `Name`）三列行——`BaseItemTypes` / `ActiveSkillType`
 /// 等外键目标表的通用读取结构。
@@ -100,7 +100,7 @@ pub fn adapt_skills(en: &Path, tw: &Path) -> Result<SkillsBundle, String> {
     let (gems, gems_total) = gems::adapt_gems(en, &base_ids)?;
     let (effects, effects_total, effect_id_by_index) =
         effects::adapt_effects(en, &active_skills, &skill_type_names)?;
-    // 暴击率挂在 stat-set 维度（M1-T4 表列直读），先建查表再按 (effect, level) join。
+    // 暴击率挂在 stat-set 维度，先建查表再按 (effect, level) join。
     let crit_by_effect = stat_sets::crit_from_statset_levels(en)?;
     let (levels, level_rows_total) =
         levels::adapt_levels(en, &effect_id_by_index, &crit_by_effect)?;

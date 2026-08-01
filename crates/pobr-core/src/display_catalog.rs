@@ -5,7 +5,7 @@
 //! parity 检查消费。计算内部只用稳定 ID；显示文本走 i18n（尚未实现）。
 //!
 //! - [`display_catalog`]：静态声明全部展示字段（id / 分类 / 值类型 / higher-is-better /
-//!   PoB key）。已计算的标 `Computed`，尚未落地的标 `Planned`（M2 防御扩展批已于
+//!   PoB key）。已计算的标 `Computed`，尚未落地的标 `Planned`（防御扩展批已于
 //!   F-3 全部翻 `Computed`）。
 //! - [`extract_display_values`]：从一个 `OutputTable` 抽取每个 `Computed` 字段的当前取值。
 
@@ -21,12 +21,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
     let computed = |id: &str, cat: Cat, vt: Vt, pob: &str| {
         DisplayStatDefinition::computed(id, cat, vt).with_pob_key(pob)
     };
-    // M2 防御扩展（W0.2 入目录时为 Planned）：C/D/E/F 各 track 接线完成后由
-    // F-3（W2 语义切换 commit，蓝图 §3.1「output.rs/display_catalog 冻结的唯一例外」）
+    // 防御扩展（W0.2 入目录时为 Planned）：C/D/E/F 各 track 接线完成后由
+    // F-3（output.rs/display_catalog 冻结的唯一例外）
     // 统一翻 Computed——24 个扩展字段全部由 perform fill 阶段产出。
 
     vec![
-        // --- Offence ---
+        // Offence
         computed("TotalDPS", Cat::Offence, Vt::Number, "TotalDPS"),
         computed("TotalHitAvg", Cat::HitDamage, Vt::Number, "AverageHit"),
         computed("HitChance", Cat::Offence, Vt::Percent, "HitChance"),
@@ -39,12 +39,12 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         ),
         computed("CritChance", Cat::Offence, Vt::Percent, "CritChance"),
         computed("CritMultiplier", Cat::Offence, Vt::Number, "CritMultiplier"),
-        // --- DoT / Ailment ---
+        // DoT / Ailment
         computed("BleedDPS", Cat::DotDamage, Vt::Number, "BleedDPS"),
         computed("IgniteDPS", Cat::DotDamage, Vt::Number, "IgniteDPS"),
         computed("PoisonDPS", Cat::DotDamage, Vt::Number, "PoisonDPS"),
         computed("ShockEffect", Cat::Ailment, Vt::Percent, "ShockEffectMod"),
-        // --- Resource ---
+        // Resource
         computed("Life", Cat::Resource, Vt::Number, "Life"),
         computed("Mana", Cat::Resource, Vt::Number, "Mana"),
         computed("EnergyShield", Cat::Resource, Vt::Number, "EnergyShield"),
@@ -64,7 +64,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "ManaUnreserved",
         ),
-        // --- Recovery ---
+        // Recovery
         computed("LifeRegen", Cat::Recovery, Vt::Number, "LifeRegen"),
         computed("ManaRegen", Cat::Recovery, Vt::Number, "ManaRegen"),
         computed(
@@ -73,7 +73,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "EnergyShieldRegen",
         ),
-        // --- Defence / Mitigation ---
+        // Defence / Mitigation
         computed("Armour", Cat::Defence, Vt::Number, "Armour"),
         computed("Evasion", Cat::Defence, Vt::Number, "Evasion"),
         computed("FireResist", Cat::Resistance, Vt::Percent, "FireResist"),
@@ -91,7 +91,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "SpellBlockChance",
         ),
-        // --- EHP / max hit ---
+        // EHP / max hit
         computed("TotalEHP", Cat::Mitigation, Vt::Number, "TotalEHP"),
         computed(
             "PhysicalMaxHit",
@@ -123,7 +123,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "ChaosMaximumHitTaken",
         ),
-        // --- ES Recharge (Wave 2) ---
+        // ES Recharge (Wave 2)
         computed(
             "EsRechargeRate",
             Cat::Recovery,
@@ -143,7 +143,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "EnergyShieldRechargePerSecond",
         ),
-        // --- Avoidance (Wave 2) ---
+        // Avoidance (Wave 2)
         computed(
             "AvoidAllDamageFromHits",
             Cat::Avoidance,
@@ -168,7 +168,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "AvoidBleeding",
         ),
-        // --- Taken multipliers (Wave 2) ---
+        // Taken multipliers (Wave 2)
         computed(
             "TakenMultiPhysical",
             Cat::Mitigation,
@@ -217,7 +217,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "EnemyCritEffect",
         )
         .with_higher_is_better(Some(false)),
-        // --- Charges (Wave 2 / Lane A) ---
+        // Charges (Wave 2 / Lane A)
         computed(
             "ChargePowerCurrent",
             Cat::Utility,
@@ -254,7 +254,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "EnduranceChargesMax",
         ),
-        // --- Leech / Recoup (Wave 2 / Lane A) ---
+        // Leech / Recoup (Wave 2 / Lane A)
         computed("LifeLeechRate", Cat::Recovery, Vt::Number, "LifeLeechRate"),
         computed("ManaLeechRate", Cat::Recovery, Vt::Number, "ManaLeechRate"),
         computed(
@@ -275,7 +275,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "EnergyShieldRecoupRate",
         ),
-        // --- Ailment extensions (Wave 2 / Lane B) ---
+        // Ailment extensions (Wave 2 / Lane B)
         computed("ChillEffect", Cat::Ailment, Vt::Percent, "ChillEffect"),
         computed(
             "FreezeBuildupPct",
@@ -313,7 +313,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "PoisonActiveStacks",
         ),
-        // --- Skill mechanics (Wave 2 / Lane C) ---
+        // Skill mechanics (Wave 2 / Lane C)
         computed("AoeRadius", Cat::SkillMechanics, Vt::Number, "AreaOfEffect"),
         computed(
             "AoeAreaMod",
@@ -339,7 +339,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         computed("LifeCost", Cat::Cost, Vt::Number, "LifeCost").with_higher_is_better(Some(false)),
         computed("SpiritReserved", Cat::Cost, Vt::Number, "SpiritReserved")
             .with_higher_is_better(Some(false)),
-        // --- Trigger (Wave 2 / Lane 4) ---
+        // Trigger (Wave 2 / Lane 4)
         computed(
             "TriggerRateCap",
             Cat::SkillMechanics,
@@ -352,7 +352,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "SkillTriggerRate",
         ),
-        // --- M2 防御扩展（W0.2 入目录 → F-3 翻 Computed；golden 参照
+        // ---防御扩展（W0.2 入目录 → F-3 翻 Computed；golden 参照
         //     meta.json::player_stats 同名键） ---
         // Spirit 池（Track D 接线）。
         computed("Spirit", Cat::Resource, Vt::Number, "Spirit"),
@@ -546,12 +546,12 @@ fn output_value_for(output: &OutputTable, id: &str) -> f64 {
         "LightningMaxHit" => output.lightning_max_hit,
         "ChaosMaxHit" => output.chaos_max_hit,
 
-        // --- ES Recharge ---
+        // ES Recharge
         "EsRechargeRate" => output.es_recharge_rate,
         "EsRechargeDelay" => output.es_recharge_delay,
         "EsRechargePerSecond" => output.es_recharge_per_second,
 
-        // --- Avoidance ---
+        // Avoidance
         "AvoidAllDamageFromHits" => output.avoid_all_damage_from_hits,
         "AvoidProjectileDamage" => output.avoid_projectile_damage,
         "AvoidStun" => output.avoid_stun,
@@ -562,7 +562,7 @@ fn output_value_for(output: &OutputTable, id: &str) -> f64 {
         "AvoidPoison" => output.avoid_poison,
         "AvoidBleeding" => output.avoid_bleeding,
 
-        // --- Taken multipliers ---
+        // Taken multipliers
         "TakenMultiPhysical" => output.taken_multi_physical,
         "TakenMultiFire" => output.taken_multi_fire,
         "TakenMultiCold" => output.taken_multi_cold,
@@ -571,7 +571,7 @@ fn output_value_for(output: &OutputTable, id: &str) -> f64 {
         "CritExtraDamageReduction" => output.crit_extra_damage_reduction,
         "EnemyCritEffect" => output.enemy_crit_effect,
 
-        // --- Charges ---
+        // Charges
         "ChargePowerCurrent" => output.charge_power_current as f64,
         "ChargePowerMaximum" => output.charge_power_maximum as f64,
         "ChargeFrenzyCurrent" => output.charge_frenzy_current as f64,
@@ -579,14 +579,14 @@ fn output_value_for(output: &OutputTable, id: &str) -> f64 {
         "ChargeEnduranceCurrent" => output.charge_endurance_current as f64,
         "ChargeEnduranceMaximum" => output.charge_endurance_maximum as f64,
 
-        // --- Leech / Recoup ---
+        // Leech / Recoup
         "LifeLeechRate" => output.life_leech_rate,
         "ManaLeechRate" => output.mana_leech_rate,
         "EsLeechRate" => output.es_leech_rate,
         "LifeRecoupRate" => output.life_recoup_rate,
         "EsRecoupRate" => output.es_recoup_rate,
 
-        // --- Ailment extensions ---
+        // Ailment extensions
         "ChillEffect" => output.chill_effect,
         "FreezeBuildupPct" => output.freeze_buildup_pct,
         "ElectrocuteBuildupPct" => output.electrocute_buildup_pct,
@@ -595,7 +595,7 @@ fn output_value_for(output: &OutputTable, id: &str) -> f64 {
         "PoisonStackedDPS" => output.poison_stacked_dps,
         "PoisonActiveStacks" => output.poison_active_stacks,
 
-        // --- Skill mechanics ---
+        // Skill mechanics
         "AoeRadius" => output.aoe_radius,
         "AoeAreaMod" => output.aoe_area_mod,
         "ProjectileCount" => output.projectile_count,
@@ -605,11 +605,11 @@ fn output_value_for(output: &OutputTable, id: &str) -> f64 {
         "LifeCost" => output.life_cost,
         "SpiritReserved" => output.spirit_reserved,
 
-        // --- Trigger ---
+        // Trigger
         "TriggerRateCap" => output.trigger_rate_cap,
         "SkillTriggerRate" => output.skill_trigger_rate,
 
-        // --- M2 防御扩展（W0.2 映射先行就位；F-3 条目翻 Computed 后进 extract） ---
+        // 防御扩展（W0.2 映射先行就位；F-3 条目翻 Computed 后进 extract）
         "Spirit" => output.spirit,
         "SpiritUnreserved" => output.spirit_unreserved,
         "BlockChanceMax" => output.block_chance_max,

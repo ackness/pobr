@@ -3,7 +3,7 @@
 //! 这是 PoBR **自有的最小 JSON schema**，由 `pobr-data-adapter` 从 GGG `.dat`
 //! 原始导出（pathofexile-dat 产物）解析外键、反范式化后生成，落在仓库
 //! `data/<poe_version>/`（三层布局：`base/` 全自动再生、`overlay/` vendor 抽取、
-//! `generated/` 确定性缓存，见架构文档 20 §1 P1）。运行时由 loader
+//! `generated/` 确定性缓存，见P1）。运行时由 loader
 //! （`pobr-gamedata`）以 serde 加载。
 //!
 //! 设计目标：与 GGG 原始列名 / PoB 生成 Lua 解耦；只保留计算/显示需要的字段；
@@ -18,7 +18,7 @@ pub mod mods;
 pub mod skills;
 pub mod tree;
 
-// ---- M0-W2 九表 schema 空壳（防并行冲突预创建，W2 填充类型）----
+// 九表 schema 空壳（防并行冲突预创建，W2 填充类型）
 pub mod base_player_mods;
 pub mod character_constants;
 pub mod enemy_presets;
@@ -29,41 +29,41 @@ pub mod non_damaging_ailments;
 pub mod unarmed_data;
 pub mod weapon_types;
 
-// ---- M0-W3 注入管道：calc 消费的运行时常量包 ----
+// 注入管道：calc 消费的运行时常量包
 pub mod runtime;
 
-// ---- M0-W4d 小查表 overlay schema（取整精度例外表 + 局部词条白名单）----
+// 小查表 overlay schema（取整精度例外表 + 局部词条白名单）
 pub mod high_precision_mods;
 pub mod local_mods;
 
-// ---- M0-W4a per-skill 覆盖值 overlay schema（vendor Lua 抽取）----
+// per-skill 覆盖值 overlay schema（vendor Lua 抽取）
 pub mod skill_overrides;
 
-// ---- M1-T2 SkillStatMap overlay schema（vendor Lua 抽取，skill_stat_map/v1）----
+// SkillStatMap overlay schema（vendor Lua 抽取，skill_stat_map/v1）
 pub mod stat_map;
 
-// ---- M6 E/F：StatDescriptions overlay schema（stat_id → canonical 文本第二通道）----
+//  StatDescriptions overlay schema（stat_id → canonical 文本第二通道）
 pub mod stat_descriptions;
-// ---- Phase 7.1：词条行输入翻译模板（i18n/<lang>/stat_lines.json）----
+// Phase 7.1：词条行输入翻译模板（i18n/<lang>/stat_lines.json）
 pub mod i18n_stat_lines;
 pub use i18n_stat_lines::StatLineTemplate;
-// ---- M6 E/F 段 B：StatId→Modifier 映射表（stat_descriptions 经引擎解析固化）----
+//  StatId→Modifier 映射表（stat_descriptions 经引擎解析固化）
 pub mod stat_id_map;
 
-// ---- M2-D1 基底物品覆盖值 overlay schema（vendor Data/Bases 抽取：block/spirit）----
+// 基底物品覆盖值 overlay schema（vendor Data/Bases 抽取：block/spirit）
 pub mod base_item_overrides;
 
 pub use base_item_overrides::{BaseItemOverrideEntry, BaseItemOverridesDef};
 
-// ---- M3 前置：受限 DSL 单点 schema + config 选项目录 + 内建 buff 定义 ----
+//  受限 DSL 单点 schema + config 选项目录 + 内建 buff 定义
 pub mod buffs;
 pub mod config_def;
 pub mod value_expr;
 
-// ---- M3 S1-C：curse 优先级数据表 overlay schema（vendor 抽取，curse_priority/v1）----
+// -C：curse 优先级数据表 overlay schema（vendor 抽取，curse_priority/v1）
 pub mod curse_priority;
 
-// ---- pre-M5 数据前置（M5a/M5b/M5c 蓝图的数据生产项，零消费接线）----
+// 数据前置
 pub mod actors; // M5a：minions / spectres / granted_effect_minions（vendor 抽取）
 pub mod item_overlay; // M5c：mod_scalability / catalysts / runes / uniques（vendor 抽取）
 pub mod parser_rules; // M5b：special_mods 模板（人工策展）+ M6：ModParser 解析规则六表（mod_parser_rules/v1）
