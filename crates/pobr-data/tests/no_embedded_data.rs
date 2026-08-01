@@ -21,9 +21,8 @@ const MAX_CONSECUTIVE_LITERAL_LINES: usize = 200;
 ///
 /// TODO(/W3): once monster.rs / minion.rs / constants.rs's embedded tables
 /// are migrated into `data/<ver>/`'s L1 constant JSON (monster_scaling /
-/// game_constants, etc. — see the relevant section of
-/// audits/rearchitecture-2026-06-10/21-roadmap.md), this list must be
-/// emptied. New files **must not** be added to it.
+/// game_constants, etc.), this list must be emptied. New files **must
+/// not** be added to it.
 const ALLOWLIST: &[&str] = &["monster.rs", "minion.rs", "constants.rs"];
 
 /// Judges whether a line looks like "a data table's literal-element line":

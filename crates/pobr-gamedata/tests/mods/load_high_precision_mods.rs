@@ -1,8 +1,7 @@
 //! `overlay/high_precision_mods.json` load tests.
 //!
 //! This table currently has **zero consumers** (pobr hasn't implemented
-//! ScaleAddMod / the MORE precision exception branch, see
-//! audits/rearchitecture-2026-06-10/10-mod-system.md Gap 6); its values
+//! ScaleAddMod / the MORE precision exception branch); its values
 //! are a faithful transcription of vendor PoB2
 //! `src/Modules/Data.lua:413-530` (vendor commit `2df5a74`); the only
 //! field with a pobr source of truth is `more_default_round_decimals`

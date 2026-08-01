@@ -1,9 +1,6 @@
 //! Schema for the vendor PoB2 ModName → PoBR canonical StatId alias table
 //! (`overlay/vendor_name_aliases.json`, `vendor_name_aliases/v1`).
 //!
-//! An M6 switchover prerequisite **data asset** (see
-//! `audits/rearchitecture-2026-06-10/blueprints/m6-switch-decision.md`).
-//!
 //! Background: the legacy hand-written parser produces **PoBR's own
 //! vocabulary** (`MaximumLife`/`Strength`/`ColdResistance`…), while the new
 //! engine faithfully stores **vendor PoB2's vocabulary**
@@ -16,8 +13,8 @@
 //! **Zero-consumer discipline**: this module only defines the serde shape
 //! (with round-trip unit tests as a safety net) — it's **not consumed by
 //! any calc / loader / parser path**. The wiring point for the two
-//! switchover routes (A/B, see the decision doc's "two routes" section) is
-//! in `m6-alias-table.md`, to be wired in at D-T8 once the owner decides.
+//! switchover routes (A/B) hasn't been decided yet, so it stays unwired
+//! until the owner decides.
 //! At that point this table will serve either "runtime translation" (A) or
 //! "extraction-time normalization" (B) — the schema doesn't change either way.
 //!

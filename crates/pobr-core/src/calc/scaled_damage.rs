@@ -3,9 +3,7 @@
 //!
 //! **Modules first, wiring last**: this file only provides self-contained
 //! calculation units with a frozen signature; consumption by `offence.rs` /
-//! `crit_pass` happens via T2 wiring (contract 2, §3.3). See
-//! `audits/rearchitecture-2026-06-10/blueprints/m4-t3-wiring-notes.md` for
-//! the wiring points and any semantic gaps.
+//! `crit_pass` happens via T2 wiring (contract 2, §3.3).
 
 use pobr_data::prelude::*;
 

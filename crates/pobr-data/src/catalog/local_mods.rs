@@ -11,9 +11,8 @@
 //! 2. clean text ending in `% increased attack speed`;
 //! 3. the `adds N to M physical damage` shape (`parse_adds_physical`).
 //!
-//! Vendor comparison (discrepancies are recorded only, not fixed here —
-//! see audits/rearchitecture-2026-06-10/16-items.md's "self-audit of
-//! pobr's current mixed approach"): PoB2's locality check is
+//! Vendor comparison (discrepancies are recorded only, not fixed here):
+//! PoB2's locality check is
 //! `src/Classes/Item.lua:1655-1682`'s `calcLocal`, a **structured rule**
 //! (exact match on mod name + flag, keywordFlags == 0, no tag or only an
 //! InSlot tag), not a text enum; the eventual direction is "a

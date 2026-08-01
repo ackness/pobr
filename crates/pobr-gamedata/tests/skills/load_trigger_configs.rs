@@ -1,4 +1,4 @@
-//! M4-T5's load test: `overlay/trigger_configs.json`
+//! Load test for `overlay/trigger_configs.json`
 //! (schema in [`pobr_data::catalog::triggers`]; the storage side of the
 //! guardrail's "61-entry extraction count assertion" + handler count monitoring).
 

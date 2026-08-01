@@ -782,8 +782,7 @@ pub(crate) fn support_modifiers(
         // A support's set_key is taken from its own selected set (per-set overrides are
         // located by the support's effect id). Note: vendor doesn't pass a statSet for
         // support effects (CalcActiveSkill.lua:130 does a full merge across all sets) —
-        // the full merge for a multi-set support's additional sets is a current gap, see
-        // the m1 acceptance report.
+        // the full merge for a multi-set support's additional sets is a current gap.
         let set_key = data.selected_set_key(&sup.effect_id, set_index);
         mods.extend(mapped_stat_modifiers(
             &stats.base,

@@ -67,8 +67,7 @@ impl ModFlags {
 
 /// The full PoB2 bit table (introduced, and permanent since the switchover
 /// commit — the old 5-bit table and the `modflags-pob2` feature's dual-write
-/// channel have both been deleted; the two dual-run diff=0 report lives at
-/// `audits/rearchitecture-2026-06-10/m4-t1-modflags-dualrun-report.md`).
+/// channel have both been deleted).
 ///
 /// Bit values are **bit-for-bit identical** to vendor
 /// `Data/Global.lua:222-259`'s `ModFlag.*` (the u64 literals are copied

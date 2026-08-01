@@ -367,7 +367,7 @@ pub fn calculate_minimal_vs_enemy(
         .clone()
         .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
     // ScaledDamageEffect (the DD/TD factor; effect == 1.0 unchanged
-    // bit-for-bit when there's no mod, m4-t3-wiring-notes §2; crit_chance is
+    // bit-for-bit when there's no mod; crit_chance is
     // a fraction input).
     let scaled = scaled_damage_effect(db, enemy_db, &hit_cfg, crit.chance);
     // Both legs aggregated + canDeal + lucky + CritBlend (vendor `:4395`).

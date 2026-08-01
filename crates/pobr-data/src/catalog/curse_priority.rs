@@ -1,4 +1,4 @@
-//! Schema for `overlay/curse_priority.json` (`curse_priority/v1`, M6-C).
+//! Schema for `overlay/curse_priority.json` (`curse_priority/v1`).
 //!
 //! Vendor source: the plain data table `data.cursePriority` starting at
 //! `Modules/Data.lua:274`, deterministically extracted by

@@ -23,7 +23,7 @@
 //! (crit-leg-only mods, CritLucky, etc.) does it fall through to a real
 //! dual-leg blend.
 //!
-//! ## T3 multiplier wiring (contract 2/3, m4-t3-wiring-notes.md §2)
+//! ## T3 multiplier wiring (contract 2/3)
 //!
 //! - `ScaledDamageEffect`: shared by both legs (vendor `:4023-4025` allMult),
 //!   supplied by the caller (`scaled_damage_effect(db, enemy_db, cfg, crit.chance)`).

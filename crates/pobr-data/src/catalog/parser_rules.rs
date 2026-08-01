@@ -81,7 +81,7 @@
 //! Recorded deviation: `resource_types` is not stored — after vendor finishes
 //! loading, parseMod only ever consumes its derived expansions (the four
 //! regen/degen/cost/base_cost tables); the raw table is unreachable and has
-//! no runtime consumer (see m6-extraction-report.md).
+//! no runtime consumer.
 
 use std::collections::BTreeMap;
 

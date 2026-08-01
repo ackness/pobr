@@ -1,9 +1,8 @@
 //! Observation of the statmap data channel + oracle comparison.
 //!
-//! The legacy suffix heuristic and the dual-run L1/L2 diff were removed along
-//! with T2.4 (the historical report and line-by-line rulings are archived at
-//! `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md`);
-//! this file keeps the **Compare observation framework regression gate** and
+//! The legacy suffix heuristic and the dual-run L1/L2 diff were removed
+//! along with T2.4; this file keeps the **Compare observation framework
+//! regression gate** and
 //! **oracle sampling comparison** (a deliberate call: the Compare enum and
 //! reporting framework stay long-term, and the config/parser dual-run reuse
 //! the same pattern):

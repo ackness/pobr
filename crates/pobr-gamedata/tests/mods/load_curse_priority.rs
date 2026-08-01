@@ -1,4 +1,4 @@
-//! `overlay/curse_priority.json` load tests (M6-C).
+//! `overlay/curse_priority.json` load tests.
 //!
 //! Spot checks against vendor `Modules/Data.lua:274-300`'s
 //! `data.cursePriority` table (commit `2df5a74`); missing-table tolerance

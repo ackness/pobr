@@ -397,12 +397,11 @@ pub(crate) fn main_skill_quality_modifiers(
 /// **this unselected set's** set_key).
 ///
 /// **First-batch boundary**: the `GlobalEffect` tag itself is still outside the tag
-/// translation boundary (the buff domain gets wired up with buff_pass, see the switch
-/// log §5) — currently a global entry is entirely Unsupported and injects nothing; this
+/// translation boundary (the buff domain gets wired up with buff_pass) —
+/// currently a global entry is entirely Unsupported and injects nothing; this
 /// wiring is the structural groundwork. Once it's connected, injections will
-/// automatically be produced (FlameWall's projectile buff etc., see
-/// m1-acceptance-report.md for the measured Q3 impact scope). Zero values are skipped
-/// (matching every other fetch point's semantics).
+/// automatically be produced (FlameWall's projectile buff etc.). Zero values
+/// are skipped (matching every other fetch point's semantics).
 pub(crate) fn unselected_set_global_modifiers(
     group: &SocketGroup,
     data: &BuildData,

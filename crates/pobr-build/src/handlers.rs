@@ -114,8 +114,8 @@ fn register_config_handlers(registry: &mut HandlerRegistry) {
         .expect("启动期注册不重复");
 }
 
-/// Second batch of config handlers (commit B, covering the 8 gaps that dualrun report
-/// §2.4 hit across the 18-build set; all vendor line numbers were read directly from
+/// Second batch of config handlers (commit B, covering the 8 gaps hit across
+/// the 18-build set; all vendor line numbers were read directly from
 /// `vendor/PathOfBuilding-PoE2/src/Modules/ConfigOptions.lua`). Grouped by treatment:
 ///
 /// **Implemented (takes effect immediately)**:

@@ -13,8 +13,7 @@
 //! - finally: a match if **any** value left on the stack is true (leftover
 //!   multiple values = implicit OR).
 //!
-//! Empty-stack defense per decision (m1-skills-gems §T3.3): popping an
-//! empty stack yields `false`.
+//! Empty-stack defense: popping an empty stack yields `false`.
 //! `minionTypes`, the second set (CalcTools.lua:73), is deferred (minion
 //! skill pipeline).
 

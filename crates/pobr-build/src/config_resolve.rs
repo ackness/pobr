@@ -1,5 +1,5 @@
-//! Closes out config consumption ("xml_build switches to the interpreter primary
-//! path", m3-orchestration §4.5 / D3 dual-run point 1).
+//! Closes out config consumption ("xml_build switches to the interpreter
+//! primary path").
 //!
 //! [`resolve_config`] is the **single entry point** `calculate_with_data` uses to
 //! consume build config:
@@ -13,8 +13,7 @@
 //!   → falls back to the legacy `parse_config` output (`build.config`'s existing fields,
 //!   tolerant of a missing table).
 //!
-//! ## Dual-run period semantics (commit cluster opened category by category, see
-//! dualrun report §3)
+//! ## Dual-run period semantics (commit cluster opened category by category)
 //!
 //! - **conditions / multipliers**: old key set ∪ interpreter output — the intersection
 //!   is asserted value-equal (`config_dualrun`'s ongoing regression hard assert); the
@@ -157,7 +156,7 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
 /// Merges conditions (fully, from commit ② on): the intersection matches the primary
 /// path value-for-value (guaranteed by config_dualrun's ongoing regression); keys unique
 /// to the interpreter are net-new overrides (count-type entries' `>0` condition,
-/// implyCond expansion, non-`condition`-prefixed entries — dualrun report §2.3 line 1).
+/// implyCond expansion, non-`condition`-prefixed entries).
 ///
 /// implyCond semantics: vendor bakes the calc-side implication **directly into each
 /// entry's apply** (e.g. conditionCritRecently also does NewMod
@@ -176,7 +175,7 @@ fn merge_conditions(conditions: &mut HashMap<String, bool>, outcome: &ConfigOutc
 
 /// Merges multipliers (fully, from commit ② on): same semantics as
 /// [`merge_conditions`] — the net-new overrides are count entries turned numeric
-/// (Multiplier:StationarySeconds etc., dualrun report §2.3 line 2; matching vendor
+/// (Multiplier:StationarySeconds etc.; matching vendor
 /// ConfigOptions.lua:120-127's conditionStationary
 /// `NewMod("Multiplier:StationarySeconds", BASE, val)` shape).
 fn merge_multipliers(multipliers: &mut HashMap<String, f64>, outcome: &ConfigOutcome) {

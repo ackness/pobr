@@ -2,7 +2,7 @@
 //! languages are stored for a given PoE2 version.
 //!
 //! Since v2, `domains` is split by the three physical directory layers
-//! (`base`/`overlay`/`generated`, see P1); deserialization stays
+//! (`base`/`overlay`/`generated`); deserialization stays
 //! compatible with v1's flat array shape (treated as all belonging to `base`).
 
 use serde::{Deserialize, Serialize};

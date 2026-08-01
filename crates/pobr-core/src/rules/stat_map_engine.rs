@@ -353,8 +353,8 @@ pub fn stat_has_global_mods(
 /// selected set are skipped by the caller (see [`stat_has_global_mods`]).
 ///
 /// **First-batch boundary**: the `GlobalEffect` tag itself is still outside
-/// the tag translation boundary (the buff domain arrives with buff_pass, see
-/// `m1-statmap-switch-log.md` §5) -- so right now every global element gets
+/// the tag translation boundary (the buff domain arrives with buff_pass) --
+/// so right now every global element gets
 /// reported wholesale via [`UnsupportedReason::UnsupportedTag`] and injects
 /// nothing (skip rather than miscompute). Once the GlobalEffect tag is wired
 /// up, this path will **automatically** start producing injection items with
@@ -2030,7 +2030,7 @@ pub fn translate_mod_name(
         // (an inert injection -- the name itself is the scope, so it can't
         // cause a miscalculation); the PoB2 original name is kept so legacy
         // doesn't wrongly merge TotemPlacementSpeed into CastSpeed (a legacy
-        // mismapping, see m1-statmap-switch-log.md).
+        // mismapping).
         | "WarcrySpeed"
         | "TotemPlacementSpeed"
         //  Cooldown recovery rate pass-through (vendor
@@ -4009,7 +4009,7 @@ mod tests {
     /// independently, all the flag payloads still come out and the
     /// GlobalEffect tag is fully stripped. This is the cross-type pass for
     /// stormweaver-comet's IgniteDPS 1911 (pinned by the oracle at
-    /// `Skill:PinnacleOfPowerPlayer`, m4-skill-gaps.md §7.4).
+    /// `Skill:PinnacleOfPowerPlayer`).
     #[test]
     fn player_buff_pinnacle_flags_survive_scalar_sibling() {
         let catalog = catalog_json(

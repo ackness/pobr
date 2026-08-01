@@ -2,9 +2,9 @@
 //! `parse_config_inputs` + `config_interpreter` path.
 //!
 //! **Ongoing regression** (since commit ①): the main path has switched to the
-//! interpreter (`config_resolve`); this test keeps running until the old path
-//! is deleted (dualrun report §3-⑧) — any change that breaks "old ⊆ new, with
-//! the intersection equal value-for-value" is caught here.
+//! interpreter (`config_resolve`); this test keeps running until the old
+//! path is deleted — any change that breaks "old ⊆ new, with the
+//! intersection equal value-for-value" is caught here.
 //!
 //! Contract: **every conditions / multipliers / global_texts / scalar item the
 //! old path can produce must be covered value-for-value by the new path
@@ -29,9 +29,7 @@
 //!
 //! Data sources: `examples/demo-bd-test/builds/*/code.txt` (the ninja
 //! 18-build set) + `tests/fixtures/config_*.xml`. Run with `-- --nocapture`
-//! to print the per-category diff summary (the list of newly-covered items)
-//! for manual transcription into
-//! `audits/rearchitecture-2026-06-10/blueprints/m3-t1-dualrun-report.md`.
+//! to print the per-category diff summary (the list of newly-covered items).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -593,7 +591,7 @@ fn dual_run_old_subset_of_new() {
         collect_new_coverage(&old.conditions, &old.multipliers, &outcome, &mut summary);
     }
 
-    // Prints the per-category summary (transcribed manually into m3-t1-dualrun-report.md when run with --nocapture).
+    // Prints the per-category summary (when run with --nocapture).
     println!(
         "\n== M3-T1 双跑分类汇总（{} 类） ==",
         summary.categories.len()

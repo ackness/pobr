@@ -1,10 +1,9 @@
 //! Dual-pass x attribution model integration tests.
 //!
-//! Cross-checked against RFC `audits/rearchitecture-2026-06-10/blueprints/m4-rfc-attribution-passes.md`
-//! §2 (PassId partitioning) / §3 (Combine weight table) / §5 (direct/marginal compatibility),
-//! and review report `m4-rfc-review.md` conditions C2 (I4 assertions split into three groups) /
-//! C3 (I1 hard invariant) / C4 (pass_filter semantics). Invariant numbers I1-I6 match the
-//! table in RFC §5.5.
+//! Covers PassId partitioning, the combine weight table, and direct/marginal
+//! compatibility, organized around invariants I1-I6 and conditions C2
+//! (I4 assertions split into three groups) / C3 (I1 hard invariant) / C4
+//! (pass_filter semantics).
 
 use pobr_core::attribution::{AttributionMode, AttributionRequest, attribute};
 use pobr_core::{CombineMode, CritTag, HandTag, PassId, TraceGraph, TraceOperation};

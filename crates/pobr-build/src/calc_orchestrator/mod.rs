@@ -154,8 +154,7 @@ impl Default for DataOrchestratorOptions {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum StatMapMode {
     /// The data engine (`overlay/skill_stat_map.json` + `rules/stat_map_engine`).
-    /// **Default** (the switch commit; the four-precondition checklist is at
-    /// `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md`).
+    /// **Default** (the switch commit, gated on a four-precondition checklist).
     #[default]
     Data,
     /// Observation comparison: the Data computation + recording a mapping outcome per
@@ -1277,10 +1276,10 @@ fn stage_inject_config_mods(
     // 2c. Quest rewards / global config mods (PoB2's `questRewards`): injected as
     //     **global** modifier text (permanent global boosts to attributes / resistances
     //     / defence inc etc.). Follows add_modifier_texts's error tolerance. Quest
-    //     still goes through the legacy text channel (dualrun report §3-⑤: not
-    //     switched to declarative mods until vendor/parser naming is unified;
-    //     `config_resolve` already excludes quest-attributed entries from the injection
-    //     list to avoid double-counting).
+    //     still goes through the legacy text channel (not switched to declarative
+    //     mods until vendor/parser naming is unified; `config_resolve` already
+    //     excludes quest-attributed entries from the injection list to avoid
+    //     double-counting).
     if !resolved_config.config.global_modifier_texts.is_empty() {
         // Consistent with the equipment/jewel path: hard-failing mods are filtered
         // first (skip-and-collect), so a single unparseable text doesn't abort the whole batch.
@@ -2662,7 +2661,7 @@ mod tests {
     /// channel produces six `<El>Can<Ailment>` FLAGs (GlobalEffect/Buff payload);
     /// the entry's leading scalar `Damage MORE` is unrelated and not swept in
     /// (each element handled independently, zero numeric injection).
-    /// This is the stormweaver-comet IgniteDPS cross-type gateway (m4-skill-gaps.md §7.4).
+    /// This is the stormweaver-comet IgniteDPS cross-type gateway.
     #[test]
     fn buff_skill_specs_emits_buff_kind_for_pinnacle_of_power_flags() {
         let data = repo_data();

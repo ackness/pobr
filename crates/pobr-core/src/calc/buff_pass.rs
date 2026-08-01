@@ -21,11 +21,11 @@
 //! that doesn't explicitly set it is unaffected value-for-value); the
 //! curse/debuff sections are additionally gated on `cfg.mode_effective`, matching vendor.
 //!
-//! After the C5 switchover (dual-run report `m3-c5-dualrun-report.md`: every
-//! value across the 18-build display was unchanged), this path is the sole
-//! channel for aura -- the orchestration layer's static direct-injection of
-//! `aura_buff_modifiers` and the `buff-pass-aura` feature gate have both been
-//! removed; the fallback channel would be to revert the switchover/deletion commit.
+//! After the C5 switchover (every value across the 18-build display was
+//! unchanged), this path is the sole channel for aura -- the orchestration
+//! layer's static direct-injection of `aura_buff_modifiers` and the
+//! `buff-pass-aura` feature gate have both been removed; the fallback
+//! channel would be to revert the switchover/deletion commit.
 //!
 //! ## Semantic simplification checklist
 //!

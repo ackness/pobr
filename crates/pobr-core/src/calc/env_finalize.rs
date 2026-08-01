@@ -280,7 +280,8 @@ fn dedup_seed(m: &Modifier) -> DedupSeed {
 /// that table, so the earlier name-blind scaling was the actual deviation);
 /// a charm base's always-on buff (vendor `item.base.charm.buff`, e.g. Ruby
 /// Charm's `+25% to Fire Resistance`) depends on a base data column (this
-/// gap is tracked in drill-findings-m3.md F8), so currently only the item's own text mod is included.
+/// column is not yet exported), so currently only the item's own text mod is
+/// included.
 ///
 /// Attribution: both the carrier and its inner mods carry
 /// `SourceId(SourceKind::Flask, "flask.<slot>")` (attached during ingest),

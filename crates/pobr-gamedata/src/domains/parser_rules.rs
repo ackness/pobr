@@ -67,8 +67,8 @@ mod tests {
             .expect("仓库数据包应含 mod_parser_rules 域");
         let forms: std::collections::BTreeSet<&str> =
             doc.forms.iter().map(|f| f.form.as_str()).collect();
-        // flag_types includes a pobr-added entry `hindered`→`Condition:Hindered`
-        // (see m6-dualrun-report §2.5), so the count is always vendor + 1.
+        // flag_types includes a pobr-added entry `hindered`→`Condition:Hindered`,
+        // so the count is always vendor + 1.
         crate::test_pins::assert_pin(
             &golden_version_dir(),
             "parser_rules.section_counts",

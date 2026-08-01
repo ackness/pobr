@@ -5,7 +5,7 @@
 //! output) by resolving foreign keys and denormalizing, landing in the
 //! repo under `data/<poe_version>/` (a three-layer layout: `base/` fully
 //! auto-regenerated, `overlay/` vendor-extracted, `generated/`
-//! deterministic cache — see P1). Loaded at runtime via serde by the
+//! deterministic cache). Loaded at runtime via serde by the
 //! loader (`pobr-gamedata`).
 //!
 //! Design goals: decoupled from GGG's raw column names / PoB's generated
@@ -64,7 +64,7 @@ pub mod buffs;
 pub mod config_def;
 pub mod value_expr;
 
-// M6-C: curse priority data table overlay schema (vendor-extracted, curse_priority/v1)
+// curse priority data table overlay schema (vendor-extracted, curse_priority/v1)
 pub mod curse_priority;
 
 // Data prerequisites

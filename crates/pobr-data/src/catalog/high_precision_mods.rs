@@ -21,8 +21,7 @@
 //! - `pobr-core::mod_db::round_more` is hardcoded to `round(·, 2)`, with
 //!   **no exception-table branch** (matches vendor's `MoreInternal`
 //!   default branch value-for-value);
-//! - the ScaleAddMod primitive isn't implemented at all
-//!   (audits/rearchitecture-2026-06-10/10-mod-system.md Gap 6). So this
+//! - the ScaleAddMod primitive isn't implemented at all. So this
 //!   table currently **has zero consumers and zero parity impact** — it's
 //!   stored now, to be wired up as injected data once ScaleAddMod / the
 //!   MORE exception branch land.

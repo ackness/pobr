@@ -42,7 +42,7 @@ pub mod base_item_overrides;
 pub mod buff_definitions;
 pub mod config_options;
 
-// M6-C: curse priority data table (overlay layer, a plain lookup table; consumer = buff_pass)
+// curse priority data table (overlay layer, a plain lookup table; consumer = buff_pass)
 pub mod curse_priority;
 
 // Data prerequisites (overlay layer, a plain loader with zero wiring; one table per file)

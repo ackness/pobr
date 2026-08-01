@@ -271,9 +271,8 @@ pub struct OutputTable {
     pub with_dot_dps: f64,
     /// Combined DPS (PoB2 `CombinedDPS`).
     pub combined_dps: f64,
-    // Per-hand sub-tables (RFC m4-rfc-attribution-passes §4 decision D4:
-    // strongly-typed sub-tables, with the flat PoB key `MainHand.X`
-    // resolved through display_catalog's pob_key).
+    // Per-hand sub-tables (decision D4: strongly-typed sub-tables, with the
+    // flat PoB key `MainHand.X` resolved through display_catalog's pob_key).
     // The existing top-level fields' semantics = after combineStat (a
     // single-hand build passes through the OR mode unchanged).
     /// Main hand pass sub-result. None for non-attack skills; Some for

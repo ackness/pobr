@@ -1,8 +1,7 @@
 //! pobr-item: **full-fidelity edit-view** parsing and reverse serialization
 //! for raw item text.
 //!
-//! See target design in `devs/docs/architecture/02-crate-design.md` §6 and
-//! `audits/rearchitecture-2026-06-10/blueprints/m5c-item-tree.md` Track A.
+//! See target design in `devs/docs/architecture/02-crate-design.md` §6.
 //!
 //! Responsibility boundary:
 //! - The **calc view** (strip annotations, gate variants, resolve ranges,

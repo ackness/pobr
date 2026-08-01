@@ -9,7 +9,7 @@ impl TraceNodeId {
     }
 }
 
-//  Pass partitioning and combine nodes (RFC m4-rfc-attribution-passes §2-§3)
+//  Pass partitioning and combine nodes
 
 /// The hand partition. `Single` = spells/non-attack skills (PoB2 passList's "Skill" pass).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

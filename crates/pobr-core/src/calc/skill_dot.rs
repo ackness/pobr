@@ -1,5 +1,4 @@
-//! Skill DoT (damage over time) calculation module (see
-//! `audits/rearchitecture-2026-06-10/blueprints/m4-offence-deep.md` §2-T4).
+//! Skill DoT (damage over time) calculation module.
 //!
 //! Vendor reference `CalcOffence.lua` (verified line by line):
 //! - dotCfg (`:5832-5856`): `flags = ModFlag.Dot | skillCfg.flags`, then

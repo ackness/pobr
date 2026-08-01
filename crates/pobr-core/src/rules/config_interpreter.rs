@@ -499,7 +499,7 @@ fn build_modifier(
 
 /// Map flag/tag names; an unknown one is recorded in diagnostics and drops the whole mod.
 ///
-/// actor tag translation (backfilled later, dualrun report §3-⑦): the actor literal on vendor's
+/// actor tag translation (backfilled later): the actor literal on vendor's
 /// `ActorCondition`/`Multiplier(actor=…)` goes through [`map_vendor_actor`] (resolved against the
 /// bucket the mod lives in) into the `actor` field of [`ModTag::Condition`]/[`ModTag::Multiplier`].
 fn apply_flags_and_tags(

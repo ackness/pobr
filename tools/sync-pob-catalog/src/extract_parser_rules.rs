@@ -42,8 +42,7 @@ const BOOTSTRAP_LUA: &str = include_str!("extract_parser_rules.lua");
 pub const PINNED_VENDOR_COMMIT: &str = "2df5a7433dd2f1609e2fad8a6c3c917f923fe34f";
 
 /// Per-section entry counts at the pinned commit (measured 2026-06; earlier
-/// estimates of 776/684 were superseded by these measured values — see
-/// blueprints/m6-extraction-report.md for the discrepancy notes).
+/// estimates of 776/684 were superseded by these measured values).
 ///
 /// `flag_types` = 24 (vendor's main table) + 1 (the legacy `hindered`
 /// special case restored during route-B extraction, see
@@ -412,8 +411,7 @@ fn finalize_rules(doc: &mut ModParserRulesDoc) {
 /// [`VENDOR_NAME_ALIASES`]) and expands aggregate names by phrase
 /// ([`AGGREGATE_EXPANSION`]). **The source of truth is
 /// `data/overlay-common/vendor_name_aliases.json`** (this table's
-/// real-rename subset matches it); see `blueprints/m6-alias-table.md` §3 for
-/// the normalization spec.
+/// real-rename subset matches it).
 ///
 /// Design: only mutates `names`, never adds or removes entries (keeps
 /// [`PINNED_SECTION_COUNTS`] counts intact). The DamageType tag (C5,

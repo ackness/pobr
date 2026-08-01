@@ -22,8 +22,7 @@
 //! CALCS mode (vendor `CalcSetup.lua:583-588`), matching golden. The panel
 //! convention (`mode_effective=false`) is still guarded by
 //! [`panel_mode_no_regression`], so a convention regression can't go
-//! unnoticed. Switch rationale and per-build attribution:
-//! `audits/rearchitecture-2026-06-10/blueprints/m3-effective-switch-report.md`.
+//! unnoticed.
 
 use pobr_build::corpus::{CorpusLine, LineSource};
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
@@ -531,9 +530,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 /// OFF_HIT5 23->22 -- deadeye-explosive-grenade's TotalDPS regressed from a
 /// Legacy "over-count masking an under-count" false hit (1.02x) to the real
 /// 0.77x (Multishot -25% less `sup_dex.lua:3154-3156` and LightningPen +30
-/// `SkillStatMap.lua:929-931`, both correct fixes). See the compensation list
-/// and per-build rationale at
-/// `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md` §3.
+/// `SkillStatMap.lua:929-931`, both correct fixes).
 ///
 /// +Re-recorded at merge (merge commit): measured on the code after merging
 /// (statmap switch + quality + support gating) with (pool deduction + EHP
@@ -544,8 +541,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 /// comparison against both branches' baselines.
 ///
 /// **Re-recorded for the effective-convention switch** (a dedicated baseline
-/// commit, explicitly reviewed; per-build attribution in
-/// `m3-effective-switch-report.md` §2-§5): default convention panel->effective
+/// commit, explicitly reviewed): default convention panel->effective
 /// (aligning with golden), defence's 425 rows unchanged value-for-value;
 /// offence @5% 27->26, @10% 33->35.
 /// **Reviewed exception (-1 @5%)**: smith-of-kitava's CritChance 1.00x->0.93x --
@@ -1023,8 +1019,7 @@ const BASELINE_OFF_HIT10: usize = 80; // #15 full marks 80/80 (78 after #10; 76 
 ///    the 1.17x overestimate's root cause (an ailment stack-rate source
 ///    over-recording at 2.54x) has been fixed -> 0.45x; the remaining
 ///    undershoot's per-factor attribution belongs to crit magnitude/curse
-///    duration/secondary-skill debuff lines (m4-skill-gaps.md §7.1, closed by
-///    a per-factor product).
+///    duration/secondary-skill debuff lines (closed by a per-factor product).
 /// 2. deadeye grenade CombinedDPS 1.02x -- an accidental hit: the old
 ///    "attack-speed throughput compensation" approximation overestimated
 ///    Speed by ×1.95, which formed a double-count of throughput together
@@ -1036,10 +1031,10 @@ const BASELINE_OFF_HIT10: usize = 80; // #15 full marks 80/80 (78 after #10; 76 
 ///    level chain double-confirmed via oracle: deadeye 27=vendor, gemling
 ///    24=vendor) + the Paragon oil-anoint quality is wired up,
 ///    CombinedDPS 0.52x -> 0.82x converges but doesn't come back into the
-///    column. The remaining per-hit ~0.82x gap is logged in m4-skill-gaps §7
-///    (including the "attack/spell area damage" deferred phrase -- its
-///    enablement precondition, "after the cooldown-line fix", is now
-///    satisfied, so it belongs to the parser line).
+///    column. The remaining per-hit ~0.82x gap is still open (including the
+///    "attack/spell area damage" deferred phrase -- its enablement
+///    precondition, "after the cooldown-line fix", is now satisfied, so it
+///    belongs to the parser line).
 // Raised 17->20 / 21->24 (wired in damaging-ailment magnitude's "with
 // Critical Hits" conditional mod: added parser stripping of the crit suffix
 // + `ailment_scoped_cfg` setting CriticalStrike=true, matching vendor
@@ -1608,8 +1603,6 @@ fn corpus_unsupported_report() {
 ///
 /// A print-only dashboard (no gate):
 /// `cargo test -p pobr-build --test ninja_parity -- effective_switch_dual_run_report --nocapture`
-///
-/// Report archive: `audits/rearchitecture-2026-06-10/blueprints/m3-effective-switch-report.md`.
 #[test]
 fn effective_switch_dual_run_report() {
     let data = load_data();

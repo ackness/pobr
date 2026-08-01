@@ -1,4 +1,4 @@
-//! MH/OH dual pass and combineStat merging (RFC m4-rfc-attribution-passes §2.5/§3).
+//! MH/OH dual pass and combineStat merging.
 //!
 //! PoB2's offence outer layer runs the pipeline once each for main hand and
 //! off hand (`CalcOffence.lua:2369-2449`'s passList: one pass each for
