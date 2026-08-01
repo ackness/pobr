@@ -1,249 +1,311 @@
-//! 全局游戏常数域 schema（`base/game_constants.json`）。
+//! Global game constants domain schema (`base/game_constants.json`).
 //!
-//! 三段结构：`character`（玩家固有常数）/ `monster`（怪物固有常数）/
-//! `game`（机制公式魔数）。
+//! Three sections: `character` (player-inherent constants) / `monster`
+//! (monster-inherent constants) / `game` (mechanic formula magic numbers).
 //!
-//! 数值来源（搬迁不变式，架构 §1.1）：
-//! - **pobr 准源**：`crates/pobr-data/src/constants.rs`（顶层常量 +
-//!   `GameConstants::poe2()` 默认集）——JSON 必须与之逐值相等；
-//! - **vendor-only**（pobr 现有 Rust 没有的数值）：抽取自
-//!   `vendor/PathOfBuilding-PoE2/src/Data/Misc.lua`（GameConstants.dat /
-//!   Character.ot / Monster.ot 自动导出）与 `src/Modules/Data.lua`
-//!   （`data.misc` 魔数表，L171-250），逐字段注明文件:行号。
+//! Value sourcing (a migration invariant, architecture doc §1.1):
+//! - **pobr's own source of truth**: `crates/pobr-data/src/constants.rs`
+//!   (top-level consts + `GameConstants::poe2()`'s default set) — the JSON
+//!   must be value-equal to it field by field;
+//! - **vendor-only** (values pobr's existing Rust doesn't have): extracted
+//!   from `vendor/PathOfBuilding-PoE2/src/Data/Misc.lua` (auto-exported from
+//!   GameConstants.dat / Character.ot / Monster.ot) and
+//!   `src/Modules/Data.lua` (the `data.misc` magic-number table, L171-250),
+//!   with a file:line-number note on each field.
 //!
-//! 注意 L4 刹车：`constants.rs` 里的枚举与结构类型
-//! （DamageType / AilmentType / DamageRange / SkillCost 等）是 PoB 内部语义，
-//! 留 Rust 不迁；本表只迁纯数值。
+//! Note the L4 brake: the enum and struct types in `constants.rs`
+//! (DamageType / AilmentType / DamageRange / SkillCost, etc.) are PoB
+//! internal semantics and stay in Rust, not migrated; this table only
+//! migrates plain numeric values.
 
 use serde::{Deserialize, Serialize};
 
-/// `base/game_constants.json` 顶层结构：character/monster/game 三段全局常数。
+/// Top-level structure of `base/game_constants.json`: the three global
+/// constant sections character/monster/game.
 ///
-/// `Default` = fallback（三段各自 `Default` 的组合，与入库 JSON 逐值相等，见文末说明）。
+/// `Default` = the fallback (the combination of each section's own
+/// `Default`, value-equal to the stored JSON field by field — see the note
+/// at the end of this file).
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct GameConstantsDef {
-    /// 玩家固有常数段（vendor `data.characterConstants`，源 Character.ot）。
+    /// Player-inherent constants section (vendor `data.characterConstants`,
+    /// sourced from Character.ot).
     pub character: CharacterConstantsDef,
-    /// 怪物固有常数段（vendor `data.monsterConstants`，源 Monster.ot）。
+    /// Monster-inherent constants section (vendor `data.monsterConstants`,
+    /// sourced from Monster.ot).
     pub monster: MonsterConstantsDef,
-    /// 机制公式魔数段（vendor `data.gameConstants` + `data.misc`）。
+    /// Mechanic formula magic numbers section (vendor `data.gameConstants` +
+    /// `data.misc`).
     pub game: GameMechanicsConstantsDef,
 }
 
-/// character 段：玩家固有常数。
+/// The character section: player-inherent constants.
 ///
-/// 注意：等级/属性派生常量（life_per_level 等）属
-/// `overlay/character_constants.json`（架构 §3.2），不在本表；
-/// 本段只放 calc 机制公式直接消费的玩家基线。
+/// Note: level/attribute-derived constants (life_per_level, etc.) live in
+/// `overlay/character_constants.json` (architecture doc §3.2), not here;
+/// this section only holds the player baselines consumed directly by calc
+/// mechanic formulas.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CharacterConstantsDef {
-    /// 默认最大抗性（%）。pobr 准源 `constants.rs::DEFAULT_MAX_RESISTANCE` = 75；
-    /// vendor Misc.lua:145 `base_maximum_all_resistances_%` = 75。
+    /// Default max resistance (%). pobr's source of truth is
+    /// `constants.rs::DEFAULT_MAX_RESISTANCE` = 75; vendor Misc.lua:145
+    /// `base_maximum_all_resistances_%` = 75.
     pub base_maximum_all_resistances_pct: f64,
-    /// 玩家/召唤物暴击伤害加成基础值（+100%）。pobr 准源
-    /// `constants.rs::PLAYER_BASE_CRIT_DAMAGE_BONUS` = 100；
-    /// vendor Misc.lua:156 `base_critical_hit_damage_bonus` = 100。
+    /// Base crit damage bonus for player/minions (+100%). pobr's source of
+    /// truth is `constants.rs::PLAYER_BASE_CRIT_DAMAGE_BONUS` = 100; vendor
+    /// Misc.lua:156 `base_critical_hit_damage_bonus` = 100.
     pub base_critical_hit_damage_bonus: f64,
-    /// vendor-only：玩家物理减伤上限（%）。Misc.lua:146
-    /// `maximum_physical_damage_reduction_%` = 90（Data.lua:178 DamageReductionCap）。
+    /// vendor-only: player physical damage reduction cap (%). Misc.lua:146
+    /// `maximum_physical_damage_reduction_%` = 90 (Data.lua:178
+    /// DamageReductionCap).
     pub maximum_physical_damage_reduction_pct: f64,
-    /// vendor-only：能量护盾充能速率（%/min）。Misc.lua:143
-    /// `energy_shield_recharge_rate_per_minute_%` = 750。
+    /// vendor-only: energy shield recharge rate (%/min). Misc.lua:143
+    /// `energy_shield_recharge_rate_per_minute_%` = 750.
     pub energy_shield_recharge_rate_per_minute_pct: f64,
-    /// vendor-only：能量护盾充能延迟（秒）。Data.lua:197 EnergyShieldRechargeDelay = 4。
+    /// vendor-only: energy shield recharge delay (seconds). Data.lua:197
+    /// EnergyShieldRechargeDelay = 4.
     pub energy_shield_recharge_delay_seconds: f64,
-    /// vendor-only：固有法力回复速率（%/min）。Misc.lua:144
-    /// `character_inherent_mana_regeneration_rate_per_minute_%` = 240。
+    /// vendor-only: inherent mana regeneration rate (%/min). Misc.lua:144
+    /// `character_inherent_mana_regeneration_rate_per_minute_%` = 240.
     pub mana_regeneration_rate_per_minute_pct: f64,
 }
 
-/// monster 段：怪物固有常数（百级成长表属 `base/monster_scaling.json`，不在本表）。
+/// The monster section: monster-inherent constants (the per-level growth
+/// tables live in `base/monster_scaling.json`, not here).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MonsterConstantsDef {
-    /// vendor-only：怪物默认最大抗性（%）。Misc.lua:248
-    /// `base_maximum_all_resistances_%` = 75（Data.lua:200 EnemyMaxResist）。
+    /// vendor-only: monster default max resistance (%). Misc.lua:248
+    /// `base_maximum_all_resistances_%` = 75 (Data.lua:200 EnemyMaxResist).
     pub base_maximum_all_resistances_pct: f64,
-    /// vendor-only：怪物物理减伤上限（%）。Misc.lua:247 = 75
-    /// （Data.lua:179 EnemyPhysicalDamageReductionCap）。
+    /// vendor-only: monster physical damage reduction cap (%). Misc.lua:247
+    /// = 75 (Data.lua:179 EnemyPhysicalDamageReductionCap).
     pub maximum_physical_damage_reduction_pct: f64,
-    /// vendor-only：怪物暴击伤害加成基础值（+30%）。Misc.lua:250。
+    /// vendor-only: monster base crit damage bonus (+30%). Misc.lua:250.
     pub base_critical_hit_damage_bonus: f64,
-    /// vendor-only：近战击中眩晕倍率（+%）。Misc.lua:258 = 33
-    /// （Data.lua:221 MeleeStunMult = 33/100）。
+    /// vendor-only: melee-hit stun multiplier (+%). Misc.lua:258 = 33
+    /// (Data.lua:221 MeleeStunMult = 33/100).
     pub melee_hit_stun_multiplier_pct: f64,
-    /// vendor-only：物理击中眩晕倍率（+%）。Misc.lua:259 = 100
-    /// （Data.lua:222 PhysicalStunMult = 100/100）。
+    /// vendor-only: physical-hit stun multiplier (+%). Misc.lua:259 = 100
+    /// (Data.lua:222 PhysicalStunMult = 100/100).
     pub physical_hit_stun_multiplier_pct: f64,
 }
 
-/// game 段：机制公式魔数（抗性边界 / 护甲 / 服务器帧 / 异常基线 / 眩晕 / 上限族）。
+/// The game section: mechanic formula magic numbers (resistance boundary /
+/// armour / server tick / ailment baseline / stun / cap families).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GameMechanicsConstantsDef {
-    // pobr 准源（constants.rs，逐值相等）
-    /// 抗性硬上限（%）。pobr `HARD_MAX_RESISTANCE` = 90；vendor Data.lua:181 MaxResistCap。
+    // pobr's own source of truth (constants.rs, value-equal)
+    /// Resistance hard cap (%). pobr `HARD_MAX_RESISTANCE` = 90; vendor
+    /// Data.lua:181 MaxResistCap.
     pub resist_hard_cap: f64,
-    /// 抗性下界。pobr `RESIST_FLOOR` = -200；vendor Data.lua:180 ResistFloor。
+    /// Resistance floor. pobr `RESIST_FLOOR` = -200; vendor Data.lua:180
+    /// ResistFloor.
     pub resist_floor: f64,
-    /// 非吟唱动作服务器帧时间（秒）。pobr `SERVER_TICK_SECONDS` = 0.033；
-    /// vendor Data.lua:172 ServerTickTime（ServerTickRate = 1/0.033 为派生值，不入库）。
+    /// Non-channelling action server tick time (seconds). pobr
+    /// `SERVER_TICK_SECONDS` = 0.033; vendor Data.lua:172 ServerTickTime
+    /// (ServerTickRate = 1/0.033 is a derived value, not stored).
     pub server_tick_seconds: f64,
-    /// PoE2 护甲系数。pobr `ARMOUR_RATIO` = 10；vendor Data.lua:193 ArmourRatio。
+    /// PoE2 armour coefficient. pobr `ARMOUR_RATIO` = 10; vendor
+    /// Data.lua:193 ArmourRatio.
     pub armour_ratio: f64,
-    /// 格挡几率硬上限（%）。pobr `BLOCK_CHANCE_CAP` = 90；vendor Data.lua:185 BlockChanceCap。
+    /// Block chance hard cap (%). pobr `BLOCK_CHANCE_CAP` = 90; vendor
+    /// Data.lua:185 BlockChanceCap.
     pub block_chance_cap: f64,
-    /// 全局 DoT DPS 上限（(2^31-1)/60）。pobr `DOT_DPS_CAP` = 35791394；
-    /// vendor Data.lua:202 DotDpsCap。
+    /// Global DoT DPS cap ((2^31-1)/60). pobr `DOT_DPS_CAP` = 35791394;
+    /// vendor Data.lua:202 DotDpsCap.
     pub dot_dps_cap: f64,
-    /// 感电最小有效强度（%）。pobr `SHOCK_MIN_EFFECT` = 20；
-    /// vendor Misc.lua:75 BaseShockMagnitude = 20。
+    /// Shock's minimum effective magnitude (%). pobr `SHOCK_MIN_EFFECT` =
+    /// 20; vendor Misc.lua:75 BaseShockMagnitude = 20.
     pub shock_min_effect: f64,
-    /// 默认感电增伤幅度（小数）。pobr `GameConstants::poe2().shock_default_effect` = 0.2
-    /// （= SHOCK_MIN_EFFECT/100；vendor 以百分制 20 表示，语义一致仅刻度不同）。
+    /// Default shock increased-damage-taken magnitude (fraction). pobr
+    /// `GameConstants::poe2().shock_default_effect` = 0.2 (=
+    /// SHOCK_MIN_EFFECT/100; vendor expresses it as percent-scale 20 — same
+    /// semantics, different scale).
     pub shock_default_effect: f64,
-    /// 流血基础 magnitude 占 pre-mitigation 物理命中比例（每秒）。pobr 0.15；
-    /// vendor Misc.lua:86 BleedingHitDamagePercentPerMinute = 900
-    /// （/60/100 = 0.15，Data.lua:203 BleedPercentBase）。
+    /// Bleed's base magnitude as a fraction of pre-mitigation physical hit
+    /// damage (per second). pobr 0.15; vendor Misc.lua:86
+    /// BleedingHitDamagePercentPerMinute = 900 (/60/100 = 0.15, Data.lua:203
+    /// BleedPercentBase).
     pub bleed_base_fraction: f64,
-    /// 流血基础持续（秒）。pobr 5.0；vendor Misc.lua:90 BaseBleedingDuration = 5。
+    /// Bleed's base duration (seconds). pobr 5.0; vendor Misc.lua:90
+    /// BaseBleedingDuration = 5.
     pub bleed_base_duration: f64,
-    /// 点燃基础 magnitude 比例（每秒）。pobr 0.20；
-    /// vendor Misc.lua:87 IgniteHitDamagePercentPerMinute = 1200
-    /// （/60/100 = 0.2，Data.lua:207 IgnitePercentBase）。
+    /// Ignite's base magnitude fraction (per second). pobr 0.20; vendor
+    /// Misc.lua:87 IgniteHitDamagePercentPerMinute = 1200 (/60/100 = 0.2,
+    /// Data.lua:207 IgnitePercentBase).
     pub ignite_base_fraction: f64,
-    /// 点燃基础持续（秒）。pobr 4.0；vendor Misc.lua:96 BaseIgniteDuration = 4。
+    /// Ignite's base duration (seconds). pobr 4.0; vendor Misc.lua:96
+    /// BaseIgniteDuration = 4.
     pub ignite_base_duration: f64,
-    /// 中毒基础 magnitude 比例（每秒）。pobr 0.20；
-    /// vendor Misc.lua:88 PoisonHitDamagePercentPerMinute = 1200
-    /// （/60/100 = 0.2，Data.lua:205 PoisonPercentBase）。
+    /// Poison's base magnitude fraction (per second). pobr 0.20; vendor
+    /// Misc.lua:88 PoisonHitDamagePercentPerMinute = 1200 (/60/100 = 0.2,
+    /// Data.lua:205 PoisonPercentBase).
     pub poison_base_fraction: f64,
-    /// 中毒基础持续（秒）。pobr 2.0；vendor Misc.lua:95 BasePoisonDuration = 2。
+    /// Poison's base duration (seconds). pobr 2.0; vendor Misc.lua:95
+    /// BasePoisonDuration = 2.
     pub poison_base_duration: f64,
 
-    // vendor-only（pobr 现有 Rust 无此值）
-    /// 闪避（evade）几率上限（%）。Misc.lua:110 DefaultMaxEvadeChancePercent = 95
-    /// （Data.lua:182 EvadeChanceCap）。
+    // vendor-only (pobr's existing Rust has no such value)
+    /// Evade-chance cap (%). Misc.lua:110
+    /// DefaultMaxEvadeChancePercent = 95 (Data.lua:182 EvadeChanceCap).
     pub evade_chance_cap: f64,
-    /// 偏斜（deflect）几率上限（%）。Data.lua:183 DeflectionChanceCap = 95。
+    /// Deflection-chance cap (%). Data.lua:183 DeflectionChanceCap = 95.
     pub deflection_chance_cap: f64,
-    /// 偏斜减伤幅度（%）。Misc.lua:111 BasePercentDamageDeflected = 40
-    /// （Data.lua:188 DeflectEffect）。
+    /// Deflect damage-reduction magnitude (%). Misc.lua:111
+    /// BasePercentDamageDeflected = 40 (Data.lua:188 DeflectEffect).
     pub deflect_effect: f64,
-    /// 翻滚闪避（dodge）几率上限（%）。Data.lua:184 DodgeChanceCap = 75。
+    /// Dodge-roll chance cap (%). Data.lua:184 DodgeChanceCap = 75.
     pub dodge_chance_cap: f64,
-    /// 回避（avoid）几率上限（%）。Data.lua:189 AvoidChanceCap = 75。
+    /// Avoid-chance cap (%). Data.lua:189 AvoidChanceCap = 75.
     pub avoid_chance_cap: f64,
-    /// 法术抑制几率上限（%）。Data.lua:186 SuppressionChanceCap = 100。
+    /// Spell suppression chance cap (%). Data.lua:186
+    /// SuppressionChanceCap = 100.
     pub suppression_chance_cap: f64,
-    /// 法术抑制减伤幅度（%）。Data.lua:187 SuppressionEffect = 50。
+    /// Spell suppression damage-reduction magnitude (%). Data.lua:187
+    /// SuppressionEffect = 50.
     pub suppression_effect: f64,
-    /// 命中随距离衰减起点（距离单位）。Data.lua:190 AccuracyFalloffStart = 20。
+    /// Distance where accuracy falloff starts (distance units). Data.lua:190
+    /// AccuracyFalloffStart = 20.
     pub accuracy_falloff_start: f64,
-    /// 命中随距离衰减终点。Data.lua:191 AccuracyFalloffEnd = 90。
+    /// Distance where accuracy falloff ends. Data.lua:191
+    /// AccuracyFalloffEnd = 90.
     pub accuracy_falloff_end: f64,
-    /// 最远距离命中惩罚幅度（%）。Data.lua:192 MaxAccuracyRangePenalty = 90
-    /// （= -Misc.lua:201 `accuracy_rating_+%_final_at_max_distance_scaled` = -(-90)）。
+    /// Accuracy penalty magnitude at max distance (%). Data.lua:192
+    /// MaxAccuracyRangePenalty = 90 (= -Misc.lua:201
+    /// `accuracy_rating_+%_final_at_max_distance_scaled` = -(-90)).
     pub max_accuracy_range_penalty: f64,
-    /// 冰缓最大效果（%）。Misc.lua:77 ChillMaxEffect = 50。
+    /// Chill's max effect (%). Misc.lua:77 ChillMaxEffect = 50.
     pub chill_max_effect: f64,
-    /// 冰缓效果乘数（%）。Misc.lua:76 ChillEffectMultiplier = 100。
+    /// Chill effect multiplier (%). Misc.lua:76 ChillEffectMultiplier = 100.
     pub chill_effect_multiplier: f64,
-    /// 低血/低魔阈值（占池比例）。Data.lua:175 LowPoolThreshold = 0.35
-    /// （Misc.lua:129 DefaultLowStatusThresholdPercent = 35 的小数形式）。
+    /// Low-life/low-mana threshold (fraction of the pool). Data.lua:175
+    /// LowPoolThreshold = 0.35 (the decimal form of Misc.lua:129
+    /// DefaultLowStatusThresholdPercent = 35).
     pub low_pool_threshold: f64,
-    /// 偷取基础速率（每秒占池比例）。Data.lua:201 LeechRateBase = 0.02。
+    /// Base leech rate (fraction of the pool per second). Data.lua:201
+    /// LeechRateBase = 0.02.
     pub leech_rate_base: f64,
-    /// 偷取有效伤害上限。Misc.lua:130 EffectiveMaxDamageForLeech = 40000。
+    /// Effective max damage for leech. Misc.lua:130
+    /// EffectiveMaxDamageForLeech = 40000.
     pub effective_max_damage_for_leech: f64,
-    /// 终结打击阈值——普通怪（剩余生命 %）。Misc.lua:104 CullingStrikeNormalThreshold = 35。
+    /// Culling strike threshold — normal monsters (% life remaining).
+    /// Misc.lua:104 CullingStrikeNormalThreshold = 35.
     pub culling_strike_normal_threshold: f64,
-    /// 终结打击阈值——魔法怪。Misc.lua:105 CullingStrikeMagicThreshold = 20。
+    /// Culling strike threshold — magic monsters. Misc.lua:105
+    /// CullingStrikeMagicThreshold = 20.
     pub culling_strike_magic_threshold: f64,
-    /// 终结打击阈值——稀有怪。Misc.lua:106 CullingStrikeRareThreshold = 10。
+    /// Culling strike threshold — rare monsters. Misc.lua:106
+    /// CullingStrikeRareThreshold = 10.
     pub culling_strike_rare_threshold: f64,
-    /// 终结打击阈值——传奇怪。Misc.lua:107 CullingStrikeUniqueThreshold = 5。
+    /// Culling strike threshold — unique monsters. Misc.lua:107
+    /// CullingStrikeUniqueThreshold = 5.
     pub culling_strike_unique_threshold: f64,
-    /// 眩晕几率生效下限（%）。Data.lua:217 MinStunChanceNeeded = 20。
+    /// Minimum stun chance needed for a stun to apply at all (%).
+    /// Data.lua:217 MinStunChanceNeeded = 20.
     pub min_stun_chance_needed: f64,
-    /// 眩晕基础倍率。Data.lua:218 StunBaseMult = 200。
+    /// Stun base multiplier. Data.lua:218 StunBaseMult = 200.
     pub stun_base_mult: f64,
-    /// 眩晕基础持续（秒）。Data.lua:219 StunBaseDuration = 0.5
-    /// （Misc.lua:220 `stun_base_duration_override_ms` = 500 / 1000）。
+    /// Stun base duration (seconds). Data.lua:219 StunBaseDuration = 0.5
+    /// (Misc.lua:220 `stun_base_duration_override_ms` = 500 / 1000).
     pub stun_base_duration_seconds: f64,
-    /// 轻眩晕最小几率——对玩家（%）。Misc.lua:46 LightStunMinimumChancePlayer = 15。
+    /// Light stun minimum chance — against players (%). Misc.lua:46
+    /// LightStunMinimumChancePlayer = 15.
     pub light_stun_minimum_chance_player: f64,
-    /// 轻眩晕比例系数——对玩家。Misc.lua:47 LightStunRatioScalePlayer = 44。
+    /// Light stun ratio scale — against players. Misc.lua:47
+    /// LightStunRatioScalePlayer = 44.
     pub light_stun_ratio_scale_player: f64,
-    /// 轻眩晕最小几率——对怪物（%）。Misc.lua:44 LightStunMinimumChance = 15。
+    /// Light stun minimum chance — against monsters (%). Misc.lua:44
+    /// LightStunMinimumChance = 15.
     pub light_stun_minimum_chance: f64,
-    /// 轻眩晕比例系数——对怪物。Misc.lua:45 LightStunRatioScale = 58。
+    /// Light stun ratio scale — against monsters. Misc.lua:45
+    /// LightStunRatioScale = 58.
     pub light_stun_ratio_scale: f64,
-    /// 重眩晕伤害系数——对玩家。Misc.lua:51 HeavyStunDamageScalePlayer = 0.65。
+    /// Heavy stun damage scale — against players. Misc.lua:51
+    /// HeavyStunDamageScalePlayer = 0.65.
     pub heavy_stun_damage_scale_player: f64,
-    /// 重眩晕阈值修正——对玩家。Misc.lua:52 HeavyStunThresholdModifierPlayer = 100。
+    /// Heavy stun threshold modifier — against players. Misc.lua:52
+    /// HeavyStunThresholdModifierPlayer = 100.
     pub heavy_stun_threshold_modifier_player: f64,
-    /// 重眩晕修正持续——对玩家（秒）。Misc.lua:53 HeavyStunModifierDurationPlayer = 10。
+    /// Heavy stun modifier duration — against players (seconds).
+    /// Misc.lua:53 HeavyStunModifierDurationPlayer = 10.
     pub heavy_stun_modifier_duration_player: f64,
-    /// 重眩晕伤害系数——对怪物。Misc.lua:48 HeavyStunDamageScale = 0.58。
+    /// Heavy stun damage scale — against monsters. Misc.lua:48
+    /// HeavyStunDamageScale = 0.58.
     pub heavy_stun_damage_scale: f64,
-    /// 重眩晕阈值修正——对怪物。Misc.lua:49 HeavyStunThresholdModifier = 500。
+    /// Heavy stun threshold modifier — against monsters. Misc.lua:49
+    /// HeavyStunThresholdModifier = 500.
     pub heavy_stun_threshold_modifier: f64,
-    /// 重眩晕修正持续——对怪物（秒）。Misc.lua:50 HeavyStunModifierDuration = 16.5。
+    /// Heavy stun modifier duration — against monsters (seconds).
+    /// Misc.lua:50 HeavyStunModifierDuration = 16.5.
     pub heavy_stun_modifier_duration: f64,
-    /// 负护甲增伤上限（%）。Data.lua:194 NegArmourDmgBonusCap = 100。
+    /// Negative-armour damage-bonus cap (%). Data.lua:194
+    /// NegArmourDmgBonusCap = 100.
     pub neg_armour_dmg_bonus_cap: f64,
 
-    // ----：EHP 循环魔数 + 普通怪 DPS 乘数（vendor-only，Data.lua:228-239）。
-    //      `#[serde(default)]`：旧 JSON 缺字段时回退 Default 同值（schema 向后兼容）。----
-    /// EHP 循环单击伤害上限（精度上界）。Data.lua:237 ehpCalcMaxDamage = 100000000。
+    //  EHP loop magic numbers + normal-monster DPS multiplier (vendor-only,
+    //  Data.lua:228-239). `#[serde(default)]`: falls back to the same
+    //  Default value when old JSON is missing the field (schema backward
+    //  compatibility).
+    /// EHP loop per-hit damage cap (a precision upper bound). Data.lua:237
+    /// ehpCalcMaxDamage = 100000000.
     #[serde(default = "default_ehp_calc_max_damage")]
     pub ehp_calc_max_damage: f64,
-    /// EHP 循环最大迭代数（超限则高 EHP 被低估）。Data.lua:239
-    /// ehpCalcMaxIterationsToCalc = 50。
+    /// EHP loop max iteration count (exceeding it underestimates high EHP).
+    /// Data.lua:239 ehpCalcMaxIterationsToCalc = 50.
     #[serde(default = "default_ehp_calc_max_iterations")]
     pub ehp_calc_max_iterations: f64,
-    /// EHP 递归加速因子（loss-prevention 时消费侧 cap 4）。Data.lua:235 ehpCalcSpeedUp = 8。
+    /// EHP recursion speed-up factor (the consumer caps it at 4 during
+    /// loss-prevention). Data.lua:235 ehpCalcSpeedUp = 8.
     #[serde(default = "default_ehp_calc_speed_up")]
     pub ehp_calc_speed_up: f64,
-    /// 普通怪 DPS 乘数（敌人进伤 placeholder 装配，= 1/4.40）。Data.lua:228
-    /// normalEnemyDPSMult。
+    /// Normal-monster DPS multiplier (used to assemble the enemy's
+    /// incoming-damage placeholder, = 1/4.40). Data.lua:228
+    /// normalEnemyDPSMult.
     ///
-    /// 注：入库 JSON 写作 `0.227272727272727265`——该十进制串在 serde_json（默认
-    /// feature，无 float_roundtrip）下恰解析为与 Rust `1.0/4.40` 逐 bit 相等的 f64；
-    /// 朴素 17 位短表示会差 1 ULP。逐 bit 相等由 gamedata 加载测试锁定。
+    /// Note: stored in JSON as `0.227272727272727265` — this decimal string
+    /// parses under serde_json (default feature, no float_roundtrip) to
+    /// exactly the same f64, bit for bit, as Rust's `1.0/4.40`; a naive
+    /// 17-digit short representation would be off by 1 ULP. The bit-for-bit
+    /// equality is locked in by the gamedata load test.
     #[serde(default = "default_normal_enemy_dps_mult")]
     pub normal_enemy_dps_mult: f64,
 
-    //  max-hit 转换平滑迭代数（vendor-only，Data.lua:241）。
-    /// max-hit 多转换分支（`useConversionSmoothing`）的平滑迭代上限。
-    /// Data.lua:241 maxHitSmoothingPasses = 8（CalcDefence.lua:3669 消费）。
+    //  max-hit conversion smoothing iteration count (vendor-only, Data.lua:241).
+    /// Iteration cap for smoothing across multiple max-hit conversion
+    /// branches (`useConversionSmoothing`). Data.lua:241
+    /// maxHitSmoothingPasses = 8 (consumed by CalcDefence.lua:3669).
     #[serde(default = "default_max_hit_smoothing_passes")]
     pub max_hit_smoothing_passes: f64,
 
-    //  Block 面板族（vendor-only）。
-    /// 基础格挡上限（%，`BaseBlockChanceMax` 的角色固有 BASE）。
-    /// Misc.lua:147 `object_inherent_base_maximum_block_%_from_ot` = 50
-    /// （CalcSetup.lua:28 注入 `BaseBlockChanceMax` BASE）。
+    //  Block panel family (vendor-only).
+    /// Base block chance cap (%, the character-inherent BASE for
+    /// `BaseBlockChanceMax`). Misc.lua:147
+    /// `object_inherent_base_maximum_block_%_from_ot` = 50 (injected as a
+    /// `BaseBlockChanceMax` BASE by CalcSetup.lua:28).
     #[serde(default = "default_base_block_chance_max")]
     pub base_block_chance_max: f64,
 
-    //  charm 合并（vendor-only）。
-    /// 护符同时生效数上限（charm limit cap）。CalcPerform.lua:1589
-    /// `m_min(Override(CharmLimit) or Sum(BASE CharmLimit), 3)` 的字面 3
-    /// （`merge_flasks_charms` 消费）。
+    //  charm merging (vendor-only).
+    /// Cap on how many charms can be active at once (charm limit cap).
+    /// CalcPerform.lua:1589's literal 3 in
+    /// `m_min(Override(CharmLimit) or Sum(BASE CharmLimit), 3)` (consumed by
+    /// `merge_flasks_charms`).
     #[serde(default = "default_charm_limit_cap")]
     pub charm_limit_cap: f64,
 
-    //  debuff 持续乘区（vendor-only）。
-    /// 敌侧 `BuffExpireFaster` 聚合的下限（Data.lua:177
-    /// `BuffExpirationSlowCap = 0.25`）：`debuffDurationMult =
+    //  debuff duration multiplier band (vendor-only).
+    /// Floor for the enemy-side `BuffExpireFaster` aggregate (Data.lua:177
+    /// `BuffExpirationSlowCap = 0.25`): `debuffDurationMult =
     /// 1 / max(cap, calcLib.mod(enemyDB, "BuffExpireFaster"))`
-    /// （CalcOffence.lua:1833-1835 / :5040，Temporal Chains 系 expire-slower
-    /// 至多把 debuff/异常持续拉长 4 倍）。
+    /// (CalcOffence.lua:1833-1835 / :5040 — the Temporal Chains
+    /// expire-slower family can stretch debuff/ailment duration by up to
+    /// 4x).
     #[serde(default = "default_buff_expiration_slow_cap")]
     pub buff_expiration_slow_cap: f64,
 }
 
-// serde default 函数（与 `Default` 落值同源，单一数值出处）。
+// serde default functions (same source as the `Default` impl's values, a
+// single numeric source of truth).
 fn default_ehp_calc_max_damage() -> f64 {
     100_000_000.0
 }
@@ -269,27 +331,30 @@ fn default_max_hit_smoothing_passes() -> f64 {
     8.0
 }
 
-// Default = fallback 值
+// Default = fallback values
 //
-// 语义：`Default` 即「无 GameData 注入时的回退常量集」，必须与
-// `data/<版本>/base/game_constants.json` 逐值相等（由
-// `crates/pobr-gamedata/tests/load_game_constants.rs` 的 default 对照测试锁定）。
-// 有 pobr Rust 准源的字段**直接引用** `crate::constants` / `crate::monster` 的
-// const / `GameConstants::poe2()` 字段（单一数值出处，不复制字面量）；
-// vendor-only 字段（pobr 旧 Rust 无此值）以字面量落值，出处见各字段 doc。
+// Semantics: `Default` is "the fallback constant set used when no GameData
+// is injected", and must be value-equal field by field to
+// `data/<version>/base/game_constants.json` (locked in by the default
+// comparison test in `crates/pobr-gamedata/tests/load_game_constants.rs`).
+// Fields that have a pobr Rust source of truth **reference it directly** —
+// `crate::constants` / `crate::monster` consts or
+// `GameConstants::poe2()` fields (a single numeric source of truth, no
+// duplicated literals); vendor-only fields (values pobr's old Rust doesn't
+// have) are stored as literals, with the source noted in each field's doc.
 
 impl Default for CharacterConstantsDef {
     fn default() -> Self {
         Self {
             base_maximum_all_resistances_pct: crate::constants::DEFAULT_MAX_RESISTANCE,
             base_critical_hit_damage_bonus: crate::constants::PLAYER_BASE_CRIT_DAMAGE_BONUS,
-            // vendor-only（Misc.lua:146 / Data.lua:178 DamageReductionCap）。
+            // vendor-only (Misc.lua:146 / Data.lua:178 DamageReductionCap).
             maximum_physical_damage_reduction_pct: 90.0,
-            // vendor-only（Misc.lua:143）。
+            // vendor-only (Misc.lua:143).
             energy_shield_recharge_rate_per_minute_pct: 750.0,
-            // vendor-only（Data.lua:197 EnergyShieldRechargeDelay）。
+            // vendor-only (Data.lua:197 EnergyShieldRechargeDelay).
             energy_shield_recharge_delay_seconds: 4.0,
-            // vendor-only（Misc.lua:144）。
+            // vendor-only (Misc.lua:144).
             mana_regeneration_rate_per_minute_pct: 240.0,
         }
     }
@@ -299,12 +364,12 @@ impl Default for MonsterConstantsDef {
     fn default() -> Self {
         Self {
             base_maximum_all_resistances_pct: crate::monster::ENEMY_MAX_RESIST,
-            // vendor-only（Misc.lua:247 / Data.lua:179）。
+            // vendor-only (Misc.lua:247 / Data.lua:179).
             maximum_physical_damage_reduction_pct: 75.0,
             base_critical_hit_damage_bonus: crate::monster::MONSTER_BASE_CRIT_DAMAGE_BONUS,
-            // vendor-only（Misc.lua:258 / Data.lua:221）。
+            // vendor-only (Misc.lua:258 / Data.lua:221).
             melee_hit_stun_multiplier_pct: 33.0,
-            // vendor-only（Misc.lua:259 / Data.lua:222）。
+            // vendor-only (Misc.lua:259 / Data.lua:222).
             physical_hit_stun_multiplier_pct: 100.0,
         }
     }
@@ -312,8 +377,9 @@ impl Default for MonsterConstantsDef {
 
 impl Default for GameMechanicsConstantsDef {
     fn default() -> Self {
-        // pobr 准源段统一取自 `GameConstants::poe2()`（其内部已引用顶层 const），
-        // 保证与旧 Rust 路径逐 bit 相等。
+        // The pobr-source-of-truth fields all come from `GameConstants::poe2()`
+        // (which itself already references the top-level consts), guaranteeing
+        // bit-for-bit equality with the old Rust path.
         let legacy = crate::constants::GameConstants::poe2();
         Self {
             resist_hard_cap: legacy.resist_hard_cap,
@@ -330,7 +396,8 @@ impl Default for GameMechanicsConstantsDef {
             ignite_base_duration: legacy.ignite_base_duration,
             poison_base_fraction: legacy.poison_base_fraction,
             poison_base_duration: legacy.poison_base_duration,
-            // 以下为 vendor-only 字段（出处见上方各字段 doc 的 Lua 行号）
+            // The fields below are vendor-only (see each field's doc above for
+            // the Lua file:line source)
             evade_chance_cap: 95.0,
             deflection_chance_cap: 95.0,
             deflect_effect: 40.0,
@@ -364,16 +431,17 @@ impl Default for GameMechanicsConstantsDef {
             heavy_stun_threshold_modifier: 500.0,
             heavy_stun_modifier_duration: 16.5,
             neg_armour_dmg_bonus_cap: 100.0,
-            //  EHP 循环魔数 + 普通怪 DPS 乘数（Data.lua:228/235/237/239）。
+            //  EHP loop magic numbers + normal-monster DPS multiplier
+            //  (Data.lua:228/235/237/239).
             ehp_calc_max_damage: default_ehp_calc_max_damage(),
             ehp_calc_max_iterations: default_ehp_calc_max_iterations(),
             ehp_calc_speed_up: default_ehp_calc_speed_up(),
             normal_enemy_dps_mult: default_normal_enemy_dps_mult(),
-            //  max-hit 转换平滑迭代数（Data.lua:241）。
+            //  max-hit conversion smoothing iteration count (Data.lua:241).
             max_hit_smoothing_passes: default_max_hit_smoothing_passes(),
-            //  Block 面板族（Misc.lua:147 / CalcSetup.lua:28）。
+            //  Block panel family (Misc.lua:147 / CalcSetup.lua:28).
             base_block_chance_max: default_base_block_chance_max(),
-            //  charm limit cap（CalcPerform.lua:1589）。
+            //  charm limit cap (CalcPerform.lua:1589).
             charm_limit_cap: default_charm_limit_cap(),
             buff_expiration_slow_cap: default_buff_expiration_slow_cap(),
         }

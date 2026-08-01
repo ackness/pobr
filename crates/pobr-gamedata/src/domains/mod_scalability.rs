@@ -1,19 +1,21 @@
-//! `overlay/mod_scalability.json` loader——`{range:x}` 词条取值的可缩放性 +
-//! 格式换算表（vendor `Data/ModScalability.lua` 经
-//! `extract-lua --what mod-scalability` 抽取，schema 见
-//! [`pobr_data::catalog::item_overlay`]）。
+//! `overlay/mod_scalability.json` loader — the scalability + format
+//! conversion table for `{range:x}` mod values (extracted from vendor
+//! `Data/ModScalability.lua` via `extract-lua --what mod-scalability`,
+//! schema in [`pobr_data::catalog::item_overlay`]).
 //!
-//! 体积注：~4MB 级，懒加载域；消费侧（
-//! `pobr-core::apply_range`）经 RuleSet `ItemRules` 注入，零接线。
+//! Size note: on the order of ~4MB, a lazily-loaded domain; consumer
+//! (`pobr-core::apply_range`) injects it via RuleSet `ItemRules`, zero
+//! wiring here.
 
 use pobr_data::catalog::item_overlay::ModScalabilityDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载可缩放性表（恒走 `overlay/` 定位）。文件缺失返回 `Ok(None)`
-    /// （消费侧降级 = 朴素线性取值 + `approx` 标记）；
-    /// 其余错误照常上抛。
+    /// Loads the scalability table (always resolved under `overlay/`).
+    /// Returns `Ok(None)` when the file is missing (the consumer degrades
+    /// to naive linear value resolution plus an `approx` flag); other
+    /// errors still propagate as usual.
     pub fn mod_scalability(&self) -> Result<Option<ModScalabilityDef>, LoadError> {
         match self.load_json_at::<ModScalabilityDef>(self.overlay_path("mod_scalability.json")) {
             Ok(def) => Ok(Some(def)),

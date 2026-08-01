@@ -1,21 +1,28 @@
-//! 词条行级标注（`{key:value}` / `{key}` 前缀）的**保真**解析与重建。
+//! **Fidelity-preserving** parsing and reconstruction of per-line mod
+//! annotations (`{key:value}` / `{key}` prefixes).
 //!
-//! 与 `pobr-core::item_text::strip_pob_annotations`（剥离丢语义，喂 calc）不同，本模块
-//! **保留**全部标注以支持编辑态往返（BuildRaw 契约）。标注顺序与命名严格对照 PoB2
-//! `Classes/Item.lua` `writeModLine`（1345-1389）：`{range}` → `{corruptedRange}` →
-//! `{rune}` → `{enchant}` → `{custom}` → `{fractured}` → `{desecrated}` → `{mutated}` →
-//! `{crafted}` → `{unscalable}` → `{variant:…}` → `{tags:…}` → 文本。
+//! Unlike `pobr-core::item_text::strip_pob_annotations` (which strips
+//! annotations, losing their semantics, to feed the calc engine), this
+//! module **preserves** every annotation to support edit-view round-tripping
+//! (the BuildRaw contract). Annotation order and naming strictly mirror PoB2
+//! `Classes/Item.lua` `writeModLine` (1345-1389): `{range}` -> `{corruptedRange}`
+//! -> `{rune}` -> `{enchant}` -> `{custom}` -> `{fractured}` -> `{desecrated}`
+//! -> `{mutated}` -> `{crafted}` -> `{unscalable}` -> `{variant:...}` ->
+//! `{tags:...}` -> the text itself.
 
-/// 单条词条行的标注集合 + 剥标注后的干净文本。
+/// The annotation set for one mod line, plus the clean text with annotations stripped.
 ///
-/// 字段顺序即 BuildRaw 输出顺序（[`ModLineAnnotations::render_prefix`]）。布尔标记按
-/// PoB2 `writeModLine` 的写出顺序排列；`range`/`corrupted_range`/`variants`/`tags`
-/// 为带值标注。
+/// Field order matches the BuildRaw output order
+/// ([`ModLineAnnotations::render_prefix`]). The boolean flags follow PoB2's
+/// `writeModLine` write-out order; `range`/`corrupted_range`/`variants`/`tags`
+/// are the value-carrying annotations.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ModLineAnnotations {
-    /// `{range:x}`（PoB2 仅在行含 `(min-max)` 模板时写出，本模块保留原值不做模板判定）。
+    /// `{range:x}` (PoB2 only writes this when the line contains a
+    /// `(min-max)` template; this module keeps the raw value without doing
+    /// that template check).
     pub range: Option<f64>,
-    /// `{corruptedRange:x}`。
+    /// `{corruptedRange:x}`.
     pub corrupted_range: Option<f64>,
     pub rune: bool,
     pub enchant: bool,
@@ -25,14 +32,14 @@ pub struct ModLineAnnotations {
     pub mutated: bool,
     pub crafted: bool,
     pub unscalable: bool,
-    /// `{variant:1,2,3}`——行级 variant 门控集合（CheckModLineVariant）。
+    /// `{variant:1,2,3}` — the per-line variant gating set (CheckModLineVariant).
     pub variants: Option<Vec<u32>>,
-    /// `{tags:a,b}`——未建模标注原样保留。
+    /// `{tags:a,b}` — unmodeled annotations, kept verbatim.
     pub tags: Vec<String>,
 }
 
 impl ModLineAnnotations {
-    /// 是否完全无标注（用于 BuildRaw 时省略前缀）。
+    /// Whether there are no annotations at all (used to omit the prefix when building BuildRaw).
     pub fn is_empty(&self) -> bool {
         self.range.is_none()
             && self.corrupted_range.is_none()
@@ -48,10 +55,11 @@ impl ModLineAnnotations {
             && self.tags.is_empty()
     }
 
-    /// 按 PoB2 `writeModLine` 顺序重建标注前缀字符串（不含正文）。
+    /// Rebuilds the annotation prefix string (without the body text), in PoB2 `writeModLine` order.
     ///
-    /// 数值标注的 round 语义对照 vendor：`{range}`/`{corruptedRange}` 用 [`round_to`]
-    /// （range 3 位、corruptedRange 2 位），整数值省略小数。
+    /// The rounding semantics for numeric annotations mirror vendor:
+    /// `{range}`/`{corruptedRange}` use [`round_to`] (3 digits for range, 2
+    /// for corruptedRange), and integral values drop the decimal point.
     pub fn render_prefix(&self) -> String {
         let mut out = String::new();
         if let Some(r) = self.range {
@@ -95,12 +103,15 @@ impl ModLineAnnotations {
     }
 }
 
-/// 解析单条词条行：剥出**所有**行首 `{...}` 标注为结构化 [`ModLineAnnotations`]，返回
-/// `(annotations, clean_text)`。
+/// Parses a single mod line: strips **every** leading `{...}` annotation
+/// into a structured [`ModLineAnnotations`], returning `(annotations, clean_text)`.
 ///
-/// PoB2 `ParseRaw` 用 `for varSpec in line:gmatch("{variant:([%d,]+)}")` 等逐标注扫描；
-/// 本实现等价地从行首循环吃 `{key[:value]}` 段。未识别的 `{key}` 归入 [`ModLineAnnotations::tags`]
-/// 兜底（保证往返不丢字节）——但已知键（range/variant/各布尔）走专门字段。
+/// PoB2's `ParseRaw` scans annotations one at a time with patterns like
+/// `for varSpec in line:gmatch("{variant:([%d,]+)}")`; this implementation is
+/// equivalent, looping over leading `{key[:value]}` segments. Unrecognized
+/// `{key}` annotations fall back into [`ModLineAnnotations::tags`] (so
+/// round-tripping never loses bytes) — but known keys (range/variant/the
+/// booleans) go to their dedicated fields.
 pub fn parse_mod_line(line: &str) -> (ModLineAnnotations, String) {
     let mut ann = ModLineAnnotations::default();
     let mut rest = line;
@@ -152,7 +163,8 @@ pub fn parse_mod_line(line: &str) -> (ModLineAnnotations, String) {
                     .filter(|s| !s.is_empty())
                     .collect();
             }
-            // 未知键：原样塞回 tags 兜底，保证 lossless（PoB2 未来键不致丢字节）。
+            // Unknown key: push back into tags verbatim to stay lossless
+            // (so future PoB2 keys never lose bytes).
             other => ann.tags.push(other.to_string()),
         }
         rest = after;
@@ -161,13 +173,14 @@ pub fn parse_mod_line(line: &str) -> (ModLineAnnotations, String) {
     (ann, rest.trim().to_string())
 }
 
-/// 把数值按 `digits` 位四舍五入；整数结果省略小数（对照 PoB2 `round(v, n)` + 字符串拼接）。
+/// Rounds a value to `digits` decimal places; integral results drop the
+/// decimal point (mirrors PoB2 `round(v, n)` plus its string formatting).
 fn fmt_round(value: f64, digits: u32) -> String {
     let r = round_to(value, digits);
     if (r.fract()).abs() < f64::EPSILON {
         format!("{}", r as i64)
     } else {
-        // 去掉尾随零（PoB2 Lua tostring 同行为：0.500 → 0.5）。
+        // Strip trailing zeros (matches PoB2's Lua tostring behaviour: 0.500 -> 0.5).
         let mut s = format!("{r:.*}", digits as usize);
         while s.contains('.') && s.ends_with('0') {
             s.pop();
@@ -179,7 +192,7 @@ fn fmt_round(value: f64, digits: u32) -> String {
     }
 }
 
-/// 四舍五入到 `digits` 位小数（对照 PoB2 `round`）。
+/// Rounds to `digits` decimal places (mirrors PoB2 `round`).
 pub fn round_to(value: f64, digits: u32) -> f64 {
     let f = 10f64.powi(digits as i32);
     (value * f).round() / f

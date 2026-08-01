@@ -26,21 +26,21 @@ fn base_items_load_with_resolved_foreign_keys() {
         .iter()
         .find(|b| b.name == "Dull Hatchet")
         .expect("存在 Dull Hatchet 基底");
-    // 外键已解析为稳定字符串 ID（非整型索引）。
+    // The foreign key is already resolved to a stable string ID (not an integer index).
     assert_eq!(hatchet.item_class, "One Hand Axe");
     assert!(hatchet.id.starts_with("Metadata/Items/Weapons/"));
     assert!(hatchet.tags.iter().any(|t| t == "ezomyte_basetype"));
 
-    // 占位条目（[DNT-UNUSED] 等）已被过滤。
+    // Placeholder entries (e.g. [DNT-UNUSED]) are already filtered out.
     assert!(
         !bases.iter().any(|b| b.name.contains("[DNT")),
         "不应包含开发占位条目"
     );
 }
 
-///  弩装填时间经 overlay merge 进 weapon 段（vendor
-/// `Data/Bases/crossbow.lua` Makeshift Crossbow `ReloadTimeBase = 0.8`），
-/// 非弩武器保持 `None`。
+///  Crossbow reload time is merged into the weapon section via overlay
+/// (vendor `Data/Bases/crossbow.lua`'s Makeshift Crossbow
+/// `ReloadTimeBase = 0.8`); non-crossbow weapons stay `None`.
 #[test]
 fn crossbow_reload_time_merged_from_overlay() {
     let bases = game_data().base_items().expect("base_items 可加载");
@@ -74,7 +74,7 @@ fn traditional_chinese_names_available_for_localization() {
         .base_item_names("zh-TW")
         .expect("zh-TW 边车可加载");
     assert!(names.len() > 1000);
-    // 磨刀石 = Blacksmith's Whetstone
+    // 磨刀石 (the zh-TW name) = Blacksmith's Whetstone
     let whetstone_id = "Metadata/Items/Currency/CurrencyWeaponQuality";
     assert_eq!(names.get(whetstone_id).map(String::as_str), Some("磨刀石"));
 }

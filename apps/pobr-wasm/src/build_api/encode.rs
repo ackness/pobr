@@ -1,4 +1,4 @@
-//! 编辑态 → PoB2 Build XML → 分享 code（`encode_build_json`）。
+//! Edit state -> PoB2 Build XML -> a share code (`encode_build_json`).
 
 use std::collections::BTreeMap;
 
@@ -9,7 +9,7 @@ use super::request::CalculateBuildRequest;
 use super::slot_from_id;
 use crate::state;
 
-/// [`EquipmentSlot`] → PoB `<Slot name>`（`slot_from_pob_name` 的逆向，encode 用）。
+/// [`EquipmentSlot`] -> PoB `<Slot name>` (the inverse of `slot_from_pob_name`, used for encoding).
 fn pob_slot_name(slot: EquipmentSlot) -> &'static str {
     match slot {
         EquipmentSlot::Weapon1 => "Weapon 1",
@@ -26,10 +26,11 @@ fn pob_slot_name(slot: EquipmentSlot) -> &'static str {
     }
 }
 
-/// 当前数据版本对应的 PoB2 树版本标注。
+/// The PoB2 tree version tag matching the current data version.
 ///
-/// ponytail: 由 `GOLDEN_PARITY_DATA_VERSION`（`4.<n>.…` = PoE2 `0.<n>`）派生；
-/// 数据大版本升级时随黄金版本常量自动跟进，无独立配置项。
+/// ponytail: derived from `GOLDEN_PARITY_DATA_VERSION` (`4.<n>.…` = PoE2
+/// `0.<n>`); automatically follows the golden-version constant on a major
+/// data version bump, with no separate config entry.
 fn current_tree_version() -> String {
     let minor = pobr_data::GOLDEN_PARITY_DATA_VERSION
         .split('.')
@@ -38,16 +39,20 @@ fn current_tree_version() -> String {
     format!("0_{minor}")
 }
 
-/// 编辑态 → PoB2 分享 code。
+/// Edit state -> a PoB2 share code.
 ///
-/// 请求形状与 [`CalculateBuildRequest`] 相同（web 端始终发全量覆盖 + 可选
-/// `notes`）；`character.class_name` 必填。往返契约：产出的 code 重新解码计算
-/// 与直接按请求计算结果一致（`contract_golden::encode_build_roundtrip`）。
+/// The request shape is the same as [`CalculateBuildRequest`] (the web side
+/// always sends a full override, plus optional `notes`); `character.class_name`
+/// is required. Round-trip contract: re-decoding and calculating the
+/// produced code matches calculating directly from the request
+/// (`contract_golden::encode_build_roundtrip`).
 ///
-/// **多套保全**：请求带 `base_code`（导入时的原始 code）时，产物以它为底、只替换
-/// 当前 active 的那一套（[`merge_active_sets`]），其余 Spec / SkillSet / ItemSet
-/// 连同各自 `title` 原样保留——否则多套 build 一导出就只剩编辑中的这套，loadout
-/// 绑定随之全断。手搓 build 无 `base_code`，仍走全量生成。
+/// **Multi-set preservation**: when the request carries `base_code` (the
+/// original code from import), the output is based on it, replacing only
+/// the currently active set ([`merge_active_sets`]), with every other Spec
+/// / SkillSet / ItemSet — along with each one's `title` — preserved as-is;
+/// otherwise, exporting a multi-set build would leave only the set being
+/// edited, breaking every loadout binding. A hand-built build has no `base_code` and still goes through full generation.
 pub fn encode_build_json(request_json: &str) -> Result<String, String> {
     encode_build_impl(request_json).map_err(super::ApiError::into_json)
 }
@@ -106,11 +111,13 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
                     (gem_id, gem.skill_id.clone(), gem.level, gem.quality)
                 })
                 .collect();
-            // XML 解析路径按「组内首个 gem = 主动技能」判定；计算路径按「首个非
-            // support」（查数据表）。把首个非 support gem 前置，使两种判定收敛，
-            // 保证 encode → decode 往返后主动技能不漂移。
+            // The XML parse path determines the active skill as "the first
+            // gem in the group"; the calc path determines it as "the first
+            // non-support" (via a data-table lookup). Moving the first
+            // non-support gem to the front makes both determinations
+            // converge, guaranteeing the active skill doesn't drift after an encode -> decode round trip.
             if let Some(active_pos) = gems.iter().position(|(gem_id, _, _, _)| {
-                // gemId 为空的 gem 会被 XML 解析丢弃，不能当 active 候选。
+                // A gem with an empty gemId gets dropped by XML parsing, so it can't be an active candidate.
                 !gem_id.is_empty() && !data.is_support_gem(gem_id).unwrap_or(false)
             }) && active_pos > 0
             {
@@ -126,9 +133,12 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         })
         .collect();
 
-    // 默认 true **条件**在请求直连路径尚未补注——对未显式设置的 key 写显式 false，
-    // 两条路径语义收敛。quest Stat 奖励两侧都已按 defaultState=true 补注
-    // （XML 路径 parse_config、直连路径 parse_build_from_request），省略即一致。
+    // Default-true **condition** keys haven't been backfilled by the
+    // request's direct-construction path yet — writing an explicit false
+    // for any key not explicitly set makes the two paths' semantics
+    // converge. Quest Stat rewards are already backfilled with
+    // defaultState=true on both sides (the XML path's parse_config, the
+    // direct-construction path's parse_build_from_request), so omitting them stays consistent.
     let mut config_inputs = req.config_inputs.clone();
     for key in pobr_build::default_true_condition_keys() {
         config_inputs
@@ -153,8 +163,9 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         config_inputs: &config_inputs,
         notes: req.notes.as_deref(),
     });
-    // 有底稿则写回其 active 套，保住其余 loadout；底稿损坏时降级为纯编辑态产物
-    // （宁可丢多套也不能让导出直接失败）。
+    // With a base draft, write back into its active set, preserving the
+    // other loadouts; if the base draft is corrupted, degrade to a
+    // pure-edit-state output (better to lose the other sets than fail the export outright).
     let xml = match req
         .base_code
         .as_deref()

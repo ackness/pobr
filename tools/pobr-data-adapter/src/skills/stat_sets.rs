@@ -1,5 +1,5 @@
-//! 分等级伤害 stat 集适配（`GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel`
-//! → `granted_effect_stat_sets.json`）。
+//! Per-level damage stat set adapter (`GrantedEffectStatSets` +
+//! `GrantedEffectStatSetsPerLevel` -> `granted_effect_stat_sets.json`).
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -21,102 +21,112 @@ struct RawStatId {
 struct RawGrantedEffectStatSetLink {
     #[serde(rename = "Id")]
     id: String,
-    /// `GrantedEffectStatSets` 行索引（负数/缺失 → 无 stat set）。
+    /// `GrantedEffectStatSets` row index (negative/missing -> no stat set).
     #[serde(rename = "StatSet")]
     stat_set: Option<i64>,
-    /// **附加** statSet 行索引（多 set，FK → `GrantedEffectStatSets`，列序保留）。
+    /// **Additional** statSet row indices (multiple sets, FK -> `GrantedEffectStatSets`, column order preserved).
     #[serde(rename = "AdditionalStatSets", default)]
     additional_stat_sets: Vec<i64>,
 }
 
 #[derive(Deserialize)]
 struct RawStatSet {
-    /// statSet 稳定 id（如 `IceNovaColdInfusedPlayer`）。
+    /// The stable statSet id (e.g. `IceNovaColdInfusedPlayer`).
     #[serde(rename = "Id", default)]
     id: String,
     #[serde(rename = "BaseEffectiveness")]
     base_effectiveness: Option<f64>,
-    /// 等级无关常量 stat（`Stats` 行索引）与其值（位置配对；如 support `damage_+%_final`）。
+    /// Level-independent constant stats (`Stats` row indices) and their
+    /// values (positionally paired; e.g. a support's `damage_+%_final`).
     #[serde(rename = "ConstantStats", default)]
     constant_stats: Vec<usize>,
     #[serde(rename = "ConstantStatsValues", default)]
     constant_stats_values: Vec<i64>,
-    /// （存量 #7-2）本 set 要**移除**的 stat（`Stats` 行索引）——社区 schema 列名
-    /// `IgnoredStats` = vendor `Export/spec.lua` 的 `RemoveStats`。vendor 导出
-    /// （`Export/Scripts/skills.lua:572-597`）把合并行里这些 stat 的值置 0（只置
-    /// **首次出现**，即 base-merge 拼入的主 set 副本）。典型 = Essence Drain 的
-    /// DoT set 移除主 set 的 `spell_min/max_base_chaos_damage`（纯 DoT 无击中）。
-    /// 列缺失（旧表下载）→ 空 = 不移除（韧性降级，与既有缺列口径一致）。
+    /// (Backlog #7-2) Stats this set should **remove** (`Stats` row
+    /// indices) — the community schema's column name `IgnoredStats` =
+    /// vendor `Export/spec.lua`'s `RemoveStats`. Vendor's export
+    /// (`Export/Scripts/skills.lua:572-597`) zeroes these stats' values in
+    /// merged rows (only the **first occurrence**, i.e. the main set's copy
+    /// spliced in by base-merge). Typical example: Essence Drain's DoT set
+    /// removes the main set's `spell_min/max_base_chaos_damage` (pure DoT
+    /// has no hit damage). A missing column (from an old table download) -> empty = nothing removed (a resilience degradation, matching existing missing-column handling).
     #[serde(rename = "IgnoredStats", default)]
     ignored_stats: Vec<usize>,
 }
 
 #[derive(Deserialize)]
 struct RawStatSetPerLevel {
-    /// `GrantedEffectStatSets` 行索引。
+    /// `GrantedEffectStatSets` row index.
     #[serde(rename = "StatSet")]
     stat_set: Option<usize>,
     #[serde(rename = "GemLevel")]
     gem_level: Option<i64>,
-    /// 每级浮动 stat（`Stats` 行索引）与其解析值（位置配对）。
+    /// Per-level float stats (`Stats` row indices) and their resolved values (positionally paired).
     #[serde(rename = "FloatStats", default)]
     float_stats: Vec<usize>,
     #[serde(rename = "BaseResolvedValues", default)]
     base_resolved_values: Vec<i64>,
-    /// 额外 stat（`Stats` 行索引）与其值（位置配对）。
+    /// Additional stats (`Stats` row indices) and their values (positionally paired).
     #[serde(rename = "AdditionalStats", default)]
     additional_stats: Vec<usize>,
     #[serde(rename = "AdditionalStatsValues", default)]
     additional_stats_values: Vec<i64>,
-    /// 技能伤害倍率原始值（permyriad）；倍率 = `1 + BaseMultiplier/10000`。
+    /// Raw skill damage multiplier value (permyriad); multiplier = `1 + BaseMultiplier/10000`.
     #[serde(rename = "BaseMultiplier")]
     base_multiplier: Option<i64>,
 }
 
-/// 分等级 stat 集适配产物。
+/// The adapted per-level stat set output.
 pub struct StatSetsBundle {
-    /// 含至少一条 stat 的授予效果（主 set + 附加 set，T5.2），按 effect id 排序。
+    /// Granted effects with at least one stat (main set + additional sets, T5.2), sorted by effect id.
     pub sets: Vec<SkillStatSetDef>,
-    /// `GrantedEffectStatSets` 总行数（用于汇报）。
+    /// Total `GrantedEffectStatSets` row count (for reporting).
     pub sets_total: usize,
-    /// 入库的分等级行总数（含附加 set）。
+    /// Total per-level rows stored (including additional sets).
     pub damage_levels_total: usize,
 }
 
-/// 从 `GrantedEffectStatSetsPerLevel` 直读技能基础暴击率：
-/// `effect id → gem level → 暴击率（百分点）`，供 [`super::levels::adapt_levels`] 落
-/// `SkillLevelDef::crit_chance`（替代 `overlay/skill_overrides.json` 的 crit merge 来源）。
+/// Reads the base skill crit chance directly from
+/// `GrantedEffectStatSetsPerLevel`: `effect id -> gem level -> crit chance
+/// (percentage points)`, feeding [`super::levels::adapt_levels`]'s
+/// `SkillLevelDef::crit_chance` (replacing the `overlay/skill_overrides.json` crit-merge source).
 ///
-/// 列名错位说明（社区 schema vs vendor `Export/spec.lua`，对照表见 `pipeline/README.md`）：
-/// - 社区 `SpellCritChance` = vendor `AttackCritChance`（主列，`/100`）；
-/// - 社区 `AttackCritChance` = vendor `OffhandCritChance`（≠0 时**覆盖**主列，
-///   vendor `Export/Scripts/skills.lua:281-286`）。
+/// Column-name mismatch note (community schema vs vendor `Export/spec.lua`;
+/// see `pipeline/README.md` for the cross-reference table):
+/// - Community `SpellCritChance` = vendor `AttackCritChance` (the primary column, `/100`);
+/// - Community `AttackCritChance` = vendor `OffhandCritChance` (**overrides**
+///   the primary column when nonzero, vendor `Export/Scripts/skills.lua:281-286`).
 ///
-/// statSet 归属（对齐 vendor 按 `GrantedEffect` join 的行为）：主 `StatSet` 优先；主 set
-/// 全程无暴击而某**附加** set（`AdditionalStatSets`，FK → `GrantedEffectStatSets`）有 →
-/// 取第一个有暴击的附加 set（如 GalvanicFieldBuffPlayer 主 set 164 无暴击、附加 set 900
-/// 有 9.0——W0 对拍 201/201 与 vendor 一致的规则）。
+/// statSet attribution (matching vendor's `GrantedEffect`-joined behavior):
+/// the main `StatSet` takes priority; if the main set has no crit chance
+/// anywhere but an **additional** set (`AdditionalStatSets`, FK ->
+/// `GrantedEffectStatSets`) does, take the first additional set that has
+/// one (e.g. GalvanicFieldBuffPlayer's main set 164 has no crit chance,
+/// while additional set 900 has 9.0 — verified during W0 against 201/201
+/// matches with vendor's rule).
 ///
-/// 独立函数边界：T4 在本文件（T5 owner）内仅新增此函数，不动既有逻辑；
-/// T5 多 statSet 改造时对齐调用点。
+/// Function-boundary note: T4 only adds this function within this file (a
+/// T5-owned file) without touching existing logic; T5's multi-statSet
+/// overhaul should align the call sites accordingly.
 pub(super) fn crit_from_statset_levels(
     en: &Path,
 ) -> Result<BTreeMap<String, BTreeMap<u32, f64>>, String> {
-    /// 暴击两列的最小行读取（与 [`RawStatSetPerLevel`] 分开：本函数只关心暴击列）。
+    /// A minimal row read for just the two crit columns (kept separate from
+    /// [`RawStatSetPerLevel`]: this function only cares about crit columns).
     #[derive(Deserialize)]
     struct RawCritRow {
         #[serde(rename = "StatSet")]
         stat_set: Option<usize>,
         #[serde(rename = "GemLevel")]
         gem_level: Option<i64>,
-        /// 社区列名（= vendor `AttackCritChance` 主列），1/100 百分点（如 900 = 9%）。
+        /// Community column name (= vendor's primary `AttackCritChance` column), in 1/100 percentage points (e.g. 900 = 9%).
         #[serde(rename = "SpellCritChance")]
         spell_crit_chance: Option<f64>,
-        /// 社区列名（= vendor `OffhandCritChance` 覆盖列）。
+        /// Community column name (= vendor's `OffhandCritChance` override column).
         #[serde(rename = "AttackCritChance")]
         attack_crit_chance: Option<f64>,
     }
-    /// `GrantedEffects` 行的 statSet 归属三列。
+    /// The three statSet-attribution columns on a `GrantedEffects` row.
     #[derive(Deserialize)]
     struct RawEffectSetLink {
         #[serde(rename = "Id")]
@@ -128,7 +138,8 @@ pub(super) fn crit_from_statset_levels(
     }
 
     let rows = read_json::<Vec<RawCritRow>>(&en.join("GrantedEffectStatSetsPerLevel.json"))?;
-    // set 行索引 → {gem level → 暴击率}（文件序内同 level 后写覆盖，行内 Offhand 覆盖主列）。
+    // set row index -> {gem level -> crit chance} (a later write at the same
+    // level overwrites within file order; Offhand overrides the primary column within a row).
     let mut crit_by_set: BTreeMap<usize, BTreeMap<u32, f64>> = BTreeMap::new();
     for row in &rows {
         let (Some(si), Some(level)) = (row.stat_set, row.gem_level.filter(|&l| l > 0)) else {
@@ -154,7 +165,7 @@ pub(super) fn crit_from_statset_levels(
         if link.id.is_empty() {
             continue;
         }
-        // 候选 set：主 StatSet 在前、AdditionalStatSets 按列序在后；取第一个有暴击值的。
+        // Candidate sets: the main StatSet first, then AdditionalStatSets in column order; take the first with a crit value.
         let candidates = link
             .stat_set
             .into_iter()
@@ -171,32 +182,43 @@ pub(super) fn crit_from_statset_levels(
     Ok(out)
 }
 
-/// 适配 `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel`（+ `Stats` / `GrantedEffects`
-/// 外键）为「effect id → 多 statSet 分等级 stat」域。
+/// Adapts `GrantedEffectStatSets` + `GrantedEffectStatSetsPerLevel` (plus the
+/// `Stats` / `GrantedEffects` foreign keys) into the "effect id -> multiple
+/// statSets, each with per-level stats" domain.
 ///
-/// 解析方式（对照 PoB2 `Export/Scripts/skills.lua` 的 statSets 处理）：
-/// - 主 set：`GrantedEffects.StatSet` 行索引 → `GrantedEffectStatSets` 行；
-/// - 附加 set：`GrantedEffects.AdditionalStatSets` 列序（W0 核验：FK 目标是
-///   `GrantedEffectStatSets`，「指向另一行 GrantedEffects」有误已修正）；
-/// - 每行 `FloatStats[i]`↔`BaseResolvedValues[i]`、`AdditionalStats[i]`↔
-///   `AdditionalStatsValues[i]` 位置配对，stat 行索引经 `Stats` 解析为稳定 id；
-/// - 附加 set 按 vendor 导出语义与主 set **合并入库**（`skills.lua:498-553`）：
-///   常量 stat 拼接（主 ++ 本 set）、分等级行与主 set 行按数组位置配对拼接、
-///   `BaseEffectiveness` 为默认 1 时回退主 set、`BaseMultiplier ≠ 0` 取本行否则
-///   回退主配对行——消费侧选中即用，无需运行时 merge。
+/// Resolution approach (cross-referenced against PoB2
+/// `Export/Scripts/skills.lua`'s statSets handling):
+/// - Main set: `GrantedEffects.StatSet` row index -> a `GrantedEffectStatSets` row;
+/// - Additional sets: `GrantedEffects.AdditionalStatSets` in column order
+///   (verified during W0 that the FK target is `GrantedEffectStatSets` — an
+///   earlier belief that it "points to another GrantedEffects row" was wrong and has been corrected);
+/// - Per row, `FloatStats[i]` <-> `BaseResolvedValues[i]` and
+///   `AdditionalStats[i]` <-> `AdditionalStatsValues[i]` are positionally
+///   paired, and stat row indices resolve to stable ids via `Stats`;
+/// - Additional sets are **merged and stored together** with the main set,
+///   following vendor's export semantics (`skills.lua:498-553`): constant
+///   stats are concatenated (main ++ this set), per-level rows are
+///   concatenated by array-position pairing with the main set's rows,
+///   `BaseEffectiveness` falls back to the main set when it's the default 1,
+///   and `BaseMultiplier != 0` takes this row's value, otherwise falls back
+///   to the paired main-set row — the consumption side just picks a set and uses it, no runtime merge needed.
 ///
-/// **全量 stat 入库**：数据层不再施加任何 stat 白名单
-/// （原 adapter 端白名单后缀谓词已删除）——statmap 数据引擎（`pobr-core::rules::
-/// stat_map_engine`，T2）需要看到全部 stat 才能穷举对照。**搬迁不变式保障**：同一谓词
-/// 已平移到消费侧 legacy 路径（`pobr-build::legacy_stat_filter`，在 `mapped_stat_modifiers`
-/// 的 Legacy 通道入口过滤），保证 ninja parity 逐值不变；该消费侧过滤随 T2.4 删 legacy
-/// 一起删除。
+/// **Full stat storage**: the data layer no longer applies any stat
+/// whitelist (the adapter-side whitelist suffix predicate has been removed)
+/// — the statmap data engine (`pobr-core::rules::stat_map_engine`, T2) needs
+/// to see every stat to exhaustively cross-reference them.
+/// **Migration-invariant guarantee**: the same predicate has been moved to
+/// the consumption-side legacy path (`pobr-build::legacy_stat_filter`,
+/// filtering at the Legacy channel's entry point in
+/// `mapped_stat_modifiers`), keeping ninja parity byte-for-byte unchanged;
+/// that consumption-side filter will be removed alongside legacy in T2.4.
 ///
-/// 验证基准：FireballPlayer L1 → `spell_minimum/maximum_base_fire_damage` = 8 / 12
-/// （与 PoB 自身 `Data/Skills/act_int.lua` 解析后逐字一致；主 set 内容与单 set 时代
-/// 逐值一致——消费缺省主 set ⇒ 搬迁不变式）。
+/// Verification baseline: FireballPlayer L1 -> `spell_minimum/maximum_base_fire_damage` = 8 / 12
+/// (matches PoB's own parsed `Data/Skills/act_int.lua` byte-for-byte; the
+/// main set's content matches the single-set era value-for-value — the
+/// consumption side defaults to the main set, which is the migration invariant).
 pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
-    // stat 行索引 → 稳定 id（按 `_index` 落位，越界为空串）。
+    // stat row index -> stable id (positioned by `_index`, out-of-range entries stay an empty string).
     let raw_stats = read_json::<Vec<RawStatId>>(&en.join("Stats.json"))?;
     let max_stat = raw_stats.iter().map(|r| r.index).max().map_or(0, |m| m + 1);
     let mut stat_id = vec![String::new(); max_stat];
@@ -208,7 +230,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
     let sets_total = sets.len();
     let links = read_json::<Vec<RawGrantedEffectStatSetLink>>(&en.join("GrantedEffects.json"))?;
 
-    // per-level 行按 StatSet 行索引分组（文件序 = vendor GetRowList 序，位置配对依据）。
+    // Per-level rows are grouped by StatSet row index (file order = vendor's GetRowList order, the basis for positional pairing).
     let per_level =
         read_json::<Vec<RawStatSetPerLevel>>(&en.join("GrantedEffectStatSetsPerLevel.json"))?;
     let mut rows_by_set: BTreeMap<usize, Vec<&RawStatSetPerLevel>> = BTreeMap::new();
@@ -218,7 +240,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
         }
     }
 
-    // 单行的 stat 位置配对解析（全量入库，不过滤）。
+    // Positional-pairing resolution of a single row's stats (stored in full, no filtering).
     let resolve_row_stats = |row: &RawStatSetPerLevel| -> Vec<SkillDamageStat> {
         row.float_stats
             .iter()
@@ -239,7 +261,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             })
             .collect()
     };
-    // 常量 stat 位置配对解析。
+    // Positional-pairing resolution of constant stats.
     let resolve_constants = |set: &RawStatSet| -> Vec<SkillDamageStat> {
         set.constant_stats
             .iter()
@@ -258,11 +280,13 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
     let raw_multiplier = |row: &RawStatSetPerLevel| {
         1.0 + f64::from(row.base_multiplier.unwrap_or(0) as i32) / 10000.0
     };
-    // （存量 #7-2）RemoveStats/IgnoredStats 置零（vendor skills.lua:589-596）：
-    // 对 set 声明移除的每个 stat，把行内**首次出现**的值置 0（合并行中先出现的
-    // 是 base-merge 拼入的主 set 副本），其余出现保留。
-    // ponytail: 同一 stat 在 IgnoredStats 重复出现时 vendor 会置零多个占位——
-    // 当前数据无此形态，重复项按单次处理。
+    // (Backlog #7-2) RemoveStats/IgnoredStats zeroing (vendor
+    // skills.lua:589-596): for every stat a set declares as removed, zero
+    // out its **first occurrence** within a row (in a merged row, the
+    // earlier occurrence is the main set's copy spliced in by base-merge);
+    // any other occurrence is left alone.
+    // ponytail: when the same stat appears more than once in IgnoredStats,
+    // vendor zeroes multiple placeholders — current data never has this shape, so a repeated entry is handled as a single occurrence.
     let apply_ignored = |stats: &mut Vec<SkillDamageStat>, ignored: &[usize]| {
         for &idx in ignored {
             let Some(sid) = stat_id.get(idx).filter(|s| !s.is_empty()) else {
@@ -290,7 +314,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
         let main_constants = resolve_constants(main_set);
         let main_rows = rows_by_set.get(&main_idx).map(Vec::as_slice).unwrap_or(&[]);
 
-        // 主 set：单 set 时代的原样解析（搬迁不变式锚点）。
+        // Main set: parsed as-is, the same as the single-set era (the migration-invariant anchor).
         let mut main_levels = Vec::new();
         for row in main_rows {
             let Some(gem_level) = row.gem_level.filter(|&l| l > 0).map(|l| l as u32) else {
@@ -299,7 +323,7 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             let mut stats = resolve_row_stats(row);
             apply_ignored(&mut stats, &main_set.ignored_stats);
             let damage_multiplier = raw_multiplier(row);
-            // 收录有 stat 或有非平凡倍率的等级行。
+            // Include level rows that have a stat or a non-trivial multiplier.
             if !stats.is_empty() || (damage_multiplier - 1.0).abs() > f64::EPSILON {
                 main_levels.push(SkillStatSetLevel {
                     gem_level,
@@ -312,25 +336,28 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
 
         let mut def_sets = vec![StatSetDef {
             set_id: main_set.id.clone(),
-            // label / vendor 导出序号来自 overlay/stat_set_labels.json（vendor 抽取，
-            // `.dat` Label 列的 FK 目标表不可下载），加载期 merge，适配阶段留空。
+            // label / the vendor export index come from
+            // overlay/stat_set_labels.json (vendor-extracted, since the
+            // `.dat` Label column's FK target table isn't downloadable),
+            // merged in during loading; left empty during adaptation.
             label: None,
             vendor_set_index: None,
             base_effectiveness: main_set.base_effectiveness.unwrap_or(0.0),
             constant_stats: main_constants.clone(),
-            // statSet baseMods（如 Flicker `Speed MORE 285`）不在 GGG `.dat` 表中，是 PoB2
-            // 自带常量，由 overlay/skill_overrides.json 加载期 merge，适配阶段留空。
+            // statSet baseMods (e.g. Flicker's `Speed MORE 285`) aren't in
+            // GGG's `.dat` tables — they're PoB2's own built-in constants,
+            // merged in from overlay/skill_overrides.json during loading; left empty during adaptation.
             skill_attack_speed_more: None,
-            // dotIs* 同为 vendor baseMods 布尔，`.dat` 无列，
-            // overlay 加载期 merge，适配阶段保持保守默认（全 false）。
+            // dotIs* are likewise vendor baseMods booleans with no `.dat`
+            // column, merged in from the overlay during loading; kept at their conservative default (all false) during adaptation.
             dot_flags: Default::default(),
             explode_corpse: false,
-            // 隐式 stat 来自 overlay（extract-lua 策展白名单），适配阶段留空。
+            // Implicit stats come from the overlay (extract-lua's curated whitelist); left empty during adaptation.
             implicit_stats: Vec::new(),
             levels: main_levels,
         }];
 
-        // 附加 set（vendor base-merge 语义，skills.lua:498-553）。
+        // Additional sets (vendor's base-merge semantics, skills.lua:498-553).
         for &add_raw in &link.additional_stat_sets {
             let Some(add_idx) = usize::try_from(add_raw).ok() else {
                 continue;
@@ -338,16 +365,17 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
             let Some(add_set) = sets.get(add_idx) else {
                 continue;
             };
-            // 常量：主 ++ 本 set（:502-504 tableConcat）。
+            // Constants: main ++ this set (:502-504 tableConcat).
             let mut constant_stats = main_constants.clone();
             constant_stats.extend(resolve_constants(add_set));
-            // 效力：本 set 原始值为导出默认 1 时回退主 set（:506-508）。
+            // Effectiveness: falls back to the main set when this set's raw value is the export default 1 (:506-508).
             let base_effectiveness = match add_set.base_effectiveness {
                 Some(v) if v != 1.0 => v,
                 _ => main_set.base_effectiveness.unwrap_or(0.0),
             };
-            // 分等级：本 set 行与主 set 行按数组位置配对（:521 `skill.baseStatRow[indx]`），
-            // stat = 主配对行 ++ 本行（:541-549 tableConcat）。
+            // Per-level: this set's rows are paired with the main set's rows
+            // by array position (:521 `skill.baseStatRow[indx]`), stats =
+            // paired main row ++ this row (:541-549 tableConcat).
             let add_rows = rows_by_set.get(&add_idx).map(Vec::as_slice).unwrap_or(&[]);
             let mut levels = Vec::new();
             for (indx, row) in add_rows.iter().enumerate() {
@@ -357,11 +385,13 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                 let paired = main_rows.get(indx);
                 let mut stats = paired.map(|p| resolve_row_stats(p)).unwrap_or_default();
                 stats.extend(resolve_row_stats(row));
-                // 本 set 的 RemoveStats 作用于**合并后**的行（vendor 先 tableConcat
-                // 再置零）：Essence Drain DoT set 置零主 set 拼入的 62/115 击中段。
+                // This set's RemoveStats acts on the **merged** row (vendor
+                // tableConcats first, then zeroes): Essence Drain's DoT set
+                // zeroes the 62/115 hit-damage segment spliced in from the main set.
                 apply_ignored(&mut stats, &add_set.ignored_stats);
-                // 倍率：本行 BaseMultiplier ≠ 0 取本行（:533-541 两分支终值同为本行
-                // `/10000+1`；UseSetAttackMulti 列未下载），否则回退主配对行。
+                // Multiplier: takes this row's value when its BaseMultiplier
+                // != 0 (:533-541, both branches resolve to this row's
+                // `/10000+1`; the UseSetAttackMulti column isn't downloaded), otherwise falls back to the paired main-set row.
                 let damage_multiplier = if row.base_multiplier.unwrap_or(0) != 0 {
                     raw_multiplier(row)
                 } else {
@@ -385,13 +415,13 @@ pub fn adapt_stat_sets(en: &Path) -> Result<StatSetsBundle, String> {
                 skill_attack_speed_more: None,
                 dot_flags: Default::default(),
                 explode_corpse: false,
-                // 隐式 stat 来自 overlay（extract-lua 策展白名单），适配阶段留空。
+                // Implicit stats come from the overlay (extract-lua's curated whitelist); left empty during adaptation.
                 implicit_stats: Vec::new(),
                 levels,
             });
         }
 
-        // 全部 set 皆空（无常量、无等级行）→ 跳过该效果（与单 set 时代口径一致）。
+        // All sets are empty (no constants, no level rows) -> skip this effect (matching the single-set era's behavior).
         if def_sets
             .iter()
             .all(|s| s.levels.is_empty() && s.constant_stats.is_empty())

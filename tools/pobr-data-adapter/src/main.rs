@@ -1,19 +1,20 @@
-//! pobr-data-adapter：把 pathofexile-dat 的原始 `.dat` JSON 适配为 PoBR 最小 JSON。
+//! pobr-data-adapter: adapts pathofexile-dat's raw `.dat` JSON into PoBR's minimal JSON.
 //!
-//! 解析整型外键（ItemClass / Tags / Implicit_Mods → 稳定字符串 ID）、反范式化、
-//! 过滤开发用占位条目，输出按 id 排序的 diff 友好 JSON 到 `data/<patch>/base/`；
-//! `manifest.json` 与 `i18n/` 边车留在版本根。
+//! Resolves integer foreign keys (ItemClass / Tags / Implicit_Mods -> stable
+//! string IDs), denormalizes, filters out dev-only placeholder entries, and
+//! writes diff-friendly JSON sorted by id to `data/<patch>/base/`;
+//! `manifest.json` and the `i18n/` sidecar stay at the version root.
 //!
-//! 用法：
+//! Usage:
 //! ```text
-//! # 物品基底域（pathofexile-dat 表）
+//! # Item base domain (pathofexile-dat tables)
 //! cargo run -p pobr-data-adapter -- --raw pipeline/tables --out data --patch 4.5.0.3.4
-//! # 被动天赋树域（GGG 官方树导出 data.json）
+//! # Passive tree domain (GGG's official tree export data.json)
 //! cargo run -p pobr-data-adapter -- --tree pipeline/tree/data.json --out data --patch 4.5.0.3.4
-//! # isSwitchable 按职业/飞升变体回填（vendor tree.lua → 既有 passive_tree.json）
+//! # Backfill isSwitchable per-class/ascendancy variants (vendor tree.lua -> the existing passive_tree.json)
 //! cargo run -p pobr-data-adapter -- --tree-variants vendor/PathOfBuilding-PoE2/src/TreeData/0_5/tree.lua \
 //!     --out data --patch 4.5.0.3.4
-//! # 油涂 notable 池回填（vendor tree.lua → 追加 passive_tree.json 缺失 notable）
+//! # Backfill the anointable notable pool (vendor tree.lua -> append notables missing from passive_tree.json)
 //! cargo run -p pobr-data-adapter -- --tree-anoints vendor/PathOfBuilding-PoE2/src/TreeData/0_5/tree.lua \
 //!     --out data --patch 4.5.0.3.4
 //! ```
@@ -69,25 +70,24 @@ struct Args {
     raw: PathBuf,
     out: PathBuf,
     patch: String,
-    /// CI 严格模式：列漂移转硬失败（默认 false = 仅告警+续跑，见 [`run`]）。
+    /// CI strict mode: turns column drift into a hard failure (default false = warn and continue, see [`run`]).
     strict_columns: bool,
 }
 
-/// 适配器子命令：物品基底域（`--raw`）或被动树域（`--tree`），二者互斥。
+/// Adapter subcommands: item base domain (`--raw`) or passive tree domain (`--tree`), mutually exclusive.
 enum Mode {
     BaseItems(Args),
     Tree(tree::TreeArgs),
-    /// 从 vendor `tree.lua` 回填既有 `passive_tree.json` 的节点 x/y 坐标。
+    /// Backfill node x/y coordinates into the existing `passive_tree.json` from vendor `tree.lua`.
     TreeCoords(tree_coords::TreeCoordsArgs),
-    /// 从 vendor `tree.lua` 回填 isSwitchable 节点的按职业/飞升变体。
+    /// Backfill per-class/ascendancy variants for isSwitchable nodes from vendor `tree.lua`.
     TreeVariants(tree_variants::TreeVariantsArgs),
-    /// 从 vendor `tree.lua` 追加 `passive_tree.json` 缺失的油涂 notable 池。
+    /// Append the anointable notable pool missing from `passive_tree.json`, from vendor `tree.lua`.
     TreeAnoints(tree_anoints::TreeAnointsArgs),
-    /// 历史赛季树版本抽取（vendor `TreeData/<v>/tree.lua` →
-    /// `base/passive_trees/<v>.json`，旧 build 的 treeVersion 适配）。
+    /// Extraction of historical league tree versions (vendor
+    /// `TreeData/<v>/tree.lua` -> `base/passive_trees/<v>.json`, for adapting old builds' treeVersion).
     TreeVersions(tree_versions::TreeVersionsArgs),
-    /// 从既有 `passive_tree.json` keystone 节点派生
-    /// `generated/special_derived.json`。
+    /// Derives `generated/special_derived.json` from the existing `passive_tree.json`'s keystone nodes.
     SpecialDerived(special_derived::SpecialDerivedArgs),
 }
 
@@ -119,7 +119,8 @@ fn parse_args() -> Result<Mode, String> {
             }
             "--out" => out = Some(PathBuf::from(take("--out")?)),
             "--patch" => patch = Some(take("--patch")?),
-            // 韧性化：默认缺列只告警+续跑（数据/代码隔离）；CI 可加此开关转硬失败。
+            // Resilience: by default, a missing column only warns and
+            // continues (keeping data and code decoupled); CI can add this flag to turn it into a hard failure.
             "--strict-columns" => strict_columns = true,
             other => return Err(format!("未知参数：{other}")),
         }
@@ -198,7 +199,7 @@ fn parse_args() -> Result<Mode, String> {
     }
 }
 
-// 原始 .dat JSON 行结构（只取我们需要的列）
+// Raw .dat JSON row structures (only the columns we need)
 
 #[derive(Deserialize)]
 pub(crate) struct RawIndexed {
@@ -240,7 +241,7 @@ pub(crate) struct RawNamed {
 
 #[derive(Deserialize)]
 struct RawWeaponType {
-    /// `BaseItemTypes` 行索引。
+    /// `BaseItemTypes` row index.
     #[serde(rename = "BaseItemType")]
     base_item_type: Option<usize>,
     #[serde(rename = "DamageMin")]
@@ -253,10 +254,11 @@ struct RawWeaponType {
     crit_chance: Option<i64>,
     #[serde(rename = "RangeMax")]
     range_max: Option<i64>,
-    /// 弩装填时间（毫秒，；vendor `Export/spec.lua:62483`、
-    /// `bases.lua:268-269` 仅 >0 导出）。旧导出（无此列的 tables 快照）回退
-    /// `None`，产物字段保持缺省（schema 兼容；当前由 overlay
-    /// `base_item_overrides.json` 兜底填充）。
+    /// Crossbow reload time (milliseconds; vendor `Export/spec.lua:62483` and
+    /// `bases.lua:268-269` only export it when >0). Old exports (table
+    /// snapshots without this column) fall back to `None`, leaving the
+    /// output field at its default (schema-compatible; currently backfilled
+    /// by the `base_item_overrides.json` overlay).
     #[serde(rename = "ReloadTime", default)]
     reload_time: Option<i64>,
 }
@@ -273,8 +275,9 @@ struct RawArmourType {
     energy_shield: Option<i64>,
     #[serde(rename = "Ward")]
     ward: Option<i64>,
-    /// 移动速度修正原始值（万分比，负值为减速；如 `-300` = 3% 移速惩罚）。
-    /// 旧导出（无此列的 tables 快照）回退 `None`，产物字段保持缺省（schema 兼容）。
+    /// Raw movement-speed modifier value (basis points; negative means a
+    /// slowdown, e.g. `-300` = a 3% movement-speed penalty). Old exports
+    /// (table snapshots without this column) fall back to `None`, leaving the output field at its default (schema-compatible).
     #[serde(rename = "IncreasedMovementSpeed", default)]
     increased_movement_speed: Option<i64>,
 }
@@ -283,13 +286,13 @@ fn nn(v: Option<i64>) -> u32 {
     v.unwrap_or(0).max(0) as u32
 }
 
-/// `WeaponTypes` / `ArmourTypes` 按 base item 行索引的基底数值查表对。
+/// The pair of `WeaponTypes` / `ArmourTypes` base-stat lookup tables, keyed by base item row index.
 type BaseStatsLookups = (
     BTreeMap<usize, WeaponBaseStats>,
     BTreeMap<usize, ArmourBaseStats>,
 );
 
-/// 把 `WeaponTypes` / `ArmourTypes`（按 `BaseItemType` 行索引）建成基底数值查表。
+/// Builds base-stat lookup tables from `WeaponTypes` / `ArmourTypes` (indexed by `BaseItemType` row).
 fn weapon_armour_lookups(en: &Path) -> Result<BaseStatsLookups, String> {
     let weapons = read_json::<Vec<RawWeaponType>>(&en.join("WeaponTypes.json"))?;
     let mut weapon_map = BTreeMap::new();
@@ -303,8 +306,8 @@ fn weapon_armour_lookups(en: &Path) -> Result<BaseStatsLookups, String> {
                     speed_ms: nn(w.speed),
                     crit_chance: nn(w.crit_chance),
                     range: nn(w.range_max),
-                    // 仅 >0 入库（对齐 vendor bases.lua:268 `if ReloadTime > 0`；
-                    // 非弩武器该列恒 0）。
+                    // Only stored when >0 (matching vendor bases.lua:268's
+                    // `if ReloadTime > 0`; this column is always 0 for non-crossbow weapons).
                     reload_time_ms: w.reload_time.filter(|&v| v > 0).map(|v| v as u32),
                 },
             );
@@ -321,12 +324,14 @@ fn weapon_armour_lookups(en: &Path) -> Result<BaseStatsLookups, String> {
                     evasion: nn(a.evasion),
                     energy_shield: nn(a.energy_shield),
                     ward: nn(a.ward),
-                    // 盾牌格挡（`ShieldTypes.Block`）：对应 bundle 已被 CDN 对钉定
-                    // patch 剪除，`.dat` 路线不可得 → 恒 None，由 overlay
-                    // `base_item_overrides.json` 在 gamedata 加载侧 merge 填充
+                    // Shield block chance (`ShieldTypes.Block`): the CDN has
+                    // pruned this bundle for the pinned patch, so it's
+                    // unreachable via the `.dat` route -> always None,
+                    // backfilled by the `base_item_overrides.json` overlay during gamedata loading
                     block_chance: None,
-                    // 移速惩罚：PoB2 口径 `-raw/10000`（Export/Scripts/bases.lua:298），
-                    // 如 raw=-300 → 0.03（3% 减速）；raw=0 → None（diff 友好）。
+                    // Movement penalty: PoB2's formula is `-raw/10000`
+                    // (Export/Scripts/bases.lua:298), e.g. raw=-300 -> 0.03
+                    // (a 3% slowdown); raw=0 -> None (diff-friendly).
                     movement_penalty: a
                         .increased_movement_speed
                         .filter(|&v| v != 0)
@@ -343,7 +348,7 @@ pub(crate) fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T, 
     serde_json::from_slice(&bytes).map_err(|e| format!("解析 {} 失败：{e}", path.display()))
 }
 
-/// 把 `_index -> Id` 建成按位置索引的查表（`_index` 连续，越界返回 None）。
+/// Builds a position-indexed lookup table from `_index -> Id` (`_index` is contiguous; out-of-range returns None).
 fn id_lookup(rows: &[RawIndexed]) -> Vec<String> {
     let max = rows.iter().map(|r| r.index).max().map_or(0, |m| m + 1);
     let mut table = vec![String::new(); max];
@@ -357,7 +362,7 @@ pub(crate) fn resolve(lookup: &[String], idx: usize) -> Option<String> {
     lookup.get(idx).filter(|s| !s.is_empty()).cloned()
 }
 
-/// 开发用占位 / 未启用条目（不入库）。
+/// A dev-only placeholder / not-yet-enabled entry (excluded from the catalog).
 pub(crate) fn is_placeholder(name: &str) -> bool {
     name.is_empty() || name.contains("[DNT") || name.contains("[UNUSED") || name.contains("[OLD")
 }
@@ -366,8 +371,10 @@ fn run(args: Args) -> Result<String, String> {
     let en = args.raw.join("English");
     let tw = args.raw.join(ZH_TW);
 
-    // F2 韧性化：必需列检查不再致命——缺列按 serde 默认值降级（字段缺失/为空），
-    // 大声告警 + 写 `_drift.json` 供审查；仅 `--strict-columns`（CI 门禁）转硬失败。
+    // F2 resilience: the required-column check is no longer fatal — a
+    // missing column degrades via serde's default (the field is missing/empty),
+    // loudly warns, and writes `_drift.json` for review; only
+    // `--strict-columns` (the CI gate) turns it into a hard failure.
     let column_drift = required_columns::check_required_columns(&en, &tw)?;
     if !column_drift.is_empty() {
         eprintln!(
@@ -387,13 +394,13 @@ fn run(args: Args) -> Result<String, String> {
         }
     }
 
-    // 外键解析表
+    // Foreign-key resolution tables
     let classes = id_lookup(&read_json::<Vec<RawIndexed>>(&en.join("ItemClasses.json"))?);
     let tags = id_lookup(&read_json::<Vec<RawIndexed>>(&en.join("Tags.json"))?);
     let mods = id_lookup(&read_json::<Vec<RawIndexed>>(&en.join("Mods.json"))?);
     let stats = id_lookup(&read_json::<Vec<RawIndexed>>(&en.join("Stats.json"))?);
 
-    // 基底（英文 canonical + 繁中名称边车）
+    // Base items (English canonical + Traditional Chinese name sidecar)
     let raw_bases = read_json::<Vec<RawBaseItem>>(&en.join("BaseItemTypes.json"))?;
     let tw_names = read_json::<Vec<RawNamed>>(&tw.join("BaseItemTypes.json"))?;
     let tw_by_index: BTreeMap<usize, String> = tw_names
@@ -401,7 +408,7 @@ fn run(args: Args) -> Result<String, String> {
         .filter_map(|r| r.name.map(|n| (r.index, n)))
         .collect();
 
-    // 武器/护甲基底数值（WeaponTypes / ArmourTypes，按 base item 行索引 join）。
+    // Weapon/armour base stats (WeaponTypes / ArmourTypes, joined by base item row index).
     let (weapon_map, armour_map) = weapon_armour_lookups(&en)?;
 
     let mut bases = Vec::new();
@@ -444,26 +451,28 @@ fn run(args: Args) -> Result<String, String> {
             mod_domain: raw.mod_domain.unwrap_or(0),
             weapon: weapon_map.get(&index).cloned(),
             armour: armour_map.get(&index).cloned(),
-            // 基底 Spirit（`ItemSpirit.SpiritGranted`）：同 block_chance，`.dat`
-            // bundle 不可得 → 恒 None，由 overlay 在 gamedata 加载侧 merge 填充。
+            // Base spirit (`ItemSpirit.SpiritGranted`): same story as
+            // block_chance, unreachable via the `.dat` bundle -> always
+            // None, backfilled by the overlay during gamedata loading.
             spirit: None,
-            // charm 基底 buff（vendor `Data/Bases/flask.lua` 的 `charm.buff`）：`.dat`
-            // 无此列 → 恒空，由 overlay 在 gamedata 加载侧 merge 填充。
+            // Charm base buff (vendor `Data/Bases/flask.lua`'s
+            // `charm.buff`): `.dat` has no such column -> always empty,
+            // backfilled by the overlay during gamedata loading.
             charm_buff: Vec::new(),
         });
     }
 
     bases.sort_by(|a, b| a.id.cmp(&b.id));
 
-    // 写出：数据域 JSON 落 base/ 层；manifest 与 i18n 边车留版本根。
+    // Write out: domain JSON goes in the base/ layer; manifest and the i18n sidecar stay at the version root.
     let version_dir = args.out.join(&args.patch);
     let base_dir = version_dir.join("base");
     fs::create_dir_all(&base_dir).map_err(|e| format!("创建输出目录失败：{e}"))?;
     fs::create_dir_all(version_dir.join("i18n").join("zh-TW"))
         .map_err(|e| format!("创建输出目录失败：{e}"))?;
 
-    // 列漂移报告：有漂移则写 `_drift.json`（机器可读，供 regen/CI 审查），
-    // 无漂移则清理陈旧文件（保持目录干净、可复现）。
+    // Column drift report: if there's drift, write `_drift.json` (machine
+    // readable, for regen/CI review); if not, clean up any stale file (keeps the directory clean and reproducible).
     let drift_path = version_dir.join("_drift.json");
     if column_drift.is_empty() {
         let _ = fs::remove_file(&drift_path);
@@ -484,11 +493,11 @@ fn run(args: Args) -> Result<String, String> {
     write_pretty(&base_dir.join("base_items.json"), &bases)?;
     write_pretty(&version_dir.join("i18n/zh-TW/base_items.json"), &i18n_zh)?;
 
-    // Mods + Stats 域（stat 注册表 + 词缀池）。
+    // Mods + Stats domain (the stat registry + the affix pool).
     let (stat_count, mod_count, mod_filtered, mod_zh) =
         mods::adapt(&en, &tw, &stats, &tags, &base_dir, &version_dir)?;
 
-    // 技能宝石域（SkillGems / GrantedEffects / GrantedEffectsPerLevel / ActiveSkills）
+    // Skill gem domain (SkillGems / GrantedEffects / GrantedEffectsPerLevel / ActiveSkills)
     let skills = skills::adapt_skills(&en, &tw)?;
     write_pretty(&base_dir.join("skill_gems.json"), &skills.gems)?;
     write_pretty(&base_dir.join("granted_effects.json"), &skills.effects)?;
@@ -498,20 +507,22 @@ fn run(args: Args) -> Result<String, String> {
         &skills.zh_skill_names,
     )?;
 
-    // 分等级伤害 stat 集（GrantedEffectStatSets* → effect id → 每级伤害）。
+    // Per-level damage stat sets (GrantedEffectStatSets* -> effect id -> per-level damage).
     let stat_sets = skills::adapt_stat_sets(&en)?;
     write_pretty(
         &base_dir.join("granted_effect_stat_sets.json"),
         &stat_sets.sets,
     )?;
 
-    // 技能消耗资源类型（CostTypes → cost_types FK 目标，解析 Mana/Life/ES/... 资源名）。
+    // Skill resource cost types (CostTypes -> the cost_types FK target, resolving Mana/Life/ES/... resource names).
     let cost_types = skills::adapt_cost_types(&en)?;
     write_pretty(&base_dir.join("cost_types.json"), &cost_types)?;
 
-    // manifest：与磁盘现有 manifest **合并**——本步只负责登记自己产出的 base 域
-    // 与 zh-TW 语言；overlay/generated/zh-CN 等由 regen 管线其余步骤维护，单步
-    // 重跑（如 `mise run data:adapt`）不得抹除既有记录。
+    // manifest: **merged** with the existing on-disk manifest — this step
+    // only registers the base domains and the zh-TW language it produced;
+    // overlay/generated/zh-CN etc. are maintained by the regen pipeline's
+    // other steps, and rerunning just this step (e.g. `mise run data:adapt`)
+    // must not wipe out those existing records.
     let manifest_path = version_dir.join("manifest.json");
     let mut manifest = fs::read_to_string(&manifest_path)
         .ok()

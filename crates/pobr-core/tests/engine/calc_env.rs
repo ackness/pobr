@@ -150,8 +150,9 @@ fn perform_writes_defence_output_and_breakdown() {
     assert_eq!(env.player.output.armour, 1_800.0);
     assert_eq!(env.player.output.evasion, 1_000.0);
     assert_eq!(env.player.output.energy_shield, 250.0);
-    // 防御侧（怪物命中玩家）用 monster_hit_chance（PoE2 双侧公式不对称）。
-    // 出处：agent-docs/accuracy-and-enemy.md §二注、CalcDefence.lua calcs.monsterHitChance
+    // The defence side (monster hitting the player) uses monster_hit_chance (PoE2's
+    // two sides use asymmetric formulas).
+    // Source: agent-docs/accuracy-and-enemy.md §2 note, CalcDefence.lua calcs.monsterHitChance
     assert_eq!(
         env.player.output.chance_to_be_hit,
         monster_hit_chance(env.player.output.evasion, 600.0)
@@ -176,9 +177,9 @@ fn armour_reduction_uses_armour_against_raw_hit() {
     assert_eq!(armour_reduction(10_000.0, 0.0), 0.0);
 }
 
-/// Bug#3 测试：PoE2 进攻侧命中率公式（accuracy*1.25/(accuracy+evasion*0.3)）。
+/// Bug#3 test: PoE2's attack-side hit-chance formula (accuracy*1.25/(accuracy+evasion*0.3)).
 ///
-/// 出处：agent-docs/accuracy-and-enemy.md §二、CalcDefence.lua `calcs.hitChance`。
+/// Source: agent-docs/accuracy-and-enemy.md §2, CalcDefence.lua `calcs.hitChance`.
 #[test]
 fn poe2_attack_hit_chance_formula() {
     // accuracy=1000, evasion=1000
@@ -191,9 +192,9 @@ fn poe2_attack_hit_chance_formula() {
     );
 }
 
-/// Bug#3 测试：防御侧公式不同（怪物命中玩家）。
+/// Bug#3 test: the defence-side formula is different (monster hitting the player).
 ///
-/// 出处：agent-docs/accuracy-and-enemy.md §二注、CalcDefence.lua `calcs.monsterHitChance`。
+/// Source: agent-docs/accuracy-and-enemy.md §2 note, CalcDefence.lua `calcs.monsterHitChance`.
 #[test]
 fn poe2_monster_hit_chance_formula() {
     // evasion=1000, accuracy=1000
@@ -205,7 +206,7 @@ fn poe2_monster_hit_chance_formula() {
         (mhc - expected).abs() < 1e-6,
         "monster_hit_chance={mhc}, expected={expected}"
     );
-    // 两侧公式应不同
+    // The two sides' formulas should differ
     assert_ne!(
         hit_chance(1000.0, 1000.0),
         monster_hit_chance(1000.0, 1000.0)

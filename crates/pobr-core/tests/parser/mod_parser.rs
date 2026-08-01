@@ -105,7 +105,8 @@ fn parses_multiplier_tag_with_limitless_charge_scaling() {
 fn parses_per_resource_scaling_with_divisor() {
     use pobr_core::CalcConfig;
 
-    // `+N to <stat> per M <resource>` → 纯 stat + Multiplier{var, div=M}（PoB2 PerStat）。
+    // `+N to <stat> per M <resource>` parses to a plain stat mod + Multiplier{var, div=M}
+    // tag (PoB2's PerStat).
     let outcome = parse_mod("+2 to Armour per 1 Spirit").unwrap();
     let modifier = &outcome.mods[0];
     assert_eq!(modifier.name, ModName::from("Armour"));
@@ -115,7 +116,7 @@ fn parses_per_resource_scaling_with_divisor() {
             .tags
             .contains(&ModTag::multiplier("Spirit", 1.0, None))
     );
-    // effective_number 按 cfg.multipliers[Spirit] / div 展开：336 Spirit → 2 * 336 = 672。
+    // effective_number expands via cfg.multipliers[Spirit] / div: 336 Spirit -> 2 * 336 = 672.
     let cfg = CalcConfig::new().with_multiplier("Spirit", 336.0);
     assert_eq!(modifier.effective_number(&cfg), Some(672.0));
 }
@@ -124,7 +125,7 @@ fn parses_per_resource_scaling_with_divisor() {
 fn parses_per_n_attribute_scaling() {
     use pobr_core::CalcConfig;
 
-    // `per 10 Intelligence` → div=10：100 Int → 5 * (100/10) = 50。
+    // `per 10 Intelligence` -> div=10: 100 Int -> 5 * (100/10) = 50.
     let outcome = parse_mod("+5 to maximum Mana per 10 Intelligence").unwrap();
     let modifier = &outcome.mods[0];
     assert_eq!(modifier.name, ModName::from("MaximumMana"));
@@ -139,7 +140,7 @@ fn parses_per_n_attribute_scaling() {
 
 #[test]
 fn parses_per_resource_without_divisor() {
-    // `per Strength`（无数字）→ div=1。
+    // `per Strength` (no number) -> div=1.
     let outcome = parse_mod("+1 to Accuracy per Strength").unwrap();
     let modifier = &outcome.mods[0];
     assert_eq!(modifier.name, ModName::from("Accuracy"));
@@ -161,7 +162,8 @@ fn unsupported_text_returns_no_mods_and_original_line() {
 
 #[test]
 fn unknown_text_is_unsupported_with_original_line() {
-    // 引擎对无法识别的行永不报错——整行 Unsupported，原文进 unparsed。
+    // The engine never errors on unrecognized lines -- the whole line becomes
+    // Unsupported, with the original text preserved in unparsed.
     let outcome = parse_mod("this line is not a known modifier").unwrap();
 
     assert_eq!(outcome.status, ParseStatus::Unsupported);
@@ -238,7 +240,7 @@ fn parses_adds_damage_to_attacks_with_flag() {
 
 #[test]
 fn strips_pob_bracket_markup() {
-    // [内部|显示] → 显示名；展开复合 + 聚合。
+    // [internal|display] -> display name; expands compounds and aggregates.
     let o = parse_mod("15% increased [Evasion|Evasion Rating]").unwrap();
     assert_eq!(o.mods.len(), 1);
     assert_eq!(o.mods[0].name, ModName::from("Evasion"));
@@ -248,10 +250,14 @@ fn strips_pob_bracket_markup() {
         .unwrap();
     assert_eq!(o.mods[0].name, ModName::from("ElementalDamage"));
 
-    // `any attribute`（属性小点三选一）不展开——玩家选择经 AttributeOverride 在树
-    // 收集阶段改写为具体属性后再解析。「无净贡献」的具体形态随数据版本变：旧规则
-    // 留残（生产闸门整行丢弃），4.5.4.3 vendor 规则整行识别为空 mods。两者净效果
-    // 一致，故只断言版本无关不变式：要么零 mod，要么留残，绝不产出具体属性 mod。
+    // `any attribute` (the tree's pick-one-of-three attribute node) is not expanded
+    // here -- the player's choice gets rewritten to a concrete attribute by
+    // AttributeOverride during tree collection, before parsing. The "no net
+    // contribution" shape varies by data version: older rules leave a residue
+    // (dropped whole-line by the production gate), the 4.5.4.3 vendor rules
+    // recognize the whole line as zero mods. Both are net-equivalent, so we only
+    // assert the version-independent invariant: either zero mods or a residue,
+    // never a concrete attribute mod.
     let o = parse_mod("+5 to any [Attributes|Attribute]").unwrap();
     assert!(
         o.mods.is_empty() || o.unparsed.is_some(),
@@ -284,9 +290,10 @@ fn parses_conversion_and_gain_as_extra() {
     assert_eq!(o.mods.len(), 3, "all elements → fire/cold/lightning");
 }
 
-/// 多源合写 converted-to（vendor ModParser.lua:2405-2409 specialModList）。
-/// 通用后缀路径只会吃掉 lightning 分支并留残 `Physical, Cold and`——special
-/// 通道必须整行吃净、三源各产一条 ConvertToFire BASE。
+/// Multi-source combined converted-to (vendor ModParser.lua:2405-2409 specialModList).
+/// The generic suffix path only consumes the lightning branch and leaves a
+/// `Physical, Cold and` residue -- the special channel must consume the whole
+/// line and produce one ConvertToFire BASE mod per source.
 #[test]
 fn parses_multi_source_converted_to_fire() {
     let o =
@@ -305,7 +312,8 @@ fn parses_multi_source_converted_to_fire() {
     }
 }
 
-/// 无数值整行 converted-to（vendor ModParser.lua:2410-2414）：三元素各 100。
+/// Whole-line converted-to with no explicit number (vendor ModParser.lua:2410-2414):
+/// all three elements get 100.
 #[test]
 fn parses_all_elemental_converted_to_chaos() {
     let o = parse_mod("All Elemental Damage Converted to Chaos Damage").unwrap();
@@ -322,8 +330,9 @@ fn parses_all_elemental_converted_to_chaos() {
     }
 }
 
-/// 承伤转换通用形（modNameList `<src> damage taken` + suffixTypes `as <dst>
-/// damage`，消费侧 calc/taken.rs `<Src>DamageTakenAs<Dst>`）。钉住整行吃净。
+/// Generic "damage taken as" form (modNameList `<src> damage taken` + suffixTypes
+/// `as <dst> damage`; consumed by calc/taken.rs as `<Src>DamageTakenAs<Dst>`).
+/// Pins down that the whole line gets consumed with no residue.
 #[test]
 fn parses_generic_damage_taken_as() {
     let o = parse_mod("5% of Physical Damage taken as Fire Damage").unwrap();
@@ -342,9 +351,10 @@ fn parses_generic_damage_taken_as() {
     );
 }
 
-/// 裸目标 taken-as（vendor ModParser.lua:5655-5656 specialModList）：suffixTypes
-/// 无 bare `as lightning`，通用路径会误产 `<Src>DamageTaken BASE` + 残留
-/// `as Lightning`——special 通道必须接管。
+/// Bare-target taken-as (vendor ModParser.lua:5655-5656 specialModList): suffixTypes
+/// has no bare `as lightning` entry, so the generic path would wrongly produce
+/// `<Src>DamageTaken BASE` plus a leftover `as Lightning` -- the special channel
+/// must take over.
 #[test]
 fn parses_bare_target_taken_as_lightning() {
     for (src, text) in [
@@ -363,8 +373,8 @@ fn parses_bare_target_taken_as_lightning() {
     }
 }
 
-/// flask 双源 taken-as（vendor ModParser.lua:5657-5660）：fire+lightning 各产
-/// 一条 FromHitsTakenAsCold，带 `Condition: UsingFlask`。
+/// Flask dual-source taken-as (vendor ModParser.lua:5657-5660): fire and lightning
+/// each produce one FromHitsTakenAsCold mod, carrying `Condition: UsingFlask`.
 #[test]
 fn parses_flask_fire_lightning_from_hits_taken_as_cold() {
     let o =
@@ -387,9 +397,10 @@ fn parses_flask_fire_lightning_from_hits_taken_as_cold() {
     }
 }
 
-/// random element 承伤（vendor ModParser.lua:5661-5665）：AVERAGE 三分 num/3。
-/// 真实语料词条（`5% of Physical Damage from Hits taken as Damage of a Random
-/// Element`），legacy 删除后曾回归为 `PhysicalDamageFromHitsTaken BASE 5` + 残留。
+/// Random element damage taken (vendor ModParser.lua:5661-5665): AVERAGE splits the
+/// value three ways (num/3). Real-world corpus text (`5% of Physical Damage from Hits
+/// taken as Damage of a Random Element`) regressed to `PhysicalDamageFromHitsTaken
+/// BASE 5` plus a residue after the legacy path was removed.
 #[test]
 fn parses_phys_from_hits_taken_as_random_element() {
     let o = parse_mod(
@@ -409,10 +420,10 @@ fn parses_phys_from_hits_taken_as_random_element() {
     }
 }
 
-/// 聚合源 gain-as（vendor ModParser.lua:702 `["elemental damage"] =
-/// "ElementalDamage"` + 后缀表 `:6173` → `ElementalDamageGainAsCold`，ModCache
-/// 实证 `Gain 10% of Elemental Damage as Extra Cold Damage`；druid-oracle
-/// ember-fusillade 的 Storm Bane/Blood Barrier 词条）。
+/// Aggregated-source gain-as (vendor ModParser.lua:702 `["elemental damage"] =
+/// "ElementalDamage"` + suffix table `:6173` -> `ElementalDamageGainAsCold`; verified
+/// via ModCache against `Gain 10% of Elemental Damage as Extra Cold Damage`; matches
+/// the druid-oracle ember-fusillade Storm Bane/Blood Barrier mods).
 #[test]
 fn parses_elemental_source_gain_as_extra() {
     let o = parse_mod("Gain 16% of Elemental Damage as Extra Cold Damage").unwrap();
@@ -422,10 +433,10 @@ fn parses_elemental_source_gain_as_extra() {
     assert_eq!(o.mods[0].value, ModValue::Number(16.0));
 }
 
-/// random element 档（vendor ModParser.lua:6182 `["as extra damage of a
-/// random element"] = "GainAsRandom"`，ModCache.lua:5257 `Gain 5% of Damage as
-/// Extra Damage of a random Element` → `DamageGainAsRandom BASE 5`；消费 =
-/// CalcOffence.lua:1175-1200 physMode 展开）。
+/// Random-element gain-as tier (vendor ModParser.lua:6182 `["as extra damage of a
+/// random element"] = "GainAsRandom"`; ModCache.lua:5257 `Gain 5% of Damage as Extra
+/// Damage of a random Element` -> `DamageGainAsRandom BASE 5`; consumed by
+/// CalcOffence.lua:1175-1200's physMode expansion).
 #[test]
 fn parses_random_element_gain_as() {
     let o = parse_mod("Gain 5% of Damage as Extra Damage of a random Element").unwrap();
@@ -433,16 +444,16 @@ fn parses_random_element_gain_as() {
     assert_eq!(o.mods[0].name, ModName::from("DamageGainAsRandom"));
     assert_eq!(o.mods[0].value, ModValue::Number(5.0));
 
-    // weapon phys 变体（ModParser.lua:3691 `gain N% of physical damage as extra
-    // damage of a random element` → PhysicalDamageGainAsRandom）。
+    // Weapon-phys variant (ModParser.lua:3691 `gain N% of physical damage as extra
+    // damage of a random element` -> PhysicalDamageGainAsRandom).
     let o = parse_mod("Gain 10% of Physical Damage as Extra Damage of a random Element").unwrap();
     assert_eq!(o.mods[0].name, ModName::from("PhysicalDamageGainAsRandom"));
 }
 
-/// per-curse 数值缩放尾缀（vendor ModParser.lua:1507-1510 →
-/// `Multiplier:CurseOnEnemy`，乘数 = `#curseSlots`（CalcPerform.lua:2969）；
-/// witch-blood-mage Liminal Coil 词条 `Spell Hits Gain 30% of Damage as Extra
-/// Physical Damage per Curse on target` → raw 30 × 5 curse = vendor 实测 150）。
+/// Per-curse scaling suffix (vendor ModParser.lua:1507-1510 -> `Multiplier:CurseOnEnemy`,
+/// multiplier = `#curseSlots` per CalcPerform.lua:2969); witch-blood-mage's Liminal Coil
+/// mod `Spell Hits Gain 30% of Damage as Extra Physical Damage per Curse on target` ->
+/// raw 30 x 5 curses = 150, matching vendor's measured value.
 #[test]
 fn parses_gain_as_per_curse_with_spell_hits_prefix() {
     let o = parse_mod("Spell Hits Gain 30% of Damage as Extra Physical Damage per Curse on target")
@@ -452,8 +463,9 @@ fn parses_gain_as_per_curse_with_spell_hits_prefix() {
     assert_eq!(m.name, ModName::from("DamageGainAsPhysical"));
     assert_eq!(m.mod_type, ModType::Base);
     assert_eq!(m.value, ModValue::Number(30.0));
-    // vendor `^spell hits [ghd][ae][iva][eln] ` → flags=Hit, keywordFlags=Spell
-    // （ModParser.lua:1273）；PoBR 无 Spell keyword 位，等价折为 HIT|SPELL ModFlags。
+    // vendor `^spell hits [ghd][ae][iva][eln] ` -> flags=Hit, keywordFlags=Spell
+    // (ModParser.lua:1273); PoBR has no separate Spell keyword bit, so this collapses
+    // to the equivalent HIT|SPELL ModFlags.
     assert_eq!(m.flags, ModFlags::HIT | ModFlags::SPELL);
     assert!(
         m.tags
@@ -462,17 +474,18 @@ fn parses_gain_as_per_curse_with_spell_hits_prefix() {
         "应携带 Multiplier:CurseOnEnemy tag"
     );
 
-    // 乘数求值：5 个 curse 槽 → 30 × 5 = 150（vendor witch oracle 钉值）。
+    // Multiplier evaluation: 5 curse slots -> 30 x 5 = 150 (pinned to the vendor witch
+    // oracle value).
     let cfg = CalcConfig::new()
         .with_flags(ModFlags::HIT | ModFlags::SPELL)
         .with_multiplier("CurseOnEnemy", 5.0);
     assert_eq!(m.effective_number(&cfg), Some(150.0));
 }
 
-/// per-different-grenade 尾缀（vendor ModParser.lua:1528 →
-/// `Multiplier:DifferentGrenadeFired`，limitVar=GrenadeTypes；mercenary
-/// Demolitionist 树点 `Gain 4% of Damage as Extra Fire Damage for every
-/// different Grenade fired in the past 8 seconds`）。
+/// Per-different-grenade suffix (vendor ModParser.lua:1528 ->
+/// `Multiplier:DifferentGrenadeFired`, limitVar=GrenadeTypes); mercenary's
+/// Demolitionist tree node `Gain 4% of Damage as Extra Fire Damage for every
+/// different Grenade fired in the past 8 seconds`.
 #[test]
 fn parses_gain_as_per_different_grenade_fired() {
     let o = parse_mod(
@@ -495,7 +508,8 @@ fn parses_gain_as_per_different_grenade_fired() {
 
 #[test]
 fn parses_against_rarity_conditions() {
-    // 「against Rare or Unique Enemies」→ 条件型增伤（DPS vs boss 时由 cfg 置真）。
+    // "against Rare or Unique Enemies" is a conditional damage bonus (set true via
+    // cfg when computing DPS against a boss).
     let o = parse_mod("50% increased Attack Damage against Rare or Unique Enemies").unwrap();
     assert_eq!(o.mods.len(), 1);
     assert_eq!(o.mods[0].name, ModName::from("AttackDamage"));
@@ -538,7 +552,8 @@ fn parses_weapon_type_attack_speed_as_condition() {
 
 #[test]
 fn parses_compound_dual_type_resistance_to_two_mods() {
-    // PoB2 ModParser modNameList：`fire and chaos resistances` → 火抗 + 混沌抗。
+    // PoB2 ModParser modNameList: `fire and chaos resistances` -> fire resistance +
+    // chaos resistance.
     let o = parse_mod("+13% to Fire and Chaos Resistances").unwrap();
     assert_eq!(o.status, ParseStatus::Parsed);
     let names: Vec<_> = o.mods.iter().map(|m| m.name.clone()).collect();
@@ -553,7 +568,8 @@ fn parses_compound_dual_type_resistance_to_two_mods() {
 
 #[test]
 fn parses_all_resistances_including_chaos() {
-    // `all resistances`（含混沌）区别于不含混沌的 `all elemental resistances`。
+    // `all resistances` (includes chaos) is distinct from `all elemental resistances`
+    // (excludes chaos).
     let o = parse_mod("+10% to all Resistances").unwrap();
     let names: Vec<_> = o.mods.iter().map(|m| m.name.clone()).collect();
     assert_eq!(names.len(), 4);
@@ -568,7 +584,8 @@ fn parses_all_resistances_including_chaos() {
 
 #[test]
 fn strips_scope_suffix_for_spells_into_flag() {
-    // `... for Spells` 后缀作用域 → SPELL flag（残留会使 resolve_names 失败）。
+    // The `... for Spells` suffix scope maps to the SPELL flag (leaving it unstripped
+    // would break resolve_names).
     let o = parse_mod("+15% to Critical Hit Chance for Spells").unwrap();
     assert_eq!(o.mods.len(), 1);
     assert_eq!(o.mods[0].name, ModName::from("CriticalStrikeChance"));
@@ -578,7 +595,7 @@ fn strips_scope_suffix_for_spells_into_flag() {
 
 #[test]
 fn strips_scope_prefix_attack_critical_into_flag() {
-    // `Attack Critical Hit Chance` 前缀作用域 → ATTACK flag。
+    // The `Attack Critical Hit Chance` prefix scope maps to the ATTACK flag.
     let o = parse_mod("8% increased Attack Critical Hit Chance").unwrap();
     assert_eq!(o.mods.len(), 1);
     assert_eq!(o.mods[0].name, ModName::from("CriticalStrikeChance"));
@@ -607,7 +624,8 @@ fn maps_skill_speed_and_freeze_buildup_and_mana_regen() {
 
 #[test]
 fn keystone_maximum_life_is_one_yields_override_and_ci_flag() {
-    // CI 关键石：`Maximum Life is 1` → MaximumLife OVERRIDE 1 + ChaosInoculation flag。
+    // Chaos Inoculation keystone: `Maximum Life is 1` -> MaximumLife OVERRIDE 1 +
+    // ChaosInoculation flag.
     let o = parse_mod("Maximum Life is 1").unwrap();
     assert_eq!(o.status, ParseStatus::Parsed);
     let life = o
@@ -636,15 +654,17 @@ fn keystone_no_mana_yields_zero_override() {
 
 #[test]
 fn pure_immunity_phrase_yields_no_mods() {
-    // 纯免疫短语无数值：不产数值 mod（引擎识别为空产出，不报错），避免噪声。
+    // A pure immunity phrase carries no numeric value: it produces no mods (the engine
+    // recognizes it as an empty-output line rather than erroring), avoiding noise.
     let o = parse_mod("Immune to Chaos Damage and Bleeding").unwrap();
     assert!(o.mods.is_empty());
 }
 
 #[test]
 fn weapon_type_guard_keeps_damage_as_weapon_keyword_name() {
-    // 「damage with crossbows」必须映射到武器类伤害名 CrossbowDamage（keyword 聚合），
-    // 不能被武器类条件守卫误转成带 UsingCrossbow 条件的通用 Damage（否则丢失武器伤害）。
+    // "damage with crossbows" must map to the weapon-class damage name CrossbowDamage
+    // (keyword aggregation), not get misconverted by the weapon-type condition guard
+    // into a generic Damage mod gated on UsingCrossbow (which would drop weapon damage).
     let outcome = parse_mod("20% increased Damage with Crossbows").unwrap();
     let m = &outcome.mods[0];
     assert_eq!(m.name, ModName::from("CrossbowDamage"));
@@ -656,9 +676,10 @@ fn weapon_type_guard_keeps_damage_as_weapon_keyword_name() {
 
 #[test]
 fn buffs_also_grant_is_unsupported() {
-    // 「Archon Buffs also grant +20% to all Elemental Resistances」——vendor 不支持该词条族
-    // （ModCache.lua:4527-4532 缓存为 nil）；面板不应注入任何数值（stormweaver FireResist
-    // 黄金 71 证实 PoB2 未应用 +20）。
+    // "Archon Buffs also grant +20% to all Elemental Resistances" -- vendor doesn't
+    // support this mod family (ModCache.lua:4527-4532 caches it as nil); the panel
+    // should not inject any numeric value (the stormweaver FireResist golden value of
+    // 71 confirms PoB2 does not apply the +20).
     let outcome = parse_mod("Archon Buffs also grant +20% to all Elemental Resistances").unwrap();
     assert_eq!(outcome.status, ParseStatus::Unsupported);
     assert!(outcome.mods.is_empty());
@@ -666,8 +687,9 @@ fn buffs_also_grant_is_unsupported() {
 
 #[test]
 fn parses_increased_armour_from_equipped_body_armour_as_slot_tag() {
-    // Titan `80% increased Armour from Equipped Body Armour`：剥离槽位子句 → 纯 Armour INC
-    // + SlotName("bodyarmour") tag（per-slot 防御聚合在该槽生效）。
+    // Titan's `80% increased Armour from Equipped Body Armour`: the slot clause is
+    // stripped off, yielding a plain Armour INC mod + SlotName("bodyarmour") tag
+    // (per-slot defence aggregation applies it to that slot).
     let outcome = parse_mod("80% increased Armour from Equipped Body Armour").unwrap();
     assert_eq!(outcome.status, ParseStatus::Parsed);
     assert_eq!(outcome.mods.len(), 1);
@@ -687,8 +709,8 @@ fn parses_increased_armour_from_equipped_body_armour_as_slot_tag() {
 
 #[test]
 fn parses_energy_shield_from_equipped_focus_as_weapon2_slot() {
-    // Focus（副手法器）在 weapon2 槽：`44% increased Energy Shield from Equipped Focus`
-    // → EnergyShield INC + SlotName("weapon2")。
+    // Focus (offhand caster weapon) lives in the weapon2 slot: `44% increased Energy
+    // Shield from Equipped Focus` -> EnergyShield INC + SlotName("weapon2").
     let outcome = parse_mod("44% increased Energy Shield from Equipped Focus").unwrap();
     assert_eq!(outcome.status, ParseStatus::Parsed);
     let m = &outcome.mods[0];
@@ -698,7 +720,7 @@ fn parses_energy_shield_from_equipped_focus_as_weapon2_slot() {
 
 #[test]
 fn parses_more_armour_from_equipped_body_armour_as_slot_more() {
-    // `50% more Armour from Equipped Body Armour` → Armour MORE + SlotName(bodyarmour)。
+    // `50% more Armour from Equipped Body Armour` -> Armour MORE + SlotName(bodyarmour).
     let outcome = parse_mod("50% more Armour from Equipped Body Armour").unwrap();
     let m = &outcome.mods[0];
     assert_eq!(m.mod_type, ModType::More);
@@ -710,7 +732,7 @@ fn slot_tag_is_transparent_to_normal_sum_but_scoped_in_per_slot() {
     use pobr_core::{CalcConfig, ModDb, Modifier};
     let cfg = CalcConfig::default();
     let mut db = ModDb::new();
-    // 全局 inc + 槽位限定底 + 槽位限定 inc。
+    // Global inc + slot-scoped base + slot-scoped inc.
     db.add_mod(Modifier::number("Armour", ModType::Inc, 100.0)); // global inc
     db.add_mod(
         Modifier::number("Armour", ModType::Base, 1000.0)
@@ -721,22 +743,23 @@ fn slot_tag_is_transparent_to_normal_sum_but_scoped_in_per_slot() {
             .with_tag(ModTag::SlotName("bodyarmour".into())),
     );
     let names = [ModName::from("Armour")];
-    // global_only 排除槽位 inc。
+    // global_only excludes the slot-scoped inc.
     assert_eq!(db.sum_global_only(ModType::Inc, &cfg, &names), 100.0);
-    // for_slot 只取该槽 inc。
+    // for_slot only picks up that slot's inc.
     assert_eq!(
         db.sum_for_slot(ModType::Inc, &cfg, &names, "bodyarmour"),
         80.0
     );
-    // slot_bases 取该槽底。
+    // slot_bases retrieves that slot's base.
     assert_eq!(
         db.slot_bases(&cfg, &ModName::from("Armour")),
         vec![("bodyarmour".to_string(), 1000.0)]
     );
 }
 
-/// 01-03：PoB2 EvalMod 对 Multiplier/PerStat 倍率做 `m_floor(base/div + 0.0001)`，
-/// 非整倍资源须向下取整。`+5 ... per 10 Intelligence` 在 95 Int → floor(9.5)=9 → 45（非 47.5）。
+/// 01-03: PoB2's EvalMod applies `m_floor(base/div + 0.0001)` to Multiplier/PerStat
+/// ratios, so non-integral resource counts must round down. `+5 ... per 10
+/// Intelligence` at 95 Int -> floor(9.5)=9 -> 45 (not 47.5).
 #[test]
 fn per_stat_multiplier_floors_non_integral_count_like_pob2() {
     use pobr_core::CalcConfig;
@@ -748,16 +771,17 @@ fn per_stat_multiplier_floors_non_integral_count_like_pob2() {
             .tags
             .contains(&ModTag::multiplier("Intelligence", 10.0, None))
     );
-    // 95 Int → floor(9.5 + 0.0001) = 9 → 5 * 9 = 45。
+    // 95 Int -> floor(9.5 + 0.0001) = 9 -> 5 * 9 = 45.
     let cfg_non_integral = CalcConfig::new().with_multiplier("Intelligence", 95.0);
     assert_eq!(modifier.effective_number(&cfg_non_integral), Some(45.0));
-    // 100 Int → floor(10.0001) = 10 → 50（整倍不受 floor 影响）。
+    // 100 Int -> floor(10.0001) = 10 -> 50 (an exact multiple is unaffected by floor).
     let cfg_integral = CalcConfig::new().with_multiplier("Intelligence", 100.0);
     assert_eq!(modifier.effective_number(&cfg_integral), Some(50.0));
 }
 
-/// `Bonded: <mod>` 符文词条默认不生效——整条挂 `CanUseBondedModifiers` 条件
-/// （PoB2 ModParser `["^bonded: "]`），仅当激活源授予对应 flag 时按 cfg 条件激活。
+/// `Bonded: <mod>` rune mods are inactive by default -- the whole mod carries a
+/// `CanUseBondedModifiers` condition (PoB2 ModParser `["^bonded: "]`), and only
+/// activates via cfg when an enabling source grants the corresponding flag.
 #[test]
 fn bonded_prefix_gates_mod_behind_condition() {
     use pobr_core::{CalcConfig, ModDb};
@@ -774,7 +798,7 @@ fn bonded_prefix_gates_mod_behind_condition() {
         "Bonded 词条须挂 CanUseBondedModifiers 条件"
     );
 
-    // 条件未置真 → 不参与聚合；置真 → 生效。
+    // Condition unset -> excluded from aggregation; set true -> takes effect.
     let mut db = ModDb::new();
     db.add_list(o.mods.clone());
     let off = CalcConfig::new();
@@ -789,10 +813,10 @@ fn bonded_prefix_gates_mod_behind_condition() {
     );
 }
 
-/// Bonded 激活行（Druid Oracle 升华，ModParser.lua:3423-3424）→
-/// `Condition:CanUseBondedModifiers` FLAG（special `bonded_modifiers_enabler`）。
-/// 编排层消费点 calc_orchestrator 6d：session.has_flag → set_condition，
-/// 解锁上面测试的 `Bonded:` 前缀词条。
+/// Bonded-enabling line (Druid Oracle ascendancy, ModParser.lua:3423-3424) ->
+/// `Condition:CanUseBondedModifiers` FLAG (special `bonded_modifiers_enabler`).
+/// Consumed at orchestration layer calc_orchestrator step 6d: session.has_flag ->
+/// set_condition, which unlocks the `Bonded:`-prefixed mods tested above.
 #[test]
 fn bonded_enabler_line_grants_condition_flag() {
     let o = parse_mod("Gain the benefits of Bonded modifiers on Runes and Idols").unwrap();
@@ -805,9 +829,10 @@ fn bonded_enabler_line_grants_condition_flag() {
     assert_eq!(o.mods[0].value, ModValue::Bool(true));
 }
 
-/// 腰带 implicit「Has N Charm Slot(s)」/ 天赋「+N Charm Slot」→ `CharmLimit` BASE N
-/// （vendor ModParser.lua:5453 `h?a?s? ?+?(%d+) charm slots?`）。无 CharmLimit 来源
-/// 时 env_finalize 阶段 3 的 charm 预算为 0（charm 全不生效），本词条是主要解锁源。
+/// Belt implicit "Has N Charm Slot(s)" / tree "+N Charm Slot" -> `CharmLimit` BASE N
+/// (vendor ModParser.lua:5453 `h?a?s? ?+?(%d+) charm slots?`). With no CharmLimit
+/// source, env_finalize stage 3's charm budget is 0 (no charms take effect at all) --
+/// this mod is the primary source that unlocks charms.
 #[test]
 fn charm_slots_implicit_parses_to_charm_limit_base() {
     for (text, expect) in [
@@ -824,7 +849,7 @@ fn charm_slots_implicit_parses_to_charm_limit_base() {
         assert_eq!(o.mods[0].mod_type, ModType::Base, "{text}");
         assert_eq!(o.mods[0].value, ModValue::Number(expect), "{text}");
     }
-    // 非 charm-slot 词条不得误命中。
+    // A non-charm-slot mod must not be mismatched.
     let o = parse_mod("Has 1 Abyssal Socket");
     assert!(
         o.is_err()
@@ -836,15 +861,16 @@ fn charm_slots_implicit_parses_to_charm_limit_base() {
     );
 }
 
-// commit-2 /切换：武器后缀位通道（condition + 武器位双写）
+// commit-2 / switchover: weapon-suffix bit channel (dual-write of condition + weapon bits)
 
-/// `with Maces` / `with One Handed Melee Weapons` / `with Unarmed Attacks`
-/// 三条词条的解析→匹配端到端。
+/// End-to-end parse -> match coverage for `with Maces` / `with One Handed Melee
+/// Weapons` / `with Unarmed Attacks`.
 mod weapon_bits_e2e {
     use super::*;
     use pobr_core::CalcConfig;
 
-    /// `with Maces`：MACE 位 + UsingMace 条件双写；cfg 武器位与条件齐备才匹配。
+    /// `with Maces`: dual-writes the MACE bit + UsingMace condition; matches cfg only
+    /// when both the weapon bit and the condition are present.
     #[test]
     fn with_maces_parses_and_matches_per_weapon_bits() {
         let o = parse_mod("10% increased Attack Speed with Maces").unwrap();
@@ -853,7 +879,8 @@ mod weapon_bits_e2e {
         assert!(m.flags.is_subset_of(ModFlags::MACE));
         assert_eq!(m.flags.bits(), ModFlags::MACE.bits());
 
-        // cfg = 持单手锤（编排侧 weapon_cfg_flags 派生口径）+ UsingMace 条件。
+        // cfg = wielding a one-handed mace (per the orchestration layer's
+        // weapon_cfg_flags derivation) + UsingMace condition.
         let mace_cfg = CalcConfig::attack()
             .with_flags(
                 ModFlags::ATTACK | ModFlags::weapon_flags("One Hand Mace", "Mace", true, true),
@@ -861,13 +888,13 @@ mod weapon_bits_e2e {
             .with_condition("UsingMace", true);
         assert!(m.matches(&mace_cfg));
 
-        // 持弓：bit 与 condition 两通道一致拒绝。
+        // Wielding a bow: both the bit and condition channels consistently reject.
         let bow_cfg = CalcConfig::attack()
             .with_flags(ModFlags::ATTACK | ModFlags::weapon_flags("Bow", "Bow", false, false));
         assert!(!m.matches(&bow_cfg));
     }
 
-    /// `with One Handed Melee Weapons`：Weapon1H|WeaponMelee 位（vendor :1017）。
+    /// `with One Handed Melee Weapons`: Weapon1H|WeaponMelee bits (vendor :1017).
     #[test]
     fn with_one_handed_melee_weapons_matches_weapon_class_bits() {
         let o = parse_mod("8% increased Attack Speed with One Handed Melee Weapons").unwrap();
@@ -886,7 +913,7 @@ mod weapon_bits_e2e {
             .with_condition("UsingOneHandedMelee", true);
         assert!(m.matches(&dagger_cfg));
 
-        // 双手武器：Weapon1H 缺位 → 拒绝。
+        // Two-handed weapon: Weapon1H bit is absent -> rejected.
         let th_cfg = CalcConfig::attack()
             .with_flags(
                 ModFlags::ATTACK | ModFlags::weapon_flags("Two Hand Mace", "Mace", false, true),
@@ -895,16 +922,19 @@ mod weapon_bits_e2e {
         assert!(!m.matches(&th_cfg));
     }
 
-    /// `with Unarmed Attacks`：UNARMED 位（vendor :1006，切换后常驻解锁短语）。
+    /// `with Unarmed Attacks`: UNARMED bit (vendor :1006; an always-present unlock
+    /// phrase post-switchover).
     #[test]
     fn with_unarmed_attacks_matches_unarmed_bit() {
         let o = parse_mod("10% increased Attack Speed with Unarmed Attacks").unwrap();
         assert_eq!(o.status, ParseStatus::Parsed);
         let m = &o.mods[0];
-        // 引擎另带 Hit 作用域位（子集匹配语义不变）；核心是 UNARMED 位在。
+        // The engine also carries the Hit scope bit (subset-match semantics
+        // unchanged); what matters is that the UNARMED bit is present.
         assert!(ModFlags::UNARMED.is_subset_of(m.flags));
 
-        // 空手（编排侧 weapon_cfg_flags 空主手分支；生产攻击上下文恒带 HIT 位）。
+        // Unarmed (the empty-mainhand branch of the orchestration layer's
+        // weapon_cfg_flags; production attack contexts always carry the HIT bit).
         let unarmed_cfg = CalcConfig::attack().with_flags(
             ModFlags::ATTACK
                 | ModFlags::HIT
@@ -912,7 +942,7 @@ mod weapon_bits_e2e {
         );
         assert!(m.matches(&unarmed_cfg));
 
-        // 持武器 → UNARMED 缺位 → 拒绝。
+        // Wielding a weapon -> UNARMED bit absent -> rejected.
         let mace_cfg = CalcConfig::attack().with_flags(
             ModFlags::ATTACK
                 | ModFlags::HIT
@@ -922,9 +952,10 @@ mod weapon_bits_e2e {
     }
 }
 
-/// 诅咒无视上限（vendor ModParser.lua:4275 → `EnemyCurseLimit BASE 99`，
-/// 消费 = buff_pass 槽位预算 DEFAULT 1 + Σ，vendor CalcPerform.lua:2832 同式；
-/// witch-blood-mage 的 Doedre's Undoing 词条，vendor EnemyCurseLimit 实测 100）。
+/// Curses ignoring the curse limit (vendor ModParser.lua:4275 -> `EnemyCurseLimit
+/// BASE 99`; consumed as buff_pass slot budget DEFAULT 1 + sum, matching vendor
+/// CalcPerform.lua:2832's formula); witch-blood-mage's Doedre's Undoing mod, vendor
+/// measured EnemyCurseLimit = 100.
 #[test]
 fn parses_curses_ignore_curse_limit() {
     let o = parse_mod("Curses you inflict ignore Curse limit").unwrap();
@@ -935,9 +966,10 @@ fn parses_curses_ignore_curse_limit() {
     assert_eq!(o.mods[0].value, ModValue::Number(99.0));
 }
 
-/// 「N% increased Damage for each type of Elemental Ailment on Enemy」（The Taming，
-/// vendor ModParser.lua:3798-3804）→ 5 条 Damage INC，各挂一种敌方异常条件
-/// （`Enemy<X>` cfg 键空间，与 `against <X> enemies` 后缀一致）。
+/// "N% increased Damage for each type of Elemental Ailment on Enemy" (The Taming,
+/// vendor ModParser.lua:3798-3804) -> 5 Damage INC mods, each gated on a different
+/// enemy-ailment condition (the `Enemy<X>` cfg key space, consistent with the
+/// `against <X> enemies` suffix).
 #[test]
 fn parses_damage_per_elemental_ailment_type_on_enemy() {
     let o = parse_mod("21% increased Damage for each type of Elemental Ailment on Enemy").unwrap();
@@ -958,7 +990,8 @@ fn parses_damage_per_elemental_ailment_type_on_enemy() {
     ] {
         assert!(conds.contains(&ModTag::condition(var, false)), "{var}");
     }
-    // 条件求值：Chilled + Ignited 真（twister 配置形态）→ 2 档生效。
+    // Condition evaluation: Chilled + Ignited true (the twister config shape) -> 2
+    // tiers active.
     let cfg = CalcConfig::attack()
         .with_condition("EnemyChilled", true)
         .with_condition("EnemyIgnited", true);
@@ -966,7 +999,8 @@ fn parses_damage_per_elemental_ailment_type_on_enemy() {
     assert_eq!(active, 2);
 }
 
-/// 伙伴在场条件后缀（vendor ModParser.lua:1803 → CompanionInPresence）。
+/// Companion-in-presence condition suffix (vendor ModParser.lua:1803 ->
+/// CompanionInPresence).
 #[test]
 fn parses_damage_while_companion_in_presence() {
     let o = parse_mod("10% increased Damage while your [Companion] is in your [Presence]").unwrap();
@@ -979,7 +1013,7 @@ fn parses_damage_while_companion_in_presence() {
     );
 }
 
-/// 奥术涌动条件后缀（vendor ModParser.lua:1817 → AffectedByArcaneSurge）。
+/// Arcane Surge condition suffix (vendor ModParser.lua:1817 -> AffectedByArcaneSurge).
 #[test]
 fn parses_spell_damage_while_you_have_arcane_surge() {
     let o =
@@ -993,9 +1027,9 @@ fn parses_spell_damage_while_you_have_arcane_surge() {
     );
 }
 
-/// 「N% chance to Gain Arcane Surge when you deal a Critical Hit」→
-/// `Condition:ArcaneSurge` FLAG（vendor FLAG form 忽略几率，ModParser.lua:92/:4197；
-/// 触发后缀 :1902 → CritRecently 条件）。
+/// "N% chance to Gain Arcane Surge when you deal a Critical Hit" ->
+/// `Condition:ArcaneSurge` FLAG (the vendor FLAG form ignores the chance value,
+/// ModParser.lua:92/:4197; the trigger suffix :1902 -> CritRecently condition).
 #[test]
 fn parses_chance_to_gain_arcane_surge_on_crit() {
     let o = parse_mod(
@@ -1010,8 +1044,9 @@ fn parses_chance_to_gain_arcane_surge_on_crit() {
     assert!(m.tags.contains(&ModTag::condition("CritRecently", false)));
 }
 
-/// 「Damage with One Handed Weapons」（vendor ModParser.lua:1016 `bor(Weapon1H,
-/// Hit)`）→ name=Damage + Weapon1H|Hit 位；cfg 武器位（单手矛）+ HIT 命中、双手缺位拒绝。
+/// "Damage with One Handed Weapons" (vendor ModParser.lua:1016 `bor(Weapon1H, Hit)`)
+/// -> name=Damage + Weapon1H|Hit bits; matches when cfg carries the weapon bit
+/// (one-handed spear) + HIT, rejects when the two-handed bit is absent.
 #[test]
 fn parses_damage_with_one_handed_weapons_bits() {
     let o = parse_mod("10% increased Damage with One Handed Weapons").unwrap();
@@ -1031,7 +1066,7 @@ fn parses_damage_with_one_handed_weapons_bits() {
     );
     assert!(!m.matches(&th_cfg));
 
-    // 双手变体（vendor :1018）。
+    // Two-handed variant (vendor :1018).
     let o2 = parse_mod("10% increased Damage with Two Handed Weapons").unwrap();
     assert_eq!(
         o2.mods[0].flags.bits(),
@@ -1039,8 +1074,9 @@ fn parses_damage_with_one_handed_weapons_bits() {
     );
 }
 
-/// 「Projectile Speed」名解锁（vendor ModName `ProjectileSpeed`）——常规无消费方，
-/// `ProjectileSpeedAppliesToProjectileDamage` 转换（CalcOffence.lua:840-845）的输入。
+/// "Projectile Speed" name unlock (vendor ModName `ProjectileSpeed`) -- normally has
+/// no direct consumer; feeds into the `ProjectileSpeedAppliesToProjectileDamage`
+/// conversion (CalcOffence.lua:840-845).
 #[test]
 fn parses_projectile_speed_name() {
     let o = parse_mod("8% increased [Projectile] Speed").unwrap();
@@ -1049,11 +1085,12 @@ fn parses_projectile_speed_name() {
     assert_eq!(o.mods[0].mod_type, ModType::Inc);
 }
 
-/// 「N% increased [Exposure] Effect」（树 Exposure Effect 小点 10 / Overexposure
-/// 30）→ 三元素 `<El>ExposureEffect` INC 展开（vendor ModParser.lua:693
-/// `["exposure effect"] = { "FireExposureEffect", "ColdExposureEffect",
-/// "LightningExposureEffect" }`）。消费方 = `calc::reduce_enemy_exposure`
-/// （CalcPerform.lua:3223 曝光 magnitude 的玩家效果 INC）。
+/// "N% increased [Exposure] Effect" (tree Exposure Effect notable = 10 /
+/// Overexposure = 30) -> expands to three elements' `<El>ExposureEffect` INC
+/// (vendor ModParser.lua:693 `["exposure effect"] = { "FireExposureEffect",
+/// "ColdExposureEffect", "LightningExposureEffect" }`). Consumed by
+/// `calc::reduce_enemy_exposure` (CalcPerform.lua:3223's player-effect INC on
+/// exposure magnitude).
 #[test]
 fn parses_exposure_effect_to_three_elements() {
     let o = parse_mod("30% increased [Exposure] Effect").unwrap();
@@ -1070,8 +1107,8 @@ fn parses_exposure_effect_to_three_elements() {
     }
 }
 
-/// 单元素曝光效果（vendor ModParser.lua:690-692 `fire/cold/lightning exposure
-/// effect`）→ 单条 `<El>ExposureEffect`。
+/// Single-element exposure effect (vendor ModParser.lua:690-692 `fire/cold/lightning
+/// exposure effect`) -> a single `<El>ExposureEffect` mod.
 #[test]
 fn parses_single_element_exposure_effect() {
     let o = parse_mod("25% increased Cold Exposure Effect").unwrap();
@@ -1082,17 +1119,18 @@ fn parses_single_element_exposure_effect() {
     assert_eq!(o.mods[0].value, ModValue::Number(25.0));
 }
 
-//  召唤物词条包裹（engine MinionModifier LIST 通道 +
-// extract_minion_modifier_entries 消费端）
+// Minion mod wrapping (engine MinionModifier LIST channel +
+// extract_minion_modifier_entries consumer)
 
-/// engine 解析 + MinionModifier 抽取的组合（生产消费路径同款）。
+/// Combines engine parsing with MinionModifier extraction (mirrors the production
+/// consumer path).
 fn minion_entries(text: &str) -> Vec<pobr_core::calc::minion::MinionModifierEntry> {
     let outcome = parse_mod(text).unwrap();
     pobr_core::calc::minion::extract_minion_modifier_entries(&outcome.mods)
 }
 
-/// `Minions deal X% increased Damage` → 内层 `20% increased damage` 解析为
-/// Damage INC 20，包裹为 MinionModifierEntry。
+/// `Minions deal X% increased Damage` -> the inner `20% increased damage` parses to
+/// Damage INC 20, wrapped as a MinionModifierEntry.
 #[test]
 fn parses_minion_increased_damage_wrapper() {
     let entries = minion_entries("Minions deal 20% increased Damage");
@@ -1101,11 +1139,11 @@ fn parses_minion_increased_damage_wrapper() {
     assert_eq!(inner.name, ModName::from("Damage"));
     assert_eq!(inner.mod_type, ModType::Inc);
     assert_eq!(inner.value, ModValue::Number(20.0));
-    // minion_type=None → 适用所有召唤物。
+    // minion_type=None -> applies to all minions.
     assert!(entries[0].minion_type.is_none());
 }
 
-/// `Minions have X% increased maximum Life` → Life INC 包裹。
+/// `Minions have X% increased maximum Life` -> wraps a Life INC mod.
 #[test]
 fn parses_minion_increased_life_wrapper() {
     let entries = minion_entries("Minions have 30% increased maximum Life");
@@ -1114,24 +1152,27 @@ fn parses_minion_increased_life_wrapper() {
     assert_eq!(entries[0].inner.value, ModValue::Number(30.0));
 }
 
-/// 非 `minions ` 前缀 → 无 MinionModifier（玩家词条不误判为召唤词条）。
+/// Text without a `minions ` prefix -> no MinionModifier (player mods aren't
+/// misclassified as minion mods).
 #[test]
 fn non_minion_text_yields_no_entries() {
     assert!(minion_entries("20% increased Fire Damage").is_empty());
-    assert!(minion_entries("Minions ").is_empty()); // 空余文
+    assert!(minion_entries("Minions ").is_empty()); // empty remainder
 }
 
-/// `Minions …` 余文不可解析 → 无 entry（不产空 entry）。
+/// `Minions ...` with an unparsable remainder -> no entry (never produces an empty
+/// entry).
 #[test]
 fn minion_unparsable_remainder_yields_no_entries() {
     assert!(minion_entries("Minions wibble wobble zorp").is_empty());
 }
 
-// wave2-defence：防御向特殊词条（special_mods `wave2-defence` 批；原 legacy-only
-// 覆盖 mod_parser_m2_defence.rs 删除后回填的 engine 形态钉，产出对齐 vendor
-// ModParser.lua specialModList）
+// wave2-defence: defence-side special mods (special_mods `wave2-defence` batch;
+// backfilled as engine-form pins after the legacy-only coverage in
+// mod_parser_m2_defence.rs was removed, matching vendor ModParser.lua's
+// specialModList output)
 
-/// 断言 outcome 恰为一组 FLAG mods（顺序一致）。
+/// Asserts the outcome is exactly a set of FLAG mods, in order.
 fn assert_flags(text: &str, names: &[&str]) {
     let o = parse_mod(text).unwrap();
     assert_eq!(o.status, ParseStatus::Parsed, "{text}");
@@ -1143,10 +1184,11 @@ fn assert_flags(text: &str, names: &[&str]) {
     }
 }
 
-/// `Armour applies to Fire, Cold and Lightning Damage taken from Hits instead
-/// of Physical Damage`（ModParser.lua:2545-2550）→ 三元素
-/// `ArmourAppliesTo<X>DamageTaken` BASE 100 + `ArmourDoesNotApplyToPhysicalDamageTaken`
-/// flag。消费端 taken.rs armour_applies_pct。
+/// `Armour applies to Fire, Cold and Lightning Damage taken from Hits instead of
+/// Physical Damage` (ModParser.lua:2545-2550) -> three-element
+/// `ArmourAppliesTo<X>DamageTaken` BASE 100 mods + the
+/// `ArmourDoesNotApplyToPhysicalDamageTaken` flag. Consumed by taken.rs's
+/// armour_applies_pct.
 #[test]
 fn parses_armour_applies_to_fcl_instead_of_physical() {
     let o = parse_mod(
@@ -1171,7 +1213,7 @@ fn parses_armour_applies_to_fcl_instead_of_physical() {
 }
 
 /// `N% of Armour applies to Fire, Cold and Lightning Damage taken from Hits`
-/// （ModParser.lua:2551-2555）→ 三元素 BASE N（无 instead flag）。
+/// (ModParser.lua:2551-2555) -> three-element BASE N mods (no "instead" flag).
 #[test]
 fn parses_pct_of_armour_applies_to_fcl() {
     let o = parse_mod("50% of Armour applies to Fire, Cold and Lightning Damage taken from Hits")
@@ -1188,8 +1230,9 @@ fn parses_pct_of_armour_applies_to_fcl() {
     }
 }
 
-/// `Armour applies to Elemental Damage`（ModParser.lua:2556-2560）与
-/// `+N% of Armour also applies to Elemental Damage`（:2561-2565）→ 三元素 BASE。
+/// `Armour applies to Elemental Damage` (ModParser.lua:2556-2560) and
+/// `+N% of Armour also applies to Elemental Damage` (:2561-2565) -> three-element
+/// BASE mods.
 #[test]
 fn parses_armour_applies_to_elemental_damage_variants() {
     for (text, expect) in [
@@ -1211,9 +1254,9 @@ fn parses_armour_applies_to_elemental_damage_variants() {
     }
 }
 
-/// `Energy Shield protects Mana instead of Life`（Eldritch Battery 类，
-/// ModParser.lua:2465）→ `EnergyShieldProtectsMana` FLAG。消费端
-/// keystone_registry.rs DefenceKeystones → pool_damage/ehp/defence。
+/// `Energy Shield protects Mana instead of Life` (the Eldritch Battery family,
+/// ModParser.lua:2465) -> `EnergyShieldProtectsMana` FLAG. Consumed by
+/// keystone_registry.rs's DefenceKeystones -> pool_damage/ehp/defence.
 #[test]
 fn parses_energy_shield_protects_mana() {
     assert_flags(
@@ -1222,9 +1265,10 @@ fn parses_energy_shield_protects_mana() {
     );
 }
 
-/// `Converts all Evasion Rating to Armour`（Iron Reflexes 类，ModParser.lua:2369）
-/// → `IronReflexes` FLAG + `EvasionConvertToArmour` BASE 100。消费端
-/// defence.rs 五元 ConvertTo 矩阵 + keystone_registry（Unbreakable 联动）。
+/// `Converts all Evasion Rating to Armour` (the Iron Reflexes family,
+/// ModParser.lua:2369) -> `IronReflexes` FLAG + `EvasionConvertToArmour` BASE 100.
+/// Consumed by defence.rs's five-way ConvertTo matrix + keystone_registry
+/// (interacts with Unbreakable).
 #[test]
 fn parses_converts_all_evasion_rating_to_armour() {
     let o = parse_mod("Converts all Evasion Rating to Armour").unwrap();
@@ -1237,17 +1281,18 @@ fn parses_converts_all_evasion_rating_to_armour() {
     assert_eq!(o.mods[1].value, ModValue::Number(100.0));
 }
 
-/// `Chance to Deflect is Lucky`（ModParser.lua:4202）→ `DeflectIsLucky` FLAG。
-/// 消费端 defence_panels.rs 偏斜几率 lucky 幂。
+/// `Chance to Deflect is Lucky` (ModParser.lua:4202) -> `DeflectIsLucky` FLAG.
+/// Consumed by defence_panels.rs's deflect-chance lucky-roll math.
 #[test]
 fn parses_chance_to_deflect_is_lucky() {
     assert_flags("Chance to Deflect is Lucky", &["DeflectIsLucky"]);
 }
 
-/// `Chance to Block Damage is Lucky`（ModParser.lua:4371）单 flag；
-/// `(Your )?Chance to Block is Lucky`（:4372）四 flag 全套。消费端
-/// defence_panels.rs effective(BlockChance/SpellBlockChance)；
-/// Projectile/SpellProjectile 两 flag 暂无消费端（形态对齐 vendor）。
+/// `Chance to Block Damage is Lucky` (ModParser.lua:4371) is a single flag;
+/// `(Your )?Chance to Block is Lucky` (:4372) is the full set of four flags.
+/// Consumed by defence_panels.rs's effective(BlockChance/SpellBlockChance);
+/// the Projectile/SpellProjectile flags currently have no consumer (kept only
+/// to match the vendor shape).
 #[test]
 fn parses_chance_to_block_is_lucky_variants() {
     assert_flags("Chance to Block Damage is Lucky", &["BlockChanceIsLucky"]);

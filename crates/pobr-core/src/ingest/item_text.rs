@@ -1,70 +1,76 @@
-//! raw 物品文本块解析：PoB 风格英文导出文本 → [`Item`]。
+//! Raw item text block parsing: PoB-style English export text → [`Item`].
 //!
-//! 把一段多行的 PoB 物品文本（首行 `Rarity:` / 名称 / 基底 / `--------` 分隔的
-//! 若干段 / `Item Level:` / `Implicits: N` / 词条行 / `{crafted}` 附魔标记）切分为
-//! 结构化的 [`Item`]，并填入 [`Item::implicit_texts`] / [`Item::modifier_texts`]
-//! （explicit） / [`Item::enchant_texts`] 三个分段字段。
+//! Splits a multi-line PoB item text (first-line `Rarity:` / name / base /
+//! several `--------`-separated sections / `Item Level:` / `Implicits: N` /
+//! modifier lines / `{crafted}` enchant markers) into a structured [`Item`],
+//! filling in the three section fields [`Item::implicit_texts`] /
+//! [`Item::modifier_texts`] (explicit) / [`Item::enchant_texts`].
 //!
-//! 本模块**只做文本分段切分**，不解析 modifier 语义——modifier 解析由
-//! [`crate::item::ingest_item`] 负责。产出的 [`Item`] 可以直接喂给 `ingest_item`。
+//! This module **only splits text into sections**, it doesn't parse modifier
+//! semantics — that's [`crate::item::ingest_item`]'s job. The resulting
+//! [`Item`] can be fed directly into `ingest_item`.
 //!
-//! ## 支持的格式子集
+//! ## Supported format subset
 //!
-//! 当前覆盖 PoB / 游戏内复制的常见导出结构：
+//! Currently covers the common export structure from PoB / in-game copy:
 //!
 //! ```text
-//! Rarity: RARE                 ← 必需，决定 ItemRarity
-//! <显示名>                      ← RARE/MAGIC/UNIQUE：稀有名；NORMAL：即基底
-//! <基底名>                      ← RARE/MAGIC/UNIQUE 才有这一行
+//! Rarity: RARE                 ← required, determines ItemRarity
+//! <display name>                ← RARE/MAGIC/UNIQUE: the rare name; NORMAL: same as base
+//! <base name>                   ← only present for RARE/MAGIC/UNIQUE
 //! --------
-//! Quality: +20% (augmented)    ← 可选，取百分比为 quality
+//! Quality: +20% (augmented)    ← optional, the percentage becomes quality
 //! --------
-//! Item Level: 84               ← 可选元数据段（连同 Requirements/Armour/Sockets…）
+//! Item Level: 84               ← optional metadata section (along with Requirements/Armour/Sockets…)
 //! --------
-//! Implicits: 1                 ← 可选，指明随后多少行 implicit
-//! +30% to Fire Resistance      ← implicit 行
+//! Implicits: 1                 ← optional, tells how many of the following lines are implicit
+//! +30% to Fire Resistance      ← an implicit line
 //! --------
-//! +40 to maximum Life          ← explicit 行（其余非元数据、非 implicit 行）
+//! +40 to maximum Life          ← an explicit line (any other non-metadata, non-implicit line)
 //! ```
 //!
-//! 附魔（enchant）行以 `{crafted}` / `{enchant}` 前缀标记，去掉标记后落入
-//! [`Item::enchant_texts`]。无法归类为元数据 / implicit / enchant 的词条行均视为
-//! explicit。
+//! Enchant lines are marked with a `{crafted}` / `{enchant}` prefix, which is
+//! stripped before they land in [`Item::enchant_texts`]. Modifier lines that
+//! can't be classified as metadata / implicit / enchant are all treated as
+//! explicit.
 //!
-//! ## 导出标注剥离
+//! ## Export annotation stripping
 //!
-//! PoB 导出的词条行常带以下元注释，这些注释必须在喂给 `mod_parser` 前剥离：
+//! PoB-exported modifier lines often carry the following meta-annotations,
+//! which must be stripped before being fed to `mod_parser`:
 //!
-//! | 格式 | 示例 | 说明 |
+//! | Format | Example | Notes |
 //! |------|------|------|
-//! | `{key:value}` / `{key}` | `{range:0.5}`, `{crafted}` | PoB 内部标注；前缀 `{crafted}` / `{enchant}` 用于 section 归类 |
-//! | ` (lowercase)` | ` (augmented)`, ` (fractured)` | 全小写字母括号注释 |
-//! | `(tier: N)` | `(tier: 3)` | 词缀等级注释 |
-//! | `[word]` | `[augmented]`, `[crafted]` | 方括号注释 |
+//! | `{key:value}` / `{key}` | `{range:0.5}`, `{crafted}` | PoB internal annotation; the `{crafted}` / `{enchant}` prefix is used for section classification |
+//! | ` (lowercase)` | ` (augmented)`, ` (fractured)` | an all-lowercase parenthetical annotation |
+//! | `(tier: N)` | `(tier: 3)` | an affix tier annotation |
+//! | `[word]` | `[augmented]`, `[crafted]` | a bracketed annotation |
 //!
-//! 剥离逻辑见 [`strip_pob_annotations`]；`{crafted}` / `{enchant}` 前缀在 section 判定后才剥离。
+//! See [`strip_pob_annotations`] for the stripping logic; the `{crafted}` /
+//! `{enchant}` prefix is only stripped after section classification.
 //!
-//! ## 留待扩展（TODO）
+//! ## Left for later (TODO)
 //!
-//! - Sockets / Rune / 多语言导出暂不处理。
-//! - `Implicits: N` 缺失时退化为"无 implicit"（PoB 导出通常都带该头）。
+//! - Sockets / Rune / non-English exports aren't handled yet.
+//! - A missing `Implicits: N` header degrades to "no implicits" (PoB exports usually include this header).
 
 use pobr_data::prelude::*;
 
-/// 物品文本块的分隔线。
+/// The item text block's section separator line.
 const SECTION_SEPARATOR: &str = "--------";
 
-/// raw 物品文本解析的结构性错误。无法识别的**词条行**不在此列——它们被保留为
-/// explicit（PoB2 兼容要求保留原始文本块），不丢弃也不报错。
+/// Structural errors from parsing raw item text. Unrecognized **modifier
+/// lines** aren't among these — they're kept as explicit (PoB2 compatibility
+/// requires preserving the raw text block), never dropped or errored.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ItemTextError {
-    /// 输入为空或仅含空白。
+    /// The input is empty or only whitespace.
     Empty,
-    /// 缺少首行 `Rarity:` 头，无法判定稀有度。
+    /// Missing the first-line `Rarity:` header, so rarity can't be determined.
     MissingRarity,
-    /// `Rarity:` 头的值无法识别（非 normal/magic/rare/unique）。
+    /// The `Rarity:` header's value isn't recognized (not normal/magic/rare/unique).
     UnknownRarity(String),
-    /// 缺少基底名（`Rarity:` 之后没有任何名称行）。
+    /// Missing a base name (no name line follows `Rarity:`).
     MissingBase,
 }
 
@@ -81,21 +87,23 @@ impl std::fmt::Display for ItemTextError {
 
 impl std::error::Error for ItemTextError {}
 
-/// 把一段 PoB 风格物品文本解析为结构化 [`Item`]。
+/// Parses a PoB-style item text block into a structured [`Item`].
 ///
-/// 词条按 section 切分：implicit（由 `Implicits: N` 头指明的行数）、enchant
-/// （`{crafted}` / `{enchant}` 前缀的行）、explicit（其余非元数据词条行）。
-/// 元数据行（`Item Level:` / `Requirements:` / `Quality:` 等）不进入任何词条段。
+/// Modifiers are split by section: implicit (the number of lines given by the
+/// `Implicits: N` header), enchant (lines with a `{crafted}` / `{enchant}`
+/// prefix), explicit (any other non-metadata modifier line). Metadata lines
+/// (`Item Level:` / `Requirements:` / `Quality:`, etc.) don't enter any
+/// modifier section.
 ///
-/// 结构性错误（空输入 / 缺 Rarity / 缺基底）返回 [`Err`]；无法识别的词条行被保留
-/// 为 explicit，不报错。
+/// Structural errors (empty input / missing Rarity / missing base) return
+/// [`Err`]; unrecognized modifier lines are kept as explicit, without erroring.
 pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
     let sections = split_sections(raw);
     if sections.is_empty() {
         return Err(ItemTextError::Empty);
     }
 
-    // 第一段含 Rarity 头与名称行。
+    // The first section holds the Rarity header and name lines.
     let header = &sections[0];
     let rarity = parse_rarity(header)?;
     let base = parse_base(header, rarity)?;
@@ -107,7 +115,8 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
     let mut modifier_texts = Vec::new();
     let mut rolled_defence = RolledDefence::default();
 
-    // 后续段：先扫描元数据（Quality / Implicits 头 / 防御底值），再按行归类词条。
+    // Subsequent sections: first scan for metadata (Quality / Implicits
+    // header / rolled defence values), then classify remaining lines as modifiers.
     let mut corrupted = false;
     for section in &sections[1..] {
         let mut mod_lines: Vec<&str> = Vec::new();
@@ -118,9 +127,9 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
             } else if let Some(count) = implicits_header(line) {
                 implicit_count = count;
             } else if accumulate_rolled_defence(line, &mut rolled_defence) {
-                // 已掷出防御底值行：记入 rolled_defence，不计入词条。
+                // A rolled defence value line: recorded into rolled_defence, not counted as a modifier.
             } else if is_metadata_line(line) {
-                // 元数据行不计入词条；`Corrupted` 标记行落 corrupted 状态。
+                // Metadata lines aren't counted as modifiers; a `Corrupted` marker line sets the corrupted state.
                 if line.trim() == "Corrupted" {
                     corrupted = true;
                 }
@@ -151,32 +160,37 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
     })
 }
 
-/// 解析 PoB Build XML 内嵌的 `<Item>` 文本块。
+/// Parses a `<Item>` text block embedded in PoB Build XML.
 ///
-/// 与剪贴板格式（[`parse_item_text`]）的区别：PoB Build XML 的 item 文本块**不含
-/// `--------` 段分隔符**，implicit / explicit 仅靠 `Implicits: N` 头计数切分。典型布局：
+/// Difference from the clipboard format ([`parse_item_text`]): PoB Build
+/// XML's item text block **has no `--------` section separators** — implicit
+/// / explicit are split purely by the `Implicits: N` header count. Typical layout:
 ///
 /// ```text
-/// Rarity: RARE                  ← 首行，决定稀有度
-/// Plague Core                   ← 显示名（RARE/MAGIC/UNIQUE）
-/// Siege Crossbow                ← 基底（NORMAL 时首行即基底；MAGIC 常无独立基底行）
-/// Unique ID: …                  ← 元数据块起始
+/// Rarity: RARE                  ← first line, determines rarity
+/// Plague Core                   ← display name (RARE/MAGIC/UNIQUE)
+/// Siege Crossbow                ← base (for NORMAL, the first line is already the base; MAGIC often has no separate base line)
+/// Unique ID: …                  ← start of the metadata block
 /// Item Level: 81
 /// Quality: 20
 /// Sockets: S S
-/// Rune: …                       ← 已镶嵌符文的命名行（其词条以 {rune} 前缀单列）
+/// Rune: …                       ← names an already-socketed rune (its modifiers are listed separately with a {rune} prefix)
 /// LevelReq: 79
-/// Implicits: 5                  ← 随后 5 行（可含 {enchant}{rune}）为 implicit
-/// {enchant}{rune}…              ← 符文 / 附魔 implicit（归 enchant 段）
-/// {fractured}…                  ← explicit（{tag} 前缀经 strip_pob_annotations 剥离）
+/// Implicits: 5                  ← the next 5 lines (may include {enchant}{rune}) are implicit
+/// {enchant}{rune}…              ← a rune / enchant implicit (goes to the enchant section)
+/// {fractured}…                  ← explicit ({tag} prefixes are stripped by strip_pob_annotations)
 /// ```
 ///
-/// 段归类沿用 [`classify_mod_lines`]：`{crafted}` / `{enchant}` 前缀行 → enchant 段，
-/// 其余按 `Implicits: N` 计数前 N 行 → implicit、之后 → explicit。**计算数值与段归类
-/// 无关**（三段都汇入同一 ModDb），段差异只影响 source-level 归因粒度。
+/// Section classification reuses [`classify_mod_lines`]: lines with a
+/// `{crafted}` / `{enchant}` prefix → the enchant section; the rest → the
+/// first N lines (per the `Implicits: N` count) go to implicit, the remainder
+/// to explicit. **Calculated values are independent of section
+/// classification** (all three sections feed into the same ModDb) — the
+/// section only affects source-level attribution granularity.
 ///
-/// 结构性错误（空输入 / 缺 `Rarity:` / 缺基底）返回 [`Err`]；无法解析的单条词条文本
-/// 仍被保留为字符串（交由 `mod_parser` 在下游按 skip-and-collect 处理）。
+/// Structural errors (empty input / missing `Rarity:` / missing base) return
+/// [`Err`]; individual modifier text that can't be parsed is still kept as a
+/// string (handled downstream by `mod_parser`'s skip-and-collect).
 pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
     let lines: Vec<&str> = raw
         .lines()
@@ -189,9 +203,12 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
 
     let rarity = parse_rarity(&lines)?;
 
-    // 名称行：Rarity 之后、首个元数据 / 计数头之前的行。RARE/UNIQUE 取 2 行（显示名 +
-    // 基底），MAGIC/NORMAL 取 1 行（基底名嵌在显示名内，无独立基底行）。任何元数据行
-    // 提前终止收集——即便后续因故缺元数据头，也最多吸收 max_names 行避免吞掉词条。
+    // Name lines: after Rarity, before the first metadata / count header.
+    // RARE/UNIQUE take 2 lines (display name + base), MAGIC/NORMAL take 1
+    // (the base name is embedded in the display name, no separate base
+    // line). Any metadata line ends collection early — even if the metadata
+    // header is missing for some reason, at most max_names lines are
+    // absorbed to avoid swallowing modifier lines.
     let max_names = match rarity {
         ItemRarity::Normal | ItemRarity::Magic => 1,
         ItemRarity::Rare | ItemRarity::Unique => 2,
@@ -204,7 +221,8 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
     }
     let base = parse_base(&header, rarity)?;
 
-    // 其余行：扫描 Quality / Implicits 头 / 防御底值，跳过元数据，收集词条行。
+    // Remaining lines: scan for Quality / Implicits headers / rolled defence
+    // values, skip metadata, collect modifier lines.
     let mut quality = 0u8;
     let mut implicit_count = 0usize;
     let mut rolled_defence = RolledDefence::default();
@@ -216,9 +234,9 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
         } else if let Some(count) = implicits_header(line) {
             implicit_count = count;
         } else if accumulate_rolled_defence(line, &mut rolled_defence) {
-            // 已掷出防御底值行：记入 rolled_defence，不计入词条。
+            // A rolled defence value line: recorded into rolled_defence, not counted as a modifier.
         } else if is_xml_metadata_line(line) {
-            // 元数据行不计入词条；`Corrupted` 标记行落 corrupted 状态。
+            // Metadata lines aren't counted as modifiers; a `Corrupted` marker line sets the corrupted state.
             if line == "Corrupted" {
                 corrupted = true;
             }
@@ -251,10 +269,12 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
     })
 }
 
-/// PoB Build XML item 块的元数据 / 非词条行判定。
+/// Determines whether a line is metadata / not a modifier line, for PoB Build XML item blocks.
 ///
-/// 在 [`is_metadata_line`] 基础上追加 PoB Build XML 专有的 `Rune:` / `Sockets:` /
-/// `Implicits:` / 变体 / 限定 / 词缀分组等头——剪贴板格式不出现这些，故不并入共享集合。
+/// Builds on [`is_metadata_line`] by adding headers unique to PoB Build XML:
+/// `Rune:` / `Sockets:` / `Implicits:` / variant / limit / affix-grouping
+/// headers, etc. — the clipboard format never has these, so they aren't
+/// folded into the shared set.
 fn is_xml_metadata_line(line: &str) -> bool {
     const XML_PREFIXES: &[&str] = &[
         "Rune:",
@@ -276,7 +296,7 @@ fn is_xml_metadata_line(line: &str) -> bool {
     is_metadata_line(line) || XML_PREFIXES.iter().any(|prefix| line.starts_with(prefix))
 }
 
-/// 按 `--------` 切分为若干段，每段是若干非空行（已 trim）。空段被丢弃。
+/// Splits by `--------` into sections, each a list of non-empty (trimmed) lines. Empty sections are dropped.
 fn split_sections(raw: &str) -> Vec<Vec<&str>> {
     let mut sections: Vec<Vec<&str>> = Vec::new();
     let mut current: Vec<&str> = Vec::new();
@@ -300,7 +320,7 @@ fn split_sections(raw: &str) -> Vec<Vec<&str>> {
     sections
 }
 
-/// 从首段读取并解析 `Rarity:` 头。
+/// Reads and parses the `Rarity:` header from the first section.
 fn parse_rarity(header: &[&str]) -> Result<ItemRarity, ItemTextError> {
     let line = header.first().ok_or(ItemTextError::MissingRarity)?;
     let value = line
@@ -317,11 +337,13 @@ fn parse_rarity(header: &[&str]) -> Result<ItemRarity, ItemTextError> {
     }
 }
 
-/// 从首段名称行解析基底名。
+/// Parses the base name from the first section's name lines.
 ///
-/// NORMAL：`Rarity:` 后第一行即基底；RARE/MAGIC/UNIQUE：第一行是稀有/魔法/传奇
-/// 显示名，第二行才是基底；若只有一行名称则退化为该行（魔法物品基底常嵌在名称里，
-/// 留 TODO 精细化）。
+/// NORMAL: the first line after `Rarity:` is already the base; RARE/MAGIC/
+/// UNIQUE: the first line is the rare/magic/unique display name, and the
+/// second line is the base; when there's only one name line, that line is
+/// used as a fallback (magic item bases are often embedded in the name —
+/// left as a TODO to refine).
 fn parse_base(header: &[&str], rarity: ItemRarity) -> Result<ItemBaseId, ItemTextError> {
     let names: Vec<&str> = header.iter().skip(1).copied().collect();
     if names.is_empty() {
@@ -330,13 +352,13 @@ fn parse_base(header: &[&str], rarity: ItemRarity) -> Result<ItemBaseId, ItemTex
 
     let base_line = match rarity {
         ItemRarity::Normal => names[0],
-        // 有第二行名称时取基底行，否则退化为唯一名称行。
+        // Uses the second name line as the base when present, otherwise falls back to the only name line.
         _ => names.get(1).copied().unwrap_or(names[0]),
     };
     Ok(ItemBaseId::from(base_line))
 }
 
-/// 解析 `Quality: +20% (augmented)` → `20`。非 Quality 行返回 `None`。
+/// Parses `Quality: +20% (augmented)` → `20`. Returns `None` for non-Quality lines.
 fn quality_from_line(line: &str) -> Option<u8> {
     let rest = line.strip_prefix("Quality:")?.trim();
     let digits: String = rest
@@ -347,20 +369,22 @@ fn quality_from_line(line: &str) -> Option<u8> {
     digits.parse::<u8>().ok()
 }
 
-/// 解析 `Implicits: N` → `N`。非该头返回 `None`。
+/// Parses `Implicits: N` → `N`. Returns `None` for lines that aren't this header.
 fn implicits_header(line: &str) -> Option<usize> {
     let rest = line.strip_prefix("Implicits:")?.trim();
     rest.parse::<usize>().ok()
 }
 
-/// 解析 PoB 导出 item 文本里的**已掷出防御底值**行
-/// （`Armour: 4018` / `Evasion: 192` / `Energy Shield: 26`），累加进 `out`。
+/// Parses **rolled defence value** lines from PoB-exported item text
+/// (`Armour: 4018` / `Evasion: 192` / `Energy Shield: 26`), accumulating them into `out`.
 ///
-/// 这些行是物品实际防御底值（已含基底掷点 / 词缀 / 影响），PoB2 `CalcDefence`
-/// 直接用作 per-slot 基底（`item.armourData`）。返回 `true` 表示该行被识别为防御行。
+/// These lines are the item's actual rolled defence values (already
+/// including base roll / affixes / influence), which PoB2's `CalcDefence`
+/// uses directly as the per-slot base (`item.armourData`). Returns `true`
+/// when the line was recognized as a defence line.
 fn accumulate_rolled_defence(line: &str, out: &mut RolledDefence) -> bool {
     let parse_num = |rest: &str| -> Option<f64> {
-        // 容错括号注释 / 范围（如 `Armour: 100 (augmented)`）：取首个数字 token。
+        // Tolerates parenthetical annotations / ranges (e.g. `Armour: 100 (augmented)`): takes the first number token.
         rest.split_whitespace()
             .next()
             .and_then(|tok| tok.parse::<f64>().ok())
@@ -387,28 +411,31 @@ fn accumulate_rolled_defence(line: &str, out: &mut RolledDefence) -> bool {
         }
     } else if let Some(rest) = line.strip_prefix("Spirit:") {
         if let Some(n) = parse_num(rest) {
-            // 权杖 `Spirit: N` 行（PoB2 `item.spiritValue`，Item.lua:523）——
-            // 已含该件局部 Spirit 词条折算（13-G11）。
+            // The `Spirit: N` line on sceptres (PoB2 `item.spiritValue`,
+            // Item.lua:523) — already includes this item's local Spirit
+            // modifier folded in (13-G11).
             out.spirit = Some(out.spirit.unwrap_or(0.0) + n);
             return true;
         }
     } else if let Some(rest) = line.strip_prefix("Ward:")
         && let Some(n) = parse_num(rest)
     {
-        // `Ward: N` 行（PoB2 `armourData.Ward` 同口径；，13-G14）。
+        // The `Ward: N` line (same semantics as PoB2's `armourData.Ward`, 13-G14).
         out.ward = Some(out.ward.unwrap_or(0.0) + n);
         return true;
     } else if line.starts_with("Rune:") || line.starts_with("Soul Core:") {
-        // 每行命名一个已镶嵌的符文/魂核 → 一个已填充 socket（PoB2 `RunesSocketedIn`
-        // 计数，ModParser.lua:1477-1478）。其词条以 `{rune}` 前缀单列、各自解析；
-        // 此处仅累加 socket 数供 `per Socket filled` Multiplier 取数。
+        // Each line names one already-socketed rune/soul core → one filled
+        // socket (matches PoB2's `RunesSocketedIn` count, ModParser.lua:1477-1478).
+        // Its modifiers are listed separately with a `{rune}` prefix and
+        // parsed individually; here we only accumulate the socket count for
+        // the `per Socket filled` Multiplier to read.
         out.sockets_filled += 1;
         return true;
     }
     false
 }
 
-/// 判断是否为元数据行（不计入词条）。匹配已知的 `Key:` 前缀。
+/// Determines whether a line is metadata (not counted as a modifier). Matches known `Key:` prefixes.
 fn is_metadata_line(line: &str) -> bool {
     const METADATA_PREFIXES: &[&str] = &[
         "Item Level:",
@@ -438,24 +465,26 @@ fn is_metadata_line(line: &str) -> bool {
         .any(|prefix| line.starts_with(prefix))
 }
 
-/// 剥离 PoB 导出词条行中的元注释，保留可被 `mod_parser` 解析的干净文本。
+/// Strips meta-annotations from PoB-exported modifier lines, leaving clean text that `mod_parser` can parse.
 ///
-/// 按照 PoB2 `Item.lua` 的处理顺序依次剥离：
+/// Stripped in the same order as PoB2's `Item.lua`:
 ///
-/// 1. `{key:value}` / `{key}` 花括号注释（`{range:0.5}`、`{variant:1}` 等）。
-///    对应 PoB2 Lua 正则：`{(%a*):?([^}]*)}` → `""`。
-/// 2. ` (lowercase)` 全小写字母括号注释（` (augmented)`、` (crafted)`、` (fractured)`）。
-///    对应 PoB2 Lua 正则：` %((%l+)%)` → `""`。
-/// 3. `(tier: N)` 词缀等级注释（含数字/冒号，不在上述规则内）。
-/// 4. `[word]` 方括号注释（` [augmented]`、`[crafted]`）。
+/// 1. `{key:value}` / `{key}` curly-brace annotations (`{range:0.5}`,
+///    `{variant:1}`, etc.). Corresponds to PoB2's Lua regex:
+///    `{(%a*):?([^}]*)}` → `""`.
+/// 2. ` (lowercase)` all-lowercase parenthetical annotations (` (augmented)`,
+///    ` (crafted)`, ` (fractured)`). Corresponds to PoB2's Lua regex:
+///    ` %((%l+)%)` → `""`.
+/// 3. `(tier: N)` affix tier annotations (contains digits/colon, not covered by the above rules).
+/// 4. `[word]` bracketed annotations (` [augmented]`, `[crafted]`).
 ///
-/// 出处：PoB2 `src/Classes/Item.lua` `BuildAndParseRaw` 函数第 708-734 行、第 926 行。
+/// Source: PoB2 `src/Classes/Item.lua`'s `BuildAndParseRaw` function, lines 708-734 and 926.
 pub fn strip_pob_annotations(text: &str) -> String {
     let mut s = text.to_string();
 
-    // 1. 剥离花括号注释：{key:value} 或 {key}。
-    //    使用扫描替代正则，避免引入 regex 依赖。
-    //    对应 PoB2 Lua `{(%a*):?([^}]*)}` → `""` (Item.lua:708)。
+    // 1. Strip curly-brace annotations: {key:value} or {key}.
+    //    Uses a scan instead of regex, to avoid a regex dependency.
+    //    Corresponds to PoB2 Lua `{(%a*):?([^}]*)}` → `""` (Item.lua:708).
     while let Some(open) = s.find('{') {
         let Some(close_rel) = s[open..].find('}') else {
             break;
@@ -464,22 +493,22 @@ pub fn strip_pob_annotations(text: &str) -> String {
         s = format!("{}{}", &s[..open], &s[close + 1..]);
     }
 
-    // 2. 剥离全小写字母括号注释：" (augmented)" / " (fractured)" 等。
-    //    匹配 " (" + 纯小写字母序列 + ")"。
-    //    对应 PoB2 Lua ` %((%l+)%)` → `""` (Item.lua:729)。
+    // 2. Strip all-lowercase parenthetical annotations: " (augmented)" / " (fractured)" etc.
+    //    Matches " (" + a run of lowercase letters + ")".
+    //    Corresponds to PoB2 Lua ` %((%l+)%)` → `""` (Item.lua:729).
     loop {
         let mut found = false;
         let bytes = s.as_bytes();
         let mut i = 0;
         while i + 2 < bytes.len() {
             if bytes[i] == b' ' && bytes[i + 1] == b'(' {
-                // 向后找 ')'，确认中间全是小写字母。
+                // Scan forward for ')', confirming everything in between is lowercase.
                 let mut j = i + 2;
                 while j < bytes.len() && bytes[j].is_ascii_lowercase() {
                     j += 1;
                 }
                 if j < bytes.len() && bytes[j] == b')' && j > i + 2 {
-                    // 整个 " (word)" 区间 [i, j+1) 剥离。
+                    // Strip the whole " (word)" range [i, j+1).
                     s = format!("{}{}", &s[..i], &s[j + 1..]);
                     found = true;
                     break;
@@ -492,20 +521,20 @@ pub fn strip_pob_annotations(text: &str) -> String {
         }
     }
 
-    // 3. 剥离 "(tier: N)" / "(tier:N)" 注释（含数字 / 冒号，不被步骤 2 匹配）。
-    //    PoB 导出格式，不在 PoB2 Lua 标准路径中但出现在某些导出。
+    // 3. Strip "(tier: N)" / "(tier:N)" annotations (contains digits / colon, not matched by step 2).
+    //    A PoB export format not in PoB2's standard Lua path, but seen in some exports.
     loop {
-        // 找 "(tier:" 模式（大小写不敏感）。
+        // Find the "(tier:" pattern (case-insensitive).
         let lower = s.to_ascii_lowercase();
         let Some(idx) = lower.find("(tier:") else {
             break;
         };
-        // 向后找 ')'。
+        // Scan forward for ')'.
         let Some(end_rel) = s[idx..].find(')') else {
             break;
         };
         let end = idx + end_rel;
-        // 包含前置空格（如果有）。
+        // Include the leading space, if any.
         let strip_start = if idx > 0 && s.as_bytes()[idx - 1] == b' ' {
             idx - 1
         } else {
@@ -514,8 +543,8 @@ pub fn strip_pob_annotations(text: &str) -> String {
         s = format!("{}{}", &s[..strip_start], &s[end + 1..]);
     }
 
-    // 4. 剥离方括号注释：" [augmented]" / "[crafted]" 等。
-    //    某些第三方工具在导出时使用方括号格式。
+    // 4. Strip bracketed annotations: " [augmented]" / "[crafted]" etc.
+    //    Some third-party tools use this bracketed format in their exports.
     while let Some(open) = s.find('[') {
         let Some(close_rel) = s[open..].find(']') else {
             break;
@@ -532,12 +561,15 @@ pub fn strip_pob_annotations(text: &str) -> String {
     s.trim().to_string()
 }
 
-/// 剥离 enchant / crafted / rune 标记。命中则返回去标记后的文本与 `true`。
+/// Strips an enchant / crafted / rune marker. Returns the marker-stripped text and `true` on a match.
 ///
-/// 注意：`{crafted}` / `{enchant}` / `{rune}` 作为**行首前缀**用于 section 归类（rune
-/// 镶嵌词条与附魔同属"可socket的外加来源"，统一归 enchant 段），此步在
-/// [`strip_pob_annotations`] 之前执行，以保留 section 分类语义。`{enchant}{rune}` 复合
-/// 前缀按数组顺序先匹配 `{enchant}`，残余 `{rune}` 再由 [`strip_pob_annotations`] 剥除。
+/// Note: `{crafted}` / `{enchant}` / `{rune}` act as a **line-start prefix**
+/// used for section classification (rune-socketed modifiers and enchants are
+/// both "extra sources that come from a socket", so they're unified into the
+/// enchant section). This step runs before [`strip_pob_annotations`] so the
+/// section classification semantics are preserved. For the compound
+/// `{enchant}{rune}` prefix, `{enchant}` matches first per the array order,
+/// and the leftover `{rune}` is stripped afterward by [`strip_pob_annotations`].
 fn strip_enchant_marker(line: &str) -> (String, bool) {
     const ENCHANT_MARKERS: &[&str] = &["{crafted}", "{enchant}", "{rune}"];
     for marker in ENCHANT_MARKERS {
@@ -548,14 +580,16 @@ fn strip_enchant_marker(line: &str) -> (String, bool) {
     (line.to_string(), false)
 }
 
-/// 把一段内的词条行按 implicit / enchant / explicit 归类。
+/// Classifies a section's modifier lines into implicit / enchant / explicit.
 ///
-/// `Implicits: N` 头指明的前 N 行（跨段累计）落入 implicit；带 enchant 标记的行落入
-/// enchant；其余落入 explicit。
+/// The first N lines (accumulated across sections) indicated by the
+/// `Implicits: N` header go to implicit; lines with an enchant marker go to
+/// enchant; the rest go to explicit.
 ///
-/// 在分类之后、入库之前调用 [`strip_pob_annotations`] 剥离 `{range:0.5}` /
-/// `(augmented)` / `(tier: N)` / `[augmented]` 等 PoB 导出元注释，
-/// 使词条文本可被 `mod_parser` 正确解析。
+/// After classification and before storing, [`strip_pob_annotations`] is
+/// called to strip PoB export meta-annotations like `{range:0.5}` /
+/// `(augmented)` / `(tier: N)` / `[augmented]`, so the modifier text can be
+/// parsed correctly by `mod_parser`.
 fn classify_mod_lines(
     lines: &[&str],
     implicit_remaining: &mut usize,
@@ -564,8 +598,9 @@ fn classify_mod_lines(
     modifier_texts: &mut Vec<String>,
 ) {
     for &line in lines {
-        // 先做 enchant marker 检测（利用 {crafted}/{enchant} 前缀语义），
-        // 再对剩余文本剥离 PoB 导出元注释。
+        // First detect the enchant marker (using the {crafted}/{enchant}
+        // prefix semantics), then strip PoB export meta-annotations from
+        // the remaining text.
         let (text_after_enchant_marker, is_enchant) = strip_enchant_marker(line);
         let clean_text = strip_pob_annotations(&text_after_enchant_marker);
         if is_enchant {

@@ -1,17 +1,20 @@
-//! PoB2 SkillType 全量枚举名 → id（1-based）查找——[`crate::skill::SkillTypes::from_pob2_name`]
-//! 的后备表。
+//! Full lookup table from PoB2 SkillType enum name → id (1-based) — the
+//! backing table for [`crate::skill::SkillTypes::from_pob2_name`].
 //!
-//! 数据本体在边车 `skill_type_names.txt`（`gen-skill-types` 从 vendor
-//! `Global.lua::SkillType` 生成，`include_str!` 内嵌——与 pobr-i18n locale toml
-//! 同模式；数据表不进 `.rs`，`no_embedded_data` 守卫不触）。行格式 `name id`，
-//! `#` 行为注释；生成时已按 name 字典序，此处再排序兜底（二分查找前提不依赖
-//! 生成端约定）。
+//! The actual data lives in the sidecar `skill_type_names.txt` (generated
+//! from vendor `Global.lua::SkillType` by `gen-skill-types`, embedded via
+//! `include_str!` — the same pattern as pobr-i18n's locale tomls; the data
+//! table doesn't go in a `.rs` file, so it's outside the `no_embedded_data`
+//! guard's reach). Line format is `name id`, `#` lines are comments;
+//! generated output is already sorted by name, and this module sorts it
+//! again as a fallback (the binary search shouldn't have to depend on the
+//! generator's ordering convention).
 
 use std::sync::LazyLock;
 
 static RAW: &str = include_str!("skill_type_names.txt");
 
-/// (name, id) 按 name 字典序——二分查找用。
+/// (name, id) pairs, sorted by name — for binary search.
 pub(crate) static SKILL_TYPE_IDS: LazyLock<Vec<(&'static str, u32)>> = LazyLock::new(|| {
     let mut entries: Vec<(&str, u32)> = RAW
         .lines()
@@ -32,7 +35,7 @@ pub(crate) static SKILL_TYPE_IDS: LazyLock<Vec<(&'static str, u32)>> = LazyLock:
     entries
 });
 
-/// 名查 id（1-based）；未知名 → None。
+/// Looks up id (1-based) by name; an unknown name → None.
 pub(crate) fn lookup(name: &str) -> Option<u32> {
     SKILL_TYPE_IDS
         .binary_search_by_key(&name, |(n, _)| n)
@@ -54,7 +57,8 @@ mod tests {
 
     #[test]
     fn table_is_full_vendor_enum() {
-        // 全量抽取的粗校验：vendor 0.5.x 枚举 290 条；vendor 升级只增不减。
+        // A coarse check on the full extraction: vendor 0.5.x has 290 enum entries;
+        // vendor upgrades only ever add, never remove.
         assert!(SKILL_TYPE_IDS.len() >= 290);
     }
 }

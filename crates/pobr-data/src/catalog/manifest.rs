@@ -1,47 +1,59 @@
-//! 数据包信封（manifest）schema：描述某个 PoE2 版本下入库了哪些域与语言。
+//! Data-pack envelope (manifest) schema: describes which domains and
+//! languages are stored for a given PoE2 version.
 //!
-//! v2 起 `domains` 按三层物理目录分段（`base`/`overlay`/`generated`，
-//! 见P1）；反序列化兼容 v1 的扁平数组形（视为全部归 `base`）。
+//! Since v2, `domains` is split by the three physical directory layers
+//! (`base`/`overlay`/`generated`, see P1); deserialization stays
+//! compatible with v1's flat array shape (treated as all belonging to `base`).
 
 use serde::{Deserialize, Serialize};
 
-/// 当前 catalog schema 版本。结构不兼容变更时 +1。
+/// The current catalog schema version. Bumped by 1 on a breaking structural change.
 ///
-/// v2：manifest `domains` 由扁平数组改为 [`DomainSections`] 三段。
+/// v2: manifest's `domains` changed from a flat array to the three-section
+/// [`DomainSections`].
 pub const CATALOG_SCHEMA_VERSION: u32 = 2;
 
-/// 数据包信封：描述某个 PoE2 版本下入库了哪些域与语言。
+/// The data-pack envelope: describes which domains and languages are
+/// stored for a given PoE2 version.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DataManifest {
     pub schema_version: u32,
-    /// CDN 补丁版本号，如 `4.5.0.3.4`（公开版 0.5.0）。
+    /// The CDN patch version, e.g. `4.5.0.3.4` (public version 0.5.0).
     pub poe_version: String,
-    /// 已生成 i18n 边车的语言标签，如 `["zh-TW"]`（英文为 canonical，不计入）。
+    /// Language tags that have a generated i18n sidecar, e.g. `["zh-TW"]`
+    /// (English is canonical and isn't counted here).
     pub languages: Vec<String>,
-    /// 已生成的数据域文件名（不含扩展名），按三层目录分段。
+    /// The data-domain filenames that have been generated (without
+    /// extension), split by the three directory layers.
     pub domains: DomainSections,
 }
 
-/// manifest v2 的三段 domains（对应 `data/<版本>/{base/, overlay/, generated/}`）。
+/// Manifest v2's three-section domains (corresponds to
+/// `data/<version>/{base/, overlay/, generated/}`).
 ///
-/// 序列化恒为 v2 对象形；反序列化兼容 v1 扁平数组（全部视为 `base` 段）。
+/// Always serializes to the v2 object shape; deserialization stays
+/// compatible with v1's flat array (treated as entirely the `base` section).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct DomainSections {
-    /// `base/`：.dat 全自动再生的域（pipeline + adapter 产出，禁手改）。
+    /// `base/`: domains fully auto-regenerated from `.dat` (produced by the
+    /// pipeline + adapter, hand edits forbidden).
     pub base: Vec<String>,
-    /// `overlay/`：vendor Lua 抽取的人工策展域（extract-lua 产出，只许工具再生）。
+    /// `overlay/`: hand-curated domains extracted from vendor Lua
+    /// (produced by extract-lua, only tool-regeneration allowed).
     pub overlay: Vec<String>,
-    /// `generated/`：可由 base + overlay 确定性派生的缓存域（precompile 产出）。
+    /// `generated/`: cached domains deterministically derived from base +
+    /// overlay (produced by precompile).
     pub generated: Vec<String>,
 }
 
-/// 反序列化中间形：v1 扁平数组 或 v2 三段对象。
+/// An intermediate deserialization shape: either v1's flat array or v2's
+/// three-section object.
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum DomainSectionsRepr {
-    /// v1：扁平 `["base_items", ...]`，全部视为 base 段。
+    /// v1: a flat `["base_items", ...]`, all treated as the base section.
     Flat(Vec<String>),
-    /// v2：`{"base": [...], "overlay": [...], "generated": [...]}`。
+    /// v2: `{"base": [...], "overlay": [...], "generated": [...]}`.
     Sections {
         base: Vec<String>,
         #[serde(default)]
@@ -79,7 +91,8 @@ impl<'de> Deserialize<'de> for DomainSections {
 mod tests {
     use super::*;
 
-    /// v1 manifest（扁平 domains 数组）应可反序列化，且全部归入 base 段。
+    /// A v1 manifest (flat domains array) should deserialize, with
+    /// everything landing in the base section.
     #[test]
     fn deserializes_v1_flat_domains_as_base() {
         let json = r#"{
@@ -95,7 +108,7 @@ mod tests {
         assert!(manifest.domains.generated.is_empty());
     }
 
-    /// v2 manifest（三段 domains 对象）应按段反序列化。
+    /// A v2 manifest (three-section domains object) should deserialize per section.
     #[test]
     fn deserializes_v2_sectioned_domains() {
         let json = r#"{
@@ -115,7 +128,8 @@ mod tests {
         assert_eq!(manifest.domains.generated, vec!["parsed_mods"]);
     }
 
-    /// v2 缺省 overlay/generated 段应回退为空（向前兼容部分写出）。
+    /// A v2 manifest missing the overlay/generated sections should default to empty
+    /// (forward compatibility for a partial write-out).
     #[test]
     fn v2_missing_sections_default_to_empty() {
         let json = r#"{
@@ -130,7 +144,7 @@ mod tests {
         assert!(manifest.domains.generated.is_empty());
     }
 
-    /// 序列化恒为 v2 三段对象形，且往返等价。
+    /// Serialization always uses the v2 three-section object shape, and the round trip is lossless.
     #[test]
     fn serializes_v2_shape_roundtrip() {
         let manifest = DataManifest {

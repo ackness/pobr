@@ -54,7 +54,8 @@ fn mods_load_with_resolved_stat_foreign_keys() {
     assert_eq!(brute.generation_type, Some(2));
     assert_eq!(brute.level, 1);
 
-    // Stat 外键已解析为稳定字符串 stat id（非整型索引），掷值区间已合并。
+    // The Stat foreign key is already resolved to a stable string stat id
+    // (not an integer index), and the roll range is already merged in.
     assert_eq!(brute.stats.len(), 1);
     let slot = &brute.stats[0];
     assert_eq!(slot.stat_id, "additional_strength");
@@ -68,7 +69,8 @@ fn every_mod_stat_id_resolves_against_registry() {
     let registry: std::collections::HashSet<&str> = stats.iter().map(|s| s.id.as_str()).collect();
     let mods = game_data().mods().unwrap();
 
-    // 抽样：所有词缀的 stat 外键必须命中注册表（无悬空整型索引残留）。
+    // Spot check: every mod's stat foreign key must resolve against the
+    // registry (no dangling integer-index leftovers).
     for m in &mods {
         for s in &m.stats {
             assert!(
@@ -99,7 +101,8 @@ fn traditional_chinese_mod_names_available() {
         "应有数千条本地化词缀名，实得 {}",
         names.len()
     );
-    // Strength1 = "of the Brute" → "野蠻之"（0.5.4 繁中导出整体从
-    // 「之X」改为「X之」形式，管线忠实转录 Mods 表 Name 列）
+    // Strength1 = "of the Brute" → "野蠻之" (the zh-TW export switched from
+    // the "之X" to the "X之" word order across the board in 0.5.4; the
+    // pipeline faithfully transcribes the Mods table's Name column)
     assert_eq!(names.get("Strength1").map(String::as_str), Some("野蠻之"));
 }

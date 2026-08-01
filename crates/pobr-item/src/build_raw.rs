@@ -1,18 +1,22 @@
-//! [`ItemDraft::build_raw`]：编辑态草稿 → PoB 物品文本块（逆向序列化）。
+//! [`ItemDraft::build_raw`]: edit-view draft -> PoB item text block (reverse serialization).
 //!
-//! 行序严格对照 PoB2 `Classes/Item.lua::BuildRaw`（1284-1483）：
-//! `Rarity` → 标题/基底 → Charm Slots → Spirit → 防御四项 → Unique ID → League →
-//! Crafted（+Prefix/Suffix）→ Catalyst/CatalystQuality → Talisman Tier → Item Level →
-//! variant 块（Variant 名列表 → Selected Variant → variant 行 → Has Alt 块）→ Quality →
-//! Sockets/Rune → LevelReq → Radius → Limited to → Requires Class →
-//! `Implicits: N` → rune/enchant/classReq/implicit/explicit 行 → 状态行。
+//! Line order strictly mirrors PoB2 `Classes/Item.lua::BuildRaw` (1284-1483):
+//! `Rarity` -> title/base -> Charm Slots -> Spirit -> the four defence
+//! fields -> Unique ID -> League -> Crafted (+Prefix/Suffix) ->
+//! Catalyst/CatalystQuality -> Talisman Tier -> Item Level -> the variant
+//! block (variant name list -> Selected Variant -> variant lines -> Has Alt
+//! blocks) -> Quality -> Sockets/Rune -> LevelReq -> Radius -> Limited to ->
+//! Requires Class -> `Implicits: N` -> rune/enchant/classReq/implicit/explicit
+//! lines -> state lines.
 //!
-//! 往返契约：`parse(build_raw(parse(x))) == parse(x)`（语义不动点）。字节级不保证。
+//! Round-trip contract: `parse(build_raw(parse(x))) == parse(x)` (a semantic
+//! fixed point). Byte-for-byte equality is not guaranteed.
 
 use crate::draft::{ItemDraft, LineBucket, ModLineDraft};
 
 impl ItemDraft {
-    /// 把草稿逆向序列化为 PoB 物品文本块（行以 `\n` 连接，无尾换行）。
+    /// Reverse-serializes the draft into a PoB item text block (lines joined
+    /// with `\n`, no trailing newline).
     pub fn build_raw(&self) -> String {
         let mut lines: Vec<String> = Vec::new();
         let h = &self.header;
@@ -58,7 +62,7 @@ impl ItemDraft {
             lines.push(format!("Item Level: {il}"));
         }
 
-        // variant 块。
+        // The variant block.
         if !self.variant.names.is_empty() {
             for name in &self.variant.names {
                 lines.push(format!("Variant: {name}"));
@@ -66,7 +70,7 @@ impl ItemDraft {
             if let Some(sel) = self.variant.selected {
                 lines.push(format!("Selected Variant: {sel}"));
             }
-            // alt 变体块。
+            // The alt-variant block.
             const ALT_LABELS: [(&str, &str); 5] = [
                 ("Has Alt Variant: true", "Selected Alt Variant"),
                 ("Has Alt Variant Two: true", "Selected Alt Variant Two"),
@@ -110,7 +114,7 @@ impl ItemDraft {
             lines.push(format!("Requires Class {class}"));
         }
 
-        // `Implicits: N` 头 = rune + enchant + classReq + implicit 行数（不含 explicit）。
+        // `Implicits: N` header = rune + enchant + classReq + implicit line count (explicit excluded).
         let implicit_total = self
             .lines
             .iter()
@@ -126,7 +130,7 @@ impl ItemDraft {
             .count();
         lines.push(format!("Implicits: {implicit_total}"));
 
-        // 按桶序写出词条行（rune → enchant → classReq → implicit → explicit）。
+        // Write out mod lines in bucket order (rune -> enchant -> classReq -> implicit -> explicit).
         for bucket in [
             LineBucket::Rune,
             LineBucket::Enchant,
@@ -139,7 +143,7 @@ impl ItemDraft {
             }
         }
 
-        // 状态行。
+        // State lines.
         if self.states.mirrored {
             lines.push("Mirrored".to_string());
         }
@@ -156,7 +160,7 @@ impl ItemDraft {
     }
 }
 
-/// 单条词条行重建：标注前缀 + 干净文本（对照 BuildRaw 的 `writeModLine`）。
+/// Rebuilds a single mod line: annotation prefix plus clean text (mirrors BuildRaw's `writeModLine`).
 fn write_mod_line(line: &ModLineDraft) -> String {
     format!("{}{}", line.annotations.render_prefix(), line.text)
 }
@@ -169,7 +173,7 @@ fn push_defence(lines: &mut Vec<String>, label: &str, value: Option<f64>) {
     }
 }
 
-/// 数值格式化：整数省略小数（对照 Lua `tostring`，`1292.0 → 1292`）。
+/// Numeric formatting: integral values drop the decimal point (mirrors Lua `tostring`, `1292.0 -> 1292`).
 fn fmt_num(v: f64) -> String {
     if v.fract().abs() < f64::EPSILON {
         format!("{}", v as i64)

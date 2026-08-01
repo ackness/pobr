@@ -1,19 +1,24 @@
-//!  `Stored<Type>*` 族（HandOutput）真实 build 对拍。
+//! Comparison of the `Stored<Type>*` family (HandOutput) against real builds.
 //!
-//! vendor `CalcOffence.lua:4047-4057`：`Stored<Type>CritAvg/HitAvg/CombinedAvg`
-//! 是 ailment magnitude 的输入，必须满足两条结构恒等式（oracle 亲验，2026-06-12，
-//! vendor 0.18.0，`tools/pob2-oracle/run.sh` 对三个 build 的 `mainHandOutput` dump）：
+//! vendor `CalcOffence.lua:4047-4057`: `Stored<Type>CritAvg/HitAvg/CombinedAvg`
+//! feeds ailment magnitude, and must satisfy two structural identities
+//! (verified against the oracle 2026-06-12, vendor 0.18.0, via
+//! `tools/pob2-oracle/run.sh`'s `mainHandOutput` dump for three builds):
 //!
-//! 1. `StoredCritAvg == StoredHitAvg × CritMultiplier`（无 CriticalStrike 条件词条时；
-//!    oracle flicker-strike：Physical 7524.775 == 1551.5 × 4.85 ✓、
-//!    bow-shot：Physical 39061.245 == 8938.5 × 4.37 ✓、
-//!    twister：Cold 17750.4 == 3440 × 5.16 ✓）。
-//! 2. `StoredCombinedAvg == CritAvg×c + HitAvg×(1−c)`（c = 该手 CritChance；
-//!    oracle flicker-strike：Physical 6549.84 == 7524.775×0.836784 + 1551.5×0.163216 ✓）。
+//! 1. `StoredCritAvg == StoredHitAvg × CritMultiplier` (when there's no
+//!    CriticalStrike condition mod; oracle flicker-strike: Physical
+//!    7524.775 == 1551.5 × 4.85 ✓, bow-shot: Physical 39061.245 == 8938.5 ×
+//!    4.37 ✓, twister: Cold 17750.4 == 3440 × 5.16 ✓).
+//! 2. `StoredCombinedAvg == CritAvg×c + HitAvg×(1−c)` (c = that hand's
+//!    CritChance; oracle flicker-strike: Physical
+//!    6549.84 == 7524.775×0.836784 + 1551.5×0.163216 ✓).
 //!
-//! 绝对值逐位对拍属整体伤害 parity 工程（当前进攻 @10% ≈44%，ninja_parity 门禁
-//! 渐进收敛）；本测试钉死 PoBR 侧与 vendor 同构的**结构恒等式**在 ≥3 个真实 build
-//! 上成立 + Stored 族非空落 HandOutput（ailment 链不断的前提）。
+//! Bit-for-bit absolute-value comparison is the job of the overall damage
+//! parity effort (offence currently @10% ≈44%, converging gradually via the
+//! ninja_parity gate); this test only pins down that PoBR's **structural
+//! identities**, isomorphic to vendor's, hold on >=3 real builds, and that the
+//! Stored family is non-empty in HandOutput (a precondition for an unbroken
+//! ailment chain).
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::{MinimalInput, OutputTable};
@@ -52,7 +57,7 @@ fn run_build(dir: &Path, data: &BuildData) -> OutputTable {
 #[test]
 fn stored_family_holds_vendor_identities_on_three_real_builds() {
     let data = {
-        // golden 钉定被校验的数据版本（与活动 DATA_VERSION 解耦）；见 pobr_data::GOLDEN_PARITY_DATA_VERSION。
+        // Pins the data version being checked against the golden values (decoupled from the active DATA_VERSION); see pobr_data::GOLDEN_PARITY_DATA_VERSION.
         let game_data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
         BuildData::load(&game_data).expect("load BuildData")
     };
@@ -82,14 +87,14 @@ fn stored_family_holds_vendor_identities_on_three_real_builds() {
         {
             if *hit_avg > 0.0 {
                 any_nonzero = true;
-                // 恒等式 1（无 CriticalStrike 条件词条 → 两腿同输入，crit 腿 ×m）。
+                // Identity 1 (no CriticalStrike condition mod -> both legs share the same input, the crit leg is ×m).
                 let ratio = crit_avg / hit_avg;
                 assert!(
                     (ratio - m).abs() < 1e-6,
                     "{name} {ty:?}: CritAvg/HitAvg={ratio} 应 == CritMultiplier={m}"
                 );
             }
-            // 恒等式 2（vendor :4048/:4053 的加权累计）。
+            // Identity 2 (the weighted accumulation from vendor :4048/:4053).
             let blend = crit_avg * c + hit_avg * (1.0 - c);
             assert!(
                 (combined - blend).abs() < 1e-6 * blend.abs().max(1.0),

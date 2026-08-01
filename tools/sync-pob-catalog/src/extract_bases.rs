@@ -1,14 +1,15 @@
-//! `extract-bases` 子命令：用 luajit 在最小 stub 环境下执行 vendor PoB2 的
-//! `Data/Bases/*.lua`，把 GGG `.dat` 路线不可得的基底列（`ShieldTypes.Block` →
-//! `block_chance`、`ItemSpirit.SpiritGranted` → `spirit`）固化为**确定性 JSON**
-//! 落到 `data/<版本>/overlay/base_item_overrides.json`——
-//! 开放问题 1/2 的 vendor 抽取兜底路线（与的 `skill_overrides` 通道同构）。
+//! `extract-bases` subcommand: runs vendor PoB2's `Data/Bases/*.lua` under
+//! luajit in a minimal stub environment, and captures base-item columns that
+//! the GGG `.dat` route can't reach (`ShieldTypes.Block` -> `block_chance`,
+//! `ItemSpirit.SpiritGranted` -> `spirit`) as **deterministic JSON** written
+//! to `data/<version>/overlay/base_item_overrides.json` — the vendor
+//! extraction fallback for open questions 1/2 (structured the same way as the `skill_overrides` channel).
 //!
-//! 职责切分（同 [`crate::extract_lua`]）：
-//! - Lua 引导脚本（`extract_base_overrides.lua`，编译期内嵌）只负责忠实抽取
-//!   并以 JSONL 输出；
-//! - Rust 侧统一做排序（按 name 升序）与整体文档序列化，保证同输入重跑
-//!   **byte-stable**。
+//! Responsibility split (same as [`crate::extract_lua`]):
+//! - The Lua bootstrap script (`extract_base_overrides.lua`, embedded at
+//!   compile time) only does faithful extraction and emits JSONL;
+//! - The Rust side does the sorting (ascending by name) and whole-document
+//!   serialization, guaranteeing **byte-stable** output on repeated runs with the same input.
 
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
@@ -17,13 +18,15 @@ use serde::Serialize;
 
 use crate::extract_lua::{ExtractLuaArgs, OverlayMeta, build_overlay_meta};
 
-/// 引导脚本内容（经 stdin 注入 luajit，二进制自包含、不依赖运行目录）
+/// Bootstrap script content (piped into luajit via stdin; the binary is
+/// self-contained and doesn't depend on the working directory)
 const BOOTSTRAP_LUA: &str = include_str!("extract_base_overrides.lua");
 
-/// 默认抽取的 vendor 基底数据文件：自 `tags` 字段（完整基底 tag 集，词缀 tier
-/// 反查的 spawn weight 判定必需）加入后取 **Data/Bases 全量**——每个可装备基底
-/// 都需要 tag 全集；block/spirit/reload/charm_buff 各自只在个别文件出现，全量
-/// 抽取天然覆盖。
+/// Default vendor base data files to extract: since adding the `tags` field
+/// (the full base tag set, needed for affix-tier reverse-lookup spawn-weight
+/// checks), this covers **all of Data/Bases** — every equippable base needs
+/// its full tag set, and block/spirit/reload/charm_buff each only appear in
+/// individual files, so extracting everything covers them naturally.
 pub const DEFAULT_BASE_FILES: &[&str] = &[
     "amulet",
     "axe",
@@ -55,26 +58,26 @@ pub const DEFAULT_BASE_FILES: &[&str] = &[
     "wand",
 ];
 
-/// 当前 overlay 文档 schema 标识（字段演化时递增）
+/// Current overlay document schema identifier (bumped when fields evolve)
 pub const BASE_ITEM_OVERRIDES_SCHEMA: &str = "base_item_overrides/v1";
 
-/// 单条基底覆盖值——schema 单一来源是
+/// A single base-item override — the single source of truth for its shape is
 /// [`pobr_data::catalog::base_item_overrides::BaseItemOverrideEntry`]
-/// （生成 / 消费两侧共用同一 serde 形状，防止字段漂移）。
+/// (shared serde shape between generation and consumption sides, so fields can't drift).
 pub use pobr_data::catalog::base_item_overrides::BaseItemOverrideEntry;
 
-/// 完整 overlay 文档（生成侧；消费侧形状见
-/// `pobr_data::catalog::base_item_overrides::BaseItemOverridesDef`）。
+/// The full overlay document (generation side; see
+/// `pobr_data::catalog::base_item_overrides::BaseItemOverridesDef` for the consumption-side shape).
 #[derive(Debug, Serialize)]
 pub struct BaseItemOverridesDoc {
-    /// 头部元信息（serde 落为 `_meta`，置于文件最前）
+    /// Header metadata (serialized as `_meta`, placed at the top of the file)
     #[serde(rename = "_meta")]
     pub meta: OverlayMeta,
-    /// 覆盖值列表，按 `name` 升序
+    /// The override list, ascending by `name`
     pub overrides: Vec<BaseItemOverrideEntry>,
 }
 
-/// 执行抽取，返回最终（byte-stable 的）JSON 文本
+/// Run the extraction, returning the final (byte-stable) JSON text
 pub fn run_extract_bases(args: &ExtractLuaArgs) -> io::Result<String> {
     let entries = invoke_luajit(args)?;
     let meta = build_overlay_meta(
@@ -87,7 +90,7 @@ pub fn run_extract_bases(args: &ExtractLuaArgs) -> io::Result<String> {
     Ok(assemble_base_overrides_document(meta, entries))
 }
 
-/// 组装最终文档：排序 + serde_json 统一序列化（同输入必然同输出）
+/// Assemble the final document: sort + serde_json serialization (identical input always yields identical output)
 pub fn assemble_base_overrides_document(
     meta: OverlayMeta,
     mut entries: Vec<BaseItemOverrideEntry>,
@@ -103,7 +106,7 @@ pub fn assemble_base_overrides_document(
     json
 }
 
-/// 启动 luajit 执行引导脚本（脚本经 stdin 注入），解析 JSONL 输出
+/// Spawn luajit to run the bootstrap script (piped via stdin), and parse its JSONL output
 fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<BaseItemOverrideEntry>> {
     if args.files.is_empty() {
         return Err(io::Error::new(
@@ -112,7 +115,7 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<BaseItemOverrideEntry>
         ));
     }
     let mut child = Command::new(&args.luajit)
-        .arg("-") // 从 stdin 读脚本
+        .arg("-") // read the script from stdin
         .arg(&args.vendor_root)
         .arg(args.files.join(","))
         .stdin(Stdio::piped())
@@ -144,7 +147,7 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<BaseItemOverrideEntry>
             stderr_text.trim()
         )));
     }
-    // 引导脚本的非致命告警透传给用户
+    // Pass through the bootstrap script's non-fatal warnings to the user
     for line in stderr_text.lines() {
         eprintln!("extract-bases(lua): {line}");
     }
@@ -166,7 +169,7 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<BaseItemOverrideEntry>
     Ok(entries)
 }
 
-/// 供 main 拼装默认文件名列表。
+/// Used by main to assemble the default file name list.
 pub fn default_base_files() -> Vec<String> {
     DEFAULT_BASE_FILES.iter().map(|s| s.to_string()).collect()
 }
@@ -175,7 +178,7 @@ pub fn default_base_files() -> Vec<String> {
 mod tests {
     use super::*;
 
-    /// 文档组装：按 name 排序 + byte-stable（同输入两次组装逐字节相等）。
+    /// Document assembly: sorted by name + byte-stable (two assemblies of the same input are byte-identical).
     #[test]
     fn assembles_sorted_and_byte_stable() {
         let meta = OverlayMeta {
@@ -236,13 +239,13 @@ mod tests {
         let a = assemble_base_overrides_document(meta.clone(), entries.clone());
         let b = assemble_base_overrides_document(meta, entries);
         assert_eq!(a, b);
-        // 排序：Crude... < Makeshift... < Omen... < Ruby...。
+        // Sort order: Crude... < Makeshift... < Omen... < Ruby...
         let crude = a.find("Crude Tower Shield").unwrap();
         let makeshift = a.find("Makeshift Crossbow").unwrap();
         let omen = a.find("Omen Sceptre").unwrap();
         let ruby = a.find("Ruby Charm").unwrap();
         assert!(crude < makeshift && makeshift < omen && omen < ruby);
-        // 消费侧 schema 能解析生成侧产物（防字段漂移）。
+        // The consumption-side schema can parse the generation-side output (guards against field drift).
         let parsed: pobr_data::catalog::base_item_overrides::BaseItemOverridesDef =
             serde_json::from_str(&a).unwrap();
         assert_eq!(parsed.overrides.len(), 4);

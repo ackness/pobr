@@ -1,19 +1,23 @@
-//! 展示字段目录（display catalog）。
+//! The display stat catalog.
 //!
-//! 把计算结果 [`OutputTable`](crate::calc::OutputTable) 映射到稳定的
-//! [`DisplayStatDefinition`] / [`DisplayStatValue`]（pobr-data 契约），供上层 UI /
-//! parity 检查消费。计算内部只用稳定 ID；显示文本走 i18n（尚未实现）。
+//! Maps calculation results ([`OutputTable`](crate::calc::OutputTable)) to the
+//! stable [`DisplayStatDefinition`] / [`DisplayStatValue`] (pobr-data
+//! contract) consumed by upstream UI / parity checks. Calculations use only
+//! stable IDs internally; display text goes through i18n (not yet
+//! implemented).
 //!
-//! - [`display_catalog`]：静态声明全部展示字段（id / 分类 / 值类型 / higher-is-better /
-//!   PoB key）。已计算的标 `Computed`，尚未落地的标 `Planned`（防御扩展批已于
-//!   F-3 全部翻 `Computed`）。
-//! - [`extract_display_values`]：从一个 `OutputTable` 抽取每个 `Computed` 字段的当前取值。
+//! - [`display_catalog`]: statically declares every display field (id /
+//!   category / value type / higher-is-better / PoB key). Computed fields are
+//!   marked `Computed`, not-yet-landed ones `Planned` (the defence extension
+//!   batch was fully flipped to `Computed` in F-3).
+//! - [`extract_display_values`]: extracts the current value of every
+//!   `Computed` field from an `OutputTable`.
 
 use pobr_data::prelude::*;
 
 use crate::calc::OutputTable;
 
-/// 全部展示字段定义（稳定声明，不含取值）。
+/// All display field definitions (stable declarations, no values).
 pub fn display_catalog() -> Vec<DisplayStatDefinition> {
     use DisplayStatCategory as Cat;
     use StatValueType as Vt;
@@ -21,9 +25,10 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
     let computed = |id: &str, cat: Cat, vt: Vt, pob: &str| {
         DisplayStatDefinition::computed(id, cat, vt).with_pob_key(pob)
     };
-    // 防御扩展（W0.2 入目录时为 Planned）：C/D/E/F 各 track 接线完成后由
-    // F-3（output.rs/display_catalog 冻结的唯一例外）
-    // 统一翻 Computed——24 个扩展字段全部由 perform fill 阶段产出。
+    // Defence extensions (entered the catalog as Planned in W0.2): once the
+    // C/D/E/F tracks finish wiring up, F-3 (the sole exception to the
+    // output.rs/display_catalog freeze) flips them all to Computed at once —
+    // all 24 extension fields are produced by the perform fill stage.
 
     vec![
         // Offence
@@ -352,9 +357,10 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "SkillTriggerRate",
         ),
-        // ---防御扩展（W0.2 入目录 → F-3 翻 Computed；golden 参照
-        //     meta.json::player_stats 同名键） ---
-        // Spirit 池（Track D 接线）。
+        // --- Defence extensions (entered the catalog in W0.2 → flipped to
+        //     Computed in F-3; golden compares against the matching key in
+        //     meta.json::player_stats) ---
+        // The Spirit pool (Track D wiring).
         computed("Spirit", Cat::Resource, Vt::Number, "Spirit"),
         computed(
             "SpiritUnreserved",
@@ -362,7 +368,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "SpiritUnreserved",
         ),
-        // Block 族（Track D；CalcDefence.lua:961-1058）。
+        // The Block family (Track D; CalcDefence.lua:961-1058).
         computed(
             "BlockChanceMax",
             Cat::Avoidance,
@@ -387,10 +393,10 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "EffectiveSpellBlockChance",
         ),
-        // 格挡承伤比例：越低越好（被格挡命中仍承受的份额）。
+        // The share of damage still taken on a blocked hit: lower is better.
         computed("BlockEffect", Cat::Mitigation, Vt::Percent, "BlockEffect")
             .with_higher_is_better(Some(false)),
-        // Deflection（Track D；CalcDefence.lua:48-54、:1487-1506）。
+        // Deflection (Track D; CalcDefence.lua:48-54, :1487-1506).
         computed(
             "DeflectionRating",
             Cat::Avoidance,
@@ -403,7 +409,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "DeflectChance",
         ),
-        // Evade 四分型 + 综合（Track E；CalcDefence.lua:1396-1466）。
+        // The four Evade subtypes + the combined figure (Track E; CalcDefence.lua:1396-1466).
         computed("EvadeChance", Cat::Avoidance, Vt::Percent, "EvadeChance"),
         computed(
             "MeleeEvadeChance",
@@ -429,7 +435,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "SpellProjectileEvadeChance",
         ),
-        // Stun 体系（Track E；CalcDefence.lua:2525-2643）。
+        // The Stun system (Track E; CalcDefence.lua:2525-2643).
         computed("StunThreshold", Cat::Defence, Vt::Number, "StunThreshold"),
         computed(
             "SelfStunChance",
@@ -445,9 +451,9 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             "StunDuration",
         )
         .with_higher_is_better(Some(false)),
-        // Ward 池（Track D；CalcDefence.lua:1144-1273）。
+        // The Ward pool (Track D; CalcDefence.lua:1144-1273).
         computed("Ward", Cat::Resource, Vt::Number, "Ward"),
-        // 池口径（Track F；EHP 循环消费的池快照口径）。
+        // Pool-value semantics (Track F; the pool snapshot values consumed by the EHP loop).
         computed(
             "LifeRecoverable",
             Cat::Resource,
@@ -466,7 +472,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "PhysicalDamageReduction",
         ),
-        // EHP 新口径（Track F；CalcDefence.lua:2979-3153、:3246-3247、:3322）。
+        // The new EHP semantics (Track F; CalcDefence.lua:2979-3153, :3246-3247, :3322).
         computed(
             "NumberOfDamagingHits",
             Cat::Mitigation,
@@ -479,7 +485,8 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Number,
             "NumberOfMitigatedDamagingHits",
         ),
-        // 旧 lowest-max-hit 口径保留为附加指标（F 切换 total_ehp 语义后仍可对照）。
+        // The old lowest-max-hit semantics are kept as a supplementary metric
+        // (still comparable after F switches total_ehp's semantics).
         computed(
             "TotalEHPLowestMaxHit",
             Cat::Mitigation,
@@ -489,8 +496,8 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
     ]
 }
 
-/// 从一个 `OutputTable` 抽取全部 `Computed` 展示字段的当前取值，顺序与
-/// [`display_catalog`] 一致。
+/// Extracts the current value of every `Computed` display field from an
+/// `OutputTable`, in the same order as [`display_catalog`].
 pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
     display_catalog()
         .into_iter()
@@ -506,13 +513,14 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
         .collect()
 }
 
-/// 把展示字段 id 映射到 `OutputTable` 字段取值。未知 id 返回 0。
+/// Maps a display field id to its `OutputTable` field value. Unknown ids return 0.
 fn output_value_for(output: &OutputTable, id: &str) -> f64 {
     match id {
         "TotalDPS" => output.dps,
         "TotalHitAvg" => output.total_hit_avg,
-        // hit_chance / crit_chance 计算侧是 fraction（0..1），展示契约是
-        // Vt::Percent（0..100，与其余 Percent 字段同口径），在抽取处转换。
+        // hit_chance / crit_chance are fractions (0..1) on the calc side, but
+        // the display contract's Vt::Percent expects 0..100 (matching every
+        // other Percent field), so we convert here at extraction time.
         "HitChance" => output.hit_chance * 100.0,
         "ActionRate" => output.action_rate,
         "EffectiveActionRate" => output.effective_action_rate,
@@ -609,7 +617,7 @@ fn output_value_for(output: &OutputTable, id: &str) -> f64 {
         "TriggerRateCap" => output.trigger_rate_cap,
         "SkillTriggerRate" => output.skill_trigger_rate,
 
-        // 防御扩展（W0.2 映射先行就位；F-3 条目翻 Computed 后进 extract）
+        // Defence extensions (the W0.2 mapping is already in place; entries enter extract once F-3 flips them to Computed)
         "Spirit" => output.spirit,
         "SpiritUnreserved" => output.spirit_unreserved,
         "BlockChanceMax" => output.block_chance_max,

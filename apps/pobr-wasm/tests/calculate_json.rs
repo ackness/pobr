@@ -1,19 +1,20 @@
-//! `calculate_json` 的集成测试（默认 features，宿主运行）。
+//! Integration tests for `calculate_json` (default features, run on the host).
 //!
-//! 覆盖：life 标准管线 `(base + Σbase) * (1 + Σinc/100)`、空输入默认值、
-//! 抗性透传、无法解析的 modifier 进入 `unsupported_modifiers`、非法 JSON 报错。
+//! Covers: the standard life pipeline `(base + Σbase) * (1 + Σinc/100)`,
+//! empty-input defaults, resistance pass-through, unparseable modifiers
+//! landing in `unsupported_modifiers`, and errors on invalid JSON.
 
 use serde_json::Value;
 
 use pobr_wasm::calculate_json;
 
-/// 初始化游戏数据（modifier 解析需要引擎规则；进程内幂等）。
+/// Initializes game data (modifier parsing needs the engine rules; idempotent within the process).
 fn init_data() {
     pobr_wasm::init_data_from_dir(&pobr_gamedata::current_data_dir().to_string_lossy())
         .expect("init game data from repo data dir");
 }
 
-/// 解析 `calculate_json` 的输出为 JSON 值，断言成功并返回。
+/// Parses `calculate_json`'s output into a JSON value, asserting success and returning it.
 fn run(input: &str) -> Value {
     let json = calculate_json(input).expect("calculate_json should succeed");
     serde_json::from_str(&json).expect("output is valid json")
@@ -148,7 +149,7 @@ fn errors_on_unknown_field() {
 
 #[test]
 fn collects_unparseable_modifier_as_unsupported() {
-    // 引擎对无法识别的文本不报错——整行进 unsupported_modifiers。
+    // The engine never errors on unrecognized text — the whole line goes into unsupported_modifiers.
     init_data();
     let input = r#"{
         "base_life": 100,
@@ -166,11 +167,13 @@ fn collects_unparseable_modifier_as_unsupported() {
 
 #[test]
 fn errors_on_modifiers_without_initialized_data() {
-    // modifiers 非空且数据未初始化 → 显式报错（fail-fast，不静默丢词条）。
-    // 注意：本用例依赖 nextest 每测试独立进程（同进程内其他用例可能已 init）。
+    // Non-empty modifiers with uninitialized data -> an explicit error
+    // (fail-fast, never silently dropping mod lines).
+    // Note: this test case relies on nextest running each test in its own
+    // process (other test cases sharing a process may have already called init).
     let input = r#"{ "base_life": 100, "modifiers": ["+10 to maximum life"] }"#;
     if pobr_wasm::is_data_ready() {
-        return; // 共享进程已初始化——跳过（cargo test 单进程模式）。
+        return; // Already initialized by a shared process — skip (cargo test's single-process mode).
     }
     let result = calculate_json(input);
     assert!(result.is_err());

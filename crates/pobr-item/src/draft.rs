@@ -1,22 +1,30 @@
-//! [`ItemDraft`]：物品编辑态的**全保真**结构化草稿。
+//! [`ItemDraft`]: a **full-fidelity** structured draft of an item's edit-view state.
 //!
-//! 对照 PoB2 `Classes/Item.lua::ParseRaw`（294-1253）的结构化产物，但**不丢任何信息**：
-//! calc 视图（`pobr-core::item_text`）刻意丢弃的 variant 名列表、行级 `{range}`/`{variant}`
-//! 标注、未建模标注（`{tags:…}`）在本草稿里全部保留，以支持 BuildRaw 往返
-//! （[`crate::build_raw`]）。
+//! Mirrors the structured output of PoB2 `Classes/Item.lua::ParseRaw`
+//! (294-1253), but **drops no information**: the variant name list, per-line
+//! `{range}`/`{variant}` annotations, and unmodeled annotations
+//! (`{tags:...}`) that the calc view (`pobr-core::item_text`) deliberately
+//! discards are all preserved in this draft, to support BuildRaw round-trips
+//! ([`crate::build_raw`]).
 //!
-//! 往返契约（编辑态无 parity 可依）：`parse(build_raw(parse(x))) == parse(x)`
-//! ——语义不动点。字节级 byte-stable 不作硬约束（PoB2 自身 BuildRaw 亦不保证）。
+//! Round-trip contract (there's no parity target for the edit view):
+//! `parse(build_raw(parse(x))) == parse(x)` — a semantic fixed point.
+//! Byte-for-byte stability is not a hard requirement (PoB2's own BuildRaw
+//! doesn't guarantee it either).
 //!
-//! 注：本草稿是**编辑态**结构，calc 路径仍由 `pobr-core::item_text` 承担；二者的 variant
-//! 门控 / range 取值规则后续由 pobr-core 提供共享函数，pobr-item 只做编排不复制规则。
+//! Note: this draft is an **edit-view** structure; the calc path is still
+//! owned by `pobr-core::item_text`. Their variant-gating / range-resolution
+//! rules will eventually get shared functions from pobr-core — pobr-item
+//! only orchestrates, it doesn't duplicate the rules.
 
 use crate::annotations::{ModLineAnnotations, parse_mod_line};
 
-/// 词条行所属桶——对照 ParseRaw 的 `runeModLines` / `enchantModLines` /
-/// `classRequirementModLines` / `implicitModLines` / `explicitModLines`。
+/// The bucket a mod line belongs to — mirrors ParseRaw's `runeModLines` /
+/// `enchantModLines` / `classRequirementModLines` / `implicitModLines` /
+/// `explicitModLines`.
 ///
-/// 桶序即 BuildRaw 的写出顺序（rune → enchant → classReq → implicit → explicit）。
+/// Bucket order matches BuildRaw's write-out order (rune -> enchant ->
+/// classReq -> implicit -> explicit).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LineBucket {
     Rune,
@@ -26,58 +34,60 @@ pub enum LineBucket {
     Explicit,
 }
 
-/// 单条词条行的全保真草稿：原始行 + 结构化标注 + 干净文本 + 所属桶。
+/// A full-fidelity draft of one mod line: the raw line, structured
+/// annotations, clean text, and its bucket.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModLineDraft {
-    /// 剥标注后的干净文本（喂 `mod_parser` 的输入）。
+    /// Clean text with annotations stripped (fed to `mod_parser`).
     pub text: String,
-    /// 行级标注集合（`{range}`/`{variant}`/各布尔/未建模 `{tags}`）。
+    /// The line's annotation set (`{range}`/`{variant}`/the booleans/unmodeled `{tags}`).
     pub annotations: ModLineAnnotations,
-    /// 所属桶。
+    /// The bucket this line belongs to.
     pub bucket: LineBucket,
 }
 
-/// 物品稀有度（与 `pobr_data::ItemRarity` 同义，但草稿层保留原始字符串以保真往返）。
+/// Item rarity (semantically the same as `pobr_data::ItemRarity`, but the
+/// draft layer keeps the raw string for fidelity round-tripping).
 #[derive(Debug, Clone, PartialEq)]
 pub struct DraftHeader {
-    /// `Rarity: <X>` 原文（如 `RARE`/`UNIQUE`/`NORMAL`/`MAGIC`/`RELIC`）。
+    /// The raw `Rarity: <X>` value (e.g. `RARE`/`UNIQUE`/`NORMAL`/`MAGIC`/`RELIC`).
     pub rarity: String,
-    /// 第一行标题（rare/unique 名）；normal/magic 无独立标题时为 None。
+    /// The first-line title (the rare/unique name); `None` for normal/magic items with no separate title.
     pub title: Option<String>,
-    /// 基底名（base type 行）。
+    /// The base name (the base type line).
     pub base_name: String,
-    /// `Unique ID: <hash>`。
+    /// `Unique ID: <hash>`.
     pub unique_id: Option<String>,
-    /// `League: <X>`。
+    /// `League: <X>`.
     pub league: Option<String>,
-    /// `Item Level: N`。
+    /// `Item Level: N`.
     pub item_level: Option<u32>,
-    /// `Quality: N`。
+    /// `Quality: N`.
     pub quality: Option<u32>,
-    /// `LevelReq:`/`Requires Level` → 等级需求。
+    /// `LevelReq:`/`Requires Level` -> the level requirement.
     pub level_req: Option<u32>,
-    /// `Spirit: N`。
+    /// `Spirit: N`.
     pub spirit: Option<f64>,
-    /// `Charm Slots: N`。
+    /// `Charm Slots: N`.
     pub charm_limit: Option<u32>,
-    /// `Talisman Tier: N`。
+    /// `Talisman Tier: N`.
     pub talisman_tier: Option<u32>,
-    /// `Requires Class <X>`。
+    /// `Requires Class <X>`.
     pub class_restriction: Option<String>,
-    /// 防御底值 `[Armour, Evasion, EnergyShield, Ward]`（缺省 None）。
+    /// Base defence values `[Armour, Evasion, EnergyShield, Ward]` (`None` if absent).
     pub armour: Option<f64>,
     pub evasion: Option<f64>,
     pub energy_shield: Option<f64>,
     pub ward: Option<f64>,
-    /// rune socket 数（`Sockets: S S S` → 3）。
+    /// The rune socket count (`Sockets: S S S` -> 3).
     pub socket_count: u32,
-    /// jewel socket 数（`Sockets: J J` → 2）。
+    /// The jewel socket count (`Sockets: J J` -> 2).
     pub jewel_socket_count: u32,
-    /// `Rune: <name>` 行（按 socket 序，含 `None`）。
+    /// `Rune: <name>` lines, in socket order (including `None` slots).
     pub runes: Vec<String>,
-    /// `Radius: <label>`（珠宝）。
+    /// `Radius: <label>` (jewels).
     pub radius_label: Option<String>,
-    /// `Limited to: N`（珠宝）。
+    /// `Limited to: N` (jewels).
     pub limited_to: Option<u32>,
 }
 
@@ -109,19 +119,19 @@ impl Default for DraftHeader {
     }
 }
 
-/// variant 选择状态（对照 ParseRaw 的 `variant`/`variantAlt`..`variantAlt5`）。
+/// Variant selection state (mirrors ParseRaw's `variant`/`variantAlt`..`variantAlt5`).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct VariantState {
-    /// `Variant: <name>` 行的名列表（编辑态 UI 用，calc 路径可丢）。
+    /// The name list from `Variant: <name>` lines (used by the edit-view UI; the calc path can drop it).
     pub names: Vec<String>,
-    /// `Selected Variant: N`（1-based）。
+    /// `Selected Variant: N` (1-based).
     pub selected: Option<u32>,
-    /// `Has Alt Variant [Two..Five]: true` + `Selected Alt Variant ...: N`。
-    /// `alts[i]` 对应第 (i+1) 个 alt（alt1 / altTwo / …）；None = 未启用该档。
+    /// `Has Alt Variant [Two..Five]: true` plus `Selected Alt Variant ...: N`.
+    /// `alts[i]` corresponds to the (i+1)-th alt slot (alt1 / altTwo / ...); `None` means that slot isn't enabled.
     pub alts: [Option<u32>; 5],
 }
 
-/// 物品末尾状态行（mirrored / sanctified / corrupted）。
+/// Trailing item state lines (mirrored / sanctified / corrupted).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ItemStates {
     pub mirrored: bool,
@@ -130,19 +140,21 @@ pub struct ItemStates {
     pub double_corrupted: bool,
 }
 
-/// 催化剂状态（首饰/腰带品质，对照 ParseRaw 524-530 / 676-683）。
+/// Catalyst state (jewellery/belt quality, mirrors ParseRaw 524-530 / 676-683).
 ///
-/// 草稿层不持有 `catalysts.json`，故保留催化剂**名**原文（`Catalyst: <name>` 行）以保真
-/// 往返；名 → 1-based id 的解析推迟到 calc 消费侧（RuleSet 注入）。
+/// The draft layer doesn't hold `catalysts.json`, so it keeps the raw
+/// catalyst **name** (the `Catalyst: <name>` line) for fidelity
+/// round-tripping; resolving the name to a 1-based id is deferred to the
+/// calc consumer (RuleSet injection).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CatalystState {
-    /// `Catalyst: <name>` 原始名（如 `Carapace`）。
+    /// The raw `Catalyst: <name>` value (e.g. `Carapace`).
     pub name: Option<String>,
-    /// 催化剂品质百分比（`CatalystQuality:` 或 `Quality (X Modifiers):`）。
+    /// The catalyst quality percentage (`CatalystQuality:` or `Quality (X Modifiers):`).
     pub quality: Option<u32>,
 }
 
-/// 全保真编辑态草稿。
+/// A full-fidelity edit-view draft.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ItemDraft {
     pub header: DraftHeader,
@@ -150,17 +162,19 @@ pub struct ItemDraft {
     pub catalyst: CatalystState,
     pub states: ItemStates,
     pub crafted: bool,
-    /// `Implicits: N` 头声明的「rune + enchant + classReq + implicit」合计行数。
-    /// 解析时按桶累计校验；缺省 None（旧导出无该头）。
+    /// The total line count declared by the `Implicits: N` header ("rune +
+    /// enchant + classReq + implicit"). Verified against the running bucket
+    /// tally while parsing; `None` for legacy exports without this header.
     pub implicit_count: Option<usize>,
-    /// 全部词条行（保桶序与原序）。
+    /// All mod lines, preserving both bucket and original order.
     pub lines: Vec<ModLineDraft>,
 }
 
-/// 解析错误（当前仅占位——解析采用 skip-and-collect，几乎不硬失败）。
+/// Parse errors (currently a placeholder — parsing uses skip-and-collect and
+/// almost never hard-fails).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DraftError {
-    /// 空输入或无 `Rarity:`/标题行。
+    /// Empty input, or no `Rarity:`/title line.
     Empty,
 }
 
@@ -175,11 +189,15 @@ impl std::fmt::Display for DraftError {
 impl std::error::Error for DraftError {}
 
 impl ItemDraft {
-    /// 解析 PoB 物品文本块（`<Item>` 内文 / 剪贴板格式超集）为全保真草稿。
+    /// Parses a PoB item text block (the body of `<Item>` / a superset of
+    /// the clipboard format) into a full-fidelity draft.
     ///
-    /// 对照 ParseRaw 294-1253：逐行扫描，`Rarity:`/标题/基底头 → header；`Spec: Val` 行
-    /// → 对应字段；`Implicits: N` 头 → 桶分界；状态行（Mirrored/Corrupted/…）→ states；
-    /// 其余非元数据行 → 词条行（先剥标注、定桶）。未识别行不报错（lossless 兜底入 explicit）。
+    /// Mirrors ParseRaw 294-1253: scans line by line — `Rarity:`/title/base
+    /// header lines go to `header`; `Spec: Val` lines go to their matching
+    /// field; the `Implicits: N` header sets the bucket boundary; state
+    /// lines (Mirrored/Corrupted/...) go to `states`; every other
+    /// non-metadata line is a mod line (annotations stripped, then bucketed).
+    /// Unrecognized lines never error (lossless fallback into explicit).
     pub fn parse(raw: &str) -> Result<Self, DraftError> {
         let lines: Vec<&str> = raw
             .lines()
@@ -193,12 +211,13 @@ impl ItemDraft {
         let mut draft = ItemDraft::default();
         let mut idx = 0;
 
-        // 头部：Rarity / 标题 / 基底
+        // Header: Rarity / title / base
         if let Some(rarity) = lines[idx].strip_prefix("Rarity: ") {
             draft.header.rarity = rarity.trim().to_string();
             idx += 1;
         }
-        // 标题 + 基底：rare/unique/relic 两行（标题、基底）；normal/magic 单行（基底）。
+        // Title + base: rare/unique/relic get two lines (title, then base);
+        // normal/magic get a single line (base only).
         let has_title = matches!(
             draft.header.rarity.to_ascii_uppercase().as_str(),
             "RARE" | "UNIQUE" | "RELIC"
@@ -212,15 +231,16 @@ impl ItemDraft {
             idx += 1;
         }
 
-        // --- 桶状态机：默认 explicit；Implicits: N 头之后的前 N 行按 rune/enchant/
-        //     classReq/implicit 标记分桶，超过 N 则进 explicit ---
+        // --- Bucket state machine: defaults to explicit; the N lines after
+        //     the Implicits: N header are bucketed by their rune/enchant/
+        //     classReq/implicit markers, anything past N goes to explicit ---
         let mut implicit_remaining: usize = 0;
 
         while idx < lines.len() {
             let line = lines[idx];
             idx += 1;
 
-            // 状态行（无值）。
+            // State lines (no value).
             match line {
                 "Corrupted" => {
                     draft.states.corrupted = true;
@@ -243,14 +263,14 @@ impl ItemDraft {
                 _ => {}
             }
 
-            // `Spec: Value` 元数据行。
+            // `Spec: Value` metadata line.
             if let Some((spec, val)) = split_spec_line(line)
                 && apply_spec(&mut draft, spec, val, &mut implicit_remaining)
             {
                 continue;
             }
 
-            // 其余 = 词条行。剥标注、定桶。
+            // Everything else is a mod line. Strip annotations, assign a bucket.
             let (ann, text) = parse_mod_line(line);
             let bucket = if implicit_remaining > 0 {
                 implicit_remaining -= 1;
@@ -269,15 +289,16 @@ impl ItemDraft {
     }
 }
 
-/// 展示用行类别（web Items 面板逐行上色）。对照 [`LineBucket`] 但额外区分
-/// 物品名 / 基底 / 结构行（等级/品质/防御等元数据行）。
+/// Display-oriented line category (used by the web Items panel to color
+/// each line). Mirrors [`LineBucket`] but additionally distinguishes the
+/// item name / base / structural lines (level/quality/defence metadata).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DisplayLineKind {
-    /// 物品名（rare/unique 标题；normal/magic 取基底名）。
+    /// The item name (rare/unique title; falls back to the base name for normal/magic).
     Name,
-    /// 基底类型行（有独立标题时）。
+    /// The base type line (when there's a separate title).
     Base,
-    /// 结构元数据行（Item Level / Quality / Sockets / Corrupted 等）。
+    /// A structural metadata line (Item Level / Quality / Sockets / Corrupted, etc.).
     Struct,
     Implicit,
     Explicit,
@@ -286,24 +307,28 @@ pub enum DisplayLineKind {
     ClassReq,
 }
 
-/// 单条展示行：干净文本 + 类别。
+/// One display line: clean text plus its category.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DisplayLine {
     pub text: String,
     pub kind: DisplayLineKind,
 }
 
-/// 把 PoB 物品文本块拆成**有序**展示行 + 类别，供前端逐行上色。
+/// Splits a PoB item text block into **ordered** display lines with
+/// categories, for the frontend to color line by line.
 ///
-/// 复用 [`ItemDraft::parse`] 的桶分类结果（词条行 → rune/enchant/classReq/implicit/
-/// explicit）与 [`parse_mod_line`] 的标注剥离——分类规则单源，本函数只按原始行序
-/// 重新编排（名/基底/结构行 vs 词条行）。解析失败（空输入）返回空表，调用方回落到无
-/// 区分渲染。
+/// Reuses [`ItemDraft::parse`]'s bucket classification (mod lines ->
+/// rune/enchant/classReq/implicit/explicit) and [`parse_mod_line`]'s
+/// annotation stripping — classification rules stay in one place, this
+/// function only re-arranges by original line order (name/base/structural
+/// lines vs. mod lines). Returns an empty list on parse failure (empty
+/// input); the caller falls back to undifferentiated rendering.
 pub fn classify_display_lines(raw: &str) -> Vec<DisplayLine> {
     let Ok(draft) = ItemDraft::parse(raw) else {
         return Vec::new();
     };
-    // 词条行队列（按原序）：其干净文本用于在原始行序里定位词条行。
+    // Mod-line queue (original order): its clean text is used to locate mod
+    // lines within the original line sequence.
     let mut mods = draft.lines.iter();
     let mut next_mod = mods.next();
 
@@ -315,7 +340,7 @@ pub fn classify_display_lines(raw: &str) -> Vec<DisplayLine> {
     let mut out = Vec::new();
     let mut idx = 0;
 
-    // Rarity 行不展示（前端亦丢弃）。
+    // The Rarity line isn't displayed (the frontend drops it too).
     if lines.first().is_some_and(|l| l.starts_with("Rarity: ")) {
         idx += 1;
     }
@@ -349,7 +374,8 @@ pub fn classify_display_lines(raw: &str) -> Vec<DisplayLine> {
 
     for &line in &lines[idx..] {
         let (_, clean) = parse_mod_line(line);
-        // 词条行：按队列顺序匹配干净文本（draft.lines 即 parse 判定的词条行，权威）。
+        // Mod line: matched against the queue in order by clean text
+        // (draft.lines is the authoritative mod-line classification from parse).
         if let Some(m) = next_mod
             && m.text == clean
         {
@@ -360,7 +386,7 @@ pub fn classify_display_lines(raw: &str) -> Vec<DisplayLine> {
             next_mod = mods.next();
             continue;
         }
-        // 其余 = 结构/状态行，原样展示。
+        // Everything else is a structural/state line, displayed as-is.
         out.push(DisplayLine {
             text: line.to_string(),
             kind: DisplayLineKind::Struct,
@@ -379,7 +405,7 @@ fn bucket_to_display_kind(bucket: LineBucket) -> DisplayLineKind {
     }
 }
 
-/// 元数据 `Spec: Value` 行 → 写入 draft 字段；返回 true 表示已消费。
+/// A metadata `Spec: Value` line -> writes into the draft's fields; returns true if consumed.
 fn apply_spec(
     draft: &mut ItemDraft,
     spec: &str,
@@ -391,7 +417,7 @@ fn apply_spec(
         "Item Level" => draft.header.item_level = parse_u32(val),
         "Quality" => draft.header.quality = parse_u32(val),
         "LevelReq" | "Requires Level" => draft.header.level_req = parse_u32(val),
-        "Level" => {} // imported level req，不信任；丢弃语义但不当词条
+        "Level" => {} // imported level req, not trusted; discard its meaning but don't treat it as a mod line
         "Spirit" => draft.header.spirit = val.trim().parse::<f64>().ok(),
         "Charm Slots" => draft.header.charm_limit = parse_u32(val),
         "Talisman Tier" => draft.header.talisman_tier = parse_u32(val),
@@ -416,7 +442,7 @@ fn apply_spec(
             draft.implicit_count = Some(*implicit_remaining);
         }
         "Variant" => {
-            // 向后兼容：`{ver}name` → 取 name。
+            // Backwards compatibility: `{ver}name` -> take name.
             let name = strip_legacy_variant_prefix(val);
             draft.variant.names.push(name);
         }
@@ -425,16 +451,16 @@ fn apply_spec(
         | "Has Alt Variant Two"
         | "Has Alt Variant Three"
         | "Has Alt Variant Four"
-        | "Has Alt Variant Five" => { /* 由 Selected Alt 行驱动 */ }
+        | "Has Alt Variant Five" => { /* driven by the Selected Alt lines */ }
         "Selected Alt Variant" => set_alt(&mut draft.variant, 0, val),
         "Selected Alt Variant Two" => set_alt(&mut draft.variant, 1, val),
         "Selected Alt Variant Three" => set_alt(&mut draft.variant, 2, val),
         "Selected Alt Variant Four" => set_alt(&mut draft.variant, 3, val),
         "Selected Alt Variant Five" => set_alt(&mut draft.variant, 4, val),
         "Crafted" => draft.crafted = true,
-        // Quality (X Modifiers): catalyst 品质——识别为元数据，不落 explicit。
+        // Quality (X Modifiers): catalyst quality — recognized as metadata, not treated as explicit.
         s if is_catalyst_quality_spec(s) => {
-            // `Quality (Defence Modifiers): +20%` → quality 百分比。
+            // `Quality (Defence Modifiers): +20%` -> the quality percentage.
             draft.catalyst.quality = parse_percent(val);
         }
         _ => return false,
@@ -442,7 +468,7 @@ fn apply_spec(
     true
 }
 
-/// 行级标注 → 桶（rune/enchant/classReq/implicit）。
+/// Per-line annotations -> bucket (rune/enchant/classReq/implicit).
 fn bucket_from_annotations(ann: &ModLineAnnotations, text: &str) -> LineBucket {
     if ann.rune {
         LineBucket::Rune
@@ -455,14 +481,15 @@ fn bucket_from_annotations(ann: &ModLineAnnotations, text: &str) -> LineBucket {
     }
 }
 
-/// `Spec: Value` 行切分；返回 `(spec, value)`（spec 去尾冒号/空格）。
+/// Splits a `Spec: Value` line; returns `(spec, value)` (spec with its trailing colon/space stripped).
 fn split_spec_line(line: &str) -> Option<(&str, &str)> {
-    // 带行级标注的词条行（`{enchant}...`、`{range:..}...`）一律不是元数据 spec——
-    // 否则形如 `{enchant}{rune}Bonded: +60 to maximum Life` 会被误判为 `Bonded:` spec。
+    // Mod lines carrying per-line annotations (`{enchant}...`, `{range:..}...`)
+    // are never metadata specs — otherwise something like
+    // `{enchant}{rune}Bonded: +60 to maximum Life` would be misread as a `Bonded:` spec.
     if line.starts_with('{') {
         return None;
     }
-    // 优先匹配 `Requires Level/Class <val>`（无冒号）。
+    // Match `Requires Level/Class <val>` first (no colon).
     if let Some(rest) = line.strip_prefix("Requires Class ") {
         return Some(("Requires Class", rest.trim()));
     }
@@ -470,14 +497,15 @@ fn split_spec_line(line: &str) -> Option<(&str, &str)> {
         return Some(("Requires Level", rest.trim()));
     }
     let (spec, val) = line.split_once(": ")?;
-    // spec 必须形似元数据键（字母/空格/括号），排除把词条句子误判（词条不含 `: ` 头键样式）。
+    // The spec must look like a metadata key (letters/spaces/parens), to
+    // rule out mistaking a mod sentence for one (mod text doesn't use the `: ` key style).
     if spec.is_empty() || spec.len() > 40 {
         return None;
     }
     Some((spec.trim(), val.trim()))
 }
 
-/// 判定行是否为 `Spec:` 或状态行（用于头部基底判定）。
+/// Whether a line is a `Spec:` or state line (used to decide the header/base boundary).
 fn is_spec_or_state_line(line: &str) -> bool {
     matches!(
         line,
@@ -485,7 +513,7 @@ fn is_spec_or_state_line(line: &str) -> bool {
     ) || split_spec_line(line).is_some()
 }
 
-/// `Quality (X Modifiers)` 催化剂品质键判定。
+/// Whether a spec key is the `Quality (X Modifiers)` catalyst-quality key.
 fn is_catalyst_quality_spec(spec: &str) -> bool {
     spec.starts_with("Quality (") && spec.ends_with("Modifiers)")
 }
@@ -503,7 +531,7 @@ fn parse_percent(s: &str) -> Option<u32> {
         .ok()
 }
 
-/// `Sockets: S S S` / `J J` → (rune_sockets, jewel_sockets)。
+/// `Sockets: S S S` / `J J` -> (rune_sockets, jewel_sockets).
 fn count_sockets(val: &str) -> (u32, u32) {
     let mut s = 0;
     let mut j = 0;
@@ -517,7 +545,7 @@ fn count_sockets(val: &str) -> (u32, u32) {
     (s, j)
 }
 
-/// `Radius` / 其它取首个连续字母+空格序列（PoB `specVal:match("^[%a ]+")`）。
+/// For `Radius` / others, takes the leading run of letters and spaces (mirrors PoB `specVal:match("^[%a ]+")`).
 fn first_alpha_run(val: &str) -> String {
     val.chars()
         .take_while(|c| c.is_ascii_alphabetic() || *c == ' ')
@@ -526,7 +554,7 @@ fn first_alpha_run(val: &str) -> String {
         .to_string()
 }
 
-/// `Variant: {ver}name` 向后兼容前缀剥离。
+/// Strips the legacy `Variant: {ver}name` prefix, for backwards compatibility.
 fn strip_legacy_variant_prefix(val: &str) -> String {
     if let Some(rest) = val.strip_prefix('{')
         && let Some((_, name)) = rest.split_once('}')
@@ -579,8 +607,9 @@ Implicits: 2
         assert_eq!(d.header.socket_count, 2);
         assert_eq!(d.header.runes.len(), 2);
         assert_eq!(d.implicit_count, Some(2));
-        // 前 2 行带 `{enchant}{rune}` → rune 桶（rune 标记优先，见
-        // bucket_from_annotations）；后 2 行 = explicit。
+        // The first 2 lines carry `{enchant}{rune}` -> the rune bucket (the
+        // rune marker takes priority, see bucket_from_annotations); the last
+        // 2 lines are explicit.
         let rune: Vec<_> = d
             .lines
             .iter()
@@ -600,7 +629,7 @@ Implicits: 2
 
     #[test]
     fn multi_variant_unique_preserves_all_lines_and_selection() {
-        // 手工构造三 variant unique（对照 Atziri's Splendour 形态）。
+        // Hand-constructed 3-variant unique (modelled after Atziri's Splendour).
         let raw = "\
 Rarity: UNIQUE
 Atziri's Splendour
@@ -618,7 +647,8 @@ Implicits: 0
         let d = ItemDraft::parse(raw).unwrap();
         assert_eq!(d.variant.names.len(), 3);
         assert_eq!(d.variant.selected, Some(2));
-        // 全部 variant 行保留（编辑态不门控），行级 variant 标注保真。
+        // Every variant line is preserved (the edit view doesn't gate them),
+        // and per-line variant annotations are kept faithfully.
         let var_lines: Vec<_> = d
             .lines
             .iter()
@@ -724,7 +754,7 @@ Implicits: 2
                 Explicit, // +34% to Cold Resistance
             ]
         );
-        // mod 行文本已剥标注。
+        // Mod line text has had its annotations stripped.
         assert_eq!(out[8].text, "60% increased Armour");
         assert_eq!(out[9].text, "Bonded: +60 to maximum Life");
     }

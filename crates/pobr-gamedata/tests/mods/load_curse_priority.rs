@@ -1,7 +1,8 @@
-//! `overlay/curse_priority.json` 加载测试（-C）。
+//! `overlay/curse_priority.json` load tests (M6-C).
 //!
-//! 抽样断言对照 vendor `Modules/Data.lua:274-300` 的 `data.cursePriority`
-//! 表（commit `2df5a74`）；缺表容忍（消费侧回退）。
+//! Spot checks against vendor `Modules/Data.lua:274-300`'s
+//! `data.cursePriority` table (commit `2df5a74`); missing-table tolerance
+//! (the consumer falls back).
 
 use pobr_gamedata::{GameData, repo_data_root};
 
@@ -13,7 +14,7 @@ fn game_data() -> GameData {
     GameData::new(repo_data_root().join(version()))
 }
 
-/// 四段分类齐全 + vendor 数值抽查（Data.lua:275-300）。
+/// All four sections present + a spot check on vendor's values (Data.lua:275-300).
 #[test]
 fn curse_priority_sections_and_samples() {
     let def = game_data()
@@ -21,28 +22,29 @@ fn curse_priority_sections_and_samples() {
         .expect("curse_priority 可加载")
         .expect("curse_priority.json 在库");
 
-    // per-curse 基值：撰写时 13 条（Temporal Chains=1 … Poacher's Mark=13）
+    // Per-curse base values: 13 entries as of writing (Temporal Chains=1 … Poacher's Mark=13)
     assert_eq!(def.curse_base.len(), 13);
     assert_eq!(def.curse_base["Temporal Chains"], 1);
     assert_eq!(def.curse_base["Despair"], 8);
     assert_eq!(def.curse_base["Poacher's Mark"], 13);
 
-    // socket 序权重单价
+    // Unit weight per socket index
     assert_eq!(def.socket_priority_base, 100);
 
-    // 装备槽名权重：10 槽（Weapon 1=1000 … Ring 3=10000）
+    // Equipment slot-name weight: 10 slots (Weapon 1=1000 … Ring 3=10000)
     assert_eq!(def.slot_weights.len(), 10);
     assert_eq!(def.slot_weights["Weapon 1"], 1000);
     assert_eq!(def.slot_weights["Body Armour"], 5000);
     assert_eq!(def.slot_weights["Ring 3"], 10000);
 
-    // 来源权重：aura 恒为最高一段
+    // Source weights: aura is always the highest band
     assert_eq!(def.curse_from_equipment, 11000);
     assert_eq!(def.curse_from_aura, 20000);
     assert!(def.curse_from_aura > def.curse_from_equipment);
 }
 
-/// 缺表容忍（缺表容忍）：版本目录无 overlay 表时返回 `Ok(None)` 而非报错。
+/// Missing-table tolerance: a version directory with no overlay table
+/// returns `Ok(None)` rather than erroring.
 #[test]
 fn curse_priority_tolerates_missing_table() {
     let missing = GameData::new(repo_data_root().join("no-such-version"));

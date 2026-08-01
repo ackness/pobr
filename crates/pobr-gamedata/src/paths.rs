@@ -1,20 +1,24 @@
-//! 三层数据目录下的域文件定位。
+//! Domain-file location logic across the three data-directory layers.
 //!
-//! `data/<版本>/` 采用三层物理布局：
-//! `base/`（.dat 全自动再生）、`overlay/`（vendor 抽取）、`generated/`（确定性缓存）。
-//! 域文件定位规则：**`base/` 优先，版本根回退**——兼容尚未迁移的旧布局
-//! （旧数据包把域 JSON 直接放在版本根）。`manifest.json` 与 `i18n/` 恒在版本根，
-//! 不走本定位。
+//! `data/<version>/` uses a three-layer physical layout: `base/` (fully
+//! auto-regenerated from `.dat`), `overlay/` (vendor-extracted),
+//! `generated/` (a deterministic cache). Domain-file location rule:
+//! **`base/` first, falling back to the version root** — compatible with
+//! the old layout not yet migrated (an old data pack puts domain JSON
+//! directly at the version root). `manifest.json` and `i18n/` always live
+//! at the version root and don't go through this location logic.
 
 use std::path::PathBuf;
 
 use crate::GameData;
 
 impl GameData {
-    /// 定位某个数据域文件：`<root>/base/<rel>` 存在则用之，否则回退 `<root>/<rel>`。
+    /// Locates a data-domain file: uses `<root>/base/<rel>` if it exists,
+    /// otherwise falls back to `<root>/<rel>`.
     ///
-    /// 注意回退路径**不检查存在性**——文件确实缺失时由加载侧报出带路径的
-    /// [`crate::LoadError::Io`]（错误信息指向回退位置）。
+    /// Note the fallback path is **not checked for existence** — when the
+    /// file is truly missing, the loader reports it via a path-carrying
+    /// [`crate::LoadError::Io`] (the error message points at the fallback location).
     pub(crate) fn domain_path(&self, rel: &str) -> PathBuf {
         let layered = self.root().join("base").join(rel);
         if self.file_exists(&layered) {
@@ -24,42 +28,59 @@ impl GameData {
         }
     }
 
-    /// 定位某个 **overlay 层**域文件：恒为 `<root>/overlay/<rel>`，不回退版本根
-    /// （overlay 是 vendor 抽取/转录层，旧平铺布局从未有过 overlay 文件，无兼容需求）。
+    /// Locates a domain file in the **overlay layer**: always
+    /// `<root>/overlay/<rel>`, no fallback to the version root (overlay is
+    /// the vendor-extraction/transcription layer — the old flat layout
+    /// never had overlay files, so there's no compatibility need).
     ///
-    /// 与 [`Self::domain_path`] 同样**不检查存在性**——缺文件时由加载侧报出带路径的
-    /// [`crate::LoadError::Io`]；是否降级回内建 fallback 由消费方（如 pobr-build 的
-    /// `BuildData::load`）按域裁决。
+    /// Like [`Self::domain_path`], **doesn't check existence** — a missing
+    /// file is reported by the loader via a path-carrying
+    /// [`crate::LoadError::Io`]; whether to degrade to a built-in fallback
+    /// is decided per-domain by the consumer (e.g. pobr-build's `BuildData::load`).
     pub(crate) fn overlay_path(&self, rel: &str) -> PathBuf {
         self.root().join("overlay").join(rel)
     }
 
-    /// 定位某个 **generated 层**域文件：恒为 `<root>/generated/<rel>`（确定性缓存层，
-    /// 工具再生产物）。同 [`Self::overlay_path`] 不检查存在性、不回退版本根。
+    /// Locates a domain file in the **generated layer**: always
+    /// `<root>/generated/<rel>` (the deterministic cache layer, tool
+    /// output). Same as [`Self::overlay_path`]: doesn't check existence,
+    /// doesn't fall back to the version root.
     pub(crate) fn generated_path(&self, rel: &str) -> PathBuf {
         self.root().join("generated").join(rel)
     }
 
-    /// 定位 **版本无关策展层** overlay 文件：`data/overlay-common/<rel>`——版本目录的
-    /// **同级** `overlay-common/` 兄弟目录（`<root>/../overlay-common/<rel>`）。
+    /// Locates a file in the **version-independent curation layer**:
+    /// `data/overlay-common/<rel>` — the sibling `overlay-common/` directory
+    /// **next to** the version directory (`<root>/../overlay-common/<rel>`).
     ///
-    /// 人工策展、随游戏版本不变的 vendor-语义修正放这里，新数据版本目录自动继承，免去
-    /// 逐版本手迁（见 `docs/version-bump-architecture.md` P1-3）。加载侧把它 merge 到
-    /// 版本层 `overlay/<rel>` **之下**（版本层按条目 key 覆盖，其余追加）。
+    /// Hand-curated vendor-semantics fixes that don't change with the game
+    /// version go here, so new data-version directories inherit them
+    /// automatically, without a per-version manual migration (see
+    /// `docs/version-bump-architecture.md` P1-3). The loader merges this
+    /// **underneath** the version layer's `overlay/<rel>` (the version
+    /// layer overrides by entry key, everything else is appended).
     ///
-    /// 返回 `None` 仅当版本根无父目录（如 root 为文件系统根）——正常磁盘/内存后端恒
-    /// `Some`：内存后端 root=`<memory>`，父为空 → 键规约为 `overlay-common/<rel>`。
+    /// Returns `None` only when the version root has no parent directory
+    /// (e.g. root is the filesystem root) — a normal disk/in-memory backend
+    /// is always `Some`: the in-memory backend's root is `<memory>`, whose
+    /// parent is empty → the key reduces to `overlay-common/<rel>`.
     pub(crate) fn overlay_common_path(&self, rel: &str) -> Option<PathBuf> {
         self.root()
             .parent()
             .map(|parent| parent.join("overlay-common").join(rel))
     }
 
-    /// 加载一个**单对象策展 overlay 域**，版本层优先、版本无关层
-    /// `overlay-common/<rel>` 兜底：版本 `overlay/<rel>` 存在则整份用之（版本特有修正
-    /// 的逃生舱），否则读 common（版本目录免费继承，见 `docs/version-bump-architecture.md`
-    /// P1-3）。两层皆缺 → 版本层的 [`LoadError::Io`]（NotFound，路径指向 `overlay/`），
-    /// 是否降级由消费方裁决。列表域（按 id 逐条覆盖/追加）用 [`merge_by_key`] 而非本方法。
+    /// Loads a **single-object curated overlay domain**, with the version
+    /// layer taking priority and the version-independent layer
+    /// `overlay-common/<rel>` as the fallback: if the version's
+    /// `overlay/<rel>` exists, the whole file is used (an escape hatch for
+    /// version-specific fixes); otherwise reads from common (free
+    /// inheritance for new version directories, see
+    /// `docs/version-bump-architecture.md` P1-3). If both layers are
+    /// missing → the version layer's [`LoadError::Io`] (NotFound, the path
+    /// points at `overlay/`); whether to degrade further is the consumer's
+    /// call. List-shaped domains (overridden/appended entry by entry by
+    /// id) use [`merge_by_key`] instead of this method.
     pub(crate) fn load_overlay_or_common<T>(&self, rel: &str) -> Result<T, crate::LoadError>
     where
         T: for<'de> serde::Deserialize<'de>,
@@ -70,7 +91,9 @@ impl GameData {
             {
                 match self.overlay_common_path(rel) {
                     Some(common) => self.load_json_at(common),
-                    // root 无父目录（FS 根）——无 common 层可退，复现版本层 NotFound 给消费方。
+                    // root has no parent directory (the FS root) — no
+                    // common layer to fall back to; reproduce the version
+                    // layer's NotFound for the consumer.
                     None => self.load_json_at(self.overlay_path(rel)),
                 }
             }
@@ -79,10 +102,13 @@ impl GameData {
     }
 }
 
-/// 合并两个按稳定 key 索引的策展 overlay 层：`version` 每条按 `key` 覆盖 `common`
-/// 同 key 条目（整条替换，保持 common 原位），common 无此 key 的 version 条目按出现序
-/// 追加在末尾。同输入恒同输出（确定性）。人工策展基底放 common，版本特有覆盖放版本层
-/// （见 `docs/version-bump-architecture.md` P1-3）。
+/// Merges two curated overlay layers indexed by a stable key: each entry of
+/// `version` overrides the same-key entry of `common` by `key` (a whole-entry
+/// replacement, keeping common's original position); a `version` entry
+/// whose key isn't in `common` is appended at the end, in appearance order.
+/// The same input always produces the same output (deterministic).
+/// Hand-curated baseline entries go in common, version-specific overrides go
+/// in the version layer (see `docs/version-bump-architecture.md` P1-3).
 pub(crate) fn merge_by_key<T>(common: Vec<T>, version: Vec<T>, key: impl Fn(&T) -> &str) -> Vec<T> {
     let mut entries = common;
     for v in version {
@@ -98,7 +124,8 @@ pub(crate) fn merge_by_key<T>(common: Vec<T>, version: Vec<T>, key: impl Fn(&T) 
 mod tests {
     use crate::GameData;
 
-    /// 创建带唯一名的临时目录（测试结束不强制清理，落在系统 temp 下）。
+    /// Creates a temp directory with a unique name (not force-cleaned up
+    /// after the test, lands under the system temp dir).
     fn temp_dir(tag: &str) -> std::path::PathBuf {
         let dir =
             std::env::temp_dir().join(format!("pobr-gamedata-paths-{tag}-{}", std::process::id()));
@@ -107,7 +134,7 @@ mod tests {
         dir
     }
 
-    /// base/ 下存在域文件时优先使用 base/。
+    /// base/ is preferred when a domain file exists under it.
     #[test]
     fn prefers_base_subdirectory() {
         let dir = temp_dir("prefer-base");
@@ -118,7 +145,7 @@ mod tests {
         assert_eq!(gd.domain_path("stats.json"), dir.join("base/stats.json"));
     }
 
-    /// base/ 缺失时回退版本根（旧布局兼容）。
+    /// Falls back to the version root when base/ is missing (old layout compatibility).
     #[test]
     fn falls_back_to_version_root() {
         let dir = temp_dir("fallback-root");

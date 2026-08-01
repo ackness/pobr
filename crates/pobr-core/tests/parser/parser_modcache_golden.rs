@@ -1,46 +1,55 @@
-//! ModCache golden differential。
+//! ModCache golden differential.
 //!
-//! 把数据驱动引擎（`parse_mod_engine` + 真实规则）的输出，对照从 vendor
-//! PoB2 `Data/ModCache.lua` 离线落盘的 golden（`tests/fixtures/modcache_golden.json`，
-//! 由 `tools/pob2-oracle/oracle.lua --mode modcache-dump` 生成）逐词条对拍，产出
-//! **五态报告**。这是 Track B 引擎重写的正确性基座：B 切换后复用同一 golden +
-//! 同一报告 schema，diff 修复以本报告为共同输入（契约 5）。
+//! Cross-checks the data-driven engine's output (`parse_mod_engine` + the real rule
+//! set) mod-by-mod against a golden dump offline-captured from vendor PoB2's
+//! `Data/ModCache.lua` (`tests/fixtures/modcache_golden.json`, produced by
+//! `tools/pob2-oracle/oracle.lua --mode modcache-dump`), producing a **five-state
+//! report**. This is the correctness baseline for the Track B engine rewrite: once B
+//! switches over it reuses the same golden fixture and the same report schema, and the
+//! diff-fixing loop treats this report as the shared input (contract 5).
 //!
-//! # 五态裁决（§5.2 口径，相对 vendor golden 落位）
+//! # The five-state verdict (§5.2 terms, relative to where the vendor golden lands)
 //!
-//! | 态 | 定义 | §5.2 对应 |
+//! | state | definition | §5.2 equivalent |
 //! |----|------|-----------|
-//! | `eq`     | golden parsed 且 PoBR parsed 且 canonical 相等 | EQ |
-//! | `diff`   | 两侧都 parsed 但 canonical 不等                | DIFF（切换阻塞——B 终裁修复） |
-//! | `miss`   | golden parsed 但 PoBR unsupported（PoBR 缺口） | NEW_ONLY 的镜像（vendor 能、PoBR 不能） |
-//! | `extra`  | golden unsupported 但 PoBR parsed（PoBR 多解） | OLD_ONLY 的镜像（PoBR 能、vendor 缓存空） |
-//! | `unsup`  | 两侧都 unsupported                              | UNSUP（计入覆盖率缺口，不阻塞） |
+//! | `eq`     | golden parsed, PoBR parsed, and the canonical forms are equal | EQ |
+//! | `diff`   | both sides parsed but the canonical forms differ | DIFF (blocks the switch — B has final say on the fix) |
+//! | `miss`   | golden parsed but PoBR is unsupported (a PoBR gap) | the mirror of NEW_ONLY (vendor can, PoBR can't) |
+//! | `extra`  | golden unsupported but PoBR parsed (PoBR over-parses) | the mirror of OLD_ONLY (PoBR can, vendor's cache is empty) |
+//! | `unsup`  | both sides unsupported | UNSUP (counted as a coverage gap, doesn't block) |
 //!
-//! 命中率 = `eq / (golden parsed 总数)`——B 引擎重写的目标是把 `miss`/`diff` 清零，
-//! 使命中率 → 100%。
+//! Hit rate = `eq / (total golden-parsed entries)` — the Track B rewrite's goal is to
+//! drive `miss`/`diff` to zero, pushing the hit rate toward 100%.
 //!
-//! # canonical 比较口径（**本批次的关键取舍**）
+//! # canonical comparison rules (**the key tradeoff in this batch**)
 //!
-//! Modifier canonical = `(name, type, value, flags[], keywordFlags[])`。**tag 结构
-//! 不参与 EQ/DIFF 裁决**——vendor tag 表与 pobr `ModTag` 的字段形态不同
-//! （vendor `{type="Multiplier",var=...,div=...}` vs pobr 形态化 enum），逐字段映射是
-//! Track B 重写的工作而非本对拍基座的工作。tag 数量差异记进报告明细（`tag_delta`）
-//! 供 B 参考，但不触发 DIFF。B 引擎落地后可在同一 fixture 上收紧到 tag 全等。
+//! Modifier canonical = `(name, type, value, flags[], keywordFlags[])`. **The tag
+//! structure does not participate in the EQ/DIFF verdict** — the vendor tag table and
+//! pobr's `ModTag` have different field shapes (vendor uses
+//! `{type="Multiplier",var=...,div=...}`, pobr uses a shaped enum), and mapping them
+//! field-by-field is Track B rewrite work, not this cross-check baseline's job. Tag
+//! count differences are recorded in the report detail (`tag_delta`) as a reference
+//! for B, but they don't trigger DIFF. Once the B engine lands, this can be tightened
+//! to full tag equality on the same fixture.
 //!
-//! 这一取舍使本基座**稳定**（不因 tag 表示差异产生海量假 DIFF），同时仍精确捕捉
-//! name/type/value/flag 级的真实偏差——这正是引擎正确性的核心信号面。
+//! This tradeoff keeps the baseline **stable** (no flood of false DIFFs from tag
+//! representation differences) while still precisely capturing real deviations at the
+//! name/type/value/flag level — which is the core correctness signal for the engine.
 //!
-//! # 产物
+//! # Artifacts
 //!
-//! 报告写 `target/parser-modcache-diff-report.json`（schema 见模块内 `DiffReport`
-//! 文档，契约 5），CI 与 B 的 diff 修复循环共同消费。本测试**不**对命中率设硬阈值
-//! （引擎对全 ModCache 语料的覆盖本就部分——硬门禁是 parity 套件）；
-//! 仅断言 fixture 可加载、报告可生成、且
-//! 五态计数自洽（守住基座可运行性）。
+//! The report is written to `target/parser-modcache-diff-report.json` (schema
+//! documented on `DiffReport` in this module, contract 5), consumed by both CI and B's
+//! diff-fixing loop. This test does **not** enforce a hard hit-rate threshold (the
+//! engine's coverage of the full ModCache corpus is inherently partial — the hard
+//! gate is the parity suite); it only asserts that the fixture loads, the report
+//! generates, and the five-state counts are self-consistent (keeping the baseline
+//! runnable).
 //!
-//! 实现注：pobr-core dev-deps 只有 `serde_json`（无 `serde` derive），故 golden
-//! 读取与报告构建全走 `serde_json::Value` 手工字段——与仓库「lib 本体零 serde_json」
-//! 约定一致（仅测试侧用）。
+//! Implementation note: pobr-core's dev-deps only include `serde_json` (no `serde`
+//! derive), so golden loading and report construction go entirely through
+//! `serde_json::Value` field access by hand — consistent with the repo convention of
+//! "zero serde_json in the lib itself" (this is test-only usage).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -57,7 +66,7 @@ const GOLDEN_PATH: &str = concat!(
     "/tests/fixtures/modcache_golden.json"
 );
 
-// golden fixture（oracle.lua --mode modcache-dump 产物）——serde_json::Value 视图
+// golden fixture (produced by oracle.lua --mode modcache-dump) — a serde_json::Value view
 
 struct GoldenDoc {
     meta_total: usize,
@@ -68,7 +77,7 @@ struct GoldenDoc {
 
 struct GoldenEntry {
     text: String,
-    /// vendor 侧 canonical（已规范化排序）。空 = unsupported。
+    /// The vendor-side canonical form (already sorted into normal form). Empty = unsupported.
     canon: Vec<CanonMod>,
     parsed: bool,
 }
@@ -122,22 +131,24 @@ fn load_golden() -> GoldenDoc {
 
 // canonical mod
 
-/// `(name, type, value, flags[], keywordFlags[])` 规范形态。`tag_count` 旁挂，
-/// 不参与相等判定（见模块文档「canonical 比较口径」）。
+/// The canonical form `(name, type, value, flags[], keywordFlags[])`. `tag_count`
+/// rides along but doesn't participate in equality (see the module doc's "canonical
+/// comparison rules").
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct CanonMod {
     name: String,
     mod_type: String,
-    /// f64 用最短往返字符串表示，避免 NaN 不可比 + 浮点抖动。
+    /// f64 stored as its shortest round-trip string, sidestepping NaN incomparability
+    /// and floating-point jitter.
     value: String,
     flags: Vec<String>,
     keyword_flags: Vec<String>,
-    /// 旁挂信号，不进 core_eq。
+    /// A side signal that doesn't feed into core_eq.
     tag_count: usize,
 }
 
 impl CanonMod {
-    /// EQ 判定用的「核心键」（排除 tag_count）。
+    /// The "core key" used for the EQ verdict (excludes tag_count).
     fn core_eq(&self, other: &Self) -> bool {
         self.name == other.name
             && self.mod_type == other.mod_type
@@ -162,7 +173,7 @@ fn mod_type_label(t: ModType) -> &'static str {
     t.as_trace_label()
 }
 
-/// f64 → 最短往返字符串（整数走整数形态对齐 vendor 编码）。
+/// f64 -> shortest round-trip string (integers render as integers to match vendor's encoding).
 fn num_to_canon(v: f64) -> String {
     if v == v.trunc() && v.abs() < 1e15 {
         format!("{}", v as i64)
@@ -182,9 +193,10 @@ fn value_to_canon(v: &ModValue) -> String {
     }
 }
 
-/// PoBR ModFlags → vendor Global.lua ModFlag 名（位值逐位等于，见
-/// pobr-data/src/modifier.rs 文档）。只列单 bit；复合 mask 不单独命名
-/// （vendor flagNames 也按单 bit 覆盖展开）。
+/// PoBR ModFlags -> vendor Global.lua ModFlag names (bit values match one-for-one,
+/// see pobr-data/src/modifier.rs docs). Only single bits are listed; compound masks
+/// aren't named individually (vendor's flagNames table is likewise expanded per
+/// single bit).
 const MOD_FLAG_NAMES: &[(u64, &str)] = &[
     (0x1, "Attack"),
     (0x2, "Spell"),
@@ -338,7 +350,7 @@ fn canon_lists_eq(a: &[CanonMod], b: &[CanonMod]) -> bool {
     a.len() == b.len() && a.iter().zip(b).all(|(x, y)| x.core_eq(y))
 }
 
-// 五态报告（§11.3 契约 5：B 的 diff 修复与 F 验收的共同输入）
+// The five-state report (§11.3 contract 5: the shared input for B's diff-fixing and F's acceptance)
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
@@ -391,13 +403,14 @@ impl StateCounts {
     }
 }
 
-/// 单条对拍明细（DIFF/MISS/EXTRA 入明细，EQ/UNSUP 仅计数）。
+/// A single cross-check detail entry (DIFF/MISS/EXTRA get a detail entry; EQ/UNSUP
+/// are just counted).
 struct DiffDetail {
     text: String,
     state: &'static str,
     pobr: Vec<CanonMod>,
     golden: Vec<CanonMod>,
-    /// pobr_tag_total - golden_tag_total（tag 形态差异提示，见模块文档）。
+    /// pobr_tag_total - golden_tag_total (a hint about tag-shape differences, see the module doc).
     tag_delta: i64,
 }
 
@@ -413,7 +426,8 @@ impl DiffDetail {
     }
 }
 
-/// 五态报告顶层 schema（契约 5），写 `target/parser-modcache-diff-report.json`：
+/// The five-state report's top-level schema (contract 5), written to
+/// `target/parser-modcache-diff-report.json`:
 ///
 /// ```jsonc
 /// {
@@ -422,11 +436,11 @@ impl DiffDetail {
 ///   "golden": { "source", "total", "parsed", "unsupported" },
 ///   "counts": { "eq", "diff", "miss", "extra", "unsup" },
 ///   "hit_rate": 0.0..1.0,         // eq / golden.parsed
-///   "miss_forms": { "<vendor 首 mod name>": count, ... },  // MISS 缺口分组
+///   "miss_forms": { "<vendor's first mod name>": count, ... },  // grouped by MISS gap
 ///   "details": [ { "text", "state", "pobr":[CanonMod], "golden":[CanonMod], "tag_delta" } ]
 /// }
 /// ```
-/// 其中 `CanonMod = { name, type, value, flags[], keywordFlags[], tag_count }`。
+/// where `CanonMod = { name, type, value, flags[], keywordFlags[], tag_count }`.
 struct DiffReport {
     counts: StateCounts,
     golden_total: usize,
@@ -461,7 +475,7 @@ impl DiffReport {
     }
 }
 
-// 对拍主流程
+// Main cross-check flow
 
 fn run_differential(doc: &GoldenDoc) -> DiffReport {
     let mut counts = StateCounts::default();
@@ -544,9 +558,10 @@ fn write_report(report: &DiffReport) -> PathBuf {
     path
 }
 
-// 测试
+// Tests
 
-/// golden fixture 自洽：meta 计数与 entries 状态一致（落盘正确性守门）。
+/// The golden fixture is self-consistent: the meta counts match the entries' actual
+/// states (guards the fixture's on-disk correctness).
 #[test]
 fn golden_fixture_is_self_consistent() {
     let doc = load_golden();
@@ -561,11 +576,13 @@ fn golden_fixture_is_self_consistent() {
     );
 }
 
-/// 引擎对 golden 的五态对拍 + 报告落盘 + 计数自洽。
+/// The engine's five-state cross-check against golden, plus report writing and
+/// count self-consistency.
 ///
-/// **不设命中率硬阈值**——引擎对全 ModCache 语料覆盖本就部分，硬门禁由
-/// parity 套件承担。本测试守住基座可运行性并把命中率打到 stderr
-/// （`--nocapture` 可见），供缺口收敛跟踪。
+/// **No hard hit-rate threshold is enforced** — the engine's coverage of the full
+/// ModCache corpus is inherently partial; the hard gate is the parity suite. This
+/// test only guards the baseline's runnability and prints the hit rate to stderr
+/// (visible with `--nocapture`) to track gap convergence.
 #[test]
 fn engine_modcache_differential() {
     let doc = load_golden();

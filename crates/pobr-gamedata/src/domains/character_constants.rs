@@ -1,14 +1,17 @@
-//! `base/character_constants.json` loader（角色等级/属性派生常量，数值迁出
-//! `pobr-core::character`，源 PoB2 `data.characterConstants`）。
+//! `base/character_constants.json` loader (character level/attribute-derived
+//! constants, values migrated out of `pobr-core::character`, sourced from
+//! PoB2's `data.characterConstants`).
 
 use pobr_data::catalog::character_constants::CharacterConstantsDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载角色基础常量（单对象域：整文件即一个 [`CharacterConstantsDef`]）。
+    /// Loads the character base constants (a single-object domain: the
+    /// whole file is one [`CharacterConstantsDef`]).
     ///
-    /// 走三层目录定位（`base/` 优先，版本根回退，见 [`crate::paths`]）。
+    /// Located via the three-layer directory lookup (`base/` first,
+    /// falling back to the version root, see [`crate::paths`]).
     pub fn character_constants(&self) -> Result<CharacterConstantsDef, LoadError> {
         self.load_domain("character_constants.json")
     }

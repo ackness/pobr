@@ -72,23 +72,25 @@ pub struct MinimalOutput {
     pub cold_resistance_over_cap: f64,
     pub lightning_resistance_over_cap: f64,
     pub crit_chance: f64,
-    /// 命中降级 / 幸运 / 分岔 / 必然之前、cap 之后的暴击几率（fraction）。供 breakdown 显示溢出。
+    /// Crit chance (fraction) before the hit-chance downgrade / lucky /
+    /// bifurcate / inevitable, but after the cap. Used to show overflow in breakdowns.
     pub pre_effective_crit_chance: f64,
     pub crit_multiplier: f64,
-    /// 按伤害类型拆分的非暴击击中分量；求和即非暴击总击中伤害。
+    /// Non-crit hit components split by damage type; summing gives total non-crit hit damage.
     pub damage_components: Vec<DamageComponent>,
     pub total_hit_avg: f64,
     pub hit_chance: f64,
     pub action_rate: f64,
     pub dps: f64,
-    // ===：Stored 族（vendor CalcOffence.lua:4047-4057，pre-resist、
-    // 含 allMult；crit 腿额外 ×CritMultiplier）。ailment magnitude 的 vendor 口径
-    // 输入；经 HandOutput 暴露 per-hand 值。===
+    // --- The Stored family (vendor CalcOffence.lua:4047-4057, pre-resist,
+    // includes allMult; the crit leg additionally has ×CritMultiplier). The
+    // vendor-view input for ailment magnitude; exposed per-hand via HandOutput. ---
     pub stored_crit_avg: Vec<(DamageType, f64)>,
     pub stored_hit_avg: Vec<(DamageType, f64)>,
     pub stored_combined_avg: Vec<(DamageType, f64)>,
-    /// `Stored<Type>{Hit,Crit}{Min,Max}` 族（append，vendor `:4050-4056`）：
-    /// damaging ailment 来源伤害的 min/max 输入面（RollAverage 内插在区间上进行）。
+    /// The `Stored<Type>{Hit,Crit}{Min,Max}` family (appended, vendor
+    /// `:4050-4056`): the min/max input surface for damaging ailment source
+    /// damage (RollAverage interpolation operates on this range).
     pub stored_ranges: Vec<super::output::StoredDamageRange>,
     pub breakdown: Vec<BreakdownStep>,
 }
@@ -134,8 +136,9 @@ impl MinimalOutput {
             hit_chance: output.hit_chance,
             action_rate: output.action_rate,
             dps: output.dps,
-            // Stored 族经 per-hand 子表回读（OutputTable 顶层不平铺该族；
-            // 非攻击/无 hand pass 时为空——与 HandOutput 的 Option 语义一致）。
+            // The Stored family is read back through the per-hand sub-table
+            // (OutputTable's top level doesn't flatten this family; empty
+            // for non-attacks/no hand pass -- matching HandOutput's Option semantics).
             stored_crit_avg: output
                 .main_hand
                 .as_ref()
@@ -161,27 +164,29 @@ impl MinimalOutput {
     }
 }
 
-/// 单条抗性的解析结果：capped final / 最大抗性 / over-cap。
+/// A single resistance's resolution result: the capped final value / max resistance / over-cap.
 pub(crate) struct ResistanceResolution {
     pub(crate) final_value: f64,
     max: f64,
     over_cap: f64,
 }
 
-/// 解析一条抗性（vendor CalcDefence.lua:888-930 全通道口径）：
-/// - total = Override(`<X>Resistance`/`<X>Resist`)，缺位时
-///   `(base + Σ BASE) × max((1 + ΣINC/100) × ΠMORE, 0)`（:891-899，
-///   "fire resistance is N%" 走 override，"reduced fire resistance" 走 INC 乘区）
-/// - max   = Override(`Maximum<X>Resistance`/`<X>ResistMax`)，缺位时
-///   `min(75 + Σ BASE, 90)`（:875/:914——max 的 override **不过** hard_cap）
-/// - final = max(min(total, max), −200)（负抗下界 `resist_floor`，
-///   :890 `min = data.misc.ResistFloor` / :924 `final = m_max(m_min(total, max), min)`）
+/// Resolves a single resistance (mirrors PoB2's full-channel semantics, CalcDefence.lua:888-930):
+/// - total = Override(`<X>Resistance`/`<X>Resist`); when absent,
+///   `(base + Σ BASE) × max((1 + ΣINC/100) × ΠMORE, 0)` (`:891-899`,
+///   "fire resistance is N%" uses override, "reduced fire resistance" uses the INC factor)
+/// - max   = Override(`Maximum<X>Resistance`/`<X>ResistMax`); when absent,
+///   `min(75 + Σ BASE, 90)` (`:875`/`:914` -- max's override does **not** pass through the hard_cap)
+/// - final = max(min(total, max), −200) (the negative-resistance floor
+///   `resist_floor`, `:890`'s `min = data.misc.ResistFloor` / `:924`'s `final = m_max(m_min(total, max), min)`)
 /// - over  = max(total - max, 0)
 ///
-/// mod 名取双口径：PoBR parser 长名（`FireResistance`）+ vendor special 通道
-/// 短名（`FireResist`），元素类型再并共享名 `ElementalResist`/`ElementalResistMax`
-/// （:895 `isElemental[elem]`；override 与 vendor 一致只查单元素名）。enemy 侧
-/// （`resolve_enemy_resistance`）早已同构双口径，此处对齐玩家侧。
+/// Mod names take a dual form: PoBR parser's long name (`FireResistance`) +
+/// vendor's special channel short name (`FireResist`), with elemental types
+/// additionally combining the shared name `ElementalResist`/`ElementalResistMax`
+/// (`:895`'s `isElemental[elem]`; the override, matching vendor, only checks
+/// the single-element name). The enemy side (`resolve_enemy_resistance`)
+/// already mirrors this dual form; this aligns the player side with it.
 pub(crate) fn resolve_resistance(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -216,7 +221,7 @@ pub(crate) fn resolve_resistance(
         .override_(cfg, max_long)
         .or_else(|| db.override_(cfg, max_short))
         .unwrap_or_else(|| {
-            //  默认最大抗性 / 硬上限改读注入常量包（fallback == 旧 const，值不变）。
+            //  The default max resistance / hard cap now reads from the injected constants pack (fallback == old const, value unchanged).
             (cfg.constants.character().base_maximum_all_resistances_pct
                 + db.sum(ModType::Base, cfg, &max_names))
             .min(cfg.constants.game().resist_hard_cap)
@@ -228,25 +233,31 @@ pub(crate) fn resolve_resistance(
     }
 }
 
-/// 旧三参入口：等价于对**空敌人 modDB** 计算（向后兼容，输出与历史一致）。
+/// The old three-parameter entry point: equivalent to computing against an
+/// **empty enemy modDB** (backward compatible, output matches history).
 ///
-/// 敌人侧机制（受伤链/抗性护甲减伤/格挡/`CannotEvade`）需要敌人 modDB，
-/// 由 [`calculate_minimal_vs_enemy`] 提供；`perform` 走后者。
+/// Enemy-side mechanics (damage-taken chain / resistance armour mitigation /
+/// block / `CannotEvade`) need the enemy modDB, provided by
+/// [`calculate_minimal_vs_enemy`]; `perform` uses the latter.
 pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> MinimalOutput {
     calculate_minimal_vs_enemy(db, &ModDb::new(), cfg, input)
 }
 
-/// 出手速率解析（= vendor `globalOutput.Speed`）：速度族（按技能类型取 AttackSpeed 或
-/// CastSpeed，SkillSpeed 始终）作为一个 inc/more 乘区；ActionSpeed 独立乘区单独相乘
-/// （对齐 PoB CalcOffence：`finalRate = base × (1+Σinc/100) × Π(more) × ActionSpeedMod`）。
-/// 攻击吃武器攻速 + AttackSpeed，法术吃技能施法速率 + CastSpeed——不混淆。
-/// 速度 inc/more 缩放后，先按附加施放/攻击时间（TotalCastTime/TotalAttackTime）换算
-/// 有效时间，再乘 ActionSpeed 独立乘区（PoB CalcOffence L2827 的加法分母 + 末端 action
-/// speed），最后冷却限速 + 服务器帧 cap。
+/// Action rate resolution (= vendor's `globalOutput.Speed`): the speed
+/// family (AttackSpeed or CastSpeed based on skill type, SkillSpeed always)
+/// forms one inc/more factor; ActionSpeed is a separate factor multiplied in
+/// on its own (matching PoB CalcOffence:
+/// `finalRate = base × (1+Σinc/100) × Π(more) × ActionSpeedMod`). Attacks
+/// use weapon attack speed + AttackSpeed, spells use the skill's cast rate +
+/// CastSpeed -- never conflated. After the speed inc/more scaling, first
+/// folds in the added cast/attack time (TotalCastTime/TotalAttackTime) to
+/// get the effective time, then multiplies by the ActionSpeed factor (PoB
+/// CalcOffence L2827's additive denominator + the end-of-pipeline action
+/// speed), and finally the cooldown speed cap + the server tick cap.
 ///
-/// 独立成函供两处共用：`calculate_minimal_vs_enemy` 主链，以及 warcry uptime 预算
-/// （`calc::warcry`——vendor 的 warcry 段读同一 `globalOutput.Speed`，
-/// CalcOffence.lua:3235）。
+/// Split into its own function for two shared call sites: `calculate_minimal_vs_enemy`'s
+/// main chain, and the warcry uptime budget (`calc::warcry` -- vendor's
+/// warcry section reads this same `globalOutput.Speed`, CalcOffence.lua:3235).
 pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> f64 {
     let speed_names = super::skill_use_time::speed_names_for(cfg);
     let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
@@ -278,12 +289,13 @@ pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalI
     ))
 }
 
-/// 完整入口：玩家 modDB + 敌人 modDB。敌人侧减伤/受伤链/格挡仅在
-/// `cfg.mode_effective == true` 时生效（面板口径不引入敌人交互，保证与历史输出一致）。
+/// The full entry point: player modDB + enemy modDB. Enemy-side mitigation/
+/// damage-taken chain/block only take effect under `cfg.mode_effective == true`
+/// (the panel view never introduces enemy interaction, keeping it consistent with historical output).
 ///
-/// 出处：agent-docs/accuracy-and-enemy.md §二.2,§二.3,§六,§七；
-///       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2,§5；
-///       PoB2 `CalcOffence.lua`（`enemyDB:Sum/More DamageTaken`、`enemyBlockChance`、`CannotEvade`）。
+/// Source: agent-docs/accuracy-and-enemy.md §2.2, §2.3, §6, §7;
+///       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2, §5;
+///       PoB2 `CalcOffence.lua` (`enemyDB:Sum/More DamageTaken`, `enemyBlockChance`, `CannotEvade`).
 pub fn calculate_minimal_vs_enemy(
     db: &ModDb,
     enemy_db: &ModDb,
@@ -302,12 +314,15 @@ pub fn calculate_minimal_vs_enemy(
     let action_rate = resolve_action_rate(db, cfg, input);
     let accuracy_names = [ModName::from("Accuracy")];
     let accuracy = scaled_numeric_stat(db, cfg, input.base_accuracy, &accuracy_names);
-    // PoE2 命中率（agent-docs/accuracy-and-enemy.md §二,§三）：
-    // - 非攻击必中（对齐 vendor CalcOffence.lua:2611-2612 `if not isAttack
-    //   then output.AccuracyHitChance = 100`）：法术/DoT/召唤等一切非攻击不做精准检定。
-    //   旧口径 `is_spell()` 在 skill_types 缺 Spell 位时把法术也卷进精准公式。
-    // - `CannotBeEvaded`（玩家旗标）/ effective 下敌方 `CannotEvade` → 置 100% 跳过精准公式。
-    // - 末端再扣敌方格挡：`HitChance = AccuracyHitChance * (1 - enemyBlockChance/100)`。
+    // PoE2 hit chance (agent-docs/accuracy-and-enemy.md §2, §3):
+    // - Non-attacks always hit (matching vendor CalcOffence.lua:2611-2612's
+    //   `if not isAttack then output.AccuracyHitChance = 100`): spells/DoT/
+    //   minions and every other non-attack skip the accuracy check entirely.
+    //   The old semantics' `is_spell()` would also pull spells into the
+    //   accuracy formula when skill_types lacked the Spell bit.
+    // - `CannotBeEvaded` (a player flag) / under effective view, enemy
+    //   `CannotEvade` → set to 100%, skipping the accuracy formula.
+    // - Finally, enemy block is deducted: `HitChance = AccuracyHitChance * (1 - enemyBlockChance/100)`.
     let cannot_be_evaded = db.flag(cfg, ModName::from("CannotBeEvaded"))
         || (cfg.mode_effective && enemy_db.flag(cfg, ModName::from("CannotEvade")));
     let accuracy_hit_chance = if !cfg.is_attack() || cannot_be_evaded {
@@ -315,7 +330,7 @@ pub fn calculate_minimal_vs_enemy(
     } else {
         hit_chance(input.enemy_evasion, accuracy)
     };
-    // 敌方格挡：仅有效口径下从命中里扣（accuracy-and-enemy.md §二.3）。
+    // Enemy block: only deducted from hit chance under the effective view (accuracy-and-enemy.md §2.3).
     let enemy_block = if cfg.mode_effective {
         (enemy_db.sum(ModType::Base, cfg, &[ModName::from("BlockChance")]) / 100.0).clamp(0.0, 1.0)
     } else {
@@ -323,10 +338,13 @@ pub fn calculate_minimal_vs_enemy(
     };
     let hit_chance = round(accuracy_hit_chance * (1.0 - enemy_block));
 
-    // 有效暴击管线（resolve_crit）：cap / 命中降级 / Lucky / Bifurcate / Inevitable /
-    // 敌方 SelfCrit* / NoCritMultiplier，全部对齐 PoB2 CalcOffence.lua（见 calc/crit.rs）。
-    // base_crit=0：本最小模型未引入武器底材基础暴击，全部经 db CriticalStrikeChance BASE。
-    // 命中降级用 accuracy_hit_chance（格挡不参与暴击降级，PoB2 仅乘 AccuracyHitChance）。
+    // The effective crit pipeline (resolve_crit): cap / hit-chance downgrade
+    // / Lucky / Bifurcate / Inevitable / enemy SelfCrit* / NoCritMultiplier,
+    // all mirroring PoB2 CalcOffence.lua (see calc/crit.rs). base_crit=0:
+    // this minimal model doesn't introduce a weapon-source base crit chance,
+    // it all goes through the db's CriticalStrikeChance BASE. The hit-chance
+    // downgrade uses accuracy_hit_chance (block doesn't participate in the
+    // crit downgrade, PoB2 only multiplies by AccuracyHitChance).
     let crit = resolve_crit(
         db,
         enemy_db,
@@ -338,19 +356,23 @@ pub fn calculate_minimal_vs_enemy(
     let crit_chance = crit.chance;
     let crit_multiplier = crit.multiplier;
 
-    // 伤害主体：暴击/非暴击双 pass+ T3 乘区接线
-    // 击中口径 cfg：补 `KeywordFlags::HIT`（击中本就是 hit）——使 `with Hits` 类
-    // keyword 词条（kw=HIT）在击中聚合中命中。kw=NONE 词条恒匹配不受影响（legacy
-    // 多产 NONE，逐值不变）；ailment 缩放另经 `ailment_scoped_cfg` 剥 Hit，ignite/
-    // bleed 等 DoT base 仍由含 Hit 的击中伤害派生（对齐 PoB2：DoT 继承击中增益）。
+    // The damage body: the crit/non-crit dual pass + T3 factor wiring
+    // The hit-view cfg: adds `KeywordFlags::HIT` (a hit is inherently a hit)
+    // -- so `with Hits`-type keyword mods (kw=HIT) match during hit
+    // aggregation. kw=NONE mods always match regardless (legacy mostly
+    // produces NONE, unchanged value-for-value); ailment scaling separately
+    // strips Hit via `ailment_scoped_cfg`, and ignite/bleed etc.'s DoT base
+    // is still derived from hit damage that includes Hit (matching PoB2: DoT inherits hit bonuses).
     let hit_cfg = cfg
         .clone()
         .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
-    // ScaledDamageEffect（DD/TD 乘区；无词条时 effect == 1.0 逐位不变，
-    // m4-t3-wiring-notes §2；crit_chance 是分数入参）。
+    // ScaledDamageEffect (the DD/TD factor; effect == 1.0 unchanged
+    // bit-for-bit when there's no mod, m4-t3-wiring-notes §2; crit_chance is
+    // a fraction input).
     let scaled = scaled_damage_effect(db, enemy_db, &hit_cfg, crit.chance);
-    // 两腿聚合 + canDeal+ lucky+ CritBlend（vendor :4395）。
-    // 无 CriticalStrike 条件词条时短路走旧单因子公式（取整顺序复刻，逐字节等价）。
+    // Both legs aggregated + canDeal + lucky + CritBlend (vendor `:4395`).
+    // Short-circuits to the old single-factor formula when there's no
+    // CriticalStrike-conditioned mod (rounding order copied, bit-identical).
     let crit_pass = run_crit_passes(
         db,
         &hit_cfg,
@@ -363,14 +385,17 @@ pub fn calculate_minimal_vs_enemy(
             enemy_damage_multiplier(db, enemy_db, pass_cfg, damage_type, raw_hit)
         },
     );
-    // 输出字段：玩家侧总击中（不含敌人减伤），保持历史口径 + 作为 ailment magnitude 源。
+    // Output field: the player-side total hit (excludes enemy mitigation),
+    // preserving the historical semantics + serving as the ailment magnitude source.
     let damage_components = crit_pass.non_crit_components.clone();
     let total_hit_avg = crit_pass.total_hit_avg;
-    // DPS 用：有效口径下含敌人受伤链/抗性/护甲减伤的总击中。
+    // For DPS: under the effective view, the total hit including the enemy damage-taken chain/resistance/armour mitigation.
     let total_hit_avg_for_dps = crit_pass.total_hit_avg_mitigated;
 
-    // DPS 末端两因子（vendor :4407；无词条且技能 dpsMultiplier 未接线（None）
-    // 时两因子均 1.0，逐值不变；T4 落 catalog 字段后由编排层透传）。
+    // The two DPS end factors (vendor `:4407`; both factors are 1.0,
+    // unchanged value-for-value, when there's no mod and the skill's
+    // dpsMultiplier isn't wired up yet (None); passed through by the
+    // orchestration layer once T4 lands the catalog field).
     let end = dps_end_factors(db, cfg, None);
     let dps = round(
         total_hit_avg_for_dps
@@ -469,10 +494,12 @@ pub fn calculate_minimal_vs_enemy(
     }
 }
 
-/// 旧四参 traced 入口：等价于对**空敌人 modDB** 计算（向后兼容，面板口径下与历史一致）。
+/// The old four-parameter traced entry point: equivalent to computing
+/// against an **empty enemy modDB** (backward compatible, matches history under the panel view).
 ///
-/// 敌人侧机制（受伤链/抗性护甲减伤/格挡/`CannotEvade`/`SelfCrit*`）需要敌人 modDB，
-/// 由 [`calculate_minimal_traced_vs_enemy`] 提供；`perform` 的归因路径应走后者。
+/// Enemy-side mechanics (damage-taken chain / resistance armour mitigation /
+/// block / `CannotEvade` / `SelfCrit*`) need the enemy modDB, provided by
+/// [`calculate_minimal_traced_vs_enemy`]; `perform`'s attribution path should use the latter.
 pub fn calculate_minimal_traced(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -481,14 +508,15 @@ pub fn calculate_minimal_traced(
     calculate_minimal_traced_vs_enemy(db, &ModDb::new(), cfg, input)
 }
 
-/// 完整 traced 入口：玩家 modDB + 敌人 modDB，与 [`calculate_minimal_vs_enemy`] 同口径。
+/// The full traced entry point: player modDB + enemy modDB, matching [`calculate_minimal_vs_enemy`]'s semantics.
 ///
-/// 把 `enemy_db` 串进 traced DPS：命中 ×(1-enemy_block)、分类型敌人减伤、暴击降级用
-/// 真实敌人 modDB（`resolve_crit_traced`）。敌人侧交互仅在 `cfg.mode_effective == true`
-/// 时生效（面板口径与历史 traced 输出一致）。
+/// Threads `enemy_db` into the traced DPS: hit chance ×(1-enemy_block),
+/// per-type enemy mitigation, and the crit downgrade uses the real enemy
+/// modDB (`resolve_crit_traced`). Enemy-side interaction only takes effect
+/// under `cfg.mode_effective == true` (the panel view matches historical traced output).
 ///
-/// 出处：与 [`calculate_minimal_vs_enemy`] 相同（PoB2 `CalcOffence.lua`：`enemyDB:Sum/More
-/// DamageTaken`、`enemyBlockChance`、`CannotEvade`、`SelfCrit*`）。
+/// Source: same as [`calculate_minimal_vs_enemy`] (PoB2 `CalcOffence.lua`:
+/// `enemyDB:Sum/More DamageTaken`, `enemyBlockChance`, `CannotEvade`, `SelfCrit*`).
 pub fn calculate_minimal_traced_vs_enemy(
     db: &ModDb,
     enemy_db: &ModDb,
@@ -569,9 +597,11 @@ pub fn calculate_minimal_traced_vs_enemy(
 /// `TotalDPS final = total_hit_avg * action_rate * hit_chance`, where each
 /// factor fans back out to the modifiers and base values that produced it.
 ///
-/// `enemy_db` 串入与 [`calculate_minimal_vs_enemy`] 同口径的敌人交互（仅 `mode_effective`）：
-/// 分类型受伤链/抗性/护甲减伤进 `total_hit_avg`、敌方格挡进 `hit_chance`、敌方 `SelfCrit*`
-/// 进暴击降级。空 `enemy_db` 等价于历史三参口径（面板口径输出不变）。
+/// `enemy_db` threads in the same enemy interaction semantics as
+/// [`calculate_minimal_vs_enemy`] (`mode_effective` only): per-type damage-
+/// taken chain/resistance/armour mitigation feeds `total_hit_avg`, enemy
+/// block feeds `hit_chance`, enemy `SelfCrit*` feeds the crit downgrade. An
+/// empty `enemy_db` is equivalent to the historical three-parameter semantics (panel-view output unchanged).
 fn total_dps_traced(
     db: &ModDb,
     enemy_db: &ModDb,
@@ -579,7 +609,7 @@ fn total_dps_traced(
     input: &MinimalInput,
     trace: &mut TraceGraph,
 ) -> TracedValue {
-    // accuracy & hit chance（提前到暴击之前：mode_effective 暴击降级需命中率）
+    // accuracy & hit chance (moved before crit: the mode_effective crit downgrade needs the hit chance)
     let accuracy_names = [ModName::from("Accuracy")];
     let base_accuracy_node = trace.add_source_node(
         "base accuracy",
@@ -617,7 +647,7 @@ fn total_dps_traced(
         input.enemy_evasion,
         SourceId::new(SourceKind::EnemyConfig, "enemy.evasion"),
     );
-    // PoE2 非攻击必中（vendor :2611）+ 有效口径 CannotEvade（同 calculate_minimal_vs_enemy）。
+    // PoE2 non-attacks always hit (vendor :2611) + the effective-view CannotEvade (same as calculate_minimal_vs_enemy).
     let cannot_be_evaded = db.flag(cfg, ModName::from("CannotBeEvaded"))
         || (cfg.mode_effective && enemy_db.flag(cfg, ModName::from("CannotEvade")));
     let accuracy_hit_chance = if !cfg.is_attack() || cannot_be_evaded {
@@ -625,7 +655,7 @@ fn total_dps_traced(
     } else {
         hit_chance(input.enemy_evasion, accuracy)
     };
-    // 敌方格挡：仅有效口径下从命中里扣（accuracy-and-enemy.md §二.3）。
+    // Enemy block: only deducted from hit chance under the effective view (accuracy-and-enemy.md §2.3).
     let enemy_block = if cfg.mode_effective {
         (enemy_db.sum(ModType::Base, cfg, &[ModName::from("BlockChance")]) / 100.0).clamp(0.0, 1.0)
     } else {
@@ -644,9 +674,11 @@ fn total_dps_traced(
         trace.add_edge(enemy_block_node, hit_chance_node);
     }
 
-    // --- crit average factor（resolve_crit_traced：与非 traced 路径同一实现，
-    //     BASE/INC/MORE + 敌方 SelfCrit* 全部接入 TraceGraph）。命中降级用 accuracy_hit_chance
-    //     （格挡不参与暴击降级，对齐 calculate_minimal_vs_enemy）。
+    // --- crit average factor (resolve_crit_traced: the same implementation
+    //     as the non-traced path, with BASE/INC/MORE + enemy SelfCrit* all
+    //     wired into the TraceGraph). The hit-chance downgrade uses
+    //     accuracy_hit_chance (block doesn't participate in the crit
+    //     downgrade, matching calculate_minimal_vs_enemy).
     let (crit, crit_node) = resolve_crit_traced(
         db,
         enemy_db,
@@ -657,13 +689,16 @@ fn total_dps_traced(
         trace,
     );
 
-    // 伤害主体：暴击/非暴击双腿子图 + CritBlend 合并
-    // 数值与非 traced 路径同源（run_crit_passes，含等价性短路）；
-    // 图形状 = 每腿独立子图（pass 戳 Single·Crit / Single·NonCrit，per-pass 的
-    // sum_traced 各落 Input 节点——RFC §2.4 条款 3）+ CritBlend Combine 节点
-    // （pass = Single·Blended，weights = [1−c, c] 冻结系数，§3.3）。
-    // TODO(归因面)：DD/TD 词条暂无 Input 节点（direct 缺失、marginal 兜底）。
-    // 击中口径 cfg：补 `KeywordFlags::HIT`（与非 traced 路径同源，见该处注释）。
+    // The damage body: separate sub-graphs for the crit/non-crit legs + a CritBlend merge
+    // Values share the same source as the non-traced path (run_crit_passes,
+    // including the equivalence short-circuit); graph shape = an independent
+    // sub-graph per leg (tagged Single·Crit / Single·NonCrit passes; each
+    // pass's sum_traced lands its own Input nodes -- RFC §2.4 clause 3) plus
+    // a CritBlend Combine node (pass = Single·Blended, weights = [1−c, c]
+    // frozen coefficients, §3.3).
+    // TODO(attribution surface): DD/TD mods have no Input node yet (missing
+    // direct, falling back to marginal).
+    // The hit-view cfg: adds `KeywordFlags::HIT` (shares its source with the non-traced path, see the comment there).
     let hit_cfg = cfg
         .clone()
         .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT);
@@ -686,7 +721,7 @@ fn total_dps_traced(
         ModName::from("AttackDamage"),
         ModName::from("Damage"),
     ];
-    // 非暴击腿子图。
+    // Non-crit leg sub-graph.
     let cfg_hit = cfg.clone().with_condition("CriticalStrike", false);
     trace.begin_pass(crate::PassId::new(
         crate::HandTag::Single,
@@ -725,8 +760,8 @@ fn total_dps_traced(
         node
     };
     trace.end_pass();
-    // 暴击腿子图（聚合条件 CriticalStrike=true；值含 ×CritMultiplier，
-    // 暴击词条来源经 crit_node 入边可达）。
+    // Crit leg sub-graph (aggregated with the CriticalStrike=true condition;
+    // its value includes ×CritMultiplier, reachable from crit mod sources via crit_node's incoming edge).
     let cfg_crit = cfg.clone().with_condition("CriticalStrike", true);
     trace.begin_pass(crate::PassId::new(
         crate::HandTag::Single,
@@ -765,9 +800,10 @@ fn total_dps_traced(
         node
     };
     trace.end_pass();
-    // crit_node（暴击几率/爆伤来源）连入暴击腿：爆伤只放大该腿（vendor :4028-4032）。
+    // crit_node (the crit chance/damage source) connects into the crit leg:
+    // crit damage only amplifies this leg (vendor :4028-4032).
     trace.add_edge(crit_node, crit_leg_node);
-    // CritBlend 合并节点（属本腿子图的 Blended 层，RFC §2.3）。
+    // The CritBlend merge node (belongs to this pass's Blended layer, RFC §2.3).
     trace.begin_pass(crate::PassId::hand_blended(crate::HandTag::Single));
     let c = crit.chance;
     let blend_node = trace.add_combine_node(
@@ -778,7 +814,7 @@ fn total_dps_traced(
     );
     trace.end_pass();
 
-    // total_hit_avg（DPS 用）：有效口径下含敌人受伤链/抗性/护甲减伤的总击中。
+    // total_hit_avg (for DPS): under the effective view, the total hit including the enemy damage-taken chain/resistance/armour mitigation.
     let total_hit_avg = crit_pass.total_hit_avg_mitigated;
     let total_hit_node = trace.add_node(
         "total hit average (after enemy mitigation)",
@@ -788,9 +824,11 @@ fn total_dps_traced(
     trace.add_edge(blend_node, total_hit_node);
 
     // action rate
-    // 速度族（攻击取 AttackSpeed / 法术取 CastSpeed，SkillSpeed 始终）一个 inc/more 乘区；
-    // ActionSpeed 独立乘区单独相乘；末端按固有冷却限速（min(rate, 1/effective_cooldown)）——
-    // 对齐非 traced 路径。
+    // The speed family (AttackSpeed for attacks / CastSpeed for spells,
+    // SkillSpeed always) forms one inc/more factor; ActionSpeed is a
+    // separate factor multiplied in on its own; finally capped by the
+    // inherent cooldown speed limit (min(rate, 1/effective_cooldown)) --
+    // matching the non-traced path.
     let speed_names = super::skill_use_time::speed_names_for(cfg);
     let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
     let base_rate_node = trace.add_source_node(
@@ -833,7 +871,8 @@ fn total_dps_traced(
     trace.add_edge(action_rate_node, dps_node);
     trace.add_edge(hit_chance_node, dps_node);
     if end_factor != 1.0 {
-        // QuantityMultiplier 词条来源进图（dpsMultiplier 技能数据侧 T4 透传后补）。
+        // QuantityMultiplier's mod source enters the graph (dpsMultiplier
+        // added once passed through from the skill data side by T4).
         let quantity = db.sum_traced(
             ModType::Base,
             cfg,
@@ -856,23 +895,28 @@ fn total_dps_traced(
     }
 }
 
-/// 敌人侧对某伤害类型的**受到伤害**总乘子（有效口径）：
+/// The enemy side's total **damage-taken** multiplier for a damage type (the effective view):
 ///
 /// `mult = (1 + Σ DamageTaken_inc/100) × Π DamageTaken_more × (1 - effective_resist_frac)`
 ///
-/// 组成（受伤链 / 抗性 / 护甲读 `enemy_db` 归因 `EnemyConfig`；穿透 / Overwhelm 读
-/// **玩家** `player_db` 归因玩家来源，doc12 §4.2、damage-scaling.md §Overwhelm/Penetration）：
-/// - **受伤链**：`DamageTaken` 通用 + `<Type>DamageTaken` 分类型（感电/Intimidate/凋萎/Uber 等）。
-///   通过把 `cfg.damage_type` 设为该类型，使带 `DamageType` tag 的 `DamageTaken` modifier 命中。
-/// - **抗性减伤（元素/混沌）**：`<Type>Resist BASE`（含曝光/降抗诅咒/Boss 加成）求和，
-///   clamp 到 `[RESIST_FLOOR, ENEMY_MAX_RESIST]`；再扣**玩家穿透**：
-///   `effective_resist = if resist > 0 { max(resist - pen, 0) } else { resist }`
-///   （PoB2 `m_max(resist - pen, minPen)`，minPen=0：穿透不破 0、负抗不被穿透）。
-///   减伤 = `(1 - effective_resist/100)`。物理无抗性穿透。
-/// - **护甲减伤 / Overwhelm（物理）**：见 [`enemy_physical_multiplier`]。
+/// Composition (the damage-taken chain / resistance / armour read the
+/// `enemy_db`, attributed to `EnemyConfig`; penetration / Overwhelm read the
+/// **player** `player_db`, attributed to player sources, doc12 §4.2,
+/// damage-scaling.md §Overwhelm/Penetration):
+/// - **The damage-taken chain**: generic `DamageTaken` + per-type
+///   `<Type>DamageTaken` (Shock/Intimidate/Wither/Uber, etc.). Setting
+///   `cfg.damage_type` to that type makes `DamageTaken` modifiers with a `DamageType` tag match.
+/// - **Resistance mitigation (elemental/chaos)**: sums `<Type>Resist BASE`
+///   (including exposure/resistance-lowering curses/Boss bonuses), clamped
+///   to `[RESIST_FLOOR, ENEMY_MAX_RESIST]`; then deducts the **player's
+///   penetration**: `effective_resist = if resist > 0 { max(resist - pen, 0) } else { resist }`
+///   (PoB2's `m_max(resist - pen, minPen)`, minPen=0: penetration doesn't
+///   break 0, negative resistance is unaffected by penetration).
+///   Mitigation = `(1 - effective_resist/100)`. Physical has no resistance penetration.
+/// - **Armour mitigation / Overwhelm (physical)**: see [`enemy_physical_multiplier`].
 ///
-/// `raw_hit` 用该分量的（未减伤）平均击中近似（PoB2 用每次击中量；面板近似足够），
-/// 仅物理护甲减伤需要它。
+/// `raw_hit` approximates this component's (unmitigated) average hit (PoB2
+/// uses the per-hit amount; the panel approximation is good enough), only needed for physical armour mitigation.
 fn enemy_damage_multiplier(
     player_db: &ModDb,
     enemy_db: &ModDb,
@@ -889,21 +933,23 @@ fn enemy_damage_multiplier(
     };
     let type_cfg = cfg.clone().with_damage_type(damage_type);
 
-    // 受伤链：通用 + 分类型 DamageTaken（INC + MORE）
+    // The damage-taken chain: generic + per-type DamageTaken (INC + MORE)
     let taken_names = [
         ModName::from("DamageTaken"),
         ModName::from(format!("{type_prefix}DamageTaken")),
     ];
     let mut taken_inc = enemy_db.sum(ModType::Inc, &type_cfg, &taken_names);
-    // INC-only 追加名（vendor 只加进 takenInc，不进 takenMore）：
-    // - 元素类型 += ElementalDamageTaken（CalcOffence.lua:4141）；
-    // - 投射物技能 += ProjectileDamageTaken（:4152-4153）、攻击投射物再加
-    //   ProjectileAttackDamageTaken（:4155-4156）——PoBR 以 cfg 的
-    //   ModFlags::PROJECTILE / 攻击判定近似 vendor skillFlags.projectile/attack；
-    // - trap/mine += TrapMineDamageTaken（:4158-4159）——（h3 登记）接线：
-    //   以 `cfg.skill_types` 含 Trapped(33)/RemoteMined(36) 近似 vendor
-    //   skillFlags.trap/mine（statSet.baseFlags 主通道；support addFlags
-    //   授予通道（如 Remote Mine support 加 'mine'）PoBR 未建模，保持登记）。
+    // INC-only extra names (vendor only adds these into takenInc, not takenMore):
+    // - Elemental types += ElementalDamageTaken (CalcOffence.lua:4141);
+    // - Projectile skills += ProjectileDamageTaken (`:4152-4153`), attack
+    //   projectiles additionally add ProjectileAttackDamageTaken
+    //   (`:4155-4156`) -- PoBR approximates vendor's
+    //   skillFlags.projectile/attack with cfg's ModFlags::PROJECTILE / attack detection;
+    // - trap/mine += TrapMineDamageTaken (`:4158-4159`) -- (tracked as h3)
+    //   wiring: approximates vendor's skillFlags.trap/mine with
+    //   `cfg.skill_types` containing Trapped(33)/RemoteMined(36) (the
+    //   statSet.baseFlags main channel; the support addFlags grant channel,
+    //   e.g. Remote Mine support adding 'mine', isn't modeled by PoBR, kept tracked).
     if damage_type.is_elemental() {
         taken_inc += enemy_db.sum(
             ModType::Inc,
@@ -938,17 +984,18 @@ fn enemy_damage_multiplier(
     let taken_more = enemy_db.more(&type_cfg, &taken_names);
     let taken_mult = (1.0 + taken_inc / 100.0) * taken_more;
 
-    // 抗性减伤（元素/混沌，含玩家穿透）/ 护甲减伤 + Overwhelm（物理）
+    // Resistance mitigation (elemental/chaos, including player penetration) / armour mitigation + Overwhelm (physical)
     let mitigation = if damage_type == DamageType::Physical {
         enemy_physical_multiplier(player_db, enemy_db, &type_cfg, raw_hit)
     } else {
         let mut resist = enemy_resist_final(enemy_db, &type_cfg, damage_type);
-        // 击中视敌元素抗性为反转（Rakiata's Flow 等，vendor
-        // CalcOffence.lua:4145-4148）：`invertChance = clamp(Sum(CHANCE,
-        // "HitsInvertEleResChance"), 0, 1)`，仅三元素；
-        // `resist = (1-c)*resist + c*(-resist) = resist - 2*c*resist`。
-        // 在抗性 clamp 之后、穿透之前应用（vendor 同序：:4135 pen 取数、
-        // :4145 反转、:4163 effMult 内扣 pen）。
+        // A hit treats enemy elemental resistance as inverted (Rakiata's
+        // Flow etc., vendor CalcOffence.lua:4145-4148):
+        // `invertChance = clamp(Sum(CHANCE, "HitsInvertEleResChance"), 0, 1)`,
+        // elemental types only;
+        // `resist = (1-c)*resist + c*(-resist) = resist - 2*c*resist`.
+        // Applied after the resistance clamp, before penetration (matching
+        // vendor's order: `:4135` reads pen, `:4145` inversion, `:4163` deducts pen inside effMult).
         if damage_type.is_elemental() {
             let invert = player_db
                 .sum(
@@ -962,8 +1009,9 @@ fn enemy_damage_multiplier(
             }
         }
         let effective_resist = apply_penetration(player_db, &type_cfg, damage_type, resist);
-        // 诊断：POBR_DBG_ENEMYMIT=1 时逐类型 dump 敌方减伤分解（与 oracle
-        // enemyMitigation 对照：resistBase/pen/takenInc/takenMore）。
+        // Diagnostics: dumps the enemy mitigation breakdown per type when
+        // POBR_DBG_ENEMYMIT=1 (for comparison against the oracle's
+        // enemyMitigation: resistBase/pen/takenInc/takenMore).
         if dbg_env!("POBR_DBG_ENEMYMIT").is_some() {
             eprintln!(
                 "[POBR_ENEMYMIT] {type_prefix}: resist={resist:.2} eff_resist={effective_resist:.2} taken_inc={taken_inc:.2} taken_more={taken_more:.4}"
@@ -984,21 +1032,26 @@ fn enemy_damage_multiplier(
     taken_mult * mitigation
 }
 
-/// 敌人对某伤害类型的 **final 抗性**（vendor `calcResistForType`，CalcOffence.lua:530-543）：
+/// The enemy's **final resistance** for a damage type (vendor
+/// `calcResistForType`, CalcOffence.lua:530-543):
 ///
-/// 1. `enemyDB:Override(cfg, "<Type>Resist")` 优先（config「视为 0 抗」类覆盖）；
-/// 2. 否则 `Σ BASE(<Type>Resist[, ElementalResist])`（元素类型含共享名
-///    `ElementalResist`，vendor :539）× `max((1 + ΣINC/100) × ΠMORE, 0)`
-///    （抗性自身的 INC/MORE 缩放，`calcLib.mod` 同式、负缩放 floor 0）；
-/// 3. clamp 到 `[ResistFloor(−200), maxResist]`（Data.lua:180/:200）。
+/// 1. `enemyDB:Override(cfg, "<Type>Resist")` takes priority (config's "treat as 0 resistance" style overrides);
+/// 2. Otherwise `Σ BASE(<Type>Resist[, ElementalResist])` (elemental types
+///    include the shared name `ElementalResist`, vendor `:539`) ×
+///    `max((1 + ΣINC/100) × ΠMORE, 0)` (the resistance's own INC/MORE
+///    scaling, matching `calcLib.mod`, negative scaling floored at 0);
+/// 3. Clamped to `[ResistFloor(−200), maxResist]` (Data.lua:180/:200).
 ///
-/// maxResist（vendor :532）：基线 `EnemyMaxResist(75)`；configInput
-/// `enemy<Type>Resist` **显式输入**时抬到 `min(max(输入, 75), MaxResistCap(90))`
-/// ——pobr 等价取数 = enemy db 中归因 `(EnemyConfig, "config.enemy<Type>Resist")`
-/// 的 BASE 条目（`config_resolve` 显式数值的唯一注入形态；档位预设/曝光等其余
-/// EnemyConfig 来源 id 不同名，不参与）。`DoNotChangeMaxResFromConfig` FLAG
-/// （config「Enemy Max Resistance is always 75%」，ConfigOptions.lua:2158-2159）
-/// 置位时恒 75。物理不走本函数（护甲/PDR 路径见 [`enemy_physical_multiplier`]）。
+/// maxResist (vendor `:532`): baseline `EnemyMaxResist(75)`; raised to
+/// `min(max(input, 75), MaxResistCap(90))` when the configInput
+/// `enemy<Type>Resist` is **explicitly set** -- pobr's equivalent lookup =
+/// the enemy db's BASE entry attributed to `(EnemyConfig, "config.enemy<Type>Resist")`
+/// (the sole injection form for `config_resolve`'s explicit values; other
+/// EnemyConfig sources like tier presets/exposure use different source ids
+/// and don't participate). Always 75 when the `DoNotChangeMaxResFromConfig`
+/// FLAG is set (config's "Enemy Max Resistance is always 75%",
+/// ConfigOptions.lua:2158-2159). Physical doesn't go through this function
+/// (its armour/PDR path is [`enemy_physical_multiplier`]).
 pub(crate) fn enemy_resist_final(
     enemy_db: &ModDb,
     type_cfg: &CalcConfig,
@@ -1017,7 +1070,7 @@ pub(crate) fn enemy_resist_final(
     let resist = match enemy_db.override_(type_cfg, resist_name.clone()) {
         Some(value) => value,
         None => {
-            // 元素类型共享 `ElementalResist` 名（vendor isElemental 三元素；混沌不含）。
+            // Elemental types share the `ElementalResist` name (vendor's isElemental applies to the three elements; chaos excluded).
             let names: &[ModName] = &if damage_type.is_elemental() {
                 vec![resist_name, ModName::from("ElementalResist")]
             } else {
@@ -1032,17 +1085,18 @@ pub(crate) fn enemy_resist_final(
     resist.clamp(type_cfg.constants.game().resist_floor, max_resist)
 }
 
-/// 该类型抗性的 clamp 上限（vendor CalcOffence.lua:532）：
+/// The clamp ceiling for this type's resistance (vendor CalcOffence.lua:532):
 ///
 /// ```text
 /// maxResist = Flag(DoNotChangeMaxResFromConfig) and EnemyMaxResist
 ///     or min(max(configInput["enemy<Type>Resist"] or EnemyMaxResist, EnemyMaxResist), MaxResistCap)
 /// ```
 ///
-/// configInput 等价取数 = enemy db 中 BASE `<Type>Resist` 且归因
-/// `(EnemyConfig, "config.enemy<Type>Resist")` 的条目（config_resolve 显式数值
-/// 注入形态；多条时与 BASE 聚合同口径求和）。`MaxResistCap(90)` = 注入常量
-/// `resist_hard_cap`（Data.lua:181）。
+/// The configInput equivalent lookup = the enemy db's BASE `<Type>Resist`
+/// entries attributed to `(EnemyConfig, "config.enemy<Type>Resist")`
+/// (config_resolve's explicit-value injection form; multiple entries are
+/// summed the same way as BASE aggregation). `MaxResistCap(90)` = the
+/// injected constant `resist_hard_cap` (Data.lua:181).
 fn enemy_max_resist_for(
     enemy_db: &ModDb,
     type_cfg: &CalcConfig,
@@ -1073,18 +1127,23 @@ fn enemy_max_resist_for(
     }
 }
 
-/// 玩家穿透对**已 clamp 的**敌人抗性的下调（仅元素/混沌、仅击中）。
+/// Reduces **already-clamped** enemy resistance by player penetration
+/// (elemental/chaos only, hits only).
 ///
-/// 读玩家 db：元素 `<Type>Penetration` + 共享 `ElementalPenetration`；混沌 `ChaosPenetration`。
-/// 公式（PoB2 CalcOffence.lua:4163）：
-/// `effective = if resist > minPen { max(resist - pen, minPen) } else { resist }`
-/// —— `minPen = Σ BASE(<El>PenetrationMinimum, ElementalPenetrationMinimum)`
-/// （vendor :4140/:4144，「穿透至多压到 N」类词条；混沌无 minimum 名、恒 0）。
-/// 无 minimum 词条时退化为旧式：穿透只在抗性为正时生效、不能把抗性压到 0 以下；
-/// 抗性已 ≤ minPen（含负抗）时穿透全浪费。
+/// Reads the player db: elemental `<Type>Penetration` + shared
+/// `ElementalPenetration`; chaos `ChaosPenetration`. Formula (PoB2
+/// CalcOffence.lua:4163): `effective = if resist > minPen { max(resist - pen, minPen) } else { resist }`
+/// -- `minPen = Σ BASE(<El>PenetrationMinimum, ElementalPenetrationMinimum)`
+/// (vendor `:4140`/`:4144`, "penetration can push down to at most N"-type
+/// mods; chaos has no minimum name, always 0). Without a minimum mod, this
+/// degenerates to the old form: penetration only takes effect when
+/// resistance is positive and can never push resistance below 0; when
+/// resistance is already ≤ minPen (including negative resistance),
+/// penetration is entirely wasted.
 ///
-/// 出处：agent-docs/damage-scaling.md §Penetration（穿透不破 0、与负抗互斥、仅击中）；
-///       damage-defence-order.md §步骤 4；PoB2 `<Type>Penetration`/`ElementalPenetration`。
+/// Source: agent-docs/damage-scaling.md §Penetration (penetration doesn't
+/// break 0, is mutually exclusive with negative resistance, hits only);
+///       damage-defence-order.md §Step 4; PoB2 `<Type>Penetration`/`ElementalPenetration`.
 fn apply_penetration(
     player_db: &ModDb,
     type_cfg: &CalcConfig,
@@ -1100,9 +1159,9 @@ fn apply_penetration(
     }
 }
 
-/// 穿透下界 `minPen`（vendor CalcOffence.lua:4140/:4144：
-/// `Sum("BASE", cfg, <El>PenetrationMinimum, ElementalPenetrationMinimum)`）。
-/// 仅三元素有 minimum 名空间；混沌/物理恒 0。
+/// Penetration floor `minPen` (vendor CalcOffence.lua:4140/:4144:
+/// `Sum("BASE", cfg, <El>PenetrationMinimum, ElementalPenetrationMinimum)`).
+/// Only the three elements have a minimum name space; chaos/physical are always 0.
 fn penetration_minimum(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: DamageType) -> f64 {
     let names: &[ModName] = &match damage_type {
         DamageType::Physical | DamageType::Chaos => return 0.0,
@@ -1122,7 +1181,7 @@ fn penetration_minimum(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: Da
     player_db.sum(ModType::Base, type_cfg, names)
 }
 
-/// 玩家对某伤害类型的穿透值（%）。物理无穿透（物理走 Overwhelm/护甲破坏路径）。
+/// The player's penetration value (%) for a damage type. Physical has no penetration (physical uses the Overwhelm/armour-break path instead).
 fn penetration_value(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: DamageType) -> f64 {
     let names: &[ModName] = &match damage_type {
         DamageType::Physical => return 0.0,
@@ -1143,32 +1202,38 @@ fn penetration_value(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: Dama
     player_db.sum(ModType::Base, type_cfg, names)
 }
 
-/// 物理减伤分量（对某 raw_hit），vendor CalcOffence.lua:4074-4096 physical 段：
+/// The physical mitigation component (for a given raw_hit), vendor
+/// CalcOffence.lua:4074-4096's physical section:
 ///
 /// ```text
-/// resist = clamp(  enemyDB:Sum(BASE, PhysicalDamageReduction)        -- 敌固定 PDR
-///                + skillModList:Sum(BASE, EnemyPhysicalDamageReduction) -- 玩家 Overwhelm（负）
+/// resist = clamp(  enemyDB:Sum(BASE, PhysicalDamageReduction)        -- enemy's flat PDR
+///                + skillModList:Sum(BASE, EnemyPhysicalDamageReduction) -- player's Overwhelm (negative)
 ///                + armourReduction(enemyArmour, raw_hit × More(CalcArmourAsThoughDealing)),
 ///                  −NegArmourDmgBonusCap, EnemyPhysicalDamageReductionCap )  -- [−100, 75]
 /// ```
 ///
-/// 三项**相加**（vendor :4095，非乘法并集）；下界 −100（Data.lua:194
-/// NegArmourDmgBonusCap——破甲到负后的增伤上限 +100%），上界 75
-/// （monsterConstants `maximum_physical_damage_reduction_%`）。
+/// The three terms are **added together** (vendor `:4095`, not a
+/// multiplicative combination); floor −100 (Data.lua:194's
+/// NegArmourDmgBonusCap -- the +100% damage-bonus ceiling once armour is
+/// broken into the negative), ceiling 75 (monsterConstants's
+/// `maximum_physical_damage_reduction_%`).
 ///
-/// - 敌甲取值（:4080-4081）：`Override(Armour)` 优先，否则
-///   `calcLib.val = Σ BASE × (1 + ΣINC/100) × ΠMORE`；
-/// - 玩家 `IgnoreEnemyArmour` flag（:4084-4085）→ 敌甲按 0 计
-///   （正甲全免；vendor 对负甲不剔除，此处同样仅在 armour > 0 时生效）；
-/// - `CalcArmourAsThoughDealing` MORE（:4087）：以放大后的击中量算护甲减免；
-/// - 负甲（破甲过零）走 [`armour_reduction_pct_signed`] 的负分支（增伤）。
+/// - Enemy armour value (`:4080-4081`): `Override(Armour)` takes priority,
+///   otherwise `calcLib.val = Σ BASE × (1 + ΣINC/100) × ΠMORE`;
+/// - The player's `IgnoreEnemyArmour` flag (`:4084-4085`) → enemy armour
+///   treated as 0 (positive armour fully waived; vendor doesn't strip
+///   negative armour, so this likewise only applies when armour > 0);
+/// - `CalcArmourAsThoughDealing` MORE (`:4087`): computes armour mitigation
+///   using an amplified hit amount;
+/// - Negative armour (broken past zero) takes [`armour_reduction_pct_signed`]'s negative branch (damage bonus).
 ///
-/// 未接（vendor 有、PoBR 当前无 producer，TODO(parity)）：`IgnoreArmour` 数值削减
-/// （:4084）、`ChanceToIgnoreEnemyArmour`（:4082/:4087）、
-/// `ChanceToIgnoreEnemyPhysicalDamageReduction` + MIN/MAX config 模式（:4088-4094）、
-/// `PartialIgnoreEnemyPhysicalDamageReduction`（:4096）。
+/// Not wired up (present in vendor, PoBR currently has no producer,
+/// TODO(parity)): `IgnoreArmour`'s numeric reduction (`:4084`),
+/// `ChanceToIgnoreEnemyArmour` (`:4082`/`:4087`),
+/// `ChanceToIgnoreEnemyPhysicalDamageReduction` + the MIN/MAX config mode
+/// (`:4088-4094`), `PartialIgnoreEnemyPhysicalDamageReduction` (`:4096`).
 ///
-/// 出处：agent-docs/damage-scaling.md §Overwhelm；PoB2 CalcOffence.lua:4074-4096。
+/// Source: agent-docs/damage-scaling.md §Overwhelm; PoB2 CalcOffence.lua:4074-4096.
 fn enemy_physical_multiplier(
     player_db: &ModDb,
     enemy_db: &ModDb,
@@ -1198,7 +1263,7 @@ fn enemy_physical_multiplier(
         cfg,
         &[ModName::from("PhysicalDamageReduction")],
     );
-    // Overwhelm：玩家 EnemyPhysicalDamageReduction BASE（通常为负）直接加到敌人 PDR 上。
+    // Overwhelm: the player's EnemyPhysicalDamageReduction BASE (usually negative) is added directly to the enemy's PDR.
     let overwhelm = player_db.sum(
         ModType::Base,
         cfg,
@@ -1211,11 +1276,13 @@ fn enemy_physical_multiplier(
     1.0 - reduction / 100.0
 }
 
-/// 护甲减伤（%，带符号）——vendor `calcs.armourReductionF`（CalcDefence.lua:55-64）：
-/// `armour/(armour + raw × ArmourRatio) × 100`；armour < 0（破甲过零）取
-/// `−(|armour|/(|armour| + raw × ratio) × 100)`（负减伤 = 增伤）；armour 与 raw
-/// 均为 0 → 0。与玩家侧 [`armour_reduction`](super::armour_reduction)（fraction、
-/// 负甲归 0）口径不同——敌甲路径需要负分支。
+/// Armour mitigation (%, signed) -- vendor `calcs.armourReductionF`
+/// (CalcDefence.lua:55-64): `armour/(armour + raw × ArmourRatio) × 100`;
+/// when armour < 0 (broken past zero), takes
+/// `−(|armour|/(|armour| + raw × ratio) × 100)` (negative mitigation =
+/// bonus damage); 0 when both armour and raw are 0. Differs from the
+/// player-side [`armour_reduction`](super::armour_reduction) (a fraction,
+/// with negative armour floored at 0) -- the enemy armour path needs the negative branch.
 fn armour_reduction_pct_signed(armour: f64, raw_hit: f64, armour_ratio: f64) -> f64 {
     if armour == 0.0 || raw_hit <= 0.0 {
         return 0.0;
@@ -1269,25 +1336,33 @@ pub(crate) fn more_factor_traced(
     }
 }
 
-/// 附加施放/攻击时间（PoB2 `TotalCastTime` / `TotalAttackTime`，单位秒）：在速度 inc/more
-/// **缩放之后**作为**加法项**计入有效时间分母（CalcOffence L2827：
-/// `Speed = 1 / (baseTime / ((1+inc/100)*more) + TotalAttackTime + TotalCastTime)`）。
+/// Added cast/attack time (PoB2's `TotalCastTime` / `TotalAttackTime`,
+/// seconds): entered as an **additive term** in the effective-time
+/// denominator **after** the speed inc/more scaling (CalcOffence L2827:
+/// `Speed = 1 / (baseTime / ((1+inc/100)*more) + TotalAttackTime + TotalCastTime)`).
 ///
-/// 这类常量来自技能 statSet 的 `total_cast_time_+_ms` / `total_attack_time_+_ms`
-/// constantStat（如 Comet +1000ms = +1.0s），由 statmap 数据引擎（`crate::rules::stat_map_engine`）映射为
-/// `TotalCastTime`/`TotalAttackTime` BASE 注入。无此词条时返回原速率（加法项为 0）。
+/// These constants come from the skill statSet's `total_cast_time_+_ms` /
+/// `total_attack_time_+_ms` constantStat (e.g. Comet's +1000ms = +1.0s),
+/// mapped by the statmap data engine (`crate::rules::stat_map_engine`) into
+/// injected `TotalCastTime`/`TotalAttackTime` BASE mods. Returns the
+/// original rate when there's no such mod (the additive term is 0).
 ///
-/// `scaled_rate` 为已应用速度 inc/more（但**未应用** ActionSpeed）的速率；本函数把它转回
-/// 时间、加上附加时间、再转回速率。ActionSpeed 由调用方在本函数之后单独乘上（对齐 PoB：
-/// action speed 是独立乘区，作用于含附加时间的最终速率）。
+/// `scaled_rate` is the rate with speed inc/more already applied (but
+/// **not** ActionSpeed); this function converts it back to time, adds the
+/// extra time, then converts back to a rate. ActionSpeed is multiplied in
+/// separately by the caller after this function (matching PoB: action speed
+/// is a separate factor, applied to the final rate that already includes the extra time).
 fn apply_total_time(db: &ModDb, cfg: &CalcConfig, scaled_rate: f64) -> f64 {
     if scaled_rate <= 0.0 {
         return scaled_rate;
     }
-    // 同时取 TotalCastTime + TotalAttackTime：PoB 按技能只注入其一（法术=cast、攻击=attack），
-    // 实际每技能仅一项非零，故求和等价于取相关项。**有意不按 cfg.is_spell() 门控**——主技能的
-    // SPELL/ATTACK flag 派生（skill_type_flags）对部分 build 并不可靠，门控会让 comet 等丢失
-    // TotalCastTime 限速（实测倒退进攻 parity）；求和则稳健。
+    // Sums both TotalCastTime + TotalAttackTime: PoB only injects one per
+    // skill (spell=cast, attack=attack), and in practice only one is
+    // non-zero per skill, so summing is equivalent to picking the relevant
+    // term. **Deliberately not gated on cfg.is_spell()** -- the main skill's
+    // SPELL/ATTACK flag derivation (skill_type_flags) isn't reliable for
+    // some builds, and gating would make comet etc. lose the TotalCastTime
+    // speed cap (regressed offence parity was observed); summing is more robust.
     let extra_time = db.sum(
         ModType::Base,
         cfg,
@@ -1303,17 +1378,22 @@ fn apply_total_time(db: &ModDb, cfg: &CalcConfig, scaled_rate: f64) -> f64 {
     1.0 / effective_time
 }
 
-/// 冷却限速：技能有固有冷却时，最终行动速率不能超过 `1/effective_cooldown`。
+/// The cooldown speed cap: when a skill has an inherent cooldown, the final
+/// action rate can't exceed `1/effective_cooldown`.
 ///
-/// PoB 顺序：**先把速度全部 inc/more 算完**，再 `min(rate, 1/cooldown)`——所以本函数在
-/// 速度链路末端调用（不在装配阶段预截 base_action_rate）。`effective_cooldown` 经
-/// `CooldownRecovery`（INC/MORE，[`calc_cooldown`]）缩短：`base_cd / (1+Σinc/100)/Πmore`。
+/// PoB's order: **finish computing all of speed's inc/more first**, then
+/// `min(rate, 1/cooldown)` -- so this function is called at the end of the
+/// speed chain (`base_action_rate` isn't pre-capped during assembly).
+/// `effective_cooldown` is shortened by `CooldownRecovery` (INC/MORE,
+/// [`calc_cooldown`]): `base_cd / (1+Σinc/100)/Πmore`.
 ///
-/// 例外：「绕过冷却」技能（如 Flicker Strike，消耗充能重置冷却）注入 `CooldownBypass` flag，
-/// 此时不限速、按攻速出手。无 `SkillCooldownBase` 词条（base_cd≤0）时也不限速。
+/// Exception: a "bypasses cooldown" skill (e.g. Flicker Strike, which
+/// consumes charges to reset its cooldown) injects the `CooldownBypass`
+/// flag, in which case there's no speed cap and it fires at attack speed.
+/// Also no speed cap when there's no `SkillCooldownBase` mod (base_cd≤0).
 ///
-/// `pub(crate)`：perform 的 fill 阶段（`effective_action_rate`，ailment/reload 消费）
-/// 与 offence 主链共用同一冷却 cap（整链单一来源）。
+/// `pub(crate)`: perform's fill stage (`effective_action_rate`, consumed by
+/// ailment/reload) and offence's main chain share this same cooldown cap (a single source across the whole chain).
 pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f64) -> f64 {
     if db.flag(cfg, ModName::from("CooldownBypass")) {
         return uncapped_rate;
@@ -1322,8 +1402,9 @@ pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f6
     if base_cd <= 0.0 {
         return uncapped_rate;
     }
-    // 储存次数（grenade=3 等）：>1 时冷却不向上取整到服务器帧（PoB2 CalcOffence
-    // L338-345），与 perform::fill_skill_mechanics 同源读 SkillStoredUsesBase。
+    // Stored use count (grenade=3, etc.): when >1, the cooldown isn't
+    // rounded up to the server tick (PoB2 CalcOffence L338-345), sharing the
+    // same source read of SkillStoredUsesBase with perform::fill_skill_mechanics.
     let stored = db
         .sum(ModType::Base, cfg, &[ModName::from("SkillStoredUsesBase")])
         .max(0.0) as u32;
@@ -1331,21 +1412,24 @@ pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f6
     if cd <= 0.0 {
         return uncapped_rate;
     }
-    // PoB2 CalcOffence L2855：冷却 cap 同样乘 Repeats（多重打击/技能重复，默认 1）。
+    // PoB2 CalcOffence L2855: the cooldown cap likewise multiplies by Repeats (multistrike/skill repeats, default 1).
     uncapped_rate.min(repeats(db, cfg) / cd)
 }
 
-/// 技能重复次数 Repeats（PoB2 CalcOffence L981：`1 + RepeatCount`，默认 1）。
-/// multistrike / 技能重复词条注入 BASE `RepeatCount` 后此值 >1；当前未接线时恒为 1。
+/// Skill repeat count Repeats (PoB2 CalcOffence L981: `1 + RepeatCount`,
+/// default 1). This exceeds 1 once multistrike / skill-repeat mods inject
+/// BASE `RepeatCount`; currently always 1 while unwired.
 fn repeats(db: &ModDb, cfg: &CalcConfig) -> f64 {
     1.0 + db
         .sum(ModType::Base, cfg, &[ModName::from("RepeatCount")])
         .max(0.0)
 }
 
-/// 服务器帧速率上限（PoB2 CalcOffence L2863-2865）：非引导技能的最终行动速率不能超过
-/// `ServerTickRate × Repeats`（ServerTickRate = 1/0.033 ≈ 30.3 actions/s）。引导技能
-/// （`Channelling` 条件）不受此限。在冷却 cap 之后施加，与 PoB2 顺序一致。
+/// The server tick rate ceiling (PoB2 CalcOffence L2863-2865): a
+/// non-channelled skill's final action rate can't exceed
+/// `ServerTickRate × Repeats` (ServerTickRate = 1/0.033 ≈ 30.3 actions/s).
+/// Channelled skills (the `Channelling` condition) are exempt. Applied after
+/// the cooldown cap, matching PoB2's order.
 fn apply_server_tick_cap(db: &ModDb, cfg: &CalcConfig, rate: f64) -> f64 {
     if cfg.condition("Channelling") {
         return rate;
@@ -1360,8 +1444,8 @@ pub(crate) fn scaled_pool(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -
     if conv == 0.0 {
         return scaled_numeric_stat(db, cfg, base, &names);
     }
-    // vendor CalcDefence.lua:92-95：`(base × (1 − conv/100) + extra) × (1+inc) × more`。
-    // OVERRIDE 仍然胜过一切（ChaosInoculation 等池钳定）。
+    // vendor CalcDefence.lua:92-95: `(base × (1 − conv/100) + extra) × (1+inc) × more`.
+    // OVERRIDE still wins over everything (ChaosInoculation etc. pool clamping).
     for n in &names {
         if let Some(value) = db.override_(cfg, n.clone()) {
             return round(value);
@@ -1373,13 +1457,16 @@ pub(crate) fn scaled_pool(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -
     round(base_value * (1.0 - conv / 100.0) * (1.0 + inc / 100.0) * more)
 }
 
-/// Life/Mana 池的「N% of Maximum X Converted to <defence>」扣减率
-/// （vendor CalcDefence.lua:92 `conv = m_min(Sum(BASE, res.."ConvertTo…"), 100)`）。
-/// 只扣池本体；ES/Armour/Evasion 侧的**转入**由 defence 矩阵按未扣减的全局底
-/// 处理（:1364 `ceil(globalBase × rate/100)`，见 calc_defence_resources）。
-// ponytail: vendor 把 conv 只作用于 base 段、Extra<res> 免扣——PoBR 的矩阵转入
-// 现注入为 Maximum<res> BASE，会一并被扣；fixture 集无「双向转换」build，出现时
-// 再把注入名迁到 Extra<res> 通道。
+/// The Life/Mana pool's "N% of Maximum X Converted to <defence>" deduction
+/// rate (vendor CalcDefence.lua:92's `conv = m_min(Sum(BASE, res.."ConvertTo…"), 100)`).
+/// Only deducts from the pool itself; the **conversion into** ES/Armour/
+/// Evasion is handled by the defence matrix against the undeducted global
+/// base (`:1364`'s `ceil(globalBase × rate/100)`, see calc_defence_resources).
+// ponytail: vendor applies conv only to the base segment, exempting
+// Extra<res> -- PoBR's matrix conversion is currently injected as
+// Maximum<res> BASE, so it gets deducted along with everything else; the
+// fixture set has no "bidirectional conversion" build, migrate the injected
+// name to the Extra<res> channel if one shows up.
 fn pool_conversion_pct(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
     let prefix = match name {
         "MaximumLife" => "Life",
@@ -1399,8 +1486,10 @@ fn pool_conversion_pct(db: &ModDb, cfg: &CalcConfig, name: &str) -> f64 {
 }
 
 fn scaled_numeric_stat(db: &ModDb, cfg: &CalcConfig, base: f64, names: &[ModName]) -> f64 {
-    // OVERRIDE 胜过 base/inc/more（PoB2 语义：关键石如 Chaos Inoculation「Maximum Life is 1」、
-    // Blood Magic「You have no Mana」直接钳定池值）。后写覆盖先写，取首个匹配的 override。
+    // OVERRIDE wins over base/inc/more (PoB2 semantics: keystones like Chaos
+    // Inoculation's "Maximum Life is 1" and Blood Magic's "You have no Mana"
+    // clamp the pool value directly). A later write overrides an earlier
+    // one; the first matching override is taken.
     for name in names {
         if let Some(value) = db.override_(cfg, name.clone()) {
             return round(value);
@@ -1421,7 +1510,7 @@ fn scaled_pool_traced(
     trace: &mut TraceGraph,
 ) -> TracedValue {
     let names = [ModName::from(stat_name)];
-    // OVERRIDE 胜过 base/inc/more（PoB2 关键石池钳定语义，见 scaled_numeric_stat）。
+    // OVERRIDE wins over base/inc/more (PoB2's keystone pool-clamping semantics, see scaled_numeric_stat).
     let (override_value, override_node) = db.override_traced(
         cfg,
         ModName::from(stat_name),
@@ -1453,7 +1542,7 @@ fn scaled_pool_traced(
         trace,
         format!("{stat_name} BASE modifier sum"),
     );
-    // Life/Mana 池转换扣减（vendor :92——与 scaled_pool 非追踪路径同式）。
+    // The Life/Mana pool conversion deduction (vendor `:92` -- the same formula as scaled_pool's non-traced path).
     let conv_factor = 1.0 - pool_conversion_pct(db, cfg, stat_name) / 100.0;
     let base_total = (base + base_mods.value) * conv_factor;
     let base_total_node = trace.add_node(
@@ -1534,7 +1623,7 @@ mod speed_tests {
     use super::*;
     use crate::Modifier;
 
-    /// base rate=1, 不带任何速度词条 → action_rate 不变。
+    /// base rate=1, with no speed mod at all → action_rate is unchanged.
     fn input(base_rate: f64) -> MinimalInput {
         MinimalInput {
             base_action_rate: base_rate,
@@ -1548,7 +1637,7 @@ mod speed_tests {
 
     #[test]
     fn cast_speed_feeds_spell_action_rate() {
-        // 法术：+50% increased Cast Speed → action_rate = 1.0 × 1.5。
+        // Spell: +50% increased Cast Speed → action_rate = 1.0 × 1.5.
         let mut db = ModDb::new();
         db.add_mod(mk("CastSpeed", ModType::Inc, 50.0));
         let cfg = CalcConfig::spell();
@@ -1560,7 +1649,7 @@ mod speed_tests {
         );
     }
 
-    /// 03-04：超过服务器帧上限（1/0.033≈30.303/s）的攻速被截断（非引导技能）。
+    /// 03-04: attack speed exceeding the server tick ceiling (1/0.033≈30.303/s) is truncated (non-channelled skill).
     #[test]
     fn server_tick_caps_high_attack_rate() {
         let mut db = ModDb::new();
@@ -1575,7 +1664,7 @@ mod speed_tests {
         );
     }
 
-    /// 03-04：引导技能（Channelling）不受服务器帧 cap。
+    /// 03-04: a channelled skill (Channelling) is exempt from the server tick cap.
     #[test]
     fn channelling_skill_bypasses_server_tick_cap() {
         let mut db = ModDb::new();
@@ -1589,7 +1678,7 @@ mod speed_tests {
         );
     }
 
-    /// 03-04 回归保护：低于帧上限的速率不变。
+    /// 03-04 regression guard: a rate below the tick ceiling is unchanged.
     #[test]
     fn low_rate_unaffected_by_server_tick_cap() {
         let mut db = ModDb::new();
@@ -1605,7 +1694,7 @@ mod speed_tests {
 
     #[test]
     fn skill_speed_feeds_action_rate() {
-        // SkillSpeed 与 CastSpeed/AttackSpeed 同 additive bucket。
+        // SkillSpeed shares the same additive bucket as CastSpeed/AttackSpeed.
         let mut db = ModDb::new();
         db.add_mod(mk("SkillSpeed", ModType::Inc, 20.0));
         db.add_mod(mk("AttackSpeed", ModType::Inc, 30.0));
@@ -1621,8 +1710,8 @@ mod speed_tests {
 
     #[test]
     fn action_speed_is_independent_multiplier() {
-        // ActionSpeed 是独立乘区：speed bucket × ActionSpeedMod。
-        // +100% bucket (×2) 且 +50% ActionSpeed (×1.5) → ×3。
+        // ActionSpeed is an independent factor: speed bucket × ActionSpeedMod.
+        // +100% bucket (×2) plus +50% ActionSpeed (×1.5) → ×3.
         let mut db = ModDb::new();
         db.add_mod(mk("AttackSpeed", ModType::Inc, 100.0));
         db.add_mod(mk("ActionSpeed", ModType::Inc, 50.0));
@@ -1637,8 +1726,8 @@ mod speed_tests {
 
     #[test]
     fn cooldown_caps_rate_after_speed() {
-        // SkillCooldownBase=2s → 上限 ≈0.5/s（冷却取整到服务器帧后略 <0.5）。
-        // 即便速度把 uncapped 推到 2.0，也被 min 截到冷却上限，远低于 2.0。
+        // SkillCooldownBase=2s → cap ≈0.5/s (cooldown rounds to the server tick, so slightly under 0.5).
+        // Even though speed pushes the uncapped rate to 2.0, min() clamps it to the cooldown cap, far below 2.0.
         let mut db = ModDb::new();
         db.add_mod(mk("SkillCooldownBase", ModType::Base, 2.0));
         db.add_mod(mk("CastSpeed", ModType::Inc, 100.0)); // ×2 → uncapped 2.0
@@ -1653,7 +1742,7 @@ mod speed_tests {
 
     #[test]
     fn cooldown_does_not_raise_slow_rate() {
-        // 速度未达上限时，冷却不抬升速率（min 不取更大值）。base 0.2 < 0.5 cap → 仍 0.2。
+        // When speed is below the cap, the cooldown does not raise the rate (min never picks the larger value). base 0.2 < 0.5 cap → stays 0.2.
         let mut db = ModDb::new();
         db.add_mod(mk("SkillCooldownBase", ModType::Base, 2.0)); // cap 0.5
         let cfg = CalcConfig::spell();
@@ -1667,8 +1756,8 @@ mod speed_tests {
 
     #[test]
     fn cooldown_recovery_raises_cap() {
-        // CooldownRecovery +100% → effective_cd = 2/2 = 1s → cap ≈1.0/s（取整到帧后略 <1.0），
-        // 显著高于无恢复时的 ≈0.5 上限。
+        // CooldownRecovery +100% → effective_cd = 2/2 = 1s → cap ≈1.0/s (slightly under 1.0 after rounding to the tick),
+        // significantly higher than the ≈0.5 cap without recovery.
         let mut db = ModDb::new();
         db.add_mod(mk("SkillCooldownBase", ModType::Base, 2.0));
         db.add_mod(mk("CooldownRecovery", ModType::Inc, 100.0));
@@ -1684,9 +1773,9 @@ mod speed_tests {
 
     #[test]
     fn cooldown_bypass_flag_skips_cap() {
-        // CooldownBypass flag（如 Flicker）→ 不限速，按全速出手。
+        // CooldownBypass flag (e.g. Flicker) → no rate limiting, fires at full speed.
         let mut db = ModDb::new();
-        db.add_mod(mk("SkillCooldownBase", ModType::Base, 2.0)); // 若生效 cap 0.5
+        db.add_mod(mk("SkillCooldownBase", ModType::Base, 2.0)); // if it applied, cap would be 0.5
         db.add_mod(Modifier::flag("CooldownBypass"));
         db.add_mod(mk("AttackSpeed", ModType::Inc, 100.0)); // uncapped 2.0
         let cfg = CalcConfig::attack();

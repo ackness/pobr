@@ -1,145 +1,173 @@
-//! 被动天赋树域 schema（`base/passive_tree.json` / `base/passive_tree_meta.json`，
-//! 来自 GGG 官方树导出 `data.json`）。
+//! Passive tree domain schema (`base/passive_tree.json` /
+//! `base/passive_tree_meta.json`, sourced from GGG's official tree export
+//! `data.json`).
 
 use serde::{Deserialize, Serialize};
 
-/// 被动天赋节点的种类。
+/// The kind of a passive node.
 ///
-/// 源自 GGG 官方树导出（`poe2-skilltree-export/data.json`）的节点布尔标志：
-/// `isKeystone` / `isNotable` / `isMastery` / `isJewelSocket` / `isAscendancyStart`，
-/// 否则为 [`PassiveNodeKind::Normal`]（小天赋）。
+/// Derived from the boolean flags in GGG's official tree export
+/// (`poe2-skilltree-export/data.json`): `isKeystone` / `isNotable` /
+/// `isMastery` / `isJewelSocket` / `isAscendancyStart`; otherwise it's
+/// [`PassiveNodeKind::Normal`] (a small passive).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PassiveNodeKind {
-    /// 小天赋（普通属性节点）。
+    /// A small passive (a plain stat node).
     Normal,
-    /// 大天赋（notable）。
+    /// A notable.
     Notable,
-    /// 基石（keystone）。
+    /// A keystone.
     Keystone,
-    /// 精通节点（mastery）。
+    /// A mastery node.
     Mastery,
-    /// 珠宝插槽。
+    /// A jewel socket.
     JewelSocket,
-    /// 飞升起始节点。
+    /// An ascendancy start node.
     AscendancyStart,
 }
 
-/// isSwitchable 节点的按职业/飞升变体（vendor `tree.lua` 节点 `options.<Class>`）。
+/// A per-class/ascendancy variant of an isSwitchable node (vendor
+/// `tree.lua` node's `options.<Class>`).
 ///
-/// PoB2 `PassiveSpec.lua:1251-1256`：节点带 `isSwitchable` 时，若
-/// `options[curClassName]`（其次 `options[curAscendClassName]`）存在，则用该
-/// option **整体替换**节点词条（`ReplaceNode` 语义，stats 不做合并）。变体自身
-/// 携带独立别名 id（如 Witch 变体『Jagged Shards』= 64801），但树连线 / Build
-/// Code 仍引用基础节点 `skill` id——别名仅供展示/对照。
+/// PoB2 `PassiveSpec.lua:1251-1256`: when a node has `isSwitchable`, if
+/// `options[curClassName]` (or failing that, `options[curAscendClassName]`)
+/// exists, that option **wholly replaces** the node's mods (`ReplaceNode`
+/// semantics — stats aren't merged). The variant itself carries its own
+/// alias id (e.g. the Witch variant "Jagged Shards" = 64801), but tree
+/// connections / the Build Code still reference the base node's `skill`
+/// id — the alias is display/cross-reference only.
 ///
-/// 仅收录**携带自有 `stats` 的 option**（纯外观 option 经 Lua `__index` 元表
-/// 继承基础 stats，行为等同基础版，不入库）。
+/// Only options that carry **their own `stats`** are stored (purely
+/// cosmetic options inherit the base stats through Lua's `__index`
+/// metatable and behave identically to the base version, so they aren't
+/// stored).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PassiveNodeVariant {
-    /// option 键：职业名（如 `Witch`/`Druid`/`Huntress`）或飞升名（如 `Abyssal Lich`）。
+    /// The option key: a class name (e.g. `Witch`/`Druid`/`Huntress`) or an
+    /// ascendancy name (e.g. `Abyssal Lich`).
     pub class: String,
-    /// 变体自身的节点别名 id（vendor `option.id`，如 64801）；展示/对照用。
+    /// The variant's own node alias id (vendor `option.id`, e.g. 64801);
+    /// for display/cross-reference.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variant_skill: Option<u32>,
-    /// 变体名称（英文 canonical，如 `Jagged Shards`）。
+    /// Variant name (English canonical, e.g. `Jagged Shards`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    /// 变体词条（整体替换基础 `stats`，PoB `ReplaceNode` 语义）。
+    /// The variant's mods (wholly replaces the base `stats`, PoB's
+    /// `ReplaceNode` semantics).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub stats: Vec<String>,
 }
 
-/// 被动天赋树节点定义（来自 GGG 官方树导出 `data.json` 的 `nodes`）。
+/// A passive tree node definition (from the `nodes` of GGG's official tree
+/// export `data.json`).
 ///
-/// 计算内部只用稳定 ID：`id` 为 GGG 的字符串 slug（如
-/// `passive_keystone_avatar_of_fire`），`skill` 为数值 skill id（树连线 / Build Code
-/// 引用的稳定数值键）。`stats` 是节点授予的英文词条文本行（PoB 兼容解析的输入）。
-/// `connections` 为该节点的出边目标 `skill` id（无向树用出边即可重建邻接）。
+/// Calc internals only use stable IDs: `id` is GGG's string slug (e.g.
+/// `passive_keystone_avatar_of_fire`), and `skill` is the numeric skill id
+/// (the stable numeric key referenced by tree connections / the Build
+/// Code). `stats` are the English mod-text lines the node grants (input for
+/// PoB-compatible parsing). `connections` are the target `skill` ids of
+/// this node's outgoing edges (the tree is undirected, so outgoing edges
+/// alone are enough to reconstruct adjacency).
 ///
-/// 注：含 `x`/`y` 浮点坐标字段，故不派生 `Eq`/`Hash`（仅 `PartialEq`）。
+/// Note: this has floating-point `x`/`y` coordinate fields, so it doesn't
+/// derive `Eq`/`Hash` (only `PartialEq`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PassiveNodeDef {
-    /// 数值 skill id（GGG `nodes` 的 map key / `skill` 字段）。树连线、Build Code 用此引用。
+    /// Numeric skill id (GGG `nodes`'s map key / `skill` field). Referenced
+    /// by tree connections and the Build Code.
     pub skill: u32,
-    /// 字符串 slug（GGG `id` 字段，如 `passive_keystone_avatar_of_fire`）。
+    /// String slug (GGG's `id` field, e.g. `passive_keystone_avatar_of_fire`).
     pub id: String,
-    /// 节点名称（英文 canonical）。
+    /// Node name (English canonical).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    /// 节点种类。
+    /// Node kind.
     pub kind: PassiveNodeKind,
-    /// 节点授予的词条文本行。
+    /// The mod-text lines this node grants.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub stats: Vec<String>,
-    /// 所属节点组（GGG `group`，用于坐标/布局；计算无关，保留以便和 PoB2 对比）。
+    /// The node's group (GGG's `group`, used for coordinates/layout;
+    /// irrelevant to calc, kept for comparing against PoB2).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group: Option<u32>,
-    /// 在 orbit 上的环号（GGG `orbit`）。
+    /// Ring number on its orbit (GGG's `orbit`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub orbit: Option<u32>,
-    /// 在 orbit 上的角度槽位（GGG `orbitIndex`）。
+    /// Angular slot on its orbit (GGG's `orbitIndex`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub orbit_index: Option<u32>,
-    /// 节点平面 x 坐标（tree units）。由 `group.(x,y)` + orbit 半径/角度推导，
-    /// 对标 PoB2 `PassiveTree.lua` `node.x = group.x + sin(angle) * orbitRadii[orbit]`。
-    /// 旧 catalog 无此字段，`#[serde(default)]` 兼容；radius 珠宝几何计算依赖它。
+    /// The node's planar x coordinate (tree units). Derived from
+    /// `group.(x,y)` plus the orbit radius/angle, matching PoB2
+    /// `PassiveTree.lua`'s
+    /// `node.x = group.x + sin(angle) * orbitRadii[orbit]`. The old catalog
+    /// didn't have this field, so `#[serde(default)]` keeps it compatible;
+    /// jewel-radius geometry calc depends on it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub x: Option<f64>,
-    /// 节点平面 y 坐标（tree units）。对标 PoB2
-    /// `node.y = group.y - cos(angle) * orbitRadii[orbit]`。
+    /// The node's planar y coordinate (tree units). Matches PoB2's
+    /// `node.y = group.y - cos(angle) * orbitRadii[orbit]`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub y: Option<f64>,
-    /// 出边目标节点的 `skill` id（GGG `out`，已从字符串 key 转为数值）。
+    /// The `skill` ids of outgoing-edge target nodes (GGG's `out`, already
+    /// converted from string keys to numbers).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub connections: Vec<u32>,
-    /// 所属飞升（GGG `ascendancyId`，如 `Warrior3`）；主树节点为 None。
+    /// The ascendancy this node belongs to (GGG's `ascendancyId`, e.g.
+    /// `Warrior3`); `None` for main-tree nodes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ascendancy_id: Option<String>,
-    /// isSwitchable 节点的按职业/飞升变体（vendor `tree.lua` `options`，由
-    /// `pobr-data-adapter --tree-variants` 回填）。旧 catalog 无此字段，
-    /// `#[serde(default)]` 兼容；非 switchable 节点恒为空。
+    /// Per-class/ascendancy variants for an isSwitchable node (vendor
+    /// `tree.lua`'s `options`, backfilled by
+    /// `pobr-data-adapter --tree-variants`). The old catalog didn't have
+    /// this field, so `#[serde(default)]` keeps it compatible; always empty
+    /// for non-switchable nodes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub variants: Vec<PassiveNodeVariant>,
-    /// Smith of Kitava 身甲连接 notable 标记（vendor `tree.lua` `applyToArmour`，
-    /// 由 `pobr-data-adapter --tree-coords` 回填）：已分配数 →
-    /// `Multiplier:AllocatedConnectedNotable`（vendor CalcSetup.lua:840-841，
-    /// 消费方 = Masterwork『+200 to Armour for each Connected Notable …』）。
+    /// Marks a notable that Smith of Kitava's body-armour connection bonus
+    /// counts (vendor `tree.lua`'s `applyToArmour`, backfilled by
+    /// `pobr-data-adapter --tree-coords`): the count of allocated ones feeds
+    /// `Multiplier:AllocatedConnectedNotable` (vendor
+    /// CalcSetup.lua:840-841, consumed by Masterwork's "+200 to Armour for
+    /// each Connected Notable …").
     #[serde(default, skip_serializing_if = "core::ops::Not::not")]
     pub apply_to_armour: bool,
 }
 
-/// 某个职业的飞升摘要。
+/// A summary of one class's ascendancy.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PassiveAscendancy {
-    /// 飞升稳定 ID（与节点 `ascendancy_id` 对应，如 `Warrior3`）。
+    /// Stable ascendancy ID (matches a node's `ascendancy_id`, e.g. `Warrior3`).
     pub id: String,
-    /// 飞升名称（英文 canonical，如 `Smith of Kitava`）。
+    /// Ascendancy name (English canonical, e.g. `Smith of Kitava`).
     pub name: String,
 }
 
-/// 某个职业的摘要（基础属性 + 飞升列表）。
+/// A summary of one class (base attributes + ascendancy list).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PassiveClass {
-    /// 职业名称（英文 canonical，如 `Warrior`）。
+    /// Class name (English canonical, e.g. `Warrior`).
     pub name: String,
-    /// 基础力量 / 敏捷 / 智慧。
+    /// Base strength / dexterity / intelligence.
     pub base_str: i32,
     pub base_dex: i32,
     pub base_int: i32,
-    /// 该职业的飞升摘要（无名占位项已过滤）。
+    /// This class's ascendancy summaries (unnamed placeholder entries filtered out).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub ascendancies: Vec<PassiveAscendancy>,
 }
 
-/// 被动天赋树的元数据摘要（职业 / 飞升 / 树名）。
+/// Metadata summary for the passive tree (classes / ascendancies / tree name).
 ///
-/// orbit 半径 / 每环槽位数（PoB 的 `constants`）在当前 GGG PoE2 导出中**未以独立
-/// `constants` 块给出**（坐标直接落在节点 `x`/`y`），故此切片不收录——见 TODO。
+/// Orbit radii / slots-per-ring (PoB's `constants`) aren't given as a
+/// separate `constants` block in the current GGG PoE2 export (coordinates
+/// are baked directly into each node's `x`/`y`), so this slice doesn't
+/// store them — see the TODO.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PassiveTreeMeta {
-    /// 树标识（GGG `tree`，如 `Default`）。
+    /// Tree identifier (GGG's `tree`, e.g. `Default`).
     pub tree: String,
-    /// 职业 + 飞升摘要（按职业名排序）。
+    /// Class + ascendancy summaries (sorted by class name).
     pub classes: Vec<PassiveClass>,
 }

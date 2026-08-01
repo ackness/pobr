@@ -1,30 +1,34 @@
-//! Web JSON 契约 golden（TODO.md 0.6）：钉住 `decode_build_json` /
-//! `calculate_build_json` / `attribution_json` 的 **JSON 形状**（键集合），
-//! 与 `web/src/api/types.ts` 的手写 TS 类型一一对应。
+//! Web JSON contract golden (TODO.md 0.6): pins the **JSON shape** (key
+//! set) of `decode_build_json` / `calculate_build_json` / `attribution_json`,
+//! matching `web/src/api/types.ts`'s hand-written TS types one-to-one.
 //!
-//! 断言键集合而非具体数值——数值随 parity 修复演进，形状才是前端契约；
-//! 本测试挂 = 契约破坏，必须同步改 `web/src/api/types.ts` 再更新这里。
+//! Asserts the key set rather than specific values — values evolve as
+//! parity fixes land, but the shape is the frontend contract; this test
+//! failing means the contract broke, and `web/src/api/types.ts` must be updated in sync before updating this file.
 
 use pobr_gamedata::repo_data_root;
 use serde_json::Value;
 
-/// 契约版本钉子：本文件里任何键集合断言更新（= 形状变更）时，Rust 侧
-/// `SCHEMA_VERSION` 与 `web/src/api/types.ts::EXPECTED_SCHEMA_VERSION` 同时 +1。
+/// The contract-version pin: whenever any key-set assertion in this file
+/// changes (= a shape change), both the Rust side's `SCHEMA_VERSION` and
+/// `web/src/api/types.ts::EXPECTED_SCHEMA_VERSION` must be bumped by 1.
 #[test]
 fn schema_version_pinned() {
-    // v3：gem catalog entry 新增 tags；BuildJson 新增 loadouts / active_loadout。
-    // （两项皆为纯新增字段，旧前端忽略即可，但键集合断言已变——按本文件约定 +1。）
+    // v3: the gem catalog entry gained `tags`; BuildJson gained loadouts / active_loadout.
+    // (Both are purely additive fields that an old frontend can ignore, but
+    // the key-set assertion changed — bumped by 1 per this file's convention.)
     assert_eq!(pobr_wasm::SCHEMA_VERSION, 3);
 }
 
-/// 真实 demo build（与 ninja_parity 同源）。
+/// A real demo build (shared with ninja_parity).
 fn demo_code() -> String {
     let path =
         repo_data_root().join("../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt");
     std::fs::read_to_string(path).expect("read demo code")
 }
 
-/// 数据初始化（存储是 thread_local——cargo test 每测试一线程，各自 init）。
+/// Data initialization (storage is thread_local — cargo test runs each test
+/// on its own thread, so each initializes independently).
 fn ensure_data() {
     if !pobr_wasm::is_data_ready() {
         let dir = repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION);
@@ -32,7 +36,7 @@ fn ensure_data() {
     }
 }
 
-/// 断言 JSON 对象的键集合恰好等于 `expected`（契约冻结点）。
+/// Asserts a JSON object's key set exactly matches `expected` (a contract freeze point).
 fn assert_keys(value: &Value, expected: &[&str], label: &str) {
     let obj = value
         .as_object()
@@ -83,7 +87,7 @@ fn decode_build_json_shape() {
         "items",
     );
 
-    // 真实 build 的内容 sanity：有职业、有装备、有已加点、有技能组。
+    // Content sanity for a real build: has a class, has equipment, has allocated nodes, has skill groups.
     assert!(!json["character"]["class_name"].as_str().unwrap().is_empty());
     assert!(
         !json["tree"]["allocated_nodes"]
@@ -125,7 +129,8 @@ fn calculate_build_json_shape() {
         "CalculateBuildResponse",
     );
 
-    // main_skill：真实伤害 build 必有主技能，含逐类型击中分量 + hit/dot/combined DPS。
+    // main_skill: a real damage build always has a main skill, with
+    // per-type hit components plus hit/dot/combined DPS.
     let main_skill = &json["main_skill"];
     assert_keys(
         main_skill,
@@ -153,7 +158,7 @@ fn calculate_build_json_shape() {
     assert!(!stats.is_empty());
     assert_keys(&stats[0], &["id", "value", "category"], "stats[0]");
 
-    // 侧边栏关键字段存在且有限值。
+    // The sidebar's key fields exist and have finite values.
     for key in ["TotalDPS", "Life", "FireResist"] {
         let stat = stats
             .iter()
@@ -164,15 +169,16 @@ fn calculate_build_json_shape() {
             "{key} not finite"
         );
     }
-    // 真实 build：Life 必为正。
+    // A real build: Life must be positive.
     let life = stats.iter().find(|s| s["id"] == "Life").unwrap();
     assert!(
         life["value"].as_f64().unwrap() > 0.0,
         "Life should be positive"
     );
 
-    // breakdown：demo build 是 ES 系，EnergyShield 一定有词条来源（Life 类
-    // 聚合名只有存在词条时才出现在 breakdowns——基础生命走 MinimalInput 注入）。
+    // breakdown: the demo build is an ES-based build, so EnergyShield
+    // always has mod-line sources (an aggregation name like Life only shows
+    // up in breakdowns when mod lines exist — base life is injected via MinimalInput).
     let es_bd = &json["breakdowns"]["EnergyShield"];
     assert_keys(
         es_bd,
@@ -205,7 +211,8 @@ fn calculate_build_json_main_group_override_changes_output() {
         .expect("baseline"),
     )
     .unwrap();
-    // 额外词条注入应改变输出（demo build 是 CI/ES 系，用 ES 词条验证）。
+    // Injecting an extra mod line should change the output (the demo build
+    // is CI/ES-based, verified with an ES mod line).
     let overridden: Value = serde_json::from_str(
         &pobr_wasm::calculate_build_json(
             &serde_json::json!({
@@ -235,8 +242,9 @@ fn calculate_build_json_main_group_override_changes_output() {
     );
 }
 
-/// main_socket_group 覆盖（0-based）反映在 main_skill.group_index，且各组
-/// hit_dps 与逐组 full_dps 的 scoped 重算同源一致。
+/// A `main_socket_group` override (0-based) is reflected in
+/// `main_skill.group_index`, and each group's `hit_dps` matches the scoped
+/// recalculation from per-group `full_dps`.
 #[test]
 fn main_skill_follows_main_group_override() {
     ensure_data();
@@ -266,7 +274,7 @@ fn main_skill_follows_main_group_override() {
         let main_skill = &calc["main_skill"];
         assert_eq!(main_skill["group_index"].as_u64().unwrap(), group_index);
         assert_eq!(main_skill["skill_id"], entry["skill_id"]);
-        // 语义不变约束：主技能口径 CombinedDPS == 逐组 full_dps 的该组数值。
+        // Semantic invariant: the main skill's CombinedDPS == that group's value from per-group full_dps.
         let combined = main_skill["combined_dps"].as_f64().unwrap();
         let scoped = entry["dps"].as_f64().unwrap();
         assert!(
@@ -276,7 +284,8 @@ fn main_skill_follows_main_group_override() {
     }
 }
 
-/// 白手起 build（无 pob_code，PoB2 新建语义）：character 即可计算，等级驱动基础量。
+/// Starting a build from scratch (no `pob_code`, PoB2's "new build"
+/// semantics): `character` alone is enough to calculate, with level driving the base values.
 #[test]
 fn calculate_scratch_build_without_code() {
     ensure_data();
@@ -313,15 +322,16 @@ fn calculate_scratch_build_without_code() {
         "Life should scale with level (lv1={level1} lv90={level90})"
     );
 
-    // 任务奖励 defaultState=true（PoB2 新建语义）：省略 = 已领取。
-    // Spirit = +30 +30 +40，火抗 = -60（默认惩罚）+10（Blackjaw 奖励）。
+    // Quest rewards default to defaultState=true (PoB2's "new build"
+    // semantics): omitted = already claimed.
+    // Spirit = +30 +30 +40, fire resist = -60 (default penalty) +10 (the Blackjaw reward).
     assert_eq!(stat_at(1, Value::Null, "Spirit"), 100.0, "default Spirit");
     assert_eq!(
         stat_at(1, Value::Null, "FireResist"),
         -50.0,
         "default FireResist"
     );
-    // 显式 false = 放弃对应奖励（前端 Config 勾选通道）。
+    // An explicit false = giving up that reward (the frontend's Config checkbox channel).
     let no_spirit = serde_json::json!({
         "questAct 1FreythornKing In The Mists": false,
         "questAct 3Azak BogIgnagduk": false,
@@ -333,10 +343,11 @@ fn calculate_scratch_build_without_code() {
         "opted-out Spirit falls back to pool floor"
     );
 
-    // HitChance 展示口径为百分制：空 build 无敌方闪避 → 100（而非 fraction 1.0）。
+    // HitChance's display basis is a percentage: an empty build with no
+    // enemy evasion -> 100 (not the fraction 1.0).
     assert_eq!(stat_at(1, Value::Null, "HitChance"), 100.0, "HitChance %");
 
-    // 缺 code 又缺 character → 可读错误而非 panic。
+    // Missing both code and character -> a readable error, not a panic.
     let err = pobr_wasm::calculate_build_json("{}").unwrap_err();
     assert!(
         err.contains("pob_code or character"),
@@ -344,12 +355,14 @@ fn calculate_scratch_build_without_code() {
     );
 }
 
-/// 手动添加技能组 / 装备（无 code 的完整手搓路径）+ 宝石目录形状。
+/// Manually adding skill groups / equipment (the full from-scratch path
+/// with no code) plus the gem catalog's shape.
 #[test]
 fn manual_skills_and_items_without_code() {
     ensure_data();
 
-    // 宝石目录：非空，条目形状 {skill_id, name, is_support}，含 active 与 support 两类。
+    // The gem catalog: non-empty, entries shaped {skill_id, name,
+    // is_support}, covering both active and support gems.
     let catalog: Value =
         serde_json::from_str(&pobr_wasm::gem_catalog_json().expect("gem catalog")).unwrap();
     let entries = catalog.as_array().unwrap();
@@ -368,7 +381,7 @@ fn manual_skills_and_items_without_code() {
         ],
         "gem catalog entry",
     );
-    // 简中名边车（Phase 7.2）已接线：多数宝石应有简中名。
+    // The Simplified Chinese name sidecar (Phase 7.2) is wired up: most gems should have a zh-CN name.
     let cn_count = entries
         .iter()
         .filter(|e| e["name_zh_cn"].is_string())
@@ -378,7 +391,7 @@ fn manual_skills_and_items_without_code() {
         "most gems should have zh-CN names ({cn_count}/{})",
         entries.len()
     );
-    // 繁中名边车已接线：多数宝石应有中文名。
+    // The Traditional Chinese name sidecar is wired up: most gems should have a Chinese name.
     let zh_count = entries
         .iter()
         .filter(|e| e["name_zh_tw"].is_string())
@@ -390,7 +403,7 @@ fn manual_skills_and_items_without_code() {
     );
     assert!(entries.iter().any(|e| e["is_support"] == false));
     assert!(entries.iter().any(|e| e["is_support"] == true));
-    // 找一个已知法术（Comet 来自 druid 参考 build）。
+    // Find a known spell (Comet is from a druid reference build).
     let comet = entries
         .iter()
         .find(|e| e["name"] == "Comet")
@@ -400,7 +413,7 @@ fn manual_skills_and_items_without_code() {
     let base_req = serde_json::json!({
         "character": { "class_name": "Sorceress", "level": 90 },
         "allocated_nodes": [],
-        // 放弃默认任务奖励里的 5% inc life，保持下方 flat delta 断言的纯增量口径。
+        // Opt out of the default quest reward's 5% inc life, to keep the flat-delta assertion below on a purely additive basis.
         "config_inputs": { "questInterlude 2Khari CrossingMolten Shrine": false },
     });
     let stat = |resp: &Value, id: &str| -> f64 {
@@ -414,7 +427,7 @@ fn manual_skills_and_items_without_code() {
             .unwrap_or(0.0)
     };
 
-    // 手动技能组：白手 build + Comet → TotalDPS > 0。
+    // Manual skill group: a from-scratch build plus Comet -> TotalDPS > 0.
     let mut with_skill = base_req.clone();
     with_skill["socket_groups"] =
         serde_json::json!([{ "gems": [{ "skill_id": comet_id, "level": 20, "quality": 0 }] }]);
@@ -427,7 +440,7 @@ fn manual_skills_and_items_without_code() {
         "manual Comet group should produce DPS"
     );
 
-    // 手动装备：+50 Life 戒指 → Life 恰好 +50（无任何 inc 来源）。
+    // Manual equipment: a +50 Life ring -> Life increases by exactly 50 (no inc sources at all).
     let baseline: Value = serde_json::from_str(
         &pobr_wasm::calculate_build_json(&base_req.to_string()).expect("baseline"),
     )
@@ -447,15 +460,17 @@ fn manual_skills_and_items_without_code() {
         "manual +50 Life ring should add 50 Life, got {delta}"
     );
 
-    // 非法槽位 → 可读错误。
+    // Invalid slot -> a readable error.
     let mut bad = base_req.clone();
     bad["items"] = serde_json::json!([{ "slot": "hat", "text": "Rarity: NORMAL\nIron Hat" }]);
     let err = pobr_wasm::calculate_build_json(&bad.to_string()).unwrap_err();
     assert!(err.contains("unknown equipment slot"), "unexpected: {err}");
 }
 
-/// 导入 build（pob_code）后 Config 页切任务奖励生效：quest 覆盖在计算前按
-/// 合并输入整份重建（旧行为 = 解码时固定，请求覆盖无效）。
+/// After importing a build (pob_code), switching a quest reward on the
+/// Config page takes effect: quest overrides are wholesale rebuilt from the
+/// merged inputs before calculation (the old behaviour = fixed at decode
+/// time, ignoring request overrides).
 #[test]
 fn quest_reward_override_applies_to_imported_build() {
     ensure_data();
@@ -483,15 +498,16 @@ fn quest_reward_override_applies_to_imported_build() {
         "questAct 3Azak BogIgnagduk": false,
         "questInterlude 3Kriar VillageLythara": false,
     }));
-    // 三个 Spirit 任务共 +100 base（inc 乘区 ≥ 0 时差值不小于 100）。
+    // The three Spirit quests total +100 base (when the inc multiplier is >= 0, the delta is never less than 100).
     assert!(
         granted - opted_out >= 99.0,
         "quest opt-out should drop Spirit (granted={granted} opted_out={opted_out})"
     );
 }
 
-/// 药剂/护符覆盖通道：`flasks` 整份替换 utility_slots——charm 基底 buff 生效、
-/// 非法槽名报错、归因视图出 `flask` 条目。
+/// The flask/charm override channel: `flasks` wholesale replaces
+/// utility_slots — a charm's base buff takes effect, an invalid slot name
+/// errors, and the attribution view shows a `flask` entry.
 #[test]
 fn manual_flasks_override_utility_slots() {
     ensure_data();
@@ -505,7 +521,7 @@ fn manual_flasks_override_utility_slots() {
             .as_f64()
             .unwrap_or(0.0)
     };
-    // 腰带提供 charm 槽预算（无 CharmLimit 来源时 charm 全不生效）。
+    // The belt provides a charm-slot budget (with no CharmLimit source, charms never take effect).
     let base_req = serde_json::json!({
         "character": { "class_name": "Sorceress", "level": 90 },
         "allocated_nodes": [],
@@ -519,7 +535,7 @@ fn manual_flasks_override_utility_slots() {
     )
     .unwrap();
 
-    // Ruby Charm 基底 buff = +25% 火抗（inject_flasks_charms 从 base_items 并入）。
+    // Ruby Charm's base buff = +25% fire resist (merged in from base_items by inject_flasks_charms).
     let mut with_charm = base_req.clone();
     with_charm["flasks"] = serde_json::json!([{
         "slot": "Charm 1",
@@ -535,7 +551,7 @@ fn manual_flasks_override_utility_slots() {
         "Ruby Charm base buff should add 25% fire res, got {delta}"
     );
 
-    // 非法槽名 → 可读错误。
+    // Invalid slot name -> a readable error.
     let mut bad = base_req.clone();
     bad["flasks"] =
         serde_json::json!([{ "slot": "Boot 1", "text": "Rarity: MAGIC\nRuby Charm\nRuby Charm" }]);
@@ -545,7 +561,7 @@ fn manual_flasks_override_utility_slots() {
         "unexpected: {err}"
     );
 
-    // 归因视图列出 flask 槽条目。
+    // The attribution view lists the flask-slot entry.
     let attr_req = serde_json::json!({
         "request": {
             "character": { "class_name": "Sorceress", "level": 90 },
@@ -566,12 +582,14 @@ fn manual_flasks_override_utility_slots() {
     assert!(has_flask_entry, "attribution should list the charm slot");
 }
 
-/// 装备授予技能：`Grants Skill: Level N X` 词条合成技能组——白手 build 仅凭
-/// 授予装备就有 DPS；full_dps 列出该组；手动同技能组仍保持独立。
+/// Equipment-granted skills: a `Grants Skill: Level N X` mod line
+/// synthesizes a skill group — a from-scratch build gets DPS purely from
+/// the granting equipment; full_dps lists that group; a manual group with
+/// the same skill still stays independent.
 #[test]
 fn item_granted_skill_synthesizes_group() {
     ensure_data();
-    // Comet 的 skill_id 从宝石目录反查（与引擎名字反查同源）。
+    // Comet's skill_id is reverse-looked-up from the gem catalog (the same source as the engine's name reverse lookup).
     let catalog: Value =
         serde_json::from_str(&pobr_wasm::gem_catalog_json().expect("gem catalog")).unwrap();
     let comet_id = catalog
@@ -611,7 +629,7 @@ fn item_granted_skill_synthesizes_group() {
         "granted Comet should produce DPS without any socket group"
     );
 
-    // full_dps 列出合成组（skill_id = Comet 主效果）。
+    // full_dps lists the synthesized group (skill_id = Comet's primary effect).
     let full: Value =
         serde_json::from_str(&pobr_wasm::full_dps_json(&base_req.to_string()).expect("full dps"))
             .unwrap();
@@ -621,7 +639,8 @@ fn item_granted_skill_synthesizes_group() {
         "full dps should list the granted skill, got {per_skill:?}"
     );
 
-    // 手动组无装备 source，即使槽位、技能和等级相同也应与授予组独立存在。
+    // A manual group has no equipment source, so it should stay independent
+    // of the granted group even with the same slot, skill, and level.
     let mut with_group = base_req.clone();
     with_group["socket_groups"] = serde_json::json!([
         { "gems": [{ "skill_id": comet_id, "level": 20, "quality": 0 }] }
@@ -642,7 +661,8 @@ fn item_granted_skill_synthesizes_group() {
     );
 }
 
-/// Ring 3 未解锁时，物品授予技能与物品词条一样不参与普通计算或 FullDPS。
+/// When Ring 3 is locked, an item-granted skill doesn't participate in
+/// regular calculation or FullDPS, just like an item's mod lines.
 #[test]
 fn ring3_granted_skill_is_gated_from_full_dps() {
     ensure_data();
@@ -678,7 +698,7 @@ fn ring3_granted_skill_is_gated_from_full_dps() {
     );
 }
 
-/// 逐技能组 DPS：demo build 至少一个伤害组，分项和 = full_dps。
+/// Per-socket-group DPS: the demo build has at least one damage group, and the per-group sum equals full_dps.
 #[test]
 fn full_dps_json_shape() {
     ensure_data();
@@ -702,12 +722,15 @@ fn full_dps_json_shape() {
     assert!((sum - full).abs() < 1e-6, "sum {sum} != full {full}");
 }
 
-/// encode 往返契约：编辑态请求 → 分享 code → 重新解码计算，与直接按请求计算
-/// 的全部展示字段一致（树/装备/药剂/技能组/config/属性小点全覆盖）。
+/// The encode round-trip contract: edit-state request -> a share code ->
+/// re-decoded calculation matches every display field from calculating
+/// directly from the request (covering tree/equipment/flasks/skill
+/// groups/config/attribute-choice small nodes).
 #[test]
 fn encode_build_roundtrip_matches_direct_calculation() {
     ensure_data();
-    // 取真实 demo build 的解码结果拼一个「全量覆盖」请求（含手动附加项）。
+    // Build a "full override" request from the real demo build's decoded
+    // result (including a manually-added item).
     let decoded: Value =
         serde_json::from_str(&pobr_wasm::decode_build_json(&demo_code()).expect("decode")).unwrap();
     let ch = &decoded["character"];
@@ -753,7 +776,8 @@ fn encode_build_roundtrip_matches_direct_calculation() {
 
     let code = pobr_wasm::encode_build_json(&request.to_string()).expect("encode");
 
-    // 结构往返：树/技能组/装备/药剂数量与输入一致（数值对比前先钉住形状）。
+    // Structural round trip: the tree/skill-group/equipment/flask counts
+    // match the input (pin the shape before comparing values).
     let redecoded: Value =
         serde_json::from_str(&pobr_wasm::decode_build_json(&code).expect("redecode")).unwrap();
     assert_eq!(
@@ -833,7 +857,7 @@ fn encode_build_roundtrip_matches_direct_calculation() {
     )
     .unwrap();
 
-    // 全部展示字段逐一相等（数值容差 1e-6）。
+    // Every display field matches one-to-one (numeric tolerance 1e-6).
     let stats = |v: &Value| -> Vec<(String, Option<f64>)> {
         v["stats"]
             .as_array()
@@ -850,7 +874,8 @@ fn encode_build_roundtrip_matches_direct_calculation() {
         match (va, vb) {
             (Some(x), Some(y)) => {
                 if (x - y).abs() >= 1e-6 {
-                    // 失败前 dump 两侧该字段的 breakdown 差异，便于定位来源。
+                    // Before failing, dump the breakdown difference for this
+                    // field on both sides, to help locate the source.
                     let dump = |v: &Value| -> Vec<String> {
                         v["breakdowns"][id_a]["mods"]
                             .as_array()
@@ -897,11 +922,12 @@ fn encode_build_roundtrip_matches_direct_calculation() {
         }
     }
 
-    // Notes 也往返（含转义字符）。
+    // Notes also round-trips (including escaped characters).
     assert_eq!(redecoded["notes"], "roundtrip <check> & escape");
 }
 
-/// Phase 7.1：中文词条行输入翻译——简中物品文本与英文等价，未知中文行落 unsupported。
+/// Phase 7.1: Chinese mod-line input translation — Simplified Chinese item
+/// text is equivalent to English, and unknown Chinese lines land in unsupported.
 #[test]
 fn chinese_mod_lines_translate_to_english() {
     ensure_data();
@@ -924,7 +950,7 @@ fn chinese_mod_lines_translate_to_english() {
             .unwrap()
     };
 
-    // 简中物品（基底名 + 两条词条行）与英文等价物逐值一致。
+    // A Simplified Chinese item (base name plus two mod lines) matches its English equivalent value-for-value.
     let mut zh_req = base_req.clone();
     zh_req["items"] = serde_json::json!([{
         "slot": "ring1",
@@ -946,7 +972,7 @@ fn chinese_mod_lines_translate_to_english() {
     );
     assert!(life(&zh) > life(&baseline), "中文词条应实际生效");
 
-    // 简中 extra_modifiers 同样翻译。
+    // Simplified Chinese extra_modifiers get translated too.
     let mut extra_req = base_req.clone();
     extra_req["extra_modifiers"] = serde_json::json!(["能量护盾上限提高 100%"]);
     let es = |resp: &Value| -> f64 {
@@ -959,7 +985,7 @@ fn chinese_mod_lines_translate_to_english() {
             .as_f64()
             .unwrap_or(0.0)
     };
-    // 白手 build 无 ES base，此断言只验证不报错且不落 unsupported。
+    // A from-scratch build has no ES base, so this assertion only verifies it doesn't error and doesn't land in unsupported.
     let extra = calc(&extra_req);
     assert!(
         !extra["unsupported_modifiers"]
@@ -971,8 +997,9 @@ fn chinese_mod_lines_translate_to_english() {
     );
     let _ = es(&extra);
 
-    // 未知中文行：原样保留进物品文本 → 与英文未知行同语义（orchestrator 的
-    // filter_parseable 闸门静默跳过，不崩、不改变数值）。
+    // An unknown Chinese line: kept as-is in the item text -> the same
+    // semantics as an unknown English line (the orchestrator's
+    // filter_parseable gate silently skips it, no crash, no value change).
     let mut unknown_req = base_req.clone();
     unknown_req["items"] = serde_json::json!([{
         "slot": "ring1",
@@ -985,11 +1012,12 @@ fn chinese_mod_lines_translate_to_english() {
     );
 }
 
-/// 属性小点三选一：同一节点选 dex 提升命中（vs 选 str），引擎 attribute_overrides 通道。
+/// Attribute-choice small node: picking dex on the same node raises
+/// accuracy (vs. picking str), via the engine's attribute_overrides channel.
 #[test]
 fn attribute_choice_changes_derived_stats() {
     ensure_data();
-    // 节点 722 = `+5 to any Attribute` 属性小点（data/base/passive_tree.json）。
+    // Node 722 = a `+5 to any Attribute` small node (data/base/passive_tree.json).
     let accuracy_with = |choice: &str| -> f64 {
         let request = serde_json::json!({
             "character": { "class_name": "Ranger", "level": 1 },
@@ -1012,8 +1040,9 @@ fn attribute_choice_changes_derived_stats() {
     );
 }
 
-/// 国服 `.build` 文件导入：真实样例解码（天赋 slug 映射 / 宝石效果映射 /
-/// 简中装备词条）→ 可直接计算。
+/// China-server `.build` file import: decoding a real sample (passive slug
+/// mapping / gem effect mapping / Simplified Chinese equipment mod lines)
+/// -> directly calculable.
 #[test]
 fn decode_cn_build_file_and_calculate() {
     ensure_data();
@@ -1022,7 +1051,7 @@ fn decode_cn_build_file_and_calculate() {
     let decoded: Value =
         serde_json::from_str(&pobr_wasm::decode_build_file_json(&content).expect("decode .build"))
             .expect("valid json");
-    // 形状与 decode_build_json 同构。
+    // The shape is isomorphic to decode_build_json's.
     assert_eq!(decoded["character"]["class_name"], "Sorceress");
     assert_eq!(decoded["character"]["level"], 98);
     assert!(decoded["tree"]["allocated_nodes"].as_array().unwrap().len() > 100);
@@ -1036,7 +1065,7 @@ fn decode_cn_build_file_and_calculate() {
     let items = decoded["items"]["equipped"].as_array().unwrap();
     assert!(items.len() >= 10, "items={}", items.len());
 
-    // 直接用解码产物计算（简中词条走翻译层）：Life/ES 应为正。
+    // Calculate directly from the decoded output (Simplified Chinese mod lines go through the translation layer): Life/ES should be positive.
     let request = serde_json::json!({
         "character": decoded["character"],
         "allocated_nodes": decoded["tree"]["allocated_nodes"],
@@ -1067,12 +1096,13 @@ fn decode_cn_build_file_and_calculate() {
     );
 }
 
-/// 手动树插槽珠宝：插槽加点才生效（与 XML 门控一致）；范围珠宝 grant 行
-/// 经几何展开改天赋词条（引擎既有链路）。
+/// Manual tree-socket jewels: only take effect when the socket is
+/// allocated (matching XML gating); a radius jewel's grant lines rewrite
+/// passive mod lines via geometric expansion (an existing engine path).
 #[test]
 fn manual_jewels_respect_socket_allocation() {
     ensure_data();
-    // 节点 7960 = jewel_slot1969（珠宝插槽）。
+    // Node 7960 = jewel_slot1969 (a jewel socket).
     let life = |allocated: bool| -> f64 {
         let request = serde_json::json!({
             "character": { "class_name": "Witch", "level": 1 },
@@ -1081,7 +1111,7 @@ fn manual_jewels_respect_socket_allocation() {
                 "socket_node": 7960,
                 "text": "Rarity: RARE\nTest Jewel\nEmerald\n+50 to maximum Life",
             }],
-            // 放弃默认任务奖励里的 5% inc life，保持 flat delta 断言的纯增量口径。
+            // Opt out of the default quest reward's 5% inc life, to keep the flat-delta assertion on a purely additive basis.
             "config_inputs": { "questInterlude 2Khari CrossingMolten Shrine": false },
         })
         .to_string();
@@ -1122,7 +1152,8 @@ fn attribution_json_shape() {
     let entries = json["entries"].as_array().unwrap();
     assert!(!entries.is_empty());
     assert_keys(&entries[0], &["kind", "id", "deltas"], "entries[0]");
-    // 至少一个装备来源对任一字段有非零贡献（不同 build 属性分布不同，不钉具体字段）。
+    // At least one equipment source has a non-zero contribution to some
+    // field (attribute distribution varies by build, so no specific field is pinned).
     assert!(
         entries.iter().any(|e| e["kind"] == "item"
             && fields
@@ -1134,21 +1165,25 @@ fn attribution_json_shape() {
 
 #[test]
 fn memory_backend_matches_dir_backend() {
-    // GameData 内存后端（wasm 数据注入路径）与目录后端产出一致的计算结果。
+    // The GameData in-memory backend (the wasm data-injection path)
+    // produces the same calculation result as the directory backend.
     ensure_data();
     let request = serde_json::json!({ "pob_code": demo_code() }).to_string();
     let from_dir = pobr_wasm::calculate_build_json(&request).expect("dir backend");
 
-    // 把版本目录整体读入内存表，走 stage/init 路径重建。版本无关策展层
-    // `data/overlay-common/`（P1-3）位于版本目录的兄弟路径，内存后端按
-    // `overlay-common/<rel>` 键解析（见 `pobr-gamedata::paths::overlay_common_path`），
-    // 生产 wasm 流程（web sync-data）同样打包该目录——staging 必须一并灌入，
-    // 否则内存后端静默丢失全部 curated special_mods。
+    // Reads the whole version directory into an in-memory table, rebuilt
+    // via the stage/init path. The version-independent curation layer
+    // `data/overlay-common/` (P1-3) sits as a sibling path to the version
+    // directory, and the in-memory backend resolves it under the
+    // `overlay-common/<rel>` key (see
+    // `pobr-gamedata::paths::overlay_common_path`); the production wasm
+    // flow (web sync-data) packages this directory too — staging must
+    // inject it as well, otherwise the in-memory backend silently loses every curated special_mods entry.
     let root = repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION);
     let common_root = repo_data_root().join("overlay-common");
     let stage_tree = |tree_root: &std::path::Path, key_prefix: &str| {
         for entry in walk_files(tree_root) {
-            // GameData 只读 JSON；跳过杂项文件（.DS_Store 等）。
+            // GameData only reads JSON; skip incidental files (.DS_Store, etc).
             if entry.extension().and_then(|e| e.to_str()) != Some("json") {
                 continue;
             }
@@ -1170,12 +1205,12 @@ fn memory_backend_matches_dir_backend() {
         "内存后端与目录后端计算结果应逐字节一致"
     );
 
-    // 还原目录后端，避免影响同线程后续测试。
+    // Restore the directory backend, to avoid affecting later tests on the same thread.
     let dir = repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION);
     pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).expect("restore dir backend");
 }
 
-/// 递归枚举目录下全部文件。
+/// Recursively enumerates every file under a directory.
 fn walk_files(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
     let mut out = Vec::new();
     let Ok(rd) = std::fs::read_dir(dir) else {
@@ -1192,10 +1227,14 @@ fn walk_files(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
     out
 }
 
-/// web 侧 calc 请求不再携带 pob_code（useBuildSession::toRequest）：导入时把
-/// 解码结果全量物化成覆盖项（materialize + config_inputs / main_socket_group）。
-/// 钉住两条路径数值等价：code 直算 == 物化请求直算。物化映射一旦变化（新增
-/// 可编辑域），这里必须同步补——否则 web 端导入后该域会静默丢失。
+/// The web side's calc requests no longer carry `pob_code`
+/// (`useBuildSession::toRequest`): on import, the decoded result is fully
+/// materialized into overrides (materialize plus config_inputs /
+/// main_socket_group). Pins the two paths' numeric equivalence: calculating
+/// directly from code == calculating directly from the materialized
+/// request. Whenever the materialization mapping changes (a new editable
+/// domain is added), this must be updated in sync — otherwise that domain
+/// silently gets lost after import on the web side.
 #[test]
 fn materialized_request_matches_pob_code_calculation() {
     ensure_data();
@@ -1226,7 +1265,7 @@ fn materialized_request_matches_pob_code_calculation() {
                 "slot": g["slot"],
                 "enabled": g["enabled"],
                 "source": g["source"],
-                // 与 web materialize 同口径：只保留 skill_id/level/quality。
+                // Matching web's materialize basis: only skill_id/level/quality are kept.
                 "gems": g["gems"].as_array().unwrap().iter().map(|gem| serde_json::json!({
                     "skill_id": gem["skill_id"],
                     "level": gem["level"],
@@ -1288,24 +1327,25 @@ fn materialized_request_matches_pob_code_calculation() {
     }
 }
 
-/// v2 错误契约：Err 侧是 `{code, message, slot?}` JSON；单件物品文本解析失败
-/// 降级为响应 `item_errors`（跳过该件，其余照算），不再整次报错。
+/// The v2 error contract: the Err side is `{code, message, slot?}` JSON; a
+/// single item's text failing to parse degrades to the response's
+/// `item_errors` (that item is skipped, everything else still calculates), no longer erroring the whole call.
 #[test]
 fn structured_errors_and_item_degrade() {
     ensure_data();
 
-    // bad_request：请求 JSON 非法。
+    // bad_request: the request JSON is malformed.
     let err = pobr_wasm::calculate_build_json("not json").unwrap_err();
     let parsed: Value = serde_json::from_str(&err).expect("error is JSON");
     assert_eq!(parsed["code"], "bad_request", "err: {err}");
     assert!(parsed["message"].is_string());
 
-    // decode_error：非法 build code。
+    // decode_error: an invalid build code.
     let err = pobr_wasm::decode_build_json("!!not-a-code!!").unwrap_err();
     let parsed: Value = serde_json::from_str(&err).expect("error is JSON");
     assert_eq!(parsed["code"], "decode_error", "err: {err}");
 
-    // bad_request + slot：未知装备槽名（客户端 bug，硬错误）。
+    // bad_request + slot: an unknown equipment slot name (a client bug, a hard error).
     let req = serde_json::json!({
         "character": { "class_name": "Warrior", "level": 1 },
         "items": [{ "slot": "NoSuchSlot", "text": "Rarity: RARE\nX\nTopaz Ring" }],
@@ -1315,7 +1355,8 @@ fn structured_errors_and_item_degrade() {
     assert_eq!(parsed["code"], "bad_request");
     assert_eq!(parsed["slot"], "NoSuchSlot");
 
-    // 降级：一件文本非法的装备 → 计算成功 + item_errors 记录该槽，其余照算。
+    // Degrade: one item with invalid text -> the calculation succeeds plus
+    // item_errors records that slot, everything else still calculates.
     let req = serde_json::json!({
         "character": { "class_name": "Warrior", "level": 1 },
         "items": [
@@ -1330,7 +1371,7 @@ fn structured_errors_and_item_degrade() {
     let issues = json["item_errors"].as_array().unwrap();
     assert_eq!(issues.len(), 1, "one degraded slot: {issues:?}");
     assert_eq!(issues[0]["slot"], "ring2");
-    // 好的那件照常生效（+50 Life 进聚合）。
+    // The good item still applies normally (+50 Life goes into aggregation).
     let life = json["stats"]
         .as_array()
         .unwrap()
@@ -1342,7 +1383,7 @@ fn structured_errors_and_item_degrade() {
     assert!(life > 50.0, "good ring still applies: Life={life}");
 }
 
-/// 入口级响应缓存：同一请求字符串二次调用命中缓存且响应逐字节一致。
+/// The entry-level response cache: a second call with the same request string hits the cache and the response is byte-identical.
 #[test]
 fn response_cache_hits_on_repeat_request() {
     ensure_data();
@@ -1361,7 +1402,7 @@ fn response_cache_hits_on_repeat_request() {
     );
 }
 
-/// 真实单套 build：恰好一个全豁免的 Default loadout，且被标记为当前选中。
+/// A real single-set build: exactly one fully-exempt Default loadout, marked as currently selected.
 #[test]
 fn real_build_exposes_a_single_default_loadout() {
     let json: Value =
@@ -1376,10 +1417,10 @@ fn real_build_exposes_a_single_default_loadout() {
     assert_eq!(json["active_loadout"], 0);
 }
 
-/// 成组切换端到端：多套 build → 切到第二组 → 树/技能确实换了一套。
+/// End-to-end group switching: a multi-set build -> switch to the second set -> tree/skills actually change.
 #[test]
 fn switching_loadout_changes_tree_and_skills() {
-    // Arrange：构造一个双组 build（标识符绑定），编码成 code。
+    // Arrange: construct a two-group build (bound by title identifier), encoded into a code.
     let xml = r#"<PathOfBuilding2>
   <Build level="1" className="Witch"/>
   <Tree activeSpec="1">
@@ -1397,7 +1438,7 @@ fn switching_loadout_changes_tree_and_skills() {
 </PathOfBuilding2>"#;
     let code = pobr_build::encode_pob_code(xml).expect("encode");
 
-    // Act：默认解码 = 第一组。
+    // Act: the default decode = the first group.
     let first: Value =
         serde_json::from_str(&pobr_wasm::decode_build_json(&code).expect("decode")).unwrap();
     let loadouts = first["loadouts"].as_array().expect("loadouts");
@@ -1408,7 +1449,7 @@ fn switching_loadout_changes_tree_and_skills() {
         2
     );
 
-    // 切到第二组。
+    // Switch to the second group.
     let target = &loadouts[1];
     let req = serde_json::json!({
         "code": code,
@@ -1420,7 +1461,7 @@ fn switching_loadout_changes_tree_and_skills() {
     let second: Value =
         serde_json::from_str(&pobr_wasm::decode_build_loadout_json(&req).expect("switch")).unwrap();
 
-    // Assert：树换成 3 点那套，技能换成第二组，且 active 指向第二组。
+    // Assert: the tree switched to the 3-node set, the skill switched to the second group, and active points at the second group.
     assert_eq!(
         second["tree"]["allocated_nodes"].as_array().unwrap().len(),
         3
@@ -1430,10 +1471,13 @@ fn switching_loadout_changes_tree_and_skills() {
     assert_eq!(gem, "Firestorm", "技能集应随组切换");
 }
 
-/// 多套 build 编辑后导出：其余 loadout 与各自 title 必须活下来。
+/// Exporting a multi-set build after editing: the other loadouts and each
+/// one's title must survive.
 ///
-/// 回归钉子——`write_build_xml` 只生成单套，导出若不以原始 code 为底做合并，
-/// 一个双组 build 点一次导出就只剩当前这套，loadout 绑定全断。
+/// A regression pin — `write_build_xml` only generates a single set; if
+/// export doesn't merge against the original code as a base, a two-group
+/// build would lose everything but the currently edited set on a single
+/// export, breaking every loadout binding.
 #[test]
 fn exporting_a_multi_loadout_build_keeps_the_other_sets() {
     ensure_data();
@@ -1454,7 +1498,7 @@ fn exporting_a_multi_loadout_build_keeps_the_other_sets() {
 </PathOfBuilding2>"#;
     let base_code = pobr_build::encode_pob_code(base_xml).expect("encode base");
 
-    // 编辑当前套（改树），带 base_code 导出。
+    // Edit the current set (change the tree), export with base_code.
     let req = serde_json::json!({
         "character": { "level": 1, "class_name": "Witch" },
         "allocated_nodes": [9, 9, 9],
@@ -1465,27 +1509,27 @@ fn exporting_a_multi_loadout_build_keeps_the_other_sets() {
     let out_code: String = serde_json::from_str(&out_code).unwrap_or(out_code);
     let out_xml = pobr_build::decode_pob_code(out_code.trim()).expect("decode result");
 
-    // 两套俱在，title 保留。
+    // Both sets are present, titles preserved.
     assert_eq!(out_xml.matches("<Spec").count(), 2, "Spec 少了：{out_xml}");
     assert_eq!(out_xml.matches("<SkillSet").count(), 2, "SkillSet 少了");
     assert_eq!(out_xml.matches("<ItemSet").count(), 2, "ItemSet 少了");
     for title in ["早期 {a}", "后期 {b}"] {
         assert!(out_xml.contains(title), "title `{title}` 丢了");
     }
-    // 编辑落到了 active 那一套。
+    // The edit landed on the active set.
     assert!(
         out_xml.contains(r#"nodes="9,9,9""#),
         "编辑未写回：{out_xml}"
     );
     assert!(out_xml.contains(r#"nodes="3,4,5""#), "另一套树被覆盖了");
 
-    // 往返：导出的 code 仍能推导出两个 loadout。
+    // Round trip: the exported code still derives two loadouts.
     let redecoded: Value =
         serde_json::from_str(&pobr_wasm::decode_build_json(&out_code).expect("redecode")).unwrap();
     assert_eq!(redecoded["loadouts"].as_array().unwrap().len(), 2);
 }
 
-/// 无 base_code（手搓 build）时仍走全量生成，不受合并逻辑影响。
+/// With no `base_code` (a hand-built build), still goes through full generation, unaffected by the merge logic.
 #[test]
 fn exporting_without_base_code_still_produces_a_single_set() {
     ensure_data();
@@ -1500,7 +1544,8 @@ fn exporting_without_base_code_still_produces_a_single_set() {
     assert_eq!(out_xml.matches("<Spec").count(), 1);
 }
 
-/// 组管理端到端：复制出一个新组 → 清单多一条 → 重命名 → 删除后复原。
+/// End-to-end group management: duplicate to get a new group -> the list
+/// gains an entry -> rename -> delete and restore.
 #[test]
 fn managing_loadouts_duplicates_renames_and_removes() {
     let xml = r#"<PathOfBuilding2>
@@ -1527,14 +1572,14 @@ fn managing_loadouts_duplicates_renames_and_removes() {
             .collect()
     };
 
-    // 复制：多出一组，且原组保留。
+    // Duplicate: an extra group appears, and the original is preserved.
     let dup = manage(&code, "duplicate", Some("后期 {b}"));
     let names = loadout_names(&dup);
     assert_eq!(names.len(), 2, "复制后应有两组：{names:?}");
     assert!(names.iter().any(|n| n.contains("早期")));
     assert!(names.iter().any(|n| n.contains("后期")));
 
-    // 重命名第二组。
+    // Rename the second group.
     let req = serde_json::json!({
         "code": dup, "op": "rename", "name": "大后期 {b}",
         "tree": 2, "item": 2, "skill": 2,
@@ -1544,7 +1589,7 @@ fn managing_loadouts_duplicates_renames_and_removes() {
         serde_json::from_str(&pobr_wasm::manage_loadout_json(&req).expect("rename")).unwrap();
     assert!(loadout_names(&renamed).iter().any(|n| n.contains("大后期")));
 
-    // 删除第二组 → 回到一组。
+    // Delete the second group -> back to one group.
     let req = serde_json::json!({
         "code": renamed, "op": "remove", "tree": 2, "item": 2, "skill": 2,
     })

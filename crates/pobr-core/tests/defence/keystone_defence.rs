@@ -1,17 +1,18 @@
-//! 集成测试：keystone_registry + CI 接线 + 防御资源转换矩阵。
+//! Integration tests: keystone_registry + CI wiring + defence resource conversion matrix.
 //!
-//! C-1：`DefenceKeystones::from_db` 契约（一次性快照、词条名即接口）。
-//! Track C / §3.3 契约 2：E/D/B/F 以参数消费本结构，
-//! 禁止各 track 散读 keystone flag。
+//! C-1: the `DefenceKeystones::from_db` contract (a one-shot snapshot, mod names as
+//! the interface). Track C / §3.3 contract 2: E/D/B/F consume this struct as a
+//! parameter — no track is allowed to read keystone flags ad hoc.
 
 use pobr_core::{CalcConfig, DefenceKeystones, ModDb, Modifier};
 use pobr_data::prelude::*;
 
-/// 从词条文本经 mod_parser 解析后驱动注册表（端到端：文本 → flag → 快照）。
+/// Drives the registry from mod text parsed through mod_parser (end-to-end:
+/// text -> flag -> snapshot).
 ///
-/// `Maximum Life is 1`（Chaos Inoculation 节点词条）→ `ChaosInoculation` flag
-/// （mod_parser keystone special 段）；`Converts all Energy Shield to Mana`
-/// （Eldritch Battery 型）→ `EnergyShieldConvertToMana` BASE 100 → 全转换开关。
+/// `Maximum Life is 1` (the Chaos Inoculation node's mod) -> `ChaosInoculation` flag
+/// (mod_parser's keystone special-case section); `Converts all Energy Shield to Mana`
+/// (Eldritch Battery style) -> `EnergyShieldConvertToMana` BASE 100 -> full-conversion switch.
 #[test]
 fn keystones_from_parsed_mod_texts() {
     // Arrange
@@ -31,14 +32,15 @@ fn keystones_from_parsed_mod_texts() {
         ks.eldritch_battery_es_to_mana,
         "全转换词条应驱动 eldritch_battery_es_to_mana"
     );
-    // 未出现的 keystone 保持关闭。
+    // Keystones that don't appear stay off.
     assert!(!ks.unbreakable);
     assert!(!ks.energy_shield_to_ward);
 }
 
-/// EB flag（`EnergyShieldProtectsMana`，来源词条 `Energy Shield protects Mana
-/// instead of Life`，ModParser.lua:2439——该文本不在当前引擎规则/数据集内，
-/// 直接注入 flag）驱动 `energy_shield_protects_mana`。
+/// The EB flag (`EnergyShieldProtectsMana`, sourced from `Energy Shield protects Mana
+/// instead of Life`, ModParser.lua:2439 — that text isn't covered by the current
+/// engine rules/dataset, so the flag is injected directly) drives
+/// `energy_shield_protects_mana`.
 #[test]
 fn eb_flag_from_injected_flag() {
     // Arrange
@@ -57,9 +59,10 @@ fn eb_flag_from_injected_flag() {
     );
 }
 
-/// IronReflexes（来源词条 `Converts all Evasion Rating to Armour`，
-/// ModParser.lua:2343——文本不在当前引擎规则内，按 legacy 展开口径直接注入）
-/// 同时含 flag（联动用）与 `EvasionConvertToArmour` BASE 100（矩阵数据通道）。
+/// IronReflexes (sourced from `Converts all Evasion Rating to Armour`,
+/// ModParser.lua:2343 — text not covered by the current engine rules, injected
+/// directly per the legacy expansion) carries both the flag (for cross-keystone
+/// interactions) and `EvasionConvertToArmour` BASE 100 (the matrix data channel).
 #[test]
 fn iron_reflexes_flag_and_matrix_data_coexist() {
     // Arrange
@@ -78,12 +81,14 @@ fn iron_reflexes_flag_and_matrix_data_coexist() {
         &[ModName::from("EvasionConvertToArmour")],
     );
 
-    // Assert：flag 仅供 Unbreakable 联动；数据展开走转换矩阵（BASE 100）。
+    // Assert: the flag only feeds the Unbreakable interaction; the numeric expansion
+    // flows through the conversion matrix (BASE 100).
     assert!(ks.iron_reflexes);
     assert_eq!(conv, 100.0);
 }
 
-/// 快照语义：直接注入 flag Modifier 的最小路径（树 ingest 等非文本来源）。
+/// Snapshot semantics: the minimal path of directly-injected flag Modifiers
+/// (non-text sources such as tree ingest).
 #[test]
 fn keystones_from_injected_flags() {
     // Arrange
@@ -109,20 +114,21 @@ fn keystones_from_injected_flags() {
     assert!(!ks.chaos_inoculation);
 }
 
-// C-2：CI 接线（perform.rs EhpOptions.chaos_inoculation 不再写死 false）
+// C-2: CI wiring (perform.rs's EhpOptions.chaos_inoculation is no longer hardcoded false)
 
-/// CI build 端到端：`Maximum Life is 1` → Life=1 + ChaosInoculation flag →
-/// EHP 走 ES 池、混沌 max hit = ∞。
+/// CI build end-to-end: `Maximum Life is 1` -> Life=1 + ChaosInoculation flag ->
+/// EHP draws from the ES pool, chaos max hit = infinity.
 ///
-/// vendor 依据：CalcDefence.lua:85（flag 读出）/:120-123（Life=1）；CI 免疫混沌
-/// （agent-docs/active-defences.md §五 Keystone 表；EhpOptions::chaos_inoculation 语义）。
-/// 修复前（C-2 之前）该 flag 在 perform 写死 false：chaos_max_hit 为有限值
-/// （1 + 500×0.5 = 251 的混沌池），EHP 池仍按 Life 口径。
+/// vendor basis: CalcDefence.lua:85 (flag read) /:120-123 (Life=1); CI grants chaos
+/// immunity (agent-docs/active-defences.md §5 keystone table; EhpOptions::chaos_inoculation
+/// semantics). Before this fix (pre C-2) the flag was hardcoded false in perform:
+/// chaos_max_hit came out finite (a chaos pool of 1 + 500x0.5 = 251), and the EHP pool
+/// still used the Life reading.
 #[test]
 fn ci_build_ehp_uses_es_pool_and_chaos_immunity() {
     use pobr_core::calc::MinimalInput;
 
-    // Arrange：1000 基础生命 + 500 ES + CI。
+    // Arrange: 1000 base life + 500 ES + CI.
     let input = MinimalInput {
         base_life: 1_000.0,
         base_mana: 100.0,
@@ -144,7 +150,7 @@ fn ci_build_ehp_uses_es_pool_and_chaos_immunity() {
     session.perform_minimal();
     let output = session.output().clone();
 
-    // Assert：CI → Life Override 1；混沌免疫；火 max hit = ES 池 / (1−0%) = 500。
+    // Assert: CI -> Life Override 1; chaos immunity; fire max hit = ES pool / (1-0%) = 500.
     assert_eq!(output.life, 1.0, "CI 应把最大生命覆盖为 1");
     assert_eq!(output.energy_shield, 500.0);
     assert!(
@@ -152,8 +158,9 @@ fn ci_build_ehp_uses_es_pool_and_chaos_immunity() {
         "CI 应使混沌 max hit = ∞（实际 {}）",
         output.chaos_max_hit
     );
-    // F-3 口径切换后 max hit 走 PoB2 TotalHitPool：CI 下 = LifeRecoverable(1) + ES(500)
-    // = 501（vendor :3540-3545 池基底含 Life 1；旧口径的 500 是 ES 单池近似）。
+    // After the F-3 switch, max hit follows PoB2's TotalHitPool: under CI that's
+    // LifeRecoverable(1) + ES(500) = 501 (vendor :3540-3545, pool base includes Life 1;
+    // the old reading of 500 was an ES-only-pool approximation).
     assert_eq!(
         output.fire_max_hit, 501.0,
         "CI 下命中池 = Life(1) + ES(500)"
@@ -161,23 +168,24 @@ fn ci_build_ehp_uses_es_pool_and_chaos_immunity() {
     assert!(output.total_ehp.is_finite());
 }
 
-// C-3：五元防御资源转换矩阵 + Body Armour 翻倍 flag
-// vendor：CalcDefence.lua:1301-1390（矩阵）、:1150-1290 / :806-808（翻倍 flag）
+// C-3: the five-way defence resource conversion matrix + the Body Armour doubling flags
+// vendor: CalcDefence.lua:1301-1390 (matrix), :1150-1290 / :806-808 (doubling flags)
 
 use pobr_core::ModTag;
 use pobr_core::calc::ActorBaseStats;
 use pobr_core::calc::defence::calc_defence_resources;
 
-/// 槽位限定 BASE 词条（装备 rolled 件级底值的测试替身）。
+/// A slot-scoped BASE mod (a test stand-in for a rolled item-level base value).
 fn slot_base(name: &str, slot: &str, value: f64) -> Modifier {
     Modifier::number(name, ModType::Base, value).with_tag(ModTag::SlotName(slot.to_string()))
 }
 
-/// 无矩阵词条 / 无 keystone 时矩阵恒等：与旧 `scaled_defence_stat` 公式逐位一致
-/// （C-3 行为 commit 的「无词条 build 逐值不变」最小见证）。
+/// The matrix is an identity transform with no conversion mods / no keystones:
+/// matches the old `scaled_defence_stat` formula bit for bit (the minimal witness
+/// that the C-3 behavior commit leaves mod-free builds' values unchanged).
 #[test]
 fn matrix_is_identity_without_conversion_mods() {
-    // Arrange：基底 100 + bodyarmour 槽位底 200 + 全局 50% increased Armour。
+    // Arrange: base 100 + bodyarmour slot base 200 + a global 50% increased Armour.
     let mut db = ModDb::new();
     db.add_list([
         slot_base("Armour", "bodyarmour", 200.0),
@@ -193,7 +201,7 @@ fn matrix_is_identity_without_conversion_mods() {
     // Act
     let res = calc_defence_resources(&db, &cfg, &base, &ks);
 
-    // Assert：旧公式 total = 100×1.5 + 200×1.5 = 450；其余资源不受扰动。
+    // Assert: old formula total = 100x1.5 + 200x1.5 = 450; other resources untouched.
     assert_eq!(res.armour, 450.0);
     assert_eq!(res.evasion, 0.0);
     assert_eq!(res.energy_shield, 0.0);
@@ -201,13 +209,15 @@ fn matrix_is_identity_without_conversion_mods() {
     assert_eq!(res.extra_mana, 0.0);
 }
 
-/// ConvertTo（defence→defence）：槽位底逐槽转移进**目标的同槽位桶**，享目标乘区；
-/// 源按 (100−total)/100 缩残（CalcDefence.lua:1340-1352）。
+/// ConvertTo (defence -> defence): the slot base moves, slot by slot, into **the
+/// target's matching slot bucket** and picks up the target's multipliers; the source
+/// shrinks by (100-total)/100 (CalcDefence.lua:1340-1352).
 #[test]
 fn convert_to_moves_slot_base_into_target_slot_bucket() {
-    // Arrange：bodyarmour Armour 槽位底 200 + 全局 100% increased Evasion +
-    // 转换词条（「50% of Armour converted to Evasion Rating」不在当前引擎规则内，
-    // 按其数据展开直接注入 ArmourConvertToEvasion BASE 50）。
+    // Arrange: bodyarmour Armour slot base 200 + a global 100% increased Evasion +
+    // a conversion mod ("50% of Armour converted to Evasion Rating" isn't covered by
+    // the current engine rules, so its numeric expansion is injected directly as
+    // ArmourConvertToEvasion BASE 50).
     let mut db = ModDb::new();
     db.add_list([
         slot_base("Armour", "bodyarmour", 200.0),
@@ -220,16 +230,18 @@ fn convert_to_moves_slot_base_into_target_slot_bucket() {
     // Act
     let res = calc_defence_resources(&db, &cfg, &ActorBaseStats::default(), &ks);
 
-    // Assert：armour 留存 200×0.5=100；evasion 槽位桶收 100 × (1+100%) = 200。
+    // Assert: armour keeps 200x0.5=100; the evasion slot bucket receives 100 x (1+100%) = 200.
     assert_eq!(res.armour, 100.0);
     assert_eq!(res.evasion, 200.0);
 }
 
-/// ConvertTo 行总和 >100 → 按比例归一化（cap 100，CalcDefence.lua:1315-1320 意图；
-/// vendor 的归一化循环因 `ipairs` 误用不生效，按裁决实现真归一化）。
+/// When ConvertTo rates sum to >100, they're normalized proportionally (capped at 100,
+/// matching CalcDefence.lua:1315-1320's intent; vendor's own normalization loop is
+/// dead code due to an `ipairs` misuse, so we implement the real normalization
+/// per the design ruling).
 #[test]
 fn conversion_rates_over_100_are_normalised() {
-    // Arrange：全局 armour 底 100；Armour→Evasion 80 + Armour→ES 40（总 120 → ×5/6）。
+    // Arrange: global armour base 100; Armour->Evasion 80 + Armour->ES 40 (total 120 -> x5/6).
     let mut db = ModDb::new();
     db.add_list([
         Modifier::number("ArmourConvertToEvasion", ModType::Base, 80.0),
@@ -245,7 +257,7 @@ fn conversion_rates_over_100_are_normalised() {
     // Act
     let res = calc_defence_resources(&db, &cfg, &base, &ks);
 
-    // Assert：armour 全转出（total=100）；evasion=100×(80×5/6)/100=66.67、ES=33.33。
+    // Assert: armour converts out entirely (total=100); evasion=100x(80x5/6)/100=66.67, ES=33.33.
     assert_eq!(res.armour, 0.0);
     assert!(
         (res.evasion - 200.0 / 3.0).abs() < 1e-6,
@@ -259,11 +271,12 @@ fn conversion_rates_over_100_are_normalised() {
     );
 }
 
-/// GainAs 不减源（CalcDefence.lua:1336-1337：rate 叠加 gainRate，但 totalConversion
-/// 只含 ConvertTo → 缩残不受 GainAs 影响）。
+/// GainAs doesn't shrink the source (CalcDefence.lua:1336-1337: gainRate is added
+/// to the rate, but totalConversion only counts ConvertTo -> the shrink factor is
+/// unaffected by GainAs).
 #[test]
 fn gain_as_does_not_reduce_source() {
-    // Arrange：全局 armour 底 100 + ArmourGainAsEvasion 25。
+    // Arrange: global armour base 100 + ArmourGainAsEvasion 25.
     let mut db = ModDb::new();
     db.add_list([Modifier::number("ArmourGainAsEvasion", ModType::Base, 25.0)]);
     let cfg = CalcConfig::new();
@@ -281,12 +294,14 @@ fn gain_as_does_not_reduce_source() {
     assert_eq!(res.evasion, 25.0);
 }
 
-/// defence→非 defence（ES→Mana，既有 es_to_mana_rate 通道并入矩阵）：槽位底 + 全局底
-/// 按 rate 转入 `extra_mana`（defence 源不取整，:1340-1355），ES 侧缩残。
+/// defence -> non-defence (ES -> Mana, folding the existing es_to_mana_rate channel
+/// into the matrix): slot base + global base convert into `extra_mana` at the given
+/// rate (no rounding for defence sources, :1340-1355), with ES shrinking accordingly.
 #[test]
 fn es_to_mana_merged_into_matrix() {
-    // Arrange：ES 基底 100 + bodyarmour 槽位底 400 + 部分转换（「30% of Maximum
-    // Energy Shield converted to Mana」不在当前引擎规则内，按其数据展开直接注入）。
+    // Arrange: ES base 100 + bodyarmour slot base 400 + a partial conversion
+    // ("30% of Maximum Energy Shield converted to Mana" isn't covered by the current
+    // engine rules, so its numeric expansion is injected directly).
     let mut db = ModDb::new();
     db.add_list([
         slot_base("EnergyShield", "bodyarmour", 400.0),
@@ -302,17 +317,18 @@ fn es_to_mana_merged_into_matrix() {
     // Act
     let res = calc_defence_resources(&db, &cfg, &base, &ks);
 
-    // Assert：ES = (400+100)×0.7 = 350；extra_mana = (400+100)×0.3 = 150。
+    // Assert: ES = (400+100)x0.7 = 350; extra_mana = (400+100)x0.3 = 150.
     assert_eq!(res.energy_shield, 350.0);
     assert_eq!(res.extra_mana, 150.0);
     assert_eq!(res.extra_life, 0.0);
 }
 
-/// 非 defence 源（Life）→ defence 目标：全局 ceil 取整（CalcDefence.lua:1364-1366）、
-/// 源本体不在矩阵内扣减（doActorLifeManaSpirit 域，:73-126）。
+/// A non-defence source (Life) -> a defence target: rounded up globally with ceil
+/// (CalcDefence.lua:1364-1366); the source itself isn't deducted inside the matrix
+/// (that's the doActorLifeManaSpirit domain, :73-126).
 #[test]
 fn non_defence_source_gain_uses_ceil() {
-    // Arrange：基础 Life 1001 + 「Gain 25% of Maximum Life as Extra Maximum Energy Shield」。
+    // Arrange: base Life 1001 + "Gain 25% of Maximum Life as Extra Maximum Energy Shield".
     let mut db = ModDb::new();
     let outcome =
         crate::support::parse_mod("Gain 25% of Maximum Life as Extra Maximum Energy Shield")
@@ -328,11 +344,12 @@ fn non_defence_source_gain_uses_ceil() {
     // Act
     let res = calc_defence_resources(&db, &cfg, &base, &ks);
 
-    // Assert：ceil(1001×0.25) = ceil(250.25) = 251。
+    // Assert: ceil(1001x0.25) = ceil(250.25) = 251.
     assert_eq!(res.energy_shield, 251.0);
 }
 
-/// Unbreakable：Body Armour 槽位 armour 基底 ×2（CalcDefence.lua:1217），其他槽位不变。
+/// Unbreakable: doubles the Body Armour slot's armour base (CalcDefence.lua:1217);
+/// other slots are unaffected.
 #[test]
 fn unbreakable_doubles_body_armour_slot_armour() {
     // Arrange
@@ -348,12 +365,12 @@ fn unbreakable_doubles_body_armour_slot_armour() {
     // Act
     let res = calc_defence_resources(&db, &cfg, &ActorBaseStats::default(), &ks);
 
-    // Assert：300×2 + 100 = 700。
+    // Assert: 300x2 + 100 = 700.
     assert_eq!(res.armour, 700.0);
 }
 
-/// DoubleBodyArmourDefence：Body Armour 槽位 armour/evasion/ES 基底皆 ×2
-/// （CalcDefence.lua:1189/:1214/:1232）。
+/// DoubleBodyArmourDefence: doubles the Body Armour slot's armour/evasion/ES bases
+/// alike (CalcDefence.lua:1189/:1214/:1232).
 #[test]
 fn double_body_armour_defence_doubles_all_three() {
     // Arrange
@@ -376,12 +393,14 @@ fn double_body_armour_defence_doubles_all_three() {
     assert_eq!(res.energy_shield, 400.0);
 }
 
-/// Unbreakable × IronReflexes 联动端到端：Body Armour 闪避基底 ×2（:1235-1237 / :806-808），
-/// 再经 `EvasionConvertToArmour` 100（IronReflexes 数据展开）全转进 armour。
+/// Unbreakable x IronReflexes interaction, end-to-end: the Body Armour slot's evasion
+/// base doubles (:1235-1237 / :806-808), then converts entirely into armour via
+/// `EvasionConvertToArmour` 100 (IronReflexes's numeric expansion).
 #[test]
 fn unbreakable_iron_reflexes_doubles_then_converts_evasion() {
-    // Arrange：bodyarmour armour 100 + evasion 200 + Unbreakable + IronReflexes
-    // （词条文本不在当前引擎规则内，按 legacy 展开口径直接注入 flag + 矩阵数据）。
+    // Arrange: bodyarmour armour 100 + evasion 200 + Unbreakable + IronReflexes
+    // (the mod text isn't covered by the current engine rules, so the flag + matrix
+    // data are injected directly per the legacy expansion).
     let mut db = ModDb::new();
     db.add_list([
         slot_base("Armour", "bodyarmour", 100.0),
@@ -396,14 +415,16 @@ fn unbreakable_iron_reflexes_doubles_then_converts_evasion() {
     // Act
     let res = calc_defence_resources(&db, &cfg, &ActorBaseStats::default(), &ks);
 
-    // Assert：armour 槽位底 100×2（Unbreakable）；evasion 槽位底 200×2（联动）全转入
-    // armour 的 bodyarmour 槽位桶 → armour = 200 + 400 = 600，evasion = 0。
+    // Assert: armour slot base 100x2 (Unbreakable); evasion slot base 200x2
+    // (the interaction) converts entirely into armour's bodyarmour slot bucket ->
+    // armour = 200 + 400 = 600, evasion = 0.
     assert_eq!(res.armour, 600.0);
     assert_eq!(res.evasion, 0.0);
 }
 
-/// EnergyShieldToWard：装备 ES 槽位底不再聚合进 ES（转 Ward 由 Track D 消费，
-/// CalcDefence.lua:1192-1205）；非装备的全局 flat ES 不受影响。
+/// EnergyShieldToWard: gear ES slot bases no longer aggregate into ES (the conversion
+/// to Ward is consumed by Track D, CalcDefence.lua:1192-1205); global flat ES from
+/// non-gear sources is unaffected.
 #[test]
 fn energy_shield_to_ward_excludes_gear_es_bases() {
     // Arrange
@@ -422,17 +443,18 @@ fn energy_shield_to_ward_excludes_gear_es_bases() {
     // Act
     let res = calc_defence_resources(&db, &cfg, &base, &ks);
 
-    // Assert：装备 300 不聚合，仅留全局 50。
+    // Assert: gear's 300 doesn't aggregate; only the global 50 remains.
     assert_eq!(res.energy_shield, 50.0);
 }
 
-/// 端到端（perform 注入路径）：全转 ES→Mana 经矩阵转入 MaximumMana BASE、
-/// ES 面板归零（旧 es_to_mana_rate 行为的等价回归）。
+/// End-to-end (perform's injection path): a full ES->Mana conversion routes through
+/// the matrix into MaximumMana BASE, zeroing out the ES panel (an equivalence
+/// regression against the old es_to_mana_rate behavior).
 #[test]
 fn perform_injects_matrix_extra_mana() {
     use pobr_core::calc::MinimalInput;
 
-    // Arrange：100 基础魔力 + 500 flat ES + 全转词条。
+    // Arrange: 100 base mana + 500 flat ES + a full-conversion mod.
     let input = MinimalInput {
         base_life: 1_000.0,
         base_mana: 100.0,
@@ -457,15 +479,18 @@ fn perform_injects_matrix_extra_mana() {
     session.perform_minimal();
     let output = session.output().clone();
 
-    // Assert：ES 面板 0；Mana = 100 + 500（转入享 Mana 全局乘区，此处乘区为 1）。
+    // Assert: ES panel 0; Mana = 100 + 500 (the converted amount picks up Mana's
+    // global multiplier, which is 1 here).
     assert_eq!(output.energy_shield, 0.0);
     assert_eq!(output.mana, 600.0);
 }
 
-/// Total 直加通道（vendor CalcDefence.lua:1331/:1394）：`<Res>Total` BASE（如
-/// Discipline 光环的 `EnergyShieldTotal`）**不乘 inc/more 直加终值**，与普通
-/// flat（进 base 吃 inc）区分。旧实现曾把 Discipline buff 错并入 `EnergyShield`
-/// 桶吃全局 inc（essence-drain ES 多算 1.13x 根因）。
+/// The Total flat-add channel (vendor CalcDefence.lua:1331/:1394): `<Res>Total` BASE
+/// (e.g. Discipline aura's `EnergyShieldTotal`) **adds straight to the final value
+/// without going through inc/more**, unlike ordinary flat (which feeds base and picks
+/// up inc). The old implementation mistakenly folded the Discipline buff into the
+/// `EnergyShield` bucket where it picked up the global inc (the root cause of
+/// essence-drain's ES being overcounted by 1.13x).
 #[test]
 fn total_channel_adds_flat_without_scaling() {
     let mut db = ModDb::new();
@@ -479,13 +504,15 @@ fn total_channel_adds_flat_without_scaling() {
 
     let res = calc_defence_resources(&db, &cfg, &ActorBaseStats::default(), &ks);
 
-    // 100×(1+100%) + 235（直加，不吃 inc）= 435；旧错位口径会给 (100+235)×2 = 670。
+    // 100x(1+100%) + 235 (flat-added, no inc) = 435; the old misplaced reading would
+    // have given (100+235)x2 = 670.
     assert_eq!(res.energy_shield, 435.0);
 }
 
-/// Total 通道随转换传播并缩残（vendor :1362-1366/:1388）：ES→Armour 60% 转换时
-/// EnergyShieldTotal 的 60% 直加进 Armour 终值（同样不乘 Armour inc），残余 40%
-/// 直加 ES。
+/// The Total channel propagates through conversions and shrinks accordingly
+/// (vendor :1362-1366/:1388): with a 60% ES->Armour conversion, 60% of
+/// EnergyShieldTotal flat-adds into Armour's final value (also without Armour's
+/// inc), and the remaining 40% flat-adds to ES.
 #[test]
 fn total_channel_follows_conversion() {
     let mut db = ModDb::new();
@@ -499,7 +526,8 @@ fn total_channel_follows_conversion() {
 
     let res = calc_defence_resources(&db, &cfg, &ActorBaseStats::default(), &ks);
 
-    // Armour 收到 total 60（直加，不吃自身 50% inc）；ES 残余 40。
+    // Armour receives total 60 (flat-added, unaffected by its own 50% inc); ES keeps
+    // the remaining 40.
     assert_eq!(res.armour, 60.0);
     assert_eq!(res.energy_shield, 40.0);
 }

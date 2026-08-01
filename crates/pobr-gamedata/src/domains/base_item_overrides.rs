@@ -1,30 +1,43 @@
-//! `overlay/base_item_overrides.json` loader + 专用 merge——基底物品覆盖值
-//! （vendor PoB2 `Data/Bases/*.lua` 抽取的盾牌 `block_chance` / 权杖 `spirit`，
-//! 对应 GGG `ShieldTypes.Block` / `ItemSpirit.SpiritGranted`——两表 bundle 已被
-//! CDN 对钉定 patch 剪除，`.dat` 路线不可得），schema 见
-//! [`pobr_data::catalog::base_item_overrides`]。
+//! `overlay/base_item_overrides.json` loader + a dedicated merge — base
+//! item overrides (a shield's `block_chance` / a sceptre's `spirit`,
+//! extracted from vendor PoB2 `Data/Bases/*.lua`; corresponds to GGG's
+//! `ShieldTypes.Block` / `ItemSpirit.SpiritGranted` — both tables' bundles
+//! have been pruned from the CDN at the pinned patch, so the `.dat` route
+//! is unavailable), schema in
+//! [`pobr_data::catalog::base_item_overrides`].
 //!
-//! 为什么不走通用 [`crate::overlay`] merge 引擎：本表是「基底名称 → 字段」的
-//! 扁平列表，base 侧是 `Vec<BaseItemDef>`（按 id 排序、以 `name` 关联），形状
-//! 不适配 key 级递归 merge，故按域写专用 merge 函数并以单测锁定语义。
+//! Why not go through the generic [`crate::overlay`] merge engine: this
+//! table is a flat "base name → field" list, while base's side is a
+//! `Vec<BaseItemDef>` (sorted by id, associated by `name`) — the shape
+//! doesn't fit key-level recursive merge, so this domain has its own merge
+//! function, locked in by unit tests.
 //!
-//! merge 语义：
+//! Merge semantics:
 //!
-//! 1. 按**英文 canonical 名称**关联（vendor `itemBases` 键 = `BaseItemDef::name`）；
-//!    同名多基底（.dat 罕见重名）时**全部**应用（值来自同一 vendor 条目，幂等）。
-//! 2. `block_chance` 写入 `BaseItemDef::armour.block_chance`；base 侧无 `armour`
-//!    段（理论上盾必有 `ArmourTypes` 行）时补零值 [`ArmourBaseStats`] 再写，不丢值。
-//! 3. `spirit` 写入 `BaseItemDef::spirit`。
-//! 4. overlay 名称在 base 中不存在 → 跳过（vendor-only / 已移除基底），与
-//!    `skill_overrides` 的规则 3 一致。
-//! 5. `reload_time_ms`（弩装填）写入 `BaseItemDef::weapon
-//!    .reload_time_ms`；base 侧无 `weapon` 段（理论上弩必有 `WeaponTypes` 行）
-//!    时补零值 [`WeaponBaseStats`] 再写，不丢值（与规则 2 同构）。
-//! 6. `charm_buff`（charm 基底固有 buff 词条，vendor `flask.lua` `charm.buff`）
-//!    覆盖写入 `BaseItemDef::charm_buff`（`Some` 时 clone 覆盖，`None` 不动）。
-//! 7. `tags`（完整基底 tag 集，vendor `.it` 继承链合并产物）与 base 侧 `.dat`
-//!    末端 tag **并集**写入 `BaseItemDef::tags`（排序去重；`None` 不动）——词缀
-//!    spawn weight 判定（tier 反查）需要 `body_armour`/`armour` 等类目 tag。
+//! 1. Associated by **English canonical name** (vendor's `itemBases` key =
+//!    `BaseItemDef::name`); when several bases share a name (a rare `.dat`
+//!    name collision), **all of them** get the value applied (it comes
+//!    from the same vendor entry, so this is idempotent).
+//! 2. `block_chance` is written into `BaseItemDef::armour.block_chance`;
+//!    when base's side has no `armour` section (in principle a shield
+//!    should always have an `ArmourTypes` row), a zero-valued
+//!    [`ArmourBaseStats`] is inserted first so the value isn't lost.
+//! 3. `spirit` is written into `BaseItemDef::spirit`.
+//! 4. An overlay name absent from base → skipped (a vendor-only / removed
+//!    base), consistent with `skill_overrides`'s rule 3.
+//! 5. `reload_time_ms` (crossbow reload) is written into
+//!    `BaseItemDef::weapon.reload_time_ms`; when base's side has no
+//!    `weapon` section (in principle a crossbow should always have a
+//!    `WeaponTypes` row), a zero-valued [`WeaponBaseStats`] is inserted
+//!    first so the value isn't lost (mirrors rule 2).
+//! 6. `charm_buff` (a charm base's inherent buff mod, vendor
+//!    `flask.lua`'s `charm.buff`) overrides `BaseItemDef::charm_buff`
+//!    (cloned over when `Some`, left untouched when `None`).
+//! 7. `tags` (the full base tag set, the merged product of vendor's `.it`
+//!    inheritance chain) is written into `BaseItemDef::tags` as a **union**
+//!    with base's `.dat` leaf tags (sorted and deduplicated; left untouched
+//!    when `None`) — mod spawn-weight checks (tier reverse-lookup) need
+//!    category tags like `body_armour`/`armour`.
 
 use pobr_data::catalog::base_item_overrides::BaseItemOverridesDef;
 use pobr_data::catalog::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
@@ -32,9 +45,11 @@ use pobr_data::catalog::{ArmourBaseStats, BaseItemDef, WeaponBaseStats};
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载基底物品覆盖值 overlay（恒走 `overlay/` 定位）。文件缺失（旧数据包
-    /// 无 overlay 层）返回 `Ok(None)`——消费侧行为 = 纯 base，向后兼容；
-    /// 其余 IO / 解析错误照常上抛，不静默。
+    /// Loads the base item override overlay (always resolved under
+    /// `overlay/`). Returns `Ok(None)` when the file is missing (an old
+    /// data pack without the overlay layer) — the consumer behaves as
+    /// plain base, backward compatible; other I/O / parse errors still
+    /// propagate, not silenced.
     pub fn base_item_overrides(&self) -> Result<Option<BaseItemOverridesDef>, LoadError> {
         match self
             .load_json_at::<BaseItemOverridesDef>(self.overlay_path("base_item_overrides.json"))
@@ -50,10 +65,11 @@ impl GameData {
     }
 }
 
-/// 把覆盖值 merge 进 base 基底列表（语义见模块文档）。
+/// Merges override values into the base item list (semantics in the module doc).
 pub fn apply_base_item_overrides(bases: &mut [BaseItemDef], overrides: &BaseItemOverridesDef) {
     use std::collections::HashMap;
-    // name → override 条目索引（条目按 name 升序且唯一，由生成侧排序保证）。
+    // name → override entry index (entries are ascending and unique by
+    // name, guaranteed by the generation side's sort).
     let by_name: HashMap<&str, usize> = overrides
         .overrides
         .iter()
@@ -96,13 +112,15 @@ pub fn apply_base_item_overrides(bases: &mut [BaseItemDef], overrides: &BaseItem
             base.charm_buff = charm_buff.clone();
         }
         if let Some(tags) = entry.tags.as_ref() {
-            // 规则 7：tag 并集（.dat 末端 tag + vendor 全集），排序去重保持确定性。
+            // Rule 7: tag union (.dat leaf tags + vendor's full set), sorted
+            // and deduplicated for determinism.
             let mut merged: Vec<String> = base.tags.iter().chain(tags.iter()).cloned().collect();
             merged.sort_unstable();
             merged.dedup();
             base.tags = merged;
         }
-        // 基底属性需求（vendor `req = { str/dex/int }`，装备需求快照取数源）。
+        // Base attribute requirements (vendor's `req = { str/dex/int }`,
+        // the data source for the equipment-requirement snapshot).
         if let Some(req) = entry.req_str {
             base.req_str = req;
         }
@@ -152,7 +170,8 @@ mod tests {
         }
     }
 
-    /// 规则 1/2/3：按名称关联，block 写入 armour 段、spirit 写入顶层。
+    /// Rules 1/2/3: associated by name, block written into the armour
+    /// section, spirit written at the top level.
     #[test]
     fn merges_block_and_spirit_by_name() {
         let mut bases = vec![
@@ -196,7 +215,8 @@ mod tests {
         assert!(bases[1].armour.is_none(), "无 block 覆盖时不虚构 armour 段");
     }
 
-    /// 规则 2 兜底：base 侧无 armour 段时补零值结构再写 block，不丢值。
+    /// Rule 2 fallback: when base's side has no armour section, insert a
+    /// zero-valued struct first, then write block, so the value isn't lost.
     #[test]
     fn creates_armour_section_when_missing() {
         let mut bases = vec![base("Phantom Buckler", None)];
@@ -219,7 +239,7 @@ mod tests {
         assert_eq!(armour.armour, 0);
     }
 
-    /// 规则 4：overlay 名称在 base 中不存在 → 跳过不报错。
+    /// Rule 4: an overlay name absent from base → skipped, no error.
     #[test]
     fn unknown_names_are_skipped() {
         let mut bases = vec![base("Crude Tower Shield", Some(armour_stats(18)))];
@@ -240,8 +260,9 @@ mod tests {
         assert_eq!(bases[0].armour.as_ref().unwrap().block_chance, None);
     }
 
-    /// 规则 5：reload_time_ms 写入 weapon 段，原值不受扰动；
-    /// base 侧无 weapon 段时补零值结构再写，不丢值。
+    /// Rule 5: reload_time_ms is written into the weapon section, the
+    /// original value untouched; when base's side has no weapon section, a
+    /// zero-valued struct is inserted first so the value isn't lost.
     #[test]
     fn merges_reload_time_into_weapon_section() {
         use pobr_data::catalog::WeaponBaseStats;
@@ -294,13 +315,14 @@ mod tests {
         assert_eq!(synthesized.physical_min, 0);
     }
 
-    /// 规则 6：`charm_buff` Some 覆盖写入 `BaseItemDef::charm_buff`（含覆盖旧值）；
-    /// None 不动，未命中名称不写入。
+    /// Rule 6: a `Some` `charm_buff` overrides `BaseItemDef::charm_buff`
+    /// (including replacing an old value); `None` leaves it untouched, and
+    /// an unmatched name doesn't write anything.
     #[test]
     fn merges_charm_buff_overriding_base() {
         let ruby = base("Ruby Charm", None);
         let mut topaz = base("Topaz Charm", None);
-        topaz.charm_buff = vec!["stale".to_string()]; // 应被 Some 覆盖
+        topaz.charm_buff = vec!["stale".to_string()]; // Should be overridden by Some
         let mut bases = vec![
             ruby,
             topaz,
@@ -330,7 +352,8 @@ mod tests {
                     charm_buff: Some(vec!["+25% to Lightning Resistance".to_string()]),
                     tags: None,
                 },
-                // charm_buff None → 不动（保持空），且校验非 charm 基底不受扰动。
+                // charm_buff None → left untouched (stays empty), and
+                // verifies a non-charm base is unaffected.
                 BaseItemOverrideEntry {
                     req_str: None,
                     req_dex: None,

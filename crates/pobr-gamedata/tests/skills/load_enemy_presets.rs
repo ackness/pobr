@@ -1,10 +1,13 @@
-//! `base/enemy_presets.json` 加载测试。
+//! `base/enemy_presets.json` load tests.
 //!
-//! 搬迁不变式校验：有 Rust 准源（`pobr_data::monster::EnemyTier` 各方法 +
-//! `setup_env.rs` 注入数值）的字段**逐档逐值断言**与现有 Rust 表相等；
-//! vendor-only 字段（KnockbackDistanceOnSelf / MinimumMovementSpeed /
-//! PoiseThreshold 213/838 / player_mods / chaos_damage_div / speed・crit 占位）
-//! 按 vendor `ConfigOptions.lua`（commit 2df5a74）行号做断言（值写死）。
+//! Migration-invariant checks: fields with a Rust source of truth
+//! (`pobr_data::monster::EnemyTier`'s methods + `setup_env.rs`'s injected
+//! values) are asserted **value-for-value, tier by tier** against the
+//! existing Rust table; vendor-only fields
+//! (KnockbackDistanceOnSelf / MinimumMovementSpeed / PoiseThreshold
+//! 213/838 / player_mods / chaos_damage_div / speed/crit placeholders) are
+//! asserted against hardcoded values per vendor
+//! `ConfigOptions.lua` (commit 2df5a74) line numbers.
 
 use pobr_data::catalog::enemy_presets::{EnemyPresetsTable, EnemyTierPreset};
 use pobr_data::monster::{EnemyTier, MAX_ENEMY_LEVEL, MONSTER_BASE_CRIT_DAMAGE_BONUS};
@@ -20,7 +23,7 @@ fn load() -> EnemyPresetsTable {
         .expect("enemy_presets 可加载")
 }
 
-/// 取指定档位（同时校验 JSON 档位顺序 = None → Boss → Pinnacle → Uber）。
+/// Gets a given tier (also checks the JSON tier order = None → Boss → Pinnacle → Uber).
 fn tier<'a>(t: &'a EnemyPresetsTable, id: &str) -> &'a EnemyTierPreset {
     t.tiers
         .iter()
@@ -28,7 +31,8 @@ fn tier<'a>(t: &'a EnemyPresetsTable, id: &str) -> &'a EnemyTierPreset {
         .unwrap_or_else(|| panic!("缺少档位 {id}"))
 }
 
-/// 在某档位的 mod 组中找一条（name + value 双键，PoiseThreshold 有两条同名）。
+/// Finds an entry in a tier's mod group (matched by name + value, since
+/// PoiseThreshold has two entries sharing a name).
 fn find_mod<'a>(
     mods: &'a [pobr_data::catalog::enemy_presets::EnemyPresetMod],
     name: &str,
@@ -39,37 +43,42 @@ fn find_mod<'a>(
         .unwrap_or_else(|| panic!("缺少 mod {name} = {value}"))
 }
 
-/// 四档齐全且顺序与 vendor list / pobr `EnemyTier` 枚举序一致。
+/// All four tiers present, in an order matching vendor's list / pobr's
+/// `EnemyTier` enum order.
 #[test]
 fn four_tiers_in_canonical_order() {
     let t = load();
     let ids: Vec<&str> = t.tiers.iter().map(|p| p.id.as_str()).collect();
     assert_eq!(ids, ["None", "Boss", "Pinnacle", "Uber"]);
-    // 默认档位 = Pinnacle（vendor defaultIndex = 3；pobr `EnemyTier::default()`）。
+    // Default tier = Pinnacle (vendor defaultIndex = 3; pobr's `EnemyTier::default()`).
     let default_id = format!("{:?}", EnemyTier::default());
     for p in &t.tiers {
         assert_eq!(p.is_default, p.id == default_id, "档位 {} 默认位", p.id);
     }
 }
 
-/// 顶层公共默认：pobr 准源逐值相等 + vendor-only 抽样。
+/// Top-level shared defaults: value-equal to pobr's source of truth plus a
+/// vendor-only spot check.
 #[test]
 fn top_level_defaults_match_rust_sources() {
     let t = load();
-    // pobr 准源：monster.rs::MAX_ENEMY_LEVEL / MONSTER_BASE_CRIT_DAMAGE_BONUS。
+    // pobr's source of truth: monster.rs::MAX_ENEMY_LEVEL / MONSTER_BASE_CRIT_DAMAGE_BONUS.
     assert_eq!(t.max_enemy_level, MAX_ENEMY_LEVEL);
     assert_eq!(
         t.default_enemy_crit_damage_bonus,
         MONSTER_BASE_CRIT_DAMAGE_BONUS
     );
-    // pobr 准源：EnemyTierDefaults::compute 内联 `damage * 1.5 * dps_mult` 的 1.5。
+    // pobr's source of truth: the 1.5 inlined in
+    // EnemyTierDefaults::compute's `damage * 1.5 * dps_mult`.
     assert_eq!(t.ehp_base_damage_mult, 1.5);
-    // vendor-only：ConfigOptions.lua L1965（enemySpeed 占位 700）/ L1966（crit 5%）。
+    // vendor-only: ConfigOptions.lua L1965 (enemySpeed placeholder 700) /
+    // L1966 (crit 5%).
     assert_eq!(t.default_enemy_speed, 700.0);
     assert_eq!(t.default_enemy_crit_chance, 5.0);
 }
 
-/// 逐档标量与 pobr `EnemyTier` 各方法逐值相等（搬迁不变式核心断言）。
+/// Per-tier scalars are value-equal to pobr's `EnemyTier` methods (the
+/// core assertion for the migration invariant).
 #[test]
 fn tier_scalars_match_enemy_tier_methods() {
     let t = load();
@@ -91,8 +100,9 @@ fn tier_scalars_match_enemy_tier_methods() {
             rust_tier.chaos_resist_bonus(),
             "{id} chaos_resist_bonus"
         );
-        // ExactRatio::value() 要求与 Rust 准源**逐 bit 相等**（分数形保证
-        // serde_json 默认浮点解析无损，见 schema doc）。
+        // ExactRatio::value() requires being **bit-identical** to the Rust
+        // source of truth (the fraction form guarantees serde_json's
+        // default float parsing is lossless, see the schema doc).
         assert_eq!(
             p.armour_mult_pct.value(),
             rust_tier.armour_mult_pct(),
@@ -108,7 +118,8 @@ fn tier_scalars_match_enemy_tier_methods() {
     }
 }
 
-/// 条件态与 pobr `setup_env.rs` 注入一致（Unique/RareOrUnique；Pinnacle/Uber 加 PinnacleBoss）。
+/// Condition states match pobr's `setup_env.rs` injection
+/// (Unique/RareOrUnique; Pinnacle/Uber add PinnacleBoss).
 #[test]
 fn conditions_match_setup_env_injection() {
     let t = load();
@@ -123,8 +134,10 @@ fn conditions_match_setup_env_injection() {
     }
 }
 
-/// pobr 已注入的 boss 共通 mod（setup_env.rs::inject_enemy_mods）逐档逐值相等：
-/// Curse/Exposure/Slow `MORE -50`（Effective 门控）+ `PoiseThreshold MORE 500`（无门控）。
+/// The boss-shared mods pobr already injects
+/// (setup_env.rs::inject_enemy_mods) are value-equal tier by tier:
+/// Curse/Exposure/Slow `MORE -50` (Effective-gated) + `PoiseThreshold MORE
+/// 500` (ungated).
 #[test]
 fn boss_common_mods_match_setup_env_values() {
     let t = load();
@@ -145,8 +158,10 @@ fn boss_common_mods_match_setup_env_values() {
         }
         let poise = find_mod(mods, "PoiseThreshold", 500.0);
         assert_eq!(poise.mod_type, "MORE", "{id} PoiseThreshold 类型");
-        // pobr setup_env.rs 用 push_enemy_number 注入（无 Effective 门控）；
-        // vendor L2005 带门控——出入已记 schema doc TODO(parity)，此处按 pobr 现状断言。
+        // pobr's setup_env.rs injects via push_enemy_number (no Effective
+        // gate); vendor L2005 has the gate — the discrepancy is already
+        // recorded in the schema doc's TODO(parity); asserted here per
+        // pobr's current behavior.
         assert!(
             !poise.effective_only,
             "{id} PoiseThreshold 500 按 pobr 现状不带门控"
@@ -154,8 +169,9 @@ fn boss_common_mods_match_setup_env_values() {
     }
 }
 
-/// Uber 专属：`DamageTaken MORE -70`（pobr `EnemyTier::damage_taken_more()`；
-/// vendor L2087，无 Effective 门控），其余档位不得出现。
+/// Uber-only: `DamageTaken MORE -70` (pobr's
+/// `EnemyTier::damage_taken_more()`; vendor L2087, no Effective gate); must
+/// not appear in any other tier.
 #[test]
 fn uber_damage_taken_matches_rust_source() {
     let t = load();
@@ -182,11 +198,12 @@ fn uber_damage_taken_matches_rust_source() {
     }
 }
 
-/// vendor-only enemy mod 抽样断言（pobr 此前未实现，值写死自 vendor）：
-/// - `KnockbackDistanceOnSelf MORE -75`（ConfigOptions.lua L2002/L2044/L2084）
-/// - `MinimumMovementSpeed BASE 20`（L2004/L2046/L2086）
-/// - `PoiseThreshold MORE 213 "Map Boss"`（仅 Boss 档，L2006）
-/// - `PoiseThreshold MORE 838 "Xesht"`（Pinnacle/Uber 档，L2048/L2089）
+/// Spot checks on vendor-only enemy mods (not previously implemented in
+/// pobr, values hardcoded from vendor):
+/// - `KnockbackDistanceOnSelf MORE -75` (ConfigOptions.lua L2002/L2044/L2084)
+/// - `MinimumMovementSpeed BASE 20` (L2004/L2046/L2086)
+/// - `PoiseThreshold MORE 213 "Map Boss"` (Boss tier only, L2006)
+/// - `PoiseThreshold MORE 838 "Xesht"` (Pinnacle/Uber tiers, L2048/L2089)
 #[test]
 fn vendor_only_enemy_mods_sampled() {
     let t = load();
@@ -211,8 +228,9 @@ fn vendor_only_enemy_mods_sampled() {
     }
 }
 
-/// vendor-only player mod：Boss/Pinnacle/Uber 三档均注入
-/// `WarcryPower BASE 20` + `Multiplier:EnemyPower BASE 20`（L2007-2008/L2049-2050/L2090-2091）。
+/// vendor-only player mods: the Boss/Pinnacle/Uber tiers all inject
+/// `WarcryPower BASE 20` + `Multiplier:EnemyPower BASE 20`
+/// (L2007-2008/L2049-2050/L2090-2091).
 #[test]
 fn vendor_only_player_mods_sampled() {
     let t = load();
@@ -229,8 +247,8 @@ fn vendor_only_player_mods_sampled() {
     }
 }
 
-/// vendor-only 混沌伤害除数：None/Boss/Pinnacle = 2.5（L1987/L2028/L2070），
-/// Uber = 4（L2111）。
+/// vendor-only chaos-damage divisor: None/Boss/Pinnacle = 2.5
+/// (L1987/L2028/L2070), Uber = 4 (L2111).
 #[test]
 fn chaos_damage_divisor_sampled_from_vendor() {
     let t = load();

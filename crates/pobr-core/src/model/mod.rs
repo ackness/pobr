@@ -1,14 +1,16 @@
-//! 词条本体层——「词条是什么」。
+//! Modifier core layer — "what a modifier is".
 //!
-//! 词条分层叙事的第 1 层（见 crate 根 `lib.rs` 的总览）：
-//! - [`modifier`]：词条的数据类型 [`Modifier`](modifier::Modifier)（`{name, type,
-//!   value, flags, keyword_flags, tags, source, origin}`）+ 标签体系
-//!   [`ModTag`](modifier::ModTag)（Condition / Multiplier / PerStat / …）+ 求值
-//!   入口 `matches` / `effective_number`。忠实移植 PoB2 `mod.lua` 的 `Mod` 与
-//!   `ModStore.lua::EvalMod`。
-//! - [`config`]：词条的求值上下文 [`CalcConfig`](config::CalcConfig) /
-//!   [`EvalContext`](config::EvalContext)——flags / conditions / multipliers /
-//!   damage_type 等，决定一条词条在「当前情境」下是否生效、生效几何。
+//! Layer 1 of the modifier lifecycle narrative (see the overview in the crate
+//! root `lib.rs`):
+//! - [`modifier`]: the modifier data type [`Modifier`](modifier::Modifier)
+//!   (`{name, type, value, flags, keyword_flags, tags, source, origin}`), its
+//!   tag system [`ModTag`](modifier::ModTag) (Condition / Multiplier / PerStat /
+//!   …), and the evaluation entry points `matches` / `effective_number`. A
+//!   faithful port of PoB2's `Mod` in `mod.lua` and `ModStore.lua::EvalMod`.
+//! - [`config`]: the evaluation context for a modifier —
+//!   [`CalcConfig`](config::CalcConfig) / [`EvalContext`](config::EvalContext) —
+//!   flags / conditions / multipliers / damage_type etc. that decide whether and
+//!   how strongly a modifier applies in the current situation.
 
 pub mod config;
 pub mod modifier;

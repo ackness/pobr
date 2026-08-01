@@ -1,12 +1,14 @@
-//! PoB Build XML 的轻量解析（quick-xml）。
+//! Lightweight PoB Build XML parsing (quick-xml).
 //!
-//! 完整还原 PoB Build XML（含 items / tree / skills 全量字段）是个大工程；此处先实现
-//! **可被计算编排消费的最小子集**：
-//! - 校验根元素为 `<PathOfBuilding2>`（PoE2-only；PoB2 上游已彻底放弃 PoE1 的 `PathOfBuilding` 根）；
-//! - 抽取 `<Build>` 头部的 `level` / `className` / `ascendClassName`；
-//! - 抽取 `viewMode`（若有）。
+//! Fully reconstructing PoB Build XML (all item / tree / skill fields) is a big
+//! undertaking; this only implements the **minimal subset the calc orchestrator needs**:
+//! - validates the root element is `<PathOfBuilding2>` (PoE2-only; PoB2 upstream has
+//!   fully dropped the PoE1 `PathOfBuilding` root);
+//! - extracts `level` / `className` / `ascendClassName` from the `<Build>` header;
+//! - extracts `viewMode` (if present).
 //!
-//! 解析失败 / 缺关键节点会返回 [`XmlError`]，但缺可选字段（如 ascendancy）不报错。
+//! Parse failures / missing required nodes return [`XmlError`], but missing optional
+//! fields (e.g. ascendancy) are not an error.
 
 use quick_xml::Reader;
 use quick_xml::events::Event;
@@ -16,14 +18,14 @@ use pobr_data::build_config::ViewMode;
 use crate::build::CharacterIdentity;
 use crate::error::XmlError;
 
-/// 从 PoB Build XML 解析出的最小头部信息。
+/// Minimal header info parsed from a PoB Build XML.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ParsedBuildHeader {
     pub identity: CharacterIdentity,
     pub view_mode: ViewMode,
 }
 
-/// 解析 Build XML 头部。校验根元素并抽取 `<Build>` / `viewMode`。
+/// Parses the Build XML header. Validates the root element and extracts `<Build>` / `viewMode`.
 pub fn parse_build_header(xml: &str) -> Result<ParsedBuildHeader, XmlError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
@@ -39,8 +41,9 @@ pub fn parse_build_header(xml: &str) -> Result<ParsedBuildHeader, XmlError> {
 
                 if !root_seen {
                     root_seen = true;
-                    // PoE2-only：仅接受 `PathOfBuilding2`。PoE1 的 `PathOfBuilding`
-                    // 根与任何其他根一律拒绝（与 PoB2 上游一致）。
+                    // PoE2-only: only `PathOfBuilding2` is accepted. The PoE1
+                    // `PathOfBuilding` root and any other root are rejected
+                    // (matches PoB2 upstream).
                     if name != "PathOfBuilding2" {
                         return Err(XmlError::NotPobRoot(name));
                     }
@@ -50,7 +53,7 @@ pub fn parse_build_header(xml: &str) -> Result<ParsedBuildHeader, XmlError> {
 
                 if name == "Build" {
                     apply_build_attrs(&e, &mut header)?;
-                    // 头部信息已足够，提前结束以避免遍历整份大文档。
+                    // The header is complete; stop early rather than walking the whole document.
                     break;
                 }
             }
@@ -67,7 +70,7 @@ pub fn parse_build_header(xml: &str) -> Result<ParsedBuildHeader, XmlError> {
     Ok(header)
 }
 
-/// 校验给定 XML 的根元素是否为 PathOfBuilding（用于导入识别 / 快速校验）。
+/// Checks whether a given XML's root element is PathOfBuilding (for import recognition / quick validation).
 pub fn is_pob_xml(xml: &str) -> bool {
     parse_build_header(xml).is_ok()
 }
@@ -109,8 +112,9 @@ fn apply_build_attrs(
 }
 
 fn decode_attr(attr: &quick_xml::events::attributes::Attribute<'_>) -> Result<String, XmlError> {
-    // 不走 normalized_value：属性值空白归一化会把字面换行压成空格，
-    // 而 PoB 在属性里存多行词条（<Input string="a\nb">），换行是行分隔符。
+    // Deliberately avoid normalized_value: whitespace normalization collapses literal
+    // newlines into spaces, but PoB stores multi-line mod text in attributes
+    // (<Input string="a\nb">), where the newline is a line separator.
     let raw = String::from_utf8_lossy(&attr.value).into_owned();
     quick_xml::escape::unescape(&raw)
         .map(|v| v.into_owned())
@@ -150,7 +154,7 @@ mod tests {
 
     #[test]
     fn poe1_root_rejected() {
-        // PoE2-only：PoE1 的 `PathOfBuilding` 根不再被接受（与 PoB2 上游一致）。
+        // PoE2-only: the PoE1 `PathOfBuilding` root is no longer accepted (matches PoB2 upstream).
         let xml = r#"<PathOfBuilding><Build level="1" className="Witch"/></PathOfBuilding>"#;
         assert!(matches!(
             parse_build_header(xml),

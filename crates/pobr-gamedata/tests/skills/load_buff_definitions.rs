@@ -1,7 +1,8 @@
-//! `overlay/buff_definitions.json` 加载测试。
+//! `overlay/buff_definitions.json` load tests.
 //!
-//! 人工归纳表的入库锚点：逐 buff 公式参数对照 vendor
-//! `CalcPerform.lua doActorMisc`（行号见各 vendor_ref）。
+//! The storage anchor for the hand-curated table: each buff's formula
+//! parameters are cross-checked against vendor
+//! `CalcPerform.lua doActorMisc` (line numbers in each entry's vendor_ref).
 
 use pobr_data::catalog::buffs::{BuffDef, BuffDefinitionsDef, BuffModValue, Rounding};
 use pobr_gamedata::{GameData, repo_data_root};
@@ -17,7 +18,7 @@ fn load() -> BuffDefinitionsDef {
         .expect("仓库数据包含 overlay/buff_definitions.json")
 }
 
-/// 文件缺失（旧数据包）= `Ok(None)`，不报错（向后兼容口径）。
+/// A missing file (an old data pack) = `Ok(None)`, no error (backward compatible).
 #[test]
 fn missing_overlay_file_is_none() {
     let dir = std::env::temp_dir().join(format!(
@@ -38,7 +39,7 @@ fn find<'a>(doc: &'a BuffDefinitionsDef, id: &str) -> &'a BuffDef {
         .unwrap_or_else(|| panic!("缺 buff {id}"))
 }
 
-/// 排序 + 首批覆盖面。
+/// Sort order + first-batch coverage.
 #[test]
 fn sorted_and_first_batch_coverage() {
     let doc = load();
@@ -60,8 +61,8 @@ fn sorted_and_first_batch_coverage() {
     }
 }
 
-/// buff handler 预算 ≤8（B2；当前 4：fortify/fanaticism/elusive/
-/// onslaught_flask）。
+/// The buff-handler budget ≤8 (B2; currently 4:
+/// fortify/fanaticism/elusive/onslaught_flask).
 #[test]
 fn handler_budget() {
     let doc = load();
@@ -75,7 +76,7 @@ fn handler_budget() {
     assert!(handlers.contains(&"buff:onslaught_flask"));
 }
 
-/// Onslaught 公式参数（vendor :614-645 基本形）。
+/// Onslaught's formula parameters (vendor :614-645's basic shape).
 #[test]
 fn onslaught_formula() {
     let doc = load();
@@ -91,13 +92,13 @@ fn onslaught_formula() {
         ]
     );
     assert_eq!(effect.rounding, Rounding::Floor);
-    // Speed INC 2e ×2（Attack/Cast）+ WarcrySpeed 2e + MovementSpeed e
+    // Speed INC 2e ×2 (Attack/Cast) + WarcrySpeed 2e + MovementSpeed e
     assert_eq!(def.mods.len(), 4);
     assert_eq!(def.mods[0].value, BuffModValue::PerEffect { coeff: 2.0 });
     assert_eq!(def.mods[3].value, BuffModValue::PerEffect { coeff: 1.0 });
 }
 
-/// Adrenaline 逐 mod floor（vendor :661-668）。
+/// Adrenaline's per-mod floor (vendor :661-668).
 #[test]
 fn adrenaline_per_mod_rounding() {
     let doc = load();
@@ -120,7 +121,8 @@ fn adrenaline_per_mod_rounding() {
     );
 }
 
-/// UnholyMight：Multiplier 字面量 + 0.3 系数 per-multiplier（vendor :652-656）。
+/// UnholyMight: a Multiplier literal + the 0.3-coefficient per-multiplier
+/// term (vendor :652-656).
 #[test]
 fn unholy_might_shape() {
     let doc = load();
@@ -138,13 +140,15 @@ fn unholy_might_shape() {
     assert_eq!(def.mods[1].tags.len(), 1);
 }
 
-/// vendor_ref 完整性：行号区间合法 + hash 格式 + 文件名一致。
+/// vendor_ref completeness: a valid line-number range + hash format +
+/// matching filename.
 #[test]
 fn vendor_refs_well_formed() {
     let doc = load();
-    // 允许的 vendor 行段：doActorMisc（CalcPerform :578-850，主体）+
-    // Arcane Surge 注入段（CalcDefence :1606-1617，vendor 把该 buff 写在
-    // doActorLifeManaSpirit 之后、recovery 之前——条目）。
+    // Allowed vendor line ranges: doActorMisc (CalcPerform :578-850, the
+    // main body) + the Arcane Surge injection section (CalcDefence
+    // :1606-1617 — vendor writes this buff after doActorLifeManaSpirit and
+    // before recovery, an odd-one-out entry).
     let allowed: &[(&str, u32, u32)] = &[
         ("Modules/CalcPerform.lua", 578, 850),
         ("Modules/CalcDefence.lua", 1606, 1617),
@@ -172,7 +176,8 @@ fn vendor_refs_well_formed() {
     }
 }
 
-/// 模板条目与 handler 条目互斥（有 handler_id 则无 mods/effect）。
+/// Template entries and handler entries are mutually exclusive (having a
+/// handler_id means no mods/effect).
 #[test]
 fn handler_entries_have_no_templates() {
     let doc = load();

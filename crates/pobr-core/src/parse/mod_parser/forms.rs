@@ -1,8 +1,11 @@
-//! 27~28 种 form 求值（vendor `ModParser.lua:6460-6655` dispatch）。
+//! Evaluation of the ~27-28 form kinds (vendor `ModParser.lua:6460-6655`
+//! dispatch).
 //!
-//! 输入 = form id + 捕获 + 当前剩余文本（小写 + 原大小写双视图）+ 编译规则表；
-//! 输出 [`FormResult`]：mod 名集 + 类型 + 值集 + suffix + 额外 tag + keyword/flag
-//! 默认补位 + 剩余文本。form 分发与 vendor 逐分支对照。
+//! Input = form id + captures + the current remaining text (both lowercased
+//! and original-case views) + the compiled rule tables. Output is a
+//! [`FormResult`]: mod name set + types + value set + suffix + extra tags +
+//! default keyword/flag fill-in + remaining text. Form dispatch is checked
+//! branch-by-branch against vendor.
 
 use super::compiled::CompiledParserRules;
 use super::scan::LuaMatch;
@@ -10,47 +13,61 @@ use pobr_data::catalog::parser_rules::RuleEffectsDef;
 use pobr_data::modifier::{KeywordFlags, ModFlags};
 use pobr_data::prelude::ModType;
 
-/// form 求值产物。
+/// The result of evaluating a form.
 #[derive(Debug, Clone)]
 pub struct FormResult {
-    /// mod 名集（DMG 族双名 `{X}Min/{X}Max`，余多为单名）。
+    /// The mod name set (the DMG family uses paired names `{X}Min/{X}Max`;
+    /// most others are single names).
     pub names: Vec<String>,
-    /// 每名对应聚合类型（DOUBLED 双类型，余统一）。
+    /// The aggregation type for each name (DOUBLED has two types; the rest
+    /// are uniform).
     pub types: Vec<ModType>,
-    /// 每名对应数值（DMG 族 `[min,max]`，余统一）。
+    /// The value for each name (the DMG family uses `[min,max]`; the rest
+    /// are uniform).
     pub values: Vec<f64>,
-    /// ModName 后缀（GAIN/BASE 族的 GainAsFire 等；空串 = 无）。
+    /// ModName suffix (e.g. GainAsFire for the GAIN/BASE family; an empty
+    /// string means none).
     pub suffix: String,
-    /// 额外补的 flag（DMGTHORNS → Thorns）。
+    /// Extra flags to add (e.g. DMGTHORNS -> Thorns).
     pub extra_flags: ModFlags,
-    /// 额外补的 keyword（DMGATTACKS → Attack 等）；仅当行内无显式 flag 时生效。
+    /// Extra default keyword to add (e.g. DMGATTACKS -> Attack); only takes
+    /// effect when the line has no explicit flag.
     pub default_keyword: KeywordFlags,
-    /// GRANTS/REMOVES 的 local `{Hand}Attack` 条件标记（消费侧 item ingest 实例化）。
+    /// Marks the local `{Hand}Attack` condition for GRANTS/REMOVES
+    /// (instantiated on the item-ingest consumer side).
     pub hand_attack_condition: bool,
-    /// name_map 命中条目附带的效果（keyword_flags / flags / tags）——.3 归一：
-    /// 引擎需把 name_map `effects` 注入产物（vendor `modNameList` 条目自带的
-    /// keywordFlags/tag，如 `magnitude of poison you inflict` 的 Poison kw、
-    /// 各伤害专名的 DamageType tag）。engine 侧 absorb 进累加器。
+    /// Effects attached to the matched name_map entry (keyword_flags / flags
+    /// / tags). Normalization note (.3): the engine needs to inject the
+    /// name_map `effects` into the result (vendor `modNameList` entries
+    /// carry their own keywordFlags/tags — e.g. the Poison keyword on
+    /// "magnitude of poison you inflict", or the DamageType tag on each
+    /// damage-specific name). The engine side absorbs this into the
+    /// accumulator.
     pub name_effects: Option<RuleEffectsDef>,
-    /// 剩余文本（form 内部 scan 后切除的）。
+    /// Remaining text (after the form's internal scan spliced its match out).
     pub remaining: String,
 }
 
-/// form 求值失败原因（对齐 vendor 三态：`return {}` 空表 / `return nil`）。
+/// The reason a form failed to evaluate (mirrors vendor's two failure modes:
+/// an empty `return {}` table, or `return nil`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FormReject {
-    /// vendor `return {}, line`——匹配 form 但 name/type 子扫描失配（空 mod 表，
-    /// 行视为「已识别但无产出」）。
+    /// vendor `return {}, line` — the form matched but the name/type
+    /// sub-scan failed (an empty mod table; the line is "recognized but
+    /// produced nothing").
     EmptyTable,
-    /// vendor `return nil, line`——form 本身不成立（FLAG 子扫描失配等）。
+    /// vendor `return nil, line` — the form itself doesn't hold (e.g. the
+    /// FLAG sub-scan failed).
     Nil,
 }
 
-/// 求值一个 form。`form` = formList 命中的 form id；`form_match` 含捕获；
-/// `name_remaining_lower`/`name_remaining` 是 form 命中后、待扫 modName 的文本。
+/// Evaluates a form. `form` is the form id matched from formList;
+/// `form_match` carries the captures; `name_remaining_lower`/`name_remaining`
+/// is the text left to scan for a modName after the form match.
 ///
-/// 返回 `Ok(FormResult)` 或 `Err(FormReject)`。modName 的 plain 扫描在本函数内
-/// 完成（与 vendor 一致——不同 form 扫不同的 name 表）。
+/// Returns `Ok(FormResult)` or `Err(FormReject)`. The plain scan for modName
+/// happens inside this function (matching vendor — different forms scan
+/// different name tables).
 pub fn eval_form(
     form: &str,
     form_match: &LuaMatch,
@@ -59,16 +76,21 @@ pub fn eval_form(
     rules: &CompiledParserRules,
 ) -> Result<FormResult, FormReject> {
     let caps = &form_match.captures;
-    // formCap[1] 数值（多数 form 的 value）。
+    // formCap[1] value (the value for most forms).
     let cap1 = caps.first().map(|s| s.as_str()).unwrap_or("");
-    // 解析为 Option，不在此处 eager 拒绝：FLAG/DMG/DOUBLED 等非数值 form 不读取
-    // 它（cap1 允许为空/非数值），eager 拒绝会误伤这些分支、拖垮 parse-rate。
+    // Parsed as an Option rather than eagerly rejected here: non-numeric
+    // forms like FLAG/DMG/DOUBLED never read it (cap1 may be empty or
+    // non-numeric for them), and an eager reject would wrongly break those
+    // branches and tank the parse rate.
     let value1_parsed = cap1.parse::<f64>().ok();
-    // value-consuming form 取数值的统一入口：解析失败 → 整条文本升级为 Unsupported
-    // （audit HIGH-1：旧 `unwrap_or(0.0)` 会对畸形规则产物静默注入 value=0 的
-    // Modifier，无报错、无 unsupported 记录，污染聚合计算）。仅数值 form 调用，
-    // 而数值 form 之所以分发到此即因其数值模式已匹配，cap1 必为干净数字，故对今天
-    // 能解析的输入零行为变化。
+    // The single entry point for value-consuming forms to read the number:
+    // a parse failure escalates the whole line to Unsupported (audit
+    // HIGH-1: the old `unwrap_or(0.0)` would silently inject a value=0
+    // Modifier for malformed rule output, with no error and no unsupported
+    // record, corrupting aggregate calculations). Only called by numeric
+    // forms, and a numeric form only dispatches here because its numeric
+    // pattern already matched, so cap1 is guaranteed to be a clean number —
+    // zero behavior change for input that parses correctly today.
     let value1 = || value1_parsed.ok_or(FormReject::Nil);
 
     let mut result = FormResult {
@@ -83,7 +105,8 @@ pub fn eval_form(
         remaining: name_original.to_string(),
     };
 
-    // 简单 form：单名（modName 由 modNameList 扫描），统一 type/value。
+    // Simple form: a single name (modName is scanned from modNameList),
+    // uniform type/value.
     let simple = |result: &mut FormResult,
                   ty: ModType,
                   value: f64,
@@ -134,13 +157,15 @@ pub fn eval_form(
         "TOTALCOST" => cost_form(&mut result, value1()?, &rules.cost_types_map, rules)?,
         "BASECOST" => cost_form(&mut result, value1()?, &rules.base_cost_types, rules)?,
         "PEN" => {
-            // pen_types 先扫（失配→空表），再 modNameList 清尾。
+            // Scan pen_types first (no match -> EmptyTable), then trim the
+            // tail with modNameList.
             let (idx, rest) = rules
                 .pen_types
                 .scan(name_lower, name_original)
                 .ok_or(FormReject::EmptyTable)?;
             let pen_name = rules.pen_types.payload(idx).clone();
-            // 清尾 modNameList（vendor `_, line = scan(line, modNameList, true)`）。
+            // Trim the tail with modNameList (vendor
+            // `_, line = scan(line, modNameList, true)`).
             let (rest_lower, rest2) = (rest.to_ascii_lowercase(), rest);
             let rest_final = rules
                 .name_map
@@ -172,7 +197,7 @@ pub fn eval_form(
             dmg_form(&mut result, form, caps, rules)?;
         }
         "DMGTHORNSBASE" => {
-            // dmgTypes[cap1]，value {1,1}，flags Thorns
+            // dmgTypes[cap1], value {1,1}, flags Thorns
             let dt = caps
                 .first()
                 .and_then(|c| lookup_dmg_type(c, rules))
@@ -186,13 +211,14 @@ pub fn eval_form(
             result.extra_flags |= ModFlags::THORNS;
         }
         "FLAG" => {
-            // flag_types 先扫（失配→nil），命中给 condition/mod；再 modNameList 清尾。
+            // Scan flag_types first (no match -> Nil); a hit supplies
+            // condition/mod, then trim the tail with modNameList.
             let (idx, _m, rest) = rules
                 .flag_types
                 .scan(name_lower, name_original)
                 .ok_or(FormReject::Nil)?;
             let payload = rules.flag_types.payload(idx).clone();
-            // 清尾 modNameList。
+            // Trim the tail with modNameList.
             let rest_lower = rest.to_ascii_lowercase();
             let rest_final = rules
                 .name_map
@@ -201,12 +227,12 @@ pub fn eval_form(
                 .unwrap_or(rest);
             result.remaining = rest_final;
             if let Some((name, ty, value)) = payload.mod_def {
-                // hexproof 特例：内嵌 mod（name/type/value）。
+                // The hexproof special case: an embedded mod (name/type/value).
                 result.names.push(name);
                 result.types.push(parse_mod_type(&ty));
                 result.values.push(value);
             } else if let Some(cond) = payload.condition {
-                // `Condition:X` FLAG mod（value=true → 1.0）。
+                // A `Condition:X` FLAG mod (value=true -> 1.0).
                 result.names.push(cond);
                 result.types.push(ModType::Flag);
                 result.values.push(1.0);
@@ -215,10 +241,13 @@ pub fn eval_form(
             }
         }
         "DOUBLED" => {
-            // modName + {Name} MORE 100 + Multiplier:{Name}Doubled OVERRIDE 1
-            // （vendor :6618-6655，依赖 globalLimit 聚合）。简化：产 MORE 100
-            // 主 mod；Multiplier mod 的 globalLimit 形态留 engine 处置（本批
-            // 仅产主 mod，覆盖率报表单列——见表注 DOUBLED）。
+            // Vendor produces modName + {Name} MORE 100 +
+            // Multiplier:{Name}Doubled OVERRIDE 1 (vendor :6618-6655, which
+            // relies on globalLimit aggregation). Simplified here: we only
+            // produce the main MORE 100 mod; the Multiplier mod's
+            // globalLimit form is left for the engine to handle later (this
+            // batch only produces the main mod — tracked separately in the
+            // coverage report, see the DOUBLED table note).
             let (idx, rest) = scan_name(name_lower, name_original, rules)?;
             let names = rules.name_map.payload(idx).names.clone();
             result.remaining = rest;
@@ -226,10 +255,12 @@ pub fn eval_form(
             result.names.push(first.clone());
             result.types.push(ModType::More);
             result.values.push(100.0);
-            // 第二 mod：Multiplier:{Name}Doubled OVERRIDE 1（globalLimit 由 tag
-            // 承载，本批不接 globalLimit，保守只产主 MORE mod——见上注）。
+            // The second mod, Multiplier:{Name}Doubled OVERRIDE 1, carries
+            // its globalLimit via a tag; this batch doesn't wire up
+            // globalLimit, so we conservatively produce only the main MORE
+            // mod (see the note above).
         }
-        // 未知 form id（数据越界）→ 视为 nil。
+        // Unknown form id (data out of range) -> treat as nil.
         _ => return Err(FormReject::Nil),
     }
 
@@ -239,8 +270,8 @@ pub fn eval_form(
     Ok(result)
 }
 
-/// 扫 modNameList（plain），返回命中 index + 剩余文本。失配 → EmptyTable
-/// （vendor `if not modName then return {}, line`）。
+/// Scans modNameList (plain), returning the matched index plus remaining
+/// text. No match -> EmptyTable (vendor `if not modName then return {}, line`).
 fn scan_name(
     lower: &str,
     original: &str,
@@ -252,7 +283,8 @@ fn scan_name(
         .ok_or(FormReject::EmptyTable)
 }
 
-/// 扫 suffixTypes（BASE/GAIN/LOSE/GRANTS 族），命中则拼进 suffix + 更新剩余。
+/// Scans suffixTypes (the BASE/GAIN/LOSE/GRANTS family); a hit appends to
+/// suffix and updates the remaining text.
 fn scan_suffix(result: &mut FormResult, rules: &CompiledParserRules) {
     let lower = result.remaining.to_ascii_lowercase();
     if let Some((idx, rest)) = rules.suffix_types.scan(&lower, &result.remaining) {
@@ -272,7 +304,7 @@ fn cost_form(
         .scan(&lower, &result.remaining)
         .ok_or(FormReject::EmptyTable)?;
     let names = table.payload(idx).clone();
-    // 清尾 modNameList。
+    // Trim the tail with modNameList.
     let rest_lower = rest.to_ascii_lowercase();
     let rest_final = rules
         .name_map
@@ -295,13 +327,15 @@ fn regen_form(
     caps: &[String],
     table: &super::compiled::PlainTable<Vec<String>>,
 ) -> Result<(), FormReject> {
-    // regenTypes[formCap[2]]——cap2 是资源名捕获，plain 直接查表。
+    // regenTypes[formCap[2]] — cap2 is the resource-name capture, looked up
+    // directly in the plain table.
     let key = caps
         .get(1)
         .cloned()
         .unwrap_or_default()
         .to_ascii_lowercase();
-    // 在 table 里找 phrase == key 的条目（这里用 scan，但 key 是完整资源名）。
+    // Look for the entry where phrase == key (we use `scan` here, but key is
+    // already the full resource name).
     let (idx, _) = table.scan(&key, &key).ok_or(FormReject::EmptyTable)?;
     let names = table.payload(idx).clone();
     let percent = form.ends_with("PERCENT");
@@ -320,13 +354,15 @@ fn dmg_form(
     caps: &[String],
     rules: &CompiledParserRules,
 ) -> Result<(), FormReject> {
-    // dmgTypes[cap3]，value {cap1, cap2}，names {X Min, X Max}
+    // dmgTypes[cap3], value {cap1, cap2}, names {X Min, X Max}
     let dt = caps
         .get(2)
         .and_then(|c| lookup_dmg_type(c, rules))
         .ok_or(FormReject::EmptyTable)?;
-    // dmg form 必带两个数值捕获；解析失败视为规则产物畸形 → 整条升级 Unsupported
-    // （audit HIGH-1：避免静默产出 value=0 的伤害词条），不再 `unwrap_or(0.0)`。
+    // A dmg form always carries two numeric captures; a parse failure means
+    // malformed rule output, so escalate the whole line to Unsupported
+    // (audit HIGH-1: avoids silently producing a value=0 damage modifier) —
+    // no more `unwrap_or(0.0)`.
     let min = caps
         .first()
         .and_then(|c| c.parse::<f64>().ok())
@@ -335,11 +371,14 @@ fn dmg_form(
         .get(1)
         .and_then(|c| c.parse::<f64>().ok())
         .ok_or(FormReject::Nil)?;
-    // .3 归一：PoBR added-damage 名为 `{Type}DamageMin/Max`（legacy 同名），
-    // 而非 vendor `{Type}Min/Max`；附 DamageType tag（与 legacy 一致）。
+    // Normalization note (.3): PoBR names added damage `{Type}DamageMin/Max`
+    // (matching legacy), not vendor's `{Type}Min/Max`; attach a DamageType
+    // tag (also matching legacy).
     push_added_damage(result, &dt, min, max);
-    // .3 归一：「to Attacks/Spells」作用域 legacy 用 ModFlag（ATTACK 0x1 等），
-    // 非 keyword——直接补 extra_flags（vendor keyword 体系差异，对齐 legacy）。
+    // Normalization note (.3): legacy scopes "to Attacks/Spells" with a
+    // ModFlag (ATTACK 0x1 etc.), not a keyword — so we set extra_flags
+    // directly (vendor uses a different keyword system; this matches
+    // legacy).
     match form {
         "DMGATTACKS" => result.extra_flags |= ModFlags::ATTACK,
         "DMGSPELLS" => result.extra_flags |= ModFlags::SPELL,
@@ -350,8 +389,9 @@ fn dmg_form(
     Ok(())
 }
 
-/// 推入一对 `{Type}DamageMin/Max` BASE mod + DamageType tag（legacy added-damage
-/// 形态）。`dt` 为 dmgTypes 值（`Physical`/`Fire`/…）。
+/// Pushes a pair of `{Type}DamageMin/Max` BASE mods plus a DamageType tag
+/// (the legacy added-damage form). `dt` is a dmgTypes value (`Physical`,
+/// `Fire`, etc.).
 fn push_added_damage(result: &mut FormResult, dt: &str, min: f64, max: f64) {
     use pobr_data::catalog::parser_rules::TagTemplate;
     use pobr_data::catalog::stat_map::StatMapValue;
@@ -375,7 +415,7 @@ fn push_added_damage(result: &mut FormResult, dt: &str, min: f64, max: f64) {
     result.values.push(max);
 }
 
-/// dmgTypes plain 查表（key 是 capture 词）。
+/// Plain lookup into dmgTypes (key is the captured word).
 fn lookup_dmg_type(word: &str, rules: &CompiledParserRules) -> Option<String> {
     let key = word.to_ascii_lowercase();
     rules

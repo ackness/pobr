@@ -1,26 +1,33 @@
-//! 中文词条行 → 英文 canonical 的输入翻译层（TODO Phase 7.1）。
+//! Input translation layer: Chinese mod lines -> canonical English (TODO Phase 7.1).
 //!
-//! 数据 = `i18n/zh-CN/stat_lines.json` 模板对（GGG stat descriptions 简中模板，
-//! 经 `pipeline/gen-zh-cn.mjs` 从国服客户端词典转录）+ 基底名边车反查表。
-//! 流程：输入行含 CJK → 骨架桶定位候选模板 → 逐段字面量匹配提取数值 →
-//! 代回英文模板 → 喂现有英文 parser。引擎（pobr-core）保持纯英文，零改动。
+//! Data = the `i18n/zh-CN/stat_lines.json` template pairs (GGG stat
+//! descriptions' Simplified Chinese templates, transcribed from the
+//! China-server client dictionary via `pipeline/gen-zh-cn.mjs`) plus a
+//! base-name sidecar reverse-lookup table. Pipeline: an input line
+//! containing CJK -> skeleton bucket locates candidate templates ->
+//! segment-by-segment literal matching extracts numeric values -> substitute
+//! back into the English template -> feed the existing English parser. The
+//! engine (pobr-core) stays pure English, unchanged.
 //!
-//! 匹配不引 regex：模板解析为「字面量 / `{N}`、`{N:+d}` 占位符」分段序列，
-//! 顺序扫描；捕获值须为纯数值形（`[0-9+.-]`），防骨架碰撞误配。
+//! Matching avoids regex: a template is parsed into a segment sequence of
+//! "literal / `{N}`, `{N:+d}` placeholder", scanned in order; captured
+//! values must be purely numeric-shaped (`[0-9+.-]`), to guard against
+//! false matches from skeleton collisions.
 
 use std::collections::HashMap;
 
 use pobr_data::catalog::StatLineTemplate;
 
-/// 模板分段。
+/// A template segment.
 #[derive(Debug, Clone)]
 enum Segment {
     Literal(String),
-    /// 占位符的数值下标（`{0}` / `{0:+d}` → 0）。
+    /// A placeholder's numeric index (`{0}` / `{0:+d}` -> 0).
     Placeholder(usize),
 }
 
-/// 解析模板文本为分段序列；返回 `None` 表示占位符语法异常（整条弃用）。
+/// Parses template text into a segment sequence; returns `None` for
+/// malformed placeholder syntax (the whole line is discarded).
 fn parse_template(text: &str) -> Option<Vec<Segment>> {
     let mut segments = Vec::new();
     let mut literal = String::new();
@@ -31,8 +38,9 @@ fn parse_template(text: &str) -> Option<Vec<Segment>> {
         if bytes[i] == b'{' {
             let end = text[i..].find('}')? + i;
             let inner = &text[i + 1..end];
-            // `{0}` / `{0:+d}`：冒号前是数值下标；`{:+d}`（无下标，上游词典
-            // 存在此形）按占位符出现顺序自动编号。
+            // `{0}` / `{0:+d}`: the numeric index precedes the colon;
+            // `{:+d}` (no index, which exists in the upstream dictionary) is
+            // numbered automatically in the order placeholders appear.
             let index_part = inner.split(':').next()?;
             let index: usize = if index_part.is_empty() {
                 auto_index
@@ -57,10 +65,14 @@ fn parse_template(text: &str) -> Option<Vec<Segment>> {
     Some(segments)
 }
 
-/// 骨架：剔除数值形字符与空白（模板侧同时剔除占位符），作为候选桶键。
-/// 字面量里的数字（如「每 15 点闪避」）在输入与模板两侧同规则剔除，仍可对齐。
-/// ASCII 统一小写：上游词典英文模板存在大小写变体（`increased damage`），
-/// en→zh 显示方向按小写骨架桶对齐；中文字符不受影响。
+/// The skeleton: strips numeric-shaped characters and whitespace (the
+/// template side also strips placeholders), used as the candidate-bucket
+/// key. Digits within literals (e.g. "per 15 Evasion") are stripped by the
+/// same rule on both the input and template sides, so alignment still
+/// holds. ASCII is uniformly lowercased: the upstream dictionary's English
+/// templates have case variants (`increased damage`), and the en->zh
+/// display direction aligns by a lowercased skeleton bucket; Chinese
+/// characters are unaffected.
 fn skeleton(text: &str) -> String {
     text.chars()
         .filter(|c| {
@@ -80,7 +92,7 @@ fn template_skeleton(segments: &[Segment]) -> String {
     out
 }
 
-/// 捕获值合法性：非空且全为数值形字符（含符号/小数点）。
+/// Whether a captured value is valid: non-empty and entirely numeric-shaped characters (sign/decimal point included).
 fn is_numeric_capture(value: &str) -> bool {
     let trimmed = value.trim();
     !trimmed.is_empty()
@@ -93,15 +105,19 @@ fn is_cjk(c: char) -> bool {
     ('\u{4E00}'..='\u{9FFF}').contains(&c) || ('\u{3400}'..='\u{4DBF}').contains(&c)
 }
 
-/// 字面量锚点是否「足够强」——够强才允许它门控一次字符串捕获回退匹配。
-/// 规则：骨架 ≥3 字符，或含 CJK 且 ≥2 字符（CJK 单字信息量高，如「配置」）。
+/// Whether a literal anchor is "strong enough" — only a strong anchor may
+/// gate a string-capture fallback match.
+/// Rule: skeleton has >=3 characters, or contains CJK and has >=2
+/// characters (a single CJK character carries a lot of information, e.g. "配置").
 fn is_strong_anchor(skel: &str) -> bool {
     let n = skel.chars().count();
     n >= 3 || (n >= 2 && skel.chars().any(is_cjk))
 }
 
-/// 模板是否含格式化占位符（`{N:...}`，如 `{0:+d}`）——带格式说明的槽位是纯数值槽，
-/// 这类模板一律不进字符串回退索引，保证数值模板行为一丝不变。
+/// Whether a template has a formatted placeholder (`{N:...}`, e.g. `{0:+d}`)
+/// — a slot with a format spec is a pure numeric slot, so this kind of
+/// template never enters the string-fallback index, keeping numeric
+/// template behaviour completely unchanged.
 fn has_numeric_format(text: &str) -> bool {
     let bytes = text.as_bytes();
     let mut i = 0;
@@ -120,8 +136,10 @@ fn has_numeric_format(text: &str) -> bool {
     false
 }
 
-/// 校验一段捕获文本：数值形照旧接受；`allow_string` 下额外接受非空、无换行的
-/// 字符串（供「配置 {0}」这类字符串占位符模板使用）。返回归一化后的捕获值。
+/// Validates a captured text span: numeric-shaped values are always
+/// accepted; with `allow_string`, non-empty strings without newlines are
+/// also accepted (for string-placeholder templates like "Allocates {0}").
+/// Returns the normalized captured value.
 fn accept_capture(capture: &str, allow_string: bool) -> Option<String> {
     if is_numeric_capture(capture) {
         return Some(capture.trim().to_string());
@@ -135,28 +153,36 @@ fn accept_capture(capture: &str, allow_string: bool) -> Option<String> {
     None
 }
 
-/// 编译后的一条模板对。
+/// A single compiled template pair.
 #[derive(Debug, Clone)]
 struct CompiledTemplate {
     src_segments: Vec<Segment>,
     en: String,
 }
 
-/// 中文输入行翻译器（thread_local 缓存于 [`crate::state`]，构建一次）。
+/// The Chinese input-line translator (cached thread_local in
+/// [`crate::state`], built once).
 pub struct LineTranslator {
-    /// 全部编译模板（`buckets`/`*_index` 存下标引用，避免克隆重复占内存）。
+    /// All compiled templates (`buckets`/`*_index` store index references,
+    /// avoiding duplicate memory from cloning).
     templates: Vec<CompiledTemplate>,
-    /// 骨架 → 候选模板下标（同骨架多候选逐个精确匹配；数值型模板主通道）。
+    /// Skeleton -> candidate template indices (multiple candidates sharing
+    /// a skeleton are matched exactly one by one; the primary channel for numeric templates).
     buckets: HashMap<String, Vec<usize>>,
-    /// 首段字面量骨架 → 候选下标（字符串占位符模板的前缀锚点索引）。
+    /// First-segment literal skeleton -> candidate indices (the prefix
+    /// anchor index for string-placeholder templates).
     prefix_index: HashMap<String, Vec<usize>>,
-    /// 末段字面量骨架 → 候选下标（后缀锚点索引；如「{0} 继承」）。
+    /// Last-segment literal skeleton -> candidate indices (the suffix
+    /// anchor index; e.g. "{0} 继承").
     suffix_index: HashMap<String, Vec<usize>>,
-    /// 本地化基底名 → 英文 canonical 名（物品文本的基底行直译）。
+    /// Localized base name -> canonical English name (a direct translation
+    /// for an item text's base-type line).
     base_names: HashMap<String, String>,
-    /// 词缀名直译表（魔法物品名组合翻译；仅 en→zh 显示方向注入，缺省为空）。
+    /// The affix-name direct-translation table (for magic item name
+    /// composition; only injected for the en->zh display direction, empty by default).
     affix_names: HashMap<String, String>,
-    /// RARE 随机名组成词表（前缀词/后缀词 → 中文；仅 en→zh 显示方向注入）。
+    /// The RARE random-name word table (prefix word/suffix word ->
+    /// Chinese; only injected for the en->zh display direction).
     rare_words: HashMap<String, String>,
 }
 
@@ -175,8 +201,9 @@ impl LineTranslator {
                 .entry(template_skeleton(&src_segments))
                 .or_default()
                 .push(idx);
-            // 只有含占位符、且首/末字面量锚点足够强的模板才进锚点索引——回退通道
-            // 靠强锚点门控字符串捕获，压误配。
+            // Only templates that have a placeholder AND a strong enough
+            // first/last literal anchor enter the anchor index — the
+            // fallback channel gates string capture on strong anchors to suppress false matches.
             let has_placeholder = src_segments
                 .iter()
                 .any(|s| matches!(s, Segment::Placeholder(_)));
@@ -210,26 +237,30 @@ impl LineTranslator {
         }
     }
 
-    /// 注入词缀名直译表（en→zh 显示方向启用魔法物品名组合翻译）。
+    /// Injects the affix-name direct-translation table (enables magic item
+    /// name composition for the en->zh display direction).
     pub fn set_affix_names(&mut self, affix_names: HashMap<String, String>) {
         self.affix_names = affix_names;
     }
 
-    /// 注入 RARE 随机名组成词表（en→zh 显示方向启用双词组合翻译）。
+    /// Injects the RARE random-name word table (enables two-word
+    /// composition for the en->zh display direction).
     pub fn set_rare_words(&mut self, rare_words: HashMap<String, String>) {
         self.rare_words = rare_words;
     }
 
-    /// 尝试翻译一行：基底名直译优先，其次数值型模板精确匹配，最后字符串占位符
-    /// 模板回退；不认识返回 `None`。
+    /// Attempts to translate a line: base-name direct translation first,
+    /// then exact numeric-template matching, then string-placeholder
+    /// template fallback; returns `None` if unrecognized.
     pub fn translate_line(&self, line: &str) -> Option<String> {
         let line = line.trim();
         if let Some(en) = self.base_names.get(line) {
             return Some(en.clone());
         }
         let line_skel = skeleton(line);
-        // 主通道：数值严格匹配、精确骨架桶。数值行行为一丝不变（命中即返回，
-        // 根本不进回退）。
+        // Primary channel: strict numeric matching against the exact
+        // skeleton bucket. Numeric-line behaviour is completely unchanged
+        // (a hit returns immediately, never entering the fallback).
         if let Some(idxs) = self.buckets.get(&line_skel) {
             for &i in idxs {
                 let candidate = &self.templates[i];
@@ -238,22 +269,28 @@ impl LineTranslator {
                 }
             }
         }
-        // 回退：字符串占位符模板。骨架桶查不到（捕获含名字字符，骨架不再对齐），
-        // 改用强前/后缀锚点选候选。
+        // Fallback: string-placeholder templates. The skeleton bucket
+        // misses (the capture contains name characters, so the skeleton no
+        // longer aligns), so candidates are instead picked by strong prefix/suffix anchors.
         if let Some(out) = self.translate_string_line(line, &line_skel) {
             return Some(out);
         }
-        // 末位回退：魔法物品名（前缀 基底 of 后缀）→ RARE 随机名（前缀词 后缀词）。
+        // Last-resort fallback: magic item names (prefix base of suffix) ->
+        // RARE random names (prefix word suffix word).
         if let Some(out) = self.translate_magic_name(line) {
             return Some(out);
         }
         self.translate_rare_name(line)
     }
 
-    /// RARE 随机名组合翻译：恰好两个单词、至少一词命中组成词表时按国服惯例
-    /// 空格分隔、保持前后词序（Storm Bite → 风暴 慧齿）；词表缺口的词保留
-    /// 英文原词（Storm Wibble → 风暴 Wibble）。词条行含空格数远超两词，
-    /// 不会误入；本函数在末位回退，名词表整名/词条模板已先行筛过。
+    /// RARE random-name composition translation: when exactly two words are
+    /// present and at least one word hits the word table, joins them with a
+    /// space, preserving word order (Storm Bite -> 风暴 慧齿), matching
+    /// China-server convention; a word missing from the table keeps its
+    /// original English form (Storm Wibble -> 风暴 Wibble). A mod line has
+    /// far more than two space-separated words, so it never falls in here
+    /// by accident; this function runs as a last-resort fallback, after the
+    /// noun table's whole-name match and the mod-line templates have already had their shot.
     fn translate_rare_name(&self, line: &str) -> Option<String> {
         if self.rare_words.is_empty() {
             return None;
@@ -274,9 +311,11 @@ impl LineTranslator {
         ))
     }
 
-    /// 魔法物品名组合翻译：`[前缀 ]基底[ of 后缀]` → 「后缀+前缀+基底」（国服
-    /// 魔法名顺序；中文缀名自带「…的/…之」结尾）。前后缀须整体命中词缀名表、
-    /// 基底须整体命中基底名表才算，防词条行误报。
+    /// Magic item name composition translation: `[prefix ]base[ of suffix]`
+    /// -> "suffix+prefix+base" (China-server magic-name order; Chinese
+    /// affix names carry their own trailing "...的/...之"). The prefix and
+    /// suffix must each hit the affix-name table exactly, and the base must
+    /// hit the base-name table exactly, to guard against false positives on mod lines.
     fn translate_magic_name(&self, line: &str) -> Option<String> {
         if self.affix_names.is_empty() {
             return None;
@@ -292,8 +331,10 @@ impl LineTranslator {
             (None, zh.as_str())
         } else {
             head.match_indices(' ').find_map(|(i, _)| {
-                // 前缀：词缀名表优先，组成词表兜底（Exceptional/Expert 等基底
-                // 品级前缀不在 Mods 表）；基底整体命中是强约束，压误报。
+                // Prefix: the affix-name table takes priority, falling back
+                // to the composition word table (base-tier prefixes like
+                // Exceptional/Expert aren't in the Mods table); the base
+                // matching exactly is a strong constraint that suppresses false positives.
                 let prefix = self
                     .affix_names
                     .get(&head[..i])
@@ -302,7 +343,8 @@ impl LineTranslator {
                 Some((Some(prefix.as_str()), base.as_str()))
             })?
         };
-        // 无任何缀词=纯基底名，该行本应由名词表整行命中，不在此报。
+        // No affix at all = a pure base name, which should be caught by the
+        // noun table's whole-line match instead; don't report here.
         if prefix_zh.is_none() && suffix_zh.is_none() {
             return None;
         }
@@ -314,10 +356,13 @@ impl LineTranslator {
         ))
     }
 
-    /// 字符串占位符模板回退：按强前/后缀锚点选候选，允许字符串捕获，命中后
-    /// 对捕获名尽力二次翻译再代回目标模板。
+    /// String-placeholder template fallback: picks candidates by strong
+    /// prefix/suffix anchors, allows string capture, and on a hit makes a
+    /// best-effort second translation pass on the captured name before
+    /// substituting it back into the target template.
     fn translate_string_line(&self, line: &str, line_skel: &str) -> Option<String> {
-        // idx → 已见最强锚点长度（同一模板可被前后缀同时选中，取更强者排序）。
+        // idx -> the strongest anchor length seen so far (the same template
+        // can be selected by both prefix and suffix; keep the stronger one for ordering).
         let mut candidates: HashMap<usize, usize> = HashMap::new();
         for (key, idxs) in &self.prefix_index {
             if line_skel.starts_with(key.as_str()) {
@@ -340,14 +385,15 @@ impl LineTranslator {
         if candidates.is_empty() {
             return None;
         }
-        // 确定性顺序：最强锚点优先，同长按下标升序。
+        // Deterministic order: strongest anchor first, ties broken by ascending index.
         let mut ordered: Vec<(usize, usize)> =
             candidates.into_iter().map(|(i, len)| (len, i)).collect();
         ordered.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
         for (_, i) in ordered {
             let candidate = &self.templates[i];
             if let Some(mut values) = match_segments(line, &candidate.src_segments, true) {
-                // 尽力而为：把捕获出的名字（非数值）二次翻译再代回。
+                // Best-effort: run a second translation pass on the
+                // captured name (non-numeric) before substituting it back.
                 for value in values.values_mut() {
                     if !is_numeric_capture(value)
                         && let Some(translated) = self.translate_value(value)
@@ -361,8 +407,10 @@ impl LineTranslator {
         None
     }
 
-    /// 捕获值二次翻译：仅走基底名 + 数值型精确桶（不递归回退，杜绝无限递归），
-    /// 命不中返回 `None`（调用方保留英文原名）。
+    /// Second-pass translation of a captured value: only tries the
+    /// base-name table plus the exact numeric bucket (no recursive
+    /// fallback, to rule out infinite recursion); returns `None` on a miss
+    /// (the caller keeps the original English name).
     fn translate_value(&self, value: &str) -> Option<String> {
         let value = value.trim();
         if let Some(en) = self.base_names.get(value) {
@@ -379,9 +427,10 @@ impl LineTranslator {
     }
 }
 
-/// ASCII 大小写不敏感子串查找（词典英文模板存在大小写变体）。字节级窗口比较：
-/// 非 ASCII 字节要求逐字节相等，且 UTF-8 连续字节不会与首字节混淆，命中位置
-/// 必落在字符边界上。
+/// ASCII case-insensitive substring search (the dictionary's English
+/// templates have case variants). Byte-level window comparison: non-ASCII
+/// bytes require byte-for-byte equality, and UTF-8 continuation bytes are
+/// never confused with lead bytes, so a match position always lands on a character boundary.
 fn find_ignore_ascii_case(haystack: &str, needle: &str) -> Option<usize> {
     if needle.is_empty() {
         return Some(0);
@@ -395,9 +444,12 @@ fn find_ignore_ascii_case(haystack: &str, needle: &str) -> Option<usize> {
         .position(|window| window.eq_ignore_ascii_case(needle.as_bytes()))
 }
 
-/// 逐段匹配：字面量顺序对齐，占位符之间的文本作为捕获值。`allow_string=false`
-/// 时捕获须数值形（主通道）；`true` 时额外允许非空、无换行的字符串（回退通道，
-/// 候选已由强锚点门控）。成功返回 `占位符下标 → 捕获文本`。
+/// Matches segments one by one: literals align in order, and the text
+/// between placeholders becomes a captured value. With `allow_string=false`,
+/// captures must be numeric-shaped (primary channel); with `true`, non-empty
+/// strings without newlines are also accepted (the fallback channel, where
+/// candidates are already gated by strong anchors). Returns
+/// `placeholder index -> captured text` on success.
 fn match_segments(
     line: &str,
     segments: &[Segment],
@@ -409,7 +461,8 @@ fn match_segments(
     for seg in segments {
         match seg {
             Segment::Placeholder(index) => {
-                // 相邻双占位符无字面量分隔——模板不该出现，保守失败。
+                // Two adjacent placeholders with no literal separator —
+                // shouldn't appear in a template, fail conservatively.
                 if pending.is_some() {
                     return None;
                 }
@@ -436,7 +489,8 @@ fn match_segments(
     Some(values)
 }
 
-/// 把捕获值代回英文模板（`{N}` / `{N:+d}` 按下标替换；缺值保留原样）。
+/// Substitutes captured values back into the English template (`{N}` /
+/// `{N:+d}` replaced by index; a missing value is left as-is).
 fn render_en(template: &str, values: &HashMap<usize, String>) -> String {
     let Some(segments) = parse_template(template) else {
         return template.to_string();
@@ -454,7 +508,7 @@ fn render_en(template: &str, values: &HashMap<usize, String>) -> String {
     out
 }
 
-/// 行内是否含 CJK 字符（触发翻译尝试的门）。
+/// Whether the line contains any CJK character (the gate that triggers a translation attempt).
 pub fn has_cjk(text: &str) -> bool {
     text.chars().any(is_cjk)
 }
@@ -477,7 +531,7 @@ mod tests {
                 src: "能量护盾提高 {0}%".into(),
                 en: "{0}% increased maximum Energy Shield".into(),
             },
-            // EN→ZH 方向的字符串占位符模板（swapped：src=英文、en=简中）。
+            // A string-placeholder template for the EN->ZH direction (swapped: src=English, en=Simplified Chinese).
             StatLineTemplate {
                 src: "Allocates {0}".into(),
                 en: "配置 {0}".into(),
@@ -532,7 +586,8 @@ mod tests {
 
     #[test]
     fn translates_string_placeholder_prefix_template() {
-        // 前缀锚点「Allocates」选中，捕获天赋名（无 zh 名字表 → 保留英文原名）。
+        // The "Allocates" prefix anchor is selected, capturing the passive
+        // name (no zh name table -> the original English name is kept).
         assert_eq!(
             translator()
                 .translate_line("Allocates Grace of the Ancestors")
@@ -551,7 +606,7 @@ mod tests {
 
     #[test]
     fn numeric_lines_unchanged_by_string_fallback() {
-        // 数值行仍走主通道、行为不变（回退不介入）。
+        // A numeric line still goes through the primary channel, unchanged (the fallback never kicks in).
         let t = translator();
         assert_eq!(
             t.translate_line("能量护盾提高 33%").as_deref(),
@@ -565,7 +620,7 @@ mod tests {
 
     #[test]
     fn string_fallback_rejects_unanchored_line() {
-        // 与任何强前/后缀锚点都不沾边——原样落空（消费侧回退英文原文）。
+        // Doesn't touch any strong prefix/suffix anchor — falls through as-is (the consumer falls back to the original English text).
         assert_eq!(translator().translate_line("Zzz Qqq Wibble"), None);
     }
 
@@ -577,7 +632,7 @@ mod tests {
             ("Bite".to_string(), "慧齿".to_string()),
         ]));
         assert_eq!(t.translate_line("Storm Bite").as_deref(), Some("风暴 慧齿"));
-        // 词表缺口的词保留英文原词；两词全缺失才整行落空回退。
+        // A word missing from the table keeps its original English form; the whole line only falls through when both words are missing.
         assert_eq!(
             t.translate_line("Storm Wibble").as_deref(),
             Some("风暴 Wibble")

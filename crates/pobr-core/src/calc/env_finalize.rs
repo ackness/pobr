@@ -1,20 +1,25 @@
-//! 环境终结阶段调度框架。
+//! The environment-finalize stage dispatch framework.
 //!
-//! PoB2 模型是「perform 前半段持续写 modDB，后半段 defence→offence 只读聚合」
-//! （CalcPerform.lua 阶段树）。本模块在 `perform` 开头、offence/defence 之前提供
-//! 固定的 7 阶段位调度：buff/aura/curse/敌方异常等机制按归属 track 在各自
-//! 独占模块实现后挂入对应阶段位；本文件只负责**顺序**。
+//! PoB2's model is "the first half of perform keeps writing to modDB, the
+//! second half's defence→offence only reads and aggregates" (the
+//! CalcPerform.lua stage tree). This module provides a fixed 7-stage
+//! dispatch at the start of `perform`, before offence/defence: mechanics
+//! like buff/aura/curse/enemy ailments are implemented in their own
+//! dedicated modules by their owning track and hooked into the corresponding
+//! stage slot; this file is only responsible for the **ordering**.
 //!
-//! 框架约束（D1）：
-//! - 每个阶段是 `pub fn xxx(env: &mut Env)` 的局部纯过程（只写
-//!   `env.player.mod_db` / `env.enemy.mod_db` / `env.cfg.conditions`），不引共享可变状态；
-//!   写入的 modifier 一律带 `SourceId` 归因（SourceKind 见 pobr-data source.rs 的
-//!   `ConfigOption`/`Buff`/`Flask`/`GrantedKeystone`）。
-//! - 各阶段默认**空转兼容**：无 buff spec / 无 flask / 无 EnemyModifier 时输出逐值
-//!   不变（搬迁不变式锚点）。
-//! - 不在调整 offence/defence 先后序；所有新机制发生在两者之前。
+//! Framework constraints (D1):
+//! - Each stage is a local, pure `pub fn xxx(env: &mut Env)` procedure
+//!   (only writes `env.player.mod_db` / `env.enemy.mod_db` /
+//!   `env.cfg.conditions`), introducing no shared mutable state; every
+//!   written modifier carries `SourceId` attribution (see SourceKind's
+//!   `ConfigOption`/`Buff`/`Flask`/`GrantedKeystone` in pobr-data's source.rs).
+//! - Each stage defaults to **no-op safe**: with no buff spec / no flask /
+//!   no EnemyModifier, every output value is unchanged (a migration invariant anchor).
+//! - The offence/defence order is not being adjusted here; all new
+//!   mechanics happen before both of them.
 //!
-//! T0 落地时全部阶段为 no-op stub；各 track 在自己的模块里实现后改此处调用体。
+//! At T0, every stage was a no-op stub; each track rewrites its call body once its own module is implemented.
 
 use std::collections::HashMap;
 
@@ -24,77 +29,104 @@ use crate::Modifier;
 
 use super::Env;
 
-/// 环境终结调度入口（`perform` 开头唯一调用点）。阶段顺序对照 PoB2 perform
-/// 阶段树（省略不做的 Banner/Warcry/party），**禁止重排**。
+/// The environment-finalize dispatch entry point (the sole call site, at the
+/// start of `perform`). Stage order mirrors PoB2's perform stage tree
+/// (omitting the unimplemented Banner/Warcry/party stages); **must not be reordered**.
 pub fn env_finalize(env: &mut Env) {
-    // 阶段 1（T5）：词条授予 keystone 合并（含 flask/buff 授予，幂等去重）。
+    // Stage 1 (T5): merges mod-granted keystones (including flask/buff grants, idempotent deduplication).
     merge_keystones(env);
-    // 阶段 2（T3）：player(+minion) db 的 EnemyModifier LIST → enemy db。
+    // Stage 2 (T3): forwards the player(+minion) db's EnemyModifier LIST into the enemy db.
     forward_enemy_modifiers(env);
-    // 阶段 2.5：Mageblood legacies 展开（vendor CalcPerform.lua:1502-1528，位于
-    // flask effect 段 :1531 之前）。把 `LegacyOf*` BASE + `MagebloodEquipped` flag
-    // 标记词条聚合成护甲/闪避/抗性等真实 mod；无 Mageblood 时空转。
+    // Stage 2.5: expands Mageblood legacies (vendor CalcPerform.lua:1502-1528,
+    // located before the flask effect section `:1531`). Aggregates the
+    // `LegacyOf*` BASE + `MagebloodEquipped` flag marker mods into real
+    // armour/evasion/resistance etc. mods; a no-op without Mageblood.
     super::mageblood::apply_mageblood_legacies(env);
-    // 阶段 3（T4）：flask/charm 词条按激活配置合入（mode_combat 门控）。
+    // Stage 3 (T4): merges flask/charm mods per the active configuration (gated by mode_combat).
     merge_flasks_charms(env);
-    // 阶段 4（T3）：buff 九类分发（aura 乘区 / curse priority+limit / debuff→enemy）。
+    // Stage 4 (T3): the nine-way buff dispatch (aura factor / curse priority+limit / debuff→enemy).
     buff_pass(env);
-    // 阶段 5（T5）：第二次 keystone 合并（buff/flask 授予的 keystone）。
+    // Stage 5 (T5): a second keystone merge pass (for keystones granted by buffs/flasks).
     merge_keystones(env);
-    // 阶段 6（T2）：doActorMisc 等价（flag → buff_definitions → mods）。
+    // Stage 6 (T2): equivalent to doActorMisc (flag → buff_definitions → mods).
     expand_misc_buffs(env);
-    // 阶段 7（T4）：非伤害异常施加（Chill/Shock → enemy db）。
+    // Stage 7 (T4): applies non-damaging ailments (Chill/Shock → enemy db).
     apply_nondamaging_ailments(env);
-    // 阶段 7.5：敌侧条件 flag → cfg 条件桥接（vendor ModStore GetCondition 语义：
-    // enemyDB 的 `Condition:<X>` FLAG 使敌人条件 <X> 为真）。pobr 条件统一放
-    // cfg.conditions（敌侧键空间 = `Enemy<X>`），故在全部敌侧注入源（item
-    // EnemyModifier 转发 / buff_pass / 异常）落库后统一回填。
-    // ponytail: 允收名单只有 Intimidated（消费方 = setup_enemy 注入的敌人基础
-    // 条件对）；其余 Condition:* flag 已各有专用桥（config/异常），需要时逐条扩。
+    // Stage 7.5: bridges enemy-side condition flags → cfg conditions (vendor
+    // ModStore's GetCondition semantics: a condition's truth value = the
+    // conditions table **or** the aggregated modDB `Condition:<X>` FLAG --
+    // a condition state applied to the enemy by a mod (e.g. body armour's
+    // "Enemies in your Presence are Intimidated" → the enemy db's
+    // `Condition:Intimidated` flag) is equivalent to a config checkbox.
+    // pobr routes all condition consumption through `cfg.conditions`, so
+    // this copies the flag aggregation result back after every enemy-side
+    // injection source (item EnemyModifier forwarding / buff_pass / ailments) has landed.
+    // ponytail: the allowlist currently only has Intimidated (the only
+    // condition with a consumer for the enemy base condition pair); other
+    // `Condition:*` flags already have their own dedicated bridge
+    // (config/ailments), extend one by one as needed.
     bridge_enemy_condition_flags(env);
-    // 阶段 8：曝光归约（vendor CalcPerform.lua:3214-3247 "Apply
-    // exposures"，buff 循环之后 / offence 之前）——enemy db 内全部
-    // `<El>Exposure BASE`（config 注入 + buff_pass Debuff 路径，如 Frost Bomb）
-    // 取最强一份折成 `<El>Resist BASE -magnitude`。**唯一归约点**：
-    // `CalculationSession::apply_enemy_exposure` 只注入不归约（双归约 = 抗性
-    // 双扣）。无曝光 mod 时空转（逐值不变）。
+    // Stage 8: exposure reduction (vendor CalcPerform.lua:3214-3247 "Apply
+    // exposures", after the buff loop / before offence) -- reduces every
+    // `<El>Exposure BASE` in the enemy db (from config injection + buff_pass's
+    // Debuff path, e.g. Frost Bomb) down to the single strongest one, folded
+    // into `<El>Resist BASE -magnitude`. **The sole reduction point**:
+    // `CalculationSession::apply_enemy_exposure` only injects, never reduces
+    // (reducing twice = double-deducting resistance). A no-op without any exposure mod (every value unchanged).
     super::setup_env::reduce_enemy_exposure(&mut env.enemy.mod_db, &env.player.mod_db, &env.cfg);
 }
 
-/// 阶段 1/5（T5 实现）：`Env::keystone_mods` 中被词条授予的 keystone 注入玩家
-/// modDB（对照 CalcPerform.lua:66-76 mergeKeystones，`env.keystonesAdded` 去重语义）。
-/// 实现体见 [`super::keystone_merge`]；空 map / 无授予词条时零写入。
+/// Stages 1/5 (T5 implementation): injects keystones granted by
+/// `Env::keystone_mods` into the player modDB (mirrors CalcPerform.lua:66-76's
+/// mergeKeystones, matching `env.keystonesAdded`'s dedup semantics).
+/// Implementation lives in [`super::keystone_merge`]; zero writes with an
+/// empty map / no granting mod.
 pub fn merge_keystones(env: &mut Env) {
     super::keystone_merge::merge_keystones(env);
 }
 
-/// 阶段 2（T3-C4-3）：player(+minions) db 的 `EnemyModifier` LIST → enemy db。
+/// Stage 2 (T3-C4-3): forwards the player(+minions) db's `EnemyModifier` LIST into the enemy db.
 ///
-/// 对照 vendor `CalcPerform.lua:486-500 applyEnemyModifiers`（commit `2df5a74`，实读）：
-/// - :491 `actor.modDB:Tabulate(nil, nil, "EnemyModifier")` 逐条取 `value.mod`（inner）；
-///   pobr 等价 = 过滤 `name == "EnemyModifier" && mod_type == List && matches(cfg)` 的
-///   外层条目展开 [`crate::ModValue::NestedMods`] 载荷（[`crate::ModDb::list_nested`]
-///   的透传语义 + 下述来源回退，故直接走 `iter_mods` 以保留外层上下文）。
-/// - :495 `local source = mod.source or value.mod.source`：inner 缺来源时回退**外层**的
-///   `source`/`origin`——解析层只给外层挂 `SourceId` 归因（item/passive/gem ingest），
-///   转发后 inner 仍可回溯到原来源（归因穿透）。
-/// - :487-498 `actor.appliedEnemyModifiers` 实例缓存（调用点 :762 / :1107-1111 多次
-///   触发，已转发 mod 不重复注入；值相等的不同实例各自保留）。pobr 单 perform 内的
-///   无状态等价：enemy db 现存 modifier 身份**多重集**——候选先抵扣同身份存量，剩余
-///   才注入，重复调用幂等且不吞值相等的多来源条目。身份 = 来源回退后 inner 的全字段
-///   等价（[`DedupSeed`] 语义 scalar 分桶 + 桶内 `Modifier` 派生 `PartialEq` 裁定，含
-///   name/type/value/tags/flags/source/origin；与 enemy db 原生注入碰撞需全字段相同，
-///   setup_env 系来源串 `enemy <id>` 与词条原文不可能同串）。
+/// Mirrors vendor `CalcPerform.lua:486-500 applyEnemyModifiers` (verified against commit `2df5a74`):
+/// - `:491`'s `actor.modDB:Tabulate(nil, nil, "EnemyModifier")` takes each
+///   `value.mod` (inner); pobr's equivalent = filters outer entries matching
+///   `name == "EnemyModifier" && mod_type == List && matches(cfg)` and
+///   unwraps the [`crate::ModValue::NestedMods`] payload (this goes through
+///   `iter_mods` directly, rather than [`crate::ModDb::list_nested`]'s
+///   pass-through semantics, in order to keep the outer context for the source fallback below).
+/// - `:495`'s `local source = mod.source or value.mod.source`: when inner
+///   lacks a source, it falls back to the **outer** entry's `source`/`origin`
+///   -- the parse layer only attaches `SourceId` attribution to the outer
+///   entry (item/passive/gem ingest), so after forwarding, inner can still
+///   be traced back to the original source (attribution passes through).
+/// - `:487-498`'s `actor.appliedEnemyModifiers` instance cache (triggered
+///   multiple times at call sites `:762` / `:1107-1111`; an already-forwarded
+///   mod isn't re-injected, but distinct instances with equal values are
+///   each kept). pobr's stateless equivalent within a single perform: the
+///   enemy db's existing modifier identities form a **multiset** -- a
+///   candidate first deducts against an existing entry with the same
+///   identity, and only what's left over gets injected; repeated calls are
+///   idempotent and don't swallow multiple equal-valued sources. Identity =
+///   full-field equality of inner after the source fallback ([`DedupSeed`]'s
+///   semantic-scalar bucketing plus the bucket's `Modifier`-derived
+///   `PartialEq` for the final call, covering name/type/value/tags/flags/
+///   source/origin; colliding with a native enemy db injection would
+///   require every field to match, and setup_env's source strings like
+///   `enemy <id>` can never collide with a mod's raw text).
 ///
-/// 空转兼容：无 `EnemyModifier` 条目时不写任何状态（D1 搬迁不变式锚点）。inner 一律带
-/// `Condition:Effective`（解析层附加），面板口径（`mode_effective == false`）聚合不命中
-/// ——转发本身不改既有输出。
+/// No-op safe: writes no state without any `EnemyModifier` entry (a D1
+/// migration invariant anchor). inner always carries `Condition:Effective`
+/// (attached by the parse layer), so it doesn't match under the panel view
+/// (`mode_effective == false`) aggregation -- forwarding by itself never changes existing output.
 pub fn forward_enemy_modifiers(env: &mut Env) {
     let enemy_modifier = ModName::from("EnemyModifier");
 
-    // enemy db 现存「桶键 → (代表 mod, 余量)」多重集（幂等抵扣基底）。桶键 = 语义
-    // scalar（见 [`DedupSeed`]）；桶内最终身份由 `Modifier` 派生 `PartialEq`（含
-    // tags/origin 全字段）裁定，等价旧 Debug 全字段指纹但不耦合 Debug 文本。
+    // The enemy db's existing "bucket key → (representative mod, remaining
+    // count)" multiset (the base for idempotent deduction). Bucket key =
+    // semantic scalars (see [`DedupSeed`]); the final identity within a
+    // bucket is decided by `Modifier`'s derived `PartialEq` (covering every
+    // field including tags/origin), equivalent to the old full-field Debug
+    // fingerprint but without coupling to Debug text.
     let mut existing: HashMap<DedupSeed, Vec<(Modifier, usize)>> = HashMap::new();
     for m in env.enemy.mod_db.iter_mods() {
         let bucket = existing.entry(dedup_seed(m)).or_default();
@@ -104,7 +136,8 @@ pub fn forward_enemy_modifiers(env: &mut Env) {
         }
     }
 
-    // 先只读收集（player + minions），再统一写 enemy（借用分离 + 确定性顺序）。
+    // Collects read-only first (player + minions), then writes to enemy all
+    // at once (separating borrows + a deterministic order).
     let mut forwarded: Vec<Modifier> = Vec::new();
     let source_dbs =
         std::iter::once(&env.player.mod_db).chain(env.minions.iter().map(|m| &m.mod_db));
@@ -121,15 +154,16 @@ pub fn forward_enemy_modifiers(env: &mut Env) {
             };
             for inner in nested {
                 let mut fwd = inner.clone();
-                // vendor :495 来源回退：inner 缺 source/origin 时继承外层。
+                // vendor :495 source fallback: inner inherits the outer entry's source/origin when it lacks its own.
                 if fwd.source.is_none() {
                     fwd.source = outer.source.clone();
                 }
                 if fwd.origin.is_none() {
                     fwd.origin = outer.origin.clone();
                 }
-                // 幂等抵扣：桶内存在同身份（PartialEq）且仍有余量的代表 → 抵扣，
-                // 不重复注入；否则视为新条目转发。
+                // Idempotent deduction: when a representative with the same
+                // identity (PartialEq) and remaining count exists in the
+                // bucket → deducts, no re-injection; otherwise forwarded as a new entry.
                 let abated = existing
                     .get_mut(&dedup_seed(&fwd))
                     .and_then(|bucket| {
@@ -150,15 +184,20 @@ pub fn forward_enemy_modifiers(env: &mut Env) {
     }
 }
 
-/// 转发去重的「桶键」（见 [`forward_enemy_modifiers`] 文档）。
+/// The "bucket key" used for forwarding dedup (see [`forward_enemy_modifiers`]'s docs).
 ///
-/// 替代旧 `format!("{m:?}")`：旧实现把 dedup 行为耦合到 `Modifier` 的**非契约**
-/// `Debug` 文本，并在 forwarding 热路径上每条 mod 堆分配一个完整 Debug String。
-/// 这里改为按语义 scalar 字段构造 `Hash+Eq` 桶键；桶内最终身份由 `Modifier` 自身的
-/// 派生 `PartialEq`（含 tags/origin 全字段）裁定——既不在 `Modifier` 上铺设全局
-/// `Hash/Eq`（f64 + 语义过宽），又对未来新增字段保持健壮（身份判定始终走派生
-/// `PartialEq`，不会因手写镜像漏字段而静默错配）。`name`/`mod_type`/`value`(f64→bits)/
-/// `source`/`flags`/`keyword_flags` 仅作分桶，碰撞由桶内 `PartialEq` 兜底。
+/// Replaces the old `format!("{m:?}")`: the old implementation coupled dedup
+/// behavior to `Modifier`'s **non-contractual** `Debug` text, and heap-
+/// allocated a full Debug String per mod on the forwarding hot path.
+/// This instead builds a `Hash+Eq` bucket key from semantic scalar fields;
+/// the final identity within a bucket is decided by `Modifier`'s own derived
+/// `PartialEq` (covering every field including tags/origin) -- this avoids
+/// laying a global `Hash/Eq` over `Modifier` (f64 plus semantics too broad
+/// for that), while staying robust to future field additions (identity
+/// resolution always goes through the derived `PartialEq`, so it can never
+/// silently mismatch due to a hand-written mirror missing a field).
+/// `name`/`mod_type`/`value` (f64→bits)/`source`/`flags`/`keyword_flags` are
+/// only used for bucketing; collisions are resolved by `PartialEq` within the bucket.
 #[derive(PartialEq, Eq, Hash)]
 struct DedupSeed {
     name: ModName,
@@ -169,8 +208,9 @@ struct DedupSeed {
     keyword_flags: u64,
 }
 
-/// [`DedupSeed`] 的 value 分桶投影：f64 取 `to_bits`（精确分桶，规避 f64 非 `Eq`）；
-/// 嵌套载荷不进键（forwarding 路径几乎不出现），统一落同一桶交 `PartialEq` 裁定。
+/// [`DedupSeed`]'s value bucketing projection: f64 uses `to_bits` (exact
+/// bucketing, working around f64 not being `Eq`); nested payloads don't
+/// enter the key (they almost never appear on the forwarding path), and all fall into the same bucket for `PartialEq` to resolve.
 #[derive(PartialEq, Eq, Hash)]
 enum ValueSeed {
     Number(u64),
@@ -196,53 +236,67 @@ fn dedup_seed(m: &Modifier) -> DedupSeed {
     }
 }
 
-/// 阶段 3：flask/charm 词条合并——载荷 List mod 经 effect 乘区缩放后
-/// 并入 player db（对照 vendor `CalcPerform.lua:1429-1663` mergeFlasks/mergeCharms，
-/// 行号实读）。
+/// Stage 3: merges flask/charm mods -- the carrier List mod's nested mods
+/// are scaled by the effect factor and merged into the player db (mirrors
+/// vendor `CalcPerform.lua:1429-1663` mergeFlasks/mergeCharms; line numbers verified against source).
 ///
-/// 输入是 [`crate::item::ingest_flask_charm`] 产出的 `FlaskBuff`/`CharmBuff` 载荷
-/// （`ModValue::NestedMods`，仅**激活态**槽位被 build 层接入——vendor
-/// CalcSetup.lua:1014-1028 `slot.active` 门控 env.flasks/charms，flask 与 charm 同口径）。
+/// The input is the `FlaskBuff`/`CharmBuff` payload produced by
+/// [`crate::item::ingest_flask_charm`] (`ModValue::NestedMods`; only
+/// **active** slots are wired up by the build layer -- vendor
+/// CalcSetup.lua:1014-1028's `slot.active` gates env.flasks/charms, with flasks and charms sharing the same semantics).
 ///
-/// vendor 对照（行号）：
-/// - :1656-1663 整段 `env.mode_combat` 门控 → `cfg.mode_combat`（D5，默认 false 零行为）；
-/// - :1405/:1495 flask effect = `Σ INC FlaskEffect + item.flaskData.effectInc`（局部份
-///   即载荷内 `LocalUtilityEffect`）；:1587/:1602 charm 同构（`CharmEffect`）；
-/// - :1589 `charmLimit = min(Override(CharmLimit) or Σ BASE CharmLimit, 3)`，cap 经
-///   `cfg.constants.game().charm_limit_cap` 注入（禁新魔数）；:1640-1643 超限 charm
-///   不并入（按载荷插入序扣减——vendor `pairs()` 序本身未定义，此处取确定性序）；
-/// - :1493-1530 `ScaleAddList(modList, effectMod)`：数值 mod 缩放走
-///   [`super::buff_pass::scale_value`]（去重：复用 T1 写原语
-///   `ModDb::scale_add_mod` 的同一取整内核——精度例外查
-///   `Env::high_precision`，非整数原值 `defaultHighPrecision` floor，默认
-///   `m_modf(round(v×scale, 2))` 截断，ModStore.lua:69-76），flag 不缩放；
-/// - :41-63 `mergeBuff`：同组（同 base）同参数 mod 取**最大值**不叠加；
-/// - :1535-1542/:1646-1647 条件：`UsingFlask`/`UsingCharm` + `Using<Base名去空格>` +
-///   `UsingLifeFlask`（基底名含 "Life Flask" 且无 `CannotRecoverLifeOutsideLeech`）/
-///   `UsingManaFlask`；
-/// - :1561 `FlasksDoNotApplyToPlayer` → flask 的 buff 与条件整体不落 player。
+/// Vendor mirror (line numbers):
+/// - `:1656-1663` gates the whole section on `env.mode_combat` →
+///   `cfg.mode_combat` (D5, default false = zero behavior);
+/// - `:1405`/`:1495` flask effect = `Σ INC FlaskEffect +
+///   item.flaskData.effectInc` (the local share is the payload's
+///   `LocalUtilityEffect`); `:1587`/`:1602` mirror this for charms (`CharmEffect`);
+/// - `:1589`'s `charmLimit = min(Override(CharmLimit) or Σ BASE CharmLimit, 3)`,
+///   with the cap injected via `cfg.constants.game().charm_limit_cap` (no
+///   new magic numbers allowed); `:1640-1643` charms over the limit aren't
+///   merged (deducted by payload insertion order -- vendor's `pairs()`
+///   order is itself undefined, so a deterministic order is used here instead);
+/// - `:1493-1530`'s `ScaleAddList(modList, effectMod)`: numeric mod scaling
+///   goes through [`super::buff_pass::scale_value`] (deduplicated: reuses
+///   the same rounding kernel as the T1 write primitive
+///   `ModDb::scale_add_mod` -- precision exceptions are looked up via
+///   `Env::high_precision`, non-integer raw values follow
+///   `defaultHighPrecision`'s floor, default `m_modf(round(v×scale, 2))` truncation, ModStore.lua:69-76); flags aren't scaled;
+/// - `:41-63`'s `mergeBuff`: mods with the same params within the same group
+///   (same base) take the **max** value rather than stacking;
+/// - `:1535-1542`/`:1646-1647` conditions: `UsingFlask`/`UsingCharm` +
+///   `Using<base name with spaces stripped>` + `UsingLifeFlask` (base name
+///   contains "Life Flask" and lacks `CannotRecoverLifeOutsideLeech`) / `UsingManaFlask`;
+/// - `:1561`'s `FlasksDoNotApplyToPlayer` → the flask's buff and conditions
+///   don't land on the player at all.
 ///
-/// 已知差异：充能/持续/恢复模型（flaskData.duration/charges、
-/// calcFlaskRecovery、Mageblood 特判 :1387-1403）不建；`MagicUtilityFlaskEffect`/
-/// `MagicCharmEffect`（:1406/:1588，需 rarity 通道）、minion 侧应用（:1568-1586）
-/// 不实现（原「highPrecisionMods 按词条覆盖精度表不实现」差异已在去重时
-/// 消除——vendor ScaleAddMod 本就查表，先期 name-blind 缩放是偏差方）；
-/// charm 基底常驻 buff
-/// （vendor `item.base.charm.buff`，如 Ruby Charm `+25% to Fire Resistance`）依赖
-/// 基底数据列（缺口已登记 drill-findings-m3.md F8），当前仅物品文本词条进入。
+/// Known differences: the charge/duration/recovery model
+/// (flaskData.duration/charges, calcFlaskRecovery, the Mageblood special
+/// case `:1387-1403`) isn't built; `MagicUtilityFlaskEffect`/`MagicCharmEffect`
+/// (`:1406`/`:1588`, needs a rarity channel) and the minion-side application
+/// (`:1568-1586`) aren't implemented (the earlier "highPrecisionMods'
+/// per-mod precision override table isn't implemented" gap has since been
+/// eliminated during deduplication -- vendor's ScaleAddMod already looks up
+/// that table, so the earlier name-blind scaling was the actual deviation);
+/// a charm base's always-on buff (vendor `item.base.charm.buff`, e.g. Ruby
+/// Charm's `+25% to Fire Resistance`) depends on a base data column (this
+/// gap is tracked in drill-findings-m3.md F8), so currently only the item's own text mod is included.
 ///
-/// 归因：载荷与内层 mod 均带 `SourceId(SourceKind::Flask, "flask.<slot>")`（ingest 落），
-/// 合并注入后逐词条可回溯。幂等：player db 已存在非 List 的 Flask 来源 mod 时跳过
-/// （同一 Env 重复 perform 不重复并入）。空转兼容：无载荷 / `mode_combat == false`
-/// 时不写任何状态（D1 搬迁不变式锚点）。
+/// Attribution: both the carrier and its inner mods carry
+/// `SourceId(SourceKind::Flask, "flask.<slot>")` (attached during ingest),
+/// so every mod remains traceable after being merged and injected.
+/// Idempotent: skipped when a non-List Flask-sourced mod already exists in
+/// the player db (repeated perform within the same Env doesn't re-merge).
+/// No-op safe: writes no state without any payload / when `mode_combat == false` (a D1 migration invariant anchor).
 pub fn merge_flasks_charms(env: &mut Env) {
     use std::collections::BTreeMap;
 
     use crate::ModValue;
     use crate::item::{CHARM_BUFF_LIST_NAME, FLASK_BUFF_LIST_NAME, LOCAL_UTILITY_EFFECT_NAME};
 
-    /// vendor mergeBuff（CalcPerform.lua:41-63）：同参数（name/type/flags/keywordFlags/
-    /// tags）已存在时数值取最大、不叠加；否则追加。
+    /// Vendor's mergeBuff (CalcPerform.lua:41-63): when an entry with the
+    /// same params (name/type/flags/keywordFlags/tags) already exists, takes
+    /// the max value rather than stacking; otherwise appends.
     fn merge_buff_max(group: &mut Vec<Modifier>, candidate: Modifier) {
         let same_params = |a: &Modifier, b: &Modifier| {
             a.name == b.name
@@ -268,7 +322,7 @@ pub fn merge_flasks_charms(env: &mut Env) {
     if !env.cfg.mode_combat {
         return;
     }
-    // 幂等护栏：非 List 的 Flask 来源 mod 已存在 = 本 Env 已并入过。
+    // Idempotency guard: an existing non-List Flask-sourced mod means this Env has already merged them in.
     let already_merged = env.player.mod_db.iter_mods().any(|m| {
         m.mod_type != ModType::List
             && m.origin
@@ -298,14 +352,17 @@ pub fn merge_flasks_charms(env: &mut Env) {
     if carriers.is_empty() {
         return;
     }
-    // 确定性说明：charm 超 `charm_limit` 时「丢哪颗」按载荷插入序——所有 charm 载荷
-    // 同享 `charm_list` 这一个 ModName，落在 ModDb 的单个 Vec 桶内、按 ingest 槽位序
-    // 连续排列（不经 HashMap 跨桶序），故扣减顺序确定。见
-    // `charm_limit_caps_number_of_active_charms` 测试钉住此插入序语义。
+    // Determinism note: when charms exceed `charm_limit`, "which one gets
+    // dropped" follows payload insertion order -- every charm payload shares
+    // the single `charm_list` ModName, landing in one Vec bucket in the
+    // ModDb, laid out consecutively in ingest slot order (not scattered
+    // across HashMap buckets), so the deduction order is deterministic. See
+    // the `charm_limit_caps_number_of_active_charms` test for this pinned insertion-order semantics.
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
-    // 取整精度规则（去重：ScaleAddMod 原语的例外表；vendor ScaleAddList →
-    // ScaleAddMod 本就按词条查 highPrecisionMods，ModStore.lua:69）。
+    // Rounding precision rules (deduplicated: the ScaleAddMod primitive's
+    // exception table; vendor's ScaleAddList → ScaleAddMod already looks up
+    // highPrecisionMods per mod, ModStore.lua:69).
     let rules = &env.high_precision;
     let flask_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("FlaskEffect")]);
     let charm_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("CharmEffect")]);
@@ -317,18 +374,18 @@ pub fn merge_flasks_charms(env: &mut Env) {
     let flasks_do_not_apply = db.flag(cfg, ModName::from("FlasksDoNotApplyToPlayer"));
     let cannot_recover_life = db.flag(cfg, ModName::from("CannotRecoverLifeOutsideLeech"));
 
-    // mergeBuff 分组：`(is_charm, base 名)` → 同组同参数取最大（BTreeMap 确定性序）。
+    // mergeBuff grouping: `(is_charm, base name)` → same group, same params take the max (BTreeMap for a deterministic order).
     let mut groups: BTreeMap<(bool, String), Vec<Modifier>> = BTreeMap::new();
     let mut conditions: Vec<String> = Vec::new();
     for carrier in &carriers {
         let is_charm = carrier.name == charm_list;
         if is_charm {
             if charm_budget < 1.0 {
-                continue; // :1640-1643 超出 charm limit。
+                continue; // :1640-1643 over the charm limit.
             }
             charm_budget -= 1.0;
         } else if flasks_do_not_apply {
-            continue; // :1561（buff 与条件同 gate）。
+            continue; // :1561 (buff and conditions share this gate).
         }
         let nested = carrier.value.as_nested_mods().unwrap_or(&[]);
         let local_inc: f64 = nested
@@ -384,22 +441,24 @@ pub fn merge_flasks_charms(env: &mut Env) {
     }
 }
 
-/// 阶段 4（T3 实现）：`Env::buff_skills` 九类分发（对照 CalcPerform.lua:1831-2984；
-/// aura 乘区 :2102-2105 / curse priority :454-485 + limit :2829-2833），整段吃
-/// `cfg.mode_buffs` 门控。实现体见 [`super::buff_pass`]；
-/// `mode_buffs == false`（默认）或无 buff spec 时空转（逐值不变）。
+/// Stage 4 (T3 implementation): the nine-way dispatch for `Env::buff_skills`
+/// (mirrors CalcPerform.lua:1831-2984; aura factor `:2102-2105` / curse
+/// priority `:454-485` + limit `:2829-2833`), the whole section gated on
+/// `cfg.mode_buffs`. Implementation in [`super::buff_pass`]; a no-op (every
+/// value unchanged) when `mode_buffs == false` (the default) or there's no buff spec.
 pub fn buff_pass(env: &mut Env) {
     super::buff_pass::buff_pass(env);
 }
 
-/// 阶段 6：doActorMisc 等价——内建 buff flag 经
-/// `Env::buff_definitions`（`overlay/buff_definitions.json` 注入）展开为 mods
-/// 写回 `env.player.mod_db`，附带条件写 `env.cfg.conditions`（对照
-/// CalcPerform.lua:503-765，整段 `cfg.mode_combat` 门控——默认 false 即 no-op，
-/// 搬迁不变式锚点；B4 的 mode_combat 自动置位是独立行为 commit）。
+/// Stage 6: equivalent to doActorMisc -- built-in buff flags are expanded
+/// via `Env::buff_definitions` (injected from `overlay/buff_definitions.json`)
+/// into mods written back to `env.player.mod_db`, with accompanying
+/// conditions written to `env.cfg.conditions` (mirrors CalcPerform.lua:503-765,
+/// the whole section gated on `cfg.mode_combat` -- default false means a
+/// no-op, a migration invariant anchor; B4's automatic mode_combat activation is a separate behavior commit).
 ///
-/// 归因：`(SourceKind::Buff, "buff.<id>")`；同 id 已展开过（同一 Env 重复
-/// `perform`）的 def 跳过，保证幂等不重复计入。
+/// Attribution: `(SourceKind::Buff, "buff.<id>")`; a def whose id has
+/// already been expanded (a repeated `perform` within the same Env) is skipped, guaranteeing idempotency with no double-counting.
 pub fn expand_misc_buffs(env: &mut Env) {
     use pobr_data::source::SourceKind;
 
@@ -409,7 +468,7 @@ pub fn expand_misc_buffs(env: &mut Env) {
         return;
     }
 
-    // 幂等护栏：剔除本 Env 已展开过的 def（按归因 id `buff.<id>` 判定）。
+    // Idempotency guard: excludes defs already expanded for this Env (decided by attribution id `buff.<id>`).
     let expanded_ids: std::collections::BTreeSet<&str> = env
         .player
         .mod_db
@@ -434,8 +493,9 @@ pub fn expand_misc_buffs(env: &mut Env) {
             enemy_db: Some(&env.enemy.mod_db),
             cfg: &env.cfg,
             mode_combat: env.cfg.mode_combat,
-            // 主技能上下文：Env 暂无主技能快照字段，
-            // 接线前 None——依赖它的 handler（buff:fanaticism）保守零输出。
+            // Main skill context: Env has no main-skill snapshot field yet,
+            // so this is None until wired up -- handlers depending on it
+            // (buff:fanaticism) conservatively produce zero output.
             main_skill: None,
         },
         &pending,
@@ -446,30 +506,36 @@ pub fn expand_misc_buffs(env: &mut Env) {
     for condition in expansion.conditions_set {
         env.cfg.conditions.insert(condition, true);
     }
-    // handler 标量 → cfg.multipliers 加法合并（vendor `modDB.multipliers[var] += v`
-    // 形态，如 Fortify 的 BuffOnSelf；registry::HandlerOutcome 文档）。
+    // Handler scalars → additively merged into cfg.multipliers (vendor's
+    // `modDB.multipliers[var] += v` shape, e.g. Fortify's BuffOnSelf; see the registry::HandlerOutcome docs).
     for (var, value) in expansion.multipliers {
         *env.cfg.multipliers.entry(var).or_insert(0.0) += value;
     }
 }
 
-/// 阶段 7（T4 实现）：非伤害异常施加——Chill/Shock 的 Val/Base/Override 折算后写
-/// enemy db（对照 CalcPerform.lua:3076-3180）。实现体在 [`super::ailment_apply`]；
-/// 无来源词条时空转（empty-spin 不变式保持）。
+/// Stage 7 (T4 implementation): applies non-damaging ailments -- folds
+/// Chill/Shock's Val/Base/Override and writes the result to the enemy db
+/// (mirrors CalcPerform.lua:3076-3180). Implementation in
+/// [`super::ailment_apply`]; a no-op without any source mod (the no-op-safe invariant holds).
 pub fn apply_nondamaging_ailments(env: &mut Env) {
     super::ailment_apply::apply_nondamaging_ailments(env);
 }
 
-/// 阶段 7.5：敌侧 `Condition:<X>` FLAG → `cfg.conditions["Enemy<X>"]` 桥接。
+/// Stage 7.5: bridges enemy-side `Condition:<X>` FLAGs → `cfg.conditions["Enemy<X>"]`.
 ///
-/// vendor 语义（ModStore.lua `GetCondition`）：条件真值 = conditions 表 **或**
-/// modDB `Condition:<X>` FLAG 聚合——敌人被词条施加的条件态（如体甲「Enemies in
-/// your Presence are Intimidated」→ enemy db `Condition:Intimidated` flag）等价
-/// 于 config 勾选。pobr 的条件消费统一走 `cfg.conditions`，此处把 flag 聚合结果
-/// 回填（`matches(cfg)` 已含 Effective/EnemyInPresence 等 tag 门控）。
+/// Vendor semantics (ModStore.lua's `GetCondition`): a condition's truth
+/// value = the conditions table **or** the aggregated modDB
+/// `Condition:<X>` FLAG -- a condition state applied to the enemy by a mod
+/// (e.g. body armour's "Enemies in your Presence are Intimidated" → the
+/// enemy db's `Condition:Intimidated` flag) is equivalent to a config
+/// checkbox. pobr routes all condition consumption through `cfg.conditions`,
+/// so this copies the aggregated flag result back
+/// (`matches(cfg)` already includes gates like the Effective/EnemyInPresence tags).
 fn bridge_enemy_condition_flags(env: &mut Env) {
-    // ponytail: 允收名单当前仅 Intimidated（唯一有敌方基础条件对消费方的条件）；
-    // 全量 `Condition:*` 泛化会一次性点亮全部敌况词条，留给 parity 点名逐条扩。
+    // ponytail: the allowlist currently only has Intimidated (the only
+    // condition with a consumer for the enemy base condition pair);
+    // generalizing to all `Condition:*` flags would light up every enemy
+    // condition mod at once -- left for parity to call out and extend one by one.
     const BRIDGED: &[&str] = &["Intimidated"];
     for cond in BRIDGED {
         let flag = ModName::from(format!("Condition:{cond}"));
@@ -484,8 +550,9 @@ mod tests {
     use super::*;
     use crate::calc::{Actor, ActorBaseStats};
 
-    /// 空转兼容不变式（原 T0 全 no-op 断言，阶段 2 落地后语义升级为「无
-    /// EnemyModifier / 无 buff spec / 无 flask 时输出逐值不变」，D1 锚点）。
+    /// No-op-safe invariant (originally a full T0 no-op assertion; once
+    /// stage 2 landed, its semantics upgraded to "every output value is
+    /// unchanged without EnemyModifier / a buff spec / a flask", a D1 anchor).
     #[test]
     fn env_finalize_is_noop_in_t0() {
         let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
@@ -501,7 +568,7 @@ mod tests {
     }
 }
 
-/// 阶段 2 `forward_enemy_modifiers`（T3-C4-3）：转发 / 归因穿透 / 幂等去重 / 端到端。
+/// Stage 2 `forward_enemy_modifiers` (T3-C4-3): forwarding / attribution pass-through / idempotent dedup / end-to-end.
 #[cfg(test)]
 mod forward_enemy_modifiers_tests {
     use super::*;
@@ -512,7 +579,7 @@ mod forward_enemy_modifiers_tests {
         ModTag::condition(var, false)
     }
 
-    /// 外层 EnemyModifier（带 Item 来源归因）+ inner（无 origin，模拟解析层产物）。
+    /// An outer EnemyModifier (with Item source attribution) plus an inner mod (no origin, simulating the parse layer's output).
     fn curse_take_outer() -> Modifier {
         let inner = Modifier::number("DamageTaken", ModType::Inc, 6.0)
             .with_source("Enemies you Curse take 6% increased Damage")
@@ -530,15 +597,17 @@ mod forward_enemy_modifiers_tests {
         )))
     }
 
-    /// 有效口径 cfg（敌人被诅咒 + effective）。
+    /// An effective-view cfg (enemy cursed + effective).
     fn effective_cursed_cfg() -> CalcConfig {
         CalcConfig::new()
             .with_condition("EnemyCursed", true)
             .with_mode_effective(true)
     }
 
-    /// 转发基线：player db 的 EnemyModifier inner 落 enemy db，敌侧聚合在双条件下命中；
-    /// 面板口径（mode_effective=false）聚合不命中（ninja_parity 不变式的微观锚点）。
+    /// Forwarding baseline: the player db's EnemyModifier inner mod lands in
+    /// the enemy db, and enemy-side aggregation matches under both
+    /// conditions; the panel view (mode_effective=false) doesn't match
+    /// (a micro-anchor for the ninja_parity invariant).
     #[test]
     fn forwards_nested_mods_to_enemy_db() {
         let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
@@ -562,8 +631,9 @@ mod forward_enemy_modifiers_tests {
         );
     }
 
-    /// 归因穿透：inner 无 origin → 转发时回退外层 SourceId（vendor :495 来源回退），
-    /// enemy db 聚合的贡献仍可回溯到原 Item 来源。
+    /// Attribution pass-through: inner has no origin → falls back to the
+    /// outer SourceId when forwarded (vendor `:495`'s source fallback), and
+    /// the enemy db's aggregated contribution can still be traced back to the original Item source.
     #[test]
     fn forwarding_preserves_source_id_attribution() {
         let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
@@ -582,7 +652,7 @@ mod forward_enemy_modifiers_tests {
             origin.source_id,
             SourceId::new(SourceKind::ItemEnchant, "item.helmet.enchant")
         );
-        // inner 自带 origin 时不被覆盖：再给一条 inner 带独立 origin 的外层。
+        // inner isn't overwritten when it has its own origin: adds another outer entry whose inner has an independent origin.
         let own_origin = ModifierSource::new(SourceId::new(SourceKind::PassiveNode, "node.123"));
         let inner = Modifier::number("ActionSpeed", ModType::Inc, -20.0)
             .with_origin(own_origin.clone())
@@ -611,12 +681,12 @@ mod forward_enemy_modifiers_tests {
         );
     }
 
-    /// 幂等去重（vendor 实例缓存语义，:487-498）：重复调用不重复注入；
-    /// 值相等的多来源条目（同一 perform 内）各自保留。
+    /// Idempotent dedup (vendor's instance-cache semantics, `:487-498`):
+    /// repeated calls don't re-inject; multiple equal-valued source entries (within the same perform) are each kept.
     #[test]
     fn forwarding_is_idempotent_and_keeps_equal_value_duplicates() {
         let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
-        // 同一 build 内两份完全相同的来源条目（如两颗同词条符文）。
+        // Two identical source entries within the same build (e.g. two runes with the same mod).
         env.player.mod_db.add_mod(curse_take_outer());
         env.player.mod_db.add_mod(curse_take_outer());
 
@@ -629,7 +699,7 @@ mod forward_enemy_modifiers_tests {
             "值相等的两份来源各自保留（vendor 按实例缓存，不按值合并）"
         );
 
-        // 重复调用（vendor applyEnemyModifiers 在 perform 内多点触发）→ 不重复注入。
+        // Repeated calls (vendor's applyEnemyModifiers triggers at multiple points within perform) → no re-injection.
         forward_enemy_modifiers(&mut env);
         forward_enemy_modifiers(&mut env);
         assert_eq!(
@@ -640,7 +710,7 @@ mod forward_enemy_modifiers_tests {
         assert_eq!(env.enemy.mod_db.iter_mods().count(), 2);
     }
 
-    /// minion db 的 EnemyModifier 同样转发（vendor :1109 `applyEnemyModifiers(env.minion)`）。
+    /// A minion db's EnemyModifier is forwarded the same way (vendor `:1109`'s `applyEnemyModifiers(env.minion)`).
     #[test]
     fn forwards_from_minion_db() {
         let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
@@ -660,8 +730,9 @@ mod forward_enemy_modifiers_tests {
         );
     }
 
-    /// 端到端（独立 fixture，不动 ninja baseline）：session 加敌方向词条 → perform →
-    /// 敌侧受伤链在有效 DPS 口径生效（×1.06）；条件不满足时 DPS 不变。
+    /// End-to-end (an independent fixture, doesn't touch the ninja
+    /// baseline): a session with an enemy-directed mod → perform → the
+    /// enemy-side damage-taken chain takes effect under the effective DPS view (×1.06); DPS is unchanged when the condition doesn't hold.
     #[test]
     fn end_to_end_enemy_direction_text_scales_effective_dps() {
         use crate::calc::{CalculationSession, MinimalInput};

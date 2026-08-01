@@ -1,7 +1,8 @@
-//! `overlay/config_options.json` 加载测试。
+//! `overlay/config_options.json` load tests.
 //!
-//! 锚点 = vendor ConfigOptions.lua 的代表性条目（探针法抽取产物的入库形态）；
-//! 数值与结构断言对应的归纳模板例。
+//! Anchored on representative entries from vendor ConfigOptions.lua (the
+//! stored shape of probe-based extraction output); the value/structure
+//! assertions correspond to the induced template examples.
 
 use pobr_data::catalog::config_def::{
     ConfigInputType, ConfigOptionDef, ConfigOptionsDef, ListEffectValue,
@@ -26,7 +27,7 @@ fn find<'a>(doc: &'a ConfigOptionsDef, var: &str) -> &'a ConfigOptionDef {
         .unwrap_or_else(|| panic!("缺条目 {var}"))
 }
 
-/// 体量与排序：≥550 条目（542 静态 + quest 动态），按 var 升序。
+/// Volume and sort order: ≥550 entries (542 static + quest-dynamic ones), ascending by var.
 #[test]
 fn volume_and_sorted_by_var() {
     let doc = load();
@@ -40,8 +41,8 @@ fn volume_and_sorted_by_var() {
     }
 }
 
-/// handler 预算：handler_id 条目 ≤60（架构 §5 预估 ~10%；
-/// 注册侧 ≤54 的断言在handlers.rs 落地）。
+/// The handler budget: handler_id entries ≤60 (architecture doc §5
+/// estimates ~10%; the registry-side ≤54 assertion lives in handlers.rs).
 #[test]
 fn handler_budget_within_estimate() {
     let doc = load();
@@ -55,7 +56,8 @@ fn handler_budget_within_estimate() {
         "handler 条目 {} 超出预估（数据切分回看裁决 P4/P6）",
         handlers.len()
     );
-    // 模板化条目须全部 verified（探针多点复验通过才落模板）。
+    // Every templated entry must be verified (only entries that pass
+    // multi-point probe re-verification become templates).
     for option in &doc.options {
         if option.handler_id.is_none() {
             assert!(option.verified, "模板条目 {} 未验证", option.var);
@@ -63,7 +65,7 @@ fn handler_budget_within_estimate() {
     }
 }
 
-/// check 直注形态（ConfigOptions.lua:133-135 conditionMoving）。
+/// The check-type direct-injection shape (ConfigOptions.lua:133-135's conditionMoving).
 #[test]
 fn condition_moving_check_shape() {
     let doc = load();
@@ -77,8 +79,8 @@ fn condition_moving_check_shape() {
     assert_eq!(effect.target, EffectTarget::Player);
 }
 
-/// count + clamp 形态（:117-119 multiplierCurrentManaPercentage：
-/// `m_max(m_min(val,100), 0)`——正探针域可观测 max=100）。
+/// The count + clamp shape (:117-119's multiplierCurrentManaPercentage:
+/// `m_max(m_min(val,100), 0)` — the positive probe range only observes max=100).
 #[test]
 fn current_mana_percentage_clamp_shape() {
     let doc = load();
@@ -99,10 +101,12 @@ fn current_mana_percentage_clamp_shape() {
     }
 }
 
-/// 小膝点 clamp 的斜率保真（:716-719 whirlwindStages：`m_min(val-1, 3)` /
-/// `m_min(val, 4)`）。膝点 ≤5 的 clamp 曾因线性段只落 1 个探针而斜率欠定
-/// （误拟合 0.5·val-0.5），探针集加密 1..5 后锁定正确斜率——本测试是该
-/// 缺陷类的回归锚点。
+/// A small-knee clamp's slope fidelity (:716-719's whirlwindStages:
+/// `m_min(val-1, 3)` / `m_min(val, 4)`). A clamp with a knee ≤5 once had
+/// its slope underdetermined because the linear segment only landed one
+/// probe point (misfit as 0.5·val-0.5); after densifying the probe set to
+/// 1..5, the correct slope is locked in — this test is the regression
+/// anchor for that class of defect.
 #[test]
 fn whirlwind_stages_small_knee_clamp_slope() {
     let doc = load();
@@ -113,7 +117,8 @@ fn whirlwind_stages_small_knee_clamp_slope() {
     match after_first.value.as_ref().expect("有数值表达式") {
         ValueExpr::Clamp { max, inner, .. } => {
             assert_eq!(*max, Some(3.0));
-            // 线性段必须是 val - 1（mult=1），而非欠定的 0.5·val - 0.5
+            // The linear segment must be val - 1 (mult=1), not the
+            // underdetermined 0.5·val - 0.5.
             assert_eq!(
                 **inner,
                 ValueExpr::Input {
@@ -136,7 +141,8 @@ fn whirlwind_stages_small_knee_clamp_slope() {
     }
 }
 
-/// count 双 mod 形态（:120-131 conditionStationary：Multiplier + 条件 FLAG）。
+/// The count-with-two-mods shape (:120-131's conditionStationary: a
+/// Multiplier plus a condition FLAG).
 #[test]
 fn condition_stationary_two_effects() {
     let doc = load();
@@ -147,7 +153,7 @@ fn condition_stationary_two_effects() {
     assert_eq!(def.effects[1].mod_type, "FLAG");
 }
 
-/// SkillData LIST 键值载荷（:114-116 detonateDeadCorpseLife）。
+/// A SkillData LIST key/value payload (:114-116's detonateDeadCorpseLife).
 #[test]
 fn detonate_dead_skill_data_payload() {
     let doc = load();
@@ -160,7 +166,7 @@ fn detonate_dead_skill_data_payload() {
     }
 }
 
-/// 敌方数值覆盖写 enemy 目标（:1958+ EnemyStats section）。
+/// An enemy-side value override writes to the enemy target (:1958+'s EnemyStats section).
 #[test]
 fn enemy_resist_targets_enemy() {
     let doc = load();
@@ -172,7 +178,8 @@ fn enemy_resist_targets_enemy() {
     assert_eq!(effect.value.as_ref(), Some(&ValueExpr::input()));
 }
 
-/// 敌侧 debuff 带 Condition:Effective tag（:1961-1962 写 enemyModList 口径）。
+/// An enemy-side debuff carries the Condition:Effective tag (:1961-1962's
+/// enemyModList convention).
 #[test]
 fn enemy_condition_carries_effective_tag() {
     let doc = load();
@@ -185,7 +192,8 @@ fn enemy_condition_carries_effective_tag() {
     )));
 }
 
-/// list 逐选项 effects（lifeRegenMode：AVERAGE/FULL 各发不同 FLAG、MIN 零效果）。
+/// A list type's per-option effects (lifeRegenMode: AVERAGE/FULL each emit
+/// a different FLAG, MIN has zero effects).
 #[test]
 fn life_regen_mode_option_effects() {
     let doc = load();
@@ -199,7 +207,7 @@ fn life_regen_mode_option_effects() {
     );
 }
 
-/// implyCond 转录（conditionUsedMinionSkillRecently → UsedSkillRecently）。
+/// implyCond transcription (conditionUsedMinionSkillRecently → UsedSkillRecently).
 #[test]
 fn imply_conditions_recorded() {
     let doc = load();
@@ -207,7 +215,7 @@ fn imply_conditions_recorded() {
     assert_eq!(def.imply_conditions, vec!["UsedSkillRecently".to_string()]);
 }
 
-/// customMods = text 型唯一条目，走专用 handler 通道。
+/// customMods is the sole text-type entry, routed through a dedicated handler channel.
 #[test]
 fn custom_mods_is_text_handler() {
     let doc = load();
@@ -222,7 +230,8 @@ fn custom_mods_is_text_handler() {
     assert_eq!(text_count, 1);
 }
 
-/// 真逻辑条目降级（enemyIsBoss / presetBossSkills 等读 build/env 状态）。
+/// Entries with genuine real-logic get downgraded (enemyIsBoss /
+/// presetBossSkills etc. read build/env state).
 #[test]
 fn known_real_logic_entries_are_handlers() {
     let doc = load();
@@ -236,8 +245,9 @@ fn known_real_logic_entries_are_handlers() {
     }
 }
 
-/// DEFAULT_TRUE_CONDITIONS 数据化：defaultState=true 的 check 条目存在
-/// （xml_build.rs:123 七条硬编码的替代来源——quest 奖励默认领取）。
+/// DEFAULT_TRUE_CONDITIONS data-driven: check entries with defaultState=true
+/// exist (the replacement source for xml_build.rs:123's seven hardcoded
+/// entries — quest rewards claimed by default).
 #[test]
 fn default_true_checks_present() {
     let doc = load();

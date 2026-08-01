@@ -1,6 +1,8 @@
-//! 数据加载：技能宝石 / 覆盖 / buff / 触发 / 召唤物 / 怪物缩放 / 敌方预设 / 异常。
+//! Data loading: skill gems / overrides / buffs / triggers / minions /
+//! monster scaling / enemy presets / ailments.
 //!
-//! 聚合二进制：原独立测试文件合并为子模块（26→4），减少链接二进制数以加速构建。
+//! An aggregated binary: formerly-separate test files merged into
+//! submodules (26→4), reducing the number of linked binaries to speed up builds.
 #![allow(clippy::all)]
 
 #[path = "skills/load_buff_definitions.rs"]

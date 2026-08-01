@@ -1,16 +1,18 @@
-//! [`ParseOutcome`] 的规范序列化——双跑 diff（Track C）与 precompile（Track D）
-//! 的**共用比较单位**（禁两套序列化）。
+//! Canonical serialization for [`ParseOutcome`] — the **shared comparison
+//! unit** for dual-run diffing (Track C) and precompile (Track D); we don't
+//! maintain two separate serializations.
 //!
-//! 比较单位：排序后的 `Vec<Modifier>` 的规范字符串。Modifier 按
-//! `(name, mod_type, tags, flags, kw, value)` 排序；f64 用最短往返表示；
-//! `source`（原文）参与、`origin`（SourceId）剔除（双跑两侧来源构造不同）。
-//! status / unparsed 一并入比较。
+//! Comparison unit: a canonical string built from a sorted `Vec<Modifier>`.
+//! Modifiers sort by `(name, mod_type, tags, flags, kw, value)`; f64 uses
+//! shortest round-trip representation; `source` (the original text) is
+//! included, `origin` (SourceId) is excluded (the two sides of a dual run
+//! construct origins differently). `status`/`unparsed` are compared too.
 
 use super::outcome::{ParseOutcome, ParseStatus};
 use crate::modifier::ModValue;
 use crate::{ModTag, Modifier};
 
-/// 规范化一行解析结果为可比较字符串。
+/// Canonicalizes one line's parse result into a comparable string.
 pub fn canonical_outcome(outcome: &ParseOutcome) -> String {
     let mut lines: Vec<String> = outcome.mods.iter().map(canonical_mod).collect();
     lines.sort();
@@ -25,7 +27,7 @@ pub fn canonical_outcome(outcome: &ParseOutcome) -> String {
     )
 }
 
-/// 单条 Modifier 的规范形态（不含 origin）。
+/// Canonical form of a single Modifier (excludes origin).
 fn canonical_mod(m: &Modifier) -> String {
     let value = canonical_value(&m.value);
     let tags = canonical_tags(&m.tags);
@@ -53,7 +55,8 @@ fn canonical_value(v: &ModValue) -> String {
     }
 }
 
-/// f64 最短往返表示（整数省略小数；NaN/inf 显式标记）。
+/// Shortest round-trip representation of an f64 (integers drop the decimal
+/// point; NaN/inf are marked explicitly).
 fn fmt_f64(n: f64) -> String {
     if n.is_nan() {
         return "nan".to_string();
@@ -64,13 +67,15 @@ fn fmt_f64(n: f64) -> String {
     if n.fract() == 0.0 && n.abs() < 1e15 {
         format!("{}", n as i64)
     } else {
-        // serde_json 的最短往返通过 ryu；这里用 {} 已足够确定（Rust f64 Display
-        // 即最短往返）。
+        // serde_json gets shortest round-trip via ryu; plain `{}` here is
+        // already deterministic since Rust's f64 Display is itself
+        // shortest-round-trip.
         format!("{n}")
     }
 }
 
-/// 一组 tag 的规范字符串（结构比较 / stat_id_map 模板的单源 tag 序列化）。
+/// Canonical string for a set of tags (used for structural comparison and
+/// stat_id_map template's single-source tag serialization).
 pub fn canonical_tags(tags: &[ModTag]) -> String {
     let mut out: Vec<String> = tags.iter().map(canonical_tag).collect();
     out.sort();
@@ -122,8 +127,9 @@ fn canonical_tag(tag: &ModTag) -> String {
             format!("GlobalLimit(value={},key={key})", fmt_f64(*value))
         }
         ModTag::DamageType(dt) => format!("DamageType({dt:?})"),
-        // 高位全零保持历史 u64 hex 形（既有缓存/双跑基线逐字节不变）；高位类型
-        // （Meta=122 等）附全字数组段。
+        // Keep the legacy u64 hex form when the high words are all zero
+        // (preserves existing caches / dual-run baselines byte-for-byte);
+        // high-word types (e.g. Meta=122) append the full word array.
         ModTag::SkillTypes(st) => {
             let w = st.words();
             if w[1..].iter().all(|&x| x == 0) {
@@ -198,7 +204,8 @@ mod tests {
             unparsed: None,
             special_meta: None,
         };
-        // origin 不参与，source 不参与 mod 的规范（仅 name/type/flags/kw/tags/value）。
+        // origin is excluded, and source doesn't participate in a mod's
+        // canonical form either (only name/type/flags/kw/tags/value do).
         assert_eq!(canonical_outcome(&oa), canonical_outcome(&ob));
     }
 

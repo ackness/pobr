@@ -1,25 +1,30 @@
-//! 受限模板 DSL 的**唯一求值器**。
+//! The **single evaluator** for the restricted template DSL.
 //!
-//! schema 类型在 `pobr_data::catalog::value_expr`（零逻辑层）；本模块是
-//! config effects / special_mods / parser 模板共用的
-//! 五算子 + 受限谓词求值实现——三处是同一套受限语言，**禁止三套方言**。
-//! special_mods 的 enums 闭集、parser 的 `:cap` 算子均为本模块的受限扩展（各自走
-//! ≥20 条目受益闸门 + 架构 review）。
+//! The schema types live in `pobr_data::catalog::value_expr` (the
+//! zero-logic layer); this module is the shared implementation of the five
+//! operators plus restricted predicates used by config effects,
+//! special_mods, and parser templates — all three are the same restricted
+//! language, and **must not fork into three dialects**. special_mods'
+//! closed enum set and parser's `:cap` operator are both restricted
+//! extensions of this module (each gated behind a ≥20-entry benefit
+//! threshold plus architecture review).
 //!
-//! 求值上下文仅单输入 `input`（config 条目单输入值）；字段引用扩展
-//! 沿 [`FieldRef`] 单点演化。
+//! The evaluation context is just a single input, `input` (a config entry's
+//! single input value); field-reference expansion evolves through the
+//! single extension point [`FieldRef`].
 
 use pobr_data::catalog::value_expr::{CmpOp, FieldRef, Predicate, ValueExpr};
 
-/// 求值数值表达式。
+/// Evaluates a numeric expression.
 ///
-/// 五算子语义（架构 §5）：
-/// - `Literal` → 字面值；
-/// - `Input { mult, div, base }` → `input × mult ÷ div + base`（`div = 0`
-///   防御性按 1 处理——schema 不应产出 0 除数，求值器不 panic）；
-/// - `Negate` → `-eval(inner)`；
-/// - `Clamp { min, max }` → 先 max 后 min 截断（与 vendor
-///   `m_max(m_min(v, max), min)` 一致）。
+/// The five operators' semantics (architecture §5):
+/// - `Literal` -> the literal value;
+/// - `Input { mult, div, base }` -> `input × mult ÷ div + base` (`div = 0` is
+///   defensively treated as 1 — the schema shouldn't produce a zero
+///   divisor, but the evaluator must not panic);
+/// - `Negate` -> `-eval(inner)`;
+/// - `Clamp { min, max }` -> clamps max first, then min (matching vendor's
+///   `m_max(m_min(v, max), min)`).
 pub fn eval(expr: &ValueExpr, input: f64) -> f64 {
     match expr {
         ValueExpr::Literal { value } => *value,
@@ -41,9 +46,11 @@ pub fn eval(expr: &ValueExpr, input: f64) -> f64 {
     }
 }
 
-/// 求值受限谓词（字段引用 + `eq/ne/gt/ge/lt/le` + `and/or`）。
+/// Evaluates a restricted predicate (field reference + `eq/ne/gt/ge/lt/le` +
+/// `and/or`).
 ///
-/// 空的 `And` 为真（全称量化空集）、空的 `Or` 为假（存在量化空集）。
+/// An empty `And` is true (universal quantification over an empty set); an
+/// empty `Or` is false (existential quantification over an empty set).
 pub fn eval_predicate(pred: &Predicate, input: f64) -> bool {
     match pred {
         Predicate::Cmp { on, op, rhs } => {
@@ -62,7 +69,7 @@ pub fn eval_predicate(pred: &Predicate, input: f64) -> bool {
     }
 }
 
-/// 字段引用解析（闭集 = `input`）。
+/// Resolves a field reference (the closed set is just `input`).
 fn resolve_field(field: FieldRef, input: f64) -> f64 {
     match field {
         FieldRef::Input => input,
@@ -75,14 +82,14 @@ mod tests {
 
     use super::*;
 
-    /// 字面量不受输入影响。
+    /// A literal is unaffected by input.
     #[test]
     fn literal_ignores_input() {
         assert_eq!(eval(&ValueExpr::literal(42.0), 0.0), 42.0);
         assert_eq!(eval(&ValueExpr::literal(42.0), 99.0), 42.0);
     }
 
-    /// Input 标准线性组合：input × mult ÷ div + base。
+    /// Input's standard linear combination: input × mult ÷ div + base.
     #[test]
     fn input_linear_combination() {
         assert_eq!(eval(&ValueExpr::input(), 17.0), 17.0);
@@ -95,7 +102,7 @@ mod tests {
         assert_eq!(eval(&expr, 10.0), 8.0);
     }
 
-    /// div = 0 防御性按 1 处理（不 panic、不产 inf）。
+    /// div = 0 is defensively treated as 1 (no panic, no inf).
     #[test]
     fn zero_div_is_defensive_one() {
         let expr = ValueExpr::Input {
@@ -106,7 +113,7 @@ mod tests {
         assert_eq!(eval(&expr, 5.0), 5.0);
     }
 
-    /// Negate 取负，可嵌套。
+    /// Negate flips the sign, and nests.
     #[test]
     fn negate_nested() {
         let expr = ValueExpr::Negate {
@@ -119,8 +126,9 @@ mod tests {
         assert_eq!(eval(&double, 7.0), 7.0);
     }
 
-    /// Clamp 上下界（vendor m_max(m_min(val, 100), 0) 语义——
-    /// multiplierCurrentManaPercentage 形态）。
+    /// Clamp's lower/upper bounds (matches vendor's
+    /// `m_max(m_min(val, 100), 0)` semantics — the
+    /// multiplierCurrentManaPercentage shape).
     #[test]
     fn clamp_min_max() {
         let expr = ValueExpr::Clamp {
@@ -133,7 +141,7 @@ mod tests {
         assert_eq!(eval(&expr, -5.0), 0.0);
     }
 
-    /// 单边 clamp：只有 min 或只有 max。
+    /// One-sided clamp: only min, or only max.
     #[test]
     fn clamp_single_sided() {
         let min_only = ValueExpr::Clamp {
@@ -153,7 +161,8 @@ mod tests {
         assert_eq!(eval(&max_only, 5.0), 5.0);
     }
 
-    /// clamp 包线性：CoveredInAsh 形态 min(effect, 20)。
+    /// Clamp wrapping a linear expression: the CoveredInAsh shape,
+    /// min(effect, 20).
     #[test]
     fn clamp_wraps_linear() {
         let expr = ValueExpr::Clamp {
@@ -169,7 +178,7 @@ mod tests {
         assert_eq!(eval(&expr, 15.0), 20.0);
     }
 
-    /// 六个比较算子逐一验证。
+    /// Verifies all six comparison operators one by one.
     #[test]
     fn predicate_cmp_operators() {
         let cmp = |op: CmpOp, rhs: f64, input: f64| {
@@ -190,7 +199,8 @@ mod tests {
         assert!(cmp(CmpOp::Le, 5.0, 5.0) && !cmp(CmpOp::Le, 5.0, 6.0));
     }
 
-    /// and/or 组合 + 空集语义（And 空 = 真，Or 空 = 假）。
+    /// and/or composition plus empty-set semantics (empty And = true, empty
+    /// Or = false).
     #[test]
     fn predicate_and_or_and_empty() {
         let and = Predicate::And {
@@ -209,7 +219,7 @@ mod tests {
         assert!(!eval_predicate(&Predicate::Or { any: Vec::new() }, 0.0));
     }
 
-    /// conditionStationary 形态端到端：emit_if input > 0。
+    /// End-to-end conditionStationary shape: emit_if input > 0.
     #[test]
     fn stationary_emit_if_shape() {
         let pred = Predicate::input_gt(0.0);

@@ -1,53 +1,67 @@
-//! 空手基底域 schema（`base/unarmed_data.json`，per-class 空手 phys/攻速/暴击基底）。
+//! Unarmed base domain schema (`base/unarmed_data.json`, per-class unarmed
+//! physical/attack-speed/crit bases).
 //!
-//! 对应 PoB2 `data.unarmedWeaponData`：
-//! `vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:553-563`（按 PoE2 classId 索引，
-//! 9 个职业条目）；其中暴击常量源 `src/Data/Misc.lua:155`
-//! （`characterConstants["unarmed_base_critical_strike_chance"] = 500`，
-//! vendor 侧 `/ 100` 得百分数 `5`）。
+//! Corresponds to PoB2's `data.unarmedWeaponData`:
+//! `vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:553-563` (indexed by
+//! PoE2 classId, 9 class entries); the crit constant is sourced from
+//! `src/Data/Misc.lua:155`
+//! (`characterConstants["unarmed_base_critical_strike_chance"] = 500`,
+//! divided by 100 on vendor's side to get the percentage `5`).
 //!
-//! 搬迁不变式：数值以 pobr 现有 Rust 准源
-//! `pobr-build::calc_orchestrator::unarmed_contribution` 为准逐值搬迁
-//! （`phys_min` / `phys_max` / `attack_rate` / `crit_chance`）；
-//! `class_id` / `weapon_type` 为 vendor-only 字段（pobr 现按 `class_name` 匹配）。
+//! Migration invariant: values are migrated verbatim from pobr's existing
+//! Rust source of truth,
+//! `pobr-build::calc_orchestrator::unarmed_contribution`
+//! (`phys_min` / `phys_max` / `attack_rate` / `crit_chance`); `class_id` /
+//! `weapon_type` are vendor-only fields (pobr currently matches by
+//! `class_name` instead).
 
 use serde::{Deserialize, Serialize};
 
-/// 单职业空手武器基底——无主手武器时攻击技能的 weaponData 来源
-/// （对照 PoB2 `CalcSetup.lua:1578` `copyTable(env.data.unarmedWeaponData[env.classId])`）。
+/// A single class's unarmed weapon base — the weaponData source for attack
+/// skills when there's no main-hand weapon (matches PoB2
+/// `CalcSetup.lua:1578`'s
+/// `copyTable(env.data.unarmedWeaponData[env.classId])`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UnarmedWeaponDef {
-    /// PoE2 classId（vendor `Data.lua:554-562` 的表键）：0=Scion（PoE2 遗留占位）、
-    /// 1=Witch、2=Ranger、6=Warrior、7=Sorceress、8=Huntress、9=Mercenary、
-    /// 10=Monk、11=Druid。vendor-only（pobr 现无 classId 通道）。
+    /// PoE2 classId (the table key in vendor `Data.lua:554-562`): 0=Scion
+    /// (a PoE2 legacy placeholder), 1=Witch, 2=Ranger, 6=Warrior,
+    /// 7=Sorceress, 8=Huntress, 9=Mercenary, 10=Monk, 11=Druid. Vendor-only
+    /// (pobr has no classId channel currently).
     pub class_id: u32,
-    /// 职业英文名（vendor 同行尾注释；pobr `Build.character.class_name` 的匹配键）。
+    /// English class name (from vendor's trailing comment on the same
+    /// line; the match key for pobr's `Build.character.class_name`).
     pub class_name: String,
-    /// 武器类型（vendor `type = "None"`，对应 `data.weaponTypeInfo["None"]` →
-    /// `Unarmed` flag，见 `Data.lua:533`）。vendor-only。
+    /// Weapon type (vendor's `type = "None"`, corresponding to
+    /// `data.weaponTypeInfo["None"]` → the `Unarmed` flag, see
+    /// `Data.lua:533`). Vendor-only.
     pub weapon_type: String,
-    /// 基底攻击速率（次/秒；vendor `AttackRate`，全职业 1.65）。
+    /// Base attack rate (per second; vendor's `AttackRate`, 1.65 for every class).
     pub attack_rate: f64,
-    /// 基底暴击几率。pobr 现值 `0.05`（`unarmed_contribution` 注释口径「暴击 5%」的
-    /// 小数表示），按搬迁不变式逐值照搬。
+    /// Base crit chance. pobr's current value is `0.05` (the decimal form
+    /// matching `unarmed_contribution`'s comment saying "5% crit"), copied
+    /// verbatim per the migration invariant.
     ///
-    /// TODO(parity): vendor 同字段为百分数 `5`（`Data.lua:554-562` =
-    /// `Misc.lua:155` 的 500 / 100），且 pobr 自身武器路径
-    /// （`weapon_contribution` 的 `raw crit / 100`）产出 `5.0`——空手与持武器两路
-    /// 单位口径不一致。本任务只搬迁不改值，行为对齐留待后续独立 commit。
+    /// TODO(parity): vendor's same field is the percentage `5`
+    /// (`Data.lua:554-562` = `Misc.lua:155`'s 500 / 100), and pobr's own
+    /// weapon path (`weapon_contribution`'s `raw crit / 100`) produces
+    /// `5.0` — the unarmed and armed paths disagree on units. This task
+    /// only migrates the value without changing it; bringing behavior into
+    /// alignment is a separate follow-up commit.
     pub crit_chance: f64,
-    /// 基底物理伤害下限（vendor `PhysicalMin`，全职业 2）。
+    /// Base physical damage minimum (vendor's `PhysicalMin`, 2 for every class).
     pub physical_min: f64,
-    /// 基底物理伤害上限（vendor `PhysicalMax`，按职业：Warrior 8、
-    /// Scion/Mercenary/Druid 6、其余 5；与 pobr `unarmed_contribution` 的
-    /// `class_name` match 一致）。
+    /// Base physical damage maximum (vendor's `PhysicalMax`, by class:
+    /// Warrior 8, Scion/Mercenary/Druid 6, everyone else 5; matches pobr's
+    /// `unarmed_contribution` `class_name` match).
     pub physical_max: f64,
 }
 
-/// 空手基底全表（[`crate::catalog::RuntimeConstants`] 的注入域）。
+/// The full unarmed-base table (the domain
+/// [`crate::catalog::RuntimeConstants`] injects).
 ///
-/// `#[serde(transparent)]`：JSON 形状与 `base/unarmed_data.json`（数组）一致。
-/// `Default` = fallback 全表（与 JSON 逐值相等，搬迁不变式）。
+/// `#[serde(transparent)]`: the JSON shape matches
+/// `base/unarmed_data.json` (an array). `Default` = the fallback full table
+/// (value-equal to the JSON, a migration invariant).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct UnarmedDataTable(pub Vec<UnarmedWeaponDef>);
@@ -59,23 +73,30 @@ impl Default for UnarmedDataTable {
 }
 
 impl UnarmedDataTable {
-    /// 按职业英文名查空手基底条目；未知职业返回 `None`（消费方回退通用值）。
+    /// Looks up the unarmed base entry by English class name; returns
+    /// `None` for an unknown class (the caller falls back to a generic value).
     pub fn for_class(&self, class_name: &str) -> Option<&UnarmedWeaponDef> {
         self.0.iter().find(|e| e.class_name == class_name)
     }
 }
 
 impl UnarmedWeaponDef {
-    /// 全表 fallback（注入管道）：无 GameData / 数据目录缺
-    /// `base/unarmed_data.json` 时 [`crate::catalog::RuntimeConstants`] 的默认值。
+    /// The full-table fallback (the injection pipeline): the default value
+    /// [`crate::catalog::RuntimeConstants`] uses when there's no GameData /
+    /// the data directory is missing `base/unarmed_data.json`.
     ///
-    /// 搬迁不变式：与 JSON 逐值相等（`pobr-gamedata` 测试锁定），数值出处 =
-    /// pobr 旧 Rust 准源 `pobr-build::calc_orchestrator::unarmed_contribution`
-    /// （该准源位于上层 crate，依赖方向不可达，故此处为带出处 doc 的字面量）+
-    /// vendor `Data.lua:554-562`（class_id / weapon_type 等 vendor-only 字段）。
+    /// Migration invariant: value-equal to the JSON (locked by a
+    /// `pobr-gamedata` test); values sourced from pobr's old Rust source of
+    /// truth, `pobr-build::calc_orchestrator::unarmed_contribution` (which
+    /// lives in an upper-layer crate unreachable in the dependency
+    /// direction, so it's transcribed here as literals with sourcing docs)
+    /// plus vendor `Data.lua:554-562` (class_id / weapon_type and other
+    /// vendor-only fields).
     pub fn default_table() -> Vec<Self> {
-        /// 单条目构造：weapon_type 全表 `"None"`、攻速 1.65、暴击 0.05、物理下限 2
-        /// 为全职业同值（vendor 同源），仅 class_id/职业名/物理上限逐职业不同。
+        /// Builds a single entry: weapon_type is `"None"`, attack_rate is
+        /// 1.65, crit_chance is 0.05, and physical_min is 2 for every class
+        /// (all from the same vendor source) — only class_id/class name/
+        /// physical_max vary by class.
         fn entry(class_id: u32, class_name: &str, physical_max: f64) -> UnarmedWeaponDef {
             UnarmedWeaponDef {
                 class_id,
@@ -87,7 +108,7 @@ impl UnarmedWeaponDef {
                 physical_max,
             }
         }
-        // 按 class_id 升序（与 JSON 排序口径一致，保证 Vec 逐值相等）。
+        // Ascending by class_id (matches the JSON's sort order, so the Vec stays value-equal).
         vec![
             entry(0, "Scion", 6.0),
             entry(1, "Witch", 5.0),

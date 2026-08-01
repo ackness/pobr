@@ -1,12 +1,15 @@
-//! 游戏数据初始化与会话级缓存。
+//! Game-data initialization and session-level caching.
 //!
-//! wasm 环境无文件系统，数据文件由 JS 侧 fetch 后经 [`stage_data_file`] 逐个
-//! 注入、[`init_staged_data`] 一次性构建 [`BuildData`]（内存后端
-//! [`GameData::from_memory`]）。宿主（测试 / CLI）走 [`init_data_from_dir`]
-//! 直接指向 `data/<version>/` 目录。两条路径产物一致：thread_local 缓存的
-//! `Rc<BuildData>`，供 `build_api` 的计算入口零 I/O 复用。
+//! The wasm environment has no filesystem: data files are fetched by JS,
+//! injected one at a time via [`stage_data_file`], then built into
+//! [`BuildData`] in one shot by [`init_staged_data`] (the in-memory backend
+//! [`GameData::from_memory`]). The host (tests / CLI) instead goes through
+//! [`init_data_from_dir`], pointing directly at a `data/<version>/`
+//! directory. Both paths produce the same thing: a thread_local-cached
+//! `Rc<BuildData>`, reused with zero I/O by `build_api`'s calculation entry points.
 //!
-//! wasm 目标单线程，thread_local 即全局；宿主测试同线程内先 init 再调用即可。
+//! The wasm target is single-threaded, so thread_local is effectively
+//! global; host tests just need to init once before calling, on the same thread.
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -16,33 +19,40 @@ use pobr_build::BuildData;
 use pobr_gamedata::GameData;
 
 thread_local! {
-    /// 分批注入的数据文件暂存区（`相对路径 -> bytes`）。
+    /// The staging area for data files injected in batches (`relative path -> bytes`).
     static STAGED: RefCell<BTreeMap<String, Vec<u8>>> = const { RefCell::new(BTreeMap::new()) };
-    /// 已构建的 BuildData（`None` = 尚未初始化）。
+    /// The built BuildData (`None` = not initialized yet).
     static BUILD_DATA: RefCell<Option<Rc<BuildData>>> = const { RefCell::new(None) };
-    /// 构建 BuildData 的 GameData 本体（i18n 名称边车等按需查询用）。
+    /// The GameData backing the built BuildData (used for on-demand queries like i18n name sidecars).
     static GAME_DATA: RefCell<Option<Rc<GameData>>> = const { RefCell::new(None) };
-    /// 中文词条行翻译器（懒构建；`None` 未尝试，`Some(None)` = 数据包无 zh-CN 模板）。
+    /// The Chinese mod-line translator (lazily built; `None` = not attempted
+    /// yet, `Some(None)` = the data pack has no zh-CN templates).
     static ZH_TRANSLATOR: RefCell<Option<Option<Rc<crate::zh::LineTranslator>>>> =
         const { RefCell::new(None) };
-    /// 反向（英文 → 简中）显示翻译器：同一份模板对换向构建（树词条 tooltip /
-    /// 配置 list 选项等展示面消费）。
+    /// The reverse (English -> Simplified Chinese) display translator: built
+    /// by swapping the direction of the same templates (consumed by tree mod
+    /// tooltips / config list options and other display surfaces).
     static EN_TO_ZH_TRANSLATOR: RefCell<Option<Option<Rc<crate::zh::LineTranslator>>>> =
         const { RefCell::new(None) };
-    /// 词缀 tier 反查索引（懒构建；`Some(None)` = 数据包缺池数据/模板，降级不标）。
+    /// The affix-tier reverse-lookup index (lazily built; `Some(None)` = the
+    /// data pack lacks pool data/templates, so tiers are left unlabeled).
     static TIER_INDEX: RefCell<Option<Option<Rc<pobr_item::TierIndex>>>> =
         const { RefCell::new(None) };
-    /// 入口级响应缓存（见 [`cached_response`]）。
+    /// The entry-level response cache (see [`cached_response`]).
     static RESPONSE_CACHE: RefCell<ResponseCache> = RefCell::new(ResponseCache::default());
 }
 
-/// 入口级 `(端点, 请求 JSON 字符串) → 响应字符串` 缓存。
+/// An entry-level `(endpoint, request JSON string) -> response string` cache.
 ///
-/// 键是原始请求字符串：同字符串进必同结果出（计算确定性 + 数据初始化后不变），
-/// 请求形状加字段自动改变键——不存在「缓存键漏字段返回陈旧结果」的漂移风险
-/// （`BuildSnapshot` 文档明确警告其 content_hash 不足以作 data 路径缓存键，
-/// 故不采用）。命中场景：面板切换 / 对比视图来回 / 点击触发的重复
-/// full-dps·归因请求。FIFO 逐出，Err 不缓存。
+/// The key is the raw request string: the same string in always produces
+/// the same result out (calculations are deterministic and don't change
+/// once data is initialized), and a request shape gaining a field
+/// automatically changes the key — so there's no drift risk of "a cache key
+/// missing a field returns a stale result" (the `BuildSnapshot` docs
+/// explicitly warn its content_hash isn't sufficient as a data-path cache
+/// key, hence it isn't used here). Hit scenarios: switching panels /
+/// toggling between comparison views / repeated full-dps and attribution
+/// requests triggered by clicks. Evicted FIFO; `Err` results aren't cached.
 #[derive(Default)]
 struct ResponseCache {
     entries: std::collections::HashMap<(&'static str, String), String>,
@@ -50,11 +60,12 @@ struct ResponseCache {
     hits: u64,
 }
 
-/// 缓存条目数上限。响应可达数百 KB（breakdown 全量），16 条足够覆盖
-/// 「对比两个 build 来回切 + 各面板重复请求」且内存有界。
+/// The cache entry-count cap. A response can reach hundreds of KB (the full
+/// breakdown), and 16 entries is enough to cover "toggling between two
+/// builds plus repeated per-panel requests" while keeping memory bounded.
 const RESPONSE_CACHE_CAP: usize = 16;
 
-/// 以 `(endpoint, request_json)` 为键缓存 `compute` 的成功结果。
+/// Caches `compute`'s successful result, keyed by `(endpoint, request_json)`.
 pub(crate) fn cached_response(
     endpoint: &'static str,
     request_json: &str,
@@ -89,12 +100,12 @@ pub(crate) fn cached_response(
     Ok(response)
 }
 
-/// 缓存命中计数（测试断言用）。
+/// The cache-hit count (used by test assertions).
 pub fn response_cache_hits() -> u64 {
     RESPONSE_CACHE.with_borrow(|c| c.hits)
 }
 
-/// 数据（重新）初始化时清空响应缓存——结果对数据版本敏感。
+/// Clears the response cache whenever data is (re-)initialized — results are sensitive to the data version.
 fn clear_response_cache() {
     RESPONSE_CACHE.with_borrow_mut(|c| {
         c.entries.clear();
@@ -103,16 +114,18 @@ fn clear_response_cache() {
     });
 }
 
-/// 注入一个数据文件（`path` = 版本目录内相对路径，正斜杠，如 `base/stats.json`）。
+/// Injects a data file (`path` = the relative path within the version
+/// directory, forward slashes, e.g. `base/stats.json`).
 ///
-/// 只暂存不解析；重复 path 后写覆盖。
+/// Only staged, not parsed; a repeated path overwrites the previous entry.
 pub fn stage_data_file(path: &str, content: &str) {
     STAGED.with_borrow_mut(|map| {
         map.insert(path.to_string(), content.as_bytes().to_vec());
     });
 }
 
-/// 用暂存区文件构建内存后端 [`GameData`] + [`BuildData`] 并缓存；清空暂存区。
+/// Builds the in-memory-backed [`GameData`] plus [`BuildData`] from the
+/// staged files and caches them; clears the staging area.
 pub fn init_staged_data() -> Result<(), String> {
     let files = STAGED.with_borrow_mut(std::mem::take);
     if files.is_empty() {
@@ -126,7 +139,8 @@ pub fn init_staged_data() -> Result<(), String> {
     Ok(())
 }
 
-/// 宿主便捷入口：从磁盘版本目录初始化（wasm 下调用会因文件 I/O 失败而报错）。
+/// A convenience entry point for the host: initializes from a disk version
+/// directory (calling this under wasm errors out from file I/O failing).
 pub fn init_data_from_dir(version_dir: &str) -> Result<(), String> {
     let data = GameData::new(version_dir);
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
@@ -136,12 +150,12 @@ pub fn init_data_from_dir(version_dir: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// 数据是否已初始化。
+/// Whether data has been initialized.
 pub fn is_data_ready() -> bool {
     BUILD_DATA.with_borrow(|slot| slot.is_some())
 }
 
-/// 取已初始化的 BuildData；未初始化时报出可透传给前端的错误消息。
+/// Gets the initialized BuildData; if uninitialized, returns an error message safe to pass through to the frontend.
 pub fn build_data() -> Result<Rc<BuildData>, String> {
     BUILD_DATA.with_borrow(|slot| {
         slot.clone()
@@ -149,7 +163,7 @@ pub fn build_data() -> Result<Rc<BuildData>, String> {
     })
 }
 
-/// 取构建时的 GameData（i18n 名称边车查询）；未初始化时报错同上。
+/// Gets the GameData used at build time (for i18n name sidecar queries); errors the same way as above if uninitialized.
 pub fn game_data() -> Result<Rc<GameData>, String> {
     GAME_DATA.with_borrow(|slot| {
         slot.clone()
@@ -157,8 +171,9 @@ pub fn game_data() -> Result<Rc<GameData>, String> {
     })
 }
 
-/// 取中文词条行翻译器（首次调用构建并缓存；数据包无 zh-CN 模板时为 `None`，
-/// 消费侧按「无输入翻译」降级——中文行原样进 parser 落 unsupported）。
+/// Gets the Chinese mod-line translator (built and cached on first call;
+/// `None` if the data pack has no zh-CN templates — consumers degrade to
+/// "no translation applied", so Chinese lines pass through the parser as-is and land in unsupported).
 pub fn zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
     ZH_TRANSLATOR.with_borrow_mut(|slot| {
         if slot.is_none() {
@@ -168,14 +183,15 @@ pub fn zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
     })
 }
 
-/// 取英文 → 简中显示翻译器（懒构建同上）。
+/// Gets the English -> Simplified Chinese display translator (lazily built, same as above).
 pub fn en_to_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
     EN_TO_ZH_TRANSLATOR.with_borrow_mut(|slot| {
         if slot.is_none() {
             let built = (|| {
                 let game = game_data().ok()?;
                 let templates = game.stat_line_templates("zh-CN").ok().flatten()?;
-                // 换向：src=英文模板、en 字段放简中模板 → translate_line 即 en→zh。
+                // Swap direction: src=the English template, and the en field
+                // holds the Simplified Chinese template -> translate_line becomes en->zh.
                 let swapped: Vec<pobr_data::catalog::StatLineTemplate> = templates
                     .into_iter()
                     .map(|t| pobr_data::catalog::StatLineTemplate {
@@ -183,8 +199,10 @@ pub fn en_to_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
                         en: t.src,
                     })
                     .collect();
-                // 名词直译表（英文 → 简中）：基底名（i18n id→zh × base 英名→id join）
-                // + Words 名词（唯一物品名等）。物品名/基底行靠这张表整行命中。
+                // The noun direct-translation table (English -> Simplified
+                // Chinese): base names (i18n id->zh joined with base English
+                // name->id) plus Words nouns (unique item names, etc). Item
+                // name / base-type lines get a whole-line hit via this table.
                 let mut names = std::collections::HashMap::new();
                 if let (Ok(zh_by_id), Ok(data)) = (game.base_item_names("zh-CN"), build_data()) {
                     for (en_name, def) in &data.base_items {
@@ -200,11 +218,13 @@ pub fn en_to_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
                     names.extend(passives);
                 }
                 let mut translator = crate::zh::LineTranslator::new(&swapped, names);
-                // 词缀名表（Mods 表）：启用魔法物品名「后缀+前缀+基底」组合翻译。
+                // The affix name table (the Mods table): enables translating
+                // magic item names composed of "suffix + prefix + base".
                 if let Ok(affixes) = game.affix_names("zh-CN") {
                     translator.set_affix_names(affixes.into_iter().collect());
                 }
-                // RARE 随机名组成词表：启用双词连写组合翻译。
+                // The RARE random-name word table: enables translating
+                // two-word names written together.
                 if let Ok(words) = game.rare_name_words("zh-CN") {
                     translator.set_rare_words(words.into_iter().collect());
                 }
@@ -216,8 +236,9 @@ pub fn en_to_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
     })
 }
 
-/// 取词缀 tier 反查索引（首次调用构建并缓存；mods 缺 group/spawn_weights 或
-/// 无 StatDescriptions overlay 的旧数据包返回 `None`——消费侧不标 tier）。
+/// Gets the affix-tier reverse-lookup index (built and cached on first call;
+/// returns `None` for old data packs whose mods lack group/spawn_weights or
+/// have no StatDescriptions overlay — consumers then leave tiers unlabeled).
 pub fn tier_index() -> Option<Rc<pobr_item::TierIndex>> {
     TIER_INDEX.with_borrow_mut(|slot| {
         if slot.is_none() {
@@ -234,7 +255,7 @@ pub fn tier_index() -> Option<Rc<pobr_item::TierIndex>> {
     })
 }
 
-/// 按英文基底名查 (tags, mod_domain)（tier 反查的适用性输入）。
+/// Looks up (tags, mod_domain) by English base name (the applicability input for tier lookup).
 pub fn base_item_tags(base_name: &str) -> Option<(Vec<String>, u32)> {
     let data = build_data().ok()?;
     let def = data.base_items.get(base_name)?;
@@ -244,7 +265,8 @@ pub fn base_item_tags(base_name: &str) -> Option<(Vec<String>, u32)> {
 fn build_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
     let game = game_data().ok()?;
     let templates = game.stat_line_templates("zh-CN").ok().flatten()?;
-    // 基底名反查表：i18n（id → 简中名）× base（英文名 → def.id）join。
+    // The base-name reverse-lookup table: i18n (id -> Simplified Chinese
+    // name) joined with base (English name -> def.id).
     let mut base_names = std::collections::HashMap::new();
     if let (Ok(zh_by_id), Ok(data)) = (game.base_item_names("zh-CN"), build_data()) {
         for (en_name, def) in &data.base_items {
@@ -253,7 +275,8 @@ fn build_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
             }
         }
     }
-    // Words 名词反查（简中唯一物品名 → 英文），国服物品文本的名称行走这里。
+    // Words-noun reverse lookup (Simplified Chinese unique item name ->
+    // English); the name lines of China-server item text go through this.
     if let Ok(words) = game.word_names("zh-CN") {
         for (en, zh) in words {
             base_names.entry(zh).or_insert(en);

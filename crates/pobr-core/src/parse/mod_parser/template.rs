@@ -1,10 +1,12 @@
-//! 占位符模板实例化——把规则表里带 `$n` / `:cap` 占位符的
-//! tag 模板、flag 名数组实例化为 pobr [`ModTag`] / [`ModFlags`] / [`KeywordFlags`]。
+//! Placeholder template instantiation — turns tag templates and flag-name arrays that carry
+//! `$n` / `:cap` placeholders in the rule tables into pobr [`ModTag`] / [`ModFlags`] /
+//! [`KeywordFlags`].
 //!
-//! 占位符方言与`rules::special_mod` **同源**（`$n` 捕获、`:cap` 首字母
-//! 大写拼接、`negate/div/mult/base` 算子）；数值算子链复用单点求值器
-//! `rules::value_expr`（禁第二套方言）。本模块只新增 `:cap`
-//! 字符串拼接的展开（受限扩展，~139 闭包受益 >> 20 条目闸门）。
+//! The placeholder dialect is **shared** with `rules::special_mod` (`$n` capture, `:cap`
+//! capitalize-and-concat, `negate/div/mult/base` operators); the numeric operator chain reuses
+//! the single evaluator `rules::value_expr` (no second dialect allowed). This module only adds
+//! `:cap` string concatenation expansion (a bounded extension — the payoff of ~139 closed gaps
+//! clears the bar of a 20-entry gate).
 
 use pobr_data::catalog::parser_rules::TagTemplate;
 use pobr_data::catalog::stat_map::StatMapValue;
@@ -13,11 +15,12 @@ use crate::{ActorRef, ModTag};
 use pobr_data::modifier::{KeywordFlags, ModFlags};
 use pobr_data::prelude::{DamageType, SkillTypes};
 
-/// 把占位符字符串值按捕获实例化（`$n` 直引、`$n:cap` 首字母大写、段间 `+`
-/// 拼接字面量；非占位符段原样）。vendor `firstToUpper(cap) .. "Effect"` →
-/// 模板 `"$2:cap+Effect"`。
+/// Instantiate a placeholder string value against the captures (`$n` substitutes directly,
+/// `$n:cap` capitalizes it, `+` between segments concatenates literals; non-placeholder
+/// segments pass through unchanged). Vendor's `firstToUpper(cap) .. "Effect"` becomes the
+/// template `"$2:cap+Effect"`.
 pub fn interpolate(template: &str, captures: &[String]) -> String {
-    // 模板形态：`段1+段2+...`，每段是字面量或 `$n` / `$n:cap`。
+    // Template shape: `segment1+segment2+...`, where each segment is a literal or `$n` / `$n:cap`.
     template
         .split('+')
         .map(|seg| interpolate_segment(seg, captures))
@@ -26,7 +29,7 @@ pub fn interpolate(template: &str, captures: &[String]) -> String {
 
 fn interpolate_segment(seg: &str, captures: &[String]) -> String {
     if let Some(rest) = seg.strip_prefix('$') {
-        // `$n` 或 `$n:cap`
+        // `$n` or `$n:cap`
         let (idx_str, cap_op) = match rest.split_once(':') {
             Some((n, op)) => (n, Some(op)),
             None => (rest, None),
@@ -41,14 +44,14 @@ fn interpolate_segment(seg: &str, captures: &[String]) -> String {
                 _ => raw,
             };
         }
-        // 非数字 → 当字面量（保 `$` 前缀）。
+        // Not a number → treat as a literal (keep the `$` prefix).
         seg.to_string()
     } else {
         seg.to_string()
     }
 }
 
-/// Lua `firstToUpper`：首字母大写，其余不变。
+/// Vendor's Lua `firstToUpper`: capitalizes the first letter, leaves the rest unchanged.
 fn first_to_upper(s: &str) -> String {
     let mut chars = s.chars();
     match chars.next() {
@@ -57,7 +60,8 @@ fn first_to_upper(s: &str) -> String {
     }
 }
 
-/// 解析模板字段值为字符串（含占位符插值）。`$n` / `$n:cap` / 字面量。
+/// Resolve a template field value as a string (with placeholder interpolation). `$n` / `$n:cap`
+/// / literal.
 fn field_text(value: &StatMapValue, captures: &[String]) -> Option<String> {
     match value {
         StatMapValue::Text(s) => Some(interpolate(s, captures)),
@@ -67,7 +71,7 @@ fn field_text(value: &StatMapValue, captures: &[String]) -> Option<String> {
     }
 }
 
-/// 解析模板字段值为数值（`$n` 捕获取数 / 字面量）。
+/// Resolve a template field value as a number (either a `$n` capture or a literal).
 fn field_number(value: &StatMapValue, captures: &[String]) -> Option<f64> {
     match value {
         StatMapValue::Number(n) => Some(*n),
@@ -90,13 +94,15 @@ fn field_bool(value: &StatMapValue) -> Option<bool> {
     }
 }
 
-/// 数值字段值含**捕获算子**的求值（`$n:mult(N)`→×N、`$n:div(N)`→÷N、
-/// `$n:base(N)`→+N；无算子退化为 [`field_number`]）。template/special 方言与
-/// `interpolate_segment` 的 `:cap` 同源，但作用于数值。
+/// Evaluate a numeric field value that carries a **capture operator** (`$n:mult(N)` → ×N,
+/// `$n:div(N)` → ÷N, `$n:base(N)` → +N; falls back to [`field_number`] when there's no
+/// operator). The template/special dialect shares the same `:cap` mechanism as
+/// `interpolate_segment`, just applied to numbers instead.
 ///
-/// 仅 MultiplierThreshold 的 `threshold = "$1:mult(10)"`（米→单位）等消费——
-/// **不**改 [`field_number`]（避免连带改动 Multiplier `limit="$1:base(6)"` 等既有
-/// 字段的口径，那些是独立 latent bug，超出本改动范围）。
+/// Only used by consumers like MultiplierThreshold's `threshold = "$1:mult(10)"` (metres →
+/// internal units) — deliberately **not** folded into [`field_number`], to avoid changing the
+/// semantics of existing fields like Multiplier's `limit="$1:base(6)"` as a side effect; those
+/// are separate latent bugs, out of scope for this change.
 fn field_number_capop(value: &StatMapValue, captures: &[String]) -> Option<f64> {
     let StatMapValue::Text(s) = value else {
         return field_number(value, captures);
@@ -124,19 +130,20 @@ fn field_number_capop(value: &StatMapValue, captures: &[String]) -> Option<f64> 
     Some(v)
 }
 
-/// 把 [`TagTemplate`] 实例化为 pobr [`ModTag`]。
+/// Instantiate a [`TagTemplate`] into a pobr [`ModTag`].
 ///
-/// **可映射清单**（与 special_mod::compile_tag 同口径，扩展 Multiplier/PerStat/
-/// ActorCondition 的 `$n` 字段）：
-/// - `Multiplier`（var/div/limit/limitTotal/actor）；
-/// - `Condition` / `ActorCondition`（var/neg/actor）；
-/// - `SkillType`（skill_type 名）；
-/// - `DamageType`（damageType 名）；
-/// - `PerStat` / `PercentStat`（stat/div/limit）。
+/// **Mappable set** (matches special_mod::compile_tag's coverage, extended with `$n` fields for
+/// Multiplier/PerStat/ActorCondition):
+/// - `Multiplier` (var/div/limit/limitTotal/actor);
+/// - `Condition` / `ActorCondition` (var/neg/actor);
+/// - `SkillType` (skill_type name);
+/// - `DamageType` (damageType name);
+/// - `PerStat` / `PercentStat` (stat/div/limit).
 ///
-/// **不可映射**（无 pobr 落点，返回 `None`，行解析仍可产其余 mod；调用方据此
-/// 把整行归为保守失配，见 engine）：`SkillName` / `GlobalEffect` / `ItemCondition`
-/// / `MultiplierThreshold` / `StatThreshold` 等。
+/// **Not mappable** (no pobr landing point, returns `None`; the line can still produce other
+/// mods, but the caller uses this to treat the whole line as a conservative mismatch — see
+/// engine): `SkillName` / `GlobalEffect` / `ItemCondition` / `MultiplierThreshold` /
+/// `StatThreshold` etc.
 pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
     let f = &tag.fields;
     match tag.tag_type.as_str() {
@@ -150,9 +157,11 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
                 .unwrap_or(1.0);
             let limit = f.get("limit").and_then(|v| field_number(v, captures));
             let actor = f.get("actor").and_then(|v| field_text(v, captures));
-            // 动态上限通道（vendor `tag.limitVar`/`limitActor`，如 "for every different
-            // grenade fired" → `Multiplier{var=DifferentGrenadeFired, limitVar=GrenadeTypes}`）。
-            // 此前硬编码 `None` → JSON 里的 limitVar 被静默丢弃，乘数不按已装类型数封顶。
+            // Dynamic-limit channel (vendor `tag.limitVar`/`limitActor`, e.g. "for every
+            // different grenade fired" → `Multiplier{var=DifferentGrenadeFired,
+            // limitVar=GrenadeTypes}`). Previously hardcoded to `None`, so the JSON's limitVar
+            // was silently dropped and the multiplier wasn't capped by the number of equipped
+            // types.
             let limit_var = f.get("limitVar").and_then(|v| field_text(v, captures));
             let limit_actor = f.get("limitActor").and_then(|v| field_text(v, captures));
             Some(ModTag::Multiplier {
@@ -168,10 +177,11 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
         }
         "Condition" => {
             let neg = f.get("neg").and_then(field_bool).unwrap_or(false);
-            // vendor Condition 可携带 `var`（单条件）或 `varList`（OR 语义：任一为真即
-            // 成立，ModStore.lua:596-607）。`var` 优先；`varList` 单元素退化为单
-            // Condition（如 `while holding a (%w+)` gear=shield → `UsingShield`，与
-            // legacy 逐字一致），多元素 → `ConditionAnyOf`（OR）。
+            // Vendor's Condition can carry either `var` (a single condition) or `varList` (OR
+            // semantics: true if any one holds, ModStore.lua:596-607). `var` takes priority; a
+            // single-element `varList` degenerates to a single Condition (e.g. `while holding a
+            // (%w+)` with gear=shield → `UsingShield`, matching legacy verbatim), a multi-element
+            // one → `ConditionAnyOf` (OR).
             if let Some(var) = f.get("var").and_then(|v| field_text(v, captures)) {
                 return Some(ModTag::condition(var, neg));
             }
@@ -189,21 +199,26 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             }
         }
         "ActorCondition" => {
-            // .3 归一：vendor `ActorCondition{actor=enemy,var=X}` → PoBR 扁平条件
-            // `Condition{var=Enemy<X>}`（actor=None），与 legacy + 编排层 cfg 键空间一致
-            // （orchestrator 据 build config `conditionEnemy<X>` 置 `Enemy<X>` 真）。
-            // 例外（[`normalize_enemy_cond_var`]）：var 已含 `Enemy` 前缀（EnemyInPresence）
-            // 或为敌人**稀有度**（Rare/Unique/RareOrUnique/Normal/Magic，legacy 用裸名）
-            // 不加前缀，避免双前缀 / 与 legacy 偏离。
+            // .3 normalization: vendor's `ActorCondition{actor=enemy,var=X}` becomes PoBR's
+            // flat condition `Condition{var=Enemy<X>}` (actor=None), matching legacy's and the
+            // orchestrator's cfg key space (the orchestrator sets `Enemy<X>` true from the
+            // build config's `conditionEnemy<X>`). Exceptions handled by
+            // [`normalize_enemy_cond_var`]: don't add the prefix when var already carries
+            // `Enemy` (EnemyInPresence) or is an enemy **rarity** name
+            // (Rare/Unique/RareOrUnique/Normal/Magic, which legacy uses bare) — avoids a double
+            // prefix / diverging from legacy.
             //
-            // 修复（fork-a）：早前一律用裸名会让 `against ignited enemies` 产
-            // `Condition{Ignited}`（查玩家自身 Ignited，恒假）而非 legacy 的 `EnemyIgnited`
-            // （查敌方异常，编排层置真）——player 侧「against <ailment> enemies」增伤全失效。
+            // Fix (fork-a): unconditionally using the bare name used to make `against ignited
+            // enemies` produce `Condition{Ignited}` (checking the player's own Ignited state,
+            // always false) instead of legacy's `EnemyIgnited` (checking the enemy's ailment,
+            // set true by the orchestrator) — every player-side "against <ailment> enemies"
+            // damage bonus was completely inert.
             //
-            // `varList`（OR 语义，ModStore.lua:631-640）：逐 var 同样归一后收进
-            // `ConditionAnyOf`（如 "against enemies affected by ailments" →
-            // Enemy<九异常> 任一真；"while a rare or unique enemy is in your presence"
-            // → {EnemyNearbyRareOrUniqueEnemy, RareOrUnique}，后者 boss 档编排层置真）。
+            // `varList` (OR semantics, ModStore.lua:631-640): each var is normalized the same
+            // way and collected into `ConditionAnyOf` (e.g. "against enemies affected by
+            // ailments" → true if any of the nine ailments' Enemy<X> holds; "while a rare or
+            // unique enemy is in your presence" → {EnemyNearbyRareOrUniqueEnemy, RareOrUnique},
+            // the latter set true by the orchestrator on boss-tier configs).
             let neg = f.get("neg").and_then(field_bool).unwrap_or(false);
             if let Some(var) = f.get("var").and_then(|v| field_text(v, captures)) {
                 return Some(ModTag::condition(normalize_enemy_cond_var(&var), neg));
@@ -224,19 +239,22 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
         "SkillType" => {
             let name = f.get("skill_type").and_then(|v| field_text(v, captures))?;
             let bare = name.strip_prefix("SkillType:").unwrap_or(&name);
-            // 全量枚举表（数据驱动 A1）：规则 JSON 的名来自 vendor 枚举反查，
-            // miss = 数据损坏——debug 构建炸出（A2 可见化），release 保守丢 tag。
+            // Full enum table (data-driven, A1): the rule JSON's names come from a reverse
+            // lookup against the vendor enum, so a miss means corrupted data — debug builds
+            // assert loudly (surfaced for A2), release builds conservatively drop the tag.
             let st = SkillTypes::from_pob2_name(bare);
             debug_assert!(st.is_some(), "unknown SkillType name: {bare}");
             st.map(ModTag::SkillTypes)
         }
         "SkillName" => {
-            // 具名技能限定（vendor `skillName` 单名 / `skillNameList` 列表，小写等值
-            // 匹配，[`ModTag::SkillName`] 语义已在 matches 落地；special_mod DSL V2
-            // 同口径）。首个数据消费者：vendor skillNameList 抢先剥离产物（如
-            // `increased Grenade Damage` → Damage + SkillName{"grenade"}——技能名
-            // 是字面 "Grenade"，任何真实技能都不叫这个名，恒不匹配 = vendor 零效果，
-            // ModCache golden 逐字对齐）。`includeTransfigured` 忽略（PoE2 无变体）。
+            // Named-skill qualifier (vendor's single `skillName` / list `skillNameList`,
+            // matched by lowercase equality; the [`ModTag::SkillName`] semantics are already
+            // implemented in `matches`, matching special_mod DSL V2's coverage). First data
+            // consumer: vendor's skillNameList catches text that was stripped early during
+            // extraction (e.g. `increased Grenade Damage` → Damage + SkillName{"grenade"} — the
+            // skill name is the literal "Grenade", which no real skill is named, so it never
+            // matches = vendor's own zero-effect outcome, matched verbatim against the ModCache
+            // golden). `includeTransfigured` is ignored (PoE2 has no skill variants).
             let names: Vec<String> = if let Some(v) = f.get("skillName") {
                 vec![field_text(v, captures)?.to_ascii_lowercase()]
             } else if let Some(StatMapValue::List(items)) = f.get("skillNameList") {
@@ -254,22 +272,23 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             damage_type_bit(&name).map(ModTag::DamageType)
         }
         "SlotName" => {
-            // vendor slot 名（`Body Armour`/`Weapon 2`/`Helmet`…）→ legacy 稳定槽位 ID
-            //（小写 + 去空格，对齐 EquipmentSlot::id）。slotNameList（多槽）本批保守
-            // 跳过（不在 C1 diff 集）。
+            // Vendor slot names (`Body Armour`/`Weapon 2`/`Helmet`…) → legacy's stable slot ID
+            // (lowercase + spaces stripped, matching EquipmentSlot::id). slotNameList (multiple
+            // slots) is conservatively skipped this batch (not in the C1 diff set).
             let name = f.get("slotName").and_then(|v| field_text(v, captures))?;
             Some(ModTag::SlotName(slot_name_to_id(&name)))
         }
         "PerStat" | "PercentStat" => {
-            // .3 归一（C2）：vendor `PerStat{stat,div,limit}` ↔ PoBR `Multiplier
-            // {var=stat,div,limit}` 字段一一对应（计算侧 effective_number 只识别
-            // Multiplier；legacy 也统一产 Multiplier）。归一为 Multiplier。
+            // .3 normalization (C2): vendor's `PerStat{stat,div,limit}` maps field-for-field to
+            // PoBR's `Multiplier{var=stat,div,limit}` (the calc side's effective_number only
+            // recognizes Multiplier; legacy also always produces Multiplier). Normalize to
+            // Multiplier.
             //
-            // vendor `statList = {A, B, …}`（如 `per 75 armour and evasion on
-            // equipped shield` → {ArmourOnWeapon 2, EvasionOnWeapon 2}，
-            // ModParser.lua:1631）：mult = floor(Σstats/div)——多 stat 求和后再
-            // 除。归一为 `|` 连接的复合 var，取数端（effective_number Multiplier
-            // 分支）按 `|` 拆分求和，语义与 vendor ModStore.lua:445-452 一致。
+            // Vendor's `statList = {A, B, …}` (e.g. "per 75 armour and evasion on equipped
+            // shield" → {ArmourOnWeapon 2, EvasionOnWeapon 2}, ModParser.lua:1631): mult =
+            // floor(Σstats/div) — the stats are summed first, then divided. This is normalized
+            // into a `|`-joined compound var; the consumer side (effective_number's Multiplier
+            // branch) splits on `|` and sums, matching vendor ModStore.lua:445-452's semantics.
             let stat = if let Some(StatMapValue::List(items)) = f.get("statList") {
                 let parts: Vec<String> = items
                     .iter()
@@ -307,28 +326,35 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
             })
         }
         "MultiplierThreshold" => {
-            // vendor `MultiplierThreshold{actor=enemy, var=<X>Stacks, threshold=1, upper}`
-            // 表达「敌方异常存在/不存在」的二元条件（如 "on targets that are not Poisoned"
-            // → 敌方毒层 <1）→ PoBR 扁平 `Condition{Enemy<X past>, negated=upper}`，镜像
-            // legacy 对该短语的处理（`EnemyPoisoned` 取反）。仅 **异常叠层 var + 字面常量
-            // threshold=1** 映射；限幅式（`$n` 阈值 = "per X up to N"）与非异常 var 无
-            // pobr 二元落点，仍返回 None（保守失配，与修复前一致）。
+            // Vendor's `MultiplierThreshold{actor=enemy, var=<X>Stacks, threshold=1, upper}`
+            // expresses a binary "enemy ailment present/absent" condition (e.g. "on targets
+            // that are not Poisoned" → enemy poison stacks <1), mapped to PoBR's flat
+            // `Condition{Enemy<X past>, negated=upper}`, mirroring how legacy handles that
+            // phrase (`EnemyPoisoned` negated). Only **ailment-stack var + literal
+            // threshold=1** is mapped; scaling forms (a `$n`-captured threshold, i.e. "per X up
+            // to N") and non-ailment vars have no binary pobr landing point and still return
+            // None (conservative mismatch, unchanged from before the fix).
             let var = f.get("var").and_then(|v| field_text(v, captures))?;
             let upper = f.get("upper").and_then(field_bool).unwrap_or(false);
             if let Some(cond) = ailment_stacks_condition(&var) {
-                // 异常叠层仅 **threshold=1 字面常量** 二元化；其余（限幅式 `$n`）无落点。
+                // Ailment stacks are only binarized for a **literal threshold=1**; anything
+                // else (a captured scaling `$n`) has no landing point.
                 return matches!(f.get("threshold"), Some(StatMapValue::Number(n)) if *n == 1.0)
                     .then(|| ModTag::condition(cond, upper));
             }
-            // 距离阈值（vendor ModStore.lua:559-573）：「against enemies within/further than
-            // N metres」→ `var=enemyDistance`、`threshold=N×10`（`"$1:mult(10)"` 米→单位，须经
-            // field_number_capop 应用 `:mult(10)` 算子）→ [`ModTag::MultiplierThreshold`]。
+            // Distance threshold (vendor ModStore.lua:559-573): "against enemies within/further
+            // than N metres" → `var=enemyDistance`, `threshold=N×10` (`"$1:mult(10)"` converts
+            // metres to internal units, requiring field_number_capop to apply the `:mult(10)`
+            // operator) → [`ModTag::MultiplierThreshold`].
             //
-            // 非距离/非异常 var 的方向性放行（A2 真缺口 #12「while you have an ally
-            // in your presence」→ NearbyAlly≥1）：**下界阈值（upper=false）盲产 tag
-            // 欠算安全**——求值读 cfg.multiplier 缺键＝0 < threshold → 条件不满足 →
-            // mod 不生效；编排层将来灌入该 multiplier 时词条自动接通。**上界
-            // （upper=true）仍保守 None**：缺键 0 ≤ threshold 恒真 = over-apply。
+            // Directional pass-through for non-distance/non-ailment vars (A2 real gap #12,
+            // "while you have an ally in your presence" → NearbyAlly≥1): **producing a tag for
+            // a lower-bound threshold (upper=false) is safe to under-apply** — evaluation reads
+            // a missing cfg.multiplier key as 0, so 0 < threshold fails and the mod stays
+            // inactive; once the orchestrator later feeds that multiplier, the entry
+            // auto-activates. **Upper-bound thresholds (upper=true) still conservatively return
+            // None**: a missing key reads as 0, and 0 ≤ threshold is always true, which would
+            // over-apply.
             if var != "enemyDistance" && upper {
                 return None;
             }
@@ -341,14 +367,17 @@ pub fn compile_tag(tag: &TagTemplate, captures: &[String]) -> Option<ModTag> {
                 upper,
             })
         }
-        // 未映射 tag 形态：保守跳过（返回 None；engine 据此处置整行）。
+        // Unmapped tag shape: conservatively skip (return None; engine decides how to treat
+        // the whole line based on this).
         _ => None,
     }
 }
 
-/// `<Ailment>Stacks` 阈值 var → 敌方异常存在条件 var（`PoisonStacks`→`EnemyPoisoned`…），
-/// 镜像 legacy「on targets that are [not] <ailment>ed」的 `Enemy<X>` 条件落点（编排层据
-/// build config `conditionEnemy<X>` 置真）。仅伤害/常见异常；其余返回 None（保守失配）。
+/// `<Ailment>Stacks` threshold var → the enemy-ailment-present condition var
+/// (`PoisonStacks`→`EnemyPoisoned`…), mirroring legacy's `Enemy<X>` condition landing point for
+/// "on targets that are [not] <ailment>ed" (set true by the orchestrator from the build
+/// config's `conditionEnemy<X>`). Covers only damage/common ailments; anything else returns
+/// None (conservative mismatch).
 fn ailment_stacks_condition(var: &str) -> Option<String> {
     let past = match var.strip_suffix("Stacks")? {
         "Poison" => "Poisoned",
@@ -365,9 +394,17 @@ fn ailment_stacks_condition(var: &str) -> Option<String> {
     Some(format!("Enemy{past}"))
 }
 
-/// 归一 PerStat/Multiplier 槽位倍率 var 的 `On<Slot>` 槽名后缀为槽位 ID（小写去空格，经 `slot_name_to_id`），对齐 orchestrator `per_slot_defence_multipliers` 拼的 `<Stat>On<slot.id()>` 键。
-/// vendor 数据槽名大小写不一（`OnBoots`/`OnBody Armour`/`Onhelmet` 混存）；不归一时 `+N to Armour per M ES on Equipped Boots` 产 `EnergyShieldOnBoots`，与消费侧 `EnergyShieldOnboots` 不匹配，倍率取 0，槽位防御底归零（fork-a Armour→0 实测根因）。
-/// 仅归一已知装备槽后缀；`OnAllArmourItems` 等非单槽后缀原样保留（消费侧另有通道）。对已小写的 `Onhelmet` 幂等。
+/// Normalizes the `On<Slot>` slot-name suffix on a PerStat/Multiplier slot-scaling var into a
+/// slot ID (lowercased, spaces stripped, via `slot_name_to_id`), matching the
+/// `<Stat>On<slot.id()>` key format the orchestrator's `per_slot_defence_multipliers` builds.
+/// Vendor data uses inconsistent slot-name casing (`OnBoots`/`OnBody Armour`/`Onhelmet` all
+/// occur); without normalization, `+N to Armour per M ES on Equipped Boots` would produce
+/// `EnergyShieldOnBoots`, which wouldn't match the consumer's `EnergyShieldOnboots`, so the
+/// multiplier reads as 0 and the slot's defence base drops to zero (the root cause of fork-a's
+/// observed Armour→0).
+/// Only normalizes recognized equipment-slot suffixes; non-single-slot suffixes like
+/// `OnAllArmourItems` pass through unchanged (handled by a separate consumer channel). Idempotent
+/// on an already-lowercase `Onhelmet`.
 pub(crate) fn normalize_perstat_slot_suffix(var: &str) -> String {
     let Some(idx) = var.rfind("On") else {
         return var.to_string();
@@ -398,12 +435,14 @@ pub(crate) fn normalize_perstat_slot_suffix(var: &str) -> String {
     }
 }
 
-/// vendor 短属性名（`Str`/`Dex`/`Int`）→ PoBR 全名（`Strength`/`Dexterity`/
-/// `Intelligence`）。PerStat/Multiplier 的属性缩放 var 须用全名——编排层
-/// `set_multiplier("Strength"/"Dexterity"/"Intelligence", …)` 与 legacy 都用全名，
-/// 短名 var 查不到 multiplier → 静默 0 贡献（per-attr 缩放失效）。
-/// 闭集，仅属性三连；其余 var（`AxeItem`/`SummonedMinion`/`Rage`/`PowerCharge`/
-/// `Spirit`…）原样返回（与 `stat_map_engine.rs` 同口径 / `vendor_name_aliases.json`）。
+/// Vendor's short attribute names (`Str`/`Dex`/`Int`) → PoBR's full names (`Strength`/
+/// `Dexterity`/`Intelligence`). PerStat/Multiplier's attribute-scaling var must use the full
+/// name — both the orchestrator's `set_multiplier("Strength"/"Dexterity"/"Intelligence", …)` and
+/// legacy use full names, so a short-name var would miss the multiplier lookup and silently
+/// contribute 0 (per-attribute scaling would be inert).
+/// A closed set, attributes only; every other var (`AxeItem`/`SummonedMinion`/`Rage`/
+/// `PowerCharge`/`Spirit`…) is returned unchanged (matches `stat_map_engine.rs` /
+/// `vendor_name_aliases.json`'s coverage).
 pub(crate) fn normalize_attribute_var(var: &str) -> String {
     match var {
         "Str" => "Strength",
@@ -414,8 +453,13 @@ pub(crate) fn normalize_attribute_var(var: &str) -> String {
     .to_string()
 }
 
-/// vendor `ActorCondition{actor=enemy}` 的 var 归一为 PoBR 扁平条件 var（与 legacy + 编排层 cfg 键空间一致）。默认加 `Enemy` 前缀（`Ignited`→`EnemyIgnited`，对齐 legacy 后缀表 + orchestrator `conditionEnemy<X>`→`Enemy<X>`）。
-/// 两类例外原样返回：已含 `Enemy` 前缀（`EnemyInPresence`）避免双前缀；敌人稀有度（`Rare`/`Unique`/`RareOrUnique`/`Normal`/`Magic`）legacy 用裸名。
+/// Normalizes the var of vendor's `ActorCondition{actor=enemy}` into a PoBR flat condition var
+/// (matching legacy's and the orchestrator's cfg key space). Adds an `Enemy` prefix by default
+/// (`Ignited`→`EnemyIgnited`, matching legacy's suffix table + the orchestrator's
+/// `conditionEnemy<X>`→`Enemy<X>`).
+/// Two exceptions pass through unchanged: a var already carrying the `Enemy` prefix
+/// (`EnemyInPresence`, avoiding a double prefix); and enemy rarity names
+/// (`Rare`/`Unique`/`RareOrUnique`/`Normal`/`Magic`), which legacy uses bare.
 fn normalize_enemy_cond_var(var: &str) -> String {
     const BARE: &[&str] = &["Rare", "Unique", "RareOrUnique", "Normal", "Magic"];
     if var.starts_with("Enemy") || BARE.contains(&var) {
@@ -425,8 +469,9 @@ fn normalize_enemy_cond_var(var: &str) -> String {
     }
 }
 
-/// 是否为本模块「已知但 pobr 无落点」的 tag 类型（区别于真正未知类型，供 engine
-/// 决定是否仍按部分支持产出）。当前保守：任何 compile_tag 返回 None 都算失配。
+/// Whether this is a tag type this module "knows but has no pobr landing point for" (as
+/// distinct from a genuinely unknown type; lets engine decide whether to still emit partial
+/// support). Currently conservative: any `compile_tag` returning None counts as a mismatch.
 pub fn is_mappable_tag_type(tag_type: &str) -> bool {
     matches!(
         tag_type,
@@ -451,7 +496,7 @@ fn parse_actor(name: Option<&str>) -> Option<ActorRef> {
     }
 }
 
-/// ModFlag 名 → 位（与 special_mod::flag_bit 同口径）。未知名 → `None`。
+/// ModFlag name → bit (matches special_mod::flag_bit's coverage). Unknown name → `None`.
 pub fn flag_bit(name: &str) -> Option<ModFlags> {
     Some(match name {
         "Attack" => ModFlags::ATTACK,
@@ -464,10 +509,11 @@ pub fn flag_bit(name: &str) -> Option<ModFlags> {
         "Projectile" => ModFlags::PROJECTILE,
         "Ailment" => ModFlags::AILMENT,
         "Weapon" => ModFlags::WEAPON,
-        // 武器**类别**位（vendor `ModFlag.Weapon1H`/`Weapon2H`/`WeaponMelee`/
-        // `WeaponRanged`，Data/Global.lua）。`weapon_type_bit` 只认武器**类型**名
-        // （Axe/Bow/Staff…），不含这些类别名——缺则 `with one handed (melee) weapons`
-        // 等短语的 Weapon1H/WeaponMelee 位被静默丢弃（只剩 Hit）。
+        // Weapon **category** bits (vendor `ModFlag.Weapon1H`/`Weapon2H`/`WeaponMelee`/
+        // `WeaponRanged`, Data/Global.lua). `weapon_type_bit` only recognizes weapon **type**
+        // names (Axe/Bow/Staff…), not these category names — without this, phrases like "with
+        // one handed (melee) weapons" would silently lose their Weapon1H/WeaponMelee bit
+        // (leaving only Hit).
         "Weapon1H" => ModFlags::WEAPON_1H,
         "Weapon2H" => ModFlags::WEAPON_2H,
         "WeaponMelee" => ModFlags::WEAPON_MELEE,
@@ -477,7 +523,7 @@ pub fn flag_bit(name: &str) -> Option<ModFlags> {
     })
 }
 
-/// flag 名数组 → 位集合。
+/// Flag-name array → bit set.
 pub fn compile_flags(names: &[String]) -> ModFlags {
     names
         .iter()
@@ -487,7 +533,7 @@ pub fn compile_flags(names: &[String]) -> ModFlags {
         })
 }
 
-/// KeywordFlag 名 → 位（与 special_mod::keyword_bit 同口径）。
+/// KeywordFlag name → bit (matches special_mod::keyword_bit's coverage).
 pub fn keyword_bit(name: &str) -> Option<KeywordFlags> {
     Some(match name {
         "Aura" => KeywordFlags::AURA,
@@ -504,7 +550,7 @@ pub fn keyword_bit(name: &str) -> Option<KeywordFlags> {
     })
 }
 
-/// keyword 名数组 → 位集合。
+/// Keyword-name array → bit set.
 pub fn compile_keyword_flags(names: &[String]) -> KeywordFlags {
     names
         .iter()
@@ -514,8 +560,9 @@ pub fn compile_keyword_flags(names: &[String]) -> KeywordFlags {
         })
 }
 
-/// vendor slot 名 → legacy 稳定槽位 ID（小写 + 去空格；副手族归 `weapon2`、
-/// 主手族归 `weapon1`，与 legacy `slot_words_to_id` 同口径）。
+/// Vendor slot name → legacy's stable slot ID (lowercase + spaces stripped; off-hand-family
+/// slots map to `weapon2`, main-hand-family to `weapon1`, matching legacy's
+/// `slot_words_to_id` coverage).
 fn slot_name_to_id(name: &str) -> String {
     match name.to_ascii_lowercase().as_str() {
         "body armour" => "bodyarmour".to_string(),
@@ -601,7 +648,7 @@ mod tests {
             } => {
                 assert_eq!(var, "IntimidateEffect");
                 assert_eq!(div, 10.0);
-                assert_eq!(actor, None); // "enemy" 非 player/parent/minion → None（保守）
+                assert_eq!(actor, None); // "enemy" isn't player/parent/minion → None (conservative)
             }
             _ => panic!("expected Multiplier"),
         }
@@ -621,10 +668,11 @@ mod tests {
 
     #[test]
     fn condition_varlist_single_degenerates() {
-        // `while holding a (%w+)` 抽取形态：Condition 缺 `var`、仅 varList=["Using+$1:cap"]。
-        // 单元素 varList 退化为单 Condition（gear=shield → UsingShield，与 legacy 硬编码
-        // `while holding a shield` 逐字一致）。修复前因只读 `var` 而整条丢弃（titan
-        // UsingShield 失效根因）。
+        // The extracted shape of `while holding a (%w+)`: Condition has no `var`, only
+        // varList=["Using+$1:cap"]. A single-element varList degenerates to a single Condition
+        // (gear=shield → UsingShield, matching legacy's hardcoded "while holding a shield"
+        // verbatim). Before the fix, only reading `var` dropped the whole entry (the root cause
+        // of titan's UsingShield being inert).
         let t = tag(
             "Condition",
             &[(
@@ -640,8 +688,9 @@ mod tests {
 
     #[test]
     fn condition_varlist_multi_maps_to_any_of() {
-        // 多元素 varList（vendor OR 语义，ModStore.lua:596-607）→ `ConditionAnyOf`
-        // （任一为真即命中）。早前无落点保守丢弃整行。
+        // A multi-element varList (vendor OR semantics, ModStore.lua:596-607) → `ConditionAnyOf`
+        // (matches if any one is true). Previously had no landing point and was conservatively
+        // dropped as a whole.
         let t = tag(
             "Condition",
             &[(
@@ -663,10 +712,11 @@ mod tests {
 
     #[test]
     fn actor_condition_varlist_normalizes_each_var() {
-        // vendor `while a rare or unique enemy is in your presence` →
-        // ActorCondition{actor=enemy, varList={NearbyRareOrUniqueEnemy, RareOrUnique}}。
-        // 逐 var 过 normalize_enemy_cond_var：非稀有度名加 Enemy 前缀，稀有度保裸名
-        // （legacy/编排层键空间）。REAL gap #4 放行根因。
+        // Vendor's "while a rare or unique enemy is in your presence" →
+        // ActorCondition{actor=enemy, varList={NearbyRareOrUniqueEnemy, RareOrUnique}}.
+        // Each var goes through normalize_enemy_cond_var: non-rarity names get an Enemy prefix,
+        // rarity names keep the bare form (legacy's/the orchestrator's key space). This is what
+        // unblocks REAL gap #4.
         let t = tag(
             "ActorCondition",
             &[
@@ -691,9 +741,10 @@ mod tests {
 
     #[test]
     fn skill_name_tag_maps_lowercased() {
-        // vendor skillNameList 抢先剥离产物（`increased Grenade Damage` →
-        // Damage + SkillName{"Grenade"}）——名小写收编，任何真实技能名不等于
-        // 字面 "grenade" → 恒不匹配 = vendor 零效果（ModCache golden 同款）。
+        // Text stripped early by vendor's skillNameList (`increased Grenade Damage` →
+        // Damage + SkillName{"Grenade"}) — the name is lowercased on ingest, and since no real
+        // skill is literally named "grenade", it never matches = vendor's own zero-effect
+        // outcome (same as the ModCache golden).
         let t = tag(
             "SkillName",
             &[("skillName", StatMapValue::Text("Grenade".into()))],
@@ -719,10 +770,11 @@ mod tests {
 
     #[test]
     fn multiplier_threshold_ailment_maps_to_enemy_condition() {
-        // vendor `MultiplierThreshold{actor=enemy, var=PoisonStacks, threshold=1, upper=true}`
-        // （"on targets that are not Poisoned"，敌方毒层 <1）→ `Condition{EnemyPoisoned,
-        // negated=true}`，镜像 legacy。修复前返回 None → 整行被 engine 判失配丢弃
-        // （Low Tolerance +60% poison magnitude 失效根因）。
+        // Vendor's `MultiplierThreshold{actor=enemy, var=PoisonStacks, threshold=1, upper=true}`
+        // ("on targets that are not Poisoned", enemy poison stacks <1) → `Condition{EnemyPoisoned,
+        // negated=true}`, mirroring legacy. Before the fix this returned None → engine treated
+        // the whole line as a mismatch and dropped it (the root cause of Low Tolerance's +60%
+        // poison magnitude being inert).
         let t = tag(
             "MultiplierThreshold",
             &[
@@ -740,9 +792,9 @@ mod tests {
 
     #[test]
     fn multiplier_threshold_scaling_limit_returns_none() {
-        // 限幅式（"per Poison up to N"，threshold=`$1` 捕获）异常叠层 var 非
-        // threshold=1 字面常量 → 仍 None（保守，不臆造条件；避免把 per-stack
-        // 倍率误判为存在性条件）。
+        // A scaling form ("per Poison up to N", threshold=captured `$1`) on an ailment-stack
+        // var that isn't a literal threshold=1 → still None (conservative, don't invent a
+        // condition; avoids misreading a per-stack multiplier as a presence check).
         let t = tag(
             "MultiplierThreshold",
             &[
@@ -751,10 +803,13 @@ mod tests {
             ],
         );
         assert!(compile_tag(&t, &["5".into()]).is_none());
-        // 非异常非距离 var 的**下界**阈值（upper 缺省=false）→ 盲产放行（A2 批 2：
-        // 缺键 0 < threshold 不生效 = 欠算安全；编排层灌 multiplier 后自动接通）。
-        // 本断言曾停留在旧「保守 None」语义——PR#46 改语义时未同步（lib 单测
-        // 不在当时的定向门禁集内），随 grenade 切片修正。
+        // A **lower-bound** threshold (upper defaults to false) on a non-ailment, non-distance
+        // var → produced without further checks (A2 batch 2: a missing key reads as 0, and
+        // 0 < threshold doesn't activate, so it's safe to under-apply; once the orchestrator
+        // feeds the multiplier the entry auto-activates). This assertion used to be stuck on
+        // the old "conservative None" semantics — PR#46 changed the semantics without updating
+        // it (the lib unit tests weren't in the targeted gate at the time), fixed alongside
+        // the grenade slice.
         let t2 = tag(
             "MultiplierThreshold",
             &[
@@ -770,7 +825,8 @@ mod tests {
                 upper: false,
             }
         );
-        // 上界（upper=true）仍保守 None（缺键 0 ≤ threshold 恒真 = over-apply）。
+        // An upper-bound threshold (upper=true) still conservatively returns None (a missing
+        // key reads as 0, and 0 ≤ threshold is always true, which would over-apply).
         let t3 = tag(
             "MultiplierThreshold",
             &[
@@ -782,8 +838,9 @@ mod tests {
         assert!(compile_tag(&t3, &[]).is_none());
     }
 
-    /// `MultiplierThreshold{var=enemyDistance}`（"within/further than N metres"）→
-    /// [`ModTag::MultiplierThreshold`]，threshold 经 `:mult(10)` 算子米→单位。
+    /// `MultiplierThreshold{var=enemyDistance}` ("within/further than N metres") →
+    /// [`ModTag::MultiplierThreshold`], with threshold converted from metres to internal units
+    /// via the `:mult(10)` operator.
     #[test]
     fn multiplier_threshold_enemy_distance_translates() {
         let within = tag(

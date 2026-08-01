@@ -1,20 +1,28 @@
-//! 非伤害异常域 schema（`base/non_damaging_ailments.json`）。
+//! Non-damaging ailment domain schema (`base/non_damaging_ailments.json`).
 //!
-//! 对应 PoB2 vendor 三张表（`vendor/PathOfBuilding-PoE2/src/Modules/Data.lua`）：
-//! - `data.nonDamagingAilment`（Data.lua:347-351）——chill/freeze/shock 的
-//!   default/min/max/precision/duration（gameConstants 引用已解析为字面值）；
-//! - `data.buildupTypes`（Data.lua:353-376)——积蓄类异常的伤害类型缩放来源；
-//! - `data.defaultAilmentDamageTypes`（Data.lua:378-410）——各异常默认的
-//!   伤害缩放来源 + 伤害型异常的 DoT 伤害类型。
+//! Corresponds to three vendor tables in PoB2
+//! (`vendor/PathOfBuilding-PoE2/src/Modules/Data.lua`):
+//! - `data.nonDamagingAilment` (Data.lua:347-351) — the
+//!   default/min/max/precision/duration for chill/freeze/shock
+//!   (gameConstants references already resolved to literal values);
+//! - `data.buildupTypes` (Data.lua:353-376) — the damage-type scaling
+//!   source for accumulating ailments;
+//! - `data.defaultAilmentDamageTypes` (Data.lua:378-410) — each ailment's
+//!   default damage-scaling source plus the DoT damage type for damaging
+//!   ailments.
 //!
-//! 数值与 pobr 现有 Rust 准源逐值相等（搬迁不变式）：
-//! chill/shock 边界对应 `pobr_data::monster` 的
+//! Values are value-equal to pobr's existing Rust source of truth (a
+//! migration invariant): chill/shock bounds correspond to
+//! `pobr_data::monster`'s
 //! `CHILL_MIN_EFFECT`/`CHILL_MAX_EFFECT`/`BASE_SHOCK_MAGNITUDE`/`SHOCK_MAX_EFFECT`
-//! 与 `pobr_data::constants::SHOCK_MIN_EFFECT`；伤害型异常的 `damage_type` 对应
-//! `pobr_data::constants::AilmentType::damage_type()`。pobr 没有的字段
-//! （associated_type/alt/precision/duration、freeze 边界、scales_from）从
-//! vendor 抽取，来源行号见各字段 doc。计算公式仍留 `pobr-core::calc::ailment`，
-//! 本表只迁数值（不接线，W3 再消费）。
+//! and `pobr_data::constants::SHOCK_MIN_EFFECT`; a damaging ailment's
+//! `damage_type` corresponds to
+//! `pobr_data::constants::AilmentType::damage_type()`. Fields pobr doesn't
+//! have (associated_type/alt/precision/duration, freeze's bounds,
+//! scales_from) are extracted from vendor, with the line number noted in
+//! each field's doc. The calc formulas still live in
+//! `pobr-core::calc::ailment` — this table only migrates the numbers (not
+//! wired up yet, to be consumed in W3).
 
 use std::collections::BTreeMap;
 
@@ -22,70 +30,84 @@ use serde::{Deserialize, Serialize};
 
 use crate::constants::DamageType;
 
-/// `base/non_damaging_ailments.json` 顶层结构。
+/// Top-level structure of `base/non_damaging_ailments.json`.
 ///
-/// 三段 map 的 key 均为 vendor canonical 异常/积蓄名
-/// （如 `Chill`/`Freeze`/`Shock`/`Electrocute`/`HeavyStun`/`Pin`/`Bleed`/`Poison`/`Ignite`）；
-/// 用 `BTreeMap` 保证序列化键序稳定（diff 友好、可再生一致）。
+/// The keys of all three section maps are vendor's canonical
+/// ailment/buildup names (e.g.
+/// `Chill`/`Freeze`/`Shock`/`Electrocute`/`HeavyStun`/`Pin`/`Bleed`/`Poison`/`Ignite`);
+/// `BTreeMap` keeps the serialized key order stable (diff-friendly,
+/// reproducible).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NonDamagingAilmentsDef {
-    /// 非伤害异常强度边界（`data.nonDamagingAilment`，Data.lua:347-351）。
+    /// Non-damaging ailment magnitude bounds (`data.nonDamagingAilment`, Data.lua:347-351).
     pub ailments: BTreeMap<String, NonDamagingAilmentDef>,
-    /// 积蓄类异常的缩放来源（`data.buildupTypes`，Data.lua:353-376）。
+    /// Scaling source for accumulating ailments (`data.buildupTypes`, Data.lua:353-376).
     pub buildup_types: BTreeMap<String, BuildupTypeDef>,
-    /// 各异常默认的伤害缩放来源 / DoT 伤害类型
-    /// （`data.defaultAilmentDamageTypes`，Data.lua:378-410）。
+    /// Each ailment's default damage-scaling source / DoT damage type
+    /// (`data.defaultAilmentDamageTypes`, Data.lua:378-410).
     pub default_ailment_damage_types: BTreeMap<String, AilmentDamageTypeDef>,
 }
 
-/// 单个非伤害异常的强度边界（`data.nonDamagingAilment` 行）。
+/// The magnitude bounds for a single non-damaging ailment (one row of
+/// `data.nonDamagingAilment`).
 ///
-/// 强度单位：Chill/Shock 为百分比（行动速度降低 % / 受伤增加 %），
-/// Freeze 为秒（冰冻持续时间档位）。
+/// Magnitude units: Chill/Shock are percentages (% reduced action speed /
+/// % increased damage taken), Freeze is seconds (a duration tier).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NonDamagingAilmentDef {
-    /// 关联的元素伤害类型（Chill/Freeze→Cold，Shock→Lightning；Data.lua:348-350）。
+    /// The associated elemental damage type (Chill/Freeze→Cold,
+    /// Shock→Lightning; Data.lua:348-350).
     pub associated_type: DamageType,
-    /// 是否为替代异常（alternative ailment；vendor 三项均 `false`，Data.lua:348-350）。
+    /// Whether this is an alternative ailment (vendor's three entries are
+    /// all `false`, Data.lua:348-350).
     pub alt: bool,
-    /// 默认施加强度。Chill=30（准源 `monster::CHILL_MIN_EFFECT`）、
-    /// Shock=20（准源 `monster::BASE_SHOCK_MAGNITUDE`/`constants::SHOCK_MIN_EFFECT`）；
-    /// Freeze 无默认值（vendor `default = nil`，Data.lua:349）。
+    /// Default applied magnitude. Chill=30 (source of truth
+    /// `monster::CHILL_MIN_EFFECT`), Shock=20 (source of truth
+    /// `monster::BASE_SHOCK_MAGNITUDE`/`constants::SHOCK_MIN_EFFECT`);
+    /// Freeze has no default (vendor's `default = nil`, Data.lua:349).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default: Option<f64>,
-    /// 最小有效强度（低于即不施加）。Chill=30 / Shock=20 同上；
-    /// Freeze=0.3 秒（vendor-only，Data.lua:349）。
+    /// Minimum effective magnitude (below this, it isn't applied at all).
+    /// Chill=30 / Shock=20 as above; Freeze=0.3 seconds (vendor-only, Data.lua:349).
     pub min: f64,
-    /// 强度上限。Chill=50（准源 `monster::CHILL_MAX_EFFECT`）、
-    /// Shock=100（准源 `monster::SHOCK_MAX_EFFECT`）；Freeze=3 秒（vendor-only，Data.lua:349）。
+    /// Magnitude cap. Chill=50 (source of truth `monster::CHILL_MAX_EFFECT`),
+    /// Shock=100 (source of truth `monster::SHOCK_MAX_EFFECT`);
+    /// Freeze=3 seconds (vendor-only, Data.lua:349).
     pub max: f64,
-    /// 显示精度（小数位数；Chill/Shock=0，Freeze=2；vendor-only，Data.lua:348-350）。
+    /// Display precision (decimal places; Chill/Shock=0, Freeze=2;
+    /// vendor-only, Data.lua:348-350).
     pub precision: u8,
-    /// 基础持续时间（秒；vendor-only，gameConstants 已解析）：
-    /// Chill=8（`BaseChillDuration`，Data/Misc.lua:91）、
-    /// Freeze=4（`FreezeDuration`，Data/Misc.lua:56）、
-    /// Shock=8（`BaseShockDuration`，Data/Misc.lua:93）。
+    /// Base duration (seconds; vendor-only, gameConstants references
+    /// already resolved): Chill=8 (`BaseChillDuration`, Data/Misc.lua:91),
+    /// Freeze=4 (`FreezeDuration`, Data/Misc.lua:56), Shock=8
+    /// (`BaseShockDuration`, Data/Misc.lua:93).
     pub duration: f64,
 }
 
-/// 积蓄类异常（buildup）的伤害类型缩放来源（`data.buildupTypes` 行，vendor-only）。
+/// The damage-type scaling source for an accumulating ailment (buildup)
+/// (one row of `data.buildupTypes`, vendor-only).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BuildupTypeDef {
-    /// 参与积蓄的伤害类型（vendor `ScalesFrom` 集合，按 PoE canonical 伤害序
-    /// Physical/Fire/Cold/Lightning/Chaos 排列）。空数组 = 不随击中伤害类型积蓄
-    /// （Electrocute/Pin 由技能 stat 直接驱动，Data.lua:354-357、372-375）。
+    /// The damage types that contribute to accumulation (vendor's
+    /// `ScalesFrom` set, in PoE's canonical damage-type order
+    /// Physical/Fire/Cold/Lightning/Chaos). An empty array means it
+    /// doesn't accumulate from hit damage type at all (Electrocute/Pin are
+    /// driven directly by a skill stat instead, Data.lua:354-357, 372-375).
     pub scales_from: Vec<DamageType>,
 }
 
-/// 异常默认的伤害缩放来源 / DoT 伤害类型（`data.defaultAilmentDamageTypes` 行）。
+/// An ailment's default damage-scaling source / DoT damage type (one row
+/// of `data.defaultAilmentDamageTypes`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AilmentDamageTypeDef {
-    /// 默认参与 magnitude 计算的击中伤害类型（vendor `ScalesFrom`，
-    /// 按 canonical 伤害序排列；Data.lua:380-409）。
+    /// The hit damage types that feed the magnitude calculation by default
+    /// (vendor's `ScalesFrom`, in canonical damage-type order;
+    /// Data.lua:380-409).
     pub scales_from: Vec<DamageType>,
-    /// 伤害型异常的 DoT 伤害类型（Bleed→Physical / Poison→Chaos / Ignite→Fire；
-    /// 准源 `constants::AilmentType::damage_type()`）；
-    /// 非伤害异常（Shock/Chill）为 `None`（vendor 行无 `DamageType` 字段）。
+    /// The DoT damage type for a damaging ailment (Bleed→Physical /
+    /// Poison→Chaos / Ignite→Fire; source of truth
+    /// `constants::AilmentType::damage_type()`); `None` for non-damaging
+    /// ailments (Shock/Chill — vendor's row has no `DamageType` field).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub damage_type: Option<DamageType>,
 }

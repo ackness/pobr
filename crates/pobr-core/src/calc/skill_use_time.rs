@@ -1,9 +1,9 @@
-//! 技能使用时间与动作速率（08-mechanics §2.1、§3.2；`agent-docs/skill-speed.md`）。
+//! Skill use time and action rate (08-mechanics §2.1, §3.2; `agent-docs/skill-speed.md`).
 //!
-//! - AttackSpeed / CastSpeed / SkillSpeed 同属一个 additive Inc 速度 bucket。
-//! - ActionSpeed 是独立乘区，作用于最终速率。
-//! - `+# seconds to use time` 类惩罚在速度修正后追加，不被速度缩放。
-//! - 非吟唱动作的有效速率被服务器帧上限（约 30.3 actions/s）截断。
+//! - AttackSpeed / CastSpeed / SkillSpeed all belong to one additive Inc speed bucket.
+//! - ActionSpeed is a separate multiplicative factor applied to the final rate.
+//! - `+# seconds to use time` penalties are added after the speed adjustment and are not scaled by speed.
+//! - The effective rate of non-channelling actions is capped by the server tick rate (~30.3 actions/s).
 
 use pobr_data::prelude::*;
 
@@ -14,9 +14,9 @@ use super::round;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SkillUseTime {
     pub base_use_time: f64,
-    /// additive 速度 bucket 总量（%）。
+    /// Total from the additive speed bucket (%).
     pub total_skill_speed: f64,
-    /// action speed 独立乘区总量（%）。
+    /// Total from the independent action speed factor (%).
     pub total_action_speed: f64,
     pub total_use_time_penalty: f64,
     pub tooltip_use_time: f64,
@@ -25,16 +25,19 @@ pub struct SkillUseTime {
     pub capped_by_server_tick: bool,
 }
 
-/// 速度 additive Inc/连乘 More bucket：AttackSpeed / CastSpeed / SkillSpeed 同属一个
-/// 速度乘区（PoB CalcOffence：`inc`/`more` 取三者之和/连乘）。ActionSpeed 不在其中——
-/// 它是独立乘区，单独相乘（见 [`action_speed_name`]）。
+/// The additive Inc / multiplicative More speed bucket: AttackSpeed / CastSpeed
+/// / SkillSpeed all share one speed factor (PoB CalcOffence: `inc`/`more`
+/// sums/multiplies all three together). ActionSpeed is not part of it — it is
+/// a separate factor, multiplied in on its own (see [`action_speed_name`]).
 pub const SPEED_BUCKET: [&str; 3] = ["AttackSpeed", "CastSpeed", "SkillSpeed"];
 
-/// 独立乘区 ActionSpeed 的 stat 名（与速度 bucket 区分，单独相乘到最终速率）。
+/// Stat name for the independent ActionSpeed factor (kept apart from the
+/// speed bucket, multiplied into the final rate separately).
 pub const ACTION_SPEED: &str = "ActionSpeed";
 
-/// 速度 bucket 的 [`ModName`] 数组（供 [`ModDb::sum`]/[`ModDb::more`] 聚合）。
-/// 含全部三个成员——用于「使用时间」展示口径（攻击/法术各自只有一侧非零）。
+/// The speed bucket as a [`ModName`] array (for [`ModDb::sum`]/[`ModDb::more`]
+/// aggregation). Contains all three members — used for the "use time" display
+/// (attacks and spells each only have one non-zero side).
 pub fn speed_names() -> [ModName; 3] {
     [
         ModName::from(SPEED_BUCKET[0]),
@@ -43,17 +46,23 @@ pub fn speed_names() -> [ModName; 3] {
     ]
 }
 
-/// 按技能类型选取速度 bucket：攻击 → `[AttackSpeed, SkillSpeed]`，法术 → `[CastSpeed, SkillSpeed]`，
-/// 二者皆非（如伙伴/召唤/预留类主技能）→ 仅 `[SkillSpeed]`。
+/// Picks the speed bucket by skill type: attack → `[AttackSpeed, SkillSpeed]`,
+/// spell → `[CastSpeed, SkillSpeed]`, neither (e.g. companion/minion/reservation
+/// main skills) → just `[SkillSpeed]`.
 ///
-/// 出处：PoB CalcOffence——攻击只吃攻速、法术只吃施法速度，`SkillSpeed` 两者通吃；不混淆
-/// （避免攻击错误吃到 `increased Cast Speed`、法术错误吃到 `increased Attack Speed`）。
-/// 未标记技能：vendor 的 `Speed` mod 带 ModFlag.Attack/Cast，flag 匹配要求 cfg 含对应位
-/// ——非攻非法术 cfg 二者皆不吃（wolf-pack 实测：Wolf Pack 主技能曾错吃武器
-/// `12% reduced Attack Speed` → Speed 0.88 vs vendor 1.00）。
+/// Source: PoB CalcOffence — attacks only benefit from attack speed, spells
+/// only from cast speed, and `SkillSpeed` applies to both; they must not be
+/// conflated (an attack must not pick up `increased Cast Speed`, nor a spell
+/// `increased Attack Speed`). For unflagged skills: vendor's `Speed` mod
+/// carries ModFlag.Attack/Cast, and flag matching requires cfg to have the
+/// corresponding bit set — a cfg that is neither attack nor spell picks up
+/// neither (confirmed on Wolf Pack: its main skill once incorrectly picked up
+/// the weapon's `12% reduced Attack Speed`, giving Speed 0.88 vs vendor's 1.00).
 pub fn speed_names_for(cfg: &CalcConfig) -> Vec<ModName> {
-    // 攻击/法术判定同时认 ModFlags（orchestrator 经 `skill_type_flags` 注入）与 SkillTypes
-    // （`CalcConfig::attack()`/`spell()` 预设），二者任一命中即可——兼容两条装配路径。
+    // Attack/spell detection accepts either ModFlags (injected by the
+    // orchestrator via `skill_type_flags`) or SkillTypes
+    // (`CalcConfig::attack()`/`spell()` presets) — either one matching is
+    // enough, to be compatible with both assembly paths.
     let is_attack = cfg.flags.intersects(ModFlags::ATTACK) || cfg.is_attack();
     let is_spell = cfg.flags.intersects(ModFlags::SPELL) || cfg.is_spell();
     let mut names = Vec::with_capacity(3);
@@ -63,11 +72,11 @@ pub fn speed_names_for(cfg: &CalcConfig) -> Vec<ModName> {
     if is_spell {
         names.push(ModName::from(SPEED_BUCKET[1])); // CastSpeed
     }
-    names.push(ModName::from(SPEED_BUCKET[2])); // SkillSpeed（始终）
+    names.push(ModName::from(SPEED_BUCKET[2])); // SkillSpeed (always)
     names
 }
 
-/// 计算技能使用时间与有效动作速率。
+/// Calculates skill use time and effective action rate.
 pub fn calc_skill_use_time(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -92,7 +101,7 @@ pub fn calc_skill_use_time(
     let action_factor = 1.0 + total_action_speed / 100.0;
     let uncapped_rate = tooltip_rate * action_factor;
 
-    //  服务器帧时间改读注入常量包（fallback == 旧 const，值不变）。
+    //  Server tick time now reads from the injected constants pack (fallback == old const, value unchanged).
     let server_rate = 1.0 / cfg.constants.game().server_tick_seconds;
     let (effective_rate, capped_by_server_tick) = if !is_channelling && uncapped_rate > server_rate
     {
@@ -113,37 +122,41 @@ pub fn calc_skill_use_time(
     }
 }
 
-// 弩 reload 模型（PoB2 CalcOffence.lua:2867-2897 逐行对照）
+// Crossbow reload model (line-by-line mirror of PoB2 CalcOffence.lua:2867-2897)
 
-/// 弩 reload 折算结果（vendor `output.FiringRate/EffectiveBoltCount/
-/// TotalFiringTime/EffectiveReloadTime/Speed`）。
+/// Crossbow reload calculation result (vendor `output.FiringRate/EffectiveBoltCount/
+/// TotalFiringTime/EffectiveReloadTime/Speed`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CrossbowReload {
-    /// 折算前射速（= 服务器帧 cap 后的攻击速率，vendor `FiringRate = Speed`）。
+    /// Firing rate before reload folding (= the attack rate after the server
+    /// tick cap, vendor `FiringRate = Speed`).
     pub firing_rate: f64,
-    /// 有效弹匣容量（`boltCount / (1 − ChanceToNotConsumeAmmo/100)`；
-    /// 几率 ≥100 → ∞，即永不进 reload）。
+    /// Effective magazine size (`boltCount / (1 − ChanceToNotConsumeAmmo/100)`;
+    /// chance ≥100 → ∞, i.e. never reloads).
     pub effective_bolt_count: f64,
-    /// 打空弹匣耗时（秒；几率 ≥100 时 0）。
+    /// Time to empty the magazine (seconds; 0 when chance ≥100).
     pub total_firing_time: f64,
-    /// 有效装填时间（秒；`reload × (1 − InstantReloadChance/100)`）。
+    /// Effective reload time (seconds; `reload × (1 − InstantReloadChance/100)`).
     pub effective_reload_time: f64,
-    /// 循环平均射速（actions/s；vendor 回写 `output.Speed`）。
+    /// Average rate over a full firing cycle (actions/s; vendor writes this
+    /// back to `output.Speed`).
     pub effective_rate: f64,
 }
 
-/// 弩 reload 循环平均射速（vendor `CalcOffence.lua:2867-2887` 逐行）：
+/// Crossbow reload cycle-average firing rate (line-by-line mirror of vendor
+/// `CalcOffence.lua:2867-2887`):
 ///
-/// - `EffectiveBoltCount = boltCount / (1 − c/100)`（`c = ChanceToNotConsumeAmmo`；
-///   `c ≥ 100` → ∞，退化为纯射速）；
-/// - `TotalFiringTime = EffectiveBoltCount / FiringRate`；
-/// - `EffectiveReloadTime = reloadTime × (1 − min(InstantReloadChance,100)/100)`；
-/// - `Speed = EffectiveBoltCount / (TotalFiringTime + EffectiveReloadTime)`。
+/// - `EffectiveBoltCount = boltCount / (1 − c/100)` (`c = ChanceToNotConsumeAmmo`;
+///   `c ≥ 100` → ∞, degenerating to pure firing rate);
+/// - `TotalFiringTime = EffectiveBoltCount / FiringRate`;
+/// - `EffectiveReloadTime = reloadTime × (1 − min(InstantReloadChance,100)/100)`;
+/// - `Speed = EffectiveBoltCount / (TotalFiringTime + EffectiveReloadTime)`.
 ///
-/// 顺序约定（vendor `:2864-2867`）：先服务器帧 cap、后 reload
-/// 折算——调用方传入的 `firing_rate` 须是 cap 后的速率。
-/// `Multiplier:BoltsReloadedPastSix/EightSeconds` 回写（Fresh Clip support）
-/// 依赖ReplaceMod，本波不做（登记）。
+/// Ordering convention (vendor `:2864-2867`): the server tick cap is applied
+/// before reload folding — the caller's `firing_rate` argument must already
+/// be the post-cap rate.
+/// `Multiplier:BoltsReloadedPastSix/EightSeconds` write-back (Fresh Clip
+/// support) depends on ReplaceMod and is not done this pass (tracked separately).
 pub fn apply_crossbow_reload(
     firing_rate: f64,
     bolt_count: f64,
@@ -151,13 +164,14 @@ pub fn apply_crossbow_reload(
     chance_not_consume_pct: f64,
     instant_reload_pct: f64,
 ) -> CrossbowReload {
-    // vendor `:319`：弹匣下限 1（`m_max(Sum(...), 1)`）。
+    // vendor `:319`: magazine size floors at 1 (`m_max(Sum(...), 1)`).
     let bolt_count = bolt_count.max(1.0);
     let instant = instant_reload_pct.clamp(0.0, 100.0);
     let effective_reload_time = reload_time_s * (1.0 - instant / 100.0);
     if chance_not_consume_pct >= 100.0 || firing_rate <= 0.0 {
-        // 永不消耗弹药（vendor `1 / 0 = ∞` 分支）→ Speed = FiringRate；
-        // 射速为 0 时无循环语义，原样返回。
+        // Ammo is never consumed (vendor's `1 / 0 = ∞` branch) → Speed =
+        // FiringRate; when firing_rate is 0 the cycle has no meaning, so
+        // return it as-is.
         return CrossbowReload {
             firing_rate,
             effective_bolt_count: f64::INFINITY,
@@ -182,10 +196,13 @@ pub fn apply_crossbow_reload(
     }
 }
 
-/// 弩装填时间折算（vendor `calcCrossbowReloadTime`，`CalcOffence.lua:283-291`）：
-/// `reload = base / calcLib.mod(skillModList, cfg, "ReloadSpeed", "Speed")`——
-/// `Speed` 与 `ReloadSpeed` 的 INC 同桶相加、MORE 连乘后作除数（攻速增益同时
-/// 加快装填）。`Speed` 按 pobr 速度桶命名展开（[`speed_names_for`]）。
+/// Crossbow reload time folding (vendor `calcCrossbowReloadTime`,
+/// `CalcOffence.lua:283-291`): `reload = base /
+/// calcLib.mod(skillModList, cfg, "ReloadSpeed", "Speed")` — `Speed`'s and
+/// `ReloadSpeed`'s INC values share a bucket (summed) and MORE values are
+/// multiplied together to form the divisor (attack speed bonuses also speed
+/// up reloading). `Speed` expands to pobr's speed bucket names
+/// (see [`speed_names_for`]).
 pub fn crossbow_reload_time(db: &crate::ModDb, cfg: &CalcConfig, base_reload_s: f64) -> f64 {
     let mut names = vec![ModName::from("ReloadSpeed")];
     names.extend(speed_names_for(cfg));
@@ -196,7 +213,7 @@ pub fn crossbow_reload_time(db: &crate::ModDb, cfg: &CalcConfig, base_reload_s: 
     base_reload_s / multi
 }
 
-/// `calc_skill_use_time` 的追踪版本：记录速度 bucket、action speed、最终速率节点。
+/// Traced version of `calc_skill_use_time`: records nodes for the speed bucket, action speed, and final rate.
 pub fn calc_skill_use_time_traced(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -238,7 +255,7 @@ pub fn calc_skill_use_time_traced(
     (result, rate_node)
 }
 
-/// 便捷 traced 返回值。
+/// Convenience wrapper returning a traced value.
 pub fn calc_skill_use_time_traced_value(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -266,9 +283,9 @@ mod crossbow_reload_tests {
     use super::*;
     use crate::Modifier;
 
-    /// 手算用例：boltCount=5, reload=0.8s, FiringRate=3 →
+    /// Hand-computed case: boltCount=5, reload=0.8s, FiringRate=3 →
     /// EffectiveBoltCount=5, TotalFiringTime=5/3≈1.6667,
-    /// Speed = 5 / (1.6667 + 0.8) ≈ 2.0270。
+    /// Speed = 5 / (1.6667 + 0.8) ≈ 2.0270.
     #[test]
     fn manual_case_bolt5_reload08_rate3() {
         let r = apply_crossbow_reload(3.0, 5.0, 0.8, 0.0, 0.0);
@@ -282,7 +299,7 @@ mod crossbow_reload_tests {
         assert!((r.effective_rate - 2.027027).abs() < 1e-5, "{r:?}");
     }
 
-    /// ChanceToNotConsumeAmmo ≥ 100：退化为纯射速（vendor ∞ 弹匣分支）。
+    /// ChanceToNotConsumeAmmo ≥ 100: degenerates to pure firing rate (vendor's infinite-magazine branch).
     #[test]
     fn not_consume_ammo_100_degenerates_to_firing_rate() {
         let r = apply_crossbow_reload(3.0, 5.0, 0.8, 100.0, 0.0);
@@ -291,7 +308,7 @@ mod crossbow_reload_tests {
         assert_eq!(r.total_firing_time, 0.0);
     }
 
-    /// ChanceToNotConsumeAmmo 50%：有效弹匣翻倍，reload 摊薄。
+    /// ChanceToNotConsumeAmmo 50%: doubles the effective magazine, diluting the reload cost.
     #[test]
     fn partial_not_consume_extends_magazine() {
         let r = apply_crossbow_reload(3.0, 5.0, 0.8, 50.0, 0.0);
@@ -303,7 +320,7 @@ mod crossbow_reload_tests {
         );
     }
 
-    /// InstantReloadChance 100%：装填时间归零，Speed = FiringRate。
+    /// InstantReloadChance 100%: reload time drops to zero, Speed = FiringRate.
     #[test]
     fn instant_reload_100_removes_reload_cost() {
         let r = apply_crossbow_reload(3.0, 5.0, 0.8, 0.0, 100.0);
@@ -311,7 +328,7 @@ mod crossbow_reload_tests {
         assert!((r.effective_rate - 3.0).abs() < 1e-9);
     }
 
-    /// 弹匣下限 1（vendor `:319` m_max；bolt 数据缺失时的保守循环）。
+    /// Magazine size floors at 1 (vendor `:319` m_max; a conservative cycle when bolt data is missing).
     #[test]
     fn bolt_count_floors_to_one() {
         let r = apply_crossbow_reload(3.0, 0.0, 0.8, 0.0, 0.0);
@@ -323,7 +340,7 @@ mod crossbow_reload_tests {
         );
     }
 
-    /// reload 折算吃 ReloadSpeed + 攻速桶（vendor calcLib.mod("ReloadSpeed","Speed")）。
+    /// Reload folding picks up both ReloadSpeed and the attack speed bucket (vendor calcLib.mod("ReloadSpeed","Speed")).
     #[test]
     fn reload_time_scales_with_reload_and_attack_speed() {
         let mut db = crate::ModDb::new();

@@ -1,8 +1,10 @@
-//! 召唤物链路端到端集成测试（/B/C）。
+//! End-to-end integration tests for the minion pipeline (/B/C).
 //!
-//! 覆盖：BuildData 召唤物查询 API（A5）、orchestrator 识别召唤宝石 →
-//! `OutputTable.minions` 非空（B2）、createMinionSkills + 主技能喂 offence（C1/C2）、
-//! modDB 装配补全（C3）。golden 数值取 PoB2 同参数面板（oracle 中间值注明）。
+//! Coverage: the BuildData minion query API (A5); the orchestrator recognizing
+//! a summon gem -> `OutputTable.minions` non-empty (B2); createMinionSkills +
+//! feeding the main skill into offence (C1/C2); modDB assembly completeness
+//! (C3). Golden values come from PoB2's panel with matching parameters (oracle
+//! intermediate values noted where relevant).
 
 use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,
@@ -13,9 +15,10 @@ use pobr_core::calc::minion::{
 };
 use pobr_gamedata::{GameData, repo_data_root};
 
-// 召唤物 golden（life/damage/DPS，取自 Minions.lua/Spectres.lua + PoB2 面板）是版本
-// 特定的，故钉定其被校验的数据版本（与活动 DATA_VERSION 解耦，见
-// pobr_data::GOLDEN_PARITY_DATA_VERSION）。
+// Minion golden values (life/damage/DPS, from Minions.lua/Spectres.lua + the
+// PoB2 panel) are version-specific, so pin the data version they're checked
+// against (decoupled from the active DATA_VERSION; see
+// pobr_data::GOLDEN_PARITY_DATA_VERSION).
 fn version() -> String {
     pobr_data::GOLDEN_PARITY_DATA_VERSION.to_string()
 }
@@ -32,7 +35,7 @@ fn default_opts() -> DataOrchestratorOptions {
     }
 }
 
-/// 一个仅含 Raise Zombie（召唤宝石等级 N）主动技能的 Witch build。
+/// A Witch build with only a Raise Zombie (summon gem level N) active skill.
 fn zombie_build(gem_level: u32) -> Build {
     Build::new()
         .with_character(CharacterIdentity {
@@ -48,13 +51,13 @@ fn zombie_build(gem_level: u32) -> Build {
         )
 }
 
-// A5：BuildData 召唤物查询 API
+// A5: BuildData minion query API
 
 #[test]
 fn build_data_minion_def_zombie() {
     let data = load_data();
     let zombie = data.minion_def("RaisedZombie").expect("RaisedZombie 在库");
-    // 数值系数来自 Minions.lua，随平衡补丁漂移 → blessed 快照（POBR_BLESS_PINS=1 刷新）。
+    // Values come from Minions.lua and drift with balance patches -> blessed snapshot (refresh with POBR_BLESS_PINS=1).
     pobr_gamedata::test_pins::assert_pin(
         &repo_data_root().join(version()),
         "minions.raised_zombie",
@@ -66,11 +69,11 @@ fn build_data_minion_def_zombie() {
 #[test]
 fn build_data_minion_def_spectre_falls_back() {
     let data = load_data();
-    // spectre key = 完整 metadata 路径（minions.json miss → spectres.json）
+    // spectre key = full metadata path (minions.json miss -> falls through to spectres.json)
     let c = data
         .minion_def("Metadata/Monsters/LeagueAbyss/Lightless/Cocoon3Spectre")
         .expect("Lightless Abomination 在库（落 spectres）");
-    // 数值系数来自 Spectres.lua，随平衡补丁漂移（0.5.4b：life 3.0→2.2）→ blessed 快照。
+    // Values come from Spectres.lua and drift with balance patches (0.5.4b: life 3.0->2.2) -> blessed snapshot.
     pobr_gamedata::test_pins::assert_pin(
         &repo_data_root().join(version()),
         "minions.spectre_cocoon3",
@@ -89,34 +92,34 @@ fn build_data_effect_minion_list() {
         data.effect_minion_list("RagingSpiritsPlayer"),
         ["SummonedRagingSpirit"]
     );
-    // 非召唤技能 → 空切片
+    // Non-summon skill -> empty slice
     assert!(data.effect_minion_list("FireballPlayer").is_empty());
     assert!(data.effect_minion_list("NonexistentSkill").is_empty());
 }
 
-// B2：orchestrator 识别召唤宝石 → OutputTable.minions 非空
+// B2: orchestrator recognizes a summon gem -> OutputTable.minions non-empty
 
 #[test]
 fn summon_build_populates_output_minions() {
     let data = load_data();
     let out = calculate_with_data(&zombie_build(20), &data, &default_opts()).expect("calculate");
-    // 召唤宝石被识别 → OutputTable.minions 非空（G4 关闭判据其一）。
+    // A summon gem is recognized -> OutputTable.minions non-empty (one of the G4 closure criteria).
     assert!(
         !out.minions.is_empty(),
         "Raise Zombie build 应产出召唤物快照"
     );
     let zombie = &out.minions[0];
-    // 召唤物等级 = minionLevelTable[gem_level=20] = 40（CalcActiveSkill.lua:896 默认规则）。
+    // Minion level = minionLevelTable[gem_level=20] = 40 (CalcActiveSkill.lua:896 default rule).
     assert_eq!(zombie.level, minion_level_from_gem_level(20));
     assert_eq!(zombie.level, 40);
-    // 生命 > 0（怪物等级基准表 × 0.7 归一化乘数派生）。
+    // Life > 0 (derived from the monster-level base table × the 0.7 normalization multiplier).
     assert!(zombie.life > 0.0, "召唤物生命应 > 0，实测 {}", zombie.life);
 }
 
 #[test]
 fn non_summon_build_has_empty_minions() {
     let data = load_data();
-    // 非召唤主技能（Fireball）→ minions 必须为空（gate 正确：零行为外溢）。
+    // Non-summon main skill (Fireball) -> minions must be empty (gate correctness: zero behavioural leakage).
     let build = Build::new()
         .with_character(CharacterIdentity {
             level: 90,
@@ -133,21 +136,22 @@ fn non_summon_build_has_empty_minions() {
     assert!(out.minions.is_empty(), "非召唤 build minions 应为空");
 }
 
-/// 召唤物生命 = 怪物盟友生命表(level) × life 归一化乘数（0.7）——与 core
-/// `build_minion_context_from_def` 派生口径一致（B2 接线未引入额外缩放）。
+/// Minion life = monster-ally life table(level) × the life normalization
+/// multiplier (0.7) — matches core's `build_minion_context_from_def`
+/// derivation (the B2 wiring introduces no extra scaling).
 #[test]
 fn summon_zombie_life_matches_core_derivation() {
     let data = load_data();
     let out = calculate_with_data(&zombie_build(20), &data, &default_opts()).expect("calculate");
     let zombie_out = &out.minions[0];
 
-    // 直接用 core 纯函数派生同一召唤物，取其防御管线后的生命做对照。
+    // Derives the same minion directly via core's pure function and compares against the life it produces after the defence pipeline.
     let def = data.minion_def("RaisedZombie").expect("RaisedZombie 在库");
     let ctx = build_minion_context_from_def(def, 20, vec![], vec![], AttributeInfusion::default());
     let core_life = ctx.base.life;
     assert_eq!(zombie_out.level, resolve_minion_level(20));
-    // OutputTable.minions 的 life 经 defence 管线（life pool）输出，与 base.life 同序；
-    // B2 未加任何 minion 词条，二者应一致。
+    // OutputTable.minions' life is emitted by the defence pipeline (life pool) and shares the same order as base.life;
+    // B2 doesn't add any minion mod, so they should match.
     assert!(
         (zombie_out.life - core_life).abs() < 1.0,
         "orchestrator minion life {} 应 ≈ core 派生 {}",
@@ -156,10 +160,12 @@ fn summon_zombie_life_matches_core_derivation() {
     );
 }
 
-// B3：MinionModifier 通道——`Minions deal X% increased Damage` 进召唤物 ModDb
+// B3: MinionModifier channel -- `Minions deal X% increased Damage` reaches the minion ModDb
 
-/// 玩家装备挂 `Minions deal 50% increased Damage`（装备词条来源）→ 召唤物 DPS
-/// 增长；玩家自身不受影响（minion 词条在玩家主流程走 Unsupported，进召唤物 ModDb）。
+/// Player gear with `Minions deal 50% increased Damage` (attributed to the
+/// item) -> minion DPS increases; the player itself is unaffected (a minion
+/// mod is Unsupported in the player's main pipeline, but reaches the minion
+/// ModDb).
 #[test]
 fn minion_increased_damage_raises_minion_dps() {
     use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
@@ -170,7 +176,7 @@ fn minion_increased_damage_raises_minion_dps() {
     let base_dps = base.minions[0].dps;
     assert!(base_dps > 0.0, "基线召唤物 DPS 应 > 0");
 
-    // 戒指挂 minion 词条（装备来源经 collect_item_texts → parse_minion_modifier）。
+    // Ring carries a minion mod (attributed via collect_item_texts -> parse_minion_modifier).
     let ring = Item {
         base: ItemBaseId::from("Ring"),
         rarity: ItemRarity::Rare,
@@ -186,11 +192,11 @@ fn minion_increased_damage_raises_minion_dps() {
     let buffed = calculate_with_data(&buffed_build, &data, &default_opts()).expect("buffed calc");
     let buffed_dps = buffed.minions[0].dps;
 
-    // 召唤物 DPS 应随 +50% increased Damage 增长（具体倍率取决于其它 inc 叠加）。
+    // Minion DPS should increase with +50% increased Damage (the exact multiplier depends on other stacked inc mods).
     assert!(
         buffed_dps > base_dps,
         "minion DPS 应随 Minions deal 50% increased Damage 增长：base {base_dps} → buffed {buffed_dps}"
     );
-    // 玩家自身 DPS 不受 minion 词条影响（minion 词条不进玩家聚合）。
+    // Player's own DPS isn't affected by the minion mod (a minion mod doesn't feed the player's aggregation).
     assert_eq!(buffed.dps, base.dps, "玩家自身 DPS 不应被 minion 词条改变");
 }

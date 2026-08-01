@@ -17,58 +17,76 @@ pub struct Env {
     pub player: Actor,
     pub enemy: Actor,
     pub cfg: CalcConfig,
-    /// 玩家召唤物（Lane4）。每个召唤物是独立 `Actor`，复用 player 的 offence/defence
-    /// 管线。无召唤物时为空（向后兼容：行为与无此字段时一致）。
+    /// Player minions (Lane4). Each minion is its own `Actor`, reusing the
+    /// player's offence/defence pipeline. Empty when there are no minions
+    /// (backward compatible: behaves the same as when this field didn't exist).
     pub minions: Vec<Actor>,
-    /// 玩家的 buff 技能规格（`session::add_buff_skill` 写入）。
+    /// The player's buff skill specs (written by `session::add_buff_skill`).
     ///
-    /// 原文记为 `player.buff_skills`——因 `Actor` 定义在 T0 归属外的 actor.rs
-    /// 且 minion buff 未落地，本波收在 `Env` 顶层（语义即玩家侧）；T3 消费时如需
-    /// per-actor 再迁。**本阶段零消费**：空与否输出逐值不变。
+    /// Originally recorded as `player.buff_skills` — since `Actor` is defined
+    /// in actor.rs outside T0's ownership and minion buffs aren't implemented
+    /// yet, this pass keeps it at the top level of `Env` (semantically still
+    /// player-side); move it to per-actor if T3 consumption needs that later.
+    /// **Zero consumption this pass**: every output value is unchanged whether this is empty or not.
     pub buff_skills: Vec<BuffSpec>,
-    /// 玩家的 warcry 技能规格（存量 #9；`session::add_warcry_skill` 写入，
-    /// `perform` 在 hand pass 之前经 [`super::warcry::apply_warcry_uptime`] 消费——
-    /// uptime 缩放后的 warcry 进攻效果（Infernal `DamageGainAsFire`）注入玩家 db）。
+    /// The player's warcry skill specs (backlog item #9; written by
+    /// `session::add_warcry_skill`, consumed by `perform` before the hand
+    /// pass via [`super::warcry::apply_warcry_uptime`] — the uptime-scaled
+    /// warcry offensive effect (Infernal's `DamageGainAsFire`) is injected
+    /// into the player db).
     pub warcry_skills: Vec<super::warcry::WarcrySpec>,
-    /// warcry uptime 增益已注入（幂等防重，vendor `InfernalActive` flag 同责，
-    /// CalcPerform.lua:1365）。
+    /// Whether the warcry uptime gain has already been injected (idempotency
+    /// guard, same role as vendor's `InfernalActive` flag, CalcPerform.lua:1365).
     pub warcry_gain_injected: bool,
-    /// keystone 名 → modifier 列表（`session::set_keystone_mods` 写入，
-    /// T5 `merge_keystones`（env_finalize 阶段 1/5）消费）。**本阶段零消费**。
+    /// Keystone name → modifier list (written by `session::set_keystone_mods`,
+    /// consumed by T5 `merge_keystones` (env_finalize stages 1/5)).
+    /// **Zero consumption this pass**.
     pub keystone_mods: BTreeMap<String, Vec<crate::Modifier>>,
-    /// 内建 buff 定义表（`overlay/buff_definitions.json` 经
-    /// `session::set_buff_definitions` 注入，env_finalize 阶段 6
-    /// `expand_misc_buffs` 消费）。`cfg.mode_combat` 默认 false →
-    /// 注入与否输出逐值不变（B4 置位是独立行为 commit）。
+    /// Built-in buff definition table (injected from
+    /// `overlay/buff_definitions.json` via `session::set_buff_definitions`,
+    /// consumed by env_finalize stage 6's `expand_misc_buffs`). `cfg.mode_combat`
+    /// defaults to false → every output value is unchanged whether this is
+    /// injected or not (turning on B4 is a separate behavior commit).
     pub buff_definitions: Vec<BuffDef>,
-    /// handler 注册表（数据条目 `handler_id` → Rust 真逻辑；pobr-build
-    /// `handlers::build_registry()` 经 `session::set_buff_handler_registry`
-    /// 注入）。缺省空注册表 = handler 条目保守零输出（进 unhandled 报表）。
+    /// Handler registry (data entry `handler_id` → real Rust logic; injected
+    /// by pobr-build's `handlers::build_registry()` via
+    /// `session::set_buff_handler_registry`). Defaults to an empty registry =
+    /// handler entries conservatively produce zero output (recorded in the
+    /// unhandled report).
     pub buff_handler_registry: Arc<HandlerRegistry>,
-    /// curse 优先级数据表（`overlay/curse_priority.json` 经 pobr-gamedata
-    /// 加载、`session::set_curse_priority` 注入——照 `buff_definitions` 先例）。
-    /// env_finalize 阶段 4 `buff_pass` 的 curse priority 计算消费；`None`（缺表/
-    /// 未注入）= 权重全 0 的 [`CursePriorityDef::default`] 回退（缺表容忍）。
+    /// Curse priority data table (loaded from `overlay/curse_priority.json`
+    /// via pobr-gamedata, injected by `session::set_curse_priority` —
+    /// following the `buff_definitions` precedent). Consumed by
+    /// env_finalize stage 4's `buff_pass` curse priority calculation;
+    /// `None` (table missing / not injected) falls back to
+    /// [`CursePriorityDef::default`] with all weights 0 (tolerant of a missing table).
     pub curse_priority: Option<CursePriorityDef>,
-    /// curse 面板输出桥（`buff_pass` 写入，`perform` 末端回填
-    /// [`super::OutputTable`] 的 `enemy_curse_limit`/`curse_slots`——env_finalize
-    /// 先于 `OutputTable::from` 整表覆盖，故经此字段中转）。`None` = buff_pass
-    /// 未运行（mode_buffs 关 / 无 spec），输出字段维持 Default 0。
+    /// Bridge for curse panel output (written by `buff_pass`; `perform`
+    /// copies it back into [`super::OutputTable`]'s `enemy_curse_limit`/
+    /// `curse_slots` at the end — env_finalize runs before `OutputTable::from`'s
+    /// whole-table overwrite, so it has to go through this field as a relay).
+    /// `None` means `buff_pass` didn't run (mode_buffs off / no spec), and
+    /// the output fields stay at their Default 0.
     pub curse_pass_output: Option<CursePassOutput>,
-    /// MH/OH hand pass 输入（契约 1；编排层武器段经
-    /// `session::set_hand_sources` 写入）。空 = 非攻击技能 / 旧入口，`perform`
-    /// 走与历史完全一致的单管线路径（回退态，行为逐值不变）。
+    /// MH/OH hand pass input (contract 1; written by the orchestration
+    /// layer's weapon section via `session::set_hand_sources`). Empty means a
+    /// non-attack skill / legacy entry point, and `perform` takes the
+    /// single-pipeline path identical to the historical behavior (fallback
+    /// state, output unchanged value-for-value).
     pub hand_sources: Vec<super::hand_pass::HandSource>,
-    /// 技能数据 `doubleHitsWhenDualWielding`（combineStat DPS/CRIT 模式翻转，
-    /// vendor CalcOffence.lua:2459-2545）。数据通道 =的 skill_overrides 抽取，
-    /// 编排层未接线前恒 false。
+    /// Skill data's `doubleHitsWhenDualWielding` (flips the combineStat
+    /// DPS/CRIT mode, vendor CalcOffence.lua:2459-2545). The data channel is
+    /// the skill_overrides extraction; always false until the orchestration
+    /// layer wires it up.
     pub double_hits_when_dual_wielding: bool,
-    /// 取整精度规则（去重；`overlay/high_precision_mods.json` 经 pobr-gamedata
-    /// `RuleSet` 加载、`session::set_high_precision_rules` 注入——照
-    /// `curse_priority` 先例）。消费点 = buff_pass / merge_flasks_charms 的
-    /// ScaleAddMod 数值缩放（T1 写原语 [`crate::ModDb::scale_add_mod`] 同一份规则）。
-    /// 未注入 = [`HighPrecisionRules::default`]（无例外表，默认 `round(·,2)` 截整 /
-    /// 小数原值 floor 1 位）。
+    /// Rounding precision rules (exceptions; loaded from
+    /// `overlay/high_precision_mods.json` via pobr-gamedata's `RuleSet`,
+    /// injected by `session::set_high_precision_rules` — following the
+    /// `curse_priority` precedent). Consumed by buff_pass /
+    /// merge_flasks_charms's ScaleAddMod value scaling (the same rule set
+    /// used by the T1 write primitive [`crate::ModDb::scale_add_mod`]). Not
+    /// injected = [`HighPrecisionRules::default`] (no exception table,
+    /// default `round(·,2)` for integers / 1 decimal floor for fractions).
     pub high_precision: HighPrecisionRules,
 }
 
@@ -93,31 +111,42 @@ impl Env {
         }
     }
 
-    /// 把一个 [`super::MinionContext`] 转成召唤物 `Actor` 并接入 `Env.minions`。
+    /// Turns a [`super::MinionContext`] into a minion `Actor` and attaches it to `Env.minions`.
     ///
-    /// 召唤物基础属性映射到 [`ActorBaseStats`]（life/armour/evasion/energy_shield/resists +
-    /// 虚拟武器伤害/攻速喂给攻击伤害管线），`mod_db` 携带三通道注入结果。集成阶段调用此
-    /// 入口后，`perform` 会对每个召唤物跑同一套 offence/defence。
+    /// The minion's base stats map to [`ActorBaseStats`] (life/armour/evasion/
+    /// energy_shield/resists, plus virtual weapon damage/attack rate feeding
+    /// the attack damage pipeline); `mod_db` carries the three-channel
+    /// injection result. Once this entry point is called during integration,
+    /// `perform` runs the same offence/defence pipeline for every minion.
     pub fn add_minion(&mut self, ctx: super::MinionContext) -> &mut Self {
         self.minions.push(minion_actor_from_context(&ctx));
         self
     }
 
-    /// 便利入口：从 [`MinionDef`](super::MinionDef) 真实底材 + 召唤宝石等级 + 数量上限
-    /// 直接接入召唤物，并把数量上限写为玩家 `Multiplier:SummonedMinion` /
-    /// `Multiplier:MinionPresenceCount`（供「per Minion / per Minion in Presence」词条引用）。
+    /// Convenience entry point: attaches a minion directly from a real
+    /// [`MinionDef`](super::MinionDef) base, the summoning gem's level, and
+    /// the minion count limit, and also writes that limit to the player as
+    /// `Multiplier:SummonedMinion` / `Multiplier:MinionPresenceCount` (for
+    /// "per Minion / per Minion in Presence" mods to reference).
     ///
-    /// 这是 Lane A 端到端入口：用 [`build_minion_context_from_def`](super::build_minion_context_from_def)
-    /// 取 `MinionDef` 归一化乘数（怪物表 × 乘数派生底材），三通道注入后接入 `Env.minions`；
-    /// 同时调用 [`write_summoned_minion_multipliers`](super::write_summoned_minion_multipliers)
-    /// 把 `limit` 写入玩家 `mod_db`（PoB2 CalcPerform.lua Limit→Multiplier 段）。
+    /// This is the Lane A end-to-end entry point: it uses
+    /// [`build_minion_context_from_def`](super::build_minion_context_from_def)
+    /// to derive `MinionDef`'s normalized multipliers (monster table ×
+    /// multiplier-derived base), attaches the minion to `Env.minions` after
+    /// three-channel injection, and also calls
+    /// [`write_summoned_minion_multipliers`](super::write_summoned_minion_multipliers)
+    /// to write `limit` into the player's `mod_db` (PoB2 CalcPerform.lua's
+    /// Limit→Multiplier section).
     ///
-    /// `limit` 通常由玩家技能 `skillModList:Sum(limitName)` 派生（本阶段由调用方给定）。
-    /// `limit == 0` 时仍写入（multiplier=0，等价无召唤数量贡献，向后兼容）。
+    /// `limit` is normally derived from the player skill's
+    /// `skillModList:Sum(limitName)` (supplied by the caller at this stage).
+    /// It's still written when `limit == 0` (multiplier=0, equivalent to no
+    /// minion count contribution, for backward compatibility).
     ///
-    /// `is_companion`：授予技能是 `SkillType.Companion` 且非
-    /// `MinionsAreUndamagable`（调用方按 skill_types 判定）——`TotalCompanionLife`
-    /// 求和（vendor CalcPerform.lua:3364-3370）只计此类召唤物。
+    /// `is_companion`: whether the granted skill is `SkillType.Companion` and
+    /// not `MinionsAreUndamagable` (decided by the caller based on
+    /// skill_types) — `TotalCompanionLife` (vendor CalcPerform.lua:3364-3370)
+    /// only sums minions with this flag set.
     #[allow(clippy::too_many_arguments)]
     pub fn add_minion_from_def(
         &mut self,
@@ -149,20 +178,27 @@ impl Env {
     }
 }
 
-/// 把召唤物 [`super::MinionContext`] 转成可走 offence/defence 管线的 `Actor`。
+/// Converts a minion's [`super::MinionContext`] into an `Actor` that can run
+/// the offence/defence pipeline.
 ///
-/// 映射策略（避免重复计入 / 漏算）：
-/// - **生命 / 抗性 / 虚拟武器伤害**：写入 [`ActorBaseStats`] 标量基础字段——因为玩家管线
-///   的池子查询用 `MaximumLife`、抗性查询用 `FireResistance`，与召唤物 `ModDb` 内禀的
-///   `Life`/`FireResist` BASE 命名不同，靠 db 取不到，必须经标量基础喂入。
-/// - **护甲 / 闪避 / ES**：标量基础留 0，由召唤物 `ModDb` 内禀的 `Armour`/`Evasion`/
-///   `EnergyShield` BASE 经防御管线驱动（这些查询名与内禀命名一致，避免双重计入）。
-/// - `mod_db` 原样携带三通道注入结果。
+/// Mapping strategy (avoids double-counting / missed values):
+/// - **Life / resistances / virtual weapon damage**: written to
+///   [`ActorBaseStats`]'s scalar base fields — because the player pipeline's
+///   pool query uses `MaximumLife` and resistance query uses
+///   `FireResistance`, which differ from the minion `ModDb`'s intrinsic
+///   `Life`/`FireResist` BASE names, so they can't be read from the db and
+///   must be supplied via the scalar base instead.
+/// - **Armour / evasion / ES**: scalar base left at 0, driven instead by the
+///   minion `ModDb`'s intrinsic `Armour`/`Evasion`/`EnergyShield` BASE
+///   through the defence pipeline (these query names match the intrinsic
+///   names, avoiding double-counting).
+/// - `mod_db` carries the three-channel injection result as-is.
 fn minion_actor_from_context(ctx: &super::MinionContext) -> Actor {
     let base = ActorBaseStats {
         life: ctx.base.life,
         mana: 0.0,
-        // 护甲/闪避/ES 由 mod_db BASE 驱动（防御管线读同名词条），标量留 0 防双重计入。
+        // Armour/evasion/ES are driven by mod_db BASE (the defence pipeline
+        // reads the same-named mods); scalar left at 0 to avoid double-counting.
         armour: 0.0,
         evasion: 0.0,
         energy_shield: 0.0,
@@ -170,7 +206,7 @@ fn minion_actor_from_context(ctx: &super::MinionContext) -> Actor {
         fire_resistance: ctx.base.fire_resist,
         cold_resistance: ctx.base.cold_resist,
         lightning_resistance: ctx.base.lightning_resist,
-        // 攻击型召唤物的虚拟武器伤害喂给攻击伤害管线。
+        // An attacking minion's virtual weapon damage feeds the attack damage pipeline.
         hit_min: ctx.base.weapon.physical_min,
         hit_max: ctx.base.weapon.physical_max,
         action_rate: ctx.base.weapon.attack_rate,

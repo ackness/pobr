@@ -1,12 +1,15 @@
-//! gem quality 四层链路集成测试（18-G1 / 15-G5）。
+//! Gem quality four-layer integration test (18-G1 / 15-G5).
 //!
-//! 覆盖：XML `<Gem quality>` 解析 → `BuildData::effect_stats` 品质段（trunc 语义）
-//! → 双跑方向断言（stormweaver-comet 15×q20 fixture）。
+//! Coverage: XML `<Gem quality>` parsing -> `BuildData::effect_stats` quality
+//! segment (trunc semantics) -> dual-run directional assertion
+//! (stormweaver-comet 15×q20 fixture).
 //!
-//! **oracle 对拍**：品质段 golden 值来自 PoB2 真实框架函数
-//! `calcLib.buildSkillInstanceStats`（Modules/CalcTools.lua:138）在 vendor commit
-//! `2df5a7433dd2f1609e2fad8a6c3c917f923fe34f` 下的输出差值（quality=Q − quality=0），
-//! 跑法：`tools/pob2-oracle/quality_stats.lua`（2026-06-11 实跑记录）：
+//! **Oracle comparison**: golden values for the quality segment come from
+//! PoB2's real framework function `calcLib.buildSkillInstanceStats`
+//! (Modules/CalcTools.lua:138) at vendor commit
+//! `2df5a7433dd2f1609e2fad8a6c3c917f923fe34f`, taken as the output delta
+//! (quality=Q − quality=0), run via `tools/pob2-oracle/quality_stats.lua`
+//! (recorded 2026-06-11):
 //!
 //! ```json
 //! {"skill":"CometPlayer","level":21,"quality":20,
@@ -18,8 +21,9 @@
 //! {"skill":"ArcticArmourPlayer","level":19,"quality":19,"quality_contribution":{}}
 //! ```
 //!
-//! 注意 ArcticArmour q19 = 空（trunc(0.05×19)=trunc(0.95)=0）——PoB2 `math.modf`
-//! 截断语义的真实数据实证，PoBR 必须逐值一致。
+//! Note ArcticArmour q19 = empty (trunc(0.05×19)=trunc(0.95)=0) — real-data
+//! evidence of PoB2's `math.modf` truncation semantics; PoBR must match it
+//! value-for-value.
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::MinimalInput;
@@ -32,7 +36,7 @@ fn load_data() -> BuildData {
     BuildData::load(&data).expect("load BuildData")
 }
 
-/// stormweaver-comet fixture（15 个 q20 宝石）的 build code。
+/// Build code for the stormweaver-comet fixture (15 q20 gems).
 fn stormweaver_code() -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../examples/demo-bd-test/builds/sorceress-stormweaver-comet/code.txt");
@@ -51,8 +55,9 @@ fn opts() -> DataOrchestratorOptions {
     }
 }
 
-/// trunc 语义单测：rate=0.55, q19 → trunc(10.45)=10；
-/// 负斜率 toward zero（区别于 floor）；q0 → 空段。合成数据，不依赖真实表。
+/// Unit test for trunc semantics: rate=0.55, q19 -> trunc(10.45)=10;
+/// negative rate rounds toward zero (unlike floor); q0 -> empty segment.
+/// Synthetic data, doesn't depend on real tables.
 #[test]
 fn quality_segment_truncates_toward_zero() {
     use pobr_data::catalog::QualityStat;
@@ -88,7 +93,7 @@ fn quality_segment_truncates_toward_zero() {
         "负斜率 toward zero：trunc(-10.45)=-10（floor 会得 -11）"
     );
 
-    // 品质 0 → 空段；未知技能 → 空段。
+    // quality=0 -> empty segment; unknown skill -> empty segment.
     assert!(
         bd.effect_stats("SynthSkill", 20, 0, None)
             .quality
@@ -97,8 +102,9 @@ fn quality_segment_truncates_toward_zero() {
     assert!(bd.effect_stats("NoSuch", 20, 20, None).quality.is_empty());
 }
 
-/// 真实数据 + oracle 对拍：q20 各效果的品质段与 PoB2 `buildSkillInstanceStats`
-/// 差值逐值一致（golden 见模块 doc 的 oracle 实跑记录）。
+/// Real data + oracle comparison: each effect's q20 quality segment matches
+/// the PoB2 `buildSkillInstanceStats` delta value-for-value (golden values are
+/// the oracle run log in the module doc comment).
 #[test]
 fn quality_segment_matches_pob2_oracle() {
     let bd = load_data();
@@ -126,20 +132,21 @@ fn quality_segment_matches_pob2_oracle() {
             1.0
         )]
     );
-    // trunc 实证（oracle：q19 贡献为空，trunc(0.95)=0）。
+    // trunc evidence (oracle: q19 contribution is empty, trunc(0.95)=0).
     assert_eq!(seg("ArcticArmourPlayer", 19, 19), vec![]);
-    // support 效果：品质表无条目（PoB2 导出条件已跳过）→ 恒空段。
+    // support effect: no entry in the quality table (skipped by PoB2's export condition) -> always an empty segment.
     assert_eq!(seg("SupportSpellEchoPlayer", 19, 20), vec![]);
 }
 
-/// q20 fixture（stormweaver-comet）端到端：XML quality 解析进 build 模型 +
-/// 双跑方向断言（品质生效 vs 品质归零，DPS/防御不得下降）。
+/// q20 fixture (stormweaver-comet) end-to-end: XML quality parses into the
+/// build model, plus a dual-run directional assertion (quality active vs
+/// quality zeroed, DPS/defence must not decrease).
 #[test]
 fn stormweaver_comet_q20_fixture_dual_run() {
     let bd = load_data();
     let build = parse_build_from_code(stormweaver_code().trim()).expect("parse build");
 
-    // XML 解析层：fixture 含 15 个 quality=20 宝石（decoded.xml 实数）。
+    // XML parsing layer: the fixture has 15 quality=20 gems (per decoded.xml).
     let q20_count: usize = build
         .socket_groups
         .iter()
@@ -151,7 +158,7 @@ fn stormweaver_comet_q20_fixture_dual_run() {
         "decoded.xml 的 15 个 q20 宝石应全部进入 build 模型"
     );
 
-    // 双跑：品质归零副本（其余完全一致）。
+    // Dual run: a copy with quality zeroed out (everything else identical).
     let mut stripped = build.clone();
     for group in &mut stripped.socket_groups {
         group.active_gem_quality = Some(0);
@@ -164,7 +171,7 @@ fn stormweaver_comet_q20_fixture_dual_run() {
     let no_q = calculate_with_data(&stripped, &bd, &opts()).expect("calc without quality");
 
     assert!(with_q.dps.is_finite() && with_q.life.is_finite());
-    // 方向断言：品质只会增益（本 build 的品质 stat 均为正向），DPS/防御不得下降。
+    // Directional assertion: quality can only help (every quality stat in this build is positive), so DPS/defence must not decrease.
     assert!(
         with_q.dps >= no_q.dps,
         "quality 生效后 DPS 不得下降：{} < {}",

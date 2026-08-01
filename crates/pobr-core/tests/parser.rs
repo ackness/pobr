@@ -1,7 +1,9 @@
-//! 解析层：modifier 文本 → Mod（mod_parser / special / modcache golden）。
+//! Parsing layer: modifier text -> Mod (mod_parser / special / modcache golden).
 //!
-//! 聚合二进制：原独立测试文件合并为子模块，减少链接二进制数（53→8）以加速构建。
-//! 各子模块即 `tests/parser/<name>.rs`，测试用例与断言逐一保留。
+//! Aggregated binary: previously-independent test files merged into submodules to
+//! cut the number of linked test binaries (53 -> 8) and speed up builds.
+//! Each submodule is `tests/parser/<name>.rs`; all test cases and assertions are
+//! preserved as-is.
 #![allow(clippy::all)]
 
 #[path = "support/parse.rs"]

@@ -1,7 +1,8 @@
-//! 计算编排：session / env / perform fill / 各 pass / 归因 / 角色基础。
+//! Calculation orchestration: session / env / perform fill / passes / attribution / character base.
 //!
-//! 聚合二进制：原独立测试文件合并为子模块，减少链接二进制数（53→8）以加速构建。
-//! 各子模块即 `tests/engine/<name>.rs`，测试用例与断言逐一保留。
+//! Aggregated binary: these were previously standalone test files, now merged into submodules
+//! to cut the number of linked test binaries (53→8) and speed up builds.
+//! Each submodule maps to `tests/engine/<name>.rs`; all test cases and assertions are preserved as-is.
 #![allow(clippy::all)]
 
 #[path = "support/parse.rs"]

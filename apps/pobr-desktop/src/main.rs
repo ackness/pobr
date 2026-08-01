@@ -1,11 +1,14 @@
-//! pobr-desktop：桌面 GUI 入口（最小可编译骨架）。
+//! pobr-desktop: the desktop GUI entry point (a minimal compilable skeleton).
 //!
-//! GUI 框架（计划采用 [egui](https://github.com/emilk/egui) / `eframe`）尚未引入：
-//! headless CI 环境无法验证 GUI，且重 GUI 依赖会拖慢编译，故延后。
+//! The GUI framework (planned to be [egui](https://github.com/emilk/egui) /
+//! `eframe`) hasn't been introduced yet: headless CI can't verify a GUI, and
+//! a heavy GUI dependency would slow down builds, so this is deferred.
 //!
-//! 当前 `main` 仅作为未来 GUI 的占位/烟雾测试：构造一个内置示例 Build、跑一次
-//! `pobr-build` 编排计算、用 `pobr-i18n` 翻译标题，并把结果摘要打印到 stdout。可测的
-//! 构造/摘要逻辑见 [`pobr_desktop`] 库部分。
+//! `main` currently only serves as a placeholder/smoke test for the future
+//! GUI: it builds a built-in example Build, runs one `pobr-build`
+//! orchestrated calculation, translates the title via `pobr-i18n`, and
+//! prints a result summary to stdout. The testable construction/summary
+//! logic lives in the [`pobr_desktop`] library.
 
 use pobr_desktop::{build_summary, example_build};
 

@@ -78,9 +78,9 @@ fn minimal_calculation_respects_damage_context() {
     assert_eq!(output.dps, 20.0);
 }
 
-/// PoE2 暴击期望值测试（PoE2 爆伤基础 +100%，非 PoE1 的 +50%）。
+/// PoE2 crit expected-value test (PoE2's base crit damage bonus is +100%, not PoE1's +50%).
 ///
-/// PoE2 公式（agent-docs/critical-hits.md §爆伤、CalcOffence.lua）：
+/// PoE2 formula (agent-docs/critical-hits.md §Crit Damage Bonus, CalcOffence.lua):
 ///   crit_mult = 1 + max(0, (PLAYER_BASE_CRIT_DAMAGE_BONUS=100 + base_mod=50) / 100) = 2.5
 ///   crit_avg_factor = 1 + 0.1 * (2.5 - 1.0) = 1.15
 ///   total_hit_avg = 100 * 1.15 = 115
@@ -92,7 +92,7 @@ fn minimal_calculation_includes_crit_average() {
         ModType::Base,
         10.0,
     ));
-    // +50 CritMultiplier BASE（来自武器/宝石等词条）
+    // +50 CritMultiplier BASE (from a weapon/gem modifier, for example)
     db.add_mod(Modifier::number(
         "CriticalStrikeMultiplier",
         ModType::Base,
@@ -115,7 +115,7 @@ fn minimal_calculation_includes_crit_average() {
     let output = calculate_minimal(&db, &CalcConfig::attack(), &input);
 
     assert_eq!(output.crit_chance, 0.1);
-    // PoE2：base_bonus=100+50=150 → crit_mult = 1 + 150/100 = 2.5
+    // PoE2: base_bonus=100+50=150 → crit_mult = 1 + 150/100 = 2.5
     assert_eq!(output.crit_multiplier, 2.5);
     // crit_avg_factor = 1 + 0.1*(2.5-1.0) = 1.15
     assert_eq!(output.total_hit_avg, 115.0);
@@ -296,9 +296,9 @@ fn traced_minimal_calculation_links_total_dps_to_damage_speed_and_accuracy_sourc
     );
 }
 
-/// Bug#2 测试：爆伤 Inc 区生效。
+/// Bug#2 test: the crit-multiplier INC bucket applies.
 ///
-/// 出处：agent-docs/critical-hits.md §爆伤、CalcOffence.lua
+/// Source: agent-docs/critical-hits.md §Crit Damage Bonus, CalcOffence.lua
 ///   `extraDamage = Sum("BASE","CritMultiplier")/100 * (1+inc/100) * more`
 #[test]
 fn crit_multiplier_scales_with_inc() {
@@ -308,7 +308,7 @@ fn crit_multiplier_scales_with_inc() {
         ModType::Base,
         100.0,
     ));
-    // INC 100 → base_bonus * (1+1.0) = 2× base_bonus（base_bonus = 100/100 = 1.0）
+    // INC 100 → base_bonus * (1+1.0) = 2× base_bonus (base_bonus = 100/100 = 1.0)
     db.add_mod(Modifier::number(
         "CriticalStrikeMultiplier",
         ModType::Inc,
@@ -354,10 +354,10 @@ fn crit_multiplier_scales_with_more() {
     assert_eq!(output.crit_multiplier, 2.5);
 }
 
-/// Bug#4 测试：法术必中（不进精准管线，hit_chance = 1.0）。
+/// Bug#4 test: spells always hit (skip the accuracy pipeline, hit_chance = 1.0).
 ///
-/// 出处：agent-docs/accuracy-and-enemy.md §三
-///   `if not isAttack then output.AccuracyHitChance = 100`。
+/// Source: agent-docs/accuracy-and-enemy.md §3
+///   `if not isAttack then output.AccuracyHitChance = 100`.
 #[test]
 fn spell_always_hits_regardless_of_evasion() {
     let db = ModDb::new();
@@ -377,7 +377,7 @@ fn spell_always_hits_regardless_of_evasion() {
     assert!(attack_output.hit_chance < 1.0);
 }
 
-/// Bug#5 测试：traced DPS 与非 traced DPS 数值一致。
+/// Bug#5 test: traced DPS numerically matches non-traced DPS.
 #[test]
 fn traced_dps_matches_non_traced_dps() {
     let mut db = ModDb::new();
@@ -407,8 +407,9 @@ fn traced_dps_matches_non_traced_dps() {
     assert_eq!(traced.output.crit_multiplier, plain.crit_multiplier);
 }
 
-/// 玩家侧抗性双口径：vendor special 通道短名（`FireResist`）与 PoBR parser
-/// 长名（`FireResistance`）同桶相加（vendor CalcDefence.lua:895 双名 Sum 口径）。
+/// Player-side resist has two naming conventions: vendor's special short name
+/// (`FireResist`) and the PoBR parser's long name (`FireResistance`) sum into the
+/// same bucket (vendor CalcDefence.lua:895 sums both names).
 #[test]
 fn resistance_vendor_short_name_shares_bucket_with_long_name() {
     let mut db = ModDb::new();
@@ -419,13 +420,14 @@ fn resistance_vendor_short_name_shares_bucket_with_long_name() {
     let output = calculate_minimal(&db, &CalcConfig::attack(), &MinimalInput::default());
 
     assert_eq!(output.fire_resistance, 55.0);
-    // 共享名 `ElementalResist` 同样进 cold/lightning 桶（vendor isElemental）。
+    // The shared name `ElementalResist` likewise feeds the cold/lightning buckets (vendor isElemental).
     assert_eq!(output.cold_resistance, 5.0);
     assert_eq!(output.lightning_resistance, 5.0);
 }
 
-/// OVERRIDE 锁定抗性（"fire resistance is N%"）：跳过 base×inc，但 final 仍被
-/// 最大抗性钳制（vendor CalcDefence.lua:891 override / :924 final clamp）。
+/// OVERRIDE pins a resist ("fire resistance is N%"): it skips base×inc, but the final
+/// value is still clamped to the max resist (vendor CalcDefence.lua:891 override / :924
+/// final clamp).
 #[test]
 fn resistance_override_locks_value_but_respects_max_cap() {
     let mut db = ModDb::new();
@@ -436,14 +438,15 @@ fn resistance_override_locks_value_but_respects_max_cap() {
 
     let output = calculate_minimal(&db, &CalcConfig::attack(), &MinimalInput::default());
 
-    // override 120 越过 BASE 词条，但 final 钳到默认 max 75。
+    // Override 120 overrides the BASE modifiers, but the final value clamps to the default max 75.
     assert_eq!(output.fire_resistance, 75.0);
-    // "elemental resistances are zero"：override 0 压掉 BASE 60。
+    // "elemental resistances are zero": override 0 overrides the BASE 60.
     assert_eq!(output.cold_resistance, 0.0);
 }
 
-/// INC/MORE 乘区（"reduced fire resistance"）：`(base + ΣBASE) × max(1+ΣINC/100, 0)`
-/// （vendor CalcDefence.lua:896-897，factor 负值 clamp 到 0）。
+/// The INC/MORE multiplier stage ("reduced fire resistance"):
+/// `(base + ΣBASE) × max(1+ΣINC/100, 0)` (vendor CalcDefence.lua:896-897; a negative
+/// factor clamps to 0).
 #[test]
 fn resistance_inc_scales_and_clamps_at_zero() {
     let mut db = ModDb::new();
@@ -455,13 +458,13 @@ fn resistance_inc_scales_and_clamps_at_zero() {
     let output = calculate_minimal(&db, &CalcConfig::attack(), &MinimalInput::default());
 
     assert_eq!(output.fire_resistance, 20.0);
-    // factor = max(1 - 1.5, 0) = 0。
+    // factor = max(1 - 1.5, 0) = 0.
     assert_eq!(output.cold_resistance, 0.0);
 }
 
-/// 最大抗性 OVERRIDE（"your maximum resistances are N%"，vendor 名 `<X>ResistMax`）：
-/// override 直取、不过 hard_cap（vendor CalcDefence.lua:875/:914）；BASE 形态
-/// （`Maximum<X>Resistance` 长名）仍受 hard_cap 钳制。
+/// Max-resist OVERRIDE ("your maximum resistances are N%", vendor name `<X>ResistMax`):
+/// the override is taken as-is and bypasses hard_cap (vendor CalcDefence.lua:875/:914);
+/// the BASE form (long name `Maximum<X>Resistance`) is still clamped by hard_cap.
 #[test]
 fn resistance_max_override_bypasses_hard_cap() {
     let mut db = ModDb::new();
@@ -476,8 +479,8 @@ fn resistance_max_override_bypasses_hard_cap() {
 
     let output = calculate_minimal(&db, &CalcConfig::attack(), &MinimalInput::default());
 
-    // max override 92 > hard_cap 90 仍生效（vendor override 不过 m_min）。
+    // max override 92 > hard_cap 90 still applies (vendor's override bypasses m_min).
     assert_eq!(output.fire_resistance, 92.0);
-    // BASE 抬升 75+30=105 → hard_cap 钳到 90。
+    // BASE raises it to 75+30=105 → hard_cap clamps to 90.
     assert_eq!(output.cold_resistance, 90.0);
 }

@@ -8,14 +8,15 @@ fn db_of(mods: Vec<pobr_core::Modifier>) -> ModDb {
     db
 }
 
-/// 测试用常量集 = Default fallback（与 `base/character_constants.json` 逐值相等）。
+/// Test constant set = Default fallback (matches `base/character_constants.json`
+/// value-for-value).
 fn constants() -> CharacterConstantsDef {
     CharacterConstantsDef::default()
 }
 
 #[test]
 fn character_base_derives_life_mana_accuracy_from_level_and_attributes() {
-    // PoB2 CalcSetup characterConstants（oracle 实证 L99: Life 1204 / Mana 426）:
+    // PoB2 CalcSetup characterConstants (oracle-verified L99: Life 1204 / Mana 426):
     // life = 12*level + 16 + 2*Strength
     // mana = 4*level + 30 + 2*Intelligence
     // accuracy = 6*level - 6 + 6*Dexterity
@@ -41,7 +42,7 @@ fn character_base_derives_life_mana_accuracy_from_level_and_attributes() {
         db.sum(ModType::Base, &cfg, &[ModName::from("Accuracy")]),
         42.0
     );
-    // PoB2 characterConstants.base_evasion_rating = 7。
+    // PoB2 characterConstants.base_evasion_rating = 7.
     assert_eq!(
         db.sum(ModType::Base, &cfg, &[ModName::from("Evasion")]),
         7.0

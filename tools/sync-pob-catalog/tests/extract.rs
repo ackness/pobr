@@ -1,6 +1,7 @@
-//! 抽取逻辑：vendor Lua 抽取 / parser rules / quality / special_mods / scan。
+//! Extraction logic: vendor Lua extraction / parser rules / quality / special_mods / scan.
 //!
-//! 聚合二进制：原独立测试文件合并为子模块（7→2），减少链接二进制数以加速构建。
+//! An aggregated binary: previously-separate test files are now submodules
+//! (7 -> 2), reducing the number of linked binaries to speed up builds.
 #![allow(clippy::all)]
 
 #[path = "extract/extract_lua.rs"]

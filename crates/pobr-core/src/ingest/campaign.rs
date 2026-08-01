@@ -1,42 +1,45 @@
-//! 战役进度惩罚与永久奖励的 modifier 入口。
+//! Modifier ingest for campaign progress penalties and permanent rewards.
 //!
-//! 战役奖励是角色配置的一部分（不属于装备 / 天赋 / 技能）。本模块把战役进度
-//! 惩罚和已选奖励转换为带 [`SourceKind::CampaignReward`] 归因的普通 modifier，
-//! 喂入 `ModDb` 后参与标准聚合，并在 trace 中可回溯。
+//! Campaign rewards are part of the character's config (not equipment /
+//! passives / skills). This module converts campaign progress penalties and
+//! chosen rewards into ordinary modifiers attributed with
+//! [`SourceKind::CampaignReward`], which feed into `ModDb`, participate in
+//! standard aggregation, and remain traceable.
 //!
-//! 数据来源见 `agent-docs/campaign-rewards.md`（PoE2 0.5.0，对照 PoB-PoE2
-//! `QuestRewards.lua` / `CalcSetup.lua`）。
+//! Data source: `agent-docs/campaign-rewards.md` (PoE2 0.5.0, cross-checked
+//! against PoB-PoE2's `QuestRewards.lua` / `CalcSetup.lua`).
 
 use pobr_data::prelude::*;
 
 use crate::Modifier;
 
-/// 三元素抗性 ModName，元素抗性惩罚作用于这三者。
+/// The three elemental resistance ModNames the elemental resistance penalty applies to.
 const ELEMENTAL_RESISTANCES: [&str; 3] =
     ["FireResistance", "ColdResistance", "LightningResistance"];
 
-/// 元素抗性惩罚的稳定 source id。
+/// Stable source id for the elemental resistance penalty.
 const RESISTANCE_PENALTY_SOURCE: &str = "campaign.resistance_penalty";
 
-/// 战役 / 区域进度，决定元素抗性惩罚。
+/// Campaign / zone progress, which determines the elemental resistance penalty.
 ///
-/// 惩罚作用于火 / 冰 / 电抗性；当前资料未确认混沌抗性随同降低。
+/// The penalty applies to fire / cold / lightning resistance; current sources
+/// haven't confirmed whether chaos resistance drops alongside it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CampaignProgress {
     Act1,
     Act2,
     Act3,
     Act4,
-    /// Interlude 区域等级 54-59。
+    /// Interlude zones, level 54-59.
     Interlude54To59,
-    /// Interlude 区域等级 60-64。
+    /// Interlude zones, level 60-64.
     Interlude60To64,
-    /// 终局区域等级 65+。
+    /// Endgame zones, level 65+.
     Endgame,
 }
 
 impl CampaignProgress {
-    /// 元素抗性惩罚值（百分点，非正数）。
+    /// The elemental resistance penalty value (percentage points, non-positive).
     pub fn resistance_penalty(self) -> f64 {
         match self {
             Self::Act1 => 0.0,
@@ -49,10 +52,11 @@ impl CampaignProgress {
         }
     }
 
-    /// 从 PoB2 `resistancePenalty` 配置值（`0 / -10 / … / -60`）反查战役进度。
+    /// Looks up campaign progress from a PoB2 `resistancePenalty` config value (`0 / -10 / … / -60`).
     ///
-    /// 对应 vendor `ConfigOptions.lua` `resistancePenalty` list 的七个档位值；
-    /// 值不在档位表内时返回 `None`（调用方自行回退 PoB2 默认 Endgame `-60`）。
+    /// Corresponds to the seven tier values in vendor `ConfigOptions.lua`'s
+    /// `resistancePenalty` list; returns `None` if the value isn't in the
+    /// table (callers fall back to PoB2's default of Endgame `-60`).
     pub fn from_resistance_penalty(value: f64) -> Option<Self> {
         const ALL: [CampaignProgress; 7] = [
             CampaignProgress::Act1,
@@ -66,7 +70,7 @@ impl CampaignProgress {
         ALL.into_iter().find(|p| p.resistance_penalty() == value)
     }
 
-    /// 生成元素抗性惩罚 modifier。无惩罚（Act1）时返回空列表。
+    /// Generates the elemental resistance penalty modifiers. Returns an empty list when there's no penalty (Act1).
     pub fn modifiers(self) -> Vec<Modifier> {
         let penalty = self.resistance_penalty();
         if penalty == 0.0 {
@@ -87,22 +91,23 @@ impl CampaignProgress {
     }
 }
 
-/// 已记录的战役永久 / 可重选奖励选择。
+/// A recorded choice of permanent / respeccable campaign reward.
 ///
-/// 目前覆盖 `agent-docs/campaign-rewards.md` 中的固定抗性奖励；其余可重选 /
-/// 多选奖励按相同模式扩展。
+/// Currently covers the fixed resistance rewards in
+/// `agent-docs/campaign-rewards.md`; other respeccable / multi-choice rewards
+/// extend with the same pattern.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CampaignReward {
-    /// Act 1 `Beira of the Rotten Pack`：+10% 冰霜抗性。
+    /// Act 1 `Beira of the Rotten Pack`: +10% cold resistance.
     HeadOfTheWinterWolf,
-    /// Act 2 `The Spires of Deshar`：+10% 闪电抗性。
+    /// Act 2 `The Spires of Deshar`: +10% lightning resistance.
     SistersOfGarukhan,
-    /// Act 3 `Blackjaw, the Remnant`：+10% 火焰抗性。
+    /// Act 3 `Blackjaw, the Remnant`: +10% fire resistance.
     TheFlameCore,
 }
 
 impl CampaignReward {
-    /// 稳定 source id（`campaign.<reward>`）。
+    /// Stable source id (`campaign.<reward>`).
     pub fn source_id(self) -> SourceId {
         SourceId::new(SourceKind::CampaignReward, self.source_key())
     }
@@ -115,7 +120,7 @@ impl CampaignReward {
         }
     }
 
-    /// 该奖励产生的 modifier 列表，带 `CampaignReward` 归因。
+    /// The modifiers produced by this reward, attributed to `CampaignReward`.
     pub fn modifiers(self) -> Vec<Modifier> {
         let (stat, value, text) = match self {
             Self::HeadOfTheWinterWolf => ("ColdResistance", 10.0, "+10% to Cold Resistance"),
@@ -130,10 +135,12 @@ impl CampaignReward {
     }
 }
 
-/// 战役状态聚合：当前进度惩罚 + 已选奖励。
+/// Aggregated campaign state: current progress penalty + chosen rewards.
 ///
-/// 对应 `agent-docs/campaign-rewards.md` 建议的 `CampaignState`。`modifiers()`
-/// 把惩罚与所有奖励扁平化为单个 modifier 列表，可直接喂入计算入口。
+/// Corresponds to the `CampaignState` suggested in
+/// `agent-docs/campaign-rewards.md`. `modifiers()` flattens the penalty and
+/// all rewards into a single modifier list that can be fed directly into the
+/// calc entry point.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CampaignState {
     pub progress: CampaignProgress,
@@ -141,7 +148,7 @@ pub struct CampaignState {
 }
 
 impl CampaignState {
-    /// 扁平化所有战役 modifier（进度惩罚在前，奖励在后）。
+    /// Flattens all campaign modifiers (progress penalty first, then rewards).
     pub fn modifiers(&self) -> Vec<Modifier> {
         let mut mods = self.progress.modifiers();
         for reward in &self.rewards {

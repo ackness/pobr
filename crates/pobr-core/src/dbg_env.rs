@@ -1,21 +1,26 @@
-//! 诊断环境变量的进程级快照。
+//! Process-wide snapshot of diagnostic environment variables.
 //!
-//! `POBR_DBG_*` / `POBR_GATE_DENY` 这批诊断开关落在**逐词条 / 逐伤害分量**的热
-//! 路径上（如 `calc_orchestrator::collect::gate_parses` 每条 modifier 文本问一
-//! 次），而 `std::env::var` 每次都要锁 environ、线性扫描、堆分配一个 `String`
-//! ——实测 ~100 ns（干净 environ）到 ~180 ns（60 个变量）。
+//! The `POBR_DBG_*` / `POBR_GATE_DENY` diagnostic switches sit on a **per-
+//! modifier / per-damage-component** hot path (e.g.
+//! `calc_orchestrator::collect::gate_parses` checks one per modifier text), and
+//! `std::env::var` locks environ, scans linearly, and heap-allocates a `String`
+//! on every call — measured at ~100 ns (clean environ) to ~180 ns (60 vars).
 //!
-//! [`dbg_env!`] 用 `LazyLock` 把结果快照成进程常量，命中后约 0.5 ns（~200–350×）。
-//! 代价是**进程启动后再改环境变量不生效**——诊断开关本就在启动时设定，无影响。
+//! [`dbg_env!`] snapshots the result into a process-lifetime constant via
+//! `LazyLock`, dropping the cost to ~0.5 ns on a cache hit (~200–350×). The
+//! trade-off is that **changing the env var after process start has no
+//! effect** — these switches are only ever set at startup anyway, so this
+//! doesn't matter in practice.
 
-/// 读取一个诊断环境变量，结果按进程快照。返回 `Option<&'static str>`。
+/// Reads a diagnostic env var, snapshotted per process. Returns `Option<&'static str>`.
 ///
 /// ```ignore
-/// if dbg_env!("POBR_DBG_BASES").is_some() { … }          // 布尔开关
-/// if let Some(deny) = dbg_env!("POBR_GATE_DENY") { … }    // 取值
+/// if dbg_env!("POBR_DBG_BASES").is_some() { … }          // boolean switch
+/// if let Some(deny) = dbg_env!("POBR_GATE_DENY") { … }    // read the value
 /// ```
 ///
-/// 每个调用点展开出自己的 `static`，无需集中登记变量名。
+/// Each call site expands its own `static`, so there's no central registry of
+/// variable names to maintain.
 #[macro_export]
 macro_rules! dbg_env {
     ($name:literal) => {{
@@ -27,7 +32,7 @@ macro_rules! dbg_env {
 
 #[cfg(test)]
 mod tests {
-    /// 同一调用点多次求值走同一份快照（LazyLock 只初始化一次）。
+    /// Repeated evaluation at the same call site reuses one snapshot (LazyLock initializes once).
     #[test]
     fn snapshot_is_stable_across_calls() {
         // Arrange / Act
@@ -39,10 +44,10 @@ mod tests {
         assert!(first.is_none(), "未设置的变量应为 None");
     }
 
-    /// 取值型用法拿到的是变量内容而非仅存在性。
+    /// Value-reading usage gets the variable's contents, not just presence.
     #[test]
     fn returns_value_not_just_presence() {
-        // Arrange：PATH 在任何测试环境下都存在且非空。
+        // Arrange: PATH exists and is non-empty in any test environment.
         // Act
         let path = dbg_env!("PATH");
 

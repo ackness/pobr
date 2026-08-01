@@ -1,16 +1,18 @@
-//! `overlay/special_mods.json` 的 pattern 编译校验。
+//! Pattern-compile validation for `overlay/special_mods.json`.
 //!
-//! schema 契约：pattern 是 Rust regex 语法子集，载入期编译
-//! 失败 = fail fast。本 crate 持有 regex 依赖，故编译校验落在这里；
-//! 解释器（`SpecialModRules::compile` 的完整错误路径）归B-2。
+//! Schema contract: pattern is a subset of Rust regex syntax, and a compile
+//! failure at load time means fail-fast. This crate already depends on
+//! regex, so the compile check lives here; the interpreter (the full error
+//! path of `SpecialModRules::compile`) belongs to B-2.
 
 use std::path::Path;
 
 use regex::Regex;
 
-/// special_mods 两层文件（tools/sync-pob-catalog/ → 上两级到仓库根）：版本无关策展层
-/// `data/overlay-common/`（P1-3，133 条大头）+ 版本层 `data/<ver>/overlay/`。两者并集
-/// 覆盖全部策展 pattern。
+/// The two special_mods layers (tools/sync-pob-catalog/ -> up two levels to
+/// the repo root): the version-independent curation layer
+/// `data/overlay-common/` (P1-3, the bulk with 133 entries) plus the version
+/// layer `data/<ver>/overlay/`. Their union covers every curated pattern.
 fn special_mods_paths() -> Vec<std::path::PathBuf> {
     let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data");
     vec![
@@ -20,7 +22,7 @@ fn special_mods_paths() -> Vec<std::path::PathBuf> {
     ]
 }
 
-/// 两层 entries 并集（缺文件跳过；至少一层须存在）。
+/// The union of entries from both layers (missing files are skipped; at least one layer must exist).
 fn load_entries() -> Vec<serde_json::Value> {
     let mut entries = Vec::new();
     for path in special_mods_paths() {
@@ -41,8 +43,9 @@ fn load_entries() -> Vec<serde_json::Value> {
     entries
 }
 
-/// 全部 pattern 可被 regex crate 编译（整行锚定由引擎统一加 `^...$`，
-/// 此处按同口径编译）；捕获组数 ≥ mods 内引用的最大 `$n`。
+/// Every pattern must compile under the regex crate (the engine uniformly
+/// wraps patterns in `^...$` for whole-line anchoring, so this compiles the
+/// same way); the capture-group count must be >= the largest `$n` referenced within mods.
 #[test]
 fn all_patterns_compile_and_captures_cover_refs() {
     let entries = load_entries();
@@ -52,7 +55,7 @@ fn all_patterns_compile_and_captures_cover_refs() {
         let pattern = entry["pattern"].as_str().unwrap();
         let re = Regex::new(&format!("^{pattern}$"))
             .unwrap_or_else(|e| panic!("{id}: pattern 编译失败：{e}"));
-        // mods JSON 文本里出现的最大 $n 不得超过捕获组数
+        // The largest $n appearing in the mods JSON text must not exceed the capture-group count
         let mods_text = entry["mods"].to_string();
         let max_ref = (1..=9)
             .rev()
@@ -68,15 +71,16 @@ fn all_patterns_compile_and_captures_cover_refs() {
     }
 }
 
-/// 数值捕获形态统一：`(\d+)` / `(\d+(?:\.\d+)?)` / `([+-]\d+)` / `(\+?\d+)`
-/// 之外的捕获必须是显式闭集（不含 `\d`）——DSL 硬边界的「禁开放捕获」。
+/// Numeric captures use a fixed set of shapes: `(\d+)` / `(\d+(?:\.\d+)?)` /
+/// `([+-]\d+)` / `(\+?\d+)`. Any capture outside that set must be an
+/// explicit closed set (no `\d`) — the DSL's hard boundary of "no open captures".
 #[test]
 fn captures_are_numeric_or_closed_sets() {
     const NUMERIC_FORMS: [&str; 4] = [r"(\d+)", r"(\d+(?:\.\d+)?)", r"([+-]\d+)", r"(\+?\d+)"];
     for entry in &load_entries() {
         let id = entry["id"].as_str().unwrap();
         let pattern = entry["pattern"].as_str().unwrap();
-        // 逐捕获组扫描（顶层括号，忽略 (?: 非捕获组）
+        // Scan capture group by capture group (top-level parens, ignoring (?: non-capturing groups)
         let bytes = pattern.as_bytes();
         let mut i = 0;
         while i < bytes.len() {
@@ -85,7 +89,7 @@ fn captures_are_numeric_or_closed_sets() {
                 continue;
             }
             if bytes[i] == b'(' && !pattern[i..].starts_with("(?:") {
-                // 找平衡右括号
+                // Find the balanced closing paren
                 let mut depth = 1;
                 let mut j = i + 1;
                 while j < bytes.len() && depth > 0 {

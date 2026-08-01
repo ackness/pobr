@@ -1,7 +1,8 @@
 use pobr_core::calc::MinimalInput;
 use pobr_core::item::{ItemIngest, ingest_item_with_ctx};
 
-/// engine 版 ingest（签名对齐历史 `ingest_item`，注入真实规则）。
+/// Engine-backed ingest (keeps the historical `ingest_item` signature, wires in the
+/// real rules).
 fn ingest_item(
     slot: EquipmentSlot,
     item: &Item,
@@ -27,8 +28,9 @@ fn helmet(texts: &[&str]) -> Item {
 
 #[test]
 fn ingest_substitutes_slotname_in_per_socket_multiplier() {
-    // `per Socket filled` → `Multiplier{var:"RunesSocketedIn{SlotName}"}`；ingest 按所在槽
-    // 把 `{SlotName}` 替换为槽位 ID（编排层预灌 `RunesSocketedIn<slot>` 取数）。
+    // `per Socket filled` -> `Multiplier{var:"RunesSocketedIn{SlotName}"}`; ingest
+    // substitutes `{SlotName}` with the slot ID (the orchestration layer pre-fills
+    // `RunesSocketedIn<slot>` for the lookup).
     let item = helmet(&["+14 to Spirit per Socket filled"]);
     let ingest = ingest_item(EquipmentSlot::BodyArmour, &item).unwrap();
     let spirit = ingest
@@ -56,10 +58,11 @@ fn ingest_item_parses_texts_into_modifiers_with_item_affix_source() {
     } = ingest_item(EquipmentSlot::Helmet, &item).unwrap();
 
     assert!(unsupported.is_empty());
-    // 品质不再注入 modifier（逐属性 base 缩放在编排层处理），仅 2 个 explicit 词条。
+    // Quality no longer injects a modifier (per-stat base scaling is handled at the
+    // orchestration layer); only the 2 explicit mods remain.
     assert_eq!(modifiers.len(), 2);
 
-    // 仅检查 explicit 词条（SourceKind::ItemAffix）的归因字段。
+    // Only check the origin fields of explicit mods (SourceKind::ItemAffix).
     let explicit_mods: Vec<_> = modifiers
         .iter()
         .filter(|m| {
@@ -76,15 +79,17 @@ fn ingest_item_parses_texts_into_modifiers_with_item_affix_source() {
             .origin
             .as_ref()
             .expect("item modifier carries an origin");
-        // explicit 词条归因到 ItemAffix，SourceId 含槽位与 section 后缀。
+        // Explicit mods attribute to ItemAffix; the SourceId includes the slot and
+        // section suffix.
         assert_eq!(origin.source_id.kind, SourceKind::ItemAffix);
         assert_eq!(origin.source_id.id, "item.helmet.explicit");
         assert_eq!(origin.slot.as_deref(), Some("helmet"));
-        // 原始词条文本必须保留，以便 breakdown 展示与 PoB 对比。
+        // The raw mod text must be preserved for breakdown display and comparison
+        // against PoB.
         assert!(origin.raw_text.is_some());
     }
 
-    // stat_id / mod_type 由 with_origin 从 modifier 回填。
+    // stat_id / mod_type get backfilled from the modifier by with_origin.
     let life = modifiers
         .iter()
         .find(|m| m.name == ModName::from("MaximumLife"))
@@ -95,7 +100,7 @@ fn ingest_item_parses_texts_into_modifiers_with_item_affix_source() {
     );
     assert_eq!(life.origin.as_ref().unwrap().mod_type, Some(ModType::Base));
 
-    // 品质不再注入任何 ItemQuality modifier。
+    // Quality no longer injects any ItemQuality modifier.
     let quality_mod = modifiers.iter().find(|m| {
         m.origin
             .as_ref()
@@ -110,7 +115,8 @@ fn ingest_item_parses_texts_into_modifiers_with_item_affix_source() {
 
 #[test]
 fn ingest_item_distinguishes_implicit_explicit_enchant_sections() {
-    // 三个 section 使用不同 stat，便于唯一定位各自的 origin。
+    // Each of the three sections uses a different stat so each origin can be
+    // uniquely located.
     let item = Item {
         base: ItemBaseId::from("Helmet"),
         rarity: ItemRarity::Rare,
@@ -170,7 +176,7 @@ fn ingest_item_collects_unsupported_texts_across_sections() {
     let ingest = ingest_item(EquipmentSlot::Helmet, &item).unwrap();
 
     assert_eq!(ingest.modifiers.len(), 1);
-    // 各 section 中无法解析的行都被收集进 unsupported。
+    // Unparseable lines from every section get collected into unsupported.
     assert_eq!(ingest.unsupported.len(), 2);
     assert!(ingest.unsupported.contains(&"split".to_string()));
     assert!(ingest.unsupported.contains(&"mirrored".to_string()));
@@ -262,24 +268,28 @@ fn session_add_item_feeds_minimal_calc() {
     session.add_item(EquipmentSlot::BodyArmour, &body).unwrap();
     let output = session.perform_minimal();
 
-    // (100 base + 40 item) * (1 + 20/100) = 168。
+    // (100 base + 40 item) * (1 + 20/100) = 168.
     assert_eq!(output.life, 168.0);
-    // 无法解析的词条仍被保留。
+    // Unparseable mods are still retained (as unsupported text).
     assert_eq!(session.unsupported_modifier_texts(), ["mirrored"]);
 }
 
-// 品质不作为 More modifier 注入（finding 02-05 修正）
+// Quality is not injected as a More modifier (finding 02-05 fix)
 //
-// PoB2 的物品品质是**逐属性 base 缩放**（武器仅物理；护甲 armour/evasion/ES 各自
-// 独立 × (1 + quality/100)），不是一个全局 `more` modifier。把品质作为
-// `LocalPhysicalDamageMore` / `LocalDefencesMore` 全局 More 注入会错误地波及全局
-// 伤害 / 全部防御。实际缩放由编排层 `pobr-build::calc_orchestrator`（item_rolled_defence
-// 与武器 physical_min/max）逐件、逐属性处理，与 PoB2 对齐。故 ingest 不注入品质 modifier。
+// PoB2's item quality is a **per-stat base scaling** (weapons: physical only;
+// armour: armour/evasion/ES each independently x (1 + quality/100)), not a single
+// global `more` modifier. Injecting quality as a global More mod
+// (`LocalPhysicalDamageMore` / `LocalDefencesMore`) would incorrectly spill over
+// into global damage / all defences. The actual scaling is handled per-item,
+// per-stat by the orchestration layer's `pobr-build::calc_orchestrator`
+// (item_rolled_defence and weapon physical_min/max), matching PoB2. So ingest
+// injects no quality modifier.
 //
-// 出处：PoB2 src/Classes/Item.lua BuildModListForSlotNum 1751-1756（武器）、
-//       1812-1819（护甲，逐属性独立缩放）。
+// Source: PoB2 src/Classes/Item.lua BuildModListForSlotNum 1751-1756 (weapons),
+//         1812-1819 (armour, per-stat independent scaling).
 
-/// 辅助：断言一件物品 ingest 后**不含**任何 `ItemQuality` 归因的 modifier。
+/// Helper: asserts that ingesting an item produces **no** modifier attributed to
+/// `ItemQuality`.
 fn assert_no_quality_modifier(slot: EquipmentSlot, item: &Item) {
     let ingest = ingest_item(slot, item).unwrap();
     let quality_mod = ingest.modifiers.iter().find(|m| {
@@ -322,7 +332,8 @@ fn weapon_quality_does_not_inject_modifier() {
 
 #[test]
 fn accessory_quality_does_not_inject_modifier() {
-    // 戒指 / 腰带品质走催化剂机制（getCatalystScalar），尚未建模——见下方 defer 说明。
+    // Ring / belt quality goes through the catalyst mechanism (getCatalystScalar),
+    // which is not yet modeled -- see the defer note below.
     assert_no_quality_modifier(EquipmentSlot::Ring1, &bare_item("Iron Ring", 20));
     assert_no_quality_modifier(EquipmentSlot::Belt, &bare_item("Heavy Belt", 20));
 }
@@ -332,24 +343,29 @@ fn zero_quality_does_not_inject_modifier() {
     assert_no_quality_modifier(EquipmentSlot::Helmet, &bare_item("Iron Helmet", 0));
 }
 
-// Defer: 催化剂（accessory quality → catalyst）尚未建模
+// Defer: catalyst (accessory quality -> catalyst) is not yet modeled
 //
-// PoB2 `getCatalystScalar(catalystId, mod, quality)`（src/Classes/Item.lua 33-58）
-// 按催化剂的 tag 集（catalystTags：life/mana/defences/physical/attack/caster…）与
-// **每条词缀的 GGG modTags** 求交，命中则将该词缀值缩放 (100 + quality)/100。
+// PoB2's `getCatalystScalar(catalystId, mod, quality)` (src/Classes/Item.lua 33-58)
+// intersects the catalyst's tag set (catalystTags: life/mana/defences/physical/
+// attack/caster...) with **each affix's GGG modTags**; on a match, it scales that
+// affix's value by (100 + quality)/100.
 //
-// PoBR 当前缺两样东西，故无法建模，明确 defer：
-//   1. 数据模型：`pobr_data::Item` 无 `catalyst` / `catalyst_quality` 字段
-//      （item_text 已把 `Catalyst:` / `CatalystQuality:` 行作为元数据丢弃）。
-//   2. 词缀 tag 分类：PoBR 解析出的 `Modifier` 不携带 GGG modTags
-//      （life/defences/physical…），`getCatalystScalar` 无从匹配。
+// PoBR is currently missing two pieces, so this can't be modeled yet -- explicitly
+// deferred:
+//   1. Data model: `pobr_data::Item` has no `catalyst` / `catalyst_quality` field
+//      (item_text already drops `Catalyst:` / `CatalystQuality:` lines as metadata).
+//   2. Affix tag classification: the `Modifier` values PoBR parses don't carry GGG
+//      modTags (life/defences/physical...), so `getCatalystScalar` has nothing to
+//      match against.
 //
-// 补齐顺序应为：先在 mod 数据管线引入词缀 tag 分类，再加 Item 催化剂字段，
-// 最后在 ingest（或编排层）按 tag 命中缩放词缀值。此处仅占位记录。
+// The fill-in order should be: introduce affix tag classification in the mod data
+// pipeline first, then add the Item catalyst field, then scale affix values by tag
+// match in ingest (or the orchestration layer). This is a placeholder note only.
 #[test]
 fn catalyst_scaling_is_deferred_no_field_in_model() {
-    // 文档化 defer：accessory 即便有品质也不缩放词条（催化剂未建模），
-    // 与 accessory_quality_does_not_inject_modifier 一致——不引入虚假缩放。
+    // Documents the defer: accessories don't scale mods by quality (catalyst is not
+    // modeled), consistent with accessory_quality_does_not_inject_modifier -- avoids
+    // introducing fake scaling.
     let ring = bare_item("Topaz Ring", 20);
     let ingest = ingest_item(EquipmentSlot::Ring1, &ring).unwrap();
     assert!(
@@ -358,14 +374,15 @@ fn catalyst_scaling_is_deferred_no_field_in_model() {
     );
 }
 
-// flask / charm 载荷接入
+// flask / charm payload wiring
 
 use pobr_core::item::{
     CHARM_BUFF_LIST_NAME, FLASK_BUFF_LIST_NAME, LOCAL_UTILITY_EFFECT_NAME, UtilityItemKind,
     classify_utility_item, ingest_flask_charm_with_ctx,
 };
 
-/// engine 版 flask/charm ingest（签名对齐历史 `ingest_flask_charm`）。
+/// Engine-backed flask/charm ingest (keeps the historical `ingest_flask_charm`
+/// signature).
 fn ingest_flask_charm(slot_name: &str, item: &Item) -> ItemIngest {
     ingest_flask_charm_with_ctx(slot_name, item, crate::support::ctx())
 }
@@ -384,8 +401,10 @@ fn utility_item(base: &str, implicits: &[&str], explicits: &[&str]) -> Item {
     }
 }
 
-/// charm 词条 → CharmBuff 载荷（List 嵌套），归因 SourceId(Flask, "flask.charm1")；
-/// 载荷对聚合零影响（List 不参与 sum——未合并前逐值不变的微观锚点）。
+/// Charm mods -> CharmBuff payload (nested List), attributed to
+/// SourceId(Flask, "flask.charm1"); the payload has zero effect on aggregation
+/// (List doesn't participate in sum -- a micro-anchor for "values unchanged before
+/// merge").
 #[test]
 fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
     let charm = utility_item(
@@ -423,7 +442,7 @@ fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
         "内层 mod 各自带 Flask 归因"
     );
 
-    // List 载荷对聚合零影响（未合并前逐值不变）。
+    // The List payload has zero effect on aggregation (values unchanged before merge).
     let mut db = ModDb::new();
     db.add_mod(carrier.clone());
     assert_eq!(
@@ -436,16 +455,20 @@ fn ingest_charm_wraps_mods_into_list_payload_with_flask_attribution() {
     );
 }
 
-/// Charm 的效果词条即使当前未建模，也必须进入 unsupported 报告。
-/// `Also grants N Guard` 是 ModCharm.lua 中的真实 explicit 前缀；`Possessed by ...`
-/// 同样来自真实 build，静默忽略会让调用方误以为效果已经生效。
+/// Even mods for effects a charm has that aren't currently modeled must still show
+/// up in the unsupported report. `Also grants N Guard` is a real explicit prefix
+/// from ModCharm.lua; `Possessed by ...` also comes from a real build -- silently
+/// dropping either would make callers think the effect is already in effect.
 #[test]
 fn ingest_charm_parses_guard_and_possession_effects_via_engine() {
-    // possession 行由引擎 special 通道建模（SpiritPossessionOnUse），正常产 mod。
-    // guard 行（`Also grants N Guard`）曾被策展条目 also_grants_guard 建模，但
-    // vendor ModParser 根本不解析它——对 PoB2 golden 是幻影 Guard 池（存量 #7
-    // 已摘除，ritualist EHP 1.10x→1.00x）。与 PoB2 对齐后它回到「未建模 →
-    // 必须响亮进 unsupported 报告」的口径，静默忽略才是失败。
+    // The possession line is modeled through the engine's special channel
+    // (SpiritPossessionOnUse) and normally produces a mod. The guard line
+    // (`Also grants N Guard`) was once modeled by the curated entry
+    // also_grants_guard, but the vendor ModParser never actually parses it -- it was
+    // a phantom Guard pool relative to PoB2 golden values (removed in backlog item
+    // #7, ritualist EHP 1.10x -> 1.00x). Aligning with PoB2 puts it back in the
+    // "unmodeled -> must be loudly reported as unsupported" bucket; silently
+    // dropping it would be the failure mode.
     let charm = utility_item(
         "Thawing Charm",
         &["Used when you become Frozen"],
@@ -465,9 +488,11 @@ fn ingest_charm_parses_guard_and_possession_effects_via_engine() {
     );
 }
 
-///  全部行不可解析的激活 charm **仍产出空载荷**（vendor 对进预算的激活
-/// charm 无条件置 UsingCharm/Using<Base> 条件，CalcPerform.lua:1634-1643——
-/// 条件置位与 modList 无关；空 NestedMods 在 merge 缩放循环空转）。
+/// An activated charm where every line fails to parse **still produces an empty
+/// payload** (vendor unconditionally sets the UsingCharm/Using<Base> condition for
+/// charms within budget, CalcPerform.lua:1634-1643 -- setting the condition is
+/// independent of the modList; an empty NestedMods is simply a no-op in the merge
+/// scaling loop).
 #[test]
 fn ingest_charm_with_no_parseable_mods_still_emits_empty_carrier() {
     let charm = utility_item(
@@ -486,13 +511,15 @@ fn ingest_charm_with_no_parseable_mods_still_emits_empty_carrier() {
     );
 }
 
-/// flask 特殊行：`N% increased effect` → LocalUtilityEffect；`... during effect`
-/// 后缀剥除复用 parser（MovementSpeed）。
+/// Flask special lines: `N% increased effect` -> LocalUtilityEffect; the
+/// `... during effect` suffix is stripped and re-uses the parser (MovementSpeed).
 ///
-/// **`Grants Onslaught during effect` 刻意归 Unsupported**——PoB2 ModParser 对该行
-/// 返回 unsupported（无 mod 产出，`run-parsemod.sh` 核实），其 Onslaught 不进 modDB；
-/// PoBR 与之逐行一致，不再越过 PoB2 解析能力无条件发 `flag("Onslaught")`（那会让
-/// detonate-dead/coiling/flicker 的 Speed 相对 golden 偏高 +20%）。
+/// **`Grants Onslaught during effect` is deliberately Unsupported** -- PoB2's
+/// ModParser returns unsupported for this line (produces no mod, verified via
+/// `run-parsemod.sh`), so Onslaught never enters modDB. PoBR matches it line for
+/// line and no longer unconditionally emits `flag("Onslaught")` beyond what PoB2 can
+/// parse (that inflated Speed for detonate-dead/coiling/flicker by +20% relative to
+/// golden).
 #[test]
 fn ingest_flask_onslaught_during_effect_is_unsupported_local_effect_still_parses() {
     let flask = utility_item(
@@ -515,7 +542,8 @@ fn ingest_flask_onslaught_during_effect_is_unsupported_local_effect_still_parses
     let carrier = &ingest.modifiers[0];
     assert_eq!(carrier.name, ModName::from(FLASK_BUFF_LIST_NAME));
     let nested = carrier.value.as_nested_mods().unwrap();
-    // Onslaught 行不产出 mod → 仅 LocalUtilityEffect + MovementSpeed 两条。
+    // The Onslaught line produces no mod -> only LocalUtilityEffect + MovementSpeed
+    // remain.
     assert_eq!(nested.len(), 2);
     assert!(
         nested.iter().all(|m| m.name != ModName::from("Onslaught")),
@@ -528,8 +556,9 @@ fn ingest_flask_onslaught_during_effect_is_unsupported_local_effect_still_parses
     assert_eq!(nested[1].value.as_number(), Some(10.0));
 }
 
-/// 全部行不可解析 → **仍产出空载荷**（行为切换：vendor 条件置位与
-/// modList 无关，CalcPerform.lua:1634-1643）；unsupported 照常逐行收集。
+/// Every line unparseable -> **still produces an empty payload** (behavior switch:
+/// vendor's condition-setting is independent of modList, CalcPerform.lua:1634-1643);
+/// unsupported still collects line by line as usual.
 #[test]
 fn ingest_flask_charm_emits_empty_payload_when_nothing_parses() {
     let charm = utility_item(
@@ -545,8 +574,9 @@ fn ingest_flask_charm_emits_empty_payload_when_nothing_parses() {
             .as_nested_mods()
             .is_some_and(<[_]>::is_empty)
     );
-    // "Used when you become Frozen" 是触发描述行（静默跳过），
-    // "Energy Shield Recharge starts on use" 仍是待支持词条缺口。
+    // "Used when you become Frozen" is a trigger-description line (silently
+    // skipped); "Energy Shield Recharge starts on use" is still an unsupported-mod
+    // gap.
     assert_eq!(
         ingest.unsupported,
         vec!["Energy Shield Recharge starts on use".to_string()]

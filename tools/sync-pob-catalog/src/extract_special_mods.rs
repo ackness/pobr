@@ -1,22 +1,32 @@
-//! `extract-lua --what special-mods`——vendor `specialModList` 批量抽取（V0 批次）。
+//! `extract-lua --what special-mods` — bulk extraction of vendor's
+//! `specialModList` (batch V0).
 //!
-//! Lua 侧（`extract_special_mods.lua`）headless 引导 + 双哨兵探针 dump JSONL；
-//! 本模块负责：
+//! The Lua side (`extract_special_mods.lua`) does a headless bootstrap plus
+//! dual-sentinel probing and dumps JSONL; this module handles:
 //!
-//! 1. **Lua pattern → Rust regex**：严格白名单子集转换（数字捕获闭集、`%` 转义、
-//!    已知字符类、`?+*-` 量词）；转不动整条跳过并计数——宁缺毋错；
-//! 2. **忠实性白名单**：tag 形态 / flag 名 / value 模板逐项过
-//!    `pobr-core::rules::{tag_is_mappable, flag_name_is_mappable, ...}` 预检。
-//!    编译期会静默丢弃不可映射 tag（保守门控），批量条目一旦丢 tag 就会把条件
-//!    词条变常驻——所以这里**整条跳过**而非丢 tag；
-//! 3. **去重**：vendor key 已被 `overlay/special_mods.json`（人工策展，优先）或
-//!    `generated/special_derived.json`（keystone 派生）覆盖 → 跳过；批内 regex
-//!    字符串冲突（`targets?` 变体收敛等）→ 后到者跳过；
-//! 4. **编译验证**：逐条 + 全量过 [`SpecialModRules::compile`]，保证产物
-//!    `generated/special_vendor.json` 永远可被消费侧 fail-fast 加载；
-//! 5. 跳过原因计数报表到 stderr（V1 扩围的输入：词类捕获→enums、enemy 包装等）。
+//! 1. **Lua pattern -> Rust regex**: converts a strict whitelisted subset
+//!    (a closed set of numeric captures, `%` escapes, known character
+//!    classes, `?+*-` quantifiers); anything that can't convert is skipped
+//!    whole and counted — better to miss an entry than get it wrong;
+//! 2. **A faithfulness whitelist**: tag shapes / flag names / value
+//!    templates are each pre-checked against
+//!    `pobr-core::rules::{tag_is_mappable, flag_name_is_mappable, ...}`.
+//!    The compiler silently drops unmappable tags (a conservative gate), but
+//!    for bulk-extracted entries dropping a tag would turn a conditional mod
+//!    into an always-on one — so this **skips the whole entry** instead of dropping the tag;
+//! 3. **Deduplication**: a vendor key already covered by
+//!    `overlay/special_mods.json` (hand-curated, takes priority) or
+//!    `generated/special_derived.json` (keystone-derived) is skipped;
+//!    within-batch regex string collisions (e.g. `targets?` variants
+//!    converging) skip whichever arrives later;
+//! 4. **Compile validation**: every entry, individually and as a whole,
+//!    goes through [`SpecialModRules::compile`], guaranteeing the
+//!    `generated/special_vendor.json` artifact can always be loaded
+//!    fail-fast by consumers;
+//! 5. A skip-reason count report to stderr (input for V1's scope expansion:
+//!    word-class capture -> enums, enemy wrapping, etc.).
 //!
-//! 产物条目：`batch:"V0"`、`verified:false`、id 形如 `vnd_<slug>_<hash8>`。
+//! Output entries: `batch:"V0"`, `verified:false`, id shaped like `vnd_<slug>_<hash8>`.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, Write};
@@ -35,13 +45,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::extract_lua::{ExtractLuaArgs, OverlayMeta, read_vendor_version, resolve_version_file};
 
-/// 引导脚本内容（经 stdin 注入 luajit，二进制自包含）。
+/// Bootstrap script content (piped into luajit via stdin; self-contained binary).
 const BOOTSTRAP_LUA: &str = include_str!("extract_special_mods.lua");
 
 const SPECIAL_MODS_SCHEMA: &str = "special_mods/v1";
 const BATCH: &str = "V0";
 
-/// 输出文档（`SpecialModsDef` 只派生 `Deserialize`，写盘侧自持结构）。
+/// The output document (`SpecialModsDef` only derives `Deserialize`, so the write side keeps its own structure).
 #[derive(Serialize)]
 struct SpecialVendorDoc {
     #[serde(rename = "_meta")]
@@ -49,7 +59,7 @@ struct SpecialVendorDoc {
     entries: Vec<SpecialTemplateDef>,
 }
 
-/// Lua 侧 JSONL 行。
+/// A JSONL row from the Lua side.
 #[derive(Deserialize)]
 struct RawRow {
     pattern: String,
@@ -58,26 +68,27 @@ struct RawRow {
     mods: serde_json::Value,
     #[serde(default)]
     reason: Option<String>,
-    /// `kind:"enum"` 行：词槽的捕获序号（1-based）。
+    /// `kind:"enum"` rows: capture indices (1-based) of the word slots.
     #[serde(default)]
     word_slots: Vec<usize>,
-    /// `kind:"enum"` 行：探针字典大小（开放词汇判定：命中数 == 字典全量
-    /// 且 mods 依赖该词 → 闭集假设不成立，整条跳过）。
+    /// `kind:"enum"` rows: the probe dictionary size (used for the
+    /// open-vocabulary check: if the hit count equals the full dictionary
+    /// and mods depend on that word, the closed-set assumption fails and the whole entry is skipped).
     #[serde(default)]
     dict_size: usize,
-    /// `kind:"enum"` 行：逐词组合的推断结果。
+    /// `kind:"enum"` rows: the inferred result for each word combination.
     #[serde(default)]
     variants: Vec<RawEnumVariant>,
 }
 
-/// 词类探针的单个命中组合（words[i] 对应 word_slots[i] 槽）。
+/// One hit combination from the word-class probe (words[i] corresponds to the word_slots[i] slot).
 #[derive(Deserialize)]
 struct RawEnumVariant {
     words: Vec<String>,
     mods: serde_json::Value,
 }
 
-/// 执行抽取，返回最终 JSON 文本。
+/// Run the extraction, returning the final JSON text.
 pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
     let rows = invoke_headless_jsonl(args)?;
     let (existing_keys, existing_patterns) = load_existing_keys()?;
@@ -91,10 +102,12 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
     let mut seen_ids: BTreeSet<String> = BTreeSet::new();
     let registry = HandlerRegistry::new();
 
-    // V2s5 预扫：全库已知 mod name 集（静态/数字推断行，非词类探针产物）。
-    // 词类探针的开放槽用它过滤拼接型闭包的有效词——`FireResist` 在其他
-    // 词条反复出现（有效），`StrengthResist` 全库唯一（字典噪声词）。
-    // vendor 数据自证，无语义启发式。
+    // V2s5 pre-scan: the whole-database known mod-name set (from
+    // static/numeric-inferred rows, not word-class-probe output). Open
+    // slots in the word-class probe use this to filter for valid words in
+    // string-concatenation closures -- `FireResist` recurs across other
+    // mods (valid), while `StrengthResist` is unique across the database (dictionary noise).
+    // The vendor data proves this itself; no semantic heuristic involved.
     let mut known_names: BTreeSet<String> = BTreeSet::new();
     for row in &rows {
         if row.kind == "static" || row.kind == "inferred" {
@@ -106,7 +119,7 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
         bump(&mut stats, "total");
         if row.kind == "failed" {
             let reason = row.reason.as_deref().unwrap_or("unknown");
-            // 探针失败归大类计数（细节原因已由 Lua stderr 透传给日志）
+            // Bucket probe failures into broad categories for counting (the detailed reason is already logged via Lua stderr)
             let class = if reason == "nonnumeric_capture" {
                 "skip_nonnumeric_capture"
             } else if reason.starts_with("probe:") {
@@ -121,8 +134,10 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
             bump(&mut stats, "skip_dedup_existing_key");
             continue;
         }
-        // V2s5：词类捕获字典探针行 → enums 闭集统一化；统一化因结构差异
-        // 失败时降级为单词条目（词特定值全字面量，tag 差异自然消解）。
+        // V2s5: rows from the word-class-capture dictionary probe -> unified
+        // into an enums closed set; when unification fails due to a
+        // structural difference, fall back to per-word singleton entries
+        // (word-specific values become plain literals, resolving tag differences naturally).
         if row.kind == "enum" {
             let rescued = match rescue_open_variants(&row, &known_names) {
                 Ok(v) => v,
@@ -182,7 +197,7 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
             }
             continue;
         }
-        // 静态条目的捕获值未被 mods 引用 → 降级非捕获组；inferred 保留捕获。
+        // Static entries whose captured value isn't referenced by mods -> downgrade to a non-capturing group; inferred entries keep captures.
         let keep_captures = row.kind == "inferred";
         let (regex, caps) =
             match lua_pattern_to_regex(&row.pattern, keep_captures, &BTreeMap::new()) {
@@ -240,7 +255,7 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
                 }
             )),
         };
-        // 逐条编译验证：pattern regex 合法性 / mod_type / enums 引用。
+        // Per-entry compile validation: pattern regex validity / mod_type / enums references.
         if let Err(error) = SpecialModRules::compile(std::slice::from_ref(&entry), &registry) {
             bump(&mut stats, "skip_compile_failed");
             eprintln!(
@@ -257,7 +272,7 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
     }
 
     entries.sort_by(|a, b| a.id.cmp(&b.id));
-    // 全量再编译一次：批内 id/pattern 唯一性兜底（与消费侧闸门同一函数）。
+    // Recompile everything once more: a final backstop for within-batch id/pattern uniqueness (same function as the consumption-side gate).
     SpecialModRules::compile(&entries, &registry).map_err(|error| {
         io::Error::other(format!("special_vendor 全量编译失败（不应发生）：{error}"))
     })?;
@@ -276,10 +291,10 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
     Ok(json)
 }
 
-// headless 调用（同 extract_parser_rules 约定：stdin 注入、JSONL 回收）
+// Headless invocation (same convention as extract_parser_rules: stdin injection, JSONL collection)
 
 fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<RawRow>> {
-    // 绝对化：cwd 会切到 vendor src/，相对 vendor_root 会让 LUA_PATH 失效。
+    // Canonicalize: cwd switches to vendor src/, and a relative vendor_root would break LUA_PATH.
     let vendor_root = args.vendor_root.canonicalize()?;
     let runtime = vendor_root.join("../runtime/lua");
     let lua_path = format!("{r}/?.lua;{r}/?/init.lua;./?.lua;;", r = runtime.display());
@@ -339,7 +354,7 @@ fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<RawRow>> {
     Ok(rows)
 }
 
-// 去重输入：已有 overlay / derived 覆盖的 vendor key 与 pattern
+// Deduplication input: vendor keys and patterns already covered by an existing overlay / derived table
 
 fn repo_data_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -347,13 +362,15 @@ fn repo_data_dir() -> PathBuf {
         .join(pobr_data::data_version())
 }
 
-/// 返回（raw key 集 = vendor_pattern ∪ pattern；regex pattern 集）。缺文件容忍
-/// （version-bump 演练时可能只有部分文件）。
+/// Returns (raw key set = vendor_pattern ∪ pattern; regex pattern set).
+/// Tolerates missing files (during a version-bump drill only some files may exist yet).
 ///
-/// 去重源含**三处** special_mods：版本无关策展层 `data/overlay-common/special_mods.json`
-/// （P1-3）、版本层 `overlay/special_mods.json`、派生表 `generated/special_derived.json`。
-/// 漏读 overlay-common 会让抽取器把已策展的 133 条当作新 vendor 条目重复产出，
-/// 下游 precompile-mods --check 报重复 id。
+/// The dedup source spans **three** special_mods locations: the
+/// version-independent curation layer `data/overlay-common/special_mods.json`
+/// (P1-3), the version layer `overlay/special_mods.json`, and the derived
+/// table `generated/special_derived.json`. Missing overlay-common would make
+/// the extractor re-emit the 133 already-curated entries as if they were new
+/// vendor entries, and downstream `precompile-mods --check` would report duplicate ids.
 fn load_existing_keys() -> io::Result<(BTreeSet<String>, BTreeSet<String>)> {
     let mut raw_keys = BTreeSet::new();
     let mut patterns = BTreeSet::new();
@@ -381,18 +398,19 @@ fn load_existing_keys() -> io::Result<(BTreeSet<String>, BTreeSet<String>)> {
     Ok((raw_keys, patterns))
 }
 
-// Lua pattern → Rust regex（严格白名单子集）
+// Lua pattern -> Rust regex (a strict whitelisted subset)
 
-/// 数字捕获内容闭集 → 忠实 regex 体（不放宽：`%d+` 不接受小数）。
+/// A closed set of numeric capture bodies -> their faithful regex bodies (no loosening: `%d+` doesn't accept decimals).
 fn numeric_capture_body(content: &str) -> Option<&'static str> {
     match content {
         "%d+" => Some(r"\d+"),
         "%d+%.?%d*" => Some(r"\d+(?:\.\d+)?"),
         "%d*%.?%d+" => Some(r"\d*\.?\d+"),
         "[%d%.]+" => Some(r"[\d.]+"),
-        // 带符号/单位数形态（V2s3）：捕获文本含 +/- 前缀，运行时
-        // parse::<f64> 原生接受（"+3"→3、"-30"→-30）；探针侧闭包走
-        // tonumber(cap) 同语义，线性推断对负值成立。
+        // Signed / single-digit forms (V2s3): the captured text carries a
+        // +/- prefix, which runtime's parse::<f64> accepts natively
+        // ("+3" -> 3, "-30" -> -30); the probe-side closure uses tonumber(cap)
+        // with the same semantics, so linear inference holds for negative values too.
         "%d" => Some(r"\d"),
         "%-%d+" => Some(r"-\d+"),
         "%-?%d+" => Some(r"-?\d+"),
@@ -418,16 +436,18 @@ fn push_literal(out: &mut String, c: char) {
     out.push(c);
 }
 
-/// 词槽的 regex 形态（V2s5；键 = 捕获组序号，1-based 计**全部** `(` 组）。
+/// The regex shape of a word slot (V2s5; keys are capture-group indices,
+/// 1-based counting **every** `(` group).
 enum WordAlt {
-    /// enums 闭集：`(w1|w2|...)`。
+    /// An enums closed set: `(w1|w2|...)`.
     Alternation(Vec<String>),
-    /// 无 enums 依赖且命中全字典（可选前缀捕获等）：按 Lua 词类原样泛化。
+    /// No enums dependency and hits the whole dictionary (e.g. an optional prefix capture): generalized as-is from its Lua word class.
     Fragment,
 }
 
-/// 转换入口。`keep_captures=false` 时捕获组降级为 `(?:...)`（静态条目捕获值
-/// 未被引用）。返回 `(regex, 捕获组数)`；白名单之外 → `Err(原因)`。
+/// The conversion entry point. When `keep_captures=false`, capture groups
+/// downgrade to `(?:...)` (a static entry whose captured value isn't
+/// referenced). Returns `(regex, capture group count)`; anything outside the whitelist -> `Err(reason)`.
 fn lua_pattern_to_regex(
     key: &str,
     keep_captures: bool,
@@ -439,7 +459,7 @@ fn lua_pattern_to_regex(
     let mut caps = 0usize;
     let mut ordinal = 0usize;
     let mut i = 0usize;
-    // 引擎整行锚定（编译期包 ^...$），首 ^ / 尾 $ 直接吸收。
+    // The engine anchors the whole line (wraps it in ^...$ at compile time), so a leading ^ / trailing $ is simply absorbed.
     if i < n && chars[i] == '^' {
         i += 1;
     }
@@ -472,8 +492,9 @@ fn lua_pattern_to_regex(
                 let content: String = chars[i + 1..close].iter().collect();
                 ordinal += 1;
                 match word_alts.get(&ordinal) {
-                    // 词类闭集：alternation（长词优先，避免 `evasion` 吞并
-                    // `evasion rating` 前缀）。恒保留捕获（enums 按序号查表）。
+                    // A closed word class: alternation (longer words first,
+                    // so `evasion` doesn't swallow the `evasion rating`
+                    // prefix). Always keeps the capture (enums are looked up by index).
                     Some(WordAlt::Alternation(words)) => {
                         let mut ws: Vec<&String> = words.iter().collect();
                         ws.sort_by(|a, b| b.len().cmp(&a.len()).then(a.cmp(b)));
@@ -487,8 +508,9 @@ fn lua_pattern_to_regex(
                         out.push(')');
                         caps += 1;
                     }
-                    // 无 enums 依赖的词槽（可选前缀等）：按原词类泛化转换，
-                    // 保留捕获以维持后续 $n 序号对齐。
+                    // A word slot with no enums dependency (e.g. an optional
+                    // prefix): converted generically from its word class,
+                    // keeping the capture so later $n indices stay aligned.
                     Some(WordAlt::Fragment) => {
                         let (frag, _) = lua_pattern_to_regex(&content, false, &BTreeMap::new())?;
                         out.push('(');
@@ -499,8 +521,9 @@ fn lua_pattern_to_regex(
                     None => {
                         let body = match numeric_capture_body(&content) {
                             Some(b) => b.to_string(),
-                            // 静态条目（捕获值未被 mods 引用）的词类捕获：按
-                            // 原词类泛化、降级非捕获（V2s5，如 `(%D+)`）。
+                            // A word-class capture on a static entry (its
+                            // captured value isn't referenced by mods):
+                            // generalize by word class, downgraded to non-capturing (V2s5, e.g. `(%D+)`).
                             None if !keep_captures => {
                                 lua_pattern_to_regex(&content, false, &BTreeMap::new())
                                     .map_err(|_| format!("capture `{content}`"))?
@@ -563,7 +586,7 @@ fn lua_pattern_to_regex(
                 out.push(']');
                 i += 1;
             }
-            // Lua `.` 与 regex `.` 同义；`- `= 懒惰 0+ 量词 → `*?`
+            // Lua `.` means the same as regex `.`; `-` is a lazy 0+ quantifier -> `*?`
             '.' => {
                 out.push('.');
                 i += 1;
@@ -593,16 +616,21 @@ fn lua_pattern_to_regex(
     Ok((out, caps))
 }
 
-// V2s5：kind:"enum" 行 → 带 enums 闭集的模板条目
+// V2s5: kind:"enum" rows -> template entries carrying an enums closed set
 
-/// 词类探针行的统一化：
-/// - 逐词组合的推断 mods 做结构 diff——全组合相等的叶子按字面量保留；
-/// - 差异叶子必须是字符串、位于 mod name 或 LIST 值字段（tags/flags/type
-///   差异整条跳过——compile_tag 是编译期静态求值），且恰由一个词槽决定 →
-///   收编为 `{"enum": slot}` 引用 + `enums[slot][word]` 映射；
-/// - 词槽命中全字典且被 enums 依赖 → 开放词汇（触发技能名等，闭集假设
-///   不成立）整条跳过；命中全字典且无依赖 → 词类原样泛化（可选前缀捕获）；
-///   命中真子集 → alternation 闭集限定匹配面。
+/// Unification for word-class probe rows:
+/// - The inferred mods for each word combination get a structural diff —
+///   leaves equal across all combinations are kept as literals;
+/// - A differing leaf must be a string, located at the mod name or a LIST
+///   value field (tags/flags/type differences skip the whole entry —
+///   compile_tag is evaluated statically at compile time), and be
+///   determined by exactly one word slot -> it's converted into a
+///   `{"enum": slot}` reference plus an `enums[slot][word]` mapping;
+/// - A word slot that hits the whole dictionary and is depended on by enums
+///   -> open vocabulary (a triggered skill name, etc.; the closed-set
+///   assumption fails), skips the whole entry; hits the whole dictionary
+///   with no dependency -> generalized as-is from its word class (an
+///   optional prefix capture); hits a genuine subset -> constrained to an alternation closed set.
 fn build_enum_entry(
     row: &RawRow,
     variants: &[&RawEnumVariant],
@@ -619,12 +647,12 @@ fn build_enum_entry(
         return Err("enum_row_malformed".into());
     }
 
-    // 1. 结构 diff（JSON Pointer 路径收集差异字符串叶子）。
+    // 1. Structural diff (collect differing string leaves by their JSON Pointer paths).
     let values: Vec<&serde_json::Value> = variants.iter().map(|v| &v.mods).collect();
     let mut diff_paths: Vec<String> = Vec::new();
     collect_diffs("", &values, &mut diff_paths)?;
 
-    // 2. 差异位置白名单：`/<i>/name` 或 `/<i>/value/<field>`（field ≠ mod）。
+    // 2. Whitelist of diff positions: `/<i>/name` or `/<i>/value/<field>` (field != mod).
     for path in &diff_paths {
         let segs: Vec<&str> = path.split('/').collect(); // ["", i, ...]
         let ok = match segs.as_slice() {
@@ -637,7 +665,7 @@ fn build_enum_entry(
         }
     }
 
-    // 3. 每个差异归属恰一个词槽（叶子 = f(该槽词)），并组装 enums 映射。
+    // 3. Each diff must belong to exactly one word slot (leaf = f(that slot's word)); assemble the enums mapping.
     let mut enums: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
     let mut slot_for_diff: Vec<usize> = Vec::with_capacity(diff_paths.len());
     for path in &diff_paths {
@@ -676,8 +704,8 @@ fn build_enum_entry(
         let key = row.word_slots[p].to_string();
         match enums.entry(key) {
             std::collections::btree_map::Entry::Occupied(e) => {
-                // 同槽被多个差异位置引用：映射必须逐字一致（resolve_enum 对
-                // 同一槽只查一张表）。
+                // The same slot is referenced by multiple diff positions:
+                // its mapping must match byte-for-byte (resolve_enum only looks up one table per slot).
                 if *e.get() != map {
                     return Err("enum_slot_conflict".into());
                 }
@@ -688,7 +716,7 @@ fn build_enum_entry(
         }
     }
 
-    // 4. 词槽 → regex 形态（开放词汇判定按 dict_size）。
+    // 4. Word slot -> regex shape (open-vocabulary is judged by dict_size).
     let contents = capture_contents(&row.pattern);
     let mut word_alts: BTreeMap<usize, WordAlt> = BTreeMap::new();
     for (p, &slot) in row.word_slots.iter().enumerate() {
@@ -700,10 +728,13 @@ fn build_enum_entry(
             }
             word_alts.insert(slot, WordAlt::Alternation(hits.into_iter().collect()));
         } else if hits.len() >= row.dict_size {
-            // 全字典命中且 mods 不依赖该词：只有**纯可选前缀捕获**（`(i?t?e?m? ?)`
-            // 等，内容无通配原子）可信为"闭包真忽略此词"→ 原样泛化；词类捕获
-            // （`.+`/`%a+`）全命中往往是闭包对字典外词退化（skillId 置 nil 丢键
-            // 使各组合输出趋同）——按开放词汇跳过，防假阳性。
+            // Full-dictionary hit with mods not depending on this word: only
+            // a **pure optional-prefix capture** (`(i?t?e?m? ?)` and the
+            // like, with no wildcard atoms) can be trusted as "the closure
+            // truly ignores this word" -> generalize as-is; a word-class
+            // capture (`.+`/`%a+`) hitting everything is usually the closure
+            // degenerating for out-of-dictionary words (setting skillId to
+            // nil drops a key so combinations converge) — skip as open vocabulary to avoid false positives.
             let junk = contents
                 .get(slot.saturating_sub(1))
                 .is_some_and(|c| is_optional_junk(c));
@@ -716,14 +747,14 @@ fn build_enum_entry(
         }
     }
 
-    // 5. 统一模板：diff 位置替换为 {"enum": slot}。
+    // 5. Unified template: replace diff positions with {"enum": slot}.
     let mut unified = variants[0].mods.clone();
     for (path, &p) in diff_paths.iter().zip(&slot_for_diff) {
         *unified.pointer_mut(path).ok_or("enum_row_malformed")? =
             serde_json::json!({ "enum": row.word_slots[p] });
     }
 
-    // 6. regex + 去重 + 白名单转换 + 编译验证（与常规路径同一闸门）。
+    // 6. regex + dedup + whitelist conversion + compile validation (same gate as the regular path).
     let (regex, caps) = lua_pattern_to_regex(&row.pattern, true, &word_alts)
         .map_err(|_| "enum_pattern_unconvertible".to_string())?;
     if existing_patterns.contains(&regex) {
@@ -755,11 +786,15 @@ fn build_enum_entry(
     Ok(entry)
 }
 
-/// 统一化失败的降级路径：逐词组合出**单词条目**——mods 全字面量（词特定
-/// 的 tag / 数值 / 形状差异不再需要 enum 落点），pattern 的词槽收窄为该
-/// 组合的单词 alternation。前置闸：任一词槽命中全字典 → 开放词汇整条
-/// 跳过；组合数 > 40 → 跳过（多槽全叉积防数据爆炸）。单个组合转换失败
-/// 只丢该组合（匹配面收窄，保守）。
+/// The fallback path when unification fails: emit a **singleton entry** per
+/// word combination — mods are all literals (word-specific tag / value /
+/// shape differences no longer need an enum landing spot), and the
+/// pattern's word slots narrow to that combination's single-word
+/// alternation. Front gate: any word slot hitting the whole dictionary ->
+/// skip the whole entry as open vocabulary; combination count > 40 -> skip
+/// (guards against a data explosion from a full cross-product over multiple
+/// slots). A single combination that fails to convert just drops that
+/// combination (narrowing the match surface, conservatively).
 fn build_singleton_entries(
     row: &RawRow,
     variants: &[&RawEnumVariant],
@@ -835,7 +870,7 @@ fn build_singleton_entries(
     Ok(out)
 }
 
-/// 递归收集 mods JSON 里全部 `name` 字符串（含嵌套载荷）。
+/// Recursively collects every `name` string in the mods JSON (including nested payloads).
 fn collect_mod_names(v: &serde_json::Value, out: &mut BTreeSet<String>) {
     match v {
         serde_json::Value::Object(map) => {
@@ -855,11 +890,14 @@ fn collect_mod_names(v: &serde_json::Value, out: &mut BTreeSet<String>) {
     }
 }
 
-/// 开放槽救援：词槽命中全字典且非可选前缀捕获时，用全库已知 name 集过滤
-/// 组合——拼接型闭包对噪声词造出的 name（`StrengthResist`）全库唯一，
-/// 有效词的 name（`FireResist`）在其他词条反复出现。过滤后仍开放交给
-/// 调用方 step-4 判定；全滤空 → 开放词汇跳过。无开放槽的行原样返回
-/// （防止误伤本条目独有的合法 name）。
+/// Open-slot rescue: when a word slot hits the whole dictionary and isn't an
+/// optional-prefix capture, filter combinations using the whole database's
+/// known name set — a string-concatenation closure's noise-word-derived
+/// name (`StrengthResist`) is unique across the database, whereas a valid
+/// word's name (`FireResist`) recurs across other mods. Whatever remains
+/// open after filtering is left to the caller's step-4 judgment; filtering
+/// everything out -> skipped as open vocabulary. Rows with no open slot are
+/// returned unchanged (avoids wrongly rejecting a name that's legitimately unique to this entry).
 fn rescue_open_variants<'a>(
     row: &'a RawRow,
     known_names: &BTreeSet<String>,
@@ -880,7 +918,7 @@ fn rescue_open_variants<'a>(
         .iter()
         .filter(|v| {
             if v.mods.as_array().is_none_or(Vec::is_empty) {
-                return false; // 闭包对噪声词短路返回空表
+                return false; // the closure short-circuits to an empty table for noise words
             }
             let mut names = BTreeSet::new();
             collect_mod_names(&v.mods, &mut names);
@@ -893,7 +931,7 @@ fn rescue_open_variants<'a>(
     Ok(filtered)
 }
 
-/// 逐捕获组提取 Lua pattern 的括号内容（1-based 序号对齐 `word_slots`）。
+/// Extracts the parenthesized content of a Lua pattern per capture group (1-based index aligned with `word_slots`).
 fn capture_contents(pattern: &str) -> Vec<String> {
     let chars: Vec<char> = pattern.chars().collect();
     let mut out = Vec::new();
@@ -916,8 +954,8 @@ fn capture_contents(pattern: &str) -> Vec<String> {
     out
 }
 
-/// 纯可选前缀捕获判定：内容不含通配原子（`.` / `%字母` 类 / `[]` 字符类），
-/// 只由字面字符与 `?` 量词组成（如 `i?t?e?m? ?`）。
+/// Detects a pure optional-prefix capture: content has no wildcard atoms
+/// (`.` / `%letter` classes / `[]` character classes), made up only of literal characters and `?` quantifiers (e.g. `i?t?e?m? ?`).
 fn is_optional_junk(content: &str) -> bool {
     let chars: Vec<char> = content.chars().collect();
     let mut i = 0;
@@ -936,8 +974,9 @@ fn is_optional_junk(content: &str) -> bool {
     true
 }
 
-/// 结构 diff：全组合相等 → 跳过；对象/数组同形递归；字符串叶子差异 →
-/// 记录 JSON Pointer；其余（形状不一致 / 数字布尔差异）→ Err 整条跳过。
+/// Structural diff: all combinations equal -> skip; objects/arrays of the
+/// same shape recurse; differing string leaves -> record the JSON Pointer;
+/// anything else (a shape mismatch / a number or bool difference) -> Err, skipping the whole entry.
 fn collect_diffs(
     path: &str,
     variants: &[&serde_json::Value],
@@ -957,7 +996,7 @@ fn collect_diffs(
             }
             for k in map.keys() {
                 if k.contains('/') || k.contains('~') {
-                    return Err("enum_diff_shape".into()); // JSON Pointer 转义不建模
+                    return Err("enum_diff_shape".into()); // JSON Pointer escaping isn't modeled
                 }
                 let subs: Vec<&serde_json::Value> =
                     variants.iter().map(|v| &v[k.as_str()]).collect();
@@ -983,24 +1022,27 @@ fn collect_diffs(
             }
             out.push(path.to_string());
         }
-        // 数字/布尔随词变化（分数词值等）：TemplateValueDef 无 enum 数值落点。
+        // A number/bool varying by word (e.g. numeric word values): TemplateValueDef has no enum numeric landing spot.
         _ => return Err("enum_diff_scalar".into()),
     }
     Ok(())
 }
 
-// raw mod JSON → ModTemplateDef（忠实性白名单）
+// raw mod JSON -> ModTemplateDef (the faithfulness whitelist)
 
 fn transform_mods(v: &serde_json::Value) -> Result<Vec<ModTemplateDef>, String> {
     let arr = v.as_array().ok_or("mods_not_array")?;
     arr.iter().map(transform_mod).collect()
 }
 
-/// PercentStat 捕获 percent 的等价改写：`value × stat × percent/100` 对
-/// value/percent 可交换——`value=1, percent=$n` ≡ `value=$n, percent=1`
-/// （vendor 主流形态 "gain X equal to (N)% of stat"，percent 来自捕获）。
-/// 改写后 tag 字段全字面量，走既有白名单；不满足形态（value≠1 / 多个捕获
-/// percent）→ None，条目按原路径落 `tag_field_capture` 跳过。
+/// Equivalent rewrite for a captured PercentStat percent: `value × stat ×
+/// percent/100` is commutative between value/percent — `value=1,
+/// percent=$n` is equivalent to `value=$n, percent=1` (vendor's common form
+/// "gain X equal to (N)% of stat", where percent comes from the capture).
+/// After the rewrite the tag field is a plain literal and goes through the
+/// existing whitelist; when the shape doesn't match (value != 1, or
+/// multiple captured percents), returns None and the entry falls through
+/// its original path to be skipped as `tag_field_capture`.
 fn rewrite_percent_capture(
     obj: &serde_json::Map<String, serde_json::Value>,
 ) -> Option<serde_json::Map<String, serde_json::Value>> {
@@ -1053,7 +1095,7 @@ fn transform_mod(v: &serde_json::Value) -> Result<ModTemplateDef, String> {
             }
             TemplateNameDef::Literal(s.clone())
         }
-        // enums 闭集引用（V2s5 统一化产物 `{"enum": n}`）。
+        // An enums closed-set reference (V2s5's unification output `{"enum": n}`).
         Some(v) => match enum_ref(v) {
             Some(idx) => TemplateNameDef::Enum { capture_index: idx },
             None => return Err("mod_name_missing".into()),
@@ -1085,8 +1127,9 @@ fn transform_mod(v: &serde_json::Value) -> Result<ModTemplateDef, String> {
             .collect::<Result<Vec<_>, _>>()?,
         Some(_) => return Err("tags_not_array".into()),
     };
-    // 嵌套载荷 + 缩放 tag：vendor 会缩放内层 value.mod.value（ModStore.lua
-    // table 分支），但 pobr 的 list_nested 转发只透传不求值——放行会静默丢缩放。
+    // A nested payload plus a scaling tag: vendor scales the inner
+    // value.mod.value (ModStore.lua's table branch), but pobr's list_nested
+    // forwarding only passes it through without evaluating -- allowing this would silently drop the scaling.
     if matches!(value, TemplateValueDef::Nested { .. })
         && tags.iter().any(|t| {
             matches!(
@@ -1128,7 +1171,7 @@ fn transform_flag_names(
     Ok(names)
 }
 
-/// value 模板迷你语法：`$n` / `$n:negate` / `$n:base(c)` / `$n:mult(k)` / `$n:div(k)`。
+/// The value-template mini-syntax: `$n` / `$n:negate` / `$n:base(c)` / `$n:mult(k)` / `$n:div(k)`.
 fn parse_capture_template(s: &str) -> Option<TemplateValueDef> {
     let rest = s.strip_prefix('$')?;
     let (idx_str, op_str) = match rest.split_once(':') {
@@ -1165,15 +1208,17 @@ fn transform_value(v: &serde_json::Value) -> Result<TemplateValueDef, String> {
         )),
         serde_json::Value::Bool(b) => Ok(TemplateValueDef::Flag(*b)),
         serde_json::Value::String(s) => {
-            // 非 `$` 开头的字面字符串没有对应的 TemplateValueDef 形态
-            //（untagged serde 会误读成 Capture），保守跳过。
+            // A literal string not starting with `$` has no corresponding
+            // TemplateValueDef shape (untagged serde would misread it as a
+            // Capture), so skip conservatively.
             parse_capture_template(s).ok_or("value_form".into())
         }
         serde_json::Value::Object(map) => {
-            // 嵌套 mod 载荷：纯 `{ "mod": <mod|[mod...]> }` 形态 → Nested
-            //（运行时 ModValue::NestedMods，编排层转发）。混合形态
-            //（mod + 其他标量键，如 ExtraAura 的 onlyAllies）运行时无法
-            // 表达 → 整条跳过。
+            // A nested mod payload: a pure `{ "mod": <mod|[mod...]> }` shape
+            // -> Nested (runtime ModValue::NestedMods, forwarded by the
+            // orchestration layer). A mixed shape (mod plus other scalar
+            // keys, e.g. ExtraAura's onlyAllies) can't be expressed at
+            // runtime -> skip the whole entry.
             if map.contains_key("mod") {
                 if map.len() != 1 {
                     return Err("value_mixed_nested".into());
@@ -1198,9 +1243,10 @@ fn transform_value(v: &serde_json::Value) -> Result<TemplateValueDef, String> {
     }
 }
 
-/// LIST 值 / tag 字段里的标量：数字 / 布尔 / 字面字符串或裸 `$n` 引用。
-/// 带算子链的 `$n:...`、`$n:cap`、`+` 拼接段、嵌套表（如 `{ mod = ... }`
-/// 嵌套 mod）都不是标量 → 整条跳过。
+/// A scalar inside a LIST value / tag field: a number / bool / literal
+/// string or a bare `$n` reference. `$n:...` with an op chain, `$n:cap`, a
+/// `+`-concatenated segment, or a nested table (e.g. a `{ mod = ... }`
+/// nested mod) are all not scalars -> skip the whole entry.
 fn transform_scalar(v: &serde_json::Value) -> Result<TemplateScalarDef, String> {
     match v {
         serde_json::Value::Number(n) => Ok(TemplateScalarDef::Number(
@@ -1216,7 +1262,7 @@ fn transform_scalar(v: &serde_json::Value) -> Result<TemplateScalarDef, String> 
             }
             Ok(TemplateScalarDef::Text(s.clone()))
         }
-        // enums 闭集引用（V2s5 统一化产物 `{"enum": n}`）——其余对象形态仍拒。
+        // An enums closed-set reference (V2s5's unification output `{"enum": n}`) — any other object shape is still rejected.
         serde_json::Value::Object(_) => match enum_ref(v) {
             Some(idx) => Ok(TemplateScalarDef::Enum { capture_index: idx }),
             None => Err("value_nested".into()),
@@ -1226,7 +1272,7 @@ fn transform_scalar(v: &serde_json::Value) -> Result<TemplateScalarDef, String> 
     }
 }
 
-/// `{"enum": n}` 引用识别（单键对象 + 非负整数）。
+/// Recognizes a `{"enum": n}` reference (a single-key object with a non-negative integer).
 fn enum_ref(v: &serde_json::Value) -> Option<u32> {
     let map = v.as_object()?;
     if map.len() != 1 {
@@ -1235,8 +1281,10 @@ fn enum_ref(v: &serde_json::Value) -> Option<u32> {
     map.get("enum")?.as_u64().map(|n| n as u32)
 }
 
-/// tag 形态白名单：与 `pobr-core::rules::special_mod::compile_tag` 的**忠实映射**
-/// 字段集对齐（字段超集会被编译静默忽略造成语义漂移，如 Multiplier 的 `actor`）。
+/// The tag-shape whitelist: aligned with the **faithfully-mapped** field set
+/// of `pobr-core::rules::special_mod::compile_tag` (extra fields get
+/// silently ignored at compile time, causing semantic drift — e.g.
+/// Multiplier's `actor`).
 fn transform_tag(v: &serde_json::Value) -> Result<TemplateTagDef, String> {
     let obj = v.as_object().ok_or("tag_not_object")?;
     let tag_type = obj
@@ -1250,13 +1298,14 @@ fn transform_tag(v: &serde_json::Value) -> Result<TemplateTagDef, String> {
         "DamageType" => &["damageType"],
         "Multiplier" => &["var", "div", "limit"],
         "PerStat" => &["stat", "div", "limit"],
-        // statList/percentVar/actor/base/limit/floor 形态无落点，字段超集整条跳过。
+        // statList/percentVar/actor/base/limit/floor shapes have no landing spot, so any extra field skips the whole entry.
         "PercentStat" => &["stat", "percent"],
         "MultiplierThreshold" => &["var", "threshold", "upper"],
-        // statList/thresholdStat/thresholdPercent(Var)/actor 形态无落点，整条跳过。
+        // statList/thresholdStat/thresholdPercent(Var)/actor shapes have no landing spot, so skip the whole entry.
         "StatThreshold" => &["stat", "threshold", "upper"],
-        // includeTransfigured 编译侧忽略（PoE2 无变体宝石，gem name→gameId
-        // 等值退化为名字等值）；partialMatch/summonSkill/neg 零出现，不放行。
+        // includeTransfigured is ignored on the compile side (PoE2 has no
+        // gem variants, so gem name -> gameId equivalence degenerates to
+        // name equivalence); partialMatch/summonSkill/neg never occur, not allowed.
         "SkillName" => &["skillName", "skillNameList", "includeTransfigured"],
         _ => return Err("tag_type_unmappable".into()),
     };
@@ -1268,7 +1317,7 @@ fn transform_tag(v: &serde_json::Value) -> Result<TemplateTagDef, String> {
         if !allowed.contains(&k.as_str()) {
             return Err("tag_field_shape".into());
         }
-        // skillNameList 是唯一允许的数组字段（字符串字面量列表 → TextList）。
+        // skillNameList is the only array field allowed (a list of string literals -> TextList).
         if k == "skillNameList" {
             let items = val.as_array().ok_or("tag_field_shape")?;
             let names = items
@@ -1285,7 +1334,7 @@ fn transform_tag(v: &serde_json::Value) -> Result<TemplateTagDef, String> {
             continue;
         }
         let scalar = transform_scalar(val).map_err(|_| "tag_field_shape".to_string())?;
-        // tag 字段禁捕获引用（compile_tag 会把 `$n` var 当字面量或静默丢 tag）
+        // Tag fields disallow capture references (compile_tag would treat a `$n` var as a literal or silently drop the tag)
         if let TemplateScalarDef::Text(s) = &scalar
             && s.contains('$')
         {
@@ -1303,7 +1352,7 @@ fn transform_tag(v: &serde_json::Value) -> Result<TemplateTagDef, String> {
     Ok(tag)
 }
 
-// 捕获引用越界校验
+// Out-of-range capture reference validation
 
 fn validate_refs(mods: &[ModTemplateDef], caps: usize) -> Result<(), String> {
     let check = |s: &str| -> Result<(), String> {
@@ -1334,7 +1383,7 @@ fn validate_refs(mods: &[ModTemplateDef], caps: usize) -> Result<(), String> {
     Ok(())
 }
 
-// id / meta
+// id / meta helpers
 
 fn slug(s: &str) -> String {
     let mut out = String::new();
@@ -1359,7 +1408,7 @@ fn slug(s: &str) -> String {
     }
 }
 
-/// FNV-1a 64 截 8 hex（vendor key 稳定指纹，保 id 唯一）。
+/// FNV-1a 64 truncated to 8 hex digits (a stable fingerprint of the vendor key, keeping ids unique).
 fn stable_hash8(s: &str) -> String {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     for byte in s.as_bytes() {
@@ -1418,7 +1467,7 @@ mod tests {
         assert_eq!(re, "50% increased effect");
         let (re, _) = lua_pattern_to_regex("armou?r", true, &BTreeMap::new()).unwrap();
         assert_eq!(re, "armou?r");
-        // `%-` 转义 = 字面连字符；裸 `-` = Lua 懒惰量词 → regex `*?`
+        // `%-` escape = a literal hyphen; a bare `-` = Lua's lazy quantifier -> regex `*?`
         let (re, _) = lua_pattern_to_regex("off%-hand", true, &BTreeMap::new()).unwrap();
         assert_eq!(re, "off-hand");
         let (re, _) = lua_pattern_to_regex("a-b", true, &BTreeMap::new()).unwrap();
@@ -1429,7 +1478,7 @@ mod tests {
     fn open_and_word_captures_rejected() {
         assert!(lua_pattern_to_regex("deal (.-) damage", true, &BTreeMap::new()).is_err());
         assert!(lua_pattern_to_regex("(%a+) skills", true, &BTreeMap::new()).is_err());
-        // 静态行（keep_captures=false）的词类捕获按泛化非捕获组放行（V2s5）。
+        // A word-class capture on a static row (keep_captures=false) is allowed through as a generalized non-capturing group (V2s5).
         let (re, caps) = lua_pattern_to_regex("(%D+) skills", false, &BTreeMap::new()).unwrap();
         assert_eq!(re, r"(?:\D+) skills");
         assert_eq!(caps, 0);
@@ -1437,7 +1486,7 @@ mod tests {
 
     #[test]
     fn word_alt_slots_convert_to_alternation_and_fragment() {
-        // 词槽 alternation：长词优先（evasion rating 不被 evasion 前缀吞并）。
+        // Word-slot alternation: longer words first (so `evasion` doesn't swallow `evasion rating` as a prefix).
         let mut alts = BTreeMap::new();
         alts.insert(
             2,
@@ -1447,7 +1496,7 @@ mod tests {
         assert_eq!(re, r"gain (\d+) (evasion rating|evasion) per level");
         assert_eq!(caps, 2);
 
-        // Fragment：可选前缀捕获按原词类泛化，保留捕获维持序号对齐。
+        // Fragment: an optional-prefix capture is generalized from its word class, keeping the capture so indices stay aligned.
         let mut alts = BTreeMap::new();
         alts.insert(1, WordAlt::Fragment);
         let (re, caps) = lua_pattern_to_regex("(i?t?e?m? ?)armour applies", true, &alts).unwrap();
@@ -1463,13 +1512,13 @@ mod tests {
         collect_diffs("", &[&a, &b], &mut out).unwrap();
         assert_eq!(out, vec!["/0/name"]);
 
-        // 数字叶子差异（分数词值）→ Err 整条跳过（单词降级兜接）。
+        // A differing numeric leaf (a numeric word value) -> Err, skipping the whole entry (caught by the singleton fallback).
         let a = serde_json::json!([{"name": "X", "value": 25.0}]);
         let b = serde_json::json!([{"name": "X", "value": 10.0}]);
         let mut out = Vec::new();
         assert!(collect_diffs("", &[&a, &b], &mut out).is_err());
 
-        // 形状差异（键缺失，闭包对噪声词丢 skillId 键）→ Err。
+        // A shape mismatch (a missing key, since the closure drops the skillId key for noise words) -> Err.
         let a = serde_json::json!([{"name": "X", "skillId": "A"}]);
         let b = serde_json::json!([{"name": "X"}]);
         let mut out = Vec::new();
@@ -1502,7 +1551,7 @@ mod tests {
 
     #[test]
     fn tag_whitelist_rejects_extra_fields() {
-        // Multiplier 带 actor 字段：compile_tag 会静默忽略 actor → 语义漂移，必须拒
+        // A Multiplier with an actor field: compile_tag would silently ignore actor -> semantic drift, so this must be rejected
         let tag = serde_json::json!({
             "type": "Multiplier", "var": "PowerCharge", "actor": "enemy"
         });
@@ -1513,13 +1562,13 @@ mod tests {
 
     #[test]
     fn skill_name_tag_transforms() {
-        // 单名 + includeTransfigured（编译侧忽略）通过。
+        // A single name plus includeTransfigured (ignored on the compile side) passes.
         let single = serde_json::json!({
             "type": "SkillName", "skillName": "Fireball", "includeTransfigured": true
         });
         assert_eq!(transform_tag(&single).unwrap().tag_type, "SkillName");
 
-        // skillNameList 数组 → TextList。
+        // A skillNameList array -> TextList.
         let list = serde_json::json!({
             "type": "SkillName", "skillNameList": ["Flicker Strike", "Viper Strike"]
         });
@@ -1532,7 +1581,7 @@ mod tests {
             ]))
         );
 
-        // 白名单外字段（partialMatch）/ 空列表 / 含捕获名 → 拒。
+        // A field outside the whitelist (partialMatch) / an empty list / a name containing a capture -> reject.
         let partial = serde_json::json!({
             "type": "SkillName", "skillName": "Fireball", "partialMatch": true
         });
@@ -1562,7 +1611,7 @@ mod tests {
 
     #[test]
     fn mixed_nested_mod_value_rejected() {
-        // ExtraAura 的 { mod = ..., onlyAllies = true } 混合形态运行时无法表达
+        // ExtraAura's { mod = ..., onlyAllies = true } mixed shape can't be expressed at runtime
         let raw = serde_json::json!([{
             "name": "ExtraAura", "type": "LIST",
             "value": {
@@ -1575,7 +1624,7 @@ mod tests {
 
     #[test]
     fn nested_mod_with_unmappable_tag_rejected() {
-        // 内层 mod 的 tag 白名单同样生效（丢 tag = 条件词条变常驻）
+        // The tag whitelist also applies to inner mods (dropping a tag would turn a conditional mod into an always-on one)
         let raw = serde_json::json!([{
             "name": "MinionModifier", "type": "LIST",
             "value": { "mod": {

@@ -1,13 +1,14 @@
-//!  config fixture 集成测试。
+//! Config fixture integration tests.
 //!
-//! 口径：断言「输入解析正确产出 RawConfigInputs + interpreter
-//! 产出 ConfigOutcome 正确」。现网 `calculate_with_data` 已切 interpreter 主
-//! 路径（`config_resolve`，commit ①）；旧 parse_config 保留为回退/对照
-//! （持续回归见 `config_dualrun.rs`）。
+//! Scope: asserts that input parsing correctly produces RawConfigInputs, and
+//! that the interpreter correctly produces ConfigOutcome. Production
+//! `calculate_with_data` has already switched to the interpreter as its main
+//! path (`config_resolve`, commit ①); the old `parse_config` is kept as a
+//! fallback/comparison (ongoing regression coverage in `config_dualrun.rs`).
 //!
-//! fixture 覆盖（`tests/fixtures/config_*.xml`）：count 型 stationary、
-//! implyCond 链、enemy 抗性覆盖 + enemyIsBoss=None、customMods 多行
-//! （含一行不可解析）、list 型选项。
+//! Fixture coverage (`tests/fixtures/config_*.xml`): count-type stationary,
+//! implyCond chains, enemy resistance overrides + enemyIsBoss=None, multi-line
+//! customMods (including one unparseable line), and list-type options.
 
 use pobr_build::handlers::{build_registry, campaign_progress_from_config, enemy_tier_from_config};
 use pobr_build::xml_build::parse_config_inputs;
@@ -21,7 +22,7 @@ use pobr_gamedata::ruleset::ConfigCatalog;
 use pobr_gamedata::{GameData, repo_data_root};
 use std::path::{Path, PathBuf};
 
-/// engine 版单行解析（真实规则，签名对齐历史 `parse_mod`；引擎永不 `Err`）。
+/// Single-line parse via the engine (real rules, signature matches the historical `parse_mod`; the engine never returns `Err`).
 fn parse_mod(
     text: &str,
 ) -> Result<pobr_core::mod_parser::ParseOutcome, pobr_core::mod_parser::ParseError> {
@@ -51,7 +52,7 @@ fn run_fixture(name: &str) -> (ConfigOutcome, ConfigCatalog) {
     (outcome, catalog)
 }
 
-/// 按归因 SourceId（`config.<var>`）过滤产物 mod。
+/// Filters produced mods by attribution SourceId (`config.<var>`).
 fn mods_from<'a>(mods: &'a [Modifier], var: &str) -> Vec<&'a Modifier> {
     let id = format!("config.{var}");
     mods.iter()
@@ -63,8 +64,9 @@ fn mods_from<'a>(mods: &'a [Modifier], var: &str) -> Vec<&'a Modifier> {
         .collect()
 }
 
-/// count 型 stationary：RawConfigInputs 三型判读 + Multiplier/Condition 双产出；
-/// number=0 时按 vendor BuildModList 语义整条跳过。
+/// Count-type stationary: RawConfigInputs three-way type detection, plus a
+/// Multiplier/Condition dual output; at number=0 the whole entry is skipped,
+/// matching vendor BuildModList semantics.
 #[test]
 fn count_stationary_fixture() {
     let xml = std::fs::read_to_string(fixtures_dir().join("config_count_stationary.xml")).unwrap();
@@ -81,7 +83,7 @@ fn count_stationary_fixture() {
     let mods = mods_from(&outcome.player_mods, "conditionStationary");
     assert_eq!(mods.len(), 2, "Multiplier + Condition 两条产出");
 
-    // number=0 → count 语义视为未设置，零产出。
+    // number=0 -> count semantics treats it as unset, so zero output.
     let catalog = load_catalog();
     let zero = pobr_core::rules::config_interpreter::RawConfigInputs::new()
         .with("conditionStationary", ConfigInputValue::Number(0.0));
@@ -90,9 +92,10 @@ fn count_stationary_fixture() {
     assert!(!outcome.conditions.contains_key("Stationary"));
 }
 
-/// implyCond 链：conditionAttackedRecently → UsedSkillRecently；
-/// conditionCritRecently → SkillCritRecently + CritInPast8Sec。
-/// 主 FLAG 本体带 Condition:Combat tag（mode_combat 门控，D5），不直落全局表。
+/// implyCond chain: conditionAttackedRecently → UsedSkillRecently;
+/// conditionCritRecently → SkillCritRecently + CritInPast8Sec.
+/// The primary FLAG itself carries a Condition:Combat tag (mode_combat gated,
+/// D5), so it doesn't land directly in the global table.
 #[test]
 fn implycond_chain_fixture() {
     let (outcome, _) = run_fixture("config_implycond.xml");
@@ -111,8 +114,10 @@ fn implycond_chain_fixture() {
     );
 }
 
-/// enemy 抗性数值覆盖（BASE 直注 enemy 桶 + EnemyConfig 归因）+
-/// enemyIsBoss=None（handler 注册 → 不入 unhandled；标量包装映射 EnemyTier）。
+/// Enemy resistance value overrides (BASE injected straight into the enemy
+/// bucket, attributed to EnemyConfig) + enemyIsBoss=None (handler is
+/// registered, so it doesn't land in unhandled; the scalar wrapper maps to
+/// EnemyTier).
 #[test]
 fn enemy_overrides_fixture() {
     let (outcome, _) = run_fixture("config_enemy_overrides.xml");
@@ -134,7 +139,7 @@ fn enemy_overrides_fixture() {
         "enemy 条件应 mod 化落 enemy 桶"
     );
 
-    // enemyIsBoss=None：handler 已注册 → 不入 unhandled；标量通道映射档位。
+    // enemyIsBoss=None: handler is already registered, so it doesn't land in unhandled; the scalar channel maps it to a tier.
     assert!(
         !outcome.unhandled.iter().any(|u| u.var == "enemyIsBoss"),
         "config:enemyIsBoss 已注册，不应入 unhandled 报表"
@@ -142,8 +147,9 @@ fn enemy_overrides_fixture() {
     assert_eq!(enemy_tier_from_config(&outcome), Some(EnemyTier::None));
 }
 
-/// customMods 多行：StripEscapes 剥色码、逐行入通道；不可解析行交由
-/// mod_parser 的 Unsupported 可见性通道（不报错）。
+/// Multi-line customMods: StripEscapes strips color codes and each line feeds
+/// the channel individually; unparseable lines flow through mod_parser's
+/// Unsupported visibility channel (no error raised).
 #[test]
 fn custom_mods_fixture() {
     let (outcome, _) = run_fixture("config_custom_mods.xml");
@@ -160,14 +166,16 @@ fn custom_mods_fixture() {
     assert_eq!(parsed.status, ParseStatus::Parsed);
     assert!(!parsed.mods.is_empty());
 
-    // 不可解析行：Err 或 Unsupported 均可，但绝不产出 Parsed mods。
+    // Unparseable line: either Err or Unsupported is acceptable, but it must never produce Parsed mods.
     if let Ok(parsed) = parse_mod(&outcome.custom_mod_lines[1]) {
         assert_eq!(parsed.status, ParseStatus::Unsupported);
     }
 }
 
-/// list 型选项：resistancePenalty 数值档（标量包装 → CampaignProgress 七档表）
-/// + 任务奖励 Options 型（option_effects 逐选项展开为带 Quest source 的 mod）。
+/// List-type options: resistancePenalty numeric tier (scalar wrapper ->
+/// CampaignProgress seven-tier table) + quest-reward Options type
+/// (option_effects expands each option into a mod attributed to a Quest
+/// source).
 #[test]
 fn list_options_fixture() {
     let (outcome, _) = run_fixture("config_list_options.xml");
@@ -200,9 +208,9 @@ fn list_options_fixture() {
     );
 }
 
-/// commit ④ 端到端：customMods 经 parse_build → calculate_with_data 主路径
-/// 生效（vendor ConfigOptions.lua:2278-2296）；不可解析行不阻断、可解析行
-/// 进计算。
+/// commit ④ end-to-end: customMods take effect via the parse_build ->
+/// calculate_with_data main path (vendor ConfigOptions.lua:2278-2296);
+/// unparseable lines don't block the pipeline, parseable lines feed the calc.
 #[test]
 fn custom_mods_feed_calculation_end_to_end() {
     use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build};
@@ -216,7 +224,7 @@ fn custom_mods_feed_calculation_end_to_end() {
   </Config>
 </PathOfBuilding2>"#;
     let build = parse_build(xml).expect("parse build");
-    // 对照组：同一 build、无 customMods（隔离 quest 默认奖励等共同贡献）。
+    // Control group: the same build without customMods (isolates shared contributions like the default quest reward).
     let plain = parse_build(&xml.replace(
         r#"<Input name="customMods" string="^x7070FF+50 to maximum Life&#10;utterly unparseable nonsense line"/>"#,
         "",
@@ -236,7 +244,7 @@ fn custom_mods_feed_calculation_end_to_end() {
     };
     let with_custom = calculate_with_data(&build, &data, &opts).expect("calculate");
     let without = calculate_with_data(&plain, &data, &opts).expect("calculate plain");
-    // +50 base Life 经全局 increased Life（quest 默认奖励 5%）= +52.5。
+    // +50 base Life through global increased Life (default 5% quest reward) = +52.5.
     assert_eq!(
         with_custom.life - without.life,
         52.5,
@@ -245,7 +253,7 @@ fn custom_mods_feed_calculation_end_to_end() {
         without.life
     );
 
-    // 缺 catalog（BuildData::empty）→ 缺表容忍回退：customMods 不消费，与对照组等值。
+    // Missing catalog (BuildData::empty) -> tolerant fallback: customMods isn't consumed, so it matches the control group.
     let empty_with = calculate_with_data(&build, &BuildData::empty(), &opts).expect("calc empty");
     let empty_plain = calculate_with_data(&plain, &BuildData::empty(), &opts).expect("calc empty");
     assert_eq!(

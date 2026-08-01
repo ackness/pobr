@@ -1,18 +1,25 @@
-//! `gen-trigger-configs` 子命令：
-//! 产 `overlay/trigger_configs.json`（vendor `Modules/CalcTriggers.lua:881-1417`
-//! configTable 的 61 项触发配置）。
+//! `gen-trigger-configs` subcommand:
+//! produces `overlay/trigger_configs.json` (the 61 trigger configs from
+//! vendor `Modules/CalcTriggers.lua:881-1417`'s configTable).
 //!
-//! configTable 条目是**返回配置表的 Lua 闭包**（约 90% 声明性事实 + 少数真逻辑），
-//! luajit 执行需完整 env mock 且 `triggerSkillCond` 等字段本身仍是闭包、无法序列化
-//! ——故沿用 mirage_configs先例：**配置数据内嵌于本工具源码**、由工具落盘。
-//! 与 mirage 不同的增强：生成时对 vendor 源做 **configTable key 扫描对账**（正则抽取
-//! `["<key>"] = function` 的 61 个 key，与内嵌转写的 key 集合做集合相等断言），
-//! key 增删改 = 生成即失败，比单一指纹更细的 drift 防线；指纹（行数+字节数）仍落
-//! `_meta` 提醒条目体语义漂移。
+//! configTable entries are **Lua closures that return a config table**
+//! (roughly 90% declarative facts plus a handful of real logic). Running
+//! them under luajit would need a full env mock, and fields like
+//! `triggerSkillCond` are themselves still closures that can't be
+//! serialized — so, following mirage_configs' precedent, **the config data
+//! is embedded in this tool's source code** and the tool writes it out.
+//! Unlike mirage, this adds a generation-time **configTable key scan
+//! reconciliation** against the vendor source (regex-extracts the 61 keys
+//! from `["<key>"] = function` and asserts set equality against the
+//! embedded transcription's key set) — any key addition/removal/rename
+//! fails generation outright, a finer-grained drift guard than a single
+//! fingerprint; the fingerprint (line count + byte count) still goes into
+//! `_meta` as a reminder to check for semantic drift within entry bodies.
 //!
-//! 受限谓词遵守 20 号 §5 硬边界（any/all/not 三字段封顶）；表达不了的
-//! 真逻辑落 `handler_id`（`trigger:` 前缀，全阶段 <100 总闸计数监控）。
-//! schema 见 [`pobr_data::catalog::triggers`]。
+//! Restricted predicates obey the 20-doc §5 hard boundary (any/all/not
+//! capped at three fields); real logic that can't be expressed that way
+//! goes to `handler_id` (`trigger:` prefix, monitored under the global <100
+//! handler-count gate across all phases). See [`pobr_data::catalog::triggers`] for the schema.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -26,18 +33,20 @@ use pobr_data::catalog::triggers::{TriggerConfigDef, TriggerKeyDef, TriggerSkill
 use crate::extract_lua::{ExtractLuaArgs, OverlayMeta, read_vendor_version, resolve_version_file};
 use crate::extract_minions::to_pretty_json;
 
-/// vendor configTable 的条目总数（CalcTriggers.lua:881-1417，drift 防线断言值）。
+/// Total entry count in vendor's configTable (CalcTriggers.lua:881-1417, the value the drift guard asserts against).
 pub const VENDOR_CONFIG_TABLE_COUNT: usize = 61;
 
-/// `_meta` 扩展：通用 OverlayMeta + vendor 粗粒度指纹 + key 对账结果。
+/// `_meta` extension: the generic OverlayMeta plus a coarse vendor fingerprint plus the key-reconciliation result.
 #[derive(Debug, Serialize)]
 struct TriggerMeta {
     #[serde(flatten)]
     base: OverlayMeta,
-    /// `Modules/CalcTriggers.lua` 粗粒度指纹（`<行数>L:<字节数>B`）——vendor bump
-    /// 后指纹变化 = 提示人工复核条目体语义（key 集合相等仍可能改条目内逻辑）。
+    /// Coarse fingerprint of `Modules/CalcTriggers.lua` (`<lines>L:<bytes>B`)
+    /// — a changed fingerprint after a vendor bump signals that entry
+    /// bodies need a manual semantic review (the key set can stay equal while internal logic changes).
     vendor_fingerprint: String,
-    /// 生成时从 vendor 源扫描出的 configTable key 数（恒 = 61，对账通过才落盘）。
+    /// The configTable key count scanned from the vendor source at
+    /// generation time (always = 61; only written if reconciliation passes).
     vendor_config_table_keys: usize,
 }
 
@@ -48,8 +57,9 @@ struct TriggerConfigsDoc {
     configs: Vec<TriggerConfigDef>,
 }
 
-/// 条目骨架：全部声明性字段缺省（仅 key + vendor_ref），各条目以 struct-update
-/// 语法覆盖差异字段，保持转写逐条可读。
+/// Entry skeleton: all declarative fields default (only key + vendor_ref
+/// set), and each entry overrides its differing fields via struct-update
+/// syntax, keeping the transcription readable entry by entry.
 fn base(kind: &str, name: &str, vendor_ref: &str) -> TriggerConfigDef {
     TriggerConfigDef {
         key: TriggerKeyDef {
@@ -83,7 +93,7 @@ fn base(kind: &str, name: &str, vendor_ref: &str) -> TriggerConfigDef {
     }
 }
 
-/// 谓词速记。
+/// Predicate shorthand.
 fn cond(any: &[&str], all_flags: &[&str], not: &[&str]) -> Option<TriggerSkillCondDef> {
     Some(TriggerSkillCondDef {
         any_skill_types: any.iter().map(|s| s.to_string()).collect(),
@@ -96,19 +106,20 @@ fn s(text: &str) -> Option<String> {
     Some(text.to_string())
 }
 
-/// 61 条触发配置（人工从 `Modules/CalcTriggers.lua:881-1417` configTable 闭包
-/// 转写，vendor commit `2df5a74` 时点；行段锚点见各 `vendor_ref`，转写顺序 =
-/// vendor 源顺序，落盘前按 `key.name` 升序排序）。
+/// The 61 trigger configs (hand-transcribed from the
+/// `Modules/CalcTriggers.lua:881-1417` configTable closures as of vendor
+/// commit `2df5a74`; see each `vendor_ref` for its line-range anchor;
+/// transcription order matches vendor source order, sorted ascending by `key.name` before writing).
 #[allow(clippy::too_many_lines)]
 fn builtin_configs() -> Vec<TriggerConfigDef> {
     let v = "Modules/CalcTriggers.lua";
     let mut configs = vec![
-        // :882-888 召唤幽魂狼（Claw 近战/攻击源，非图腾）。
+        // :882-888 Summon Spectral Wolf (Claw melee/attack source, not a totem).
         TriggerConfigDef {
             source_skill_cond: cond(&["Melee", "Attack"], &["Claw"], &["SummonsTotem"]),
             ..base("unique_item", "law of the wilds", &format!("{v}:882-888"))
         },
-        // :889-897 仅当主技能 = Storm Cascade 时生效（Melee/Attack 源）。
+        // :889-897 Active only when the main skill is Storm Cascade (Melee/Attack source).
         TriggerConfigDef {
             requires_main_skill_name: s("Storm Cascade"),
             source_skill_cond: cond(&["Melee", "Attack"], &[], &[]),
@@ -118,7 +129,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:889-897"),
             )
         },
-        // :898-906 同上（Surging 变体）。
+        // :898-906 Same as above (the Surging variant).
         TriggerConfigDef {
             requires_main_skill_name: s("Storm Cascade"),
             source_skill_cond: cond(&["Melee", "Attack"], &[], &[]),
@@ -128,7 +139,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:898-906"),
             )
         },
-        // :907-921 Unseen Strike：global + 速率上限 2/s，需 Phasing（否则 disable）。
+        // :907-921 Unseen Strike: global + rate cap 2/s, requires Phasing (otherwise disabled).
         TriggerConfigDef {
             global_trigger: true,
             source_is_self: true,
@@ -136,7 +147,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
             requires_condition: s("Phasing"),
             ..base("unique_item", "the hidden blade", &format!("{v}:907-921"))
         },
-        // :922-925 global + 源 = 自身。
+        // :922-925 global + source = self.
         TriggerConfigDef {
             global_trigger: true,
             source_is_self: true,
@@ -146,7 +157,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:922-925"),
             )
         },
-        // :926-929 global + 源 = 自身。
+        // :926-929 global + source = self.
         TriggerConfigDef {
             global_trigger: true,
             source_is_self: true,
@@ -156,32 +167,32 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:926-929"),
             )
         },
-        // :930-932 Gore Shockwave（Melee/Attack 源）。
+        // :930-932 Gore Shockwave (Melee/Attack source).
         TriggerConfigDef {
             trigger_name: s("Gore Shockwave"),
             source_skill_cond: cond(&["Melee", "Attack"], &[], &[]),
             ..base("unique_item", "limbsplit", &format!("{v}:930-932"))
         },
-        // :933-935 同 Limbsplit。
+        // :933-935 Same as Limbsplit.
         TriggerConfigDef {
             trigger_name: s("Gore Shockwave"),
             source_skill_cond: cond(&["Melee", "Attack"], &[], &[]),
             ..base("unique_item", "the cauteriser", &format!("{v}:933-935"))
         },
-        // :936-938 Stalking Pustule（Damage/Attack 源）。
+        // :936-938 Stalking Pustule (Damage/Attack source).
         TriggerConfigDef {
             trigger_name: s("Stalking Pustule"),
             source_skill_cond: cond(&["Damage", "Attack"], &[], &[]),
             ..base("unique_item", "duskblight", &format!("{v}:936-938"))
         },
-        // :939-944 Rain of Arrows on bow attack：cd 覆盖 1s，triggerOnUse。
+        // :939-944 Rain of Arrows on bow attack: cooldown override 1s, triggerOnUse.
         TriggerConfigDef {
             trigger_on_use: true,
             cooldown_override_s: Some(1.0),
             source_skill_cond: cond(&["Attack"], &["Bow"], &[]),
             ..base("unique_item", "lioneye's paws", &format!("{v}:939-944"))
         },
-        // :945-950 同上（Replica）。
+        // :945-950 Same as above (Replica).
         TriggerConfigDef {
             trigger_on_use: true,
             cooldown_override_s: Some(1.0),
@@ -192,26 +203,26 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:945-950"),
             )
         },
-        // :951-955 Lightning Warp：cd 覆盖 1s。
+        // :951-955 Lightning Warp: cooldown override 1s.
         TriggerConfigDef {
             trigger_name: s("Lightning Warp"),
             cooldown_override_s: Some(1.0),
             source_skill_cond: cond(&["Melee", "Attack"], &[], &[]),
             ..base("unique_item", "moonbender's wing", &format!("{v}:951-955"))
         },
-        // :956-958 Molten Burst。
+        // :956-958 Molten Burst.
         TriggerConfigDef {
             trigger_name: s("Molten Burst"),
             source_skill_cond: cond(&["Melee", "Attack"], &[], &[]),
             ..base("unique_item", "ngamahu's flame", &format!("{v}:956-958"))
         },
-        // :959-961 Icicle Burst。
+        // :959-961 Icicle Burst.
         TriggerConfigDef {
             trigger_name: s("Icicle Burst"),
             source_skill_cond: cond(&["Damage", "Attack"], &[], &[]),
             ..base("unique_item", "cameria's avarice", &format!("{v}:959-961"))
         },
-        // :962-964 Bone Nova。
+        // :962-964 Bone Nova.
         TriggerConfigDef {
             trigger_name: s("Bone Nova"),
             source_skill_cond: cond(&["Damage", "Attack"], &[], &[]),
@@ -221,14 +232,14 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:962-964"),
             )
         },
-        // :965-968 on-kill：sourceRateIsFinal + assumingEveryHitKills。
+        // :965-968 on-kill: sourceRateIsFinal + assumingEveryHitKills.
         TriggerConfigDef {
             source_rate_is_final: true,
             assuming_every_hit_kills: true,
             source_skill_cond: cond(&["Damage", "Attack"], &[], &[]),
             ..base("unique_item", "rigwald's crest", &format!("{v}:965-968"))
         },
-        // :969-972 同上。
+        // :969-972 Same as above.
         TriggerConfigDef {
             source_rate_is_final: true,
             assuming_every_hit_kills: true,
@@ -239,45 +250,45 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:969-972"),
             )
         },
-        // :973-976 同上。
+        // :973-976 Same as above.
         TriggerConfigDef {
             source_rate_is_final: true,
             assuming_every_hit_kills: true,
             source_skill_cond: cond(&["Damage", "Attack"], &[], &[]),
             ..base("unique_item", "ashcaller", &format!("{v}:973-976"))
         },
-        // :977-979 on-kill（无 sourceRateIsFinal）。
+        // :977-979 on-kill (no sourceRateIsFinal).
         TriggerConfigDef {
             assuming_every_hit_kills: true,
             source_skill_cond: cond(&["Damage", "Attack"], &[], &[]),
             ..base("unique_item", "arakaali's fang", &format!("{v}:977-979"))
         },
-        // :980-982 同上。
+        // :980-982 Same as above.
         TriggerConfigDef {
             assuming_every_hit_kills: true,
             source_skill_cond: cond(&["Damage", "Attack"], &[], &[]),
             ..base("unique_item", "sporeguard", &format!("{v}:980-982"))
         },
-        // :983-985 同上。
+        // :983-985 Same as above.
         TriggerConfigDef {
             assuming_every_hit_kills: true,
             source_skill_cond: cond(&["Damage", "Attack"], &[], &[]),
             ..base("unique_item", "mark of the elder", &format!("{v}:983-985"))
         },
-        // :986-988 同上。
+        // :986-988 Same as above.
         TriggerConfigDef {
             assuming_every_hit_kills: true,
             source_skill_cond: cond(&["Damage", "Attack"], &[], &[]),
             ..base("unique_item", "mark of the shaper", &format!("{v}:986-988"))
         },
-        // :989-997 法术触发于 Wand 攻击；被触发 = 同槽 triggeredByUnique 法术。
+        // :989-997 Spell triggered on a Wand attack; the triggered skill is the same-socket triggeredByUnique spell.
         TriggerConfigDef {
             trigger_on_use: true,
             source_skill_cond: cond(&["Damage", "Attack"], &["Wand"], &[]),
             triggered_skill_cond: cond(&["Spell"], &[], &[]),
             ..base("unique_item", "poet's pen", &format!("{v}:989-997"))
         },
-        // :998-1011 真逻辑：从 modSource 正则提取 unique 触发名 + Replica 分流。
+        // :998-1011 Real logic: regex-extracts the unique's trigger name from modSource, plus a Replica branch.
         TriggerConfigDef {
             trigger_on_use: true,
             triggered_skill_cond: cond(&["RangedAttack"], &[], &[]),
@@ -289,14 +300,14 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:998-1011"),
             )
         },
-        // :1012-1020 弓攻击触发同槽法术。
+        // :1012-1020 A bow attack triggers the same-socket spell.
         TriggerConfigDef {
             trigger_on_use: true,
             source_skill_cond: cond(&["Damage", "Attack"], &["Bow"], &[]),
             triggered_skill_cond: cond(&["Spell"], &[], &[]),
             ..base("unique_item", "asenath's chant", &format!("{v}:1011-1019"))
         },
-        // :1021-1026 Hex 源 + 施法速率。
+        // :1021-1026 Hex source + cast rate.
         TriggerConfigDef {
             use_cast_rate: true,
             source_skill_cond: cond(&["Hex"], &[], &[]),
@@ -306,25 +317,25 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:1020-1025"),
             )
         },
-        // :1027-1032 源 = Queen's Demand（按名精确匹配）。
+        // :1027-1032 Source = Queen's Demand (exact name match).
         TriggerConfigDef {
             source_rate_is_final: true,
             source_skill_name: s("Queen's Demand"),
             ..base("skill", "flames of judgement", &format!("{v}:1026-1031"))
         },
-        // :1033-1038 同上。
+        // :1033-1038 Same as above.
         TriggerConfigDef {
             source_rate_is_final: true,
             source_skill_name: s("Queen's Demand"),
             ..base("skill", "storm of judgement", &format!("{v}:1032-1037"))
         },
-        // :1039-1061 工艺词条触发：全局扫描 + 图腾/魔像速率特判，真逻辑。
+        // :1039-1061 Craft-mod trigger: a global scan plus totem/golem rate special-casing, real logic.
         TriggerConfigDef {
             handler_id: s("trigger:trigger_craft_scan"),
             note: s("triggeredByCraft 全局源扫描 + totem/golem/banner 源速率特判"),
             ..base("triggered_by", "trigger craft", &format!("{v}:1038-1060"))
         },
-        // :1062-1075 真逻辑：mana cost 门控 comparer（KitavaRequiredManaCost）。
+        // :1062-1075 Real logic: a mana-cost-gated comparer (KitavaRequiredManaCost).
         TriggerConfigDef {
             trigger_name: s("Kitava's Thirst"),
             trigger_chance_stat: s("KitavaTriggerChance"),
@@ -332,20 +343,20 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
             note: s("源比较器要求 ManaCost > KitavaRequiredManaCost，落 handler"),
             ..base("unique_item", "kitava's thirst", &format!("{v}:1061-1074"))
         },
-        // :1076-1083 真逻辑：双手双源（源须**不同**槽位，vendor not slotMatch）。
+        // :1076-1083 Real logic: dual two-handed sources (the sources must be in **different** sockets, vendor's not slotMatch).
         TriggerConfigDef {
             source_skill_cond: cond(&["Damage", "Attack"], &["Mace", "Weapon1H"], &[]),
             handler_id: s("trigger:mjolner_dual_source"),
             note: s("vendor band(bor(Mace,1H)) 任一位命中 + 非同槽源约束，落 handler"),
             ..base("unique_item", "mjolner", &format!("{v}:1075-1082"))
         },
-        // :1084-1089 Melee + 单手剑源；被触发 = 同槽 triggeredByCospris。
+        // :1084-1089 Melee + one-handed-sword source; the triggered skill is the same-socket triggeredByCospris.
         TriggerConfigDef {
             source_skill_cond: cond(&["Melee"], &["Sword", "Weapon1H"], &[]),
             note: s("vendor band(bor(Sword,1H)) 字面任一位命中，按条目意图转写 all-of"),
             ..base("unique_item", "cospri's malice", &format!("{v}:1083-1088"))
         },
-        // :1090-1093 CoC：攻击源（同槽），折源暴击率（triggerOnCrit）。
+        // :1090-1093 CoC: attack source (same socket), folds the source's crit chance in (triggerOnCrit).
         TriggerConfigDef {
             source_skill_cond: cond(&["Attack"], &[], &[]),
             trigger_on_crit: true,
@@ -357,7 +368,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:1089-1092"),
             )
         },
-        // :1094-1105 on-melee-kill：需 KilledRecently，否则退化自施法。
+        // :1094-1105 on-melee-kill: requires KilledRecently, otherwise degrades to self-cast.
         TriggerConfigDef {
             assuming_every_hit_kills: true,
             source_skill_cond: cond(&["Melee"], &[], &[]),
@@ -370,7 +381,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:1093-1104"),
             )
         },
-        // :1106-1113 Holy Relic Nova：minion actor 真逻辑。
+        // :1106-1113 Holy Relic Nova: real logic for the minion actor.
         TriggerConfigDef {
             trigger_name: s("Summon Holy Relic"),
             source_skill_cond: cond(&["Attack"], &[], &[]),
@@ -378,7 +389,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
             note: s("actor = env.minion（召唤物触发域），M5a minion 框架后接"),
             ..base("skill", "nova", &format!("{v}:1105-1112"))
         },
-        // :1114-1128 CWDT：global + 源自身；阈值输出 CWDTThreshold（面板信息）。
+        // :1114-1128 CWDT: global + source is self; the threshold output CWDTThreshold is panel info.
         TriggerConfigDef {
             global_trigger: true,
             source_is_self: true,
@@ -390,7 +401,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:1113-1127"),
             )
         },
-        // :1129-1133 触发几率 = skillData.chanceToTriggerOnStun。
+        // :1129-1133 Trigger chance = skillData.chanceToTriggerOnStun.
         TriggerConfigDef {
             global_trigger: true,
             source_is_self: true,
@@ -402,7 +413,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:1128-1132"),
             )
         },
-        // :1134-1153 被触发侧：源 = Automation 宝石（按名），不受帧取整。
+        // :1134-1153 The triggered side: source = the Automation gem (by name), not subject to frame rounding.
         TriggerConfigDef {
             trigger_on_use: true,
             use_cast_rate: true,
@@ -412,7 +423,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
             note: s("主技能 = Automation 自身时 vendor 走 global+self 分支（自速率）"),
             ..base("triggered_by", "automation", &format!("{v}:1133-1152"))
         },
-        // :1154-1169 被触发侧：源 = Spellslinger（按名）；源侧 = Wand 攻击。
+        // :1154-1169 The triggered side: source = Spellslinger (by name); the source side is a Wand attack.
         TriggerConfigDef {
             trigger_on_use: true,
             use_cast_rate: true,
@@ -421,7 +432,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
             note: s("主技能 = Spellslinger 自身时源谓词为 Wand 攻击（weaponTypes 判定）"),
             ..base("triggered_by", "spellslinger", &format!("{v}:1153-1168"))
         },
-        // :1170-1182 同 Automation 形态。
+        // :1170-1182 Same shape as Automation.
         TriggerConfigDef {
             trigger_on_use: true,
             use_cast_rate: true,
@@ -430,7 +441,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
             source_skill_name: s("Call to Arms"),
             ..base("triggered_by", "call to arms", &format!("{v}:1169-1181"))
         },
-        // :1183-1195 同 Automation 形态。
+        // :1183-1195 Same shape as Automation.
         TriggerConfigDef {
             trigger_on_use: true,
             use_cast_rate: true,
@@ -439,30 +450,30 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
             source_skill_name: s("Autoexertion"),
             ..base("triggered_by", "autoexertion", &format!("{v}:1182-1194"))
         },
-        // :1196-1198 攻击源。
+        // :1196-1198 Attack source.
         TriggerConfigDef {
             source_skill_cond: cond(&["Attack"], &[], &[]),
             ..base("triggered_by", "mark on hit", &format!("{v}:1195-1197"))
         },
-        // :1199-1204 攻击源（同槽）。
+        // :1199-1204 Attack source (same socket).
         TriggerConfigDef {
             source_rate_is_final: true,
             source_skill_cond: cond(&["Attack"], &[], &[]),
             ..base("triggered_by", "hextouch", &format!("{v}:1198-1203"))
         },
-        // :1205-1210 攻击源。
+        // :1205-1210 Attack source.
         TriggerConfigDef {
             source_rate_is_final: true,
             source_skill_cond: cond(&["Attack"], &[], &[]),
             ..base("unique_item", "oskarm", &format!("{v}:1204-1209"))
         },
-        // :1211-1214 global + 源自身。
+        // :1211-1214 global + source is self.
         TriggerConfigDef {
             global_trigger: true,
             source_is_self: true,
             ..base("skill", "tempest shield", &format!("{v}:1210-1213"))
         },
-        // :1215-1230 真逻辑：duration 作伪冷却（需自身子计算 Duration）。
+        // :1215-1230 Real logic: duration acts as a pseudo-cooldown (needs a self-sub-calculation of Duration).
         TriggerConfigDef {
             global_trigger: true,
             source_is_self: true,
@@ -470,13 +481,13 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
             note: s("triggerRateCapOverride = 1/Duration（取自自身子计算输出）"),
             ..base("skill", "shattershard", &format!("{v}:1214-1229"))
         },
-        // :1231-1241 真逻辑：BattlemageUpTimeRatio comparer。
+        // :1231-1241 Real logic: BattlemageUpTimeRatio comparer.
         TriggerConfigDef {
             source_skill_cond: cond(&["Melee"], &[], &[]),
             handler_id: s("trigger:battlemage_uptime_comparer"),
             ..base("skill", "battlemage's cry", &format!("{v}:1230-1240"))
         },
-        // :1242-1261 真逻辑：brand 激活频率（repeatFrequency × 频率乘区）。
+        // :1242-1261 Real logic: brand activation frequency (repeatFrequency × the frequency multiplier zone).
         TriggerConfigDef {
             ignores_tick_rate: true,
             source_rate_is_final: true,
@@ -484,30 +495,30 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
             handler_id: s("trigger:arcanist_brand_activation_freq"),
             ..base("triggered_by", "arcanist brand", &format!("{v}:1241-1260"))
         },
-        // :1262-1266 死亡触发：global，DPS 仅信息展示。
+        // :1262-1266 On-death trigger: global, DPS is display-only info.
         TriggerConfigDef {
             global_trigger: true,
             source_is_self: true,
             note: s("vendor 仅置 triggered + infoMessage（on-death 无稳态 DPS 语义）"),
             ..base("triggered_by", "cast on death", &format!("{v}:1261-1265"))
         },
-        // :1267-1274 真逻辑：InfernalUpTimeRatio comparer。
+        // :1267-1274 Real logic: InfernalUpTimeRatio comparer.
         TriggerConfigDef {
             source_skill_cond: cond(&["Melee"], &[], &[]),
             handler_id: s("trigger:infernal_uptime_comparer"),
             ..base("skill", "combust", &format!("{v}:1266-1273"))
         },
-        // :1275-1277 攻击源（同槽）。
+        // :1275-1277 Attack source (same socket).
         TriggerConfigDef {
             source_skill_cond: cond(&["Attack"], &[], &[]),
             ..base("skill", "prismatic burst", &format!("{v}:1274-1276"))
         },
-        // :1278-1280 Melee 源（同槽）。
+        // :1278-1280 Melee source (same socket).
         TriggerConfigDef {
             source_skill_cond: cond(&["Melee"], &[], &[]),
             ..base("skill", "shockwave", &format!("{v}:1277-1279"))
         },
-        // :1281-1285 弓攻击源。
+        // :1281-1285 Bow attack source.
         TriggerConfigDef {
             trigger_on_use: true,
             trigger_name: s("Manaforged Arrows"),
@@ -518,7 +529,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:1280-1284"),
             )
         },
-        // :1286-1295 真逻辑：CurseOverlaps 倍增 + config 输入分流。
+        // :1286-1295 Real logic: CurseOverlaps multiplication plus a config-input branch.
         TriggerConfigDef {
             use_cast_rate: true,
             ignores_tick_rate: true,
@@ -526,7 +537,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
             handler_id: s("trigger:doom_blast_overlaps"),
             ..base("skill", "doom blast", &format!("{v}:1285-1294"))
         },
-        // :1296-1298 CWC：customHandler（pobr 已建模 CWCTriggerTime 通道）。
+        // :1296-1298 CWC: customHandler (pobr already models this via the CWCTriggerTime channel).
         TriggerConfigDef {
             handler_id: s("trigger:cwc_handler"),
             match_effect_ids: vec!["MetaCastWhileChannellingPlayer".to_string()],
@@ -537,24 +548,24 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:1295-1297"),
             )
         },
-        // :1299-1301 头盔 Focus 附魔触发：customHandler。
+        // :1299-1301 Helmet Focus enchant trigger: customHandler.
         TriggerConfigDef {
             handler_id: s("trigger:helmet_focus_handler"),
             ..base("triggered_by", "focus", &format!("{v}:1298-1300"))
         },
-        // :1302-1377 真逻辑：Snipe 蓄力层数 / hitTimeMultiplier / 触发列表。
+        // :1302-1377 Real logic: Snipe's charge-up stage count / hitTimeMultiplier / trigger list.
         TriggerConfigDef {
             handler_id: s("trigger:snipe_stages"),
             ..base("triggered_by", "snipe", &format!("{v}:1301-1376"))
         },
-        // :1378-1384 真逻辑：TotemLife comparer + ignoreSourceRate。
+        // :1378-1384 Real logic: TotemLife comparer + ignoreSourceRate.
         TriggerConfigDef {
             ignore_source_rate: true,
             handler_id: s("trigger:avenging_flame_totem_comparer"),
             note: s("源谓词 skillFlags.totem（pobr 无图腾域）+ 图腾血量比较器"),
             ..base("skill", "avenging flame", &format!("{v}:1377-1384"))
         },
-        // :1385-1399 链接触发：源速率 = IntuitiveLinkSourceRate stat。
+        // :1385-1399 Link trigger: source rate = the IntuitiveLinkSourceRate stat.
         TriggerConfigDef {
             use_cast_rate: true,
             source_skill_name: s("Intuitive Link"),
@@ -562,7 +573,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
             triggered_skill_cond: cond(&["Spell"], &[], &[]),
             ..base("triggered_by", "intuitive link", &format!("{v}:1385-1399"))
         },
-        // :1400-1406 Svalinn 盾：global + 源自身；被触发筛选走 support 适用性。
+        // :1400-1406 Svalinn shield: global + source is self; the triggered-skill filter goes through support applicability.
         TriggerConfigDef {
             global_trigger: true,
             source_is_self: true,
@@ -574,7 +585,7 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
                 &format!("{v}:1400-1406"),
             )
         },
-        // :1407-1416 Settlers 附魔：Melee 源触发同槽被附魔技能。
+        // :1407-1416 Settlers enchant: a Melee source triggers the same-socket enchanted skill.
         TriggerConfigDef {
             source_skill_cond: cond(&["Melee"], &[], &[]),
             ..base(
@@ -588,8 +599,8 @@ fn builtin_configs() -> Vec<TriggerConfigDef> {
     configs
 }
 
-/// 从 vendor `Modules/CalcTriggers.lua` 扫描 configTable 的 key 集合
-/// （`local configTable = {` 到首个行首 `}` 之间的 `["<key>"] = function` 行）。
+/// Scan vendor `Modules/CalcTriggers.lua` for configTable's key set (the
+/// `["<key>"] = function` lines between `local configTable = {` and the first line-leading `}`).
 fn scan_vendor_config_keys(vendor_root: &Path) -> io::Result<BTreeSet<String>> {
     let path = vendor_root.join("Modules/CalcTriggers.lua");
     let text = fs::read_to_string(&path).map_err(|error| {
@@ -611,7 +622,7 @@ fn scan_vendor_config_keys(vendor_root: &Path) -> io::Result<BTreeSet<String>> {
         if line.starts_with('}') {
             break;
         }
-        // 形如：\t["law of the wilds"] = function()
+        // Shape: \t["law of the wilds"] = function()
         let trimmed = line.trim_start();
         if let Some(rest) = trimmed.strip_prefix("[\"")
             && let Some(end) = rest.find("\"]")
@@ -623,8 +634,9 @@ fn scan_vendor_config_keys(vendor_root: &Path) -> io::Result<BTreeSet<String>> {
     Ok(keys)
 }
 
-/// key 对账（drift 防线：61 项抽取计数断言的生成时刻面）：
-/// 内嵌转写 key 集合必须与 vendor 源扫描结果**集合相等**且 = 61。
+/// Key reconciliation (a drift guard: the generation-time counterpart of the
+/// 61-entry extraction count assertion): the embedded transcription's key
+/// set must be **set-equal** to the vendor-source scan result, and equal 61.
 fn check_key_drift(vendor_root: &Path) -> io::Result<usize> {
     let vendor_keys = scan_vendor_config_keys(vendor_root)?;
     let embedded_keys: BTreeSet<String> = builtin_configs()
@@ -648,7 +660,7 @@ fn check_key_drift(vendor_root: &Path) -> io::Result<usize> {
     Ok(vendor_keys.len())
 }
 
-/// 生成 `overlay/trigger_configs.json` 文本（byte-stable；先过 key 对账）。
+/// Generate `overlay/trigger_configs.json` text (byte-stable; runs the key reconciliation first).
 pub fn run_gen_trigger_configs(args: &ExtractLuaArgs) -> io::Result<String> {
     let key_count = check_key_drift(&args.vendor_root)?;
     let (commit, subject) = read_vendor_version(&resolve_version_file(args))?;
@@ -678,7 +690,7 @@ pub fn run_gen_trigger_configs(args: &ExtractLuaArgs) -> io::Result<String> {
     }))
 }
 
-/// CalcTriggers.lua 粗粒度指纹：行数 + 字节数。
+/// Coarse fingerprint of CalcTriggers.lua: line count + byte count.
 fn vendor_fingerprint(vendor_root: &Path) -> io::Result<String> {
     let path = vendor_root.join("Modules/CalcTriggers.lua");
     let text = fs::read_to_string(&path).map_err(|error| {
@@ -694,7 +706,7 @@ fn vendor_fingerprint(vendor_root: &Path) -> io::Result<String> {
 mod tests {
     use super::{VENDOR_CONFIG_TABLE_COUNT, builtin_configs};
 
-    /// 61 条、key 唯一且升序（61 项抽取计数断言的内嵌侧）。
+    /// 61 entries, keys unique and ascending (the embedded-side counterpart of the 61-entry extraction count assertion).
     #[test]
     fn builtin_configs_count_and_order() {
         let configs = builtin_configs();
@@ -706,8 +718,8 @@ mod tests {
         assert_eq!(names, sorted, "key.name 必须唯一且升序");
     }
 
-    /// handler 条目带 `trigger:` 前缀（20 号 §5 全局台账按前缀分域计数）；
-    /// handler 总数计入监控（当前 15 条，全阶段 <100 总闸）。
+    /// handler entries carry the `trigger:` prefix (20-doc §5's global ledger
+    /// counts by prefix domain); the total handler count is monitored (currently 15, under the global <100 gate across all phases).
     #[test]
     fn handler_ids_prefixed_and_counted() {
         let configs = builtin_configs();
@@ -725,8 +737,9 @@ mod tests {
         assert!(handlers.len() < 100, "handler 总数超 20 号 §5 监控闸");
     }
 
-    /// 每条都有 key 类别 + vendor 行段锚点；谓词非空字段遵守三字段封顶
-    /// （schema 即三字段，此处断言非空谓词必至少约束一个字段）。
+    /// Every entry has a key category plus a vendor line-range anchor;
+    /// non-empty predicate fields obey the three-field cap (the schema
+    /// itself has three fields, and this asserts a non-empty predicate constrains at least one of them).
     #[test]
     fn entries_have_anchor_and_meaningful_cond() {
         for config in builtin_configs() {
@@ -753,7 +766,7 @@ mod tests {
         }
     }
 
-    /// PoE2 join 键（match_effect_ids）当前映射的 5 个 Meta 触发宝石。
+    /// The 5 Meta trigger gems currently mapped by the PoE2 join key (match_effect_ids).
     #[test]
     fn match_effect_ids_mapped_meta_gems() {
         let configs = builtin_configs();
@@ -766,7 +779,7 @@ mod tests {
         assert!(mapped.contains(&"MetaCastWhileChannellingPlayer"));
     }
 
-    /// CoC 条目方向性事实：trigger_on_crit 置位（暴击折入的数据前提）。
+    /// A directional fact about the CoC entry: trigger_on_crit is set (the data precondition for folding in crit chance).
     #[test]
     fn coc_entry_folds_crit() {
         let configs = builtin_configs();

@@ -1,13 +1,16 @@
-//! RuleSet 聚合入口。
+//! RuleSet aggregation entry point.
 //!
-//! `GameData::load_ruleset()` 一次性加载计算引擎需要的规则/常量域，由 pobr-build
-//! 合并为 [`pobr_data::catalog::RuntimeConstants`] 注入 pobr-core
-//! （经 `CalculationSession::set_constants` → `CalcConfig.constants`，
-//! pobr-core 保持零 I/O）。
+//! `GameData::load_ruleset()` loads every rule/constant domain the calc
+//! engine needs in one shot; pobr-build merges them into
+//! [`pobr_data::catalog::RuntimeConstants`] and injects it into pobr-core
+//! (via `CalculationSession::set_constants` → `CalcConfig.constants`,
+//! keeping pobr-core zero-I/O).
 //!
-//! 字段为 `Option`：`None` = 该域尚未数据化或数据目录缺该文件——消费方
-//! （pobr-build `BuildData::load`）对 `None` 回退 `Default`（fallback 与 JSON
-//! 逐值相等，搬迁不变式）。阶段 2 各域 agent 在此逐域追加加载。
+//! Fields are `Option`: `None` means that domain hasn't been data-driven
+//! yet, or the data directory is missing that file — the consumer
+//! (pobr-build's `BuildData::load`) falls back to `Default` for `None`
+//! (the fallback is value-equal to the JSON, a migration invariant). Each
+//! phase-2 domain agent appends its own loading here, domain by domain.
 
 use std::collections::HashMap;
 
@@ -24,26 +27,30 @@ use pobr_data::catalog::weapon_types::WeaponTypeTable;
 
 use crate::{GameData, LoadError};
 
-/// 解析规则占位（起由 `overlay/mod_parser_rules.json` 等填充，
-/// 真实类型落 `pobr_data::catalog`）。
+/// A placeholder for parser rules (to be filled in from
+/// `overlay/mod_parser_rules.json` etc.; the real type lives in
+/// `pobr_data::catalog`).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ParserRules;
 
-/// config 选项目录（`overlay/config_options.json`）。
+/// The config options catalog (`overlay/config_options.json`).
 ///
-/// `options` 保持文件序（`var` 升序，byte-stable）；`by_var` 为 var → 下标
-/// 索引，供 `config_interpreter` 消费方按 XML `<Input name>` 直查条目。
+/// `options` keeps the file's order (ascending by `var`, byte-stable);
+/// `by_var` is a var → index map, for `config_interpreter` consumers to
+/// look up an entry directly by the XML `<Input name>`.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ConfigCatalog {
-    /// 全部条目（schema 见 [`pobr_data::catalog::config_def`]）。
+    /// All entries (schema in [`pobr_data::catalog::config_def`]).
     pub options: Vec<ConfigOptionDef>,
-    /// `var` → [`Self::options`] 下标。
+    /// `var` → index into [`Self::options`].
     pub by_var: HashMap<String, usize>,
 }
 
 impl ConfigCatalog {
-    /// 从条目列表构建（同 `var` 重复时后写覆盖——overlay 产物按 var 唯一，
-    /// 此分支实际不可达，保守取后写与 loader 容错一致）。
+    /// Builds from an entry list (a duplicate `var` has the later one win
+    /// — the overlay's output has unique vars, so this branch shouldn't
+    /// actually be reachable; taking the later write is a conservative
+    /// choice consistent with the loader's general error tolerance).
     pub fn new(options: Vec<ConfigOptionDef>) -> Self {
         let by_var = options
             .iter()
@@ -53,59 +60,71 @@ impl ConfigCatalog {
         Self { options, by_var }
     }
 
-    /// 按 `var` 查条目。
+    /// Looks up an entry by `var`.
     pub fn get(&self, var: &str) -> Option<&ConfigOptionDef> {
         self.by_var.get(var).map(|&index| &self.options[index])
     }
 
-    /// 未通过抽取期 oracle 对拍的条目数（`verified:false`，parity 报表单列，
-    /// 监控口径）。
+    /// The count of entries that didn't pass oracle reconciliation at
+    /// extraction time (`verified:false`, listed separately in the parity
+    /// report, for monitoring).
     pub fn unverified_count(&self) -> usize {
         self.options.iter().filter(|o| !o.verified).count()
     }
 }
 
-/// 注入计算引擎的规则/常量聚合。
+/// The rule/constant aggregate injected into the calc engine.
 ///
-/// 字段为 `None` 表示对应域尚未数据化（或数据目录缺该文件）——消费方在过渡期
-/// 回退 `Default` fallback（与硬编码路径逐值一致）。
+/// A `None` field means the corresponding domain hasn't been data-driven
+/// yet (or the data directory is missing that file) — during the
+/// transition, consumers fall back to `Default` (value-equal to the
+/// hardcoded path).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct RuleSet {
-    /// modifier 文本解析规则（forms/name_map/flag_phrases/tag_phrases…）。
+    /// Modifier-text parsing rules (forms/name_map/flag_phrases/tag_phrases…).
     pub parser_rules: Option<ParserRules>,
-    /// 机制公式消费的游戏常量。
+    /// Game constants consumed by mechanic formulas.
     pub game_constants: Option<GameConstantsDef>,
-    /// 角色等级/属性派生常量。
+    /// Character level/attribute-derived constants.
     pub character_constants: Option<CharacterConstantsDef>,
-    /// 范围珠宝环形档。
-    /// 消费侧在 pobr-build（树几何，pobr-core 不消费此域，不入 `RuntimeConstants`）。
+    /// Radius-jewel ring bands.
+    /// Consumed on the pobr-build side (tree geometry; pobr-core doesn't
+    /// consume this domain, so it's not part of `RuntimeConstants`).
     pub jewel_radii: Option<JewelRadiiDef>,
-    /// 怪物百级缩放表。
+    /// Monster per-level scaling table.
     pub monster_scaling: Option<MonsterScalingTable>,
-    /// 敌人档位预设。
+    /// Enemy tier presets.
     pub enemy_presets: Option<EnemyPresetsTable>,
-    /// per-class 空手基底表。
+    /// Per-class unarmed base table.
     pub unarmed_data: Option<UnarmedDataTable>,
-    /// 武器类型表（持握/近战条件与武器类伤害关键词查表）。
+    /// Weapon type table (grip/melee condition checks and weapon-class
+    /// damage keyword lookup).
     pub weapon_types: Option<WeaponTypeTable>,
-    /// config 选项目录（声明式 effects + imply_conditions）。
+    /// Config options catalog (declarative effects + imply_conditions).
     pub config_catalog: Option<ConfigCatalog>,
-    /// 取整精度例外表（ScaleAddMod / MORE 聚合精度，接通；
-    /// 消费侧 = pobr-core `HighPrecisionRules`）。
+    /// Rounding-precision exception table (ScaleAddMod / MORE aggregation
+    /// precision, wired up; consumed by pobr-core's `HighPrecisionRules`).
     pub high_precision_mods: Option<HighPrecisionModsDef>,
-    /// special 词条模板（`overlay/special_mods.json` + `generated/special_derived.json`
-    /// 拼接，接通数据面）。消费侧（orchestrator）`SpecialModRules::compile`
-    /// 一次后经 `parse_mod_with_rules` 整行查表；缺表 → `None`（消费方走纯通用解析，
-    /// 行为不变）。两表 entries 顺序拼接、id 冲突由 compile 期 fail-fast。
+    /// Special mod-line templates (the concatenation of
+    /// `overlay/special_mods.json` + `generated/special_derived.json`,
+    /// wired into the data plane). Consumer (the orchestrator): compiles
+    /// once via `SpecialModRules::compile`, then does a whole-line lookup
+    /// through `parse_mod_with_rules`; a missing table → `None` (the
+    /// consumer falls back to pure generic parsing, unchanged behavior).
+    /// The two tables' entries are concatenated in order; an id collision
+    /// is a fail-fast at compile time.
     pub special_mods: Option<Vec<SpecialTemplateDef>>,
 }
 
 impl GameData {
-    /// 加载 RuleSet 聚合：逐域加载已数据化的 JSON（`game_constants`）。
+    /// Loads the RuleSet aggregate: loads each already-data-driven JSON
+    /// domain (`game_constants`) one by one.
     ///
-    /// 缺文件（`LoadError::Io`，如旧数据包/测试目录）按「该域未数据化」处理返回
-    /// `None`（消费方回退 `Default`）；JSON 解析错误（`LoadError::Parse`）则向上
-    /// 抛出——文件存在但坏了不允许静默回退。
+    /// A missing file (`LoadError::Io`, e.g. an old data pack/test
+    /// directory) is treated as "this domain isn't data-driven yet" and
+    /// returns `None` (the consumer falls back to `Default`); a JSON parse
+    /// error (`LoadError::Parse`) propagates upward instead — a file that
+    /// exists but is broken isn't allowed to silently fall back.
     pub fn load_ruleset(&self) -> Result<RuleSet, LoadError> {
         let game_constants = match self.game_constants() {
             Ok(v) => Some(v),
@@ -132,7 +151,8 @@ impl GameData {
             Err(LoadError::Io { .. }) => None,
             Err(e) => return Err(e),
         };
-        // 域 loader 返回 Vec（W2 口径），此处包成注入用表 newtype。
+        // The domain loader returns a Vec (W2's convention); wrapped here
+        // into the injection-table newtype.
         let unarmed_data = match self.unarmed_data() {
             Ok(v) => Some(UnarmedDataTable(v)),
             Err(LoadError::Io { .. }) => None,
@@ -143,7 +163,8 @@ impl GameData {
             Err(LoadError::Io { .. }) => None,
             Err(e) => return Err(e),
         };
-        // 缺表容忍：表不存在 → None，消费方回退旧 parse_config 路径。
+        // Missing-table tolerance: table absent → None, the consumer falls
+        // back to the old parse_config path.
         let config_catalog = match self.config_options() {
             Ok(v) => Some(ConfigCatalog::new(v.options)),
             Err(LoadError::Io { .. }) => None,
@@ -154,11 +175,15 @@ impl GameData {
             Err(LoadError::Io { .. }) => None,
             Err(e) => return Err(e),
         };
-        // special 词条模板：overlay（人工策展，居先）+ generated（keystone 派生）
-        // + generated（vendor 批量抽取 V0）三源拼接。全缺 → None（消费方走纯通用
-        // 解析）；任一存在则按此序拼接 entries（id 冲突由消费侧
-        // `SpecialModRules::compile` fail-fast，不在加载期去重——vendor 批次在
-        // 抽取期已对前两源做 vendor_pattern/pattern 去重）。
+        // Special mod-line templates: overlay (hand-curated, takes
+        // priority) + generated (keystone-derived) + generated (batch
+        // vendor extraction V0), concatenated from three sources. All
+        // absent → None (the consumer falls back to pure generic parsing);
+        // if any is present, concatenate entries in this order (an id
+        // collision is caught fail-fast by the consumer's
+        // `SpecialModRules::compile`, not deduplicated at load time — the
+        // vendor batch was already deduplicated against the first two
+        // sources by vendor_pattern/pattern at extraction time).
         let special_overlay = self.special_mods()?;
         let special_derived = self.special_derived()?;
         let special_vendor = self.special_vendor()?;
@@ -191,7 +216,8 @@ impl GameData {
 mod tests {
     use crate::GameData;
 
-    /// 数据目录不存在时：load_ruleset 仍成功，各域为未填充（None）→ 消费方走 Default。
+    /// When the data directory doesn't exist: load_ruleset still succeeds,
+    /// with every domain unfilled (None) → the consumer falls back to Default.
     #[test]
     fn missing_dir_ruleset_loads_with_all_domains_unfilled() {
         let ruleset = GameData::new("nonexistent-dir").load_ruleset().unwrap();
@@ -208,9 +234,12 @@ mod tests {
         assert!(ruleset.special_mods.is_none());
     }
 
-    /// 仓库数据目录：special_mods 域已接通（overlay 策展条目 + generated keystone
-    /// 派生拼接，消费激活后过滤掉降级 shadow 条目）。仅断言非空且条数
-    /// ≥ overlay 基数——具体计数随策展批次增长，不钉死。
+    /// The repo data directory: the special_mods domain is wired up (the
+    /// overlay's curated entries plus generated's keystone-derived ones
+    /// concatenated; once the consumer activates, downgraded shadow
+    /// entries get filtered out). Only asserts non-empty and count ≥ the
+    /// overlay's base count — the exact count grows with the curation
+    /// batches, so it's not pinned.
     #[test]
     fn repo_data_ruleset_loads_special_mods() {
         let data = GameData::new(crate::current_data_dir());
@@ -223,8 +252,8 @@ mod tests {
         );
     }
 
-    /// 仓库数据目录：high_precision_mods 域已接通（
-    /// `overlay/high_precision_mods.json` ← vendor Data.lua:413-530）。
+    /// The repo data directory: the high_precision_mods domain is wired up
+    /// (`overlay/high_precision_mods.json` ← vendor Data.lua:413-530).
     #[test]
     fn repo_data_ruleset_loads_high_precision_mods() {
         let data = GameData::new(crate::current_data_dir());
@@ -236,8 +265,9 @@ mod tests {
         assert_eq!(loaded.mods.len(), 38, "vendor highPrecisionMods 38 条");
     }
 
-    /// 仓库数据目录：game_constants 域已接通（Some），且与 Default fallback 逐值相等
-    /// （搬迁不变式：注入与回退两条路径输出一致）。
+    /// The repo data directory: the game_constants domain is wired up
+    /// (Some), and value-equal to the Default fallback (a migration
+    /// invariant: both the injected and fallback paths produce the same output).
     #[test]
     fn repo_data_ruleset_loads_game_constants_equal_to_default() {
         let data = GameData::new(crate::current_data_dir());
@@ -250,8 +280,9 @@ mod tests {
         );
     }
 
-    /// 仓库数据目录：character_constants 域已接通（Some），且与 Default fallback 逐值
-    /// 相等（搬迁不变式：注入与回退两条路径输出一致）。
+    /// The repo data directory: the character_constants domain is wired up
+    /// (Some), and value-equal to the Default fallback (a migration
+    /// invariant: both the injected and fallback paths produce the same output).
     #[test]
     fn repo_data_ruleset_loads_character_constants_equal_to_default() {
         let data = GameData::new(crate::current_data_dir());
@@ -266,8 +297,9 @@ mod tests {
         );
     }
 
-    /// 仓库数据目录：jewel_radii 域已接通（Some），且与 Default fallback 逐值相等
-    /// （搬迁不变式：注入与回退两条路径输出一致）。
+    /// The repo data directory: the jewel_radii domain is wired up (Some),
+    /// and value-equal to the Default fallback (a migration invariant:
+    /// both the injected and fallback paths produce the same output).
     #[test]
     fn repo_data_ruleset_loads_jewel_radii_equal_to_default() {
         let data = GameData::new(crate::current_data_dir());
@@ -280,8 +312,10 @@ mod tests {
         );
     }
 
-    /// 仓库数据目录：monster_scaling 域已接通（Some），且与 Default fallback **整表
-    /// 逐值相等**（含 vendor-only ally 两表；搬迁不变式：注入/回退两条路径输出一致）。
+    /// The repo data directory: the monster_scaling domain is wired up
+    /// (Some), and the **whole table** is value-equal to the Default
+    /// fallback (including the two vendor-only ally tables; a migration
+    /// invariant: both the injected/fallback paths produce the same output).
     #[test]
     fn repo_data_ruleset_loads_monster_scaling_equal_to_default() {
         let data = GameData::new(crate::current_data_dir());
@@ -294,8 +328,10 @@ mod tests {
         );
     }
 
-    /// 仓库数据目录：unarmed_data 域已接通（Some），且与 Default fallback **整表
-    /// 逐值相等**（含 vendor-only class_id/weapon_type 字段；搬迁不变式）。
+    /// The repo data directory: the unarmed_data domain is wired up
+    /// (Some), and the **whole table** is value-equal to the Default
+    /// fallback (including the vendor-only class_id/weapon_type fields; a
+    /// migration invariant).
     #[test]
     fn repo_data_ruleset_loads_unarmed_data_equal_to_default() {
         let data = GameData::new(crate::current_data_dir());
@@ -308,8 +344,10 @@ mod tests {
         );
     }
 
-    /// 仓库数据目录：weapon_types 域已接通（Some），且与 Default fallback **整表
-    /// 逐值相等**（19 条 vendor weaponTypeInfo 含 label；搬迁不变式）。
+    /// The repo data directory: the weapon_types domain is wired up
+    /// (Some), and the **whole table** is value-equal to the Default
+    /// fallback (19 entries of vendor weaponTypeInfo including label; a
+    /// migration invariant).
     #[test]
     fn repo_data_ruleset_loads_weapon_types_equal_to_default() {
         let data = GameData::new(crate::current_data_dir());
@@ -322,8 +360,10 @@ mod tests {
         );
     }
 
-    /// 仓库数据目录：config_catalog 域已接通——条目数覆盖 vendor 542+、
-    /// `by_var` 索引与条目一一对应、典型条目可查；并打印 `verified:false` 条目数
+    /// The repo data directory: the config_catalog domain is wired up —
+    /// the entry count covers vendor's 542+, `by_var` indices correspond
+    /// 1:1 with entries, a typical entry is look-up-able; and prints the
+    /// count of `verified:false` entries
     #[test]
     fn repo_data_ruleset_loads_config_catalog() {
         let data = GameData::new(crate::current_data_dir());
@@ -334,9 +374,10 @@ mod tests {
             "config 条目数 {} 低于 vendor 静态条目数 542",
             catalog.options.len()
         );
-        // vendor ConfigOptions.lua 存在 1 处同 var 条目（conditionEnemyExitedPresenceRecently
-        // 同 var 承载 Exited/Entered 两条，vendor 侧本身共用同一输入键）——by_var 按
-        // 后写覆盖收敛为唯一索引。
+        // Vendor's ConfigOptions.lua has one place with a shared var
+        // (conditionEnemyExitedPresenceRecently's var carries both the
+        // Exited and Entered entries — vendor itself reuses the same input
+        // key) — by_var converges to a unique index by taking the later write.
         let unique_vars: std::collections::BTreeSet<&str> =
             catalog.options.iter().map(|o| o.var.as_str()).collect();
         assert_eq!(
@@ -356,7 +397,8 @@ mod tests {
         );
         assert!(catalog.get("不存在的var").is_none());
 
-        // A6 监控：verified:false 条目数（运行时照用，parity 报告单列）。
+        // A6 monitoring: the count of verified:false entries (used as-is at
+        // runtime, listed separately in the parity report).
         let unverified = catalog.unverified_count();
         println!(
             "config_catalog verified:false 条目数 = {unverified} / {}",
@@ -368,8 +410,10 @@ mod tests {
         );
     }
 
-    /// 仓库数据目录：enemy_presets 域已接通（Some），且与 Default fallback **整表
-    /// 逐值相等**（含 vendor-only mod 组/占位列；搬迁不变式）。
+    /// The repo data directory: the enemy_presets domain is wired up
+    /// (Some), and the **whole table** is value-equal to the Default
+    /// fallback (including vendor-only mod groups/placeholder columns; a
+    /// migration invariant).
     #[test]
     fn repo_data_ruleset_loads_enemy_presets_equal_to_default() {
         let data = GameData::new(crate::current_data_dir());

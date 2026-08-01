@@ -1,8 +1,9 @@
-//! 有效暴击管线（resolve_crit）单测——逐项对齐 PoB2 `CalcOffence.lua` 暴击段。
+//! Unit tests for the effective-crit pipeline (resolve_crit) -- pinned item by item
+//! against PoB2 `CalcOffence.lua`'s crit section.
 //!
-//! 覆盖 gap：crit-resolve-refactor / crit-chance-cap-queryable / crit-mode-effective /
+//! Covers gaps: crit-resolve-refactor / crit-chance-cap-queryable / crit-mode-effective /
 //! crit-flag-no-crit-multiplier / crit-flag-lucky / crit-flag-bifurcate /
-//! crit-flag-inevitable / crit-enemy-selfcrit / crit-traced-inc-more-untraced。
+//! crit-flag-inevitable / crit-enemy-selfcrit / crit-traced-inc-more-untraced.
 
 use pobr_core::calc::crit::resolve_crit;
 use pobr_core::calc::{
@@ -19,17 +20,18 @@ fn approx(a: f64, b: f64) {
     assert!((a - b).abs() < EPS, "expected {b}, got {a}");
 }
 
-/// 仅含 CriticalStrikeChance BASE 的玩家 db。
+/// A player db containing only a CriticalStrikeChance BASE mod.
 fn player_with_base_crit(pct: f64) -> ModDb {
     let mut db = ModDb::new();
     db.add_mod(Modifier::number("CriticalStrikeChance", ModType::Base, pct));
     db
 }
 
-// 基线 / cap
+// Baseline / cap
 
-/// 无任何旗标 / 敌方 / mode_effective 时，resolve_crit 与历史逐字一致：
-/// crit_chance = base/100，cap=100%，crit_mult = 1 + (100+0)/100 = 2.0。
+/// With no flags / enemy mods / mode_effective, resolve_crit matches the legacy
+/// formula exactly: crit_chance = base/100, cap=100%,
+/// crit_mult = 1 + (100+0)/100 = 2.0.
 #[test]
 fn baseline_matches_legacy_formula() {
     let db = player_with_base_crit(40.0);
@@ -44,19 +46,20 @@ fn baseline_matches_legacy_formula() {
     approx(crit.effect, 1.4);
 }
 
-/// CritChanceCap：默认 100%；注入 Override 后上限生效（gap crit-chance-cap-queryable）。
+/// CritChanceCap: defaults to 100%; injecting an Override makes the cap take
+/// effect (gap crit-chance-cap-queryable).
 #[test]
 fn crit_chance_cap_default_100_and_override() {
     let cfg = CalcConfig::attack();
     let enemy = ModDb::new();
 
-    // 200% 原始几率默认被 100% cap → chance=1.0。
+    // A raw 200% chance is capped at 100% by default -> chance=1.0.
     let db = player_with_base_crit(200.0);
     let crit = resolve_crit(&db, &enemy, &cfg, 1.0, 0.0, false);
     approx(crit.chance, 1.0);
     approx(crit.pre_effective_chance, 1.0);
 
-    // Override CritChanceCap = 50 → 上限 50%。
+    // Override CritChanceCap = 50 -> cap becomes 50%.
     let mut capped = player_with_base_crit(200.0);
     capped.add_mod(Modifier::number("CritChanceCap", ModType::Override, 50.0));
     let crit = resolve_crit(&capped, &enemy, &cfg, 1.0, 0.0, false);
@@ -64,9 +67,9 @@ fn crit_chance_cap_default_100_and_override() {
     approx(crit.pre_effective_chance, 0.50);
 }
 
-/// CritChanceBase OVERRIDE（vendor CalcOffence.lua:3667-3676 baseCritOverride）：
-/// 直接**替换**底材基础暴击（如 Blood Mage『Sunder the Flesh』= 15%），
-/// 与 BASE/INC 正常叠乘。
+/// CritChanceBase OVERRIDE (vendor CalcOffence.lua:3667-3676 baseCritOverride):
+/// directly **replaces** the base item's base crit chance (e.g. Blood Mage's
+/// "Sunder the Flesh" = 15%), then stacks normally with BASE/INC.
 #[test]
 fn crit_chance_base_override_replaces_weapon_base() {
     let cfg = CalcConfig::attack();
@@ -80,11 +83,11 @@ fn crit_chance_base_override_replaces_weapon_base() {
         100.0,
     ));
 
-    // 底材 7%（gem 基础暴击）被 15% 覆盖：15 × (1+100/100) = 30%。
+    // The base item's 7% (gem base crit) is overridden to 15%: 15 x (1+100/100) = 30%.
     let crit = resolve_crit(&db, &enemy, &cfg, 1.0, 0.07, false);
     approx(crit.chance, 0.30);
 
-    // 无 OVERRIDE 时维持底材：7 × 2 = 14%。
+    // Without OVERRIDE, the base item value is kept: 7 x 2 = 14%.
     let mut plain = ModDb::new();
     plain.add_mod(Modifier::number(
         "CriticalStrikeChance",
@@ -95,9 +98,10 @@ fn crit_chance_base_override_replaces_weapon_base() {
     approx(crit.chance, 0.14);
 }
 
-// mode_effective 命中降级
+// mode_effective hit-chance downgrade
 
-/// mode_effective=true 时有效暴击 = 暴击几率 × 命中率；PreEffective 保留降级前值。
+/// With mode_effective=true, effective crit = crit chance x hit chance;
+/// PreEffective retains the value before the downgrade.
 #[test]
 fn mode_effective_downgrades_crit_by_hit_chance() {
     let db = player_with_base_crit(50.0);
@@ -105,13 +109,14 @@ fn mode_effective_downgrades_crit_by_hit_chance() {
     let cfg = CalcConfig::attack().with_mode_effective(true);
 
     let crit = resolve_crit(&db, &enemy, &cfg, 0.6, 0.0, true);
-    // effective = 50% × 0.6 = 30%。
+    // effective = 50% x 0.6 = 30%.
     approx(crit.chance, 0.30);
-    // PreEffective 是降级前的 cap 后值 = 50%。
+    // PreEffective is the post-cap value before the downgrade = 50%.
     approx(crit.pre_effective_chance, 0.50);
 }
 
-/// mode_effective=false 时不做命中降级（面板口径，向后兼容）。
+/// With mode_effective=false, no hit-chance downgrade is applied (panel semantics,
+/// for backward compatibility).
 #[test]
 fn non_effective_skips_hit_downgrade() {
     let db = player_with_base_crit(50.0);
@@ -124,7 +129,8 @@ fn non_effective_skips_hit_downgrade() {
 
 // NoCritMultiplier
 
-/// NoCritMultiplier flag → 爆伤 = 1.0，任何暴击几率下 crit_effect = 1（总击中 == 非暴击）。
+/// NoCritMultiplier flag -> crit damage = 1.0, so crit_effect = 1 regardless of crit
+/// chance (total hit == non-crit).
 #[test]
 fn no_crit_multiplier_flag_neutralizes_bonus() {
     let mut db = player_with_base_crit(50.0);
@@ -142,7 +148,7 @@ fn no_crit_multiplier_flag_neutralizes_bonus() {
     approx(crit.effect, 1.0);
 }
 
-/// 端到端：NoCritMultiplier 下 total_hit_avg == 非暴击平均击中。
+/// End-to-end: with NoCritMultiplier, total_hit_avg == the non-crit average hit.
 #[test]
 fn no_crit_multiplier_end_to_end_total_hit_equals_non_crit() {
     let mut db = player_with_base_crit(75.0);
@@ -160,7 +166,7 @@ fn no_crit_multiplier_end_to_end_total_hit_equals_non_crit() {
 
 // Lucky
 
-/// CritChanceLucky flag（mode_effective）：30% → 1-(1-0.3)² = 0.51。
+/// CritChanceLucky flag (mode_effective): 30% -> 1-(1-0.3)^2 = 0.51.
 #[test]
 fn lucky_crit_chance_30_to_51() {
     let mut db = player_with_base_crit(30.0);
@@ -168,12 +174,12 @@ fn lucky_crit_chance_30_to_51() {
     let enemy = ModDb::new();
     let cfg = CalcConfig::spell().with_mode_effective(true);
 
-    // 法术必中 → hit_chance 1.0，Lucky 在降级之后。
+    // Spells always hit -> hit_chance 1.0, Lucky is applied after the downgrade.
     let crit = resolve_crit(&db, &enemy, &cfg, 1.0, 0.0, true);
     approx(crit.chance, 0.51);
 }
 
-/// Lucky 仅 mode_effective 下生效（PoB2 gate）。
+/// Lucky only takes effect under mode_effective (PoB2 gate).
 #[test]
 fn lucky_inactive_without_mode_effective() {
     let mut db = player_with_base_crit(30.0);
@@ -187,7 +193,7 @@ fn lucky_inactive_without_mode_effective() {
 
 // Bifurcate
 
-/// BifurcateCrit flag（mode_effective）：50% → 1-(1-0.5)² = 0.75。
+/// BifurcateCrit flag (mode_effective): 50% -> 1-(1-0.5)^2 = 0.75.
 #[test]
 fn bifurcate_crit_chance_50_to_75() {
     let mut db = player_with_base_crit(50.0);
@@ -199,11 +205,12 @@ fn bifurcate_crit_chance_50_to_75() {
     approx(crit.chance, 0.75);
 }
 
-/// Bifurcate 额外爆伤：条件概率「至少一次暴击时两次都暴击」额外加权一份 extra
-/// （vendor CalcOffence.lua `conditionalBifurcateChance`）。
-/// base_crit=50%，extra 基础 = (100)/100 = 1.0；
-/// bifurcateMultiChance = 50²/100 = 25；有效暴击 = 75；
-/// conditional = 25/75 = 1/3；extra' = 1.0×(1+1/3) → crit_mult = 2.3333。
+/// Bifurcate extra crit damage: the conditional probability "both hits crit given
+/// at least one crits" adds an extra weighting of `extra` (vendor CalcOffence.lua's
+/// `conditionalBifurcateChance`).
+/// base_crit=50%, base extra = (100)/100 = 1.0;
+/// bifurcateMultiChance = 50^2/100 = 25; effective crit = 75;
+/// conditional = 25/75 = 1/3; extra' = 1.0x(1+1/3) -> crit_mult = 2.3333.
 #[test]
 fn bifurcate_adds_extra_crit_multiplier() {
     let mut db = player_with_base_crit(50.0);
@@ -217,9 +224,11 @@ fn bifurcate_adds_extra_crit_multiplier() {
 
 // Inevitable
 
-/// InevitableCriticalHits flag（mode_effective）：crit 置 100%，且按几何级数折算 less 爆伤。
-/// effective crit=50%（spell, hit 1.0）→ lessMore = round((1 - m)*-100) = -27（见 PoB2 4 项截断）。
-/// crit_mult = 1 + (100/100)*(1 + (-27)/100) = 1 + 0.73 = 1.73。
+/// InevitableCriticalHits flag (mode_effective): forces crit to 100%, and applies a
+/// geometric-series discount to crit damage as a less modifier.
+/// effective crit=50% (spell, hit 1.0) -> lessMore = round((1 - m)*-100) = -27 (see
+/// PoB2's 4-term truncation).
+/// crit_mult = 1 + (100/100)*(1 + (-27)/100) = 1 + 0.73 = 1.73.
 #[test]
 fn inevitable_forces_100_and_geometric_less_bonus() {
     let mut db = player_with_base_crit(50.0);
@@ -229,17 +238,17 @@ fn inevitable_forces_100_and_geometric_less_bonus() {
 
     let crit = resolve_crit(&db, &enemy, &cfg, 1.0, 0.0, true);
     approx(crit.chance, 1.0);
-    // ±0.1% 容差（题面要求）。
+    // +-0.1% tolerance (per the spec).
     assert!(
         (crit.multiplier - 1.73).abs() < 1e-3,
         "inevitable crit_mult expected ~1.73, got {}",
         crit.multiplier
     );
-    // crit_effect = (1-1) + 1*1.73 = 1.73。
+    // crit_effect = (1-1) + 1*1.73 = 1.73.
     assert!((crit.effect - 1.73).abs() < 1e-3);
 }
 
-/// Inevitable 在 100% effective crit 下不折损（lessMore=0 → crit_mult=2.0）。
+/// Inevitable applies no discount at 100% effective crit (lessMore=0 -> crit_mult=2.0).
 #[test]
 fn inevitable_at_full_crit_no_penalty() {
     let mut db = player_with_base_crit(100.0);
@@ -254,8 +263,8 @@ fn inevitable_at_full_crit_no_penalty() {
 
 // enemy SelfCrit
 
-/// 敌方 SelfCritChance（暴击弱点）加在基础暴击上（mode_effective）：
-/// 玩家 base 20% + enemy 10% = 30% → chance 0.30。
+/// Enemy SelfCritChance (a crit-weakness debuff) adds onto the base crit chance
+/// (mode_effective): player base 20% + enemy 10% = 30% -> chance 0.30.
 #[test]
 fn enemy_self_crit_chance_raises_base() {
     let db = player_with_base_crit(20.0);
@@ -267,7 +276,7 @@ fn enemy_self_crit_chance_raises_base() {
     approx(crit.chance, 0.30);
 }
 
-/// 敌方 SelfCritChance 不在 mode_effective=false 下生效（面板口径）。
+/// Enemy SelfCritChance has no effect when mode_effective=false (panel semantics).
 #[test]
 fn enemy_self_crit_chance_ignored_when_not_effective() {
     let db = player_with_base_crit(20.0);
@@ -279,8 +288,8 @@ fn enemy_self_crit_chance_ignored_when_not_effective() {
     approx(crit.chance, 0.20);
 }
 
-/// 敌方 SelfCritMultiplier（标记等，BASE 百分点）抬升爆伤：
-/// base extra=1.0；+ enemy 50/100 = 1.5 → crit_mult = 2.5。
+/// Enemy SelfCritMultiplier (e.g. from a mark, a BASE percentage) raises crit
+/// damage: base extra=1.0; + enemy 50/100 = 1.5 -> crit_mult = 2.5.
 #[test]
 fn enemy_self_crit_multiplier_raises_bonus() {
     let db = player_with_base_crit(100.0);
@@ -292,7 +301,8 @@ fn enemy_self_crit_multiplier_raises_bonus() {
     approx(crit.multiplier, 2.5);
 }
 
-/// 端到端（vs enemy）：mode_effective 下敌方 SelfCritChance 提升 total_hit_avg。
+/// End-to-end (vs enemy): under mode_effective, enemy SelfCritChance raises
+/// total_hit_avg.
 #[test]
 fn enemy_self_crit_chance_increases_total_hit_end_to_end() {
     let db = player_with_base_crit(0.0);
@@ -306,15 +316,17 @@ fn enemy_self_crit_chance_increases_total_hit_end_to_end() {
     };
     let cfg = CalcConfig::spell().with_mode_effective(true);
     let out = calculate_minimal_vs_enemy(&db, &enemy, &cfg, &input);
-    // 100% 敌方暴击弱点 → 全暴击，crit_mult=2.0，total_hit_avg = 100*2 = 200。
+    // 100% enemy crit-weakness -> always crits, crit_mult=2.0, total_hit_avg =
+    // 100*2 = 200.
     approx(out.crit_chance, 1.0);
     approx(out.total_hit_avg, 200.0);
 }
 
-// traced 归因
+// traced attribution
 
-/// traced 路径把 CritChance / CritMultiplier 的 inc/more 贡献接入 TraceGraph：
-/// source_ancestors(crit_node) 应能找到 inc 与 more 的来源。
+/// The traced path wires CritChance / CritMultiplier's inc/more contributions into
+/// the TraceGraph: source_ancestors(crit_node) should be able to find both the inc
+/// and more sources.
 #[test]
 fn traced_records_inc_and_more_sources() {
     let mut db = ModDb::new();
@@ -366,7 +378,8 @@ fn traced_records_inc_and_more_sources() {
     );
 }
 
-/// traced 与 plain resolve_crit 数值一致（保证两路径不漂移）。
+/// traced and plain resolve_crit produce identical values (guards against the two
+/// paths drifting apart).
 #[test]
 fn traced_matches_plain() {
     let mut db = player_with_base_crit(35.0);
@@ -393,7 +406,8 @@ fn traced_matches_plain() {
     approx(traced.effect, plain.effect);
 }
 
-/// calculate_minimal_traced 整体 DPS 与 plain 一致（端到端不漂移，含 crit 接线后）。
+/// calculate_minimal_traced's overall DPS matches plain (end-to-end, no drift, now
+/// that crit is wired in).
 #[test]
 fn calculate_minimal_traced_dps_unchanged() {
     let mut db = player_with_base_crit(25.0);

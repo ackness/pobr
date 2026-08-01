@@ -1,21 +1,26 @@
-//! 节点坐标推导：从 PoB2 vendor `tree.lua` 抽取 `groups` 中心坐标 + orbit 常量 +
-//! 节点自身的 group/orbit/orbitIndex，按 PoB `PassiveTree.lua` 公式计算每个节点的平面
-//! (x, y)，按 `skill` id 回填入既有 `passive_tree.json`（保留全部现有字段，仅新增 x/y）。
+//! Node coordinate derivation: extracts `groups` center coordinates + orbit
+//! constants + each node's own group/orbit/orbitIndex from PoB2 vendor
+//! `tree.lua`, computes each node's planar (x, y) using PoB's
+//! `PassiveTree.lua` formula, and backfills them into the existing
+//! `passive_tree.json` by `skill` id (keeping every existing field, only adding x/y).
 //!
-//! 关键：**节点→group/orbit/orbitIndex 一律取自 `tree.lua` 的 `nodes` 块**，不能用
-//! `passive_tree.json` 现有的 `group`（源自 GGG `data.json`，其 group 编号与 PoB
-//! `tree.lua` 的 `groups` 表键**不一致**——同一 skill 在两边 group 号不同）。坐标的三个
-//! 输入（groups 中心、orbit 常量、节点 orbit 槽位）必须全部来自同一份 `tree.lua`。
+//! Key point: **node -> group/orbit/orbitIndex must always come from
+//! `tree.lua`'s `nodes` block**, never from `passive_tree.json`'s existing
+//! `group` (which comes from GGG's `data.json`, whose group numbering
+//! **doesn't match** PoB `tree.lua`'s `groups` table keys — the same skill
+//! has a different group number on each side). All three coordinate inputs
+//! (groups' centers, orbit constants, a node's orbit slot) must come from the same `tree.lua`.
 //!
-//! PoB2 `Classes/PassiveTree.lua:ProcessNode` 坐标公式（`scaleImage = 1`）：
+//! PoB2's `Classes/PassiveTree.lua:ProcessNode` coordinate formula (`scaleImage = 1`):
 //! ```text
-//! angle       = orbitAnglesByOrbit[orbit + 1][orbitIndex + 1]   -- 预算弧度表
+//! angle       = orbitAnglesByOrbit[orbit + 1][orbitIndex + 1]   -- a precomputed radian table
 //! orbitRadius = orbitRadii[orbit + 1]
 //! node.x = group.x + sin(angle) * orbitRadius
 //! node.y = group.y - cos(angle) * orbitRadius
 //! ```
-//! 源 `tree.lua` = `vendor/PathOfBuilding-PoE2/src/TreeData/0_5/tree.lua`，
-//! 即 GGG 官方树导出经 PoB 处理后的完整布局数据（含 `groups`/`constants`/`nodes`）。
+//! Source `tree.lua` = `vendor/PathOfBuilding-PoE2/src/TreeData/0_5/tree.lua`,
+//! i.e. GGG's official tree export after PoB's processing into full layout
+//! data (including `groups`/`constants`/`nodes`).
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -25,37 +30,38 @@ use pobr_data::catalog::PassiveNodeDef;
 use crate::write_pretty;
 
 pub struct TreeCoordsArgs {
-    /// vendor `tree.lua`（PoB2 完整树数据）。
+    /// vendor `tree.lua` (PoB2's full tree data).
     pub tree_lua: PathBuf,
-    /// `data/<patch>/` 所在根目录（与 `--out` 一致）。
+    /// The root directory that contains `data/<patch>/` (matches `--out`).
     pub out: PathBuf,
     pub patch: String,
 }
 
-/// 节点在 orbit 布局中的位置（取自 `tree.lua` nodes 块）。
+/// A node's position within the orbit layout (taken from `tree.lua`'s nodes block).
 struct NodeOrbit {
     group: u32,
     orbit: u32,
     orbit_index: u32,
-    /// vendor `applyToArmour=true`（Smith of Kitava 身甲连接 notable 标记，
-    /// 同一 nodes 块顶层字段，顺路抽取回填 `PassiveNodeDef::apply_to_armour`）。
+    /// Vendor's `applyToArmour=true` (the Smith of Kitava body-armour
+    /// connection notable marker; extracted from the same nodes-block
+    /// top-level field, backfilled into `PassiveNodeDef::apply_to_armour` along the way).
     apply_to_armour: bool,
 }
 
-/// 从 vendor `tree.lua` 解析出的布局常量、group 坐标与节点 orbit 槽位。
+/// Layout constants, group coordinates, and node orbit slots parsed from vendor `tree.lua`.
 struct TreeLayout {
-    /// group id → (x, y) 中心坐标。
+    /// group id -> (x, y) center coordinates.
     groups: BTreeMap<u32, (f64, f64)>,
-    /// orbit 半径表，索引 = orbit（已 0-based，对齐 `node.orbit`）。
+    /// The orbit radius table, indexed by orbit (already 0-based, matching `node.orbit`).
     orbit_radii: Vec<f64>,
-    /// 每个 orbit 的预算角度表（弧度），索引 = orbit，内层索引 = orbit_index。
+    /// Each orbit's precomputed angle table (radians), indexed by orbit, inner index = orbit_index.
     orbit_angles: Vec<Vec<f64>>,
-    /// skill id → orbit 槽位（PoB 权威 group/orbit/orbitIndex）。
+    /// skill id -> orbit slot (the authoritative group/orbit/orbitIndex from PoB).
     node_orbits: BTreeMap<u32, NodeOrbit>,
 }
 
 impl TreeLayout {
-    /// 按 PoB 公式计算 skill id 对应节点的 (x, y)；缺数据返回 None。
+    /// Computes (x, y) for the node with the given skill id, using PoB's formula; returns None when data is missing.
     fn position(&self, skill: u32) -> Option<(f64, f64)> {
         let no = self.node_orbits.get(&skill)?;
         let &(gx, gy) = self.groups.get(&no.group)?;
@@ -73,8 +79,8 @@ pub fn run(args: TreeCoordsArgs) -> Result<String, String> {
         .map_err(|e| format!("读取 {} 失败：{e}", args.tree_lua.display()))?;
     let layout = parse_layout(&lua)?;
 
-    // 三层布局：base/ 优先读取既有 passive_tree.json，旧布局（版本根）回退；
-    // 回填后原地写回所读到的位置。
+    // The three-layer layout: prefer reading the existing passive_tree.json
+    // from base/, falling back to the old layout (version root); write the backfill back to wherever it was read from.
     let version_dir = args.out.join(&args.patch);
     let layered = version_dir.join("base/passive_tree.json");
     let tree_path = if layered.exists() {
@@ -87,9 +93,11 @@ pub fn run(args: TreeCoordsArgs) -> Result<String, String> {
     let mut nodes: Vec<PassiveNodeDef> = serde_json::from_slice(&bytes)
         .map_err(|e| format!("解析 {} 失败：{e}", tree_path.display()))?;
 
-    // 图外节点（油涂池 DeliriumAnoint / voices 等：无连线且无人引用）不参与树
-    // 拓扑，即使 tree.lua 携带名义 orbit 槽位也不写坐标——否则前端会把它们
-    // 渲染成悬浮孤点，且破坏「off-graph 节点无坐标」的数据不变量。
+    // Off-graph nodes (the anointable pool: DeliriumAnoint / voices etc. —
+    // no connections and referenced by nothing) don't participate in the
+    // tree topology, so no coordinates are written even if tree.lua carries
+    // a nominal orbit slot for them — otherwise the frontend would render
+    // them as floating orphan points, and it would break the data invariant that off-graph nodes have no coordinates.
     let mut referenced: std::collections::HashSet<u32> = std::collections::HashSet::new();
     for node in &nodes {
         referenced.extend(node.connections.iter().copied());
@@ -101,7 +109,7 @@ pub fn run(args: TreeCoordsArgs) -> Result<String, String> {
     let mut missing = 0usize;
     let mut off_graph = 0usize;
     for node in &mut nodes {
-        // applyToArmour（Smith 身甲连接 notable）与坐标同源顺路回填（图外与否无关）。
+        // applyToArmour (the Smith body-armour connection notable) is backfilled from the same source alongside coordinates (regardless of on/off-graph status).
         node.apply_to_armour = layout
             .node_orbits
             .get(&node.skill)
@@ -139,13 +147,13 @@ pub fn run(args: TreeCoordsArgs) -> Result<String, String> {
     ))
 }
 
-/// 保留 6 位小数，避免浮点尾差污染 diff（tree units 精度足够）。
+/// Rounds to 6 decimal places, avoiding floating-point noise polluting diffs (plenty of precision for tree units).
 fn round6(v: f64) -> f64 {
     (v * 1e6).round() / 1e6
 }
 
-/// 从 `tree.lua` 文本抽取 `constants.orbitRadii` / `constants.orbitAnglesByOrbit` /
-/// 顶层 `groups` / 顶层 `nodes`（节点 group/orbit/orbitIndex）。
+/// Extracts `constants.orbitRadii` / `constants.orbitAnglesByOrbit` / the
+/// top-level `groups` / the top-level `nodes` (each node's group/orbit/orbitIndex) from `tree.lua`'s text.
 fn parse_layout(lua: &str) -> Result<TreeLayout, String> {
     let const_block = balanced_block(lua, "constants={").ok_or("tree.lua 未找到 constants 块")?;
     let orbit_radii =
@@ -153,11 +161,12 @@ fn parse_layout(lua: &str) -> Result<TreeLayout, String> {
     let orbit_angles = parse_nested_number_arrays(const_block, "orbitAnglesByOrbit={")
         .ok_or("tree.lua 未找到 orbitAnglesByOrbit 块")?;
 
-    // 顶层 groups / nodes 块（缩进 `\t`），与 group 内嵌的 `nodes=` 区分。
+    // The top-level groups / nodes blocks (indented with `\t`), distinguished from a group's nested `nodes=`.
     let groups_block = balanced_block(lua, "\tgroups={").ok_or("tree.lua 未找到顶层 groups 块")?;
     let groups = parse_groups(groups_block).ok_or("groups 块解析为空")?;
 
-    // 顶层 nodes 块在 groups 之后；从 groups 块末尾起查找以避开组内 `nodes=`。
+    // The top-level nodes block comes after groups; search starting from the
+    // end of the groups block to avoid a group's nested `nodes=`.
     let groups_end = block_offset(lua, groups_block);
     let nodes_block =
         balanced_block(&lua[groups_end..], "\tnodes={").ok_or("tree.lua 未找到顶层 nodes 块")?;
@@ -174,13 +183,13 @@ fn parse_layout(lua: &str) -> Result<TreeLayout, String> {
     })
 }
 
-/// 返回 `sub`（来自 `whole` 的切片）末尾在 `whole` 中的字节偏移。
+/// Returns the byte offset in `whole` of the end of `sub` (a slice taken from `whole`).
 pub(crate) fn block_offset(whole: &str, sub: &str) -> usize {
     let start = sub.as_ptr() as usize - whole.as_ptr() as usize;
     start + sub.len()
 }
 
-/// 找到 `marker` 后第一个 `{` 起、配平到对应 `}` 的子串（含两端花括号）。
+/// Finds the substring starting at the first `{` after `marker`, balanced to its matching `}` (including both braces).
 pub(crate) fn balanced_block<'a>(lua: &'a str, marker: &str) -> Option<&'a str> {
     let start = lua.find(marker)?;
     let brace_start = start + marker.len() - 1;
@@ -204,13 +213,13 @@ pub(crate) fn balanced_block<'a>(lua: &'a str, marker: &str) -> Option<&'a str> 
     None
 }
 
-/// 解析形如 `{ [1]=0, [2]=82, ... }` 的 Lua 1-based 数值数组 → 0-based `Vec<f64>`。
+/// Parses a Lua 1-based numeric array shaped like `{ [1]=0, [2]=82, ... }` into a 0-based `Vec<f64>`.
 fn parse_number_array(lua: &str, marker: &str) -> Option<Vec<f64>> {
     let block = balanced_block(lua, marker)?;
     parse_indexed_numbers(block)
 }
 
-/// 在配平块内解析所有 `[idx]=number`（跳过 `[idx]={` 嵌套项），铺成 0-based `Vec<f64>`。
+/// Parses every `[idx]=number` within a balanced block (skipping nested `[idx]={` entries), laying them out into a 0-based `Vec<f64>`.
 fn parse_indexed_numbers(block: &str) -> Option<Vec<f64>> {
     let mut pairs: BTreeMap<usize, f64> = BTreeMap::new();
     let bytes = block.as_bytes();
@@ -240,11 +249,11 @@ fn parse_indexed_numbers(block: &str) -> Option<Vec<f64>> {
     indexed_to_vec(pairs)
 }
 
-/// Lua 1-based 索引 map → 0-based `Vec`（索引须从 1 起；缺位填默认）。
+/// Converts a Lua 1-based index map into a 0-based `Vec` (indices must start at 1; missing slots default).
 fn indexed_to_vec(pairs: BTreeMap<usize, f64>) -> Option<Vec<f64>> {
     let max = *pairs.keys().max()?;
     if pairs.contains_key(&0) {
-        return None; // Lua 数组不含 [0]
+        return None; // A Lua array never contains [0]
     }
     let mut out = vec![0.0; max];
     for (idx, v) in pairs {
@@ -253,7 +262,7 @@ fn indexed_to_vec(pairs: BTreeMap<usize, f64>) -> Option<Vec<f64>> {
     Some(out)
 }
 
-/// 解析 `orbitAnglesByOrbit = { [1]={...}, [2]={...} }` → 外层 1-based 转 0-based。
+/// Parses `orbitAnglesByOrbit = { [1]={...}, [2]={...} }`, converting the outer 1-based indexing to 0-based.
 fn parse_nested_number_arrays(lua: &str, marker: &str) -> Option<Vec<Vec<f64>>> {
     let block = balanced_block(lua, marker)?;
     let inner = &block[1..block.len() - 1];
@@ -289,7 +298,7 @@ fn parse_nested_number_arrays(lua: &str, marker: &str) -> Option<Vec<Vec<f64>>> 
     Some(out)
 }
 
-/// 解析顶层 `groups = { [id]={ ... x=..., y=... }, ... }` → group id → (x, y)。
+/// Parses the top-level `groups = { [id]={ ... x=..., y=... }, ... }` into group id -> (x, y).
 fn parse_groups(block: &str) -> Option<BTreeMap<u32, (f64, f64)>> {
     let inner = &block[1..block.len() - 1];
     let mut groups: BTreeMap<u32, (f64, f64)> = BTreeMap::new();
@@ -324,7 +333,7 @@ fn parse_groups(block: &str) -> Option<BTreeMap<u32, (f64, f64)>> {
     }
 }
 
-/// 解析顶层 `nodes = { [skill]={ ... group=..., orbit=..., orbitIndex=... }, ... }`。
+/// Parses the top-level `nodes = { [skill]={ ... group=..., orbit=..., orbitIndex=... }, ... }`.
 fn parse_node_orbits(block: &str) -> BTreeMap<u32, NodeOrbit> {
     let inner = &block[1..block.len() - 1];
     let mut out: BTreeMap<u32, NodeOrbit> = BTreeMap::new();
@@ -342,8 +351,10 @@ fn parse_node_orbits(block: &str) -> BTreeMap<u32, NodeOrbit> {
                     && after[1..].trim_start().starts_with('{')
                     && let Some(sub) = balanced_block(&inner[close + 1..], "{")
                 {
-                    // 节点块含 `connections`/`recipe` 等嵌套子表，其内部亦有 `orbit=` 字段。
-                    // 先剥离所有嵌套 `{...}`，只在节点顶层读 group/orbit/orbitIndex。
+                    // A node block contains nested subtables like
+                    // `connections`/`recipe`, which also have their own
+                    // `orbit=` field. Strip all nested `{...}` first, and
+                    // only read group/orbit/orbitIndex at the node's top level.
                     let top = strip_nested_blocks(sub);
                     if let (Some(group), Some(orbit)) =
                         (scalar_u32(&top, "group="), scalar_u32(&top, "orbit="))
@@ -371,10 +382,12 @@ fn parse_node_orbits(block: &str) -> BTreeMap<u32, NodeOrbit> {
     out
 }
 
-/// 剥离一个配平块内的所有嵌套子表（depth ≥ 2 的 `{...}`），仅保留顶层文本。
+/// Strips every nested subtable (depth >= 2 `{...}`) within a balanced block, keeping only the top-level text.
 ///
-/// 输入须为含两端 `{`/`}` 的配平块。节点块的 `group`/`orbit`/`orbitIndex` 在顶层，而
-/// `connections`/`recipe`/`stats` 等子表内部也含同名 `orbit=` 字段——剥离后避免误读。
+/// The input must be a balanced block with both `{`/`}`. A node block's
+/// `group`/`orbit`/`orbitIndex` sit at the top level, while subtables like
+/// `connections`/`recipe`/`stats` also contain a field named `orbit=`
+/// internally — stripping avoids misreading those.
 pub(crate) fn strip_nested_blocks(block: &str) -> String {
     let mut out = String::with_capacity(block.len());
     let mut depth = 0i32;
@@ -382,7 +395,7 @@ pub(crate) fn strip_nested_blocks(block: &str) -> String {
         match c {
             '{' => {
                 depth += 1;
-                // 顶层（depth 1）的 `{` 保留为占位换行，深层不输出。
+                // A top-level (depth 1) `{` is kept as a placeholder; deeper ones aren't output.
                 if depth <= 1 {
                     out.push(c);
                 }
@@ -403,14 +416,15 @@ pub(crate) fn strip_nested_blocks(block: &str) -> String {
     out
 }
 
-/// 在配平块内抽取顶层标量字段 `field`（如 `"x="` / `"group="`）的浮点值。
+/// Extracts the float value of a top-level scalar field `field` (e.g. `"x="` / `"group="`) within a balanced block.
 ///
-/// 用 `\n\t+field`（换行 + 任意制表符缩进 + 字段名）锚定，避免误命中嵌套子表同名 key。
+/// Anchored on `\n\t+field` (a newline, then any number of tab indents, then
+/// the field name), avoiding a false match on a nested subtable's field of the same name.
 pub(crate) fn scalar_field(block: &str, field: &str) -> Option<f64> {
     let mut search_from = 0;
     while let Some(rel) = block[search_from..].find(field) {
         let pos = search_from + rel;
-        // 字段名前须紧邻换行 + 制表符缩进（顶层字段约定）。
+        // The field name must be immediately preceded by a newline plus tab indentation (the top-level-field convention).
         let prefix_ok = block[..pos]
             .rfind('\n')
             .map(|nl| block[nl + 1..pos].chars().all(|c| c == '\t'))
@@ -429,7 +443,7 @@ pub(crate) fn scalar_field(block: &str, field: &str) -> Option<f64> {
     None
 }
 
-/// 顶层标量字段的整数解析版。
+/// The integer-parsing variant of a top-level scalar field.
 pub(crate) fn scalar_u32(block: &str, field: &str) -> Option<u32> {
     scalar_field(block, field).map(|v| v as u32)
 }
@@ -473,7 +487,7 @@ mod tests {
 
     #[test]
     fn ignores_nested_connection_orbit() {
-        // 节点块的 connections 子表含 `orbit=0`，不得污染节点自身的 `orbit=7`。
+        // A node block's connections subtable contains `orbit=0`, which must not pollute the node's own `orbit=7`.
         let block = "{\n\t\t[94]={\n\t\t\tconnections={\n\t\t\t\t[1]={\n\t\t\t\t\tid=27234,\n\t\t\t\t\torbit=0\n\t\t\t\t}\n\t\t\t},\n\t\t\tgroup=946,\n\t\t\torbit=7,\n\t\t\torbitIndex=4,\n\t\t\tskill=94\n\t\t}\n\t}";
         let nodes = parse_node_orbits(block);
         let n = nodes.get(&94).unwrap();
@@ -509,7 +523,7 @@ mod tests {
             orbit_angles: vec![vec![0.0], vec![0.0, 0.523]],
             node_orbits,
         };
-        // orbit 0 → radius 0 → 落在 group 中心。
+        // orbit 0 -> radius 0 -> lands at the group's center.
         let (x, y) = layout.position(61419).unwrap();
         assert_eq!((x, y), (0.0, -7995.0));
     }

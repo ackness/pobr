@@ -1,61 +1,71 @@
-//! 词缀 tier 推断（展示用，best-effort）。
+//! Affix tier inference (display-only, best-effort).
 //!
-//! 目标：给一条**已掷出**的装备词条行标注「同池第几档」（T1 = 最强）。游戏物品
-//! 文本本身不含 tier；PoB2 也只在 Crafting 模拟器里现算（`ItemsTab.lua:924`：
-//! 同 `group` 收集词缀池 → spawn weight 过滤该基底可掷项 → 排序 → 名次倒数）。
-//! 本模块把同一套算法搬到「反向」场景：从词条行文本出发反查它属于哪条 mod，
-//! 再在同池内定名次。
+//! Goal: label an **already-rolled** item mod line with "which rank within
+//! its pool" (T1 = strongest). Game item text itself carries no tier; even
+//! PoB2 only computes it on the fly in its Crafting simulator
+//! (`ItemsTab.lua:924`: collect the affix pool sharing a `group` -> filter to
+//! what's rollable on this base by spawn weight -> sort -> rank position).
+//! This module runs the same algorithm in reverse: starting from a mod
+//! line's text, look up which mod it belongs to, then rank it within that pool.
 //!
-//! 匹配链路：行文本 → 数值骨架化 → StatDescriptions 模板反查 stat_id + 捕获值
-//! → 词缀池内按 (stat 集合相等 + 掷值区间含捕获值 + domain/spawn weight 适用)
-//! 定位 mod → 同 (group, generation_type, stat 集合) 池内按 level 升序排名。
+//! Matching pipeline: line text -> numeric skeletonization -> reverse lookup
+//! against StatDescriptions templates for the stat_id + captured values ->
+//! locate the mod within the affix pool by (matching stat set + captured
+//! values fall within its roll range + domain/spawn weight applicability) ->
+//! rank ascending by level within the (group, generation_type, stat set) pool.
 //!
-//! 明确不做（ponytail: 展示 best-effort，匹配不上就不标，绝不猜）：
-//! - 数值缩放型 stat（如 per-minute 存储的再生）——捕获值不落区间 → 不标；
-//! - essence/腐化/独占词缀（spawn weight 全 0）——不在可掷池 → 不标；
-//! - 跨行 hybrid（一条 mod 渲染成多行）——单行 stat 集合与 mod 不等 → 不标。
+//! Explicitly out of scope (ponytail: this is best-effort display — no match
+//! means no label, never guess):
+//! - Scaled stats (e.g. regen stored per-minute) — the captured value won't
+//!   land in any range, so it's left unlabeled;
+//! - Essence/corrupted/exclusive affixes (spawn weight is all zero) — not in
+//!   the rollable pool, so unlabeled;
+//! - Cross-line hybrids (one mod rendered across multiple lines) — a single
+//!   line's stat set won't equal the mod's, so unlabeled.
 
 use std::collections::{BTreeSet, HashMap};
 
 use pobr_data::catalog::stat_descriptions::StatDescriptionsDef;
 use pobr_data::catalog::{ModDef, ModStat, SpawnWeight};
 
-/// GGG `Mods.GenerationType`：1 = 前缀，2 = 后缀（其余生成类型不参与 tier）。
+/// GGG `Mods.GenerationType`: 1 = prefix, 2 = suffix (other generation types don't participate in tiering).
 const GENERATION_PREFIX: u32 = 1;
 const GENERATION_SUFFIX: u32 = 2;
 
-/// 一条词缀行的 tier 判定结果。
+/// The tier verdict for one affix line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TierInfo {
-    /// 名次，1 = 同池最强。
+    /// Rank, where 1 = strongest in the pool.
     pub tier: u32,
-    /// 该基底可掷出的同池总档数。
+    /// The total number of tiers rollable on this base within the pool.
     pub total: u32,
-    /// 是否前缀（false = 后缀）。
+    /// Whether it's a prefix (false = suffix).
     pub is_prefix: bool,
-    /// 词缀名（如 `of the Brute`；内部 mod 无名时为空）。
+    /// The affix name (e.g. `of the Brute`; empty for unnamed internal mods).
     pub affix_name: String,
-    /// 匹配到的 mod 稳定 ID（如 `Strength5`），调试/溯源用。
+    /// The matched mod's stable ID (e.g. `Strength5`), for debugging/tracing.
     pub mod_id: String,
 }
 
-/// 模板槽位：数值捕获位（映射到第 k 个 stat）或必须字面相等的常数位。
+/// A template slot: either a numeric capture position (mapped to the k-th
+/// stat) or a literal constant that must match exactly.
 #[derive(Debug, Clone, PartialEq)]
 enum Slot {
     Value(usize),
     Literal(f64),
 }
 
-/// 一条可反查的描述模板（single 或 compound 展开后统一形态）。
+/// One reverse-lookupable description template (single and compound entries
+/// are normalized to this common shape).
 #[derive(Debug, Clone)]
 struct TemplateEntry {
-    /// 捕获索引 k → stat_id。single 恒 1 个；compound 按 member 顺序。
+    /// Capture index k -> stat_id. Always 1 entry for single; member order for compound.
     stat_ids: Vec<String>,
-    /// 文本序的数值槽位。
+    /// Numeric slots, in text order.
     slots: Vec<Slot>,
 }
 
-/// 参与 tier 排名的词缀条目（从 [`ModDef`] 摘取所需字段）。
+/// An affix entry participating in tier ranking (the fields needed, pulled from [`ModDef`]).
 #[derive(Debug, Clone)]
 struct TierMod {
     id: String,
@@ -68,26 +78,27 @@ struct TierMod {
     spawn_weights: Vec<SpawnWeight>,
 }
 
-/// 词缀 tier 反查索引（构建一次，逐行查询）。
+/// The affix-tier reverse-lookup index (built once, queried per line).
 #[derive(Debug, Default)]
 pub struct TierIndex {
-    /// 骨架文本 → 候选模板。
+    /// Skeleton text -> candidate templates.
     templates: HashMap<String, Vec<TemplateEntry>>,
-    /// stat 集合键（排序 stat_id 以 `\n` 连接）→ 候选 mod 下标。
+    /// Stat-set key (sorted stat_ids joined by `\n`) -> candidate mod indices.
     pools: HashMap<String, Vec<usize>>,
     mods: Vec<TierMod>,
 }
 
 impl TierIndex {
-    /// 无可用数据（旧数据包缺 group/spawn_weights 或缺 StatDescriptions）。
+    /// Whether there's no usable data (an old data pack missing group/spawn_weights, or missing StatDescriptions).
     pub fn is_empty(&self) -> bool {
         self.templates.is_empty() || self.mods.is_empty()
     }
 
-    /// 从词缀池 + StatDescriptions overlay 构建反查索引。
+    /// Builds the reverse-lookup index from the affix pool plus the StatDescriptions overlay.
     ///
-    /// 只收前缀/后缀、带 group、带非空 spawn_weights 的词缀（可掷池）；模板只用
-    /// root `stat_descriptions` scope（装备词条域）。
+    /// Only collects affixes that are prefix/suffix, carry a group, and have
+    /// non-empty spawn_weights (i.e. the rollable pool); templates only use
+    /// the root `stat_descriptions` scope (the equipment mod domain).
     pub fn build(mods: &[ModDef], descriptions: &StatDescriptionsDef) -> Self {
         let mut index = TierIndex::default();
 
@@ -149,10 +160,11 @@ impl TierIndex {
         index
     }
 
-    /// 反查一条（已剥标注的）词条行：命中则给出该基底下的 tier。
+    /// Reverse-looks-up a (already annotation-stripped) mod line: on a
+    /// match, returns its tier on the given base.
     ///
-    /// `base_tags` = 基底 `BaseItemDef::tags`；`mod_domain` = 基底
-    /// `BaseItemDef::mod_domain`（词缀 domain 须一致）。
+    /// `base_tags` = the base's `BaseItemDef::tags`; `mod_domain` = the
+    /// base's `BaseItemDef::mod_domain` (the affix's domain must match).
     pub fn lookup(&self, line: &str, base_tags: &[String], mod_domain: u32) -> Option<TierInfo> {
         let (skeleton, captures) = skeletonize(line);
         let tags: BTreeSet<&str> = base_tags.iter().map(String::as_str).collect();
@@ -166,7 +178,9 @@ impl TierIndex {
             let Some(pool) = self.pools.get(&key) else {
                 continue;
             };
-            // 该基底可掷的同 stat 集合候选（跨 group / 前后缀混合，匹配后再分池）。
+            // Candidates sharing this stat set that are rollable on this
+            // base (spans groups / mixes prefix and suffix; split into
+            // pools below after matching).
             let spawnable: Vec<usize> = pool
                 .iter()
                 .copied()
@@ -180,7 +194,8 @@ impl TierIndex {
                 if !values_in_range(&m.stats, &entry.stat_ids, &values) {
                     continue;
                 }
-                // 同 (group, 前/后缀) 才互为档位；按 level 升序 = 弱→强。
+                // Only mods sharing (group, prefix/suffix) are tiers of each
+                // other; rank ascending by level = weakest to strongest.
                 let mut ranked: Vec<&TierMod> = spawnable
                     .iter()
                     .map(|&j| &self.mods[j])
@@ -195,7 +210,8 @@ impl TierIndex {
                     affix_name: m.affix_name.clone(),
                     mod_id: m.id.clone(),
                 };
-                // 区间重叠导致多命中时取最强档（ponytail: 边界值歧义罕见，取优即可）。
+                // Overlapping ranges can produce multiple matches; keep the
+                // strongest tier (ponytail: boundary-value ambiguity is rare, picking the best is fine).
                 if best.as_ref().is_none_or(|b| info.tier < b.tier) {
                     best = Some(info);
                 }
@@ -205,18 +221,19 @@ impl TierIndex {
     }
 }
 
-/// stat 集合键：排序去重后以 `\n` 连接（顺序无关）。
+/// A stat-set key: sorted, deduplicated, joined by `\n` (order-independent).
 fn stat_key<'a>(ids: impl Iterator<Item = &'a str>) -> String {
     let set: BTreeSet<&str> = ids.collect();
     set.into_iter().collect::<Vec<_>>().join("\n")
 }
 
-/// 排名 tiebreak 用的量级：首 stat 掷值上界绝对值。
+/// The magnitude used as a ranking tiebreak: the absolute value of the first stat's upper roll bound.
 fn stat_magnitude(stats: &[ModStat]) -> i64 {
     stats.first().map_or(0, |s| s.max.abs().max(s.min.abs()))
 }
 
-/// 把一行文本骨架化：每个数值 run（`[+-]?\d+(\.\d+)?`）替换为 `#` 并按序捕获。
+/// Skeletonizes a line of text: replaces each numeric run
+/// (`[+-]?\d+(\.\d+)?`) with `#`, capturing the values in order.
 fn skeletonize(text: &str) -> (String, Vec<f64>) {
     let mut skeleton = String::with_capacity(text.len());
     let mut captures = Vec::new();
@@ -244,11 +261,11 @@ fn skeletonize(text: &str) -> (String, Vec<f64>) {
                 skeleton.push('#');
                 continue;
             }
-            // 解析失败按原文保留（理论不可达）。
+            // Parse failure: keep the original text (theoretically unreachable).
             skeleton.push_str(&text[start..i]);
             continue;
         }
-        // 逐字节推进：非数字起始的多字节 UTF-8 直接整体拷贝。
+        // Byte-by-byte advance: multi-byte UTF-8 not starting with a digit is copied wholesale.
         let ch_len = utf8_len(c);
         skeleton.push_str(&text[i..i + ch_len]);
         i += ch_len;
@@ -265,10 +282,13 @@ fn utf8_len(first_byte: u8) -> usize {
     }
 }
 
-/// single 模板（V=1 渲染，占位值恒为字面 `1`）→ 骨架 + 槽位。
+/// A single template (rendered at V=1, where the placeholder value is
+/// always literal `1`) -> skeleton plus slots.
 ///
-/// 值为 1 的数值位视作捕获位（全部映射 stat 0），其余数值是模板常数（如
-/// `per 3 Red Support Gems` 的 3）须字面相等。无任何数值位（布尔词条）也收录。
+/// A numeric position whose value is 1 is treated as a capture slot (always
+/// mapped to stat 0); every other numeric value is a template constant (e.g.
+/// the 3 in `per 3 Red Support Gems`) that must match literally. Templates
+/// with no numeric positions at all (boolean mods) are also collected.
 fn single_template_slots(template: &str) -> Option<(String, Vec<Slot>)> {
     let (skeleton, values) = skeletonize(template);
     let mut slots = Vec::with_capacity(values.len());
@@ -281,16 +301,17 @@ fn single_template_slots(template: &str) -> Option<(String, Vec<Slot>)> {
             slots.push(Slot::Literal(v));
         }
     }
-    // 有数值但全是常数 → 无法定位捕获位，放弃该模板。
+    // Has numeric positions but they're all constants -> no capture slot to anchor on, so give up on this template.
     if !slots.is_empty() && !has_value_slot {
         return None;
     }
     Some((skeleton, slots))
 }
 
-/// compound 模板（`{0}`/`{1}` 占位符 + 可能的字面常数）→ 骨架 + 槽位。
+/// A compound template (`{0}`/`{1}` placeholders plus possible literal constants) -> skeleton plus slots.
 fn compound_template_slots(template: &str) -> Option<(String, Vec<Slot>)> {
-    // 先把 {k}（含 {k:...} 格式说明）替换为占位标记，再骨架化字面数字。
+    // First replace {k} (including the {k:...} format spec) with a
+    // placeholder marker, then skeletonize the literal numbers.
     let mut rendered = String::with_capacity(template.len());
     let mut placeholder_order = Vec::new();
     let mut rest = template;
@@ -300,7 +321,7 @@ fn compound_template_slots(template: &str) -> Option<(String, Vec<Slot>)> {
         let key = inner.split(':').next().unwrap_or(inner);
         let k: usize = key.parse().ok()?;
         rendered.push_str(&rest[..open]);
-        rendered.push('\u{1}'); // 占位哨兵（不会出现在游戏文本里）
+        rendered.push('\u{1}'); // placeholder sentinel (never appears in real game text)
         placeholder_order.push(k);
         rest = &rest[close + 1..];
     }
@@ -309,7 +330,7 @@ fn compound_template_slots(template: &str) -> Option<(String, Vec<Slot>)> {
     let mut slots = Vec::new();
     let mut ph = placeholder_order.into_iter();
     let mut skeleton = String::with_capacity(rendered.len());
-    // 哨兵与字面数字都变成 `#`，槽位按文本序交错归位。
+    // Both sentinels and literal numbers become `#`; slots are interleaved back in text order.
     for piece in split_keep_sentinel(&rendered) {
         match piece {
             Piece::Sentinel => {
@@ -341,8 +362,10 @@ fn split_keep_sentinel(s: &str) -> impl Iterator<Item = Piece<'_>> {
     })
 }
 
-/// 把行捕获值绑定到模板槽位：常数位须相等；同一捕获位多次出现须一致。
-/// 返回 `values[k]` = 第 k 个 stat 的行值（布尔模板返回全 None 的空绑定）。
+/// Binds a line's captured values to the template's slots: constant
+/// positions must match exactly; a capture position reused multiple times
+/// must agree each time. Returns `values[k]` = the k-th stat's line value
+/// (a boolean template returns an all-`None` binding).
 fn bind_captures(entry: &TemplateEntry, captures: &[f64]) -> Option<Vec<Option<f64>>> {
     if captures.len() != entry.slots.len() {
         return None;
@@ -365,7 +388,8 @@ fn bind_captures(entry: &TemplateEntry, captures: &[f64]) -> Option<Vec<Option<f
     Some(values)
 }
 
-/// 捕获值是否逐 stat 落在该 mod 的掷值区间（含负掷镜像）。
+/// Whether every captured value falls within that mod's roll range for its
+/// stat (also checking the negated-roll mirror).
 fn values_in_range(stats: &[ModStat], stat_ids: &[String], values: &[Option<f64>]) -> bool {
     if stats.len() != stat_ids.len() {
         return false;
@@ -375,7 +399,7 @@ fn values_in_range(stats: &[ModStat], stat_ids: &[String], values: &[Option<f64>
             return false;
         };
         let Some(Some(v)) = values.get(k) else {
-            // 布尔模板：无捕获值，仅按 stat 集合与池匹配。
+            // Boolean template: no captured value, matched purely by stat set and pool.
             continue;
         };
         let (min, max) = (stat.min as f64, stat.max as f64);
@@ -387,8 +411,8 @@ fn values_in_range(stats: &[ModStat], stat_ids: &[String], values: &[Option<f64>
     true
 }
 
-/// PoB2 `Item:GetModSpawnWeight` 语义：按序取第一个命中基底 tag 的权重；
-/// `default` 恒命中兜底。
+/// Mirrors PoB2 `Item:GetModSpawnWeight` semantics: takes the first weight
+/// entry whose tag matches a base tag, in order; `default` always matches as a fallback.
 fn spawn_weight_positive(weights: &[SpawnWeight], base_tags: &BTreeSet<&str>) -> bool {
     for w in weights {
         if w.tag == "default" || base_tags.contains(w.tag.as_str()) {
@@ -488,7 +512,7 @@ mod tests {
                 &[("ring", 1), ("belt", 1), ("default", 0)],
                 "Strength",
             ),
-            // 只在腰带掷出的更高档：不该进入 ring 的池。
+            // A higher tier that only rolls on belts: shouldn't enter the ring pool.
             mod_def(
                 "Strength4",
                 "of the Goliath",
@@ -507,16 +531,16 @@ mod tests {
         let ring_tags = vec!["ring".to_string()];
         let info = index.lookup("+10 to Strength", &ring_tags, 1).unwrap();
         assert_eq!(info.mod_id, "Strength2");
-        assert_eq!(info.tier, 2); // ring 池只有 1..3 档，10 落在中档
+        assert_eq!(info.tier, 2); // the ring pool only has tiers 1..3, 10 lands in the middle tier
         assert_eq!(info.total, 3);
         assert!(!info.is_prefix);
         assert_eq!(info.affix_name, "of the Wrestler");
 
-        // 顶档在 ring 池里是 T1。
+        // The top tier is T1 in the ring pool.
         let top = index.lookup("+16 to Strength", &ring_tags, 1).unwrap();
         assert_eq!(top.tier, 1);
 
-        // belt 池含第 4 档，同一行在 belt 上是 T3/4。
+        // The belt pool includes a 4th tier, so the same line is T3/4 on belt.
         let belt = index
             .lookup("+16 to Strength", &["belt".to_string()], 1)
             .unwrap();
@@ -562,25 +586,25 @@ mod tests {
     #[test]
     fn no_match_outside_ranges_or_domain_or_tags() {
         let index = TierIndex::build(&strength_pool(), &descriptions());
-        // 值超出全部区间。
+        // Value outside every range.
         assert!(
             index
                 .lookup("+99 to Strength", &["ring".to_string()], 1)
                 .is_none()
         );
-        // domain 不符（flask=2）。
+        // Domain mismatch (flask=2).
         assert!(
             index
                 .lookup("+10 to Strength", &["ring".to_string()], 2)
                 .is_none()
         );
-        // 基底 tag 不可掷（default 兜底权重 0）。
+        // Base tag not rollable (falls back to the default weight of 0).
         assert!(
             index
                 .lookup("+10 to Strength", &["amulet".to_string()], 1)
                 .is_none()
         );
-        // 完全无关文本。
+        // Completely unrelated text.
         assert!(
             index
                 .lookup("Corrupted", &["ring".to_string()], 1)

@@ -1,35 +1,46 @@
-//! 暴击/非暴击双 pass。
+//! Crit / non-crit dual pass.
 //!
-//! PoB2 在每个 hand pass 内按 `CriticalStrike` 条件分别聚合伤害主体
-//! （`CalcOffence.lua:3978-3980`：`for pass = 1, 2 do cfg.skillCond["CriticalStrike"]
-//! = (pass == 1)`，pass 1 = 暴击腿），暴击腿 `allMult ×= CritMultiplier`
-//! （`:4028-4032`），两腿 pre-resist 均值分存 `Stored<Type>CritAvg/HitAvg/CombinedAvg`
-//! （`:4047-4057`，ailment magnitude 输入），末端 CritBlend 合并
-//! （`:4395` `AverageHit = totalHitAvg×(1−c) + totalCritAvg×c`）。
+//! PoB2 aggregates the damage body separately for each `CriticalStrike`
+//! condition state within each hand pass (`CalcOffence.lua:3978-3980`:
+//! `for pass = 1, 2 do cfg.skillCond["CriticalStrike"] = (pass == 1)`, pass 1
+//! is the crit leg). The crit leg gets `allMult ×= CritMultiplier`
+//! (`:4028-4032`); both legs' pre-resist averages are stored to
+//! `Stored<Type>CritAvg/HitAvg/CombinedAvg` (`:4047-4057`, feeding ailment
+//! magnitude); finally CritBlend merges them (`:4395`
+//! `AverageHit = totalHitAvg×(1−c) + totalCritAvg×c`).
 //!
-//! 本模块替换 `offence.rs` 的单因子 `total_hit_avg = non_crit_hit_avg × crit.effect`。
+//! This module replaces `offence.rs`'s single-factor
+//! `total_hit_avg = non_crit_hit_avg × crit.effect`.
 //!
-//! ## 等价性短路（I5，回退开关的正确性证明）
+//! ## Equivalence short circuit (I5, the correctness proof for the fallback switch)
 //!
-//! 无 `CriticalStrike` 条件词条时两腿聚合输入逐位相同（分量向量 + per-type lucky
-//! 几率比较），此时走旧单因子公式（数学恒等 I5：`blend(c, x×m, x) = x×(1+(m−1)c)
-//! = x×crit.effect`，且**复用旧公式的取整顺序**保证逐字节等价——等价性测试钉死）。
-//! 两腿有差异（暴击腿专属词条 / CritLucky 等）才走真双腿 blend。
+//! When no mod is conditioned on `CriticalStrike`, both legs' aggregation
+//! inputs are bit-for-bit identical (component vectors + per-type lucky
+//! chance comparison), and the old single-factor formula is used instead
+//! (mathematical identity I5: `blend(c, x×m, x) = x×(1+(m−1)c) = x×crit.effect`,
+//! and **reusing the old formula's rounding order** guarantees byte-for-byte
+//! equivalence — pinned by the equivalence tests). Only when the legs differ
+//! (crit-leg-only mods, CritLucky, etc.) does it fall through to a real
+//! dual-leg blend.
 //!
-//! ## T3 乘区接线（契约 2/3，m4-t3-wiring-notes.md §2）
+//! ## T3 multiplier wiring (contract 2/3, m4-t3-wiring-notes.md §2)
 //!
-//! - `ScaledDamageEffect`：两腿共用（vendor `:4023-4025` allMult），由调用方
-//!   传入（`scaled_damage_effect(db, enemy_db, cfg, crit.chance)`）。
-//! - lucky：min/max ×allMult **之后**按 (pass, damageType) 求 lucky 几率折
-//!   avg（`:4035-4046`）。
-//! - canDeal：转换链之后、聚合之前就地清零（`:3989` 消费点）。
+//! - `ScaledDamageEffect`: shared by both legs (vendor `:4023-4025` allMult),
+//!   supplied by the caller (`scaled_damage_effect(db, enemy_db, cfg, crit.chance)`).
+//! - lucky: the lucky chance is folded into the average per (pass, damageType)
+//!   **after** min/max are multiplied by allMult (`:4035-4046`).
+//! - canDeal: zeroed in place after the conversion chain but before
+//!   aggregation (`:3989` consumption point).
 //!
-//! ## 保守口径（登记，独立行为 commit 再修）
+//! ## Conservative choice (tracked, to be revisited in its own behavior commit)
 //!
-//! 敌方护甲减伤的 `raw_hit` 沿用 **lucky 折算前**的分量均值（与替换前实现一致；
-//! vendor 按 pass 内已乘 allMult 的伤害走护甲公式 `:4060+`——暴击腿 raw_hit 已含
-//! ×CritMultiplier 属 per-pass 精化，本实现腿内 raw_hit 即该腿分量 avg，短路路径
-//! 与旧实现完全同形）。
+//! Enemy armour mitigation's `raw_hit` still uses the component average
+//! **before** lucky folding (matching the pre-replacement implementation;
+//! vendor runs the armour formula on damage already multiplied by allMult
+//! within the pass `:4060+` — the crit leg's raw_hit already including
+//! ×CritMultiplier is a per-pass refinement; in this implementation a leg's
+//! raw_hit is just that leg's component average, so the short-circuit path is
+//! shaped identically to the old implementation).
 
 use pobr_data::prelude::*;
 
@@ -41,47 +52,54 @@ use super::output::StoredDamageRange;
 use super::round;
 use super::scaled_damage::{AllMultExtras, ScaledDamage, all_mult};
 
-/// 暴击双 pass 结果。
+/// Result of the crit/non-crit dual pass.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CritPassOutput {
-    /// 非暴击腿分量（canDeal 门控 + allMult 缩放后；顶层 `damage_components`
-    /// 字段与 ailment magnitude 的现行来源）。
+    /// Non-crit leg components (after canDeal gating + allMult scaling; the
+    /// current source for the top-level `damage_components` field and ailment magnitude).
     pub non_crit_components: Vec<DamageComponent>,
-    /// 暴击腿分量（额外 ×CritMultiplier）。
+    /// Crit leg components (with the extra ×CritMultiplier).
     pub crit_components: Vec<DamageComponent>,
-    /// `Stored<Type>CritAvg`（pre-resist，含 allMult 与 ×CritMultiplier，`:4049`）。
+    /// `Stored<Type>CritAvg` (pre-resist, includes allMult and ×CritMultiplier, `:4049`).
     pub stored_crit_avg: Vec<(DamageType, f64)>,
-    /// `Stored<Type>HitAvg`（非暴击腿，`:4054`）。
+    /// `Stored<Type>HitAvg` (non-crit leg, `:4054`).
     pub stored_hit_avg: Vec<(DamageType, f64)>,
-    /// `Stored<Type>CombinedAvg`（两腿按暴击率加权累计，`:4048/:4053`）。
+    /// `Stored<Type>CombinedAvg` (both legs, accumulated weighted by crit chance, `:4048/:4053`).
     pub stored_combined_avg: Vec<(DamageType, f64)>,
-    /// `Stored<Type>{Hit,Crit}{Min,Max}`（`:4050-4056`；min/max **不做** lucky 折算
-    /// （vendor lucky 只折 `*Avg` 族），damaging ailment 来源伤害与 RollAverage
-    /// 内插的输入面，append）。
+    /// `Stored<Type>{Hit,Crit}{Min,Max}` (`:4050-4056`; min/max are **not**
+    /// folded by lucky (vendor's lucky folding only applies to the `*Avg`
+    /// family) — this is the input surface for damaging ailments and
+    /// RollAverage interpolation, appended in place).
     pub stored_ranges: Vec<StoredDamageRange>,
-    /// CritBlend 后玩家侧总均值（不含敌减伤；`total_hit_avg` 字段口径）。
+    /// Player-side total average after CritBlend (excludes enemy mitigation;
+    /// this is the `total_hit_avg` field's semantics).
     pub total_hit_avg: f64,
-    /// CritBlend 后有效口径总均值（敌减伤后；DPS 用）。
+    /// Effective total average after CritBlend (after enemy mitigation; used for DPS).
     pub total_hit_avg_mitigated: f64,
-    /// 是否走了等价性短路（两腿聚合输入逐位相同 → 旧单因子公式）。
+    /// Whether the equivalence short circuit was taken (both legs'
+    /// aggregation inputs bit-identical → old single-factor formula).
     pub short_circuited: bool,
 }
 
-/// 单腿聚合产物。
+/// Aggregation output for a single leg.
 struct Leg {
     components: Vec<DamageComponent>,
-    /// (type, lucky 折算后 avg)；顺序与 `components` 一致。
+    /// (type, average after lucky folding); order matches `components`.
     avgs: Vec<(DamageType, f64)>,
-    /// lucky 折算前的分量 avg（敌方护甲减伤 raw_hit，保守口径见模块文档）。
+    /// Component averages before lucky folding (used for enemy armour
+    /// mitigation's raw_hit; see the module docs for the conservative choice).
     raw_avgs: Vec<f64>,
 }
 
-/// 暴击/非暴击双 pass 主入口（在每个 hand pass 内调用——2×2 嵌套：hand 外层、
-/// crit 内层，与 PoB2 同构）。
+/// Main entry point for the crit/non-crit dual pass (called within each hand
+/// pass — a 2×2 nesting with hand on the outside and crit on the inside,
+/// mirroring PoB2's structure).
 ///
-/// `mitigation(pass_cfg, type, raw_hit)` = 敌方对该类型的受伤总乘子（仅
-/// `mode_effective` 下被调用；由 offence 闭包提供，保持 `enemy_damage_multiplier`
-/// 私有）。`scaled` =乘区（T3 契约 2，两腿共用、暴击腿额外 ×CritMultiplier）。
+/// `mitigation(pass_cfg, type, raw_hit)` is the enemy's total damage-taken
+/// multiplier for that type (only called under `mode_effective`; supplied by
+/// an offence closure so `enemy_damage_multiplier` stays private). `scaled`
+/// is the multiplier group (T3 contract 2, shared by both legs, with the crit
+/// leg getting the extra ×CritMultiplier).
 #[allow(clippy::too_many_arguments)]
 pub fn run_crit_passes<F>(
     db: &ModDb,
@@ -96,18 +114,21 @@ pub fn run_crit_passes<F>(
 where
     F: Fn(&CalcConfig, DamageType, f64) -> f64,
 {
-    // vendor `:3979`：两轮 pass 都显式置条件（绝对值，非叠加）。
+    // vendor `:3979`: both passes set the condition explicitly (an absolute
+    // assignment, not a toggle).
     let cfg_crit = cfg.clone().with_condition("CriticalStrike", true);
     let cfg_hit = cfg.clone().with_condition("CriticalStrike", false);
 
-    // 各腿未缩放聚合（转换链 + canDeal）——只算两次，短路判据直接复用。
+    // Unscaled aggregation per leg (conversion chain + canDeal) — computed
+    // only twice, and the short-circuit check reuses these directly.
     let mut hit_unscaled = calculate_components(db, &cfg_hit, base_hit_min, base_hit_max);
     apply_can_deal(&mut hit_unscaled, db, &cfg_hit);
     let mut crit_unscaled = calculate_components(db, &cfg_crit, base_hit_min, base_hit_max);
     apply_can_deal(&mut crit_unscaled, db, &cfg_crit);
 
-    // 等价性短路判据：未缩放分量逐位相同 + per-type lucky 几率相同
-    // ⇔ 无 CriticalStrike 条件词条参与伤害聚合 / canDeal / lucky。
+    // Equivalence short-circuit check: unscaled components bit-identical +
+    // per-type lucky chance identical ⇔ no CriticalStrike-conditioned mod
+    // participates in damage aggregation / canDeal / lucky.
     let short_circuit = hit_unscaled == crit_unscaled
         && hit_unscaled.iter().all(|component| {
             lucky_hit_chance(db, &cfg_hit, component.damage_type, false)
@@ -115,7 +136,7 @@ where
         });
 
     let base_mult = all_mult(scaled, &AllMultExtras::default());
-    // 暴击腿额外乘区（`:4028-4032` pass==1 allMult ×= CritMultiplier）。
+    // Crit leg's extra multiplier (`:4028-4032` pass==1 allMult ×= CritMultiplier).
     let crit_leg_mult = base_mult * crit.multiplier;
 
     let non_crit = finish_leg(db, &cfg_hit, hit_unscaled, base_mult, false);
@@ -123,7 +144,7 @@ where
 
     let c = crit.chance;
 
-    // Stored 族（pre-resist，`:4047-4057`）。
+    // Stored family (pre-resist, `:4047-4057`).
     let stored_crit_avg = crit_leg.avgs.clone();
     let stored_hit_avg = non_crit.avgs.clone();
     let stored_combined_avg: Vec<(DamageType, f64)> = non_crit
@@ -132,8 +153,10 @@ where
         .zip(crit_leg.avgs.iter())
         .map(|((ty, hit_avg), (_, crit_avg))| (*ty, crit_avg * c + hit_avg * (1.0 - c)))
         .collect();
-    // Stored min/max 族（`:4050-4056`）：非暴击腿区间 + 同类型暴击腿区间（暴击腿
-    // 缺该类型按 0 折入，vendor `or 0` 语义；min/max 不做 lucky 折算）。
+    // Stored min/max family (`:4050-4056`): non-crit leg's range plus the
+    // crit leg's range for the same type (folded in as 0 if the crit leg
+    // lacks that type, matching vendor's `or 0` semantics; min/max are not
+    // folded by lucky).
     let stored_ranges: Vec<StoredDamageRange> = non_crit
         .components
         .iter()
@@ -153,16 +176,22 @@ where
         .collect();
 
     let (total_hit_avg, total_hit_avg_mitigated) = if short_circuit {
-        // 旧单因子公式（取整顺序逐字节复刻替换前 offence.rs 实现）：
-        // total = round(Σavg × crit.effect)，I5 恒等保证与真 blend 数学相同。
+        // Old single-factor formula (rounding order copied byte-for-byte
+        // from the pre-replacement offence.rs implementation):
+        // total = round(Σavg × crit.effect); identity I5 guarantees this
+        // matches a real blend mathematically.
         let player_side: f64 = leg_total(&non_crit);
         let mitigated: f64 = if mode_effective {
-            // 减伤侧**不能**走「单腿减伤 × crit.effect」：敌方护甲减伤依赖
-            // 单次击中量（vendor pass1 用暴击后的击中量算 DR，暴击更大 → DR
-            // 更小），raw 依赖使 I5 恒等在减伤维度不成立。短路下暴击腿 =
-            // 非暴击腿 × crit.multiplier，据此按 vendor `:4395` 分腿减伤后
-            // blend；减伤对 raw 无依赖（纯抗性/受伤链）时数学上退化为
-            // 旧公式，逐值不变。
+            // The mitigated side **cannot** use "single-leg mitigation ×
+            // crit.effect": enemy armour mitigation depends on the
+            // single-hit damage amount (vendor pass1 computes DR from the
+            // post-crit hit amount — a bigger crit means smaller DR), so
+            // this raw dependency breaks identity I5 along the mitigation
+            // dimension. Under the short circuit, crit leg = non-crit leg ×
+            // crit.multiplier, so blend per vendor `:4395` by mitigating
+            // each leg separately first; when mitigation has no dependency
+            // on raw (a pure resistance/damage-taken chain), this degenerates
+            // mathematically to the old formula with every value unchanged.
             let hit_leg = leg_total_mitigated(&non_crit, &cfg_hit, &mitigation);
             let crit_leg_mitigated: f64 = non_crit
                 .avgs
@@ -178,7 +207,7 @@ where
         };
         (round(player_side * crit.effect), round(mitigated))
     } else {
-        // 真双腿 blend（`:4395`）：分腿过敌方减伤后按 c 加权。
+        // Real dual-leg blend (`:4395`): mitigate each leg against the enemy separately, then weight by c.
         let blend = |hit: f64, crit_v: f64| hit * (1.0 - c) + crit_v * c;
         let player_side = blend(leg_total(&non_crit), leg_total(&crit_leg));
         let mitigated = if mode_effective {
@@ -205,8 +234,8 @@ where
     }
 }
 
-/// 完成一条腿：×allMult（`:4033-4034`）→ lucky 折 avg（`:4035-4046`）。
-/// `mult == 1.0` 时跳过缩放，保持与替换前实现逐位一致。
+/// Finishes a leg: ×allMult (`:4033-4034`) → fold lucky into avg (`:4035-4046`).
+/// Skips scaling when `mult == 1.0`, keeping it bit-identical to the pre-replacement implementation.
 fn finish_leg(
     db: &ModDb,
     pass_cfg: &CalcConfig,

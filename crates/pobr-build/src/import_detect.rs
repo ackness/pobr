@@ -1,59 +1,64 @@
-//! 快捷导入识别：根据粘贴内容判断输入类型，路由到对应导入器。
+//! Quick-import recognition: figures out the input type from pasted content and routes
+//! it to the right importer.
 //!
-//! 覆盖 PoB 桌面端「Import」对话框接受的几类输入：
-//! - **Build Code**：URL-safe Base64 + zlib 压缩的 Build XML（PoB share code）。
-//! - **Build XML**：未压缩的 `<PathOfBuilding...>` 文本（直接粘贴 XML）。
-//! - **pobb.in / pastebin 链接**：分享服务 URL，需先抓取再解码（本 crate 不做网络 I/O，
-//!   仅识别并提取出 paste key 供上层处理）。
-//! - **Raw Item Text**：从游戏内复制的单件物品文本（含 `Item Class:` / `Rarity:` 头）。
+//! Covers the input types PoB desktop's "Import" dialog accepts:
+//! - **Build Code**: URL-safe Base64 + zlib compressed Build XML (PoB share code).
+//! - **Build XML**: uncompressed `<PathOfBuilding...>` text (XML pasted directly).
+//! - **pobb.in / pastebin links**: share service URLs that need fetching before they can
+//!   be decoded (this crate does no network I/O — it only recognizes the link and
+//!   extracts the paste key for the caller to fetch).
+//! - **Raw Item Text**: a single item's text as copied from the game (`Item Class:` /
+//!   `Rarity:` header).
 //!
-//! 纯函数 + 启发式，不做网络请求。判别顺序由强到弱，避免误判。
+//! Pure functions + heuristics, no network requests. Checks run strongest-signal-first
+//! to avoid misclassification.
 
-/// 识别出的导入类型。
+/// The recognized import type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImportKind {
-    /// PoB Build Code（压缩 + Base64）。
+    /// PoB Build Code (compressed + Base64).
     BuildCode,
-    /// 未压缩的 Build XML。
+    /// Uncompressed Build XML.
     BuildXml,
-    /// 分享链接（pobb.in / pastebin 等），携带解析出的 paste key。
+    /// A share link (pobb.in / pastebin / etc.), carrying the extracted paste key.
     ShareLink { service: ShareService, key: String },
-    /// 游戏内复制的物品文本。
+    /// Item text copied from the game.
     RawItem,
 }
 
-/// 已知的分享服务。
+/// Known share services.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShareService {
-    /// pobb.in（Path of Building 专用分享）。
+    /// pobb.in (dedicated Path of Building share host).
     PobbIn,
-    /// pastebin.com。
+    /// pastebin.com.
     Pastebin,
 }
 
-/// 根据输入内容识别导入类型。返回 `None` 表示无法识别。
+/// Detects the import type from the input content. Returns `None` if it can't be recognized.
 pub fn detect_import(input: &str) -> Option<ImportKind> {
     let trimmed = input.trim();
     if trimmed.is_empty() {
         return None;
     }
 
-    // 1) 分享链接：URL 形态最易识别，优先。
+    // 1) Share link: URL shape is the easiest to recognize, so check it first.
     if let Some(link) = detect_share_link(trimmed) {
         return Some(link);
     }
 
-    // 2) 未压缩 Build XML：以 `<?xml` 或 `<PathOfBuilding` 开头。
+    // 2) Uncompressed Build XML: starts with `<?xml` or `<PathOfBuilding`.
     if is_build_xml(trimmed) {
         return Some(ImportKind::BuildXml);
     }
 
-    // 3) Raw item text：含游戏内物品头部标记。
+    // 3) Raw item text: contains an in-game item header marker.
     if is_raw_item(trimmed) {
         return Some(ImportKind::RawItem);
     }
 
-    // 4) Build Code：剩余情况里若像 Base64 + 可解出 zlib header，则判为 build code。
+    // 4) Build Code: whatever's left is treated as a build code if it looks like
+    //    Base64 that could decode to a zlib header.
     if looks_like_build_code(trimmed) {
         return Some(ImportKind::BuildCode);
     }
@@ -87,14 +92,15 @@ fn detect_share_link(input: &str) -> Option<ImportKind> {
     None
 }
 
-/// 从 URL 中提取 `host/` 之后第一段路径作为 key（去掉查询串 / 末尾斜杠 / `raw/` 前缀）。
+/// Extracts the first path segment after `host/` as the key (strips query string /
+/// trailing slash / `raw/` prefix).
 fn extract_path_key(input: &str, host_marker: &str) -> Option<String> {
     let lower = input.to_ascii_lowercase();
     let pos = lower.find(host_marker)?;
     let after = &input[pos + host_marker.len()..];
-    // 去查询串与锚点。
+    // Strip query string and anchor.
     let after = after.split(['?', '#']).next().unwrap_or("");
-    // pastebin 常见 raw/ 前缀。
+    // Common pastebin raw/ prefix.
     let after = after.strip_prefix("raw/").unwrap_or(after);
     let key = after.trim_matches('/').split('/').next().unwrap_or("");
     if key.is_empty() {
@@ -109,7 +115,8 @@ fn is_build_xml(input: &str) -> bool {
     head.starts_with("<?xml") || head.starts_with("<PathOfBuilding")
 }
 
-/// 游戏内物品文本特征：`Item Class:` / `Rarity:` 头，或经典 `--------` 分隔线 + 名称块。
+/// In-game item text signature: `Item Class:` / `Rarity:` header, or the classic
+/// `--------` separator plus a name block.
 fn is_raw_item(input: &str) -> bool {
     let head: String = input.lines().take(4).collect::<Vec<_>>().join("\n");
     head.contains("Item Class:")
@@ -117,10 +124,12 @@ fn is_raw_item(input: &str) -> bool {
         || (input.contains("--------") && input.contains("Rarity"))
 }
 
-/// Build Code 启发式：去空白后整体落在 Base64 字母表内，且足够长。
+/// Build Code heuristic: after stripping whitespace, the whole string falls within the
+/// Base64 alphabet and is long enough.
 ///
-/// 不在此处真正解压（保持纯启发式、零分配开销外的轻量判定）；最终是否合法由
-/// [`crate::build_code::decode_pob_code`] 决定。
+/// Doesn't actually decompress here (kept as a cheap heuristic with no allocation
+/// beyond string filtering); whether it's actually valid is decided by
+/// [`crate::build_code::decode_pob_code`].
 fn looks_like_build_code(input: &str) -> bool {
     let cleaned: String = input.chars().filter(|c| !c.is_ascii_whitespace()).collect();
     if cleaned.len() < 16 {

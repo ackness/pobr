@@ -1,10 +1,11 @@
-//! 伤害转换链端到端集成测试（接入 `calculate_components` 管线）。
+//! End-to-end integration tests for the damage conversion chain (wired into the
+//! `calculate_components` pipeline).
 //!
-//! 覆盖 gap：conversion-chain-not-wired、double-dip-accumulated-type-flags、
-//! hit-dot-split-missing-in-damagecomponent、gain-as-extra。
+//! Covers the gaps: conversion-chain-not-wired, double-dip-accumulated-type-flags,
+//! hit-dot-split-missing-in-damagecomponent, gain-as-extra.
 //!
-//! 核对基准：PoB2 `CalcOffence.lua`（`processDamageConversion` / `calcConvertedDamage`
-//! / `buildGainTable` / `calcGainedDamage`）、agent-docs/damage-scaling.md §伤害转换。
+//! Reference: PoB2 `CalcOffence.lua` (`processDamageConversion` / `calcConvertedDamage`
+//! / `buildGainTable` / `calcGainedDamage`), agent-docs/damage-scaling.md §damage conversion.
 
 use pobr_core::calc::damage::DAMAGE_TYPES;
 use pobr_core::calc::{DamageComponent, MinimalInput, calculate_minimal};
@@ -41,8 +42,8 @@ fn find(output: &pobr_core::calc::MinimalOutput, ty: DamageType) -> Option<&Dama
         .find(|c| c.damage_type == ty)
 }
 
-/// 50% Phys→Fire 转换：物理留 50%、火焰得 50%。
-/// 验证基础搬运正确，且火焰分量的 `type_path` 含 [Physical, Fire]。
+/// 50% Phys→Fire conversion: physical keeps 50%, fire gets 50%.
+/// Verifies the basic transfer is correct and the fire component's `type_path` contains [Physical, Fire].
 #[test]
 fn convert_50_percent_phys_to_fire_splits_base() {
     let mut db = ModDb::new();
@@ -55,19 +56,21 @@ fn convert_50_percent_phys_to_fire_splits_base() {
 
     let phys = component(&output, DamageType::Physical);
     let fire = component(&output, DamageType::Fire);
-    // base 100-200 → 各 50%
+    // base 100-200 → 50% each
     assert_eq!(phys.min, 50.0);
     assert_eq!(phys.max, 100.0);
     assert_eq!(fire.min, 50.0);
     assert_eq!(fire.max, 100.0);
-    // 火焰分量携带 phys→fire 沿途类型集合
+    // The fire component carries the set of types along the phys→fire path.
     assert!(fire.type_path.contains(&DamageType::Physical));
     assert!(fire.type_path.contains(&DamageType::Fire));
 }
 
-/// PoE2 口径（无转换源 double-dip）：50% Phys→Fire 后，火焰分量只吃**最终类型** FireDamage inc
-/// 与 ElementalDamage inc，**不**吃转换源 PhysicalDamage inc。一手依据：PoB2 `CalcOffence.lua`
-/// `calcDamage(..., damageType, 0)`（:3990，typeFlags 传 0，仅含最终类型）+ headless oracle 逐分量验证。
+/// PoE2 semantics (no conversion-source double-dip): after a 50% Phys→Fire conversion, the
+/// fire component only takes **final-type** FireDamage inc and ElementalDamage inc — it does
+/// **not** take the conversion source's PhysicalDamage inc. Primary source: PoB2
+/// `CalcOffence.lua` `calcDamage(..., damageType, 0)` (:3990, typeFlags passed as 0, i.e. only
+/// the final type) + headless oracle verification per component.
 #[test]
 fn converted_fire_uses_final_type_inc_only_no_conversion_source_double_dip() {
     let mut db = ModDb::new();
@@ -75,19 +78,19 @@ fn converted_fire_uses_final_type_inc_only_no_conversion_source_double_dip() {
         Modifier::number("PhysicalDamageConvertToFire", ModType::Base, 50.0)
             .with_flags(ModFlags::ATTACK),
     );
-    // PhysicalDamage inc 100：物理分量与转换出的火焰分量都吃
+    // PhysicalDamage inc 100: both the physical component and the converted fire component take it.
     db.add_mod(
         Modifier::number("PhysicalDamage", ModType::Inc, 100.0)
             .with_flags(ModFlags::ATTACK)
             .with_tag(ModTag::DamageType(DamageType::Physical)),
     );
-    // FireDamage inc 100：仅火焰分量吃
+    // FireDamage inc 100: only the fire component takes it.
     db.add_mod(
         Modifier::number("FireDamage", ModType::Inc, 100.0)
             .with_flags(ModFlags::ATTACK)
             .with_tag(ModTag::DamageType(DamageType::Fire)),
     );
-    // ElementalDamage inc 50：火焰分量吃
+    // ElementalDamage inc 50: the fire component takes it.
     db.add_mod(
         Modifier::number("ElementalDamage", ModType::Inc, 50.0)
             .with_flags(ModFlags::ATTACK)
@@ -96,20 +99,20 @@ fn converted_fire_uses_final_type_inc_only_no_conversion_source_double_dip() {
 
     let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
 
-    // 物理分量：base 50-100，吃 PhysicalDamage inc 100 → ×2.0
+    // Physical component: base 50-100, takes PhysicalDamage inc 100 → ×2.0.
     let phys = component(&output, DamageType::Physical);
     assert_eq!(phys.min, 100.0);
     assert_eq!(phys.max, 200.0);
 
-    // 火焰分量：base 50-100，inc = Fire100 + Elem50 = 150（**不含**转换源 Phys100）→ ×2.5
-    // min 50*2.5 = 125, max 100*2.5 = 250
+    // Fire component: base 50-100, inc = Fire100 + Elem50 = 150 (**excludes** the conversion
+    // source's Phys100) → ×2.5. min 50*2.5 = 125, max 100*2.5 = 250.
     let fire = component(&output, DamageType::Fire);
     assert_eq!(fire.min, 125.0);
     assert_eq!(fire.max, 250.0);
 }
 
-/// 超 100% 转换归一：100% Phys→Fire + 50% Phys→Cold → 归一为 ~67% Fire / ~33% Cold。
-/// 物理被完全转出（留存 0）。
+/// Over-100% conversion is normalized: 100% Phys→Fire + 50% Phys→Cold normalizes to
+/// ~67% Fire / ~33% Cold. Physical is fully converted away (0 retained).
 #[test]
 fn over_100_percent_conversion_normalizes_to_one() {
     let mut db = ModDb::new();
@@ -124,15 +127,15 @@ fn over_100_percent_conversion_normalizes_to_one() {
 
     let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
 
-    // 物理完全转出（留存 0）→ 无物理分量或为 0
+    // Physical is fully converted away (0 retained) → no physical component, or it's 0.
     let phys = find(&output, DamageType::Physical);
     if let Some(p) = phys {
         assert!(p.min.abs() < 1e-6 && p.max.abs() < 1e-6, "phys should be 0");
     }
-    // fire = 100/150 = 2/3，cold = 50/150 = 1/3（无 inc）
+    // fire = 100/150 = 2/3, cold = 50/150 = 1/3 (no inc).
     let fire = component(&output, DamageType::Fire);
     let cold = component(&output, DamageType::Cold);
-    // base avg 150 → fire avg ≈ 100, cold avg ≈ 50
+    // base avg 150 → fire avg ~100, cold avg ~50.
     assert!(
         (fire.avg() - 100.0).abs() < 0.5,
         "fire avg ~100, got {}",
@@ -143,7 +146,7 @@ fn over_100_percent_conversion_normalizes_to_one() {
         "cold avg ~50, got {}",
         cold.avg()
     );
-    // 转换后总伤害守恒（≈ base avg 150）
+    // Total damage is conserved after conversion (~ base avg 150).
     let total: f64 = output.damage_components.iter().map(|c| c.avg()).sum();
     assert!(
         (total - 150.0).abs() < 0.5,
@@ -151,7 +154,8 @@ fn over_100_percent_conversion_normalizes_to_one() {
     );
 }
 
-/// gain-as-extra：25% Phys gain as Lightning，物理来源**不扣减**，额外追加闪电包。
+/// gain-as-extra: 25% Phys gain as Lightning — the physical source is **not reduced**,
+/// a lightning component is added on top.
 #[test]
 fn gain_as_extra_does_not_reduce_source() {
     let mut db = ModDb::new();
@@ -162,24 +166,26 @@ fn gain_as_extra_does_not_reduce_source() {
 
     let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
 
-    // 物理来源保持原样（gain 不扣减）
+    // The physical source stays unchanged (gain doesn't reduce it).
     let phys = component(&output, DamageType::Physical);
     assert_eq!(phys.min, 100.0);
     assert_eq!(phys.max, 200.0);
-    // 额外闪电 = 25% 物理
+    // Extra lightning = 25% of physical.
     let lightning = component(&output, DamageType::Lightning);
     assert_eq!(lightning.min, 25.0);
     assert_eq!(lightning.max, 50.0);
-    // 闪电分量 type_path 含来源 Physical（仅用于归因/展示；inc 聚合只按最终类型，不 double-dip）
+    // The lightning component's type_path includes the Physical source (used only for
+    // attribution/display; inc aggregation goes by final type only, no double-dip).
     assert!(lightning.type_path.contains(&DamageType::Physical));
     assert!(lightning.type_path.contains(&DamageType::Lightning));
-    // 总伤害 = 物理 150 + 闪电 37.5 = 187.5（gain 是净增）
+    // Total damage = physical 150 + lightning 37.5 = 187.5 (gain is a net addition).
     let total: f64 = output.damage_components.iter().map(|c| c.avg()).sum();
     assert_eq!(total, 187.5);
 }
 
-/// PoE2 口径：物理 gain as 火焰后，额外火焰分量只吃**最终类型** FireDamage inc，**不**吃来源
-/// PhysicalDamage inc（与转换同口径，PoB2 calcDamage typeFlags 仅含最终类型；oracle 验证）。
+/// PoE2 semantics: after physical gain-as-fire, the extra fire component only takes
+/// **final-type** FireDamage inc, **not** the source PhysicalDamage inc (same semantics as
+/// conversion — PoB2 calcDamage's typeFlags contains only the final type; oracle-verified).
 #[test]
 fn gain_as_extra_fire_uses_final_type_inc_only() {
     let mut db = ModDb::new();
@@ -200,45 +206,48 @@ fn gain_as_extra_fire_uses_final_type_inc_only() {
 
     let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
 
-    // 物理：base 100-200 不扣减，吃 PhysicalDamage inc 100 → ×2 = 200-400
+    // Physical: base 100-200 not reduced, takes PhysicalDamage inc 100 → ×2 = 200-400.
     let phys = component(&output, DamageType::Physical);
     assert_eq!(phys.min, 200.0);
     assert_eq!(phys.max, 400.0);
-    // 额外火焰：50% 物理 base = 50-100，inc = Fire100（**不含**来源 Phys100）→ ×2 = 100-200
+    // Extra fire: 50% of physical base = 50-100, inc = Fire100 (**excludes** source Phys100) → ×2 = 100-200.
     let fire = component(&output, DamageType::Fire);
     assert_eq!(fire.min, 100.0);
     assert_eq!(fire.max, 200.0);
 }
 
-/// 回归（type_path-last-not-final-type）：当某分量的 `type_path` 含**链序晚于自身**的类型时，
-/// inc/more 聚合必须按分量自身 `damage_type` 而非 `type_path` 末位。
+/// Regression (type_path-last-not-final-type): when a component's `type_path` contains a
+/// type that comes **later in chain order** than the component's own type, inc/more
+/// aggregation must key on the component's own `damage_type`, not the last entry in `type_path`.
 ///
-/// 场景：物理 100% gain as Cold（Cold 分量 path 起含 Physical），再叠加 Fire gain as Cold
-/// （把 Fire 推入 Cold 的 path）。链序 [Phys,Lightning,Cold,Fire] 下 Cold 的 path 排序后末位
-/// = Fire。旧实现误用 `FireDamage` inc 聚合 Cold 分量；修正后须用 `ColdDamage`。
-/// PoB2 `calcDamage` typeFlags 仅含最终 damageType——oracle（ice-shot/deadeye）逐分量验证。
+/// Scenario: physical 100% gain as Cold (the Cold component's path starts with Physical),
+/// then stack Fire gain as Cold on top (pushing Fire into Cold's path). Under chain order
+/// [Phys, Lightning, Cold, Fire], the last entry in Cold's sorted path is Fire. The old
+/// implementation mistakenly aggregated the Cold component using `FireDamage` inc; the fix
+/// must use `ColdDamage` instead. PoB2 `calcDamage`'s typeFlags contains only the final
+/// damageType — verified per component against the ice-shot/deadeye oracle.
 #[test]
 fn component_uses_own_type_inc_not_path_last() {
     let mut db = ModDb::new();
-    // 物理 100% gain as Cold（Cold 得物理 base，path 含 Physical）。
+    // Physical 100% gain as Cold (Cold gets the physical base, path includes Physical).
     db.add_mod(
         Modifier::number("PhysicalDamageGainAsCold", ModType::Base, 100.0)
             .with_flags(ModFlags::ATTACK),
     );
-    // Fire flat base（使 Fire→Cold gain 有源，从而把 Fire 推入 Cold 的 type_path）。
+    // Flat fire base (gives Fire→Cold gain a source, pushing Fire into Cold's type_path).
     db.add_mod(Modifier::number("FireDamageMin", ModType::Base, 10.0).with_flags(ModFlags::ATTACK));
     db.add_mod(Modifier::number("FireDamageMax", ModType::Base, 20.0).with_flags(ModFlags::ATTACK));
-    // Fire 100% gain as Cold——把 Fire 推入 Cold 的 type_path。
+    // Fire 100% gain as Cold — pushes Fire into Cold's type_path.
     db.add_mod(
         Modifier::number("FireDamageGainAsCold", ModType::Base, 100.0).with_flags(ModFlags::ATTACK),
     );
-    // ColdDamage inc 100：仅当按分量自身类型聚合时 Cold 才吃到。
+    // ColdDamage inc 100: Cold only takes this if aggregation keys on the component's own type.
     db.add_mod(
         Modifier::number("ColdDamage", ModType::Inc, 100.0)
             .with_flags(ModFlags::ATTACK)
             .with_tag(ModTag::DamageType(DamageType::Cold)),
     );
-    // FireDamage inc 999：若误用 path 末位（Fire），Cold 会被这个巨大值污染。
+    // FireDamage inc 999: if the buggy path-last logic is used (Fire), Cold gets polluted by this huge value.
     db.add_mod(
         Modifier::number("FireDamage", ModType::Inc, 999.0)
             .with_flags(ModFlags::ATTACK)
@@ -248,8 +257,8 @@ fn component_uses_own_type_inc_not_path_last() {
     let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
 
     let cold = component(&output, DamageType::Cold);
-    // Cold base = 物理 gain(100-200) + 火焰 gain(10-20) = 110-220，吃 ColdDamage inc 100 →
-    // ×2 = 220-440。若误用 path 末位 FireDamage inc 999 → ×10.99（断言会失败）。
+    // Cold base = physical gain(100-200) + fire gain(10-20) = 110-220, takes ColdDamage inc 100
+    // → ×2 = 220-440. If the buggy path-last FireDamage inc 999 were used → ×10.99 (assertion would fail).
     assert!(cold.type_path.contains(&DamageType::Fire), "path 应含 Fire");
     assert_eq!(
         cold.min, 220.0,
@@ -258,7 +267,8 @@ fn component_uses_own_type_inc_not_path_last() {
     assert_eq!(cold.max, 440.0);
 }
 
-/// 富化字段：转换 / gain 产生的分量 kind=Hit、source=Attack；type_path 正确去重有序。
+/// Enriched fields: components produced by conversion / gain have kind=Hit, source=Attack;
+/// type_path is correctly deduplicated and ordered.
 #[test]
 fn converted_components_carry_hit_attack_kind_and_ordered_path() {
     let mut db = ModDb::new();
@@ -272,7 +282,7 @@ fn converted_components_carry_hit_attack_kind_and_ordered_path() {
 
     assert_eq!(fire.kind, DamageKind::Hit);
     assert_eq!(fire.source, DamageSource::Attack);
-    // type_path 按 DAMAGE_TYPES 链序：Physical(0) before Fire(3)
+    // type_path follows DAMAGE_TYPES chain order: Physical(0) before Fire(3).
     let idx_phys = DAMAGE_TYPES
         .iter()
         .position(|t| *t == DamageType::Physical)
@@ -295,10 +305,11 @@ fn converted_components_carry_hit_attack_kind_and_ordered_path() {
     assert!(path_phys < path_fire, "type_path must follow chain order");
 }
 
-/// 回归：无任何转换 / gain modifier 时，分量与历史逐字一致（纯物理 + 附加火焰）。
+/// Regression: with no conversion / gain modifiers at all, the components match the legacy
+/// output verbatim (pure physical + additional fire).
 #[test]
 fn no_conversion_path_matches_legacy_output_verbatim() {
-    // 纯物理
+    // Pure physical.
     let db = ModDb::new();
     let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
     assert_eq!(output.damage_components.len(), 1);
@@ -307,7 +318,7 @@ fn no_conversion_path_matches_legacy_output_verbatim() {
     assert_eq!(phys.max, 200.0);
     assert_eq!(phys.type_path, vec![DamageType::Physical]);
 
-    // 附加火焰 flat + 元素 inc，无转换
+    // Additional flat fire + elemental inc, no conversion.
     let mut db2 = ModDb::new();
     db2.add_mod(
         Modifier::number("FireDamageMin", ModType::Base, 100.0).with_flags(ModFlags::ATTACK),
@@ -319,26 +330,27 @@ fn no_conversion_path_matches_legacy_output_verbatim() {
         Modifier::number("ElementalDamage", ModType::Inc, 50.0).with_flags(ModFlags::ATTACK),
     );
     let output2 = calculate_minimal(&db2, &CalcConfig::attack(), &base_input());
-    // 火焰 100 * 1.5 = 150（与 damage_components.rs 历史断言一致）
+    // Fire 100 * 1.5 = 150 (matches the historical assertion in damage_components.rs).
     let fire = component(&output2, DamageType::Fire);
     assert_eq!(fire.avg(), 150.0);
     assert_eq!(fire.type_path, vec![DamageType::Fire]);
-    // 物理不受元素 inc 影响
+    // Physical is unaffected by the elemental inc.
     let phys2 = component(&output2, DamageType::Physical);
     assert_eq!(phys2.avg(), 150.0);
 }
 
-/// 技能转换先于全局转换：技能 50% Phys→Cold，全局 50% Cold→Fire 链式。
-/// 物理留 50%，冷 50% 中 50% 再转火，即冷 25%、火 25%。
+/// Skill conversion runs before global conversion: skill 50% Phys→Cold, chained into global
+/// 50% Cold→Fire. Physical keeps 50%, and 50% of the resulting Cold converts again to Fire,
+/// giving Cold 25% and Fire 25%.
 #[test]
 fn skill_conversion_chains_into_global_conversion() {
     let mut db = ModDb::new();
-    // 技能：50% Phys→Cold
+    // Skill: 50% Phys→Cold.
     db.add_mod(
         Modifier::number("SkillPhysicalDamageConvertToCold", ModType::Base, 50.0)
             .with_flags(ModFlags::ATTACK),
     );
-    // 全局：50% Cold→Fire（作用于技能转出的 cold）
+    // Global: 50% Cold→Fire (applies to the Cold produced by the skill conversion).
     db.add_mod(
         Modifier::number("ColdDamageConvertToFire", ModType::Base, 50.0)
             .with_flags(ModFlags::ATTACK),
@@ -346,7 +358,7 @@ fn skill_conversion_chains_into_global_conversion() {
 
     let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
 
-    // base avg 150。phys 留 50% → 75；cold 50%*留50% → 37.5；fire 50%*转50% → 37.5
+    // base avg 150. phys keeps 50% → 75; cold 50%*keeps 50% → 37.5; fire 50%*converts 50% → 37.5.
     let phys = component(&output, DamageType::Physical);
     let cold = component(&output, DamageType::Cold);
     let fire = component(&output, DamageType::Fire);
@@ -365,16 +377,16 @@ fn skill_conversion_chains_into_global_conversion() {
         "fire ~37.5, got {}",
         fire.avg()
     );
-    // 火焰 type_path 经 Physical→Cold→Fire 链，应含三者
+    // Fire's type_path goes through the Physical→Cold→Fire chain, so it should contain all three.
     assert!(fire.type_path.contains(&DamageType::Physical));
     assert!(fire.type_path.contains(&DamageType::Cold));
     assert!(fire.type_path.contains(&DamageType::Fire));
 }
 
-/// random element 档折叠（vendor CalcOffence.lua:1175-1200：
-/// `DamageGainAsRandom BASE n` 在 physMode=AVERAGE（configInput 缺省）下展开为
-/// `DamageGainAs{Fire,Cold,Lightning} BASE n/3`——PoBR 在 build_gain_matrix 折叠
-/// 同口径；druid-oracle ember-fusillade 的 Relentless Vindicator 树点实例）。
+/// Random-element gain folding (vendor CalcOffence.lua:1175-1200: `DamageGainAsRandom BASE n`,
+/// under physMode=AVERAGE (the default configInput), expands to `DamageGainAs{Fire,Cold,Lightning}
+/// BASE n/3`; PoBR folds it the same way in build_gain_matrix — instanced by the Relentless
+/// Vindicator tree node from the druid-oracle ember-fusillade case).
 #[test]
 fn random_element_gain_as_splits_average_across_elements() {
     let mut db = ModDb::new();
@@ -384,7 +396,7 @@ fn random_element_gain_as_splits_average_across_elements() {
 
     let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
 
-    // 物理源 100-200 不扣减；三元素各 gain 10%（30/3）。
+    // Physical source 100-200 not reduced; each of the three elements gains 10% (30/3).
     let phys = component(&output, DamageType::Physical);
     assert_eq!(phys.min, 100.0);
     assert_eq!(phys.max, 200.0);
@@ -396,8 +408,8 @@ fn random_element_gain_as_splits_average_across_elements() {
     assert!(find(&output, DamageType::Chaos).is_none_or(|c| c.avg() == 0.0));
 }
 
-/// PhysicalDamageGainAsRandom 仅作用于物理源行（vendor 展开为
-/// `PhysicalDamageGainAs<Elem>`；CalcOffence.lua:1193-1200）。
+/// PhysicalDamageGainAsRandom only applies to the physical-source line (vendor expands it to
+/// `PhysicalDamageGainAs<Elem>`; CalcOffence.lua:1193-1200).
 #[test]
 fn physical_random_gain_as_only_from_physical_source() {
     let mut db = ModDb::new();
@@ -405,17 +417,17 @@ fn physical_random_gain_as_only_from_physical_source() {
         Modifier::number("PhysicalDamageGainAsRandom", ModType::Base, 30.0)
             .with_flags(ModFlags::ATTACK),
     );
-    // 非物理源：flat 火焰附加 60-60（不应再被 phys-random 二次放大）。
+    // Non-physical source: flat fire addition of 60-60 (should not be amplified again by phys-random).
     db.add_mod(Modifier::number("FireDamageMin", ModType::Base, 60.0).with_flags(ModFlags::ATTACK));
     db.add_mod(Modifier::number("FireDamageMax", ModType::Base, 60.0).with_flags(ModFlags::ATTACK));
 
     let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
 
-    // fire = flat 60 + phys 100×10% = 70 / 60 + 200×10% = 80。
+    // fire = flat 60 + phys 100×10% = 70 / 60 + 200×10% = 80.
     let fire = component(&output, DamageType::Fire);
     assert_eq!(fire.min, 70.0);
     assert_eq!(fire.max, 80.0);
-    // cold/lightning 仅来自 phys 源 10%。
+    // cold/lightning come only from the 10% physical-source gain.
     let cold = component(&output, DamageType::Cold);
     assert_eq!(cold.min, 10.0);
     assert_eq!(cold.max, 20.0);

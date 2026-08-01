@@ -1,37 +1,46 @@
-//! Loadout —— 天赋树 / 装备 / 技能的**成组切换**（PoB2 `Build.lua:617 SyncLoadouts`）。
+//! Loadout — a **grouped switch** across passive tree / items / skills (PoB2
+//! `Build.lua:617 SyncLoadouts`).
 //!
-//! PoB2 不单独存 loadout：它从各 set 的 `title` 按命名约定**推导**出来，所以本
-//! 特性零格式扩展、与 PoB2 双向兼容——在 PoB2 里建的组 pobr 认得，反之亦然。
+//! PoB2 doesn't store loadouts separately: it **derives** them from each set's `title`
+//! following a naming convention, so this feature needs zero format extension and is
+//! bidirectionally compatible with PoB2 — a group created in PoB2 is recognized by pobr,
+//! and vice versa.
 //!
-//! 两种绑定方式（vendor `SyncLoadouts` 逐条对应）：
+//! Two binding styles (matching vendor `SyncLoadouts` one for one):
 //!
-//! 1. **精确同名**：各类 set 的 `title` 完全相同即成组（`title="Mapping"` × 3）。
-//! 2. **花括号标识**：`title="升级期 {lvl30}"` —— 靠 `{lvl30}` 绑定，各类显示名可
-//!    不同；`{lvl30,lvl50}` 逗号分隔表示一套同时属于多个组。
+//! 1. **Exact same title**: sets of every category with an identical `title` form a
+//!    group (`title="Mapping"` × 3).
+//! 2. **Brace identifier**: `title="Leveling {lvl30}"` — bound via `{lvl30}`, so display
+//!    names can differ across categories; a comma-separated `{lvl30,lvl50}` means one
+//!    set belongs to multiple groups at once.
 //!
-//! **单套豁免**：某一类只有一套（或没有）时，该类不参与匹配（vendor 的
-//! `oneItem` / `oneSkill`）。于是「只切树和装备、技能共用一套」无需为技能建组。
+//! **Single-set exemption**: when a category has only one set (or none), that category
+//! is excluded from matching (vendor's `oneItem` / `oneSkill`). So "only switch tree and
+//! items, skills share one set" needs no skill group.
 //!
-//! # 与 vendor 的已知差异
+//! # Known differences from vendor
 //!
-//! - **ConfigSet 不参与**：pobr 尚未解析多套 `<Config>`，等价于 vendor 的
-//!   `oneConfig` 恒真。若 build 真有多套 ConfigSet，PoB2 会额外要求 config 也匹配，
-//!   此处会多推导出组。接入多套 config 时补上即可。
-//! - **树版本前缀不参与匹配**：vendor 在非最新 `treeVersion` 时把显示名前缀成
-//!   `[0.4] Mapping` 再去匹配 item/skill 的纯 title（`Build.lua:695`），导致旧版本树
-//!   的精确同名组匹配不上。这里只用纯 `title` 匹配——树版本全为最新时行为一致。
+//! - **ConfigSet doesn't participate**: pobr doesn't yet parse multiple `<Config>` sets,
+//!   which is equivalent to vendor's `oneConfig` always being true. If a build actually
+//!   has multiple ConfigSets, PoB2 would additionally require config to match too, so
+//!   this would over-derive groups. Fix once multi-config support lands.
+//! - **Tree version prefix doesn't participate in matching**: vendor prefixes the
+//!   display name with `[0.4] Mapping` when `treeVersion` isn't the latest, before
+//!   matching against item/skill's plain title (`Build.lua:695`), which means exact-name
+//!   groups on an old-version tree fail to match. Here we only match on the plain
+//!   `title` — behavior is identical when the tree version is always the latest.
 
-/// 一个 set 的引用：XML 文档序（1-based，即 `activeSpec` / `activeItemSet` /
-/// `activeSkillSet` 的取值口径）+ 显示名。
+/// A reference to one set: its XML document order (1-based, matching the value
+/// semantics of `activeSpec` / `activeItemSet` / `activeSkillSet`) plus its display name.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SetRef {
-    /// 1-based 文档序。
+    /// 1-based document order.
     pub id: usize,
-    /// `title` 属性原文；缺省为 `"Default"`（与 vendor `spec.title or "Default"` 一致）。
+    /// Raw `title` attribute; defaults to `"Default"` (matching vendor's `spec.title or "Default"`).
     pub title: String,
 }
 
-/// build XML 里各类 set 的清单（按文档序）。
+/// The list of sets of each category in the build XML (in document order).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildSets {
     pub trees: Vec<SetRef>,
@@ -39,23 +48,25 @@ pub struct BuildSets {
     pub skills: Vec<SetRef>,
 }
 
-/// 一个推导出的 loadout：组名 + 各类选中的 set 文档序。
+/// A derived loadout: group name + the selected set document order for each category.
 ///
-/// `item` / `skill` 为 `None` 表示该类未参与绑定（单套豁免）——切换时保持原样。
+/// `item` / `skill` being `None` means that category didn't participate in binding
+/// (single-set exemption) — leave it untouched when switching.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Loadout {
-    /// 展示名。标识符绑定时为 `"<去标识符的名字> {<标识符>}"`（同 vendor）。
+    /// Display name. When bound by identifier, it's `"<name with identifier stripped> {<identifier>}"` (matches vendor).
     pub name: String,
     pub tree: usize,
     pub item: Option<usize>,
     pub skill: Option<usize>,
 }
 
-/// 拆出 `title` 里的 `{a,b}` 标识符与去掉标识符后的名字。
+/// Splits the `{a,b}` identifier out of a `title` and the name with the identifier stripped.
 ///
-/// 等价 vendor 的 `string.match(title, "%{([%w,]+)%}")` + `gsub` + trim：仅接受
-/// **ASCII 字母数字与逗号**，其余（如 `{中文}` / `{a-b}` / `{}`）视为普通文本，
-/// 该 set 走精确同名分支。名字被清空时回退 `"Default"`。
+/// Equivalent to vendor's `string.match(title, "%{([%w,]+)%}")` + `gsub` + trim: only
+/// **ASCII alphanumerics and commas** are accepted; anything else (e.g. `{中文}` /
+/// `{a-b}` / `{}`) is treated as plain text, and that set falls through to the exact-name
+/// branch. Falls back to `"Default"` if stripping leaves an empty name.
 fn split_link_ids(title: &str) -> (Vec<String>, String) {
     let plain = || {
         let t = title.trim();
@@ -85,12 +96,13 @@ fn split_link_ids(title: &str) -> (Vec<String>, String) {
     (ids, name.to_string())
 }
 
-/// 同一标识符下的目标 set（同 id 多套时后写覆盖，与 vendor 的 map 赋值一致）。
+/// The target set for a given identifier (last write wins on duplicate ids, matching
+/// vendor's map assignment).
 struct LinkTarget {
     set_id: usize,
 }
 
-/// 建立「标识符 → set」映射；无标识符的 set 归入纯名字集合。
+/// Builds an "identifier → set" map; sets with no identifier go into the plain-name set.
 fn index_links(sets: &[SetRef]) -> (std::collections::HashMap<String, LinkTarget>, Vec<String>) {
     let mut links = std::collections::HashMap::new();
     let mut plain = Vec::new();
@@ -107,9 +119,10 @@ fn index_links(sets: &[SetRef]) -> (std::collections::HashMap<String, LinkTarget
     (links, plain)
 }
 
-/// 从 set 清单推导全部 loadout（顺序：先精确同名，后标识符绑定——同 vendor）。
+/// Derives all loadouts from the set lists (order: exact-name matches first, then
+/// identifier bindings — matches vendor).
 pub fn derive_loadouts(sets: &BuildSets) -> Vec<Loadout> {
-    // 单套豁免：该类只有一套（或没有）时不参与匹配。
+    // Single-set exemption: a category with only one set (or none) doesn't participate in matching.
     let one_item = sets.items.len() <= 1;
     let one_skill = sets.skills.len() <= 1;
 
@@ -118,11 +131,12 @@ pub fn derive_loadouts(sets: &BuildSets) -> Vec<Loadout> {
 
     let mut out = Vec::new();
 
-    // 1) 精确同名：无标识符的 tree spec，要求各类存在同名 set（豁免类除外）
+    // 1) Exact same title: for tree specs without an identifier, require a same-named
+    //    set to exist in each category (exempt categories excluded).
     for spec in &sets.trees {
         let (ids, _) = split_link_ids(&spec.title);
         if !ids.is_empty() {
-            continue; // 带标识符的走下一段
+            continue; // Identifiers are handled in the next pass.
         }
         let item = sets.items.iter().find(|s| s.title == spec.title);
         let skill = sets.skills.iter().find(|s| s.title == spec.title);
@@ -138,7 +152,7 @@ pub fn derive_loadouts(sets: &BuildSets) -> Vec<Loadout> {
         }
     }
 
-    // 2) 标识符绑定：按 tree spec 的标识符逐个匹配
+    // 2) Identifier binding: match each of the tree spec's identifiers individually
     for spec in &sets.trees {
         let (ids, name) = split_link_ids(&spec.title);
         for link_id in ids {
@@ -166,7 +180,7 @@ pub fn derive_loadouts(sets: &BuildSets) -> Vec<Loadout> {
     out
 }
 
-/// 一次切换要选中的各类 set 文档序（`None` = 保持 XML 原有 active 不动）。
+/// The set document order to select for each category in one switch (`None` = leave the XML's existing active value untouched).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SetSelection {
     pub tree: Option<usize>,
@@ -184,13 +198,17 @@ impl From<&Loadout> for SetSelection {
     }
 }
 
-/// 改写 build XML 里的三个 active 属性，返回新 XML——**切换 loadout 的实现方式**。
+/// Rewrites the three active attributes in the build XML and returns the new XML —
+/// **this is how switching a loadout is implemented**.
 ///
-/// 之所以改 XML 而不是给解析函数加参数：`parse_build` 下挂六个各自读 active 属性
-/// 的解析函数，逐个穿参会横切整条解析链（parity 的主战场）。这里只替换
-/// `<Tree activeSpec>` / `<Items activeItemSet>` / `<Skills activeSkillSet>` 三个
-/// **结构标签**上的一个数字，其余字节原样保留——物品文本 / Notes / 转义一概不碰，
-/// 不传 selection 时 `parse_build` 的行为逐字不变。
+/// Why edit the XML instead of adding a parameter to the parse functions: `parse_build`
+/// has six sub-parsers each reading an active attribute, and threading a parameter
+/// through all of them would cut across the whole parse chain (which is where parity is
+/// hardest fought). Instead this only replaces a single number on the three
+/// **structural tags** `<Tree activeSpec>` / `<Items activeItemSet>` /
+/// `<Skills activeSkillSet>`, leaving every other byte untouched — item text / Notes /
+/// escaping are never touched, and `parse_build`'s behavior is byte-for-byte unchanged
+/// when no selection is passed.
 pub fn select_sets(xml: &str, sel: &SetSelection) -> String {
     let mut out = xml.to_string();
     for (elem, attr, value) in [
@@ -204,8 +222,8 @@ pub fn select_sets(xml: &str, sel: &SetSelection) -> String {
     out
 }
 
-/// 读出 XML 当前的 active 三元组（属性缺失时为 `None`，解析侧按 1 兜底）。
-/// 供切换后反查「现在是哪个 loadout」。
+/// Reads the XML's current active triple (`None` when an attribute is missing; the
+/// caller falls back to 1). Used to look up "which loadout is currently active" after switching.
 pub fn active_selection(xml: &str) -> SetSelection {
     SetSelection {
         tree: read_tag_attr(xml, "<Tree", "activeSpec"),
@@ -214,7 +232,7 @@ pub fn active_selection(xml: &str) -> SetSelection {
     }
 }
 
-/// 读 `elem` 开始标签上的数字属性。
+/// Reads a numeric attribute on `elem`'s start tag.
 fn read_tag_attr(xml: &str, elem: &str, attr: &str) -> Option<usize> {
     let start = xml.match_indices(elem).find_map(|(i, _)| {
         let rest = &xml[i + elem.len()..];
@@ -228,9 +246,11 @@ fn read_tag_attr(xml: &str, elem: &str, attr: &str) -> Option<usize> {
     tag[at..at + ve].parse().ok()
 }
 
-/// 在 `elem` 开始标签内把 `attr` 设为 `n`（属性缺失则插入）。找不到该标签时原样返回。
+/// Sets `attr` to `n` inside `elem`'s start tag (inserts it if missing). Returns the
+/// input unchanged if the tag isn't found.
 fn set_tag_attr(xml: &str, elem: &str, attr: &str, n: usize) -> String {
-    // 定位开始标签：`<Tree` 后必须紧跟空白或 `>`，避免命中 `<TreeView`。
+    // Locate the start tag: `<Tree` must be immediately followed by whitespace or `>`,
+    // to avoid matching `<TreeView`.
     let Some(start) = xml.match_indices(elem).find_map(|(i, _)| {
         let rest = &xml[i + elem.len()..];
         rest.starts_with([' ', '\t', '\r', '\n', '>', '/'])
@@ -253,7 +273,7 @@ fn set_tag_attr(xml: &str, elem: &str, attr: &str, n: usize) -> String {
             };
             format!("{}{n}{}", &tag[..vs], &tag[vs + ve_rel..])
         }
-        // 属性缺失：插在元素名之后（`<Tree` → `<Tree activeSpec="2"`）。
+        // Attribute missing: insert it right after the element name (`<Tree` → `<Tree activeSpec="2"`).
         None => format!(
             "{}{} {attr}=\"{n}\"{}",
             &tag[..elem.len()],
@@ -294,7 +314,8 @@ mod tests {
 
     #[test]
     fn rejects_non_alphanumeric_identifiers_as_plain_text() {
-        // vendor 正则 %{([%w,]+)%} 只收字母数字与逗号——中文/连字符不算标识符。
+        // vendor's regex %{([%w,]+)%} only accepts alphanumerics and commas — CJK text
+        // and hyphens don't count as identifiers.
         assert_eq!(split_link_ids("阶段 {中文}").0, Vec::<String>::new());
         assert_eq!(split_link_ids("phase {a-b}").0, Vec::<String>::new());
         assert_eq!(split_link_ids("empty {}").0, Vec::<String>::new());
@@ -347,7 +368,7 @@ mod tests {
 
     #[test]
     fn leaves_everything_else_byte_identical() {
-        // 物品文本含换行与特殊字符——切换绝不能碰它们。
+        // Item text contains newlines and special characters — switching must never touch them.
         let xml = "<PathOfBuilding2><Tree activeSpec=\"1\"/><Items activeItemSet=\"1\"><Item id=\"1\">Rarity: RARE\nFoo &amp; Bar\n\"quoted\"</Item></Items></PathOfBuilding2>";
         let out = select_sets(
             xml,
@@ -368,7 +389,7 @@ mod tests {
 
     #[test]
     fn does_not_match_a_longer_element_name() {
-        // `<TreeView>` 不是 `<Tree>`——前缀匹配必须看后一个字符。
+        // `<TreeView>` is not `<Tree>` — prefix matching must check the following character.
         let xml = r#"<PathOfBuilding2><TreeView activeSpec="9"/><Tree activeSpec="1"/></PathOfBuilding2>"#;
         let out = select_sets(
             xml,
@@ -420,7 +441,7 @@ mod tests {
         let loadouts = derive_loadouts(&sets);
 
         assert_eq!(loadouts.len(), 2);
-        // 组名取树的名字 + 标识符（vendor 口径）。
+        // The group name takes the tree's name + identifier (matches vendor).
         assert_eq!(loadouts[0].name, "升级期 {lvl30}");
         assert_eq!(
             (loadouts[0].tree, loadouts[0].item, loadouts[0].skill),
@@ -440,14 +461,14 @@ mod tests {
         let loadouts = derive_loadouts(&sets);
 
         assert_eq!(loadouts.len(), 2);
-        // 同一件装备集被两个 loadout 共用。
+        // The same item set is shared by two loadouts.
         assert_eq!(loadouts[0].item, Some(1));
         assert_eq!(loadouts[1].item, Some(1));
     }
 
     #[test]
     fn exempts_a_category_that_has_only_one_set() {
-        // 只有一套技能 → 技能不参与匹配，仍能按树+装备成组。
+        // Only one skill set → skill is exempt from matching, but tree+item can still form a group.
         let sets = BuildSets {
             trees: vec![set(1, "Leveling"), set(2, "Mapping")],
             items: vec![set(1, "Leveling"), set(2, "Mapping")],
@@ -463,7 +484,7 @@ mod tests {
 
     #[test]
     fn skips_a_tree_whose_counterparts_are_missing() {
-        // Mapping 树没有对应的装备集 → 不成组（vendor "only exact match"）。
+        // The Mapping tree has no matching item set → no group forms (vendor "only exact match").
         let sets = BuildSets {
             trees: vec![set(1, "Leveling"), set(2, "Mapping")],
             items: vec![set(1, "Leveling"), set(2, "别的名字")],
@@ -478,7 +499,7 @@ mod tests {
 
     #[test]
     fn single_set_build_yields_one_loadout_with_everything_exempt() {
-        // 最常见的真实 build：各类都只有一套 → 一个 Default 组，全豁免。
+        // The most common real build: every category has exactly one set → a single Default group, everything exempt.
         let sets = BuildSets {
             trees: vec![set(1, "Default")],
             items: vec![set(1, "Default")],
@@ -505,7 +526,7 @@ mod xml_tests {
     use super::*;
     use crate::xml_build::parse_build_sets;
 
-    /// 仓库里的真实 PoB2 build：各类恰好一套 → 一个全豁免的 Default 组。
+    /// A real PoB2 build from the repo: exactly one set per category → a single fully-exempt Default group.
     #[test]
     fn real_build_yields_a_single_default_loadout() {
         // Arrange
@@ -532,7 +553,7 @@ mod xml_tests {
         assert_eq!(loadouts[0].tree, 1);
     }
 
-    /// 多套 + 标识符绑定的往返：从 XML 直接推导出两个组。
+    /// Round trip with multiple sets + identifier binding: derives two groups directly from XML.
     #[test]
     fn multi_set_xml_derives_identifier_bound_loadouts() {
         let xml = r#"<PathOfBuilding2>

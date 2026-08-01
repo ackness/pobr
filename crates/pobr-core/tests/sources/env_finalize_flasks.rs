@@ -1,19 +1,20 @@
-//! env_finalize 阶段 3：flask/charm 词条合并端到端。
+//! env_finalize stage 3: end-to-end flask/charm mod merging.
 //!
-//! 载荷构造已由 `item::ingest_flask_charm` 单测锚定（tests/item_source.rs），
-//! 本文件验证**合并语义**（vendor CalcPerform.lua:1429-1663）：
-//! `cfg.mode_combat` 门控整段、effect 乘区缩放（FlaskEffect/CharmEffect +
-//! 载荷局部 LocalUtilityEffect）、charm limit（Override/Sum + cap 常量）、
-//! mergeBuff 同 base 取最大、Using* 条件写回、幂等护栏。
+//! Payload construction is already pinned by `item::ingest_flask_charm` unit tests
+//! (tests/item_source.rs). This file verifies the **merge semantics**
+//! (vendor CalcPerform.lua:1429-1663): the whole section gated by `cfg.mode_combat`, effect
+//! multiplier scaling (FlaskEffect/CharmEffect + the payload-local LocalUtilityEffect),
+//! charm limit (Override/Sum + a cap constant), mergeBuff taking the max for matching bases,
+//! Using* condition writeback, and idempotency guards.
 //!
-//! 关键不变式（ninja_parity 锚点）：`mode_combat` 默认 false → 载荷在不在
-//! player db，输出逐值不变。
+//! Key invariant (a ninja_parity anchor): with `mode_combat` defaulting to false, the output
+//! is value-for-value unchanged whether or not the payload is in the player db.
 
 use pobr_core::calc::env_finalize::merge_flasks_charms;
 use pobr_core::calc::{Actor, ActorBaseStats, Env, MinimalInput};
 use pobr_core::item::{ItemIngest, ingest_flask_charm_with_ctx};
 
-/// engine 版 flask/charm ingest（签名对齐历史 `ingest_flask_charm`）。
+/// Engine-side flask/charm ingest (signature matches the legacy `ingest_flask_charm`).
 fn ingest_flask_charm(slot_name: &str, item: &Item) -> ItemIngest {
     ingest_flask_charm_with_ctx(slot_name, item, crate::support::ctx())
 }
@@ -34,7 +35,7 @@ fn utility_item(base: &str, explicits: &[&str]) -> Item {
     }
 }
 
-/// 带载荷的 Env（mode_combat 由调用方设定）。
+/// An Env pre-loaded with carriers (mode_combat is set by the caller).
 fn env_with_carriers(mode_combat: bool, carriers: Vec<Modifier>) -> Env {
     let mut env = Env::new(Actor::new(1, ActorBaseStats::default()));
     env.cfg = CalcConfig::attack()
@@ -54,8 +55,9 @@ fn lightning_res(db: &ModDb, cfg: &CalcConfig) -> f64 {
     db.sum(ModType::Base, cfg, &[ModName::from("LightningResistance")])
 }
 
-/// 基线：charm 词条 + CharmLimit 1 → 合并进 player db 并吃 CharmEffect 乘区
-/// （15 × 1.2 = 18，vendor ScaleAddMod 整数截断）；Using* 条件置位。
+/// Baseline: a charm mod + CharmLimit 1 -> merges into the player db and gets scaled by the
+/// CharmEffect multiplier (15 x 1.2 = 18, integer-truncated per vendor ScaleAddMod);
+/// Using* conditions get set.
 #[test]
 fn charm_mods_merge_and_scale_with_charm_effect() {
     let mut carriers = carrier_for(
@@ -79,7 +81,7 @@ fn charm_mods_merge_and_scale_with_charm_effect() {
         env.cfg.conditions.get("UsingSapphireCharmofLightning"),
         Some(&true)
     );
-    // 归因穿透：合并产物可回溯 Flask 来源。
+    // Attribution passthrough: the merged output traces back to the Flask source.
     let contributions = env.player.mod_db.contributions(
         ModType::Base,
         &env.cfg,
@@ -91,11 +93,13 @@ fn charm_mods_merge_and_scale_with_charm_effect() {
     );
 }
 
-/// flask 载荷：局部 `25% increased effect` 与全局 FlaskEffect INC 相加进乘区
-/// （10 × (1 + (20+25)/100) = 14.5 → 整数截断 14）；UsingFlask 条件置位。
+/// Flask payload: the local `25% increased effect` and the global FlaskEffect INC add
+/// together into the multiplier (10 x (1 + (20+25)/100) = 14.5 -> integer-truncated to 14);
+/// UsingFlask condition gets set.
 ///
-/// `Grants Onslaught during effect` **不产出 Onslaught flag**——PoB2 ModParser 对该行
-/// 返回 unsupported（见 item.rs 注释 + item_source.rs 对应测试），PoBR 逐行一致。
+/// `Grants Onslaught during effect` **does not produce an Onslaught flag** — PoB2's
+/// ModParser returns unsupported for this line (see the item.rs comment + the corresponding
+/// item_source.rs test), and PoBR matches it line for line.
 #[test]
 fn flask_local_and_global_effect_inc_stack_additively() {
     let mut carriers = carrier_for(
@@ -127,7 +131,8 @@ fn flask_local_and_global_effect_inc_stack_additively() {
     assert_eq!(env.cfg.conditions.get("UsingQuicksilverFlask"), Some(&true));
 }
 
-/// mode_combat=false → 载荷存在与否输出逐值不变（ninja_parity 不变式的微观锚点）。
+/// mode_combat=false -> output is value-for-value unchanged regardless of whether the payload
+/// is present (a micro-anchor for the ninja_parity invariant).
 #[test]
 fn mode_combat_false_keeps_everything_untouched() {
     let mut carriers = carrier_for(
@@ -147,9 +152,9 @@ fn mode_combat_false_keeps_everything_untouched() {
     assert_eq!(lightning_res(&env.player.mod_db, &env.cfg), 0.0);
 }
 
-/// charm limit：CharmLimit 1 → 仅首个（插入序）charm 并入；CharmLimit Base 5
-/// 被 cap 常量（charm_limit_cap = 3）截断；无 CharmLimit 词条 → charm 全不生效
-/// （vendor :1589 `Override or Sum` 为 0）。
+/// charm limit: CharmLimit 1 -> only the first charm (insertion order) merges in;
+/// CharmLimit Base 5 gets truncated by the cap constant (charm_limit_cap = 3); with no
+/// CharmLimit mod at all, no charm takes effect (vendor :1589 `Override or Sum` is 0).
 #[test]
 fn charm_limit_caps_number_of_active_charms() {
     let two_charms = |limit: Option<f64>| {
@@ -190,7 +195,8 @@ fn charm_limit_caps_number_of_active_charms() {
     );
 }
 
-/// mergeBuff（vendor :41-63）：同 base 同参数词条取最大不叠加；不同 base 各自生效。
+/// mergeBuff (vendor :41-63): mods with the same base and same parameters take the max
+/// rather than stacking; different bases each take effect independently.
 #[test]
 fn merge_buff_takes_max_for_same_base_same_params() {
     let mut carriers = carrier_for(
@@ -215,7 +221,8 @@ fn merge_buff_takes_max_for_same_base_same_params() {
     );
 }
 
-/// 幂等：重复调用（同一 Env 多次 perform 场景）不重复并入。
+/// Idempotency: repeated calls (the same Env going through perform multiple times) don't
+/// merge the payload in again.
 #[test]
 fn merge_is_idempotent_across_repeated_calls() {
     let mut carriers = carrier_for(
@@ -235,8 +242,8 @@ fn merge_is_idempotent_across_repeated_calls() {
     assert_eq!(after_first, 15.0);
 }
 
-/// FlasksDoNotApplyToPlayer（vendor :1561）：flask buff 与条件整体不落 player；
-/// charm 不受该 flag 影响。
+/// FlasksDoNotApplyToPlayer (vendor :1561): both the flask buff and its conditions are
+/// entirely withheld from the player; charms are unaffected by this flag.
 #[test]
 fn flasks_do_not_apply_to_player_flag_gates_flask_only() {
     let mut carriers = carrier_for(
@@ -266,8 +273,9 @@ fn flasks_do_not_apply_to_player_flag_gates_flask_only() {
     assert_eq!(env.cfg.conditions.get("UsingCharm"), Some(&true));
 }
 
-/// 端到端（session → perform）：charm 抗性词条经 mode_combat=true 进输出；
-/// mode_combat=false 输出逐值持平基线（无 charm 的 session）。
+/// End-to-end (session -> perform): a charm's resistance mod reaches the output when
+/// mode_combat=true; with mode_combat=false the output matches the baseline (a session
+/// without the charm) value-for-value.
 #[test]
 fn end_to_end_charm_resistance_reaches_output_under_mode_combat() {
     let input = MinimalInput {
@@ -304,9 +312,10 @@ fn end_to_end_charm_resistance_reaches_output_under_mode_combat() {
     );
 }
 
-/// 端到端：charm 预算来源不再手搓 `CharmLimit` modifier，而是经 mod_parser
-/// 解析腰带 implicit「Has 1 Charm Slot」（vendor ModParser.lua:5453）注入——预算
-/// 解锁后 charm 抗性进入输出；无该词条（预算 0，:1589）时 charm 全不生效。
+/// End-to-end: the charm budget no longer comes from a hand-built `CharmLimit` modifier —
+/// it's injected by mod_parser parsing the belt implicit "Has 1 Charm Slot"
+/// (vendor ModParser.lua:5453). Once the budget is unlocked, the charm's resistance reaches
+/// the output; without that mod (budget 0, :1589), no charm takes effect at all.
 #[test]
 fn end_to_end_belt_charm_slots_text_unlocks_charm_budget() {
     let input = MinimalInput {

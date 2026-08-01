@@ -2,30 +2,33 @@ use std::collections::HashMap;
 
 use pobr_data::prelude::*;
 
-/// PerStat 的 actor output 读数函数（`stat 名 → output 值`；缺键 `None`）。
+/// Actor output lookup function for PerStat (`stat name → output value`; missing key → `None`).
 pub type StatLookup<'a> = &'a dyn Fn(&str) -> Option<f64>;
 
-/// EvalMod 求值上下文。
+/// EvalMod evaluation context.
 ///
-/// [`crate::Modifier::effective_number`] 的入参从 `&CalcConfig` 升级为本类型；
-/// `From<&CalcConfig>` + `impl Into` 签名使全部既有调用点（传 `&cfg`）**零改动**
-/// 编译（契约 5 预告的机械迁移面收敛为 0）。`matches` 仍取 `&CalcConfig`
-/// （PerStat/GlobalLimit 不参与匹配过滤）。
+/// [`crate::Modifier::effective_number`]'s parameter is upgraded from
+/// `&CalcConfig` to this type; the `From<&CalcConfig>` + `impl Into` signature
+/// lets every existing call site (which passes `&cfg`) compile with **zero
+/// changes** (the mechanical migration surface promised by contract 5 comes
+/// out to zero). `matches` still takes `&CalcConfig` (PerStat/GlobalLimit
+/// don't participate in match filtering).
 ///
-/// `stat_lookup` = PerStat tag 的 actor **output** 读数通道（vendor
-/// `ModStore.lua:280-325 GetStat`：`self.actor.output[stat] or cfg.skillStats
-/// or 0`）——由消费方（T2/T4 的 pass 编排）在只读快照阶段提供；`None` =
-/// 无快照，PerStat 取 0（保守等价 vendor output 缺位）。
+/// `stat_lookup` is the actor **output** read channel for the PerStat tag
+/// (vendor `ModStore.lua:280-325 GetStat`: `self.actor.output[stat] or
+/// cfg.skillStats or 0`) — supplied by the consumer (T2/T4 pass orchestration)
+/// during the read-only snapshot stage; `None` means no snapshot, so PerStat
+/// reads as 0 (conservatively equivalent to a missing vendor output).
 #[derive(Clone, Copy)]
 pub struct EvalContext<'a> {
-    /// 匹配/条件/乘数上下文（既有通道）。
+    /// Match/condition/multiplier context (the existing channel).
     pub cfg: &'a CalcConfig,
-    /// `stat 名 → actor output 值`。`None` = 整体无快照。
+    /// `stat name → actor output value`. `None` means no snapshot at all.
     pub stat_lookup: Option<StatLookup<'a>>,
 }
 
 impl<'a> EvalContext<'a> {
-    /// 仅 cfg、无 output 快照（等价 `From<&CalcConfig>`）。
+    /// cfg only, no output snapshot (equivalent to `From<&CalcConfig>`).
     pub fn new(cfg: &'a CalcConfig) -> Self {
         Self {
             cfg,
@@ -33,7 +36,7 @@ impl<'a> EvalContext<'a> {
         }
     }
 
-    /// 带 actor output 读数通道（PerStat 消费方用）。
+    /// With an actor output read channel (for PerStat consumers).
     pub fn with_stat_lookup(cfg: &'a CalcConfig, lookup: StatLookup<'a>) -> Self {
         Self {
             cfg,
@@ -41,12 +44,15 @@ impl<'a> EvalContext<'a> {
         }
     }
 
-    /// vendor `GetStat` 默认路径：output 快照值，缺位 → 0（ModStore.lua:323
-    /// `(self.actor.output and self.actor.output[stat]) or ... or 0`）。
+    /// The vendor `GetStat` default path: output snapshot value, falling back
+    /// to 0 when missing (ModStore.lua:323
+    /// `(self.actor.output and self.actor.output[stat]) or ... or 0`).
     ///
-    /// 读数优先级：`stat_lookup`（消费方现算通道）→ [`CalcConfig::stats`] 快照
-    /// （编排层 6c 回填，与 `multipliers` 同源；两通道统一回填源见
-    /// [`CalcConfig::stats`] doc）→ 0。
+    /// Read priority: `stat_lookup` (the consumer's compute-on-demand channel)
+    /// → [`CalcConfig::stats`] snapshot (backfilled by the orchestration
+    /// layer's stage 6c, same source as `multipliers`; see the
+    /// [`CalcConfig::stats`] doc for the shared backfill source of both
+    /// channels) → 0.
     pub fn stat(&self, name: &str) -> f64 {
         self.stat_lookup
             .and_then(|lookup| lookup(name))
@@ -77,81 +83,115 @@ pub struct CalcConfig {
     pub damage_type: Option<DamageType>,
     pub conditions: HashMap<String, bool>,
     pub multipliers: HashMap<String, f64>,
-    /// 已算出 stat 快照（V2s4；PoB2 `StatThreshold`/`PerStat`/`PercentStat` tag
-    /// 经 GetStat 读 actor **output**，ModStore.lua:556-573）。由编排层在来源注入
-    /// 后回填（`inject_per_x_multipliers` 6c，与 `multipliers` 同源同值）；缺键＝0
-    /// （vendor output 缺 stat 同为 0）。与 [`EvalContext`] 的 `stat_lookup`
-    /// （PerStat/PercentStat 求值通道）已统一回填源：matches 侧 gate 类 tag 直读
-    /// 本快照，求值侧经 `EvalContext::stat` 在无 lookup 时回退到本快照。
+    /// Snapshot of already-computed stats (V2s4; PoB2's `StatThreshold`/
+    /// `PerStat`/`PercentStat` tags read actor **output** via GetStat,
+    /// ModStore.lua:556-573). Backfilled by the orchestration layer after
+    /// source injection (`inject_per_x_multipliers` stage 6c, same source and
+    /// values as `multipliers`); missing key → 0 (matches a missing stat in
+    /// vendor output, which is also 0). Shares its backfill source with
+    /// [`EvalContext`]'s `stat_lookup` (the PerStat/PercentStat evaluation
+    /// channel): gate-style tags on the matches side read this snapshot
+    /// directly, while the evaluation side falls back to this snapshot via
+    /// `EvalContext::stat` when there's no lookup.
     ///
-    /// 回填范围＝perform 前可算的子集（属性/Life/Mana 池值/per-slot 装备防御）；
-    /// perform 内才算出的全局 Armour/Evasion/EnergyShield/Ward 等留 0
-    /// （保守＝该类条目休眠，等 output 快照通道接入）。
+    /// Backfill scope = the subset computable before `perform` (attributes /
+    /// life / mana pool values / per-slot equipment defence); globals only
+    /// computed inside `perform` (Armour/Evasion/EnergyShield/Ward, etc.) are
+    /// left at 0 (conservative: those entries stay dormant until the output
+    /// snapshot channel is wired in).
     pub stats: HashMap<String, f64>,
-    /// 额外的伤害缩放 ModName（按主技能关键词 / 武器类别派生，如 `GrenadeDamage`、
-    /// `CrossbowDamage`）。`damage::aggregate_inc_more` 把它们纳入通用增伤桶，使
-    /// `increased Grenade Damage` / `Damage with Crossbows` 对该技能生效。
+    /// Extra damage-scaling ModNames (derived from main skill keywords /
+    /// weapon category, e.g. `GrenadeDamage`, `CrossbowDamage`).
+    /// `damage::aggregate_inc_more` folds them into the general increased-
+    /// damage bucket so that `increased Grenade Damage` / `Damage with
+    /// Crossbows` apply to this skill.
     pub damage_keywords: Vec<String>,
-    /// 有效 DPS 口径开关（PoB2 `env.mode_effective`）。
+    /// Effective-DPS mode toggle (PoB2 `env.mode_effective`).
     ///
-    /// - `false`（默认，面板/裸 DPS 口径）：进攻计算**不**引入敌人 modDB 的减伤
-    ///   （抗性/护甲/`DamageTaken`/格挡）。命中率沿用现有标量 evasion 口径，保证与
-    ///   历史输出一致（向后兼容）。
-    /// - `true`（有效 DPS）：伤害末端乘 `enemy.mod_db` 的 `DamageTaken` 链、扣减敌人
-    ///   抗性/护甲、扣敌人格挡，并启用敌人 `CannotEvade` 短路。
+    /// - `false` (default, panel / raw DPS mode): offence calculation does
+    ///   **not** apply the enemy modDB's damage reduction (resistance / armour
+    ///   / `DamageTaken` / block). Hit chance keeps using the existing scalar
+    ///   evasion formula, matching historical output (backward compatible).
+    /// - `true` (effective DPS): the tail of the damage pipeline multiplies by
+    ///   the enemy `mod_db`'s `DamageTaken` chain, subtracts enemy resistance/
+    ///   armour, subtracts enemy block, and enables the enemy's `CannotEvade`
+    ///   short-circuit.
     ///
-    /// 出处：agent-docs/accuracy-and-enemy.md §七（buffMode → mode_effective 口径表）、
-    /// devs/docs/architecture/12-combat-mechanics-architecture.md §5。
+    /// Source: agent-docs/accuracy-and-enemy.md §7 (buffMode → mode_effective
+    /// mapping table), devs/docs/architecture/12-combat-mechanics-architecture.md §5.
     pub mode_effective: bool,
-    /// buffMode 三态之 buffs 维度（PoB2 CalcSetup.lua:582-605：BUFFED/COMBAT/EFFECTIVE
-    /// 均含 buffs）。门控 `env_finalize` 的 buff_pass 整段（aura/curse/debuff 分发）。
+    /// The "buffs" dimension of buffMode's three states (PoB2
+    /// CalcSetup.lua:582-605: BUFFED/COMBAT/EFFECTIVE all include buffs).
+    /// Gates the entire buff_pass section of `env_finalize` (aura/curse/debuff
+    /// dispatch).
     ///
-    /// 默认 **false**（与 `mode_effective` 默认一致）——未显式置位的既有调用方逐值不变；
-    /// pobr-build 编排入口对 MAIN 口径显式置 true（PoB2 非 CALCS 模式恒 EFFECTIVE）。
+    /// Defaults to **false** (matching `mode_effective`'s default) — existing
+    /// callers that don't set it explicitly keep unchanged behavior; the
+    /// pobr-build orchestration entry point sets it explicitly to true for the
+    /// MAIN calculation (PoB2 is always EFFECTIVE outside CALCS mode).
     pub mode_buffs: bool,
-    /// buffMode 三态之 combat 维度（PoB2 CalcSetup.lua:582-605：COMBAT/EFFECTIVE 含
-    /// combat）。门控 doActorMisc 等价段（expand_misc_buffs）、战斗条件自动置位
-    /// （CalcPerform.lua:242-260）、flask/charm 合并。
+    /// The "combat" dimension of buffMode's three states (PoB2
+    /// CalcSetup.lua:582-605: COMBAT/EFFECTIVE include combat). Gates the
+    /// doActorMisc-equivalent section (expand_misc_buffs), automatic setting
+    /// of combat conditions (CalcPerform.lua:242-260), and flask/charm
+    /// merging.
     ///
-    /// 默认 **false**，语义与 [`CalcConfig::mode_buffs`] 同步引入。
+    /// Defaults to **false**, introduced with the same semantics as
+    /// [`CalcConfig::mode_buffs`].
     pub mode_combat: bool,
-    /// 距离 ramp 的 skillDist（PoB2 `skillCfg.skillDist = env.mode_effective and
-    /// env.configInput.enemyDistance`，CalcActiveSkill.lua:655）：[`ModTag::DistanceRamp`]
-    /// （Close/Far Combat 等近/远战伤害随距离变化）的插值距离。
+    /// The skillDist for distance ramp (PoB2 `skillCfg.skillDist =
+    /// env.mode_effective and env.configInput.enemyDistance`,
+    /// CalcActiveSkill.lua:655): the interpolation distance for
+    /// [`ModTag::DistanceRamp`] (Close/Far Combat and similar melee/ranged
+    /// damage-by-distance effects).
     ///
-    /// **关键**：vendor 取的是 `configInput.enemyDistance`——**仅 `<Input>` 显式值**
-    /// （或 catalog 的 `defaultState`），**不含 `<Placeholder>` 显示占位值**。这与
-    /// `Multiplier:enemyDistance`（ConfigTab apply 时 placeholder 也会兜底，用于命中
-    /// 距离惩罚）是**两条独立通道**。demo 套件 18 个 build 的 enemyDistance 全是
-    /// placeholder（无 Input）→ 此处 `None` → DistanceRamp 整条跳过，与 golden 一致
-    /// （PoB2 同样不应用 Close Combat 距离 MORE）。
+    /// **Important**: vendor reads `configInput.enemyDistance` — **only the
+    /// explicit `<Input>` value** (or the catalog's `defaultState`), **not**
+    /// the `<Placeholder>` display placeholder value. This is a **separate
+    /// channel** from `Multiplier:enemyDistance` (which does fall back to the
+    /// placeholder when ConfigTab applies it, used for the hit distance
+    /// penalty). All 18 demo-suite builds have `enemyDistance` as a
+    /// placeholder (no Input) → `None` here → DistanceRamp is skipped
+    /// entirely, matching golden (PoB2 likewise doesn't apply the Close
+    /// Combat distance MORE).
     ///
-    /// `None`（默认 / panel 口径 / 未显式设 enemyDistance）→ DistanceRamp mod 在
-    /// [`crate::Modifier::effective_number`] 返回 `None`（跳过），镜像 vendor
-    /// `if not cfg.skillDist then return end`（ModStore.lua:575）。
+    /// `None` (default / panel mode / enemyDistance not explicitly set) →
+    /// DistanceRamp mods return `None` (skipped) in
+    /// [`crate::Modifier::effective_number`], mirroring vendor's `if not
+    /// cfg.skillDist then return end` (ModStore.lua:575).
     pub skill_distance: Option<f64>,
-    /// 主技能显示名（小写；vendor `cfg.skillName`，ModStore.lua:752-780 `SkillName`
-    /// tag 的匹配口径）。由编排层按 `skill_name_from_id(skill_id)` 填入主技能 cfg；
-    /// `None`（默认 / 防御侧 / 无主技能）→ [`ModTag::SkillName`] 恒不匹配（镜像
-    /// vendor `cfg.skillName or ""` 空串不等于任何 tag 名的保守口径）。
+    /// The main skill's display name (lowercase; vendor `cfg.skillName`, the
+    /// matching semantics of the `SkillName` tag, ModStore.lua:752-780).
+    /// Filled into the main skill's cfg by the orchestration layer via
+    /// `skill_name_from_id(skill_id)`; `None` (default / defence side / no
+    /// main skill) → [`ModTag::SkillName`] never matches (mirroring vendor's
+    /// conservative behavior where `cfg.skillName or ""` — an empty string —
+    /// never equals any tag name).
     pub skill_name: Option<String>,
-    /// 跨 actor multiplier 快照（为 S2-D 预留，本阶段零消费）。
+    /// Snapshot of cross-actor multipliers (reserved for S2-D; unused at this stage).
     ///
-    /// 对应 PoB2 ModStore EvalMod 的 `actor`/`limitActor` tag：`Multiplier`/`PerStat`
-    /// 读取上下文切到 `env.player`/`env.minion`/parent 时，从此表按
-    /// `"<actor>.<var>"`（如 `"player.PowerCharges"`）取对方 actor 的值。
-    /// 由编排层在只读快照阶段回填；空表 = 行为与引入前逐值一致。
+    /// Corresponds to the `actor`/`limitActor` tags of PoB2's ModStore
+    /// EvalMod: when the `Multiplier`/`PerStat` read context switches to
+    /// `env.player`/`env.minion`/parent, the other actor's value is read from
+    /// this table by `"<actor>.<var>"` (e.g. `"player.PowerCharges"`).
+    /// Backfilled by the orchestration layer during the read-only snapshot
+    /// stage; an empty table means behavior is unchanged from before this was
+    /// introduced.
     pub actor_multipliers: HashMap<String, f64>,
-    /// 注入的运行时常量包。
+    /// The injected runtime constants bundle.
     ///
-    /// calc 公式中的全部游戏常量魔数（抗性边界 / 服务器帧 / 异常基线 / 各类 cap…）
-    /// 改读此包；`Default` = fallback（与 `base/game_constants.json` 逐值相等，
-    /// 无 GameData 时行为不变）。挂在 `CalcConfig` 上是因为 cfg 已线程化到全部
-    /// calc 函数——这是把常量送达每个使用点的最小侵入通道。
+    /// All game constant magic numbers used in calc formulas (resistance
+    /// boundaries / server frames / ailment baselines / various caps…) now
+    /// read from this bundle; `Default` is the fallback (value-equal to
+    /// `base/game_constants.json`, so behavior is unchanged without
+    /// GameData). It lives on `CalcConfig` because cfg is already threaded
+    /// through every calc function — the least invasive channel for getting
+    /// constants to every use site.
     ///
-    /// 注入入口：`CalculationSession::set_constants`（pobr-build
-    /// `calculate_with_data` 在 `with_config` 之后调用；注意 `with_config`
-    /// 会整体覆盖 cfg，故注入必须在其后）。
+    /// Injection entry point: `CalculationSession::set_constants`
+    /// (pobr-build's `calculate_with_data` calls it after `with_config`; note
+    /// that `with_config` overwrites cfg wholesale, so injection must happen
+    /// after it).
     pub constants: RuntimeConstants,
 }
 
@@ -172,13 +212,13 @@ impl CalcConfig {
             .with_skill_types(SkillTypes::SPELL)
     }
 
-    /// 是否为法术（PoE2 法术必中，不做精准/闪避检定）。
-    /// 出处：agent-docs/accuracy-and-enemy.md §三：`if not isAttack then output.AccuracyHitChance = 100`。
+    /// Whether this is a spell (PoE2 spells always hit — no accuracy/evasion check).
+    /// Source: agent-docs/accuracy-and-enemy.md §3: `if not isAttack then output.AccuracyHitChance = 100`.
     pub fn is_spell(&self) -> bool {
         self.skill_types.intersects(SkillTypes::SPELL)
     }
 
-    /// 是否为攻击（需要精准/闪避命中检定）。
+    /// Whether this is an attack (requires an accuracy/evasion hit check).
     pub fn is_attack(&self) -> bool {
         self.skill_types.intersects(SkillTypes::ATTACK)
     }
@@ -203,7 +243,7 @@ impl CalcConfig {
         self
     }
 
-    /// 设定额外伤害缩放 ModName（技能关键词 / 武器类别派生）。
+    /// Sets extra damage-scaling ModNames (derived from skill keywords / weapon category).
     pub fn with_damage_keywords(mut self, names: Vec<String>) -> Self {
         self.damage_keywords = names;
         self
@@ -219,47 +259,50 @@ impl CalcConfig {
         self
     }
 
-    /// 设置有效 DPS 口径开关（见 [`CalcConfig::mode_effective`]）。
+    /// Sets the effective-DPS mode toggle (see [`CalcConfig::mode_effective`]).
     pub fn with_mode_effective(mut self, mode_effective: bool) -> Self {
         self.mode_effective = mode_effective;
         self
     }
 
-    /// 设置 buffMode 之 buffs 维度（见 [`CalcConfig::mode_buffs`]）。
+    /// Sets buffMode's buffs dimension (see [`CalcConfig::mode_buffs`]).
     pub fn with_mode_buffs(mut self, mode_buffs: bool) -> Self {
         self.mode_buffs = mode_buffs;
         self
     }
 
-    /// 设置 buffMode 之 combat 维度（见 [`CalcConfig::mode_combat`]）。
+    /// Sets buffMode's combat dimension (see [`CalcConfig::mode_combat`]).
     pub fn with_mode_combat(mut self, mode_combat: bool) -> Self {
         self.mode_combat = mode_combat;
         self
     }
 
-    /// 设置 DistanceRamp 的 skillDist（见 [`CalcConfig::skill_distance`]）。
+    /// Sets DistanceRamp's skillDist (see [`CalcConfig::skill_distance`]).
     pub fn with_skill_distance(mut self, skill_distance: Option<f64>) -> Self {
         self.skill_distance = skill_distance;
         self
     }
 
-    /// 设置主技能显示名（见 [`CalcConfig::skill_name`]；小写）。
+    /// Sets the main skill's display name (see [`CalcConfig::skill_name`]; lowercase).
     pub fn with_skill_name(mut self, skill_name: Option<String>) -> Self {
         self.skill_name = skill_name;
         self
     }
 
-    /// 注入运行时常量包（见 [`CalcConfig::constants`]）。未调用时为 `Default`
-    /// （fallback，与入库 JSON 逐值相等）。
+    /// Injects the runtime constants bundle (see [`CalcConfig::constants`]).
+    /// Defaults to `Default` (the fallback, value-equal to the on-disk JSON)
+    /// when not called.
     pub fn with_constants(mut self, constants: RuntimeConstants) -> Self {
         self.constants = constants;
         self
     }
 
     pub fn condition(&self, name: &str) -> bool {
-        // PoB2 `mode_effective` 派生条件：`Condition:Effective` 用于门控只在有效 DPS 口径
-        // 才生效的敌侧 debuff（curse/exposure/slow effect-on-self）。显式置入的 `Effective`
-        // 条件优先（便于测试覆盖），未显式置入时回退为 `mode_effective`。
+        // A condition derived from PoB2's `mode_effective`: `Condition:Effective`
+        // gates enemy-side debuffs (curse/exposure/self-inflicted slow) that only
+        // apply in effective-DPS mode. An explicitly set `Effective` condition
+        // takes priority (so tests can override it); falls back to
+        // `mode_effective` when not set explicitly.
         if name == "Effective"
             && let Some(explicit) = self.conditions.get(name)
         {
@@ -275,19 +318,21 @@ impl CalcConfig {
         self.multipliers.get(name).copied().unwrap_or(0.0)
     }
 
-    /// 读已算出 stat 快照（见 [`CalcConfig::stats`]；缺键＝0）。
+    /// Reads the already-computed stat snapshot (see [`CalcConfig::stats`]; missing key → 0).
     pub fn stat(&self, name: &str) -> f64 {
         self.stats.get(name).copied().unwrap_or(0.0)
     }
 
-    /// 写入已算出 stat 快照（编排层回填 / 测试构造）。
+    /// Writes into the already-computed stat snapshot (orchestration-layer backfill / test construction).
     pub fn with_stat(mut self, name: impl Into<String>, value: f64) -> Self {
         self.stats.insert(name.into(), value);
         self
     }
 
-    /// 写入跨 actor multiplier 快照（见 [`CalcConfig::actor_multipliers`]；键形如
-    /// `"player.PowerCharge"`）。供编排层在只读快照阶段回填 / 测试构造。
+    /// Writes into the cross-actor multiplier snapshot (see
+    /// [`CalcConfig::actor_multipliers`]; keys look like `"player.PowerCharge"`).
+    /// For the orchestration layer to backfill during the read-only snapshot
+    /// stage, or for test construction.
     pub fn with_actor_multiplier(
         mut self,
         actor: crate::ActorRef,
@@ -299,9 +344,10 @@ impl CalcConfig {
         self
     }
 
-    /// 按 actor 维度读跨 actor multiplier 快照（[`ModTag`](crate::ModTag) 的
-    /// `actor`/`limit_actor` 求值通道）。缺键＝0.0——保守等价 PoB2 ModStore.lua
-    /// getActor 缺位时 mod 不生效的口径。
+    /// Reads the cross-actor multiplier snapshot for a given actor (the
+    /// `actor`/`limit_actor` evaluation channel of [`ModTag`](crate::ModTag)).
+    /// Missing key → 0.0 — conservatively matching PoB2 ModStore.lua's
+    /// behavior where the mod doesn't apply when `getActor` is missing.
     pub fn actor_multiplier(&self, actor: crate::ActorRef, var: &str) -> f64 {
         self.actor_multipliers
             .get(&format!("{}.{}", actor.key(), var))

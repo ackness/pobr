@@ -1,7 +1,8 @@
-//! 技能功能面机制集成测试（Lane C）。
+//! Skill-mechanics integration tests (Lane C).
 //!
-//! 涵盖 AoE 半径、投射物数量/行为、冷却、消耗/保留四个子系统。
-//! 测试数值对照 `agent-docs/skill-mechanics.md` + PoB2 `CalcOffence.lua`。
+//! Covers four subsystems: AoE radius, projectile count/behavior, cooldown, and
+//! cost/reservation. Expected values are checked against
+//! `agent-docs/skill-mechanics.md` + PoB2 `CalcOffence.lua`.
 
 use pobr_core::calc::skill_mechanics::{
     ProjectileBehavior, ProjectileBehaviorInput, calc_aoe, calc_aoe_traced_value, calc_cooldown,
@@ -10,9 +11,10 @@ use pobr_core::calc::skill_mechanics::{
 use pobr_core::{CalcConfig, ModDb, Modifier, TraceGraph};
 use pobr_data::prelude::*;
 
-// §1  AoE 半径
+// §1  AoE radius
 
-/// PoB2 `calcRadius` 参考值：baseRadius=12（120/10），无 AoE 修饰词 → areaMod=1.0 → radius=12。
+/// PoB2 `calcRadius` reference value: baseRadius=12 (120/10), no AoE mods ->
+/// areaMod=1.0 -> radius=12.
 #[test]
 fn aoe_radius_no_modifiers() {
     let db = ModDb::new();
@@ -50,7 +52,7 @@ fn aoe_radius_40pct_increased() {
     assert_eq!(result.radius, 14.0);
 }
 
-/// more Area Of Effect + increased 叠加测试。
+/// more Area Of Effect + increased stacking test.
 /// +50% inc × 20% more → areaMod = 1.5 × 1.2 = 1.8
 /// floor(100×√1.8) = floor(134.16) = 134 → floor(12×134/100)=floor(16.08)=16
 #[test]
@@ -65,7 +67,7 @@ fn aoe_radius_inc_and_more_stacking() {
     assert_eq!(result.radius, 16.0);
 }
 
-/// extra_base（Base AreaOfEffect 加值）参与半径计算。
+/// extra_base (a Base AreaOfEffect addend) participates in the radius calculation.
 #[test]
 fn aoe_radius_with_extra_base() {
     let db = ModDb::new();
@@ -76,7 +78,7 @@ fn aoe_radius_with_extra_base() {
     assert_eq!(result.base_radius_input, 10.0);
 }
 
-/// base_radius=0 → radius=0（防止除零）。
+/// base_radius=0 -> radius=0 (guards against division by zero).
 #[test]
 fn aoe_radius_zero_base() {
     let db = ModDb::new();
@@ -85,7 +87,7 @@ fn aoe_radius_zero_base() {
     assert_eq!(result.radius, 0.0);
 }
 
-/// 追踪版本与非追踪版本数值一致。
+/// The traced and non-traced versions produce identical values.
 #[test]
 fn aoe_traced_matches_non_traced() {
     let mut db = ModDb::new();
@@ -97,12 +99,13 @@ fn aoe_traced_matches_non_traced() {
     assert!((plain.radius - traced.value).abs() < 1e-9);
 }
 
-// §2  投射物数量
+// §2  Projectile count
 
-/// 无修饰词：ProjectileCount BASE=1（或 0 时 more 结果为 0）。
-/// PoB2 约定：ProjectileCount BASE = -1 + 技能本身 base（SkillStatMap `base=-1`），
-/// 因此若不加任何词条，base sum = 0 → count = 0.0。
-/// 测试只加 1 枚基础投射物词条（相当于宝石本身），期望 count = 1.0。
+/// No mods: ProjectileCount BASE=1 (or the more result is 0 at 0).
+/// PoB2's convention: ProjectileCount BASE = -1 + the skill's own base
+/// (SkillStatMap `base=-1`), so with no mods at all, base sum = 0 -> count = 0.0.
+/// This test adds only 1 base projectile mod (representing the gem itself),
+/// expecting count = 1.0.
 #[test]
 fn projectile_count_base_one() {
     let mut db = ModDb::new();
@@ -113,8 +116,9 @@ fn projectile_count_base_one() {
     assert!((result.additional_count - 0.0).abs() < 1e-9);
 }
 
-/// 基础 1 枚 + 额外 2 枚：base sum=3（SkillStatMap base=-1 约定下会是 base + additional=-1+3=2，
-/// 但在本测试直接用 BASE sum=3），count=3。
+/// 1 base + 2 additional: base sum=3 (under the SkillStatMap base=-1 convention
+/// this would be base + additional = -1+3=2, but this test uses BASE sum=3
+/// directly), count=3.
 #[test]
 fn projectile_count_with_additional() {
     let mut db = ModDb::new();
@@ -125,7 +129,8 @@ fn projectile_count_with_additional() {
     assert!((result.additional_count - 2.0).abs() < 1e-9); // count-1
 }
 
-/// More("ProjectileCount") 为乘区。base=2, +50% more → count = 2*1.5 = 3.0。
+/// More("ProjectileCount") is a multiplicative bucket. base=2, +50% more -> count
+/// = 2*1.5 = 3.0.
 #[test]
 fn projectile_count_more_multiplier() {
     let mut db = ModDb::new();
@@ -137,7 +142,7 @@ fn projectile_count_more_multiplier() {
     assert!((result.more_factor - 1.5).abs() < 1e-9);
 }
 
-/// NoAdditionalProjectiles flag → 强制 1 发。
+/// NoAdditionalProjectiles flag -> forces a single projectile.
 #[test]
 fn projectile_count_no_additional_projectiles_flag() {
     let mut db = ModDb::new();
@@ -148,9 +153,9 @@ fn projectile_count_no_additional_projectiles_flag() {
     assert!((result.projectile_count - 1.0).abs() < 1e-9);
 }
 
-// §3  投射物行为优先级
+// §3  Projectile behavior priority
 
-/// 无任何行为激活 → behaviors 为空。
+/// No behavior active -> behaviors is empty.
 #[test]
 fn projectile_behavior_none_active() {
     let input = ProjectileBehaviorInput::default();
@@ -158,7 +163,7 @@ fn projectile_behavior_none_active() {
     assert!(result.behaviors.is_empty());
 }
 
-/// Split 激活（split_count=2）。
+/// Split active (split_count=2).
 #[test]
 fn projectile_behavior_split_active() {
     let input = ProjectileBehaviorInput {
@@ -170,7 +175,7 @@ fn projectile_behavior_split_active() {
     assert_eq!(result.split_count, 2);
 }
 
-/// CannotSplit 锁定分裂。
+/// CannotSplit locks out splitting.
 #[test]
 fn projectile_behavior_cannot_split() {
     let input = ProjectileBehaviorInput {
@@ -183,7 +188,7 @@ fn projectile_behavior_cannot_split() {
     assert_eq!(result.split_count, 0);
 }
 
-/// PierceAllTargets → 无限穿透，Fork/Chain 不触发。
+/// PierceAllTargets -> unlimited pierce; Fork/Chain don't trigger.
 #[test]
 fn projectile_behavior_pierce_all_blocks_fork_chain() {
     let input = ProjectileBehaviorInput {
@@ -195,12 +200,13 @@ fn projectile_behavior_pierce_all_blocks_fork_chain() {
     let result = resolve_projectile_behavior(&input, 0);
     assert!(result.effective_pierce_all);
     assert!(result.behaviors.contains(&ProjectileBehavior::Pierce));
-    // Fork 和 Chain 被无限穿透屏蔽
+    // Fork and Chain are suppressed by unlimited pierce
     assert!(!result.behaviors.contains(&ProjectileBehavior::Fork));
     assert!(!result.behaviors.contains(&ProjectileBehavior::Chain));
 }
 
-/// 优先级顺序：Split + Pierce + Fork + Chain 全激活时按顺序排列。
+/// Priority order: with Split + Pierce + Fork + Chain all active, they appear in
+/// order.
 #[test]
 fn projectile_behavior_all_active_order() {
     let input = ProjectileBehaviorInput {
@@ -211,7 +217,7 @@ fn projectile_behavior_all_active_order() {
         ..Default::default()
     };
     let result = resolve_projectile_behavior(&input, 0);
-    // 按优先级顺序出现
+    // Appear in priority order
     let order: Vec<usize> = [
         ProjectileBehavior::Split,
         ProjectileBehavior::Pierce,
@@ -221,25 +227,25 @@ fn projectile_behavior_all_active_order() {
     .iter()
     .filter_map(|b| result.behaviors.iter().position(|rb| rb == b))
     .collect();
-    // 确认每个行为都存在且下标递增（有序）
+    // Confirm every behavior is present and indices are increasing (ordered)
     assert_eq!(order.len(), 4);
     assert!(order.windows(2).all(|w| w[0] < w[1]));
 }
 
-/// AdditionalProjectilesAddSplitsInstead：额外投射物转 Split。
+/// AdditionalProjectilesAddSplitsInstead: extra projectiles convert to Split.
 #[test]
 fn projectile_behavior_additional_adds_splits() {
     let input = ProjectileBehaviorInput {
         additional_projectiles_add_splits_instead: true,
         ..Default::default()
     };
-    // 额外 2 枚转为 split
+    // 2 extra projectiles convert to split
     let result = resolve_projectile_behavior(&input, 2);
     assert!(result.behaviors.contains(&ProjectileBehavior::Split));
     assert_eq!(result.split_count, 2);
 }
 
-/// AdditionalProjectilesAddChainsInstead：额外投射物转 Chain。
+/// AdditionalProjectilesAddChainsInstead: extra projectiles convert to Chain.
 #[test]
 fn projectile_behavior_additional_adds_chains() {
     let input = ProjectileBehaviorInput {
@@ -247,13 +253,13 @@ fn projectile_behavior_additional_adds_chains() {
         additional_projectiles_add_chains_instead: true,
         ..Default::default()
     };
-    // base chain=1 + 额外2 = 3
+    // base chain=1 + 2 extra = 3
     let result = resolve_projectile_behavior(&input, 2);
     assert!(result.behaviors.contains(&ProjectileBehavior::Chain));
     assert_eq!(result.chain_count_max, 3);
 }
 
-/// ForkTwice → fork_count_max=2；ForkOnce → fork_count_max=1。
+/// ForkTwice -> fork_count_max=2; ForkOnce -> fork_count_max=1.
 #[test]
 fn projectile_behavior_fork_once_and_twice() {
     let input_once = ProjectileBehaviorInput {
@@ -271,10 +277,11 @@ fn projectile_behavior_fork_once_and_twice() {
     assert_eq!(r_twice.fork_count_max, 2);
 }
 
-// §4  冷却
+// §4  Cooldown
 
-/// 无修饰词、基础 0.5s 冷却 → 向上取整到服务器帧。
-/// 服务器帧率 ≈ 30.303/s；0.5 × 30.303 = 15.15 → ceil = 16 帧 → 16/30.303 ≈ 0.528s。
+/// No mods, a base 0.5s cooldown -> rounds up to a server frame.
+/// Server tick rate ~= 30.303/s; 0.5 x 30.303 = 15.15 -> ceil = 16 frames ->
+/// 16/30.303 ~= 0.528s.
 #[test]
 fn cooldown_rounds_up_to_server_frame() {
     let db = ModDb::new();
@@ -287,32 +294,32 @@ fn cooldown_rounds_up_to_server_frame() {
     assert!((result.cooldown - expected).abs() < 1e-9);
 }
 
-/// +100% increased Cooldown Recovery → 冷却减半。
+/// +100% increased Cooldown Recovery -> halves the cooldown.
 #[test]
 fn cooldown_increased_recovery_halves_cooldown() {
     let mut db = ModDb::new();
     db.add_mod(Modifier::number("CooldownRecovery", ModType::Inc, 100.0));
     let cfg = CalcConfig::attack();
-    // base=1.0s / 2.0 = 0.5s，然后取整到帧
+    // base=1.0s / 2.0 = 0.5s, then rounds to a frame
     let result = calc_cooldown(&db, &cfg, 1.0, 1);
     assert!((result.recovery_rate - 2.0).abs() < 1e-9);
-    // 实际 cd 应 ≤ 0.5s（取整后）
+    // The actual cooldown should be <= 0.5s (after rounding)
     assert!(result.cooldown <= 0.5 + 1.0 / (1.0 / SERVER_TICK_SECONDS));
 }
 
-/// stored_uses > 1 时不取整到服务器帧。
+/// stored_uses > 1 skips the round-to-server-frame step.
 #[test]
 fn cooldown_stored_uses_not_rounded() {
     let db = ModDb::new();
     let cfg = CalcConfig::attack();
-    // base=0.3s, stored_uses=2 → 不取整
+    // base=0.3s, stored_uses=2 -> no rounding
     let result = calc_cooldown(&db, &cfg, 0.3, 2);
     assert!(!result.rounded_to_tick);
-    // cooldown 应接近 0.3（无 INC/MORE）
+    // cooldown should be close to 0.3 (no INC/MORE)
     assert!((result.cooldown - 0.3).abs() < 1e-6);
 }
 
-/// AdditionalCooldownUses BASE modifier 增加 stored_uses。
+/// AdditionalCooldownUses BASE modifier increases stored_uses.
 #[test]
 fn cooldown_additional_uses_from_modifier() {
     let mut db = ModDb::new();
@@ -323,12 +330,12 @@ fn cooldown_additional_uses_from_modifier() {
     ));
     let cfg = CalcConfig::attack();
     let result = calc_cooldown(&db, &cfg, 0.3, 1);
-    // base_stored_uses=1 + AdditionalCooldownUses=1 = 2 → 不取整
+    // base_stored_uses=1 + AdditionalCooldownUses=1 = 2 -> no rounding
     assert_eq!(result.stored_uses, 2);
     assert!(!result.rounded_to_tick);
 }
 
-/// 无冷却（base_cooldown_s=0.0，无加值）→ cooldown=0.0。
+/// No cooldown (base_cooldown_s=0.0, no addend) -> cooldown=0.0.
 #[test]
 fn cooldown_zero_when_no_cooldown() {
     let db = ModDb::new();
@@ -337,9 +344,9 @@ fn cooldown_zero_when_no_cooldown() {
     assert_eq!(result.cooldown, 0.0);
 }
 
-// §5  消耗/保留
+// §5  Cost/reservation
 
-/// 无修饰词 Mana 消耗：base=20 → final=20。
+/// No mods, Mana cost: base=20 -> final=20.
 #[test]
 fn mana_cost_no_modifiers() {
     let db = ModDb::new();
@@ -349,7 +356,7 @@ fn mana_cost_no_modifiers() {
     assert!(!result.no_cost);
 }
 
-/// -30% ManaCost（reduced，即 Inc=-30）→ floor(20 × 0.7) = 14。
+/// -30% ManaCost (reduced, i.e. Inc=-30) -> floor(20 x 0.7) = 14.
 #[test]
 fn mana_cost_reduced_30pct() {
     let mut db = ModDb::new();
@@ -361,7 +368,7 @@ fn mana_cost_reduced_30pct() {
     assert!((result.final_cost - 14.0).abs() < 1e-9);
 }
 
-/// +50% increased Mana Cost → floor(20 × 1.5) = 30。
+/// +50% increased Mana Cost -> floor(20 x 1.5) = 30.
 #[test]
 fn mana_cost_increased_50pct() {
     let mut db = ModDb::new();
@@ -372,18 +379,18 @@ fn mana_cost_increased_50pct() {
     assert!((result.final_cost - 30.0).abs() < 1e-9);
 }
 
-/// "no cost" ManaCost MORE = -100 → floor(x × 0) = 0。
+/// "no cost" ManaCost MORE = -100 -> floor(x * 0) = 0.
 #[test]
 fn mana_cost_no_cost_more() {
     let mut db = ModDb::new();
     db.add_mod(Modifier::number("ManaCost", ModType::More, -100.0));
     let cfg = CalcConfig::attack();
     let result = calc_mana_cost(&db, &cfg, 30.0);
-    // more = (1 + (-100)/100) = 0.0 → ceil(30 × 0) = 0（more < 1 用 ceil）
+    // more = (1 + (-100)/100) = 0.0 -> ceil(30 * 0) = 0 (more < 1 uses ceil)
     assert_eq!(result.final_cost, 0.0);
 }
 
-/// HasNoCost flag → final_cost=0 且 no_cost=true。
+/// HasNoCost flag -> final_cost=0 and no_cost=true.
 #[test]
 fn mana_cost_has_no_cost_flag() {
     let mut db = ModDb::new();
@@ -394,7 +401,7 @@ fn mana_cost_has_no_cost_flag() {
     assert!(result.no_cost);
 }
 
-/// Cost（通用 INC）也作用于 Mana：+20% Cost → floor(20 × 1.2) = 24。
+/// Cost (the generic INC) also applies to Mana: +20% Cost -> floor(20 * 1.2) = 24.
 #[test]
 fn mana_cost_generic_cost_inc() {
     let mut db = ModDb::new();
@@ -405,9 +412,9 @@ fn mana_cost_generic_cost_inc() {
     assert!((result.final_cost - 24.0).abs() < 1e-9);
 }
 
-/// 辅助宝石 cost 正倍率：SupportManaMultiplier MORE +30 →
-/// finalBase = floor(10 × 1.3) = 13（PoB2 CalcOffence.lua:2052/:2076-2077，
-/// 先于 inc/more 链作用于 base）。
+/// Support gem positive cost multiplier: SupportManaMultiplier MORE +30 ->
+/// finalBase = floor(10 x 1.3) = 13 (PoB2 CalcOffence.lua:2052/:2076-2077;
+/// applied to base before the inc/more chain).
 #[test]
 fn mana_cost_support_multiplier_positive() {
     let mut db = ModDb::new();
@@ -421,9 +428,10 @@ fn mana_cost_support_multiplier_positive() {
     assert!((result.final_cost - 13.0).abs() < 1e-9);
 }
 
-/// 辅助宝石 cost 负倍率：SupportManaMultiplier MORE -50 →
-/// finalBase = floor(9 × 0.5) = 4（mult 截断 4 位小数后 floor，**不**走
-/// inc/more 链的负值 ceil 分支——base 段恒 floor，对齐 PoB2 m_floor）。
+/// Support gem negative cost multiplier: SupportManaMultiplier MORE -50 ->
+/// finalBase = floor(9 x 0.5) = 4 (the multiplier is truncated to 4 decimal
+/// places then floored -- it does **not** take the negative-value ceil branch of
+/// the inc/more chain; the base stage always floors, matching PoB2's m_floor).
 #[test]
 fn mana_cost_support_multiplier_negative() {
     let mut db = ModDb::new();
@@ -437,9 +445,10 @@ fn mana_cost_support_multiplier_negative() {
     assert!((result.final_cost - 4.0).abs() < 1e-9);
 }
 
-/// 多个辅助倍率连乘 + 截断 4 位小数后才乘 base：+30% × +10% = 1.43 →
-/// floor(20 × 1.43) = 28；再叠 +50% ManaCost INC → floor(28 × 1.5) = 42
-/// （SupportManaMultiplier 先于 inc 链，分步取整）。
+/// Multiple support multipliers chain-multiply, truncated to 4 decimal places
+/// before multiplying base: +30% x +10% = 1.43 -> floor(20 x 1.43) = 28; then
+/// stacking +50% ManaCost INC -> floor(28 x 1.5) = 42 (SupportManaMultiplier
+/// applies before the inc chain, rounding at each step).
 #[test]
 fn mana_cost_support_multiplier_stacks_then_inc_applies() {
     let mut db = ModDb::new();
@@ -459,8 +468,9 @@ fn mana_cost_support_multiplier_stacks_then_inc_applies() {
     assert!((result.final_cost - 42.0).abs() < 1e-9);
 }
 
-/// Spirit 保留**不**吃辅助宝石通用 cost 倍率（PoB2 Reservation 段只认
-/// ReservationMultiplier；SupportManaMultiplier 仅进 costs 通用路径）。
+/// Spirit reservation is **not** affected by the generic support-gem cost
+/// multiplier (PoB2's Reservation stage only recognizes ReservationMultiplier;
+/// SupportManaMultiplier only feeds the generic costs path).
 #[test]
 fn spirit_reservation_ignores_support_mana_multiplier() {
     let mut db = ModDb::new();
@@ -474,7 +484,8 @@ fn spirit_reservation_ignores_support_mana_multiplier() {
     assert!((result.final_cost - 30.0).abs() < 1e-9);
 }
 
-/// Spirit 保留：base=30，ReservationMultiplier MORE +20% → reserved = floor(30 × 1.2) = 36。
+/// Spirit reservation: base=30, ReservationMultiplier MORE +20% -> reserved =
+/// floor(30 x 1.2) = 36.
 #[test]
 fn spirit_reservation_with_multiplier() {
     let mut db = ModDb::new();
@@ -490,7 +501,7 @@ fn spirit_reservation_with_multiplier() {
     assert_eq!(result.kind, SkillCostKind::Spirit);
 }
 
-/// Spirit 保留：ExtraSpirit BASE 加值。
+/// Spirit reservation: ExtraSpirit BASE addend.
 #[test]
 fn spirit_reservation_extra_flat() {
     let mut db = ModDb::new();
@@ -501,7 +512,7 @@ fn spirit_reservation_extra_flat() {
     assert!((result.final_cost - 35.0).abs() < 1e-9);
 }
 
-/// HasNoCost 对 Spirit 保留同样免除。
+/// HasNoCost also waives Spirit reservation.
 #[test]
 fn spirit_reservation_no_cost_flag() {
     let mut db = ModDb::new();

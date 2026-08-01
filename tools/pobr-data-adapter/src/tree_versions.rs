@@ -1,22 +1,29 @@
-//! 历史赛季树版本抽取：vendor `TreeData/<v>/tree.lua` → `base/passive_trees/<v>.json`。
+//! Historical league tree version extraction: vendor `TreeData/<v>/tree.lua`
+//! -> `base/passive_trees/<v>.json`.
 //!
-//! 背景：GGG 官方树导出（`--tree` 通道）只有**当前补丁**一份快照，旧赛季 build
-//! （`<Spec treeVersion>` = `0_1`..`0_4`）导入后若用当前树词条计算，节点数值/形态
-//! 可能完全不同（如 53853『Backup Plan』在 0_3 是 50/50 两条、0_5 是 20/40/40 三条）。
-//! PoB2 的做法是每版本一份完整 `TreeData/<v>/tree.lua`，按 build 的 treeVersion 加载
-//! ——本通道把 vendor 的历史树抽成 PoBR 入库 JSON，消费侧
-//! （`pobr-build::resolve_passive_nodes`）按 treeVersion 选树。
+//! Background: GGG's official tree export (the `--tree` channel) only has a
+//! snapshot for the **current patch**; when an old-league build (`<Spec
+//! treeVersion>` = `0_1`..`0_4`) is imported and computed against the
+//! current tree's mods, node values/shapes can be entirely different (e.g.
+//! 53853 "Backup Plan" is two lines of 50/50 in 0_3 but three lines of
+//! 20/40/40 in 0_5). PoB2's approach is a full `TreeData/<v>/tree.lua` per
+//! version, loaded by the build's treeVersion — this channel extracts
+//! vendor's historical trees into PoBR-storable JSON, and the consumption
+//! side (`pobr-build::resolve_passive_nodes`) picks the tree by treeVersion.
 //!
-//! **范围**（最小可用 = 旧版本 build 的节点词条正确）：skill / name / kind /
-//! stats / ascendancy 归属。connections / 坐标 / isSwitchable variants 不抽——
-//! radius 珠宝几何、connected-notable 等高级面对旧版本树退化为默认树近似
-//! （历史版本 best-effort，与「数据来源策略」的 vendor 兜底口径一致）。
+//! **Scope** (minimum viable = correct node mods for old-version builds):
+//! skill / name / kind / stats / ascendancy attribution. connections /
+//! coordinates / isSwitchable variants aren't extracted — advanced features
+//! like radius jewel geometry and connected-notable degrade to a
+//! default-tree approximation for old-version trees (a best-effort approach
+//! for historical versions, matching the vendor-fallback approach in the "data source policy").
 //!
-//! kind 判定（vendor 节点标量 flag，`strip_nested_blocks` 后只看本节点）：
-//! `isKeystone` → Keystone；`isAscendancyStart` → AscendancyStart；
-//! `isJewelSocket` → JewelSocket；`isOnlyImage` → Mastery（PoE2 属性/精通图标
-//! 节点，GGG 导出侧 kind=mastery 的对应物，实查 skill 259『Attack Mastery』）；
-//! `isNotable` → Notable；无标记 → Normal。
+//! kind determination (vendor's node scalar flags; only looks at the node's
+//! own fields after `strip_nested_blocks`): `isKeystone` -> Keystone;
+//! `isAscendancyStart` -> AscendancyStart; `isJewelSocket` -> JewelSocket;
+//! `isOnlyImage` -> Mastery (PoE2's attribute/mastery icon nodes, the
+//! counterpart of GGG export's kind=mastery, verified against skill 259
+//! "Attack Mastery"); `isNotable` -> Notable; no flag -> Normal.
 
 use pobr_data::catalog::{PassiveNodeDef, PassiveNodeKind};
 
@@ -27,11 +34,11 @@ use crate::write_pretty;
 use std::path::PathBuf;
 
 pub struct TreeVersionsArgs {
-    /// vendor `TreeData/<v>/tree.lua`（历史版本完整树数据）。
+    /// vendor `TreeData/<v>/tree.lua` (full tree data for the historical version).
     pub tree_lua: PathBuf,
-    /// 树版本号（PoB `<Spec treeVersion>` 形式，如 `0_3`）——输出文件名。
+    /// The tree version number (PoB's `<Spec treeVersion>` form, e.g. `0_3`) — used as the output file name.
     pub tree_version: String,
-    /// `data/<patch>/` 所在根目录（与 `--out` 一致）。
+    /// The root directory that contains `data/<patch>/` (matches `--out`).
     pub out: PathBuf,
     pub patch: String,
 }
@@ -55,10 +62,11 @@ pub fn run(args: TreeVersionsArgs) -> Result<String, String> {
     ))
 }
 
-/// 从 `tree.lua` 顶层 `nodes` 块抽取全部数值 id 节点（词条最小集）。
+/// Extracts every numeric-id node from `tree.lua`'s top-level `nodes` block (the minimal set of mods).
 fn parse_all_nodes(lua: &str) -> Result<Vec<PassiveNodeDef>, String> {
-    // 顶层 nodes 块在 groups 之后；从 groups 块末尾起查找以避开组内 `nodes=`
-    // （与 tree_anoints / tree_variants 同手法）。
+    // The top-level nodes block comes after groups; search starting from the
+    // end of the groups block to avoid a group's nested `nodes=`
+    // (same technique as tree_anoints / tree_variants).
     let groups_block = balanced_block(lua, "\tgroups={").ok_or("tree.lua 未找到顶层 groups 块")?;
     let groups_end = block_offset(lua, groups_block);
     let nodes_block =
@@ -85,8 +93,9 @@ fn parse_all_nodes(lua: &str) -> Result<Vec<PassiveNodeDef>, String> {
         };
         out.push(PassiveNodeDef {
             skill,
-            // tree.lua 无 GGG 导出侧字符串键，用 skill id 字符串（消费方按
-            // `skill` 数值索引，`id` 仅诊断用；与 tree_anoints 同约定）。
+            // tree.lua has no GGG-export-side string key, so this uses the
+            // skill id as a string (consumers index by the numeric `skill`;
+            // `id` is diagnostic-only; same convention as tree_anoints).
             id: skill.to_string(),
             name: string_field(node_block, "name="),
             kind,
@@ -96,11 +105,13 @@ fn parse_all_nodes(lua: &str) -> Result<Vec<PassiveNodeDef>, String> {
             orbit_index: None,
             x: None,
             y: None,
-            // ponytail: 历史树只保词条正确；拓扑/坐标退化默认树近似，需要
-            // connected-notable / radius 珠宝历史精确时再抽 connections+坐标。
+            // ponytail: historical trees only keep mods correct; topology/coordinates
+            // degrade to a default-tree approximation. Extract connections+coordinates too
+            // if connected-notable / radius jewel historical accuracy is ever needed.
             connections: Vec::new(),
-            // vendor 是飞升显示名（非 GGG `<Class><N>` id）——消费端仅
-            // `is_some()` 判「属于飞升」，语义等价。
+            // Vendor gives the ascendancy display name (not GGG's
+            // `<Class><N>` id) — the consumption side only checks
+            // `is_some()` to determine "belongs to an ascendancy", which is semantically equivalent.
             ascendancy_id: string_field(node_block, "ascendancyName="),
             variants: Vec::new(),
             apply_to_armour: false,

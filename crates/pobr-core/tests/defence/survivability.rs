@@ -29,13 +29,13 @@ fn capped_chance_clamps_to_cap() {
     assert_eq!(capped_chance(40.0, 75.0), 40.0);
 }
 
-/// PoE2 格挡上限测试（Bug#11：上限已从 75% 改为 90%）。
+/// PoE2 block cap test (Bug#11: the cap changed from 75% to 90%).
 ///
-/// 出处：agent-docs/block.md §被动格挡 `BlockChanceCap = 90`；
-///       PoB2 DeepWiki `data.misc.BlockChanceCap = 90`。
+/// Source: agent-docs/block.md §Passive Block `BlockChanceCap = 90`;
+///         PoB2 DeepWiki `data.misc.BlockChanceCap = 90`.
 #[test]
 fn block_caps_at_90_poe2() {
-    // PoE2 格挡上限 90%（cap 由调用方传入，注入默认值与旧 const 相等）
+    // PoE2 block cap is 90% (the cap is passed in by the caller; the injected default equals the old const).
     let cap = pobr_data::catalog::RuntimeConstants::default()
         .game()
         .block_chance_cap;

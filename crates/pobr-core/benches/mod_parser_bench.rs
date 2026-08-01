@@ -1,11 +1,12 @@
-//! parser 引擎中位耗时 bench。
+//! Median-latency benchmark for the parser engine.
 //!
-//! 两组：
-//! 1. `parse_corpus_engine`：固定语料逐行解析吞吐（唯一解析器，legacy 已删）；
-//! 2. `compile_rules`：ParserRules → CompiledParserRules（含 aho-corasick 构建）
-//!    一次性成本（载入期、非热路径）。
+//! Two groups:
+//! 1. `parse_corpus_engine`: line-by-line parse throughput over a fixed corpus (single parser;
+//!    the legacy one has been removed);
+//! 2. `compile_rules`: the one-time cost of ParserRules → CompiledParserRules (including
+//!    building the aho-corasick automaton) — a load-time, not hot-path, cost.
 //!
-//! 运行：`cargo bench -p pobr-core --bench mod_parser_bench`
+//! Run: `cargo bench -p pobr-core --bench mod_parser_bench`
 
 use std::path::PathBuf;
 
@@ -26,7 +27,8 @@ fn load_doc() -> ModParserRulesDoc {
     serde_json::from_str(&json).expect("反序列化规则表")
 }
 
-/// 固定混合语料（从 18-build Item 文本块抽样 + 去重，确定性，截前 1000 行）。
+/// Fixed mixed corpus (sampled from the item text blocks of the 18-build set, deduplicated,
+/// deterministic, truncated to the first 1000 lines).
 fn corpus() -> Vec<String> {
     let builds_dir = repo_root().join("examples/demo-bd-test/builds");
     let mut lines = Vec::new();
@@ -48,7 +50,7 @@ fn corpus() -> Vec<String> {
                     if !in_item || line.is_empty() || line.starts_with('<') {
                         continue;
                     }
-                    // 去 crafting 标签前缀 `{enchant}{rune}` 等。
+                    // Strip crafting tag prefixes like `{enchant}{rune}`.
                     let mut rest = line;
                     while let Some(stripped) = rest.strip_prefix('{') {
                         if let Some(end) = stripped.find('}') {

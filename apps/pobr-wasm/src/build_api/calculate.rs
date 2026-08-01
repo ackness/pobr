@@ -1,5 +1,6 @@
-//! 完整 build 计算：`calculate_build_json`（display_catalog 全量 + breakdown +
-//! 主技能分解）与 `full_dps_json`（逐技能组 DPS + FullDPS 汇总）。
+//! Full build calculation: `calculate_build_json` (the full display_catalog
+//! plus breakdown plus main-skill damage decomposition) and `full_dps_json`
+//! (per-socket-group DPS plus the FullDPS summary).
 
 use std::collections::BTreeMap;
 
@@ -13,10 +14,11 @@ use super::request::{
 };
 use crate::state;
 
-// 0.2 + 0.3 calculate_build_json（display_catalog 全量 + breakdown）
+// 0.2 + 0.3 calculate_build_json (the full display_catalog plus breakdown)
 
-/// breakdown 面向的聚合 ModName（PoB2 侧边栏常驻属性；派生量如 TotalDPS 无
-/// 单一聚合名，不在此列——其构成经归因接口看）。
+/// The aggregated ModNames the breakdown covers (PoB2's always-present
+/// sidebar stats; derived values like TotalDPS have no single aggregation
+/// name, so they're not listed here — see them via the attribution endpoint instead).
 const BREAKDOWN_MOD_NAMES: &[&str] = &[
     "Life",
     "Mana",
@@ -37,27 +39,27 @@ const BREAKDOWN_MOD_NAMES: &[&str] = &[
 
 #[derive(Debug, Serialize)]
 struct BreakdownModJson {
-    /// `BASE` / `INC` / `MORE` / `FLAG` / `OVERRIDE` / `LIST`。
+    /// `BASE` / `INC` / `MORE` / `FLAG` / `OVERRIDE` / `LIST`.
     mod_type: &'static str,
-    /// 数值视图（Flag/Text 词条为 null）。
+    /// The numeric view (`null` for Flag/Text mod lines).
     value: Option<f64>,
-    /// 词条原文（解析来源文本）。
+    /// The mod line's raw text (the source it was parsed from).
     source_text: Option<String>,
-    /// 归因来源类别（`SourceKind` Debug 名，如 `PassiveNode` / `ItemAffix`）。
+    /// The attribution source category (`SourceKind`'s Debug name, e.g. `PassiveNode` / `ItemAffix`).
     origin_kind: Option<String>,
-    /// 归因来源稳定 id（节点 id / 物品槽 / 宝石 id）。
+    /// The attribution source's stable id (node id / item slot / gem id).
     origin_id: Option<String>,
-    /// 来源槽位（装备词条）。
+    /// The source slot (for equipment mod lines).
     slot: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 struct BreakdownJson {
-    /// BASE 词条合计（不含职业/基础注入以外的表达式细节，直接 Σ）。
+    /// The BASE mod-line total (a direct sum, with no expression detail beyond class/base injection).
     base_total: f64,
-    /// INC 词条合计（百分点）。
+    /// The INC mod-line total (in percentage points).
     inc_total: f64,
-    /// 逐词条来源列表。
+    /// The per-mod-line source list.
     mods: Vec<BreakdownModJson>,
 }
 
@@ -87,8 +89,10 @@ fn breakdown_for(session: &CalculationSession, name: &str) -> Option<BreakdownJs
             }
         })
         .collect();
-    // 定序：ModDb 迭代序受上游 HashMap 实例影响，不同数据后端会产生不同顺序；
-    // 输出按 (类型, 来源, 词条文本, 数值) 排序，保证契约字节级确定 + UI 展示稳定。
+    // Establish a fixed order: ModDb iteration order is affected by the
+    // underlying HashMap instance, so different data backends can produce
+    // different orderings; the output is sorted by (type, origin, mod-line
+    // text, value) to keep the contract byte-deterministic and the UI display stable.
     entries.sort_by(|a, b| {
         (a.mod_type, &a.origin_kind, &a.origin_id, &a.source_text)
             .cmp(&(b.mod_type, &b.origin_kind, &b.origin_id, &b.source_text))
@@ -105,33 +109,36 @@ fn breakdown_for(session: &CalculationSession, name: &str) -> Option<BreakdownJs
     })
 }
 
-/// 主技能击中伤害的单类型分量（非暴击腿，玩家侧、敌减伤前——PoB2 Calcs 页
-/// 伤害分解同口径；占比展示用 `avg`）。
+/// One damage-type component of the main skill's hit damage (a non-crit
+/// leg, player-side, before enemy damage reduction — matches PoB2's Calcs
+/// page damage-breakdown basis; `avg` is used for share display).
 #[derive(Debug, Serialize)]
 struct HitDamagePartJson {
-    /// `Physical` / `Fire` / `Cold` / `Lightning` / `Chaos`。
+    /// `Physical` / `Fire` / `Cold` / `Lightning` / `Chaos`.
     damage_type: String,
     min: f64,
     max: f64,
-    /// `(min + max) / 2`。
+    /// `(min + max) / 2`.
     avg: f64,
 }
 
-/// 主技能（引擎实际计算围绕的技能）身份 + 伤害分解（PoB2 左侧栏 Main Skill +
-/// Calcs 伤害分解区的对应物）。每次重算随响应返回——装备/天赋一变即时更新。
+/// The main skill's identity (the skill the engine's calculation actually
+/// centers on) plus its damage breakdown (the counterpart to PoB2's Main
+/// Skill sidebar plus its Calcs damage-breakdown area). Returned with every
+/// recalculation — updates instantly on any equipment/passive change.
 #[derive(Debug, Serialize)]
 struct MainSkillJson {
-    /// 选中技能组（0-based，与请求的 `socket_groups` 对齐）。
+    /// The selected skill group (0-based, aligned with the request's `socket_groups`).
     group_index: usize,
-    /// 该组主技能的授予效果 id。
+    /// That group's main skill's granted effect id.
     skill_id: String,
-    /// 按伤害类型拆分的击中分量。
+    /// The hit-damage components, split by damage type.
     hit_damage: Vec<HitDamagePartJson>,
-    /// 击中 DPS（`TotalDPS`）。
+    /// Hit DPS (`TotalDPS`).
     hit_dps: f64,
-    /// 全部持续伤害合计 DPS（`TotalDotDPS`）。
+    /// The total of every damage-over-time source (`TotalDotDPS`).
     dot_dps: f64,
-    /// 综合 DPS（`CombinedDPS`）。
+    /// Combined DPS (`CombinedDPS`).
     combined_dps: f64,
 }
 
@@ -164,22 +171,25 @@ fn main_skill_json(
 
 #[derive(Debug, Serialize)]
 struct CalculateBuildResponse {
-    /// display_catalog 全量 Computed 字段（id/value/category）。
+    /// The full set of display_catalog Computed fields (id/value/category).
     stats: Vec<pobr_data::display_stat::DisplayStatValue>,
-    /// 未能解析的 modifier 文本（前端提示区直出）。
+    /// Modifier text that couldn't be parsed (output directly to the frontend's hint area).
     unsupported_modifiers: Vec<String>,
-    /// 聚合属性的词条分解（键 = ModName，见 [`BREAKDOWN_MOD_NAMES`]）。
+    /// The mod-line breakdown for aggregated stats (keyed by ModName, see [`BREAKDOWN_MOD_NAMES`]).
     breakdowns: BTreeMap<String, BreakdownJson>,
-    /// 主技能身份 + 伤害分解（`null` = build 无可解析的伤害主技能）。
+    /// The main skill's identity plus damage breakdown (`null` = the build has no resolvable damage main skill).
     main_skill: Option<MainSkillJson>,
-    /// 单件装备/药剂/珠宝文本解析失败的降级记录（该件被跳过，其余照算；
-    /// 前端据 slot 标红）。空数组 = 全部解析成功。
+    /// Degraded records for a single equipment/flask/jewel item's text
+    /// failing to parse (that item is skipped, everything else still
+    /// calculates; the frontend flags it red by slot). An empty array means
+    /// everything parsed successfully.
     item_errors: Vec<super::request::SlotIssue>,
 }
 
-/// 0.2 + 0.3：完整 build 计算 → display_catalog 全量键值 + breakdown + 主技能分解。
+/// 0.2 + 0.3: full build calculation -> the full display_catalog key/values
+/// plus breakdown plus main-skill damage decomposition.
 ///
-/// 需先初始化游戏数据（`init` 系列入口）。
+/// Requires game data to be initialized first (the `init` family of entry points).
 pub fn calculate_build_json(request_json: &str) -> Result<String, String> {
     state::cached_response("calculate_build", request_json, || {
         calculate_build_impl(request_json).map_err(super::ApiError::into_json)
@@ -208,28 +218,29 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     Ok(serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))?)
 }
 
-// full_dps_json（逐技能组 DPS + FullDPS 汇总）
+// full_dps_json (per-socket-group DPS plus the FullDPS summary)
 
 #[derive(Debug, Serialize)]
 struct SkillDpsJson {
-    /// 技能组下标（0-based，与 socket_groups 对齐）。
+    /// The skill group's index (0-based, aligned with socket_groups).
     group_index: usize,
-    /// 该组主动技能的授予效果 id。
+    /// That group's active skill's granted effect id.
     skill_id: String,
     dps: f64,
 }
 
 #[derive(Debug, Serialize)]
 struct FullDpsResponse {
-    /// 全部启用伤害技能组的 CombinedDPS 之和。
+    /// The sum of CombinedDPS across every enabled damage skill group.
     full_dps: f64,
     per_skill: Vec<SkillDpsJson>,
 }
 
-/// 逐技能组 DPS（请求形状同 [`CalculateBuildRequest`]）。
+/// Per-socket-group DPS (the request shape is the same as [`CalculateBuildRequest`]).
 ///
-/// 计算量 = `1 + 启用伤害组数` 次完整编排；供点击触发的技能 DPS 面板，
-/// 不在每次重算时调用（与归因同模式）。
+/// Computation cost = `1 + the number of enabled damage groups` full
+/// orchestration passes; feeds the click-triggered per-skill DPS panel, and
+/// isn't called on every recalculation (the same pattern as attribution).
 pub fn full_dps_json(request_json: &str) -> Result<String, String> {
     state::cached_response("full_dps", request_json, || {
         full_dps_impl(request_json).map_err(super::ApiError::into_json)
@@ -241,7 +252,8 @@ fn full_dps_impl(request_json: &str) -> Result<String, super::ApiError> {
         .map_err(|e| super::ApiError::bad_request(format!("invalid request json: {e}")))?;
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let mut build = parse_build_from_request(&req)?;
-    // 降级记录不进本响应——主面板的 calculate 已报告同一份 item_errors。
+    // Degraded records don't go into this response — the main panel's
+    // calculate already reports the same item_errors.
     let _ = apply_request_overrides(&mut build, &req, &data)?;
     let opts = orchestrator_options(&req)?;
     let report = pobr_build::calculate_full_dps(&build, &data, &opts)

@@ -1,6 +1,6 @@
-//! 迁移期新旧双跑 harness(statmap / config)——迁移切换完成后可整组删除。
+//! Old/new dual-run harness (statmap / config) for the migration period — delete this whole group once the migration cutover lands.
 //!
-//! 聚合二进制：原独立测试文件合并为子模块（22→4），减少链接二进制数以加速构建。
+//! Aggregated test binary: originally separate test files, merged into submodules (22→4) to cut the number of linked test binaries and speed up builds.
 #![allow(clippy::all)]
 
 #[path = "dualrun/config_dualrun.rs"]

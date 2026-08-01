@@ -1,16 +1,19 @@
-//! `precompile-mods`：离线预编译工具。
+//! `precompile-mods`: offline precompile tool.
 //!
-//! 把四层语料（§5.1：C1 build XML / C2 passive_tree / special_derived 展开
-//! / `--corpus-extra` 外挂）去重收集后，逐行过 `pobr-core` 数据驱动 scan 引擎
-//! 预解析，产出两份 `data/<version>/generated/` 产物 + 一份覆盖率报表：
+//! Collects the four corpus layers (§5.1: C1 build XML / C2 passive_tree /
+//! special_derived expansion / `--corpus-extra` add-on), deduplicates them,
+//! and runs each line through `pobr-core`'s data-driven scan engine to
+//! produce two `data/<version>/generated/` artifacts plus a coverage report:
 //!
-//! - `generated/parsed_mods.json`：`{ _meta, entries: [{ text, status, mods }] }`
-//!   （text 字典序、byte-stable）。运行时（D-T8）由 gamedata 懒加载为
-//!   `text → Vec<Modifier>` 缓存，热路径零解析。
-//! - 覆盖率报表（`--report` 时打印 + 写 `parse-coverage.json`）：parsed /
-//!   unsupported / err 三态计数 + 按命中频率排序的缺口 top-N。
+//! - `generated/parsed_mods.json`: `{ _meta, entries: [{ text, status, mods }] }`
+//!   (text in lexicographic order, byte-stable). The runtime (D-T8) lazily
+//!   loads this via gamedata as a `text → Vec<Modifier>` cache, so the hot
+//!   path never parses.
+//! - Coverage report (printed and written to `parse-coverage.json` with
+//!   `--report`): parsed / unsupported / err counts, plus a gap top-N sorted
+//!   by hit frequency.
 //!
-//! 用法：
+//! Usage:
 //! ```text
 //! cargo run -p precompile-mods -- --data data/4.5.0.3.4 [--corpus-extra <file>] [--report]
 //! ```
@@ -20,17 +23,17 @@ use std::process::ExitCode;
 
 use precompile_mods::{check, corpus, parsed, report};
 
-/// 解析后的命令行参数。
+/// Parsed command-line arguments.
 struct Args {
-    /// 版本数据目录（如 `data/4.5.0.3.4`）。
+    /// Version data directory (e.g. `data/4.5.0.3.4`).
     data_dir: PathBuf,
-    /// 可选外挂语料文件（每行一条 mod 文本；`#` 起始行 / 空行忽略）。
+    /// Optional add-on corpus file (one mod text per line; `#`-prefixed and blank lines ignored).
     corpus_extra: Option<PathBuf>,
-    /// 打印覆盖率报表并写 `generated/parse-coverage.json`。
+    /// Print the coverage report and write `generated/parse-coverage.json`.
     report: bool,
-    /// 覆盖率缺口 top-N 条数（默认 40）。
+    /// Number of top gaps to report (default 40).
     top_n: usize,
-    /// 仅校验 overlay JSON 合法性（不预编译产物），非法即非零退出。
+    /// Only validate overlay JSON (no precompile artifacts); non-zero exit on invalid data.
     check_only: bool,
 }
 
@@ -116,7 +119,7 @@ fn run() -> Result<(), String> {
         return Err(format!("--data 目录不存在：{}", data_dir.display()));
     }
 
-    // --check：仅校验 overlay JSON 合法性，非法即非零退出，不写产物。
+    // --check: validate overlay JSON only; non-zero exit on invalid data, no artifacts written.
     if args.check_only {
         check::check(&data_dir)?;
         eprintln!(
@@ -126,7 +129,7 @@ fn run() -> Result<(), String> {
         return Ok(());
     }
 
-    // 1) 语料收集（四层去重，字典序）。
+    // 1) Collect the corpus (four layers, deduplicated, lexicographic order).
     let corpus = corpus::collect(&data_dir, args.corpus_extra.as_deref())?;
     eprintln!(
         "precompile-mods: 语料 {} 行（去重后），来源 {}",
@@ -134,7 +137,7 @@ fn run() -> Result<(), String> {
         corpus.source_summary()
     );
 
-    // 2) 逐行预解析，产出 parsed_mods.json + 覆盖率统计。
+    // 2) Precompile line by line, producing parsed_mods.json + coverage stats.
     let outcome = parsed::precompile(&corpus, &data_dir)?;
     eprintln!(
         "precompile-mods: 写出 {} （{} 条目）",
@@ -142,7 +145,7 @@ fn run() -> Result<(), String> {
         outcome.entries
     );
 
-    // 3) 覆盖率报表。
+    // 3) Coverage report.
     let cov = &outcome.coverage;
     eprintln!(
         "precompile-mods: 覆盖率 {:.4}（parsed {} / unsupported {} / err {} / total {}）",

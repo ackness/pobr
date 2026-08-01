@@ -1,16 +1,24 @@
-//! `overlay/skill_overrides.json` 加载 + merge 的集成测试（真实仓库数据）。
+//! Integration test for loading + merging `overlay/skill_overrides.json`
+//! (real repo data).
 //!
-//! 搬迁不变式：`base/granted_effect_levels.json` /
-//! `base/granted_effect_stat_sets.json` 为**纯 adapter 产物**，`.dat` 拿不到的
-//! vendor 值由 overlay 在加载期 merge——本测试锁定「纯 base + merge 后的生效值」
-//! 与历史手补 base 的逐值等价（聚合行数 + 代表性技能点值）。
+//! Migration invariant: `base/granted_effect_levels.json` /
+//! `base/granted_effect_stat_sets.json` are **pure adapter output**;
+//! vendor values the `.dat` can't provide are merged in from the overlay
+//! at load time — this test locks "plain base + the value in effect after
+//! merge" value-equal to the historical hand-patched base (aggregate row
+//! counts + representative skill point values).
 //!
-//! 通道收窄：critChance / attackSpeedMultiplier 改为 `.dat` 表列直读落
-//! base/（GrantedEffectStatSetsPerLevel 暴击两列 / GrantedEffectsPerLevel
-//! `AttackSpeedMultiplier`），历史 overlay 值 3911 + 3578 条逐值一致验收后切换；
-//! overlay 边车仅余 base_multiplier（分等级）+ skill_attack_speed_more（statSet
-//! 常量）。表列直读在 vendor 覆盖之外**新增**怪物/非 vendor 技能的值（crit
-//! +2180 行、attspd +678 行）——vendor 覆盖技能上零新增、零漂移（T4.3 校验）。
+//! Channel narrowing: critChance / attackSpeedMultiplier were switched to
+//! reading the `.dat` table columns directly into base/
+//! (GrantedEffectStatSetsPerLevel's two crit columns /
+//! GrantedEffectsPerLevel's `AttackSpeedMultiplier`), switched over after
+//! the historical overlay values (3911 + 3578 entries) were verified
+//! value-equal; the overlay sidecar now only has base_multiplier
+//! (per-level) + skill_attack_speed_more (a statSet constant). Reading the
+//! table column directly **adds** values for monster/non-vendor skills
+//! beyond vendor's coverage (crit +2180 rows, attspd +678 rows) — for
+//! skills vendor already covers, there are zero additions and zero drift
+//! (T4.3 verified).
 
 use pobr_gamedata::GameData;
 
@@ -18,8 +26,10 @@ fn repo_game_data() -> GameData {
     GameData::new(pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version()))
 }
 
-/// overlay 文档可加载，且已收窄为两类 stat（crit/attspd 改表列直读，
-/// 不得再出现在边车里——出现即说明 extract 脚本回退）。
+/// The overlay document loads, and has already been narrowed to two stat
+/// kinds (crit/attspd switched to reading the table column directly, and
+/// must no longer appear in the sidecar — their appearance would mean the
+/// extract script regressed).
 #[test]
 fn loads_skill_overrides_overlay() {
     let overrides = repo_game_data()
@@ -37,12 +47,14 @@ fn loads_skill_overrides_overlay() {
     );
 }
 
-/// 等级域 merge 后的聚合行数。
+/// Aggregate row counts after the level-domain merge.
 ///
-/// crit / attspd：vendor 覆盖的历史值 3911 / 3578 条逐值保留，表列直读额外带来
-/// 怪物/非 vendor 技能的值 → 总数 6091 / 4256；base_multiplier 仍走 overlay
-/// merge（6821 不变）。等级字段族覆盖数：CostMultiplier≠100 = 542 /
-/// Reservation≠0 = 3166 / EffectOnPlayer≠100 = 169 / StoredUses≠0 = 6721。
+/// crit / attspd: the historical vendor-covered values (3911 / 3578
+/// entries) are kept value-for-value, and reading the table column
+/// directly adds values for monster/non-vendor skills → totals 6091 / 4256;
+/// base_multiplier still goes through the overlay merge (6821 unchanged).
+/// Level-field-family override counts: CostMultiplier≠100 = 542 /
+/// Reservation≠0 = 3166 / EffectOnPlayer≠100 = 169 / StoredUses≠0 = 6721.
 #[test]
 fn merged_levels_match_historical_coverage() {
     let levels = repo_game_data()
@@ -52,27 +64,30 @@ fn merged_levels_match_historical_coverage() {
     let count = |f: fn(&pobr_data::catalog::SkillLevelDef) -> bool| {
         levels.values().flatten().filter(|r| f(r)).count()
     };
-    // 4.5.4.3（0.5.4b）数据升级后 crit/base_multiplier/stored_uses 随新增
-    // 技能等级行增长（6091→6294 / 6821→6850 / 6721→6734），其余覆盖数不变。
+    // After the 4.5.4.3 (0.5.4b) data upgrade, crit/base_multiplier/stored_uses
+    // grew along with newly added skill level rows (6091→6294 / 6821→6850 /
+    // 6721→6734); the other coverage counts are unchanged.
     assert_eq!(count(|r| r.crit_chance.is_some()), 6294);
     assert_eq!(count(|r| r.attack_speed_multiplier.is_some()), 4256);
     assert_eq!(count(|r| r.base_multiplier.is_some()), 6850);
-    // 等级字段族（adapter 直读，平凡值归一化为 None）。
+    // The level-field family (read directly by the adapter, trivial values
+    // normalized to None).
     assert_eq!(count(|r| r.mana_multiplier.is_some()), 542);
     assert_eq!(count(|r| r.spirit_reservation_flat.is_some()), 3166);
     assert_eq!(count(|r| r.reservation_multiplier.is_some()), 169);
     assert_eq!(count(|r| r.stored_uses.is_some()), 6734);
-    // level_requirement：PoE2 `.dat` 无列（真源表不可下载），恒 None、落库。
+    // level_requirement: PoE2's `.dat` has no such column (the real source
+    // table isn't downloadable), so it's always None, and stored as such.
     assert_eq!(count(|r| r.level_requirement.is_some()), 0);
 }
 
-/// 代表性点值（与 vendor PoB2 Lua 逐字对照）。
+/// Representative point values (compared line-for-line against vendor PoB2 Lua).
 #[test]
 fn merged_levels_spot_values() {
     let data = repo_game_data();
     let levels = data.granted_effect_levels().expect("加载等级域");
 
-    // Flicker Strike：attackSpeedMultiplier -50（全等级同值）。
+    // Flicker Strike: attackSpeedMultiplier -50 (same value at every level).
     let flicker = &levels["FlickerStrikePlayer"];
     assert!(
         flicker
@@ -80,29 +95,33 @@ fn merged_levels_spot_values() {
             .all(|r| r.attack_speed_multiplier == Some(-50.0))
     );
 
-    // Arc：critChance 9（全等级同值）。
+    // Arc: critChance 9 (same value at every level).
     let arc = &levels["ArcPlayer"];
     assert!(arc.iter().all(|r| r.crit_chance == Some(9.0)));
 
-    // RisenArbalestSnipe：vendor 仅 L1 有 baseMultiplier 2.65——per_level 明细
-    // 不得把缺失等级误填（压缩条件修复的回归锚点）。
+    // RisenArbalestSnipe: vendor only has baseMultiplier 2.65 at L1 — the
+    // per_level breakdown must not wrongly fill in the missing levels
+    // (a regression anchor for the compression-condition fix).
     let snipe = &levels["RisenArbalestSnipe"];
     assert_eq!(snipe[0].base_multiplier, Some(2.65));
     assert!(snipe[1..].iter().all(|r| r.base_multiplier.is_none()));
 
-    // 等级字段族点值（与 vendor Data/Skills/*.lua 逐字对照）：
-    // Acrimony support：manaMultiplier 10（sup_int.lua `manaMultiplier = 10`）。
+    // Level-field-family point values (compared line-for-line against
+    // vendor Data/Skills/*.lua):
+    // Acrimony support: manaMultiplier 10 (sup_int.lua's `manaMultiplier = 10`).
     let acrimony = &levels["SupportAcrimonyPlayer"];
     assert_eq!(acrimony[0].mana_multiplier, Some(10.0));
-    // Alchemist's Boon（持续型）：spiritReservationFlat 30。
+    // Alchemist's Boon (a sustained effect): spiritReservationFlat 30.
     let boon = &levels["AlchemistsBoonPlayer"];
     assert_eq!(boon[0].spirit_reservation_flat, Some(30.0));
-    // Impurity：manaMultiplier -100 + reservationMultiplier -100（双倍率归一化保号）。
+    // Impurity: manaMultiplier -100 + reservationMultiplier -100 (both
+    // multipliers normalized while preserving sign).
     let impurity = &levels["ImpurityPlayer"];
     assert_eq!(impurity[0].mana_multiplier, Some(-100.0));
     assert_eq!(impurity[0].reservation_multiplier, Some(-100.0));
 
-    // statSet 级：Flicker 固有攻击速度 MORE 285（PoB2 baseMods 常量）。
+    // statSet-level: Flicker's inherent attack speed MORE 285 (a PoB2
+    // baseMods constant).
     let sets = data.skill_stat_sets().expect("加载 stat-set 域");
     let flicker_set = sets
         .iter()
@@ -111,9 +130,10 @@ fn merged_levels_spot_values() {
         .expect("FlickerStrikePlayer 主 stat-set 存在");
     assert_eq!(flicker_set.skill_attack_speed_more, Some(285.0));
 
-    //  dotIs* 布尔——vendor 全量唯一条目 TornadoShotPlayer
-    // statSets[2]（"Tornado"）的 dotIsArea，按 vendor 序号命中
-    // TornadoShotNovaPlayer set；主 set 保持保守默认（未核验全 false）。
+    //  dotIs* boolean — vendor's only full-data entry, TornadoShotPlayer's
+    // statSets[2] ("Tornado")'s dotIsArea, matches TornadoShotNovaPlayer's
+    // set by vendor index; the primary set keeps the conservative default
+    // (unverified, all false).
     let tornado = sets
         .iter()
         .find(|s| s.effect_id == "TornadoShotPlayer")
@@ -130,9 +150,10 @@ fn merged_levels_spot_values() {
         "主 set（Impact）未核验，保守默认"
     );
 
-    //  explodeCorpse 布尔（vendor statSet baseMods，act_int.lua:5287；
-    // CalcOffence.lua:2213 尸体爆炸基伤门控）——DetonateDeadPlayer 主 set
-    // 命中；无该 baseMod 的技能保持缺省 false。
+    //  explodeCorpse boolean (vendor statSet baseMods, act_int.lua:5287;
+    // CalcOffence.lua:2213's corpse-explosion base-damage gate) —
+    // DetonateDeadPlayer's primary set matches; skills without this
+    // baseMod keep the default false.
     let dd = sets
         .iter()
         .find(|s| s.effect_id == "DetonateDeadPlayer")
@@ -141,13 +162,17 @@ fn merged_levels_spot_values() {
     assert!(!flicker_set.explode_corpse, "无 baseMod 的技能缺省 false");
 }
 
-/// 纯 base 不含 overlay 专属字段——确保这些值只来自 merge，不再有手补漂移
-/// （regen-check byte-diff 零的语义对应）。后 overlay 专属字段收窄为
-/// base_multiplier（等级域）+ skill_attack_speed_more（statSet 域）；crit /
-/// attspd 已是表列直读的 base 字段，不在断言范围。
+/// Plain base doesn't contain overlay-exclusive fields — ensures these
+/// values only ever come from the merge, with no more hand-patched drift
+/// (the semantic equivalent of a zero regen-check byte-diff). The
+/// overlay-exclusive fields have since narrowed to base_multiplier (level
+/// domain) + skill_attack_speed_more (statSet domain); crit / attspd are
+/// already base fields read directly from the table columns, so they're
+/// outside this assertion's scope.
 #[test]
 fn pure_base_has_no_overlay_fields() {
-    // 构造无 overlay 的临时数据目录（base 软链到仓库文件，避免大文件复制）。
+    // Builds a temp data directory without an overlay (base symlinked to
+    // the repo's files, avoiding a large-file copy).
     let dir = std::env::temp_dir().join(format!(
         "pobr-gamedata-skill-overrides-pure-{}",
         std::process::id()
@@ -177,7 +202,9 @@ fn pure_base_has_no_overlay_fields() {
             .all(|r| r.base_multiplier.is_none()),
         "纯 base 不得含 base_multiplier（该列在 .dat 导出中不存在，值只来自 overlay merge）"
     );
-    // 表列直读字段在纯 base 中**应当**存在（与 overlay 无关）——锚定通道切换不可回退。
+    // The table-column-direct-read fields **should** exist in plain base
+    // (unrelated to overlay) — anchors that the channel switchover can't
+    // regress.
     assert!(
         levels.values().flatten().any(|r| r.crit_chance.is_some()),
         "crit_chance 是表列直读的 base 字段（M1-T4.3），纯 base 不得为空"

@@ -41,17 +41,19 @@ fn perform_fills_ehp_from_pools_and_resistances() {
     perform(&mut env).unwrap();
 
     assert_eq!(env.player.output.life, 1000.0);
-    // F-3 口径切换：`total_ehp` = PoB2 口径（致死击数 × 单击进伤）；裸 Env 无
-    // setup_enemy → 无进伤 placeholder → 0 中性。旧 lowest-max-hit 口径保留在
-    // `total_ehp_lowest_max_hit`（`CalcDefence.lua:3322`）。
+    // F-3 semantics switch: `total_ehp` now follows PoB2 semantics (lethal hit count × damage
+    // taken per hit); a bare Env without setup_enemy has no damage-taken placeholder → neutral
+    // 0. The old lowest-max-hit semantics are kept in `total_ehp_lowest_max_hit`
+    // (`CalcDefence.lua:3322`).
     assert_eq!(env.player.output.total_ehp, 0.0);
     assert!(env.player.output.total_ehp_lowest_max_hit > 0.0);
     // With 0% resist, an element max hit equals the life pool.
     assert_eq!(env.player.output.fire_max_hit, 1000.0);
 }
 
-/// PoE2 口径修正（gap: no-ailment-chance-pipeline）：流血需显式 `BleedChance` 才施加。
-/// 无 `BleedChance` 时 `bleed_dps == 0`（即便打出巨额物理击中）；有几率时按 几率×DoT 期望值输出。
+/// PoE2 semantics fix (gap: no-ailment-chance-pipeline): bleed only applies with an explicit
+/// `BleedChance`. Without `BleedChance`, `bleed_dps == 0` (even for a huge physical hit); with
+/// a chance set, the output is the chance × DoT expected value.
 #[test]
 fn perform_fills_bleed_dps_only_with_bleed_chance() {
     let base = ActorBaseStats {
@@ -61,13 +63,13 @@ fn perform_fills_bleed_dps_only_with_bleed_chance() {
         ..ActorBaseStats::default()
     };
 
-    // 无 BleedChance → 不施加流血。
+    // No BleedChance → bleed doesn't apply.
     let mut no_chance = player_with(base, vec![]);
     no_chance.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
     perform(&mut no_chance).unwrap();
     assert_eq!(no_chance.player.output.bleed_dps, 0.0);
 
-    // 100% BleedChance → 施加流血，DPS > 0。
+    // 100% BleedChance → bleed applies, DPS > 0.
     let mut with_chance = player_with(
         base,
         vec![Modifier::number("BleedChance", ModType::Base, 100.0)],
@@ -77,12 +79,13 @@ fn perform_fills_bleed_dps_only_with_bleed_chance() {
     assert!(with_chance.player.output.bleed_dps > 0.0);
 }
 
-/// PoE2 格挡上限测试（后走 BlockChanceMax 体系）。
+/// PoE2 block chance cap test (now follows the BlockChanceMax system).
 ///
-/// 角色固有格挡上限 = 50%（`BaseBlockChanceMax`，Misc.lua:147 /
-/// CalcSetup.lua:28），硬上限 `BlockChanceCap` = 90 仅对堆了
-/// `+Maximum Block Chance` 词条的 build 生效（CalcDefence.lua:961-965）。
-/// 旧断言（95→90）缺 BlockChanceMax 层，按 vendor 模型修正为 95→50。
+/// The character's inherent block chance cap = 50% (`BaseBlockChanceMax`, Misc.lua:147 /
+/// CalcSetup.lua:28); the hard cap `BlockChanceCap` = 90 only applies to a build stacking
+/// `+Maximum Block Chance` mods (CalcDefence.lua:961-965).
+/// The old assertion (95→90) was missing the BlockChanceMax layer; corrected to 95→50 per
+/// the vendor model.
 #[test]
 fn perform_fills_block_chance() {
     let base = ActorBaseStats {
@@ -92,7 +95,7 @@ fn perform_fills_block_chance() {
     let mut env = player_with(
         base,
         vec![
-            // 95% block → 先被默认格挡上限 50%（BaseBlockChanceMax）截断。
+            // 95% block → first clamped by the default block chance cap of 50% (BaseBlockChanceMax).
             Modifier::number("BlockChance", ModType::Base, 95.0),
         ],
     );
@@ -101,7 +104,7 @@ fn perform_fills_block_chance() {
     assert_eq!(env.player.output.block_chance, 50.0);
     assert_eq!(env.player.output.block_chance_max, 50.0);
 
-    // 抬高上限词条后随之上移，仍被硬上限 90 封顶（50 固有 + 50 词条 → cap 90）。
+    // Raising the cap mod moves it up too, still capped at the hard limit 90 (50 inherent + 50 from mods → cap 90).
     let mut env = player_with(
         ActorBaseStats {
             life: 1000.0,
@@ -117,7 +120,7 @@ fn perform_fills_block_chance() {
     assert_eq!(env.player.output.block_chance, 90.0);
 }
 
-/// 端到端：点燃几率派生 + effMult（敌方火抗降低点燃 DPS）经 `setup_enemy` 全管线。
+/// End-to-end: ignite chance derivation + effMult (enemy fire resist reducing ignite DPS) through the full `setup_enemy` pipeline.
 #[test]
 fn perform_ignite_dps_drops_with_enemy_fire_resist() {
     use pobr_core::calc::setup_env::setup_enemy;
@@ -129,7 +132,7 @@ fn perform_ignite_dps_drops_with_enemy_fire_resist() {
         ..ActorBaseStats::default()
     };
 
-    // 火焰附加伤害技能，有效口径，对 lv1 敌人。
+    // A skill with added fire damage, effective semantics, against a level-1 enemy.
     let make_env = |fire_resist: f64| {
         let mut actor = Actor::new(1, base);
         actor
@@ -143,7 +146,7 @@ fn perform_ignite_dps_drops_with_enemy_fire_resist() {
             .with_damage_type(DamageType::Fire)
             .with_mode_effective(true);
         setup_enemy(&mut env, 1, EnemyTier::None);
-        // 注入敌方火抗（覆盖默认）。
+        // Inject enemy fire resist (overrides the default).
         if fire_resist != 0.0 {
             env.enemy
                 .mod_db
@@ -161,7 +164,7 @@ fn perform_ignite_dps_drops_with_enemy_fire_resist() {
         no_resist.player.output.ignite_dps > 0.0,
         "ignite should apply"
     );
-    // 50% 火抗 → effMult 0.5 → 点燃 DPS 约减半（几率派生不变，仅 effMult 变）。
+    // 50% fire resist → effMult 0.5 → ignite DPS roughly halves (chance derivation unchanged, only effMult changes).
     assert!(
         with_resist.player.output.ignite_dps < no_resist.player.output.ignite_dps,
         "fire resist should reduce ignite DPS via effMult"
@@ -186,10 +189,10 @@ fn perform_does_not_disturb_base_outputs() {
     assert_eq!(env.player.output.mana, 200.0);
 }
 
-// Lane2 集成：防御扩展字段（ES 充能 / 规避 / 承受乘数 / 暴击减免）
+// Lane2 integration: defence extension fields (ES recharge / avoidance / taken multiplier / crit reduction)
 
-/// 防御新字段默认中性：无 ES → 充能 0、延迟 4；无规避词条 → 0；承受乘数默认 1.0；
-/// 敌人暴击效果默认 1.0（无敌人暴击）。
+/// New defence fields default to neutral: no ES → recharge 0, delay 4; no avoidance mods → 0;
+/// taken multiplier defaults to 1.0; enemy crit effect defaults to 1.0 (no enemy crit).
 #[test]
 fn perform_defence_ext_defaults_are_neutral() {
     let base = ActorBaseStats {
@@ -205,14 +208,14 @@ fn perform_defence_ext_defaults_are_neutral() {
     assert_eq!(o.es_recharge_per_second, 0.0);
     assert_eq!(o.avoid_all_damage_from_hits, 0.0);
     assert_eq!(o.avoid_freeze, 0.0);
-    // 承受乘数默认中性。
+    // Taken multipliers default to neutral.
     assert_eq!(o.taken_multi_physical, 1.0);
     assert_eq!(o.taken_multi_fire, 1.0);
     assert_eq!(o.crit_extra_damage_reduction, 0.0);
     assert_eq!(o.enemy_crit_effect, 1.0);
 }
 
-/// ES 充能：有 ES 时充能速率 12.5%/s，每秒绝对量 = rate × ES。
+/// ES recharge: with ES present, the recharge rate is 12.5%/s; the absolute per-second amount = rate × ES.
 #[test]
 fn perform_fills_es_recharge_from_energy_shield() {
     let base = ActorBaseStats {
@@ -225,16 +228,16 @@ fn perform_fills_es_recharge_from_energy_shield() {
 
     let o = &env.player.output;
     assert_eq!(o.energy_shield, 800.0);
-    // 默认 750%/min → 12.5%/s。
+    // Default 750%/min → 12.5%/s.
     assert!((o.es_recharge_rate - 0.125).abs() < 1e-9);
     assert!((o.es_recharge_per_second - 0.125 * 800.0).abs() < 1e-6);
-    // ZealotsOath 禁用充能。
+    // ZealotsOath disables recharge.
     let mut zealots = player_with(base, vec![Modifier::flag("ZealotsOath")]);
     perform(&mut zealots).unwrap();
     assert_eq!(zealots.player.output.es_recharge_rate, 0.0);
 }
 
-/// 规避词条接入：AvoidAllDamageFromHitsChance 写入面板，超 75 被 cap。
+/// Avoidance mod wiring: AvoidAllDamageFromHitsChance is written to the panel, capped above 75.
 #[test]
 fn perform_fills_avoidance_chances() {
     let base = ActorBaseStats {
@@ -250,12 +253,12 @@ fn perform_fills_avoidance_chances() {
     );
     perform(&mut env).unwrap();
 
-    // 击中规避 cap 到 75。
+    // Hit avoidance is capped at 75.
     assert_eq!(env.player.output.avoid_all_damage_from_hits, 75.0);
     assert_eq!(env.player.output.avoid_shock, 40.0);
 }
 
-/// 承受乘数 + 暴击额外减免接入：增加承受 → 乘数 > 1；ReduceCritExtraDamage 写入。
+/// Taken multiplier + crit extra reduction wiring: increased taken damage → multiplier > 1; ReduceCritExtraDamage is written.
 #[test]
 fn perform_fills_taken_multi_and_crit_reduction() {
     let base = ActorBaseStats {
@@ -271,12 +274,12 @@ fn perform_fills_taken_multi_and_crit_reduction() {
     );
     perform(&mut env).unwrap();
 
-    // +20% 物理承受 → 乘数 1.2。
+    // +20% physical taken → multiplier 1.2.
     assert!((env.player.output.taken_multi_physical - 1.2).abs() < 1e-9);
     assert_eq!(env.player.output.crit_extra_damage_reduction, 30.0);
 }
 
-/// 敌人暴击效果：敌人有暴击几率/爆伤 → enemy_crit_effect > 1；减免缩放它。
+/// Enemy crit effect: an enemy with crit chance/multiplier → enemy_crit_effect > 1; reduction scales it down.
 #[test]
 fn perform_enemy_crit_effect_scales_with_reduction() {
     use pobr_core::calc::setup_env::setup_enemy;
@@ -297,7 +300,7 @@ fn perform_enemy_crit_effect_scales_with_reduction() {
         }
         let mut env = Env::new(actor);
         setup_enemy(&mut env, 1, EnemyTier::None);
-        // 注入敌人暴击。
+        // Inject enemy crit.
         env.enemy
             .mod_db
             .add_mod(Modifier::number("CritChance", ModType::Base, 50.0));
@@ -312,15 +315,15 @@ fn perform_enemy_crit_effect_scales_with_reduction() {
     let mut with_reduce = make(50.0);
     perform(&mut with_reduce).unwrap();
 
-    // 1 + 0.5 * 1.0 = 1.5（无减免）。
+    // 1 + 0.5 * 1.0 = 1.5 (no reduction).
     assert!((no_reduce.player.output.enemy_crit_effect - 1.5).abs() < 1e-9);
-    // 50% 减免 → 1 + 0.5 * 1.0 * 0.5 = 1.25。
+    // 50% reduction → 1 + 0.5 * 1.0 * 0.5 = 1.25.
     assert!((with_reduce.player.output.enemy_crit_effect - 1.25).abs() < 1e-9);
 }
 
-// Lane4 集成：召唤物多 Actor（offence/defence 复用玩家管线）
+// Lane4 integration: multi-Actor minions (reusing the player offence/defence pipeline)
 
-/// 无召唤物时 minions 输出为空，玩家行为不变（向后兼容）。
+/// With no minions, the minions output is empty and player behavior is unchanged (backward compatibility).
 #[test]
 fn perform_without_minions_leaves_minion_output_empty() {
     let base = ActorBaseStats {
@@ -332,8 +335,9 @@ fn perform_without_minions_leaves_minion_output_empty() {
     assert!(env.player.output.minions.is_empty());
 }
 
-/// 召唤物接入：单召唤物经 build_minion_context → Env::add_minion，perform 后产出
-/// 独立的 offence/defence 快照（life/dps 来自召唤物管线）。
+/// Minion wiring: a single minion goes through build_minion_context → Env::add_minion, and
+/// after perform produces its own independent offence/defence snapshot (life/dps come from
+/// the minion pipeline).
 #[test]
 fn perform_runs_minion_offence_and_defence() {
     let base = ActorBaseStats {
@@ -343,7 +347,7 @@ fn perform_runs_minion_offence_and_defence() {
     let mut env = player_with(base, vec![]);
     env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
 
-    // 攻击型召唤物：有虚拟武器伤害（damage 归一化 > 0）。
+    // An attacking minion: has virtual weapon damage (normalized damage > 0).
     let data = MinionData {
         damage: 1.0,
         attack_time: 1.0,
@@ -363,17 +367,17 @@ fn perform_runs_minion_offence_and_defence() {
 
     assert_eq!(env.player.output.minions.len(), 1);
     let m = &env.player.output.minions[0];
-    // 召唤物等级 = 宝石 20 → 怪物等级 40。
+    // Minion level = gem level 20 → monster level 40.
     assert_eq!(m.level, 40);
-    // 召唤物生命来自怪物表（> 0）。
+    // Minion life comes from the monster table (> 0).
     assert!(m.life > 0.0, "minion life should derive from monster table");
-    // 召唤物虚拟武器 → DPS > 0。
+    // Minion virtual weapon → DPS > 0.
     assert!(m.dps > 0.0, "attacking minion should deal damage");
-    // 玩家自身输出不受召唤物影响。
+    // The player's own output is unaffected by minions.
     assert_eq!(env.player.output.life, 1000.0);
 }
 
-/// 召唤物三通道之一：MinionModifier 注入「增加召唤物生命」→ 召唤物生命提升。
+/// One of three minion channels: a MinionModifier injecting "increased minion life" → minion life goes up.
 #[test]
 fn perform_minion_modifier_channel_scales_minion_life() {
     let base = ActorBaseStats {
@@ -397,7 +401,7 @@ fn perform_minion_modifier_channel_scales_minion_life() {
     };
 
     let base_life = make(vec![]);
-    // 通道 1：MinionModifier 包裹「召唤物 +50% 最大生命」。
+    // Channel 1: a MinionModifier wrapping "minions +50% maximum life".
     let buffed_life = make(vec![MinionModifierEntry {
         inner: Modifier::number("MaximumLife", ModType::Inc, 50.0),
         minion_type: None,
@@ -408,9 +412,9 @@ fn perform_minion_modifier_channel_scales_minion_life() {
     );
 }
 
-// Lane A 集成：防御恢复（充能 / 偷取 / Recoup / regen 超集）
+// Lane A integration: defence recovery (charges / leech / Recoup / regen superset)
 
-/// 防御恢复新字段默认中性：无来源 → 充能 current=0/maximum=3、偷取 0、Recoup 0。
+/// New defence recovery fields default to neutral: no source → charges current=0/maximum=3, leech 0, Recoup 0.
 #[test]
 fn perform_recovery_ext_defaults_are_neutral() {
     let base = ActorBaseStats {
@@ -422,12 +426,12 @@ fn perform_recovery_ext_defaults_are_neutral() {
     perform(&mut env).unwrap();
 
     let o = &env.player.output;
-    // 充能默认上限 3、当前 0（无 multiplier config）。
+    // Charges default to maximum 3, current 0 (no multiplier config).
     assert_eq!(o.charge_power_current, 0);
     assert_eq!(o.charge_power_maximum, 3);
     assert_eq!(o.charge_frenzy_maximum, 3);
     assert_eq!(o.charge_endurance_maximum, 3);
-    // 无偷取/Recoup 词条 → 速率 0。
+    // No leech/Recoup mods → rate 0.
     assert_eq!(o.life_leech_rate, 0.0);
     assert_eq!(o.mana_leech_rate, 0.0);
     assert_eq!(o.es_leech_rate, 0.0);
@@ -435,7 +439,7 @@ fn perform_recovery_ext_defaults_are_neutral() {
     assert_eq!(o.es_recoup_rate, 0.0);
 }
 
-/// 充能上限词条接入：+2 to Maximum Power Charges → maximum=5；当前层数由 multiplier config。
+/// Charge-maximum mod wiring: +2 to Maximum Power Charges → maximum=5; current stacks come from the multiplier config.
 #[test]
 fn perform_fills_charge_maximum_and_current() {
     let base = ActorBaseStats {
@@ -446,7 +450,7 @@ fn perform_fills_charge_maximum_and_current() {
         base,
         vec![Modifier::number("PowerChargesMax", ModType::Base, 2.0)],
     );
-    // 当前 4 层 power charge（multiplier config），会被 cap 到 maximum=5。
+    // Currently 4 power charge stacks (via multiplier config), which stays under the maximum=5 cap.
     env.cfg = env.cfg.with_multiplier("PowerCharge", 4.0);
     perform(&mut env).unwrap();
 
@@ -454,7 +458,7 @@ fn perform_fills_charge_maximum_and_current() {
     assert_eq!(env.player.output.charge_power_current, 4);
 }
 
-/// 偷取接入：物理命中 + LifeLeech BASE → life_leech_rate > 0。
+/// Leech wiring: physical hit + LifeLeech BASE → life_leech_rate > 0.
 #[test]
 fn perform_fills_life_leech_from_physical_hit() {
     let base = ActorBaseStats {
@@ -463,13 +467,13 @@ fn perform_fills_life_leech_from_physical_hit() {
         hit_max: 1000.0,
         ..ActorBaseStats::default()
     };
-    // 无偷取 → 0。
+    // No leech → 0.
     let mut no_leech = player_with(base, vec![]);
     no_leech.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
     perform(&mut no_leech).unwrap();
     assert_eq!(no_leech.player.output.life_leech_rate, 0.0);
 
-    // 5% LifeLeech → 速率 > 0（取最高速率实例口径）。
+    // 5% LifeLeech → rate > 0 (uses the highest-rate-instance semantics).
     let mut with_leech = player_with(
         base,
         vec![Modifier::number("LifeLeech", ModType::Base, 5.0)],
@@ -479,13 +483,13 @@ fn perform_fills_life_leech_from_physical_hit() {
     assert!(with_leech.player.output.life_leech_rate > 0.0);
 }
 
-/// Recoup 接入（基数替换，13-G15 部分）：基数 = mitigated EHP 循环累计的
-/// recoupable 伤害（vendor CalcDefence.lua:489/:537/:3119-3123/:3347-3361），
-/// 不再用 life×10% 估算。
+/// Recoup wiring (base replacement, part of 13-G15): the base is now the recoupable damage
+/// accumulated over the mitigated-EHP cycle (vendor CalcDefence.lua:489/:537/:3119-3123/
+/// :3347-3361), no longer estimated as life×10%.
 ///
-/// 手算：life 1000、Pinnacle@82 单击进伤 4246（965×4+386）× EnemyCritEffect 1.015
-/// （1 + 5%×30%/100，:2065-2071）= 4309.69 taken（无减伤）→ 1 击致死、recoupable
-/// 累计 = 4309.69；LifeRecoup 20% → 4309.69×0.2/8s = 107.74225/s。
+/// Hand-computed: life 1000, Pinnacle@82 single-hit damage taken 4246 (965×4+386) ×
+/// EnemyCritEffect 1.015 (1 + 5%×30%/100, :2065-2071) = 4309.69 taken (no mitigation) →
+/// dies in 1 hit, recoupable total = 4309.69; LifeRecoup 20% → 4309.69×0.2/8s = 107.74225/s.
 #[test]
 fn perform_fills_life_recoup_rate() {
     let base = ActorBaseStats {
@@ -505,8 +509,9 @@ fn perform_fills_life_recoup_rate() {
     );
 }
 
-/// F-4 基数语义：裸 Env（无敌人进伤）→ recoupable 基数 0 → 速率 0
-/// （与 vendor 无进伤语义一致；旧 life×10% 估算口径在此废止）。
+/// F-4 base semantics: a bare Env (no enemy damage taken) → recoupable base 0 → rate 0
+/// (consistent with vendor semantics when there's no damage taken; the old life×10% estimate
+/// is retired here).
 #[test]
 fn perform_recoup_rate_zero_without_enemy_damage() {
     let base = ActorBaseStats {
@@ -522,14 +527,14 @@ fn perform_recoup_rate_zero_without_enemy_damage() {
     assert_eq!(env.player.output.es_recoup_rate, 0.0);
 }
 
-/// regen 超集：XRecoveryRate 全局恢复速率乘进 regen（calc_regen 行为超集）。
+/// regen superset: the global XRecoveryRate multiplier folds into regen (superset of calc_regen's behavior).
 #[test]
 fn perform_regen_picks_up_global_recovery_rate() {
     let base = ActorBaseStats {
         life: 1000.0,
         ..ActorBaseStats::default()
     };
-    // 1%/s 生命再生 + 100% 增加生命恢复速率（LifeRecoveryRate INC）。
+    // 1%/s life regen + 100% increased life recovery rate (LifeRecoveryRate INC).
     let mut env = player_with(
         base,
         vec![
@@ -538,11 +543,11 @@ fn perform_regen_picks_up_global_recovery_rate() {
         ],
     );
     perform(&mut env).unwrap();
-    // base regen = 1000 * 1% = 10；×(1 + 100/100) = 20。
+    // base regen = 1000 * 1% = 10; ×(1 + 100/100) = 20.
     assert!((env.player.output.life_regen - 20.0).abs() < 1e-6);
 }
 
-// Lane B 集成：异常扩展（冰缓 / 冰冻·电击姿态积累 / 流血·中毒叠层）
+// Lane B integration: ailment extensions (chill / freeze·electrocute buildup / bleed·poison stacking)
 
 fn cold_hit_env(extra: Vec<Modifier>) -> Env {
     let base = ActorBaseStats {
@@ -550,7 +555,7 @@ fn cold_hit_env(extra: Vec<Modifier>) -> Env {
         ..ActorBaseStats::default()
     };
     let mut actor = Actor::new(1, base);
-    // 巨额冷伤命中以越过冰缓最低阈值。
+    // A huge cold hit to clear the chill minimum threshold.
     actor
         .mod_db
         .add_mod(Modifier::number("ColdDamageMin", ModType::Base, 200000.0));
@@ -563,7 +568,7 @@ fn cold_hit_env(extra: Vec<Modifier>) -> Env {
     env
 }
 
-/// 冰缓接入：足量冷伤命中 → chill_effect > 0；冰冻姿态积累 > 0。
+/// Chill wiring: a sufficiently large cold hit → chill_effect > 0; freeze buildup > 0.
 #[test]
 fn perform_fills_chill_and_freeze_buildup_from_cold_hit() {
     let mut env = cold_hit_env(vec![]);
@@ -580,7 +585,7 @@ fn perform_fills_chill_and_freeze_buildup_from_cold_hit() {
     );
 }
 
-/// 无冷伤命中时冰缓/冰冻积累保持 0（向后兼容：纯物理 build 不受影响）。
+/// Without a cold hit, chill/freeze buildup stays at 0 (backward compatibility: pure-physical builds are unaffected).
 #[test]
 fn perform_chill_zero_without_cold_hit() {
     let base = ActorBaseStats {
@@ -596,7 +601,7 @@ fn perform_chill_zero_without_cold_hit() {
     assert_eq!(env.player.output.freeze_buildup_pct, 0.0);
 }
 
-/// 电击姿态积累接入：闪电命中 → electrocute_buildup_pct > 0。
+/// Electrocute buildup wiring: a lightning hit → electrocute_buildup_pct > 0.
 #[test]
 fn perform_fills_electrocute_buildup_from_lightning_hit() {
     let base = ActorBaseStats {
@@ -624,10 +629,11 @@ fn perform_fills_electrocute_buildup_from_lightning_hit() {
     );
 }
 
-/// 叠层接入：`BleedCanStack` flag + BleedStacks BASE → bleed_stacked_dps =
-/// 单层 × 活跃层数；默认单层时相等。（对齐 vendor CalcOffence.lua:5021-5025：
-/// maxStacks 仅在 `<Ailment>CanStack` flag 在场时展开，词条与 flag 成对注入——
-/// statmap 来源如 Escalating Poison 即 `PoisonStacks BASE + PoisonCanStack`。）
+/// Stacking wiring: `BleedCanStack` flag + BleedStacks BASE → bleed_stacked_dps =
+/// per-stack DPS × active stack count; equal to per-stack DPS at the default single stack.
+/// (Matches vendor CalcOffence.lua:5021-5025: maxStacks only expands when the
+/// `<Ailment>CanStack` flag is present, and the mod is injected paired with the flag — e.g.
+/// the statmap source Escalating Poison injects `PoisonStacks BASE + PoisonCanStack`.)
 #[test]
 fn perform_bleed_stacking_multiplies_dps() {
     let base = ActorBaseStats {
@@ -637,7 +643,7 @@ fn perform_bleed_stacking_multiplies_dps() {
         ..ActorBaseStats::default()
     };
 
-    // 单层（默认）：stacked == 单层 DPS。
+    // Single stack (default): stacked == single-stack DPS.
     let mut single = player_with(
         base,
         vec![Modifier::number("BleedChance", ModType::Base, 100.0)],
@@ -649,7 +655,7 @@ fn perform_bleed_stacking_multiplies_dps() {
     assert!((single.player.output.bleed_stacked_dps - one_layer).abs() < 1e-6);
     assert_eq!(single.player.output.bleed_active_stacks, 1.0);
 
-    // +2 BleedStacks → max_stacks=3 → stacked ≈ 单层 × 3。
+    // +2 BleedStacks → max_stacks=3 → stacked ≈ single-stack × 3.
     let mut stacked = player_with(
         base,
         vec![
@@ -664,20 +670,23 @@ fn perform_bleed_stacking_multiplies_dps() {
     assert!((stacked.player.output.bleed_stacked_dps - one_layer * 3.0).abs() < 1e-3);
 }
 
-/// 05-01/05-04 综合：高攻速 + 暴击的流血 build → StackPotential > 1，触发 over-stacking
-/// 暴击放大 + RollAverage 高位偏移，bleed_dps 高于"无速率（SP=1）"的同配置基线。
+/// 05-01/05-04 combined: a high-attack-speed, high-crit bleed build → StackPotential > 1,
+/// triggering over-stacking crit amplification + a high-end RollAverage shift, so bleed_dps
+/// exceeds the same-config baseline with "no speed (SP=1)".
 ///
-/// 无速率 build：`effective_action_rate=0` → active_stacks 估算为 0 → SP=1 → 裸暴击 + 50% roll。
-/// 有速率 build：active_stacks = hit×chance×duration×speed ≫ max_stacks(=1) → SP≫1 →
-/// 暴击份额 `1-(1-c)^SP`（接近全暴击）+ roll 向高端偏移 → magnitude 明显更高。
+/// No-speed build: `effective_action_rate=0` → active_stacks estimated as 0 → SP=1 → plain
+/// crit + 50% roll.
+/// With-speed build: active_stacks = hit×chance×duration×speed ≫ max_stacks(=1) → SP≫1 →
+/// crit share `1-(1-c)^SP` (near all-crit) + roll shifted toward the high end → noticeably
+/// higher magnitude.
 #[test]
 fn perform_overstacking_amplifies_bleed_dps_with_speed_and_crit() {
-    // 物理击中区间 [400, 1600]（min≠max，使 RollAverage 内插可见）。
+    // Physical hit range [400, 1600] (min≠max so RollAverage interpolation is visible).
     let base = ActorBaseStats {
         life: 1000.0,
         hit_min: 400.0,
         hit_max: 1600.0,
-        action_rate: 1.6, // 攻速基底（仅"有速率"分支用；无速率分支置 0）
+        action_rate: 1.6, // Attack speed base (used only by the "with speed" branch; the no-speed branch zeroes it)
         ..ActorBaseStats::default()
     };
     let crit_bleed_mods = || {
@@ -688,7 +697,7 @@ fn perform_overstacking_amplifies_bleed_dps_with_speed_and_crit() {
         ]
     };
 
-    // 基线：无攻速（action_rate=0）→ SP=1（active_stacks 估算为 0，回退 max=1）。
+    // Baseline: no attack speed (action_rate=0) → SP=1 (active_stacks estimated as 0, falls back to max=1).
     let no_speed = ActorBaseStats {
         action_rate: 0.0,
         ..base
@@ -703,13 +712,13 @@ fn perform_overstacking_amplifies_bleed_dps_with_speed_and_crit() {
     perform(&mut baseline).unwrap();
     let baseline_dps = baseline.player.output.bleed_dps;
     assert!(baseline_dps > 0.0, "baseline bleed should apply");
-    // 无速率 → active_stacks 回退到 max_stacks=1（SP=1，无放大）。
+    // No speed → active_stacks falls back to max_stacks=1 (SP=1, no amplification).
     assert_eq!(
         baseline.player.output.bleed_active_stacks, 1.0,
         "no speed → active_stacks falls back to max=1"
     );
 
-    // SP>1：有攻速 → active_stacks ≫ 1 → over-stacking 放大生效。
+    // SP>1: with attack speed → active_stacks ≫ 1 → over-stacking amplification kicks in.
     let mut overstack = {
         let mut actor = Actor::new(1, base);
         actor.mod_db.add_list(crit_bleed_mods());
@@ -720,20 +729,20 @@ fn perform_overstacking_amplifies_bleed_dps_with_speed_and_crit() {
     perform(&mut overstack).unwrap();
     let overstack_dps = overstack.player.output.bleed_dps;
 
-    // active_stacks 应远大于 1（hit≈1 × chance=1 × 5s × ~1.6/s ≈ 8 层，max=1 → SP≈8）。
+    // active_stacks should be much greater than 1 (hit≈1 × chance=1 × 5s × ~1.6/s ≈ 8 stacks, max=1 → SP≈8).
     assert!(
         overstack.player.output.bleed_active_stacks > 1.0,
         "speed → active_stacks > 1 (SP>1), got {}",
         overstack.player.output.bleed_active_stacks
     );
-    // over-stacking 暴击放大 + RollAverage 高位偏移 → 单层 magnitude（bleed_dps）严格更高。
+    // over-stacking crit amplification + high-end RollAverage shift → strictly higher per-stack magnitude (bleed_dps).
     assert!(
         overstack_dps > baseline_dps,
         "SP>1 should amplify bleed_dps: overstack {overstack_dps} vs baseline {baseline_dps}"
     );
 }
 
-/// 点燃叠层接入：默认 max_stacks=1（stacked==单层）；`IgniteStacks` BASE → 叠层翻倍。
+/// Ignite stacking wiring: default max_stacks=1 (stacked==single-stack); `IgniteStacks` BASE → stacking doubles.
 #[test]
 fn perform_ignite_stacking_multiplies_dps() {
     let base = ActorBaseStats {
@@ -754,7 +763,7 @@ fn perform_ignite_stacking_multiplies_dps() {
         env
     };
 
-    // 默认（无 IgniteStacks）：stacked == 单层 ignite_dps，活跃层数 1。
+    // Default (no IgniteStacks): stacked == single-stack ignite_dps, active stack count 1.
     let mut single = fire_skill(vec![]);
     perform(&mut single).unwrap();
     let one_layer = single.player.output.ignite_dps;
@@ -762,8 +771,8 @@ fn perform_ignite_stacking_multiplies_dps() {
     assert!((single.player.output.ignite_stacked_dps - one_layer).abs() < 1e-6);
     assert_eq!(single.player.output.ignite_active_stacks, 1.0);
 
-    // IgniteCanStack + 2 IgniteStacks → max_stacks=3 → stacked ≈ 单层 × 3
-    // （flag 门对齐 vendor CalcOffence.lua:5021-5025，词条与 flag 成对）。
+    // IgniteCanStack + 2 IgniteStacks → max_stacks=3 → stacked ≈ single-stack × 3
+    // (the flag gate matches vendor CalcOffence.lua:5021-5025; the mod is paired with the flag).
     let mut stacked = fire_skill(vec![
         Modifier::number("IgniteStacks", ModType::Base, 2.0),
         Modifier::flag("IgniteCanStack"),
@@ -773,9 +782,9 @@ fn perform_ignite_stacking_multiplies_dps() {
     assert!((stacked.player.output.ignite_stacked_dps - one_layer * 3.0).abs() < 1e-3);
 }
 
-// Lane C 集成：技能功能（AoE / 投射物 / 冷却 / 消耗）
+// Lane C integration: skill mechanics (AoE / projectiles / cooldown / cost)
 
-/// 技能功能默认中性：无 base 词条 → AoE/cooldown/cost 全 0；投射物 0（无投射物来源）。
+/// Skill mechanics default to neutral: no base mods → AoE/cooldown/cost all 0; projectiles 0 (no projectile source).
 #[test]
 fn perform_skill_mechanics_defaults_are_neutral() {
     let base = ActorBaseStats {
@@ -796,7 +805,7 @@ fn perform_skill_mechanics_defaults_are_neutral() {
     assert_eq!(o.spirit_reserved, 0.0);
 }
 
-/// AoE 接入：SkillAreaRadiusBase BASE + AreaOfEffect INC → 半径与面积乘数 > 0。
+/// AoE wiring: SkillAreaRadiusBase BASE + AreaOfEffect INC → radius and area multiplier > 0.
 #[test]
 fn perform_fills_aoe_radius_from_base_and_inc() {
     let base = ActorBaseStats {
@@ -812,19 +821,19 @@ fn perform_fills_aoe_radius_from_base_and_inc() {
     );
     perform(&mut env).unwrap();
 
-    // areaMod = 1.44 → radius = floor(20 × floor(100×√1.44)/100) = floor(20 × 1.2) = 24。
+    // areaMod = 1.44 → radius = floor(20 × floor(100×√1.44)/100) = floor(20 × 1.2) = 24.
     assert!((env.player.output.aoe_area_mod - 1.44).abs() < 1e-9);
     assert_eq!(env.player.output.aoe_radius, 24.0);
 }
 
-/// 投射物接入：ProjectileCount BASE → projectile_count；无来源时保持 0。
+/// Projectile wiring: ProjectileCount BASE → projectile_count; stays 0 without a source.
 #[test]
 fn perform_fills_projectile_count_when_source_present() {
     let base = ActorBaseStats {
         life: 1000.0,
         ..ActorBaseStats::default()
     };
-    // 基础 1 发 + 额外 2 发 = 3 发。
+    // Base 1 shot + 2 extra shots = 3 shots.
     let mut env = player_with(
         base,
         vec![Modifier::number("ProjectileCount", ModType::Base, 3.0)],
@@ -833,7 +842,7 @@ fn perform_fills_projectile_count_when_source_present() {
     assert_eq!(env.player.output.projectile_count, 3.0);
 }
 
-/// 冷却接入：SkillCooldownBase BASE + CooldownRecovery INC → cooldown 缩短。
+/// Cooldown wiring: SkillCooldownBase BASE + CooldownRecovery INC → cooldown shortens.
 #[test]
 fn perform_fills_cooldown_from_base_and_recovery() {
     let base = ActorBaseStats {
@@ -848,13 +857,13 @@ fn perform_fills_cooldown_from_base_and_recovery() {
         ],
     );
     perform(&mut env).unwrap();
-    // 4s / (1 + 100/100) = 2s（向上取整到服务器帧，单次储存）。
+    // 4s / (1 + 100/100) = 2s (rounded up to the server tick, single stored use).
     assert!(env.player.output.cooldown > 0.0);
     assert!(env.player.output.cooldown <= 2.1);
     assert!(env.player.output.cooldown >= 1.9);
 }
 
-/// 消耗接入：SkillManaCostBase BASE + ManaCost INC → mana_cost；Spirit 保留同理。
+/// Cost wiring: SkillManaCostBase BASE + ManaCost INC → mana_cost; Spirit reservation works the same way.
 #[test]
 fn perform_fills_mana_and_spirit_cost() {
     let base = ActorBaseStats {
@@ -871,14 +880,14 @@ fn perform_fills_mana_and_spirit_cost() {
         ],
     );
     perform(&mut env).unwrap();
-    // 30 × (1 + 50/100) = 45。
+    // 30 × (1 + 50/100) = 45.
     assert_eq!(env.player.output.mana_cost, 45.0);
     assert!(env.player.output.spirit_reserved > 0.0);
 }
 
-// 集成阶段：触发速率（冷却驱动 / CWC）
+// Integration stage: trigger rate (cooldown-driven / CWC)
 
-/// 触发默认中性：无触发词条 → trigger_rate_cap / skill_trigger_rate 保持 0（向后兼容）。
+/// Trigger defaults to neutral: no trigger mods → trigger_rate_cap / skill_trigger_rate stay 0 (backward compatibility).
 #[test]
 fn perform_trigger_rate_zero_without_trigger_mods() {
     let base = ActorBaseStats {
@@ -891,13 +900,13 @@ fn perform_trigger_rate_zero_without_trigger_mods() {
     assert_eq!(env.player.output.skill_trigger_rate, 0.0);
 }
 
-/// 冷却驱动触发接入：TriggerCooldownBase BASE → trigger_rate_cap > 0；
-/// skill_trigger_rate = min(cap, effective_action_rate) 双门控。
+/// Cooldown-driven trigger wiring: TriggerCooldownBase BASE → trigger_rate_cap > 0;
+/// skill_trigger_rate = min(cap, effective_action_rate) is gated by both.
 #[test]
 fn perform_fills_cooldown_driven_trigger_rate() {
     let base = ActorBaseStats {
         life: 1000.0,
-        // 高行动速率，使触发由 cap 而非源速率门控。
+        // High action rate, so triggering is gated by the cap rather than the source rate.
         action_rate: 20.0,
         ..ActorBaseStats::default()
     };
@@ -906,24 +915,24 @@ fn perform_fills_cooldown_driven_trigger_rate() {
         vec![Modifier::number("TriggerCooldownBase", ModType::Base, 0.3)],
     );
     perform(&mut env).unwrap();
-    // 0.3s 冷却 → cap ≈ 1/ceil_tick(0.3) ≈ 3/s。
+    // 0.3s cooldown → cap ≈ 1/ceil_tick(0.3) ≈ 3/s.
     assert!(
         env.player.output.trigger_rate_cap > 0.0,
         "trigger cap should be positive"
     );
     assert!((env.player.output.trigger_rate_cap - 3.03).abs() < 0.2);
-    // 源速率 20/s 高于 cap → skill_trigger_rate == cap（不被源门控）。
+    // Source rate 20/s exceeds the cap → skill_trigger_rate == cap (not gated by the source).
     assert!(
         (env.player.output.skill_trigger_rate - env.player.output.trigger_rate_cap).abs() < 1e-9
     );
 }
 
-/// 冷却驱动触发被源速率门控：低行动速率 → skill_trigger_rate < trigger_rate_cap。
+/// Cooldown-driven trigger gated by the source rate: low action rate → skill_trigger_rate < trigger_rate_cap.
 #[test]
 fn perform_trigger_rate_gated_by_source_rate() {
     let base = ActorBaseStats {
         life: 1000.0,
-        // 低行动速率（1/s），低于 cap（短冷却）→ 触发被源速率门控。
+        // Low action rate (1/s), below the cap (short cooldown) → triggering is gated by the source rate.
         action_rate: 1.0,
         ..ActorBaseStats::default()
     };
@@ -932,12 +941,12 @@ fn perform_trigger_rate_gated_by_source_rate() {
         vec![Modifier::number("TriggerCooldownBase", ModType::Base, 0.05)],
     );
     perform(&mut env).unwrap();
-    // cap ≈ 10+/s，源速率 1/s → skill_trigger_rate 被门控到 ≈ 1/s。
+    // cap ≈ 10+/s, source rate 1/s → skill_trigger_rate is gated down to ≈ 1/s.
     assert!(env.player.output.skill_trigger_rate < env.player.output.trigger_rate_cap);
     assert!((env.player.output.skill_trigger_rate - 1.0).abs() < 0.2);
 }
 
-/// ICDR（CooldownRecovery）缩短触发冷却 → trigger_rate_cap 提高。
+/// ICDR (CooldownRecovery) shortens the trigger cooldown → trigger_rate_cap goes up.
 #[test]
 fn perform_trigger_icdr_increases_cap() {
     let base = ActorBaseStats {
@@ -953,7 +962,7 @@ fn perform_trigger_icdr_increases_cap() {
         env.player.output.trigger_rate_cap
     };
     let no_icdr = make(vec![]);
-    // +100% CooldownRecovery → 触发冷却减半 → cap 提高。
+    // +100% CooldownRecovery → trigger cooldown halved → cap goes up.
     let with_icdr = make(vec![Modifier::number(
         "CooldownRecovery",
         ModType::Inc,
@@ -965,7 +974,7 @@ fn perform_trigger_icdr_increases_cap() {
     );
 }
 
-/// CWC 触发接入：CWCTriggerTime BASE（无冷却驱动词条）→ trigger_rate_cap 由引导间隔决定。
+/// CWC trigger wiring: CWCTriggerTime BASE (no cooldown-driven mod) → trigger_rate_cap is determined by the cast interval.
 #[test]
 fn perform_fills_cwc_trigger_rate() {
     let base = ActorBaseStats {
@@ -977,10 +986,11 @@ fn perform_fills_cwc_trigger_rate() {
         vec![Modifier::number("CWCTriggerTime", ModType::Base, 0.3)],
     );
     perform(&mut env).unwrap();
-    // triggerTime 0.3s → ceil_tick ≈ 0.33s → rate ≈ 3.03/s。
+    // triggerTime 0.3s → ceil_tick ≈ 0.33s → rate ≈ 3.03/s.
     assert!((env.player.output.trigger_rate_cap - 3.03).abs() < 0.2);
-    // CWC 单被触发技能（无冷却）经单技能轮转：源速率=引导频率 → 稳态速率≈引导频率，
-    // 再被 cap clamp。无冷却时 ≈ cap（finding 03-06：CWC 走 calcMultiSpellRotationImpact）。
+    // A single CWC-triggered skill (no cooldown) runs through single-skill rotation: source
+    // rate = cast frequency → steady-state rate ≈ cast frequency, then clamped by the cap.
+    // With no cooldown it's ≈ cap (finding 03-06: CWC uses calcMultiSpellRotationImpact).
     assert!(
         (env.player.output.skill_trigger_rate - env.player.output.trigger_rate_cap).abs() < 0.2,
         "CWC 无冷却 skill_trigger_rate≈cap: rate={} cap={}",
@@ -989,15 +999,16 @@ fn perform_fills_cwc_trigger_rate() {
     );
 }
 
-/// CWC 被触发技能冷却 > 引导间隔时：rate 被冷却门控，且经单技能轮转后 ≤ cap
-/// （finding 03-06：CWC skill_trigger_rate 走 calc_multi_spell_rotation 单技能路径）。
+/// When the CWC-triggered skill's cooldown > the cast interval: rate is gated by the
+/// cooldown, and after single-skill rotation is ≤ cap (finding 03-06: CWC's
+/// skill_trigger_rate goes through the calc_multi_spell_rotation single-skill path).
 #[test]
 fn perform_cwc_trigger_rate_limited_by_triggered_cooldown() {
     let base = ActorBaseStats {
         life: 1000.0,
         ..ActorBaseStats::default()
     };
-    // 引导间隔 0.1s（快），被触发技能冷却 0.5s（慢）→ 冷却门控。
+    // Cast interval 0.1s (fast), triggered-skill cooldown 0.5s (slow) → gated by cooldown.
     let mut env = player_with(
         base,
         vec![
@@ -1006,13 +1017,13 @@ fn perform_cwc_trigger_rate_limited_by_triggered_cooldown() {
         ],
     );
     perform(&mut env).unwrap();
-    // 冷却 0.5s 限速 → cap = 1/ceil_tick(0.5) ≈ 1.96/s，远低于引导频率 ~9.9/s。
+    // Cooldown 0.5s rate-limits → cap = 1/ceil_tick(0.5) ≈ 1.96/s, well below the cast frequency ~9.9/s.
     assert!(
         env.player.output.trigger_rate_cap < 3.0,
         "被触发冷却应压低 cap: {}",
         env.player.output.trigger_rate_cap
     );
-    // 轮转稳态速率不得超过 cap，且为正（被触发技能确实在触发）。
+    // The rotation steady-state rate must not exceed the cap, and must be positive (the triggered skill is actually firing).
     assert!(env.player.output.skill_trigger_rate > 0.0);
     assert!(
         env.player.output.skill_trigger_rate <= env.player.output.trigger_rate_cap + 1e-6,
@@ -1022,11 +1033,11 @@ fn perform_cwc_trigger_rate_limited_by_triggered_cooldown() {
     );
 }
 
-// 集成阶段：触发源统计折算
+// Integration stage: trigger-source stat folding
 
-/// 手算对拍：triggerChance = 源命中 × 源暴击。
-/// 源速率 2/s（< cap），hit 80%，crit 35%，TriggerOnCrit →
-/// skill_trigger_rate = 2 × 0.8 × 0.35 = 0.56。
+/// Hand-computed check: triggerChance = source hit chance × source crit chance.
+/// Source rate 2/s (< cap), hit 80%, crit 35%, TriggerOnCrit →
+/// skill_trigger_rate = 2 × 0.8 × 0.35 = 0.56.
 #[test]
 fn perform_trigger_chance_folds_source_hit_and_crit() {
     let base = ActorBaseStats {
@@ -1051,7 +1062,7 @@ fn perform_trigger_chance_folds_source_hit_and_crit() {
     );
 }
 
-/// CoC 方向性断言：源暴击率↑ → 触发几率↑ → 触发速率↑。
+/// CoC directional assertion: higher source crit rate → higher trigger chance → higher trigger rate.
 #[test]
 fn perform_trigger_rate_rises_with_source_crit() {
     let base = ActorBaseStats {
@@ -1078,8 +1089,8 @@ fn perform_trigger_rate_rises_with_source_crit() {
     );
 }
 
-/// 速率上限覆盖（trigger_rate_cap_override，如 The Hidden Blade = 2/s）：
-/// cap 取覆盖值，源速率 10/s 被截到 2/s。
+/// Rate cap override (trigger_rate_cap_override, e.g. The Hidden Blade = 2/s):
+/// the cap takes the override value, and the 10/s source rate is clamped to 2/s.
 #[test]
 fn perform_trigger_rate_cap_override() {
     let base = ActorBaseStats {
@@ -1098,8 +1109,9 @@ fn perform_trigger_rate_cap_override() {
     assert!((env.player.output.skill_trigger_rate - 2.0).abs() < 1e-9);
 }
 
-/// 无冷却数据的触发关系（`SkillIsTriggered` FLAG 门控）：vendor triggerCD 空 →
-/// 触发速率纯源速率驱动；cap 面板保持 0。
+/// A trigger relationship with no cooldown data (gated by the `SkillIsTriggered` FLAG):
+/// when vendor triggerCD is empty, the trigger rate is driven purely by the source rate;
+/// the cap panel stays 0.
 #[test]
 fn perform_trigger_no_cooldown_uses_source_rate() {
     let base = ActorBaseStats {
@@ -1123,13 +1135,13 @@ fn perform_trigger_no_cooldown_uses_source_rate() {
     );
 }
 
-/// global 触发（`TriggerSourceGlobal` FLAG）：不依赖源速率，
-/// EffectiveSourceRate = TriggerRateCap（vendor CalcTriggers.lua:705-707）。
+/// Global trigger (`TriggerSourceGlobal` FLAG): doesn't depend on the source rate,
+/// EffectiveSourceRate = TriggerRateCap (vendor CalcTriggers.lua:705-707).
 #[test]
 fn perform_global_trigger_rate_equals_cap() {
     let base = ActorBaseStats {
         life: 1000.0,
-        // 主技能速率极低——global 触发不得被其门控。
+        // Main skill rate is extremely low — global trigger must not be gated by it.
         action_rate: 0.1,
         ..ActorBaseStats::default()
     };
@@ -1149,7 +1161,7 @@ fn perform_global_trigger_rate_equals_cap() {
     );
 }
 
-// 集成阶段：异常维度（AilmentEffect / Faster / DotDpsCap / 跨类型施加）
+// Integration stage: ailment dimensions (AilmentEffect / Faster / DotDpsCap / cross-type application)
 
 fn bleed_env(extra: Vec<Modifier>) -> Env {
     let base = ActorBaseStats {
@@ -1165,7 +1177,7 @@ fn bleed_env(extra: Vec<Modifier>) -> Env {
     env
 }
 
-/// AilmentEffect（MORE）放大流血 DPS：+50% AilmentEffect → bleed_dps ×1.5。
+/// AilmentEffect (MORE) amplifies bleed DPS: +50% AilmentEffect → bleed_dps ×1.5.
 #[test]
 fn perform_ailment_effect_scales_bleed_dps() {
     let mut baseline = bleed_env(vec![]);
@@ -1183,7 +1195,7 @@ fn perform_ailment_effect_scales_bleed_dps() {
     );
 }
 
-/// BleedFaster（rateMod）放大流血 DPS：+100% BleedFaster → bleed_dps ×2。
+/// BleedFaster (rateMod) amplifies bleed DPS: +100% BleedFaster → bleed_dps ×2.
 #[test]
 fn perform_ailment_faster_scales_bleed_dps() {
     let mut baseline = bleed_env(vec![]);
@@ -1198,15 +1210,15 @@ fn perform_ailment_faster_scales_bleed_dps() {
     );
 }
 
-/// DotDpsCap 截断：巨额流血 DPS 被全局上限 clamp（DOT_DPS_CAP）。
+/// DotDpsCap clamping: a huge bleed DPS is clamped by the global cap (DOT_DPS_CAP).
 #[test]
 fn perform_dot_dps_cap_clamps_huge_bleed() {
-    // 巨额物理命中 + 大量 AilmentMagnitude/AilmentEffect → 未截断 DPS 远超上限。
+    // A huge physical hit + massive AilmentMagnitude/AilmentEffect → the unclamped DPS would far exceed the cap.
     let mut env = bleed_env(vec![
         Modifier::number("AilmentMagnitude", ModType::Inc, 100000.0),
         Modifier::number("AilmentEffect", ModType::More, 100000.0),
     ]);
-    // 把命中放大到天文数字。
+    // Amplify the hit to an astronomical number.
     env.player
         .mod_db
         .add_mod(Modifier::number("PhysicalDamageMin", ModType::Base, 1e9));
@@ -1214,7 +1226,7 @@ fn perform_dot_dps_cap_clamps_huge_bleed() {
         .mod_db
         .add_mod(Modifier::number("PhysicalDamageMax", ModType::Base, 1e9));
     perform(&mut env).unwrap();
-    // DotDpsCap = 35_791_394（pobr_data 常量）。
+    // DotDpsCap = 35_791_394 (pobr_data constant).
     assert!(
         env.player.output.bleed_dps <= 35_791_394.0 + 1.0,
         "bleed DPS should be capped at DotDpsCap: {}",
@@ -1223,14 +1235,14 @@ fn perform_dot_dps_cap_clamps_huge_bleed() {
     assert!(env.player.output.bleed_dps > 0.0);
 }
 
-/// 跨类型施加：FireCanBleed 旗标 → 火焰命中也计入流血来源 → 火焰 build 产生流血。
+/// Cross-type application: the FireCanBleed flag → fire hits also count as a bleed source → a fire build can bleed.
 #[test]
 fn perform_cross_type_fire_can_bleed() {
     let base = ActorBaseStats {
         life: 1000.0,
         ..ActorBaseStats::default()
     };
-    // 纯火焰命中，无物理 → 默认不流血。
+    // A pure fire hit, no physical → doesn't bleed by default.
     let make = |with_flag: bool| {
         let mut mods = vec![
             Modifier::number("FireDamageMin", ModType::Base, 5000.0),
@@ -1245,18 +1257,18 @@ fn perform_cross_type_fire_can_bleed() {
         perform(&mut env).unwrap();
         env.player.output.bleed_dps
     };
-    // 无旗标：火焰命中不计入流血来源 → bleed_dps == 0。
+    // No flag: a fire hit doesn't count as a bleed source → bleed_dps == 0.
     assert_eq!(make(false), 0.0, "fire hit should not bleed by default");
-    // 有 FireCanBleed：火焰命中计入流血来源 → bleed_dps > 0。
+    // With FireCanBleed: a fire hit counts as a bleed source → bleed_dps > 0.
     assert!(
         make(true) > 0.0,
         "FireCanBleed should let fire hits cause bleed"
     );
 }
 
-// 集成阶段：召唤物从 MinionDef 真实底材 + 数量上限
+// Integration stage: minions from a real MinionDef base + population limit
 
-/// add_minion_from_def 端到端：真实 MinionDef（僵尸）底材 + 数量上限注入玩家 multiplier。
+/// add_minion_from_def end-to-end: a real MinionDef (zombie) base + population limit injected into the player's multiplier.
 #[test]
 fn perform_minion_from_def_with_limit() {
     use pobr_data::minion::minion_def_zombie;
@@ -1280,7 +1292,7 @@ fn perform_minion_from_def_with_limit() {
     );
     perform(&mut env).unwrap();
 
-    // 数量上限写入玩家 multiplier。
+    // The population limit is written to the player's multiplier.
     let limit = env.player.mod_db.sum(
         ModType::Base,
         &env.cfg,
@@ -1288,16 +1300,16 @@ fn perform_minion_from_def_with_limit() {
     );
     assert_eq!(limit, 3.0);
 
-    // 召唤物用真实僵尸底材：等级 = 宝石 20 → 怪物等级 40，生命来自怪物表 × 0.7 归一化。
+    // The minion uses the real zombie base: level = gem level 20 → monster level 40, life comes from the monster table × 0.7 normalization.
     assert_eq!(env.player.output.minions.len(), 1);
     let m = &env.player.output.minions[0];
     assert_eq!(m.level, 40);
     assert!(m.life > 0.0, "zombie should have life from monster table");
-    // 玩家自身不受召唤物影响。
+    // The player itself is unaffected by minions.
     assert_eq!(env.player.output.life, 1000.0);
 }
 
-/// 数量上限 multiplier 接入 cfg：召唤物「per Summoned Minion」词条可引用数量。
+/// Population-limit multiplier wiring into cfg: minion "per Summoned Minion" mods can reference the count.
 #[test]
 fn perform_minion_damage_per_summoned_minion_uses_limit() {
     use pobr_data::minion::minion_def_zombie;
@@ -1311,7 +1323,7 @@ fn perform_minion_damage_per_summoned_minion_uses_limit() {
         let mut env = player_with(base, vec![]);
         env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
         let def = minion_def_zombie();
-        // 通道 1：召唤物「每个召唤物 +X% 增伤」（Multiplier:SummonedMinion 引用数量）。
+        // Channel 1: minion "+X% damage per summoned minion" (Multiplier:SummonedMinion references the count).
         let entry = MinionModifierEntry {
             inner: Modifier::number("Damage", ModType::Inc, 10.0)
                 .with_tag(pobr_core::ModTag::multiplier("SummonedMinion", 1.0, None)),
@@ -1332,15 +1344,15 @@ fn perform_minion_damage_per_summoned_minion_uses_limit() {
 
     let dps_1 = make(1);
     let dps_5 = make(5);
-    // 数量越多，per-minion 增伤越高 → 召唤物 DPS 越高。
+    // More minions → higher per-minion damage bonus → higher minion DPS.
     assert!(
         dps_5 > dps_1,
         "more summoned minions should scale per-minion damage: {dps_5} vs {dps_1}"
     );
 }
 
-// 06-01：EHP/max-hit 计入 DamageTakenWhenHit 受击专属承受乘数
-// （PoB2 CalcDefence.lua:2250-2263 TakenHitMult）
+// 06-01: EHP/max-hit now accounts for the hit-specific DamageTakenWhenHit taken multiplier
+// (PoB2 CalcDefence.lua:2250-2263 TakenHitMult)
 
 #[test]
 fn perform_max_hit_includes_damage_taken_when_hit() {
@@ -1348,7 +1360,7 @@ fn perform_max_hit_includes_damage_taken_when_hit() {
         life: 1000.0,
         ..ActorBaseStats::default()
     };
-    // FireDamageTakenWhenHit INC -20 → 受击火承受乘数 = 0.8 → fire_max_hit = 1000/0.8 = 1250。
+    // FireDamageTakenWhenHit INC -20 → fire taken-on-hit multiplier = 0.8 → fire_max_hit = 1000/0.8 = 1250.
     let mut env = player_with(
         base,
         vec![Modifier::number(
@@ -1363,14 +1375,14 @@ fn perform_max_hit_includes_damage_taken_when_hit() {
         "fire_max_hit = {} (期望 1250 = 1000/0.8)",
         env.player.output.fire_max_hit
     );
-    // 冷不含 WhenHit → 不受影响（类型隔离）。
+    // Cold has no WhenHit mod → unaffected (type isolation).
     assert!(
         (env.player.output.cold_max_hit - 1000.0).abs() < 1e-6,
         "cold_max_hit = {} (期望 1000)",
         env.player.output.cold_max_hit
     );
 
-    // 叠加：DamageTaken MORE -10 + DamageTakenWhenHit INC -20 → 0.8*0.9=0.72。
+    // Stacked: DamageTaken MORE -10 + DamageTakenWhenHit INC -20 → 0.8*0.9=0.72.
     let mut env2 = player_with(
         base,
         vec![
@@ -1379,8 +1391,9 @@ fn perform_max_hit_includes_damage_taken_when_hit() {
         ],
     );
     perform(&mut env2).unwrap();
-    // F-3 口径切换后 canonical max hit 走 PoB2 管线，末端 vendor round
-    // （CalcDefence.lua:3696）→ 1388.89 取整为 1389，容差放宽到 1。
+    // After the F-3 semantics switch, the canonical max hit goes through the PoB2 pipeline
+    // with a final vendor round (CalcDefence.lua:3696) → 1388.89 rounds to 1389, so the
+    // tolerance is relaxed to 1.
     let expected = 1000.0 / 0.72;
     assert!(
         (env2.player.output.physical_max_hit - expected).abs() < 1.0,
@@ -1390,20 +1403,20 @@ fn perform_max_hit_includes_damage_taken_when_hit() {
     );
 }
 
-// 03-02：触发源速率取注入的 TriggerSourceRate（PoB2 EffectiveSourceRate = 触发源技能速率）
+// 03-02: the trigger source rate takes the injected TriggerSourceRate (PoB2 EffectiveSourceRate = the trigger-source skill's rate)
 
 #[test]
 fn perform_trigger_uses_injected_source_rate_not_main_skill_rate() {
     let base = ActorBaseStats {
         life: 1000.0,
-        action_rate: 50.0, // 主技能高速；若误用主技能速率当源速率则门控失效
+        action_rate: 50.0, // Main skill is fast; if the main-skill rate were mistakenly used as the source rate, gating would fail
         ..ActorBaseStats::default()
     };
     let mut env = player_with(
         base,
         vec![
-            Modifier::number("TriggerCooldownBase", ModType::Base, 0.05), // 短冷却 → cap 高
-            Modifier::number("TriggerSourceRate", ModType::Base, 1.0),    // 注入源速率 1/s
+            Modifier::number("TriggerCooldownBase", ModType::Base, 0.05), // Short cooldown → high cap
+            Modifier::number("TriggerSourceRate", ModType::Base, 1.0), // Injected source rate 1/s
         ],
     );
     perform(&mut env).unwrap();
@@ -1423,16 +1436,16 @@ fn perform_trigger_uses_injected_source_rate_not_main_skill_rate() {
     );
 }
 
-// 03-01：触发速率末端乘 triggerChance（显式触发几率折算，PoB2 CalcTriggers L715-777）
+// 03-01: the trigger rate is multiplied at the end by triggerChance (explicit trigger-chance folding, PoB2 CalcTriggers L715-777)
 
 #[test]
 fn perform_trigger_rate_folds_explicit_trigger_chance() {
     let base = ActorBaseStats {
         life: 1000.0,
-        action_rate: 20.0, // 源速率 > cap → 被 cap 门控
+        action_rate: 20.0, // Source rate > cap → gated by the cap
         ..ActorBaseStats::default()
     };
-    // 基准：无显式触发几率 → 不折算。
+    // Baseline: no explicit trigger chance → no folding.
     let mut env_base = player_with(
         base,
         vec![Modifier::number("TriggerCooldownBase", ModType::Base, 0.3)],
@@ -1446,7 +1459,8 @@ fn perform_trigger_rate_folds_explicit_trigger_chance() {
         cap
     );
 
-    // 注入显式触发几率 50%（build 层经 cfg.multipliers["TriggerChance"] 注入，百分数）。
+    // Inject an explicit 50% trigger chance (injected by the build layer via
+    // cfg.multipliers["TriggerChance"], as a percentage).
     let mut env_half = player_with(
         base,
         vec![Modifier::number("TriggerCooldownBase", ModType::Base, 0.3)],
@@ -1468,11 +1482,12 @@ fn perform_trigger_rate_folds_explicit_trigger_chance() {
     );
 }
 
-//  异常 magnitude 接 Stored 族 + vendor uptime 口径
+// Ailment magnitude now wired to the Stored family + vendor uptime semantics
 
-/// vendor uptime 口径（CalcOffence.lua:5189-5193）：施加几率只经 ailmentStacks
-/// （uptime）进入 DPS——叠层估算饱和（stacks ≥ maxStacks）后，几率减半不再线性
-/// 折减 DPS（50% 几率 × 高攻速依然全程维持流血）。
+/// Vendor uptime semantics (CalcOffence.lua:5189-5193): the apply chance only enters DPS
+/// through ailmentStacks (uptime) — once the stack estimate saturates (stacks ≥ maxStacks),
+/// halving the chance no longer linearly reduces DPS (50% chance × high attack speed still
+/// sustains bleed the whole time).
 #[test]
 fn perform_ailment_uptime_saturates_chance() {
     let base = ActorBaseStats {
@@ -1494,16 +1509,17 @@ fn perform_ailment_uptime_saturates_chance() {
     let full = run(100.0);
     let half = run(50.0);
     assert!(full > 0.0, "100% 几率应有流血 DPS");
-    // stacks(50%) = 1 × 0.5 × 5s × 2/s = 5 ≥ max(1) → uptime 饱和，DPS 与 100% 相同。
+    // stacks(50%) = 1 × 0.5 × 5s × 2/s = 5 ≥ max(1) → uptime saturates, DPS matches the 100% case.
     assert!(
         (half - full).abs() < 1e-6,
         "uptime 饱和后几率不得线性折减 DPS：half={half} full={full}"
     );
 }
 
-/// Stored 族暴击腿接入：on-crit 专属伤害词条（CriticalStrike 条件）经
-/// `Stored<Type>Crit{Min,Max}` 进入点燃来源——旧 `hit × CritMultiplier` 近似
-/// 看不到该词条（暴击腿真实聚合，vendor :4049-4052 → :4833-4857）。
+/// Stored-family crit leg wiring: on-crit-only damage mods (the CriticalStrike condition)
+/// enter the ignite source through `Stored<Type>Crit{Min,Max}` — the old `hit × CritMultiplier`
+/// approximation was blind to this mod (real crit-leg aggregation, vendor :4049-4052 →
+/// :4833-4857).
 #[test]
 fn perform_ignite_source_uses_real_crit_leg() {
     let base = ActorBaseStats {
@@ -1534,17 +1550,18 @@ fn perform_ignite_source_uses_real_crit_leg() {
             .with_tag(ModTag::condition("CriticalStrike", false)),
     ]);
     assert!(plain > 0.0, "100% 暴击的火击中应点燃");
-    // 暴击腿 ×2（on-crit inc）→ 点燃来源（全暴击）≈ ×2；几率已 clamp 100 不再放大。
+    // Crit leg ×2 (on-crit inc) → ignite source (all-crit) ≈ ×2; chance is already clamped to 100 and can't amplify further.
     assert!(
         with_on_crit > plain * 1.5,
         "on-crit 词条应放大点燃 magnitude：plain={plain} on_crit={with_on_crit}"
     );
 }
 
-/// defence output 快照（vendor calcs.defence 先于 offence，CalcPerform.lua:3298/
-/// :3361）：perform 在 hand_pass 之前用 calc_defence_resources 的三防终值回填
-/// cfg.stats，使 PerStat/PercentStat/StatThreshold 引用 EnergyShield/Armour/
-/// Evasion 的词条在 hit 伤害与后续 fill 阶段取到真值（此前恒 0 休眠）。
+/// Defence output snapshot (vendor runs calcs.defence before offence, CalcPerform.lua:3298/
+/// :3361): before hand_pass, perform writes the three final defence values from
+/// calc_defence_resources back into cfg.stats, so PerStat/PercentStat/StatThreshold mods
+/// referencing EnergyShield/Armour/Evasion get real values during hit damage and the
+/// subsequent fill stages (previously always dormant at 0).
 #[test]
 fn perform_snapshots_defence_output_stats_before_offence() {
     let base = ActorBaseStats {
@@ -1554,8 +1571,8 @@ fn perform_snapshots_defence_output_stats_before_offence() {
         ..ActorBaseStats::default()
     };
     let per_es_damage = || {
-        // 「1% increased Damage per 50 maximum Energy Shield」形态
-        // （vendor PerStat{stat=EnergyShield, div=50}）。
+        // The "1% increased Damage per 50 maximum Energy Shield" pattern
+        // (vendor PerStat{stat=EnergyShield, div=50}).
         Modifier::number("Damage", ModType::Inc, 1.0).with_tag(ModTag::PerStat {
             stat: "EnergyShield".into(),
             div: 50.0,
@@ -1571,9 +1588,9 @@ fn perform_snapshots_defence_output_stats_before_offence() {
         env
     };
 
-    // 无 ES → PerStat 乘数 0 → 词条无贡献（快照缺键=0 保守口径不变）。
+    // No ES → PerStat multiplier 0 → the mod contributes nothing (missing key in the snapshot = 0, the conservative default is unchanged).
     let control = run(vec![per_es_damage()]);
-    // +500 ES → floor(500/50)=10 → Damage Inc +10%。
+    // +500 ES → floor(500/50)=10 → Damage Inc +10%.
     let with_es = run(vec![
         Modifier::number("EnergyShield", ModType::Base, 500.0),
         per_es_damage(),
@@ -1581,7 +1598,7 @@ fn perform_snapshots_defence_output_stats_before_offence() {
 
     assert_eq!(with_es.cfg.stat("EnergyShield"), 500.0);
     assert_eq!(with_es.cfg.stat("MaximumEnergyShield"), 500.0);
-    // armour=0/evasion=0 → lowest=min=0（缺键=0 等价）。
+    // armour=0/evasion=0 → lowest=min=0 (equivalent to a missing key = 0).
     assert_eq!(with_es.cfg.stat("LowestOfArmourAndEvasion"), 0.0);
     let (base_hit, scaled_hit) = (
         control.player.output.total_hit_avg,

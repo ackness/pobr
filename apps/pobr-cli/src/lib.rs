@@ -1,14 +1,16 @@
-//! pobr-cli 库层：把每个子命令实现为纯函数（输入结构 → 输出结构 + `Result`），
-//! 便于单测与复用。`main.rs` 只负责 IO 粘合（参数解析、读文件 / stdin、打印 JSON）。
+//! The pobr-cli library layer: each subcommand is implemented as a pure
+//! function (an input struct -> an output struct plus `Result`), for easy
+//! unit testing and reuse. `main.rs` only handles IO glue (arg parsing,
+//! reading a file / stdin, printing JSON).
 //!
-//! 子命令：
-//! - [`calculate`]：从基础 [`MinimalInput`] + modifier 文本构造 [`CalculationSession`]，
-//!   `perform_minimal` 后返回关键字段 + 未支持文本。
-//! - [`parse_mod`]：数据驱动引擎解析单行 modifier，返回可序列化的解析报告。
-//! - [`parse_item`]：调用 [`pobr_core::item_text::parse_item_text`] +
-//!   [`pobr_core::item::ingest_item_with_ctx`] 真正解析 raw item 文本，输出 JSON（解析出的
-//!   modifier / section / unsupported）。
-//! - [`encode_code`] / [`decode_code`]：包装 PoB Build Code 编解码。
+//! Subcommands:
+//! - [`calculate`]: builds a [`CalculationSession`] from a base [`MinimalInput`]
+//!   plus modifier text, and returns the key fields plus unsupported text after `perform_minimal`.
+//! - [`parse_mod`]: the data-driven engine parses a single modifier line, returning a serializable parse report.
+//! - [`parse_item`]: calls [`pobr_core::item_text::parse_item_text`] plus
+//!   [`pobr_core::item::ingest_item_with_ctx`] to actually parse raw item
+//!   text, outputting JSON (the parsed modifiers / sections / unsupported text).
+//! - [`encode_code`] / [`decode_code`]: wrap PoB Build Code encoding/decoding.
 
 use std::path::PathBuf;
 
@@ -28,44 +30,44 @@ use pobr_gamedata::GameData;
 use serde::Serialize;
 use thiserror::Error;
 
-/// CLI 库层统一错误。
+/// The unified error type for the CLI library layer.
 #[derive(Debug, Error)]
 pub enum CliError {
-    /// modifier 文本无法解析（来自 `pobr_core::mod_parser`）。
+    /// Modifier text couldn't be parsed (from `pobr_core::mod_parser`).
     #[error("modifier parse error: {0}")]
     ModParse(String),
-    /// Build Code 编解码失败。
+    /// Build Code encoding/decoding failed.
     #[error("build code error: {0}")]
     BuildCode(#[from] pobr_build::BuildCodeError),
-    /// JSON 序列化失败。
+    /// JSON serialization failed.
     #[error("json serialization error: {0}")]
     Json(#[from] serde_json::Error),
-    /// raw item text 结构性解析失败（空输入 / 缺 Rarity / 缺基底）。
+    /// Structural parsing of raw item text failed (empty input / missing Rarity / missing base).
     #[error("item text parse error: {0}")]
     ItemText(#[from] ItemTextError),
-    /// Build 解析 / 计算编排失败（来自 pobr-build）。
+    /// Build parsing / calc orchestration failed (from pobr-build).
     #[error("build error: {0}")]
     Build(#[from] pobr_build::BuildError),
-    /// 游戏数据加载失败（缺数据目录 / JSON 反序列化）。
+    /// Game data failed to load (missing data dir / JSON deserialization failure).
     #[error("game data load error: {0}")]
     GameData(#[from] pobr_gamedata::LoadError),
-    /// 功能尚未实现（占位保留）。
+    /// The feature isn't implemented yet (kept as a placeholder).
     #[error("not implemented: {0}")]
     NotImplemented(&'static str),
 }
 
 // calculate
 
-/// `calculate` 子命令输入。
+/// Input for the `calculate` subcommand.
 #[derive(Debug, Clone)]
 pub struct CalculateRequest {
-    /// 基础属性输入（life / mana / 抗性 / 命中 / 敌人闪避 / hit / action rate）。
+    /// Base attribute input (life / mana / resistances / accuracy / enemy evasion / hit / action rate).
     pub input: MinimalInput,
-    /// 待应用的 modifier 文本（英文 PoB 兼容）。
+    /// The modifier text to apply (PoB-compatible English).
     pub modifier_texts: Vec<String>,
 }
 
-/// `calculate` 输出的关键字段（可序列化为 JSON）。
+/// The key output fields from `calculate` (serializable to JSON).
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateOutput {
     pub life: f64,
@@ -99,22 +101,26 @@ impl From<&MinimalOutput> for CalculateOutput {
     }
 }
 
-/// `calculate` 结果：输出字段 + 未支持（已识别但解析器拒绝聚合）的 modifier 文本。
+/// The `calculate` result: output fields plus unsupported modifier text
+/// (recognized text the parser refused to aggregate).
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateResult {
     pub output: CalculateOutput,
     pub unsupported: Vec<String>,
 }
 
-/// 执行最小计算：构造 [`CalculationSession`]（注入默认数据目录的引擎规则），
-/// 应用 modifier 文本，`perform_minimal`。
+/// Runs the minimal calculation: builds a [`CalculationSession`] (injecting
+/// the engine rules from the default data directory), applies the modifier
+/// text, then calls `perform_minimal`.
 ///
-/// 引擎对无法识别的文本**不报错**——收集到 `unsupported`，不阻断计算；仅
-/// 默认数据目录缺失/规则编译失败时返回 [`CliError::ModParse`]。
+/// The engine **never errors** on unrecognized text — it's collected into
+/// `unsupported` without blocking the calculation; [`CliError::ModParse`] is
+/// only returned when the default data directory is missing or rule
+/// compilation fails.
 pub fn calculate(req: &CalculateRequest) -> Result<CalculateResult, CliError> {
     let mut session = CalculationSession::new(req.input);
-    // 引擎规则注入（唯一解析器）——缺默认数据目录时 fail-fast 报错，
-    // 不静默把全部词条当 Unsupported。
+    // Inject the engine rules (the sole parser) — fail-fast if the default
+    // data directory is missing, rather than silently treating every mod line as Unsupported.
     session.set_parser_rules(default_rules()?.rules.clone());
     session
         .add_modifier_texts(&req.modifier_texts)
@@ -129,7 +135,7 @@ pub fn calculate(req: &CalculateRequest) -> Result<CalculateResult, CliError> {
     })
 }
 
-/// 把 [`CalculateResult`] 渲染为美化的 JSON 字符串。
+/// Renders a [`CalculateResult`] as a pretty-printed JSON string.
 pub fn calculate_json(req: &CalculateRequest) -> Result<String, CliError> {
     let result = calculate(req)?;
     Ok(serde_json::to_string_pretty(&result)?)
@@ -137,34 +143,36 @@ pub fn calculate_json(req: &CalculateRequest) -> Result<String, CliError> {
 
 // parse-mod
 
-/// 单条 modifier 的可序列化摘要。
+/// A serializable summary of a single modifier.
 #[derive(Debug, Clone, Serialize)]
 pub struct ModSummary {
-    /// 稳定 stat 名（如 `MaximumLife`）。
+    /// Stable stat name (e.g. `MaximumLife`).
     pub name: String,
-    /// 聚合类型（`Base` / `Inc` / `More` / …）。
+    /// Aggregation type (`Base` / `Inc` / `More` / ...).
     pub mod_type: String,
-    /// 数值（文本型 modifier 为 `None`）。
+    /// The numeric value (`None` for text-valued modifiers).
     pub value: Option<f64>,
-    /// 原始来源文本。
+    /// The raw source text.
     pub source: Option<String>,
 }
 
-/// `parse-mod` 解析报告。
+/// The `parse-mod` parse report.
 #[derive(Debug, Clone, Serialize)]
 pub struct ParseModReport {
-    /// `Parsed` 或 `Unsupported`。
+    /// `Parsed` or `Unsupported`.
     pub status: String,
-    /// 解析出的 modifier 列表。
+    /// The list of parsed modifiers.
     pub mods: Vec<ModSummary>,
-    /// 未能识别归类的原始文本（仅 `Unsupported` 时出现）。
+    /// The raw text that couldn't be recognized/classified (present only when `Unsupported`).
     pub unparsed: Option<String>,
 }
 
-/// 启动期编译一次、复用的 parser 规则上下文（数据驱动引擎，唯一解析器）。
+/// The parser rule context, compiled once at startup and reused (the
+/// data-driven engine, the sole parser).
 ///
-/// `overlay/mod_parser_rules.json` + special 条目（[`RuleSet`] 三源拼接）从
-/// [`GameData`] 构造，经 [`CompiledParserRules::compile_with_special`] 编译。
+/// Built from [`GameData`] as `overlay/mod_parser_rules.json` plus special
+/// entries (three sources stitched together via [`RuleSet`]), compiled via
+/// [`CompiledParserRules::compile_with_special`].
 ///
 /// [`RuleSet`]: pobr_gamedata::ruleset::RuleSet
 pub struct ParseModRules {
@@ -172,11 +180,12 @@ pub struct ParseModRules {
 }
 
 impl ParseModRules {
-    /// 从游戏数据编译 parser 规则（解析规则六表 + special 通道）。
+    /// Compiles the parser rules from game data (the six parse-rule tables plus the special channel).
     ///
-    /// `overlay/mod_parser_rules.json` 缺失（旧数据包）或编译失败（pattern
-    /// 非法 / id 重复）上抛 [`CliError::ModParse`]——删除 legacy 解析器后没有
-    /// 回退路径，fail-fast 优于静默全 Unsupported。
+    /// Raises [`CliError::ModParse`] if `overlay/mod_parser_rules.json` is
+    /// missing (an old data pack) or compilation fails (an invalid pattern /
+    /// a duplicate id) — with the legacy parser removed, there's no fallback
+    /// path, so failing fast beats silently marking everything Unsupported.
     pub fn from_game_data(data: &GameData) -> Result<Self, CliError> {
         let doc = data.mod_parser_rules()?.ok_or_else(|| {
             CliError::ModParse("数据目录缺 overlay/mod_parser_rules.json（解析规则表）".into())
@@ -189,16 +198,17 @@ impl ParseModRules {
         })
     }
 
-    /// 引擎解析上下文（[`ingest_item_with_ctx`] 等消费）。
+    /// The engine's parse context (consumed by [`ingest_item_with_ctx`], etc).
     fn ctx(&self) -> ParseCtx<'_> {
         ParseCtx::with_engine(&self.rules)
     }
 }
 
-/// 进程内缓存的默认规则（仓库数据目录 `pobr_gamedata::current_data_dir()`）。
+/// The default rules, cached in-process (from the repo data directory `pobr_gamedata::current_data_dir()`).
 ///
-/// [`parse_mod`] / [`calculate`] / [`parse_item`] 等无 `data_dir` 参数的入口
-/// 使用；加载/编译失败的错误缓存后逐次返回（fail-fast，不静默）。
+/// Used by entry points with no `data_dir` parameter ([`parse_mod`] /
+/// [`calculate`] / [`parse_item`], etc); a load/compile failure is cached as
+/// an error and returned on every call (fail-fast, never silent).
 fn default_rules() -> Result<&'static ParseModRules, CliError> {
     use std::sync::LazyLock;
     static RULES: LazyLock<Result<ParseModRules, String>> = LazyLock::new(|| {
@@ -210,15 +220,17 @@ fn default_rules() -> Result<&'static ParseModRules, CliError> {
         .map_err(|e| CliError::ModParse(format!("默认解析规则加载失败：{e}")))
 }
 
-/// 解析单条 modifier 文本（默认数据目录规则）。
+/// Parses a single modifier text (using the default data directory's rules).
 ///
-/// 引擎对无法识别的文本**不报错**——返回 `status == "Unsupported"` 并把原文放进
-/// `unparsed`。仅数据目录缺失/规则编译失败时返回 [`CliError::ModParse`]。
+/// The engine **never errors** on unrecognized text — it returns
+/// `status == "Unsupported"` with the raw text in `unparsed`.
+/// [`CliError::ModParse`] is only returned when the data directory is
+/// missing or rule compilation fails.
 pub fn parse_mod(text: &str) -> Result<ParseModReport, CliError> {
     parse_mod_with_data(text, default_rules()?)
 }
 
-/// 解析单条 modifier 文本（显式规则，生产路径）。
+/// Parses a single modifier text (explicit rules, the production path).
 pub fn parse_mod_with_data(text: &str, rules: &ParseModRules) -> Result<ParseModReport, CliError> {
     let outcome = parse_mod_engine(text, &rules.rules);
 
@@ -236,7 +248,8 @@ pub fn parse_mod_with_data(text: &str, rules: &ParseModRules) -> Result<ParseMod
             value: match &m.value {
                 ModValue::Number(n) => Some(*n),
                 ModValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
-                // 文本/嵌套载荷无标量值（嵌套 mod 由编排层转发，不在摘要里展开）。
+                // Text/nested payloads have no scalar value (nested mods are
+                // forwarded by the orchestration layer, not expanded in this summary).
                 ModValue::Text(_) | ModValue::NestedMods(_) => None,
             },
             source: m.source.clone(),
@@ -250,9 +263,9 @@ pub fn parse_mod_with_data(text: &str, rules: &ParseModRules) -> Result<ParseMod
     })
 }
 
-/// 把 [`ParseModReport`] 渲染为美化的 JSON 字符串。
+/// Renders a [`ParseModReport`] as a pretty-printed JSON string.
 ///
-/// `data_dir` 指向版本数据目录；从中编译 parser 规则一次。
+/// `data_dir` points at a version data directory; parser rules are compiled from it once.
 pub fn parse_mod_json(text: &str, data_dir: &std::path::Path) -> Result<String, CliError> {
     let data = GameData::new(data_dir);
     let rules = ParseModRules::from_game_data(&data)?;
@@ -260,61 +273,66 @@ pub fn parse_mod_json(text: &str, data_dir: &std::path::Path) -> Result<String, 
     Ok(serde_json::to_string_pretty(&report)?)
 }
 
-// explain-mod（词条解剖）
+// explain-mod (mod anatomy)
 //
-// 与 parse-mod 的区别：parse-mod 只给 name/type/value/source，**丢掉了 flags 和
-// tags**——而 tags（Condition / Multiplier / PerStat / SkillTypes / SlotName …）正是
-// 一条词条「在什么情境下生效、按什么缩放」的灵魂（PoB2「一切皆带 tag 的 Mod」那一层）。
-// explain-mod 把这些摊开并用人话解释，让「词条是怎么运作的」在命令行直接看得见。
+// Difference from parse-mod: parse-mod only gives name/type/value/source, and
+// **drops flags and tags** — but tags (Condition / Multiplier / PerStat /
+// SkillTypes / SlotName, ...) are exactly what makes a mod line "under what
+// circumstances does it apply, and how does it scale" (the layer behind
+// PoB2's "everything is a tagged Mod"). explain-mod lays these out and
+// explains them in plain language, so "how does this mod line actually
+// work" is visible right on the command line.
 
-/// 单个 tag 的人话解释。
+/// A plain-language explanation of a single tag.
 #[derive(Debug, Clone, Serialize)]
 pub struct TagExplain {
-    /// tag 类别（`Condition` / `Multiplier` / `PerStat` / …）。
+    /// The tag category (`Condition` / `Multiplier` / `PerStat` / ...).
     pub kind: String,
-    /// 人类可读的语义说明。
+    /// A human-readable explanation of its semantics.
     pub detail: String,
 }
 
-/// 单条 modifier 的「解剖」——比 [`ModSummary`] 多出 flags / keyword_flags / tags
-/// （词条的条件与缩放灵魂），并附一行人话总结。
+/// The "anatomy" of a single modifier — everything [`ModSummary`] has, plus
+/// flags / keyword_flags / tags (a mod line's conditions and scaling), and a
+/// one-line plain-language summary.
 #[derive(Debug, Clone, Serialize)]
 pub struct ModAnatomy {
-    /// 稳定 stat 名（如 `FireDamage`）。
+    /// Stable stat name (e.g. `FireDamage`).
     pub name: String,
-    /// 聚合类型（`BASE` / `INC` / `MORE` / `FLAG` / `OVERRIDE` / `LIST`）。
+    /// Aggregation type (`BASE` / `INC` / `MORE` / `FLAG` / `OVERRIDE` / `LIST`).
     pub mod_type: String,
-    /// 数值（文本 / 嵌套载荷为 `None`）。
+    /// The numeric value (`None` for text / nested payloads).
     pub value: Option<f64>,
-    /// 文本载荷（`ModValue::Text` / 嵌套提示；数值型为 `None`）。
+    /// The text payload (`ModValue::Text` / a nested-mod hint; `None` for numeric values).
     pub text_value: Option<String>,
-    /// 命中的 [`ModFlags`] 名（如 `Attack` / `Melee` / `Bow`）；空 = 无 flag 约束。
+    /// The matched [`ModFlags`] names (e.g. `Attack` / `Melee` / `Bow`); empty = no flag constraint.
     pub flags: Vec<String>,
-    /// 命中的 [`KeywordFlags`] 名（如 `Aura` / `Curse` / `Poison`）；空 = 无。
+    /// The matched [`KeywordFlags`] names (e.g. `Aura` / `Curse` / `Poison`); empty = none.
     pub keyword_flags: Vec<String>,
-    /// tag 解释（词条的条件与缩放灵魂）；空 = 任何情境下恒定生效。
+    /// The tag explanations (the mod line's conditions and scaling); empty = always applies unconditionally.
     pub tags: Vec<TagExplain>,
-    /// 原始来源文本。
+    /// The raw source text.
     pub source: Option<String>,
-    /// 一行人话总结。
+    /// A one-line plain-language summary.
     pub plain: String,
 }
 
-/// `explain-mod` 解剖报告。
+/// The `explain-mod` anatomy report.
 #[derive(Debug, Clone, Serialize)]
 pub struct ExplainModReport {
-    /// 输入的原始 modifier 文本。
+    /// The raw input modifier text.
     pub input: String,
-    /// `Parsed` 或 `Unsupported`。
+    /// `Parsed` or `Unsupported`.
     pub status: String,
-    /// 解析出的每条 modifier 的解剖。
+    /// The anatomy of each parsed modifier.
     pub mods: Vec<ModAnatomy>,
-    /// 未能识别归类的原始文本（仅 `Unsupported` 时出现）。
+    /// The raw text that couldn't be recognized/classified (present only when `Unsupported`).
     pub unparsed: Option<String>,
 }
 
-/// 解剖单条 modifier 文本：解析后摊开每条 [`Modifier`] 的全部字段（含 flags / tags），
-/// 附人话解释。`rules` 同 [`parse_mod_with_data`]。
+/// Dissects a single modifier text: after parsing, lays out every field of
+/// each [`Modifier`] (including flags / tags), with a plain-language
+/// explanation. `rules` is the same as in [`parse_mod_with_data`].
 pub fn explain_mod(text: &str, rules: &ParseModRules) -> Result<ExplainModReport, CliError> {
     let outcome = parse_mod_engine(text, &rules.rules);
 
@@ -333,7 +351,7 @@ pub fn explain_mod(text: &str, rules: &ParseModRules) -> Result<ExplainModReport
     })
 }
 
-/// 把一条 [`Modifier`] 拆成可序列化的 [`ModAnatomy`]。
+/// Breaks a [`Modifier`] apart into a serializable [`ModAnatomy`].
 fn anatomy_of(m: &Modifier) -> ModAnatomy {
     let (value, text_value) = match &m.value {
         ModValue::Number(n) => (Some(*n), None),
@@ -356,7 +374,7 @@ fn anatomy_of(m: &Modifier) -> ModAnatomy {
     }
 }
 
-/// [`ModFlags`] 位 → 名字列表（仅独立位，不含 mask）。
+/// [`ModFlags`] bits -> name list (individual bits only, no masks).
 fn mod_flag_names(flags: ModFlags) -> Vec<String> {
     const TABLE: &[(ModFlags, &str)] = &[
         (ModFlags::ATTACK, "Attack"),
@@ -398,7 +416,7 @@ fn mod_flag_names(flags: ModFlags) -> Vec<String> {
         .collect()
 }
 
-/// [`KeywordFlags`] 位 → 名字列表（带 `MatchAll` 标记）。
+/// [`KeywordFlags`] bits -> name list (with the `MatchAll` marker).
 fn keyword_flag_names(flags: KeywordFlags) -> Vec<String> {
     const TABLE: &[(KeywordFlags, &str)] = &[
         (KeywordFlags::AURA, "Aura"),
@@ -429,7 +447,7 @@ fn keyword_flag_names(flags: KeywordFlags) -> Vec<String> {
     names
 }
 
-/// 跨 actor 取数后缀（同 actor 为空串）。
+/// The suffix for a cross-actor value lookup (empty string for the same actor).
 fn actor_label(actor: Option<ActorRef>) -> &'static str {
     match actor {
         None => "",
@@ -439,7 +457,7 @@ fn actor_label(actor: Option<ActorRef>) -> &'static str {
     }
 }
 
-/// 单个 [`ModTag`] → 人话解释。
+/// A single [`ModTag`] -> a plain-language explanation.
 fn explain_tag(tag: &ModTag) -> TagExplain {
     match tag {
         ModTag::Condition {
@@ -597,7 +615,7 @@ fn explain_tag(tag: &ModTag) -> TagExplain {
     }
 }
 
-/// 一行人话总结：把聚合桶 + 数值 + 条件串成自然语言。
+/// A one-line plain-language summary: strings the aggregation bucket, value, and conditions into natural language.
 fn plain_summary(m: &Modifier, tags: &[TagExplain]) -> String {
     let bucket = match m.mod_type {
         ModType::Base => "基础值(BASE)桶",
@@ -627,7 +645,7 @@ fn plain_summary(m: &Modifier, tags: &[TagExplain]) -> String {
     format!("给属性 `{}` 的{bucket} {val}{cond}", m.name)
 }
 
-/// 把 [`ExplainModReport`] 渲染为人类可读文本（命令行默认输出）。
+/// Renders an [`ExplainModReport`] as human-readable text (the CLI's default output).
 pub fn render_explain(report: &ExplainModReport) -> String {
     use std::fmt::Write as _;
     let mut s = String::new();
@@ -682,7 +700,7 @@ pub fn render_explain(report: &ExplainModReport) -> String {
     s
 }
 
-/// `explain-mod` 的 JSON 输出（`--json`）：从游戏数据编译规则一次后解剖。
+/// The `explain-mod` JSON output (`--json`): compiles rules from game data once, then dissects.
 pub fn explain_mod_json(text: &str, data_dir: &std::path::Path) -> Result<String, CliError> {
     let data = GameData::new(data_dir);
     let rules = ParseModRules::from_game_data(&data)?;
@@ -690,7 +708,7 @@ pub fn explain_mod_json(text: &str, data_dir: &std::path::Path) -> Result<String
     Ok(serde_json::to_string_pretty(&report)?)
 }
 
-/// `explain-mod` 的人类可读文本输出（命令行默认）：从游戏数据编译规则一次后解剖。
+/// The `explain-mod` human-readable text output (the CLI default): compiles rules from game data once, then dissects.
 pub fn explain_mod_text(text: &str, data_dir: &std::path::Path) -> Result<String, CliError> {
     let data = GameData::new(data_dir);
     let rules = ParseModRules::from_game_data(&data)?;
@@ -700,59 +718,63 @@ pub fn explain_mod_text(text: &str, data_dir: &std::path::Path) -> Result<String
 
 // parse-item
 
-/// `parse-item` 子命令输入。
+/// Input for the `parse-item` subcommand.
 #[derive(Debug, Clone)]
 pub struct ParseItemRequest {
-    /// 完整 raw item text（PoB 风格英文导出）。
+    /// The complete raw item text (PoB-style English export).
     pub text: String,
 }
 
-/// 单条已解析 modifier 的可序列化摘要（`parse-item` 专用）。
+/// A serializable summary of one parsed modifier (specific to `parse-item`).
 #[derive(Debug, Clone, Serialize)]
 pub struct ParsedModEntry {
-    /// section：`implicit` / `explicit` / `enchant`。
+    /// The section: `implicit` / `explicit` / `enchant`.
     pub section: String,
-    /// 稳定 ModName。
+    /// Stable ModName.
     pub name: String,
-    /// 聚合类型（`Base` / `Inc` / `More` / …）。
+    /// Aggregation type (`Base` / `Inc` / `More` / ...).
     pub mod_type: String,
-    /// 数值（文本型 modifier 为 `None`）。
+    /// The numeric value (`None` for text-valued modifiers).
     pub value: Option<f64>,
-    /// 归因来源 ID（装备槽 + section 后缀）。
+    /// The attribution source ID (equipment slot plus section suffix).
     pub source_id: String,
 }
 
-/// `parse-item` 解析报告：基础元数据 + 各 section modifier + 未支持词条。
+/// The `parse-item` parse report: base metadata plus per-section modifiers plus unsupported mod lines.
 #[derive(Debug, Clone, Serialize)]
 pub struct ParseItemReport {
-    /// 物品基底名。
+    /// The item's base name.
     pub base: String,
-    /// 稀有度（`Normal` / `Magic` / `Rare` / `Unique`）。
+    /// Rarity (`Normal` / `Magic` / `Rare` / `Unique`).
     pub rarity: String,
-    /// 品质（0–20）。
+    /// Quality (0-20).
     pub quality: u8,
-    /// 解析出的 modifier（含 implicit / explicit / enchant / quality）。
+    /// The parsed modifiers (including implicit / explicit / enchant / quality).
     pub modifiers: Vec<ParsedModEntry>,
-    /// 无法被 mod_parser 识别的词条文本（保留原始，不报错）。
+    /// Mod line text that `mod_parser` couldn't recognize (kept verbatim, never errors).
     pub unsupported: Vec<String>,
 }
 
-/// 解析 raw item text，输出结构化 [`ParseItemReport`]。
+/// Parses raw item text, outputting a structured [`ParseItemReport`].
 ///
-/// 内部调用：
-/// 1. [`pobr_core::item_text::parse_item_text`] — 文本分段（rarity / sections / annotations 剥离）→ `Item`；
-/// 2. [`pobr_core::item::ingest_item_with_ctx`] — `Item` 词条 → 带归因 `Modifier` 列表
-///    （默认数据目录的引擎规则）。
+/// Internally calls:
+/// 1. [`pobr_core::item_text::parse_item_text`] — segments the text
+///    (rarity / sections / annotation stripping) into an `Item`;
+/// 2. [`pobr_core::item::ingest_item_with_ctx`] — turns the `Item`'s mod
+///    lines into an attributed `Modifier` list (using the default data
+///    directory's engine rules).
 ///
-/// 槽位默认为 [`EquipmentSlot::Ring1`]（CLI parse-item 不关联具体槽位，归因 ID 仅供
-/// 调试显示，不影响伤害计算）。
+/// The slot defaults to [`EquipmentSlot::Ring1`] (CLI parse-item isn't tied
+/// to a specific slot; the attribution ID is only for debug display and
+/// doesn't affect damage calculation).
 ///
-/// 结构性错误（空文本 / 缺 Rarity / 缺基底）返回 [`CliError::ItemText`]；
-/// 词条解析不支持时收入 `unsupported`，不报错。
+/// Structural errors (empty text / missing Rarity / missing base) return
+/// [`CliError::ItemText`]; unsupported mod lines are collected into
+/// `unsupported` without erroring.
 pub fn parse_item(req: &ParseItemRequest) -> Result<ParseItemReport, CliError> {
     let item = parse_item_text(&req.text)?;
 
-    // CLI parse-item 不关联具体装备槽；使用 Ring1 作为占位槽（归因 ID 供调试）。
+    // CLI parse-item isn't tied to a specific equipment slot; Ring1 is used as a placeholder slot (the attribution ID is for debugging).
     let slot = EquipmentSlot::Ring1;
     let ingest = ingest_item_with_ctx(slot, &item, default_rules()?.ctx())
         .map_err(|e| CliError::ModParse(e.to_string()))?;
@@ -783,7 +805,8 @@ pub fn parse_item(req: &ParseItemRequest) -> Result<ParseItemReport, CliError> {
                 value: match &m.value {
                     ModValue::Number(n) => Some(*n),
                     ModValue::Bool(b) => Some(if *b { 1.0 } else { 0.0 }),
-                    // 文本/嵌套载荷无标量值（嵌套 mod 由编排层转发，不在摘要里展开）。
+                    // Text/nested payloads have no scalar value (nested mods
+                    // are forwarded by the orchestration layer, not expanded in this summary).
                     ModValue::Text(_) | ModValue::NestedMods(_) => None,
                 },
                 source_id: sid,
@@ -800,7 +823,7 @@ pub fn parse_item(req: &ParseItemRequest) -> Result<ParseItemReport, CliError> {
     })
 }
 
-/// 把 [`ParseItemReport`] 渲染为美化的 JSON 字符串。
+/// Renders a [`ParseItemReport`] as a pretty-printed JSON string.
 pub fn parse_item_json(req: &ParseItemRequest) -> Result<String, CliError> {
     let report = parse_item(req)?;
     Ok(serde_json::to_string_pretty(&report)?)
@@ -808,34 +831,34 @@ pub fn parse_item_json(req: &ParseItemRequest) -> Result<String, CliError> {
 
 // decode-code / encode-code
 
-/// 解码 PoB Build Code → XML。
+/// Decodes a PoB Build Code -> XML.
 pub fn decode_code(code: &str) -> Result<String, CliError> {
     Ok(pobr_build::decode_pob_code(code)?)
 }
 
-/// 编码 XML → PoB Build Code（URL-safe base64 of zlib-compressed XML）。
+/// Encodes XML -> a PoB Build Code (URL-safe base64 of zlib-compressed XML).
 pub fn encode_code(xml: &str) -> Result<String, CliError> {
     Ok(pobr_build::encode_pob_code(xml)?)
 }
 
-// calculate-build（PoB Build Code → 完整 Build → 端到端归因计算）
+// calculate-build (PoB Build Code -> a full Build -> end-to-end attributed calculation)
 
-/// `calculate-build` 子命令输入。
+/// Input for the `calculate-build` subcommand.
 #[derive(Debug, Clone)]
 pub struct CalculateBuildRequest {
-    /// PoB Build Code（URL-safe Base64 + zlib）。
+    /// PoB Build Code (URL-safe Base64 + zlib).
     pub code: String,
-    /// 游戏数据版本目录（含入库 JSON，如 `data/4.5.0.3.4`）。
+    /// The game data version directory (containing ingested JSON, e.g. `data/4.5.0.3.4`).
     pub data_dir: PathBuf,
-    /// 敌人等级（`0` = 跟随角色等级）。
+    /// Enemy level (`0` = follows the character level).
     pub enemy_level: u32,
-    /// 敌人档位（普通 / Boss / Pinnacle / Uber）。
+    /// Enemy tier (normal / Boss / Pinnacle / Uber).
     pub enemy_tier: EnemyTier,
-    /// 有效 DPS 口径（`true` → 计入命中 / 敌人减伤；`false` → 面板口径）。
+    /// Effective-DPS basis (`true` -> accounts for hit chance / enemy damage reduction; `false` -> panel basis).
     pub mode_effective: bool,
 }
 
-/// 解析出的 Build 摘要（角色身份 + 各来源计数）。
+/// A summary of the parsed Build (character identity plus per-source counts).
 #[derive(Debug, Clone, Serialize)]
 pub struct BuildSummary {
     pub level: u32,
@@ -846,7 +869,7 @@ pub struct BuildSummary {
     pub socket_group_count: usize,
 }
 
-/// `calculate-build` 计算结果的关键输出字段。
+/// The key output fields from a `calculate-build` result.
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateBuildOutput {
     pub life: f64,
@@ -862,31 +885,32 @@ pub struct CalculateBuildOutput {
     pub hit_chance: f64,
     pub total_hit_avg: f64,
     pub dps: f64,
-    /// 持续伤害（异常）DPS：流血 / 点燃 / 中毒（PoB2 BleedDPS/IgniteDPS/PoisonDPS）。
+    /// Damage-over-time (ailment) DPS: bleed / ignite / poison (PoB2 BleedDPS/IgniteDPS/PoisonDPS).
     pub bleed_dps: f64,
     pub ignite_dps: f64,
     pub poison_dps: f64,
-    /// 全部 DoT 合计（PoB2 TotalDotDPS）。
+    /// The total of all DoT (PoB2 TotalDotDPS).
     pub total_dot_dps: f64,
-    /// 异常活跃叠层数（诊断用：bleed/ignite/poison）。
+    /// Active ailment stack counts (diagnostic: bleed/ignite/poison).
     pub bleed_active_stacks: f64,
     pub ignite_active_stacks: f64,
     pub poison_active_stacks: f64,
-    /// 异常叠层上限（诊断用：bleed/ignite/poison；1 = 不可叠层）。
+    /// Ailment stack caps (diagnostic: bleed/ignite/poison; 1 = can't stack).
     pub bleed_max_stacks: f64,
     pub ignite_max_stacks: f64,
     pub poison_max_stacks: f64,
-    /// 主技能行动速率（次/秒，来自宝石分等级 cast/attack 时间）。
+    /// The main skill's action rate (per second, derived from the gem's per-level cast/attack time).
     pub action_rate: f64,
-    /// 主技能冷却（秒，来自分等级 cooldown）。
+    /// The main skill's cooldown (seconds, derived from its per-level cooldown).
     pub cooldown: f64,
-    /// 主技能法力消耗（来自分等级 cost）。
+    /// The main skill's mana cost (derived from its per-level cost).
     pub mana_cost: f64,
 }
 
-/// 天赋树版本对账诊断（gap B）：build 记录的 `treeVersion` + 已分配但**不在已加载树**
-/// 的节点（calc 会静默跳过其贡献——树版本失配的实际症状）。`unknown_node_count > 0`
-/// 时 CLI 向 stderr 告警。
+/// Passive-tree version reconciliation diagnostics (gap B): the build's
+/// recorded `treeVersion` plus allocated nodes that **aren't in the loaded
+/// tree** (calc silently skips their contribution — the actual symptom of a
+/// tree-version mismatch). The CLI warns to stderr when `unknown_node_count > 0`.
 #[derive(Debug, Clone, Serialize)]
 pub struct TreeVersionDiag {
     pub build_tree_version: Option<String>,
@@ -894,7 +918,7 @@ pub struct TreeVersionDiag {
     pub unknown_nodes: Vec<u32>,
 }
 
-/// `calculate-build` 报告：Build 摘要 + 计算输出 + 天赋树版本对账诊断。
+/// The `calculate-build` report: Build summary plus calc output plus passive-tree version reconciliation diagnostics.
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateBuildReport {
     pub build: BuildSummary,
@@ -902,11 +926,13 @@ pub struct CalculateBuildReport {
     pub tree_version: TreeVersionDiag,
 }
 
-/// 从一份 PoB Build Code 端到端计算：decode → [`parse_build_from_code`] →
-/// [`BuildData::load`] → [`calculate_with_data`]，返回 Build 摘要 + 关键输出字段。
+/// Computes end-to-end from a PoB Build Code: decode -> [`parse_build_from_code`]
+/// -> [`BuildData::load`] -> [`calculate_with_data`], returning a Build summary plus the key output fields.
 ///
-/// 这是 build-layer 集成的 CLI 入口：把「装备 / 天赋树 / 技能宝石 / 角色基础 / 敌人」
-/// 全来源驱动进 REAL 计算引擎，输出可直接与 PoB2 面板对照的标量。
+/// This is the CLI entry point for build-layer integration: it drives every
+/// source (equipment / passive tree / skill gems / character base / enemy)
+/// into the REAL calc engine, producing scalars that can be compared
+/// directly against PoB2's panel.
 pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildReport, CliError> {
     let build = parse_build_from_code(&req.code)?;
 
@@ -966,13 +992,13 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
     })
 }
 
-/// 把 [`CalculateBuildReport`] 渲染为美化的 JSON 字符串。
+/// Renders a [`CalculateBuildReport`] as a pretty-printed JSON string.
 pub fn calculate_build_json(req: &CalculateBuildRequest) -> Result<String, CliError> {
     let report = calculate_build(req)?;
     Ok(serde_json::to_string_pretty(&report)?)
 }
 
-/// 解析出的 [`Build`] → [`BuildSummary`]（calculate_build 与 marginal 共用）。
+/// Parsed [`Build`] -> [`BuildSummary`] (shared by calculate_build and marginal).
 fn build_summary(build: &Build) -> BuildSummary {
     BuildSummary {
         level: build.character.level,
@@ -984,59 +1010,67 @@ fn build_summary(build: &Build) -> BuildSummary {
     }
 }
 
-// 边际贡献（explain-mod --build）
+// Marginal contribution (explain-mod --build)
 //
-// 「在我现有的 build 上加这条词条，会怎样？」把候选词条文本作为 extra_modifier_texts
-// 注入玩家侧管线，重算一遍，与基线逐字段对比——复用 calculate_with_data 既有机制
-// （extra_modifier_texts 经 session.add_modifier_texts 入玩家 ModDb）。
+// "What happens if I add this mod line to my current build?" The candidate
+// mod text is injected into the player-side pipeline as
+// extra_modifier_texts, the calculation is rerun, and every field is
+// compared against the baseline — reusing calculate_with_data's existing
+// mechanism (extra_modifier_texts flows into the player ModDb via
+// session.add_modifier_texts).
 
-/// 单个输出字段的边际变化（加入候选词条前后）。
+/// The marginal change in a single output field (before vs. after adding the candidate mod line).
 #[derive(Debug, Clone, Serialize)]
 pub struct OutputDelta {
-    /// 输出字段可读名（如 `DPS (hit)` / `Life`）。
+    /// The output field's readable name (e.g. `DPS (hit)` / `Life`).
     pub key: String,
-    /// 加词条前的值。
+    /// The value before adding the mod line.
     pub before: f64,
-    /// 加词条后的值。
+    /// The value after adding the mod line.
     pub after: f64,
-    /// 差值（after − before）。
+    /// The difference (after - before).
     pub delta: f64,
-    /// 相对变化百分比（before == 0 时为 `None`）。
+    /// The relative change as a percentage (`None` if before == 0).
     pub pct: Option<f64>,
 }
 
-/// `explain-mod --build` 的边际贡献请求。
+/// The marginal-contribution request for `explain-mod --build`.
 #[derive(Debug, Clone)]
 pub struct MarginalRequest {
-    /// PoB Build Code（URL-safe Base64 + zlib）。
+    /// PoB Build Code (URL-safe Base64 + zlib).
     pub build_code: String,
-    /// 游戏数据版本目录。
+    /// The game data version directory.
     pub data_dir: PathBuf,
-    /// 敌人等级（`0` = 跟随角色等级）。
+    /// Enemy level (`0` = follows the character level).
     pub enemy_level: u32,
-    /// 敌人档位。
+    /// Enemy tier.
     pub enemy_tier: EnemyTier,
-    /// 有效 DPS 口径（`true`）/ 面板口径（`false`）。
+    /// Effective-DPS basis (`true`) / panel basis (`false`).
     pub mode_effective: bool,
-    /// 要加进 build 的候选词条文本（通常即 explain 的那条）。
+    /// The candidate mod text to add to the build (usually the one being explained).
     pub mod_texts: Vec<String>,
 }
 
-/// 边际贡献报告：build 摘要 + 加入的词条 + 有变化的输出字段差值。
+/// The marginal-contribution report: build summary plus the added mod lines
+/// plus the output fields that changed.
 #[derive(Debug, Clone, Serialize)]
 pub struct MarginalReport {
-    /// build 摘要（角色身份 + 各来源计数）。
+    /// The build summary (character identity plus per-source counts).
     pub build: BuildSummary,
-    /// 加进 build 的候选词条文本。
+    /// The candidate mod text added to the build.
     pub added_mod_texts: Vec<String>,
-    /// **有变化**的输出字段差值（无变化字段不列；全空 = 该词条对关键输出无可见影响）。
+    /// The output-field deltas for fields that **changed** (unchanged fields
+    /// are omitted; an empty list means the mod line has no visible impact
+    /// on the key outputs).
     pub deltas: Vec<OutputDelta>,
 }
 
-/// 计算候选词条对一份 build 的边际贡献：基线 vs 基线+词条，逐字段差值。
+/// Computes a candidate mod line's marginal contribution to a build:
+/// baseline vs. baseline+mod, diffed field by field.
 ///
-/// 两次 [`calculate_with_data`] 只差 `extra_modifier_texts`；其余编排选项（敌人 /
-/// 口径 / 角色基础注入）完全一致，确保差值纯由候选词条引起。
+/// The two [`calculate_with_data`] calls only differ in
+/// `extra_modifier_texts`; every other orchestration option (enemy /
+/// basis / character-base injection) is identical, so the delta is caused purely by the candidate mod line.
 pub fn marginal_contribution(req: &MarginalRequest) -> Result<MarginalReport, CliError> {
     let build = parse_build_from_code(&req.build_code)?;
     let game_data = GameData::new(req.data_dir.clone());
@@ -1066,7 +1100,8 @@ pub fn marginal_contribution(req: &MarginalRequest) -> Result<MarginalReport, Cl
     })
 }
 
-/// 逐字段对比基线与加词条后的 [`OutputTable`]，仅保留**有变化**的字段（确定性序）。
+/// Compares the baseline and post-mod [`OutputTable`] field by field,
+/// keeping only fields that **changed** (in a deterministic order).
 fn build_deltas(before: &OutputTable, after: &OutputTable) -> Vec<OutputDelta> {
     let pairs: [(&str, f64, f64); 17] = [
         ("DPS (hit)", before.dps, after.dps),
@@ -1116,7 +1151,8 @@ fn build_deltas(before: &OutputTable, after: &OutputTable) -> Vec<OutputDelta> {
         .collect()
 }
 
-/// 紧凑数值格式：|n|≥100 时不留小数，否则 2 位（DPS 等大数避免冗长尾数）。
+/// Compact numeric formatting: no decimal places when |n|>=100, otherwise 2
+/// (avoids a long decimal tail on large numbers like DPS).
 fn fmt_num(n: f64) -> String {
     if n.abs() >= 100.0 {
         format!("{n:.0}")
@@ -1125,7 +1161,7 @@ fn fmt_num(n: f64) -> String {
     }
 }
 
-/// 把 [`MarginalReport`] 渲染为人类可读文本（接在 explain 输出之后）。
+/// Renders a [`MarginalReport`] as human-readable text (appended after the explain output).
 pub fn render_marginal(report: &MarginalReport) -> String {
     use std::fmt::Write as _;
     let mut s = String::new();
@@ -1167,16 +1203,16 @@ pub fn render_marginal(report: &MarginalReport) -> String {
     s
 }
 
-/// explain 解剖 + 边际贡献的合并报告（`explain-mod --build --json`）。
+/// The combined report of mod-line anatomy plus marginal contribution (`explain-mod --build --json`).
 #[derive(Debug, Clone, Serialize)]
 pub struct ExplainWithMarginal {
-    /// 词条解剖。
+    /// The mod-line anatomy.
     pub explain: ExplainModReport,
-    /// 在 build 上的边际贡献。
+    /// The marginal contribution on the build.
     pub marginal: MarginalReport,
 }
 
-/// `explain-mod --build`（文本）：解剖 + 边际贡献拼接输出。
+/// `explain-mod --build` (text): the anatomy plus marginal-contribution output, concatenated.
 pub fn explain_mod_with_marginal_text(
     text: &str,
     req: &MarginalRequest,
@@ -1190,7 +1226,7 @@ pub fn explain_mod_with_marginal_text(
     Ok(s)
 }
 
-/// `explain-mod --build --json`：解剖 + 边际贡献的合并 JSON。
+/// `explain-mod --build --json`: the anatomy plus marginal contribution, combined into one JSON object.
 pub fn explain_mod_with_marginal_json(
     text: &str,
     req: &MarginalRequest,
@@ -1209,7 +1245,7 @@ pub fn explain_mod_with_marginal_json(
 mod explain_tests {
     use super::*;
 
-    /// 无条件 / 无缩放的平凡词条：无 tags，值与桶正确。
+    /// An unconditional / unscaled flat mod line: no tags, correct value and bucket.
     #[test]
     fn flat_modifier_has_no_tags() {
         let report = explain_mod("+50 to maximum Life", default_rules().unwrap()).unwrap();
@@ -1223,7 +1259,8 @@ mod explain_tests {
         assert!(m.flags.is_empty());
     }
 
-    /// 带条件 + 伤害类型的词条：摊开 Condition 与 DamageType tag（parse-mod 会丢掉这些）。
+    /// A mod line with a condition plus a damage type: lays out the
+    /// Condition and DamageType tags (parse-mod drops these).
     #[test]
     fn conditional_modifier_surfaces_condition_and_damage_type_tags() {
         let report = explain_mod(
@@ -1249,11 +1286,11 @@ mod explain_tests {
             m.tags.iter().any(|t| t.kind == "DamageType"),
             "应有 DamageType tag"
         );
-        // 人话总结把条件串进去。
+        // The plain-language summary strings the condition in.
         assert!(m.plain.contains("FullLife"));
     }
 
-    /// 带「per N 资源」缩放的词条：摊开 Multiplier tag。
+    /// A mod line scaled by "per N resource": lays out the Multiplier tag.
     #[test]
     fn per_stat_modifier_surfaces_multiplier_tag() {
         let report = explain_mod(
@@ -1276,7 +1313,7 @@ mod explain_tests {
         );
     }
 
-    /// flag 位分解：命名位被正确还原为可读名。
+    /// Flag bit decomposition: named bits are correctly translated back to readable names.
     #[test]
     fn mod_flag_names_decomposes_named_bits() {
         let names = mod_flag_names(ModFlags::ATTACK | ModFlags::MELEE | ModFlags::BOW);
@@ -1286,7 +1323,7 @@ mod explain_tests {
         assert!(mod_flag_names(ModFlags::NONE).is_empty());
     }
 
-    /// 文本渲染器冒烟：含原文、状态、tag 段。
+    /// Smoke test for the text renderer: contains the raw text, status, and tag sections.
     #[test]
     fn render_explain_smoke() {
         let report = explain_mod(
@@ -1306,7 +1343,7 @@ mod explain_tests {
 mod marginal_tests {
     use super::*;
 
-    /// 真实 demo build code（与 calculate-build 集成测试同源）。
+    /// A real demo build code (shared with the calculate-build integration test).
     const DEADEYE_CODE: &str = include_str!("../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
 
     fn deadeye_request(mod_texts: Vec<String>) -> MarginalRequest {
@@ -1320,7 +1357,8 @@ mod marginal_tests {
         }
     }
 
-    /// 加 maximum Life 词条：Life 上升，且因 build 的 increased Life% 乘区，增量 ≥ 基础值。
+    /// Adding a maximum Life mod line: Life rises, and thanks to the
+    /// build's increased Life% multiplier, the delta is >= the base value.
     #[test]
     fn adding_life_raises_life_through_increase_multipliers() {
         let report =
@@ -1332,7 +1370,8 @@ mod marginal_tests {
             .find(|d| d.key == "Life")
             .expect("Life 应有变化");
         assert!(life.after > life.before, "Life 应上升");
-        // 基础 +500 经 increased Life% 放大 → 实际增量 ≥ 500（证明走了真实聚合管线）。
+        // The base +500 gets amplified by the increased Life% multiplier ->
+        // the actual delta is >= 500 (proving it went through the real aggregation pipeline).
         assert!(
             life.delta >= 500.0,
             "Life 增量应被 increased% 乘区放大，实际 {}",
@@ -1340,7 +1379,7 @@ mod marginal_tests {
         );
     }
 
-    /// 加 increased Damage 词条：DPS 与 Avg Hit 上升（边际为正）。
+    /// Adding an increased Damage mod line: DPS and Avg Hit rise (a positive marginal contribution).
     #[test]
     fn adding_increased_damage_raises_dps() {
         let report =
@@ -1355,7 +1394,8 @@ mod marginal_tests {
         assert!(dps.pct.unwrap() > 0.0);
     }
 
-    /// 边际报告空 deltas 时，文本渲染给出"无可见影响"提示（不依赖解析 / build）。
+    /// When the marginal report's deltas are empty, the text renderer emits
+    /// a "no visible impact" note (independent of parsing / the build).
     #[test]
     fn render_marginal_reports_no_impact_when_empty() {
         let report = MarginalReport {

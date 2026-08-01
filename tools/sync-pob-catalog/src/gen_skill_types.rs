@@ -1,12 +1,17 @@
-//! `gen-skill-types`：从 vendor `src/Data/Global.lua::SkillType` 表抽取**全量**
-//! 枚举（name → 1-based id），写为 `pobr-data` 的文本边车
-//! （`crates/pobr-data/src/skill_type_names.txt`，`include_str!` 内嵌——与
-//! pobr-i18n locale toml 同模式；数据表不进 `.rs`，`no_embedded_data` 守卫不触）。
+//! `gen-skill-types`: extracts the **full** enum (name -> 1-based id) from
+//! vendor's `src/Data/Global.lua::SkillType` table, writing it out as a
+//! `pobr-data` text sidecar (`crates/pobr-data/src/skill_type_names.txt`,
+//! embedded via `include_str!` — the same pattern as pobr-i18n's locale
+//! toml; the data table doesn't live in a `.rs` file, so the
+//! `no_embedded_data` guard doesn't trip).
 //!
-//! 与 extract-lua 系不同：不执行 luajit，纯正则逐行解析（表体是稳定的
-//! `Name = number,` 形态）。数据驱动裁决 A1 的落点——SkillType 名→位映射
-//! 单源化，消灭 template.rs / special_mod.rs / conditions.rs 的手工白名单副本；
-//! vendor 版本升级后 regen 本产物即完成枚举同步（不再逐名补代码）。
+//! Unlike the extract-lua family: this doesn't run luajit, just plain
+//! line-by-line regex parsing (the table body has a stable `Name = number,`
+//! shape). This is where data-driven decision A1 lands — a single source of
+//! truth for SkillType name -> bit mapping, eliminating the hand-maintained
+//! whitelist copies in template.rs / special_mod.rs / conditions.rs; after a
+//! vendor version bump, regenerating this artifact keeps the enum in sync
+//! (no more patching code name by name).
 
 use std::fs;
 use std::io;
@@ -14,7 +19,7 @@ use std::path::Path;
 
 use regex::Regex;
 
-/// 解析 Global.lua 的 SkillType 表体，返回 (name, id)，按 name 字典序。
+/// Parse the SkillType table body of Global.lua, returning (name, id) pairs, sorted lexicographically by name.
 pub fn parse_skill_types(lua_source: &str) -> io::Result<Vec<(String, u32)>> {
     let entry_re = Regex::new(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\d+)\s*,").unwrap();
     let mut in_table = false;
@@ -44,7 +49,8 @@ pub fn parse_skill_types(lua_source: &str) -> io::Result<Vec<(String, u32)>> {
         ));
     }
     entries.sort();
-    // 名唯一（生成表二分查找的前提）；id 重复在 vendor 语义下不可能，同样拦截。
+    // Names must be unique (a precondition for binary search over the
+    // generated table); duplicate ids can't happen under vendor semantics either, so guard against both.
     for w in entries.windows(2) {
         if w[0].0 == w[1].0 {
             return Err(io::Error::new(
@@ -56,7 +62,7 @@ pub fn parse_skill_types(lua_source: &str) -> io::Result<Vec<(String, u32)>> {
     Ok(entries)
 }
 
-/// 抽取并写出生成文件，返回写入路径的描述。
+/// Extract and write the generated file, returning a description of the written path.
 pub fn run_gen_skill_types(vendor_root: &Path, out: &Path) -> io::Result<String> {
     let lua_path = vendor_root.join("src/Data/Global.lua");
     let source = fs::read_to_string(&lua_path)?;

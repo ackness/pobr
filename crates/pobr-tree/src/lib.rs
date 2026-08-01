@@ -1,16 +1,25 @@
-//! pobr-tree：天赋树拓扑、allocated node mod 收集、jewel socket gating、radius jewel。
+//! pobr-tree: passive tree topology, allocated-node mod collection, jewel
+//! socket gating, and radius jewels.
 //!
-//! 数据流：天赋树 JSON（[`PassiveNodeDef`](pobr_data::catalog::PassiveNodeDef) 数组）→
-//! [`PassiveTree`] → 配合 [`PassiveTreeSpec`](pobr_data::passive_tree::PassiveTreeSpec)
-//! 的已分配节点 → [`AllocatedNodeMods`]（modifier 文本 + [`SourceKind::PassiveNode`](pobr_data::source::SourceKind::PassiveNode)
-//! 归因，交给 `pobr-core::passive` / `mod_parser` 解析）。Radius jewel 通过
-//! [`compute_radius_jewel_effect_with_radii`]（档位半径由注入的
-//! `base/jewel_radii.json` 数据解析；无数据走 [`compute_radius_jewel_effect`]
-//! fallback，二者逐值一致）按欧氏距离筛选受影响节点。
+//! Data flow: passive tree JSON (an array of
+//! [`PassiveNodeDef`](pobr_data::catalog::PassiveNodeDef)) → [`PassiveTree`] →
+//! combined with the allocated nodes in
+//! [`PassiveTreeSpec`](pobr_data::passive_tree::PassiveTreeSpec) →
+//! [`AllocatedNodeMods`] (modifier text plus
+//! [`SourceKind::PassiveNode`](pobr_data::source::SourceKind::PassiveNode)
+//! attribution, handed off to `pobr-core::passive` / `mod_parser` for
+//! parsing). Radius jewels filter affected nodes by Euclidean distance via
+//! [`compute_radius_jewel_effect_with_radii`] (band radii resolved from the
+//! injected `base/jewel_radii.json` data; without injected data,
+//! [`compute_radius_jewel_effect`] falls back to hardcoded constants that
+//! match value-for-value).
 //!
-//! 本 crate 只依赖 `pobr-data`，零 I/O（JSON 由调用方读入字符串），确定性 + 不可变查询。
-//! 节点数据采用 REAL 权威类型 [`PassiveNodeDef`]（以数值 `skill` id 索引）；坐标由调用方
-//! 经 [`PassiveTree::with_positions`] 注入（catalog 不携带坐标，见模块文档）。
+//! This crate depends only on `pobr-data`, does no I/O (the caller reads the
+//! JSON string), and its queries are deterministic and immutable. Node data
+//! uses the REAL authoritative type [`PassiveNodeDef`] (indexed by numeric
+//! `skill` id); coordinates are injected by the caller via
+//! [`PassiveTree::with_positions`] (the catalog doesn't carry coordinates —
+//! see the module docs).
 
 pub mod error;
 pub mod node;

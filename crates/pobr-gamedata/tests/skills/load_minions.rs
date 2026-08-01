@@ -1,9 +1,11 @@
-//! 数据前置的加载测试：`overlay/minions.json` / `overlay/spectres.json` /
-//! `overlay/granted_effect_minions.json` / `overlay/mirage_configs.json`。
+//! Load tests for the data prerequisites: `overlay/minions.json` /
+//! `overlay/spectres.json` / `overlay/granted_effect_minions.json` /
+//! `overlay/mirage_configs.json`.
 //!
-//! 抽样断言全部注明 vendor 行号来源（commit `2df5a74`，见
-//! `vendor/.pob2-version.txt`）；搬迁不变式校验对照
-//! `pobr_data::minion::minion_def_*` 手抄常量。
+//! Every sample assertion notes its vendor line-number source (commit
+//! `2df5a74`, see `vendor/.pob2-version.txt`); the migration-invariant
+//! check compares against `pobr_data::minion::minion_def_*`'s
+//! hand-transcribed constants.
 
 use pobr_data::catalog::actors::{LuaValueDef, MinionEntryDef, MinionsDef};
 use pobr_data::minion::{
@@ -27,14 +29,18 @@ fn find<'a>(def: &'a MinionsDef, id: &str) -> &'a MinionEntryDef {
         .unwrap_or_else(|| panic!("条目 {id} 缺失"))
 }
 
-/// 抽取条目（overlay）与手抄常量（`pobr_data::minion`，2025-06 手抄）的
-/// **数值字段**逐值比对——搬迁不变式的逐值校验。
+/// Compares the extracted entry (overlay) against the hand-transcribed
+/// constant (`pobr_data::minion`, transcribed 2025-06) **numeric fields**
+/// value-for-value — the value-by-value check for the migration invariant.
 ///
-/// 已知差异（以 vendor 为准，记录于此）：
-/// - 手抄 `monster_tags` 是缩减子集（如 zombie 手抄 4 条 vs vendor
-///   Minions.lua:11 全量 10 条）——非数值口径，A6 删手抄时随 schema v2 收齐；
-/// - 手抄无 `attack_range`/`accuracy`/`base_movement_speed`/`weapon_type1`
-///   （schema v2 新增列），不在比对面。
+/// Known discrepancies (vendor is authoritative, recorded here):
+/// - The hand-transcribed `monster_tags` is a reduced subset (e.g. the
+///   zombie's hand-transcription has 4 entries vs. vendor
+///   Minions.lua:11's full 10) — not a numeric-convention issue, to be
+///   reconciled with schema v2 when the hand-transcription is deleted at A6;
+/// - The hand-transcription has no `attack_range`/`accuracy`/
+///   `base_movement_speed`/`weapon_type1` (new columns in schema v2), so
+///   they're outside this comparison's scope.
 fn assert_matches_handwritten(entry: &MinionEntryDef, hand: &MinionDef) {
     assert_eq!(entry.name, hand.name, "{}: name", hand.id);
     assert_eq!(entry.life, hand.life, "{}: life", hand.id);
@@ -54,7 +60,7 @@ fn assert_matches_handwritten(entry: &MinionEntryDef, hand: &MinionDef) {
         "{}: crit_chance",
         hand.id
     );
-    // 可选字段缺省语义：armour/evasion 缺失 = 1.0，energyShield 缺失 = 0.0
+    // Optional-field default semantics: armour/evasion absent = 1.0, energyShield absent = 0.0
     assert_eq!(
         entry.armour.unwrap_or(1.0),
         hand.armour,
@@ -105,7 +111,7 @@ fn assert_matches_handwritten(entry: &MinionEntryDef, hand: &MinionDef) {
     assert_eq!(entry.skill_list, hand.skill_list, "{}: skill_list", hand.id);
 }
 
-/// minions.json：32 条（vendor Data/Minions.lua 全量），id 升序。
+/// minions.json: 32 entries (vendor Data/Minions.lua in full), ascending by id.
 #[test]
 fn minions_count_and_order() {
     let def = game_data().minions().unwrap().expect("minions.json 在库");
@@ -116,7 +122,7 @@ fn minions_count_and_order() {
     assert_eq!(ids, sorted, "id 升序");
 }
 
-/// 4 条手抄常量逐值校验（搬迁不变式）。
+/// Value-for-value check of the 4 hand-transcribed constants (a migration invariant).
 #[test]
 fn minions_match_handwritten_constants() {
     let def = game_data().minions().unwrap().unwrap();
@@ -135,7 +141,8 @@ fn minions_match_handwritten_constants() {
     );
 }
 
-/// RaisedZombie 逐字段抽查（vendor Minions.lua:9-21 + weaponType1 列）。
+/// A field-by-field spot check of RaisedZombie (vendor Minions.lua:9-21 +
+/// the weaponType1 column).
 #[test]
 fn zombie_fields_from_vendor() {
     let def = game_data().minions().unwrap().unwrap();
@@ -148,8 +155,8 @@ fn zombie_fields_from_vendor() {
     assert_eq!(z.weapon_type1.as_deref(), Some("One Hand Axe"));
 }
 
-/// SummonedRagingSpirit 的 modList 完整序列化（mod() 构造全部入参；
-/// vendor Minions.lua:68 `mod("Speed", "MORE", 40, 1, 0)`）。
+/// SummonedRagingSpirit's modList fully serialized (all of `mod()`'s
+/// arguments; vendor Minions.lua:68's `mod("Speed", "MORE", 40, 1, 0)`).
 #[test]
 fn raging_spirit_mod_list_full_args() {
     let def = game_data().minions().unwrap().unwrap();
@@ -164,18 +171,21 @@ fn raging_spirit_mod_list_full_args() {
     assert!(m.tags.is_empty());
 }
 
-/// spectres.json：617 条 distinct（vendor 0.5.4）。
+/// spectres.json: 617 distinct entries (vendor 0.5.4).
 ///
-/// 注：vendor Data/Spectres.lua 有 619 个赋值块，其中 2 个 key 重复——
-/// Lua 表语义后写覆盖，PoB2 运行时同样只见 617 条；本表忠实于运行时语义。
+/// Note: vendor Data/Spectres.lua has 619 assignment blocks, 2 of which
+/// share a key — Lua table semantics means the later write wins, and
+/// PoB2's runtime likewise only ever sees 617 entries; this table is
+/// faithful to that runtime semantics.
 #[test]
 fn spectres_count() {
     let def = game_data().spectres().unwrap().expect("spectres.json 在库");
     assert_eq!(def.minions.len(), 617);
 }
 
-/// Lightless Abomination 抽查（vendor Spectres.lua:10-30 + :49 modList）：
-/// life=2.2（0.5.4 下调）/ armour=0.4 / fireResist=75 / StunDuration OVERRIDE 3。
+/// A spot check on Lightless Abomination (vendor Spectres.lua:10-30 +
+/// :49's modList): life=2.2 (lowered in 0.5.4) / armour=0.4 /
+/// fireResist=75 / StunDuration OVERRIDE 3.
 #[test]
 fn spectre_lightless_abomination() {
     let def = game_data().spectres().unwrap().unwrap();
@@ -197,7 +207,7 @@ fn spectre_lightless_abomination() {
     assert_eq!(m.value, LuaValueDef::Number(3.0));
 }
 
-/// granted_effect_minions.json：外键边车抽样。
+/// granted_effect_minions.json: a sample of the foreign-key sidecar.
 #[test]
 fn granted_effect_minions_samples() {
     let def = game_data()
@@ -225,12 +235,12 @@ fn granted_effect_minions_samples() {
         find("TriggeredLivingLightningPlayer").minion_list,
         ["LivingLightning"]
     );
-    // other.lua:10523/10590-10592 Manifest Weapon：minionList + 借武器槽 + item set
+    // other.lua:10523/10590-10592 Manifest Weapon: minionList + borrowed weapon slot + item set
     let manifest = find("ManifestWeaponPlayer");
     assert_eq!(manifest.minion_list, ["ManifestWeapon"]);
     assert_eq!(manifest.minion_uses, ["Weapon 1"]);
     assert!(manifest.minion_has_item_set);
-    // 召唤系主动技能至少含骷髅/僵尸两类
+    // Summon-family active skills include at least the skeleton/zombie kinds
     assert!(
         def.entries
             .iter()
@@ -246,8 +256,9 @@ fn granted_effect_minions_samples() {
     );
 }
 
-/// A3 merge：`granted_effects()` 加载期把 `granted_effect_minions.json` 边车
-/// 拼进 `GrantedEffectDef.minion_list` 等字段。
+/// The A3 merge: `granted_effects()` folds the
+/// `granted_effect_minions.json` sidecar into `GrantedEffectDef.minion_list`
+/// and other fields at load time.
 #[test]
 fn granted_effects_merge_minion_list() {
     let effects = game_data().granted_effects().unwrap();
@@ -266,20 +277,21 @@ fn granted_effects_merge_minion_list() {
             .minion_list,
         ["SummonedRagingSpirit"]
     );
-    // Manifest Weapon：minion_uses + item set 也 merge 进
+    // Manifest Weapon: minion_uses + item set are also merged in
     let manifest = by_id
         .get("ManifestWeaponPlayer")
         .expect("ManifestWeaponPlayer 在库");
     assert_eq!(manifest.minion_uses, ["Weapon 1"]);
     assert!(manifest.minion_has_item_set);
-    // 非召唤技能（如 Fireball）的 minion_list 应为空（向后兼容）
+    // A non-summon skill's (e.g. Fireball) minion_list should be empty
+    // (backward compatible)
     if let Some(fb) = by_id.get("FireballPlayer") {
         assert!(fb.minion_list.is_empty(), "非召唤技能 minion_list 空");
     }
 }
 
-/// mirage_configs.json：5 条配置（vendor CalcMirages.lua 五分支），
-/// mirage_archer 的 stat 名抽查（:74-76）。
+/// mirage_configs.json: 5 configs (vendor CalcMirages.lua's five
+/// branches), a spot check on mirage_archer's stat names (:74-76).
 #[test]
 fn mirage_configs_five_branches() {
     let def = game_data()
@@ -320,7 +332,8 @@ fn mirage_configs_five_branches() {
     assert!(archer.handler_id.is_none());
 }
 
-/// 缺表容忍（缺表容忍）：空目录下全部新域返回 Ok(None) 不 panic。
+/// Missing-table tolerance: in an empty directory, every new domain
+/// returns Ok(None), no panic.
 #[test]
 fn missing_overlay_files_yield_none() {
     let dir = std::env::temp_dir().join(format!("pobr-pre-m5a-missing-{}", std::process::id()));

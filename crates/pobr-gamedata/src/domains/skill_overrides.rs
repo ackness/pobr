@@ -1,27 +1,39 @@
-//! `overlay/skill_overrides.json` loader + 专用 merge——per-skill 覆盖值
-//! （vendor PoB2 Lua 抽取的 critChance / attackSpeedMultiplier / baseMultiplier /
-//! statSet Speed MORE），schema 见 [`pobr_data::catalog::skill_overrides`]。
+//! `overlay/skill_overrides.json` loader + a dedicated merge — per-skill
+//! override values (critChance / attackSpeedMultiplier / baseMultiplier /
+//! statSet Speed MORE, extracted from vendor PoB2 Lua); schema in
+//! [`pobr_data::catalog::skill_overrides`].
 //!
-//! 为什么不走通用 [`crate::overlay`] merge 引擎：本表是「(skill, stat) → 值」的
-//! 扁平列表，而非与 base 同形的 JSON 树（base 侧是 `effect id → 等级行数组` /
-//! `SkillStatSetDef` 数组），形状不适配 key 级递归 merge，故按域写专用 merge
-//! 函数并以单测锁定语义。
+//! Why not go through the generic [`crate::overlay`] merge engine: this
+//! table is a flat "(skill, stat) → value" list, not a JSON tree shaped
+//! like base (base's side is an `effect id → level-row array` /
+//! `SkillStatSetDef` array) — the shape doesn't fit key-level recursive
+//! merge, so this domain has its own merge functions, locked in by unit tests.
 //!
-//! merge 语义（与 `tools/pobr-data-adapter` 的字段归一化规则对齐，
-//! 保证「纯 base + overlay merge」与历史手补 base 逐值相等）：
+//! Merge semantics (aligned with `tools/pobr-data-adapter`'s field
+//! normalization rules, so "plain base + overlay merge" is value-equal to
+//! the historical hand-patched base):
 //!
-//! 1. `value` 单值 → 应用到该技能**全部**等级行（抽取侧仅在 vendor 所有等级
-//!    均出现且同值时压缩为单值）；`per_level` 明细 → 只覆盖列出的等级，
-//!    缺失等级不填（忠实于 vendor，如 RisenArbalestSnipe 仅 L1 有 baseMultiplier）。
-//! 2. 归一化（对齐 adapter 对 `.dat` 同名列的处理）：
-//!    `attack_speed_multiplier == 0` 与 `base_multiplier ≈ 1.0` 是平凡值，跳过
-//!    不写（base 字段保持 `None`）；`crit_chance` 原样写入（含 0，区别于缺失）。
-//! 3. overlay 技能在 base 中不存在 → 跳过（vendor-only 技能，`.dat` 无对应
-//!    `GrantedEffects` 行，如 `EnemyExplode`）。
-//! 4. 未知 `stat` 名 → 报错不静默（schema 演化必须与消费侧 lockstep）。
-//! 5. `skill_attack_speed_more`：按 effect id 写入 [`SkillStatSetDef`]，
-//!    同 id 多条（多 statSet）时**首条生效**（`stat_set` 升序排序保证确定性）；
-//!    base 中无该 effect 时**追加**最小条目（空 stat、空等级），不丢值。
+//! 1. A single `value` → applied to **every** level row of that skill (the
+//!    extraction side only compresses to a single value when it appears at
+//!    every vendor level with the same value); a `per_level` breakdown →
+//!    only overrides the listed levels, missing levels aren't filled in
+//!    (faithful to vendor — e.g. RisenArbalestSnipe only has
+//!    baseMultiplier at L1).
+//! 2. Normalization (matching how the adapter handles the same-named
+//!    `.dat` columns): `attack_speed_multiplier == 0` and
+//!    `base_multiplier ≈ 1.0` are trivial values, skipped without writing
+//!    (the base field stays `None`); `crit_chance` is written as-is
+//!    (including 0, distinct from missing).
+//! 3. An overlay skill absent from base → skipped (a vendor-only skill
+//!    with no corresponding `GrantedEffects` row in the `.dat`, e.g.
+//!    `EnemyExplode`).
+//! 4. An unknown `stat` name → an error, not silenced (schema evolution
+//!    must stay in lockstep with the consumer).
+//! 5. `skill_attack_speed_more`: written into [`SkillStatSetDef`] by
+//!    effect id; when several entries share an id (multiple statSets),
+//!    **the first one wins** (`stat_set` is sorted ascending for
+//!    determinism); when base has no such effect, a minimal entry (empty
+//!    stat, empty levels) is **appended** so the value isn't lost.
 
 use std::collections::BTreeMap;
 
@@ -34,9 +46,9 @@ use pobr_data::catalog::skill_overrides::{
 };
 use pobr_data::catalog::{SkillLevelDef, SkillStatSetDef, StatSetDef};
 
-/// 是否为 statSet 级 stat（由 [`apply_stat_set_overrides`] /
-/// [`apply_dot_flag_overrides`] / [`apply_implicit_stat_overrides`] 消费，
-/// 等级域 merge 跳过）。
+/// Whether this is a statSet-level stat (consumed by
+/// [`apply_stat_set_overrides`] / [`apply_dot_flag_overrides`] /
+/// [`apply_implicit_stat_overrides`]; the level-domain merge skips it).
 fn is_stat_set_stat(stat: &str) -> bool {
     stat == OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE
         || stat == OVERRIDE_STAT_EXPLODE_CORPSE
@@ -47,9 +59,11 @@ fn is_stat_set_stat(stat: &str) -> bool {
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载 per-skill 覆盖值 overlay（恒走 `overlay/` 定位）。文件缺失（旧数据包
-    /// 无 overlay 层）返回 `Ok(None)`——消费侧行为 = 纯 base，向后兼容；
-    /// 其余 IO / 解析错误照常上抛，不静默。
+    /// Loads the per-skill override-value overlay (always resolved under
+    /// `overlay/`). Returns `Ok(None)` when the file is missing (an old
+    /// data pack without the overlay layer) — the consumer behaves as
+    /// plain base, backward compatible; other I/O / parse errors still
+    /// propagate, not silenced.
     pub fn skill_overrides(&self) -> Result<Option<SkillOverridesDef>, LoadError> {
         match self.load_json_at::<SkillOverridesDef>(self.overlay_path("skill_overrides.json")) {
             Ok(def) => Ok(Some(def)),
@@ -63,18 +77,20 @@ impl GameData {
     }
 }
 
-/// 平凡值归一化（对齐 adapter 的 `.dat` 列处理）：返回 `None` 表示跳过不写。
+/// Normalizes a trivial value (matching the adapter's `.dat` column
+/// handling): returns `None` to mean skip without writing.
 fn normalized_level_value(stat: &str, value: f64) -> Option<f64> {
     match stat {
-        // adapter：`raw.attack_speed_multiplier.filter(|&m| m != 0)`
+        // adapter: `raw.attack_speed_multiplier.filter(|&m| m != 0)`
         OVERRIDE_STAT_ATTACK_SPEED_MULTIPLIER if value == 0.0 => None,
-        // adapter：`raw.base_multiplier.filter(|&m| (m - 1.0).abs() > 1e-9)`
+        // adapter: `raw.base_multiplier.filter(|&m| (m - 1.0).abs() > 1e-9)`
         OVERRIDE_STAT_BASE_MULTIPLIER if (value - 1.0).abs() <= 1e-9 => None,
         _ => Some(value),
     }
 }
 
-/// 按 stat 名取 [`SkillLevelDef`] 上的目标字段。未知 stat 返回 `Err`（规则 4）。
+/// Gets the target field on a [`SkillLevelDef`] by stat name. An unknown
+/// stat returns `Err` (rule 4).
 fn level_field<'row>(
     row: &'row mut SkillLevelDef,
     stat: &str,
@@ -89,24 +105,25 @@ fn level_field<'row>(
     }
 }
 
-/// 把 overlay 的等级类覆盖值（crit_chance / attack_speed_multiplier /
-/// base_multiplier）merge 进 `granted_effect_levels` 域。语义见模块文档。
+/// Merges the overlay's level-domain override values (crit_chance /
+/// attack_speed_multiplier / base_multiplier) into the
+/// `granted_effect_levels` domain. See the module doc for the semantics.
 pub fn apply_level_overrides(
     levels: &mut BTreeMap<String, Vec<SkillLevelDef>>,
     overrides: &SkillOverridesDef,
 ) -> Result<(), String> {
     for entry in &overrides.overrides {
-        // statSet 级覆盖值由 apply_stat_set_overrides / apply_dot_flag_overrides
-        // 消费，此处跳过。
+        // statSet-level overrides are consumed by apply_stat_set_overrides /
+        // apply_dot_flag_overrides; skipped here.
         if is_stat_set_stat(&entry.stat) {
             continue;
         }
-        // 规则 3：vendor-only 技能（.dat 无对应效果）跳过。
+        // Rule 3: a vendor-only skill (no corresponding effect in the .dat) is skipped.
         let Some(rows) = levels.get_mut(&entry.skill) else {
             continue;
         };
         match (&entry.value, &entry.per_level) {
-            // 单值 → 全部等级行。
+            // A single value → every level row.
             (Some(value), None) => {
                 if let Some(v) = normalized_level_value(&entry.stat, *value) {
                     for row in rows.iter_mut() {
@@ -114,7 +131,8 @@ pub fn apply_level_overrides(
                     }
                 }
             }
-            // 明细 → 只覆盖列出的等级（rows 按 level 升序，逐行查明细）。
+            // A breakdown → only the listed levels (rows are ascending by
+            // level, check the breakdown row by row).
             (None, Some(per_level)) => {
                 let by_level: BTreeMap<u32, f64> = per_level.iter().copied().collect();
                 for row in rows.iter_mut() {
@@ -136,11 +154,14 @@ pub fn apply_level_overrides(
     Ok(())
 }
 
-/// 把 overlay 的 statSet 级覆盖值（skill_attack_speed_more）merge 进
-/// `granted_effect_stat_sets` 域。语义见模块文档规则 5。
+/// Merges the overlay's statSet-level override value
+/// (skill_attack_speed_more) into the `granted_effect_stat_sets` domain.
+/// See the module doc's rule 5 for the semantics.
 ///
-/// T5.2 多 set 模型下写入**主 set**（`sets[0]`）——与单 set 时代「首条生效」
-/// 等价（消费缺省主 set；per-set 精确归属待 overlay 条目带 set id 时再细化）。
+/// Under the T5.2 multi-set model, this writes to the **primary set**
+/// (`sets[0]`) — equivalent to "the first one wins" from the single-set
+/// era (defaults to the primary set on consumption; precise per-set
+/// attribution is deferred until an overlay entry carries a set id).
 pub fn apply_stat_set_overrides(
     sets: &mut Vec<SkillStatSetDef>,
     overrides: &SkillOverridesDef,
@@ -161,13 +182,16 @@ pub fn apply_stat_set_overrides(
             .find(|s| s.effect_id == entry.skill)
             .and_then(|def| def.sets.first_mut())
         {
-            // 首条生效（同 skill 多条 overlay 条目时按 stat_set 升序取第一条）。
+            // The first one wins (when several overlay entries share a
+            // skill, take the first one by `stat_set` ascending order).
             Some(main_set) => {
                 if main_set.skill_attack_speed_more.is_none() {
                     main_set.skill_attack_speed_more = Some(value);
                 }
             }
-            // base 无该 effect 的 stat-set 条目 → 追加最小条目（合成主 set），不丢值。
+            // base has no stat-set entry for this effect → append a
+            // minimal entry (synthesizing a primary set), so the value
+            // isn't lost.
             None => {
                 sets.push(SkillStatSetDef {
                     effect_id: entry.skill.clone(),
@@ -188,39 +212,45 @@ pub fn apply_stat_set_overrides(
             }
         }
     }
-    // 追加后恢复按 effect id 排序（与 base 域排序契约一致，消费确定性）。
+    // Restore sorting by effect id after appending (matches the base
+    // domain's sort-order contract, for deterministic consumption).
     if appended {
         sets.sort_by(|a, b| a.effect_id.cmp(&b.effect_id));
     }
     Ok(())
 }
 
-/// 把 overlay 的 statSet 级 **dotIs\* 布尔**（`dot_is_area` 等）
-/// merge 进 `granted_effect_stat_sets` 域，并打 `verified` 核验标记。
+/// Merges the overlay's statSet-level **dotIs\* booleans** (`dot_is_area`
+/// etc.) into the `granted_effect_stat_sets` domain, and marks them
+/// `verified`.
 ///
-/// 必须在 stat_set_labels merge **之后**调用（set 定位依赖
-/// [`StatSetDef::vendor_set_index`]——overlay 条目的 `stat_set` 是 vendor
-/// `statSets` 的 1-based 序号，与 label 边车的 `set_index` 同源；如
-/// TornadoShotPlayer 的 `dotIsArea` 挂在 vendor statSets\[2\]
-/// "Tornado" = `.dat` 侧 `TornadoShotNovaPlayer` set）。
+/// Must be called **after** the stat_set_labels merge (locating the set
+/// depends on [`StatSetDef::vendor_set_index`] — an overlay entry's
+/// `stat_set` is vendor's 1-based `statSets` index, sharing its source
+/// with the label sidecar's `set_index`; e.g. TornadoShotPlayer's
+/// `dotIsArea` hangs off vendor statSets\[2\] "Tornado" = the `.dat`
+/// side's `TornadoShotNovaPlayer` set).
 ///
-/// merge 语义：
-/// 1. 定位：`stat_set = Some(i)` → 匹配 `vendor_set_index == i` 的 set；
-///    `None` → 主 set（`sets[0]`）。
-/// 2. 未命中（base 无该 effect / 无对应 vendor 序号的 set）→ **跳过**——
-///    保守默认（全 false 不剥 flag）正是的回退语义，不合成空 set。
-/// 3. 命中 set 写入对应布尔（value ≠ 0 = true）并置 `verified = true`
-///    （parity 报告据此单列未核验技能）。
-/// 4. 未知 dot stat 名不会到达此处（清单驱动：仅消费
-///    [`OVERRIDE_DOT_FLAG_STATS`] 内的条目；其余由等级域 merge 的规则 4 拦截）。
+/// Merge semantics:
+/// 1. Locating the set: `stat_set = Some(i)` → the set matching
+///    `vendor_set_index == i`; `None` → the primary set (`sets[0]`).
+/// 2. No match (base has no such effect / no set with that vendor index)
+///    → **skipped** — the conservative default (all-false, no flag
+///    stripped) is exactly the intended fallback; no empty set is synthesized.
+/// 3. On a match, the corresponding boolean is written (value ≠ 0 = true)
+///    and `verified = true` is set (the parity report lists unverified
+///    skills separately based on this).
+/// 4. An unknown dot-stat name never reaches here (list-driven: only
+///    entries in [`OVERRIDE_DOT_FLAG_STATS`] are consumed; everything else
+///    is caught by the level-domain merge's rule 4).
 pub fn apply_dot_flag_overrides(
     sets: &mut [SkillStatSetDef],
     overrides: &SkillOverridesDef,
 ) -> Result<(), String> {
     for entry in &overrides.overrides {
         let is_dot_flag = OVERRIDE_DOT_FLAG_STATS.contains(&entry.stat.as_str());
-        // explode_corpse与 dotIs* 同通道（statSet baseMods 布尔，
-        // 同一 set 定位语义），仅落点字段不同。
+        // explode_corpse shares a channel with dotIs* (statSet baseMods
+        // booleans, the same set-lookup semantics), only the target field differs.
         if !is_dot_flag && entry.stat != OVERRIDE_STAT_EXPLODE_CORPSE {
             continue;
         }
@@ -231,7 +261,7 @@ pub fn apply_dot_flag_overrides(
             ));
         };
         let Some(def) = sets.iter_mut().find(|s| s.effect_id == entry.skill) else {
-            continue; // 规则 2：vendor-only 技能，保守默认。
+            continue; // Rule 2: a vendor-only skill, conservative default.
         };
         let target = match entry.stat_set {
             Some(idx) => def
@@ -241,7 +271,8 @@ pub fn apply_dot_flag_overrides(
             None => def.sets.first_mut(),
         };
         let Some(set) = target else {
-            continue; // 规则 2：vendor 序号未命中（模板策展跳过的 set），保守默认。
+            continue; // Rule 2: no set with this vendor index (curated out
+            // by the template), conservative default.
         };
         let flag = value != 0.0;
         match entry.stat.as_str() {
@@ -252,7 +283,8 @@ pub fn apply_dot_flag_overrides(
             OVERRIDE_STAT_DOT_IS_HIT => set.dot_flags.hit = flag,
             OVERRIDE_STAT_EXPLODE_CORPSE => {
                 set.explode_corpse = flag;
-                continue; // 不触碰 dot_flags.verified（dot 核验标记语义独立）。
+                continue; // Doesn't touch dot_flags.verified (the dot
+                // verification marker has independent semantics).
             }
             _ => unreachable!("statSet 布尔清单已过滤"),
         }
@@ -261,12 +293,14 @@ pub fn apply_dot_flag_overrides(
     Ok(())
 }
 
-/// 把 overlay 的 statSet 级**隐式 stat**（`implicit_stat` 条目）merge 进
-/// `granted_effect_stat_sets` 域。
+/// Merges the overlay's statSet-level **implicit stats** (`implicit_stat`
+/// entries) into the `granted_effect_stat_sets` domain.
 ///
-/// 与 [`apply_dot_flag_overrides`] 同一 set 定位语义（vendor 序号优先，`None` →
-/// 主 set；未命中跳过——保守默认 = 该 stat 不注入，欠算安全）。同一 set 内按
-/// stat id 去重 + 字典序（消费确定性）。缺 `stat_id` 报错不静默。
+/// Shares the same set-lookup semantics as [`apply_dot_flag_overrides`]
+/// (vendor index first, `None` → primary set; no match is skipped — the
+/// conservative default means that stat isn't injected, an under-count
+/// that's safe). Deduplicated + sorted by stat id within a set (for
+/// deterministic consumption). A missing `stat_id` is an error, not silenced.
 pub fn apply_implicit_stat_overrides(
     sets: &mut [SkillStatSetDef],
     overrides: &SkillOverridesDef,
@@ -282,7 +316,7 @@ pub fn apply_implicit_stat_overrides(
             ));
         };
         let Some(def) = sets.iter_mut().find(|s| s.effect_id == entry.skill) else {
-            continue; // vendor-only 技能，保守默认。
+            continue; // A vendor-only skill, conservative default.
         };
         let target = match entry.stat_set {
             Some(idx) => def
@@ -292,7 +326,8 @@ pub fn apply_implicit_stat_overrides(
             None => def.sets.first_mut(),
         };
         let Some(set) = target else {
-            continue; // vendor 序号未命中（模板策展跳过的 set），保守默认。
+            continue; // No set with this vendor index (curated out by the
+            // template), conservative default.
         };
         if !set.implicit_stats.iter().any(|s| s == stat_id) {
             set.implicit_stats.push(stat_id.clone());
@@ -311,7 +346,7 @@ mod tests {
 
     use super::{apply_level_overrides, apply_stat_set_overrides};
 
-    /// 工具：构造一条覆盖值。
+    /// Helper: builds a single override entry.
     fn entry(
         skill: &str,
         stat: &str,
@@ -328,7 +363,7 @@ mod tests {
         }
     }
 
-    /// 两行裸等级行（level 1/2，其余字段空）。
+    /// Two bare level rows (level 1/2, everything else empty).
     fn bare_rows() -> Vec<SkillLevelDef> {
         [1u32, 2]
             .into_iter()
@@ -353,7 +388,7 @@ mod tests {
         SkillOverridesDef { overrides }
     }
 
-    /// 裸 statSet（全空字段，按需指定 vendor 导出序号）。
+    /// A bare statSet (every field empty, with the vendor export index specified as needed).
     fn bare_set(set_id: &str, vendor_set_index: Option<u32>) -> StatSetDef {
         StatSetDef {
             set_id: set_id.into(),
@@ -369,7 +404,8 @@ mod tests {
         }
     }
 
-    /// 规则 1a：单值应用到全部等级行；规则 3：base 无此技能的条目跳过。
+    /// Rule 1a: a single value applies to every level row; rule 3: an
+    /// entry for a skill absent from base is skipped.
     #[test]
     fn constant_value_applies_to_all_levels_and_unknown_skill_is_skipped() {
         let mut levels = BTreeMap::from([("Arc".to_string(), bare_rows())]);
@@ -382,7 +418,8 @@ mod tests {
         assert!(!levels.contains_key("VendorOnly"));
     }
 
-    /// 规则 1b：per_level 明细只覆盖列出的等级，缺失等级保持 None。
+    /// Rule 1b: a per_level breakdown only touches the listed levels;
+    /// missing levels stay None.
     #[test]
     fn per_level_detail_only_touches_listed_levels() {
         let mut levels = BTreeMap::from([("Snipe".to_string(), bare_rows())]);
@@ -397,7 +434,8 @@ mod tests {
         assert_eq!(levels["Snipe"][1].base_multiplier, None, "L2 不得被填充");
     }
 
-    /// 规则 2：平凡值归一化——asm 0 / base_multiplier ≈1.0 跳过；crit 0 原样写入。
+    /// Rule 2: trivial-value normalization — asm 0 / base_multiplier ≈1.0
+    /// are skipped; crit 0 is written as-is.
     #[test]
     fn trivial_values_are_normalized_like_adapter() {
         let mut levels = BTreeMap::from([("S".to_string(), bare_rows())]);
@@ -412,7 +450,8 @@ mod tests {
         assert_eq!(levels["S"][0].crit_chance, Some(0.0), "crit 0 区别于缺失");
     }
 
-    /// 规则 4：未知 stat 名报错不静默；value/per_level 二选一违例同样报错。
+    /// Rule 4: an unknown stat name errors out, not silenced; violating
+    /// the value/per_level either-or also errors out.
     #[test]
     fn unknown_stat_and_malformed_entry_error_out() {
         let mut levels = BTreeMap::from([("S".to_string(), bare_rows())]);
@@ -423,8 +462,10 @@ mod tests {
         assert!(apply_level_overrides(&mut levels, &ov).is_err());
     }
 
-    /// 规则 5：sasm 写入既有 effect 的**主 set**（首条生效）；base 无条目时追加
-    /// 最小条目（合成主 set）并保持排序。
+    /// Rule 5: skill_attack_speed_more writes to an existing effect's
+    /// **primary set** (the first one wins); when base has no entry, a
+    /// minimal entry (synthesizing a primary set) is appended and sort
+    /// order is preserved.
     #[test]
     fn stat_set_speed_more_merges_or_appends() {
         let mut sets = vec![SkillStatSetDef {
@@ -450,8 +491,9 @@ mod tests {
         );
     }
 
-    /// dotIs* merge 规则 1/3：按 vendor 序号定位 set（非主 set 可命中），写入
-    /// 布尔并打 verified 标记；等级域 merge 对 dot stat 跳过不报错。
+    /// dotIs* merge rules 1/3: locates the set by vendor index (a
+    /// non-primary set can match), writes the boolean and sets the
+    /// verified marker; the level-domain merge skips dot stats without erroring.
     #[test]
     fn dot_flags_merge_targets_set_by_vendor_index() {
         use super::apply_dot_flag_overrides;
@@ -466,7 +508,8 @@ mod tests {
         e.stat_set = Some(2);
         let ov = doc(vec![e]);
 
-        // 等级域：dot stat 是 statSet 级，不得被规则 4 误报。
+        // Level domain: a dot stat is statSet-level, must not be
+        // misreported by rule 4.
         let mut levels = BTreeMap::from([("TornadoShotPlayer".to_string(), bare_rows())]);
         apply_level_overrides(&mut levels, &ov).unwrap();
 
@@ -480,8 +523,8 @@ mod tests {
         assert!(!nova.dot_flags.spell, "未列出的位保持保守 false");
     }
 
-    /// dotIs* merge 规则 2：vendor-only 技能 / 序号未命中 → 跳过（保守默认）；
-    /// 缺 value 报错不静默。
+    /// dotIs* merge rule 2: a vendor-only skill / unmatched index →
+    /// skipped (conservative default); a missing value errors out, not silenced.
     #[test]
     fn dot_flags_merge_skips_unmatched_and_rejects_missing_value() {
         use super::apply_dot_flag_overrides;
@@ -500,8 +543,9 @@ mod tests {
         assert!(apply_dot_flag_overrides(&mut sets, &doc(vec![bad])).is_err());
     }
 
-    /// implicit_stat merge：按 vendor 序号定位、push 去重排序；
-    /// 未命中跳过；缺 stat_id 报错；等级域 merge 对该 stat 跳过不报错。
+    /// implicit_stat merge: locates the set by vendor index, pushes with
+    /// dedup and sorting; no match is skipped; a missing stat_id errors
+    /// out; the level-domain merge skips this stat without erroring.
     #[test]
     fn implicit_stat_merge_targets_set_and_dedupes() {
         use super::apply_implicit_stat_overrides;
@@ -517,7 +561,8 @@ mod tests {
         miss.stat_id = Some("whatever".into());
         let ov = doc(vec![e, dup, miss]);
 
-        // 等级域：implicit_stat 是 statSet 级，不得被规则 4 误报。
+        // Level domain: implicit_stat is statSet-level, must not be
+        // misreported by rule 4.
         let mut levels =
             BTreeMap::from([("SupportGarukhansResolvePlayer".to_string(), bare_rows())]);
         apply_level_overrides(&mut levels, &ov).unwrap();

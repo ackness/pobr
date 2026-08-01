@@ -1,12 +1,13 @@
-//! AttributionReport（来源贡献总账）集成测试。
+//! Integration tests for AttributionReport (the per-source contribution ledger).
 //!
-//! 对照 `devs/docs/architecture/10-pob-parity-and-attribution.md` §6-7：
-//! - Direct contribution：从 TraceGraph 直接读某 source 对某输出的直接贡献。
-//! - Marginal contribution：`final(build) - final(build_without_source)`。
-//! - Interaction：`final - base - Σ(individual marginal deltas)`。
+//! Cross-checked against `devs/docs/architecture/10-pob-parity-and-attribution.md` §6-7:
+//! - Direct contribution: read a source's direct contribution to an output straight from the TraceGraph.
+//! - Marginal contribution: `final(build) - final(build_without_source)`.
+//! - Interaction: `final - base - Sum(individual marginal deltas)`.
 //!
-//! 用一个含多来源（两件装备各 +Life、装备 + 天赋）的小场景驱动，
-//! 通过按 `SourceId` 过滤的 `ModDb` 重算 + `calculate_minimal` 实现 marginal 重算。
+//! Driven by a small scenario with multiple sources (two pieces of gear each with +Life,
+//! plus gear + a passive); marginal recompute is done via a `ModDb` filtered by `SourceId` +
+//! `calculate_minimal`.
 
 use pobr_core::attribution::{
     AttributionEntry, AttributionMode, AttributionReport, AttributionRequest, attribute,
@@ -23,7 +24,7 @@ fn life_source(kind: SourceKind, id: &str) -> ModifierSource {
     ModifierSource::new(SourceId::new(kind, id))
 }
 
-/// 构造一个三来源 Life 场景：
+/// Builds a three-source Life scenario:
 /// - weapon: +60 Life (Base)
 /// - helmet: +40 Life (Base)
 /// - passive node: +30% increased Life (Inc)
@@ -44,7 +45,7 @@ fn life_db() -> ModDb {
     db
 }
 
-/// 复制一个剔除 `excluded` 中任一 source 的 ModDb，用于"移除某 source 后重算"。
+/// Clones a ModDb with any source in `excluded` filtered out, for "recompute with a source removed".
 fn db_without(db: &ModDb, excluded: &[SourceId]) -> ModDb {
     db.filtered(|modifier| {
         modifier
@@ -156,15 +157,15 @@ fn interaction_is_zero_for_single_source() {
         calculate_minimal(&db_without(&db, excluded), &cfg, &input).life
     });
 
-    // 单来源：interaction = final - base - Σdelta
-    //          base(remove weapon) = 100; delta = 50; final = 150 → interaction 0
+    // Single source: interaction = final - base - Sum(delta)
+    //                base(remove weapon) = 100; delta = 50; final = 150 -> interaction 0
     let interaction = report.interaction.as_ref().expect("interaction bucket");
     assert!(interaction.marginal_delta.unwrap().abs() < 1e-9);
 }
 
 #[test]
 fn interaction_captures_more_inc_synergy() {
-    // weapon +100 base, passive +50% inc。两者有交互（inc 放大 base）。
+    // weapon +100 base, passive +50% inc. The two interact (inc amplifies base).
     // final = (100 + 100) * 1.5 = 300
     // remove weapon: 100 * 1.5 = 150 → delta_weapon = 150
     // remove passive: (100 + 100) * 1.0 = 200 → delta_passive = 100
@@ -229,7 +230,7 @@ fn direct_contribution_reads_per_source_value_from_trace() {
         .iter()
         .find(|entry| entry.source == weapon)
         .expect("weapon direct entry");
-    // weapon 直接贡献 60 flat life
+    // weapon's direct contribution is 60 flat life.
     assert_eq!(weapon_entry.value, 60.0);
     assert!((weapon_entry.percent_of_final.unwrap() - 60.0 / 260.0).abs() < 1e-9);
 }

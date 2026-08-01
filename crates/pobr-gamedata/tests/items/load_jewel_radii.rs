@@ -1,9 +1,11 @@
-//! `base/jewel_radii.json` 加载测试。
+//! `base/jewel_radii.json` load tests.
 //!
-//! 搬迁不变式校验：4 个具名档（Small/Medium/Large/Very Large）与距离乘数**逐值等于**
-//! pobr 现有 Rust 准源 `crates/pobr-tree/src/radius_jewel.rs` 的常量；
-//! vendor-only 部分（inner / colour / 8 个 Variable 档）按 vendor PoB2
-//! `src/Modules/Data.lua:595-611` 写死期望值抽样断言。
+//! Migration-invariant checks: the 4 named bands
+//! (Small/Medium/Large/Very Large) plus the distance multiplier are
+//! **value-equal** to pobr's existing Rust source-of-truth consts in
+//! `crates/pobr-tree/src/radius_jewel.rs`; the vendor-only parts (inner /
+//! colour / the 8 Variable bands) are spot-checked against hardcoded
+//! expected values per vendor PoB2 `src/Modules/Data.lua:595-611`.
 
 use pobr_data::catalog::jewel_radii::{JewelRadiiDef, JewelRadiusBandDef};
 use pobr_gamedata::{GameData, repo_data_root};
@@ -22,7 +24,7 @@ fn load() -> JewelRadiiDef {
         .expect("jewel_radii 可加载")
 }
 
-/// 取 `0_1` 树版本中指定具名档（具名档 label 唯一）。
+/// Gets a named band from the `0_1` tree version (a named band's label is unique).
 fn named_band<'a>(def: &'a JewelRadiiDef, label: &str) -> &'a JewelRadiusBandDef {
     def.tree_versions["0_1"]
         .iter()
@@ -30,9 +32,10 @@ fn named_band<'a>(def: &'a JewelRadiiDef, label: &str) -> &'a JewelRadiusBandDef
         .unwrap_or_else(|| panic!("存在 {label} 档"))
 }
 
-/// 搬迁不变式：`JewelRadiiDef::default()`（注入缺失时的 fallback）
-/// 与 `base/jewel_radii.json` **全等**——保证「无数据走 Default」与「有数据走注入」
-/// 两条路径输出逐值一致。
+/// Migration invariant: `JewelRadiiDef::default()` (the fallback used when
+/// injection is missing) is **wholly equal** to `base/jewel_radii.json` —
+/// guaranteeing "no data → Default" and "data present → injected" produce
+/// value-identical output on both paths.
 #[test]
 fn default_fallback_equals_loaded_json() {
     assert_eq!(
@@ -42,7 +45,8 @@ fn default_fallback_equals_loaded_json() {
     );
 }
 
-/// 距离乘数逐值等于 pobr-tree 准源常量（= 1.2，源 GameConstants.dat）。
+/// The distance multiplier is value-equal to pobr-tree's source-of-truth
+/// const (= 1.2, sourced from GameConstants.dat).
 #[test]
 fn distance_multiplier_matches_pobr_tree_constant() {
     let def = load();
@@ -53,8 +57,9 @@ fn distance_multiplier_matches_pobr_tree_constant() {
     assert_eq!(def.distance_multiplier, 1.2);
 }
 
-/// 4 个具名档的 outer × 乘数逐值等于 pobr-tree 的 `JEWEL_RADIUS_*` 常量，
-/// 且与 `JewelRadius::units()` 行为一致（搬迁不变式）。
+/// The 4 named bands' outer × multiplier is value-equal to pobr-tree's
+/// `JEWEL_RADIUS_*` consts, and matches `JewelRadius::units()`'s behavior
+/// (a migration invariant).
 #[test]
 fn named_bands_match_pobr_tree_radius_constants() {
     let def = load();
@@ -77,13 +82,14 @@ fn named_bands_match_pobr_tree_radius_constants() {
             "{label} 档 outer×乘数应等于 pobr-tree 常量"
         );
         assert_eq!(f64::from(band.outer) * m, radius.units());
-        // 具名档为实心圆，inner=0（vendor Data.lua:597-600 同为 0）。
+        // Named bands are solid circles, inner=0 (vendor Data.lua:597-600 is also 0).
         assert_eq!(band.inner, 0, "{label} 档 inner 应为 0");
     }
 }
 
-/// 具名档 outer 基础值抽样（vendor `Modules/Data.lua:597-600`；
-/// 与 pobr-tree 常量定义里的 1000/1150/1300/1500 一致）。
+/// A spot check on the named bands' base outer values (vendor
+/// `Modules/Data.lua:597-600`; matches the 1000/1150/1300/1500 defined in
+/// pobr-tree's consts).
 #[test]
 fn named_band_outer_base_values() {
     let def = load();
@@ -93,8 +99,9 @@ fn named_band_outer_base_values() {
     assert_eq!(named_band(&def, "Very Large").outer, 1500);
 }
 
-/// vendor-only：8 个 Variable 环形档的 inner/outer 逐值等于
-/// vendor `Modules/Data.lua:602-609`（pobr 现无 Rust 准源，期望值写死）。
+/// vendor-only: the 8 Variable ring bands' inner/outer are value-equal to
+/// vendor `Modules/Data.lua:602-609` (pobr has no Rust source of truth for
+/// these currently, expected values hardcoded).
 #[test]
 fn variable_bands_match_vendor_data_lua() {
     let def = load();
@@ -120,12 +127,13 @@ fn variable_bands_match_vendor_data_lua() {
         ],
         "Variable 档 inner/outer 应与 vendor Data.lua:602-609 逐值一致（保持书写顺序）"
     );
-    // Variable 档环宽恒为 300（vendor 表的结构性质，防手误改值）。
+    // A Variable band's ring width is always 300 (structural to vendor's
+    // table, guards against a fat-fingered value change).
     assert!(variables.iter().all(|(inner, outer)| outer - inner == 300));
 }
 
-/// vendor-only：颜色码抽样（`Modules/Data.lua:597` Small `^xBB6600`、
-/// `:609` 最末 Variable 档 `^x0099FF`）。
+/// vendor-only: a spot check on color codes (`Modules/Data.lua:597`'s
+/// Small `^xBB6600`, `:609`'s last Variable band `^x0099FF`).
 #[test]
 fn colour_codes_sampled_from_vendor() {
     let def = load();

@@ -1,7 +1,7 @@
 use pobr_core::calc::MinimalInput;
 use pobr_core::passive::{AllocatedNode, PassiveIngest, ingest_passive_nodes_with_ctx};
 
-/// engine 版 passive ingest（签名对齐历史 `ingest_passive_nodes`）。
+/// Engine-facing passive ingest (signature matches the historical `ingest_passive_nodes`).
 fn ingest_passive_nodes(
     nodes: &[AllocatedNode],
 ) -> Result<PassiveIngest, pobr_core::mod_parser::ParseError> {
@@ -39,11 +39,11 @@ fn ingest_passive_nodes_parses_texts_into_modifiers_with_passive_source() {
             .as_ref()
             .expect("passive node modifier carries an origin");
         assert_eq!(origin.source_id.kind, SourceKind::PassiveNode);
-        // 原始词条文本必须保留，以便 breakdown 展示与 PoB 对比。
+        // The raw modifier text must be retained so the breakdown display can be compared against PoB.
         assert!(origin.raw_text.is_some());
     }
 
-    // stat_id / mod_type 由 with_origin 从 modifier 回填。
+    // stat_id / mod_type are back-filled from the modifier by with_origin.
     let life = modifiers
         .iter()
         .find(|m| m.name == ModName::from("MaximumLife"))
@@ -72,7 +72,7 @@ fn ingested_passive_modifiers_attribute_back_to_node_id() {
         .as_ref()
         .expect("contribution carries the passive node origin");
     assert_eq!(origin.source_id.kind, SourceKind::PassiveNode);
-    // 稳定 ID 约定：node.<NodeId>，可回溯到具体节点。
+    // Stable ID convention: node.<NodeId>, so it can be traced back to the specific node.
     assert_eq!(origin.source_id.id, "node.55555");
 }
 
@@ -117,8 +117,8 @@ fn session_add_passive_nodes_feeds_minimal_calc() {
     session.add_passive_nodes(&nodes).unwrap();
     let output = session.perform_minimal();
 
-    // (100 base + 40 node) * (1 + 20/100) = 168。
+    // (100 base + 40 node) * (1 + 20/100) = 168.
     assert_eq!(output.life, 168.0);
-    // 无法解析的词条仍被保留。
+    // Unparseable modifier text is still retained.
     assert_eq!(session.unsupported_modifier_texts(), ["mirrored"]);
 }

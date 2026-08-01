@@ -1,12 +1,12 @@
-//! raw 物品文本块解析的集成测试。
+//! Integration tests for parsing raw item text blocks.
 //!
-//! 覆盖 PoB 风格英文导出文本 → [`Item`] 的分段切分（rarity / quality /
-//! implicit / explicit / enchant），并验证产物喂给 `ingest_item` 后能得到
-//! 带正确 [`SourceKind`] 的 modifier。
+//! Covers splitting PoB-style English export text into an [`Item`] (rarity / quality /
+//! implicit / explicit / enchant sections), and verifies that feeding the result into
+//! `ingest_item` yields modifiers with the correct [`SourceKind`].
 
 use pobr_core::item::{ItemIngest, ingest_item_with_ctx};
 
-/// engine 版 ingest（签名对齐历史 `ingest_item`，注入真实规则）。
+/// Engine-facing ingest (signature matches the historical `ingest_item`, wired to the real rules).
 fn ingest_item(
     slot: EquipmentSlot,
     item: &Item,
@@ -18,7 +18,7 @@ use pobr_core::item_text::{
 };
 use pobr_data::prelude::*;
 
-/// 典型 PoB 稀有物品导出：含 Quality / Item Level / Implicits 头。
+/// A typical PoB rare-item export: has Quality / Item Level / Implicits headers.
 const RARE_HELMET: &str = "\
 Rarity: RARE
 Hate Cowl
@@ -85,7 +85,7 @@ fn parsed_item_feeds_ingest_item_with_correct_sources() {
     assert_eq!(kind_of("MaximumLife"), SourceKind::ItemAffix);
 }
 
-/// 带附魔的物品：`{crafted}` 标记的行落入 enchant 段。
+/// An item with an enchant: lines marked `{crafted}` land in the enchant section.
 const ENCHANTED_BOOTS: &str = "\
 Rarity: MAGIC
 Goathide Boots
@@ -152,16 +152,17 @@ Item Level: 1
 
 // Bug Fix: item-text-range-tier-marker-not-stripped
 //
-// PoB 导出的词条行常带 `{range:0.5}` / `(tier: 3)` / `[augmented]` 等元注释。
-// 修复后这些注释在喂给 mod_parser 前被剥离，解析不再归入 Unsupported。
+// PoB-exported modifier lines often carry annotations like `{range:0.5}` / `(tier: 3)` /
+// `[augmented]`. After the fix these are stripped before the text reaches mod_parser, so
+// the lines no longer fall into Unsupported.
 //
-// 出处：agent-docs/item-character-systems.md §5；
-//       PoB2 src/Classes/Item.lua BuildAndParseRaw (line 708-734, 926)。
+// Source: agent-docs/item-character-systems.md §5;
+//         PoB2 src/Classes/Item.lua BuildAndParseRaw (line 708-734, 926).
 
-/// 单元测试：`strip_pob_annotations` 剥离各类注释。
+/// Unit test: `strip_pob_annotations` strips each annotation style.
 #[test]
 fn strip_pob_annotations_removes_range_marker() {
-    // {range:0.5} 花括号注释被剥离。
+    // The {range:0.5} brace annotation is stripped.
     assert_eq!(
         strip_pob_annotations("+40 to maximum Life {range:0.5}"),
         "+40 to maximum Life"
@@ -170,7 +171,7 @@ fn strip_pob_annotations_removes_range_marker() {
 
 #[test]
 fn strip_pob_annotations_removes_augmented_parenthetical() {
-    // " (augmented)" 全小写括号注释被剥离。
+    // The " (augmented)" lowercase parenthetical annotation is stripped.
     assert_eq!(
         strip_pob_annotations("20% increased maximum Life (augmented)"),
         "20% increased maximum Life"
@@ -179,7 +180,7 @@ fn strip_pob_annotations_removes_augmented_parenthetical() {
 
 #[test]
 fn strip_pob_annotations_removes_tier_annotation() {
-    // "(tier: 3)" 注释（含冒号/数字）被剥离。
+    // The "(tier: 3)" annotation (colon + digits) is stripped.
     assert_eq!(
         strip_pob_annotations("20% increased Fire Damage (tier: 3)"),
         "20% increased Fire Damage"
@@ -188,7 +189,7 @@ fn strip_pob_annotations_removes_tier_annotation() {
 
 #[test]
 fn strip_pob_annotations_removes_square_bracket_annotation() {
-    // "[augmented]" 方括号注释被剥离。
+    // The "[augmented]" bracket annotation is stripped.
     assert_eq!(
         strip_pob_annotations("+30% to Fire Resistance [augmented]"),
         "+30% to Fire Resistance"
@@ -197,20 +198,21 @@ fn strip_pob_annotations_removes_square_bracket_annotation() {
 
 #[test]
 fn strip_pob_annotations_removes_multiple_annotations() {
-    // 同一行多个注释同时剥离。
+    // Multiple annotations on the same line are all stripped.
     assert_eq!(
         strip_pob_annotations("{range:0.5}+40 to maximum Life (augmented)"),
         "+40 to maximum Life"
     );
 }
 
-/// 集成测试：带 {range:0.5} 注释的 PoB 导出物品能正常解析并产出 modifier。
+/// Integration test: a PoB-exported item with a {range:0.5} annotation parses cleanly
+/// and produces modifiers.
 ///
-/// 这是 Bug item-text-range-tier-marker-not-stripped 的回归测试：
-/// 修复前，带注释的行会归入 unsupported；修复后，解析成功。
+/// This is the regression test for Bug item-text-range-tier-marker-not-stripped:
+/// before the fix, annotated lines fell into unsupported; after the fix they parse.
 #[test]
 fn item_with_range_markers_parses_correctly() {
-    // 模拟 PoB 导出：词条行带 {range:0.5} 标注。
+    // Simulates a PoB export: modifier lines carry {range:0.5} annotations.
     let raw = "\
 Rarity: RARE
 Storm Visage
@@ -229,7 +231,7 @@ Implicits: 1
 ";
     let item = parse_item_text(raw).expect("item with range markers parses");
 
-    // 注释被剥离后文本应是干净的。
+    // Once annotations are stripped, the text should be clean.
     assert_eq!(
         item.implicit_texts,
         vec!["+30% to Fire Resistance"],
@@ -241,14 +243,14 @@ Implicits: 1
         "explicit 行的 {{range:0.5}} 和 (augmented) 应被剥离"
     );
 
-    // 喂给 ingest_item 后应该能成功解析，不归入 unsupported。
+    // Once fed into ingest_item, it should parse successfully rather than landing in unsupported.
     let ingest = ingest_item(EquipmentSlot::Helmet, &item).expect("ingest succeeds");
     assert!(
         ingest.unsupported.is_empty(),
         "含注释的行在剥离后应能被 mod_parser 解析，不应归入 unsupported：{:?}",
         ingest.unsupported
     );
-    // 1 implicit + 2 explicit（品质不再注入 modifier，逐属性 base 缩放在编排层处理）。
+    // 1 implicit + 2 explicit (quality no longer injects a modifier; per-attribute base scaling is handled by the orchestration layer).
     assert_eq!(
         ingest.modifiers.len(),
         3,
@@ -256,7 +258,7 @@ Implicits: 1
     );
 }
 
-/// 集成测试：带 (tier: N) 注释的词条行能正常解析。
+/// Integration test: modifier lines with a (tier: N) annotation parse cleanly.
 #[test]
 fn item_with_tier_annotation_parses_correctly() {
     let raw = "\
@@ -274,7 +276,7 @@ Implicits: 0
 ";
     let item = parse_item_text(raw).expect("item with tier annotations parses");
 
-    // tier 注释被剥离。
+    // The tier annotation is stripped.
     assert_eq!(
         item.modifier_texts,
         vec!["20% increased Fire Damage", "+30% to Cold Resistance"],
@@ -289,7 +291,7 @@ Implicits: 0
     );
 }
 
-/// 确认 {crafted} 前缀仍然正确触发 enchant section 归类，且后续注释也被剥离。
+/// Confirms the {crafted} prefix still routes the line into the enchant section, and that trailing annotations are also stripped.
 #[test]
 fn crafted_prefix_still_triggers_enchant_section_after_annotation_strip() {
     let raw = "\
@@ -305,7 +307,7 @@ Item Level: 60
 ";
     let item = parse_item_text(raw).expect("crafted item parses");
 
-    // {crafted} 前缀正确归入 enchant，且行内 {range:0.9} 也被剥离。
+    // The {crafted} prefix routes correctly into enchant, and the inline {range:0.9} is also stripped.
     assert_eq!(
         item.enchant_texts,
         vec!["+25% to Cold Resistance"],
@@ -314,9 +316,9 @@ Item Level: 60
     assert_eq!(item.modifier_texts, vec!["+40 to maximum Life"]);
 }
 
-// PoB Build XML 内嵌 <Item> 文本块解析（无 -------- 段分隔，按 Implicits: N 计数）
+// Parsing <Item> text blocks embedded in PoB Build XML (no -------- section separators; sections are split by the Implicits: N count)
 
-/// 真实 PoB2 Build XML 的 RARE 武器块（无段分隔，含 Rune: / {enchant}{rune} / {fractured}）。
+/// A real PoB2 Build XML RARE weapon block (no section separators; has Rune: / {enchant}{rune} / {fractured}).
 const XML_RARE_CROSSBOW: &str = "\
 \t\t\tRarity: RARE
 Plague Core
@@ -350,7 +352,7 @@ fn xml_item_parses_rarity_base_and_quality_without_separators() {
 fn xml_item_strips_brace_prefixes_and_collects_all_mods() {
     let item = parse_pob_xml_item(XML_RARE_CROSSBOW).expect("parse");
 
-    // {enchant}{rune} 前缀经 strip_enchant_marker + strip_pob_annotations 剥离后归 enchant 段。
+    // The {enchant}{rune} prefix is stripped by strip_enchant_marker + strip_pob_annotations and the line lands in the enchant section.
     assert!(
         item.enchant_texts
             .iter()
@@ -359,7 +361,7 @@ fn xml_item_strips_brace_prefixes_and_collects_all_mods() {
         item.enchant_texts
     );
 
-    // Rune: 命名行 / Sockets: / Unique ID: 等元数据行不得进入任何词条段。
+    // Metadata lines like Rune: / Sockets: / Unique ID: must not leak into any modifier section.
     let all: Vec<&String> = item
         .implicit_texts
         .iter()
@@ -373,7 +375,7 @@ fn xml_item_strips_brace_prefixes_and_collects_all_mods() {
         "元数据行泄漏到词条段: {all:?}"
     );
 
-    // {fractured} / {desecrated} 前缀被剥离，保留可解析文本。
+    // The {fractured} / {desecrated} prefixes are stripped, leaving parseable text.
     assert!(
         all.iter()
             .any(|t| t.as_str() == "Adds 1 to 356 Lightning Damage"),
@@ -387,14 +389,14 @@ fn xml_item_strips_brace_prefixes_and_collects_all_mods() {
 
 #[test]
 fn xml_item_counts_filled_sockets_from_rune_lines() {
-    // `Sockets: S S` 声明 2 槽，但仅 1 行 `Rune:` → 已填充 1（PoB2 `RunesSocketedIn`
-    // 数已镶嵌符文/魂核，非槽位总数）。
+    // `Sockets: S S` declares 2 sockets, but only 1 `Rune:` line → filled count is 1
+    // (PoB2's `RunesSocketedIn` counts runes/soul cores actually socketed, not total sockets).
     let item = parse_pob_xml_item(XML_RARE_CROSSBOW).expect("parse");
     assert_eq!(item.rolled_defence.sockets_filled, 1);
 }
 
-/// 5 槽全填（Morior Invictus 形态）：5 行 `Rune:` → 已填充 5；
-/// `per Socket filled` 词条按此取数（gemling Spirit +14×5 = 70）。
+/// All 5 sockets filled (the Morior Invictus shape): 5 `Rune:` lines → filled count 5;
+/// `per Socket filled` modifiers read this value (gemling Spirit +14×5 = 70).
 const XML_FIVE_RUNE_BODY: &str = "\
 \t\t\tRarity: UNIQUE
 Morior Invictus
@@ -414,7 +416,7 @@ Implicits: 0
 fn xml_item_counts_five_filled_sockets() {
     let item = parse_pob_xml_item(XML_FIVE_RUNE_BODY).expect("parse");
     assert_eq!(item.rolled_defence.sockets_filled, 5);
-    // Rune: 行被识别为已填充 socket，不泄漏到词条段。
+    // Rune: lines are recognized as filled sockets and don't leak into a modifier section.
     let all: Vec<&String> = item
         .implicit_texts
         .iter()
@@ -434,7 +436,7 @@ fn xml_item_counts_five_filled_sockets() {
 
 #[test]
 fn xml_item_handles_magic_flask_without_separate_base_line() {
-    // MAGIC 物品（药剂/护身符）只有 1 行名称、基底嵌在名称内，名称后直接是元数据。
+    // A MAGIC item (flask/charm) has a single name line with the base embedded in it; metadata follows directly.
     let raw = "\
 Rarity: MAGIC
 Catalysed Ultimate Life Flask of the Eternal
@@ -446,7 +448,7 @@ Implicits: 0
 ";
     let item = parse_pob_xml_item(raw).expect("magic flask parses");
     assert_eq!(item.rarity, ItemRarity::Magic);
-    // 无独立基底行时退化为名称行（与 parse_item_text 一致）。
+    // With no separate base line, this falls back to the name line (matching parse_item_text).
     assert_eq!(
         item.base,
         ItemBaseId::from("Catalysed Ultimate Life Flask of the Eternal")
@@ -470,7 +472,7 @@ Implicits: 1
 +25 to Dexterity
 ";
     let item = parse_pob_xml_item(raw).expect("ring parses");
-    // 前 1 行（Implicits: 1）→ implicit，其余 → explicit。
+    // The first 1 line (Implicits: 1) → implicit, the rest → explicit.
     assert_eq!(item.implicit_texts, vec!["+30% to Lightning Resistance"]);
     assert_eq!(
         item.modifier_texts,
@@ -489,7 +491,7 @@ fn xml_item_rejects_empty_and_missing_rarity() {
 
 #[test]
 fn xml_item_feeds_ingest_item_with_attribution() {
-    // 端到端：XML item 块 → parse_pob_xml_item → ingest_item，词条带正确归因。
+    // End-to-end: XML item block → parse_pob_xml_item → ingest_item, modifiers carry the correct attribution.
     let raw = "\
 Rarity: RARE
 Dragon Hold

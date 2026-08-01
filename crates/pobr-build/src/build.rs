@@ -1,12 +1,14 @@
-//! `Build`：PoB Build 的内存状态。
+//! `Build`: in-memory state of a PoB Build.
 //!
-//! 聚合一个 build 的全部可计算输入：角色基础（等级 / 职业 / 升华）、天赋树
-//! ([`PassiveTreeSpec`])、装备（按 [`EquipmentSlot`] 的 [`Item`]）、技能宝石组
-//! （[`SocketGroup`]）、Build 级配置（[`BuildConfig`]）以及当前视图（[`ViewMode`]）。
+//! Aggregates all the calculable inputs of a build: character basics (level / class /
+//! ascendancy), passive tree ([`PassiveTreeSpec`]), equipment ([`Item`] keyed by
+//! [`EquipmentSlot`]), skill gem groups ([`SocketGroup`]), Build-level config
+//! ([`BuildConfig`]), and the current view ([`ViewMode`]).
 //!
-//! 类型一律采用 REAL 权威定义（`pobr_data` 的 `PassiveTreeSpec` / `Item` /
-//! `ViewMode`）。`SocketGroup` 是本 crate 的简化等价物（不依赖
-//! SANDBOX 专有类型），承载「主动技能 + 辅助宝石」的稳定 id 与启用状态。
+//! Types are always the REAL authoritative definitions (`pobr_data`'s `PassiveTreeSpec` /
+//! `Item` / `ViewMode`). `SocketGroup` is this crate's simplified equivalent (no
+//! dependency on SANDBOX-only types), carrying the stable id and enabled state of an
+//! "active skill + support gems" group.
 
 use std::collections::HashMap;
 
@@ -16,61 +18,76 @@ use pobr_data::passive_tree::PassiveTreeSpec;
 
 use crate::build_config::BuildConfig;
 
-/// 一个宝石的授予效果引用（`<Gem skillId>` + `<Gem level>` + `<Gem quality>` +
-/// `<Gem statSetIndex>`），active/support 皆可。由计算侧按数据表（`is_support`）分类。
+/// A granted-effect reference for one gem (`<Gem skillId>` + `<Gem level>` +
+/// `<Gem quality>` + `<Gem statSetIndex>`), active or support. Classified by the calc
+/// side using the data table (`is_support`).
 ///
-/// 契约 C4收口：`quality` 为 T1 份额（default 0 = 无品质），
-/// `stat_set_index` 为 T5 份额（形态选择）。
+/// Contract C4 scope: `quality` is the T1 share (default 0 = no quality),
+/// `stat_set_index` is the T5 share (form selection).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GemSkillRef {
-    /// 授予效果 id（PoB `<Gem skillId>`，如 `SupportAddedLightningDamagePlayer`）。
+    /// Granted effect id (PoB `<Gem skillId>`, e.g. `SupportAddedLightningDamagePlayer`).
     pub skill_id: String,
-    /// 宝石等级（PoB `<Gem level>`）。
+    /// Gem level (PoB `<Gem level>`).
     pub gem_level: u32,
-    /// 宝石品质（PoB `<Gem quality>`，0–23；0 = 无品质）。消费侧按
-    /// `trunc(per_quality_rate × quality)` 叠加品质 stat（见
-    /// `BuildData::effect_stats`，对齐 PoB2 CalcTools.lua `buildSkillInstanceStats`）。
+    /// Gem quality (PoB `<Gem quality>`, 0-23; 0 = no quality). The consumer applies the
+    /// quality stat as `trunc(per_quality_rate × quality)` (see `BuildData::effect_stats`,
+    /// matching PoB2 CalcTools.lua `buildSkillInstanceStats`).
     pub quality: u32,
-    /// statSet 形态选择（PoB `<Gem statSetIndex>`，**1-based**，索引 PoB2 导出的
-    /// statSets 列表 = `StatSetDef::vendor_set_index` 语义；vendor SkillsTab.lua:354
-    /// 读 / :489 写）。`None` = 未指定（缺省主 set；PoB2 序列化缺省态为字面量
-    /// `"nil"`，解析归一化为 `None`）。`statSetIndexCalcs`（calcs 页独立选择）
-    /// 不做，解析忽略。
+    /// statSet form selection (PoB `<Gem statSetIndex>`, **1-based**, indexes the
+    /// statSets list exported by PoB2 = `StatSetDef::vendor_set_index` semantics; vendor
+    /// SkillsTab.lua:354 reads / :489 writes). `None` = unspecified (defaults to the
+    /// primary set; PoB2 serializes the default state as the literal `"nil"`, which
+    /// parsing normalizes to `None`). `statSetIndexCalcs` (a separate selection on the
+    /// calcs page) is not handled and is ignored by the parser.
     pub stat_set_index: Option<u32>,
-    /// PoB `<Gem nameSpec>` 显示名——仅当 XML 缺 `skillId`/`gemId`（lineage
-    /// support 如 Atziri's Communion 的序列化形态）时携带，`skill_id` 此时为空串。
-    /// 编排层 `stage_build_view` 按显示名归一匹配 granted_effects 回填
-    /// `skill_id`（PoB2 SkillsTab 按 nameSpec 反查 gem 的等价物）；未解析成功
-    /// 的引用在全部消费点因 `granted_effects.get("")` 落空而惰性跳过。
+    /// PoB `<Gem nameSpec>` display name — only present when the XML lacks
+    /// `skillId`/`gemId` (the serialized form of a lineage support like Atziri's
+    /// Communion), in which case `skill_id` is an empty string. The orchestrator's
+    /// `stage_build_view` matches this display name against granted_effects to backfill
+    /// `skill_id` (mirroring how PoB2 SkillsTab looks up a gem by nameSpec). References
+    /// that fail to resolve are silently skipped at every consumption point because
+    /// `granted_effects.get("")` comes up empty.
     pub name_spec: Option<String>,
 }
 
-/// 一组同插槽的技能宝石（主动技能 + 其辅助）。简化等价物：用稳定 gem id 表示。
+/// A group of skill gems in the same socket (active skill + its supports). A simplified
+/// equivalent represented by stable gem ids.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SocketGroup {
-    /// PoB `<Skill source>`（装备授予技能为 `Item:<id>:<name>`）。`None` 表示
-    /// 用户手动创建的普通技能组；编排层据此区分同槽同技能的手动组与授予组。
+    /// PoB `<Skill source>` (item-granted skills use `Item:<id>:<name>`). `None` means a
+    /// regular skill group the user created manually; the orchestrator uses this to tell
+    /// manual groups apart from granted ones in the same slot with the same skill.
     pub source: Option<String>,
-    /// 装在哪个槽位（如 `"weapon1"`）。`None` 表示未指定 / 灵魂珠等无槽来源。
+    /// Which slot it's socketed in (e.g. `"weapon1"`). `None` means unspecified / a
+    /// slotless source such as a soul core.
     pub slot: Option<String>,
-    /// 该组是否参与计算（PoB 里每组可单独启停）。
+    /// Whether this group participates in the calculation (PoB lets each group be
+    /// enabled/disabled individually).
     pub enabled: bool,
-    /// 该组的宝石稳定 id（主动技能在前，辅助宝石在后；与 PoB Gem 列表顺序一致）。
+    /// Stable gem ids for this group (active skill first, then support gems; matches
+    /// PoB's Gem list order).
     pub gem_ids: Vec<String>,
-    /// 主动技能的授予效果 id（PoB `<Gem skillId>`，如 `ExplosiveGrenadePlayer`），
-    /// 用于解析该技能的分等级参数（cast/attack time、cost、cooldown）。`None`=未知。
+    /// The active skill's granted effect id (PoB `<Gem skillId>`, e.g.
+    /// `ExplosiveGrenadePlayer`), used to look up this skill's per-level parameters
+    /// (cast/attack time, cost, cooldown). `None` = unknown.
     pub active_skill_id: Option<String>,
-    /// 主动技能宝石的等级（PoB `<Gem level>`），用于在分等级数组中定位行。
+    /// The active skill gem's level (PoB `<Gem level>`), used to index the per-level
+    /// parameter arrays.
     pub active_gem_level: Option<u32>,
-    /// 主动技能宝石的品质（PoB `<Gem quality>`），与 [`GemSkillRef::quality`] 同步
-    /// （T1.4：取数侧实际经 `gem_skills` 查品质，本字段供 builder/快照口径对齐）。
+    /// The active skill gem's quality (PoB `<Gem quality>`), kept in sync with
+    /// [`GemSkillRef::quality`] (T1.4: the data-fetch side actually looks up quality via
+    /// `gem_skills`; this field exists to keep the builder/snapshot views consistent).
     pub active_gem_quality: Option<u32>,
-    /// 该组**每个启用宝石**的授予效果引用（按 PoB Gem 列表顺序，含 active 与 support）；
-    /// 供解析 support 宝石的分等级 stat（倍率/附加伤害）注入被支援技能。
+    /// Granted-effect references for **every enabled gem** in this group (in PoB Gem
+    /// list order, active and support included); used to resolve support gems' per-level
+    /// stats (multipliers/added damage) and inject them into the supported skill.
     pub gem_skills: Vec<GemSkillRef>,
-    /// PoB `<Skill mainActiveSkill="N">`（**1-based**）：指向该组**非辅助技能列表**中的第 N 个
-    /// （meta/触发壳算入，support 不计入）。用于多主动技能组（如 Cast on Crit + Comet）里
-    /// 选中正确的主技能；`None`=未指定（退化为该组首个伤害技能）。
+    /// PoB `<Skill mainActiveSkill="N">` (**1-based**): points to the Nth entry in this
+    /// group's **non-support skill list** (meta/trigger shells count, supports don't).
+    /// Used to pick the correct main skill in groups with multiple active skills (e.g.
+    /// Cast on Crit + Comet); `None` = unspecified (falls back to the group's first
+    /// damaging skill).
     pub main_active_skill: Option<usize>,
 }
 
@@ -109,20 +126,22 @@ impl SocketGroup {
         self
     }
 
-    /// 设定主动技能授予效果 id + 宝石等级（分等级参数解析的键）。
+    /// Sets the active skill's granted effect id + gem level (the key for looking up
+    /// per-level parameters).
     pub fn with_active_skill(mut self, skill_id: impl Into<String>, gem_level: u32) -> Self {
         self.active_skill_id = Some(skill_id.into());
         self.active_gem_level = Some(gem_level);
         self
     }
 
-    /// 追加一个宝石的授予效果引用（active 或 support；按 PoB Gem 列表顺序）。
-    /// 品质缺省 0（无品质）；带品质用 [`Self::with_gem_skill_quality`]。
+    /// Appends a granted-effect reference for a gem (active or support; in PoB Gem list
+    /// order). Quality defaults to 0 (no quality); use
+    /// [`Self::with_gem_skill_quality`] to set it.
     pub fn with_gem_skill(self, skill_id: impl Into<String>, gem_level: u32) -> Self {
         self.with_gem_skill_quality(skill_id, gem_level, 0)
     }
 
-    /// 追加一个带品质的宝石授予效果引用（T1.4，契约 C4）。
+    /// Appends a granted-effect reference for a gem with quality (T1.4, contract C4).
     pub fn with_gem_skill_quality(
         mut self,
         skill_id: impl Into<String>,
@@ -139,7 +158,7 @@ impl SocketGroup {
         self
     }
 
-    /// 追加一个带 statSet 形态选择的宝石授予效果引用（T5.4，契约 C4）。
+    /// Appends a granted-effect reference for a gem with a statSet form selection (T5.4, contract C4).
     pub fn with_gem_skill_stat_set(
         mut self,
         skill_id: impl Into<String>,
@@ -156,14 +175,14 @@ impl SocketGroup {
         self
     }
 
-    /// 设定 PoB `mainActiveSkill`（1-based，索引该组非辅助技能列表）。
+    /// Sets PoB `mainActiveSkill` (1-based, indexing this group's non-support skill list).
     pub fn with_main_active_skill(mut self, n: usize) -> Self {
         self.main_active_skill = Some(n);
         self
     }
 }
 
-/// 角色身份（PoB Build XML 的 `<Build>` 头部字段子集）。
+/// Character identity (a subset of the header fields in PoB Build XML's `<Build>`).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CharacterIdentity {
     pub level: u32,
@@ -171,66 +190,81 @@ pub struct CharacterIdentity {
     pub ascendancy_name: String,
 }
 
-/// 范围珠宝（radius jewel）的几何展开输入。
+/// Geometric expansion input for a radius jewel.
 ///
-/// PoB2 `... Passive Skills in Radius also grant <mod>` 词条需要按珠宝插槽**半径内已分配**
-/// 的对应种类节点数 × 授予值注入全局 mod。本结构携带几何计算所需的最小信息：插槽所在
-/// 树节点 id、半径档位文本（`Radius:` 行）、以及 `also grant` 行（原文，后续逐行展开）。
+/// PoB2's `... Passive Skills in Radius also grant <mod>` mods need to inject a global
+/// mod scaled by the count of matching **allocated** nodes within the jewel socket's
+/// radius times the granted value. This struct carries the minimum info that geometry
+/// needs: the tree node id the socket sits on, the radius tier text (`Radius:` line),
+/// and the `also grant` lines (raw text, expanded line by line downstream).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RadiusJewel {
-    /// 珠宝所在的树插槽节点 `skill` id（`<Socket nodeId>`）。
+    /// The `skill` id of the tree socket the jewel sits in (`<Socket nodeId>`).
     pub socket_node: u32,
-    /// 半径档位文本（`Radius:` 行原文，如 `Small`/`Medium`/`Large`/`Very Large`）。
-    /// 缺失时为 `None`（PoB 默认珠宝半径，按 Large 近似）。
+    /// Radius tier text (raw `Radius:` line, e.g. `Small`/`Medium`/`Large`/`Very Large`).
+    /// `None` when missing (PoB defaults to a jewel radius approximated as Large).
     pub radius_label: Option<String>,
-    /// `... Passive Skills in Radius also grant <mod>` 行（原文，含种类前缀）。
+    /// `... Passive Skills in Radius also grant <mod>` lines (raw text, including the
+    /// node-type prefix).
     pub grant_lines: Vec<String>,
-    /// `N% increased Effect of Notable Passive Skills in Radius`（Time-Lost 珠宝；
-    /// vendor ModParser.lua:6847 → `JewelNotablePassiveSkillEffect` INC，消费点
-    /// CalcSetup.lua:246-275 对半径内 Notable 节点 modList 整体 ScaleAddList）。
-    /// 同珠宝多行时取末行（vendor `localNotableIncEffect = mod.value` 后写覆盖）。
+    /// `N% increased Effect of Notable Passive Skills in Radius` (Time-Lost jewels;
+    /// vendor ModParser.lua:6847 → `JewelNotablePassiveSkillEffect` INC, consumed at
+    /// CalcSetup.lua:246-275 which applies a ScaleAddList to the modList of Notable
+    /// nodes within radius). When a jewel has multiple such lines, the last one wins
+    /// (vendor overwrites via `localNotableIncEffect = mod.value`).
     pub notable_effect_inc: u32,
 }
 
-/// PoB Build 的内存状态。
+/// In-memory state of a PoB Build.
 ///
-/// 不可变更新：所有 `with_*` 方法返回新副本；`set_item` / `add_socket_group` 等
-/// 也保持「构造新值」语义（沿用 builder 风格，避免就地共享可变状态）。
+/// Immutable updates: every `with_*` method returns a new copy; `set_item` /
+/// `add_socket_group` etc. keep the same "construct a new value" semantics (following
+/// the builder pattern to avoid in-place shared mutable state).
 #[derive(Debug, Clone, Default)]
 pub struct Build {
-    /// 角色身份。
+    /// Character identity.
     pub character: CharacterIdentity,
-    /// 当前视图（PoB UI 状态，兼容 Build XML `viewMode`）。
+    /// Current view (PoB UI state, compatible with Build XML's `viewMode`).
     pub view_mode: ViewMode,
-    /// 已分配天赋树。
+    /// Allocated passive tree.
     pub tree: PassiveTreeSpec,
-    /// 该 build 记录的 PoB 天赋树版本（`<Spec treeVersion>`，如 `"0_5"`）。`None`=旧存档
-    /// 未标注。**纯对账元信息**：calc 仍按已加载数据的树解释已分配节点（对齐 PoB2「用当前
-    /// 池重算」）；树版本失配的实际症状=已分配节点不在已加载树中，用
-    /// [`crate::diagnose_tree_version`] 显性化（calc 现状静默跳过，见 pobr-tree node.rs）。
+    /// The PoB passive tree version recorded for this build (`<Spec treeVersion>`, e.g.
+    /// `"0_5"`). `None` = an old save with no annotation. **Purely reconciliation
+    /// metadata**: calc still interprets allocated nodes against whatever tree data is
+    /// currently loaded (matching PoB2's "recompute against the current pool"). The
+    /// actual symptom of a tree version mismatch is allocated nodes not present in the
+    /// loaded tree; use [`crate::diagnose_tree_version`] to surface it explicitly (calc
+    /// itself currently skips such nodes silently — see pobr-tree node.rs).
     pub tree_version: Option<String>,
-    /// 装备：按 [`EquipmentSlot`] 索引。遍历时按 `slot.id()` 字典序排序以保证确定性
-    /// （`EquipmentSlot` 仅实现 `Hash` 不实现 `Ord`，REAL 类型不可改）。
+    /// Equipment, indexed by [`EquipmentSlot`]. Iterated in `slot.id()` lexical order for
+    /// determinism (`EquipmentSlot` only implements `Hash`, not `Ord`, and we can't
+    /// change the REAL type).
     pub items: HashMap<EquipmentSlot, Item>,
-    /// 珠宝（天赋树/深渊槽，无固定 [`EquipmentSlot`]）。其词条按全局作用注入
-    /// （多数珠宝为全局；radius 珠宝当前按全局近似）。
+    /// Jewels (passive tree / abyss sockets, no fixed [`EquipmentSlot`]). Their mods are
+    /// injected as global (most jewels are global; radius jewels are currently
+    /// approximated as global too).
     pub jewels: Vec<Item>,
-    /// 范围珠宝（`... in Radius also grant <mod>`）的几何展开输入。与 `jewels` 并存：
-    /// `jewels` 注入珠宝**自身**的全局词条，本列表额外按半径几何把 `also grant` 展开为
-    /// 「半径内已分配对应种类节点数 × 授予」的全局 mod（见 `calc_orchestrator`）。
+    /// Geometric expansion input for radius jewels (`... in Radius also grant <mod>`).
+    /// Coexists with `jewels`: `jewels` injects the jewel's **own** global mods, while
+    /// this list additionally expands `also grant` lines by radius geometry into global
+    /// mods scaled by "count of allocated nodes of the matching type within radius ×
+    /// grant" (see `calc_orchestrator`).
     pub radius_jewels: Vec<RadiusJewel>,
-    /// **激活态**药剂/护符的「槽名 + 物品」：
-    /// `("Flask 1"|"Charm 1..3", Item)`，XML 文档序，仅 `active="true"` 的槽进入
-    /// （vendor CalcSetup.lua:1014-1028 `slot.active` 门控）。槽名供 flask/charm
-    /// 结构化通道做 `SourceId(Flask, "flask.<slot>")` 归因与 flask/charm 分类，
-    /// 经 `ingest_flask_charm` → env_finalize 阶段 3 `merge_flasks_charms` 进计算。
+    /// **Active** flask/charm slot-name + item pairs:
+    /// `("Flask 1"|"Charm 1..3", Item)`, in XML document order, only slots with
+    /// `active="true"` are included (matches vendor CalcSetup.lua:1014-1028's
+    /// `slot.active` gate). The slot name feeds the flask/charm structured pipeline's
+    /// `SourceId(Flask, "flask.<slot>")` attribution and flask/charm classification, and
+    /// enters the calculation via `ingest_flask_charm` → env_finalize stage 3
+    /// `merge_flasks_charms`.
     pub utility_slots: Vec<(String, Item)>,
-    /// 技能宝石组。
+    /// Skill gem groups.
     pub socket_groups: Vec<SocketGroup>,
-    /// 主技能组索引（PoB `<Build mainSocketGroup>`，**1-based**，指向 `socket_groups`）。
-    /// `None`=未指定（退化为启发式选首个伤害技能）。
+    /// Main skill group index (PoB `<Build mainSocketGroup>`, **1-based**, indexes
+    /// `socket_groups`). `None` = unspecified (falls back to a heuristic pick of the
+    /// first damaging skill).
     pub main_socket_group: Option<usize>,
-    /// Build 级配置。
+    /// Build-level config.
     pub config: BuildConfig,
 }
 
@@ -249,7 +283,7 @@ impl Build {
         self
     }
 
-    /// 设定主技能组索引（PoB `mainSocketGroup`，1-based）。
+    /// Sets the main skill group index (PoB `mainSocketGroup`, 1-based).
     pub fn with_main_socket_group(mut self, group: usize) -> Self {
         self.main_socket_group = Some(group);
         self
@@ -260,7 +294,7 @@ impl Build {
         self
     }
 
-    /// 设定该 build 的 PoB 天赋树版本标注（`<Spec treeVersion>`），返回新副本。
+    /// Sets this build's PoB passive tree version annotation (`<Spec treeVersion>`), returns a new copy.
     pub fn with_tree_version(mut self, version: Option<String>) -> Self {
         self.tree_version = version;
         self
@@ -271,37 +305,37 @@ impl Build {
         self
     }
 
-    /// 设置某槽位装备，返回新副本。
+    /// Sets the item in a slot, returns a new copy.
     pub fn set_item(mut self, slot: EquipmentSlot, item: Item) -> Self {
         self.items.insert(slot, item);
         self
     }
 
-    /// 设定珠宝列表，返回新副本。
+    /// Sets the jewel list, returns a new copy.
     pub fn with_jewels(mut self, jewels: Vec<Item>) -> Self {
         self.jewels = jewels;
         self
     }
 
-    /// 设定范围珠宝（radius jewel）几何展开列表，返回新副本。
+    /// Sets the radius jewel geometric expansion list, returns a new copy.
     pub fn with_radius_jewels(mut self, radius_jewels: Vec<RadiusJewel>) -> Self {
         self.radius_jewels = radius_jewels;
         self
     }
 
-    /// 设定激活态药剂/护符的槽名保留列表（见 [`Self::utility_slots`]），返回新副本。
+    /// Sets the active flask/charm slot-name list (see [`Self::utility_slots`]), returns a new copy.
     pub fn with_utility_slots(mut self, slots: Vec<(String, Item)>) -> Self {
         self.utility_slots = slots;
         self
     }
 
-    /// 追加一个技能宝石组，返回新副本。
+    /// Appends a skill gem group, returns a new copy.
     pub fn add_socket_group(mut self, group: SocketGroup) -> Self {
         self.socket_groups.push(group);
         self
     }
 
-    /// 按 `slot.id()` 字典序的确定性顺序遍历已装备物品（槽位 + 物品）。
+    /// Iterates equipped items (slot + item) in deterministic `slot.id()` lexical order.
     pub fn equipped_items(&self) -> Vec<(EquipmentSlot, &Item)> {
         let mut entries: Vec<(EquipmentSlot, &Item)> = self
             .items
@@ -312,7 +346,7 @@ impl Build {
         entries
     }
 
-    /// 已启用的技能宝石组。
+    /// Enabled skill gem groups.
     pub fn enabled_socket_groups(&self) -> impl Iterator<Item = &SocketGroup> {
         self.socket_groups.iter().filter(|g| g.enabled)
     }

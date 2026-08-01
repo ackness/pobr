@@ -1,11 +1,15 @@
-//! PoB2 数值对齐 harness：用真实 ninja build code 内嵌的 `<PlayerStat>`（PoB2 自己导出时
-//! 算好的值）作为 golden 参照，对比 PoBR 的计算输出。
+//! PoB2 numeric-alignment harness: uses the `<PlayerStat>` values embedded in
+//! real ninja build codes (values PoB2 itself computed when it exported them)
+//! as the golden reference, and compares them against PoBR's calculated output.
 //!
-//! **关键**：PoB Build Code 解码出的 XML 含 `<PlayerStat stat="X" value="Y"/>`——这就是
-//! PoB2 的权威答案，无需另跑 PoB2。本测试逐 build 打印「PoBR vs PoB2」对照表（`--nocapture`
-//! 可见），并断言**目前应当成立**的不变量；已知差距不硬失败，作为对齐进度的活体度量。
+//! **Key point**: the XML decoded from a PoB Build Code contains
+//! `<PlayerStat stat="X" value="Y"/>` — this is PoB2's authoritative answer,
+//! no need to run PoB2 separately. This test prints a "PoBR vs PoB2"
+//! comparison table per build (visible with `--nocapture`), and asserts the
+//! invariants that **should currently hold**; known gaps don't hard-fail —
+//! they serve as a live measure of alignment progress.
 //!
-//! 运行：`cargo test -p pobr-build --test pob2_parity -- --nocapture`
+//! Run with: `cargo test -p pobr-build --test pob2_parity -- --nocapture`
 
 use pobr_build::{
     BuildData, DataOrchestratorOptions, calculate_with_data, decode_pob_code, parse_build_from_code,
@@ -18,7 +22,7 @@ use std::collections::HashMap;
 const DEADEYE: &str = include_str!("../../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
 const MARTIAL: &str = include_str!("../../../../examples/demo-bd-test/ninja-bd-marial-artist.txt");
 
-/// 从解码后的 Build XML 抽取所有 `<PlayerStat stat="X" value="Y"/>`（PoB2 的参照值）。
+/// Extracts every `<PlayerStat stat="X" value="Y"/>` from the decoded Build XML (PoB2's reference values).
 fn parse_player_stats(xml: &str) -> HashMap<String, f64> {
     let mut out = HashMap::new();
     for chunk in xml.split("<PlayerStat ").skip(1) {
@@ -41,12 +45,12 @@ fn between<'a>(s: &'a str, start: &str, end: &str) -> Option<&'a str> {
 }
 
 fn load_data() -> BuildData {
-    // golden 钉定被校验的数据版本（与活动 DATA_VERSION 解耦）；见 pobr_data::GOLDEN_PARITY_DATA_VERSION。
+    // Pins the data version being checked against the golden values (decoupled from the active DATA_VERSION); see pobr_data::GOLDEN_PARITY_DATA_VERSION.
     let data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
     BuildData::load(&data).expect("load BuildData")
 }
 
-/// (显示名, PoB2 key, PoBR 取值闭包)
+/// (display label, PoB2 key, PoBR value)
 fn compare_row(out: &OutputTable, label: &str, pob2: Option<f64>, pobr: f64) -> String {
     match pob2 {
         Some(v2) => {
@@ -68,7 +72,7 @@ fn report(name: &str, code: &str, data: &BuildData) -> (OutputTable, HashMap<Str
     let xml = decode_pob_code(code).expect("decode");
     let pob2 = parse_player_stats(&xml);
     let build = parse_build_from_code(code).expect("parse build");
-    // 面板口径（PoB2 PlayerStat 的防御/属性是面板值；DPS 另作说明）。
+    // Panel convention (PoB2's PlayerStat defence/attribute values are panel values; DPS is a separate case, see below).
     let opts = DataOrchestratorOptions {
         base_input: MinimalInput::default(),
         inject_character_base: true,
@@ -91,7 +95,7 @@ fn report(name: &str, code: &str, data: &BuildData) -> (OutputTable, HashMap<Str
         ("FireRes", "FireResist", out.fire_resistance),
         ("ColdRes", "ColdResist", out.cold_resistance),
         ("LightRes", "LightningResist", out.lightning_resistance),
-        // PoBR crit_chance 是 fraction（0.05），PoB2 CritChance 是 percent（5）→ ×100 对齐。
+        // PoBR's crit_chance is a fraction (0.05), PoB2's CritChance is a percent (5) -> align by ×100.
         ("CritChance", "CritChance", out.crit_chance * 100.0),
         ("CritMulti", "CritMultiplier", out.crit_multiplier),
         ("AvgHit", "AverageDamage", out.total_hit_avg),
@@ -106,7 +110,7 @@ fn report(name: &str, code: &str, data: &BuildData) -> (OutputTable, HashMap<Str
     (out, pob2)
 }
 
-/// 断言某 PoB2 嵌入 PlayerStat 与 PoBR 输出在 `tol` 相对误差内（golden 缺该 key 则跳过）。
+/// Asserts a PoB2-embedded PlayerStat and PoBR's output are within `tol` relative error (skipped if golden lacks the key).
 fn assert_within(pob2: &HashMap<String, f64>, key: &str, pobr: f64, tol: f64) {
     if let Some(&golden) = pob2.get(key)
         && golden != 0.0
@@ -119,57 +123,80 @@ fn assert_within(pob2: &HashMap<String, f64>, key: &str, pobr: f64, tol: f64) {
     }
 }
 
-/// Deadeye：打印对照 + 断言「目前应当成立」的不变量（build 解析、生命有限为正、抗性 ≤ cap）。
+/// Deadeye: prints the comparison + asserts the invariants that "should currently hold" (build parses, life is finite and positive, resistances <= cap).
 #[test]
 fn deadeye_parity_report() {
     let data = load_data();
     let (out, pob2) = report("DEADEYE", DEADEYE, &data);
     assert!(out.life > 0.0 && out.life.is_finite(), "life must be > 0");
     assert!(out.dps.is_finite(), "dps must be finite");
-    // 已对齐 PoB2 <10%（回归门禁，防止后续改动破坏 deadeye parity）：
+    // Already aligned with PoB2 within <10% (a regression gate to keep later changes from breaking deadeye parity):
     assert_within(&pob2, "Life", out.life, 0.10);
     assert_within(&pob2, "Armour", out.armour, 0.10);
     assert_within(&pob2, "CritChance", out.crit_chance * 100.0, 0.10);
     assert_within(&pob2, "CritMultiplier", out.crit_multiplier, 0.10);
-    // Fire/Cold/Lightning resist + Evasion **不再对 ninja-bd-deadeye.txt 内嵌 PlayerStat
-    // 断言**：该 code 的内嵌 `<PlayerStat>` 由早于 PoB2 建模 Mageblood legacies 的版本
-    // 导出，缺 Bismuth 的 ElementalResist +45（内嵌 Fire 66/Cold 56/Light 75 未封顶）与
-    // Jade/Stibnite 的 Evasion +2000/+150%（内嵌 14301）。同一 build 的 0.5.4b 权威 golden
-    // （fixture ranger-deadeye-explosive-grenade/meta.json）三抗全封顶 75、Evasion 29774
-    // ——PoBR 现值与之吻合（Evasion 0.99x）。故此处旧样本的 res/evasion 断言已失效，删除；
-    // Mageblood 的回归门禁由 ninja_parity（0.5.4b oracle golden）承担。
-    // AvgDamage 容差 0.20、DPS 0.12（**本旧样本**口径，非主回归门禁——主门禁是 ninja_parity 的
-    // 结构化 build）：deadeye 的伤害 base 偏小缺口（oracle 实证 ~0.59-0.64x 物理 base，源于 grenade
-    // 宝石等级加成被刻意抑制 + 缺失 Mirage Deadeye 全局 −25% more + grenade 吞吐/Speed 补偿结）此前
-    // 被「分类型 final MORE 漏算」（Lightning Attunement `support_cold_and_fire_damage_+%_final`
-    // 未注入 → Fire/Cold ~2.1x 虚高）巧合抵消，使 AvgDamage 假性命中 0.894x。Wave12 修复分类型
-    // final MORE 映射后，Fire/Cold 逐分量收敛到 1.05x（oracle 双证），真实的 base 缺口随之暴露
-    // （AvgHit 0.817x）。base 缺口是 grenade 冷却吞吐/Mirage 数据补全的独立任务（与 Speed 1.71x
-    // 过算耦合，单边修复会让 DPS 反向跑飞），不在本 wave 凑值范围。容差按当前真实偏差放宽，
-    // 待 grenade 链路数据补齐后收紧。
+    // Fire/Cold/Lightning resist + Evasion are **no longer asserted against
+    // ninja-bd-deadeye.txt's embedded PlayerStat**: that code's embedded
+    // `<PlayerStat>` was exported by a version of PoB2 that predates modeling
+    // Mageblood's legacies, so it's missing Bismuth's ElementalResist +45
+    // (embedded Fire 66/Cold 56/Light 75, uncapped) and Jade/Stibnite's
+    // Evasion +2000/+150% (embedded 14301). The 0.5.4b authoritative golden
+    // for the same build (fixture ranger-deadeye-explosive-grenade/meta.json)
+    // has all three resists capped at 75 and Evasion 29774 -- PoBR's current
+    // value matches it (Evasion 0.99x). So the old sample's res/evasion
+    // assertions here are stale and removed; Mageblood's regression gate is
+    // now carried by ninja_parity (0.5.4b oracle golden).
+    // AvgDamage tolerance 0.20, DPS 0.12 (**this old sample's** convention,
+    // not the primary regression gate -- the primary gate is ninja_parity's
+    // structured builds): deadeye's damage-base undershoot gap (oracle
+    // confirms ~0.59-0.64x physical base, caused by grenade gem level bonus
+    // being deliberately suppressed + a missing Mirage Deadeye global -25%
+    // more + a grenade-throughput/Speed compensation knot) used to be
+    // coincidentally masked by a "missing per-type final MORE" bug (Lightning
+    // Attunement's `support_cold_and_fire_damage_+%_final` wasn't injected ->
+    // Fire/Cold were inflated ~2.1x), which made AvgDamage falsely land at
+    // 0.894x. After Wave 12 fixed the per-type final MORE mapping, Fire/Cold
+    // each converged to 1.05x per-component (double-confirmed by oracle), and
+    // the real base gap was exposed (AvgHit 0.817x). The base gap is a
+    // separate task for grenade cooldown throughput / Mirage data completion
+    // (it's coupled with a Speed 1.71x over-calculation, so a one-sided fix
+    // would send DPS flying the other way), out of scope for this wave.
+    // Tolerance is loosened to match the current real deviation, to be
+    // tightened once the grenade-chain data is filled in.
     //
-    // statmap 切换（Legacy→Data）后再放宽：Data 通道补上 legacy 漏注入的
-    // Multishot −25% more（`sup_dex.lua:3154-3156`，修对）后，本旧样本 AverageDamage
-    // 0.817x→0.613x、TotalDPS 同步下移——legacy 假性命中的又一层「过算抵消欠算」
-    // 被拆除，真实 base/吞吐缺口完整暴露（与 ninja deadeye 行同一补偿结，切换审查
-    // 记录 §3）。
+    // Loosened further after the statmap switch (Legacy->Data): once the Data
+    // channel added the Multishot -25% more that Legacy had failed to inject
+    // (`sup_dex.lua:3154-3156`, now fixed), this old sample's AverageDamage
+    // moved 0.817x->0.613x and TotalDPS shifted down with it -- another layer
+    // of Legacy's false-positive "over-count masking an under-count" was
+    // peeled away, fully exposing the real base/throughput gap (the same
+    // compensation knot as the ninja deadeye row; see switch-review log §3).
     //
-    // 补刀（武器集专属点过滤，vendor CalcSetup.lua:209-233/:791-792）同向放宽：
-    // 此前非激活 WeaponSet2 的 22 个专属点（含伤害节点）被错误计入，假性收敛；按
-    // vendor 语义剔除后偏差全部归属上述已记录的 grenade base/吞吐缺口。+合并后
-    // 两层「过算抵消欠算」**叠乘**拆除（0.613x × 0.647/0.817 ≈ 0.485x，实测吻合），
-    // 容差按合并后真实偏差放宽，只防进一步倒退；待 grenade 冷却吞吐 / Mirage 数据
-    // 补齐后收紧。
+    // Loosened the same direction for the finishing-move fix (weapon-set
+    // exclusive-node filtering, vendor CalcSetup.lua:209-233/:791-792): 22
+    // exclusive nodes from the inactive WeaponSet2 (including damage nodes)
+    // were previously wrongly counted, producing a false convergence; once
+    // stripped per vendor semantics, the whole deviation attributes to the
+    // grenade base/throughput gap recorded above. Combined, the two layers of
+    // "over-count masking an under-count" were peeled away **multiplicatively**
+    // (0.613x × 0.647/0.817 ≈ 0.485x, matches measurement); tolerance is
+    // loosened to the combined real deviation, only to guard against further
+    // regression -- to be tightened once grenade cooldown throughput / Mirage
+    // data is completed.
     //
-    // 0.5.4b #4（grenade 短语解禁）后收口：AvgDamage 实测 1.04x——上述「过算抵消
-    // 欠算」链中 base 侧缺口已被历次修复闭合，容差 0.55→0.20 收紧。TotalDPS **不再
-    // 对本旧样本断言**（与上方 res/evasion 同理）：内嵌 PlayerStat 导出早于 0.5.4b
-    // 的 grenade CDR 再平衡（vendor 0.22.0 ModParser gem 循环加 `fromItem` 排除，
-    // `for grenade skills` 短语复活 → 3×15 CDR 树词条生效，Speed 0.164→0.254），
-    // 旧样本 Speed 口径已失效；权威 DPS 门禁走 ninja_parity 的 0.5.4b fixture
-    // golden（Speed 0.254 精确、TotalDPS 0.83x 且棘轮守护）。
+    // Tightened after 0.5.4b #4 (grenade phrase unblocked): AvgDamage now
+    // measures 1.04x -- the base-side gap in the "over-count masking an
+    // under-count" chain above has been closed by the accumulated fixes, so
+    // tolerance tightens 0.55->0.20. TotalDPS is **no longer asserted against
+    // this old sample** (same reasoning as res/evasion above): the embedded
+    // PlayerStat was exported before 0.5.4b's grenade CDR rebalance (vendor
+    // 0.22.0's ModParser gem loop added a `fromItem` exclusion, reviving the
+    // `for grenade skills` phrase -> the 3×15 CDR tree mods take effect,
+    // Speed 0.164->0.254), so the old sample's Speed convention is stale;
+    // the authoritative DPS gate is ninja_parity's 0.5.4b fixture golden
+    // (Speed exactly 0.254, TotalDPS 0.83x, ratchet-guarded).
     assert_within(&pob2, "AverageDamage", out.total_hit_avg, 0.20);
-    // Evasion 见上方注释：内嵌样本缺 Mageblood（14301），不硬断言；权威值走 fixture golden。
+    // Evasion: see the comment above -- the embedded sample is missing Mageblood (14301), so it's not hard-asserted; the authoritative value comes from the fixture golden.
 }
 
 #[test]
@@ -178,14 +205,19 @@ fn martial_parity_report() {
     let (out, pob2) = report("MARTIAL", MARTIAL, &data);
     assert!(out.life.is_finite() && out.mana.is_finite());
     assert!(out.dps.is_finite());
-    // EnergyShield「1.12x 高估」诊断（存量 #11-2）：**旧样本 golden 失真，非 PoBR
-    // 多算**。本 code `targetVersion="0_1"`（PoE2 0.1 时代导出），内嵌 PlayerStat
-    // EnergyShield=6257；同一 XML 喂当前 vendor（tools/pob2-oracle）得 7008，
-    // PoBR 7005.5 = 0.9996x 现行 vendor。0.1→0.5.x 间未变的口径（Life/Mana/
-    // Evasion/三抗/Crit）内嵌值与现行 oracle 逐位一致，唯 ES（与进攻侧）随数据
-    // 版本漂移——与上方 deadeye 的 Mageblood/res 旧样本失效同类。断言按**现行
-    // vendor 语义**守护（容差 0.15 覆盖 stale-golden 缺口 1.12x，只防大幅倒退；
-    // 权威 ES 门禁走 ninja_parity 的 0.5.4b fixture golden）。
+    // EnergyShield "1.12x overestimate" diagnosis (backlog item #11-2): **the
+    // old sample's golden is stale, PoBR isn't over-computing**. This code
+    // has `targetVersion="0_1"` (exported in the PoE2 0.1 era), with embedded
+    // PlayerStat EnergyShield=6257; feeding the same XML into current vendor
+    // (tools/pob2-oracle) gives 7008, and PoBR gives 7005.5 = 0.9996x of
+    // current vendor. Conventions unchanged between 0.1 and 0.5.x
+    // (Life/Mana/Evasion/three resists/Crit) match the current oracle
+    // value-for-value in the embedded data; only ES (and the offence side)
+    // drifted with the data version -- the same category as the stale
+    // Mageblood/res sample above for deadeye. This assertion is guarded by
+    // **current vendor semantics** (tolerance 0.15 covers the stale-golden
+    // gap of 1.12x, only to guard against a large regression; the
+    // authoritative ES gate is ninja_parity's 0.5.4b fixture golden).
     assert_within(&pob2, "EnergyShield", out.energy_shield, 0.15);
     assert_within(&pob2, "Evasion", out.evasion, 0.05);
     assert_within(&pob2, "Mana", out.mana, 0.05);

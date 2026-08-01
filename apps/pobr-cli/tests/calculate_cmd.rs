@@ -1,4 +1,4 @@
-//! 集成测试：直接调用 `pobr_cli` 库函数（纯函数，IO 无关）。
+//! Integration tests: calling `pobr_cli` library functions directly (pure functions, no IO).
 
 use pobr_cli::{
     CalculateBuildRequest, CalculateRequest, ParseItemRequest, calculate, calculate_build,
@@ -15,7 +15,7 @@ fn base_input() -> pobr_core::calc::MinimalInput {
 
 #[test]
 fn calculate_applies_base_life_modifier_text() {
-    // Arrange：base_life=1000，加一条可解析的 "+50 to maximum Life" → 期望 life=1050。
+    // Arrange: base_life=1000, plus a parseable "+50 to maximum Life" -> expect life=1050.
     let req = CalculateRequest {
         input: base_input(),
         modifier_texts: vec!["+50 to maximum Life".to_string()],
@@ -31,7 +31,7 @@ fn calculate_applies_base_life_modifier_text() {
 
 #[test]
 fn calculate_collects_unsupported_modifier_texts() {
-    // "mirrored" 在 parser 中是 Unsupported 状态（不报错），应被收集。
+    // "mirrored" is Unsupported in the parser (no error), and should be collected.
     let req = CalculateRequest {
         input: base_input(),
         modifier_texts: vec!["mirrored".to_string()],
@@ -45,7 +45,7 @@ fn calculate_collects_unsupported_modifier_texts() {
 
 #[test]
 fn calculate_collects_unparseable_modifier_text_as_unsupported() {
-    // 引擎对无法识别的文本不报错——整行进 unsupported 收集面。
+    // The engine never errors on unrecognized text — the whole line goes into the unsupported collection.
     let req = CalculateRequest {
         input: base_input(),
         modifier_texts: vec!["garbage zzz".to_string()],
@@ -94,7 +94,7 @@ fn parse_mod_returns_unsupported_for_mirrored() {
 
 #[test]
 fn parse_mod_reports_unsupported_for_unparseable() {
-    // 引擎对无法识别的文本不报错——Unsupported + 原文进 unparsed。
+    // The engine never errors on unrecognized text — Unsupported, with the raw text going into unparsed.
     let report = parse_mod("garbage zzz").expect("engine never errors on unknown text");
     assert_eq!(report.status, "Unsupported");
     assert_eq!(report.unparsed.as_deref(), Some("garbage zzz"));
@@ -102,7 +102,7 @@ fn parse_mod_reports_unsupported_for_unparseable() {
 
 #[test]
 fn parse_item_parses_rare_ring() {
-    // parse_item 现已调用真实解析器（item_text::parse_item_text + item::ingest_item）。
+    // parse_item now calls the real parser (item_text::parse_item_text + item::ingest_item).
     let req = ParseItemRequest {
         text: "Rarity: Rare\nGloom Coil\nIron Ring\n--------\n+40 to maximum Life".to_string(),
     };
@@ -110,7 +110,7 @@ fn parse_item_parses_rare_ring() {
     assert_eq!(report.base, "Iron Ring");
     assert_eq!(report.rarity, "Rare");
     assert_eq!(report.quality, 0);
-    // "+40 to maximum Life" 是可解析词条，应出现在 modifiers 中。
+    // "+40 to maximum Life" is a parseable mod line and should show up in modifiers.
     assert!(
         report
             .modifiers
@@ -128,7 +128,7 @@ fn parse_item_parses_rare_ring() {
 
 #[test]
 fn parse_item_collects_unsupported_modifiers() {
-    // "mirrored" 是 Unsupported，应收集进 unsupported 而不阻断解析。
+    // "mirrored" is Unsupported, and should be collected into unsupported without blocking parsing.
     let req = ParseItemRequest {
         text: "Rarity: Normal\nIron Ring\n--------\nmirrored".to_string(),
     };
@@ -139,7 +139,7 @@ fn parse_item_collects_unsupported_modifiers() {
 
 #[test]
 fn parse_item_errors_on_missing_rarity() {
-    // 缺少 Rarity: 头，返回结构性错误。
+    // Missing the Rarity: header, returns a structural error.
     let req = ParseItemRequest {
         text: "Iron Ring\n--------\n+40 to maximum Life".to_string(),
     };
@@ -156,7 +156,7 @@ fn encode_then_decode_roundtrips_xml() {
 
     let code = encode_code(xml).expect("encode succeeds");
     assert!(!code.is_empty());
-    // URL-safe base64 不应含 '+' 或 '/'。
+    // URL-safe base64 should never contain '+' or '/'.
     assert!(!code.contains('+'));
     assert!(!code.contains('/'));
 
@@ -170,7 +170,7 @@ fn decode_errors_on_invalid_code() {
     assert!(!format!("{err}").is_empty());
 }
 
-// calculate-build：PoB Build Code → 完整 Build → 端到端归因计算
+// calculate-build: PoB Build Code -> a full Build -> end-to-end attributed calculation
 
 const DEADEYE_CODE: &str = include_str!("../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
 
@@ -189,7 +189,7 @@ fn calculate_build_summarizes_and_computes_from_code() {
     };
     let report = calculate_build(&req).expect("calculate-build succeeds");
 
-    // Build 摘要：身份与各来源计数被生产解析器还原。
+    // Build summary: identity and per-source counts are recovered by the production parser.
     assert_eq!(report.build.level, 98);
     assert_eq!(report.build.class_name, "Ranger");
     assert!(report.build.ascendancy_name.contains("Deadeye"));
@@ -197,7 +197,7 @@ fn calculate_build_summarizes_and_computes_from_code() {
     assert!(report.build.equipped_item_count > 0);
     assert!(report.build.socket_group_count > 0);
 
-    // 输出：CharacterBase + 装备 + 天赋抬升生命；命中率在合法区间。
+    // Output: CharacterBase plus equipment plus passives raise life; hit chance falls within a valid range.
     let char_base_life = 28.0 + 12.0 * 98.0 + 2.0 * 7.0;
     assert!(
         report.output.life > char_base_life,
@@ -207,11 +207,13 @@ fn calculate_build_summarizes_and_computes_from_code() {
     );
     assert!(report.output.life.is_finite());
     assert!(report.output.hit_chance >= 0.0 && report.output.hit_chance <= 1.0);
-    // PoE2 基础爆伤倍率 2.0（无额外增伤词条）。
+    // PoE2's base crit multiplier is 2.0 (no additional damage-increase mod lines).
     assert_eq!(report.output.crit_multiplier, 2.0);
 
-    // gap B：报告携带天赋树版本对账诊断（真实 PoB2 build 必带 <Spec treeVersion>）。
-    // 不钉未知节点精确数（数据版本相关），只验捕获 + 计数自洽。
+    // gap B: the report carries passive-tree version reconciliation
+    // diagnostics (a real PoB2 build always has <Spec treeVersion>). Doesn't
+    // pin the exact unknown-node count (data-version dependent), only checks
+    // that it's captured and self-consistent.
     let diag = &report.tree_version;
     assert!(
         diag.build_tree_version.is_some(),
@@ -240,7 +242,7 @@ fn calculate_build_panel_vs_effective_hit_chance() {
     })
     .expect("effective");
 
-    // 面板口径不计敌人闪避，命中率应 ≥ 有效口径。
+    // The panel basis ignores enemy evasion, so hit chance should be >= the effective basis.
     assert!(
         panel.output.hit_chance >= effective.output.hit_chance,
         "panel {} >= effective {}",

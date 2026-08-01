@@ -1,49 +1,61 @@
-//! 端对端管线烟雾测试 + 确定性守卫（**不是** PoB2 数值 parity）。
+//! End-to-end pipeline smoke test + determinism guard (**not** PoB2 numeric parity).
 //!
-//! 本套件以真实 PoB2 ninja build code 为输入，验证 `decode → Build → calc` 整条管线：
-//! 解码 build code → 解析 header → 构造 Build → 跑 CalcOrchestrator，全程不崩溃，
-//! 且同一输入两次调用结果逐字段一致（确定性）。
+//! This suite feeds real PoB2 ninja build codes into the whole
+//! `decode -> Build -> calc` pipeline: decode the build code -> parse the
+//! header -> construct a Build -> run CalcOrchestrator, verifying it never
+//! crashes and that two calls with the same input agree field-for-field
+//! (determinism).
 //!
-//! 关键限制：`build_from_code` 只构造 `CharacterIdentity`（level / class / ascendancy），
-//! **不加载任何装备或天赋词条**。CalcOrchestrator 只聚合 `build.equipped_items()` 的词条，
-//! 此处 Build 无装备，故绝大多数输出落到 `OutputTable::default()` 的中性空 build 默认值
-//! （life / mana / 抗性 / dps = 0.0；taken_multi_* / enemy_crit_effect / crit_multiplier 等
-//! 维持中性 1.0 / 2.0）。下面命名为 `*_NEUTRAL_*` 的常量即这些默认值，**不是**真实 PoB2
-//! 黄金数值，不要当作数值 parity 基线读。（带 `_golden_` 的测试函数名同理：此处“golden”
-//! 指“快照/回归锁”，不指数值对齐。）
+//! Key limitation: `build_from_code` only constructs a `CharacterIdentity`
+//! (level / class / ascendancy) — **it doesn't load any gear or passive
+//! mods**. CalcOrchestrator only aggregates mods from
+//! `build.equipped_items()`, and this Build has no gear, so the vast majority
+//! of outputs land on `OutputTable::default()`'s neutral empty-build defaults
+//! (life / mana / resistances / dps = 0.0; taken_multi_* / enemy_crit_effect /
+//! crit_multiplier etc. stay at their neutral 1.0 / 2.0). The constants named
+//! `*_NEUTRAL_*` below are exactly these defaults — they are **not** real
+//! PoB2 golden values, so don't read them as a numeric parity baseline.
+//! (Same goes for the `_golden_` test function names: "golden" here means
+//! "snapshot / regression lock", not numeric alignment.)
 //!
-//! 因此本套件实际守卫三件事：
-//! 1. 管线烟雾：编解码 + header 解析 + Build 构造 + CalcOrchestrator 端对端跑通；
-//! 2. 确定性：相同输入两次调用逐字段一致；
-//! 3. 注入词条 sanity：唯一会“算出非零结果”的断言来自显式注入的 `MinimalInput`
-//!    （如 base_life 500 + `"+1000 to maximum Life"` → life = 1500），验证词条确实进入计算。
+//! So this suite actually guards three things:
+//! 1. Pipeline smoke: codec + header parsing + Build construction +
+//!    CalcOrchestrator run end-to-end without error;
+//! 2. Determinism: two calls with the same input agree field-for-field;
+//! 3. Injected-mod sanity: the only assertion that "computes a non-zero
+//!    result" comes from an explicitly injected `MinimalInput` (e.g.
+//!    base_life 500 + `"+1000 to maximum Life"` -> life = 1500), verifying the
+//!    mod actually reaches the calculation.
 //!
-//! 真实 PoB2 逐字段数值 parity 由 `ninja_parity.rs` 等套件负责，不在此处。
+//! Real field-for-field PoB2 numeric parity is the responsibility of suites
+//! like `ninja_parity.rs`, not this one.
 //!
-//! 容差规则：
-//! - 整数型字段（life / mana 等无小数的基础属性）：`delta.abs() < 0.5`（舍入容差）。
-//! - 浮点型字段（crit_chance / dps 等）：`relative < 1e-6`（相对误差百万分之一）。
+//! Tolerance rules:
+//! - Integer-like fields (life / mana and other whole-number base attributes):
+//!   `delta.abs() < 0.5` (rounding tolerance).
+//! - Float fields (crit_chance / dps etc.): `relative < 1e-6` (one part per million).
 //!
-//! 若将来 `build_from_code` 改为加载装备/天赋词条，请把对应 `*_NEUTRAL_*` 常量替换为
-//! 真实期望值——届时本套件才升级为数值 parity。
+//! If `build_from_code` is ever changed to load gear/passive mods, replace the
+//! corresponding `*_NEUTRAL_*` constants with real expected values — that's
+//! when this suite would graduate to numeric parity.
 
 use pobr_build::{
     Build, CharacterIdentity, OrchestratorOptions, calculate, decode_pob_code, parse_build_header,
 };
 use pobr_core::calc::MinimalInput;
 
-/// 真实 PoB2 ninja Deadeye build code。
+/// A real PoB2 ninja Deadeye build code.
 const DEADEYE_CODE: &str = include_str!("../../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
 
-/// 真实 PoB2 ninja Martial Artist build code。
+/// A real PoB2 ninja Martial Artist build code.
 const MARTIAL_ARTIST_CODE: &str =
     include_str!("../../../../examples/demo-bd-test/ninja-bd-marial-artist.txt");
 
-// 容差工具
+// Tolerance helpers
 
-/// 整数字段容差：|delta| < 0.5（允许舍入偏差）。
+/// Integer field tolerance: |delta| < 0.5 (allows rounding deviation).
 const INTEGER_TOL: f64 = 0.5;
-/// 浮点字段相对容差：1e-6（百万分之一）。
+/// Float field relative tolerance: 1e-6 (one part per million).
 const RELATIVE_TOL: f64 = 1e-6;
 
 fn assert_near_int(label: &str, expected: f64, actual: f64) {
@@ -55,7 +67,7 @@ fn assert_near_int(label: &str, expected: f64, actual: f64) {
 }
 
 fn assert_near_float(label: &str, expected: f64, actual: f64) {
-    // 若期望值为 0，回退整数容差。
+    // If the expected value is 0, fall back to the integer tolerance.
     if expected.abs() < f64::EPSILON {
         let delta = actual.abs();
         assert!(
@@ -71,7 +83,7 @@ fn assert_near_float(label: &str, expected: f64, actual: f64) {
     );
 }
 
-// 从 build code 构造 Build（最小路径）
+// Constructs a Build from a build code (minimal path)
 
 fn build_from_code(code: &str) -> Build {
     let xml = decode_pob_code(code.trim()).expect("decode build code");
@@ -91,23 +103,24 @@ fn default_opts() -> OrchestratorOptions {
     }
 }
 
-// Deadeye 中性空 build 基线
+// Deadeye neutral empty-build baseline
 //
-// 使用全零 MinimalInput（无装备/天赋词条注入；CalcOrchestrator 只收集
-// build.equipped_items() 的词条，本测试 Build 无装备，故输出为基础默认值）。
-// 这样可稳定测试编解码 → Build 构造 → CalcOrchestrator 的端对端管线，
-// 同时不依赖外部数据文件。这些是 OutputTable::default() 的中性默认值，
-// 不是真实 PoB2 黄金数值。
+// Uses an all-zero MinimalInput (no gear/passive mods injected; CalcOrchestrator
+// only collects mods from build.equipped_items(), and this test's Build has no
+// gear, so output is the base default value). This makes the codec ->
+// Build-construction -> CalcOrchestrator end-to-end pipeline stable to test
+// without depending on external data files. These are OutputTable::default()'s
+// neutral defaults, not real PoB2 golden values.
 //
-// 若将来添加装备/天赋词条注入，在此更新基线。
+// If gear/passive mod injection is added later, update the baseline here.
 
-/// Deadeye build 解码后的角色等级期望值（来自 XML `<Build level="...">`）。
+/// Expected character level after decoding the Deadeye build (from XML `<Build level="...">`).
 const DEADEYE_EXPECTED_LEVEL: u32 = 98;
 
-/// Deadeye build 解码后的职业名期望值。
+/// Expected class name after decoding the Deadeye build.
 const DEADEYE_EXPECTED_CLASS: &str = "Ranger";
 
-/// 空 Build（无装备）+ 空 MinimalInput → 中性默认值：全零/默认防御。
+/// Empty Build (no gear) + empty MinimalInput -> neutral defaults: all zero / default defence.
 const DEADEYE_NEUTRAL_LIFE: f64 = 0.0;
 const DEADEYE_NEUTRAL_MANA: f64 = 0.0;
 const DEADEYE_NEUTRAL_FIRE_RES: f64 = 0.0;
@@ -115,11 +128,11 @@ const DEADEYE_NEUTRAL_COLD_RES: f64 = 0.0;
 const DEADEYE_NEUTRAL_LIGHTNING_RES: f64 = 0.0;
 const DEADEYE_NEUTRAL_DPS: f64 = 0.0;
 
-// 测试：Deadeye build 端对端 golden
+// Tests: Deadeye build end-to-end golden
 
 #[test]
 fn deadeye_golden_decode_and_identity() {
-    // Stage 1：build code → XML → header 解析。
+    // Stage 1: build code -> XML -> header parsing.
     let xml = decode_pob_code(DEADEYE_CODE.trim()).expect("decode");
     let header = parse_build_header(&xml).expect("parse header");
 
@@ -140,8 +153,8 @@ fn deadeye_golden_decode_and_identity() {
 
 #[test]
 fn deadeye_golden_calc_baseline() {
-    // Stage 2：Build 构造 + CalcOrchestrator → OutputTable 基线。
-    // 无装备 / 无额外 modifier，输出应等于空 MinimalInput 默认值。
+    // Stage 2: Build construction + CalcOrchestrator -> OutputTable baseline.
+    // No gear / no extra modifiers, so output should equal the empty MinimalInput defaults.
     let build = build_from_code(DEADEYE_CODE);
     let opts = default_opts();
     let out = calculate(&build, &opts).expect("calculate");
@@ -168,8 +181,8 @@ fn deadeye_golden_calc_baseline() {
 
 #[test]
 fn deadeye_golden_calc_with_life_modifier() {
-    // Stage 3：注入已知词条，验证词条影响被正确纳入计算。
-    // 注入 "+1000 to maximum Life" → 期望 life 增加 1000。
+    // Stage 3: injects a known mod, verifying its effect is correctly folded into the calculation.
+    // Injects "+1000 to maximum Life" -> expects life to increase by 1000.
     let build = build_from_code(DEADEYE_CODE);
     let opts = OrchestratorOptions {
         base_input: MinimalInput {
@@ -186,7 +199,7 @@ fn deadeye_golden_calc_with_life_modifier() {
 
 #[test]
 fn deadeye_golden_snapshot_is_deterministic() {
-    // Stage 4：两次相同调用结果完全一致（确定性保证）。
+    // Stage 4: two identical calls produce identical results (determinism guarantee).
     let build = build_from_code(DEADEYE_CODE);
     let opts = default_opts();
 
@@ -201,22 +214,22 @@ fn deadeye_golden_snapshot_is_deterministic() {
     );
 }
 
-// Martial Artist golden 基线（第二个 fixture，验证非 Ranger 职业解码正常）
+// Martial Artist golden baseline (a second fixture, verifying non-Ranger class decoding works)
 
 #[test]
 fn martial_artist_golden_decode_and_calc() {
     let xml = decode_pob_code(MARTIAL_ARTIST_CODE.trim()).expect("decode martial artist code");
-    // parse_build_header 仅接受 PathOfBuilding2 根；成功解析即确认是 PoE2 文档。
+    // parse_build_header only accepts a PathOfBuilding2 root; successful parsing confirms it's a PoE2 document.
     let header = parse_build_header(&xml).expect("parse header");
 
-    // level 应在合理范围。
+    // level should be within a sane range.
     assert!(
         header.identity.level > 0 && header.identity.level <= 100,
         "level out of range: {}",
         header.identity.level
     );
 
-    // Build + CalcOrchestrator 不报错。
+    // Build + CalcOrchestrator run without error.
     let build = Build::new().with_character(CharacterIdentity {
         level: header.identity.level,
         class_name: header.identity.class_name.clone(),
@@ -224,11 +237,11 @@ fn martial_artist_golden_decode_and_calc() {
     });
 
     let out = calculate(&build, &default_opts()).expect("martial artist calc");
-    // 空 Build 无词条，输出全零（默认）。
+    // Empty Build with no mods -> output is all zero (default).
     assert_near_int("martial_artist_life", 0.0, out.life);
 }
 
-// 回归守卫：确保 decode → Build → Calc 管线不因重构而静默崩溃
+// Regression guard: ensures the decode -> Build -> Calc pipeline doesn't silently break during refactors
 
 #[test]
 fn pipeline_smoke_test_both_fixtures() {
@@ -250,19 +263,21 @@ fn pipeline_smoke_test_both_fixtures() {
     }
 }
 
-// Wave 1 / Wave 2 新增字段快照（空 Build + 空 MinimalInput → 全为默认中性值）
+// Wave 1 / Wave 2 new-field snapshots (empty Build + empty MinimalInput -> all default neutral values)
 //
-// 目的：锁定 Wave1/2 新增 OutputTable 字段在默认（无词条）状态下的基准值，
-// 防止这些字段在重构过程中被静默改写。
-// 基线值均来自 OutputTable::default() 中性规则：
-//   - 大多数字段 0.0（无词条时无效果）
-//   - taken_multi_* = 1.0（乘数中性，不减伤也不增伤）
-//   - enemy_crit_effect = 1.0（中性）
+// Purpose: pins the baseline values of OutputTable fields added in Wave 1/2
+// in their default (no mods) state, so they can't be silently rewritten
+// during a refactor.
+// Baseline values all follow OutputTable::default()'s neutral rules:
+//   - most fields are 0.0 (no effect with no mods)
+//   - taken_multi_* = 1.0 (a neutral multiplier, neither reduces nor increases damage taken)
+//   - enemy_crit_effect = 1.0 (neutral)
 
-/// Wave 1 暴击字段快照（crit_chance / crit_multiplier / pre_effective_crit_chance）。
+/// Wave 1 crit field snapshot (crit_chance / crit_multiplier / pre_effective_crit_chance).
 ///
-/// 说明：crit_multiplier 基值 = 1 + PLAYER_BASE_CRIT_DAMAGE_BONUS/100 = 2.0（PoE2 口径）；
-/// 无额外增伤词条时维持 2.0。crit_chance 无词条 → 0.0（无暴击 base）。
+/// Note: crit_multiplier's base value = 1 + PLAYER_BASE_CRIT_DAMAGE_BONUS/100 = 2.0
+/// (PoE2's convention); it stays at 2.0 with no extra damage-bonus mods.
+/// crit_chance has no mods -> 0.0 (no base crit).
 const DEADEYE_NEUTRAL_CRIT_MULTIPLIER: f64 = 2.0;
 
 #[test]
@@ -270,15 +285,15 @@ fn deadeye_golden_wave1_crit_fields() {
     let build = build_from_code(DEADEYE_CODE);
     let out = calculate(&build, &default_opts()).expect("calc");
 
-    // 暴击率：无暴击 base 词条 → 0.0。
+    // Crit chance: no base-crit mod -> 0.0.
     assert_near_float("crit_chance", 0.0, out.crit_chance);
-    // 暴击加成：PoE2 基础值 2.0（PLAYER_BASE_CRIT_DAMAGE_BONUS = 100%）。
+    // Crit multiplier: PoE2's base value 2.0 (PLAYER_BASE_CRIT_DAMAGE_BONUS = 100%).
     assert_near_float(
         "crit_multiplier",
         DEADEYE_NEUTRAL_CRIT_MULTIPLIER,
         out.crit_multiplier,
     );
-    // 未应用 mode_effective 前暴击率：无 base → 0.0。
+    // Pre-effective-mode crit chance: no base -> 0.0.
     assert_near_float(
         "pre_effective_crit_chance",
         0.0,
@@ -286,18 +301,18 @@ fn deadeye_golden_wave1_crit_fields() {
     );
 }
 
-/// Wave 2 防御扩展字段快照：ES 充能 / 规避 / 承受乘数 / 暴击减免。
+/// Wave 2 defence extension field snapshot: ES recharge / avoidance / damage-taken multipliers / crit reduction.
 #[test]
 fn deadeye_golden_wave2_defence_extension_fields() {
     let build = build_from_code(DEADEYE_CODE);
     let out = calculate(&build, &default_opts()).expect("calc");
 
-    // ES 充能：无词条 → 充能速率 0，延迟 0，每秒 0。
+    // ES recharge: no mods -> recharge rate 0, delay 0, per-second 0.
     assert_near_float("es_recharge_rate", 0.0, out.es_recharge_rate);
     assert_near_float("es_recharge_delay", 0.0, out.es_recharge_delay);
     assert_near_float("es_recharge_per_second", 0.0, out.es_recharge_per_second);
 
-    // 规避：无词条 → 全 0。
+    // Avoidance: no mods -> all 0.
     assert_near_float(
         "avoid_all_damage_from_hits",
         0.0,
@@ -311,14 +326,14 @@ fn deadeye_golden_wave2_defence_extension_fields() {
     assert_near_float("avoid_bleeding", 0.0, out.avoid_bleeding);
     assert_near_float("avoid_stun", 0.0, out.avoid_stun);
 
-    // 承受乘数中性：默认 1.0。
+    // Damage-taken multipliers are neutral: default 1.0.
     assert_near_float("taken_multi_physical", 1.0, out.taken_multi_physical);
     assert_near_float("taken_multi_fire", 1.0, out.taken_multi_fire);
     assert_near_float("taken_multi_cold", 1.0, out.taken_multi_cold);
     assert_near_float("taken_multi_lightning", 1.0, out.taken_multi_lightning);
     assert_near_float("taken_multi_chaos", 1.0, out.taken_multi_chaos);
 
-    // 暴击额外减免 / 敌方暴击效果（中性）。
+    // Extra crit damage reduction / enemy crit effect (neutral).
     assert_near_float(
         "crit_extra_damage_reduction",
         0.0,
@@ -327,13 +342,13 @@ fn deadeye_golden_wave2_defence_extension_fields() {
     assert_near_float("enemy_crit_effect", 1.0, out.enemy_crit_effect);
 }
 
-/// Wave 2 充能 / 偷取 / Recoup 快照（无词条 → 全 0）。
+/// Wave 2 charges / leech / recoup snapshot (no mods -> all 0).
 #[test]
 fn deadeye_golden_wave2_charges_leech_recoup_fields() {
     let build = build_from_code(DEADEYE_CODE);
     let out = calculate(&build, &default_opts()).expect("calc");
 
-    // 充能：无词条 → 当前/最大均 0。
+    // Charges: no mods -> current/maximum both 0.
     assert_eq!(out.charge_power_current, 0, "charge_power_current");
     assert_eq!(out.charge_power_maximum, 0, "charge_power_maximum");
     assert_eq!(out.charge_frenzy_current, 0, "charge_frenzy_current");
@@ -341,17 +356,17 @@ fn deadeye_golden_wave2_charges_leech_recoup_fields() {
     assert_eq!(out.charge_endurance_current, 0, "charge_endurance_current");
     assert_eq!(out.charge_endurance_maximum, 0, "charge_endurance_maximum");
 
-    // 偷取速率：无词条 → 0。
+    // Leech rates: no mods -> 0.
     assert_near_float("life_leech_rate", 0.0, out.life_leech_rate);
     assert_near_float("mana_leech_rate", 0.0, out.mana_leech_rate);
     assert_near_float("es_leech_rate", 0.0, out.es_leech_rate);
 
-    // Recoup：无词条 → 0。
+    // Recoup: no mods -> 0.
     assert_near_float("life_recoup_rate", 0.0, out.life_recoup_rate);
     assert_near_float("es_recoup_rate", 0.0, out.es_recoup_rate);
 }
 
-/// Wave 2 异常扩展快照（无词条 → 全 0）。
+/// Wave 2 ailment extension snapshot (no mods -> all 0).
 #[test]
 fn deadeye_golden_wave2_ailment_extension_fields() {
     let build = build_from_code(DEADEYE_CODE);
@@ -361,20 +376,20 @@ fn deadeye_golden_wave2_ailment_extension_fields() {
     assert_near_float("freeze_buildup_pct", 0.0, out.freeze_buildup_pct);
     assert_near_float("electrocute_buildup_pct", 0.0, out.electrocute_buildup_pct);
 
-    // 叠层 DPS / 活跃层数：无命中词条 → 0。
+    // Stacked DPS / active stacks: no hit-producing mods -> 0.
     assert_near_float("bleed_stacked_dps", 0.0, out.bleed_stacked_dps);
     assert_near_float("bleed_active_stacks", 0.0, out.bleed_active_stacks);
     assert_near_float("poison_stacked_dps", 0.0, out.poison_stacked_dps);
     assert_near_float("poison_active_stacks", 0.0, out.poison_active_stacks);
 }
 
-/// Wave 2 技能功能 / 触发快照（无 base 配置 → 全 0）。
+/// Wave 2 skill mechanics / trigger snapshot (no base config -> all 0).
 #[test]
 fn deadeye_golden_wave2_skill_mechanics_and_trigger_fields() {
     let build = build_from_code(DEADEYE_CODE);
     let out = calculate(&build, &default_opts()).expect("calc");
 
-    // 技能功能：无 base 词条 → 0。
+    // Skill mechanics: no base mods -> 0.
     assert_near_float("aoe_radius", 0.0, out.aoe_radius);
     assert_near_float("aoe_area_mod", 0.0, out.aoe_area_mod);
     assert_near_float("projectile_count", 0.0, out.projectile_count);
@@ -384,12 +399,12 @@ fn deadeye_golden_wave2_skill_mechanics_and_trigger_fields() {
     assert_near_float("life_cost", 0.0, out.life_cost);
     assert_near_float("spirit_reserved", 0.0, out.spirit_reserved);
 
-    // 触发：无触发词条 → 0。
+    // Trigger: no trigger mods -> 0.
     assert_near_float("trigger_rate_cap", 0.0, out.trigger_rate_cap);
     assert_near_float("skill_trigger_rate", 0.0, out.skill_trigger_rate);
 }
 
-/// Wave 1 异常 DPS 字段快照（空 Build → 全 0 期望）。
+/// Wave 1 ailment DPS field snapshot (empty Build -> expects all 0).
 #[test]
 fn deadeye_golden_wave1_ailment_dps_fields() {
     let build = build_from_code(DEADEYE_CODE);
@@ -401,10 +416,11 @@ fn deadeye_golden_wave1_ailment_dps_fields() {
     assert_near_float("shock_effect", 0.0, out.shock_effect);
 }
 
-/// Wave 1 行动速率字段快照。
+/// Wave 1 action-rate field snapshot.
 ///
-/// 说明：hit_chance 在 base_accuracy=0 + enemy_evasion=0 时命中率公式退化为 1.0（100%）。
-/// action_rate / effective_action_rate 无 base 词条 → 0.0。
+/// Note: with base_accuracy=0 + enemy_evasion=0, the hit-chance formula
+/// degenerates to 1.0 (100%). action_rate / effective_action_rate have no
+/// base mods -> 0.0.
 const DEADEYE_NEUTRAL_HIT_CHANCE: f64 = 1.0;
 
 #[test]
@@ -414,17 +430,19 @@ fn deadeye_golden_wave1_action_rate_fields() {
 
     assert_near_float("action_rate", 0.0, out.action_rate);
     assert_near_float("effective_action_rate", 0.0, out.effective_action_rate);
-    // hit_chance: base_accuracy=0 + enemy_evasion=0 → formula returns 1.0（100%）。
+    // hit_chance: base_accuracy=0 + enemy_evasion=0 -> formula returns 1.0 (100%).
     assert_near_float("hit_chance", DEADEYE_NEUTRAL_HIT_CHANCE, out.hit_chance);
 }
 
-/// Wave 2 ES 词条注入：验证 ES 词条被正确解析并注入计算管线。
+/// Wave 2 ES mod injection: verifies an ES mod is correctly parsed and injected into the calc pipeline.
 ///
-/// 注意：当前 CalcOrchestrator 通过 MinimalOutput → OutputTable 路径返回结果，
-/// 该路径只保留 MinimalOutput 的核心字段（life/mana/resistance/crit/hit），
-/// energy_shield / es_recharge 等防御扩展字段在此路径中回退到 OutputTable::default()。
-/// 本测试验证：管线不崩溃 + life 注入路径正常 + 默认字段符合预期。
-/// 完整 ES 计算的单元测试在 pobr-core 层（defense.rs / session.rs）覆盖。
+/// Note: the current CalcOrchestrator returns results via the
+/// MinimalOutput -> OutputTable path, which only keeps MinimalOutput's core
+/// fields (life/mana/resistance/crit/hit); defence extension fields like
+/// energy_shield / es_recharge fall back to OutputTable::default() on this
+/// path. This test verifies: the pipeline doesn't crash + the life injection
+/// path works + default fields match expectations. Full ES-calculation unit
+/// tests live at the pobr-core layer (defense.rs / session.rs).
 #[test]
 fn deadeye_golden_wave2_es_modifier_pipeline_ok() {
     let build = build_from_code(DEADEYE_CODE);
@@ -438,15 +456,15 @@ fn deadeye_golden_wave2_es_modifier_pipeline_ok() {
             "+1000 to maximum Life".to_string(),
         ],
     };
-    // 管线不崩溃。
+    // The pipeline doesn't crash.
     let out = calculate(&build, &opts).expect("calc with es modifier should not panic");
 
-    // life = base(500) + modifier(+1000) = 1500（MinimalOutput 路径正常保留）。
+    // life = base(500) + modifier(+1000) = 1500 (kept correctly by the MinimalOutput path).
     assert_near_int("life_with_modifiers", 1500.0, out.life);
 
-    // 当前 orchestrator 路径 energy_shield 回退到 OutputTable::default() = 0.0。
-    // 此断言作为回归锁，防止静默改写（若将来 orchestrator 改为全字段返回，
-    // 此断言应更新为 500.0）。
+    // The current orchestrator path falls back energy_shield to OutputTable::default() = 0.0.
+    // This assertion is a regression lock against silent rewrites (if the orchestrator
+    // is ever changed to return all fields, this assertion should be updated to 500.0).
     assert_near_int(
         "energy_shield_via_orchestrator_path",
         0.0,
@@ -454,9 +472,9 @@ fn deadeye_golden_wave2_es_modifier_pipeline_ok() {
     );
 }
 
-/// Wave 1/2 抗性 + 防御字段整体确定性（两次调用一致）。
+/// Wave 1/2 resistance + defence field determinism as a whole (two calls agree).
 ///
-/// 只注入已知可解析词条；避免引入 ParseError（不支持的词条形式会导致 Err 返回）。
+/// Only injects known-parseable mods; avoids triggering a ParseError (unsupported mod text would return Err).
 #[test]
 fn deadeye_golden_wave2_all_fields_deterministic() {
     let build = build_from_code(DEADEYE_CODE);
@@ -474,7 +492,7 @@ fn deadeye_golden_wave2_all_fields_deterministic() {
     let out1 = calculate(&build, &opts).expect("first calc");
     let out2 = calculate(&build, &opts).expect("second calc");
 
-    // 核心防御字段。
+    // Core defence fields.
     assert_eq!(out1.life, out2.life, "life non-deterministic");
     assert_eq!(
         out1.fire_resistance, out2.fire_resistance,
@@ -484,7 +502,7 @@ fn deadeye_golden_wave2_all_fields_deterministic() {
         out1.es_recharge_per_second, out2.es_recharge_per_second,
         "es_recharge_per_second"
     );
-    // Wave 2 充能/异常/技能字段。
+    // Wave 2 charges/ailment/skill fields.
     assert_eq!(
         out1.charge_power_maximum, out2.charge_power_maximum,
         "charge_power_max"

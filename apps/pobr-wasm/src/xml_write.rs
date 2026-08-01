@@ -1,20 +1,24 @@
-//! 编辑态 → PoB2 Build XML（`encode_build_json` 的写出端）。
+//! Edit state -> PoB2 Build XML (the write-out side of `encode_build_json`).
 //!
-//! 元素/属性集合与 `pobr-build::xml_build` 的**读取面**一一对应（`Build` 头部 /
-//! `Tree>Spec`（nodes / AttributeOverride / Sockets）/ `Skills>SkillSet>Skill>Gem` /
-//! `Items>Item + ItemSet>Slot` / `Config>Input` / `Notes`），保证
-//! `encode → decode → calculate` 与直接 calculate 一致（契约测试钉住）。
-//! Gem 同时写 `gemId`（PoB2 导入主键）与 `skillId`（PoBR 主键）。
+//! The element/attribute set corresponds one-to-one with the **read side**
+//! of `pobr-build::xml_build` (the `Build` header / `Tree>Spec`
+//! (nodes / AttributeOverride / Sockets) / `Skills>SkillSet>Skill>Gem` /
+//! `Items>Item + ItemSet>Slot` / `Config>Input` / `Notes`), guaranteeing
+//! `encode -> decode -> calculate` matches calculating directly (pinned by a
+//! contract test). Gem writes both `gemId` (PoB2's import key) and
+//! `skillId` (PoBR's key).
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-/// `write!` / `writeln!` 到 `String` 的省噪包装。
+/// A noise-reducing wrapper around `write!` / `writeln!` into a `String`.
 ///
-/// sink 恒为 `String`，而 `impl fmt::Write for String` 的 `Err` 分支不可达
-/// （`push_str` 不会失败），所以这里的 `Result` 没有可处理的失败态。用宏就地吞
-/// 掉，免去正文四十来处 `.unwrap()` —— 那些 unwrap 不会 panic，但会让「wasm 里
-/// 有 N 个 unwrap」这个指标每次审计都要重新排查一遍。
+/// The sink is always a `String`, and `impl fmt::Write for String`'s `Err`
+/// branch is unreachable (`push_str` never fails), so the `Result` here has
+/// no failure state worth handling. The macro swallows it inline, sparing
+/// the body about forty `.unwrap()` calls — those unwraps would never panic,
+/// but "N unwraps in the wasm crate" is a metric that would need
+/// re-investigating on every audit otherwise.
 macro_rules! w {
     ($w:expr, $($arg:tt)*) => { let _ = write!($w, $($arg)*); };
 }
@@ -22,47 +26,50 @@ macro_rules! wln {
     ($w:expr, $($arg:tt)*) => { let _ = writeln!($w, $($arg)*); };
 }
 
-/// 待写出的技能组（已做 gem_id 反查）。
+/// A socket group ready to write out (gem_id already reverse-looked-up).
 pub(crate) struct XmlSkillGroup {
     pub slot: Option<String>,
     pub enabled: bool,
-    /// 装备授予技能组的来源标记（写回 `<Skill source>`，保证往返判重）。
+    /// The source marker for a group granted by equipment (written back as
+    /// `<Skill source>`, so round-tripping can tell it apart).
     pub source: Option<String>,
-    /// `(gem_id, skill_id, level, quality)`；gem_id 反查不到时为空串（省略属性）。
+    /// `(gem_id, skill_id, level, quality)`; `gem_id` is an empty string
+    /// when the reverse lookup fails (the attribute is then omitted).
     pub gems: Vec<(String, String, u32, u32)>,
 }
 
-/// 写出输入（全部来自计算请求——web 端始终发全量覆盖）。
+/// The write-out input (all sourced from the calculation request — the web
+/// side always sends a full overwrite).
 pub(crate) struct XmlInput<'a> {
     pub level: u32,
     pub class_name: &'a str,
     pub ascendancy_name: &'a str,
-    /// PoB2 树版本标注（如 `0_5`）。
+    /// PoB2's passive-tree version tag (e.g. `0_5`).
     pub tree_version: &'a str,
     pub allocated_nodes: &'a [u32],
-    /// 属性小点三选一（node skill id → `"str"|"dex"|"int"`）。
+    /// Attribute-choice small nodes (node skill id -> `"str"|"dex"|"int"`).
     pub attribute_choices: &'a BTreeMap<u32, String>,
-    /// `(PoB 槽名, 原始文本)`，如 `("Ring 1", "Rarity: …")`。
+    /// `(PoB slot name, raw text)`, e.g. `("Ring 1", "Rarity: ...")`.
     pub items: Vec<(String, String)>,
-    /// 激活态药剂/护符 `(槽名, 原始文本)`（`Flask 1/2`、`Charm 1..3`）。
+    /// Active flasks/charms as `(slot name, raw text)` (`Flask 1/2`, `Charm 1..3`).
     pub flasks: Vec<(String, String)>,
-    /// 树插槽珠宝 `(socket node id, 原始文本)`。
+    /// Tree-socketed jewels as `(socket node id, raw text)`.
     pub jewels: Vec<(u32, String)>,
     pub socket_groups: Vec<XmlSkillGroup>,
-    /// 0-based（XML 里写 1-based）。
+    /// 0-based (written as 1-based in the XML).
     pub main_socket_group: Option<usize>,
     pub config_inputs: &'a BTreeMap<String, serde_json::Value>,
     pub notes: Option<&'a str>,
 }
 
-/// XML 属性值转义。
+/// Escapes an XML attribute value.
 fn esc_attr(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('"', "&quot;")
 }
 
-/// XML 文本节点转义。
+/// Escapes an XML text node.
 fn esc_text(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;")
 }
@@ -71,7 +78,7 @@ fn csv(nodes: impl Iterator<Item = u32>) -> String {
     nodes.map(|n| n.to_string()).collect::<Vec<_>>().join(",")
 }
 
-/// 生成 PoB2 Build XML。
+/// Generates the PoB2 Build XML.
 pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
     let mut xml = String::new();
     let w = &mut xml;
@@ -79,7 +86,7 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
     wln!(w, r#"<?xml version="1.0" encoding="UTF-8"?>"#);
     wln!(w, "<PathOfBuilding2>");
 
-    // Build 头部（mainSocketGroup 1-based）。
+    // The Build header (mainSocketGroup is 1-based).
     w!(
         w,
         r#"  <Build level="{}" className="{}" targetVersion="0_1""#,
@@ -98,7 +105,8 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
     }
     wln!(w, "/>");
 
-    // 物品：装备 + 药剂/护符 + 树珠宝统一编 id（1-based，文档序）。
+    // Items: equipment, flasks/charms, and tree jewels are numbered
+    // together as ids (1-based, document order).
     let mut item_blocks: Vec<&str> = Vec::new();
     let mut slot_lines: Vec<String> = Vec::new();
     for (slot, text) in &input.items {
@@ -127,7 +135,7 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
         ));
     }
 
-    // Tree（单 Spec；AttributeOverride 与 Sockets 内嵌）。
+    // Tree (a single Spec; AttributeOverride and Sockets are nested inside it).
     wln!(w, r#"  <Tree activeSpec="1">"#);
     wln!(
         w,
@@ -161,7 +169,7 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
     wln!(w, "    </Spec>");
     wln!(w, "  </Tree>");
 
-    // Skills。
+    // Skills.
     wln!(w, r#"  <Skills activeSkillSet="1">"#);
     wln!(w, r#"    <SkillSet id="1">"#);
     for group in &input.socket_groups {
@@ -188,7 +196,7 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
     wln!(w, "    </SkillSet>");
     wln!(w, "  </Skills>");
 
-    // Items（文本块 + 激活 ItemSet 槽位映射）。
+    // Items (text blocks plus the active ItemSet slot mapping).
     wln!(w, r#"  <Items activeItemSet="1">"#);
     for (idx, text) in item_blocks.iter().enumerate() {
         wln!(w, r#"    <Item id="{}">"#, idx + 1);
@@ -202,7 +210,7 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
     wln!(w, "    </ItemSet>");
     wln!(w, "  </Items>");
 
-    // Config。
+    // Config.
     if !input.config_inputs.is_empty() {
         wln!(w, "  <Config>");
         for (name, value) in input.config_inputs {
@@ -219,7 +227,7 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
         wln!(w, "  </Config>");
     }
 
-    // Notes。
+    // Notes.
     if let Some(notes) = input.notes
         && !notes.is_empty()
     {

@@ -1,41 +1,49 @@
-//! 解析派发上下文 [`ParseCtx`]——把可选的数据驱动引擎规则打包，沿 ingest 链
-//! （item / passive / gem）传递，决定每行词条是否可解析。
+//! Parse dispatch context [`ParseCtx`] — packages the optional data-driven
+//! engine rules and threads them along the ingest chain (item / passive /
+//! gem) to decide whether each modifier line can be parsed.
 //!
-//! 收尾后引擎（[`parse_mod_engine`]）是唯一解析器：`engine = Some` 走数据驱动
-//! 引擎；`engine = None`（未注入规则，如旧数据包 / 纯文本回退）**不再有 legacy
-//! 回退**——每行按整行 [`ParseStatus::Unsupported`](super::ParseStatus::Unsupported)
-//! 返回（词条不生效但被收集进 unsupported 报表，绝不静默丢失或误算）。
+//! Now that the transition is complete, the engine ([`parse_mod_engine`]) is
+//! the only parser: `engine = Some` goes through the data-driven engine;
+//! `engine = None` (no rules injected, e.g. an old data package or a
+//! plain-text fallback) **has no legacy fallback anymore** — every line
+//! comes back as whole-line
+//! [`ParseStatus::Unsupported`](super::ParseStatus::Unsupported) (the
+//! modifier has no effect but is collected into the unsupported report;
+//! it's never silently dropped or miscalculated).
 //!
 //! [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
 
 use super::outcome::{ParseError, ParseOutcome, ParseStatus};
 
-/// 解析派发上下文：数据驱动引擎规则的可选引用，沿 ingest 链（item / passive /
-/// gem / flask）传递。
+/// Parse dispatch context: an optional reference to the data-driven engine
+/// rules, threaded along the ingest chain (item / passive / gem / flask).
 ///
-/// 默认（[`ParseCtx::none`]）= 未注入规则：所有文本按 Unsupported 处理（见模块
-/// 文档）。生产路径（orchestrator / wasm / CLI）恒经 `mod_parser_rules.json`
-/// 编译 [`CompiledParserRules`] 注入。
+/// The default ([`ParseCtx::none`]) means no rules injected: all text is
+/// treated as Unsupported (see the module doc). Production paths
+/// (orchestrator / wasm / CLI) always compile [`CompiledParserRules`] from
+/// `mod_parser_rules.json` and inject it.
 ///
 /// [`CompiledParserRules`]: crate::mod_parser::CompiledParserRules
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ParseCtx<'a> {
-    /// 数据驱动 parser 引擎规则。`Some` 时 [`ParseCtx::parse`] 走
-    /// [`parse_mod_engine`]；`None` 时每行返回 Unsupported。
+    /// Data-driven parser engine rules. When `Some`, [`ParseCtx::parse`]
+    /// goes through [`parse_mod_engine`]; when `None`, every line returns
+    /// Unsupported.
     ///
     /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
     pub engine: Option<&'a crate::mod_parser::CompiledParserRules>,
 }
 
 impl<'a> ParseCtx<'a> {
-    /// 空上下文（无引擎规则）：任何文本都解析为整行 Unsupported。
+    /// An empty context (no engine rules): any text parses to whole-line
+    /// Unsupported.
     pub fn none() -> Self {
         Self::default()
     }
 
-    /// 携带数据驱动 parser 引擎规则：之后 [`parse`](Self::parse) 走
-    /// [`parse_mod_engine`]（special 通道已编译进
-    /// [`CompiledParserRules::special`]）。
+    /// A context carrying data-driven parser engine rules: afterward
+    /// [`parse`](Self::parse) goes through [`parse_mod_engine`] (the special
+    /// channel is already compiled into [`CompiledParserRules::special`]).
     ///
     /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
     /// [`CompiledParserRules::special`]: crate::mod_parser::CompiledParserRules
@@ -45,13 +53,15 @@ impl<'a> ParseCtx<'a> {
         }
     }
 
-    /// 按本上下文解析一行词条。
+    /// Parses one line of modifier text under this context.
     ///
-    /// - `engine = Some`（生产路径）→ [`parse_mod_engine`]（数据驱动；引擎对
-    ///   无法识别的输入返回 Unsupported，永不报错）。
-    /// - `engine = None` → 整行 [`ParseStatus::Unsupported`]（mods 空、
-    ///   `unparsed = 原文`）。词条不生效但进入 unsupported 收集面（session /
-    ///   报表可见），不会被当作已解析静默吞掉。
+    /// - `engine = Some` (the production path) -> [`parse_mod_engine`]
+    ///   (data-driven; the engine returns Unsupported for input it can't
+    ///   recognize, and never errors).
+    /// - `engine = None` -> whole-line [`ParseStatus::Unsupported`] (empty
+    ///   mods, `unparsed` = the original text). The modifier has no effect,
+    ///   but it lands in the unsupported collection (visible to the session
+    ///   / reports) rather than being silently swallowed as if parsed.
     ///
     /// [`parse_mod_engine`]: crate::mod_parser::parse_mod_engine
     pub fn parse(&self, text: &str) -> Result<ParseOutcome, ParseError> {

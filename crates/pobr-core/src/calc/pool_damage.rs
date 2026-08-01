@@ -1,26 +1,32 @@
-//! 扣池状态机（13-G2/G5）——对应 PoB2 `CalcDefence.lua:461-678
-//! reducePoolsByDamage`（顺序：allies → aegis → guard → ward → ES(bypass) → MoM →
-//! loss-prevention → life → overkill）与 :3540-3601 的 max-hit TotalHitPool 扩展层。
+//! The damage pool deduction state machine (13-G2/G5) -- corresponds to
+//! PoB2 `CalcDefence.lua:461-678 reducePoolsByDamage` (order: allies → aegis
+//! → guard → ward → ES(bypass) → MoM → loss-prevention → life → overkill)
+//! and `:3540-3601`'s max-hit TotalHitPool expansion layer.
 //!
-//! 模块切分：
-//! - 本文件 = 状态机求值（[`reduce_pools`]）+ 池公式原语（[`pool_protected`] /
-//!   [`life_hit_pool_with_loss_prevention`] / [`apply_protected_layer`]）+ max-hit
-//!   池层（[`total_hit_pool_base`] / [`extend_total_hit_pool`]）；
-//! - 整备（从 ModDb 读 bypass/MoM/guard/aegis 等构造 [`PoolCtx`]/[`PoolState`]）在
-//!   `pool_setup.rs`——**本文件不读 ModDb**（整备与求值分离）。
+//! Module split:
+//! - This file = the state machine evaluation ([`reduce_pools`]) + pool
+//!   formula primitives ([`pool_protected`] / [`life_hit_pool_with_loss_prevention`]
+//!   / [`apply_protected_layer`]) + the max-hit pool layer
+//!   ([`total_hit_pool_base`] / [`extend_total_hit_pool`]);
+//! - Setup (reading bypass/MoM/guard/aegis etc. from the ModDb to build
+//!   [`PoolCtx`]/[`PoolState`]) lives in `pool_setup.rs` -- **this file never
+//!   reads the ModDb** (setup is kept separate from evaluation).
 //!
-//! 纯函数约定：输入输出皆值类型，**不写 `Env`**、不持共享
-//! 可变状态；对 `Env`/`OutputTable` 的写入仍集中在 `perform.rs`（Track F）。
+//! Pure function convention: inputs and outputs are all value types, this
+//! **never writes `Env`** and holds no shared mutable state; writes to
+//! `Env`/`OutputTable` are still centralized in `perform.rs` (Track F).
 
 use pobr_data::constants::DamageType;
 
-/// PoB2 防御侧伤害类型遍历顺序（`CalcDefence.lua:27`
-/// `dmgTypeList = {"Physical", "Lightning", "Cold", "Fire", "Chaos"}`）。
+/// PoB2's defence-side damage type traversal order (`CalcDefence.lua:27`'s
+/// `dmgTypeList = {"Physical", "Lightning", "Cold", "Fire", "Chaos"}`).
 ///
-/// 与 pobr [`DamageType`] 枚举序（Physical/Fire/Cold/Lightning/Chaos，per-type 数组
-/// 下标）**不同**：状态机按本序正序扣 allies→ward，按本序**逆序**（Chaos 先）扣
-/// ES→life（:578 `for i=#dmgTypeList,1,-1`）。共享池（shared aegis/guard/ward/ES/
-/// mana/life）被跨类型顺次消耗，遍历序影响结果，必须对齐 vendor。
+/// **Differs** from pobr's [`DamageType`] enum order (Physical/Fire/Cold/
+/// Lightning/Chaos, the per-type array index): the state machine deducts
+/// allies→ward in this order forward, and ES→life in this order
+/// **reversed** (Chaos first) (`:578`'s `for i=#dmgTypeList,1,-1`). Shared
+/// pools (shared aegis/guard/ward/ES/mana/life) are consumed sequentially
+/// across types, so traversal order affects the result and must match vendor.
 pub const POB2_DAMAGE_ORDER: [DamageType; 5] = [
     DamageType::Physical,
     DamageType::Lightning,
@@ -29,7 +35,7 @@ pub const POB2_DAMAGE_ORDER: [DamageType; 5] = [
     DamageType::Chaos,
 ];
 
-/// 五类型伤害向量（taken 乘区之后、入池之前；PoB2 damageTable 等价）。
+/// The five-type damage vector (after the taken factor, before entering the pool; equivalent to PoB2's damageTable).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct TypedDamage {
     pub physical: f64,
@@ -40,7 +46,7 @@ pub struct TypedDamage {
 }
 
 impl TypedDamage {
-    /// 按 [`DamageType`] 取分量。
+    /// Gets a component by [`DamageType`].
     pub fn get(&self, dtype: DamageType) -> f64 {
         match dtype {
             DamageType::Physical => self.physical,
@@ -51,145 +57,168 @@ impl TypedDamage {
         }
     }
 
-    /// 五分量之和（总进伤）。
+    /// Sum of the five components (total incoming damage).
     pub fn total(&self) -> f64 {
         self.physical + self.fire + self.cold + self.lightning + self.chaos
     }
 }
 
-/// 盟友先扣层（frost shield / spectre / totem / vaal rejuvenation totem / radiance
-/// sentinel / soul link……，PoB2 poolTable 的 allies 段，CalcDefence.lua:466-489）。
+/// The allies before-you layer (frost shield / spectre / totem / vaal
+/// rejuvenation totem / radiance sentinel / soul link, etc.; PoB2 poolTable's
+/// allies section, CalcDefence.lua:466-489).
 ///
-/// 各层 `{remaining, percent}` 比例先扣，**不计入 recoupable**（:529-530 注释
-/// 「taken before you does not count as you taking damage」）。
+/// Each layer deducts its `{remaining, percent}` share first, and **doesn't
+/// count toward recoupable** (per the `:529-530` comment "taken before you does not count as you taking damage").
 #[derive(Debug, Clone, PartialEq)]
 pub struct AllyLayer {
-    /// 层 ID（稳定标识，breakdown / resources_lost 用），如 `"frostShield"`。
+    /// Layer ID (a stable identifier, used for breakdown / resources_lost), e.g. `"frostShield"`.
     pub id: &'static str,
-    /// 该层剩余可吸收量。
+    /// This layer's remaining absorbable amount.
     pub remaining: f64,
-    /// 该层分担比例（%，0-100；CalcDefence.lua:527 `damageRemainder × percent` 分流）。
+    /// This layer's share (%, 0-100; CalcDefence.lua:527's `damageRemainder × percent` split).
     pub mitigation_pct: f64,
-    /// 仅对单一伤害类型生效的层（:526 `allyValues.damageType` 过滤；`None` = 全类型）。
+    /// A layer that only applies to a single damage type (`:526`'s
+    /// `allyValues.damageType` filter; `None` = all types).
     pub damage_type: Option<DamageType>,
 }
 
-/// 扣池前的全部池快照（对应 PoB2 poolTable；构造一次、EHP 循环中按值传递）。
+/// A complete pool snapshot before deduction (corresponds to PoB2's
+/// poolTable; built once, passed by value through the EHP loop).
 ///
-/// per-type 数组下标约定 = [`DamageType`] 枚举序（Physical/Fire/Cold/Lightning/Chaos），
-/// 与 [`TypedDamage`] 字段一一对应；遍历序见 [`POB2_DAMAGE_ORDER`]。
+/// Per-type array index convention = [`DamageType`]'s enum order
+/// (Physical/Fire/Cold/Lightning/Chaos), matching [`TypedDamage`]'s fields
+/// one-to-one; see [`POB2_DAMAGE_ORDER`] for the traversal order.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct PoolState {
-    /// 盟友先扣层（本阶段玩家无 frost shield 等来源时为空 Vec，结构保留）。
+    /// The allies before-you layer (an empty Vec when the player has no
+    /// frost shield etc. source this stage; the structure is kept regardless).
     pub allies: Vec<AllyLayer>,
-    /// 共享 Aegis（全类型，CalcDefence.lua:551-556）。
+    /// Shared Aegis (all types, CalcDefence.lua:551-556).
     pub aegis_shared: f64,
-    /// 元素共享 Aegis（仅元素类型可扣，:545-550）。
+    /// Elemental shared Aegis (only elemental types can deduct it, :545-550).
     pub aegis_shared_elemental: f64,
-    /// per-type Aegis（:539-544）。
+    /// Per-type Aegis (:539-544).
     pub aegis_by_type: [f64; 5],
-    /// 共享 Guard 池与吸收比例（%；CalcDefence.lua:563-568 / 整备 :2823-2826）。
+    /// Shared Guard pool and absorption rate (%; CalcDefence.lua:563-568 / set up at :2823-2826).
     pub guard_shared: f64,
     pub guard_shared_rate: f64,
-    /// per-type Guard 池与吸收比例（%；:557-562 / 整备 :2838-2845）。
+    /// Per-type Guard pool and absorption rate (%; :557-562 / set up at :2838-2845).
     pub guard_by_type: [f64; 5],
     pub guard_rate_by_type: [f64; 5],
-    /// 结界（ward；`×(1−WardBypass/100)` 吸收，`WardNotBreak` 时返还，:569-573）。
+    /// Ward (absorbs `×(1−WardBypass/100)`, returned when `WardNotBreak`, :569-573).
     pub ward: f64,
-    /// 能量护盾池（EHP 口径 = EnergyShieldRecoveryCap）。
+    /// Energy shield pool (the EHP view = EnergyShieldRecoveryCap).
     pub energy_shield: f64,
-    /// 法力池（EHP 口径 = ManaUnreserved；MoM/EB 消耗）。
+    /// Mana pool (the EHP view = ManaUnreserved; consumed by MoM/EB).
     pub mana: f64,
-    /// 生命池（EHP 口径 = LifeRecoverable）。
+    /// Life pool (the EHP view = LifeRecoverable).
     pub life: f64,
-    /// loss-prevention 转入的延迟损失累计（above-half / below-half 分段，
-    /// CalcDefence.lua:611-651）。
+    /// Accumulated deferred loss redirected by loss-prevention (the
+    /// above-half / below-half segments, CalcDefence.lua:611-651).
     pub life_loss_lost_over_time: f64,
     pub life_below_half_loss_lost_over_time: f64,
 }
 
-/// 不随单次击中变化的上下文（flag / 比例从 ModDb 读出后固化；状态机本体不读 ModDb）。
+/// Context that doesn't change per hit (flags / ratios read from the ModDb
+/// and resolved; the state machine itself never reads the ModDb).
 ///
-/// 整备入口（`pool_setup.rs::build_pool_ctx`）对照：ES bypass per-type
-/// CalcDefence.lua:2707-2722、MoM shared/per-type :2728/:2773、loss-prevention :2662-2665。
+/// Compare against the setup entry point (`pool_setup.rs::build_pool_ctx`):
+/// per-type ES bypass CalcDefence.lua:2707-2722, MoM shared/per-type
+/// :2728/:2773, loss-prevention :2662-2665.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct PoolCtx {
-    /// 最大生命（分段生命命中池的 half-life 基准，vendor `output.Life`）。
+    /// Maximum life (the half-life baseline for the segmented life hit pool, vendor `output.Life`).
     pub max_life: f64,
-    /// per-type ES bypass（%，0-100；vendor :2715 Override 或 Σ BASE，:2720 clamp。
-    /// 注意 PoE2 下混沌**不**默认 bypass——混沌对 ES 双倍扣减（:582）取而代之）。
+    /// Per-type ES bypass (%, 0-100; vendor :2715's Override or Σ BASE,
+    /// clamped at :2720. Note that in PoE2, chaos does **not** default to
+    /// bypass -- chaos double-deducting ES (:582) takes its place instead).
     pub es_bypass_by_type: [f64; 5],
-    /// 共享 MoM 比例（%，0-100；`min(Σ DamageTakenFromManaBeforeLife, 100)`，:2728）。
+    /// Shared MoM ratio (%, 0-100; `min(Σ DamageTakenFromManaBeforeLife, 100)`, :2728).
     pub mom_shared: f64,
-    /// per-type MoM 比例（%；`<X>DamageTakenFromManaBeforeLife`，
-    /// `min(Σ, 100 − shared)`，:2773）。
+    /// Per-type MoM ratio (%; `<X>DamageTakenFromManaBeforeLife`,
+    /// `min(Σ, 100 − shared)`, :2773).
     pub mom_by_type: [f64; 5],
-    /// Ward bypass（%，0-100 预期；vendor :572 不 clamp，此处保持原值语义）。
+    /// Ward bypass (%, expected 0-100; vendor :572 doesn't clamp, so this preserves the raw-value semantics).
     pub ward_bypass: f64,
-    /// EternalLife 分支（CalcDefence.lua:587-594，与普通 ES 分支互斥；bypass 部分
-    /// 直接「免除」而非穿透到生命）。
+    /// The EternalLife branch (CalcDefence.lua:587-594, mutually exclusive
+    /// with the normal ES branch; the bypass portion is directly "waived" rather than passing through to life).
     pub eternal_life: bool,
-    /// EB（`EnergyShieldProtectsMana` flag）：ES 嵌套保护 Mana（池整备 :2735-2744 /
-    /// :2782-2791 的 manaProtected 公式；状态机本体不直接分支，经整备结果生效）。
+    /// EB (the `EnergyShieldProtectsMana` flag): ES nests to protect Mana
+    /// (the manaProtected formula from pool setup :2735-2744 /
+    /// :2782-2791; the state machine itself doesn't branch on this
+    /// directly, it takes effect through the setup result).
     pub eb: bool,
-    /// chaos 对 ES 不双倍（默认 chaos `esDamageTypeMultiplier = 2`，:582）。
+    /// Chaos doesn't double-deduct ES (defaults to chaos's
+    /// `esDamageTypeMultiplier = 2`, :582).
     pub chaos_not_double_es: bool,
-    /// WardNotBreak：ward 吸收后不破（:509 返还原值），EHP 中伤害低于 ward 时
-    /// 致死击数 = ∞（:3030，Track F）。
+    /// WardNotBreak: ward doesn't break after absorbing (`:509` returns the
+    /// original value); in EHP, when damage is below ward, the lethal hit
+    /// count = ∞ (`:3030`, Track F).
     pub ward_not_break: bool,
-    /// 生命损失防止（%；`min(Σ LifeLossPrevented, 100)`，:2662）。
+    /// Life loss prevention (%; `min(Σ LifeLossPrevented, 100)`, :2662).
     pub prevented_life_loss: f64,
-    /// 半血以下生命损失防止（%；Σ `LifeLossBelowHalfPrevented` 原始 BASE 和，:514/:2664）。
+    /// Below-half-life loss prevention (%; the raw Σ `LifeLossBelowHalfPrevented` BASE sum, :514/:2664).
     pub life_loss_below_half_prevented: f64,
 }
 
 impl PoolCtx {
-    /// vendor `output.preventedLifeLossBelowHalf`（:2665）：
-    /// `(1 − preventedLifeLoss/100) × Σ LifeLossBelowHalfPrevented`。
-    /// reduce_pools 的 :623 分支判据（≠0 走 above/below-half 分段）。
+    /// Vendor's `output.preventedLifeLossBelowHalf` (:2665):
+    /// `(1 − preventedLifeLoss/100) × Σ LifeLossBelowHalfPrevented`.
+    /// This is `reduce_pools`'s `:623` branch condition (≠0 takes the above/below-half segments).
     fn prevented_life_loss_below_half_effective(&self) -> f64 {
         (1.0 - self.prevented_life_loss / 100.0) * self.life_loss_below_half_prevented
     }
 }
 
-/// 一次扣池的完整结果（PoB2 reducePoolsByDamage 返回的 poolsRemaining 等价 + 扣量明细）。
+/// The complete result of one pool deduction (equivalent to PoB2's
+/// reducePoolsByDamage return, `poolsRemaining`, plus per-deduction detail).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct PoolsAfter {
-    /// 扣减后的池快照（ward 字段 = 返还语义：`WardNotBreak` 时回满原值、否则 0，:509/:666）。
+    /// The pool snapshot after deduction (the `ward` field follows return
+    /// semantics: restored to its original value under `WardNotBreak`, else 0, :509/:666).
     pub pools: PoolState,
-    /// per-type 可 recoup 伤害（allies 先扣段**不计入**，CalcDefence.lua:529-530）。
+    /// Per-type recoupable damage (the allies before-you layer **does not
+    /// count** toward this, CalcDefence.lua:529-530).
     pub recoupable_by_type: [f64; 5],
-    /// 溢出击杀量（生命扣穿后剩余伤害，EHP 小数击数折算用，:619-621/:656）。
+    /// Overflow kill amount (damage left over after the life pool is
+    /// depleted, used for the EHP fractional-hit-count calculation, :619-621/:656).
     pub overkill: f64,
-    /// 命中池余量（:659-660：扣后 life 的分段命中池 + MoM 池余量 + ES 池余量，floor）。
+    /// Hit pool remainder (`:659-660`: the segmented hit pool from the
+    /// post-deduction life, plus the remaining MoM pool, plus the remaining ES pool, floored).
     pub hit_pool_remaining: f64,
-    /// 每类型每层扣量明细（breakdown 用）：(伤害类型, 层 ID, 扣量)。同一 (类型, 层)
-    /// 可能出现多条（如 loss-prevention 段与普通段各扣一次 life），调用方自行汇总。
-    /// 层 ID 取值（vendor resourcesLostToTypeDamage 键的蛇形对应）：
+    /// Per-type, per-layer deduction detail (for breakdown): (damage type,
+    /// layer ID, amount deducted). The same (type, layer) pair may appear
+    /// multiple times (e.g. the loss-prevention segment and the normal
+    /// segment each deduct life once); the caller aggregates them as needed.
+    /// Layer ID values (matching a snake_case version of vendor's
+    /// resourcesLostToTypeDamage keys):
     /// `"ally:<id>"` / `"aegis"` / `"shared_elemental_aegis"` / `"shared_aegis"` /
     /// `"guard"` / `"shared_guard"` / `"ward"` / `"energy_shield"` /
     /// `"eternal_life_prevented"` / `"mana"` / `"life"` / `"life_loss_prevented"` /
-    /// `"overkill"`。
-    /// 注：vendor 仅在扣量 ≥1 时落 breakdown 行（显示层裁剪）；本实现保留全部 >0
-    /// 明细，不丢精度。
+    /// `"overkill"`.
+    /// Note: vendor only records a breakdown row when the amount is ≥1 (a
+    /// display-layer truncation); this implementation keeps every detail >0, losing no precision.
     pub resources_lost: Vec<(DamageType, &'static str, f64)>,
 }
 
-/// 扣池状态机（纯函数，逐行对照 CalcDefence.lua:461-678）。
+/// The damage pool deduction state machine (a pure function, mirroring CalcDefence.lua:461-678 line by line).
 ///
-/// 顺序固定：
-/// 1. **正序**（[`POB2_DAMAGE_ORDER`]）逐类型：allies（:525-531，比例先扣、不计
-///    recoupable）→ recoupable 记账（:531）→ aegis（per-type :539 → sharedElemental
-///    仅元素 :545 → shared :551）→ guard（per-type :557 与 shared :563 各按
-///    AbsorbRate% 比例吸收）→ ward（:569 `×(1−WardBypass/100)`）；
-/// 2. **逆序**（:578，Chaos 先）逐类型：ES（chaos 双倍除非 `ChaosNotDoubleESDamage`
-///    :582；per-type bypass；`EternalLife` :587-594 与普通分支 :594-601 互斥）→
-///    MoM（:602-609 `MoMPool = min(lifeHitPool/(1−MoM)−lifeHitPool, mana)`）→
-///    loss-prevention（:611-651 above/below half 分段，超出生命可承部分先记 overkill）
-///    → life（:651-655）→ overkill（:656）。
+/// Fixed order:
+/// 1. **Forward** ([`POB2_DAMAGE_ORDER`]) per type: allies (:525-531, deducts
+///    its share first, doesn't count toward recoupable) → recoupable
+///    bookkeeping (:531) → aegis (per-type :539 → sharedElemental, elemental
+///    only, :545 → shared :551) → guard (per-type :557 and shared :563 each
+///    absorb by AbsorbRate% share) → ward (:569 `×(1−WardBypass/100)`);
+/// 2. **Reversed** (:578, Chaos first) per type: ES (chaos doubles unless
+///    `ChaosNotDoubleESDamage`, :582; per-type bypass; `EternalLife`
+///    :587-594 is mutually exclusive with the normal branch :594-601) → MoM
+///    (:602-609 `MoMPool = min(lifeHitPool/(1−MoM)−lifeHitPool, mana)`) →
+///    loss-prevention (:611-651 the above/below-half segments; any amount
+///    exceeding what life can still take is recorded as overkill first) →
+///    life (:651-655) → overkill (:656).
 ///
-/// 伤害分量 ≤0 的类型跳过（vendor 以 damageTable 键存在性门控，EHP/max-hit 调用方
-/// 只传正分量）。
+/// Types with a damage component ≤0 are skipped (vendor gates this on
+/// damageTable key existence; EHP/max-hit callers only pass positive components).
 pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> PoolsAfter {
     let mut allies = pools.allies.clone();
     let mut aegis_by_type = pools.aegis_by_type;
@@ -204,17 +233,19 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
     let mut life_loss_lost_over_time = pools.life_loss_lost_over_time;
     let mut life_below_half_loss_lost_over_time = pools.life_below_half_loss_lost_over_time;
 
-    // :509 ward 返还语义：WardNotBreak 持有原值，否则击后归零。
+    // :509 ward return semantics: WardNotBreak keeps the original value, otherwise it's zeroed after the hit.
     let restore_ward = if ctx.ward_not_break { ward } else { 0.0 };
 
     let mut recoupable_by_type = [0.0_f64; 5];
     let mut overkill = 0.0_f64;
     let mut resources_lost: Vec<(DamageType, &'static str, f64)> = Vec::new();
-    // :520-521：MoM/ES 池余量跨类型取 min；m_huge 哨兵 = 该池从未被求值。
+    // :520-521: the MoM/ES pool remainder takes the min across types; the
+    // m_huge sentinel means that pool was never evaluated.
     let mut mom_pool_remaining = f64::INFINITY;
     let mut es_pool_remaining = f64::INFINITY;
 
-    // 记一条扣量明细（保留全部 >0 明细；vendor 仅 ≥1 落 breakdown，显示层差异）。
+    // Records one deduction detail entry (keeps every detail >0; vendor only
+    // records breakdown rows ≥1, a display-layer difference).
     let lose = |list: &mut Vec<(DamageType, &'static str, f64)>,
                 dtype: DamageType,
                 layer: &'static str,
@@ -224,7 +255,7 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
         }
     };
 
-    // 前半段：正序 allies → aegis → guard → ward（:524-575）
+    // First half: forward-order allies → aegis → guard → ward (:524-575)
     let mut remainder_before_es = [0.0_f64; 5];
     for dtype in POB2_DAMAGE_ORDER {
         let idx = dtype as usize;
@@ -232,7 +263,7 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
         if rem <= 0.0 {
             continue;
         }
-        // allies（:525-530）：各层按 percent 比例分担，cap 于层余量。
+        // allies (:525-530): each layer shares by percent, capped at that layer's remainder.
         for ally in allies.iter_mut() {
             if (ally.damage_type.is_none() || ally.damage_type == Some(dtype))
                 && ally.remaining > 0.0
@@ -245,9 +276,9 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
                 }
             }
         }
-        // :531 allies 之后才计 recoupable（先扣段不算「你受到的伤害」）。
+        // :531 recoupable is only counted after allies (the before-you layer doesn't count as "damage you took").
         recoupable_by_type[idx] += rem;
-        // aegis：per-type（:539）→ sharedElemental 仅元素（:545）→ shared（:551）。
+        // aegis: per-type (:539) → sharedElemental, elemental only (:545) → shared (:551).
         if aegis_by_type[idx] > 0.0 {
             let temp = rem.min(aegis_by_type[idx]);
             aegis_by_type[idx] -= temp;
@@ -266,7 +297,7 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             rem -= temp;
             lose(&mut resources_lost, dtype, "shared_aegis", temp);
         }
-        // guard：per-type（:557）与 shared（:563）各按 AbsorbRate% 比例吸收、cap 于池量。
+        // guard: per-type (:557) and shared (:563) each absorb by AbsorbRate% share, capped at the pool amount.
         if guard_by_type[idx] > 0.0 {
             let temp = (rem * pools.guard_rate_by_type[idx] / 100.0).min(guard_by_type[idx]);
             guard_by_type[idx] -= temp;
@@ -279,7 +310,7 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             rem -= temp;
             lose(&mut resources_lost, dtype, "shared_guard", temp);
         }
-        // ward（:569-573）：`×(1−WardBypass/100)` 部分被 ward 吸收。
+        // ward (:569-573): the `×(1−WardBypass/100)` portion is absorbed by ward.
         if ward > 0.0 {
             let temp = (rem * (1.0 - ctx.ward_bypass / 100.0)).min(ward);
             ward -= temp;
@@ -289,28 +320,28 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
         remainder_before_es[idx] = rem;
     }
 
-    // 后半段：逆序（Chaos 先）ES → MoM → loss-prevention → life → overkill（:578-657）
+    // Second half: reversed-order (Chaos first) ES → MoM → loss-prevention → life → overkill (:578-657)
     for dtype in POB2_DAMAGE_ORDER.into_iter().rev() {
         let idx = dtype as usize;
         let mut rem = remainder_before_es[idx];
         if rem <= 0.0 {
             continue;
         }
-        // :582 chaos 对 ES 双倍（除非 ChaosNotDoubleESDamage）。
+        // :582 chaos doubles against ES (unless ChaosNotDoubleESDamage).
         let es_mult = if dtype == DamageType::Chaos && !ctx.chaos_not_double_es {
             2.0
         } else {
             1.0
         };
         let es_bypass = ctx.es_bypass_by_type[idx] / 100.0;
-        // :584 分段生命命中池（以当前 life 重算）。
+        // :584 the segmented life hit pool (recomputed from the current life).
         let life_hit_pool = life_hit_pool_with_loss_prevention(
             life,
             ctx.max_life,
             ctx.prevented_life_loss,
             ctx.life_loss_below_half_prevented,
         );
-        // :585-586 MoM 比例与 MoM 池。
+        // :585-586 the MoM ratio and the MoM pool.
         let mom_effect = (ctx.mom_shared + ctx.mom_by_type[idx]).min(100.0) / 100.0;
         let mom_pool = if mom_effect < 1.0 {
             (life_hit_pool / (1.0 - mom_effect) - life_hit_pool).min(mana)
@@ -318,8 +349,8 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             mana
         };
         if energy_shield > 0.0 && ctx.eternal_life {
-            // :587-594 EternalLife 分支：bypass 部分整体免除（eternalLifePrevented），
-            // 不穿透到生命。
+            // :587-594 the EternalLife branch: the bypass portion is
+            // entirely waived (eternalLifePrevented), not passing through to life.
             let temp = rem.min(energy_shield / (1.0 - es_bypass) / es_mult);
             energy_shield -= temp * (1.0 - es_bypass) * es_mult;
             es_pool_remaining = es_pool_remaining.min(energy_shield);
@@ -337,8 +368,9 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
                 temp * es_bypass,
             );
         } else if energy_shield > 0.0 && es_bypass < 1.0 {
-            // :594-601 普通分支：ES 可用额度被 (MoM+life) 池经 bypass 嵌套限制
-            // （MoMEBPool），chaos 双倍折算。
+            // :594-601 the normal branch: the ES amount available is limited
+            // by the (MoM+life) pool nested via bypass (MoMEBPool), with the
+            // chaos-doubling factor applied.
             let mom_eb_pool = if es_bypass > 0.0 {
                 ((mom_pool + life_hit_pool) / es_bypass * es_mult - (mom_pool + life_hit_pool))
                     .min(energy_shield)
@@ -352,7 +384,7 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             lose(&mut resources_lost, dtype, "energy_shield", temp * es_mult);
         }
         if mom_effect > 0.0 && mana > 0.0 {
-            // :602-608 MoM：rem 的 MoM 份额进 mana，cap 于 MoMPool。
+            // :602-608 MoM: rem's MoM share goes into mana, capped at MoMPool.
             let mom_damage = rem * mom_effect;
             let temp = mom_damage.min(mom_pool);
             mom_pool_remaining = mom_pool_remaining.min(mom_pool - temp);
@@ -360,11 +392,12 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             rem -= temp;
             lose(&mut resources_lost, dtype, "mana", temp);
         } else {
-            // :609 无 MoM 路径：MoM 池余量记 0（参与 :659 命中池余量求和）。
+            // :609 the no-MoM path: the MoM pool remainder is recorded as 0
+            // (this feeds into the `:659` hit pool remainder sum).
             mom_pool_remaining = 0.0;
         }
-        // :611-651 loss-prevention（gate = preventedLifeLossTotal > 0，:2670 推导：
-        // prev>0 或 belowHalf 有效值>0）。
+        // :611-651 loss-prevention (gate = preventedLifeLossTotal > 0,
+        // derived per :2670: prev>0 or belowHalf's effective value >0).
         let below_half_eff = ctx.prevented_life_loss_below_half_effective();
         if ctx.prevented_life_loss > 0.0 || below_half_eff > 0.0 {
             let half_life = ctx.max_life * 0.5;
@@ -372,7 +405,8 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
             let prevent_pct = ctx.prevented_life_loss / 100.0;
             let pool_above_low = life_over_half / (1.0 - prevent_pct);
             let prevent_below_half_pct = ctx.life_loss_below_half_prevented / 100.0;
-            // :617-618 生命（含防止折算）还能吃下的伤害；超出部分先记 overkill。
+            // :617-618 how much damage life (with prevention folded in) can
+            // still take; the excess is recorded as overkill first.
             let damage_that_life_can_still_take = pool_above_low
                 + life.min(half_life).max(0.0)
                     / (1.0 - prevent_below_half_pct)
@@ -382,8 +416,9 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
                 rem = damage_that_life_can_still_take;
             }
             if below_half_eff != 0.0 {
-                // :623-641 above/below half 分段：先按半血以上池拆分，再对剩余按
-                // 「非特定低血防止 → 特定低血防止」两步折算。
+                // :623-641 the above/below-half segments: first splits off
+                // the above-half-life pool's share, then folds the rest
+                // through two steps -- "non-specific below-half prevention → specific below-half prevention".
                 let damage_to_split = rem.min(pool_above_low);
                 let lost_life = damage_to_split * (1.0 - prevent_pct);
                 let prevented_loss = damage_to_split * prevent_pct;
@@ -408,27 +443,28 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
                     prevented_total_this_type,
                 );
             } else {
-                // :643-647 仅 above-half 防止：固定比例转入延迟损失。
+                // :643-647 above-half prevention only: a fixed ratio is redirected into deferred loss.
                 let temp = rem * ctx.prevented_life_loss / 100.0;
                 life_loss_lost_over_time += temp;
                 rem -= temp;
                 lose(&mut resources_lost, dtype, "life_loss_prevented", temp);
             }
         }
-        // :651-655 life。
+        // :651-655 life.
         if life > 0.0 {
             let temp = rem.min(life);
             life -= temp;
             rem -= temp;
             lose(&mut resources_lost, dtype, "life", temp);
         }
-        // :656-657 overkill。
+        // :656-657 overkill.
         overkill += rem;
         lose(&mut resources_lost, dtype, "overkill", rem);
     }
 
-    // :659-660 命中池余量 = 扣后 life 的分段命中池 + MoM/ES 余量（未求值的 m_huge
-    // 哨兵不计入），floor。
+    // :659-660 hit pool remainder = the segmented hit pool from the
+    // post-deduction life, plus the MoM/ES remainders (unevaluated m_huge
+    // sentinels don't count), floored.
     let life_hit_pool_after = life_hit_pool_with_loss_prevention(
         life,
         ctx.max_life,
@@ -472,15 +508,15 @@ pub fn reduce_pools(pools: &PoolState, hit: &TypedDamage, ctx: &PoolCtx) -> Pool
     }
 }
 
-/// X-protects-Y 通用原语（CalcDefence.lua:2746 / :2827 / :3547 / :3563）：
-/// `poolProtected = source_pool / rate × (1 − rate)`。
+/// The generic X-protects-Y primitive (CalcDefence.lua:2746 / :2827 / :3547 / :3563):
+/// `poolProtected = source_pool / rate × (1 − rate)`.
 ///
-/// `rate_fraction` 为保护比例（小数）：
-/// - `rate ≥ 1` → 全额保护（PoB2 `m_huge`），返回 `f64::INFINITY`；
-/// - `rate ≤ 0` → 无保护层，返回 0；
-/// - 其余 → 公式值（source 池按 rate 分担时，能保护的"另一侧"额度）。
+/// `rate_fraction` is the protection ratio (a fraction):
+/// - `rate ≥ 1` → full protection (PoB2's `m_huge`), returns `f64::INFINITY`;
+/// - `rate ≤ 0` → no protection layer, returns 0;
+/// - otherwise → the formula's value (when the source pool shares by rate, how much "the other side" is protected for).
 ///
-/// MoM / Guard / Ward bypass / SoulLink / EB 嵌套全部复用本原语。
+/// MoM / Guard / Ward bypass / SoulLink / EB nesting all reuse this primitive.
 pub fn pool_protected(source_pool: f64, rate_fraction: f64) -> f64 {
     if rate_fraction >= 1.0 {
         return f64::INFINITY;
@@ -491,18 +527,21 @@ pub fn pool_protected(source_pool: f64, rate_fraction: f64) -> f64 {
     source_pool / rate_fraction * (1.0 - rate_fraction)
 }
 
-/// 把一个「按比例分担」的保护层折进目标池（PoB2 :2753-2754 / :3549 / :3564 / :3571
-/// 共用形）：`pool' = max(pool − protected, 0) + min(pool, protected) / passthrough`。
+/// Folds a "proportional share" protection layer into the target pool (the
+/// shared shape of PoB2 :2753-2754 / :3549 / :3564 / :3571):
+/// `pool' = max(pool − protected, 0) + min(pool, protected) / passthrough`.
 ///
-/// `protected` = [`pool_protected`] 的产出；`passthrough_fraction` = 伤害穿过该层到达
-/// 目标池的比例（= 1 − 层吸收比例）。`protected = ∞`（全额保护）时 vendor 数值上
-/// 即 `min(pool,∞)/passthrough`；passthrough ≤ 0 的全吸收层不适用本公式（调用方按
-/// vendor 走平铺相加分支，如 :3560-3561）。
+/// `protected` = [`pool_protected`]'s output; `passthrough_fraction` = the
+/// fraction of damage that passes through this layer to reach the target
+/// pool (= 1 − the layer's absorption ratio). When `protected = ∞` (full
+/// protection), vendor's value numerically becomes `min(pool,∞)/passthrough`;
+/// a fully-absorbing layer with passthrough ≤ 0 doesn't fit this formula
+/// (the caller follows vendor's flat-addition branch instead, e.g. :3560-3561).
 pub fn apply_protected_layer(pool: f64, protected: f64, passthrough_fraction: f64) -> f64 {
     (pool - protected).max(0.0) + pool.min(protected) / passthrough_fraction
 }
 
-/// 分段生命命中池（CalcDefence.lua:450-454 `calcLifeHitPoolWithLossPrevention`）：
+/// The segmented life hit pool (CalcDefence.lua:450-454's `calcLifeHitPoolWithLossPrevention`):
 ///
 /// ```text
 /// halfLife = maxLife × 0.5
@@ -511,8 +550,9 @@ pub fn apply_protected_layer(pool: f64, protected: f64, passthrough_fraction: f6
 ///      + min(life, halfLife) / (1 − belowHalfPrev/100) / (1 − lossPrev/100)
 /// ```
 ///
-/// `loss_prev_pct` / `below_half_prev_pct` 为百分比（0-100）；任一达 100 时分母为 0，
-/// 池自然为 ∞（与 vendor 除零 → m_huge 行为一致，不额外 clamp）。
+/// `loss_prev_pct` / `below_half_prev_pct` are percentages (0-100); when
+/// either reaches 100, the denominator is 0, and the pool naturally becomes
+/// ∞ (matching vendor's divide-by-zero → m_huge behavior, no extra clamp applied).
 pub fn life_hit_pool_with_loss_prevention(
     life: f64,
     max_life: f64,
@@ -525,12 +565,12 @@ pub fn life_hit_pool_with_loss_prevention(
         + life.min(half_life) / (1.0 - below_half_prev_pct / 100.0) / (1.0 - loss_prev_pct / 100.0)
 }
 
-/// max-hit TotalHitPool 基底：把 ES（bypass / chaos 双倍 / EternalLife 分支）折在
-/// MoM 命中池之上（CalcDefence.lua:2942-2960）。
+/// The max-hit TotalHitPool base: folds ES (bypass / chaos-doubling /
+/// EternalLife branch) on top of the MoM hit pool (CalcDefence.lua:2942-2960).
 ///
-/// `mom_hit_pool` = `<X>MoMHitPool`（pool_setup `mom_hit_pools` 产出）；
-/// `energy_shield` = EnergyShieldRecoveryCap。Track F 在此之上再叠
-/// [`extend_total_hit_pool`] 的 ward/aegis/guard/allies 层。
+/// `mom_hit_pool` = `<X>MoMHitPool` (produced by pool_setup's `mom_hit_pools`);
+/// `energy_shield` = EnergyShieldRecoveryCap. Track F stacks
+/// [`extend_total_hit_pool`]'s ward/aegis/guard/allies layers on top of this.
 pub fn total_hit_pool_base(
     dtype: DamageType,
     mom_hit_pool: f64,
@@ -538,38 +578,39 @@ pub fn total_hit_pool_base(
     ctx: &PoolCtx,
 ) -> f64 {
     let es_bypass = ctx.es_bypass_by_type[dtype as usize] / 100.0;
-    // :2947 chaos 对 ES 双倍 → ES 折半计入池。
+    // :2947 chaos doubles against ES → ES is halved when entering the pool.
     let chaos_es_mult = if dtype == DamageType::Chaos && !ctx.chaos_not_double_es {
         2.0
     } else {
         1.0
     };
     if ctx.eternal_life {
-        // :2948-2950 EternalLife：bypass 部分被免除 → ES 实际能挡 ES/(1−bypass)。
+        // :2948-2950 EternalLife: the bypass portion is waived → ES can actually cover ES/(1−bypass).
         mom_hit_pool + energy_shield / (1.0 - es_bypass) / chaos_es_mult
     } else if es_bypass < 1.0 {
         if es_bypass > 0.0 {
-            // :2952-2955 bypass 嵌套：poolProtected = EScap/(1−bypass)×bypass/chaosMult。
+            // :2952-2955 bypass nesting: poolProtected = EScap/(1−bypass)×bypass/chaosMult.
             let protected = energy_shield / (1.0 - es_bypass) * es_bypass / chaos_es_mult;
             apply_protected_layer(mom_hit_pool, protected, es_bypass)
         } else {
-            // :2956-2958 无 bypass：平铺相加（chaos 双倍折半）。
+            // :2956-2958 no bypass: added flat (chaos-doubling halves it).
             mom_hit_pool + energy_shield / chaos_es_mult
         }
     } else {
-        // bypass ≥ 100%：ES 不参与该类型的池。
+        // bypass ≥ 100%: ES doesn't participate in this type's pool.
         mom_hit_pool
     }
 }
 
-/// max-hit TotalHitPool 扩展层（CalcDefence.lua:3540-3596）：在
-/// [`total_hit_pool_base`] 之上依次叠 ward（bypass poolProtected，:3544-3553）、
-/// aegis（取最强口径平铺相加，:3554-3555）、guard（:3556-3566）、allies
-/// （各层 poolProtected，:3567-3595）。
+/// The max-hit TotalHitPool expansion layer (CalcDefence.lua:3540-3596):
+/// stacks ward (bypass via poolProtected, :3544-3553), aegis (added flat
+/// using the strongest view, :3554-3555), guard (:3556-3566), and allies
+/// (each layer via poolProtected, :3567-3595) on top of [`total_hit_pool_base`].
 ///
-/// 注意 vendor :3557/:3559 的 Lua 运算符优先级（`a or 0 + b or 0` 解析为
-/// `a or (0+b) or 0`）使 guard 段**只有 shared guard 生效**（sharedGuardAbsorbRate
-/// 恒非 nil）；为 parity 逐值对齐，此处复刻该求值语义而非字面公式。
+/// Note that vendor :3557/:3559's Lua operator precedence (`a or 0 + b or 0`
+/// parses as `a or (0+b) or 0`) makes **only shared guard actually take
+/// effect** in the guard section (sharedGuardAbsorbRate is always non-nil);
+/// to align value-for-value with parity, this mirrors that evaluation semantics rather than the literal formula.
 pub fn extend_total_hit_pool(
     base_pool: f64,
     dtype: DamageType,
@@ -578,17 +619,17 @@ pub fn extend_total_hit_pool(
 ) -> f64 {
     let idx = dtype as usize;
     let mut pool = base_pool;
-    // ward（:3544-3553）：bypass>0 时按 poolProtected 嵌套，否则平铺相加。
+    // ward (:3544-3553): nested via poolProtected when bypass>0, otherwise added flat.
     if ctx.ward_bypass > 0.0 {
         let bypass = ctx.ward_bypass / 100.0;
-        // :3547 protected = Ward/(1−bypass)×bypass = pool_protected(Ward, 1−bypass)。
+        // :3547 protected = Ward/(1−bypass)×bypass = pool_protected(Ward, 1−bypass).
         let protected = pool_protected(pools.ward, 1.0 - bypass);
         pool = apply_protected_layer(pool, protected, bypass);
     } else {
         pool += pools.ward;
     }
-    // aegis（:3555）：max(per-type, shared, 元素时 per-type+sharedElemental) 平铺相加
-    // （AegisDisplay = perType + sharedElemental，:2879）。
+    // aegis (:3555): added flat as max(per-type, shared, and for elemental
+    // types, per-type+sharedElemental) (AegisDisplay = perType + sharedElemental, :2879).
     let aegis_display = if DamageType::ELEMENTAL.contains(&dtype) {
         pools.aegis_by_type[idx] + pools.aegis_shared_elemental
     } else {
@@ -597,7 +638,7 @@ pub fn extend_total_hit_pool(
     pool += pools.aegis_by_type[idx]
         .max(pools.aegis_shared)
         .max(aegis_display);
-    // guard（:3556-3566）：vendor 求值语义 = 仅 shared guard（见函数文档）。
+    // guard (:3556-3566): vendor's evaluation semantics = shared guard only (see the function docs).
     let guard_rate = pools.guard_shared_rate;
     if guard_rate > 0.0 {
         let guard_absorb = pools.guard_shared;
@@ -608,8 +649,8 @@ pub fn extend_total_hit_pool(
             pool = apply_protected_layer(pool, protected, 1.0 - guard_rate / 100.0);
         }
     }
-    // allies（:3567-3595）：各层 poolProtected 依次折入（mitigation 0 时 protected=∞，
-    // 公式自然退化为原池）。
+    // allies (:3567-3595): each layer is folded in via poolProtected in turn
+    // (when mitigation is 0, protected=∞ and the formula naturally degenerates to the original pool).
     for ally in &pools.allies {
         if ally.remaining > 0.0 && (ally.damage_type.is_none() || ally.damage_type == Some(dtype)) {
             let rate = ally.mitigation_pct / 100.0;
@@ -624,16 +665,16 @@ pub fn extend_total_hit_pool(
 mod tests {
     use super::*;
 
-    /// poolProtected 公式锁值（CalcDefence.lua:2746：`source/(rate)×(1−rate)`）。
-    /// 手算：1000/0.3×0.7 = 2333.33…；500/0.5×0.5 = 500。
+    /// Pins the poolProtected formula (CalcDefence.lua:2746: `source/(rate)×(1−rate)`).
+    /// Hand-computed: 1000/0.3×0.7 = 2333.33…; 500/0.5×0.5 = 500.
     #[test]
     fn pool_protected_formula_locked() {
         assert!((pool_protected(1000.0, 0.3) - 1000.0 / 0.3 * 0.7).abs() < 1e-9);
         assert_eq!(pool_protected(500.0, 0.5), 500.0);
     }
 
-    /// rate ≥ 1 → ∞ 保护（vendor `sharedMindOverMatter >= 100` → m_huge，:2748-2751）；
-    /// rate ≤ 0 → 无保护层（0）。
+    /// rate ≥ 1 → ∞ protection (vendor `sharedMindOverMatter >= 100` → m_huge, :2748-2751);
+    /// rate ≤ 0 → no protection layer (0).
     #[test]
     fn pool_protected_boundary_rates() {
         assert_eq!(pool_protected(800.0, 1.0), f64::INFINITY);
@@ -642,18 +683,18 @@ mod tests {
         assert_eq!(pool_protected(800.0, -0.2), 0.0);
     }
 
-    /// apply_protected_layer 两段语义（CalcDefence.lua:2753-2754 形）：
-    /// 池 ≤ protected → pool/passthrough；池 > protected → 超出部分原值 + protected 段放大。
-    /// 手算：pool=1000, protected=2400, pass=0.5 → 0 + 1000/0.5 = 2000；
-    ///       pool=3000, protected=2400, pass=0.5 → 600 + 2400/0.5 = 5400。
+    /// apply_protected_layer's two-segment semantics (the CalcDefence.lua:2753-2754 shape):
+    /// pool ≤ protected → pool/passthrough; pool > protected → the excess kept as-is + the protected segment amplified.
+    /// Hand-computed: pool=1000, protected=2400, pass=0.5 → 0 + 1000/0.5 = 2000;
+    ///       pool=3000, protected=2400, pass=0.5 → 600 + 2400/0.5 = 5400.
     #[test]
     fn apply_protected_layer_two_segments() {
         assert_eq!(apply_protected_layer(1000.0, 2400.0, 0.5), 2000.0);
         assert_eq!(apply_protected_layer(3000.0, 2400.0, 0.5), 5400.0);
     }
 
-    /// 无损失防止时分段池退化为 life 本值（CalcDefence.lua:450-454，prev=0 →
-    /// aboveLow + min(life, half) = life）。
+    /// The segmented pool degenerates to life's own value with no loss
+    /// prevention (CalcDefence.lua:450-454, prev=0 → aboveLow + min(life, half) = life).
     #[test]
     fn life_hit_pool_without_prevention_equals_life() {
         assert_eq!(
@@ -666,8 +707,8 @@ mod tests {
         );
     }
 
-    /// 全段 20% 损失防止：满血 1000/1000 → 500/0.8 + 500/0.8 = 1250（手算，
-    /// CalcDefence.lua:453 两段同除 (1−lossPrev/100)）。
+    /// Full-range 20% loss prevention: full health 1000/1000 → 500/0.8 + 500/0.8 = 1250
+    /// (hand-computed, CalcDefence.lua:453's two segments both divide by (1−lossPrev/100)).
     #[test]
     fn life_hit_pool_with_full_range_prevention() {
         assert!(
@@ -675,9 +716,9 @@ mod tests {
         );
     }
 
-    /// 半血以下 50% 防止：满血 1000/1000 → 500 + 500/0.5 = 1500；
-    /// 双段叠加（life=800, max=1000, lossPrev=20, belowHalf=50）→
-    /// 300/0.8 + 500/0.5/0.8 = 375 + 1250 = 1625（手算）。
+    /// Below-half 50% prevention: full health 1000/1000 → 500 + 500/0.5 = 1500;
+    /// both segments combined (life=800, max=1000, lossPrev=20, belowHalf=50) →
+    /// 300/0.8 + 500/0.5/0.8 = 375 + 1250 = 1625 (hand-computed).
     #[test]
     fn life_hit_pool_below_half_prevention_segments() {
         assert!(
@@ -688,8 +729,9 @@ mod tests {
         );
     }
 
-    /// 半血以下段只作用于 min(life, halfLife)：当前生命低于半血时 aboveLow=0，
-    /// 整池 = life/(1−belowHalf/100)（400/0.5 = 800，手算）。
+    /// The below-half segment only applies to min(life, halfLife): when
+    /// current life is below half, aboveLow=0, so the whole pool =
+    /// life/(1−belowHalf/100) (400/0.5 = 800, hand-computed).
     #[test]
     fn life_hit_pool_when_life_below_half() {
         assert_eq!(
@@ -698,7 +740,7 @@ mod tests {
         );
     }
 
-    /// 100% 损失防止 → 池 ∞（vendor 除零 → m_huge 等价，不 clamp）。
+    /// 100% loss prevention → pool ∞ (equivalent to vendor's divide-by-zero → m_huge, not clamped).
     #[test]
     fn life_hit_pool_full_prevention_is_infinite() {
         assert_eq!(
@@ -707,8 +749,8 @@ mod tests {
         );
     }
 
-    /// TypedDamage 访问器与 PoolState/PoolCtx/PoolsAfter 的 Default 构造（契约可编译 +
-    /// 中性默认锁定）。
+    /// TypedDamage's accessors and PoolState/PoolCtx/PoolsAfter's Default
+    /// construction (the contract compiles + neutral defaults are pinned).
     #[test]
     fn contract_types_construct_with_neutral_defaults() {
         let hit = TypedDamage {
@@ -733,8 +775,8 @@ mod tests {
         assert!(after.resources_lost.is_empty());
     }
 
-    /// POB2 遍历序锁定（CalcDefence.lua:27）：正序 Physical→Lightning→Cold→Fire→Chaos，
-    /// 数组下标仍按 pobr DamageType 枚举序。
+    /// Pins the POB2 traversal order (CalcDefence.lua:27): forward order
+    /// Physical→Lightning→Cold→Fire→Chaos, while array indices still follow pobr's DamageType enum order.
     #[test]
     fn pob2_damage_order_locked() {
         assert_eq!(

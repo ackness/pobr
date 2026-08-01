@@ -1,5 +1,6 @@
-//! DamageComponent 向量集成测试：验证击中伤害按伤害类型拆分聚合，
-//! 求和等于总击中伤害，且纯物理路径与旧实现完全一致（回归安全）。
+//! DamageComponent vector integration tests: verifies that hit damage is split and
+//! aggregated by damage type, that the components sum to the total hit damage, and
+//! that the pure-physical path matches the old implementation exactly (regression safe).
 
 use pobr_core::calc::output::OutputTable;
 use pobr_core::calc::{MinimalInput, calculate_minimal};
@@ -21,7 +22,8 @@ fn base_input() -> MinimalInput {
     }
 }
 
-/// 找到指定伤害类型的分量；不存在时 panic（让断言定位清晰）。
+/// Finds the component for a given damage type; panics if missing (keeps assertion
+/// failures easy to locate).
 fn component(
     output: &pobr_core::calc::MinimalOutput,
     ty: DamageType,
@@ -45,7 +47,7 @@ fn pure_physical_path_matches_legacy_total_hit_avg() {
 
     // base avg 150 * (1 + 0.5) * 1.2 = 270
     assert_eq!(output.total_hit_avg, 270.0);
-    // 唯一分量是物理，其 avg 即总击中伤害
+    // The only component is physical, so its avg is the total hit damage
     assert_eq!(output.damage_components.len(), 1);
     let phys = component(&output, DamageType::Physical);
     assert_eq!(phys.avg(), 270.0);
@@ -68,7 +70,7 @@ fn physical_component_is_emitted_with_no_modifiers() {
 #[test]
 fn fire_flat_added_contributes_to_total_hit() {
     let mut db = ModDb::new();
-    // 附加火焰伤害（flat added），用 min/max 双词条表达
+    // Flat added fire damage, expressed with separate min/max mods
     db.add_mod(Modifier::number("FireDamageMin", ModType::Base, 30.0).with_flags(ModFlags::ATTACK));
     db.add_mod(Modifier::number("FireDamageMax", ModType::Base, 50.0).with_flags(ModFlags::ATTACK));
 
@@ -80,7 +82,7 @@ fn fire_flat_added_contributes_to_total_hit() {
     assert_eq!(fire.min, 30.0);
     assert_eq!(fire.max, 50.0);
     assert_eq!(fire.avg(), 40.0);
-    // 总击中伤害 = 物理 avg + 火焰 avg
+    // Total hit damage = physical avg + fire avg
     assert_eq!(output.total_hit_avg, 150.0 + 40.0);
 }
 
@@ -93,7 +95,7 @@ fn type_specific_inc_only_scales_its_own_component() {
     db.add_mod(
         Modifier::number("FireDamageMax", ModType::Base, 100.0).with_flags(ModFlags::ATTACK),
     );
-    // 仅作用于火焰的 increased：通过 DamageType tag 限定
+    // increased that only applies to fire: scoped via the DamageType tag
     db.add_mod(
         Modifier::number("FireDamage", ModType::Inc, 50.0)
             .with_flags(ModFlags::ATTACK)
@@ -104,9 +106,9 @@ fn type_specific_inc_only_scales_its_own_component() {
 
     let phys = component(&output, DamageType::Physical);
     let fire = component(&output, DamageType::Fire);
-    // 物理未被火焰 inc 影响
+    // Physical is unaffected by the fire-only inc
     assert_eq!(phys.avg(), 150.0);
-    // 火焰 100 * (1 + 0.5) = 150
+    // fire: 100 * (1 + 0.5) = 150
     assert_eq!(fire.avg(), 150.0);
     assert_eq!(output.total_hit_avg, 150.0 + 150.0);
 }
@@ -120,20 +122,21 @@ fn generic_damage_inc_scales_all_components() {
     db.add_mod(
         Modifier::number("FireDamageMax", ModType::Base, 100.0).with_flags(ModFlags::ATTACK),
     );
-    // 通用 Damage inc 应同时作用于物理与火焰
+    // A generic Damage inc should apply to both physical and fire
     db.add_mod(Modifier::number("Damage", ModType::Inc, 100.0).with_flags(ModFlags::ATTACK));
 
     let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
 
     let phys = component(&output, DamageType::Physical);
     let fire = component(&output, DamageType::Fire);
-    // 物理 150 * 2 = 300；火焰 100 * 2 = 200
+    // physical 150 * 2 = 300; fire 100 * 2 = 200
     assert_eq!(phys.avg(), 300.0);
     assert_eq!(fire.avg(), 200.0);
     assert_eq!(output.total_hit_avg, 500.0);
 }
 
-/// PoE2 暴击期望值测试（base_crit_bonus = PLAYER_BASE_CRIT_DAMAGE_BONUS=100，非 PoE1 的 50）。
+/// Crit expected-value test for PoE2 (base_crit_bonus = PLAYER_BASE_CRIT_DAMAGE_BONUS=100,
+/// not PoE1's 50).
 ///
 /// PoE2：CritMultiplier BASE 50 → bonus = 100+50=150 → mult = 1+1.5 = 2.5
 ///         crit_avg_factor = 1 + 0.1*(2.5-1) = 1.15
@@ -157,7 +160,7 @@ fn components_sum_equals_total_hit_avg_with_crit() {
 
     let output = calculate_minimal(&db, &CalcConfig::attack(), &base_input());
 
-    // 分量向量是「非暴击」命中分量，求和 = 150 + 30 = 180
+    // The component vector holds the "non-crit" hit components; their sum = 150 + 30 = 180
     let sum_avg: f64 = output.damage_components.iter().map(|c| c.avg()).sum();
     assert_eq!(sum_avg, 180.0);
     // PoE2 total_hit_avg = 180 * (1 + 0.1*(2.5-1)) = 180 * 1.15 = 207
@@ -188,13 +191,14 @@ fn output_table_exposes_damage_components() {
     assert_eq!(fire.avg(), 40.0);
 }
 
-/// Bug#6 测试：ElementalDamage 共享 inc 组作用于三元素分量。
+/// Bug#6 test: the ElementalDamage shared inc group applies to all three elemental components.
 ///
-/// 出处：damage-scaling.md §核心叠加语义；PoB2 `typeFlags + modNames` ElementalDamage 展开。
+/// Source: damage-scaling.md §core stacking semantics; PoB2's `typeFlags + modNames`
+/// ElementalDamage expansion.
 #[test]
 fn elemental_damage_inc_scales_all_three_elemental_components() {
     let mut db = ModDb::new();
-    // 附加火/冰/电各 100
+    // Add 100 flat fire/cold/lightning damage each
     db.add_mod(
         Modifier::number("FireDamageMin", ModType::Base, 100.0).with_flags(ModFlags::ATTACK),
     );
@@ -213,7 +217,7 @@ fn elemental_damage_inc_scales_all_three_elemental_components() {
     db.add_mod(
         Modifier::number("LightningDamageMax", ModType::Base, 100.0).with_flags(ModFlags::ATTACK),
     );
-    // ElementalDamage INC 50 应作用于所有三元素
+    // ElementalDamage INC 50 should apply to all three elements
     db.add_mod(
         Modifier::number("ElementalDamage", ModType::Inc, 50.0).with_flags(ModFlags::ATTACK),
     );
@@ -223,18 +227,19 @@ fn elemental_damage_inc_scales_all_three_elemental_components() {
     let fire = component(&output, DamageType::Fire);
     let cold = component(&output, DamageType::Cold);
     let lightning = component(&output, DamageType::Lightning);
-    // 各元素 100 * (1 + 0.5) = 150
+    // each element: 100 * (1 + 0.5) = 150
     assert_eq!(fire.avg(), 150.0);
     assert_eq!(cold.avg(), 150.0);
     assert_eq!(lightning.avg(), 150.0);
-    // 物理不受 ElementalDamage 影响
+    // Physical is unaffected by ElementalDamage
     let phys = component(&output, DamageType::Physical);
     assert_eq!(phys.avg(), 150.0); // base_input: 100-200 avg 150, no scaler
 }
 
-/// Bug#7 测试：DAMAGE_TYPES 顺序为 PoE2 转换链顺序 Phys→Lightning→Cold→Fire→Chaos。
+/// Bug#7 test: DAMAGE_TYPES follows the PoE2 conversion-chain order
+/// Phys→Lightning→Cold→Fire→Chaos.
 ///
-/// 出处：damage-scaling.md §转换顺序、PoB2 CalcOffence.lua `dmgTypeList`。
+/// Source: damage-scaling.md §conversion order, PoB2 CalcOffence.lua `dmgTypeList`.
 #[test]
 fn damage_types_array_follows_poe2_conversion_chain_order() {
     use pobr_core::calc::damage::DAMAGE_TYPES;
@@ -245,16 +250,17 @@ fn damage_types_array_follows_poe2_conversion_chain_order() {
     assert_eq!(DAMAGE_TYPES[4], DamageType::Chaos);
 }
 
-/// Bug#8 测试：AddedDamage MORE 只作用于外部 flat added，不乘武器自带 base。
+/// Bug#8 test: AddedDamage MORE only applies to external flat added damage, not to the
+/// weapon's own base damage.
 ///
-/// 出处：damage-scaling.md §Added Damage Effectiveness；
-///       PoB2 `addedMin * addedMult` 不包含 `source[...]`（武器/技能自带）。
+/// Source: damage-scaling.md §Added Damage Effectiveness;
+///       PoB2 `addedMin * addedMult` excludes `source[...]` (the weapon's/skill's own base).
 #[test]
 fn added_damage_effectiveness_only_scales_flat_added_not_weapon_base() {
     let mut db = ModDb::new();
-    // AddedDamage MORE 200（效率 200% = 乘以 3.0 … MORE 200 → factor = 1+200/100 = 3.0）
+    // AddedDamage MORE 200 (200% effectiveness = ×3.0 ... MORE 200 → factor = 1+200/100 = 3.0)
     db.add_mod(Modifier::number("AddedDamage", ModType::More, 200.0).with_flags(ModFlags::ATTACK));
-    // 附加火焰 10 flat
+    // Add 10 flat fire damage
     db.add_mod(Modifier::number("FireDamageMin", ModType::Base, 10.0).with_flags(ModFlags::ATTACK));
     db.add_mod(Modifier::number("FireDamageMax", ModType::Base, 10.0).with_flags(ModFlags::ATTACK));
 
@@ -264,29 +270,30 @@ fn added_damage_effectiveness_only_scales_flat_added_not_weapon_base() {
     // fire flat=10 * eff_factor=3.0 = 30 avg
     assert_eq!(fire.avg(), 30.0);
 
-    // 物理 base（来自武器 base_hit_min/max）不受 AddedDamage MORE 影响
-    // flat added 物理=0 → phys = (base_hit + 0*eff) scaled = base_hit * scale (no INC/MORE)
+    // Physical base (from the weapon's base_hit_min/max) is unaffected by AddedDamage MORE
+    // flat added physical=0 → phys = (base_hit + 0*eff) scaled = base_hit * scale (no INC/MORE)
     let phys = component(&output, DamageType::Physical);
-    // PhysicalDamage MORE = 3.0 also applies to phys base? NO: AddedDamage MORE只乘added
+    // PhysicalDamage MORE = 3.0 also applies to phys base? NO: AddedDamage MORE only
+    // multiplies added damage
     // phys base = (100 + 0*3) = 100 min, (200+0*3) = 200 max → avg 150
     assert_eq!(phys.avg(), 150.0);
 }
 
-/// 测试：addedMult 含 INC 腿——vendor `calcLib.mod`（CalcTools.lua:16-18）=
-/// `(1 + Sum(INC, "Added<Type>Damage", "AddedDamage")/100) × More(...)`。
+/// Test: addedMult includes an INC leg — vendor `calcLib.mod` (CalcTools.lua:16-18) =
+/// `(1 + Sum(INC, "Added<Type>Damage", "AddedDamage")/100) × More(...)`.
 ///
-/// 出处：PoB2 CalcOffence.lua:3909 + CalcTools.lua:16-18。
+/// Source: PoB2 CalcOffence.lua:3909 + CalcTools.lua:16-18.
 #[test]
 fn added_damage_effectiveness_includes_inc_leg() {
     let mut db = ModDb::new();
-    // INC 腿：AddedDamage INC 50 + AddedFireDamage INC 30 → (1 + 80/100) = 1.8
+    // INC leg: AddedDamage INC 50 + AddedFireDamage INC 30 → (1 + 80/100) = 1.8
     db.add_mod(Modifier::number("AddedDamage", ModType::Inc, 50.0).with_flags(ModFlags::ATTACK));
     db.add_mod(
         Modifier::number("AddedFireDamage", ModType::Inc, 30.0).with_flags(ModFlags::ATTACK),
     );
-    // MORE 腿：AddedDamage MORE 100 → ×2.0；合计 addedMult = 1.8 × 2.0 = 3.6
+    // MORE leg: AddedDamage MORE 100 → ×2.0; combined addedMult = 1.8 × 2.0 = 3.6
     db.add_mod(Modifier::number("AddedDamage", ModType::More, 100.0).with_flags(ModFlags::ATTACK));
-    // 附加火焰 10 flat
+    // Add 10 flat fire damage
     db.add_mod(Modifier::number("FireDamageMin", ModType::Base, 10.0).with_flags(ModFlags::ATTACK));
     db.add_mod(Modifier::number("FireDamageMax", ModType::Base, 10.0).with_flags(ModFlags::ATTACK));
 
@@ -296,16 +303,18 @@ fn added_damage_effectiveness_includes_inc_leg() {
     // fire flat=10 × addedMult=3.6 = 36 avg
     assert_eq!(fire.avg(), 36.0);
 
-    // INC 腿同样不乘武器自带 base：物理仍为 (100,200) → avg 150。
+    // The INC leg likewise does not multiply the weapon's own base: physical remains
+    // (100,200) → avg 150.
     let phys = component(&output, DamageType::Physical);
     assert_eq!(phys.avg(), 150.0);
 }
 
-/// 测试：`Added<Type>Damage` 分类型 INC 只作用于对应类型的 flat added。
+/// Test: type-specific `Added<Type>Damage` INC only applies to the flat added damage of
+/// the matching type.
 #[test]
 fn added_type_damage_inc_is_type_scoped() {
     let mut db = ModDb::new();
-    // 仅 AddedFireDamage INC 100：火 ×2.0，冰不受影响。
+    // Only AddedFireDamage INC 100: fire ×2.0, cold unaffected.
     db.add_mod(
         Modifier::number("AddedFireDamage", ModType::Inc, 100.0).with_flags(ModFlags::ATTACK),
     );
@@ -320,8 +329,8 @@ fn added_type_damage_inc_is_type_scoped() {
     assert_eq!(component(&output, DamageType::Cold).avg(), 10.0);
 }
 
-// 04-01：Min<Type>Damage / Max<Type>Damage 分 min/max 独立 MORE 乘区
-// （PoB2 CalcOffence.lua:138-139,153-154）
+// 04-01: Min<Type>Damage / Max<Type>Damage have independent MORE buckets for min/max
+// (PoB2 CalcOffence.lua:138-139,153-154)
 
 #[test]
 fn min_max_type_more_scales_only_one_end() {
@@ -341,7 +350,8 @@ fn min_max_type_more_scales_only_one_end() {
 
 #[test]
 fn min_max_type_more_stacks_with_generic_inc_more() {
-    // 通用 PhysicalDamage INC 50% → scale=1.5；MaxPhysicalDamage MORE +10% 只乘 max。
+    // Generic PhysicalDamage INC 50% → scale=1.5; MaxPhysicalDamage MORE +10% only
+    // multiplies max.
     //   min = round(100 * 1.5) = 150; max = round(200 * 1.5 * 1.10) = 330
     let mut db = ModDb::new();
     db.add_mod(Modifier::number("PhysicalDamage", ModType::Inc, 50.0).with_flags(ModFlags::ATTACK));

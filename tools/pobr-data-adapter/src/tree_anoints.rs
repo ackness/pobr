@@ -1,13 +1,17 @@
-//! 油涂（anoint）notable 池回填：GGG 官方树导出 `data.json` **不含**不在主图上的
-//! 油涂专属 notable（如 `Paragon`——「Allocates Paragon」项链 enchant 的目标节点），
-//! 而 vendor `tree.lua` 的顶层 `nodes` 块携带完整定义（`isNotable=true` + 自有
-//! `stats` + `recipe`（油配方）+ 空 `connections`，节点经 amulet anoint /
-//! `GrantedPassive` 进入计算，vendor `spec.tree.notableMap` 按名查找，
-//! CalcSetup.lua:1322-1331）。
+//! Anoint notable pool backfill: GGG's official tree export `data.json`
+//! **doesn't include** anoint-only notables that aren't on the main graph
+//! (e.g. `Paragon` — the target node of the "Allocates Paragon" amulet
+//! enchant), whereas vendor `tree.lua`'s top-level `nodes` block carries the
+//! full definition (`isNotable=true` + its own `stats` + `recipe` (the
+//! anoint recipe) + empty `connections`; the node enters calculation via
+//! amulet anoint / `GrantedPassive`, looked up by name through vendor's
+//! `spec.tree.notableMap`, CalcSetup.lua:1322-1331).
 //!
-//! 本通道把 `tree.lua` 中存在、`passive_tree.json` 中缺失的 **notable** 节点追加
-//! 入库（kind=Notable、`connections=[]`、无坐标——不参与主图拓扑，仅供按名授予
-//! 消费）。与 `--tree-coords` / `--tree-variants` 同源同约定（原地回写）。
+//! This channel appends **notable** nodes that exist in `tree.lua` but are
+//! missing from `passive_tree.json` (kind=Notable, `connections=[]`, no
+//! coordinates — they don't participate in the main graph's topology, only
+//! consumed by name-based granting). Same source and conventions as
+//! `--tree-coords` / `--tree-variants` (writes back in place).
 
 use pobr_data::catalog::{PassiveNodeDef, PassiveNodeKind};
 
@@ -18,9 +22,9 @@ use crate::write_pretty;
 use std::path::PathBuf;
 
 pub struct TreeAnointsArgs {
-    /// vendor `tree.lua`（PoB2 完整树数据）。
+    /// vendor `tree.lua` (PoB2's full tree data).
     pub tree_lua: PathBuf,
-    /// `data/<patch>/` 所在根目录（与 `--out` 一致）。
+    /// The root directory that contains `data/<patch>/` (matches `--out`).
     pub out: PathBuf,
     pub patch: String,
 }
@@ -29,8 +33,9 @@ pub fn run(args: TreeAnointsArgs) -> Result<String, String> {
     let lua = std::fs::read_to_string(&args.tree_lua)
         .map_err(|e| format!("读取 {} 失败：{e}", args.tree_lua.display()))?;
 
-    // 三层布局：base/ 优先读取既有 passive_tree.json，旧布局（版本根）回退；
-    // 回填后原地写回所读到的位置（与 tree_coords / tree_variants 同约定）。
+    // The three-layer layout: prefer reading the existing passive_tree.json
+    // from base/, falling back to the old layout (version root); write the
+    // backfill back to wherever it was read from (same convention as tree_coords / tree_variants).
     let version_dir = args.out.join(&args.patch);
     let layered = version_dir.join("base/passive_tree.json");
     let tree_path = if layered.exists() {
@@ -58,16 +63,18 @@ pub fn run(args: TreeAnointsArgs) -> Result<String, String> {
     ))
 }
 
-/// 从 `tree.lua` 顶层 `nodes` 块抽取 `passive_tree.json` 缺失的 notable 节点。
+/// Extracts notable nodes missing from `passive_tree.json` out of `tree.lua`'s top-level `nodes` block.
 ///
-/// 入选条件（保守，与油涂池形态对齐）：`isNotable=true` 且有自有 `stats`。
-/// 缺失的非 notable（cluster 占位等）不属于本通道，跳过。
+/// Inclusion criteria (conservative, matching the anoint pool's shape):
+/// `isNotable=true` and having its own `stats`. Missing non-notables
+/// (cluster placeholders, etc.) don't belong to this channel and are skipped.
 fn parse_missing_notables(
     lua: &str,
     existing: &std::collections::BTreeSet<u32>,
 ) -> Result<Vec<PassiveNodeDef>, String> {
-    // 顶层 nodes 块在 groups 之后；从 groups 块末尾起查找以避开组内 `nodes=`
-    // （与 tree_variants 同手法）。
+    // The top-level nodes block comes after groups; search starting from
+    // the end of the groups block to avoid a group's nested `nodes=`
+    // (same technique as tree_variants).
     let groups_block = balanced_block(lua, "\tgroups={").ok_or("tree.lua 未找到顶层 groups 块")?;
     let groups_end = block_offset(lua, groups_block);
     let nodes_block =
@@ -91,8 +98,10 @@ fn parse_missing_notables(
         let name = string_field(node_block, "name=");
         out.push(PassiveNodeDef {
             skill,
-            // GGG data.json 的 `id` 是导出侧字符串键；tree.lua 无对应物，用
-            // skill id 字符串（库内消费方按 `skill` 数值索引，`id` 仅诊断用）。
+            // GGG's data.json's `id` is the export side's string key;
+            // tree.lua has no equivalent, so this uses the skill id as a
+            // string (consumers within the catalog index by the numeric
+            // `skill`; `id` is diagnostic-only).
             id: skill.to_string(),
             name,
             kind: PassiveNodeKind::Notable,
@@ -102,7 +111,8 @@ fn parse_missing_notables(
             orbit_index: scalar_u32(node_block, "orbitIndex="),
             x: None,
             y: None,
-            // 油涂池节点不在主图上（tree.lua `connections={}` 空），拓扑零参与。
+            // Anoint-pool nodes aren't on the main graph (tree.lua's
+            // `connections={}` is empty), so zero topology participation.
             connections: Vec::new(),
             ascendancy_id: None,
             variants: Vec::new(),

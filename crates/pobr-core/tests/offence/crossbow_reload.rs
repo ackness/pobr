@@ -1,8 +1,9 @@
-//! 弩 reload 端到端：perform `fill_crossbow_reload` 把弹匣循环平均
-//! （bolt_count 发 × 攻速 + reload 间隔）折进有效速率与 DPS。
+//! Crossbow reload end-to-end: `perform` folds `fill_crossbow_reload`'s magazine-cycle average
+//! (bolt_count shots at attack speed, plus the reload interval) into effective action rate and DPS.
 //!
-//! vendor 参照 `CalcOffence.lua:2867-2887`；数据通道 = `CrossbowReloadTimeBase` /
-//! `CrossbowBoltCount` BASE（编排层注入，此处直接经 session 注入等价词条）。
+//! Vendor reference: `CalcOffence.lua:2867-2887`. Data channel: `CrossbowReloadTimeBase` /
+//! `CrossbowBoltCount` BASE mods (normally injected by the orchestration layer; here injected
+//! directly via the session for test purposes).
 
 use pobr_core::Modifier;
 use pobr_core::calc::{CalculationSession, MinimalInput};
@@ -23,8 +24,8 @@ fn crossbow_input() -> MinimalInput {
     }
 }
 
-/// 手算用例：bolt=5、reload=0.8s、射速 3/s →
-/// 循环平均 = 5 / (5/3 + 0.8) ≈ 2.027/s；DPS 等比缩放（avg 150 × 2.027 ≈ 304.05）。
+/// Hand-computed case: bolt=5, reload=0.8s, fire rate 3/s →
+/// cycle average = 5 / (5/3 + 0.8) ≈ 2.027/s; DPS scales proportionally (avg 150 × 2.027 ≈ 304.05).
 #[test]
 fn reload_cycle_average_scales_rate_and_dps() {
     let mut session = CalculationSession::new(crossbow_input());
@@ -46,14 +47,14 @@ fn reload_cycle_average_scales_rate_and_dps() {
         "面板速率（PoB2 output.Speed 改写口径）：{}",
         out.action_rate
     );
-    // DPS = avg(150) × 循环平均速率。
+    // DPS = avg(150) × cycle-average rate.
     assert!(
         (out.dps - 150.0 * expected_rate).abs() < 1.0,
         "DPS 等比折算：{} vs {}",
         out.dps,
         150.0 * expected_rate
     );
-    // AverageDamage 恒等式（parity 口径）不受影响：dps / action_rate == 150。
+    // The AverageDamage identity (parity semantics) is unaffected: dps / action_rate == 150.
     assert!(
         (out.dps / out.action_rate - 150.0).abs() < 1e-6,
         "dps/action_rate 恒等式破坏：{}",
@@ -61,7 +62,7 @@ fn reload_cycle_average_scales_rate_and_dps() {
     );
 }
 
-/// ChanceToNotConsumeAmmo ≥ 100：退化为纯射速（reload 不触发，输出与无 reload 一致）。
+/// ChanceToNotConsumeAmmo ≥ 100: degenerates to pure fire rate (reload never triggers, output matches no-reload).
 #[test]
 fn not_consume_ammo_100_keeps_firing_rate() {
     let mut session = CalculationSession::new(crossbow_input());
@@ -80,7 +81,7 @@ fn not_consume_ammo_100_keeps_firing_rate() {
     assert!((out.dps - 450.0).abs() < 1e-6, "DPS 不得折算：{}", out.dps);
 }
 
-/// 无 reload 词条（非弩）：整段零行为，输出与历史逐值一致。
+/// No reload mods (non-crossbow): entirely zero-behavior, output matches history value for value.
 #[test]
 fn no_reload_data_is_neutral() {
     let mut baseline = CalculationSession::new(crossbow_input());
@@ -88,7 +89,7 @@ fn no_reload_data_is_neutral() {
     let base_out = baseline.output().clone();
 
     let mut with_bolts_only = CalculationSession::new(crossbow_input());
-    // 只有弹匣词条、无 reload 基值：同样零行为（reload 数据缺失不进模型）。
+    // Only a bolt-count mod, no reload base value: still zero-behavior (missing reload data never enters the model).
     with_bolts_only.add_modifiers(vec![Modifier::number(
         "CrossbowBoltCount",
         ModType::Base,
@@ -100,8 +101,8 @@ fn no_reload_data_is_neutral() {
     assert_eq!(out.dps, base_out.dps);
 }
 
-/// ReloadSpeed / 攻速增益加快装填（vendor calcLib.mod("ReloadSpeed","Speed")）：
-/// +50% 攻速同时提升射速与装填速度。
+/// ReloadSpeed / attack-speed bonuses also speed up reloading (vendor calcLib.mod("ReloadSpeed","Speed")):
+/// +50% attack speed raises both fire rate and reload speed.
 #[test]
 fn attack_speed_scales_reload_too() {
     let mut session = CalculationSession::new(crossbow_input());
@@ -112,7 +113,7 @@ fn attack_speed_scales_reload_too() {
     ]);
     session.perform_minimal();
     let out = session.output();
-    // 射速 4.5/s；reload = 0.8 / 1.5 ≈ 0.5333 → 5 / (5/4.5 + 0.5333) ≈ 3.0405。
+    // Fire rate 4.5/s; reload = 0.8 / 1.5 ≈ 0.5333 → 5 / (5/4.5 + 0.5333) ≈ 3.0405.
     let expected = 5.0 / (5.0 / 4.5 + 0.8 / 1.5);
     assert!(
         (out.effective_action_rate - expected).abs() < 1e-2,

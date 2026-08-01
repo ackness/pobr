@@ -1,5 +1,5 @@
-//! 树节点威力热力图集成测试（真实 ninja build）：BFS 深度门控 + 单点试加
-//! 增量非全零。
+//! Integration test for the tree node power heatmap (a real ninja build):
+//! BFS depth gating plus non-all-zero single-node trial-allocation deltas.
 
 use pobr_gamedata::repo_data_root;
 use serde_json::{Value, json};

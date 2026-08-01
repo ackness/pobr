@@ -9,9 +9,9 @@ impl TraceNodeId {
     }
 }
 
-//  pass 分区与合并节点（RFC m4-rfc-attribution-passes §2-§3）
+//  Pass partitioning and combine nodes (RFC m4-rfc-attribution-passes §2-§3)
 
-/// 手分区。`Single` = 法术/非攻击技能（PoB2 passList 的 "Skill" pass）。
+/// The hand partition. `Single` = spells/non-attack skills (PoB2 passList's "Skill" pass).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HandTag {
     Single,
@@ -19,7 +19,7 @@ pub enum HandTag {
     OffHand,
 }
 
-/// 暴击分区。`Blended` = 不在暴击双 pass 内、或已完成 CritBlend 合并的节点。
+/// The crit partition. `Blended` = nodes outside the crit dual-pass, or nodes that already went through CritBlend merging.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CritTag {
     Blended,
@@ -27,7 +27,7 @@ pub enum CritTag {
     NonCrit,
 }
 
-/// pass 标识：hand × crit 二维分区（RFC §2.1）。
+/// A pass identifier: the two-dimensional hand × crit partition (RFC §2.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PassId {
     pub hand: HandTag,
@@ -39,7 +39,7 @@ impl PassId {
         Self { hand, crit }
     }
 
-    /// 该手的 Blended（CritBlend 合并后 / 不在暴击双 pass 内）pass。
+    /// The Blended pass for a given hand (after CritBlend merging / outside the crit dual-pass).
     pub const fn hand_blended(hand: HandTag) -> Self {
         Self {
             hand,
@@ -48,41 +48,49 @@ impl PassId {
     }
 }
 
-/// combineStat 合并模式（vendor `CalcOffence.lua:2451-2538` 逐分支 + `:4395` CritBlend）。
+/// combineStat merge modes (a branch-by-branch port of vendor
+/// `CalcOffence.lua:2451-2538`, plus `:4395` for CritBlend).
 ///
-/// 注意：`Chance` / `ChanceAilment` / `CritBlend` 是**系数模式**——合并值与权重依赖
-/// 外生系数（portion / stacks 占比 / 该手暴击率 c），由构图侧冻结为常数写进
-/// [`TraceOperation::Combine`] 的 `weights`；
-/// [`CombineMode::combine`] / [`CombineMode::linearized_weights`] 对它们返回 `None`。
+/// Note: `Chance` / `ChanceAilment` / `CritBlend` are **coefficient modes** —
+/// their merged value and weights depend on exogenous coefficients (portion /
+/// stack share / this hand's crit rate c), which the graph-building side
+/// freezes into constants written to [`TraceOperation::Combine`]'s `weights`;
+/// [`CombineMode::combine`] / [`CombineMode::linearized_weights`] return
+/// `None` for them.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CombineMode {
-    /// `MH or OH`（vendor `:2453-2454`；`not bothWeaponAttack` 也走此分支——单手直通）。
+    /// `MH or OH` (vendor `:2453-2454`; `not bothWeaponAttack` also takes this branch — single-hand passthrough).
     Or,
-    /// `MH + OH`（`:2455-2456`）。
+    /// `MH + OH` (`:2455-2456`).
     Add,
-    /// `(MH + OH) / 2`（`:2457-2458`）。
+    /// `(MH + OH) / 2` (`:2457-2458`).
     Average,
-    /// `MH + OH`，非 `doubleHitsWhenDualWielding` 再 `/2`（`:2541-2545`）。
+    /// `MH + OH`, further `/2` unless `doubleHitsWhenDualWielding` (`:2541-2545`).
     Dps { double_hits: bool },
-    /// doubleHits：`MH + OH − MH×OH/100`；否则 `(MH+OH)/2`（`:2459-2464`，仅 CritChance 用，百分数）。
+    /// doubleHits: `MH + OH − MH×OH/100`; otherwise `(MH+OH)/2` (`:2459-2464`, CritChance only, percentage values).
     Crit { double_hits: bool },
-    /// 任一腿 0 → 0；否则 `2/(1/MH + 1/OH)`（`:2465-2470`，Speed 用）。
+    /// Either leg 0 → 0; otherwise `2/(1/MH + 1/OH)` (`:2465-2470`, used for Speed).
     HarmonicMean,
-    /// `MH×mainPortion + OH×offPortion`，portion = chance×HitChance 占比（`:2471-2496`）。
+    /// `MH×mainPortion + OH×offPortion`, portion = chance×HitChance share (`:2471-2496`).
     Chance,
-    /// `maxInstance×stacks + minInstance×(1−stacks)`（`:2497-2538`）。
+    /// `maxInstance×stacks + minInstance×(1−stacks)` (`:2497-2538`).
     ChanceAilment,
-    /// 内层暴击合并 `hitAvg×(1−c) + critAvg×c`（`:4395`）。约定入边顺序 NonCrit 先、Crit 后，
-    /// 即 weights = `[1−c, c]`。
+    /// The inner crit merge `hitAvg×(1−c) + critAvg×c` (`:4395`). Incoming
+    /// edge order is by convention NonCrit first, Crit second, i.e.
+    /// weights = `[1−c, c]`.
     CritBlend,
 }
 
 impl CombineMode {
-    /// 自给模式按 vendor 公式合并各腿值；系数模式（Chance/ChanceAilment/CritBlend）返回
-    /// `None`（合并值由构图侧用外生系数计算）。
+    /// Self-sufficient modes merge the leg values via the vendor formula;
+    /// coefficient modes (Chance/ChanceAilment/CritBlend) return `None` (the
+    /// merged value is computed by the graph-building side using exogenous
+    /// coefficients).
     ///
-    /// `legs` 约定 MH 先、OH 后（缺腿由调用方按 0 折入或走 Or 单腿直通）；
-    /// 单腿一律直通（vendor `not bothWeaponAttack` 分支）。
+    /// `legs` is ordered MH first, OH second by convention (a missing leg is
+    /// folded in as 0 by the caller, or passes through as a single leg via
+    /// Or); a single leg always passes through (vendor's `not
+    /// bothWeaponAttack` branch).
     pub fn combine(self, legs: &[f64]) -> Option<f64> {
         if legs.len() == 1 {
             return match self {
@@ -113,10 +121,13 @@ impl CombineMode {
         }
     }
 
-    /// direct 归因口径的一阶线性化权重（RFC §3.2 表；= `∂combined/∂leg_i` 在当前腿值处）。
+    /// First-order linearized weights for direct-attribution purposes (RFC
+    /// §3.2 table; = `∂combined/∂leg_i` at the current leg values).
     ///
-    /// 系数模式返回 `None`——其权重是构图时冻结的外生系数（Chance 的 portion、
-    /// ChanceAilment 的 stacks 占比、CritBlend 的 `[1−c, c]`），由构图侧直接给出。
+    /// Coefficient modes return `None` — their weights are exogenous
+    /// coefficients frozen at graph-building time (Chance's portion,
+    /// ChanceAilment's stack share, CritBlend's `[1−c, c]`), supplied
+    /// directly by the graph-building side.
     pub fn linearized_weights(self, legs: &[f64]) -> Option<Vec<f64>> {
         if legs.len() == 1 {
             return match self {
@@ -132,8 +143,9 @@ impl CombineMode {
             Self::Average
             | Self::Crit { double_hits: false }
             | Self::Dps { double_hits: false } => Some(vec![0.5, 0.5]),
-            // 偏导：∂(MH+OH−MH·OH/100)/∂MH = 1−OH/100（交叉项使加权和 ≠ 输出，
-            // 守恒由 marginal 兜底——评审 C2）。
+            // Partial derivative: ∂(MH+OH−MH·OH/100)/∂MH = 1−OH/100 (the cross
+            // term means the weighted sum ≠ the output; conservation is
+            // backstopped by marginal — see review C2).
             Self::Crit { double_hits: true } => Some(vec![1.0 - oh / 100.0, 1.0 - mh / 100.0]),
             Self::HarmonicMean => {
                 if mh == 0.0 || oh == 0.0 {
@@ -148,9 +160,10 @@ impl CombineMode {
     }
 }
 
-/// 注：起 `Combine` 变体携带 `Vec<f64>` 权重，故本枚举不再可derive `Eq`
-/// （f64 无全序相等）。全仓核查（评审 C6a）：无穷尽 `match TraceOperation` 点、
-/// 无依赖 `Eq` 的消费（仅 `==` 比较，`PartialEq` 足够）。
+/// Note: the `Combine` variant carries `Vec<f64>` weights, so this enum can
+/// no longer derive `Eq` (f64 has no total-order equality). Whole-repo audit
+/// (review C6a): no exhaustive `match TraceOperation` sites and no consumer
+/// depends on `Eq` (only `==` comparisons, for which `PartialEq` suffices).
 #[derive(Debug, Clone, PartialEq)]
 pub enum TraceOperation {
     Input,
@@ -171,9 +184,10 @@ pub enum TraceOperation {
     SelectMax,
     Stack,
     Aggregate,
-    /// combineStat / CritBlend 合并节点。
-    /// `weights[i]` 对应第 i 条入边（与 `add_edge` 插入顺序一致；约定 MH 先、OH 后，
-    /// CritBlend 为 NonCrit 先、Crit 后）。
+    /// A combineStat / CritBlend merge node.
+    /// `weights[i]` corresponds to the i-th incoming edge (matching
+    /// `add_edge`'s insertion order; MH first then OH by convention,
+    /// CritBlend is NonCrit first then Crit).
     Combine {
         mode: CombineMode,
         weights: Vec<f64>,
@@ -187,8 +201,9 @@ pub struct TraceNode {
     pub value: f64,
     pub operation: TraceOperation,
     pub source: Option<SourceId>,
-    /// 所属 pass 分区。`None` = pass 无关节点（全局输入、防御、
-    /// 外层 hand-combine 输出）。由 [`TraceGraph::begin_pass`] 作用域栈自动盖戳。
+    /// The pass partition this node belongs to. `None` means a pass-agnostic
+    /// node (global inputs, defence, outer hand-combine output). Stamped
+    /// automatically by the [`TraceGraph::begin_pass`] scope stack.
     pub pass: Option<PassId>,
 }
 
@@ -214,7 +229,7 @@ pub struct TraceOutput {
 pub struct TraceGraph {
     nodes: Vec<TraceNode>,
     edges: Vec<TraceEdge>,
-    /// pass 作用域栈。构图期瞬态状态；图建完应为空。
+    /// The pass scope stack. Transient graph-building state; should be empty once the graph is built.
     pass_stack: Vec<PassId>,
 }
 
@@ -223,13 +238,16 @@ impl TraceGraph {
         Self::default()
     }
 
-    /// 进入 pass 作用域：之后 `add_node` / `add_source_node` 自动盖当前 pass 戳。
-    /// 嵌套时栈顶生效（hand 外层作用域内再 `begin_pass` 覆盖 crit 维度）。
+    /// Enters a pass scope: subsequent `add_node` / `add_source_node` calls
+    /// automatically stamp the current pass. When nested, the top of the
+    /// stack wins (e.g. `begin_pass` again inside a hand's outer scope
+    /// overrides the crit dimension).
     pub fn begin_pass(&mut self, pass: PassId) {
         self.pass_stack.push(pass);
     }
 
-    /// 退出当前 pass 作用域。debug 下栈空即 panic（编排 bug 早暴露）；release 静默忽略。
+    /// Exits the current pass scope. Panics on an empty stack in debug builds
+    /// (surfaces orchestration bugs early); silently ignored in release.
     pub fn end_pass(&mut self) {
         debug_assert!(
             !self.pass_stack.is_empty(),
@@ -238,7 +256,7 @@ impl TraceGraph {
         self.pass_stack.pop();
     }
 
-    /// 当前生效的 pass（栈顶）；栈空 = `None`（pass 无关）。
+    /// The currently active pass (top of the stack); an empty stack means `None` (pass-agnostic).
     pub fn current_pass(&self) -> Option<PassId> {
         self.pass_stack.last().copied()
     }
@@ -281,8 +299,10 @@ impl TraceGraph {
         id
     }
 
-    /// 添加合并节点并按 `legs` 顺序连边：保证 `weights[i]` 与第 i 条
-    /// 入边一一对应（权重/边顺序锁死在单一构造点，RFC §3.1 约定 MH 先、OH 后）。
+    /// Adds a combine node and wires up edges in `legs` order: guarantees
+    /// `weights[i]` corresponds one-to-one with the i-th incoming edge (the
+    /// weight/edge ordering is locked at this single construction point, per
+    /// RFC §3.1's MH-first-then-OH convention).
     pub fn add_combine_node(
         &mut self,
         label: impl Into<String>,
@@ -346,18 +366,22 @@ impl TraceGraph {
         sources
     }
 
-    /// 不变式 I1 / 评审 C3 诊断：合并节点各入腿的**带 pass 戳**祖先
-    /// 集合必须两两不相交（跨腿共享只允许发生在 `pass == None` 的结构性祖先上——
-    /// 这是 direct 算法逐腿独立遍历正确性的前提，RFC §2.4 / §5.1）。
+    /// Invariant I1 / review C3 diagnostic: the sets of **pass-stamped**
+    /// ancestors of a combine node's incoming legs must be pairwise disjoint
+    /// (cross-leg sharing is only allowed among structural ancestors with
+    /// `pass == None` — this is the precondition for the direct algorithm's
+    /// correctness when traversing each leg independently, RFC §2.4 / §5.1).
     ///
-    /// 返回出现在 ≥2 条入腿子图中的带戳节点；空 = 满足不变式。
-    /// direct 归因在 debug 构建下对每个 Combine 节点断言此集合为空。
+    /// Returns the stamped nodes that appear in ≥2 leg subgraphs; empty means
+    /// the invariant holds. Direct attribution asserts this set is empty for
+    /// every Combine node in debug builds.
     pub fn combine_partition_violations(&self, combine: TraceNodeId) -> Vec<TraceNodeId> {
         let legs = self.incoming(combine);
         let mut seen_in_leg: Vec<Option<usize>> = vec![None; self.nodes.len()];
         let mut violations = Vec::new();
         for (leg_idx, leg) in legs.iter().enumerate() {
-            // 收集该腿（含腿根自身）的全部祖先；只对带 pass 戳的节点做跨腿重叠检查。
+            // Collect this leg's full ancestor set (including the leg root
+            // itself); only check pass-stamped nodes for cross-leg overlap.
             let mut visited = vec![false; self.nodes.len()];
             let mut stack = vec![*leg];
             while let Some(current) = stack.pop() {

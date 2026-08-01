@@ -1,42 +1,52 @@
-//! 怪物百级缩放表 schema（`base/monster_scaling.json`）。
+//! Monster per-level scaling table schema (`base/monster_scaling.json`).
 //!
-//! 对应 PoB2 `src/Data/Misc.lua` 的九张 per-level 怪物表（每张 100 项，
-//! 索引 = 怪物等级 - 1，源头是 GGG `DefaultMonsterStats.dat`，adapter 未来
-//! 可直接从 `.dat` 再生同形 JSON）：
+//! Corresponds to PoB2 `src/Data/Misc.lua`'s nine per-level monster tables
+//! (100 entries each, indexed by monster level - 1; the ultimate source is
+//! GGG's `DefaultMonsterStats.dat`, and the adapter will eventually be able
+//! to regenerate an equivalent JSON directly from the `.dat`):
 //!
-//! | JSON 字段 | PoB2 Lua 表（Misc.lua 行号） | pobr 准源（迁出前） |
+//! | JSON field | PoB2 Lua table (Misc.lua line) | pobr source of truth (pre-migration) |
 //! |---|---|---|
-//! | `accuracy` | `data.monsterAccuracyTable`（L6） | `monster.rs::MONSTER_ACCURACY_TABLE` |
-//! | `evasion` | `data.monsterEvasionTable`（L5） | `monster.rs::MONSTER_EVASION_TABLE` |
-//! | `armour` | `data.monsterArmourTable`（L11） | `monster.rs::MONSTER_ARMOUR_TABLE` |
-//! | `life` | `data.monsterLifeTable`（L7） | `monster.rs::MONSTER_LIFE_TABLE` |
-//! | `ally_life` | `data.monsterAllyLifeTable`（L8） | 无（vendor-only） |
-//! | `damage` | `data.monsterDamageTable`（L9） | `monster.rs::MONSTER_DAMAGE_TABLE` |
-//! | `ally_damage` | `data.monsterAllyDamageTable`（L10） | 无（vendor-only） |
-//! | `ailment_threshold` | `data.monsterAilmentThresholdTable`（L12） | `monster.rs::MONSTER_AILMENT_THRESHOLD_TABLE` |
-//! | `poise_threshold` | `data.monsterPoiseThresholdTable`（L13） | `monster.rs::MONSTER_POISE_THRESHOLD_TABLE` |
+//! | `accuracy` | `data.monsterAccuracyTable` (L6) | `monster.rs::MONSTER_ACCURACY_TABLE` |
+//! | `evasion` | `data.monsterEvasionTable` (L5) | `monster.rs::MONSTER_EVASION_TABLE` |
+//! | `armour` | `data.monsterArmourTable` (L11) | `monster.rs::MONSTER_ARMOUR_TABLE` |
+//! | `life` | `data.monsterLifeTable` (L7) | `monster.rs::MONSTER_LIFE_TABLE` |
+//! | `ally_life` | `data.monsterAllyLifeTable` (L8) | none (vendor-only) |
+//! | `damage` | `data.monsterDamageTable` (L9) | `monster.rs::MONSTER_DAMAGE_TABLE` |
+//! | `ally_damage` | `data.monsterAllyDamageTable` (L10) | none (vendor-only) |
+//! | `ailment_threshold` | `data.monsterAilmentThresholdTable` (L12) | `monster.rs::MONSTER_AILMENT_THRESHOLD_TABLE` |
+//! | `poise_threshold` | `data.monsterPoiseThresholdTable` (L13) | `monster.rs::MONSTER_POISE_THRESHOLD_TABLE` |
 //!
-//! 数值口径：
-//! - 有 pobr Rust 准源的七张表，JSON 与 Rust 表逐值相等（搬迁不变式）；
-//!   其中 `damage` 沿用 pobr 既有口径——vendor f32 噪声值（如 `9.1599998474121`）
-//!   round 到 2 位小数（`9.16`），与 vendor 在 2 位精度下逐值一致。
-//! - `ally_life` / `ally_damage` 为 vendor-only 字段（pobr 此前未迁），自
-//!   `vendor/PathOfBuilding-PoE2/src/Data/Misc.lua` L8 / L10 抽取；
-//!   `ally_damage` 同样 round 到 2 位小数（与 `damage` 口径一致，也与 PoB2
-//!   `CalcActiveSkill.lua:907` hiddenDamageFixup 派生中 `round(..., 2)` 的
-//!   精度处理同构）。
+//! Value conventions:
+//! - For the seven tables that have a pobr Rust source of truth, the JSON
+//!   is value-equal to the Rust table (a migration invariant); `damage`
+//!   keeps pobr's existing convention — vendor's noisy f32 values (e.g.
+//!   `9.1599998474121`) are rounded to 2 decimal places (`9.16`), matching
+//!   vendor value-for-value at that precision.
+//! - `ally_life` / `ally_damage` are vendor-only fields (not previously
+//!   migrated in pobr), extracted from
+//!   `vendor/PathOfBuilding-PoE2/src/Data/Misc.lua` L8 / L10; `ally_damage`
+//!   is likewise rounded to 2 decimal places (matching `damage`'s
+//!   convention, and also matching the `round(..., 2)` precision handling
+//!   in PoB2 `CalcActiveSkill.lua:907`'s hiddenDamageFixup derivation).
 //!
-//! 消费方（PoB2 侧用法，pobr 对应 `setup_env` / EHP / minion 装配）：
-//! - `accuracy`/`evasion`/`armour`/`life`：`CalcSetup.lua` 注入 enemy ModDB 的
-//!   BASE 值；`damage`：EHP 计算 `monsterDamageTable[lv] * 1.5 * DPSMult`。
-//! - `ailment_threshold`：几率派生型异常（点燃/感电/冰缓最小阈值），
-//!   `CalcOffence.lua` `enemyThreshold = 表值 × mod(EnemyAilmentThreshold)`。
-//! - `poise_threshold`：积累型 debuff（冰冻/电击/重眩晕/钉刺），Boss 档位的
-//!   `PoiseThreshold MORE 500` 在 mod_db 层另行注入，表值为裸值。
-//! - `ally_life`/`ally_damage`：召唤物（非敌对 minion）的生命/伤害基线
-//!   （`CalcActiveSkill.lua:899-908`），并作为 hiddenDamageFixup 的派生输入：
+//! Consumers (PoB2-side usage; pobr's counterparts are `setup_env` / EHP /
+//! minion assembly):
+//! - `accuracy`/`evasion`/`armour`/`life`: the BASE values `CalcSetup.lua`
+//!   injects into the enemy ModDB; `damage`: EHP calc's
+//!   `monsterDamageTable[lv] * 1.5 * DPSMult`.
+//! - `ailment_threshold`: chance-derived ailments (Ignite/Shock's chance,
+//!   Chill's minimum threshold); `CalcOffence.lua`'s
+//!   `enemyThreshold = table value × mod(EnemyAilmentThreshold)`.
+//! - `poise_threshold`: accumulating debuffs (Freeze/Electrocute/HeavyStun/Pin);
+//!   a boss tier's `PoiseThreshold MORE 500` is injected separately at the
+//!   mod_db layer — this table's value is the raw value.
+//! - `ally_life`/`ally_damage`: baseline life/damage for minions
+//!   (non-hostile summons) (`CalcActiveSkill.lua:899-908`), and also feed
+//!   the hiddenDamageFixup derivation:
 //!   `hiddenDamageFixup = round(allyDamage[lv] / damageTable[lv] × SpectreBeastDamageFixup, 2) - 1`
-//!   （`SpectreBeastDamageFixup = 1.25` 属 misc 常量，归 `game_constants` 域）。
+//!   (`SpectreBeastDamageFixup = 1.25` is a misc constant, living in the
+//!   `game_constants` domain).
 
 use serde::{Deserialize, Serialize};
 
@@ -45,40 +55,49 @@ use crate::monster::{
     MONSTER_DAMAGE_TABLE, MONSTER_EVASION_TABLE, MONSTER_LIFE_TABLE, MONSTER_POISE_THRESHOLD_TABLE,
 };
 
-/// 怪物百级表长度（等级 1..=100，各数组恒为 100 项）。
+/// Length of the monster per-level tables (level 1..=100; every array is
+/// always 100 entries).
 pub const MONSTER_SCALING_TABLE_LEN: usize = 100;
 
-/// 怪物百级缩放表（九张并列 per-level 数组，索引 = 等级 - 1）。
+/// The monster per-level scaling table (nine parallel per-level arrays,
+/// indexed by level - 1).
 ///
-/// 并列数组形与 vendor `Misc.lua` / `DefaultMonsterStats.dat` 同构，
-/// adapter 再生时逐表照搬即可；各数组长度恒为
-/// [`MONSTER_SCALING_TABLE_LEN`]，由 loader 侧测试约束。
+/// This parallel-array shape mirrors vendor `Misc.lua` /
+/// `DefaultMonsterStats.dat`, so the adapter can regenerate it by copying
+/// each table verbatim; every array's length is always
+/// [`MONSTER_SCALING_TABLE_LEN`], enforced by a loader-side test.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MonsterScalingTable {
-    /// 怪物基础精准（`data.monsterAccuracyTable`）。
+    /// Monster base accuracy (`data.monsterAccuracyTable`).
     pub accuracy: Vec<u32>,
-    /// 怪物基础闪避（`data.monsterEvasionTable`）。
+    /// Monster base evasion (`data.monsterEvasionTable`).
     pub evasion: Vec<u32>,
-    /// 怪物基础护甲（`data.monsterArmourTable`）。
+    /// Monster base armour (`data.monsterArmourTable`).
     pub armour: Vec<u32>,
-    /// 怪物基础生命（`data.monsterLifeTable`）。
+    /// Monster base life (`data.monsterLifeTable`).
     pub life: Vec<u32>,
-    /// 友方（召唤物）基础生命（`data.monsterAllyLifeTable`，vendor-only）。
+    /// Ally (minion) base life (`data.monsterAllyLifeTable`, vendor-only).
     pub ally_life: Vec<u32>,
-    /// 怪物基础伤害（`data.monsterDamageTable`，2 位小数口径）。
+    /// Monster base damage (`data.monsterDamageTable`, 2-decimal-place convention).
     pub damage: Vec<f64>,
-    /// 友方（召唤物）基础伤害（`data.monsterAllyDamageTable`，vendor-only，
-    /// 2 位小数口径；hiddenDamageFixup 派生输入）。
+    /// Ally (minion) base damage (`data.monsterAllyDamageTable`,
+    /// vendor-only, 2-decimal-place convention; feeds the hiddenDamageFixup
+    /// derivation).
     pub ally_damage: Vec<f64>,
-    /// 怪物异常阈值（`data.monsterAilmentThresholdTable`，点燃/感电/冰缓）。
+    /// Monster ailment threshold (`data.monsterAilmentThresholdTable`, for
+    /// Ignite/Shock/Chill).
     pub ailment_threshold: Vec<u32>,
-    /// 怪物姿态阈值（`data.monsterPoiseThresholdTable`，冰冻/电击/重眩晕/钉刺）。
+    /// Monster poise threshold (`data.monsterPoiseThresholdTable`, for
+    /// Freeze/Electrocute/HeavyStun/Pin).
     pub poise_threshold: Vec<u32>,
 }
 
-/// 通用等级查表（u32 表）：等级 clamp 到 `[1, 表长]`，索引 = 等级 - 1；
-/// 空表返回 0（loader 侧测试约束各表恒 100 项，正常路径不会触发）。
-/// 与 `monster.rs::level_to_index` 的 clamp 语义逐值一致（搬迁不变式）。
+/// A generic level lookup (u32 table): the level is clamped to
+/// `[1, table length]`, index = level - 1; an empty table returns 0 (a
+/// loader-side test enforces every table is always 100 entries, so this
+/// path shouldn't trigger under normal operation). Matches
+/// `monster.rs::level_to_index`'s clamp semantics value-for-value (a
+/// migration invariant).
 fn lookup_u32(table: &[u32], level: u32) -> u32 {
     if table.is_empty() {
         return 0;
@@ -86,7 +105,7 @@ fn lookup_u32(table: &[u32], level: u32) -> u32 {
     table[(level.clamp(1, table.len() as u32) - 1) as usize]
 }
 
-/// 通用等级查表（f64 表）：语义同 [`lookup_u32`]。
+/// A generic level lookup (f64 table): same semantics as [`lookup_u32`].
 fn lookup_f64(table: &[f64], level: u32) -> f64 {
     if table.is_empty() {
         return 0.0;
@@ -95,51 +114,58 @@ fn lookup_f64(table: &[f64], level: u32) -> f64 {
 }
 
 impl MonsterScalingTable {
-    /// 查询怪物基础精准（等级 1..=100，超界 clamp；对应 `monster_accuracy`）。
+    /// Looks up monster base accuracy (level 1..=100, out-of-range
+    /// clamped; corresponds to `monster_accuracy`).
     pub fn accuracy_at(&self, level: u32) -> u32 {
         lookup_u32(&self.accuracy, level)
     }
 
-    /// 查询怪物基础闪避（对应 `monster_evasion`）。
+    /// Looks up monster base evasion (corresponds to `monster_evasion`).
     pub fn evasion_at(&self, level: u32) -> u32 {
         lookup_u32(&self.evasion, level)
     }
 
-    /// 查询怪物基础护甲（对应 `monster_armour`）。
+    /// Looks up monster base armour (corresponds to `monster_armour`).
     pub fn armour_at(&self, level: u32) -> u32 {
         lookup_u32(&self.armour, level)
     }
 
-    /// 查询怪物基础生命（对应 `monster_life`）。
+    /// Looks up monster base life (corresponds to `monster_life`).
     pub fn life_at(&self, level: u32) -> u32 {
         lookup_u32(&self.life, level)
     }
 
-    /// 查询怪物基础伤害（EHP 用；对应 `monster_damage`）。
+    /// Looks up monster base damage (for EHP; corresponds to `monster_damage`).
     pub fn damage_at(&self, level: u32) -> f64 {
         lookup_f64(&self.damage, level)
     }
 
-    /// 查询怪物异常阈值（裸表值；对应 `enemy_ailment_threshold`）。
+    /// Looks up the monster ailment threshold (raw table value;
+    /// corresponds to `enemy_ailment_threshold`).
     pub fn ailment_threshold_at(&self, level: u32) -> u32 {
         lookup_u32(&self.ailment_threshold, level)
     }
 
-    /// 查询怪物姿态阈值（裸表值；对应 `enemy_poise_threshold`）。
+    /// Looks up the monster poise threshold (raw table value; corresponds
+    /// to `enemy_poise_threshold`).
     pub fn poise_threshold_at(&self, level: u32) -> u32 {
         lookup_u32(&self.poise_threshold, level)
     }
 }
 
-/// fallback（无 GameData 注入时使用）：与 `base/monster_scaling.json` **逐值相等**
-/// （搬迁不变式，W2 测试已锁 JSON == Rust 准源）。
+/// The fallback (used when no GameData is injected): **value-equal** to
+/// `base/monster_scaling.json` field by field (a migration invariant; the
+/// W2 test already locks JSON == this Rust source of truth).
 ///
-/// - 有 pobr Rust 准源的八张表（含 #12 升格的 `ally_life` =
-///   `MONSTER_ALLY_LIFE_TABLE`，消费方 = 召唤物基础生命派生）直接引用
-///   `crate::monster` 既有 const（零字面量复制）；
-/// - `ally_damage` 为 vendor-only（calc 暂无消费方），字面量抄录自
-///   `vendor/PathOfBuilding-PoE2/src/Data/Misc.lua` L10
-///   （与 `base/monster_scaling.json` 同源同值；2 位小数口径）。
+/// - The eight tables that have a pobr Rust source of truth (including
+///   `ally_life`, upgraded in #12 to reference
+///   `MONSTER_ALLY_LIFE_TABLE` — consumed for deriving minion base life)
+///   reference `crate::monster`'s existing consts directly (zero literal
+///   duplication);
+/// - `ally_damage` is vendor-only (nothing in calc consumes it yet), a
+///   literal transcribed from
+///   `vendor/PathOfBuilding-PoE2/src/Data/Misc.lua` L10 (same source, same
+///   value as `base/monster_scaling.json`; 2-decimal-place convention).
 impl Default for MonsterScalingTable {
     fn default() -> Self {
         Self {
@@ -178,8 +204,9 @@ mod tests {
     use super::*;
     use crate::monster;
 
-    /// fallback 不变式：Default 七张准源表与 `monster.rs` 查表函数逐级相等
-    /// （含 clamp 语义：0 → lv1、>100 → lv100）。
+    /// Fallback invariant: `Default`'s seven source-of-truth tables agree
+    /// with `monster.rs`'s lookup functions at every level (including
+    /// clamp semantics: 0 → lv1, >100 → lv100).
     #[test]
     fn default_lookups_match_legacy_monster_tables() {
         let t = MonsterScalingTable::default();
@@ -218,7 +245,8 @@ mod tests {
         }
     }
 
-    /// vendor-only ally 两表抽样（与 `base/monster_scaling.json` / Misc.lua L8、L10 同值）。
+    /// Spot checks for the two vendor-only ally tables (matching
+    /// `base/monster_scaling.json` / Misc.lua L8, L10).
     #[test]
     fn default_ally_tables_spot_checks() {
         let t = MonsterScalingTable::default();
@@ -232,7 +260,7 @@ mod tests {
         assert_eq!(t.ally_damage[99], 4661.93, "lv100 ally_damage");
     }
 
-    /// 空表防御：查表对空 Vec 返回 0（不 panic）。
+    /// Empty-table defense: a lookup against an empty Vec returns 0 (no panic).
     #[test]
     fn empty_table_lookup_is_zero() {
         assert_eq!(lookup_u32(&[], 50), 0);

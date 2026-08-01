@@ -1,18 +1,20 @@
-//! 四层语料收集器。
+//! Four-layer corpus collector.
 //!
-//! | 层 | 来源 | 提取 |
+//! | Layer | Source | Extraction |
 //! |----|------|------|
-//! | C1 | `examples/demo-bd-test/builds/*/decoded.xml` 的 `<Item>` 文本块 | 行级（strip 注解） |
-//! | C2 | `<data>/base/passive_tree.json` 每节点 `stats[]` | 行级 |
-//! | SD | `<data>/generated/special_derived.json` 的 `pattern` | 整条 |
-//! | CX | `--corpus-extra <file>` 每行 | 整行 |
+//! | C1 | `<Item>` text blocks in `examples/demo-bd-test/builds/*/decoded.xml` | per-line (annotations stripped) |
+//! | C2 | `stats[]` of every node in `<data>/base/passive_tree.json` | per-line |
+//! | SD | `pattern` in `<data>/generated/special_derived.json` | whole entry |
+//! | CX | each line of `--corpus-extra <file>` | whole line |
 //!
-//! 去重后按字典序排，保证 `parsed_mods.json` byte-stable。每行记录其来源集合
-//! （多来源命中取并集）供覆盖率报表分组。
+//! Sorted lexicographically after deduplication, so `parsed_mods.json` stays
+//! byte-stable. Each line records its set of contributing sources (union
+//! across multiple hits) for coverage-report grouping.
 //!
-//! C3（vendor ModCache.lua）/C4（QueryMods.lua）需要 luajit，归 C-track（T6）的
-//! 抽取，不在本 T7 骨架——`--corpus-extra` 提供注入点（落盘的 ModCache key dump
-//! 可直接喂入）。
+//! C3 (vendor `ModCache.lua`) / C4 (`QueryMods.lua`) need luajit and belong
+//! to C-track's (T6) extraction, not this T7 skeleton — `--corpus-extra`
+//! gives an injection point for them (a dumped ModCache key list can be fed
+//! straight in).
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -20,7 +22,7 @@ use std::path::{Path, PathBuf};
 use pobr_core::item_text::strip_pob_annotations;
 use pobr_gamedata::GameData;
 
-/// 语料来源标记（位集，便于一行归多来源）。
+/// Corpus source markers (a bit set, so one line can belong to multiple sources).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct SourceSet {
     pub c1_build: bool,
@@ -37,7 +39,7 @@ impl SourceSet {
         self.cx_extra |= other.cx_extra;
     }
 
-    /// 主来源标签（用于报表分组；优先级 C2>C1>SD>CX，仅取一个代表）。
+    /// Primary source label for report grouping (priority C2 > C1 > SD > CX, one representative only).
     pub fn primary_label(&self) -> &'static str {
         if self.c2_tree {
             "C2_tree"
@@ -51,9 +53,9 @@ impl SourceSet {
     }
 }
 
-/// 收集后的语料：字典序行 + 每行来源。
+/// The collected corpus: lines in lexicographic order, plus each line's sources.
 pub struct Corpus {
-    /// 字典序去重后的 (text, sources)。
+    /// Deduplicated (text, sources) pairs in lexicographic order.
     pub lines: Vec<(String, SourceSet)>,
 }
 
@@ -78,15 +80,15 @@ impl Corpus {
     }
 }
 
-/// 收集四层语料。`data_dir` 是版本目录（如 `data/4.5.0.3.4`）。
+/// Collect all four corpus layers. `data_dir` is the version directory (e.g. `data/4.5.0.3.4`).
 pub fn collect(data_dir: &Path, corpus_extra: Option<&Path>) -> Result<Corpus, String> {
-    // text → 来源集合（BTreeMap 同时去重 + 字典序）。
+    // text → source set (BTreeMap gives us dedup and lexicographic order for free).
     let mut map: BTreeMap<String, SourceSet> = BTreeMap::new();
 
-    // C2：passive_tree 节点 stats（最可靠、最大批；从 data 内自举）。
+    // C2: passive_tree node stats (most reliable, largest batch; self-contained within data).
     collect_passive_tree(data_dir, &mut map)?;
 
-    // C1：build XML item 文本块（门禁主语料）。
+    // C1: build XML item text blocks (the main gate corpus).
     let examples = examples_dir(data_dir);
     if let Some(examples) = examples {
         collect_build_xml(&examples, &mut map)?;
@@ -96,10 +98,10 @@ pub fn collect(data_dir: &Path, corpus_extra: Option<&Path>) -> Result<Corpus, S
         );
     }
 
-    // SD：special_derived 展开（pattern 即整行锚定语料）。
+    // SD: special_derived expansion (pattern is a whole-line anchored corpus entry).
     collect_special_derived(data_dir, &mut map)?;
 
-    // CX：外挂语料。
+    // CX: add-on corpus.
     if let Some(extra) = corpus_extra {
         collect_extra(extra, &mut map)?;
     }
@@ -108,7 +110,7 @@ pub fn collect(data_dir: &Path, corpus_extra: Option<&Path>) -> Result<Corpus, S
     Ok(Corpus { lines })
 }
 
-/// 把一条规范化后非空的文本行登记到 map（合并来源）。
+/// Register a normalized, non-empty text line in the map (merging sources).
 fn add_line(map: &mut BTreeMap<String, SourceSet>, text: &str, src: SourceSet) {
     let trimmed = text.trim();
     if trimmed.is_empty() {
@@ -137,8 +139,8 @@ fn collect_passive_tree(
     Ok(())
 }
 
-/// 从版本数据目录推断 `examples/demo-bd-test/builds`：data_dir 形如
-/// `<repo>/data/<version>`，故上溯两级到 repo 根。
+/// Infer `examples/demo-bd-test/builds` from the version data directory:
+/// data_dir looks like `<repo>/data/<version>`, so go up two levels to the repo root.
 fn examples_dir(data_dir: &Path) -> Option<PathBuf> {
     let repo_root = data_dir.parent()?.parent()?;
     let builds = repo_root.join("examples/demo-bd-test/builds");
@@ -174,16 +176,21 @@ fn collect_build_xml(
     Ok(())
 }
 
-/// 从 build XML 抽取 `<Item>` 块内的 mod 文本行。
+/// Extract mod text lines from `<Item>` blocks in build XML.
 ///
-/// PoB2 item 文本块：`<Item id="N">` 与 `</Item>` 之间是物品原文，前若干行是
-/// 元数据（Rarity/名称/Sockets/Implicits 计数/…），其后是 mod 文本行（可能带
-/// `{enchant}{rune}{desecrated}` 等注解前缀）。本抽取走**保守启发式**：剥离注解
-/// 前缀后，跳过明显的元数据/XML 标签行，其余作为候选 mod 文本喂解析器
-/// （解析失败者计入覆盖率缺口，不影响正确性）。
+/// A PoB2 item text block: between `<Item id="N">` and `</Item>` is the raw
+/// item text — the first several lines are metadata (Rarity/name/Sockets/
+/// Implicits count/…), followed by mod text lines (which may carry
+/// `{enchant}{rune}{desecrated}` annotation prefixes). This extraction uses a
+/// **conservative heuristic**: strip annotation prefixes, skip lines that are
+/// obviously metadata/XML tags, and feed the rest to the parser as candidate
+/// mod text (lines that fail to parse just count as coverage gaps and don't
+/// affect correctness).
 ///
-/// 这是 T7 骨架的语料面，**不追求与 vendor item parser 逐行一致**——精确的
-/// item-block 解析是 T6/T8 的范畴；本工具只需稳定、可去重的候选行集合。
+/// This is the corpus-collection surface for the T7 skeleton and **does not
+/// aim to match the vendor item parser line-for-line** — precise item-block
+/// parsing belongs to T6/T8; this tool only needs a stable, deduplicable set
+/// of candidate lines.
 fn extract_item_mod_lines(xml: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut in_item = false;
@@ -200,7 +207,7 @@ fn extract_item_mod_lines(xml: &str) -> Vec<String> {
         if !in_item {
             continue;
         }
-        // 物品块内的嵌套 XML 标签（<ModRange .../> 等）跳过。
+        // Skip nested XML tags inside the item block (<ModRange .../> etc.).
         if line.starts_with('<') {
             continue;
         }
@@ -217,7 +224,8 @@ fn extract_item_mod_lines(xml: &str) -> Vec<String> {
     out
 }
 
-/// 物品块元数据行判定（保守白名单前缀 + 已知裸标记）。命中即不作为 mod 文本。
+/// Detects item-block metadata lines (a conservative prefix allowlist plus
+/// known bare markers). A match means the line is not treated as mod text.
 fn is_item_metadata(line: &str) -> bool {
     const PREFIXES: &[&str] = &[
         "Rarity:",
@@ -265,8 +273,8 @@ fn is_item_metadata(line: &str) -> bool {
     PREFIXES.iter().any(|p| line.starts_with(p))
 }
 
-/// special_derived.json 的 `entries[].pattern` 作为整行语料（这些是 special
-/// 整行锚定命中的词条文本，如 keystone 名）。
+/// `entries[].pattern` from special_derived.json, taken as whole-line corpus
+/// entries (this is the text for special whole-line-anchored matches, e.g. keystone names).
 fn collect_special_derived(
     data_dir: &Path,
     map: &mut BTreeMap<String, SourceSet>,
@@ -341,8 +349,9 @@ mod tests {
         let lines = extract_item_mod_lines(xml);
         assert!(lines.contains(&"+30 to maximum Runic Ward".to_string()));
         assert!(lines.contains(&"35% increased Movement Speed".to_string()));
-        // 名称行（Sandsworn Sandals）不在白名单 → 会作为候选行（解析为 Unsupported，
-        // 计入缺口，不影响正确性）；元数据被滤掉。
+        // The name line (Sandsworn Sandals) isn't in the allowlist, so it
+        // becomes a candidate line (parses as Unsupported, counted as a gap,
+        // doesn't affect correctness); metadata is filtered out.
         assert!(!lines.iter().any(|l| l.starts_with("Rarity:")));
         assert!(!lines.iter().any(|l| l == "Corrupted"));
         assert!(!lines.iter().any(|l| l.starts_with("Item Level:")));

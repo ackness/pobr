@@ -30,7 +30,8 @@ fn resistance_penalty_table_matches_campaign_progress() {
 
 #[test]
 fn from_resistance_penalty_roundtrips_all_tiers() {
-    // PoB2 `resistancePenalty` list 七档值 → 进度 → 惩罚值闭环一致。
+    // PoB2's `resistancePenalty` list has seven tiers → progress → penalty value
+    // round-trips consistently.
     for value in [0.0, -10.0, -20.0, -30.0, -40.0, -50.0, -60.0] {
         let progress =
             CampaignProgress::from_resistance_penalty(value).expect("档位表内的值应可反查");
@@ -40,7 +41,7 @@ fn from_resistance_penalty_roundtrips_all_tiers() {
 
 #[test]
 fn from_resistance_penalty_rejects_unknown_values() {
-    // 不在 PoB2 档位表内的值返回 None（调用方回退默认 Endgame）。
+    // Values not in PoB2's tier table return None (callers fall back to Endgame by default).
     assert_eq!(CampaignProgress::from_resistance_penalty(-15.0), None);
     assert_eq!(CampaignProgress::from_resistance_penalty(10.0), None);
 }
@@ -149,13 +150,13 @@ fn session_ingests_character_base_and_campaign_modifiers() {
         rewards: vec![CampaignReward::TheFlameCore],
     };
 
-    // 常量集 = Default fallback（与 base/character_constants.json 逐值相等）。
+    // Constant set = Default fallback (matches base/character_constants.json value-for-value).
     session.add_modifiers(base.modifiers(&CharacterConstantsDef::default()));
     session.add_modifiers(state.modifiers());
 
     let output = session.perform_minimal();
 
-    // Character base life: 12*1 + 16 + 2*15 = 58（PoB2 `Life BASE 12 × Level + 16`）。
+    // Character base life: 12*1 + 16 + 2*15 = 58 (PoB2 `Life BASE 12 × Level + 16`).
     assert_eq!(output.life, 58.0);
     // Fire resistance: Act3 penalty (-20) + The Flame Core (+10) = -10.
     assert_eq!(output.fire_resistance, -10.0);

@@ -1,10 +1,12 @@
-//! `base/non_damaging_ailments.json` 加载测试。
+//! `base/non_damaging_ailments.json` load tests.
 //!
-//! 搬迁不变式：凡 pobr 现有 Rust 准源已有的数值，JSON
-//! 必须与之逐值相等——chill/shock 边界对照 `pobr_data::monster` 与
-//! `pobr_data::constants` 的 pub 常量；伤害型异常 DoT 类型对照
-//! `AilmentType::damage_type()`。pobr 没有的字段（vendor-only）按
-//! vendor PoB2 行号写死期望值抽样断言。
+//! Migration invariant: for any value pobr's existing Rust already has a
+//! source of truth for, the JSON must be value-equal to it — chill/shock
+//! bounds are checked against `pobr_data::monster` and
+//! `pobr_data::constants`'s pub consts; a damaging ailment's DoT type is
+//! checked against `AilmentType::damage_type()`. Fields pobr doesn't have
+//! (vendor-only) are spot-checked against hardcoded expected values per
+//! vendor PoB2 line numbers.
 
 use pobr_data::constants::{AilmentType, DamageType, SHOCK_MIN_EFFECT};
 use pobr_data::monster::{
@@ -20,7 +22,8 @@ fn game_data() -> GameData {
     GameData::new(repo_data_root().join(version()))
 }
 
-/// chill/shock 边界逐值等于 pobr Rust 准源常量（搬迁不变式核心断言）。
+/// The chill/shock bounds are value-equal to pobr's Rust source-of-truth
+/// consts (the core assertion for the migration invariant).
 #[test]
 fn chill_and_shock_bounds_match_rust_source_constants() {
     let table = game_data()
@@ -28,35 +31,37 @@ fn chill_and_shock_bounds_match_rust_source_constants() {
         .expect("non_damaging_ailments 可加载");
 
     let chill = table.ailments.get("Chill").expect("存在 Chill");
-    // 准源：pobr-data/src/monster.rs CHILL_MIN_EFFECT=30 / CHILL_MAX_EFFECT=50。
+    // Source of truth: pobr-data/src/monster.rs's CHILL_MIN_EFFECT=30 / CHILL_MAX_EFFECT=50.
     assert_eq!(chill.default, Some(CHILL_MIN_EFFECT));
     assert_eq!(chill.min, CHILL_MIN_EFFECT);
     assert_eq!(chill.max, CHILL_MAX_EFFECT);
 
     let shock = table.ailments.get("Shock").expect("存在 Shock");
-    // 准源：pobr-data/src/monster.rs BASE_SHOCK_MAGNITUDE=20 / SHOCK_MAX_EFFECT=100；
-    // pobr-data/src/constants.rs SHOCK_MIN_EFFECT=20（两常量同值，均为准源）。
+    // Source of truth: pobr-data/src/monster.rs's BASE_SHOCK_MAGNITUDE=20 /
+    // SHOCK_MAX_EFFECT=100; pobr-data/src/constants.rs's SHOCK_MIN_EFFECT=20
+    // (the two consts share a value, both are sources of truth).
     assert_eq!(shock.default, Some(BASE_SHOCK_MAGNITUDE));
     assert_eq!(shock.min, BASE_SHOCK_MAGNITUDE);
     assert_eq!(shock.min, SHOCK_MIN_EFFECT);
     assert_eq!(shock.max, SHOCK_MAX_EFFECT);
 }
 
-/// vendor-only 字段抽样断言（pobr 无准源，期望值写死，引用 vendor 行号）。
+/// Spot-checks vendor-only fields (pobr has no source of truth for these,
+/// expected values hardcoded, vendor line numbers referenced).
 #[test]
 fn vendor_only_fields_match_pob2_data_lua() {
     let table = game_data().non_damaging_ailments().unwrap();
     assert_eq!(table.ailments.len(), 3, "nonDamagingAilment 恰三项");
 
-    // Modules/Data.lua:348（Chill 行）+ Data/Misc.lua:91 BaseChillDuration=8。
+    // Modules/Data.lua:348 (the Chill row) + Data/Misc.lua:91's BaseChillDuration=8.
     let chill = &table.ailments["Chill"];
     assert_eq!(chill.associated_type, DamageType::Cold);
     assert!(!chill.alt);
     assert_eq!(chill.precision, 0);
     assert_eq!(chill.duration, 8.0);
 
-    // Modules/Data.lua:349（Freeze 行，default=nil/min=0.3/max=3/precision=2）
-    // + Data/Misc.lua:56 FreezeDuration=4。
+    // Modules/Data.lua:349 (the Freeze row, default=nil/min=0.3/max=3/precision=2)
+    // + Data/Misc.lua:56's FreezeDuration=4.
     let freeze = &table.ailments["Freeze"];
     assert_eq!(freeze.associated_type, DamageType::Cold);
     assert!(!freeze.alt);
@@ -66,7 +71,7 @@ fn vendor_only_fields_match_pob2_data_lua() {
     assert_eq!(freeze.precision, 2);
     assert_eq!(freeze.duration, 4.0);
 
-    // Modules/Data.lua:350（Shock 行）+ Data/Misc.lua:93 BaseShockDuration=8。
+    // Modules/Data.lua:350 (the Shock row) + Data/Misc.lua:93's BaseShockDuration=8.
     let shock = &table.ailments["Shock"];
     assert_eq!(shock.associated_type, DamageType::Lightning);
     assert!(!shock.alt);
@@ -74,21 +79,21 @@ fn vendor_only_fields_match_pob2_data_lua() {
     assert_eq!(shock.duration, 8.0);
 }
 
-/// buildupTypes 与 vendor 一致（Modules/Data.lua:353-376，vendor-only）。
+/// buildupTypes matches vendor (Modules/Data.lua:353-376, vendor-only).
 #[test]
 fn buildup_types_match_pob2_data_lua() {
     let table = game_data().non_damaging_ailments().unwrap();
     assert_eq!(table.buildup_types.len(), 4);
 
-    // Data.lua:354-357 Electrocute / :372-375 Pin：ScalesFrom 为空。
+    // Data.lua:354-357 Electrocute / :372-375 Pin: ScalesFrom is empty.
     assert!(table.buildup_types["Electrocute"].scales_from.is_empty());
     assert!(table.buildup_types["Pin"].scales_from.is_empty());
-    // Data.lua:358-362 Freeze：仅 Cold。
+    // Data.lua:358-362 Freeze: Cold only.
     assert_eq!(
         table.buildup_types["Freeze"].scales_from,
         vec![DamageType::Cold]
     );
-    // Data.lua:363-371 HeavyStun：全部五种伤害类型（canonical 序）。
+    // Data.lua:363-371 HeavyStun: all five damage types (canonical order).
     assert_eq!(
         table.buildup_types["HeavyStun"].scales_from,
         vec![
@@ -101,15 +106,16 @@ fn buildup_types_match_pob2_data_lua() {
     );
 }
 
-/// defaultAilmentDamageTypes：DoT 伤害类型逐值等于 Rust 准源
-/// `AilmentType::damage_type()`（pobr-data/src/constants.rs:124-134）；
-/// ScalesFrom 为 vendor-only（Modules/Data.lua:378-410）。
+/// defaultAilmentDamageTypes: the DoT damage type is value-equal to the
+/// Rust source of truth `AilmentType::damage_type()`
+/// (pobr-data/src/constants.rs:124-134); ScalesFrom is vendor-only
+/// (Modules/Data.lua:378-410).
 #[test]
 fn default_ailment_damage_types_match_rust_source_and_vendor() {
     let table = game_data().non_damaging_ailments().unwrap();
     assert_eq!(table.default_ailment_damage_types.len(), 5);
 
-    // 伤害型异常：damage_type 与 Rust 准源逐值相等。
+    // Damaging ailments: damage_type is value-equal to the Rust source of truth.
     for (key, ailment) in [
         ("Bleed", AilmentType::Bleed),
         ("Poison", AilmentType::Poison),
@@ -121,14 +127,16 @@ fn default_ailment_damage_types_match_rust_source_and_vendor() {
             "{key} 的 DoT 伤害类型应与 AilmentType::damage_type() 一致"
         );
     }
-    // 非伤害异常无 DoT 类型（vendor 行无 DamageType 字段；准源同样返回 None）。
+    // Non-damaging ailments have no DoT type (vendor's row has no
+    // DamageType field; the source of truth likewise returns None).
     for (key, ailment) in [("Shock", AilmentType::Shock), ("Chill", AilmentType::Chill)] {
         assert_eq!(table.default_ailment_damage_types[key].damage_type, None);
         assert_eq!(ailment.damage_type(), None);
     }
 
-    // ScalesFrom 抽样（vendor-only）：Data.lua:386-392 Poison 物理+混沌双来源、
-    // :400-404 Shock 仅闪电、:405-409 Chill 仅冰冷。
+    // ScalesFrom spot checks (vendor-only): Data.lua:386-392 Poison's dual
+    // physical+chaos source, :400-404 Shock is lightning only, :405-409
+    // Chill is cold only.
     assert_eq!(
         table.default_ailment_damage_types["Poison"].scales_from,
         vec![DamageType::Physical, DamageType::Chaos]
@@ -143,7 +151,8 @@ fn default_ailment_damage_types_match_rust_source_and_vendor() {
     );
 }
 
-/// 提交的 JSON 与 serde 序列化往返字节一致（可再生性铁律：禁手改后重生 byte-diff 零）。
+/// The committed JSON is byte-identical to a serde-pretty round trip (the
+/// reproducibility rule: no hand edits, regenerating gives a zero byte-diff).
 #[test]
 fn committed_json_is_serde_pretty_roundtrip_stable() {
     let path = repo_data_root()

@@ -1,4 +1,5 @@
-//! 预解析：逐语料行过数据驱动 parser 引擎，产出 `parsed_mods.json` + 覆盖率统计。
+//! Precompile: run each corpus line through the data-driven parser engine,
+//! producing `parsed_mods.json` plus coverage stats.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -11,19 +12,19 @@ use pobr_gamedata::GameData;
 use crate::canonical::CanonMod;
 use crate::corpus::Corpus;
 
-/// 三态计数 + 分组覆盖率。
+/// Three-way status counts plus per-source-group coverage.
 pub struct Coverage {
     pub total: usize,
     pub parsed: usize,
     pub unsupported: usize,
     pub err: usize,
-    /// 按主来源标签分组的三态计数。
+    /// Three-way counts grouped by primary source label.
     pub by_source: BTreeMap<&'static str, [usize; 3]>, // [parsed, unsupported, err]
-    /// 未支持/出错的文本行（缺口），字典序——报表 top-N 从此取。
+    /// Unsupported/error text lines (gaps), lexicographic order — the report's top-N draws from here.
     pub gaps: Vec<GapEntry>,
 }
 
-/// 缺口条目（覆盖率报表 top-N 用）。
+/// A gap entry (used for the coverage report's top-N).
 #[derive(Debug, Clone, Serialize)]
 pub struct GapEntry {
     pub text: String,
@@ -40,7 +41,7 @@ impl Coverage {
     }
 }
 
-/// `parsed_mods.json` 顶层 schema。
+/// Top-level `parsed_mods.json` schema.
 #[derive(Serialize)]
 struct ParsedModsDoc<'a> {
     #[serde(rename = "_meta")]
@@ -53,9 +54,9 @@ struct Meta<'a> {
     schema: &'a str,
     generator: &'a str,
     note: &'a str,
-    /// 语料行总数（去重后）。
+    /// Total corpus lines (after deduplication).
     corpus_lines: usize,
-    /// parse 引擎标识（数据驱动穿线后 = `engine`，schema 版本随之 bump）。
+    /// Parse engine identifier (`engine` once fully data-driven; schema version bumps with it).
     engine: &'a str,
 }
 
@@ -67,7 +68,7 @@ struct Entry {
     mods: Vec<CanonMod>,
 }
 
-/// precompile 产物落点与统计。
+/// Where precompile wrote its output, plus stats.
 pub struct PrecompileOutcome {
     pub parsed_mods_path: PathBuf,
     pub entries: usize,
@@ -76,17 +77,21 @@ pub struct PrecompileOutcome {
 
 const SCHEMA: &str = "parsed_mods/v2";
 const GENERATOR: &str = "precompile-mods --data";
-// 收尾（删 legacy）：预解析走数据驱动 scan 引擎（special 通道编译在内），
-// 与运行时（orchestrator / session）同一解析器。
+// Post-cleanup (legacy removed): precompile runs through the data-driven
+// scan engine (including the special-mod channel compile), the same parser
+// the runtime (orchestrator / session) uses.
 const ENGINE: &str = "scan_engine+special";
 const NOTE: &str =
     "M6-T7 离线预解析；运行时（D-T8）作 text→Vec<Modifier> 缓存兜底，cache miss 回退在线 parse";
 
-/// 收集语料 → 逐行过数据驱动 parser 引擎 → 写 `parsed_mods.json`（byte-stable）。
+/// Collect corpus → run each line through the data-driven parser engine →
+/// write `parsed_mods.json` (byte-stable).
 ///
-/// 引擎规则从 `data_dir` 的游戏数据编译一次、全语料复用（与运行时同一解析器）。
+/// Engine rules are compiled once from `data_dir`'s game data and reused
+/// across the whole corpus (same parser the runtime uses).
 pub fn precompile(corpus: &Corpus, data_dir: &Path) -> Result<PrecompileOutcome, String> {
-    // 启动期编译一次 parser 引擎规则（解析规则六表 + special 通道），全语料复用。
+    // Compile the parser engine rules once at startup (the six parse-rule
+    // tables plus the special channel), reused across the whole corpus.
     let rules = compile_parser_rules(data_dir)?;
 
     let mut entries = Vec::with_capacity(corpus.lines.len());
@@ -104,7 +109,8 @@ pub fn precompile(corpus: &Corpus, data_dir: &Path) -> Result<PrecompileOutcome,
         let label = sources.primary_label();
         let slot = cov.by_source.entry(label).or_insert([0, 0, 0]);
 
-        // 引擎永不返回硬错误——`err` 计数保留在 schema 里（恒 0），报表形状不变。
+        // The engine never returns a hard error — the `err` count stays in
+        // the schema (always 0) so the report shape doesn't change.
         let outcome = parse_mod_engine(text, &rules);
         let (status, mods): (&'static str, Vec<CanonMod>) = match outcome.status {
             ParseStatus::Parsed => {
@@ -132,7 +138,7 @@ pub fn precompile(corpus: &Corpus, data_dir: &Path) -> Result<PrecompileOutcome,
         });
     }
 
-    // entries 已随 corpus.lines（BTreeMap 字典序）有序，保证 byte-stable。
+    // entries are already ordered by corpus.lines (BTreeMap lexicographic order), keeping output byte-stable.
     let doc = ParsedModsDoc {
         meta: Meta {
             schema: SCHEMA,
@@ -158,12 +164,14 @@ pub fn precompile(corpus: &Corpus, data_dir: &Path) -> Result<PrecompileOutcome,
     })
 }
 
-/// 从 `data_dir` 的游戏数据编译引擎规则（解析规则六表 + special 通道拼接），
-/// 启动期一次、全语料复用（与 `BuildData::load` 同一编译路径）。
+/// Compile engine rules from `data_dir`'s game data (the six parse-rule
+/// tables plus the special channel), once at startup and reused across the
+/// whole corpus (same compile path as `BuildData::load`).
 ///
-/// `overlay/mod_parser_rules.json` 缺失（旧数据包）→ 硬错误：删除 legacy
-/// 解析器后没有回退路径，预编译对无规则数据包无意义（fail-fast 优于产出
-/// 全 unsupported 的产物）。
+/// A missing `overlay/mod_parser_rules.json` (an old data pack) is a hard
+/// error: with the legacy parser removed there's no fallback, and
+/// precompiling a ruleless data pack is pointless (fail fast beats
+/// producing an all-unsupported artifact).
 fn compile_parser_rules(data_dir: &Path) -> Result<CompiledParserRules, String> {
     let data = GameData::new(data_dir);
 
@@ -185,7 +193,8 @@ fn compile_parser_rules(data_dir: &Path) -> Result<CompiledParserRules, String> 
         .map_err(|e| format!("parser 规则编译失败：{e:?}"))
 }
 
-/// 两空格缩进 + 末尾换行的稳定 pretty JSON（与仓库既有 generated 产物风格一致）。
+/// Stable pretty JSON with two-space indent and a trailing newline (matches
+/// the repo's existing generated-artifact style).
 pub fn serialize_pretty_stable<T: Serialize>(value: &T) -> Result<String, String> {
     let mut json = serde_json::to_string_pretty(value).map_err(|e| format!("序列化失败：{e}"))?;
     json.push('\n');

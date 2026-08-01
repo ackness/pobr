@@ -1,7 +1,8 @@
-//! 来源接入：item / passive / gem / flask / minion 词条 ingest。
+//! Source ingest: item / passive / gem / flask / minion modifier ingestion.
 //!
-//! 聚合二进制：原独立测试文件合并为子模块，减少链接二进制数（53→8）以加速构建。
-//! 各子模块即 `tests/sources/<name>.rs`，测试用例与断言逐一保留。
+//! Aggregated test binary: the former standalone test files are merged into submodules
+//! to cut the number of linked binaries (53→8) and speed up builds. Each submodule is
+//! `tests/sources/<name>.rs`, with test cases and assertions preserved as-is.
 #![allow(clippy::all)]
 
 #[path = "support/parse.rs"]

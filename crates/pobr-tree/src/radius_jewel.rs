@@ -1,10 +1,15 @@
-//! Radius jewel：以 socket 节点为圆心，按欧氏距离筛出影响范围内的节点。
+//! Radius jewels: centered on a socket node, filter nodes within its effect
+//! radius by Euclidean distance.
 //!
-//! REAL 权威节点数据 [`PassiveNodeDef`] 不携带平面坐标（GGG PoE2 导出把坐标留在
-//! orbit/group 布局里，未给独立的 `x`/`y`，见 catalog 文档）。因此范围计算依赖**外部
-//! 提供的坐标表** `positions`（`skill id -> (x, y)`，tree units）；`PassiveTree` 通过
-//! [`PassiveTree::with_positions`](crate::PassiveTree::with_positions) 注入。坐标缺失的
-//! 节点被视为不在任何半径内（socket 自身缺坐标则报 [`TreeError::NodePositionMissing`]）。
+//! The REAL authoritative node data [`PassiveNodeDef`] carries no planar
+//! coordinates (GGG's PoE2 export leaves positions embedded in the
+//! orbit/group layout instead of giving standalone `x`/`y` fields — see the
+//! catalog docs). Radius calculations therefore rely on an **externally
+//! provided position table** `positions` (`skill id -> (x, y)`, in tree
+//! units), injected into `PassiveTree` via
+//! [`PassiveTree::with_positions`](crate::PassiveTree::with_positions). Nodes
+//! missing coordinates are treated as outside every radius (if the socket
+//! itself lacks coordinates, [`TreeError::NodePositionMissing`] is returned).
 
 use std::collections::HashMap;
 
@@ -13,67 +18,80 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::TreeError;
 
-/// PoE2 天赋树珠宝距离缩放因子。
+/// PoE2's passive-tree jewel distance scaling factor.
 ///
-/// 来源：PoB2 `Data/Misc.lua` `data.gameConstants["PassiveTreeJewelDistanceMultiplier"]`，
-/// 转录自 `GameConstants.dat`。`outer` 值乘以该系数后再与节点欧氏距离比较，等价于
-/// `outerSquared = outer * outer * 1.2 * 1.2`（PoB2 Data.lua setJewelRadiiGlobally）。
+/// Source: PoB2 `Data/Misc.lua` `data.gameConstants["PassiveTreeJewelDistanceMultiplier"]`,
+/// transcribed from `GameConstants.dat`. An `outer` value is multiplied by
+/// this factor before comparing against node Euclidean distance, equivalent
+/// to `outerSquared = outer * outer * 1.2 * 1.2` (PoB2 Data.lua
+/// setJewelRadiiGlobally).
 ///
-/// **降级说明**：本常量与 `JEWEL_RADIUS_*` 已切换为 **fallback 专用**——
-/// 计算路径经 [`compute_radius_jewel_effect_with_radii`] 消费注入的
-/// [`JewelRadiiDef`]（`base/jewel_radii.json`，与本组常量逐值相等，测试锁定）；
-/// **禁止新增计算路径消费方**，保留供无数据路径（[`JewelRadius::units`]）与
-/// 测试期望值锚定使用。
+/// **Deprecation note**: this constant and `JEWEL_RADIUS_*` are now
+/// **fallback-only** — the live calculation path consumes the injected
+/// [`JewelRadiiDef`] (`base/jewel_radii.json`, which is value-for-value equal
+/// to this constant group, pinned by tests) via
+/// [`compute_radius_jewel_effect_with_radii`]. **Do not add new consumers of
+/// the calculation path here**; these are kept for the no-data fallback path
+/// ([`JewelRadius::units`]) and as anchors for test expectations.
 pub const PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER: f64 = 1.2;
 
-/// Radius jewel 各档 outer 基础半径（tree units，未乘缩放因子）。
+/// Base outer radius per radius-jewel band (tree units, before the scaling factor).
 ///
-/// 来源：PoB2 `src/Modules/Data.lua` `data.jewelRadii["0_1"]`（PoE2 0.x 首版）。
-/// 实际比较阈值 = `outer * PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER`（见 [`JewelRadius::units`]）。
+/// Source: PoB2 `src/Modules/Data.lua` `data.jewelRadii["0_1"]` (PoE2's first
+/// 0.x release). The actual comparison threshold is
+/// `outer * PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER` (see [`JewelRadius::units`]).
 ///
-/// | 档位       | outer | 实际半径（×1.2）|
-/// |------------|-------|----------------|
-/// | Small      | 1000  | 1200.0          |
-/// | Medium     | 1150  | 1380.0          |
-/// | Large      | 1300  | 1560.0          |
-/// | Very Large | 1500  | 1800.0          |
+/// | Band       | outer | Effective radius (×1.2) |
+/// |------------|-------|--------------------------|
+/// | Small      | 1000  | 1200.0                   |
+/// | Medium     | 1150  | 1380.0                   |
+/// | Large      | 1300  | 1560.0                   |
+/// | Very Large | 1500  | 1800.0                   |
 ///
-/// **降级说明**：fallback 专用，禁止新增计算路径消费方
-/// （见 [`PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER`] 的说明）。
+/// **Deprecation note**: fallback-only, do not add new consumers of the
+/// calculation path (see the note on
+/// [`PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER`]).
 pub const JEWEL_RADIUS_SMALL: f64 = 1000.0 * PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER;
 pub const JEWEL_RADIUS_MEDIUM: f64 = 1150.0 * PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER;
 pub const JEWEL_RADIUS_LARGE: f64 = 1300.0 * PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER;
 pub const JEWEL_RADIUS_VERY_LARGE: f64 = 1500.0 * PASSIVE_TREE_JEWEL_DISTANCE_MULTIPLIER;
 
-/// 珠宝半径档位。
+/// A jewel radius band.
 ///
-/// 档位对应 PoB2 `data.jewelRadii["0_1"]` 中 `label` 字段；`Custom` 由调用方直接提供
-/// 有效半径（tree units，已含缩放因子），适合 Variable 半径珠宝的 outer 边界。
+/// The named bands match the `label` field in PoB2's
+/// `data.jewelRadii["0_1"]`; `Custom` lets the caller supply an effective
+/// radius directly (tree units, scaling factor already applied), for the
+/// outer bound of Variable-radius jewels.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum JewelRadius {
-    /// outer=1000，实际半径 1200 tree units（×1.2）。
+    /// outer=1000, effective radius 1200 tree units (×1.2).
     Small,
-    /// outer=1150，实际半径 1380 tree units（×1.2）。
+    /// outer=1150, effective radius 1380 tree units (×1.2).
     Medium,
-    /// outer=1300，实际半径 1560 tree units（×1.2）。
+    /// outer=1300, effective radius 1560 tree units (×1.2).
     Large,
-    /// outer=1500，实际半径 1800 tree units（×1.2）。
+    /// outer=1500, effective radius 1800 tree units (×1.2).
     VeryLarge,
-    /// 自定义有效半径（tree units，调用方已乘缩放因子）。适用于 Variable 半径等非标准档位。
+    /// A custom effective radius (tree units, scaling factor already
+    /// applied by the caller). Used for Variable-radius jewels and other
+    /// non-standard bands.
     Custom(f64),
 }
 
 impl JewelRadius {
-    /// 返回有效半径（tree units），即 `outer * PassiveTreeJewelDistanceMultiplier`。
+    /// Returns the effective radius (tree units), i.e.
+    /// `outer * PassiveTreeJewelDistanceMultiplier`.
     ///
-    /// **fallback 路径**（无注入数据时使用，硬编码常量与 `base/jewel_radii.json`
-    /// 逐值相等）；数据注入路径见 [`JewelRadius::units_with_radii`]。
+    /// **Fallback path** (used when no data is injected; the hardcoded
+    /// constants match `base/jewel_radii.json` value-for-value). See
+    /// [`JewelRadius::units_with_radii`] for the data-injection path.
     ///
-    /// 对标 PoB2 `Data.lua` 的计算：
+    /// Mirrors PoB2's `Data.lua` calculation:
     /// ```text
     /// outerSquared = outer * outer * PassiveTreeJewelDistanceMultiplier^2
     /// ```
-    /// 等价于先算 `effective = outer * 1.2`，再取平方作为欧氏距离的平方阈值。
+    /// equivalent to computing `effective = outer * 1.2` first, then squaring
+    /// it as the Euclidean-distance-squared threshold.
     pub fn units(self) -> f64 {
         match self {
             JewelRadius::Small => JEWEL_RADIUS_SMALL,
@@ -84,15 +102,20 @@ impl JewelRadius {
         }
     }
 
-    /// 从注入的范围珠宝档位数据解析有效半径（tree units）。
+    /// Resolves the effective radius (tree units) from injected radius-jewel
+    /// band data.
     ///
-    /// 具名档（Small/Medium/Large/VeryLarge）按 label 在 `radii` 中查档，
-    /// 有效半径 = `outer × distance_multiplier`（对标 PoB2 `setJewelRadiiGlobally`
-    /// 的 `outerSquared` 语义）；`Custom` 直接返回调用方提供值（已含缩放因子）。
+    /// Named bands (Small/Medium/Large/VeryLarge) are looked up by label in
+    /// `radii`; effective radius = `outer × distance_multiplier` (mirroring
+    /// PoB2's `outerSquared` semantics in `setJewelRadiiGlobally`). `Custom`
+    /// returns the caller-provided value directly (scaling factor already applied).
     ///
-    /// 树版本选取：PoB2 取 `<=` 目标树版本中最新的一组——当前数据只有 `0_1` 一组，
-    /// 此处取 `tree_versions` 的最大键（BTreeMap 末项）等价。数据缺对应具名档
-    /// （异常/裁剪过的数据）时回退硬编码常量（与 Default 数据逐值一致，行为不变）。
+    /// Tree version selection: PoB2 picks the newest version group `<=` the
+    /// target tree version — currently there's only the `0_1` group, so
+    /// taking the max key of `tree_versions` (the last `BTreeMap` entry) is
+    /// equivalent. If the data is missing the requested named band
+    /// (malformed/truncated data), this falls back to the hardcoded
+    /// constants (value-for-value equal to the default data, so behaviour is unchanged).
     pub fn units_with_radii(self, radii: &JewelRadiiDef) -> f64 {
         let label = match self {
             JewelRadius::Small => "Small",
@@ -111,23 +134,29 @@ impl JewelRadius {
     }
 }
 
-/// 一个 radius jewel 的计算结果：受影响节点集合 + 珠宝携带的 modifier 文本。
+/// The result of a radius jewel calculation: the affected node set plus the
+/// jewel's own modifier text.
 ///
-/// `socket` / `affected_nodes` 以节点 `skill` id（`u32`）表示。REAL [`NodeId`](pobr_data::passive_tree::NodeId)
-/// 不派生 `Serialize`/`Ord`，这里以稳定的数值 id 持久化并排序，调用方可自行包回 `NodeId`。
+/// `socket` / `affected_nodes` are represented as node `skill` ids (`u32`).
+/// The REAL [`NodeId`](pobr_data::passive_tree::NodeId) doesn't derive
+/// `Serialize`/`Ord`, so this persists and sorts by the stable numeric id
+/// instead; the caller can wrap it back into `NodeId` as needed.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RadiusJewelEffect {
     pub socket: u32,
-    /// 受影响节点的 `skill` id，按数值升序（确定性）。
+    /// The `skill` ids of affected nodes, ascending numeric order (deterministic).
     pub affected_nodes: Vec<u32>,
     pub mod_texts: Vec<String>,
 }
 
-/// 计算 radius jewel 影响范围（**fallback 入口**：无注入数据路径）。
+/// Computes a radius jewel's effect range (**fallback entry point**: the
+/// no-injected-data path).
 ///
-/// 等价于 `compute_radius_jewel_effect_with_radii(.., &JewelRadiiDef::default(), ..)`
-/// ——`Default` fallback 与 `base/jewel_radii.json` 逐值相等（搬迁不变式），两条
-/// 路径输出一致。数据注入路径见 [`compute_radius_jewel_effect_with_radii`]。
+/// Equivalent to `compute_radius_jewel_effect_with_radii(.., &JewelRadiiDef::default(), ..)`
+/// — the `Default` fallback is value-for-value equal to `base/jewel_radii.json`
+/// (an invariant carried over from the migration), so both paths produce the
+/// same output. See [`compute_radius_jewel_effect_with_radii`] for the
+/// data-injection path.
 pub fn compute_radius_jewel_effect(
     socket: u32,
     radius: JewelRadius,
@@ -143,19 +172,24 @@ pub fn compute_radius_jewel_effect(
     )
 }
 
-/// 计算 radius jewel 影响范围（数据注入版，计算路径主入口）。
+/// Computes a radius jewel's effect range (data-injection version; the main
+/// entry point for the calculation path).
 ///
-/// 以 `socket` 节点的坐标为圆心，按欧氏距离筛出落在有效半径内的**其它**节点
-/// （socket 自身始终排除）。有效半径由注入的 `radii`（`base/jewel_radii.json`）按
-/// 档位 label 解析（见 [`JewelRadius::units_with_radii`]）；`positions` 提供
-/// `skill id -> (x, y)`；缺坐标的候选节点不计入。结果按 `skill` id 升序排序以确保确定性。
+/// Centered on the `socket` node's coordinates, filters **other** nodes
+/// within the effective radius by Euclidean distance (the socket itself is
+/// always excluded). The effective radius is resolved from the injected
+/// `radii` (`base/jewel_radii.json`) by band label (see
+/// [`JewelRadius::units_with_radii`]); `positions` provides `skill id -> (x, y)`;
+/// candidate nodes missing coordinates are excluded. Results are sorted
+/// ascending by `skill` id for determinism.
 ///
-/// 比较公式：`dx² + dy² <= (outer × distance_multiplier)²`，对标 PoB2 Data.lua 中
-/// `radiusInfo.outerSquared = outer * outer * PassiveTreeJewelDistanceMultiplier²`。
+/// Comparison formula: `dx² + dy² <= (outer × distance_multiplier)²`,
+/// mirroring PoB2 Data.lua's
+/// `radiusInfo.outerSquared = outer * outer * PassiveTreeJewelDistanceMultiplier²`.
 ///
-/// 错误：
-/// - `socket` 缺坐标 → [`TreeError::NodePositionMissing`]。
-/// - 半径为负或非有限（NaN/Inf）→ [`TreeError::InvalidRadius`]。
+/// Errors:
+/// - `socket` missing coordinates → [`TreeError::NodePositionMissing`].
+/// - A negative or non-finite radius (NaN/Inf) → [`TreeError::InvalidRadius`].
 pub fn compute_radius_jewel_effect_with_radii(
     socket: u32,
     radius: JewelRadius,
@@ -172,8 +206,9 @@ pub fn compute_radius_jewel_effect_with_radii(
         .get(&socket)
         .ok_or(TreeError::NodePositionMissing(socket))?;
 
-    // 对标 PoB2：outerSquared = outer * outer * multiplier * multiplier
-    // 等价于 (outer * multiplier)^2，此处 radius_units 已是 outer * multiplier。
+    // Mirrors PoB2: outerSquared = outer * outer * multiplier * multiplier,
+    // equivalent to (outer * multiplier)^2; radius_units here is already
+    // outer * multiplier.
     let radius_sq = radius_units * radius_units;
 
     let mut affected: Vec<u32> = positions
@@ -187,7 +222,7 @@ pub fn compute_radius_jewel_effect_with_radii(
         .map(|(id, _)| *id)
         .collect();
 
-    // HashMap 迭代顺序不确定，排序以保证输出确定性。
+    // HashMap iteration order is unspecified; sort to keep output deterministic.
     affected.sort_unstable();
 
     Ok(RadiusJewelEffect {

@@ -1,27 +1,34 @@
-//! statmap 数据通道观测 + oracle 对拍。
+//! Observation of the statmap data channel + oracle comparison.
 //!
-//! Legacy 后缀启发式与双跑 L1/L2 diff 已随 T2.4 删除（历史报告与逐行裁决归档
-//! `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md`）；
-//! 本文件保留 **Compare 观测框架回归门禁** 与 **oracle 抽样对拍**（
-//! 裁决：Compare 枚举与报告框架长期保留，config / parser 双跑复用同模式）：
+//! The legacy suffix heuristic and the dual-run L1/L2 diff were removed along
+//! with T2.4 (the historical report and line-by-line rulings are archived at
+//! `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md`);
+//! this file keeps the **Compare observation framework regression gate** and
+//! **oracle sampling comparison** (a deliberate call: the Compare enum and
+//! reporting framework stay long-term, and the config/parser dual-run reuse
+//! the same pattern):
 //!
 //! ```bash
-//! # Compare 纯观测契约（常跑，非 ignore）：
+//! # Compare's pure-observation contract (runs normally, not ignored):
 //! cargo test -p pobr-build --test statmap_dual_run
-//! # 观测记录定位工具（手动跑）：
-//! POBR_L2_BUILD=<build目录名> cargo test -p pobr-build --test statmap_dual_run -- --ignored --nocapture runtime
-//! # oracle 抽样需要 vendor PoB2 源码 + luajit：
+//! # Observation-record locator tool (manual run):
+//! POBR_L2_BUILD=<build-dir-name> cargo test -p pobr-build --test statmap_dual_run -- --ignored --nocapture runtime
+//! # oracle sampling requires the vendor PoB2 source + luajit:
 //! POBR_POB2_SRC=/path/to/PathOfBuilding-PoE2/src \
 //!   cargo test -p pobr-build --test statmap_dual_run -- --ignored --nocapture oracle
 //! ```
 //!
-//! - **Compare 纯观测契约**：同一 build 以 Data 与 Compare 各跑一次，输出逐字段
-//!   一致（Compare 不改变计算结果），且 Compare 跑后能取出映射级 outcome 记录；
-//! - **oracle 抽样**（≥50 条 stat，覆盖 div/mult/base/value/tag/flags/per-set
-//!   各形态）：`tools/pob2-oracle/statmap_oracle.lua` 跑 PoB2 真实
-//!   `mergeSkillInstanceMods`（受控值经 `extraStats` 注入）取注入后 modList，
-//!   名字/flags/tag 经引擎翻译层归一后与 `stat_map_engine::map_stat` 输出逐项
-//!   对拍，报告落 `target/statmap-diff/oracle-report.md`。
+//! - **Compare's pure-observation contract**: the same build runs once each
+//!   under Data and Compare mode; the output must match field-for-field
+//!   (Compare doesn't change the calculation result), and after a Compare run
+//!   the mapping-level outcome records can be retrieved;
+//! - **oracle sampling** (>=50 stats, covering div/mult/base/value/tag/flags/
+//!   per-set variants): `tools/pob2-oracle/statmap_oracle.lua` runs PoB2's
+//!   real `mergeSkillInstanceMods` (controlled values injected via
+//!   `extraStats`) and captures the resulting modList; names/flags/tags are
+//!   normalized through the engine's translation layer and compared
+//!   item-by-item against `stat_map_engine::map_stat`'s output, with the
+//!   report written to `target/statmap-diff/oracle-report.md`.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -40,7 +47,7 @@ use pobr_data::modifier::ModType;
 use pobr_data::monster::EnemyTier;
 use pobr_gamedata::{GameData, repo_data_root};
 
-/// 报告输出目录（`target/statmap-diff/`）。
+/// Report output directory (`target/statmap-diff/`).
 fn report_dir() -> PathBuf {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/statmap-diff");
     std::fs::create_dir_all(&dir).expect("create target/statmap-diff");
@@ -59,7 +66,7 @@ fn load_stat_map_catalog(data: &GameData) -> StatMapCatalog {
     )
 }
 
-// Compare 观测框架
+// Compare observation framework
 
 fn builds_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -81,8 +88,10 @@ fn opts(mode: StatMapMode, catalog: Option<Arc<StatMapCatalog>>) -> DataOrchestr
     }
 }
 
-/// OutputTable 主要标量字段的命名展开（diff 行集；OutputTable 非 serde 类型，
-/// 此处手工枚举与 ninja_parity 报告同族的字段 + 进攻/机制扩展字段）。
+/// Named expansion of OutputTable's main scalar fields (the diff row set;
+/// OutputTable isn't a serde type, so these fields are hand-enumerated here —
+/// the same family used by the ninja_parity report, plus offence/mechanics
+/// extension fields).
 fn scalar_fields(out: &OutputTable) -> Vec<(&'static str, f64)> {
     vec![
         ("life", out.life),
@@ -115,18 +124,21 @@ fn scalar_fields(out: &OutputTable) -> Vec<(&'static str, f64)> {
     ]
 }
 
-/// Compare 模式纯观测契约：同一 build 以 Data 与 Compare 各跑一次，输出
-/// **逐字段一致**（Compare 不改变计算结果）；且 Compare 跑后能取出映射级
-/// outcome 观测记录。非 ignore——这是观测框架本身的回归门禁。
+/// Compare mode's pure-observation contract: the same build runs once each
+/// under Data and Compare mode; the output must be **identical
+/// field-for-field** (Compare doesn't change the calculation result), and
+/// after a Compare run, mapping-level outcome observation records can be
+/// retrieved. Not ignored — this is the regression gate for the observation
+/// framework itself.
 #[test]
 fn compare_mode_is_pure_observation() {
     let game_data = load_game_data();
     let Ok(Some(def)) = game_data.skill_stat_map() else {
-        return; // 数据包未就位时跳过
+        return; // skip when the data package isn't in place yet
     };
     let catalog = Arc::new(StatMapCatalog::new(def));
     let data = BuildData::load(&game_data).expect("load BuildData");
-    // 取一个固定样本 build（quality fixture 同款，含 15×q20 宝石、覆盖三个取数点）。
+    // Uses a fixed sample build (same as the quality fixture, has 15×q20 gems and covers three sampling points).
     let code_path = builds_dir().join("sorceress-stormweaver-comet/code.txt");
     let Ok(code) = std::fs::read_to_string(&code_path) else {
         return;
@@ -135,7 +147,7 @@ fn compare_mode_is_pure_observation() {
 
     let data_out =
         calculate_with_data(&build, &data, &opts(StatMapMode::Data, None)).expect("data run");
-    // 清空历史记录，确保取到的是本次 Compare 的。
+    // Clears any leftover records so we retrieve only this Compare run's.
     let _ = pobr_build::take_stat_map_compare_records();
     let compare_out = calculate_with_data(
         &build,
@@ -163,13 +175,15 @@ fn compare_mode_is_pure_observation() {
             .all(|r| matches!(r.classification, "mapped" | "unsupported" | "unknown")),
         "观测记录分类应为 mapped/unsupported/unknown"
     );
-    // 记录已取出 → 再取应为空（take 语义）。
+    // Records have been taken -> taking again should be empty (take semantics).
     assert!(pobr_build::take_stat_map_compare_records().is_empty());
 }
 
-/// 观测记录定位辅助：对单个 build（env `POBR_L2_BUILD`，缺省 stormweaver）以
-/// Compare 模式跑一次，打印**运行时**逐 stat 映射级 outcome 记录（取数点上下
-/// 文）——字段级偏移的根因定位工具（哪个 stat 在哪个取数点未映射/Unsupported）。
+/// Observation-record locator helper: runs a single build (env
+/// `POBR_L2_BUILD`, defaults to stormweaver) once under Compare mode and
+/// prints the **runtime** per-stat mapping-level outcome records (with
+/// sampling-point context) — a root-cause locator for field-level deviations
+/// (which stat is unmapped/Unsupported at which sampling point).
 #[test]
 #[ignore = "观测定位（手动跑）：POBR_L2_BUILD=<build目录名> cargo test … runtime_compare_records"]
 fn l2_runtime_compare_records() {
@@ -199,10 +213,11 @@ fn l2_runtime_compare_records() {
     }
 }
 
-// oracle 抽样对拍（≥50 条 stat，PoB2 mergeSkillInstanceMods）
+// Oracle sampling comparison (>=50 stats, PoB2 mergeSkillInstanceMods)
 
-/// PoB2 `ModFlag` 位 → 抽取层 token 名（vendor `Data/Global.lua:213-249`；
-/// 仅解码 oracle 样本可能出现的位，未知位保留为 `?0x…` 让翻译层拒绝上报）。
+/// PoB2 `ModFlag` bits -> extraction-layer token names (vendor
+/// `Data/Global.lua:213-249`; only decodes bits that could actually appear in
+/// oracle samples — unknown bits stay `?0x…` so the translation layer rejects them).
 const POB2_MOD_FLAG_BITS: [(u64, &str); 12] = [
     (0x1, "Attack"),
     (0x2, "Spell"),
@@ -218,7 +233,7 @@ const POB2_MOD_FLAG_BITS: [(u64, &str); 12] = [
     (0x2000, "Weapon"),
 ];
 
-/// PoB2 `KeywordFlag` 位 → token 名（vendor `Data/Global.lua:251-292`）。
+/// PoB2 `KeywordFlag` bits -> token names (vendor `Data/Global.lua:251-292`).
 const POB2_KEYWORD_FLAG_BITS: [(u64, &str); 25] = [
     (0x1, "Aura"),
     (0x2, "Curse"),
@@ -262,7 +277,7 @@ fn decode_bits(bits: u64, table: &[(u64, &str)]) -> Vec<String> {
     tokens
 }
 
-/// oracle JSON tag → 抽取层 [`StatMapValue`] 表（供 [`translate_tag`] 归一）。
+/// oracle JSON tag -> extraction-layer [`StatMapValue`] table (feeds [`translate_tag`] for normalization).
 fn json_to_stat_map_value(v: &serde_json::Value) -> StatMapValue {
     match v {
         serde_json::Value::Bool(b) => StatMapValue::Bool(*b),
@@ -280,13 +295,13 @@ fn json_to_stat_map_value(v: &serde_json::Value) -> StatMapValue {
     }
 }
 
-/// 引擎/oracle 双方注入项的归一比较形态。
+/// Normalized comparison form for injected items from both the engine and oracle side.
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 enum ComparableItem {
     Modifier {
         name: String,
         mod_type: String,
-        /// FLAG mod 比 bool 真值；数值 mod 比 f64（1e-6 容差在比较前 round）。
+        /// A FLAG mod compares its bool truth value; a numeric mod compares as f64 (rounded to a 1e-6 tolerance before comparing).
         value: String,
         flags: u64,
         keyword_flags: u64,
@@ -338,15 +353,17 @@ fn tag_comparable(tag: &ModTag) -> String {
     format!("{tag:?}")
 }
 
-/// oracle 侧单条 mod → 归一比较形态（名字/flags/keyword/tag 经引擎翻译层归一）。
-/// 翻译失败返回 Err（样本 FAIL：引擎声称 Mapped 但 oracle 形态不可归一 = 覆盖不一致）。
+/// oracle-side single mod -> normalized comparison form (name/flags/keyword/tag
+/// normalized through the engine's translation layer). Returns Err on
+/// translation failure (sample FAILs: the engine claims Mapped but the oracle
+/// form can't be normalized = a coverage mismatch).
 fn oracle_mod_comparable(mod_json: &serde_json::Value) -> Result<ComparableItem, String> {
     let name = mod_json["name"].as_str().unwrap_or("?");
     let mod_type = mod_json["type"].as_str().unwrap_or("?");
     let flags_bits = mod_json["flags"].as_f64().unwrap_or(0.0) as u64;
     let kw_bits = mod_json["keywordFlags"].as_f64().unwrap_or(0.0) as u64;
-    // skill_data（vendor `skill(key,…)` = SkillData LIST）：伤害基值键 →
-    // `<Type>DamageMin/Max` BASE；duration → SkillData 项（与引擎口径一致）。
+    // skill_data (vendor `skill(key,…)` = SkillData LIST): a base-damage key maps to
+    // `<Type>DamageMin/Max` BASE; duration maps to a SkillData item (matches engine's convention).
     if name == "SkillData" && mod_type == "LIST" {
         let key = mod_json["value"]["key"].as_str().unwrap_or("?").to_string();
         let value = mod_json["value"]["value"].as_f64().unwrap_or(0.0);
@@ -354,9 +371,9 @@ fn oracle_mod_comparable(mod_json: &serde_json::Value) -> Result<ComparableItem,
         for ty in damage_types {
             for bound in ["Min", "Max"] {
                 if key == format!("{ty}{bound}") {
-                    // vendor `skill(key, nil, …tags)` 的 tag 同样要归一比较（如
-                    // `SkillStatMap.lua:99-101` per_removable_frenzy_charge 的
-                    // Multiplier tag——引擎侧 collect_skill_data 会附带）。
+                    // vendor `skill(key, nil, …tags)`'s tags must also be normalized and compared
+                    // (e.g. the Multiplier tag on per_removable_frenzy_charge in
+                    // `SkillStatMap.lua:99-101` -- the engine side's collect_skill_data attaches it too).
                     let mut tags = Vec::new();
                     for tag_json in mod_json["tags"].as_array().cloned().unwrap_or_default() {
                         let StatMapValue::Table(map) = json_to_stat_map_value(&tag_json) else {
@@ -398,7 +415,7 @@ fn oracle_mod_comparable(mod_json: &serde_json::Value) -> Result<ComparableItem,
     tags.sort();
     let value = match mod_type {
         "FLAG" => {
-            // vendor flag mod 的 value 为 Lua 真值。
+            // vendor's flag mod value is a Lua truth value.
             format!("{}", mod_json["value"].as_bool().unwrap_or(true))
         }
         _ => fmt_value(mod_json["value"].as_f64().unwrap_or(0.0)),
@@ -413,8 +430,9 @@ fn oracle_mod_comparable(mod_json: &serde_json::Value) -> Result<ComparableItem,
     })
 }
 
-/// vendor PoB2 源码目录（oracle 运行根）：`POBR_POB2_SRC` 显式指定，缺省取
-/// 仓库 `vendor/PathOfBuilding-PoE2/src`（worktree 未检出 vendor 时必须用 env）。
+/// The vendor PoB2 source directory (oracle's run root): explicitly set via
+/// `POBR_POB2_SRC`, defaulting to the repo's `vendor/PathOfBuilding-PoE2/src`
+/// (must use the env var when the worktree hasn't checked out vendor).
 fn vendor_src_dir() -> PathBuf {
     if let Ok(p) = std::env::var("POBR_POB2_SRC") {
         return PathBuf::from(p);
@@ -422,9 +440,10 @@ fn vendor_src_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../vendor/PathOfBuilding-PoE2/src")
 }
 
-/// oracle 抽样：≥50 条 stat 覆盖 div / mult / base / value / 多 mod / tag
-/// （Condition/ActorCondition/Multiplier/PerStat）/ flags / 转换 gain-as /
-/// skill_data / per-set 覆盖各形态，跑 PoB2 真实 `mergeSkillInstanceMods` 对拍。
+/// Oracle sampling: >=50 stats covering div / mult / base / value / multi-mod /
+/// tag (Condition/ActorCondition/Multiplier/PerStat) / flags / conversion
+/// gain-as / skill_data / per-set variants, compared against PoB2's real
+/// `mergeSkillInstanceMods`.
 #[test]
 #[ignore = "需要 vendor PoB2 + luajit：POBR_POB2_SRC=<…>/src cargo test -p pobr-build --test statmap_dual_run -- --ignored oracle"]
 fn oracle_statmap_sampling() {
@@ -433,7 +452,7 @@ fn oracle_statmap_sampling() {
     let catalog = load_stat_map_catalog(&game_data);
     let data = BuildData::load(&game_data).expect("load BuildData");
 
-    // L1 universe：实际入库 stat（global 样本只从这里选，保证对拍的是真实消费面）。
+    // L1 universe: stats actually present in the ingested data (global samples are only drawn from here, so the comparison covers real consumption).
     let mut universe: BTreeSet<String> = BTreeSet::new();
     for set_def in data.skill_stat_sets.values() {
         for set in &set_def.sets {
@@ -448,7 +467,7 @@ fn oracle_statmap_sampling() {
         }
     }
 
-    // 选样（确定性：BTreeMap 序 + 每桶配额）
+    // Sample selection (deterministic: BTreeMap ordering + a per-bucket quota)
     #[derive(Default)]
     struct Buckets {
         plain: Vec<String>,
@@ -519,7 +538,7 @@ fn oracle_statmap_sampling() {
             buckets.plain.push(stat);
         }
     }
-    // per-set 覆盖样本（默认 set "1"，effect 必须真实存在于 PoB2 data.skills）。
+    // per-set coverage samples (default set "1"; the effect must actually exist in PoB2's data.skills).
     let mut per_set_samples: Vec<(String, String)> = Vec::new();
     for (effect, set_key, stat, _entry) in catalog.per_set_entries() {
         if set_key != "1" || per_set_samples.len() >= 12 {
@@ -537,7 +556,7 @@ fn oracle_statmap_sampling() {
         per_set_samples.push((effect.to_string(), stat.to_string()));
     }
 
-    // 组装探针（effect="GLOBAL" 走全局表）。
+    // Assembles probes (effect="GLOBAL" uses the global table).
     let mut probes: Vec<(String, String)> = Vec::new();
     for stat in [
         &buckets.plain,
@@ -578,7 +597,7 @@ fn oracle_statmap_sampling() {
         probes.iter().filter(|(e, _)| e != "GLOBAL").count(),
     );
 
-    // 跑 oracle（一次进程调用，参数 = 三元组重复序列）
+    // Runs the oracle (one process invocation; args = a repeated triple sequence)
     let vendor_src = vendor_src_dir();
     assert!(
         vendor_src.join("HeadlessWrapper.lua").exists(),
@@ -612,7 +631,7 @@ fn oracle_statmap_sampling() {
     let oracle_rows = oracle_json.as_array().expect("oracle JSON 是数组");
     assert_eq!(oracle_rows.len(), probes.len(), "oracle 行数与探针数一致");
 
-    // 逐样本对拍
+    // Per-sample comparison
     let mut report = String::new();
     report.push_str("# statmap oracle 抽样对拍（M1-T2b，蓝图 T2.3）\n\n");
     report.push_str(&format!(

@@ -1,5 +1,6 @@
-//! build 解码：PoB Build Code → 结构化 build JSON（`decode_build_json`），
-//! 以及国服 `.build` 文件 → 同构 `BuildJson`（`decode_build_file_json`）。
+//! Build decoding: PoB Build Code -> structured build JSON
+//! (`decode_build_json`), plus a China-server `.build` file -> an
+//! isomorphic `BuildJson` (`decode_build_file_json`).
 
 use std::collections::BTreeMap;
 
@@ -27,7 +28,7 @@ struct CharacterJson {
 struct TreeJson {
     allocated_nodes: Vec<u32>,
     tree_version: Option<String>,
-    /// 属性小点三选一（node skill id → `"str"|"dex"|"int"`）。
+    /// Attribute-choice small nodes (node skill id -> `"str"|"dex"|"int"`).
     attribute_choices: BTreeMap<u32, &'static str>,
 }
 
@@ -47,7 +48,7 @@ struct SlotItemJson {
 
 #[derive(Debug, Serialize)]
 struct SocketJewelJson {
-    /// 珠宝插槽的树节点 skill id。
+    /// The tree node's skill id for the jewel socket.
     socket_node: u32,
     text: String,
 }
@@ -56,7 +57,7 @@ struct SocketJewelJson {
 struct ItemsJson {
     equipped: Vec<SlotItemJson>,
     jewels: Vec<String>,
-    /// 树插槽珠宝（可编辑：天赋树页按插槽维护）。
+    /// Tree-socketed jewels (editable: maintained per-socket on the passive tree page).
     socket_jewels: Vec<SocketJewelJson>,
     flasks: Vec<SlotItemJson>,
 }
@@ -72,15 +73,17 @@ struct GemJson {
 struct SocketGroupJson {
     slot: Option<String>,
     enabled: bool,
-    /// PoB `<Skill source>`（装备授予技能组 `Item:<id>:<name>`）；`None`=手动组。
-    /// 需全链透传（web 状态 → 请求 → encode），否则分享 code 往返后授予组会
-    /// 失去 source 标记，引擎按物品词条再合成一份 → 授予技能重复计数。
+    /// PoB `<Skill source>` (equipment-granted skill groups get `Item:<id>:<name>`); `None` = a manual group.
+    /// Must be passed through the whole chain (web state -> request ->
+    /// encode); otherwise a granted group loses its source marker after a
+    /// share-code round trip, and the engine re-synthesizes it from the
+    /// item's mod lines -> the granted skill gets double-counted.
     source: Option<String>,
     active_skill_id: Option<String>,
     gems: Vec<GemJson>,
 }
 
-/// config `<Input>` 值的 JSON 形状（三型直出）。
+/// The JSON shape for a config `<Input>` value (the three types output directly).
 fn config_value_json(value: &ConfigInputValue) -> serde_json::Value {
     match value {
         ConfigInputValue::Bool(b) => serde_json::Value::from(*b),
@@ -95,21 +98,25 @@ struct BuildJson {
     tree: TreeJson,
     items: ItemsJson,
     socket_groups: Vec<SocketGroupJson>,
-    /// 主技能组下标（0-based；`None` = 未指定，计算侧退化为首个启用组）。
+    /// The main socket group's index (0-based; `None` = unspecified, and
+    /// the calc side falls back to the first enabled group).
     main_socket_group: Option<usize>,
-    /// `<Config>` 原始输入键值（Config 页展示/编辑的初始状态）。
+    /// The raw `<Config>` input key/values (the initial state shown/edited on the Config page).
     config_inputs: BTreeMap<String, serde_json::Value>,
-    /// `<Notes>` 自由文本（PoB 笔记页；无该段为 null）。
+    /// Free-text `<Notes>` (PoB's notes page; `null` if that section is absent).
     notes: Option<String>,
-    /// 成组切换清单（PoB2 loadout：天赋/装备/技能按 title 命名约定绑定）。
-    /// 单套 build 恒为一条 `Default`；前端据此渲染切换下拉。
+    /// The list of switchable loadouts (PoB2's loadout concept: passives /
+    /// equipment / skills bound together by a title naming convention).
+    /// A single-set build is always exactly one `Default` entry; the
+    /// frontend renders its switch dropdown from this.
     loadouts: Vec<LoadoutJson>,
-    /// 当前 build 对应的 loadout 下标（`loadouts` 内），无法判定时为 null。
+    /// The loadout index (within `loadouts`) matching the current build; `null` if it can't be determined.
     active_loadout: Option<usize>,
 }
 
-/// 一个可切换的 loadout。`tree`/`item`/`skill` 是 1-based 文档序，回传
-/// `decodeBuildJson` 的 selection 即可切过去；`null` = 该类未参与绑定（单套豁免）。
+/// A single switchable loadout. `tree`/`item`/`skill` are 1-based document
+/// indices; passing them back as `decodeBuildJson`'s selection switches to
+/// it; `null` means that category didn't participate in the binding (the single-set exemption).
 #[derive(Debug, Serialize)]
 struct LoadoutJson {
     name: String,
@@ -120,8 +127,9 @@ struct LoadoutJson {
 
 fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
     let raw_items = parse_raw_items_view(xml).map_err(|e| format!("parse items: {e}"))?;
-    // Loadout 清单 + 当前选中项：按 XML 的 active 三元组反查（切换后重新 decode
-    // 时，改写过的 active 会指向新组，前端据此高亮）。
+    // The loadout list plus the current selection: reverse-looked-up
+    // against the XML's active triple (after switching and re-decoding, the
+    // rewritten active values point at the new group, which the frontend uses to highlight it).
     let sets = parse_build_sets(xml).map_err(|e| format!("parse sets: {e}"))?;
     let active = active_selection(xml);
     let loadouts: Vec<LoadoutJson> = derive_loadouts(&sets)
@@ -191,7 +199,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                     .collect(),
             })
             .collect(),
-        // Build 内部 1-based（PoB XML 同）→ 契约 0-based（web 下标语义）。
+        // Build's internal representation is 1-based (matching PoB XML) -> the contract is 0-based (web index semantics).
         main_socket_group: build.main_socket_group.map(|m| m.saturating_sub(1)),
         config_inputs: build
             .config
@@ -206,9 +214,9 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
     })
 }
 
-/// 0.1：PoB Build Code → 结构化 build JSON（角色/树/装备文本块/技能组/config）。
+/// 0.1: PoB Build Code -> structured build JSON (character/tree/equipment text blocks/skill groups/config).
 ///
-/// 纯解码，不需要游戏数据初始化。
+/// Pure decoding; doesn't require game data to be initialized.
 pub fn decode_build_json(code: &str) -> Result<String, String> {
     decode_build_impl(code).map_err(super::ApiError::into_json)
 }
@@ -217,12 +225,14 @@ fn decode_build_impl(code: &str) -> Result<String, super::ApiError> {
     decode_selected(code, &SetSelection::default())
 }
 
-/// 0.1b：同 [`decode_build_json`]，但先切到指定的 loadout（成组切换）。
+/// 0.1b: same as [`decode_build_json`], but first switches to a specified loadout (group switching).
 ///
-/// 请求形状 `{ "code": "...", "tree": 2, "item": 2, "skill": null }`——三个序号取自
-/// 响应里 `loadouts[]` 的条目；省略/`null` 表示该类保持原样（单套豁免）。切换在
-/// **XML 层**完成（改写三个 active 属性后重新解析），因此结果与用 PoB2 手动切三个
-/// 下拉完全一致。
+/// Request shape `{ "code": "...", "tree": 2, "item": 2, "skill": null }` —
+/// the three indices are taken from the `loadouts[]` entries in the
+/// response; omitted/`null` means that category is left as-is (the
+/// single-set exemption). Switching happens at the **XML level** (rewrite
+/// the three active attributes, then re-parse), so the result exactly
+/// matches manually switching all three dropdowns in PoB2.
 pub fn decode_build_loadout_json(request_json: &str) -> Result<String, String> {
     state::cached_response("decode_loadout", request_json, || {
         decode_loadout_impl(request_json).map_err(super::ApiError::into_json)
@@ -253,14 +263,17 @@ fn decode_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
     )
 }
 
-/// 0.1c：组管理——复制 / 重命名 / 删除一个 loadout，返回**新的 build code**。
+/// 0.1c: group management — copies / renames / deletes a loadout, returning the **new build code**.
 ///
-/// 请求 `{ code, op, name?, tree?, item?, skill? }`：`op` ∈ `duplicate` /
-/// `rename` / `remove`；三个序号指定操作哪一套（缺省 = 当前 active）。三类 set
-/// 一并操作——loadout 是它们的组合，只动一类会让绑定错位。
+/// Request `{ code, op, name?, tree?, item?, skill? }`: `op` is one of
+/// `duplicate` / `rename` / `remove`; the three indices specify which set
+/// to operate on (default = the currently active one). All three set types
+/// are operated on together — a loadout is their combination, and touching
+/// only one type would misalign the bindings.
 ///
-/// 复制而非新建空套（同 PoB2 `CustomLoadout` 的 `CopyTree`/`CopyItemSet` 语义）：
-/// 新阶段总是从上一阶段改出来的，空树对用户没用。
+/// Copies rather than creating an empty new set (matching PoB2
+/// `CustomLoadout`'s `CopyTree`/`CopyItemSet` semantics): a new stage is
+/// always derived from the previous one, and an empty tree is useless to the user.
 pub fn manage_loadout_json(request_json: &str) -> Result<String, String> {
     manage_loadout_impl(request_json).map_err(super::ApiError::into_json)
 }
@@ -312,7 +325,8 @@ fn manage_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
                 return Err(super::ApiError::bad_request(format!("unknown op: {other}")));
             }
         };
-        // 某一类缺该套（如只有一套技能集）时跳过——单套豁免下这是正常形态。
+        // Skipped when a category lacks that set (e.g. only one skill set
+        // exists) — normal under the single-set exemption.
         if let Some(next) = applied {
             out = next;
         }
@@ -333,10 +347,11 @@ fn decode_selected(code: &str, sel: &SetSelection) -> Result<String, super::ApiE
     Ok(serde_json::to_string(&json).map_err(|e| format!("serialize: {e}"))?)
 }
 
-// decode_build_file_json（国服导出 `.build` 文件 → BuildJson）
+// decode_build_file_json (a China-server exported `.build` file -> BuildJson)
 
-/// 国服 `.build` 文件形状（poe2 国服市集导出：JSON，天赋为字符串 slug、
-/// 装备只有简中词条行、宝石为基底 metadata id 且无等级/品质）。
+/// The shape of a China-server `.build` file (exported from PoE2's
+/// China-server marketplace: JSON, passives as string slugs, equipment with
+/// only Simplified Chinese mod lines, and gems as base metadata ids with no level/quality).
 #[derive(Debug, Deserialize)]
 struct CnBuildFile {
     #[serde(default)]
@@ -370,8 +385,9 @@ struct CnSkill {
     support_skills: Vec<CnPassive>,
 }
 
-/// `.build` 槽位 → 我们的装备槽 id。`Weapon2`/`Offhand2` 是第二武器组,
-/// v1 不建模（与 XML 导入的 useSecondWeaponSet 同期欠账），跳过。
+/// `.build` slot -> our equipment slot id. `Weapon2`/`Offhand2` is the
+/// second weapon set, unmodeled in v1 (the same known gap as
+/// `useSecondWeaponSet` in XML import), so it's skipped.
 fn cn_inventory_slot(inventory_id: &str) -> Option<&'static str> {
     Some(match inventory_id {
         "Weapon1" => "weapon1",
@@ -388,8 +404,8 @@ fn cn_inventory_slot(inventory_id: &str) -> Option<&'static str> {
     })
 }
 
-/// 宝石基底 metadata id → 主授予效果 id（`.build` 里 `Gem`/`Gems` 两种前缀混用，
-/// 归一化后查 skill_gems 表）。
+/// Gem base metadata id -> the primary granted effect id (`.build` mixes
+/// both `Gem`/`Gems` prefixes; normalized before looking up the skill_gems table).
 fn cn_gem_effect_id(data: &BuildData, gem_id: &str) -> Option<String> {
     let lookup = |id: &str| {
         data.skill_gems
@@ -401,11 +417,13 @@ fn cn_gem_effect_id(data: &BuildData, gem_id: &str) -> Option<String> {
         .or_else(|| lookup(&gem_id.replace("/Gem/", "/Gems/")))
 }
 
-/// 解析国服 `.build` 文件为 [`BuildJson`] 同构 JSON（需先初始化游戏数据：
-/// 天赋 slug → 数值 id、宝石基底 id → 效果 id 都要查表）。
+/// Parses a China-server `.build` file into JSON isomorphic to [`BuildJson`]
+/// (requires game data to be initialized first: both passive slug -> numeric
+/// id and gem base id -> effect id need table lookups).
 ///
-/// 已知边界：装备无基底名/稀有度（按 RARE + 占位名构造，防御底值缺失）；
-/// 宝石无等级/品质（默认 20/0）；第二武器组跳过。
+/// Known limitations: equipment has no base name/rarity (constructed as
+/// RARE plus a placeholder name, with base defence values missing); gems
+/// have no level/quality (defaulted to 20/0); the second weapon set is skipped.
 pub fn decode_build_file_json(content: &str) -> Result<String, String> {
     decode_build_file_impl(content).map_err(super::ApiError::into_json)
 }
@@ -416,7 +434,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let game = state::game_data().map_err(super::ApiError::not_initialized)?;
 
-    // 等级：build 名里的 `Lv.98`。
+    // Level: from `Lv.98` in the build name.
     let level = file
         .name
         .split("Lv")
@@ -431,7 +449,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
         })
         .unwrap_or(1);
 
-    // 升华 id（如 `Sorceress3`）→ 职业名 + 升华名。
+    // Ascendancy id (e.g. `Sorceress3`) -> class name plus ascendancy name.
     let mut class_name = String::new();
     let mut ascendancy_name = String::new();
     if let Some(asc_id) = &file.ascendancy {
@@ -452,7 +470,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
         }
     }
 
-    // 天赋 slug → 数值 skill id。
+    // Passive slug -> numeric skill id.
     let slug_to_skill: std::collections::HashMap<&str, u32> = data
         .passive_nodes
         .values()
@@ -469,7 +487,8 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
     allocated_nodes.sort_unstable();
     allocated_nodes.dedup();
 
-    // 装备：只有词条行 → 构造 PoB 文本（RARE + 占位名；词条简中由计算侧翻译层处理）。
+    // Equipment: only mod lines are available -> construct PoB text (RARE
+    // plus a placeholder name; Chinese mod lines are handled by the calc-side translation layer).
     let equipped: Vec<SlotItemJson> = file
         .items
         .iter()
@@ -486,7 +505,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
         })
         .collect();
 
-    // 技能组：宝石基底 id → 效果 id（等级/品质缺省 20/0）。
+    // Skill groups: gem base id -> effect id (level/quality default to 20/0).
     let mut unknown_gems = 0usize;
     let socket_groups: Vec<SocketGroupJson> = file
         .skills
@@ -558,7 +577,8 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
             }
             note
         }),
-        // 国服 `.build` 无多套概念：给一条全豁免的 Default，前端下拉形状一致。
+        // A China-server `.build` has no multi-set concept: give it one
+        // fully-exempt Default entry, so the frontend's dropdown shape stays consistent.
         loadouts: vec![LoadoutJson {
             name: "Default".to_string(),
             tree: 1,

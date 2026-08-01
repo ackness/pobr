@@ -1,62 +1,78 @@
-//! 物品基底域 schema（`base/base_items.json`，来自 `BaseItemTypes.dat` 等）。
+//! Base item domain schema (`base/base_items.json`, sourced from
+//! `BaseItemTypes.dat` etc.).
 
 use serde::{Deserialize, Serialize};
 
-/// 物品基底定义（来自 `BaseItemTypes.dat` + 外键解析）。
+/// A base item definition (from `BaseItemTypes.dat` plus foreign-key
+/// resolution).
 ///
-/// `name` 为英文 canonical；其它语言的名称走 `i18n/<lang>/base_items.json` 边车
-/// （`id -> 本地化名称`）。武器/护甲数值（如 PhysicalMin/Max）来自独立的
-/// `WeaponTypes` / `ArmourTypes` 表，后续切片接入。
+/// `name` is English canonical; names in other languages go through the
+/// `i18n/<lang>/base_items.json` sidecar (`id -> localized name`).
+/// Weapon/armour numbers (e.g. PhysicalMin/Max) come from the separate
+/// `WeaponTypes` / `ArmourTypes` tables, wired in by a later slice.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BaseItemDef {
-    /// 稳定 ID，即 `.dat` 的 `Id`（如 `Metadata/Items/Weapons/.../FourOneHandAxe1`）。
+    /// Stable ID, i.e. the `.dat`'s `Id` (e.g.
+    /// `Metadata/Items/Weapons/.../FourOneHandAxe1`).
     pub id: String,
-    /// 英文 canonical 名称。
+    /// English canonical name.
     pub name: String,
-    /// 物品类别（解析 `ItemClasses.Id`，如 `One Hand Axe`）。
+    /// Item class (resolves `ItemClasses.Id`, e.g. `One Hand Axe`).
     pub item_class: String,
-    /// 掉落等级。
+    /// Drop level.
     pub drop_level: u32,
-    /// 物品栏宽 / 高。
+    /// Inventory width / height.
     pub width: u8,
     pub height: u8,
-    /// 标签（解析 `Tags.Id`，如 `ezomyte_basetype`）。
+    /// Tags (resolves `Tags.Id`, e.g. `ezomyte_basetype`).
     pub tags: Vec<String>,
-    /// 固有词缀（implicit）的 mod 稳定 ID（解析 `Mods.Id`）。
+    /// Stable mod IDs for implicit mods (resolves `Mods.Id`).
     pub implicits: Vec<String>,
-    /// mod domain（GGG 原始枚举值，用于词缀适用域判定）。
+    /// Mod domain (a raw GGG enum value, used to decide which mods can
+    /// apply to this base).
     pub mod_domain: u32,
-    /// 武器基底数值（来自 `WeaponTypes.dat`；非武器为 `None`）——攻击伤害的基底。
+    /// Weapon base stats (from `WeaponTypes.dat`; `None` for non-weapons) —
+    /// the base for attack damage.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub weapon: Option<WeaponBaseStats>,
-    /// 护甲基底数值（来自 `ArmourTypes.dat`；非护甲为 `None`）——armour/evasion/ES 局部基底。
+    /// Armour base stats (from `ArmourTypes.dat`; `None` for non-armour) —
+    /// the local base for armour/evasion/ES.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub armour: Option<ArmourBaseStats>,
-    /// 基底固有 Spirit（如权杖 `spirit = 100`；来源 `ItemSpirit.dat` 的 `SpiritGranted`）。
+    /// The base's inherent Spirit (e.g. a sceptre's `spirit = 100`; sourced
+    /// from `ItemSpirit.dat`'s `SpiritGranted`).
     ///
-    /// 该表对应 bundle 已被 CDN 对钉定 patch 剪除（.dat 路线不可得），当前由
-    /// `overlay/base_item_overrides.json`（vendor `Data/Bases/*.lua` 确定性抽取，
-    /// `sync-pob-catalog extract-bases`）经 gamedata merge 填充——
-    /// §6 开放问题 2 的双路线兜底。无 Spirit 的基底为 `None`。
+    /// This table's bundle has been pruned from the CDN at the pinned
+    /// patch (the `.dat` route is unavailable), so it's currently filled in
+    /// via a gamedata merge from `overlay/base_item_overrides.json`
+    /// (deterministically extracted from vendor `Data/Bases/*.lua` by
+    /// `sync-pob-catalog extract-bases`) — the dual-route fallback from §6
+    /// open question 2. `None` for bases without Spirit.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spirit: Option<u32>,
-    /// charm 基底固有 buff 词条（vendor `Data/Bases/flask.lua` 的 `charm.buff`，
-    /// 如 Ruby Charm `"+25% to Fire Resistance"`、Sapphire/Topaz 冰/电抗、Amethyst
-    /// 混抗、其余免疫类）。该 buff **不在物品文本里**，是基底固有属性——charm
-    /// active 时由 `pobr_core::ingest::item::ingest_flask_charm` 并入 `CharmBuff`
-    /// 载荷（vendor `Item.lua:838-844` 把 `base.charm.buff` 逐行 parseMod 进
-    /// `buffModList`）。GGG `.dat` 无此列，由 `overlay/base_item_overrides.json`
-    /// （vendor `Data/Bases/flask.lua` 抽取，`sync-pob-catalog extract-bases`）经
-    /// gamedata merge 填充——与 [`BaseItemDef::spirit`] 同款双路线兜底。
-    /// 非 charm / 无 buff 为空。
+    /// A charm base's inherent buff mod (vendor `Data/Bases/flask.lua`'s
+    /// `charm.buff`, e.g. a Ruby Charm's `"+25% to Fire Resistance"`,
+    /// Sapphire/Topaz's cold/lightning resist, Amethyst's mixed resist, and
+    /// the other immunity-type charms). This buff **isn't in the item's
+    /// text** — it's an inherent property of the base; when the charm is
+    /// active, `pobr_core::ingest::item::ingest_flask_charm` folds it into
+    /// the `CharmBuff` payload (vendor `Item.lua:838-844` runs each line of
+    /// `base.charm.buff` through parseMod into `buffModList`). No GGG
+    /// `.dat` column for this — filled in via a gamedata merge from
+    /// `overlay/base_item_overrides.json` (extracted from vendor
+    /// `Data/Bases/flask.lua` by `sync-pob-catalog extract-bases`) — the
+    /// same dual-route fallback as [`BaseItemDef::spirit`]. Empty for
+    /// non-charms / charms without a buff.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub charm_buff: Vec<String>,
-    /// 基底属性需求（vendor `Data/Bases/*.lua` 的 `req = { str/dex/int }`；GGG
-    /// `.dat` 对应表 bundle 不可得，走 `overlay/base_item_overrides.json` 抽取
-    /// merge——与 [`Self::spirit`] 同款兜底）。消费方 = 装备需求快照
-    /// `<Attr>RequirementsOn<slot>`（vendor CalcPerform.lua:1848-1857，
-    /// Smith『Gain Armour equal to 150% of total Strength Requirements …』）。
-    /// 无需求为 0。
+    /// The base's attribute requirements (vendor `Data/Bases/*.lua`'s
+    /// `req = { str/dex/int }`; the corresponding GGG `.dat` table's bundle
+    /// is unavailable, so this is extracted and merged via
+    /// `overlay/base_item_overrides.json` — the same fallback as
+    /// [`Self::spirit`]). Consumed by the equipment-requirement snapshot
+    /// `<Attr>RequirementsOn<slot>` (vendor CalcPerform.lua:1848-1857,
+    /// Smith's "Gain Armour equal to 150% of total Strength Requirements
+    /// …"). 0 when there's no requirement.
     #[serde(default, skip_serializing_if = "is_zero_u32")]
     pub req_str: u32,
     #[serde(default, skip_serializing_if = "is_zero_u32")]
@@ -65,32 +81,39 @@ pub struct BaseItemDef {
     pub req_int: u32,
 }
 
-/// 武器基底数值（`WeaponTypes.dat` 外键解析；攻击技能伤害的基底，对照 PoB2
-/// `CalcSetup.lua` weaponData 装配）。数值均为原始 `.dat` 整型，计算侧按单位换算。
+/// Weapon base stats (`WeaponTypes.dat` foreign-key resolution; the base
+/// for attack-skill damage, matching PoB2 `CalcSetup.lua`'s weaponData
+/// assembly). Values are all raw `.dat` integers; unit conversion happens
+/// on the calc side.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WeaponBaseStats {
-    /// 基底物理伤害下/上限（`DamageMin`/`DamageMax`）。
+    /// Base physical damage min/max (`DamageMin`/`DamageMax`).
     pub physical_min: u32,
     pub physical_max: u32,
-    /// 攻击间隔（`Speed`，毫秒）；攻击速率 = `1000 / speed_ms`。
+    /// Attack interval (`Speed`, milliseconds); attack rate = `1000 / speed_ms`.
     pub speed_ms: u32,
-    /// 基底暴击率（`CritChance` 原始值；暴击% = `crit_chance / 100`，如 `500` = 5%）。
+    /// Base crit chance (`CritChance` raw value; crit% = `crit_chance / 100`,
+    /// e.g. `500` = 5%).
     pub crit_chance: u32,
-    /// 攻击射程（`RangeMax`）。
+    /// Attack range (`RangeMax`).
     #[serde(default, skip_serializing_if = "is_zero_u32")]
     pub range: u32,
-    /// 弩装填时间（毫秒；）。真源 = `WeaponTypes.dat` 的 `ReloadTime`
-    /// 列（vendor `Export/spec.lua:62483`、`Export/Scripts/bases.lua:268-269`
-    /// `ReloadTimeBase = ReloadTime/1000`，仅 >0 时导出）。本地 pipeline/tables
-    /// 快照缺失（drill F3/F8）期间由 `overlay/base_item_overrides.json`
-    /// （vendor `Data/Bases/crossbow.lua` 的 `ReloadTimeBase` 秒值 ×1000，
-    /// `sync-pob-catalog extract-bases`）经 gamedata merge 填充——与
-    /// [`BaseItemDef::spirit`] 同款双路线兜底。非弩为 `None`。
+    /// Crossbow reload time (milliseconds). The real source is
+    /// `WeaponTypes.dat`'s `ReloadTime` column (vendor
+    /// `Export/spec.lua:62483`, `Export/Scripts/bases.lua:268-269`'s
+    /// `ReloadTimeBase = ReloadTime/1000`, exported only when >0). While
+    /// the local pipeline/tables snapshot is missing it (drill F3/F8),
+    /// it's filled in via a gamedata merge from
+    /// `overlay/base_item_overrides.json` (vendor
+    /// `Data/Bases/crossbow.lua`'s `ReloadTimeBase` seconds value ×1000,
+    /// via `sync-pob-catalog extract-bases`) — the same dual-route
+    /// fallback as [`BaseItemDef::spirit`]. `None` for non-crossbows.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reload_time_ms: Option<u32>,
 }
 
-/// 护甲基底数值（`ArmourTypes.dat` 外键解析；armour/evasion/ES/ward 局部基底）。
+/// Armour base stats (`ArmourTypes.dat` foreign-key resolution; the local
+/// base for armour/evasion/ES/ward).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ArmourBaseStats {
     pub armour: u32,
@@ -98,20 +121,23 @@ pub struct ArmourBaseStats {
     pub energy_shield: u32,
     #[serde(default, skip_serializing_if = "is_zero_u32")]
     pub ward: u32,
-    /// 盾牌基底格挡几率（%；来源 `ShieldTypes.dat` 的 `Block` 列，对照 PoB2
-    /// `Export/Scripts/bases.lua:277-279`）。该表 bundle 已被 CDN 对钉定 patch
-    /// 剪除，当前由 `overlay/base_item_overrides.json` 经 gamedata merge 填充
-    /// （双路线兜底，见 [`BaseItemDef::spirit`] 说明）。非盾为 `None`。
+    /// A shield's base block chance (%; sourced from `ShieldTypes.dat`'s
+    /// `Block` column, matching PoB2 `Export/Scripts/bases.lua:277-279`).
+    /// This table's bundle has been pruned from the CDN at the pinned
+    /// patch, so it's currently filled in via a gamedata merge from
+    /// `overlay/base_item_overrides.json` (the dual-route fallback, see
+    /// [`BaseItemDef::spirit`]'s note). `None` for non-shields.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub block_chance: Option<f64>,
-    /// 移动速度惩罚（小数，如 `0.03` = 3% 减速；`ArmourTypes.dat` 的
-    /// `IncreasedMovementSpeed` 原始值按 PoB2 口径换算 `-raw/10000`，
-    /// 对照 `Export/Scripts/bases.lua:298-300`）。无惩罚为 `None`。
+    /// Movement speed penalty (a fraction, e.g. `0.03` = 3% slower;
+    /// `ArmourTypes.dat`'s `IncreasedMovementSpeed` raw value converted per
+    /// PoB2's convention as `-raw/10000`, matching
+    /// `Export/Scripts/bases.lua:298-300`). `None` when there's no penalty.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub movement_penalty: Option<f64>,
 }
 
-/// serde 跳过零值 u32（diff 友好）。
+/// serde predicate to skip a zero u32 (keeps diffs clean).
 fn is_zero_u32(v: &u32) -> bool {
     *v == 0
 }
@@ -120,8 +146,10 @@ fn is_zero_u32(v: &u32) -> bool {
 mod m4_t4_reload_tests {
     use super::WeaponBaseStats;
 
-    /// reload_time_ms serde 往返无损；None 不落盘（既有 base JSON 零 diff）、
-    /// 旧 JSON（无键）反序列化为 None（schema 向后兼容）。
+    /// `reload_time_ms` round-trips through serde losslessly; `None` isn't
+    /// written out (zero diff against existing base JSON), and old JSON
+    /// (missing the key) deserializes to `None` (schema backward
+    /// compatible).
     #[test]
     fn reload_time_round_trip_and_backward_compatible() {
         let weapon = WeaponBaseStats {

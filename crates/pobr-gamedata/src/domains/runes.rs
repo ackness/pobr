@@ -1,16 +1,18 @@
-//! `overlay/runes.json` loader——符文 / 魂核镶嵌词条表（vendor
-//! `Data/ModRunes.lua` 经 `extract-lua --what runes` 抽取，schema 见
-//! [`pobr_data::catalog::item_overlay`]）。
+//! `overlay/runes.json` loader — the rune / soul-core socketed-mod table
+//! (extracted from vendor `Data/ModRunes.lua` via
+//! `extract-lua --what runes`, schema in
+//! [`pobr_data::catalog::item_overlay`]).
 //!
-//! 消费侧按需单独加载，不进 ItemRules。
+//! The consumer loads it separately on demand — it isn't part of ItemRules.
 
 use pobr_data::catalog::item_overlay::RunesDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载符文表（恒走 `overlay/` 定位）。文件缺失返回 `Ok(None)`
-    /// （缺表容忍）；其余错误照常上抛。
+    /// Loads the rune table (always resolved under `overlay/`). Returns
+    /// `Ok(None)` when the file is missing (missing-table tolerance);
+    /// other errors still propagate as usual.
     pub fn runes(&self) -> Result<Option<RunesDef>, LoadError> {
         match self.load_json_at::<RunesDef>(self.overlay_path("runes.json")) {
             Ok(def) => Ok(Some(def)),

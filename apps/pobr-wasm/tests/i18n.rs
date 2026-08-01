@@ -1,7 +1,8 @@
-//! `translate` 的集成测试（默认 features，宿主运行）。
+//! Integration tests for `translate` (default features, run on the host).
 //!
-//! 覆盖：en-US 直接命中、zh-TW 翻译命中、zh-TW 缺失键回退 en-US、
-//! 完全缺失键回退 key 原文、未知语言回退规范语言。
+//! Covers: a direct en-US hit, a zh-TW translation hit, a zh-TW missing key
+//! falling back to en-US, a key missing everywhere falling back to the raw
+//! key, and an unknown language falling back to the canonical language.
 
 use pobr_wasm::translate;
 

@@ -1,21 +1,28 @@
-//! `extract-lua --what gem-quality`：vendor PoB2 `Data/Skills/*.lua` 的
-//! `qualityStats` 字段 → `data/<版本>/overlay/gem_quality_stats.json`
+//! `extract-lua --what gem-quality`: extracts the `qualityStats` field from
+//! vendor PoB2's `Data/Skills/*.lua` into `data/<version>/overlay/gem_quality_stats.json`
 //!
-//! **通道说明**：原定从 `.dat` 表 `GrantedEffectQualityStats` 走 adapter →
-//! `base/`，但该表所在 bundle 在钉定补丁 4.5.0.3.4 已无法下载（核验，见
-//! `pipeline/config.json` 的 `_tablesUnavailableForPinnedPatch`），按 owner 裁决
-//! 「生产工具定层」：extract-lua 抽取 → **overlay/**。vendor
-//! 数据文件本就是导出产物（rate 已 `/1000`、辅助宝石已按导出条件跳过，
-//! `Export/Scripts/skills.lua:304-313`），抽取为忠实转录。后续若 `.dat` 表通道
-//! 恢复则迁回 `base/`（迁移 commit byte 等价）。
+//! **Channel note**: originally planned to come from the `.dat` table
+//! `GrantedEffectQualityStats` via the adapter into `base/`, but the bundle
+//! containing that table is no longer downloadable at the pinned patch
+//! 4.5.0.3.4 (verified — see `_tablesUnavailableForPinnedPatch` in
+//! `pipeline/config.json`). Per the owner's call to "let the producing tool
+//! define the layer," it's extracted via extract-lua into **overlay/**
+//! instead. The vendor data file is itself an export artifact (rate already
+//! `/1000`, support gems already skipped per export conditions,
+//! `Export/Scripts/skills.lua:304-313`), so the extraction is a faithful
+//! transcription. If the `.dat` table channel comes back, this should
+//! migrate back to `base/` (a byte-equivalent migration commit).
 //!
-//! 职责切分与 [`crate::extract_lua`] 一致：Lua 引导脚本
-//! （`extract_gem_quality.lua`，编译期内嵌）只负责忠实抽取并以 JSONL 输出；
-//! Rust 侧统一做排序（effect_id 升序，效果内保持 vendor 顺序）、数字最短往返
-//! 表示与整体文档序列化，保证同输入重跑 **byte-stable**。
+//! Responsibility split matches [`crate::extract_lua`]: the Lua bootstrap
+//! script (`extract_gem_quality.lua`, embedded at compile time) only does
+//! faithful extraction and emits JSONL; the Rust side handles sorting
+//! (ascending effect_id, preserving vendor order within each effect),
+//! shortest-round-trip number representation, and whole-document
+//! serialization, guaranteeing **byte-stable** output on repeated runs with the same input.
 //!
-//! NOTE(T2)：luajit 调用 / `_meta` 构建与 `extract_lua.rs` 存在少量同形代码——
-//! 该文件归 T2（stat-map 抽取）owner，T2 落地时可顺势抽公共层统一。
+//! NOTE(T2): the luajit invocation / `_meta` construction here overlaps a
+//! bit with `extract_lua.rs` — this file belongs to the T2 (stat-map
+//! extraction) owner, who can factor out the shared layer once T2 lands.
 
 use std::fs;
 use std::io::{self, Write};
@@ -27,48 +34,51 @@ use serde::{Deserialize, Serialize};
 
 use crate::extract_lua::{ExtractLuaArgs, OverlayMeta};
 
-/// 引导脚本内容（经 stdin 注入 luajit，二进制自包含、不依赖运行目录）
+/// Bootstrap script content (piped into luajit via stdin; the binary is
+/// self-contained and doesn't depend on the working directory)
 const BOOTSTRAP_LUA: &str = include_str!("extract_gem_quality.lua");
 
-/// 当前 overlay 文档 schema 标识（字段演化时递增）
+/// Current overlay document schema identifier (bumped when fields evolve)
 pub const GEM_QUALITY_SCHEMA: &str = "gem_quality_stats/v1";
 
-/// 引导脚本输出的单行 JSONL：一条 (效果, stat, 每品质斜率)。
+/// One JSONL line emitted by the bootstrap script: one (effect, stat, per-quality slope) triple.
 #[derive(Debug, Clone, Deserialize)]
 pub struct QualityRow {
-    /// 授予效果 id（如 `CometPlayer`）。
+    /// The granted effect id (e.g. `CometPlayer`).
     pub effect: String,
-    /// 稳定 stat id。
+    /// The stable stat id.
     pub stat: String,
-    /// 每 1 点品质的斜率（vendor 数据已 `/1000`，原样转录）。
+    /// The slope per 1 point of quality (vendor data already `/1000`, transcribed as-is).
     pub rate: f64,
-    /// vendor `altQualityStats` 条目（仅 GemlingQuality flag build 生效）。
+    /// Whether this is a vendor `altQualityStats` entry (only active on GemlingQuality flag builds).
     #[serde(default)]
     pub alt: bool,
 }
 
-/// 完整 overlay 文档（生成侧；消费侧 schema 见
-/// [`pobr_data::catalog::GemQualityStatsDef`]，serde 形状一致防字段漂移）。
+/// The full overlay document (generation side; see
+/// [`pobr_data::catalog::GemQualityStatsDef`] for the consumption-side
+/// schema — matching serde shapes guard against field drift).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GemQualityDoc {
-    /// 头部元信息（serde 落为 `_meta`，置于文件最前）
+    /// Header metadata (serialized as `_meta`, placed at the top of the file)
     #[serde(rename = "_meta")]
     pub meta: OverlayMeta,
-    /// 品质 stat 表，按 effect_id 升序。
+    /// The quality stat table, ascending by effect_id.
     pub effects: Vec<GemQualityStatDef>,
 }
 
-/// 执行抽取，返回最终（byte-stable 的）JSON 文本。
+/// Run the extraction, returning the final (byte-stable) JSON text.
 pub fn run_extract_gem_quality(args: &ExtractLuaArgs) -> io::Result<String> {
     let rows = invoke_luajit(args)?;
     let meta = build_meta(args)?;
     Ok(assemble_quality_document(meta, rows))
 }
 
-/// 组装最终文档：按 effect_id 分组排序（效果内保持到达顺序 = vendor 顺序）+
-/// serde_json 统一序列化（同输入必然同输出）。
+/// Assemble the final document: group and sort by effect_id (preserving
+/// arrival order = vendor order within each effect) + serde_json
+/// serialization (identical input always yields identical output).
 pub fn assemble_quality_document(meta: OverlayMeta, rows: Vec<QualityRow>) -> String {
-    // 分组：effect_id → 斜率列表（到达顺序即 vendor ipairs 顺序，效果内不重排）。
+    // Grouping: effect_id -> slope list (arrival order is vendor's ipairs order; not reordered within an effect).
     let mut by_effect: std::collections::BTreeMap<String, Vec<QualityStat>> =
         std::collections::BTreeMap::new();
     for row in rows {
@@ -88,7 +98,7 @@ pub fn assemble_quality_document(meta: OverlayMeta, rows: Vec<QualityRow>) -> St
     json
 }
 
-/// 启动 luajit 执行引导脚本（脚本经 stdin 注入），解析 JSONL 输出。
+/// Spawn luajit to run the bootstrap script (piped via stdin), and parse its JSONL output.
 fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<QualityRow>> {
     if args.files.is_empty() {
         return Err(io::Error::new(
@@ -97,7 +107,7 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<QualityRow>> {
         ));
     }
     let mut child = Command::new(&args.luajit)
-        .arg("-") // 从 stdin 读脚本
+        .arg("-") // read the script from stdin
         .arg(&args.vendor_root)
         .arg(args.files.join(","))
         .stdin(Stdio::piped())
@@ -129,7 +139,7 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<QualityRow>> {
             stderr_text.trim()
         )));
     }
-    // 引导脚本的非致命告警透传给用户
+    // Pass through the bootstrap script's non-fatal warnings to the user
     for line in stderr_text.lines() {
         eprintln!("extract-lua(lua): {line}");
     }
@@ -151,12 +161,13 @@ fn invoke_luajit(args: &ExtractLuaArgs) -> io::Result<Vec<QualityRow>> {
     Ok(rows)
 }
 
-/// 读取 vendor 版本文件并构建 `_meta`（与 `extract_lua::build_meta` 同约定：
-/// regen_command 写 canonical 相对路径，跨机器重跑产物 byte 一致）。
+/// Read the vendor version file and build `_meta` (same convention as
+/// `extract_lua::build_meta`: `regen_command` writes a canonical relative
+/// path, so output is byte-identical when rerun on a different machine).
 fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
     let version_path = match &args.version_file {
         Some(path) => path.clone(),
-        // 约定布局 vendor/PathOfBuilding-PoE2/src → 版本文件在 vendor/.pob2-version.txt
+        // The conventional layout is vendor/PathOfBuilding-PoE2/src -> the version file lives at vendor/.pob2-version.txt
         None => args.vendor_root.join("../../.pob2-version.txt"),
     };
     let (commit, subject) = read_vendor_version(&version_path)?;
@@ -186,7 +197,7 @@ fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
     })
 }
 
-/// 解析 `.pob2-version.txt`：首行为 commit 标题，文件中 40 位 hex 行为完整 hash。
+/// Parse `.pob2-version.txt`: the first line is the commit subject, and the 40-hex-char line is the full hash.
 fn read_vendor_version(version_path: &Path) -> io::Result<(String, String)> {
     let version_text = fs::read_to_string(version_path).map_err(|error| {
         io::Error::new(

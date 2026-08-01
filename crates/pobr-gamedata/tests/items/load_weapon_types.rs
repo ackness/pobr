@@ -1,10 +1,14 @@
-//! `base/weapon_types.json` 加载与逐值校验。
+//! `base/weapon_types.json` loading and value-by-value verification.
 //!
-//! pobr 无既有的武器类型 Rust **数据表**（仅散落谓词，见
-//! `pobr-build::calc_orchestrator::weapon_type_conditions`），故本表整体取
-//! vendor 准源 `data.weaponTypeInfo`
-//! （`vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:532-551`）逐条写死断言；
-//! 另对 pobr 现有谓词覆盖的近战/远程子集做一致性断言，已知出入只记录不改值。
+//! pobr has no existing weapon-type Rust **data table** (only scattered
+//! predicates, see
+//! `pobr-build::calc_orchestrator::weapon_type_conditions`), so this table
+//! is asserted as a whole against vendor's source of truth
+//! `data.weaponTypeInfo`
+//! (`vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:532-551`) with
+//! hardcoded values line by line; it also checks consistency for the
+//! melee/ranged subset pobr's existing predicates already cover — known
+//! discrepancies are recorded only, not fixed here.
 
 use pobr_data::catalog::weapon_types::WeaponTypeDef;
 use pobr_gamedata::{GameData, repo_data_root};
@@ -28,11 +32,12 @@ fn find<'a>(table: &'a [WeaponTypeDef], id: &str) -> &'a WeaponTypeDef {
         .unwrap_or_else(|| panic!("存在武器类型 {id}"))
 }
 
-/// 全表逐值等于 vendor `data.weaponTypeInfo`（Modules/Data.lua:532-551，19 条）。
-/// 元组序：(id, one_hand, melee, flag, label)。
+/// The full table is value-equal to vendor's `data.weaponTypeInfo`
+/// (Modules/Data.lua:532-551, 19 entries).
+/// Tuple order: (id, one_hand, melee, flag, label).
 #[test]
 fn full_table_matches_vendor_weapon_type_info() {
-    // 写死的 vendor 值，逐行对应 Data.lua:533-551。
+    // Hardcoded vendor values, corresponding line by line to Data.lua:533-551.
     #[rustfmt::skip]
     let expected: &[(&str, bool, bool, &str, Option<&str>)] = &[
         ("None",                     true,  true,  "Unarmed",  None),                    // Data.lua:533
@@ -71,7 +76,7 @@ fn full_table_matches_vendor_weapon_type_info() {
     }
 }
 
-/// JSON 按 id 排序（稳定 diff，对齐 base_items 约定）。
+/// The JSON is sorted by id (a stable diff, matching the base_items convention).
 #[test]
 fn sorted_by_id_for_stable_diffs() {
     let table = load();
@@ -80,14 +85,18 @@ fn sorted_by_id_for_stable_diffs() {
     assert_eq!(table, sorted, "weapon_types.json 应按 id 排序");
 }
 
-/// 与 pobr 现有近战判定一致的子集：
-/// `pobr-build::calc_orchestrator::weapon_type_conditions` 的 matches! 近战类
-/// （Warstaff / 1H·2H Mace·Sword·Axe / Spear / Dagger / Claw / Flail）在本表
-/// `melee = true`；法器/弓/弩（pobr 注释「法器/弓/弩为非近战」）`melee = false`。
+/// The subset consistent with pobr's existing melee check: the melee
+/// classes matched by `matches!` in
+/// `pobr-build::calc_orchestrator::weapon_type_conditions` (Warstaff /
+/// 1H·2H Mace·Sword·Axe / Spear / Dagger / Claw / Flail) have
+/// `melee = true` in this table; casting implements/bows/crossbows (pobr's
+/// comment says "casting implements/bows/crossbows are non-melee") have
+/// `melee = false`.
 #[test]
 fn melee_subset_consistent_with_pobr_weapon_type_conditions() {
     let table = load();
-    // pobr 近战 matches! 列表（GGG item_class 键空间；长杖类名 Warstaff）。
+    // pobr's melee `matches!` list (GGG item_class key space; the
+    // quarterstaff class is named Warstaff).
     for id in [
         "Warstaff",
         "One Hand Mace",
@@ -103,17 +112,20 @@ fn melee_subset_consistent_with_pobr_weapon_type_conditions() {
     ] {
         assert!(find(&table, id).melee, "{id} 应为近战（与 pobr 判定一致）");
     }
-    // pobr 非近战：法器/弓/弩。
+    // pobr's non-melee: casting implements/bows/crossbows.
     for id in ["Wand", "Bow", "Crossbow"] {
         assert!(!find(&table, id).melee, "{id} 应为远程（与 pobr 判定一致）");
     }
 }
 
-/// 已知 pobr↔vendor 出入（本测试钉住 **vendor 值**，出入只记录不改行为）：
-/// - TODO(parity): pobr `weapon_type_conditions` 不把 Talisman/FishingRod 计为
-///   近战，vendor `Talisman`/`Fishing Rod` 均 `melee = true`（Data.lua:547,551）。
-/// - TODO(parity): pobr `two_handed` 谓词视 Bow/Crossbow 为「非双手」，vendor
-///   两者均 `oneHand = false`（Data.lua:534-535）。
+/// Known pobr↔vendor discrepancies (this test pins **vendor's values**;
+/// the discrepancy is recorded only, behavior isn't changed here):
+/// - TODO(parity): pobr's `weapon_type_conditions` doesn't count
+///   Talisman/FishingRod as melee, while vendor has both
+///   `Talisman`/`Fishing Rod` as `melee = true` (Data.lua:547,551).
+/// - TODO(parity): pobr's `two_handed` predicate treats Bow/Crossbow as
+///   "not two-handed", while vendor has both as `oneHand = false`
+///   (Data.lua:534-535).
 #[test]
 fn divergences_pinned_to_vendor_values() {
     let table = load();
@@ -123,9 +135,11 @@ fn divergences_pinned_to_vendor_values() {
     assert!(!find(&table, "Crossbow").one_hand, "vendor Data.lua:535");
 }
 
-/// 空手（`None`）与长杖（`Staff`，label=Quarterstaff）的语义抽样：
-/// 空手计单手近战、flag=Unarmed（Data.lua:533）；PoE2 长杖基底 `type = "Staff"`
-/// （Data/Bases/staff.lua:159-167，GGG item_class 记为 `Warstaff`）。
+/// A semantic spot check on unarmed (`None`) and the quarterstaff
+/// (`Staff`, label=Quarterstaff): unarmed counts as one-handed melee,
+/// flag=Unarmed (Data.lua:533); PoE2's quarterstaff base has
+/// `type = "Staff"` (Data/Bases/staff.lua:159-167, recorded by GGG's
+/// item_class as `Warstaff`).
 #[test]
 fn unarmed_and_quarterstaff_semantics() {
     let table = load();

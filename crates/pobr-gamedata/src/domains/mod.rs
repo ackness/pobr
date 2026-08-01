@@ -1,8 +1,10 @@
-//! 按域 loader：W2 九张常量表（`base/`）+ W4d 两张小查表（`overlay/`），
-//! 与 `pobr_data::catalog` 各域 schema 对应。
+//! Per-domain loaders: W2's nine constant tables (`base/`) + W4d's two
+//! small lookup tables (`overlay/`), corresponding to each domain's schema
+//! in `pobr_data::catalog`.
 //!
-//! 每个子模块实现 `GameData` 上的对应加载方法（base 域走 `base/` 优先、
-//! 版本根回退定位；overlay 域恒走 `overlay/` 定位）。
+//! Each submodule implements its own loading method on `GameData` (base
+//! domains resolve via `base/` first, falling back to the version root;
+//! overlay domains always resolve under `overlay/`).
 
 pub mod base_player_mods;
 pub mod character_constants;
@@ -14,48 +16,48 @@ pub mod non_damaging_ailments;
 pub mod unarmed_data;
 pub mod weapon_types;
 
-// 小查表（overlay 层）
+// Small lookup tables (overlay layer)
 pub mod high_precision_mods;
 pub mod local_mods;
 
-// per-skill 覆盖值（overlay 层，loader + 专用 merge）
+// Per-skill override values (overlay layer, loader + a dedicated merge)
 pub mod skill_overrides;
 
-// 宝石品质 stat 斜率（overlay 层，纯查表）
+// Gem quality-stat slopes (overlay layer, a plain lookup table)
 pub mod gem_quality_stats;
 
-// SkillStatMap 映射表（overlay 层，消费侧 = stat_map_engine）
+// SkillStatMap mapping table (overlay layer, consumer = stat_map_engine)
 pub mod skill_stat_map;
 
-// 宝石→授予效果连边（overlay 层，merge 进 skill_gems + meta 展开索引）
+// Gem → granted-effect edges (overlay layer, merged into skill_gems + the meta expansion index)
 pub mod gem_effects;
 
-// statSet label / vendor 导出序号边车（overlay 层，merge 进 stat sets）
+// statSet label / vendor export index sidecar (overlay layer, merged into stat sets)
 pub mod stat_set_labels;
 
-// 基底物品覆盖值（overlay 层，loader + 专用 merge：block/spirit）
+// Base item overrides (overlay layer, loader + a dedicated merge: block/spirit)
 pub mod base_item_overrides;
 
-//  config 选项目录 + 内建 buff 定义（overlay 层，纯查表）
+//  Config options catalog + built-in buff definitions (overlay layer, plain lookup tables)
 pub mod buff_definitions;
 pub mod config_options;
 
-// -C：curse 优先级数据表（overlay 层，纯查表；消费侧 = buff_pass）
+// M6-C: curse priority data table (overlay layer, a plain lookup table; consumer = buff_pass)
 pub mod curse_priority;
 
-// 数据前置（overlay 层，纯 loader 零接线；一表一文件）
-pub mod catalysts; // M5c：催化剂品质标签匹配表
-pub mod granted_effect_minions; // M5a：宝石→召唤物外键边车
-pub mod minions; // M5a：召唤物条目
-pub mod mirage_configs; // M5a-D2：mirage 配置
-pub mod mod_scalability; // M5c：{range:x} 可缩放性表
-pub mod runes; // M5c：符文/魂核词条表
-pub mod special_mods; // M5b：special 词条模板
-pub mod spectres; // M5a：魂灵条目
-pub mod uniques; // M5c：传奇 raw+索引双层
+// Data prerequisites (overlay layer, a plain loader with zero wiring; one table per file)
+pub mod catalysts; // M5c: catalyst quality-tag matching table
+pub mod granted_effect_minions; // M5a: gem → minion foreign-key sidecar
+pub mod minions; // M5a: minion entries
+pub mod mirage_configs; // M5a-D2: mirage configs
+pub mod mod_scalability; // M5c: {range:x} scalability table
+pub mod runes; // M5c: rune/soul-core mod table
+pub mod special_mods; // M5b: special mod-line templates
+pub mod spectres; // M5a: spectre entries
+pub mod uniques; // M5c: unique items, raw+index two-layer
 
-//  ModParser 解析规则六表（overlay 层，消费侧 = mod_parser scan 引擎）
+//  The ModParser rule six-table set (overlay layer, consumer = the mod_parser scan engine)
 pub mod parser_rules;
 
-//  触发配置 61 项（overlay 层，消费侧 = orchestrator 触发段）
+//  61 trigger configs (overlay layer, consumer = the orchestrator's trigger section)
 pub mod trigger_configs;

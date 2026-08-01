@@ -1,13 +1,14 @@
-//! 一次性探针（审计用）：枚举树节点词条 + demo build 装备/珠宝词条，
-//! 跑 en→zh 显示翻译，dump 未命中行到 target/zh_gap_report.txt。
-//! 跑法：cargo test -p pobr-wasm --test zh_gap_probe -- --nocapture --ignored
+//! A one-shot audit probe: enumerates tree node mod lines plus demo build
+//! equipment/jewel mod lines, runs the en->zh display translation, and
+//! dumps unmatched lines to target/zh_gap_report.txt.
+//! Run with: cargo test -p pobr-wasm --test zh_gap_probe -- --nocapture --ignored
 
 use std::collections::BTreeMap;
 
 use pobr_gamedata::repo_data_root;
 use serde_json::Value;
 
-/// 前端同款标注剥离：`[A|B]` 取 B、`[A]` 取 A、`{tag}` 删除。
+/// The same annotation-stripping the frontend does: `[A|B]` keeps B, `[A]` keeps A, `{tag}` is removed.
 fn strip_markup(line: &str) -> String {
     let mut out = String::new();
     let mut chars = line.chars().peekable();
@@ -68,10 +69,10 @@ fn dump_untranslated_lines() {
     let dir = repo_data_root().join(pobr_gamedata::data_version());
     pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).expect("init data");
 
-    // 来源 → 待翻行集合（去重，记来源类别）。
+    // Source -> the set of lines to translate (deduplicated, recording the source category).
     let mut lines: BTreeMap<String, &'static str> = BTreeMap::new();
 
-    // 1. 树节点词条（全量）。
+    // 1. Tree node mod lines (the full set).
     let tree: Vec<Value> = serde_json::from_str(
         &std::fs::read_to_string(dir.join("base/passive_tree.json")).expect("tree"),
     )
@@ -85,7 +86,7 @@ fn dump_untranslated_lines() {
         }
     }
 
-    // 2. demo build 装备/珠宝词条行（真实物品语料）。
+    // 2. demo build equipment/jewel mod lines (a real item corpus).
     let repo_root = repo_data_root();
     let builds_dir = repo_root
         .parent()
@@ -117,7 +118,7 @@ fn dump_untranslated_lines() {
         }
     }
 
-    // 3. 批量翻译，收集未命中（返回原文）。
+    // 3. Batch-translate, collecting misses (the input text returned unchanged).
     let inputs: Vec<&String> = lines.keys().collect();
     let payload = serde_json::to_string(&inputs).unwrap();
     let out = pobr_wasm::translate_lines_to_zh_cn_json(&payload).expect("translate");

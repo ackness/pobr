@@ -1,18 +1,23 @@
-//! Web 前端 JSON 契约：build 解码 / 完整计算 / breakdown / 归因。
+//! The web frontend's JSON contract: build decoding / full calculation / breakdown / attribution.
 //!
-//! 契约原则（TODO.md P0）：前端只消费这里的 JSON 形状，不 import Rust 类型、
-//! 不复刻计算——所有数值由本模块调用现有 crate 能力算好。JSON 形状由
-//! `tests/contract_golden.rs` 钉住，`web/src/api/types.ts` 手写同构 TS 类型；
-//! 改形状必须同时动两处 + golden。
+//! Contract principle (TODO.md P0): the frontend only consumes the JSON
+//! shapes defined here — it never imports Rust types and never re-implements
+//! any calculation. Every value is computed by this module calling into
+//! existing crate capabilities. JSON shapes are pinned by
+//! `tests/contract_golden.rs`, with `web/src/api/types.ts` hand-written to
+//! mirror them isomorphically; a shape change must touch both places plus the golden fixture.
 //!
-//! 全部入口为 `&str -> Result<String, String>`（JSON 入出）。**Err 侧也是 JSON**：
-//! [`ApiError`] 的 `{code, message, slot?}` 编码（wasm JsError 只能携带字符串），
-//! web 侧 `wasmBackend` 解析回类型化错误后按 code 分流处理。
+//! Every entry point is `&str -> Result<String, String>` (JSON in, JSON
+//! out). **The Err side is also JSON**: [`ApiError`] encodes
+//! `{code, message, slot?}` (a wasm `JsError` can only carry a string), and
+//! the web side's `wasmBackend` parses it back into a typed error, dispatching by code.
 //!
-//! 按域拆子模块：[`decode`]（build code / .build 文件解码）、[`request`]（计算
-//! 请求 DTO + 共享装配）、[`calculate`]（完整计算 / full DPS）、[`analysis`]
-//! （node power / 变体寻优 / 归因）、[`encode`]（编辑态 → 分享 code）、[`catalog`]
-//! （宝石/符文目录、逐行上色、翻译）。共享小工具留在本文件。
+//! Split into submodules by domain: [`decode`] (build code / .build file
+//! decoding), [`request`] (calculation request DTOs plus shared assembly),
+//! [`calculate`] (full calculation / full DPS), [`analysis`] (node power /
+//! variant optimization / attribution), [`encode`] (edit state -> a share
+//! code), [`catalog`] (gem/rune catalogs, per-line coloring, translation).
+//! Small shared utilities stay in this file.
 
 mod analysis;
 mod calculate;
@@ -40,16 +45,18 @@ use serde::Serialize;
 
 use crate::state;
 
-/// 对外错误契约：`{code, message, slot?}`，入口 Err 侧序列化为 JSON 字符串。
+/// The outward-facing error contract: `{code, message, slot?}`, serialized
+/// to a JSON string on an entry point's Err side.
 ///
-/// code 取值（web/src/api/types.ts 同步）：
-/// - `not_initialized` — 游戏数据未初始化，应先跑 init 流程
-/// - `bad_request` — 请求 JSON 非法 / 字段值非法（客户端 bug）
-/// - `decode_error` — PoB code / .build 文件解码失败（用户输入）
-/// - `internal` — 其余计算/序列化错误（兜底，`From<String>` 自动归入）
+/// `code` values (kept in sync with web/src/api/types.ts):
+/// - `not_initialized` — game data hasn't been initialized; run the init flow first
+/// - `bad_request` — the request JSON is malformed / a field value is invalid (a client bug)
+/// - `decode_error` — PoB code / .build file decoding failed (bad user input)
+/// - `internal` — every other calculation/serialization error (the catch-all, `From<String>` lands here automatically)
 ///
-/// 注意：单件装备/珠宝/药剂**文本**解析失败不走 Err——降级为响应里的
-/// `item_errors`（跳过该件继续算），见 [`request::apply_request_overrides`]。
+/// Note: a single equipment/jewel/flask's **text** failing to parse doesn't
+/// go through Err — it degrades to `item_errors` in the response (that item
+/// is skipped and the calculation continues), see [`request::apply_request_overrides`].
 #[derive(Debug, Serialize)]
 pub(crate) struct ApiError {
     code: &'static str,
@@ -88,13 +95,15 @@ impl ApiError {
         self
     }
 
-    /// Err 边界序列化（序列化自身失败时退化为裸 message，前端有非 JSON 兜底）。
+    /// Serializes at the Err boundary (falls back to the bare message if
+    /// self-serialization fails; the frontend has a non-JSON fallback for that).
     pub(crate) fn into_json(self) -> String {
         serde_json::to_string(&self).unwrap_or(self.message)
     }
 }
 
-/// 未显式分类的字符串错误一律归入 `internal`——既有内部代码的 `?` 零改动。
+/// Every string error not explicitly classified lands in `internal` — this
+/// keeps existing internal code's `?` usage unchanged.
 impl From<String> for ApiError {
     fn from(message: String) -> Self {
         Self {
@@ -105,7 +114,7 @@ impl From<String> for ApiError {
     }
 }
 
-/// 装备槽稳定 id → [`EquipmentSlot`]（与 `EquipmentSlot::id()` 互逆）。
+/// Stable equipment-slot id -> [`EquipmentSlot`] (the inverse of `EquipmentSlot::id()`).
 fn slot_from_id(id: &str) -> Result<EquipmentSlot, String> {
     const ALL: [EquipmentSlot; 11] = [
         EquipmentSlot::Weapon1,
@@ -125,8 +134,10 @@ fn slot_from_id(id: &str) -> Result<EquipmentSlot, String> {
         .ok_or_else(|| format!("unknown equipment slot: {id}"))
 }
 
-/// 中文输入预处理（Phase 7.1）：含 CJK 的行尝试「模板反查 → 英文 canonical」
-/// 翻译；不认识 / 无 zh-CN 数据时原样保留（parser 记 unsupported，前端可见）。
+/// Chinese input preprocessing (Phase 7.1): a line containing CJK attempts
+/// "template reverse lookup -> canonical English" translation; if
+/// unrecognized or there's no zh-CN data, it's kept as-is (the parser marks
+/// it unsupported, visible to the frontend).
 fn localize_input_text(text: &str) -> String {
     if !crate::zh::has_cjk(text) {
         return text.to_string();

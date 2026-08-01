@@ -1,10 +1,12 @@
-//! 扣池状态机 + 池整备集成测试（13-G2/G3/G5）。
+//! Pool-drain state machine + pool setup integration tests (13-G2/G3/G5).
 //!
-//! 每个 fixture 的期望值**手算自 PoB2 公式**，注释标注
-//! `vendor/PathOfBuilding-PoE2/src/Modules/CalcDefence.lua` 行号。
-//! 末段两组 oracle 对拍数值取自 pob2-oracle（tools/pob2-oracle）对
+//! Every fixture's expected value is **hand-computed from the PoB2 formula**;
+//! comments cite line numbers in
+//! `vendor/PathOfBuilding-PoE2/src/Modules/CalcDefence.lua`.
+//! The final two oracle cross-checks pull numbers from pob2-oracle (tools/pob2-oracle)
+//! run against the mainOutput dump of
 //! `examples/demo-bd-test/builds/{sorceress-stormweaver-comet,
-//! witch-abyssal-lich-detonate-dead}/decoded.xml` 的 mainOutput 平铺（2026-06-11 跑取）。
+//! witch-abyssal-lich-detonate-dead}/decoded.xml` (captured 2026-06-11).
 
 use pobr_core::calc::pool_damage::{
     AllyLayer, PoolCtx, PoolState, TypedDamage, extend_total_hit_pool, reduce_pools,
@@ -39,7 +41,7 @@ fn ctx_with_life(max_life: f64) -> PoolCtx {
     }
 }
 
-/// 按层 ID 汇总某类型的扣量明细。
+/// Sums the drained amount of a given damage type across pool layers, grouped by layer id.
 fn lost(after: &pobr_core::calc::pool_damage::PoolsAfter, dtype: DamageType, layer: &str) -> f64 {
     after
         .resources_lost
@@ -49,10 +51,11 @@ fn lost(after: &pobr_core::calc::pool_damage::PoolsAfter, dtype: DamageType, lay
         .sum()
 }
 
-// 逐层独立 fixture
+// Per-layer fixtures (independent pools)
 
-/// 纯 life：部分扣减（:651-655）。手算：life 1000 − 400 = 600；recoupable = 400
-/// （:531，allies 后全额计入）；hit_pool_remaining = floor(600)（:659，无 MoM/ES）。
+/// Pure life: partial drain (:651-655). Hand calc: life 1000 - 400 = 600;
+/// recoupable = 400 (:531, counted in full once allies have taken their share);
+/// hit_pool_remaining = floor(600) (:659, no MoM/ES).
 #[test]
 fn pure_life_partial_hit() {
     // Arrange
@@ -70,8 +73,8 @@ fn pure_life_partial_hit() {
     assert!((lost(&after, DamageType::Physical, "life") - 400.0).abs() < EPS);
 }
 
-/// 纯 life 溢出击杀（:656-657 overkill 折算）。手算：life 100、hit 250 →
-/// life 0、overkill 150、hit_pool_remaining 0。
+/// Pure life overkill (:656-657 overkill conversion). Hand calc: life 100, hit 250 ->
+/// life 0, overkill 150, hit_pool_remaining 0.
 #[test]
 fn pure_life_overkill() {
     // Arrange / Act
@@ -84,9 +87,9 @@ fn pure_life_overkill() {
     assert!((lost(&after, DamageType::Physical, "overkill") - 150.0).abs() < EPS);
 }
 
-/// life + ES（:594-601 普通分支，bypass=0 → MoMEBPool = ES 全额）。
-/// 手算：hit 1200，ES 500 全吃 → rem 700 → life 1000−700 = 300；
-/// esPoolRemaining = 0 → hit_pool_remaining = floor(300+0) = 300。
+/// life + ES (:594-601 normal branch, bypass=0 -> MoMEBPool = full ES).
+/// Hand calc: hit 1200, ES 500 fully absorbs -> rem 700 -> life 1000-700 = 300;
+/// esPoolRemaining = 0 -> hit_pool_remaining = floor(300+0) = 300.
 #[test]
 fn life_plus_energy_shield() {
     // Arrange
@@ -106,9 +109,10 @@ fn life_plus_energy_shield() {
     assert!((lost(&after, DamageType::Physical, "energy_shield") - 500.0).abs() < EPS);
 }
 
-/// chaos 对 ES 双倍（:582 `esDamageTypeMultiplier=2`）。手算：chaos 600、ES 500 →
-/// ES 能挡 500/2 = 250 伤害（耗 500 ES）→ rem 350 → life 650；
-/// `ChaosNotDoubleESDamage` 时恢复 1 倍：挡 500 → rem 100 → life 900。
+/// Chaos deals double damage to ES (:582 `esDamageTypeMultiplier=2`). Hand calc:
+/// chaos 600, ES 500 -> ES can only absorb 500/2 = 250 damage (costing all 500 ES)
+/// -> rem 350 -> life 650; with `ChaosNotDoubleESDamage` the multiplier reverts to 1x:
+/// absorbs 500 -> rem 100 -> life 900.
 #[test]
 fn chaos_double_es_damage_and_opt_out() {
     // Arrange
@@ -122,9 +126,9 @@ fn chaos_double_es_damage_and_opt_out() {
         ..Default::default()
     };
 
-    // Act：默认双倍。
+    // Act: default (double damage applies).
     let after = reduce_pools(&pools, &hit, &ctx_with_life(1000.0));
-    // Act：ChaosNotDoubleESDamage 关闭双倍。
+    // Act: ChaosNotDoubleESDamage disables the doubling.
     let ctx_no_double = PoolCtx {
         max_life: 1000.0,
         chaos_not_double_es: true,
@@ -139,9 +143,9 @@ fn chaos_double_es_damage_and_opt_out() {
     assert!((after_no_double.pools.life - 900.0).abs() < EPS);
 }
 
-/// ES bypass 30%（:594-601）。手算：hit 1000、ES 700、life 1000、无 MoM：
-/// MoMEBPool = min((0+1000)/0.3 − 1000, 700) = 700；temp = min(1000×0.7, 700) = 700
-/// → ES 0、rem 300 → life 700。
+/// ES bypass 30% (:594-601). Hand calc: hit 1000, ES 700, life 1000, no MoM:
+/// MoMEBPool = min((0+1000)/0.3 - 1000, 700) = 700; temp = min(1000x0.7, 700) = 700
+/// -> ES 0, rem 300 -> life 700.
 #[test]
 fn es_bypass_thirty_percent() {
     // Arrange
@@ -161,10 +165,10 @@ fn es_bypass_thirty_percent() {
     assert!((after.pools.life - 700.0).abs() < EPS);
 }
 
-/// MoM 30%（:585-586/:602-608）。手算：hit 1000、life 2000、mana 500：
-/// lifeHitPool = 2000；MoMPool = min(2000/0.7 − 2000, 500) = 500；
-/// MoM 份额 = 1000×0.3 = 300 → mana 200、rem 700 → life 1300；
-/// MoMPoolRemaining = 200 → hit_pool_remaining = floor(1300+200) = 1500。
+/// MoM 30% (:585-586/:602-608). Hand calc: hit 1000, life 2000, mana 500:
+/// lifeHitPool = 2000; MoMPool = min(2000/0.7 - 2000, 500) = 500;
+/// MoM share = 1000x0.3 = 300 -> mana 200, rem 700 -> life 1300;
+/// MoMPoolRemaining = 200 -> hit_pool_remaining = floor(1300+200) = 1500.
 #[test]
 fn mom_thirty_percent() {
     // Arrange
@@ -189,8 +193,8 @@ fn mom_thirty_percent() {
     assert!((lost(&after, DamageType::Physical, "mana") - 300.0).abs() < EPS);
 }
 
-/// MoM 100%（:585 `MoMEffect=1` → MoMPool = mana 全额）。手算：hit 1000、
-/// life 800、mana 600：MoM 份额 = 1000×1 = 1000，cap mana 600 → rem 400 → life 400。
+/// MoM 100% (:585 `MoMEffect=1` -> MoMPool = full mana). Hand calc: hit 1000,
+/// life 800, mana 600: MoM share = 1000x1 = 1000, capped at mana 600 -> rem 400 -> life 400.
 #[test]
 fn mom_full_takes_all_mana_first() {
     // Arrange
@@ -213,9 +217,10 @@ fn mom_full_takes_all_mana_first() {
     assert!((after.pools.life - 400.0).abs() < EPS);
 }
 
-/// guard：shared 按 AbsorbRate% 比例吸收、cap 于池量（:563-568）；per-type 同构
-/// （:557-562）。手算：shared rate 20%、池 300、hit 1000 → 吸 200（rem 800）；
-/// fire guard rate 50%、池 100、fire hit 300 → 吸 min(150,100)=100（rem 200）。
+/// Guard: shared guard absorbs at AbsorbRate%, capped by pool size (:563-568);
+/// per-type mirrors the same shape (:557-562). Hand calc: shared rate 20%, pool 300,
+/// hit 1000 -> absorbs 200 (rem 800); fire guard rate 50%, pool 100, fire hit 300 ->
+/// absorbs min(150,100)=100 (rem 200).
 #[test]
 fn guard_absorb_rate_and_limit() {
     // Arrange
@@ -237,20 +242,20 @@ fn guard_absorb_rate_and_limit() {
     // Act
     let after = reduce_pools(&pools, &hit, &ctx);
 
-    // Assert：正序 Physical 先消耗 shared guard 200，Fire 先 per-type 100、
-    // 再 shared 剩余 100 的 20% 份额 min(200×0.2,100)=40。
+    // Assert: in order, Physical first drains shared guard 200, then Fire drains
+    // per-type 100 followed by 20% of the remaining shared 200 -> min(200x0.2,100)=40.
     assert!((lost(&after, DamageType::Physical, "shared_guard") - 200.0).abs() < EPS);
     assert!((lost(&after, DamageType::Fire, "guard") - 100.0).abs() < EPS);
     assert!((lost(&after, DamageType::Fire, "shared_guard") - 40.0).abs() < EPS);
     assert!((after.pools.guard_shared - 60.0).abs() < EPS);
     assert_eq!(after.pools.guard_by_type[DamageType::Fire as usize], 0.0);
-    // life = 5000 − 800（phys 余）− 160（fire 余）。
+    // life = 5000 - 800 (leftover phys) - 160 (leftover fire).
     assert!((after.pools.life - 4040.0).abs() < EPS);
 }
 
-/// ward + bypass（:569-573）与 WardNotBreak 返还（:509/:666）。
-/// 手算：ward 500、bypass 40% → 吸 min(1000×0.6, 500)=500、rem 500；
-/// 击后 ward 归零（破盾）；WardNotBreak 时返还原值 500。
+/// Ward + bypass (:569-573) and WardNotBreak restoration (:509/:666).
+/// Hand calc: ward 500, bypass 40% -> absorbs min(1000x0.6, 500)=500, rem 500;
+/// ward breaks to zero after the hit; with WardNotBreak it's restored to 500.
 #[test]
 fn ward_bypass_and_not_break_restore() {
     // Arrange
@@ -262,9 +267,9 @@ fn ward_bypass_and_not_break_restore() {
     let mut ctx = ctx_with_life(2000.0);
     ctx.ward_bypass = 40.0;
 
-    // Act：默认破盾。
+    // Act: default (ward breaks).
     let after = reduce_pools(&pools, &phys(1000.0), &ctx);
-    // Act：WardNotBreak 返还。
+    // Act: WardNotBreak restores it.
     let mut ctx_nb = ctx.clone();
     ctx_nb.ward_not_break = true;
     let after_nb = reduce_pools(&pools, &phys(1000.0), &ctx_nb);
@@ -277,9 +282,9 @@ fn ward_bypass_and_not_break_restore() {
     assert!((after_nb.pools.life - 1500.0).abs() < EPS);
 }
 
-/// EternalLife + bypass（:587-594）：bypass 部分整体免除、不穿透到生命。
-/// 手算：ES 1000、bypass 20%、hit 800：temp = min(800, 1000/0.8) = 800；
-/// ES −= 800×0.8 = 640 → 360；rem = 0 → life 不动；免除 = 800×0.2 = 160。
+/// EternalLife + bypass (:587-594): the bypass portion is fully waived instead of
+/// spilling into life. Hand calc: ES 1000, bypass 20%, hit 800: temp = min(800, 1000/0.8) = 800;
+/// ES -= 800x0.8 = 640 -> 360; rem = 0 -> life unchanged; prevented = 800x0.2 = 160.
 #[test]
 fn eternal_life_prevents_bypass_portion() {
     // Arrange
@@ -302,9 +307,10 @@ fn eternal_life_prevents_bypass_portion() {
     assert!((lost(&after, DamageType::Physical, "eternal_life_prevented") - 160.0).abs() < EPS);
 }
 
-/// allies 先扣层（:525-530）：按 percent 比例分担、cap 于层余量，**不计入 recoupable**
-/// （:531）。手算：层余量 300、50% → 吸 min(1000×0.5, 300)=300、rem 700；
-/// recoupable = 700（仅 allies 后的部分）。
+/// Allies drain first (:525-530): absorb a percentage of the hit, capped by layer
+/// remaining, and **not counted toward recoupable** (:531). Hand calc: layer remaining 300,
+/// 50% -> absorbs min(1000x0.5, 300)=300, rem 700; recoupable = 700 (only the
+/// post-ally remainder).
 #[test]
 fn ally_layer_absorbs_before_recoup() {
     // Arrange
@@ -329,8 +335,9 @@ fn ally_layer_absorbs_before_recoup() {
     assert!((lost(&after, DamageType::Physical, "frostShield") - 300.0).abs() < EPS);
 }
 
-/// aegis 扣减顺序（per-type :539 → sharedElemental 仅元素 :545 → shared :551）。
-/// 手算：fire 500 依次吃 fire aegis 100、sharedElemental 150、shared 200 → rem 50。
+/// Aegis drain order (per-type :539 -> sharedElemental, elemental only, :545 -> shared
+/// :551). Hand calc: fire 500 drains fire aegis 100, then sharedElemental 150, then
+/// shared 200, in that order -> rem 50.
 #[test]
 fn aegis_layers_in_order() {
     // Arrange
@@ -354,7 +361,7 @@ fn aegis_layers_in_order() {
     assert!((lost(&after, DamageType::Fire, "shared_elemental_aegis") - 150.0).abs() < EPS);
     assert!((lost(&after, DamageType::Fire, "shared_aegis") - 200.0).abs() < EPS);
     assert!((after.pools.life - 950.0).abs() < EPS);
-    // 物理不能吃 sharedElemental（:545 isElemental 门）。
+    // Physical can't draw from sharedElemental (:545 isElemental gate).
     let phys_after = reduce_pools(
         &PoolState {
             life: 1000.0,
@@ -367,10 +374,12 @@ fn aegis_layers_in_order() {
     assert_eq!(phys_after.pools.aegis_shared_elemental, 150.0);
 }
 
-/// ES 段逆序遍历（:578 `for i=#dmgTypeList,1,-1` → Chaos 先）。
-/// 手算：ES 500、fire 400 + chaos 300：chaos 先（双倍）耗尽 ES（挡 250、耗 500）、
-/// rem chaos 50 → life；fire 无 ES 可吃，400 全进 life → life 2000−450 = 1550。
-/// 若误为正序（fire 先），fire 吃 400 ES、chaos 双倍只能挡 50 → life 1650 ≠ 本期望。
+/// ES types are drained in reverse order (:578 `for i=#dmgTypeList,1,-1` -> Chaos first).
+/// Hand calc: ES 500, fire 400 + chaos 300: chaos goes first (double damage) and
+/// exhausts ES (absorbs 250, costs 500) -> rem chaos 50 hits life; fire has no ES left
+/// so all 400 hits life -> life 2000-450 = 1550.
+/// A (wrong) forward order (fire first) would let fire absorb 400 ES, leaving chaos's
+/// double damage to absorb only 50 -> life 1650, which does not match this expectation.
 #[test]
 fn es_consumed_in_reverse_type_order_chaos_first() {
     // Arrange
@@ -394,10 +403,11 @@ fn es_consumed_in_reverse_type_order_chaos_first() {
     assert!((after.pools.life - 1550.0).abs() < EPS);
 }
 
-// loss-prevention 分段（:611-651）
+// loss-prevention segments (:611-651)
 
-/// 仅 above-half 防止（:643-647 else 分支）。手算：prev 20%、life 1000/1000、
-/// hit 400：转入延迟损失 400×0.2 = 80、生命实扣 320 → life 680。
+/// Above-half prevention only (:643-647 else branch). Hand calc: prevented 20%,
+/// life 1000/1000, hit 400: 400x0.2 = 80 becomes deferred loss, 320 is drained
+/// immediately -> life 680.
 #[test]
 fn loss_prevention_above_half_only() {
     // Arrange
@@ -413,10 +423,11 @@ fn loss_prevention_above_half_only() {
     assert!((lost(&after, DamageType::Physical, "life_loss_prevented") - 80.0).abs() < EPS);
 }
 
-/// 仅 below-half 防止（:623-641 分段分支）。手算：belowHalf 50%、life 1000/1000、
-/// hit 800：半血以上段 damageToSplit = min(800, 500) = 500 全额实扣 → life 500、
-/// rem 300；入低血段：unspecific = 300×0 = 0、specific = 300×0.5 = 150 →
-/// 延迟 150、rem 150 → life 350。
+/// Below-half prevention only (:623-641 segmented branch). Hand calc: belowHalf 50%,
+/// life 1000/1000, hit 800: the above-half segment fully drains
+/// damageToSplit = min(800, 500) = 500 -> life 500, rem 300; entering the below-half
+/// segment: unspecific = 300x0 = 0, specific = 300x0.5 = 150 -> 150 deferred,
+/// rem 150 -> life 350.
 #[test]
 fn loss_prevention_below_half_segments() {
     // Arrange
@@ -432,12 +443,12 @@ fn loss_prevention_below_half_segments() {
     assert!((after.pools.life_below_half_loss_lost_over_time - 150.0).abs() < EPS);
 }
 
-/// 双段叠加 + 生命可承上限的 overkill 前置（:617-621）。手算：prev 20%、
-/// belowHalf 50%、life 800/1000、hit 2000：
-/// poolAboveLow = 300/0.8 = 375；可承 = 375 + 500/0.5/0.8 = 1625 < 2000 →
-/// overkill = 375、rem = 1625；split = 375 → 实扣 300（life 500）、延迟 75；
-/// 低血段：unspecific = 1250×0.2 = 250（延迟累计 325）、rem 1000；
-/// specific = 1000×0.5 = 500（低血延迟 500）、rem 500 → life 0。
+/// Both segments stacked, with overkill pre-clamped to what life can absorb
+/// (:617-621). Hand calc: prevented 20%, belowHalf 50%, life 800/1000, hit 2000:
+/// poolAboveLow = 300/0.8 = 375; absorbable = 375 + 500/0.5/0.8 = 1625 < 2000 ->
+/// overkill = 375, rem = 1625; split = 375 -> 300 drained (life 500), 75 deferred;
+/// below-half segment: unspecific = 1250x0.2 = 250 (deferred total 325), rem 1000;
+/// specific = 1000x0.5 = 500 (below-half deferred 500), rem 500 -> life 0.
 #[test]
 fn loss_prevention_both_segments_with_overkill_clamp() {
     // Arrange
@@ -456,14 +467,15 @@ fn loss_prevention_both_segments_with_overkill_clamp() {
     assert_eq!(after.hit_pool_remaining, 0.0);
 }
 
-// max-hit TotalHitPool 池层（:2942-2960 基底 + :3540-3596 扩展）
+// max-hit TotalHitPool layers (:2942-2960 base + :3540-3596 extension)
 
-/// ward bypass 的池扩展（:3544-3553）。手算：base 1000、ward 600、bypass 40%：
-/// protected = 600/0.6×0.4 = 400；pool = max(1000−400,0) + min(1000,400)/0.4 =
-/// 600 + 1000 = 1600；bypass=0 时平铺相加 1000+600 = 1600（巧合同值，再以
-/// ward 200 区分：bypass 路径 protected = 133.33 → 866.67+333.33 = 1200 vs 平铺 1200——
-/// 改用池小于 protected 的形状：base 300、ward 600、bypass 40% → protected 400 →
-/// 0 + 300/0.4 = 750）。
+/// Pool extension for ward bypass (:3544-3553). Hand calc: base 1000, ward 600,
+/// bypass 40%: protected = 600/0.6x0.4 = 400; pool = max(1000-400,0) + min(1000,400)/0.4 =
+/// 600 + 1000 = 1600; with bypass=0, flat addition gives 1000+600 = 1600 (coincidentally
+/// the same value — disambiguated below with ward 200: the bypass path gives
+/// protected = 133.33 -> 866.67+333.33 = 1200 vs. flat 1200 — so instead use a shape
+/// where the pool is smaller than protected: base 300, ward 600, bypass 40% ->
+/// protected 400 -> 0 + 300/0.4 = 750).
 #[test]
 fn extend_pool_ward_bypass_vs_flat() {
     // Arrange
@@ -476,17 +488,18 @@ fn extend_pool_ward_bypass_vs_flat() {
         ..Default::default()
     };
 
-    // Act / Assert：bypass 嵌套（池 < protected 段：全段放大 1/bypass）。
+    // Act / Assert: bypass nesting (pool < protected segment: the whole segment scales by 1/bypass).
     let extended = extend_total_hit_pool(300.0, DamageType::Physical, &pools, &ctx);
     assert!((extended - 750.0).abs() < EPS);
-    // bypass = 0 → 平铺相加（:3552）。
+    // bypass = 0 -> flat addition (:3552).
     let flat = extend_total_hit_pool(300.0, DamageType::Physical, &pools, &PoolCtx::default());
     assert!((flat - 900.0).abs() < EPS);
 }
 
-/// guard 池扩展只认 shared（vendor :3557 Lua 优先级求值语义）+ rate≥100 平铺
-/// （:3560-3561）。手算：shared rate 20%、池 300 → protected = 300/0.2×0.8 = 1200；
-/// base 1000 < 1200 → pool = 1000/0.8 = 1250；per-type guard 不参与。
+/// Guard pool extension only considers shared guard (vendor :3557 Lua
+/// short-circuit-evaluation semantics) + rate>=100 falls back to flat addition
+/// (:3560-3561). Hand calc: shared rate 20%, pool 300 -> protected = 300/0.2x0.8 = 1200;
+/// base 1000 < 1200 -> pool = 1000/0.8 = 1250; per-type guard doesn't participate.
 #[test]
 fn extend_pool_guard_shared_only() {
     // Arrange
@@ -504,7 +517,7 @@ fn extend_pool_guard_shared_only() {
 
     // Assert
     assert!((extended - 1250.0).abs() < EPS);
-    // rate ≥ 100 → 平铺相加。
+    // rate >= 100 -> flat addition.
     let pools_full = PoolState {
         guard_shared: 300.0,
         guard_shared_rate: 100.0,
@@ -514,8 +527,9 @@ fn extend_pool_guard_shared_only() {
     assert!((flat - 1300.0).abs() < EPS);
 }
 
-/// aegis 池扩展取最强口径（:3555：max(perType, shared, 元素时 perType+sharedElemental)）。
-/// 手算：fire perType 100 + sharedElemental 150 = 250 > shared 200 → +250。
+/// Aegis pool extension takes the strongest reading (:3555:
+/// max(perType, shared, and for elemental types perType+sharedElemental)).
+/// Hand calc: fire perType 100 + sharedElemental 150 = 250 > shared 200 -> +250.
 #[test]
 fn extend_pool_aegis_takes_strongest() {
     // Arrange
@@ -530,21 +544,21 @@ fn extend_pool_aegis_takes_strongest() {
     // Act / Assert
     let fire = extend_total_hit_pool(1000.0, DamageType::Fire, &pools, &ctx);
     assert!((fire - 1250.0).abs() < EPS);
-    // 物理无元素口径 → max(0, 200) = 200。
+    // Physical has no elemental reading -> max(0, 200) = 200.
     let physical = extend_total_hit_pool(1000.0, DamageType::Physical, &pools, &ctx);
     assert!((physical - 1200.0).abs() < EPS);
 }
 
-// pob2-oracle 对拍（中间值锚定真实 build）
+// pob2-oracle cross-check (intermediate values pinned to a real build)
 
-/// sorceress-stormweaver-comet（MoM 系）oracle 中间值对拍。
-/// oracle mainOutput（2026-06-11）：Life=1581 / ManaUnreserved=2367 /
+/// sorceress-stormweaver-comet (MoM build) oracle intermediate-value cross-check.
+/// oracle mainOutput (2026-06-11): Life=1581 / ManaUnreserved=2367 /
 /// EnergyShieldRecoveryCap=987 / Ward=890 / sharedMindOverMatter=100 /
-/// 全类型 EnergyShieldBypass=0 / sharedMoMHitPool=3948 /
-/// PhysicalTotalHitPool=5825 / ChaosTotalHitPool=5331.5（chaos ES 双倍折半）。
+/// EnergyShieldBypass=0 for all types / sharedMoMHitPool=3948 /
+/// PhysicalTotalHitPool=5825 / ChaosTotalHitPool=5331.5 (halved for chaos's double ES damage).
 #[test]
 fn oracle_stormweaver_mom_pool_chain() {
-    // Arrange：池整备输入按 oracle 口径。
+    // Arrange: pool setup inputs taken straight from the oracle.
     let base = PoolBaseStats {
         max_life: 1581.0,
         life_recoverable: 1581.0,
@@ -558,16 +572,16 @@ fn oracle_stormweaver_mom_pool_chain() {
         ..Default::default()
     };
 
-    // Act：MoM 池整备（:2726-2820）。
+    // Act: MoM pool setup (:2726-2820).
     let mom = mom_hit_pools(&ctx, &base);
 
-    // Assert：sharedMoMHitPool = 1581 + 2367 = 3948（oracle 同值）。
+    // Assert: sharedMoMHitPool = 1581 + 2367 = 3948 (matches oracle).
     assert!((mom.shared_hit_pool - 3948.0).abs() < EPS);
     for idx in 0..5 {
         assert!((mom.hit_pool_by_type[idx] - 3948.0).abs() < EPS);
     }
 
-    // Act：TotalHitPool 基底（:2942-2960）+ ward 扩展（:3540-3553）。
+    // Act: TotalHitPool base (:2942-2960) + ward extension (:3540-3553).
     let pools = PoolState {
         life: 1581.0,
         mana: 2367.0,
@@ -580,16 +594,16 @@ fn oracle_stormweaver_mom_pool_chain() {
     let chaos_base = total_hit_pool_base(DamageType::Chaos, 3948.0, 987.0, &ctx);
     let chaos_total = extend_total_hit_pool(chaos_base, DamageType::Chaos, &pools, &ctx);
 
-    // Assert：oracle PhysicalTotalHitPool=5825（=3948+987+890）、
-    // ChaosTotalHitPool=5331.5（=3948+987/2+890）。
+    // Assert: oracle PhysicalTotalHitPool=5825 (=3948+987+890),
+    // ChaosTotalHitPool=5331.5 (=3948+987/2+890).
     assert!((phys_base - 4935.0).abs() < EPS);
     assert!((phys_total - 5825.0).abs() < EPS);
     assert!((chaos_total - 5331.5).abs() < EPS);
 
-    // Act：恰好 TotalHitPool 大小的物理击中 → 状态机应精确清空全部池。
+    // Act: a physical hit exactly equal to TotalHitPool should drain every pool to exactly zero.
     let after = reduce_pools(&pools, &phys(5825.0), &ctx);
 
-    // Assert：ward 890 → ES 987 → mana 2367（MoM 100）→ life 1581，零溢出。
+    // Assert: ward 890 -> ES 987 -> mana 2367 (MoM 100) -> life 1581, zero overkill.
     assert!((lost(&after, DamageType::Physical, "ward") - 890.0).abs() < EPS);
     assert!((lost(&after, DamageType::Physical, "energy_shield") - 987.0).abs() < EPS);
     assert!((lost(&after, DamageType::Physical, "mana") - 2367.0).abs() < EPS);
@@ -599,15 +613,16 @@ fn oracle_stormweaver_mom_pool_chain() {
     assert_eq!(after.hit_pool_remaining, 0.0);
 }
 
-/// witch-abyssal-lich-detonate-dead（EternalLife + 全类型 bypass 27）oracle 对拍。
-/// oracle mainOutput（2026-06-11）：Life=1694 / ManaUnreserved=792 /
+/// witch-abyssal-lich-detonate-dead (EternalLife + 27% ES bypass on every type)
+/// oracle cross-check.
+/// oracle mainOutput (2026-06-11): Life=1694 / ManaUnreserved=792 /
 /// EnergyShieldRecoveryCap=11512 / Ward=0 / sharedMindOverMatter=0 /
-/// 全类型 EnergyShieldBypass=27 / sharedMoMHitPool=1694 /
-/// PhysicalTotalHitPool=17463.86301（=1694+11512/0.73）/
-/// ChaosTotalHitPool=9578.931507（chaos 双倍：11512/0.73/2）。
+/// EnergyShieldBypass=27 for all types / sharedMoMHitPool=1694 /
+/// PhysicalTotalHitPool=17463.86301 (=1694+11512/0.73) /
+/// ChaosTotalHitPool=9578.931507 (chaos doubling: 11512/0.73/2).
 #[test]
 fn oracle_lich_eternal_life_pool_chain() {
-    // Arrange：bypass 经 build_pool_ctx 聚合（BASE 27），EternalLife 经 keystone 注入。
+    // Arrange: bypass aggregated via build_pool_ctx (BASE 27), EternalLife injected via keystone.
     let mut db = ModDb::new();
     db.add_list([
         Modifier::flag("EternalLife"),
@@ -627,32 +642,33 @@ fn oracle_lich_eternal_life_pool_chain() {
         ward: 0.0,
     };
 
-    // Act：整备。
+    // Act: setup.
     let ctx = build_pool_ctx(&db, &cfg, &keystones, &base);
     let pools = build_pool_state(&db, &cfg, &base);
     let mom = mom_hit_pools(&ctx, &base);
 
-    // Assert：整备中间值对 oracle。
+    // Assert: setup intermediate values against the oracle.
     assert!(ctx.eternal_life);
     assert_eq!(ctx.es_bypass_by_type, [27.0; 5]);
-    assert!((mom.shared_hit_pool - 1694.0).abs() < EPS); // 无 MoM → 纯生命池
+    assert!((mom.shared_hit_pool - 1694.0).abs() < EPS); // no MoM -> pure life pool
     assert_eq!(pools.energy_shield, 11512.0);
 
-    // Act：TotalHitPool 基底（EternalLife 分支 :2948-2950）。
+    // Act: TotalHitPool base (EternalLife branch :2948-2950).
     let phys_total = total_hit_pool_base(DamageType::Physical, 1694.0, 11512.0, &ctx);
     let chaos_total = total_hit_pool_base(DamageType::Chaos, 1694.0, 11512.0, &ctx);
 
-    // Assert：oracle PhysicalTotalHitPool=17463.86301 / ChaosTotalHitPool=9578.931507
-    // （= 1694 + 11512/0.73[/2]，oracle 输出 5 位小数精度）。
+    // Assert: oracle PhysicalTotalHitPool=17463.86301 / ChaosTotalHitPool=9578.931507
+    // (= 1694 + 11512/0.73[/2]; oracle output has 5 decimal digits of precision).
     assert!((phys_total - (1694.0 + 11512.0 / 0.73)).abs() < 1e-9);
     assert!((chaos_total - (1694.0 + 11512.0 / 0.73 / 2.0)).abs() < 1e-9);
     assert!((phys_total - 17463.86301).abs() < 1e-4);
     assert!((chaos_total - 9578.931507).abs() < 1e-4);
 
-    // Act：恰好池量的物理击中 → EternalLife 分支精确清空（bypass 部分被免除）。
+    // Act: a physical hit exactly equal to the pool size -> the EternalLife branch
+    // drains it to exactly zero (the bypass portion is waived).
     let after = reduce_pools(&pools, &phys(phys_total), &ctx);
 
-    // Assert：ES 实扣 11512、免除 15769.863×0.27 = 4257.863、life 实扣 1694。
+    // Assert: ES drained 11512, waived 15769.863x0.27 = 4257.863, life drained 1694.
     assert!(after.pools.energy_shield.abs() < 1e-6);
     assert!(after.pools.life.abs() < 1e-6);
     assert!(after.overkill.abs() < 1e-6);

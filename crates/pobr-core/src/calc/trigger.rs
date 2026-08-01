@@ -1,63 +1,76 @@
-//! 触发（Trigger）域：冷却驱动型触发速率上限 + 能量驱动元宝石模型 + 多技能轮转 + CWC。
+//! Trigger domain: cooldown-gated trigger rate caps + energy-driven meta-gem model +
+//! multi-skill rotation + CWC.
 //!
-//! ## 结构
+//! ## Structure
 //!
-//! ### §一  冷却驱动（Cooldown-gated）触发速率上限
-//! 对应 agent-docs/triggers.md §三：`TriggerRateCap = 1/(ceil(cd × ServerTickRate)/ServerTickRate)`，
-//! 双门控 `SkillTriggerRate = min(cap, sourceRate)`，ICDR 除数缩短触发冷却。
-//! 出处：PoB2 `CalcTriggers.lua`（`modActionCooldown / rateCapAdjusted / SkillTriggerRate`）、
-//!       PoB2 `Data.lua`（`ServerTickTime = 0.033`）。
+//! ### §1  Cooldown-gated trigger rate cap
+//! Corresponds to agent-docs/triggers.md §3: `TriggerRateCap = 1/(ceil(cd × ServerTickRate)/ServerTickRate)`,
+//! double-gated by `SkillTriggerRate = min(cap, sourceRate)`, with ICDR shortening the trigger
+//! cooldown as a divisor.
+//! Source: PoB2 `CalcTriggers.lua` (`modActionCooldown / rateCapAdjusted / SkillTriggerRate`),
+//!       PoB2 `Data.lua` (`ServerTickTime = 0.033`).
 //!
-//! ### §二  能量驱动（Energy / Meta Gem）模型
-//! Cast on X（Cast on Critical, Cast on Ailment, etc.）用 Energy 计数器决定何时触发。
-//! - `max_energy = Σ(socketed base_cast_time / 0.1) × 10`；total-use-time 修饰词按 ×2 处理。
-//! - 产能：`centienergy_per_hit = MonsterPower × baseCentienergy × scale`，Crit/Ignite/Shock=100，
-//!   Freeze=1000（centienergy = 1/100 能量），CoC 还乘 (原始伤害 / 异常阈值)。
-//! - 等级加成：`energy_generated_+%` 提升产能速率（不改基数/上限）。
-//! - 触发频率估算：`≈ source_rate × energy_per_event / max_energy`，上限取 `trigger_rate_cap`。
+//! ### §2  Energy-driven (Energy / Meta Gem) model
+//! Cast on X (Cast on Critical, Cast on Ailment, etc.) uses an Energy counter to decide when to
+//! trigger.
+//! - `max_energy = Σ(socketed base_cast_time / 0.1) × 10`; total-use-time modifiers count double.
+//! - Generation: `centienergy_per_hit = MonsterPower × baseCentienergy × scale`, Crit/Ignite/Shock=100,
+//!   Freeze=1000 (centienergy = 1/100 energy); CoC additionally multiplies by (raw damage / ailment
+//!   threshold).
+//! - Level bonus: `energy_generated_+%` boosts the generation rate (doesn't change the base or cap).
+//! - Trigger frequency estimate: `≈ source_rate × energy_per_event / max_energy`, capped at
+//!   `trigger_rate_cap`.
 //!
-//! 出处：agent-docs/triggers.md §二；PoB2 `act_int.lua` / `other.lua`；PoE2 Wiki CoC；PoE2DB Energy。
+//! Source: agent-docs/triggers.md §2; PoB2 `act_int.lua` / `other.lua`; PoE2 Wiki CoC; PoE2DB Energy.
 //!
-//! ### §三  多技能轮转（Multi-Skill Rotation）
-//! 移植 PoB2 `calcMultiSpellRotationImpact`：确定性 1000 次触发机会 + 帧对齐冷却 + 几何分布折算。
-//! - 每次触发机会按轮转顺序找第一个「已脱离冷却」的技能触发；都在冷却则该次触发浪费。
-//! - `next_trig = ceil_tick(floor_tick(now) + cd)`（冷却从当前帧边界起算）。
-//! - 触发几率 < 100% 时用几何分布期望值折算实际触发速率。
+//! ### §3  Multi-skill rotation
+//! Ports PoB2 `calcMultiSpellRotationImpact`: a deterministic simulation of 1000 trigger
+//! opportunities, frame-aligned cooldowns, and a geometric-distribution conversion.
+//! - Each trigger opportunity fires the first skill (in rotation order) that has left cooldown;
+//!   if all skills are on cooldown, that opportunity is wasted.
+//! - `next_trig = ceil_tick(floor_tick(now) + cd)` (cooldown counts from the current frame boundary).
+//! - When trigger chance < 100%, the actual trigger rate is converted using the geometric
+//!   distribution's expected value.
 //!
-//! 出处：agent-docs/triggers.md §五；PoB2 `CalcTriggers.lua::calcMultiSpellRotationImpact`。
+//! Source: agent-docs/triggers.md §5; PoB2 `CalcTriggers.lua::calcMultiSpellRotationImpact`.
 //!
-//! ### §四  CWC（Cast While Channelling）
-//! 引导触发：由 `triggerTime`（引导每隔若干秒触发一次，取整到服务器帧）决定基准节奏，
-//! 被触发技能冷却再 clamp。可选 `SpellCastTimeAddedToCooldownIfTriggered`（施法时间加入冷却）。
-//! `TriggeredDamage` INC/MORE 作为被触发技能的 Damage 乘区（不在此注入，供集成层引用）。
-//! 出处：agent-docs/triggers.md §4.2；PoB2 `CalcTriggers.lua::CWCHandler`。
+//! ### §4  CWC (Cast While Channelling)
+//! Channelling trigger: `triggerTime` (the channel fires once every N seconds, rounded to the
+//! server tick) sets the base cadence, further clamped by the triggered skill's cooldown.
+//! Optional `SpellCastTimeAddedToCooldownIfTriggered` (adds cast time to the cooldown).
+//! `TriggeredDamage` INC/MORE act as a Damage factor on the triggered skill (not injected here,
+//! left for the integration layer to reference).
+//! Source: agent-docs/triggers.md §4.2; PoB2 `CalcTriggers.lua::CWCHandler`.
 //!
-//! ## 并行安全
-//! 本模块**只修改 trigger.rs 与 tests/trigger.rs**，不触碰 perform/output/offence/env/actor/mod_db。
-//! 新增 pub 函数通过 `calc/mod.rs` re-export（仅追加，不修改已有 re-export 行）。
+//! ## Parallel-safety
+//! This module **only touches trigger.rs and tests/trigger.rs**, never perform/output/offence/env/actor/mod_db.
+//! New pub functions are re-exported via `calc/mod.rs` (append only, never edit existing
+//! re-export lines).
 //!
-//! ## defer
-//! 完整能量蒙特卡洛精确对齐（需服务器帧级别逐帧模拟）留 golden fixture；
-//! PoB2 对能量驱动元宝石的完整支持本身「needs an entire overhaul」，故当前 pobr 的能量触发
-//! 速率估算为**确定性近似**，见 `EnergyTriggerRate` 注释中的偏差说明。
+//! ## Deferred
+//! Full Monte Carlo precision alignment for the energy model (would need frame-by-frame server-tick
+//! simulation) is left for a golden fixture; PoB2's own support for energy-driven meta gems "needs
+//! an entire overhaul", so pobr's current energy-trigger-rate estimate is a **deterministic
+//! approximation** — see the deviation notes on `EnergyTriggerRate`.
 
 use super::round;
 
-// §一  服务器帧工具 & 冷却驱动基础
+// §1  Server-tick utilities & cooldown-gated basics
 
-/// 服务器帧速率（actions/s），`1 / tick_seconds ≈ 30.3`。
-/// 出处：PoB2 Data.lua `ServerTickRate = 1/0.033`。
+/// Server tick rate (actions/s), `1 / tick_seconds ≈ 30.3`.
+/// Source: PoB2 Data.lua `ServerTickRate = 1/0.033`.
 ///
-///  `tick_seconds` 由调用方自注入常量包传入
-/// （`cfg.constants.game().server_tick_seconds`，fallback == 旧 const，值不变）。
+/// `tick_seconds` is injected by the caller's constant pack
+/// (`cfg.constants.game().server_tick_seconds`; falls back to the old const's value unchanged).
 pub fn server_tick_rate(tick_seconds: f64) -> f64 {
     1.0 / tick_seconds
 }
 
-/// 把冷却向上取整到服务器帧：`ceil(cd × rate) / rate`。
+/// Rounds a cooldown up to the server tick: `ceil(cd × rate) / rate`.
 ///
-/// 触发只能发生在帧边界，真实冷却被「四舍五入」到下一帧。这是触发速率出现台阶的根因。
-/// 出处：agent-docs/triggers.md §3.2；PoB2 CalcTriggers.lua。
+/// Triggers can only happen on frame boundaries, so the real cooldown gets rounded up to the
+/// next frame. This is the root cause of the "stair-step" pattern in trigger rates.
+/// Source: agent-docs/triggers.md §3.2; PoB2 CalcTriggers.lua.
 pub fn round_cooldown_to_tick(cooldown: f64, tick_rate: f64) -> f64 {
     if cooldown <= 0.0 || tick_rate <= 0.0 {
         return 0.0;
@@ -65,12 +78,13 @@ pub fn round_cooldown_to_tick(cooldown: f64, tick_rate: f64) -> f64 {
     round((cooldown * tick_rate).ceil() / tick_rate)
 }
 
-/// 触发速率上限纯函数：`cap = 1 / (ceil(cd × rate) / rate)`。
+/// Pure trigger-rate-cap function: `cap = 1 / (ceil(cd × rate) / rate)`.
 ///
-/// `cd` 为实际动作冷却（已是 `max(triggeredCD, triggerCD/icdr)` 的结果）；`tick_rate` 为
-/// 服务器帧速率（默认 `server_tick_rate(SERVER_TICK_SECONDS)`）。返回每秒触发上限。
-/// 出处：agent-docs/triggers.md §3.1；PoB2 CalcTriggers.lua
-/// `TriggerRateCap = 1/(ceil(modActionCooldown × ServerTickRate)/ServerTickRate)`。
+/// `cd` is the actual action cooldown (already the result of `max(triggeredCD, triggerCD/icdr)`);
+/// `tick_rate` is the server tick rate (defaults to `server_tick_rate(SERVER_TICK_SECONDS)`).
+/// Returns the trigger cap in triggers/second.
+/// Source: agent-docs/triggers.md §3.1; PoB2 CalcTriggers.lua
+/// `TriggerRateCap = 1/(ceil(modActionCooldown × ServerTickRate)/ServerTickRate)`.
 pub fn trigger_rate_cap(cooldown: f64, tick_rate: f64) -> f64 {
     let rounded = round_cooldown_to_tick(cooldown, tick_rate);
     if rounded > 0.0 {
@@ -80,14 +94,15 @@ pub fn trigger_rate_cap(cooldown: f64, tick_rate: f64) -> f64 {
     }
 }
 
-/// 计算实际动作冷却：`max(triggeredCD, triggerCD / icdr)`。
+/// Computes the actual action cooldown: `max(triggeredCD, triggerCD / icdr)`.
 ///
-/// - `trigger_cd`：触发宝石本身冷却（`triggeredBy.grantedEffect.levels[lvl].cooldown`）。
-/// - `triggered_cd`：被触发技能冷却（`skillData.cooldown`）；无冷却传 0。
-/// - `icdr`：冷却恢复速率乘区（`CooldownRecovery`，INC/MORE 折算后的乘数，≥0），作为**除数**缩短触发宝石冷却。
+/// - `trigger_cd`: the trigger gem's own cooldown (`triggeredBy.grantedEffect.levels[lvl].cooldown`).
+/// - `triggered_cd`: the triggered skill's cooldown (`skillData.cooldown`); pass 0 if none.
+/// - `icdr`: the cooldown-recovery-rate factor (`CooldownRecovery`, the multiplier after
+///   folding INC/MORE, ≥0), used as a **divisor** to shorten the trigger gem's cooldown.
 ///
-/// 出处：agent-docs/triggers.md §3.1；PoB2 CalcTriggers.lua
-/// `modActionCooldown = max(triggeredCD, triggerCD / icdrSkill)`。
+/// Source: agent-docs/triggers.md §3.1; PoB2 CalcTriggers.lua
+/// `modActionCooldown = max(triggeredCD, triggerCD / icdrSkill)`.
 pub fn action_cooldown(trigger_cd: f64, triggered_cd: f64, icdr: f64) -> f64 {
     let effective_trigger = if icdr > 0.0 {
         trigger_cd / icdr
@@ -97,25 +112,27 @@ pub fn action_cooldown(trigger_cd: f64, triggered_cd: f64, icdr: f64) -> f64 {
     effective_trigger.max(triggered_cd)
 }
 
-/// 触发速率上限的结算结果（冷却驱动版）。
+/// Settlement result of the trigger rate cap (cooldown-gated version).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TriggerRate {
-    /// 取较大者后、取整前的实际动作冷却（秒）。
+    /// The actual action cooldown (seconds) after taking the max, before rounding.
     pub action_cooldown: f64,
-    /// 向上取整到服务器帧后的冷却（秒）。
+    /// The cooldown (seconds) after rounding up to the server tick.
     pub rate_cap_cooldown: f64,
-    /// 触发速率上限（次/秒）= 1 / rate_cap_cooldown。
+    /// Trigger rate cap (triggers/second) = 1 / rate_cap_cooldown.
     pub trigger_rate_cap: f64,
-    /// 实际触发速率（次/秒）= min(上限, 有效源速率)。
+    /// Actual trigger rate (triggers/second) = min(cap, effective source rate).
     pub skill_trigger_rate: f64,
-    /// 是否被源速率门控（源速率 < 上限）。
+    /// Whether the source rate is the gating factor (source rate < cap).
     pub limited_by_source: bool,
 }
 
-/// 端到端：从触发器/被触发技能冷却 + ICDR + 有效源速率求实际触发速率。
+/// End-to-end: derives the actual trigger rate from trigger/triggered-skill cooldowns + ICDR +
+/// the effective source rate.
 ///
-/// `SkillTriggerRate = min(TriggerRateCap, EffectiveSourceRate)`——伤害再高，若源攻速低或
-/// 冷却长，触发也慢（双重门控）。出处：agent-docs/triggers.md §3.3；PoB2 CalcTriggers.lua。
+/// `SkillTriggerRate = min(TriggerRateCap, EffectiveSourceRate)` — no matter how high the damage,
+/// if the source attack speed is low or the cooldown is long, the trigger rate is still slow
+/// (double gating). Source: agent-docs/triggers.md §3.3; PoB2 CalcTriggers.lua.
 pub fn resolve_trigger_rate(
     trigger_cd: f64,
     triggered_cd: f64,
@@ -148,32 +165,34 @@ pub fn resolve_trigger_rate(
     }
 }
 
-// §二  能量（Energy）驱动元宝石模型
+// §2  Energy-driven meta-gem model
 
-/// 触发条件类型——决定 centienergy 基数与产能计算方式。
+/// The trigger-condition type — determines the centienergy base and how generation is computed.
 ///
-/// 出处：agent-docs/triggers.md §2.2；PoB2 `act_int.lua` centienergy 常量表。
+/// Source: agent-docs/triggers.md §2.2; PoB2 `act_int.lua` centienergy constant table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriggerCondition {
-    /// Cast on Critical：centienergy = MonsterPower × 100 × (hit_damage / ailment_threshold)。
-    /// 0.5.0 起还看暴击原始伤害对异常阈值的比例。
+    /// Cast on Critical: centienergy = MonsterPower × 100 × (hit_damage / ailment_threshold).
+    /// Since 0.5.0 this also depends on the ratio of the critical hit's raw damage to the
+    /// ailment threshold.
     CriticalStrike,
-    /// Cast on Ignite：centienergy = MonsterPower × 100（按 ignite magnitude/阈值比调整）。
+    /// Cast on Ignite: centienergy = MonsterPower × 100 (adjusted by the ignite magnitude/threshold ratio).
     Ignite,
-    /// Cast on Shock：centienergy = MonsterPower × 100。
+    /// Cast on Shock: centienergy = MonsterPower × 100.
     Shock,
-    /// Cast on Freeze：centienergy = MonsterPower × 1000（冰冻基数是 Crit/Ignite/Shock 的 10 倍）。
+    /// Cast on Freeze: centienergy = MonsterPower × 1000 (the freeze base is 10× Crit/Ignite/Shock).
     Freeze,
-    /// Cast on Melee Kill / Cast on Minion Death / Hit 等——每次事件产固定能量（centienergy=100 默认）。
+    /// Cast on Melee Kill / Cast on Minion Death / Hit, etc. — a fixed amount of energy per
+    /// event (centienergy=100 by default).
     Other,
 }
 
 impl TriggerCondition {
-    /// 该触发条件的基础 centienergy（1/100 能量）/每 MonsterPower/每次事件。
+    /// The base centienergy (1/100 energy) for this trigger condition, per MonsterPower per event.
     ///
-    /// 出处：agent-docs/triggers.md §2.2 表格；PoB2 act_int.lua
-    /// `cast_on_crit_gain_X_centienergy_per_monster_power_on_crit = 100`，
-    /// `cast_on_freeze_gain_X_centienergy_per_monster_power_on_freeze = 1000`。
+    /// Source: agent-docs/triggers.md §2.2 table; PoB2 act_int.lua
+    /// `cast_on_crit_gain_X_centienergy_per_monster_power_on_crit = 100`,
+    /// `cast_on_freeze_gain_X_centienergy_per_monster_power_on_freeze = 1000`.
     pub fn base_centienergy(self) -> f64 {
         match self {
             TriggerCondition::CriticalStrike
@@ -185,18 +204,19 @@ impl TriggerCondition {
     }
 }
 
-/// 能量最大值计算参数（插槽中各法术的基础施法时间 + total-use-time 修饰词）。
+/// Parameters for the max-energy calculation (each socketed spell's base cast time +
+/// total-use-time modifier).
 ///
-/// 出处：agent-docs/triggers.md §2.1；PoB2 other.lua
-/// `generic_ongoing_trigger_1_maximum_energy_per_Xms_total_cast_time = 10`、
-/// `generic_ongoing_trigger_maximum_energy_is_total_of_socketed_skills`。
+/// Source: agent-docs/triggers.md §2.1; PoB2 other.lua
+/// `generic_ongoing_trigger_1_maximum_energy_per_Xms_total_cast_time = 10`,
+/// `generic_ongoing_trigger_maximum_energy_is_total_of_socketed_skills`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SocketedSpellInfo {
-    /// 该插槽法术的基础施法时间（秒）。
+    /// This slot's spell's base cast time (seconds).
     pub base_cast_time: f64,
-    /// total-use-time 修饰词百分比（%）；计算最大能量时按 ×2 处理。
-    /// 出处：agent-docs/triggers.md §2.1「modifiers to Total use time are treated as though
-    /// they were double the value」。
+    /// The total-use-time modifier percentage (%); counted ×2 when computing max energy.
+    /// Source: agent-docs/triggers.md §2.1 "modifiers to Total use time are treated as though
+    /// they were double the value".
     pub use_time_increase_pct: f64,
 }
 
@@ -213,24 +233,25 @@ impl SocketedSpellInfo {
         self
     }
 
-    /// 用于计算最大能量的「有效总使用时间」：
-    /// `base_cast_time × (1 + use_time_increase_pct/100 × 2)`。
+    /// The "effective total use time" used for the max-energy calculation:
+    /// `base_cast_time × (1 + use_time_increase_pct/100 × 2)`.
     ///
-    /// total-use-time 修饰词在能量计算中按 2 倍处理（相当于把施法更慢的惩罚放大）。
-    /// 出处：agent-docs/triggers.md §2.1；PoE2 Wiki CoC；PoE2DB Energy。
+    /// The total-use-time modifier counts double in the energy calculation (effectively
+    /// amplifying the penalty for casting slower).
+    /// Source: agent-docs/triggers.md §2.1; PoE2 Wiki CoC; PoE2DB Energy.
     pub fn effective_cast_time_for_energy(&self) -> f64 {
         self.base_cast_time * (1.0 + self.use_time_increase_pct / 100.0 * 2.0)
     }
 }
 
-/// 计算能量驱动元宝石的最大能量：`Σ(effective_cast_time / 0.1) × 10`。
+/// Computes the max energy of an energy-driven meta gem: `Σ(effective_cast_time / 0.1) × 10`.
 ///
-/// 等价于 `Σ effective_cast_time × 100`（每 0.1s 基础施法时间 = 10 能量）。
-/// 最大能量越高 → 越难触发（攒到上限才触发）。
+/// Equivalent to `Σ effective_cast_time × 100` (10 energy per 0.1s of base cast time).
+/// Higher max energy → harder to trigger (has to build up to the cap before firing).
 ///
-/// 出处：agent-docs/triggers.md §2.1；PoB2 other.lua
-/// `generic_ongoing_trigger_1_maximum_energy_per_Xms_total_cast_time = 10`，
-/// 即「Has 10 maximum Energy per 0.1 seconds of base cast time of Socketed Spells」。
+/// Source: agent-docs/triggers.md §2.1; PoB2 other.lua
+/// `generic_ongoing_trigger_1_maximum_energy_per_Xms_total_cast_time = 10`, i.e. "Has 10 maximum
+/// Energy per 0.1 seconds of base cast time of Socketed Spells".
 pub fn calc_max_energy(socketed_spells: &[SocketedSpellInfo]) -> f64 {
     if socketed_spells.is_empty() {
         return 0.0;
@@ -242,23 +263,27 @@ pub fn calc_max_energy(socketed_spells: &[SocketedSpellInfo]) -> f64 {
     round(total)
 }
 
-/// 每次触发事件（命中/暴击/击杀等）产生的能量（非 centienergy）。
+/// Energy generated per trigger event (hit/crit/kill/etc.), not centienergy.
 ///
-/// 公式（CoC）：`energy = MonsterPower × (hit_damage / ailment_threshold) × scale`
-/// 其中 `scale = energy_generated_pct_bonus / 100`（宝石等级加成，≥ 1.0）。
+/// Formula (CoC): `energy = MonsterPower × (hit_damage / ailment_threshold) × scale`
+/// where `scale = energy_generated_pct_bonus / 100` (gem-level bonus, ≥ 1.0).
 ///
-/// 其他条件（Ignite/Shock/Freeze/Other）：
-/// - `energy = MonsterPower × base_centienergy / 100 × scale`。
-/// - CoC 额外乘「原始伤害 / 异常阈值」（伤害越高 → 产能越多）。
+/// Other conditions (Ignite/Shock/Freeze/Other):
+/// - `energy = MonsterPower × base_centienergy / 100 × scale`.
+/// - CoC additionally multiplies by "raw damage / ailment threshold" (more damage → more energy).
 ///
-/// 出处：agent-docs/triggers.md §2.2；PoE2 Wiki CoC 0.5.0 公式。
+/// Source: agent-docs/triggers.md §2.2; PoE2 Wiki CoC 0.5.0 formula.
 ///
-/// # 参数
-/// - `condition`：触发条件类型（决定 centienergy 基数）。
-/// - `monster_power`：敌人力量（通常 0.5–3，稀有怪乘以稀有度系数 1/2/5/独特=20）。
-/// - `hit_damage`：本次命中的原始伤害（减免前）；仅 CoC 有意义，其他条件传 0。
-/// - `ailment_threshold`：怪物异常阈值；仅 CoC 有意义，其他条件传 1.0 避免除零。
-/// - `energy_generated_scale`：宝石等级提供的「energy_generated_+%」/100 + 1（即乘数，如 1.57）。
+/// # Parameters
+/// - `condition`: the trigger condition type (determines the centienergy base).
+/// - `monster_power`: the enemy's power (usually 0.5–3; rare monsters multiply by a rarity factor
+///   of 1/2/5, unique=20).
+/// - `hit_damage`: the raw damage of this hit (before mitigation); only meaningful for CoC, pass
+///   0 for other conditions.
+/// - `ailment_threshold`: the monster's ailment threshold; only meaningful for CoC, pass 1.0 for
+///   other conditions to avoid division by zero.
+/// - `energy_generated_scale`: the gem level's "energy_generated_+%"/100 + 1 (i.e. the multiplier,
+///   e.g. 1.57).
 pub fn calc_energy_per_event(
     condition: TriggerCondition,
     monster_power: f64,
@@ -272,66 +297,70 @@ pub fn calc_energy_per_event(
 
     let centienergy = match condition {
         TriggerCondition::CriticalStrike => {
-            // CoC 0.5.0：产能还看原始伤害 / 怪物异常阈值。
-            // 要可靠触发，暴击伤害需约为怪物异常阈值的 10 倍。
+            // CoC 0.5.0: generation also depends on raw damage / the monster's ailment threshold.
+            // For reliable triggering, crit damage needs to be roughly 10× the monster's ailment threshold.
             let threshold = ailment_threshold.max(1.0);
             let damage_ratio = (hit_damage / threshold).max(0.0);
             monster_power * base_centienergy * damage_ratio * scale
         }
         _ => {
-            // Ignite/Shock/Freeze/Other：按 MonsterPower × base_centienergy 线性产能。
+            // Ignite/Shock/Freeze/Other: generation scales linearly with MonsterPower × base_centienergy.
             monster_power * base_centienergy * scale
         }
     };
-    // centienergy / 100 = 能量。
+    // centienergy / 100 = energy.
     round(centienergy / 100.0)
 }
 
-/// 能量驱动触发速率结算结果。
+/// Settlement result of the energy-driven trigger rate.
 ///
-/// **注意（与 PoB2 的偏差）**：当前实现是**确定性近似**（非蒙特卡洛逐帧模拟）。
-/// - 假设每次「触发事件」（每次命中/暴击）产能恒定（用均值替代分布）。
-/// - `effective_trigger_rate` = `source_rate × energy_per_event / max_energy`，
-///   上限取 `trigger_rate_cap`（冷却门控）。
-/// - PoB2 的精确版本是「服务器帧 × 逐帧模拟」——差异在高伤方差场景（暴击伤害离散度大）
-///   或 MonsterPower 非均匀时会出现偏差。
-/// - defer 完整蒙特卡洛精确对齐（保留 golden fixture 测试框架）。
+/// **Note (deviation from PoB2)**: the current implementation is a **deterministic
+/// approximation** (not a frame-by-frame Monte Carlo simulation).
+/// - Assumes each "trigger event" (each hit/crit) generates a constant amount of energy (a mean
+///   value stands in for the distribution).
+/// - `effective_trigger_rate` = `source_rate × energy_per_event / max_energy`, capped at
+///   `trigger_rate_cap` (cooldown gating).
+/// - PoB2's precise version is a "server-tick × frame-by-frame simulation" — deviations show up
+///   in high-damage-variance scenarios (widely spread crit damage) or with non-uniform MonsterPower.
+/// - Full Monte Carlo precision alignment is deferred (the golden fixture test framework is kept
+///   in place for it).
 ///
-/// 出处：agent-docs/triggers.md §二、§对 pobr 实现的启示 #2；
-///       PoE2 Wiki CoC；PoE2DB Energy；PoB2 DeepWiki（「needs an entire overhaul」警告）。
+/// Source: agent-docs/triggers.md §2, §"Implications for pobr" #2;
+///       PoE2 Wiki CoC; PoE2DB Energy; PoB2 DeepWiki (the "needs an entire overhaul" warning).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EnergyTriggerRate {
-    /// 元宝石能量上限。
+    /// The meta gem's max energy.
     pub max_energy: f64,
-    /// 每次触发事件产生的能量（均值，用于速率估算）。
+    /// Energy generated per trigger event (mean value, used for the rate estimate).
     pub energy_per_event: f64,
-    /// 每秒产生的总能量（`energy_per_event × source_rate`）。
+    /// Total energy generated per second (`energy_per_event × source_rate`).
     pub energy_per_second: f64,
-    /// 能量驱动的原始触发频率估算（次/秒）：`energy_per_second / max_energy`。
+    /// Estimated raw energy-driven trigger frequency (triggers/second): `energy_per_second / max_energy`.
     pub raw_trigger_rate: f64,
-    /// 受冷却上限截断后的有效触发速率（次/秒）。
+    /// The effective trigger rate (triggers/second) after clamping to the cooldown cap.
     pub effective_trigger_rate: f64,
-    /// 冷却驱动的触发速率上限（次/秒）；用于截断能量速率。
+    /// The cooldown-driven trigger rate cap (triggers/second); used to clamp the energy rate.
     pub cooldown_rate_cap: f64,
-    /// 是否被冷却上限截断（能量产出比冷却更快）。
+    /// Whether the cooldown cap is the clamping factor (energy generation outpaces the cooldown).
     pub limited_by_cooldown: bool,
 }
 
-/// 能量驱动元宝石的端到端触发速率估算（确定性近似）。
+/// End-to-end trigger rate estimate for an energy-driven meta gem (deterministic approximation).
 ///
-/// # 参数
-/// - `socketed_spells`：插槽中各法术的施法时间信息（决定 max_energy）。
-/// - `condition`：触发条件（Crit/Ignite/Shock/Freeze/Other）。
-/// - `monster_power`：敌人力量（单次事件）；一波怪建议传总 power（15–20）。
-/// - `hit_damage`：命中原始伤害（CoC 使用；其他条件传 0）。
-/// - `ailment_threshold`：怪物异常阈值（CoC 使用；其他条件传 1.0）。
-/// - `energy_generated_scale`：宝石等级加成乘数（1.0 + energy_generated_+%/100）。
-/// - `source_rate`：源技能（命中/攻击/引导）的每秒事件数。
-/// - `trigger_cd`：触发宝石本身冷却（秒；用于冷却门控上限）。
-/// - `triggered_cd`：被触发技能冷却（秒；无冷却传 0）。
-/// - `icdr`：冷却恢复速率乘数（≥ 1.0）。
+/// # Parameters
+/// - `socketed_spells`: cast-time info for each socketed spell (determines max_energy).
+/// - `condition`: the trigger condition (Crit/Ignite/Shock/Freeze/Other).
+/// - `monster_power`: the enemy's power (per event); for a pack of monsters, pass the combined
+///   power (15–20).
+/// - `hit_damage`: the hit's raw damage (used by CoC; pass 0 for other conditions).
+/// - `ailment_threshold`: the monster's ailment threshold (used by CoC; pass 1.0 for other conditions).
+/// - `energy_generated_scale`: the gem-level bonus multiplier (1.0 + energy_generated_+%/100).
+/// - `source_rate`: the source skill's (hit/attack/channel) events per second.
+/// - `trigger_cd`: the trigger gem's own cooldown (seconds; used for the cooldown-gated cap).
+/// - `triggered_cd`: the triggered skill's cooldown (seconds; pass 0 if none).
+/// - `icdr`: the cooldown-recovery-rate multiplier (≥ 1.0).
 ///
-/// 出处：agent-docs/triggers.md §二；PoE2DB Energy；PoE2 Wiki CoC 0.5.0。
+/// Source: agent-docs/triggers.md §2; PoE2DB Energy; PoE2 Wiki CoC 0.5.0.
 #[allow(clippy::too_many_arguments)]
 pub fn calc_energy_trigger_rate(
     socketed_spells: &[SocketedSpellInfo],
@@ -363,14 +392,14 @@ pub fn calc_energy_trigger_rate(
         0.0
     };
 
-    // 冷却门控上限（不能超过冷却决定的上限）。
+    // Cooldown-gated cap (can't exceed the cap determined by the cooldown).
     let cd = action_cooldown(trigger_cd, triggered_cd, icdr);
     let tick_rate = server_tick_rate(tick_seconds);
     let rate_cap_cd = round_cooldown_to_tick(cd, tick_rate);
     let cd_cap = if rate_cap_cd > 0.0 {
         round(1.0 / rate_cap_cd)
     } else {
-        // 无冷却 → 只受能量速率门控，无上限截断。
+        // No cooldown → gated only by the energy rate, no cap clamping.
         f64::INFINITY
     };
 
@@ -392,22 +421,24 @@ pub fn calc_energy_trigger_rate(
     }
 }
 
-// §三  多技能轮转（Multi-Skill Rotation）
+// §3  Multi-skill rotation
 
-/// 轮转中单个技能的参数。
+/// Parameters for a single skill in the rotation.
 ///
-/// 每次触发机会按轮转顺序找第一个「已脱离冷却」的技能触发；都在冷却则该次触发浪费。
-/// 出处：agent-docs/triggers.md §五；PoB2 CalcTriggers.lua `calcMultiSpellRotationImpact`。
+/// Each trigger opportunity fires the first skill (in rotation order) that has left cooldown;
+/// if all skills are on cooldown, that opportunity is wasted.
+/// Source: agent-docs/triggers.md §5; PoB2 CalcTriggers.lua `calcMultiSpellRotationImpact`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RotationSkill {
-    /// 技能有效冷却（秒；已含 ICDR 除法与 max(triggeredCD, triggerCD/icdr)）。
-    /// 若调用方已完成 `action_cooldown()` 计算，直接传入结果即可。
+    /// The skill's effective cooldown (seconds; already includes the ICDR division and
+    /// max(triggeredCD, triggerCD/icdr)). If the caller has already computed `action_cooldown()`,
+    /// pass that result straight in.
     pub effective_cd: f64,
-    /// 每次触发机会的触发几率（0.0–1.0；1.0 = 必然触发）。
-    /// 出处：agent-docs/triggers.md §五「几率折算——几何分布期望」。
+    /// The trigger chance per trigger opportunity (0.0–1.0; 1.0 = always triggers).
+    /// Source: agent-docs/triggers.md §5 "Chance conversion — geometric distribution expectation".
     pub trigger_chance: f64,
-    /// 额外冷却追加（SpellCastTimeAddedToCooldownIfTriggered，秒；无则传 0）。
-    /// 出处：agent-docs/triggers.md §4.3；PoB2 CalcTriggers.lua `addsCastTime`。
+    /// Extra cooldown added (SpellCastTimeAddedToCooldownIfTriggered, seconds; pass 0 if none).
+    /// Source: agent-docs/triggers.md §4.3; PoB2 CalcTriggers.lua `addsCastTime`.
     pub added_cooldown: f64,
 }
 
@@ -430,42 +461,46 @@ impl RotationSkill {
         self
     }
 
-    /// 有效总冷却（含追加）。
+    /// The effective total cooldown (including the addition).
     pub fn total_cd(&self) -> f64 {
         (self.effective_cd + self.added_cooldown).max(0.0)
     }
 }
 
-/// 多技能轮转模拟结果：每个技能的稳态触发速率。
+/// Result of the multi-skill rotation simulation: each skill's steady-state trigger rate.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RotationResult {
-    /// 每个技能在轮转中的稳态触发速率（次/秒）。顺序与输入 `skills` 对应。
+    /// Each skill's steady-state trigger rate (triggers/second) in the rotation. Order matches
+    /// the input `skills`.
     pub rates: Vec<f64>,
-    /// 触发机会中「所有技能都在冷却，本次触发浪费」的比例（稳态估算，0–1）。
+    /// The fraction of trigger opportunities where "every skill was on cooldown, so the
+    /// opportunity was wasted" (steady-state estimate, 0–1).
     pub wasted_fraction: f64,
 }
 
-/// 多技能轮转确定性模拟：移植 PoB2 `calcMultiSpellRotationImpact`。
+/// Deterministic simulation of the multi-skill rotation: ports PoB2 `calcMultiSpellRotationImpact`.
 ///
-/// 算法：
-/// 1. 模拟 `SIM_ROUNDS`（=1000）次触发机会，间隔 `1 / source_rate` 秒。
-/// 2. 每次机会按轮转顺序找第一个「已过冷却时间」的技能触发。
-/// 3. 冷却从当前帧起算、对齐到服务器帧：
-///    `next_trig = ceil_tick(floor_tick(now) + cd)`（`ceil_tick/floor_tick = ±round to frame`）。
-/// 4. 触发几率 < 100% 时，将「平均需要 1/chance 次机会才能触发」折算进稳态触发速率：
-///    `rate = triggers_in_sim / (SIM_TIME + expected_extra_wait)`。
+/// Algorithm:
+/// 1. Simulate `SIM_ROUNDS` (=1000) trigger opportunities, spaced `1 / source_rate` seconds apart.
+/// 2. Each opportunity fires the first skill (in rotation order) whose cooldown has elapsed.
+/// 3. Cooldowns count from the current frame, aligned to the server tick:
+///    `next_trig = ceil_tick(floor_tick(now) + cd)` (`ceil_tick/floor_tick = ±round to frame`).
+/// 4. When trigger chance < 100%, "on average it takes 1/chance opportunities to trigger" is
+///    folded into the steady-state trigger rate:
+///    `rate = triggers_in_sim / (SIM_TIME + expected_extra_wait)`.
 ///
-/// 与 PoB2 蒙特卡洛的差异：本实现是**确定性**模拟——trigger_chance < 1 时用期望值替代
-/// 随机采样（无随机数），结果与 PoB2 在 chance=1.0 时严格对齐，chance < 1 时是期望近似。
+/// Difference from PoB2's Monte Carlo: this implementation is a **deterministic** simulation —
+/// when trigger_chance < 1 it substitutes the expected value for random sampling (no random
+/// numbers), matching PoB2 exactly at chance=1.0 and approximating it in expectation for chance < 1.
 ///
-/// 出处：agent-docs/triggers.md §五；PoB2 CalcTriggers.lua L460–520 (calcMultiSpellRotationImpact)。
+/// Source: agent-docs/triggers.md §5; PoB2 CalcTriggers.lua L460-520 (calcMultiSpellRotationImpact).
 ///
-/// # 参数
-/// - `skills`：轮转中各技能（有序列表，轮转按此顺序）。
-/// - `source_rate`：源技能每秒触发机会数（如攻速 / 吟唱频率）。
+/// # Parameters
+/// - `skills`: the skills in the rotation (ordered list; rotation follows this order).
+/// - `source_rate`: the source skill's trigger opportunities per second (e.g. attack speed / cast frequency).
 ///
-/// # 返回
-/// [`RotationResult`]，每个技能的稳态触发速率（次/秒）与浪费率。
+/// # Returns
+/// [`RotationResult`], each skill's steady-state trigger rate (triggers/second) and the waste fraction.
 pub fn calc_multi_spell_rotation(
     skills: &[RotationSkill],
     source_rate: f64,
@@ -478,20 +513,21 @@ pub fn calc_multi_spell_rotation(
         };
     }
 
-    let trigger_increment = 1.0 / source_rate; // 每次触发机会间隔（秒）。
+    let trigger_increment = 1.0 / source_rate; // Interval between trigger opportunities (seconds).
     const SIM_ROUNDS: usize = 1000;
     let sim_time = trigger_increment * SIM_ROUNDS as f64;
 
     let n = skills.len();
     let mut trigger_counts = vec![0u64; n];
-    // next_available[i]：技能 i 下一次可触发的时间（秒），初始为 0（全部立即可用）。
+    // next_available[i]: the time (seconds) at which skill i is next available to trigger;
+    // starts at 0 (all immediately available).
     let mut next_available = vec![0.0f64; n];
     let mut wasted_count = 0u64;
 
     for round_idx in 0..SIM_ROUNDS {
         let now = trigger_increment * round_idx as f64;
 
-        // 找当前时间可用的第一个技能（按轮转顺序）。
+        // Find the first skill available right now (in rotation order).
         let triggered_idx = next_available
             .iter()
             .enumerate()
@@ -507,10 +543,10 @@ pub fn calc_multi_spell_rotation(
                 let skill = &skills[i];
                 trigger_counts[i] += 1;
 
-                // 下一次可触发时间：帧对齐。
-                // PoB2：`next_trig = ceil_b(floor_b(now, ServerTickTime) + cd, ServerTickTime)`
+                // Next available time: frame-aligned.
+                // PoB2: `next_trig = ceil_b(floor_b(now, ServerTickTime) + cd, ServerTickTime)`
                 let floor_now = (now / tick_seconds).floor() * tick_seconds;
-                let cd = skill.total_cd().max(tick_seconds); // 最小冷却 = 1 帧。
+                let cd = skill.total_cd().max(tick_seconds); // Minimum cooldown = 1 frame.
                 let raw_next = floor_now + cd;
                 let ceil_next = (raw_next / tick_seconds).ceil() * tick_seconds;
                 next_available[i] = ceil_next;
@@ -518,9 +554,9 @@ pub fn calc_multi_spell_rotation(
         }
     }
 
-    // 把「触发几率 < 1」折算进速率（几何分布期望）。
-    // PoB2 几率折算：rate = count / (sim_time + (1/chance - 1) × triggerIncrement × count)
-    // 简化：若 chance=1，直接 rate = count/sim_time。
+    // Fold "trigger chance < 1" into the rate (geometric distribution expectation).
+    // PoB2's chance conversion: rate = count / (sim_time + (1/chance - 1) × triggerIncrement × count)
+    // Simplification: if chance=1, rate = count/sim_time directly.
     let rates = skills
         .iter()
         .enumerate()
@@ -530,8 +566,9 @@ pub fn calc_multi_spell_rotation(
                 return 0.0;
             }
             let chance = skill.trigger_chance.max(1e-9);
-            // 期望每次触发需要 1/chance 次机会；每次机会间隔 trigger_increment 秒。
-            // 额外等待时间 = (1/chance - 1) × trigger_increment × count（所有额外机会之和）。
+            // Expected 1/chance opportunities per trigger; each opportunity is trigger_increment
+            // seconds apart. Extra wait time = (1/chance - 1) × trigger_increment × count (sum
+            // over all extra opportunities).
             let extra_wait = (1.0 / chance - 1.0) * trigger_increment * count;
             let effective_time = sim_time + extra_wait;
             round(count / effective_time)
@@ -546,37 +583,43 @@ pub fn calc_multi_spell_rotation(
     }
 }
 
-// §四  CWC（Cast While Channelling）
+// §4  CWC (Cast While Channelling)
 
-/// CWC（Cast While Channelling）触发速率结算结果。
+/// Settlement result of the CWC (Cast While Channelling) trigger rate.
 ///
-/// CWC 由引导间隔 `triggerTime`（向上取整到服务器帧）决定基准节奏，被触发技能冷却再 clamp。
-/// 出处：agent-docs/triggers.md §4.2；PoB2 CalcTriggers.lua `CWCHandler`。
+/// CWC's base cadence is set by the channelling interval `triggerTime` (rounded up to the
+/// server tick), further clamped by the triggered skill's cooldown.
+/// Source: agent-docs/triggers.md §4.2; PoB2 CalcTriggers.lua `CWCHandler`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CwcTriggerRate {
-    /// 取整到服务器帧后的引导触发间隔（秒）= `ceil(triggerTime × ServerTickRate)/ServerTickRate`。
+    /// The channelling trigger interval (seconds) after rounding to the server tick =
+    /// `ceil(triggerTime × ServerTickRate)/ServerTickRate`.
     pub adjusted_trigger_interval: f64,
-    /// 引导触发基准频率（次/秒）= `1 / adjusted_trigger_interval`。
+    /// The channelling trigger base frequency (triggers/second) = `1 / adjusted_trigger_interval`.
     pub channelling_trigger_rate: f64,
-    /// 被触发技能的有效冷却（含 SpellCastTimeAddedToCooldownIfTriggered，经 ICDR 除法，秒）。
+    /// The triggered skill's effective cooldown (seconds; includes
+    /// SpellCastTimeAddedToCooldownIfTriggered, after ICDR division).
     pub effective_triggered_cd: f64,
-    /// 最终触发速率上限（次/秒）= `min(channelling_trigger_rate, 1/effective_triggered_cd)`。
+    /// The final trigger rate cap (triggers/second) =
+    /// `min(channelling_trigger_rate, 1/effective_triggered_cd)`.
     pub trigger_rate_cap: f64,
-    /// 是否被被触发技能冷却限制（triggered_cd > 引导间隔）。
+    /// Whether the triggered skill's cooldown is the limiting factor (triggered_cd > the
+    /// channelling interval).
     pub limited_by_triggered_cd: bool,
 }
 
-/// 计算 CWC（Cast While Channelling）触发速率。
+/// Computes the CWC (Cast While Channelling) trigger rate.
 ///
-/// CWC 流程：
-/// 1. `adjInterval = ceil(triggerTime × ServerTickRate) / ServerTickRate`（帧对齐）。
-/// 2. `channelingRate = 1 / adjInterval`（引导基准频率）。
-/// 3. `effTriggeredCD = max(triggered_cd, adds_cast_time) / icdr`。
-///    - `adds_cast_time`：`SpellCastTimeAddedToCooldownIfTriggered` = 被触发法术基础施法时间/施法速度。
-///    - 无此追加时传 0。
-/// 4. `TriggerRateCap = min(channelingRate, 1/ceil(effTriggeredCD × rate)/rate)`。
+/// CWC flow:
+/// 1. `adjInterval = ceil(triggerTime × ServerTickRate) / ServerTickRate` (frame-aligned).
+/// 2. `channelingRate = 1 / adjInterval` (channelling base frequency).
+/// 3. `effTriggeredCD = max(triggered_cd, adds_cast_time) / icdr`.
+///    - `adds_cast_time`: `SpellCastTimeAddedToCooldownIfTriggered` = the triggered spell's base
+///      cast time / cast speed.
+///    - Pass 0 if there is no such addition.
+/// 4. `TriggerRateCap = min(channelingRate, 1/ceil(effTriggeredCD × rate)/rate)`.
 ///
-/// 出处：agent-docs/triggers.md §4.2；PoB2 `CalcTriggers.lua::CWCHandler`：
+/// Source: agent-docs/triggers.md §4.2; PoB2 `CalcTriggers.lua::CWCHandler`:
 /// ```lua
 /// adjTriggerInterval = ceil(triggerTime × ServerTickRate) / ServerTickRate
 /// triggerRateOfTrigger = 1 / adjTriggerInterval
@@ -584,15 +627,19 @@ pub struct CwcTriggerRate {
 /// TriggerRateCap = min(1/effCDTriggeredSkill, triggerRateOfTrigger)
 /// ```
 ///
-/// **`TriggeredDamage` 注入**：
-/// `TriggeredDamage INC/MORE` 修饰词需由集成层注入被触发技能的 `Damage` 乘区（本函数不操作 ModDb）。
-/// 集成层可在 perform 时读取 `TriggeredDamageInc` / `TriggeredDamageMore` mod，追加到技能 damage 管线。
+/// **`TriggeredDamage` injection**:
+/// `TriggeredDamage INC/MORE` modifiers need to be injected into the triggered skill's `Damage`
+/// factor by the integration layer (this function doesn't touch the ModDb). The integration
+/// layer can read the `TriggeredDamageInc` / `TriggeredDamageMore` mods during perform and append
+/// them to the skill's damage pipeline.
 ///
-/// # 参数
-/// - `trigger_time`：引导基准触发间隔（秒；来自 `skillData.triggerTime` 或 PoB2 宝石数据）。
-/// - `triggered_cd`：被触发技能的基础冷却（秒；无冷却传 0）。
-/// - `adds_cast_time`：`SpellCastTimeAddedToCooldownIfTriggered` 追加的冷却（秒；无则传 0）。
-/// - `icdr`：冷却恢复速率乘数（≥ 1.0；1.0 = 无 ICDR 加成）。
+/// # Parameters
+/// - `trigger_time`: the channelling base trigger interval (seconds; from `skillData.triggerTime`
+///   or PoB2 gem data).
+/// - `triggered_cd`: the triggered skill's base cooldown (seconds; pass 0 if none).
+/// - `adds_cast_time`: the cooldown added by `SpellCastTimeAddedToCooldownIfTriggered` (seconds;
+///   pass 0 if none).
+/// - `icdr`: the cooldown-recovery-rate multiplier (≥ 1.0; 1.0 = no ICDR bonus).
 pub fn calc_cwc_trigger_rate(
     trigger_time: f64,
     triggered_cd: f64,
@@ -602,7 +649,7 @@ pub fn calc_cwc_trigger_rate(
 ) -> CwcTriggerRate {
     let tick_rate = server_tick_rate(tick_seconds);
 
-    // 引导间隔取整到服务器帧。
+    // Round the channelling interval to the server tick.
     let adj_interval = round_cooldown_to_tick(trigger_time.max(0.0), tick_rate);
     let channelling_rate = if adj_interval > 0.0 {
         round(1.0 / adj_interval)
@@ -610,16 +657,16 @@ pub fn calc_cwc_trigger_rate(
         0.0
     };
 
-    // 被触发技能有效冷却：max(triggered_cd, adds_cast_time) / icdr。
+    // Triggered skill's effective cooldown: max(triggered_cd, adds_cast_time) / icdr.
     let icdr_eff = if icdr > 0.0 { icdr } else { 1.0 };
     let raw_triggered_cd = triggered_cd.max(adds_cast_time).max(0.0);
     let eff_triggered_cd = raw_triggered_cd / icdr_eff;
 
-    // 被触发技能冷却门控的速率上限。
+    // The rate cap gated by the triggered skill's cooldown.
     let cd_rate_cap = if eff_triggered_cd > 0.0 {
         round(1.0 / round_cooldown_to_tick(eff_triggered_cd, tick_rate))
     } else {
-        // 无冷却：纯引导频率驱动。
+        // No cooldown: driven purely by the channelling frequency.
         channelling_rate
     };
 
@@ -635,16 +682,17 @@ pub fn calc_cwc_trigger_rate(
     }
 }
 
-/// 计算 `SpellCastTimeAddedToCooldownIfTriggered` 的追加冷却量（秒）。
+/// Computes the added cooldown (seconds) from `SpellCastTimeAddedToCooldownIfTriggered`.
 ///
-/// 部分触发把**被触发法术的施法时间加进冷却**，使施法慢的法术触发更慢：
-/// `adds_cast_time = base_cast_time / cast_speed_multiplier`。
+/// Some triggers **add the triggered spell's cast time to the cooldown**, making slower-casting
+/// spells trigger more slowly:
+/// `adds_cast_time = base_cast_time / cast_speed_multiplier`.
 ///
-/// 出处：agent-docs/triggers.md §4.3；PoB2 `CalcTriggers.lua::processAddedCastTime`。
+/// Source: agent-docs/triggers.md §4.3; PoB2 `CalcTriggers.lua::processAddedCastTime`.
 ///
-/// # 参数
-/// - `base_cast_time`：被触发法术的基础施法时间（秒）。
-/// - `cast_speed_multiplier`：施法速度乘区总值（> 0）；= 1.0 + cast_speed_pct/100。
+/// # Parameters
+/// - `base_cast_time`: the triggered spell's base cast time (seconds).
+/// - `cast_speed_multiplier`: the total cast-speed factor (> 0); = 1.0 + cast_speed_pct/100.
 pub fn spell_cast_time_added_to_cooldown(base_cast_time: f64, cast_speed_multiplier: f64) -> f64 {
     if base_cast_time <= 0.0 || cast_speed_multiplier <= 0.0 {
         return 0.0;
@@ -652,15 +700,17 @@ pub fn spell_cast_time_added_to_cooldown(base_cast_time: f64, cast_speed_multipl
     round(base_cast_time / cast_speed_multiplier)
 }
 
-// §五  TraceGraph 归因扩展（触发速率拆解到来源）
+// §5  TraceGraph attribution extensions (breaking trigger rate down to sources)
 
 use crate::{TraceGraph, TraceNodeId, TraceOperation};
 use pobr_data::prelude::{SourceId, SourceKind};
 
-/// 冷却驱动触发速率的归因版本：把 trigger_cd、triggered_cd、icdr、source_rate 各加到 TraceGraph。
+/// The attributed version of the cooldown-gated trigger rate: adds trigger_cd, triggered_cd,
+/// icdr, source_rate each to the TraceGraph.
 ///
-/// 返回 `(TriggerRate, skill_trigger_rate_node)`。调用方可继续把下游（DPS 等）连上此节点。
-/// 出处：agent-docs/triggers.md §对 pobr 实现的启示 #5（触发速率归因到 SourceId）。
+/// Returns `(TriggerRate, skill_trigger_rate_node)`. Callers can chain downstream nodes (e.g. DPS)
+/// off this node.
+/// Source: agent-docs/triggers.md §"Implications for pobr" #5 (attributing trigger rate to a SourceId).
 pub fn resolve_trigger_rate_traced(
     trigger_cd: f64,
     triggered_cd: f64,
@@ -725,9 +775,10 @@ pub fn resolve_trigger_rate_traced(
     (result, rate_node)
 }
 
-/// 能量驱动触发速率的归因版本：把 max_energy、energy_per_event、source_rate 加到 TraceGraph。
+/// The attributed version of the energy-driven trigger rate: adds max_energy, energy_per_event,
+/// source_rate to the TraceGraph.
 ///
-/// 返回 `(EnergyTriggerRate, effective_trigger_rate_node)`。
+/// Returns `(EnergyTriggerRate, effective_trigger_rate_node)`.
 #[allow(clippy::too_many_arguments)]
 pub fn calc_energy_trigger_rate_traced(
     socketed_spells: &[SocketedSpellInfo],
@@ -791,9 +842,10 @@ pub fn calc_energy_trigger_rate_traced(
     (result, effective_node)
 }
 
-/// CWC 触发速率的归因版本：把 trigger_time、triggered_cd、adds_cast_time、icdr 加到 TraceGraph。
+/// The attributed version of the CWC trigger rate: adds trigger_time, triggered_cd,
+/// adds_cast_time, icdr to the TraceGraph.
 ///
-/// 返回 `(CwcTriggerRate, trigger_rate_cap_node)`。
+/// Returns `(CwcTriggerRate, trigger_rate_cap_node)`.
 pub fn calc_cwc_trigger_rate_traced(
     trigger_time: f64,
     triggered_cd: f64,
@@ -858,39 +910,46 @@ pub fn calc_cwc_trigger_rate_traced(
     (result, rate_cap_node)
 }
 
-// §六 触发源统计
+// §6  Trigger source stats
 
-/// 触发**源技能**的完整子计算统计。
+/// The complete sub-calculation stats of the **source skill** that does the triggering.
 ///
-/// 由 build 层（orchestrator）对源技能跑一次完整子计算后构造（PoB2 GlobalCache
-/// 等价物最小版，`CalcTriggers.lua:74-86` `cachedData[uuid].HitSpeed or Speed`），
-/// 经 BASE 词条通道（`TriggerSourceRate` / `TriggerSourceHitChance` /
-/// `TriggerSourceCritChance`）注入 perform `fill_trigger` 消费：
-/// - `action_rate`：源技能**计算后**有效行动速率（含攻速 inc/more 乘区，修
-///   「堆攻速的 CoC build 源速率不随攻速增长」的 14-G2 定性级错误）；
-/// - `hit_chance` / `crit_chance`：源技能命中率 / 暴击率（fraction 0–1），折入
-///   触发几率（`CalcTriggers.lua:716-770` `triggerChance ×= sourceHitChance ×
-///   sourceCritChance`，crit 仅 triggerOnCrit 链路）。
+/// Built by the build layer (orchestrator) after running one full sub-calculation for the source
+/// skill (a minimal equivalent of PoB2's GlobalCache, `CalcTriggers.lua:74-86`
+/// `cachedData[uuid].HitSpeed or Speed`), injected via the BASE mod channel
+/// (`TriggerSourceRate` / `TriggerSourceHitChance` / `TriggerSourceCritChance`) for consumption
+/// by perform's `fill_trigger`:
+/// - `action_rate`: the source skill's **post-calculation** effective action rate (includes
+///   attack-speed inc/more factors, fixing the 14-G2 correctness-level bug where "a CoC build
+///   stacking attack speed didn't see its source rate grow with attack speed");
+/// - `hit_chance` / `crit_chance`: the source skill's hit rate / crit rate (fraction 0-1), folded
+///   into the trigger chance (`CalcTriggers.lua:716-770`
+///   `triggerChance ×= sourceHitChance × sourceCritChance`; crit only applies on the
+///   triggerOnCrit path).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct TriggerSourceStats {
-    /// 源技能有效行动速率（次/秒；计算后口径，= OutputTable.effective_action_rate）。
+    /// The source skill's effective action rate (triggers/second; post-calculation, =
+    /// OutputTable.effective_action_rate).
     pub action_rate: f64,
-    /// 源技能命中率（fraction 0–1；0 = 未注入/不适用，消费侧跳过折算）。
+    /// The source skill's hit rate (fraction 0-1; 0 = not injected/not applicable, consumer skips
+    /// folding it in).
     pub hit_chance: f64,
-    /// 源技能暴击率（fraction 0–1；0 = 未注入/不适用，消费侧跳过折算）。
+    /// The source skill's crit rate (fraction 0-1; 0 = not injected/not applicable, consumer
+    /// skips folding it in).
     pub crit_chance: f64,
 }
 
 impl TriggerSourceStats {
-    /// 触发几率折算乘子（fraction 0–1）：`hit ×（triggerOnCrit ? crit : 1）`。
+    /// The trigger-chance conversion multiplier (fraction 0-1): `hit × (triggerOnCrit ? crit : 1)`.
     ///
-    /// 对齐 PoB2 `defaultTriggerHandler`（CalcTriggers.lua:716-770）：
-    /// - 源命中率 ≠ 100% 时乘 `sourceHitChance`（:721-742；triggerOnUse 链路由
-    ///   注入侧不注入 hit_chance 表达，此处 0 = 跳过）；
-    /// - `triggerOnCrit` 时再乘 `sourceCritChance`（:744-769）。
+    /// Matches PoB2 `defaultTriggerHandler` (CalcTriggers.lua:716-770):
+    /// - When the source hit rate ≠ 100%, multiply by `sourceHitChance` (:721-742; on the
+    ///   triggerOnUse path, the injecting side doesn't inject a hit_chance value, so 0 = skip here);
+    /// - When `triggerOnCrit`, also multiply by `sourceCritChance` (:744-769).
     ///
-    /// 双武器独立 roll 的 effective hit/crit（:725-731 doubleHitsWhenDualWielding）
-    /// 待 per-hand 输出接入后折算，当前取整体值。
+    /// Dual-wield's independently-rolled effective hit/crit (:725-731
+    /// doubleHitsWhenDualWielding) is deferred to when per-hand output is wired in; currently
+    /// the overall value is used.
     pub fn chance_multiplier(&self, trigger_on_crit: bool) -> f64 {
         let mut chance = 1.0_f64;
         if self.hit_chance > 0.0 && self.hit_chance < 1.0 {
@@ -903,7 +962,7 @@ impl TriggerSourceStats {
     }
 }
 
-// §一  内部单元测试（冷却驱动基础）
+// §1  Internal unit tests (cooldown-gated basics)
 
 #[cfg(test)]
 mod tests {
@@ -912,17 +971,17 @@ mod tests {
 
     #[test]
     fn server_tick_rate_matches_constant() {
-        // 1 / 0.033 ≈ 30.30/s。
+        // 1 / 0.033 ≈ 30.30/s.
         assert!((server_tick_rate(SERVER_TICK_SECONDS) - 30.303_030_303).abs() < 1e-6);
     }
 
     #[test]
     fn cooldown_rounds_up_to_frame() {
-        // 0.10s 冷却在 30.3/s 帧率下：ceil(0.10 × 30.303) = ceil(3.03) = 4 帧 → 4/30.303 ≈ 0.132s。
+        // At 30.3/s: a 0.10s cooldown → ceil(0.10 × 30.303) = ceil(3.03) = 4 frames → 4/30.303 ≈ 0.132s.
         let rate = server_tick_rate(SERVER_TICK_SECONDS);
         let rounded = round_cooldown_to_tick(0.10, rate);
         assert!((rounded - 4.0 / rate).abs() < 1e-9);
-        assert!(rounded > 0.10); // 取整后冷却变长。
+        assert!(rounded > 0.10); // Rounding lengthens the cooldown.
     }
 
     #[test]
@@ -936,21 +995,21 @@ mod tests {
 
     #[test]
     fn icdr_shortens_trigger_cooldown() {
-        // trigger_cd=0.3, icdr=1.5 → 0.2；被触发技能无冷却 → action_cd=0.2。
+        // trigger_cd=0.3, icdr=1.5 → 0.2; triggered skill has no cooldown → action_cd=0.2.
         let cd = action_cooldown(0.3, 0.0, 1.5);
         assert!((cd - 0.2).abs() < 1e-9);
     }
 
     #[test]
     fn larger_of_two_cooldowns_wins() {
-        // triggered_cd=0.5 大于 trigger_cd/icdr=0.3 → action_cd=0.5。
+        // triggered_cd=0.5 is larger than trigger_cd/icdr=0.3 → action_cd=0.5.
         let cd = action_cooldown(0.3, 0.5, 1.0);
         assert!((cd - 0.5).abs() < 1e-9);
     }
 
     #[test]
     fn source_rate_gates_trigger_rate() {
-        // 上限远高于源速率 2/s → 实际速率被源门控为 2/s。
+        // The cap is far above the 2/s source rate → the actual rate is gated to 2/s by the source.
         let r = resolve_trigger_rate(0.05, 0.0, 1.0, 2.0, SERVER_TICK_SECONDS);
         assert!(r.limited_by_source);
         assert!((r.skill_trigger_rate - 2.0).abs() < 1e-6);
@@ -958,32 +1017,32 @@ mod tests {
 
     #[test]
     fn cap_gates_when_source_is_fast() {
-        // 源速率 100/s 高于上限 → 实际速率 = 上限。
+        // Source rate of 100/s exceeds the cap → the actual rate = the cap.
         let r = resolve_trigger_rate(0.3, 0.0, 1.0, 100.0, SERVER_TICK_SECONDS);
         assert!(!r.limited_by_source);
         assert!((r.skill_trigger_rate - r.trigger_rate_cap).abs() < 1e-9);
     }
 
-    // §二  能量模型测试
+    // §2  Energy model tests
 
     #[test]
     fn max_energy_single_spell_0_5s() {
-        // base_cast_time = 0.5s → effective = 0.5s → (0.5/0.1)×10 = 50。
+        // base_cast_time = 0.5s → effective = 0.5s → (0.5/0.1)×10 = 50.
         let spells = [SocketedSpellInfo::new(0.5)];
         assert!((calc_max_energy(&spells) - 50.0).abs() < 1e-6);
     }
 
     #[test]
     fn max_energy_two_spells() {
-        // 0.3s + 0.6s = 0.9s → 90 能量。
+        // 0.3s + 0.6s = 0.9s → 90 energy.
         let spells = [SocketedSpellInfo::new(0.3), SocketedSpellInfo::new(0.6)];
         assert!((calc_max_energy(&spells) - 90.0).abs() < 1e-6);
     }
 
     #[test]
     fn max_energy_use_time_penalty_doubled() {
-        // base=0.5s, use_time_increase=20% → effective = 0.5 × (1 + 0.20 × 2) = 0.5 × 1.4 = 0.7s。
-        // max_energy = (0.7/0.1)×10 = 70。
+        // base=0.5s, use_time_increase=20% → effective = 0.5 × (1 + 0.20 × 2) = 0.5 × 1.4 = 0.7s.
+        // max_energy = (0.7/0.1)×10 = 70.
         let spell = SocketedSpellInfo::new(0.5).with_use_time_increase(20.0);
         assert!((spell.effective_cast_time_for_energy() - 0.7).abs() < 1e-9);
         let spells = [spell];
@@ -992,9 +1051,9 @@ mod tests {
 
     #[test]
     fn energy_per_event_freeze_10x_crit_same_ratio() {
-        // Freeze base_centienergy=1000 vs Crit base_centienergy=100（ratio=1时）→ 10 倍。
-        // CoC ratio=1 时（hit_damage=ailment_threshold）：crit = 1×100×1/100 = 1。
-        // Freeze：freeze = 1×1000/100 = 10。
+        // Freeze base_centienergy=1000 vs Crit base_centienergy=100 (at ratio=1) → 10x.
+        // At CoC ratio=1 (hit_damage=ailment_threshold): crit = 1×100×1/100 = 1.
+        // Freeze: freeze = 1×1000/100 = 10.
         let crit_ratio1 =
             calc_energy_per_event(TriggerCondition::CriticalStrike, 1.0, 100.0, 100.0, 1.0);
         let freeze = calc_energy_per_event(TriggerCondition::Freeze, 1.0, 0.0, 1.0, 1.0);
@@ -1011,14 +1070,14 @@ mod tests {
 
     #[test]
     fn energy_per_event_coc_damage_ratio() {
-        // CoC：MonsterPower=1, hit_damage=500, threshold=100 → ratio=5 → energy=1×100×5/100=5。
+        // CoC: MonsterPower=1, hit_damage=500, threshold=100 → ratio=5 → energy=1×100×5/100=5.
         let e = calc_energy_per_event(TriggerCondition::CriticalStrike, 1.0, 500.0, 100.0, 1.0);
         assert!((e - 5.0).abs() < 1e-6);
     }
 
     #[test]
     fn energy_per_event_scale_increases_gain() {
-        // energy_generated_scale=1.57（lvl20 +57%）应比 1.0 多 57% 能量。
+        // energy_generated_scale=1.57 (lvl20 +57%) should generate 57% more energy than 1.0.
         let base = calc_energy_per_event(TriggerCondition::Shock, 2.0, 0.0, 1.0, 1.0);
         let scaled = calc_energy_per_event(TriggerCondition::Shock, 2.0, 0.0, 1.0, 1.57);
         assert!((scaled / base - 1.57).abs() < 1e-3);
@@ -1026,7 +1085,8 @@ mod tests {
 
     #[test]
     fn energy_trigger_rate_increases_with_source_rate() {
-        // source_rate 增大时 effective_trigger_rate 单调非递减（受冷却上限截断）。
+        // effective_trigger_rate is monotonically non-decreasing as source_rate increases
+        // (clamped by the cooldown cap).
         let spells = [SocketedSpellInfo::new(0.5)];
         let low = calc_energy_trigger_rate(
             &spells,
@@ -1059,23 +1119,23 @@ mod tests {
 
     #[test]
     fn energy_trigger_rate_limited_by_cooldown() {
-        // 很高 source_rate 且能量充足 → 应被冷却上限截断。
-        let spells = [SocketedSpellInfo::new(0.1)]; // max_energy=10（小 → 产能很快）
+        // Very high source_rate and ample energy → should be clamped by the cooldown cap.
+        let spells = [SocketedSpellInfo::new(0.1)]; // max_energy=10 (small → fast generation)
         let r = calc_energy_trigger_rate(
             &spells,
             TriggerCondition::Freeze,
-            20.0, // 高 MonsterPower
+            20.0, // High MonsterPower
             0.0,
             1.0,
             1.0,
-            100.0, // 源速率极高
-            0.5,   // 触发宝石冷却 0.5s → cap ≈ 2/s
+            100.0, // Very high source rate
+            0.5,   // Trigger gem cooldown 0.5s → cap ≈ 2/s
             0.0,
             1.0,
             SERVER_TICK_SECONDS,
         );
         assert!(r.limited_by_cooldown, "should be limited by cooldown cap");
-        // effective ≤ cd_cap。
+        // effective ≤ cd_cap.
         assert!(r.effective_trigger_rate <= r.cooldown_rate_cap + 1e-6);
     }
 
@@ -1098,23 +1158,24 @@ mod tests {
         assert_eq!(r.effective_trigger_rate, 0.0);
     }
 
-    // §三  多技能轮转测试
+    // §3  Multi-skill rotation tests
 
     #[test]
     fn single_skill_rotation_no_waste() {
-        // 单技能轮转：每次触发机会都触发该技能（无浪费），速率 ≈ source_rate（受冷却上限限）。
-        let skill = RotationSkill::new(0.15); // 0.15s 冷却。
-        let source_rate = 4.0; // 4/s 源速率。
+        // Single-skill rotation: every trigger opportunity fires this skill (no waste), rate ≈ source_rate (bounded by the cooldown cap).
+        let skill = RotationSkill::new(0.15); // 0.15s cooldown.
+        let source_rate = 4.0; // 4/s source rate.
         let result = calc_multi_spell_rotation(&[skill], source_rate, SERVER_TICK_SECONDS);
         assert_eq!(result.rates.len(), 1);
-        // 速率上界 = source_rate（0.15s 冷却 << 0.25s 触发间隔，不构成瓶颈）。
+        // Rate upper bound = source_rate (0.15s cooldown << 0.25s trigger interval, not a bottleneck).
         assert!(result.rates[0] > 0.0);
-        assert_eq!(result.wasted_fraction, 0.0); // 单技能无浪费。
+        assert_eq!(result.wasted_fraction, 0.0); // No waste with a single skill.
     }
 
     #[test]
     fn two_skills_share_trigger_opportunities() {
-        // 两个技能，源速率 4/s，每个技能冷却比触发间隔长 → 共享触发机会，各自速率 < 源速率。
+        // Two skills, source rate 4/s, each skill's cooldown longer than the trigger interval →
+        // they share trigger opportunities, each skill's rate < the source rate.
         let skill_a = RotationSkill::new(0.5);
         let skill_b = RotationSkill::new(0.5);
         let source_rate = 4.0;
@@ -1122,20 +1183,21 @@ mod tests {
             calc_multi_spell_rotation(&[skill_a, skill_b], source_rate, SERVER_TICK_SECONDS);
         assert_eq!(result.rates.len(), 2);
         let total: f64 = result.rates.iter().sum::<f64>();
-        // 总触发速率 ≤ 源速率（可能有浪费）。
+        // Total trigger rate ≤ the source rate (there may be waste).
         assert!(total <= source_rate + 1e-6);
-        // 每个技能都有非零速率。
+        // Both skills have a non-zero rate.
         assert!(result.rates[0] > 0.0);
         assert!(result.rates[1] > 0.0);
     }
 
     #[test]
     fn rotation_with_long_cooldowns_causes_waste() {
-        // 所有技能冷却极长（10s），触发频率很高（10/s）→ 大量触发机会浪费。
+        // All skills have extremely long cooldowns (10s) with a high trigger frequency (10/s) →
+        // most trigger opportunities are wasted.
         let skills: Vec<RotationSkill> = (0..3).map(|_| RotationSkill::new(10.0)).collect();
         let source_rate = 10.0;
         let result = calc_multi_spell_rotation(&skills, source_rate, SERVER_TICK_SECONDS);
-        // 极长冷却下大多数触发机会浪费。
+        // With such long cooldowns, most trigger opportunities go to waste.
         assert!(
             result.wasted_fraction > 0.5,
             "wasted={}",
@@ -1145,13 +1207,14 @@ mod tests {
 
     #[test]
     fn rotation_trigger_chance_reduces_rate() {
-        // 触发几率 50% 的技能，稳态速率约为 chance=1 时的一半（几何分布期望值近似）。
+        // A skill with a 50% trigger chance has a steady-state rate roughly half that of chance=1
+        // (geometric distribution expectation approximation).
         let full_chance = RotationSkill::new(0.3).with_trigger_chance(1.0);
         let half_chance = RotationSkill::new(0.3).with_trigger_chance(0.5);
         let source_rate = 3.0;
         let r_full = calc_multi_spell_rotation(&[full_chance], source_rate, SERVER_TICK_SECONDS);
         let r_half = calc_multi_spell_rotation(&[half_chance], source_rate, SERVER_TICK_SECONDS);
-        // 50% 几率的速率应显著低于 100% 几率。
+        // The 50%-chance rate should be significantly lower than the 100%-chance rate.
         assert!(r_half.rates[0] < r_full.rates[0]);
     }
 
@@ -1170,7 +1233,7 @@ mod tests {
 
     #[test]
     fn added_cooldown_slows_rotation() {
-        // 无 added_cooldown 与有 added_cooldown 相比，后者触发速率更低。
+        // Compared to no added_cooldown, having one lowers the trigger rate.
         let no_add = RotationSkill::new(0.3).with_added_cooldown(0.0);
         let with_add = RotationSkill::new(0.3).with_added_cooldown(0.5);
         let source_rate = 5.0;
@@ -1179,11 +1242,11 @@ mod tests {
         assert!(r_with.rates[0] <= r_no.rates[0] + 1e-9);
     }
 
-    // §四  CWC 测试
+    // §4  CWC tests
 
     #[test]
     fn cwc_basic_trigger_rate() {
-        // triggerTime=0.3s → ceil(0.3 × 30.303) = 10 帧 → 10/30.303 ≈ 0.33s → rate ≈ 3.03/s。
+        // triggerTime=0.3s → ceil(0.3 × 30.303) = 10 frames → 10/30.303 ≈ 0.33s → rate ≈ 3.03/s.
         let r = calc_cwc_trigger_rate(0.3, 0.0, 0.0, 1.0, SERVER_TICK_SECONDS);
         let tick_rate = server_tick_rate(SERVER_TICK_SECONDS);
         let expected_interval = round_cooldown_to_tick(0.3, tick_rate);
@@ -1194,7 +1257,7 @@ mod tests {
 
     #[test]
     fn cwc_triggered_cd_limits_rate() {
-        // triggered_cd=1.0s >> triggerTime=0.1s → 被触发技能冷却成为瓶颈。
+        // triggered_cd=1.0s >> triggerTime=0.1s → the triggered skill's cooldown becomes the bottleneck.
         let r = calc_cwc_trigger_rate(0.1, 1.0, 0.0, 1.0, SERVER_TICK_SECONDS);
         assert!(r.limited_by_triggered_cd, "triggered CD should limit rate");
         assert!(r.trigger_rate_cap < r.channelling_trigger_rate);
@@ -1202,7 +1265,7 @@ mod tests {
 
     #[test]
     fn cwc_icdr_increases_trigger_rate() {
-        // ICDR=2.0 把 0.6s triggered_cd 缩短到 0.3s → rate 上限提高。
+        // ICDR=2.0 shortens a 0.6s triggered_cd to 0.3s → the rate cap goes up.
         let r_no_icdr = calc_cwc_trigger_rate(0.2, 0.6, 0.0, 1.0, SERVER_TICK_SECONDS);
         let r_icdr = calc_cwc_trigger_rate(0.2, 0.6, 0.0, 2.0, SERVER_TICK_SECONDS);
         assert!(r_icdr.trigger_rate_cap >= r_no_icdr.trigger_rate_cap);
@@ -1210,38 +1273,38 @@ mod tests {
 
     #[test]
     fn cwc_adds_cast_time_increases_effective_cd() {
-        // adds_cast_time=0.5s 追加到冷却 → effective_triggered_cd 比 triggered_cd=0.2s 大。
+        // adds_cast_time=0.5s added to the cooldown → effective_triggered_cd is larger than triggered_cd=0.2s.
         let r = calc_cwc_trigger_rate(0.2, 0.2, 0.5, 1.0, SERVER_TICK_SECONDS);
-        // max(0.2, 0.5) = 0.5s → effective_triggered_cd = 0.5。
+        // max(0.2, 0.5) = 0.5s → effective_triggered_cd = 0.5.
         assert!((r.effective_triggered_cd - 0.5).abs() < 1e-6);
         assert!(r.limited_by_triggered_cd);
     }
 
     #[test]
     fn spell_cast_time_to_cooldown_basic() {
-        // base=0.5s, cast_speed=1.5 → 0.5/1.5 ≈ 0.333s。
+        // base=0.5s, cast_speed=1.5 → 0.5/1.5 ≈ 0.333s.
         let added = spell_cast_time_added_to_cooldown(0.5, 1.5);
         assert!((added - 0.5 / 1.5).abs() < 1e-6);
     }
 
     #[test]
     fn spell_cast_time_to_cooldown_no_speed_bonus() {
-        // 无施法速度加成（乘数=1.0）→ 追加冷却 = 基础施法时间。
+        // No cast-speed bonus (multiplier=1.0) → added cooldown = the base cast time.
         let added = spell_cast_time_added_to_cooldown(0.8, 1.0);
         assert!((added - 0.8).abs() < 1e-9);
     }
 
-    // §五  归因测试
+    // §5  Attribution tests
 
     #[test]
     fn trace_graph_nodes_created_for_trigger_rate() {
         let mut trace = TraceGraph::new();
         let (result, rate_node) =
             resolve_trigger_rate_traced(0.3, 0.0, 1.0, 5.0, SERVER_TICK_SECONDS, &mut trace);
-        assert!(trace.nodes().len() >= 5); // 至少 5 个节点。
+        assert!(trace.nodes().len() >= 5); // At least 5 nodes.
         let node = trace.node(rate_node).unwrap();
         assert!((node.value - result.skill_trigger_rate).abs() < 1e-9);
-        // rate_node 应有来自 cap_node 和 source_rate_node 的入边。
+        // rate_node should have incoming edges from cap_node and source_rate_node.
         let incoming = trace.incoming(rate_node);
         assert!(incoming.len() >= 2);
     }
@@ -1278,10 +1341,10 @@ mod tests {
         assert!(trace.nodes().len() >= 4);
     }
 
-    // §六 触发源统计测试
+    // §6  Trigger source stats tests
 
-    /// 手算对拍：triggerChance = 源命中 × 源暴击
-    /// （CoC：hit 80% × crit 35% = 28%）。
+    /// Manual check: triggerChance = source hit × source crit
+    /// (CoC: hit 80% × crit 35% = 28%).
     #[test]
     fn source_stats_chance_folds_hit_and_crit() {
         let stats = TriggerSourceStats {
@@ -1290,11 +1353,11 @@ mod tests {
             crit_chance: 0.35,
         };
         assert!((stats.chance_multiplier(true) - 0.28).abs() < 1e-9);
-        // 非 triggerOnCrit 链路只折命中。
+        // A non-triggerOnCrit path only folds in the hit chance.
         assert!((stats.chance_multiplier(false) - 0.80).abs() < 1e-9);
     }
 
-    /// 未注入（0 值）字段跳过折算；100% 命中/暴击不降速。
+    /// Unset (0-valued) fields skip the fold-in; 100% hit/crit doesn't slow the rate.
     #[test]
     fn source_stats_chance_skips_unset_and_full() {
         let unset = TriggerSourceStats::default();
@@ -1307,7 +1370,8 @@ mod tests {
         assert_eq!(full.chance_multiplier(true), 1.0);
     }
 
-    /// CoC 方向性：触发几率↑ → 触发速率↑（源速率门控段）。
+    /// Directionality for CoC: higher trigger chance → higher trigger rate (in the
+    /// source-rate-gated regime).
     #[test]
     fn coc_directional_higher_crit_higher_rate() {
         let low_crit = TriggerSourceStats {
@@ -1319,7 +1383,8 @@ mod tests {
             crit_chance: 0.5,
             ..low_crit
         };
-        // 双门控后乘 chance（perform 同公式）：cap 远高于源速率时 rate ∝ chance。
+        // Multiply by chance after double-gating (same formula as perform): when the cap is far
+        // above the source rate, rate ∝ chance.
         let r = resolve_trigger_rate(0.05, 0.0, 1.0, 2.0, SERVER_TICK_SECONDS);
         let low = r.skill_trigger_rate * low_crit.chance_multiplier(true);
         let high = r.skill_trigger_rate * high_crit.chance_multiplier(true);

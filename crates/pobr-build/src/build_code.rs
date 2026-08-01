@@ -1,14 +1,15 @@
-//! PoB Build Code 编解码：URL-safe Base64 + zlib（与 PathOfBuilding / pobb.in 字节级兼容）。
+//! PoB Build Code codec: URL-safe Base64 + zlib (byte-compatible with PathOfBuilding / pobb.in).
 //!
-//! PoB 的 share code 流程是：Build XML → `zlib.compress`（带 zlib header `0x78 0x9c`）→
-//! 标准 Base64 → 把 `+`/`/` 替换为 `-`/`_`（URL-safe），并去掉 `=` 填充。
+//! PoB's share code flow is: Build XML → `zlib.compress` (with zlib header `0x78 0x9c`) →
+//! standard Base64 → replace `+`/`/` with `-`/`_` (URL-safe), strip `=` padding.
 //!
-//! 本模块还原该流程，并在 **解码侧做容错**：
-//! - 容忍是否带 `=` 填充（PoB 去填充，pobb.in 偶尔带）；
-//! - 容忍 URL-safe 与标准两种字母表（先按 URL-safe 解，失败回退标准）；
-//! - 去除一切 ASCII 空白 / 换行（粘贴时常见污染）。
+//! This module replicates that flow, and is **tolerant on the decode side**:
+//! - tolerates `=` padding being present or absent (PoB strips it, pobb.in sometimes keeps it);
+//! - tolerates both the URL-safe and standard alphabets (tries URL-safe first, falls back to standard);
+//! - strips any ASCII whitespace / newlines (common pollution from copy-paste).
 //!
-//! 以及 **zip-bomb 防护**：限制压缩输入与解压产物的长度上限。
+//! Also includes **zip-bomb protection**: caps on both the compressed input length and the
+//! decompressed output length.
 
 use std::io::Read;
 
@@ -21,16 +22,17 @@ use std::io::Write;
 
 use crate::error::BuildCodeError;
 
-/// 解压产物长度上限（PoB Build XML 通常 < 1 MiB；留足余量同时防 zip-bomb）。
+/// Upper bound on decompressed output length (PoB Build XML is usually < 1 MiB; this
+/// leaves plenty of headroom while still guarding against zip-bombs).
 pub const MAX_DECOMPRESSED_BYTES: usize = 16 * 1024 * 1024;
 
-/// 压缩输入长度上限（编码侧；正常 Build XML 远小于此）。
+/// Upper bound on compressed input length (encode side; normal Build XML is far smaller).
 pub const MAX_INPUT_BYTES: usize = 16 * 1024 * 1024;
 
-/// 解码 PoB Build Code → Build XML 字符串。
+/// Decodes a PoB Build Code into a Build XML string.
 ///
-/// 容错：忽略空白、容忍填充缺失、URL-safe 与标准字母表均可。
-/// 防护：解压产物超过 [`MAX_DECOMPRESSED_BYTES`] 时报错（zip-bomb）。
+/// Tolerant of whitespace, missing padding, and both URL-safe and standard alphabets.
+/// Guards against zip-bombs by erroring if the decompressed output exceeds [`MAX_DECOMPRESSED_BYTES`].
 pub fn decode_pob_code(code: &str) -> Result<String, BuildCodeError> {
     let cleaned = strip_ascii_whitespace(code);
     if cleaned.is_empty() {
@@ -43,7 +45,7 @@ pub fn decode_pob_code(code: &str) -> Result<String, BuildCodeError> {
     String::from_utf8(xml_bytes).map_err(|e| BuildCodeError::Utf8(e.to_string()))
 }
 
-/// 编码 Build XML 字符串 → PoB Build Code（URL-safe Base64，无填充，与 PoB 一致）。
+/// Encodes a Build XML string into a PoB Build Code (URL-safe Base64, no padding, matches PoB).
 pub fn encode_pob_code(xml: &str) -> Result<String, BuildCodeError> {
     let bytes = xml.as_bytes();
     if bytes.len() > MAX_INPUT_BYTES {
@@ -57,14 +59,14 @@ pub fn encode_pob_code(xml: &str) -> Result<String, BuildCodeError> {
     Ok(URL_SAFE_NO_PAD.encode(compressed))
 }
 
-/// 去除所有 ASCII 空白字符（空格 / 制表 / 换行 / 回车）。
+/// Strips all ASCII whitespace characters (space / tab / newline / carriage return).
 fn strip_ascii_whitespace(input: &str) -> String {
     input.chars().filter(|c| !c.is_ascii_whitespace()).collect()
 }
 
-/// 容错 Base64 解码：依次尝试 URL-safe（无填充 / 有填充）与标准（无填充 / 有填充）。
+/// Tolerant Base64 decode: tries URL-safe (no-pad / padded) then standard (no-pad / padded), in order.
 fn decode_base64_tolerant(cleaned: &str) -> Result<Vec<u8>, BuildCodeError> {
-    // 优先 URL-safe（PoB 默认）；padding 容错：先 NO_PAD 再带 PAD。
+    // URL-safe first (PoB's default); padding tolerance tries NO_PAD before the padded variant.
     let attempts: [&base64::engine::GeneralPurpose; 4] =
         [&URL_SAFE_NO_PAD, &URL_SAFE, &STANDARD_NO_PAD, &STANDARD];
 
@@ -79,7 +81,7 @@ fn decode_base64_tolerant(cleaned: &str) -> Result<Vec<u8>, BuildCodeError> {
     Err(BuildCodeError::Base64(last_err))
 }
 
-/// zlib 压缩。
+/// zlib compression.
 fn deflate(bytes: &[u8]) -> Result<Vec<u8>, BuildCodeError> {
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
     encoder
@@ -90,11 +92,11 @@ fn deflate(bytes: &[u8]) -> Result<Vec<u8>, BuildCodeError> {
         .map_err(|e| BuildCodeError::Deflate(e.to_string()))
 }
 
-/// zlib 解压，带产物长度上限（zip-bomb 防护）。
+/// zlib decompression with an output length cap (zip-bomb protection).
 fn inflate_bounded(compressed: &[u8], limit: usize) -> Result<Vec<u8>, BuildCodeError> {
     let mut decoder = ZlibDecoder::new(compressed);
     let mut out = Vec::new();
-    // 多读 1 字节用于探测是否越界：take(limit + 1)。
+    // Read one extra byte to detect overflow: take(limit + 1).
     let mut limited = (&mut decoder).take((limit as u64) + 1);
     limited
         .read_to_end(&mut out)
@@ -115,7 +117,7 @@ mod tests {
     fn roundtrip_encode_decode() {
         let xml = "<PathOfBuilding2><Build level=\"1\"/></PathOfBuilding2>";
         let code = encode_pob_code(xml).expect("encode");
-        // URL-safe / 无填充：不应含 +、/、=。
+        // URL-safe / no padding: should not contain +, /, =.
         assert!(!code.contains('+'));
         assert!(!code.contains('/'));
         assert!(!code.contains('='));
@@ -141,7 +143,7 @@ mod tests {
 
     #[test]
     fn decode_tolerates_standard_alphabet_with_padding() {
-        // 用标准 base64 + 填充模拟来自非 PoB 来源的 code。
+        // Simulate a code from a non-PoB source using standard base64 + padding.
         let xml = "<PathOfBuilding2>x</PathOfBuilding2>";
         let compressed = deflate(xml.as_bytes()).unwrap();
         let std_code = STANDARD.encode(&compressed);
@@ -167,7 +169,7 @@ mod tests {
 
     #[test]
     fn non_zlib_payload_errors() {
-        // 合法 base64 但不是 zlib 流。
+        // Valid base64 but not a zlib stream.
         let code = URL_SAFE_NO_PAD.encode(b"hello world not zlib");
         assert!(matches!(
             decode_pob_code(&code),

@@ -1,39 +1,49 @@
-//! SkillStatMap 数据引擎：把 `overlay/skill_stat_map.json`
-//! （[`pobr_data::catalog::stat_map`]，vendor `Data/SkillStatMap.lua` 954 条全局 +
-//! per-statSet 覆盖的确定性抽取）翻译为 PoBR [`Modifier`] 注入项，替代
-//! `pobr-build::skill_stat_map` 的 751 行后缀启发式。
+//! SkillStatMap data engine: translates `overlay/skill_stat_map.json`
+//! ([`pobr_data::catalog::stat_map`], a deterministic extraction of vendor
+//! `Data/SkillStatMap.lua`'s 954 global entries plus per-statSet overrides)
+//! into PoBR [`Modifier`] injection items, replacing the 751-line suffix
+//! heuristic in `pobr-build::skill_stat_map`.
 //!
-//! 纯函数 + 零 I/O（注入风格）：catalog 由 pobr-gamedata 加载、pobr-build
-//! 注入，本层只做查表 + merge 公式 + 名字/tag 翻译。
+//! Pure functions + zero I/O (injection style): the catalog is loaded by
+//! pobr-gamedata and injected by pobr-build; this layer only does table
+//! lookup, the merge formula, and name/tag translation.
 //!
-//! ## merge 公式（vendor `Modules/CalcActiveSkill.lua:112` 逐字对齐）
+//! ## Merge formula (matches vendor `Modules/CalcActiveSkill.lua:112` line for line)
 //!
 //! ```text
-//! 注入值 = entry.value or stat值 × (entry.mult or 1) × scalar / (entry.div or 1) + (entry.base or 0)
+//! injected value = (entry.value or stat value) × (entry.mult or 1) × scalar / (entry.div or 1) + (entry.base or 0)
 //! ```
 //!
-//! group 元素（无 name 的嵌套 mod 列表）用 group 级参数替代 entry 级参数
-//! （CalcActiveSkill.lua:117）。`scalar`（`checkForScalarMultiplier`，:53-66，
-//! 依赖 mod_db 反查 `Multiplier:<var>`）固定 1.0，**含 scalar 需求的条目整条归
-//! [`MappedOutcome::Unsupported`]**（统计上报，不错算）。
+//! A group element (a nested mod list with no name) uses group-level
+//! parameters instead of entry-level ones (CalcActiveSkill.lua:117). `scalar`
+//! (`checkForScalarMultiplier`, :53-66, which needs a mod_db lookup of
+//! `Multiplier:<var>`) is fixed at 1.0; **any entry that requires a scalar is
+//! reported wholesale as [`MappedOutcome::Unsupported`]** (counted, never
+//! miscomputed).
 //!
-//! ## 支持边界（第一批，宁可跳过不可错算）
+//! ## Support boundary (first batch: skip rather than miscompute)
 //!
-//! - **tag**：无 tag / `Condition` / `Multiplier` / `PerStat`（映射到 PoBR 既有
-//!   [`ModTag`] 体系）；其余 tag 类型（GlobalEffect / DistanceRamp / SkillType /
-//!   actor 系…）条目整条 Unsupported——与 legacy「保守跳过」口径一致，保证双跑可比。
-//! - **ModName 翻译层**：PoB2 名 → PoBR 名的 Rust 常量表（框架语义，判据：
-//!   名字随机制不随版本变；架构 owner 裁决见）。初版从
-//!   `pobr-build::skill_stat_map` 既有映射反推，未知名字归
-//!   [`UnsupportedReason::UnknownModName`] 上报，由双跑 diff 驱动补全。
-//! - **skill_data**（vendor `skill(key, …)` 构造器）：伤害基值键
-//!   （`FireMin`/`PhysicalMax` 等）翻译为 `<Type>DamageMin/Max` BASE modifier
-//!   （PoBR 无 skillData 表，伤害基值经 modifier 管线消费，对齐 legacy 口径）；
-//!   `duration` 出 [`MappedItem::SkillData`]（消费方接入前调用方可忽略）；其余键
-//!   Unsupported 统计。
-//! - **flag 构造器**（vendor `flag(name)`，技能行为开关如 `projectile`）：
-//!   白名单翻译有 ModDb flag 消费方的名字，其余
-//!   Unsupported（见 [`is_consumable_flag`]）。
+//! - **tag**: no tag / `Condition` / `Multiplier` / `PerStat` (mapped onto
+//!   PoBR's existing [`ModTag`] system); other tag kinds (GlobalEffect /
+//!   DistanceRamp / SkillType / actor-related...) make the whole entry
+//!   Unsupported -- matching legacy's "skip conservatively" behaviour so the
+//!   two engines stay comparable.
+//! - **ModName translation layer**: a Rust constant table from PoB2 names to
+//!   PoBR names (framework-level; the rationale is that names track game
+//!   mechanics, not versions -- see the architecture owner's ruling). The
+//!   first pass was reverse-derived from the existing mapping in
+//!   `pobr-build::skill_stat_map`; unknown names are reported as
+//!   [`UnsupportedReason::UnknownModName`] and filled in as the dual-run diff
+//!   turns them up.
+//! - **skill_data** (vendor `skill(key, …)` constructor): base damage keys
+//!   (`FireMin`/`PhysicalMax` etc.) translate to `<Type>DamageMin/Max` BASE
+//!   modifiers (PoBR has no skillData table, so base damage flows through the
+//!   modifier pipeline instead, matching legacy behaviour); `duration`
+//!   produces [`MappedItem::SkillData`] (callers may ignore it until a
+//!   consumer is wired up); other keys are counted as Unsupported.
+//! - **flag constructor** (vendor `flag(name)`, a skill behaviour switch such
+//!   as `projectile`): only names with a ModDb flag consumer are translated;
+//!   the rest are Unsupported (see [`is_consumable_flag`]).
 
 use std::collections::BTreeMap;
 
@@ -43,36 +53,43 @@ use pobr_data::skill::SkillTypes;
 
 use crate::modifier::{ModTag, Modifier};
 
-/// scalar 固定值（vendor `checkForScalarMultiplier` 的 mod_db 反查暂不
-/// 接入；含 scalar 字段的条目整条 Unsupported，本常量仅为公式形态完整保留）。
+/// Fixed scalar value (the vendor `checkForScalarMultiplier` mod_db lookup
+/// isn't wired up yet; entries with a scalar field are Unsupported wholesale.
+/// This constant only exists to keep the formula's shape complete).
 const SCALAR_FIXED: f64 = 1.0;
 
-/// statmap 查表目录（global + per-statSet 覆盖的聚合视图）。
+/// statmap lookup catalog (a combined view of global entries and
+/// per-statSet overrides).
 ///
-/// 由 `overlay/skill_stat_map.json` 反序列化的 [`SkillStatMapDef`] 构造；
-/// 查找语义：per-set 命中优先，miss 落回 global（vendor `Data.lua:835-847`
-/// statMap metatable 的 `__index` 链等价）。
+/// Built from the [`SkillStatMapDef`] deserialized from
+/// `overlay/skill_stat_map.json`; lookup semantics: a per-set hit wins, a
+/// miss falls back to global (equivalent to the `__index` chain on the
+/// vendor `Data.lua:835-847` statMap metatable).
 #[derive(Debug, Clone)]
 pub struct StatMapCatalog {
     def: SkillStatMapDef,
 }
 
 impl StatMapCatalog {
-    /// 从反序列化的 overlay 文档构造。
+    /// Constructs from a deserialized overlay document.
     pub fn new(def: SkillStatMapDef) -> Self {
         Self { def }
     }
 
-    /// 查条目：`set_key` 给定时先查 `per_stat_set[effect_id][set_key]`，
-    /// miss 落回 `global`。
+    /// Looks up an entry: when `set_key` is given, checks
+    /// `per_stat_set[effect_id][set_key]` first, falling back to `global` on
+    /// a miss.
     ///
-    /// `set_key = None` = 调用方未做 statSet 选择 → 取**默认 set "1"** 的覆盖表：
-    /// PoB2 缺省 statSetIndex 恒为 1（vendor `SkillsTab.lua:354`
-    /// `gemInstance.statSet = { index = tonumber(child.attrib.statSetIndex) or 1 }`，
-    /// `CalcActiveSkill.lua:171` `statSet = …statSets[activeEffect.statSet.index]`），
-    /// 选中 set 的 statMap miss 时经 metatable 链落回全局表（`Data.lua` statMap
-    /// `__index`）。非 "1" 的 set 覆盖只有显式 `set_key` 才会命中（statSetIndex
-    /// 选择接线随 T5 多 statSet 模型）。
+    /// `set_key = None` means the caller hasn't made a statSet selection, so
+    /// this uses the override table for the **default set "1"**: PoB2's
+    /// statSetIndex always defaults to 1 (vendor `SkillsTab.lua:354`
+    /// `gemInstance.statSet = { index = tonumber(child.attrib.statSetIndex) or 1 }`,
+    /// `CalcActiveSkill.lua:171` `statSet = …statSets[activeEffect.statSet.index]`),
+    /// and a miss on the selected set's statMap falls back to the global
+    /// table through the metatable chain (the `Data.lua` statMap `__index`).
+    /// Overrides on sets other than "1" only get hit with an explicit
+    /// `set_key` (statSetIndex selection wiring is planned for the T5
+    /// multi-statSet model).
     fn lookup(&self, effect_id: &str, set_key: Option<&str>, stat: &str) -> Option<&StatMapEntry> {
         let key = set_key.unwrap_or("1");
         if let Some(entry) = self
@@ -87,18 +104,19 @@ impl StatMapCatalog {
         self.def.global.get(stat)
     }
 
-    /// global 段条目数（双跑报告用）。
+    /// Number of entries in the global section (used by dual-run reporting).
     pub fn global_len(&self) -> usize {
         self.def.global.len()
     }
 
-    /// global 段 stat id 迭代。
+    /// Iterates the stat ids in the global section.
     pub fn global_stats(&self) -> impl Iterator<Item = &str> {
         self.def.global.keys().map(String::as_str)
     }
 
-    /// 指定 (effect, set, stat) 是否存在 per-statSet 覆盖（双跑 L1 用：仅当存在
-    /// 覆盖时才需要按 effect 上下文单独出 diff 行，其余 stat 走 global 行去重）。
+    /// Whether a per-statSet override exists for (effect, set, stat). Used by
+    /// dual-run L1: only stats with an override need a separate diff line per
+    /// effect context; other stats dedupe on the global line.
     pub fn has_per_set_override(&self, effect_id: &str, set_key: &str, stat: &str) -> bool {
         self.def
             .per_stat_set
@@ -107,8 +125,7 @@ impl StatMapCatalog {
             .is_some_and(|map| map.contains_key(stat))
     }
 
-    /// per-statSet 段迭代：
-    /// `(effect_id, set_key, stat, entry)`。
+    /// Iterates the per-statSet section: `(effect_id, set_key, stat, entry)`.
     pub fn per_set_entries(&self) -> impl Iterator<Item = (&str, &str, &str, &StatMapEntry)> {
         self.def.per_stat_set.iter().flat_map(|(effect, sets)| {
             sets.iter().flat_map(move |(set_key, map)| {
@@ -119,7 +136,7 @@ impl StatMapCatalog {
         })
     }
 
-    /// global 段条目迭代（oracle 抽样选样用）。
+    /// Iterates entries in the global section (used for oracle sampling).
     pub fn global_entries(&self) -> impl Iterator<Item = (&str, &StatMapEntry)> {
         self.def.global.iter().map(|(k, v)| (k.as_str(), v))
     }
@@ -131,51 +148,65 @@ impl From<SkillStatMapDef> for StatMapCatalog {
     }
 }
 
-/// 单个翻译产物：注入 modifier 或 skill data 键值。
+/// A single translation output: either an injected modifier or a skill data
+/// key/value pair.
 #[derive(Debug, Clone, PartialEq)]
 pub enum MappedItem {
-    /// 一条可直接入 ModDb 的 PoBR modifier（名字已翻译、tag 已映射；Box
-    /// 平衡与 SkillData 变体的尺寸差）。
+    /// A PoBR modifier ready to go straight into ModDb (name translated, tag
+    /// mapped; boxed to offset the size difference with the SkillData
+    /// variant).
     Modifier(Box<Modifier>),
-    /// skill data 键值（vendor `skill(key, …)`；如 `duration`，秒）。
-    /// 消费方按需接入；无消费方时调用侧忽略即可（不参与计算，不会错算）。
+    /// A skill data key/value (vendor `skill(key, …)`; e.g. `duration`, in
+    /// seconds). Consumers wire this up as needed; callers with no consumer
+    /// can just ignore it (it doesn't participate in calculation, so
+    /// ignoring it can't cause a miscalculation).
     SkillData {
-        /// vendor skillData 键名（原样）。
+        /// The vendor skillData key name, verbatim.
         key: String,
-        /// merge 公式产出的值。
+        /// The value produced by the merge formula.
         value: f64,
     },
 }
 
-/// 条目不支持的原因分类（双跑 L1 报告的统计维度）。
+/// Classification of why an entry is unsupported (the aggregation dimension
+/// for dual-run L1 reporting).
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnsupportedReason {
-    /// 抽取失真条目（vendor 函数值/畸形构造，`_unextractable: true`）。
+    /// An entry with a distorted extraction (a vendor function value or
+    /// malformed construct, `_unextractable: true`).
     Unextractable,
-    /// 条目含 scalar 需求（scalar 固定 1.0，整条跳过避免错算）。
+    /// The entry needs a scalar (scalar is fixed at 1.0, so the whole entry
+    /// is skipped to avoid miscomputing).
     ScalarMultiplier,
-    /// PoB2 ModName 不在翻译表（含 flag 构造器的行为开关名）。
+    /// The PoB2 ModName isn't in the translation table (includes behaviour
+    /// switch names from flag constructors).
     UnknownModName(String),
-    /// mod 构造器缺 type（vendor 笔误条目，抽取忠实保留）。
+    /// The mod constructor is missing a type (a vendor typo entry, kept
+    /// faithfully as extracted).
     MissingModType,
-    /// 聚合类型不在第一批（如非 skill_data 的 `LIST`）。
+    /// An aggregation type outside the first batch (e.g. a `LIST` that isn't
+    /// skill_data).
     UnsupportedModType(String),
-    /// tag 类型不在第一批（GlobalEffect / DistanceRamp / actor 系…）。
+    /// A tag kind outside the first batch (GlobalEffect / DistanceRamp /
+    /// actor-related...).
     UnsupportedTag(String),
-    /// ModFlag 组合无法翻译到 PoBR ModName 语义。
+    /// A ModFlag combination that can't be translated to PoBR ModName
+    /// semantics.
     UnsupportedFlags(String),
-    /// KeywordFlag 语义无法保守丢弃（仅伤害基值族允许丢弃，对齐 legacy）。
+    /// A KeywordFlag whose semantics can't be conservatively dropped (only
+    /// the base-damage family is allowed to drop it, matching legacy).
     UnsupportedKeywordFlags(String),
-    /// skill_data 键不在第一批白名单。
+    /// A skill_data key outside the first-batch whitelist.
     UnsupportedSkillDataKey(String),
-    /// 条目带 `skillFlag`（由 PoB2 statSet flags 路径消费，非 merge 公式）。
+    /// The entry carries a `skillFlag` (consumed by the PoB2 statSet flags
+    /// path, not by the merge formula).
     SkillFlag(String),
-    /// 未知元素种类（抽取器约定外的 kind）。
+    /// An unknown element kind (outside the extractor's set of conventions).
     UnsupportedKind(String),
 }
 
 impl UnsupportedReason {
-    /// 稳定分类标签（双跑报告聚合键）。
+    /// A stable classification tag (the aggregation key for dual-run reports).
     pub fn category(&self) -> &'static str {
         match self {
             Self::Unextractable => "unextractable",
@@ -193,23 +224,29 @@ impl UnsupportedReason {
     }
 }
 
-/// `map_stat` 的产出（契约 C3）。
+/// The result of `map_stat` (contract C3).
 #[derive(Debug, Clone, PartialEq)]
 pub enum MappedOutcome {
-    /// 条目命中且全部元素可翻译——产出注入项列表。
+    /// The entry was found and every element could be translated -- yields
+    /// the list of injection items.
     Mapped(Vec<MappedItem>),
-    /// 条目命中但含第一批之外的语义，**整条**跳过（宁可跳过不可错算）。
+    /// The entry was found but has semantics outside the first batch, so the
+    /// **whole entry** is skipped (skip rather than miscompute).
     Unsupported(UnsupportedReason),
-    /// catalog 无该 stat 条目（global 与 per-set 均 miss）。
+    /// The catalog has no entry for this stat (miss on both global and
+    /// per-set).
     Unknown,
 }
 
-/// 把一条技能 stat 经 statmap 数据翻译为 PoBR 注入项。
+/// Translates one skill stat through the statmap data into PoBR injection
+/// items.
 ///
-/// - `effect_id` + `set_key`：per-statSet 覆盖定位（`set_key` = vendor `statSets`
-///   1-based 下标的十进制字符串）；`set_key = None` 或 miss 落回 global；
-/// - `stat_value`：stat 的运行时数值（分等级 stat + quality 叠加后）；
-/// - merge 公式与支持边界见模块文档。
+/// - `effect_id` + `set_key`: locate a per-statSet override (`set_key` is the
+///   decimal string of the vendor `statSets` 1-based index); `set_key = None`
+///   or a miss falls back to global;
+/// - `stat_value`: the stat's runtime value (after per-level stat + quality
+///   are applied);
+/// - see the module doc for the merge formula and support boundary.
 pub fn map_stat(
     catalog: &StatMapCatalog,
     effect_id: &str,
@@ -223,7 +260,8 @@ pub fn map_stat(
     map_entry(entry, stat_value)
 }
 
-/// 条目级翻译（查表后的纯 merge + 翻译；供 `map_stat` 与单测共用）。
+/// Entry-level translation (pure merge + translation after lookup; shared by
+/// `map_stat` and unit tests).
 fn map_entry(entry: &StatMapEntry, stat_value: f64) -> MappedOutcome {
     if entry.unextractable {
         return MappedOutcome::Unsupported(UnsupportedReason::Unextractable);
@@ -240,26 +278,32 @@ fn map_entry(entry: &StatMapEntry, stat_value: f64) -> MappedOutcome {
     let mut items = Vec::new();
     for element in &entry.mods {
         if let Err(reason) = collect_element(element, &entry_params, stat_value, &mut items) {
-            // 任一元素不支持 → 整条跳过（半条注入会破坏 PoB2 条目的成组语义）。
+            // Any unsupported element skips the whole entry -- a half-injected
+            // entry would break PoB2's grouped semantics.
             return MappedOutcome::Unsupported(reason);
         }
     }
     MappedOutcome::Mapped(items)
 }
 
-//  未选 statSet 的 global-only merge
+//  global-only merge for an unselected statSet
 
-/// vendor `isGlobalEffect`（`Modules/CalcActiveSkill.lua:68-80`）等价判定：
-/// modOrGroup 的**任一** mod 带 `type == "GlobalEffect"` tag 即视为 global。
+/// Equivalent to vendor `isGlobalEffect` (`Modules/CalcActiveSkill.lua:68-80`):
+/// a modOrGroup counts as global if **any** of its mods carries a
+/// `type == "GlobalEffect"` tag.
 ///
-/// vendor 形态：`local modList = modOrGroup.name and { modOrGroup } or modOrGroup`
-/// ——有 name 即单 mod（查自身 tags），无 name 即 group（逐个成员查 tags）。
-/// 抽取层把两种形态分别记为 `kind == "mod"/"flag"/"skill_data"`（tags 直挂）与
-/// `kind == "group"`（成员在 [`StatMapMod::mods`]）；vendor 无嵌套 group，此处
-/// 递归是忠实的保守泛化（任一层命中即 global）。
+/// Vendor shape: `local modList = modOrGroup.name and { modOrGroup } or modOrGroup`
+/// -- having a name means a single mod (check its own tags), no name means a
+/// group (check each member's tags). The extraction layer records the two
+/// shapes as `kind == "mod"/"flag"/"skill_data"` (tags attached directly) and
+/// `kind == "group"` (members live in [`StatMapMod::mods`]); vendor never
+/// nests groups, so this recursion is a faithful, conservative
+/// generalization (a hit at any level counts as global).
 ///
-/// 判定粒度 = **modOrGroup 整体**（vendor `:103` 对 map 的每个元素判一次）：group
-/// 任一成员带 tag 则整个 group 按 global 注入（含不带 tag 的成员），不做成员级拆分。
+/// Judged at the granularity of the **whole modOrGroup** (vendor `:103`
+/// judges each map element once): if any group member carries the tag, the
+/// entire group is injected as global (including members without the tag) --
+/// there's no member-level split.
 pub fn is_global_effect(element: &StatMapMod) -> bool {
     if element.kind == "group" {
         return element.mods.iter().any(is_global_effect);
@@ -270,15 +314,18 @@ pub fn is_global_effect(element: &StatMapMod) -> bool {
         .any(|tag| matches!(tag.get("type"), Some(StatMapValue::Text(t)) if t == "GlobalEffect"))
 }
 
-/// 条目级 global 记账探针：该 (effect, set, stat) 的 statmap 条目是否含**任一**
-/// global modOrGroup。
+/// Entry-level global bookkeeping probe: whether the statmap entry for
+/// (effect, set, stat) contains **any** global modOrGroup.
 ///
-/// 对应 vendor 选中 set merge 时的 `selectedGlobalStats[stat] = true` 记账
-/// （`CalcActiveSkill.lua:104-106`：`if isGlobal and not onlyGlobals`）——调用方
-/// 对**选中 set** 的每条 stat 调用本函数收集集合，未选 set 的 global-only merge
-/// 对集合内 stat 整条跳过（`:107` `not (onlyGlobals and selectedGlobalStats[stat])`；
-/// `selectedGlobalStats` 在 onlyGlobals 阶段不再变更，故 stat 级跳过与 vendor
-/// 元素级条件等价）。条目 miss / `_unextractable`（mods 为空）按无 global 处理。
+/// Corresponds to the `selectedGlobalStats[stat] = true` bookkeeping vendor
+/// does when merging the selected set (`CalcActiveSkill.lua:104-106`:
+/// `if isGlobal and not onlyGlobals`) -- callers call this function for every
+/// stat of the **selected set** to build the set, and the global-only merge
+/// for the unselected set skips stats in that set wholesale (`:107`
+/// `not (onlyGlobals and selectedGlobalStats[stat])`; `selectedGlobalStats`
+/// doesn't change again during the onlyGlobals phase, so this stat-level skip
+/// is equivalent to vendor's element-level condition). A missing entry or an
+/// `_unextractable` one (empty mods) is treated as having no global mods.
 pub fn stat_has_global_mods(
     catalog: &StatMapCatalog,
     effect_id: &str,
@@ -290,20 +337,28 @@ pub fn stat_has_global_mods(
         .is_some_and(|entry| entry.mods.iter().any(is_global_effect))
 }
 
-/// 未选 statSet 的 **global-only** 映射（vendor `mergeStatSet(set, onlyGlobals=true)`，
-/// `CalcActiveSkill.lua:92-141` 的 `:124-129` 调用 + `:103-107` 注入条件）：
-/// 只保留 [`is_global_effect`] 命中的 modOrGroup 参与 merge 公式与翻译，
-/// 非 global 元素**静默跳过**（vendor 同口径——未选 set 的局部 mod 本就不该注入，
-/// 不属于 Unsupported）。过滤后无 global 元素 → `Mapped(空)`。
+/// **Global-only** mapping for an unselected statSet (vendor
+/// `mergeStatSet(set, onlyGlobals=true)`, `CalcActiveSkill.lua:92-141`'s call
+/// at `:124-129` plus the injection condition at `:103-107`): only the
+/// modOrGroup elements that hit [`is_global_effect`] go through the merge
+/// formula and translation; non-global elements are **silently skipped**
+/// (same as vendor -- a local mod on an unselected set was never meant to be
+/// injected, so this isn't an Unsupported case). If filtering leaves no
+/// global elements, the result is `Mapped(empty)`.
 ///
-/// `set_key` 应传**未选 set** 的 vendor 序号（per-set 覆盖按该 set 自身的 statMap
-/// 链查，miss 落回 global——vendor `set.statMap` metatable `__index` 同语义）。
-/// 选中 set 已按 global 记账的 stat 由调用方跳过（见 [`stat_has_global_mods`]）。
+/// `set_key` should be the vendor index of the **unselected** set (a per-set
+/// override is looked up through that set's own statMap chain, falling back
+/// to global on a miss -- same semantics as the vendor `set.statMap`
+/// metatable `__index`). Stats already accounted for as global on the
+/// selected set are skipped by the caller (see [`stat_has_global_mods`]).
 ///
-/// **第一批边界**：`GlobalEffect` tag 本身仍在 tag 翻译边界之外（buff 域随
-/// buff_pass 接入，`m1-statmap-switch-log.md` §5）——当前 global 元素会因
-/// [`UnsupportedReason::UnsupportedTag`] 整条上报、注入为零（宁可跳过不可错算）；
-/// 接通 GlobalEffect tag 后本路径**自动**开始产出注入项，无需再改本函数。
+/// **First-batch boundary**: the `GlobalEffect` tag itself is still outside
+/// the tag translation boundary (the buff domain arrives with buff_pass, see
+/// `m1-statmap-switch-log.md` §5) -- so right now every global element gets
+/// reported wholesale via [`UnsupportedReason::UnsupportedTag`] and injects
+/// nothing (skip rather than miscompute). Once the GlobalEffect tag is wired
+/// up, this path will **automatically** start producing injection items with
+/// no further changes to this function.
 pub fn map_stat_global_only(
     catalog: &StatMapCatalog,
     effect_id: &str,
@@ -315,12 +370,15 @@ pub fn map_stat_global_only(
         return MappedOutcome::Unknown;
     };
     if entry.unextractable {
-        // 抽取失真：内容未知（mods 为空），按 Unsupported 上报可见（注入同样为零）。
+        // Distorted extraction: content unknown (mods is empty), reported as
+        // Unsupported for visibility (injects nothing either way).
         return MappedOutcome::Unsupported(UnsupportedReason::Unextractable);
     }
-    // 注：entry 带 `skill_flag` 时其 flag 不是 modOrGroup（vendor statSet flags 路径
-    // 消费），global-only 视角下无 global 元素 → 自然落入 `Mapped(空)`，与 vendor
-    // 未选 set 不收 flags 的行为一致（flags 仅在选中 set 生效）。
+    // Note: when an entry carries `skill_flag`, that flag isn't a modOrGroup
+    // (it's consumed by the vendor statSet flags path), so from the
+    // global-only viewpoint there's no global element and it naturally falls
+    // into `Mapped(empty)` -- matching vendor, where flags on an unselected
+    // set don't apply (flags only take effect on the selected set).
     let entry_params = MergeParams {
         div: entry.div,
         mult: entry.mult,
@@ -330,20 +388,23 @@ pub fn map_stat_global_only(
     let mut items = Vec::new();
     for element in entry.mods.iter().filter(|e| is_global_effect(e)) {
         if let Err(reason) = collect_element(element, &entry_params, stat_value, &mut items) {
-            // 与 map_entry 同口径：任一保留元素不可翻译 → 整条跳过（成组语义）。
+            // Same rule as map_entry: any retained element that can't be
+            // translated skips the whole entry (grouped semantics).
             return MappedOutcome::Unsupported(reason);
         }
     }
     MappedOutcome::Mapped(items)
 }
 
-//  curse 域（GlobalEffect effectType=Curse）敌侧映射
+//  curse domain (GlobalEffect effectType=Curse) enemy-side mapping
 
-/// 元素是否为 **curse buff 载荷**（vendor `GlobalEffect` tag 且
-/// `effectType == "Curse"`——`CalcActiveSkill.lua:976-1041` 把命中元素从
-/// skillModList 搬入 `buff.modList`（buff.type = "Curse"），`CalcPerform.lua:2286-2316`
-/// 经 CurseEffect 乘区 `ScaleAddList` 后由 :2969-2984 写 enemyDB）。
-/// group 任一成员命中即整组（与 [`is_global_effect`] 同口径的保守泛化）。
+/// Whether an element is a **curse buff payload** (vendor `GlobalEffect` tag
+/// with `effectType == "Curse"` -- `CalcActiveSkill.lua:976-1041` moves
+/// matching elements out of skillModList into `buff.modList` (buff.type =
+/// "Curse"), and `CalcPerform.lua:2286-2316` writes them to enemyDB at
+/// :2969-2984 after the CurseEffect multiplier zone `ScaleAddList`).
+/// A hit on any group member counts for the whole group (the same
+/// conservative generalization as [`is_global_effect`]).
 fn is_curse_effect(element: &StatMapMod) -> bool {
     if element.kind == "group" {
         return element.mods.iter().any(is_curse_effect);
@@ -354,27 +415,38 @@ fn is_curse_effect(element: &StatMapMod) -> bool {
     })
 }
 
-/// 把一条 curse 技能 stat 经 statmap 数据翻译为**敌侧** PoBR 注入项
-/// （BuffSpec.mods 取数通道，buff_pass curse 路径消费）。
+/// Translates one curse skill stat through the statmap data into
+/// **enemy-side** PoBR injection items (the BuffSpec.mods read channel,
+/// consumed by the buff_pass curse path).
 ///
-/// 与 [`map_stat`] 的差异：
-/// - 只保留 [`is_curse_effect`] 命中的元素（非 curse 元素 = 技能局部 mod，走主
-///   技能注入通道，此处**静默跳过**——vendor 同口径：未带 GlobalEffect 的 mod 留在
-///   skillModList）。过滤后无 curse 元素 → `Mapped(空)`（该 stat 非 curse 载荷）。
-/// - ModName 走敌侧翻译表 [`translate_curse_mod_name`]（enemy db 聚合名 =
-///   vendor enemyDB 名直通；`ElementalResist` 展开三元素——pobr 敌侧抗性聚合
-///   只读 `<Type>Resist`，vendor `enemyDB:Sum(.. type.."Resist", "ElementalResist")`
-///   两名同收，展开等值）。未知名（pobr 暂无敌侧消费方，如
-///   `TemporalChainsActionSpeed` / `FreezeBuildup`）整条归
-///   [`UnsupportedReason::UnknownModName`] 上报（宁可跳过不可错算，可见性报表
-///   由调用方落 Compare 记录）。
-/// - `GlobalEffect` tag 本身剥除（路由元数据，不参与匹配）；带约定外键
-///   （`effectCond` / `modCond` / `effectStackVar`…携带额外门控语义）→ 整条
-///   Unsupported。其余 tag 经 [`translate_tag`] 直译——curse mod 落 enemy db，
-///   `Condition` 的 var 即敌方自身状态（如 Enfeeble 的 `Unique`，与编排层
-///   boss 档位置位的 cfg 条件 `Unique` 同名同义，**不加** Enemy 前缀）。
-/// - flags / keyword_flags 第一批要求为空（curse 载荷数据全部无 flag；非空 =
-///   作用域语义未建模 → Unsupported）。
+/// Differences from [`map_stat`]:
+/// - Only elements hitting [`is_curse_effect`] are kept (non-curse elements
+///   are technique-local mods that go through the main skill injection
+///   channel, so they're **silently skipped** here -- matching vendor: a mod
+///   without GlobalEffect stays in skillModList). If filtering leaves no
+///   curse elements, the result is `Mapped(empty)` (the stat isn't a curse
+///   payload).
+/// - ModName goes through the enemy-side translation table
+///   [`translate_curse_mod_name`] (enemy db aggregate names pass through
+///   vendor's enemyDB names directly; `ElementalResist` expands to the three
+///   elements -- pobr's enemy-side resistance aggregation only reads
+///   `<Type>Resist`, and vendor's `enemyDB:Sum(.. type.."Resist", "ElementalResist")`
+///   collects both names, so the expansion is equivalent). Unknown names
+///   (pobr has no enemy-side consumer yet, e.g. `TemporalChainsActionSpeed` /
+///   `FreezeBuildup`) make the whole entry
+///   [`UnsupportedReason::UnknownModName`] (skip rather than miscompute; the
+///   caller records the visibility report in Compare).
+/// - The `GlobalEffect` tag itself is stripped (routing metadata, not part
+///   of the match); a tag with keys outside the convention (`effectCond` /
+///   `modCond` / `effectStackVar`... carry extra gating semantics) makes the
+///   whole entry Unsupported. Other tags are translated directly via
+///   [`translate_tag`] -- a curse mod lands in the enemy db, so a
+///   `Condition`'s var is the enemy's own state (e.g. Enfeeble's `Unique`,
+///   which is the same name and meaning as the `Unique` cfg condition set by
+///   the orchestration layer for boss tiers -- **no** Enemy prefix is added).
+/// - flags / keyword_flags must be empty in the first batch (all curse
+///   payload data has no flags; a non-empty one means scope semantics that
+///   aren't modeled yet, so it's Unsupported).
 pub fn map_curse_stat(
     catalog: &StatMapCatalog,
     effect_id: &str,
@@ -397,28 +469,37 @@ pub fn map_curse_stat(
     let mut items = Vec::new();
     for element in entry.mods.iter().filter(|e| is_curse_effect(e)) {
         if let Err(reason) = collect_curse_element(element, &entry_params, stat_value, &mut items) {
-            // 与 map_entry 同口径：任一 curse 元素不可翻译 → 整条跳过（成组语义）。
+            // Same rule as map_entry: any curse element that can't be
+            // translated skips the whole entry (grouped semantics).
             return MappedOutcome::Unsupported(reason);
         }
     }
     MappedOutcome::Mapped(items)
 }
 
-/// 该 stat 是否携带 **curse buff 载荷**（任一元素 [`is_curse_effect`] 命中）。
+/// Whether this stat carries a **curse buff payload** (any element hits
+/// [`is_curse_effect`]).
 ///
-/// 供编排层镜像 vendor 的 curse 注册前置条件：vendor 只把带 `GlobalEffect` tag 的
-/// mod 搬入 `activeSkill.buffList`（`CalcActiveSkill.lua:976-1041`），curse 表项
-/// 仅从 buffList 构造（`CalcPerform.lua:2286-2316`）——statMap 数据上**没有任何**
-/// `GlobalEffect effectType=Curse` 条目的 curse 技能（如 Repulsion
-/// `CurseOfRepulsionPlayer`，per-set statMap 全空）buffList 恒空，不注册 curse、
-/// 不占 curse 槽、不计入 `Multiplier:CurseOnEnemy`（:2969 `#curseSlots`）。
-/// 反例 Freezing Mark：vendor 数据特意给了 `Dummy INC`（GlobalEffect Curse）占位
-/// 载荷使其入槽（`act_int.lua:8645`）。
+/// Lets the orchestration layer mirror vendor's curse registration
+/// precondition: vendor only moves mods carrying the `GlobalEffect` tag into
+/// `activeSkill.buffList` (`CalcActiveSkill.lua:976-1041`), and curse table
+/// entries are built only from buffList (`CalcPerform.lua:2286-2316`) -- so a
+/// curse skill whose statMap data has **no** `GlobalEffect effectType=Curse`
+/// entry at all (e.g. Repulsion `CurseOfRepulsionPlayer`, whose per-set
+/// statMap is entirely empty) has an always-empty buffList: it never
+/// registers as a curse, never occupies a curse slot, and never counts toward
+/// `Multiplier:CurseOnEnemy` (:2969 `#curseSlots`). Counterexample: Freezing
+/// Mark, where vendor data deliberately supplies a `Dummy INC`
+/// (GlobalEffect Curse) placeholder payload so it takes a slot
+/// (`act_int.lua:8645`).
 ///
-/// 与 [`map_curse_stat`] 的差异：只判**存在性**，不要求可翻译——允收名单外的
-/// 载荷（Temporal Chains `TemporalChainsActionSpeed` / `Dummy`）仍算 curse 载荷
-/// （vendor 同样入槽计数）。`unextractable` 条目 mods 为空 → 按无载荷处理
-/// （抽取器对 curse statMap 的 `mod()` 构造均可抽取，当前数据无此形态）。
+/// Differs from [`map_curse_stat`]: this only checks **existence**, not
+/// translatability -- payloads outside the allow-list (Temporal Chains
+/// `TemporalChainsActionSpeed` / `Dummy`) still count as a curse payload
+/// (vendor counts them toward the slot too). An `unextractable` entry has
+/// empty mods, so it's treated as having no payload (the extractor can
+/// extract every `mod()` construct in curse statMap data; the current data
+/// has no case that fails this).
 pub fn has_curse_payload(
     catalog: &StatMapCatalog,
     effect_id: &str,
@@ -430,17 +511,20 @@ pub fn has_curse_payload(
         .is_some_and(|entry| entry.mods.iter().any(is_curse_effect))
 }
 
-/// （存量 #7-1）curse 技能的**技能局部效果乘区**取数：stat 若映射为
-/// **无 GlobalEffect tag** 的 `CurseEffect` INC/MORE（留在 skillModList 的
-/// 技能局部 mod——vendor curse 乘区 CalcPerform.lua:2423/:2427 读
-/// `skillModList:Sum/More(skillCfg, "CurseEffect")`），返回其
-/// `(inc 增量, more 因子)`。典型来源 = curse 宝石自身品质 `curse_effect_+%`
-/// （EW 0.5/q）、组内 Heightened Curse support（constantStats +25）、
-/// Atziri's Allure lineage（`support_atziri_curse_effect_+%_final` MORE -20）。
+/// (Backlog #7-1) Reads the **skill-local effect multiplier zone** for curse
+/// skills: if a stat maps to a `CurseEffect` INC/MORE **without a
+/// GlobalEffect tag** (a skill-local mod that stays in skillModList -- vendor
+/// reads the curse multiplier zone at CalcPerform.lua:2423/:2427 via
+/// `skillModList:Sum/More(skillCfg, "CurseEffect")`), returns its
+/// `(inc increment, more factor)`. Typical sources: the curse gem's own
+/// quality `curse_effect_+%` (EW 0.5/q), the Heightened Curse support in the
+/// same group (constantStats +25), and the Atziri's Allure lineage
+/// (`support_atziri_curse_effect_+%_final` MORE -20).
 ///
-/// 保守口径：仅 kind=="mod"、无 tag、无 flag 的裸 `CurseEffect` 计入
-/// （Mark 门控变体带 SkillType tag，不计——mark 域另行建模时再放开）；
-/// 其余 stat / 形态返回 `(0.0, 1.0)`（零贡献，不误算）。
+/// Conservative rule: only bare `CurseEffect` with `kind=="mod"`, no tag, and
+/// no flag counts (Mark-gated variants carry a SkillType tag and don't count
+/// -- unblocked once the mark domain gets its own modeling). Every other stat
+/// or shape returns `(0.0, 1.0)` (zero contribution, never a miscalculation).
 pub fn curse_local_effect(
     catalog: &StatMapCatalog,
     effect_id: &str,
@@ -481,14 +565,16 @@ pub fn curse_local_effect(
     (inc, more)
 }
 
-/// 元素是否为**曝光施加能力**载荷（宿主探测用、非取数）：vendor
-/// `flag("InflictExposure", …)`（SkillStatMap.lua:1692-1715 各 on_shock /
-/// on_cold_crit / on_ignite / on_hit 形）或 `<El>ExposureChance BASE`
-/// （:1689-1690 / :1704-1707）。对应 CalcPerform.lua:3196-3200
-/// `getSkillExposureEffect` 的 Config 曝光源宿主判据 `HasMod("BASE", cfg,
-/// el.."ExposureChance") or HasMod("FLAG", "InflictExposure")`。PoBR 近似
-/// 忽略 flag 上的门控 tag（on-Ignited 等条件——vendor `HasMod` 带 cfg 同样
-/// 宽松存在性判定，条件不参与）。
+/// Whether an element is an **exposure-infliction capability** payload (used
+/// for host detection, not for reading a value): vendor
+/// `flag("InflictExposure", …)` (SkillStatMap.lua:1692-1715, in its
+/// on_shock / on_cold_crit / on_ignite / on_hit forms) or
+/// `<El>ExposureChance BASE` (:1689-1690 / :1704-1707). Corresponds to the
+/// Config exposure-source host test in CalcPerform.lua:3196-3200
+/// `getSkillExposureEffect`: `HasMod("BASE", cfg, el.."ExposureChance") or
+/// HasMod("FLAG", "InflictExposure")`. PoBR approximates by ignoring gating
+/// tags on the flag (on-Ignited and similar conditions -- vendor's `HasMod`
+/// with a cfg is likewise a loose existence check that ignores conditions).
 fn is_exposure_inflict(element: &StatMapMod) -> bool {
     if element.kind == "group" {
         return element.mods.iter().any(is_exposure_inflict);
@@ -499,11 +585,14 @@ fn is_exposure_inflict(element: &StatMapMod) -> bool {
         .is_some_and(|n| n == "InflictExposure" || n.ends_with("ExposureChance"))
 }
 
-/// 一条 stat 是否含曝光施加能力载荷（[`is_exposure_inflict`]；与
-/// [`has_curse_payload`] 同口径的**存在性**判定，不要求允收可翻译）。供编排层
-/// 曝光宿主探测：宿主曝光能力来自 support（Fire Exposure
-/// `inflict_exposure_for_x_ms_on_ignite`）时，组内曝光效果 support
-/// （Potent Exposure）的 `<El>ExposureEffect` 才全局注入。
+/// Whether a stat carries an exposure-infliction payload
+/// ([`is_exposure_inflict`]; an **existence** check with the same rule as
+/// [`has_curse_payload`] -- doesn't require it to be on the allow-list).
+/// Lets the orchestration layer detect an exposure host: only when the
+/// host's exposure capability comes from a support (Fire Exposure
+/// `inflict_exposure_for_x_ms_on_ignite`) does an exposure-effect support in
+/// the same group (Potent Exposure) get its `<El>ExposureEffect` injected
+/// globally.
 pub fn has_exposure_inflict_payload(
     catalog: &StatMapCatalog,
     effect_id: &str,
@@ -515,26 +604,35 @@ pub fn has_exposure_inflict_payload(
         .is_some_and(|entry| entry.mods.iter().any(is_exposure_inflict))
 }
 
-/// 敌侧 ModName 翻译表（curse 域，PoB2 enemyDB 名 → PoBR enemy db 聚合名）。
+/// Enemy-side ModName translation table (curse domain, PoB2 enemyDB name →
+/// PoBR enemy db aggregate name).
 ///
-/// 允收名单 = 当前 pobr 敌侧消费方逐一对照（宁可跳过不可错算）：
-/// - `<Type>Resist` BASE：`offence::enemy_damage_multiplier` 抗性减伤段
-///   （Despair `ChaosResist`）；`ElementalResist`（Elemental Weakness）展开
-///   火/冰/电三条（消费侧只读 `<Type>Resist`，与 vendor 双名同收等值）。
-/// - `Damage` INC/MORE：敌方出伤乘区（Enfeeble），`ehp::assemble_enemy_damage`
-///   （CalcDefence.lua:2133 enemyDamageMult）消费。
-/// - `SelfCritMultiplier` BASE：敌方受暴击加成（Sniper's Mark），
-///   `crit.rs` 敌侧段消费（CalcOffence.lua:3814-3825）。
-/// - `BuffExpireFaster` MORE：敌方身上效果到期速率（Temporal Chains
-///   `base_temporal_chains_other_buff_time_passed_+%_to_apply` → MORE 负值 =
-///   expire slower），`ailment::debuff_duration_mult` 消费
-///   （CalcOffence.lua:1833-1835 `debuffDurationMult = 1 / max(
-///   BuffExpirationSlowCap, calcLib.mod(enemyDB, cfg, "BuffExpireFaster"))`，
-///   :5040 折入异常持续）。
+/// The allow-list is checked one by one against pobr's current enemy-side
+/// consumers (skip rather than miscompute):
+/// - `<Type>Resist` BASE: the resistance-mitigation section of
+///   `offence::enemy_damage_multiplier` (Despair's `ChaosResist`);
+///   `ElementalResist` (Elemental Weakness) expands to the three fire/cold/
+///   lightning lines (the consumer only reads `<Type>Resist`, which is
+///   equivalent to vendor collecting both names).
+/// - `Damage` INC/MORE: the enemy's outgoing-damage multiplier zone
+///   (Enfeeble), consumed by `ehp::assemble_enemy_damage`
+///   (CalcDefence.lua:2133 enemyDamageMult).
+/// - `SelfCritMultiplier` BASE: bonus to crits taken by the enemy
+///   (Sniper's Mark), consumed by the enemy-side section of `crit.rs`
+///   (CalcOffence.lua:3814-3825).
+/// - `BuffExpireFaster` MORE: how fast effects on the enemy expire
+///   (Temporal Chains's
+///   `base_temporal_chains_other_buff_time_passed_+%_to_apply` → a negative
+///   MORE means "expire slower"), consumed by
+///   `ailment::debuff_duration_mult` (CalcOffence.lua:1833-1835
+///   `debuffDurationMult = 1 / max(
+///   BuffExpirationSlowCap, calcLib.mod(enemyDB, cfg, "BuffExpireFaster"))`,
+///   folded into ailment duration at :5040).
 ///
-/// 其余（`TemporalChainsActionSpeed` / `FreezeBuildup` /
-/// `ElectrocuteBuildup` / `IgnoreArmour` / `Dummy`…）pobr 暂无敌侧消费方 →
-/// `UnknownModName` 上报，消费方落地后补名单。
+/// Everything else (`TemporalChainsActionSpeed` / `FreezeBuildup` /
+/// `ElectrocuteBuildup` / `IgnoreArmour` / `Dummy`...) has no enemy-side
+/// consumer in pobr yet, so it's reported as `UnknownModName` and added to
+/// the list once a consumer lands.
 fn translate_curse_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
     match name {
         "FireResist" => Ok(vec!["FireResist"]),
@@ -549,8 +647,9 @@ fn translate_curse_mod_name(name: &str) -> Result<Vec<&'static str>, Unsupported
     }
 }
 
-/// curse 元素翻译（group 递归 + mod 构造器；flag/skill_data 带 curse tag 在
-/// 数据中不存在，出现即 Unsupported——非 mod 载荷的 curse 语义未建模）。
+/// Translates a curse element (group recursion + mod constructor; flag/
+/// skill_data with a curse tag doesn't occur in the data, so any occurrence
+/// is Unsupported -- curse semantics for non-mod payloads aren't modeled).
 fn collect_curse_element(
     element: &StatMapMod,
     params: &MergeParams,
@@ -588,7 +687,8 @@ fn collect_curse_element(
     }
 }
 
-/// curse `mod()` 构造器翻译：敌侧名单名 + GlobalEffect 剥除 + 其余 tag 直译。
+/// Translates a curse `mod()` constructor: enemy-side allow-list name +
+/// GlobalEffect stripped + other tags translated directly.
 fn collect_curse_mod(
     element: &StatMapMod,
     merged_value: f64,
@@ -608,8 +708,9 @@ fn collect_curse_mod(
         "OVERRIDE" => ModType::Override,
         other => return Err(UnsupportedReason::UnsupportedModType(other.to_string())),
     };
-    // 第一批：curse 载荷无 flag / keyword_flag（敌侧 cfg 不派生作用域位，附上
-    // 即静默欠算）；非空整条上报。
+    // First batch: curse payloads have no flag / keyword_flag (enemy-side cfg
+    // doesn't derive scope bits, so attaching one would silently undercount);
+    // a non-empty one reports the whole entry.
     if !element.flags.is_empty() {
         return Err(UnsupportedReason::UnsupportedFlags(element.flags.join("|")));
     }
@@ -618,7 +719,9 @@ fn collect_curse_mod(
             element.keyword_flags.join("|"),
         ));
     }
-    // tag：GlobalEffect 剥除（约定外键 = 额外门控语义，整条上报）；其余直译。
+    // tag: GlobalEffect is stripped (a key outside the convention means extra
+    // gating semantics, reported wholesale); everything else is translated
+    // directly.
     let mut tags = Vec::new();
     for tag in &element.tags {
         let is_global =
@@ -651,13 +754,15 @@ fn collect_curse_mod(
     Ok(())
 }
 
-//  player buff 域（GlobalEffect effectType=Buff/Aura）玩家侧映射
+//  player buff domain (GlobalEffect effectType=Buff/Aura) player-side mapping
 
-/// 元素是否为**玩家侧 buff 载荷**（vendor `GlobalEffect` tag 且
-/// `effectType ∈ {Buff, Aura}`——`CalcActiveSkill.lua:976-1041` 把命中元素搬入
-/// `buff.modList`，`CalcPerform.lua:1949-1962`（Buff）/ :2086-2120（Aura）经
-/// BuffEffect/AuraEffect 乘区 `ScaleAddList` 后写玩家 modDB）。
-/// group 任一成员命中即整组（与 [`is_curse_effect`] 同口径的保守泛化）。
+/// Whether an element is a **player-side buff payload** (vendor
+/// `GlobalEffect` tag with `effectType ∈ {Buff, Aura}` --
+/// `CalcActiveSkill.lua:976-1041` moves matching elements into
+/// `buff.modList`, and `CalcPerform.lua:1949-1962` (Buff) / :2086-2120 (Aura)
+/// write them to the player modDB after the BuffEffect/AuraEffect multiplier
+/// zone `ScaleAddList`). A hit on any group member counts for the whole group
+/// (the same conservative generalization as [`is_curse_effect`]).
 fn is_player_buff_effect(element: &StatMapMod) -> bool {
     if element.kind == "group" {
         return element.mods.iter().any(is_player_buff_effect);
@@ -668,30 +773,43 @@ fn is_player_buff_effect(element: &StatMapMod) -> bool {
     })
 }
 
-/// 把一条 buff 授予技能（或其 support）的 stat 经 statmap 数据翻译为**玩家侧**
-/// PoBR 注入项（BuffSpec.mods 取数通道，buff_pass Buff/Aura 路径消费）。
+/// Translates one stat of a buff-granting skill (or its support) through the
+/// statmap data into **player-side** PoBR injection items (the BuffSpec.mods
+/// read channel, consumed by the buff_pass Buff/Aura path).
 ///
-/// 与 [`map_curse_stat`] 同构（curse 域先例）：
-/// - 只保留 [`is_player_buff_effect`] 命中的元素（非 buff 元素 = 技能局部 mod，
-///   走主技能注入通道，此处**静默跳过**）。过滤后无 buff 元素 → `Mapped(空)`。
-/// - ModName 走玩家侧允收名单 [`translate_player_buff_mod_name`]——第一批仅
-///   `Accuracy`（Precision I/II support `sup_dex.lua:4181-4250` / War Banner
-///   `base_skill_buff_banner_accuracy_+%_to_apply`，进 offence 精准聚合
-///   CalcOffence.lua:2555-2572）。与既有 `map_aura_buff_stat` 静态映射的
-///   防御名单（ES/抗性族）**不重叠**，避免 aura 路径双注入。
-/// - `GlobalEffect` tag 剥除；除 curse 域约定键外额外允许 `effectName`
-///   （buff 显示名，vendor 仅用于 AffectedBy 条件命名，无门控语义）。
-/// - flags / keyword_flags 第一批要求为空（允收名单内载荷数据全部无 flag）。
+/// Structured like [`map_curse_stat`] (the curse domain's precedent):
+/// - Only elements hitting [`is_player_buff_effect`] are kept (non-buff
+///   elements are skill-local mods that go through the main skill injection
+///   channel, so they're **silently skipped** here). If filtering leaves no
+///   buff elements, the result is `Mapped(empty)`.
+/// - ModName goes through the player-side allow-list
+///   [`translate_player_buff_mod_name`] -- the first batch is just
+///   `Accuracy` (Precision I/II support `sup_dex.lua:4181-4250` / War
+///   Banner's `base_skill_buff_banner_accuracy_+%_to_apply`, feeding the
+///   offence accuracy aggregate at CalcOffence.lua:2555-2572). This
+///   **doesn't overlap** with the defensive allow-list (ES/resistance
+///   family) already covered by the static `map_aura_buff_stat` mapping, to
+///   avoid double-injecting through the aura path.
+/// - `GlobalEffect` tag is stripped; besides the curse domain's convention
+///   keys, `effectName` is also allowed (the buff's display name, used by
+///   vendor only to name AffectedBy conditions, no gating semantics).
+/// - flags / keyword_flags must be empty in the first batch (every payload
+///   on the allow-list has no flags).
 ///
-/// **逐元素独立处置**（与 map_curse_stat 的「整条跳过」口径不同）：
-/// vendor merge 循环对条目的每个 modOrGroup **独立**翻译入 modList
-/// （CalcActiveSkill.lua:96-117 逐元素 `mergeStat`，元素间无成组耦合语义），
-/// 故单一元素不可翻译只跳过该元素、不连坐兄弟元素——典型场景 = Pinnacle of
-/// Power（other.lua:12503）`elemental_power_elemental_damage_+%_final_per_
-/// power_charge` 条目：首元素 `Damage MORE` 带 scalar Multiplier
-/// （ScalarMultiplier 边界外）不应丢弃同条目六枚 `<El>Can<Ailment>` flag 载荷。
-/// 可见性：全部命中元素失败（零注入）时仍按首个失败原因 Unsupported 上报；
-/// 部分成功 → `Mapped(成功子集)`（失败元素维持零注入，宁可跳过不可错算）。
+/// **Each element is handled independently** (unlike map_curse_stat's
+/// "skip the whole entry" rule): vendor's merge loop translates each
+/// modOrGroup of an entry into modList **independently**
+/// (CalcActiveSkill.lua:96-117 does `mergeStat` per element, with no grouped
+/// coupling between elements), so a single untranslatable element only skips
+/// itself, not its siblings -- a concrete case is Pinnacle of Power's
+/// (other.lua:12503) `elemental_power_elemental_damage_+%_final_per_
+/// power_charge` entry: its first element, `Damage MORE` with a scalar
+/// Multiplier (outside the ScalarMultiplier boundary), shouldn't drag down
+/// the same entry's six `<El>Can<Ailment>` flag payloads.
+/// Visibility: if every matching element fails (zero injections), the first
+/// failure reason is still reported as Unsupported; a partial success yields
+/// `Mapped(the successful subset)` (failed elements just inject nothing --
+/// skip rather than miscompute).
 pub fn map_player_buff_stat(
     catalog: &StatMapCatalog,
     effect_id: &str,
@@ -714,8 +832,10 @@ pub fn map_player_buff_stat(
     let mut items = Vec::new();
     let mut first_failure: Option<UnsupportedReason> = None;
     for element in entry.mods.iter().filter(|e| is_player_buff_effect(e)) {
-        // 逐元素独立处置（见函数文档）：失败元素零注入、不连坐兄弟元素。
-        // 元素级 scratch vec 防半元素注入（group 内部分成员已 push 后失败）。
+        // Each element is handled independently (see the function doc): a
+        // failed element injects nothing and doesn't drag down its siblings.
+        // Per-element scratch vec guards against a half-injected group (some
+        // members already pushed before a later member fails).
         let mut element_items = Vec::new();
         match collect_player_buff_element(element, &entry_params, stat_value, &mut element_items) {
             Ok(()) => items.append(&mut element_items),
@@ -727,113 +847,140 @@ pub fn map_player_buff_stat(
     if items.is_empty()
         && let Some(reason) = first_failure
     {
-        // 全部命中元素失败 → 维持 Unsupported 上报。
+        // Every matching element failed -> report Unsupported.
         return MappedOutcome::Unsupported(reason);
     }
     MappedOutcome::Mapped(items)
 }
 
-/// 玩家侧 ModName 允收名单（buff 域）。逐族对照消费方后准入：
-/// - `Accuracy` INC：`offence.rs` 精准段（CalcOffence.lua:2555-2572
-///   `skillModList:Sum("INC", cfg, "Accuracy")`）——第一批。
-/// - `ManaRegen` INC（Clarity I/II，vendor sup_int.txt:305-315）：
-///   消费方 = `calc::survivability::calc_regen`（vendor CalcDefence.lua:1642
-///   `Sum("INC", nil, resource.."Regen", resource.."RecoveryRate")`）。
-/// - `LifeRegenPercent` BASE（Vitality I/II，vendor sup_str.txt:1791-1802
-///   per-minute div 60）：消费方同上（CalcDefence.lua:1658 `pool ×
-///   Sum("BASE", resource.."RegenPercent")/100`）。
+/// Player-side ModName allow-list (buff domain). Checked family by family
+/// against their consumers before admission:
+/// - `Accuracy` INC: the accuracy section in `offence.rs`
+///   (CalcOffence.lua:2555-2572 `skillModList:Sum("INC", cfg, "Accuracy")`) --
+///   first batch.
+/// - `ManaRegen` INC (Clarity I/II, vendor sup_int.txt:305-315): consumed by
+///   `calc::survivability::calc_regen` (vendor CalcDefence.lua:1642
+///   `Sum("INC", nil, resource.."Regen", resource.."RecoveryRate")`).
+/// - `LifeRegenPercent` BASE (Vitality I/II, vendor sup_str.txt:1791-1802,
+///   per-minute div 60): same consumer as above (CalcDefence.lua:1658
+///   `pool × Sum("BASE", resource.."RegenPercent")/100`).
 ///
-/// **不准入**（已盘点 18-build 语料、登记）：
-/// - `base_skill_buff_*_to_apply` 防御族（Purity/Impurity/Discipline 的
-///   FireResistance/ChaosResistance/EnergyShield…）——已由
-///   `map_aura_buff_stat` 静态名单注入（aura 通道），此处准入即双注入。
-/// - Mysticism `Damage INC + ModFlag.Spell + Condition:FullEnergyShield`
-///   （sup_int.txt:1250-1251）——伤害向量段归伤害线，且 flags 非空在
-///   本域约定内整条上报。
-/// - 自护体异常时长族（Coolheaded/Warmblooded/StrongHearted
-///   `*_duration_on_self_+%_final`）、flask 域（Herbalism/Alchemist's Boon）、
-///   rage/incision 非 mod 载荷（kind=flag/scalar）——无消费方，维持
-///   `UnknownModName`/`UnsupportedKind` 上报（宁可跳过不可错算）。
+/// **Not admitted** (already surveyed against the 18-build corpus and
+/// recorded):
+/// - The `base_skill_buff_*_to_apply` defensive family (Purity/Impurity/
+///   Discipline's FireResistance/ChaosResistance/EnergyShield...) -- already
+///   injected via `map_aura_buff_stat`'s static allow-list (the aura
+///   channel), so admitting them here would double-inject.
+/// - Mysticism's `Damage INC + ModFlag.Spell + Condition:FullEnergyShield`
+///   (sup_int.txt:1250-1251) -- belongs to the damage-vector line, and a
+///   non-empty flags set is reported wholesale under this domain's
+///   convention anyway.
+/// - The self-buff ailment-duration family (Coolheaded/Warmblooded/
+///   StrongHearted's `*_duration_on_self_+%_final`), the flask domain
+///   (Herbalism/Alchemist's Boon), and non-mod rage/incision payloads
+///   (kind=flag/scalar) -- no consumer yet, so they stay reported as
+///   `UnknownModName`/`UnsupportedKind` (skip rather than miscompute).
 fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
     match name {
         "Accuracy" => Ok(vec!["Accuracy"]),
         "ManaRegen" => Ok(vec!["ManaRegen"]),
         "LifeRegen" => Ok(vec!["LifeRegen"]),
         "LifeRegenPercent" => Ok(vec!["LifeRegenPercent"]),
-        // 防御 buff 族（Gemling 升华 Virtuous Barrier 的 per-Mote INC：
-        // `gem_barrier_green_grants_*` → Armour/Evasion/EnergyShield INC ×Mote、
-        // `gem_barrier_red_grants_maximum_life_+%` → Life INC ×Mote）。消费方 =
-        // `calc::defence`（Armour/Evasion/EnergyShield 聚合）+ life 池。Multiplier
-        // tag（StrengthMoteSkillCount/DexterityMoteSkillCount）在编排层 provision。
+        // Defensive buff family (Gemling ascendancy's Virtuous Barrier
+        // per-Mote INC: `gem_barrier_green_grants_*` → Armour/Evasion/
+        // EnergyShield INC ×Mote, `gem_barrier_red_grants_maximum_life_+%` →
+        // Life INC ×Mote). Consumer = `calc::defence` (Armour/Evasion/
+        // EnergyShield aggregation) + the life pool. The Multiplier tag
+        // (StrengthMoteSkillCount/DexterityMoteSkillCount) is provisioned by
+        // the orchestration layer.
         "Armour" => Ok(vec!["Armour"]),
         "Evasion" => Ok(vec!["Evasion"]),
         "EnergyShield" => Ok(vec!["EnergyShield"]),
-        // PoBR 生命池聚合名是 `MaximumLife`（parser name_map 把「maximum Life」归一到此，
-        // scaled_pool 也查此名）——vendor 名 `Life` 必须归一到 `MaximumLife`，否则 barrier
-        // 的 per-Mote Life INC 落进死桶 `Life`、生命池读不到（Armour/Evasion/EnergyShield
-        // 因规范名与 vendor 同名而无此问题）。gemling Virtuous Barrier 24% Life INC 根因。
+        // PoBR's life-pool aggregate name is `MaximumLife` (the parser's
+        // name_map normalizes "maximum Life" to this, and scaled_pool looks
+        // up the same name) -- the vendor name `Life` must be normalized to
+        // `MaximumLife`, otherwise barrier's per-Mote Life INC lands in a
+        // dead bucket named `Life` and the life pool never reads it
+        // (Armour/Evasion/EnergyShield don't have this problem because their
+        // canonical names already match vendor's). This is the root cause of
+        // gemling Virtuous Barrier's 24% Life INC gap.
         "Life" => Ok(vec!["MaximumLife"]),
-        // 伤害向量族（Sigil of Power `circle_of_power_spell_damage_+%
-        // _final_per_stage` → Damage MORE Spell；Elemental Conflux
+        // Damage-vector family (Sigil of Power's
+        // `circle_of_power_spell_damage_+%_final_per_stage` → Damage MORE
+        // Spell; Elemental Conflux's
         // `skill_elemental_conflux_active_element_damage_+%_final` →
-        // <El>Damage MORE）：消费方 = damage 分桶聚合（`calc::damage` 的
-        // `Damage`/`<El>Damage` INC/MORE 查询，vendor CalcOffence 同名）。
+        // <El>Damage MORE). Consumer = the damage-bucket aggregation
+        // (`calc::damage`'s `Damage`/`<El>Damage` INC/MORE queries, same
+        // names as vendor CalcOffence).
         "Damage" => Ok(vec!["Damage"]),
         "FireDamage" => Ok(vec!["FireDamage"]),
         "ColdDamage" => Ok(vec!["ColdDamage"]),
         "LightningDamage" => Ok(vec!["LightningDamage"]),
-        // Refraction I/II support（`sup_str.lua:5984/6023` Refractive Plating buff，
-        // `support_tempered_valour_deflection_rating_%_of_evasion_rating` → BASE 20）：
-        // 消费方 = `calc::defence_panels::calc_deflection`（CalcDefence.lua:1516
-        // `Evasion × ΣBASE EvasionGainAsDeflection / 100`）。
+        // Refraction I/II support (`sup_str.lua:5984/6023` Refractive Plating
+        // buff, `support_tempered_valour_deflection_rating_%_of_evasion_rating`
+        // → BASE 20). Consumer = `calc::defence_panels::calc_deflection`
+        // (CalcDefence.lua:1516 `Evasion × ΣBASE EvasionGainAsDeflection / 100`).
         "EvasionGainAsDeflection" => Ok(vec!["EvasionGainAsDeflection"]),
-        // 同 buff 的 `support_tempered_valour_%_armour_to_apply_to_elemental_damage`
-        // → ArmourAppliesTo<El>DamageTaken BASE 30（Refraction II）。消费方 =
-        // `calc::taken::armour_applies_pct`（vendor CalcDefence.lua:2361-2368
-        // `percentOfArmourApplies` → `effectiveAppliedArmour`，进 per-type
-        // DamageReduction / MaximumHit / EHP）。tag 形态与 deflection 载荷同
-        // （GlobalEffect + MultiplierThreshold RefractionMinimumValour 静态折 0）。
+        // The same buff's
+        // `support_tempered_valour_%_armour_to_apply_to_elemental_damage` →
+        // ArmourAppliesTo<El>DamageTaken BASE 30 (Refraction II). Consumer =
+        // `calc::taken::armour_applies_pct` (vendor CalcDefence.lua:2361-2368
+        // `percentOfArmourApplies` → `effectiveAppliedArmour`, feeding
+        // per-type DamageReduction / MaximumHit / EHP). Tag shape matches the
+        // deflection payload (GlobalEffect + MultiplierThreshold
+        // RefractionMinimumValour statically resolves to 0).
         "ArmourAppliesToFireDamageTaken" => Ok(vec!["ArmourAppliesToFireDamageTaken"]),
         "ArmourAppliesToColdDamageTaken" => Ok(vec!["ArmourAppliesToColdDamageTaken"]),
         "ArmourAppliesToLightningDamageTaken" => Ok(vec!["ArmourAppliesToLightningDamageTaken"]),
-        // Sigil of Power `circle_of_power_max_stages` → 玩家 `Multiplier:
-        // SigilOfPowerMaxStages` BASE（vendor 消费点 = GetMultiplier 动态上限
-        // ModStore.lua:369；PoBR 编排层把 buff 载荷中 `Multiplier:` BASE 桥进
-        // cfg.multipliers，见 calc_orchestrator buff specs 注入点）。
+        // Sigil of Power's `circle_of_power_max_stages` → player
+        // `Multiplier:SigilOfPowerMaxStages` BASE (vendor's consumption point
+        // is the dynamic cap in GetMultiplier, ModStore.lua:369; PoBR's
+        // orchestration layer bridges `Multiplier:` BASE from buff payloads
+        // into cfg.multipliers -- see the buff-specs injection point in
+        // calc_orchestrator).
         "Multiplier:SigilOfPowerMaxStages" => Ok(vec!["Multiplier:SigilOfPowerMaxStages"]),
-        // （0.5.4b #5）Blazing Critical support（sup_int.lua:959）：0.22.0 给
+        // (0.5.4b #5) Blazing Critical support (sup_int.lua:959): 0.22.0 added
+        // a GlobalEffect/Buff tag to
         // `support_blazing_crits_gain_%_fire_damage_with_attacks_on_critical_hit`
-        // 补上 GlobalEffect/Buff tag——15% `DamageGainAsFire` BASE（ModFlag.Attack
-        // + Condition:CritRecently）从「只挂在被支援技能上的死词条」变成全局玩家
-        // buff（"imbue all of your Attacks"）。消费方 = `calc::damage` gain-as
-        // 矩阵（buildGainTable，`DamageGainAs<To>` BASE 查询）；点燃火源随之
-        // 平方级放大（chance ∝ fire/threshold，magnitude ∝ fire）。
+        // -- the 15% `DamageGainAsFire` BASE (ModFlag.Attack +
+        // Condition:CritRecently) went from "a dead mod that only sits on the
+        // supported skill" to a global player buff ("imbue all of your
+        // Attacks"). Consumer = `calc::damage`'s gain-as matrix
+        // (buildGainTable, `DamageGainAs<To>` BASE queries); ignite's fire
+        // source scales up quadratically as a result (chance ∝ fire/threshold,
+        // magnitude ∝ fire).
         "DamageGainAsFire" => Ok(vec!["DamageGainAsFire"]),
-        // （存量 #7-1）Archmage（act_int.lua:229-231）：`archmage_all_damage_%_to_
-        // gain_as_lightning_to_grant_to_non_channelling_spells_per_100_max_mana`
-        // → `DamageGainAsLightning` BASE 4（GlobalEffect/Buff + SkillType
-        // Channel neg + SkillType Spell + PerStat Mana div 100）。消费方与
-        // DamageGainAsFire 同 = `calc::damage` gain-as 矩阵；Mana 分母由编排层
-        // `inject_per_x_multipliers` 预灌（cfg.multipliers["Mana"] = 全管线池值）。
-        // monk-invoker-frost-bomb TotalDPS 0.66x 根因（缺 80% 闪电 gain-as）。
+        // (Backlog #7-1) Archmage (act_int.lua:229-231):
+        // `archmage_all_damage_%_to_gain_as_lightning_to_grant_to_non_
+        // channelling_spells_per_100_max_mana` → `DamageGainAsLightning` BASE
+        // 4 (GlobalEffect/Buff + SkillType Channel negated + SkillType Spell
+        // + PerStat Mana div 100). Same consumer as DamageGainAsFire =
+        // `calc::damage`'s gain-as matrix; the Mana denominator is
+        // pre-loaded by the orchestration layer's `inject_per_x_multipliers`
+        // (cfg.multipliers["Mana"] = the full-pipeline pool value). Root
+        // cause of monk-invoker-frost-bomb's 0.66x TotalDPS (missing 80%
+        // lightning gain-as).
         "DamageGainAsLightning" => Ok(vec!["DamageGainAsLightning"]),
-        // （#10-2）Barrage buff（BarragePlayer `empower_barrage_*`，act_dex.lua:
-        // 216-224）：`BarrageRepeats` BASE / `BarrageRepeatDamage` MORE。消费方 =
-        // `calc::scaled_damage::dps_end_factors` 的 Barrage repeats DPS 乘区
-        // （vendor CalcOffence.lua:962-976，Barrageable + SequentialProjectiles 门控）。
+        // (#10-2) Barrage buff (BarragePlayer `empower_barrage_*`,
+        // act_dex.lua:216-224): `BarrageRepeats` BASE / `BarrageRepeatDamage`
+        // MORE. Consumer = the Barrage-repeats DPS multiplier zone in
+        // `calc::scaled_damage::dps_end_factors` (vendor CalcOffence.lua:962-976,
+        // gated by Barrageable + SequentialProjectiles).
         "BarrageRepeats" => Ok(vec!["BarrageRepeats"]),
         "BarrageRepeatDamage" => Ok(vec!["BarrageRepeatDamage"]),
-        // （#12 companion allies 层）Loyalty support（SupportLoyaltyPlayer）的
-        // `companion_takes_%_damage_before_you_from_support` → BASE 10（GlobalEffect
-        // /Buff/unscalable，SkillStatMap.lua:2559-2561）。消费方 = perform 的
-        // `inject_companion_life` 门控 + `pool_setup::build_pool_state` companion
-        // 先扣层（CalcDefence.lua:2961-2965 / :3656-3663）。
+        // (#12 companion allies layer) Loyalty support's (SupportLoyaltyPlayer)
+        // `companion_takes_%_damage_before_you_from_support` → BASE 10
+        // (GlobalEffect/Buff/unscalable, SkillStatMap.lua:2559-2561). Consumer
+        // = perform's `inject_companion_life` gate + `pool_setup::build_pool_state`'s
+        // companion-first-absorbs-damage layer (CalcDefence.lua:2961-2965 /
+        // :3656-3663).
         "TakenFromCompanionBeforeYou" => Ok(vec!["TakenFromCompanionBeforeYou"]),
         other => Err(UnsupportedReason::UnknownModName(other.to_string())),
     }
 }
 
-/// player buff 元素翻译（group 递归 + mod 构造器；与 curse 域同构）。
+/// Translates a player buff element (group recursion + mod constructor; same
+/// structure as the curse domain).
 fn collect_player_buff_element(
     element: &StatMapMod,
     params: &MergeParams,
@@ -872,25 +1019,30 @@ fn collect_player_buff_element(
     }
 }
 
-/// player buff `flag()` 构造器翻译：buff 域 flag 允收 = 跨类型施加
-/// `<Type>Can<Ailment>` 族（[`is_cross_type_ailment_flag`]）。
+/// Translates a player buff `flag()` constructor: the buff domain's flag
+/// allow-list is the cross-type infliction `<Type>Can<Ailment>` family
+/// ([`is_cross_type_ailment_flag`]).
 ///
-/// 消费方：`calc::ailment::{cross_type_source_hit_at_roll, stored_source_at_roll}`
-/// 的 `{type_prefix}Can{ailment}` 旗标门控（vendor CalcOffence.lua:4791-4825
-/// `canDoAilment` + :5453-5456 `type.."Can"..ailment`）。典型来源 = Pinnacle of
-/// Power（武器 Adonia's Ego 授予，other.lua:12503）六枚 `<El>Can<Ailment>`
-/// FLAG（全带 GlobalEffect/Buff tag，vendor 经 buff 循环写全局）。
+/// Consumer: the `{type_prefix}Can{ailment}` flag gate in
+/// `calc::ailment::{cross_type_source_hit_at_roll, stored_source_at_roll}`
+/// (vendor CalcOffence.lua:4791-4825 `canDoAilment` + :5453-5456
+/// `type.."Can"..ailment`). Typical source = Pinnacle of Power (granted by
+/// the Adonia's Ego weapon, other.lua:12503)'s six `<El>Can<Ailment>` FLAGs
+/// (all carrying the GlobalEffect/Buff tag; vendor writes them globally
+/// through the buff loop).
 ///
-/// 名单外 flag 名维持未知名上报（与主通道 [`is_consumable_flag`] 同口径：
-/// 错注会污染 ModDb flag 查询）；tag 处理与 [`collect_player_buff_mod`] 同款
-/// （GlobalEffect 剥除 + 约定键校验 + 其余直译）。
+/// Flag names outside the allow-list are still reported as unknown (same
+/// rule as the main channel's [`is_consumable_flag`]: a wrong injection would
+/// pollute ModDb flag queries); tag handling matches
+/// [`collect_player_buff_mod`] (GlobalEffect stripped + convention-key check
+/// + everything else translated directly).
 fn collect_player_buff_flag(
     element: &StatMapMod,
     items: &mut Vec<MappedItem>,
 ) -> Result<(), UnsupportedReason> {
     let name = element.name.as_deref().unwrap_or("?");
-    // `SequentialProjectiles`（Barrage buff，act_dex.lua:219）：消费方 =
-    // `dps_end_factors` 的 Barrage repeats 门控（vendor CalcOffence.lua:962）。
+    // `SequentialProjectiles` (Barrage buff, act_dex.lua:219): consumer = the
+    // Barrage-repeats gate in `dps_end_factors` (vendor CalcOffence.lua:962).
     if !is_cross_type_ailment_flag(name) && name != "SequentialProjectiles" {
         return Err(UnsupportedReason::UnknownModName(format!("flag:{name}")));
     }
@@ -924,10 +1076,12 @@ fn collect_player_buff_flag(
     Ok(())
 }
 
-/// `<Type>Can<Ailment>` 跨类型施加旗标族判定：type ∈ 五伤害类型前缀
-/// （`calc::ailment::type_prefix` 同表），ailment ∈ ModDb 消费方识别的七异常名
-/// （`calc::ailment::ailment_mod_name` 同表）。消费点拼名格式 =
-/// `format!("{prefix}Can{ailment}")`，本判定与之逐字对齐。
+/// Recognizes the `<Type>Can<Ailment>` cross-type infliction flag family:
+/// type ∈ the five damage-type prefixes (the same table as
+/// `calc::ailment::type_prefix`), ailment ∈ the seven ailment names the ModDb
+/// consumer recognizes (the same table as `calc::ailment::ailment_mod_name`).
+/// The consumer builds the name as `format!("{prefix}Can{ailment}")`, and
+/// this check matches that literally.
 fn is_cross_type_ailment_flag(name: &str) -> bool {
     let Some(rest) = ["Physical", "Fire", "Cold", "Lightning", "Chaos"]
         .iter()
@@ -944,8 +1098,9 @@ fn is_cross_type_ailment_flag(name: &str) -> bool {
     )
 }
 
-/// player buff `mod()` 构造器翻译：玩家侧名单名 + GlobalEffect 剥除
-/// （额外允许 `effectName` 键）+ 其余 tag 直译。
+/// Translates a player buff `mod()` constructor: the name must be on the
+/// player-side allow-list, `GlobalEffect` is stripped (`effectName` is allowed
+/// through as well), and everything else is translated directly.
 fn collect_player_buff_mod(
     element: &StatMapMod,
     merged_value: f64,
@@ -965,19 +1120,24 @@ fn collect_player_buff_mod(
         "OVERRIDE" => ModType::Override,
         other => return Err(UnsupportedReason::UnsupportedModType(other.to_string())),
     };
-    // flags 走 ModFlag 子集直译（放开：Sigil of Power 的 Damage MORE 带
-    // `Spell` flag——vendor flags=ModFlag.Spell，匹配语义两边一致；子集外
-    // token 仍整条上报）。`Hit` ModFlag 路由到 keyword HIT（见 translate_mod_flags）。
+    // flags go through the ModFlag subset direct translation (allowed
+    // through: Sigil of Power's Damage MORE carries a `Spell` flag -- vendor
+    // has flags=ModFlag.Spell, so the matching semantics agree on both
+    // sides; tokens outside the subset are still reported wholesale). The
+    // `Hit` ModFlag routes to the HIT keyword (see translate_mod_flags).
     let (flags, kw_from_flags) = translate_mod_flags(&element.flags)?;
     if !element.keyword_flags.is_empty() {
         return Err(UnsupportedReason::UnsupportedKeywordFlags(
             element.keyword_flags.join("|"),
         ));
     }
-    // tag：GlobalEffect 剥除（额外门控键整条上报；`effectName` = buff 显示名，
-    // 无门控语义、允许；`unscalable` = buff effect 乘区豁免标记——PoBR
-    // buff_pass 缩放豁免维度未建模，乘区为 1 时无差异，允许通过并登记）；
-    // 其余直译。
+    // tag: GlobalEffect is stripped (an extra gating key reports the whole
+    // entry; `effectName` = the buff's display name, no gating semantics, so
+    // it's allowed; `unscalable` = a marker that the buff effect multiplier
+    // zone is exempt -- PoBR's buff_pass doesn't model the scaling-exemption
+    // dimension, but there's no difference when the multiplier zone is 1, so
+    // it's allowed through and logged); everything else is translated
+    // directly.
     let mut tags = Vec::new();
     for tag in &element.tags {
         let is_global =
@@ -1014,25 +1174,34 @@ fn collect_player_buff_mod(
     Ok(())
 }
 
-// #12：minion 域（MinionModifier LIST 载荷 → 召唤物内层 mod）
+// #12: minion domain (MinionModifier LIST payload -> inner minion mod)
 
-/// 把一条 support/skill stat 经 statmap 翻译为**召唤物侧**内层 modifier 列表
-/// （`MinionModifierEntry.inner` 载荷；消费方 = 编排层 spawn_minions →
-/// `build_minion_context` 通道 1）。
+/// Translates one support/skill stat through statmap into a **minion-side**
+/// list of inner modifiers (the `MinionModifierEntry.inner` payload;
+/// consumer = the orchestration layer's spawn_minions ->
+/// `build_minion_context` channel 1).
 ///
-/// vendor 语义：statmap 的 `mod("MinionModifier","LIST",{ mod = mod(<inner>) })`
-/// 随 support 并入被支援技能 skillModList（CalcActiveSkill.lua merge 循环），
-/// `addMinionModifiers`（CalcPerform.lua:1668-1686）再把内层 mod 注入**该技能的**
-/// 召唤物 modDB——作用域是组内被支援技能的 minion，不是全局。典型 = Loyalty
-/// support `support_trusty_companion_minion_life_+%_final` → Life MORE −30
-/// （wolf-pack 伴侣生命 3231 × 0.7 = 2262 的 MORE 因子，oracle 钉值）。
+/// Vendor semantics: statmap's
+/// `mod("MinionModifier","LIST",{ mod = mod(<inner>) })` merges into the
+/// supported skill's skillModList along with the support (the
+/// CalcActiveSkill.lua merge loop), and `addMinionModifiers`
+/// (CalcPerform.lua:1668-1686) then injects the inner mod into **that
+/// skill's** minion modDB -- the scope is the minions of the supported skill
+/// in that group, not global. Typical case: the Loyalty support's
+/// `support_trusty_companion_minion_life_+%_final` -> Life MORE -30 (the
+/// wolf-pack companion's life 3231 × 0.7 = 2262 MORE factor, pinned by the
+/// oracle).
 ///
-/// 第一批允收内层 = `Life`（BASE/INC/MORE；vendor 名 `Life` 归一到 PoBR 生命池
-/// 聚合名 `MaximumLife`，与 buff 域 [`translate_player_buff_mod_name`] 同口径）。
-/// 其余内层（伤害/速度族）暂不准入——minion DPS 不在 parity 面板，宁可跳过不可
-/// 错算。保守门控：外层带 flags/keyword_flags/tags/scalar、内层含
-/// kind/mod_type/name 之外的键的条目整条跳过（返回空，不上报——窄通道，
-/// 未准入形态无消费方）。
+/// The first batch's allowed inner mod is `Life` (BASE/INC/MORE; the vendor
+/// name `Life` is normalized to PoBR's life-pool aggregate name
+/// `MaximumLife`, the same rule as the buff domain's
+/// [`translate_player_buff_mod_name`]). Other inner mods (damage/speed
+/// families) aren't admitted yet -- minion DPS isn't on the parity panel, so
+/// skip rather than miscompute. Conservative gate: an entry whose outer
+/// layer carries flags/keyword_flags/tags/scalar, or whose inner layer has
+/// keys outside kind/mod_type/name, is skipped wholesale (returns empty, not
+/// reported -- this is a narrow channel and unadmitted shapes have no
+/// consumer).
 pub fn map_minion_life_stat(
     catalog: &StatMapCatalog,
     effect_id: &str,
@@ -1070,8 +1239,9 @@ pub fn map_minion_life_stat(
         let Some(StatMapValue::Table(inner)) = wrapper.get("mod") else {
             continue;
         };
-        // 内层只接受 `{ kind:"mod", mod_type, name:"Life" }` 的裸形态
-        // （带 tags/flags 的内层 = 额外门控语义，跳过）。
+        // The inner layer only accepts the bare shape
+        // `{ kind:"mod", mod_type, name:"Life" }` (an inner layer with
+        // tags/flags carries extra gating semantics, so it's skipped).
         if wrapper.len() != 1
             || inner
                 .keys()
@@ -1100,13 +1270,16 @@ pub fn map_minion_life_stat(
     out
 }
 
-//  debuff 域（GlobalEffect effectType=Debuff）敌侧映射
+//  debuff domain (GlobalEffect effectType=Debuff) enemy-side mapping
 
-/// 元素是否为**敌侧 debuff 载荷**（vendor `GlobalEffect` tag 且
-/// `effectType == "Debuff"`——`CalcActiveSkill.lua:976-1041` 把命中元素搬入
-/// `buff.modList`（buff.type = "Debuff"），`CalcPerform.lua:2219-2285` 经
-/// DebuffEffect 乘区 `ScaleAddList` 后 mergeBuff 进 `debuffs` 表写 enemyDB）。
-/// group 任一成员命中即整组（与 [`is_curse_effect`] 同口径的保守泛化）。
+/// Whether an element is an **enemy-side debuff payload** (vendor
+/// `GlobalEffect` tag with `effectType == "Debuff"` --
+/// `CalcActiveSkill.lua:976-1041` moves matching elements into
+/// `buff.modList` (buff.type = "Debuff"), and `CalcPerform.lua:2219-2285`
+/// writes them to enemyDB via mergeBuff into the `debuffs` table after the
+/// DebuffEffect multiplier zone `ScaleAddList`). A hit on any group member
+/// counts for the whole group (the same conservative generalization as
+/// [`is_curse_effect`]).
 fn is_debuff_effect(element: &StatMapMod) -> bool {
     if element.kind == "group" {
         return element.mods.iter().any(is_debuff_effect);
@@ -1117,21 +1290,27 @@ fn is_debuff_effect(element: &StatMapMod) -> bool {
     })
 }
 
-/// 把一条 debuff 技能 stat 经 statmap 数据翻译为**敌侧** PoBR 注入项
-/// （BuffSpec.mods 取数通道，buff_pass Debuff 路径消费）。
+/// Translates one debuff skill stat through the statmap data into
+/// **enemy-side** PoBR injection items (the BuffSpec.mods read channel,
+/// consumed by the buff_pass Debuff path).
 ///
-/// 与 [`map_curse_stat`] 同构（curse 域先例）：
-/// - 只保留 [`is_debuff_effect`] 命中的元素（非 debuff 元素 = 技能局部 mod，
-///   走主技能注入通道，此处**静默跳过**）。过滤后无 debuff 元素 → `Mapped(空)`。
-/// - ModName 走敌侧允收名单 [`translate_debuff_mod_name`]——第一批 = 元素曝光族
-///   （Frost Bomb `active_skill_all_elemental_exposure_magnitude` →
-///   `<El>Exposure BASE`，vendor SkillStatMap.lua:1721-1725；消费方 =
-///   `calc::reduce_enemy_exposure` 曝光归约，CalcPerform.lua:3214-3247
-///   "Apply exposures" 把 enemyDB `<El>Exposure` 最强一份折成
-///   `<El>Resist BASE -magnitude`）。未知名整条 `UnknownModName` 上报
-///   （宁可跳过不可错算）。
-/// - `GlobalEffect` tag 剥除（curse 域同款约定键校验）；其余 tag 直译。
-/// - flags / keyword_flags 第一批要求为空。
+/// Structured like [`map_curse_stat`] (the curse domain's precedent):
+/// - Only elements hitting [`is_debuff_effect`] are kept (non-debuff
+///   elements are skill-local mods that go through the main skill injection
+///   channel, so they're **silently skipped** here). If filtering leaves no
+///   debuff elements, the result is `Mapped(empty)`.
+/// - ModName goes through the enemy-side allow-list
+///   [`translate_debuff_mod_name`] -- the first batch is the elemental
+///   exposure family (Frost Bomb's
+///   `active_skill_all_elemental_exposure_magnitude` → `<El>Exposure BASE`,
+///   vendor SkillStatMap.lua:1721-1725; consumer =
+///   `calc::reduce_enemy_exposure`'s exposure reduction, CalcPerform.lua:3214-3247
+///   "Apply exposures", which folds the strongest of enemyDB's `<El>Exposure`
+///   into `<El>Resist BASE -magnitude`). Unknown names report the whole
+///   entry as `UnknownModName` (skip rather than miscompute).
+/// - `GlobalEffect` tag is stripped (same convention-key check as the curse
+///   domain); everything else is translated directly.
+/// - flags / keyword_flags must be empty in the first batch.
 pub fn map_debuff_stat(
     catalog: &StatMapCatalog,
     effect_id: &str,
@@ -1155,18 +1334,21 @@ pub fn map_debuff_stat(
     for element in entry.mods.iter().filter(|e| is_debuff_effect(e)) {
         if let Err(reason) = collect_debuff_element(element, &entry_params, stat_value, &mut items)
         {
-            // 与 map_curse_stat 同口径：任一 debuff 元素不可翻译 → 整条跳过（成组语义）。
+            // Same rule as map_curse_stat: any debuff element that can't be
+            // translated skips the whole entry (grouped semantics).
             return MappedOutcome::Unsupported(reason);
         }
     }
     MappedOutcome::Mapped(items)
 }
 
-/// 敌侧 ModName 允收名单（debuff 域）。第一批 = 元素曝光（消费方
-/// `calc::reduce_enemy_exposure` 读 enemy db `<El>Exposure` BASE）。
+/// Enemy-side ModName allow-list (debuff domain). The first batch is
+/// elemental exposure (consumer = `calc::reduce_enemy_exposure`, which reads
+/// enemy db `<El>Exposure` BASE).
 ///
-/// 其余 debuff 载荷名（`ColdDamageTaken`/`MovementSpeed`…）pobr 暂无敌侧
-/// 消费方逐一对照 → `UnknownModName` 上报，消费方落地后补名单。
+/// Other debuff payload names (`ColdDamageTaken`/`MovementSpeed`...) have no
+/// enemy-side consumer in pobr yet after checking one by one, so they're
+/// reported as `UnknownModName` and added to the list once a consumer lands.
 fn translate_debuff_mod_name(name: &str) -> Result<Vec<&'static str>, UnsupportedReason> {
     match name {
         "FireExposure" => Ok(vec!["FireExposure"]),
@@ -1176,7 +1358,8 @@ fn translate_debuff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsupporte
     }
 }
 
-/// debuff 元素翻译（group 递归 + mod 构造器；与 curse 域同构）。
+/// Translates a debuff element (group recursion + mod constructor; same
+/// structure as the curse domain).
 fn collect_debuff_element(
     element: &StatMapMod,
     params: &MergeParams,
@@ -1214,7 +1397,8 @@ fn collect_debuff_element(
     }
 }
 
-/// debuff `mod()` 构造器翻译：敌侧名单名 + GlobalEffect 剥除 + 其余 tag 直译。
+/// Translates a debuff `mod()` constructor: enemy-side allow-list name +
+/// GlobalEffect stripped + other tags translated directly.
 fn collect_debuff_mod(
     element: &StatMapMod,
     merged_value: f64,
@@ -1234,7 +1418,8 @@ fn collect_debuff_mod(
         "OVERRIDE" => ModType::Override,
         other => return Err(UnsupportedReason::UnsupportedModType(other.to_string())),
     };
-    // 第一批：debuff 允收载荷无 flag / keyword_flag；非空整条上报。
+    // First batch: debuff's allowed payloads have no flag / keyword_flag; a
+    // non-empty one reports the whole entry.
     if !element.flags.is_empty() {
         return Err(UnsupportedReason::UnsupportedFlags(element.flags.join("|")));
     }
@@ -1243,7 +1428,9 @@ fn collect_debuff_mod(
             element.keyword_flags.join("|"),
         ));
     }
-    // tag：GlobalEffect 剥除（约定外键 = 额外门控语义，整条上报）；其余直译。
+    // tag: GlobalEffect is stripped (a key outside the convention means
+    // extra gating semantics, reported wholesale); everything else is
+    // translated directly.
     let mut tags = Vec::new();
     for tag in &element.tags {
         let is_global =
@@ -1276,7 +1463,7 @@ fn collect_debuff_mod(
     Ok(())
 }
 
-/// entry / group 级 merge 参数（vendor `map.div/mult/base/value`）。
+/// Entry- or group-level merge parameters (vendor `map.div/mult/base/value`).
 struct MergeParams {
     div: Option<f64>,
     mult: Option<f64>,
@@ -1285,8 +1472,9 @@ struct MergeParams {
 }
 
 impl MergeParams {
-    /// merge 公式本体（CalcActiveSkill.lua:112 逐字对齐；scalar固定 1.0，
-    /// 含 scalar 的条目在进入本公式前已整条 Unsupported）。
+    /// The merge formula itself (matches CalcActiveSkill.lua:112 line for
+    /// line; scalar is fixed at 1.0, and entries with a scalar are already
+    /// Unsupported wholesale before reaching this formula).
     fn merge(&self, stat_value: f64) -> f64 {
         match self.value {
             Some(v) => v,
@@ -1298,8 +1486,9 @@ impl MergeParams {
     }
 }
 
-/// 翻译单个元素（mod / flag / skill_data / group）。group 递归展开，嵌套 mod 用
-/// group 级参数（CalcActiveSkill.lua:117）。
+/// Translates a single element (mod / flag / skill_data / group). Groups
+/// recurse, and the nested mods use group-level parameters
+/// (CalcActiveSkill.lua:117).
 fn collect_element(
     element: &StatMapMod,
     params: &MergeParams,
@@ -1315,9 +1504,10 @@ fn collect_element(
                 div: element.div,
                 mult: element.mult,
                 base: element.base,
-                value: None, // group 级 value 抽取层落在 StatMapMod.value（StatMapValue）——见下
+                value: None, // group-level value is stored by the extraction layer in StatMapMod.value (StatMapValue) -- see below
             };
-            // group 级字面 value（vendor `modOrGroup.value`）：数值才参与公式覆盖。
+            // group-level literal value (vendor `modOrGroup.value`): only a
+            // numeric value overrides the formula.
             let group_params = match &element.value {
                 Some(StatMapValue::Number(v)) => MergeParams {
                     value: Some(*v),
@@ -1337,12 +1527,15 @@ fn collect_element(
         }
         "mod" => collect_mod(element, params.merge(stat_value), items),
         "flag" => {
-            // vendor flag(name) 多为技能行为开关（projectile / unarmedMelee…），
-            // PoBR 无消费方 → 未知名上报；**白名单**翻译有 ModDb flag 消费方的
-            // 名字（crit/lucky 族，消费点 = calc::crit::resolve_crit 与
-            // calc::damage::lucky_hit_chance），tag 照常翻译（如 Garukhan's
-            // Resolve `attacks_roll_crits_twice` → flag("BifurcateCrit",
-            // SkillType.Attack)，SkillStatMap.lua:1011-1013）。
+            // Vendor flag(name) is mostly a skill behaviour switch
+            // (projectile / unarmedMelee...) that PoBR has no consumer for,
+            // so it's reported as unknown by default; the **whitelist**
+            // translates names that have a ModDb flag consumer (the
+            // crit/lucky family, consumed at calc::crit::resolve_crit and
+            // calc::damage::lucky_hit_chance); tags are translated as usual
+            // (e.g. Garukhan's Resolve's `attacks_roll_crits_twice` →
+            // flag("BifurcateCrit", SkillType.Attack),
+            // SkillStatMap.lua:1011-1013).
             let name = element.name.as_deref().unwrap_or("?");
             if !is_consumable_flag(name) {
                 return Err(UnsupportedReason::UnknownModName(format!("flag:{name}")));
@@ -1359,12 +1552,14 @@ fn collect_element(
     }
 }
 
-/// statmap `flag()` 构造器名字白名单：PoBR ModDb 有 `flag()` 消费方的旗标
-/// （crit/lucky 族——`calc::crit::resolve_crit` 步骤 4/5/6/爆伤 +
-/// `calc::damage::lucky_hit_chance`；mod 转换族——
-/// `calc::perform::apply_projectile_speed_to_damage`，CalcOffence.lua:840-845）。
-/// 白名单外的 flag 名维持未知名上报（多为技能行为开关，错注会污染 ModDb
-/// flag 查询）。
+/// Whitelist of statmap `flag()` constructor names: flags that have a
+/// `flag()` consumer in PoBR's ModDb (the crit/lucky family --
+/// `calc::crit::resolve_crit` steps 4/5/6/crit damage plus
+/// `calc::damage::lucky_hit_chance`; the mod-conversion family --
+/// `calc::perform::apply_projectile_speed_to_damage`,
+/// CalcOffence.lua:840-845). Flag names outside the whitelist are still
+/// reported as unknown (mostly skill behaviour switches; a wrong injection
+/// would pollute ModDb flag queries).
 fn is_consumable_flag(name: &str) -> bool {
     matches!(
         name,
@@ -1376,17 +1571,19 @@ fn is_consumable_flag(name: &str) -> bool {
             | "CritLucky"
             | "ElementalLuckHits"
             | "ProjectileSpeedAppliesToProjectileDamage"
-            //  异常叠层开关（Escalating Poison `number_of_additional_poison_
-            // stacks` 与 `PoisonStacks BASE` 成对注入，sup_dex.lua:2188-2191）。
-            // 消费方 = `calc::perform::resolve_stack_config` 的 maxStacks flag 门
-            // （vendor CalcOffence.lua:5022-5025）。
+            //  Ailment-stacking switch (Escalating Poison's
+            // `number_of_additional_poison_stacks` is injected paired with
+            // `PoisonStacks BASE`, sup_dex.lua:2188-2191). Consumer = the
+            // maxStacks flag gate in `calc::perform::resolve_stack_config`
+            // (vendor CalcOffence.lua:5022-5025).
             | "PoisonCanStack"
             | "BleedCanStack"
             | "IgniteCanStack"
     )
 }
 
-/// 翻译 `mod()` 构造器：名字（含 flag 语义分派）→ PoBR ModName，tag → [`ModTag`]。
+/// Translates a `mod()` constructor: the name (including flag-semantics
+/// dispatch) maps to a PoBR ModName, and tags map to [`ModTag`].
 fn collect_mod(
     element: &StatMapMod,
     merged_value: f64,
@@ -1396,7 +1593,8 @@ fn collect_mod(
         return Err(UnsupportedReason::UnknownModName("<missing name>".into()));
     };
     let Some(mod_type) = element.mod_type.as_deref() else {
-        // vendor 笔误条目（如 sup_str CorruptingCry 漏 type），抽取忠实保留 → 跳过。
+        // A vendor typo entry (e.g. sup_str's CorruptingCry is missing
+        // type); kept faithfully as extracted, so it's skipped here.
         return Err(UnsupportedReason::MissingModType);
     };
     let mod_type = match mod_type {
@@ -1405,16 +1603,20 @@ fn collect_mod(
         "MORE" => ModType::More,
         "FLAG" => ModType::Flag,
         "OVERRIDE" => ModType::Override,
-        //  vendor "CHANCE" 桶的消费形态 = `Sum("CHANCE", cfg, name)` 后在
-        // 消费点 clamp（CalcOffence.lua:4145 HitsInvertEleResChance）——求和语义
-        // 与 BASE 一致，translate_mod_name 名单仍逐名把关（当前数据全集仅
-        // `treat_enemy_resistances_as_negated_…` 一条，无 BASE/CHANCE 同名混桶）。
+        //  Vendor's "CHANCE" bucket is consumed as
+        // `Sum("CHANCE", cfg, name)` and clamped at the consumption point
+        // (CalcOffence.lua:4145 HitsInvertEleResChance) -- its summation
+        // semantics match BASE, and translate_mod_name's allow-list still
+        // gates it name by name (the current data has only one such entry,
+        // `treat_enemy_resistances_as_negated_...`, so there's no case of
+        // BASE and CHANCE sharing a bucket under the same name).
         "CHANCE" => ModType::Base,
         other => return Err(UnsupportedReason::UnsupportedModType(other.to_string())),
     };
     let translated = translate_mod_name(name, &element.flags, &element.keyword_flags)?;
     let mut modifier = if mod_type == ModType::Flag {
-        // FLAG mod 的 merge 值仅 Lua 真值语义（任意 number 含 0 均 truthy）→ Bool(true)。
+        // A FLAG mod's merged value only carries Lua truthiness semantics
+        // (any number, including 0, is truthy) -> Bool(true).
         Modifier::flag(translated.name)
     } else {
         Modifier::number(translated.name, mod_type, merged_value)
@@ -1429,14 +1631,15 @@ fn collect_mod(
     Ok(())
 }
 
-/// 翻译 `skill()` 构造器：伤害基值键 → `<Type>DamageMin/Max` BASE modifier；
-/// `duration` → [`MappedItem::SkillData`]；其余键第一批 Unsupported。
+/// Translates a `skill()` constructor: base damage keys become
+/// `<Type>DamageMin/Max` BASE modifiers; `duration` becomes
+/// [`MappedItem::SkillData`]; other keys are Unsupported in the first batch.
 fn collect_skill_data(
     element: &StatMapMod,
     merged_value: f64,
     items: &mut Vec<MappedItem>,
 ) -> Result<(), UnsupportedReason> {
-    // skill_data 的键在抽取层落 value 表 `{key, value}`。
+    // skill_data's key lands in the extraction layer's value table `{key, value}`.
     let key = match &element.value {
         Some(StatMapValue::Table(t)) => match t.get("key") {
             Some(StatMapValue::Text(k)) => k.as_str(),
@@ -1452,14 +1655,16 @@ fn collect_skill_data(
             ));
         }
     };
-    // tag 翻译先行（带不支持 tag 的 skill_data 同样整条跳过）。
+    // Translate tags first (a skill_data with an unsupported tag is also
+    // skipped wholesale).
     let mut tags = Vec::new();
     for tag in &element.tags {
         tags.push(translate_tag(tag)?);
     }
-    // 伤害基值键（vendor 把技能基础伤害写进 skillData；PoBR 无 skillData 表，
-    // 经 modifier 管线消费 `<Type>DamageMin/Max` BASE，对齐 legacy
-    // `map_base_damage` 口径）。
+    // Base damage keys (vendor writes a skill's base damage into skillData;
+    // PoBR has no skillData table, so it's consumed as `<Type>DamageMin/Max`
+    // BASE through the modifier pipeline instead, matching legacy's
+    // `map_base_damage` behaviour).
     if let Some(mod_name) = damage_bound_mod_name(key) {
         let mut modifier = Modifier::number(mod_name, ModType::Base, merged_value);
         for tag in tags {
@@ -1468,11 +1673,13 @@ fn collect_skill_data(
         items.push(MappedItem::Modifier(Box::new(modifier)));
         return Ok(());
     }
-    //  技能 DoT 基值键（vendor `skill("<Type>Dot", …)`，源 stat
-    // `base_<type>_damage_to_deal_per_minute`、entry 级 div=60 已换算每分 → 每秒）
-    // → 同名 `<Type>Dot` BASE modifier（PoBR 无 skillData 表，经 modifier 管线
-    // 消费，对齐伤害基值族 `<Type>DamageMin/Max` 的既有口径；消费方 =
-    // `calc::skill_dot`，按 dotTypeCfg 聚合）。
+    //  Skill DoT base value keys (vendor `skill("<Type>Dot", …)`, sourced from
+    // the `base_<type>_damage_to_deal_per_minute` stat, with the entry-level
+    // div=60 already converting per-minute to per-second) become a
+    // same-named `<Type>Dot` BASE modifier (PoBR has no skillData table, so
+    // it's consumed through the modifier pipeline, matching the existing
+    // convention for the base-damage family `<Type>DamageMin/Max`; consumer =
+    // `calc::skill_dot`, aggregated by dotTypeCfg).
     if let Some(mod_name) = dot_base_mod_name(key) {
         let mut modifier = Modifier::number(mod_name, ModType::Base, merged_value);
         for tag in tags {
@@ -1481,12 +1688,15 @@ fn collect_skill_data(
         items.push(MappedItem::Modifier(Box::new(modifier)));
         return Ok(());
     }
-    //  dotIs* 布尔键（vendor `skill("dotIsSpell", true)` 类，源 stat
-    // 如 `spell_damage_modifiers_apply_to_skill_dot`）→ `DotIs<X>` FLAG modifier
-    // （`calc::skill_dot` 据此保留 dotCfg 对应位，否则剥除——CalcOffence.lua:5839-5856）。
-    // 注：当前 `.dat` 入库不含 value-less 布尔 stat，本通道在现有数据下不触发；
-    // statSet baseMods 直挂的 dotIs*（TornadoShot）走 catalog `DotFlags` →
-    // 编排层注入同名 FLAG（同一消费口径）。
+    //  `dotIs*` boolean keys (vendor `skill("dotIsSpell", true)` and similar,
+    // sourced from stats like `spell_damage_modifiers_apply_to_skill_dot`)
+    // become `DotIs<X>` FLAG modifiers (`calc::skill_dot` keeps the
+    // corresponding dotCfg bit when set and strips it otherwise --
+    // CalcOffence.lua:5839-5856). Note: the current `.dat` ingest has no
+    // value-less boolean stats, so this channel never fires against the
+    // present data; the dotIs* that hang directly off statSet baseMods
+    // (TornadoShot) go through catalog `DotFlags` -> the orchestration layer
+    // injects the same-named FLAG (the same consumption path).
     if let Some(flag_name) = dot_is_flag_mod_name(key) {
         if !tags.is_empty() {
             return Err(UnsupportedReason::UnsupportedTag(
@@ -1496,14 +1706,16 @@ fn collect_skill_data(
         items.push(MappedItem::Modifier(Box::new(Modifier::flag(flag_name))));
         return Ok(());
     }
-    // skill_data 白名单（出 [`MappedItem::SkillData`]，编排层按键消费）：
-    // - duration（vendor `skill("duration", …)`，entry 级 div=1000 已在 merge
-    //   公式换算 ms → s）；
-    // - corpseExplosionLifeMultiplier（vendor SkillStatMap.lua:309-316：
-    //   `corpse_explosion_monster_life_%` div=100 / `_permillage_physical`
-    //   div=1000 → 尸体生命倍率；消费方 = 编排层尸体爆炸基伤注入，
-    //   CalcOffence.lua:2211-2217）。
-    // 其余键统计上报。
+    // skill_data whitelist (produces [`MappedItem::SkillData`], consumed by
+    // the orchestration layer by key):
+    // - duration (vendor `skill("duration", …)`; the entry-level div=1000
+    //   already converts ms to s in the merge formula);
+    // - corpseExplosionLifeMultiplier (vendor SkillStatMap.lua:309-316:
+    //   `corpse_explosion_monster_life_%` div=100 /
+    //   `_permillage_physical` div=1000 -> the corpse life multiplier;
+    //   consumer = the orchestration layer's corpse-explosion base-damage
+    //   injection, CalcOffence.lua:2211-2217).
+    // Other keys are counted as unsupported.
     if matches!(key, "duration" | "corpseExplosionLifeMultiplier") {
         if !tags.is_empty() {
             return Err(UnsupportedReason::UnsupportedTag(
@@ -1519,16 +1731,18 @@ fn collect_skill_data(
     Err(UnsupportedReason::UnsupportedSkillDataKey(key.to_string()))
 }
 
-/// `<Type>Dot` skill_data 键 → 同名 BASE ModName（vendor SkillStatMap
-/// `base_<type>_damage_to_deal_per_minute` 条目，五伤害类型全集）。
+/// `<Type>Dot` skill_data key -> the same-named BASE ModName (vendor
+/// SkillStatMap's `base_<type>_damage_to_deal_per_minute` entries, across all
+/// five damage types).
 fn dot_base_mod_name(key: &str) -> Option<String> {
     DAMAGE_TYPES.iter().find_map(|ty| {
-        (key == format!("{ty}Dot")).then(|| key.to_string()) // ModName 与键同名
+        (key == format!("{ty}Dot")).then(|| key.to_string()) // ModName matches the key
     })
 }
 
-/// `dotIs*` skill_data 键 → `DotIs*` FLAG ModName（与 catalog
-/// `DotFlags`（statSet baseMods 直挂布尔）的编排层注入共用同一组 FLAG 名）。
+/// `dotIs*` skill_data key -> `DotIs*` FLAG ModName (shares the same set of
+/// FLAG names as the orchestration layer's injection for catalog `DotFlags`,
+/// the booleans that hang directly off statSet baseMods).
 fn dot_is_flag_mod_name(key: &str) -> Option<&'static str> {
     Some(match key {
         "dotIsArea" => "DotIsArea",
@@ -1540,11 +1754,12 @@ fn dot_is_flag_mod_name(key: &str) -> Option<&'static str> {
     })
 }
 
-/// 五伤害类型（PoB2 命名 → PoBR PascalCase 相同）。
+/// The five damage types (PoB2 naming matches PoBR's PascalCase directly).
 const DAMAGE_TYPES: [&str; 5] = ["Physical", "Fire", "Cold", "Lightning", "Chaos"];
 
-/// `<Type>Min` / `<Type>Max` → `<Type>DamageMin/Max`（mod 与 skill_data 共用：
-/// vendor 两条通道都用这组键名承载伤害基值）。
+/// `<Type>Min` / `<Type>Max` -> `<Type>DamageMin/Max` (shared by mod and
+/// skill_data: vendor uses this same set of key names for base damage on
+/// both channels).
 pub(crate) fn damage_bound_mod_name(name: &str) -> Option<String> {
     for ty in DAMAGE_TYPES {
         if let Some(bound) = name.strip_prefix(ty)
@@ -1556,19 +1771,23 @@ pub(crate) fn damage_bound_mod_name(name: &str) -> Option<String> {
     None
 }
 
-/// 名字翻译产物：PoBR ModName + 直译后的 ModFlags / KeywordFlags。
+/// The output of name translation: a PoBR ModName plus the directly
+/// translated ModFlags / KeywordFlags.
 ///
-/// pub 供双跑 oracle 对拍（vendor `mergeSkillInstanceMods` 注入的 modList 用
-/// PoB2 名，对拍前经本翻译层归一，见 `pobr-build/tests/statmap_dual_run.rs`）。
+/// Public so the dual-run oracle comparison can use it (the modList injected
+/// by vendor's `mergeSkillInstanceMods` uses PoB2 names, normalized through
+/// this translation layer before comparison; see
+/// `pobr-build/tests/statmap_dual_run.rs`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct TranslatedName {
-    /// PoBR ModName。
+    /// The PoBR ModName.
     pub name: String,
-    /// 直译后的作用域 flags（PoB2 `band(cfg.flags, mod.flags) == mod.flags` 与
-    /// PoBR [`ModFlags::is_subset_of`] 同语义，逐位对齐）。
+    /// The directly translated scope flags (PoB2's
+    /// `band(cfg.flags, mod.flags) == mod.flags` has the same semantics as
+    /// PoBR's [`ModFlags::is_subset_of`], bit for bit).
     pub flags: ModFlags,
-    /// 直译后的 keyword flags（PoB2 `MatchKeywordFlags` ANY 语义同
-    /// [`KeywordFlags::matches_context`]）。
+    /// The directly translated keyword flags (PoB2's `MatchKeywordFlags` ANY
+    /// semantics match [`KeywordFlags::matches_context`]).
     pub keyword_flags: KeywordFlags,
 }
 
@@ -1582,16 +1801,21 @@ impl TranslatedName {
     }
 }
 
-/// ModFlag token 直译（PoBR [`ModFlags`] 已移植子集；匹配语义两边一致——
-/// PoB2 `ModList.lua` 子集判定 = PoBR `Modifier::matches` 的 `is_subset_of`）。
-/// 子集外 token（Thorns/Weapon/武器类…）→ 条目 Unsupported（PoBR cfg
-/// 不会置这些位，附上会让 mod 永不匹配 = 静默欠算，宁可整条上报）。
+/// Direct translation of ModFlag tokens (PoBR's [`ModFlags`] already ports
+/// this subset; matching semantics agree on both sides -- PoB2's
+/// `ModList.lua` subset check equals PoBR `Modifier::matches`'s
+/// `is_subset_of`). Tokens outside the subset (Thorns/Weapon/weapon-type...)
+/// make the entry Unsupported (PoBR cfg never sets these bits, so attaching
+/// one would make the mod never match -- a silent undercount -- so it's
+/// reported wholesale instead).
 ///
-/// 返回 `(mod_flags, keyword_flags)`：`Hit` 是 vendor `ModFlag.Hit`，但 PoBR 的
-/// hit-scoping **走 KeywordFlag.Hit 通道**（`offence` 击中 cfg `| KeywordFlags::HIT`，
-/// `skill_dot`/`ailment` 剥 `KeywordFlags::HIT`）——cfg.flags 从不置 `ModFlags::HIT`。
-/// 故把 `Hit` ModFlag 路由到 keyword HIT：匹配语义与 vendor 逐位一致（命中适用、
-/// 异常/DoT 不适用），与 [`translate_keyword_flags`] 对 `KeywordFlag.Hit` 的处理同口径。
+/// Returns `(mod_flags, keyword_flags)`: `Hit` is vendor's `ModFlag.Hit`, but
+/// PoBR's hit-scoping **goes through the KeywordFlag.Hit channel** (`offence`
+/// ORs cfg with `KeywordFlags::HIT` on a hit, `skill_dot`/`ailment` strip
+/// `KeywordFlags::HIT`) -- cfg.flags never sets `ModFlags::HIT`. So the `Hit`
+/// ModFlag is routed to the HIT keyword: the matching semantics agree with
+/// vendor bit for bit (applies on a hit, not on ailments/DoT), using the same
+/// rule as [`translate_keyword_flags`]'s handling of `KeywordFlag.Hit`.
 fn translate_mod_flags(tokens: &[String]) -> Result<(ModFlags, KeywordFlags), UnsupportedReason> {
     let mut flags = ModFlags::NONE;
     let mut keyword_flags = KeywordFlags::NONE;
@@ -1602,11 +1826,14 @@ fn translate_mod_flags(tokens: &[String]) -> Result<(ModFlags, KeywordFlags), Un
             "Melee" => flags |= ModFlags::MELEE,
             "Projectile" => flags |= ModFlags::PROJECTILE,
             "Area" => flags |= ModFlags::AREA,
-            //  Dot 位——dotCfg（`calc::skill_dot`）置 DOT 位后该类
-            // mod（如 `support_rapid_decay_damage_over_time_+%_final` →
-            // Damage MORE Dot）只命中 DoT 聚合（切换 PoB2 全位表后常驻）。
+            //  The Dot bit -- once dotCfg (`calc::skill_dot`) sets the DOT
+            // bit, this kind of mod (e.g.
+            // `support_rapid_decay_damage_over_time_+%_final` -> Damage MORE
+            // Dot) only matches the DoT aggregation (kept permanently once
+            // PoB2's full bit table is switched over).
             "Dot" => flags |= ModFlags::DOT,
-            // vendor `ModFlag.Hit` → PoBR keyword HIT 通道（见函数文档）。
+            // Vendor's `ModFlag.Hit` routes to PoBR's keyword HIT channel
+            // (see the function doc).
             "Hit" => keyword_flags = keyword_flags | KeywordFlags::HIT,
             _ => return Err(UnsupportedReason::UnsupportedFlags(tokens.join("|"))),
         }
@@ -1614,21 +1841,27 @@ fn translate_mod_flags(tokens: &[String]) -> Result<(ModFlags, KeywordFlags), Un
     Ok((flags, keyword_flags))
 }
 
-/// 名字本身已承载作用域、且 PoBR 当前无消费方的惰性名：其 KeywordFlag 仅是
-/// 冗余作用域限定（如 vendor `SkillStatMap.lua:556` `mod("WarcrySpeed","INC",nil,
-/// 0,KeywordFlag.Warcry)`——WarcrySpeed 名字即 Warcry 作用域），安全丢弃：
-/// 该名无任何 PoBR 查询方，丢弃不会改变任何现有计算。
+/// Names whose scope is already implied by the name itself and that PoBR has
+/// no consumer for: their KeywordFlag is purely a redundant scope qualifier
+/// (e.g. vendor `SkillStatMap.lua:556`'s
+/// `mod("WarcrySpeed","INC",nil,0,KeywordFlag.Warcry)` -- the name
+/// "WarcrySpeed" already implies the Warcry scope), so it's safe to drop:
+/// nothing in PoBR queries this name, so dropping the flag can't change any
+/// existing calculation.
 const SCOPE_NAMED_INERT: [&str; 2] = ["WarcrySpeed", "TotemPlacementSpeed"];
 
-/// KeywordFlag token 直译（位值两边均对齐 PoB2 `Global.lua:263-292`）。
+/// Direct translation of KeywordFlag tokens (bit values agree with PoB2's
+/// `Global.lua:263-292` on both sides).
 ///
-/// 返回 `(keyword_flags, extra_mod_flags)`：`KeywordFlag.Attack` / `KeywordFlag.Spell`
-/// 折算为 [`ModFlags::ATTACK`] / [`ModFlags::SPELL`]——PoB2 对这两个 keyword 的
-/// ANY 匹配（`MatchKeywordFlags`，cfg.keywordFlags 由技能类型派生含 Attack/Spell）
-/// 与 PoBR cfg.flags 的 ATTACK/SPELL 子集匹配门控等价（cfg.flags 同样由
-/// skill_types 派生，`calc_orchestrator.rs:1125-1129`）。例
-/// `support_attack_skills_elemental_damage_+%_final`（vendor `sup_str.lua:2825-2827`
-/// `mod("ElementalDamage","MORE",nil,0,KeywordFlag.Attack)`）。
+/// Returns `(keyword_flags, extra_mod_flags)`: `KeywordFlag.Attack` /
+/// `KeywordFlag.Spell` fold into [`ModFlags::ATTACK`] / [`ModFlags::SPELL`] --
+/// PoB2's ANY match on these two keywords (`MatchKeywordFlags`,
+/// cfg.keywordFlags derived from skill type includes Attack/Spell) is
+/// equivalent to PoBR cfg.flags's ATTACK/SPELL subset-match gate (cfg.flags
+/// is likewise derived from skill_types, `calc_orchestrator.rs:1125-1129`).
+/// Example: `support_attack_skills_elemental_damage_+%_final` (vendor
+/// `sup_str.lua:2825-2827`
+/// `mod("ElementalDamage","MORE",nil,0,KeywordFlag.Attack)`).
 fn translate_keyword_flags(
     tokens: &[String],
     name: &str,
@@ -1636,11 +1869,13 @@ fn translate_keyword_flags(
     let mut flags = KeywordFlags::NONE;
     let mut extra_mod_flags = ModFlags::NONE;
     for token in tokens {
-        // 惰性作用域名上的冗余 keyword（见 [`SCOPE_NAMED_INERT`]）→ 丢弃。
+        // A redundant keyword on an inert scope name (see
+        // [`SCOPE_NAMED_INERT`]) is dropped.
         if matches!(token.as_str(), "Warcry" | "Totem") && SCOPE_NAMED_INERT.contains(&name) {
             continue;
         }
-        // Attack/Spell keyword → 等价 ModFlags 门控（见函数文档）。
+        // Attack/Spell keyword -> the equivalent ModFlags gate (see the
+        // function doc).
         if token == "Attack" {
             extra_mod_flags |= ModFlags::ATTACK;
             continue;
@@ -1671,31 +1906,42 @@ fn translate_keyword_flags(
     Ok((flags, extra_mod_flags))
 }
 
-/// ModName 翻译层（PoB2 名 + ModFlag/KeywordFlag 组合 → PoBR 名 + flags）。
+/// ModName translation layer (PoB2 name + ModFlag/KeywordFlag combination ->
+/// PoBR name + flags).
 ///
-/// 框架语义 L4（名字随机制不随版本变，留 Rust 常量表）。
-/// 初版覆盖 = legacy `pobr-build::skill_stat_map` 既有映射族的反推，双跑 diff
-/// 驱动补全；未知名归 [`UnsupportedReason::UnknownModName`] 上报。
+/// Framework-level semantics, tier L4 (names track game mechanics, not
+/// versions, so this stays a Rust constant table). The first pass's coverage
+/// was reverse-derived from the mapping families already in legacy
+/// `pobr-build::skill_stat_map`, filled in as the dual-run diff turns up
+/// gaps; unknown names are reported as
+/// [`UnsupportedReason::UnknownModName`].
 ///
-/// flag 处理分两层：
-/// - **名字分派**（PoBR 用独立 ModName 表达的速度/伤害桶）：`Speed` + Attack →
-///   `AttackSpeed`；+ Cast → `CastSpeed`；裸 → `SkillSpeed`。`Damage` 的
-///   Attack/Spell/Area 单 flag 同 legacy 口径分派（PoBR `calc::damage` 按 cfg
-///   flag 加读 `AttackDamage`/`AreaDamage` 桶，两种表达等价）；
-/// - **flags 直译**（其余组合）：经 [`translate_mod_flags`] 附在 Modifier 上，
-///   匹配语义与 PoB2 子集判定逐位一致（如 `support_melee_physical_damage_+%_final`
-///   per-set 条目 `mod("PhysicalDamage","MORE",nil,ModFlag.Melee)` →
-///   `PhysicalDamage` MORE + `MELEE`，cfg 取 skill_types 派生 flags）。
+/// Flag handling has two layers:
+/// - **Name dispatch** (speed/damage buckets that PoBR expresses as separate
+///   ModNames): `Speed` + Attack -> `AttackSpeed`; + Cast -> `CastSpeed`;
+///   bare -> `SkillSpeed`. `Damage`'s single Attack/Spell/Area flag dispatches
+///   the same way as legacy (PoBR's `calc::damage` reads the
+///   `AttackDamage`/`AreaDamage` buckets by cfg flag as well, so the two
+///   representations are equivalent);
+/// - **Direct flag translation** (every other combination): attached to the
+///   Modifier via [`translate_mod_flags`], with matching semantics agreeing
+///   bit for bit with PoB2's subset check (e.g.
+///   `support_melee_physical_damage_+%_final`'s per-set entry
+///   `mod("PhysicalDamage","MORE",nil,ModFlag.Melee)` ->
+///   `PhysicalDamage` MORE + `MELEE`, with cfg taking flags derived from
+///   skill_types).
 ///
-/// 伤害基值族（`<Type>Min/Max`）维持丢弃 Attack/Spell flag 与 KeywordFlag
-/// （legacy 同口径：单主技能全局注入，作用域限定无差异）。
+/// The base-damage family (`<Type>Min/Max`) still drops the Attack/Spell
+/// flag and KeywordFlag (same rule as legacy: injected globally for a single
+/// main skill, so scope qualification makes no difference).
 pub fn translate_mod_name(
     name: &str,
     flags: &[String],
     keyword_flags: &[String],
 ) -> Result<TranslatedName, UnsupportedReason> {
-    // 伤害基值族：允许丢弃 Attack/Spell flag 与 KeywordFlag（作用域限定在单主
-    // 技能口径下无差异；legacy 同样 flag-blind 注入）。
+    // Base-damage family: allowed to drop the Attack/Spell flag and
+    // KeywordFlag (scope qualification makes no difference for a single main
+    // skill; legacy is likewise flag-blind here).
     if let Some(bound_name) = damage_bound_mod_name(name) {
         let droppable = |f: &String| f == "Attack" || f == "Spell";
         if !flags.iter().all(droppable) {
@@ -1708,7 +1954,8 @@ pub fn translate_mod_name(
         }
         return Ok(TranslatedName::bare(bound_name));
     }
-    // 名字分派族：分派吃掉的 flag 从直译集合移除，剩余 flag 照常直译。
+    // Name-dispatch family: the flag consumed by dispatch is removed from
+    // the direct-translation set; remaining flags are translated as usual.
     let (base_name, remaining_flags): (&str, Vec<String>) = match name {
         "Speed" => {
             if let Some(pos) = flags.iter().position(|f| f == "Attack") {
@@ -1731,15 +1978,16 @@ pub fn translate_mod_name(
         },
         _ => (name, flags.to_vec()),
     };
-    // 名字翻译（分派后的 base_name）。
+    // Name translation (base_name after dispatch).
     let translated: String = match base_name {
         "CritChance" => "CriticalStrikeChance".to_string(),
         "CritMultiplier" => "CriticalStrikeMultiplier".to_string(),
-        // 暴击上限：vendor 同名（如 Garukhan's Resolve
-        // `maximum_critical_strike_chance_is_%` → CritChanceCap OVERRIDE 50），
-        // 消费方 = `calc::crit::crit_chance_cap`。
+        // Crit chance cap: same name as vendor (e.g. Garukhan's Resolve's
+        // `maximum_critical_strike_chance_is_%` -> CritChanceCap OVERRIDE 50);
+        // consumer = `calc::crit::crit_chance_cap`.
         "CritChanceCap" => base_name.to_string(),
-        // 同名直通族（PoBR calc 消费名或惰性作用域名）。
+        // Same-name pass-through family (names either consumed directly by
+        // PoBR calc or scope names with no consumer).
         "Damage"
         | "AttackDamage"
         | "AreaDamage"
@@ -1752,11 +2000,13 @@ pub fn translate_mod_name(
         | "LightningDamage"
         | "ChaosDamage"
         | "ElementalDamage"
-        // 区间端 MORE 族（vendor `mod("Max<Type>Damage"/"Min<Type>Damage","MORE",…)`，
-        // 如 Heft `support_heft_maximum_physical_damage_+%_final` →
-        // `MaxPhysicalDamage` MORE，sup_str.lua:4222-4223）。消费方 =
-        // `calc::damage::scale_with_path`（CalcOffence.lua:138-139,153-154 的
-        // `Min/Max<Type>Damage` 独立 MORE 乘区，仅缩放区间一端）。
+        // Interval-end MORE family (vendor
+        // `mod("Max<Type>Damage"/"Min<Type>Damage","MORE",…)`, e.g. Heft's
+        // `support_heft_maximum_physical_damage_+%_final` ->
+        // `MaxPhysicalDamage` MORE, sup_str.lua:4222-4223). Consumer =
+        // `calc::damage::scale_with_path` (CalcOffence.lua:138-139,153-154's
+        // separate `Min/Max<Type>Damage` MORE multiplier zone, which only
+        // scales one end of the interval).
         | "MaxPhysicalDamage"
         | "MaxFireDamage"
         | "MaxColdDamage"
@@ -1774,77 +2024,96 @@ pub fn translate_mod_name(
         | "ElementalPenetration"
         | "TotalCastTime"
         | "TotalAttackTime"
-        // vendor `SkillStatMap.lua:554-557`（skill_speed_+% 同条目三 mod）与
-        // `:2400-2401`（summon_totem_cast_speed_+%）：警吼/图腾速度的独立名。
-        // PoBR 当前无消费方（惰性注入，名字即作用域，不会错算），保留 PoB2 原名
-        // 以免 legacy 把 TotemPlacementSpeed 误并入 CastSpeed（legacy 误映射，
-        // 见 m1-statmap-switch-log.md）。
+        // Vendor `SkillStatMap.lua:554-557` (skill_speed_+% shares the entry
+        // with three mods) and `:2400-2401` (summon_totem_cast_speed_+%):
+        // separate names for warcry/totem speed. PoBR has no consumer yet
+        // (an inert injection -- the name itself is the scope, so it can't
+        // cause a miscalculation); the PoB2 original name is kept so legacy
+        // doesn't wrongly merge TotemPlacementSpeed into CastSpeed (a legacy
+        // mismapping, see m1-statmap-switch-log.md).
         | "WarcrySpeed"
         | "TotemPlacementSpeed"
-        //  冷却恢复速率直通（vendor `base_cooldown_speed_+%`/quality 段/
-        // `support_cooldown_reduction_cooldown_recovery_+%` → CooldownRecovery）。
-        // 消费方 = `calc::skill_mechanics::calc_cooldown` /
-        // `offence::apply_cooldown_cap`（冷却管辖速率整链）。
+        //  Cooldown recovery rate pass-through (vendor
+        // `base_cooldown_speed_+%`/quality section/
+        // `support_cooldown_reduction_cooldown_recovery_+%` -> CooldownRecovery).
+        // Consumer = `calc::skill_mechanics::calc_cooldown` /
+        // `offence::apply_cooldown_cap` (the whole cooldown recovery-rate
+        // chain).
         | "CooldownRecovery"
-        //  曝光效果直通（vendor `exposure_effect_+%` → 三元素
-        // `<El>ExposureEffect` INC，SkillStatMap.lua:1731-1735，Potent Exposure
-        // support 载荷）。消费方 = `calc::reduce_enemy_exposure`（CalcPerform.lua
-        // :3223 曝光效果 INC；vendor 按技能作用域，PoBR 扁平 db 全局求和近似，
-        // 见 reduce_enemy_exposure doc 的已登记 TODO(parity)）。
+        //  Exposure effect pass-through (vendor `exposure_effect_+%` -> the
+        // three elemental `<El>ExposureEffect` INC, SkillStatMap.lua:1731-1735,
+        // the Potent Exposure support payload). Consumer =
+        // `calc::reduce_enemy_exposure` (CalcPerform.lua:3223 exposure
+        // effect INC; vendor scopes this per skill, PoBR approximates with a
+        // flat db global sum -- see the registered TODO(parity) in
+        // reduce_enemy_exposure's doc).
         | "FireExposureEffect"
         | "ColdExposureEffect"
         | "LightningExposureEffect" => base_name.to_string(),
-        //  击中视敌元素抗性为反转（Rakiata's Flow
+        //  Treats the enemy's elemental resistance as inverted on hit
+        // (Rakiata's Flow's
         // `treat_enemy_resistances_as_negated_on_elemental_damage_hit_%_chance`
-        // → CHANCE，SkillStatMap.lua:941-944，entry div=100 → 分数）。消费方 =
-        // `offence::enemy_damage_multiplier` 抗性段（CalcOffence.lua:4145-4148
-        // `resist = resist - 2 * invertChance * resist`）。
+        // -> CHANCE, SkillStatMap.lua:941-944, entry div=100 -> a fraction).
+        // Consumer = the resistance section of
+        // `offence::enemy_damage_multiplier` (CalcOffence.lua:4145-4148
+        // `resist = resist - 2 * invertChance * resist`).
         "HitsInvertEleResChance" => base_name.to_string(),
-        //  grenade 二次起爆几率（vendor SkillStatMap.lua:2795-2797
-        // `grenade_skill_%_chance_to_explode_twice` → GrenadeActivateTwice BASE，
-        // 仅 SupportPayload 产出该 stat）。消费方 = `calc::scaled_damage::
-        // dps_end_factors`（vendor CalcOffence.lua:1124-1127 折 DPS MORE）。
+        //  Grenade's chance to detonate twice (vendor
+        // SkillStatMap.lua:2795-2797's
+        // `grenade_skill_%_chance_to_explode_twice` -> GrenadeActivateTwice
+        // BASE; only a SupportPayload produces this stat). Consumer =
+        // `calc::scaled_damage::dps_end_factors` (vendor
+        // CalcOffence.lua:1124-1127 folds it into a DPS MORE).
         "GrenadeActivateTwice" => base_name.to_string(),
-        //  伤害异常族直通（消费方 = `calc::ailment` + `calc::perform::
-        // fill_ailments`）。施加几率：流血/中毒内禀 `<Ailment>Chance`（vendor
-        // `base_chance_to_inflict_bleeding_%`/`base_chance_to_poison_on_hit_%`，
-        // SkillStatMap.lua:1267/:1311 族），点燃/感电几率派生 `Enemy<Ailment>Chance`
-        // （`base_chance_to_ignite_%` 等）；量级：`AilmentMagnitude`（Deadly
-        // Poison/Ignites 的 `*_effect_+%_final`，kw 限定经 keyword 直译）+
-        // 感电/冰缓幅度（`EnemyShockMagnitude`/`EnemyChillMagnitude`，
-        // `shock_traced`/`chill_traced` 消费）；叠层：`<Ailment>Stacks`
-        // （Escalating Poison `number_of_additional_poison_stacks`，
-        // `resolve_stack_config` 消费，与 `<Ailment>CanStack` flag 成对）。
+        //  Damage-ailment family pass-through (consumer = `calc::ailment` +
+        // `calc::perform::fill_ailments`). Infliction chance: bleed/poison's
+        // intrinsic `<Ailment>Chance` (vendor
+        // `base_chance_to_inflict_bleeding_%`/`base_chance_to_poison_on_hit_%`,
+        // the SkillStatMap.lua:1267/:1311 families), derived ignite/shock
+        // chance `Enemy<Ailment>Chance` (`base_chance_to_ignite_%` etc.);
+        // magnitude: `AilmentMagnitude` (Deadly Poison/Ignites's
+        // `*_effect_+%_final`, keyword-scoped via direct keyword
+        // translation) plus shock/chill magnitude
+        // (`EnemyShockMagnitude`/`EnemyChillMagnitude`, consumed by
+        // `shock_traced`/`chill_traced`); stacking: `<Ailment>Stacks`
+        // (Escalating Poison's `number_of_additional_poison_stacks`,
+        // consumed by `resolve_stack_config`, paired with the
+        // `<Ailment>CanStack` flag).
         "PoisonChance" | "BleedChance" | "EnemyIgniteChance" | "EnemyShockChance"
         | "AilmentMagnitude" | "EnemyShockMagnitude" | "EnemyChillMagnitude" | "PoisonStacks"
         | "BleedStacks" | "IgniteStacks" => base_name.to_string(),
-        // （k3 登记）：异常堆叠速率 rateMod 名直通（vendor `faster_burn_%`/
-        // `faster_poison_%`/`faster_bleed_%`/`damaging_ailments_deal_damage_+%_faster`
-        // → `<Ailment>Faster` INC，SkillStatMap.lua:843-848/:1255/:1479-1483）。
-        // 消费方 = `calc::ailment::ailment_rate_mod`（CalcOffence.lua:5036 rateMod，
-        // calcLib.mod 的 INC+MORE 两腿同名集）。
+        // (k3 backlog) Ailment stack-rate rateMod name pass-through (vendor
+        // `faster_burn_%`/`faster_poison_%`/`faster_bleed_%`/
+        // `damaging_ailments_deal_damage_+%_faster` -> `<Ailment>Faster` INC,
+        // SkillStatMap.lua:843-848/:1255/:1479-1483). Consumer =
+        // `calc::ailment::ailment_rate_mod` (CalcOffence.lua:5036 rateMod,
+        // calcLib.mod's combined INC+MORE set under the same name).
         "BleedFaster" | "PoisonFaster" | "IgniteFaster" => base_name.to_string(),
-        // 存量 #9：warcry uptime 机器直通族（vendor `warcry_empowers_per_X_monster_power[_mp_cap]`
-        // → WarcryPowerPer/Cap（SkillStatMap.lua:608-613）、Infernal Cry per-set
-        // `infernal_cry_exerted_attack_all_damage_%_to_gain_as_fire_%` →
-        // InfernalExtraFireDamageMultiplier（act_str.lua:7729-7731））。消费方 =
-        // `calc::warcry`（賦能次数 CalcPerform.lua:2121-2123 + uptime 缩放的
-        // DamageGainAsFire 注入 CalcOffence.lua:3251-3254）。
+        // Backlog #9: warcry uptime-machinery pass-through family (vendor
+        // `warcry_empowers_per_X_monster_power[_mp_cap]` -> WarcryPowerPer/Cap
+        // (SkillStatMap.lua:608-613), Infernal Cry's per-set
+        // `infernal_cry_exerted_attack_all_damage_%_to_gain_as_fire_%` ->
+        // InfernalExtraFireDamageMultiplier (act_str.lua:7729-7731)). Consumer
+        // = `calc::warcry` (empower-count math CalcPerform.lua:2121-2123 +
+        // the uptime-scaled DamageGainAsFire injection CalcOffence.lua:3251-3254).
         "WarcryPowerPer" | "WarcryPowerCap" | "InfernalExtraFireDamageMultiplier" => {
             base_name.to_string()
         }
-        //  异常持续时间——vendor 施加方词条名带 Enemy 前缀（作用于敌身上的
-        // debuff 时长，CalcOffence.lua:5037 durationMod 取
-        // `Enemy<Ailment>Duration`/`EnemyAilmentDuration`/`DamagingAilmentDuration`），
-        // PoBR `ailment_duration`/`scale_duration` 的聚合名为 `<Ailment>Duration`/
-        // `AilmentDuration`（mod_parser 同名族）→ 翻译归一。
+        //  Ailment duration -- vendor's infliction-side mod names carry an
+        // Enemy prefix (the debuff duration applied to the enemy,
+        // CalcOffence.lua:5037's durationMod reads
+        // `Enemy<Ailment>Duration`/`EnemyAilmentDuration`/`DamagingAilmentDuration`),
+        // while PoBR's `ailment_duration`/`scale_duration` aggregate under
+        // `<Ailment>Duration`/`AilmentDuration` (the same family in
+        // mod_parser) -> translation normalizes between the two.
         "EnemyPoisonDuration" => "PoisonDuration".to_string(),
         "EnemyBleedDuration" => "BleedDuration".to_string(),
         "EnemyIgniteDuration" => "IgniteDuration".to_string(),
         "EnemyAilmentDuration" | "DamagingAilmentDuration" => "AilmentDuration".to_string(),
         other => {
-            // 转换 / gain-as 族（`Skill<From>DamageConvertTo<To>` /
-            // `[Skill]<From>DamageGainAs<To>`）：PoB2 与 PoBR 命名一致，按形态直通。
+            // Conversion / gain-as family (`Skill<From>DamageConvertTo<To>` /
+            // `[Skill]<From>DamageGainAs<To>`): PoB2 and PoBR use the same
+            // naming, so it passes through by shape.
             if is_conversion_mod_name(other) {
                 other.to_string()
             } else {
@@ -1861,9 +2130,11 @@ pub fn translate_mod_name(
     })
 }
 
-/// 转换 / gain-as ModName 形态校验：`[Skill]<From>DamageConvertTo<To>` /
-/// `[Skill]<From>DamageGainAs<To>`，`<From>` 可为空（全伤害源）、`<To>` 必须是
-/// 伤害类型。与 PoBR `calc::damage` 消费的名字逐字一致。
+/// Validates the shape of a conversion / gain-as ModName:
+/// `[Skill]<From>DamageConvertTo<To>` / `[Skill]<From>DamageGainAs<To>`,
+/// where `<From>` may be empty (meaning all damage sources) and `<To>` must
+/// be a damage type. Matches the names consumed by PoBR `calc::damage`
+/// literally.
 fn is_conversion_mod_name(name: &str) -> bool {
     let core = name.strip_prefix("Skill").unwrap_or(name);
     for marker in ["DamageConvertTo", "DamageGainAs"] {
@@ -1876,12 +2147,15 @@ fn is_conversion_mod_name(name: &str) -> bool {
     false
 }
 
-/// tag 翻译（第一批：Condition / ActorCondition(enemy) / Multiplier / PerStat →
-/// PoBR [`ModTag`]）。
+/// Tag translation (first batch: Condition / ActorCondition(enemy) /
+/// Multiplier / PerStat -> PoBR [`ModTag`]).
 ///
-/// 其余 tag 类型整条 Unsupported；已支持类型出现**约定外的键**同样 Unsupported
-/// （宁可跳过——多余键往往携带额外语义，静默丢键 = 错算）。
-/// pub 供双跑 oracle 对拍（vendor modList 的 tag 经同一翻译归一后比对）。
+/// Other tag types are Unsupported wholesale; a supported type with **keys
+/// outside the convention** is likewise Unsupported (skip rather than
+/// miscompute -- an extra key usually carries extra semantics, and silently
+/// dropping it would be a miscalculation). Public so the dual-run oracle
+/// comparison can use it (vendor's modList tags are compared after going
+/// through the same normalizing translation).
 pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, UnsupportedReason> {
     let tag_type = match tag.get("type") {
         Some(StatMapValue::Text(t)) => t.as_str(),
@@ -1905,17 +2179,20 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 )));
             }
             let Some(var) = text("var") else {
-                // varList 等变体第一批不支持。
+                // Variants like varList aren't supported in the first batch.
                 return Err(UnsupportedReason::UnsupportedTag("Condition 缺 var".into()));
             };
             let negated = matches!(tag.get("neg"), Some(StatMapValue::Bool(true)));
             Ok(ModTag::condition(var, negated))
         }
-        // 敌方状态条件（vendor 如 `SkillStatMap.lua:1119` `{ type = "ActorCondition",
-        // actor = "enemy", var = "Burning" }`）：PoBR 既有约定把敌方条件折算为
-        // `Enemy<Var>` 条件变量（`mod_parser.rs:950-964`，编排层经 build config
-        // 注入 `EnemyBurning` 等），翻译为同名 Condition tag。actor ≠ enemy
-        // （player/parent…）第一批不支持。
+        // Enemy state condition (vendor e.g. `SkillStatMap.lua:1119`
+        // `{ type = "ActorCondition", actor = "enemy", var = "Burning" }`):
+        // PoBR's existing convention folds enemy conditions into an
+        // `Enemy<Var>` condition variable (`mod_parser.rs:950-964`, injected
+        // by the orchestration layer via build config, e.g. `EnemyBurning`),
+        // so this translates to a same-named Condition tag. actor values
+        // other than enemy (player/parent...) aren't supported in the first
+        // batch.
         "ActorCondition" => {
             if !keys_subset_of(&["type", "actor", "var", "neg"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
@@ -1956,11 +2233,13 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                     "Multiplier 缺 var".into(),
                 ));
             };
-            // limitVar（vendor ModStore.lua:369 动态上限，如 Sigil of Power
-            // `SigilOfPowerStage` 受 `SigilOfPowerMaxStages` 封顶）、invert
-            // （:378-380 倒数缩放，如 Elemental Conflux 三元素按
-            // `ElementalConflux<El>Effect` 取 1/N 均摊）与 limitTotal（:370-371 +
-            // 402-404 总量封顶，如「每层中毒 +N% 伤害至多 +M%」）直译为 ModTag 字段。
+            // limitVar (vendor ModStore.lua:369's dynamic cap, e.g. Sigil of
+            // Power's `SigilOfPowerStage` capped by `SigilOfPowerMaxStages`),
+            // invert (:378-380's reciprocal scaling, e.g. Elemental Conflux
+            // splitting evenly across the three elements via
+            // `ElementalConflux<El>Effect` as 1/N), and limitTotal (:370-371 +
+            // 402-404's total cap, e.g. "each poison stack gives +N% damage,
+            // up to +M% total") translate directly into ModTag fields.
             Ok(ModTag::Multiplier {
                 var,
                 div: number("div").unwrap_or(1.0),
@@ -1972,12 +2251,17 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 limit_total: matches!(tag.get("limitTotal"), Some(StatMapValue::Bool(true))),
             })
         }
-        // 阈值 gate（vendor ModStore.lua:429-459）：`mult = GetMultiplier(var)`，
-        // `threshold = tag.threshold or GetMultiplier(thresholdVar)`，落错侧跳过。
-        // `thresholdVar` 形态只准入 **已核实全 vendor 树零 setter** 的变量
-        // （GetMultiplier 对未设变量恒返 0 → 阈值恒 0，静态折算无损）；有 setter
-        // 的（如 Attrition `AttritionCullSeconds`）维持 Unsupported——静态折 0 会
-        // 错开 gate。actor/thresholdActor/scalar/equals 变体由 keys_subset 挡下。
+        // Threshold gate (vendor ModStore.lua:429-459): `mult =
+        // GetMultiplier(var)`, `threshold = tag.threshold or
+        // GetMultiplier(thresholdVar)`, skipped when it falls on the wrong
+        // side. A `thresholdVar` shape is only admitted for variables
+        // **verified to have zero setters across the whole vendor tree**
+        // (GetMultiplier always returns 0 for an unset variable -> the
+        // threshold is always 0, so statically folding it is lossless);
+        // variables with a setter (e.g. Attrition's `AttritionCullSeconds`)
+        // stay Unsupported -- statically folding to 0 would open the gate at
+        // the wrong point. actor/thresholdActor/scalar/equals variants are
+        // blocked by the keys_subset check.
         "MultiplierThreshold" => {
             if !keys_subset_of(&["type", "var", "threshold", "thresholdVar", "upper"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
@@ -1992,9 +2276,10 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
             };
             let threshold = match (number("threshold"), text("thresholdVar")) {
                 (Some(t), None) => t,
-                // Refraction I/II `RefractionMinimumValour`（sup_str.lua:5978-6024）：
-                // 全 vendor 树无任何 setter → 恒 0（ValourStacks ≥ 0 恒过 gate，
-                // 与 vendor 默认配置行为一致）。
+                // Refraction I/II's `RefractionMinimumValour`
+                // (sup_str.lua:5978-6024): no setter anywhere in the vendor
+                // tree -> always 0 (ValourStacks ≥ 0 always passes the gate,
+                // matching vendor's default-config behaviour).
                 (None, Some(v)) if v == "RefractionMinimumValour" => 0.0,
                 (None, Some(v)) => {
                     return Err(UnsupportedReason::UnsupportedTag(format!(
@@ -2023,17 +2308,20 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
             let Some(stat) = text("stat") else {
                 return Err(UnsupportedReason::UnsupportedTag("PerStat 缺 stat".into()));
             };
-            // PoB2 PerStat 读 actor 输出 stat；PoBR 经 cfg.multipliers 注入同名变量
-            // （缩写归一化为 PoBR 资源名）。变量未注入时乘 0 → 贡献 0（欠算安全）。
+            // PoB2's PerStat reads an actor output stat; PoBR injects the
+            // same-named variable through cfg.multipliers (abbreviations are
+            // normalized to PoBR resource names). If the variable was never
+            // injected it multiplies by 0 -> contributes 0 (safe undercount).
             let var = match stat.as_str() {
                 "Str" => "Strength".to_string(),
                 "Dex" => "Dexterity".to_string(),
                 "Int" => "Intelligence".to_string(),
                 other => other.to_string(),
             };
-            // limit / limitTotal（vendor ModStore.lua:461-468 + :402-404；如 Atalui's
-            // Bloodletting `PerStat{stat=LifeCost,div=20,limit=40,limitTotal}`——
-            // per 20 life cost 至多 +40% 总量封顶）。
+            // limit / limitTotal (vendor ModStore.lua:461-468 + :402-404;
+            // e.g. Atalui's Bloodletting's
+            // `PerStat{stat=LifeCost,div=20,limit=40,limitTotal}` -- +1% per
+            // 20 life cost, capped at +40% total).
             let mut mtag = ModTag::multiplier(var, number("div").unwrap_or(1.0), number("limit"));
             if let (ModTag::Multiplier { limit_total, .. }, Some(StatMapValue::Bool(true))) =
                 (&mut mtag, tag.get("limitTotal"))
@@ -2042,14 +2330,17 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
             }
             Ok(mtag)
         }
-        // 技能类型限定（vendor `{ type = "SkillType", skillType = SkillType.X,
-        // [neg = true] }`，如 Garukhan `attacks_roll_crits_twice` 的 Attack 限定、
-        // Archmage buff 的「non-channelling Spells」= Channel neg + Spell）→
-        // [`ModTag::SkillTypes`] / [`ModTag::SkillTypesNeg`]（`Modifier::matches`
-        // 按 `cfg.skill_types` intersects / 反选判定）。类型名走单源
-        // `SkillTypes::from_pob2_name`（A1 全量 290 枚举表）——编排层
-        // `skill_type_bits` 已全量置位（conditions.rs），限 Attack/Spell 的
-        // 旧白名单口径已过时。枚举外名维持 Unsupported。
+        // Skill-type qualifier (vendor `{ type = "SkillType", skillType =
+        // SkillType.X, [neg = true] }`, e.g. Garukhan's
+        // `attacks_roll_crits_twice`'s Attack qualifier, or the Archmage
+        // buff's "non-channelling Spells" = Channel neg + Spell) ->
+        // [`ModTag::SkillTypes`] / [`ModTag::SkillTypesNeg`] (`Modifier::matches`
+        // tests via `cfg.skill_types` intersection / negated intersection).
+        // Type names go through the single-source `SkillTypes::from_pob2_name`
+        // (the full 290-entry enum table from A1) -- the orchestration
+        // layer's `skill_type_bits` already sets every bit (conditions.rs),
+        // so the old whitelist limited to Attack/Spell is obsolete. Names
+        // outside the enum stay Unsupported.
         "SkillType" => {
             if !keys_subset_of(&["type", "skillType", "neg"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
@@ -2069,9 +2360,11 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 Ok(ModTag::SkillTypes(bits))
             }
         }
-        // 距离插值（vendor `{ type = "DistanceRamp", ramp = {{d,m},...} }`，如 Close
-        // Combat `support_close_combat_attack_damage_+%_final_from_distance`）→
-        // [`ModTag::DistanceRamp`]（求值期按 `enemyDistance` 线性插值，ModStore.lua:574-590）。
+        // Distance interpolation (vendor `{ type = "DistanceRamp", ramp =
+        // {{d,m},...} }`, e.g. Close Combat's
+        // `support_close_combat_attack_damage_+%_final_from_distance`) ->
+        // [`ModTag::DistanceRamp`] (linearly interpolated against
+        // `enemyDistance` at evaluation time, ModStore.lua:574-590).
         "DistanceRamp" => {
             if !keys_subset_of(&["type", "ramp"]) {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
@@ -2086,7 +2379,7 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
             };
             let mut ramp = Vec::with_capacity(points.len());
             for point in points {
-                // 每点须是 `[距离, 倍率]` 二元数组。
+                // Each point must be a `[distance, multiplier]` pair.
                 let StatMapValue::List(pair) = point else {
                     return Err(UnsupportedReason::UnsupportedTag(
                         "DistanceRamp ramp 点非数组".into(),
@@ -2117,7 +2410,7 @@ mod tests {
     use super::*;
     use pobr_data::catalog::stat_map::StatMapEntry;
 
-    /// 便捷构造：单 mod 条目。
+    /// Convenience constructor: a single-mod entry.
     fn entry_json(json: &str) -> StatMapEntry {
         serde_json::from_str(json).expect("测试条目 JSON 合法")
     }
@@ -2139,11 +2432,11 @@ mod tests {
         }
     }
 
-    // flag 构造器白名单
+    // flag constructor whitelist
 
-    /// 白名单 flag（BifurcateCrit）+ SkillType tag → FLAG modifier +
-    /// `ModTag::SkillTypes(ATTACK)`（Garukhan `attacks_roll_crits_twice` 实形，
-    /// SkillStatMap.lua:1011-1013）。
+    /// Whitelisted flag (BifurcateCrit) + SkillType tag -> FLAG modifier +
+    /// `ModTag::SkillTypes(ATTACK)` (mirrors Garukhan's
+    /// `attacks_roll_crits_twice`, SkillStatMap.lua:1011-1013).
     #[test]
     fn flag_kind_whitelist_translates_with_skill_type_tag() {
         let entry = entry_json(
@@ -2163,11 +2456,13 @@ mod tests {
         );
     }
 
-    // 伤害异常族白名单
+    // damage-ailment family whitelist
 
-    /// Escalating Poison 实形（sup_dex.lua:2188-2191 `number_of_additional_
-    /// poison_stacks` → `PoisonStacks BASE + PoisonCanStack flag` 成对）：
-    /// 两元素都翻译成功（flag 走白名单、mod 走直通族）。
+    /// Mirrors Escalating Poison (sup_dex.lua:2188-2191's
+    /// `number_of_additional_poison_stacks` -> `PoisonStacks BASE +
+    /// PoisonCanStack flag` injected as a pair): both elements translate
+    /// successfully (the flag through the whitelist, the mod through the
+    /// pass-through family).
     #[test]
     fn poison_stacks_pair_translates() {
         let entry = entry_json(
@@ -2183,9 +2478,10 @@ mod tests {
         assert_eq!(mods[1].mod_type, ModType::Flag);
     }
 
-    /// 异常持续时间归一：vendor `EnemyPoisonDuration`（施加方对敌 debuff 时长，
-    /// CalcOffence.lua:5037）→ PoBR 聚合名 `PoisonDuration`（Escalating Poison
-    /// `support_multi_poison_poison_duration_+%_final` MORE -20 实形）。
+    /// Ailment-duration normalization: vendor's `EnemyPoisonDuration` (the
+    /// infliction side's debuff duration on the enemy, CalcOffence.lua:5037)
+    /// -> PoBR's aggregate name `PoisonDuration` (mirrors Escalating
+    /// Poison's `support_multi_poison_poison_duration_+%_final` MORE -20).
     #[test]
     fn enemy_poison_duration_renames_to_pobr_bucket() {
         let entry = entry_json(
@@ -2198,9 +2494,11 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(-20.0));
     }
 
-    /// 量级词条 keyword 限定直译：Deadly Poison `support_deadly_poison_poison_
-    /// effect_+%_final` → `AilmentMagnitude MORE kw=Poison`（sup_dex.lua:1748-1750）。
-    /// 消费侧 ailment_scoped_cfg 置位后 ANY-overlap 命中。
+    /// Direct translation of a magnitude mod's keyword scope: Deadly
+    /// Poison's `support_deadly_poison_poison_effect_+%_final` ->
+    /// `AilmentMagnitude MORE kw=Poison` (sup_dex.lua:1748-1750). Hits on the
+    /// consumer side once `ailment_scoped_cfg` sets the bit and the
+    /// ANY-overlap check passes.
     #[test]
     fn ailment_magnitude_with_poison_keyword_translates() {
         let entry = entry_json(
@@ -2213,8 +2511,8 @@ mod tests {
         assert!(mods[0].keyword_flags.intersects(KeywordFlags::POISON));
     }
 
-    /// 施加几率直通：Envenom/Bleed III 的 `<Ailment>Chance BASE`
-    /// （SkillStatMap.lua:1267 / sup_str.lua:932）。
+    /// Infliction-chance pass-through: Envenom/Bleed III's
+    /// `<Ailment>Chance BASE` (SkillStatMap.lua:1267 / sup_str.lua:932).
     #[test]
     fn ailment_chance_passthrough() {
         for name in ["PoisonChance", "BleedChance", "EnemyIgniteChance"] {
@@ -2226,8 +2524,9 @@ mod tests {
         }
     }
 
-    /// （k3）：异常堆叠速率 rateMod 名直通（vendor `faster_burn_%` 族 →
-    /// `<Ailment>Faster` INC，SkillStatMap.lua:843-848；消费方 ailment_rate_mod）。
+    /// (k3) Ailment stack-rate rateMod name pass-through (vendor's
+    /// `faster_burn_%` family -> `<Ailment>Faster` INC,
+    /// SkillStatMap.lua:843-848; consumer = ailment_rate_mod).
     #[test]
     fn ailment_faster_passthrough() {
         for name in ["BleedFaster", "PoisonFaster", "IgniteFaster"] {
@@ -2240,10 +2539,10 @@ mod tests {
         }
     }
 
-    ///  CHANCE 桶 → Base 求和语义（Rakiata's Flow
-    /// `treat_enemy_resistances_as_negated_…` → HitsInvertEleResChance，
-    /// SkillStatMap.lua:941-944，entry div=100；消费点 clamp 见
-    /// `offence::enemy_damage_multiplier`）。
+    ///  The CHANCE bucket maps to Base summation semantics (Rakiata's
+    /// Flow's `treat_enemy_resistances_as_negated_…` -> HitsInvertEleResChance,
+    /// SkillStatMap.lua:941-944, entry div=100; the consumption-point clamp
+    /// lives in `offence::enemy_damage_multiplier`).
     #[test]
     fn chance_mod_type_maps_to_base_for_invert_ele_res() {
         let entry = entry_json(
@@ -2257,8 +2556,10 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(1.0), "div=100 → 分数");
     }
 
-    /// 白名单外 flag 维持未知名上报；SkillType 枚举外类型名整条跳过
-    /// （枚举内类型经 `SkillTypes::from_pob2_name` 全量准入——存量 #7-1）。
+    /// A flag outside the whitelist is still reported as unknown; a
+    /// SkillType name outside the enum skips the whole entry (names inside
+    /// the enum are admitted in full via `SkillTypes::from_pob2_name` --
+    /// backlog #7-1).
     #[test]
     fn flag_kind_outside_whitelist_or_unknown_skill_type_unsupported() {
         let entry = entry_json(
@@ -2279,9 +2580,10 @@ mod tests {
         ));
     }
 
-    /// （存量 #7-1）SkillType tag：枚举内类型名全量准入（单源
-    /// `SkillTypes::from_pob2_name`）；`neg = true` → [`ModTag::SkillTypesNeg`]
-    /// （vendor ModStore.lua:829-833 反选，如 Archmage 的 non-channelling 限定）。
+    /// (Backlog #7-1) SkillType tag: every name inside the enum is admitted
+    /// via the single-source `SkillTypes::from_pob2_name`; `neg = true` ->
+    /// [`ModTag::SkillTypesNeg`] (vendor ModStore.lua:829-833's negated
+    /// match, e.g. Archmage's non-channelling qualifier).
     #[test]
     fn skill_type_tag_full_enum_and_neg_translate() {
         use pobr_data::skill::SkillTypes;
@@ -2300,7 +2602,7 @@ mod tests {
         );
     }
 
-    /// CritChanceCap 直通（Garukhan constant stat 50 → OVERRIDE）。
+    /// CritChanceCap pass-through (Garukhan's constant stat 50 -> OVERRIDE).
     #[test]
     fn crit_chance_cap_override_passthrough() {
         let entry = entry_json(
@@ -2312,9 +2614,9 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(50.0));
     }
 
-    // merge 公式四参全覆盖
+    // full coverage of the merge formula's four parameters
 
-    /// 无参数：注入值 = stat 值。
+    /// No parameters: injected value = the stat value.
     #[test]
     fn merge_defaults_to_stat_value() {
         let entry =
@@ -2325,7 +2627,7 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(42.0));
     }
 
-    /// div：total_cast_time_+_ms 形态（1000ms → 1.0s）。
+    /// div: the total_cast_time_+_ms shape (1000ms -> 1.0s).
     #[test]
     fn merge_div_scales_down() {
         let entry = entry_json(
@@ -2337,7 +2639,7 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(1.0));
     }
 
-    /// mult + base：注入值 = stat × mult + base。
+    /// mult + base: injected value = stat × mult + base.
     #[test]
     fn merge_mult_and_base() {
         let entry = entry_json(
@@ -2348,7 +2650,8 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(25.0));
     }
 
-    /// value：恒值覆盖，忽略 stat 值（global_bleed_on_hit = 100 形态）。
+    /// value: a constant override that ignores the stat value (the
+    /// global_bleed_on_hit = 100 shape).
     #[test]
     fn merge_value_overrides_stat() {
         let entry = entry_json(
@@ -2359,7 +2662,8 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(100.0));
     }
 
-    /// 四参组合：value 优先级最高（vendor `map.value or …` 短路）。
+    /// All four parameters combined: value takes highest priority (vendor's
+    /// `map.value or …` short-circuits).
     #[test]
     fn merge_value_wins_over_other_params() {
         let entry = entry_json(
@@ -2370,7 +2674,8 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(3.0));
     }
 
-    /// group：嵌套 mod 用 group 级参数（CalcActiveSkill.lua:117），entry 级参数不串扰。
+    /// group: nested mods use group-level parameters (CalcActiveSkill.lua:117);
+    /// entry-level parameters don't leak in.
     #[test]
     fn group_params_apply_to_nested_mods() {
         let entry = entry_json(
@@ -2381,13 +2686,14 @@ mod tests {
         );
         let mods = expect_modifiers(map_entry(&entry, 10.0));
         assert_eq!(mods.len(), 2);
-        assert_eq!(mods[0].value.as_number(), Some(5.0)); // 10/2，非 10/7
+        assert_eq!(mods[0].value.as_number(), Some(5.0)); // 10/2, not 10/7
         assert_eq!(mods[1].name.as_str(), "ColdDamage");
     }
 
-    // scalar / 失真 / 未知名
+    // scalar / distorted extraction / unknown name
 
-    /// 含 scalar（entry 元素级）→ 整条 Unsupported。
+    /// An element-level scalar (on an entry) skips the whole entry as
+    /// Unsupported.
     #[test]
     fn scalar_entry_is_unsupported() {
         let entry = entry_json(
@@ -2400,7 +2706,7 @@ mod tests {
         );
     }
 
-    /// 抽取失真条目 → Unsupported(Unextractable)。
+    /// A distorted-extraction entry -> Unsupported(Unextractable).
     #[test]
     fn unextractable_entry_is_unsupported() {
         let entry = entry_json(r#"{ "_unextractable": true }"#);
@@ -2410,7 +2716,7 @@ mod tests {
         );
     }
 
-    /// 未知 ModName → Unsupported(UnknownModName) 上报。
+    /// An unknown ModName is reported as Unsupported(UnknownModName).
     #[test]
     fn unknown_mod_name_is_reported() {
         let entry = entry_json(
@@ -2424,7 +2730,7 @@ mod tests {
         );
     }
 
-    /// 缺 mod_type（vendor 笔误条目）→ Unsupported(MissingModType)。
+    /// A missing mod_type (a vendor typo entry) -> Unsupported(MissingModType).
     #[test]
     fn missing_mod_type_is_unsupported() {
         let entry = entry_json(r#"{ "mods": [ { "kind": "mod", "name": "Damage" } ] }"#);
@@ -2434,7 +2740,7 @@ mod tests {
         );
     }
 
-    /// 任一元素不支持 → 整条跳过（不半条注入）。
+    /// Any unsupported element skips the whole entry (never a half injection).
     #[test]
     fn one_bad_element_rejects_whole_entry() {
         let entry = entry_json(
@@ -2448,9 +2754,10 @@ mod tests {
         ));
     }
 
-    // 名字翻译 / flag 分派
+    // name translation / flag dispatch
 
-    /// Speed 按 ModFlag 分派：Attack → AttackSpeed / Cast → CastSpeed / 裸 → SkillSpeed。
+    /// Speed dispatches on ModFlag: Attack -> AttackSpeed / Cast -> CastSpeed
+    /// / bare -> SkillSpeed.
     #[test]
     fn speed_dispatches_on_flags() {
         for (flags, expect) in [
@@ -2464,7 +2771,7 @@ mod tests {
             let mods = expect_modifiers(map_entry(&entry, 15.0));
             assert_eq!(mods[0].name.as_str(), expect);
         }
-        // 未知 flag 组合 → Unsupported。
+        // An unknown flag combination -> Unsupported.
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "Speed", "mod_type": "INC", "flags": ["Warcry"] } ] }"#,
         );
@@ -2474,7 +2781,8 @@ mod tests {
         ));
     }
 
-    /// Damage 按 ModFlag 分派；CritChance/CritMultiplier 直译。
+    /// Damage dispatches on ModFlag; CritChance/CritMultiplier translate
+    /// directly.
     #[test]
     fn damage_and_crit_translation() {
         let entry = entry_json(
@@ -2493,7 +2801,8 @@ mod tests {
         );
     }
 
-    /// 伤害基值族（mod 形态，带 KeywordFlag.Spell）：丢弃 flag 直译 `<Type>DamageMin`。
+    /// Base-damage family (mod shape, with KeywordFlag.Spell): the flag is
+    /// dropped and `<Type>DamageMin` translates directly.
     #[test]
     fn damage_bound_mod_drops_scoping_flags() {
         let entry = entry_json(
@@ -2503,7 +2812,7 @@ mod tests {
         let mods = expect_modifiers(map_entry(&entry, 12.0));
         assert_eq!(mods[0].name.as_str(), "PhysicalDamageMin");
         assert_eq!(mods[0].value.as_number(), Some(12.0));
-        // 不可丢弃的 keyword flag（如 Warcry）→ Unsupported。
+        // A keyword flag that can't be dropped (e.g. Warcry) -> Unsupported.
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "PhysicalMin", "mod_type": "BASE",
                              "keyword_flags": ["Warcry"] } ] }"#,
@@ -2514,9 +2823,10 @@ mod tests {
         ));
     }
 
-    /// ModFlag 直译：已移植子集附在 Modifier 上（PoB2 子集匹配语义两边一致）。
-    /// vendor `sup_str.lua` Melee Physical Damage statMap：
-    /// `mod("PhysicalDamage","MORE",nil,ModFlag.Melee)`。
+    /// Direct ModFlag translation: the ported subset attaches to the
+    /// Modifier (matching semantics agree with PoB2's subset check on both
+    /// sides). Mirrors vendor `sup_str.lua`'s Melee Physical Damage statMap:
+    /// `mod("PhysicalDamage","MORE",nil,ModFlag.Melee)`.
     #[test]
     fn supported_mod_flags_are_attached() {
         let entry = entry_json(
@@ -2525,8 +2835,10 @@ mod tests {
         let mods = expect_modifiers(map_entry(&entry, 25.0));
         assert_eq!(mods[0].name.as_str(), "PhysicalDamage");
         assert_eq!(mods[0].flags, ModFlags::MELEE);
-        // vendor `ModFlag.Hit` → PoBR keyword HIT 通道（hit-scoping 走 KeywordFlag，
-        // cfg.flags 从不置 ModFlags::HIT）：mod 产出、ModFlags 为空、keyword 含 HIT。
+        // Vendor's `ModFlag.Hit` routes to PoBR's keyword HIT channel
+        // (hit-scoping goes through KeywordFlag; cfg.flags never sets
+        // ModFlags::HIT): the mod is produced, ModFlags is empty, and the
+        // keyword contains HIT.
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "PhysicalDamage", "mod_type": "MORE", "flags": ["Hit"] } ] }"#,
         );
@@ -2536,9 +2848,10 @@ mod tests {
         assert_eq!(mods[0].keyword_flags, KeywordFlags::HIT);
     }
 
-    /// gain-as + ModFlag.Attack（vendor `SkillStatMap.lua:1116`
-    /// `non_skill_base_all_damage_%_to_gain_as_chaos_with_attacks`）：
-    /// 名直通 + ATTACK flag 附着（攻击 cfg 下生效，法术不吃——对齐 PoB2 作用域）。
+    /// gain-as + ModFlag.Attack (mirrors vendor `SkillStatMap.lua:1116`'s
+    /// `non_skill_base_all_damage_%_to_gain_as_chaos_with_attacks`): the name
+    /// passes through and the ATTACK flag attaches (applies under an attack
+    /// cfg, not a spell -- matching PoB2's scoping).
     #[test]
     fn gain_as_with_attack_flag_translates() {
         let entry = entry_json(
@@ -2550,7 +2863,8 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(30.0));
     }
 
-    /// Speed 分派吃掉 Attack 后剩余 flag 照常直译（Attack+Melee → AttackSpeed+MELEE）。
+    /// After Speed's dispatch consumes Attack, the remaining flag still
+    /// translates directly as usual (Attack+Melee -> AttackSpeed+MELEE).
     #[test]
     fn speed_dispatch_keeps_remaining_flags() {
         let entry = entry_json(
@@ -2561,9 +2875,10 @@ mod tests {
         assert_eq!(mods[0].flags, ModFlags::MELEE);
     }
 
-    /// `skill_speed_+%` 全条目三 mod（vendor `SkillStatMap.lua:554-557`）：
-    /// Speed → SkillSpeed；WarcrySpeed/TotemPlacementSpeed 惰性名直通
-    /// （WarcrySpeed 的冗余 KeywordFlag.Warcry 安全丢弃）。
+    /// The `skill_speed_+%` entry's full set of three mods (vendor
+    /// `SkillStatMap.lua:554-557`): Speed -> SkillSpeed;
+    /// WarcrySpeed/TotemPlacementSpeed pass through as inert names
+    /// (WarcrySpeed's redundant KeywordFlag.Warcry is safely dropped).
     #[test]
     fn skill_speed_entry_maps_all_three_mods() {
         let entry = entry_json(
@@ -2578,7 +2893,8 @@ mod tests {
             vec!["SkillSpeed", "WarcrySpeed", "TotemPlacementSpeed"]
         );
         assert!(mods.iter().all(|m| m.value.as_number() == Some(20.0)));
-        // 非惰性名上的 Warcry keyword 仍拒绝（无对应 KeywordFlags 位）。
+        // A Warcry keyword on a non-inert name is still rejected (no
+        // corresponding KeywordFlags bit).
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC", "keyword_flags": ["Warcry"] } ] }"#,
         );
@@ -2588,7 +2904,8 @@ mod tests {
         ));
     }
 
-    /// 已移植 KeywordFlag 位直译附着（如 KeywordFlag.Bleed）。
+    /// A ported KeywordFlag bit attaches via direct translation (e.g.
+    /// KeywordFlag.Bleed).
     #[test]
     fn ported_keyword_flags_are_attached() {
         let entry = entry_json(
@@ -2598,9 +2915,11 @@ mod tests {
         assert_eq!(mods[0].keyword_flags, KeywordFlags::BLEED);
     }
 
-    /// KeywordFlag.Attack/Spell → 等价 ModFlags 门控（vendor `sup_str.lua:2825-2827`
-    /// Elemental Armament：`mod("ElementalDamage","MORE",nil,0,KeywordFlag.Attack)`；
-    /// PoB2 ANY keyword 匹配与 PoBR cfg.flags ATTACK 子集匹配同为"仅攻击技能生效"）。
+    /// KeywordFlag.Attack/Spell -> the equivalent ModFlags gate (mirrors
+    /// vendor `sup_str.lua:2825-2827`'s Elemental Armament:
+    /// `mod("ElementalDamage","MORE",nil,0,KeywordFlag.Attack)`; PoB2's ANY
+    /// keyword match and PoBR's cfg.flags ATTACK subset match both mean
+    /// "only applies to attack skills").
     #[test]
     fn attack_spell_keywords_become_mod_flags() {
         let entry = entry_json(
@@ -2612,8 +2931,9 @@ mod tests {
         assert_eq!(mods[0].keyword_flags, KeywordFlags::NONE);
     }
 
-    /// ActorCondition(enemy) → `Enemy<Var>` Condition（vendor `SkillStatMap.lua:1119`
-    /// + PoBR `mod_parser.rs:950-964` 敌方条件命名约定）。
+    /// ActorCondition(enemy) -> `Enemy<Var>` Condition (mirrors vendor
+    /// `SkillStatMap.lua:1119` plus PoBR `mod_parser.rs:950-964`'s enemy
+    /// condition naming convention).
     #[test]
     fn enemy_actor_condition_translates() {
         let entry = entry_json(
@@ -2622,7 +2942,7 @@ mod tests {
         );
         let mods = expect_modifiers(map_entry(&entry, 40.0));
         assert_eq!(mods[0].tags, vec![ModTag::condition("EnemyBurning", false)]);
-        // 非 enemy actor → Unsupported。
+        // An actor other than enemy -> Unsupported.
         let entry = entry_json(
             r#"{ "mods": [ { "kind": "mod", "name": "Damage", "mod_type": "INC",
                  "tags": [ { "type": "ActorCondition", "actor": "parent", "var": "Stationary" } ] } ] }"#,
@@ -2633,8 +2953,9 @@ mod tests {
         ));
     }
 
-    /// set_key=None 自动取默认 set "1" 覆盖（PoB2 缺省 statSetIndex=1，
-    /// `SkillsTab.lua:354` / `CalcActiveSkill.lua:166-171`）。
+    /// set_key=None automatically uses the default set "1" override (PoB2
+    /// defaults statSetIndex to 1, `SkillsTab.lua:354` /
+    /// `CalcActiveSkill.lua:166-171`).
     #[test]
     fn none_set_key_uses_default_set_one() {
         let catalog = catalog_json(
@@ -2652,17 +2973,18 @@ mod tests {
               }
             }"#,
         );
-        // 默认 set "1" 覆盖命中。
+        // Hits the default set "1" override.
         let outcome = map_stat(&catalog, "FooPlayer", None, "damage_+%", 10.0);
         assert_eq!(expect_modifiers(outcome)[0].name.as_str(), "FireDamage");
-        // 非 "1" 的 set 覆盖不被默认选择（需显式 set_key，T5 接线）。
+        // A set override other than "1" isn't selected by default (needs an
+        // explicit set_key, wired up with T5).
         let outcome = map_stat(&catalog, "BarPlayer", None, "damage_+%", 10.0);
         assert_eq!(expect_modifiers(outcome)[0].name.as_str(), "Damage");
         let outcome = map_stat(&catalog, "BarPlayer", Some("2"), "damage_+%", 10.0);
         assert_eq!(expect_modifiers(outcome)[0].name.as_str(), "ColdDamage");
     }
 
-    /// 转换 / gain-as 名直通；非法类型词不通过。
+    /// Conversion / gain-as names pass through; an invalid type word doesn't.
     #[test]
     fn conversion_names_pass_through() {
         for name in [
@@ -2687,9 +3009,9 @@ mod tests {
         ));
     }
 
-    // tag 第一批
+    // tag first batch
 
-    /// Condition tag → ModTag::Condition（含 neg）。
+    /// Condition tag -> ModTag::Condition (including neg).
     #[test]
     fn condition_tag_translates() {
         let entry = entry_json(
@@ -2700,7 +3022,8 @@ mod tests {
         assert_eq!(mods[0].tags, vec![ModTag::condition("Leeching", true)]);
     }
 
-    /// Multiplier / PerStat tag → ModTag::Multiplier（PerStat 缩写归一化）。
+    /// Multiplier / PerStat tag -> ModTag::Multiplier (PerStat abbreviations
+    /// are normalized).
     #[test]
     fn multiplier_and_per_stat_tags_translate() {
         let entry = entry_json(
@@ -2714,7 +3037,8 @@ mod tests {
         );
         let entry =
             entry_json(r#"{ "mods": [ { "kind": "skill_data", "value": { "key": "Damage" } } ] }"#);
-        // （上一行只为构造合法 JSON 的反例占位——skill_data Damage 键不在白名单）
+        // (The line above just constructs a legal-JSON counterexample --
+        // skill_data's Damage key isn't on the whitelist.)
         assert!(matches!(
             map_entry(&entry, 1.0),
             MappedOutcome::Unsupported(UnsupportedReason::UnsupportedSkillDataKey(_))
@@ -2730,7 +3054,8 @@ mod tests {
         );
     }
 
-    /// 第一批之外的 tag（GlobalEffect）→ 整条 Unsupported。
+    /// A tag outside the first batch (GlobalEffect) skips the whole entry as
+    /// Unsupported.
     #[test]
     fn unsupported_tag_types_reject_entry() {
         let entry = entry_json(
@@ -2743,8 +3068,9 @@ mod tests {
         ));
     }
 
-    /// `DistanceRamp` tag（Close Combat `..._final_from_distance`）→
-    /// [`ModTag::DistanceRamp`]，ramp 点列原样翻译（vendor ModStore.lua:574-590）。
+    /// `DistanceRamp` tag (Close Combat's `..._final_from_distance`) ->
+    /// [`ModTag::DistanceRamp`], with the ramp point list translated verbatim
+    /// (vendor ModStore.lua:574-590).
     #[test]
     fn distance_ramp_tag_translates() {
         let entry = entry_json(
@@ -2760,7 +3086,8 @@ mod tests {
         );
     }
 
-    /// DistanceRamp 含约定外键 → 整条 Unsupported（多余键往往携带额外语义）。
+    /// DistanceRamp with a key outside the convention skips the whole entry
+    /// as Unsupported (an extra key usually carries extra semantics).
     #[test]
     fn distance_ramp_rejects_extra_keys() {
         let entry = entry_json(
@@ -2773,9 +3100,11 @@ mod tests {
         ));
     }
 
-    /// `Multiplier{limitTotal}`（vendor ModStore.lua:370-371 + 402-404 总量封顶）：
-    /// `limit` 不截断乘数计数，而在 `value × mult` 后对最终贡献封顶。
-    /// 形如「每层中毒 +15% 伤害，至多 +75%」（var=PoisonStacks, limit=75, limitTotal）。
+    /// `Multiplier{limitTotal}` (vendor ModStore.lua:370-371 + 402-404's total
+    /// cap): `limit` doesn't truncate the multiplier count, it caps the
+    /// final contribution after `value × mult`. Shaped like "each poison
+    /// stack gives +15% damage, up to +75% total" (var=PoisonStacks,
+    /// limit=75, limitTotal).
     #[test]
     fn multiplier_limit_total_caps_final_contribution() {
         let entry = entry_json(
@@ -2797,17 +3126,18 @@ mod tests {
                 limit_total: true,
             }]
         );
-        // 3 层：15×3 = 45 ≤ 75 → 45（未触顶）。
+        // 3 stacks: 15×3 = 45 ≤ 75 -> 45 (cap not hit).
         let cfg3 = crate::CalcConfig::new().with_multiplier("PoisonStacks", 3.0);
         assert_eq!(mods[0].effective_number(&cfg3), Some(45.0));
-        // 8 层：15×8 = 120 → 总量封顶到 75（计数封顶会给 15×min(8,75)=120，错算）。
+        // 8 stacks: 15×8 = 120 -> capped to the 75 total (capping the count
+        // instead would give 15×min(8,75)=120, a miscalculation).
         let cfg8 = crate::CalcConfig::new().with_multiplier("PoisonStacks", 8.0);
         assert_eq!(mods[0].effective_number(&cfg8), Some(75.0));
     }
 
-    // skill_data / flag 构造器
+    // skill_data / flag constructors
 
-    /// skill_data 伤害基值键 → `<Type>DamageMin/Max` BASE modifier。
+    /// A skill_data base-damage key -> a `<Type>DamageMin/Max` BASE modifier.
     #[test]
     fn skill_data_damage_bounds_become_modifiers() {
         let entry = entry_json(
@@ -2819,7 +3149,7 @@ mod tests {
         assert_eq!(mods[0].value.as_number(), Some(19.0));
     }
 
-    /// skill_data duration → SkillData 项（entry div=1000 换算 ms → s）。
+    /// skill_data duration -> a SkillData item (entry div=1000 converts ms to s).
     #[test]
     fn skill_data_duration_emits_skill_data() {
         let entry = entry_json(
@@ -2838,7 +3168,8 @@ mod tests {
         }
     }
 
-    /// flag 构造器（技能行为开关）第一批无消费方 → Unsupported 上报。
+    /// A flag constructor (a skill behaviour switch) with no consumer in the
+    /// first batch is reported as Unsupported.
     #[test]
     fn flag_ctor_is_unsupported_in_first_batch() {
         let entry = entry_json(r#"{ "mods": [ { "kind": "flag", "name": "projectile" } ] }"#);
@@ -2848,7 +3179,8 @@ mod tests {
         );
     }
 
-    /// entry 带 skillFlag（statSet flags 路径消费）→ Unsupported(SkillFlag)。
+    /// An entry with skillFlag (consumed by the statSet flags path) ->
+    /// Unsupported(SkillFlag).
     #[test]
     fn entry_skill_flag_is_unsupported() {
         let entry = entry_json(r#"{ "skill_flag": "arrow" }"#);
@@ -2858,7 +3190,8 @@ mod tests {
         );
     }
 
-    /// FLAG 类型 mod（vendor `mod(…, "FLAG", …)`）→ Modifier::flag（Lua 真值语义）。
+    /// A FLAG-typed mod (vendor `mod(…, "FLAG", …)`) -> Modifier::flag (Lua
+    /// truthiness semantics).
     #[test]
     fn flag_typed_mod_becomes_bool_modifier() {
         let entry = entry_json(
@@ -2869,9 +3202,10 @@ mod tests {
         assert_eq!(mods[0].value.as_bool(), Some(true));
     }
 
-    // catalog 查找语义
+    // catalog lookup semantics
 
-    /// per-set 覆盖优先；miss 落回 global；双 miss → Unknown。
+    /// A per-set override wins; a miss falls back to global; a miss on both
+    /// -> Unknown.
     #[test]
     fn per_set_overrides_global_then_falls_back() {
         let catalog = catalog_json(
@@ -2886,24 +3220,25 @@ mod tests {
               }
             }"#,
         );
-        // per-set 命中。
+        // Hits the per-set override.
         let outcome = map_stat(&catalog, "IceNovaPlayer", Some("2"), "damage_+%", 10.0);
         assert_eq!(expect_modifiers(outcome)[0].name.as_str(), "ColdDamage");
-        // set miss → global。
+        // A set miss falls back to global.
         let outcome = map_stat(&catalog, "IceNovaPlayer", Some("1"), "damage_+%", 10.0);
         assert_eq!(expect_modifiers(outcome)[0].name.as_str(), "Damage");
-        // 无 set 上下文 → global。
+        // No set context -> global.
         let outcome = map_stat(&catalog, "Other", None, "damage_+%", 10.0);
         assert_eq!(expect_modifiers(outcome)[0].name.as_str(), "Damage");
-        // 双 miss → Unknown。
+        // A miss on both -> Unknown.
         assert_eq!(
             map_stat(&catalog, "Other", None, "nonexistent_stat", 1.0),
             MappedOutcome::Unknown
         );
     }
 
-    /// （存量 #7-1）curse 技能局部效果乘区取数：裸 `CurseEffect` INC/MORE 计入，
-    /// 带 GlobalEffect / 其他 tag 的元素与无关 stat 归零贡献。
+    /// (Backlog #7-1) Reading the curse skill-local effect multiplier zone:
+    /// a bare `CurseEffect` INC/MORE counts, while elements with a
+    /// GlobalEffect / other tag, and unrelated stats, contribute zero.
     #[test]
     fn curse_local_effect_collects_bare_curse_effect_only() {
         let catalog = catalog_json(
@@ -2931,12 +3266,12 @@ mod tests {
             ),
             (0.0, 0.8)
         );
-        // 带 tag（Mark 门控）的变体保守不计。
+        // A tagged variant (Mark-gated) is conservatively not counted.
         assert_eq!(
             curse_local_effect(&catalog, "X", None, "mark_effect_+%", 30.0),
             (0.0, 1.0)
         );
-        // 无关 stat / 无条目 → 零贡献。
+        // An unrelated stat / a missing entry -> zero contribution.
         assert_eq!(
             curse_local_effect(&catalog, "X", None, "nope", 1.0),
             (0.0, 1.0)
@@ -2945,12 +3280,13 @@ mod tests {
 
     //  isGlobalEffect / global-only merge
 
-    /// isGlobalEffect 等价（CalcActiveSkill.lua:68-80）：单 mod 查自身 tags；
-    /// group 任一成员命中即 global；flag/skill_data 形态同样按 tags 判。
+    /// Equivalent to isGlobalEffect (CalcActiveSkill.lua:68-80): a single mod
+    /// checks its own tags; a hit on any group member makes the group
+    /// global; flag/skill_data shapes are judged by tags the same way.
     #[test]
     fn is_global_effect_matches_vendor_predicate() {
         let m = |json: &str| -> StatMapMod { serde_json::from_str(json).expect("mod JSON 合法") };
-        // 单 mod：带 / 不带 GlobalEffect tag。
+        // A single mod: with / without the GlobalEffect tag.
         assert!(is_global_effect(&m(
             r#"{ "kind": "mod", "name": "Damage", "mod_type": "INC",
                  "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] }"#
@@ -2962,7 +3298,8 @@ mod tests {
         assert!(!is_global_effect(&m(
             r#"{ "kind": "mod", "name": "Damage", "mod_type": "INC" }"#
         )));
-        // group：任一成员带 tag → 整组 global；全员不带 → 非 global。
+        // group: a hit on any member -> the whole group is global; no
+        // member hit -> not global.
         assert!(is_global_effect(&m(r#"{ "kind": "group", "mods": [
                  { "kind": "mod", "name": "Damage", "mod_type": "INC" },
                  { "kind": "mod", "name": "CastSpeed", "mod_type": "INC",
@@ -2970,23 +3307,29 @@ mod tests {
         assert!(!is_global_effect(&m(r#"{ "kind": "group", "mods": [
                  { "kind": "mod", "name": "Damage", "mod_type": "INC" },
                  { "kind": "mod", "name": "ColdDamage", "mod_type": "MORE" } ] }"#)));
-        // skill_data 形态（vendor skill() 构造器同样可带 GlobalEffect tag）。
+        // skill_data shape (vendor's skill() constructor can likewise carry
+        // a GlobalEffect tag).
         assert!(is_global_effect(&m(
             r#"{ "kind": "skill_data", "value": { "key": "duration" },
                  "tags": [ { "type": "GlobalEffect", "effectType": "Buff" } ] }"#
         )));
     }
 
-    /// global-only 双 set 用例（对照 `CalcActiveSkill.lua:124-140`）：
-    /// 选中 set 全量 merge + global 记账；未选 set 仅 global 元素参与、
-    /// 非 global 静默跳过（Mapped 空）、记账命中 stat 由调用方整条跳过。
+    /// global-only dual-set case (mirrors `CalcActiveSkill.lua:124-140`): the
+    /// selected set does a full merge plus global bookkeeping; the
+    /// unselected set only lets global elements participate, silently
+    /// skipping non-global ones (Mapped empty), and a stat already accounted
+    /// for is skipped wholesale by the caller.
     #[test]
     fn global_only_merge_dual_set_semantics() {
-        // 合成双 set 目录（DemonForm 形态：global = GlobalEffect Buff tag 的 INC，
-        // 见 other.lua:4384-4386；local = 普通分等级 stat）：
-        // set "1"（选中）：alpha（global+local 混合条目）、beta（纯 local）；
-        // set "2"（未选）：alpha（per-set 覆盖，global）、beta（纯 local）、
-        //                 gamma（global，仅经 global 表可见）。
+        // A synthetic dual-set catalog (mirrors the DemonForm shape: global =
+        // an INC with a GlobalEffect Buff tag, see other.lua:4384-4386; local
+        // = an ordinary per-level stat):
+        // set "1" (selected): alpha (a mixed global+local entry), beta (pure
+        // local);
+        // set "2" (unselected): alpha (a per-set override, global), beta
+        // (pure local), gamma (global, visible only through the global
+        // table).
         let catalog = catalog_json(
             r#"{
               "global": {
@@ -3006,20 +3349,27 @@ mod tests {
               }
             }"#,
         );
-        // ① 选中 set "1" merge 时的记账（:104-106）：alpha 含 global 元素 → 记账；
-        //    beta 纯 local → 不记账。
+        // (1) Bookkeeping when merging the selected set "1" (:104-106): alpha
+        //     has a global element -> accounted for; beta is pure local ->
+        //     not accounted for.
         assert!(stat_has_global_mods(&catalog, "Foo", Some("1"), "alpha"));
         assert!(!stat_has_global_mods(&catalog, "Foo", Some("1"), "beta"));
-        // 未选 set "2" 视角：alpha 走 per-set 覆盖链，同样含 global。
+        // From the unselected set "2"'s viewpoint: alpha goes through the
+        // per-set override chain and is likewise global.
         assert!(stat_has_global_mods(&catalog, "Foo", Some("2"), "alpha"));
-        // ② 未选 set 的 global-only：纯 local 条目 → 静默无注入（Mapped 空，
-        //    非 Unsupported——vendor :107 直接不收，不属于"不支持"）。
+        // (2) Global-only on the unselected set: a pure-local entry ->
+        //     silently injects nothing (Mapped empty, not Unsupported --
+        //     vendor's :107 simply doesn't collect it, which isn't the same
+        //     as "unsupported").
         assert_eq!(
             map_stat_global_only(&catalog, "Foo", Some("2"), "beta", 10.0),
             MappedOutcome::Mapped(Vec::new())
         );
-        // ③ global 元素保留参与翻译——第一批 GlobalEffect tag 仍在翻译边界外
-        //    （buff 域），整条 Unsupported 上报、注入为零（宁可跳过不可错算）。
+        // (3) Global elements are still kept for translation -- the
+        //     GlobalEffect tag itself is still outside the first batch's
+        //     translation boundary (the buff domain), so the whole entry is
+        //     reported Unsupported and injects nothing (skip rather than
+        //     miscompute).
         for stat in ["alpha", "gamma"] {
             assert!(
                 matches!(
@@ -3029,19 +3379,24 @@ mod tests {
                 "global 元素应整条上报（M3 前注入为零）：{stat}"
             );
         }
-        // ④ 调用方记账跳过语义：alpha 在选中 set 已按 global 记账 → 未选 set 不再
-        //    调用 map_stat_global_only（vendor selectedGlobalStats 的 stat 级等价，
-        //    见 stat_has_global_mods 文档）。记账探针 + global-only 组合即 :107 全条件。
-        // ⑤ 条目双 miss → Unknown。
+        // (4) The caller's bookkeeping-skip semantics: alpha was already
+        //     accounted for as global on the selected set, so the unselected
+        //     set never calls map_stat_global_only for it again (the
+        //     stat-level equivalent of vendor's selectedGlobalStats -- see
+        //     stat_has_global_mods's doc). The bookkeeping probe plus
+        //     global-only together implement all of :107's condition.
+        // (5) A miss on both -> Unknown.
         assert_eq!(
             map_stat_global_only(&catalog, "Foo", Some("2"), "nonexistent", 1.0),
             MappedOutcome::Unknown
         );
     }
 
-    /// global-only 的元素粒度与 skill_flag 行为：group 整体按 global 保留（含不带
-    /// tag 的成员，vendor :103 粒度 = modOrGroup）；skill_flag 条目无 modOrGroup →
-    /// global-only 下自然 Mapped 空（flags 仅在选中 set 生效）。
+    /// Global-only's element granularity and skill_flag behaviour: a group
+    /// is retained as a whole when global (including members without the
+    /// tag -- vendor's :103 granularity is the modOrGroup); a skill_flag
+    /// entry has no modOrGroup, so it naturally comes out Mapped empty under
+    /// global-only (flags only take effect on the selected set).
     #[test]
     fn global_only_group_granularity_and_skill_flag() {
         let entry: StatMapEntry = serde_json::from_str(
@@ -3053,17 +3408,20 @@ mod tests {
                  { "kind": "mod", "name": "ColdDamage", "mod_type": "MORE" } ] }"#,
         )
         .expect("条目 JSON 合法");
-        // group 任一成员 global → 整组保留；兄弟普通 mod 不沾染。
+        // A global hit on any group member -> the whole group is retained;
+        // a sibling ordinary mod is unaffected.
         assert!(is_global_effect(&entry.mods[0]));
         assert!(!is_global_effect(&entry.mods[1]));
-        // skill_flag 条目：无 modOrGroup → global-only 下 Mapped 空。
+        // A skill_flag entry has no modOrGroup -> Mapped empty under
+        // global-only.
         let catalog =
             catalog_json(r#"{ "global": { "skill_can_fire_arrows": { "skill_flag": "arrow" } } }"#);
         assert_eq!(
             map_stat_global_only(&catalog, "Any", None, "skill_can_fire_arrows", 1.0),
             MappedOutcome::Mapped(Vec::new())
         );
-        // 抽取失真条目 → Unsupported 上报（内容未知，可见性优先；注入同为零）。
+        // A distorted-extraction entry is reported as Unsupported (content
+        // unknown, visibility comes first; injects nothing either way).
         let catalog = catalog_json(r#"{ "global": { "broken": { "_unextractable": true } } }"#);
         assert!(matches!(
             map_stat_global_only(&catalog, "Any", None, "broken", 1.0),
@@ -3071,10 +3429,12 @@ mod tests {
         ));
     }
 
-    //  curse 域敌侧映射
+    //  curse domain enemy-side mapping
 
-    /// Despair 形态（per-set `ChaosResist` BASE + GlobalEffect Curse tag）：
-    /// 直通敌侧名、GlobalEffect 剥除、merge 值 = stat 原值（负数减抗）。
+    /// Mirrors Despair's shape (a per-set `ChaosResist` BASE with a
+    /// GlobalEffect Curse tag): the enemy-side name passes through,
+    /// GlobalEffect is stripped, and the merged value is the raw stat value
+    /// (negative = a resistance reduction).
     #[test]
     fn curse_chaos_resist_maps_to_enemy_name() {
         let catalog = catalog_json(
@@ -3102,8 +3462,9 @@ mod tests {
         assert!(m.tags.is_empty(), "GlobalEffect 路由 tag 已剥除");
     }
 
-    /// Elemental Weakness 形态：`ElementalResist` 展开火/冰/电三条（pobr 敌侧
-    /// 聚合只读 `<Type>Resist`，与 vendor 双名同收等值）。
+    /// Mirrors Elemental Weakness's shape: `ElementalResist` expands to the
+    /// three fire/cold/lightning lines (pobr's enemy-side aggregation only
+    /// reads `<Type>Resist`, equivalent to vendor collecting both names).
     #[test]
     fn curse_elemental_resist_expands_to_three_types() {
         let catalog = catalog_json(
@@ -3131,8 +3492,9 @@ mod tests {
         assert_eq!(names, vec!["FireResist", "ColdResist", "LightningResist"]);
     }
 
-    /// Enfeeble 形态：`Damage` MORE + Condition(Unique[, neg]) 直译保留
-    /// （curse mod 落 enemy db，var 即敌方自身状态，不加 Enemy 前缀）。
+    /// Mirrors Enfeeble's shape: `Damage` MORE + Condition(Unique[, neg])
+    /// translates directly and is kept (a curse mod lands in the enemy db,
+    /// so the var is the enemy's own state, with no Enemy prefix added).
     #[test]
     fn curse_damage_more_keeps_condition_tags() {
         let catalog = catalog_json(
@@ -3164,8 +3526,9 @@ mod tests {
         );
     }
 
-    /// 未知敌侧名（pobr 暂无消费方，如 TemporalChainsActionSpeed）→
-    /// Unsupported(UnknownModName) 上报（可见性，不静默注入）。
+    /// An unknown enemy-side name (pobr has no consumer yet, e.g.
+    /// TemporalChainsActionSpeed) is reported as Unsupported(UnknownModName)
+    /// (for visibility, not injected silently).
     #[test]
     fn curse_unknown_enemy_name_is_reported() {
         let catalog = catalog_json(
@@ -3188,9 +3551,10 @@ mod tests {
         );
     }
 
-    /// Temporal Chains 第二载荷（允收）：`BuffExpireFaster MORE` 负值
-    /// （expire slower）直通敌侧同名（消费方 = `ailment::debuff_duration_mult`，
-    /// CalcOffence.lua:1833-1835 / :5040）。
+    /// Temporal Chains's second (admitted) payload: a negative
+    /// `BuffExpireFaster MORE` (meaning "expire slower") passes through to
+    /// the same enemy-side name (consumer =
+    /// `ailment::debuff_duration_mult`, CalcOffence.lua:1833-1835 / :5040).
     #[test]
     fn curse_buff_expire_faster_maps_to_enemy_name() {
         let catalog = catalog_json(
@@ -3218,8 +3582,9 @@ mod tests {
         assert!(m.tags.is_empty(), "GlobalEffect 路由 tag 已剥除");
     }
 
-    /// 非 curse 载荷（global 条目无 Curse tag，如技能自带 duration/AoE）→
-    /// Mapped(空)：静默跳过（走主技能注入通道，非 Unsupported）。
+    /// A non-curse payload (a global entry with no Curse tag, e.g. a skill's
+    /// own duration/AoE) -> Mapped(empty): silently skipped (goes through the
+    /// main skill injection channel instead, not Unsupported).
     #[test]
     fn non_curse_payload_yields_empty_mapped() {
         let catalog = catalog_json(
@@ -3237,17 +3602,19 @@ mod tests {
             ),
             MappedOutcome::Mapped(Vec::new())
         );
-        // catalog miss → Unknown（与 map_stat 同口径）。
+        // A catalog miss -> Unknown (same rule as map_stat).
         assert_eq!(
             map_curse_stat(&catalog, "DespairPlayer", None, "no_such_stat", 1.0),
             MappedOutcome::Unknown
         );
     }
 
-    /// 曝光施加能力载荷存在性：`flag("InflictExposure", …)`（Fire
-    /// Exposure `inflict_exposure_for_x_ms_on_ignite`，SkillStatMap.lua:1701-1703，
-    /// 门控 tag 不参与判定）与 `<El>ExposureChance BASE`（:1689-1690）均命中；
-    /// 普通载荷 / catalog miss → 不存在。
+    /// Existence check for an exposure-infliction payload:
+    /// `flag("InflictExposure", …)` (mirrors Fire Exposure's
+    /// `inflict_exposure_for_x_ms_on_ignite`, SkillStatMap.lua:1701-1703,
+    /// where the gating tag doesn't affect the check) and
+    /// `<El>ExposureChance BASE` (:1689-1690) both hit; an ordinary payload
+    /// / a catalog miss -> doesn't exist.
     #[test]
     fn has_exposure_inflict_payload_matches_flag_and_chance() {
         let catalog = catalog_json(
@@ -3289,9 +3656,11 @@ mod tests {
         ));
     }
 
-    /// curse 载荷**存在性**判定（vendor buffList 注册前置，CalcActiveSkill.lua:976-1041）：
-    /// 允收名单外的载荷（TemporalChainsActionSpeed / Dummy 占位）仍算存在
-    /// （vendor 同样入槽计数）；非 curse 条目 / catalog miss → 不存在。
+    /// The **existence** check for a curse payload (vendor's buffList
+    /// registration precondition, CalcActiveSkill.lua:976-1041): a payload
+    /// outside the allow-list (TemporalChainsActionSpeed / a Dummy
+    /// placeholder) still counts as existing (vendor counts it toward the
+    /// slot too); a non-curse entry / a catalog miss -> doesn't exist.
     #[test]
     fn has_curse_payload_is_presence_not_translatability() {
         let catalog = catalog_json(
@@ -3303,21 +3672,23 @@ mod tests {
                    "mods": [ { "kind": "mod", "name": "TemporalChainsActionSpeed", "mod_type": "INC",
                                "tags": [ { "type": "GlobalEffect", "effectType": "Curse" } ] } ] } } } } }"#,
         );
-        // 允收名单外（map_curse_stat 会 Unsupported）但载荷存在 → true。
+        // Outside the allow-list (map_curse_stat would say Unsupported) but
+        // the payload exists -> true.
         assert!(has_curse_payload(
             &catalog,
             "TemporalChainsPlayer",
             None,
             "base_skill_debuff_action_speed_+%_final_to_inflict",
         ));
-        // 非 curse 条目（global duration，Repulsion 全部 stat 的形态）→ false。
+        // A non-curse entry (a global duration, the shape of all of
+        // Repulsion's stats) -> false.
         assert!(!has_curse_payload(
             &catalog,
             "CurseOfRepulsionPlayer",
             None,
             "base_skill_effect_duration",
         ));
-        // catalog miss → false。
+        // A catalog miss -> false.
         assert!(!has_curse_payload(
             &catalog,
             "CurseOfRepulsionPlayer",
@@ -3326,7 +3697,8 @@ mod tests {
         ));
     }
 
-    /// GlobalEffect 带约定外键（effectCond 等额外门控语义）→ 整条 Unsupported。
+    /// GlobalEffect with a key outside the convention (effectCond etc.,
+    /// carrying extra gating semantics) skips the whole entry as Unsupported.
     #[test]
     fn curse_global_effect_extra_keys_unsupported() {
         let catalog = catalog_json(
@@ -3342,9 +3714,10 @@ mod tests {
         ));
     }
 
-    /// Frost Bomb 形态（SkillStatMap.lua:1721-1725）：
-    /// `active_skill_all_elemental_exposure_magnitude` → 三元素
-    /// `<El>Exposure BASE`（GlobalEffect Debuff 剥除，敌侧曝光归约消费）。
+    /// Mirrors Frost Bomb's shape (SkillStatMap.lua:1721-1725):
+    /// `active_skill_all_elemental_exposure_magnitude` -> the three elemental
+    /// `<El>Exposure BASE` (GlobalEffect Debuff is stripped, consumed by
+    /// enemy-side exposure reduction).
     #[test]
     fn debuff_exposure_magnitude_maps_three_elements() {
         let catalog = catalog_json(
@@ -3389,8 +3762,10 @@ mod tests {
         }
     }
 
-    /// 未知敌侧 debuff 名（允收名单外）→ Unsupported(UnknownModName) 上报；
-    /// 非 debuff 载荷（无 Debuff tag）→ Mapped(空) 静默跳过（走主技能通道）。
+    /// An unknown enemy-side debuff name (outside the allow-list) is
+    /// reported as Unsupported(UnknownModName); a non-debuff payload (no
+    /// Debuff tag) -> Mapped(empty), silently skipped (goes through the main
+    /// skill channel instead).
     #[test]
     fn debuff_unknown_name_reported_and_non_debuff_empty() {
         let catalog = catalog_json(
@@ -3421,10 +3796,12 @@ mod tests {
         );
     }
 
-    /// （#12）Loyalty 形态（per_stat_set["SupportLoyaltyPlayer"]["1"]）：
-    /// `MinionModifier LIST { mod = Life MORE }` → 召唤物内层 `MaximumLife MORE`
-    /// （名归一，与 buff 域 Life→MaximumLife 同口径）。allow-list 外内层
-    /// （Damage）与带 tag 的外层整条跳过（返回空）。
+    /// (#12) Mirrors Loyalty's shape (per_stat_set["SupportLoyaltyPlayer"]["1"]):
+    /// `MinionModifier LIST { mod = Life MORE }` -> the minion-side inner
+    /// `MaximumLife MORE` (name normalized, the same rule as the buff
+    /// domain's Life -> MaximumLife). An inner mod outside the allow-list
+    /// (Damage) and a tagged outer layer both skip the whole entry (return
+    /// empty).
     #[test]
     fn minion_life_stat_maps_loyalty_more_life() {
         let catalog = catalog_json(
@@ -3449,7 +3826,8 @@ mod tests {
         assert_eq!(mods[0].name.as_str(), "MaximumLife");
         assert_eq!(mods[0].mod_type, ModType::More);
         assert_eq!(mods[0].value.as_number(), Some(-30.0));
-        // 内层非 Life（Damage）：窄通道未准入 → 空。
+        // An inner mod other than Life (Damage): not admitted by the narrow
+        // channel -> empty.
         assert!(
             map_minion_life_stat(
                 &catalog,
@@ -3460,14 +3838,15 @@ mod tests {
             )
             .is_empty()
         );
-        // 未知 stat → 空。
+        // An unknown stat -> empty.
         assert!(
             map_minion_life_stat(&catalog, "SupportLoyaltyPlayer", None, "no_such", 1.0).is_empty()
         );
     }
 
-    /// Precision II 形态（sup_dex.lua:4216-4250）：`Accuracy INC` + GlobalEffect
-    /// Buff（含 effectName 键，无门控语义）→ 玩家侧 Accuracy INC，tag 剥净。
+    /// Mirrors Precision II's shape (sup_dex.lua:4216-4250): `Accuracy INC` +
+    /// GlobalEffect Buff (including the effectName key, no gating semantics)
+    /// -> a player-side Accuracy INC with tags fully stripped.
     #[test]
     fn player_buff_precision_accuracy_inc_maps() {
         let catalog = catalog_json(
@@ -3496,8 +3875,9 @@ mod tests {
         assert!(m.tags.is_empty(), "GlobalEffect（含 effectName）剥除");
     }
 
-    /// War Banner 形态（GlobalEffect effectType=Aura + Condition BannerPlanted）：
-    /// Aura 类玩家侧 buff 同收，Condition tag 直译保留。
+    /// Mirrors War Banner's shape (GlobalEffect effectType=Aura + Condition
+    /// BannerPlanted): Aura-type player-side buffs are collected the same
+    /// way, and the Condition tag translates directly and is kept.
     #[test]
     fn player_buff_banner_accuracy_keeps_condition() {
         let catalog = catalog_json(
@@ -3528,11 +3908,13 @@ mod tests {
         );
     }
 
-    /// Clarity II 形态（vendor sup_int.txt:305-315：`support_clarity_mana_
-    /// regeneration_rate_+%` → `ManaRegen INC` + GlobalEffect Buff effectName
-    /// "Clarity II"）→ 玩家侧 ManaRegen INC，tag 剥净。oracle 钉值
-    /// （pob2-oracle sorceress-stormweaver-comet）：Clarity II lv1 载荷 50 +
-    /// 其余裸名 INC 25 → calcsOutput.ManaRegenInc = 75。
+    /// Mirrors Clarity II's shape (vendor sup_int.txt:305-315:
+    /// `support_clarity_mana_regeneration_rate_+%` -> `ManaRegen INC` +
+    /// GlobalEffect Buff effectName "Clarity II") -> a player-side
+    /// ManaRegen INC with tags fully stripped. Pinned by the oracle
+    /// (pob2-oracle sorceress-stormweaver-comet): Clarity II lv1's payload of
+    /// 50 plus the rest of the bare-name INC 25 -> calcsOutput.ManaRegenInc
+    /// = 75.
     #[test]
     fn player_buff_clarity_mana_regen_inc_maps() {
         let catalog = catalog_json(
@@ -3561,11 +3943,12 @@ mod tests {
         assert!(m.tags.is_empty(), "GlobalEffect（含 effectName）剥除");
     }
 
-    /// Vitality II 形态（vendor sup_str.txt:1791-1802：`support_vitality_life_
-    /// regeneration_rate_per_minute_%` div=60 → `LifeRegenPercent BASE`）→
-    /// 每分钟 % 折每秒（120/60 = 2.0）。oracle 钉值（pob2-oracle
-    /// warrior-smith-of-kitava-shield-wall）：Vitality II 2.0 + 其余 6.1 →
-    /// calcsOutput.LifeRegenPercent = 8.1。
+    /// Mirrors Vitality II's shape (vendor sup_str.txt:1791-1802:
+    /// `support_vitality_life_regeneration_rate_per_minute_%` div=60 ->
+    /// `LifeRegenPercent BASE`) -> a per-minute percentage converted to
+    /// per-second (120/60 = 2.0). Pinned by the oracle (pob2-oracle
+    /// warrior-smith-of-kitava-shield-wall): Vitality II's 2.0 plus the rest
+    /// of 6.1 -> calcsOutput.LifeRegenPercent = 8.1.
     #[test]
     fn player_buff_vitality_life_regen_percent_div60() {
         let catalog = catalog_json(
@@ -3595,8 +3978,9 @@ mod tests {
         assert!(m.tags.is_empty());
     }
 
-    /// 玩家侧允收名单外的名（如 AttackSpeed）→ Unsupported(UnknownModName) 上报；
-    /// 非 buff 载荷（无 GlobalEffect Buff/Aura tag）→ Mapped(空) 静默跳过。
+    /// A name outside the player-side allow-list (e.g. AttackSpeed) is
+    /// reported as Unsupported(UnknownModName); a non-buff payload (no
+    /// GlobalEffect Buff/Aura tag) -> Mapped(empty), silently skipped.
     #[test]
     fn player_buff_unknown_name_reported_and_non_buff_empty() {
         let catalog = catalog_json(
@@ -3617,12 +4001,15 @@ mod tests {
         );
     }
 
-    /// Pinnacle of Power 形态（other.lua:12503 `elemental_power_elemental_
-    /// damage_+%_final_per_power_charge`）：首元素 `Damage MORE` 带 scalar
-    /// Multiplier（边界外，零注入）**不连坐**同条目六枚 `<El>Can<Ailment>` flag
-    /// ——逐元素独立处置后 flag 载荷全部产出、GlobalEffect tag 剥净。
-    /// stormweaver-comet IgniteDPS 1911 的跨类型通行证（oracle 钉源
-    /// `Skill:PinnacleOfPowerPlayer`，m4-skill-gaps.md §7.4）。
+    /// Mirrors Pinnacle of Power's shape (other.lua:12503
+    /// `elemental_power_elemental_damage_+%_final_per_power_charge`): the
+    /// first element, `Damage MORE` with a scalar Multiplier (outside the
+    /// boundary, injects nothing), does **not** drag down the same entry's
+    /// six `<El>Can<Ailment>` flags -- with each element handled
+    /// independently, all the flag payloads still come out and the
+    /// GlobalEffect tag is fully stripped. This is the cross-type pass for
+    /// stormweaver-comet's IgniteDPS 1911 (pinned by the oracle at
+    /// `Skill:PinnacleOfPowerPlayer`, m4-skill-gaps.md §7.4).
     #[test]
     fn player_buff_pinnacle_flags_survive_scalar_sibling() {
         let catalog = catalog_json(
@@ -3680,8 +4067,10 @@ mod tests {
         );
     }
 
-    /// `<Type>Can<Ailment>` 族名单外的 flag（如行为开关 projectile）维持未知名
-    /// 上报；全部命中元素失败（零注入）时 Unsupported 可见性不退化。
+    /// A flag outside the `<Type>Can<Ailment>` family (e.g. the behaviour
+    /// switch projectile) stays reported as unknown; when every matching
+    /// element fails (zero injections), the Unsupported visibility doesn't
+    /// degrade.
     #[test]
     fn player_buff_flag_outside_family_reported() {
         let catalog = catalog_json(
@@ -3697,11 +4086,13 @@ mod tests {
         );
     }
 
-    /// Sigil of Power 形态（vendor other.lua SigilOfPowerPlayer statMap
-    /// `circle_of_power_spell_damage_+%_final_per_stage`）：Damage MORE +
-    /// Spell flag + Multiplier{var=SigilOfPowerStage, limitVar=
-    /// SigilOfPowerMaxStages}。oracle 钉值（varashta）：eff level 32 →
-    /// per-stage 17，stage=1 → modDB `Damage MORE 17 | Skill:SigilOfPowerPlayer`。
+    /// Mirrors Sigil of Power's shape (vendor other.lua's
+    /// SigilOfPowerPlayer statMap
+    /// `circle_of_power_spell_damage_+%_final_per_stage`): Damage MORE +
+    /// Spell flag + Multiplier{var=SigilOfPowerStage,
+    /// limitVar=SigilOfPowerMaxStages}. Pinned by the oracle (varashta): eff
+    /// level 32 -> per-stage 17, stage=1 -> modDB
+    /// `Damage MORE 17 | Skill:SigilOfPowerPlayer`.
     #[test]
     fn player_buff_sigil_per_stage_damage_more_with_limit_var() {
         let catalog = catalog_json(
@@ -3743,7 +4134,8 @@ mod tests {
             }],
             "Multiplier limitVar 直译，GlobalEffect 剥除"
         );
-        // 求值：stage=1、maxStages=4 → ×1；stage=9 被 maxStages 封到 4。
+        // Evaluation: stage=1, maxStages=4 -> ×1; stage=9 is capped to 4 by
+        // maxStages.
         let cfg = crate::CalcConfig::new()
             .with_multiplier("SigilOfPowerStage", 1.0)
             .with_multiplier("SigilOfPowerMaxStages", 4.0);
@@ -3754,12 +4146,15 @@ mod tests {
         assert_eq!(m.effective_number(&cfg9), Some(68.0));
     }
 
-    /// Refraction II 形态（vendor sup_str.lua:6023-6025：`support_tempered_
-    /// valour_deflection_rating_%_of_evasion_rating` → `EvasionGainAsDeflection
-    /// BASE 20` + GlobalEffect Buff "Refractive Plating" + MultiplierThreshold
-    /// ValourStacks/thresholdVar=RefractionMinimumValour）→ 玩家侧 BASE，
-    /// threshold 静态折 0（该 var 全 vendor 树零 setter），默认 cfg 下生效。
-    /// oracle 钉值（wolf-pack）：tree 28 + 本载荷 20 = 48%，rating 11791.52。
+    /// Mirrors Refraction II's shape (vendor sup_str.lua:6023-6025:
+    /// `support_tempered_valour_deflection_rating_%_of_evasion_rating` ->
+    /// `EvasionGainAsDeflection BASE 20` + GlobalEffect Buff "Refractive
+    /// Plating" + MultiplierThreshold
+    /// ValourStacks/thresholdVar=RefractionMinimumValour) -> a player-side
+    /// BASE, with the threshold statically folded to 0 (that var has zero
+    /// setters across the whole vendor tree), active under the default cfg.
+    /// Pinned by the oracle (wolf-pack): tree's 28 + this payload's 20 =
+    /// 48%, rating 11791.52.
     #[test]
     fn player_buff_refraction_evasion_gain_as_deflection_maps() {
         let catalog = catalog_json(
@@ -3796,15 +4191,18 @@ mod tests {
             }],
             "thresholdVar 静态折 0，GlobalEffect 剥除"
         );
-        // 默认 cfg（ValourStacks 未注入 = 0）：0 ≥ 0 → 生效，与 vendor 默认一致。
+        // Under the default cfg (ValourStacks not injected = 0): 0 ≥ 0 ->
+        // active, matching vendor's default.
         assert!(m.matches(&crate::CalcConfig::new()));
     }
 
-    /// 同 buff 的护甲折算载荷（vendor sup_str.lua:6019-6021：`support_tempered_
-    /// valour_%_armour_to_apply_to_elemental_damage` → ArmourAppliesTo{Fire,Cold,
-    /// Lightning}DamageTaken BASE 30，tag 形态与 deflection 载荷同）→ 三条玩家侧
-    /// BASE，消费方 `calc::taken::armour_applies_pct`。oracle 钉值（wolf-pack）：
-    /// tree 84 + 本载荷 30 = 114%，FireEffectiveAppliedArmour 21181.2。
+    /// The same buff's armour-conversion payload (vendor sup_str.lua:6019-6021:
+    /// `support_tempered_valour_%_armour_to_apply_to_elemental_damage` ->
+    /// ArmourAppliesTo{Fire,Cold,Lightning}DamageTaken BASE 30, with the same
+    /// tag shape as the deflection payload) -> three player-side BASE
+    /// modifiers, consumed by `calc::taken::armour_applies_pct`. Pinned by
+    /// the oracle (wolf-pack): tree's 84 + this payload's 30 = 114%,
+    /// FireEffectiveAppliedArmour 21181.2.
     #[test]
     fn player_buff_refraction_armour_applies_to_elements_maps() {
         let catalog = catalog_json(
@@ -3846,7 +4244,8 @@ mod tests {
                 };
                 assert_eq!(m.mod_type, ModType::Base);
                 assert_eq!(m.value.as_number(), Some(30.0));
-                // 默认 cfg（ValourStacks 未注入 = 0）：0 ≥ 0 → 生效。
+                // Under the default cfg (ValourStacks not injected = 0):
+                // 0 ≥ 0 -> active.
                 assert!(m.matches(&crate::CalcConfig::new()));
                 m.name.as_str()
             })
@@ -3861,9 +4260,10 @@ mod tests {
         );
     }
 
-    /// MultiplierThreshold thresholdVar 有 setter（Attrition
-    /// `AttritionCullSeconds`，act_str.lua:1258 设 Multiplier）→ 静态折 0 会
-    /// 错开 gate，维持 Unsupported 整条上报。
+    /// A MultiplierThreshold thresholdVar with a setter (Attrition's
+    /// `AttritionCullSeconds`, set by act_str.lua:1258's Multiplier) --
+    /// statically folding it to 0 would open the gate at the wrong point, so
+    /// it stays reported as Unsupported wholesale.
     #[test]
     fn player_buff_threshold_var_with_setter_reported() {
         let catalog = catalog_json(
@@ -3887,9 +4287,10 @@ mod tests {
         ));
     }
 
-    /// Sigil of Power 最大层数载荷（`circle_of_power_max_stages` →
-    /// `Multiplier:SigilOfPowerMaxStages` BASE，GlobalEffect 带 unscalable
-    /// 标记——允收通过；编排层把该 BASE 桥进 cfg.multipliers 作 limitVar 分母）。
+    /// Sigil of Power's max-stages payload (`circle_of_power_max_stages` ->
+    /// `Multiplier:SigilOfPowerMaxStages` BASE, with GlobalEffect carrying
+    /// the unscalable marker -- admitted through; the orchestration layer
+    /// bridges this BASE into cfg.multipliers as the limitVar denominator).
     #[test]
     fn player_buff_sigil_max_stages_multiplier_base() {
         let catalog = catalog_json(
@@ -3918,11 +4319,12 @@ mod tests {
         assert!(m.tags.is_empty(), "GlobalEffect（含 unscalable 键）剥除");
     }
 
-    /// Elemental Conflux 形态（vendor SkillStatMap
-    /// `skill_elemental_conflux_active_element_damage_+%_final`）：三元素
-    /// MORE，各带 invert Multiplier（`ElementalConflux<El>Effect`，config
-    /// Average 档 = 3 → ×1/3 均摊；锁单元素档 = 1/0 → ×1/×0）。oracle 钉值
-    /// （varashta）：73 → 三条 `<El>Damage MORE 24.33`。
+    /// Mirrors Elemental Conflux's shape (vendor SkillStatMap's
+    /// `skill_elemental_conflux_active_element_damage_+%_final`): three
+    /// elemental MORE mods, each with an invert Multiplier
+    /// (`ElementalConflux<El>Effect`; the config's Average setting = 3 ->
+    /// splits ×1/3, and locking to a single element = 1/0 -> ×1/×0). Pinned
+    /// by the oracle (varashta): 73 -> three `<El>Damage MORE 24.33`.
     #[test]
     fn player_buff_conflux_inverted_element_more() {
         let catalog = catalog_json(
@@ -3958,17 +4360,20 @@ mod tests {
         assert_eq!(lightning.name.as_str(), "LightningDamage");
         assert_eq!(lightning.mod_type, ModType::More);
         assert_eq!(lightning.value.as_number(), Some(73.0));
-        // Average 档：multiplier 3 → invert ×1/3 = 24.33（vendor Tabulate 同值）。
+        // Average setting: multiplier 3 -> invert ×1/3 = 24.33 (matches
+        // vendor's Tabulate).
         let avg = crate::CalcConfig::new().with_multiplier("ElementalConfluxLightningEffect", 3.0);
         let v = lightning.effective_number(&avg).expect("数值");
         assert!((v - 73.0 / 3.0).abs() < 1e-9, "invert 1/3 均摊，得 {v}");
-        // 锁定别的元素：multiplier 0 → invert 保持 0 → 该元素载荷为 0。
+        // Locked to another element: multiplier 0 -> invert stays 0 -> this
+        // element's payload is 0.
         let locked =
             crate::CalcConfig::new().with_multiplier("ElementalConfluxLightningEffect", 0.0);
         assert_eq!(lightning.effective_number(&locked), Some(0.0));
     }
 
-    /// Unsupported 分类标签稳定（双跑报告聚合键）。
+    /// Unsupported classification tags stay stable (the aggregation key for
+    /// dual-run reports).
     #[test]
     fn unsupported_categories_are_stable() {
         assert_eq!(UnsupportedReason::Unextractable.category(), "unextractable");

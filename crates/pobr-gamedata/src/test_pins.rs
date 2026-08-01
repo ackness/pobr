@@ -1,17 +1,24 @@
-//! Test-pin snapshots：数据内容计数钉的 bless 快照（v0.0.3）。
+//! Test-pin snapshots: blessed snapshots for data-content-count pins (v0.0.3).
 //!
-//! 「断言值 = 当前数据文件内容的计数/统计量」这类测试钉（段条数、覆盖率、某条
-//! 数据的具体数值）随每次数据 regen 必然变化，手工重钉是零信息量劳动。此类钉
-//! 统一存进 `data/<ver>/generated/test_pins.json`（扁平 map：pin 名 → JSON 值），
-//! 测试经 [`assert_pin`] 对照；regen 后以 `POBR_BLESS_PINS=1` 重跑同一批测试
-//! 一步刷新（`pipeline/regen-all.sh` 末步已编排）。
+//! Test pins of the form "asserted value = a count/statistic of the
+//! current data file's content" (section entry counts, coverage, a
+//! specific data value) necessarily change on every data regen, so
+//! manually re-pinning them is zero-information labor. This class of pin
+//! is stored uniformly in `data/<ver>/generated/test_pins.json` (a flat
+//! map: pin name → JSON value), checked by tests via [`assert_pin`];
+//! after a regen, rerunning the same tests with `POBR_BLESS_PINS=1`
+//! refreshes them in one step (the last step of `pipeline/regen-all.sh`
+//! already orchestrates this).
 //!
-//! 甄别边界：**结构性守卫**（schema 非空、单调棘轮、去重不变式）仍写死在代码
-//! 里，不进快照——快照只承载「会随数据内容漂移、且漂移本身无对错」的值。
+//! Boundary: **structural guards** (a non-empty schema, monotonic
+//! ratchets, dedup invariants) still live hardcoded in the code, not in
+//! the snapshot — the snapshot only carries values that drift with data
+//! content, where the drift itself has no right or wrong answer.
 //!
-//! 注意：bless 写回在进程内串行（全局锁）；跨进程并发 bless 同一文件会整文件
-//! 互相覆盖。请用 `cargo test`（单进程多线程）而非 nextest（进程/测试）执行
-//! bless 命令。
+//! Note: bless write-back is serialized within a process (a global lock);
+//! concurrent bless across processes on the same file will clobber each
+//! other over the whole file. Use `cargo test` (single process, multiple
+//! threads) rather than nextest (per-process/per-test) to run bless commands.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -19,20 +26,26 @@ use std::sync::Mutex;
 
 use serde_json::Value;
 
-/// bless 开关环境变量：`POBR_BLESS_PINS=1` 时 [`assert_pin`] 把实际值写回快照。
+/// The bless-toggle environment variable: when `POBR_BLESS_PINS=1`,
+/// [`assert_pin`] writes the actual value back to the snapshot.
 pub const BLESS_ENV: &str = "POBR_BLESS_PINS";
 
-/// bless 写回锁（同进程内多测试线程对同一快照文件 read-modify-write 串行）。
+/// The bless write-back lock (serializes read-modify-write on the same
+/// snapshot file across test threads within a process).
 static WRITE_LOCK: Mutex<()> = Mutex::new(());
 
-/// 对照（或 bless 时写回）`<version_dir>/generated/test_pins.json` 中的一个 pin。
+/// Checks (or, in bless mode, writes back) one pin in
+/// `<version_dir>/generated/test_pins.json`.
 ///
-/// `version_dir` = 该测试实际加载数据的版本目录（golden 测试传
-/// `GOLDEN_PARITY_DATA_VERSION` 对应目录，活动版本测试传 `DATA_VERSION` 对应
-/// 目录）——pin 跟数据同目录，regen 哪个版本就刷新哪个版本的快照。
+/// `version_dir` = the version directory the test actually loaded its data
+/// from (a golden test passes the directory for
+/// `GOLDEN_PARITY_DATA_VERSION`, an active-version test passes the
+/// directory for `DATA_VERSION`) — a pin lives alongside its data, so
+/// regenning one version only refreshes that version's snapshot.
 ///
-/// 正常模式：pin 缺失或值不等 → panic，报错信息给出 bless 刷新命令。
-/// bless 模式（`POBR_BLESS_PINS=1`）：写回实际值并通过。
+/// Normal mode: a missing pin or a value mismatch → panics, with the error
+/// message giving the bless-refresh command.
+/// Bless mode (`POBR_BLESS_PINS=1`): writes back the actual value and passes.
 pub fn assert_pin(version_dir: &Path, name: &str, actual: impl Into<Value>) {
     let actual = actual.into();
     let path = version_dir.join("generated/test_pins.json");
@@ -68,7 +81,8 @@ pub fn assert_pin(version_dir: &Path, name: &str, actual: impl Into<Value>) {
     }
 }
 
-/// 读快照（缺文件 → 空 map；损坏文件 → panic，不静默）。
+/// Reads the snapshot (a missing file → an empty map; a corrupt file →
+/// panics, not silenced).
 fn read_pins(path: &Path) -> BTreeMap<String, Value> {
     match std::fs::read(path) {
         Ok(bytes) => serde_json::from_slice(&bytes)

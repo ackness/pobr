@@ -1,21 +1,26 @@
-//! `extract-lua --what stat-set-labels`：vendor statSet 形态 label + 导出序号 →
-//! `data/<版本>/overlay/stat_set_labels.json`。
+//! `extract-lua --what stat-set-labels`: vendor statSet shape's label plus
+//! export index -> `data/<version>/overlay/stat_set_labels.json`.
 //!
-//! **双源 join**（`.dat` `GrantedEffectStatSets.Label` 的 FK 目标表
-//! `GrantedEffectLabels` 在钉定补丁不可下载，label 文本只存在于 vendor 导出产物）：
-//! - **label 文本**：`Data/Skills/<file>.lua` 的 `statSets[i].label`
-//!   （vendor `Export/Scripts/skills.lua:478` 已解析 `LabelType.Label`，
-//!   缺省回退技能显示名），经 luajit 引导脚本抽取（JSONL）；
-//! - **set 稳定 id**：`Export/Skills/<file>.txt` 模板的 `#skill` / `#set` 行——
-//!   模板内 `#set` 顺序 = 数据文件 statSets 数字键 = PoB2 `<Gem statSetIndex>`
-//!   的索引语义，按 (skill, 序号) join 得 `(skill, set_id, set_index, label)`。
+//! **Two-source join** (the FK target table for `.dat` `GrantedEffectStatSets.Label`
+//! — `GrantedEffectLabels` — isn't downloadable at the pinned patch, so the
+//! label text only exists in vendor's export artifacts):
+//! - **label text**: `statSets[i].label` from `Data/Skills/<file>.lua`
+//!   (vendor `Export/Scripts/skills.lua:478` already resolves `LabelType.Label`,
+//!   defaulting back to the skill's display name), extracted via a luajit bootstrap script (JSONL);
+//! - **stable set id**: the `#skill` / `#set` lines of the
+//!   `Export/Skills/<file>.txt` template — the `#set` order in the template
+//!   matches the data file's statSets numeric keys, which is the same index
+//!   semantics as PoB2's `<Gem statSetIndex>`, so joining by (skill, index)
+//!   yields `(skill, set_id, set_index, label)`.
 //!
-//! 注意 vendor 模板会**策展跳过**个别 `.dat` 附加 set（如 IceNovaPlayerOnFrostbolt，
-//! 与主 set 数值同形的位置变体）——这些 set 不在导出产物中，无 label / 无导出序号，
-//! 消费侧（`StatSetDef::vendor_set_index = None`）不可被 statSetIndex 选中，忠实
-//! 转录 PoB2 行为。
+//! Note that vendor's template **deliberately skips** a few `.dat`
+//! additional sets (e.g. IceNovaPlayerOnFrostbolt, a positional variant with
+//! the same values as the main set) — these sets aren't in the export
+//! artifacts, so they have no label / no export index, and on the
+//! consumption side (`StatSetDef::vendor_set_index = None`) they can't be
+//! selected by statSetIndex; this is a faithful transcription of PoB2's behavior.
 //!
-//! 确定性：按 `(skill, set_index)` 排序 + serde_json 统一序列化，同输入 byte-stable。
+//! Determinism: sorted by `(skill, set_index)` + serde_json serialization; byte-stable for the same input.
 
 use std::fs;
 use std::io;
@@ -27,35 +32,38 @@ use crate::extract_lua::{
     ExtractLuaArgs, OverlayMeta, invoke_luajit_jsonl, read_vendor_version, resolve_version_file,
 };
 
-/// 引导脚本内容（经 stdin 注入 luajit，二进制自包含、不依赖运行目录）
+/// Bootstrap script content (piped into luajit via stdin; the binary is
+/// self-contained and doesn't depend on the working directory)
 const BOOTSTRAP_LUA: &str = include_str!("extract_stat_set_labels.lua");
 
-/// 当前 overlay 文档 schema 标识（字段演化时递增）
+/// Current overlay document schema identifier (bumped when fields evolve)
 pub const STAT_SET_LABELS_SCHEMA: &str = "stat_set_labels/v1";
 
-/// 引导脚本输出的单行 JSONL：一条 (技能, 导出序号, label)。
+/// One JSONL line emitted by the bootstrap script: one (skill, export index, label) triple.
 #[derive(Debug, Clone, Deserialize)]
 pub struct LabelRow {
-    /// 授予效果 id。
+    /// The granted effect id.
     pub skill: String,
-    /// statSets 1-based 导出序号。
+    /// The statSets 1-based export index.
     pub set_index: u32,
-    /// label 文本。
+    /// The label text.
     pub label: String,
 }
 
-/// 完整 overlay 文档（生成侧；消费侧 schema 见
-/// [`pobr_data::catalog::StatSetLabelsDef`]，serde 形状一致防字段漂移）。
+/// The full overlay document (generation side; see
+/// [`pobr_data::catalog::StatSetLabelsDef`] for the consumption-side schema
+/// — matching serde shapes guard against field drift).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StatSetLabelsDoc {
-    /// 头部元信息（serde 落为 `_meta`，置于文件最前）
+    /// Header metadata (serialized as `_meta`, placed at the top of the file)
     #[serde(rename = "_meta")]
     pub meta: OverlayMeta,
-    /// label 表，按 `(skill, set_index)` 升序。
+    /// The label table, ascending by `(skill, set_index)`.
     pub labels: Vec<StatSetLabelDef>,
 }
 
-/// 执行抽取：luajit 抽 label + Rust 读模板抽 set id，join 后返回 byte-stable JSON。
+/// Run the extraction: luajit extracts labels, Rust reads templates to
+/// extract set ids, then joins them and returns byte-stable JSON.
 pub fn run_extract_stat_set_labels(args: &ExtractLuaArgs) -> io::Result<String> {
     let rows: Vec<LabelRow> = invoke_luajit_jsonl(args, BOOTSTRAP_LUA)?;
     let template_sets = parse_templates(args)?;
@@ -63,8 +71,9 @@ pub fn run_extract_stat_set_labels(args: &ExtractLuaArgs) -> io::Result<String> 
     Ok(assemble_labels_document(meta, rows, &template_sets))
 }
 
-/// 解析 `Export/Skills/<file>.txt` 模板：`#skill <id>` 开块、其后的 `#set <id>`
-/// 依序编号（1-based）。返回 `(skill, set_index) → set_id`。
+/// Parse an `Export/Skills/<file>.txt` template: `#skill <id>` opens a
+/// block, and the `#set <id>` lines that follow are numbered in order
+/// (1-based). Returns `(skill, set_index) -> set_id`.
 fn parse_templates(
     args: &ExtractLuaArgs,
 ) -> io::Result<std::collections::BTreeMap<(String, u32), String>> {
@@ -98,8 +107,9 @@ fn parse_templates(
     Ok(map)
 }
 
-/// 组装最终文档：join 模板 set id（无对应模板行的 label 条目丢弃并告警——
-/// 数据/模板漂移信号）+ 排序 + serde_json 统一序列化。
+/// Assemble the final document: join in the template's set id (a label
+/// entry with no matching template line is dropped with a warning — a
+/// data/template drift signal) + sort + serde_json serialization.
 pub fn assemble_labels_document(
     meta: OverlayMeta,
     rows: Vec<LabelRow>,
@@ -136,7 +146,7 @@ pub fn assemble_labels_document(
     json
 }
 
-/// 构建 `_meta`（与公共层同约定：regen_command 写 canonical 相对路径）。
+/// Build `_meta` (same convention as the shared layer: regen_command writes a canonical relative path).
 fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
     let (commit, subject) = read_vendor_version(&resolve_version_file(args))?;
     let extracted_files: Vec<String> = args
@@ -183,7 +193,7 @@ mod tests {
         }
     }
 
-    /// join：模板有对应行 → 带 set_id 落库；无对应行 → 丢弃告警。排序确定。
+    /// Join: a matching template line -> stored with its set_id; no match -> dropped with a warning. Sort order is deterministic.
     #[test]
     fn joins_template_set_ids_and_sorts() {
         let mut templates = std::collections::BTreeMap::new();
@@ -209,7 +219,7 @@ mod tests {
             LabelRow {
                 skill: "IceNovaPlayer".into(),
                 set_index: 3,
-                label: "Orphan".into(), // 模板无第 3 set → 丢弃
+                label: "Orphan".into(), // no set 3 in the template -> dropped
             },
         ];
         let json = assemble_labels_document(meta(), rows, &templates);

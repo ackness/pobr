@@ -1,14 +1,22 @@
-//! Golden **canary**——跨伤害类型 / 防御层各取一个代表 build，对 PoB2 黄金值做
-//! **宽容标定 sanity**。
+//! Golden **canary** — takes one representative build per damage type /
+//! defence layer and runs a **loose calibration sanity check** against PoB2
+//! golden values.
 //!
-//! 定位（重要）：这是**额外**的"标定烟雾"锚点，**不替代** `ninja_parity` 的全量 parity
-//! 门禁——后者仍是穷尽对照 + 回归基线。canary 只快速抓住"系数/基础值写错"这类**粗标定
-//! 漂移**（逻辑不变量抓不到、又不该靠追精确数字暴露），故容差刻意宽：Life/防御 ±10–15%
-//! （标定应吻合），DPS ±40%（只抓数量级漂移，容忍 offence 管线已知缺口）。
+//! Purpose (important): this is an **extra** "calibration smoke" anchor, it
+//! **doesn't replace** `ninja_parity`'s full parity gate — that's still the
+//! exhaustive comparison + regression baseline. The canary only catches
+//! **coarse calibration drift** like a mistyped coefficient/base value (the
+//! kind of thing logic invariants can't catch, but that shouldn't need
+//! precise-number chasing to surface either), so the tolerance is
+//! deliberately loose: Life/defence ±10-15% (calibration should be close),
+//! DPS ±40% (only catches order-of-magnitude drift, tolerating known offence
+//! pipeline gaps).
 //!
-//! 版本钉定 `GOLDEN_PARITY_DATA_VERSION`（见 parity.rs A 组契约 + doc 16 §5）。
-//! 口径与 CLI `calculate-build` 默认一致（mode_effective / Pinnacle / enemy_level=0）。
-//! DoT / chaos 的标定走 `skill_dot_golden`（DoT 管线偏差大，不塞进 canary）。
+//! Pins `GOLDEN_PARITY_DATA_VERSION` (see parity.rs group A's contract + doc
+//! 16 §5). Uses the same settings as the CLI `calculate-build` default
+//! (mode_effective / Pinnacle / enemy_level=0). DoT/chaos calibration is
+//! covered by `skill_dot_golden` instead (the DoT pipeline's deviation is too
+//! large to fold into the canary).
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::{MinimalInput, OutputTable};
@@ -24,7 +32,7 @@ fn builds_dir() -> PathBuf {
 }
 
 fn load_data() -> BuildData {
-    // golden 钉定被校验的数据版本（与活动 DATA_VERSION 解耦）；见 pobr_data::GOLDEN_PARITY_DATA_VERSION。
+    // Pins the data version being checked against the golden values (decoupled from the active DATA_VERSION); see pobr_data::GOLDEN_PARITY_DATA_VERSION.
     let data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
     BuildData::load(&data).expect("load BuildData")
 }
@@ -59,7 +67,7 @@ fn run(name: &str, data: &BuildData) -> OutputTable {
     calculate_with_data(&build, data, &opts).expect("calculate")
 }
 
-/// ±tol 相对标定带（golden 必须有效 >0——canary 只选有有效 golden 值的 stat）。
+/// ±tol relative calibration band (golden must be valid >0 -- the canary only picks stats with valid golden values).
 fn within(name: &str, label: &str, pobr: f64, golden: f64, tol: f64) {
     assert!(
         golden > 0.0,
@@ -73,12 +81,12 @@ fn within(name: &str, label: &str, pobr: f64, golden: f64, tol: f64) {
     );
 }
 
-// 宽容刻度：Life/防御 = 紧（标定应吻合）；DPS = 宽（只抓数量级漂移）。
+// Loose scale: Life/defence = tight (calibration should be close); DPS = loose (only catches order-of-magnitude drift).
 const LIFE: f64 = 0.10;
 const DEF: f64 = 0.15;
 const DPS: f64 = 0.40;
 
-/// 物理近战 / 护甲 + 格挡层。
+/// Physical melee / armour + block layer.
 #[test]
 fn canary_physical_armour_block() {
     let d = load_data();
@@ -96,7 +104,7 @@ fn canary_physical_armour_block() {
     within(n, "DPS", o.dps, golden_stat(n, "TotalDPS"), DPS);
 }
 
-/// 冰冷投射 / 闪避 + ES 层。
+/// Cold projectile / evasion + ES layer.
 #[test]
 fn canary_cold_projectile_evasion_es() {
     let d = load_data();
@@ -114,7 +122,7 @@ fn canary_cold_projectile_evasion_es() {
     within(n, "DPS", o.dps, golden_stat(n, "TotalDPS"), DPS);
 }
 
-/// 冰冷法术 / 纯 ES（CI，Life=1 跳过）。
+/// Cold spell / pure ES (CI, Life=1 skipped).
 #[test]
 fn canary_cold_spell_es() {
     let d = load_data();
@@ -130,7 +138,7 @@ fn canary_cold_spell_es() {
     within(n, "DPS", o.dps, golden_stat(n, "TotalDPS"), DPS);
 }
 
-/// 闪避近战层。
+/// Evasion melee layer.
 #[test]
 fn canary_evasion_melee() {
     let d = load_data();
@@ -141,11 +149,13 @@ fn canary_evasion_melee() {
     within(n, "DPS", o.dps, golden_stat(n, "TotalDPS"), DPS);
 }
 
-/// 火焰法术 / 护甲层（CI，Life=1 跳过）。
+/// Fire spell / armour layer (CI, Life=1 skipped).
 ///
-/// Phase 0 曾以「0.5.4b offence DPS 适配缺口（~0.60x）」`#[ignore]`；#4 重验
-/// ember-fusillade TotalDPS 已 1.00x（548742 vs 549423——gap map 条目在先前
-/// mana-multiplier / Arcane Surge 等修复中顺带闭合，未及回验），un-ignore。
+/// Phase 0 once `#[ignore]`d this as a "0.5.4b offence DPS adaptation gap
+/// (~0.60x)"; #4's re-verification found ember-fusillade TotalDPS is already
+/// 1.00x (548742 vs 549423 -- the gap-map entry had already been closed
+/// incidentally by earlier mana-multiplier / Arcane Surge fixes, just without
+/// re-checking), so it's un-ignored.
 #[test]
 fn canary_fire_spell_armour() {
     let d = load_data();
@@ -155,7 +165,7 @@ fn canary_fire_spell_armour() {
     within(n, "DPS", o.dps, golden_stat(n, "TotalDPS"), DPS);
 }
 
-/// 闪电 / 纯生命层。
+/// Lightning / pure life layer.
 #[test]
 fn canary_lightning_life() {
     let d = load_data();

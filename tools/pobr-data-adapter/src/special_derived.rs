@@ -1,20 +1,26 @@
-//! keystone 派生 special 表生成。
+//! Generates the keystone-derived special table.
 //!
-//! 从 `data/<patch>/base/passive_tree.json` 的 keystone 节点确定性派生
-//! `generated/special_derived.json`（schema = `special_derived/v1`，与
-//! `special_mods/v1` 同结构）：每个 keystone 名 → 一条整行锚定 special 条目，产出
-//! `Keystone LIST` mod（字面量值 = 节点 canonical 名，proper-case 保留——与
-//! `pobr-core::mod_parser::parse_keystone_grant` 通用路径逐字段等价，避免大小写
-//! 失配；keystone 实际 mods 由 env_finalize `merge_keystones` 查注入表展开）。
+//! Deterministically derives `generated/special_derived.json` (schema =
+//! `special_derived/v1`, the same structure as `special_mods/v1`) from the
+//! keystone nodes in `data/<patch>/base/passive_tree.json`: each keystone
+//! name becomes one whole-line-anchored special entry that produces a
+//! `Keystone LIST` mod (literal value = the node's canonical name, kept in
+//! proper case — matching field-for-field with
+//! `pobr-core::mod_parser::parse_keystone_grant`'s generic path, avoiding a
+//! case mismatch; the keystone's actual mods get expanded via
+//! `env_finalize`'s `merge_keystones` lookup table).
 //!
-//! 对照 vendor `ModParser.lua:6151-6158`：`data.keystones` 每名注册为
-//! specialModList 整行 key。本步骤以 passive_tree.json keystone 节点为全集
-//! （超集无害：多识别几行；差异记 `_meta`）。
+//! Cross-referenced against vendor `ModParser.lua:6151-6158`: each name in
+//! `data.keystones` is registered as a whole-line specialModList key. This
+//! step treats passive_tree.json's keystone nodes as the full set (a
+//! superset is harmless — it just recognizes a few extra lines; any discrepancy is noted in `_meta`).
 //!
-//! **byte-stable 纪律**：条目按 keystone 名字典序排序，序列化走统一 pretty
-//! 写入（[`crate::write_pretty`]）；同输入重跑 byte-diff 零（纳入regen-check）。
+//! **byte-stable discipline**: entries are sorted lexicographically by
+//! keystone name, and serialization goes through the uniform pretty writer
+//! ([`crate::write_pretty`]); rerunning with the same input produces zero byte-diff (covered by regen-check).
 //!
-//! **衔接**：本步骤产物迁入 `tools/precompile-mods` 时 keystone 段须 byte 等价。
+//! **Downstream note**: when this step's output migrates into
+//! `tools/precompile-mods`, the keystone segment must stay byte-equivalent.
 
 use std::path::PathBuf;
 
@@ -24,15 +30,15 @@ use serde::Serialize;
 use crate::write_pretty;
 
 pub struct SpecialDerivedArgs {
-    /// 已入库的 `passive_tree.json`（节点数组）路径。
+    /// Path to the already-stored `passive_tree.json` (a node array).
     pub tree_json: PathBuf,
-    /// 数据根（`data/`）；产物落 `<out>/<patch>/generated/special_derived.json`。
+    /// The data root (`data/`); output goes to `<out>/<patch>/generated/special_derived.json`.
     pub out: PathBuf,
     pub patch: String,
 }
 
-// ── 产物 schema（序列化侧；与 pobr-data SpecialModsDef 同结构，独立定义避免
-//    给纯数据 crate 加序列化依赖耦合）──
+// -- Output schema (serialization side; same structure as pobr-data's
+//    SpecialModsDef, defined independently to avoid coupling the pure-data crate to a serialization dependency) --
 
 #[derive(Serialize)]
 struct DerivedDoc {
@@ -66,7 +72,7 @@ struct DerivedMod {
     value: String,
 }
 
-/// snake_case 化 keystone 名做稳定 id（与现有 special_mods.json id 风格一致）。
+/// Snake-cases a keystone name into a stable id (matching the existing special_mods.json id style).
 fn slug(name: &str) -> String {
     let mut out = String::with_capacity(name.len());
     let mut prev_us = false;
@@ -82,7 +88,7 @@ fn slug(name: &str) -> String {
     out.trim_matches('_').to_string()
 }
 
-/// regex 元字符转义（keystone 名含 `'`/空格等；整行锚定由解释器加 `^...$`）。
+/// Escapes regex metacharacters (keystone names contain `'`/spaces/etc.; whole-line anchoring is added by the interpreter with `^...$`).
 fn regex_escape_lower(name: &str) -> String {
     let lower = name.to_ascii_lowercase();
     let mut out = String::with_capacity(lower.len());
@@ -107,12 +113,13 @@ pub fn run(args: SpecialDerivedArgs) -> Result<String, String> {
         .filter_map(|n| n.name.as_deref())
         .map(|name| DerivedEntry {
             id: format!("keystone_{}", slug(name)),
-            // 整行小写 + 转义；解释器编译期包 ^...$（对照 vendor :6155-6158）。
+            // The whole line, lowercased and escaped; the interpreter wraps
+            // it in ^...$ at compile time (cross-referenced against vendor :6155-6158).
             pattern: regex_escape_lower(name),
             mods: vec![DerivedMod {
                 name: "Keystone",
                 mod_type: "LIST",
-                // proper-case 字面量值——与通用 parse_keystone_grant 逐字段等价。
+                // A proper-case literal value — matches the generic parse_keystone_grant field-for-field.
                 value: name.to_string(),
             }],
             verified: false,
@@ -121,7 +128,7 @@ pub fn run(args: SpecialDerivedArgs) -> Result<String, String> {
         })
         .collect();
 
-    // byte-stable：按 id 字典序排序。
+    // byte-stable: sorted lexicographically by id.
     entries.sort_by(|a, b| a.id.cmp(&b.id));
     let count = entries.len();
 

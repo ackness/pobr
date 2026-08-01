@@ -1,14 +1,17 @@
-//! `check-buff-refs`：`overlay/buff_definitions.json` 的 vendor 行段对账
-//! （人工归纳例外通道的 drift 防线）。
+//! `check-buff-refs`: reconciles `overlay/buff_definitions.json` against
+//! vendor line ranges (the drift guard for the manually-curated-exception channel).
 //!
-//! `buff_definitions.json` 由人工从 `CalcPerform.lua doActorMisc` if-chain
-//! 归纳（过程代码无法 luajit 序列化），每条带 `vendor_ref`（文件 + 行段 +
-//! `fnv1a64` 行段 hash）。本模块：
-//! - `check`：重算各行段 hash，与登记值比对——vendor 升级后行段漂移即告警
-//!   （提示人工复核归纳是否仍忠实）；
-//! - `--write`：人工复核后回写最新 hash（机械步骤，归纳内容仍是人工责任）。
+//! `buff_definitions.json` is curated by hand from the `CalcPerform.lua
+//! doActorMisc` if-chain (procedural code can't be serialized by luajit),
+//! and each entry carries a `vendor_ref` (file + line range + `fnv1a64` hash
+//! of that range). This module:
+//! - `check`: recomputes each line range's hash and compares it against the
+//!   recorded value — a drifted range after a vendor upgrade raises a
+//!   warning (a signal that the curation may no longer be faithful);
+//! - `--write`: after manual review, writes back the fresh hashes (a
+//!   mechanical step; the curated content itself is still a human's responsibility).
 //!
-//! hash 用 FNV-1a 64（自包含、非加密用途——只做 drift 检测）。
+//! Hashing uses FNV-1a 64 (self-contained, non-cryptographic — this is only for drift detection).
 
 use std::fs;
 use std::io;
@@ -17,17 +20,17 @@ use std::path::Path;
 use pobr_data::catalog::buffs::BuffDef;
 use serde::{Deserialize, Serialize};
 
-/// 完整文档（生产/对账侧；`_meta` 透传保序）。
+/// The full document (production/reconciliation side; `_meta` is passed through order-preserving).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BuffDefinitionsDoc {
-    /// 头部元信息（人工策展表：记 vendor commit + 维护说明）。
+    /// Header metadata (a hand-curated table: vendor commit + maintenance notes).
     #[serde(rename = "_meta")]
     pub meta: serde_json::Value,
-    /// buff 定义列表。
+    /// The list of buff definitions.
     pub buffs: Vec<BuffDef>,
 }
 
-/// FNV-1a 64 位 hash。
+/// FNV-1a 64-bit hash.
 pub fn fnv1a64(bytes: &[u8]) -> u64 {
     const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
     const PRIME: u64 = 0x0000_0100_0000_01b3;
@@ -39,8 +42,9 @@ pub fn fnv1a64(bytes: &[u8]) -> u64 {
     hash
 }
 
-/// 计算文件 `[line_start, line_end]`（1-based，含端点）行段的登记 hash 值。
-/// 行段以 `\n` 重连（与平台换行无关）；行号越界返回 `None`。
+/// Compute the recorded hash for lines `[line_start, line_end]` (1-based,
+/// inclusive) of a file. Lines are rejoined with `\n` (platform-line-ending
+/// independent); returns `None` when the range is out of bounds.
 pub fn segment_hash(file_text: &str, line_start: u32, line_end: u32) -> Option<String> {
     if line_start == 0 || line_end < line_start {
         return None;
@@ -55,19 +59,20 @@ pub fn segment_hash(file_text: &str, line_start: u32, line_end: u32) -> Option<S
     Some(format!("fnv1a64:{:016x}", fnv1a64(segment.as_bytes())))
 }
 
-/// 对账结果（单条）。
+/// A single reconciliation result.
 #[derive(Debug)]
 pub struct RefDrift {
-    /// buff id。
+    /// The buff id.
     pub id: String,
-    /// 登记 hash。
+    /// The recorded hash.
     pub recorded: String,
-    /// 实算 hash（行号越界时为 `None`）。
+    /// The freshly computed hash (`None` when the line range is out of bounds).
     pub actual: Option<String>,
 }
 
-/// 对账：返回漂移清单（空 = 全部一致）。`write = true` 时回写实算 hash
-/// 并重新序列化 defs 文件（机械刷新，人工复核后使用）。
+/// Reconcile: returns the drift list (empty means everything matches). When
+/// `write = true`, writes back the freshly computed hashes and re-serializes
+/// the defs file (a mechanical refresh, meant to be used after manual review).
 pub fn run_check_buff_refs(
     vendor_root: &Path,
     defs_path: &Path,
@@ -116,7 +121,7 @@ pub fn run_check_buff_refs(
 mod tests {
     use super::*;
 
-    /// FNV-1a 64 已知向量（标准测试向量）。
+    /// FNV-1a 64 known-answer test (standard test vectors).
     #[test]
     fn fnv1a64_known_vectors() {
         assert_eq!(fnv1a64(b""), 0xcbf2_9ce4_8422_2325);
@@ -124,13 +129,13 @@ mod tests {
         assert_eq!(fnv1a64(b"foobar"), 0x85944171f73967e8);
     }
 
-    /// 行段 hash：1-based 含端点；越界返回 None；与平台换行无关。
+    /// Line-range hash: 1-based inclusive; out-of-bounds returns None; independent of line endings.
     #[test]
     fn segment_hash_lines_and_bounds() {
         let text = "line1\nline2\nline3\n";
         let h12 = segment_hash(text, 1, 2).unwrap();
         assert_eq!(h12, format!("fnv1a64:{:016x}", fnv1a64(b"line1\nline2")));
-        // CRLF 同值
+        // CRLF gives the same value
         let crlf = "line1\r\nline2\r\nline3\r\n";
         assert_eq!(segment_hash(crlf, 1, 2).unwrap(), h12);
         assert!(segment_hash(text, 0, 1).is_none());

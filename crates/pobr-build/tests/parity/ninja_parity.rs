@@ -1,20 +1,29 @@
-//! 通用 PoB2 parity harness：遍历 `examples/demo-bd-test/builds/*/`，用每个 build 的
-//! `meta.json::player_stats`（PoB2/Lua 导出的黄金数值）作为参照，对比 PoBR 计算输出。
+//! General-purpose PoB2 parity harness: walks `examples/demo-bd-test/builds/*/`,
+//! using each build's `meta.json::player_stats` (golden values exported by
+//! PoB2/Lua) as the reference, and compares them against PoBR's calculated output.
 //!
-//! 设计目标：
-//! - **零硬编码、零按技能特化**——同一套比较逻辑作用于全部职业/升华/技能。
-//! - **基线度量**：默认不硬失败，逐 build 打印「PoBR vs PoB2」对照 + 聚合命中率，
-//!   作为对齐进度的活体仪表盘（`cargo test -p pobr-build --test ninja_parity -- --nocapture`）。
-//! - **回归门禁**：`parity_no_regression` 断言聚合命中率不低于已记录基线（防止改动倒退）。
+//! Design goals:
+//! - **Zero hardcoding, zero per-skill specialization** — the same comparison
+//!   logic applies to every class/ascendancy/skill.
+//! - **Baseline measurement**: doesn't hard-fail by default; prints a
+//!   "PoBR vs PoB2" comparison per build plus an aggregate hit rate, serving
+//!   as a live dashboard of alignment progress
+//!   (`cargo test -p pobr-build --test ninja_parity -- --nocapture`).
+//! - **Regression gate**: `parity_no_regression` asserts the aggregate hit
+//!   rate doesn't fall below the recorded baseline (prevents changes from regressing).
 //!
-//! 防御/属性按 PoB2 PlayerStat 口径比较；DPS 类（与技能管线完整度强相关）单列报告，
-//! 不计入防御命中率，避免未完成的 offence 管线掩盖防御侧 parity 信号。
+//! Defence/attributes are compared using PoB2's PlayerStat convention; DPS
+//! (strongly tied to how complete the skill pipeline is) is reported in a
+//! separate column and doesn't count toward the defensive hit rate, so an
+//! incomplete offence pipeline can't mask defensive-side parity signal.
 //!
-//! **默认口径 = `mode_effective=true`**：PoB2 主面板（即 golden 导出）
-//! 在非 CALCS 模式下恒为 EFFECTIVE（vendor `CalcSetup.lua:583-588`），与 golden 对齐。
-//! 面板口径（`mode_effective=false`）保留 [`panel_mode_no_regression`] 守卫，防口径
-//! 回归无感知。切换依据与逐 build 归因：
-//! `audits/rearchitecture-2026-06-10/blueprints/m3-effective-switch-report.md`。
+//! **Default convention = `mode_effective=true`**: PoB2's main panel (i.e.
+//! what the golden values are exported from) is always EFFECTIVE outside
+//! CALCS mode (vendor `CalcSetup.lua:583-588`), matching golden. The panel
+//! convention (`mode_effective=false`) is still guarded by
+//! [`panel_mode_no_regression`], so a convention regression can't go
+//! unnoticed. Switch rationale and per-build attribution:
+//! `audits/rearchitecture-2026-06-10/blueprints/m3-effective-switch-report.md`.
 
 use pobr_build::corpus::{CorpusLine, LineSource};
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
@@ -49,16 +58,17 @@ fn discover_builds() -> Vec<PathBuf> {
 }
 
 fn load_data() -> BuildData {
-    // golden 钉定其被校验的数据版本（与活动 DATA_VERSION 解耦——后者可前进到更新的
-    // 数据而不误红 parity；见 pobr_data::GOLDEN_PARITY_DATA_VERSION）。
+    // Pins the data version being checked against the golden values (decoupled
+    // from the active DATA_VERSION -- the latter can advance to newer data
+    // without falsely failing parity; see pobr_data::GOLDEN_PARITY_DATA_VERSION).
     let data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
     BuildData::load(&data).expect("load BuildData")
 }
 
-/// 读取 meta.json::player_stats（PoB2 黄金值）。
+/// Reads meta.json::player_stats (PoB2 golden values).
 fn golden_stats(dir: &Path) -> serde_json::Map<String, serde_json::Value> {
     let text = std::fs::read_to_string(dir.join("meta.json")).expect("read meta.json");
-    // PoB2 导出含 `Infinity`/`NaN` 字面量（非法 JSON）——替换为可解析占位后再 parse。
+    // PoB2's export contains `Infinity`/`NaN` literals (invalid JSON) -- replace them with parseable placeholders before parsing.
     let sanitized = text
         .replace("-Infinity", "-1e308")
         .replace("Infinity", "1e308")
@@ -74,8 +84,9 @@ fn golden(stats: &serde_json::Map<String, serde_json::Value>, key: &str) -> Opti
     stats.get(key).and_then(|v| v.as_f64())
 }
 
-/// 以指定口径计算一个 build（`mode_effective`：false=面板口径，true=PoB2 主面板
-/// EFFECTIVE 口径，vendor `CalcSetup.lua:583-588`——非 CALCS 模式恒 EFFECTIVE）。
+/// Calculates a build under a given convention (`mode_effective`: false = panel
+/// convention, true = PoB2's main-panel EFFECTIVE convention, vendor
+/// `CalcSetup.lua:583-588` -- always EFFECTIVE outside CALCS mode).
 fn run_build_mode(dir: &Path, data: &BuildData, mode_effective: bool) -> Option<OutputTable> {
     if std::env::var("POBR_DBG_DEFRES").is_ok() {
         eprintln!(
@@ -97,29 +108,30 @@ fn run_build_mode(dir: &Path, data: &BuildData, mode_effective: bool) -> Option<
     calculate_with_data(&build, data, &opts).ok()
 }
 
-/// 默认口径：effective。
+/// Default convention: effective.
 fn run_build(dir: &Path, data: &BuildData) -> Option<OutputTable> {
     run_build_mode(dir, data, true)
 }
 
-/// 比较列：(显示名, PoB2 key, PoBR 取值)。
+/// A comparison column: (display label, PoB2 key, PoBR value).
 struct Row {
     label: &'static str,
     golden: Option<f64>,
     pobr: f64,
 }
 
-/// golden 经 sanitize 后 `Infinity` → `1e308`；≥ 此阈值按 ∞ 等价处理（比值口径）。
+/// After sanitizing, golden's `Infinity` becomes `1e308`; treat anything >=
+/// this threshold as ∞-equivalent (for ratio purposes).
 const GOLDEN_INF: f64 = 1e307;
 
-/// ∞ 等价判定（pobr 的 `f64::INFINITY` 与 golden 的 sanitize 占位都算）。
+/// ∞-equivalence check (covers both pobr's `f64::INFINITY` and golden's sanitized placeholder).
 fn is_inf_like(v: f64) -> bool {
     !v.is_finite() || v >= GOLDEN_INF
 }
 
 fn ratio(pobr: f64, golden: f64) -> f64 {
     if is_inf_like(golden) {
-        // 双方皆 ∞ → 命中（1.0）；golden ∞ 而 pobr 有限 → 0（脱靶）。
+        // Both sides ∞ -> hit (1.0); golden ∞ but pobr finite -> 0 (miss).
         if is_inf_like(pobr) { 1.0 } else { 0.0 }
     } else if golden == 0.0 {
         if pobr == 0.0 { 1.0 } else { f64::INFINITY }
@@ -128,8 +140,9 @@ fn ratio(pobr: f64, golden: f64) -> f64 {
     }
 }
 
-/// 防御/属性面板**核心列**（W1 全程的旧 8 列基线口径；扩列稀释防护的子集指标，
-/// -index §4 owner 双指标裁决）。
+/// The defence/attribute panel's **core columns** (the original 8-column
+/// baseline used throughout W1; a subset metric guarding against dilution
+/// from column expansion, per the owner's dual-metric ruling in -index §4).
 fn defensive_core_rows(
     out: &OutputTable,
     g: &serde_json::Map<String, serde_json::Value>,
@@ -178,8 +191,9 @@ fn defensive_core_rows(
     ]
 }
 
-/// 防御扩展列（扩列 8→25：EHP/max-hit 新口径 + Block/Spirit/Evade/
-/// Deflect/池口径面板，Track F「defensive_rows 扩列」清单）。
+/// Defence extension columns (expanding 8->25: the new EHP/max-hit convention
+/// plus the Block/Spirit/Evade/Deflect/pool convention panels, per Track F's
+/// "expand defensive_rows" checklist).
 fn defensive_extended_rows(
     out: &OutputTable,
     g: &serde_json::Map<String, serde_json::Value>,
@@ -273,21 +287,24 @@ fn defensive_extended_rows(
     ]
 }
 
-/// 全量防御列 = 核心 8 列 + 扩展 17 列。
+/// Full defence column set = the 8 core columns + 17 extension columns.
 fn defensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Value>) -> Vec<Row> {
     let mut rows = defensive_core_rows(out, g);
     rows.extend(defensive_extended_rows(out, g));
     rows
 }
 
-/// 进攻列（技能管线完整度强相关，单列报告）。
+/// Offence columns (strongly tied to skill-pipeline completeness, reported separately).
 fn offensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Value>) -> Vec<Row> {
-    // （k2 登记）：vendor 恒等式实为 `TotalDPS = AverageDamage × Speed ×
-    // dpsMultiplier × quantityMultiplier`（CalcOffence.lua:4407）——golden 的
-    // `AverageDamage` 不含端因子，而 PoBR `dps`（与 golden `TotalDPS` 同口径）含。
-    // 旧读数 `dps / action_rate` 对 grenade 等 build 带结构性偏置（deadeye ×1.5、
-    // gemling ×1.65、twister ×1.02 实测）。用 golden 自身恒等式反解端因子，把
-    // PoBR 读数折回 AverageDamage 同口径（harness 取数口径修正，零 calc 行为）。
+    // (k2 note): vendor's real identity is `TotalDPS = AverageDamage × Speed ×
+    // dpsMultiplier × quantityMultiplier` (CalcOffence.lua:4407) -- golden's
+    // `AverageDamage` excludes the end-factor, while PoBR's `dps` (same
+    // convention as golden's `TotalDPS`) includes it. The old readout
+    // `dps / action_rate` carries a structural bias for grenade-type builds
+    // (measured ×1.5 for deadeye, ×1.65 for gemling, ×1.02 for twister).
+    // Solves for the end-factor using golden's own identity and folds PoBR's
+    // readout back to the same convention as AverageDamage (a harness readout
+    // fix, zero calc behaviour change).
     let golden_end_factor = match (
         golden(g, "TotalDPS"),
         golden(g, "AverageDamage"),
@@ -318,10 +335,12 @@ fn offensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Val
         Row {
             label: "AverageDamage",
             golden: golden(g, "AverageDamage"),
-            // PoB2 恒等式 `TotalDPS = AverageDamage × Speed × 端因子`（golden 的平均
-            // 伤害已含命中率/暴击/敌方减伤，不含端因子）。PoBR 侧用同一恒等式取
-            // `dps / action_rate / 端因子`；旧值 `total_hit_avg`（玩家侧未减伤、不含
-            // 命中率）在 effective 口径下与 golden 结构性错配。
+            // PoB2's identity `TotalDPS = AverageDamage × Speed × end-factor`
+            // (golden's average damage already includes hit chance/crit/enemy
+            // mitigation, but not the end-factor). PoBR's side uses the same
+            // identity to take `dps / action_rate / end-factor`; the old value
+            // `total_hit_avg` (player-side, unmitigated, excludes hit chance)
+            // was structurally mismatched against golden under the effective convention.
             pobr: if out.action_rate > 0.0 {
                 out.dps / out.action_rate / golden_end_factor
             } else {
@@ -336,11 +355,13 @@ fn offensive_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Val
     ]
 }
 
-/// DoT 合并族列（扩列：技能 DoT + 异常 DoT 的末端合并面板，PoB2
-/// `TotalDotDPS`/`WithDotDPS`/`CombinedDPS`，CalcOffence.lua:6093-6234）。
-/// 与技能管线完整度强相关，独立于既有进攻 5 列单独计数（新列单独基线常量，
-/// 不稀释/不挪动 BASELINE_OFF_*）。golden 键已在 meta.json（WithDotDPS 仅
-/// 纯 DoT build 导出，如 essence-drain）。
+/// The DoT combined-family columns (an expansion: the end-stage combined
+/// panel for skill DoT + ailment DoT, PoB2's `TotalDotDPS`/`WithDotDPS`/
+/// `CombinedDPS`, CalcOffence.lua:6093-6234). Strongly tied to skill-pipeline
+/// completeness, counted independently of the existing 5 offence columns (a
+/// separate baseline constant for the new columns, doesn't dilute/move
+/// BASELINE_OFF_*). The golden keys already exist in meta.json (WithDotDPS is
+/// only exported for pure-DoT builds, e.g. essence-drain).
 fn dot_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Value>) -> Vec<Row> {
     vec![
         Row {
@@ -361,9 +382,9 @@ fn dot_rows(out: &OutputTable, g: &serde_json::Map<String, serde_json::Value>) -
     ]
 }
 
-const TOL: f64 = 0.05; // 命中 = 相对误差 < 5%
+const TOL: f64 = 0.05; // hit = relative error < 5%
 
-/// 一组比较列的命中统计：5% 命中数、10% 接近数、总比较数。
+/// Hit-count stats for a set of comparison columns: number of 5% hits, number of 10% near-hits, total comparisons.
 #[derive(Default, Clone, Copy)]
 struct Tally {
     hit5: usize,
@@ -379,9 +400,9 @@ impl Tally {
     }
 }
 
-const TOL10: f64 = 0.10; // 接近 = 相对误差 < 10%（进度可见性辅助指标）
+const TOL10: f64 = 0.10; // near = relative error < 10% (a supplementary progress-visibility metric)
 
-/// 仅计数（不打印）：供回归门禁 [`parity_no_regression`] 用。
+/// Counts only (no printing): used by the regression gate [`parity_no_regression`].
 fn tally_rows(rows: &[Row]) -> Tally {
     let mut t = Tally::default();
     for r in rows {
@@ -399,7 +420,7 @@ fn tally_rows(rows: &[Row]) -> Tally {
     t
 }
 
-/// 打印逐 stat 对照表并返回命中聚合（复用 [`tally_rows`] 的计数口径）。
+/// Prints the per-stat comparison table and returns the hit aggregate (reuses [`tally_rows`]'s counting logic).
 fn print_rows(rows: &[Row]) -> Tally {
     let fmt = |v: f64| -> String {
         if is_inf_like(v) {
@@ -433,10 +454,12 @@ fn print_rows(rows: &[Row]) -> Tally {
     tally_rows(rows)
 }
 
-/// 遍历全部 build 计算防御/进攻/DoT 命中聚合。`verbose` 控制是否逐 build 打印
-/// 对照表，`mode_effective` 控制计算口径（默认门禁走 effective，面板守卫走 false）。
-/// 返回 `(防御核心 8 列 Tally, 防御全量 25 列 Tally, 进攻 Tally, DoT 三列 Tally,
-/// 解析/计算失败的 build 名)`。
+/// Iterates every build to compute the defence/offence/DoT hit aggregates.
+/// `verbose` controls whether the comparison table is printed per build,
+/// `mode_effective` controls the calc convention (the default gate uses
+/// effective, the panel guard uses false).
+/// Returns `(core-8 defence Tally, full 25-column defence Tally, offence
+/// Tally, 3-column DoT Tally, names of builds that failed to parse/calc)`.
 fn compute_tallies_mode(
     verbose: bool,
     mode_effective: bool,
@@ -488,484 +511,703 @@ fn compute_tallies_mode(
     (def_core, def, off, dot, failed_parse)
 }
 
-/// 默认口径（effective）聚合，主门禁/报告入口。
+/// Default-convention (effective) aggregate, the entry point for the main gate/report.
 fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
     compute_tallies_mode(verbose, true)
 }
 
-/// 已记录的 parity 基线（命中数）——回归门禁的下限。**仅在确认改动整体提升 parity 时上调**，
-/// 永不下调（防止改动悄悄倒退）。对应 commit 当时的 ninja_parity 输出。
+/// The recorded parity baseline (hit counts) — the regression gate's lower
+/// bound. **Only raise it once a change is confirmed to improve overall
+/// parity**, never lower it (prevents changes from silently regressing).
+/// Corresponds to the ninja_parity output at the time of the commit.
 ///
-/// 扩列重记：
-/// - `DEF_CORE`：旧 8 列子集（扩列稀释防护指标，下限 111 全程冻结）；
-/// - `DEF`：扩列后全量 25 列（分母 = golden 可比项总数）。
+/// Re-recorded for column expansion:
+/// - `DEF_CORE`: the old 8-column subset (a guard metric against dilution
+///   from column expansion; lower bound 111 frozen throughout);
+/// - `DEF`: the full 25 columns after expansion (denominator = the total
+///   number of golden-comparable items).
 ///
-/// **已审查例外**：
-/// OFF_HIT5 23→22——deadeye-explosive-grenade 的 TotalDPS 由 Legacy「过算抵消
-/// 欠算」假命中（1.02x）回归真实 0.77x（Multishot −25% less `sup_dex.lua:3154-3156`
-/// 与 LightningPen +30 `SkillStatMap.lua:929-931`，均为修对）。补偿清单与逐 build
-/// 依据见 `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md` §3。
+/// **Reviewed exceptions**:
+/// OFF_HIT5 23->22 -- deadeye-explosive-grenade's TotalDPS regressed from a
+/// Legacy "over-count masking an under-count" false hit (1.02x) to the real
+/// 0.77x (Multishot -25% less `sup_dex.lua:3154-3156` and LightningPen +30
+/// `SkillStatMap.lua:929-931`, both correct fixes). See the compensation list
+/// and per-build rationale at
+/// `audits/rearchitecture-2026-06-10/blueprints/m1-statmap-switch-log.md` §3.
 ///
-/// +合并重记（merge commit）：在（statmap 切换 + quality + support
-/// 裁决）与（扣池 + EHP 口径 + 25 列扩列 + 补刀 1-3）合并后的代码上实测重记。
-/// 防御 369→374（83.1%，两分支改进叠加）/ @10% 385→390；核心 130（=，90.3%）/
-/// @10% 132→133；进攻 27（=）/ @10% 32→33。与两分支基线对比见 merge commit message。
+/// +Re-recorded at merge (merge commit): measured on the code after merging
+/// (statmap switch + quality + support gating) with (pool deduction + EHP
+/// convention + 25-column expansion + finishing moves 1-3).
+/// Defence 369->374 (83.1%, both branches' improvements stacked) / @10%
+/// 385->390; core 130 (unchanged, 90.3%) / @10% 132->133; offence 27
+/// (unchanged) / @10% 32->33. See the merge commit message for the
+/// comparison against both branches' baselines.
 ///
-/// **effective 口径切换重记**（独立 baseline commit，显式审查；逐 build 归因
-/// 见 `m3-effective-switch-report.md` §2-§5）：默认口径 panel→effective（与 golden
-/// 对齐），防御 425 行逐值不变；进攻 @5% 27→26、@10% 33→35。
-/// **已审查例外（−1 @5%）**：smith-of-kitava CritChance 1.00x→0.93x——golden
-/// `HitChance`=100（PoB2 玩家精准足额过 cap）而 PoBR 精准聚合低估（≈1015 vs 1438，
-/// 装备/天赋精准词条与武器局部精准未入聚合，登记），effective 下暴击二次命中检定
-/// （vendor CalcOffence.lua:3700）放大该缺口。面板口径水平由
-/// [`panel_mode_no_regression`]（PANEL_OFF_*）继续守住 27/35。
-// **Mageblood legacies 重记（Phase 1 #1，+17 @5% core-8 118→135）**：9/18 fixture 全戴
-// Mageblood，但 `LegacyOf*` BASE + `MagebloodEquipped` flag 从未展开成护甲/闪避/抗性
-// （env_finalize.rs 声明未建）。实现 vendor CalcPerform.lua:66-142 legacies 表 +
-// :1502-1528 应用逻辑（stacks × duplicate 放大 globalEffect × floor）+ `legacy of (%w+)`
-// handler（动态 mod 名）+ MagesLegacyEffect implicit（已在 special_vendor 批）。titan
-// Armour（Basalt INC 219 = floor(1.46×150)）/ ice-shot Evasion（Jade BASE 2000 + Stibnite
-// INC 150）等多 build 的护甲/闪避/抗性缺口一次收敛，三 canary（physical_armour_block/
-// cold_projectile_evasion_es/evasion_melee）un-ignore。
-// **Virtuous Barrier Life 名归一重记（+1 @5% core-8 135→136）**：Gemling 升华 buff 的
-// per-Mote Life INC（`gem_barrier_red_grants_maximum_life_+%` → 24% = 2×12 StrengthMote）
-// 此前经 stat_map_engine 映射到 vendor 名 `Life`，落进死桶——PoBR 生命池聚合名是
-// `MaximumLife`（Armour/Evasion/EnergyShield 因规范名与 vendor 同名无此问题）。归一
-// `Life`→`MaximumLife` 后 gemling Life 0.79x→0.96x，连带 TotalEHP/5×MaxHit/LifeUnres 共 8 列翻正。
-// **Item ES 重算重记（+2 @5% core-8 136→138）**：per-slot 物品 ES 从「信物品文本
-// 展示行」改为 PoB2 口径「基底 DB 重算 (esBase+flat)×(1+localInc/100)×(1+quality/100)」
-// （Item.lua:1994-1996；展示行跨数据版本会滞后）——titan ES 41→55、stormweaver ES
-// 986→1120，各连带 ESRecoveryCap。见 calc_orchestrator/defence.rs::item_rolled_defence。
-// **0.5.4b #4 Communion/LowLife + Voices 重记（+2 @5% core-8 138→140）**：
-// huntress-ritualist SpiritUnres −13.00x→1.00x / LifeUnres 12.74x→1.01x——
-// Atziri's Communion 的 Spirit→Life 保留转换（LifeReservePercentPerSpirit，
-// vendor CalcDefence.lua:248-254）接入后双列翻正；abyssal-lich（同戴 Communion）
-// SpiritUnres inf→1.00x 同根。见 buffs.rs spirit_reservation_modifiers 转换分支。
-// **#14 防御长尾分诊重记（+2 core-8 142→144/144 = 100%）**：abyssal-lich Life
-// （LifeConvertToEnergyShield 池扣减，0_5 树 Enhanced Barrier）+ smith Armour
-// （connected-notable multiplier + StrRequirements 快照）翻正。详见 #14 各修复
-// commit 与 docs/adapting-to-0.5.4b.md §#14。
-const BASELINE_DEF_CORE_HIT5: usize = 144; // #14 长尾分诊后 144/144（存量 #7-3/4 142；Communion 140（ItemES 138；Barrier-Life 136；Mageblood 135；迁移基线 118；0.5.0=139）
-// **per-socket-filled 修复重记（+1 @5%/@10%）**：gemling-legionnaire 身甲 Morior Invictus
-// `+14 to Spirit per Socket filled`（×5 socket）经 `RunesSocketedIn{SlotName}` Multiplier
-// 接入 → Spirit 180→250（0.72x→1.00x，翻正）。详见 collect.rs::filter_parseable 闸门 +
-// legacy/engine per-socket 后缀 + ingest {SlotName} 替换 + per_slot_socket_multipliers 预灌。
-// **charm base buff 修复重记（+3 @5% / +2 @10%）**：huntress-ritualist-bow-shot 的
-// Sunburst Ruby Charm（base `Ruby Charm`）固有 buff `+25% to Fire Resistance` 经
-// base_items.charm_buff（overlay vendor 抽取）并入 CharmBuff 载荷 → FireResist
-// 12→37（0.32x→1.00x），连带 FireMaxHit 0.73x→1.00x、TotalEHP 0.93x→1.00x。
-// **Disciple of Varashta ES→armour 修复重记（+2 @5% / +2 @10%）**：升华 Sacred Rituals
-// （tree node 56857）『N% of your current Energy Shield is added to your Armour for
-// determining your Physical Damage Reduction from Armour』→ EnergyShieldAppliesTo
-// PhysicalDamageTaken=60，taken.rs effective_applied_armour 加 60% ES 借入项 → PhysDR
-// 0.08x→1.03x（连带 PhysMaxHit 命中）。sorceress-disciple-of-varashta-comet。
-// **Gemling Virtuous Barrier per-Mote 升华 buff 修复重记（+7 @5% / +7 @10%）**：升华 notable
-// 「Essence of Virtue」（tree node 11641）`Grants Skill: Virtuous Barrier`，该 buff 按属性
-// Mote 数给 INC（Armour/Evasion/EnergyShield ×DexterityMoteSkillCount、Life ×StrengthMote…）。
-// 修复双路：① stat_map_engine buff 域允收名单加 Armour/Evasion/EnergyShield/Life/LifeRegen
-// （barrier stat 已在 data，唯缺放行）；② inject_per_x_multipliers 按 vendor CalcSetup.lua:1766-
-// 1781 计 Attribute-Mote（base 3/3/3 + 单属性宝石 +2/多属性各 +1）并 provision 三 multiplier。
-// mercenary-gemling-legionnaire-explosive-grenade：Armour 0.70x→1.00x、Evasion 0.81x→1.00x、
-// EnergyShield 0.72x→1.00x，连带 PhysDR/各 MaxHit/EHP 下游。
-// **essence-drain taken+Total 双修复重记（+7 @5% / +7 @10%，两修复须同序合并）**：
-// ① 『Take 30% less Damage』动词前置形（tree node 28153 Phased Form）接入 DamageTaken
-//   MORE −30（taken_mult 0.7，oracle AfterReductionTakenHitMulti 同值）；
-// ② Discipline 光环 buff 改走 `EnergyShieldTotal` 直加通道（vendor CalcDefence.lua:1331/
-//   :1394——**不乘 inc/more**；旧映射错并入 EnergyShield 桶吃全局 570% inc → ES 多算
-//   1.13x）。defence.rs 矩阵新增 Total 通道（读取/转换传播/缩残/直加）。
-// 叠加后 sorceress-chronomancer-essence-drain 七列翻正（ES/ESRecoveryCap 1.13x→1.03x、
-// 四 MaxHit+TotalEHP 0.79x→1.03x）。⚠️ 单独合并 ② 会让 MaxHit 0.79→0.72 更差（Total
-// 修复缩 ES 而 taken 缺口仍在）——两 commit 同 PR 防拆。
-// **Spirit 预留双机制修复重记（+8 @5% / +7 @10%）**：
-// ① 宝石品质预留效率（vendor CalcDefence.lua:251 `/(1+efficiency/100)`，数据 =
-//   overlay/gem_quality_stats.json 的 `base_reservation_efficiency_+%` 斜率×q）——
-//   跨 build 通用缺口，ember/frost-bomb/flicker/monk-twister/pathfinder/stormweaver/
-//   detonate-dead 七 build 的 SpiritUnres 列翻正；
-// ② Blasphemy per-curse 预留（:273-284 `blasphemy_base_spirit_reservation_per_socketed_curse`
-//   =60 × 同组 AppliesCurse 数，**单份缩放 round 后 ×count**——essence-drain
-//   60→55×3=165，SpiritUnres 28.5x→1.00x 精确翻正）。
-// 剩余：druid-comet 1.26x/coiling（Spell Totem 化预留 + ReservationEfficiency
-// 词条族）、wolf-pack（companion 管线）。
-// **域限定预留效率 + Ancestral Bond totem 预留重记（+2 @5% / +3 @10%）**：
-// ① SkillTypes 位掩码 u64→[u64;5]（320 位，Meta=122/SummonsTotem=25 等全域可表达，
-//   Debug/canonical 高位全零保旧格式→缓存 byte-stable）；
-// ② 域限定效率词条（「Meta Skills have N% increased Reservation Efficiency」→
-//   ReservationEfficiency INC + SkillTypes tag，per-gem cfg 消费）+ **删除**
-//   calc_spirit_reservation 的聚合侧全局 efficiency 除法（与注入侧构成双重应用，
-//   frost-bomb 面板 148 vs 注入 166 的 18 差值根因）；
-// ③ Ancestral Bond『Totems reserve 75 Spirit each』→ AncestralBond FLAG +
-//   ExtraSpirit 75 + SkillType(SummonsTotem)（run-parsemod 双 mod 口径），
-//   SummonsTotem×flag 入选预留循环（CalcDefence.lua:197）。
-// druid-comet SpiritUnres 209/209 精确翻正、frost-bomb 136/138（0.99x）翻正、
-// disciple 连带（efficiency）。coiling/wolf-pack/gemling 仍 miss（companion 管线
-// / Blasphemy ExtraSpirit 交互待审计）。
-// **aura magnitude 乘区重记（+5 @5% / +6 @10% / core-8 +1）**：buff_pass aura
-// 乘区对齐 vendor CalcPerform.lua:2204-2205——① per-skill cfg（BuffSpec 携带
-// 来源效果类型位，域词条「Banner Skills have N% increased Aura Magnitudes」
-// = AuraEffect INC + SkillTypes(Banner=89) 只命中对应 aura）；② `Magnitude`
-// 独立乘区桶（「Aura Skills have N% increased Magnitudes」= Magnitude INC +
-// SkillTypes(Aura)，与 AuraEffect 桶分别成 (1+Σinc/100) 后相乘——wolf-pack
-// Defiance Banner 30×(1+39%)×(1+88%)=78.4 对 vendor 78）。三形态词条双 parser
-// 落地（legacy parse_scoped_buff_magnitude + overlay 3 条目）。
-// wolf-pack Armour 0.71→0.98✓/EvadeChance·MeleeEvade→0.95✓/PhysDR→0.96✓，
-// huntress-spirit-walker ChaosMaxHit 0.88→1.00✓（aura 小点词条正外溢）。
-// **Tactician『A Solid Plan』预留 more 桶（+1 @5%/+1 @10%）**：「Persistent Buffs
-// have 50% less Reservation」（tree 15044）→ `Reserved MORE −50 + Persistent+Buff
-// 双 tag AND`（vendor ModParser.lua:1339 tagList）；spirit_reservation_modifiers
-// 消费 `SpiritReserved`/`Reserved` inc/more + efficiency MORE（CalcDefence.lua:
-// 240-252 全式）。wolf-pack SpiritUnres −210→21 精确闭合（oracle 逐技能对账：
-// banner 自身 10% efficiency 原有 quality 路径已覆盖；Wolf Pack companion 只带
-// Persistent 无 Buff，AND 语义下不吃 ×0.5——两侧一致）。engine 侧 template
-// skill_type_bit 补 Persistent/Buff 位映射（pre_flag 丢 tag 根因）。
-// **BeenHitRecently 条件后缀（+1 @5%/+1 @10%，core-8 +1）**：「… if you
-// have/haven't been Hit Recently」（vendor ModParser.lua:1955/:1961）→
-// Condition `BeenHitRecently`（负形 neg），cfg 真值走 config
-// `conditionBeenHitRecently` 通用透传（既有）。wolf-pack 树点『Backup Plan』
-// (53853，0_5 树) 的 40% Evasion 条件词条激活——Evasion 14618→16824.47 对
-// vendor 16824 精确闭合（oracle defenceModList 对账：INC 165→205），EHP
-// 0.54→0.59 正外溢。
-// **过时导入修正（PR#40 合并后回记 416→415）**：#40 是 B3 前分支——其 legacy.rs
-// 词条 + 基线 416 在 pre-B3 世界线实测；B3 闸门切 engine 后该词条已经由
-// mod_parser_rules 数据通道生效（B3 commit 的 core-8 138→139 即此格），wolf-pack
-// Evasion 在 #40 合并前即 1.00x ✓。合并 #40 行为零变化（18 build 逐格 diff 为空），
-// 416 是双重计数；当前实测 415（@10% 432 与 core-8 139 恰与现实吻合，保留）。
-// **Mageblood legacies 重记（Phase 1 #1，+50 @5% 343→393 / +56 @10% 361→417）**：见
-// BASELINE_DEF_CORE_HIT5 上的说明；护甲/闪避/抗性列跨多 build 收敛。
-// **Virtuous Barrier Life 名归一重记（+8 @5% 393→401 / +8 @10% 417→425）**：见
-// BASELINE_DEF_CORE_HIT5 上的说明；gemling 8 列（Life/TotalEHP/5×MaxHit/LifeUnres）翻正。
-// **Item ES 重算重记（+4 @5% 401→405 / +3 @10% 425→428）**：titan+stormweaver 各
-// ES+ESRecoveryCap 翻正；见 BASELINE_DEF_CORE_HIT5 上说明。
-// **Refraction buff EvasionGainAsDeflection 重记（+2 @5% 405→407 / +1 @10%
-// 428→429）**：support Refraction I/II 的 Refractive Plating buff 载荷
-// （`support_tempered_valour_deflection_rating_%_of_evasion_rating` BASE 20）
-// 经 player buff 允收名单接入（stat_map_engine），wolf-pack DeflectChance
-// 0.80x→1.00x（@5%+@10%）、pathfinder 0.93x→1.00x（@5%）。
-// **Refraction buff ArmourAppliesTo<El>DamageTaken 重记（+3 @5% 407→410）**：
-// 同 buff 的 `support_tempered_valour_%_armour_to_apply_to_elemental_damage`
-// 载荷（三条 BASE 30）经同一 player buff 允收名单接入，消费方
-// `calc::taken::armour_applies_pct`（tree 84 + buff 30 = 114%，oracle 钉值
-// FireEffectiveAppliedArmour 21181.2）。wolf-pack Fire/Cold/LightMaxHit
-// 0.94x→0.96x（@5% 翻正）、TotalEHP 0.81x→0.88x（余量 = Armour 0.98x 本体
-// 差 + ChaosMaxHit 0.87x + Life 1.11x，均与本通道无关）。@10% 无变化。
-// **0.5.4b #4 Communion/LowLife + Voices 重记（+3 @5% 410→413 / +5 @10% 429→434）**：
-// core-8 的 SpiritUnres/LifeUnres 翻正（见 BASELINE_DEF_CORE_HIT5 上说明）+
-// abyssal-lich EnergyShield 0.93x→0.98x（Voices sinister 珠宝的 ES 词条找回）。
-// **#12 companion allies 层重记（+6 @5% 425→431 / +5 @10% 434→439）**：伴侣先扣层
-// 落地（TakenFromCompanionBeforeYou buff 允收 + TotalCompanionLife 求和注入 +
-// pool_setup companion AllyLayer；连带 = 召唤物等级吃 `+N to Level of Minion
-// Skills`、召唤物基础生命改走 monsterAllyLifeTable、Loyalty 的 −30% more minion
-// life 经 minion 域 statmap 通道注入）。spirit-walker-twister 6 格全翻正
-// （5×MaxHit + TotalEHP 0.89-0.90x→1.00x 精确闭合，Bear Companion + Wild
-// Protector 自带 10% taken）；wolf-pack MaxHit 族 0.82x→0.90x / ChaosMaxHit
-// 0.72x→0.80x / TotalEHP 0.74x→0.83x（池侧 3817 vs oracle 3826.67 = 0.9975 已
-// 闭合，余量 = per-type taken 乘子侧 ~10% 均匀缺口 + Mana 761.2 vs 770，均与
-// companion 层无关）。
-// **#13 防御残差定点修复重记（+6 @5% 431→437 / +6 @10% 439→445）**：三根因——
-// ① wolf-pack per-type taken 乘子 ~10% 均匀缺口 = 敌人 Intimidated 基础条件对
-//    （vendor CalcSetup.lua:73-77 `Damage INC -10 / DamageTaken INC 10 if
-//    Intimidated`）未建：体甲词条「Enemies in your Presence are Intimidated」的
-//    敌侧 `Condition:Intimidated` flag 已入 enemy db 但无消费方。setup_enemy 注入
-//    条件对 + env_finalize 桥接 flag→cfg `EnemyIntimidated` + orchestrator 默认
-//    置真 `EnemyInPresence`（vendor CalcPerform.lua:524）→ `<X>EnemyDamageMult`
-//    0.9 生效（max hit 末端除数 :3734-3771 + EHP 进伤），wolf-pack 5×MaxHit
-//    0.80-0.90x→1.00x、TotalEHP 0.83x→1.00x、PhysDR 68.03 精确。
-// ② wolf-pack Mana 761.2 vs 770 = The Adorned「97% increased Effect of Jewel
-//    Socket Passive Skills containing Corrupted Magic Jewels」未建：腐化魔法珠宝
-//    （Rallying Ruby ×6，enchant +Int/+Dex/+chaos res）mod 未按 1.97 缩放
-//    （vendor CalcSetup.lua:944-948/:1342-1347，ScaleAddList = trunc(round(v×s,2))）。
-//    orchestrator stage_inject_jewels 解析后缩放注入 → Int 135→139 → Mana 770
-//    精确（连带 ChaosMaxHit 尾差闭合）。
-// ③ titan Armour 0.985x = 三件 Runeforged 基底（0.5.4b buff 过）护甲展示行滞后：
-//    item_rolled_defence 的「基底已知恒重算」从 ES-only 扩到三防（vendor
-//    Item.lua:1994-1996 + round 口径）——手套 96→101 / 盔 192→284 / 靴 58→100，
-//    Gear:Armour 6100→6239 = vendor，titan Armour/ES/5×MaxHit 精确闭合；连带
-//    pathfinder Evasion 0.98x→1.00x、twister DeflectChance 0.97x→1.00x 精确化。
-// **#14 防御长尾分诊重记（+13 @5% 431→444 / +5 @10% 439→444）**：五簇闭合——
-// ① PhysDR 取整（vendor :2402 armourReduction 整数变体）ember/deadeye 2 格；
-// ② Life 池 ConvertTo 扣减（CalcDefence.lua:92）abyssal-lich Life/LifeUnres 2 格；
-// ③ Blasphemy per-curse 并入 baseFlat 单次 round（:229-239）essence-drain
-//    SpiritUnres 1 格；④ altQualityStats 通道（GemlingQuality 门控，
-//    CalcTools.lua:147-152）gemling SpiritUnres 1 格；⑤ Smith connected-notable
-//    multiplier + StrRequirementsOn<slot> 快照（CalcSetup.lua:840/CalcPerform.
-//    lua:1848-1857）smith Armour+4×MaxHit+TotalEHP 等 5 格；⑥ EHP 平均格挡改
-//    四分型均值（:1067，SpellProjectileBlock=max(spell,proj) 不再漏）smith+titan
-//    TotalEHP 2 格。剩余 6 格全部 = wolf-pack（#13 领地）。
-const BASELINE_DEF_HIT5: usize = 450; // #13+#14 合并实测 450/450 = 100%（#13 单独 437：wolf-pack 全清；#14 单独 444：长尾 12 格+四分型格挡；迁移基线 343；0.5.0=415）
-const BASELINE_DEF_HIT10: usize = 450; // #13+#14 合并实测 450/450 = 100%（迁移基线 361；0.5.0=432）
-// **附加授予效果展开重记（+3 @10%）**：gem 的 additionalGrantedEffectId1..N
-// （overlay/gem_effects.json 外键，如三 banner 的 buff 侧效果——主位是预留侧
-// ReservationPlayer、buff 侧 <X>BannerPlayer（Aura）在附加位）在 buff_skill_specs
-// 展开为独立效果参与 aura/curse/debuff 分类。wolf-pack：Defiance Banner 的
-// Armour/Evasion MORE 30（Condition:BannerPlanted，config 无 tag FLAG 桥已放行）
-// 激活——Armour 0.55→0.71、Evasion 0.49→0.63、三 MaxHit 0.89→0.91（@10% 翻正）、
-// EHP 0.28→0.37。到 1.00x 还差 banner valour 缩放（AuraEffect MORE per-resource
-// ×Multiplier:BannerValour，vendor :1186/:2783——见记忆 companion 管线路线）。
-// Dread Banner 的 `..._additional_maximum_all_elemental_resistances_%_to_apply`
-// 静态映射按 vendor 口径删除。
-// **进攻 parity 修复簇累计重记（Onslaught + CI→FullLife + MultiplierThreshold 三修复合并）**：
-// - Onslaught 幻影（移除 item.rs `parse_granted_buff_flag`，PoB2 ModParser 对
-//   `Grants Onslaught during effect` 返回 unsupported）：detonate-dead/coiling/flicker
-//   Speed +20% 偏高 → 归 1.00x。
-// - CI→FullLife 桥（vendor CalcDefence.lua:123-126：CI build 恒满生命）：flicker（CI）
-//   「while on Full Life」增伤生效 → AvgDamage 0.90x→0.99x、五分量齐命中。
-// - MultiplierThreshold:enemyDistance（`... against enemies within/further than N metres`
-//   接通，含 collect.rs 预过滤闸门窄放行）：monk-twister node 5802「Stand and Deliver」
-//   等 within-metres 节点生效 → monk-twister CritMult/Avg/TotalDPS 转命中，huntress-twister/
-//   titan-shield-wall 连带。
-// 三修复 build 互不重叠、增益叠加；合并后全量实测重记（master 62/70 → 70/73）。
+/// **Re-recorded for the effective-convention switch** (a dedicated baseline
+/// commit, explicitly reviewed; per-build attribution in
+/// `m3-effective-switch-report.md` §2-§5): default convention panel->effective
+/// (aligning with golden), defence's 425 rows unchanged value-for-value;
+/// offence @5% 27->26, @10% 33->35.
+/// **Reviewed exception (-1 @5%)**: smith-of-kitava's CritChance 1.00x->0.93x --
+/// golden `HitChance`=100 (PoB2's player accuracy fully clears the cap) while
+/// PoBR's accuracy aggregation undershoots (≈1015 vs 1438, gear/passive
+/// accuracy mods and local weapon accuracy aren't in the aggregation, logged),
+/// and under effective the crit's secondary hit check (vendor
+/// CalcOffence.lua:3700) amplifies this gap. The panel-convention level is
+/// still held at 27/35 by [`panel_mode_no_regression`] (PANEL_OFF_*).
+// **Re-recorded for Mageblood legacies (Phase 1 #1, +17 @5% core-8
+// 118->135)**: 9/18 fixtures wear full Mageblood, but the `LegacyOf*` BASE +
+// `MagebloodEquipped` flag were never expanded into armour/evasion/resistances
+// (declared but never built in env_finalize.rs). Implemented vendor
+// CalcPerform.lua:66-142's legacies table + :1502-1528's application logic
+// (stacks × duplicate amplifies globalEffect × floor) + the `legacy of (%w+)`
+// handler (dynamic mod name) + the MagesLegacyEffect implicit (already in the
+// special_vendor batch). Armour/evasion/resistance gaps across multiple
+// builds converge in one shot -- titan Armour (Basalt INC 219 =
+// floor(1.46×150)) / ice-shot Evasion (Jade BASE 2000 + Stibnite INC 150),
+// etc. -- and the three canaries (physical_armour_block/
+// cold_projectile_evasion_es/evasion_melee) are un-ignored.
+// **Re-recorded for Virtuous Barrier Life name normalization (+1 @5% core-8
+// 135->136)**: the Gemling ascendancy buff's per-Mote Life INC
+// (`gem_barrier_red_grants_maximum_life_+%` -> 24% = 2×12 StrengthMote) used
+// to be mapped by stat_map_engine to vendor's name `Life`, landing in a dead
+// bucket -- PoBR's life-pool aggregation name is `MaximumLife` (Armour/
+// Evasion/EnergyShield don't have this problem since their canonical names
+// already match vendor's). After normalizing `Life`->`MaximumLife`, gemling
+// Life goes 0.79x->0.96x, flipping 8 columns (including
+// TotalEHP/5×MaxHit/LifeUnres) to correct.
+// **Re-recorded for item ES recalculation (+2 @5% core-8 136->138)**: per-slot
+// item ES changed from "trusting the item text's display line" to PoB2's
+// convention "recalculate from the base DB:
+// (esBase+flat)×(1+localInc/100)×(1+quality/100)" (Item.lua:1994-1996; the
+// display line lags across data versions) -- titan ES 41->55, stormweaver ES
+// 986->1120, each with ESRecoveryCap following. See
+// calc_orchestrator/defence.rs::item_rolled_defence.
+// **Re-recorded for 0.5.4b #4 Communion/LowLife + Voices (+2 @5% core-8
+// 138->140)**: huntress-ritualist SpiritUnres -13.00x->1.00x / LifeUnres
+// 12.74x->1.01x -- once Atziri's Communion's Spirit->Life reservation
+// conversion (LifeReservePercentPerSpirit, vendor CalcDefence.lua:248-254) is
+// wired in, both columns flip to correct; abyssal-lich (also wearing
+// Communion) SpiritUnres inf->1.00x has the same root cause. See
+// buffs.rs::spirit_reservation_modifiers's conversion branch.
+// **Re-recorded for #14 defensive long-tail triage (+2 core-8 142->144/144 =
+// 100%)**: abyssal-lich Life (LifeConvertToEnergyShield pool deduction, 0_5
+// tree's Enhanced Barrier) + smith Armour (connected-notable multiplier +
+// StrRequirements snapshot) flip to correct. See #14's individual fix commits
+// and docs/adapting-to-0.5.4b.md §#14 for details.
+const BASELINE_DEF_CORE_HIT5: usize = 144; // After #14's long-tail triage: 144/144 (pre-existing #7-3/4: 142; Communion: 140; ItemES: 138; Barrier-Life: 136; Mageblood: 135; migration baseline: 118; 0.5.0=139)
+// **Re-recorded for the per-socket-filled fix (+1 @5%/@10%)**: gemling-legionnaire's
+// body armour Morior Invictus's `+14 to Spirit per Socket filled` (×5 sockets)
+// wired in via a `RunesSocketedIn{SlotName}` Multiplier -> Spirit 180->250
+// (0.72x->1.00x, flips to correct). See collect.rs::filter_parseable's gate +
+// the legacy/engine per-socket suffix + ingest's {SlotName} substitution +
+// per_slot_socket_multipliers pre-fill for details.
+// **Re-recorded for the charm base buff fix (+3 @5% / +2 @10%)**:
+// huntress-ritualist-bow-shot's Sunburst Ruby Charm's (base `Ruby Charm`)
+// inherent buff `+25% to Fire Resistance` is folded into the CharmBuff
+// payload via base_items.charm_buff (a vendor-extracted overlay) -> FireResist
+// 12->37 (0.32x->1.00x), with FireMaxHit 0.73x->1.00x and TotalEHP
+// 0.93x->1.00x following.
+// **Re-recorded for the Disciple of Varashta ES->armour fix (+2 @5% / +2
+// @10%)**: the Sacred Rituals ascendancy notable (tree node 56857), "N% of
+// your current Energy Shield is added to your Armour for determining your
+// Physical Damage Reduction from Armour" -> EnergyShieldAppliesTo
+// PhysicalDamageTaken=60, adding a 60% ES-borrow term to taken.rs's
+// effective_applied_armour -> PhysDR 0.08x->1.03x (PhysMaxHit follows to a
+// hit). sorceress-disciple-of-varashta-comet.
+// **Re-recorded for the Gemling Virtuous Barrier per-Mote ascendancy buff fix
+// (+7 @5% / +7 @10%)**: the ascendancy notable "Essence of Virtue" (tree node
+// 11641) grants the skill Virtuous Barrier, whose buff gives an INC scaled by
+// attribute Mote count (Armour/Evasion/EnergyShield ×DexterityMoteSkillCount,
+// Life ×StrengthMote, etc.). Two-part fix: ① stat_map_engine's buff-domain
+// allowlist gains Armour/Evasion/EnergyShield/Life/LifeRegen (the barrier stat
+// was already in the data, just needed to be let through); ② inject_per_x_multipliers
+// computes Attribute-Mote per vendor CalcSetup.lua:1766-1781 (base 3/3/3 +
+// single-attribute gems +2 / multi-attribute gems +1 each) and provisions the
+// three multipliers. mercenary-gemling-legionnaire-explosive-grenade: Armour
+// 0.70x->1.00x, Evasion 0.81x->1.00x, EnergyShield 0.72x->1.00x, with
+// PhysDR/per-type MaxHit/EHP following downstream.
+// **Re-recorded for the essence-drain taken+Total dual fix (+7 @5% / +7 @10%,
+// both fixes must be merged together)**:
+// ① The verb-fronted form of "Take 30% less Damage" (tree node 28153, Phased
+//   Form) wires into DamageTaken MORE -30 (taken_mult 0.7, matches the
+//   oracle's AfterReductionTakenHitMulti);
+// ② The Discipline aura buff switches to the `EnergyShieldTotal` direct-add
+//   channel (vendor CalcDefence.lua:1331/:1394 -- **not multiplied by
+//   inc/more**; the old mapping wrongly folded it into the EnergyShield
+//   bucket, where it picked up the global 570% inc -> ES over-computed by
+//   1.13x). Added a Total channel to defence.rs's matrix (read/conversion
+//   propagation/shrink-residual/direct-add).
+// Combined, sorceress-chronomancer-essence-drain flips seven columns to
+// correct (ES/ESRecoveryCap 1.13x->1.03x, four MaxHit columns +TotalEHP
+// 0.79x->1.03x). Warning: merging ② alone would make MaxHit worse
+// (0.79->0.72, since the Total fix shrinks ES while the taken gap remains) --
+// the two commits must ship in the same PR to prevent a split.
+// **Re-recorded for the Spirit reservation dual-mechanism fix (+8 @5% / +7 @10%)**:
+// ① Gem quality reservation efficiency (vendor CalcDefence.lua:251
+//   `/(1+efficiency/100)`, data = the `base_reservation_efficiency_+%` slope
+//   ×q in overlay/gem_quality_stats.json) -- a cross-build common gap, flips
+//   the SpiritUnres column for seven builds (ember/frost-bomb/flicker/
+//   monk-twister/pathfinder/stormweaver/detonate-dead);
+// ② Blasphemy per-curse reservation (:273-284
+//   `blasphemy_base_spirit_reservation_per_socketed_curse` = 60 × the number
+//   of same-group AppliesCurse skills, **scaled and rounded once, then ×
+//   count**) -- essence-drain 60->55×3=165, SpiritUnres 28.5x->1.00x flips
+//   exactly to correct.
+// Remaining: druid-comet 1.26x/coiling (totem-form reservation for Spell
+// Totem + the ReservationEfficiency mod family), wolf-pack (the companion
+// pipeline).
+// **Re-recorded for domain-scoped reservation efficiency + Ancestral Bond
+// totem reservation (+2 @5% / +3 @10%)**:
+// ① SkillTypes bitmask u64->[u64;5] (320 bits, expresses the entire domain
+//   including Meta=122/SummonsTotem=25 etc.; Debug/canonical keep the high
+//   bits all-zero to preserve the old format -> cache stays byte-stable);
+// ② Domain-scoped efficiency mods ("Meta Skills have N% increased
+//   Reservation Efficiency" -> ReservationEfficiency INC + a SkillTypes tag,
+//   consumed per-gem via cfg) + **deleted** calc_spirit_reservation's
+//   aggregation-side global efficiency division (which double-applied
+//   alongside the injection side -- the root cause of frost-bomb's panel 148
+//   vs injected 166, an 18-point gap);
+// ③ Ancestral Bond's "Totems reserve 75 Spirit each" -> an AncestralBond FLAG
+//   + ExtraSpirit 75 + SkillType(SummonsTotem) (matches run-parsemod's
+//   two-mod output), with SummonsTotem×flag entering the reservation loop
+//   (CalcDefence.lua:197).
+// druid-comet SpiritUnres 209/209 flips exactly to correct, frost-bomb 136/138
+// (0.99x) flips to correct, disciple follows (efficiency). coiling/wolf-pack/
+// gemling still miss (companion pipeline / Blasphemy ExtraSpirit interaction
+// still to be audited).
+// **Re-recorded for the aura magnitude multiplier bucket (+5 @5% / +6 @10% /
+// core-8 +1)**: aligns buff_pass's aura multiplier bucket with vendor
+// CalcPerform.lua:2204-2205 -- ① per-skill cfg (BuffSpec carries the source
+// effect's type bits, so a domain mod like "Banner Skills have N% increased
+// Aura Magnitudes" = AuraEffect INC + SkillTypes(Banner=89) only hits the
+// matching aura); ② an independent `Magnitude` multiplier bucket ("Aura
+// Skills have N% increased Magnitudes" = Magnitude INC + SkillTypes(Aura),
+// forming its own (1+Σinc/100) separately from the AuraEffect bucket before
+// multiplying together -- wolf-pack's Defiance Banner
+// 30×(1+39%)×(1+88%)=78.4 against vendor's 78). Both parsers for the three
+// mod shapes land (legacy parse_scoped_buff_magnitude + 3 overlay entries).
+// wolf-pack Armour 0.71->0.98✓/EvadeChance·MeleeEvade->0.95✓/PhysDR->0.96✓,
+// huntress-spirit-walker ChaosMaxHit 0.88->1.00✓ (a small positive spillover
+// from an aura-point mod).
+// **Re-recorded for the Tactician "A Solid Plan" reservation MORE bucket (+1
+// @5%/+1 @10%)**: "Persistent Buffs have 50% less Reservation" (tree 15044)
+// -> `Reserved MORE -50` gated by a Persistent+Buff AND of two tags (vendor
+// ModParser.lua:1339's tagList); spirit_reservation_modifiers consumes
+// `SpiritReserved`/`Reserved` inc/more + the efficiency MORE (the full
+// formula at CalcDefence.lua:240-252). wolf-pack SpiritUnres -210->21 closes
+// exactly (per-skill oracle reconciliation: the banner's own 10% efficiency
+// was already covered by the existing quality path; the Wolf Pack companion
+// only carries Persistent, not Buff, so under AND semantics it doesn't take
+// the ×0.5 -- both sides agree). The engine-side template's skill_type_bit
+// gained the missing Persistent/Buff bit mapping (the root cause of pre_flag
+// dropping the tag).
+// **Re-recorded for the BeenHitRecently condition suffix (+1 @5%/+1 @10%,
+// core-8 +1)**: "… if you have/haven't been Hit Recently" (vendor
+// ModParser.lua:1955/:1961) -> the Condition `BeenHitRecently` (negated
+// form), whose cfg truth value already flows through the generic passthrough
+// for config `conditionBeenHitRecently`. wolf-pack's tree node "Backup Plan"
+// (53853, 0_5 tree) has its 40% Evasion conditional mod activate -- Evasion
+// 14618->16824.47 against vendor's 16824 closes exactly (oracle
+// defenceModList reconciliation: INC 165->205), EHP 0.54->0.59 spills over positively.
+// **Stale-import correction (re-recorded 416->415 after PR#40 merged)**: #40
+// was a pre-B3 branch -- its legacy.rs mod plus the 416 baseline were both
+// measured in a pre-B3 world; after the B3 gate switched to the engine, that
+// mod was already taking effect via the mod_parser_rules data channel (this
+// is the same slot as B3's commit taking core-8 from 138->139), so wolf-pack
+// Evasion was already 1.00x ✓ before #40 merged. Merging #40 changed zero
+// behaviour (the per-build diff across all 18 builds is empty); 416 was a
+// double-count. Current measured value is 415 (@10% 432 and core-8 139 match
+// reality exactly, so it's kept).
+// **Re-recorded for Mageblood legacies (Phase 1 #1, +50 @5% 343->393 / +56
+// @10% 361->417)**: see the note above BASELINE_DEF_CORE_HIT5; armour/
+// evasion/resistance columns converge across multiple builds.
+// **Re-recorded for Virtuous Barrier Life name normalization (+8 @5%
+// 393->401 / +8 @10% 417->425)**: see the note above BASELINE_DEF_CORE_HIT5;
+// gemling's 8 columns (Life/TotalEHP/5×MaxHit/LifeUnres) flip to correct.
+// **Re-recorded for item ES recalculation (+4 @5% 401->405 / +3 @10%
+// 425->428)**: titan+stormweaver each flip ES+ESRecoveryCap to correct; see
+// the note above BASELINE_DEF_CORE_HIT5.
+// **Re-recorded for the Refraction buff's EvasionGainAsDeflection (+2 @5%
+// 405->407 / +1 @10% 428->429)**: support Refraction I/II's Refractive
+// Plating buff payload
+// (`support_tempered_valour_deflection_rating_%_of_evasion_rating` BASE 20)
+// wires in through the player buff allowlist (stat_map_engine), wolf-pack
+// DeflectChance 0.80x->1.00x (@5%+@10%), pathfinder 0.93x->1.00x (@5%).
+// **Re-recorded for the Refraction buff's ArmourAppliesTo<El>DamageTaken (+3
+// @5% 407->410)**: the same buff's
+// `support_tempered_valour_%_armour_to_apply_to_elemental_damage` payload
+// (three BASE 30 entries) wires in through the same player buff allowlist,
+// consumed by `calc::taken::armour_applies_pct` (tree 84 + buff 30 = 114%,
+// oracle-pinned FireEffectiveAppliedArmour 21181.2). wolf-pack
+// Fire/Cold/LightMaxHit 0.94x->0.96x (@5% flips to correct), TotalEHP
+// 0.81x->0.88x (the remainder = Armour's own 0.98x gap + ChaosMaxHit 0.87x +
+// Life 1.11x, all unrelated to this channel). No change @10%.
+// **Re-recorded for 0.5.4b #4 Communion/LowLife + Voices (+3 @5% 410->413 /
+// +5 @10% 429->434)**: core-8's SpiritUnres/LifeUnres flip to correct (see the
+// note above BASELINE_DEF_CORE_HIT5) + abyssal-lich EnergyShield 0.93x->0.98x
+// (the Voices sinister jewel's ES mod was recovered).
+// **Re-recorded for #12's companion allies layer (+6 @5% 425->431 / +5 @10%
+// 434->439)**: the companion damage-taken-first layer lands
+// (TakenFromCompanionBeforeYou buff allowlisted + TotalCompanionLife summed
+// and injected + pool_setup's companion AllyLayer; downstream: minion level
+// picks up `+N to Level of Minion Skills`, minion base life switches to
+// monsterAllyLifeTable, and Loyalty's -30% more minion life injects via the
+// minion-domain statmap channel). spirit-walker-twister flips all 6 columns
+// to correct (5×MaxHit + TotalEHP 0.89-0.90x->1.00x close exactly, from Bear
+// Companion + Wild Protector's inherent 10% taken); wolf-pack's MaxHit family
+// 0.82x->0.90x / ChaosMaxHit 0.72x->0.80x / TotalEHP 0.74x->0.83x (the pool
+// side, 3817 vs oracle's 3826.67 = 0.9975, is already closed; the remainder =
+// a uniform ~10% gap in the per-type taken multipliers + Mana 761.2 vs 770,
+// both unrelated to the companion layer).
+// **Re-recorded for #13's defensive-residual pinpoint fixes (+6 @5% 431->437
+// / +6 @10% 439->445)**: three root causes --
+// ① wolf-pack's uniform ~10% gap in per-type taken multipliers = the
+//    enemy-Intimidated base condition pair (vendor CalcSetup.lua:73-77
+//    `Damage INC -10 / DamageTaken INC 10 if Intimidated`) was never built:
+//    the body armour mod "Enemies in your Presence are Intimidated"'s
+//    enemy-side `Condition:Intimidated` flag was already in the enemy db but
+//    had no consumer. setup_enemy now injects the condition pair +
+//    env_finalize bridges flag->cfg `EnemyIntimidated` + the orchestrator
+//    defaults `EnemyInPresence` to true (vendor CalcPerform.lua:524) ->
+//    `<X>EnemyDamageMult` 0.9 takes effect (the max-hit end divisor
+//    :3734-3771 + EHP damage-taken), wolf-pack's 5×MaxHit 0.80-0.90x->1.00x,
+//    TotalEHP 0.83x->1.00x, PhysDR exactly 68.03.
+// ② wolf-pack Mana 761.2 vs 770 = The Adorned's "97% increased Effect of
+//    Jewel Socket Passive Skills containing Corrupted Magic Jewels" was never
+//    built: the corrupted magic jewels (Rallying Ruby ×6, enchant
+//    +Int/+Dex/+chaos res) mods weren't scaled by 1.97 (vendor
+//    CalcSetup.lua:944-948/:1342-1347, ScaleAddList =
+//    trunc(round(v×s,2))). orchestrator's stage_inject_jewels now scales
+//    after parsing and injects -> Int 135->139 -> Mana exactly 770 (with the
+//    ChaosMaxHit tail-gap closing along with it).
+// ③ titan Armour 0.985x = three Runeforged-base items (buffed in 0.5.4b) had
+//    a stale armour display line: item_rolled_defence's "always recalculate
+//    from a known base" was expanded from ES-only to all three defences
+//    (vendor Item.lua:1994-1996 + the round convention) -- gloves 96->101 /
+//    helmet 192->284 / boots 58->100, Gear:Armour 6100->6239 = vendor,
+//    closing titan's Armour/ES/5×MaxHit exactly; pathfinder Evasion
+//    0.98x->1.00x and twister DeflectChance 0.97x->1.00x also become exact.
+// **Re-recorded for #14's defensive long-tail triage (+13 @5% 431->444 / +5
+// @10% 439->444)**: five clusters closed --
+// ① PhysDR rounding (vendor :2402's armourReduction integer variant): 2 slots
+//    for ember/deadeye;
+// ② Life-pool ConvertTo deduction (CalcDefence.lua:92): 2 slots for
+//    abyssal-lich Life/LifeUnres;
+// ③ Blasphemy per-curse folded into baseFlat with a single round (:229-239):
+//    1 slot for essence-drain SpiritUnres; ④ the altQualityStats channel
+//    (gated by GemlingQuality, CalcTools.lua:147-152): 1 slot for gemling
+//    SpiritUnres; ⑤ Smith's connected-notable multiplier +
+//    StrRequirementsOn<slot> snapshot (CalcSetup.lua:840/CalcPerform.
+//    lua:1848-1857): 5 slots including smith Armour+4×MaxHit+TotalEHP; ⑥ EHP's
+//    average block switched to the four-way mean (:1067, no longer missing
+//    SpellProjectileBlock=max(spell,proj)): 2 slots for smith+titan TotalEHP.
+//    The remaining 6 slots are all wolf-pack (#13's territory).
+const BASELINE_DEF_HIT5: usize = 450; // #13+#14 merged, measured 450/450 = 100% (#13 alone: 437, wolf-pack fully cleared; #14 alone: 444, long tail 12 slots + four-way block; migration baseline: 343; 0.5.0=415)
+const BASELINE_DEF_HIT10: usize = 450; // #13+#14 merged, measured 450/450 = 100% (migration baseline: 361; 0.5.0=432)
+// **Re-recorded for expanding additional granted effects (+3 @10%)**: a gem's
+// additionalGrantedEffectId1..N (a foreign key in overlay/gem_effects.json --
+// e.g. a banner's buff-side effect: the primary slot is the reservation-side
+// ReservationPlayer, and the buff-side <X>BannerPlayer, an Aura, is in the
+// additional slot) is now expanded in buff_skill_specs into an independent
+// effect that participates in aura/curse/debuff classification. wolf-pack:
+// Defiance Banner's Armour/Evasion MORE 30 (gated by Condition:BannerPlanted,
+// now let through by a config-tagless FLAG bridge) activates -- Armour
+// 0.55->0.71, Evasion 0.49->0.63, three MaxHit columns 0.89->0.91 (@10% flips
+// to correct), EHP 0.28->0.37. Reaching 1.00x still needs banner valour
+// scaling (AuraEffect MORE per-resource × Multiplier:BannerValour, vendor
+// :1186/:2783 -- see the companion-pipeline roadmap memory). Dread Banner's
+// `..._additional_maximum_all_elemental_resistances_%_to_apply` static
+// mapping was removed to match vendor's convention.
+// **Cumulative re-record for the offence parity fix cluster (Onslaught +
+// CI->FullLife + MultiplierThreshold, three fixes merged together)**:
+// - Onslaught phantom (removed item.rs's `parse_granted_buff_flag`; PoB2's
+//   ModParser returns unsupported for `Grants Onslaught during effect`):
+//   detonate-dead/coiling/flicker's Speed was +20% too high -> now returns
+//   to 1.00x.
+// - The CI->FullLife bridge (vendor CalcDefence.lua:123-126: a CI build is
+//   always at full life): flicker's (CI) "while on Full Life" damage bonus
+//   now activates -> AvgDamage 0.90x->0.99x, all five components hit.
+// - MultiplierThreshold:enemyDistance ("... against enemies within/further
+//   than N metres" wired up, including a narrow allowance in collect.rs's
+//   pre-filter gate): monk-twister's node 5802 "Stand and Deliver" and other
+//   within-metres nodes now activate -> monk-twister's CritMult/Avg/TotalDPS
+//   flip to hits, with huntress-twister/titan-shield-wall following.
+// The three fixes' builds don't overlap and their gains stack; measured
+// after merging all three (master 62/70 -> 70/73).
 //
-// **radius-jewel × weapon-set 交互修复重记（gemling CritChance，⚠️已在 #15 回退）**：
-// 曾把非激活武器组节点并回 radius 授予几何（当时 golden 10.30 = 6×+7）。0.5.4b 重采
-// golden 后 vendor 实测（oracle Tabulate）授予受**目标节点**的 `Condition:WeaponSet<N>`
-// 门控（CalcSetup.lua:222-223），非激活组授予净效果为零 → 正确值 8.55 = 1×+7，
-// 机制整体回退（见 BASELINE_OFF_HIT5 上 #15 ①）。
-// **Mageblood Diamond crit 名归一重记（+2 @5% 39→41 / +3 @10% 47→50）**：Mageblood
-// LegacyOfDiamond 注入 vendor 名 `CritChance` INC，但 calc::crit 读 `CriticalStrikeChance`
-// （PoBR 规范名）——裸注入不过 parser 的 translate_vendor_name，落死桶（同 Virtuous
-// Barrier Life→MaximumLife 类）。表内改用 `CriticalStrikeChance` 后 blood-mage CritChance
-// 0.79x→0.96x、ember CritChance+CritMultiplier→1.00x（InevitableCrit 的 crit-mult 惩罚随
-// pre-eff crit 修复一并解决），三 Diamond build 的 crit/DPS 抬升。见 calc/mageblood.rs。
-// **Mageblood Silver Speed 名归一重记（+4 @5% 41→45 / +4 @10% 50→54）**：同 crit 死桶
-// 类——LegacyOfSilver 注入 vendor 裸 `Speed` INC，但 PoBR 速度桶名是 `SkillSpeed`
-// （SPEED_BUCKET，攻/施法通吃）。改后 ember/monk-twister/smith/titan 的 Speed 列翻正、
-// DPS 抬升（ember 0.68x→0.77x、monk-twister→0.88x）。见 calc/mageblood.rs LegacyOfSilver。
-// **bloodmage 池转换后 Mana multiplier 刷新重记（off +1 @5% 45→46 / @10% 54→55；dot +2
-// @5% 9→11 / @10% 11→13）**：perform 防御资源转换（Eldritch Battery ES→Mana）后重算了
-// mana_pool 并回填 cfg.stats["Mana"]，但漏刷 cfg.multipliers["Mana"]（per-100-max-Mana
-// 类词条如 Arcane Intensity 读它）→ 池转换 build 的 mana 缩放用了转换前的旧值。补刷后
-// blood-mage SpellDamage INC 39→105、TotalDPS 0.74x→0.87x，其 DoT 基底随之抬升。见 perform.rs。
-// **0.5.4b #4 Communion/LowLife + Voices 重记（off +6 @5% 46→52 / +4 @10% 55→59）**：
-// 两个 0.5.4b 新机制在真实 build 上叠加成 per-build DPS 簇（gap map「~0.60x」项）：
-// 1. Atziri's Communion Spirit→Life 保留转换（vendor CalcDefence.lua:248-254）→
-//    重保留 build 自动 Low Life（:335-350 unreserved ≤ 35%）→「while on Low Life」
-//    族增伤解锁（ritualist：tree +60 与 Direstrike buff +70 attack INC，oracle
-//    damageModList 钉值 = 缺口 130 INC 整）。
-// 2. Voices「Allocates 2 Sinister Jewel sockets」→ sinister socket 珠宝入计
-//    （ritualist crit chance/mult 13/37 INC 找回，双列精确闭合）。
-// huntress-ritualist TotalDPS 0.68x→0.99x（AvgDamage/CritChance/CritMultiplier 同翻）、
-// witch-abyssal-lich TotalDPS 0.62x→0.91x（Speed 0.91x→1.00x、CritChance 0.98x、
-// CritMultiplier 0.75x→0.97x，其中 Speed/CritChance @5% 翻正、DPS 未回带）。
-// **0.5.4b #4 grenade 短语解禁重记（off +4 @5% 52→56 / +3 @10% 59→62）**：vendor
-// 0.22.0 ModParser gem 名注册循环新增 `not grantedEffect.fromItem` 排除
-// （ModParser.lua:6423）——`MeleeGrenadeLauncherPlayer`（name "Grenade"，fromItem）
-// 不再抢注 skillNameList，`grenade` / `for grenade skills` 短语恢复为 live
-// `SkillType.Grenade` tag（run-parsemod 双证）。PR#53 时代（0.21 语义）的抽取侧
-// 死条目/惰性改写撤销 + mod_parser_rules/parsed_mods 再生成。deadeye 3×15 CDR
-// 树词条（oracle extraModList 钉源 Tree:21077/354/48429）生效：deadeye Speed
-// 0.65x→1.00x（翻正）、TotalDPS 0.53x→0.83x；gemling Speed/AvgDamage/TotalDPS/
-// CombinedDPS 全部 1.00-1.04x 翻正。
-// **0.5.4b #5 Blazing Critical 全局火焰 buff 重记（off +2 @5% 56→58 / +2 @10%
-// 62→64）**：0.22.0 给 `support_blazing_crits_gain_%_fire_damage_with_attacks_
-// on_critical_hit` 补 GlobalEffect/Buff tag（sup_int.lua:959）——15%
-// `DamageGainAsFire`（Attack + Condition:CritRecently）从死词条变成全局玩家
-// buff。两处接线：stat_map_engine 玩家 buff 允收名单 + support_buff_specs
-// 裁决对象补附加授予效果（Charged Staff 的隐藏 Attack 附加效果
-// ChargedStaffShockwavePlayer 才是 Blazing Critical 的兼容宿主）。
-// monk-twister AverageDamage/TotalDPS 0.60x→0.96x 双列翻正；flicker
-// TotalDPS 0.76x→0.84x、spirit-walker 0.78x→0.89x 收敛未入列（残余 =
-// 攻击 AvgDamage 族存量缺口的平方传导）。
-// **0.5.4b #6 攻击 AvgDamage 族攻坚重记（off +13 @5% 58→71 / +9 @10% 64→73）**：
-// 五个通用消费点修复叠加，整族（smith/titan/flicker/monk-twister/spirit-walker/
-// pathfinder/ritualist/gemling）全部进入 5% 带：
-// 1. Bifurcate 爆伤条件概率（vendor :3823-3846 `conditionalBifurcateChance =
-//    (PreBifurcate²/100)/CritChance`，PoBR 误移植为无条件 pre²/10000——新旧 vendor
-//    同式，属存量误差）+ 武器无 flag 爆伤词条转按手条件（Item.lua:1954-1961，
-//    **0.22.0 新增** CritMultiplier 进转换清单）：spirit-walker/pathfinder CritMult
-//    0.94x→1.00x/0.99x，titan CritMult 1.20x→1.00x（oracle 钉值 6.02→5.00 golden 精确）。
-// 2. enemyDistance placeholder 喂 skillDist（CalcActiveSkill.lua:671，**0.22.0 新增**
-//    configPlaceholder 兜底）：Close Combat 30% MORE 按 ramp(20)=0.6 生效 →
-//    flicker 0.838x→0.99x、smith +Close Combat 段。
-// 3. PerStat statList 支持（ModParser.lua:1631 `per 75 armour and evasion on
-//    equipped shield` → `|` 复合 Multiplier var 求和）：smith/titan 盾防御缩放
-//    tree notable（Tree:27687，oracle 钉值 88 INC）生效。
-// 4. hybrid mana→life cost + per-LifeCost 词条（Atalui's Bloodletting：
-//    `base_skill_cost_life_instead_of_mana_%` 100 + PerStat{stat=LifeCost,div=20,
-//    limit=40,limitTotal}，vendor :2067/:2090-2104）：smith +30% DamageGainAsPhysical
-//    （oracle LifeCost 309 → floor(309/20)=15 → 30）。
-// 5. 暴击短路路径分腿减伤 blend（vendor :4395；敌方护甲 DR 依赖单次击中量，
-//    crit 腿用暴击后击中算 DR）：spirit-walker 0.94x→0.98x、blood-mage/abyssal-lich
-//    连带收敛（0.87x→0.88x / 0.91x→0.93x，未入列）。
-// 逐 build：smith 0.575x→0.996x、titan 0.874x→0.978x、flicker 0.838x→1.003x、
-// spirit-walker 0.892x→0.980x、monk-twister 0.958x→0.980x、pathfinder 0.904x→
-// 0.963x、ritualist 0.989x→1.000x。剩余脱靶：deadeye 0.832x（pre-0.5.4b per-hit
-// 欠条）、blood-mage 0.880x / abyssal-lich 0.926x（Mageblood 词条族缺口，Phase 1
-// 独立项——oracle 钉值 blood-mage 缺 `INC CritChance 107 'Mageblood'`）、
-// frost-bomb 0.661x（golden 两版未动，存量冷却 DPS 缺口）。
-// （存量 #7-1）frost-bomb TotalDPS 0.66x→1.00x 翻正（off @5/@10 各 +1）：
-// Archmage buff `DamageGainAsLightning`（BASE 4/100 Mana → 80% gain-as，
-// act_int.lua:229-231）+ curse 链两缺口（EW 取数等级未吃 +8 spell skill
-// levels：-58→-66；技能局部 CurseEffect 段缺失：Heightened Curse +25 +
-// EW 品质 +10 → 敌抗 9→-7，oracle enemyMitigation 逐源钉值）。
-// **0.5.4b #8 Zarokh's Gift anoint socket 重记（off +3 @5% 73→76 / +1 @10% 75→76）**：
-// #6 留下的「blood-mage 缺 `INC CritChance 107 'Mageblood'`」钉值实为下游症状：
-// Mageblood 效果表与 `MagesLegacyEffect` 解析均已在位（逐 mod 对拍与 oracle 一致），
-// 真根因 = 两 build 的 amulet anoint `{enchant}Allocates Zarokh's Gift` 未把具名
-// jewel socket 节点 11184 视为已分配（vendor PassiveSpec.lua:1106-1114 sockets 名
-// 匹配 fallback），socket 内珠宝（blood-mage: Pandemonium Ornament——CritChance
-// INC 24 + CritMult INC 25/28；abyssal: 同位 ES/防御珠宝）整体被丢弃。修复见
-// xml_build.rs NAMED_SOCKETS_0_5。blood-mage TotalDPS 0.880x→1.00x（CritChance
-// 88.5→92.1、CritMult 5.34→5.87 逐值精确）、abyssal-lich TotalDPS 0.926x→1.00x
-// （CritChance/CritMult 1.00x；ES 12124→12437 vs golden 12434、MaxHit 五族 +
-// TotalEHP 0.97-0.98x→1.00x——def 列先前已在 5% 带内，def 计数不变）。
-// 18 build 逐格 diff 仅此两 build 变动。
-// **#15 最后三格清零（off 78→80、dot 36→37，进攻/dot 满分）**：
-// ① gemling CritChance 1.20x→1.00x：范围珠宝授予不再落到非激活武器组节点——
-//    vendor 对 allocMode≠0 节点的**每条** mod（含珠宝授予）都加 `Condition:WeaponSet<N>`
-//    （CalcSetup.lua:222-223，节点自身门控优先于珠宝来源分支 :224-227），非激活组
-//    授予净效果为零；oracle critModList 实证仅 1 条 `7 @ Tree:32763`（旧 75a348e 的
-//    「按 jewel allocMode 门控」判读有误，已整体回退）。同珠宝的 Small 授予
-//    （Crossbow 伤害）同步收敛 → AvgDamage/TotalDPS 1.04x→0.97x（带内换向）。
-// ② gemling TotalDotDPS 1.10x→0.95x（转入带内）：点燃链吃 crit/珠宝高估传导，修复后
-//    残差 -4.9%（952 vs 1001）分解 = 点燃几率 0.0962 vs 0.098636（0.9754）× 堆叠潜力
-//    0.2603 vs 0.26691（0.9752）——两者均 ∝ 击中火伤，0.9754² ≈ 0.951 与 dot 残差
-//    逐位吻合，即完全是 AvgDamage 0.97x 既有低估的下游（此前被 6× 珠宝授予掩盖）。
-// ③ wolf-pack Speed 1.43x→1.00x：主技能选择兜底——mainSocketGroup 指向的组无
-//    攻击/法术候选（Wolf Pack = Minion+Companion）时不再回退扫描其它组（曾错选
-//    Blasphemy 组 Temporal Chains，0.7s 施放 → 1.43），改用组内 mainActiveSkill
-//    选中项（vendor socketGroupSkillList 无伤害过滤）；并修 speed bucket：非攻非
-//    法术技能不吃 Attack/CastSpeed INC（vendor ModFlag 匹配语义），Wolf Pack 不再
-//    错吃武器 `12% reduced Attack Speed`（0.88→1.00）。18 build 逐格零倒退（全命中）。
-const BASELINE_OFF_HIT5: usize = 80; // #15 满分 80/80（#10 后 78；#8 后 76；#6+#7 合并 73；迁移基线 39）
-const BASELINE_OFF_HIT10: usize = 80; // #15 满分 80/80（#10 后 78；#8 后 76；迁移基线 47；0.5.0=74）
+// **Re-recorded for the radius-jewel × weapon-set interaction fix (gemling
+// CritChance, warning: already reverted in #15)**: this used to fold
+// inactive-weapon-group nodes back into the radius-grant geometry (golden was
+// 10.30 = 6×+7 at the time). After re-sampling golden for 0.5.4b, real vendor
+// measurement (oracle Tabulate) showed the grant is gated by the **target
+// node's** `Condition:WeaponSet<N>` (CalcSetup.lua:222-223) -- an inactive
+// group's grant has zero net effect -> the correct value is 8.55 = 1×+7, so
+// the mechanism was reverted wholesale (see #15's item ① above BASELINE_OFF_HIT5).
+// **Re-recorded for the Mageblood Diamond crit name normalization (+2 @5%
+// 39->41 / +3 @10% 47->50)**: Mageblood's LegacyOfDiamond injects vendor's
+// name `CritChance` INC, but calc::crit reads `CriticalStrikeChance` (PoBR's
+// canonical name) -- an un-translated injection skips the parser's
+// translate_vendor_name and lands in a dead bucket (same class of bug as
+// Virtuous Barrier's Life->MaximumLife). After switching the table to
+// `CriticalStrikeChance`, blood-mage CritChance goes 0.79x->0.96x, ember
+// CritChance+CritMultiplier hit 1.00x (InevitableCrit's crit-mult penalty
+// resolves together with the pre-effective-crit fix), and crit/DPS rise for
+// all three Diamond builds. See calc/mageblood.rs.
+// **Re-recorded for the Mageblood Silver Speed name normalization (+4 @5%
+// 41->45 / +4 @10% 50->54)**: the same dead-bucket class -- LegacyOfSilver
+// injects vendor's bare `Speed` INC, but PoBR's speed bucket is named
+// `SkillSpeed` (SPEED_BUCKET, covers both attack and cast). After the fix,
+// ember/monk-twister/smith/titan's Speed columns flip to correct and DPS
+// rises (ember 0.68x->0.77x, monk-twister ->0.88x). See
+// calc/mageblood.rs::LegacyOfSilver.
+// **Re-recorded for refreshing the Mana multiplier after blood-mage pool
+// conversion (off +1 @5% 45->46 / @10% 54->55; dot +2 @5% 9->11 / @10%
+// 11->13)**: after perform's defence-resource conversion (Eldritch Battery
+// ES->Mana) recalculates mana_pool and writes back cfg.stats["Mana"], it
+// forgot to refresh cfg.multipliers["Mana"] (read by per-100-max-Mana mods
+// like Arcane Intensity) -> a pool-conversion build's mana scaling used the
+// stale pre-conversion value. After the fix, blood-mage's SpellDamage INC
+// goes 39->105, TotalDPS 0.74x->0.87x, and its DoT base rises along with it.
+// See perform.rs.
+// **Re-recorded for 0.5.4b #4 Communion/LowLife + Voices (off +6 @5% 46->52 /
+// +4 @10% 55->59)**: two new 0.5.4b mechanics stack on real builds into a
+// per-build DPS cluster (the gap map's "~0.60x" entries):
+// 1. Atziri's Communion's Spirit->Life reservation conversion (vendor
+//    CalcDefence.lua:248-254) -> a heavily-reserved build automatically goes
+//    Low Life (:335-350, unreserved <= 35%) -> the "while on Low Life" damage
+//    bonus family unlocks (ritualist: tree +60 and the Direstrike buff's +70
+//    attack INC; oracle's damageModList pins the gap at exactly 130 INC).
+// 2. Voices' "Allocates 2 Sinister Jewel sockets" -> sinister-socket jewels
+//    are now counted (recovers ritualist's crit chance/mult 13/37 INC, both
+//    columns close exactly).
+// huntress-ritualist TotalDPS 0.68x->0.99x (AvgDamage/CritChance/CritMultiplier
+// flip along with it), witch-abyssal-lich TotalDPS 0.62x->0.91x (Speed
+// 0.91x->1.00x, CritChance 0.98x, CritMultiplier 0.75x->0.97x, where
+// Speed/CritChance flip @5% but DPS doesn't come back into the column).
+// **Re-recorded for the 0.5.4b #4 grenade-phrase unblock (off +4 @5% 52->56 /
+// +3 @10% 59->62)**: vendor 0.22.0's ModParser gem-name registration loop
+// added a `not grantedEffect.fromItem` exclusion (ModParser.lua:6423) --
+// `MeleeGrenadeLauncherPlayer` (name "Grenade", fromItem) no longer steals
+// the skillNameList registration, so the `grenade` / `for grenade skills`
+// phrases go back to matching the live `SkillType.Grenade` tag (confirmed
+// both ways via run-parsemod). Reverted the extraction-side dead entries/lazy
+// rewrites from the PR#53 era (0.21 semantics) + regenerated
+// mod_parser_rules/parsed_mods. deadeye's 3×15 CDR tree mods (oracle's
+// extraModList pins the source to Tree:21077/354/48429) now activate: deadeye
+// Speed 0.65x->1.00x (flips to correct), TotalDPS 0.53x->0.83x; gemling's
+// Speed/AvgDamage/TotalDPS/CombinedDPS all flip to correct at 1.00-1.04x.
+// **Re-recorded for the 0.5.4b #5 Blazing Critical global fire buff (off +2
+// @5% 56->58 / +2 @10% 62->64)**: 0.22.0 added a GlobalEffect/Buff tag to
+// `support_blazing_crits_gain_%_fire_damage_with_attacks_on_critical_hit`
+// (sup_int.lua:959) -- the 15% `DamageGainAsFire` (Attack +
+// Condition:CritRecently) went from a dead mod to a global player buff. Two
+// wiring changes: stat_map_engine's player buff allowlist + support_buff_specs'
+// gating target gained the additional granted effect (Charged Staff's hidden
+// Attack additional effect, ChargedStaffShockwavePlayer, is the actual
+// compatible host for Blazing Critical). monk-twister's
+// AverageDamage/TotalDPS flip both columns 0.60x->0.96x; flicker's TotalDPS
+// 0.76x->0.84x and spirit-walker's 0.78x->0.89x converge but don't reach the
+// column (the remainder is the squared propagation of the attack AvgDamage
+// family's existing gap, not a dot-side mechanism).
+// **Re-recorded for the 0.5.4b #6 attack AvgDamage family push (off +13 @5%
+// 58->71 / +9 @10% 64->73)**: five general-purpose consumer-site fixes
+// stack, bringing the whole family (smith/titan/flicker/monk-twister/
+// spirit-walker/pathfinder/ritualist/gemling) into the 5% band:
+// 1. Bifurcate's crit-damage conditional probability (vendor :3823-3846
+//    `conditionalBifurcateChance = (PreBifurcate²/100)/CritChance`; PoBR had
+//    mis-ported this as unconditional pre²/10000 -- old and new vendor use
+//    the same formula, so this was a pre-existing bug) + weapons' flag-less
+//    crit-damage mods converted to per-hand conditions (Item.lua:1954-1961,
+//    **new in 0.22.0**: CritMultiplier added to the conversion list):
+//    spirit-walker/pathfinder CritMult 0.94x->1.00x/0.99x, titan CritMult
+//    1.20x->1.00x (oracle-pinned 6.02->5.00, exactly matching golden).
+// 2. Feeding the enemyDistance placeholder into skillDist
+//    (CalcActiveSkill.lua:671, **new in 0.22.0**: a configPlaceholder
+//    fallback): Close Combat's 30% MORE now activates via ramp(20)=0.6 ->
+//    flicker 0.838x->0.99x, smith gains its Close Combat segment.
+// 3. PerStat statList support (ModParser.lua:1631 "per 75 armour and evasion
+//    on equipped shield" -> a `|`-composed Multiplier var sum): smith/titan's
+//    shield-defence-scaled tree notable (Tree:27687, oracle-pinned 88 INC)
+//    now activates.
+// 4. Hybrid mana->life cost + per-LifeCost mods (Atalui's Bloodletting:
+//    `base_skill_cost_life_instead_of_mana_%` 100 + PerStat{stat=LifeCost,
+//    div=20,limit=40,limitTotal}, vendor :2067/:2090-2104): smith gains +30%
+//    DamageGainAsPhysical (oracle LifeCost 309 -> floor(309/20)=15 -> 30).
+// 5. The crit fast-path's per-leg damage-taken blend (vendor :4395; enemy
+//    armour DR depends on the single-hit amount, and the crit leg computes DR
+//    using the post-crit hit): spirit-walker 0.94x->0.98x, blood-mage/
+//    abyssal-lich converge along with it (0.87x->0.88x / 0.91x->0.93x,
+//    don't reach the column).
+// Per build: smith 0.575x->0.996x, titan 0.874x->0.978x, flicker
+// 0.838x->1.003x, spirit-walker 0.892x->0.980x, monk-twister 0.958x->0.980x,
+// pathfinder 0.904x->0.963x, ritualist 0.989x->1.000x. Remaining misses:
+// deadeye 0.832x (a pre-0.5.4b per-hit shortfall), blood-mage 0.880x /
+// abyssal-lich 0.926x (a Mageblood mod-family gap, a separate Phase 1 item --
+// oracle pins blood-mage as missing `INC CritChance 107 'Mageblood'`),
+// frost-bomb 0.661x (unchanged across both golden versions, a pre-existing
+// cooldown-DPS gap).
+// (pre-existing #7-1) frost-bomb TotalDPS 0.66x->1.00x flips to correct (off
+// @5/@10 each +1): the Archmage buff's `DamageGainAsLightning` (BASE 4/100
+// Mana -> 80% gain-as, act_int.lua:229-231) + two curse-chain gaps (Ethereal
+// Whip's level lookup wasn't picking up +8 spell skill levels: -58->-66;
+// missing a skill-local CurseEffect segment: Heightened Curse +25 + EW
+// quality +10 -> enemy resist 9->-7, per-source oracle
+// enemyMitigation pin).
+// **Re-recorded for 0.5.4b #8 Zarokh's Gift anoint socket (off +3 @5% 73->76
+// / +1 @10% 75->76)**: the "blood-mage missing `INC CritChance 107
+// 'Mageblood'`" pin left over from #6 was actually a downstream symptom:
+// both the Mageblood effect table and the `MagesLegacyEffect` parsing were
+// already correct (per-mod comparison matches the oracle); the real root
+// cause = both builds' amulet anoint `{enchant}Allocates Zarokh's Gift`
+// wasn't treating the named jewel socket node 11184 as allocated (vendor
+// PassiveSpec.lua:1106-1114's sockets-name-match fallback), so the jewels in
+// that socket (blood-mage: Pandemonium Ornament -- CritChance INC 24 +
+// CritMult INC 25/28; abyssal: an ES/defence jewel in the same slot) were
+// dropped entirely. See xml_build.rs::NAMED_SOCKETS_0_5 for the fix.
+// blood-mage TotalDPS 0.880x->1.00x (CritChance 88.5->92.1, CritMult
+// 5.34->5.87, both exact), abyssal-lich TotalDPS 0.926x->1.00x
+// (CritChance/CritMult 1.00x; ES 12124->12437 vs golden 12434, MaxHit's five
+// columns + TotalEHP 0.97-0.98x->1.00x -- the def columns were already
+// within the 5% band, so the def count doesn't change).
+// Across all 18 builds, only these two builds' per-slot diffs change.
+// **#15: the last three slots zeroed out (off 78->80, dot 36->37, offence/dot
+// at full marks)**:
+// ① gemling CritChance 1.20x->1.00x: a radius jewel's grant no longer lands
+//    on an inactive weapon-group node -- vendor tags **every** mod on an
+//    allocMode!=0 node (including jewel grants) with `Condition:WeaponSet<N>`
+//    (CalcSetup.lua:222-223, the node's own gate takes priority over the
+//    jewel-source branch :224-227), so an inactive group's grant has zero net
+//    effect; oracle's critModList shows only 1 entry, `7 @ Tree:32763`
+//    (the earlier "gate by jewel allocMode" reading in 75a348e was wrong and
+//    has been reverted wholesale). The same jewel's Small grant (Crossbow
+//    damage) converges along with it -> AvgDamage/TotalDPS 1.04x->0.97x
+//    (flips direction, still within the band).
+// ② gemling TotalDotDPS 1.10x->0.95x (moves into the band): the ignite chain
+//    absorbed the crit/jewel overestimate's propagation; after the fix, the
+//    residual -4.9% (952 vs 1001) decomposes into ignite chance 0.0962 vs
+//    0.098636 (0.9754) × stack potential 0.2603 vs 0.26691 (0.9752) -- both
+//    are proportional to hit fire damage, and 0.9754² ≈ 0.951 matches the dot
+//    residual bit-for-bit, i.e. it's entirely downstream of AvgDamage's
+//    existing 0.97x undershoot (previously masked by the 6× jewel grant).
+// ③ wolf-pack Speed 1.43x->1.00x: main-skill-selection fallback -- when the
+//    group pointed to by mainSocketGroup has no attack/spell candidate (Wolf
+//    Pack = Minion+Companion), it no longer falls back to scanning other
+//    groups (it used to wrongly pick the Blasphemy group's Temporal Chains,
+//    a 0.7s cast -> 1.43), and instead uses the group's own mainActiveSkill
+//    selection (vendor's socketGroupSkillList has no damage filter); also
+//    fixed the speed bucket: a non-attack, non-spell skill no longer takes
+//    Attack/CastSpeed INC (matching vendor's ModFlag matching semantics), so
+//    Wolf Pack no longer wrongly picks up the weapon's `12% reduced Attack
+//    Speed` (0.88->1.00). Zero regression across all 18 builds' per-slot
+//    diffs (all hits).
+const BASELINE_OFF_HIT5: usize = 80; // #15 full marks 80/80 (78 after #10; 76 after #8; 73 after merging #6+#7; migration baseline: 39)
+const BASELINE_OFF_HIT10: usize = 80; // #15 full marks 80/80 (78 after #10; 76 after #8; migration baseline: 47; 0.5.0=74)
 
-/// DoT 三列（TotalDotDPS/WithDotDPS/CombinedDPS）独立基线（扩列时实测；
-/// 新列单独常量，不动既有 BASELINE_OFF_*）。命中 3 = wolf-pack 双 0 命中
-/// （TotalDotDPS/CombinedDPS golden=0）+ essence-drain TotalDotDPS 1.0000；
-/// 分母 37 = 18 build × (TotalDotDPS + CombinedDPS) + essence-drain WithDotDPS。
+/// Independent baseline for the DoT three columns (TotalDotDPS/WithDotDPS/
+/// CombinedDPS), measured when they were added (a separate constant for the
+/// new columns, doesn't touch existing BASELINE_OFF_*). Hits 3 = wolf-pack's
+/// double zero-hit (TotalDotDPS/CombinedDPS golden=0) + essence-drain
+/// TotalDotDPS at 1.0000; denominator 37 = 18 builds × (TotalDotDPS +
+/// CombinedDPS) + essence-drain's WithDotDPS.
 ///
-/// **已审查例外 ×2（两处伪命中被修复揭示，叠加 −1 @5% / −2 @10%）**：
-/// 1. druid-oracle-comet TotalDotDPS 1.08x→1.17x——旧 1.08x 是伪命中：
-///    isSwitchable 树变体缺失（druid 6898 误用基础版、缺 `Gain 5% of Damage as
-///    Extra Damage of a random Element`）恰好部分抵消既有 ignite 高估。变体修复
-///    后（解析/展开与 vendor CalcOffence.lua:1175-1200 同口径：三元素均分 n/3）
-///    真实偏差 ~1.17x 暴露。**后续**：1.17x 高估根因（ailment 堆叠速率源
-///    2.54x 过记）已修复 → 0.45x；剩余低估逐因子归属暴击量级/curse duration/
-///    副技能 debuff 线（m4-skill-gaps.md §7.1，逐因子乘积闭合）。
-/// 2. deadeye grenade CombinedDPS 1.02x——偶然命中：旧「攻速补偿吞吐」近似把
-///    Speed 高估 ×1.95，与 GrenadeActivateTwice ×1.5 形成吞吐双重计入，恰好
-///    抵消 per-hit 低估（0.52x）。按 vendor CalcOffence.lua:2852-2856 切
-///    冷却管辖速率（Speed 1.00x ✓ 入 off 列）后双计消失。
-///    **进展**：grenade 宝石等级 gating 已解除（等级链 oracle 双证
-///    deadeye 27=vendor、gemling 24=vendor）+ 油涂 Paragon 品质接通，
-///    CombinedDPS 0.52x → 0.82x 收敛但未回带。剩余 per-hit ~0.82x 缺口
-///    登记 m4-skill-gaps §7（含「attack/spell area damage」暂缓短语——其
-///    启用前提『冷却线修复后』已满足，归 parser 线）。
-// 上调 17→20 / 21→24（damaging-ailment magnitude 的 `with Critical Hits` 条件词条
-// 接入：parser 新增暴击后缀剥离 + `ailment_scoped_cfg` 置 CriticalStrike=true，对齐
-// vendor dotCfg `skillCond["CriticalStrike"]=true`，CalcOffence.lua:5006）。huntress
-// poison 0.58x→1.04x、bleed 0.64x→1.11x，TotalDotDPS/CombinedDPS 双列入命中。
-// **进攻修复簇 dot 列累计重记**：flicker（CI→FullLife）CombinedDPS 0.90x→0.99x、
-// monk-twister / titan-shield-wall（MultiplierThreshold）CombinedDPS 随 hit 转命中。
-// 三修复合并后 dot 列全量实测重记（master 22/26 → 26/28）。
-// **诚实下调 26→25 / 28→27（gain-as fallback 修复,2026-07-06）**：deadeye ignite
-// TotalDotDPS 0.97x✓ 是双错抵消——旧 gain-as base 回退使 fire 分量高估 ~1.30x,
-// 恰好补偿 PoBR ignite 链自身 ~0.69x 低估（vendor IgniteChance 2.5%/StackPotential/
-// RollAverage 公式链未对齐,登记下一切片）。修复 fire 基础后该格如实显形为 0.69x✗。
-// 同 commit：进攻/防御全指标持平（off 71/80·def 415/450·core-8 139/144,且系
-// deadeye 两条 INC 冻结行解冻后仍持平）,全 18 build 仅 deadeye 自身 dot 一格变动。
-// **回记 25→26 / 27→28（ailment stacks × dpsMultiplier,同日）**：vendor :3878 在
-// 异常段前把 `DPS` 乘区折进 skillData.dpsMultiplier,:5046 ailmentStacks 因此吃到
-// （Payload 二次起爆 ×1.5）；PoBR 与 TotalDPS 同源取 dps_end_factors 折入
-// ctx.speed（:3880 hitRate 同语义）。deadeye ignite 0.69x→1.04x✓ 找回；gemling
-// dot 0.77x→1.16x（miss→miss 不计数,其底层 ~1.27x 高估属 gemling 多因子独立
-// 缺口）；其余 16 build 逐格不变。
-// **上调 26→27 / 28→29（grenade 短语 skillNameList 抢先修复,2026-07-06）**：
-// vendor 运行时把裸 `grenade` 短语剥成惰性 SkillName{"Grenade"}（恒不匹配 = 零
-// 效果,ModCache/oracle 探针双证）,PoBR 旧 flag_phrase 产 SkillTypes(Grenade) 反而
-// 生效 → gemling/deadeye 全类型 inc +60 over-apply。payload 改写 + gemling 冻结行
-// 解冻（dps 端因子 1.65 两侧一致）后：gemling AvgDmg/TotalDPS/dot 三列 1.00x 精确
-// 闭合（dot 0.77x→1.00x 入列）,deadeye 残余 ~2% 同根消散（AvgDmg/dot 均 1.00x）。
-// 18 build 逐格 diff 仅 gemling dot 一格翻正。
-// **诚实下调 27→26 / 29→28（blood-mage curse 欠条解冻,2026-07-07）**：
-// `magnitudes of curses you inflict are zero`（Coiling Whisper）解冻——curse 机制
-// 全链已验证与 vendor 一致（5 诅咒占槽/ignore limit=99/per-Curse gain-as ×5 经
-// Multiplier{CurseOnEnemy} 生效）。冻结态的 blood-mage dot 1.01x✓ 是双错抵消：
-// 诅咒按满效果错误生效（物品明言 zero）恰好补偿 per-hit/dot 存量低估。解冻 +
-// 同组辅助授予等级修复（Chaos Mastery +1,L30→31 vendor 精确）后 TotalDPS
-// 0.73x→0.84x、dot 0.54x→0.70x 收敛但未回带；剩余 ~16% per-hit 低估是
-// blood-mage 自身根因（deadeye/gemling 同型剧本）,修复后基线回记。
-// 18 build 逐格 diff 仅 blood-mage 三格变动。冻结榜只剩 legacy `split`。
-// **bloodmage mana-mult 重记（dot +2 @5% 9→11 / @10% 11→13）**：见 BASELINE_OFF_HIT5 上
-// 说明——mana 缩放抬 blood-mage 的 spell DoT 基底，其 TotalDotDPS/CombinedDPS 翻正。
-// **0.5.4b #4 Communion/LowLife + Voices 重记（dot +2 @5% 11→13 / +5 @10% 13→18）**：
-// ritualist TotalDotDPS 0.60x→1.00x / CombinedDPS 0.63x→0.99x（LowLife 增伤 +
-// sinister 珠宝的 damaging-ailment-magnitude 词条同时抬 bleed/poison 基底）；
-// abyssal-lich dot 列随 hit 侧收敛入 @10% 带。
-// **0.5.4b #4 grenade 短语解禁重记（dot +1 @5% 13→14 / +1 @10% 18→19）**：
-// gemling CombinedDPS 0.65x→1.04x 翻正（见 BASELINE_OFF_HIT5 上说明）。
-// **0.5.4b #5 Blazing Critical 重记（dot +2 @5% 14→16 / +2 @10% 19→21）**：
-// 点燃火源随全局 15% DamageGainAsFire 平方级放大（chance ∝ fire/threshold ×
-// magnitude ∝ fire）：monk-twister TotalDotDPS 0.44x→0.98x + CombinedDPS
-// 0.60x→0.96x 翻正；flicker dot 0.05x→0.72x、spirit-walker 0.23x→0.87x 收敛
-// 未入列（残余同为 hit 侧存量缺口的平方传导，非 dot 侧机制）。其余 dot 脱靶
-// 逐格判定：deadeye 0.69x=hit 0.83x²、blood-mage 0.79x≈hit 0.87x²、titan/
-// abyssal/pathfinder 0.91-0.94x 随 hit 收敛；smith 0.20x 中 dot 特有残差 =
-// Infernal Cry uptime-scaled DamageGainAsFire 12% 未建模（新旧 vendor 同值，
-// 存量缺口非 0.5.4b 项）；frost-bomb 0.87x / essence-drain WithDotDPS 1.36x
-// golden 两版未动（存量）；gemling dot 1.10x 高估 = fire/crit 小幅 hit 侧
-// 高估的下游传导（oracle 逐分量：fire 1.03x × stacks 1.05x × crit 混叠）。
-// **0.5.4b #6 AvgDamage 族 dot 列跟涨重记（dot +9 @5% 16→25 / +6 @10% 21→27）**：
-// 点燃 ∝ 火源²，hit 侧整族闭合后 dot 列自动跟正（flicker 0.72x→0.87✓ 附近、
-// spirit-walker 0.87x→0.98x✓、titan/pathfinder/monk-twister CombinedDPS 随 hit
-// 翻正）。剩余脱靶：smith TotalDotDPS 0.40x（= 火源比 0.63² —— Infernal Cry
-// uptime-scaled DamageGainAsFire 12.04% 未建模，新旧 vendor 同值的存量 warcry
-// uptime 机制，见 BASELINE_OFF_HIT5 注）；deadeye 0.69x = hit 0.83x²；
-// blood-mage 0.79x（Mageblood）；gemling 1.10x 高估（存量）。
-// （存量 #7-1）frost-bomb 修复的 dot 列迁移：CombinedDPS 0.66x→1.00x 入列
-// （@5/@10 各 +1）、TotalDotDPS 0.87x→1.07x 入 @10%；druid-oracle-comet
-// TotalDotDPS 1.04x→1.06x 出 @5%（EW 变强的下游——vendor 侧 druid 的 EW
-// 根本未入 enemy resistMods（curse 槽位/优先级差异，oracle 钉值），PoBR
-// 施加了它，存量高估被放大 2%，另行追）。@5 净 0、@10 净 +2。
-// **0.5.4b #8 Zarokh's Gift anoint socket 重记（dot +4 @5% 27→31 / +2 @10% 31→33）**：
-// blood-mage TotalDotDPS 0.79x→1.00x + CombinedDPS 0.88x→1.00x、abyssal-lich
-// TotalDotDPS 0.94x→1.00x + CombinedDPS 0.93x→1.00x——hit 侧 crit 闭合后
-// 点燃/DoT 基底跟正（见 BASELINE_OFF_HIT5 上 #8 说明）。
+/// **Reviewed exceptions ×2 (two false hits revealed by fixes, combined -1
+/// @5% / -2 @10%)**:
+/// 1. druid-oracle-comet TotalDotDPS 1.08x->1.17x -- the old 1.08x was a
+///    false hit: a missing isSwitchable tree variant (druid 6898 was wrongly
+///    using the base version, missing "Gain 5% of Damage as Extra Damage of a
+///    random Element") happened to partially offset an existing ignite
+///    overestimate. After fixing the variant (parsing/expansion matches
+///    vendor CalcOffence.lua:1175-1200's convention: split evenly n/3 across
+///    the three elements), the real ~1.17x deviation is exposed. **Follow-up**:
+///    the 1.17x overestimate's root cause (an ailment stack-rate source
+///    over-recording at 2.54x) has been fixed -> 0.45x; the remaining
+///    undershoot's per-factor attribution belongs to crit magnitude/curse
+///    duration/secondary-skill debuff lines (m4-skill-gaps.md §7.1, closed by
+///    a per-factor product).
+/// 2. deadeye grenade CombinedDPS 1.02x -- an accidental hit: the old
+///    "attack-speed throughput compensation" approximation overestimated
+///    Speed by ×1.95, which formed a double-count of throughput together
+///    with GrenadeActivateTwice's ×1.5, which happened to offset the per-hit
+///    undershoot (0.52x). After switching to a cooldown-governed rate per
+///    vendor CalcOffence.lua:2852-2856 (Speed 1.00x ✓, entering the off
+///    column), the double count disappears.
+///    **Progress**: the grenade gem-level gating has been removed (the
+///    level chain double-confirmed via oracle: deadeye 27=vendor, gemling
+///    24=vendor) + the Paragon oil-anoint quality is wired up,
+///    CombinedDPS 0.52x -> 0.82x converges but doesn't come back into the
+///    column. The remaining per-hit ~0.82x gap is logged in m4-skill-gaps §7
+///    (including the "attack/spell area damage" deferred phrase -- its
+///    enablement precondition, "after the cooldown-line fix", is now
+///    satisfied, so it belongs to the parser line).
+// Raised 17->20 / 21->24 (wired in damaging-ailment magnitude's "with
+// Critical Hits" conditional mod: added parser stripping of the crit suffix
+// + `ailment_scoped_cfg` setting CriticalStrike=true, matching vendor
+// dotCfg's `skillCond["CriticalStrike"]=true`, CalcOffence.lua:5006).
+// huntress poison 0.58x->1.04x, bleed 0.64x->1.11x, both TotalDotDPS/CombinedDPS
+// columns become hits.
+// **Cumulative re-record for the offence fix cluster's dot columns**: flicker's
+// (CI->FullLife) CombinedDPS 0.90x->0.99x, monk-twister /
+// titan-shield-wall's (MultiplierThreshold) CombinedDPS flip to hits
+// following hit. Measured after merging all three fixes (master 22/26 -> 26/28).
+// **Honest downgrade 26->25 / 28->27 (gain-as fallback fix, 2026-07-06)**:
+// deadeye ignite's TotalDotDPS 0.97x✓ was a double-error cancellation -- the
+// old gain-as base fallback overestimated the fire component by ~1.30x,
+// which happened to compensate for PoBR's own ignite chain's ~0.69x
+// undershoot (vendor's IgniteChance 2.5%/StackPotential/RollAverage formula
+// chain wasn't aligned, logged for the next slice). After fixing the fire
+// base, this slot honestly shows up as 0.69x✗. Same commit: offence/defence
+// metrics held steady across the board (off 71/80, def 415/450, core-8
+// 139/144, and this holds even after unfreezing deadeye's two frozen INC
+// rows); across all 18 builds, only deadeye's own dot slot changes.
+// **Re-recorded 25->26 / 27->28 (ailment stacks × dpsMultiplier, same day)**:
+// vendor :3878 folds the `DPS` multiplier bucket into skillData.dpsMultiplier
+// before the ailment segment, so :5046's ailmentStacks picks it up (Payload's
+// second detonation ×1.5); PoBR now folds dps_end_factors into ctx.speed from
+// the same source as TotalDPS (:3880's hitRate has the same semantics).
+// deadeye ignite recovers 0.69x->1.04x✓; gemling dot 0.77x->1.16x
+// (miss->miss doesn't count; its underlying ~1.27x overestimate is a
+// separate gemling multi-factor gap); the other 16 builds are unchanged per-slot.
+// **Raised 26->27 / 28->29 (grenade-phrase skillNameList pre-emption fix,
+// 2026-07-06)**: at runtime vendor strips the bare `grenade` phrase into an
+// inert SkillName{"Grenade"} (always fails to match = zero effect, confirmed
+// both via ModCache and an oracle probe), but PoBR's old flag_phrase produced
+// SkillTypes(Grenade), which actually took effect -> gemling/deadeye's
+// all-types inc over-applied by +60. After rewriting the payload + unfreezing
+// gemling's frozen row (both sides now agree on the dps end-factor 1.65):
+// gemling's AvgDmg/TotalDPS/dot three columns close exactly at 1.00x (dot
+// 0.77x->1.00x enters the column), deadeye's remaining ~2% dissipates from
+// the same root cause (AvgDmg/dot both 1.00x). Across all 18 builds' per-slot
+// diffs, only gemling's dot slot flips to correct.
+// **Honest downgrade 27->26 / 29->28 (blood-mage curse shortfall unfrozen,
+// 2026-07-07)**: unfroze "magnitudes of curses you inflict are zero"
+// (Coiling Whisper) -- the whole curse mechanism chain has been verified to
+// match vendor (5 curse slots occupied / ignore limit=99 / per-Curse gain-as
+// ×5 via Multiplier{CurseOnEnemy}). The frozen blood-mage dot's 1.01x✓ was a
+// double-error cancellation: the curse was wrongly taking full effect (the
+// item explicitly says zero) which happened to compensate for an existing
+// per-hit/dot undershoot. After unfreezing + fixing the same-group support's
+// granted level (Chaos Mastery +1, L30->31, exactly matching vendor),
+// TotalDPS 0.73x->0.84x, dot 0.54x->0.70x converge but don't come back into
+// the column; the remaining ~16% per-hit undershoot is blood-mage's own root
+// cause (same pattern as deadeye/gemling), and the baseline is re-recorded
+// after the fix. Across all 18 builds' per-slot diffs, only blood-mage's
+// three slots change. Only the legacy `split` remains on the frozen list.
+// **Re-recorded for the bloodmage mana-mult fix (dot +2 @5% 9->11 / @10%
+// 11->13)**: see the note above BASELINE_OFF_HIT5 -- the mana scaling raises
+// blood-mage's spell DoT base, flipping its TotalDotDPS/CombinedDPS to correct.
+// **Re-recorded for 0.5.4b #4 Communion/LowLife + Voices (dot +2 @5% 11->13 /
+// +5 @10% 13->18)**: ritualist TotalDotDPS 0.60x->1.00x / CombinedDPS
+// 0.63x->0.99x (LowLife's damage bonus + the sinister jewel's
+// damaging-ailment-magnitude mod simultaneously raise the bleed/poison base);
+// abyssal-lich's dot columns converge into the @10% band following the hit
+// side.
+// **Re-recorded for the 0.5.4b #4 grenade-phrase unblock (dot +1 @5% 13->14 /
+// +1 @10% 18->19)**: gemling CombinedDPS 0.65x->1.04x flips to correct (see
+// the note above BASELINE_OFF_HIT5).
+// **Re-recorded for 0.5.4b #5 Blazing Critical (dot +2 @5% 14->16 / +2 @10%
+// 19->21)**: the ignite fire source scales up quadratically with the global
+// 15% DamageGainAsFire (chance ∝ fire/threshold × magnitude ∝ fire):
+// monk-twister's TotalDotDPS 0.44x->0.98x + CombinedDPS 0.60x->0.96x flip to
+// correct; flicker's dot 0.05x->0.72x, spirit-walker's 0.23x->0.87x converge
+// but don't reach the column (the remainder is the same squared propagation
+// of a hit-side pre-existing gap, not a dot-side mechanism). Remaining dot
+// misses, per slot: deadeye 0.69x = hit 0.83x², blood-mage 0.79x≈hit 0.87x²,
+// titan/abyssal/pathfinder 0.91-0.94x converge along with hit; smith's 0.20x
+// has a dot-specific residual = Infernal Cry's uptime-scaled
+// DamageGainAsFire 12% isn't modeled (old and new vendor agree on this
+// value, a pre-existing gap not a 0.5.4b item); frost-bomb 0.87x /
+// essence-drain's WithDotDPS 1.36x are unchanged across both golden versions
+// (pre-existing); gemling's dot overestimate at 1.10x is the downstream
+// propagation of a small hit-side fire/crit overestimate (per-component
+// oracle: fire 1.03x × stacks 1.05x × crit aliasing).
+// **Re-recorded for the 0.5.4b #6 AvgDamage family's dot-column follow-through
+// (dot +9 @5% 16->25 / +6 @10% 21->27)**: ignite ∝ fire-source², so once the
+// hit side's whole family closes, the dot columns automatically follow to
+// correct (flicker 0.72x->near 0.87✓, spirit-walker 0.87x->0.98x✓,
+// titan/pathfinder/monk-twister's CombinedDPS flip to correct along with
+// hit). Remaining misses: smith TotalDotDPS 0.40x (= fire-source ratio
+// 0.63² -- Infernal Cry's uptime-scaled DamageGainAsFire 12.04% isn't
+// modeled, a pre-existing warcry-uptime mechanism gap where old and new
+// vendor agree, see the BASELINE_OFF_HIT5 note); deadeye 0.69x = hit 0.83x²;
+// blood-mage 0.79x (Mageblood); gemling 1.10x overestimate (pre-existing).
+// (pre-existing #7-1) dot-column migration from the frost-bomb fix:
+// CombinedDPS 0.66x->1.00x enters the column (@5/@10 each +1),
+// TotalDotDPS 0.87x->1.07x enters @10%; druid-oracle-comet's
+// TotalDotDPS 1.04x->1.06x exits @5% (downstream of EW getting stronger --
+// vendor-side druid's EW was never actually applied to enemy resistMods, a
+// curse-slot/priority difference, oracle-pinned; PoBR was applying it, so a
+// pre-existing overestimate gets amplified by 2%, to be tracked separately).
+// Net @5 change: 0; net @10 change: +2.
+// **Re-recorded for 0.5.4b #8 Zarokh's Gift anoint socket (dot +4 @5%
+// 27->31 / +2 @10% 31->33)**: blood-mage TotalDotDPS 0.79x->1.00x +
+// CombinedDPS 0.88x->1.00x, abyssal-lich TotalDotDPS 0.94x->1.00x +
+// CombinedDPS 0.93x->1.00x -- once the hit-side crit closes, the
+// ignite/DoT base follows to correct (see #8's note above BASELINE_OFF_HIT5).
 
-// **存量 #9 warcry uptime 机器重记（dot +1 @10% 31→32）**：Infernal Cry 的
-// uptime 缩放 `DamageGainAsFire`（CalcOffence.lua:3229-3256，pobr-core
-// `calc::warcry`）落地，smith TotalDotDPS 0.40x→1.06x 入 @10% 带（uptime/
-// castTime/cooldown 对 oracle 逐位：19.4116%/0.544218/6.27；gain 62×uptime
-// =12.035 与 vendor "Uptime Scaled Infernal Cry" 条 bit-exact）。残余 +6% =
-// smith 命中侧原有 +2% 高估（此前被缺失的 gain 抵消遮蔽，AverageDamage
-// 0.996→1.02）经点燃 ∝ 火源² 放大——命中侧存量项，非 warcry 机制。titan 随动：
-// TotalDotDPS 0.98→1.01、TotalDPS 0.98→1.05（同为被遮蔽的原有高估暴露，
-// 仍在 @5% 带内）。其余 16 build 无 warcry，逐值不变。
-// **存量 #11 Blasphemy support 半身接入（dot +2 @5% 31→33）**：support 裁决
-// 扩到宝石附加授予效果（gem_effects 外键），Blasphemy 的 SupportBlasphemyPlayer
-// （`support_blasphemy_curse_effect_+%_final` → `CurseEffect MORE -41`@L19）进入
-// curse 局部乘区——Temporal Chains 施加值 -13→-8（vendor 逐位：mult 0.55→0.3245，
-// (1+10%)×0.59×0.5boss），点燃 debuffDurationMult 1/0.87→1/0.92 跟正：druid
-// TotalDotDPS 1.06x→1.00x（182.40 vs 182.60）、monk frost-bomb 1.07x→0.99x
-// （4.53 vs 4.58）；witch-lich 带内微降（21659→21621，仍 1.00x）。curse 槽位
-// 归属逐 build 不变（druid 单槽仍 Temporal Chains 胜出，EW 依旧不入槽）。
-const BASELINE_DOT_HIT5: usize = 37; // #15 满分 37/37（gemling TotalDotDPS 随 crit 修复入带；#10+#11 合并 36；迁移基线 9；0.5.0=26）
-const BASELINE_DOT_HIT10: usize = 37; // #15 满分 37/37（#10+#11 合并 36；迁移基线 11；0.5.0=28）
+// **Re-recorded for pre-existing #9's warcry-uptime machinery (dot +1 @10%
+// 31->32)**: Infernal Cry's uptime-scaled `DamageGainAsFire`
+// (CalcOffence.lua:3229-3256, pobr-core::calc::warcry) landed, bringing smith
+// TotalDotDPS 0.40x->1.06x into the @10% band (uptime/castTime/cooldown match
+// the oracle bit-for-bit: 19.4116%/0.544218/6.27; gain 62×uptime = 12.035,
+// bit-exact against vendor's "Uptime Scaled Infernal Cry" entry). The
+// remaining +6% = smith's pre-existing +2% hit-side overestimate (previously
+// masked by the missing gain's offset, AverageDamage 0.996->1.02), amplified
+// through ignite ∝ fire-source² -- a hit-side pre-existing item, not a
+// warcry mechanism. titan follows suit: TotalDotDPS 0.98->1.01, TotalDPS
+// 0.98->1.05 (also a previously-masked pre-existing overestimate being
+// exposed, still within the @5% band). The other 16 builds have no warcry,
+// unchanged value-for-value.
+// **Re-recorded for pre-existing #11's Blasphemy support half-wiring (dot +2
+// @5% 31->33)**: support gating was extended to gems' additional granted
+// effects (the gem_effects foreign key); Blasphemy's SupportBlasphemyPlayer
+// (`support_blasphemy_curse_effect_+%_final` -> `CurseEffect MORE -41`@L19)
+// now enters the curse's local multiplier bucket -- Temporal Chains'
+// applied value -13->-8 (matches vendor bit-for-bit: mult 0.55->0.3245,
+// (1+10%)×0.59×0.5boss), ignite's debuffDurationMult 1/0.87->1/0.92 follows
+// to correct: druid TotalDotDPS 1.06x->1.00x (182.40 vs 182.60), monk
+// frost-bomb 1.07x->0.99x (4.53 vs 4.58); witch-lich dips slightly but stays
+// within band (21659->21621, still 1.00x). Curse-slot ownership is unchanged
+// per build (druid's single slot still goes to Temporal Chains, EW still
+// doesn't get a slot).
+const BASELINE_DOT_HIT5: usize = 37; // #15 full marks 37/37 (gemling TotalDotDPS enters the band following the crit fix; #10+#11 merged: 36; migration baseline: 9; 0.5.0=26)
+const BASELINE_DOT_HIT10: usize = 37; // #15 full marks 37/37 (#10+#11 merged: 36; migration baseline: 11; 0.5.0=28)
 
-/// 面板口径（`mode_effective=false`）守卫基线：防止口径回归无感知（effective 与
-/// panel 在防御侧逐值相同，故只守进攻）。切换 commit 实测。
+/// Baseline guarding the panel convention (`mode_effective=false`): prevents
+/// a convention regression from going unnoticed (defence is identical
+/// value-for-value between effective and panel, so only offence needs
+/// guarding). Measured at the switch commit.
 ///
-/// **已审查例外（−1 @10%）**：witch-abyssal-lich-detonate-dead panel
-/// TotalDPS 1.09x→1.12x——`CritInPast8Sec` 短语族接入（vendor
-/// ModParser.lua:1904-1906，oracle 证实 vendor 计入）使 panel 口径既有
-/// 9% 过记（panel 无敌方减伤）越过 10% 带沿。effective 主口径同一改动为
-/// 纯收敛（TotalDPS 0.81x→0.83x，主基线 41/47 不倒退；dot 列 twister
-/// 0.96x 新入列 3→4）。panel 侧待 effective 减伤线把 DD 过记根因收敛后
-/// 回升再上记。同 commit panel @5% 35→36（titan 入列），下限保守不上调。
-/// **SkillType 全量化重记（数据驱动 A1，panel +8 @5% / +6 @10%）**：cfg 侧
-/// `skill_type_bits` 从手工白名单（Attack/Spell/… 十余位）换全量枚举置位
-/// （`SkillTypes::from_pob2_name`，vendor Global.lua 290 名生成表），tag 侧
-/// （template.rs / special_mod.rs）同 commit 全量化——一批 `ModTag::SkillTypes`
-/// 域词条（Area/Projectile/Grenade 等）在 panel 口径开始正确匹配。effective
-/// 主口径与防御/进攻/dot 主基线逐值持平（纯 panel 侧收敛）。
-const PANEL_OFF_HIT5: usize = 45; // #15 实测 45（gemling CritChance + wolf-pack Speed/DPS 面板同收）；#6+#7 叠加 42；迁移基线 27；0.5.0=44
-const PANEL_OFF_HIT10: usize = 47; // #15 实测 47（同上）；#6+#7 叠加 43；迁移基线 30；0.5.0=46
+/// **Reviewed exception (-1 @10%)**: witch-abyssal-lich-detonate-dead's panel
+/// TotalDPS 1.09x->1.12x -- wiring in the `CritInPast8Sec` phrase family
+/// (vendor ModParser.lua:1904-1906, confirmed applied by vendor via oracle)
+/// pushed the panel convention's pre-existing 9% over-count (panel has no
+/// enemy mitigation) past the 10% band edge. The same change is a pure
+/// convergence for the effective main convention (TotalDPS 0.81x->0.83x, the
+/// main baseline 41/47 doesn't regress; the dot column twister at 0.96x
+/// newly enters the band, 3->4). The panel side will be re-recorded once the
+/// effective damage-mitigation line closes DD's over-count root cause.
+/// Same commit: panel @5% 35->36 (titan enters the band); the lower bound is
+/// kept conservative and not raised.
+/// **Re-recorded for full SkillType enumeration (data-driven A1, panel +8
+/// @5% / +6 @10%)**: the cfg side's `skill_type_bits` switched from a
+/// hand-maintained allowlist (a dozen-odd bits for Attack/Spell/…) to a full
+/// enumeration bitset (`SkillTypes::from_pob2_name`, generated from vendor
+/// Global.lua's 290-name table); the tag side (template.rs / special_mod.rs)
+/// was fully enumerated in the same commit -- a batch of `ModTag::SkillTypes`
+/// domain mods (Area/Projectile/Grenade etc.) start matching correctly under
+/// the panel convention. The effective main convention's
+/// defence/offence/dot baselines hold steady value-for-value (a pure
+/// panel-side convergence).
+const PANEL_OFF_HIT5: usize = 45; // #15 measured 45 (gemling CritChance + wolf-pack Speed/DPS converge together on the panel); #6+#7 combined: 42; migration baseline: 27; 0.5.0=44
+const PANEL_OFF_HIT10: usize = 47; // #15 measured 47 (same as above); #6+#7 combined: 43; migration baseline: 30; 0.5.0=46
 
-/// 回归门禁：聚合命中数不得低于已记录基线（[`BASELINE_*`]）。CI gate，防止改动倒退 parity。
+/// Regression gate: the aggregate hit count must not fall below the recorded baseline ([`BASELINE_*`]). CI gate, prevents changes from regressing parity.
 #[test]
 fn parity_no_regression() {
     let (def_core, def, off, dot, failed) = compute_tallies(false);
     assert!(failed.is_empty(), "builds failed to parse/calc: {failed:?}");
-    // owner 双指标裁决之一：旧 8 列子集 ≥ 111（防「扩列稀释」掩盖回退）。
+    // One half of the owner's dual-metric ruling: the old 8-column subset must be >= 111 (guards against "column-expansion dilution" masking a regression).
     assert!(
         def_core.hit5 >= BASELINE_DEF_CORE_HIT5,
         "defensive core-8 @5% regressed: {} < baseline {BASELINE_DEF_CORE_HIT5}",
@@ -1003,12 +1245,14 @@ fn parity_no_regression() {
     );
 }
 
-/// 面板口径守卫：`mode_effective=false` 的进攻聚合不得低于切换时实测水平
-/// （[`PANEL_OFF_HIT5`]/[`PANEL_OFF_HIT10`]）。防御侧与 effective 逐值相同，
-/// 由主门禁覆盖。防止口径开关上游接线被改动而无感知回归。
+/// Panel-convention guard: the offence aggregate under `mode_effective=false`
+/// must not fall below the level measured at the switch
+/// ([`PANEL_OFF_HIT5`]/[`PANEL_OFF_HIT10`]). Defence is identical
+/// value-for-value to effective, so it's covered by the main gate. Prevents a
+/// regression in the convention switch's upstream wiring from going unnoticed.
 #[test]
 fn panel_mode_no_regression() {
-    // DoT 三列只在 effective 主门禁守（面板口径无独立 golden 口径，不另设守卫）。
+    // The DoT three columns are only guarded by the effective main gate (the panel convention has no independent golden values, so no separate guard is set up).
     let (_, _, off, _dot, failed) = compute_tallies_mode(false, false);
     assert!(failed.is_empty(), "builds failed to parse/calc: {failed:?}");
     assert!(
@@ -1023,7 +1267,7 @@ fn panel_mode_no_regression() {
     );
 }
 
-/// 主基线报告：逐 build 打印防御 + 进攻对照，并汇总聚合命中率。
+/// Main baseline report: prints the defence + offence comparison per build and summarizes the aggregate hit rate.
 #[test]
 fn parity_baseline_report() {
     let (def_core, def, off, dot, failed_parse) = compute_tallies(true);
@@ -1080,10 +1324,12 @@ fn parity_baseline_report() {
     );
 }
 
-/// 收集一个 build 的全量词条语料行（装备三段 + 珠宝 + **已分配树节点**），供
-/// unsupported 分类。**绕开** `filter_parseable` / 树侧闸门——直接对原始行分类，
-/// 使缺口语料可见（A-1 方法 §1；树行为 A2 并入——B3 后闸门/ingest 同一 engine，
-/// 树侧缺口同样是生产缺口）。
+/// Collects a build's full mod-text corpus lines (all three gear text
+/// blocks + jewels + **allocated tree nodes**) for unsupported
+/// classification. **Bypasses** `filter_parseable` / the tree-side gate --
+/// classifies the raw lines directly so gap corpus is visible (method A-1 §1;
+/// tree behaviour folded in per A2 -- after B3, the gate/ingest share the
+/// same engine, so tree-side gaps are production gaps too).
 fn collect_corpus_lines(dir: &Path, data: &BuildData) -> Vec<CorpusLine> {
     let Ok(code) = std::fs::read_to_string(dir.join("code.txt")) else {
         return Vec::new();
@@ -1122,9 +1368,10 @@ fn collect_corpus_lines(dir: &Path, data: &BuildData) -> Vec<CorpusLine> {
     for jewel in &build.jewels {
         push_item(jewel, LineSource::Jewel, &mut lines);
     }
-    // 已分配树节点 stats（含 `\n` 折行摊平——与 pobr_tree::split_lines 同口径）。
-    // 注意：本语料按**独立行**分类，树侧生产还有折行合并兜底（combine_wrapped），
-    // 故此处的 Partial/Unsupported 是生产缺口的**上界**。
+    // Allocated tree-node stats (with `\n`-wrapped lines flattened out -- same convention as pobr_tree::split_lines).
+    // Note: this corpus classifies **individual lines**, but tree-side production has a
+    // wrapped-line-merging fallback (combine_wrapped), so the Partial/Unsupported figures
+    // here are an **upper bound** on the production gap.
     for node_id in &build.tree.allocated_nodes {
         let Some(def) = data.passive_nodes.get(&node_id.0) else {
             continue;
@@ -1145,10 +1392,12 @@ fn collect_corpus_lines(dir: &Path, data: &BuildData) -> Vec<CorpusLine> {
     lines
 }
 
-/// unsupported 词条率曲线报表（roadmap「unsupported 词条率下降曲线纳入
-/// 报表」）。**report-only，不进门禁断言**——验收口径是曲线不是百分比。
-/// 逐 build + 聚合的 词条总数 / parsed / unsupported / err 计数与百分比，附 Top-20
-/// 缺口模板（C-2 选批的事实来源）。
+/// Unsupported-mod-rate trend report (roadmap item "fold the unsupported-rate
+/// trend curve into the report"). **Report-only, not part of any gate
+/// assertion** -- the acceptance criterion is the trend, not a percentage.
+/// Per-build and aggregate counts/percentages for total mod lines / parsed /
+/// unsupported / err, with the Top-20 gap templates attached (the source of
+/// truth for picking C-2 batches).
 ///
 /// `cargo test -p pobr-build --test ninja_parity -- corpus_unsupported_report --nocapture`
 #[test]
@@ -1159,16 +1408,18 @@ fn corpus_unsupported_report() {
     for dir in &builds {
         all_lines.extend(collect_corpus_lines(dir, &data));
     }
-    // engine 生产口径段（闸门/ingest 同一 parser——本段数字即生产行为）。
-    // Partial = 引擎识别一半但整行被闸门丢弃（迁移候选）；dropped-tags = pre_flag
-    // 静默丢 tag（作用域放大 over-apply 风险面，此前完全不可见）。
+    // The engine production section (the gate and ingest share the same parser -- these numbers ARE production behaviour).
+    // Partial = the engine recognized half the line but the whole line got dropped by the gate
+    // (a migration candidate); dropped-tags = pre_flag silently drops a tag (a scope-widening
+    // over-apply risk that was previously completely invisible).
     if let Some(rules) = data.parser_rules.as_deref() {
         use pobr_build::corpus::build_report_engine;
         let er = build_report_engine(&all_lines, rules);
-        // vendor 裁决源：ModCache golden（vendor 全语料预解析缓存落盘）。
-        // gap 模板按样本（strip 方括号后小写）精查——「vendor 同款不支持」= 伪缺口
-        // （不用修，slowing-potency 教训：vendor 空 mods + 全残留 = PoB2 不生效）；
-        // 「vendor parsed」= 真缺口（迁移目标清单）。
+        // The vendor-verdict source: ModCache golden (vendor's pre-parsed cache of the full corpus, dumped to disk).
+        // Gap templates are checked precisely against samples (lowercase after stripping brackets) --
+        // "vendor is also unsupported on the same text" = a pseudo-gap (nothing to fix; per the
+        // slowing-potency lesson: vendor empty mods + all leftover = PoB2 has no effect); "vendor
+        // parsed" = a real gap (the migration target list).
         let vendor_verdict: std::collections::HashMap<String, bool> = {
             let path = Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../pobr-core/tests/fixtures/modcache_golden.json");
@@ -1181,9 +1432,10 @@ fn corpus_unsupported_report() {
                         .iter()
                         .filter_map(|e| {
                             let text = e.get("text")?.as_str()?.trim().to_ascii_lowercase();
-                            // 「vendor 生效」= parsed 且无 leftover——ModCache 的
-                            // status 不含 leftover 判定，但树加载对 extra 非空整行
-                            // 丢弃（B3 语义），故 leftover 非空一律按不生效裁决。
+                            // "vendor takes effect" = parsed with no leftover -- ModCache's
+                            // status doesn't itself account for leftover, but tree loading
+                            // drops the whole line when extra is non-empty (B3 semantics), so
+                            // any non-empty leftover is ruled "no effect".
                             let parsed = e.get("status")?.as_str()? == "parsed"
                                 && e.get("leftover")
                                     .and_then(|l| l.as_str())
@@ -1194,10 +1446,11 @@ fn corpus_unsupported_report() {
                 })
                 .unwrap_or_default()
         };
-        // pobr 主动降级/另行建模的模板——从 REAL 榜剥离，防止反复误列为待办：
-        // - deferred：B3 暂缓行（unsupported_pobr_extra，双错抵消欠条）；
-        // - modeled-elsewhere：gem-level 族（gem_property_bonuses 独立扫原始行
-        //   已建模，GemProperty LIST 在 ModDb 无消费者；C5 统一）。
+        // Templates pobr deliberately downgrades/models elsewhere -- stripped from the REAL list
+        // to keep them from being repeatedly mis-listed as TODO:
+        // - deferred: B3's deferred lines (unsupported_pobr_extra, a double-error-cancels-a-shortfall case);
+        // - modeled-elsewhere: the gem-level family (gem_property_bonuses already models this by
+        //   scanning raw lines independently; the GemProperty LIST has no consumer in ModDb; unified under C5).
         let deferred: std::collections::HashSet<String> = {
             let path = repo_data_root()
                 .join(pobr_data::GOLDEN_PARITY_DATA_VERSION)
@@ -1217,15 +1470,16 @@ fn corpus_unsupported_report() {
                 })
                 .unwrap_or_default()
         };
-        // 显式裁决过的「不迁」模板（A2 收尾）——与 deferred/modeled-elsewhere 同属
-        // 伪待办剥离，防止 REAL 榜反复误列：
-        // - no-consumer(pobr)：`grants skill:` 族（vendor ExtraSkill LIST）。PoBR 技能
-        //   来自 build XML 技能列表，树/装备授予行没有 ModDb 消费者——迁 LIST 只是
-        //   噪音（gem-level 族同理），待 granted-skill 消费端立项时一并接线。
-        // - wont-do(pobr)：树分配规则行（non-keystone medium radius——不是 stat mod，
-        //   属 pobr-tree 分配语义）与 per-skill distance ramp（demo 套件 enemyDistance
-        //   全 placeholder → DistanceRamp 恒休眠，DSL 亦无 4 捕获 ramp 形态；见
-        //   ModTag::DistanceRamp 文档）。
+        // Templates explicitly ruled "won't migrate" (A2 cleanup) -- same category of pseudo-TODO
+        // stripping as deferred/modeled-elsewhere, to keep the REAL list from being repeatedly mis-listed:
+        // - no-consumer(pobr): the `grants skill:` family (vendor's ExtraSkill LIST). PoBR's skills
+        //   come from the build XML's skill list, so tree/gear-granted lines have no consumer in
+        //   ModDb -- migrating the LIST would just be noise (same for the gem-level family); to be
+        //   wired up together once a granted-skill consumer is scoped.
+        // - wont-do(pobr): tree-allocation-rule lines (non-keystone medium radius -- not a stat
+        //   mod, it's pobr-tree allocation semantics) and per-skill distance ramp (the demo suite's
+        //   enemyDistance is always a placeholder -> DistanceRamp is permanently dormant, and the
+        //   DSL has no 4-capture ramp form either; see the ModTag::DistanceRamp docs).
         const NO_CONSUMER_PREFIXES: &[&str] = &["grants skill:"];
         const WONT_DO_PREFIXES: &[&str] = &[
             "non-keystone passive skills in medium radius",
@@ -1339,21 +1593,23 @@ fn corpus_unsupported_report() {
         assert!(er.total_lines > 0, "engine 语料为空");
     }
 
-    // 弱断言：语料非空（防 fixture/收集链断裂静默归零）。
+    // Weak assertion: the corpus isn't empty (guards against a broken fixture/collection chain silently going to zero).
     assert!(
         !all_lines.is_empty(),
         "corpus 收集为空——检查 build 装备词条收集链"
     );
 }
 
-/// 口径切换双跑报告：同一 build 以 `mode_effective=false`（面板口径）与
-/// `mode_effective=true`（PoB2 主面板 EFFECTIVE 口径，vendor `CalcSetup.lua:583-588`）
-/// 各算一遍，逐 stat 三列输出（panel / effective / PoB2 golden）+ 收敛/恶化标记。
+/// Convention-switch dual-run report: calculates the same build once under
+/// `mode_effective=false` (panel convention) and once under
+/// `mode_effective=true` (PoB2's main-panel EFFECTIVE convention, vendor
+/// `CalcSetup.lua:583-588`), printing a three-column output per stat
+/// (panel / effective / PoB2 golden) plus convergence/regression markers.
 ///
-/// 打印型仪表盘（不设门禁）：
+/// A print-only dashboard (no gate):
 /// `cargo test -p pobr-build --test ninja_parity -- effective_switch_dual_run_report --nocapture`
 ///
-/// 报告归档：`audits/rearchitecture-2026-06-10/blueprints/m3-effective-switch-report.md`。
+/// Report archive: `audits/rearchitecture-2026-06-10/blueprints/m3-effective-switch-report.md`.
 #[test]
 fn effective_switch_dual_run_report() {
     let data = load_data();
@@ -1367,7 +1623,7 @@ fn effective_switch_dual_run_report() {
             format!("{v:.2}")
         }
     };
-    // 命中带宽标记：✓ = @5%，~ = @10%，空 = 脱靶。
+    // Hit-band marker: ✓ = @5%, ~ = @10%, blank = miss.
     let band = |rt: f64| -> &'static str {
         if (rt - 1.0).abs() < TOL {
             "✓"
@@ -1380,7 +1636,7 @@ fn effective_switch_dual_run_report() {
 
     let mut panel_tally = (Tally::default(), Tally::default(), Tally::default()); // (core, def, off)
     let mut eff_tally = (Tally::default(), Tally::default(), Tally::default());
-    // 迁移统计（@5% 口径）：(收敛 panel✗→eff✓, 恶化 panel✓→eff✗, 双✓, 双✗)。
+    // Migration stats (@5% convention): (converged panel✗->eff✓, regressed panel✓->eff✗, both✓, both✗).
     let mut moved: Vec<String> = Vec::new();
 
     for dir in &builds {
@@ -1469,12 +1725,14 @@ fn effective_switch_dual_run_report() {
     }
 }
 
-/// /F-3：EHP 新旧口径 18-build 双跑对照报告。
+/// /F-3: EHP old vs new convention, 18-build dual-run comparison report.
 ///
-/// F-3 口径切换后：canonical `total_ehp`/`*_max_hit` 即新口径，「old」列取
-/// `total_ehp_lowest_max_hit`（旧管线仍并行产出，revert 通道保留）；per-type
-/// max hit 旧值不再单列（新旧在中性输入下数学等价，见 F-2 报告 §3.1）。
-/// 打印型仪表盘（不设门禁）：
+/// After the F-3 convention switch: canonical `total_ehp`/`*_max_hit` are the
+/// new convention; the "old" column takes `total_ehp_lowest_max_hit` (the old
+/// pipeline still runs in parallel, keeping a revert path available); the old
+/// per-type max-hit values are no longer listed separately (old and new are
+/// mathematically equivalent under neutral input, see the F-2 report §3.1).
+/// A print-only dashboard (no gate):
 /// `cargo test -p pobr-build --test ninja_parity -- ehp_dual_run_report --nocapture`
 #[test]
 fn ehp_dual_run_report() {
@@ -1482,7 +1740,7 @@ fn ehp_dual_run_report() {
     let builds = discover_builds();
     assert!(!builds.is_empty(), "no builds discovered");
 
-    // golden 的 Infinity 经 sanitize 变为 1e308——展示与比值口径按 ∞ 处理。
+    // After sanitizing, golden's Infinity becomes 1e308 -- treat it as ∞ for display and ratio purposes.
     let fmt_v = |v: f64| -> String {
         if !v.is_finite() || v >= 1e307 {
             "inf".into()
@@ -1558,20 +1816,25 @@ fn ehp_dual_run_report() {
     );
 }
 
-/// 验收专项 fixture（「MoM/CI/taken-as/盾 block 四类」，@5% 对 golden）。
+/// Acceptance fixtures for four special categories ("MoM/CI/taken-as/shield
+/// block"), checked @5% against golden.
 ///
-/// 四类覆盖方式：
-/// - **MoM**：sorceress-stormweaver-comet（`DamageTakenFromManaBeforeLife` 来源；
-///   mana 池折入 TotalHitPool）——TotalEHP / PhysicalMaximumHitTaken @5%；
-/// - **CI**：monk-invoker-frost-bomb（CI keystone）——TotalEHP @5% +
-///   ChaosMaximumHitTaken 双 ∞（混沌免疫）；
-/// - **盾 block**：warrior-titan / warrior-smith-of-kitava——EffectiveBlockChance /
-///   EffectiveSpellBlockChance @5%（block 概率层；TotalEHP 残差 0.24-0.48x 为
-///   已知缺口：护甲聚合上游 + 格挡回复 GainWhenHit（vendor :3168-3177）未实现，
-///   见 F-3 commit message 残差清单，不在本断言内）；
-/// - **taken-as**：18-build golden 无该词条载体，由 pobr-core 合成 fixture 覆盖
-///   （`tests/taken_as.rs` Lightning Coil 型 + `tests/ehp_pob2.rs` 端到端，
-///   期望值手算自 CalcDefence.lua:356-455 公式）。
+/// How each category is covered:
+/// - **MoM**: sorceress-stormweaver-comet (a `DamageTakenFromManaBeforeLife`
+///   source; the mana pool folds into TotalHitPool) -- TotalEHP /
+///   PhysicalMaximumHitTaken @5%;
+/// - **CI**: monk-invoker-frost-bomb (the CI keystone) -- TotalEHP @5% +
+///   ChaosMaximumHitTaken both ∞ (chaos immunity);
+/// - **Shield block**: warrior-titan / warrior-smith-of-kitava --
+///   EffectiveBlockChance / EffectiveSpellBlockChance @5% (the block-chance
+///   layer; TotalEHP's 0.24-0.48x residual is a known gap: upstream armour
+///   aggregation + block recovery's GainWhenHit (vendor :3168-3177) isn't
+///   implemented, see the F-3 commit message's residual checklist, not
+///   asserted here);
+/// - **taken-as**: the 18-build golden set has no carrier for this mod, so
+///   it's covered by a pobr-core synthetic fixture (`tests/taken_as.rs`'s
+///   Lightning Coil type + `tests/ehp_pob2.rs`'s end-to-end test, with
+///   expected values hand-computed from the CalcDefence.lua:356-455 formula).
 #[test]
 fn m2_f3_specialty_fixtures() {
     let data = load_data();
@@ -1591,7 +1854,7 @@ fn m2_f3_specialty_fixtures() {
         );
     };
 
-    // MoM 类。
+    // MoM category.
     let (out, g) = run("sorceress-stormweaver-comet");
     assert_5pct(
         "sorceress-stormweaver-comet",
@@ -1606,7 +1869,7 @@ fn m2_f3_specialty_fixtures() {
         golden(&g, "PhysicalMaximumHitTaken"),
     );
 
-    // CI 类。
+    // CI category.
     let (out, g) = run("monk-invoker-frost-bomb");
     assert_5pct(
         "monk-invoker-frost-bomb",
@@ -1614,14 +1877,14 @@ fn m2_f3_specialty_fixtures() {
         out.total_ehp,
         golden(&g, "TotalEHP"),
     );
-    // CI 混沌免疫：双方皆 ∞（golden 经 sanitize 为 1e308 占位）。
+    // CI chaos immunity: both sides ∞ (golden's placeholder after sanitizing is 1e308).
     assert!(
         is_inf_like(out.chaos_max_hit)
             && golden(&g, "ChaosMaximumHitTaken").is_some_and(is_inf_like),
         "CI 混沌免疫应双 ∞"
     );
 
-    // 盾 block 类（两个 warrior build 的 block 概率层）。
+    // Shield block category (the block-chance layer for the two warrior builds).
     for name in [
         "warrior-titan-shield-wall",
         "warrior-smith-of-kitava-shield-wall",

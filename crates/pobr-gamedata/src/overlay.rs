@@ -1,34 +1,39 @@
-//! base → overlay 确定性 merge 引擎。
+//! The deterministic base → overlay merge engine.
 //!
-//! merge 语义在 gamedata **一处收口**（adapter 构建期的 skill_overrides merge 是
-//! 等价物，两处规则共享本文档）。规则（全部由单测锁定）：
+//! Merge semantics are centralized **in one place** in gamedata (the
+//! adapter's build-time skill_overrides merge is an equivalent; both share
+//! the rules documented here). Rules (all locked in by unit tests):
 //!
-//! 1. **对象 + 对象**：key 级覆盖——overlay 的每个 key 递归 merge 进 base；
-//!    base 独有 key 原样保留。
-//! 2. **数组 + 数组**：若两侧元素**全部**是带字符串 `"id"` 字段的对象，则按 id
-//!    合并——同 id 元素递归 merge（保持 base 顺序），overlay 新 id 按其出现顺序
-//!    追加；否则（任一侧含无 id 元素）overlay **整体替换** base。
-//! 3. **同类标量**（null/bool/number/string）：overlay 覆盖 base。
-//! 4. **JSON 类型冲突**（如对象 vs 数组、字符串 vs 数字）：返回
-//!    [`MergeError::TypeConflict`]，**不静默**。
+//! 1. **object + object**: key-level override — every key of overlay is
+//!    recursively merged into base; a key unique to base is kept as-is.
+//! 2. **array + array**: if every element on **both** sides is an object
+//!    with a string `"id"` field, merge by id — elements sharing an id are
+//!    merged recursively (base's order is preserved), and overlay's new
+//!    ids are appended in the order they appear; otherwise (either side
+//!    has an element without an id), overlay **wholesale replaces** base.
+//! 3. **same-kind scalars** (null/bool/number/string): overlay overrides base.
+//! 4. **a JSON type conflict** (e.g. object vs. array, string vs. number):
+//!    returns [`MergeError::TypeConflict`], **not silenced**.
 //!
-//! 确定性：对象 key 按 `serde_json::Map`（BTreeMap）排序；数组合并保持
-//! base 顺序 + overlay 追加顺序——同输入恒同输出。
+//! Determinism: object keys are ordered by `serde_json::Map` (a BTreeMap);
+//! array merging preserves base's order plus overlay's append order — the
+//! same input always produces the same output.
 
 use std::fmt;
 
 use serde_json::Value;
 
-/// merge 失败。
+/// A merge failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MergeError {
-    /// base 与 overlay 在同一路径上的 JSON 类型不一致。
+    /// base and overlay disagree on JSON type at the same path.
     TypeConflict {
-        /// 冲突位置（JSON Pointer 风格，如 `/mods/3/stats`；根为空串）。
+        /// The conflict location (JSON Pointer style, e.g. `/mods/3/stats`;
+        /// the root is an empty string).
         path: String,
-        /// base 侧 JSON 类型名。
+        /// base's JSON type name.
         base_kind: &'static str,
-        /// overlay 侧 JSON 类型名。
+        /// overlay's JSON type name.
         overlay_kind: &'static str,
     },
 }
@@ -50,7 +55,7 @@ impl fmt::Display for MergeError {
 
 impl std::error::Error for MergeError {}
 
-/// JSON 值的类型名（错误信息用）。
+/// A JSON value's type name (for error messages).
 fn kind(value: &Value) -> &'static str {
     match value {
         Value::Null => "null",
@@ -62,7 +67,8 @@ fn kind(value: &Value) -> &'static str {
     }
 }
 
-/// 元素是否为带字符串 `"id"` 字段的对象（数组按 id 合并的前提）。
+/// Whether an element is an object with a string `"id"` field (the
+/// prerequisite for merging arrays by id).
 fn has_string_id(value: &Value) -> bool {
     value
         .as_object()
@@ -70,19 +76,21 @@ fn has_string_id(value: &Value) -> bool {
         .is_some_and(Value::is_string)
 }
 
-/// 数组是否整体可按 id 合并（所有元素都是带字符串 id 的对象；空数组视为可合并）。
+/// Whether an array can be merged by id as a whole (every element is an
+/// object with a string id; an empty array counts as mergeable).
 fn is_id_array(values: &[Value]) -> bool {
     values.iter().all(has_string_id)
 }
 
-/// 把 overlay 确定性地 merge 进 base，返回合并结果。规则见模块文档。
+/// Deterministically merges overlay into base, returning the merged
+/// result. See the module doc for the rules.
 pub fn merge(base: Value, overlay: Value) -> Result<Value, MergeError> {
     merge_at(base, overlay, String::new())
 }
 
 fn merge_at(base: Value, overlay: Value, path: String) -> Result<Value, MergeError> {
     match (base, overlay) {
-        // 规则 1：对象 key 级覆盖（递归）。
+        // Rule 1: object key-level override (recursive).
         (Value::Object(mut base_map), Value::Object(overlay_map)) => {
             for (key, overlay_value) in overlay_map {
                 let child_path = format!("{path}/{key}");
@@ -98,7 +106,8 @@ fn merge_at(base: Value, overlay: Value, path: String) -> Result<Value, MergeErr
             }
             Ok(Value::Object(base_map))
         }
-        // 规则 2：数组按 id 合并；任一侧含无 id 元素则整体替换。
+        // Rule 2: arrays merge by id; wholesale replace if either side has
+        // an element without an id.
         (Value::Array(base_arr), Value::Array(overlay_arr)) => {
             if is_id_array(&base_arr) && is_id_array(&overlay_arr) {
                 merge_id_arrays(base_arr, overlay_arr, &path)
@@ -106,13 +115,13 @@ fn merge_at(base: Value, overlay: Value, path: String) -> Result<Value, MergeErr
                 Ok(Value::Array(overlay_arr))
             }
         }
-        // 规则 3：同类标量 overlay 覆盖。
+        // Rule 3: same-kind scalars, overlay overrides.
         (base @ (Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_)), overlay)
             if std::mem::discriminant(&base) == std::mem::discriminant(&overlay) =>
         {
             Ok(overlay)
         }
-        // 规则 4：类型冲突报错，不静默。
+        // Rule 4: a type conflict errors out, not silenced.
         (base, overlay) => Err(MergeError::TypeConflict {
             path,
             base_kind: kind(&base),
@@ -121,14 +130,15 @@ fn merge_at(base: Value, overlay: Value, path: String) -> Result<Value, MergeErr
     }
 }
 
-/// 按 `"id"` 字段合并两个对象数组：同 id 递归 merge（保持 base 顺序），
-/// overlay 新 id 按出现顺序追加。
+/// Merges two object arrays by their `"id"` field: elements sharing an id
+/// are merged recursively (base's order is preserved), and overlay's new
+/// ids are appended in the order they appear.
 fn merge_id_arrays(
     base_arr: Vec<Value>,
     overlay_arr: Vec<Value>,
     path: &str,
 ) -> Result<Value, MergeError> {
-    /// 取元素 id（调用前已由 `is_id_array` 保证存在）。
+    /// Gets an element's id (guaranteed present by `is_id_array` before this is called).
     fn id_of(value: &Value) -> &str {
         value
             .as_object()
@@ -161,7 +171,8 @@ mod tests {
 
     use super::{MergeError, merge};
 
-    /// 规则 1：对象 key 级覆盖——overlay 改写既有 key、新增 key，base 独有 key 保留。
+    /// Rule 1: object key-level override — overlay rewrites existing keys
+    /// and adds new ones, base's unique keys are kept.
     #[test]
     fn object_keys_merge_with_overlay_priority() {
         let base = json!({"a": 1, "b": 2, "nested": {"x": 1, "y": 2}});
@@ -173,7 +184,8 @@ mod tests {
         );
     }
 
-    /// 规则 2a：两侧均为带 id 对象数组 → 按 id 合并（同 id 递归 merge，保持 base 顺序）。
+    /// Rule 2a: both sides are id-bearing object arrays → merge by id
+    /// (elements sharing an id merge recursively, base's order preserved).
     #[test]
     fn id_arrays_merge_by_id_preserving_base_order() {
         let base = json!([
@@ -191,7 +203,7 @@ mod tests {
         );
     }
 
-    /// 规则 2b：overlay 的新 id 按出现顺序追加在 base 之后。
+    /// Rule 2b: overlay's new ids are appended after base, in the order they appear.
     #[test]
     fn id_arrays_append_new_ids_in_overlay_order() {
         let base = json!([{"id": "alpha", "value": 1}]);
@@ -207,19 +219,20 @@ mod tests {
         );
     }
 
-    /// 规则 2c：任一侧含无 id 元素 → overlay 整体替换。
+    /// Rule 2c: either side has an element without an id → overlay
+    /// wholesale replaces base.
     #[test]
     fn arrays_without_id_are_replaced_wholesale() {
         let base = json!([1, 2, 3]);
         let overlay = json!([4]);
         assert_eq!(merge(base, overlay).unwrap(), json!([4]));
 
-        // 元素为对象但缺 id 字段，同样整体替换。
+        // Elements are objects but missing the id field, still wholesale replaced.
         let base = json!([{"name": "a"}]);
         let overlay = json!([{"name": "b"}]);
         assert_eq!(merge(base, overlay).unwrap(), json!([{"name": "b"}]));
 
-        // id 非字符串（数字）不参与 id 合并语义。
+        // A non-string id (a number) doesn't participate in id-merge semantics.
         let base = json!([{"id": 1, "value": 1}]);
         let overlay = json!([{"id": 2, "value": 2}]);
         assert_eq!(
@@ -228,7 +241,8 @@ mod tests {
         );
     }
 
-    /// 规则 2d：overlay 为空 id 数组时保留 base（空数组视为可 id 合并、合并零项）。
+    /// Rule 2d: an empty overlay id array keeps base (an empty array
+    /// counts as id-mergeable, merging in zero items).
     #[test]
     fn empty_overlay_id_array_keeps_base() {
         let base = json!([{"id": "alpha", "value": 1}]);
@@ -239,7 +253,7 @@ mod tests {
         );
     }
 
-    /// 规则 3：同类标量 overlay 覆盖（number/string/bool/null）。
+    /// Rule 3: same-kind scalars, overlay wins (number/string/bool/null).
     #[test]
     fn same_kind_scalars_overlay_wins() {
         assert_eq!(merge(json!(1), json!(2)).unwrap(), json!(2));
@@ -248,7 +262,7 @@ mod tests {
         assert_eq!(merge(Value::Null, Value::Null).unwrap(), Value::Null);
     }
 
-    /// 规则 4：类型冲突报错不静默，并带冲突路径。
+    /// Rule 4: a type conflict errors out, not silenced, and carries the conflict path.
     #[test]
     fn type_conflict_errors_with_path() {
         let base = json!({"outer": {"inner": [1, 2]}});
@@ -263,7 +277,7 @@ mod tests {
             }
         );
 
-        // 标量 vs 标量的不同类同样冲突（string vs number）。
+        // A scalar-vs-scalar type mismatch is also a conflict (string vs number).
         let err = merge(json!("a"), json!(1)).unwrap_err();
         assert_eq!(
             err,
@@ -274,11 +288,13 @@ mod tests {
             }
         );
 
-        // null 不作为「删除」语义：null vs 对象同样是类型冲突。
+        // null isn't treated as "delete" semantics: null vs. an object is
+        // also a type conflict.
         assert!(merge(json!({"a": 1}), Value::Null).is_err());
     }
 
-    /// id 数组内同 id 元素递归 merge 时的类型冲突同样报错（路径含数组下标）。
+    /// A type conflict while recursively merging same-id elements inside
+    /// an id array also errors out (the path includes the array index).
     #[test]
     fn type_conflict_inside_id_array_reports_indexed_path() {
         let base = json!([{"id": "alpha", "value": 1}]);
@@ -294,7 +310,7 @@ mod tests {
         );
     }
 
-    /// 确定性：同输入两次 merge 输出逐字节一致。
+    /// Determinism: merging the same input twice produces byte-identical output.
     #[test]
     fn merge_is_deterministic() {
         let base = json!({"list": [{"id": "b", "v": 1}, {"id": "a", "v": 2}], "k": 1});

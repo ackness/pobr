@@ -1,7 +1,8 @@
-//! 聚合层：ModDb 存储 / 查询 / 归因 trace / 敌方 ModDb。
+//! Aggregation layer: ModDb storage / queries / attribution trace / enemy ModDb.
 //!
-//! 聚合二进制：原独立测试文件合并为子模块，减少链接二进制数（53→8）以加速构建。
-//! 各子模块即 `tests/aggregation/<name>.rs`，测试用例与断言逐一保留。
+//! An aggregated binary: previously-separate test files are merged into submodules
+//! to cut the number of linked test binaries (53 -> 8) and speed up builds.
+//! Each submodule is `tests/aggregation/<name>.rs`; test cases and assertions are kept as-is.
 #![allow(clippy::all)]
 
 #[path = "aggregation/enemy_mod_db.rs"]

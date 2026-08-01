@@ -1,11 +1,13 @@
-//! §B 可行性测量（探索性，`#[ignore]`，非 CI 门禁）。
+//! §B feasibility measurement (exploratory, `#[ignore]`d, not a CI gate).
 //!
-//! 问题：`overlay/stat_descriptions.json`（段 A 抽取的 stat_id → canonical 文本）
-//! 里，有多少条能被现行 `parse_mod_engine` 成功解析成 Modifier？这个解析率决定
-//! 「stat_id → Modifier 第二通道」是否可行——率高则通道成立、可逐域切换；率低则
-//! 要先补引擎解析能力。
+//! Question: of the entries in `overlay/stat_descriptions.json` (Section A's
+//! extracted stat_id -> canonical text), how many can the current
+//! `parse_mod_engine` successfully parse into a Modifier? This parse rate
+//! determines whether the "stat_id -> Modifier, second channel" pipeline is
+//! feasible — a high rate means the channel works and can be switched over
+//! domain by domain; a low rate means the engine's parsing needs beefing up first.
 //!
-//! 运行：`cargo test -p sync-pob-catalog --test stat_desc_parse_rate -- --ignored --nocapture`
+//! Run: `cargo test -p sync-pob-catalog --test stat_desc_parse_rate -- --ignored --nocapture`
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -23,7 +25,7 @@ fn overlay_path(file: &str) -> PathBuf {
 
 fn load_rules() -> CompiledParserRules {
     let text = fs::read_to_string(overlay_path("mod_parser_rules.json")).expect("read rules");
-    // serde 忽略 `_meta` 头部；只读规则六表。
+    // serde ignores the `_meta` header; only the six rule tables are read.
     let doc: ModParserRulesDoc = serde_json::from_str(&text).expect("deserialize rules doc");
     CompiledParserRules::compile(&doc).expect("compile rules")
 }
@@ -48,7 +50,7 @@ fn measure_single_stat_parse_rate() {
 
     let mut grand_parsed = 0usize;
     let mut grand_total = 0usize;
-    // 每个文本里命中的 ModName（解析成功时）频次，抽样观察。
+    // Frequency of each matched ModName across texts (when parsing succeeds), for a sampled overview.
     let mut name_freq: BTreeMap<String, usize> = BTreeMap::new();
 
     for (scope_name, scope) in &descs.scopes {

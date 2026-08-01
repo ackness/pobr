@@ -1,4 +1,5 @@
-//! 摘要/示例 Build 的集成测试：验证占位烟雾输出包含预期字段，且可本地化标题。
+//! Integration tests for the summary/example Build: verifies the
+//! placeholder smoke output contains the expected fields and the title can be localized.
 
 use pobr_desktop::{EXAMPLE_BUILD_LEVEL, app_title, build_summary, example_build};
 

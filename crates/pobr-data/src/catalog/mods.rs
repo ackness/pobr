@@ -1,83 +1,100 @@
-//! 词缀池与 stat 注册表域 schema（`base/mods.json` / `base/stats.json`，
-//! 来自 `Mods.dat` / `Stats.dat`）。
+//! Mod pool and stat registry domain schema (`base/mods.json` /
+//! `base/stats.json`, sourced from `Mods.dat` / `Stats.dat`).
 
 use serde::{Deserialize, Serialize};
 
-/// Stat 注册表条目（来自 `Stats.dat`）。
+/// A stat registry entry (from `Stats.dat`).
 ///
-/// `id` 是 GGG 稳定字符串 stat key（如 `additional_strength`），是 Mods 里
-/// `Stat1..4` 整型外键解析后的目标，也是未来 i18n stat 描述的主键。
-/// `semantic` / `category` 是 GGG 原始整型枚举（无独立解析表，保留原值）。
+/// `id` is GGG's stable string stat key (e.g. `additional_strength`) — the
+/// target that a Mod's `Stat1..4` integer foreign keys resolve to, and also
+/// the future primary key for i18n stat descriptions. `semantic` /
+/// `category` are raw GGG integer enums (no separate lookup table, kept as
+/// their raw values).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StatDef {
-    /// 稳定 stat ID，即 `Stats.dat` 的 `Id`（如 `additional_strength`）。
+    /// Stable stat ID, i.e. `Stats.dat`'s `Id` (e.g. `additional_strength`).
     pub id: String,
-    /// 是否为本地词缀（local，仅作用于所在装备）。
+    /// Whether this is a local stat (only affects the item it's on).
     pub is_local: bool,
-    /// GGG 原始 `Semantic` 枚举值（数值正负 / 百分比 / 时长等显示语义）。
+    /// Raw GGG `Semantic` enum value (display semantics like sign /
+    /// percentage / duration).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub semantic: Option<u32>,
-    /// GGG 原始 `Category` 枚举值（stat 归类，可空）。
+    /// Raw GGG `Category` enum value (stat classification, can be absent).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub category: Option<u32>,
 }
 
-/// 词缀掷出权重条目（来自 `Mods.SpawnWeight_Tags` + `SpawnWeight_Values` 平行数组）。
+/// A mod spawn-weight entry (from `Mods.SpawnWeight_Tags` +
+/// `SpawnWeight_Values`'s parallel arrays).
 ///
-/// 判定某基底能否掷到该词缀：按顺序找第一个命中基底 tag 集的条目，取其 weight；
-/// weight = 0 表示掷不到（PoB2 `Item:GetModSpawnWeight` 同语义）。
+/// To decide whether a base can roll this mod: scan in order for the first
+/// entry whose tag matches one of the base's tags, and take its weight;
+/// weight = 0 means it can't roll (same semantics as PoB2's
+/// `Item:GetModSpawnWeight`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpawnWeight {
-    /// 匹配的基底 tag（解析 `Tags.Id`，如 `ring` / `str_armour`；`default` 兜底）。
+    /// The base tag this matches (resolves `Tags.Id`, e.g. `ring` /
+    /// `str_armour`; `default` is the catch-all).
     pub tag: String,
-    /// 权重值（0 = 该 tag 下不可掷出）。
+    /// Weight value (0 = can't roll under this tag).
     pub weight: u32,
 }
 
-/// 词缀（mod）某个 stat 槽位的掷值区间（来自 `Mods.StatNValue`，形如 `[min, max]`）。
+/// The roll range for one stat slot of a mod (from `Mods.StatNValue`, a
+/// `[min, max]` pair).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModStat {
-    /// 该槽位作用的 stat 稳定 ID（解析 `StatN` 外键 → `Stats.Id`）。
+    /// The stable stat ID this slot affects (resolves the `StatN` foreign
+    /// key → `Stats.Id`).
     pub stat_id: String,
-    /// 掷值下界。
+    /// Roll lower bound.
     pub min: i64,
-    /// 掷值上界。
+    /// Roll upper bound.
     pub max: i64,
 }
 
-/// 词缀池定义（来自 `Mods.dat` + 外键解析）。
+/// A mod pool definition (from `Mods.dat` plus foreign-key resolution).
 ///
-/// `name` 为英文 canonical 词缀名（前后缀名，如 `of the Brute`）；其它语言走
-/// `i18n/<lang>/mods.json` 边车（`id -> 本地化名称`）。`Stat1..4` + `Stat1Value..4Value`
-/// 被合并成 `stats` 数组（解析 stat 外键、跳过空槽）。
+/// `name` is the English canonical mod name (prefix/suffix name, e.g. `of
+/// the Brute`); other languages go through the `i18n/<lang>/mods.json`
+/// sidecar (`id -> localized name`). `Stat1..4` + `Stat1Value..4Value` are
+/// merged into the `stats` array (with the stat foreign key resolved and
+/// empty slots skipped).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModDef {
-    /// 稳定 ID，即 `Mods.dat` 的 `Id`（如 `Strength1`）。
+    /// Stable ID, i.e. `Mods.dat`'s `Id` (e.g. `Strength1`).
     pub id: String,
-    /// 英文 canonical 词缀名（可空：大量内部 mod 无显示名）。
+    /// English canonical mod name (can be absent: a lot of internal mods
+    /// have no display name).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    /// GGG 原始 `ModType` 枚举值（无独立解析表，保留原值；可空）。
+    /// Raw GGG `ModType` enum value (no separate lookup table, kept as its
+    /// raw value; can be absent).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mod_type: Option<u32>,
-    /// mod domain（GGG 原始枚举值，用于词缀适用域判定）。
+    /// Mod domain (a raw GGG enum value, used to decide which items this
+    /// mod can apply to).
     pub domain: u32,
-    /// GGG 原始 `GenerationType` 枚举值（前缀 / 后缀 / 固有等生成类型；可空）。
+    /// Raw GGG `GenerationType` enum value (generation type: prefix /
+    /// suffix / implicit, etc.; can be absent).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub generation_type: Option<u32>,
-    /// 词缀生成等级。
+    /// Mod generation level.
     pub level: u32,
-    /// 该词缀作用的 stat 槽位（已合并 Stat 外键 + 掷值区间，跳过空槽）。
+    /// This mod's stat slots (the Stat foreign key plus its roll range
+    /// already merged in, empty slots skipped).
     pub stats: Vec<ModStat>,
-    /// 标签（解析 `Tags.Id`）。
+    /// Tags (resolves `Tags.Id`).
     pub tags: Vec<String>,
-    /// 词缀组（解析 `ModType` 外键 → `ModType.Name`，即 PoB2 导出的 `group`）。
-    /// 同一条强度线（如 Strength1..9）共享同组，是 tier 排名的分组键。
-    /// 旧版本数据无此字段（serde 缺省 None）。
+    /// Mod group (resolves the `ModType` foreign key → `ModType.Name`,
+    /// i.e. PoB2's exported `group`). Mods on the same strength line (e.g.
+    /// Strength1..9) share a group — this is the grouping key for tier
+    /// ranking. Absent (serde defaults to `None`) in older data.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
-    /// 掷出权重表（tag → weight，顺序敏感：取第一个命中项）。
-    /// 旧版本数据无此字段（serde 缺省空）。
+    /// Spawn-weight table (tag → weight, order-sensitive: the first
+    /// matching entry wins). Absent (serde defaults to empty) in older data.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub spawn_weights: Vec<SpawnWeight>,
 }

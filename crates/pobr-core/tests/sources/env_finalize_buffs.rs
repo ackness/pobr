@@ -1,11 +1,13 @@
-//! env_finalize 阶段 6端到端：session → perform → 输出。
+//! env_finalize stage 6, end to end: session → perform → output.
 //!
-//! 逐 buff 数值已由 `rules::buff_expander` 单测锚定（PoB2 公式 + floor 行为），
-//! 本文件验证**接线**：buff 定义经 `set_buff_definitions` 入 Env，
-//! `cfg.mode_combat` 门控整段，展开 mods 写回 player modDB 并参与聚合，
-//! `conditions_set` 写 `cfg.conditions` 供条件型词条生效。
+//! Per-buff numeric values are already pinned by the `rules::buff_expander` unit tests
+//! (PoB2 formula + floor behaviour). This file verifies the **wiring**: buff definitions
+//! enter Env via `set_buff_definitions`, the whole stage is gated by `cfg.mode_combat`,
+//! expanded mods are written back into the player modDB and participate in aggregation,
+//! and `conditions_set` writes `cfg.conditions` so condition-tagged modifiers activate.
 //!
-//! 关键不变式：`mode_combat` 默认 false → 注入与否输出逐值不变。
+//! Key invariant: with `mode_combat` false (the default), injecting the definitions or
+//! not must leave every output value unchanged.
 
 use pobr_core::calc::{CalculationSession, MinimalInput};
 use pobr_core::{CalcConfig, ModTag, Modifier};
@@ -38,8 +40,8 @@ fn vendor_ref() -> VendorRef {
     }
 }
 
-/// Onslaught 最小定义（vendor :539-570 基本形：Speed INC 2e Attack +
-/// MovementSpeed INC e，e = floor(10 × (1 + Σ INC/100))）。
+/// A minimal Onslaught definition (vendor :539-570 basic shape: Speed INC 2e Attack +
+/// MovementSpeed INC e, where e = floor(10 × (1 + Σ INC/100))).
 fn onslaught_def() -> BuffDef {
     BuffDef {
         id: "Onslaught".to_string(),
@@ -88,8 +90,8 @@ fn session_with_onslaught(mode_combat: bool) -> CalculationSession {
     session
 }
 
-/// mode_combat=true + flag 置位 → Onslaught 展开（effect=10 → Speed INC 20）
-/// 参与攻速聚合：action_rate 2.0 × 1.20 = 2.4。
+/// mode_combat=true + the flag set → Onslaught expands (effect=10 → Speed INC 20)
+/// and feeds into attack-speed aggregation: action_rate 2.0 × 1.20 = 2.4.
 #[test]
 fn onslaught_expands_through_perform() {
     let mut session = session_with_onslaught(true);
@@ -97,8 +99,8 @@ fn onslaught_expands_through_perform() {
     assert_eq!(out.action_rate, 2.4);
 }
 
-/// B3 数值锚点（端到端口径）：OnslaughtEffect 23% + BuffEffectOnSelf 10%
-/// → effect = floor(10×1.33) = 13 → Speed INC 26 → action_rate 2.52。
+/// B3 numeric anchor (end-to-end semantics): OnslaughtEffect 23% + BuffEffectOnSelf 10%
+/// → effect = floor(10×1.33) = 13 → Speed INC 26 → action_rate 2.52.
 #[test]
 fn onslaught_effect_scaling_floor_end_to_end() {
     let mut session = session_with_onslaught(true);
@@ -110,7 +112,7 @@ fn onslaught_effect_scaling_floor_end_to_end() {
     assert_eq!(out.action_rate, 2.0 * 1.26);
 }
 
-/// 关键不变式：mode_combat 默认/显式 false → 定义注入与否输出逐值不变。
+/// Key invariant: with mode_combat false (default or explicit), injecting the definitions or not leaves every output value unchanged.
 #[test]
 fn mode_combat_false_is_value_identical() {
     let mut with_defs = session_with_onslaught(false);
@@ -125,7 +127,7 @@ fn mode_combat_false_is_value_identical() {
     assert_eq!(out_with_defs, out_without_defs);
 }
 
-/// trigger flag 未置位 → 零展开（mode_combat=true 也不触发）。
+/// The trigger flag isn't set → no expansion happens (even with mode_combat=true).
 #[test]
 fn flag_unset_yields_no_expansion() {
     let mut session =
@@ -135,8 +137,9 @@ fn flag_unset_yields_no_expansion() {
     assert_eq!(out.action_rate, 2.0);
 }
 
-/// conditions_set 通道：buff 附带条件写 cfg.conditions，使条件型词条
-/// （`ModTag::Condition`）在同一次 perform 内生效。
+/// The conditions_set channel: a buff's attached conditions write into cfg.conditions,
+/// activating condition-tagged modifiers (`ModTag::Condition`) within the same perform
+/// pass.
 #[test]
 fn conditions_set_activates_condition_tagged_mods() {
     let def = BuffDef {
@@ -163,7 +166,7 @@ fn conditions_set_activates_condition_tagged_mods() {
     assert_eq!(out.action_rate, 2.2, "HerEmbrace 条件应被置位并激活该词条");
 }
 
-/// 幂等护栏：同一 session 重复 perform，buff 展开不重复计入。
+/// Idempotency guard: repeated perform calls on the same session must not double-count buff expansion.
 #[test]
 fn repeated_perform_does_not_double_count() {
     let mut session = session_with_onslaught(true);

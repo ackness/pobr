@@ -12,10 +12,12 @@ fn game_data() -> GameData {
 #[test]
 fn passive_nodes_load_with_reasonable_count() {
     let nodes = game_data().passive_nodes().expect("passive_tree 可加载");
-    // PoE2 0.5.0 主树 + 飞升约数千节点；过滤掉无 slug 的布局占位后仍应 >3000。
+    // PoE2 0.5.0's main tree + ascendancies is roughly a few thousand
+    // nodes; even after filtering out slug-less layout placeholders, it
+    // should still be >3000.
     assert!(nodes.len() > 3000, "节点数应为数千，实得 {}", nodes.len());
 
-    // 每个节点都有稳定数值 skill id 与字符串 slug。
+    // Every node has a stable numeric skill id and a string slug.
     assert!(nodes.iter().all(|n| !n.id.is_empty()));
 }
 
@@ -25,7 +27,7 @@ fn passive_nodes_sorted_by_skill_for_stable_diffs() {
     let mut sorted = nodes.clone();
     sorted.sort_by_key(|n| n.skill);
     assert_eq!(nodes, sorted, "passive_tree.json 应按 skill id 排序");
-    // skill id 唯一（map key 反范式化后无碰撞）。
+    // skill id is unique (no collision after denormalizing the map key).
     let mut skills: Vec<u32> = nodes.iter().map(|n| n.skill).collect();
     skills.dedup();
     assert_eq!(skills.len(), nodes.len(), "skill id 应唯一");
@@ -63,12 +65,12 @@ fn node_kinds_cover_expected_variants() {
 #[test]
 fn connections_and_group_fields_present() {
     let nodes = game_data().passive_nodes().unwrap();
-    // 至少存在分组字段（布局）。
+    // At least the group field (layout) is present.
     assert!(
         nodes.iter().any(|n| n.group.is_some()),
         "应保留 group 分组字段"
     );
-    // 连线指向有效的 skill id（无悬空引用）。
+    // A connection points to a valid skill id (no dangling reference).
     let valid: std::collections::HashSet<u32> = nodes.iter().map(|n| n.skill).collect();
     let connected = nodes.iter().find(|n| !n.connections.is_empty()).unwrap();
     assert!(
@@ -97,7 +99,7 @@ fn tree_meta_lists_classes_and_ascendancies() {
             .any(|a| a.name == "Smith of Kitava" && a.id == "Warrior3"),
         "Warrior 应含 Smith of Kitava 飞升"
     );
-    // 无名占位飞升槽已过滤（id/name 非空）。
+    // Unnamed placeholder ascendancy slots are already filtered out (id/name non-empty).
     assert!(
         meta.classes
             .iter()
@@ -107,20 +109,24 @@ fn tree_meta_lists_classes_and_ascendancies() {
     );
 }
 
-/// 油涂 notable 池（`--tree-anoints` 回填，vendor tree.lua 顶层 nodes 块）：
-/// GGG data.json 不含不在主图上的油涂专属 notable，回填后应可按名授予消费
-/// （`Allocates <name>` enchant → GrantedPassive，CalcSetup.lua:1322-1331）。
+/// The anointment notable pool (backfilled by `--tree-anoints`, from
+/// vendor tree.lua's top-level nodes block): GGG's data.json doesn't
+/// include anoint-exclusive notables that aren't on the main graph; once
+/// backfilled they should be consumable via granting by name (the
+/// `Allocates <name>` enchant → GrantedPassive, CalcSetup.lua:1322-1331).
 #[test]
 fn anoint_pool_notables_backfilled_off_graph() {
     let nodes = game_data().passive_nodes().unwrap();
-    // 代表节点：Paragon（20686，gemling『Allocates Paragon』项链 enchant 目标）。
+    // A representative node: Paragon (20686, the target of the gemling
+    // "Allocates Paragon" amulet enchant).
     let paragon = nodes
         .iter()
         .find(|n| n.skill == 20686)
         .expect("油涂池节点 Paragon(20686) 应在库");
     assert_eq!(paragon.kind, PassiveNodeKind::Notable);
     assert_eq!(paragon.name.as_deref(), Some("Paragon"));
-    // 新数据的词条带 `[Quality]` 内部标注，匹配放宽为两段子串。
+    // The new data's mod line carries an internal `[Quality]` annotation,
+    // so the match is relaxed to two separate substrings.
     assert!(
         paragon
             .stats
@@ -129,7 +135,8 @@ fn anoint_pool_notables_backfilled_off_graph() {
         "Paragon 应携带品质词条，实得 {:?}",
         paragon.stats
     );
-    // 油涂池节点不在主图：无连线、无坐标（不参与树拓扑/寻路）。
+    // An anointment-pool node isn't on the main graph: no connections, no
+    // coordinates (doesn't participate in tree topology/pathfinding).
     assert!(paragon.connections.is_empty());
     assert!(paragon.x.is_none() && paragon.y.is_none());
 }

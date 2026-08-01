@@ -1,6 +1,8 @@
-//! 数据加载：角色常量 / 游戏常量 / 配置项 / stat set 入库。
+//! Data loading: character constants / game constants / config options /
+//! stat set storage.
 //!
-//! 聚合二进制：原独立测试文件合并为子模块（26→4），减少链接二进制数以加速构建。
+//! An aggregated binary: formerly-separate test files merged into
+//! submodules (26→4), reducing the number of linked binaries to speed up builds.
 #![allow(clippy::all)]
 
 #[path = "core/full_stat_ingestion.rs"]

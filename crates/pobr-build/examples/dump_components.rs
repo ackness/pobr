@@ -1,9 +1,11 @@
-//! parity 调试工具：按 demo build 名 dump PoBR 侧 damage_components 逐分量分解
-//! （min/max/avg/type_path），与 `tools/pob2-oracle` 的 vendor 侧
-//! `<Type>Stored{Hit,Crit}{Min,Max}` / `<Type>SummedBase` 对照定位逐类型偏差
-//! （deadeye gain-as fallback 根因即由此钉出）。harness 同口径
-//! （Pinnacle / enemy_level 0 / effective）。
-//! 用法: cargo run -p pobr-build --example dump_components [build-dir-name]
+//! Parity debugging tool: dumps the per-component breakdown of PoBR's
+//! damage_components (min/max/avg/type_path) for a given demo build, to be
+//! compared against `tools/pob2-oracle`'s vendor-side
+//! `<Type>Stored{Hit,Crit}{Min,Max}` / `<Type>SummedBase` for locating
+//! per-type deviations (this is how the deadeye gain-as fallback root cause
+//! was pinned down). Uses the same harness settings as elsewhere
+//! (Pinnacle / enemy_level 0 / effective).
+//! Usage: cargo run -p pobr-build --example dump_components [build-dir-name]
 
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::MinimalInput;
@@ -42,8 +44,8 @@ fn main() {
         out.action_rate,
         out.hit_chance
     );
-    // POBR_DUMP_DEFENCE=1：附加防御/EHP 池分解（与 oracle mainOutput 的
-    // <Type>TotalHitPool / LifeRecoverable / MaximumHitTaken 族对照）。
+    // POBR_DUMP_DEFENCE=1: adds a defence/EHP pool breakdown (compare against
+    // oracle mainOutput's <Type>TotalHitPool / LifeRecoverable / MaximumHitTaken family).
     if std::env::var("POBR_DUMP_DEFENCE").is_ok() {
         println!(
             "  life={:.2} life_unres={:.2} life_recoverable={:.2} es={:.2} es_cap={:.2} ward={:.2} mana={:.2} mana_unres={:.2}",

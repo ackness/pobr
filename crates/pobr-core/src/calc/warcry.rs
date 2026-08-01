@@ -1,42 +1,50 @@
-//! Warcry uptime 机器（存量 #9）：非主技能的 warcry 按「賦能攻擊次數 / 主技能出手
-//! 速率 / (冷却 + 喊叫时间)」折算 uptime，再把 warcry 的进攻性效果按 uptime 缩放
-//! 注入主技能聚合。
+//! Warcry uptime engine (backlog item #9): a non-main-skill warcry's uptime
+//! is folded from "empowered attack count / main skill's action rate /
+//! (cooldown + cast time)", and the warcry's offensive effect is then
+//! injected into the main skill's aggregation, scaled by that uptime.
 //!
-//! 逐段对照 vendor：
-//! - **WarcryPower / 賦能次数**：`CalcPerform.lua:2116-2142`（Warcry buff 分支）——
-//!   `warcryPower = Override("WarcryPower") or max(Sum(BASE)×(1+Sum(INC)/100),
-//!   Sum(BASE,"MinimumWarcryPower"))`（:2120）；`baseEmpowers =
-//!   floor(min(power, Sum("WarcryPowerCap")) / Sum("WarcryPowerPer"))`（:2121-2123）
-//!   `+ Sum("<Name>EmpoweredAttacks")`（:2125）；`totalEmpowers =
-//!   (base + Sum("ExtraEmpoweredAttacks")) × More("ExtraEmpoweredAttacks")`
-//!   （:2127-2129）→ 发布 `Num<Name>Empowers`（:2130）。
-//! - **冷却**：`calcSkillCooldown`（CalcOffence.lua:325-348）——`cooldown =
-//!   Override("CooldownRecovery") or (skillData.cooldown + Sum(BASE)) /
-//!   max(0, (1+Sum(INC)/100)×More)`，storedUses ≤ 1 且无 AdditionalCooldownUses
-//!   时向上取整到服务器帧（:338-346）。
-//! - **喊叫时间**：`calcWarcryCastTime`（CalcOffence.lua:350-359）——
+//! Line-by-line mirror of vendor:
+//! - **WarcryPower / empowered attack count**: `CalcPerform.lua:2116-2142`
+//!   (the Warcry buff branch) — `warcryPower = Override("WarcryPower") or
+//!   max(Sum(BASE)×(1+Sum(INC)/100), Sum(BASE,"MinimumWarcryPower"))` (:2120);
+//!   `baseEmpowers = floor(min(power, Sum("WarcryPowerCap")) /
+//!   Sum("WarcryPowerPer"))` (:2121-2123) `+ Sum("<Name>EmpoweredAttacks")`
+//!   (:2125); `totalEmpowers = (base + Sum("ExtraEmpoweredAttacks")) ×
+//!   More("ExtraEmpoweredAttacks")` (:2127-2129) → published as
+//!   `Num<Name>Empowers` (:2130).
+//! - **Cooldown**: `calcSkillCooldown` (CalcOffence.lua:325-348) —
+//!   `cooldown = Override("CooldownRecovery") or (skillData.cooldown +
+//!   Sum(BASE)) / max(0, (1+Sum(INC)/100)×More)`, rounded up to the server
+//!   tick when storedUses ≤ 1 and there's no AdditionalCooldownUses (:338-346).
+//! - **Cast time**: `calcWarcryCastTime` (CalcOffence.lua:350-359) —
 //!   `1 / min((1/Sum(BASE,"WarcryCastTime")) × mod("WarcrySpeed") ×
-//!   actionSpeedMod, ServerTickRate)`；`InstantWarcry` flag → 0。
-//! - **uptime**：CalcOffence.lua:3229-3237（Infernal 分支，Ancestral/Intimidating/
-//!   Rallying 同构）——`baseUptimeRatio = min((NumEmpowers / Speed) /
-//!   (cooldown + castTime), 1) × 100`；`UptimeRatio = min(100, baseUptimeRatio ×
-//!   storedUses)`。注：vendor `:3236` 的 `storedUses or 0 + Sum(...)` 受 Lua 优先级
-//!   影响实为 `storedUses or (0 + Sum)`，本实现按意图语义
-//!   `storedUses + Sum("AdditionalCooldownUses")`（与 scaled_damage.rs `:3845`
-//!   笔误处置同一先例；两 fixture 均 storedUses=1、Additional=0，取值相同）。
-//! - **Infernal 消费点**：`CalcPerform.lua:1362-1366` 把 warcry skillModList 的
-//!   `InfernalExtraFireDamageMultiplier` 发布为玩家 `InfernalExtraFireDamage`；
-//!   `CalcOffence.lua:3251-3254` 注入 `DamageGainAsFire BASE gain×uptime/100`
-//!   （ModFlag.Melee，source "Uptime Scaled Infernal Cry"）。本实现把两步折叠：
-//!   直接从 spec 的 skill-local mods（+玩家 db）求和后按 uptime 注入。
+//!   actionSpeedMod, ServerTickRate)`; the `InstantWarcry` flag forces it to 0.
+//! - **uptime**: CalcOffence.lua:3229-3237 (Infernal's branch;
+//!   Ancestral/Intimidating/Rallying mirror the same structure) —
+//!   `baseUptimeRatio = min((NumEmpowers / Speed) / (cooldown + castTime), 1)
+//!   × 100`; `UptimeRatio = min(100, baseUptimeRatio × storedUses)`. Note:
+//!   vendor `:3236`'s `storedUses or 0 + Sum(...)` is, due to Lua operator
+//!   precedence, actually `storedUses or (0 + Sum)`; this implementation
+//!   follows the apparent intended semantics
+//!   `storedUses + Sum("AdditionalCooldownUses")` (the same precedent as the
+//!   typo handling at scaled_damage.rs `:3845`; both fixtures have
+//!   storedUses=1, Additional=0, so the value comes out the same either way).
+//! - **Infernal consumption point**: `CalcPerform.lua:1362-1366` publishes
+//!   the warcry skillModList's `InfernalExtraFireDamageMultiplier` as the
+//!   player's `InfernalExtraFireDamage`; `CalcOffence.lua:3251-3254` injects
+//!   `DamageGainAsFire BASE gain×uptime/100` (ModFlag.Melee, source "Uptime
+//!   Scaled Infernal Cry"). This implementation folds both steps together:
+//!   sums directly from the spec's skill-local mods (plus the player db) and
+//!   injects scaled by uptime.
 //!
-//! 门控（vendor CalcOffence.lua:3203-3205/:3229）：`env.mode_buffs`；主技能非
-//! NeverExertable/Triggered/OtherThingUsesSkill/Retaliation；Infernal 消费点要求
-//! 主技能带 SkillType.Melee。
+//! Gating (vendor CalcOffence.lua:3203-3205/:3229): `env.mode_buffs`; main
+//! skill must not be NeverExertable/Triggered/OtherThingUsesSkill/Retaliation;
+//! the Infernal consumption point requires the main skill to carry SkillType.Melee.
 //!
-//! ponytail: 本模块当前只接 Infernal 的 DamageGainAsFire 消费点（fixture 中唯一
-//! 消费者）；Intimidating/Rallying/Seismic 的 exert 伤害乘区（OffensiveWarcryEffect
-//! 族）待有消费 build 时按同一 spec/uptime 底座补。
+//! ponytail: this module currently only wires up Infernal's DamageGainAsFire
+//! consumption point (the only consumer in the fixtures); the exert damage
+//! multipliers for Intimidating/Rallying/Seismic (the OffensiveWarcryEffect
+//! family) can be added on the same spec/uptime foundation once a build consumes them.
 
 use pobr_data::prelude::*;
 use pobr_data::skill::SkillTypes;
@@ -46,32 +54,36 @@ use crate::{CalcConfig, ModDb, Modifier};
 use super::env::Env;
 use super::offence::MinimalInput;
 
-/// 一个 warcry 主动技能的注入规格（编排层 `warcry_skill_specs` 构造，
-/// `session::add_warcry_skill` 写入 `Env::warcry_skills`）。
+/// Injection spec for one warcry active skill (built by the orchestration
+/// layer's `warcry_skill_specs`, written into `Env::warcry_skills` via
+/// `session::add_warcry_skill`).
 #[derive(Debug, Clone)]
 pub struct WarcrySpec {
-    /// warcry 键名（vendor `buff.name:gsub(" Cry",""):gsub("'s",""):gsub(" ","")`，
-    /// CalcPerform.lua:2124——"Infernal Cry" → `Infernal`；`<Name>EmpoweredAttacks`
-    /// 求和键用）。
+    /// The warcry key name (vendor
+    /// `buff.name:gsub(" Cry",""):gsub("'s",""):gsub(" ","")`,
+    /// CalcPerform.lua:2124 — "Infernal Cry" → `Infernal`; used as the key
+    /// for summing `<Name>EmpoweredAttacks`).
     pub name: String,
-    /// 授予效果 id（去重 + 归因）。
+    /// Granted effect id (used for deduplication + attribution).
     pub skill_id: String,
-    /// 技能基础冷却（秒，granted_effect_levels `cooldown_ms`；vendor
-    /// `skillData.cooldown`）。
+    /// Skill's base cooldown (seconds, from granted_effect_levels
+    /// `cooldown_ms`; vendor `skillData.cooldown`).
     pub cooldown_base_s: f64,
-    /// `skillData.storedUses`（granted_effect_levels `stored_uses`，缺省 1）。
+    /// `skillData.storedUses` (from granted_effect_levels `stored_uses`, defaults to 1).
     pub stored_uses: f64,
-    /// warcry 技能自身的类型位（skill-local/全局词条按 warcry 域匹配用——
-    /// 对位 vendor 的 per-skill `skillCfg`）。
+    /// The warcry skill's own type bits (used to match skill-local/global
+    /// mods against the warcry domain — corresponds to vendor's per-skill `skillCfg`).
     pub skill_types: SkillTypes,
-    /// skill-local mod 列表 = 自身 statmap 产物（WarcryPowerPer/Cap、
-    /// InfernalExtraFireDamageMultiplier 等）+ 组内兼容 support 载荷
-    /// （如 Cooldown Recovery II 的 CooldownRecovery INC 30）+
-    /// `WarcryCastTime BASE`（效果 cast_time，对位 vendor skillModList "Base" 条）。
+    /// Skill-local mod list = the skill's own statmap output
+    /// (WarcryPowerPer/Cap, InfernalExtraFireDamageMultiplier, etc.) plus
+    /// compatible support payloads within the group (e.g. Cooldown Recovery
+    /// II's CooldownRecovery INC 30) plus `WarcryCastTime BASE` (the
+    /// effect's cast_time, corresponding to vendor's skillModList "Base" entry).
     pub mods: Vec<Modifier>,
 }
 
-/// spec-local 求和（vendor skillModList 的 local 段；global 段由玩家 db 单独求和后相加）。
+/// Spec-local sum (vendor skillModList's local section; the global section
+/// is summed separately from the player db and added on).
 fn local_sum(mods: &[Modifier], cfg: &CalcConfig, mod_type: ModType, name: &str) -> f64 {
     mods.iter()
         .filter(|m| m.mod_type == mod_type && m.name.as_str() == name && m.matches(cfg))
@@ -79,7 +91,7 @@ fn local_sum(mods: &[Modifier], cfg: &CalcConfig, mod_type: ModType, name: &str)
         .sum()
 }
 
-/// spec-local MORE 连乘（`Π(1+v/100)`）。
+/// Spec-local MORE product (`Π(1+v/100)`).
 fn local_more(mods: &[Modifier], cfg: &CalcConfig, name: &str) -> f64 {
     mods.iter()
         .filter(|m| m.mod_type == ModType::More && m.name.as_str() == name && m.matches(cfg))
@@ -87,7 +99,7 @@ fn local_more(mods: &[Modifier], cfg: &CalcConfig, name: &str) -> f64 {
         .fold(1.0, |acc, v| acc * (1.0 + v / 100.0))
 }
 
-/// skill-local + 玩家 db 的合并 BASE/INC 求和（vendor skillModList 链上溯 modDB）。
+/// Combined BASE/INC sum across skill-local mods and the player db (vendor skillModList chains up to modDB).
 fn scoped_sum(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig, ty: ModType, name: &str) -> f64 {
     db.sum(ty, cfg, &[ModName::from(name)]) + local_sum(&spec.mods, cfg, ty, name)
 }
@@ -96,11 +108,12 @@ fn scoped_more(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig, name: &str) -> f
     db.more(cfg, &[ModName::from(name)]) * local_more(&spec.mods, cfg, name)
 }
 
-/// 賦能攻擊次数（`Num<Name>Empowers`，CalcPerform.lua:2116-2130）。
+/// Empowered attack count (`Num<Name>Empowers`, CalcPerform.lua:2116-2130).
 fn total_empowers(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig) -> f64 {
-    // :2120 —— WarcryPower：config OVERRIDE（multiplierWarcryPower）优先，否则
-    // BASE×(1+INC/100) 与 MinimumWarcryPower 取大（BASE 20 来自敌人档位预设
-    // player_mods，Boss/Pinnacle/Uber 共通，ConfigOptions.lua:2007）。
+    // :2120 -- WarcryPower: config OVERRIDE (multiplierWarcryPower) takes
+    // priority, otherwise the max of BASE×(1+INC/100) and MinimumWarcryPower
+    // (BASE 20 comes from the enemy preset's player_mods, shared across
+    // Boss/Pinnacle/Uber, ConfigOptions.lua:2007).
     let warcry_power = db
         .override_(cfg, ModName::from("WarcryPower"))
         .unwrap_or_else(|| {
@@ -109,7 +122,7 @@ fn total_empowers(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig) -> f64 {
             let min = db.sum(ModType::Base, cfg, &[ModName::from("MinimumWarcryPower")]);
             (base * (1.0 + inc / 100.0)).max(min)
         });
-    // :2121-2123 —— per/cap 是 skillModList 侧 stat（Infernal 常量 stat 10/50）。
+    // :2121-2123 -- per/cap are skillModList-side stats (Infernal's constant stat 10/50).
     let power_cap = scoped_sum(db, spec, cfg, ModType::Base, "WarcryPowerCap");
     let power_per = scoped_sum(db, spec, cfg, ModType::Base, "WarcryPowerPer");
     let mut base_empowers = if power_per > 0.0 {
@@ -117,7 +130,7 @@ fn total_empowers(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig) -> f64 {
     } else {
         0.0
     };
-    // :2125 —— `<Name>EmpoweredAttacks`（主技能 cfg 求和；fixture 无来源，恒 0）。
+    // :2125 -- `<Name>EmpoweredAttacks` (summed against the main skill cfg; no fixture source, always 0).
     base_empowers += scoped_sum(
         db,
         spec,
@@ -126,17 +139,17 @@ fn total_empowers(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig) -> f64 {
         &format!("{}EmpoweredAttacks", spec.name),
     );
     if base_empowers <= 0.0 {
-        // :2126 —— base 为 0 时 vendor 不发布 Num<Name>Empowers（Sum 取 0）。
+        // :2126 -- vendor doesn't publish Num<Name>Empowers when base is 0 (Sum reads 0).
         return 0.0;
     }
-    // :2127-2129。
+    // :2127-2129.
     let extra = scoped_sum(db, spec, cfg, ModType::Base, "ExtraEmpoweredAttacks");
     let mult = scoped_more(db, spec, cfg, "ExtraEmpoweredAttacks");
     (base_empowers + extra) * mult
 }
 
-/// `calcSkillCooldown`（CalcOffence.lua:325-348）的 warcry 取值路径。
-/// 未建模：Temporalis 冷却注入（:328/:332-337）——fixture 无来源。
+/// The warcry-specific value path for `calcSkillCooldown` (CalcOffence.lua:325-348).
+/// Not modeled: Temporalis cooldown injection (:328/:332-337) -- no fixture source.
 fn actual_cooldown(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig, tick_s: f64) -> f64 {
     let name = "CooldownRecovery";
     let added = scoped_sum(db, spec, cfg, ModType::Base, name);
@@ -147,7 +160,7 @@ fn actual_cooldown(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig, tick_s: f64)
         Some(v) => v,
         None => base / recovery.max(0.0),
     };
-    // :338-346 —— 可存多次使用时不取整到服务器帧。
+    // :338-346 -- not rounded to the server tick when multiple stored uses are possible.
     let extra_uses = scoped_sum(db, spec, cfg, ModType::Base, "AdditionalCooldownUses");
     if spec.stored_uses > 1.0 || extra_uses > 0.0 {
         cooldown
@@ -156,24 +169,26 @@ fn actual_cooldown(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig, tick_s: f64)
     }
 }
 
-/// `calcWarcryCastTime`（CalcOffence.lua:350-359）。
-/// 未建模：`SupportedByAutoexertion`（:355 后半）——fixture 无来源。
+/// `calcWarcryCastTime` (CalcOffence.lua:350-359).
+/// Not modeled: `SupportedByAutoexertion` (:355 second half) -- no fixture source.
 fn warcry_cast_time(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig, tick_s: f64) -> f64 {
     if db.flag(cfg, ModName::from("InstantWarcry")) {
         return 0.0;
     }
     let base = scoped_sum(db, spec, cfg, ModType::Base, "WarcryCastTime");
     if base <= 0.0 {
-        return 0.0; // 无 cast time 数据（防御：除零）。
+        return 0.0; // No cast time data (defensive: avoid a division by zero).
     }
-    // 只求和 "WarcrySpeed"（:352）。「N% increased Skill Speed」文本在 parser 侧
-    // 扇出成 {SkillSpeed, WarcrySpeed, TotemPlacementSpeed}（vendor ModParser.lua:770
-    // 同构；extract_parser_rules 的 curated 覆盖，存量 #9 起对齐），statmap 的
-    // `skill_speed_+%` 条目与 mageblood.rs 的手工扇出本就双名——三通道口径一致，
-    // 此处单名求和无双计。
+    // Only sums "WarcrySpeed" (:352). The text "N% increased Skill Speed" is
+    // fanned out on the parser side into {SkillSpeed, WarcrySpeed,
+    // TotemPlacementSpeed} (mirrors vendor ModParser.lua:770; a curated
+    // override in extract_parser_rules, aligned since backlog item #9), and
+    // the statmap's `skill_speed_+%` entry already shares this dual naming
+    // with mageblood.rs's manual fan-out -- all three channels agree, so
+    // summing a single name here doesn't double-count.
     let speed_mod = (1.0 + scoped_sum(db, spec, cfg, ModType::Inc, "WarcrySpeed") / 100.0)
         * scoped_more(db, spec, cfg, "WarcrySpeed");
-    // vendor calcs.actionSpeedMod(actor)：与 offence 主链同名 ActionSpeed 乘区。
+    // vendor calcs.actionSpeedMod(actor): the same ActionSpeed factor used in the offence main chain.
     let action_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
     let action_speed =
         (1.0 + db.sum(ModType::Inc, cfg, &action_names) / 100.0) * db.more(cfg, &action_names);
@@ -181,7 +196,7 @@ fn warcry_cast_time(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig, tick_s: f64
     1.0 / rate
 }
 
-/// 单个 warcry 的 uptime（百分比 0..=100，CalcOffence.lua:3231-3237）。
+/// A single warcry's uptime (percentage 0..=100, CalcOffence.lua:3231-3237).
 fn uptime_ratio(
     db: &ModDb,
     spec: &WarcrySpec,
@@ -192,8 +207,9 @@ fn uptime_ratio(
     if speed <= 0.0 {
         return 0.0;
     }
-    // 賦能次数按主技能 cfg 求和（vendor :2125/:3234 读 env.player.mainSkill.skillCfg /
-    // env.modDB）；per/cap 等 skill-local 常量不带条件，两 cfg 等价。
+    // Empowered attack count is summed against the main skill cfg (vendor
+    // :2125/:3234 reads env.player.mainSkill.skillCfg / env.modDB); skill-local
+    // constants like per/cap carry no conditions, so both cfgs are equivalent here.
     let empowers = total_empowers(db, spec, main_cfg);
     let tick_s = main_cfg.constants.game().server_tick_seconds;
     let cooldown = actual_cooldown(db, spec, scope_cfg, tick_s);
@@ -202,28 +218,30 @@ fn uptime_ratio(
         return 0.0;
     }
     let base_ratio = ((empowers / speed) / (cooldown + cast_time)).min(1.0) * 100.0;
-    // :3236 —— storedUses 意图语义（模块 doc 的 Lua 优先级说明）。
+    // :3236 -- storedUses's intended semantics (see the module doc's note on Lua operator precedence).
     let stored =
         spec.stored_uses + scoped_sum(db, spec, scope_cfg, ModType::Base, "AdditionalCooldownUses");
     (base_ratio * stored).min(100.0)
 }
 
-/// perform 阶段入口：主技能 hand pass 之前调用，把 uptime 缩放后的 warcry 进攻
-/// 效果注入玩家 db（vendor 在 CalcOffence 伤害段之前写 skillModList，注入后
-/// 击中与其派生 DoT（点燃）同吃该增益——smith dot 缺口 = 命中比平方的根源）。
+/// Perform-stage entry point: called before the main skill's hand pass,
+/// injects the uptime-scaled warcry offensive effect into the player db
+/// (vendor writes into skillModList before the CalcOffence damage section,
+/// so after injection both the hit and its derived DoT (ignite) pick up this
+/// gain -- this is the root cause of the smith dot gap being a squared miss ratio).
 ///
-/// 幂等：`env.warcry_gain_injected` 防重复注入（vendor 以 `InfernalActive` flag
-/// 防重，CalcPerform.lua:1365）。
+/// Idempotent: `env.warcry_gain_injected` guards against re-injection
+/// (vendor uses the `InfernalActive` flag for the same purpose, CalcPerform.lua:1365).
 pub fn apply_warcry_uptime(env: &mut Env) {
     if env.warcry_skills.is_empty() || env.warcry_gain_injected {
         return;
     }
-    // vendor CalcOffence.lua:3203 `if env.mode_buffs`。
+    // vendor CalcOffence.lua:3203 `if env.mode_buffs`.
     if !env.cfg.mode_buffs {
         return;
     }
-    // :3205 —— 主技能可被赋能（NeverExertable/Triggered/OtherThingUsesSkill/
-    // Retaliation 之外）。
+    // :3205 -- main skill must be exertable (not
+    // NeverExertable/Triggered/OtherThingUsesSkill/Retaliation).
     let excluded = [
         "NeverExertable",
         "Triggered",
@@ -236,8 +254,10 @@ pub fn apply_warcry_uptime(env: &mut Env) {
     if env.cfg.skill_types.intersects(excluded) {
         return;
     }
-    // 主技能 Speed（vendor globalOutput.Speed，:3235）：与 hand pass 主手域逐位
-    // 一致地解析（双持时 vendor 逐 pass 计算 uptime——此处取主手，见 hand_scope doc）。
+    // Main skill's Speed (vendor globalOutput.Speed, :3235): resolved
+    // identically to the hand pass's main-hand scope (vendor computes uptime
+    // per-pass when dual wielding -- this takes the main hand, see the
+    // hand_scope docs).
     let input = MinimalInput::from(env.player.base);
     let speed = match env
         .hand_sources
@@ -255,8 +275,10 @@ pub fn apply_warcry_uptime(env: &mut Env) {
     let dbg = dbg_env!("POBR_DBG_WARCRY").is_some();
     let mut gain_mods: Vec<Modifier> = Vec::new();
     for spec in &env.warcry_skills {
-        // per-skill scope cfg（vendor skillCfg）：warcry 自身类型位；flags/keyword
-        // 清空（warcry 非攻击/法术，主技能的武器位不外溢到冷却/喊叫速度求和）。
+        // Per-skill scope cfg (vendor skillCfg): the warcry's own type bits;
+        // flags/keywords cleared (a warcry is neither an attack nor a spell,
+        // so the main skill's weapon bits must not leak into the
+        // cooldown/cast-speed sums).
         let scope_cfg = env
             .cfg
             .clone()
@@ -291,7 +313,7 @@ pub fn apply_warcry_uptime(env: &mut Env) {
             }
         }
 
-        // Infernal 消费点（CalcOffence.lua:3229/:3251-3254）：主技能须带 Melee。
+        // Infernal consumption point (CalcOffence.lua:3229/:3251-3254): main skill must carry Melee.
         let gain = scoped_sum(
             &env.player.mod_db,
             spec,
@@ -300,7 +322,7 @@ pub fn apply_warcry_uptime(env: &mut Env) {
             "InfernalExtraFireDamageMultiplier",
         );
         if gain > 0.0 && env.cfg.skill_types.intersects(SkillTypes::MELEE) {
-            // :3253 —— `Condition:WarcryMaxHit`（config）时按满 uptime。
+            // :3253 -- uses full uptime when `Condition:WarcryMaxHit` (config) is set.
             let uptime_used = if env
                 .player
                 .mod_db
@@ -338,11 +360,11 @@ pub fn apply_warcry_uptime(env: &mut Env) {
 
 #[cfg(test)]
 mod tests {
-    //! smith-of-kitava oracle 钉值链（tools/pob2-oracle，2026-07-17 复跑）：
-    //! WarcryPower 20（Boss preset）→ empowers floor(min(20,50)/10)=2；
-    //! cooldown 8/(1+(30-12+10)/100)=6.25 → 帧取整 6.27；castTime
-    //! 1/((1/0.8)×1.47×1)=0.544218；Speed 1.512 →
-    //! uptime (2/1.512)/6.814218=19.4116%；gain 62 → DamageGainAsFire 12.0352。
+    //! smith-of-kitava oracle-pinned value chain (tools/pob2-oracle, re-run
+    //! 2026-07-17): WarcryPower 20 (Boss preset) → empowers
+    //! floor(min(20,50)/10)=2; cooldown 8/(1+(30-12+10)/100)=6.25 → rounded
+    //! to tick 6.27; castTime 1/((1/0.8)×1.47×1)=0.544218; Speed 1.512 →
+    //! uptime (2/1.512)/6.814218=19.4116%; gain 62 → DamageGainAsFire 12.0352.
 
     use super::*;
     use crate::CalcConfig;
@@ -359,7 +381,7 @@ mod tests {
                 Modifier::number("WarcryPowerPer", ModType::Base, 10.0),
                 Modifier::number("WarcryPowerCap", ModType::Base, 50.0),
                 Modifier::number("InfernalExtraFireDamageMultiplier", ModType::Base, 62.0),
-                // Cooldown Recovery II support 载荷。
+                // Cooldown Recovery II support payload.
                 Modifier::number("CooldownRecovery", ModType::Inc, 30.0),
             ],
         }
@@ -371,7 +393,7 @@ mod tests {
             Modifier::number("WarcryPower", ModType::Base, 20.0).with_source("Boss"),
             Modifier::number("CooldownRecovery", ModType::Inc, -12.0).with_source("Quest"),
             Modifier::number("CooldownRecovery", ModType::Inc, 10.0).with_source("Rune"),
-            // Mageblood 30 + 树上「Skill Speed」小点 17（parser 扇出成 WarcrySpeed）。
+            // Mageblood 30 + 17 from a tree "Skill Speed" small node (fanned out by the parser into WarcrySpeed).
             Modifier::number("WarcrySpeed", ModType::Inc, 47.0),
         ]);
         db

@@ -1,49 +1,62 @@
-//! vendor PoB2 ModName → PoBR canonical StatId 别名表 schema
-//! （`overlay/vendor_name_aliases.json`，`vendor_name_aliases/v1`）。
+//! Schema for the vendor PoB2 ModName → PoBR canonical StatId alias table
+//! (`overlay/vendor_name_aliases.json`, `vendor_name_aliases/v1`).
 //!
-//! .3 切换前置**数据资产**（见
-//! `audits/rearchitecture-2026-06-10/blueprints/m6-switch-decision.md`）。
+//! An M6 switchover prerequisite **data asset** (see
+//! `audits/rearchitecture-2026-06-10/blueprints/m6-switch-decision.md`).
 //!
-//! 背景：legacy 手写 parser 产 **PoBR
-//! 自有词表**（`MaximumLife`/`Strength`/`ColdResistance`…），新引擎按
-//! 忠实落 **vendor PoB2 词表**（`Life`/`Str`/`ColdResist`…），全部下游消费 PoBR
-//! 词表。本表用一张 `vendor_name → pobr_stat_id` 别名把两侧词表桥接起来，自举来源
-//! = legacy `parse_name` 短语映射 ∩ engine `name_map`（同一触发短语对齐）。
+//! Background: the legacy hand-written parser produces **PoBR's own
+//! vocabulary** (`MaximumLife`/`Strength`/`ColdResistance`…), while the new
+//! engine faithfully stores **vendor PoB2's vocabulary**
+//! (`Life`/`Str`/`ColdResist`…), and every downstream consumer expects
+//! PoBR's vocabulary. This table bridges the two vocabularies with a single
+//! `vendor_name → pobr_stat_id` alias map, bootstrapped from the
+//! intersection of the legacy `parse_name` phrase mapping and the engine's
+//! `name_map` (aligned by the phrase that triggers both).
 //!
-//! **零消费纪律**：本模块仅定义 serde 形状（往返单测兜底），**不被任何 calc /
-//! loader / parser 路径消费**。A/B 两条切换路线（决策文档 §两条路）的接线点见
-//! `m6-alias-table.md`，由 owner 定夺后于 D-T8 接入。届时本表用在「运行期翻译」
-//! (A) 或「抽取期归一」(B)，schema 不变。
+//! **Zero-consumer discipline**: this module only defines the serde shape
+//! (with round-trip unit tests as a safety net) — it's **not consumed by
+//! any calc / loader / parser path**. The wiring point for the two
+//! switchover routes (A/B, see the decision doc's "two routes" section) is
+//! in `m6-alias-table.md`, to be wired in at D-T8 once the owner decides.
+//! At that point this table will serve either "runtime translation" (A) or
+//! "extraction-time normalization" (B) — the schema doesn't change either way.
 //!
-//! 消费侧视角：serde 默认忽略顶层 `_meta` 与 `structural_deferrals`（生成溯源 /
-//! 结构性分歧登记，备查不入计算，与既有 overlay schema 同款）。本模块零逻辑、
-//! 零 I/O；新字段 `#[serde(default)]`。
+//! From the consumer's perspective: serde ignores the top-level `_meta` and
+//! `structural_deferrals` by default (provenance info / a log of structural
+//! disagreements, kept for reference but not consumed by calc — the same
+//! convention as the existing overlay schemas). This module has zero
+//! logic, zero I/O; new fields use `#[serde(default)]`.
 
 use serde::{Deserialize, Serialize};
 
-/// schema 标识（`_meta.schema` 期望值）。
+/// Schema identifier (the expected value of `_meta.schema`).
 pub const VENDOR_NAME_ALIASES_SCHEMA: &str = "vendor_name_aliases/v1";
 
-/// 别名表顶层文档（`overlay/vendor_name_aliases.json`）。
+/// Top-level document for the alias table (`overlay/vendor_name_aliases.json`).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct VendorNameAliasesDoc {
-    /// vendor → PoBR 别名条目（自举 + 人工核对）。
+    /// vendor → PoBR alias entries (bootstrapped, plus manual review).
     #[serde(default)]
     pub aliases: Vec<VendorNameAliasDef>,
 }
 
-/// 单条 vendor → PoBR 别名。
+/// A single vendor → PoBR alias.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct VendorNameAliasDef {
-    /// 引擎产出的 vendor PoB2 ModName（如 `Life` / `Str` / `ColdResistMax`）。
+    /// The vendor PoB2 ModName the engine produces (e.g. `Life` / `Str` / `ColdResistMax`).
     pub vendor_name: String,
-    /// 归一目标——PoBR canonical StatId（如 `MaximumLife` / `Strength`）。
+    /// The normalization target — PoBR's canonical StatId (e.g.
+    /// `MaximumLife` / `Strength`).
     pub pobr_stat_id: String,
-    /// 是否同名（`vendor_name == pobr_stat_id`）——identity 别名占多数，
-    /// 真正改名（identity=false）的是切换时下游 miss 的根因子集。
+    /// Whether the names are identical (`vendor_name == pobr_stat_id`) —
+    /// identity aliases are the majority; the entries that actually rename
+    /// something (identity=false) are the subset most likely to cause
+    /// downstream misses during the switchover.
     #[serde(default)]
     pub identity: bool,
-    /// 自举证据：legacy 与 engine 共同识别、产出此对的触发短语（空串 = 人工补录）。
+    /// Bootstrap evidence: the trigger phrase both legacy and the engine
+    /// recognized and produced this pair from (an empty string means
+    /// manually added).
     #[serde(default)]
     pub via_phrase: String,
 }
@@ -52,7 +65,8 @@ pub struct VendorNameAliasDef {
 mod tests {
     use super::*;
 
-    /// serde 往返：顶层文档结构稳定（零消费资产的唯一保障）。
+    /// serde round-trip: the top-level document structure is stable (the
+    /// only safety net for a zero-consumer asset).
     #[test]
     fn doc_roundtrips_through_json() {
         let doc = VendorNameAliasesDoc {
@@ -76,8 +90,9 @@ mod tests {
         assert_eq!(doc, back);
     }
 
-    /// 缺省字段：仅 `aliases` 的精简 JSON 也能反序列化；顶层 `_meta` /
-    /// `structural_deferrals` 被 serde 忽略（不破坏消费侧）。
+    /// Default fields: minimal JSON with only `aliases` still deserializes;
+    /// the top-level `_meta` / `structural_deferrals` are ignored by serde
+    /// (doesn't break the consumer).
     #[test]
     fn minimal_json_deserializes_and_ignores_meta() {
         let json = r#"{

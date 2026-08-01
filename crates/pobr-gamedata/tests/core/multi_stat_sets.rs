@@ -1,8 +1,11 @@
-//! 多 statSet 入库验收：
-//! - IceNova effect 含 ≥2 个**附加** set（`IceNovaPlayerOnFrostbolt` /
-//!   `IceNovaColdInfusedPlayer`，`.dat` `GrantedEffects.AdditionalStatSets` 列）；
-//! - vendor 导出的 set 带非空 label（`overlay/stat_set_labels.json` merge）；
-//! - `GrantedEffectDef::additional_stat_set_ids` 外键与 stat-set 域对齐。
+//! Multi-statSet storage acceptance:
+//! - the IceNova effect has ≥2 **additional** sets
+//!   (`IceNovaPlayerOnFrostbolt` / `IceNovaColdInfusedPlayer`, the `.dat`'s
+//!   `GrantedEffects.AdditionalStatSets` column);
+//! - a vendor-exported set carries a non-empty label (merged from
+//!   `overlay/stat_set_labels.json`);
+//! - `GrantedEffectDef::additional_stat_set_ids`'s foreign key lines up
+//!   with the stat-set domain.
 
 use pobr_gamedata::{GameData, repo_data_root};
 
@@ -18,7 +21,7 @@ fn ice_nova_has_additional_sets_with_labels() {
         .find(|s| s.effect_id == "IceNovaPlayer")
         .expect("IceNovaPlayer present");
 
-    // 主 set + ≥2 附加 set。
+    // The primary set + ≥2 additional sets.
     assert!(
         ice.sets.len() >= 3,
         "IceNova 应含主 set + ≥2 附加 set，实得 {}",
@@ -29,8 +32,9 @@ fn ice_nova_has_additional_sets_with_labels() {
     assert!(set_ids.contains(&"IceNovaPlayerOnFrostbolt"));
     assert!(set_ids.contains(&"IceNovaColdInfusedPlayer"));
 
-    // label 非空（vendor 导出的 set；OnFrostbolt 被 vendor 模板策展跳过 → 无 label，
-    // 忠实转录 PoB2 行为）。
+    // A non-empty label (a vendor-exported set; OnFrostbolt was curated
+    // out by vendor's template → no label, a faithful transcription of
+    // PoB2's behavior).
     assert_eq!(ice.sets[0].label.as_deref(), Some("Ice Nova"));
     assert_eq!(ice.sets[0].vendor_set_index, Some(1));
     let cold = ice
@@ -54,7 +58,8 @@ fn ice_nova_has_additional_sets_with_labels() {
         "vendor 未导出的 set 不可被 statSetIndex 选中"
     );
 
-    // 附加 set 已做 vendor base-merge：常量 = 主 set 常量 ++ 本 set 常量。
+    // An additional set has already gone through vendor's base-merge:
+    // constants = the primary set's constants ++ this set's constants.
     assert!(
         cold.constant_stats.len() >= ice.sets[0].constant_stats.len(),
         "附加 set 常量应含主 set 拼接"

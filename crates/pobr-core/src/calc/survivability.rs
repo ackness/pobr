@@ -1,54 +1,60 @@
-//! 生存性辅助计算（reservation / regen / capped chance / charges / leech / recoup）。
+//! Survivability helper calculations (reservation / regen / capped chance / charges / leech / recoup).
 //!
-//! 资料：`agent-docs/active-defences.md`、`agent-docs/block.md`、
-//! `agent-docs/recovery-charges-buffs.md`（PoE2 0.5.0）。
+//! References: `agent-docs/active-defences.md`, `agent-docs/block.md`,
+//! `agent-docs/recovery-charges-buffs.md` (PoE2 0.5.0).
 //!
-//! - **Reservation**：光环 / 守护按 `Σ flat + 池子 * (Σ % / 100)` 预留，结果钳到 [0, pool]。
-//! - **Regen**：`base_flat + pool * (Σ %regen / 100)`，再吃 inc/more 恢复速率（含 RecoveryRateMod）。
-//! - **Capped chance**：几率类（block）求和后钳到 [0, cap]。
-//! - **Charges**：充能层数/上限解析；PoE2 充能无固有属性，仅供 per-charge 词条乘数引用。
-//! - **Leech**：0.5.0 重制——单资源单实例（取最高速率），三层上限，默认仅物理。
-//! - **Recoup**：承受伤害的一定比例在 8s（或 4s）内返还。
+//! - **Reservation**: auras / guards reserve `Σ flat + pool * (Σ % / 100)`, clamped to [0, pool].
+//! - **Regen**: `base_flat + pool * (Σ %regen / 100)`, then the recovery rate factor (inc/more, including RecoveryRateMod).
+//! - **Capped chance**: chance-based stats (block) are summed then clamped to [0, cap].
+//! - **Charges**: charge count/ceiling resolution; PoE2 charges have no
+//!   inherent stats, they only serve as a reference for per-charge mod multipliers.
+//! - **Leech**: reworked in 0.5.0 -- one instance per resource (takes the
+//!   highest rate), three ceilings, physical only by default.
+//! - **Recoup**: a fraction of damage taken is returned over 8s (or 4s).
 
 use crate::{CalcConfig, ModDb};
 use pobr_data::prelude::*;
 
 use super::round;
 
-// 预留 (Reservation)
+// Reservation
 
-/// 预留结果：预留量 + 剩余可用量。
+/// Reservation result: amount reserved + remaining available.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Reservation {
     pub reserved: f64,
     pub unreserved: f64,
 }
 
-/// 计算池子（life / mana）的预留量。
+/// Calculates the reservation amount for a pool (life / mana).
 ///
-/// `flat` 是固定预留之和，`percent` 是百分比预留之和（如 50 表示 50%）。
-/// 结果钳到 `[0, pool]`，`unreserved = pool - reserved`。
-/// 中性 multiplier/efficiency 的便捷封装（见 [`reservation_with_efficiency`]）。
+/// `flat` is the sum of flat reservations, `percent` is the sum of
+/// percentage reservations (e.g. 50 means 50%). The result is clamped to
+/// `[0, pool]`, `unreserved = pool - reserved`.
+/// A convenience wrapper with neutral multiplier/efficiency (see [`reservation_with_efficiency`]).
 pub fn reservation(pool: f64, flat: f64, percent: f64) -> Reservation {
     reservation_with_efficiency(pool, flat, percent, 1.0, 0.0, 1.0)
 }
 
-/// 预留量计算——含 `ReservationMultiplier` 与 Reservation Efficiency
-/// （13-G11；PoB2 CalcDefence.lua:172-350
-/// `doActorLifeManaSpiritReservation`）。
+/// Reservation calculation including `ReservationMultiplier` and
+/// Reservation Efficiency (13-G11; PoB2 CalcDefence.lua:172-350's
+/// `doActorLifeManaSpiritReservation`).
 ///
-/// vendor 逐技能公式（:249-258）：
+/// Vendor's per-skill formula (`:249-258`):
 /// `reservedFlat = max(round(baseFlat × mult × (100+inc)/100 × more
-/// / (1 + efficiency/100) / efficiencyMore), 0)`，其中
-/// - `mult = floor(More(ReservationMultiplier), 4)`（:197，小数四位向下取整）；
+/// / (1 + efficiency/100) / efficiencyMore), 0)`, where
+/// - `mult = floor(More(ReservationMultiplier), 4)` (`:197`, rounded down to 4 decimal places);
 /// - `efficiency = max(Σinc(<X>ReservationEfficiency, ReservationEfficiency), −100)`
-///   （:240，**除法**语义——效率提高 → 预留变少）；
-/// - `efficiencyMore = More(同名集)`（:241，同为除数）。
+///   (`:240`, **division** semantics -- higher efficiency → less reservation);
+/// - `efficiencyMore = More(the same name set)` (`:241`, also a divisor).
 ///
-/// PoBR 聚合口径（无逐技能粒度时）：`raw = (flat + pool×pct/100) × mult ÷
-/// (1+eff_inc/100) ÷ eff_more`——乘除因子对加总后的预留量整体应用，与 vendor
-/// 「逐技能应用后求和」在因子全局一致时等价。`eff_inc` 在本函数内钳到 −100
-/// 下界（vendor :240）；除数 ≤ 0（efficiency = −100）时预留视为无穷 → 钳到池满。
+/// PoBR's aggregate view (when per-skill granularity isn't available):
+/// `raw = (flat + pool×pct/100) × mult ÷ (1+eff_inc/100) ÷ eff_more` -- the
+/// multiply/divide factors apply to the summed reservation amount as a
+/// whole, equivalent to vendor's "apply per skill then sum" when the
+/// factors are globally consistent. `eff_inc` is floored at −100 within
+/// this function (vendor `:240`); when the divisor ≤ 0 (efficiency = −100),
+/// the reservation is treated as infinite → clamped to the full pool.
 pub fn reservation_with_efficiency(
     pool: f64,
     flat: f64,
@@ -63,14 +69,14 @@ pub fn reservation_with_efficiency(
             unreserved: 0.0,
         };
     }
-    // vendor :197 `floor(more, 4)`（小数四位向下取整）。
+    // vendor :197 `floor(more, 4)` (rounded down to 4 decimal places).
     let mult = (reservation_mult_more * 10_000.0).floor() / 10_000.0;
     let divisor = (1.0 + efficiency_inc.max(-100.0) / 100.0) * efficiency_more;
     let base_raw = (flat + pool * (percent / 100.0)) * mult;
     let raw = if divisor > 0.0 {
         base_raw / divisor
     } else if base_raw > 0.0 {
-        // efficiency −100%：除数归零 → 预留发散，钳到池满。
+        // efficiency −100%: the divisor hits zero → reservation diverges, clamped to the full pool.
         pool
     } else {
         0.0
@@ -82,25 +88,28 @@ pub fn reservation_with_efficiency(
     }
 }
 
-// 再生 (Regeneration)
+// Regeneration
 
-/// 计算每秒恢复（regen）。
+/// Calculates per-second regen.
 ///
-/// `base_flat` 是固定每秒恢复之和，`percent` 是按池子百分比恢复之和，
-/// `inc` / `more` 为恢复速率增益（% 加法 + more 连乘）。
+/// `base_flat` is the sum of flat per-second recovery, `percent` is the sum
+/// of pool-percentage recovery, `inc` / `more` are the recovery rate bonus
+/// (% addition + more product).
 pub fn regen(pool: f64, base_flat: f64, percent: f64, inc: f64, more: f64) -> f64 {
     let base = base_flat + pool * (percent / 100.0);
     round(base * (1.0 + inc / 100.0) * more)
 }
 
-/// 计算每秒恢复（regen），含 `RecoveryRateMod` 全局恢复速率乘数。
+/// Calculates per-second regen, including the `RecoveryRateMod` global recovery rate multiplier.
 ///
-/// PoB2 `CalcDefence.lua`：`regen × RecoveryRateMod`（三类资源各有独立的 `XRecoveryRate`，
-/// 其 inc/more 已并入 `regen` 的 inc/more 参数；此处额外乘外部传入的 `recovery_rate_mod`，
-/// 对应 `output.LifeRecoveryRateMod` / `ManaRecoveryRateMod` / `EnergyShieldRecoveryRateMod`）。
+/// PoB2 `CalcDefence.lua`: `regen × RecoveryRateMod` (each of the three
+/// resources has its own `XRecoveryRate`, whose inc/more are already folded
+/// into `regen`'s inc/more parameters; this additionally multiplies by the
+/// externally-passed `recovery_rate_mod`, corresponding to
+/// `output.LifeRecoveryRateMod` / `ManaRecoveryRateMod` / `EnergyShieldRecoveryRateMod`).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §2.1；
-///       PoB2 `src/Modules/CalcDefence.lua` 再生段。
+/// Source: agent-docs/recovery-charges-buffs.md §2.1;
+///       PoB2 `src/Modules/CalcDefence.lua`'s regen section.
 pub fn regen_with_rate(
     pool: f64,
     base_flat: f64,
@@ -113,14 +122,15 @@ pub fn regen_with_rate(
     round(base_regen * recovery_rate_mod.max(0.0))
 }
 
-/// 从 ModDb 中查询并计算某资源的每秒再生速率。
+/// Queries and calculates a resource's per-second regen rate from the ModDb.
 ///
-/// `stat` 取值：`"LifeRegen"` / `"ManaRegen"` / `"EnergyShieldRegen"`。
-/// inc/more 同时参考 `<stat>Rate`（专属速率）和 `XRecoveryRate`（全局恢复速率），
-/// 与 PoB2 `CalcDefence.lua` 「`XRegen` + `XRecoveryRate` 合并」行为一致。
+/// `stat` takes values: `"LifeRegen"` / `"ManaRegen"` / `"EnergyShieldRegen"`.
+/// inc/more consult both `<stat>Rate` (the dedicated rate) and
+/// `XRecoveryRate` (the global recovery rate), matching PoB2
+/// `CalcDefence.lua`'s "merge `XRegen` + `XRecoveryRate`" behavior.
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §2.1；
-///       PoB2 `src/Modules/CalcDefence.lua` 再生段注释。
+/// Source: agent-docs/recovery-charges-buffs.md §2.1;
+///       PoB2 `src/Modules/CalcDefence.lua`'s regen section comments.
 pub fn calc_regen(db: &ModDb, cfg: &CalcConfig, pool: f64, stat: &str) -> f64 {
     let bare_name = ModName::from(stat);
     let flat = db.sum(ModType::Base, cfg, std::slice::from_ref(&bare_name));
@@ -129,12 +139,13 @@ pub fn calc_regen(db: &ModDb, cfg: &CalcConfig, pool: f64, stat: &str) -> f64 {
         cfg,
         &[ModName::from(format!("{stat}Percent"))],
     );
-    // inc/more：裸 `<stat>` 名（vendor CalcDefence.lua:1642-1643
-    // `Sum("INC", nil, resource.."Regen", resource.."RecoveryRate")`——
-    // mod_parser「increased Mana Regeneration Rate」与 statmap buff 域
-    // （Clarity `ManaRegen INC`）产裸名；Arcane Surge `ManaRegen MORE`
-    // CalcPerform.lua:1586 同名）+ 专属 `<stat>Rate`（PoBR 既有测试名，
-    // vendor 无此名、保留兼容）+ 通用 `XRecoveryRate`。
+    // inc/more: the bare `<stat>` name (vendor CalcDefence.lua:1642-1643's
+    // `Sum("INC", nil, resource.."Regen", resource.."RecoveryRate")` --
+    // mod_parser's "increased Mana Regeneration Rate" and the statmap buff
+    // domain (Clarity's `ManaRegen INC`) produce the bare name; Arcane
+    // Surge's `ManaRegen MORE`, CalcPerform.lua:1586, uses the same name)
+    // plus the dedicated `<stat>Rate` (an existing PoBR test name; vendor
+    // has no such name, kept for compatibility) plus the generic `XRecoveryRate`.
     let rate_name = ModName::from(format!("{stat}Rate"));
     let recovery_rate_name = recovery_rate_mod_name(stat);
     let inc = db.sum(ModType::Inc, cfg, std::slice::from_ref(&bare_name))
@@ -146,7 +157,7 @@ pub fn calc_regen(db: &ModDb, cfg: &CalcConfig, pool: f64, stat: &str) -> f64 {
     regen(pool, flat, percent, inc, more)
 }
 
-/// 根据资源名返回对应的 `XRecoveryRate` ModName。
+/// Returns the corresponding `XRecoveryRate` ModName for a resource name.
 fn recovery_rate_mod_name(stat: &str) -> ModName {
     let prefix = stat
         .trim_end_matches("Regen")
@@ -154,39 +165,39 @@ fn recovery_rate_mod_name(stat: &str) -> ModName {
     ModName::from(format!("{prefix}RecoveryRate"))
 }
 
-// 几率类 (Capped Chance)
+// Capped Chance
 
-/// 几率类聚合：求和后钳到 `[0, cap]`（cap 通常 75% 或 100%）。
+/// Chance-stat aggregation: summed then clamped to `[0, cap]` (cap is typically 75% or 100%).
 pub fn capped_chance(percent_sum: f64, cap: f64) -> f64 {
     round(percent_sum.clamp(0.0, cap))
 }
 
-/// 格挡几率（PoE2 硬上限 90%，`data.misc.BlockChanceCap = 90`）。
+/// Block chance (PoE2's hard cap of 90%, `data.misc.BlockChanceCap = 90`).
 ///
-/// **Bug#11 修正（block-chance-cap-wrong）**：PoE2 格挡上限为 90%，非 PoE1 的 75%。
-/// 出处：agent-docs/block.md §被动格挡、PoB2 DeepWiki `BlockChanceCap = 90`。
+/// **Bug#11 fix (block-chance-cap-wrong)**: PoE2's block cap is 90%, not PoE1's 75%.
+/// Source: agent-docs/block.md §Passive block, PoB2 DeepWiki `BlockChanceCap = 90`.
 ///
-///  cap 改由调用方自注入常量包传入
-/// （`cfg.constants.game().block_chance_cap`，fallback == 旧 const，值不变）。
+///  The cap now comes from the injected constants pack via the caller
+/// (`cfg.constants.game().block_chance_cap`, fallback == old const, value unchanged).
 pub fn block_chance(percent_sum: f64, cap: f64) -> f64 {
     capped_chance(percent_sum, cap)
 }
 
-// 充能 (Charges) — PoE2：充能无固有属性，仅供 per-charge 词条引用
+// Charges -- PoE2: charges have no inherent stats, they only serve as a reference for per-charge mods
 
-/// 充能默认最大层数（Power / Frenzy / Endurance；PoB2 `Data/Misc.lua`）。
+/// Default max charge stacks (Power / Frenzy / Endurance; PoB2 `Data/Misc.lua`).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §1.3；
-///       PoB2 `src/Data/Misc.lua`: `max_power_charges = max_frenzy_charges = max_endurance_charges = 3`。
+/// Source: agent-docs/recovery-charges-buffs.md §1.3;
+///       PoB2 `src/Data/Misc.lua`: `max_power_charges = max_frenzy_charges = max_endurance_charges = 3`.
 pub const DEFAULT_MAX_CHARGES: u32 = 3;
 
-/// 充能默认持续时间（秒；0.5.0 已从 20s 改为 15s）。
+/// Default charge duration (seconds; changed from 20s to 15s in 0.5.0).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §1.3；
-///       PoB2 `src/Modules/CalcSetup.lua`: `NewMod("ChargeDuration","BASE",15,"Base")`。
+/// Source: agent-docs/recovery-charges-buffs.md §1.3;
+///       PoB2 `src/Modules/CalcSetup.lua`: `NewMod("ChargeDuration","BASE",15,"Base")`.
 pub const DEFAULT_CHARGE_DURATION_SECONDS: f64 = 15.0;
 
-/// 充能种类。
+/// Charge kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ChargeKind {
     Power,
@@ -195,7 +206,7 @@ pub enum ChargeKind {
 }
 
 impl ChargeKind {
-    /// 对应的 `XChargesMax` ModName（最大充能层数修饰词名称）。
+    /// The corresponding `XChargesMax` ModName (the max charge stack modifier name).
     pub fn max_mod_name(self) -> ModName {
         match self {
             ChargeKind::Power => ModName::from("PowerChargesMax"),
@@ -204,7 +215,7 @@ impl ChargeKind {
         }
     }
 
-    /// 对应的 `XChargesMin` ModName（最小充能层数修饰词名称）。
+    /// The corresponding `XChargesMin` ModName (the min charge stack modifier name).
     pub fn min_mod_name(self) -> ModName {
         match self {
             ChargeKind::Power => ModName::from("PowerChargesMin"),
@@ -213,10 +224,11 @@ impl ChargeKind {
         }
     }
 
-    /// 乘数名称（供 `CalcConfig.multipliers` 查询，与 `Modifier::effective_number` Multiplier tag 同构）。
+    /// The multiplier name (queried via `CalcConfig.multipliers`, mirroring
+    /// `Modifier::effective_number`'s Multiplier tag).
     ///
-    /// 出处：agent-docs/recovery-charges-buffs.md §1.1；
-    ///       PoB2 `CalcSetup.lua`: `modDB.multipliers["PowerCharge" | "FrenzyCharge" | "EnduranceCharge"]`。
+    /// Source: agent-docs/recovery-charges-buffs.md §1.1;
+    ///       PoB2 `CalcSetup.lua`: `modDB.multipliers["PowerCharge" | "FrenzyCharge" | "EnduranceCharge"]`.
     pub fn multiplier_key(self) -> &'static str {
         match self {
             ChargeKind::Power => "PowerCharge",
@@ -226,33 +238,34 @@ impl ChargeKind {
     }
 }
 
-/// 充能层数解析结果。
+/// Charge stack resolution result.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ChargeState {
-    /// 当前充能层数（已按上限/下限钳位）。
+    /// Current charge stacks (already clamped to the max/min).
     pub current: u32,
-    /// 最大充能层数（含 `+N to Maximum X Charges` 词条）。
+    /// Max charge stacks (includes `+N to Maximum X Charges` mods).
     pub maximum: u32,
-    /// 最小充能层数（常驻层数）。
+    /// Min charge stacks (the always-on stack count).
     pub minimum: u32,
 }
 
-/// 从 ModDb 解析某种充能的最大层数（默认 3 + `+N to Maximum X Charges` BASE 词条）。
+/// Resolves a charge kind's max stacks from the ModDb (default 3 + `+N to Maximum X Charges` BASE mods).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §1.3；
-///       PoB2 `CalcSetup.lua`: max base = 3，`XChargesMax` BASE 词条加成。
+/// Source: agent-docs/recovery-charges-buffs.md §1.3;
+///       PoB2 `CalcSetup.lua`: max base = 3, boosted by `XChargesMax` BASE mods.
 pub fn charge_maximum(db: &ModDb, cfg: &CalcConfig, kind: ChargeKind) -> u32 {
     let extra = db.sum(ModType::Base, cfg, &[kind.max_mod_name()]);
     let max_val = DEFAULT_MAX_CHARGES as f64 + extra;
     max_val.max(0.0) as u32
 }
 
-/// 从 ModDb 解析某种充能的最小层数（默认 0；`+N to Minimum X Charges` 可设 constant floor）。
+/// Resolves a charge kind's min stacks from the ModDb (default 0; `+N to
+/// Minimum X Charges` can set a constant floor).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §1.5；
-///       PoB2 `CalcSetup.lua`: `MinimumXChargesIsMaximumXCharges` 旗标可把最小拉满到上限。
+/// Source: agent-docs/recovery-charges-buffs.md §1.5;
+///       PoB2 `CalcSetup.lua`: the `MinimumXChargesIsMaximumXCharges` flag can raise the minimum to the maximum.
 pub fn charge_minimum(db: &ModDb, cfg: &CalcConfig, kind: ChargeKind, maximum: u32) -> u32 {
-    // MinimumXChargesIsMaximumXCharges：最小充能 = 最大充能（常驻满层）。
+    // MinimumXChargesIsMaximumXCharges: min charges = max charges (always at full stacks).
     let full_flag_name = match kind {
         ChargeKind::Power => "MinimumPowerChargesIsMaximumPowerCharges",
         ChargeKind::Frenzy => "MinimumFrenzyChargesIsMaximumFrenzyCharges",
@@ -266,18 +279,20 @@ pub fn charge_minimum(db: &ModDb, cfg: &CalcConfig, kind: ChargeKind, maximum: u
     (min_val.max(0.0) as u32).min(maximum)
 }
 
-/// 解析充能状态：从 `CalcConfig.multipliers` 读取当前层数，结合 ModDb 的最大/最小值钳位。
+/// Resolves charge state: reads the current stack count from
+/// `CalcConfig.multipliers`, clamped by the ModDb's max/min.
 ///
-/// PoB2 通过 `modDB.multipliers["PowerCharge"]` 暴露当前层数供 per-charge 词条引用（Multiplier tag）；
-/// pobr 使用 `CalcConfig.multipliers` 保持同构。
+/// PoB2 exposes the current stack count via
+/// `modDB.multipliers["PowerCharge"]` for per-charge mods to reference (the
+/// Multiplier tag); pobr uses `CalcConfig.multipliers` to mirror this.
 ///
-/// # 参数
-/// - `db` — 玩家 ModDb（查询最大/最小充能层数词条）。
-/// - `cfg` — 当前计算配置（`cfg.multiplier("PowerCharge")` 等存放当前层数）。
-/// - `kind` — 充能种类（Power / Frenzy / Endurance）。
+/// # Parameters
+/// - `db` -- the player ModDb (for querying max/min charge stack mods).
+/// - `cfg` -- the current calculation config (`cfg.multiplier("PowerCharge")` etc. hold the current stack count).
+/// - `kind` -- charge kind (Power / Frenzy / Endurance).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §1.1 & §1.5；
-///       PoB2 `src/Modules/CalcSetup.lua` 充能段。
+/// Source: agent-docs/recovery-charges-buffs.md §1.1 & §1.5;
+///       PoB2 `src/Modules/CalcSetup.lua`'s charges section.
 pub fn resolve_charge_state(db: &ModDb, cfg: &CalcConfig, kind: ChargeKind) -> ChargeState {
     let maximum = charge_maximum(db, cfg, kind);
     let minimum = charge_minimum(db, cfg, kind, maximum);
@@ -290,7 +305,7 @@ pub fn resolve_charge_state(db: &ModDb, cfg: &CalcConfig, kind: ChargeKind) -> C
     }
 }
 
-/// 所有三种充能的聚合状态。
+/// Aggregate state of all three charge kinds.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AllChargeStates {
     pub power: ChargeState,
@@ -299,16 +314,16 @@ pub struct AllChargeStates {
 }
 
 impl AllChargeStates {
-    /// 三种充能合计层数（`TotalCharges` 乘数所用）。
+    /// Total stacks across all three charge kinds (used by the `TotalCharges` multiplier).
     ///
-    /// 出处：agent-docs/recovery-charges-buffs.md §充能乘数；
-    ///       PoB2 `CalcSetup.lua`: `modDB.multipliers["TotalCharges"]`。
+    /// Source: agent-docs/recovery-charges-buffs.md §Charge multipliers;
+    ///       PoB2 `CalcSetup.lua`: `modDB.multipliers["TotalCharges"]`.
     pub fn total(&self) -> u32 {
         self.power.current + self.frenzy.current + self.endurance.current
     }
 }
 
-/// 解析三种充能的完整状态。
+/// Resolves the complete state of all three charge kinds.
 pub fn resolve_all_charges(db: &ModDb, cfg: &CalcConfig) -> AllChargeStates {
     AllChargeStates {
         power: resolve_charge_state(db, cfg, ChargeKind::Power),
@@ -317,28 +332,32 @@ pub fn resolve_all_charges(db: &ModDb, cfg: &CalcConfig) -> AllChargeStates {
     }
 }
 
-/// 按 PoB2 充能口径填充充能层数 multiplier，返回派生 cfg。
+/// Fills the charge-stack multipliers per PoB2's charge semantics, returning a derived cfg.
 ///
-/// PoB2（CalcPerform.lua L831-832 / L899）：仅当 `Condition:UseXCharges` 为真时
-/// `output.XCharges = output.XChargesMax`，随后 `modDB.multipliers["XCharge"] = output.XCharges`，
-/// 使 `per X charge` 词条按满层展开。**未启用该充能的 build，PoB2 面板 current=0**（如
-/// stormweaver `PowerCharges value="0"`），故此处也保持 0，避免错误施加 `per charge` 罚减/增益。
-/// pobr 用 `CalcConfig.multipliers` 与 `Condition:UseXCharges` 同构。
+/// PoB2 (CalcPerform.lua L831-832 / L899): only when `Condition:UseXCharges`
+/// is true does `output.XCharges = output.XChargesMax`, after which
+/// `modDB.multipliers["XCharge"] = output.XCharges`, causing `per X charge`
+/// mods to expand at full stacks. **For a build that hasn't enabled this
+/// charge, PoB2's panel shows current=0** (e.g. stormweaver's
+/// `PowerCharges value="0"`), so this also stays at 0, avoiding incorrectly
+/// applying `per charge` penalties/bonuses. pobr mirrors this with
+/// `CalcConfig.multipliers` and `Condition:UseXCharges`.
 ///
-/// **覆盖语义**：若 cfg 已显式设正值（build 导入的 `XCharges` 数量覆盖 / 非满层），沿用原值；
-/// 若 `MinimumXChargesIsMaximumXCharges`（常驻满层），`charge_minimum` 会返回 maximum，
-/// 即便未勾选使用条件也按常驻层填充。
+/// **Override semantics**: if cfg already has an explicit positive value
+/// (a build-imported `XCharges` count override / not at full stacks), that
+/// value is kept as-is; under `MinimumXChargesIsMaximumXCharges` (always at
+/// full stacks), `charge_minimum` returns maximum, so it's filled at the always-on stack count even without the use condition checked.
 pub fn charge_multipliers_panel_default(db: &ModDb, cfg: &CalcConfig) -> CalcConfig {
     let mut out = cfg.clone();
     for kind in [ChargeKind::Power, ChargeKind::Frenzy, ChargeKind::Endurance] {
         let key = kind.multiplier_key();
-        // 已显式设为正值则尊重 build 覆盖。
+        // Respect the build's override when it's already explicitly set to a positive value.
         if out.multiplier(key) > 0.0 {
             continue;
         }
         let maximum = charge_maximum(db, cfg, kind);
         let minimum = charge_minimum(db, cfg, kind, maximum);
-        // 使用条件（PoB2 `Condition:UseXCharges`）：勾选则满层，否则取常驻最小（通常 0）。
+        // Use condition (PoB2's `Condition:UseXCharges`): checked → full stacks, otherwise the always-on minimum (usually 0).
         let use_cond = match kind {
             ChargeKind::Power => "UsePowerCharges",
             ChargeKind::Frenzy => "UseFrenzyCharges",
@@ -356,29 +375,29 @@ pub fn charge_multipliers_panel_default(db: &ModDb, cfg: &CalcConfig) -> CalcCon
     out
 }
 
-// 偷取 (Leech) — 0.5.0 重制
+// Leech -- reworked in 0.5.0
 
-/// 偷取速率上限（生命/法力：池子的 20%；ES：池子的 10%）。
+/// Leech rate ceiling (Life/Mana: 20% of the pool; ES: 10% of the pool).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §2.2；
-///       PoB2 `src/Modules/CalcSetup.lua`: `MaxLifeLeechRate=20, MaxManaLeechRate=20, MaxEnergyShieldLeechRate=10`。
+/// Source: agent-docs/recovery-charges-buffs.md §2.2;
+///       PoB2 `src/Modules/CalcSetup.lua`: `MaxLifeLeechRate=20, MaxManaLeechRate=20, MaxEnergyShieldLeechRate=10`.
 pub const LEECH_MAX_LIFE_RATE_PCT: f64 = 20.0;
 pub const LEECH_MAX_MANA_RATE_PCT: f64 = 20.0;
 pub const LEECH_MAX_ES_RATE_PCT: f64 = 10.0;
 
-/// 偷取单实例上限（各资源池的 10%）。
+/// Leech single-instance ceiling (10% of each resource pool).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §2.2；
-///       PoB2 `src/Modules/CalcSetup.lua`: `MaxLifeLeechInstance=10`。
+/// Source: agent-docs/recovery-charges-buffs.md §2.2;
+///       PoB2 `src/Modules/CalcSetup.lua`: `MaxLifeLeechInstance=10`.
 pub const LEECH_MAX_INSTANCE_PCT: f64 = 10.0;
 
-/// 用于偷取计算的单击有效伤害上限（超过部分被截断）。
+/// Effective single-hit damage ceiling used for leech calculation (anything above is truncated).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §2.2；
-///       PoB2 `src/Data/Misc.lua`: `EffectiveMaxDamageForLeech = 40000`。
+/// Source: agent-docs/recovery-charges-buffs.md §2.2;
+///       PoB2 `src/Data/Misc.lua`: `EffectiveMaxDamageForLeech = 40000`.
 pub const LEECH_EFFECTIVE_MAX_HIT_DAMAGE: f64 = 40000.0;
 
-/// 偷取的偷取资源类型。
+/// Resource type being leeched.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LeechResource {
     Life,
@@ -387,7 +406,7 @@ pub enum LeechResource {
 }
 
 impl LeechResource {
-    /// 该资源对应的「偷取速率上限（占池子的 %）」。
+    /// This resource's "leech rate ceiling (% of the pool)".
     pub fn max_rate_pct(self) -> f64 {
         match self {
             LeechResource::Life => LEECH_MAX_LIFE_RATE_PCT,
@@ -396,7 +415,7 @@ impl LeechResource {
         }
     }
 
-    /// 偷取来源的 ModName（`LifeLeech` / `ManaLeech` / `EnergyShieldLeech`，BASE%）。
+    /// The leech source's ModName (`LifeLeech` / `ManaLeech` / `EnergyShieldLeech`, BASE%).
     pub fn leech_mod_name(self) -> ModName {
         match self {
             LeechResource::Life => ModName::from("LifeLeech"),
@@ -406,39 +425,46 @@ impl LeechResource {
     }
 }
 
-/// 偷取计算输出（0.5.0 单实例口径）。
+/// Leech calculation output (0.5.0's single-instance view).
 ///
-/// 0.5.0 关键变化：每种资源**同时只有一个偷取实例**；pobr 按「取最高速率实例」估算面板值。
+/// 0.5.0's key change: each resource has **only one leech instance at a
+/// time**; pobr estimates the panel value by "taking the highest-rate instance".
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LeechResult {
-    /// 单实例偷取总量（= `effective_hit × leech_pct%`，受 instance_cap 钳位）。
+    /// Single-instance leech total (= `effective_hit × leech_pct%`, clamped by instance_cap).
     pub instance_total: f64,
-    /// 偷取速率上限（每秒；= `pool × max_rate_pct%`）。
+    /// Leech rate ceiling (per second; = `pool × max_rate_pct%`).
     pub rate_cap_per_second: f64,
-    /// 面板偷取速率（每秒；min(instance_总量 × 2%/s, rate_cap)）。
+    /// Panel leech rate (per second; min(instance_total × 2%/s, rate_cap)).
     ///
-    /// PoE 系列偷取默认每秒恢复偷取量的 2%（PoB2 `CalcSetup.lua` 无此常量但行业共识值，
-    /// 从偷取总量 / 持续时间反推；0.5.0 单实例下该速率即面板值）。
+    /// The PoE series' leech defaults to recovering 2% of the leeched amount
+    /// per second (PoB2's `CalcSetup.lua` has no such constant, but it's an
+    /// industry-consensus value, back-derived from leech total / duration;
+    /// under 0.5.0's single-instance model this rate is the panel value directly).
     pub display_rate_per_second: f64,
 }
 
-/// 计算某资源的偷取面板速率（0.5.0 单实例模型）。
+/// Calculates a resource's leech panel rate (0.5.0's single-instance model).
 ///
-/// # 参数
-/// - `pool` — 对应资源池（生命 / 法力 / ES）最终值。
-/// - `leech_pct` — 本次击中伤害×偷取%，即偷取词条百分比之和（如 `LifeLeech` BASE 0.5 表示 0.5%）。
-/// - `hit_damage` — 用于偷取的击中伤害（物理/元素；受 `LEECH_EFFECTIVE_MAX_HIT_DAMAGE` 截断）。
-/// - `resource` — 偷取资源类型（决定速率上限）。
+/// # Parameters
+/// - `pool` -- the corresponding resource pool's (life / mana / ES) final value.
+/// - `leech_pct` -- this hit's damage × leech%, i.e. the sum of leech mod
+///   percentages (e.g. `LifeLeech` BASE 0.5 means 0.5%).
+/// - `hit_damage` -- the hit damage used for leech (physical/elemental;
+///   truncated by `LEECH_EFFECTIVE_MAX_HIT_DAMAGE`).
+/// - `resource` -- the leech resource type (determines the rate ceiling).
 ///
-/// # 说明
-/// - PoE2 默认偷取「实例速率 = 偷取总量 × 2%/s」（PoE 系列约定）；
-/// - 0.5.0 单实例：只取最高速率的一个实例（此函数计算单实例，调用方可取最高值）；
-/// - 单实例总量上限：`pool × LEECH_MAX_INSTANCE_PCT%`；
-/// - 速率上限：`pool × max_rate_pct%`；
-/// - `CannotLeechXxx` 旗标由调用方在传入前短路（返回 `LeechResult::zero(pool, resource)`）。
+/// # Notes
+/// - PoE2 defaults leech to "instance rate = leech total × 2%/s" (a PoE series convention);
+/// - 0.5.0's single instance: only takes the single instance with the
+///   highest rate (this function computes a single instance; the caller can take the max);
+/// - Single-instance total ceiling: `pool × LEECH_MAX_INSTANCE_PCT%`;
+/// - Rate ceiling: `pool × max_rate_pct%`;
+/// - The `CannotLeechXxx` flag is short-circuited by the caller before
+///   passing in (returns `LeechResult::zero(pool, resource)`).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §2.2；
-///       PoB2 `src/Modules/CalcDefence.lua` 偷取段 / `CalcSetup.lua` 上限常量。
+/// Source: agent-docs/recovery-charges-buffs.md §2.2;
+///       PoB2 `src/Modules/CalcDefence.lua`'s leech section / `CalcSetup.lua`'s ceiling constants.
 pub fn calc_leech(
     pool: f64,
     leech_pct: f64,
@@ -448,21 +474,21 @@ pub fn calc_leech(
     if pool <= 0.0 || leech_pct <= 0.0 {
         return LeechResult::zero(pool, resource);
     }
-    // 单击有效伤害上限（PoB2 Data/Misc.lua EffectiveMaxDamageForLeech = 40000）
+    // Effective single-hit damage ceiling (PoB2 Data/Misc.lua's EffectiveMaxDamageForLeech = 40000)
     let effective_hit = hit_damage.clamp(0.0, LEECH_EFFECTIVE_MAX_HIT_DAMAGE);
-    // 单实例偷取总量：吃单实例上限（pool × 10%）
+    // Single-instance leech total: subject to the single-instance ceiling (pool × 10%)
     let instance_cap = pool * LEECH_MAX_INSTANCE_PCT / 100.0;
     let instance_total = round((effective_hit * leech_pct / 100.0).min(instance_cap));
 
-    // 速率上限：pool × max_rate_pct% /s（CalcSetup.lua MaxLifeLeechRate=20 等）。
-    // 面板显示速率 = min(rate_cap, instance_total × (rate_cap / instance_cap))
+    // Rate ceiling: pool × max_rate_pct% /s (CalcSetup.lua's MaxLifeLeechRate=20, etc.).
+    // Panel display rate = min(rate_cap, instance_total × (rate_cap / instance_cap))
     // = min(rate_cap, instance_total × max_rate_pct / max_instance_pct)
     // = min(rate_cap, instance_total × 2)  when max_rate = 20%, max_inst = 10%
-    // 上式推导：实例持续时间 = instance_total / rate_cap；速率 = instance_total / duration。
-    // 简化：若 instance_total == instance_cap → display_rate = rate_cap（最大速率）；
-    //        若 instance_total < instance_cap → display_rate = instance_total × (rate_cap / instance_cap)。
+    // Derivation: instance duration = instance_total / rate_cap; rate = instance_total / duration.
+    // Simplified: if instance_total == instance_cap → display_rate = rate_cap (max rate);
+    //        if instance_total < instance_cap → display_rate = instance_total × (rate_cap / instance_cap).
     let rate_cap = pool * resource.max_rate_pct() / 100.0;
-    let ratio = resource.max_rate_pct() / LEECH_MAX_INSTANCE_PCT; // rate_cap / instance_cap（规格化）
+    let ratio = resource.max_rate_pct() / LEECH_MAX_INSTANCE_PCT; // rate_cap / instance_cap (normalized)
     let display_rate_per_second = round((instance_total * ratio).min(rate_cap));
 
     LeechResult {
@@ -472,13 +498,13 @@ pub fn calc_leech(
     }
 }
 
-/// 从 ModDb 计算某资源的偷取结果。
+/// Calculates a resource's leech result from the ModDb.
 ///
-/// `leech_mod` 已内化为 `resource.leech_mod_name()`；
-/// 调用方负责传入 `hit_damage`（通常是物理/击中伤害；PoE2 默认仅物理）。
+/// `leech_mod` is internalized as `resource.leech_mod_name()`; the caller is
+/// responsible for supplying `hit_damage` (usually physical/hit damage; PoE2 defaults to physical only).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §2.2；
-///       PoB2 `src/Modules/CalcDefence.lua` 偷取段。
+/// Source: agent-docs/recovery-charges-buffs.md §2.2;
+///       PoB2 `src/Modules/CalcDefence.lua`'s leech section.
 pub fn calc_leech_from_db(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -486,7 +512,7 @@ pub fn calc_leech_from_db(
     hit_damage: f64,
     resource: LeechResource,
 ) -> LeechResult {
-    // CannotLeechXxx 旗标短路
+    // CannotLeechXxx flag short-circuit
     let cannot_flag = match resource {
         LeechResource::Life => "CannotLeechLife",
         LeechResource::Mana => "CannotLeechMana",
@@ -500,7 +526,7 @@ pub fn calc_leech_from_db(
 }
 
 impl LeechResult {
-    /// 偷取为 0 的空结果（pool = 0 或无偷取词条）。
+    /// An empty result with zero leech (pool = 0 or no leech mod).
     pub fn zero(pool: f64, resource: LeechResource) -> Self {
         Self {
             instance_total: 0.0,
@@ -510,21 +536,21 @@ impl LeechResult {
     }
 }
 
-// 返还 (Recoup)
+// Recoup
 
-/// Recoup 默认返还持续时间（秒）。
+/// Recoup's default return duration (seconds).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §2.3；
-///       PoB2 `CalcPerform.lua`: 默认 8 秒。
+/// Source: agent-docs/recovery-charges-buffs.md §2.3;
+///       PoB2 `CalcPerform.lua`: defaults to 8 seconds.
 pub const RECOUP_DURATION_DEFAULT: f64 = 8.0;
 
-/// Recoup 4 秒旗标对应的持续时间。
+/// The duration corresponding to Recoup's 4-second flag.
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §2.3；
-///       PoB2 `CalcPerform.lua`: `4SecondRecoup` / `4SecondLifeRecoup` 旗标。
+/// Source: agent-docs/recovery-charges-buffs.md §2.3;
+///       PoB2 `CalcPerform.lua`: `4SecondRecoup` / `4SecondLifeRecoup` flags.
 pub const RECOUP_DURATION_4S: f64 = 4.0;
 
-/// Recoup 资源类型。
+/// Recoup resource type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RecoupResource {
     Life,
@@ -533,7 +559,7 @@ pub enum RecoupResource {
 }
 
 impl RecoupResource {
-    /// 对应的 `XRecoup` ModName（BASE%，如 `LifeRecoup` 表示对承受伤害返还比例）。
+    /// The corresponding `XRecoup` ModName (BASE%, e.g. `LifeRecoup` is the return ratio for damage taken).
     pub fn recoup_mod_name(self) -> ModName {
         match self {
             RecoupResource::Life => ModName::from("LifeRecoup"),
@@ -542,12 +568,12 @@ impl RecoupResource {
         }
     }
 
-    /// 全局 4 秒 Recoup 旗标名（`4SecondRecoup` 作用于全部资源）。
+    /// The global 4-second Recoup flag name (`4SecondRecoup` applies to every resource).
     pub fn four_sec_flag_global() -> &'static str {
         "4SecondRecoup"
     }
 
-    /// 单资源 4 秒 Recoup 旗标名（`4SecondLifeRecoup` 等）。
+    /// The per-resource 4-second Recoup flag name (`4SecondLifeRecoup`, etc.).
     pub fn four_sec_flag(self) -> &'static str {
         match self {
             RecoupResource::Life => "4SecondLifeRecoup",
@@ -557,28 +583,29 @@ impl RecoupResource {
     }
 }
 
-/// Recoup 计算输出。
+/// Recoup calculation output.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RecoupResult {
-    /// 返还的每秒速率（承受伤害量 × recoup_pct% / duration）。
+    /// The returned per-second rate (damage taken × recoup_pct% / duration).
     pub rate_per_second: f64,
-    /// Recoup 持续时间（秒；8 或 4）。
+    /// Recoup duration (seconds; 8 or 4).
     pub duration: f64,
 }
 
-/// 计算 Recoup 每秒返还速率（纯函数版本）。
+/// Calculates Recoup's per-second return rate (pure-function version).
 ///
-/// Recoup = `damage_taken × recoup_pct%`，在 `duration` 秒内均匀返还；
-/// 乘 `recovery_rate_mod`（`XRecoveryRateMod`）。
+/// Recoup = `damage_taken × recoup_pct%`, returned evenly over `duration`
+/// seconds; multiplied by `recovery_rate_mod` (`XRecoveryRateMod`).
 ///
-/// # 参数
-/// - `damage_taken` — 单次承受的伤害量（已过减免；是到达资源池的部分）。
-/// - `recoup_pct` — 返还词条百分比之和（如 `LifeRecoup` BASE 15 表示 15%）。
-/// - `duration` — 返还持续时间（8 秒或 4 秒）。
-/// - `recovery_rate_mod` — `XRecoveryRateMod`（fraction；1.0 = 无加成）。
+/// # Parameters
+/// - `damage_taken` -- the damage taken in a single hit (already mitigated;
+///   the portion that reaches the resource pool).
+/// - `recoup_pct` -- the sum of recoup mod percentages (e.g. `LifeRecoup` BASE 15 means 15%).
+/// - `duration` -- the return duration (8 seconds or 4 seconds).
+/// - `recovery_rate_mod` -- `XRecoveryRateMod` (fraction; 1.0 = no bonus).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §2.3；
-///       PoB2 `src/Modules/CalcDefence.lua` Recoup 段。
+/// Source: agent-docs/recovery-charges-buffs.md §2.3;
+///       PoB2 `src/Modules/CalcDefence.lua`'s Recoup section.
 pub fn calc_recoup(
     damage_taken: f64,
     recoup_pct: f64,
@@ -599,15 +626,15 @@ pub fn calc_recoup(
     }
 }
 
-/// 从 ModDb 计算 Recoup 结果。
+/// Calculates the Recoup result from the ModDb.
 ///
-/// - 持续时间：先检查 `4SecondRecoup`（全局），再检查资源专属 `4SecondXRecoup` 旗标；
-///   其中任一为真 → 4 秒，否则 8 秒。
-/// - `recovery_rate_mod`：从 `XRecoveryRate` INC/MORE 计算（与再生共用乘区）。
+/// - Duration: checks `4SecondRecoup` (global) first, then the
+///   resource-specific `4SecondXRecoup` flag; either being true → 4 seconds, otherwise 8 seconds.
+/// - `recovery_rate_mod`: computed from `XRecoveryRate` INC/MORE (shares the factor with regen).
 ///
-/// 出处：agent-docs/recovery-charges-buffs.md §2.3；
-///       PoB2 `src/Modules/CalcDefence.lua` Recoup 段；
-///       PoB2 `src/Modules/CalcPerform.lua` `4SecondRecoup` 旗标处理。
+/// Source: agent-docs/recovery-charges-buffs.md §2.3;
+///       PoB2 `src/Modules/CalcDefence.lua`'s Recoup section;
+///       PoB2 `src/Modules/CalcPerform.lua`'s `4SecondRecoup` flag handling.
 pub fn calc_recoup_from_db(
     db: &ModDb,
     cfg: &CalcConfig,
@@ -622,7 +649,7 @@ pub fn calc_recoup_from_db(
         };
     }
 
-    // 持续时间：全局 4s 旗标 或 单资源 4s 旗标
+    // Duration: the global 4s flag or the per-resource 4s flag
     let four_sec = db.flag(cfg, ModName::from(RecoupResource::four_sec_flag_global()))
         || db.flag(cfg, ModName::from(resource.four_sec_flag()));
     let duration = if four_sec {
@@ -631,7 +658,7 @@ pub fn calc_recoup_from_db(
         RECOUP_DURATION_DEFAULT
     };
 
-    // RecoveryRateMod：此资源的 XRecoveryRate inc/more 合并为乘数
+    // RecoveryRateMod: this resource's XRecoveryRate inc/more merged into a multiplier
     let recovery_rate_name = match resource {
         RecoupResource::Life => ModName::from("LifeRecoveryRate"),
         RecoupResource::Mana => ModName::from("ManaRecoveryRate"),

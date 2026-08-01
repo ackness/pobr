@@ -1,18 +1,23 @@
-//! special_mods 与 PoB2 parseMod 的 differential 对拍。
+//! Differential comparison of special_mods against PoB2's parseMod.
 //!
-//! 对 `overlay/special_mods.json` 的每条模板条目，用样本数值/enum 值实例化其
-//! pattern 为具体词条行，同一行喂两侧——PoB2 headless `parseMod`
-//! （`tools/pob2-oracle/run-parsemod.sh`，JSONL 输出）与 pobr 数据驱动引擎
-//! `parse_mod_engine`（special 通道编译在内），规范化后比对 name / type /
-//! value（容差 1e-9）/ flags / keywordFlags 集合。
+//! For every template entry in `overlay/special_mods.json`, instantiates its
+//! pattern into a concrete mod line using sample numeric/enum values, and
+//! feeds the same line to both sides -- PoB2's headless `parseMod`
+//! (`tools/pob2-oracle/run-parsemod.sh`, JSONL output) and pobr's
+//! data-driven engine `parse_mod_engine` (with the special channel compiled
+//! in) -- then compares the normalized name / type / value (1e-9 tolerance) /
+//! flags / keywordFlags sets.
 //!
-//! **门禁外**（`#[ignore]`）：依赖 vendor PoB2 + luajit，不进默认 CI。本地/CI
-//! 手动跑：`cargo test -p pobr-build --test special_oracle_differential -- --ignored --nocapture`。
-//! vendor / luajit 缺失（如隔离 worktree）→ 测试体内 early-return + 登记打印，
-//! 不 panic（沿用既有 oracle 依赖测试的 skip 模式）。
+//! **Outside the gate** (`#[ignore]`): depends on vendor PoB2 + luajit, so
+//! it's excluded from the default CI. Run manually locally/in CI with:
+//! `cargo test -p pobr-build --test special_oracle_differential -- --ignored --nocapture`.
+//! If vendor/luajit is missing (e.g. an isolated worktree), the test body
+//! early-returns and logs it, without panicking (following the existing skip
+//! pattern used by other oracle-dependent tests).
 //!
-//! 产报告不写数据：`verified:true` 标记是人工策展列（差分通过后人工改 JSON +
-//! 独立 commit），本 harness 只产对拍报告。
+//! Produces a report, doesn't write data: the `verified:true` marker is a
+//! manually curated column (edited into the JSON by hand + a dedicated commit
+//! once the diff passes); this harness only produces the comparison report.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -33,7 +38,7 @@ fn run_parsemod_script() -> PathBuf {
     repo_root().join("tools/pob2-oracle/run-parsemod.sh")
 }
 
-/// vendor + luajit 就绪判定（缺则 skip）。
+/// Checks whether vendor + luajit are ready (skip if missing).
 fn oracle_available() -> bool {
     if !vendor_src().join("HeadlessWrapper.lua").exists() {
         return false;
@@ -61,12 +66,14 @@ fn load_entries() -> Vec<SpecialTemplateDef> {
     doc.entries
 }
 
-/// 把一条 pattern 实例化为一行具体词条文本（取数值槽 = 37，enum 槽取闭集首词）。
-/// 仅支持本批次「数值捕获 + 显式闭集」形态；无法实例化（开放捕获等）→ None。
+/// Instantiates a pattern into one concrete mod-text line (numeric slots -> 37,
+/// enum slots -> the first word of the closed set).
+/// Only supports this batch's "numeric capture + explicit closed set" shapes;
+/// returns None when it can't be instantiated (open captures, etc.).
 fn instantiate_sample(entry: &SpecialTemplateDef) -> Option<String> {
-    // pattern 已是小写 regex；把已知捕获形态替换为样本字面量。
+    // pattern is already a lowercase regex; replace known capture shapes with sample literals.
     let mut s = entry.pattern.clone();
-    // 数值捕获形态（两种常见写法）→ "37"
+    // Numeric capture shapes (two common forms) -> "37"
     for needle in [
         r"(\d+(?:\.\d+)?)",
         r"([+-]\d+)",
@@ -76,8 +83,8 @@ fn instantiate_sample(entry: &SpecialTemplateDef) -> Option<String> {
     ] {
         s = s.replace(needle, "37");
     }
-    // enum 闭集捕获：取该捕获的首个 enums 词（按 entry.enums 表）。
-    // 简化：把 (a|b|c) 形态替换为第一个分支。
+    // Closed-set enum capture: takes the first enums word for that capture (per entry.enums table).
+    // Simplification: replaces (a|b|c) shapes with their first branch.
     while let Some(start) = s.find('(') {
         let end = s[start..].find(')').map(|e| start + e)?;
         let inner = &s[start + 1..end];
@@ -85,11 +92,11 @@ fn instantiate_sample(entry: &SpecialTemplateDef) -> Option<String> {
             let first = inner.split('|').next().unwrap_or("").to_string();
             s.replace_range(start..=end, &first);
         } else {
-            // 仍有未替换的捕获组（开放捕获等）→ 放弃该条目。
+            // Still has an unreplaced capture group (open capture, etc.) -> give up on this entry.
             return None;
         }
     }
-    // 锚定符 / 转义符清理（pattern 字面量已小写）。
+    // Strips anchors / escape characters (the pattern literal is already lowercase).
     let s: String = s
         .chars()
         .filter(|c| !matches!(c, '\\' | '^' | '$'))
@@ -112,14 +119,14 @@ fn special_parsemod_differential() {
     }
 
     let entries = load_entries();
-    // 引擎规则（special 通道编译在内）——special 整行命中优先，与生产同路径。
+    // Engine rules (with the special channel compiled in) -- special whole-line matches take priority, same path as production.
     let rules = test_compiled_rules();
 
-    // 收集可实例化的样本行 + 对应 entry_id。
+    // Collects instantiable sample lines + their entry_id.
     let mut samples: Vec<(String, String)> = Vec::new();
     for e in &entries {
         if e.handler_id.is_some() {
-            continue; // handler 条目走 calc 消费，不走 parseMod 数值对拍
+            continue; // handler entries are consumed by calc, not compared numerically via parseMod
         }
         if let Some(line) = instantiate_sample(e) {
             samples.push((e.id.clone(), line));
@@ -131,7 +138,7 @@ fn special_parsemod_differential() {
         samples.len()
     );
 
-    // 喂 oracle（stdin = 全部样本行）。
+    // Feeds the oracle (stdin = all sample lines).
     let lines_blob = samples
         .iter()
         .map(|(_, l)| l.as_str())
@@ -162,7 +169,7 @@ fn special_parsemod_differential() {
     }
     let oracle_out = String::from_utf8_lossy(&output.stdout);
 
-    // 解析 oracle JSONL：line → mods name 集合。
+    // Parses the oracle's JSONL: line -> set of mod names.
     let mut oracle_names: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for jl in oracle_out.lines() {
         if jl.trim().is_empty() {
@@ -184,7 +191,7 @@ fn special_parsemod_differential() {
         oracle_names.insert(line, names);
     }
 
-    // 对拍：name 集合一致率（report-only；逐条 verified 由人工据报告改 JSON）。
+    // Comparison: name-set agreement rate (report-only; per-entry verified status is set manually from the report into the JSON).
     let mut agree = 0usize;
     let mut total = 0usize;
     let mut mismatches: Vec<String> = Vec::new();

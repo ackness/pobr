@@ -1,11 +1,16 @@
-//! `base/character_constants.json` 加载 + 搬迁不变式回归。
+//! `base/character_constants.json` load + migration-invariant regression.
 //!
-//! 断言策略：
-//! - 有 pobr Rust 准源的 10 个值（`crates/pobr-core/src/character.rs` 常量），
-//!   逐值断言与准源字面量相等——pobr-gamedata 不依赖 pobr-core，无法直接引用
-//!   私有常量，故把准源值写死在测试里并注明常量名；准源若改值本测试即红。
-//! - vendor-only 的 3 个值抽样断言，值写死并引用 vendor 文件:行号
-//!   （commit `2df5a74`，见 `vendor/.pob2-version.txt`）。
+//! Assertion strategy:
+//! - The 10 values with a pobr Rust source of truth
+//!   (`crates/pobr-core/src/character.rs`'s consts) are asserted
+//!   value-for-value against literals matching the source of truth —
+//!   pobr-gamedata doesn't depend on pobr-core, so it can't reference the
+//!   private consts directly; the source-of-truth values are hardcoded
+//!   in the test with the const name noted, and this test goes red if the
+//!   source of truth's value changes.
+//! - The 3 vendor-only values are spot-checked, with the value hardcoded
+//!   and the vendor file:line referenced (commit `2df5a74`, see
+//!   `vendor/.pob2-version.txt`).
 
 use pobr_gamedata::{GameData, repo_data_root};
 
@@ -17,7 +22,7 @@ fn game_data() -> GameData {
     GameData::new(repo_data_root().join(version()))
 }
 
-/// manifest v2 已把本域注册在 base 段。
+/// manifest v2 already registers this domain in the base section.
 #[test]
 fn manifest_registers_character_constants_in_base() {
     let manifest = game_data().manifest().expect("manifest 可加载");
@@ -31,34 +36,36 @@ fn manifest_registers_character_constants_in_base() {
     );
 }
 
-/// 逐值断言 = pobr-core/src/character.rs 现有常量（搬迁不变式：JSON 必须与
-/// 既有 Rust 数值相等；行为对齐 vendor 是后续独立 commit 的事）。
+/// Value-for-value assertion = pobr-core/src/character.rs's existing
+/// consts (a migration invariant: the JSON must equal the existing Rust
+/// values; aligning behavior with vendor is a separate follow-up commit).
 #[test]
 fn values_match_pobr_core_character_rs_constants() {
     let c = game_data()
         .character_constants()
         .expect("character_constants 可加载");
 
-    // 生命：character.rs BASE_LIFE_CONSTANT / LIFE_PER_LEVEL / LIFE_PER_STRENGTH
+    // Life: character.rs's BASE_LIFE_CONSTANT / LIFE_PER_LEVEL / LIFE_PER_STRENGTH
     assert_eq!(c.base_life_constant, 16.0);
     assert_eq!(c.life_per_level, 12.0);
     assert_eq!(c.life_per_strength, 2.0);
 
-    // 魔力：character.rs BASE_MANA_CONSTANT / MANA_PER_LEVEL / MANA_PER_INTELLIGENCE
+    // Mana: character.rs's BASE_MANA_CONSTANT / MANA_PER_LEVEL / MANA_PER_INTELLIGENCE
     assert_eq!(c.base_mana_constant, 30.0);
     assert_eq!(c.mana_per_level, 4.0);
     assert_eq!(c.mana_per_intelligence, 2.0);
 
-    // 精准：character.rs BASE_ACCURACY_CONSTANT / ACCURACY_PER_LEVEL / ACCURACY_PER_DEXTERITY
+    // Accuracy: character.rs's BASE_ACCURACY_CONSTANT / ACCURACY_PER_LEVEL / ACCURACY_PER_DEXTERITY
     assert_eq!(c.base_accuracy_constant, -6.0);
     assert_eq!(c.accuracy_per_level, 6.0);
     assert_eq!(c.accuracy_per_dexterity, 6.0);
 
-    // 闪避：character.rs BASE_EVASION
+    // Evasion: character.rs's BASE_EVASION
     assert_eq!(c.base_evasion, 7.0);
 }
 
-/// vendor-only 字段抽样断言（pobr Rust 无此值，源 vendor PoB2 commit 2df5a74）。
+/// Spot-checks vendor-only fields (pobr's Rust has no such value, sourced
+/// from vendor PoB2 commit 2df5a74).
 #[test]
 fn vendor_only_per_level_attributes_match_vendor() {
     let c = game_data().character_constants().unwrap();
@@ -71,9 +78,10 @@ fn vendor_only_per_level_attributes_match_vendor() {
     assert_eq!(c.intelligence_per_level, 0.0);
 }
 
-/// 派生公式复算 oracle 实证值（character.rs 模块 doc 注：L99 Life base 1204 =
-/// 12×99+16、Mana base 426 = 4×99+30；L1 Accuracy base 0 = 6×1−6）——确认本表
-/// 数值喂入既有公式后输出不变。
+/// Recomputes the derived formulas against the documented oracle values
+/// (character.rs's module doc notes: L99 Life base 1204 = 12×99+16, Mana
+/// base 426 = 4×99+30; L1 Accuracy base 0 = 6×1−6) — confirms feeding this
+/// table's values into the existing formulas produces the same output.
 #[test]
 fn derived_formulas_reproduce_documented_oracle_values() {
     let c = game_data().character_constants().unwrap();
@@ -88,7 +96,7 @@ fn derived_formulas_reproduce_documented_oracle_values() {
     assert_eq!(accuracy_l1, 0.0, "L1 固有精准应为 0");
 }
 
-/// JSON 与 schema 往返一致（serde 字段无遗漏 / 无多余）。
+/// The JSON round-trips through the schema (no serde fields missing / extra).
 #[test]
 fn json_roundtrips_through_schema() {
     use pobr_data::catalog::character_constants::CharacterConstantsDef;

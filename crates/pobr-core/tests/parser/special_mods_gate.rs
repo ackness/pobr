@@ -1,17 +1,19 @@
-//! special_mods 闸门测试。
+//! Gate tests for special_mods.
 //!
-//! 读仓库 `data/overlay-common/special_mods.json`（版本无关策展层，P1-3）+
-//! `data/<ver>/{overlay/special_mods.json, generated/special_derived.json}`，断言：
-//! 1. [`SpecialModRules::compile`] 全量成功（pattern 合法 / mod_type 已知 /
-//!    enums 引用不越界 / id 唯一）；
-//! 2. 所有 `handler_id` 均已注册（未注册 = 测试失败 + 打印未映射清单，
-//!    「未映射告警」落成硬门禁）；
-//! 3. `registry.len() < 100`（架构 §5 监控线）；
-//! 4. handler 条目数 / special 总条目 < 10%（逼近即判切分失败）；
-//! 5. id 唯一 + pattern 编译唯一（两条等价 pattern 字符串视为冲突）；
-//! 6. `verified:false` 计数打印（报表，不断言）。
+//! Reads the repo's `data/overlay-common/special_mods.json` (the version-independent
+//! curation layer, P1-3) + `data/<ver>/{overlay/special_mods.json, generated/special_derived.json}`,
+//! and asserts:
+//! 1. [`SpecialModRules::compile`] succeeds fully (pattern is valid / mod_type is known /
+//!    enum references are in range / ids are unique);
+//! 2. every `handler_id` is registered (unregistered = test failure + a printed list of
+//!    unmapped ids — turning "unmapped" warnings into a hard gate);
+//! 3. `registry.len() < 100` (the architecture §5 monitoring line);
+//! 4. handler entry count / total special entries < 10% (approaching it counts as a split failure);
+//! 5. ids are unique + compiled patterns are unique (two equivalent pattern strings count as a conflict);
+//! 6. the `verified:false` count is printed (a report, not an assertion).
 //!
-//! special_derived.json 缺表时跳过其拼接（落地后纳入）。
+//! When special_derived.json is missing, its concatenation step is skipped (will be included
+//! once it lands).
 
 use std::collections::BTreeMap;
 
@@ -42,9 +44,10 @@ fn special_vendor_path() -> std::path::PathBuf {
         .join("generated/special_vendor.json")
 }
 
-/// 加载仓库 special 条目（overlay-common 版本无关层 + 版本 overlay + 可选 generated
-/// 派生/vendor 批量，拼接——与 pobr-gamedata `load_ruleset` 同序）。overlay-common 层
-/// （P1-3）按 id 打底，版本层覆盖 / 追加。
+/// Load the repo's special entries (overlay-common version-independent layer + version
+/// overlay + optional generated derived/vendor batches, concatenated — same order as
+/// pobr-gamedata's `load_ruleset`). The overlay-common layer (P1-3) forms the base by id;
+/// the version layer overrides / appends on top.
 fn load_entries() -> Vec<SpecialTemplateDef> {
     let mut entries: Vec<SpecialTemplateDef> = Vec::new();
     if let Ok(raw) = std::fs::read_to_string(overlay_common_special_mods_path()) {
@@ -73,8 +76,8 @@ fn load_entries() -> Vec<SpecialTemplateDef> {
     entries
 }
 
-/// 全部已注册的 special handler（`register_special_handlers`）。
-/// 闸门 `all_handler_ids_registered` 用它校验每个 `handler_id` 条目均已注册。
+/// All registered special handlers (`register_special_handlers`).
+/// Used by the `all_handler_ids_registered` gate to check every `handler_id` entry is registered.
 fn special_registry() -> HandlerRegistry {
     let mut registry = HandlerRegistry::new();
     pobr_core::rules::register_special_handlers(&mut registry).expect("special handler 注册不冲突");
@@ -150,7 +153,8 @@ fn ids_and_patterns_unique() {
     assert!(dup_patterns.is_empty(), "重复 pattern：{dup_patterns:?}");
 }
 
-/// `verified:false` 计数报表（不断言；验收口径是曲线/抽样，不是百分比硬指标）。
+/// A report of the `verified:false` count (not an assertion — acceptance is judged by the
+/// trend/spot-checks, not a hard percentage threshold).
 #[test]
 fn report_verified_distribution() {
     let entries = load_entries();

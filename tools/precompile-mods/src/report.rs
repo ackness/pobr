@@ -1,9 +1,11 @@
-//! 覆盖率报表：打印 + 写 `generated/parse-coverage.json`。
+//! Coverage report: printed and written to `generated/parse-coverage.json`.
 //!
-//! 报表是 special 长尾收尾（10-G2）与覆盖率棘轮 CI 的共同输入。`parse-coverage.json`
-//! 是 byte-stable 产物（进 regen-check generated 段校验）；缺口 top-N 按字典序
-//! 截断（语料已去重，「命中频率」= 是否出现，故 top-N 取字典序前 N 的缺口行——
-//! 频率维度需 C3/C4 带计数的语料，归后续）。
+//! The report feeds both the special-mods long-tail cleanup (10-G2) and the
+//! coverage-ratchet CI check. `parse-coverage.json` is a byte-stable
+//! artifact (checked in the regen-check generated section); the gap top-N is
+//! truncated in lexicographic order (the corpus is already deduplicated, so
+//! "hit frequency" just means presence — a real frequency-weighted top-N
+//! needs C3/C4's counted corpus, deferred to later work).
 
 use std::path::Path;
 
@@ -11,7 +13,7 @@ use serde::Serialize;
 
 use crate::parsed::{Coverage, serialize_pretty_stable};
 
-/// `parse-coverage.json` 顶层。
+/// Top-level `parse-coverage.json`.
 #[derive(Serialize)]
 struct CoverageReport<'a> {
     #[serde(rename = "_meta")]
@@ -34,7 +36,7 @@ struct Summary {
     parsed: usize,
     unsupported: usize,
     err: usize,
-    /// parsed / total，6 位小数（棘轮 baseline 比较口径）。
+    /// parsed / total, rounded to 6 decimal places (comparison precision for the ratchet baseline).
     coverage_ratio: f64,
 }
 
@@ -50,16 +52,17 @@ const SCHEMA: &str = "parse-coverage/v1";
 const GENERATOR: &str = "precompile-mods --report";
 const NOTE: &str = "M6-T7 覆盖率报表；coverage_ratio 进 devs/ci/parse-coverage-baseline.json 棘轮";
 
-/// 四舍五入到 6 位小数（避免 f64 尾噪声影响 byte-stable 与棘轮比较）。
+/// Round to 6 decimal places (keeps f64 trailing noise from affecting
+/// byte-stability and ratchet comparisons).
 pub fn round6(v: f64) -> f64 {
     (v * 1_000_000.0).round() / 1_000_000.0
 }
 
-/// 打印报表到 stderr + 写 `generated/parse-coverage.json`。
+/// Print the report to stderr and write `generated/parse-coverage.json`.
 pub fn emit(cov: &Coverage, top_n: usize, data_dir: &Path) -> Result<(), String> {
     let ratio = round6(cov.coverage_ratio());
 
-    // stderr 摘要
+    // stderr summary
     eprintln!("─── parse 覆盖率报表 ───");
     eprintln!(
         "总计 {} | parsed {} | unsupported {} | err {} | 覆盖率 {:.4}",
@@ -79,7 +82,7 @@ pub fn emit(cov: &Coverage, top_n: usize, data_dir: &Path) -> Result<(), String>
         eprintln!("  [{}/{}] {}", gap.source, gap.status, gap.text);
     }
 
-    // JSON 产物
+    // JSON artifact
     let by_source: Vec<SourceRow> = cov
         .by_source
         .iter()
@@ -91,7 +94,7 @@ pub fn emit(cov: &Coverage, top_n: usize, data_dir: &Path) -> Result<(), String>
         })
         .collect();
 
-    // gaps 已字典序（来自 BTreeMap 顺序的 corpus.lines），截断 top-N。
+    // gaps are already lexicographic (from corpus.lines' BTreeMap order); just truncate to top-N.
     let gaps_top_n: Vec<_> = cov.gaps.iter().take(top_n).cloned().collect();
 
     let report = CoverageReport {

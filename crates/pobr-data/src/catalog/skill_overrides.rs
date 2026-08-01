@@ -1,56 +1,69 @@
-//! per-skill 覆盖值 overlay 域 schema（`overlay/skill_overrides.json`）。
+//! Per-skill override-value overlay domain schema
+//! (`overlay/skill_overrides.json`).
 //!
-//! 数据来源：vendor PoB2 `Data/Skills/*.lua` 的人工策展层——GGG `.dat` 导出
-//! （pipeline/tables）中**不存在**的分等级列（`critChance` /
-//! `attackSpeedMultiplier` / `baseMultiplier`）与 statSet `baseMods` 固有
-//! Speed MORE。由 `sync-pob-catalog extract-lua` 确定性抽取生成
-//! （schema 标识 `skill_overrides/v1`，生成侧见该工具的 `extract_lua` 模块）。
+//! Data source: a hand-curated layer over vendor PoB2 `Data/Skills/*.lua`
+//! for per-level columns that **don't exist** in the GGG `.dat` export
+//! (pipeline/tables) — `critChance` / `attackSpeedMultiplier` /
+//! `baseMultiplier` — plus a statSet's inherent `baseMods` Speed MORE.
+//! Deterministically extracted by `sync-pob-catalog extract-lua` (schema id
+//! `skill_overrides/v1`; see that tool's `extract_lua` module for the
+//! generation side).
 //!
-//! 消费侧：`pobr-gamedata` 在加载 `base/granted_effect_levels.json` /
-//! `base/granted_effect_stat_sets.json` 时把本表 merge 到纯 base 之上
-//! （merge 语义与单测见 `pobr-gamedata::domains::skill_overrides`）。
-//! 本模块只定义 serde 形状，零逻辑。
+//! Consumer: `pobr-gamedata` merges this table on top of the plain base
+//! data while loading `base/granted_effect_levels.json` /
+//! `base/granted_effect_stat_sets.json` (merge semantics and unit tests in
+//! `pobr-gamedata::domains::skill_overrides`). This module only defines the
+//! serde shape, zero logic.
 
 use serde::{Deserialize, Serialize};
 
-/// [`SkillOverrideEntry::stat`] 取值：技能基础暴击率（百分点，对应
-/// `SkillLevelDef::crit_chance`）。
+/// A value for [`SkillOverrideEntry::stat`]: the skill's base crit chance
+/// (percentage points, corresponds to `SkillLevelDef::crit_chance`).
 pub const OVERRIDE_STAT_CRIT_CHANCE: &str = "crit_chance";
-/// [`SkillOverrideEntry::stat`] 取值：攻击速度乘数（百分点，可负，对应
-/// `SkillLevelDef::attack_speed_multiplier`）。
+/// A value for [`SkillOverrideEntry::stat`]: the attack speed multiplier
+/// (percentage points, can be negative, corresponds to
+/// `SkillLevelDef::attack_speed_multiplier`).
 pub const OVERRIDE_STAT_ATTACK_SPEED_MULTIPLIER: &str = "attack_speed_multiplier";
-/// [`SkillOverrideEntry::stat`] 取值：技能伤害基础倍率（对应
-/// `SkillLevelDef::base_multiplier`）。
+/// A value for [`SkillOverrideEntry::stat`]: the skill's base damage
+/// multiplier (corresponds to `SkillLevelDef::base_multiplier`).
 pub const OVERRIDE_STAT_BASE_MULTIPLIER: &str = "base_multiplier";
-/// [`SkillOverrideEntry::stat`] 取值：statSet 固有攻击速度 MORE（百分点，对应
-/// `SkillStatSetDef::skill_attack_speed_more`）。
+/// A value for [`SkillOverrideEntry::stat`]: the statSet's inherent attack
+/// speed MORE (percentage points, corresponds to
+/// `SkillStatSetDef::skill_attack_speed_more`).
 pub const OVERRIDE_STAT_SKILL_ATTACK_SPEED_MORE: &str = "skill_attack_speed_more";
-/// [`SkillOverrideEntry::stat`] 取值：技能 DoT 配置布尔（vendor
-/// statSet `baseMods` 的 `skill("dotIs*", true)`；value 1.0 = true，对应
-/// `StatSetDef::dot_flags` 的同名位）。statSet 级条目（恒带 `stat_set`）。
+/// A value for [`SkillOverrideEntry::stat`]: a skill DoT config boolean
+/// (vendor statSet `baseMods`'s `skill("dotIs*", true)`; value 1.0 = true,
+/// corresponds to the matching bit of `StatSetDef::dot_flags`). A
+/// statSet-level entry (always carries `stat_set`).
 pub const OVERRIDE_STAT_DOT_IS_AREA: &str = "dot_is_area";
-/// 同 [`OVERRIDE_STAT_DOT_IS_AREA`]（dotIsProjectile）。
+/// Same as [`OVERRIDE_STAT_DOT_IS_AREA`] (dotIsProjectile).
 pub const OVERRIDE_STAT_DOT_IS_PROJECTILE: &str = "dot_is_projectile";
-/// 同 [`OVERRIDE_STAT_DOT_IS_AREA`]（dotIsSpell）。
+/// Same as [`OVERRIDE_STAT_DOT_IS_AREA`] (dotIsSpell).
 pub const OVERRIDE_STAT_DOT_IS_SPELL: &str = "dot_is_spell";
-/// 同 [`OVERRIDE_STAT_DOT_IS_AREA`]（dotIsAttack）。
+/// Same as [`OVERRIDE_STAT_DOT_IS_AREA`] (dotIsAttack).
 pub const OVERRIDE_STAT_DOT_IS_ATTACK: &str = "dot_is_attack";
-/// 同 [`OVERRIDE_STAT_DOT_IS_AREA`]（dotIsHit）。
+/// Same as [`OVERRIDE_STAT_DOT_IS_AREA`] (dotIsHit).
 pub const OVERRIDE_STAT_DOT_IS_HIT: &str = "dot_is_hit";
-/// [`SkillOverrideEntry::stat`] 取值：尸体爆炸门控布尔（vendor statSet
-/// `baseMods` 的 `skill("explodeCorpse", true)`，CalcOffence.lua:2213 据此把
-/// `monsterLife × corpseExplosionLifeMultiplier` 注入物理基伤；value 1.0 = true，
-/// 对应 `StatSetDef::explode_corpse`）。statSet 级条目（恒带 `stat_set`）。
+/// A value for [`SkillOverrideEntry::stat`]: the corpse-explosion gate
+/// boolean (vendor statSet `baseMods`'s `skill("explodeCorpse", true)`;
+/// CalcOffence.lua:2213 uses it to inject
+/// `monsterLife × corpseExplosionLifeMultiplier` into physical base
+/// damage; value 1.0 = true, corresponds to `StatSetDef::explode_corpse`).
+/// A statSet-level entry (always carries `stat_set`).
 pub const OVERRIDE_STAT_EXPLODE_CORPSE: &str = "explode_corpse";
-/// [`SkillOverrideEntry::stat`] 取值：statSet 隐式 stat（vendor statSet
-/// `stats` 列表中任何等级行都没有数值的条目 = `.dat` `ImplicitStats` 列，适配器
-/// 未下载；vendor 消费值恒 1，`CalcTools.lua:152` `statSetLevel[index] or 1`）。
-/// statSet 级条目（恒带 `stat_set`），stat id 落 [`SkillOverrideEntry::stat_id`]，
-/// 对应 `StatSetDef::implicit_stats`。生成侧为**策展白名单**抽取
-/// （见 `extract_skill_overrides.lua` 头注）。
+/// A value for [`SkillOverrideEntry::stat`]: a statSet implicit stat
+/// (entries from vendor statSet's `stats` list where no level row has a
+/// value = the `.dat`'s `ImplicitStats` column, not downloaded by the
+/// adapter; vendor always consumes value 1,
+/// `CalcTools.lua:152`'s `statSetLevel[index] or 1`). A statSet-level entry
+/// (always carries `stat_set`); the stat id lives in
+/// [`SkillOverrideEntry::stat_id`], corresponding to
+/// `StatSetDef::implicit_stats`. Extracted as a **curated whitelist** on
+/// the generation side (see `extract_skill_overrides.lua`'s header comment).
 pub const OVERRIDE_STAT_IMPLICIT_STAT: &str = "implicit_stat";
 
-/// 全部 statSet 级 dotIs* stat 名（消费侧 merge / 生成侧抽取共用清单）。
+/// All statSet-level dotIs* stat names (a shared list for both the
+/// consumer's merge and the generator's extraction).
 pub const OVERRIDE_DOT_FLAG_STATS: &[&str] = &[
     OVERRIDE_STAT_DOT_IS_AREA,
     OVERRIDE_STAT_DOT_IS_PROJECTILE,
@@ -59,35 +72,42 @@ pub const OVERRIDE_DOT_FLAG_STATS: &[&str] = &[
     OVERRIDE_STAT_DOT_IS_HIT,
 ];
 
-/// 单条 per-skill 覆盖值。`value` 与 `per_level` 二选一：
-/// 该 stat 在 vendor **所有等级**均出现且同值时压缩为 `value`
-/// （消费侧应用到该技能全部等级行），否则保留 `per_level` 明细
-/// （只覆盖明细中列出的等级，缺失等级不填——忠实于 vendor）。
+/// A single per-skill override value. `value` and `per_level` are mutually
+/// exclusive: when the stat appears at **every level** in vendor with the
+/// same value, it's compressed into `value` (the consumer applies it to
+/// every level row of that skill); otherwise the `per_level` breakdown is
+/// kept (only the listed levels are overridden — missing levels aren't
+/// filled in, staying faithful to vendor).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SkillOverrideEntry {
-    /// vendor 技能 id（= `GrantedEffects.Id`，如 `FlickerStrikePlayer`）。
+    /// Vendor skill id (= `GrantedEffects.Id`, e.g. `FlickerStrikePlayer`).
     pub skill: String,
-    /// 入库 stat 名（见本模块 `OVERRIDE_STAT_*` 常量）。
+    /// The stored stat name (see this module's `OVERRIDE_STAT_*` constants).
     pub stat: String,
-    /// statSet 序号（仅 statSet 级覆盖值携带，如 baseMods 的 Speed MORE）。
+    /// statSet index (only present for statSet-level overrides, e.g.
+    /// baseMods's Speed MORE).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stat_set: Option<u32>,
-    /// 全等级同值（或与等级无关）时的单值。
+    /// The single value, when it's the same at every level (or
+    /// level-independent).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<f64>,
-    /// 按等级明细：`[[level, value], ...]`，level 升序。
+    /// Per-level breakdown: `[[level, value], ...]`, ascending by level.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub per_level: Option<Vec<(u32, f64)>>,
-    /// 隐式 stat 的 stat id（仅 [`OVERRIDE_STAT_IMPLICIT_STAT`] 条目携带，如
-    /// `attacks_roll_crits_twice`）。
+    /// The stat id for an implicit stat (only present for
+    /// [`OVERRIDE_STAT_IMPLICIT_STAT`] entries, e.g.
+    /// `attacks_roll_crits_twice`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stat_id: Option<String>,
 }
 
-/// `overlay/skill_overrides.json` 顶层（消费侧视角：`_meta` 头部为生成溯源
-/// 信息，serde 默认忽略未知字段，消费侧只取 `overrides` 列表）。
+/// Top level of `overlay/skill_overrides.json` (from the consumer's
+/// perspective: the `_meta` header is provenance info, ignored by default
+/// via serde along with other unknown fields; the consumer just takes the
+/// `overrides` list).
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct SkillOverridesDef {
-    /// 覆盖值列表，按 `(skill, stat, stat_set)` 排序。
+    /// Override list, sorted by `(skill, stat, stat_set)`.
     pub overrides: Vec<SkillOverrideEntry>,
 }

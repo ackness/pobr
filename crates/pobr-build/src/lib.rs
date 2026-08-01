@@ -1,24 +1,25 @@
-//! pobr-build：Build 状态机 / PoB Build Code 兼容编解码 / 计算编排。
+//! pobr-build: Build state machine / PoB Build Code compatible codec / calculation orchestration.
 //!
-//! 目标设计见 `devs/docs/architecture/02-crate-design.md` §7 与
-//! `05-compatibility-and-i18n.md`。
+//! For the target design see `devs/docs/architecture/02-crate-design.md` §7 and
+//! `05-compatibility-and-i18n.md`.
 //!
-//! 模块概览：
-//! - [`error`] — 三层错误（[`BuildCodeError`] / [`XmlError`] / [`BuildError`]）。
-//! - [`build_code`] — PoB Build Code 编解码（URL-safe Base64 + zlib，padding 容错 + 防 bomb）。
-//! - [`import_detect`] — 快捷导入识别（Build Code / XML / pobb.in 链接 / raw item）。
-//! - [`build_config`] — [`BuildConfig`] + `to_calc_config`（适配 REAL [`pobr_core::CalcConfig`]）。
-//! - [`build`] — [`Build`] 内存状态（采用 REAL `pobr_data` 类型 + 简化 [`SocketGroup`]）。
-//! - [`xml_serde`] — PoB Build XML 头部解析（quick-xml）。
-//! - [`xml_build`] — PoB Build XML → 完整 [`Build`]（天赋树 / 装备槽位 / 技能宝石组）。
-//! - [`snapshot`] — 计算输入只读快照 + 确定性内容哈希。
-//! - [`build_data`] — 把 [`pobr_gamedata::GameData`] 投影为 orchestrator 所需内存索引（节点/宝石/职业属性）。
-//! - [`calc_orchestrator`] — 把 [`Build`] 驱动进 [`pobr_core::calc::CalculationSession`]
-//!   （text-only `calculate` + 端到端归因 `calculate_with_data`）。
-//! - [`calc_cache`] — 以内容哈希为键的结果缓存。
-//! - [`comparison`] — 两份 [`pobr_core::calc::OutputTable`] 的标量字段 diff。
+//! Module overview:
+//! - [`error`] — three error layers ([`BuildCodeError`] / [`XmlError`] / [`BuildError`]).
+//! - [`build_code`] — PoB Build Code codec (URL-safe Base64 + zlib, padding-tolerant + bomb guard).
+//! - [`import_detect`] — quick-import recognition (Build Code / XML / pobb.in link / raw item).
+//! - [`build_config`] — [`BuildConfig`] + `to_calc_config` (adapts to REAL [`pobr_core::CalcConfig`]).
+//! - [`build`] — [`Build`] in-memory state (uses REAL `pobr_data` types + a simplified [`SocketGroup`]).
+//! - [`xml_serde`] — PoB Build XML header parsing (quick-xml).
+//! - [`xml_build`] — PoB Build XML → full [`Build`] (passive tree / item slots / skill gem groups).
+//! - [`snapshot`] — read-only snapshot of calculation input + deterministic content hash.
+//! - [`build_data`] — projects [`pobr_gamedata::GameData`] into the in-memory indexes the orchestrator needs (nodes/gems/class attributes).
+//! - [`calc_orchestrator`] — drives a [`Build`] through [`pobr_core::calc::CalculationSession`]
+//!   (text-only `calculate` + end-to-end attribution `calculate_with_data`).
+//! - [`calc_cache`] — result cache keyed by content hash.
+//! - [`comparison`] — scalar field diff between two [`pobr_core::calc::OutputTable`]s.
 //!
-//! 设计约束：确定性、不可变、零网络 I/O（分享链接只识别 + 提取 key，抓取由上层做）。
+//! Design constraints: deterministic, immutable, zero network I/O (share links are only
+//! recognized and their key extracted; fetching is left to the caller).
 
 pub mod buff_stat_map;
 pub mod build;

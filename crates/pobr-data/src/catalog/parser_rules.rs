@@ -1,66 +1,87 @@
-//! ModParser 规则数据 schema 域——同一模块承载两套互补 schema：
+//! ModParser rule data schema — this module holds two complementary schemas:
 //!
-//! 1. **special_mods 模板**（`overlay/special_mods.json` +
-//!    `generated/special_derived.json`，人工策展）—— [`SpecialModsDef`] 一族；
-//! 2. **ModParser 解析规则六表**（`overlay/mod_parser_rules.json`，
-//!    `mod_parser_rules/v1`，vendor 抽取）—— [`ModParserRulesDoc`] 一族。
+//! 1. **special_mods templates** (`overlay/special_mods.json` +
+//!    `generated/special_derived.json`, hand-curated) — the [`SpecialModsDef`]
+//!    family;
+//! 2. **the ModParser rule six-table set** (`overlay/mod_parser_rules.json`,
+//!    `mod_parser_rules/v1`, vendor-extracted) — the [`ModParserRulesDoc`]
+//!    family.
 //!
-//! 本模块零逻辑、零 I/O；全部新字段 `#[serde(default)]` / `Option`。
+//! This module has zero logic and zero I/O; every new field is
+//! `#[serde(default)]` / `Option`.
 //!
-//! # special_mods 模板
+//! # special_mods templates
 //!
-//! 对应 vendor PoB2 `Modules/ModParser.lua:2231-6150` `specialModList`
-//! （2085 条整行锚定特例）的分批数据化载体。本表是**人工策展域**（`_meta.generator
-//! = "hand-curated"`，`regen_command` 记录对账命令而非再生命令）；vendor 对账由
-//! `vendor_pattern` 列 + `sync-pob-catalog check --special-coverage` 承担。
+//! A batched data carrier for vendor PoB2's `Modules/ModParser.lua:2231-6150`
+//! `specialModList` (2085 whole-line-anchored special cases). This table is a
+//! **hand-curated domain** (`_meta.generator = "hand-curated"`; `regen_command`
+//! records the reconciliation command, not a regeneration command); vendor
+//! reconciliation is handled by the `vendor_pattern` column plus
+//! `sync-pob-catalog check --special-coverage`.
 //!
-//! ## 受限模板 DSL 硬边界
+//! ## Hard limits of the restricted template DSL
 //!
-//! - 允许：`$1..$n` 数值占位、字面量、`negate / clamp(min,max) / div / mult / base`
-//!   五种算子、`target(player|enemy|minion)`、受限谓词（字段引用 + eq/ne/gt/lt +
-//!   and/or）。
-//! - 禁止：循环、递归、自由表达式、跨条目引用、字符串拼接求值。
-//! - 扩展闸门：新增任何 DSL 能力需 ≥20 个条目受益，否则该条目走 `handler_id`。
-//! - 监控：handler 条目数 <100；逼近 special 总量 10% 即判切分失败。
-//! - 元数据：未经 oracle 验证的条目带 `verified:false`，运行时照用但 parity
-//!   报告单列。
+//! - Allowed: `$1..$n` numeric placeholders, literals, the five operators
+//!   `negate / clamp(min,max) / div / mult / base`, `target(player|enemy|minion)`,
+//!   restricted predicates (field references + eq/ne/gt/lt + and/or).
+//! - Forbidden: loops, recursion, free-form expressions, cross-entry
+//!   references, runtime string concatenation.
+//! - Extension gate: adding any new DSL capability requires ≥20 entries to
+//!   benefit from it, otherwise the entry goes through `handler_id`.
+//! - Monitoring: fewer than 100 handler entries; approaching 10% of the total
+//!   special count counts as a failed split.
+//! - Metadata: entries not yet verified against the oracle carry
+//!   `verified:false` — used as-is at runtime, but listed separately in the
+//!   parity report.
 //!
-//! 求值器唯一实现 = `pobr-core::rules::value_expr`（config / special / parser
-//! 三处同一套受限语言，禁三套方言）；本模块只定义 serde 形状，不 import 求值
-//! 代码。受限谓词的语言定义（值形态预留在 [`TemplateTagDef`] 的开放字段）：
+//! The only evaluator implementation is `pobr-core::rules::value_expr` (one
+//! restricted language shared by config / special / parser — no three
+//! dialects). This module only defines the serde shape and doesn't import
+//! evaluator code. The restricted predicate grammar (value shapes reserved in
+//! [`TemplateTagDef`]'s open fields):
 //!
 //! ```text
 //! predicate := comparison | predicate ("and" | "or") predicate
 //! comparison := field_ref ("eq" | "ne" | "gt" | "lt") literal
-//! field_ref  := 求值上下文白名单内的字段名（无自由表达式、无函数调用）
+//! field_ref  := a field name from the evaluation context's whitelist (no
+//!               free-form expressions, no function calls)
 //! ```
 //!
-//! # ModParser 解析规则六表
+//! # ModParser rule six-table set
 //!
-//! 数据来源：vendor PoB2 `Modules/ModParser.lua` 的解析规则表（formList /
-//! modNameList / modFlagList / preFlagList / modTagList + 小查找表），由
-//! `sync-pob-catalog extract-lua --what parser-rules` 经 headless 引导 luajit
-//! 执行后 dump **加载后的最终表**（含 regen/cost 等派生表展开）确定性抽取生成。
-//! specialModList 不在本表（归 `overlay/special_mods.json`）；
-//! skillNameList / preSkillNameList 归 `generated/special_derived.json`。
+//! Data source: vendor PoB2 `Modules/ModParser.lua`'s parser rule tables
+//! (formList / modNameList / modFlagList / preFlagList / modTagList plus a
+//! few small lookup tables), deterministically extracted by
+//! `sync-pob-catalog extract-lua --what parser-rules`, which bootstraps
+//! headless luajit and dumps the **final loaded tables** (including derived
+//! tables like regen/cost, already expanded). specialModList isn't in this
+//! table (it lives in `overlay/special_mods.json`); skillNameList /
+//! preSkillNameList live in `generated/special_derived.json`.
 //!
-//! 关键抽取约定（消费侧 = mod_parser scan 引擎）：
-//! - **pattern 原样保留 Lua pattern 语法**，不在抽取期翻译成 regex；
-//!   [`FormDef::literal`] / `anchored` 是 Rust 侧派生的索引辅助字段；
-//! - **位掩码 → 名字**：vendor `ModFlag` / `KeywordFlag` 掩码分解为名字数组
-//!   （位枚举留 Rust，载入期 `from_names` 还原）；tag 内 `skillType` 数值
-//!   枚举反查为名字（落 `skill_type` 键）、`modFlags`/`keywordFlags` 掩码分解
-//!   （落 `mod_flags`/`keyword_flags` 键）；其余 tag 字段**键名原样转录**
-//!   （vendor camelCase，如 `limitTotal` / `varList`）；
-//! - **闭包 → 模板（探针推断）**：闭包条目用双哨兵探针推断为占位符模板
-//!   （`$1..$5`，算子 `:cap`（首字母大写）、`:div(k)`/`:mult(k)`/`:negate`，
-//!   字符串拼接用 `+` 连接段），成功者标 [`PreFlagDef::inferred`]；推断失败
-//!   条目落 `handler_id`（`<段名>:<pattern 稳定 hash 前 12 位>`），由 Rust
-//!   handler 注册表兜底（全局 <100 闸门）。
+//! Key extraction conventions (consumer side = the mod_parser scan engine):
+//! - **`pattern` keeps raw Lua pattern syntax as-is**, not translated to
+//!   regex at extraction time; [`FormDef::literal`] / `anchored` are
+//!   Rust-side derived indexing helper fields;
+//! - **bitmask → names**: vendor `ModFlag` / `KeywordFlag` masks are
+//!   decomposed into name arrays (the bit enums stay in Rust; `from_names`
+//!   restores them at load time); a tag's numeric `skillType` enum is
+//!   reverse-looked-up into a name (stored under the `skill_type` key), and
+//!   `modFlags`/`keywordFlags` masks are decomposed (stored under the
+//!   `mod_flags`/`keyword_flags` keys); other tag fields **keep their key
+//!   names verbatim** (vendor camelCase, e.g. `limitTotal` / `varList`);
+//! - **closures → templates (inferred by probing)**: closure entries are
+//!   inferred into placeholder templates (`$1..$5`, operators `:cap`
+//!   (capitalize first letter), `:div(k)`/`:mult(k)`/`:negate`, string
+//!   concatenation joined with `+`) via a dual-sentinel probe; successful
+//!   inferences are marked [`PreFlagDef::inferred`]; entries where inference
+//!   fails fall back to `handler_id` (`<section>:<first 12 chars of the
+//!   pattern's stable hash>`), backed by a Rust handler registry (global
+//!   <100 gate).
 //!
-//! 已记录偏差：`resource_types` 不入库——vendor 加载完成后
-//! parseMod 仅消费其派生展开（regen/degen/cost/base_cost 四表），原始表
-//! 不可达也无运行时消费方（见 m6-extraction-report.md）。
+//! Recorded deviation: `resource_types` is not stored — after vendor finishes
+//! loading, parseMod only ever consumes its derived expansions (the four
+//! regen/degen/cost/base_cost tables); the raw table is unreachable and has
+//! no runtime consumer (see m6-extraction-report.md).
 
 use std::collections::BTreeMap;
 
@@ -68,441 +89,491 @@ use serde::{Deserialize, Serialize};
 
 pub use crate::catalog::stat_map::StatMapValue;
 
-//  special 词条模板 schema（overlay/special_mods.json）
+//  special mod-line template schema (overlay/special_mods.json)
 
-/// 数值算子（五算子白名单，外部标签 serde 形：`{"negate": {}}` /
-/// `{"div": 100}`）。语义（与 value_expr 单点实现对齐）：
+/// Numeric operator (a whitelist of five operators, externally tagged serde
+/// form: `{"negate": {}}` / `{"div": 100}`). Semantics (matches the single
+/// value_expr implementation):
 ///
-/// - `negate`：`v → -v`；
-/// - `clamp{min,max}`：`v → min(max(v, min), max)`；
-/// - `div(n)`：`v → v / n`；
-/// - `mult(n)`：`v → v × n`；
-/// - `base(n)`：`v → v + n`（先加基准再继续算子链）。
+/// - `negate`: `v → -v`;
+/// - `clamp{min,max}`: `v → min(max(v, min), max)`;
+/// - `div(n)`: `v → v / n`;
+/// - `mult(n)`: `v → v × n`;
+/// - `base(n)`: `v → v + n` (added first, before the rest of the operator chain).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ValueOpDef {
-    /// 取负。
+    /// Negation.
     Negate {},
-    /// 区间钳制。
+    /// Range clamp.
     Clamp {
-        /// 下界。
+        /// Lower bound.
         min: f64,
-        /// 上界。
+        /// Upper bound.
         max: f64,
     },
-    /// 除以常数。
+    /// Divide by a constant.
     Div(f64),
-    /// 乘以常数。
+    /// Multiply by a constant.
     Mult(f64),
-    /// 加基准常数。
+    /// Add a base constant.
     Base(f64),
 }
 
-/// 带算子链的取值表达式（`{"ref": "$1", "ops": [{"negate": {}}, {"div": 100}]}`）。
+/// A value expression with an operator chain (`{"ref": "$1", "ops": [{"negate": {}}, {"div": 100}]}`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ValueExprDef {
-    /// 捕获引用（`$1..$n`，按 pattern 捕获组出现序）。
+    /// Capture reference (`$1..$n`, in the order the capture groups appear
+    /// in the pattern).
     #[serde(rename = "ref")]
     pub capture: String,
-    /// 算子链（按序应用）。
+    /// Operator chain (applied in order).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub ops: Vec<ValueOpDef>,
 }
 
-/// 模板值形态：数字字面量 | `"$n"` 捕获直引 | 带算子链表达式 | 嵌套 mod 载荷
-/// | 标量表。`Flag(bool)` 供 FLAG 型 mod 的 value=true 字面量。
+/// A template's value shape: a numeric literal | a `"$n"` capture reference |
+/// an expression with an operator chain | a nested mod payload | a scalar
+/// table. `Flag(bool)` covers the `value=true` literal for FLAG-type mods.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TemplateValueDef {
-    /// FLAG 布尔字面量。
+    /// FLAG boolean literal.
     Flag(bool),
-    /// 数字字面量。
+    /// Numeric literal.
     Number(f64),
-    /// 捕获直引（`"$1"`）。
+    /// A direct capture reference (`"$1"`).
     Capture(String),
-    /// 表达式（捕获 + 算子链）。
+    /// An expression (capture plus operator chain).
     Expr(ValueExprDef),
-    /// 嵌套 mod 载荷（vendor `mod("EnemyModifier", "LIST", { mod = mod(...) })`
-    /// 形态；JSON 形 `{"mods": [<ModTemplateDef>...]}`）。实例化为
-    /// `ModValue::NestedMods`，由编排层（env_finalize `forward_enemy_modifiers`
-    /// 等）经 `ModDb::list_nested` 透传转发到目标 db。**必须列在 `List` 之前**：
-    /// untagged 按声明序尝试，`{"mods": ...}` 的数组值会让 `List`（标量表）
-    /// 反序列化失败，但反向顺序会把标量表误吞。
+    /// A nested mod payload (vendor `mod("EnemyModifier", "LIST", { mod = mod(...) })`
+    /// shape; JSON shape `{"mods": [<ModTemplateDef>...]}`). Instantiated as
+    /// `ModValue::NestedMods`, forwarded to the target db by the
+    /// orchestration layer (env_finalize's `forward_enemy_modifiers`, etc.)
+    /// via `ModDb::list_nested`. **Must be listed before `List`**: untagged
+    /// tries variants in declaration order, and `{"mods": ...}`'s array
+    /// value would fail to deserialize as `List` (a scalar table), but the
+    /// reverse order would let `List` wrongly swallow a scalar table.
     Nested {
-        /// 内层 mod 模板（与顶层 [`ModTemplateDef`] 同 schema，可递归）。
+        /// The inner mod templates (same schema as the top-level
+        /// [`ModTemplateDef`], can recurse).
         mods: Vec<ModTemplateDef>,
     },
-    /// LIST 型 mod 的结构化值（如 `Keystone LIST` 的关键石名）。值内字符串
-    /// 必须是字面量或 enums 闭集产物，禁运行时拼接（DSL 硬边界）。
+    /// A LIST-type mod's structured value (e.g. the keystone name for
+    /// `Keystone LIST`). Strings inside the value must be literals or
+    /// products of a closed enum set — no runtime concatenation (a hard DSL
+    /// limit).
     List(BTreeMap<String, TemplateScalarDef>),
 }
 
-/// 模板内标量：字面量或 `"$n"` 捕获 / `{"enum": n}` 闭集引用。
+/// A scalar inside a template: a literal, or a `"$n"` capture /
+/// `{"enum": n}` closed-set reference.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TemplateScalarDef {
-    /// 布尔字面量。
+    /// Boolean literal.
     Bool(bool),
-    /// 数字字面量。
+    /// Numeric literal.
     Number(f64),
-    /// 字符串字面量或 `"$n"` 捕获引用。
+    /// String literal or a `"$n"` capture reference.
     Text(String),
-    /// enums 闭集映射引用（`{"enum": 3}` = 用第 3 个捕获词在条目 `enums["3"]`
-    /// 表中查完整字面量；每个可能输出都是表内显式字面量，非字符串拼接）。
+    /// A closed-set enum reference (`{"enum": 3}` = look up the full literal
+    /// in this entry's `enums["3"]` table using the 3rd capture's word;
+    /// every possible output is an explicit literal in the table, not a
+    /// string concatenation).
     Enum {
-        /// 捕获组序号（1-based）。
+        /// Capture group index (1-based).
         #[serde(rename = "enum")]
         capture_index: u32,
     },
-    /// 字符串字面量列表（vendor `SkillName` tag 的 `skillNameList` 形态）。
-    /// JSON 数组形状与其余标量变体互斥，untagged 无歧义。
+    /// A list of string literals (the `skillNameList` shape of vendor's
+    /// `SkillName` tag). Its JSON array shape is mutually exclusive with the
+    /// other scalar variants, so untagged deserialization is unambiguous.
     TextList(Vec<String>),
 }
 
-/// 模板 tag（pobr `ModTag` 的 serde 形态投影；`type` 之外的字段开放转录，
-/// 值可为字面量 / `"$n"` / enums 引用）。
+/// A template tag (a serde-shape projection of pobr's `ModTag`; fields
+/// besides `type` are transcribed openly, with values that can be a literal
+/// / `"$n"` / an enums reference).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TemplateTagDef {
-    /// tag 类型（如 `Condition` / `Multiplier` / `SkillType`）。
+    /// Tag type (e.g. `Condition` / `Multiplier` / `SkillType`).
     #[serde(rename = "type")]
     pub tag_type: String,
-    /// 其余字段（如 `var` / `stat` / `threshold`），按 tag 类型开放。
+    /// The remaining fields (e.g. `var` / `stat` / `threshold`), open per
+    /// tag type.
     #[serde(flatten)]
     pub fields: BTreeMap<String, TemplateScalarDef>,
 }
 
-/// mod 名三态：字面量或 enums 闭集引用。
+/// A mod name in one of two shapes: a literal or a closed-set enums reference.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TemplateNameDef {
-    /// ModName 字面量。
+    /// ModName literal.
     Literal(String),
-    /// enums 闭集引用（同 [`TemplateScalarDef::Enum`]）。
+    /// A closed-set enums reference (same as [`TemplateScalarDef::Enum`]).
     Enum {
-        /// 捕获组序号（1-based）。
+        /// Capture group index (1-based).
         #[serde(rename = "enum")]
         capture_index: u32,
     },
 }
 
-/// 一条产出 mod 的模板（`ModTemplate`）。
+/// A template that produces one mod (`ModTemplate`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModTemplateDef {
-    /// ModName（字面量或 enums 引用）。
+    /// ModName (a literal or an enums reference).
     pub name: TemplateNameDef,
-    /// mod 类型（`BASE|INC|MORE|FLAG|OVERRIDE|LIST`，pobr ModType serde 名）。
+    /// Mod type (`BASE|INC|MORE|FLAG|OVERRIDE|LIST`, pobr's ModType serde name).
     #[serde(rename = "type")]
     pub mod_type: String,
-    /// 取值（三态，见 [`TemplateValueDef`]）。
+    /// The value (one of three shapes, see [`TemplateValueDef`]).
     pub value: TemplateValueDef,
-    /// ModFlags 位名列表（按届时扩位后的位名；本批次只用既有位名）。
+    /// ModFlags bit names (using whichever bit names are current at the
+    /// time; this batch only uses existing bit names).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub flags: Vec<String>,
-    /// KeywordFlags 位名列表。
+    /// KeywordFlags bit names.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keyword_flags: Vec<String>,
-    /// tag 列表。
+    /// Tag list.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<TemplateTagDef>,
-    /// 作用目标：`player`（缺省）| `enemy`（→ EnemyModifier LIST 包装，通道）
-    /// | `minion`（→ MinionModifier LIST 包装）。
+    /// The target: `player` (default) | `enemy` (wrapped as an
+    /// EnemyModifier LIST, forwarded) | `minion` (wrapped as a
+    /// MinionModifier LIST).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub target: Option<String>,
 }
 
-/// 一条 special 词条模板（`SpecialTemplateDef`）。
+/// A single special mod-line template (`SpecialTemplateDef`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SpecialTemplateDef {
-    /// 稳定 id（snake_case；diff / 报表 / oracle 对拍引用。重命名视为删+增）。
+    /// Stable id (snake_case; referenced by diffs / reports / oracle
+    /// reconciliation. A rename counts as delete+add).
     pub id: String,
-    /// 匹配模式：Rust regex 语法（regex crate 子集：无 look-around / 反向引用）。
-    /// 引擎统一做输入小写规范化 + 整行锚定（编译期包 `^...$`，对照 vendor
-    /// :6155-6158）。捕获组按出现序 = `$1..$n`；数值捕获统一
-    /// `(\d+(?:\.\d+)?)`；词类捕获必须是显式闭集（如
-    /// `(fire|cold|lightning|chaos|physical)`），禁 `(.+)` 开放捕获
-    /// （开放捕获条目走 `handler_id`）。
+    /// Match pattern: Rust regex syntax (a subset of the regex crate — no
+    /// look-around, no backreferences). The engine uniformly lowercases the
+    /// input and anchors the whole line (wrapped in `^...$` at compile time,
+    /// per vendor `:6155-6158`). Capture groups are numbered in appearance
+    /// order as `$1..$n`; numeric captures uniformly use
+    /// `(\d+(?:\.\d+)?)`; word-class captures must be an explicit closed set
+    /// (e.g. `(fire|cold|lightning|chaos|physical)`) — open captures like
+    /// `(.+)` are forbidden (such entries go through `handler_id` instead).
     pub pattern: String,
-    /// vendor 对账元数据：原 Lua pattern 字面量（`check --special-coverage`
-    /// 按它对 vendor key 做存在性 diff）。`None` = pobr 自有特例
-    /// （vendor 无同 key，来源见 `source_note`）。
+    /// Vendor reconciliation metadata: the original Lua pattern literal
+    /// (used by `check --special-coverage` to diff for existence against
+    /// the vendor key). `None` means a pobr-only special case (no matching
+    /// key in vendor; see `source_note` for its origin).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vendor_pattern: Option<String>,
-    /// 模板路径（与 `handler_id` 互斥；两者都缺 = 纯识别不产 mod 的
-    /// 「已知不支持」条目，进 unsupported 报表但不再算解析失败）。
+    /// Template paths (mutually exclusive with `handler_id`; both absent
+    /// means a "known unsupported" entry that's recognized but produces no
+    /// mod — goes into the unsupported report but no longer counts as a
+    /// parse failure).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub mods: Vec<ModTemplateDef>,
-    /// handler 路径：真逻辑条目的稳定 id（运行时查
-    /// `pobr-core::rules::registry`；未注册 → 命中但产空 mods + 报表标记）。
+    /// Handler path: the stable id of an entry with real logic (looked up
+    /// at runtime in `pobr-core::rules::registry`; unregistered → matched
+    /// but produces empty mods plus a report flag).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub handler_id: Option<String>,
-    /// handler 实参（捕获按序透传，`"$n"` 形）。
+    /// Handler arguments (captures forwarded in order, as `"$n"`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub handler_args: Vec<String>,
-    /// enums 受限闭集映射：
-    /// 键 = 捕获组序号（字符串形），值 = `捕获词 → 完整字面量` 闭集表。
+    /// Restricted closed-set enums mapping: key = capture group index (as a
+    /// string), value = a closed `captured word → full literal` table.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub enums: BTreeMap<String, BTreeMap<String, String>>,
-    /// oracle 对拍通过标记（Track D 流程置 true；人工改 JSON + 独立 commit）。
+    /// Oracle-reconciliation-passed marker (set true by the Track D
+    /// process; edited by hand in JSON as an independent commit).
     #[serde(default)]
     pub verified: bool,
-    /// 批次标记（`S0|S1|S2`，长尾续编）。
+    /// Batch marker (`S0|S1|S2`, for long-tail continuation).
     pub batch: String,
-    /// 来源备注（unique 名 / keystone 名 / pobr 准源说明）。
+    /// Source note (unique item name / keystone name / pobr-authoritative
+    /// explanation).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_note: Option<String>,
 }
 
-/// `overlay/special_mods.json` / `generated/special_derived.json` 顶层
-/// （消费侧忽略 `_meta`；两表 entries 拼接、id 冲突报错——接线语义）。
+/// Top level of `overlay/special_mods.json` / `generated/special_derived.json`
+/// (the consumer ignores `_meta`; the two tables' `entries` are concatenated,
+/// with id collisions treated as errors — this is a wiring-level semantic).
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct SpecialModsDef {
-    /// 模板条目列表，按 `id` 升序。
+    /// Template entries, ascending by `id`.
     pub entries: Vec<SpecialTemplateDef>,
 }
 
-//  ModParser 解析规则六表 schema（overlay/mod_parser_rules.json）
+//  ModParser rule six-table schema (overlay/mod_parser_rules.json)
 
-/// 当前 overlay 文档 schema 标识（字段演化时递增）。
+/// Current overlay document schema identifier (bumped when the field shape evolves).
 pub const MOD_PARSER_RULES_SCHEMA: &str = "mod_parser_rules/v1";
 
-/// 一个 tag 模板：vendor tag 表的忠实转录（`type` + 其余字段）。
+/// A single tag template: a faithful transcription of a vendor tag table
+/// (`type` plus the remaining fields).
 ///
-/// 字段值可含占位符模板字符串（闭包探针推断产物，如 `"$1"` /
-/// `"$2:cap+Effect"`）；纯表条目则全为字面值。
+/// Field values may contain placeholder template strings (products of
+/// closure-probe inference, e.g. `"$1"` / `"$2:cap+Effect"`); plain-table
+/// entries are all literal values.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct TagTemplate {
-    /// tag 类型（vendor `type` 字段：`Condition` / `Multiplier` / `PerStat` /
-    /// `SkillType` / `ModFlagOr` / `ActorCondition` …）。
+    /// Tag type (vendor's `type` field: `Condition` / `Multiplier` /
+    /// `PerStat` / `SkillType` / `ModFlagOr` / `ActorCondition` …).
     #[serde(rename = "type")]
     pub tag_type: String,
-    /// 其余字段（键字典序）：`var` / `varList` / `div` / `limit` / `limitTotal`
-    /// / `actor` / `neg` / `threshold` / `skill_type`（已反查名字）/
-    /// `mod_flags` / `keyword_flags`（已分解名字数组）等。
+    /// The remaining fields (dictionary order): `var` / `varList` / `div` /
+    /// `limit` / `limitTotal` / `actor` / `neg` / `threshold` /
+    /// `skill_type` (already reverse-looked-up to a name) / `mod_flags` /
+    /// `keyword_flags` (already decomposed into name arrays), etc.
     #[serde(flatten)]
     pub fields: BTreeMap<String, StatMapValue>,
 }
 
-/// 各短语/pattern 表条目共用的效果字段全集（pre_flags 与
-/// tag_phrases 共用；name_map / flag_phrases 是其子集，serde flatten 嵌入）。
+/// The full set of effect fields shared by the various phrase/pattern
+/// tables (shared between pre_flags and tag_phrases; name_map /
+/// flag_phrases are a subset, flattened in via serde).
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct RuleEffectsDef {
-    /// ModFlag 名字数组（vendor `flags` 掩码分解）。
+    /// ModFlag names (decomposed from vendor's `flags` mask).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub flags: Vec<String>,
-    /// KeywordFlag 名字数组（vendor `keywordFlags` 掩码分解）。
+    /// KeywordFlag names (decomposed from vendor's `keywordFlags` mask).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keyword_flags: Vec<String>,
-    /// tag 模板（vendor 单 `tag` 与 `tagList` 归一为数组，原顺序 = `[tag] ++ tagList`）。
+    /// Tag templates (vendor's single `tag` and `tagList` are normalized
+    /// into one array, in the original order `[tag] ++ tagList`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<TagTemplate>,
-    /// 玩家侧 tag（vendor `playerTag` / `playerTagList` 归一）。
+    /// Player-side tags (normalized from vendor's `playerTag` /
+    /// `playerTagList`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub player_tags: Vec<TagTemplate>,
-    /// 包装指令：mod 转给召唤物（vendor `addToMinion`）。
+    /// Wrapping directive: forward the mod to the minion (vendor `addToMinion`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub add_to_minion: bool,
-    /// 转给召唤物时附带的 tag（vendor `addToMinionTag` 单值归一为数组）。
+    /// Tags carried along when forwarding to the minion (vendor's single
+    /// `addToMinionTag` normalized into an array).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub add_to_minion_tags: Vec<TagTemplate>,
-    /// 包装指令：并入光环效果（vendor `addToAura`）。
+    /// Wrapping directive: fold into the aura effect (vendor `addToAura`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub add_to_aura: bool,
-    /// 包装指令：仅并入战旗（vendor `onlyAddToBanners`）。
+    /// Wrapping directive: fold only into banners (vendor `onlyAddToBanners`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub only_add_to_banners: bool,
-    /// 包装指令：生成新光环（vendor `newAura`）。
+    /// Wrapping directive: create a new aura (vendor `newAura`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub new_aura: bool,
-    /// 新光环仅作用盟友（vendor `newAuraOnlyAllies`）。
+    /// The new aura affects allies only (vendor `newAuraOnlyAllies`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub new_aura_only_allies: bool,
-    /// 包装指令：mod 注入技能局部（vendor `addToSkill`，单 tag）。
+    /// Wrapping directive: inject the mod into the skill's local scope
+    /// (vendor `addToSkill`, a single tag).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub add_to_skill: Option<TagTemplate>,
-    /// 包装指令：mod 施加给敌人（vendor `applyToEnemy`）。
+    /// Wrapping directive: apply the mod to the enemy (vendor `applyToEnemy`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub apply_to_enemy: bool,
-    /// 敌方 actor 视角（vendor `actorEnemy`）。
+    /// Enemy-actor perspective (vendor `actorEnemy`).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub actor_enemy: bool,
-    /// ModName 后缀（vendor `modSuffix`，如 `^take ` → `"Taken"`）。
+    /// ModName suffix (vendor `modSuffix`, e.g. `^take ` → `"Taken"`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mod_suffix: Option<String>,
 }
 
-/// formList 条目：Lua pattern → form id。
+/// A formList entry: Lua pattern → form id.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct FormDef {
-    /// Lua pattern 原样（含 `^` 锚 / `(%d+)` 捕获 / `%%` 转义）。
+    /// Raw Lua pattern (including `^` anchors / `(%d+)` captures / `%%` escapes).
     pub pattern: String,
-    /// form id（`INC` / `RED` / `MORE` / `BASE` / `PEN` / `DMG` … 28 种）。
+    /// Form id (`INC` / `RED` / `MORE` / `BASE` / `PEN` / `DMG` … 28 kinds).
     pub form: String,
-    /// 派生：pattern 中最长的连续字面量片段（aho-corasick 预过滤用；
-    /// 全类元素 pattern 为 `None` → 引擎 always-check 桶）。
+    /// Derived: the longest contiguous literal substring in the pattern
+    /// (used for aho-corasick pre-filtering; `None` for fully-wildcard
+    /// patterns → the engine's always-check bucket).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub literal: Option<String>,
-    /// 派生：pattern 以 `^` 锚定（引擎只在剩余文本头部尝试）。
+    /// Derived: whether the pattern is anchored with `^` (the engine only
+    /// tries it at the start of the remaining text).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub anchored: bool,
 }
 
-/// modNameList 条目：短语（plain 子串匹配）→ ModName 集 + 可选效果。
+/// A modNameList entry: a phrase (plain substring match) → a set of
+/// ModNames plus optional effects.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct NameMapDef {
-    /// 匹配短语（小写，plain 子串匹配、无 pattern 语法）。
+    /// Match phrase (lowercase, plain substring match, no pattern syntax).
     pub phrase: String,
-    /// vendor ModName 列表（单名也包一层数组；直接落 pobr `StatId`）。
+    /// Vendor ModName list (a single name is still wrapped in an array;
+    /// stored directly as pobr `StatId`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub names: Vec<String>,
-    /// 可选效果（vendor 带 tag / flags / addToMinion 的表条目）。
+    /// Optional effects (vendor table entries carrying tag / flags / addToMinion).
     #[serde(flatten)]
     pub effects: RuleEffectsDef,
 }
 
-/// modFlagList 条目：短语（plain）→ ModFlag/KeywordFlag + 可选 tag。
+/// A modFlagList entry: a phrase (plain) → ModFlag/KeywordFlag plus an
+/// optional tag.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct FlagPhraseDef {
-    /// 匹配短语（小写，plain 子串匹配）。
+    /// Match phrase (lowercase, plain substring match).
     pub phrase: String,
-    /// 效果（flags / keyword_flags / tags / addToMinion…）。
+    /// Effects (flags / keyword_flags / tags / addToMinion…).
     #[serde(flatten)]
     pub effects: RuleEffectsDef,
 }
 
-/// preFlagList 条目：行首 pattern → flags/tag/包装指令。
+/// A preFlagList entry: a leading pattern → flags/tag/wrapping directives.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct PreFlagDef {
-    /// Lua pattern 原样（vendor 全部 `^` 锚定）。
+    /// Raw Lua pattern (vendor anchors all of these with `^`).
     pub pattern: String,
-    /// 派生：最长字面量片段（见 [`FormDef::literal`]）。
+    /// Derived: the longest literal substring (see [`FormDef::literal`]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub literal: Option<String>,
-    /// 派生：`^` 锚定。
+    /// Derived: `^`-anchored.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub anchored: bool,
-    /// 效果字段全集。
+    /// The full set of effect fields.
     #[serde(flatten)]
     pub effects: RuleEffectsDef,
-    /// 闭包条目经探针推断为模板（oracle differential 覆盖后可升级 verified，
-    /// 范围）。
+    /// Whether a closure entry was inferred into a template by probing (can
+    /// be upgraded to verified once covered by oracle differential testing).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub inferred: bool,
-    /// 探针推断失败的闭包条目：Rust handler 注册表 id
-    /// （`pre_flag:<hash12>`）；与 `effects` 互斥。
+    /// A closure entry where probe inference failed: the Rust handler
+    /// registry id (`pre_flag:<hash12>`); mutually exclusive with `effects`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub handler_id: Option<String>,
 }
 
-/// modTagList 条目：per-X / 条件短语 pattern → tag 模板。
+/// A modTagList entry: a per-X / conditional-phrase pattern → a tag template.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct TagPhraseDef {
-    /// Lua pattern 原样。
+    /// Raw Lua pattern.
     pub pattern: String,
-    /// 派生：最长字面量片段。
+    /// Derived: the longest literal substring.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub literal: Option<String>,
-    /// 派生：`^` 锚定。
+    /// Derived: `^`-anchored.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub anchored: bool,
-    /// 效果字段全集（与 pre_flags 共用；多数条目仅 `tags`）。
+    /// The full set of effect fields (shared with pre_flags; most entries
+    /// only use `tags`).
     #[serde(flatten)]
     pub effects: RuleEffectsDef,
-    /// 见 [`PreFlagDef::inferred`]。
+    /// See [`PreFlagDef::inferred`].
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub inferred: bool,
-    /// 见 [`PreFlagDef::handler_id`]（`tag_phrase:<hash12>`）。
+    /// See [`PreFlagDef::handler_id`] (`tag_phrase:<hash12>`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub handler_id: Option<String>,
 }
 
-/// 小查找表条目：短语 → 单个后缀/类型名（suffix_types / damage_types /
-/// pen_types）。
+/// A small lookup-table entry: phrase → a single suffix/type name
+/// (suffix_types / damage_types / pen_types).
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct PhraseValueDef {
-    /// 匹配短语（plain）。
+    /// Match phrase (plain).
     pub phrase: String,
-    /// 目标名（如 `GainAsFire` / `Physical` / `LightningPenetration`）。
+    /// Target name (e.g. `GainAsFire` / `Physical` / `LightningPenetration`).
     pub value: String,
 }
 
-/// 小查找表条目：短语 → 名集。
+/// A small lookup-table entry: phrase → a set of names.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct PhraseNamesDef {
-    /// 匹配短语（plain，含 vendor 加载期补入的 `maximum X` 变体）。
+    /// Match phrase (plain; includes the `maximum X` variants vendor adds
+    /// at load time).
     pub phrase: String,
-    /// 目标名列表（如 `["LifeRegen", "ManaRegen"]`；单名也包一层）。
+    /// Target names (e.g. `["LifeRegen", "ManaRegen"]`; a single name is
+    /// still wrapped in an array).
     pub names: Vec<String>,
 }
 
-/// flagTypes 条目内嵌 mod（目前仅 hexproof 特例）。
+/// An embedded mod inside a flagTypes entry (currently only the hexproof
+/// special case).
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct FlagTypeModDef {
-    /// ModName（如 `CurseEffectOnSelf`）。
+    /// ModName (e.g. `CurseEffectOnSelf`).
     pub name: String,
-    /// 聚合类型原文（如 `MORE`）。
+    /// Aggregation type, raw text (e.g. `MORE`).
     pub mod_type: String,
-    /// 数值。
+    /// Numeric value.
     pub value: f64,
 }
 
-/// flagTypes 条目：FLAG form 的短语 → `Condition:X` 字符串或内嵌 mod
+/// A flagTypes entry: a FLAG-form phrase → either a `Condition:X` string or
+/// an embedded mod.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct FlagTypeDef {
-    /// 匹配短语（plain；个别含 pattern 语法，如 hindered 变体）。
+    /// Match phrase (plain; a few use pattern syntax, e.g. the hindered variants).
     pub phrase: String,
-    /// 字符串形态：条件/flag 名（如 `Condition:Phasing` / `NoLifeRegen`）。
+    /// String form: a condition/flag name (e.g. `Condition:Phasing` / `NoLifeRegen`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub condition: Option<String>,
-    /// 表形态：内嵌 mod（hexproof 特例）；与 `condition` 互斥。
+    /// Table form: an embedded mod (the hexproof special case); mutually
+    /// exclusive with `condition`.
     #[serde(default, skip_serializing_if = "Option::is_none", rename = "mod")]
     pub mod_def: Option<FlagTypeModDef>,
 }
 
-/// `overlay/mod_parser_rules.json` 顶层（消费侧视角：serde 默认忽略 `_meta`
-/// 生成溯源头；段顺序 =）。
+/// Top level of `overlay/mod_parser_rules.json` (from the consumer's
+/// perspective: serde ignores `_meta`'s provenance header by default;
+/// fields follow in the order below).
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct ModParserRulesDoc {
-    /// formList（91 条 pattern → 28 种 form id），按 pattern 字典序。
+    /// formList (91 pattern → one of 28 form ids), ascending by pattern.
     pub forms: Vec<FormDef>,
-    /// modNameList（775 条短语 → ModName 集），按 phrase 字典序。
+    /// modNameList (775 phrase → ModName set), ascending by phrase.
     pub name_map: Vec<NameMapDef>,
-    /// modFlagList（202 条短语 → flag 位名 + tag），按 phrase 字典序。
+    /// modFlagList (202 phrase → flag bit names + tag), ascending by phrase.
     pub flag_phrases: Vec<FlagPhraseDef>,
-    /// preFlagList（219 条行首 pattern → 包装指令），按 pattern 字典序。
+    /// preFlagList (219 leading pattern → wrapping directive), ascending by
+    /// pattern.
     pub pre_flags: Vec<PreFlagDef>,
-    /// modTagList（682 条 per-X/条件 pattern → tag 模板），按 pattern 字典序。
+    /// modTagList (682 per-X/conditional pattern → tag template), ascending
+    /// by pattern.
     pub tag_phrases: Vec<TagPhraseDef>,
-    /// suffixTypes（BASE/GAIN/LOSE/GRANTS 族 form 的后缀扫描表）。
+    /// suffixTypes (suffix scan table for the BASE/GAIN/LOSE/GRANTS form family).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub suffix_types: Vec<PhraseValueDef>,
-    /// dmgTypes（DMG 族 form 的伤害类型表）。
+    /// dmgTypes (damage-type table for the DMG form family).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub damage_types: Vec<PhraseValueDef>,
-    /// penTypes（PEN form 的穿透目标表）。
+    /// penTypes (penetration-target table for the PEN form).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub pen_types: Vec<PhraseValueDef>,
-    /// regenTypes（REGEN 族；vendor 加载期 `appendMod(resourceTypes, "Regen")`
-    /// 派生的最终展开形态，照 dump）。
+    /// regenTypes (REGEN family; the final expanded shape derived at vendor
+    /// load time via `appendMod(resourceTypes, "Regen")`, dumped as-is).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub regen_types: Vec<PhraseNamesDef>,
-    /// degenTypes（DEGEN 族派生展开）。
+    /// degenTypes (derived expansion for the DEGEN family).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub degen_types: Vec<PhraseNamesDef>,
-    /// costTypes（TOTALCOST form 派生展开；命名带 `_map` 后缀避让 base 域
-    /// `cost_types`）。
+    /// costTypes (derived expansion for the TOTALCOST form; named with a
+    /// `_map` suffix to avoid clashing with the base domain's `cost_types`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cost_types_map: Vec<PhraseNamesDef>,
-    /// baseCostTypes（BASECOST form 派生展开）。
+    /// baseCostTypes (derived expansion for the BASECOST form).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub base_cost_types: Vec<PhraseNamesDef>,
-    /// flagTypes（FLAG form 的条件表）。
+    /// flagTypes (condition table for the FLAG form).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub flag_types: Vec<FlagTypeDef>,
-    /// unsupportedModList（vendor 原样，目前仅 `mirrored`）。
+    /// unsupportedModList (verbatim from vendor, currently only `mirrored`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub unsupported: Vec<String>,
-    /// pobr 自加的 unsupported 项（与 vendor 段分列保证 drift diff 纯净；
-    /// `split` 来自现 `mod_parser.rs:63` 硬编码，要求迁表保留）。
+    /// pobr's own additional unsupported entries (kept in a separate
+    /// section from vendor's to keep drift diffs clean; `split` comes from
+    /// the current hardcoded value in `mod_parser.rs:63` and must be
+    /// preserved when migrating tables).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub unsupported_pobr_extra: Vec<String>,
 }

@@ -1,16 +1,23 @@
-//! special 词条 handler 实现。
+//! Special-modifier handler implementations.
 //!
-//! 受限模板 DSL（[`crate::rules::special_mod`]）无法表达的真逻辑 special 条目，
-//! 在 `overlay/special_mods.json` 里只记一个稳定 `handler_id`（命名 `special:<name>`）；
-//! 运行时由本目录注册的 [`HandlerRegistry`] handler 裁决执行。
+//! Special entries whose real logic can't be expressed by the restricted
+//! template DSL ([`crate::rules::special_mod`]) carry only a stable
+//! `handler_id` (named `special:<name>`) in `overlay/special_mods.json`; at
+//! runtime a [`HandlerRegistry`] handler registered in this directory
+//! decides what to do.
 //!
-//! **DSL 硬边界监控**（20-target-architecture §5）：handler 总数 < 100、占 special
-//! 总条目 <10%（闸门测试 `special_mods_gate.rs` 守）。逼近上限即判数据切分失败、
-//! 能模板化的条目一律走 DSL，handler 只接「条件分支 / 跨域 LIST
-//! 载荷 / PoB2 闭包构造器」三类真逻辑。
+//! **DSL hard-boundary monitoring** (20-target-architecture §5): total
+//! handler count must stay under 100, and under 10% of all special entries
+//! (enforced by the gate test `special_mods_gate.rs`). Approaching that
+//! ceiling signals a data-split failure — anything that can be templated
+//! must go through the DSL; handlers are reserved for three kinds of real
+//! logic: conditional branching, cross-domain LIST payloads, and PoB2
+//! closure constructors.
 //!
-//! 注册聚合点 [`register_special_handlers`]：append-only，每个 handler 模块暴露
-//! 自己的 `register_*` 函数，本文件逐行 append 调用（共享文件冲突最小化）。
+//! The registration aggregation point is [`register_special_handlers`]:
+//! append-only, where each handler module exposes its own `register_*`
+//! function and this file appends a call per line (minimizing shared-file
+//! conflicts).
 //!
 //! [`HandlerRegistry`]: crate::rules::HandlerRegistry
 
@@ -20,10 +27,11 @@ mod explode;
 mod granted_passive;
 mod mageblood;
 
-/// 注册全部 special handler（启动期一次，零 I/O）。
+/// Registers all special handlers (once at startup, zero I/O).
 ///
-/// handler_id 命名 `special:<name>`（`<name>` 沿用 vendor ModParser.lua 构造器名
-/// 的 snake_case）。注册冲突（重复 id）→ `Err`（fail-fast）。
+/// handler_id follows the naming `special:<name>` (`<name>` reuses the
+/// snake_case of the matching vendor ModParser.lua constructor name). A
+/// registration conflict (duplicate id) -> `Err` (fail-fast).
 pub fn register_special_handlers(
     registry: &mut HandlerRegistry,
 ) -> Result<(), DuplicateHandlerError> {

@@ -1,15 +1,16 @@
-//! `extract-lua --what minions|spectres|minion-list`（数据生产）：
+//! `extract-lua --what minions|spectres|minion-list` (data production):
 //!
-//! - `minions` / `spectres`：执行 vendor `Data/Minions.lua` / `Data/Spectres.lua`
-//!   （引导脚本 `extract_minions.lua`，stub 完整序列化 `mod(...)`/`flag(...)`
-//!   构造参数——丢参警告的丢参问题在 stub 层规避），产
-//!   `overlay/minions.json` / `overlay/spectres.json`；
-//! - `minion-list`：执行 vendor `Data/Skills/*.lua`（引导脚本
-//!   `extract_minion_list.lua`），抽 `minionList`/`minionUses`/`minionHasItemSet`
-//!   外键边车，产 `overlay/granted_effect_minions.json`。
+//! - `minions` / `spectres`: runs vendor `Data/Minions.lua` /
+//!   `Data/Spectres.lua` (bootstrap script `extract_minions.lua`, whose stub
+//!   fully serializes `mod(...)`/`flag(...)` constructor arguments — this is
+//!   how the stub layer avoids the argument-dropping warning), producing
+//!   `overlay/minions.json` / `overlay/spectres.json`;
+//! - `minion-list`: runs vendor `Data/Skills/*.lua` (bootstrap script
+//!   `extract_minion_list.lua`), extracting the `minionList`/`minionUses`/
+//!   `minionHasItemSet` foreign-key sidecar, producing `overlay/granted_effect_minions.json`.
 //!
-//! 公共层（luajit JSONL 调用 / vendor 版本解析 / byte-stable 序列化约定）
-//! 复用 [`crate::extract_lua`]。
+//! The shared layer (luajit JSONL invocation / vendor version parsing /
+//! byte-stable serialization conventions) reuses [`crate::extract_lua`].
 
 use std::io;
 
@@ -21,16 +22,16 @@ use crate::extract_lua::{
     ExtractLuaArgs, OverlayMeta, invoke_luajit_jsonl, read_vendor_version, resolve_version_file,
 };
 
-/// 引导脚本（编译期内嵌）。
+/// Bootstrap scripts (embedded at compile time).
 const MINIONS_BOOTSTRAP_LUA: &str = include_str!("extract_minions.lua");
 const MINION_LIST_BOOTSTRAP_LUA: &str = include_str!("extract_minion_list.lua");
 
-/// `minions` / `spectres` 两个抽取目标的差异参数。
+/// The parameters that differ between the `minions` and `spectres` extraction targets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MinionsKind {
-    /// `Data/Minions.lua` → `overlay/minions.json`（schema `minions/v1`）。
+    /// `Data/Minions.lua` -> `overlay/minions.json` (schema `minions/v1`).
     Minions,
-    /// `Data/Spectres.lua` → `overlay/spectres.json`（schema `spectres/v1`）。
+    /// `Data/Spectres.lua` -> `overlay/spectres.json` (schema `spectres/v1`).
     Spectres,
 }
 
@@ -57,7 +58,7 @@ impl MinionsKind {
     }
 }
 
-/// `overlay/minions.json` / `overlay/spectres.json` 完整文档（生成侧）。
+/// The full `overlay/minions.json` / `overlay/spectres.json` document (generation side).
 #[derive(Debug, Serialize)]
 struct MinionsDoc {
     #[serde(rename = "_meta")]
@@ -65,9 +66,9 @@ struct MinionsDoc {
     minions: Vec<MinionEntryDef>,
 }
 
-/// 执行 minions / spectres 抽取，返回 byte-stable JSON 文本。
+/// Run the minions / spectres extraction, returning byte-stable JSON text.
 pub fn run_extract_minions(args: &ExtractLuaArgs, kind: MinionsKind) -> io::Result<String> {
-    // 数据文件固定单文件；显式 --files 与目标不符时报错（防误用）。
+    // The data file is a fixed single file; error when an explicit --files doesn't match the target (guards against misuse).
     let expected = [kind.vendor_file().to_string()];
     if args.files != expected {
         return Err(io::Error::new(
@@ -95,7 +96,7 @@ pub fn run_extract_minions(args: &ExtractLuaArgs, kind: MinionsKind) -> io::Resu
     Ok(to_pretty_json(&doc))
 }
 
-/// `overlay/granted_effect_minions.json` 完整文档（生成侧）。
+/// The full `overlay/granted_effect_minions.json` document (generation side).
 #[derive(Debug, Serialize)]
 struct GrantedEffectMinionsDoc {
     #[serde(rename = "_meta")]
@@ -103,10 +104,10 @@ struct GrantedEffectMinionsDoc {
     entries: Vec<GrantedEffectMinionDef>,
 }
 
-/// 当前 overlay 文档 schema 标识。
+/// Current overlay document schema identifier.
 pub const GRANTED_EFFECT_MINIONS_SCHEMA: &str = "granted_effect_minions/v1";
 
-/// 执行 minion-list 外键边车抽取，返回 byte-stable JSON 文本。
+/// Run the minion-list foreign-key sidecar extraction, returning byte-stable JSON text.
 pub fn run_extract_minion_list(args: &ExtractLuaArgs) -> io::Result<String> {
     let mut entries: Vec<GrantedEffectMinionDef> =
         invoke_luajit_jsonl(args, MINION_LIST_BOOTSTRAP_LUA)?;
@@ -126,8 +127,8 @@ pub fn run_extract_minion_list(args: &ExtractLuaArgs) -> io::Result<String> {
     Ok(to_pretty_json(&doc))
 }
 
-/// 组装 `_meta`（vendor commit / regen 命令；canonical 相对路径约定与
-/// `extract_lua::build_meta` 一致）。
+/// Assemble `_meta` (vendor commit / regen command; the canonical
+/// relative-path convention matches `extract_lua::build_meta`).
 fn build_meta(
     args: &ExtractLuaArgs,
     schema: &str,
@@ -152,7 +153,7 @@ fn build_meta(
     })
 }
 
-/// 统一 serde_json pretty 序列化（同输入必然同输出，尾随换行）。
+/// Uniform serde_json pretty serialization (identical input always yields identical output, with a trailing newline).
 pub(crate) fn to_pretty_json<T: Serialize>(doc: &T) -> String {
     let mut json = serde_json::to_string_pretty(doc).expect("overlay 文档序列化不应失败");
     json.push('\n');

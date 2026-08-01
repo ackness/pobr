@@ -8,41 +8,47 @@ use crate::{
     TracedValue,
 };
 
-/// 单个 modName 的 MORE 连乘积按 PoB2 默认精度 `round(·, 2)` 归一（ModList.lua MoreInternal）。
+/// Normalizes a single modName's MORE product to PoB2's default precision
+/// `round(·, 2)` (ModList.lua MoreInternal).
 fn round_more(value: f64) -> f64 {
     (value * 100.0).round() / 100.0
 }
 
-/// PoB2 `round(val, dec)`（vendor `Common.lua:648-654`）：
-/// `m_floor(val × 10^dec + 0.5) / 10^dec`——半数恒向上（非银行家舍入；
-/// 负数与 Rust `f64::round` 在 `.5` 处不同，须用本函数对拍 vendor）。
+/// PoB2's `round(val, dec)` (vendor `Common.lua:648-654`):
+/// `m_floor(val × 10^dec + 0.5) / 10^dec` — always rounds half up (not
+/// banker's rounding; differs from Rust's `f64::round` at `.5` for negative
+/// numbers, so this function must be used to match vendor).
 fn pob_round(value: f64, dec: i32) -> f64 {
     let mult = 10f64.powi(dec);
     (value * mult + 0.5).floor() / mult
 }
 
-/// 取整精度规则：vendor `data.highPrecisionMods` +
-/// `data.defaultHighPrecision`（`Data.lua:413-530`，入库为
-/// `overlay/high_precision_mods.json`，经 pobr-gamedata `RuleSet` 注入）。
+/// Rounding-precision rules: vendor's `data.highPrecisionMods` +
+/// `data.defaultHighPrecision` (`Data.lua:413-530`, stored on disk as
+/// `overlay/high_precision_mods.json`, injected via pobr-gamedata's
+/// `RuleSet`).
 ///
-/// `Default`（未注入数据）= **无例外表** fallback（默认
-/// `round(·,2)` 截整；小数原值仍走 `default_high_precision = 1`——该常量与
-/// 入库 JSON 逐值相等，搬迁不变式）。消费方：[`ModDb::scale_add_mod`] 与
-/// MORE 聚合精度例外分支。
+/// `Default` (no data injected) is the **no exception table** fallback
+/// (defaults to `round(·,2)` truncation; a fractional original value still
+/// goes through `default_high_precision = 1` — this constant is value-equal
+/// to the on-disk JSON, a migration invariant). Consumers:
+/// [`ModDb::scale_add_mod`] and the MORE aggregation precision-exception
+/// branch.
 #[derive(Debug, Clone, Default)]
 pub struct HighPrecisionRules {
     def: Option<HighPrecisionModsDef>,
 }
 
 impl HighPrecisionRules {
-    /// 从入库表构造（pobr-gamedata `RuleSet::high_precision_mods` → 此处）。
+    /// Constructs from the on-disk table (pobr-gamedata's `RuleSet::high_precision_mods` → here).
     pub fn from_def(def: HighPrecisionModsDef) -> Self {
         Self { def: Some(def) }
     }
 
-    /// `data.highPrecisionMods[name][type]`（vendor `ModStore.lua:69` /
-    /// `ModDB.lua:175-180`）。mod type 键用 vendor 字面量（`BASE`/`MORE`…，
-    /// = [`ModType::as_trace_label`]）。未注入 / 未命中 → `None`。
+    /// `data.highPrecisionMods[name][type]` (vendor `ModStore.lua:69` /
+    /// `ModDB.lua:175-180`). The mod type key uses vendor's literal
+    /// (`BASE`/`MORE`…, = [`ModType::as_trace_label`]). Returns `None` when
+    /// not injected / no match.
     pub fn precision_for(&self, name: &str, mod_type: ModType) -> Option<u32> {
         self.def
             .as_ref()?
@@ -52,16 +58,18 @@ impl HighPrecisionRules {
             .copied()
     }
 
-    /// `data.defaultHighPrecision`（`Data.lua:413` = 1；未注入时同值 fallback）。
+    /// `data.defaultHighPrecision` (`Data.lua:413` = 1; same-value fallback when not injected).
     pub fn default_high_precision(&self) -> u32 {
         self.def.as_ref().map_or(1, |d| d.default_high_precision)
     }
 }
 
-/// ScaleAddMod 的数值取整（vendor `ModStore.lua:69-77` 逐字）：
-/// - 精度 = 例外表 `[name][type]`，未命中且**原值含小数** → `defaultHighPrecision`；
-/// - 有精度 `p` → `m_floor(value × scale × 10^p) / 10^p`（floor，非四舍五入）；
-/// - 无精度 → `m_modf(round(value × scale, 2))` 取整数部（向零截断）。
+/// ScaleAddMod's value rounding (a line-by-line port of vendor `ModStore.lua:69-77`):
+/// - precision = the exception table's `[name][type]`; when missing and
+///   **the original value has a fractional part**, falls back to
+///   `defaultHighPrecision`;
+/// - with precision `p` → `m_floor(value × scale × 10^p) / 10^p` (floor, not rounding);
+/// - without precision → `m_modf(round(value × scale, 2))` takes the integer part (truncated toward zero).
 fn scale_mod_value(
     name: &str,
     mod_type: ModType,
@@ -81,17 +89,22 @@ fn scale_mod_value(
     }
 }
 
-/// 单次聚合查询内的 GlobalLimit 记账表（vendor 每次
-/// Sum/More/Tabulate 调用新建 `local globalLimits = { }`，ModDB.lua:133/159/269）。
-/// 懒分配：无 [`ModTag::GlobalLimit`] mod 时零开销（热路径不建表）。
+/// The GlobalLimit accounting table for a single aggregate query (vendor
+/// creates a fresh `local globalLimits = { }` on every Sum/More/Tabulate
+/// call, ModDB.lua:133/159/269). Lazily allocated: zero overhead when there's
+/// no [`ModTag::GlobalLimit`] mod (no table is built on the hot path).
 type GlobalLimits = Option<HashMap<String, f64>>;
 
-/// EvalMod 尾段 globalLimit 记账（vendor ModStore.lua:895-905 逐字）：
-/// 同 `key` 的生效值累计封顶——`used + value > limit` 时截到余额，随后记账。
-/// 返回（截断后值，`Some(原值)` 若发生截断——traced 路径据此挂 Clamp 节点）。
+/// The globalLimit accounting at the tail of EvalMod (a line-by-line port of
+/// vendor ModStore.lua:895-905): effective values sharing the same `key` are
+/// capped cumulatively — when `used + value > limit`, clips to the remaining
+/// balance, then records it. Returns (the clipped value, `Some(original
+/// value)` if clipping occurred — the traced path attaches a Clamp node
+/// based on this).
 ///
-/// `#[inline]` + 调用侧 `tags.is_empty()` 快路径：mod_db 聚合是热路径
-/// （mod_db_bench 门禁），无 tag mod 必须零开销。
+/// `#[inline]` + the caller-side `tags.is_empty()` fast path: mod_db
+/// aggregation is a hot path (gated by mod_db_bench), so mods with no tags
+/// must have zero overhead.
 #[inline]
 fn apply_global_limits(
     modifier: &Modifier,
@@ -124,23 +137,29 @@ pub struct ModContribution {
     pub value: f64,
     pub origin: Option<ModifierSource>,
     pub raw_text: Option<String>,
-    /// [`ModTag::GlobalLimit`] 截断前的原生效值
-    /// （`Some` = 本条被累计限幅截断；traced 路径据此挂 Clamp 节点）。
+    /// The original effective value before [`ModTag::GlobalLimit`] clipping
+    /// (`Some` means this entry was clipped by the cumulative cap; the
+    /// traced path attaches a Clamp node based on this).
     pub clamped_from: Option<f64>,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct ModDb {
     mods: HashMap<ModName, Vec<Modifier>>,
-    /// 取整精度规则：vendor 把 `data.highPrecisionMods` 当全局
-    /// 环境数据消费，pobr 收口在 db 实例上（计算核心零 I/O，由编排层经
-    /// [`Self::set_high_precision_rules`] 注入）。`Default` = 无例外表 →
-    /// MORE 聚合走默认 `round(·,2)` 分支，行为与字段引入前逐字一致。
+    /// Rounding-precision rules: vendor treats `data.highPrecisionMods` as
+    /// global environment data, while pobr keeps it scoped to the db
+    /// instance (the calc core stays zero-I/O; the orchestration layer
+    /// injects it via [`Self::set_high_precision_rules`]). `Default` = no
+    /// exception table → MORE aggregation takes the default `round(·,2)`
+    /// branch, unchanged from before this field existed.
     high_precision: HighPrecisionRules,
-    /// 含 [`ModTag::GlobalLimit`] mod 的名字桶（性能分流：[`Self::sum`]
-    /// 仅在查询名命中此集合时走记账慢路径——记账闭包会破坏纯求和链的优化，
-    /// 实测 bench +50%）。写入时维护（`add_mod`/`replace_mod`）；移除侧不回收
-    /// （stale 正例只影响性能不影响语义）。
+    /// The set of names with a [`ModTag::GlobalLimit`] mod (a performance
+    /// fork: [`Self::sum`] only takes the accounting slow path when a
+    /// queried name hits this set — the accounting closure defeats the pure
+    /// summation chain's optimization, measured at +50% in benchmarks).
+    /// Maintained on write (`add_mod`/`replace_mod`); not reclaimed on
+    /// removal (a stale false-positive only costs performance, not
+    /// correctness).
     global_limit_names: std::collections::HashSet<ModName>,
 }
 
@@ -149,7 +168,7 @@ impl ModDb {
         Self::default()
     }
 
-    /// 维护 [`Self::global_limit_names`]（写入时一次 tags 扫描，查询期零成本）。
+    /// Maintains [`Self::global_limit_names`] (one tags scan per write, zero cost at query time).
     fn note_global_limit(&mut self, modifier: &Modifier) {
         if modifier
             .tags
@@ -160,7 +179,7 @@ impl ModDb {
         }
     }
 
-    /// 查询名集是否可能含 GlobalLimit mod（快/慢路径分流）。
+    /// Whether the queried name set might include a GlobalLimit mod (the fast/slow path fork).
     #[inline]
     fn names_have_global_limit(&self, names: &[ModName]) -> bool {
         !self.global_limit_names.is_empty()
@@ -169,9 +188,10 @@ impl ModDb {
                 .any(|name| self.global_limit_names.contains(name))
     }
 
-    /// 注入取整精度规则（来源 = pobr-gamedata `RuleSet::high_precision_mods`）。
-    /// 消费点：MORE 聚合精度例外分支（[`Self::more`]）与调用方传给
-    /// [`Self::scale_add_mod`] 的同一份规则。
+    /// Injects the rounding-precision rules (sourced from pobr-gamedata's
+    /// `RuleSet::high_precision_mods`). Consumed by the MORE aggregation
+    /// precision-exception branch ([`Self::more`]) and the same rules the
+    /// caller passes to [`Self::scale_add_mod`].
     pub fn set_high_precision_rules(&mut self, rules: HighPrecisionRules) {
         self.high_precision = rules;
     }
@@ -190,14 +210,17 @@ impl ModDb {
         }
     }
 
-    /// 写侧原语 ReplaceMod（vendor `ModStore.lua:114-118` +
-    /// `ModDB.lua:38-66` `ReplaceModInternal`）：同 `name + type + flags +
-    /// keywordFlags + source` 的既有 mod **原位替换**（保持桶内顺序），无匹配则
-    /// append（= [`add_mod`](Self::add_mod)）。
+    /// The write-side primitive ReplaceMod (vendor `ModStore.lua:114-118` +
+    /// `ModDB.lua:38-66`'s `ReplaceModInternal`): an existing mod matching
+    /// `name + type + flags + keywordFlags + source` is **replaced in
+    /// place** (preserving bucket order); with no match, appends instead
+    /// (= [`add_mod`](Self::add_mod)).
     ///
-    /// 返回是否发生替换（`false` = 走了 append 分支）。典型消费方：弩 reload 的
-    /// `Multiplier:BoltsReloadedPastSixSeconds` 回写（`CalcOffence.lua:2890-2894`，
-    /// T4）。注：pobr `ModDb` 无 parent 链（vendor 的 parent 递归不适用）。
+    /// Returns whether a replacement occurred (`false` means the append
+    /// branch was taken). A typical consumer: the crossbow reload's
+    /// `Multiplier:BoltsReloadedPastSixSeconds` write-back
+    /// (`CalcOffence.lua:2890-2894`, T4). Note: pobr's `ModDb` has no parent
+    /// chain (vendor's parent recursion doesn't apply here).
     pub fn replace_mod(&mut self, modifier: Modifier) -> bool {
         self.note_global_limit(&modifier);
         if let Some(bucket) = self.mods.get_mut(&modifier.name)
@@ -215,15 +238,19 @@ impl ModDb {
         false
     }
 
-    /// 写侧原语 ConvertMod（vendor `ModStore.lua:120-132` +
-    /// `ModDB.lua:75-105` `ConvertModInternal`）：在 `from` 桶内找同
-    /// `type + flags + keywordFlags + source`（与 `to` 比对）的既有 mod，
-    /// **从旧名桶移除、`to` 落新名桶**（跨桶搬迁）；无匹配则直接 append `to`。
+    /// The write-side primitive ConvertMod (vendor `ModStore.lua:120-132` +
+    /// `ModDB.lua:75-105`'s `ConvertModInternal`): finds an existing mod in
+    /// the `from` bucket matching `type + flags + keywordFlags + source`
+    /// (compared against `to`), **removes it from the old name's bucket and
+    /// lands `to` in the new name's bucket** (a cross-bucket move); with no
+    /// match, just appends `to` directly.
     ///
-    /// 返回是否发生搬迁。与 vendor 的已知出入（登记）：vendor 以 `converted`
-    /// 标记防同一 mod 被链式转换二次命中；pobr `Modifier` 无该标记——`from` 与
-    /// `to.name` 相同或转换链回环的场景未防护（当前无消费方，T4/T5 接入时若
-    /// 出现链式转换再补）。
+    /// Returns whether a move occurred. A known divergence from vendor
+    /// (tracked here): vendor marks mods with `converted` to prevent the
+    /// same mod from being chain-converted twice; pobr's `Modifier` has no
+    /// such marker — the case where `from` equals `to.name`, or a conversion
+    /// chain loops back, isn't guarded against (no consumer currently
+    /// triggers this; will be added if chain conversion shows up when T4/T5 land).
     pub fn convert_mod(&mut self, from: &ModName, to: Modifier) -> bool {
         if let Some(old_bucket) = self.mods.get_mut(from)
             && let Some(index) = old_bucket.iter().position(|cur| {
@@ -241,17 +268,22 @@ impl ModDb {
         false
     }
 
-    /// 写侧原语 ScaleAddMod（vendor `ModStore.lua:45-81`）：按
-    /// `scale` 缩放数值后入库，取整走 [`HighPrecisionRules`]（见
-    /// [`scale_mod_value`] 的逐字分支）。`scale == 1` 直接入库（vendor :54）。
+    /// The write-side primitive ScaleAddMod (vendor `ModStore.lua:45-81`):
+    /// scales the value by `scale` before storing; rounding goes through
+    /// [`HighPrecisionRules`] (see [`scale_mod_value`] for the line-by-line
+    /// branches). `scale == 1` stores directly (vendor :54).
     ///
-    /// 与 vendor 的已知出入（登记）：
-    /// - `effects.unscalable`（:46-52，不可缩放词条原值入库）——pobr `ModTag`
-    ///   暂无该位，全部视为可缩放（当前解析层无产出点）；
-    /// - `value.keyOfScaledMod` / `+level` floor 特例（:59-66）——针对 table 值
-    ///   内非 `mod` 键的缩放，pobr `ModValue` 无对应形态；
-    /// - [`ModValue::NestedMods`]（vendor `value.mod` 嵌套载荷）按同规则逐内层
-    ///   Number 缩放（vendor :57 `subMod = scaledMod.value.mod` 的多载荷推广）。
+    /// Known divergences from vendor (tracked here):
+    /// - `effects.unscalable` (:46-52, non-scalable modifiers store their
+    ///   original value) — pobr's `ModTag` has no such bit yet, so
+    ///   everything is treated as scalable (no producer in the current parse
+    ///   layer);
+    /// - the `value.keyOfScaledMod` / `+level` floor special case (:59-66) —
+    ///   for scaling non-`mod` keys inside a table value; pobr's `ModValue`
+    ///   has no corresponding shape;
+    /// - [`ModValue::NestedMods`] (vendor's `value.mod` nested payload)
+    ///   scales each inner Number under the same rule (a generalization of
+    ///   vendor :57's `subMod = scaledMod.value.mod` for multiple payloads).
     pub fn scale_add_mod(
         &mut self,
         mut modifier: Modifier,
@@ -285,7 +317,7 @@ impl ModDb {
                     }
                 }
             }
-            // 布尔 / 文本载荷不缩放（vendor 仅对 number 分支取整，:68）。
+            // Bool / text payloads aren't scaled (vendor only rounds the number branch, :68).
             ModValue::Bool(_) | ModValue::Text(_) => {}
         }
         self.add_mod(modifier);
@@ -314,15 +346,17 @@ impl ModDb {
         Self {
             mods,
             high_precision: self.high_precision.clone(),
-            // 整集拷贝（stale 正例可接受：被过滤掉的名字仅多走一次慢路径判断）。
+            // A copy of the full set (a stale false-positive is fine: a
+            // filtered-out name just takes the slow path check once more).
             global_limit_names: self.global_limit_names.clone(),
         }
     }
 
-    /// 入参升级 `impl Into<EvalContext>`：既有调用点传 `&cfg`
-    /// 零改动；PerStat 消费方传带 `stat_lookup` 的 [`EvalContext`]。聚合循环内
-    /// 消费 [`ModTag::GlobalLimit`]（vendor SumInternal 传 `globalLimits` 表，
-    /// ModDB.lua:131-154）。
+    /// The parameter is upgraded to `impl Into<EvalContext>`: existing call
+    /// sites passing `&cfg` compile unchanged; PerStat consumers pass an
+    /// [`EvalContext`] with `stat_lookup`. Consumes [`ModTag::GlobalLimit`]
+    /// within the aggregation loop (vendor's SumInternal passes a
+    /// `globalLimits` table, ModDB.lua:131-154).
     pub fn sum<'a>(
         &self,
         mod_type: ModType,
@@ -330,8 +364,10 @@ impl ModDb {
         names: &[ModName],
     ) -> f64 {
         let ctx = ctx.into();
-        // 快路径（绝大多数查询）：名集无 GlobalLimit mod → 纯求和链（记账状态
-        // 会破坏链优化，实测 bench +50%，故分流而非内联判断）。
+        // Fast path (the vast majority of queries): the name set has no
+        // GlobalLimit mod → a pure summation chain (the accounting state
+        // would defeat the chain's optimization, measured at +50% in
+        // benchmarks, hence the fork instead of an inline check).
         if self.names_have_global_limit(names) {
             return self.sum_with_global_limits(mod_type, ctx, names);
         }
@@ -344,9 +380,10 @@ impl ModDb {
             .sum()
     }
 
-    /// [`sum`](Self::sum) 的 GlobalLimit 记账慢路径（vendor SumInternal 传
-    /// `globalLimits` 表，ModDB.lua:131-154）。与快路径对无 GlobalLimit tag 的
-    /// mod 逐值等价（记账仅截断带 tag 条目）。
+    /// The GlobalLimit accounting slow path for [`sum`](Self::sum) (vendor's
+    /// SumInternal passes a `globalLimits` table, ModDB.lua:131-154).
+    /// Value-equal to the fast path for mods without a GlobalLimit tag (the
+    /// accounting only clips tagged entries).
     fn sum_with_global_limits(
         &self,
         mod_type: ModType,
@@ -369,14 +406,16 @@ impl ModDb {
         total
     }
 
-    /// 取某组 modifier 中**生效值最大的一份**（曝光 `ExposureMin`/取最强语义）。
+    /// Takes the **largest effective value** among a set of modifiers
+    /// (exposure's `ExposureMin`/take-the-strongest semantics).
     ///
-    /// PoB2 `CalcPerform.lua` 对曝光的聚合是逐来源结算后 `magnitude = max(magnitude, value)`
-    /// （**取最强单一来源**而非求和）。本方法只考虑 `matches(cfg)` 通过的 modifier，
-    /// 空集合返回 `0.0`。
+    /// PoB2's `CalcPerform.lua` aggregates exposure by settling each source
+    /// then `magnitude = max(magnitude, value)` (**takes the single
+    /// strongest source** rather than summing). This method only considers
+    /// modifiers passing `matches(cfg)`, returning `0.0` for an empty set.
     ///
-    /// 出处：agent-docs/debuffs.md §曝光；
-    ///       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2（exposure 取最强）。
+    /// Source: agent-docs/debuffs.md §Exposure;
+    ///         devs/docs/architecture/12-combat-mechanics-architecture.md §4.2 (exposure takes the strongest).
     pub fn max_of(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
         names
             .iter()
@@ -387,8 +426,9 @@ impl ModDb {
             .fold(0.0_f64, f64::max)
     }
 
-    /// 与 [`sum`](Self::sum) 同口径：GlobalLimit 记账后逐条产出
-    /// （`clamped_from` 携带截断前原值）；`Σ value == sum()` 恒等。
+    /// Matches [`sum`](Self::sum)'s semantics: emits an entry per modifier
+    /// after GlobalLimit accounting (`clamped_from` carries the value before
+    /// clipping); `Σ value == sum()` always holds.
     pub fn contributions<'a>(
         &self,
         mod_type: ModType,
@@ -458,8 +498,11 @@ impl ModDb {
                     contribution.value
                 )
             });
-            // 源节点带截断前原值；被 GlobalLimit 截断的贡献经 Clamp 节点入图
-            // （限幅在归因图上显式可见，clamp 值 = 实际计入聚合的值）。
+            // The source node carries the value before clipping; a
+            // contribution clipped by GlobalLimit enters the graph through a
+            // Clamp node (so the cap is explicitly visible in the
+            // attribution graph, with the clamp value being what actually
+            // counts toward aggregation).
             let raw_value = contribution.clamped_from.unwrap_or(contribution.value);
             let input_node = trace.add_source_node(label, raw_value, source);
             let feed_node = if contribution.clamped_from.is_some() {
@@ -482,24 +525,31 @@ impl ModDb {
         }
     }
 
-    /// 入参升级 `impl Into<EvalContext>`（同 [`sum`](Self::sum)）。
+    /// The parameter is upgraded to `impl Into<EvalContext>` (same as [`sum`](Self::sum)).
     pub fn more<'a>(&self, ctx: impl Into<EvalContext<'a>>, names: &[ModName]) -> f64 {
         self.more_rounded(ctx.into(), names, |_| true)
     }
 
-    /// PoB2 `MoreInternal` 语义（`ModDB.lua:156-190`，桶式变体）：**逐 modName**
-    /// 先连乘该名下所有 MORE mod 得 `modResult`，按精度取整后跨 modName 连乘。
-    /// 逐名取整避免多 more 乘区的浮点末位漂移。`extra` 施加额外筛选（如槽位）。
+    /// PoB2's `MoreInternal` semantics (`ModDB.lua:156-190`, the bucketed
+    /// variant): **per modName**, first multiplies together all the MORE
+    /// mods under that name to get `modResult`, rounds it to precision, then
+    /// multiplies across modNames. Rounding per-name avoids floating-point
+    /// drift in the last digit across multiple more multiplier buckets.
+    /// `extra` applies additional filtering (e.g. by slot).
     ///
-    /// 取整分支（vendor `ModDB.lua:175-186` 逐字）：
-    /// - 默认（无精度例外命中）：`result *= round(modResult, 2)`——与例外分支
-    ///   引入前逐字一致（[`round_more`] 不动，搬迁不变式）；
-    /// - 命中 [`HighPrecisionRules`] 的 MORE 例外（`SupportManaMultiplier` /
-    ///   `ReservationMultiplier` → 4）：`result = floor(result × modResult ×
-    ///   10^p) / 10^p`（floor 作用于**累计积**）。
-    /// - vendor quirk 逐字保留：`modPrecision` 在**整个查询内跨名持留**
-    ///   （一旦置位不复位、只 max 抬升，:175-180）——例外名之后的普通名乃至
-    ///   缺桶名（`modResult = 1`）也走 floor 分支重截累计积。
+    /// Rounding branches (a line-by-line port of vendor `ModDB.lua:175-186`):
+    /// - default (no precision exception hit): `result *= round(modResult, 2)`
+    ///   — unchanged from before the exception branch existed ([`round_more`]
+    ///   stays as-is, a migration invariant);
+    /// - hits a MORE exception in [`HighPrecisionRules`]
+    ///   (`SupportManaMultiplier` / `ReservationMultiplier` → 4):
+    ///   `result = floor(result × modResult × 10^p) / 10^p` (floor applies to
+    ///   the **cumulative product**).
+    /// - a vendor quirk kept verbatim: `modPrecision` **persists across names
+    ///   for the entire query** (once set, it never resets, only ever
+    ///   increases via max, :175-180) — ordinary names after an exception
+    ///   name, and even names with no bucket (`modResult = 1`), also take
+    ///   the floor branch and re-clip the cumulative product.
     fn more_rounded(
         &self,
         ctx: EvalContext<'_>,
@@ -509,8 +559,9 @@ impl ModDb {
         let cfg = ctx.cfg;
         let mut result = 1.0;
         let mut mod_precision: Option<u32> = None;
-        // GlobalLimit 记账（vendor MoreInternal 同样传 globalLimits 表，
-        // ModDB.lua:159-169——限幅作用于百分比值，先于乘区折算）。
+        // GlobalLimit accounting (vendor's MoreInternal likewise passes a
+        // globalLimits table, ModDB.lua:159-169 — the cap applies to the
+        // percentage value, before it's folded into the multiplier bucket).
         let mut limits: GlobalLimits = None;
         for name in names {
             let mut mod_result = 1.0;
@@ -523,7 +574,7 @@ impl ModDb {
                 };
                 let value = apply_global_limits(m, value, &mut limits).0;
                 mod_result *= 1.0 + value / 100.0;
-                // vendor ModDB.lua:175-180：modPrecision = max(prev, 表值 or prev)。
+                // vendor ModDB.lua:175-180: modPrecision = max(prev, table value or prev).
                 let hit = self
                     .high_precision
                     .precision_for(m.name.as_str(), ModType::More);
@@ -543,8 +594,9 @@ impl ModDb {
         result
     }
 
-    /// Traced [`more`](Self::more)：把 `Π(1 + v/100)` 记录为单个 MoreProduct 节点，
-    /// 每个贡献 modifier 各连一个 source 输入节点。
+    /// The traced version of [`more`](Self::more): records `Π(1 + v/100)` as
+    /// a single MoreProduct node, with each contributing modifier connected
+    /// as its own source input node.
     pub fn more_traced<'a>(
         &self,
         ctx: impl Into<EvalContext<'a>>,
@@ -554,8 +606,10 @@ impl ModDb {
     ) -> TracedValue {
         let ctx = ctx.into();
         let contributions = self.contributions(ModType::More, ctx, names);
-        // 取整口径与 [`more`](Self::more) 共用同一实现（含精度例外分支），
-        // traced / 非 traced 值恒等（此前为重复实现，易漂移）。
+        // Rounding shares the same implementation as [`more`](Self::more)
+        // (including the precision-exception branch), so traced / non-traced
+        // values are always equal (previously a duplicate implementation,
+        // which was prone to drifting apart).
         let factor = self.more(ctx, names);
         let factor_node = trace.add_node(label, factor, TraceOperation::MoreProduct);
 
@@ -588,11 +642,15 @@ impl ModDb {
         }
     }
 
-    /// 仅累加**无槽位限定**（无 [`ModTag::SlotName`]）的 modifier（per-slot 防御聚合的全局桶）。
+    /// Sums only modifiers **without a slot restriction** (no
+    /// [`ModTag::SlotName`]) — the global bucket for per-slot defence
+    /// aggregation.
     ///
-    /// 与 [`sum`](Self::sum) 区别：[`sum`] 对槽位 tag 透明（会一并算入槽位限定 mod），
-    /// 而本方法显式排除带槽位 tag 的 mod，使之只通过 [`sum_for_slot`](Self::sum_for_slot)
-    /// 在匹配槽位生效。PoB2 `calcLib.mod` 的 global 部分对应此。
+    /// Differs from [`sum`](Self::sum): [`sum`] is transparent to the slot
+    /// tag (it also counts slot-restricted mods), whereas this method
+    /// explicitly excludes mods with a slot tag, so they only apply through
+    /// [`sum_for_slot`](Self::sum_for_slot) on a matching slot. Corresponds
+    /// to the global part of PoB2's `calcLib.mod`.
     pub fn sum_global_only(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
         names
             .iter()
@@ -607,7 +665,7 @@ impl ModDb {
             .sum()
     }
 
-    /// 仅累加限定到 `slot`（[`ModTag::SlotName`] 匹配）的 modifier（per-slot 防御聚合的槽位桶）。
+    /// Sums only modifiers restricted to `slot` (matched via [`ModTag::SlotName`]) — the slot bucket for per-slot defence aggregation.
     pub fn sum_for_slot(
         &self,
         mod_type: ModType,
@@ -628,21 +686,23 @@ impl ModDb {
             .sum()
     }
 
-    /// 仅连乘**无槽位限定**的 `More` modifier（per-slot 防御聚合的全局 more 桶）。
+    /// Multiplies only `More` modifiers **without a slot restriction** — the global more bucket for per-slot defence aggregation.
     pub fn more_global_only(&self, cfg: &CalcConfig, names: &[ModName]) -> f64 {
         self.more_rounded(EvalContext::new(cfg), names, |m| m.slot_name().is_none())
     }
 
-    /// 仅连乘限定到 `slot` 的 `More` modifier（per-slot 防御聚合的槽位 more 桶）。
+    /// Multiplies only `More` modifiers restricted to `slot` — the slot more bucket for per-slot defence aggregation.
     pub fn more_for_slot(&self, cfg: &CalcConfig, names: &[ModName], slot: &str) -> f64 {
         self.more_rounded(EvalContext::new(cfg), names, |m| {
             m.slot_name() == Some(slot)
         })
     }
 
-    /// per-slot 防御聚合所需的槽位 BASE 词条：返回各 `(slot, value)`（带 [`ModTag::SlotName`]
-    /// 的 `Base` modifier）。无槽位的 BASE 由调用方另行用 [`sum_global_only`](Self::sum_global_only)
-    /// 取（作为「无槽位底」，只享全局乘区）。
+    /// The per-slot BASE modifiers needed for per-slot defence aggregation:
+    /// returns each `(slot, value)` (`Base` modifiers with a
+    /// [`ModTag::SlotName`]). Slot-less BASE values are read separately by
+    /// the caller via [`sum_global_only`](Self::sum_global_only) (as the
+    /// "slot-less base", which only benefits from the global multiplier bucket).
     pub fn slot_bases(&self, cfg: &CalcConfig, name: &ModName) -> Vec<(String, f64)> {
         self.mods
             .get(name)
@@ -669,8 +729,10 @@ impl ModDb {
             })
     }
 
-    /// 返回**第一条**命中该 flag 的 modifier 的归因 `SourceId`（无 origin 或未命中返回 `None`）。
-    /// 供归因路径把旗标行为回溯到来源（如某天赋/宝石赋予 `CritChanceLucky`）。
+    /// Returns the attributed `SourceId` of the **first** modifier that
+    /// activates this flag (`None` if no origin or no match). Lets the
+    /// attribution path trace a flag's behavior back to its source (e.g.
+    /// which passive/gem grants `CritChanceLucky`).
     pub fn flag_origin(&self, cfg: &CalcConfig, name: ModName) -> Option<SourceId> {
         self.mods
             .get(&name)
@@ -689,8 +751,9 @@ impl ModDb {
             })
     }
 
-    /// Traced [`flag`](Self::flag)：记录一个 QueryFlag 节点（值 1.0/0.0），并把所有
-    /// 命中该 flag 的 source 连为输入。
+    /// The traced version of [`flag`](Self::flag): records a QueryFlag node
+    /// (value 1.0/0.0), connecting every source that activates this flag as
+    /// an input.
     pub fn flag_traced(
         &self,
         cfg: &CalcConfig,
@@ -743,16 +806,23 @@ impl ModDb {
             .next()
     }
 
-    /// PoB2 `ModStore:GetMultiplier(var, cfg)`（ModStore.lua:276-278）等价原语：
-    /// `Override("Multiplier:var")` 优先，否则 `cfg.multipliers[var] + Sum(BASE, "Multiplier:var")`。
+    /// The equivalent primitive to PoB2's `ModStore:GetMultiplier(var, cfg)`
+    /// (ModStore.lua:276-278): `Override("Multiplier:var")` takes priority,
+    /// otherwise `cfg.multipliers[var] + Sum(BASE, "Multiplier:var")`.
     ///
-    /// PoBR 的 multiplier 求值（[`crate::Modifier::effective_number`] → `cfg.multiplier`）只读
-    /// `cfg.multipliers` HashMap，无法消费 modDB 内 `Multiplier:X` 形态的 BASE/Override mod。
-    /// 编排层在注入完所有来源后，对需要的 `var` 调用本方法把结果写回 `cfg.with_multiplier(var, _)`，
-    /// 使 per-X 缩放词条引用到这些 modDB 乘数（契约：`Multiplier:X` 由编排层经此原语注入 cfg）。
+    /// PoBR's multiplier evaluation
+    /// ([`crate::Modifier::effective_number`] → `cfg.multiplier`) only reads
+    /// the `cfg.multipliers` HashMap, and can't consume `Multiplier:X`-shaped
+    /// BASE/Override mods inside modDB. After injecting all sources, the
+    /// orchestration layer calls this method for each needed `var` and
+    /// writes the result back via `cfg.with_multiplier(var, _)`, so per-X
+    /// scaling modifiers can reference these modDB multipliers (the
+    /// contract: `Multiplier:X` is injected into cfg by the orchestration
+    /// layer through this primitive).
     ///
-    /// 注意：parent 链与 PerStat `tag.base` 偏置暂未纳入；此处覆盖 PoB2 主路径的
-    /// Override / multipliers / Sum(BASE) 三项基线。
+    /// Note: the parent chain and PerStat's `tag.base` offset aren't covered
+    /// yet; this covers PoB2's main-path baseline of Override /
+    /// multipliers / Sum(BASE).
     pub fn get_multiplier(&self, var: &str, cfg: &CalcConfig) -> f64 {
         let name = ModName::from(format!("Multiplier:{var}"));
         if let Some(overridden) = self.override_(cfg, name.clone()) {
@@ -761,8 +831,10 @@ impl ModDb {
         cfg.multiplier(var) + self.sum(ModType::Base, cfg, &[name])
     }
 
-    /// Traced [`override_`](Self::override_)：记录一个 QueryOverride 节点（生效值或 0），
-    /// 把胜出的 override modifier 连为唯一输入（后写覆盖先写）。
+    /// The traced version of [`override_`](Self::override_): records a
+    /// QueryOverride node (the effective value or 0), connecting the winning
+    /// override modifier as the sole input (later writes override earlier
+    /// ones).
     pub fn override_traced(
         &self,
         cfg: &CalcConfig,
@@ -797,16 +869,21 @@ impl ModDb {
         (value, override_node)
     }
 
-    /// 遍历库内全部 modifier（不分 name 桶）。
+    /// Iterates over every modifier in the db (across all name buckets).
     ///
-    /// **顺序保证仅限桶内**：同一 [`ModName`] 的 modifier 按插入序连续排列；**桶间
-    /// 顺序不保证**——`mods` 是 `HashMap`，其 `RandomState` 每进程重新播种，故跨
-    /// name 的相对顺序逐次运行都可能不同。
+    /// **The order guarantee is bucket-local only**: modifiers under the same
+    /// [`ModName`] appear consecutively in insertion order; **the order
+    /// across buckets is not guaranteed** — `mods` is a `HashMap`, whose
+    /// `RandomState` is reseeded every process, so the relative order across
+    /// names can differ from run to run.
     ///
-    /// 调用方若跨多个 name 收集，结果只能喂给**序无关**的消费（`max` / 求和 /
-    /// `any` / 收进 `HashSet`）；需要稳定顺序时请按单一 name 过滤（等价只碰一个
-    /// 桶），或改用 [`Self::filtered`]。反例：把跨桶结果按序写回另一个 ModDb，会让
-    /// `override_`（后写覆盖）与 [`Self::list`] 的输出随进程漂移。
+    /// When a caller collects across multiple names, the result may only
+    /// feed **order-independent** consumers (`max` / summation / `any` /
+    /// collecting into a `HashSet`); when a stable order is needed, filter by
+    /// a single name instead (equivalent to touching only one bucket), or use
+    /// [`Self::filtered`]. Counter-example: writing cross-bucket results back
+    /// into another ModDb in this order would make `override_` (last write
+    /// wins) and [`Self::list`]'s output drift across process runs.
     pub fn iter_mods(&self) -> impl Iterator<Item = &Modifier> {
         self.mods.values().flat_map(|mods| mods.iter())
     }
@@ -824,12 +901,17 @@ impl ModDb {
             .collect()
     }
 
-    /// List 通道的嵌套 modifier 透传：收集 `name` 名下 List 型、`matches(cfg)` 通过的
-    /// [`ModValue::NestedMods`] 载荷（按桶内插入序克隆展开）。
+    /// Passes through nested modifiers from the List channel: collects the
+    /// [`ModValue::NestedMods`] payloads of List-type modifiers under `name`
+    /// that pass `matches(cfg)` (cloned and expanded in bucket insertion
+    /// order).
     ///
-    /// 供编排层把 `EnemyModifier` 等「外层落 player db、内层转发目标 db」的嵌套词条
-    /// 取出转发（env_finalize `forward_enemy_modifiers`）；本方法只透传不求值，
-    /// 内层 mod 的 `matches`/`effective_number` 由目标 db 聚合时按目标上下文结算。
+    /// Lets the orchestration layer pull out and forward nested modifiers
+    /// like `EnemyModifier`, where "the outer mod lands on the player db but
+    /// the inner mods forward to a target db" (env_finalize's
+    /// `forward_enemy_modifiers`); this method only passes them through
+    /// without evaluating — the inner mods' `matches`/`effective_number` are
+    /// settled by the target db's aggregation under its own context.
     pub fn list_nested(&self, cfg: &CalcConfig, name: ModName) -> Vec<Modifier> {
         self.mods
             .get(&name)

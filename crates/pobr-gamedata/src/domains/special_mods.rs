@@ -1,26 +1,36 @@
-//! `overlay/special_mods.json` loader——special 词条模板（vendor ModParser
-//! `specialModList` 的分批数据化，人工策展域；schema 见
-//! [`pobr_data::catalog::parser_rules`]，/B-4）。
+//! `overlay/special_mods.json` loader — special mod-line templates (a
+//! batched data-driving of vendor ModParser's `specialModList`, a
+//! hand-curated domain; schema in [`pobr_data::catalog::parser_rules`],
+//! /B-4).
 //!
-//! 消费侧：`RuleSet.special_mods` 域 →
-//! `CalcOrchestrator` 构建期 `SpecialModRules::compile` 一次 → 全部 ingest
-//! 路径走 `parse_mod_with_rules`。届时 `generated/special_derived.json`
-//! （keystone 派生）与本表 entries 拼接、id 冲突报错。
+//! Consumer: the `RuleSet.special_mods` domain → `CalcOrchestrator` compiles
+//! `SpecialModRules::compile` once at build time → every ingest path goes
+//! through `parse_mod_with_rules`. At that point,
+//! `generated/special_derived.json` (keystone-derived) is concatenated
+//! with this table's entries, and an id collision is an error.
 
 use pobr_data::catalog::parser_rules::SpecialModsDef;
 
 use crate::{GameData, LoadError};
 
 impl GameData {
-    /// 加载 special 词条模板表，**两层合并**：先读版本无关策展层
-    /// `data/overlay-common/special_mods.json`（不存在则跳过），再叠版本层
-    /// `<root>/overlay/special_mods.json`。合并语义简单明确：**版本层条目按 `id`
-    /// 覆盖 common 层同 id 条目，其余按出现序追加**（common 顺序保持，version-only
-    /// 追加在后）。人工策展的 vendor-语义修正放 common 层，新数据版本目录自动继承，
-    /// 免去逐版本手迁（`docs/version-bump-architecture.md` P1-3）。
+    /// Loads the special mod-line template table, **merging two layers**:
+    /// first reads the version-independent curation layer
+    /// `data/overlay-common/special_mods.json` (skipped if absent), then
+    /// layers the version layer `<root>/overlay/special_mods.json` on top.
+    /// The merge semantics are simple: **a version-layer entry overrides
+    /// the common layer's same-id entry, everything else is appended in
+    /// appearance order** (common's order is preserved, version-only
+    /// entries appended after). Hand-curated vendor-semantics fixes go in
+    /// the common layer, so new data-version directories inherit them
+    /// automatically, without a per-version manual migration
+    /// (`docs/version-bump-architecture.md` P1-3).
     ///
-    /// 两层皆缺 → `Ok(None)`（约定：缺表 → RuleSet 域 None，解析退回硬编码
-    /// 路径）。任一层坏 JSON 照常上抛；common 层文件缺失是常态（软降级，非错误）。
+    /// Both layers missing → `Ok(None)` (convention: a missing table →
+    /// the RuleSet domain is None, parsing falls back to the hardcoded
+    /// path). Either layer having broken JSON still propagates as usual; a
+    /// missing common-layer file is the normal case (a soft degradation,
+    /// not an error).
     pub fn special_mods(&self) -> Result<Option<SpecialModsDef>, LoadError> {
         let common = match self.overlay_common_path("special_mods.json") {
             Some(path) => self.load_special_mods_at(path)?,
@@ -34,8 +44,9 @@ impl GameData {
         })
     }
 
-    /// 读一个 `special_mods` schema 文件为 `Option`：NotFound → `None`（软降级），
-    /// 其余错误上抛。`load_json_at` 仍叠加用户 patch 层。
+    /// Reads a `special_mods`-schema file as an `Option`: NotFound → `None`
+    /// (a soft degradation), other errors propagate. `load_json_at` still
+    /// layers the user patch on top.
     fn load_special_mods_at(
         &self,
         path: std::path::PathBuf,
@@ -51,9 +62,10 @@ impl GameData {
         }
     }
 
-    /// 加载 keystone 派生 special 表（`generated/special_derived.json`，
-    /// adapter 产物；schema 同 `special_mods/v1`）。缺表返回 `Ok(None)`（C-1 落地
-    /// 前的过渡）；坏 JSON 照常上抛。
+    /// Loads the keystone-derived special table
+    /// (`generated/special_derived.json`, adapter output; same schema as
+    /// `special_mods/v1`). A missing table returns `Ok(None)` (a
+    /// transition state before C-1 lands); broken JSON still propagates.
     pub fn special_derived(&self) -> Result<Option<SpecialModsDef>, LoadError> {
         match self.load_json_at::<SpecialModsDef>(self.generated_path("special_derived.json")) {
             Ok(def) => Ok(Some(def)),
@@ -66,9 +78,11 @@ impl GameData {
         }
     }
 
-    /// 加载 vendor 批量抽取 special 表（`generated/special_vendor.json`，
-    /// `sync-pob-catalog extract-lua --what special-mods` 产物，V0 批次；
-    /// schema 同 `special_mods/v1`）。缺表返回 `Ok(None)`；坏 JSON 照常上抛。
+    /// Loads the batch-vendor-extracted special table
+    /// (`generated/special_vendor.json`, output of
+    /// `sync-pob-catalog extract-lua --what special-mods`, batch V0; same
+    /// schema as `special_mods/v1`). A missing table returns `Ok(None)`;
+    /// broken JSON still propagates.
     pub fn special_vendor(&self) -> Result<Option<SpecialModsDef>, LoadError> {
         match self.load_json_at::<SpecialModsDef>(self.generated_path("special_vendor.json")) {
             Ok(def) => Ok(Some(def)),
@@ -82,8 +96,10 @@ impl GameData {
     }
 }
 
-/// 合并策展两层：`common`（版本无关基底）叠 `version`（版本特有覆盖），按 `id`
-/// 逐条覆盖/追加（[`crate::paths::merge_by_key`] 的 special_mods 特化）。
+/// Merges the two curation layers: `common` (a version-independent
+/// baseline) with `version` (version-specific overrides) layered on top,
+/// overridden/appended entry by entry by `id` (a special_mods
+/// specialization of [`crate::paths::merge_by_key`]).
 fn merge_special_layers(common: SpecialModsDef, version: SpecialModsDef) -> SpecialModsDef {
     SpecialModsDef {
         entries: crate::paths::merge_by_key(common.entries, version.entries, |e| &e.id),

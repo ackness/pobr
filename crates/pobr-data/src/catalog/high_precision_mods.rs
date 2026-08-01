@@ -1,45 +1,57 @@
-//! 取整精度例外表域 schema（`overlay/high_precision_mods.json`）。
+//! Rounding-precision exception table domain schema
+//! (`overlay/high_precision_mods.json`).
 //!
-//! 数据来源（vendor commit `2df5a74`，见 `vendor/.pob2-version.txt`）：
-//! - `src/Modules/Data.lua:413` `data.defaultHighPrecision = 1`；
-//! - `src/Modules/Data.lua:415-530` `data.highPrecisionMods`（38 条
-//!   `mod name → mod type → 精度位数`）。
+//! Data source (vendor commit `2df5a74`, see `vendor/.pob2-version.txt`):
+//! - `src/Modules/Data.lua:413`'s `data.defaultHighPrecision = 1`;
+//! - `src/Modules/Data.lua:415-530`'s `data.highPrecisionMods` (38 entries
+//!   of `mod name → mod type → precision digit count`).
 //!
-//! vendor 消费点（本表的目标接线位，**pobr 当前均未实现**）：
-//! - `src/Classes/ModStore.lua:45-81` `ScaleAddMod`：缩放后数值的取整精度——
-//!   命中本表用 `floor(v·10^p)/10^p`，未命中但缩放出小数用 `defaultHighPrecision`，
-//!   否则 `modf(round(v, 2))` 取整数部分；
-//! - `src/Classes/ModList.lua:118-147` `MoreInternal`：MORE 连乘逐 modName
-//!   取整——命中本表 `floor(result·10^p)/10^p`，未命中 `round(modResult, 2)`。
+//! Vendor consumption points (this table's intended wiring targets,
+//! **none implemented in pobr yet**):
+//! - `src/Classes/ModStore.lua:45-81`'s `ScaleAddMod`: the rounding
+//!   precision for a scaled value — a hit in this table uses
+//!   `floor(v·10^p)/10^p`, a miss that still produces a fraction uses
+//!   `defaultHighPrecision`, otherwise `modf(round(v, 2))` takes the
+//!   integer part;
+//! - `src/Classes/ModList.lua:118-147`'s `MoreInternal`: rounding per
+//!   modName in the MORE product — a hit in this table uses
+//!   `floor(result·10^p)/10^p`, a miss uses `round(modResult, 2)`.
 //!
-//! pobr 现状：
-//! - `pobr-core::mod_db::round_more` 固定 `round(·, 2)`，**无例外查表分支**
-//!   （与 vendor `MoreInternal` 的默认分支逐值一致）；
-//! - ScaleAddMod 原语整体未实现（audits/rearchitecture-2026-06-10/10-mod-system.md
-//!   Gap 6）。因此本表**当前零消费方、零 parity 影响**——按先落库，
-//!   待 ScaleAddMod / MORE 例外分支落地时作为注入数据接线。
-//! - `more_default_round_decimals` 是唯一有 pobr 准源的字段（= round_more 的 2）。
+//! pobr's current state:
+//! - `pobr-core::mod_db::round_more` is hardcoded to `round(·, 2)`, with
+//!   **no exception-table branch** (matches vendor's `MoreInternal`
+//!   default branch value-for-value);
+//! - the ScaleAddMod primitive isn't implemented at all
+//!   (audits/rearchitecture-2026-06-10/10-mod-system.md Gap 6). So this
+//!   table currently **has zero consumers and zero parity impact** — it's
+//!   stored now, to be wired up as injected data once ScaleAddMod / the
+//!   MORE exception branch land.
+//! - `more_default_round_decimals` is the only field with a pobr source of
+//!   truth (= round_more's 2).
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-/// `overlay/high_precision_mods.json` 顶层（单对象域）。
+/// Top level of `overlay/high_precision_mods.json` (a single-object domain).
 ///
-/// 精度语义：`p` 位数即保留 `p` 位小数（`floor(v × 10^p) / 10^p`，vendor 用
-/// `floor` 而非四舍五入）。
+/// Precision semantics: `p` digits means `p` decimal places are kept
+/// (`floor(v × 10^p) / 10^p` — vendor uses `floor`, not round-half-up).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HighPrecisionModsDef {
-    /// 未命中例外表、但缩放结果含小数时的默认精度位数
-    /// （vendor `Data.lua:413` `defaultHighPrecision = 1`；仅 ScaleAddMod 消费）。
+    /// The default precision digit count used when a scaled result has a
+    /// fraction but misses the exception table (vendor
+    /// `Data.lua:413`'s `defaultHighPrecision = 1`; only ScaleAddMod consumes it).
     pub default_high_precision: u32,
-    /// MORE 连乘逐 modName 的默认取整小数位
-    /// （vendor `ModList.lua:144` `round(modResult, 2)` 的 2；
-    /// pobr 准源：`pobr-core::mod_db::round_more` 固定 2 位，逐值一致）。
+    /// The default rounding decimal count per modName in the MORE product
+    /// (vendor `ModList.lua:144`'s `round(modResult, 2)`'s 2; pobr's
+    /// source of truth: `pobr-core::mod_db::round_more` is hardcoded to 2,
+    /// matching value-for-value).
     pub more_default_round_decimals: u32,
-    /// 精度例外表：`mod name → (mod type → 精度位数)`。
+    /// The precision exception table: `mod name → (mod type → precision digit count)`.
     ///
-    /// mod type 取 vendor 字面量 `"BASE"` / `"MORE"`（与 pobr `ModType` 的
-    /// 序列化名对齐留待接线波次裁决，本表忠实转录 vendor 键）。
+    /// Mod type uses vendor's raw literal `"BASE"` / `"MORE"` (aligning it
+    /// with pobr's `ModType` serialization name is left to the wiring-up
+    /// wave's decision; this table transcribes vendor's keys faithfully).
     pub mods: BTreeMap<String, BTreeMap<String, u32>>,
 }

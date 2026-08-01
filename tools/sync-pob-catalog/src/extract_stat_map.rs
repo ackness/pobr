@@ -1,18 +1,21 @@
-//! `extract-lua --what stat-map`：vendor PoB2 `Data/SkillStatMap.lua`（954 条
-//! 全局 stat → modifier 构造器映射）+ `Data/Skills/{act_*,sup_*,other}.lua` 各
-//! statSet 的 `statMap` 字段（per-set 覆盖）→
-//! `data/<版本>/overlay/skill_stat_map.json`（的
-//! 数据面）。
+//! `extract-lua --what stat-map`: extracts vendor PoB2's
+//! `Data/SkillStatMap.lua` (954 global stat -> modifier-constructor mappings)
+//! plus the `statMap` field of each statSet in `Data/Skills/{act_*,sup_*,other}.lua`
+//! (per-set overrides) into `data/<version>/overlay/skill_stat_map.json` (the data plane).
 //!
-//! 职责切分与 [`crate::extract_lua`] 一致：Lua 引导脚本
-//! （`extract_skill_stat_map.lua`，编译期内嵌）只负责**忠实抽取**并以 JSONL
-//! 输出（每行 `{"scope":"global"|"set",...,"entry":{...}}`）；Rust 侧统一做
-//! 排序（[`std::collections::BTreeMap`] 字典序）、数字最短往返表示与整体文档
-//! 序列化，保证同输入重跑 **byte-stable**。
+//! Responsibility split matches [`crate::extract_lua`]: the Lua bootstrap
+//! script (`extract_skill_stat_map.lua`, embedded at compile time) only does
+//! **faithful extraction** and emits JSONL (one line per
+//! `{"scope":"global"|"set",...,"entry":{...}}`); the Rust side handles
+//! sorting ([`std::collections::BTreeMap`] lexicographic order),
+//! shortest-round-trip number representation, and whole-document
+//! serialization, guaranteeing **byte-stable** output on repeated runs with the same input.
 //!
-//! 消费侧 schema 单一来源 = [`pobr_data::catalog::stat_map`]（生成 / 消费两侧
-//! 共用同一 serde 形状，防字段漂移）；语义筛选（哪些 tag / 构造器受支持）是
-//! `pobr-core::rules::stat_map_engine` 的职责，本模块不做。
+//! The single source of truth for the consumption-side schema is
+//! [`pobr_data::catalog::stat_map`] (shared serde shape between generation
+//! and consumption, so fields can't drift); semantic filtering (which tags /
+//! constructors are actually supported) belongs to
+//! `pobr-core::rules::stat_map_engine`, not this module.
 
 use std::io;
 
@@ -23,52 +26,55 @@ use crate::extract_lua::{
     ExtractLuaArgs, OverlayMeta, invoke_luajit_jsonl, read_vendor_version, resolve_version_file,
 };
 
-/// 引导脚本内容（经 stdin 注入 luajit，二进制自包含、不依赖运行目录）。
+/// Bootstrap script content (piped into luajit via stdin; the binary is
+/// self-contained and doesn't depend on the working directory).
 const BOOTSTRAP_LUA: &str = include_str!("extract_skill_stat_map.lua");
 
-/// 当前 overlay 文档 schema 标识（字段演化时递增）。
+/// Current overlay document schema identifier (bumped when fields evolve).
 pub const SKILL_STAT_MAP_SCHEMA: &str = "skill_stat_map/v1";
 
-/// 引导脚本输出的单行 JSONL：一条 statMap 映射（global 或 per-set 作用域）。
+/// One JSONL line emitted by the bootstrap script: one statMap mapping (global or per-set scope).
 #[derive(Debug, Clone, Deserialize)]
 pub struct StatMapRow {
-    /// 作用域：`"global"`（SkillStatMap.lua）或 `"set"`（Data/Skills 各 statSet）。
+    /// Scope: `"global"` (SkillStatMap.lua) or `"set"` (a statSet in Data/Skills).
     pub scope: String,
-    /// stat 稳定 id。
+    /// The stable stat id.
     pub stat: String,
-    /// granted effect id（仅 `scope == "set"`）。
+    /// The granted effect id (only when `scope == "set"`).
     #[serde(default)]
     pub effect: Option<String>,
-    /// statSet 序号（vendor `statSets` 数组 1-based 下标；仅 `scope == "set"`）。
+    /// The statSet index (1-based index into vendor's `statSets` array; only when `scope == "set"`).
     #[serde(default)]
     pub stat_set: Option<u32>,
-    /// 映射条目（schema 形状 = 消费侧 [`StatMapEntry`]，忠实纯表化）。
+    /// The mapping entry (same schema shape as the consumption-side [`StatMapEntry`], a faithful table dump).
     pub entry: StatMapEntry,
 }
 
-/// 完整 overlay 文档（生成侧；`_meta` 头部 + 消费侧 [`SkillStatMapDef`] 平铺）。
+/// The full overlay document (generation side; `_meta` header plus the flattened consumption-side [`SkillStatMapDef`]).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StatMapDoc {
-    /// 头部元信息（serde 落为 `_meta`，置于文件最前）。
+    /// Header metadata (serialized as `_meta`, placed at the top of the file).
     #[serde(rename = "_meta")]
     pub meta: OverlayMeta,
-    /// 映射本体（global + per_stat_set，BTreeMap 字典序保证确定性）。
+    /// The mapping body (global + per_stat_set; BTreeMap lexicographic order guarantees determinism).
     #[serde(flatten)]
     pub def: SkillStatMapDef,
 }
 
-/// 执行抽取，返回最终（byte-stable 的）JSON 文本。
+/// Run the extraction, returning the final (byte-stable) JSON text.
 pub fn run_extract_stat_map(args: &ExtractLuaArgs) -> io::Result<String> {
     let rows = invoke_luajit_jsonl::<StatMapRow>(args, BOOTSTRAP_LUA)?;
     let meta = build_meta(args)?;
     assemble_stat_map_document(meta, rows)
 }
 
-/// 组装最终文档：JSONL 行 → `global` / `per_stat_set` 两段（键全部经 BTreeMap
-/// 字典序）+ serde_json 统一序列化（同输入必然同输出）。
+/// Assemble the final document: JSONL rows -> `global` / `per_stat_set`
+/// sections (all keys go through BTreeMap lexicographic order) + serde_json
+/// serialization (identical input always yields identical output).
 ///
-/// 重复键防御：同一 (作用域, stat) 出现两条 → 报错（vendor 表为字典，重复说明
-/// 引导脚本或 vendor 数据异常，宁可失败不可静默后写覆盖）。
+/// Duplicate-key guard: the same (scope, stat) appearing twice is an error
+/// (vendor's table is a dict, so a duplicate signals a bootstrap-script or
+/// vendor-data anomaly — better to fail than silently let the later write win).
 pub fn assemble_stat_map_document(meta: OverlayMeta, rows: Vec<StatMapRow>) -> io::Result<String> {
     let mut def = SkillStatMapDef::default();
     for row in rows {
@@ -114,12 +120,13 @@ pub fn assemble_stat_map_document(meta: OverlayMeta, rows: Vec<StatMapRow>) -> i
     Ok(json)
 }
 
-/// 读取 vendor 版本文件并构建 `_meta`（与 `extract_lua::build_meta` 同约定：
-/// `regen_command` 写 canonical 相对路径，跨机器重跑产物 byte 一致）。
+/// Read the vendor version file and build `_meta` (same convention as
+/// `extract_lua::build_meta`: `regen_command` writes a canonical relative
+/// path, so output is byte-identical when rerun on a different machine).
 fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
     let (commit, subject) = read_vendor_version(&resolve_version_file(args))?;
 
-    // 抽取源 = 全局表 + 各技能数据文件（区别于 skill-overrides：多一个全局表）。
+    // Extraction sources = the global table plus each skill data file (unlike skill-overrides: one extra global table).
     let mut extracted_files = vec!["Data/SkillStatMap.lua".to_string()];
     extracted_files.extend(
         args.files
@@ -172,7 +179,7 @@ mod tests {
         }
     }
 
-    /// global / set 两个作用域各归各段；键按字典序（BTreeMap 保证）。
+    /// The global / set scopes each go into their own section; keys are lexicographic (BTreeMap guarantees this).
     #[test]
     fn assembles_global_and_per_set_sections() {
         let json = assemble_stat_map_document(
@@ -190,11 +197,11 @@ mod tests {
             vec!["a_stat", "b_stat"]
         );
         assert!(doc.def.per_stat_set["CometPlayer"]["1"].contains_key("x_stat"));
-        // 字典序：a_stat 文本位置先于 b_stat（byte-stable 排序的可见证据）。
+        // Lexicographic order: a_stat's text appears before b_stat's (visible evidence of byte-stable sorting).
         assert!(json.find("a_stat").unwrap() < json.find("b_stat").unwrap());
     }
 
-    /// 重复键（同作用域同 stat）→ 报错不静默覆盖。
+    /// A duplicate key (same scope, same stat) errors rather than silently overwriting.
     #[test]
     fn duplicate_keys_error_out() {
         let result = assemble_stat_map_document(
@@ -207,13 +214,13 @@ mod tests {
         assert!(result.is_err());
     }
 
-    /// set 行缺 effect / stat_set → 报错。
+    /// A set row missing effect / stat_set errors.
     #[test]
     fn set_row_missing_fields_errors_out() {
         assert!(assemble_stat_map_document(meta(), vec![row("set", "s", None, None)]).is_err());
     }
 
-    /// 未知 scope → 报错。
+    /// An unknown scope errors.
     #[test]
     fn unknown_scope_errors_out() {
         assert!(assemble_stat_map_document(meta(), vec![row("woot", "s", None, None)]).is_err());
