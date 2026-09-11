@@ -1,5 +1,5 @@
 use pobr_core::calc::OutputTable;
-use pobr_core::{display_catalog, extract_display_values};
+use pobr_core::{display_catalog, display_value, extract_display_values};
 use pobr_data::prelude::*;
 
 #[test]
@@ -142,6 +142,25 @@ fn extract_display_values_reads_output_table_fields() {
     assert_eq!(lookup("TotalEHP"), Some(9000.0));
     assert_eq!(lookup("BleedDPS"), Some(250.0));
     assert_eq!(lookup("BlockChance"), Some(35.0));
+}
+
+#[test]
+fn sparse_display_values_preserve_percentage_units_and_unknown_defaults() {
+    let output = OutputTable {
+        hit_chance: 0.875,
+        crit_chance: 0.123,
+        projectile_count: 1.45,
+        dps: 12345.0,
+        total_ehp: 9000.0,
+        ..OutputTable::default()
+    };
+    assert_eq!(display_value(&output, "HitChance"), 87.5);
+    assert_eq!(display_value(&output, "CritChance"), 12.3);
+    assert_eq!(display_value(&output, "ProjectileCount"), 1.45);
+    assert_eq!(display_value(&output, "UnknownStat"), 0.0);
+    for value in extract_display_values(&output) {
+        assert_eq!(display_value(&output, value.id.as_str()), value.value);
+    }
 }
 
 #[test]

@@ -51,11 +51,7 @@ struct NodePowerResponse {
 
 /// Extracts a display stat value from the full output (defaults to 0 if missing).
 fn display_stat_value(session: &CalculationSession, stat_id: &str) -> f64 {
-    pobr_core::extract_display_values(session.output())
-        .into_iter()
-        .find(|s| s.id.as_str() == stat_id)
-        .map(|s| s.value)
-        .unwrap_or(0.0)
+    pobr_core::display_value(session.output(), stat_id)
 }
 
 /// Passive node power (PoB2 heatmap semantics): runs a BFS from the

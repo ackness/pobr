@@ -155,9 +155,27 @@ struct CompiledModTemplate {
     keyword_flags: KeywordFlags,
     /// Tags that were successfully mapped (unmappable tags are dropped at
     /// compile time, see `compile_tag`).
-    tags: Vec<ModTag>,
+    tags: Vec<CompiledTag>,
     #[allow(dead_code)]
     target: Option<ActorRef>,
+}
+
+#[derive(Debug)]
+enum CompiledTag {
+    Literal(ModTag),
+    PercentStatCapture { stat: String, capture: String },
+}
+
+impl CompiledTag {
+    fn instantiate(&self, captures: &[String]) -> ModTag {
+        match self {
+            Self::Literal(tag) => tag.clone(),
+            Self::PercentStatCapture { stat, capture } => ModTag::PercentStat {
+                stat: stat.clone(),
+                percent: Some(resolve_capture_number(capture, captures)),
+            },
+        }
+    }
 }
 
 /// A single special match (produced by [`SpecialModRules::try_match`]).
@@ -531,7 +549,7 @@ fn damage_type_bit(name: &str) -> Option<DamageType> {
 /// - `PerStat` (**literal** stat/div/limit; linear scaling by an actor's
 ///   already-computed stat, reads `EvalContext::stat_lookup` — wired up at
 ///   runtime via [`ModTag::PerStat`]);
-/// - `PercentStat` (V2 slice 2: **literal** stat/percent; scales by a
+/// - `PercentStat` (literal stat, literal or numeric `$n` percent; scales by a
 ///   percentage of an already-computed stat,
 ///   `value = ceil(value × stat × percent/100)`, runtime
 ///   [`ModTag::PercentStat`]. Vendor's `statList`/`percentVar`/`actor`/
@@ -553,7 +571,26 @@ fn damage_type_bit(name: &str) -> Option<DamageType> {
 /// a `Multiplier` with a `$n`-captured field value — returns `None`, and the
 /// entry stays `verified:false` (conservative gating, so we never produce a
 /// possibly-wrong tag).
-fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
+fn compile_tag(tag: &TemplateTagDef) -> Option<CompiledTag> {
+    if tag.tag_type == "PercentStat"
+        && let Some(TemplateScalarDef::Text(capture)) = tag.fields.get("percent")
+        && capture_index(capture).is_some_and(|index| index > 0)
+    {
+        let stat = scalar_text(tag.fields.get("stat")?)?;
+        if stat.starts_with('$') {
+            return None;
+        }
+        // Keep BASE=1 and capture the tag's percentage. Moving the percent
+        // into BASE changes ScaleAddMod truncation for Adorned/item effects.
+        return Some(CompiledTag::PercentStatCapture {
+            stat: normalize_stat_name(&stat),
+            capture: capture.clone(),
+        });
+    }
+    compile_literal_tag(tag).map(CompiledTag::Literal)
+}
+
+fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
     match tag.tag_type.as_str() {
         "Condition" => {
             let var = scalar_text(tag.fields.get("var")?)?;
@@ -648,8 +685,8 @@ fn compile_tag(tag: &TemplateTagDef) -> Option<ModTag> {
                 return None;
             }
             let stat = normalize_stat_name(&stat);
-            // percent present but not a number (e.g. a hand-written overlay
-            // mistakenly using `$n`) → the whole tag is unmappable; must not
+            // Captures are handled by compile_tag. Other nonnumeric values
+            // make the whole tag unmappable; must not
             // silently fall back to the or-1 branch (mult would be off by
             // 100x).
             let percent = match tag.fields.get("percent") {
@@ -936,7 +973,7 @@ fn instantiate_template(
             modifier = modifier.with_keyword_flags(m.keyword_flags);
         }
         for tag in &m.tags {
-            modifier = modifier.with_tag(tag.clone());
+            modifier = modifier.with_tag(tag.instantiate(captures));
         }
         out.push(modifier);
     }
@@ -970,7 +1007,7 @@ fn instantiate_mod_def(
         modifier = modifier.with_keyword_flags(keyword_flags);
     }
     for tag in def.tags.iter().filter_map(compile_tag) {
-        modifier = modifier.with_tag(tag);
+        modifier = modifier.with_tag(tag.instantiate(captures));
     }
     Some(modifier)
 }
@@ -1226,6 +1263,29 @@ mod tests {
                 percent: Some(40.0),
             }]
         );
+
+        // A captured percentage must remain in the tag, so scaling/truncating
+        // the mod's BASE retains the upstream ScaleAddMod representation.
+        let d = def(
+            r#"{"id":"captured","pattern":"gain (\\d+(?:\\.\\d+)?)% of energy shield","mods":[
+                {"name":"StunThreshold","type":"BASE","value":1,
+                 "tags":[{"type":"PercentStat","stat":"EnergyShield","percent":"$1"}]}],"batch":"V2"}"#,
+        );
+        assert!(tag_is_mappable(&d.mods[0].tags[0]));
+        let r = rules(vec![d]);
+        for percent in [2.0, 8.0, 13.0, 13.5] {
+            let m = r
+                .try_match(&format!("gain {percent}% of energy shield"), &reg)
+                .unwrap();
+            assert_eq!(m.mods[0].value, ModValue::Number(1.0));
+            assert_eq!(
+                m.mods[0].tags,
+                vec![ModTag::PercentStat {
+                    stat: "EnergyShield".into(),
+                    percent: Some(percent),
+                }]
+            );
+        }
 
         // percent omitted → None (at runtime, mult = the stat itself).
         let d = def(r#"{"id":"t2","pattern":"noop","mods":[

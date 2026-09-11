@@ -130,32 +130,26 @@ pub(crate) fn granted_passive_defs<'d>(
         return Vec::new();
     }
 
-    // Notable name (lowercase) → node (same name takes the smallest skill id, deterministic).
-    let mut by_name: std::collections::BTreeMap<String, &pobr_data::catalog::PassiveNodeDef> =
-        std::collections::BTreeMap::new();
-    for def in data.passive_nodes.values() {
-        if def.kind != pobr_data::catalog::PassiveNodeKind::Notable {
-            continue;
-        }
-        let Some(name) = &def.name else { continue };
-        by_name
-            .entry(name.to_ascii_lowercase())
-            .and_modify(|existing| {
-                if def.skill < existing.skill {
-                    *existing = def;
-                }
-            })
-            .or_insert(def);
-    }
-
     let mut seen: std::collections::HashSet<u32> = std::collections::HashSet::new();
     let mut out = Vec::new();
     for name in granted {
-        let Some(def) = by_name.get(name.to_ascii_lowercase().as_str()) else {
+        // A build grants only a few notables. Resolve those names directly instead
+        // of allocating a lowercase index of the entire tree on every gem scan.
+        let def = data
+            .passive_nodes
+            .values()
+            .filter(|def| def.kind == pobr_data::catalog::PassiveNodeKind::Notable)
+            .filter(|def| {
+                def.name
+                    .as_ref()
+                    .is_some_and(|n| n.eq_ignore_ascii_case(&name))
+            })
+            .min_by_key(|def| def.skill);
+        let Some(def) = def else {
             continue; // Unknown name (outside the tree/a variant), safely skipped (under-counting is the safe failure mode).
         };
         if seen.insert(def.skill) {
-            out.push(*def);
+            out.push(def);
         }
     }
     out
@@ -598,11 +592,44 @@ pub(crate) fn filter_parseable(texts: Vec<String>, ctx: ParseCtx<'_>) -> Vec<Str
 /// Filters an item's three mod segments (implicit / explicit / enchant) each into their
 /// parseable subset, preserving which segment each mod belongs to (used by
 /// [`CalculationSession::add_item`] to assign source-category attribution per segment).
-pub(crate) fn filter_item_parseable(item: &Item, ctx: ParseCtx<'_>) -> Item {
+/// Rejected text remains visible in diagnostics; it must not silently disappear from
+/// replacement comparisons or be applied as a partially understood modifier.
+pub(crate) fn filter_item_parseable(
+    item: &Item,
+    ctx: ParseCtx<'_>,
+    session: &mut CalculationSession,
+) -> Item {
+    // These sources have dedicated orchestration consumers even when they do
+    // not yield ordinary ModDb modifiers. The Adorned's real clipboard/XML
+    // text wraps across two lines; exempt only the verified pair, not all
+    // text on that jewel (unknown additional effects must remain visible).
+    let adorned_pair = (item.rarity == pobr_data::item::ItemRarity::Unique)
+        .then(|| {
+            item.modifier_texts.windows(2).find(|pair| {
+                pair[0]
+                    .strip_suffix("% increased Effect of Jewel Socket Passive Skills")
+                    .is_some_and(|number| number.parse::<u32>().is_ok())
+                    && pair[1] == "containing Corrupted Magic Jewels"
+            })
+        })
+        .flatten();
     let mut filtered = item.clone();
-    filtered.implicit_texts = filter_parseable(filtered.implicit_texts, ctx);
-    filtered.modifier_texts = filter_parseable(filtered.modifier_texts, ctx);
-    filtered.enchant_texts = filter_parseable(filtered.enchant_texts, ctx);
+    for texts in [
+        &mut filtered.implicit_texts,
+        &mut filtered.modifier_texts,
+        &mut filtered.enchant_texts,
+    ] {
+        texts.retain(|text| {
+            let accepted = gate_parses(ctx, text);
+            if !accepted
+                && parse_gem_property_bonus(text).is_none()
+                && !adorned_pair.is_some_and(|pair| pair.contains(text))
+            {
+                session.record_unsupported_modifier_text(text.clone());
+            }
+            accepted
+        });
+    }
     filtered
 }
 

@@ -23,7 +23,14 @@ An equipment purchase follows three steps:
 3. Apply the evaluated item to the build. Recalculate subsequent suggestions
    because interactions and the baseline have changed.
 
-The replacement preview automatically validates the item base, selected position and required level. Attribute and special equip requirements still need manual verification; the calculation API itself accepts permissive equipment snapshots.
+The visible paste card automatically validates the item base and required level,
+then compares every compatible equipped position and allocated jewel socket in
+one batch. It selects the best position under the shared objective, while users
+can inspect another position before applying. Attribute and special equip
+requirements still need manual verification; the calculation API itself accepts
+permissive equipment snapshots. See
+[calculation performance and copied items](19-calculation-performance-and-item-paste.md)
+for the v0.0.14 performance measurements, new affix coverage and diagnostic rules.
 
 The market Sum is a linear explicit-affix score. It does not include every base
 property, implicit, augment, conditional effect, or interaction. EHP floors and

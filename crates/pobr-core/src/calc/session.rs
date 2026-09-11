@@ -570,6 +570,12 @@ impl CalculationSession {
         &self.unsupported_modifier_texts
     }
 
+    /// Records text rejected by an orchestration-level parseability gate without
+    /// injecting a partially parsed modifier into the calculation.
+    pub fn record_unsupported_modifier_text(&mut self, text: String) {
+        self.unsupported_modifier_texts.push(text);
+    }
+
     /// Gets the sum of a ModName's BASE in the player modDB (per the current
     /// cfg). Used by the orchestration layer, after every source is
     /// injected, to read total attributes (Strength/Dexterity/Intelligence)

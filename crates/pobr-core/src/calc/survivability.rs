@@ -512,6 +512,17 @@ pub fn calc_leech_from_db(
     hit_damage: f64,
     resource: LeechResource,
 ) -> LeechResult {
+    // Proxy damage does not grant the player ordinary leech. PoB2
+    // CalcOffence.lua:4413-4418 only permits DamageLifeLeechToPlayer for
+    // mine/trap/totem damage; that explicit transfer is not modeled here.
+    // Trappable/Mineable merely describe eligibility and must not be gated.
+    let proxy_types = pobr_data::skill::SkillTypes::TRAPPED
+        | pobr_data::skill::SkillTypes::REMOTE_MINED
+        | pobr_data::skill::SkillTypes::from_pob2_name("UsedByTotem").unwrap_or_default()
+        | pobr_data::skill::SkillTypes::from_pob2_name("UsedByProxy").unwrap_or_default();
+    if cfg.skill_types.intersects(proxy_types) {
+        return LeechResult::zero(pool, resource);
+    }
     // CannotLeechXxx flag short-circuit
     let cannot_flag = match resource {
         LeechResource::Life => "CannotLeechLife",
@@ -521,7 +532,20 @@ pub fn calc_leech_from_db(
     if db.flag(cfg, ModName::from(cannot_flag)) {
         return LeechResult::zero(pool, resource);
     }
-    let leech_pct = db.sum(ModType::Base, cfg, &[resource.leech_mod_name()]);
+    // The typed names are emitted by PoB's equipment/passive parser. The
+    // legacy untyped names remain accepted by the minimal calculation API.
+    // hit_damage must be the physical component after conversion, never the
+    // total hit (which would let elemental added damage fuel physical leech).
+    let physical_name = match resource {
+        LeechResource::Life => "PhysicalDamageLifeLeech",
+        LeechResource::Mana => "PhysicalDamageManaLeech",
+        LeechResource::EnergyShield => "PhysicalDamageEnergyShieldLeech",
+    };
+    let leech_pct = db.sum(
+        ModType::Base,
+        cfg,
+        &[resource.leech_mod_name(), ModName::from(physical_name)],
+    );
     calc_leech(pool, leech_pct, hit_damage, resource)
 }
 

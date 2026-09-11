@@ -37675,11 +37675,31 @@
     },
     {
       "text": "Gain additional Stun Threshold equal to 13% of maximum Energy Shield",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(13.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain additional Stun Threshold equal to 14% of maximum Energy Shield",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "Base",
+          "value": 1.0,
+          "tags": [
+            "PercentStat { stat: \"EnergyShield\", percent: Some(14.0) }"
+          ]
+        }
+      ]
     },
     {
       "text": "Gain additional [AilmentThreshold|Ailment Threshold] equal to 12% of maximum [EnergyShield|Energy Shield]",

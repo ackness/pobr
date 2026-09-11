@@ -503,7 +503,7 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
         .into_iter()
         .filter(|def| def.parity_status == ParityStatus::Computed)
         .map(|def| {
-            let value = output_value_for(output, def.id.as_str());
+            let value = display_value(output, def.id.as_str());
             DisplayStatValue {
                 id: def.id,
                 value,
@@ -513,8 +513,10 @@ pub fn extract_display_values(output: &OutputTable) -> Vec<DisplayStatValue> {
         .collect()
 }
 
-/// Maps a display field id to its `OutputTable` field value. Unknown ids return 0.
-fn output_value_for(output: &OutputTable, id: &str) -> f64 {
+/// Reads one display field without allocating the full catalog. Units match
+/// [`extract_display_values`], including fractional chance to percent conversion.
+/// Unknown ids return 0.
+pub fn display_value(output: &OutputTable, id: &str) -> f64 {
     match id {
         "TotalDPS" => output.dps,
         "TotalHitAvg" => output.total_hit_avg,

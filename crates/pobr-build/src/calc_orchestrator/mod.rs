@@ -1192,7 +1192,7 @@ fn stage_inject_jewels(
 ) -> Result<(), BuildError> {
     let adorned_inc = adorned_corrupted_magic_jewel_inc(&ctx.build.jewels);
     for jewel in &ctx.build.jewels {
-        let filtered = filter_item_parseable(jewel, engine_ctx(ctx.data));
+        let filtered = filter_item_parseable(jewel, engine_ctx(ctx.data), session);
         let texts: Vec<&str> = filtered
             .implicit_texts
             .iter()
@@ -1733,6 +1733,33 @@ mod tests {
         assert_eq!(
             quality_count, 1,
             "allocated + granted should only count once"
+        );
+
+        // Duplicate names are deterministic even when tree definitions share a
+        // display name. Case differences and repeated grants must not add copies.
+        let mut data = data;
+        let mut same_name = data.passive_nodes[&20686].clone();
+        same_name.skill = 1;
+        data.passive_nodes.insert(1, same_name.clone());
+        same_name.skill = 0;
+        same_name.kind = pobr_data::catalog::PassiveNodeKind::Normal;
+        data.passive_nodes.insert(0, same_name);
+        let mut build = build;
+        build
+            .items
+            .get_mut(&EquipmentSlot::Amulet)
+            .unwrap()
+            .enchant_texts = vec![
+            "Allocates PARAGON".into(),
+            "Allocates Paragon".into(),
+            "Allocates Unknown Notable".into(),
+        ];
+        assert_eq!(
+            granted_passive_defs(&build, &data)
+                .iter()
+                .map(|node| node.skill)
+                .collect::<Vec<_>>(),
+            vec![1]
         );
     }
 
