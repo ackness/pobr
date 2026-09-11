@@ -37,6 +37,7 @@ interface WasmModule {
   decodeBuildLoadoutJson(requestJson: string): string;
   manageLoadoutJson(requestJson: string): string;
   decodeBuildFileJson(content: string): string;
+  importTradeItemsJson(input: string): string;
   calculateBuildJson(requestJson: string): string;
   encodeBuildJson(requestJson: string): string;
   fullDpsJson(requestJson: string): string;
@@ -149,6 +150,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async decodeBuildFile(content) {
       return JSON.parse(wasm.decodeBuildFileJson(content)) as BuildJson;
+    },
+    async importTradeItems(items) {
+      return JSON.parse(wasm.importTradeItemsJson(JSON.stringify(items)));
     },
     async calculateBuild(request: CalculateBuildRequest) {
       return JSON.parse(wasm.calculateBuildJson(JSON.stringify(request))) as CalculateBuildResponse;

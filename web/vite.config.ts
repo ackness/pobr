@@ -6,13 +6,13 @@ import worker from './public/_worker.js';
 // Use the production Pages handler in dev and preview, including upstream limits.
 function importService(): Plugin {
   const middleware = (server: ViteDevServer | PreviewServer) => {
-    server.middlewares.use('/api/import/wegame', async (req, res) => {
+    server.middlewares.use('/api', async (req, res) => {
       try {
         const chunks: Buffer[] = [];
         let size = 0;
         for await (const chunk of req) {
           size += chunk.length;
-          if (size > 2048) {
+          if (size > 32768) {
             res.writeHead(413);
             res.end();
             return;
@@ -23,16 +23,16 @@ function importService(): Plugin {
         for (const [name, value] of Object.entries(req.headers)) {
           if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(', ') : value);
         }
-        const request = new Request(`http://${req.headers.host}/api/import/wegame`, {
+        const request = new Request(`http://${req.headers.host}/api${req.url}`, {
           method: req.method, headers,
           ...(req.method === 'POST' ? { body: Buffer.concat(chunks) } : {}),
         });
-        const response = await worker.fetch(request, {});
+        const response = await worker.fetch(request, { ASSETS: { fetch: () => new Response('Not found', { status: 404 }) } });
         res.writeHead(response.status, Object.fromEntries(response.headers));
         res.end(await response.text());
       } catch {
         res.writeHead(502, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ error: 'WeGame import service failed.' }));
+        res.end(JSON.stringify({ error: 'Trade/import service failed.' }));
       }
     });
   };

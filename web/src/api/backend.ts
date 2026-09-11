@@ -49,6 +49,7 @@ export interface PobrBackend {
   ): Promise<string>;
   /** 解析国服导出的 `.build` 文件（JSON 文本）。 */
   decodeBuildFile(content: string): Promise<BuildJson>;
+  importTradeItems(items: unknown[]): Promise<{ text?: string; warnings?: string[]; error?: string }[]>;
   calculateBuild(request: CalculateBuildRequest): Promise<CalculateBuildResponse>;
   /** 编辑态 → PoB2 分享 code（请求同 calculateBuild + 可选 notes）。 */
   encodeBuild(

@@ -220,6 +220,26 @@ fn item_text(item: &Value, warnings: &mut BTreeSet<String>) -> Result<String, St
     Ok(lines.join("\n"))
 }
 
+/// GGG trade/profile items share the same equipment JSON shape. Reuse the
+/// canonical importer so local rolls, sockets and Chinese text stay consistent.
+pub fn import_trade_items_json(input: &str) -> Result<String, String> {
+    let items: Vec<Value> = serde_json::from_str(input).map_err(|e| e.to_string())?;
+    if items.len() > 100 {
+        return Err("At most 100 trade items per import".into());
+    }
+    let result: Vec<Value> = items
+        .iter()
+        .map(|item| {
+            let mut warnings = BTreeSet::new();
+            match item_text(item, &mut warnings) {
+                Ok(text) => serde_json::json!({ "text": text, "warnings": warnings }),
+                Err(error) => serde_json::json!({ "error": error }),
+            }
+        })
+        .collect();
+    serde_json::to_string(&result).map_err(|e| e.to_string())
+}
+
 fn slot(item: &Value) -> Option<String> {
     Some(
         match text(item, "inventoryId") {

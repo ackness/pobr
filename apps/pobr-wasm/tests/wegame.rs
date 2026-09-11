@@ -158,3 +158,31 @@ fn wegame_live_bundle_calculates() {
     )
     .unwrap();
 }
+
+#[test]
+fn trade_item_objects_preserve_rolls_and_isolate_bad_entries() {
+    init();
+    let input = json!([
+        {"name": "Synthetic Ward", "baseType": "Linen Belt", "frameType": 2, "ilvl": 82,
+         "implicitMods": [{"description": "+20 to maximum Life"}],
+         "explicitMods": [{"description": "+100 to maximum [Life|Life]"}, {"description": "+30% to Fire Resistance"}],
+         "properties": [{"type": 6, "values": [["+20%", 1]]}], "corrupted": true},
+        {"frameType": 2}
+    ]);
+    let result: Value =
+        serde_json::from_str(&pobr_wasm::import_trade_items_json(&input.to_string()).unwrap())
+            .unwrap();
+    let text = result[0]["text"].as_str().unwrap();
+    for expected in [
+        "Linen Belt",
+        "Item Level: 82",
+        "Implicits: 1",
+        "+100 to maximum Life",
+        "+30% to Fire Resistance",
+        "Quality: 20",
+        "Corrupted",
+    ] {
+        assert!(text.contains(expected), "missing {expected}: {text}");
+    }
+    assert!(result[1]["error"].is_string());
+}

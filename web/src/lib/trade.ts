@@ -1,11 +1,5 @@
-/**
- * Trade 市集加权搜索（PoB2 TradeQueryGenerator 的最小复刻）：
- * - 词条 → 官方 trade2 stat id：`overlay/trade_stat_map.json`（vendor ModItem
- *   tradeHashes × TradeSiteStats 抽取，模板 = 数字骨架化词条行）；
- * - 权重 = 该词条的边际收益 ÷ 词条数值（摘一行重算一次，走通用变体框架——
- *   与 PoB2 的有限差分口径一致）；
- * - 产物 = `pathofexile.com/trade2/search/poe2/<league>?q=<json>` 直开 URL，
- *   网站前端自己读 q 预填查询，无需 OAuth。
+/** Official trade templates, live realm/league discovery and weighted search links.
+ * Affix probes live in tradeOptimizer.ts; actual listing recalculation lives in tradeMarket.ts.
  */
 
 import type { TradeStatEntry } from '../api/types';
@@ -41,9 +35,12 @@ export function loadTradeMap(): Promise<Record<string, TradeStatEntry>> {
   return mapPromise;
 }
 
-/** 词条行的代表数值（权重分母）：首个数字；无数字（纯 flag 词条）为 null。 */
+/** Representative stat value: average flat damage range, otherwise the signed number. */
 export function lineValue(line: string): number | null {
-  const m = line.replace(/\{[^}]*\}/g, '').match(/\d+(\.\d+)?/);
+  const clean = line.replace(/\{[^}]*\}/g, '');
+  const range = clean.match(/(-?\d+(?:\.\d+)?) to (-?\d+(?:\.\d+)?)/);
+  if (range) return (Number(range[1]) + Number(range[2])) / 2;
+  const m = clean.match(/-?\d+(\.\d+)?/);
   return m ? Number(m[0]) : null;
 }
 
@@ -66,13 +63,9 @@ const REALM_HOSTS: Record<TradeRealm, string> = {
   cn: 'https://poe.game.qq.com',
 };
 
-/**
- * 各服的赛季预设（首项 = 当前挑战赛季，次项 = 常驻标准服）。
- * 赛季名每个版本会变（0.5 = Runes of Aldur / 奥杜尔秘符），随数据版本升级
- * 一并更新；过期期间用户可走「自定义」手填，功能不至于坏。
- */
+/** Offline fallback; the UI refreshes these from the official realm-specific API. */
 export const REALM_LEAGUES: Record<TradeRealm, string[]> = {
-  intl: ['Runes of Aldur', 'Standard'],
+  intl: ['Forbidden Rites', 'HC Forbidden Rites', 'Runes of Aldur', 'HC Runes of Aldur', 'Standard', 'Hardcore'],
   cn: ['周年庆巅峰挑战', '奥杜尔秘符', '标准'],
 };
 
@@ -80,6 +73,18 @@ export const REALM_DEFAULT_LEAGUE: Record<TradeRealm, string> = {
   intl: REALM_LEAGUES.intl[0],
   cn: REALM_LEAGUES.cn[0],
 };
+
+/** Live official lists; fallback values remain usable during upstream outages. */
+export async function loadTradeLeagues(realm: TradeRealm): Promise<string[]> {
+  const response = await fetch(`/api/trade/leagues?realm=${realm}`);
+  if (!response.ok) throw new Error('League list unavailable');
+  const data = await response.json() as { leagues?: unknown };
+  if (!Array.isArray(data.leagues) || data.leagues.length === 0 ||
+      !data.leagues.every(value => typeof value === 'string' && value.length > 0)) {
+    throw new Error('Invalid league list');
+  }
+  return data.leagues;
+}
 
 /**
  * 预算上限（trade2 Buyout Price 过滤器）。currency 取官方过滤器 id：
@@ -90,22 +95,21 @@ export interface TradePriceCap {
   currency?: 'divine' | 'exalted' | 'chaos';
 }
 
-/** trade2 加权查询 JSON + 直开 URL（min = 当前加权和 × threshold）。 */
+/** Category is mandatory: an untyped weighted query mixes unrelated equipment. */
 export function buildTradeUrl(
   league: string,
   weighted: WeightedStat[],
-  threshold = 0.7,
-  realm: TradeRealm = 'intl',
-  price?: TradePriceCap,
+  options: { category: string; realm?: TradeRealm; price?: TradePriceCap; minimumWeight?: number },
 ): string {
-  const sum = weighted.reduce((acc, w) => acc + w.weight * w.value, 0);
+  const { category, realm = 'intl', price, minimumWeight = 0 } = options;
+  if (!category) throw new Error('Select an item category before searching');
   const query = {
     query: {
-      status: { option: 'any' },
+      status: { option: 'online' },
       stats: [
         {
           type: 'weight',
-          value: { min: Math.round(sum * threshold * 1000) / 1000 },
+          value: { min: Math.round(minimumWeight * 1000) / 1000 },
           filters: weighted.map((w) => ({
             id: w.id,
             value: { weight: Math.round(w.weight * 1000) / 1000 },
@@ -113,7 +117,9 @@ export function buildTradeUrl(
         },
       ],
       filters: {
-        type_filters: { filters: { rarity: { option: 'nonunique' } } },
+        type_filters: { filters: {
+          category: { option: category },
+        } },
         ...(price && price.max > 0
           ? {
               trade_filters: {

@@ -7,9 +7,10 @@
 #   deps       仅安装系统依赖（luajit）
 #   vendor     仅克隆/对齐 PoB2 vendor 到钉定 commit（gitignored，永不提交）
 #   build      cargo build --workspace
-#   test       定向测试：pobr-core + pobr-build（含 parity_no_regression 门禁）
+#   test <args> Forward targeted cargo test arguments (package, suite, filter).
+#   full       fmt + clippy + all workspace tests + i18n lint
 #   drill      version-bump-drill：数据可再生性 + 编译 + parity 可运行
-#   smoke      test + drill（最常用的"改完一遍过"验证）
+#   smoke      Quick representative aggregation, parser and codec checks.
 #   data       数据现状自检 + 再生管线说明（含云端约束）
 #   lua <pat>  在 vendor PoB2 Lua 里 grep 一个 pattern（公式/规则裁决用）
 #   status     报告 luajit / vendor / data 就绪态
@@ -59,17 +60,34 @@ cmd_vendor() {
   echo "OK: $(git -C "$VENDOR_DIR" log -1 --oneline)"
 }
 
-cmd_build() { say "cargo build --workspace"; cargo build --workspace --quiet && echo "build OK"; }
+cmd_build() { say "cargo build --workspace"; cargo build --workspace && echo "build OK"; }
 
 cmd_test() {
-  say "定向测试 pobr-core + pobr-build（含 parity 门禁）"
-  cargo test -p pobr-core -p pobr-build 2>&1 \
-    | grep -E "test result:|FAILED|error\[|error:|Running " | grep -vE "^\s*$"
+  if [[ $# -eq 0 ]]; then
+    echo "usage: driver.sh test -p <crate> [--test <suite>] [filter] [-- <test options>]" >&2
+    echo "Use 'smoke' for quick checks or 'full' for the complete gate." >&2
+    return 2
+  fi
+  say "cargo test $*"
+  cargo test "$@"
+}
+
+cmd_full() {
+  say "Full workspace gate: fmt, clippy, tests (including doctests), i18n"
+  cargo fmt --all --check &&
+    cargo clippy --workspace --all-targets -- -D warnings &&
+    cargo test --workspace &&
+    cargo run -p lint-i18n
 }
 
 cmd_drill() { say "version-bump-drill（数据可再生 + 编译 + parity 可运行）"; bash devs/scripts/version-bump-drill.sh; }
 
-cmd_smoke() { cmd_build && cmd_test; }   # 核心绿信号；版本升级再生检查走 `drill`
+cmd_smoke() {
+  say "Quick smoke: aggregation, parser and Build Code roundtrip"
+  cargo test -p pobr-core --test aggregation mod_db:: &&
+    cargo test -p pobr-core --test parser mod_parser:: &&
+    cargo test -p pobr-build --test codec build_code::
+}
 
 cmd_data() {
   say "数据现状自检"
@@ -143,7 +161,8 @@ case "${1:-smoke}" in
   vendor)    cmd_vendor ;;
   bootstrap) cmd_deps && cmd_vendor && cmd_build ;;
   build)     cmd_build ;;
-  test)      cmd_test ;;
+  test)      shift; cmd_test "$@" ;;
+  full)      cmd_full ;;
   drill)     cmd_drill ;;
   smoke)     cmd_smoke ;;
   data)      cmd_data ;;
@@ -151,5 +170,5 @@ case "${1:-smoke}" in
   diff)      cmd_diff "$@" ;;
   lua)       cmd_lua "$@" ;;
   status)    cmd_status ;;
-  *) echo "usage: driver.sh {bootstrap|deps|vendor|build|test|drill|smoke|data|versions|diff <verA> <verB>|lua <pat>|status}"; exit 2 ;;
+  *) echo "usage: driver.sh {bootstrap|deps|vendor|build|test <cargo args>|full|drill|smoke|data|versions|diff <verA> <verB>|lua <pat>|status}"; exit 2 ;;
 esac

@@ -44,15 +44,15 @@ fn precompile_is_byte_stable() {
     let tmp_data = tmp.join("data").join(PATCH);
 
     let corpus1 = corpus::collect(&tmp_data, None).expect("collect 1");
-    parsed::precompile(&corpus1, &tmp_data).expect("precompile 1");
-    let cov1 = recompute_coverage(&tmp_data);
+    let outcome1 = parsed::precompile(&corpus1, &tmp_data).expect("precompile 1");
+    let cov1 = outcome1.coverage;
     report::emit(&cov1, 40, &tmp_data).expect("report 1");
     let parsed1 = std::fs::read(tmp_data.join("generated/parsed_mods.json")).unwrap();
     let report1 = std::fs::read(tmp_data.join("generated/parse-coverage.json")).unwrap();
 
     let corpus2 = corpus::collect(&tmp_data, None).expect("collect 2");
-    parsed::precompile(&corpus2, &tmp_data).expect("precompile 2");
-    let cov2 = recompute_coverage(&tmp_data);
+    let outcome2 = parsed::precompile(&corpus2, &tmp_data).expect("precompile 2");
+    let cov2 = outcome2.coverage;
     report::emit(&cov2, 40, &tmp_data).expect("report 2");
     let parsed2 = std::fs::read(tmp_data.join("generated/parsed_mods.json")).unwrap();
     let report2 = std::fs::read(tmp_data.join("generated/parse-coverage.json")).unwrap();
@@ -128,8 +128,8 @@ fn committed_coverage_matches_fresh_run() {
     let tmp = mirror_data_dir(&src_data);
     let tmp_data = tmp.join("data").join(PATCH);
     let corpus = corpus::collect(&tmp_data, None).expect("collect");
-    parsed::precompile(&corpus, &tmp_data).expect("precompile");
-    let cov = recompute_coverage(&tmp_data);
+    let outcome = parsed::precompile(&corpus, &tmp_data).expect("precompile");
+    let cov = outcome.coverage;
     report::emit(&cov, 40, &tmp_data).expect("report");
     let fresh: serde_json::Value = serde_json::from_slice(
         &std::fs::read(tmp_data.join("generated/parse-coverage.json")).unwrap(),
@@ -251,14 +251,4 @@ fn mirror_data_dir(src_data: &Path) -> PathBuf {
         std::os::unix::fs::symlink(&src_builds, dst_examples.join("builds")).unwrap();
     }
     tmp
-}
-
-/// Recompute coverage (precompile already wrote parsed_mods.json, but
-/// Coverage lives in its outcome; report::emit needs a &Coverage, so we just
-/// rerun precompile and take outcome.coverage).
-fn recompute_coverage(data_dir: &Path) -> parsed::Coverage {
-    let corpus = corpus::collect(data_dir, None).expect("collect for coverage");
-    parsed::precompile(&corpus, data_dir)
-        .expect("precompile for coverage")
-        .coverage
 }

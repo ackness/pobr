@@ -14,8 +14,8 @@ use pobr_data::passive_tree::NodeId;
 use serde::{Deserialize, Serialize};
 
 use super::request::{
-    CalculateBuildRequest, GemInput, SlotItemInput, apply_request_overrides, orchestrator_options,
-    parse_build_from_request, run_session_for_build,
+    CalculateBuildRequest, GemInput, JewelInput, SlotItemInput, SocketGroupInput,
+    apply_request_overrides, orchestrator_options, parse_build_from_request, run_session_for_build,
 };
 use super::{localize_input_text, slot_from_id};
 use crate::state;
@@ -182,6 +182,10 @@ struct VariantInput {
     add_gems: Option<AddGemsInput>,
     /// Overrides an equipment slot (an empty `text` means unequip that slot).
     set_items: Vec<SlotItemInput>,
+    /// Whole-list replacements use the same validation and socket gating as normal edits.
+    jewels: Option<Vec<JewelInput>>,
+    flasks: Option<Vec<SlotItemInput>>,
+    socket_groups: Option<Vec<SocketGroupInput>>,
     /// Additional allocated nodes (connectivity isn't validated — this is a
     /// hypothetical what-if, so pathing is the caller's responsibility).
     allocate_nodes: Vec<u32>,
@@ -212,6 +216,7 @@ struct VariantStatsJson {
     /// variant failing doesn't take down the whole batch).
     stats: BTreeMap<String, f64>,
     error: Option<String>,
+    unsupported: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -240,6 +245,18 @@ fn apply_variant(
     variant: &VariantInput,
     data: &BuildData,
 ) -> Result<(), String> {
+    if variant.jewels.is_some() || variant.flasks.is_some() || variant.socket_groups.is_some() {
+        let overrides = CalculateBuildRequest {
+            jewels: variant.jewels.clone(),
+            flasks: variant.flasks.clone(),
+            socket_groups: variant.socket_groups.clone(),
+            ..Default::default()
+        };
+        let issues = apply_request_overrides(build, &overrides, data).map_err(|e| e.into_json())?;
+        if let Some(issue) = issues.first() {
+            return Err(format!("{}: {}", issue.slot, issue.message));
+        }
+    }
     if let Some(add) = &variant.add_gems {
         let group_count = build.socket_groups.len();
         let group = build
@@ -355,12 +372,14 @@ fn optimize_variants_impl(request_json: &str) -> Result<String, super::ApiError>
                 label: variant.label.clone(),
                 stats: collect_stats(&session, &req.stats),
                 error: None,
+                unsupported: session.unsupported_modifier_texts().to_vec(),
             },
             Err(error) => VariantStatsJson {
                 index,
                 label: variant.label.clone(),
                 stats: BTreeMap::new(),
                 error: Some(error),
+                unsupported: Vec::new(),
             },
         });
     }

@@ -17,6 +17,7 @@ use crate::state;
 
 #[path = "wegame.rs"]
 mod wegame;
+pub use wegame::import_trade_items_json;
 
 // 0.1 decode_build_json
 
