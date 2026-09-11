@@ -16,7 +16,8 @@ import { AppSelect } from '../shared/AppSelect';
 import { CopyButton } from '../shared/CopyButton';
 import { OptimizerProgress } from '../shared/OptimizerControls';
 import { affixPool, basesForSlot, loadTradeCatalog, optimizeTradeAffixes, type TradeCatalog, type TradeBase, type TradeOptimization } from '../../lib/tradeOptimizer';
-import { evaluateMarket, searchMarket, rankMarket, planGemUpgrades, evaluateGemMarket, type MarketRanking, type MarketUpgrade } from '../../lib/tradeMarket';
+import { evaluateMarket, searchMarket, rankMarket, planGemUpgrades, evaluateGemMarket, type MarketRanking, type MarketUpgrade, type MarketQuery, type GemPlan } from '../../lib/tradeMarket';
+import { readTradeExport, tradeExportBookmark, gemTradeUrl } from '../../lib/tradeExport';
 import './trade.css';
 
 interface Props {
@@ -51,7 +52,7 @@ const CURRENCY_OPTIONS: { value: BudgetCurrency; labelKey: UiKey }[] = [
   { value: 'chaos', labelKey: 'trade.curChaos' },
 ];
 
-type SlotResult = Partial<TradeOptimization> & { category?: string; market?: MarketRanking; total?: number; sampled?: number; searchMode?: string; error?: string };
+type SlotResult = Partial<TradeOptimization> & { category?: string; market?: MarketRanking; total?: number; sampled?: number; searchMode?: string; error?: string; gemPlans?: GemPlan[] };
 
 /** Category-constrained market search with full recalculation of each actual listing. */
 export function TradePanel({ session, lang }: Props) {
@@ -162,6 +163,7 @@ export function TradePanel({ session, lang }: Props) {
         try {
           if (slot === 'gems') {
             const plans = await planGemUpgrades(request, catalog, gemGroup, objective, options.signal, options.onProgress);
+            setResults(prev => ({ ...prev, [slot]: { gemPlans: plans } }));
             let ranking: MarketRanking = { baseline: {}, upgrades: [], rejected: 0 };
             let total = 0, sampled = 0;
             for (const plan of plans) {
@@ -173,9 +175,9 @@ export function TradePanel({ session, lang }: Props) {
                 upgrades: ranked.filter((entry, index) => ranked.findIndex(other => other.listing.id === entry.listing.id) === index),
                 rejected: ranking.rejected + result.rejected };
               total += market.total; sampled += market.sampled;
-              setResults(prev => ({ ...prev, [slot]: { market: ranking, total, sampled } }));
+              setResults(prev => ({ ...prev, [slot]: { gemPlans: plans, market: ranking, total, sampled } }));
             }
-            setResults(prev => ({ ...prev, [slot]: { market: ranking, total, sampled } }));
+            setResults(prev => ({ ...prev, [slot]: { gemPlans: plans, market: ranking, total, sampled } }));
           } else {
             const base = baseOf(slot);
             if (!base) continue;
@@ -202,6 +204,29 @@ export function TradePanel({ session, lang }: Props) {
       if (abortRef.current === controller) {
         setRunning(null); setProgress(null); abortRef.current = null;
       }
+    }
+  };
+  const importCandidates = async (slot: string, file: File, plan?: GemPlan) => {
+    const request = session.currentRequest();
+    const result = results[slot];
+    if (!request || !result || (!result.category && !plan)) return;
+    const controller = new AbortController();
+    abortRef.current = controller; setRunning(slot);
+    try {
+      if (file.size > 4 * 1024 * 1024) throw new Error('Trade export is too large.');
+      const market = readTradeExport(await file.text(), { realm, league, category: plan ? 'gem' : result.category!, price: priceCap, maxLevel: session.character?.level,
+        ...(plan ? { gem: { name: plan.gem.name, level: plan.level, quality: plan.quality } } : {}) });
+      const ranking = plan ? await evaluateGemMarket(request, plan, market, objective, controller.signal)
+        : await evaluateMarket({ request, slot, market, objective, signal: controller.signal,
+          onProgress: (done, total) => setProgress({ done, total }) });
+      controller.signal.throwIfAborted();
+      const all = rankMarket([...(plan ? result.market?.upgrades ?? [] : []), ...ranking.upgrades]);
+      const merged = { ...ranking, baseline: Object.keys(ranking.baseline).length ? ranking.baseline : result.market?.baseline ?? {}, upgrades: all.filter((entry, index) => all.findIndex(other => other.listing.id === entry.listing.id) === index) };
+      setResults(prev => ({ ...prev, [slot]: { ...result, error: undefined, market: merged, sampled: market.sampled + (plan ? result.sampled ?? 0 : 0), total: market.total + (plan ? result.total ?? 0 : 0), searchMode: 'weighted' } }));
+    } catch (error) {
+      if (!controller.signal.aborted) setResults(prev => ({ ...prev, [slot]: { ...prev[slot], error: error instanceof Error ? error.message : String(error) } }));
+    } finally {
+      if (abortRef.current === controller) { setRunning(null); setProgress(null); abortRef.current = null; }
     }
   };
   const valueCurrency = sortBy === 'value' ? (currency === 'equiv' ? 'exalted' : currency) : undefined;
@@ -401,6 +426,9 @@ export function TradePanel({ session, lang }: Props) {
                     />
                   )}
                   {result?.error && <p className="opt-error">{result.error}</p>}
+                  {result?.weighted && result.category && <SignedInImport searchUrl={urlOf(result)} query={{
+                    realm, league, category: result.category, price: priceCap, maxLevel: session.character?.level,
+                  }} disabled={running !== null || session.busy} label={labelOf(slot)} lang={lang} onImport={file => void importCandidates(slot, file)} />}
                   {result && renderMarket(result)}
                   {result?.weighted && (
                     <details className="trade-details">
@@ -440,6 +468,16 @@ export function TradePanel({ session, lang }: Props) {
               onClick={() => void run(['gems'])}>{tt('trade.findBetter')}</button>
             {running === 'gems' && progress && <OptimizerProgress {...progress} onCancel={() => abortRef.current?.abort()} lang={lang} />}
             {results.gems?.error && <p className="opt-error">{results.gems.error}</p>}
+            {results.gems?.gemPlans?.map(plan => {
+              const query: MarketQuery = { realm, league, category: 'gem', price: priceCap, maxLevel: session.character?.level,
+                gem: { name: plan.gem.name, level: plan.level, quality: plan.quality } };
+              const url = gemTradeUrl(query);
+              return <div key={`${plan.gem.skill_id}:${plan.level}:${plan.quality}`}>
+                <a href={url} target="_blank" rel="noreferrer">{plan.gem.name} · {plan.level} / {plan.quality}%</a>
+                <SignedInImport searchUrl={url} query={query} disabled={running !== null || session.busy} label={plan.gem.name} lang={lang}
+                  onImport={file => void importCandidates('gems', file, plan)} />
+              </div>;
+            })}
             {results.gems && renderMarket(results.gems)}
           </div>
         </>
@@ -473,4 +511,21 @@ function MarketCard({ upgrade, baseline, lang, onApply }: {
     {upgrade.warnings.length > 0 && <details className="trade-warnings"><summary>{tt('trade.uncertain')} ({upgrade.warnings.length})</summary>
       <pre>{[...new Set(upgrade.warnings)].join('\n')}</pre></details>}
   </article>;
+}
+
+function SignedInImport({ searchUrl, query, disabled, label, lang, onImport }: {
+  searchUrl: string; query: MarketQuery; disabled: boolean; label: string; lang: Lang; onImport: (file: File) => void;
+}) {
+  const tt = bindT(lang);
+  const bookmark = tradeExportBookmark(searchUrl, query);
+  return <details className="trade-export" open={query.realm === 'cn'}>
+    <summary>{tt('trade.signedIn')}</summary><p className="items-hint">{tt('trade.exportHint')}</p>
+    <a draggable ref={node => { node?.setAttribute('href', bookmark); }} onClick={event => event.preventDefault()}>{tt('trade.exportBookmark')}</a>
+    <CopyButton label={tt('trade.copyBookmark')} text={bookmark} lang={lang} />
+    <label>{tt('trade.importCandidates')}<input aria-label={`${label} ${tt('trade.importCandidates')}`} type="file" accept=".json,application/json"
+      disabled={disabled} onChange={event => {
+        const file = event.target.files?.[0]; event.target.value = '';
+        if (file) onImport(file);
+      }} /></label>
+  </details>;
 }
