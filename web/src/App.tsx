@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useBuildSession } from './hooks/useBuildSession';
 import { t, type Lang } from './lib/i18n';
 import { TAB_IDS, TopBar, type TabId } from './components/shell/TopBar';
@@ -14,6 +14,8 @@ import './components/shell/shell.css';
 
 export default function App() {
   const session = useBuildSession();
+  const mainRef = useRef<HTMLElement>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
   // 界面偏好（页签/语言）实时持久化到浏览器。
   const [tab, setTabState] = useState<TabId>(() => {
     // 兜底：历史存的页签可能已下线（如原独立笔记页）。
@@ -27,7 +29,7 @@ export default function App() {
     setTabState(next);
     localStorage.setItem('pobr-tab', next);
     // 各页签内容高度差异大，沿用上一页的滚动位置会露出页底黑区。
-    window.scrollTo(0, 0);
+    mainRef.current?.scrollTo(0, 0);
   };
   const setLang = (next: Lang) => {
     setLangState(next);
@@ -114,9 +116,13 @@ export default function App() {
           </button>
         </div>
       )}
-      <div className="app-body">
+      <button className="stats-toggle" aria-expanded={statsOpen} aria-controls="character-stats"
+        onClick={() => setStatsOpen(open => !open)}>
+        {t(lang, statsOpen ? 'ui.hideStats' : 'ui.showStats')} <span aria-hidden>{statsOpen ? '−' : '+'}</span>
+      </button>
+      <div className={`app-body${statsOpen ? ' stats-open' : ''}`}>
         <StatSidebar session={session} lang={lang} onStatClick={focusStat} />
-        <main className="app-main">
+        <main className="app-main" ref={mainRef}>
           {session.error && (
             <div className="calc-error" role="alert">
               {session.error}

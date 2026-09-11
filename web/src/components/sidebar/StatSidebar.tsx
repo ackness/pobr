@@ -133,7 +133,7 @@ export function StatSidebar({ session, lang, onStatClick }: Props) {
   const values = calc ? statMap(calc.stats) : null;
 
   return (
-    <aside className="stat-sidebar" aria-label="Character stats">
+    <aside id="character-stats" className="stat-sidebar" aria-label="Character stats">
       <MainSkillSection session={session} lang={lang} />
       {STAT_SECTIONS.map((section) => {
         const rows = section.rows.filter((row) => {

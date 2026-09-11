@@ -541,6 +541,7 @@ pub fn keyword_bit(name: &str) -> Option<KeywordFlags> {
     Some(match name {
         "Aura" => KeywordFlags::AURA,
         "Curse" => KeywordFlags::CURSE,
+        "Arrow" => KeywordFlags::ARROW,
         "Totem" => KeywordFlags::TOTEM,
         "Attack" => KeywordFlags::ATTACK,
         "Spell" => KeywordFlags::SPELL,

@@ -4,7 +4,7 @@
   overflow-y: auto;
   background: var(--surface-panel);
   border-right: 1px solid var(--border-subtle);
-  padding: var(--space-3);
+  padding: var(--space-4);
 }
 
 .stat-section + .stat-section {
@@ -17,7 +17,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--accent-gold-dim);
+  color: var(--accent-gold);
   border-bottom: 1px solid transparent;
   border-image: linear-gradient(90deg, var(--accent-gold-dim), var(--border-subtle) 70%) 1;
   padding-bottom: var(--space-1);
@@ -31,7 +31,7 @@
   display: flex;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: 1px 0;
+  padding: 3px 0;
   font-size: var(--text-sm);
 }
 
@@ -50,7 +50,8 @@ button.stat-row--link {
   background: none;
   border: none;
   text-align: inherit;
-  font: inherit;
+  font-size: var(--text-sm);
+  min-height: 0;
   color: inherit;
   cursor: pointer;
   border-radius: var(--radius-sm);
@@ -128,8 +129,16 @@ button.stat-row--link:hover dt {
 @media (max-width: 768px) {
   .stat-sidebar {
     width: 100%;
-    max-height: 40vh;
+    display: none;
+    max-height: 35vh;
     border-right: none;
     border-bottom: 1px solid var(--border-subtle);
   }
+}
+
+ .main-skill-section { padding-bottom: var(--space-4); border-bottom: 1px solid var(--border-subtle); }
+.main-skill-section > dl .stat-row:last-child dd { font-size: var(--text-lg); font-weight: 600; }
+.stat-section h3 { border-image: none; border-bottom-color: var(--border-subtle); padding-bottom: var(--space-2); margin-bottom: var(--space-2); }
+@media (max-width: 768px) {
+  .stats-open .stat-sidebar { display: block; }
 }

@@ -81,6 +81,7 @@ impl Default for GemInput {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SocketGroupInput {
+    pub(crate) weapon_set: Option<u8>,
     pub(crate) slot: Option<String>,
     pub(crate) enabled: bool,
     /// The source marker for an equipment-granted skill group (passed
@@ -92,6 +93,7 @@ pub struct SocketGroupInput {
 impl Default for SocketGroupInput {
     fn default() -> Self {
         Self {
+            weapon_set: None,
             slot: None,
             enabled: true,
             source: None,
@@ -102,11 +104,19 @@ impl Default for SocketGroupInput {
 
 /// Manual equipment (a raw PoB text block, using the same parser as the
 /// import path; wholesale replaces the equipment slot).
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, serde::Serialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SlotItemInput {
     pub(crate) slot: String,
     pub(crate) text: String,
+}
+
+#[derive(Debug, Clone, Deserialize, serde::Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct WeaponSwapInput {
+    pub(crate) active: u8,
+    pub(crate) alternate_items: Vec<SlotItemInput>,
+    pub(crate) exclusive_nodes: [Vec<u32>; 2],
 }
 
 /// A manual tree-socket jewel (wholesale replaces them; only takes effect
@@ -125,6 +135,8 @@ pub struct JewelInput {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct CalculateBuildRequest {
+    /// Editable inactive equipment and weapon-set passives, used for export.
+    pub(crate) weapon_swap: Option<WeaponSwapInput>,
     pub(crate) pob_code: String,
     /// The character-identity override (level / class / ascendancy; each field optional).
     pub(crate) character: Option<CharacterOverride>,
@@ -190,6 +202,7 @@ fn json_to_config_value(v: &serde_json::Value) -> Result<ConfigInputValue, Strin
 /// reverse-looked-up from the `gem_effects` table by effect id (support classification depends on it).
 fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData) -> SocketGroup {
     let mut group = SocketGroup {
+        weapon_set: input.weapon_set,
         slot: input.slot.clone(),
         enabled: input.enabled,
         source: input.source.clone(),

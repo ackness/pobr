@@ -14,10 +14,8 @@ use serde_json::Value;
 /// `web/src/api/types.ts::EXPECTED_SCHEMA_VERSION` must be bumped by 1.
 #[test]
 fn schema_version_pinned() {
-    // v3: the gem catalog entry gained `tags`; BuildJson gained loadouts / active_loadout.
-    // (Both are purely additive fields that an old frontend can ignore, but
-    // the key-set assertion changed — bumped by 1 per this file's convention.)
-    assert_eq!(pobr_wasm::SCHEMA_VERSION, 3);
+    // v4: BuildJson preserves weapon sets; socket groups carry their set binding.
+    assert_eq!(pobr_wasm::SCHEMA_VERSION, 4);
 }
 
 /// A real demo build (shared with ninja_parity).
@@ -68,6 +66,7 @@ fn decode_build_json_shape() {
             "notes",
             "loadouts",
             "active_loadout",
+            "weapon_swap",
         ],
         "BuildJson",
     );
@@ -86,6 +85,11 @@ fn decode_build_json_shape() {
         &["equipped", "jewels", "socket_jewels", "flasks"],
         "items",
     );
+    assert_keys(
+        &json["weapon_swap"],
+        &["active", "alternate_items", "exclusive_nodes"],
+        "weapon_swap",
+    );
 
     // Content sanity for a real build: has a class, has equipment, has allocated nodes, has skill groups.
     assert!(!json["character"]["class_name"].as_str().unwrap().is_empty());
@@ -102,7 +106,14 @@ fn decode_build_json_shape() {
     assert!(!groups.is_empty());
     assert_keys(
         &groups[0],
-        &["slot", "enabled", "source", "active_skill_id", "gems"],
+        &[
+            "slot",
+            "enabled",
+            "source",
+            "active_skill_id",
+            "gems",
+            "weapon_set",
+        ],
         "socket_groups[0]",
     );
     let gems = groups[0]["gems"].as_array().unwrap();

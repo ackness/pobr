@@ -1,3 +1,4 @@
+import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
 import { useRef, useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -71,10 +72,11 @@ export function BuildPanel({ session, lang, onImported }: Props) {
   const notesColored = hasPobColorCodes(session.notes);
 
   return (
-    <section className="build-page" aria-labelledby="build-heading">
+    <section className="ui-page build-page" aria-labelledby="build-heading">
+      <PageHeader id="build-heading" title={tt('ui.buildTitle')} description={tt('ui.buildHint')} />
       <div className="build-grid">
         <article className="build-card">
-          <h2 id="build-heading">{tt('build.character')}</h2>
+          <h3>{tt('build.character')}</h3>
           <div className="character-form">
             <label>
               {tt('build.class')}
@@ -141,7 +143,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
         </article>
 
         <article className="build-card build-card--notes">
-          <h2>{tt('tab.notes')}</h2>
+          <h3>{tt('tab.notes')}</h3>
           <p className="build-card-hint">{tt('notes.hint')}</p>
           <textarea
             className="notes-editor"
@@ -166,7 +168,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
         </article>
 
         <article className="build-card">
-          <h2>{tt('build.import')}</h2>
+          <h3>{tt('build.import')}</h3>
           <textarea
             className="import-code"
             rows={5}
@@ -188,7 +190,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
         </article>
 
         <article className="build-card">
-          <h2>{tt('share.title')}</h2>
+          <h3>{tt('share.title')}</h3>
           <p className="build-card-hint">{tt('share.hint')}</p>
           <div className="build-card-actions">
             <button onClick={generateCode} disabled={session.busy}>
@@ -209,7 +211,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
             />
           )}
 
-          <h2 className="build-card-divide">{tt('save.title')}</h2>
+          <h3 className="build-card-divide">{tt('save.title')}</h3>
           <p className="build-card-hint">{tt('save.hint')}</p>
           <div className="build-card-actions">
             <button onClick={exportFile}>{tt('save.export')}</button>
@@ -247,6 +249,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
           <summary>
             {tt('build.unsupported')}（{session.calc.unsupported_modifiers.length}）
           </summary>
+          <p className="hint">{tt('build.unsupportedHint')}</p>
           <ul>
             {session.calc.unsupported_modifiers.map((text, i) => (
               <li key={i}>{text}</li>

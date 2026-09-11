@@ -101,6 +101,8 @@ export interface TradeQueryOptions {
   price?: TradePriceCap;
   minimumWeight?: number;
   maxLevel?: number;
+  includeUnique?: boolean;
+  requiredStats?: string[];
 }
 
 /** CN's instant-buy market includes listings whose owners are offline. */
@@ -110,13 +112,16 @@ export function buildTradeQuery(weighted: WeightedStat[], options: TradeQueryOpt
   return {
     query: {
       status: { option: realm === 'cn' ? 'any' : 'online' },
-      stats: weighted.length ? [{
+      stats: [...(weighted.length ? [{
         type: 'weight',
         ...(options.minimumWeight && options.minimumWeight > 0 ? { value: { min: Math.round(options.minimumWeight * 1000) / 1000 } } : {}),
         filters: weighted.map(w => ({ id: w.id, value: { weight: Math.round(w.weight * 1000) / 1000 } })),
-      }] : [{ type: 'and', filters: [] }],
+      }] : [{ type: 'and', filters: [] }]), ...(options.requiredStats?.length ? [{ type: 'and', filters: [...new Set(options.requiredStats)].map(id => ({ id })) }] : [])],
       filters: {
-        type_filters: { filters: { category: { option: category } } },
+        type_filters: { filters: {
+          category: { option: category },
+          ...(!options.includeUnique && !category.startsWith('gem') ? { rarity: { option: 'nonunique' } } : {}),
+        } },
         ...(price && price.max > 0 ? { trade_filters: { filters: {
           price: { max: price.max, ...(price.currency ? { option: price.currency } : {}) },
         } } } : {}),

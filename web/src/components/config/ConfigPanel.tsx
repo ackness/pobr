@@ -1,3 +1,4 @@
+import { PageHeader } from '../shared/PageHeader';
 import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { ConfigInputValue, ConfigOption, EnemyTier } from '../../api/types';
@@ -214,10 +215,8 @@ export function ConfigPanel({ session, lang }: Props) {
   };
 
   return (
-    <section aria-labelledby="config-heading">
-      <h2 id="config-heading" className="panel-heading">
-        {tt('config.title')}
-      </h2>
+    <section className="ui-page config-page" aria-labelledby="config-heading">
+      <PageHeader id="config-heading" title={tt('config.title')} description={tt('ui.configHint')} />
 
       <div className="config-toolbar">
         <label className="config-row">
@@ -260,7 +259,7 @@ export function ConfigPanel({ session, lang }: Props) {
                 setOpenSections(next);
               }}
             >
-              <span>{configSectionLabel(lang, name)}</span>
+              <span><span className="row-caret" aria-hidden>{open ? '▾' : '▸'}</span> {configSectionLabel(lang, name)}</span>
               <span className="config-section-count">{sectionOptions.length}</span>
             </button>
             {open && (
@@ -284,7 +283,8 @@ export function ConfigPanel({ session, lang }: Props) {
         );
       })}
 
-      <h3 className="panel-subheading">{tt('config.extraMods')}</h3>
+      <article className="ui-card config-custom">
+      <h3 className="section-heading">{tt('config.extraMods')}</h3>
       <p className="config-hint">{tt('config.extraModsHint')}</p>
       <textarea
         className="config-extra-mods"
@@ -308,7 +308,9 @@ export function ConfigPanel({ session, lang }: Props) {
         }}
       />
 
-      <h3 className="panel-subheading">{tt('config.addTitle')}</h3>
+      </article>
+      <details className="ui-card config-advanced">
+      <summary>{tt('config.addTitle')}</summary>
       <p className="config-hint">{tt('config.hint')}</p>
       {extraKeys.length > 0 && (
         <div className="config-grid">
@@ -357,6 +359,7 @@ export function ConfigPanel({ session, lang }: Props) {
           {tt('config.addButton')}
         </button>
       </div>
+      </details>
     </section>
   );
 }

@@ -29,7 +29,7 @@ test('tree renders, granted badges, zh item names, library search', async ({ pag
 
   await page.getByRole('textbox', { name: /Build code|build code|代碼|代码/i }).fill(ninjaCode);
   await page.locator('.import-submit').click();
-  await expect(page.getByRole('heading', { name: /装备|Items/ })).toBeVisible({
+  await expect(page.getByRole('heading', { name: /^(装备|Items)$/ })).toBeVisible({
     timeout: 60_000,
   });
 

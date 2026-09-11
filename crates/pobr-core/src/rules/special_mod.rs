@@ -478,12 +478,13 @@ fn keyword_bit(name: &str) -> Option<KeywordFlags> {
     Some(match name {
         "Aura" => KeywordFlags::AURA,
         "Curse" => KeywordFlags::CURSE,
+        "Arrow" => KeywordFlags::ARROW,
         "Hit" => KeywordFlags::HIT,
         "Ailment" => KeywordFlags::AILMENT,
         "Poison" => KeywordFlags::POISON,
         "Bleed" => KeywordFlags::BLEED,
         "Ignite" => KeywordFlags::IGNITE,
-        // Unmapped keywords (e.g. Arrow) are conservatively skipped — the
+        // Unmapped keywords are conservatively skipped — the
         // entry stays verified:false.
         _ => return None,
     })

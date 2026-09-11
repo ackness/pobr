@@ -1,3 +1,6 @@
+import { WeaponSetControl } from '../shared/WeaponSetControl';
+import { SlotSymbol } from '../shared/SlotSymbol';
+import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { getBackend } from '../../api/backend';
@@ -144,23 +147,12 @@ function ItemRow({
   );
 }
 
-/** 人形布局的槽位 → grid-area（与 items.css 的 template areas 对应）。 */
-const DOLL_SLOTS: { slot: string; area: string }[] = [
-  { slot: 'weapon1', area: 'weapon1' },
-  { slot: 'helmet', area: 'helmet' },
-  { slot: 'amulet', area: 'amulet' },
-  { slot: 'weapon2', area: 'weapon2' },
-  { slot: 'bodyarmour', area: 'body' },
-  { slot: 'ring1', area: 'ring1' },
-  { slot: 'ring2', area: 'ring2' },
-  { slot: 'gloves', area: 'gloves' },
-  { slot: 'belt', area: 'belt' },
-  { slot: 'boots', area: 'boots' },
-];
+/** Display order matches the equipment and accessory groups. */
+const DOLL_SLOTS = ['weapon1', 'weapon2', 'helmet', 'bodyarmour', 'gloves', 'boots', 'amulet', 'ring1', 'ring2', 'belt'];
 
 const ITEM_TEMPLATE = 'Rarity: RARE\nNew Item\nSapphire Ring\n+50 to maximum Life';
-const FLASK_TEMPLATE = 'Rarity: MAGIC\nUltimate Life Flask\nUltimate Life Flask';
-const CHARM_TEMPLATE = 'Rarity: MAGIC\nRuby Charm\nRuby Charm';
+const FLASK_TEMPLATE = 'Rarity: MAGIC\nUltimate Life Flask';
+const CHARM_TEMPLATE = 'Rarity: MAGIC\nRuby Charm';
 
 /** PoB 药剂/护符槽（激活态；与 wasm 契约的 utility 槽名一致）。 */
 const UTILITY_SLOTS = ['Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3'];
@@ -181,7 +173,7 @@ export function ItemsPanel({ session, lang }: Props) {
     isUtilitySlot(slot) ? utilityBySlot.get(slot) : bySlot.get(slot);
   // 槽位按钮上的物品显示名「名称·基底」（一批送翻译；中文界面显示本地化名）。
   const slotNames = useItemDisplayNames(
-    [...DOLL_SLOTS.map(({ slot }) => slot), ...UTILITY_SLOTS].map((slot) => textOf(slot)),
+    [...DOLL_SLOTS, ...UTILITY_SLOTS].map((slot) => textOf(slot)),
     lang,
   );
   const slotName = (index: number) => slotNames[index] || null;
@@ -349,14 +341,16 @@ export function ItemsPanel({ session, lang }: Props) {
     candidates.find((c) => c.text === selectedText)?.id ?? (selectedText ? '__current' : '');
 
   return (
-    <section aria-labelledby="items-heading">
-      <h2 id="items-heading" className="panel-heading">
-        {tt('items.title')}
-      </h2>
-      <p className="items-hint">{tt('items.hint')}</p>
-
+    <section className="ui-page items-page" aria-labelledby="items-heading">
+      <PageHeader id="items-heading" title={tt('items.title')} description={tt('ui.itemsHint')}>
+        <WeaponSetControl session={session} lang={lang} />
+      </PageHeader>
+      <p className="weapon-set-hint">{tt('weapons.hint')}</p>
+      <div className="items-workspace">
+      <article className="ui-card items-equipped">
+      <h3 className="section-heading">{tt('ui.equipped')}</h3>
       <div className="paper-doll" role="group" aria-label={tt('items.title')}>
-        {DOLL_SLOTS.map(({ slot, area }, slotIdx) => {
+        {DOLL_SLOTS.map((slot, slotIdx) => {
           const text = bySlot.get(slot);
           const name = text ? slotName(slotIdx) : null;
           return (
@@ -365,10 +359,11 @@ export function ItemsPanel({ session, lang }: Props) {
               className={`doll-slot${text ? ` rarity-${rarityOf(text)}` : ' doll-slot-empty'}${
                 selected === slot ? ' is-selected' : ''
               }`}
-              style={{ gridArea: area }}
               onClick={() => select(slot)}
+              aria-pressed={selected === slot}
               aria-label={slotLabel(lang, slot)}
             >
+              <span className="doll-symbol"><SlotSymbol slot={slot} /></span>
               <span className="doll-slot-label">
                 {slotLabel(lang, slot)}
                 {hasNote(slot) && <span className="note-dot" aria-hidden />}
@@ -383,6 +378,7 @@ export function ItemsPanel({ session, lang }: Props) {
         })}
       </div>
 
+      <h3 className="section-heading utility-heading">{tt('items.flasks')}</h3>
       <div className="utility-row" role="group" aria-label={tt('items.flasks')}>
         {UTILITY_SLOTS.map((slot, utilIdx) => {
           const text = utilityBySlot.get(slot);
@@ -394,8 +390,10 @@ export function ItemsPanel({ session, lang }: Props) {
                 selected === slot ? ' is-selected' : ''
               }`}
               onClick={() => select(slot)}
+              aria-pressed={selected === slot}
               aria-label={slot}
             >
+              <span className="doll-symbol"><SlotSymbol slot={slot} /></span>
               <span className="doll-slot-label">
                 {slotLabel(lang, slot)}
                 {hasNote(slot) && <span className="note-dot" aria-hidden />}
@@ -410,6 +408,8 @@ export function ItemsPanel({ session, lang }: Props) {
         })}
       </div>
 
+      </article>
+      <div className="items-collection">
       {selected && (
         <div className={`item-detail${selectedText ? ` rarity-${rarityOf(selectedText)}` : ''}`}>
           <header className="item-detail-header">
@@ -461,6 +461,7 @@ export function ItemsPanel({ session, lang }: Props) {
           </header>
           {editing ? (
             <div className="item-editor">
+              <p className="items-hint">{tt('items.hint')}</p>
               <textarea
                 rows={10}
                 value={draft}
@@ -469,7 +470,7 @@ export function ItemsPanel({ session, lang }: Props) {
                 onChange={(e) => setDraft(e.target.value)}
               />
               <div className="item-editor-actions">
-                <button disabled={session.busy} onClick={applyEdit}>
+                <button className="button-primary" disabled={session.busy} onClick={applyEdit}>
                   {tt('items.apply')}
                 </button>
                 <button onClick={() => setEditing(false)}>{tt('items.cancel')}</button>
@@ -543,8 +544,13 @@ export function ItemsPanel({ session, lang }: Props) {
         </div>
       )}
 
-      <h3 className="panel-subheading">{tt('lib.title')}</h3>
-      <LibrarySection session={session} lang={lang} selectedSlot={selected} />
+      <article className="ui-card items-library">
+        <h3 className="section-heading">{tt('lib.title')} <span className="ui-badge">{session.library.items.filter(item => item.kind === 'item').length}</span></h3>
+        {!selected && <p className="items-hint">{tt('lib.selectSlotFirst')}</p>}
+        <LibrarySection session={session} lang={lang} selectedSlot={selected} />
+      </article>
+      </div>
+      </div>
 
       {build && build.items.jewels.length > 0 && (
         <>

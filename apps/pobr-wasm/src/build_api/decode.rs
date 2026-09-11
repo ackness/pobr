@@ -75,6 +75,7 @@ struct GemJson {
 
 #[derive(Debug, Serialize)]
 struct SocketGroupJson {
+    weapon_set: Option<u8>,
     slot: Option<String>,
     enabled: bool,
     /// PoB `<Skill source>` (equipment-granted skill groups get `Item:<id>:<name>`); `None` = a manual group.
@@ -98,6 +99,7 @@ fn config_value_json(value: &ConfigInputValue) -> serde_json::Value {
 
 #[derive(Debug, Serialize)]
 struct BuildJson {
+    weapon_swap: Option<super::request::WeaponSwapInput>,
     character: CharacterJson,
     tree: TreeJson,
     items: ItemsJson,
@@ -151,6 +153,15 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
             && l.skill.is_none_or(|s| Some(s) == active.skill)
     });
     Ok(BuildJson {
+        weapon_swap: Some(super::request::WeaponSwapInput {
+            active: raw_items.active_weapon_set,
+            alternate_items: raw_items
+                .alternate_weapons
+                .into_iter()
+                .map(|(slot, text)| super::request::SlotItemInput { slot, text })
+                .collect(),
+            exclusive_nodes: raw_items.weapon_set_nodes,
+        }),
         character: CharacterJson {
             level: build.character.level,
             class_name: build.character.class_name.clone(),
@@ -188,6 +199,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
             .socket_groups
             .iter()
             .map(|g| SocketGroupJson {
+                weapon_set: g.weapon_set,
                 slot: g.slot.clone(),
                 enabled: g.enabled,
                 source: g.source.clone(),
@@ -543,6 +555,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 }
             }
             Some(SocketGroupJson {
+                weapon_set: None,
                 slot: None,
                 enabled: true,
                 source: None,
@@ -553,6 +566,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
         .collect();
 
     let json = BuildJson {
+        weapon_swap: None,
         character: CharacterJson {
             level,
             class_name,

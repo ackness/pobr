@@ -2,17 +2,17 @@
    全部颜色、间距、字号收口在此；组件层不写裸色值。 */
 :root {
   /* 表面层级：页面底 → 面板 → 卡片 → 悬浮 */
-  --surface-page: #0c0d10;
-  --surface-panel: #16181d;
-  --surface-card: #1e2128;
+  --surface-page: #101216;
+  --surface-panel: #181b21;
+  --surface-card: #20242c;
   --surface-raised: #262a33;
   --border-subtle: #2c313b;
   --border-strong: #3d4450;
 
   /* 文本 */
   --text-primary: #e8e6e0;
-  --text-secondary: #a9a696;
-  --text-muted: #6d6b60;
+  --text-secondary: #b3b7c1;
+  --text-muted: #9298a4;
 
   /* 品牌 / 强调：PoB2 金 */
   --accent-gold: #d8b36a;
@@ -42,9 +42,9 @@
   /* 字体 */
   --font-ui: 'Segoe UI', 'PingFang SC', 'Noto Sans', system-ui, sans-serif;
   --font-mono: 'SF Mono', 'Cascadia Code', Consolas, monospace;
-  --text-xs: 0.72rem;
-  --text-sm: 0.82rem;
-  --text-base: 0.92rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
   --text-lg: 1.08rem;
   --text-xl: 1.35rem;
 
@@ -55,13 +55,17 @@
   --space-4: 1rem;
   --space-6: 1.5rem;
 
-  --radius-sm: 4px;
-  --radius-md: 6px;
+  --content-width: 1400px;
+  --control-height: 36px;
+  --space-8: 2rem;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
 
   --duration-fast: 120ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* 布局 */
   --sidebar-width: 264px;
-  --topbar-height: 46px;
+  --topbar-height: 64px;
 }

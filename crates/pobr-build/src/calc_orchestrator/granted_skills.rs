@@ -144,6 +144,7 @@ pub(crate) fn augment_item_granted_skills(build: &Build, data: &BuildData) -> Op
             continue; // A group with the same item source, slot, skill, and level already exists.
         }
         synthesized.push(SocketGroup {
+            weapon_set: None,
             source: Some(ITEM_SKILL_SOURCE.to_string()),
             slot: Some(slot),
             enabled: true,

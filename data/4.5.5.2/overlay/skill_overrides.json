@@ -1349,6 +1349,12 @@
       "value": 0.25
     },
     {
+      "skill": "AzmeriPictBowRainOfSpores",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "AzmerianSwarmAttack",
       "stat": "base_multiplier",
       "value": 0.75
@@ -3022,6 +3028,12 @@
       ]
     },
     {
+      "skill": "ClusterGrenadePlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "number_of_projectiles_cannot_be_modified"
+    },
+    {
       "skill": "CorpseCloudPlayer",
       "stat": "explode_corpse",
       "stat_set": 1,
@@ -3707,9 +3719,21 @@
       "value": 1.5
     },
     {
+      "skill": "DTTHellscapeStabbySkyStab",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "DeathFromAboveDaemonMinion",
       "stat": "base_multiplier",
       "value": 7.63
+    },
+    {
+      "skill": "DeathFromAboveDaemonMinion",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "base_modifiers_to_projectile_count_do_not_apply"
     },
     {
       "skill": "DeathKnightSlamEAA",
@@ -3898,6 +3922,18 @@
           6.97
         ]
       ]
+    },
+    {
+      "skill": "DetonatingArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "DetonatingArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "skill_can_fire_arrows"
     },
     {
       "skill": "DisengagePlayer",
@@ -4565,6 +4601,12 @@
       ]
     },
     {
+      "skill": "ElectrocutingArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "EnemyExplode",
       "stat": "base_multiplier",
       "value": 1.0
@@ -4918,6 +4960,18 @@
           11.76
         ]
       ]
+    },
+    {
+      "skill": "EscapeShotPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "EscapeShotPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "number_of_projectiles_cannot_be_modified"
     },
     {
       "skill": "ExplodingPoisonToadPlayer",
@@ -5750,6 +5804,12 @@
       ]
     },
     {
+      "skill": "ExplosiveSpearPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "number_of_projectiles_cannot_be_modified"
+    },
+    {
       "skill": "FallingThunderPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -6080,6 +6140,12 @@
           7.86
         ]
       ]
+    },
+    {
+      "skill": "FireballPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 3,
+      "stat_id": "number_of_projectiles_cannot_be_modified"
     },
     {
       "skill": "FlameSliceFireDjinn",
@@ -7409,6 +7475,18 @@
       ]
     },
     {
+      "skill": "FreezingSalvoPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "FrostDartsPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 3,
+      "stat_id": "number_of_projectiles_cannot_be_modified"
+    },
+    {
       "skill": "FulminatingConcoctionPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -8450,6 +8528,24 @@
       ]
     },
     {
+      "skill": "GasArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "GasArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "GasArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 3,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "GasShotSkeletonSniperMinion",
       "stat": "base_multiplier",
       "value": 0.8
@@ -9279,6 +9375,12 @@
           10.76
         ]
       ]
+    },
+    {
+      "skill": "GlacialLancePlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "number_of_projectiles_cannot_be_modified"
     },
     {
       "skill": "GoreChargerCharge",
@@ -10141,6 +10243,12 @@
       "value": 1.5
     },
     {
+      "skill": "HyenaCompanionMelee",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "IceFragmentsPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -10633,6 +10741,12 @@
           12.5
         ]
       ]
+    },
+    {
+      "skill": "IceShotPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
     },
     {
       "skill": "IceStrikePlayer",
@@ -11631,6 +11745,18 @@
       ]
     },
     {
+      "skill": "LightningArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "LightningArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "LightningRodPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -11791,6 +11917,12 @@
           3.42
         ]
       ]
+    },
+    {
+      "skill": "LightningRodPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
     },
     {
       "skill": "LightningSpearPlayer",
@@ -12125,9 +12257,21 @@
       ]
     },
     {
+      "skill": "MAASBaronEndgameBasic",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "MAASExpedition2ShakariBasicMelee",
       "stat": "base_multiplier",
       "value": 0.85
+    },
+    {
+      "skill": "MAASExpedition2ShakariBasicMelee",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
     },
     {
       "skill": "MAASExpedition2ShakariTailSwipe",
@@ -12135,9 +12279,57 @@
       "value": 1.45
     },
     {
+      "skill": "MAASExpedition2ShakariTailSwipe",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MASExtraAttackDistance20",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MASExtraAttackDistance6",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MASFireConvertAltArtFireArrow",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MASKelpDregCrossbow",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MASKelpDregCrossbowIce",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MASKelpDregCrossbowPhys",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "MASStatueWretchPush",
       "stat": "base_multiplier",
       "value": 0.1
+    },
+    {
+      "skill": "MASStatueWretchPush",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
     },
     {
       "skill": "MMSVaalGuardGrenade",
@@ -12522,6 +12714,18 @@
       ]
     },
     {
+      "skill": "MagneticSalvoPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MagneticSalvoPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "Melee1HMacePlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -12846,6 +13050,72 @@
       ]
     },
     {
+      "skill": "MeleeAtAnimationSpeed",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MeleeAtAnimationSpeed2",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MeleeAtAnimationSpeedBoss",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MeleeAtAnimationSpeedBow",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MeleeAtAnimationSpeedCold",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MeleeAtAnimationSpeedComboTEMP",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MeleeAtAnimationSpeedFire",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MeleeAtAnimationSpeedFireCombo35",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MeleeAtAnimationSpeedLightning",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MeleeAtAnimationSpeedUnique",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MeleeAtAnimationSpeedWolfCompanion",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "MeleeAtAnimationSpeedWolfPackleader",
       "stat": "base_multiplier",
       "value": 2.5
@@ -13013,6 +13283,12 @@
       ]
     },
     {
+      "skill": "MeleeBowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "MeleeCrossbowPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -13178,6 +13454,12 @@
       "skill": "MeleeGiantStarfishTentacle1",
       "stat": "base_multiplier",
       "value": 1.2
+    },
+    {
+      "skill": "MeleeGiantStarfishTentacle1",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
     },
     {
       "skill": "MeleeGrenadeLauncherPlayer",
@@ -14167,6 +14449,24 @@
       ]
     },
     {
+      "skill": "MinionMelee",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MinionMeleeBow",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "MinionMeleeStep",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "MoltenBlastPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -14331,6 +14631,12 @@
           11.76
         ]
       ]
+    },
+    {
+      "skill": "MoltenBlastPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "number_of_projectiles_cannot_be_modified"
     },
     {
       "skill": "MoltenCrashPlayer",
@@ -15663,6 +15969,18 @@
       ]
     },
     {
+      "skill": "PhantasmalArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "PhantasmalArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "PlasmaBlastPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -15993,6 +16311,18 @@
           7.28
         ]
       ]
+    },
+    {
+      "skill": "PoisonBurstArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "PoisonBurstArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "skill_can_fire_arrows"
     },
     {
       "skill": "PrimalStrikesPlayer",
@@ -16350,6 +16680,12 @@
           6.58
         ]
       ]
+    },
+    {
+      "skill": "RainOfArrowsPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
     },
     {
       "skill": "RainOfBladesTriggeredPlayer",
@@ -17355,6 +17691,12 @@
       ]
     },
     {
+      "skill": "RisenArbalestSnipe",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "RollingMagmaPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -18186,6 +18528,12 @@
       ]
     },
     {
+      "skill": "ShellMonsterSprayMortar",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "number_of_projectiles_cannot_be_modified"
+    },
+    {
       "skill": "ShieldBlockPlayer",
       "stat": "base_multiplier",
       "value": 0.8
@@ -19011,6 +19359,18 @@
           5.79
         ]
       ]
+    },
+    {
+      "skill": "ShockchainArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "ShockchainArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "skill_can_fire_arrows"
     },
     {
       "skill": "ShockwaveTotemQuakePlayer",
@@ -20001,6 +20361,24 @@
       ]
     },
     {
+      "skill": "SnipePlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "SnipePlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "SnipePlayer",
+      "stat": "implicit_stat",
+      "stat_set": 3,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "SpearOfSolarisPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -20497,6 +20875,12 @@
           5.46
         ]
       ]
+    },
+    {
+      "skill": "SpiralVolleyPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
     },
     {
       "skill": "StaggeringPalmPlayer",
@@ -21823,6 +22207,18 @@
       ]
     },
     {
+      "skill": "StormcallerArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "StormcallerArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
       "skill": "SunderPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -22847,6 +23243,24 @@
       "value": 1.0
     },
     {
+      "skill": "TornadoShotPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "TornadoShotPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "TornadoShotPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "base_modifiers_to_projectile_count_do_not_apply"
+    },
+    {
       "skill": "ToxicDomainPlayer",
       "stat": "base_multiplier",
       "per_level": [
@@ -23335,6 +23749,18 @@
           1.66
         ]
       ]
+    },
+    {
+      "skill": "ToxicGrowthPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "ToxicGrowthPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "skill_can_fire_arrows"
     },
     {
       "skill": "TriggeredDeadlyResolvePlayer",
@@ -25162,6 +25588,18 @@
           5.79
         ]
       ]
+    },
+    {
+      "skill": "VineArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "skill_can_fire_arrows"
+    },
+    {
+      "skill": "VineArrowPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "skill_can_fire_arrows"
     },
     {
       "skill": "VividStampedePlayer",

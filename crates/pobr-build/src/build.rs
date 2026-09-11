@@ -55,6 +55,8 @@ pub struct GemSkillRef {
 /// equivalent represented by stable gem ids.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SocketGroup {
+    /// Exclusive weapon-set binding (1/2); None follows the active item set.
+    pub weapon_set: Option<u8>,
     /// PoB `<Skill source>` (item-granted skills use `Item:<id>:<name>`). `None` means a
     /// regular skill group the user created manually; the orchestrator uses this to tell
     /// manual groups apart from granted ones in the same slot with the same skill.
@@ -94,6 +96,7 @@ pub struct SocketGroup {
 impl SocketGroup {
     pub fn new() -> Self {
         Self {
+            weapon_set: None,
             source: None,
             slot: None,
             enabled: true,

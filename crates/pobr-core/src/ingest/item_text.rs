@@ -191,7 +191,14 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
 /// Structural errors (empty input / missing `Rarity:` / missing base) return
 /// [`Err`]; individual modifier text that can't be parsed is still kept as a
 /// string (handled downstream by `mod_parser`'s skip-and-collect).
+/// Clipboard blocks with section separators are dispatched to [`parse_item_text`].
 pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
+    // Imports and the item editor also accept clipboard blocks. Their explicit
+    // header boundary permits a separate magic-item base name; XML's one-name
+    // heuristic would otherwise ingest that base and every separator as mods.
+    if raw.lines().any(|line| line.trim() == SECTION_SEPARATOR) {
+        return parse_item_text(raw);
+    }
     let lines: Vec<&str> = raw
         .lines()
         .map(str::trim)
@@ -217,6 +224,10 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
     let mut idx = 1;
     while idx < lines.len() && header.len() <= max_names && !is_xml_metadata_line(lines[idx]) {
         header.push(lines[idx]);
+        idx += 1;
+    }
+    // Older editor templates repeated a utility base as both name and base.
+    if max_names == 1 && header.len() == 2 && lines.get(idx) == header.get(1) {
         idx += 1;
     }
     let base = parse_base(&header, rarity)?;

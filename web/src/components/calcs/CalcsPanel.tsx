@@ -1,3 +1,4 @@
+import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
 import { useMemo, useState } from 'react';
 import type {
@@ -175,7 +176,7 @@ function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
   };
 
   return (
-    <section className="attribution-view" aria-labelledby="fulldps-heading">
+    <section className="ui-card attribution-view" aria-labelledby="fulldps-heading">
       <h3 id="fulldps-heading">
         {tt('calcs.fullDps')}
         {running && <span className="calcs-hint"> {tt('calcs.running')}</span>}
@@ -209,7 +210,10 @@ function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
                         }
                       >
                         <td>
-                          {groupLabel(entry.group_index, entry.skill_id)}
+                          <button className="calcs-skill-button" aria-pressed={entry.group_index === mainIndex}
+                            onClick={(event) => { event.stopPropagation(); session.updateParams({ main_socket_group: entry.group_index }); }}>
+                            {groupLabel(entry.group_index, entry.skill_id)}
+                          </button>
                           {meta.granted && (
                             <span className="granted-badge">{meta.granted}</span>
                           )}
@@ -258,7 +262,7 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
   };
 
   return (
-    <section className="attribution-view" aria-labelledby="attribution-heading">
+    <section className="ui-card attribution-view" aria-labelledby="attribution-heading">
       <h3 id="attribution-heading">{tt('calcs.attribution')}</h3>
       <p className="calcs-hint">
 {tt('calcs.attributionHint')}
@@ -378,13 +382,8 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   const values = statMap(calc.stats);
 
   return (
-    <section aria-labelledby="calcs-heading">
-      <h2 id="calcs-heading" className="panel-heading">
-        {tt('calcs.title')}
-      </h2>
-      <p className="calcs-hint">
-        {tt('calcs.hint')}
-      </p>
+    <section className="ui-page calcs-page" aria-labelledby="calcs-heading">
+      <PageHeader id="calcs-heading" title={tt('calcs.title')} description={tt('calcs.hint')} />
       <input
         className="calcs-search"
         type="search"
@@ -393,6 +392,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
         onChange={(e) => setQuery(e.target.value)}
         aria-label={tt('calcs.search')}
       />
+      <div className="calcs-breakdowns">
       {sections.map(({ category, names }) => (
         <section key={category} className="calcs-section">
           <h3 className="calcs-section-title">{statCategoryLabel(lang, category)}</h3>
@@ -411,6 +411,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
                     aria-expanded={isOpen}
                     onClick={() => setOpen(isOpen ? null : name)}
                   >
+                    <span className="row-caret" aria-hidden>▸</span>
                     <span className="breakdown-name">{statNameLabel(lang, name)}</span>
                     <span className="breakdown-value">
                       {values.has(name) ? formatStatValue(values.get(name) ?? null, 'float2') : ''}
@@ -426,6 +427,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
           </div>
         </section>
       ))}
+      </div>
       <FullDpsView session={session} lang={lang} />
       <AttributionView session={session} lang={lang} />
     </section>

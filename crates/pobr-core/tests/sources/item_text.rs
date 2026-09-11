@@ -18,6 +18,40 @@ use pobr_core::item_text::{
 };
 use pobr_data::prelude::*;
 
+#[test]
+fn xml_entry_accepts_clipboard_utility_items_without_structural_modifiers() {
+    for base in [
+        "Ultimate Mana Flask",
+        "Thawing Charm",
+        "Stone Charm",
+        "Ultimate Life Flask",
+        "Silver Charm",
+    ] {
+        let raw = format!(
+            "Rarity: MAGIC\nSynthetic Item\n{base}\n--------\nQuality: +20%\n--------\nItem Level: 70\n--------\nImplicits: 0\n--------\nAlso grants 102 Guard\n--------"
+        );
+        let item = parse_pob_xml_item(&raw).unwrap();
+        assert_eq!(item.base.to_string(), base);
+        assert_eq!(item.quality, 20);
+        assert_eq!(item.modifier_texts, ["Also grants 102 Guard"]);
+        let ingest =
+            pobr_core::item::ingest_flask_charm_with_ctx("Charm 1", &item, crate::support::ctx());
+        // Real effects must still be diagnosed while their mechanics are unmodeled.
+        assert_eq!(ingest.unsupported, ["Also grants 102 Guard"]);
+        let old_editor = parse_pob_xml_item(&format!(
+            "Rarity: MAGIC\n{base}\n{base}\nAlso grants 102 Guard"
+        ))
+        .unwrap();
+        assert_eq!(old_editor.modifier_texts, ["Also grants 102 Guard"]);
+    }
+    let item = parse_pob_xml_item(RARE_HELMET).unwrap();
+    assert_eq!(item.implicit_texts, ["+30% to Fire Resistance"]);
+    assert_eq!(
+        item.modifier_texts,
+        ["+40 to maximum Life", "20% increased maximum Life"]
+    );
+}
+
 /// A typical PoB rare-item export: has Quality / Item Level / Implicits headers.
 const RARE_HELMET: &str = "\
 Rarity: RARE

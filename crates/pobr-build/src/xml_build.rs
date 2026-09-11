@@ -866,6 +866,10 @@ pub struct RawItemsView {
     pub socket_jewels: Vec<(u32, String)>,
     /// Active Flask/Charm: `(slot name, raw text block)`.
     pub flasks: Vec<(String, String)>,
+    /// The inactive weapon pair, kept separately from shared equipment.
+    pub alternate_weapons: Vec<(String, String)>,
+    pub active_weapon_set: u8,
+    pub weapon_set_nodes: [Vec<u32>; 2],
 }
 
 /// Parses the free-text `<Notes>` in the build XML (PoB's notes page; returns `None` when the section is absent).
@@ -934,7 +938,24 @@ pub fn parse_build_sets(xml: &str) -> Result<BuildSets, XmlError> {
 /// Parses the raw item text view of the build XML (see [`RawItemsView`]).
 pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
     let texts = parse_raw_item_texts(xml)?;
-    let (slot_assignments, jewel_ids, flask_charm_ids, _) = parse_active_item_set(xml)?;
+    let (slot_assignments, jewel_ids, flask_charm_ids, second) = parse_active_item_set(xml)?;
+    let alternate_weapons = parse_item_set_for_weapons(xml, Some(!second))?
+        .0
+        .into_iter()
+        .filter(|(slot, _)| matches!(slot, EquipmentSlot::Weapon1 | EquipmentSlot::Weapon2))
+        .filter_map(|(slot, id)| Some((slot.id().to_string(), texts.get(&id)?.clone())))
+        .collect();
+    let node_sets = [
+        parse_passive_nodes(xml, false)?.allocated,
+        parse_passive_nodes(xml, true)?.allocated,
+    ];
+    let weapon_set_nodes = std::array::from_fn(|index| {
+        node_sets[index]
+            .iter()
+            .filter(|node| !node_sets[1 - index].contains(node))
+            .map(|node| node.0)
+            .collect()
+    });
     let mut equipped: Vec<(String, String)> = slot_assignments
         .into_iter()
         .filter_map(|(slot, id)| Some((slot.id().to_string(), texts.get(&id)?.clone())))
@@ -963,6 +984,9 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
         jewels,
         socket_jewels,
         flasks,
+        alternate_weapons,
+        active_weapon_set: if second { 2 } else { 1 },
+        weapon_set_nodes,
     })
 }
 
@@ -1137,6 +1161,13 @@ fn item_set_data(e: &BytesStart<'_>) -> ItemSetData {
 /// `useSecondWeaponSet`; items in `Jewel*` / `*Socket*` slots go into the jewel list
 /// (injected globally, see orchestrator).
 fn parse_active_item_set(xml: &str) -> Result<SlotAssignments, XmlError> {
+    parse_item_set_for_weapons(xml, None)
+}
+
+fn parse_item_set_for_weapons(
+    xml: &str,
+    second: Option<bool>,
+) -> Result<SlotAssignments, XmlError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
 
@@ -1195,7 +1226,9 @@ fn parse_active_item_set(xml: &str) -> Result<SlotAssignments, XmlError> {
         if *item_id == 0 {
             continue;
         }
-        if let Some(slot) = slot_from_pob_name(slot_name, chosen.use_second_weapon_set) {
+        if let Some(slot) =
+            slot_from_pob_name(slot_name, second.unwrap_or(chosen.use_second_weapon_set))
+        {
             assignments.push((slot, *item_id));
         } else if is_jewel_slot(slot_name) {
             jewel_ids.push(*item_id);
@@ -1298,6 +1331,14 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
                         {
                             group = group.with_main_active_skill(n);
                         }
+                        group.weapon_set = match (
+                            attr_bool_default_true(&e, b"set1"),
+                            attr_bool_default_true(&e, b"set2"),
+                        ) {
+                            (true, false) => Some(1),
+                            (false, true) => Some(2),
+                            _ => None,
+                        };
                         current = Some(group);
                     }
                     "Gem" if in_target_set => {

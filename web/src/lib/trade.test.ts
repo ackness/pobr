@@ -103,3 +103,10 @@ test('gem links preserve realm, level, quality, budget and character requirement
   expect(query.query.filters.req_filters.filters.lvl.max).toBe(71);
   expect(query.sort).toEqual({ price: 'asc' });
 });
+
+test.each(['intl', 'cn'] as const)('excludes unique equipment by default in %s without restricting gems', realm => {
+  const query = (category: string, includeUnique?: boolean) => JSON.parse(new URL(buildTradeUrl('Standard', [], { realm, category, includeUnique })).searchParams.get('q')!);
+  expect(query('accessory.ring').query.filters.type_filters.filters.rarity).toEqual({ option: 'nonunique' });
+  expect(query('accessory.ring', true).query.filters.type_filters.filters.rarity).toBeUndefined();
+  expect(query('gem').query.filters.type_filters.filters.rarity).toBeUndefined();
+});

@@ -265,6 +265,8 @@ impl KeywordFlags {
     pub const AURA: Self = Self(0x0000_0001);
     /// `KeywordFlag.Curse = 0x00000002`
     pub const CURSE: Self = Self(0x0000_0002);
+    /// `KeywordFlag.Arrow = 0x00000800`
+    pub const ARROW: Self = Self(0x0000_0800);
     /// `KeywordFlag.Totem = 0x00004000`
     pub const TOTEM: Self = Self(0x0000_4000);
     /// `KeywordFlag.Attack = 0x00010000` (default backfill for DMGATTACKS / flag_phrases)

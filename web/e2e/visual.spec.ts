@@ -14,11 +14,26 @@ for (const width of BREAKPOINTS) {
     await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({
       timeout: 90_000,
     });
-    await page.screenshot({ path: `e2e/screenshots/import-${width}.png`, fullPage: true });
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow, 'page body must not scroll horizontally').toBeLessThanOrEqual(0);
+    for (const [tab, selector] of [
+      ['Build', '.build-page'], ['Items', '.paper-doll'], ['Skills', '.skills-toolbar'],
+      ['Calcs', '.calcs-page'], ['Config', '.config-section-header'], ['Tree', '.tree-canvas svg'], ['Trade', '.trade-setup'],
+    ]) {
+      await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: tab, exact: true }).click();
+      await expect(page.locator(selector).first()).toBeVisible();
+      const overflow = await page.evaluate(() => ({
+        body: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        main: document.querySelector('main')!.scrollWidth - document.querySelector('main')!.clientWidth,
+      }));
+      expect(overflow.body, `${tab}: document must fit the viewport`).toBeLessThanOrEqual(1);
+      expect(overflow.main, `${tab}: main content must not overflow horizontally`).toBeLessThanOrEqual(1);
+      await page.screenshot({ path: `e2e/screenshots/${tab.toLowerCase()}-${width}.png` });
+    }
+    if (width <= 768) {
+      await page.getByRole('button', { name: 'Show character stats' }).click();
+      await expect(page.getByRole('complementary', { name: 'Character stats' })).toBeVisible();
+      await page.getByRole('button', { name: 'Hide character stats' }).click();
+      await expect(page.getByRole('complementary', { name: 'Character stats' })).toBeHidden();
+    }
   });
 }
 

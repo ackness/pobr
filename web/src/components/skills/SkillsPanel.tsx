@@ -1,3 +1,5 @@
+import { WeaponSetControl } from '../shared/WeaponSetControl';
+import { PageHeader } from '../shared/PageHeader';
 import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { GemCatalogEntry, SocketGroupInput } from '../../api/types';
@@ -6,6 +8,7 @@ import { bindT, grantedSourceLabel, type Lang } from '../../lib/i18n';
 import { GemPicker, gemDisplayName } from './GemPicker';
 import { GemOptimizer } from './GemOptimizer';
 import { NoteEditor } from '../shared/NoteEditor';
+import { AppSelect } from '../shared/AppSelect';
 import './skills.css';
 
 interface Props {
@@ -49,10 +52,10 @@ export function SkillsPanel({ session, lang }: Props) {
   };
 
   return (
-    <section aria-labelledby="skills-heading">
-      <h2 id="skills-heading" className="panel-heading">
-        {tt('skills.title')}
-      </h2>
+    <section className="ui-page skills-page" aria-labelledby="skills-heading">
+      <PageHeader id="skills-heading" title={tt('skills.title')} description={tt('skills.hint')}>
+        <WeaponSetControl session={session} lang={lang} />
+      </PageHeader>
       <div className="skills-toolbar">
         <GemPicker
           entries={actives}
@@ -67,7 +70,7 @@ export function SkillsPanel({ session, lang }: Props) {
             setOpenIdx(groups.length);
           }}
         />
-        <span className="skills-hint">{tt('skills.hint')}</span>
+
       </div>
       {groups.length === 0 && <p className="skills-hint">{tt('skills.empty')}</p>}
       <SkillSets session={session} lang={lang} />
@@ -105,6 +108,7 @@ export function SkillsPanel({ session, lang }: Props) {
                       <span className="note-dot" aria-hidden />
                     )}
                   </span>
+                  {group.weapon_set && <span className="ui-badge">{tt('weapons.set')} {group.weapon_set}</span>}
                   {isMain && <span className="skill-group-main">{tt('skills.main')}</span>}
                   {grantedSourceLabel(lang, group.source) && (
                     <span className="granted-badge">
@@ -139,6 +143,13 @@ export function SkillsPanel({ session, lang }: Props) {
                 </button>
               </div>
               {isOpen && (
+              <div className="skill-gem-editor">
+              <div className="skill-weapon-binding"><label>{tt('weapons.binding')}</label>
+                <AppSelect ariaLabel={tt('weapons.binding')} value={String(group.weapon_set ?? 0)}
+                  options={[{ value: '0', label: tt('weapons.both') }, ...[1, 2].map(set => ({ value: String(set), label: `${tt('weapons.set')} ${set}` }))]}
+                  disabled={session.busy} onChange={value => updateGroup(idx, { weapon_set: value === '0' ? null : Number(value) as 1 | 2 })} />
+              </div>
+              <div className="gem-column-labels"><span>{tt('calcs.skill')}</span><span>{tt('skills.level')}</span><span>{tt('skills.quality')}</span><span /></div>
               <ul className="skill-gems">
                 {group.gems.map((gem, gemIdx) => (
                   <li key={gemIdx} className={`skill-gem${gemIdx === 0 ? ' is-active' : ''}`}>
@@ -188,6 +199,7 @@ export function SkillsPanel({ session, lang }: Props) {
                   </li>
                 ))}
               </ul>
+              </div>
               )}
               {isOpen && (
                 <div className="skill-group-picker">

@@ -2162,6 +2162,24 @@
       "source_note": "vendor specialModList 批量抽取（静态表）"
     },
     {
+      "id": "vnd_always_pierce_with_arrows_d2e74813",
+      "pattern": "always pierce with arrows",
+      "vendor_pattern": "^always pierce with arrows$",
+      "mods": [
+        {
+          "name": "PierceAllTargets",
+          "type": "FLAG",
+          "value": true,
+          "keyword_flags": [
+            "Arrow"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
       "id": "vnd_always_poison_on_hit_against_cursed_enem_eb045a31",
       "pattern": "always poison on hit against cursed enemies",
       "vendor_pattern": "^always poison on hit against cursed enemies$",
@@ -2842,6 +2860,283 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_arrows_always_pierce_079272b6",
+      "pattern": "arrows always pierce",
+      "vendor_pattern": "^arrows always pierce$",
+      "mods": [
+        {
+          "name": "PierceAllTargets",
+          "type": "FLAG",
+          "value": true,
+          "keyword_flags": [
+            "Arrow"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_arrows_chain_d_times_4dbf37c7",
+      "pattern": "arrows chain \\+(\\d) times",
+      "vendor_pattern": "^arrows chain %+(%d) times$",
+      "mods": [
+        {
+          "name": "ChainCountMax",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Arrow"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_arrows_fork_6c8d2ac4",
+      "pattern": "arrows fork",
+      "vendor_pattern": "^arrows fork$",
+      "mods": [
+        {
+          "name": "ForkOnce",
+          "type": "FLAG",
+          "value": true,
+          "keyword_flags": [
+            "Arrow"
+          ]
+        },
+        {
+          "name": "ForkCountMax",
+          "type": "BASE",
+          "value": 1.0,
+          "flags": [
+            "Projectile"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_arrows_pierce_all_targets_after_forking_b28ce0db",
+      "pattern": "arrows pierce all targets after forking",
+      "vendor_pattern": "^arrows pierce all targets after forking$",
+      "mods": [
+        {
+          "name": "PierceAllTargets",
+          "type": "FLAG",
+          "value": true,
+          "keyword_flags": [
+            "Arrow"
+          ],
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "ForkedCount",
+              "threshold": 1.0
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_arrows_pierce_all_targets_fb2e0a78",
+      "pattern": "arrows pierce all targets",
+      "vendor_pattern": "^arrows pierce all targets$",
+      "mods": [
+        {
+          "name": "PierceAllTargets",
+          "type": "FLAG",
+          "value": true,
+          "keyword_flags": [
+            "Arrow"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_arrows_pierce_an_additional_target_7e69f120",
+      "pattern": "arrows pierce an additional target",
+      "vendor_pattern": "^arrows pierce an additional target$",
+      "mods": [
+        {
+          "name": "PierceCount",
+          "type": "BASE",
+          "value": 1.0,
+          "keyword_flags": [
+            "Arrow"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_arrows_pierce_d_additional_targets_5884663c",
+      "pattern": "arrows pierce (\\d+) additional targets",
+      "vendor_pattern": "^arrows pierce (%d+) additional targets$",
+      "mods": [
+        {
+          "name": "PierceCount",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Arrow"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_arrows_pierce_d_targets_01a19254",
+      "pattern": "arrows pierce (\\d+) targets?",
+      "vendor_pattern": "^arrows pierce (%d+) targets?$",
+      "mods": [
+        {
+          "name": "PierceCount",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Arrow"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_arrows_pierce_one_target_d94a0950",
+      "pattern": "arrows pierce one target",
+      "vendor_pattern": "^arrows pierce one target$",
+      "mods": [
+        {
+          "name": "PierceCount",
+          "type": "BASE",
+          "value": 1.0,
+          "keyword_flags": [
+            "Arrow"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_arrows_that_pierce_cause_bleeding_6df227e0",
+      "pattern": "arrows that pierce cause bleeding",
+      "vendor_pattern": "^arrows that pierce cause bleeding$",
+      "mods": [
+        {
+          "name": "BleedChance",
+          "type": "BASE",
+          "value": 100.0,
+          "keyword_flags": [
+            "Arrow"
+          ],
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "PierceCount",
+              "threshold": 1.0
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（静态表）"
+    },
+    {
+      "id": "vnd_arrows_that_pierce_deal_d_increased_dama_a8a7cea3",
+      "pattern": "arrows that pierce deal (\\d+)% increased damage",
+      "vendor_pattern": "^arrows that pierce deal (%d+)%% increased damage$",
+      "mods": [
+        {
+          "name": "Damage",
+          "type": "INC",
+          "value": "$1",
+          "keyword_flags": [
+            "Arrow"
+          ],
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "PierceCount",
+              "threshold": 1.0
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_arrows_that_pierce_have_d_chance_to_caus_0c345315",
+      "pattern": "arrows that pierce have (\\d+)% chance to cause bleeding",
+      "vendor_pattern": "^arrows that pierce have (%d+)%% chance to cause bleeding$",
+      "mods": [
+        {
+          "name": "BleedChance",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Arrow"
+          ],
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "PierceCount",
+              "threshold": 1.0
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_arrows_that_pierce_have_d_to_critical_da_1963844f",
+      "pattern": "arrows that pierce have \\+(\\d+)% to critical damage bonus",
+      "vendor_pattern": "^arrows that pierce have %+(%d+)%% to critical damage bonus$",
+      "mods": [
+        {
+          "name": "CritMultiplier",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Arrow"
+          ],
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "PierceCount",
+              "threshold": 1.0
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
       "id": "vnd_artillery_ballista_fires_an_additional_p_09b7b808",
@@ -4672,6 +4967,49 @@
               "type": "SkillName",
               "includeTransfigured": true,
               "skillName": "Bonestorm"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_bow_attacks_fire_d_additional_arrows_91e365df",
+      "pattern": "bow attacks fire (\\d+) additional arrows",
+      "vendor_pattern": "^bow attacks fire (%d+) additional arrows$",
+      "mods": [
+        {
+          "name": "ProjectileCount",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Arrow"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_bow_attacks_fire_d_additional_arrows_if_f2dc57f0",
+      "pattern": "bow attacks fire (\\d+) additional arrows if you haven't cast dash recently",
+      "vendor_pattern": "^bow attacks fire (%d+) additional arrows if you haven't cast dash recently$",
+      "mods": [
+        {
+          "name": "ProjectileCount",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Arrow"
+          ],
+          "tags": [
+            {
+              "type": "Condition",
+              "neg": true,
+              "var": "CastDashRecently"
             }
           ]
         }
@@ -8767,6 +9105,24 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_d_additional_arrows_ab7b3308",
+      "pattern": "(\\d+) additional arrows",
+      "vendor_pattern": "^(%d+) additional arrows$",
+      "mods": [
+        {
+          "name": "ProjectileCount",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Arrow"
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
       "id": "vnd_d_body_armour_sockets_5fb57efd",
       "pattern": "(?:\\d+) body armour sockets?",
       "vendor_pattern": "^(%d+) body armour sockets?$",
@@ -9894,6 +10250,37 @@
               "type": "Condition",
               "neg": true,
               "var": "IntHigherThanStr"
+            }
+          ]
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_increased_critical_hit_chance_with_arr_650d51dd",
+      "pattern": "(\\d+)% increased critical hit chance with arrows that fork",
+      "vendor_pattern": "^(%d+)%% increased critical hit chance with arrows that fork$",
+      "mods": [
+        {
+          "name": "CritChance",
+          "type": "INC",
+          "value": "$1",
+          "keyword_flags": [
+            "Arrow"
+          ],
+          "tags": [
+            {
+              "type": "StatThreshold",
+              "stat": "ForkRemaining",
+              "threshold": 1.0
+            },
+            {
+              "type": "StatThreshold",
+              "stat": "PierceCount",
+              "threshold": 0.0,
+              "upper": true
             }
           ]
         }
@@ -12317,6 +12704,24 @@
           "name": "SurpassingProjectileChance",
           "type": "BASE",
           "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_surpassing_chance_to_fire_an_additiona_b668663c",
+      "pattern": "\\+(\\d+)% surpassing chance to fire an additional arrow",
+      "vendor_pattern": "^%+(%d+)%% surpassing chance to fire an additional arrow$",
+      "mods": [
+        {
+          "name": "SurpassingProjectileChance",
+          "type": "BASE",
+          "value": "$1",
+          "keyword_flags": [
+            "Arrow"
+          ]
         }
       ],
       "verified": false,
