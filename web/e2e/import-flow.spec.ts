@@ -21,7 +21,7 @@ test('import build code and browse tabs', async ({ page }) => {
   await page.goto('/');
 
   // 等待 wasm + 数据初始化完成（boot 屏消失，导入页出现）。
-  await expect(page.getByRole('heading', { name: /Import Build Code/i })).toBeVisible({
+  await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({
     timeout: 90_000,
   });
 

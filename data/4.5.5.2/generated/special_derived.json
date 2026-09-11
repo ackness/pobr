@@ -1,0 +1,471 @@
+{
+  "_meta": {
+    "schema": "special_derived/v1",
+    "generator": "pobr-data-adapter --emit-special-derived",
+    "note": "33 个 keystone（passive_tree kind=Keystone）派生；对照 vendor ModParser.lua:6151-6158 data.keystones（超集无害）"
+  },
+  "entries": [
+    {
+      "id": "keystone_ancestral_bond",
+      "pattern": "ancestral bond",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Ancestral Bond"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Ancestral Bond」（C-1 派生）"
+    },
+    {
+      "id": "keystone_avatar_of_fire",
+      "pattern": "avatar of fire",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Avatar of Fire"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Avatar of Fire」（C-1 派生）"
+    },
+    {
+      "id": "keystone_blackflame_covenant",
+      "pattern": "blackflame covenant",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Blackflame Covenant"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Blackflame Covenant」（C-1 派生）"
+    },
+    {
+      "id": "keystone_blood_magic",
+      "pattern": "blood magic",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Blood Magic"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Blood Magic」（C-1 派生）"
+    },
+    {
+      "id": "keystone_bulwark",
+      "pattern": "bulwark",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Bulwark"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Bulwark」（C-1 派生）"
+    },
+    {
+      "id": "keystone_chaos_inoculation",
+      "pattern": "chaos inoculation",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Chaos Inoculation"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Chaos Inoculation」（C-1 派生）"
+    },
+    {
+      "id": "keystone_conduit",
+      "pattern": "conduit",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Conduit"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Conduit」（C-1 派生）"
+    },
+    {
+      "id": "keystone_crimson_assault",
+      "pattern": "crimson assault",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Crimson Assault"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Crimson Assault」（C-1 派生）"
+    },
+    {
+      "id": "keystone_dance_with_death",
+      "pattern": "dance with death",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Dance with Death"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Dance with Death」（C-1 派生）"
+    },
+    {
+      "id": "keystone_eldritch_battery",
+      "pattern": "eldritch battery",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Eldritch Battery"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Eldritch Battery」（C-1 派生）"
+    },
+    {
+      "id": "keystone_elemental_equilibrium",
+      "pattern": "elemental equilibrium",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Elemental Equilibrium"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Elemental Equilibrium」（C-1 派生）"
+    },
+    {
+      "id": "keystone_eternal_youth",
+      "pattern": "eternal youth",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Eternal Youth"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Eternal Youth」（C-1 派生）"
+    },
+    {
+      "id": "keystone_giant_s_blood",
+      "pattern": "giant's blood",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Giant's Blood"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Giant's Blood」（C-1 派生）"
+    },
+    {
+      "id": "keystone_glancing_blows",
+      "pattern": "glancing blows",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Glancing Blows"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Glancing Blows」（C-1 派生）"
+    },
+    {
+      "id": "keystone_heartstopper",
+      "pattern": "heartstopper",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Heartstopper"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Heartstopper」（C-1 派生）"
+    },
+    {
+      "id": "keystone_hollow_palm_technique",
+      "pattern": "hollow palm technique",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Hollow Palm Technique"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Hollow Palm Technique」（C-1 派生）"
+    },
+    {
+      "id": "keystone_iron_reflexes",
+      "pattern": "iron reflexes",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Iron Reflexes"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Iron Reflexes」（C-1 派生）"
+    },
+    {
+      "id": "keystone_lord_of_the_wilds",
+      "pattern": "lord of the wilds",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Lord of the Wilds"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Lord of the Wilds」（C-1 派生）"
+    },
+    {
+      "id": "keystone_mind_over_matter",
+      "pattern": "mind over matter",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Mind Over Matter"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Mind Over Matter」（C-1 派生）"
+    },
+    {
+      "id": "keystone_necromantic_talisman",
+      "pattern": "necromantic talisman",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Necromantic Talisman"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Necromantic Talisman」（C-1 派生）"
+    },
+    {
+      "id": "keystone_oasis",
+      "pattern": "oasis",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Oasis"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Oasis」（C-1 派生）"
+    },
+    {
+      "id": "keystone_pain_attunement",
+      "pattern": "pain attunement",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Pain Attunement"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Pain Attunement」（C-1 派生）"
+    },
+    {
+      "id": "keystone_primal_hunger",
+      "pattern": "primal hunger",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Primal Hunger"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Primal Hunger」（C-1 派生）"
+    },
+    {
+      "id": "keystone_resolute_technique",
+      "pattern": "resolute technique",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Resolute Technique"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Resolute Technique」（C-1 派生）"
+    },
+    {
+      "id": "keystone_resonance",
+      "pattern": "resonance",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Resonance"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Resonance」（C-1 派生）"
+    },
+    {
+      "id": "keystone_ritual_cadence",
+      "pattern": "ritual cadence",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Ritual Cadence"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Ritual Cadence」（C-1 派生）"
+    },
+    {
+      "id": "keystone_scarred_faith",
+      "pattern": "scarred faith",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Scarred Faith"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Scarred Faith」（C-1 派生）"
+    },
+    {
+      "id": "keystone_trusted_kinship",
+      "pattern": "trusted kinship",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Trusted Kinship"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Trusted Kinship」（C-1 派生）"
+    },
+    {
+      "id": "keystone_unwavering_stance",
+      "pattern": "unwavering stance",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Unwavering Stance"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Unwavering Stance」（C-1 派生）"
+    },
+    {
+      "id": "keystone_vaal_pact",
+      "pattern": "vaal pact",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Vaal Pact"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Vaal Pact」（C-1 派生）"
+    },
+    {
+      "id": "keystone_whispers_of_doom",
+      "pattern": "whispers of doom",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Whispers of Doom"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Whispers of Doom」（C-1 派生）"
+    },
+    {
+      "id": "keystone_wildsurge_incantation",
+      "pattern": "wildsurge incantation",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Wildsurge Incantation"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Wildsurge Incantation」（C-1 派生）"
+    },
+    {
+      "id": "keystone_zealot_s_oath",
+      "pattern": "zealot's oath",
+      "mods": [
+        {
+          "name": "Keystone",
+          "type": "LIST",
+          "value": "Zealot's Oath"
+        }
+      ],
+      "verified": false,
+      "batch": "S0",
+      "source_note": "passive_tree keystone「Zealot's Oath」（C-1 派生）"
+    }
+  ]
+}

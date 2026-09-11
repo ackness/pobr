@@ -21,9 +21,10 @@ fn repo_root() -> PathBuf {
         .expect("canonicalize repo root")
 }
 
-// Pin the golden verification version (follows automatically when golden
-// switches; both the byte-stable and coverage goldens assert against this version's data).
-const PATCH: &str = pobr_data::GOLDEN_PARITY_DATA_VERSION;
+// Regeneration validates the active parser artifact. Historical calculation
+// goldens keep their own data pin; parser improvements must not require
+// rewriting archived snapshots to keep this artifact-consistency gate green.
+const PATCH: &str = pobr_data::DATA_VERSION;
 
 fn data_dir() -> PathBuf {
     repo_root().join("data").join(PATCH)
@@ -173,13 +174,15 @@ fn committed_coverage_matches_fresh_run() {
 /// corpus is reachable via the grandparent lookup — the golden comparison
 /// only holds if the isolated copy's four corpus layers match the real data directory.
 fn mirror_data_dir(src_data: &Path) -> PathBuf {
+    static NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let unique = format!(
-        "pobr-precompile-test-{}-{:?}",
+        "pobr-precompile-test-{}-{:?}-{}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_nanos()
+            .as_nanos(),
+        NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     );
     let tmp = std::env::temp_dir().join(unique);
     let tmp_data = tmp.join("data").join(PATCH);

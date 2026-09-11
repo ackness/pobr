@@ -7,6 +7,7 @@
  */
 
 import { formatApiError } from '../api/error';
+import { resolveBuildInput } from '../api/import';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getBackend } from '../api/backend';
 import { composeNotes, splitNotes, type Annotations } from '../lib/annotations';
@@ -499,7 +500,8 @@ export function useBuildSession(): BuildSession {
       setError(null);
       try {
         const backend = await getBackend();
-        // 以 `{` 开头视为国服 .build 文件（JSON），否则按 PoB2 code 解码。
+        code = await resolveBuildInput(code);
+        // JSON includes China-server .build files and WeGame share bundles.
         const isBuildFile = code.trimStart().startsWith('{');
         const decoded = isBuildFile
           ? await backend.decodeBuildFile(code)

@@ -5,6 +5,29 @@ use pobr_core::{CalcConfig, ModTag, ModValue};
 use pobr_data::prelude::*;
 
 #[test]
+fn immunity_forms_cover_statuses_and_reject_false_positives() {
+    for (line, names) in [
+        ("Immune to being Frozen", vec!["FreezeImmune"]),
+        ("Immune to Bleeding", vec!["BleedImmune"]),
+        (
+            "Immune to Freeze and Chill",
+            vec!["FreezeImmune", "ChillImmune"],
+        ),
+    ] {
+        let outcome = parse_mod(line).unwrap();
+        let actual: Vec<_> = outcome.mods.iter().map(|m| m.name.as_str()).collect();
+        assert_eq!(actual, names, "{line}");
+        assert!(outcome.mods.iter().all(|m| m.mod_type == ModType::Flag));
+    }
+    assert!(
+        parse_mod("Cannot be used manually")
+            .unwrap()
+            .mods
+            .is_empty()
+    );
+}
+
+#[test]
 fn parses_increased_damage_with_condition_tag() {
     let outcome = parse_mod("20% increased Fire Damage while on Full Life").unwrap();
 

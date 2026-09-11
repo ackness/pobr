@@ -92,6 +92,10 @@ end
 
 -- 全局映射：SkillStatMap.lua 以 `local mod, flag, skill = ...` 接收注入并 return 表。
 local okGlobal, globalMap = pcall(loadVendorChunk("Data/SkillStatMap.lua"), modCtor, flagCtor, skillCtor)
+-- Newer PoB2 exports return a constructor; older snapshots return the table.
+if okGlobal and type(globalMap) == "function" then
+	okGlobal, globalMap = pcall(globalMap, modCtor, flagCtor, skillCtor)
+end
 if not okGlobal then
 	io.stderr:write("error executing Data/SkillStatMap.lua: " .. tostring(globalMap) .. "\n")
 	os.exit(3)
@@ -102,6 +106,10 @@ local skills = {}
 for fileName in string.gmatch(fileListArg, "[^,]+") do
 	local chunk = loadVendorChunk("Data/Skills/" .. fileName .. ".lua")
 	local ok, runErr = pcall(chunk, skills, modCtor, flagCtor, skillCtor)
+	-- Support both direct exports and the newer constructor-returning exports.
+	if ok and type(runErr) == "function" then
+		ok, runErr = pcall(runErr, skills, modCtor, flagCtor, skillCtor)
+	end
 	if not ok then
 		io.stderr:write("error executing Data/Skills/" .. fileName .. ".lua: " .. tostring(runErr) .. "\n")
 		os.exit(3)

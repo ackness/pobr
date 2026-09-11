@@ -70,10 +70,9 @@ fn merged_levels_match_historical_coverage() {
     let count = |f: fn(&pobr_data::catalog::SkillLevelDef) -> bool| {
         levels.values().flatten().filter(|r| f(r)).count()
     };
-    // After the 4.5.4.3 (0.5.4b) data upgrade, crit/base_multiplier/stored_uses
-    // grew along with newly added skill level rows (6091→6294 / 6821→6850 /
-    // 6721→6734); the other coverage counts are unchanged.
-    assert_eq!(count(|r| r.crit_chance.is_some()), 6294);
+    // GGG 4.5.5.2 adds two crit rows and one stored-use row for Ultimatum
+    // monster skills. Other coverage counts are unchanged from 4.5.4.8.
+    assert_eq!(count(|r| r.crit_chance.is_some()), 6296);
     assert_eq!(count(|r| r.attack_speed_multiplier.is_some()), 4256);
     assert_eq!(count(|r| r.base_multiplier.is_some()), 6850);
     // The level-field family (read directly by the adapter, trivial values
@@ -81,7 +80,7 @@ fn merged_levels_match_historical_coverage() {
     assert_eq!(count(|r| r.mana_multiplier.is_some()), 542);
     assert_eq!(count(|r| r.spirit_reservation_flat.is_some()), 3166);
     assert_eq!(count(|r| r.reservation_multiplier.is_some()), 169);
-    assert_eq!(count(|r| r.stored_uses.is_some()), 6734);
+    assert_eq!(count(|r| r.stored_uses.is_some()), 6735);
     // level_requirement: PoE2's `.dat` has no such column (the real source
     // table isn't downloadable), so it's always None, and stored as such.
     assert_eq!(count(|r| r.level_requirement.is_some()), 0);

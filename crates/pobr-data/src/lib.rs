@@ -11,7 +11,7 @@
 /// not read this constant, so it can move ahead to newer data without turning
 /// them red; see [`GOLDEN_PARITY_DATA_VERSION`]. That the newer data still runs
 /// at all is covered by the `multi_version` smoke test.
-pub const DATA_VERSION: &str = "4.5.4.8";
+pub const DATA_VERSION: &str = "4.5.5.2";
 
 /// Data version the checked-in golden and parity numbers were recorded against.
 ///

@@ -1,5 +1,5 @@
--- 测试夹具：模仿 vendor Data/Skills/*.lua 的最小结构（与真实文件同一注入约定）
-local skills, mod, flag, skill = ...
+-- Synthetic PoB2 constructor export; mini_quality.lua covers the older direct export.
+return function(skills, mod, flag, skill)
 
 -- 全等级同值的 baseMultiplier（触发压缩为单 value）+ 含 statSets baseMods Speed MORE
 -- （模仿 FlickerStrikePlayer；M1-T4.3 后 attackSpeedMultiplier/critChance 不再抽取，
@@ -58,3 +58,4 @@ skills["MiniPlain"] = {
 		[1] = { levelRequirement = 0, cost = { Mana = 5, }, },
 	},
 }
+end

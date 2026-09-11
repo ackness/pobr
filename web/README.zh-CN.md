@@ -73,7 +73,7 @@ web/src/
 
 - **新建 build**（PoB2 语义）：启动即有默认角色——Build 页切职业/升华/等级，
   Tree 页点选加点，全程实时重算，无需任何 code。
-- **一键导入**：Build 页粘贴 PoB2 code 整体替换（装备/技能/树/config 全带入）；
+- **一键导入**：Build 页粘贴 PoB2 code 或 WeGame 分享链接，导入装备、技能和天赋；
   编辑态可导出回可分享的 PoB2 code。
 - **装备**：人形槽位布局 + PoB 文本编辑、符文插槽、药剂/护符槽、
   物品库（对比/一键换装）、槽位备注。
@@ -85,7 +85,7 @@ web/src/
 
 1. 启动：JS fetch `public/data/manifest.json` 列出的全部 JSON → `stageDataFile`
    注入 wasm → `initStagedData()` 构建 `BuildData`（一次，之后零 I/O）。
-2. 导入：`decodeBuildJson(code)` → 结构化 build（角色/树/装备文本/技能组/config）。
+2. 导入：PoB2 code 或 WeGame 分享数据 → 结构化 build（角色/树/装备文本/技能组/config）。WeGame 导入需运行 `pnpm dev` / `pnpm preview` 或部署随构建提供的 Pages worker，详见 [导入说明与限制](../docs/wegame-import.md)。
 3. 计算：`calculateBuildJson({pob_code, ...覆盖})` → display_catalog 全量键值 +
    unsupported 词条 + 聚合属性 breakdown。
 4. 归因：`attributionJson({pob_code, fields})` → 逐来源「移除后重算」边际贡献

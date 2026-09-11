@@ -71,6 +71,12 @@ for _, name in ipairs({
 	assert(type(U[name]) == "table", "parseMod upvalue table missing: " .. name)
 end
 
+-- Older item exports use this prefix. Newer PoB2 handles bonded lines in
+-- its item model, but PoBR must keep the condition on existing raw text.
+U.preFlagList["^bonded: "] = U.preFlagList["^bonded: "] or {
+	tag = { type = "Condition", var = "CanUseBondedModifiers" },
+}
+
 local function firstToUpper(str)
 	return (str:gsub("^%l", string.upper))
 end

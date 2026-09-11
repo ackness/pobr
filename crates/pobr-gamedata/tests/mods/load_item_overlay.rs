@@ -76,8 +76,8 @@ fn catalysts_thirteen_entries() {
     assert_eq!(def.catalysts[12].descriptor, "Minion");
 }
 
-/// runes: a spot check on Hayoxi's Soul Core's helmet row
-/// (ModRunes.lua:5-13) and Desert Rune's weapon slot (:660-666).
+/// Rune spot checks against PoB2 ce566eac (0.5.5): the rank field was
+/// removed, and nested bonded bonuses retain their conditional raw syntax.
 #[test]
 fn runes_samples() {
     let def = game_data()
@@ -98,7 +98,7 @@ fn runes_samples() {
     let helmet = &hayoxi.slots["helmet"];
     assert_eq!(helmet.kind, "SoulCore");
     assert_eq!(helmet.lines, ["+40% of Armour also applies to Cold Damage"]);
-    assert_eq!(helmet.rank, [50.0]);
+    assert!(helmet.rank.is_empty());
     let desert = find("Desert Rune");
     let weapon = &desert.slots["weapon"];
     assert_eq!(weapon.kind, "Rune");
@@ -109,7 +109,7 @@ fn runes_samples() {
             "Bonded: 30% increased Ignite Magnitude"
         ]
     );
-    // vendor 0.5.4 (ModRunes.lua:737-746): statOrder = {832, 1077}
+    // Base and bonded stat orders are combined in the same order as lines.
     assert_eq!(weapon.stat_order, [832.0, 1077.0]);
 }
 

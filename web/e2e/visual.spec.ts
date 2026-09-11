@@ -11,7 +11,7 @@ for (const width of BREAKPOINTS) {
   test(`no horizontal overflow at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: /Import Build Code/i })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({
       timeout: 90_000,
     });
     await page.screenshot({ path: `e2e/screenshots/import-${width}.png`, fullPage: true });
@@ -24,7 +24,7 @@ for (const width of BREAKPOINTS) {
 
 test('keyboard: tab navigation reaches import textarea', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /Import Build Code/i })).toBeVisible({
+  await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({
     timeout: 90_000,
   });
   // 顶栏 7 个页签 + 语言切换后到达 textarea；直接断言 textarea 可聚焦。

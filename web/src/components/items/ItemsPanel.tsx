@@ -577,9 +577,10 @@ function JewelList({ texts, lang }: { texts: string[]; lang: Lang }) {
   );
 }
 
-/** 槽位归一化（`ring1`/`ring2` → `ring`）：库条目槽位与选中槽位的互换匹配键。 */
+/** Numbered rings share candidates; main hand and offhand remain distinct. */
 function slotFamily(slot: string): string {
-  return slot.replace(/\s*\d+$/, '').toLowerCase();
+  const normalized = slot.toLowerCase();
+  return /^weapon[12]$/.test(normalized) ? normalized : normalized.replace(/\s*\d+$/, '');
 }
 
 /** 物品库：存起来的装备/珠宝，可搜索/按选中槽位过滤，对比差异并一键装备。 */

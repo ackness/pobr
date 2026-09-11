@@ -54,6 +54,15 @@ for fileName in string.gmatch(fileListArg, "[^,]+") do
 		os.exit(3)
 	end
 	local ok, runErr = pcall(chunk, minions, makeSkillMod, makeFlagMod)
+	-- Support both direct exports and the newer constructor-returning exports.
+	if ok and type(runErr) == "function" then
+		ok, runErr = pcall(runErr, makeSkillMod, makeFlagMod)
+		if ok and type(runErr) == "table" then
+			for id, minion in pairs(runErr) do
+				minions[id] = minion
+			end
+		end
+	end
 	if not ok then
 		io.stderr:write("error executing " .. path .. ": " .. tostring(runErr) .. "\n")
 		os.exit(3)

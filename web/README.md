@@ -83,9 +83,10 @@ web/src/
 - **New build** (PoB2 semantics): a default character exists on startup —
   pick class/ascendancy/level on the Build tab, allocate on the Tree tab,
   everything recalculates live without any code.
-- **One-shot import**: paste a PoB2 build code on the Build tab to replace
+- **One-shot import**: paste a PoB2 build code or a WeGame PoE2 share URL on the Build tab to replace
   everything (items / skills / tree / config); the editing state can be
   exported back to a shareable PoB2 code.
+  See [WeGame import](../docs/wegame-import.md) for deployment and calculation limits.
 - **Items**: paper-doll slot layout with full PoB-text editing, rune sockets,
   flask/charm slots, an item library with compare/equip, and per-slot notes.
 - **Skills**: socket-group editing (gems, levels, quality, supports),

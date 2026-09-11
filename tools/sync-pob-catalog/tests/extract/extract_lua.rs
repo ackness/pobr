@@ -39,6 +39,32 @@ fn sample_meta() -> OverlayMeta {
     }
 }
 
+#[test]
+fn runes_preserve_legacy_and_nested_bonded_bonuses() {
+    let mut args = fixture_args();
+    args.files = vec!["ModRunes".to_string()];
+    if !luajit_available(&args.luajit) {
+        eprintln!("skip: no luajit available");
+        return;
+    }
+    let json = sync_pob_catalog::extract_item_overlay::run_extract_runes(&args)
+        .expect("extract rune fixture");
+    let doc: serde_json::Value = serde_json::from_str(&json).unwrap();
+    let legacy = &doc["runes"][0]["slots"]["weapon"];
+    let nested = &doc["runes"][1]["slots"]["weapon"];
+    assert_eq!(legacy["lines"], nested["lines"]);
+    assert_eq!(
+        nested["lines"],
+        serde_json::json!([
+            "Adds 7 to 11 Fire Damage",
+            "Bonded: 30% increased Ignite Magnitude"
+        ])
+    );
+    assert_eq!(nested["stat_order"], serde_json::json!([832.0, 1077.0]));
+    assert_eq!(legacy["rank"], serde_json::json!([15.0]));
+    assert!(nested["rank"].is_null());
+}
+
 /// Rerun with the same input twice; the output must be byte-identical (an ironclad determinism rule)
 #[test]
 fn extract_is_byte_stable_across_runs() {
