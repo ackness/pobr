@@ -171,3 +171,13 @@ test('anonymous complexity limit uses one explicit budget fallback and filters l
   assert.equal(response.status, 200, JSON.stringify(data));
   assert.equal(data.search_mode, 'budget'); assert.equal(data.listings.length, 1); assert.equal(searches, 2);
 });
+
+test('Pages deployment routes every API to the Worker while static assets bypass it', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const manifest = JSON.parse(await readFile(new URL('../public/_routes.json', import.meta.url), 'utf8'));
+  const matches = (pattern, path) => pattern.endsWith('*') ? path.startsWith(pattern.slice(0, -1)) : path === pattern;
+  const routed = path => manifest.include.some(pattern => matches(pattern, path)) && !manifest.exclude.some(pattern => matches(pattern, path));
+  // Workerd unit tests invoke fetch directly, so this separately guards the Pages routing boundary.
+  for (const path of ['/api/import/wegame', '/api/trade/leagues', '/api/trade/search']) assert.equal(routed(path), true, path);
+  for (const path of ['/', '/assets/app.js', '/data/manifest.json']) assert.equal(routed(path), false, path);
+});
