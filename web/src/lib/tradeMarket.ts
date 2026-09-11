@@ -3,6 +3,7 @@ import type { CalculateBuildRequest, VariantInput } from '../api/types';
 import { compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type Objective } from './optimize';
 import type { TradePriceCap, TradeRealm, WeightedStat } from './trade';
 import { tradeItemVariant, type TradeCatalog, type TradeGem } from './tradeOptimizer';
+import { eligibleSupports, lineageAvailable, sameSupportFamily, supportSetCompatible, type SupportMetadata } from './supportOptimizer';
 
 export interface MarketItem {
   name?: string; baseType?: string; typeLine?: string;
@@ -69,7 +70,11 @@ export async function evaluateMarket(options: {
   return { baseline: result.baseline, upgrades: rankMarket(upgrades), rejected };
 }
 
-export interface GemPlan { gem: TradeGem; group: number; position: number; level: number; quality: number; variant: VariantInput; gainPercent?: number; gain?: number; stats?: Record<string, number>; baseline?: Record<string, number> }
+export type GemAcquisition = 'skill-adjustment' | 'market-lineage' | 'market-skill';
+export function gemAcquisition(gem: SupportMetadata): GemAcquisition {
+  return !gem.is_support ? 'market-skill' : gem.is_lineage ? 'market-lineage' : 'skill-adjustment';
+}
+export interface GemPlan { acquisition: GemAcquisition; gem: TradeGem; group: number; position: number; level: number; quality: number; variant: VariantInput; gainPercent?: number; gain?: number; stats?: Record<string, number>; baseline?: Record<string, number> }
 /** Only propose known usable levels; old catalogs can still suggest quality upgrades. */
 export function usableGemLevel(gem: TradeGem, characterLevel: number): number {
   return (gem.level_requirements ?? []).reduce((best, required, index) =>
@@ -85,80 +90,82 @@ export function gemVariant(request: CalculateBuildRequest, group: number, positi
   }) };
 }
 
-/** Score every support family on the existing skill, then explore the best replacement positions.
- * A single purchase is evaluated against all currently equipped gems, preserving interactions.
+/** Compare complete single-gem replacements. Ordinary supports are skill adjustments;
+ * only active and lineage gems produce market purchase plans.
  */
 export async function planGemUpgrades(request: CalculateBuildRequest, catalog: TradeCatalog, group: number,
-  objective: Objective, signal?: AbortSignal, onProgress?: EvaluateOptions['onProgress']): Promise<GemPlan[]> {
+  objective: Objective, signal?: AbortSignal, onProgress?: EvaluateOptions['onProgress'],
+  evaluate: typeof evaluateVariants = evaluateVariants): Promise<GemPlan[]> {
   const current = request.socket_groups?.[group];
   if (!current?.enabled || current.source || !current.gems.length) return [];
-  const byId = new Map(catalog.gems?.map(gem => [gem.skill_id, gem]));
+  const gems: SupportMetadata[] = catalog.gems ?? [];
+  const byId = new Map(gems.map(gem => [gem.skill_id, gem]));
   const plans: GemPlan[] = [];
-  const add = (gem: TradeGem, position: number, level: number, quality: number) => {
-    plans.push({ gem, group, position, level, quality, variant: gemVariant(request, group, position, gem, level, quality) });
-  };
-  // First score removing each support to select a useful probe position when all sockets are occupied.
   const supports = current.gems.flatMap((gem, index) => byId.get(gem.skill_id)?.is_support ? [index] : []);
-  let probePosition = current.gems.length;
-  if (supports.length >= 5) {
-    const removal = await evaluateVariants({ request, signal, variants: supports.map(position => ({
-      socket_groups: request.socket_groups!.map((entry, index) => index === group
-        ? { ...entry, gems: entry.gems.filter((_, i) => i !== position) } : entry),
-    })) });
-    if (removal.aborted) throw new DOMException('Search cancelled', 'AbortError');
-    const best = [...removal.results].filter(row => !row.error).sort((a, b) => scoreOf(b.stats, objective) - scoreOf(a.stats, objective))[0];
-    if (!best) return [];
-    probePosition = supports[best.index];
-  }
-  const present = new Set(current.gems.map(gem => gem.skill_id));
+  // Imported groups expose occupied sockets, not the unlocked capacity. Only the two
+  // initial support sockets are assumed; additional sockets are configured in Skills.
+  const capacity = Math.max(2, Math.min(5, supports.length));
   const characterLevel = request.character?.level ?? 1;
-  for (const gem of catalog.gems ?? []) {
-    if (!gem.is_support || present.has(gem.skill_id)) continue;
-    const duplicateFamily = current.gems.some((entry, index) => index !== probePosition && byId.get(entry.skill_id)?.family === gem.family);
+  const add = (gem: SupportMetadata, position: number, level: number, quality: number) => {
+    const variant = gemVariant(request, group, position, gem, level, quality);
+    const replacement = variant.socket_groups![group];
+    const supportInputs = replacement.gems.filter(input => byId.get(input.skill_id)?.is_support);
+    if (gem.is_support && (!supportSetCompatible(current, supportInputs, gems)
+      || supportInputs.some(input => !lineageAvailable(byId.get(input.skill_id)!, request.socket_groups ?? [], group)))) return;
+    plans.push({ acquisition: gemAcquisition(gem), gem, group, position, level, quality, variant });
+  };
+  for (const gem of eligibleSupports(current, gems, characterLevel).gems) {
+    if (!lineageAvailable(gem, request.socket_groups ?? [], group)) continue;
     const level = Math.min(gem.max_level, usableGemLevel(gem, characterLevel));
-    if (!duplicateFamily && level > 0) add(gem, probePosition, level, 0);
+    const positions = [...supports, ...(supports.length < capacity ? [current.gems.length] : [])];
+    for (const position of positions) {
+      if (current.gems[position]?.skill_id === gem.skill_id) continue;
+      if (supports.some(index => index !== position && sameSupportFamily(byId.get(current.gems[index].skill_id)!, gem))) continue;
+      add(gem, position, level, 0);
+    }
   }
   current.gems.forEach((entry, position) => {
     const gem = byId.get(entry.skill_id);
     if (!gem) return;
-    // Include a quality purchase and a level purchase; supports use their actual natural maximum.
     if (entry.quality < 20) add(gem, position, entry.level, 20);
     const level = Math.min(gem.max_level + 1, usableGemLevel(gem, characterLevel));
     if (!gem.is_support && entry.level < level) add(gem, position, level, Math.max(entry.quality, 20));
   });
-  const ranked: { plan: GemPlan; gain: number }[] = [];
-  const evaluate = async (batch: GemPlan[]) => {
-    for (let start = 0; start < batch.length; start += 512) {
-      signal?.throwIfAborted();
-      const selected = batch.slice(start, start + 512);
-      const result = await evaluateVariants({ request, variants: selected.map(plan => plan.variant), signal,
-        onProgress: done => onProgress?.(start + done, batch.length) });
-      if (result.aborted) throw new DOMException('Search cancelled', 'AbortError');
-      for (const row of result.results) {
-        const gain = scoreOf(row.stats, objective) - scoreOf(result.baseline, objective);
-        if (!row.error && feasibleOf(row.stats, objective) && compareObjectiveStats(row.stats, result.baseline, objective) < 0) ranked.push({ plan: { ...selected[row.index], gain, stats: row.stats, baseline: result.baseline,
-          gainPercent: gain / Math.max(Math.abs(scoreOf(result.baseline, objective)), 1) * 100 }, gain });
-      }
-    }
-  };
-  await evaluate(plans);
-  ranked.sort((a, b) => compareObjectiveStats(a.plan.stats!, b.plan.stats!, objective));
-  const refinements: GemPlan[] = [];
-  for (const { plan } of ranked.slice(0, 8)) {
-    if (!plan.gem.is_support || present.has(plan.gem.skill_id)) continue;
-    for (const position of supports) {
-      if (position === plan.position || current.gems.some((entry, index) => index !== position && byId.get(entry.skill_id)?.family === plan.gem.family)) continue;
-      refinements.push({ ...plan, position, variant: gemVariant(request, group, position, plan.gem, plan.level, plan.quality) });
+  if (!plans.length) return [];
+  const identity = await evaluate({ request, variants: [{}], signal });
+  if (identity.aborted) throw new DOMException('Search cancelled', 'AbortError');
+  signal?.throwIfAborted();
+  if (identity.results[0]?.error) throw new Error(identity.results[0].error);
+  const unsupported = new Set(identity.results[0]?.unsupported ?? []);
+  const ranked: GemPlan[] = [];
+  for (let start = 0; start < plans.length; start += 512) {
+    signal?.throwIfAborted();
+    const selected = plans.slice(start, start + 512);
+    const result = await evaluate({ request, variants: selected.map(plan => plan.variant), signal,
+      onProgress: done => onProgress?.(start + done, plans.length) });
+    if (result.aborted) throw new DOMException('Search cancelled', 'AbortError');
+    for (const row of result.results) {
+      if (row.error || row.unsupported?.some(line => !unsupported.has(line))) continue;
+      const gain = scoreOf(row.stats, objective) - scoreOf(result.baseline, objective);
+      if (!Number.isFinite(gain) || !feasibleOf(row.stats, objective)
+        || compareObjectiveStats(row.stats, result.baseline, objective) >= 0) continue;
+      ranked.push({ ...selected[row.index], gain, stats: row.stats, baseline: result.baseline,
+        gainPercent: gain / Math.max(Math.abs(scoreOf(result.baseline, objective)), 1) * 100 });
     }
   }
-  await evaluate(refinements);
   signal?.throwIfAborted();
   const unique = new Map<string, GemPlan>();
-  for (const { plan } of ranked.sort((a, b) => compareObjectiveStats(a.plan.stats!, b.plan.stats!, objective))) {
+  for (const plan of ranked.sort((a, b) => compareObjectiveStats(a.stats!, b.stats!, objective))) {
     const key = `${plan.gem.skill_id}:${plan.level}:${plan.quality}`;
     if (!unique.has(key)) unique.set(key, plan);
   }
-  return [...unique.values()].slice(0, 3);
+  // Keep both acquisition paths visible even when cheap skill adjustments dominate.
+  const counts = new Map<GemAcquisition, number>();
+  return [...unique.values()].filter(plan => {
+    const count = counts.get(plan.acquisition) ?? 0;
+    counts.set(plan.acquisition, count + 1);
+    return count < 3;
+  });
 }
 
 export async function evaluateGemMarket(request: CalculateBuildRequest, plan: GemPlan, market: MarketResponse,

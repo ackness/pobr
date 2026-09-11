@@ -739,7 +739,13 @@
     "y": -1514.07,
     "connections": [
       29126
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 483,
@@ -757,7 +763,13 @@
     "connections": [
       12601,
       35745
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 506,
@@ -1118,7 +1130,13 @@
     "y": -1539.04,
     "connections": [
       22133
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 762,
@@ -1186,7 +1204,13 @@
     "y": -5333.082399,
     "connections": [
       36025
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 857,
@@ -2093,7 +2117,13 @@
     "connections": [
       9554,
       49769
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 1631,
@@ -2422,7 +2452,13 @@
     "y": -3636.11851,
     "connections": [
       10713
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 1913,
@@ -3310,7 +3346,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -6846.57,
-    "y": -239.4
+    "y": -239.4,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 2745,
@@ -4062,7 +4104,13 @@
     "y": -2332.55,
     "connections": [
       35720
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 3282,
@@ -4449,7 +4497,13 @@
     "y": 942.04,
     "connections": [
       19953
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 3567,
@@ -4658,7 +4712,13 @@
     "y": -9697.42,
     "connections": [
       57386
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 3685,
@@ -4969,7 +5029,13 @@
     "y": 680.07642,
     "connections": [
       56320
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 3918,
@@ -5935,7 +6001,13 @@
     "y": -9270.469476,
     "connections": [
       57202
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 4623,
@@ -6017,7 +6089,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -5431.35,
-    "y": -1790.04
+    "y": -1790.04,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 4664,
@@ -6088,7 +6166,13 @@
     "connections": [
       26228,
       48828
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 4709,
@@ -6347,7 +6431,13 @@
     "y": -6142.57,
     "connections": [
       12683
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 4882,
@@ -7737,7 +7827,13 @@
     "y": -5594.627624,
     "connections": [
       54380
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 6100,
@@ -7754,7 +7850,13 @@
     "y": -633.262618,
     "connections": [
       20963
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 6109,
@@ -8612,7 +8714,13 @@
     "y": -1608.26851,
     "connections": [
       34940
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 6891,
@@ -8802,7 +8910,13 @@
     "y": -6299.66562,
     "connections": [
       15672
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 7023,
@@ -8902,7 +9016,13 @@
     "y": -1657.100524,
     "connections": [
       23932
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 7068,
@@ -9106,7 +9226,13 @@
     "y": -2397.51358,
     "connections": [
       11861
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 7275,
@@ -9479,7 +9605,13 @@
     "connections": [
       15842,
       43385
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 7554,
@@ -9995,7 +10127,13 @@
     "y": -1482.537624,
     "connections": [
       18081
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 8115,
@@ -10128,7 +10266,13 @@
     "y": -904.68,
     "connections": [
       48079
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 8249,
@@ -10379,7 +10523,13 @@
     "y": -1476.65,
     "connections": [
       60708
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 8440,
@@ -10856,7 +11006,13 @@
     "y": 810.00358,
     "connections": [
       35393
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 8697,
@@ -10892,7 +11048,13 @@
     "connections": [
       3681,
       21374
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 8734,
@@ -11695,7 +11857,13 @@
     "orbit": 1,
     "orbit_index": 3,
     "x": -6671.23,
-    "y": -6208.67
+    "y": -6208.67,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 9217,
@@ -11970,7 +12138,13 @@
     "orbit": 2,
     "orbit_index": 21,
     "x": -7152.951299,
-    "y": -1814.461299
+    "y": -1814.461299,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 9417,
@@ -12191,7 +12365,13 @@
     "y": -10241.218318,
     "connections": [
       8723
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 9568,
@@ -13748,7 +13928,13 @@
     "y": -3109.119228,
     "connections": [
       38697
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 10648,
@@ -13853,7 +14039,13 @@
     "y": -3669.585152,
     "connections": [
       16615
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 10727,
@@ -14342,7 +14534,13 @@
     "connections": [
       21374,
       43721
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 11178,
@@ -14707,7 +14905,13 @@
     "orbit": 2,
     "orbit_index": 7,
     "x": -7449.210016,
-    "y": -5424.551315
+    "y": -5424.551315,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 11433,
@@ -14756,7 +14960,13 @@
     "y": -1193.34,
     "connections": [
       27405
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 11472,
@@ -14925,7 +15135,13 @@
     "y": -3399.030016,
     "connections": [
       34769
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 11598,
@@ -15016,7 +15232,13 @@
     "y": -1188.221315,
     "connections": [
       60708
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 11667,
@@ -15370,7 +15592,13 @@
     "y": -2574.997382,
     "connections": [
       59795
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 11871,
@@ -15505,7 +15733,13 @@
     "y": 412.698042,
     "connections": [
       42762
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 12000,
@@ -16244,7 +16478,13 @@
     "connections": [
       35745,
       50908
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 12610,
@@ -16261,7 +16501,13 @@
     "y": -6017.07,
     "connections": [
       4873
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 12611,
@@ -16314,7 +16560,13 @@
     "connections": [
       33618,
       61974
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 12750,
@@ -16652,7 +16904,13 @@
     "y": -11851.09,
     "connections": [
       20637
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 12964,
@@ -16788,7 +17046,13 @@
     "orbit": 5,
     "orbit_index": 67,
     "x": -8886.243289,
-    "y": -4019.505755
+    "y": -4019.505755,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 13123,
@@ -16877,7 +17141,13 @@
     "y": -3150.238685,
     "connections": [
       43486
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 13233,
@@ -17270,7 +17540,13 @@
     "y": -3845.62851,
     "connections": [
       51454
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 13474,
@@ -17561,7 +17837,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -10575.67,
-    "y": -6386.37
+    "y": -6386.37,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 13693,
@@ -18039,7 +18321,13 @@
     "y": -1272.078685,
     "connections": [
       11666
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 13980,
@@ -18724,7 +19012,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -10437.87,
-    "y": -4316.54
+    "y": -4316.54,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 14439,
@@ -19403,7 +19697,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -7038.4,
-    "y": -1699.91
+    "y": -1699.91,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 14996,
@@ -19524,7 +19824,13 @@
     "orbit": 6,
     "orbit_index": 63,
     "x": -9332.722337,
-    "y": -7908.582337
+    "y": -7908.582337,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 15180,
@@ -19885,7 +20191,13 @@
     "y": -3934.02,
     "connections": [
       61977
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 15590,
@@ -20022,7 +20334,13 @@
     "y": -6451.33358,
     "connections": [
       45400
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 15698,
@@ -20212,7 +20530,13 @@
     "orbit": 3,
     "orbit_index": 10,
     "x": -11515.1,
-    "y": -5422.67149
+    "y": -5422.67149,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 15855,
@@ -20744,7 +21068,13 @@
     "connections": [
       11160,
       49258
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 16347,
@@ -21059,7 +21389,13 @@
     "y": -3592.5,
     "connections": [
       18713
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 16618,
@@ -21406,7 +21742,13 @@
     "y": -3346.0,
     "connections": [
       18713
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 17024,
@@ -21556,7 +21898,13 @@
     "y": -1399.15,
     "connections": [
       6874
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 17061,
@@ -22371,7 +22719,13 @@
     "orbit": 1,
     "orbit_index": 9,
     "x": -9329.14,
-    "y": -875.71
+    "y": -875.71,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 17589,
@@ -22707,7 +23061,13 @@
     "y": -4315.428685,
     "connections": [
       56466
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 17745,
@@ -22963,7 +23323,13 @@
     "y": -803.199476,
     "connections": [
       58058
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 17903,
@@ -23182,7 +23548,13 @@
     "connections": [
       14980,
       52993
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 18086,
@@ -23493,7 +23865,13 @@
     "connections": [
       3544,
       20496
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 18374,
@@ -23578,7 +23956,13 @@
     "y": -3117.087624,
     "connections": [
       34181
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 18448,
@@ -23935,7 +24319,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -11380.71,
-    "y": -3346.0
+    "y": -3346.0,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 18717,
@@ -24429,7 +24819,13 @@
     "y": -6263.02,
     "connections": [
       34782
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 19001,
@@ -24680,7 +25076,13 @@
       15141,
       31554,
       34143
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 19203,
@@ -25485,7 +25887,13 @@
     "y": 599.167624,
     "connections": [
       50142
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 19955,
@@ -25516,7 +25924,13 @@
     "y": -5655.092898,
     "connections": [
       829
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 19998,
@@ -25888,7 +26302,13 @@
     "y": -3109.119228,
     "connections": [
       16947
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 20397,
@@ -26022,7 +26442,13 @@
     "y": 816.54,
     "connections": [
       11984
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 20499,
@@ -26137,7 +26563,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -3604.52,
-    "y": -11358.09
+    "y": -11358.09,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 20641,
@@ -26580,7 +27012,13 @@
     "y": -875.71,
     "connections": [
       17587
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 20989,
@@ -26937,7 +27375,13 @@
     "connections": [
       7066,
       13950
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 21225,
@@ -27197,7 +27641,13 @@
     "orbit": 7,
     "orbit_index": 21,
     "x": -8019.903802,
-    "y": -9874.903802
+    "y": -9874.903802,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 21380,
@@ -27413,7 +27863,13 @@
     "y": -11526.705931,
     "connections": [
       12940
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 21560,
@@ -27766,7 +28222,13 @@
     "y": -7310.37,
     "connections": [
       19162
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 21861,
@@ -28005,7 +28467,13 @@
     "y": -1915.54,
     "connections": [
       39857
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 22141,
@@ -28148,7 +28616,13 @@
     "y": -5930.162376,
     "connections": [
       57079
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 22270,
@@ -29660,7 +30134,13 @@
     "y": -4990.278568,
     "connections": [
       29197
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 23450,
@@ -29866,7 +30346,13 @@
     "y": 996.04,
     "connections": [
       3896
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 23710,
@@ -30190,7 +30676,13 @@
     "y": -1869.592897,
     "connections": [
       8423
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 23939,
@@ -31446,7 +31938,13 @@
     "orbit": 2,
     "orbit_index": 19,
     "x": -8762.949984,
-    "y": -3461.458685
+    "y": -3461.458685,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 24948,
@@ -31512,7 +32010,13 @@
     "y": -9784.12438,
     "connections": [
       54297
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 25011,
@@ -31615,7 +32119,13 @@
     "connections": [
       4681,
       48828
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 25070,
@@ -31920,7 +32430,13 @@
     "y": -5876.96358,
     "connections": [
       34990
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 25361,
@@ -32204,7 +32720,13 @@
       37694,
       44560,
       64083
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 25586,
@@ -32367,7 +32889,13 @@
     "y": -9697.42,
     "connections": [
       49258
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 25683,
@@ -33079,7 +33607,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -4208.73,
-    "y": -7738.4
+    "y": -7738.4,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 26236,
@@ -33200,7 +33734,13 @@
     "y": -4827.037103,
     "connections": [
       23436
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 26308,
@@ -34209,7 +34749,13 @@
     "connections": [
       13691,
       33423
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 27108,
@@ -34437,7 +34983,13 @@
     "y": -1419.757335,
     "connections": [
       30781
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 27417,
@@ -34633,7 +35185,13 @@
     "y": -11526.705931,
     "connections": [
       12940
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 27581,
@@ -35451,7 +36009,13 @@
     "connections": [
       10636,
       56174
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 28214,
@@ -35486,7 +36050,13 @@
     "y": -384.586014,
     "connections": [
       6100
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 28229,
@@ -35520,7 +36090,14 @@
     "orbit_index": 5,
     "x": 11980.562942,
     "y": 10695.247197,
-    "ascendancy_id": "Huntress2"
+    "ascendancy_id": "Huntress2",
+    "unlock_constraint": {
+      "nodes": [
+        41401,
+        62743,
+        46070
+      ]
+    }
   },
   {
     "skill": 28258,
@@ -35858,7 +36435,13 @@
     "connections": [
       27216,
       56890
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 28492,
@@ -36139,7 +36722,13 @@
     "y": -1731.442376,
     "connections": [
       479
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 28774,
@@ -36602,7 +37191,13 @@
     "y": -1296.697624,
     "connections": [
       32353
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 29133,
@@ -36673,7 +37268,13 @@
     "y": -5288.996198,
     "connections": [
       11428
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 29240,
@@ -37209,7 +37810,13 @@
     "orbit": 2,
     "orbit_index": 6,
     "x": -6501.73,
-    "y": -1193.34
+    "y": -1193.34,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 29695,
@@ -37465,7 +38072,13 @@
     "y": -5991.297624,
     "connections": [
       61113
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 29990,
@@ -38488,7 +39101,13 @@
     "y": -1193.34,
     "connections": [
       63772
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 30808,
@@ -39337,7 +39956,13 @@
     "y": -7868.598817,
     "connections": [
       49929
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 31566,
@@ -39573,7 +40198,13 @@
     "orbit": 6,
     "orbit_index": 9,
     "x": -9334.677663,
-    "y": -7893.502337
+    "y": -7893.502337,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 31763,
@@ -41171,7 +41802,13 @@
     "y": -1657.981315,
     "connections": [
       8107
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 32771,
@@ -41783,7 +42420,13 @@
     "connections": [
       38707,
       55033
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 33209,
@@ -42187,7 +42830,13 @@
     "y": -6143.922618,
     "connections": [
       65192
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 33445,
@@ -43113,7 +43762,13 @@
     "y": -7883.678817,
     "connections": [
       36408
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 34168,
@@ -43149,7 +43804,13 @@
     "y": -3334.46,
     "connections": [
       45422
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 34187,
@@ -43702,7 +44363,13 @@
     "y": -6436.02,
     "connections": [
       18972
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 34493,
@@ -44046,7 +44713,13 @@
     "y": -3555.51,
     "connections": [
       52115
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 34782,
@@ -44329,7 +45002,13 @@
     "orbit": 2,
     "orbit_index": 6,
     "x": -8991.31,
-    "y": -1318.15
+    "y": -1318.15,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 34968,
@@ -44374,7 +45053,13 @@
     "y": -5893.0,
     "connections": [
       6088
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 35011,
@@ -44797,7 +45482,13 @@
     "y": 604.743885,
     "connections": [
       23708
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 35404,
@@ -45257,7 +45948,13 @@
     "y": -2155.066198,
     "connections": [
       7258
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 35739,
@@ -45308,7 +46005,13 @@
     "orbit": 2,
     "orbit_index": 10,
     "x": -2350.32,
-    "y": -2552.363885
+    "y": -2552.363885,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 35755,
@@ -45718,7 +46421,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -11843.45,
-    "y": 816.54
+    "y": 816.54,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 35985,
@@ -45770,7 +46479,13 @@
     "y": -4980.132508,
     "connections": [
       44309
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 36027,
@@ -45972,7 +46687,13 @@
     "y": -6473.07438,
     "connections": [
       27096
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 36217,
@@ -46306,7 +47027,13 @@
     "y": -7972.37,
     "connections": [
       31757
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 36449,
@@ -48001,7 +48728,13 @@
     "y": -11535.573802,
     "connections": [
       12940
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 37695,
@@ -48111,7 +48844,13 @@
     "connections": [
       13108,
       24929
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 37780,
@@ -48271,7 +49010,13 @@
     "y": -1193.34,
     "connections": [
       29663
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 37905,
@@ -49079,7 +49824,13 @@
     "orbit": 7,
     "orbit_index": 13,
     "x": -3767.62358,
-    "y": -581.232618
+    "y": -581.232618,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 38479,
@@ -49500,7 +50251,13 @@
     "y": -3011.0,
     "connections": [
       20391
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 38703,
@@ -50013,7 +50770,13 @@
     "y": -3222.861299,
     "connections": [
       13228
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 39116,
@@ -50938,7 +51701,13 @@
     "y": -1915.54,
     "connections": [
       4663
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 39881,
@@ -51638,7 +52407,13 @@
     "y": -6334.17,
     "connections": [
       55375
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 40550,
@@ -53516,7 +54291,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": 9257.6,
-    "y": -2702.28
+    "y": -2702.28,
+    "unlock_constraint": {
+      "nodes": [
+        59657,
+        49356
+      ]
+    }
   },
   {
     "skill": 42103,
@@ -54265,7 +55046,13 @@
     "y": 533.766817,
     "connections": [
       58197
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 42781,
@@ -55013,7 +55800,13 @@
     "y": -3723.01,
     "connections": [
       57596
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 43338,
@@ -55085,7 +55878,13 @@
     "y": -5712.79,
     "connections": [
       64139
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 43396,
@@ -55278,7 +56077,13 @@
     "connections": [
       39102,
       54289
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 43507,
@@ -55609,7 +56414,13 @@
     "y": -10190.42,
     "connections": [
       24993
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 43736,
@@ -56352,7 +57163,13 @@
     "y": -5053.30911,
     "connections": [
       44485
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 44316,
@@ -56640,7 +57457,13 @@
     "y": -6979.37,
     "connections": [
       21809
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 44453,
@@ -56727,7 +57550,13 @@
     "y": -5112.814245,
     "connections": [
       7553
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 44487,
@@ -56871,7 +57700,13 @@
     "y": -11520.09,
     "connections": [
       12940
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 44563,
@@ -57771,7 +58606,13 @@
     "y": -983.65,
     "connections": [
       21218
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 45227,
@@ -58196,7 +59037,13 @@
     "connections": [
       13691,
       59908
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 45422,
@@ -58211,7 +59058,13 @@
     "orbit": 7,
     "orbit_index": 2,
     "x": -4913.98,
-    "y": -3551.832376
+    "y": -3551.832376,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 45481,
@@ -59049,7 +59902,13 @@
     "y": -5974.0,
     "connections": [
       6088
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 46070,
@@ -61044,7 +61903,13 @@
     "y": -870.73,
     "connections": [
       57002
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 47635,
@@ -61512,7 +62377,13 @@
     "y": -683.383885,
     "connections": [
       60014
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 48103,
@@ -61619,7 +62490,13 @@
     "y": -3182.649228,
     "connections": [
       37778
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 48171,
@@ -62407,7 +63284,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -4230.17,
-    "y": -789.73
+    "y": -789.73,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 48773,
@@ -62497,7 +63380,13 @@
     "y": -7819.4,
     "connections": [
       34840
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 48833,
@@ -62617,7 +63506,13 @@
     "y": -476.280772,
     "connections": [
       61367
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 48974,
@@ -62812,7 +63707,13 @@
     "orbit": 4,
     "orbit_index": 66,
     "x": -5914.46,
-    "y": -4607.470524
+    "y": -4607.470524,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 49165,
@@ -63010,7 +63911,13 @@
     "y": -10124.370524,
     "connections": [
       49769
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 49259,
@@ -63425,7 +64332,13 @@
     "y": -3576.009984,
     "connections": [
       13108
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 49545,
@@ -63676,7 +64589,13 @@
     "y": -9811.971299,
     "connections": [
       21374
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 49799,
@@ -63727,7 +64646,13 @@
     "y": -7957.29,
     "connections": [
       31757
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 49938,
@@ -64035,7 +64960,13 @@
     "y": 647.924069,
     "connections": [
       58197
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 50146,
@@ -64092,7 +65023,13 @@
     "y": -6054.447382,
     "connections": [
       46069
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 50192,
@@ -65037,7 +65974,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -2431.32,
-    "y": -2692.66
+    "y": -2692.66,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 50912,
@@ -65594,7 +66537,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -4109.59,
-    "y": -3555.51
+    "y": -3555.51,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 51463,
@@ -65809,7 +66758,13 @@
     "connections": [
       11580,
       43324
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 51672,
@@ -66236,7 +67191,14 @@
     "connections": [
       9535,
       37434
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        50239,
+        9535,
+        61309
+      ]
+    }
   },
   {
     "skill": 51867,
@@ -66538,7 +67500,13 @@
     "y": -3717.51,
     "connections": [
       51454
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 52125,
@@ -67708,7 +68676,13 @@
     "y": -1825.41,
     "connections": [
       9414
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 53030,
@@ -68843,7 +69817,13 @@
     "connections": [
       9212,
       58368
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 53921,
@@ -69327,7 +70307,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -7915.44,
-    "y": -3108.31
+    "y": -3108.31,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 54297,
@@ -69346,7 +70332,13 @@
     "y": -9450.92,
     "connections": [
       25678
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 54311,
@@ -69419,7 +70411,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -4860.65,
-    "y": -5812.0
+    "y": -5812.0,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 54413,
@@ -70291,7 +71289,13 @@
     "y": -1177.853885,
     "connections": [
       17059
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 55041,
@@ -71665,7 +72669,13 @@
     "y": -4121.17,
     "connections": [
       14432
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 55909,
@@ -71906,7 +72916,13 @@
     "y": -4106.0,
     "connections": [
       59136
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 56104,
@@ -71991,7 +73007,13 @@
     "y": -3432.70438,
     "connections": [
       1887
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 56214,
@@ -72105,7 +73127,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -5140.8,
-    "y": 745.04
+    "y": 745.04,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 56325,
@@ -72344,7 +73372,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -2701.66,
-    "y": -4273.5
+    "y": -4273.5,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 56472,
@@ -72972,7 +74006,13 @@
     "y": -8469.612897,
     "connections": [
       12005
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 56893,
@@ -73233,7 +74273,13 @@
     "y": -649.433885,
     "connections": [
       48761
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 57021,
@@ -73323,7 +74369,13 @@
     "connections": [
       15842,
       19966
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 57088,
@@ -73472,7 +74524,13 @@
     "y": -9535.42,
     "connections": [
       1628
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 57204,
@@ -73624,7 +74682,13 @@
     "y": -9373.834848,
     "connections": [
       4621
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 57388,
@@ -73832,7 +74896,13 @@
     "y": -4046.633986,
     "connections": [
       13468
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 57608,
@@ -74448,7 +75518,13 @@
     "orbit": 0,
     "orbit_index": 0,
     "x": -12135.66,
-    "y": -1230.15
+    "y": -1230.15,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 58088,
@@ -74701,7 +75777,13 @@
     "y": 393.54,
     "connections": [
       35980
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 58198,
@@ -74847,7 +75929,13 @@
     "y": -6459.67,
     "connections": [
       40511
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 58379,
@@ -75575,7 +76663,13 @@
     "y": -223.767268,
     "connections": [
       28223
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 59053,
@@ -75697,7 +76791,13 @@
     "y": -4450.983802,
     "connections": [
       17729
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 59180,
@@ -76762,7 +77862,13 @@
     "y": -6709.955152,
     "connections": [
       36197
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 59909,
@@ -76872,7 +77978,13 @@
     "y": -698.18,
     "connections": [
       38474
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 60034,
@@ -77649,7 +78761,13 @@
     "y": -1143.44562,
     "connections": [
       17894
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 60735,
@@ -78080,7 +79198,13 @@
     "y": -5991.297624,
     "connections": [
       53910
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 61119,
@@ -78459,7 +79583,13 @@
     "y": -99.103885,
     "connections": [
       64239
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 61373,
@@ -78723,7 +79853,13 @@
     "y": -4427.02,
     "connections": [
       49153
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 61472,
@@ -79040,7 +80176,13 @@
     "y": -6737.061183,
     "connections": [
       44452
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 61834,
@@ -79360,7 +80502,13 @@
     "orbit": 7,
     "orbit_index": 2,
     "x": -2924.44,
-    "y": -6108.942376
+    "y": -6108.942376,
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 61976,
@@ -79397,7 +80545,13 @@
     "y": -4180.52,
     "connections": [
       61471
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 61983,
@@ -79926,7 +81080,13 @@
     "y": -870.73,
     "connections": [
       47633
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 62388,
@@ -80907,7 +82067,13 @@
     "y": -6149.489228,
     "connections": [
       6999
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 63182,
@@ -81000,7 +82166,13 @@
     "connections": [
       48160,
       49543
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 63246,
@@ -81706,7 +82878,13 @@
     "y": -1435.787382,
     "connections": [
       37888
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 63790,
@@ -82031,7 +83209,13 @@
     "y": -11535.573802,
     "connections": [
       12940
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 64119,
@@ -82066,7 +83250,13 @@
     "connections": [
       15842,
       22221
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 64140,
@@ -82155,7 +83345,13 @@
     "y": -197.471315,
     "connections": [
       2733
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 64240,
@@ -83378,7 +84574,13 @@
     "y": -6062.784848,
     "connections": [
       63170
-    ]
+    ],
+    "unlock_constraint": {
+      "nodes": [
+        5571
+      ],
+      "ascendancy": "Druid1"
+    }
   },
   {
     "skill": 65193,

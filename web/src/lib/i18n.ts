@@ -86,7 +86,7 @@ const DICT = {
   'tab.tree': { 'en-US': 'Tree', 'zh-TW': '天賦樹', 'zh-CN': '天赋树' },
   'tab.skills': { 'en-US': 'Skills', 'zh-TW': '技能', 'zh-CN': '技能' },
   'tab.items': { 'en-US': 'Items', 'zh-TW': '裝備', 'zh-CN': '装备' },
-  'tab.trade': { 'en-US': 'Trade', 'zh-TW': '市集', 'zh-CN': '市集' },
+  'tab.trade': { 'en-US': 'Upgrades', 'zh-TW': '提升', 'zh-CN': '提升' },
   'tab.calcs': { 'en-US': 'Calcs', 'zh-TW': '計算', 'zh-CN': '计算' },
   'tab.config': { 'en-US': 'Config', 'zh-TW': '配置', 'zh-CN': '配置' },
   'tab.notes': { 'en-US': 'Notes', 'zh-TW': '筆記', 'zh-CN': '笔记' },
@@ -219,8 +219,8 @@ const DICT = {
   'opt.infeasible': { 'en-US': 'constraint not met', 'zh-TW': '不滿足約束', 'zh-CN': '不满足约束' },
 
   // Trade 市集页（独立 Tab，PoB2 Trader 的对应物）
-  "trade.title": {"en-US": "Find your next upgrade", "zh-TW": "找到下一件升級", "zh-CN": "找到下一件升级"},
-  "trade.hint": {"en-US": "Choose a slot, goal and budget. See which affixes help your character, then browse matching items on the official market.", "zh-TW": "選位置、目標與預算，了解哪些詞條對角色有用，再到官方市集挑選商品。", "zh-CN": "选位置、目标与预算，了解哪些词条对角色有用，再到官方市集挑选商品。"},
+  "trade.title": {"en-US": "Plan your next upgrade", "zh-TW": "規劃下一步提升", "zh-CN": "规划下一步提升"},
+  "trade.hint": {"en-US": "Compare equipment, support combinations and passive paths under one goal. Check real changes before applying an upgrade.", "zh-TW": "以同一目標比較裝備、輔助組合與天賦路徑，確認實際變化後再套用。", "zh-CN": "以同一目标比较装备、辅助组合与天赋路径，确认实际变化后再应用。"},
   "trade.marketCoverage": { 'en-US': "Listings evaluated / market matches", 'zh-TW': "評估商品 / 市集匹配", 'zh-CN': "评估商品 / 市集匹配" },
   "trade.rejected": { 'en-US': "Unreadable items skipped", 'zh-TW': "略過無法解析商品", 'zh-CN': "跳过无法解析商品" },
   "trade.marketHint": { 'en-US': "Each search recalculates up to 20 live listings; weights shortlist candidates, not their final ranking. Gains use your selected skill and combat settings. Prices and availability can change.", 'zh-TW': "每次搜尋重算最多 20 件在售商品，權重只用於篩選。提升取決於主技能和戰鬥設定；價格與庫存可能變動。", 'zh-CN': "每次搜索重算最多 20 件在售商品，权重只用于筛选。提升取决于主技能和战斗设置；价格与库存可能变动。" },
@@ -230,7 +230,7 @@ const DICT = {
   "trade.scanEquipped": { 'en-US': "Search equipped slots", 'zh-TW': "搜尋已裝備位置", 'zh-CN': "搜索已装备位置" },
   "trade.overall": { 'en-US': "Best single purchases across searched slots", 'zh-TW': "已搜尋位置的單件升級排行", 'zh-CN': "已搜索位置的单件升级排行" },
   "trade.gems": { 'en-US': "Skill and support gems", 'zh-TW': "技能與輔助寶石", 'zh-CN': "技能与辅助宝石" },
-  "trade.gemHint": {"en-US": "Compare gem levels, quality and replacement supports for the selected skill. Open the market to check prices and choose a matching gem.", "zh-TW": "比較目前技能的寶石等級、品質與輔助替換方案，再到市集查看價格並挑選。", "zh-CN": "比较当前技能的宝石等级、品质与辅助替换方案，再到市集查看价格并挑选。"},
+  "trade.gemHint": {"en-US": "Ordinary supports are skill adjustments. Tradable skill and lineage gems have market links; open Skills to optimize the complete support setup.", "zh-TW": "普通輔助列為技能調整；可交易技能與血脈寶石提供市集連結。前往技能頁尋優完整輔助搭配。", "zh-CN": "普通辅助列为技能调整；可交易技能与血脉宝石提供市集链接。前往技能页寻优完整辅助搭配。"},
   "trade.gemGroup": { 'en-US': "Skill group", 'zh-TW': "技能組", 'zh-CN': "技能组" },
   "trade.gain": { 'en-US': "Goal gain", 'zh-TW': "目標提升", 'zh-CN': "目标提升" },
   "trade.tryOn": { 'en-US': "Try on", 'zh-TW': "試穿", 'zh-CN': "试穿" },

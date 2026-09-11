@@ -1,11 +1,11 @@
 import { formatApiError } from '../../api/error';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import type { VariantInput, VariantStats } from '../../api/types';
 import type { BuildSession, LibraryItem } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
 import { evaluateVariants, rankVariants } from '../../lib/optimize';
 import {
-  DEFAULT_OBJECTIVE_STATE,
   ObjectiveEditor,
   OptimizerProgress,
   OptimizerResults,
@@ -42,7 +42,7 @@ export function ItemOptimizer({
 }: Props) {
   const tt = bindT(lang);
   const [expanded, setExpanded] = useState(false);
-  const [objState, setObjState] = useState(DEFAULT_OBJECTIVE_STATE);
+  const { goal: objState, setGoal: setObjState } = useUpgradeGoal();
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [evaluated, setEvaluated] = useState<{
@@ -51,6 +51,9 @@ export function ItemOptimizer({
     variants: VariantInput[];
   } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => { abortRef.current?.abort(); setEvaluated(null); setProgress(null); }, [session.currentRequest, slot]);
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const variantDefs = useMemo<VariantInput[]>(() => {
     const defs: VariantInput[] = candidates
@@ -66,7 +69,7 @@ export function ItemOptimizer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidates, candidateNames, currentText, slot, lang]);
 
-  const objective = objectiveOf(objState);
+  const objective = objectiveOf(objState, evaluated?.baseline);
   const ranked = useMemo(
     () => (evaluated ? rankVariants(evaluated.results, objective) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,15 +88,13 @@ export function ItemOptimizer({
         request,
         variants: variantDefs,
         signal: controller.signal,
-        onProgress: (done, total) => setProgress({ done, total }),
+        onProgress: (done, total) => { if (!controller.signal.aborted) setProgress({ done, total }); },
       });
-      setEvaluated({ baseline, results, variants: variantDefs });
+      if (!controller.signal.aborted) setEvaluated({ baseline, results, variants: variantDefs });
     } catch (err: unknown) {
-      setEvaluated(null);
-      setError(formatApiError(err));
+      if (!controller.signal.aborted) { setEvaluated(null); setError(formatApiError(err)); }
     } finally {
-      setProgress(null);
-      abortRef.current = null;
+      if (abortRef.current === controller) { setProgress(null); abortRef.current = null; }
     }
   };
 

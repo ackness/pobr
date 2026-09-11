@@ -99,7 +99,7 @@ pub use skills::{
 };
 pub use tree::{
     PassiveAscendancy, PassiveClass, PassiveNodeDef, PassiveNodeKind, PassiveNodeVariant,
-    PassiveTreeMeta,
+    PassiveTreeMeta, PassiveUnlockConstraint,
 };
 pub use triggers::{
     MirageConfigDef, MirageConfigsDef, MirageSourceFilterDef, MirageTriggerDef, TriggerConfigDef,

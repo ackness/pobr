@@ -1,7 +1,8 @@
 import { situationalAffix, type SituationalAffix } from './tradeMechanics';
 import type { CalculateBuildRequest, VariantInput } from '../api/types';
 import { compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type EvaluateResult, type Objective } from './optimize';
-import { normalizeTradeLine, type WeightedStat } from './trade';
+import { normalizeTradeLine, tradeQueryWeights, type WeightedStat } from './trade';
+import { itemForAffixProbes, scoreEquipment, withoutTradeStat, type EquipmentScore } from './equipmentScore';
 
 export interface TradeBase {
   name: string;
@@ -22,7 +23,18 @@ export interface TradeAffix {
   stats: { id: string; line: string; value: number }[];
   domain?: string;
 }
-export interface TradeGem { skill_id: string; name: string; family: string; is_support: boolean; max_level: number; level_requirements?: number[] }
+export interface TradeGem {
+  skill_id: string; name: string; family: string; is_support: boolean; max_level: number; level_requirements?: number[];
+  is_lineage?: boolean;
+  skill_types?: string[];
+  require_skill_types?: string[];
+  exclude_skill_types?: string[];
+  add_skill_types?: string[];
+  support_gems_only?: boolean;
+  cannot_be_supported?: boolean;
+  compatibility_known?: boolean;
+  families?: string[];
+}
 export interface TradeCatalog { bases: TradeBase[]; mods: TradeAffix[]; gems?: TradeGem[] }
 
 export async function loadTradeCatalog(): Promise<TradeCatalog> {
@@ -121,6 +133,8 @@ export interface TradeOptimization {
   limited: boolean;
   minimumWeight: number;
   unsupported: string[];
+  currentItemScore: EquipmentScore | null;
+  scoreWarnings: ('partial-current-score' | 'nonlinear' | 'base-dependent' | 'constraints-not-in-query'|'unmodeled-candidates')[];
 }
 
 interface SearchOptions {
@@ -165,38 +179,49 @@ export async function optimizeTradeAffixes(options: SearchOptions): Promise<Trad
     }
     return results;
   };
-  const blank = combinationText(base, [], itemLevel);
   // Weight each mapped stat independently, even if it belongs to a hybrid affix.
   const probes = [...new Map(pool.flatMap(mod => mod.stats).map(stat => [stat.id, stat])).values()];
   if (probes.length + 1 >= cap) throw new Error('Affix pool exceeds the search budget');
   const currentText = slot.startsWith('Jewel@')
     ? request.jewels?.find(jewel => jewel.socket_node === Number(slot.slice(6)))?.text
     : (/^(Flask|Charm) /.test(slot) ? request.flasks : request.items)?.find(item => item.slot === slot)?.text;
-  // Probe both an empty item and the equipped item. Their average captures
-  // interactions with existing flat damage, speed and critical modifiers while
-  // retaining useful affixes that are already saturated on the current item.
-  const current = currentText?.split('\n').some(line => line.trim() === base.name) ? currentText : undefined;
+  const sameBase = currentText?.split('\n').some(line => line.trim() === base.name);
+  const quality = sameBase ? currentText?.split('\n').find(line => /^Quality:/.test(line.trim())) : undefined;
+  const blank = [combinationText(base, [], itemLevel), quality].filter(Boolean).join('\n');
+  const current = sameBase && currentText ? itemForAffixProbes(currentText) : undefined;
   const contexts = current ? [blank, current] : [blank];
   if ((probes.length + 1) * contexts.length >= cap) throw new Error('Affix pool exceeds the search budget');
-  const probeResults = await run(contexts.flatMap(text => [variant(text), ...probes.map(stat => variant(`${text}\n${stat.line}`))]));
+  // Existing stats are removed to measure their realized marginal contribution.
+  // Adding a second full roll instead would undervalue capped resistance/accuracy
+  // and can recommend replacing the very affix that keeps the build at its cap.
+  const removals = probes.map(stat => current ? withoutTradeStat(current, stat, probes) : undefined);
+  const probeResults = await run(contexts.flatMap((text, context) => [variant(text),
+    ...probes.map((stat, index) => variant(context === 1 && removals[index]
+      ? removals[index]!.text : `${text}\n${stat.line}`))]));
   signal?.throwIfAborted();
   const empty = probeResults.find(result => result.index === 0);
   if (!empty || empty.error) throw new Error(empty?.error ?? 'Unable to evaluate item base');
   const emptyScore = scoreOf(empty.stats, objective);
   const scale = 1000 / Math.max(Math.abs(scoreOf(baseline, objective)), Math.abs(emptyScore), 1);
-  const weighted = probes.flatMap((stat, index) => {
-    const gains = contexts.flatMap((_, context) => {
+  let nonlinear = false;
+  const weighted = tradeQueryWeights(probes.flatMap((stat, index) => {
+    const unitGains = contexts.flatMap((_, context) => {
       const offset = context * (probes.length + 1);
       const reference = probeResults.find(row => row.index === offset);
       const result = probeResults.find(row => row.index === offset + index + 1);
-      return !reference || reference.error || !result || result.error ? []
-        : [scoreOf(result.stats, objective) - scoreOf(reference.stats, objective)];
+      if (!reference || reference.error || !result || result.error) return [];
+      const removed = context === 1 ? removals[index] : undefined;
+      const value = removed?.value ?? stat.value;
+      if (!value) return [];
+      const delta = scoreOf(result.stats, objective) - scoreOf(reference.stats, objective);
+      return [(removed ? -delta : delta) / value];
     });
-    const gain = gains.reduce((sum, value) => sum + value, 0) / Math.max(gains.length, 1);
+    if (unitGains.length === 2 && Math.abs(unitGains[0] - unitGains[1]) > Math.max(...unitGains.map(Math.abs), 1e-9) * 0.25) nonlinear = true;
+    const gain = unitGains.reduce((sum, value) => sum + value, 0) / Math.max(unitGains.length, 1) * stat.value;
     if (!Number.isFinite(gain) || gain <= 0 || !stat.value) return [];
     return [{ ...stat, weight: gain / stat.value * scale, gain,
       gainPercent: gain / Math.max(Math.abs(scoreOf(baseline, objective)), 1) * 100 }];
-  }).sort((a, b) => b.weight * b.value - a.weight * a.value).slice(0, 32);
+  }).sort((a, b) => b.weight * b.value - a.weight * a.value));
   const situational = probes.flatMap((stat, index) => {
     if (weighted.some(weight => weight.id === stat.id)) return [];
     const result = probeResults.find(row => row.index === index + 1);
@@ -204,10 +229,22 @@ export async function optimizeTradeAffixes(options: SearchOptions): Promise<Trad
   });
   const unsupported = [...new Set(probeResults.filter(row => row.index % (probes.length + 1) === 0)
     .flatMap(row => row.unsupported ?? []))];
-  const minimumWeight = Math.max(0, (scoreOf(baseline, objective) - emptyScore) * scale * 0.5);
+  const currentItemScore = currentText ? scoreEquipment(currentText, weighted, pool.flatMap(mod => mod.stats)) : null;
+  // A same-query Sum is a comparable search threshold. A whole-build DPS delta
+  // is not in these units and the previous arbitrary 50% threshold admitted downgrades.
+  const minimumWeight = currentItemScore?.complete ? Math.max(0, Math.ceil((currentItemScore.score - 1e-9) * 1000) / 1000) : 0;
+  const scoreWarnings: TradeOptimization['scoreWarnings'] = [
+    ...(currentItemScore && !currentItemScore.complete ? ['partial-current-score' as const] : []),
+    ...(nonlinear ? ['nonlinear' as const] : []),
+    ...(base.category.startsWith('weapon.') || base.category.startsWith('armour.') || base.implicits.length
+      ? ['base-dependent' as const] : []),
+    ...(objective.constraints.length || objective.softMinimums?.length ? ['constraints-not-in-query' as const] : []),
+  ];
   if (options.combinations === false) return { baseline, weighted, evaluated, limited: false,
-    minimumWeight, combinations: [], unsupported, situational };
+    minimumWeight, combinations: [], unsupported, situational, currentItemScore, scoreWarnings };
 
+  const baselineUnsupported = new Set(unsupported);
+  let skippedUnmodeled = false;
   let beam: TradeCombination[] = [{ mods: [], text: blank, stats: empty.stats, score: emptyScore }];
   const all: TradeCombination[] = [];
   const seen = new Set<string>();
@@ -238,12 +275,14 @@ export async function optimizeTradeAffixes(options: SearchOptions): Promise<Trad
     if (candidates.length > allowance) limited = true;
     const selected = candidates.slice(0, Math.min(remaining, allowance));
     if (selected.length === 0) break;
-    const texts = selected.map(mods => combinationText(base, mods, itemLevel));
+    const texts = selected.map(mods => [combinationText(base, mods, itemLevel), quality].filter(Boolean).join('\n'));
     const results = await run(texts.map(variant));
-    const ranked = results.flatMap(result => result.error ? [] : [{
+    const ranked = results.flatMap(result => {
+      if (result.unsupported?.some(line => !baselineUnsupported.has(line))) { skippedUnmodeled = true; return []; }
+      return result.error || Object.values(result.stats).some(value => !Number.isFinite(value)) ? [] : [{
       mods: selected[result.index], text: texts[result.index], stats: result.stats,
       score: scoreOf(result.stats, objective),
-    }]).sort((a, b) => compareObjectiveStats(a.stats, b.stats, objective) || a.text.localeCompare(b.text));
+    }]; }).sort((a, b) => compareObjectiveStats(a.stats, b.stats, objective) || a.text.localeCompare(b.text));
     all.push(...ranked);
     // Retain every single affix so zero-gain singles can still form useful pairs.
     if (depth === 1) {
@@ -259,7 +298,8 @@ export async function optimizeTradeAffixes(options: SearchOptions): Promise<Trad
   }
   signal?.throwIfAborted();
   onProgress?.(evaluated, evaluated);
-  return { baseline, weighted, evaluated, limited,
+  if (skippedUnmodeled) scoreWarnings.push('unmodeled-candidates');
+  return { baseline, weighted, evaluated, limited, currentItemScore, scoreWarnings,
     minimumWeight, unsupported, situational,
     combinations: all.filter(entry => feasibleOf(entry.stats, objective))
       .sort((a, b) => compareObjectiveStats(a.stats, b.stats, objective) || a.text.localeCompare(b.text)).slice(0, 5) };

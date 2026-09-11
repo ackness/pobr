@@ -22,17 +22,23 @@ export interface ObjectiveState {
   cStat: string;
   cMin: string;
   cMax: string;
+  keepEhp?: boolean;
+  resistanceFirst?: boolean;
+  resistanceTarget?: number;
 }
 
 export const DEFAULT_OBJECTIVE_STATE: ObjectiveState = {
-  preset: 'dps',
+  preset: 'balanced',
   cStat: '',
   cMin: '',
   cMax: '',
+  keepEhp: true,
+  resistanceFirst: false,
+  resistanceTarget: 75,
 };
 
 /** 编辑态 → 打分目标。 */
-export function objectiveOf(state: ObjectiveState): Objective {
+export function objectiveOf(state: ObjectiveState, baseline?: Record<string, number>): Objective {
   const preset = OBJECTIVE_PRESETS.find((p) => p.id === state.preset) ?? OBJECTIVE_PRESETS[0];
   const constraints =
     state.cStat && (state.cMin !== '' || state.cMax !== '')
@@ -44,7 +50,13 @@ export function objectiveOf(state: ObjectiveState): Objective {
           },
         ]
       : [];
-  return { stat: preset.stat, per: preset.per, constraints };
+  if (state.preset === 'balanced' && state.keepEhp && baseline?.TotalEHP !== undefined) {
+    constraints.push({ stat: 'TotalEHP', min: baseline.TotalEHP });
+  }
+  return { stat: preset.stat, per: preset.per, secondaryStat: preset.secondaryStat, constraints,
+    softMinimums: state.resistanceFirst ? ['FireResist', 'ColdResist', 'LightningResist'].map(stat =>
+      ({ stat, min: state.resistanceTarget ?? 75 })) : [],
+  };
 }
 
 export function statLabel(id: string, lang: Lang): string {
@@ -60,6 +72,7 @@ function fmtNum(value: number): string {
 }
 
 interface EditorProps {
+  constraintsOnly?: boolean;
   value: ObjectiveState;
   onChange: (next: ObjectiveState) => void;
   lang: Lang;
@@ -67,10 +80,20 @@ interface EditorProps {
 }
 
 /** 目标预设 + 单条约束（属性 / 下限 / 上限）。 */
-export function ObjectiveEditor({ value, onChange, lang, disabled }: EditorProps) {
+export function ObjectiveEditor({ value, onChange, lang, disabled, constraintsOnly }: EditorProps) {
   const tt = bindT(lang);
   return (
     <>
+      {!constraintsOnly && <>
+      {value.preset === 'balanced' && <label className="opt-checkbox"><input type="checkbox" checked={value.keepEhp ?? true}
+        disabled={disabled} onChange={event => onChange({ ...value, keepEhp: event.target.checked })} />{tt('trade.keepEhp')}</label>}
+      <label className="opt-checkbox"><input type="checkbox" checked={value.resistanceFirst ?? false}
+        disabled={disabled} onChange={event => onChange({ ...value, resistanceFirst: event.target.checked })} />{tt('trade.resistanceFirst')}</label>
+      {value.resistanceFirst && <label>{tt('trade.resistanceTarget')}<input type="number" min={0} max={90}
+        value={value.resistanceTarget ?? 75} disabled={disabled} onChange={event => {
+          const next = Number(event.target.value);
+          if (Number.isFinite(next) && next >= 0 && next <= 90) onChange({ ...value, resistanceTarget: next });
+        }} /></label>}
       <label>
         {tt('opt.objective')}
         <AppSelect
@@ -81,6 +104,7 @@ export function ObjectiveEditor({ value, onChange, lang, disabled }: EditorProps
           ariaLabel={tt('opt.objective')}
         />
       </label>
+      </>}
       <label>
         {tt('opt.constraint')}
         <AppSelect

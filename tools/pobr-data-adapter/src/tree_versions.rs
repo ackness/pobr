@@ -25,7 +25,7 @@
 //! counterpart of GGG export's kind=mastery, verified against skill 259
 //! "Attack Mastery"); `isNotable` -> Notable; no flag -> Normal.
 
-use pobr_data::catalog::{PassiveNodeDef, PassiveNodeKind};
+use pobr_data::catalog::{PassiveNodeDef, PassiveNodeKind, PassiveUnlockConstraint};
 
 use crate::tree_coords::{balanced_block, block_offset, strip_nested_blocks};
 use crate::tree_variants::{BlockKey, iter_keyed_blocks, parse_string_array, string_field};
@@ -115,6 +115,7 @@ fn parse_all_nodes(lua: &str) -> Result<Vec<PassiveNodeDef>, String> {
             // `<Class><N>` id) — the consumption side only checks
             // `is_some()` to determine "belongs to an ascendancy", which is semantically equivalent.
             ascendancy_id: string_field(node_block, "ascendancyName="),
+            unlock_constraint: parse_unlock_constraint(node_block),
             variants: Vec::new(),
             apply_to_armour: false,
         });
@@ -124,4 +125,59 @@ fn parse_all_nodes(lua: &str) -> Result<Vec<PassiveNodeDef>, String> {
     }
     out.sort_by_key(|n| n.skill);
     Ok(out)
+}
+
+/// Vendor emits numeric prerequisite arrays as one `[index]=skill` entry per line.
+fn parse_unlock_constraint(block: &str) -> Option<PassiveUnlockConstraint> {
+    let constraint = balanced_block(block, "unlockConstraint={")?;
+    let nodes = balanced_block(constraint, "nodes={")
+        .map(|block| {
+            block
+                .lines()
+                .filter_map(|line| {
+                    let (key, value) = line.trim().split_once('=')?;
+                    key.strip_prefix('[')?
+                        .strip_suffix(']')?
+                        .parse::<u32>()
+                        .ok()?;
+                    value.trim().trim_end_matches(',').parse::<u32>().ok()
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    Some(PassiveUnlockConstraint {
+        nodes,
+        ascendancy: string_field(constraint, "ascendancy="),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn preserves_oracle_unlock_requirements_in_vendor_tree() {
+        let lua = r#"
+	groups={}
+	nodes={
+	[479]={
+		name="Hidden Forms",
+		isNotable=true,
+		unlockConstraint={
+			ascendancy="Oracle",
+			nodes={
+				[1]=5571,
+				[2]=12345
+			}
+		}
+	},
+	[480]={name="Ordinary Node"}
+}
+"#;
+        let nodes = parse_all_nodes(lua).unwrap();
+        let constraint = nodes[0].unlock_constraint.as_ref().unwrap();
+        assert_eq!(constraint.ascendancy.as_deref(), Some("Oracle"));
+        assert_eq!(constraint.nodes, vec![5571, 12345]);
+        assert!(nodes[1].unlock_constraint.is_none());
+    }
 }

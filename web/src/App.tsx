@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { UpgradeGoalProvider } from './hooks/useUpgradeGoal';
 import { useBuildSession } from './hooks/useBuildSession';
 import { t, type Lang } from './lib/i18n';
 import { TAB_IDS, TopBar, type TabId } from './components/shell/TopBar';
@@ -13,9 +14,16 @@ import { ConfigPanel } from './components/config/ConfigPanel';
 import './components/shell/shell.css';
 
 export default function App() {
+  return <UpgradeGoalProvider><BuildApp /></UpgradeGoalProvider>;
+}
+
+function BuildApp() {
   const session = useBuildSession();
   const mainRef = useRef<HTMLElement>(null);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [upgradeFocus, setUpgradeFocus] = useState<{slot:string; nonce:number} | undefined>();
+  const [skillFocus, setSkillFocus] = useState<{group:number; nonce:number} | undefined>();
+  const [treeFocus, setTreeFocus] = useState<{nonce:number} | undefined>();
   // 界面偏好（页签/语言）实时持久化到浏览器。
   const [tab, setTabState] = useState<TabId>(() => {
     // 兜底：历史存的页签可能已下线（如原独立笔记页）。
@@ -129,10 +137,12 @@ export default function App() {
             </div>
           )}
           {tab === 'build' && <BuildPanel session={session} lang={lang} onImported={() => setTab('items')} />}
-          {tab === 'tree' && <TreePanel session={session} lang={lang} />}
-          {tab === 'skills' && <SkillsPanel session={session} lang={lang} />}
-          {tab === 'items' && <ItemsPanel session={session} lang={lang} />}
-          {tab === 'trade' && <TradePanel session={session} lang={lang} />}
+          {tab === 'tree' && <TreePanel session={session} lang={lang} focusPlanner={treeFocus} />}
+          {tab === 'skills' && <SkillsPanel session={session} lang={lang} focusOptimizer={skillFocus} />}
+          {tab === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({slot, nonce:Date.now()}); setTab('trade'); }} />}
+          {tab === 'trade' && <TradePanel session={session} lang={lang} focus={upgradeFocus}
+            onSkills={group => { setSkillFocus({group, nonce:Date.now()}); setTab('skills'); }}
+            onTree={() => { setTreeFocus({nonce:Date.now()}); setTab('tree'); }} />}
           {tab === 'calcs' && (
             <CalcsPanel
               session={session}

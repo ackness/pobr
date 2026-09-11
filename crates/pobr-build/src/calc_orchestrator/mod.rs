@@ -1548,6 +1548,7 @@ mod ring3_tests {
             y: None,
             connections: vec![],
             ascendancy_id: Some("Huntress3".into()),
+            unlock_constraint: None,
             variants: vec![],
         };
         let mut passive_nodes = HashMap::new();
@@ -1860,6 +1861,7 @@ mod tests {
             y: None,
             connections: vec![],
             ascendancy_id: None,
+            unlock_constraint: None,
             variants: vec![],
         };
         let mut passive_nodes = HashMap::new();
@@ -1911,6 +1913,7 @@ mod tests {
             y: Some(y),
             connections: vec![],
             ascendancy_id: None,
+            unlock_constraint: None,
             variants: vec![],
         }
     }
@@ -2756,6 +2759,7 @@ mod tests {
             y: None,
             connections: vec![],
             ascendancy_id: None,
+            unlock_constraint: None,
             variants: vec![],
         };
         let mut passive_nodes = HashMap::new();

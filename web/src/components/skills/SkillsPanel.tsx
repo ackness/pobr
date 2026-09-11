@@ -9,11 +9,15 @@ import { GemPicker, gemDisplayName } from './GemPicker';
 import { GemOptimizer } from './GemOptimizer';
 import { NoteEditor } from '../shared/NoteEditor';
 import { AppSelect } from '../shared/AppSelect';
+import { loadTradeCatalog } from '../../lib/tradeOptimizer';
+import { eligibleSupports, lineageAvailable, supportSetCompatible, usableSupportLevel, type SupportMetadata } from '../../lib/supportOptimizer';
+import { supportText } from '../../lib/supportI18n';
 import './skills.css';
 
 interface Props {
   session: BuildSession;
   lang: Lang;
+  focusOptimizer?: { group: number; nonce: number };
 }
 
 /** `ExplosiveGrenadePlayer` → `Explosive Grenade`（目录查不到时的展示名退化）。 */
@@ -24,19 +28,27 @@ export function prettySkillId(id: string): string {
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2');
 }
 
-export function SkillsPanel({ session, lang }: Props) {
+export function SkillsPanel({ session, lang, focusOptimizer }: Props) {
   const tt = bindT(lang);
   const [catalog, setCatalog] = useState<GemCatalogEntry[]>([]);
+  const [tradeGems, setTradeGems] = useState<SupportMetadata[]>([]);
+  const [catalogError, setCatalogError] = useState(false);
   useEffect(() => {
-    getBackend()
-      .then((b) => b.gemCatalog())
-      .then(setCatalog)
-      .catch(() => setCatalog([]));
+    let active = true;
+    Promise.all([getBackend().then(backend => backend.gemCatalog()), loadTradeCatalog()])
+      .then(([entries, trade]) => {
+        if (!active) return;
+        const metadata = new Map(trade.gems?.map(gem => [gem.skill_id, gem as SupportMetadata]));
+        setTradeGems(trade.gems ?? []);
+        setCatalog(entries.map(entry => ({ ...entry, is_lineage: metadata.get(entry.skill_id)?.is_lineage ?? entry.is_lineage })));
+      }).catch(() => { if (active) setCatalogError(true); });
+    return () => { active = false; };
   }, []);
 
   const byId = useMemo(() => new Map(catalog.map((e) => [e.skill_id, e])), [catalog]);
   const actives = useMemo(() => catalog.filter((e) => !e.is_support), [catalog]);
   const supports = useMemo(() => catalog.filter((e) => e.is_support), [catalog]);
+  const tradeById = useMemo(() => new Map(tradeGems.map(gem => [gem.skill_id, gem])), [tradeGems]);
   const gemName = (skillId: string) => {
     const entry = byId.get(skillId);
     return entry ? gemDisplayName(entry, lang) : prettySkillId(skillId);
@@ -46,6 +58,10 @@ export function SkillsPanel({ session, lang }: Props) {
   const mainIndex = session.calcParams.main_socket_group ?? session.build?.main_socket_group ?? 0;
   // 手风琴：同一时刻只展开一个组编辑，其余收成单行摘要。
   const [openIdx, setOpenIdx] = useState<number | null>(null);
+  useEffect(() => {
+    if (!focusOptimizer) return;
+    setOpenIdx(focusOptimizer.group);
+  }, [focusOptimizer]);
 
   const updateGroup = (idx: number, patch: Partial<SocketGroupInput>) => {
     session.setSocketGroups(groups.map((g, i) => (i === idx ? { ...g, ...patch } : g)));
@@ -72,6 +88,8 @@ export function SkillsPanel({ session, lang }: Props) {
         />
 
       </div>
+      {catalogError && <p className="opt-error">{supportText(lang, 'catalogError')}</p>}
+      {!catalogError && !catalog.length && <p className="skills-hint">{supportText(lang, 'loading')}</p>}
       {groups.length === 0 && <p className="skills-hint">{tt('skills.empty')}</p>}
       <SkillSets session={session} lang={lang} />
       <div className="skill-groups">
@@ -79,6 +97,12 @@ export function SkillsPanel({ session, lang }: Props) {
           const isMain = idx === mainIndex;
           const isOpen = idx === openIdx;
           const [active, ...supportGems] = group.gems;
+          const currentSupports = group.gems.filter(gem => tradeById.get(gem.skill_id)?.is_support);
+          const eligibleIds = new Set((isOpen ? eligibleSupports(group, tradeGems, session.character?.level ?? 1).gems : [])
+            .filter(gem => lineageAvailable(gem, groups, idx) && supportSetCompatible(group, [...currentSupports,
+              { skill_id: gem.skill_id, level: usableSupportLevel(gem, session.character?.level ?? 1), quality: 0 }], tradeGems))
+            .map(gem => gem.skill_id));
+          const availableSupports = supports.filter(gem => eligibleIds.has(gem.skill_id));
           return (
             <div
               key={idx}
@@ -117,7 +141,7 @@ export function SkillsPanel({ session, lang }: Props) {
                   )}
                   {!isOpen && supportGems.length > 0 && (
                     <span className="skill-group-supports">
-                      {supportGems.map((g) => gemName(g.skill_id)).join(' · ')}
+                      {supportGems.map((g) => `${gemName(g.skill_id)}${byId.get(g.skill_id)?.is_lineage ? ` [${tt('picker.lineage')}]` : ''}`).join(' · ')}
                     </span>
                   )}
                 </button>
@@ -153,7 +177,9 @@ export function SkillsPanel({ session, lang }: Props) {
               <ul className="skill-gems">
                 {group.gems.map((gem, gemIdx) => (
                   <li key={gemIdx} className={`skill-gem${gemIdx === 0 ? ' is-active' : ''}`}>
-                    <span className="gem-name">{gemName(gem.skill_id)}</span>
+                    <span className="gem-name">{gemName(gem.skill_id)}
+                      {byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
+                    </span>
                     <span className="gem-controls">
                       <input
                         type="number"
@@ -204,13 +230,14 @@ export function SkillsPanel({ session, lang }: Props) {
               {isOpen && (
                 <div className="skill-group-picker">
                   <GemPicker
-                    entries={supports}
+                    entries={availableSupports}
                     placeholder={tt('skills.addSupport')}
-                    disabled={session.busy || catalog.length === 0}
+                    disabled={session.busy || catalog.length === 0 || currentSupports.length >= 5}
                     lang={lang}
                     onPick={(skillId) =>
                       updateGroup(idx, {
-                        gems: [...group.gems, { skill_id: skillId, level: 20, quality: 0 }],
+                        gems: [...group.gems, { skill_id: skillId,
+                          level: usableSupportLevel(tradeById.get(skillId)!, session.character?.level ?? 1), quality: 0 }],
                       })
                     }
                   />
@@ -221,8 +248,9 @@ export function SkillsPanel({ session, lang }: Props) {
                   session={session}
                   lang={lang}
                   groupIndex={idx}
-                  supports={supports}
+                  catalog={tradeGems}
                   gemName={gemName}
+                  focusNonce={focusOptimizer?.group === idx ? focusOptimizer.nonce : undefined}
                 />
               )}
               {isOpen && (

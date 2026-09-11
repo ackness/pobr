@@ -116,6 +116,7 @@ fn parse_missing_notables(
             // `connections={}` is empty), so zero topology participation.
             connections: Vec::new(),
             ascendancy_id: None,
+            unlock_constraint: None,
             variants: Vec::new(),
             apply_to_armour: false,
         });

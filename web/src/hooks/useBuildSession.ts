@@ -68,6 +68,7 @@ interface BuildState {
 
 export interface BuildSession {
   activeWeaponSet: 1 | 2;
+  weaponSwap?: WeaponSwap | null;
   setWeaponSet: (set: 1 | 2) => void;
   bootMessage: string | null;
   bootError: string | null;
@@ -116,7 +117,7 @@ export interface BuildSession {
   /** 点选加点/取消；属性小点加点时带三选一。 */
   toggleNode: (skill: number, choice?: AttributeChoice) => void;
   /** 整体替换加点集合（树寻路一次点亮/熄灭整条路径）。 */
-  setAllocatedNodes: (skills: number[]) => void;
+  setAllocatedNodes: (skills: number[], choices?: Record<string, AttributeChoice>) => void;
   /** 整表替换属性三选一（批量调配 / 快捷键改单点）。 */
   setAttributeChoices: (choices: Record<string, AttributeChoice>) => void;
   /** 当前完整计算请求（对比预览用：克隆后改一处再算一次）。 */
@@ -748,20 +749,16 @@ export function useBuildSession(): BuildSession {
     [apply, state],
   );
 
-  /**
-   * 整体替换加点集合（树寻路：一次点亮/熄灭一整条路径）。
-   *
-   * 不再加点的节点连带清掉其属性小点三选一；仍在集合内的保持原选择。属性小点
-   * 本身不在这里定选择——路径穿过时先点亮、choice 留空（引擎语义＝无贡献），
-   * 比例交给 TreePanel 已有的批量调配面板。
+  /** Apply a complete passive plan and travel-attribute choices atomically.
+   * Retained nodes keep their choices; refunded nodes lose theirs.
    */
   const setAllocatedNodes = useCallback(
-    (skills: number[]) => {
+    (skills: number[], choices?: Record<string, AttributeChoice>) => {
       if (!state) return;
       const allocatedNodes = [...new Set(skills)];
       const kept = new Set(allocatedNodes);
       const attributeChoices = Object.fromEntries(
-        Object.entries(state.attributeChoices).filter(([skill]) => kept.has(Number(skill))),
+        Object.entries({ ...state.attributeChoices, ...choices }).filter(([skill]) => kept.has(Number(skill))),
       );
       apply({ ...state, allocatedNodes, attributeChoices });
     },
@@ -971,6 +968,7 @@ export function useBuildSession(): BuildSession {
 
   return {
     activeWeaponSet: state?.weaponSwap?.active ?? 1,
+    weaponSwap: state?.weaponSwap,
     setWeaponSet,
     bootMessage,
     bootError,

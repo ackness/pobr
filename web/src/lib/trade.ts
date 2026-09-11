@@ -55,6 +55,17 @@ export interface WeightedStat {
   value: number;
 }
 
+/** Keep the displayed reference and the official query on exactly the same scale. */
+export function tradeQueryWeights<T extends WeightedStat>(weighted: readonly T[]): T[] {
+  const seen = new Set<string>();
+  return weighted.flatMap(stat => {
+    const weight = Math.round(stat.weight * 1000) / 1000;
+    if (!Number.isFinite(weight) || weight === 0 || seen.has(stat.id)) return [];
+    seen.add(stat.id);
+    return [{ ...stat, weight }];
+  }).slice(0, 32);
+}
+
 /** 服务器：国际服 / 国服（腾讯）。路径结构相同，仅主机名不同；stat id 通用。 */
 export type TradeRealm = 'intl' | 'cn';
 
@@ -108,14 +119,15 @@ export interface TradeQueryOptions {
 /** CN's instant-buy market includes listings whose owners are offline. */
 export function buildTradeQuery(weighted: WeightedStat[], options: TradeQueryOptions) {
   const { category, realm = 'intl', price, maxLevel } = options;
+  const weights = tradeQueryWeights(weighted);
   if (!category) throw new Error('Select an item category before searching');
   return {
     query: {
       status: { option: realm === 'cn' ? 'any' : 'online' },
-      stats: [...(weighted.length ? [{
+      stats: [...(weights.length ? [{
         type: 'weight',
         ...(options.minimumWeight && options.minimumWeight > 0 ? { value: { min: Math.round(options.minimumWeight * 1000) / 1000 } } : {}),
-        filters: weighted.map(w => ({ id: w.id, value: { weight: Math.round(w.weight * 1000) / 1000 } })),
+        filters: weights.map(w => ({ id: w.id, value: { weight: w.weight } })),
       }] : [{ type: 'and', filters: [] }]), ...(options.requiredStats?.length ? [{ type: 'and', filters: [...new Set(options.requiredStats)].map(id => ({ id })) }] : [])],
       filters: {
         type_filters: { filters: {
@@ -128,7 +140,7 @@ export function buildTradeQuery(weighted: WeightedStat[], options: TradeQueryOpt
         ...(maxLevel ? { req_filters: { filters: { lvl: { max: maxLevel } } } } : {}),
       },
     },
-    sort: weighted.length ? { 'statgroup.0': 'desc' } : { price: 'asc' },
+    sort: weights.length ? { 'statgroup.0': 'desc' } : { price: 'asc' },
   };
 }
 
@@ -139,7 +151,6 @@ export function buildTradeUrl(
   options: TradeQueryOptions,
 ): string {
   const { realm = 'intl' } = options;
-  // A broad link omits the score threshold so useful combinations remain visible.
   const query = { ...buildTradeQuery(weighted, options), engine: 'new' };
   return `${REALM_HOSTS[realm]}/trade2/search/poe2/${encodeURIComponent(
     league,
