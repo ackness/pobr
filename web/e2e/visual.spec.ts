@@ -16,7 +16,7 @@ for (const width of BREAKPOINTS) {
     });
     for (const [tab, selector] of [
       ['Build', '.build-page'], ['Items', '.paper-doll'], ['Skills', '.skills-toolbar'],
-      ['Calcs', '.calcs-page'], ['Config', '.config-section-header'], ['Tree', '.tree-canvas svg'], ['Trade', '.trade-setup'],
+      ['Calcs', '.calcs-page'], ['Config', '.config-section-header'], ['Tree', '.tree-canvas svg'], ['Upgrades', '.trade-setup'],
     ]) {
       await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: tab, exact: true }).click();
       await expect(page.locator(selector).first()).toBeVisible();

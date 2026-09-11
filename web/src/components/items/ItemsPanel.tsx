@@ -23,6 +23,7 @@ import { ItemOptimizer } from './ItemOptimizer';
 import './items.css';
 
 interface Props {
+  onUpgrade?: (slot:string) => void;
   session: BuildSession;
   lang: Lang;
 }
@@ -159,7 +160,7 @@ const UTILITY_SLOTS = ['Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3'];
 const isUtilitySlot = (slot: string) => slot.startsWith('Flask') || slot.startsWith('Charm');
 
 /** 装备页：PoB2 式人形槽位布局；点槽位在下方编辑 PoB 文本，保存即重算。 */
-export function ItemsPanel({ session, lang }: Props) {
+export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   const tt = bindT(lang);
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -344,6 +345,7 @@ export function ItemsPanel({ session, lang }: Props) {
     <section className="ui-page items-page" aria-labelledby="items-heading">
       <PageHeader id="items-heading" title={tt('items.title')} description={tt('ui.itemsHint')}>
         <WeaponSetControl session={session} lang={lang} />
+        {onUpgrade && <button onClick={() => onUpgrade(selected ?? "weapon1")}>{tt("trade.findBetter")} ↗</button>}
       </PageHeader>
       <p className="weapon-set-hint">{tt('weapons.hint')}</p>
       <div className="items-workspace">

@@ -463,6 +463,7 @@ export interface PassiveNode {
   y?: number;
   connections?: number[];
   ascendancy_id?: string;
+  unlock_constraint?: { nodes: number[]; ascendancy?: string };
 }
 
 // ---------------------------------------------------------------------------

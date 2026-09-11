@@ -291,6 +291,7 @@ fn from_nodes_round_trips_with_positions() {
             y: None,
             connections: vec![],
             ascendancy_id: None,
+            unlock_constraint: None,
             variants: vec![],
         },
         PassiveNodeDef {
@@ -307,6 +308,7 @@ fn from_nodes_round_trips_with_positions() {
             y: None,
             connections: vec![],
             ascendancy_id: None,
+            unlock_constraint: None,
             variants: vec![],
         },
     ];

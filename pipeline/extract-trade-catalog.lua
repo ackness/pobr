@@ -91,7 +91,7 @@ for _, id in ipairs(sorted_keys(raw_mods)) do
             lines = lines, weights = weights, stats = stats, domain = mod.domain }
     end
 end
--- Load data constructors only; modifier behavior is irrelevant to level requirements.
+-- Load data constructors for level requirements and support compatibility.
 -- The same minimal enum stubs are used by sync-pob-catalog's skill extractors.
 SkillType = setmetatable({}, { __index = function(_, key) return key end })
 local function flag_enum()
@@ -117,7 +117,8 @@ for _, id in ipairs(sorted_keys(raw_gems)) do
     local gem = raw_gems[id]
     if gem.grantedEffectId and gem.name then
         local requirements = {}
-        local levels = (raw_skills[gem.grantedEffectId] or {}).levels or {}
+        local effect = raw_skills[gem.grantedEffectId]
+        local levels = (effect or {}).levels or {}
         local maximum_level = (gem.naturalMaxLevel or 20) + (gem.gemType == "Support" and 0 or 1)
         for level = 1, maximum_level do
             if not levels[level] or levels[level].levelRequirement == nil then break end
@@ -125,17 +126,36 @@ for _, id in ipairs(sorted_keys(raw_gems)) do
         end
         gems[#gems + 1] = { skill_id = gem.grantedEffectId, name = gem.name, family = gem.gemFamily or gem.name,
             is_support = gem.gemType == "Support", max_level = gem.naturalMaxLevel or 20,
-            level_requirements = requirements }
+            level_requirements = requirements,
+            is_lineage = (gem.tags or {}).lineage == true,
+            compatibility_known = effect ~= nil,
+            skill_types = sorted_keys((effect or {}).skillTypes or {}),
+            require_skill_types = (effect or {}).requireSkillTypes or {},
+            exclude_skill_types = (effect or {}).excludeSkillTypes or {},
+            add_skill_types = (effect or {}).addSkillTypes or {},
+            support_gems_only = (effect or {}).supportGemsOnly == true,
+            cannot_be_supported = (effect or {}).cannotBeSupported == true,
+            families = (effect or {}).gemFamily or { gem.gemFamily or gem.name } }
     end
 end
 local result = { _meta = { source = "PoB2 ModItem/ModJewel/ModFlask/ModCharm, Bases, Gems, Skills and TradeSiteStats",
     regen_command = "luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src <out>" },
     bases = bases, mods = mods, gems = gems }
+-- This vendored dkjson tests truthiness when honoring keyorder. Wrap false only
+-- for serialization so boolean fields keep deterministic order across processes.
+local json_false = setmetatable({}, { __tojson = function() return "false" end })
+for _, gem in ipairs(gems) do
+    for key, value in pairs(gem) do
+        if value == false then gem[key] = json_false end
+    end
+end
 local f = assert(io.open(output, "w"))
 f:write(json.encode(result, { indent = true, keyorder = {
     "_meta", "source", "regen_command", "bases", "mods", "gems", "id", "name", "category", "tags",
     "group", "kind", "level", "implicits", "domain", "affix_limit", "lines", "weights", "stats", "line", "value",
-    "skill_id", "family", "is_support", "max_level", "level_requirements",
+    "skill_id", "family", "is_support", "max_level", "level_requirements", "is_lineage",
+    "compatibility_known", "skill_types", "require_skill_types", "exclude_skill_types", "add_skill_types",
+    "support_gems_only", "cannot_be_supported", "families",
 } }), "\n")
 f:close()
 print(string.format("trade catalog: %d bases, %d affixes", #bases, #mods))

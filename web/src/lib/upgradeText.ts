@@ -1,0 +1,48 @@
+import type { Lang } from './i18n';
+
+const labels = {
+  equipment: ['Equipment upgrades', '裝備提升', '装备提升'],
+  equipmentHint: ['Rank positions and compare complete replacement items.', '比較全身提升空間與整件換裝收益。', '比较全身提升空间与整件换装收益。'],
+  supports: ['Skill and support setup', '技能與輔助搭配', '技能与辅助搭配'],
+  supportsHint: ['Automatically evaluate eligible supports and their combinations.', '自動篩選可用輔助，重算完整組合。', '自动筛选可用辅助，重算完整组合。'],
+  tree: ['Passive point planning', '天賦點規劃', '天赋点规划'],
+  treeHint: ['Compare connected paths, travel cost and respec options.', '比較連通路徑、過路點成本與洗點方案。', '比较连通路径、过路点成本与洗点方案。'],
+  open: ['Open planner', '開始規劃', '开始规划'],
+  currentScore: ['Current item · market Sum', '目前裝備 · 市集 Sum', '当前装备 · 市集 Sum'],
+  complete: ['Comparable stat score', '同口徑詞條分數', '同口径词条分数'],
+  partial: ['Partial score · no minimum filter', '部分詞條可比 · 不設最低分', '部分词条可比 · 不设最低分'],
+  noScore: ['No comparable item score', '尚無可比裝備分數', '尚无可比装备分数'],
+  scoreHint: ['Sum ranks weighted affixes, not DPS. The current item is replaced during calculation. Base stats, local modifiers and interactions can reverse market rankings; compare the complete item below.', 'Sum 是詞條加權分，不是 DPS。重算時會替換目前位置的裝備；基底、局部詞條與交互作用可能改變排名，請在下方核對整件物品。', 'Sum 是词条加权分，不是 DPS。重算时会替换当前位置的装备；基底、局部词条与交互作用可能改变排名，请在下方核对整件物品。'],
+  scoreDetails: ['Current item score breakdown', '目前裝備評分明細', '当前装备评分明细'],
+  marginal: ['Marginal estimate', '邊際估算', '边际估算'],
+  check: ['Compare before equipping', '換裝前核對', '换装前核对'],
+  checkHint: ['Paste a complete copied item to replace only this position and recalculate DPS, EHP and resistances. Position and level are checked; verify attribute and special equip requirements before buying. Apply only when ready.', '貼上完整物品文本，只替換此位置重算 DPS、EHP 與抗性。自動檢查位置與等級；購買前仍需核對屬性及特殊裝備需求。套用前保留目前構築。', '粘贴完整物品文本，只替换此位置重算 DPS、EHP 与抗性。自动检查位置与等级；购买前仍需核对属性及特殊装备需求。应用前保留当前构筑。'],
+  itemText: ['Complete item text', '完整物品文本', '完整物品文本'],
+  compare: ['Calculate replacement', '重算換裝', '重算换装'],
+  apply: ['Apply to build', '套用到構築', '应用到构筑'],
+  before: ['Current', '目前', '当前'],
+  after: ['Replacement', '換裝後', '换装后'],
+  change: ['Change', '變化', '变化'],
+  better: ['Improves the selected goal', '符合目前目標的提升', '符合当前目标的提升'],
+  worse: ['Does not improve the selected goal', '未改善目前目標', '未改善当前目标'],
+  dpsDrop: ['DPS decreases after this replacement', '此方案換裝後 DPS 下降', '此方案换装后 DPS 下降'],
+  constraintFail: ['Does not meet your survival / stat floor', '未滿足生存／屬性底線', '未满足生存／属性底线'],
+  incomplete: ['Some effects could not be calculated. Treat these values as incomplete.', '部分效果未能計算，以上數值並不完整。', '部分效果未能计算，以上数值并不完整。'],
+  invalidItem: ['Copy the full item, including its rarity and base. English and Chinese clipboard headers are supported.', '請複製包含稀有度與基底的完整物品；支援中英文物品標頭。', '请复制包含稀有度与基底的完整物品；支持中英文物品头部。'],
+  skippedUnmodeled: ['Reference items with newly unmodeled effects were excluded from recommendations.', '含新增未建模效果的參考物品已排除推薦。', '含新增未建模效果的参考物品已排除推荐。'],
+  marketConstraints: ['Survival floors and resistance priority apply to local calculations. The official market Sum does not enforce them; check the complete item before buying.', '生存底線與抗性優先用於本地計算，官方市集 Sum 不保證滿足。購買前請核對整件物品。', '生存底线与抗性优先用于本地计算，官方市集 Sum 不保证满足。购买前请核对整件物品。'],
+  unknownBase: ['Cannot verify the item base. Copy the complete item with its base name.', '無法確認基底，請複製包含基底名稱的完整物品。', '无法确认基底，请复制包含基底名称的完整物品。'],
+  wrongSlot: ['This item does not fit the selected position.', '此物品不適用於目前位置。', '此物品不适用于当前位置。'],
+  weaponType: ['This weapon family requires a coordinated skill/offhand change. Configure it on Equipment first.', '變更武器類型需要同時調整技能與副手，請先到裝備頁配置。', '变更武器类型需要同时调整技能与副手，请先到装备页配置。'],
+  itemLevel: ['Required level exceeds your character level.', '需求等級高於角色等級。', '需求等级高于角色等级。'],
+  unidentified: ['Identify the item before comparing its effects.', '請先鑑定物品再比較效果。', '请先鉴定物品再比较效果。'],
+  advancedGoal: ['Stat constraints', '屬性約束', '属性约束'],
+  adjustment: ['Skill adjustment · no market purchase', '技能調整 · 無需市集購買', '技能调整 · 无需市集购买'],
+  lineage: ['Lineage support', '血脈輔助', '血脉辅助'],
+  autoSupports: ['Find all usable supports', '自動尋找可用輔助', '自动寻找可用辅助'],
+  sharedGoal: ['Your goal follows equipment, skills and passives. Each suggestion uses the current main skill and weapon set.', '裝備、技能與天賦共用目標；每項建議均使用目前主技能和武器組。', '装备、技能与天赋共用目标；每项建议均使用当前主技能和武器组。'],
+} as const;
+
+export function upgradeT(lang: Lang, key: keyof typeof labels): string {
+  return labels[key][lang === 'en-US' ? 0 : lang === 'zh-TW' ? 1 : 2];
+}

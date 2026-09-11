@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
 import type { EvaluateOptions } from './optimize';
-import { evaluateMarket, gemVariant, rankMarket, usableGemLevel, type MarketResponse, type MarketUpgrade } from './tradeMarket';
+import { evaluateMarket, gemAcquisition, gemVariant, planGemUpgrades, rankMarket, usableGemLevel, type MarketResponse, type MarketUpgrade } from './tradeMarket';
 
 const market: MarketResponse = { url: 'https://www.pathofexile.com/trade2/search/poe2/Standard/synthetic',
   total: 50, sampled: 3, listings: [
@@ -58,4 +58,42 @@ test('gem plans respect character level and do not guess missing requirements', 
   expect(usableGemLevel(gem, 10)).toBe(2);
   expect(usableGemLevel(gem, 20)).toBe(4);
   expect(usableGemLevel({ ...gem, level_requirements: undefined }, 100)).toBe(0);
+});
+
+
+test('ordinary supports are skill adjustments while lineage and active gems are market acquisitions', () => {
+  const gem = { skill_id: 'Synthetic', name: 'Synthetic', family: 'Synthetic', is_support: true, max_level: 1 };
+  expect(gemAcquisition(gem)).toBe('skill-adjustment');
+  expect(gemAcquisition({ ...gem, is_lineage: true })).toBe('market-lineage');
+  expect(gemAcquisition({ ...gem, is_support: false })).toBe('market-skill');
+});
+
+test('gem planning checks compatibility, current sockets, overlapping families and newly unsupported effects', async () => {
+  const support = (id: string, extra = {}) => ({ skill_id: id, name: id, family: id, is_support: true,
+    max_level: 1, level_requirements: [0], compatibility_known: true, require_skill_types: ['Spell'], ...extra });
+  const catalog = { bases: [], mods: [], gems: [
+    support('Fireball', { is_support: false, max_level: 20, skill_types: ['Spell'] }),
+    support('Old', { families: ['A'] }), support('Ordinary', { families: ['A'] }),
+    support('Lineage', { is_lineage: true }), support('Attack', { require_skill_types: ['Attack'] }),
+    support('Unmodeled'), support('Unknown', { compatibility_known: false }),
+  ] };
+  const request = { character: { level: 50 }, socket_groups: [{ enabled: true,
+    gems: [{ skill_id: 'Fireball', level: 1, quality: 20 }, { skill_id: 'Old', level: 1, quality: 20 }] }] };
+  const evaluate = async ({ variants }: EvaluateOptions) => ({
+    baseline: { TotalDPS: 100 }, aborted: false,
+    results: variants.map((variant, index) => {
+      const ids = variant.socket_groups?.[0].gems.map(gem => gem.skill_id) ?? ['Fireball', 'Old'];
+      expect(ids).not.toContain('Attack');
+      expect(ids).not.toContain('Unknown');
+      expect(ids.includes('Old') && ids.includes('Ordinary')).toBe(false);
+      expect(ids.length).toBeLessThanOrEqual(3);
+      return { index, label: null, error: null,
+        stats: { TotalDPS: ids.includes('Unmodeled') ? 500 : ids.includes('Lineage') ? 200 : ids.includes('Ordinary') ? 180 : 100 },
+        unsupported: ['Existing Guard', ...(ids.includes('Unmodeled') ? ['New unmodeled effect'] : [])] };
+    }),
+  });
+  const plans = await planGemUpgrades(request, catalog, 0, { stat: 'TotalDPS', constraints: [] }, undefined, undefined, evaluate);
+  expect(plans.map(plan => plan.gem.skill_id)).toEqual(['Lineage', 'Ordinary']);
+  expect(plans.map(plan => plan.acquisition)).toEqual(['market-lineage', 'skill-adjustment']);
+  expect(plans[1].variant.socket_groups![0].gems.map(gem => gem.skill_id)).toEqual(['Fireball', 'Ordinary']);
 });

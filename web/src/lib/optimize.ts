@@ -30,7 +30,8 @@ export interface Objective {
 }
 
 /** 目标预设（i18n key 由 UI 层解释）。 */
-export const OBJECTIVE_PRESETS: { id: string; stat: string; per?: string; labelKey: string }[] = [
+export const OBJECTIVE_PRESETS: { id: string; stat: string; per?: string; secondaryStat?: string; labelKey: string }[] = [
+  { id: 'balanced', stat: 'TotalDPS', secondaryStat: 'TotalEHP', labelKey: 'trade.balanced' },
   { id: 'dps', stat: 'TotalDPS', labelKey: 'opt.objDps' },
   { id: 'dpsPerMana', stat: 'TotalDPS', per: 'ManaCost', labelKey: 'opt.objDpsPerMana' },
   { id: 'life', stat: 'Life', labelKey: 'opt.objLife' },
@@ -38,7 +39,7 @@ export const OBJECTIVE_PRESETS: { id: string; stat: string; per?: string; labelK
 ];
 
 /** 约束可选属性（display_catalog 字段 id；标签复用侧边栏字典）。 */
-export const CONSTRAINT_STATS = ['ActionRate', 'ManaCost', 'Life', 'TotalDPS', 'CritChance'];
+export const CONSTRAINT_STATS = ['ActionRate', 'ManaCost', 'Life', 'TotalDPS', 'TotalEHP', 'CritChance'];
 
 /**
  * 评估时固定收集的属性全集 = 全部预设目标/分母 + 全部约束候选。

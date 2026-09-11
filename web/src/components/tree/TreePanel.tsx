@@ -17,11 +17,13 @@ import { DiffList } from '../shared/DiffList';
 import { AppSelect } from '../shared/AppSelect';
 import { NoteEditor } from '../shared/NoteEditor';
 import { TreeOptimizer } from './TreeOptimizer';
+import type { PassivePlan } from '../../lib/passivePlanner';
 import './tree.css';
 
 interface Props {
   session: BuildSession;
   lang: Lang;
+  focusPlanner?: { nonce: number };
 }
 
 const NODE_RADIUS: Record<string, number> = {
@@ -85,7 +87,7 @@ function isAttrNode(node: PassiveNode): boolean {
 const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 
 /** 天赋树查看器：SVG 渲染 + 已加点高亮 + 缩放平移 / hover 词条 + 点选加点重算。 */
-export function TreePanel({ session, lang }: Props) {
+export function TreePanel({ session, lang, focusPlanner }: Props) {
   const tt = bindT(lang);
   const [nodes, setNodes] = useState<PassiveNode[] | null>(null);
   const [art, setArt] = useState<TreeArt | null>(null);
@@ -95,6 +97,7 @@ export function TreePanel({ session, lang }: Props) {
   const [hoverStats, setHoverStats] = useState<string[] | null>(null);
   /** hover 节点名的中文翻译（词典命中才有；null = 显示英文原名）。 */
   const [hoverName, setHoverName] = useState<string | null>(null);
+  const [plannedNodes, setPlannedNodes] = useState<PassivePlan | null>(null);
   /** 节点搜索串（名称/词条子串匹配，高亮命中节点）。 */
   const [search, setSearch] = useState('');
   /** 「下一个命中」轮转下标（搜索串变化时归零）。 */
@@ -446,7 +449,7 @@ export function TreePanel({ session, lang }: Props) {
                 cy={node.y}
                 r={r}
                 style={heat ? { fill: heat } : undefined}
-                className={`node node-${node.kind}${icon || frame ? ' node-art' : ''}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}`}
+                className={`node node-${node.kind}${icon || frame ? ' node-art' : ''}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${plannedNodes?.allocate.includes(node.skill) ? ' node-planned-add' : ''}${plannedNodes?.deallocate.includes(node.skill) ? ' node-planned-remove' : ''}`}
                 onPointerEnter={(e) => {
                   setHover(node);
                   setHoverPos({ x: e.clientX, y: e.clientY });
@@ -460,7 +463,7 @@ export function TreePanel({ session, lang }: Props) {
         })}
       </g>
     );
-  }, [placed, allocated, filledJewelSockets, searchHits, heatStat, heatData, heatMax, handleNodeClick, art]);
+  }, [placed, allocated, filledJewelSockets, searchHits, heatStat, heatData, heatMax, handleNodeClick, art, plannedNodes]);
 
   const fullExtent = useMemo((): ViewBox | null => {
     if (placed.length === 0) return null;
@@ -473,6 +476,21 @@ export function TreePanel({ session, lang }: Props) {
     const pad = 400;
     return { x: minX - pad, y: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2 };
   }, [placed]);
+
+  const previewPlan = useCallback((plan: PassivePlan | null) => {
+    setPlannedNodes(plan);
+    if (!plan || !fullExtent) return;
+    const route = [...plan.allocate, ...plan.deallocate].map(id => byId.get(id))
+      .filter((node): node is PassiveNode => node?.x !== undefined && node.y !== undefined);
+    if (route.length === 0) return;
+    const xs = route.map(node => node.x!);
+    const ys = route.map(node => node.y!);
+    const width = Math.max(1600, Math.max(...xs) - Math.min(...xs) + 900);
+    const height = Math.max(1600, Math.max(...ys) - Math.min(...ys) + 900);
+    setViewBox(clampView({ x: (Math.max(...xs) + Math.min(...xs) - width) / 2,
+      y: (Math.max(...ys) + Math.min(...ys) - height) / 2, w: width, h: height }, fullExtent));
+    requestAnimationFrame(() => svgRef.current?.closest('.tree-canvas')?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+  }, [byId, fullExtent]);
 
   // 中文界面下把 hover 节点名 + 词条经词典/模板反查翻成简中（异步，结果晚到时
   // 校验仍是当前节点）。
@@ -877,14 +895,14 @@ export function TreePanel({ session, lang }: Props) {
             </label>
           </span>
       </div>
-      {heatData && (
-        <TreeOptimizer
-          session={session}
-          lang={lang}
-          heatData={heatData}
-          nodeLabel={(skill) => byId.get(skill)?.name ?? `#${skill}`}
-        />
-      )}
+      <TreeOptimizer
+        session={session}
+        lang={lang}
+        nodes={nodes ?? []}
+        nodeLabel={(skill) => byId.get(skill)?.name ?? `#${skill}`}
+        onPreview={previewPlan}
+        focusPlanner={focusPlanner}
+      />
       {jewelEdit && (
         <div className="jewel-editor" role="group" aria-label={tt('tree.jewel')}>
           <header className="item-detail-header">

@@ -13,6 +13,7 @@ use std::path::PathBuf;
 
 use pobr_data::catalog::{
     PassiveAscendancy, PassiveClass, PassiveNodeDef, PassiveNodeKind, PassiveTreeMeta,
+    PassiveUnlockConstraint,
 };
 use serde::Deserialize;
 
@@ -75,6 +76,8 @@ struct RawNode {
     out: Vec<String>,
     #[serde(rename = "ascendancyId", default)]
     ascendancy_id: Option<String>,
+    #[serde(rename = "unlockConstraint", default)]
+    unlock_constraint: Option<PassiveUnlockConstraint>,
     #[serde(rename = "isNotable", default)]
     is_notable: bool,
     #[serde(rename = "isKeystone", default)]
@@ -151,6 +154,7 @@ pub fn run(args: TreeArgs) -> Result<String, String> {
             y: None,
             connections: resolve_connections(&n.out, &skill_by_key),
             ascendancy_id: n.ascendancy_id.clone(),
+            unlock_constraint: n.unlock_constraint.clone(),
             // isSwitchable variants are backfilled by the separate
             // `--tree-variants <tree.lua>` step (GGG's data.json carries no options variants).
             variants: Vec::new(),
@@ -203,4 +207,36 @@ pub fn run(args: TreeArgs) -> Result<String, String> {
         base_dir.display(),
         raw_mb,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn adapter_preserves_main_tree_unlock_requirements() {
+        let root = std::env::temp_dir().join(format!("pobr-tree-unlock-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let source = root.join("source.json");
+        std::fs::write(&source, r#"{"classes":[],"nodes":{"479":{"id":"oracle_test","skill":479,"unlockConstraint":{"nodes":[5571],"ascendancy":"Druid1"}},"480":{"id":"ordinary","skill":480}}}"#).unwrap();
+        run(TreeArgs {
+            data_json: source,
+            out: root.clone(),
+            patch: "test".into(),
+        })
+        .unwrap();
+        let output: Vec<PassiveNodeDef> = serde_json::from_slice(
+            &std::fs::read(root.join("test/base/passive_tree.json")).unwrap(),
+        )
+        .unwrap();
+        std::fs::remove_dir_all(root).unwrap();
+        assert_eq!(
+            output[0].unlock_constraint,
+            Some(PassiveUnlockConstraint {
+                nodes: vec![5571],
+                ascendancy: Some("Druid1".into())
+            })
+        );
+        assert!(output[1].unlock_constraint.is_none());
+    }
 }

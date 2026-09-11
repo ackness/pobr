@@ -8,7 +8,7 @@ test('local affix scores work for empty slots and budget edits only update marke
   await page.route('**/api/trade/search', route => { marketCalls++; return route.fulfill({ status: 401, json: { error: 'Login required' } }); });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Character' })).toBeVisible({ timeout: 90_000 });
-  await page.getByRole('button', { name: 'Trade', exact: true }).click();
+  await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
   await expect(page.getByRole('button', { name: 'League', exact: true })).toContainText('Future League');
   await page.getByRole('button', { name: 'Max Life', exact: true }).click();
   await page.locator('.trade-position').filter({ hasText: /^Amulet/ }).click();
@@ -56,7 +56,7 @@ test('WeGame quiver analysis opens the CN instant-buy market without JSON or bas
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
-  await page.getByRole('button', { name: 'Trade', exact: true }).click();
+  await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
   await page.getByRole('button', { name: 'Server', exact: true }).click();
   await page.getByRole('option', { name: 'CN (Tencent)', exact: true }).click();
   await page.locator('.trade-position').filter({ hasText: /^Off Hand/ }).click();
@@ -104,7 +104,7 @@ for (const [characterLevel, gemLevel] of [[71, 16], [90, 21]]) test(`gem plans a
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
-  await page.getByRole('button', { name: 'Trade', exact: true }).click();
+  await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
   await page.locator('.trade-position').filter({ hasText: 'Skill and support gems' }).click();
   await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
   const card = page.locator('.trade-gem-card').first();
@@ -162,7 +162,7 @@ test('default damage skill, weapon binding and whole-build priority use the same
   await page.getByRole('button', { name: 'Items', exact: true }).click();
   await expect(page.locator('.paper-doll')).toContainText('Spell Staff');
   await expect(page.locator('.paper-doll')).not.toContainText('Primed Quiver');
-  await page.getByRole('button', { name: 'Trade', exact: true }).click();
+  await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Skill used for scoring' })).toContainText('Fireball');
   await expect(page.getByRole('checkbox', { name: 'Keep at least current EHP' })).toBeChecked();
   await page.getByRole('button', { name: 'Analyze all positions', exact: true }).click();

@@ -5,7 +5,7 @@ const baseline = { TotalDPS: 100, TotalEHP: 1000, Life: 500, FireResist: 75, Col
 const objective: Objective = { stat: 'TotalDPS', secondaryStat: 'TotalEHP', constraints: [{ stat: 'TotalEHP', min: 1000 }] };
 function result(patch: Record<string, number>): PositionAnalysis {
   const stats = { ...baseline, ...patch };
-  return { weights: { baseline, weighted: [], evaluated: 10, limited: true, minimumWeight: 0, unsupported: [],
+  return { weights: { baseline, weighted: [], evaluated: 10, limited: true, minimumWeight: 0, unsupported: [], currentItemScore: null, scoreWarnings: [],
     combinations: [{ mods: [], text: 'Synthetic reference', stats, score: scoreOf(stats, objective) }] } };
 }
 test('balanced ranking values relative DPS and EHP gains equally and rejects lost EHP', () => {

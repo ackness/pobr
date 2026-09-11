@@ -1,3 +1,6 @@
+import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
+import { upgradeT } from '../../lib/upgradeText';
+import { ItemReplacementCheck } from './ItemReplacementCheck';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { SlotSymbol } from '../shared/SlotSymbol';
 import { PageHeader } from '../shared/PageHeader';
@@ -13,12 +16,12 @@ import { affixPool, basesForSlot, categoryAffixPool, loadTradeCatalog, optimizeT
 import { planGemUpgrades } from '../../lib/tradeMarket';
 import { AppSelect } from '../shared/AppSelect';
 import { CopyButton } from '../shared/CopyButton';
-import { OptimizerProgress } from '../shared/OptimizerControls';
+import { objectiveOf, ObjectiveEditor, OptimizerProgress } from '../shared/OptimizerControls';
 import { statMap } from '../../lib/statDisplay';
 import { rankUpgradePositions, type PositionAnalysis } from '../../lib/tradePriority';
 import './trade.css';
 
-const TRADE_OBJECTIVES = [{ id: 'balanced', stat: 'TotalDPS', labelKey: 'trade.balanced' }, ...OBJECTIVE_PRESETS];
+const TRADE_OBJECTIVES = OBJECTIVE_PRESETS;
 const TRADE_SLOTS = ['weapon1', 'weapon2', 'helmet', 'bodyarmour', 'gloves', 'boots', 'amulet', 'ring1', 'ring2', 'belt', 'Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3'];
 const REALM_KEY = 'pobr-trade-realm';
 const leagueKey = (realm: TradeRealm) => `pobr-trade-league-${realm}`;
@@ -28,8 +31,13 @@ type Currency = 'equiv' | 'divine' | 'chaos';
 type SlotResult = PositionAnalysis;
 
 /** Local build analysis produces official search links; login and buying stay on the market. */
-export function TradePanel({ session, lang }: { session: BuildSession; lang: Lang }) {
+export function TradePanel({ session, lang, focus, onSkills, onTree }: {
+  session: BuildSession; lang: Lang; focus?: {slot:string; nonce:number};
+  onSkills?: (group:number) => void; onTree?: () => void;
+}) {
   const tt = bindT(lang);
+  const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
+  const { goal, setGoal } = useUpgradeGoal();
   const skillName = useSkillName(lang);
   const cnSkillName = useSkillName('zh-CN');
   const [catalog, setCatalog] = useState<TradeCatalog | null>(null);
@@ -41,7 +49,8 @@ export function TradePanel({ session, lang }: { session: BuildSession; lang: Lan
   const [league, setLeague] = useState(() => localStorage.getItem(leagueKey(realm)) ?? REALM_DEFAULT_LEAGUE[realm]);
   const [leagues, setLeagues] = useState(REALM_LEAGUES[realm]);
   const [leagueFallback, setLeagueFallback] = useState(false);
-  const [preset, setPreset] = useState('balanced');
+  const preset = goal.preset;
+  const setPreset = (preset: string) => setGoal({ ...goal, preset });
   const [budget, setBudget] = useState(() => localStorage.getItem(BUDGET_KEY) ?? '100');
   const [currency, setCurrency] = useState<Currency>(() => {
     const saved = localStorage.getItem(CURRENCY_KEY);
@@ -54,13 +63,17 @@ export function TradePanel({ session, lang }: { session: BuildSession; lang: Lan
   const [requiredStats, setRequiredStats] = useState<Record<string, string[]>>({});
   const [showEmpty, setShowEmpty] = useState(false);
   const [includeUnique, setIncludeUnique] = useState(false);
-  const [resistanceFirst, setResistanceFirst] = useState(false);
-  const [resistanceTarget, setResistanceTarget] = useState(75);
-  const [keepEhp, setKeepEhp] = useState(true);
+  const resistanceFirst = goal.resistanceFirst ?? false;
+  const resistanceTarget = goal.resistanceTarget ?? 75;
+  const keepEhp = goal.keepEhp ?? true;
+  const setResistanceFirst = (value:boolean) => setGoal({ ...goal, resistanceFirst:value });
+  const setResistanceTarget = (value:number) => setGoal({ ...goal, resistanceTarget:value });
+  const setKeepEhp = (value:boolean) => setGoal({ ...goal, keepEhp:value });
   const [allProgress, setAllProgress] = useState<{ done: number; total: number } | null>(null);
   const [overview, setOverview] = useState(false);
   const analysisRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => { if (focus) setSelected(focus.slot); }, [focus]);
   const mainGroup = session.calcParams.main_socket_group ?? session.calc?.main_skill?.group_index ?? 0;
 
   useEffect(() => {
@@ -82,7 +95,7 @@ export function TradePanel({ session, lang }: { session: BuildSession; lang: Lan
   // Market-only changes update links immediately; they do not rerun local calculations.
   useEffect(() => {
     abortRef.current?.abort(); setResults({}); setAllProgress(null); setRequiredStats({});
-  }, [preset, session.currentRequest, categories, resistanceFirst, resistanceTarget, keepEhp]);
+  }, [goal, session.currentRequest, categories]);
   useEffect(() => () => abortRef.current?.abort(), []);
 
   const slots = [...TRADE_SLOTS, ...jewelSockets.filter(node => session.allocatedNodes.includes(node)).map(node => `Jewel@${node}`)];
@@ -98,15 +111,8 @@ export function TradePanel({ session, lang }: { session: BuildSession; lang: Lan
     const max = Number(budget);
     return Number.isFinite(max) && max > 0 ? { max, currency: currency === 'equiv' ? 'exalted' : currency } : undefined;
   }, [budget, currency]);
-  const objective = useMemo<Objective>(() => {
-    const chosen = TRADE_OBJECTIVES.find(entry => entry.id === preset) ?? TRADE_OBJECTIVES[0];
-    const current = statMap(session.calc?.stats ?? []);
-    return { stat: chosen.stat, per: 'per' in chosen ? chosen.per : undefined,
-      secondaryStat: preset === 'balanced' ? 'TotalEHP' : undefined,
-      constraints: preset === 'balanced' && keepEhp ? [{ stat: 'TotalEHP', min: current.get('TotalEHP') ?? 0 }] : [],
-      softMinimums: resistanceFirst ? ['FireResist', 'ColdResist', 'LightningResist'].map(stat => ({ stat, min: resistanceTarget })) : [],
-    };
-  }, [preset, session.calc, resistanceFirst, resistanceTarget, keepEhp]);
+  const objective = useMemo<Objective>(() => objectiveOf(goal,
+    Object.fromEntries([...statMap(session.calc?.stats ?? [])].filter((entry): entry is [string, number] => entry[1] !== null))), [goal, session.calc]);
   const result = results[selected];
   const weights = result?.weights;
   const localized = useLocalizedLines(weights?.weighted.map(weight => weight.line) ?? [], lang);
@@ -172,6 +178,12 @@ export function TradePanel({ session, lang }: { session: BuildSession; lang: Lan
     <PageHeader id="trade-heading" title={tt('trade.title')} description={tt('trade.hint')}>
       <span className="trade-local-badge"><span />{tt('trade.localBadge')}</span>
     </PageHeader>
+    <div className="upgrade-paths">
+      <button onClick={() => analysisRef.current?.scrollIntoView({block:'start'})}><SlotSymbol slot="helmet" /><strong>{ut('equipment')}</strong><span>{ut('equipmentHint')}</span></button>
+      <button disabled={!onSkills || !session.socketGroups[mainGroup]} onClick={() => onSkills?.(mainGroup)}><SlotSymbol slot="gems" /><strong>{ut('supports')}</strong><span>{ut('supportsHint')}</span></button>
+      <button disabled={!onTree} onClick={onTree}><SlotSymbol slot="Jewel@" /><strong>{ut('tree')}</strong><span>{ut('treeHint')}</span></button>
+    </div>
+    <p className="upgrade-shared-goal">{ut('sharedGoal')}</p>
     <div className="trade-setup">
       <div className="trade-objectives" role="group" aria-label={tt('opt.objective')}>
         <span className="trade-field-label">{tt('opt.objective')}</span>
@@ -210,6 +222,7 @@ export function TradePanel({ session, lang }: { session: BuildSession; lang: Lan
         onChange={event => { const value = Number(event.target.value); if (Number.isFinite(value) && value >= 0 && value <= 90) setResistanceTarget(value); }} />%</label>}
       <p>{tt(preset === 'balanced' ? 'trade.balancedHint' : 'trade.resistanceHint')}</p>
     </div>
+    <details className="upgrade-goal-details" open={!!goal.cStat}><summary>{ut('advancedGoal')}{goal.cStat ? ` · ${statNameLabel(lang, goal.cStat)}` : ''}</summary><div className="opt-controls"><ObjectiveEditor value={goal} onChange={setGoal} lang={lang} constraintsOnly /></div></details>
     <div className="trade-overview-toolbar">
       <div><h3>{tt('trade.overviewTitle')}</h3><p>{tt('trade.overviewHint')}</p></div>
       <button className="trade-primary trade-analyze-all" disabled={disabled || fullTargets.length === 0}
@@ -279,10 +292,22 @@ export function TradePanel({ session, lang }: { session: BuildSession; lang: Lan
           <ol><li>{tt('trade.stepScore')}</li><li>{tt('trade.stepSearch')}</li><li>{tt('trade.stepBuy')}</li></ol>
         </div>}
         {weights && <>
+          <section className="upgrade-score-reference ui-card" aria-label={ut('currentScore')}>
+            <div><span>{ut('currentScore')}</span><strong>{weights.currentItemScore ? number(weights.currentItemScore.score, 3) : '—'}</strong>
+              <small>{ut(!weights.currentItemScore ? 'noScore' : weights.currentItemScore.complete ? 'complete' : 'partial')}</small></div>
+            <div className="upgrade-current-stats"><span>DPS <b>{number(weights.baseline.TotalDPS ?? 0)}</b></span><span>EHP <b>{number(weights.baseline.TotalEHP ?? 0)}</b></span></div>
+            <p>{ut('scoreHint')}</p>
+            {weights.scoreWarnings.includes('unmodeled-candidates') && <p>{ut('skippedUnmodeled')}</p>}
+            {weights.scoreWarnings.includes('constraints-not-in-query') && <p className="upgrade-score-caution">{ut('marketConstraints')}</p>}
+            {weights.currentItemScore && <details><summary>{ut('scoreDetails')} ({weights.currentItemScore.matchedLines}/{weights.currentItemScore.totalLines})</summary>
+              <ul>{weights.currentItemScore.contributions.map((entry,index) => <li key={index}>{entry.line} · {number(entry.value)} × {number(entry.weight,3)} = {number(entry.score,3)}</li>)}</ul>
+              {weights.currentItemScore.unscoredLines.length > 0 && <pre>{weights.currentItemScore.unscoredLines.join('\n')}</pre>}
+            </details>}
+          </section>
           <div className="trade-results-heading"><div><h4>{tt('trade.affixHeading')}</h4><p>{tt('trade.affixDescription')}</p></div>
             <span className="trade-count">{weights.weighted.length} {tt('trade.usefulAffixes')}</span></div>
           {weights.weighted.length === 0 ? <p className="trade-notice">{tt('trade.noWeights')}</p> : <div className="trade-score-table" role="table" aria-label={tt('trade.affixHeading')}>
-            <div className="trade-score-row trade-score-labels" role="row"><span role="columnheader">{tt('trade.colLine')}</span><span role="columnheader">{tt('trade.priority')}</span><span role="columnheader">{tt('trade.referenceGain')}</span><span role="columnheader">{tt('trade.marketWeight')}</span></div>
+            <div className="trade-score-row trade-score-labels" role="row"><span role="columnheader">{tt('trade.colLine')}</span><span role="columnheader">{tt('trade.priority')}</span><span role="columnheader">{ut('marginal')}</span><span role="columnheader">{tt('trade.marketWeight')}</span></div>
             {weights.weighted.map((weight, index) => <div key={weight.id} className="trade-score-row" role="row">
               <span className="trade-affix" role="cell"><span className="trade-rank">{String(index + 1).padStart(2, '0')}</span>{localized[index] ?? weight.line}</span>
               <span className="trade-priority" role="cell"><span className="trade-bar"><span style={{ width: `${weight.gain / maxGain * 100}%` }} /></span><b>{Math.round(weight.gain / maxGain * 100)}</b></span>
@@ -309,17 +334,23 @@ export function TradePanel({ session, lang }: { session: BuildSession; lang: Lan
               <CopyButton text={searchUrl} label={tt('trade.copySearch')} lang={lang} /></div>
           </div>}
         </>}
-        {result?.gems && <div className="trade-gems"><div className="trade-results-heading"><div><h4>{tt('trade.gemCandidates')}</h4><p>{tt('trade.gemHint')}</p></div></div>
+        {selected !== 'gems' && <ItemReplacementCheck session={session} slot={selected} lang={lang} objective={objective} />}
+        {result?.gems && <div className="trade-gems"><div className="trade-results-heading"><div><h4>{tt('trade.gemCandidates')}</h4>{onSkills && <button onClick={() => onSkills(mainGroup)}>{ut('autoSupports')} ↗</button>}<p>{tt('trade.gemHint')}</p></div></div>
           {result.gems.length === 0 && <p className="trade-notice">{tt('trade.noGemUpgrade')}</p>}
           {result.gems.map(plan => <article className="trade-gem-card" key={`${plan.gem.skill_id}:${plan.position}:${plan.level}:${plan.quality}`}>
             <span className="trade-position-symbol" aria-hidden><SlotSymbol slot="gems" /></span>
-            <div><h4>{skillName(plan.gem.skill_id)}</h4><p>{tt('skills.level')} {plan.level} · {tt('skills.quality')} {plan.quality}%</p>
+            <div><h4>{skillName(plan.gem.skill_id)} {plan.gem.is_lineage && <span className="gem-lineage-badge">{ut('lineage')}</span>}</h4>{plan.acquisition === 'skill-adjustment' && <small>{ut('adjustment')}</small>}<p>{tt('skills.level')} {plan.level} · {tt('skills.quality')} {plan.quality}%</p>
               <p>{session.socketGroups[plan.group]?.gems[plan.position]
                 ? `${tt('trade.replacesGem')} ${skillName(session.socketGroups[plan.group].gems[plan.position].skill_id)}`
                 : tt('trade.addsGem')}</p>
               {plan.gainPercent !== undefined && <span className={plan.gainPercent < 0 ? 'delta-neg' : 'trade-gain'}>{tt('trade.referenceGain')} {plan.gainPercent >= 0 ? '+' : ''}{number(plan.gainPercent)}%</span>}</div>
-            {league.trim() && <a className="trade-secondary" href={gemTradeUrl({ realm, league, category: 'gem', price: priceCap, maxLevel: session.character?.level,
+            <div className="upgrade-gem-stats">{['TotalDPS', 'TotalEHP'].map(stat => { const before = plan.baseline?.[stat] ?? 0, after = plan.stats?.[stat] ?? 0; return <span key={stat}>{stat === 'TotalDPS' ? 'DPS' : 'EHP'} <b className={after < before ? 'delta-neg' : 'delta-pos'}>{number(before)} → {number(after)}</b></span>; })}</div>
+            {plan.acquisition !== 'skill-adjustment' && league.trim() && <a className="trade-secondary" href={gemTradeUrl({ realm, league, category: 'gem', price: priceCap, maxLevel: session.character?.level,
               gem: { name: realm === 'cn' ? cnSkillName(plan.gem.skill_id) : plan.gem.name, level: plan.level, quality: plan.quality } })} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}</a>}
+            <button disabled={session.busy} onClick={() => {
+              const gems = plan.variant.socket_groups?.[plan.group]?.gems;
+              if (gems) session.setSocketGroups(session.socketGroups.map((group,index) => index === plan.group ? {...group,gems} : group));
+            }}>{ut('apply')}</button>
           </article>)}
         </div>}
       </div>

@@ -174,3 +174,40 @@
 .trade-situational > label { display: flex; align-items: start; gap: 10px; padding: 12px 0; border-top: 1px solid var(--border-subtle); cursor: pointer; }
 .trade-situational small { display: block; margin-top: 4px; color: var(--text-muted); }
 .trade-situational strong { font-size: var(--text-sm); font-weight: 500; }
+
+.upgrade-paths { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); margin-bottom: var(--space-3); }
+.upgrade-paths > button { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 10px 14px; padding: 20px; text-align: left; background: var(--surface-panel); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.upgrade-paths > button:hover { border-color: var(--accent-gold); background: var(--surface-card); }
+.upgrade-paths svg { width: 26px; height: 26px; color: var(--accent-gold); }
+.upgrade-paths strong { font-weight: 500; color: var(--text-primary); }
+.upgrade-paths span { grid-column: 2; font-size: var(--text-xs); line-height: 1.7; color: var(--text-secondary); }
+.trade-page .upgrade-shared-goal { color: var(--text-muted); font-size: var(--text-xs); line-height: 1.7; margin-bottom: var(--space-6); }
+.upgrade-goal-details { margin: -8px 0 24px; font-size: var(--text-sm); color: var(--text-secondary); }
+.upgrade-goal-details .opt-controls { margin: var(--space-3) 0; }
+.upgrade-score-reference { display: grid; grid-template-columns: 1fr auto; gap: var(--space-4); margin: var(--space-4) 0; border-color: color-mix(in srgb, var(--accent-gold) 30%, var(--border-subtle)); }
+.upgrade-score-reference > div:first-child { display: flex; flex-direction: column; gap: 6px; }
+.upgrade-score-reference > div:first-child > span { color: var(--text-secondary); font-size: var(--text-xs); }
+.upgrade-score-reference > div:first-child > strong { font-size: 30px; font-weight: 500; line-height: 1.2; color: var(--accent-gold-bright); font-variant-numeric: tabular-nums; }
+.upgrade-score-reference small { font-size: var(--text-xs); color: var(--text-muted); }
+.upgrade-score-reference p, .upgrade-score-reference details { grid-column: 1 / -1; font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.8; }
+.upgrade-score-reference pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.upgrade-score-reference ul { padding-left: 20px; overflow-wrap: anywhere; }
+.upgrade-current-stats, .upgrade-gem-stats { display: flex; flex-direction: column; gap: 8px; font-size: var(--text-xs); color: var(--text-muted); justify-content: center; }
+.upgrade-current-stats b, .upgrade-gem-stats b { margin-left: 8px; font-weight: 500; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.upgrade-score-reference .upgrade-score-caution { padding-top: var(--space-3); border-top: 1px solid var(--border-subtle); color: var(--accent-gold); }
+.upgrade-item-check { margin-top: var(--space-6); }
+.upgrade-item-check > summary { font-size: var(--text-sm); font-weight: 500; color: var(--text-primary); }
+.trade-page .upgrade-item-check > p { font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.8; margin: var(--space-3) 0; }
+.upgrade-item-check textarea { width: 100%; resize: vertical; margin-bottom: var(--space-3); min-height: 110px; font-size: var(--text-xs); }
+.upgrade-replacement-result { margin-top: var(--space-4); font-size: var(--text-sm); overflow-x: auto; }
+.upgrade-replacement-result p { margin: var(--space-2) 0; }
+.upgrade-replacement-result table { width: 100%; border-collapse: collapse; margin-block: var(--space-4); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.upgrade-replacement-result th, .upgrade-replacement-result td { padding: 10px 8px; text-align: right; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
+.upgrade-replacement-result th { font-weight: 400; color: var(--text-secondary); }
+.upgrade-replacement-result th:first-child { text-align: left; }
+.upgrade-replacement-result pre { white-space: pre-wrap; }
+.trade-gem-card { flex-wrap: wrap; }
+.trade-gem-card > div { min-width: 0; }
+.trade-gem-card > .upgrade-gem-stats { flex: 0 1 auto; }
+@media (max-width: 1100px) { .upgrade-paths > button { padding: 14px; gap: 8px; } .upgrade-paths span { grid-column: 1 / -1; } }
+@media (max-width: 640px) { .upgrade-paths { grid-template-columns: minmax(0, 1fr); } .upgrade-paths span { grid-column: 2; } .upgrade-score-reference { grid-template-columns: minmax(0, 1fr); } }

@@ -27,6 +27,15 @@ pub enum PassiveNodeKind {
     AscendancyStart,
 }
 
+/// Requirements for main-tree nodes unlocked by an ascendancy, such as Oracle paths.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PassiveUnlockConstraint {
+    #[serde(default)]
+    pub nodes: Vec<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ascendancy: Option<String>,
+}
+
 /// A per-class/ascendancy variant of an isSwitchable node (vendor
 /// `tree.lua` node's `options.<Class>`).
 ///
@@ -118,6 +127,9 @@ pub struct PassiveNodeDef {
     /// `Warrior3`); `None` for main-tree nodes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ascendancy_id: Option<String>,
+    /// All prerequisite nodes and the matching ascendancy must be allocated/selected.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub unlock_constraint: Option<PassiveUnlockConstraint>,
     /// Per-class/ascendancy variants for an isSwitchable node (vendor
     /// `tree.lua`'s `options`, backfilled by
     /// `pobr-data-adapter --tree-variants`). The old catalog didn't have
