@@ -190,10 +190,10 @@ fn ingest_section(
 /// shields/quivers/foci aren't converted — vendor's conversion is inside the
 /// `self.base.weapon` branch).
 ///
-/// ponytail: vendor's list also converts Accuracy/ImpaleChance/OnHit/leech
-/// (pre-0.22.0 entries that PoBR hasn't modeled yet); only the 0.5.4b
-/// CritMultiplier addition lands here, the rest wait for their own oracle
-/// pinning before being added through the same entry point.
+/// Physical Life/Mana leech on a weapon belongs to that weapon's attacks,
+/// including the current "Leeches ... Physical Damage" spelling without
+/// an explicit Attack flag. Equipment outside weapon slots stays global.
+/// Accuracy/ImpaleChance/OnHit conversion remains outside this function.
 pub fn apply_weapon_hand_conditions(modifiers: &mut [Modifier], slot: EquipmentSlot) {
     let var = match slot {
         EquipmentSlot::Weapon1 => "MainHandAttack",
@@ -203,11 +203,15 @@ pub fn apply_weapon_hand_conditions(modifiers: &mut [Modifier], slot: EquipmentS
     for m in modifiers {
         let keyword_ok =
             m.keyword_flags == KeywordFlags::NONE || m.keyword_flags == KeywordFlags::ATTACK;
-        if m.name == ModName::from("CriticalStrikeMultiplier")
-            && m.flags == ModFlags::NONE
-            && keyword_ok
-            && m.tags.is_empty()
-        {
+        let local_crit =
+            m.name == ModName::from("CriticalStrikeMultiplier") && m.flags == ModFlags::NONE;
+        let local_leech = (m.name == ModName::from("PhysicalDamageLifeLeech")
+            || m.name == ModName::from("PhysicalDamageManaLeech"))
+            && (m.flags == ModFlags::NONE || m.flags == ModFlags::ATTACK);
+        if (local_crit || local_leech) && keyword_ok && m.tags.is_empty() {
+            if local_leech {
+                m.flags = ModFlags::ATTACK;
+            }
             m.tags.push(ModTag::condition(var, false));
         }
     }

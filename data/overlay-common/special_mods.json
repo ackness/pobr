@@ -1453,116 +1453,6 @@
       "source_note": "pobr 准源 mod_parser.rs:490-506；vendor 无数值形同 key（仅 lucky 系 :3730-3732）"
     },
     {
-      "id": "stun_threshold_from_es_8",
-      "pattern": "gain additional stun threshold equal to 8% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
-      "mods": [
-        {
-          "name": "StunThreshold",
-          "type": "BASE",
-          "value": 1,
-          "tags": [
-            {
-              "type": "PercentStat",
-              "stat": "EnergyShield",
-              "percent": 8
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
-    },
-    {
-      "id": "stun_threshold_from_es_12",
-      "pattern": "gain additional stun threshold equal to 12% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
-      "mods": [
-        {
-          "name": "StunThreshold",
-          "type": "BASE",
-          "value": 1,
-          "tags": [
-            {
-              "type": "PercentStat",
-              "stat": "EnergyShield",
-              "percent": 12
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
-    },
-    {
-      "id": "stun_threshold_from_es_15",
-      "pattern": "gain additional stun threshold equal to 15% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
-      "mods": [
-        {
-          "name": "StunThreshold",
-          "type": "BASE",
-          "value": 1,
-          "tags": [
-            {
-              "type": "PercentStat",
-              "stat": "EnergyShield",
-              "percent": 15
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
-    },
-    {
-      "id": "stun_threshold_from_es_20",
-      "pattern": "gain additional stun threshold equal to 20% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
-      "mods": [
-        {
-          "name": "StunThreshold",
-          "type": "BASE",
-          "value": 1,
-          "tags": [
-            {
-              "type": "PercentStat",
-              "stat": "EnergyShield",
-              "percent": 20
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
-    },
-    {
-      "id": "stun_threshold_from_es_30",
-      "pattern": "gain additional stun threshold equal to 30% of maximum energy shield",
-      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
-      "mods": [
-        {
-          "name": "StunThreshold",
-          "type": "BASE",
-          "value": 1,
-          "tags": [
-            {
-              "type": "PercentStat",
-              "stat": "EnergyShield",
-              "percent": 30
-            }
-          ]
-        }
-      ],
-      "verified": false,
-      "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:5234（mod(firstToUpper(statType)..\"Threshold\", BASE, 1, PercentStat{EnergyShield, num})；DSL PercentStat 为字面值不吃捕获——按语料数值集 {8,12,15,20,30} 钉值展开（blood_mage_additional_life_from_body_es 同款先例）。A2 真缺口榜 #2/#3（hit=6，cnt=20/16）。AilmentThreshold 玩家侧 calc 暂无消费（解析对齐 vendor，消费端接线时词条已就位）"
-    },
-    {
       "id": "ailment_threshold_from_es_8",
       "pattern": "gain additional ailment threshold equal to 8% of maximum energy shield",
       "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
@@ -2699,6 +2589,73 @@
       "verified": true,
       "batch": "hand-curated",
       "source_note": "域限定 buff magnitude（wolf-pack banner/aura 词条族；run-parsemod 实证 tag 口径）；消费=buff_pass aura 乘区（AuraEffect 桶×Magnitude 桶分乘，CalcPerform.lua:2204-2205）；legacy parse_scoped_buff_magnitude 同形过树/装备闸门"
+    },
+    {
+      "id": "stun_threshold_from_es_percent",
+      "pattern": "gain additional stun threshold equal to (\\d+(?:\\.\\d+)?)% of maximum energy shield",
+      "vendor_pattern": "gain additional (%a+) threshold equal to (%d+)%% of maximum energy shield",
+      "mods": [
+        {
+          "name": "StunThreshold",
+          "type": "BASE",
+          "value": 1,
+          "tags": [
+            {
+              "type": "PercentStat",
+              "stat": "EnergyShield",
+              "percent": "$1"
+            }
+          ]
+        }
+      ],
+      "verified": true,
+      "batch": "affix-coverage",
+      "source_note": "PoB2 ModParser.lua:5326 and ModStore.lua:82-117: preserve BASE=1 with the captured percentage in PercentStat, including ScaleAddMod truncation before stat evaluation."
+    },
+    {
+      "id": "lightning_hits_contribute_to_ignite",
+      "pattern": "lightning damage from hits also contributes to flammability and ignite magnitudes",
+      "vendor_pattern": "your lightning damage can ignite",
+      "mods": [
+        {
+          "name": "LightningCanIgnite",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": true,
+      "batch": "affix-coverage",
+      "source_note": "4.5.5.2 trade catalog AlloyLightningDamageIgnites1; PoB2 ModParser.lua your lightning damage can ignite and CalcOffence.lua canDoAilment. Extends the ignite source only; does not multiply hit DPS."
+    },
+    {
+      "id": "leech_physical_damage_as_life",
+      "pattern": "leeches (\\d+(?:\\.\\d+)?)% of physical damage as life",
+      "vendor_pattern": "leeche?s? ([%d%.]+)%% of (%a+) damage as life",
+      "mods": [
+        {
+          "name": "PhysicalDamageLifeLeech",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "affix-coverage",
+      "source_note": "PoB2 Data/ModCache.lua Leeches physical damage as Life; resource-specific physical leech, evaluated after damage conversion. Weapon sources receive hand-local attack gating during item ingestion."
+    },
+    {
+      "id": "leech_physical_damage_as_mana",
+      "pattern": "leeches (\\d+(?:\\.\\d+)?)% of physical damage as mana",
+      "vendor_pattern": "leeche?s? ([%d%.]+)%% of (%a+) damage as mana",
+      "mods": [
+        {
+          "name": "PhysicalDamageManaLeech",
+          "type": "BASE",
+          "value": "$1"
+        }
+      ],
+      "verified": true,
+      "batch": "affix-coverage",
+      "source_note": "PoB2 Data/ModCache.lua Leeches physical damage as Mana; resource-specific physical leech, evaluated after damage conversion. Weapon sources receive hand-local attack gating during item ingestion."
     }
   ]
 }

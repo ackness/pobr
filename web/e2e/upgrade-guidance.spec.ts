@@ -32,20 +32,19 @@ test('current market Sum is a reference; complete replacement detects a downgrad
   const query = JSON.parse(new URL(href!).searchParams.get('q')!);
   expect(sum).toBeGreaterThan(0);
   expect(query.query.stats[0].value.min).toBeCloseTo(sum, 3);
-  await page.locator('.upgrade-item-check > summary').click();
   await page.getByRole('textbox', { name: 'Complete item text' }).fill('Rarity: NORMAL\nSapphire Ring');
   await page.getByRole('button', { name: 'Calculate replacement' }).click();
   await expect(page.locator('.upgrade-replacement-result')).toContainText('DPS decreases after this replacement');
   await expect(dps(page)).toHaveText(before);
   const preview = await page.locator('.upgrade-replacement-result tbody tr').first().locator('td').nth(1).innerText();
-  await page.getByRole('button', { name: 'Apply to build' }).click();
+  await page.getByRole('button', { name: 'Apply to build · Ring 1', exact: true }).click();
   await expect(dps(page)).not.toHaveText(before);
   expect(Number((await dps(page).innerText()).replaceAll(',', ''))).toBeCloseTo(Number(preview.replaceAll(',', '')), 0);
   await expect(reference).toHaveCount(0);
   await page.getByRole('textbox', { name: 'Complete item text' }).fill('Rarity: NORMAL\nTwin Bow');
   await page.getByRole('button', { name: 'Calculate replacement' }).click();
-  await expect(page.getByRole('alert')).toContainText('does not fit');
-  await expect(page.getByRole('button', { name: 'Apply to build' })).toHaveCount(0);
+  await expect(page.getByRole('alert')).toContainText('No compatible equipped position');
+  await expect(page.getByRole('button', { name: /Apply to build/ })).toHaveCount(0);
 });
 
 test('shared goals link automatic supports and connected passive plans with real apply', async ({ page }) => {

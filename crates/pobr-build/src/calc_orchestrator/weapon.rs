@@ -308,6 +308,9 @@ pub(crate) fn unarmed_contribution(build: &Build, data: &BuildData) -> WeaponCon
 
 /// Strips PoB item mod `{tag}` markers (e.g. `{desecrated}{enchant}`), returning the untagged lowercase text.
 pub(crate) fn clean_item_text(text: &str) -> String {
+    if !text.contains(['{', '}']) {
+        return text.trim().to_lowercase();
+    }
     let mut out = String::with_capacity(text.len());
     let mut depth = 0u32;
     for c in text.chars() {

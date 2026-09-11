@@ -9,6 +9,8 @@ mod corpse_explosion;
 mod cost_multiplier;
 #[path = "skills/dual_wield.rs"]
 mod dual_wield;
+#[path = "skills/equipment_affix_effects.rs"]
+mod equipment_affix_effects;
 #[path = "skills/gem_quality.rs"]
 mod gem_quality;
 #[path = "skills/minions.rs"]

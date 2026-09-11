@@ -814,6 +814,33 @@ pub(crate) fn slot_bonus_effect_scales(
             texts.push(clean_grant_text(t));
         }
     }
+    // Ordinary socketed jewels enter the same global ModDb as equipment. Match
+    // their injection scaling (including The Adorned) before scaling the quiver.
+    let adorned_inc = adorned_corrupted_magic_jewel_inc(&build.jewels);
+    for jewel in &build.jewels {
+        let scale = if jewel.rarity == pobr_data::item::ItemRarity::Magic && jewel.corrupted {
+            1.0 + adorned_inc.unwrap_or(0.0) / 100.0
+        } else {
+            1.0
+        };
+        for text in jewel
+            .implicit_texts
+            .iter()
+            .chain(&jewel.modifier_texts)
+            .chain(&jewel.enchant_texts)
+        {
+            let text = clean_grant_text(text);
+            if scale != 1.0 {
+                if let Some((number, rest)) = text.split_once('%')
+                    && let Ok(value) = number.parse::<f64>()
+                {
+                    texts.push(format!("{}%{rest}", scale_trunc_2dp(value, scale)));
+                }
+            } else {
+                texts.push(text);
+            }
+        }
+    }
     for t in &texts {
         // Two prefixes: increased (positive) and reduced (negative, vendor only has this for the focus variant).
         const INC_NEEDLE: &str = "% increased bonuses gained from ";

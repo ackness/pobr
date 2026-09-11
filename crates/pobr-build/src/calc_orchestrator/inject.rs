@@ -706,7 +706,7 @@ pub(super) fn inject_items(
         // the opposite slot (matching vendor CalcSetup.lua:1221-1243), while the source
         // is still attributed to the slot Kalandra's Touch is in.
         let item = kalandra_reflected_ring(build, slot, item).unwrap_or(item);
-        let mut filtered = filter_item_parseable(item, engine_ctx(data));
+        let mut filtered = filter_item_parseable(item, engine_ctx(data), session);
         // Main-hand weapon: strips local physical damage boost/added (already counted
         // into weapon_contribution as an independent weapon-source multiplier zone ×
         // baseMultiplier); leaving it in the global set would double-count and

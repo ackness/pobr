@@ -592,33 +592,76 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.charge_endurance_current = charges.endurance.current;
     env.player.output.charge_endurance_maximum = charges.endurance.maximum;
 
-    // Leech (Lane A: passes the physical average hit as hit_damage; PoE2 defaults to physical-only leech)
-    // With no leech mods, each display_rate is 0 (calc_leech_from_db short-circuits), no effect on the panel.
-    let phys_hit = component_avg(&env.player.output.damage_components, DamageType::Physical);
-    env.player.output.life_leech_rate = calc_leech_from_db(
-        db,
-        cfg,
-        env.player.output.life,
-        phys_hit,
-        LeechResource::Life,
-    )
-    .display_rate_per_second;
-    env.player.output.mana_leech_rate = calc_leech_from_db(
-        db,
-        cfg,
-        env.player.output.mana,
-        phys_hit,
-        LeechResource::Mana,
-    )
-    .display_rate_per_second;
-    env.player.output.es_leech_rate = calc_leech_from_db(
-        db,
-        cfg,
-        env.player.output.energy_shield,
-        phys_hit,
-        LeechResource::EnergyShield,
-    )
-    .display_rate_per_second;
+    // Physical leech uses each attacking hand's post-conversion damage and
+    // that hand's modifier scope. Never pair an off-hand leech affix with the
+    // main hand's hit. Preserve the current single-instance panel model:
+    // among hands, only the strongest recovery instance is active.
+    let leech_rates_for = |scope: &CalcConfig, components: &[super::DamageComponent]| {
+        let physical_hit = component_avg(components, DamageType::Physical);
+        [
+            (LeechResource::Life, env.player.output.life),
+            (LeechResource::Mana, env.player.output.mana),
+            (LeechResource::EnergyShield, env.player.output.energy_shield),
+        ]
+        .map(|(resource, pool)| {
+            calc_leech_from_db(db, scope, pool, physical_hit, resource).display_rate_per_second
+        })
+    };
+    let has_leech_source = db.iter_mods().any(|modifier| {
+        matches!(
+            modifier.name.as_str(),
+            "LifeLeech"
+                | "ManaLeech"
+                | "EnergyShieldLeech"
+                | "PhysicalDamageLifeLeech"
+                | "PhysicalDamageManaLeech"
+                | "PhysicalDamageEnergyShieldLeech"
+        )
+    });
+    let leech_rates = if !has_leech_source {
+        // Most build variants have no leech: avoid cloning per-hand scopes.
+        [0.0; 3]
+    } else if env.hand_sources.is_empty() {
+        leech_rates_for(cfg, &env.player.output.damage_components)
+    } else {
+        let mut rates = [0.0_f64; 3];
+        for source in &env.hand_sources {
+            let hand = match source.label {
+                crate::HandTag::MainHand | crate::HandTag::Single => {
+                    env.player.output.main_hand.as_ref()
+                }
+                crate::HandTag::OffHand => env.player.output.off_hand.as_ref(),
+            };
+            let Some(hand) = hand else { continue };
+            // Damage is already calculated in HandOutput; only reuse the
+            // hand scope here, so the returned input is deliberately unused.
+            let (mut hand_cfg, _) =
+                super::hand_pass::hand_scope(source, cfg, &MinimalInput::default());
+            hand_cfg.conditions.insert(
+                "MainHandAttack".into(),
+                matches!(
+                    source.label,
+                    crate::HandTag::MainHand | crate::HandTag::Single
+                ),
+            );
+            hand_cfg.conditions.insert(
+                "OffHandAttack".into(),
+                matches!(source.label, crate::HandTag::OffHand),
+            );
+            for (maximum, rate) in rates
+                .iter_mut()
+                .zip(leech_rates_for(&hand_cfg, &hand.damage_components))
+            {
+                *maximum = maximum.max(rate);
+            }
+        }
+        rates
+    };
+    [
+        env.player.output.life_leech_rate,
+        env.player.output.mana_leech_rate,
+        env.player.output.es_leech_rate,
+    ] = leech_rates;
 
     // Skill mechanics (Lane C: AoE / projectiles / cooldown / cost)
     fill_skill_mechanics(env);

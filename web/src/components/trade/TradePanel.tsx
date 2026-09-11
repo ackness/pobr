@@ -72,6 +72,7 @@ export function TradePanel({ session, lang, focus, onSkills, onTree }: {
   const [allProgress, setAllProgress] = useState<{ done: number; total: number } | null>(null);
   const [overview, setOverview] = useState(false);
   const analysisRef = useRef<HTMLDivElement>(null);
+  const goalRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   useEffect(() => { if (focus) setSelected(focus.slot); }, [focus]);
   const mainGroup = session.calcParams.main_socket_group ?? session.calc?.main_skill?.group_index ?? 0;
@@ -184,8 +185,11 @@ export function TradePanel({ session, lang, focus, onSkills, onTree }: {
       <button disabled={!onTree} onClick={onTree}><SlotSymbol slot="Jewel@" /><strong>{ut('tree')}</strong><span>{ut('treeHint')}</span></button>
     </div>
     <p className="upgrade-shared-goal">{ut('sharedGoal')}</p>
+    <ItemReplacementCheck session={session} lang={lang} objective={objective} catalog={catalog} jewelSockets={jewelSockets}
+      goalLabel={tt(TRADE_OBJECTIVES.find(entry => entry.id === preset)!.labelKey as UiKey)}
+      onEditGoal={() => { goalRef.current?.scrollIntoView({ block: 'start' }); goalRef.current?.focus({ preventScroll: true }); }} />
     <div className="trade-setup">
-      <div className="trade-objectives" role="group" aria-label={tt('opt.objective')}>
+      <div className="trade-objectives" role="group" aria-label={tt('opt.objective')} ref={goalRef} tabIndex={-1}>
         <span className="trade-field-label">{tt('opt.objective')}</span>
         <div>{TRADE_OBJECTIVES.map(entry => <button key={entry.id} aria-pressed={preset === entry.id}
           onClick={() => setPreset(entry.id)}>{tt(entry.labelKey as UiKey)}</button>)}</div>
@@ -334,7 +338,6 @@ export function TradePanel({ session, lang, focus, onSkills, onTree }: {
               <CopyButton text={searchUrl} label={tt('trade.copySearch')} lang={lang} /></div>
           </div>}
         </>}
-        {selected !== 'gems' && <ItemReplacementCheck session={session} slot={selected} lang={lang} objective={objective} />}
         {result?.gems && <div className="trade-gems"><div className="trade-results-heading"><div><h4>{tt('trade.gemCandidates')}</h4>{onSkills && <button onClick={() => onSkills(mainGroup)}>{ut('autoSupports')} ↗</button>}<p>{tt('trade.gemHint')}</p></div></div>
           {result.gems.length === 0 && <p className="trade-notice">{tt('trade.noGemUpgrade')}</p>}
           {result.gems.map(plan => <article className="trade-gem-card" key={`${plan.gem.skill_id}:${plan.position}:${plan.level}:${plan.quality}`}>
