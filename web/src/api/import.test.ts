@@ -25,7 +25,7 @@ describe('WeGame import', () => {
     const fetcher = vi.fn(async (target: string, options: RequestInit) => {
       expect(target.startsWith('https://www.wegame.com.cn/api/v1/')).toBe(true);
       expect(options.credentials).toBe('omit');
-      expect(options.redirect).toBe('error');
+      expect(options.redirect).toBe('manual');
       return Response.json({ result: { error_code: 0 }, ...payloads[target.split('/').pop()!] });
     });
     const result = await fetchShare(url, fetcher);
@@ -35,6 +35,15 @@ describe('WeGame import', () => {
   });
   test('rejects partial upstream failures', async () => {
     await expect(fetchShare(url, async () => Response.json({ result: { error_code: 1 } }))).rejects.toThrow('expired');
+  });
+  test('rejects upstream redirects without following them', async () => {
+    const fetcher = vi.fn(async (_target: string, options: RequestInit) => {
+      expect(options.redirect).toBe('manual');
+      return new Response(null, { status: 302, headers: { location: 'https://example.com' } });
+    });
+    await expect(fetchShare(url, fetcher)).rejects.toThrow('HTTP 302');
+    expect(fetcher).toHaveBeenCalledTimes(5);
+    expect(fetcher.mock.calls.every(([target]) => target.startsWith('https://www.wegame.com.cn/api/v1/'))).toBe(true);
   });
   test('worker refuses invalid requests before fetching', async () => {
     const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);

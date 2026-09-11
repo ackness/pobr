@@ -48,7 +48,8 @@ export async function fetchShare(url, fetcher = fetch) {
   const methods = ['GetRoleInfo', 'GetEquipments', 'GetTalentTree', 'GetJewels', 'GetSkills'];
   const responses = await Promise.all(methods.map(async method => {
     const response = await fetcher(API + method, {
-      method: 'POST', redirect: 'error', credentials: 'omit',
+      // Workers supports manual redirects; the non-2xx check below rejects them.
+      method: 'POST', redirect: 'manual', credentials: 'omit',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ share_code: code, area: 0, from_src: 'poe2_helper' }),
       signal: AbortSignal.timeout(15000),
