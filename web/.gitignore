@@ -3,3 +3,4 @@ dist/
 src/wasm/pkg/
 public/data/
 e2e/screenshots/
+test-results/

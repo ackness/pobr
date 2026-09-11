@@ -53,6 +53,18 @@ tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle�
 - 根 `Cargo.toml` 设置 `[profile.dev] debug = "line-tables-only"` 以加速 ~100 个测试二进制的链接（保留 panic 回溯行号）；需要 lldb 单步调试时临时改回 `debug = true`（会触发全量重编译）。
 - CI gate（见 `devs/docs/architecture/06-development-workflow.md`）= fmt + clippy + test。涉及计算/Modifier/parser 的改动需补对应的集成测试或 golden fixture。
 
+### 快速检查与发版
+
+- `bash .claude/skills/run-pobr/driver.sh smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
+- `bash .claude/skills/run-pobr/driver.sh test -p <crate> --test <suite> [filter]`：原样传递 Cargo 参数，不过滤编译/错误输出。
+- `bash .claude/skills/run-pobr/driver.sh full`：fmt + clippy + workspace tests（含 doctest/parity）+ i18n lint，只在提交前跑一次。
+- `perf_timing` / `perf_phases` 是按需计时诊断，运行时加 `-- --ignored --nocapture`；正确性、覆盖率、parity 门禁仍默认执行。
+- `python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，不调用真实 Cargo。
+- `cd web && pnpm test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
+- 计划发版时，在功能 PR 中一并更新 workspace 版本。完成本地门禁后合并，再推送一次 tag；tag CI 通过后自动部署，无需在 master 额外手动运行同一套 CI。
+- `devs/scripts/regen-check.sh` 在临时副本中重生成，保留 `overlay-common` 与 examples 语料，不写入或恢复工作区文件。
+
+
 ## Workspace 结构
 
 `devs/docs/architecture/`（00–15 共 16 篇）描述目标架构与路线图；当前实现进度以代码 + `14-remaining-work-recheck.md` + parity 门禁为准（`11-implementation-progress.md` 已过时，见其顶部声明）。14 个 member 均已落地实现：
@@ -124,3 +136,12 @@ PoB2 兼容是硬回归基准，三层校验互补：
 - **不可变 / 确定性**：calc 函数对 `Env` 的可变写入集中在 `perform`，并行化只在只读快照阶段展开。
 - **Build Code** 走 XML → deflate → URL-safe Base64（`pobr-build::{decode,encode}_pob_code`，已用真实 PoB2 ninja code 验证）；自定义/复制物品需保留原始文本块以便和 PoB2 对比。
 - 文档以可执行契约为主；改变 crate 边界、聚合语义、catalog/parity 规则时同步更新 `devs/docs/architecture/*`。
+
+## Trade upgrade search
+
+- `pipeline/extract-trade-catalog.lua` exports category/base spawn weights, affix groups and gem families from the pinned PoB2 source. Regenerate alongside `trade_stat_map.json`; do not hand-edit the generated catalog.
+- `web/src/lib/tradeOptimizer.ts` probes eligible category affixes on a blank reference base, following PoB2's first-match spawn weights. It includes affixes absent from the equipped item. Weights shortlist market candidates; they are not the purchase ranking. The optional bounded combination search respects mod groups and prefix/suffix limits (equipment 3/3, jewels 2/2, flask/charm 1/1).
+- `web/public/_worker.js` calls fixed official trade hosts for live leagues, category/price/level-constrained searches, and at most 20 listings per search. It strips account/whisper objects (the buying URL retains the seller filter to locate the selected listing), rejects redirects, and surfaces verification/rate-limit errors without retries. A complexity-limit response (HTTP 400, code 2) permits one simpler category/price query, clearly labeled in the UI; level requirements are then filtered on fetched items. Full weighted links remain available on the official site when logged in. No credentials are required or forwarded. Test this path with synthetic responses in actual workerd (`pnpm test:worker`).
+- `web/src/lib/tradeMarket.ts` imports actual item JSON through the shared Rust WeGame/profile converter, replaces one equipment/jewel/utility slot, and fully recalculates the current build. Rankings compare goal gain or gain per quoted currency; currencies are not implicitly equated. Multi-slot results are independent single purchases against the same baseline, not a jointly budgeted shopping basket.
+- Gem search preserves the selected skill group, probes eligible support families plus current gem level/quality upgrades, refines replacement positions and prices the three best evaluated plans. Actual listing level/quality is recalculated before ranking. Equipment-granted skills cannot be purchased as gems.
+- Search is bounded and cannot prove a global market optimum. Unsupported modifier text is surfaced with each result; the user's skill/configuration, attribute requirements and engine parity limitations still matter. Prices/stock may change after retrieval. Changing build, goal, realm, league or budget invalidates results; cancellation never publishes incomplete weights as finished.

@@ -5,7 +5,7 @@
 //! on-demand `full_dps_json`. Run with `--nocapture` to see numbers:
 //!
 //! ```bash
-//! cargo test -p pobr-wasm --test perf_timing -- --nocapture
+//! cargo test -p pobr-wasm --test perf_timing -- --ignored --nocapture
 //! ```
 
 use pobr_gamedata::repo_data_root;
@@ -24,6 +24,7 @@ fn demo_code(build: &str) -> String {
 }
 
 #[test]
+#[ignore = "timing diagnostic; run explicitly with --ignored --nocapture"]
 fn recalc_hot_path_timing() {
     ensure_data();
     for build in [

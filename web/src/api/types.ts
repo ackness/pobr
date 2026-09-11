@@ -248,6 +248,10 @@ export interface VariantInput {
   add_gems?: AddGemsInput;
   /** 覆盖装备槽（text 为空 = 摘下该槽）。 */
   set_items?: SlotItemInput[];
+  /** Whole-list replacements, preserving the ordinary edit/import validation. */
+  jewels?: JewelInput[];
+  flasks?: SlotItemInput[];
+  socket_groups?: SocketGroupInput[];
   /** 追加加点（不验证连通性——假设性试算）。 */
   allocate_nodes?: number[];
   deallocate_nodes?: number[];
@@ -271,6 +275,7 @@ export interface VariantStats {
   /** 计算失败时为空表并给出 error。 */
   stats: Record<string, number>;
   error: string | null;
+  unsupported?: string[];
 }
 
 export interface OptimizeVariantsResponse {

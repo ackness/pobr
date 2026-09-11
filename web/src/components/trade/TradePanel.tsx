@@ -1,24 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
-import type { TradeStatEntry, VariantInput } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useItemDisplayNames, useLocalizedLines } from '../../hooks/useLocalizedLines';
-import { bindT, slotLabel, type Lang, type UiKey } from '../../lib/i18n';
-import { OBJECTIVE_PRESETS, evaluateVariants, scoreOf } from '../../lib/optimize';
+import { bindT, slotLabel, statNameLabel, type Lang, type UiKey } from '../../lib/i18n';
+import { OBJECTIVE_PRESETS } from '../../lib/optimize';
 import {
   REALM_DEFAULT_LEAGUE,
   REALM_LEAGUES,
   buildTradeUrl,
-  lineValue,
-  loadTradeMap,
-  normalizeTradeLine,
+  loadTradeLeagues,
   type TradePriceCap,
   type TradeRealm,
-  type WeightedStat,
 } from '../../lib/trade';
 import { AppSelect } from '../shared/AppSelect';
 import { CopyButton } from '../shared/CopyButton';
 import { OptimizerProgress } from '../shared/OptimizerControls';
+import { affixPool, basesForSlot, loadTradeCatalog, optimizeTradeAffixes, type TradeCatalog, type TradeBase, type TradeOptimization } from '../../lib/tradeOptimizer';
+import { evaluateMarket, searchMarket, rankMarket, planGemUpgrades, evaluateGemMarket, type MarketRanking, type MarketUpgrade } from '../../lib/tradeMarket';
 import './trade.css';
 
 interface Props {
@@ -37,7 +35,7 @@ const TRADE_SLOTS = [
   'amulet',
   'ring1',
   'ring2',
-  'belt',
+  'belt', 'Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3',
 ];
 
 const REALM_KEY = 'pobr-trade-realm';
@@ -45,7 +43,7 @@ const leagueKey = (realm: TradeRealm) => `pobr-trade-league-${realm}`;
 const BUDGET_KEY = 'pobr-trade-budget';
 const CURRENCY_KEY = 'pobr-trade-currency';
 
-/** 预算通货：equiv = 官方缺省「崇高石等价」（站方自动换算所有报价）。 */
+/** Retain the stored equiv key, now using explicit exalted quotes for value comparisons. */
 type BudgetCurrency = 'equiv' | 'divine' | 'chaos';
 const CURRENCY_OPTIONS: { value: BudgetCurrency; labelKey: UiKey }[] = [
   { value: 'equiv', labelKey: 'trade.curExalted' },
@@ -53,64 +51,91 @@ const CURRENCY_OPTIONS: { value: BudgetCurrency; labelKey: UiKey }[] = [
   { value: 'chaos', labelKey: 'trade.curChaos' },
 ];
 
-type SlotResult = { weighted: WeightedStat[] } | { error: string };
+type SlotResult = Partial<TradeOptimization> & { category?: string; market?: MarketRanking; total?: number; sampled?: number; searchMode?: string; error?: string };
 
-/** 摘掉物品文本中与词条对应的那一行（比对剥 {…} 后的整行）。 */
-function removeLine(text: string, target: string): string {
-  const lines = text.split('\n');
-  const idx = lines.findIndex((raw) => raw.replace(/\{[^}]*\}/g, '').trim() === target);
-  if (idx < 0) return text;
-  return [...lines.slice(0, idx), ...lines.slice(idx + 1)].join('\n');
-}
-
-/**
- * 市集页（PoB2 Trader 的对应物）：逐槽位生成「按对你的提升排序 + 预算上限」的
- * 官方市集搜索。权重 = 当前物品逐词条摘除重算的边际收益（与 PoB2 同口径）。
- */
+/** Category-constrained market search with full recalculation of each actual listing. */
 export function TradePanel({ session, lang }: Props) {
   const tt = bindT(lang);
-  const [tradeMap, setTradeMap] = useState<Record<string, TradeStatEntry> | null>(null);
+  const [catalog, setCatalog] = useState<TradeCatalog | null>(null);
+  const [catalogError, setCatalogError] = useState(false);
+  const [bases, setBases] = useState<Record<string, string>>({});
+  const [itemLevel, setItemLevel] = useState(82);
+  const [jewelSockets, setJewelSockets] = useState<number[]>([]);
   const [realm, setRealm] = useState<TradeRealm>(
-    () => (localStorage.getItem(REALM_KEY) as TradeRealm) ?? 'intl',
+    () => localStorage.getItem(REALM_KEY) === 'cn' ? 'cn' : 'intl',
   );
   const [league, setLeague] = useState(
     () => localStorage.getItem(leagueKey(realm)) ?? REALM_DEFAULT_LEAGUE[realm],
   );
+  const [leagues, setLeagues] = useState(REALM_LEAGUES[realm]);
+  const [leagueFallback, setLeagueFallback] = useState(false);
   const [preset, setPreset] = useState('dps');
-  const [budget, setBudget] = useState(() => localStorage.getItem(BUDGET_KEY) ?? '');
+  const [budget, setBudget] = useState(() => localStorage.getItem(BUDGET_KEY) ?? '100');
   const [currency, setCurrency] = useState<BudgetCurrency>(
     () => (localStorage.getItem(CURRENCY_KEY) as BudgetCurrency) ?? 'equiv',
   );
+  const [sortBy, setSortBy] = useState('gain');
+  const [gemGroup, setGemGroup] = useState(0);
   const [running, setRunning] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [results, setResults] = useState<Record<string, SlotResult>>({});
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    loadTradeMap().then(setTradeMap);
+    loadTradeCatalog().then(setCatalog).catch(() => setCatalogError(true));
+    getBackend().then(backend => backend.loadPassiveTree()).then(nodes => {
+      setJewelSockets(nodes.filter(node => node.kind === 'jewel_socket').map(node => node.skill));
+    }).catch(() => {});
   }, []);
-  // 目标变了 → 已算的权重口径过期，清掉。
-  useEffect(() => setResults({}), [preset]);
+  useEffect(() => {
+    let cancelled = false;
+    setLeagues(REALM_LEAGUES[realm]);
+    setLeagueFallback(false);
+    loadTradeLeagues(realm).then(list => {
+      if (cancelled) return;
+      setLeagues(list);
+      // Keep an explicitly stored league/custom name. Fresh sessions follow the live default.
+      if (localStorage.getItem(leagueKey(realm)) === null) setLeague(list[0]);
+    }).catch(() => { if (!cancelled) setLeagueFallback(true); });
+    return () => { cancelled = true; };
+  }, [realm]);
+  useEffect(() => {
+    abortRef.current?.abort();
+    setResults({});
+  }, [preset, session.currentRequest, bases, itemLevel, realm, league, budget, currency, gemGroup]);
+  useEffect(() => () => abortRef.current?.abort(), []);
 
-  const bySlot = new Map(session.items.map((item) => [item.slot, item.text]));
+  const slots = [...TRADE_SLOTS, ...jewelSockets.filter(node => session.allocatedNodes.includes(node)).map(node => `Jewel@${node}`)];
+  const labelOf = (slot: string) => slot.startsWith('Jewel@') ? `${tt('trade.jewelSocket')} ${slot.slice(6)}` : slotLabel(lang, slot);
+  const bySlot = new Map([...session.items, ...session.flasks,
+    ...session.jewels.map(jewel => ({ slot: `Jewel@${jewel.socket_node}`, text: jewel.text })),
+  ].map(item => [item.slot, item.text]));
   const slotNames = useItemDisplayNames(
-    TRADE_SLOTS.map((slot) => bySlot.get(slot)),
+    slots.map((slot) => bySlot.get(slot)),
     lang,
   );
 
-  // 预算：非法/空 = 不限；服务器/赛季/预算改动即时反映到已生成的链接（权重不用重算）。
+  // Prices and results are invalidated together when the market inputs change.
   const priceCap = useMemo<TradePriceCap | undefined>(() => {
     const max = Number(budget);
     if (!Number.isFinite(max) || max <= 0) return undefined;
-    return { max, ...(currency === 'equiv' ? {} : { currency }) };
+    return { max, currency: currency === 'equiv' ? 'exalted' : currency };
   }, [budget, currency]);
 
-  const urlOf = (weighted: WeightedStat[]) => buildTradeUrl(league, weighted, 0.7, realm, priceCap);
+  const urlOf = (result: SlotResult) => buildTradeUrl(league, result.weighted ?? [], {
+    category: result.category!, realm, price: priceCap, minimumWeight: result.minimumWeight,
+  });
+  const baseOf = (slot: string): TradeBase | undefined => {
+    if (!catalog) return undefined;
+    const available = basesForSlot(catalog, slot);
+    const lines = new Set((bySlot.get(slot) ?? '').split('\n').map(line => line.trim()));
+    return available.find(base => base.name === bases[slot]) ?? available.find(base => lines.has(base.name)) ?? available[0];
+  };
 
   // 词条明细本地化（flat 展开 → 按槽切回）。
-  const detailLines = TRADE_SLOTS.map((slot) => {
+  const detailLines = slots.map((slot) => {
     const r = results[slot];
-    return r && 'weighted' in r ? r.weighted.map((w) => w.line) : [];
+    return r?.weighted ? r.weighted.map((w) => w.line) : [];
   });
   const localizedFlat = useLocalizedLines(detailLines.flat(), lang);
   const localizedOf = (slotIdx: number): string[] => {
@@ -118,64 +143,85 @@ export function TradePanel({ session, lang }: Props) {
     return localizedFlat.slice(offset, offset + detailLines[slotIdx].length);
   };
 
-  const run = async (slot: string) => {
-    const itemText = bySlot.get(slot);
+  const objective = (() => {
+    const p = OBJECTIVE_PRESETS.find(entry => entry.id === preset) ?? OBJECTIVE_PRESETS[0];
+    return { stat: p.stat, per: p.per, constraints: [] };
+  })();
+  const run = async (selected: string[]) => {
     const request = session.currentRequest();
-    if (!itemText || !request || !tradeMap) return;
-    const backend = await getBackend();
-    const classified = await backend.classifyItemLines(itemText);
-    const mapped = classified
-      .filter((l) => l.kind === 'explicit')
-      .flatMap((l) => {
-        const entry = tradeMap[normalizeTradeLine(l.text)];
-        const value = lineValue(l.text);
-        return entry && value !== null ? [{ line: l.text, entry, value }] : [];
-      });
-    if (mapped.length === 0) {
-      setResults((prev) => ({ ...prev, [slot]: { error: tt('trade.noMapped') } }));
-      return;
-    }
-    const presetDef = OBJECTIVE_PRESETS.find((p) => p.id === preset) ?? OBJECTIVE_PRESETS[0];
-    const objective = { stat: presetDef.stat, per: presetDef.per, constraints: [] };
-    const variants: VariantInput[] = mapped.map((m) => ({
-      label: m.line,
-      set_items: [{ slot, text: removeLine(itemText, m.line) }],
-    }));
+    if (!request || !catalog) return;
     const controller = new AbortController();
     abortRef.current = controller;
-    setRunning(slot);
-    setProgress({ done: 0, total: variants.length });
     try {
-      const { baseline, results: variantStats } = await evaluateVariants({
-        request,
-        variants,
-        signal: controller.signal,
-        onProgress: (done, total) => setProgress({ done, total }),
-      });
-      const baseScore = scoreOf(baseline, objective);
-      const weighted: WeightedStat[] = variantStats.flatMap((r) => {
-        const m = mapped[r.index];
-        if (!m || r.error) return [];
-        // 边际收益：摘掉该词条后目标下降多少（≤0 = 对目标无贡献，不进权重）。
-        const delta = baseScore - scoreOf(r.stats, objective);
-        if (delta <= 0) return [];
-        return [{ id: m.entry.id, weight: delta / m.value, line: m.line, value: m.value }];
-      });
-      setResults((prev) => ({
-        ...prev,
-        [slot]: weighted.length === 0 ? { error: tt('trade.noWeights') } : { weighted },
-      }));
-    } catch (err: unknown) {
-      setResults((prev) => ({
-        ...prev,
-        [slot]: { error: err instanceof Error ? err.message : String(err) },
-      }));
+      for (const slot of selected) {
+        if (controller.signal.aborted) break;
+        setRunning(slot);
+        setProgress({ done: 0, total: 1 });
+        setResults(prev => ({ ...prev, [slot]: {} }));
+        const options = { signal: controller.signal, onProgress: (done: number, total: number) => setProgress({ done, total }) };
+        try {
+          if (slot === 'gems') {
+            const plans = await planGemUpgrades(request, catalog, gemGroup, objective, options.signal, options.onProgress);
+            let ranking: MarketRanking = { baseline: {}, upgrades: [], rejected: 0 };
+            let total = 0, sampled = 0;
+            for (const plan of plans) {
+              const market = await searchMarket({ realm, league, category: 'gem', price: priceCap,
+                maxLevel: session.character?.level, gem: { name: plan.gem.name, level: plan.level, quality: plan.quality } }, options.signal);
+              const result = await evaluateGemMarket(request, plan, market, objective, options.signal);
+              const ranked = rankMarket([...ranking.upgrades, ...result.upgrades]);
+              ranking = { baseline: Object.keys(result.baseline).length ? result.baseline : ranking.baseline,
+                upgrades: ranked.filter((entry, index) => ranked.findIndex(other => other.listing.id === entry.listing.id) === index),
+                rejected: ranking.rejected + result.rejected };
+              total += market.total; sampled += market.sampled;
+              setResults(prev => ({ ...prev, [slot]: { market: ranking, total, sampled } }));
+            }
+            setResults(prev => ({ ...prev, [slot]: { market: ranking, total, sampled } }));
+          } else {
+            const base = baseOf(slot);
+            if (!base) continue;
+            const pool = [...new Map(catalog.bases.filter(entry => entry.category === base.category)
+              .flatMap(entry => affixPool(catalog, entry, itemLevel)).map(mod => [mod.id, mod])).values()];
+            const weights = await optimizeTradeAffixes({ request, slot, base, pool, itemLevel, objective,
+              combinations: false, ...options });
+            setResults(prev => ({ ...prev, [slot]: { ...weights, category: base.category } }));
+            const market = await searchMarket({ realm, league, category: base.category, weighted: weights.weighted,
+              price: priceCap, maxLevel: session.character?.level }, options.signal);
+            const ranking = await evaluateMarket({ request, slot, market, objective, ...options });
+            if (!controller.signal.aborted) setResults(prev => ({ ...prev, [slot]: {
+              ...weights, category: base.category, market: ranking, total: market.total, sampled: market.sampled, searchMode: market.search_mode,
+            } }));
+          }
+        } catch (err) {
+          if (controller.signal.aborted) break;
+          setResults(prev => ({ ...prev, [slot]: { ...prev[slot], error: err instanceof Error ? err.message : String(err) } }));
+          // Stop a multi-slot scan on an upstream failure; no automatic retries or request storm.
+          break;
+        }
+      }
     } finally {
-      setRunning(null);
-      setProgress(null);
-      abortRef.current = null;
+      if (abortRef.current === controller) {
+        setRunning(null); setProgress(null); abortRef.current = null;
+      }
     }
   };
+  const valueCurrency = sortBy === 'value' ? (currency === 'equiv' ? 'exalted' : currency) : undefined;
+  const applyUpgrade = (upgrade: MarketUpgrade) => {
+    const variant = upgrade.variant;
+    if (variant.set_items) session.setItems([...session.items.filter(item => !variant.set_items!.some(next => next.slot === item.slot)), ...variant.set_items]);
+    if (variant.jewels) session.setJewels(variant.jewels);
+    if (variant.flasks) session.setFlasks(variant.flasks);
+    if (variant.socket_groups) session.setSocketGroups(variant.socket_groups);
+  };
+  const renderMarket = (result: SlotResult) => result.market && <div className="trade-market">
+    {result.searchMode === 'budget' && <p className="items-hint">{tt('trade.budgetSearch')}</p>}
+    <p className="items-hint">{tt('trade.marketCoverage')}: {result.sampled ?? 0} / {result.total ?? 0}
+      {result.market.rejected > 0 ? ` · ${tt('trade.rejected')}: ${result.market.rejected}` : ''}</p>
+    {result.market.upgrades.length === 0 && <p>{tt('trade.noImprovement')}</p>}
+    {rankMarket(result.market.upgrades, valueCurrency).slice(0, 10).map(upgrade =>
+      <MarketCard key={upgrade.listing.id} upgrade={upgrade} baseline={result.market!.baseline} lang={lang}
+        onApply={() => applyUpgrade(upgrade)} />)}
+  </div>;
+  const combined = rankMarket(Object.values(results).flatMap(result => result.market?.upgrades ?? []), valueCurrency);
 
   return (
     <section aria-labelledby="trade-heading">
@@ -184,7 +230,7 @@ export function TradePanel({ session, lang }: Props) {
       </h2>
       <p className="items-hint">{tt('trade.hint')}</p>
 
-      {tradeMap && Object.keys(tradeMap).length === 0 ? (
+      {catalogError ? (
         <p className="items-hint">{tt('trade.unavailable')}</p>
       ) : (
         <>
@@ -209,11 +255,11 @@ export function TradePanel({ session, lang }: Props) {
             <label>
               {tt('trade.league')}
               <AppSelect
-                value={REALM_LEAGUES[realm].includes(league) ? league : '__custom'}
+                value={leagues.includes(league) ? league : '__custom'}
                 options={[
-                  ...REALM_LEAGUES[realm].map((name, i) => ({
+                  ...leagues.map((name) => ({
                     value: name,
-                    label: i === 0 ? `${name}（${tt('trade.leagueSeason')}）` : name,
+                    label: name,
                   })),
                   { value: '__custom', label: tt('trade.leagueCustom') },
                 ]}
@@ -225,7 +271,7 @@ export function TradePanel({ session, lang }: Props) {
                 ariaLabel={tt('trade.league')}
               />
             </label>
-            {!REALM_LEAGUES[realm].includes(league) && (
+            {!leagues.includes(league) && (
               <label>
                 {tt('trade.leagueCustom')}
                 <input
@@ -276,32 +322,73 @@ export function TradePanel({ session, lang }: Props) {
             </label>
           </div>
 
+          {leagueFallback && <p className="items-hint">{tt('trade.leagueFallback')}</p>}
+          <label className="trade-ilvl">
+            {tt('trade.itemLevel')}
+            <input type="number" min={1} max={100} value={itemLevel}
+              onChange={event => setItemLevel(Math.min(100, Math.max(1, Number(event.target.value) || 1)))} />
+          </label>
+          <p className="items-hint">{tt('trade.marketHint')}</p>
+          <div className="opt-row">
+            <label>{tt('trade.sort')} <select value={sortBy} onChange={event => setSortBy(event.target.value)}>
+              <option value="gain">{tt('trade.sortGain')}</option><option value="value">{tt('trade.sortValue')}</option>
+            </select></label>
+            <button disabled={running !== null || session.busy || !catalog || !league.trim()}
+              onClick={() => void run(slots.filter(slot => bySlot.has(slot)))}>{tt('trade.scanEquipped')}</button>
+          </div>
+          {Object.values(results).filter(result => result.market).length > 1 && combined.length > 0 && <details className="trade-overall" open>
+            <summary>{tt('trade.overall')}</summary>
+            {combined.slice(0, 5).map((upgrade, index) => {
+              const source = Object.entries(results).find(([, result]) => result.market?.upgrades.includes(upgrade));
+              return <div key={`${index}:${upgrade.listing.id}`}>
+                <strong>#{index + 1} · {source?.[0] === 'gems' ? tt('trade.gems') : labelOf(source?.[0] ?? '')}</strong>
+                <MarketCard upgrade={upgrade} baseline={source?.[1].market?.baseline ?? {}} lang={lang} onApply={() => applyUpgrade(upgrade)} />
+              </div>;
+            })}
+          </details>}
+          {!slots.some(slot => slot.startsWith('Jewel@')) && <p className="items-hint">{tt('trade.jewelHint')}</p>}
           <ul className="trade-slots">
-            {TRADE_SLOTS.map((slot, idx) => {
+            {slots.map((slot, idx) => {
               const text = bySlot.get(slot);
               const result = results[slot];
               const isRunning = running === slot;
+              const base = baseOf(slot);
+              const available = catalog ? basesForSlot(catalog, slot) : [];
+              const categories = [...new Set(available.map(entry => entry.category))];
               return (
                 <li key={slot} className="trade-slot-row">
                   <div className="trade-slot-main">
-                    <span className="trade-slot-name">{slotLabel(lang, slot)}</span>
+                    <span className="trade-slot-name">{labelOf(slot)}</span>
                     <span className={`trade-slot-item${text ? '' : ' is-empty'}`}>
                       {slotNames[idx] || tt('trade.slotEmpty')}
                     </span>
+                    <select aria-label={`${labelOf(slot)} ${tt('trade.category')}`}
+                      value={base?.category ?? ''} onChange={event => {
+                        const next = available.find(entry => entry.category === event.target.value);
+                        if (next) setBases(prev => ({ ...prev, [slot]: next.name }));
+                      }}>
+                      {categories.map(category => <option key={category} value={category}>
+                        {tt(`trade.category.${category}` as UiKey)}
+                      </option>)}
+                    </select>
+                    <select aria-label={`${labelOf(slot)} ${tt('trade.base')}`}
+                      value={base?.name ?? ''} onChange={event => setBases(prev => ({ ...prev, [slot]: event.target.value }))}>
+                      {available.filter(entry => entry.category === base?.category).map(entry =>
+                        <option key={entry.name} value={entry.name}>{entry.name}</option>)}
+                    </select>
                     <button
                       className="opt-run"
-                      disabled={!text || session.busy || running !== null || !league.trim()}
-                      title={text ? undefined : tt('trade.emptyHint')}
-                      onClick={() => void run(slot)}
+                      disabled={!base || session.busy || running !== null || !league.trim()}
+                      onClick={() => void run([slot])}
                     >
                       {isRunning ? tt('opt.running') : tt('trade.findBetter')}
                     </button>
-                    {result && 'weighted' in result && (
+                    {result?.weighted && result.category && (
                       <>
-                        <a href={urlOf(result.weighted)} target="_blank" rel="noreferrer">
+                        <a href={urlOf(result)} target="_blank" rel="noreferrer">
                           <button>{tt('trade.openSite')}</button>
                         </a>
-                        <CopyButton text={urlOf(result.weighted)} lang={lang} />
+                        <CopyButton text={urlOf(result)} lang={lang} />
                       </>
                     )}
                   </div>
@@ -313,8 +400,9 @@ export function TradePanel({ session, lang }: Props) {
                       lang={lang}
                     />
                   )}
-                  {result && 'error' in result && <p className="opt-error">{result.error}</p>}
-                  {result && 'weighted' in result && (
+                  {result?.error && <p className="opt-error">{result.error}</p>}
+                  {result && renderMarket(result)}
+                  {result?.weighted && (
                     <details className="trade-details">
                       <summary>
                         {result.weighted.length} {tt('trade.details')}
@@ -341,8 +429,48 @@ export function TradePanel({ session, lang }: Props) {
               );
             })}
           </ul>
+          <div className="trade-gems">
+            <h3>{tt('trade.gems')}</h3><p className="items-hint">{tt('trade.gemHint')}</p>
+            <select aria-label={tt('trade.gemGroup')} value={gemGroup} onChange={event => setGemGroup(Number(event.target.value))}>
+              {session.socketGroups.map((group, index) => <option key={index} value={index} disabled={!group.enabled || Boolean(group.source)}>
+                {index + 1}. {catalog?.gems?.find(gem => gem.skill_id === group.gems[0]?.skill_id)?.name ?? group.gems[0]?.skill_id}
+              </option>)}
+            </select>
+            <button disabled={!catalog || running !== null || session.busy || !league.trim() || !session.socketGroups[gemGroup]?.enabled || Boolean(session.socketGroups[gemGroup]?.source)}
+              onClick={() => void run(['gems'])}>{tt('trade.findBetter')}</button>
+            {running === 'gems' && progress && <OptimizerProgress {...progress} onCancel={() => abortRef.current?.abort()} lang={lang} />}
+            {results.gems?.error && <p className="opt-error">{results.gems.error}</p>}
+            {results.gems && renderMarket(results.gems)}
+          </div>
         </>
       )}
     </section>
   );
+}
+
+function MarketCard({ upgrade, baseline, lang, onApply }: {
+  upgrade: MarketUpgrade; baseline: Record<string, number>; lang: Lang; onApply: () => void;
+}) {
+  const tt = bindT(lang);
+  const signed = (value: number) => `${value >= 0 ? '+' : ''}${value.toLocaleString(lang, { maximumFractionDigits: 2 })}`;
+  return <article className="trade-market-card">
+    <div className="trade-slot-main"><strong>{upgrade.listing.item.name || upgrade.listing.item.baseType || upgrade.listing.item.typeLine}</strong>
+      <span>{upgrade.listing.price.amount} {upgrade.listing.price.currency}</span>
+      <strong className="opt-score">{tt('trade.gain')}: {signed(upgrade.gain)}</strong>
+      {upgrade.listing.price.amount > 0 && <span>{(upgrade.gain / upgrade.listing.price.amount).toFixed(2)} / {upgrade.listing.price.currency}</span>}
+      <button onClick={onApply}>{tt('trade.tryOn')}</button>
+      <a href={upgrade.url} target="_blank" rel="noreferrer">{tt('trade.openSite')}</a>
+      <CopyButton text={upgrade.text} lang={lang} />
+    </div>
+    <div className="trade-deltas">{['TotalDPS', 'Life', 'TotalEHP', 'FireResist', 'ColdResist', 'LightningResist', 'ChaosResist'].map(stat => {
+      const before = baseline[stat] ?? 0, after = upgrade.stats[stat] ?? 0;
+      const delta = after - before;
+      return <span key={stat} className={delta < 0 ? 'opt-error' : ''}>{statNameLabel(lang, stat)}: {signed(delta)}
+        {before !== 0 ? ` (${signed(delta / Math.abs(before) * 100)}%)` : ''}</span>;
+    })}</div>
+    <details><summary>{tt('trade.itemDetails')}</summary><pre>{upgrade.text}</pre></details>
+    {!!upgrade.listing.item.requirements?.length && <p className="items-hint">{tt('trade.requirements')}: {upgrade.listing.item.requirements.map(req => `${req.name} ${req.values[0]?.[0] ?? ''}`).join(', ')}</p>}
+    {upgrade.warnings.length > 0 && <details className="trade-warnings"><summary>{tt('trade.uncertain')} ({upgrade.warnings.length})</summary>
+      <pre>{[...new Set(upgrade.warnings)].join('\n')}</pre></details>}
+  </article>;
 }

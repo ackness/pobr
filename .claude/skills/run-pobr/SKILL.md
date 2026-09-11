@@ -31,11 +31,29 @@ Check what's set up:
 bash .claude/skills/run-pobr/driver.sh status
 ```
 
-The green "is it working" signal (build + targeted tests incl. `parity_no_regression`, ~1540 tests, exit 0):
+Quick feedback (representative aggregation, parser and Build Code tests; no preliminary workspace build):
 
 ```bash
 bash .claude/skills/run-pobr/driver.sh smoke
 ```
+
+Target a changed package/suite with ordinary Cargo arguments, or run the full gate once before submission:
+
+```bash
+bash .claude/skills/run-pobr/driver.sh test -p pobr-build --test codec build_code::
+bash .claude/skills/run-pobr/driver.sh full
+```
+
+`test` requires explicit arguments. `full` runs fmt, clippy, all workspace tests (including doctests and parity), and i18n lint. Output is not filtered, so compiler errors and build-lock waits remain visible. `smoke` is not a substitute for this gate.
+
+Timing diagnostics are opt-in; they do not enforce correctness or performance thresholds:
+
+```bash
+cargo test -p pobr-wasm --test perf_timing --test perf_phases -- --ignored --nocapture
+```
+
+CI keeps the full nextest and doctest gates on tags/manual dispatch. For a release, set the workspace version in the feature PR, validate locally, merge, then push the version tag once. That run gates deployment; avoid an additional identical dispatch on master.
+
 
 Look up a PoB2 formula / parse rule in vendor Lua (fixed-string match across ModParser/CalcOffence/CalcDefence/CalcPerform) — this is how you adjudicate engine-vs-PoB2 divergences:
 
@@ -43,7 +61,7 @@ Look up a PoB2 formula / parse rule in vendor Lua (fixed-string match across Mod
 bash .claude/skills/run-pobr/driver.sh lua "per (%d+) intelligence"
 ```
 
-Other subcommands: `deps` (luajit only), `vendor` (clone/align PoB2 to the pinned commit), `build`, `test`, `data` (data status + regen-pipeline notes), `diff <verA> <verB>` (semantic cross-version data diff — what nodes/skills/mods changed), `drill` (version-bump reproducibility — see Gotchas).
+Other subcommands: `deps` (luajit only), `vendor` (clone/align PoB2 to the pinned commit), `build`, `test <cargo args>`, `full`, `data` (data status + regen-pipeline notes), `diff <verA> <verB>` (semantic cross-version data diff — what nodes/skills/mods changed), `drill` (version-bump reproducibility — see Gotchas).
 
 ## Vendor reference (PoB2 clone)
 

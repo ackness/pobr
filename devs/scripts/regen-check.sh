@@ -160,8 +160,8 @@ fi
 # generated 段：precompile-mods 重生一致 + 覆盖率棘轮（M6-T7，架构 §4 防线 ③）
 # ----------------------------------------------------------------------------
 # precompile-mods 直接写 data/<patch>/generated/{parsed_mods.json,parse-coverage.json}。
-# 校验方式：先把这两份已提交产物用 git 暂存到临时副本 → 原地重跑 precompile →
-# byte-diff 重生产物 vs 已提交副本 → 用 git restore 还原工作区（CI 无副作用）。
+# Copy the current data inputs into an isolated layout, regenerate there, and
+# compare with the working tree. Never write or restore working-tree artifacts.
 # 输入 = 已提交 base/passive_tree.json + generated/special_derived.json + examples build XML，
 # 无 pipeline 依赖；仓库有 data/<patch>/ 即可重跑。
 # ============================================================================
@@ -174,31 +174,30 @@ if [[ -f "$GEN_PARSED" ]]; then
     echo ""
     echo "regen-check: 重跑 precompile-mods（generated 段）……"
 
-    # 已提交产物暂存到临时目录（byte 对照基准）。
-    GEN_STASH="$(mktemp -d "${TMPDIR:-/tmp}/pobr-gen-stash.XXXXXX")"
-    trap 'rm -rf "$TMP_OUT" "$GEN_STASH"' EXIT
-    cp "$GEN_PARSED" "$GEN_STASH/parsed_mods.json"
-    [[ -f "$GEN_COVERAGE" ]] && cp "$GEN_COVERAGE" "$GEN_STASH/parse-coverage.json"
+    # Preserve data/<patch>, sibling overlay-common and the C1 corpus lookup.
+    # Dereference copied symlinks so generated outputs cannot point into the source.
+    PC_ROOT="$TMP_OUT/precompile"
+    PC_DATA="$PC_ROOT/data/$PATCH"
+    mkdir -p "$PC_DATA"
+    cp -RL "$COMMITTED_FLAT/." "$PC_DATA/"
+    if [[ -d "$ROOT/data/overlay-common" ]]; then
+        cp -RL "$ROOT/data/overlay-common" "$PC_ROOT/data/overlay-common"
+    fi
+    [[ ! -d "$ROOT/examples" ]] || ln -s "$ROOT/examples" "$PC_ROOT/examples"
 
-    # 原地重跑（写回 generated/）。
     cargo run --quiet -p precompile-mods --manifest-path "$ROOT/Cargo.toml" -- \
-        --data "$COMMITTED_FLAT" --report >/dev/null
+        --data "$PC_DATA" --report >/dev/null
 
     GEN_DIFF=0
-    if ! cmp -s "$GEN_STASH/parsed_mods.json" "$GEN_PARSED"; then
+    if ! cmp -s "$PC_DATA/generated/parsed_mods.json" "$GEN_PARSED"; then
         GEN_DIFF=1
         echo "regen-check: generated/parsed_mods.json byte-diff 不为零（precompile 漂移）。"
     fi
-    if [[ -f "$GEN_STASH/parse-coverage.json" ]] \
-       && ! cmp -s "$GEN_STASH/parse-coverage.json" "$GEN_COVERAGE"; then
+    if [[ -f "$GEN_COVERAGE" ]] \
+       && ! cmp -s "$PC_DATA/generated/parse-coverage.json" "$GEN_COVERAGE"; then
         GEN_DIFF=1
         echo "regen-check: generated/parse-coverage.json byte-diff 不为零（precompile 漂移）。"
     fi
-
-    # 还原工作区（不污染 git status）。重跑产物与已提交一致时本身就是 no-op。
-    git -C "$ROOT" checkout -- "$GEN_PARSED" 2>/dev/null || true
-    [[ -f "$GEN_COVERAGE" ]] && { git -C "$ROOT" checkout -- "$GEN_COVERAGE" 2>/dev/null || true; }
-    rm -rf "$GEN_STASH"
 
     if [[ "$GEN_DIFF" -eq 1 ]]; then
         STATUS=1

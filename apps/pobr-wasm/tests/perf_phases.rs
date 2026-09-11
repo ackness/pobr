@@ -1,11 +1,12 @@
 //! Phase-level timing of one recalc (diagnostic; not a gate).
-//! `cargo test -p pobr-wasm --test perf_phases --release -- --nocapture`
+//! `cargo test -p pobr-wasm --test perf_phases --release -- --ignored --nocapture`
 
 use pobr_build::{DataOrchestratorOptions, calculate_with_data_session};
 use pobr_gamedata::repo_data_root;
 use std::time::Instant;
 
 #[test]
+#[ignore = "timing diagnostic; run explicitly with --ignored --nocapture"]
 fn phase_timing() {
     let dir = repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION);
 

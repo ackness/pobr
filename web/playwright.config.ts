@@ -6,6 +6,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173',
     screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',
   },
   webServer: {
     // preview 用已构建的 dist（含 wasm + public/data）；先 pnpm build + sync-data。

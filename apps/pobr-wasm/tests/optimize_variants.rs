@@ -97,3 +97,54 @@ fn evaluates_all_mutation_channels_and_isolates_errors() {
     let noop_life = resp["variants"][0]["stats"]["Life"].as_f64().unwrap();
     assert!((noop_life - base_life).abs() < 0.01);
 }
+
+#[test]
+fn trade_replacements_match_normal_edits_and_keep_socket_gating() {
+    setup();
+    let request = json!({
+        "character": {"class_name": "Witch", "level": 90},
+        "allocated_nodes": [7960],
+        "config_inputs": {"questInterlude 2Khari CrossingMolten Shrine": false},
+        "jewels": [{"socket_node": 7960, "text": "Rarity: RARE\nOld Jewel\nEmerald\n+20 to maximum Life"}],
+    });
+    let replacements = json!({
+        "jewels": [{"socket_node": 7960, "text": "Rarity: RARE\nNew Jewel\nEmerald\n+80 to maximum Life"}],
+        "flasks": [{"slot": "Charm 1", "text": "Rarity: MAGIC\nRuby Charm\nRuby Charm"}],
+        "socket_groups": [{"enabled": true, "gems": [{"skill_id": "FireballPlayer", "level": 10, "quality": 20}]}],
+    });
+    let mut edited = request.clone();
+    edited
+        .as_object_mut()
+        .unwrap()
+        .extend(replacements.as_object().unwrap().clone());
+    let normal: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&edited.to_string()).unwrap())
+            .unwrap();
+    let output: Value = serde_json::from_str(&pobr_wasm::optimize_variants_json(&json!({
+        "request": request, "stats": ["Life", "TotalDPS", "FireResist"],
+        "variants": [replacements, {"jewels": [{"socket_node": 7960, "text": "???"}]},
+            {"jewels": [{"socket_node": 999999, "text": "Rarity: RARE\nUnused\nEmerald\n+900 to maximum Life"}]}],
+    }).to_string()).unwrap()).unwrap();
+    assert!(output["variants"][0]["error"].is_null(), "{output}");
+    for stat in ["Life", "TotalDPS", "FireResist"] {
+        let expected = normal["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["id"] == stat)
+            .unwrap();
+        assert_eq!(
+            output["variants"][0]["stats"][stat], expected["value"],
+            "{stat}"
+        );
+    }
+    assert!(
+        output["variants"][0]["stats"]["Life"].as_f64().unwrap()
+            > output["baseline"]["Life"].as_f64().unwrap()
+    );
+    assert!(output["variants"][1]["error"].is_string());
+    assert!(
+        output["variants"][2]["stats"]["Life"].as_f64().unwrap()
+            < output["baseline"]["Life"].as_f64().unwrap()
+    );
+}

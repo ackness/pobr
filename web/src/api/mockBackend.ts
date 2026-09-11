@@ -93,6 +93,9 @@ export function createMockBackend(): PobrBackend {
         })),
       };
     },
+    async importTradeItems(items) {
+      return items.map(() => ({ error: 'Trade item import requires the calculation backend' }));
+    },
     async runeCatalog() {
       // mock 无符文目录；面板隐藏符文编辑器。
       return [];

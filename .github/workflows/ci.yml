@@ -9,9 +9,9 @@ name: CI
 #     to validate a branch on demand.
 # Day-to-day commits cost nothing; you pay only when releasing or when you ask.
 #
-# Single sequential job: GitHub bills per job rounded up to the minute, so one
-# job = one rounding. Cheapest checks run first, so a fmt/clippy failure exits
-# before the ~4-min test compile.
+# Rust and Web run in parallel. Within each job, cheap checks fail before builds.
+# Prepare the workspace version in the feature PR, then use one tag run for the
+# full release gate; do not also dispatch an identical full run on master.
 on:
   push:
     tags:
@@ -47,6 +47,8 @@ jobs:
       # Cheapest first — fail fast before the expensive test compile.
       - name: Format
         run: cargo fmt --all --check
+      - name: Workflow script tests
+        run: python3 devs/scripts/test_workflows.py
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
@@ -97,6 +99,8 @@ jobs:
         run: pnpm typecheck
       - name: Unit tests
         run: pnpm test
+      - name: Worker runtime smoke
+        run: pnpm test:worker
       - name: Build wasm
         run: pnpm build-wasm
       - name: Sync game data
@@ -115,6 +119,14 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: E2E smoke
         run: pnpm exec playwright test
+      - name: Upload E2E failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-failure
+          path: web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
 
   # Auto-deploy to Cloudflare Pages on v0.x release tags, only after BOTH the
   # Rust gate and the web gate pass. Reuses the dist built by the web job —
