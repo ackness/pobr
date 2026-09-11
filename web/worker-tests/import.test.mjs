@@ -68,6 +68,7 @@ test('Worker loads official leagues and rejects arbitrary upstream realms', asyn
     outboundService: async (request) => {
       calls += 1;
       assert.equal(request.url, 'https://www.pathofexile.com/api/trade2/data/leagues');
+      assert.equal(request.headers.get('user-agent'), 'PoBR (+https://github.com/ackness/pobr)');
       return Response.json({ result: [
         { id: 'Future League', realm: 'poe2' }, { id: 'Standard', realm: 'poe2' },
         { id: 'Wrong Game', realm: 'pc' },
