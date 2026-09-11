@@ -94,7 +94,19 @@ web/src/
 - **Tree**: allocation, attribute picks, jewel sockets, search, and a
   node-power heatmap.
 - **Optimizers & trade**: objective-driven gem/item/tree suggestions and a
-  weighted trade search.
+  category-constrained trade search with actual listing recalculation and budget/value ranking.
+
+## Trade upgrades and signed-in imports
+
+Choose the server, league, goal and budget on the Trade tab. Equipment, accessories, allocated passive jewels, flasks/charms and skill/support gems are evaluated as single purchases against the current build. The panel shows DPS, life, EHP and resistance changes, quoted prices, try-on actions and official buying links.
+
+Public searches recalculate up to 20 listings. When anonymous weighted queries exceed the official complexity limit, the panel labels the simpler price-based candidate search. Full weights remain available on the official site after login. CN listing searches currently require login:
+
+1. Run **Find better**, then drag **Export this search to PoBR** from the signed-in import section to the bookmarks bar (or copy its address into a bookmark).
+2. Open the generated official search, sign in there, and activate that bookmark. It downloads `pobr-trade-*.json` using the official tab's authenticated requests.
+3. Import that file in the same PoBR slot or gem candidate. The current budget is applied again and every listing is recalculated. Cookies and login tokens never leave the official tab.
+
+Exports are checked against the chosen server, league and item category. Unknown mechanics and attribute requirements are shown for review; bounded candidate sampling does not prove a global market optimum. A changed build/goal/budget invalidates results, and prices/availability may change after export.
 
 ## Data flow
 
