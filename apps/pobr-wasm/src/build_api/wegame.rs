@@ -359,9 +359,14 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
     })?;
     let mut warnings = BTreeSet::new();
     let mut nodes: BTreeSet<u32> = file.talent_tree.hashes.into_iter().collect();
+    let mut exclusive_nodes = [Vec::new(), Vec::new()];
     for (set, ids) in file.talent_tree.specialisations {
-        if set == "set1" {
-            nodes.extend(ids);
+        if set == "set1" || set == "set2" {
+            let index = usize::from(set == "set2");
+            exclusive_nodes[index] = ids.clone();
+            if index == 0 {
+                nodes.extend(ids);
+            }
         } else if !ids.is_empty() {
             warnings.insert(format!("Inactive passive specialisation omitted: {set}"));
         }
@@ -385,7 +390,19 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
     }
     let mut equipped = Vec::new();
     let mut flasks = Vec::new();
+    let mut alternate_items = Vec::new();
     for item in file.equipments {
+        if let Some(slot) = match text(&item, "inventoryId") {
+            "Weapon2" => Some("weapon1"),
+            "Offhand2" => Some("weapon2"),
+            _ => None,
+        } {
+            alternate_items.push(super::super::request::SlotItemInput {
+                slot: slot.into(),
+                text: item_text(&item, &mut warnings)?,
+            });
+            continue;
+        }
         let Some(slot) = slot(&item) else {
             warnings.insert(format!(
                 "Equipment slot omitted: {}",
@@ -449,6 +466,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             }
         }
         groups.push(SocketGroupJson {
+            weapon_set: None,
             slot: None,
             enabled: true,
             source: None,
@@ -474,6 +492,12 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
         ),
     );
     warnings.insert("Check the main skill, combat configuration and resistance penalty before comparing upgrades.".into());
+    if !alternate_items.is_empty() {
+        warnings.insert(
+            "WeGame does not provide skill weapon-set bindings. Assign them on the Skills page."
+                .into(),
+        );
+    }
     let notes = format!(
         "WeGame import\n{}",
         warnings
@@ -483,6 +507,11 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             .join("\n")
     );
     let json = BuildJson {
+        weapon_swap: Some(super::super::request::WeaponSwapInput {
+            active: 1,
+            alternate_items,
+            exclusive_nodes,
+        }),
         character,
         tree: TreeJson {
             allocated_nodes: nodes.into_iter().collect(),

@@ -8,6 +8,8 @@
 
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
+import { defaultMainSkill } from '../lib/mainSkill';
+import { groupsForWeaponSet, skillWeaponSet, switchWeapons, validWeaponSwap } from '../lib/weaponSets';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getBackend } from '../api/backend';
 import { composeNotes, splitNotes, type Annotations } from '../lib/annotations';
@@ -26,6 +28,7 @@ import type {
   PassiveTreeMeta,
   SlotItemInput,
   SocketGroupInput,
+  WeaponSwap,
 } from '../api/types';
 
 export interface CharacterState {
@@ -44,6 +47,7 @@ export interface CalcParams {
 
 /** 会话完整可编辑状态（重算请求由此派生）。 */
 interface BuildState {
+  weaponSwap?: WeaponSwap | null;
   pobCode: string | null;
   character: CharacterState;
   allocatedNodes: number[];
@@ -63,6 +67,8 @@ interface BuildState {
 }
 
 export interface BuildSession {
+  activeWeaponSet: 1 | 2;
+  setWeaponSet: (set: 1 | 2) => void;
   bootMessage: string | null;
   bootError: string | null;
   /** 解码出的原始 build（珠宝/药剂等只读展示；白手 build 为 null）。 */
@@ -149,7 +155,7 @@ function toRequest(state: BuildState): CalculateBuildRequest {
     character: state.character,
     allocated_nodes: state.allocatedNodes,
     attribute_choices: state.attributeChoices,
-    socket_groups: state.socketGroups,
+    socket_groups: groupsForWeaponSet(state.socketGroups, state.weaponSwap?.active ?? 1),
     items: state.items,
     flasks: state.flasks,
     jewels: state.jewels,
@@ -243,6 +249,7 @@ function parseSaved(json: string): SavedSession | null {
         attributeChoices: state.attributeChoices ?? {},
         socketGroups: state.socketGroups,
         items: state.items,
+        weaponSwap: validWeaponSwap(state.weaponSwap),
         flasks: state.flasks ?? [],
         jewels: state.jewels ?? [],
         annotations: state.annotations ?? {},
@@ -283,9 +290,11 @@ function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState 
 /** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
 function materialize(
   decoded: BuildJson,
-): Pick<BuildState, 'socketGroups' | 'items' | 'flasks' | 'jewels'> {
+): Pick<BuildState, 'socketGroups' | 'items' | 'flasks' | 'jewels' | 'weaponSwap'> {
   return {
+    weaponSwap: decoded.weapon_swap,
     socketGroups: decoded.socket_groups.map((g) => ({
+      weapon_set: g.weapon_set,
       slot: g.slot,
       enabled: g.enabled,
       source: g.source,
@@ -302,6 +311,23 @@ function materialize(
       text: j.text,
     })),
   };
+}
+
+async function fullDpsForState(state: BuildState): Promise<FullDpsResponse> {
+  const backend = await getBackend();
+  const active = state.weaponSwap?.active ?? 1;
+  const sets = new Set<1 | 2>([active]);
+  for (const group of state.socketGroups) if (group.enabled && group.weapon_set) sets.add(group.weapon_set);
+  const per_skill: FullDpsResponse['per_skill'] = [];
+  for (const set of sets) {
+    const report = await backend.fullDps(toRequest(switchWeapons(state, set)));
+    per_skill.push(...report.per_skill.filter(entry => {
+      const group = state.socketGroups[entry.group_index];
+      return group ? (group.weapon_set ?? active) === set : set === active;
+    }));
+  }
+  per_skill.sort((a, b) => a.group_index - b.group_index);
+  return { full_dps: per_skill.reduce((sum, entry) => sum + entry.dps, 0), per_skill };
 }
 
 export function useBuildSession(): BuildSession {
@@ -370,6 +396,12 @@ export function useBuildSession(): BuildSession {
   /** 应用新状态并触发重算 + 自动保存到浏览器。 */
   const apply = useCallback(
     (next: BuildState, opts?: { clean?: boolean }) => {
+      const previous = stateRef.current;
+      if (!opts?.clean && previous?.weaponSwap && next.weaponSwap === previous.weaponSwap && next.allocatedNodes !== previous.allocatedNodes) {
+        const index = previous.weaponSwap.active - 1;
+        next = { ...next, weaponSwap: { ...previous.weaponSwap, exclusive_nodes: previous.weaponSwap.exclusive_nodes.map((nodes, i) => i === index ? nodes.filter(node => next.allocatedNodes.includes(node)) : nodes) as [number[], number[]] } };
+      }
+      next = switchWeapons(next, skillWeaponSet(next, next.params.main_socket_group));
       setState(next);
       stateRef.current = next;
       versionRef.current += 1;
@@ -441,7 +473,7 @@ export function useBuildSession(): BuildSession {
   /** 导入时把装备/珠宝/技能组自动收进库（按文本/套装名去重，避免重复导入堆叠）。 */
   const mergeImportedIntoLibrary = useCallback((decoded: BuildJson) => {
     const imported: LibraryItem[] = [
-      ...decoded.items.equipped.map((it) => ({
+      ...[...decoded.items.equipped, ...(decoded.weapon_swap?.alternate_items ?? [])].map((it) => ({
         kind: 'item' as const,
         text: it.text,
         slot: it.slot as string | undefined,
@@ -461,7 +493,7 @@ export function useBuildSession(): BuildSession {
 
     const setName = decoded.character.ascendancy_name || decoded.character.class_name;
     const skillSet: SkillSet | null = decoded.socket_groups.length
-      ? { id: crypto.randomUUID(), name: setName, groups: materialize(decoded).socketGroups }
+      ? { id: crypto.randomUUID(), name: setName, groups: materialize(decoded).socketGroups, main_socket_group: decoded.main_socket_group ?? undefined }
       : null;
 
     setLibrary((prev) => {
@@ -503,9 +535,19 @@ export function useBuildSession(): BuildSession {
         code = await resolveBuildInput(code);
         // JSON includes China-server .build files and WeGame share bundles.
         const isBuildFile = code.trimStart().startsWith('{');
-        const decoded = isBuildFile
+        let decoded = isBuildFile
           ? await backend.decodeBuildFile(code)
           : await backend.decodeBuild(code);
+        if (decoded.main_socket_group == null && decoded.socket_groups.some(group => group.enabled && group.gems.length)) {
+          const materialized = materialize(decoded);
+          const report = await fullDpsForState({
+            ...materialized, pobCode: null, character: decoded.character,
+            allocatedNodes: decoded.tree.allocated_nodes,
+            attributeChoices: decoded.tree.attribute_choices ?? {}, annotations: {},
+            params: { config_inputs: decoded.config_inputs ?? {} },
+          });
+          decoded = { ...decoded, main_socket_group: defaultMainSkill(materialized.socketGroups, report) ?? null };
+        }
         setBuild(decoded);
         mergeImportedIntoLibrary(decoded);
         // <Notes> 里可能带 PoBR 注释标记段：拆成总览笔记 + 局部注释。
@@ -646,6 +688,15 @@ export function useBuildSession(): BuildSession {
     },
     [apply, state],
   );
+
+  const setWeaponSet = useCallback((set: 1 | 2) => {
+    if (!state) return;
+    const main = state.params.main_socket_group ?? 0;
+    const next = switchWeapons(state, set);
+    // Explicitly switching the selected skill changes its exclusive binding too.
+    apply({ ...next, socketGroups: next.socketGroups.map((group, i) =>
+      i === main && group.weapon_set ? { ...group, weapon_set: set } : group) });
+  }, [apply, state]);
 
   const setItems = useCallback(
     (items: SlotItemInput[]) => {
@@ -802,6 +853,8 @@ export function useBuildSession(): BuildSession {
     const request = toRequest(state);
     return backend.encodeBuild({
       ...request,
+      socket_groups: state.socketGroups,
+      weapon_swap: state.weaponSwap,
       notes: composeNotes(notes, state.annotations),
       base_code: state.pobCode ?? undefined,
     });
@@ -913,11 +966,12 @@ export function useBuildSession(): BuildSession {
 
   const runFullDps = useCallback(async (): Promise<FullDpsResponse> => {
     if (!state) throw new Error('build not ready');
-    const backend = await getBackend();
-    return backend.fullDps(toRequest(state));
+    return fullDpsForState(state);
   }, [state]);
 
   return {
+    activeWeaponSet: state?.weaponSwap?.active ?? 1,
+    setWeaponSet,
     bootMessage,
     bootError,
     build,

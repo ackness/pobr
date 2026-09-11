@@ -28,6 +28,7 @@ macro_rules! wln {
 
 /// A socket group ready to write out (gem_id already reverse-looked-up).
 pub(crate) struct XmlSkillGroup {
+    pub weapon_set: Option<u8>,
     pub slot: Option<String>,
     pub enabled: bool,
     /// The source marker for a group granted by equipment (written back as
@@ -41,6 +42,8 @@ pub(crate) struct XmlSkillGroup {
 /// The write-out input (all sourced from the calculation request — the web
 /// side always sends a full overwrite).
 pub(crate) struct XmlInput<'a> {
+    pub active_weapon_set: u8,
+    pub weapon_set_nodes: &'a [Vec<u32>; 2],
     pub level: u32,
     pub class_name: &'a str,
     pub ascendancy_name: &'a str,
@@ -143,6 +146,14 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
         esc_attr(input.tree_version),
         csv(input.allocated_nodes.iter().copied()),
     );
+    for (index, nodes) in input.weapon_set_nodes.iter().enumerate() {
+        wln!(
+            w,
+            r#"      <WeaponSet{} nodes="{}"/>"#,
+            index + 1,
+            csv(nodes.iter().copied())
+        );
+    }
     if !input.attribute_choices.is_empty() {
         let pick = |want: &str| {
             csv(input
@@ -173,7 +184,13 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
     wln!(w, r#"  <Skills activeSkillSet="1">"#);
     wln!(w, r#"    <SkillSet id="1">"#);
     for group in &input.socket_groups {
-        w!(w, r#"      <Skill enabled="{}""#, group.enabled);
+        w!(
+            w,
+            r#"      <Skill enabled="{}" set1="{}" set2="{}""#,
+            group.enabled,
+            group.weapon_set != Some(2),
+            group.weapon_set != Some(1)
+        );
         if let Some(slot) = &group.slot {
             w!(w, r#" slot="{}""#, esc_attr(slot));
         }
@@ -203,7 +220,11 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
         wln!(w, "{}", esc_text(text.trim_end()));
         wln!(w, "    </Item>");
     }
-    wln!(w, r#"    <ItemSet id="1" useSecondWeaponSet="false">"#);
+    wln!(
+        w,
+        r#"    <ItemSet id="1" useSecondWeaponSet="{}">"#,
+        input.active_weapon_set == 2
+    );
     for line in &slot_lines {
         wln!(w, "{line}");
     }

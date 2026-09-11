@@ -1,3 +1,4 @@
+import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
@@ -678,17 +679,11 @@ export function TreePanel({ session, lang }: Props) {
   };
 
   return (
-    <section className="tree-panel" aria-labelledby="tree-heading">
+    <section className="ui-page tree-panel" aria-labelledby="tree-heading">
+      <PageHeader id="tree-heading" title={tt('tree.title')} description={tt('tree.hint')}>
+        <span className="ui-badge tree-count">{session.allocatedNodes.length} {tt('tree.allocated')}</span>
+      </PageHeader>
       <div className="tree-toolbar">
-        <h2 id="tree-heading" className="panel-heading">
-          {tt('tree.title')}
-        </h2>
-        <span className="tree-count">
-          {session.allocatedNodes.length} {tt('tree.allocated')}
-        </span>
-        <span className="tree-hint">
-          {tt('tree.hint')}
-        </span>
         <span className="tree-search">
           <input
             type="search"

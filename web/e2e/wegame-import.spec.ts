@@ -10,6 +10,10 @@ test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ pa
           explicitMods: [{ description: 'Adds 10 to 20 Physical Damage' }] },
         { inventoryId: 'Offhand', baseType: 'Primed Quiver', name: 'Current Quiver', frameType: 2,
           implicitMods: ['8% increased Attack Speed'] },
+        ...['Ultimate Mana Flask', 'Ultimate Life Flask', 'Thawing Charm', 'Stone Charm', 'Silver Charm'].map((baseType, x) => ({
+          inventoryId: 'Flask', x, baseType, name: 'Synthetic Utility Item', frameType: 1,
+          explicitMods: x === 3 ? ['Also grants 102 Guard'] : [],
+        })),
       ],
       talent_tree: { hashes: [], quest_stats: [] }, jewel_data: '[]',
       skills: [{ baseType: 'Ice Shot', support: false,
@@ -22,7 +26,11 @@ test('WeGame import preserves gem levels and ranks quiver upgrades', async ({ pa
     'https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456',
   );
   await page.locator('.import-submit').click();
-  await expect(page.getByRole('heading', { name: 'Items' })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await page.getByRole('button', { name: 'Build', exact: true }).click();
+  const unsupported = page.locator('.unsupported-block');
+  await unsupported.locator('summary').click();
+  await expect(unsupported.locator('li')).toHaveText(['Also grants 102 Guard']);
   await page.getByRole('button', { name: 'Skills', exact: true }).click();
   await expect(page.locator('.skill-group').first()).toContainText('Ice Shot');
   // The persisted editing state is what the optimizer and the next reload consume.

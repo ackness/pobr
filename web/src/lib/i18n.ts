@@ -15,6 +15,44 @@ export const LANGS: Lang[] = ['en-US', 'zh-TW', 'zh-CN'];
 type Entry = { 'en-US': string; 'zh-TW': string; 'zh-CN': string };
 
 const DICT = {
+  "trade.situational": {"en-US": "Utility and conditional affixes", "zh-TW": "功能與條件詞條", "zh-CN": "功能与条件词条"},
+  "trade.situationalHint": {"en-US": "These are not fixed DPS gains. Tick an affix to require it in the market search without assigning an invented weight. For debuffs, review the enemy settings on Config; effect, trigger rate and uptime must match your build.", "zh-TW": "這些不等於固定 DPS 提升。勾選後要求市集商品具備該詞條，不虛設分數。負面狀態需到配置頁核對敵人條件、效果與覆蓋率。", "zh-CN": "这些不等于固定 DPS 提升。勾选后要求市集商品具备该词条，不虚设分数。负面状态需到配置页核对敌人条件、效果与覆盖率。"},
+  "trade.mechanic.projectiles": {"en-US": "Expected projectiles per use; not same-target hits", "zh-TW": "每次使用的投射物期望數；不等於同目標命中次數", "zh-CN": "每次使用的投射物期望数；不等于同目标命中次数"},
+  "trade.mechanic.area": {"en-US": "Calculated radius change; damage depends on overlap", "zh-TW": "計算半徑變化；傷害取決於重疊", "zh-CN": "计算半径变化；伤害取决于重叠"},
+  "trade.mechanic.debuff": {"en-US": "Needs enemy conditions; benefit not quantified", "zh-TW": "需確認敵人條件，收益尚未量化", "zh-CN": "需确认敌人条件，收益尚未量化"},
+
+  "weapons.active": {"en-US": "Active weapon set", "zh-TW": "目前武器組", "zh-CN": "当前武器组"},
+  "weapons.set": {"en-US": "Set", "zh-TW": "武器組", "zh-CN": "武器组"},
+  "weapons.binding": {"en-US": "Skill weapon set", "zh-TW": "技能武器組", "zh-CN": "技能武器组"},
+  "weapons.both": {"en-US": "Follow active set", "zh-TW": "跟隨目前武器組", "zh-CN": "跟随当前武器组"},
+  "weapons.hint": {"en-US": "Each set has its own main hand, off hand and exclusive passives. The selected skill uses its assigned set for calculations and trade scores.", "zh-TW": "每組分別保存主手、副手及專屬天賦。計算和市集評分會使用主技能綁定的武器組。", "zh-CN": "每组分别保存主手、副手及专属天赋。计算和市集评分会使用主技能绑定的武器组。"},
+
+  "trade.resistanceHint": {"en-US": "Resistance priority reduces the combined fire, cold and lightning gap first; set the target to your build’s resistance cap.", "zh-TW": "抗性優先會先縮小火焰、冰冷與閃電的總缺口；目標可按角色的抗性上限調整。", "zh-CN": "抗性优先会先缩小火焰、冰冷与闪电的总缺口；目标可按角色的抗性上限调整。"},
+  "trade.balancedHint": {"en-US": "Balanced score = geometric mean of DPS and EHP. The EHP floor applies to evaluated references; market weights cannot guarantee it for a complete listing. Resistance priority first reduces the total gap to your target, then compares balanced gains.", "zh-TW": "均衡分取 DPS 與 EHP 的幾何平均。生存底線用於參考換裝重算，市集詞條權重無法保證整件商品滿足底線。開啟抗性優先後，先縮小三抗總缺口，再比較均衡提升。", "zh-CN": "均衡分取 DPS 与 EHP 的几何平均。生存底线用于参考换装重算，市集词条权重无法保证整件商品满足底线。开启抗性优先后，先缩小三抗总缺口，再比较均衡提升。"},
+  "trade.resistanceGap": {"en-US": "Total resistance gap", "zh-TW": "元素抗性總缺口", "zh-CN": "元素抗性总缺口"},
+  "trade.resistanceTarget": {"en-US": "Resistance target", "zh-TW": "抗性目標", "zh-CN": "抗性目标"},
+  "trade.resistanceFirst": {"en-US": "Prioritize capped elemental resistances", "zh-TW": "優先補滿元素抗性", "zh-CN": "优先补满元素抗性"},
+  "trade.keepEhp": {"en-US": "Keep at least current EHP", "zh-TW": "EHP 不低於目前角色", "zh-CN": "EHP 不低于当前角色"},
+  "trade.balanced": {"en-US": "Balanced DPS / EHP", "zh-TW": "均衡 DPS / EHP", "zh-CN": "均衡 DPS / EHP"},
+  "trade.referenceItem": {"en-US": "View the reference combination", "zh-TW": "查看參考詞條組合", "zh-CN": "查看参考词条组合"},
+  "trade.partialAnalysis": {"en-US": "Some positions could not be analyzed. Select a position to see details; the ranking contains completed results only.", "zh-TW": "部分位置分析失敗，可選取位置查看詳情；排序只包含已完成的結果。", "zh-CN": "部分位置分析失败，可选择位置查看详情；排序只包含已完成的结果。"},
+  "trade.noPriority": {"en-US": "No improving reference found among the analyzed positions. Try another goal or inspect individual affix scores.", "zh-TW": "已分析位置暫未找到更好的參考方案。可切換目標或查看各位置的詞條評分。", "zh-CN": "已分析位置暂未找到更好的参考方案。可切换目标或查看各位置的词条评分。"},
+  "trade.positions": {"en-US": "positions analyzed", "zh-TW": "個位置已分析", "zh-CN": "个位置已分析"},
+  "trade.referencePotential": {"en-US": "Reference gain", "zh-TW": "參考提升", "zh-CN": "参考提升"},
+  "trade.nonUnique": {"en-US": "Excludes uniques", "zh-TW": "排除傳奇", "zh-CN": "排除传奇"},
+  "trade.includeUnique": {"en-US": "Include unique items", "zh-TW": "包含傳奇物品", "zh-CN": "包含传奇物品"},
+  "trade.priorityHint": {"en-US": "Each position replaces one item with a bounded affix-combination reference and recalculates your build. Ranked by the selected goal, with life and EHP changes shown below. This is potential, not a priced listing: budget and level filter the market links. Buying one upgrade changes the order; analyze again afterwards.", "zh-TW": "每個位置以詞條組合參考方案替換一件物品並重算，按目標提升排序，下方同時顯示生命與 EHP 變化。這是提升空間，並非在售商品；預算與等級用於市集篩選。買入一件後請重新分析。", "zh-CN": "每个位置以词条组合参考方案替换一件物品并重算，按目标提升排序，下方同时显示生命与 EHP 变化。这是提升空间，并非在售商品；预算与等级用于市集筛选。买入一件后请重新分析。"},
+  "trade.priorityOrder": {"en-US": "Upgrade priority", "zh-TW": "升級優先順序", "zh-CN": "升级优先顺序"},
+  "trade.overviewHint": {"en-US": "Analyze equipped positions, allocated jewel sockets and gems for the selected skill together.", "zh-TW": "一次分析已裝備位置、已配置珠寶插槽與目前技能的寶石。", "zh-CN": "一次分析已装备位置、已配置珠宝插槽与当前技能的宝石。"},
+  "trade.overviewTitle": {"en-US": "Where should I upgrade first?", "zh-TW": "先升級哪個位置？", "zh-CN": "先升级哪个位置？"},
+  "ui.buildTitle": {"en-US": "Your build", "zh-TW": "我的構築", "zh-CN": "我的构筑"},
+  "ui.buildHint": {"en-US": "Manage your character, import a build, and save your next upgrade plan.", "zh-TW": "管理角色、匯入配置，記錄下一步的升級計畫。", "zh-CN": "管理角色、导入配置，记录下一步的升级计划。"},
+  "ui.itemsHint": {"en-US": "Choose a position to inspect or edit an item. Compare saved items before equipping them.", "zh-TW": "選擇位置查看、編輯裝備，從物品庫比較替換後的變化。", "zh-CN": "选择位置查看、编辑装备，从物品库比较替换后的变化。"},
+  "ui.equipped": {"en-US": "Equipped items", "zh-TW": "目前裝備", "zh-CN": "当前装备"},
+  "ui.configHint": {"en-US": "Set the encounter and combat conditions used to calculate damage and survivability.", "zh-TW": "設定敵人與戰鬥條件，讓傷害和生存計算符合實際場景。", "zh-CN": "设置敌人与战斗条件，让伤害和生存计算符合实际场景。"},
+  "ui.showStats": {"en-US": "Show character stats", "zh-TW": "展開角色數據", "zh-CN": "展开角色数据"},
+  "ui.hideStats": {"en-US": "Hide character stats", "zh-TW": "收起角色數據", "zh-CN": "收起角色数据"},
+
   // Beta 提示
   'beta.notice': {
     'en-US':
@@ -82,15 +120,16 @@ const DICT = {
   'build.passives': { 'en-US': 'passives', 'zh-TW': '天賦點', 'zh-CN': '天赋点' },
   'build.itemsCount': { 'en-US': 'items', 'zh-TW': '件裝備', 'zh-CN': '件装备' },
   'build.unsupported': { 'en-US': 'Unsupported modifiers', 'zh-TW': '未支援詞條', 'zh-CN': '未支持词条' },
+  'build.unsupportedHint': { 'en-US': 'These effects are not included in the calculation. For example, Guard granted by charms is not yet modeled; keep it in mind when comparing survival upgrades.', 'zh-TW': '以下效果尚未計入數值。例如護符授予的 Guard 尚未建模，比較生存提升時需另外考慮。', 'zh-CN': '以下效果尚未计入数值。例如护符授予的 Guard 尚未建模，比较生存提升时需另外考虑。' },
 
   // Skills 页
   'skills.title': { 'en-US': 'Socket Groups', 'zh-TW': '技能組', 'zh-CN': '技能组' },
   'skills.addPlaceholder': { 'en-US': 'Search an active gem to add a group…', 'zh-TW': '搜尋主動技能以新建組…', 'zh-CN': '搜索主动技能以新建组…' },
   'skills.addSupport': { 'en-US': 'Add a support gem…', 'zh-TW': '添加輔助寶石…', 'zh-CN': '添加辅助宝石…' },
   'skills.hint': {
-    'en-US': 'Click a group title to make it the main skill; level/quality edits recalc live.',
-    'zh-TW': '點組標題設為主技能；等級/品質即改即算。',
-    'zh-CN': '点组标题设为主技能；等级/品质即改即算。',
+    'en-US': 'Use the star to select the main skill; expand a group to edit gems and weapon bindings.',
+    'zh-TW': '點擊星標選擇主技能，展開技能組編輯寶石和武器綁定。',
+    'zh-CN': '点击星标选择主技能，展开技能组编辑宝石和武器绑定。',
   },
   'skills.empty': {
     'en-US': 'No socket groups yet — add one with the search box above, or import a build code.',
@@ -280,7 +319,7 @@ const DICT = {
   "trade.gemSubtitle": {"en-US": "Levels, quality and supports", "zh-TW": "等級、品質與輔助", "zh-CN": "等级、品质与辅助"},
   "trade.showEmpty": {"en-US": "Show empty positions", "zh-TW": "顯示空位置", "zh-CN": "显示空位置"},
   "trade.hideEmpty": {"en-US": "Hide empty positions", "zh-TW": "收起空位置", "zh-CN": "收起空位置"},
-  "trade.analyzeAll": {"en-US": "Score all equipped positions", "zh-TW": "評分全部已裝備位置", "zh-CN": "评分全部已装备位置"},
+  "trade.analyzeAll": {"en-US": "Analyze all positions", "zh-TW": "分析所有位置", "zh-CN": "分析所有位置"},
   "trade.allBases": {"en-US": "All bases included", "zh-TW": "不限基底", "zh-CN": "不限基底"},
   "trade.levelLimit": {"en-US": "Required level up to", "zh-TW": "需求等級不超過", "zh-CN": "需求等级不超过"},
   "trade.analyze": {"en-US": "Calculate affix scores", "zh-TW": "計算詞條評分", "zh-CN": "计算词条评分"},
@@ -334,7 +373,7 @@ const DICT = {
   'items.apply': { 'en-US': 'Apply', 'zh-TW': '保存並重算', 'zh-CN': '保存并重算' },
   'items.cancel': { 'en-US': 'Cancel', 'zh-TW': '取消', 'zh-CN': '取消' },
   'items.empty': { 'en-US': '(empty)', 'zh-TW': '（空）', 'zh-CN': '（空）' },
-  'items.flasks': { 'en-US': 'Flasks / Charms (read-only, from import)', 'zh-TW': '藥劑 / 護符（只讀，來自匯入）', 'zh-CN': '药剂 / 护符（只读，来自导入）' },
+  "items.flasks": {"en-US": "Flasks / Charms", "zh-TW": "藥劑 / 護符", "zh-CN": "药剂 / 护符"},
   'items.switcher': { 'en-US': 'Switch item', 'zh-TW': '切換裝備', 'zh-CN': '切换装备' },
   'items.runes': { 'en-US': 'Rune sockets', 'zh-TW': '符文插槽', 'zh-CN': '符文插槽' },
   'items.socketAdd': { 'en-US': 'Add socket', 'zh-TW': '加孔', 'zh-CN': '加孔' },
@@ -444,7 +483,7 @@ const DICT = {
     'zh-TW': '庫是空的——把裝備/珠寶存進來即可隨意切換對比。',
     'zh-CN': '库是空的——把装备/珠宝存进来即可随意切换对比。',
   },
-  'lib.selectSlotFirst': { 'en-US': 'Select a slot above first', 'zh-TW': '先在上方選中槽位', 'zh-CN': '先在上方选中槽位' },
+  "lib.selectSlotFirst": {"en-US": "Select an equipment position to compare or equip an item.", "zh-TW": "先選擇裝備位置，即可比較或替換物品。", "zh-CN": "先选择装备位置，即可比较或替换物品。"},
   'lib.search': { 'en-US': 'Search items…', 'zh-TW': '搜尋物品…', 'zh-CN': '搜索物品…' },
   'lib.filterSlot': { 'en-US': 'Current slot only', 'zh-TW': '只看當前槽位', 'zh-CN': '只看当前槽位' },
   'lib.noMatch': { 'en-US': 'No matching items', 'zh-TW': '無符合物品', 'zh-CN': '没有匹配的物品' },

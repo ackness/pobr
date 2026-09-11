@@ -630,9 +630,10 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ProjectileCount",
+          "name": "SurpassingProjectileChance",
           "type": "Base",
-          "value": 10.0
+          "value": 10.0,
+          "kw": 2048
         }
       ]
     },
@@ -2137,9 +2138,10 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ProjectileCount",
+          "name": "SurpassingProjectileChance",
           "type": "Base",
-          "value": 197.0
+          "value": 197.0,
+          "kw": 2048
         }
       ]
     },
@@ -2880,9 +2882,10 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ProjectileCount",
+          "name": "SurpassingProjectileChance",
           "type": "Base",
-          "value": 24.0
+          "value": 24.0,
+          "kw": 2048
         }
       ]
     },
@@ -5758,9 +5761,10 @@
       "status": "parsed",
       "mods": [
         {
-          "name": "ProjectileCount",
+          "name": "SurpassingProjectileChance",
           "type": "Base",
-          "value": 8.0
+          "value": 8.0,
+          "kw": 2048
         }
       ]
     },
@@ -33611,7 +33615,15 @@
     },
     {
       "text": "Arrows [Pierce] an additional Target",
-      "status": "unsupported"
+      "status": "parsed",
+      "mods": [
+        {
+          "name": "PierceCount",
+          "type": "Base",
+          "value": 1.0,
+          "kw": 2048
+        }
+      ]
     },
     {
       "text": "Arrows gain [Critical|Critical Hit] Chance as they travel farther, up to\n40% increased [Critical|Critical Hit] Chance after 7 metres",
@@ -34670,7 +34682,8 @@
         {
           "name": "ProjectileCount",
           "type": "Base",
-          "value": 1.0
+          "value": 1.0,
+          "kw": 2048
         }
       ]
     },

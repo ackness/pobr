@@ -896,6 +896,17 @@ fn stage_build_cfg(ctx: &mut StageCtx<'_>) {
         })
         .flatten();
     cfg = cfg.with_skill_distance(skill_distance);
+    // SkillStatMap's skill_can_fire_arrows -> skillFlags.arrow ->
+    // CalcActiveSkill's KeywordFlag.Arrow. Use the selected stat set, since
+    // secondary projectiles need not be arrows even when fired from a bow.
+    if ctx.main_skill.as_ref().is_some_and(|(skill, _, _)| {
+        skill
+            .base_damage
+            .iter()
+            .any(|stat| stat.stat == "skill_can_fire_arrows" && stat.value != 0.0)
+    }) {
+        cfg.keyword_flags = cfg.keyword_flags | pobr_data::modifier::KeywordFlags::ARROW;
+    }
     // Main skill-derived combat conditions (read directly from vendor
     // CalcPerform.lua:242-266's `if env.mode_combat` section): attack/spell/Movement/
     // Minion/Vaal/Channel → "...Recently"/Channelling conditions;
@@ -1096,6 +1107,14 @@ fn stage_create_session(ctx: &mut StageCtx<'_>) -> CalculationSession {
     // into calc (must come after with_config — with_config replaces cfg wholesale). The
     // data is value-for-value equal to the Default fallback, zero behavior change.
     session.set_constants(data.constants.clone());
+    // CalcSetup supplies one base projectile; SkillStatMap count overrides
+    // subtract that one. Only projectile skills expose this output.
+    if ctx.skill_flags.intersects(ModFlags::PROJECTILE) {
+        session.add_modifiers(vec![
+            Modifier::number("ProjectileCount", ModType::Base, 1.0)
+                .with_source("Base projectile count"),
+        ]);
+    }
     // Injects the data-driven ModParser engine rules (the sole parser, with the special
     // channel already compiled in). Must precede add_item/add_passive_nodes/add_gem
     // below. Missing parser_rules (an old data pack) = not injected — in that case

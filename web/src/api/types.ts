@@ -9,7 +9,7 @@
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 3;
+export const EXPECTED_SCHEMA_VERSION = 4;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -103,6 +103,7 @@ export interface GemJson {
 }
 
 export interface SocketGroupJson {
+  weapon_set?: 1 | 2 | null;
   slot: string | null;
   enabled: boolean;
   /** PoB 装备授予技能来源；手动组为 null。 */
@@ -113,7 +114,14 @@ export interface SocketGroupJson {
 
 export type ConfigInputValue = boolean | number | string;
 
+export interface WeaponSwap {
+  active: 1 | 2;
+  alternate_items: SlotItemInput[];
+  exclusive_nodes: [number[], number[]];
+}
+
 export interface BuildJson {
+  weapon_swap?: WeaponSwap | null;
   character: CharacterJson;
   tree: TreeJson;
   items: ItemsJson;
@@ -166,6 +174,7 @@ export interface GemInput {
 
 /** 手动技能组（整份替换 build 的 socket_groups）。 */
 export interface SocketGroupInput {
+  weapon_set?: 1 | 2 | null;
   slot?: string | null;
   enabled: boolean;
   /** decode 后透传的装备授予技能来源；手动组省略。 */

@@ -22,6 +22,10 @@ export interface Objective {
   stat: string;
   /** 比值分母（如 ManaCost → DPS÷魔耗效率）。 */
   per?: string;
+  /** Geometric mean gives equal importance to relative gains in both stats. */
+  secondaryStat?: string;
+  /** Soft minimums are prioritized after hard constraints, before score. */
+  softMinimums?: { stat: string; min: number }[];
   constraints: StatConstraint[];
 }
 
@@ -44,7 +48,7 @@ export const COLLECT_STATS: string[] = [
   ...new Set([
     ...OBJECTIVE_PRESETS.flatMap((p) => (p.per ? [p.stat, p.per] : [p.stat])),
     ...CONSTRAINT_STATS,
-    'FireResist', 'ColdResist', 'LightningResist', 'ChaosResist',
+    'FireResist', 'ColdResist', 'LightningResist', 'ChaosResist', 'ProjectileCount', 'AoeRadius',
   ]),
 ];
 
@@ -57,9 +61,20 @@ const BATCH_SIZE = 16;
 /** 目标得分：比值分母 ≤ 0 时退化为纯目标值（如 0 蓝耗技能）。 */
 export function scoreOf(stats: Record<string, number>, objective: Objective): number {
   const obj = stats[objective.stat] ?? 0;
+  if (objective.secondaryStat) return Math.sqrt(Math.max(0, obj)) * Math.sqrt(Math.max(0, stats[objective.secondaryStat] ?? 0));
   if (!objective.per) return obj;
   const per = stats[objective.per] ?? 0;
   return per > 0 ? obj / per : obj;
+}
+
+export function minimumDeficit(stats: Record<string, number>, objective: Objective): number {
+  return (objective.softMinimums ?? []).reduce((sum, target) => sum + Math.max(0, target.min - (stats[target.stat] ?? 0)), 0);
+}
+
+/** Negative means a is preferred; all calculations remain relative to one build. */
+export function compareObjectiveStats(a: Record<string, number>, b: Record<string, number>, objective: Objective): number {
+  const feasible = Number(feasibleOf(b, objective)) - Number(feasibleOf(a, objective));
+  return feasible || minimumDeficit(a, objective) - minimumDeficit(b, objective) || scoreOf(b, objective) - scoreOf(a, objective);
 }
 
 /** 全部约束满足？ */
@@ -74,10 +89,7 @@ export function feasibleOf(stats: Record<string, number>, objective: Objective):
 export function rankVariants(results: VariantStats[], objective: Objective): VariantStats[] {
   return [...results].sort((a, b) => {
     if (Boolean(a.error) !== Boolean(b.error)) return a.error ? 1 : -1;
-    const fa = feasibleOf(a.stats, objective);
-    const fb = feasibleOf(b.stats, objective);
-    if (fa !== fb) return fa ? -1 : 1;
-    return scoreOf(b.stats, objective) - scoreOf(a.stats, objective);
+    return compareObjectiveStats(a.stats, b.stats, objective);
   });
 }
 

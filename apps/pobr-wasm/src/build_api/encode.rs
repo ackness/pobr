@@ -69,10 +69,56 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         super::ApiError::bad_request("character.class_name is required to encode")
     })?;
 
+    let active_weapon_set = req.weapon_swap.as_ref().map_or(1, |swap| swap.active);
+    if !matches!(active_weapon_set, 1 | 2)
+        || req
+            .socket_groups
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .any(|g| g.weapon_set.is_some_and(|s| !matches!(s, 1 | 2)))
+    {
+        return Err(super::ApiError::bad_request("weapon set must be 1 or 2"));
+    }
     let mut items: Vec<(String, String)> = Vec::new();
     for item in req.items.as_deref().unwrap_or_default() {
         let slot = slot_from_id(&item.slot)?;
-        items.push((pob_slot_name(slot).to_string(), item.text.clone()));
+        let name = pob_slot_name(slot);
+        items.push((
+            if active_weapon_set == 2 && matches!(name, "Weapon 1" | "Weapon 2") {
+                format!("{name} Swap")
+            } else {
+                name.into()
+            },
+            item.text.clone(),
+        ));
+    }
+    let mut allocated_nodes = req.allocated_nodes.clone().unwrap_or_default();
+    let empty_weapon_nodes = [Vec::new(), Vec::new()];
+    let weapon_set_nodes = req
+        .weapon_swap
+        .as_ref()
+        .map_or(&empty_weapon_nodes, |swap| &swap.exclusive_nodes);
+    if let Some(swap) = &req.weapon_swap {
+        for item in &swap.alternate_items {
+            if !matches!(item.slot.as_str(), "weapon1" | "weapon2") {
+                return Err(super::ApiError::bad_request(
+                    "alternate_items must contain only weapons",
+                ));
+            }
+            let name = pob_slot_name(slot_from_id(&item.slot)?);
+            items.push((
+                if active_weapon_set == 1 {
+                    format!("{name} Swap")
+                } else {
+                    name.into()
+                },
+                item.text.clone(),
+            ));
+        }
+        allocated_nodes.extend(weapon_set_nodes.iter().flatten());
+        allocated_nodes.sort_unstable();
+        allocated_nodes.dedup();
     }
     let mut flasks: Vec<(String, String)> = Vec::new();
     for flask in req.flasks.as_deref().unwrap_or_default() {
@@ -125,6 +171,7 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
                 gems.insert(0, active);
             }
             crate::xml_write::XmlSkillGroup {
+                weapon_set: g.weapon_set,
                 slot: g.slot.clone(),
                 enabled: g.enabled,
                 source: g.source.clone(),
@@ -149,11 +196,13 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     let empty_choices = BTreeMap::new();
     let tree_version = current_tree_version();
     let xml = crate::xml_write::write_build_xml(&crate::xml_write::XmlInput {
+        active_weapon_set,
+        weapon_set_nodes,
         level: ch.level.unwrap_or(1),
         class_name: &class_name,
         ascendancy_name: ch.ascendancy_name.as_deref().unwrap_or(""),
         tree_version: &tree_version,
-        allocated_nodes: req.allocated_nodes.as_deref().unwrap_or_default(),
+        allocated_nodes: &allocated_nodes,
         attribute_choices: req.attribute_choices.as_ref().unwrap_or(&empty_choices),
         items,
         flasks,

@@ -1,6 +1,6 @@
 import { getBackend } from '../api/backend';
 import type { CalculateBuildRequest, VariantInput } from '../api/types';
-import { evaluateVariants, scoreOf, type EvaluateOptions, type Objective } from './optimize';
+import { compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type Objective } from './optimize';
 import type { TradePriceCap, TradeRealm, WeightedStat } from './trade';
 import { tradeItemVariant, type TradeCatalog, type TradeGem } from './tradeOptimizer';
 
@@ -69,7 +69,7 @@ export async function evaluateMarket(options: {
   return { baseline: result.baseline, upgrades: rankMarket(upgrades), rejected };
 }
 
-export interface GemPlan { gem: TradeGem; group: number; position: number; level: number; quality: number; variant: VariantInput; gainPercent?: number }
+export interface GemPlan { gem: TradeGem; group: number; position: number; level: number; quality: number; variant: VariantInput; gainPercent?: number; gain?: number; stats?: Record<string, number>; baseline?: Record<string, number> }
 /** Only propose known usable levels; old catalogs can still suggest quality upgrades. */
 export function usableGemLevel(gem: TradeGem, characterLevel: number): number {
   return (gem.level_requirements ?? []).reduce((best, required, index) =>
@@ -136,13 +136,13 @@ export async function planGemUpgrades(request: CalculateBuildRequest, catalog: T
       if (result.aborted) throw new DOMException('Search cancelled', 'AbortError');
       for (const row of result.results) {
         const gain = scoreOf(row.stats, objective) - scoreOf(result.baseline, objective);
-        if (!row.error && gain > 0) ranked.push({ plan: { ...selected[row.index],
+        if (!row.error && feasibleOf(row.stats, objective) && compareObjectiveStats(row.stats, result.baseline, objective) < 0) ranked.push({ plan: { ...selected[row.index], gain, stats: row.stats, baseline: result.baseline,
           gainPercent: gain / Math.max(Math.abs(scoreOf(result.baseline, objective)), 1) * 100 }, gain });
       }
     }
   };
   await evaluate(plans);
-  ranked.sort((a, b) => b.gain - a.gain);
+  ranked.sort((a, b) => compareObjectiveStats(a.plan.stats!, b.plan.stats!, objective));
   const refinements: GemPlan[] = [];
   for (const { plan } of ranked.slice(0, 8)) {
     if (!plan.gem.is_support || present.has(plan.gem.skill_id)) continue;
@@ -154,7 +154,7 @@ export async function planGemUpgrades(request: CalculateBuildRequest, catalog: T
   await evaluate(refinements);
   signal?.throwIfAborted();
   const unique = new Map<string, GemPlan>();
-  for (const { plan } of ranked.sort((a, b) => b.gain - a.gain)) {
+  for (const { plan } of ranked.sort((a, b) => compareObjectiveStats(a.plan.stats!, b.plan.stats!, objective))) {
     const key = `${plan.gem.skill_id}:${plan.level}:${plan.quality}`;
     if (!unique.has(key)) unique.set(key, plan);
   }

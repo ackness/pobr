@@ -24,8 +24,12 @@ test('local affix scores work for empty slots and budget edits only update marke
   expect(query.query.status.option).toBe('online');
   expect(query.query.stats[0].filters.length).toBeGreaterThan(0);
   expect(query.query.type).toBeUndefined();
+  expect(query.query.filters.type_filters.filters.rarity.option).toBe('nonunique');
   await page.getByRole('spinbutton', { name: 'Max price' }).fill('50');
   expect(searchQuery((await link.getAttribute('href'))!).query.filters.trade_filters.filters.price.max).toBe(50);
+  expect(await table.innerText()).toBe(originalScores);
+  await page.getByRole('checkbox', { name: 'Include unique items' }).check();
+  expect(searchQuery((await link.getAttribute('href'))!).query.filters.type_filters.filters.rarity).toBeUndefined();
   expect(await table.innerText()).toBe(originalScores);
   await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
   await expect(table).toHaveCount(0);
@@ -51,7 +55,7 @@ test('WeGame quiver analysis opens the CN instant-buy market without JSON or bas
   await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
-  await expect(page.getByRole('heading', { name: 'Items' })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
   await page.getByRole('button', { name: 'Trade', exact: true }).click();
   await page.getByRole('button', { name: 'Server', exact: true }).click();
   await page.getByRole('option', { name: 'CN (Tencent)', exact: true }).click();
@@ -60,8 +64,12 @@ test('WeGame quiver analysis opens the CN instant-buy market without JSON or bas
   await expect(page.getByRole('button', { name: 'Skill used for scoring' })).toContainText('Ice Shot');
   await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
   await expect(page.locator('.trade-score-table')).toBeVisible({ timeout: 90_000 });
+  const utility = page.locator('.trade-situational label').filter({ hasText: /Surpassing/ }).first();
+  await expect(utility).toBeVisible();
+  await utility.getByRole('checkbox').check();
   const link = page.locator('.trade-market-link').first();
   const query = searchQuery((await link.getAttribute('href'))!);
+  expect(query.query.stats.at(-1).filters).toContainEqual({ id: 'explicit.stat_2463230181' });
   expect(query.query.filters.type_filters.filters.category.option).toBe('armour.quiver');
   expect(query.query.filters.req_filters.filters.lvl.max).toBe(71);
   expect(query.query.status.option).toBe('any');
@@ -95,7 +103,7 @@ for (const [characterLevel, gemLevel] of [[71, 16], [90, 21]]) test(`gem plans a
   await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
-  await expect(page.getByRole('heading', { name: 'Items' })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
   await page.getByRole('button', { name: 'Trade', exact: true }).click();
   await page.locator('.trade-position').filter({ hasText: 'Skill and support gems' }).click();
   await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
@@ -117,4 +125,59 @@ for (const [characterLevel, gemLevel] of [[71, 16], [90, 21]]) test(`gem plans a
     return JSON.parse(saved).state;
   });
   expect(state.socketGroups[0].gems).toEqual([{ skill_id: 'FireballPlayer', level: 12, quality: 0 }]);
+});
+
+test('default damage skill, weapon binding and whole-build priority use the same build context', async ({ page }) => {
+  await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
+  await page.route('**/overlay/trade_catalog.json', async route => {
+    const catalog = await (await route.fetch()).json();
+    // Exercise real calculations with a small legal pool so the integration test stays fast.
+    catalog.mods = catalog.mods.filter((mod: { lines: string[] }) => mod.lines.some(line => /to maximum Life|increased Spell Damage|increased Cast Speed|to Fire Resistance/.test(line))).slice(0, 12);
+    catalog.gems = catalog.gems.filter((gem: { name: string }) => gem.name === 'Fireball');
+    await route.fulfill({ json: catalog });
+  });
+  await page.route('**/api/import/wegame', route => route.fulfill({ json: {
+    format: 'wegame', version: 1, role: { level: 71, class_name: 'Witch' },
+    equipments: [
+      { inventoryId: 'Weapon', baseType: 'Crude Bow', frameType: 0 },
+      { inventoryId: 'Offhand', baseType: 'Primed Quiver', frameType: 0 },
+      { inventoryId: 'Weapon2', baseType: 'Ashen Staff', frameType: 2, name: 'Spell Staff', explicitMods: ['100% increased Spell Damage'] },
+      { inventoryId: 'Ring', x: 0, baseType: 'Sapphire Ring', frameType: 0 },
+    ], talent_tree: { hashes: [], quest_stats: [] }, jewel_data: '[]',
+    skills: [{ baseType: 'Raise Shield', support: false },
+      { baseType: 'Fireball', support: false, properties: [{ type: 5, values: [['12', 0]] }] },
+      { baseType: 'Ice Shot', support: false, properties: [{ type: 5, values: [['1', 0]] }] }],
+  } }));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({ timeout: 90_000 });
+  await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
+  await page.locator('.import-submit').click();
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('.main-skill-select')).toHaveValue('1');
+  await page.getByRole('button', { name: 'Skills', exact: true }).click();
+  await page.locator('.skill-group-title').filter({ hasText: 'Fireball' }).click();
+  await page.getByRole('button', { name: 'Skill weapon set', exact: true }).click();
+  await page.getByRole('option', { name: 'Set 2', exact: true }).click();
+  await expect(page.getByRole('group', { name: 'Active weapon set' }).getByRole('button', { name: 'Set 2', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Items', exact: true }).click();
+  await expect(page.locator('.paper-doll')).toContainText('Spell Staff');
+  await expect(page.locator('.paper-doll')).not.toContainText('Primed Quiver');
+  await page.getByRole('button', { name: 'Trade', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Skill used for scoring' })).toContainText('Fireball');
+  await expect(page.getByRole('checkbox', { name: 'Keep at least current EHP' })).toBeChecked();
+  await page.getByRole('button', { name: 'Analyze all positions', exact: true }).click();
+  await expect(page.locator('.trade-priorities')).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByRole('button', { name: 'Analyze all positions', exact: true })).toBeEnabled({ timeout: 90_000 });
+  const ranking = await page.locator('.trade-priorities').innerText();
+  expect(ranking).toContain('DPS');
+  expect(ranking).toContain('EHP');
+  await page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances' }).check();
+  await expect(page.locator('.trade-priority-position')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Items', exact: true }).click();
+  await page.getByRole('group', { name: 'Active weapon set' }).getByRole('button', { name: 'Set 1', exact: true }).click();
+  await expect(page.locator('.paper-doll')).toContainText('Primed Quiver');
+  await page.reload();
+  await expect(page.locator('.paper-doll')).toContainText('Primed Quiver', { timeout: 90_000 });
+  await page.getByRole('group', { name: 'Active weapon set' }).getByRole('button', { name: 'Set 2', exact: true }).click();
+  await expect(page.locator('.paper-doll')).toContainText('Spell Staff');
 });

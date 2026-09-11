@@ -1,13 +1,3 @@
-.panel-heading {
-  color: var(--accent-gold);
-  margin-top: 0;
-}
-
-.panel-subheading {
-  color: var(--accent-gold-dim);
-  margin-top: var(--space-6);
-}
-
 .item-slot {
   font-size: var(--text-xs);
   text-transform: uppercase;
@@ -91,7 +81,7 @@
 
 .item-actions button {
   font-size: var(--text-xs);
-  padding: 0 var(--space-2);
+  padding: var(--space-1) var(--space-2);
 }
 
 .item-empty-hint {
@@ -117,46 +107,29 @@
 /* 人形槽位布局（PoB2 式）：武器居两侧，头/胸/腰居中，饰品环绕。 */
 .paper-doll {
   display: grid;
-  grid-template-areas:
-    'weapon1 .      helmet .     weapon2'
-    'weapon1 amulet body   ring1 weapon2'
-    'weapon1 ring2  body   .     weapon2'
-    '.       gloves belt   boots .';
-  grid-template-columns: 1.2fr 1fr 1.2fr 1fr 1.2fr;
-  grid-auto-rows: minmax(84px, auto);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
-  max-width: 920px;
-  margin: 0 auto var(--space-4);
-  padding: var(--space-3);
-  background: radial-gradient(ellipse at center, #15171c 0%, var(--surface-page) 80%);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
 }
 
 .doll-slot {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  text-align: center;
-  background: var(--surface-card);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  padding: var(--space-2);
+  gap: 5px var(--space-2);
+  min-height: 94px;
   min-width: 0;
-  transition: border-color var(--duration-fast) var(--ease-out),
-    box-shadow var(--duration-fast) var(--ease-out);
+  padding: var(--space-3);
+  text-align: left;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
 }
 
 /* 已装备槽位按稀有度着色（边框 + 顶部微光底色） */
 .doll-slot:not(.doll-slot-empty) {
-  border-color: color-mix(in srgb, var(--rarity-c, var(--border-strong)) 45%, var(--border-strong));
-  background: linear-gradient(
-    170deg,
-    color-mix(in srgb, var(--rarity-c, var(--surface-card)) 9%, var(--surface-card)),
-    var(--surface-card) 65%
-  );
+  border-color: var(--border-subtle);
+  background: var(--surface-card);
 }
 
 .doll-slot:hover {
@@ -198,26 +171,19 @@
 /* 药剂/护符横排（人形布局下方，与 doll-slot 同风格） */
 .utility-row {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
-  max-width: 920px;
-  margin: 0 auto var(--space-4);
 }
 
-@media (max-width: 768px) {
-  .utility-row {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
+
 
 .item-detail {
-  max-width: 920px;
-  margin: 0 auto var(--space-4);
-  background: var(--surface-card);
+  min-width: 0;
+  background: var(--surface-panel);
   border: 1px solid var(--border-subtle);
-  border-left: 3px solid var(--rarity-c, var(--border-subtle));
+  border-top: 2px solid var(--rarity-c, var(--accent-gold));
   border-radius: var(--radius-md);
-  padding: var(--space-3);
+  padding: var(--space-6);
 }
 
 .item-detail-header {
@@ -227,18 +193,7 @@
   margin-bottom: var(--space-2);
 }
 
-@media (max-width: 768px) {
-  .paper-doll {
-    grid-template-areas:
-      'helmet  helmet'
-      'weapon1 weapon2'
-      'body    amulet'
-      'body    ring1'
-      'gloves  ring2'
-      'belt    boots';
-    grid-template-columns: 1fr 1fr;
-  }
-}
+
 
 /* 符文插槽编辑器（物品详情内，一槽一下拉） */
 .rune-editor {
@@ -278,7 +233,8 @@
 }
 
 .library-search {
-  min-width: 220px;
+  min-width: 0;
+  width: 100%;
 }
 
 .library-slot-filter {
@@ -294,8 +250,7 @@
 .library-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-width: 920px;
+  gap: var(--space-2);
 }
 
 .library-row {
@@ -314,11 +269,12 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  flex-wrap: nowrap;
 }
 
 .library-row-toggle {
-  flex: 1;
+  flex: 1 1 180px;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -365,4 +321,48 @@
   margin-top: var(--space-2);
   padding-top: var(--space-2);
   border-top: 1px solid var(--border-subtle);
+}
+
+ .items-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: var(--space-6); align-items: start; }
+.items-collection { display: flex; flex-direction: column; gap: var(--space-6); min-width: 0; }
+.doll-symbol { grid-row: span 2; display: grid; place-items: center; color: var(--text-secondary); }
+.doll-symbol svg { width: 28px; height: 28px; }
+.doll-slot-label { align-self: end; color: var(--text-secondary); }
+.doll-item-name { align-self: start; line-height: 1.6; margin: 0; font-size: var(--text-sm); }
+.doll-slot.is-selected { background: color-mix(in srgb, var(--accent-gold) 8%, var(--surface-card)); box-shadow: none; }
+.doll-slot.is-selected .doll-symbol { color: var(--accent-gold); }
+.utility-heading { border-top: 1px solid var(--border-subtle); padding-top: var(--space-6); margin-top: var(--space-6); }
+.utility-row .doll-slot { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); min-height: 88px; }
+.utility-row .doll-symbol { display: none; }
+.item-detail-header { flex-wrap: wrap; gap: var(--space-2); padding-bottom: var(--space-3); border-bottom: 1px solid var(--border-subtle); }
+.item-detail-header .item-slot { color: var(--accent-gold); }
+.item-detail > .item-name { margin-top: var(--space-4); font-size: var(--text-lg); }
+.item-detail .item-lines { line-height: 1.8; }
+.item-actions { flex-wrap: wrap; }
+.library-row-head > .item-actions { margin-left: auto; }
+.library-row-slot { margin-left: auto; }
+.library-row-body { padding: var(--space-3); }
+.items-hint { line-height: 1.7; }
+@media (max-width: 1200px) {
+  .items-workspace { grid-template-columns: minmax(0, 1fr); }
+  .paper-doll { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .utility-row { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .paper-doll, .utility-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .doll-slot { grid-template-columns: minmax(0, 1fr); min-height: 106px; padding: var(--space-2); }
+  .doll-symbol { display: none; }
+  .item-detail { padding: var(--space-4); }
+  .library-row-toggle { flex-wrap: wrap; }
+  .library-row-toggle .item-name { white-space: normal; flex: 1; }
+}
+
+
+.library-row-toggle { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 2px var(--space-2); }
+.library-row-toggle .row-caret { grid-row: span 2; }
+.library-row-slot { grid-column: 2; margin-left: 0; }
+.library-row-head > .item-actions { flex-wrap: nowrap; }
+@media (max-width: 600px) {
+  .library-row-head { flex-wrap: wrap; }
+  .library-row-toggle { flex-basis: 100%; }
 }

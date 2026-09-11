@@ -1887,6 +1887,7 @@ fn translate_keyword_flags(
         let bit = match token.as_str() {
             "Aura" => KeywordFlags::AURA,
             "Curse" => KeywordFlags::CURSE,
+            "Arrow" => KeywordFlags::ARROW,
             "Hit" => KeywordFlags::HIT,
             "Ailment" => KeywordFlags::AILMENT,
             "Poison" => KeywordFlags::POISON,

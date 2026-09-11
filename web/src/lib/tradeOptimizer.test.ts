@@ -116,3 +116,21 @@ test('weights include interactions with the equipped item without discarding sat
   expect(result.weighted[0].gainPercent).toBe(25);
   expect(result.evaluated).toBe(6);
 });
+
+test('combination references only use base-compatible affixes and obey survival constraints', async () => {
+  const allowed = affix('allowed'); const impossible = affix('impossible');
+  const result = await optimizeTradeAffixes({ request: { character: { level: 90, class_name: 'Ranger' } }, slot: 'weapon2', base,
+    pool: [allowed, impossible], combinationPool: [allowed], itemLevel: 82,
+    objective: { stat: 'TotalDPS', constraints: [{ stat: 'TotalDPS', min: 101 }] },
+    evaluate: evaluator(text => 100 + (text.includes('allowed') ? 5 : 0) + (text.includes('impossible') ? 100 : 0)) });
+  expect(result.combinations.length).toBeGreaterThan(0);
+  expect(result.combinations.every(entry => !entry.text.includes('impossible') && entry.score >= 101)).toBe(true);
+});
+
+test('reference equipment and category affixes respect character level without changing category', () => {
+  const high = { ...base, name: 'Endgame Quiver', level: 80, tags: ['high', 'default'] };
+  const highMod = { ...affix('high'), weights: [['high', 1], ['default', 0]] as [string, number][] };
+  const catalog = { bases: [high, base], mods: [highMod, affix('low')] };
+  expect(referenceBase(catalog, 'weapon2', 'Endgame Quiver', undefined, 20)).toEqual(base);
+  expect(categoryAffixPool(catalog, 'armour.quiver', 100, 20).map(mod => mod.id)).toEqual(['low']);
+});

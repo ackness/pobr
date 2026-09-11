@@ -63,7 +63,11 @@ fn wegame_preserves_calculation_inputs_and_roundtrips() {
     assert_eq!(gem["quality"], 20);
     let notes = decoded["notes"].as_str().unwrap();
     assert!(notes.contains("Unknown Test Support"));
-    assert!(notes.contains("Weapon2"));
+    assert!(!notes.contains("Equipment slot omitted: Weapon2"));
+    assert_eq!(
+        decoded["weapon_swap"]["alternate_items"][0]["slot"],
+        "weapon1"
+    );
     assert_eq!(
         decoded["config_inputs"]["questAct 1Ogham ManorCandlemass"],
         false
@@ -76,7 +80,7 @@ fn wegame_preserves_calculation_inputs_and_roundtrips() {
         "character":decoded["character"], "allocated_nodes":decoded["tree"]["allocated_nodes"],
         "items":decoded["items"]["equipped"], "flasks":decoded["items"]["flasks"],
         "jewels":decoded["items"]["socket_jewels"], "socket_groups":groups(&decoded),
-        "config_inputs":decoded["config_inputs"]
+        "config_inputs":decoded["config_inputs"], "weapon_swap":decoded["weapon_swap"]
     });
     let calculated: Value =
         serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
@@ -92,6 +96,7 @@ fn wegame_preserves_calculation_inputs_and_roundtrips() {
     let roundtrip: Value =
         serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
     assert_eq!(roundtrip["socket_groups"][0]["gems"][0], *gem);
+    assert_swap(&roundtrip["weapon_swap"], &decoded["weapon_swap"]);
 }
 
 #[test]
@@ -185,4 +190,136 @@ fn trade_item_objects_preserve_rolls_and_isolate_bad_entries() {
         assert!(text.contains(expected), "missing {expected}: {text}");
     }
     assert!(result[1]["error"].is_string());
+}
+
+#[test]
+fn weapon_sets_roundtrip_both_pairs_passives_and_skill_bindings() {
+    init();
+    let request = json!({
+        "character": {"level":80,"class_name":"Witch"},
+        "allocated_nodes": [100, 222],
+        "items": [{"slot":"weapon1","text":"Rarity: NORMAL\nAshen Staff"}, {"slot":"ring1","text":"Rarity: NORMAL\nSapphire Ring"}],
+        "weapon_swap": {"active":2, "alternate_items":[
+            {"slot":"weapon1","text":"Rarity: NORMAL\nCrude Bow"},
+            {"slot":"weapon2","text":"Rarity: NORMAL\nPrimed Quiver"}
+        ], "exclusive_nodes":[[111],[222]]},
+        "socket_groups":[
+            {"weapon_set":1,"enabled":true,"gems":[{"skill_id":"IceShotPlayer","level":12}]},
+            {"weapon_set":2,"enabled":true,"gems":[{"skill_id":"FireballPlayer","level":12}]}
+        ], "main_socket_group":1
+    });
+    let code = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    assert_swap(&decoded["weapon_swap"], &request["weapon_swap"]);
+    assert_eq!(decoded["tree"]["allocated_nodes"], json!([100, 222]));
+    assert_eq!(decoded["socket_groups"][0]["weapon_set"], 1);
+    assert_eq!(decoded["socket_groups"][1]["weapon_set"], 2);
+    let equipped = decoded["items"]["equipped"].as_array().unwrap();
+    assert_eq!(equipped.len(), 2);
+    assert!(!equipped.iter().any(|item| item["slot"] == "weapon2"));
+    assert!(
+        equipped
+            .iter()
+            .any(|item| item["text"].as_str().unwrap().contains("Ashen Staff"))
+    );
+}
+
+#[test]
+fn ring_added_damage_respects_attack_and_spell_skill_contexts() {
+    init();
+    for (skill, applicable, irrelevant) in [
+        (
+            "FireballPlayer",
+            "Adds 20 to 40 Fire Damage to Spells",
+            "Adds 20 to 40 Fire Damage to Attacks",
+        ),
+        (
+            "IceShotPlayer",
+            "Adds 20 to 40 Fire Damage to Attacks",
+            "Adds 20 to 40 Fire Damage to Spells",
+        ),
+    ] {
+        let request = json!({
+            "character":{"level":71,"class_name":"Ranger"},
+            "items":[{"slot":"weapon1","text":"Rarity: NORMAL\nCrude Bow"}],
+            "socket_groups":[{"enabled":true,"gems":[{"skill_id":skill,"level":12}]}],
+            "main_socket_group":0
+        });
+        let input = json!({"request":request, "stats":["TotalDPS"], "variants":[
+            {"set_items":[{"slot":"ring1","text":format!("Rarity: RARE\nSynthetic Ring\nSapphire Ring\n{applicable}")}]},
+            {"set_items":[{"slot":"ring1","text":format!("Rarity: RARE\nSynthetic Ring\nSapphire Ring\n{irrelevant}")}]}
+        ]});
+        let result: Value =
+            serde_json::from_str(&pobr_wasm::optimize_variants_json(&input.to_string()).unwrap())
+                .unwrap();
+        let base = result["baseline"]["TotalDPS"].as_f64().unwrap();
+        assert!(base > 0.0, "{skill}");
+        assert!(
+            result["variants"][0]["stats"]["TotalDPS"].as_f64().unwrap() > base,
+            "{skill}: relevant damage"
+        );
+        assert_eq!(
+            result["variants"][1]["stats"]["TotalDPS"].as_f64().unwrap(),
+            base,
+            "{skill}: irrelevant damage"
+        );
+    }
+}
+
+fn assert_swap(actual: &Value, expected: &Value) {
+    let normalize = |value: &Value| {
+        let mut value = value.clone();
+        for item in value["alternate_items"].as_array_mut().unwrap() {
+            item["text"] = json!(item["text"].as_str().unwrap().trim());
+        }
+        value
+    };
+    assert_eq!(normalize(actual), normalize(expected));
+}
+
+#[test]
+fn arrow_chance_changes_expected_projectiles_only_for_arrow_skill_sets() {
+    init();
+    for (skill, set_index, delta) in [
+        ("IceShotPlayer", 1, 0.4),
+        ("IceShotPlayer", 2, 0.0),
+        ("FireballPlayer", 1, 0.0),
+    ] {
+        let code = pobr_build::encode_pob_code(&format!(
+            r#"<PathOfBuilding2><Build level="71" className="Ranger"/><Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true"><Gem skillId="{skill}" gemId="SyntheticGem" level="12" statSetIndex="{set_index}" enabled="true"/></Skill></SkillSet></Skills></PathOfBuilding2>"#
+        )).unwrap();
+        let input = json!({
+            "request": {
+                "pob_code":code,
+                "character":{"level":71,"class_name":"Ranger"},
+                "items":[{"slot":"weapon1","text":"Rarity: NORMAL\nCrude Bow"}],
+                "main_socket_group":0
+            },
+            "stats":["TotalDPS","ProjectileCount"],
+            "variants":[{"set_items":[{"slot":"weapon2","text":"Rarity: RARE\nSynthetic Quiver\nPrimed Quiver\n+40% Surpassing chance to fire an additional Arrow"}]}]
+        });
+        let result: Value =
+            serde_json::from_str(&pobr_wasm::optimize_variants_json(&input.to_string()).unwrap())
+                .unwrap();
+        let base = &result["baseline"];
+        let variant = &result["variants"][0];
+        assert!(variant["error"].is_null(), "{variant}");
+        assert!(
+            base["ProjectileCount"].as_f64().unwrap() >= 1.0,
+            "{skill}: {base}"
+        );
+        assert!(
+            (variant["stats"]["ProjectileCount"].as_f64().unwrap()
+                - base["ProjectileCount"].as_f64().unwrap()
+                - delta)
+                .abs()
+                < 1e-9,
+            "{skill}/{set_index}: {result}"
+        );
+        assert_eq!(
+            variant["stats"]["TotalDPS"], base["TotalDPS"],
+            "Extra projectiles do not imply same-target shotgun damage"
+        );
+    }
 }

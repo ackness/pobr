@@ -285,6 +285,10 @@ end
 --                                          消费点 calc::perform::
 --                                          apply_projectile_speed_to_damage）
 local IMPLICIT_STAT_KEYS = {
+	"skill_can_fire_arrows",
+	"modifiers_to_projectile_count_do_not_apply",
+	"number_of_projectiles_cannot_be_modified",
+	"base_modifiers_to_projectile_count_do_not_apply",
 	"attack_damage_is_lucky_if_surrounded",
 	"attacks_roll_crits_twice",
 	"no_critical_strike_multiplier",

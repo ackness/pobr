@@ -12,7 +12,7 @@
 
 .config-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
   gap: var(--space-2);
 }
 
@@ -23,7 +23,7 @@
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-3);
 }
 
 .config-item.is-overridden {
@@ -84,11 +84,12 @@
 
 .config-search {
   flex: 1;
-  min-width: 240px;
+  min-width: 0;
+  flex-basis: 220px;
 }
 
 .config-section {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .config-section-header {
@@ -99,8 +100,8 @@
   background: var(--surface-panel);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  padding: var(--space-1) var(--space-3);
-  color: var(--accent-gold-dim);
+  padding: var(--space-4);
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -116,4 +117,24 @@
 
 .config-section .config-grid {
   margin-top: var(--space-2);
+}
+
+ .config-toolbar { padding: var(--space-4); background: var(--surface-panel); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.config-section-header { align-items: center; text-align: left; }
+.config-section-count { border-radius: 20px; background: var(--surface-card); padding: 2px 9px; }
+.config-item { min-width: 0; min-height: 58px; }
+.config-item select { max-width: 48%; }
+.config-key { line-height: 1.6; }
+.config-value { flex: 0 0 90px; width: 90px; }
+.config-reset { flex: none; min-width: 28px; }
+.config-custom, .config-advanced { margin-top: var(--space-6); }
+.config-extra-mods { max-width: none; padding: var(--space-3); line-height: 1.7; }
+.config-advanced > summary { color: var(--text-primary); font-weight: 500; }
+.config-add { margin-top: var(--space-4); }
+.config-add input { flex: 1; min-width: 0; }
+@media (max-width: 600px) {
+  .config-toolbar { align-items: stretch; }
+  .config-toolbar .config-row { flex-wrap: wrap; }
+  .config-search { flex-basis: 100%; }
+  .config-add input { flex-basis: 100%; }
 }

@@ -1,5 +1,6 @@
+import { situationalAffix, type SituationalAffix } from './tradeMechanics';
 import type { CalculateBuildRequest, VariantInput } from '../api/types';
-import { evaluateVariants, scoreOf, type EvaluateOptions, type EvaluateResult, type Objective } from './optimize';
+import { compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type EvaluateResult, type Objective } from './optimize';
 import { normalizeTradeLine, type WeightedStat } from './trade';
 
 export interface TradeBase {
@@ -53,16 +54,17 @@ export function basesForSlot(catalog: TradeCatalog, slot: string): TradeBase[] {
 }
 
 /** The base is an internal probe reference, never a market base restriction. */
-export function referenceBase(catalog: TradeCatalog, slot: string, itemText = '', category?: string): TradeBase | undefined {
+export function referenceBase(catalog: TradeCatalog, slot: string, itemText = '', category?: string, maxLevel = 100): TradeBase | undefined {
   const available = basesForSlot(catalog, slot);
   const lines = new Set(itemText.split('\n').map(line => line.trim()));
   const equipped = available.find(base => lines.has(base.name));
-  return equipped && (!category || equipped.category === category) ? equipped
-    : available.find(base => !category || base.category === category);
+  const searchCategory = category ?? equipped?.category;
+  return equipped && equipped.level <= maxLevel && (!category || equipped.category === category) ? equipped
+    : available.find(base => base.level <= maxLevel && (!searchCategory || base.category === searchCategory));
 }
 
-export function categoryAffixPool(catalog: TradeCatalog, category: string, itemLevel = 100): TradeAffix[] {
-  return [...new Map(catalog.bases.filter(base => base.category === category)
+export function categoryAffixPool(catalog: TradeCatalog, category: string, itemLevel = 100, maxLevel = 100): TradeAffix[] {
+  return [...new Map(catalog.bases.filter(base => base.category === category && base.level <= maxLevel)
     .flatMap(base => affixPool(catalog, base, itemLevel)).map(mod => [mod.id, mod])).values()];
 }
 
@@ -111,6 +113,7 @@ export interface TradeCombination {
   score: number;
 }
 export interface TradeOptimization {
+  situational?: SituationalAffix[];
   baseline: Record<string, number>;
   weighted: (WeightedStat & { gain: number; gainPercent: number })[];
   combinations: TradeCombination[];
@@ -133,6 +136,7 @@ interface SearchOptions {
   maxEvaluations?: number;
   beamWidth?: number;
   combinations?: boolean;
+  combinationPool?: TradeAffix[];
 }
 
 /** Whole-item evaluation preserves nonlinear interactions; beam pruning bounds browser work.
@@ -193,16 +197,26 @@ export async function optimizeTradeAffixes(options: SearchOptions): Promise<Trad
     return [{ ...stat, weight: gain / stat.value * scale, gain,
       gainPercent: gain / Math.max(Math.abs(scoreOf(baseline, objective)), 1) * 100 }];
   }).sort((a, b) => b.weight * b.value - a.weight * a.value).slice(0, 32);
+  const situational = probes.flatMap((stat, index) => {
+    if (weighted.some(weight => weight.id === stat.id)) return [];
+    const result = probeResults.find(row => row.index === index + 1);
+    return !result || result.error ? [] : situationalAffix(stat, empty.stats, result.stats) ?? [];
+  });
   const unsupported = [...new Set(probeResults.filter(row => row.index % (probes.length + 1) === 0)
     .flatMap(row => row.unsupported ?? []))];
   const minimumWeight = Math.max(0, (scoreOf(baseline, objective) - emptyScore) * scale * 0.5);
   if (options.combinations === false) return { baseline, weighted, evaluated, limited: false,
-    minimumWeight, combinations: [], unsupported };
+    minimumWeight, combinations: [], unsupported, situational };
 
   let beam: TradeCombination[] = [{ mods: [], text: blank, stats: empty.stats, score: emptyScore }];
   const all: TradeCombination[] = [];
   const seen = new Set<string>();
-  let extensionPool = pool;
+  // Rank before truncation so an evaluation cap cannot favor alphabetical IDs.
+  // Keep zero-gain affixes eligible: useful interactions can require both parts.
+  const weightById = new Map(weighted.map(stat => [stat.id, stat.weight]));
+  const estimate = (mod: TradeAffix) => mod.stats.reduce((sum, stat) => sum + (weightById.get(stat.id) ?? 0) * stat.value, 0);
+  const legalPool = options.combinationPool ?? pool;
+  let extensionPool = [...legalPool].sort((a, b) => estimate(b) - estimate(a) || a.id.localeCompare(b.id));
   const affixLimit = base.affix_limit ?? 3;
   const maxDepth = affixLimit * 2;
   for (let depth = 1; depth <= maxDepth; depth += 1) {
@@ -229,13 +243,13 @@ export async function optimizeTradeAffixes(options: SearchOptions): Promise<Trad
     const ranked = results.flatMap(result => result.error ? [] : [{
       mods: selected[result.index], text: texts[result.index], stats: result.stats,
       score: scoreOf(result.stats, objective),
-    }]).sort((a, b) => b.score - a.score || a.text.localeCompare(b.text));
+    }]).sort((a, b) => compareObjectiveStats(a.stats, b.stats, objective) || a.text.localeCompare(b.text));
     all.push(...ranked);
     // Retain every single affix so zero-gain singles can still form useful pairs.
     if (depth === 1) {
       beam = ranked;
       extensionPool = [...ranked.map(entry => entry.mods[0]),
-        ...pool.filter(mod => !ranked.some(entry => entry.mods[0].id === mod.id))];
+        ...extensionPool.filter(mod => !ranked.some(entry => entry.mods[0].id === mod.id))];
     }
     else {
       if (depth < maxDepth && ranked.length > width) limited = true;
@@ -246,6 +260,7 @@ export async function optimizeTradeAffixes(options: SearchOptions): Promise<Trad
   signal?.throwIfAborted();
   onProgress?.(evaluated, evaluated);
   return { baseline, weighted, evaluated, limited,
-    minimumWeight, unsupported,
-    combinations: all.sort((a, b) => b.score - a.score || a.text.localeCompare(b.text)).slice(0, 5) };
+    minimumWeight, unsupported, situational,
+    combinations: all.filter(entry => feasibleOf(entry.stats, objective))
+      .sort((a, b) => compareObjectiveStats(a.stats, b.stats, objective) || a.text.localeCompare(b.text)).slice(0, 5) };
 }

@@ -29,7 +29,7 @@ test('import build code and browse tabs', async ({ page }) => {
   await page.locator('.import-submit').click();
 
   // 计算完成 → 自动切到 Items 页，侧边栏出现非零 EnergyShield。
-  await expect(page.getByRole('heading', { name: 'Items' })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
   const sidebar = page.getByRole('complementary', { name: 'Character stats' });
   await expect(sidebar).toContainText('Energy Shield');
   const esValue = sidebar.locator('.stat-row', { hasText: 'Energy Shield' }).locator('dd').first();
