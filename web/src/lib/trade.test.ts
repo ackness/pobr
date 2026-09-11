@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { buildTradeUrl, lineValue, normalizeTradeLine, loadTradeLeagues } from './trade';
+import { buildTradeUrl, gemTradeUrl, lineValue, normalizeTradeLine, loadTradeLeagues } from './trade';
 
 describe('normalizeTradeLine', () => {
   test('skeletonizes numbers and strips annotations', () => {
@@ -79,4 +79,27 @@ test('upstream failure remains visible to the fallback UI', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 502 })));
   await expect(loadTradeLeagues('cn')).rejects.toThrow();
   expect(() => buildTradeUrl('Standard', [], { category: '' })).toThrow('item category');
+});
+
+test('CN links search instant-buy stock across bases with a wearable level cap', () => {
+  const url = buildTradeUrl('Test League', [{ id: 'explicit.stat_1', line: 'x', value: 10, weight: 1 }], {
+    realm: 'cn', category: 'armour.quiver', maxLevel: 71, price: { max: 100, currency: 'exalted' },
+  });
+  const query = JSON.parse(new URL(url).searchParams.get('q')!);
+  expect(query.query.status.option).toBe('any');
+  expect(query.query.type).toBeUndefined();
+  expect(query.query.filters.req_filters.filters.lvl.max).toBe(71);
+  expect(query.query.stats[0].value).toBeUndefined();
+});
+
+test('gem links preserve realm, level, quality, budget and character requirements', () => {
+  const url = gemTradeUrl({ realm: 'cn', league: 'Test League', category: 'gem', maxLevel: 71,
+    price: { max: 50, currency: 'exalted' }, gem: { name: 'Fireball', level: 16, quality: 20 } });
+  const query = JSON.parse(new URL(url).searchParams.get('q')!);
+  expect(query.query.status.option).toBe('any');
+  expect(query.query.type).toBe('Fireball');
+  expect(query.query.filters.misc_filters.filters.gem_level.min).toBe(16);
+  expect(query.query.filters.type_filters.filters.quality.min).toBe(20);
+  expect(query.query.filters.req_filters.filters.lvl.max).toBe(71);
+  expect(query.sort).toEqual({ price: 'asc' });
 });

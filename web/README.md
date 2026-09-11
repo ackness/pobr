@@ -94,19 +94,19 @@ web/src/
 - **Tree**: allocation, attribute picks, jewel sockets, search, and a
   node-power heatmap.
 - **Optimizers & trade**: objective-driven gem/item/tree suggestions and a
-  category-constrained trade search with actual listing recalculation and budget/value ranking.
+  category-constrained official market links with local affix scores and budget filters.
 
-## Trade upgrades and signed-in imports
+## Trade upgrade planning
 
-Choose the server, league, goal and budget on the Trade tab. Equipment, accessories, allocated passive jewels, flasks/charms and skill/support gems are evaluated as single purchases against the current build. The panel shows DPS, life, EHP and resistance changes, quoted prices, try-on actions and official buying links.
+On the Trade tab, choose a position, goal, budget and market. The current item's type is detected automatically; you do not need to select a base. Equipment, accessories, allocated passive jewels, flasks/charms and skill/support gems have dedicated positions.
 
-Public searches recalculate up to 20 listings. When anonymous weighted queries exceed the official complexity limit, the panel labels the simpler price-based candidate search. Full weights remain available on the official site after login. CN listing searches currently require login:
+1. **Calculate affix scores** to see useful stats, relative priority, estimated contribution and market weights. The visible skill selector determines which skill is scored.
+2. **Browse matching items** opens the official market with category, budget, character level and weights already filled in. CN uses instant-buy stock. Sign in and select items there; no JSON export or import is needed.
+3. Click a listing's **Sum** on the official site to sort by weighted score. If too few items match, enable **Broaden search** to remove the score threshold.
 
-1. Run **Find better**, then drag **Export this search to PoBR** from the signed-in import section to the bookmarks bar (or copy its address into a bookmark).
-2. Open the generated official search, sign in there, and activate that bookmark. It downloads `pobr-trade-*.json` using the official tab's authenticated requests.
-3. Import that file in the same PoBR slot or gem candidate. The current budget is applied again and every listing is recalculated. Cookies and login tokens never leave the official tab.
+Affix estimates average probes on a reference item and current gear. They describe a stat's contribution, not the gain from buying an entire replacement; percentages cannot be added together. Gem cards show evaluated level/quality plans using PoB2 character-level requirements. Unsupported mechanics remain visible. Market weights guide selection and cannot guarantee the best purchase or account for every interaction.
 
-Exports are checked against the chosen server, league and item category. Unknown mechanics and attribute requirements are shown for review; bounded candidate sampling does not prove a global market optimum. A changed build/goal/budget invalidates results, and prices/availability may change after export.
+Changing the build, skill or goal clears scores. Changing budget, server or league updates search links immediately without repeating calculations.
 
 ## Data flow
 

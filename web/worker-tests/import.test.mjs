@@ -85,18 +85,19 @@ test('Worker loads official leagues and rejects arbitrary upstream realms', asyn
   assert.equal(calls, 1);
 });
 
-test('Worker searches the selected category/budget and returns only calculation fields', async (t) => {
+for (const realm of ['intl', 'cn']) test(`Worker searches ${realm} stock with category/budget and returns only calculation fields`, async (t) => {
   const ids = Array.from({ length: 25 }, (_, i) => i.toString(16).padStart(64, '0'));
   let searches = 0, fetches = 0;
   const mf = new Miniflare({ modules: true, cf: false, compatibilityDate: '2026-07-30',
     scriptPath: fileURLToPath(new URL('../public/_worker.js', import.meta.url)),
     outboundService: async request => {
       const url = new URL(request.url);
-      assert.equal(url.origin, 'https://www.pathofexile.com');
+      assert.equal(url.origin, realm === 'cn' ? 'https://poe.game.qq.com' : 'https://www.pathofexile.com');
       if (request.method === 'POST') {
         searches++;
         assert.equal(url.pathname, '/api/trade2/search/poe2/Future%20League');
         const body = await request.json();
+        assert.equal(body.query.status.option, realm === 'cn' ? 'any' : 'online');
         assert.equal(body.query.filters.type_filters.filters.category.option, 'armour.quiver');
         assert.deepEqual(body.query.filters.trade_filters.filters.price, { option: 'exalted', max: 100 });
         assert.deepEqual(body.query.filters.req_filters.filters.lvl, { max: 80 });
@@ -116,7 +117,7 @@ test('Worker searches the selected category/budget and returns only calculation 
   t.after(() => mf.dispose());
   const send = body => mf.dispatchFetch('https://pobr.test/api/trade/search', { method: 'POST',
     headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-  const response = await send({ realm: 'intl', league: 'Future League', category: 'armour.quiver',
+  const response = await send({ realm, league: 'Future League', category: 'armour.quiver',
     weighted: [{ id: 'explicit.stat_123', weight: 2 }], price: { max: 100, currency: 'exalted' }, maxLevel: 80 });
   const body = await response.json();
   assert.equal(response.status, 200, JSON.stringify(body));

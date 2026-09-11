@@ -69,7 +69,12 @@ export async function evaluateMarket(options: {
   return { baseline: result.baseline, upgrades: rankMarket(upgrades), rejected };
 }
 
-export interface GemPlan { gem: TradeGem; group: number; position: number; level: number; quality: number; variant: VariantInput }
+export interface GemPlan { gem: TradeGem; group: number; position: number; level: number; quality: number; variant: VariantInput; gainPercent?: number }
+/** Only propose known usable levels; old catalogs can still suggest quality upgrades. */
+export function usableGemLevel(gem: TradeGem, characterLevel: number): number {
+  return (gem.level_requirements ?? []).reduce((best, required, index) =>
+    required <= characterLevel ? index + 1 : best, 0);
+}
 export function gemVariant(request: CalculateBuildRequest, group: number, position: number,
   gem: TradeGem, level: number, quality: number): VariantInput {
   return { socket_groups: (request.socket_groups ?? []).map((entry, index) => {
@@ -106,17 +111,20 @@ export async function planGemUpgrades(request: CalculateBuildRequest, catalog: T
     probePosition = supports[best.index];
   }
   const present = new Set(current.gems.map(gem => gem.skill_id));
+  const characterLevel = request.character?.level ?? 1;
   for (const gem of catalog.gems ?? []) {
     if (!gem.is_support || present.has(gem.skill_id)) continue;
     const duplicateFamily = current.gems.some((entry, index) => index !== probePosition && byId.get(entry.skill_id)?.family === gem.family);
-    if (!duplicateFamily) add(gem, probePosition, gem.max_level, 0);
+    const level = Math.min(gem.max_level, usableGemLevel(gem, characterLevel));
+    if (!duplicateFamily && level > 0) add(gem, probePosition, level, 0);
   }
   current.gems.forEach((entry, position) => {
     const gem = byId.get(entry.skill_id);
     if (!gem) return;
     // Include a quality purchase and a level purchase; supports use their actual natural maximum.
     if (entry.quality < 20) add(gem, position, entry.level, 20);
-    if (!gem.is_support && entry.level < gem.max_level + 1) add(gem, position, gem.max_level + 1, Math.max(entry.quality, 20));
+    const level = Math.min(gem.max_level + 1, usableGemLevel(gem, characterLevel));
+    if (!gem.is_support && entry.level < level) add(gem, position, level, Math.max(entry.quality, 20));
   });
   const ranked: { plan: GemPlan; gain: number }[] = [];
   const evaluate = async (batch: GemPlan[]) => {
@@ -128,7 +136,8 @@ export async function planGemUpgrades(request: CalculateBuildRequest, catalog: T
       if (result.aborted) throw new DOMException('Search cancelled', 'AbortError');
       for (const row of result.results) {
         const gain = scoreOf(row.stats, objective) - scoreOf(result.baseline, objective);
-        if (!row.error && gain > 0) ranked.push({ plan: selected[row.index], gain });
+        if (!row.error && gain > 0) ranked.push({ plan: { ...selected[row.index],
+          gainPercent: gain / Math.max(Math.abs(scoreOf(result.baseline, objective)), 1) * 100 }, gain });
       }
     }
   };

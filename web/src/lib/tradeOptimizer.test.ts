@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { affixPool, basesForSlot, combinationLegal, tradeItemVariant, optimizeTradeAffixes, type TradeAffix, type TradeBase } from './tradeOptimizer';
+import { affixPool, basesForSlot, categoryAffixPool, referenceBase, combinationLegal, tradeItemVariant, optimizeTradeAffixes, type TradeAffix, type TradeBase } from './tradeOptimizer';
 import type { EvaluateOptions, EvaluateResult } from './optimize';
 
 const base: TradeBase = { name: 'Broadhead Quiver', category: 'armour.quiver', tags: ['quiver', 'default'], level: 1, implicits: [] };
@@ -93,4 +93,26 @@ test('a cancellation arriving after the last probe still invalidates score-only 
       return result;
     },
   })).rejects.toThrow();
+});
+
+test('automatically detects equipped bases but pools affixes across the whole category', () => {
+  const other = { ...base, name: 'Primed Quiver', tags: ['primed', 'quiver', 'default'] };
+  const special = { ...affix('other-base'), weights: [['primed', 1], ['default', 0]] as [string, number][] };
+  const catalog = { bases: [base, other], mods: [affix('common'), special] };
+  expect(referenceBase(catalog, 'weapon2', `Rarity: RARE\nEquipped\n${other.name}`)).toBe(other);
+  expect(categoryAffixPool(catalog, 'armour.quiver').map(mod => mod.id)).toEqual(['common', 'other-base']);
+  expect(referenceBase(catalog, 'helmet')).toBeUndefined();
+});
+
+test('weights include interactions with the equipped item without discarding saturated affixes', async () => {
+  const current = `Rarity: RARE\nEquipped\n${base.name}\n10 flat`;
+  const result = await optimizeTradeAffixes({ request: { items: [{ slot: 'weapon2', text: current }] },
+    slot: 'weapon2', base, pool: [affix('speed', 'suffix'), affix('crit', 'suffix')], itemLevel: 82, objective, combinations: false,
+    evaluate: evaluator(text => 100 + (text.includes('speed') ? text.includes('flat') ? 40 : 10 : 0)
+      + (text.includes('crit') && !text.includes('Equipped') ? 20 : 0)),
+  });
+  expect(result.weighted.find(row => row.id === 'explicit.speed')?.gain).toBe(25);
+  expect(result.weighted.find(row => row.id === 'explicit.crit')?.gain).toBe(10);
+  expect(result.weighted[0].gainPercent).toBe(25);
+  expect(result.evaluated).toBe(6);
 });

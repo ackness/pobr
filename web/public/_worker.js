@@ -120,7 +120,7 @@ export async function fetchTradeMarket(input, fetcher = fetch) {
   const host = TRADE_HOSTS[realm];
   const query = {
     query: {
-      status: { option: 'online' },
+      status: { option: realm === 'cn' ? 'any' : 'online' },
       ...(gem ? { type: gem.name } : {}),
       stats: weighted.length ? [{ type: 'weight', filters: weighted.map(stat => ({ id: stat.id, value: { weight: stat.weight } })) }]
         : [{ type: 'and', filters: [] }],

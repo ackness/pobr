@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
 import type { EvaluateOptions } from './optimize';
-import { evaluateMarket, gemVariant, rankMarket, type MarketResponse, type MarketUpgrade } from './tradeMarket';
+import { evaluateMarket, gemVariant, rankMarket, usableGemLevel, type MarketResponse, type MarketUpgrade } from './tradeMarket';
 
 const market: MarketResponse = { url: 'https://www.pathofexile.com/trade2/search/poe2/Standard/synthetic',
   total: 50, sampled: 3, listings: [
@@ -49,4 +49,13 @@ test('gem replacement preserves other supports and groups instead of appending d
   expect(variant.socket_groups![0].gems.map(gem => gem.skill_id)).toEqual(['Fireball', 'New']);
   expect(variant.socket_groups![1]).toEqual(request.socket_groups[1]);
   expect(request.socket_groups[0].gems[1].skill_id).toBe('Old');
+});
+
+test('gem plans respect character level and do not guess missing requirements', () => {
+  const gem = { skill_id: 'Synthetic', name: 'Synthetic', family: 'Synthetic', is_support: false, max_level: 3,
+    level_requirements: [0, 10, 20, 20] };
+  expect(usableGemLevel(gem, 9)).toBe(1);
+  expect(usableGemLevel(gem, 10)).toBe(2);
+  expect(usableGemLevel(gem, 20)).toBe(4);
+  expect(usableGemLevel({ ...gem, level_requirements: undefined }, 100)).toBe(0);
 });

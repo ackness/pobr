@@ -95,46 +95,59 @@ export interface TradePriceCap {
   currency?: 'divine' | 'exalted' | 'chaos';
 }
 
+export interface TradeQueryOptions {
+  category: string;
+  realm?: TradeRealm;
+  price?: TradePriceCap;
+  minimumWeight?: number;
+  maxLevel?: number;
+}
+
+/** CN's instant-buy market includes listings whose owners are offline. */
+export function buildTradeQuery(weighted: WeightedStat[], options: TradeQueryOptions) {
+  const { category, realm = 'intl', price, maxLevel } = options;
+  if (!category) throw new Error('Select an item category before searching');
+  return {
+    query: {
+      status: { option: realm === 'cn' ? 'any' : 'online' },
+      stats: weighted.length ? [{
+        type: 'weight',
+        ...(options.minimumWeight && options.minimumWeight > 0 ? { value: { min: Math.round(options.minimumWeight * 1000) / 1000 } } : {}),
+        filters: weighted.map(w => ({ id: w.id, value: { weight: Math.round(w.weight * 1000) / 1000 } })),
+      }] : [{ type: 'and', filters: [] }],
+      filters: {
+        type_filters: { filters: { category: { option: category } } },
+        ...(price && price.max > 0 ? { trade_filters: { filters: {
+          price: { max: price.max, ...(price.currency ? { option: price.currency } : {}) },
+        } } } : {}),
+        ...(maxLevel ? { req_filters: { filters: { lvl: { max: maxLevel } } } } : {}),
+      },
+    },
+    sort: weighted.length ? { 'statgroup.0': 'desc' } : { price: 'asc' },
+  };
+}
+
 /** Category is mandatory: an untyped weighted query mixes unrelated equipment. */
 export function buildTradeUrl(
   league: string,
   weighted: WeightedStat[],
-  options: { category: string; realm?: TradeRealm; price?: TradePriceCap; minimumWeight?: number },
+  options: TradeQueryOptions,
 ): string {
-  const { category, realm = 'intl', price, minimumWeight = 0 } = options;
-  if (!category) throw new Error('Select an item category before searching');
-  const query = {
-    query: {
-      status: { option: 'online' },
-      stats: [
-        {
-          type: 'weight',
-          value: { min: Math.round(minimumWeight * 1000) / 1000 },
-          filters: weighted.map((w) => ({
-            id: w.id,
-            value: { weight: Math.round(w.weight * 1000) / 1000 },
-          })),
-        },
-      ],
-      filters: {
-        type_filters: { filters: {
-          category: { option: category },
-        } },
-        ...(price && price.max > 0
-          ? {
-              trade_filters: {
-                filters: {
-                  price: { max: price.max, ...(price.currency ? { option: price.currency } : {}) },
-                },
-              },
-            }
-          : {}),
-      },
-    },
-    sort: { 'statgroup.0': 'desc' },
-    engine: 'new',
-  };
+  const { realm = 'intl' } = options;
+  // A broad link omits the score threshold so useful combinations remain visible.
+  const query = { ...buildTradeQuery(weighted, options), engine: 'new' };
   return `${REALM_HOSTS[realm]}/trade2/search/poe2/${encodeURIComponent(
     league,
   )}?q=${encodeURIComponent(JSON.stringify(query))}`;
+}
+
+/** Exact gem level and quality filters for a locally evaluated upgrade plan. */
+export function gemTradeUrl(input: TradeQueryOptions & { league: string; gem: { name: string; level: number; quality: number } }): string {
+  const url = new URL(buildTradeUrl(input.league, [], input));
+  const query = JSON.parse(url.searchParams.get('q')!);
+  query.query.type = input.gem.name;
+  query.query.filters.type_filters.filters.quality = { min: input.gem.quality };
+  query.query.filters.misc_filters = { filters: { gem_level: { min: input.gem.level } } };
+  url.searchParams.set('q', JSON.stringify(query));
+  return url.toString();
 }
