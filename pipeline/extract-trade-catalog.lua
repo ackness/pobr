@@ -91,23 +91,51 @@ for _, id in ipairs(sorted_keys(raw_mods)) do
             lines = lines, weights = weights, stats = stats, domain = mod.domain }
     end
 end
+-- Load data constructors only; modifier behavior is irrelevant to level requirements.
+-- The same minimal enum stubs are used by sync-pob-catalog's skill extractors.
+SkillType = setmetatable({}, { __index = function(_, key) return key end })
+local function flag_enum()
+    local next_bit = 1
+    return setmetatable({}, { __index = function(t, key)
+        local value = next_bit
+        next_bit = next_bit * 2
+        rawset(t, key, value)
+        return value
+    end })
+end
+ModFlag, KeywordFlag = flag_enum(), flag_enum()
+local raw_skills = {}
+local function unused_mod() return {} end
+for _, file in ipairs({ "act_dex", "act_int", "act_str", "sup_dex", "sup_int", "sup_str" }) do
+    local constructor = assert(loadfile(vendor .. "/Data/Skills/" .. file .. ".lua"))
+    local result = constructor(raw_skills, unused_mod, unused_mod, unused_mod)
+    if type(result) == "function" then result(raw_skills, unused_mod, unused_mod, unused_mod) end
+end
 local gems = {}
 local raw_gems = dofile(vendor .. "/Data/Gems.lua")
 for _, id in ipairs(sorted_keys(raw_gems)) do
     local gem = raw_gems[id]
     if gem.grantedEffectId and gem.name then
+        local requirements = {}
+        local levels = (raw_skills[gem.grantedEffectId] or {}).levels or {}
+        local maximum_level = (gem.naturalMaxLevel or 20) + (gem.gemType == "Support" and 0 or 1)
+        for level = 1, maximum_level do
+            if not levels[level] or levels[level].levelRequirement == nil then break end
+            requirements[level] = levels[level].levelRequirement
+        end
         gems[#gems + 1] = { skill_id = gem.grantedEffectId, name = gem.name, family = gem.gemFamily or gem.name,
-            is_support = gem.gemType == "Support", max_level = gem.naturalMaxLevel or 20 }
+            is_support = gem.gemType == "Support", max_level = gem.naturalMaxLevel or 20,
+            level_requirements = requirements }
     end
 end
-local result = { _meta = { source = "PoB2 ModItem/ModJewel/ModFlask/ModCharm, Bases, Gems and TradeSiteStats",
+local result = { _meta = { source = "PoB2 ModItem/ModJewel/ModFlask/ModCharm, Bases, Gems, Skills and TradeSiteStats",
     regen_command = "luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src <out>" },
     bases = bases, mods = mods, gems = gems }
 local f = assert(io.open(output, "w"))
 f:write(json.encode(result, { indent = true, keyorder = {
     "_meta", "source", "regen_command", "bases", "mods", "gems", "id", "name", "category", "tags",
     "group", "kind", "level", "implicits", "domain", "affix_limit", "lines", "weights", "stats", "line", "value",
-    "skill_id", "family", "is_support", "max_level",
+    "skill_id", "family", "is_support", "max_level", "level_requirements",
 } }), "\n")
 f:close()
 print(string.format("trade catalog: %d bases, %d affixes", #bases, #mods))

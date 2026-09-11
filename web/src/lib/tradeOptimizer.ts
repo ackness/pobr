@@ -21,7 +21,7 @@ export interface TradeAffix {
   stats: { id: string; line: string; value: number }[];
   domain?: string;
 }
-export interface TradeGem { skill_id: string; name: string; family: string; is_support: boolean; max_level: number }
+export interface TradeGem { skill_id: string; name: string; family: string; is_support: boolean; max_level: number; level_requirements?: number[] }
 export interface TradeCatalog { bases: TradeBase[]; mods: TradeAffix[]; gems?: TradeGem[] }
 
 export async function loadTradeCatalog(): Promise<TradeCatalog> {
@@ -50,6 +50,20 @@ export function basesForSlot(catalog: TradeCatalog, slot: string): TradeBase[] {
       'weapon.onemace', 'weapon.wand', 'weapon.sceptre', 'weapon.flail', 'weapon.spear'].includes(base.category);
     return SLOT_CATEGORIES[slot]?.includes(base.category) ?? false;
   });
+}
+
+/** The base is an internal probe reference, never a market base restriction. */
+export function referenceBase(catalog: TradeCatalog, slot: string, itemText = '', category?: string): TradeBase | undefined {
+  const available = basesForSlot(catalog, slot);
+  const lines = new Set(itemText.split('\n').map(line => line.trim()));
+  const equipped = available.find(base => lines.has(base.name));
+  return equipped && (!category || equipped.category === category) ? equipped
+    : available.find(base => !category || base.category === category);
+}
+
+export function categoryAffixPool(catalog: TradeCatalog, category: string, itemLevel = 100): TradeAffix[] {
+  return [...new Map(catalog.bases.filter(base => base.category === category)
+    .flatMap(base => affixPool(catalog, base, itemLevel)).map(mod => [mod.id, mod])).values()];
 }
 
 /** First matching spawn weight wins, including a zero-weight exclusion (PoB2 semantics). */
@@ -98,11 +112,12 @@ export interface TradeCombination {
 }
 export interface TradeOptimization {
   baseline: Record<string, number>;
-  weighted: WeightedStat[];
+  weighted: (WeightedStat & { gain: number; gainPercent: number })[];
   combinations: TradeCombination[];
   evaluated: number;
   limited: boolean;
   minimumWeight: number;
+  unsupported: string[];
 }
 
 interface SearchOptions {
@@ -150,22 +165,39 @@ export async function optimizeTradeAffixes(options: SearchOptions): Promise<Trad
   // Weight each mapped stat independently, even if it belongs to a hybrid affix.
   const probes = [...new Map(pool.flatMap(mod => mod.stats).map(stat => [stat.id, stat])).values()];
   if (probes.length + 1 >= cap) throw new Error('Affix pool exceeds the search budget');
-  const probeResults = await run([variant(blank), ...probes.map(stat => variant(`${blank}\n${stat.line}`))]);
+  const currentText = slot.startsWith('Jewel@')
+    ? request.jewels?.find(jewel => jewel.socket_node === Number(slot.slice(6)))?.text
+    : (/^(Flask|Charm) /.test(slot) ? request.flasks : request.items)?.find(item => item.slot === slot)?.text;
+  // Probe both an empty item and the equipped item. Their average captures
+  // interactions with existing flat damage, speed and critical modifiers while
+  // retaining useful affixes that are already saturated on the current item.
+  const current = currentText?.split('\n').some(line => line.trim() === base.name) ? currentText : undefined;
+  const contexts = current ? [blank, current] : [blank];
+  if ((probes.length + 1) * contexts.length >= cap) throw new Error('Affix pool exceeds the search budget');
+  const probeResults = await run(contexts.flatMap(text => [variant(text), ...probes.map(stat => variant(`${text}\n${stat.line}`))]));
   signal?.throwIfAborted();
   const empty = probeResults.find(result => result.index === 0);
   if (!empty || empty.error) throw new Error(empty?.error ?? 'Unable to evaluate item base');
   const emptyScore = scoreOf(empty.stats, objective);
   const scale = 1000 / Math.max(Math.abs(scoreOf(baseline, objective)), Math.abs(emptyScore), 1);
-  const weighted = probeResults.flatMap(result => {
-    const stat = probes[result.index - 1];
-    if (!stat || result.error) return [];
-    const gain = scoreOf(result.stats, objective) - emptyScore;
+  const weighted = probes.flatMap((stat, index) => {
+    const gains = contexts.flatMap((_, context) => {
+      const offset = context * (probes.length + 1);
+      const reference = probeResults.find(row => row.index === offset);
+      const result = probeResults.find(row => row.index === offset + index + 1);
+      return !reference || reference.error || !result || result.error ? []
+        : [scoreOf(result.stats, objective) - scoreOf(reference.stats, objective)];
+    });
+    const gain = gains.reduce((sum, value) => sum + value, 0) / Math.max(gains.length, 1);
     if (!Number.isFinite(gain) || gain <= 0 || !stat.value) return [];
-    return [{ ...stat, weight: gain / stat.value * scale }];
+    return [{ ...stat, weight: gain / stat.value * scale, gain,
+      gainPercent: gain / Math.max(Math.abs(scoreOf(baseline, objective)), 1) * 100 }];
   }).sort((a, b) => b.weight * b.value - a.weight * a.value).slice(0, 32);
+  const unsupported = [...new Set(probeResults.filter(row => row.index % (probes.length + 1) === 0)
+    .flatMap(row => row.unsupported ?? []))];
   const minimumWeight = Math.max(0, (scoreOf(baseline, objective) - emptyScore) * scale * 0.5);
   if (options.combinations === false) return { baseline, weighted, evaluated, limited: false,
-    minimumWeight, combinations: [] };
+    minimumWeight, combinations: [], unsupported };
 
   let beam: TradeCombination[] = [{ mods: [], text: blank, stats: empty.stats, score: emptyScore }];
   const all: TradeCombination[] = [];
@@ -214,6 +246,6 @@ export async function optimizeTradeAffixes(options: SearchOptions): Promise<Trad
   signal?.throwIfAborted();
   onProgress?.(evaluated, evaluated);
   return { baseline, weighted, evaluated, limited,
-    minimumWeight,
+    minimumWeight, unsupported,
     combinations: all.sort((a, b) => b.score - a.score || a.text.localeCompare(b.text)).slice(0, 5) };
 }
