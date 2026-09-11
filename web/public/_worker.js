@@ -81,7 +81,8 @@ export async function fetchTradeLeagues(realm, fetcher = fetch) {
   if (!Object.hasOwn(hosts, realm)) throw new Error('Invalid trade realm.');
   const response = await fetcher(`${hosts[realm]}/api/trade2/data/leagues`, {
     redirect: 'manual', credentials: 'omit', signal: AbortSignal.timeout(10000),
-    headers: { accept: 'application/json' },
+    // Identify the same client used for listing requests.
+    headers: { accept: 'application/json', 'user-agent': 'PoBR (+https://github.com/ackness/pobr)' },
   });
   if (!response.ok) throw new Error(`Trade leagues: HTTP ${response.status}.`);
   const data = await readJson(response, 256 * 1024);
