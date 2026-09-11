@@ -15,6 +15,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::state;
 
+#[path = "wegame.rs"]
+mod wegame;
+
 // 0.1 decode_build_json
 
 #[derive(Debug, Serialize)]
@@ -429,6 +432,11 @@ pub fn decode_build_file_json(content: &str) -> Result<String, String> {
 }
 
 fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
+    let value: serde_json::Value = serde_json::from_str(content)
+        .map_err(|e| super::ApiError::decode_error(format!("invalid build json: {e}")))?;
+    if value.get("format").is_some() {
+        return wegame::decode(value);
+    }
     let file: CnBuildFile = serde_json::from_str(content)
         .map_err(|e| super::ApiError::decode_error(format!("invalid .build json: {e}")))?;
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;

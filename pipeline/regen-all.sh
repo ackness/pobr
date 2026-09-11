@@ -75,7 +75,7 @@ die_on_fail "${ADAPTER[@]}" --tree-coords "$VENDOR/TreeData/0_5/tree.lua" --out 
 anoint_log="$(mktemp)"
 if "${ADAPTER[@]}" --tree-anoints "$VENDOR/TreeData/0_5/tree.lua" --out data --patch "$PATCH" >"$anoint_log" 2>&1; then
     cat "$anoint_log"
-elif grep -q "未解析出任何缺失 notable" "$anoint_log"; then
+elif grep -q "no missing notables were parsed" "$anoint_log"; then
     echo "   tree-anoints: 无缺失 notable 需回填（新树已自带油涂 notable）——跳过"
 else
     cat "$anoint_log" >&2
@@ -127,10 +127,13 @@ soft_step trigger_configs "${SYNC[@]}" gen-trigger-configs --vendor-root "$VENDO
 # stat_id_map（M6 E/F 段 B）须在 stat_descriptions + mod_parser_rules 之后——消费两者跑引擎派生。
 soft_step stat_id_map     "${SYNC[@]}" gen-stat-id-map --overlay-dir "$OVL" --out "$OVL/stat_id_map.json"
 
-# ---- 6) 手工策展 overlay：全部迁至 data/overlay-common/，无逐版本沿用 ----
-# special_mods / buff_definitions / high_precision_mods / local_mods /
-# vendor_name_aliases 均在 data/overlay-common/，gamedata 加载期合并/兜底继承（P1-3）。
-# 版本特有修正才落 data/<patch>/overlay/<域>.json。此步已无沿用动作。
+# ---- 6) Preserve the version-specific special-mod corrections ----
+# The common layer is inherited by the loader. The version layer still
+# contains curated corrections and must exist before special-vendor dedup.
+if [[ -f "data/$OLD_PATCH/overlay/special_mods.json" && ! -f "$OVL/special_mods.json" ]]; then
+    cp "data/$OLD_PATCH/overlay/special_mods.json" "$OVL/special_mods.json"
+    echo "   carried over: overlay/special_mods.json (review against the new vendor)"
+fi
 
 # ---- 6b) 手工策展 base 文件：管线不产出，从 OLD_PATCH 沿用（需人工复核版本变更）----
 # 这些是 git 跟踪、无生成器的游戏常量/定义（武器类型、game/character constants、
@@ -169,13 +172,13 @@ fi
 # ---- 6c) vendor specialModList 批量抽取 (generated/special_vendor.json) ----
 # 必须在 special_derived (步骤 4) 之后：抽取器对 special_mods（overlay-common +
 # 版本 overlay 两层）/ special_derived 做 key 去重。注意去重读的是
-# pobr_data::data_version() 指向的数据目录（含其同级 overlay-common），不是 $PATCH——
-# 升级 drill 中先把 DATA_VERSION 常量推进到 $PATCH 再跑本脚本。
+# POBR_DATA_VERSION 指定的新数据目录（含其同级 overlay-common）；活动默认版本
+# 在完整生成成功后才推进。
 # 4.5.4.3 升级曾漏掉这一步 (special_vendor 为 0 条)；precompile-mods --check 现在
 # 会对缺失报错。
 echo "== [6c] extract-lua --what special-mods (generated/special_vendor.json)"
 mkdir -p "$OUT_DIR/generated"
-soft_step special_vendor "${SYNC[@]}" extract-lua --what special-mods --vendor-root "$VENDOR" --out "$OUT_DIR/generated/special_vendor.json"
+soft_step special_vendor env POBR_DATA_VERSION="$PATCH" "${SYNC[@]}" extract-lua --what special-mods --vendor-root "$VENDOR" --out "$OUT_DIR/generated/special_vendor.json"
 
 # ---- 7) generated/（precompile-mods）----
 echo "== [7/9] precompile-mods（generated/）"
@@ -191,9 +194,8 @@ fi
 # 数据内容计数钉（parser 规则段计数 / minion 系数等）不再手写在测试里，而是存
 # 每版本一份的 generated/test_pins.json；这里以 POBR_BLESS_PINS=1 重跑对应定向
 # 测试把实际值写回快照（与 regen 同一提交）。注意：
-#   - 快照落在各测试**实际加载**的版本目录（golden 测试 =
-#     pobr_data::GOLDEN_PARITY_DATA_VERSION）——升级 drill 中 golden 尚未切换时，
-#     刷新的是旧 golden 目录，属预期；
+#   - 快照落在各测试实际加载的版本目录；golden 测试继续钉定
+#     GOLDEN_PARITY_DATA_VERSION，升级活动数据不会改写黄金基准。
 #   - 必须用 cargo test（单进程多线程，写回有进程内锁），勿换 nextest
 #     （进程/测试并发写同一快照会互相覆盖）。
 echo "== [9/9] test-pin bless（generated/test_pins.json）"

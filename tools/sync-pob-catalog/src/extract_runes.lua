@@ -79,6 +79,23 @@ for _, name in ipairs(sortedKeys(runes)) do
 			end
 			lines[i] = '"' .. jsonEscape(line) .. '"'
 		end
+		-- New exports separate bonded bonuses; preserve the conditional raw
+		-- item syntax used by existing consumers and older exports.
+		local statOrder = {}
+		for _, stat in ipairs(slot.statOrder or {}) do
+			statOrder[#statOrder + 1] = stat
+		end
+		if type(slot.bonded) == "table" then
+			for _, line in ipairs(slot.bonded) do
+				if type(line) ~= "string" then
+					error("non-string bonded line at " .. name .. "/" .. slotName)
+				end
+				lines[#lines + 1] = '"' .. jsonEscape("Bonded: " .. line) .. '"'
+			end
+			for _, stat in ipairs(slot.bonded.statOrder or {}) do
+				statOrder[#statOrder + 1] = stat
+			end
+		end
 		local fields = {
 			'"kind":"' .. jsonEscape(slot.type) .. '"',
 			'"lines":[' .. table.concat(lines, ",") .. "]",
@@ -86,9 +103,9 @@ for _, name in ipairs(sortedKeys(runes)) do
 		if type(slot.rank) == "table" and #slot.rank > 0 then
 			fields[#fields + 1] = '"rank":' .. jsonNumArray(slot.rank, name .. "/" .. slotName .. ".rank")
 		end
-		if type(slot.statOrder) == "table" and #slot.statOrder > 0 then
+		if #statOrder > 0 then
 			fields[#fields + 1] = '"stat_order":'
-				.. jsonNumArray(slot.statOrder, name .. "/" .. slotName .. ".statOrder")
+				.. jsonNumArray(statOrder, name .. "/" .. slotName .. ".statOrder")
 		end
 		slotParts[#slotParts + 1] = '"' .. jsonEscape(slotName) .. '":{' .. table.concat(fields, ",") .. "}"
 	end

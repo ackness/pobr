@@ -73,7 +73,7 @@ const REALM_HOSTS: Record<TradeRealm, string> = {
  */
 export const REALM_LEAGUES: Record<TradeRealm, string[]> = {
   intl: ['Runes of Aldur', 'Standard'],
-  cn: ['奥杜尔秘符', '标准'],
+  cn: ['周年庆巅峰挑战', '奥杜尔秘符', '标准'],
 };
 
 export const REALM_DEFAULT_LEAGUE: Record<TradeRealm, string> = {

@@ -179,7 +179,7 @@ fn detonate_dead_skill_data_payload() {
 fn enemy_resist_targets_enemy() {
     let doc = load();
     let def = find(&doc, "enemyLightningResist");
-    assert_eq!(def.input_type, ConfigInputType::Integer);
+    assert_eq!(def.input_type, ConfigInputType::CountAllowZero);
     let effect = &def.effects[0];
     assert_eq!(effect.target, EffectTarget::Enemy);
     assert_eq!(effect.name, "LightningResist");

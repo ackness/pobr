@@ -18,7 +18,7 @@ const ninjaCode = readFileSync(
 
 test('tree renders, granted badges, zh item names, library search', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /Import Build Code/i })).toBeVisible({
+  await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({
     timeout: 90_000,
   });
 

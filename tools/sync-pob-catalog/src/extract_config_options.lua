@@ -184,7 +184,9 @@ local function analyzeRecord(record)
 	-- tags（整体进 identity；数值字段随探针变化时 identity 不同 → 上层降级）
 	local tags = {}
 	for _, tag in ipairs(mod) do
-		if type(tag) == "table" then
+		-- IgnoreCond only hides condition controls in PoB2 Calcs.lua. It does
+		-- not disable the following calculation conditions in ModStore.
+		if type(tag) == "table" and tag.type ~= "IgnoreCond" then
 			local s, reason = serializeTag(tag)
 			if not s then return nil, reason end
 			tags[#tags + 1] = s
@@ -638,6 +640,7 @@ end
 local stats = { total = 0, template = 0, handler = 0, no_apply = 0 }
 local handlerReasons = {}
 local section = ""
+local hasCustomMods = false
 
 for _, entry in ipairs(varList) do
 	if entry.section then
@@ -646,6 +649,7 @@ for _, entry in ipairs(varList) do
 	if entry.var and entry.type and INPUT_TYPE_MAP[entry.type] then
 		stats.total = stats.total + 1
 		local def = buildSchemaFields(entry, section)
+		if def.var == "customMods" then hasCustomMods = true end
 
 		if not entry.apply then
 			-- 纯 schema 条目（标量消费 / UI-only）：零 effects，无需验证。
@@ -706,6 +710,19 @@ for _, entry in ipairs(varList) do
 
 		io.write(dkjson.encode(def), "\n")
 	end
+end
+
+-- Newer PoB2 moved this editor out of ConfigOptions into ConfigTab's mod
+-- groups, but still accepts input.customMods when loading older builds.
+-- Keep the existing PoBR text-input contract and editor across data updates.
+if not hasCustomMods then
+	io.write(dkjson.encode({
+		var = "customMods", input_type = "text", section = "Custom Modifiers", label = "",
+		handler_id = "config:custom_mods", verified = true,
+		handler_reason = "Legacy customMods text input retained after PoB2 moved its editor to ConfigTab mod groups",
+	}), "\n")
+	stats.total = stats.total + 1
+	stats.handler = stats.handler + 1
 end
 
 io.stderr:write(string.format(

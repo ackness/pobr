@@ -1,9 +1,46 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin, type PreviewServer, type ViteDevServer } from 'vite';
 import react from '@vitejs/plugin-react';
+import worker from './public/_worker.js';
+
+// Use the production Pages handler in dev and preview, including upstream limits.
+function importService(): Plugin {
+  const middleware = (server: ViteDevServer | PreviewServer) => {
+    server.middlewares.use('/api/import/wegame', async (req, res) => {
+      try {
+        const chunks: Buffer[] = [];
+        let size = 0;
+        for await (const chunk of req) {
+          size += chunk.length;
+          if (size > 2048) {
+            res.writeHead(413);
+            res.end();
+            return;
+          }
+          chunks.push(chunk);
+        }
+        const headers = new Headers();
+        for (const [name, value] of Object.entries(req.headers)) {
+          if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(', ') : value);
+        }
+        const request = new Request(`http://${req.headers.host}/api/import/wegame`, {
+          method: req.method, headers,
+          ...(req.method === 'POST' ? { body: Buffer.concat(chunks) } : {}),
+        });
+        const response = await worker.fetch(request, {});
+        res.writeHead(response.status, Object.fromEntries(response.headers));
+        res.end(await response.text());
+      } catch {
+        res.writeHead(502, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'WeGame import service failed.' }));
+      }
+    });
+  };
+  return { name: 'wegame-import', configureServer: middleware, configurePreviewServer: middleware };
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), importService()],
   test: {
     // e2e/ 归 Playwright；vitest 只跑 src 内单测。
     include: ['src/**/*.test.{ts,tsx}'],

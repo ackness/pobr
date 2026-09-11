@@ -240,6 +240,52 @@ pub fn eval_form(
                 return Err(FormReject::Nil);
             }
         }
+        "IMMUNE" => {
+            // PoB2 0.5.5: immunity phrases may name one or two statuses.
+            let effect = name_lower.trim();
+            if effect == "used manually" {
+                return Err(FormReject::EmptyTable);
+            }
+            let parts: Vec<_> = effect.split(" and ").collect();
+            if parts.len() > 2
+                || parts
+                    .iter()
+                    .any(|p| !(1..=2).contains(&p.split_whitespace().count()))
+            {
+                return Err(FormReject::EmptyTable);
+            }
+            for part in parts {
+                let effect = match part {
+                    "bleeding" => "Bleed",
+                    "blinded" => "Blind",
+                    "chilled" => "Chill",
+                    "cursed" | "curses" => "Curse",
+                    "elemental ailments" => "ElementalAilment",
+                    "frozen" => "Freeze",
+                    "hindered" => "Hinder",
+                    "ignited" => "Ignite",
+                    "light stunned" => "Stun",
+                    "maimed" => "Maim",
+                    "poisoned" => "Poison",
+                    "shocked" => "Shock",
+                    _ => part,
+                };
+                let name: String = effect
+                    .split_whitespace()
+                    .map(|word| {
+                        let mut chars = word.chars();
+                        chars
+                            .next()
+                            .map(|c| c.to_uppercase().to_string() + chars.as_str())
+                            .unwrap_or_default()
+                    })
+                    .collect();
+                result.names.push(format!("{name}Immune"));
+                result.types.push(ModType::Flag);
+                result.values.push(1.0);
+            }
+            result.remaining.clear();
+        }
         "DOUBLED" => {
             // Vendor produces modName + {Name} MORE 100 +
             // Multiplier:{Name}Doubled OVERRIDE 1 (vendor :6618-6655, which

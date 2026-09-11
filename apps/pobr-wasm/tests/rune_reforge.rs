@@ -93,12 +93,11 @@ fn reforge_replaces_rune_lines_and_fixes_implicit_count() {
         text.contains("{rune}+9 to Dexterity"),
         "the new rune mod line should have been written:\n{text}"
     );
-    // Implicits count = old 1 - old rune line 1 + new rune lines 4 (Greater
-    // Iron Rune has 3 lines total across the armour + body armour keys,
-    // both broad/specific hitting, matching PoB2; Adept has 1 line).
+    // PoB2 ce566eac (0.5.5): both runes have one armour line and two
+    // bonded bonuses. Replace the old rune implicit with all six lines.
     assert!(text.contains("{rune}Bonded: +20 to maximum Life"));
     assert!(
-        text.contains("Implicits: 4"),
+        text.contains("Implicits: 6"),
         "the Implicits count should have been fixed up:\n{text}"
     );
     // Non-rune mod lines are preserved as-is.

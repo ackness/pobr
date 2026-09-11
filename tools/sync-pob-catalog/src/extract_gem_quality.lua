@@ -77,6 +77,10 @@ for fileName in string.gmatch(fileListArg, "[^,]+") do
 		os.exit(3)
 	end
 	local ok, runErr = pcall(chunk, skills, makeSkillMod, makeFlagMod, makeSkillDataMod)
+	-- Support both direct exports and the newer constructor-returning exports.
+	if ok and type(runErr) == "function" then
+		ok, runErr = pcall(runErr, skills, makeSkillMod, makeFlagMod, makeSkillDataMod)
+	end
 	if not ok then
 		io.stderr:write("error executing " .. path .. ": " .. tostring(runErr) .. "\n")
 		os.exit(3)
