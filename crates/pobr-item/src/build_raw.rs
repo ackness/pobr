@@ -113,6 +113,7 @@ impl ItemDraft {
         if let Some(class) = &h.class_restriction {
             lines.push(format!("Requires Class {class}"));
         }
+        lines.extend(self.metadata_lines.iter().cloned());
 
         // `Implicits: N` header = rune + enchant + classReq + implicit line count (explicit excluded).
         let implicit_total = self

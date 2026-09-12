@@ -166,6 +166,9 @@ pub struct ItemDraft {
     /// enchant + classReq + implicit"). Verified against the running bucket
     /// tally while parsing; `None` for legacy exports without this header.
     pub implicit_count: Option<usize>,
+    /// Known clipboard metadata without a calculation field (notes and
+    /// attribute requirements), retained in order for lossless editing.
+    pub metadata_lines: Vec<String>,
     /// All mod lines, preserving both bucket and original order.
     pub lines: Vec<ModLineDraft>,
 }
@@ -240,6 +243,14 @@ impl ItemDraft {
             let line = lines[idx];
             idx += 1;
 
+            if line == "--------" {
+                continue;
+            }
+            if line == "Requirements:" {
+                draft.metadata_lines.push(line.to_string());
+                continue;
+            }
+
             // State lines (no value).
             match line {
                 "Corrupted" => {
@@ -275,6 +286,10 @@ impl ItemDraft {
             let bucket = if implicit_remaining > 0 {
                 implicit_remaining -= 1;
                 bucket_from_annotations(&ann, &text)
+            } else if ann.rune {
+                LineBucket::Rune
+            } else if ann.enchant {
+                LineBucket::Enchant
             } else {
                 LineBucket::Explicit
             };
@@ -437,6 +452,9 @@ fn apply_spec(
             draft.header.jewel_socket_count = j;
         }
         "Rune" => draft.header.runes.push(val.to_string()),
+        "Note" | "Str" | "Dex" | "Int" | "Requirements" => {
+            draft.metadata_lines.push(format!("{spec}: {val}"));
+        }
         "Implicits" => {
             *implicit_remaining = parse_u32(val).unwrap_or(0) as usize;
             draft.implicit_count = Some(*implicit_remaining);
@@ -774,6 +792,61 @@ Implicits: 1
             vec![Name, Struct, Struct, Implicit],
         );
         assert_eq!(out[0].text, "Sapphire Ring");
+    }
+
+    #[test]
+    fn clipboard_metadata_preserves_notes_and_requirements_without_consuming_implicits() {
+        let raw = "Rarity: MAGIC\nStone Charm\n--------\nNote: Synthetic Stone Charm of Testing\nRequirements:\nLevelReq: 30\nStr: 10\nDex: 20\nInt: 30\n--------\nImplicits: 1\n--------\nUsed when you become Stunned\n--------\n15% increased Duration\nUnknown effect: still needs review";
+        let draft = ItemDraft::parse(raw).unwrap();
+        assert_eq!(draft.lines.len(), 3);
+        assert_eq!(draft.lines[0].bucket, LineBucket::Implicit);
+        assert_eq!(draft.lines[2].text, "Unknown effect: still needs review");
+        assert_eq!(draft.lines[2].bucket, LineBucket::Explicit);
+        assert_eq!(
+            draft.metadata_lines,
+            [
+                "Note: Synthetic Stone Charm of Testing",
+                "Requirements:",
+                "Str: 10",
+                "Dex: 20",
+                "Int: 30",
+            ]
+        );
+        let lines = classify_display_lines(raw);
+        assert_eq!(
+            lines
+                .iter()
+                .filter(|line| line.kind == DisplayLineKind::Explicit)
+                .count(),
+            2
+        );
+        for line in lines.iter().filter(|line| {
+            line.text == "--------"
+                || line.text.starts_with("Note:")
+                || line.text.starts_with("Str:")
+                || line.text == "Requirements:"
+        }) {
+            assert_eq!(line.kind, DisplayLineKind::Struct, "{}", line.text);
+        }
+        fixpoint(raw);
+    }
+
+    #[test]
+    fn clipboard_rune_and_enchant_markers_remain_typed_after_the_implicit_section() {
+        let raw = "Rarity: NORMAL\nLinen Belt\n--------\nImplicits: 0\n--------\n{rune}+40 to maximum Life\n{enchant}+10 to Dexterity\n+30 to maximum Mana";
+        let draft = ItemDraft::parse(raw).unwrap();
+        assert_eq!(
+            draft
+                .lines
+                .iter()
+                .map(|line| line.bucket)
+                .collect::<Vec<_>>(),
+            [LineBucket::Rune, LineBucket::Enchant, LineBucket::Explicit]
+        );
+        // BuildRaw includes these typed lines in its own implicit count.
+        let built = ItemDraft::parse(&draft.build_raw()).unwrap();
+        assert_eq!(built.lines, draft.lines);
+        assert_eq!(built.implicit_count, Some(2));
     }
 
     #[test]

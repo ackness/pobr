@@ -434,13 +434,19 @@ fn accumulate_rolled_defence(line: &str, out: &mut RolledDefence) -> bool {
         // The `Ward: N` line (same semantics as PoB2's `armourData.Ward`, 13-G14).
         out.ward = Some(out.ward.unwrap_or(0.0) + n);
         return true;
-    } else if line.starts_with("Rune:") || line.starts_with("Soul Core:") {
+    } else if let Some(name) = line
+        .strip_prefix("Rune:")
+        .or_else(|| line.strip_prefix("Soul Core:"))
+    {
         // Each line names one already-socketed rune/soul core → one filled
         // socket (matches PoB2's `RunesSocketedIn` count, ModParser.lua:1477-1478).
         // Its modifiers are listed separately with a `{rune}` prefix and
         // parsed individually; here we only accumulate the socket count for
         // the `per Socket filled` Multiplier to read.
-        out.sockets_filled += 1;
+        let name = name.trim();
+        if !name.is_empty() && !name.eq_ignore_ascii_case("None") {
+            out.sockets_filled += 1;
+        }
         return true;
     }
     false

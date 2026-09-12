@@ -193,6 +193,220 @@ fn trade_item_objects_preserve_rolls_and_isolate_bad_entries() {
 }
 
 #[test]
+fn magic_flasks_and_charms_use_one_canonical_name_and_preserve_real_effects() {
+    init();
+    let bases = [
+        ("终极生命药剂", "Ultimate Life Flask"),
+        ("终极魔力药剂", "Ultimate Mana Flask"),
+        ("磐石咒符", "Stone Charm"),
+        ("真银咒符", "Silver Charm"),
+        ("融冰咒符", "Thawing Charm"),
+    ];
+    let mut input = fixture();
+    input["equipments"] = json!(bases.iter().enumerate().map(|(index, (cn, _))| json!({
+        "baseType":cn, "typeLine":format!("合成前缀 {cn} 合成后缀"), "name":"", "frameType":1,
+        "inventoryId":"Flask", "x":index, "ilvl":80,
+        "requirements":[{"name":"等级", "type":62, "values":[["30",0]]}],
+        "implicitMods": if index >= 2 { vec![json!({"description":"当你被[Stun|晕眩]时使用"})] } else { vec![] },
+        "explicitMods":[{"description":"持续时间提高 15%"},{"description":"同时获得 75 [Guard|防卫]"}]
+    })).collect::<Vec<_>>());
+    input["skills"] = json!([]);
+    let build: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_file_json(&input.to_string()).unwrap())
+            .unwrap();
+    let flasks = build["items"]["flasks"].as_array().unwrap();
+    assert_eq!(flasks.len(), 5);
+    for (index, (entry, (_, base))) in flasks.iter().zip(bases).enumerate() {
+        let expected_slot = if index < 2 {
+            format!("Flask {}", index + 1)
+        } else {
+            format!("Charm {}", index - 1)
+        };
+        assert_eq!(entry["slot"], expected_slot);
+        let text = entry["text"].as_str().unwrap();
+        assert!(
+            text.starts_with(&format!("Rarity: MAGIC\n{base}\n--------\n")),
+            "{text}"
+        );
+        assert!(!text.contains("Imported Item"));
+        assert!(text.contains("Note: 合成前缀"));
+        let parsed = pobr_core::item_text::parse_pob_xml_item(text).unwrap();
+        assert_eq!(parsed.base.to_string(), base);
+        assert_eq!(
+            parsed.modifier_texts,
+            ["15% increased Duration", "Also grants 75 Guard"]
+        );
+        assert_eq!(parsed.implicit_texts.len(), usize::from(index >= 2));
+        let classified: Value =
+            serde_json::from_str(&pobr_wasm::classify_item_lines_json(text).unwrap()).unwrap();
+        let lines = classified.as_array().unwrap();
+        assert_eq!(lines[0]["text"], base);
+        assert_eq!(lines[0]["kind"], "name");
+        assert_eq!(
+            lines
+                .iter()
+                .filter(|line| line["kind"] == "explicit")
+                .count(),
+            2
+        );
+        assert!(
+            lines
+                .iter()
+                .filter(|line| line["text"].as_str().unwrap().starts_with("Note:"))
+                .all(|line| line["kind"] == "struct")
+        );
+    }
+    let code = pobr_wasm::encode_build_json(
+        &json!({
+            "character":build["character"], "flasks":flasks
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let roundtrip: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    let after = roundtrip["items"]["flasks"].as_array().unwrap();
+    assert_eq!(after.len(), 5);
+    for entry in flasks {
+        let retained = after
+            .iter()
+            .find(|item| item["slot"] == entry["slot"])
+            .unwrap();
+        assert_eq!(
+            retained["text"].as_str().unwrap().trim(),
+            entry["text"].as_str().unwrap()
+        );
+    }
+}
+
+#[test]
+fn utility_tooltip_properties_and_requirements_are_retained_as_metadata() {
+    init();
+    let input = json!([{
+        "baseType":"Ultimate Mana Flask", "typeLine":"Synthetic Ultimate Mana Flask of Testing",
+        "name":"", "frameType":1, "ilvl":85,
+        "properties":[
+            {"name":"[Flask|药剂]", "type":109, "values":[]},
+            {"name":"{1} 秒内回复 {0} 魔力", "displayMode":3, "values":[["500",1],["4",0]]},
+            {"name":"每次使用会从 {1} 充能次数中消耗 {0} 次", "displayMode":3, "values":[["12",1],["70",0]]},
+            {"name":"Quality", "type":6, "values":[["+20%",1]]}
+        ],
+        "requirements":[
+            {"name":"等级", "type":62, "values":[["60",0]]},
+            {"name":"[Strength|力量]", "values":[["20",0]]},
+            {"name":"[Dexterity|敏捷]", "values":[["30",0]]},
+            {"name":"[Intelligence|智慧]", "values":[["40",0]]},
+            {"name":"Class:", "values":[["Synthetic Class",0]]},
+            {"name":"Level", "values":[["Unknown requirement",0]]}
+        ],
+        "explicitMods":[{"description":"回复量提高 50%"}]
+    }]);
+    let imported: Value =
+        serde_json::from_str(&pobr_wasm::import_trade_items_json(&input.to_string()).unwrap())
+            .unwrap();
+    let text = imported[0]["text"].as_str().unwrap();
+    for expected in [
+        "Note: Synthetic Ultimate Mana Flask of Testing",
+        "LevelReq: 60",
+        "Str: 20",
+        "Dex: 30",
+        "Int: 40",
+        "Note: 4 秒内回复 500 魔力",
+        "Note: 每次使用会从 70 充能次数中消耗 12 次",
+        "Note: Requirement - Class:",
+        "Note: Requirement - Level: Unknown requirement",
+    ] {
+        assert!(text.contains(expected), "missing {expected}: {text}");
+    }
+    assert_eq!(text.matches("Quality:").count(), 1);
+    let parsed = pobr_core::item_text::parse_pob_xml_item(text).unwrap();
+    assert_eq!(parsed.base.to_string(), "Ultimate Mana Flask");
+    assert_eq!(parsed.quality, 20);
+    assert_eq!(parsed.modifier_texts, ["50% increased Amount Recovered"]);
+    let classified: Value =
+        serde_json::from_str(&pobr_wasm::classify_item_lines_json(text).unwrap()).unwrap();
+    assert_eq!(
+        classified
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|line| line["kind"] == "explicit")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn magic_weapons_keep_exact_base_lookup_without_losing_named_rare_headers() {
+    init();
+    let input = json!([
+        {"baseType":"Crude Bow", "typeLine":"Synthetic Crude Bow of Testing", "name":"", "frameType":1, "explicitMods":["Adds 5 to 10 Physical Damage"]},
+        {"baseType":"Crude Bow", "name":"Synthetic Rare Bow", "frameType":2},
+        {"baseType":"Crude Bow", "name":"", "frameType":2}
+    ]);
+    let imported: Value =
+        serde_json::from_str(&pobr_wasm::import_trade_items_json(&input.to_string()).unwrap())
+            .unwrap();
+    let magic = imported[0]["text"].as_str().unwrap();
+    let parsed = pobr_core::item_text::parse_pob_xml_item(magic).unwrap();
+    assert_eq!(parsed.base.to_string(), "Crude Bow");
+    assert_eq!(parsed.modifier_texts, ["Adds 5 to 10 Physical Damage"]);
+    assert!(
+        imported[1]["text"]
+            .as_str()
+            .unwrap()
+            .starts_with("Rarity: RARE\nSynthetic Rare Bow\nCrude Bow\n")
+    );
+    assert!(
+        imported[2]["text"]
+            .as_str()
+            .unwrap()
+            .starts_with("Rarity: RARE\nCrude Bow\nCrude Bow\n")
+    );
+}
+
+#[test]
+fn importer_emits_only_occupied_runes_and_keeps_their_modifiers_once() {
+    init();
+    let input = json!([{
+        "baseType":"Grand Regalia", "name":"Synthetic Socket Test", "frameType":2,
+        "sockets":[{"type":"rune"},{"type":"rune"},{"type":"rune"}],
+        "socketedItems":[{"socket":1,"baseType":"Perfect Body Rune"}],
+        "runeMods":["+40 to maximum Life"],
+        "explicitMods":["+14 to Spirit per Socket filled"]
+    }]);
+    let imported: Value =
+        serde_json::from_str(&pobr_wasm::import_trade_items_json(&input.to_string()).unwrap())
+            .unwrap();
+    let text = imported[0]["text"].as_str().unwrap();
+    assert!(text.contains("Sockets: S S S"));
+    assert_eq!(text.matches("Rune:").count(), 1);
+    assert!(text.contains("Rune: Perfect Body Rune"));
+    assert!(!text.contains("Rune: None"));
+    let parsed = pobr_core::item_text::parse_pob_xml_item(text).unwrap();
+    assert_eq!(parsed.rolled_defence.sockets_filled, 1);
+    assert_eq!(
+        parsed
+            .modifier_texts
+            .iter()
+            .chain(&parsed.implicit_texts)
+            .chain(&parsed.enchant_texts)
+            .filter(|line| *line == "+40 to maximum Life")
+            .count(),
+        1
+    );
+    let classified: Value =
+        serde_json::from_str(&pobr_wasm::classify_item_lines_json(text).unwrap()).unwrap();
+    assert!(
+        classified
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|line| { line["text"] == "+40 to maximum Life" && line["kind"] == "rune" })
+    );
+}
+
+#[test]
 fn weapon_sets_roundtrip_both_pairs_passives_and_skill_bindings() {
     init();
     let request = json!({

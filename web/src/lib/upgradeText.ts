@@ -22,6 +22,8 @@ const labels = {
   comparisonGoal: ['Comparison goal', '比較目標', '比较目标'],
   pastePlaceholder: ['Paste the full copied item, including Rarity, its base and modifiers…', '貼上包含稀有度、基底與詞綴的完整物品文本…', '粘贴包含稀有度、基底与词缀的完整物品文本…'],
   autoPositions: ['Pasting starts comparison automatically. No position selection needed.', '貼上後自動比較，無需先選位置。', '粘贴后自动比较，无需先选位置。'],
+  copyScript: ['Install market copy userscript', '安裝市集複製腳本', '安装市集复制脚本'],
+  copyScriptHelp: ['Setup and supported formats', '安裝說明與支援格式', '安装说明与支持格式'],
   comparingPositions: ['Comparing positions…', '正在比較各位置…', '正在比较各位置…'],
   cancelCompare: ['Cancel comparison', '取消比較', '取消比较'],
   parsedItem: ['Parsed item', '已辨識物品', '已识别物品'],
