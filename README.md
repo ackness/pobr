@@ -26,8 +26,8 @@ regression baseline; the rewrite exists to fix what a port can't:
   sidecars on the web). The web frontend even accepts item text pasted in
   Simplified Chinese. Adding a language means adding data, not code.
 - **Runs anywhere via WASM** — the engine compiles to WebAssembly behind a
-  JSON contract, so the web app runs fully in-browser with no server; the
-  same core also powers the CLI and a desktop entry point.
+  JSON contract. Calculation runs in the browser; WeGame and market HTTP
+  adapters use a Pages Worker. The same core powers the CLI and a desktop placeholder.
 - **Built to extend** — a layered workspace (data → core → build → apps)
   with a data-driven pipeline: game data ships as versioned JSON generated
   from GGG `.dat` exports, and most modifier/stat behaviour is data, not
@@ -53,19 +53,22 @@ before buying.
 
 ## Getting started
 
-Standard cargo workflow ([`cargo-nextest`](https://nexte.st/) recommended for
-running tests):
+Run commands from the repository root and select checks for the changed behavior.
+For example, validate Build Code changes with:
 
 ```bash
-cargo nextest run --workspace          # all tests
-cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --check
+cargo test -p pobr-build --test codec
+bash .claude/skills/run-pobr/driver.sh lint -p pobr-build --lib --test codec
 
 # CLI (binary name: pobr)
 cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
 cargo run -p pobr-cli -- decode-code <pob_code>        # PoB build code → XML
 cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
 ```
+
+Normal local commits use relevant checks. Before merge/release or broad changes,
+run `driver.sh full` as described in [CLAUDE.md](CLAUDE.md): nextest plus doctests,
+or Cargo when nextest is unavailable.
 
 For the web frontend see [`web/README.md`](web/README.md) (Vite + React + TS,
 decoupled from the engine through a wasm JSON contract; not part of the cargo
@@ -93,13 +96,21 @@ modifier text → parse → ModDb → aggregation queries → calc
 
 Standard stat aggregation: `(base + Σbase) * (1 + Σinc/100) * Π(1 + more/100)`.
 
-All file I/O is confined to `pobr-gamedata`; `pobr-data` / `pobr-core` stay
-zero-I/O. Dependencies only point downward, with `pobr-data` at the bottom.
+Game-data file loading is confined to `pobr-gamedata`; production `pobr-data` /
+`pobr-core` do not read data files. Test rule loading requires an explicit test
+feature. Apps and tools own network and file input/output; `pobr-data` remains
+the bottom project dependency.
+
+Core sources are layered into `model/`, `parse/`, `rules/`, `ingest/`,
+`aggregate/`, `calc/`, and `attribute/`. Web's `api/wasmBackend.ts` calls the JSON
+contract in `apps/pobr-wasm/src/build_api/`; startup fetches and stages data into
+in-memory `GameData` / `BuildData`.
 
 ## Workspace layout
 
-14 members — `crates/` are libraries, `apps/` are executables, `tools/` are
-data/maintenance tooling:
+14 members: seven libraries in `crates/`, three application entry points in
+`apps/`, and four Rust tools in `tools/`. The React/TypeScript `web/` application
+and Lua oracle are outside the Cargo workspace.
 
 | Crate | Responsibility |
 |-------|----------------|
@@ -108,11 +119,11 @@ data/maintenance tooling:
 | `crates/pobr-gamedata` | Runtime data loader — the only layer in the data system that touches files; lazy per-domain loading + i18n sidecars |
 | `crates/pobr-i18n` | Language pack loading / fallback / display-text mapping (`en-US` canonical + `zh-TW`) |
 | `crates/pobr-tree` | Passive tree topology, allocated-node mod collection, radius jewels |
-| `crates/pobr-build` | Build state, PoB build code encode/decode, import recognition, `CalcOrchestrator` (cached), build comparison. **Home of the parity tests** |
+| `crates/pobr-build` | Build state, PoB build code encode/decode, import recognition, `calc_orchestrator/` + `CalcCache`, build comparison. **Home of the parity tests** |
 | `crates/pobr-item` | Full-fidelity edit-mode parsing of raw item text + reverse serialization (BuildRaw round-trip) |
 | `apps/pobr-cli` | CLI: `calculate` / `parse-mod` / `decode-code` / `encode-code` |
 | `apps/pobr-wasm` | Web/WASM API: pure-Rust JSON in/out; wasm-bindgen bindings behind the `wasm` feature |
-| `apps/pobr-desktop` | Minimal desktop entry-point skeleton |
+| `apps/pobr-desktop` | Example calculation and text summary placeholder; no GUI framework yet |
 | `tools/pobr-data-adapter` | Data pipeline adapter: GGG `.dat` export → denormalized committed JSON |
 | `tools/sync-pob-catalog` | Extracts the stat catalog from PoB core Lua; parity check / diff |
 | `tools/lint-i18n` | Language pack completeness check |
@@ -126,11 +137,13 @@ calculation breakdowns for per-component comparison.)
 PoB2 compatibility is a hard regression gate, guarded by three complementary
 layers:
 
-1. **`crates/pobr-build/tests/ninja_parity.rs`** — walks real PoB2 builds with
+1. **`crates/pobr-build/tests/parity/ninja_parity.rs`** — walks real PoB2 builds with
    golden stat values, comparing all classes / skills with zero hard-coding;
    `parity_no_regression` asserts the aggregate hit rate never drops below the
    recorded baseline.
-2. **golden / dual-run suites** — pin intermediate values and config semantics.
+2. **golden / dual-run suites** — modules under `tests/parity/` and
+   `tests/dualrun/` pin intermediate values and config semantics; Cargo runs
+   their aggregate targets `parity.rs` and `dualrun.rs`.
 3. **`tools/pob2-oracle`** — when a divergence needs per-component diagnosis,
    dumps the Lua-side calculation breakdown straight from the vendored PoB2.
 
@@ -143,12 +156,18 @@ the local Lua directly instead of searching online.
 
 ## Documentation
 
+- [`AGENTS.md`](AGENTS.md) — concise contributor guide and development entry points.
 - [`CLAUDE.md`](CLAUDE.md) — verification tiers, command cheat-sheet, key
   conventions (read before contributing).
 - [`agent-docs/`](agent-docs/) — PoE2 (0.5.0) game-mechanics reference in
   Chinese (damage types / resistances / armour, evasion, ES / crit / ailments /
   damage-defence order, …).
 - [`web/README.md`](web/README.md) — web frontend.
+
+Early `devs/docs/architecture/00–16` designs and audits are optional local history;
+committed documents 18–21 cover feature contracts. Historical snapshots are not
+current task lists or fresh-checkout prerequisites. Use code, CLAUDE.md, and
+relevant tests for current behavior.
 
 ## Conventions
 

@@ -63,8 +63,7 @@ core changes whose impact cannot be bounded:
 bash .claude/skills/run-pobr/driver.sh full
 ```
 
-This runs fmt, workspace Clippy, nextest plus separate doctests (or `cargo test
---workspace` when nextest is absent), and i18n lint. It stops at the first failure.
+This runs fmt, workspace Clippy, nextest plus separate doctests (or `cargo test --workspace` when nextest is absent), and i18n lint. It stops at the first failure.
 CI retains its full Rust and Web gates on tags/manual dispatch; ordinary pushes
 and PRs do not trigger CI automatically. Do not repeat a successful full gate for
 an unchanged local commit, or dispatch an identical CI run in addition to a tag.
@@ -112,7 +111,10 @@ bash .claude/skills/run-pobr/driver.sh diff 4.5.0.3.4 4.5.2.1.3            # all
 bash .claude/skills/run-pobr/driver.sh diff 4.5.0.3.4 4.5.2.1.3 --domain tree --limit 40
 ```
 
-The full data-versioning + iteration model (PoB2's two regimes vs pobr's snapshot model, the test philosophy, and the open gaps) is documented in `devs/docs/architecture/16-data-versioning-and-iteration.md`.
+For the committed data workflow, read [pipeline/README.md](../../../pipeline/README.md)
+and [docs/version-bump-architecture.md](../../../docs/version-bump-architecture.md).
+`devs/docs/architecture/16-data-versioning-and-iteration.md` is optional local
+background; its historical gap list is not a current implementation checklist.
 
 ## Gotchas
 
