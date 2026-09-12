@@ -137,6 +137,11 @@ export interface BuildJson {
   active_loadout: number | null;
 }
 
+export interface SelectedLoadoutJson extends BuildJson {
+  /** Build code with the returned loadout selected; use as the next export base. */
+  code: string;
+}
+
 /**
  * 一个可切换的 loadout —— PoB2 把天赋树 / 装备 / 技能按各自 `title` 的命名约定
  * 绑成一组（`Build.lua::SyncLoadouts`），因此零格式扩展、与 PoB2 双向兼容。

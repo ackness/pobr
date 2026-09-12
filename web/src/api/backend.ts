@@ -10,6 +10,7 @@ import type {
   ClassNames,
   AttributionResponse,
   BuildJson,
+  SelectedLoadoutJson,
   CalculateBuildRequest,
   CalculateBuildResponse,
   ConfigOption,
@@ -34,11 +35,12 @@ export interface PobrBackend {
   /**
    * 切到指定 loadout 后重新解码（成组切换天赋/装备/技能）。
    * 三个序号取自 `BuildJson.loadouts[]`；null 表示该类保持原样。
+   * The returned code contains the selected loadout and becomes the new export base.
    */
   switchLoadout(
     pobCode: string,
     sel: { tree: number; item: number | null; skill: number | null },
-  ): Promise<BuildJson>;
+  ): Promise<SelectedLoadoutJson>;
   /**
    * 组管理：复制 / 重命名 / 删除一个 loadout，返回**新的 build code**。
    * `name` 同时写进三类 set 的 title——同名即成组，用户无需理解 `{tag}` 语法。

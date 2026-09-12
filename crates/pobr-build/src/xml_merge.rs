@@ -7,8 +7,8 @@
 //! their `title` (the basis loadout binding relies on).
 //!
 //! [`merge_active_sets`] therefore works the other way around: it takes the **original
-//! XML as the base** and only replaces the set that active points to with the edit
-//! result, leaving every other byte untouched. Same idea as
+//! XML as the base** and replaces the active sets and editable global fields with
+//! the edit result, preserving the other sets. Same idea as
 //! [`crate::loadout::select_sets`] — the multi-set data always lives in the XML, and the
 //! edit state is just one slice of it.
 //!
@@ -24,31 +24,37 @@
 use crate::loadout::active_selection;
 
 /// Merges `edited` (a single-set XML) back into `base` (possibly multi-set), replacing
-/// only the set that `base` has as active.
+/// the sets that `base` has as active plus Build/Config/Notes.
 ///
-/// If `base` has no matching element, that category is skipped as-is; if both sides
-/// lack it, this degrades to returning `edited` (a hand-built build has no original XML
-/// to merge into).
+/// Missing set categories are left unchanged. Global fields absent from `edited`
+/// are removed, so clearing notes or config does not revive old values.
 pub fn merge_active_sets(base: &str, edited: &str) -> String {
     let sel = active_selection(base);
     let mut out = base.to_string();
+
+    for tag in ["Build", "Config", "Notes"] {
+        replace_global(&mut out, edited, tag);
+    }
+
+    // Tree sockets reference the same item pool as equipment slots.
+    let renumbered = renumber_items(edited, max_item_id(&out));
 
     // Tree / skills: self-contained elements, replaced wholesale, keeping the original title/id attributes
     for (tag, idx) in [
         ("Spec", sel.tree.unwrap_or(1)),
         ("SkillSet", sel.skill.unwrap_or(1)),
     ] {
-        let (Some(new_el), Some(old)) = (nth_element(edited, tag, 1), nth_element(&out, tag, idx))
-        else {
+        let (Some(new_el), Some(old)) = (
+            nth_element(&renumbered, tag, 1),
+            nth_element(&out, tag, idx),
+        ) else {
             continue;
         };
-        let merged = merge_attrs(&out[old.clone()], &edited[new_el], tag);
+        let merged = merge_attrs(&out[old.clone()], &renumbered[new_el], tag);
         out.replace_range(old, &merged);
     }
 
     // Items: append to the item pool (renumbered) first, then replace this ItemSet
-    let base_max_id = max_item_id(&out);
-    let renumbered = renumber_items(edited, base_max_id);
     if let Some(new_set) = nth_element(&renumbered, "ItemSet", 1)
         && let Some(old) = nth_element(&out, "ItemSet", sel.item.unwrap_or(1))
     {
@@ -67,6 +73,17 @@ pub fn merge_active_sets(base: &str, edited: &str) -> String {
     }
 
     out
+}
+
+fn replace_global(out: &mut String, edited: &str, tag: &str) {
+    let replacement = nth_element(edited, tag, 1).map(|range| &edited[range]);
+    if let Some(old) = nth_element(out, tag, 1) {
+        out.replace_range(old, replacement.unwrap_or(""));
+    } else if let Some(replacement) = replacement
+        && let Some(end) = out.rfind("</PathOfBuilding")
+    {
+        out.insert_str(end, &format!("{replacement}\n"));
+    }
 }
 
 /// Locates the byte range of the `n`-th (1-based) `<tag …>…</tag>` or self-closing `<tag …/>`.
@@ -103,9 +120,8 @@ fn nth_element(xml: &str, tag: &str, n: usize) -> Option<std::ops::Range<usize>>
     None
 }
 
-/// Replaces `old_el`'s content with `new_el`'s, but **keeps the attributes only
-/// `old_el` has** (`title` / `id`, the basis for loadout binding) — the edit state
-/// doesn't carry these, and overwriting them outright would sever the binding.
+/// Keep the target set's identity and metadata while replacing its editable content.
+/// Generated sets always have id=1; importing that id would break active selections.
 fn merge_attrs(old_el: &str, new_el: &str, tag: &str) -> String {
     let Some(old_end) = old_el.find('>') else {
         return new_el.to_string();
@@ -116,13 +132,28 @@ fn merge_attrs(old_el: &str, new_el: &str, tag: &str) -> String {
     let old_open = &old_el[..old_end];
     let new_open = &new_el[..new_end];
 
-    let mut merged = new_open.to_string();
-    for (name, value) in attrs(old_open) {
-        if !has_attr(new_open, &name) {
+    let old_attrs = attrs(old_open);
+    let new_attrs = attrs(new_open);
+    let mut merged = format!("<{tag}");
+    for (name, value) in &new_attrs {
+        let value = if matches!(name.as_str(), "id" | "title") {
+            old_attrs
+                .iter()
+                .find(|(key, _)| key == name)
+                .map_or(value, |(_, value)| value)
+        } else {
+            value
+        };
+        merged.push_str(&format!(" {name}=\"{value}\""));
+    }
+    for (name, value) in &old_attrs {
+        if !new_attrs.iter().any(|(key, _)| key == name) {
             merged.push_str(&format!(" {name}=\"{value}\""));
         }
     }
-    let _ = tag;
+    if new_open.trim_end().ends_with('/') {
+        merged.push('/');
+    }
     format!("{merged}{}", &new_el[new_end..])
 }
 
@@ -150,10 +181,6 @@ fn attrs(open_tag: &str) -> Vec<(String, String)> {
         rest = &rest[vs + ve + 1..];
     }
     out
-}
-
-fn has_attr(open_tag: &str, name: &str) -> bool {
-    open_tag.contains(&format!("{name}=\""))
 }
 
 /// The largest existing `<Item id>` in the `<Items>` pool (0 for an empty pool).
@@ -334,6 +361,25 @@ fn set_title(element: &str, tag: &str, title: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn global_fields_can_be_added_and_cleared() {
+        let base = r#"<PathOfBuilding2><Build level="1"/><Tree activeSpec="1"><Spec nodes="1"/></Tree><TreeView zoom="2"/></PathOfBuilding2>"#;
+        let edited = r#"<PathOfBuilding2><Build level="90"/><Config><Input name="conditionFullLife" boolean="true"/></Config><Notes>New &amp; escaped</Notes></PathOfBuilding2>"#;
+        let out = merge_active_sets(base, edited);
+        assert!(out.contains(r#"<Build level="90"/>"#));
+        assert!(out.contains(r#"<Input name="conditionFullLife" boolean="true"/>"#));
+        assert!(out.contains("<Notes>New &amp; escaped</Notes>"));
+        assert!(out.contains(r#"<TreeView zoom="2"/>"#));
+
+        let cleared = merge_active_sets(
+            &out,
+            r#"<PathOfBuilding2><Build level="91"/></PathOfBuilding2>"#,
+        );
+        assert!(!cleared.contains("<Notes>"));
+        assert!(!cleared.contains("<Config>"));
+        assert!(cleared.contains(r#"<Spec nodes="1"/>"#));
+    }
 
     /// Exporting after editing one of two sets: the other set, title included, must be kept unchanged.
     #[test]

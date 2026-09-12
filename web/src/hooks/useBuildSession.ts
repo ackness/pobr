@@ -604,7 +604,7 @@ export function useBuildSession(): BuildSession {
         const { overview, annotations } = splitNotes(decoded.notes ?? '');
         if (decoded.notes) setNotes(overview);
         apply({
-          pobCode: code,
+          pobCode: decoded.code,
           character: {
             level: decoded.character.level,
             class_name: decoded.character.class_name,
@@ -817,6 +817,10 @@ export function useBuildSession(): BuildSession {
     (index: number) => {
       if (!state) return;
       const socketGroups = state.socketGroups.filter((_, i) => i !== index);
+      // Keep the same selected group after compaction; replace it only if removed.
+      const main = state.params.main_socket_group ?? 0;
+      const nextMain = main === index ? socketGroups.findIndex(group => group.enabled)
+        : main > index ? main - 1 : main;
       // `skill:<index>` 注释键跟随组序号：删除组的注释一并删，后续组的键前移。
       const annotations: Annotations = {};
       for (const [key, text] of Object.entries(state.annotations)) {
@@ -829,7 +833,8 @@ export function useBuildSession(): BuildSession {
         if (i === index) continue;
         annotations[i > index ? `skill:${i - 1}` : key] = text;
       }
-      apply({ ...state, socketGroups, annotations });
+      apply({ ...state, socketGroups, annotations, params: { ...state.params,
+        main_socket_group: nextMain >= 0 && nextMain < socketGroups.length ? nextMain : undefined } });
     },
     [apply, state],
   );
@@ -845,8 +850,8 @@ export function useBuildSession(): BuildSession {
     const backend = await getBackend();
     // encode 走全量覆盖（toRequest 本就不带 pob_code——分享内容 = 当前编辑态本身）；
     // 局部注释嵌入 <Notes> 标记段随 code 往返（PoB2 里显示为普通笔记）。
-    // base_code：导入过的 build 以原始 code 为底做合并，保住未在编辑的其余
-    // loadout（多套 build 不带它导出会只剩当前这套）。
+    // The base code includes the latest loadout selection; merge edits there while
+    // preserving all other loadouts.
     const request = toRequest(state);
     return backend.encodeBuild({
       ...request,

@@ -11,6 +11,7 @@ import type {
   ClassNames,
   AttributionResponse,
   BuildJson,
+  SelectedLoadoutJson,
   CalculateBuildRequest,
   CalculateBuildResponse,
   ConfigCatalogFile,
@@ -144,7 +145,7 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async switchLoadout(pobCode, sel) {
       const req = JSON.stringify({ code: pobCode, ...sel });
-      return JSON.parse(wasm.decodeBuildLoadoutJson(req)) as BuildJson;
+      return JSON.parse(wasm.decodeBuildLoadoutJson(req)) as SelectedLoadoutJson;
     },
     async manageLoadout(pobCode, op, name, target) {
       const req = JSON.stringify({ code: pobCode, op, name, ...target });
