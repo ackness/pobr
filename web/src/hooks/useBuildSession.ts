@@ -103,7 +103,7 @@ export interface BuildSession {
   exportCode: () => Promise<string>;
   /** 从导出的 JSON 恢复会话；非法输入抛错。 */
   importSession: (json: string) => void;
-  importCode: (code: string) => Promise<void>;
+  importCode: (code: string) => Promise<boolean>;
   /** 切到指定 loadout（成组换天赋/装备/技能）；会覆盖本地编辑。 */
   switchLoadout: (sel: { tree: number; item: number | null; skill: number | null }) => Promise<void>;
   /** 当前 build 的 loadout 清单（导入后可用；手搓 build 为空）。 */
@@ -126,6 +126,8 @@ export interface BuildSession {
   stateVersion: number;
   /** 自上次导入 / 切换 loadout 以来是否有编辑（切换会整份覆盖，据此提醒）。 */
   isDirty: boolean;
+  /** Whether starting over would discard character progress, including restored saves. */
+  hasBuildContent: boolean;
   /** 物品/珠宝/技能组套装库（独立持久化，跨 build 复用）。 */
   library: Library;
   saveLibraryItem: (kind: 'item' | 'jewel', text: string, slot?: string) => void;
@@ -584,9 +586,11 @@ export function useBuildSession(): BuildSession {
             main_socket_group: decoded.main_socket_group ?? undefined,
           },
         }, { clean: true });
+        return true;
       } catch (err) {
         setError(formatApiError(err));
         setBusy(false);
+        return false;
       }
     },
     [apply, setNotes, mergeImportedIntoLibrary],
@@ -1026,6 +1030,16 @@ export function useBuildSession(): BuildSession {
     currentRequest,
     stateVersion,
     isDirty: stateVersion > cleanVersionRef.current,
+    hasBuildContent: !!build || !!state && Boolean(
+      state.character.level > 1 || state.character.ascendancy_name
+      || state.items.length || state.flasks.length || state.jewels.length
+      || state.socketGroups.length || state.allocatedNodes.length
+      || state.weaponSwap?.alternate_items.length
+      || state.weaponSwap?.exclusive_nodes.some(nodes => nodes.length > 0)
+      || Object.keys(state.annotations).length
+      || Object.keys(state.params.config_inputs).length
+      || Object.entries(state.params).some(([key, value]) => key !== 'config_inputs' && value !== undefined)
+    ),
     library,
     saveLibraryItem,
     removeLibraryItem,

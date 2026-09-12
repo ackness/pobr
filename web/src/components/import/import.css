@@ -1,4 +1,4 @@
-/* Build 页：2×2 卡片网格（角色 / 笔记 / 导入 / 分享+存档），窄屏退化单列。 */
+/* Character and import first; notes and backups follow in the narrow layout. */
 .build-page {
   padding-bottom: var(--space-6);
 }

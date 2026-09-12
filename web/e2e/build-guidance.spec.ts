@@ -66,8 +66,8 @@ for (const width of [320, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(() => localStorage.setItem('pobr-lang', 'zh-CN'));
     await page.goto('/');
-    await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({ timeout: 90_000 });
-    await page.getByRole('textbox', { name: 'Build code' }).fill(code);
+    await expect(page.getByRole('textbox', { name: '构筑代码' })).toBeVisible({ timeout: 90_000 });
+    await page.getByRole('textbox', { name: '构筑代码' }).fill(code);
     await page.locator('.import-submit').click();
     await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 60_000 });
     await nav(page, '流派参考').click();

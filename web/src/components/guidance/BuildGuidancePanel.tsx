@@ -130,12 +130,12 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
     {(!!session.calc?.unsupported_modifiers.length || !!session.calc?.item_errors.length) && <p className="guidance-notice">{gt('partial')}</p>}
     <div className="guidance-actions">
       <article className="guidance-card"><span className="guidance-step">01</span><h4>{gt('skills')}</h4><p>{gt('skillHint')}</p>
-        <button disabled={groupIndex === undefined || session.busy} onClick={() => groupIndex !== undefined && onSkills(groupIndex)}>{gt('calculate')}</button></article>
+        <button disabled={groupIndex === undefined || session.busy} onClick={() => groupIndex !== undefined && onSkills(groupIndex)}>{gt('planSkills')} →</button></article>
       <article className="guidance-card"><span className="guidance-step">02</span><h4>{gaps.length ? gt('gaps') : gt('gear')}</h4>
         {gaps.length > 0 && <ul className="guidance-gap-list">{gaps.map(gap => <li key={gap.stat}>{statNameLabel(lang, gap.stat)} <strong>{gap.value.toFixed(0)}% → {gap.target}%</strong></li>)}</ul>}
-        <p>{gaps.length ? gt('gapHint') : gt('gearHint')}</p><button onClick={onEquipment}>{gt('calculate')}</button></article>
+        <p>{gaps.length ? gt('gapHint') : gt('gearHint')}</p><button onClick={onEquipment}>{gt('planGear')} →</button></article>
       <article className="guidance-card"><span className="guidance-step">03</span><h4>{gt('tree')}</h4><p>{gt('treeHint')}</p>
-        <button onClick={onTree}>{gt('calculate')}</button></article>
+        <button onClick={onTree}>{gt('planTree')} →</button></article>
     </div>
     <button className="guidance-config" onClick={onConfig}>{gt('configure')} →</button>
 

@@ -393,6 +393,10 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
         aria-label={tt('calcs.search')}
       />
       <div className="calcs-breakdowns">
+      {query.trim() && sections.length === 0 && <div className="search-empty" role="status">
+        <p>{tt('common.noResults')}</p>
+        <button onClick={() => setQuery('')}>{tt('common.clearSearch')}</button>
+      </div>}
       {sections.map(({ category, names }) => (
         <section key={category} className="calcs-section">
           <h3 className="calcs-section-title">{statCategoryLabel(lang, category)}</h3>

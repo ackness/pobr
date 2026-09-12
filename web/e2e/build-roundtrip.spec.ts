@@ -45,7 +45,7 @@ test('an imported trigger group retains its main active skill through edits, rel
   await expect(page.locator('.main-skill-section .stat-row dd').first()).toHaveText(dps!);
 
   await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await page.getByRole('button', { name: 'Generate code', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
   const code = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
   expect(inflateSync(Buffer.from(code, 'base64url')).toString('utf8')).toContain('mainActiveSkill="3"');
   await importCode(page, code);
@@ -86,7 +86,7 @@ test('switch, reload, edit and share preserve the selected loadout and global fi
   const before = await saved(page);
 
   await page.getByRole('button', { name: 'Build', exact: true }).click();
-  await page.getByRole('button', { name: 'Generate code', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
   const code = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
   const exported = inflateSync(Buffer.from(code, 'base64url')).toString('utf8');
   expect(exported).toContain('<Spec title="A" nodes="1,2" treeVersion="0_5"/>');

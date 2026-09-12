@@ -41,7 +41,7 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
 
   // 手动添加技能：自定义选择器搜 Comet → 回车选中首项 → 新组出现 → Total DPS 出数。
   await page.getByRole('button', { name: 'Skills' }).click();
-  const picker = page.getByLabel(/Search an active gem/);
+  const picker = page.getByRole('combobox', { name: /Search an active gem/ });
   await picker.fill('Comet');
   await expect(page.locator('.gem-picker-item').first()).toBeVisible();
   await picker.press('Enter');
@@ -54,7 +54,7 @@ test('scratch build: class picker, level edit, tree allocation', async ({ page }
   const lifeBeforeItem = await lifeValue.textContent();
   await page.getByRole('button', { name: 'Items' }).click();
   await page.locator('.paper-doll').getByRole('button', { name: 'Ring 1' }).click();
-  await page.locator('.item-detail').getByRole('button', { name: 'Apply' }).click();
+  await page.locator('.item-detail').getByRole('button', { name: 'Save & recalculate' }).click();
   await expect(lifeValue).not.toHaveText(lifeBeforeItem!, { timeout: 30_000 });
 
   // 三语切换：EN → 繁 → 简（页签文案跟随，简繁字形区分）。

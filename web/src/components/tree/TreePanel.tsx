@@ -847,7 +847,10 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
           <select
             value={session.character?.class_name ?? ''}
             disabled={session.busy}
-            onChange={(e) => session.newBuild(e.target.value, '')}
+            onChange={(e) => {
+              if (session.hasBuildContent && !window.confirm(tt('build.confirmClassChange'))) return;
+              session.newBuild(e.target.value, '');
+            }}
           >
             {(session.treeMeta?.classes ?? []).map((c) => (
               <option key={c.name} value={c.name}>

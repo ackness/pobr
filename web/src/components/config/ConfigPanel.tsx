@@ -66,20 +66,25 @@ function OptionRow({
   onChange: (value: ConfigInputValue) => void;
   onReset: () => void;
 }) {
+  const tt = bindT(lang);
   const label = optionLabel(lang, option);
+  const [draft, setDraft] = useState(String(value ?? ''));
+  useEffect(() => setDraft(String(value ?? '')), [value]);
   return (
     <div className={`config-item${overridden ? ' is-overridden' : ''}`} title={option.var}>
-      <span className="config-key">{label}</span>
+      <label className="config-key" htmlFor={`config-${option.var}`}>{label}</label>
       {option.input_type === 'check' ? (
         <input
+          id={`config-${option.var}`}
           type="checkbox"
-          checked={value === true}
+          checked={value === undefined ? option.default === true : value === true}
           disabled={busy}
           onChange={(e) => onChange(e.target.checked)}
           aria-label={label}
         />
       ) : option.input_type === 'list' ? (
         <select
+          id={`config-${option.var}`}
           value={String(value ?? listDefault(option) ?? '')}
           disabled={busy}
           onChange={(e) => onChange(e.target.value)}
@@ -97,9 +102,10 @@ function OptionRow({
         </select>
       ) : (
         <input
+          id={`config-${option.var}`}
           className="config-value"
           type={option.input_type === 'text' ? 'text' : 'number'}
-          value={value === undefined ? '' : String(value)}
+          value={draft}
           placeholder={
             typeof option.default === 'number' || typeof option.default === 'string'
               ? String(option.default)
@@ -107,18 +113,24 @@ function OptionRow({
           }
           disabled={busy}
           aria-label={label}
-          onChange={(e) => {
+          onChange={event => setDraft(event.target.value)}
+          onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+          onBlur={(e) => {
             const raw = e.target.value;
             if (option.input_type === 'text') {
-              onChange(raw);
+              if (raw !== String(value ?? '')) onChange(raw);
+            } else if (raw.trim() === '') {
+              setDraft(String(value ?? ''));
+              onReset();
             } else if (raw.trim() !== '' && Number.isFinite(Number(raw))) {
-              onChange(Number(raw));
+              if (Number(raw) !== value) onChange(Number(raw));
             }
           }}
         />
       )}
       {overridden && (
-        <button className="config-reset" title="reset" onClick={onReset}>
+        <button className="config-reset" disabled={busy} title={tt('config.reset')}
+          aria-label={`${tt('config.reset')}: ${label}`} onClick={onReset}>
           ↺
         </button>
       )}
@@ -130,17 +142,26 @@ function OptionRow({
 export function ConfigPanel({ session, lang }: Props) {
   const tt = bindT(lang);
   const [options, setOptions] = useState<ConfigOption[]>([]);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [query, setQuery] = useState('');
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['General']));
   // 词条文本型 list 选项（如任务奖励 "+5 to all Attributes"）的反查翻译缓存。
   const [listLabels, setListLabels] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    let cancelled = false;
+    setLoadState('loading');
     getBackend()
       .then((b) => b.loadConfigOptions())
-      .then(setOptions)
-      .catch(() => setOptions([]));
-  }, []);
+      .then(result => {
+        if (cancelled) return;
+        setOptions(result);
+        setLoadState('ready');
+      })
+      .catch(() => { if (!cancelled) setLoadState('error'); });
+    return () => { cancelled = true; };
+  }, [loadAttempt]);
 
   useEffect(() => {
     if (lang === 'en-US' || options.length === 0) return;
@@ -174,6 +195,8 @@ export function ConfigPanel({ session, lang }: Props) {
   const buildInputs = session.build?.config_inputs ?? {};
   const effective = (key: string): ConfigInputValue | undefined =>
     key in overrides ? overrides[key] : buildInputs[key];
+  const isOverridden = (key: string) => key in overrides && overrides[key] !== buildInputs[key];
+  const resetInput = (key: string) => session.setConfigInput(key, buildInputs[key] ?? null);
 
   const sections = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -235,12 +258,22 @@ export function ConfigPanel({ session, lang }: Props) {
         </label>
         <input
           className="config-search"
+          type="search"
           placeholder={tt('config.search')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label={tt('config.search')}
         />
       </div>
+      <p className="config-hint">{tt('config.editHint')}</p>
+      {loadState === 'loading' && <p role="status">{tt('config.loading')}</p>}
+      {loadState === 'error' && <div className="calc-error" role="alert">
+        {tt('config.loadFailed')} <button onClick={() => setLoadAttempt(value => value + 1)}>{tt('common.retry')}</button>
+      </div>}
+      {loadState === 'ready' && searching && sections.length === 0 && <div className="search-empty" role="status">
+        <p>{tt('common.noResults')}</p>
+        <button onClick={() => setQuery('')}>{tt('common.clearSearch')}</button>
+      </div>}
 
       {sections.map(({ name, options: sectionOptions }) => {
         const open = searching || openSections.has(name);
@@ -269,12 +302,12 @@ export function ConfigPanel({ session, lang }: Props) {
                     key={option.var}
                     option={option}
                     value={effective(option.var)}
-                    overridden={option.var in overrides}
+                    overridden={isOverridden(option.var)}
                     busy={session.busy}
                     lang={lang}
                     listLabels={listLabels}
                     onChange={(value) => session.setConfigInput(option.var, value)}
-                    onReset={() => session.setConfigInput(option.var, null)}
+                    onReset={() => resetInput(option.var)}
                   />
                 ))}
               </div>
@@ -315,9 +348,10 @@ export function ConfigPanel({ session, lang }: Props) {
       {extraKeys.length > 0 && (
         <div className="config-grid">
           {extraKeys.map((key) => (
-            <div key={key} className={`config-item${key in overrides ? ' is-overridden' : ''}`}>
+            <div key={key} className={`config-item${isOverridden(key) ? ' is-overridden' : ''}`}>
               <span className="config-key config-key--raw">{key}</span>
               <input
+                key={String(effective(key) ?? '')}
                 className="config-value"
                 defaultValue={String(effective(key) ?? '')}
                 disabled={session.busy}
@@ -327,8 +361,9 @@ export function ConfigPanel({ session, lang }: Props) {
                   if (parsed !== effective(key)) session.setConfigInput(key, parsed);
                 }}
               />
-              {key in overrides && (
-                <button className="config-reset" title="reset" onClick={() => session.setConfigInput(key, null)}>
+              {isOverridden(key) && (
+                <button className="config-reset" disabled={session.busy} title={tt('config.reset')}
+                  aria-label={`${tt('config.reset')}: ${key}`} onClick={() => resetInput(key)}>
                   ↺
                 </button>
               )}
