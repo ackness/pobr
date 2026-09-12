@@ -2,9 +2,9 @@ import type { ClassNames, LoadoutJson } from '../../api/types';
 import type { CharacterState } from '../../hooks/useBuildSession';
 import { LANGS, bindT, type Lang, type UiKey } from '../../lib/i18n';
 
-export type TabId = 'build' | 'tree' | 'skills' | 'items' | 'trade' | 'calcs' | 'config';
+export type TabId = 'build' | 'tree' | 'skills' | 'items' | 'trade' | 'guidance' | 'calcs' | 'config';
 
-export const TAB_IDS: TabId[] = ['build', 'tree', 'skills', 'items', 'trade', 'calcs', 'config'];
+export const TAB_IDS: TabId[] = ['build', 'tree', 'skills', 'items', 'trade', 'guidance', 'calcs', 'config'];
 
 const TABS: { id: TabId; key: UiKey }[] = [
   { id: 'build', key: 'tab.build' },
@@ -12,6 +12,7 @@ const TABS: { id: TabId; key: UiKey }[] = [
   { id: 'skills', key: 'tab.skills' },
   { id: 'items', key: 'tab.items' },
   { id: 'trade', key: 'tab.trade' },
+  { id: 'guidance', key: 'tab.guidance' },
   { id: 'calcs', key: 'tab.calcs' },
   { id: 'config', key: 'tab.config' },
 ];
