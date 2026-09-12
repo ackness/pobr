@@ -4,6 +4,7 @@
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { syncBuildReferences } from './sync-build-references.mjs';
 
 const webRoot = fileURLToPath(new URL('..', import.meta.url));
 const repoRoot = join(webRoot, '..');
@@ -56,3 +57,4 @@ files.sort();
 
 writeFileSync(join(destRoot, 'manifest.json'), JSON.stringify({ version, files }, null, 2));
 console.log(`synced ${files.length} files from data/${version} -> web/public/data/${version}`);
+syncBuildReferences();

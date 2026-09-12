@@ -31,9 +31,10 @@ type Currency = 'equiv' | 'divine' | 'chaos';
 type SlotResult = PositionAnalysis;
 
 /** Local build analysis produces official search links; login and buying stay on the market. */
-export function TradePanel({ session, lang, focus, onSkills, onTree }: {
+export function TradePanel({ session, lang, focus, onSkills, onTree, initialItemText }: {
   session: BuildSession; lang: Lang; focus?: {slot:string; nonce:number};
   onSkills?: (group:number) => void; onTree?: () => void;
+  initialItemText?: string;
 }) {
   const tt = bindT(lang);
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
@@ -185,7 +186,7 @@ export function TradePanel({ session, lang, focus, onSkills, onTree }: {
       <button disabled={!onTree} onClick={onTree}><SlotSymbol slot="Jewel@" /><strong>{ut('tree')}</strong><span>{ut('treeHint')}</span></button>
     </div>
     <p className="upgrade-shared-goal">{ut('sharedGoal')}</p>
-    <ItemReplacementCheck session={session} lang={lang} objective={objective} catalog={catalog} jewelSockets={jewelSockets}
+    <ItemReplacementCheck session={session} lang={lang} objective={objective} catalog={catalog} jewelSockets={jewelSockets} initialItemText={initialItemText}
       goalLabel={tt(TRADE_OBJECTIVES.find(entry => entry.id === preset)!.labelKey as UiKey)}
       onEditGoal={() => { goalRef.current?.scrollIntoView({ block: 'start' }); goalRef.current?.focus({ preventScroll: true }); }} />
     <div className="trade-setup">
