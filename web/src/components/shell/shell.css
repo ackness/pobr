@@ -164,6 +164,24 @@
   gap: var(--space-3);
 }
 
+.topbar-source {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+
+.topbar-source:hover,
+.topbar-source:focus-visible {
+  color: var(--accent-gold-bright);
+  background: var(--surface-raised);
+  border-color: var(--border-strong);
+}
+
 .topbar-busy {
   color: var(--accent-gold);
   animation: spin 1s linear infinite;

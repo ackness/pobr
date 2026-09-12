@@ -10,7 +10,8 @@ import {
 import { buildPassiveGraph, classStartSkill, connectedAllocation, type PassiveGraph } from './passiveGraph';
 
 const CLASS_START_NAMES = new Set(['TEMPLAR', 'DUELIST', 'RANGER', 'MARAUDER', 'SIX', 'WITCH']);
-const TOTAL_LIMIT = 512;
+export const PASSIVE_PLAN_LIMIT = 512;
+export const PASSIVE_POINT_LIMIT = 8;
 const PROBE_LIMIT = 256;
 
 export interface PassivePlan {
@@ -91,10 +92,12 @@ export function allocationPaths(
     if (path.length >= budget) continue;
     for (const next of context.graph.get(current) ?? []) {
       if (paths.has(next)) continue;
+      const node = context.byId.get(next)!;
+      // A refund can revoke a gate that was eligible in the original graph.
+      if (node.unlock_constraint?.nodes.some(id => context.allocated.has(id) && !allocated.has(id))) continue;
       const nextPath = [...path, next];
       paths.set(next, nextPath);
       queue.push(next);
-      const node = context.byId.get(next)!;
       // A new empty socket has no known jewel value. It can still be a travel node.
       if (node.kind !== 'jewel_socket' || context.protectedNodes.has(next)) {
         out.push({ allocate: nextPath, deallocate: [], target: next });
@@ -142,6 +145,45 @@ export interface PassivePlannerResult {
   unmodeled: number;
 }
 
+/** Validate the exact evaluated edit before applying it to its original request. */
+export function passivePlanAllocation(
+  request: CalculateBuildRequest,
+  context: PassivePlanningContext,
+  plan: PassivePlan,
+  points: number,
+  mode: 'allocate' | 'reallocate',
+): { allocatedNodes: number[]; attributeChoices: Record<string, AttributeChoice> } | null {
+  const current = new Set(request.allocated_nodes ?? []);
+  const removed = new Set(plan.deallocate);
+  const added = new Set(plan.allocate);
+  const budget = Math.min(PASSIVE_POINT_LIMIT, Math.floor(points));
+  if (!Number.isFinite(budget) || budget < 1 || context.root === null
+    || removed.size !== plan.deallocate.length || added.size !== plan.allocate.length
+    || [...current].filter(id => context.byId.has(id)).some(id => !context.allocated.has(id))
+    || [...context.allocated].some(id => !current.has(id))
+    || [...removed].some(id => !context.allocated.has(id) || context.protectedNodes.has(id))
+    || [...added].some(id => current.has(id) || removed.has(id) || !context.byId.has(id) || id === context.root)) return null;
+  if (mode === 'allocate' ? removed.size > 0 || added.size > budget
+    : !context.canRefund || removed.size === 0 || removed.size > budget || added.size > removed.size) return null;
+  const allocatedNodes = [...current].filter(id => !removed.has(id)).concat([...added]);
+  const final = new Set(allocatedNodes);
+  if ([...added].some(id => context.byId.get(id)?.unlock_constraint?.nodes.some(required => !final.has(required)))) return null;
+  const main = new Set(allocatedNodes.filter(id => context.byId.has(id)));
+  if (mode === 'reallocate' && connectedAllocation(context.graph, main, context.root).size !== main.size) return null;
+  // Unexplained imported components may be extended, but a new disconnected island is never legal.
+  const reached = new Set([...context.allocated].filter(id => !removed.has(id)));
+  reached.add(context.root);
+  const queue = [...reached];
+  for (let index = 0; index < queue.length; index += 1) {
+    for (const id of context.graph.get(queue[index]) ?? []) {
+      if (main.has(id) && !reached.has(id)) { reached.add(id); queue.push(id); }
+    }
+  }
+  if ([...added].some(id => !reached.has(id))) return null;
+  return { allocatedNodes, attributeChoices: Object.fromEntries(Object.entries(request.attribute_choices ?? {})
+    .filter(([id]) => final.has(Number(id)))) };
+}
+
 interface PlannerOptions {
   request: CalculateBuildRequest;
   context: PassivePlanningContext;
@@ -156,7 +198,8 @@ interface PlannerOptions {
 /** Bounded full-build search: connected paths, then interacting path unions or legal branch swaps. */
 export async function planPassiveUpgrades(options: PlannerOptions): Promise<PassivePlannerResult> {
   const { context, objective, request, signal } = options;
-  const budget = Number.isFinite(options.points) ? Math.max(1, Math.min(8, Math.floor(options.points))) : 1;
+  if (signal?.aborted) return { baseline: {}, plans: [], evaluated: 0, limited: false, unmodeled: 0 };
+  const budget = Number.isFinite(options.points) ? Math.max(1, Math.min(PASSIVE_POINT_LIMIT, Math.floor(options.points))) : 1;
   const evaluate = options.evaluate ?? evaluateVariants;
   const paths = allocationPaths(context, context.allocated, budget);
   const refunds = options.mode === 'reallocate' ? refundableBranches(context, budget) : [];
@@ -170,7 +213,7 @@ export async function planPassiveUpgrades(options: PlannerOptions): Promise<Pass
   let limited = paths.length > pathCap || refunds.length > 64;
   const run = async (plans: PassivePlan[]) => {
     const result = await evaluate({ request, variants: plans.map(variantOf), signal,
-      onProgress: done => options.onProgress?.(count + done, TOTAL_LIMIT) });
+      onProgress: done => { if (!signal?.aborted) options.onProgress?.(count + done, PASSIVE_PLAN_LIMIT); } });
     count += result.results.length;
     return result;
   };
@@ -218,7 +261,7 @@ export async function planPassiveUpgrades(options: PlannerOptions): Promise<Pass
       for (const plan of replacements.slice(0, 32)) add({ ...plan, deallocate: removed });
     }
   }
-  const remainingCapacity = TOTAL_LIMIT - count;
+  const remainingCapacity = PASSIVE_PLAN_LIMIT - count;
   limited ||= next.size > remainingCapacity;
   const combinations = [...next.values()].slice(0, remainingCapacity);
   const second = combinations.length > 0 ? await run(combinations) : null;

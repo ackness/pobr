@@ -67,8 +67,11 @@ local mods = {}
 for _, id in ipairs(sorted_keys(raw_mods)) do
     local mod = raw_mods[id]
     if (mod.type == "Prefix" or mod.type == "Suffix") and mod.group and #(mod.weightKey or {}) > 0 then
-        local lines, weights, stats = {}, {}, {}
-        for _, line in ipairs(mod) do lines[#lines + 1] = maximum(line) end
+        local lines, roll_lines, weights, stats = {}, {}, {}, {}
+        for _, line in ipairs(mod) do
+            lines[#lines + 1] = maximum(line)
+            roll_lines[#roll_lines + 1] = line
+        end
         for i, tag in ipairs(mod.weightKey) do weights[#weights + 1] = {tag, mod.weightVal[i]} end
         for _, hash in ipairs(sorted_keys(mod.tradeHashes or {})) do
             local source = mod.tradeHashes[hash]
@@ -88,7 +91,7 @@ for _, id in ipairs(sorted_keys(raw_mods)) do
             end
         end
         mods[#mods + 1] = { id = id, group = mod.group, kind = mod.type:lower(), level = mod.level or 1,
-            lines = lines, weights = weights, stats = stats, domain = mod.domain }
+            lines = lines, roll_lines = roll_lines, weights = weights, stats = stats, domain = mod.domain }
     end
 end
 -- Load data constructors for level requirements and support compatibility.
@@ -152,7 +155,7 @@ end
 local f = assert(io.open(output, "w"))
 f:write(json.encode(result, { indent = true, keyorder = {
     "_meta", "source", "regen_command", "bases", "mods", "gems", "id", "name", "category", "tags",
-    "group", "kind", "level", "implicits", "domain", "affix_limit", "lines", "weights", "stats", "line", "value",
+    "group", "kind", "level", "implicits", "domain", "affix_limit", "lines", "roll_lines", "weights", "stats", "line", "value",
     "skill_id", "family", "is_support", "max_level", "level_requirements", "is_lineage",
     "compatibility_known", "skill_types", "require_skill_types", "exclude_skill_types", "add_skill_types",
     "support_gems_only", "cannot_be_supported", "families",

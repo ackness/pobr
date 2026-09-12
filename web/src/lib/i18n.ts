@@ -86,6 +86,7 @@ const DICT = {
   'tab.tree': { 'en-US': 'Tree', 'zh-TW': '天賦樹', 'zh-CN': '天赋树' },
   'tab.skills': { 'en-US': 'Skills', 'zh-TW': '技能', 'zh-CN': '技能' },
   'tab.items': { 'en-US': 'Items', 'zh-TW': '裝備', 'zh-CN': '装备' },
+  'app.source': { 'en-US': 'View source on GitHub (opens in a new tab)', 'zh-TW': '在 GitHub 查看原始碼（另開分頁）', 'zh-CN': '在 GitHub 查看源码（新标签页打开）' },
   'tab.trade': { 'en-US': 'Upgrades', 'zh-TW': '提升', 'zh-CN': '提升' },
   'tab.calcs': { 'en-US': 'Calcs', 'zh-TW': '計算', 'zh-CN': '计算' },
   'tab.config': { 'en-US': 'Config', 'zh-TW': '配置', 'zh-CN': '配置' },

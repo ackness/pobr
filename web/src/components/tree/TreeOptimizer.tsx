@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatApiError } from '../../api/error';
-import type { AttributeChoice, PassiveNode } from '../../api/types';
+import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
-import { scoreOf } from '../../lib/optimize';
+import { scoreOf, type Objective } from '../../lib/optimize';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import {
+  PASSIVE_PLAN_LIMIT,
+  PASSIVE_POINT_LIMIT,
+  passivePlanAllocation,
   passivePlanningContext,
   planPassiveUpgrades,
   withTravelAttributes,
@@ -38,6 +41,10 @@ const COPY = {
     skipped: 'Skipped plans with new unmodeled effects', evaluated: 'Plans evaluated', add: 'Allocate', remove: 'Refund', cost: 'Net points', score: 'Goal gain',
     needsBuild: 'Import or create a build to plan upgrades.', route: 'Complete route', baseline: 'Current build',
     unavailable: 'The class start or passive graph is unavailable.',
+    refresh: 'After the first search, changes refresh this open planner automatically. Cancel or collapse to pause.',
+    waiting: 'Waiting for the current build calculation, then searching the updated tree…',
+    limits: 'At most 8 new or refunded points and 512 full-plan evaluations per search. Refund mode moves terminal branches within the current total point count.',
+    limited: 'The search limit was reached; results cover only the evaluated routes.',
   },
   'zh-TW': {
     title: '天賦提升規劃', hint: '自動尋找目前天賦樹可連接的路線，過路點計入預算。每個完整方案都按目前裝備和主技能重新計算。',
@@ -51,6 +58,10 @@ const COPY = {
     skipped: '已排除含新增未建模效果的方案', evaluated: '已重算方案', add: '新增', remove: '退還', cost: '淨投入', score: '目標提升',
     needsBuild: '匯入或新建角色後可規劃天賦提升。', route: '完整路線', baseline: '目前配置',
     unavailable: '缺少職業起點或天賦連接資料。',
+    refresh: '首次搜尋後，修改配置會自動更新已展開的規劃。取消或收起可暫停。',
+    waiting: '等待目前角色重算完成，再搜尋修改後的天賦樹…',
+    limits: '每次最多投入或退還 8 點、重算 512 個完整方案。洗點模式在目前總點數內搬移末端分支。',
+    limited: '已達搜尋上限；結果僅涵蓋本次已評估的路線。',
   },
   'zh-CN': {
     title: '天赋提升规划', hint: '自动寻找当前天赋树可连接的路线，过路点计入预算。每个完整方案都按当前装备和主技能重新计算。',
@@ -64,6 +75,10 @@ const COPY = {
     skipped: '已排除含新增未建模效果的方案', evaluated: '已重算方案', add: '新增', remove: '退还', cost: '净投入', score: '目标提升',
     needsBuild: '导入或新建角色后可规划天赋提升。', route: '完整路线', baseline: '当前配置',
     unavailable: '缺少职业起点或天赋连接数据。',
+    refresh: '首次搜索后，修改配置会自动更新已展开的规划。取消或收起可暂停。',
+    waiting: '等待当前角色重算完成，再搜索修改后的天赋树…',
+    limits: '每次最多投入或退还 8 点、重算 512 个完整方案。洗点模式在当前总点数内搬移末端分支。',
+    limited: '已达搜索上限；结果仅涵盖本次已评估的路线。',
   },
 };
 
@@ -83,10 +98,15 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
   });
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [evaluated, setEvaluated] = useState<PassivePlannerResult | null>(null);
+  const [completed, setCompleted] = useState<{ key: string; request: CalculateBuildRequest;
+    result: PassivePlannerResult; objective: Objective } | null>(null);
+  const [tracking, setTracking] = useState(false);
+  const [runId, setRunId] = useState(0);
   const [preview, setPreview] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const previewRef = useRef(onPreview);
+  previewRef.current = onPreview;
   const context = useMemo(() => passivePlanningContext(nodes, session.allocatedNodes,
     session.character?.class_name, session.weaponSwap?.exclusive_nodes.flat() ?? [],
     session.jewels.map(jewel => jewel.socket_node), session.treeMeta?.classes.flatMap(entry => entry.ascendancies ?? [])
@@ -94,6 +114,13 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
   [nodes, session.allocatedNodes, session.character?.class_name, session.weaponSwap, session.jewels, session.treeMeta, session.character?.ascendancy_name]);
   const baselineStats = useMemo(() => Object.fromEntries((session.calc?.stats ?? []).map(stat => [stat.id, stat.value ?? 0])), [session.calc]);
   const objective = useMemo(() => objectiveOf(goal, baselineStats), [goal, baselineStats]);
+  const request = useMemo(() => session.currentRequest(), [session.currentRequest, session.stateVersion]);
+  // Include the materialized request as well as the revision: results never migrate to another tree.
+  const snapshotKey = useMemo(() => JSON.stringify([session.stateVersion, request, mode, points, goal, attribute]),
+    [session.stateVersion, request, mode, points, goal, attribute]);
+  const latestKeyRef = useRef(snapshotKey);
+  latestKeyRef.current = snapshotKey;
+  const evaluated = completed?.key === snapshotKey ? completed.result : null;
 
   useEffect(() => {
     if (!focusPlanner) return;
@@ -103,47 +130,73 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
 
   useEffect(() => {
     abortRef.current?.abort();
-    abortRef.current = null;
-    setProgress(null);
-    setEvaluated(null);
+    setCompleted(null);
     setError(null);
     setPreview(null);
-    onPreview(null);
-    return () => { abortRef.current?.abort(); };
-  }, [session.stateVersion, mode, points, goal, attribute, onPreview]);
+    previewRef.current(null);
+  }, [snapshotKey]);
 
-  const run = async () => {
-    const request = session.currentRequest();
-    if (!request || progress) return;
+  useEffect(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setProgress(null);
+    if (!tracking || !expanded || session.busy || session.error || !session.character
+      || !request || context.root === null || (mode === 'reallocate' && !context.canRefund)) return;
     const controller = new AbortController();
     abortRef.current = controller;
-    setProgress({ done: 0, total: 512 });
-    setEvaluated(null);
-    setError(null);
-    try {
-      const result = await planPassiveUpgrades({ request: withTravelAttributes(request, nodes, attribute),
-        context, points, mode, objective, signal: controller.signal,
-        onProgress: (done, total) => {
-          if (!controller.signal.aborted) setProgress({ done, total });
-        } });
-      if (!controller.signal.aborted && abortRef.current === controller) setEvaluated(result);
-    } catch (err) {
-      if (!controller.signal.aborted) setError(formatApiError(err));
-    } finally {
-      if (abortRef.current === controller) { setProgress(null); abortRef.current = null; }
-    }
-  };
+    // Coalesce rapid edits and wait for the session's new baseline before spending the search budget.
+    const timer = setTimeout(async () => {
+      const prepared = withTravelAttributes(request, nodes, attribute);
+      setProgress({ done: 0, total: PASSIVE_PLAN_LIMIT });
+      setCompleted(null);
+      setError(null);
+      try {
+        const result = await planPassiveUpgrades({ request: prepared, context, points, mode, objective,
+          signal: controller.signal, onProgress: (done, total) => {
+            if (!controller.signal.aborted && latestKeyRef.current === snapshotKey) setProgress({ done, total });
+          } });
+        if (!controller.signal.aborted && abortRef.current === controller && latestKeyRef.current === snapshotKey) {
+          setCompleted({ key: snapshotKey, request: prepared, result, objective });
+        }
+      } catch (err) {
+        if (!controller.signal.aborted && latestKeyRef.current === snapshotKey) setError(formatApiError(err));
+      } finally {
+        if (abortRef.current === controller) { setProgress(null); abortRef.current = null; }
+      }
+    }, 350);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+      if (abortRef.current === controller) abortRef.current = null;
+    };
+  }, [snapshotKey, tracking, expanded, session.busy, session.error, session.character, request,
+    context, nodes, attribute, points, mode, objective, runId]);
 
+  const run = () => {
+    setCompleted(null);
+    setError(null);
+    setPreview(null);
+    previewRef.current(null);
+    setTracking(true);
+    setRunId(value => value + 1);
+  };
+  const cancel = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setTracking(false);
+    setProgress(null);
+  };
   const show = (index: number | null) => {
+    if (latestKeyRef.current !== snapshotKey || (index !== null && !evaluated)) return;
     setPreview(index);
-    onPreview(index === null ? null : evaluated?.plans[index] ?? null);
+    previewRef.current(index === null ? null : evaluated?.plans[index] ?? null);
   };
   const apply = (plan: PassivePlan) => {
-    const allocated = new Set(session.allocatedNodes.filter(id => !plan.deallocate.includes(id)));
-    plan.allocate.forEach(id => allocated.add(id));
-    const choices = Object.fromEntries(plan.allocate.filter(id => context.byId.get(id)?.name === 'Attribute')
-      .map(id => [String(id), attribute]));
-    session.setAllocatedNodes([...allocated], choices);
+    if (!completed || completed.key !== latestKeyRef.current || session.busy) return;
+    const next = passivePlanAllocation(completed.request, context, plan, points, mode);
+    if (!next) return;
+    // Apply the same full allocation and attribute choices used by the successful evaluation.
+    session.setAllocatedNodes(next.allocatedNodes, next.attributeChoices);
   };
   const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 1 });
   const delta = (value: number, baseline: number) => baseline > 0
@@ -153,7 +206,7 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
 
   return (
     <div className="tree-planner" ref={containerRef} id="passive-upgrades">
-      <button className="tree-planner-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+      <button className="tree-planner-toggle" aria-expanded={expanded} onClick={() => { if (expanded) cancel(); setExpanded(!expanded); }}>
         <span aria-hidden>{expanded ? '▾' : '▸'}</span>{text.title}
       </button>
       {expanded && <div className="tree-planner-body">
@@ -163,26 +216,30 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
           <label>{text.mode}<AppSelect value={mode} ariaLabel={text.mode} onChange={value => setMode(value as typeof mode)} options={[
             { value: 'allocate', label: text.allocate }, { value: 'reallocate', label: text.reallocate },
           ]} /></label>
-          <label>{mode === 'allocate' ? text.points : text.refundPoints}<input type="number" min={1} max={8} value={points}
-            onChange={event => { const value = Number(event.target.value); if (Number.isInteger(value) && value >= 1 && value <= 8) setPoints(value); }} /></label>
+          <label>{mode === 'allocate' ? text.points : text.refundPoints}<input type="number" min={1} max={PASSIVE_POINT_LIMIT} value={points}
+            onChange={event => { const value = Number(event.target.value); if (Number.isInteger(value) && value >= 1 && value <= PASSIVE_POINT_LIMIT) setPoints(value); }} /></label>
           <ObjectiveEditor value={goal} onChange={setGoal} lang={lang} />
           <label>{text.attribute}<AppSelect value={attribute} ariaLabel={text.attribute} onChange={value => setAttribute(value as AttributeChoice)} options={[
             { value: 'str', label: text.str }, { value: 'dex', label: text.dex }, { value: 'int', label: text.int },
           ]} /></label>
         </div>
         <p className="tree-planner-hint">{text.scope}</p>
+        <p className="tree-planner-hint">{text.limits} {text.refresh}</p>
         {mode === 'reallocate' && !context.canRefund && <p className="tree-planner-hint">{text.refundUnavailable}</p>}
         {!session.character && <p className="tree-planner-hint">{text.needsBuild}</p>}
         {context.root === null && session.character && <p className="tree-planner-hint">{text.unavailable}</p>}
-        <button className="tree-planner-run" onClick={run} disabled={session.busy || progress !== null || !session.character
+        <button className="tree-planner-run" onClick={run} disabled={session.busy || Boolean(session.error) || progress !== null || !session.character
           || context.root === null || (mode === 'reallocate' && !context.canRefund)}>{text.run}</button>
-        {progress && <OptimizerProgress {...progress} lang={lang} onCancel={() => { abortRef.current?.abort(); setProgress(null); }} />}
+        {tracking && !evaluated && !progress && !error && !session.error && context.root !== null
+          && (mode === 'allocate' || context.canRefund) && <p className="tree-planner-hint" role="status">{text.waiting}</p>}
+        {progress && <OptimizerProgress {...progress} lang={lang} onCancel={cancel} />}
         {error && <p className="opt-error">{error}</p>}
         {evaluated && <>
           <div className="tree-planner-summary"><span>{text.evaluated}: {evaluated.evaluated}</span>
             {evaluated.evaluated > 0 && <span>{text.baseline}: DPS {number(currentStats.TotalDPS ?? 0)} · EHP {number(currentStats.TotalEHP ?? 0)}</span>}
             {preview !== null && <button onClick={() => show(null)}>{text.clear}</button>}
           </div>
+          {evaluated.limited && <p className="tree-planner-hint">{text.limited}</p>}
           {evaluated.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}: {evaluated.unmodeled}</p>}
           {evaluated.plans.length === 0 && <p className="tree-planner-hint">{text.noResults}</p>}
           <ol className="tree-planner-results">
@@ -190,7 +247,7 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
               <div className="tree-plan-heading"><strong>{index + 1}. {nodeLabel(plan.target)}</strong>
                 <span>{text.cost} {plan.allocate.length - plan.deallocate.length} · {text.add} {plan.allocate.length}{plan.deallocate.length > 0 ? ` · ${text.remove} ${plan.deallocate.length}` : ''}</span></div>
               <div className="tree-plan-metrics">
-                <span>{text.score} <b>{delta(scoreOf(plan.stats, objective), scoreOf(currentStats, objective))}</b></span>
+                <span>{text.score} <b>{delta(scoreOf(plan.stats, completed!.objective), scoreOf(currentStats, completed!.objective))}</b></span>
                 {(['TotalDPS', 'TotalEHP', 'Life'] as const).map(stat => <span key={stat}>{stat === 'TotalDPS' ? 'DPS' : stat === 'TotalEHP' ? 'EHP' : tt('opt.objLife')} <b className={(plan.stats[stat] ?? 0) >= (currentStats[stat] ?? 0) ? 'is-positive' : 'is-negative'}>{delta(plan.stats[stat] ?? 0, currentStats[stat] ?? 0)}</b></span>)}
               </div>
               <details><summary>{text.route}</summary><p>{text.add}: {plan.allocate.map(nodeLabel).join(' · ')}</p>

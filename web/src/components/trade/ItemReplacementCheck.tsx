@@ -8,6 +8,8 @@ import { slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
 import { upgradeT } from '../../lib/upgradeText';
 import type { AugmentSelection } from '../../lib/replacementAugments';
 import { ReplacementAugmentPicker } from './ReplacementAugmentPicker';
+import { ReplacementAffixEditor } from './ReplacementAffixEditor';
+import { affixT } from '../../lib/marketAffixText';
 
 interface ComparisonSnapshot { report: ReplacementReport; requestKey: string; input: string }
 
@@ -20,7 +22,8 @@ export function ItemReplacementCheck({ session, lang, objective, catalog, jewelS
   const [text, setText] = useState('');
   const [snapshot, setSnapshot] = useState<ComparisonSnapshot | null>(null);
   const [chosenSlot, setChosenSlot] = useState<string | null>(null);
-  const [pendingPaste, setPendingPaste] = useState<string | null>(null);
+  const [pendingPaste, setPendingPaste] = useState<{ input: string; plans?: Record<string, AugmentSelection>; slot?: string } | null>(null);
+  const [affixDirty, setAffixDirty] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [augmentPlans, setAugmentPlans] = useState<Record<string, AugmentSelection>>({});
@@ -63,8 +66,9 @@ export function ItemReplacementCheck({ session, lang, objective, catalog, jewelS
     controller.current?.abort();
     const abort = new AbortController(); controller.current = abort;
     const key = JSON.stringify([session.activeWeaponSet, request]);
-    setPendingPaste(null); setBusy(true); setError('');
+    setPendingPaste(null); setBusy(true); setError(''); setAugmentPlans(plans);
     if (!keepSlot) { setSnapshot(null); setChosenSlot(null); }
+    else setChosenSlot(keepSlot);
     try {
       const next = await compareReplacementPositions(request, input, abort.signal, { catalog, jewelSocketNodes: jewelSockets, augmentPlans: plans });
       if (!abort.signal.aborted) setSnapshot({ report: next, requestKey: key, input });
@@ -77,12 +81,12 @@ export function ItemReplacementCheck({ session, lang, objective, catalog, jewelS
   // Read only an explicit paste event. Manual edits retain the Calculate action.
   useEffect(() => {
     if (pendingPaste === null || session.busy || !catalog) return;
-    const timer = setTimeout(() => void run(pendingPaste), 150);
+    const timer = setTimeout(() => void run(pendingPaste.input, pendingPaste.plans, pendingPaste.slot), 150);
     return () => clearTimeout(timer);
   }, [pendingPaste, session.busy, catalog, run]);
 
   const apply = () => {
-    if (busy || !report || !selected || snapshot?.requestKey !== JSON.stringify([session.activeWeaponSet, session.currentRequest()])) return;
+    if (busy || affixDirty || !report || !selected || snapshot?.requestKey !== JSON.stringify([session.activeWeaponSet, session.currentRequest()])) return;
     // Apply the evaluated per-position payload, preserving all unrelated sources.
     if (selected.variant.jewels) session.setJewels(selected.variant.jewels);
     else if (selected.variant.flasks) session.setFlasks(selected.variant.flasks);
@@ -100,8 +104,8 @@ export function ItemReplacementCheck({ session, lang, objective, catalog, jewelS
       <textarea ref={inputRef} id="replacement-text" rows={report ? 3 : 5} value={text} placeholder={ut('pastePlaceholder')}
         onChange={event => { setPendingPaste(null); setText(event.target.value); }}
         onPaste={event => { const copied = event.clipboardData.getData('text/plain'); if (!copied) return;
-          event.preventDefault(); controller.current?.abort(); setSnapshot(null); setAugmentPlans({}); setChosenSlot(null); setText(copied); setPendingPaste(copied); }} />
-      <div className="replacement-actions"><button className="trade-primary" disabled={busy || session.busy || !catalog || !text.trim()} onClick={() => void run(text, augmentPlans)}>
+          event.preventDefault(); controller.current?.abort(); setSnapshot(null); setAugmentPlans({}); setChosenSlot(null); setText(copied); setPendingPaste({ input: copied }); }} />
+      <div className="replacement-actions"><button className="trade-primary" disabled={busy || affixDirty || session.busy || !catalog || !text.trim()} onClick={() => void run(text, augmentPlans)}>
         {busy ? ut('comparingPositions') : ut('compare')}</button>
         {busy && <button onClick={() => { controller.current?.abort(); controller.current = null; setPendingPaste(null); setSnapshot(null); setBusy(false); }}>{ut('cancelCompare')}</button>}
         <span>{ut('autoPositions')}</span></div>
@@ -122,7 +126,11 @@ export function ItemReplacementCheck({ session, lang, objective, catalog, jewelS
         {report.lines.some(line => line.kind === 'class_req') && <p className="trade-notice">{report.lines.filter(line => line.kind === 'class_req').map(line => line.text).join('\n')}</p>}
         <p className="replacement-requirement-note">{ut('requirementsNote')}</p>
       </aside>
-      <ReplacementAugmentPicker key={selected.slot} plan={selected.augments} level={session.currentRequest()?.character?.level ?? 1} lang={lang} disabled={busy || session.busy}
+      {catalog && <ReplacementAffixEditor key={report.text} report={report} catalog={catalog} characterLevel={session.currentRequest()?.character?.level ?? 1} lang={lang}
+        disabled={busy || session.busy} onDirtyChange={setAffixDirty} onCompare={input => {
+          controller.current?.abort(); setSnapshot(null); setAffixDirty(false); setText(input); setPendingPaste({ input, plans: augmentPlans, slot: selected.slot });
+        }} />}
+      <ReplacementAugmentPicker key={selected.slot} plan={selected.augments} level={session.currentRequest()?.character?.level ?? 1} lang={lang} disabled={busy || affixDirty || session.busy}
         onChange={selection => { const plans = { ...augmentPlans, [selected.slot]: selection }; setAugmentPlans(plans); setChosenSlot(selected.slot); void run(text, plans, selected.slot); }} />
       </div>
       <div className="upgrade-replacement-result" aria-live="polite">
@@ -152,7 +160,7 @@ export function ItemReplacementCheck({ session, lang, objective, catalog, jewelS
           })}</tbody></table></div>
         {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary>{ut('incomplete')} ({selected.unsupported.length})</summary><ul>{selected.unsupported.map((line, index) => <li key={index}>{line}</li>)}</ul></details>}
         {!!report.rejected.length && <p className="trade-notice">{report.rejected.map(row => `${positionLabel(row.slot)}: ${errorText(row.reason)}`).join('\n')}</p>}
-        <div className="replacement-apply"><button className="trade-primary" disabled={busy || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</button><span>{ut('applyHint')}</span></div>
+        <div className="replacement-apply"><button className="trade-primary" disabled={busy || affixDirty || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</button><span>{affixDirty ? affixT(lang, 'dirty') : ut('applyHint')}</span></div>
       </div>
     </div>}
   </section>;

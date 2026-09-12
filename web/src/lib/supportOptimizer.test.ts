@@ -127,6 +127,58 @@ test('cancellation rejects partially evaluated results', async () => {
     catalog: [active, gem('New')], capacity: 2, objective, evaluate: evaluator(() => 100, { abort: true }) })).rejects.toThrow('cancelled');
 });
 
+test('player exclusions constrain probes and current-set seeds without changing the equipped baseline', async () => {
+  const catalog = [active, gem('Costly'), gem('CostlyII', { family: 'Costly' }), gem('A'), gem('B'), gem('Greedy')];
+  const request: CalculateBuildRequest = { character: { level: 80 }, socket_groups: [group(['Costly', 'A']),
+    { ...group(['Costly']), weapon_set: 2, enabled: false }] };
+  const original = structuredClone(request);
+  const score = (ids: string[]) => 100 + (ids.includes('Costly') ? 500 : 0)
+    + (ids.includes('CostlyII') ? 10 : 0) + (ids.includes('Greedy') ? 900 : 0)
+    + (ids.includes('A') && ids.includes('B') ? 700 : 0);
+  const evaluate = evaluator(score);
+  const probed: string[][] = [];
+  const result = await optimizeSupports({ request, groupIndex: 0, catalog, capacity: 2, objective,
+    excludedSkillIds: ['Costly', 'Greedy', 'Costly', 'StaleId'], evaluate: async options => {
+      for (const variant of options.variants) {
+        if (!variant.socket_groups) continue; // The identity call must keep the real equipped build.
+        probed.push(variant.socket_groups[0].gems.slice(1).map(gem => gem.skill_id));
+        expect(variant.socket_groups[1]).toEqual(original.socket_groups![1]);
+      }
+      return evaluate(options);
+    } });
+  expect(request).toEqual(original);
+  expect(result.baseline.TotalDPS).toBe(600);
+  expect(result.candidates).toBe(3);
+  expect(probed.every(ids => !ids.includes('Costly') && !ids.includes('Greedy'))).toBe(true);
+  expect(probed.some(ids => ids.includes('CostlyII'))).toBe(true);
+  const oracle = exhaustiveSupports(catalog.filter(gem => !['Costly', 'Greedy'].includes(gem.skill_id)), 2, score);
+  expect(result.plans[0].stats.TotalDPS).toBe(oracle.best);
+  expect(result.plans[0].supports.map(gem => gem.skill_id).sort()).toEqual(['A', 'B']);
+});
+
+test('excluding an equipped harmful support evaluates its removal, including an empty allowed pool', async () => {
+  const catalog = [active, gem('Harmful'), gem('Neutral')];
+  const score = (ids: string[]) => 100 - (ids.includes('Harmful') ? 50 : 0);
+  for (const equipped of [['Harmful', 'Neutral'], ['Harmful']]) {
+    const result = await optimizeSupports({ request: { character: { level: 80 }, socket_groups: [group(equipped)] },
+      groupIndex: 0, catalog, capacity: 2, objective, excludedSkillIds: equipped.includes('Neutral')
+        ? ['Harmful'] : ['Harmful', 'Neutral'], evaluate: evaluator(score) });
+    expect(result.baseline.TotalDPS).toBe(50);
+    expect(result.plans.some(plan => plan.supports.length === equipped.length - 1 && plan.stats.TotalDPS === 100)).toBe(true);
+    expect(result.plans.every(plan => !plan.supports.some(gem => gem.skill_id === 'Harmful'))).toBe(true);
+  }
+});
+
+test('excluded type-enablers and disabled lineage gems cannot survive in an equipped search seed', async () => {
+  const catalog = [active, gem('Enabler', { add_skill_types: ['Minion'] }), gem('NeedsMinion', { require_skill_types: ['Minion'] }),
+    gem('Lineage', { is_lineage: true }), gem('Alternative')];
+  const result = await optimizeSupports({ request: { socket_groups: [group(['Enabler', 'NeedsMinion', 'Lineage'])] },
+    groupIndex: 0, catalog, capacity: 3, objective, excludedSkillIds: ['Enabler'], includeLineage: false,
+    evaluate: evaluator(ids => 100 + (ids.includes('Alternative') ? 100 : 0)) });
+  expect(result.plans[0].supports.map(gem => gem.skill_id)).toEqual(['Alternative']);
+  expect(result.plans.every(plan => plan.supports.every(gem => gem.skill_id === 'Alternative'))).toBe(true);
+});
+
 
 test('lineage supports respect the default copy limit across skill and weapon groups', () => {
   const lineage = gem('Lineage', { is_lineage: true });

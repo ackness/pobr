@@ -83,3 +83,176 @@ test('shared goals link automatic supports and connected passive plans with real
   await expect(dps(page)).not.toHaveText(treeBefore);
   await expect(page.locator('.calc-error')).toHaveCount(0);
 });
+
+test('support exclusions persist, invalidate old plans and constrain real-WASM recommendations', async ({ page }) => {
+  const openOptimizer = async () => {
+    await nav(page, 'Skills').click();
+    await expect(page.locator('.skills-toolbar input')).toBeEnabled();
+    const group = page.locator('.skill-group-title').first();
+    if (await group.getAttribute('aria-expanded') === 'false') await group.click();
+    const toggle = page.locator('.gem-optimizer-toggle');
+    if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
+  };
+  await caster(page);
+  const baseline = await dps(page).innerText();
+  await nav(page, 'Upgrades').click();
+  await page.locator('.upgrade-paths > button').nth(1).click();
+  const run = page.getByRole('button', { name: 'Calculate support combinations', exact: true });
+  const count = page.locator('.support-pool-summary strong');
+  await expect.poll(async () => Number(await count.innerText())).toBeGreaterThan(20);
+  const candidates = Number(await count.innerText());
+  await run.click();
+  await expect(page.locator('.support-plan').first()).toBeVisible({ timeout: 30_000 });
+  const gem = page.locator('.support-plan-gems > .opt-chip').first();
+  const id = (await gem.getAttribute('data-skill-id'))!;
+  const name = (await gem.getByRole('button').getAttribute('aria-label'))!.replace(/^Exclude /, '');
+  await gem.getByRole('button').click();
+  await expect(page.locator('.support-results')).toHaveCount(0);
+  await expect(count).toHaveText(String(candidates - 1));
+  await expect(page.locator('.support-excluded')).toContainText(name);
+  await expect(dps(page)).toHaveText(baseline);
+  await page.locator('.support-pool-details > summary').click();
+  const search = page.getByRole('searchbox', { name: 'Search supports' });
+  await search.fill(name);
+  const checkbox = page.locator(`.support-candidate[data-skill-id="${id}"]`).getByRole('checkbox');
+  await expect(checkbox).not.toBeChecked();
+  await run.click();
+  await expect(page.locator('.support-plan').first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(`.support-plan-gems > [data-skill-id="${id}"]`)).toHaveCount(0);
+  await search.fill('no such support name');
+  await expect(page.locator('.support-candidate')).toHaveCount(0);
+  await expect(page.locator('.support-plan').first()).toBeVisible(); // Searching does not alter the selected pool.
+  await expect(dps(page)).toHaveText(baseline);
+  for (const width of [320, 768, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const overflow = await page.locator('main').evaluate(element => element.scrollWidth - element.clientWidth);
+    expect(overflow, `Support exclusions and results must fit ${width}px`).toBeLessThanOrEqual(1);
+  }
+
+  await nav(page, 'Items').click();
+  await openOptimizer();
+  await expect(page.locator('.support-excluded')).toContainText(name);
+  await expect(count).toHaveText(String(candidates - 1));
+  await page.reload();
+  await openOptimizer();
+  await expect(page.locator('.support-excluded')).toContainText(name);
+  await expect(count).toHaveText(String(candidates - 1));
+  await page.getByRole('button', { name: `Restore ${name}`, exact: true }).click();
+  await expect(page.locator('.support-excluded')).toHaveCount(0);
+  await expect(count).toHaveText(String(candidates));
+  await expect(dps(page)).toHaveText(baseline);
+
+  await page.locator('.support-pool-details > summary').click();
+  const ids = await page.locator('.support-candidate').evaluateAll(elements => elements.map(element => element.getAttribute('data-skill-id')!));
+  await page.evaluate(ids => {
+    const key = Object.keys(localStorage).find(key => key.startsWith('pobr-support-exclusions:'))!;
+    localStorage.setItem(key, JSON.stringify(ids));
+  }, ids);
+  await page.reload();
+  await openOptimizer();
+  await expect(count).toHaveText('0');
+  await expect(run).toBeDisabled();
+  await expect(page.locator('.gem-optimizer-body')).toContainText('All eligible supports are excluded');
+  await page.getByRole('button', { name: 'Restore all excluded supports' }).click();
+  await expect(count).toHaveText(String(candidates));
+  await expect(run).toBeEnabled();
+});
+
+test('tree panning keeps the viewport fixed, reveals edge nodes and commits without a jump', async ({ page }) => {
+  await caster(page);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await nav(page, 'Tree').click();
+  const svg = page.locator('.tree-canvas svg');
+  await expect(svg).toBeVisible();
+  await svg.scrollIntoViewIfNeeded();
+  const box = (await svg.boundingBox())!;
+  const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.mouse.move(start.x, start.y);
+  for (let i = 0; i < 7; i++) {
+    await page.mouse.wheel(0, -100);
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  }
+  const initial = await svg.getAttribute('viewBox');
+  const edgeId = await svg.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return [...element.querySelectorAll('circle[data-skill-id]')].find(node => {
+      const b = node.getBoundingClientRect();
+      return b.x < rect.x - 10 && b.x > rect.x - 100 && b.y > rect.y + 100 && b.bottom < rect.bottom - 120;
+    })?.getAttribute('data-skill-id');
+  });
+  expect(edgeId, 'Zoomed tree should have nodes just beyond the left edge').toBeTruthy();
+  const node = page.locator(`circle[data-skill-id="${edgeId}"]`);
+  await page.mouse.down();
+  await page.mouse.move(start.x + 160, start.y + 80, { steps: 12 });
+  await expect(page.locator('.tree-scene')).toHaveAttribute('transform', /translate/);
+  await expect(svg).toHaveAttribute('viewBox', initial!);
+  const dragged = (await svg.boundingBox())!;
+  expect(dragged.x).toBeCloseTo(box.x, 2);
+  expect(dragged.y).toBeCloseTo(box.y, 2);
+  const beforeRelease = (await node.boundingBox())!;
+  expect(beforeRelease.x).toBeGreaterThan(box.x);
+  const groupsBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state.allocatedNodes);
+  await page.mouse.up();
+  await expect(page.locator('.tree-scene')).not.toHaveAttribute('transform', /translate/);
+  const afterRelease = (await node.boundingBox())!;
+  expect(Math.abs(afterRelease.x - beforeRelease.x)).toBeLessThan(1);
+  expect(Math.abs(afterRelease.y - beforeRelease.y)).toBeLessThan(1);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state.allocatedNodes)).toEqual(groupsBefore);
+
+  // Starting on a node retains pointer capture, but must remain a pan rather
+  // than an allocation click or a moving tooltip.
+  await page.mouse.move(afterRelease.x + afterRelease.width / 2, afterRelease.y + afterRelease.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(afterRelease.x + 80, afterRelease.y + 40, { steps: 12 });
+  await expect(svg).toHaveClass(/is-dragging/);
+  await expect(page.locator('.tree-tooltip')).toHaveCount(0);
+  await page.mouse.up();
+  await expect(page.locator('.tree-scene')).not.toHaveAttribute('transform', /translate/);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state.allocatedNodes)).toEqual(groupsBefore);
+
+  // A cancelled gesture must leave neither a displaced scene nor disabled hit testing.
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(start.x + 90, start.y + 40, { steps: 4 });
+  await svg.dispatchEvent('pointercancel', { pointerId: 1, isPrimary: true });
+  await page.mouse.up();
+  await expect(svg).not.toHaveClass(/is-dragging/);
+  await expect(page.locator('.tree-scene')).not.toHaveAttribute('transform', /translate/);
+});
+
+test('editing passives automatically replans from the new tree and applying never spends points twice', async ({ page }) => {
+  await caster(page);
+  const before = await dps(page).innerText();
+  await nav(page, 'Tree').click();
+  await page.locator('.tree-planner-toggle').click();
+  await page.locator('.tree-planner-run').click();
+  const plans = page.locator('.tree-planner-results > li');
+  await expect(plans.first()).toBeVisible({ timeout: 30_000 });
+  // Invoke the same node click handler without depending on tiny default-zoom hit boxes.
+  await page.locator('circle[data-skill-id="4739"]').dispatchEvent('click');
+  await expect(page.locator('circle[data-skill-id="4739"]')).not.toHaveClass(/node-allocated/);
+  await expect(plans).toHaveCount(0);
+  await expect(dps(page)).not.toHaveText(before);
+  await expect(plans.first()).toBeVisible({ timeout: 30_000 });
+  const currentDps = Number((await dps(page).innerText()).replaceAll(',', ''));
+  const summary = await page.locator('.tree-planner-summary').innerText();
+  const planningDps = Number(summary.match(/DPS ([\d,.]+)/)![1].replaceAll(',', ''));
+  expect(planningDps).toBeCloseTo(currentDps, 0);
+  await plans.first().getByRole('button', { name: 'Apply plan', exact: true }).click();
+  await expect(plans).toHaveCount(0);
+  const applied = await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state.allocatedNodes);
+  await expect(page.locator('.tree-planner-summary')).toBeVisible({ timeout: 30_000 });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state.allocatedNodes)).toEqual(applied);
+
+  await page.getByRole('button', { name: 'Plan', exact: true }).click();
+  await page.getByRole('option', { name: 'Reallocate existing points', exact: true }).click();
+  await expect(page.getByRole('spinbutton', { name: 'Maximum refunds' })).toHaveValue('3');
+  await expect(page.locator('.tree-planner-summary')).toBeVisible({ timeout: 30_000 });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state.allocatedNodes)).toEqual(applied);
+  await page.locator('.tree-planner-toggle').click();
+  await page.locator('circle[data-skill-id="4739"]').dispatchEvent('click');
+  await page.locator('.tree-planner-toggle').click();
+  await expect(page.locator('.tree-planner-summary')).toHaveCount(0);
+  await expect(page.locator('.tree-planner-run')).toBeEnabled();
+  await expect(page.locator('.calc-error')).toHaveCount(0);
+});
