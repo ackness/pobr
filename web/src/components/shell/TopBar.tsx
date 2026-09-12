@@ -4,7 +4,9 @@ import { LANGS, bindT, type Lang, type UiKey } from '../../lib/i18n';
 
 export type TabId = 'build' | 'tree' | 'skills' | 'items' | 'trade' | 'guidance' | 'calcs' | 'config';
 
-export const TAB_IDS: TabId[] = ['build', 'tree', 'skills', 'items', 'trade', 'guidance', 'calcs', 'config'];
+// Keep the reference panel for future shared builds, but hide it from navigation
+// and saved-tab restoration while its only data source is historical fixtures.
+export const TAB_IDS: TabId[] = ['build', 'tree', 'skills', 'items', 'trade', 'calcs', 'config'];
 
 const TABS: { id: TabId; key: UiKey }[] = [
   { id: 'build', key: 'tab.build' },
@@ -12,7 +14,6 @@ const TABS: { id: TabId; key: UiKey }[] = [
   { id: 'skills', key: 'tab.skills' },
   { id: 'items', key: 'tab.items' },
   { id: 'trade', key: 'tab.trade' },
-  { id: 'guidance', key: 'tab.guidance' },
   { id: 'calcs', key: 'tab.calcs' },
   { id: 'config', key: 'tab.config' },
 ];

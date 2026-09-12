@@ -10,6 +10,14 @@
   gap: var(--space-3);
 }
 
+@media (min-width: 1800px) {
+  .skill-groups {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
 .skill-group {
   text-align: left;
   background: var(--surface-card);

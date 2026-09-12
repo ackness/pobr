@@ -188,6 +188,10 @@
 .calcs-skill-button:hover { color: var(--accent-gold); }
 .fulldps-row td:last-child { text-align: right; }
 .breakdown-table th:last-child { text-align: right; }
+@media (min-width: 1800px) {
+  .calcs-breakdowns { grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); }
+}
+
 @media (max-width: 900px) {
   .calcs-breakdowns { grid-template-columns: minmax(0, 1fr); }
 }

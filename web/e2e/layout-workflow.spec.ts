@@ -71,10 +71,5 @@ test('editing and analysis shortcuts reach their target without changing the cur
   await nav(page, 'Calcs').click();
   await page.getByRole('button', { name: 'Skill DPS ↓', exact: true }).click();
   await expect(page.locator('#fulldps-heading')).toBeFocused();
-  await nav(page, 'Build references').click();
-  await page.locator('.guidance-result').first().getByRole('button', { name: 'Compare details', exact: true }).click();
-  await expect(page.locator('.guidance-detail')).toBeFocused();
-  await page.locator('.guidance-detail .page-header button').click();
-  await expect(page.locator('.guidance-section-heading')).toBeFocused();
   expect(await saved(page)).toEqual(before);
 });

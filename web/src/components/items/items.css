@@ -369,3 +369,8 @@
 
 .item-detail { scroll-margin-top: var(--space-4); }
 .item-position { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); max-width: 100%; }
+
+@media (min-width: 1800px) {
+  .paper-doll { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .utility-row { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
