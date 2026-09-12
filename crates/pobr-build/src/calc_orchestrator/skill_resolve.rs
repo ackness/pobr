@@ -104,7 +104,7 @@ pub(crate) fn spawn_minions(
             // the fix, 36 → life 1013 vs 2262).
             let effective_gem_level = gem_level
                 .saturating_add(additional_gem_levels(build, data, skill_id))
-                .saturating_add(support_granted_gem_levels(build, data, skill_id));
+                .saturating_add(support_granted_gem_levels(group, data, skill_id));
             // (#12 companion) Companion determination: the granted skill has
             // `SkillType.Companion` and not `MinionsAreUndamagable` (matching vendor
             // CalcPerform.lua:3365-3367's includeSkill predicate) → this skill's
@@ -403,7 +403,7 @@ pub(crate) fn resolve_main_skill<'b>(
         && let Some((skill_id, level, set_index)) =
             pick_group_main_skill(data, group).or_else(|| pick_group_chosen_active(data, group))
         && let Some(resolved) =
-            resolve_skill_level_with_gem_bonus(build, data, skill_id, level, set_index)
+            resolve_skill_level_with_gem_bonus(build, data, group, skill_id, level, set_index)
     {
         return Some((resolved, group, skill_id));
     }
@@ -412,7 +412,7 @@ pub(crate) fn resolve_main_skill<'b>(
     for group in build.enabled_socket_groups() {
         if let Some((skill_id, level, set_index)) = pick_group_main_skill(data, group)
             && let Some(resolved) =
-                resolve_skill_level_with_gem_bonus(build, data, skill_id, level, set_index)
+                resolve_skill_level_with_gem_bonus(build, data, group, skill_id, level, set_index)
         {
             return Some((resolved, group, skill_id));
         }
@@ -433,7 +433,8 @@ pub fn resolve_main_skill_selection(build: &Build, data: &BuildData) -> Option<(
         && let Some(group) = build.socket_groups.get(n.saturating_sub(1))
         && let Some((skill_id, level, set_index)) =
             pick_group_main_skill(data, group).or_else(|| pick_group_chosen_active(data, group))
-        && resolve_skill_level_with_gem_bonus(build, data, skill_id, level, set_index).is_some()
+        && resolve_skill_level_with_gem_bonus(build, data, group, skill_id, level, set_index)
+            .is_some()
     {
         return Some((n.saturating_sub(1), skill_id.to_string()));
     }
@@ -444,7 +445,7 @@ pub fn resolve_main_skill_selection(build: &Build, data: &BuildData) -> Option<(
         .filter(|(_, g)| g.enabled)
         .find_map(|(i, group)| {
             let (skill_id, level, set_index) = pick_group_main_skill(data, group)?;
-            resolve_skill_level_with_gem_bonus(build, data, skill_id, level, set_index)?;
+            resolve_skill_level_with_gem_bonus(build, data, group, skill_id, level, set_index)?;
             Some((i, skill_id.to_string()))
         })
 }
@@ -471,12 +472,13 @@ pub fn resolve_main_skill_selection(build: &Build, data: &BuildData) -> Option<(
 pub(crate) fn resolve_skill_level_with_gem_bonus(
     build: &Build,
     data: &BuildData,
+    group: &SocketGroup,
     skill_id: &str,
     base_level: u32,
     set_index: Option<u32>,
 ) -> Option<ResolvedSkillLevel> {
     let bonus = additional_gem_levels(build, data, skill_id)
-        .saturating_add(support_granted_gem_levels(build, data, skill_id));
+        .saturating_add(support_granted_gem_levels(group, data, skill_id));
     if pobr_core::dbg_env!("POBR_DBG_GEMLVL").is_some() {
         eprintln!("[POBR_GEMLVL] {skill_id} base={base_level} bonus={bonus}");
     }
@@ -490,14 +492,18 @@ pub(crate) fn resolve_skill_level_with_gem_bonus(
 /// Chaos Mastery's "granting them an additional level"; this was the root cause of
 /// blood-mage's Coiling Bolts being 1 level short (L30→31), pinned by oracle per-source A/B).
 ///
-/// - Group location: the first enabled group with `skill_id` as a member (same
-///   iteration order as the resolve primary path's group walk); a support doesn't get
-///   granted levels itself (vendor only applies this to the active gem).
+/// - Scope: the caller supplies the skill's actual group, including an explicitly
+///   selected disabled group. Repeated skill ids in other groups cannot contribute.
+///   A support does not receive granted levels itself.
 /// - Compatibility: goes through [`super::triggers::judge_group_supports`]'s
 ///   four-stage judgement (an incompatible support's grant doesn't apply, matching
 ///   vendor's effectList gate); a typed variant (chaos/fire/…) matches against the
 ///   post-judgement `final_skill_types` (including the addSkillTypes fixed point), the same basis as vendor's tag evaluation.
-pub(crate) fn support_granted_gem_levels(build: &Build, data: &BuildData, skill_id: &str) -> u32 {
+pub(crate) fn support_granted_gem_levels(
+    group: &SocketGroup,
+    data: &BuildData,
+    skill_id: &str,
+) -> u32 {
     if data
         .granted_effects
         .get(skill_id)
@@ -505,43 +511,37 @@ pub(crate) fn support_granted_gem_levels(build: &Build, data: &BuildData, skill_
     {
         return 0;
     }
-    for group in build.enabled_socket_groups() {
-        if !group.gem_skills.iter().any(|g| g.skill_id == skill_id) {
-            continue;
-        }
-        let judgement = super::triggers::judge_group_supports(group, data, skill_id);
-        let mut total = 0u32;
-        for sup in &judgement.compatible {
-            let host = &group.gem_skills[sup.gem_index];
-            let stats = data.effect_stats(
-                &sup.effect_id,
-                host.gem_level,
-                host.quality,
-                sup.stat_set_index(group),
-            );
-            for s in &stats.base {
-                let Some(rest) = s.stat.strip_prefix("supported_") else {
-                    continue;
-                };
-                let Some(kind) = rest.strip_suffix("_skill_gem_level_+") else {
-                    continue;
-                };
-                let type_name = {
-                    let mut c = kind.chars();
-                    c.next()
-                        .map(|f| f.to_ascii_uppercase().to_string() + c.as_str())
-                        .unwrap_or_default()
-                };
-                if (kind == "active" || judgement.final_skill_types.contains(&type_name))
-                    && s.value > 0.0
-                {
-                    total += s.value as u32;
-                }
+    let judgement = super::triggers::judge_group_supports(group, data, skill_id);
+    let mut total = 0u32;
+    for sup in &judgement.compatible {
+        let host = &group.gem_skills[sup.gem_index];
+        let stats = data.effect_stats(
+            &sup.effect_id,
+            host.gem_level,
+            host.quality,
+            sup.stat_set_index(group),
+        );
+        for s in &stats.base {
+            let Some(rest) = s.stat.strip_prefix("supported_") else {
+                continue;
+            };
+            let Some(kind) = rest.strip_suffix("_skill_gem_level_+") else {
+                continue;
+            };
+            let type_name = {
+                let mut c = kind.chars();
+                c.next()
+                    .map(|f| f.to_ascii_uppercase().to_string() + c.as_str())
+                    .unwrap_or_default()
+            };
+            if (kind == "active" || judgement.final_skill_types.contains(&type_name))
+                && s.value > 0.0
+            {
+                total += s.value as u32;
             }
         }
-        return total;
     }
-    0
+    total
 }
 
 /// Scans every GemProperty mod source (equipment implicit/explicit/enchant + jewels +

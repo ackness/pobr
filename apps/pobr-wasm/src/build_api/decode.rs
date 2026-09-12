@@ -78,6 +78,9 @@ struct SocketGroupJson {
     weapon_set: Option<u8>,
     slot: Option<String>,
     enabled: bool,
+    /// PoB's 1-based selection among this group's active skills.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    main_active_skill: Option<usize>,
     /// PoB `<Skill source>` (equipment-granted skill groups get `Item:<id>:<name>`); `None` = a manual group.
     /// Must be passed through the whole chain (web state -> request ->
     /// encode); otherwise a granted group loses its source marker after a
@@ -202,6 +205,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                 weapon_set: g.weapon_set,
                 slot: g.slot.clone(),
                 enabled: g.enabled,
+                main_active_skill: g.main_active_skill,
                 source: g.source.clone(),
                 active_skill_id: g.active_skill_id.clone(),
                 gems: g
@@ -573,6 +577,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 weapon_set: None,
                 slot: None,
                 enabled: true,
+                main_active_skill: None,
                 source: None,
                 active_skill_id: Some(active),
                 gems,

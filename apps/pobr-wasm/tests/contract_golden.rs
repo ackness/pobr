@@ -9,9 +9,8 @@
 use pobr_gamedata::repo_data_root;
 use serde_json::Value;
 
-/// The contract-version pin: whenever any key-set assertion in this file
-/// changes (= a shape change), both the Rust side's `SCHEMA_VERSION` and
-/// `web/src/api/types.ts::EXPECTED_SCHEMA_VERSION` must be bumped by 1.
+/// Breaking contract changes bump both schema constants. Optional fields
+/// with defaults can be added without changing the existing version.
 #[test]
 fn schema_version_pinned() {
     // v4: BuildJson preserves weapon sets; socket groups carry their set binding.
@@ -104,8 +103,16 @@ fn decode_build_json_shape() {
     assert_keys(&equipped[0], &["slot", "text"], "equipped[0]");
     let groups = json["socket_groups"].as_array().unwrap();
     assert!(!groups.is_empty());
+    let mut group_shape = groups[0].clone();
+    if let Some(main) = group_shape
+        .as_object_mut()
+        .unwrap()
+        .remove("main_active_skill")
+    {
+        assert!(main.as_u64().is_some(), "optional active-skill ordinal");
+    }
     assert_keys(
-        &groups[0],
+        &group_shape,
         &[
             "slot",
             "enabled",
@@ -250,6 +257,63 @@ fn calculate_build_json_main_group_override_changes_output() {
         "extra modifier should change the output (base={} overridden={})",
         es(&base),
         es(&overridden)
+    );
+}
+
+/// Materializing an imported multi-active group must retain PoB's selection
+/// through calculation and share-code export, including trigger groups.
+#[test]
+fn imported_group_main_skill_survives_materialization_and_export() {
+    ensure_data();
+    let xml = include_str!("../../../crates/pobr-build/tests/fixtures/coc_cast_on_crit.xml");
+    let code = pobr_build::encode_pob_code(xml).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    let groups: Vec<Value> = decoded["socket_groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|g| {
+            let mut group = g.clone();
+            group.as_object_mut().unwrap().remove("active_skill_id");
+            group
+        })
+        .collect();
+    assert_eq!(groups[0]["main_active_skill"], 3);
+    let request = serde_json::json!({
+        "character": decoded["character"],
+        "allocated_nodes": decoded["tree"]["allocated_nodes"],
+        "items": decoded["items"]["equipped"],
+        "socket_groups": groups,
+        "main_socket_group": decoded["main_socket_group"],
+        "config_inputs": decoded["config_inputs"],
+    });
+    let calculate = |request: &Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap()
+    };
+    let original = calculate(&serde_json::json!({"pob_code": code}));
+    let materialized = calculate(&request);
+    assert_eq!(original["main_skill"]["skill_id"], "FireballPlayer");
+    assert_eq!(materialized["main_skill"], original["main_skill"]);
+    let exported = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let redecoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&exported).unwrap()).unwrap();
+    assert_eq!(redecoded["socket_groups"][0]["main_active_skill"], 3);
+    assert_eq!(
+        calculate(&serde_json::json!({"pob_code": exported}))["main_skill"],
+        original["main_skill"]
+    );
+
+    // Older requests omit the optional ordinal and still select the first active.
+    let mut legacy = request;
+    legacy["socket_groups"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("main_active_skill");
+    assert_eq!(
+        calculate(&legacy)["main_skill"]["skill_id"],
+        "ArmourBreakerPlayer"
     );
 }
 
@@ -760,6 +824,7 @@ fn encode_build_roundtrip_matches_direct_calculation() {
                 "slot": g["slot"],
                 "enabled": g["enabled"],
                 "source": g["source"],
+                "main_active_skill": g["main_active_skill"],
                 "gems": g["gems"],
             })
         })

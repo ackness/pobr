@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { deflateSync, inflateSync } from 'node:zlib';
+import { readFileSync } from 'node:fs';
 
 const skill = (name: string, set?: 1 | 2) => `<Skill enabled="true" set1="${set !== 2}" set2="${set !== 1}"><Gem skillId="${name}Player" gemId="Metadata/Items/Gems/SkillGem${name}" level="5" quality="0" enabled="true"/></Skill>`;
 const xml = `<PathOfBuilding2>
@@ -21,6 +22,45 @@ async function importCode(page: Page, code: string) {
 async function saved(page: Page) {
   return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!));
 }
+
+test('an imported trigger group retains its main active skill through edits, reload and share', async ({ page }) => {
+  const source = readFileSync(new URL('../../crates/pobr-build/tests/fixtures/coc_cast_on_crit.xml', import.meta.url), 'utf8');
+  await page.goto('/');
+  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+  await importCode(page, deflateSync(source).toString('base64url'));
+  await expect(page.locator('.main-skill-select option:checked')).toContainText('Fireball');
+  expect((await saved(page)).state.socketGroups[0].main_active_skill).toBe(3);
+  const dps = await page.locator('.main-skill-section .stat-row dd').first().textContent();
+
+  // Earlier saves omitted this metadata; restore it only for unchanged gem order.
+  await page.evaluate(() => {
+    const snapshot = JSON.parse(localStorage.getItem('pobr-build-state')!);
+    delete snapshot.state.socketGroups[0].main_active_skill;
+    localStorage.setItem('pobr-build-state', JSON.stringify(snapshot));
+  });
+  await page.reload();
+  await expect(page.locator('.main-skill-select option:checked')).toContainText('Fireball', { timeout: 90_000 });
+  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  expect((await saved(page)).state.socketGroups[0].main_active_skill).toBe(3);
+  await expect(page.locator('.main-skill-section .stat-row dd').first()).toHaveText(dps!);
+
+  await page.getByRole('button', { name: 'Build', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate code', exact: true }).click();
+  const code = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
+  expect(inflateSync(Buffer.from(code, 'base64url')).toString('utf8')).toContain('mainActiveSkill="3"');
+  await importCode(page, code);
+  await expect(page.locator('.main-skill-select option:checked')).toContainText('Fireball');
+  await expect(page.locator('.main-skill-section .stat-row dd').first()).toHaveText(dps!);
+
+  await page.getByRole('button', { name: 'Skills', exact: true }).click();
+  await expect(page.locator('.skill-group-name')).toHaveText('Fireball');
+  await page.locator('.skill-group-title').click();
+  // Removing the preceding attack must shift the active ordinal, not select the meta shell.
+  await page.locator('.skill-gems .skill-remove').first().click();
+  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  expect((await saved(page)).state.socketGroups[0].main_active_skill).toBe(2);
+  await expect(page.locator('.main-skill-select option:checked')).toContainText('Fireball');
+});
 
 test('switch, reload, edit and share preserve the selected loadout and global fields', async ({ page }) => {
   await page.goto('/');

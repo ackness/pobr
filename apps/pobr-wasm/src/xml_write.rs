@@ -31,6 +31,7 @@ pub(crate) struct XmlSkillGroup {
     pub weapon_set: Option<u8>,
     pub slot: Option<String>,
     pub enabled: bool,
+    pub main_active_skill: Option<usize>,
     /// The source marker for a group granted by equipment (written back as
     /// `<Skill source>`, so round-tripping can tell it apart).
     pub source: Option<String>,
@@ -196,6 +197,9 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
         }
         if let Some(source) = &group.source {
             w!(w, r#" source="{}""#, esc_attr(source));
+        }
+        if let Some(main) = group.main_active_skill {
+            w!(w, r#" mainActiveSkill="{main}""#);
         }
         wln!(w, ">");
         for (gem_id, skill_id, level, quality) in &group.gems {

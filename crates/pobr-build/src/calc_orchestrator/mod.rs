@@ -452,7 +452,6 @@ pub fn calculate_with_data_session(
         data,
         options,
         &ctx.main_skill,
-        ctx.weapon.as_ref(),
         ctx.dmg_mult,
     );
 
@@ -1169,6 +1168,33 @@ fn stage_hand_sources(session: &mut CalculationSession, ctx: &StageCtx<'_>) {
         } else {
             vec![pobr_core::calc::HandSource::main_hand(wb)]
         };
+        // A skill with its own base critical chance keeps that source. Otherwise
+        // each hand uses its own weapon's locally modified base, before global
+        // CriticalStrikeChance increases. The main-hand value also serves the
+        // preliminary unscoped offence pass; the off-hand pass replaces it.
+        let skill_has_own_crit = ctx
+            .main_skill
+            .as_ref()
+            .is_some_and(|(skill, _, _)| skill.crit_chance.is_some_and(|c| c > 0.0));
+        if !skill_has_own_crit {
+            for source in &sources {
+                let off_hand = source.label == pobr_core::HandTag::OffHand;
+                let slot = if off_hand { "weapon2" } else { "weapon1" };
+                let origin =
+                    ModifierSource::new(SourceId::new(SourceKind::Item, format!("{slot}.base")))
+                        .with_slot(slot)
+                        .with_raw_text(format!("weapon base crit {}%", source.weapon.crit_chance));
+                session.add_modifiers(vec![
+                    Modifier::number(
+                        "SkillBaseCritChance",
+                        ModType::Base,
+                        source.weapon.crit_chance,
+                    )
+                    .with_tag(pobr_core::ModTag::condition("OffHandAttack", !off_hand))
+                    .with_origin(origin),
+                ]);
+            }
+        }
         session.set_hand_sources(sources, false);
     }
 }

@@ -557,16 +557,15 @@ pub(super) fn inject_enemy(
     }
 }
 
-/// Stages 1b/1b-ii/1c: main skill base mod / quality / unselected set / DoT flag /
+/// Stages 1b/1b-ii: main skill base mod / quality / unselected set / DoT flag /
 /// corpse explosion / crossbow reload / support / trigger injection + skill damage
-/// multiplier MORE + weapon base crit.
+/// multiplier MORE. Weapon base crit is injected with the hand sources.
 pub(super) fn inject_main_skill_mods(
     session: &mut CalculationSession,
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
     main_skill: &Option<(ResolvedSkillLevel, &SocketGroup, &str)>,
-    weapon: Option<&WeaponContribution>,
     dmg_mult: f64,
 ) {
     // 1b. Main skill cost / cooldown / base damage + this group's support gems'
@@ -631,27 +630,6 @@ pub(super) fn inject_main_skill_mods(
             .with_raw_text(format!("skill damage multiplier {dmg_mult:.2}"));
         session.add_modifiers(vec![
             Modifier::number("AddedDamage", ModType::More, (dmg_mult - 1.0) * 100.0)
-                .with_origin(origin),
-        ]);
-    }
-
-    // 1c. Weapon base crit chance → Weapon1-attributed BASE SkillBaseCritChance
-    //     (**attack skills only**; the base-material bucket, distinct from the mod
-    //     bucket — see the same-named comment in skill_base_modifiers). Spell skills
-    //     use their own base crit (injected by skill_base_modifiers) and don't pick up
-    //     weapon crit — so this is skipped when the main skill has its own crit_chance.
-    let main_skill_has_own_crit = main_skill
-        .as_ref()
-        .map(|(s, _, _)| s.crit_chance.is_some_and(|c| c > 0.0))
-        .unwrap_or(false);
-    if let Some(w) = weapon
-        && w.crit_chance > 0.0
-        && !main_skill_has_own_crit
-    {
-        let origin = ModifierSource::new(SourceId::new(SourceKind::Item, "weapon1.base"))
-            .with_raw_text(format!("weapon base crit {}%", w.crit_chance));
-        session.add_modifiers(vec![
-            Modifier::number("SkillBaseCritChance", ModType::Base, w.crit_chance)
                 .with_origin(origin),
         ]);
     }
@@ -824,6 +802,18 @@ pub(super) fn inject_items(
         let is_weapon_item = matches!(slot, EquipmentSlot::Weapon1 | EquipmentSlot::Weapon2)
             && data.weapon_base(&item.base.to_string()).is_some();
         if is_weapon_item {
+            // Local critical chance is already folded into the weapon base.
+            // Strip it even when this weapon is not an active damage source,
+            // so spells and attacks using another source cannot inherit it.
+            filtered
+                .implicit_texts
+                .retain(|t| parse_weapon_local_crit(t).is_none());
+            filtered
+                .modifier_texts
+                .retain(|t| parse_weapon_local_crit(t).is_none());
+            filtered
+                .enchant_texts
+                .retain(|t| parse_weapon_local_crit(t).is_none());
             session
                 .add_weapon_item(slot, &filtered)
                 .map_err(|e| BuildError::Parse(e.to_string()))?;

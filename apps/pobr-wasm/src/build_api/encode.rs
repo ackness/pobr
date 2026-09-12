@@ -174,6 +174,7 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
                 weapon_set: g.weapon_set,
                 slot: g.slot.clone(),
                 enabled: g.enabled,
+                main_active_skill: g.main_active_skill,
                 source: g.source.clone(),
                 gems,
             }

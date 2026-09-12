@@ -96,7 +96,12 @@ export function SkillsPanel({ session, lang, focusOptimizer }: Props) {
         {groups.map((group, idx) => {
           const isMain = idx === mainIndex;
           const isOpen = idx === openIdx;
-          const [active, ...supportGems] = group.gems;
+          const activeGems = group.gems.filter(gem => !byId.get(gem.skill_id)?.is_support);
+          const selectedActive = activeGems[Math.min(Math.max((group.main_active_skill ?? 1) - 1, 0), activeGems.length - 1)];
+          const active = session.calc?.main_skill?.group_index === idx
+            ? group.gems.find(gem => gem.skill_id === session.calc?.main_skill?.skill_id) ?? selectedActive
+            : selectedActive;
+          const supportGems = group.gems.filter(gem => gem !== active);
           const currentSupports = group.gems.filter(gem => tradeById.get(gem.skill_id)?.is_support);
           const eligibleIds = new Set((isOpen ? eligibleSupports(group, tradeGems, session.character?.level ?? 1).gems : [])
             .filter(gem => lineageAvailable(gem, groups, idx) && supportSetCompatible(group, [...currentSupports,
@@ -217,9 +222,16 @@ export function SkillsPanel({ session, lang, focusOptimizer }: Props) {
                         className="skill-remove"
                         disabled={session.busy}
                         title={tt('skills.removeGem')}
-                        onClick={() =>
-                          updateGroup(idx, { gems: group.gems.filter((_, i) => i !== gemIdx) })
-                        }
+                        onClick={() => {
+                          const removedActive = activeGems.indexOf(gem);
+                          const selected = Math.min(Math.max((group.main_active_skill ?? 1) - 1, 0), activeGems.length - 1);
+                          const nextSelected = removedActive >= 0 && removedActive <= selected
+                            ? Math.max(0, selected - 1) : selected;
+                          updateGroup(idx, {
+                            gems: group.gems.filter((_, i) => i !== gemIdx),
+                            main_active_skill: group.main_active_skill == null ? undefined : nextSelected + 1,
+                          });
+                        }}
                       >
                         ×
                       </button>

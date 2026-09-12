@@ -61,7 +61,8 @@ pub(crate) fn weapon_contribution(
 /// mirroring PoB2's `CalcSetup.lua` weaponData).
 ///
 /// - Physical damage = (base + local adds) × (1 + local increased%) × (1 + quality/100);
-/// - Attack rate = `1000 / speed_ms × (1 + local attack-speed%)`; crit chance = `crit_chance / 100`;
+/// - Attack rate = `1000 / speed_ms × (1 + local attack-speed%)`;
+/// - Crit chance = `(base crit + local flat) × (1 + local increased%)`, rounded to two decimals;
 /// - Weapon bits derived from **this item's** own base category (matching vendor's
 ///   getWeaponFlags; the same `weapon_types.json` table as the cfg side's
 ///   [`weapon_cfg_flags`], so the Weapon1 item's bits match the global cfg bits).
@@ -80,6 +81,15 @@ pub(crate) fn weapon_item_contribution(
     let (local_add_min, local_add_max) = weapon_local_phys_adds(item);
     let local_inc = 1.0 + weapon_local_phys_inc(item) / 100.0;
     let local_as = 1.0 + weapon_local_attack_speed(item) / 100.0;
+    let mut crit_base = f64::from(w.crit_chance) / 100.0;
+    let mut crit_inc = 0.0;
+    for (kind, value) in weapon_mod_texts(item).filter_map(|t| parse_weapon_local_crit(t)) {
+        match kind {
+            ModType::Base => crit_base += value,
+            ModType::Inc => crit_inc += value,
+            _ => unreachable!("local crit parser only returns BASE or INC"),
+        }
+    }
     let base_rate = if w.speed_ms > 0 {
         1000.0 / f64::from(w.speed_ms)
     } else {
@@ -95,7 +105,9 @@ pub(crate) fn weapon_item_contribution(
         phys_min: (f64::from(w.physical_min) + local_add_min) * local_inc * quality,
         phys_max: (f64::from(w.physical_max) + local_add_max) * local_inc * quality,
         attack_rate: base_rate * local_as,
-        crit_chance: f64::from(w.crit_chance) / 100.0,
+        // Item.lua's weaponData.CritChance is rounded to two decimal places
+        // before global increases and per-hand hit-chance corrections.
+        crit_chance: ((crit_base * (1.0 + crit_inc / 100.0) * 100.0) + 0.5).floor() / 100.0,
         flags,
     })
 }
@@ -116,10 +128,6 @@ pub(crate) fn weapon_item_contribution(
 /// - vendor also trims this pass by the skill's weapon restrictions (a `weaponTypes`
 ///   allowlist); PoBR doesn't model weapon restrictions, and approximates it as
 ///   "dual wielding always produces one";
-/// - per-hand base crit: `WeaponBase::crit_chance` isn't consumed within the hand pass
-///   yet (the global `CriticalStrikeChance BASE` still takes the main-hand's value, see
-///   orchestration stage 1c), so the off-hand's base crit just reuses the main hand's —
-///   per-hand crit consumption will be closed out along with the crit pass semantics.
 pub(crate) fn dual_wield_off_hand_contribution(
     build: &Build,
     data: &BuildData,
@@ -344,6 +352,29 @@ pub(crate) fn weapon_local_attack_speed(item: &Item) -> f64 {
                 .and_then(|n| n.trim().parse::<f64>().ok())
         })
         .sum()
+}
+
+/// Bare weapon critical chance is local (Item.lua `calcLocal("CritChance")`).
+/// Exact numeric forms leave global, attack/spell-specific and conditional
+/// modifiers in the global pipeline. Shared by weapon base assembly and stripping.
+pub(crate) fn parse_weapon_local_crit(text: &str) -> Option<(ModType, f64)> {
+    let clean = clean_item_text(text);
+    let prefix = clean
+        .strip_suffix("critical hit chance")
+        .or_else(|| clean.strip_suffix("critical strike chance"))?;
+    for (suffix, kind, sign) in [
+        ("% increased ", ModType::Inc, 1.0),
+        ("% reduced ", ModType::Inc, -1.0),
+        ("% to ", ModType::Base, 1.0),
+        ("% ", ModType::Base, 1.0),
+    ] {
+        if let Some(number) = prefix.strip_suffix(suffix)
+            && let Ok(value) = number.trim().parse::<f64>()
+        {
+            return Some((kind, value * sign));
+        }
+    }
+    None
 }
 
 /// Range sum of "Adds N to M Physical Damage" (local mod) on the weapon.

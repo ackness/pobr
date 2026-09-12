@@ -904,7 +904,7 @@ pub(crate) fn warcry_skill_specs(
             // 51+q11=62, matching oracle exactly).
             let level = gem.gem_level
                 + additional_gem_levels(build, data, &gem.skill_id)
-                + support_granted_gem_levels(build, data, &gem.skill_id);
+                + support_granted_gem_levels(group, data, &gem.skill_id);
             let es = data.effect_stats(&gem.skill_id, level, gem.quality, gem.stat_set_index);
             let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
             let stats: Vec<pobr_data::catalog::SkillDamageStat> = es.all().cloned().collect();

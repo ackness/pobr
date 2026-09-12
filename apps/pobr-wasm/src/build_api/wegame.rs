@@ -537,6 +537,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
             }
         }
         groups.push(SocketGroupJson {
+            main_active_skill: None,
             weapon_set: None,
             slot: None,
             enabled: true,

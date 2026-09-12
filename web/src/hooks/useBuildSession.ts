@@ -280,6 +280,15 @@ function itemName(text: string): string {
 function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState {
   return {
     ...state,
+    socketGroups: state.socketGroups.map((group, index) => {
+      const original = decoded.socket_groups[index];
+      // Only restore missing metadata when the saved gem order still matches
+      // the source. Edited groups cannot safely inherit an old ordinal.
+      return group.main_active_skill === undefined && original?.main_active_skill != null
+        && group.gems.length === original.gems.length
+        && group.gems.every((gem, i) => gem.skill_id === original.gems[i].skill_id)
+        ? { ...group, main_active_skill: original.main_active_skill } : group;
+    }),
     params: {
       ...state.params,
       main_socket_group: state.params.main_socket_group ?? decoded.main_socket_group ?? undefined,
@@ -298,6 +307,7 @@ function materialize(
       weapon_set: g.weapon_set,
       slot: g.slot,
       enabled: g.enabled,
+      main_active_skill: g.main_active_skill,
       source: g.source,
       gems: g.gems.map((gem) => ({
         skill_id: gem.skill_id,
