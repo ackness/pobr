@@ -91,6 +91,9 @@ export interface BuildSession {
   /** 笔记（本地持久化；导入 build 时被其 <Notes> 覆盖）。 */
   notes: string;
   setNotes: (text: string) => void;
+  /** Unapplied item text, retained across tabs until saved, cancelled or the build is replaced. */
+  editorDrafts: Record<string, string>;
+  setEditorDraft: (key: string, text: string | null) => void;
   /** 局部注释（装备/技能组/珠宝旁的说明；随分享 code 与存档往返）。 */
   annotations: Annotations;
   /** 写/清一条局部注释（空文本 = 删除；不触发重算）。 */
@@ -143,6 +146,7 @@ export interface BuildSession {
   setFlasks: (flasks: SlotItemInput[]) => void;
   /** 整份替换树插槽珠宝（Tree 页珠宝编辑器）。 */
   setJewels: (jewels: JewelInput[]) => void;
+  removeJewelSocket: (socket: number, allocatedNodes: number[]) => void;
   updateParams: (patch: Partial<CalcParams>) => void;
   setConfigInput: (key: string, value: ConfigInputValue | null) => void;
   runAttribution: (fields: string[]) => Promise<AttributionResponse>;
@@ -357,8 +361,24 @@ export function useBuildSession(): BuildSession {
     () => localStorage.getItem('pobr-notes') ?? '',
   );
 
-  const notesRef = useRef('');
+  const notesRef = useRef(notes);
   const stateRef = useRef<BuildState | null>(null);
+  const [editorDrafts, setEditorDrafts] = useState<Record<string, string>>({});
+  const setEditorDraft = useCallback((key: string, text: string | null) => {
+    setEditorDrafts(previous => {
+      const next = { ...previous };
+      if (text === null) delete next[key];
+      else next[key] = text;
+      return next;
+    });
+  }, []);
+  const hasDrafts = Object.keys(editorDrafts).length > 0;
+  useEffect(() => {
+    if (!hasDrafts) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [hasDrafts]);
 
   const setNotes = useCallback((text: string) => {
     setNotesState(text);
@@ -374,6 +394,7 @@ export function useBuildSession(): BuildSession {
    * 覆盖状态，切之前要据此提醒。
    */
   const cleanVersionRef = useRef(0);
+  const cleanNotesRef = useRef(notes);
   /** `stateVersion` 的同步副本（apply 内自增，避免在 setState updater 里做副作用）。 */
   const versionRef = useRef(0);
 
@@ -420,7 +441,11 @@ export function useBuildSession(): BuildSession {
       versionRef.current += 1;
       setStateVersion(versionRef.current);
       // 整份替换（导入 / 切 loadout）落地即为新基线，不算「未保存改动」。
-      if (opts?.clean) cleanVersionRef.current = versionRef.current;
+      if (opts?.clean) {
+        cleanVersionRef.current = versionRef.current;
+        cleanNotesRef.current = notesRef.current;
+        setEditorDrafts({});
+      }
       saveToStorage(next, notesRef.current);
       recalc(next);
     },
@@ -565,9 +590,7 @@ export function useBuildSession(): BuildSession {
         mergeImportedIntoLibrary(decoded);
         // <Notes> 里可能带 PoBR 注释标记段：拆成总览笔记 + 局部注释。
         const { overview, annotations } = splitNotes(decoded.notes ?? '');
-        if (decoded.notes) {
-          setNotes(overview);
-        }
+        setNotes(overview);
         apply({
           pobCode: isBuildFile ? null : code,
           character: {
@@ -616,7 +639,7 @@ export function useBuildSession(): BuildSession {
         const decoded = await (await getBackend()).switchLoadout(code, sel);
         setBuild(decoded);
         const { overview, annotations } = splitNotes(decoded.notes ?? '');
-        if (decoded.notes) setNotes(overview);
+        setNotes(overview);
         apply({
           pobCode: decoded.code,
           character: {
@@ -680,6 +703,7 @@ export function useBuildSession(): BuildSession {
   const newBuild = useCallback(
     (className: string, ascendancyName: string) => {
       setBuild(null);
+      setNotes('');
       apply({
         pobCode: null,
         character: { level: 1, class_name: className, ascendancy_name: ascendancyName },
@@ -693,7 +717,7 @@ export function useBuildSession(): BuildSession {
         params: { config_inputs: {} },
       }, { clean: true });
     },
-    [apply],
+    [apply, setNotes],
   );
 
   const setSocketGroups = useCallback(
@@ -736,6 +760,12 @@ export function useBuildSession(): BuildSession {
     },
     [apply, state],
   );
+
+  const removeJewelSocket = useCallback((socket: number, allocatedNodes: number[]) => {
+    const current = stateRef.current;
+    if (!current) return;
+    apply({ ...current, allocatedNodes, jewels: current.jewels.filter(jewel => jewel.socket_node !== socket) });
+  }, [apply]);
 
   const setCharacter = useCallback(
     (patch: Partial<CharacterState>) => {
@@ -882,6 +912,7 @@ export function useBuildSession(): BuildSession {
       if (!saved) {
         throw new Error('invalid session file');
       }
+      setEditorDrafts({});
       setBuild(null);
       notesRef.current = saved.notes;
       setNotesState(saved.notes);
@@ -1007,6 +1038,8 @@ export function useBuildSession(): BuildSession {
     error,
     notes,
     setNotes,
+    editorDrafts,
+    setEditorDraft,
     annotations: state?.annotations ?? {},
     setAnnotation,
     removeSocketGroup,
@@ -1027,10 +1060,11 @@ export function useBuildSession(): BuildSession {
     setItems,
     setFlasks,
     setJewels,
+    removeJewelSocket,
     currentRequest,
     stateVersion,
-    isDirty: stateVersion > cleanVersionRef.current,
-    hasBuildContent: !!build || !!state && Boolean(
+    isDirty: stateVersion > cleanVersionRef.current || notes !== cleanNotesRef.current || hasDrafts,
+    hasBuildContent: !!build || hasDrafts || !!notes.trim() || !!state && Boolean(
       state.character.level > 1 || state.character.ascendancy_name
       || state.items.length || state.flasks.length || state.jewels.length
       || state.socketGroups.length || state.allocatedNodes.length

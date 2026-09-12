@@ -97,6 +97,7 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
     detailRef.current?.focus({ preventScroll: true });
     detailRef.current?.scrollIntoView({ block: 'start' });
   }, [selectedId]);
+  const samplesRef = useRef<HTMLDivElement>(null);
   const open = (id: string) => {
     setSelectedId(id);
     if (id === selectedId) detailRef.current?.scrollIntoView({ block: 'start' });
@@ -126,19 +127,7 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
           <option value={index} key={index}>{index + 1}. {gemName(gem.skill_id)}</option>; })}
       </select></label>
     </div>
-    <h3>{gt('next')}</h3>
-    {(!!session.calc?.unsupported_modifiers.length || !!session.calc?.item_errors.length) && <p className="guidance-notice">{gt('partial')}</p>}
-    <div className="guidance-actions">
-      <article className="guidance-card"><span className="guidance-step">01</span><h4>{gt('skills')}</h4><p>{gt('skillHint')}</p>
-        <button disabled={groupIndex === undefined || session.busy} onClick={() => groupIndex !== undefined && onSkills(groupIndex)}>{gt('planSkills')} →</button></article>
-      <article className="guidance-card"><span className="guidance-step">02</span><h4>{gaps.length ? gt('gaps') : gt('gear')}</h4>
-        {gaps.length > 0 && <ul className="guidance-gap-list">{gaps.map(gap => <li key={gap.stat}>{statNameLabel(lang, gap.stat)} <strong>{gap.value.toFixed(0)}% → {gap.target}%</strong></li>)}</ul>}
-        <p>{gaps.length ? gt('gapHint') : gt('gearHint')}</p><button onClick={onEquipment}>{gt('planGear')} →</button></article>
-      <article className="guidance-card"><span className="guidance-step">03</span><h4>{gt('tree')}</h4><p>{gt('treeHint')}</p>
-        <button onClick={onTree}>{gt('planTree')} →</button></article>
-    </div>
-    <button className="guidance-config" onClick={onConfig}>{gt('configure')} →</button>
-
+    <div className="guidance-entry">
     <article className="guidance-card guidance-live"><div><h3>{gt('live')}</h3><p>{gt('leagueHint')}</p></div>
       <div className="guidance-filters"><label>{gt('league')}<select value={league} onChange={event => setLeague(event.target.value)}>
         {LEAGUES.map(([id, name]) => <option key={id} value={id}>{name}</option>)}<option value="custom">{gt('otherLeague')}</option>
@@ -148,7 +137,13 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
         {searchUrl && <a className="guidance-link" href={searchUrl} target="_blank" rel="noreferrer">{gt('searchLive')} ↗</a>}
         <a href="https://poe.ninja/poe2/builds/" target="_blank" rel="noreferrer">{gt('leagues')} ↗</a></div>
     </article>
-    <div className="guidance-section-heading"><h3>{gt('samples')} <span>{ranked.length}</span></h3>
+    <article className="guidance-card guidance-paste"><h3>{gt('pasteTitle')}</h3><p>{gt('pasteHint')}</p>
+      <textarea aria-label={gt('paste')} placeholder={gt('paste')} value={code} onChange={event => setCode(event.target.value)} rows={3} spellCheck={false} />
+      <button onClick={() => void paste()} disabled={!code.trim() || decoding}>{decoding ? gt('loading') : gt('compare')}</button>
+      {pasteError && <p role="alert">{pasteError}</p>}
+    </article>
+    </div>
+    <div className="guidance-section-heading" ref={samplesRef} tabIndex={-1}><h3>{gt('samples')} <span>{ranked.length}</span></h3>
       <details><summary>{gt('score')}</summary><p>{gt('formula')}</p></details></div>
     <p className="guidance-notice">{gt('history')}</p>
     <div className="guidance-filters"><input className="guidance-search" aria-label={gt('search')} placeholder={gt('search')} value={query} onChange={event => setQuery(event.target.value)} />
@@ -168,13 +163,13 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
       <div className="guidance-row-actions"><button aria-pressed={selectedId === reference.id} onClick={() => open(reference.id)}>{gt('details')}</button>
         {reference.source.url && <a href={reference.source.url} target="_blank" rel="noreferrer">{gt('source')} ↗</a>}</div>
     </article>)}</div>
-    <article className="guidance-card guidance-paste"><h3>{gt('pasteTitle')}</h3><p>{gt('pasteHint')}</p>
-      <textarea aria-label={gt('paste')} placeholder={gt('paste')} value={code} onChange={event => setCode(event.target.value)} rows={3} spellCheck={false} />
-      <button onClick={() => void paste()} disabled={!code.trim() || decoding}>{decoding ? gt('loading') : gt('compare')}</button>
-      {pasteError && <p role="alert">{pasteError}</p>}
-    </article>
     {selected && <div ref={detailRef} className="guidance-detail" tabIndex={-1} aria-label={gt('details')}>
-      <PageHeader id="reference-heading" title={`${gt('reference')} · ${selectedGroup?.active_skill_id ? gemName(selectedGroup.active_skill_id) : className(selected.build.character.ascendancy_name)}`} description={gt('differences')} />
+      <PageHeader id="reference-heading" title={`${gt('reference')} · ${selectedGroup?.active_skill_id ? gemName(selectedGroup.active_skill_id) : className(selected.build.character.ascendancy_name)}`} description={gt('differences')}>
+        <button onClick={() => {
+          samplesRef.current?.focus({ preventScroll: true });
+          samplesRef.current?.scrollIntoView({ block: 'start' });
+        }}>← {gt('samples')}</button>
+      </PageHeader>
       <h3>{gt('skills')}</h3><p className="guidance-muted">{gt('mainOnly')}</p>
       <div className="guidance-table-wrap"><table className="guidance-table"><thead><tr><th>{gt('gem')}</th><th>{gt('current')}</th><th>{gt('reference')}</th></tr></thead>
         <tbody>{compareGems(currentGroup?.gems ?? [], selectedGroup?.gems ?? []).map(row => <tr key={row.id}>
@@ -189,6 +184,19 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
         <PassiveList title={gt('reference')} nodes={keyPassives(selected.build.tree.allocated_nodes, nodes)} lang={lang} /></div>
       <details className="guidance-card"><summary>{gt('notes')}</summary><p>{gt('notesHint')}</p><pre className="guidance-notes">{referenceNotes ? parsePobColorText(referenceNotes).map(part => part.text).join('') : gt('noNotes')}</pre></details>
     </div>}
+    <h3>{gt('next')}</h3>
+    {(!!session.calc?.unsupported_modifiers.length || !!session.calc?.item_errors.length) && <p className="guidance-notice">{gt('partial')}</p>}
+    <div className="guidance-actions">
+      <article className="guidance-card"><span className="guidance-step">01</span><h4>{gt('skills')}</h4><p>{gt('skillHint')}</p>
+        <button disabled={groupIndex === undefined || session.busy} onClick={() => groupIndex !== undefined && onSkills(groupIndex)}>{gt('planSkills')} →</button></article>
+      <article className="guidance-card"><span className="guidance-step">02</span><h4>{gaps.length ? gt('gaps') : gt('gear')}</h4>
+        {gaps.length > 0 && <ul className="guidance-gap-list">{gaps.map(gap => <li key={gap.stat}>{statNameLabel(lang, gap.stat)} <strong>{gap.value.toFixed(0)}% → {gap.target}%</strong></li>)}</ul>}
+        <p>{gaps.length ? gt('gapHint') : gt('gearHint')}</p><button onClick={onEquipment}>{gt('planGear')} →</button></article>
+      <article className="guidance-card"><span className="guidance-step">03</span><h4>{gt('tree')}</h4><p>{gt('treeHint')}</p>
+        <button onClick={onTree}>{gt('planTree')} →</button></article>
+    </div>
+    <button className="guidance-config" onClick={onConfig}>{gt('configure')} →</button>
+
   </section>;
 }
 

@@ -145,6 +145,7 @@ export function ConfigPanel({ session, lang }: Props) {
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [query, setQuery] = useState('');
+  const [configuredOnly, setConfiguredOnly] = useState(false);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['General']));
   // 词条文本型 list 选项（如任务奖励 "+5 to all Attributes"）的反查翻译缓存。
   const [listLabels, setListLabels] = useState<Record<string, string>>({});
@@ -156,7 +157,8 @@ export function ConfigPanel({ session, lang }: Props) {
       .then((b) => b.loadConfigOptions())
       .then(result => {
         if (cancelled) return;
-        setOptions(result);
+        // The calculation catalog resolves repeated variables with the last definition.
+        setOptions([...new Map(result.map(option => [option.var, option])).values()]);
         setLoadState('ready');
       })
       .catch(() => { if (!cancelled) setLoadState('error'); });
@@ -202,10 +204,10 @@ export function ConfigPanel({ session, lang }: Props) {
     const q = query.trim().toLowerCase();
     const filtered = options.filter(
       (o) =>
-        q === '' ||
+        (!configuredOnly || effective(o.var) !== undefined) && (q === '' ||
         (o.label ?? '').toLowerCase().includes(q) ||
         o.var.toLowerCase().includes(q) ||
-        (CONFIG_LABEL_ZH[o.var] ?? '').includes(query.trim()),
+        (CONFIG_LABEL_ZH[o.var] ?? '').includes(query.trim())),
     );
     const bySection = new Map<string, ConfigOption[]>();
     for (const option of filtered) {
@@ -216,9 +218,10 @@ export function ConfigPanel({ session, lang }: Props) {
     const known = SECTION_ORDER.filter((s) => bySection.has(s));
     const rest = [...bySection.keys()].filter((s) => !SECTION_ORDER.includes(s)).sort();
     return [...known, ...rest].map((name) => ({ name, options: bySection.get(name)! }));
-  }, [options, query]);
+  }, [options, query, configuredOnly, overrides, buildInputs]);
 
-  const searching = query.trim() !== '';
+  const searching = query.trim() !== '' || configuredOnly;
+  const configuredCount = options.filter(option => effective(option.var) !== undefined).length;
 
   // build 自带但不在目录里的键（导入 build 的自定义/未映射 Input）→ 高级区可见。
   const extraKeys = useMemo(() => {
@@ -264,6 +267,8 @@ export function ConfigPanel({ session, lang }: Props) {
           onChange={(e) => setQuery(e.target.value)}
           aria-label={tt('config.search')}
         />
+        <label className="config-filter"><input type="checkbox" checked={configuredOnly}
+          onChange={event => setConfiguredOnly(event.target.checked)} />{tt('config.configuredOnly')} ({configuredCount})</label>
       </div>
       <p className="config-hint">{tt('config.editHint')}</p>
       {loadState === 'loading' && <p role="status">{tt('config.loading')}</p>}
@@ -272,7 +277,7 @@ export function ConfigPanel({ session, lang }: Props) {
       </div>}
       {loadState === 'ready' && searching && sections.length === 0 && <div className="search-empty" role="status">
         <p>{tt('common.noResults')}</p>
-        <button onClick={() => setQuery('')}>{tt('common.clearSearch')}</button>
+        <button onClick={() => { setQuery(''); setConfiguredOnly(false); }}>{tt(configuredOnly ? 'config.showAll' : 'common.clearSearch')}</button>
       </div>}
 
       {sections.map(({ name, options: sectionOptions }) => {

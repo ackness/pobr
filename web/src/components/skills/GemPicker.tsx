@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { GemCatalogEntry } from '../../api/types';
 import { bindT, type Lang } from '../../lib/i18n';
 import { gemTagLabels, gemTagMatches } from '../../lib/gemTags';
+import { usePopupPosition } from '../../hooks/usePopupPosition';
 
 /** 宝石颜色 → 语义 CSS 变量（tokens.css）。 */
 const COLOUR_VAR: Record<string, string> = {
@@ -39,6 +40,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
   const [highlight, setHighlight] = useState(0);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listId = useId();
 
@@ -67,6 +69,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
       )
       .slice(0, 200);
   }, [entries, query, colour]);
+  usePopupPosition(rootRef, panelRef, open && !disabled, filtered, 340);
 
   useEffect(() => setHighlight(0), [query, colour, open]);
   useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
@@ -133,7 +136,7 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
         }}
       />
       {open && !disabled && (
-        <div className="gem-picker-panel">
+        <div className="gem-picker-panel" ref={panelRef}>
           <div className="gem-picker-chips" role="group" aria-label={tt('picker.colour')}>
             {chips.map((chip) => (
               <button

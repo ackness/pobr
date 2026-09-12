@@ -180,6 +180,27 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
     <PageHeader id="trade-heading" title={tt('trade.title')} description={tt('trade.hint')}>
       <span className="trade-local-badge"><span />{tt('trade.localBadge')}</span>
     </PageHeader>
+    <div className="upgrade-evaluation">
+      <div className="trade-objectives" role="group" aria-label={tt('opt.objective')} ref={goalRef} tabIndex={-1}>
+        <span className="trade-field-label">{tt('opt.objective')}</span>
+        <div>{TRADE_OBJECTIVES.map(entry => <button key={entry.id} aria-pressed={preset === entry.id}
+          onClick={() => setPreset(entry.id)}>{tt(entry.labelKey as UiKey)}</button>)}</div>
+      </div>
+        {session.socketGroups.length > 0 && <div className="trade-skill-context"><span>{tt('sidebar.mainSkill')}</span>
+          <AppSelect value={String(mainGroup)} ariaLabel={tt('trade.analysisSkill')} disabled={session.busy}
+            options={session.socketGroups.flatMap((group, index) => group.enabled && group.gems.length ? [{ value: String(index), label: skillName(group.gems[0].skill_id) }] : [])}
+            onChange={value => session.updateParams({ main_socket_group: Number(value) })} />
+          <span className="trade-skill-hint">{tt('trade.skillContext')}</span></div>}
+    <WeaponSetControl session={session} lang={lang} />
+    <div className="trade-safety-settings">
+      {preset === 'balanced' && <label><input type="checkbox" checked={keepEhp} onChange={event => setKeepEhp(event.target.checked)} />{tt('trade.keepEhp')}</label>}
+      <label><input type="checkbox" checked={resistanceFirst} onChange={event => setResistanceFirst(event.target.checked)} />{tt('trade.resistanceFirst')}</label>
+      {resistanceFirst && <label>{tt('trade.resistanceTarget')}<input type="number" min={0} max={90} value={resistanceTarget} aria-label={tt('trade.resistanceTarget')}
+        onChange={event => { const value = Number(event.target.value); if (Number.isFinite(value) && value >= 0 && value <= 90) setResistanceTarget(value); }} />%</label>}
+      <details className="trade-goal-help"><summary>{tt('trade.goalHelp')}</summary><p>{tt(preset === 'balanced' ? 'trade.balancedHint' : 'trade.resistanceHint')}</p></details>
+    </div>
+    <details className="upgrade-goal-details" open={!!goal.cStat}><summary>{ut('advancedGoal')}{goal.cStat ? ` · ${statNameLabel(lang, goal.cStat)}` : ''}</summary><div className="opt-controls"><ObjectiveEditor value={goal} onChange={setGoal} lang={lang} constraintsOnly /></div></details>
+    </div>
     <div className="upgrade-paths">
       <button onClick={() => analysisRef.current?.scrollIntoView({block:'start'})}><SlotSymbol slot="helmet" /><strong>{ut('equipment')}</strong><span>{ut('equipmentHint')}</span></button>
       <button disabled={!onSkills || !session.socketGroups[mainGroup]} onClick={() => onSkills?.(mainGroup)}><SlotSymbol slot="gems" /><strong>{ut('supports')}</strong><span>{ut('supportsHint')}</span></button>
@@ -190,11 +211,6 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
       goalLabel={tt(TRADE_OBJECTIVES.find(entry => entry.id === preset)!.labelKey as UiKey)}
       onEditGoal={() => { goalRef.current?.scrollIntoView({ block: 'start' }); goalRef.current?.focus({ preventScroll: true }); }} />
     <div className="trade-setup">
-      <div className="trade-objectives" role="group" aria-label={tt('opt.objective')} ref={goalRef} tabIndex={-1}>
-        <span className="trade-field-label">{tt('opt.objective')}</span>
-        <div>{TRADE_OBJECTIVES.map(entry => <button key={entry.id} aria-pressed={preset === entry.id}
-          onClick={() => setPreset(entry.id)}>{tt(entry.labelKey as UiKey)}</button>)}</div>
-      </div>
       <label className="trade-price-field"><span className="trade-field-label">{tt('trade.budget')}</span>
         <span className="trade-budget"><input type="number" min={0} aria-label={tt('trade.budget')} value={budget} placeholder={tt('trade.budgetAny')}
           onChange={event => { setBudget(event.target.value); localStorage.setItem(BUDGET_KEY, event.target.value); }} />
@@ -214,20 +230,6 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
           onChange={event => { setLeague(event.target.value); localStorage.setItem(leagueKey(realm), event.target.value); }} />}
       </div>
     </div>
-        {session.socketGroups.length > 0 && <div className="trade-skill-context"><span>{tt('sidebar.mainSkill')}</span>
-          <AppSelect value={String(mainGroup)} ariaLabel={tt('trade.analysisSkill')} disabled={session.busy}
-            options={session.socketGroups.flatMap((group, index) => group.enabled && group.gems.length ? [{ value: String(index), label: skillName(group.gems[0].skill_id) }] : [])}
-            onChange={value => session.updateParams({ main_socket_group: Number(value) })} />
-          <span className="trade-skill-hint">{tt('trade.skillContext')}</span></div>}
-    <WeaponSetControl session={session} lang={lang} />
-    <div className="trade-safety-settings">
-      {preset === 'balanced' && <label><input type="checkbox" checked={keepEhp} onChange={event => setKeepEhp(event.target.checked)} />{tt('trade.keepEhp')}</label>}
-      <label><input type="checkbox" checked={resistanceFirst} onChange={event => setResistanceFirst(event.target.checked)} />{tt('trade.resistanceFirst')}</label>
-      {resistanceFirst && <label>{tt('trade.resistanceTarget')}<input type="number" min={0} max={90} value={resistanceTarget} aria-label={tt('trade.resistanceTarget')}
-        onChange={event => { const value = Number(event.target.value); if (Number.isFinite(value) && value >= 0 && value <= 90) setResistanceTarget(value); }} />%</label>}
-      <p>{tt(preset === 'balanced' ? 'trade.balancedHint' : 'trade.resistanceHint')}</p>
-    </div>
-    <details className="upgrade-goal-details" open={!!goal.cStat}><summary>{ut('advancedGoal')}{goal.cStat ? ` · ${statNameLabel(lang, goal.cStat)}` : ''}</summary><div className="opt-controls"><ObjectiveEditor value={goal} onChange={setGoal} lang={lang} constraintsOnly /></div></details>
     <div className="trade-overview-toolbar">
       <div><h3>{tt('trade.overviewTitle')}</h3><p>{tt('trade.overviewHint')}</p></div>
       <button className="trade-primary trade-analyze-all" disabled={disabled || fullTargets.length === 0}

@@ -195,3 +195,9 @@
   .breakdown-toggle { padding: var(--space-3); gap: var(--space-2); flex-wrap: wrap; }
   .breakdown-table { min-width: 460px; }
 }
+
+.calcs-tools { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4); }
+.calcs-tools .calcs-search { margin-bottom: 0; flex: 1 1 220px; }
+.calcs-navigation { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.calcs-section:has(.breakdown-item.is-open) { grid-column: 1 / -1; }
+.attribution-view > h3 { scroll-margin-top: var(--space-4); }

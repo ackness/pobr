@@ -15,10 +15,22 @@ export const LANGS: Lang[] = ['en-US', 'zh-TW', 'zh-CN'];
 type Entry = { 'en-US': string; 'zh-TW': string; 'zh-CN': string };
 
 const DICT = {
+  'trade.goalHelp': { 'en-US': 'How this goal is evaluated', 'zh-TW': '目標如何評估', 'zh-CN': '目标如何评估' },
+  'items.position': { 'en-US': 'Equipment position', 'zh-TW': '裝備位置', 'zh-CN': '装备位置' },
+  'skills.editMain': { 'en-US': 'Edit main skill', 'zh-TW': '編輯主技能', 'zh-CN': '编辑主技能' },
+  'config.configuredOnly': { 'en-US': 'Configured only', 'zh-TW': '僅顯示已設定', 'zh-CN': '仅显示已配置' },
+  'config.showAll': { 'en-US': 'Show all options', 'zh-TW': '顯示全部選項', 'zh-CN': '显示全部选项' },
+  'tree.editOptions': { 'en-US': 'Attributes & planning', 'zh-TW': '屬性與規劃', 'zh-CN': '属性与规划' },
+
+  "editor.draft": {"en-US": "Draft", "zh-TW": "草稿", "zh-CN": "草稿"},
+  "editor.draftHint": {"en-US": "Draft kept while switching pages in this session. Save to apply it to calculations, sharing and backups; Cancel discards it.", "zh-TW": "切換頁面會保留本次開啟期間的草稿。儲存後才會計入數值、分享與備份；取消會丟棄草稿。", "zh-CN": "切换页面会保留本次打开期间的草稿。保存后才会计入数值、分享与备份；取消会丢弃草稿。"},
+  "editor.reviewItems": {"en-US": "Review item drafts", "zh-TW": "查看裝備草稿", "zh-CN": "查看装备草稿"},
+  "editor.reviewJewels": {"en-US": "Review jewel drafts", "zh-TW": "查看珠寶草稿", "zh-CN": "查看珠宝草稿"},
+  "lib.wrongSlot": {"en-US": "Select a compatible equipment position first", "zh-TW": "請先選擇相容的裝備位置", "zh-CN": "请先选择兼容的装备位置"},
   "build.code": {"en-US": "Build code", "zh-TW": "構築代碼", "zh-CN": "构筑代码"},
   "build.importHint": {"en-US": "Paste a PoB2 code, WeGame share link or .build JSON. Importing replaces the current character, equipment, skills and tree. Download a backup first to keep a copy.", "zh-TW": "貼上 PoB2 代碼、WeGame 分享連結或 .build JSON。匯入會替換目前角色、裝備、技能與天賦；如需保留，請先下載備份。", "zh-CN": "粘贴 PoB2 代码、WeGame 分享链接或 .build JSON。导入会替换当前角色、装备、技能与天赋；如需保留，请先下载备份。"},
   "build.importing": {"en-US": "Importing build…", "zh-TW": "正在匯入構築…", "zh-CN": "正在导入构筑…"},
-  "build.confirmClassChange": {"en-US": "Start an empty level 1 build with this class? Current equipment, skills, passives and combat settings will be cleared. Download a backup first if you want to keep them.", "zh-TW": "要以此職業新建 1 級空白構築嗎？目前裝備、技能、天賦與戰鬥配置將被清除。如需保留，請先下載備份。", "zh-CN": "要以此职业新建 1 级空白构筑吗？当前装备、技能、天赋与战斗配置将被清除。如需保留，请先下载备份。"},
+  "build.confirmClassChange": {"en-US": "Start an empty level 1 build with this class? Current equipment, skills, passives, notes and combat settings will be cleared. Download a backup first if you want to keep them.", "zh-TW": "要以此職業新建 1 級空白構築嗎？目前裝備、技能、天賦、筆記與戰鬥配置將被清除。如需保留，請先下載備份。", "zh-CN": "要以此职业新建 1 级空白构筑吗？当前装备、技能、天赋、笔记与战斗配置将被清除。如需保留，请先下载备份。"},
   "build.itemError": {"en-US": "Item could not be parsed and is excluded from calculations", "zh-TW": "物品解析失敗，未計入數值", "zh-CN": "物品解析失败，未计入数值"},
   "share.generating": {"en-US": "Generating share code…", "zh-TW": "正在生成分享碼…", "zh-CN": "正在生成分享码…"},
   "share.stale": {"en-US": "Your build has changed. Generate a new share code to include your latest edits.", "zh-TW": "構築已修改，請重新生成分享碼以包含最新修改。", "zh-CN": "构筑已修改，请重新生成分享码以包含最新修改。"},
@@ -89,7 +101,7 @@ const DICT = {
     'zh-CN': '删除此阶段？其天赋、装备与技能组会一并从 build 移除。',
   },
   "loadout.confirmDiscard": {"en-US": "This reloads the original imported build and discards local edits, including auto-saved changes. Export a backup first if you want to keep them. Continue?", "zh-TW": "此操作會重新載入原始構築，捨棄本地修改（包括自動儲存的修改）。若要保留，請先下載備份。繼續？", "zh-CN": "此操作会重新加载原始构筑，丢弃本地修改（包括自动保存的修改）。如需保留，请先下载备份。继续？"},
-  'tab.build': { 'en-US': 'Build', 'zh-TW': '構建', 'zh-CN': '构建' },
+  'tab.build': { 'en-US': 'Build', 'zh-TW': '構築', 'zh-CN': '构筑' },
   'tab.tree': { 'en-US': 'Tree', 'zh-TW': '天賦樹', 'zh-CN': '天赋树' },
   'tab.skills': { 'en-US': 'Skills', 'zh-TW': '技能', 'zh-CN': '技能' },
   'tab.items': { 'en-US': 'Items', 'zh-TW': '裝備', 'zh-CN': '装备' },
@@ -403,6 +415,7 @@ const DICT = {
   'calcs.source': { 'en-US': 'Source', 'zh-TW': '來源', 'zh-CN': '来源' },
   'calcs.baseDerived': { 'en-US': '(base/derived)', 'zh-TW': '（基底/派生）', 'zh-CN': '（基底/派生）' },
   'calcs.attribution': { 'en-US': 'Source Attribution', 'zh-TW': '來源貢獻歸因', 'zh-CN': '来源贡献归因' },
+  'calcs.attributionStale': { 'en-US': 'The build or main skill has changed. Run attribution again to update source contributions.', 'zh-TW': '構築或主技能已變更，請重新計算歸因以更新來源貢獻。', 'zh-CN': '构筑或主技能已变更，请重新计算归因以更新来源贡献。' },
   "calcs.attributionHint": {"en-US": "Recalculate after removing each source to see how much it contributes. This can take a while; run it when you need a detailed comparison.", "zh-TW": "逐一移除裝備、天賦等來源並重算，查看各自的貢獻。計算需要一些時間，可在比較方案時按需執行。", "zh-CN": "逐一移除装备、天赋等来源并重算，查看各自的贡献。计算需要一些时间，可在比较方案时按需执行。"},
   'calcs.runAttribution': { 'en-US': 'Run attribution', 'zh-TW': '計算歸因', 'zh-CN': '计算归因' },
   'calcs.running': { 'en-US': 'Running…', 'zh-TW': '歸因計算中…', 'zh-CN': '归因计算中…' },
@@ -531,8 +544,8 @@ const DICT = {
   'config.extraModsHint': {
     'en-US':
       'One modifier per line (PoB text, e.g. "20% increased Fire Damage"); applies globally on blur. Unparsable lines show up in the Build tab unsupported list.',
-    'zh-TW': '一行一條詞綴（PoB 文本，如「20% increased Fire Damage」），離開輸入框即全域生效；無法解析的行會出現在構建頁的不支援清單。',
-    'zh-CN': '一行一条词缀（PoB 文本，如「20% increased Fire Damage」），离开输入框即全局生效；无法解析的行会出现在构建页的不支持列表。',
+    'zh-TW': '一行一條詞綴（PoB 文本，如「20% increased Fire Damage」），離開輸入框即全域生效；無法解析的行會出現在構築頁的不支援清單。',
+    'zh-CN': '一行一条词缀（PoB 文本，如「20% increased Fire Damage」），离开输入框即全局生效；无法解析的行会出现在构筑页的不支持列表。',
   },
 
   // Notes 页

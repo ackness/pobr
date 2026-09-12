@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useRef, useState } from 'react';
+import { usePopupPosition } from '../../hooks/usePopupPosition';
 
 export interface AppSelectOption {
   value: string;
@@ -35,22 +36,7 @@ export function AppSelect({ value, options, onChange, disabled, ariaLabel, place
   const selectedIdx = options.findIndex((o) => o.value === value);
   const current = selectedIdx >= 0 ? options[selectedIdx] : null;
 
-  useLayoutEffect(() => {
-    if (!isOpen) return;
-    const position = () => {
-      const list = listRef.current;
-      if (!list) return;
-      list.style.left = '0px';
-      const rect = list.getBoundingClientRect();
-      const bounds = rootRef.current?.closest('main')?.getBoundingClientRect();
-      const left = (bounds?.left ?? 0) + 16;
-      const right = (bounds?.right ?? document.documentElement.clientWidth) - 16;
-      list.style.left = `${Math.max(left - rect.left, Math.min(0, right - rect.right))}px`;
-    };
-    position();
-    window.addEventListener('resize', position);
-    return () => window.removeEventListener('resize', position);
-  }, [isOpen]);
+  usePopupPosition(rootRef, listRef, isOpen, options);
 
   useEffect(() => {
     if (!isOpen) return;

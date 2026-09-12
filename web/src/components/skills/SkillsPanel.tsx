@@ -1,6 +1,6 @@
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { PageHeader } from '../shared/PageHeader';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { GemCatalogEntry, SocketGroupInput } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -57,6 +57,7 @@ export function SkillsPanel({ session, lang, focusOptimizer }: Props) {
   const groups = session.socketGroups;
   const mainIndex = session.calcParams.main_socket_group ?? session.build?.main_socket_group ?? 0;
   // 手风琴：同一时刻只展开一个组编辑，其余收成单行摘要。
+  const groupRefs = useRef<Array<HTMLDivElement | null>>([]);
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   useEffect(() => {
     if (!focusOptimizer) return;
@@ -73,6 +74,10 @@ export function SkillsPanel({ session, lang, focusOptimizer }: Props) {
         <WeaponSetControl session={session} lang={lang} />
       </PageHeader>
       <div className="skills-toolbar">
+        {groups[mainIndex] && <button onClick={() => {
+          setOpenIdx(mainIndex);
+          requestAnimationFrame(() => groupRefs.current[mainIndex]?.scrollIntoView({ block: 'start' }));
+        }}>{tt('skills.editMain')} · {gemName(session.calc?.main_skill?.skill_id ?? groups[mainIndex].gems[0]?.skill_id ?? '')}</button>}
         <GemPicker
           entries={actives}
           placeholder={tt('skills.addPlaceholder')}
@@ -113,6 +118,7 @@ export function SkillsPanel({ session, lang, focusOptimizer }: Props) {
           return (
             <div
               key={idx}
+              ref={element => { groupRefs.current[idx] = element; }}
               className={`skill-group${isMain ? ' is-main' : ''}${group.enabled ? '' : ' is-disabled'}`}
             >
               <div className="skill-group-header">

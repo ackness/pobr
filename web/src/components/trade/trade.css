@@ -281,4 +281,18 @@
 .trade-gem-card > div { min-width: 0; }
 .trade-gem-card > .upgrade-gem-stats { flex: 0 1 auto; }
 @media (max-width: 1100px) { .upgrade-paths > button { padding: 14px; gap: 8px; } .upgrade-paths span { grid-column: 1 / -1; } }
-@media (max-width: 640px) { .upgrade-paths { grid-template-columns: minmax(0, 1fr); } .upgrade-paths span { grid-column: 2; } .upgrade-score-reference { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .upgrade-score-reference { grid-template-columns: minmax(0, 1fr); } }
+
+.upgrade-evaluation { padding: var(--space-4); margin-bottom: var(--space-4); border: 1px solid var(--accent-gold-dim); border-radius: var(--radius-md); background: var(--surface-panel); }
+.upgrade-evaluation .trade-objectives { margin-bottom: var(--space-4); }
+.upgrade-evaluation .trade-skill-context { padding-bottom: 0; border: 0; }
+.upgrade-evaluation .upgrade-goal-details { margin-bottom: 0; }
+
+.trade-goal-help { flex-basis: 100%; color: var(--text-secondary); font-size: var(--text-xs); }
+.trade-goal-help summary { cursor: pointer; }
+@media (max-width: 640px) {
+  .upgrade-paths { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .upgrade-paths > button { grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--space-2); padding: var(--space-3); }
+  .upgrade-paths strong { font-size: var(--text-xs); overflow-wrap: anywhere; }
+  .upgrade-paths span { display: none; }
+}

@@ -179,33 +179,25 @@ export function BuildPanel({ session, lang, onImported }: Props) {
             >
               {importing ? tt('build.importing') : tt('build.importButton')}
             </button>
+            <button onClick={() => fileRef.current?.click()} disabled={session.busy || importing}>
+              {tt('save.import')}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".json,.build,.txt,application/json,text/plain"
+              hidden
+              aria-label={tt('save.import')}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) importFile(file);
+                e.target.value = '';
+              }}
+            />
           </div>
+          {fileError && <div className="calc-error" role="alert">{fileError}</div>}
         </article>
 
-        <article className="build-card build-card--notes">
-          <h3>{tt('tab.notes')}</h3>
-          <p className="build-card-hint">{tt('notes.hint')}</p>
-          <textarea
-            className="notes-editor"
-            value={session.notes}
-            placeholder={tt('notes.placeholder2')}
-            spellCheck={false}
-            aria-label={tt('tab.notes')}
-            onChange={(e) => session.setNotes(e.target.value)}
-          />
-          {notesColored && (
-            <div className="notes-preview" aria-label={tt('notes.preview')}>
-              <span className="notes-preview-title">{tt('notes.preview')}</span>
-              <pre className="notes-preview-body">
-                {parsePobColorText(session.notes).map((seg, i) => (
-                  <span key={i} style={seg.color ? { color: seg.color } : undefined}>
-                    {seg.text}
-                  </span>
-                ))}
-              </pre>
-            </div>
-          )}
-        </article>
 
         <article className="build-card">
           <h3>{tt('share.title')}</h3>
@@ -234,24 +226,34 @@ export function BuildPanel({ session, lang, onImported }: Props) {
           <p className="build-card-hint">{tt('save.hint')}</p>
           <div className="build-card-actions">
             <button onClick={exportFile} disabled={session.busy || importing}>{tt('save.export')}</button>
-            <button onClick={() => fileRef.current?.click()} disabled={session.busy || importing}>
-              {tt('save.import')}
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".json,.build,.txt,application/json,text/plain"
-              hidden
-              aria-label={tt('save.import')}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) importFile(file);
-                e.target.value = '';
-              }}
-            />
+
           </div>
-          {fileError && <div className="calc-error" role="alert">{fileError}</div>}
         </article>
+        <article className="build-card build-card--notes">
+          <h3>{tt('tab.notes')}</h3>
+          <p className="build-card-hint">{tt('notes.hint')}</p>
+          <textarea
+            className="notes-editor"
+            value={session.notes}
+            placeholder={tt('notes.placeholder2')}
+            spellCheck={false}
+            aria-label={tt('tab.notes')}
+            onChange={(e) => session.setNotes(e.target.value)}
+          />
+          {notesColored && (
+            <div className="notes-preview" aria-label={tt('notes.preview')}>
+              <span className="notes-preview-title">{tt('notes.preview')}</span>
+              <pre className="notes-preview-body">
+                {parsePobColorText(session.notes).map((seg, i) => (
+                  <span key={i} style={seg.color ? { color: seg.color } : undefined}>
+                    {seg.text}
+                  </span>
+                ))}
+              </pre>
+            </div>
+          )}
+        </article>
+
       </div>
 
       {session.calc && session.calc.item_errors.length > 0 && (

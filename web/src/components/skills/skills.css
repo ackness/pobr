@@ -196,6 +196,8 @@
 }
 
 .gem-picker-panel {
+  display: flex;
+  flex-direction: column;
   position: absolute;
   z-index: 20;
   top: calc(100% + 4px);
@@ -209,6 +211,7 @@
 }
 
 .gem-picker-chips {
+  flex: none;
   display: flex;
   align-items: center;
   gap: var(--space-1);
@@ -234,6 +237,7 @@
 }
 
 .gem-picker-list {
+  min-height: 0;
   list-style: none;
   margin: 0;
   padding: var(--space-1);
@@ -550,4 +554,14 @@
   .support-plan { grid-template-columns: minmax(0, 1fr); }
   .support-plan > button { grid-row: auto; grid-column: auto; justify-self: start; }
   .support-pool-details { padding: var(--space-2); }
+}
+
+.skills-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
+.skills-toolbar > .gem-picker { flex: 1 1 220px; }
+.skill-group { scroll-margin-top: var(--space-4); }
+.skills-toolbar > button { max-width: 100%; white-space: normal; text-align: left; }
+
+@media (min-width: 380px) and (max-width: 600px) {
+  .skill-gem { flex-wrap: nowrap; }
+  .gem-name { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; }
 }
