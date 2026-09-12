@@ -201,6 +201,8 @@
 .replacement-heading p, .replacement-parsed p { color: var(--text-secondary); font-size: var(--text-xs); line-height: 1.8; }
 .replacement-heading > .ui-badge { flex: none; }
 .replacement-input > label { display: block; margin-bottom: var(--space-2); font-size: var(--text-xs); color: var(--text-secondary); }
+.replacement-copy-links { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 8px 0 16px; font-size: var(--text-xs); }
+.replacement-copy-links a { color: var(--accent-gold); text-decoration: underline; text-underline-offset: 3px; }
 .upgrade-item-check textarea { width: 100%; resize: vertical; margin-bottom: var(--space-3); min-height: 110px; font-size: var(--text-xs); line-height: 1.65; }
 .replacement-goal { margin: var(--space-3) 0; color: var(--accent-gold); font-size: var(--text-xs); }
 .replacement-actions, .replacement-apply { display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; }

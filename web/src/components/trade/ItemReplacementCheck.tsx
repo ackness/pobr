@@ -95,6 +95,8 @@ export function ItemReplacementCheck({ session, lang, objective, catalog, jewelS
         {busy ? ut('comparingPositions') : ut('compare')}</button>
         {busy && <button onClick={() => { controller.current?.abort(); controller.current = null; setPendingPaste(null); setBusy(false); }}>{ut('cancelCompare')}</button>}
         <span>{ut('autoPositions')}</span></div>
+      <p className="replacement-copy-links"><a href="/userscripts/pobr-market-copy.user.js" target="_blank" rel="noreferrer">{ut('copyScript')}</a>
+        <a href="/userscripts/index.html" target="_blank" rel="noreferrer">{ut('copyScriptHelp')}</a></p>
     </div>
     {error && <p role="alert" className="trade-error">{error}</p>}
     {report && selected && <div className="replacement-content">

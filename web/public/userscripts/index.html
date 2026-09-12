@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoBR · 市集装备复制脚本</title>
+<style>
+  :root {color-scheme:dark;font:16px/1.75 system-ui,sans-serif;background:#101318;color:#e4e6eb}
+  body {max-width:720px;margin:48px auto;padding:0 24px}
+  h1 {line-height:1.3;font-size:30px} h2 {font-size:20px;margin-top:32px}
+  a {color:#e0bd70;text-underline-offset:4px}
+  .install {display:inline-block;padding:10px 20px;border-radius:7px;background:#d5b068;color:#16191e;font-weight:650;text-decoration:none}
+  .muted {color:#a9aeb9} li {margin:10px 0} code {color:#e0bd70}
+</style>
+<body>
+<a href="/">← 返回 PoBR</a>
+<h1>市集装备，一键复制比较</h1>
+<p>在国服或国际服 PoE2 官方市集，每件已加载的商品旁添加「复制到 PoBR」。复制完整物品文本，再回到「提升」页粘贴，即可比较当前角色换装后的变化。</p>
+<p><a class="install" href="pobr-market-copy.user.js">安装复制脚本 · v0.1.0</a></p>
+<ol>
+  <li>先安装 <a href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer">Tampermonkey（油猴）</a>，再点击上方按钮并确认安装。若只看到源码，在油猴中新建脚本，粘贴完整源码并保存。</li>
+  <li>刷新已经登录的市集搜索页，在目标商品旁点击「复制到 PoBR」。</li>
+  <li>返回 PoBR「提升」页粘贴。确认 DPS、EHP、抗性和未支持词条后，再决定是否购买。</li>
+</ol>
+<h2>复制哪些内容</h2>
+<p>包含基底、稀有度、需求等级、品质、已显示的防御值、隐式、符文、附魔、工艺及破裂词缀。魔法物品使用可识别的基底名，完整原名保存在 Note 中；空插槽不会被当成已镶嵌符文。</p>
+<p>未知效果会保留为待复核信息。物品能够复制不代表全部效果已被计算；主动技能石和血脉宝石仍需使用对应的技能提升流程。</p>
+<h2>读取范围</h2>
+<p>只在你点击时，通过当前市集的同源接口读取这一件商品。只复制物品数据，不复制价格、卖家、账号、密语或 Cookie，也不会自动联系卖家或购买。登录验证和限流需要在市集页面处理，脚本不会自动重试。</p>
+<p>若剪贴板写入失败，会显示可手动选中复制的文本窗口。脚本支持无限滚动加载的商品；市集改版后可能需要更新脚本。</p>
+<p class="muted">English: Install the userscript in Tampermonkey, reload an official PoE2 market search, click “Copy for PoBR”, then paste into PoBR → Upgrades. The script reads only the clicked listing and copies item text, without seller details or automatic purchases.</p>
+</body>
+</html>

@@ -124,6 +124,56 @@ fn mod_lines(item: &Value, field: &str) -> Vec<String> {
         .collect()
 }
 
+/// Utility recovery/charge properties are tooltip metadata, not modifiers.
+/// Keep their display values without injecting them into the active-effect model.
+fn display_property(property: &Value) -> Option<String> {
+    let values: Vec<_> = array(property, "values")
+        .iter()
+        .filter_map(|value| value[0].as_str())
+        .map(clean)
+        .collect();
+    if values.is_empty() {
+        return None;
+    }
+    let mut name = clean(text(property, "name"))
+        .trim_end_matches([':', '：'])
+        .to_string();
+    if property["displayMode"].as_u64() == Some(3) {
+        for (index, value) in values.iter().enumerate() {
+            name = name.replace(&format!("{{{index}}}"), value);
+        }
+        Some(name)
+    } else {
+        Some(format!("{name}: {}", values.join(", ")))
+    }
+}
+
+fn requirement_lines(item: &Value) -> Vec<String> {
+    array(item, "requirements")
+        .iter()
+        .filter_map(|requirement| {
+            let name = clean(text(requirement, "name"));
+            let label = match name.trim_end_matches(':') {
+                "Level" | "等级" | "等級" => "LevelReq",
+                "Str" | "Strength" | "力量" => "Str",
+                "Dex" | "Dexterity" | "敏捷" => "Dex",
+                "Int" | "Intelligence" | "智慧" | "智力" => "Int",
+                _ => {
+                    return display_property(requirement)
+                        .map(|line| format!("Note: Requirement - {line}"));
+                }
+            };
+            let raw = requirement["values"][0][0].as_str()?;
+            match raw.trim().parse::<u32>() {
+                Ok(value) => Some(format!("{label}: {value}")),
+                Err(_) => {
+                    display_property(requirement).map(|line| format!("Note: Requirement - {line}"))
+                }
+            }
+        })
+        .collect()
+}
+
 fn item_text(item: &Value, warnings: &mut BTreeSet<String>) -> Result<String, String> {
     let base = canonical(if text(item, "baseType").is_empty() {
         text(item, "typeLine")
@@ -135,20 +185,39 @@ fn item_text(item: &Value, warnings: &mut BTreeSet<String>) -> Result<String, St
     }
     let rarity = rarity(item["frameType"].as_u64().unwrap_or(2));
     let mut lines = vec![format!("Rarity: {rarity}")];
-    if rarity != "NORMAL" {
+    if matches!(rarity, "RARE" | "UNIQUE") {
         let name = canonical(text(item, "name"));
-        lines.push(if name.is_empty() {
-            "Imported Item".into()
-        } else {
-            name
-        });
+        lines.push(if name.is_empty() { base.clone() } else { name });
     }
-    lines.extend([base, "--------".into()]);
+    lines.extend([base.clone(), "--------".into()]);
+    // PoB magic items have one name line. A fabricated title makes the UI
+    // treat the real base as an affix. Keep the canonical base for exact calc
+    // lookup and retain WeGame's prefixed/suffixed display name as metadata.
+    if rarity == "MAGIC" {
+        let original_name = clean(if text(item, "typeLine").is_empty() {
+            text(item, "name")
+        } else {
+            text(item, "typeLine")
+        });
+        if !original_name.is_empty() && original_name != base {
+            lines.push(format!("Note: {original_name}"));
+        }
+    }
     if let Some(level) = item["ilvl"].as_u64() {
         lines.push(format!("Item Level: {level}"));
     }
+    lines.extend(requirement_lines(item));
     if let Some(quality) = property(item, 6) {
         lines.push(format!("Quality: {quality}"));
+    }
+    if base.ends_with(" Flask") || base.ends_with(" Charm") {
+        for property in array(item, "properties") {
+            if property["type"].as_u64() != Some(6)
+                && let Some(line) = display_property(property)
+            {
+                lines.push(format!("Note: {line}"));
+            }
+        }
     }
     let sockets = array(item, "sockets");
     if !sockets.is_empty() {
@@ -165,10 +234,12 @@ fn item_text(item: &Value, warnings: &mut BTreeSet<String>) -> Result<String, St
             let rune = array(item, "socketedItems")
                 .iter()
                 .find(|r| r["socket"].as_u64() == Some(index as u64));
-            let name = rune
-                .map(|r| canonical(text(r, "baseType")))
-                .unwrap_or_else(|| "None".into());
-            lines.push(format!("Rune: {name}"));
+            if let Some(rune) = rune {
+                let name = canonical(text(rune, "baseType"));
+                if !name.is_empty() && !name.eq_ignore_ascii_case("None") {
+                    lines.push(format!("Rune: {name}"));
+                }
+            }
         }
     }
     // Rolled defences are consumed by the existing item parser, which

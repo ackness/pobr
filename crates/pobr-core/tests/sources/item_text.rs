@@ -429,6 +429,18 @@ fn xml_item_counts_filled_sockets_from_rune_lines() {
     assert_eq!(item.rolled_defence.sockets_filled, 1);
 }
 
+#[test]
+fn empty_rune_and_soul_core_placeholders_never_count_as_filled_sockets() {
+    for separator in ["", "--------\n"] {
+        let text = format!(
+            "Rarity: NORMAL\nGrand Regalia\n{separator}Sockets: S S S S S\nRune: None\nRune: \nSoul Core: none\nSoul Core: \nRune: Perfect Body Rune\nSoul Core: Soul Core of Tacati\nImplicits: 0\n+14 to Spirit per Socket filled"
+        );
+        let item = parse_pob_xml_item(&text).expect("parse");
+        assert_eq!(item.rolled_defence.sockets_filled, 2, "{text}");
+        assert_eq!(item.modifier_texts, ["+14 to Spirit per Socket filled"]);
+    }
+}
+
 /// All 5 sockets filled (the Morior Invictus shape): 5 `Rune:` lines → filled count 5;
 /// `per Socket filled` modifiers read this value (gemling Spirit +14×5 = 70).
 const XML_FIVE_RUNE_BODY: &str = "\
