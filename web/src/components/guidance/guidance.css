@@ -64,3 +64,7 @@
 .guidance-page { overflow-wrap: anywhere; }
 @media (max-width: 1100px) { .guidance-actions { grid-template-columns: 1fr; } .guidance-equipment { grid-template-columns: 1fr; } }
 @media (max-width: 650px) { .guidance-results, .guidance-passives { grid-template-columns: 1fr; } .guidance-identity { padding: var(--space-4); } .guidance-filters { align-items: flex-start; flex-direction: column; } .guidance-search { width: 100%; } .guidance-equipment-pair { grid-template-columns: 1fr; } }
+
+.guidance-entry { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.guidance-section-heading { scroll-margin-top: var(--space-4); }
+@media (max-width: 900px) { .guidance-entry { grid-template-columns: minmax(0, 1fr); } }

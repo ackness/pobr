@@ -1,6 +1,6 @@
 import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type {
   AttributionResponse,
   Breakdown,
@@ -134,11 +134,12 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
  */
 function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
   const tt = bindT(lang);
-  const [report, setReport] = useState<FullDpsResponse | null>(null);
+  const [completed, setCompleted] = useState<{ version: number; report: FullDpsResponse } | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { stateVersion, runFullDps } = session;
+  const report = completed?.version === stateVersion ? completed.report : null;
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
@@ -146,7 +147,7 @@ function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
       setError(null);
       runFullDps()
         .then((result) => {
-          if (!cancelled) setReport(result);
+          if (!cancelled) setCompleted({ version: stateVersion, report: result });
         })
         .catch((err) => {
           if (!cancelled) setError(formatApiError(err));
@@ -177,7 +178,7 @@ function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
 
   return (
     <section className="ui-card attribution-view" aria-labelledby="fulldps-heading">
-      <h3 id="fulldps-heading">
+      <h3 id="fulldps-heading" tabIndex={-1}>
         {tt('calcs.fullDps')}
         {running && <span className="calcs-hint"> {tt('calcs.running')}</span>}
       </h3>
@@ -232,27 +233,38 @@ function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
 
 function AttributionView({ session, lang }: { session: BuildSession; lang: Lang }) {
   const tt = bindT(lang);
-  const [report, setReport] = useState<AttributionResponse | null>(null);
+  const [completed, setCompleted] = useState<{ version: number; report: AttributionResponse } | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fields = ['TotalDPS', 'Life', 'EnergyShield', 'TotalEHP'];
+  const sequence = useRef(0);
+  const report = completed?.version === session.stateVersion ? completed.report : null;
+  useEffect(() => {
+    sequence.current++;
+    setRunning(false);
+    setError(null);
+    return () => { sequence.current++; };
+  }, [session.stateVersion]);
 
   const run = async () => {
+    const current = ++sequence.current;
+    const version = session.stateVersion;
     setRunning(true);
     setError(null);
     try {
-      setReport(await session.runAttribution(fields));
+      const result = await session.runAttribution(fields);
+      if (current === sequence.current) setCompleted({ version, report: result });
     } catch (err) {
-      setError(formatApiError(err));
+      if (current === sequence.current) setError(formatApiError(err));
     } finally {
-      setRunning(false);
+      if (current === sequence.current) setRunning(false);
     }
   };
 
   const skillName = useSkillName(lang);
   const label = (kind: string, id: string) => {
     if (kind === 'socket_group') {
-      const group = session.build?.socket_groups[Number(id)];
+      const group = session.socketGroups[Number(id)];
       const skill = group?.gems[0]?.skill_id;
       return `${tt('calcs.group')} ${Number(id) + 1}${skill ? ` · ${skillName(skill)}` : ''}`;
     }
@@ -263,13 +275,14 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
 
   return (
     <section className="ui-card attribution-view" aria-labelledby="attribution-heading">
-      <h3 id="attribution-heading">{tt('calcs.attribution')}</h3>
+      <h3 id="attribution-heading" tabIndex={-1}>{tt('calcs.attribution')}</h3>
       <p className="calcs-hint">
 {tt('calcs.attributionHint')}
       </p>
       <button onClick={run} disabled={running || session.busy}>
         {running ? tt('calcs.running') : tt('calcs.runAttribution')}
       </button>
+      {completed && !report && <p className="calcs-hint" role="status">{tt('calcs.attributionStale')}</p>}
       {error && <div className="calc-error">{error}</div>}
       {report && (
         <div className="breakdown-scroll">
@@ -384,6 +397,14 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   return (
     <section className="ui-page calcs-page" aria-labelledby="calcs-heading">
       <PageHeader id="calcs-heading" title={tt('calcs.title')} description={tt('calcs.hint')} />
+      <div className="calcs-tools">
+      <nav className="calcs-navigation" aria-label={tt('calcs.title')}>
+        {['calcs.fullDps', 'calcs.attribution'].map((key, index) => <button key={key} onClick={() => {
+          const section = document.getElementById(index === 0 ? 'fulldps-heading' : 'attribution-heading');
+          section?.focus({ preventScroll: true });
+          section?.scrollIntoView({ block: 'start' });
+        }}>{tt(key as 'calcs.fullDps' | 'calcs.attribution')} ↓</button>)}
+      </nav>
       <input
         className="calcs-search"
         type="search"
@@ -392,7 +413,12 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
         onChange={(e) => setQuery(e.target.value)}
         aria-label={tt('calcs.search')}
       />
+      </div>
       <div className="calcs-breakdowns">
+      {query.trim() && sections.length === 0 && <div className="search-empty" role="status">
+        <p>{tt('common.noResults')}</p>
+        <button onClick={() => setQuery('')}>{tt('common.clearSearch')}</button>
+      </div>}
       {sections.map(({ category, names }) => (
         <section key={category} className="calcs-section">
           <h3 className="calcs-section-title">{statCategoryLabel(lang, category)}</h3>

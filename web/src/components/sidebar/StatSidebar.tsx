@@ -49,7 +49,8 @@ function MainSkillSection({ session, lang }: { session: BuildSession; lang: Lang
       >
         {groups.map((group, idx) => {
           const [active] = group.gems;
-          const name = active ? skillName(active.skill_id) : tt('skills.emptyGroup');
+          const name = mainSkill?.group_index === idx ? skillName(mainSkill.skill_id)
+            : active ? skillName(active.skill_id) : tt('skills.emptyGroup');
           return (
             <option key={idx} value={idx}>
               {idx + 1}. {name}

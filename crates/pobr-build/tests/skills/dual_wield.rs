@@ -272,3 +272,89 @@ fn dual_wield_golden_baseline() {
     near("oh.speed", GOLDEN_OH_SPEED, oh.speed);
     near("oh.average_hit", GOLDEN_OH_AVG_HIT, oh.average_hit);
 }
+
+/// Local weapon critical chance is folded before global increases and applies
+/// only to the weapon supplying each attack pass. Item.lua's weaponData formula.
+#[test]
+fn weapon_local_critical_chance_is_scoped_and_multiplicative() {
+    let data = load_build_data();
+    let local = weapon("Wooden Club", &["50% increased Critical Hit Chance"]);
+    let attack =
+        dual_build(Some(weapon("Shortsword", &[]))).set_item(EquipmentSlot::Weapon1, local.clone());
+    let out = calculate_with_data(
+        &attack,
+        &data,
+        &opts(&["100% increased Critical Hit Chance"]),
+    )
+    .unwrap();
+    assert!((out.main_hand.unwrap().crit_chance - 0.15).abs() < 1e-9);
+    assert!((out.off_hand.unwrap().crit_chance - 0.10).abs() < 1e-9);
+    let swapped =
+        dual_build(Some(local)).set_item(EquipmentSlot::Weapon1, weapon("Shortsword", &[]));
+    let swapped_out = calculate_with_data(
+        &swapped,
+        &data,
+        &opts(&["100% increased Critical Hit Chance"]),
+    )
+    .unwrap();
+    assert!((swapped_out.main_hand.unwrap().crit_chance - 0.10).abs() < 1e-9);
+    assert!((swapped_out.off_hand.unwrap().crit_chance - 0.15).abs() < 1e-9);
+    assert_eq!(out.dps, swapped_out.dps);
+
+    let flat_and_reduced = dual_build(None).set_item(
+        EquipmentSlot::Weapon1,
+        weapon(
+            "Wooden Club",
+            &[
+                "+2% to Critical Hit Chance",
+                "50% reduced Critical Hit Chance",
+            ],
+        ),
+    );
+    let reduced = calculate_with_data(
+        &flat_and_reduced,
+        &data,
+        &opts(&["100% increased Critical Hit Chance"]),
+    )
+    .unwrap();
+    // (5 + 2) * 0.5 local * 2 global = 7%.
+    assert!((reduced.crit_chance - 0.07).abs() < 1e-9);
+
+    let spell =
+        Build::new().add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20));
+    let baseline = calculate_with_data(&spell, &data, &opts(&[])).unwrap();
+    for slot in [EquipmentSlot::Weapon1, EquipmentSlot::Weapon2] {
+        for line in [
+            "50% increased Critical Hit Chance",
+            "50% reduced Critical Hit Chance",
+            "+2% to Critical Hit Chance",
+            "50% increased Critical Strike Chance",
+        ] {
+            let modified = spell.clone().set_item(slot, weapon("Wooden Club", &[line]));
+            let actual = calculate_with_data(&modified, &data, &opts(&[])).unwrap();
+            assert_eq!(actual.crit_chance, baseline.crit_chance, "{slot:?}: {line}");
+            assert_eq!(actual.dps, baseline.dps, "{slot:?}: {line}");
+        }
+    }
+    // Explicitly global or spell-specific mods on a weapon still affect spells.
+    for line in [
+        "50% increased Global Critical Hit Chance",
+        "50% increased Critical Hit Chance for Spells",
+    ] {
+        let modified = spell
+            .clone()
+            .set_item(EquipmentSlot::Weapon1, weapon("Wooden Club", &[line]));
+        let actual = calculate_with_data(&modified, &data, &opts(&[])).unwrap();
+        assert!(
+            (actual.crit_chance - baseline.crit_chance * 1.5).abs() < 1e-9,
+            "{line}"
+        );
+    }
+    // Outside weapons, the same bare wording remains global.
+    let ring = spell.set_item(
+        EquipmentSlot::Ring1,
+        weapon("Sapphire Ring", &["50% increased Critical Hit Chance"]),
+    );
+    let ring_out = calculate_with_data(&ring, &data, &opts(&[])).unwrap();
+    assert!((ring_out.crit_chance - baseline.crit_chance * 1.5).abs() < 1e-9);
+}

@@ -53,10 +53,9 @@ pub struct WeaponBase {
     /// `MinimalInput::base_action_rate`; `None`/non-positive means the input
     /// rate is used as-is — same semantics as the current orchestration's `w.attack_rate > 0.0` gate).
     pub attack_rate: Option<f64>,
-    /// Weapon base crit chance (percentage points, e.g. 5.0). Currently
-    /// injected globally by the orchestration layer via `CriticalStrikeChance
-    /// BASE` (keeping current behavior); once the dual pass is truly enabled,
-    /// per-hand crit base will be consumed from here instead.
+    /// Weapon base crit chance after local modifiers (percentage points, e.g. 5.0).
+    /// The orchestration layer injects this as `SkillBaseCritChance BASE`
+    /// with a hand condition, keeping it separate from global crit increases.
     pub crit_chance: f64,
     /// This hand's ModFlags weapon flags (vendor `getWeaponFlags`, derived by
     /// the orchestration layer from `weapon_types.json` via

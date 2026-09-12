@@ -350,7 +350,7 @@
 }
 @media (max-width: 600px) {
   .paper-doll, .utility-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .doll-slot { grid-template-columns: minmax(0, 1fr); min-height: 106px; padding: var(--space-2); }
+  .doll-slot { grid-template-columns: minmax(0, 1fr); min-height: 76px; padding: var(--space-2); }
   .doll-symbol { display: none; }
   .item-detail { padding: var(--space-4); }
   .library-row-toggle { flex-wrap: wrap; }
@@ -366,3 +366,6 @@
   .library-row-head { flex-wrap: wrap; }
   .library-row-toggle { flex-basis: 100%; }
 }
+
+.item-detail { scroll-margin-top: var(--space-4); }
+.item-position { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); max-width: 100%; }

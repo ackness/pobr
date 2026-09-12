@@ -84,6 +84,8 @@ pub struct SocketGroupInput {
     pub(crate) weapon_set: Option<u8>,
     pub(crate) slot: Option<String>,
     pub(crate) enabled: bool,
+    /// PoB's 1-based selection among non-support gems; absent selects the first.
+    pub(crate) main_active_skill: Option<usize>,
     /// The source marker for an equipment-granted skill group (passed
     /// through from decode; `None` for a manual group).
     pub(crate) source: Option<String>,
@@ -96,6 +98,7 @@ impl Default for SocketGroupInput {
             weapon_set: None,
             slot: None,
             enabled: true,
+            main_active_skill: None,
             source: None,
             gems: Vec::new(),
         }
@@ -205,6 +208,7 @@ fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData) -> Socket
         weapon_set: input.weapon_set,
         slot: input.slot.clone(),
         enabled: input.enabled,
+        main_active_skill: input.main_active_skill,
         source: input.source.clone(),
         ..SocketGroup::default()
     };

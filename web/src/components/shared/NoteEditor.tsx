@@ -55,9 +55,11 @@ export function NoteEditor({ value, onCommit, lang }: Props) {
     );
   }
   return (
-    <blockquote
+    <button
+      type="button"
       className="note-block"
       title={tt('note.editHint')}
+      aria-label={`${tt('note.editHint')}: ${value}`}
       onClick={() => {
         setDraft(value);
         setEditing(true);
@@ -65,6 +67,6 @@ export function NoteEditor({ value, onCommit, lang }: Props) {
     >
       <span className="note-block-label">{tt('note.label')}</span>
       {value}
-    </blockquote>
+    </button>
   );
 }

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { GemCatalogEntry } from '../../api/types';
 import { bindT, type Lang } from '../../lib/i18n';
 import { gemTagLabels, gemTagMatches } from '../../lib/gemTags';
+import { usePopupPosition } from '../../hooks/usePopupPosition';
 
 /** 宝石颜色 → 语义 CSS 变量（tokens.css）。 */
 const COLOUR_VAR: Record<string, string> = {
@@ -39,6 +40,9 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
   const [highlight, setHighlight] = useState(0);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const listId = useId();
 
   // 点击组件外关闭。
   useEffect(() => {
@@ -65,17 +69,27 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
       )
       .slice(0, 200);
   }, [entries, query, colour]);
+  usePopupPosition(rootRef, panelRef, open && !disabled, filtered, 340);
 
   useEffect(() => setHighlight(0), [query, colour, open]);
+  useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
 
   const pick = (entry: GemCatalogEntry) => {
+    inputRef.current?.focus({ preventScroll: true });
     onPick(entry.skill_id);
     setQuery('');
     setOpen(false);
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (!open) return;
+    if (disabled || e.nativeEvent.isComposing) return;
+    if (!open) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        setOpen(true);
+      }
+      return;
+    }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       const next = e.key === 'ArrowDown' ? highlight + 1 : highlight - 1;
@@ -98,26 +112,37 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
   ];
 
   return (
-    <div className="gem-picker" ref={rootRef} onKeyDown={onKeyDown}>
+    <div className="gem-picker" ref={rootRef}
+      onBlur={event => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+      onKeyDown={event => { if (event.key === 'Escape') setOpen(false); }}>
       <input
+        ref={inputRef}
         value={query}
         placeholder={placeholder}
         disabled={disabled}
         aria-label={placeholder}
-        aria-expanded={open}
+        aria-expanded={open && !disabled}
+        aria-controls={open && !disabled ? listId : undefined}
+        aria-activedescendant={open && !disabled && filtered[highlight] ? `${listId}-${highlight}` : undefined}
+        aria-autocomplete="list"
         role="combobox"
+        onKeyDown={onKeyDown}
         onFocus={() => setOpen(true)}
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
         }}
       />
-      {open && (
-        <div className="gem-picker-panel">
-          <div className="gem-picker-chips" role="group" aria-label="Gem colour filter">
+      {open && !disabled && (
+        <div className="gem-picker-panel" ref={panelRef}>
+          <div className="gem-picker-chips" role="group" aria-label={tt('picker.colour')}>
             {chips.map((chip) => (
               <button
                 key={chip.id}
+                type="button"
+                aria-pressed={colour === chip.id}
                 className={`gem-chip${colour === chip.id ? ' is-active' : ''}`}
                 style={chip.colorVar ? { color: `var(--${chip.colorVar})` } : undefined}
                 onClick={() => setColour(chip.id)}
@@ -127,8 +152,8 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
             ))}
             <span className="gem-picker-count">{filtered.length}</span>
           </div>
-          <ul className="gem-picker-list" role="listbox" ref={listRef}>
-            {filtered.length === 0 && <li className="gem-picker-empty">{tt('picker.noResults')}</li>}
+          {filtered.length === 0 && <p className="gem-picker-empty" role="status">{tt('picker.noResults')}</p>}
+          <ul className="gem-picker-list" role="listbox" ref={listRef} id={listId} aria-label={placeholder}>
             {filtered.map((entry, idx) => {
               const primary = gemDisplayName(entry, lang);
               const secondary = primary === entry.name ? entry.name_zh_tw : entry.name;
@@ -137,10 +162,12 @@ export function GemPicker({ entries, placeholder, disabled, lang, onPick }: Prop
               return (
                 <li
                   key={entry.skill_id}
+                  id={`${listId}-${idx}`}
                   role="option"
                   aria-selected={idx === highlight}
                   className={`gem-picker-item${idx === highlight ? ' is-highlight' : ''}`}
                   onPointerEnter={() => setHighlight(idx)}
+                  onMouseDown={event => event.preventDefault()}
                   onClick={() => pick(entry)}
                 >
                   <span

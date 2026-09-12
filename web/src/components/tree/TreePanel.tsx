@@ -107,7 +107,25 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
     null,
   );
   /** 珠宝插槽编辑器（正在编辑的插槽节点 id + 草稿）。 */
-  const [jewelEdit, setJewelEdit] = useState<{ socket: number; draft: string } | null>(null);
+  const toolsRef = useRef<HTMLDivElement>(null);
+  const jewelRef = useRef<HTMLDivElement>(null);
+  const [jewelSocket, setJewelSocket] = useState<number | null>(() => {
+    const key = Object.keys(session.editorDrafts).find(key => key.startsWith('jewel:'));
+    return key ? Number(key.slice(6)) : null;
+  });
+  const jewelDraftKey = `jewel:${jewelSocket}`;
+  const jewelEdit = jewelSocket === null ? null : { socket: jewelSocket,
+    draft: session.editorDrafts[jewelDraftKey]
+      ?? session.jewels.find(jewel => jewel.socket_node === jewelSocket)?.text ?? JEWEL_TEMPLATE };
+  useEffect(() => {
+    if (jewelSocket === null) return;
+    jewelRef.current?.focus({ preventScroll: true });
+    jewelRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [jewelSocket]);
+  const closeJewelEditor = () => {
+    session.setEditorDraft(jewelDraftKey, null);
+    setJewelSocket(null);
+  };
   /** hover 节点的加点/取消收益（防抖重算；按 stateVersion 失效的缓存）。 */
   const [hoverDiff, setHoverDiff] = useState<DiffEntry[] | null>(null);
   const diffCacheRef = useRef<{ version: number; map: Map<number, DiffEntry[]> }>({
@@ -369,8 +387,7 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
             ...shortestAllocationPath(graph, allocated, startSkill, node.skill),
           ]);
         }
-        const existing = s.jewels.find((j) => j.socket_node === node.skill);
-        setJewelEdit({ socket: node.skill, draft: existing?.text ?? JEWEL_TEMPLATE });
+        setJewelSocket(node.skill);
         return;
       }
 
@@ -765,6 +782,10 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
   return (
     <section className="ui-page tree-panel" aria-labelledby="tree-heading">
       <PageHeader id="tree-heading" title={tt('tree.title')} description={tt('tree.hint')}>
+        <button onClick={() => {
+          toolsRef.current?.focus({ preventScroll: true });
+          toolsRef.current?.scrollIntoView({ block: 'start' });
+        }}>{tt('tree.editOptions')}</button>
         <span className="ui-badge tree-count">{session.allocatedNodes.length} {tt('tree.allocated')}</span>
       </PageHeader>
       <div className="tree-toolbar">
@@ -847,7 +868,10 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
           <select
             value={session.character?.class_name ?? ''}
             disabled={session.busy}
-            onChange={(e) => session.newBuild(e.target.value, '')}
+            onChange={(e) => {
+              if (session.hasBuildContent && !window.confirm(tt('build.confirmClassChange'))) return;
+              session.newBuild(e.target.value, '');
+            }}
           >
             {(session.treeMeta?.classes ?? []).map((c) => (
               <option key={c.name} value={c.name}>
@@ -880,6 +904,92 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
         )}
         <button onClick={() => setViewBox(null)}>{tt('tree.reset')}</button>
       </div>
+      <div className="tree-workspace">
+      <div className="tree-canvas">
+        <svg
+          ref={svgRef}
+          viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
+          onWheel={onWheel}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={e => finishDrag(e)}
+          onPointerCancel={e => finishDrag(e, true)}
+          onLostPointerCapture={e => finishDrag(e, true)}
+          role="img"
+          aria-label={tt('tree.title')}
+        >
+          <defs>
+            {/* 技能图标裁成圆形（美术是方图，避免方角戳出外框） */}
+            <clipPath id="tree-icon-clip" clipPathUnits="objectBoundingBox">
+              <circle cx="0.5" cy="0.5" r="0.5" />
+            </clipPath>
+          </defs>
+          <g ref={sceneRef} className="tree-scene">
+          {ascExtent && (
+            <circle
+              className="asc-backdrop"
+              cx={ascExtent.x + ascExtent.w / 2}
+              cy={ascExtent.y + ascExtent.h / 2}
+              r={Math.max(ascExtent.w, ascExtent.h) / 2}
+            />
+          )}
+          {edgesEl}
+          {nodesEl}
+          </g>
+        </svg>
+        {hover && !attrPicker && (
+          <TreeTooltip
+            node={hover}
+            name={hoverName}
+            stats={hoverStats ?? []}
+            pos={hoverPos}
+            canvasRef={svgRef}
+            benefit={
+              hoverDiff && (
+                <div className="tooltip-benefit">
+                  <span className="tooltip-benefit-title">
+                    {allocated.has(hover.skill) ? tt('diff.ifDealloc') : tt('diff.ifAlloc')}
+                  </span>
+                  <DiffList diffs={hoverDiff} lang={lang} limit={5} />
+                </div>
+              )
+            }
+          />
+        )}
+        {attrPicker && (
+          <div
+            className="attr-picker"
+            role="menu"
+            style={{ left: attrPicker.x + 10, top: attrPicker.y + 10 }}
+          >
+            <div className="attr-picker-title">{tt('tree.attrPick')}</div>
+            {(['str', 'dex', 'int'] as AttributeChoice[]).map((choice) => (
+              <button
+                key={choice}
+                role="menuitem"
+                className={`attr-choice attr-${choice}`}
+                onClick={() => {
+                  session.toggleNode(attrPicker.node.skill, choice);
+                  setAttrPicker(null);
+                }}
+              >
+                {tt(`tree.attr.${choice}` as Parameters<typeof tt>[0])}
+                <kbd>{choice === 'str' ? 'S' : choice === 'dex' ? 'D' : 'I'}</kbd>
+              </button>
+            ))}
+            <button className="attr-cancel" onClick={() => setAttrPicker(null)}>
+              ×
+            </button>
+          </div>
+        )}
+        {!currentAscId &&
+          ((session.treeMeta?.classes ?? []).find(
+            (c) => c.name === session.character?.class_name,
+          )?.ascendancies?.length ?? 0) > 0 && (
+            <div className="asc-hint">{tt('tree.pickAscHint')}</div>
+          )}
+      </div>
+      <div className="tree-edit-tools" ref={toolsRef} tabIndex={-1}>
       <div className="attr-distribute" role="group" aria-label={tt('tree.attrDistribute')}>
         {allocatedAttrNodes.length > 0 && (
         <>
@@ -969,19 +1079,24 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
         onPreview={previewPlan}
         focusPlanner={focusPlanner}
       />
+      {Object.keys(session.editorDrafts).filter(key => key.startsWith('jewel:')).map(key => (
+        <button key={key} onClick={() => setJewelSocket(Number(key.slice(6)))}>
+          {tt('editor.draft')} · {tt('tree.jewel')} #{key.slice(6)}
+        </button>
+      ))}
       {jewelEdit && (
-        <div className="jewel-editor" role="group" aria-label={tt('tree.jewel')}>
+        <div className="jewel-editor" ref={jewelRef} tabIndex={-1} role="group" aria-label={tt('tree.jewel')}>
           <header className="item-detail-header">
             <span className="item-slot">
               {tt('tree.jewel')} · #{jewelEdit.socket}
             </span>
             <span className="item-actions">
               <button
-                disabled={session.busy}
+                disabled={session.busy || !jewelEdit.draft.trim()}
                 onClick={() => {
                   const rest = session.jewels.filter((j) => j.socket_node !== jewelEdit.socket);
                   session.setJewels([...rest, { socket_node: jewelEdit.socket, text: jewelEdit.draft }]);
-                  setJewelEdit(null);
+                  closeJewelEditor();
                 }}
               >
                 {tt('items.apply')}
@@ -992,7 +1107,7 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
                   disabled={session.busy}
                   onClick={() => {
                     session.setJewels(session.jewels.filter((j) => j.socket_node !== jewelEdit.socket));
-                    setJewelEdit(null);
+                    closeJewelEditor();
                   }}
                 >
                   {tt('items.remove')}
@@ -1001,9 +1116,9 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
               <button
                 disabled={session.busy}
                 onClick={() => {
-                  if (allocated.has(jewelEdit.socket)) session.toggleNode(jewelEdit.socket);
-                  session.setJewels(session.jewels.filter((j) => j.socket_node !== jewelEdit.socket));
-                  setJewelEdit(null);
+                  session.removeJewelSocket(jewelEdit.socket,
+                    [...deallocateNode(graph, allocated, startSkill, jewelEdit.socket)]);
+                  closeJewelEditor();
                 }}
               >
                 {tt('tree.unallocSocket')}
@@ -1014,7 +1129,7 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
               >
                 {tt('lib.save')}
               </button>
-              <button onClick={() => setJewelEdit(null)}>{tt('items.cancel')}</button>
+              <button onClick={() => closeJewelEditor()}>{tt('items.cancel')}</button>
             </span>
           </header>
           <p className="tree-hint">{tt('tree.jewelHint')}</p>
@@ -1053,7 +1168,7 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
                       );
                       if (v === '') {
                         session.setJewels(rest);
-                        setJewelEdit({ ...jewelEdit, draft: JEWEL_TEMPLATE });
+                        session.setEditorDraft(jewelDraftKey, null);
                         return;
                       }
                       const entry = jewelLib.find((x) => x.id === v);
@@ -1062,7 +1177,7 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
                         ...rest,
                         { socket_node: jewelEdit.socket, text: entry.text },
                       ]);
-                      setJewelEdit({ ...jewelEdit, draft: entry.text });
+                      session.setEditorDraft(jewelDraftKey, null);
                     }}
                   />
                 );
@@ -1074,93 +1189,13 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
             value={jewelEdit.draft}
             spellCheck={false}
             aria-label={tt('tree.jewel')}
-            onChange={(e) => setJewelEdit({ ...jewelEdit, draft: e.target.value })}
+            onChange={(e) => session.setEditorDraft(jewelDraftKey,
+              e.target.value === (session.jewels.find(jewel => jewel.socket_node === jewelSocket)?.text ?? JEWEL_TEMPLATE)
+                ? null : e.target.value)}
           />
         </div>
       )}
-      <div className="tree-canvas">
-        <svg
-          ref={svgRef}
-          viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
-          onWheel={onWheel}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={e => finishDrag(e)}
-          onPointerCancel={e => finishDrag(e, true)}
-          onLostPointerCapture={e => finishDrag(e, true)}
-          role="img"
-          aria-label={tt('tree.title')}
-        >
-          <defs>
-            {/* 技能图标裁成圆形（美术是方图，避免方角戳出外框） */}
-            <clipPath id="tree-icon-clip" clipPathUnits="objectBoundingBox">
-              <circle cx="0.5" cy="0.5" r="0.5" />
-            </clipPath>
-          </defs>
-          <g ref={sceneRef} className="tree-scene">
-          {ascExtent && (
-            <circle
-              className="asc-backdrop"
-              cx={ascExtent.x + ascExtent.w / 2}
-              cy={ascExtent.y + ascExtent.h / 2}
-              r={Math.max(ascExtent.w, ascExtent.h) / 2}
-            />
-          )}
-          {edgesEl}
-          {nodesEl}
-          </g>
-        </svg>
-        {hover && !attrPicker && (
-          <TreeTooltip
-            node={hover}
-            name={hoverName}
-            stats={hoverStats ?? []}
-            pos={hoverPos}
-            canvasRef={svgRef}
-            benefit={
-              hoverDiff && (
-                <div className="tooltip-benefit">
-                  <span className="tooltip-benefit-title">
-                    {allocated.has(hover.skill) ? tt('diff.ifDealloc') : tt('diff.ifAlloc')}
-                  </span>
-                  <DiffList diffs={hoverDiff} lang={lang} limit={5} />
-                </div>
-              )
-            }
-          />
-        )}
-        {attrPicker && (
-          <div
-            className="attr-picker"
-            role="menu"
-            style={{ left: attrPicker.x + 10, top: attrPicker.y + 10 }}
-          >
-            <div className="attr-picker-title">{tt('tree.attrPick')}</div>
-            {(['str', 'dex', 'int'] as AttributeChoice[]).map((choice) => (
-              <button
-                key={choice}
-                role="menuitem"
-                className={`attr-choice attr-${choice}`}
-                onClick={() => {
-                  session.toggleNode(attrPicker.node.skill, choice);
-                  setAttrPicker(null);
-                }}
-              >
-                {tt(`tree.attr.${choice}` as Parameters<typeof tt>[0])}
-                <kbd>{choice === 'str' ? 'S' : choice === 'dex' ? 'D' : 'I'}</kbd>
-              </button>
-            ))}
-            <button className="attr-cancel" onClick={() => setAttrPicker(null)}>
-              ×
-            </button>
-          </div>
-        )}
-        {!currentAscId &&
-          ((session.treeMeta?.classes ?? []).find(
-            (c) => c.name === session.character?.class_name,
-          )?.ascendancies?.length ?? 0) > 0 && (
-            <div className="asc-hint">{tt('tree.pickAscHint')}</div>
-          )}
+      </div>
       </div>
     </section>
   );

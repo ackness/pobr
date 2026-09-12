@@ -9,9 +9,8 @@
 use pobr_gamedata::repo_data_root;
 use serde_json::Value;
 
-/// The contract-version pin: whenever any key-set assertion in this file
-/// changes (= a shape change), both the Rust side's `SCHEMA_VERSION` and
-/// `web/src/api/types.ts::EXPECTED_SCHEMA_VERSION` must be bumped by 1.
+/// Breaking contract changes bump both schema constants. Optional fields
+/// with defaults can be added without changing the existing version.
 #[test]
 fn schema_version_pinned() {
     // v4: BuildJson preserves weapon sets; socket groups carry their set binding.
@@ -104,8 +103,16 @@ fn decode_build_json_shape() {
     assert_keys(&equipped[0], &["slot", "text"], "equipped[0]");
     let groups = json["socket_groups"].as_array().unwrap();
     assert!(!groups.is_empty());
+    let mut group_shape = groups[0].clone();
+    if let Some(main) = group_shape
+        .as_object_mut()
+        .unwrap()
+        .remove("main_active_skill")
+    {
+        assert!(main.as_u64().is_some(), "optional active-skill ordinal");
+    }
     assert_keys(
-        &groups[0],
+        &group_shape,
         &[
             "slot",
             "enabled",
@@ -250,6 +257,63 @@ fn calculate_build_json_main_group_override_changes_output() {
         "extra modifier should change the output (base={} overridden={})",
         es(&base),
         es(&overridden)
+    );
+}
+
+/// Materializing an imported multi-active group must retain PoB's selection
+/// through calculation and share-code export, including trigger groups.
+#[test]
+fn imported_group_main_skill_survives_materialization_and_export() {
+    ensure_data();
+    let xml = include_str!("../../../crates/pobr-build/tests/fixtures/coc_cast_on_crit.xml");
+    let code = pobr_build::encode_pob_code(xml).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    let groups: Vec<Value> = decoded["socket_groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|g| {
+            let mut group = g.clone();
+            group.as_object_mut().unwrap().remove("active_skill_id");
+            group
+        })
+        .collect();
+    assert_eq!(groups[0]["main_active_skill"], 3);
+    let request = serde_json::json!({
+        "character": decoded["character"],
+        "allocated_nodes": decoded["tree"]["allocated_nodes"],
+        "items": decoded["items"]["equipped"],
+        "socket_groups": groups,
+        "main_socket_group": decoded["main_socket_group"],
+        "config_inputs": decoded["config_inputs"],
+    });
+    let calculate = |request: &Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap()
+    };
+    let original = calculate(&serde_json::json!({"pob_code": code}));
+    let materialized = calculate(&request);
+    assert_eq!(original["main_skill"]["skill_id"], "FireballPlayer");
+    assert_eq!(materialized["main_skill"], original["main_skill"]);
+    let exported = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let redecoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&exported).unwrap()).unwrap();
+    assert_eq!(redecoded["socket_groups"][0]["main_active_skill"], 3);
+    assert_eq!(
+        calculate(&serde_json::json!({"pob_code": exported}))["main_skill"],
+        original["main_skill"]
+    );
+
+    // Older requests omit the optional ordinal and still select the first active.
+    let mut legacy = request;
+    legacy["socket_groups"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("main_active_skill");
+    assert_eq!(
+        calculate(&legacy)["main_skill"]["skill_id"],
+        "ArmourBreakerPlayer"
     );
 }
 
@@ -760,6 +824,7 @@ fn encode_build_roundtrip_matches_direct_calculation() {
                 "slot": g["slot"],
                 "enabled": g["enabled"],
                 "source": g["source"],
+                "main_active_skill": g["main_active_skill"],
                 "gems": g["gems"],
             })
         })
@@ -1485,6 +1550,128 @@ fn switching_loadout_changes_tree_and_skills() {
     assert_eq!(
         gem, "Firestorm",
         "the skill set should switch with the group"
+    );
+
+    // The editable session must persist the selected XML, not the original active set.
+    let selected_code = second["code"].as_str().expect("selected build code");
+    let restored: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(selected_code).unwrap()).unwrap();
+    assert_eq!(restored["active_loadout"], 1);
+    assert_eq!(restored["tree"], second["tree"]);
+    assert_eq!(restored["socket_groups"], second["socket_groups"]);
+}
+
+const EXPORT_BASE: &str = r#"<PathOfBuilding2>
+  <Build level="20" className="Witch" ascendClassName="Infernalist" mainSocketGroup="1"/>
+  <Tree activeSpec="2">
+    <Spec title="A" nodes="1,2" treeVersion="0_5"/>
+    <Spec title="B" nodes="3,4" treeVersion="0_5"/>
+  </Tree>
+  <Skills activeSkillSet="2">
+    <SkillSet id="1" title="A"><Skill enabled="true"><Gem skillId="SparkPlayer" gemId="Metadata/Items/Gems/SkillGemSpark" level="1" quality="0" enabled="true"/></Skill></SkillSet>
+    <SkillSet id="2" title="B"><Skill enabled="true"><Gem skillId="FirestormPlayer" gemId="Metadata/Items/Gems/SkillGemFirestorm" level="1" quality="0" enabled="true"/></Skill></SkillSet>
+  </Skills>
+  <Items activeItemSet="2">
+    <Item id="1">Rarity: RARE
+Old Ring
+Sapphire Ring
++10 to maximum Life</Item>
+    <ItemSet id="1" title="A"><Slot name="Ring 1" itemId="1"/></ItemSet>
+    <ItemSet id="2" title="B"><Slot name="Ring 1" itemId="1"/></ItemSet>
+  </Items>
+  <Config><Input name="conditionFullLife" boolean="false"/><Input name="customMods" string="+10 to maximum Life"/></Config>
+  <Notes>Original notes</Notes>
+</PathOfBuilding2>"#;
+
+#[test]
+fn exporting_imported_build_writes_global_edits_and_clears_removed_values() {
+    ensure_data();
+    let mut request = serde_json::json!({
+        "base_code": pobr_build::encode_pob_code(EXPORT_BASE).unwrap(),
+        "character": { "level": 90, "class_name": "Sorceress", "ascendancy_name": "Stormweaver" },
+        "main_socket_group": 1,
+        "socket_groups": [
+            { "gems": [{ "skill_id": "FireballPlayer", "level": 5 }] },
+            { "gems": [{ "skill_id": "FirestormPlayer", "level": 8 }] }
+        ],
+        "config_inputs": { "conditionFullLife": true },
+        "notes": "Edited <notes> & annotations"
+    });
+    let code = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    assert_eq!(decoded["character"], request["character"]);
+    assert_eq!(decoded["main_socket_group"], 1);
+    assert_eq!(decoded["config_inputs"]["conditionFullLife"], true);
+    assert!(decoded["config_inputs"].get("customMods").is_none());
+    assert_eq!(decoded["notes"], request["notes"]);
+
+    request["base_code"] = code.into();
+    request["character"]["ascendancy_name"] = "".into();
+    request["main_socket_group"] = Value::Null;
+    request["notes"] = "".into();
+    let code = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    assert_eq!(decoded["character"], request["character"]);
+    assert_eq!(decoded["main_socket_group"], Value::Null);
+    assert!(decoded["notes"].is_null() || decoded["notes"] == "");
+}
+
+#[test]
+fn exporting_second_loadout_preserves_set_identity_and_item_references() {
+    ensure_data();
+    let ring = "Rarity: RARE\nNew Ring\nSapphire Ring\n+50 to maximum Life";
+    let jewel = "Rarity: RARE\nNew Jewel\nRuby\n10% increased Fire Damage";
+    let request = serde_json::json!({
+        "base_code": pobr_build::encode_pob_code(EXPORT_BASE).unwrap(),
+        "character": { "level": 90, "class_name": "Witch" },
+        "allocated_nodes": [9],
+        "socket_groups": [{ "gems": [{ "skill_id": "FireballPlayer", "level": 5 }] }],
+        "items": [{ "slot": "ring1", "text": ring }],
+        "jewels": [{ "socket_node": 9, "text": jewel }]
+    });
+    let code = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    assert_eq!(decoded["active_loadout"], 1);
+    assert_eq!(decoded["tree"]["allocated_nodes"], serde_json::json!([9]));
+    assert_eq!(
+        decoded["socket_groups"][0]["gems"][0]["skill_id"],
+        "FireballPlayer"
+    );
+    assert_eq!(
+        decoded["items"]["equipped"][0]["text"]
+            .as_str()
+            .unwrap()
+            .trim(),
+        ring
+    );
+    assert_eq!(
+        decoded["items"]["socket_jewels"][0]["text"]
+            .as_str()
+            .unwrap()
+            .trim(),
+        jewel
+    );
+
+    let other: Value = serde_json::from_str(
+        &pobr_wasm::decode_build_loadout_json(
+            &serde_json::json!({ "code": code, "tree": 1, "skill": 1, "item": 1 }).to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(other["tree"]["allocated_nodes"], serde_json::json!([1, 2]));
+    assert_eq!(
+        other["socket_groups"][0]["gems"][0]["skill_id"],
+        "SparkPlayer"
+    );
+    assert!(
+        other["items"]["equipped"][0]["text"]
+            .as_str()
+            .unwrap()
+            .contains("Old Ring")
     );
 }
 

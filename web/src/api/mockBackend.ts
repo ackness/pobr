@@ -33,8 +33,8 @@ export function createMockBackend(): PobrBackend {
       }
       return decodeFixture as unknown as BuildJson;
     },
-    async switchLoadout() {
-      return decodeFixture as unknown as BuildJson;
+    async switchLoadout(code) {
+      return { ...decodeFixture as unknown as BuildJson, code };
     },
     async manageLoadout(pobCode) {
       return pobCode;

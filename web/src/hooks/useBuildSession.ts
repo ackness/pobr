@@ -91,6 +91,9 @@ export interface BuildSession {
   /** 笔记（本地持久化；导入 build 时被其 <Notes> 覆盖）。 */
   notes: string;
   setNotes: (text: string) => void;
+  /** Unapplied item text, retained across tabs until saved, cancelled or the build is replaced. */
+  editorDrafts: Record<string, string>;
+  setEditorDraft: (key: string, text: string | null) => void;
   /** 局部注释（装备/技能组/珠宝旁的说明；随分享 code 与存档往返）。 */
   annotations: Annotations;
   /** 写/清一条局部注释（空文本 = 删除；不触发重算）。 */
@@ -103,7 +106,7 @@ export interface BuildSession {
   exportCode: () => Promise<string>;
   /** 从导出的 JSON 恢复会话；非法输入抛错。 */
   importSession: (json: string) => void;
-  importCode: (code: string) => Promise<void>;
+  importCode: (code: string) => Promise<boolean>;
   /** 切到指定 loadout（成组换天赋/装备/技能）；会覆盖本地编辑。 */
   switchLoadout: (sel: { tree: number; item: number | null; skill: number | null }) => Promise<void>;
   /** 当前 build 的 loadout 清单（导入后可用；手搓 build 为空）。 */
@@ -126,6 +129,8 @@ export interface BuildSession {
   stateVersion: number;
   /** 自上次导入 / 切换 loadout 以来是否有编辑（切换会整份覆盖，据此提醒）。 */
   isDirty: boolean;
+  /** Whether starting over would discard character progress, including restored saves. */
+  hasBuildContent: boolean;
   /** 物品/珠宝/技能组套装库（独立持久化，跨 build 复用）。 */
   library: Library;
   saveLibraryItem: (kind: 'item' | 'jewel', text: string, slot?: string) => void;
@@ -141,6 +146,7 @@ export interface BuildSession {
   setFlasks: (flasks: SlotItemInput[]) => void;
   /** 整份替换树插槽珠宝（Tree 页珠宝编辑器）。 */
   setJewels: (jewels: JewelInput[]) => void;
+  removeJewelSocket: (socket: number, allocatedNodes: number[]) => void;
   updateParams: (patch: Partial<CalcParams>) => void;
   setConfigInput: (key: string, value: ConfigInputValue | null) => void;
   runAttribution: (fields: string[]) => Promise<AttributionResponse>;
@@ -280,6 +286,15 @@ function itemName(text: string): string {
 function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState {
   return {
     ...state,
+    socketGroups: state.socketGroups.map((group, index) => {
+      const original = decoded.socket_groups[index];
+      // Only restore missing metadata when the saved gem order still matches
+      // the source. Edited groups cannot safely inherit an old ordinal.
+      return group.main_active_skill === undefined && original?.main_active_skill != null
+        && group.gems.length === original.gems.length
+        && group.gems.every((gem, i) => gem.skill_id === original.gems[i].skill_id)
+        ? { ...group, main_active_skill: original.main_active_skill } : group;
+    }),
     params: {
       ...state.params,
       main_socket_group: state.params.main_socket_group ?? decoded.main_socket_group ?? undefined,
@@ -298,6 +313,7 @@ function materialize(
       weapon_set: g.weapon_set,
       slot: g.slot,
       enabled: g.enabled,
+      main_active_skill: g.main_active_skill,
       source: g.source,
       gems: g.gems.map((gem) => ({
         skill_id: gem.skill_id,
@@ -345,8 +361,24 @@ export function useBuildSession(): BuildSession {
     () => localStorage.getItem('pobr-notes') ?? '',
   );
 
-  const notesRef = useRef('');
+  const notesRef = useRef(notes);
   const stateRef = useRef<BuildState | null>(null);
+  const [editorDrafts, setEditorDrafts] = useState<Record<string, string>>({});
+  const setEditorDraft = useCallback((key: string, text: string | null) => {
+    setEditorDrafts(previous => {
+      const next = { ...previous };
+      if (text === null) delete next[key];
+      else next[key] = text;
+      return next;
+    });
+  }, []);
+  const hasDrafts = Object.keys(editorDrafts).length > 0;
+  useEffect(() => {
+    if (!hasDrafts) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [hasDrafts]);
 
   const setNotes = useCallback((text: string) => {
     setNotesState(text);
@@ -362,6 +394,7 @@ export function useBuildSession(): BuildSession {
    * 覆盖状态，切之前要据此提醒。
    */
   const cleanVersionRef = useRef(0);
+  const cleanNotesRef = useRef(notes);
   /** `stateVersion` 的同步副本（apply 内自增，避免在 setState updater 里做副作用）。 */
   const versionRef = useRef(0);
 
@@ -408,7 +441,11 @@ export function useBuildSession(): BuildSession {
       versionRef.current += 1;
       setStateVersion(versionRef.current);
       // 整份替换（导入 / 切 loadout）落地即为新基线，不算「未保存改动」。
-      if (opts?.clean) cleanVersionRef.current = versionRef.current;
+      if (opts?.clean) {
+        cleanVersionRef.current = versionRef.current;
+        cleanNotesRef.current = notesRef.current;
+        setEditorDrafts({});
+      }
       saveToStorage(next, notesRef.current);
       recalc(next);
     },
@@ -553,9 +590,7 @@ export function useBuildSession(): BuildSession {
         mergeImportedIntoLibrary(decoded);
         // <Notes> 里可能带 PoBR 注释标记段：拆成总览笔记 + 局部注释。
         const { overview, annotations } = splitNotes(decoded.notes ?? '');
-        if (decoded.notes) {
-          setNotes(overview);
-        }
+        setNotes(overview);
         apply({
           pobCode: isBuildFile ? null : code,
           character: {
@@ -574,9 +609,11 @@ export function useBuildSession(): BuildSession {
             main_socket_group: decoded.main_socket_group ?? undefined,
           },
         }, { clean: true });
+        return true;
       } catch (err) {
         setError(formatApiError(err));
         setBusy(false);
+        return false;
       }
     },
     [apply, setNotes, mergeImportedIntoLibrary],
@@ -602,9 +639,9 @@ export function useBuildSession(): BuildSession {
         const decoded = await (await getBackend()).switchLoadout(code, sel);
         setBuild(decoded);
         const { overview, annotations } = splitNotes(decoded.notes ?? '');
-        if (decoded.notes) setNotes(overview);
+        setNotes(overview);
         apply({
-          pobCode: code,
+          pobCode: decoded.code,
           character: {
             level: decoded.character.level,
             class_name: decoded.character.class_name,
@@ -666,6 +703,7 @@ export function useBuildSession(): BuildSession {
   const newBuild = useCallback(
     (className: string, ascendancyName: string) => {
       setBuild(null);
+      setNotes('');
       apply({
         pobCode: null,
         character: { level: 1, class_name: className, ascendancy_name: ascendancyName },
@@ -679,7 +717,7 @@ export function useBuildSession(): BuildSession {
         params: { config_inputs: {} },
       }, { clean: true });
     },
-    [apply],
+    [apply, setNotes],
   );
 
   const setSocketGroups = useCallback(
@@ -722,6 +760,16 @@ export function useBuildSession(): BuildSession {
     },
     [apply, state],
   );
+
+  const removeJewelSocket = useCallback((socket: number, allocatedNodes: number[]) => {
+    const current = stateRef.current;
+    if (!current) return;
+    const kept = new Set(allocatedNodes);
+    const attributeChoices = Object.fromEntries(
+      Object.entries(current.attributeChoices).filter(([skill]) => kept.has(Number(skill))),
+    );
+    apply({ ...current, allocatedNodes, attributeChoices, jewels: current.jewels.filter(jewel => jewel.socket_node !== socket) });
+  }, [apply]);
 
   const setCharacter = useCallback(
     (patch: Partial<CharacterState>) => {
@@ -817,6 +865,10 @@ export function useBuildSession(): BuildSession {
     (index: number) => {
       if (!state) return;
       const socketGroups = state.socketGroups.filter((_, i) => i !== index);
+      // Keep the same selected group after compaction; replace it only if removed.
+      const main = state.params.main_socket_group ?? 0;
+      const nextMain = main === index ? socketGroups.findIndex(group => group.enabled)
+        : main > index ? main - 1 : main;
       // `skill:<index>` 注释键跟随组序号：删除组的注释一并删，后续组的键前移。
       const annotations: Annotations = {};
       for (const [key, text] of Object.entries(state.annotations)) {
@@ -829,7 +881,8 @@ export function useBuildSession(): BuildSession {
         if (i === index) continue;
         annotations[i > index ? `skill:${i - 1}` : key] = text;
       }
-      apply({ ...state, socketGroups, annotations });
+      apply({ ...state, socketGroups, annotations, params: { ...state.params,
+        main_socket_group: nextMain >= 0 && nextMain < socketGroups.length ? nextMain : undefined } });
     },
     [apply, state],
   );
@@ -845,8 +898,8 @@ export function useBuildSession(): BuildSession {
     const backend = await getBackend();
     // encode 走全量覆盖（toRequest 本就不带 pob_code——分享内容 = 当前编辑态本身）；
     // 局部注释嵌入 <Notes> 标记段随 code 往返（PoB2 里显示为普通笔记）。
-    // base_code：导入过的 build 以原始 code 为底做合并，保住未在编辑的其余
-    // loadout（多套 build 不带它导出会只剩当前这套）。
+    // The base code includes the latest loadout selection; merge edits there while
+    // preserving all other loadouts.
     const request = toRequest(state);
     return backend.encodeBuild({
       ...request,
@@ -863,6 +916,7 @@ export function useBuildSession(): BuildSession {
       if (!saved) {
         throw new Error('invalid session file');
       }
+      setEditorDrafts({});
       setBuild(null);
       notesRef.current = saved.notes;
       setNotesState(saved.notes);
@@ -988,6 +1042,8 @@ export function useBuildSession(): BuildSession {
     error,
     notes,
     setNotes,
+    editorDrafts,
+    setEditorDraft,
     annotations: state?.annotations ?? {},
     setAnnotation,
     removeSocketGroup,
@@ -1008,9 +1064,20 @@ export function useBuildSession(): BuildSession {
     setItems,
     setFlasks,
     setJewels,
+    removeJewelSocket,
     currentRequest,
     stateVersion,
-    isDirty: stateVersion > cleanVersionRef.current,
+    isDirty: stateVersion > cleanVersionRef.current || notes !== cleanNotesRef.current || hasDrafts,
+    hasBuildContent: !!build || hasDrafts || !!notes.trim() || !!state && Boolean(
+      state.character.level > 1 || state.character.ascendancy_name
+      || state.items.length || state.flasks.length || state.jewels.length
+      || state.socketGroups.length || state.allocatedNodes.length
+      || state.weaponSwap?.alternate_items.length
+      || state.weaponSwap?.exclusive_nodes.some(nodes => nodes.length > 0)
+      || Object.keys(state.annotations).length
+      || Object.keys(state.params.config_inputs).length
+      || Object.entries(state.params).some(([key, value]) => key !== 'config_inputs' && value !== undefined)
+    ),
     library,
     saveLibraryItem,
     removeLibraryItem,

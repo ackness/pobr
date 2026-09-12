@@ -273,3 +273,11 @@
   .stats-toggle { display: flex; align-items: center; justify-content: space-between; flex: none; width: 100%; padding: var(--space-2) var(--space-4); background: var(--surface-panel); border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; font-size: var(--text-sm); color: var(--accent-gold); }
   .app-main { padding: var(--space-4); }
 }
+.editor-draft-notice {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+.editor-draft-notice p { margin: 0 0 0.5rem; }
+.editor-draft-notice button + button { margin-left: 0.5rem; }

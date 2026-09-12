@@ -106,6 +106,8 @@ export interface SocketGroupJson {
   weapon_set?: 1 | 2 | null;
   slot: string | null;
   enabled: boolean;
+  /** PoB's 1-based selection among this group's active skills. */
+  main_active_skill?: number | null;
   /** PoB 装备授予技能来源；手动组为 null。 */
   source: string | null;
   active_skill_id: string | null;
@@ -135,6 +137,11 @@ export interface BuildJson {
   loadouts: LoadoutJson[];
   /** 当前对应的 loadout 下标；无法判定为 null。 */
   active_loadout: number | null;
+}
+
+export interface SelectedLoadoutJson extends BuildJson {
+  /** Build code with the returned loadout selected; use as the next export base. */
+  code: string;
 }
 
 /**
@@ -177,6 +184,8 @@ export interface SocketGroupInput {
   weapon_set?: 1 | 2 | null;
   slot?: string | null;
   enabled: boolean;
+  /** PoB's 1-based selection among this group's active skills. */
+  main_active_skill?: number | null;
   /** decode 后透传的装备授予技能来源；手动组省略。 */
   source?: string | null;
   gems: GemInput[];

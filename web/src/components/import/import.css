@@ -1,4 +1,4 @@
-/* Build 页：2×2 卡片网格（角色 / 笔记 / 导入 / 分享+存档），窄屏退化单列。 */
+/* Character and import first; sharing, backups and notes follow. */
 .build-page {
   padding-bottom: var(--space-6);
 }
@@ -7,7 +7,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
-  align-items: stretch;
+  align-items: start;
 }
 
 @media (max-width: 900px) {

@@ -78,6 +78,9 @@ struct SocketGroupJson {
     weapon_set: Option<u8>,
     slot: Option<String>,
     enabled: bool,
+    /// PoB's 1-based selection among this group's active skills.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    main_active_skill: Option<usize>,
     /// PoB `<Skill source>` (equipment-granted skill groups get `Item:<id>:<name>`); `None` = a manual group.
     /// Must be passed through the whole chain (web state -> request ->
     /// encode); otherwise a granted group loses its source marker after a
@@ -202,6 +205,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                 weapon_set: g.weapon_set,
                 slot: g.slot.clone(),
                 enabled: g.enabled,
+                main_active_skill: g.main_active_skill,
                 source: g.source.clone(),
                 active_skill_id: g.active_skill_id.clone(),
                 gems: g
@@ -238,7 +242,8 @@ pub fn decode_build_json(code: &str) -> Result<String, String> {
 }
 
 fn decode_build_impl(code: &str) -> Result<String, super::ApiError> {
-    decode_selected(code, &SetSelection::default())
+    let (build, _) = decode_selected(code, &SetSelection::default())?;
+    Ok(serde_json::to_string(&build).map_err(|e| format!("serialize: {e}"))?)
 }
 
 /// 0.1b: same as [`decode_build_json`], but first switches to a specified loadout (group switching).
@@ -249,6 +254,7 @@ fn decode_build_impl(code: &str) -> Result<String, super::ApiError> {
 /// single-set exemption). Switching happens at the **XML level** (rewrite
 /// the three active attributes, then re-parse), so the result exactly
 /// matches manually switching all three dropdowns in PoB2.
+/// The response adds `code`, containing the selected XML for persistence and export.
 pub fn decode_build_loadout_json(request_json: &str) -> Result<String, String> {
     state::cached_response("decode_loadout", request_json, || {
         decode_loadout_impl(request_json).map_err(super::ApiError::into_json)
@@ -266,17 +272,30 @@ struct LoadoutRequest {
     skill: Option<usize>,
 }
 
+#[derive(Serialize)]
+struct SelectedLoadoutJson {
+    #[serde(flatten)]
+    build: BuildJson,
+    code: String,
+}
+
 fn decode_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
     let req: LoadoutRequest = serde_json::from_str(request_json)
         .map_err(|e| super::ApiError::bad_request(format!("parse request: {e}")))?;
-    decode_selected(
+    let (build, xml) = decode_selected(
         &req.code,
         &SetSelection {
             tree: req.tree,
             item: req.item,
             skill: req.skill,
         },
-    )
+    )?;
+    let selected = SelectedLoadoutJson {
+        build,
+        code: pobr_build::encode_pob_code(&xml)
+            .map_err(|e| format!("encode selected build: {e}"))?,
+    };
+    Ok(serde_json::to_string(&selected).map_err(|e| format!("serialize: {e}"))?)
 }
 
 /// 0.1c: group management — copies / renames / deletes a loadout, returning the **new build code**.
@@ -353,14 +372,14 @@ fn manage_loadout_impl(request_json: &str) -> Result<String, super::ApiError> {
     .map_err(|e| format!("serialize: {e}"))?)
 }
 
-fn decode_selected(code: &str, sel: &SetSelection) -> Result<String, super::ApiError> {
+fn decode_selected(code: &str, sel: &SetSelection) -> Result<(BuildJson, String), super::ApiError> {
     let raw = decode_pob_code(code.trim())
         .map_err(|e| super::ApiError::decode_error(format!("decode build code: {e}")))?;
     let xml = select_sets(&raw, sel);
     let build = parse_build(&xml)
         .map_err(|e| super::ApiError::decode_error(format!("parse build xml: {e}")))?;
     let json = build_to_json(&build, &xml)?;
-    Ok(serde_json::to_string(&json).map_err(|e| format!("serialize: {e}"))?)
+    Ok((json, xml))
 }
 
 // decode_build_file_json (a China-server exported `.build` file -> BuildJson)
@@ -558,6 +577,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 weapon_set: None,
                 slot: None,
                 enabled: true,
+                main_active_skill: None,
                 source: None,
                 active_skill_id: Some(active),
                 gems,

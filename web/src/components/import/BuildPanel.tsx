@@ -21,15 +21,21 @@ export function BuildPanel({ session, lang, onImported }: Props) {
   const [code, setCode] = useState('');
   const [fileError, setFileError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
-  const [shareCode, setShareCode] = useState<string | null>(null);
+  const [share, setShare] = useState<{ code: string; source: BuildSession['exportCode'] } | null>(null);
+  const shareCode = share?.source === session.exportCode ? share.code : null;
   const [shareError, setShareError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const generateCode = async () => {
     setShareError(null);
+    setGenerating(true);
     try {
-      setShareCode(await session.exportCode());
+      setShare({ code: await session.exportCode(), source: session.exportCode });
     } catch (err) {
       setShareError(formatApiError(err));
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -45,17 +51,19 @@ export function BuildPanel({ session, lang, onImported }: Props) {
 
   const importFile = async (file: File) => {
     setFileError(null);
-    const text = await file.text();
+    setImporting(true);
     try {
-      // 优先按本地存档解析；不是存档信封（如国服 .build / PoB code 文本）则走导入通道。
-      session.importSession(text);
-    } catch {
+      const text = await file.text();
       try {
-        await session.importCode(text.trim());
+        session.importSession(text);
         onImported();
-      } catch (err) {
-        setFileError(formatApiError(err));
+      } catch {
+        if (await session.importCode(text.trim())) onImported();
       }
+    } catch (err) {
+      setFileError(formatApiError(err));
+    } finally {
+      setImporting(false);
     }
   };
   const character = session.character!;
@@ -64,9 +72,13 @@ export function BuildPanel({ session, lang, onImported }: Props) {
   const ascendancies = currentClass?.ascendancies ?? [];
 
   const doImport = async () => {
-    if (!code.trim()) return;
-    await session.importCode(code.trim());
-    onImported();
+    if (!code.trim() || importing || session.busy) return;
+    setImporting(true);
+    try {
+      if (await session.importCode(code.trim())) onImported();
+    } finally {
+      setImporting(false);
+    }
   };
 
   const notesColored = hasPobColorCodes(session.notes);
@@ -83,7 +95,10 @@ export function BuildPanel({ session, lang, onImported }: Props) {
               <select
                 value={character.class_name}
                 disabled={session.busy}
-                onChange={(e) => session.newBuild(e.target.value, '')}
+                onChange={(e) => {
+                  if (session.hasBuildContent && !window.confirm(tt('build.confirmClassChange'))) return;
+                  session.newBuild(e.target.value, '');
+                }}
               >
                 {classes.map((c) => (
                   <option key={c.name} value={c.name}>
@@ -142,6 +157,78 @@ export function BuildPanel({ session, lang, onImported }: Props) {
           )}
         </article>
 
+        <article className="build-card build-card--import">
+          <h3>{tt('build.import')}</h3>
+          <p className="build-card-hint" id="import-hint">{tt('build.importHint')}</p>
+          <textarea
+            className="import-code"
+            rows={5}
+            placeholder={tt('build.importPlaceholder')}
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            spellCheck={false}
+            aria-label={tt('build.code')}
+            aria-describedby="import-hint"
+            disabled={importing}
+          />
+          <div className="build-card-actions">
+            <button
+              className="import-submit"
+              onClick={doImport}
+              disabled={session.busy || importing || !code.trim()}
+            >
+              {importing ? tt('build.importing') : tt('build.importButton')}
+            </button>
+            <button onClick={() => fileRef.current?.click()} disabled={session.busy || importing}>
+              {tt('save.import')}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".json,.build,.txt,application/json,text/plain"
+              hidden
+              aria-label={tt('save.import')}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) importFile(file);
+                e.target.value = '';
+              }}
+            />
+          </div>
+          {fileError && <div className="calc-error" role="alert">{fileError}</div>}
+        </article>
+
+
+        <article className="build-card">
+          <h3>{tt('share.title')}</h3>
+          <p className="build-card-hint">{tt('share.hint')}</p>
+          <div className="build-card-actions">
+            <button onClick={generateCode} disabled={session.busy || generating}>
+              {tt(generating ? 'share.generating' : 'share.generate')}
+            </button>
+            {shareCode && <CopyButton text={shareCode} lang={lang} />}
+          </div>
+          {shareError && <div className="calc-error" role="alert">{shareError}</div>}
+          {share && !shareCode && <p className="build-card-hint" role="status">{tt('share.stale')}</p>}
+          {shareCode && (
+            <textarea
+              className="import-code"
+              rows={3}
+              readOnly
+              value={shareCode}
+              spellCheck={false}
+              aria-label={tt('share.title')}
+              onFocus={(e) => e.target.select()}
+            />
+          )}
+
+          <h3 className="build-card-divide">{tt('save.title')}</h3>
+          <p className="build-card-hint">{tt('save.hint')}</p>
+          <div className="build-card-actions">
+            <button onClick={exportFile} disabled={session.busy || importing}>{tt('save.export')}</button>
+
+          </div>
+        </article>
         <article className="build-card build-card--notes">
           <h3>{tt('tab.notes')}</h3>
           <p className="build-card-hint">{tt('notes.hint')}</p>
@@ -167,79 +254,13 @@ export function BuildPanel({ session, lang, onImported }: Props) {
           )}
         </article>
 
-        <article className="build-card">
-          <h3>{tt('build.import')}</h3>
-          <textarea
-            className="import-code"
-            rows={5}
-            placeholder={tt('build.importPlaceholder')}
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            spellCheck={false}
-            aria-label="Build code"
-          />
-          <div className="build-card-actions">
-            <button
-              className="import-submit"
-              onClick={doImport}
-              disabled={session.busy || !code.trim()}
-            >
-              {session.busy ? tt('build.calculating') : tt('build.importButton')}
-            </button>
-          </div>
-        </article>
-
-        <article className="build-card">
-          <h3>{tt('share.title')}</h3>
-          <p className="build-card-hint">{tt('share.hint')}</p>
-          <div className="build-card-actions">
-            <button onClick={generateCode} disabled={session.busy}>
-              {tt('share.generate')}
-            </button>
-            {shareCode && <CopyButton text={shareCode} lang={lang} />}
-          </div>
-          {shareError && <div className="calc-error">{shareError}</div>}
-          {shareCode && (
-            <textarea
-              className="import-code"
-              rows={3}
-              readOnly
-              value={shareCode}
-              spellCheck={false}
-              aria-label={tt('share.title')}
-              onFocus={(e) => e.target.select()}
-            />
-          )}
-
-          <h3 className="build-card-divide">{tt('save.title')}</h3>
-          <p className="build-card-hint">{tt('save.hint')}</p>
-          <div className="build-card-actions">
-            <button onClick={exportFile}>{tt('save.export')}</button>
-            <button onClick={() => fileRef.current?.click()} disabled={session.busy}>
-              {tt('save.import')}
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".json,.build,application/json"
-              hidden
-              aria-label={tt('save.import')}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) importFile(file);
-                e.target.value = '';
-              }}
-            />
-          </div>
-          {fileError && <div className="calc-error">{fileError}</div>}
-        </article>
       </div>
 
       {session.calc && session.calc.item_errors.length > 0 && (
         <div className="calc-error">
           {session.calc.item_errors.map((e) => (
             <div key={e.slot}>
-              [{e.slot}] 解析失败，已跳过该件继续计算：{e.message}
+              [{e.slot}] {tt('build.itemError')}: {e.message}
             </div>
           ))}
         </div>

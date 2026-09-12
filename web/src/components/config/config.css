@@ -138,3 +138,6 @@
   .config-search { flex-basis: 100%; }
   .config-add input { flex-basis: 100%; }
 }
+
+.config-toolbar { position: sticky; top: 0; z-index: 5; background: var(--surface-page); padding-block: var(--space-3); border-bottom: 1px solid var(--border-subtle); }
+.config-filter { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--text-secondary); }

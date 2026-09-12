@@ -150,7 +150,8 @@ pre {
   top: calc(100% + 4px);
   left: 0;
   min-width: 100%;
-  max-width: 320px;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 2rem));
   max-height: 280px;
   overflow-y: auto;
   list-style: none;
@@ -168,7 +169,8 @@ pre {
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: var(--text-sm);
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -214,6 +216,10 @@ pre {
 
 /* 局部注释（装备/技能组/珠宝旁共用）：引用块展示 + 失焦即存编辑 */
 .note-block {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
   margin: var(--space-2) 0 0;
   padding: var(--space-1) var(--space-3);
   border-left: 2px solid var(--accent-gold-dim);
@@ -222,7 +228,7 @@ pre {
   color: var(--text-secondary);
   font-size: var(--text-sm);
   white-space: pre-wrap;
-  cursor: text;
+  cursor: pointer;
 }
 
 .note-block-label {
@@ -300,6 +306,8 @@ pre {
   *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -398,3 +406,45 @@ a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-gold); 
 .page-header-actions { flex-wrap: wrap; min-width: 0; max-width: 100%; }
 .opt-row label.opt-checkbox, .tree-planner-controls label.opt-checkbox { flex-direction: row; align-items: center; gap: 8px; align-self: center; line-height: 1.5; }
 .opt-checkbox input[type=checkbox] { width: auto; margin: 0; flex-shrink: 0; }
+
+.search-empty {
+  padding: var(--space-6);
+  margin-block: var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.search-empty p { margin: 0 0 var(--space-3); }
+
+.copy-control {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  max-width: 100%;
+  min-width: 0;
+  vertical-align: top;
+}
+
+.copy-fallback {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--color-negative);
+  font-size: var(--text-sm);
+}
+
+.copy-fallback textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--font-mono);
+}
+
+@media (pointer: coarse) {
+  .topbar-tab, .stats-toggle, .build-card button, .config-reset, .app-select-trigger {
+    min-height: 44px;
+  }
+}

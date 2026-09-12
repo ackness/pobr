@@ -49,7 +49,7 @@ fn current_tree_version() -> String {
 ///
 /// **Multi-set preservation**: when the request carries `base_code` (the
 /// original code from import), the output is based on it, replacing only
-/// the currently active set ([`merge_active_sets`]), with every other Spec
+/// the currently active sets and editable global fields ([`merge_active_sets`]), with every other Spec
 /// / SkillSet / ItemSet — along with each one's `title` — preserved as-is;
 /// otherwise, exporting a multi-set build would leave only the set being
 /// edited, breaking every loadout binding. A hand-built build has no `base_code` and still goes through full generation.
@@ -174,6 +174,7 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
                 weapon_set: g.weapon_set,
                 slot: g.slot.clone(),
                 enabled: g.enabled,
+                main_active_skill: g.main_active_skill,
                 source: g.source.clone(),
                 gems,
             }
@@ -212,8 +213,8 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         config_inputs: &config_inputs,
         notes: req.notes.as_deref(),
     });
-    // With a base draft, write back into its active set, preserving the
-    // other loadouts; if the base draft is corrupted, degrade to a
+    // With a base draft, write back the active sets and global fields, preserving
+    // the other loadouts; if the base draft is corrupted, degrade to a
     // pure-edit-state output (better to lose the other sets than fail the export outright).
     let xml = match req
         .base_code

@@ -238,6 +238,7 @@ pub(crate) fn config_trigger_modifiers(
         resolve_skill_level_with_gem_bonus(
             build,
             data,
+            group,
             &gem.skill_id,
             gem.gem_level,
             gem.stat_set_index,
@@ -293,7 +294,7 @@ pub(crate) fn config_trigger_modifiers(
     {
         let stats = trigger_source_stats(build, data, options, group, source_gem, main_skill_id)
             .or_else(|| {
-                base_rate_of(build, data, source_gem).map(|rate| {
+                base_rate_of(build, data, group, source_gem).map(|rate| {
                     pobr_core::calc::TriggerSourceStats {
                         action_rate: rate,
                         ..Default::default()
@@ -382,7 +383,7 @@ pub(crate) fn find_trigger_source_gem<'b>(
         {
             continue;
         }
-        let Some(rate) = base_rate_of(build, data, gem) else {
+        let Some(rate) = base_rate_of(build, data, group, gem) else {
             continue;
         };
         if best.is_none_or(|(_, b)| rate > b) {
@@ -441,11 +442,13 @@ pub(crate) fn source_cond_matches(
 pub(crate) fn base_rate_of(
     build: &Build,
     data: &BuildData,
+    group: &SocketGroup,
     gem: &crate::build::GemSkillRef,
 ) -> Option<f64> {
     let resolved = resolve_skill_level_with_gem_bonus(
         build,
         data,
+        group,
         &gem.skill_id,
         gem.gem_level,
         gem.stat_set_index,
@@ -560,7 +563,7 @@ pub(crate) fn in_group_trigger_source_stats(
         {
             continue;
         }
-        let Some(rate) = base_rate_of(build, data, gem) else {
+        let Some(rate) = base_rate_of(build, data, group, gem) else {
             continue;
         };
         if best.is_none_or(|(_, b)| rate > b) {

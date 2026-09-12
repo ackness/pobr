@@ -5,7 +5,7 @@ import { formatApiError } from '../../api/error';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { getBackend } from '../../api/backend';
 import type { ItemAugmentInfo, ItemLineJson, RuneCatalogEntry } from '../../api/types';
-import type { BuildSession } from '../../hooks/useBuildSession';
+import type { BuildSession, LibraryItem } from '../../hooks/useBuildSession';
 import {
   cleanLine,
   itemLines,
@@ -160,13 +160,16 @@ const CHARM_TEMPLATE = 'Rarity: MAGIC\nRuby Charm';
 /** PoB 药剂/护符槽（激活态；与 wasm 契约的 utility 槽名一致）。 */
 const UTILITY_SLOTS = ['Flask 1', 'Flask 2', 'Charm 1', 'Charm 2', 'Charm 3'];
 const isUtilitySlot = (slot: string) => slot.startsWith('Flask') || slot.startsWith('Charm');
+const itemDraftKey = (slot: string, weaponSet: number) =>
+  `item:${slot.startsWith('weapon') ? weaponSet : 0}:${slot}`;
 
 /** 装备页：PoB2 式人形槽位布局；点槽位在下方编辑 PoB 文本，保存即重算。 */
 export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   const tt = bindT(lang);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [draft, setDraft] = useState('');
-  const [editing, setEditing] = useState(false);
+  const [selected, setSelected] = useState<string | null>(() => [...DOLL_SLOTS, ...UTILITY_SLOTS]
+    .find(slot => session.editorDrafts[itemDraftKey(slot, session.activeWeaponSet)] !== undefined) ?? null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const build = session.build;
   const items = session.items;
   const bySlot = new Map(items.map((item) => [item.slot, item.text]));
@@ -182,11 +185,32 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   const slotName = (index: number) => slotNames[index] || null;
   const templateOf = (slot: string) =>
     slot.startsWith('Charm') ? CHARM_TEMPLATE : slot.startsWith('Flask') ? FLASK_TEMPLATE : ITEM_TEMPLATE;
+  const draftKey = selected ? itemDraftKey(selected, session.activeWeaponSet) : '';
+  const savedDraft = session.editorDrafts[draftKey];
+  const draft = savedDraft ?? (selected ? textOf(selected) ?? templateOf(selected) : '');
+  const editing = editingKey === draftKey || savedDraft !== undefined;
+  const setDraft = (text: string) => session.setEditorDraft(draftKey,
+    text === (selected ? textOf(selected) ?? templateOf(selected) : '') ? null : text);
+  const setEditing = (value: boolean) => {
+    setEditingKey(value ? draftKey : null);
+    if (!value) session.setEditorDraft(draftKey, null);
+  };
+  useEffect(() => { setEditingKey(null); }, [session.build, session.activeWeaponSet]);
 
   const select = (slot: string) => {
     setSelected(slot);
-    setDraft(textOf(slot) ?? templateOf(slot));
-    setEditing(textOf(slot) === undefined);
+    requestAnimationFrame(() => {
+      const detail = detailRef.current;
+      if (!detail) return;
+      detail.focus({ preventScroll: true });
+      const header = detail.querySelector('header')!.getBoundingClientRect();
+      const bounds = detail.closest('main')!.getBoundingClientRect();
+      // Inserting details above the library can move the browser's scroll anchor.
+      if (header.top < bounds.top || header.bottom > bounds.bottom) {
+        detail.scrollIntoView({ block: 'start' });
+      }
+    });
+    setEditingKey(textOf(slot) === undefined ? itemDraftKey(slot, session.activeWeaponSet) : null);
   };
   const applyEdit = () => {
     if (!selected) return;
@@ -398,6 +422,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
               <span className="doll-slot-label">
                 {slotLabel(lang, slot)}
                 {hasNote(slot) && <span className="note-dot" aria-hidden />}
+                {session.editorDrafts[itemDraftKey(slot, session.activeWeaponSet)] !== undefined && <span className="ui-badge">{tt('editor.draft')}</span>}
               </span>
               {name ? (
                 <span className="doll-item-name item-name">{name}</span>
@@ -428,6 +453,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
               <span className="doll-slot-label">
                 {slotLabel(lang, slot)}
                 {hasNote(slot) && <span className="note-dot" aria-hidden />}
+                {session.editorDrafts[itemDraftKey(slot, session.activeWeaponSet)] !== undefined && <span className="ui-badge">{tt('editor.draft')}</span>}
               </span>
               {name ? (
                 <span className="doll-item-name item-name">{name}</span>
@@ -442,9 +468,13 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
       </article>
       <div className="items-collection">
       {selected && (
-        <div className={`item-detail${selectedText ? ` rarity-${rarityOf(selectedText)}` : ''}`}>
+        <div ref={detailRef} tabIndex={-1} className={`item-detail${selectedText ? ` rarity-${rarityOf(selectedText)}` : ''}`}>
           <header className="item-detail-header">
-            <span className="item-slot">{slotLabel(lang, selected)}</span>
+            <label className="item-position"><span className="item-slot">{tt('items.position')}</span>
+              <AppSelect ariaLabel={tt('items.position')} value={selected}
+                options={[...DOLL_SLOTS, ...UTILITY_SLOTS].map(slot => ({ value: slot, label: slotLabel(lang, slot) }))}
+                onChange={select} />
+            </label>
             {candidates.length > 0 && (
               <AppSelect
                 ariaLabel={tt('items.switcher')}
@@ -501,7 +531,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
                 onChange={(e) => setDraft(e.target.value)}
               />
               <div className="item-editor-actions">
-                <button className="button-primary" disabled={session.busy} onClick={applyEdit}>
+                <button className="button-primary" disabled={session.busy || !draft.trim()} onClick={applyEdit}>
                   {tt('items.apply')}
                 </button>
                 <button onClick={() => setEditing(false)}>{tt('items.cancel')}</button>
@@ -577,7 +607,7 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
       <article className="ui-card items-library">
         <h3 className="section-heading">{tt('lib.title')} <span className="ui-badge">{session.library.items.filter(item => item.kind === 'item').length}</span></h3>
         {!selected && <p className="items-hint">{tt('lib.selectSlotFirst')}</p>}
-        <LibrarySection session={session} lang={lang} selectedSlot={selected} />
+        <LibrarySection session={session} lang={lang} selectedSlot={selected} onEquip={switchTo} />
       </article>
       </div>
       </div>
@@ -624,13 +654,17 @@ function LibrarySection({
   session,
   lang,
   selectedSlot,
+  onEquip,
 }: {
   session: BuildSession;
   lang: Lang;
   selectedSlot: string | null;
+  onEquip: (text: string) => void;
 }) {
   const tt = bindT(lang);
-  const [diffFor, setDiffFor] = useState<{ id: string; diffs: DiffEntry[] } | null>(null);
+  const [comparison, setComparison] = useState<{ id: string; slot: string;
+    source: BuildSession['currentRequest']; diffs: DiffEntry[]; error?: string } | null>(null);
+  const diffFor = comparison?.slot === selectedSlot && comparison.source === session.currentRequest ? comparison : null;
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [slotOnly, setSlotOnly] = useState(true);
@@ -659,22 +693,25 @@ function LibrarySection({
     return <p className="items-hint">{tt('lib.empty')}</p>;
   }
 
-  const compare = async (id: string, text: string) => {
+  const canUse = (entry: LibraryItem) => Boolean(selectedSlot && entry.slot && slotFamily(entry.slot) === slotFamily(selectedSlot));
+  const compare = async (entry: LibraryItem) => {
     const request = session.currentRequest();
-    if (!request || !selectedSlot || !session.calc) return;
-    const rest = (request.items ?? []).filter((it) => it.slot !== selectedSlot);
-    const diffs = await previewDiff(
-      { ...request, items: [...rest, { slot: selectedSlot, text }] },
-      session.calc,
-    );
-    setDiffFor({ id, diffs });
+    if (!request || !selectedSlot || !session.calc || !canUse(entry)) return;
+    const origin = { id: entry.id, slot: selectedSlot, source: session.currentRequest };
+    const field = isUtilitySlot(selectedSlot) ? 'flasks' : 'items';
+    const rest = (request[field] ?? []).filter((it) => it.slot !== selectedSlot);
+    try {
+      const diffs = await previewDiff({ ...request, [field]: [...rest, { slot: selectedSlot, text: entry.text }] }, session.calc);
+      setComparison({ ...origin, diffs });
+    } catch (error) {
+      setComparison({ ...origin, diffs: [], error: formatApiError(error) });
+    }
   };
 
-  const equip = (text: string) => {
-    if (!selectedSlot) return;
-    const rest = session.items.filter((it) => it.slot !== selectedSlot);
-    session.setItems([...rest, { slot: selectedSlot, text }]);
-    setDiffFor(null);
+  const equip = (entry: LibraryItem) => {
+    if (!canUse(entry)) return;
+    onEquip(entry.text);
+    setComparison(null);
   };
 
   return (
@@ -714,19 +751,19 @@ function LibrarySection({
             <>
               <CopyButton text={entry.text} lang={lang} />
               <button
-                disabled={session.busy || !selectedSlot}
-                title={selectedSlot ? '' : tt('lib.selectSlotFirst')}
+                disabled={session.busy || !canUse(entry)}
+                title={!selectedSlot ? tt('lib.selectSlotFirst') : !canUse(entry) ? tt('lib.wrongSlot') : ''}
                 onClick={() => {
                   setExpandedId(entry.id);
-                  void compare(entry.id, entry.text);
+                  void compare(entry);
                 }}
               >
                 {tt('lib.compare')}
               </button>
               <button
-                disabled={session.busy || !selectedSlot}
-                title={selectedSlot ? '' : tt('lib.selectSlotFirst')}
-                onClick={() => equip(entry.text)}
+                disabled={session.busy || !canUse(entry)}
+                title={!selectedSlot ? tt('lib.selectSlotFirst') : !canUse(entry) ? tt('lib.wrongSlot') : ''}
+                onClick={() => equip(entry)}
               >
                 {tt('lib.equip')}
               </button>
@@ -742,7 +779,7 @@ function LibrarySection({
         >
           {diffFor?.id === entry.id && (
             <div className="library-diff">
-              <DiffList diffs={diffFor.diffs} lang={lang} />
+              {diffFor.error ? <p className="calc-error" role="alert">{diffFor.error}</p> : <DiffList diffs={diffFor.diffs} lang={lang} />}
             </div>
           )}
         </ItemRow>

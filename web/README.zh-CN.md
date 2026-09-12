@@ -5,28 +5,29 @@
 > **⚠️ 测试版。** 应用与底层 wasm/JSON API 仍在迭代中，可能随时变动或不稳定。
 
 PoB2 风格的 PoBR Web 前端。**与计算引擎完全解耦**：只消费 `apps/pobr-wasm`
-的 JSON 契约（`web/src/api/types.ts` ↔ `apps/pobr-wasm/src/build_api.rs`，
-形状由 Rust 侧 `tests/contract_golden.rs` 钉住），不 import Rust 类型、
+的 JSON 契约（`web/src/api/types.ts` ↔ `apps/pobr-wasm/src/build_api/`，
+形状由 Rust 侧 `apps/pobr-wasm/tests/contract_golden.rs` 钉住），不 import Rust 类型、
 不复刻任何公式。
 
 ## 快速开始
+
+以下命令均在仓库根目录运行，使用 `web/package.json` 指定的 pnpm 版本；CI 使用 Node 22。已有可用工具链时跳过安装步骤。
 
 ```bash
 # 一次性前置（仓库根目录）
 rustup target add wasm32-unknown-unknown
 cargo install wasm-pack
 
-cd web
-pnpm install
-pnpm build-wasm    # wasm-pack 构建 pobr-wasm → src/wasm/pkg/（gitignored）
-pnpm sync-data     # data/<version>/ JSON → public/data/（gitignored）
-pnpm dev           # http://localhost:5173
+pnpm --dir web install --frozen-lockfile
+pnpm --dir web build-wasm    # wasm-pack 构建 pobr-wasm → src/wasm/pkg/（gitignored）
+pnpm --dir web sync-data     # data/<version>/ JSON → public/data/（gitignored）
+pnpm --dir web dev           # http://localhost:5173
 ```
 
 无 wasm / 数据时可用 mock 后端独立开发 UI：
 
 ```bash
-VITE_POBR_BACKEND=mock pnpm dev
+VITE_POBR_BACKEND=mock pnpm --dir web dev
 ```
 
 mock fixture 由真实契约生成（契约变更后重跑并提交）：
@@ -35,17 +36,29 @@ mock fixture 由真实契约生成（契约变更后重跑并提交）：
 cargo test -p pobr-wasm --test gen_fixtures -- --ignored
 ```
 
+## 开发与验证
+
+验证范围遵循根目录 [CLAUDE.md](../CLAUDE.md#验证分层本地提交默认定向验证)。
+日常修改运行相关 Vitest 文件与 typecheck；交互变化补对应 Playwright spec。
+WASM 产物缺失或其 Rust 源码、依赖、features、工具链变化时重建 WASM；源数据变化或同步数据缺失时
+运行 `sync-data`。E2E 使用生产 dist，需要构建当前 Web 代码；`build` 已含 typecheck。
+
+Web 经 `src/api/wasmBackend.ts` 在浏览器中调用 WASM，规划器复用计算结果。
+`public/_worker.js` 是部署于 Cloudflare Pages 的 HTTP 适配层，Vite 本地复用它处理
+WeGame / 市集接口；它不运行 Rust 计算。修改该文件需运行实际 workerd 测试。
+
 ## 命令
 
 | 命令 | 说明 |
 |------|------|
-| `pnpm dev` | Vite dev server |
-| `pnpm build` | tsc + 生产构建（dist/） |
-| `pnpm typecheck` | 仅类型检查 |
-| `pnpm test` | vitest 单元测试 |
-| `pnpm exec playwright test` | E2E 冒烟（先 build-wasm + sync-data + build） |
-| `pnpm build-wasm` | 重建 wasm 包 |
-| `pnpm sync-data` | 重新同步游戏数据到 public/ |
+| `pnpm --dir web dev` | Vite dev server |
+| `pnpm --dir web build` | tsc + 生产构建（dist/） |
+| `pnpm --dir web typecheck` | 仅类型检查 |
+| `pnpm --dir web test src/lib/mainSkill.test.ts` | 指定 Vitest 单元测试 |
+| `pnpm --dir web test:worker` | Worker 的实际 workerd 运行时测试 |
+| `pnpm --dir web exec playwright test e2e/build-roundtrip.spec.ts` | 指定 E2E spec；需要当前 dist 和已准备的 WASM/数据 |
+| `pnpm --dir web build-wasm` | 重建 wasm 包 |
+| `pnpm --dir web sync-data` | 重新同步游戏数据到 public/ |
 
 ## 结构
 
@@ -53,7 +66,7 @@ cargo test -p pobr-wasm --test gen_fixtures -- --ignored
 web/src/
 ├── api/          # 后端唯一入口：types.ts（契约）+ wasm/mock 双后端
 ├── hooks/        # useBuildSession（导入/重算/归因编排）
-├── components/   # 按 feature 分目录：shell/import/sidebar/items/skills/calcs/tree/config/shared
+├── components/   # Features: shell/import/sidebar/items/skills/calcs/tree/config/trade/guidance/shared
 ├── lib/          # statDisplay / i18n / trade / optimize / annotations …
 ├── fixtures/     # mock 后端数据（gen_fixtures 生成）
 └── styles/       # tokens.css（设计变量收口）+ global.css
@@ -66,7 +79,7 @@ web/src/
   `node pipeline/gen-zh-cn.mjs` 再生成）；宝石选择器支持简繁英搜索。
 - **中文物品输入**：物品词条行与基底名可直接用简中（国服文本），
   wasm 侧模板反查翻译为英文 canonical 后进现有解析器；结构行（`Rarity:`）保持
-  PoB 格式；未知中文行与未知英文行同语义（静默跳过）。繁中侧只有名词边车
+  PoB 格式；未知中文行与未知英文行一样保留原文、报告 unsupported 诊断，其未建模效果不计入结果。繁中侧只有名词边车
   （词条行模板未入库）。
 
 ## 功能
@@ -84,10 +97,10 @@ web/src/
 ## 数据流
 
 1. 启动：JS fetch `public/data/manifest.json` 列出的全部 JSON → `stageDataFile`
-   注入 wasm → `initStagedData()` 构建 `BuildData`（一次，之后零 I/O）。
-2. 导入：PoB2 code 或 WeGame 分享数据 → 结构化 build（角色/树/装备文本/技能组/config）。WeGame 导入需运行 `pnpm dev` / `pnpm preview` 或部署随构建提供的 Pages worker，详见 [导入说明与限制](../docs/wegame-import.md)。
-3. 计算：`calculateBuildJson({pob_code, ...覆盖})` → display_catalog 全量键值 +
+   注入 wasm → `initStagedData()` 构建内存 `GameData` / `BuildData`，后续计算读取内存数据。
+2. 导入：PoB2 code 或 WeGame 分享数据 → 结构化 build（角色/树/装备文本/技能组/config）。WeGame 导入需运行 `pnpm --dir web dev` / `pnpm --dir web preview` 或部署随构建提供的 Pages worker，详见 [导入说明与限制](../docs/wegame-import.md)。
+3. 计算：编辑态经 `useBuildSession` 组装请求 → `calculateBuildJson(request)` → display_catalog 全量键值 +
    unsupported 词条 + 聚合属性 breakdown。
-4. 归因：`attributionJson({pob_code, fields})` → 逐来源「移除后重算」边际贡献
+4. 归因：`attributionJson(request)` → 逐来源「移除后重算」边际贡献
    （点击触发，计算量 = 1 + 来源数）。
 5. 天赋树：`public/data/<version>/base/passive_tree.json` 静态加载（不经 wasm）。

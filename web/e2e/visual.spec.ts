@@ -71,3 +71,26 @@ test('replacement header fits a narrow screen with classic scrollbar space', asy
   expect(overflow.heading).toBeLessThanOrEqual(1);
   expect(overflow.main).toBeLessThanOrEqual(1);
 });
+
+for (const width of [390, 1440]) {
+  test(`populated build workflow at ${width}px`, async ({ page }) => {
+    const { readFileSync } = await import('node:fs');
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto('/');
+    await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({ timeout: 90_000 });
+    await page.getByRole('textbox', { name: 'Build code' }).fill(readFileSync('../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', 'utf8'));
+    await page.locator('.import-submit').click();
+    await expect(page.locator('.paper-doll')).toBeVisible();
+    for (const tab of ['Build', 'Items', 'Skills', 'Tree', 'Calcs', 'Config', 'Upgrades', 'Build references']) {
+      await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: tab, exact: true }).click();
+      if (tab === 'Items') await page.getByRole('button', { name: 'Body Armour', exact: true }).click();
+      if (tab === 'Calcs') await expect(page.locator('.fulldps-row').first()).toBeVisible();
+      if (tab === 'Skills') await page.locator('.skill-group-title').nth(4).click();
+      await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== 'running'));
+      await expect(page.locator('main')).toBeVisible();
+      const overflow = await page.locator('main').evaluate(element => element.scrollWidth - element.clientWidth);
+      expect(overflow, `${tab} populated at ${width}`).toBeLessThanOrEqual(1);
+      await page.screenshot({ path: `e2e/screenshots/layout-${process.env.LAYOUT_REVIEW_PHASE ?? 'after'}-${tab.toLowerCase()}-${width}.png` });
+    }
+  });
+}

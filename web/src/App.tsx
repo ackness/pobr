@@ -134,6 +134,11 @@ function BuildApp() {
       <div className={`app-body${statsOpen ? ' stats-open' : ''}`}>
         <StatSidebar session={session} lang={lang} onStatClick={focusStat} />
         <main className="app-main" ref={mainRef}>
+          {Object.keys(session.editorDrafts).length > 0 && <div className="editor-draft-notice" role="status">
+            <p>{t(lang, 'editor.draftHint')}</p>
+            {tab !== 'items' && Object.keys(session.editorDrafts).some(key => key.startsWith('item:')) && <button onClick={() => setTab('items')}>{t(lang, 'editor.reviewItems')}</button>}
+            {tab !== 'tree' && Object.keys(session.editorDrafts).some(key => key.startsWith('jewel:')) && <button onClick={() => setTab('tree')}>{t(lang, 'editor.reviewJewels')}</button>}
+          </div>}
           {session.error && (
             <div className="calc-error" role="alert">
               {session.error}

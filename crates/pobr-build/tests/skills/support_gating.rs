@@ -148,3 +148,61 @@ fn compatible_support_still_injects() {
         boosted.total_hit_avg
     );
 }
+
+/// Supported levels belong to a gem instance's group, not the first matching
+/// skill id in the build. This also applies to an explicitly selected disabled group.
+#[test]
+fn supported_levels_stay_in_the_selected_group() {
+    use pobr_build::{Build, CharacterIdentity, SocketGroup, calculate_full_dps};
+    let data = load_build_data();
+    let plain = SocketGroup::new().with_gem_skill("FireballPlayer", 20);
+    let mastery = plain.clone().with_gem_skill("SupportFireMasteryPlayer", 1);
+    let base = Build::new().with_character(CharacterIdentity {
+        level: 90,
+        class_name: "Witch".into(),
+        ascendancy_name: String::new(),
+    });
+    let single = |group: SocketGroup| {
+        calculate_with_data(
+            &base
+                .clone()
+                .add_socket_group(group)
+                .with_main_socket_group(1),
+            &data,
+            &panel_opts(),
+        )
+        .unwrap()
+    };
+    let plain_out = single(plain.clone());
+    let mastery_out = single(mastery.clone());
+    assert!(mastery_out.dps > plain_out.dps);
+    for (groups, expected) in [
+        ([plain.clone(), mastery.clone()], [&plain_out, &mastery_out]),
+        ([mastery.clone(), plain.clone()], [&mastery_out, &plain_out]),
+    ] {
+        let build = base
+            .clone()
+            .add_socket_group(groups[0].clone())
+            .add_socket_group(groups[1].clone());
+        for (index, wanted) in expected.iter().enumerate() {
+            let out = calculate_with_data(
+                &build.clone().with_main_socket_group(index + 1),
+                &data,
+                &panel_opts(),
+            )
+            .unwrap();
+            assert_eq!(
+                out.dps, wanted.dps,
+                "group {index} must use its own supports"
+            );
+            assert_eq!(out.damage_components, wanted.damage_components);
+        }
+        let full = calculate_full_dps(&build, &data, &panel_opts()).unwrap();
+        assert_eq!(
+            full.full_dps,
+            plain_out.combined_dps + mastery_out.combined_dps
+        );
+    }
+    let disabled = single(mastery.with_enabled(false));
+    assert_eq!(disabled.dps, mastery_out.dps);
+}

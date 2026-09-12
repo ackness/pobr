@@ -431,3 +431,14 @@
 }
 .tree-planner-run:hover:not(:disabled) { background: var(--accent-gold-bright); border-color: var(--accent-gold-bright); }
 .tree-planner-run:disabled { background: var(--surface-raised); color: var(--text-muted); border-color: var(--border-subtle); }
+
+.tree-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; gap: var(--space-3); }
+.tree-edit-tools { min-width: 0; scroll-margin-top: var(--space-3); }
+.tree-edit-tools .tree-planner-results { grid-template-columns: minmax(0, 1fr); }
+.tree-edit-tools .jewel-editor { min-width: 0; scroll-margin-top: var(--space-3); }
+@media (min-width: 1281px) {
+  .tree-workspace > .tree-canvas { position: sticky; top: var(--space-3); }
+}
+@media (max-width: 1280px) {
+  .tree-workspace { grid-template-columns: minmax(0, 1fr); }
+}

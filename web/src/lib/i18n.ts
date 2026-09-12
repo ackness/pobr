@@ -15,6 +15,34 @@ export const LANGS: Lang[] = ['en-US', 'zh-TW', 'zh-CN'];
 type Entry = { 'en-US': string; 'zh-TW': string; 'zh-CN': string };
 
 const DICT = {
+  'trade.goalHelp': { 'en-US': 'How this goal is evaluated', 'zh-TW': '目標如何評估', 'zh-CN': '目标如何评估' },
+  'items.position': { 'en-US': 'Equipment position', 'zh-TW': '裝備位置', 'zh-CN': '装备位置' },
+  'skills.editMain': { 'en-US': 'Edit main skill', 'zh-TW': '編輯主技能', 'zh-CN': '编辑主技能' },
+  'config.configuredOnly': { 'en-US': 'Configured only', 'zh-TW': '僅顯示已設定', 'zh-CN': '仅显示已配置' },
+  'config.showAll': { 'en-US': 'Show all options', 'zh-TW': '顯示全部選項', 'zh-CN': '显示全部选项' },
+  'tree.editOptions': { 'en-US': 'Attributes & planning', 'zh-TW': '屬性與規劃', 'zh-CN': '属性与规划' },
+
+  "editor.draft": {"en-US": "Draft", "zh-TW": "草稿", "zh-CN": "草稿"},
+  "editor.draftHint": {"en-US": "Draft kept while switching pages in this session. Save to apply it to calculations, sharing and backups; Cancel discards it.", "zh-TW": "切換頁面會保留本次開啟期間的草稿。儲存後才會計入數值、分享與備份；取消會丟棄草稿。", "zh-CN": "切换页面会保留本次打开期间的草稿。保存后才会计入数值、分享与备份；取消会丢弃草稿。"},
+  "editor.reviewItems": {"en-US": "Review item drafts", "zh-TW": "查看裝備草稿", "zh-CN": "查看装备草稿"},
+  "editor.reviewJewels": {"en-US": "Review jewel drafts", "zh-TW": "查看珠寶草稿", "zh-CN": "查看珠宝草稿"},
+  "lib.wrongSlot": {"en-US": "Select a compatible equipment position first", "zh-TW": "請先選擇相容的裝備位置", "zh-CN": "请先选择兼容的装备位置"},
+  "build.code": {"en-US": "Build code", "zh-TW": "構築代碼", "zh-CN": "构筑代码"},
+  "build.importHint": {"en-US": "Paste a PoB2 code, WeGame share link or .build JSON. Importing replaces the current character, equipment, skills and tree. Download a backup first to keep a copy.", "zh-TW": "貼上 PoB2 代碼、WeGame 分享連結或 .build JSON。匯入會替換目前角色、裝備、技能與天賦；如需保留，請先下載備份。", "zh-CN": "粘贴 PoB2 代码、WeGame 分享链接或 .build JSON。导入会替换当前角色、装备、技能与天赋；如需保留，请先下载备份。"},
+  "build.importing": {"en-US": "Importing build…", "zh-TW": "正在匯入構築…", "zh-CN": "正在导入构筑…"},
+  "build.confirmClassChange": {"en-US": "Start an empty level 1 build with this class? Current equipment, skills, passives, notes and combat settings will be cleared. Download a backup first if you want to keep them.", "zh-TW": "要以此職業新建 1 級空白構築嗎？目前裝備、技能、天賦、筆記與戰鬥配置將被清除。如需保留，請先下載備份。", "zh-CN": "要以此职业新建 1 级空白构筑吗？当前装备、技能、天赋、笔记与战斗配置将被清除。如需保留，请先下载备份。"},
+  "build.itemError": {"en-US": "Item could not be parsed and is excluded from calculations", "zh-TW": "物品解析失敗，未計入數值", "zh-CN": "物品解析失败，未计入数值"},
+  "share.generating": {"en-US": "Generating share code…", "zh-TW": "正在生成分享碼…", "zh-CN": "正在生成分享码…"},
+  "share.stale": {"en-US": "Your build has changed. Generate a new share code to include your latest edits.", "zh-TW": "構築已修改，請重新生成分享碼以包含最新修改。", "zh-CN": "构筑已修改，请重新生成分享码以包含最新修改。"},
+  "common.copyFailed": {"en-US": "Copy failed. Select the text below and copy it manually.", "zh-TW": "複製失敗，請選取下方文字後手動複製。", "zh-CN": "复制失败，请选中下方文本后手动复制。"},
+  "common.manualCopy": {"en-US": "Text to copy manually", "zh-TW": "手動複製文字", "zh-CN": "手动复制文本"},
+  "common.clearSearch": {"en-US": "Clear search", "zh-TW": "清除搜尋", "zh-CN": "清除搜索"},
+  "common.noResults": {"en-US": "No matches. Try a different keyword or clear the search.", "zh-TW": "沒有符合的結果，請更換關鍵字或清除搜尋。", "zh-CN": "没有匹配的结果，请更换关键词或清除搜索。"},
+  "common.retry": {"en-US": "Retry", "zh-TW": "重試", "zh-CN": "重试"},
+  "config.loading": {"en-US": "Loading combat options…", "zh-TW": "正在載入戰鬥配置…", "zh-CN": "正在加载战斗配置…"},
+  "config.loadFailed": {"en-US": "Combat options could not be loaded. Retry to show the settings.", "zh-TW": "戰鬥配置載入失敗，請重試。", "zh-CN": "战斗配置加载失败，请重试。"},
+  "config.editHint": {"en-US": "Checkboxes and lists apply immediately. Number and text edits apply when you leave the field or press Enter. Reset restores the imported value, or the default for a new build.", "zh-TW": "勾選與下拉選擇立即生效；數字和文字在離開輸入框或按 Enter 後生效。還原會恢復匯入值，新構築則使用預設值。", "zh-CN": "勾选与下拉选择立即生效；数字和文本在离开输入框或按 Enter 后生效。还原会恢复导入值，新构筑则使用默认值。"},
+  "picker.colour": {"en-US": "Gem attribute filter", "zh-TW": "寶石屬性篩選", "zh-CN": "宝石属性筛选"},
   "trade.situational": {"en-US": "Utility and conditional affixes", "zh-TW": "功能與條件詞條", "zh-CN": "功能与条件词条"},
   "trade.situationalHint": {"en-US": "These are not fixed DPS gains. Tick an affix to require it in the market search without assigning an invented weight. For debuffs, review the enemy settings on Config; effect, trigger rate and uptime must match your build.", "zh-TW": "這些不等於固定 DPS 提升。勾選後要求市集商品具備該詞條，不虛設分數。負面狀態需到配置頁核對敵人條件、效果與覆蓋率。", "zh-CN": "这些不等于固定 DPS 提升。勾选后要求市集商品具备该词条，不虚设分数。负面状态需到配置页核对敌人条件、效果与覆盖率。"},
   "trade.mechanic.projectiles": {"en-US": "Expected projectiles per use; not same-target hits", "zh-TW": "每次使用的投射物期望數；不等於同目標命中次數", "zh-CN": "每次使用的投射物期望数；不等于同目标命中次数"},
@@ -54,17 +82,12 @@ const DICT = {
   "ui.hideStats": {"en-US": "Hide character stats", "zh-TW": "收起角色數據", "zh-CN": "收起角色数据"},
 
   // Beta 提示
-  'beta.notice': {
-    'en-US':
-      'Beta preview — calculation results, game data and the wasm/JSON API are still evolving and may change or break without notice.',
-    'zh-TW': '測試版預覽——計算結果、遊戲資料與 wasm/JSON API 仍在迭代中，可能隨時變動或不穩定。',
-    'zh-CN': '测试版预览——计算结果、游戏数据与 wasm/JSON API 仍在迭代中，可能随时变动或不稳定。',
-  },
+  "beta.notice": {"en-US": "Beta: some effects are not included in calculations. Check unsupported modifiers before comparing upgrades.", "zh-TW": "測試版：部分效果尚未計入數值，比較提升前請核對未支援詞條。", "zh-CN": "测试版：部分效果尚未计入数值，比较提升前请核对未支持词条。"},
   'beta.dismiss': { 'en-US': 'Got it', 'zh-TW': '知道了', 'zh-CN': '知道了' },
 
   // 页签
   'loadout.switch': { 'en-US': 'Loadout', 'zh-TW': '配置組', 'zh-CN': '配置组' },
-  'loadout.new': { 'en-US': '+ New stage…', 'zh-TW': '＋ 新增階段…', 'zh-CN': '＋ 新增阶段…' },
+  "loadout.new": {"en-US": "Duplicate this stage…", "zh-TW": "複製目前階段…", "zh-CN": "复制当前阶段…"},
   'loadout.rename': { 'en-US': 'Rename…', 'zh-TW': '重新命名…', 'zh-CN': '重命名…' },
   'loadout.remove': { 'en-US': 'Delete this stage', 'zh-TW': '刪除此階段', 'zh-CN': '删除此阶段' },
   'loadout.namePrompt': {
@@ -77,12 +100,8 @@ const DICT = {
     'zh-TW': '刪除此階段？其天賦、裝備與技能組會一併從 build 移除。',
     'zh-CN': '删除此阶段？其天赋、装备与技能组会一并从 build 移除。',
   },
-  'loadout.confirmDiscard': {
-    'en-US': 'Switching reloads this build from its code and discards your unsaved edits. Continue?',
-    'zh-TW': '切換配置組會用原始 code 重新載入，未保存的修改將丟失。要繼續嗎？',
-    'zh-CN': '切换配置组会用原始 code 重新加载，未保存的修改将丢失。要继续吗？',
-  },
-  'tab.build': { 'en-US': 'Build', 'zh-TW': '構建', 'zh-CN': '构建' },
+  "loadout.confirmDiscard": {"en-US": "This reloads the original imported build and discards local edits, including auto-saved changes. Export a backup first if you want to keep them. Continue?", "zh-TW": "此操作會重新載入原始構築，捨棄本地修改（包括自動儲存的修改）。若要保留，請先下載備份。繼續？", "zh-CN": "此操作会重新加载原始构筑，丢弃本地修改（包括自动保存的修改）。如需保留，请先下载备份。继续？"},
+  'tab.build': { 'en-US': 'Build', 'zh-TW': '構築', 'zh-CN': '构筑' },
   'tab.tree': { 'en-US': 'Tree', 'zh-TW': '天賦樹', 'zh-CN': '天赋树' },
   'tab.skills': { 'en-US': 'Skills', 'zh-TW': '技能', 'zh-CN': '技能' },
   'tab.items': { 'en-US': 'Items', 'zh-TW': '裝備', 'zh-CN': '装备' },
@@ -109,14 +128,10 @@ const DICT = {
   'build.ascendancy': { 'en-US': 'Ascendancy', 'zh-TW': '升華', 'zh-CN': '升华' },
   'build.level': { 'en-US': 'Level', 'zh-TW': '等級', 'zh-CN': '等级' },
   'build.none': { 'en-US': '(none)', 'zh-TW': '（無）', 'zh-CN': '（无）' },
-  'build.newHint': {
-    'en-US': 'Switching class starts a fresh empty build (allocate passives on the Tree tab). Import a PoB2 code below to replace everything.',
-    'zh-TW': '切換職業會開一個全新空 build（樹加點在天賦樹頁點選）；下方可一鍵導入 PoB2 code 替換全部內容。',
-    'zh-CN': '切换职业会开一个全新空 build（树加点在天赋树页点选）；下方可一键导入 PoB2 code 替换全部内容。',
-  },
+  "build.newHint": {"en-US": "Changing class starts an empty level 1 build. Set passives on the Tree tab and add gems on Skills.", "zh-TW": "更換職業會新建 1 級空白構築。可到天賦樹加點、技能頁添加寶石。", "zh-CN": "更换职业会新建 1 级空白构筑。可到天赋树加点、技能页添加宝石。"},
   'build.import': { 'en-US': 'Import Build', 'zh-TW': '匯入配置', 'zh-CN': '导入配置' },
   'build.importPlaceholder': { 'en-US': 'Paste a PoB2 build code, WeGame PoE2 share URL, or .build JSON…', 'zh-TW': '貼上 PoB2 Build Code、WeGame 分享連結或 .build JSON…', 'zh-CN': '粘贴 PoB2 Build Code、WeGame 分享链接或 .build JSON…' },
-  'build.importButton': { 'en-US': 'Import', 'zh-TW': '匯入', 'zh-CN': '导入' },
+  "build.importButton": {"en-US": "Import & replace build", "zh-TW": "匯入並替換構築", "zh-CN": "导入并替换构筑"},
   'build.calculating': { 'en-US': 'Calculating…', 'zh-TW': '計算中…', 'zh-CN': '计算中…' },
   'build.imported': { 'en-US': 'Imported: ', 'zh-TW': '已匯入：', 'zh-CN': '已导入：' },
   'build.passives': { 'en-US': 'passives', 'zh-TW': '天賦點', 'zh-CN': '天赋点' },
@@ -372,7 +387,7 @@ const DICT = {
   'items.edit': { 'en-US': 'Edit', 'zh-TW': '編輯', 'zh-CN': '编辑' },
   'items.add': { 'en-US': 'Add', 'zh-TW': '添加', 'zh-CN': '添加' },
   'items.remove': { 'en-US': 'Remove', 'zh-TW': '移除', 'zh-CN': '移除' },
-  'items.apply': { 'en-US': 'Apply', 'zh-TW': '保存並重算', 'zh-CN': '保存并重算' },
+  "items.apply": {"en-US": "Save & recalculate", "zh-TW": "儲存並重算", "zh-CN": "保存并重算"},
   'items.cancel': { 'en-US': 'Cancel', 'zh-TW': '取消', 'zh-CN': '取消' },
   'items.empty': { 'en-US': '(empty)', 'zh-TW': '（空）', 'zh-CN': '（空）' },
   "items.flasks": {"en-US": "Flasks / Charms", "zh-TW": "藥劑 / 護符", "zh-CN": "药剂 / 护符"},
@@ -390,11 +405,7 @@ const DICT = {
 
   // Calcs 页
   'calcs.title': { 'en-US': 'Calculations', 'zh-TW': '計算明細', 'zh-CN': '计算明细' },
-  'calcs.hint': {
-    'en-US': 'Click a stat to expand its base/inc decomposition and per-source modifiers.',
-    'zh-TW': '點擊字段展開 base/inc 分解與逐來源詞條。',
-    'zh-CN': '点击字段展开 base/inc 分解与逐来源词条。',
-  },
+  "calcs.hint": {"en-US": "Expand a stat to inspect its base value, increases and modifier sources. Skill DPS and source contributions are below.", "zh-TW": "展開數值可查看基礎值、加成與詞條來源；下方可查看各技能 DPS 並計算來源貢獻。", "zh-CN": "展开数值可查看基础值、加成与词条来源；下方可查看各技能 DPS 并计算来源贡献。"},
   'calcs.mods': { 'en-US': 'mods', 'zh-TW': '條', 'zh-CN': '条' },
   'calcs.baseTotal': { 'en-US': 'Base total', 'zh-TW': '基礎合計', 'zh-CN': '基础合计' },
   'calcs.incTotal': { 'en-US': 'Increased total', 'zh-TW': '增加合計', 'zh-CN': '增加合计' },
@@ -404,11 +415,8 @@ const DICT = {
   'calcs.source': { 'en-US': 'Source', 'zh-TW': '來源', 'zh-CN': '来源' },
   'calcs.baseDerived': { 'en-US': '(base/derived)', 'zh-TW': '（基底/派生）', 'zh-CN': '（基底/派生）' },
   'calcs.attribution': { 'en-US': 'Source Attribution', 'zh-TW': '來源貢獻歸因', 'zh-CN': '来源贡献归因' },
-  'calcs.attributionHint': {
-    'en-US': 'Recomputes the build without each source and reports marginal contributions (expensive; click to run).',
-    'zh-TW': '對每個來源做「移除後重算」，報告其對關鍵字段的邊際貢獻（計算量大，點擊觸發）。',
-    'zh-CN': '对每个来源做「移除后重算」，报告其对关键字段的边际贡献（计算量大，点击触发）。',
-  },
+  'calcs.attributionStale': { 'en-US': 'The build or main skill has changed. Run attribution again to update source contributions.', 'zh-TW': '構築或主技能已變更，請重新計算歸因以更新來源貢獻。', 'zh-CN': '构筑或主技能已变更，请重新计算归因以更新来源贡献。' },
+  "calcs.attributionHint": {"en-US": "Recalculate after removing each source to see how much it contributes. This can take a while; run it when you need a detailed comparison.", "zh-TW": "逐一移除裝備、天賦等來源並重算，查看各自的貢獻。計算需要一些時間，可在比較方案時按需執行。", "zh-CN": "逐一移除装备、天赋等来源并重算，查看各自的贡献。计算需要一些时间，可在比较方案时按需执行。"},
   'calcs.runAttribution': { 'en-US': 'Run attribution', 'zh-TW': '計算歸因', 'zh-CN': '计算归因' },
   'calcs.running': { 'en-US': 'Running…', 'zh-TW': '歸因計算中…', 'zh-CN': '归因计算中…' },
   'calcs.baseline': { 'en-US': 'Baseline (full build)', 'zh-TW': '基線（完整 build）', 'zh-CN': '基线（完整 build）' },
@@ -525,49 +533,36 @@ const DICT = {
     'zh-TW': '來自 build 的原始配置；修改值即重算。鍵名與 PoB2 Config 頁一致（如 conditionEnemyChilled）。',
     'zh-CN': '来自 build 的原始配置；修改值即重算。键名与 PoB2 Config 页一致（如 conditionEnemyChilled）。',
   },
-  'config.addTitle': { 'en-US': 'Add config input', 'zh-TW': '新增配置項', 'zh-CN': '新增配置项' },
+  "config.addTitle": {"en-US": "Advanced config inputs", "zh-TW": "進階配置項", "zh-CN": "高级配置项"},
   'config.keyPlaceholder': { 'en-US': 'key (e.g. enemyDistance)', 'zh-TW': '鍵名（如 enemyDistance）', 'zh-CN': '键名（如 enemyDistance）' },
   'config.key': { 'en-US': 'Config key', 'zh-TW': '配置鍵名', 'zh-CN': '配置键名' },
   'config.valueLabel': { 'en-US': 'Config value', 'zh-TW': '配置值', 'zh-CN': '配置值' },
   'config.addButton': { 'en-US': 'Add & recalc', 'zh-TW': '加入並重算', 'zh-CN': '加入并重算' },
-  'config.reset': { 'en-US': 'Reset', 'zh-TW': '還原', 'zh-CN': '还原' },
+  "config.reset": {"en-US": "Restore imported/default value", "zh-TW": "還原匯入值或預設值", "zh-CN": "还原导入值或默认值"},
   'config.search': { 'en-US': 'Search config options…', 'zh-TW': '搜尋配置項…', 'zh-CN': '搜索配置项…' },
   'config.extraMods': { 'en-US': 'Custom modifiers', 'zh-TW': '自訂詞綴', 'zh-CN': '自定义词缀' },
   'config.extraModsHint': {
     'en-US':
       'One modifier per line (PoB text, e.g. "20% increased Fire Damage"); applies globally on blur. Unparsable lines show up in the Build tab unsupported list.',
-    'zh-TW': '一行一條詞綴（PoB 文本，如「20% increased Fire Damage」），離開輸入框即全域生效；無法解析的行會出現在構建頁的不支援清單。',
-    'zh-CN': '一行一条词缀（PoB 文本，如「20% increased Fire Damage」），离开输入框即全局生效；无法解析的行会出现在构建页的不支持列表。',
+    'zh-TW': '一行一條詞綴（PoB 文本，如「20% increased Fire Damage」），離開輸入框即全域生效；無法解析的行會出現在構築頁的不支援清單。',
+    'zh-CN': '一行一条词缀（PoB 文本，如「20% increased Fire Damage」），离开输入框即全局生效；无法解析的行会出现在构筑页的不支持列表。',
   },
 
   // Notes 页
-  'notes.hint': {
-    'en-US': 'Free-form notes. Saved locally in your browser; importing a build brings in its <Notes> section.',
-    'zh-TW': '自由筆記。本地保存在瀏覽器；匯入 build 會帶入其 <Notes> 內容。',
-    'zh-CN': '自由笔记。本地保存在浏览器；导入 build 会带入其 <Notes> 内容。',
-  },
+  "notes.hint": {"en-US": "Keep build ideas and upgrade plans here. Notes are saved in this browser and included in backups and share codes.", "zh-TW": "記錄構築思路與升級計畫。筆記會儲存在此瀏覽器，並包含在備份和分享碼中。", "zh-CN": "记录构筑思路与升级计划。笔记会保存在此浏览器，并包含在备份和分享码中。"},
   'notes.placeholder2': { 'en-US': 'Write anything about this build…', 'zh-TW': '寫點關於這個 build 的東西…', 'zh-CN': '写点关于这个 build 的东西…' },
   'notes.preview': { 'en-US': 'Colored preview', 'zh-TW': '著色預覽', 'zh-CN': '着色预览' },
 
   // 分享 code
-  'share.title': { 'en-US': 'Share Code', 'zh-TW': '分享 Code', 'zh-CN': '分享 Code' },
-  'share.generate': { 'en-US': 'Generate code', 'zh-TW': '生成 Code', 'zh-CN': '生成 Code' },
-  'share.hint': {
-    'en-US':
-      'Exports the current edited build (tree/items/skills/config/notes) as a PoB2-format share code.',
-    'zh-TW': '把當前編輯態（樹/裝備/技能/配置/筆記）導出為 PoB2 格式分享 code。',
-    'zh-CN': '把当前编辑态（树/装备/技能/配置/笔记）导出为 PoB2 格式分享 code。',
-  },
+  "share.title": {"en-US": "Share Code", "zh-TW": "分享碼", "zh-CN": "分享码"},
+  "share.generate": {"en-US": "Generate share code", "zh-TW": "生成分享碼", "zh-CN": "生成分享码"},
+  "share.hint": {"en-US": "Generate a PoB2 code from your current character, gear, skills, tree and notes. Generate it again after editing.", "zh-TW": "將目前角色、裝備、技能、天賦與筆記生成 PoB2 分享碼。修改構築後需重新生成。", "zh-CN": "将当前角色、装备、技能、天赋与笔记生成 PoB2 分享码。修改构筑后需重新生成。"},
 
   // 本地存档
   'save.title': { 'en-US': 'Local Save', 'zh-TW': '本地存檔', 'zh-CN': '本地存档' },
-  'save.hint': {
-    'en-US': 'Every edit is saved to this browser automatically and restored on reload. Export/import a JSON file to back up or move between devices.',
-    'zh-TW': '每次編輯都會自動保存到瀏覽器，刷新後自動恢復；可導出/導入 JSON 文件備份或跨設備遷移。',
-    'zh-CN': '每次编辑都会自动保存到浏览器，刷新后自动恢复；可导出/导入 JSON 文件备份或跨设备迁移。',
-  },
-  'save.export': { 'en-US': 'Export JSON', 'zh-TW': '導出 JSON', 'zh-CN': '导出 JSON' },
-  'save.import': { 'en-US': 'Import JSON', 'zh-TW': '導入 JSON', 'zh-CN': '导入 JSON' },
+  "save.hint": {"en-US": "Build edits are auto-saved in this browser. Download a JSON backup to keep a copy or move devices. Import a backup, .build file or code text file to replace the current build.", "zh-TW": "構築修改會自動儲存在此瀏覽器。下載 JSON 備份可另存或跨裝置使用；匯入備份、.build 或代碼文字檔會替換目前構築。", "zh-CN": "构筑修改会自动保存在此浏览器。下载 JSON 备份可另存或跨设备使用；导入备份、.build 或代码文本文件会替换当前构筑。"},
+  "save.export": {"en-US": "Download backup", "zh-TW": "下載備份", "zh-CN": "下载备份"},
+  "save.import": {"en-US": "Import from file…", "zh-TW": "從檔案匯入…", "zh-CN": "从文件导入…"},
 } as const satisfies Record<string, Entry>;
 
 export type UiKey = keyof typeof DICT;

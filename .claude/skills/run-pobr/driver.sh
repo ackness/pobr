@@ -8,6 +8,7 @@
 #   vendor     仅克隆/对齐 PoB2 vendor 到钉定 commit（gitignored，永不提交）
 #   build      cargo build --workspace
 #   test <args> Forward targeted cargo test arguments (package, suite, filter).
+#   lint <args> Format check plus Clippy for explicitly selected Cargo targets.
 #   full       fmt + clippy + all workspace tests + i18n lint
 #   drill      version-bump-drill：数据可再生性 + 编译 + parity 可运行
 #   smoke      Quick representative aggregation, parser and codec checks.
@@ -72,11 +73,29 @@ cmd_test() {
   cargo test "$@"
 }
 
+cmd_lint() {
+  if [[ $# -eq 0 ]]; then
+    echo "usage: driver.sh lint -p <crate> [--lib] [--bin <name>] [--test <suite>]" >&2
+    return 2
+  fi
+  say "Targeted lint: fmt and cargo clippy $*"
+  cargo fmt --all --check && cargo clippy "$@" -- -D warnings
+}
+
+cmd_workspace_tests() {
+  if cargo nextest --version >/dev/null 2>&1; then
+    cargo nextest run --workspace && cargo test --workspace --doc
+  else
+    say "nextest unavailable; using cargo test (including doctests)"
+    cargo test --workspace
+  fi
+}
+
 cmd_full() {
   say "Full workspace gate: fmt, clippy, tests (including doctests), i18n"
   cargo fmt --all --check &&
     cargo clippy --workspace --all-targets -- -D warnings &&
-    cargo test --workspace &&
+    cmd_workspace_tests &&
     cargo run -p lint-i18n
 }
 
@@ -156,12 +175,13 @@ cmd_status() {
   echo "注：oracle（tools/pob2-oracle）+ extract-lua 与旧版 4.5.0.3.4 的 vendor（2df5a74）不兼容（见 SKILL.md Gotchas）。"
 }
 
-case "${1:-smoke}" in
+case "${1:-}" in
   deps)      cmd_deps ;;
   vendor)    cmd_vendor ;;
   bootstrap) cmd_deps && cmd_vendor && cmd_build ;;
   build)     cmd_build ;;
   test)      shift; cmd_test "$@" ;;
+  lint)      shift; cmd_lint "$@" ;;
   full)      cmd_full ;;
   drill)     cmd_drill ;;
   smoke)     cmd_smoke ;;
@@ -170,5 +190,5 @@ case "${1:-smoke}" in
   diff)      cmd_diff "$@" ;;
   lua)       cmd_lua "$@" ;;
   status)    cmd_status ;;
-  *) echo "usage: driver.sh {bootstrap|deps|vendor|build|test <cargo args>|full|drill|smoke|data|versions|diff <verA> <verB>|lua <pat>|status}"; exit 2 ;;
+  *) echo "usage: driver.sh {bootstrap|deps|vendor|build|test <cargo args>|lint <cargo targets>|full|drill|smoke|data|versions|diff <verA> <verB>|lua <pat>|status}"; exit 2 ;;
 esac
