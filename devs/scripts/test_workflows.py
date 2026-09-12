@@ -17,7 +17,10 @@ class WorkflowTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="pobr script tests ")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        for rel in ["devs/scripts/regen-check.sh", ".claude/skills/run-pobr/driver.sh"]:
+        scripts = ["devs/scripts/regen-check.sh", ".claude/skills/run-pobr/driver.sh"]
+        if (REPO / ".agents/skills/run-pobr/driver.sh").is_file():
+            scripts.append(".agents/skills/run-pobr/driver.sh")
+        for rel in scripts:
             dest = self.root / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(REPO / rel, dest)
@@ -37,6 +40,10 @@ import json, os, pathlib, sys
 args = sys.argv[1:]
 with open(os.environ["CALLS"], "a", encoding="utf-8") as out:
     out.write(json.dumps(args) + "\\n")
+if args == ["nextest", "--version"]:
+    sys.exit(0 if os.environ.get("HAS_NEXTEST") else 1)
+if os.environ.get("FAIL_COMMAND") == args[0]:
+    sys.exit(17)
 if os.environ.get("FAIL_TEST") and args[0] == "test":
     sys.exit(19)
 if "pobr-data-adapter" in args:
@@ -64,6 +71,8 @@ if "precompile-mods" in args:
             "TMPDIR": str(self.root / "tmp"),
             "POBR_PATCH": "test",
         }
+        for key in ["HAS_NEXTEST", "FAIL_COMMAND", "FAIL_TEST", "FAIL_REGEN"]:
+            self.env.pop(key, None)
 
     def write(self, rel, text):
         path = self.root / rel
@@ -124,6 +133,77 @@ if "precompile-mods" in args:
         result = self.run_script(".claude/skills/run-pobr/driver.sh", "test")
         self.assertEqual(result.returncode, 2)
         self.assertFalse((self.root / "calls.jsonl").exists())
+
+    def calls(self):
+        return [json.loads(line) for line in
+                (self.root / "calls.jsonl").read_text(encoding="utf-8").splitlines()]
+
+    @unittest.skipUnless((REPO / ".agents/skills/run-pobr/driver.sh").is_file(),
+                         "Optional local agent alias is not present in fresh checkouts")
+    def test_agent_alias_preserves_arguments_and_failure(self):
+        self.env["FAIL_TEST"] = "1"
+        args = ["-p", "pobr-build", "--test", "skills", "a filter with spaces"]
+        result = self.run_script(".agents/skills/run-pobr/driver.sh", "test", *args)
+        self.assertEqual(result.returncode, 19, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [["test", *args]])
+
+    def test_lint_only_checks_requested_targets(self):
+        args = ["-p", "pobr-build", "--lib", "--test", "skills"]
+        result = self.run_script(".claude/skills/run-pobr/driver.sh", "lint", *args)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [
+            ["fmt", "--all", "--check"], ["clippy", *args, "--", "-D", "warnings"],
+        ])
+
+    def test_lint_stops_on_format_failure(self):
+        self.env["FAIL_COMMAND"] = "fmt"
+        result = self.run_script(".claude/skills/run-pobr/driver.sh", "lint", "-p", "pobr-build")
+        self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [["fmt", "--all", "--check"]])
+
+    def test_empty_commands_do_not_trigger_implicit_checks(self):
+        for entry in [".claude", ".agents"]:
+            if not (self.root / entry / "skills/run-pobr/driver.sh").is_file():
+                continue
+            for args in [[], ["lint"], ["test"]]:
+                with self.subTest(entry=entry, args=args):
+                    result = self.run_script(f"{entry}/skills/run-pobr/driver.sh", *args)
+                    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                    self.assertFalse((self.root / "calls.jsonl").exists())
+
+    def test_full_uses_nextest_and_keeps_doctests(self):
+        self.env["HAS_NEXTEST"] = "1"
+        result = self.run_script(".claude/skills/run-pobr/driver.sh", "full")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [
+            ["fmt", "--all", "--check"],
+            ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"],
+            ["nextest", "--version"],
+            ["nextest", "run", "--workspace"],
+            ["test", "--workspace", "--doc"],
+            ["run", "-p", "lint-i18n"],
+        ])
+
+    def test_full_falls_back_only_when_nextest_is_unavailable(self):
+        result = self.run_script(".claude/skills/run-pobr/driver.sh", "full")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.calls()[2:], [
+            ["nextest", "--version"], ["test", "--workspace"], ["run", "-p", "lint-i18n"],
+        ])
+
+    def test_full_stops_at_failure_without_retrying_tests(self):
+        for command, has_nextest in [("fmt", "1"), ("clippy", "1"),
+                                     ("nextest", "1"), ("test", "1"), ("test", "")]:
+            with self.subTest(command=command, has_nextest=has_nextest):
+                (self.root / "calls.jsonl").unlink(missing_ok=True)
+                self.env["FAIL_COMMAND"] = command
+                self.env["HAS_NEXTEST"] = has_nextest
+                result = self.run_script(".claude/skills/run-pobr/driver.sh", "full")
+                self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
+                calls = self.calls()
+                self.assertEqual(calls[-1][0], command)
+                self.assertEqual(sum(call[0] == command and "--version" not in call
+                                     for call in calls), 1)
 
 
 if __name__ == "__main__":

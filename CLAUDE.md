@@ -11,24 +11,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 每个 worktree / 并行会话使用**自己的 `./target`**。**禁止**设置共享 `CARGO_TARGET_DIR`——并发 cargo 会在构建目录锁上串行排队（症状：长时间无输出；stderr 的 `Blocking waiting for file lock` 提示不要用 `| tail` 等管道吞掉）。
 - 同一 target 目录下 cargo 命令**一次一条、前台执行**，禁止后台叠加。
 
-## 验证分层（重要：避免无谓的全量测试）
+## 验证分层（本地提交默认定向验证）
 
-| 阶段 | 命令 | 说明 |
-|------|------|------|
-| 编辑循环中 | `cargo check -p <crate>` | 只查类型/借用错误，最快反馈 |
-| 完成一个完整任务后 | `cargo nextest run -p <crate> --test <suite>`（或 `-E 'test(...)'`） | 只跑改动相关的定向测试，**不要跑全量** |
-| 提交/合并门禁前 | `cargo nextest run --workspace` + clippy + fmt | 全量只在这一刻跑 |
+**先按改动选检查，通过后结束验证并提交。普通本地提交不要求全量门禁。** 不把 `check → build → clippy → test → full` 当作固定流水线；已有相关测试能检查编译时，不先重复运行 check/build。
+
+| 改动 | 最小相关验证 |
+|------|------|
+| Rust 局部逻辑 | `driver.sh test -p <crate> --test <suite> [filter]`；收尾跑 `driver.sh lint -p <crate> --lib --test <suite>` |
+| 计算 / Modifier / parser | 对应集成套件；改变完整 build 数值时再跑 `cargo test -p pobr-build --test parity parity_no_regression` |
+| 跨 crate API / 数据结构 | 相关 crate 测试 + 直接使用者的契约或集成测试；边界无法明确时扩大到 workspace |
+| Web TS / React | `pnpm --dir web test <test-file>` + `pnpm --dir web typecheck`；交互改动补相关 Playwright spec |
+| Rust → WASM / Web 契约 | Rust 契约测试 + 重建 WASM + 相关真实 WASM / E2E 测试 |
+| Worker | `pnpm --dir web test:worker` |
+| 仅文档 | 审查 diff；不运行 Cargo / Web 构建 |
+| 验证脚本 | `bash -n <script>` + `python3 devs/scripts/test_workflows.py`；不为改脚本重跑整个 workspace |
+
+表中 `driver.sh` 指 `bash .claude/skills/run-pobr/driver.sh`。测试目标先查对应 `Cargo.toml` 或 `tests/*.rs`；用 `--test <suite>` / `--lib` 限定编译目标，只有名称 filter 仍可能编译整个 crate 的测试。计算修复必须有能复现错误的断言，不降低 parity 基线来换取通过。
+
+- 编辑中只有需要快速定位编译错误时才单独 `cargo check -p <crate> --lib`。Clippy 按改动选择 `--lib` / `--bin <name>` / `--test <suite>`；测试专属改动无需扩大到 `--all-targets`。
+- 同一代码、依赖、工具链、features、数据版本下已通过的检查复用结果；后续只改文档不使代码测试失效。失败后先重跑失败目标，只有新改动、失败或明确影响范围才扩大验证。
+- Web 纯 TS/CSS 改动复用已构建 WASM；Rust 依赖、WASM features 或工具链改变才重建。`pnpm build` 已包含 typecheck，最终需要 build 时不额外重复 typecheck。E2E 前确认 dist 对应当前代码。
+- **合并 / 发版、工具链 / Cargo features / workspace 依赖变更、影响范围不明的核心改动**运行一次 `driver.sh full`。当前 CI 仅 tag / 手动触发，不会替普通提交兜底；全量未跑时如实说明。已验证的相同代码不因创建本地提交再跑一遍。
+- 不自动 `cargo clean`、改 profile / features / `RUSTFLAGS` 或共享 target 来“加速”；这些可能使缓存失效。看到构建锁先检查已有进程，不叠加 Cargo 命令。
 
 ## 常用命令
 
 ```bash
 cargo nextest run --workspace                          # 全部测试（推荐；不含 doctest）
-cargo test --workspace                                 # 全部测试（CI gate；仅在无 nextest 时用）
+cargo test --workspace --doc                           # nextest 不执行 doctest，完整门禁另跑
+cargo test --workspace                                 # 无 nextest 时的完整测试（含 doctest）
 cargo clippy --workspace --all-targets -- -D warnings  # lint（CI gate，warning 即失败）
 cargo fmt --check                                      # 格式检查（CI gate）
 
-cargo nextest run -p pobr-core --test mod_db           # 单个测试套件
-cargo nextest run -p pobr-core -E 'test(sum_traced)'   # 单个用例（filterset 过滤）
+cargo test -p pobr-core --test aggregation mod_db::   # 定向编译套件 + 过滤用例
+cargo test -p pobr-build --test skills support_gating::
 cargo bench -p pobr-core --bench mod_db_bench          # ModDB 热查询基准（criterion）
 
 # PoB2 parity 仪表盘：逐 build 打印 PoBR vs PoB2 对照 + 聚合命中率
@@ -57,7 +73,9 @@ tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle�
 
 - `bash .claude/skills/run-pobr/driver.sh smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
 - `bash .claude/skills/run-pobr/driver.sh test -p <crate> --test <suite> [filter]`：原样传递 Cargo 参数，不过滤编译/错误输出。
-- `bash .claude/skills/run-pobr/driver.sh full`：fmt + clippy + workspace tests（含 doctest/parity）+ i18n lint，只在提交前跑一次。
+- `bash .claude/skills/run-pobr/driver.sh lint -p <crate> --lib --test <suite>`：fmt + 指定目标的 Clippy，不隐式扩大到 workspace / all-targets。
+- `bash .claude/skills/run-pobr/driver.sh full`：fmt + clippy + workspace tests（含 doctest/parity）+ i18n lint。优先 nextest，未安装时用 Cargo；用于上述完整门禁场景，不是每次本地提交的收尾动作。
+- 本地 `.agents/skills/run-pobr/driver.sh` 转发到同一驱动（`.agents` 按仓库规则不入库）。`smoke` 是环境检查，已有相关测试通过后无需再补一次。
 - `perf_timing` / `perf_phases` 是按需计时诊断，运行时加 `-- --ignored --nocapture`；正确性、覆盖率、parity 门禁仍默认执行。
 - `node web/scripts/bench-calc.mjs` measures uncached real-WASM calculation and 16-item batches on three committed builds. It requires built WASM and synced data; `--reference <old-pkg>` additionally checks complete output equality for behavior-preserving optimizations. Reports stay under ignored `.cache/`; this benchmark is opt-in, outside the CI gate.
 - `python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，不调用真实 Cargo。
