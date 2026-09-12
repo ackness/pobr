@@ -63,6 +63,19 @@ fn runes_preserve_legacy_and_nested_bonded_bonuses() {
     assert_eq!(nested["stat_order"], serde_json::json!([832.0, 1077.0]));
     assert_eq!(legacy["rank"], serde_json::json!([15.0]));
     assert!(nested["rank"].is_null());
+    assert_eq!(nested["required_level"], 15);
+    assert_eq!(nested["limit"], 1);
+    assert_eq!(nested["limit_id"], "SharedFixtureAugment");
+    assert_eq!(nested["socket_bound"], true);
+    assert_eq!(nested["can_socket_in_unique_items"], true);
+    assert_eq!(nested["can_socket_in_corrupted_sanctified"], true);
+    assert_eq!(nested["can_socket_in_jewellery"], false);
+    assert!(legacy["required_level"].is_null());
+    assert_eq!(legacy["socket_bound"], false);
+    assert_eq!(
+        json,
+        sync_pob_catalog::extract_item_overlay::run_extract_runes(&args).unwrap()
+    );
 }
 
 /// Rerun with the same input twice; the output must be byte-identical (an ironclad determinism rule)

@@ -1,8 +1,14 @@
 import { expect, test, vi } from 'vitest';
 import { compareReplacement, compareReplacementPositions, normalizeCopiedItem, replacementAffixes, validateReplacement } from './itemReplacement';
 import type { TradeCatalog } from './tradeOptimizer';
-import type { CalculateBuildRequest } from '../api/types';
+import type { CalculateBuildRequest, ItemAugmentInfo, RuneCatalogEntry } from '../api/types';
 import type { EvaluateOptions, EvaluateResult } from './optimize';
+
+vi.mock('../api/backend', () => ({ getBackend: async () => ({
+  itemAugmentInfo: async () => ({ sockets: 0, max_sockets: 0, runes: [], editable: false, options: [] }),
+  reforgeRunes: async (text: string) => text,
+  runeCatalog: async () => [],
+}) }));
 
 const catalog: TradeCatalog = { mods: [], bases: [
   { name: 'Sapphire Ring', category: 'accessory.ring', tags: [], level: 12, implicits: [] },
@@ -22,6 +28,17 @@ test('clipboard CN headers retain effects and map short attribute requirements',
   expect(normalized).toContain('Rarity: RARE\n升级\n蓝玉戒指');
   expect(normalized).toContain('Level: 60\nStr: 10\nDex: 20\nInt: 30');
   expect(normalized).toContain('+40 最大生命');
+});
+
+test('legacy userscript pseudo mods become metadata while genuine unknown effects remain visible', () => {
+  const raw = `${copied}\nUnmodeled market effect (pseudoMods): Sum: 369.1\nUnmodeled market effect (pseudoMods): +120% total Elemental Resistance\nUnmodeled market effect (unknownMods): +50 to maximum Life\nSum: custom text to review`;
+  const normalized = normalizeCopiedItem(raw);
+  expect(normalized).toContain('Note: Sum: 369.1');
+  expect(normalized).toContain('Note: +120% total Elemental Resistance');
+  expect(normalized).not.toContain('Unmodeled market effect (pseudoMods)');
+  expect(normalized).toContain('Unmodeled market effect (unknownMods): +50 to maximum Life');
+  expect(normalized).toContain('Sum: custom text to review');
+  expect(normalized).toContain('+40 to maximum Life');
 });
 
 test('required level uses declared/base requirements, not item level', async () => {
@@ -147,4 +164,141 @@ test('cancellation during parsing never sends the item to the calculator', async
   await expect(compareReplacementPositions(request, copied, controller.signal, { catalog, translate, evaluate,
     classify: async () => { controller.abort(); return []; } })).rejects.toThrow();
   expect(evaluate).not.toHaveBeenCalled();
+});
+
+const augmentOption = (name: string): RuneCatalogEntry => ({ name, name_zh_cn: null, name_zh_tw: null,
+  is_soul_core: false, kind: 'Rune', required_level: 1, lines: ['Synthetic effect'] });
+const augmentOptions = [augmentOption('Damage Rune'), augmentOption('Life Rune')];
+const augmentState = (sockets = 0, runes: string[] = []): ItemAugmentInfo => ({ sockets, max_sockets: 2,
+  runes, editable: true, options: augmentOptions });
+const maceCatalog: TradeCatalog = { mods: [], bases: [
+  { name: 'Synthetic Mace', category: 'weapon.onemace', tags: [], level: 1, implicits: [] },
+] };
+const maceCandidate = 'Rarity: RARE\nMarket Mace\nSynthetic Mace\n--------\nImplicits: 0\n--------\n20% increased Physical Damage';
+const dualBuild: CalculateBuildRequest = { character: { level: 72, class_name: 'Warrior' }, items: [
+  { slot: 'weapon1', text: 'Rarity: RARE\nCurrent One\nSynthetic Mace\n--------\nSockets: S\nRune: Damage Rune' },
+  { slot: 'weapon2', text: 'Rarity: RARE\nCurrent Two\nSynthetic Mace\n--------\nSockets: S S\nRune: Life Rune\nRune: Damage Rune' },
+  { slot: 'helmet', text: 'Preserve unrelated helmet' },
+] };
+const sourceInfo = async (text: string): Promise<ItemAugmentInfo> => text.includes('Current One')
+  ? augmentState(1, ['Damage Rune']) : text.includes('Current Two') ? augmentState(2, ['Life Rune', 'Damage Rune']) : augmentState();
+const reforgeText = async (text: string, runes: string[], sockets?: number) => text.replace('Implicits: 0',
+  [`Sockets: ${Array(sockets ?? 0).fill('S').join(' ')}`, ...runes.filter(Boolean).map(name => `Rune: ${name}`), 'Implicits: 0'].join('\n'));
+const classifyAugments = async (text: string) => text.split('\n').filter(line => line.startsWith('Rune:'))
+  .map(line => ({ kind: 'rune' as const, text: line.slice(6) }));
+
+test('each compatible position inherits its own current augments and exposes the exact evaluated variant for apply', async () => {
+  const original = structuredClone(dualBuild);
+  const reforge = vi.fn(reforgeText), evaluate = vi.fn(evaluatePositions);
+  const report = await compareReplacementPositions(dualBuild, maceCandidate, undefined, {
+    catalog: maceCatalog, translate, classify: classifyAugments, augmentInfo: sourceInfo, reforge, evaluate,
+  });
+  expect(reforge.mock.calls).toEqual([
+    [maceCandidate, ['Damage Rune'], 1], [maceCandidate, ['Life Rune', 'Damage Rune'], 2],
+  ]);
+  expect(report.positions.map(row => row.augments.runes)).toEqual([['Damage Rune'], ['Life Rune', 'Damage Rune']]);
+  const evaluated = evaluate.mock.calls[0][0].variants;
+  expect(evaluated).toHaveLength(2);
+  for (const [index, row] of report.positions.entries()) {
+    expect(row.variant).toEqual(evaluated[index]);
+    expect(row.variant.set_items?.[0].slot).toBe(index ? 'weapon2' : 'weapon1');
+    expect(row.variant.set_items?.[0].text).toContain('20% increased Physical Damage');
+    expect(row.lines.map(line => line.text)).toEqual(row.augments.runes);
+    expect(row.augments.source).toBe('inherited');
+  }
+  expect(report.text).toBe(maceCandidate);
+  expect(dualBuild).toEqual(original);
+});
+
+test('listing augments and explicit as-listed choices are never reforged or replaced by current gear', async () => {
+  for (const asListed of [false, true]) {
+    const reforge = vi.fn(reforgeText);
+    const augmentInfo = vi.fn(async () => asListed ? augmentState() : augmentState(2, ['', 'Life Rune']));
+    const report = await compareReplacementPositions(dualBuild, maceCandidate, undefined, {
+      catalog: maceCatalog, translate, classify: classifyAugments, augmentInfo, reforge, evaluate: evaluatePositions,
+      augmentPlans: asListed ? { weapon1: { mode: 'original' }, weapon2: { mode: 'original' } } : undefined,
+    });
+    expect(reforge).not.toHaveBeenCalled();
+    expect(augmentInfo).toHaveBeenCalledTimes(1);
+    expect(report.positions.every(row => row.augments.source === 'original')).toBe(true);
+    expect(report.positions.map(row => row.variant.set_items?.[0].text)).toEqual([maceCandidate, maceCandidate]);
+  }
+});
+
+test('existing listing augments enforce their required level even when the copied requirements are missing', async () => {
+  const text = maceCandidate.replace('Implicits: 0', 'Sockets: S\nRune: Perfect Rune\nImplicits: 0');
+  const augmentInfo = vi.fn(async (): Promise<ItemAugmentInfo> => ({ ...augmentState(1, ['Perfect Rune']),
+    options: [{ ...augmentOption('Perfect Rune'), required_level: 80 }] }));
+  const evaluate = vi.fn(evaluatePositions), reforge = vi.fn(reforgeText);
+  const dependencies = { catalog: maceCatalog, translate, classify: classifyAugments, augmentInfo, reforge, evaluate };
+  await expect(compareReplacementPositions(dualBuild, text, undefined, dependencies)).rejects.toThrow('item-level');
+  expect(evaluate).not.toHaveBeenCalled();
+  expect(reforge).not.toHaveBeenCalled();
+  const report = await compareReplacementPositions({ ...dualBuild, character: { level: 80, class_name: 'Warrior' } }, text, undefined, dependencies);
+  expect(report.requiredLevel).toBe(80);
+  expect(report.positions.every(row => row.augments.source === 'original')).toBe(true);
+  expect(report.positions.every(row => row.variant.set_items?.[0].text === text)).toBe(true);
+  expect(reforge).not.toHaveBeenCalled();
+});
+
+test('whole-build augment limits reject only destinations that would duplicate an occupied limited rune', async () => {
+  const vitality = { ...augmentOption('Rune of Vitality'), limit: 1 };
+  const text = maceCandidate.replace('Implicits: 0', 'Sockets: S\nRune: Rune of Vitality\nImplicits: 0');
+  const build = { ...dualBuild, items: dualBuild.items!.map(item => ({ ...item,
+    text: item.text.replace('Rune: Damage Rune', 'Rune: Rune of Vitality') })) };
+  // Only weapon1 occupies the limited rune; replacing weapon2 would leave it equipped.
+  build.items[1].text = dualBuild.items![1].text;
+  const evaluate = vi.fn(evaluatePositions), reforge = vi.fn(reforgeText);
+  const report = await compareReplacementPositions(build, text, undefined, {
+    catalog: maceCatalog, translate, classify: classifyAugments, evaluate, reforge,
+    augmentInfo: async () => ({ ...augmentState(1, [vitality.name]), options: [vitality, ...augmentOptions] }),
+    runeCatalog: async () => [vitality, ...augmentOptions],
+  });
+  expect(report.positions.map(row => row.slot)).toEqual(['weapon1']);
+  expect(report.rejected).toEqual([{ slot: 'weapon2', reason: 'augment-limit' }]);
+  expect(report.positions[0].augments.info.options.find(entry => entry.name === vitality.name)?.limit).toBe(1);
+  expect(evaluate.mock.calls[0][0].variants).toEqual([{ set_items: [{ slot: 'weapon1', text }] }]);
+  expect(reforge).not.toHaveBeenCalled();
+});
+
+test('custom preparation is per-position and its empty sockets stay in the evaluated apply payload', async () => {
+  const reforge = vi.fn(reforgeText);
+  const report = await compareReplacementPositions(dualBuild, maceCandidate, undefined, {
+    catalog: maceCatalog, translate, classify: classifyAugments, augmentInfo: sourceInfo, reforge, evaluate: evaluatePositions,
+    augmentPlans: { weapon1: { mode: 'custom', sockets: 2, runes: ['', 'Life Rune'] }, weapon2: { mode: 'original' } },
+  });
+  expect(reforge.mock.calls).toEqual([[maceCandidate, ['', 'Life Rune'], 2]]);
+  expect(report.positions[0].augments).toMatchObject({ source: 'custom', sockets: 2, runes: ['', 'Life Rune'] });
+  expect(report.positions[0].variant.set_items?.[0].text).toContain('Sockets: S S\nRune: Life Rune');
+  expect(report.positions[1].variant.set_items?.[0].text).toBe(maceCandidate);
+});
+
+test('a preparation failure preserves the next compatible position and its remapped calculator index', async () => {
+  const evaluate = vi.fn(evaluatePositions);
+  const report = await compareReplacementPositions(dualBuild, maceCandidate, undefined, {
+    catalog: maceCatalog, translate, classify: classifyAugments, augmentInfo: sourceInfo, evaluate,
+    reforge: async (text, runes, sockets) => {
+      if (runes.length === 1) throw new Error('Cannot prepare this augment setup');
+      return reforgeText(text, runes, sockets);
+    },
+  });
+  expect(report.rejected).toEqual([{ slot: 'weapon1', reason: 'Cannot prepare this augment setup' }]);
+  expect(report.positions).toHaveLength(1);
+  expect(report.positions[0].slot).toBe('weapon2');
+  expect(report.positions[0].variant.set_items?.[0].slot).toBe('weapon2');
+  expect(report.positions[0].stats.TotalDPS).toBe(90);
+  expect(evaluate.mock.calls[0][0].variants).toEqual([report.positions[0].variant]);
+});
+
+test('aborting metadata lookup or reforge preparation never sends partial variants to calc', async () => {
+  for (const stage of ['metadata', 'reforge']) {
+    const controller = new AbortController();
+    const evaluate = vi.fn(evaluatePositions);
+    await expect(compareReplacementPositions(dualBuild, maceCandidate, controller.signal, {
+      catalog: maceCatalog, translate, classify: classifyAugments, evaluate,
+      augmentInfo: async text => { if (stage === 'metadata' && text.includes('Current')) controller.abort(); return sourceInfo(text); },
+      reforge: async (text, runes, sockets) => { if (stage === 'reforge') controller.abort(); return reforgeText(text, runes, sockets); },
+    })).rejects.toThrow();
+    expect(evaluate).not.toHaveBeenCalled();
+  }
 });

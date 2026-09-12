@@ -25,6 +25,12 @@ pub struct BaseItemOverrideEntry {
     /// The base's English canonical name (= vendor's `itemBases` key =
     /// `BaseItemDef::name`).
     pub name: String,
+    /// Normal augment-socket capacity, directly from PoB2's base.socketLimit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub socket_limit: Option<u32>,
+    /// PoB2 base subtype; distinguishes bucklers and quarterstaves for augments.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sub_type: Option<String>,
     /// A shield base's block chance (%; vendor's `armour.BlockChance`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub block_chance: Option<f64>,

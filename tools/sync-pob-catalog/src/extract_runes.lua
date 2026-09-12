@@ -67,11 +67,19 @@ for _, name in ipairs(sortedKeys(runes)) do
 		error("unexpected rune entry shape at " .. tostring(name))
 	end
 	local slotParts = {}
+	local firstSlot = true
+	local limitId
 	for _, slotName in ipairs(sortedKeys(slots)) do
 		local slot = slots[slotName]
 		if type(slot) ~= "table" or type(slot.type) ~= "string" then
 			error("unexpected slot shape at " .. name .. "/" .. tostring(slotName))
 		end
+		-- The context-free catalog identifies a single whole-build limit group.
+		if not firstSlot and limitId ~= slot.limitId then
+			error("inconsistent limitId across slots at " .. name)
+		end
+		firstSlot = false
+		limitId = slot.limitId
 		local lines = {}
 		for i, line in ipairs(slot) do
 			if type(line) ~= "string" then
@@ -100,6 +108,18 @@ for _, name in ipairs(sortedKeys(runes)) do
 			'"kind":"' .. jsonEscape(slot.type) .. '"',
 			'"lines":[' .. table.concat(lines, ",") .. "]",
 		}
+		if type(slot.levelReq) == "number" then
+			fields[#fields + 1] = '"required_level":' .. jsonNum(slot.levelReq)
+		end
+		if type(slot.limit) == "number" then
+			fields[#fields + 1] = '"limit":' .. jsonNum(slot.limit)
+		end
+		if type(slot.limitId) == "string" then
+			fields[#fields + 1] = '"limit_id":"' .. jsonEscape(slot.limitId) .. '"'
+		end
+		for key, source in pairs({ socket_bound = "isSocketBound", can_socket_in_unique_items = "canSocketInUniqueItems", can_socket_in_jewellery = "canSocketInJewellery", can_socket_in_corrupted_sanctified = "canSocketInCorruptedSanctified" }) do
+			fields[#fields + 1] = '"' .. key .. '":' .. tostring(slot[source] == true)
+		end
 		if type(slot.rank) == "table" and #slot.rank > 0 then
 			fields[#fields + 1] = '"rank":' .. jsonNumArray(slot.rank, name .. "/" .. slotName .. ".rank")
 		end

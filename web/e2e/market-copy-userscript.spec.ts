@@ -73,6 +73,23 @@ test('international magic copies keep an exact base, decorated name metadata and
   expect(text).toContain('Corrupted');
 });
 
+test('search Sum and combined pseudo stats never become copied effects while unknown real mods stay visible', async ({ page }) => {
+  const count = await setup(page, { ...ring,
+    pseudoMods: ['Sum: 369.1', { description: '+130% total Elemental Resistance' }, { description: '+999 to maximum Life' }],
+    unknownMods: [{ description: 'Synthetic conditional effect requiring review' }],
+  });
+  await page.getByRole('button', { name: '复制到 PoBR', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('已复制');
+  const [text] = await copied(page);
+  expect(text).not.toMatch(/Sum:|369\.1|total Elemental Resistance|\+999 to maximum Life|pseudoMods/);
+  expect(text).toContain('冰霜抗性 +30%');
+  expect(text).toContain('火焰伤害提高 20%');
+  expect(text).toContain('+100 生命上限');
+  expect(text).toContain('Unmodeled market effect (unknownMods): Synthetic conditional effect requiring review');
+  expect(text).not.toMatch(/PRIVATE_|T1|Do not copy/);
+  expect(count()).toBe(1);
+});
+
 test('utility descriptions interpolate API placeholders and preserve requirements as metadata', async ({ page }) => {
   await setup(page, { frameType: 1, baseType: 'Ultimate Mana Flask',
     properties: [{ name: '{1} 秒内回复 {0} 魔力', displayMode: 3, values: [['500', 1], ['4', 0]] }],
@@ -154,7 +171,7 @@ test('a delayed clipboard failure cannot open a manual dialog for a removed list
 });
 
 test('text copied from a market response reaches real WASM replacement comparison', async ({ page }) => {
-  await setup(page);
+  await setup(page, { ...ring, pseudoMods: ['Sum: 369.1', { description: '+130% total Elemental Resistance' }] });
   await page.getByRole('button', { name: '复制到 PoBR', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('已复制');
   const [text] = await copied(page);

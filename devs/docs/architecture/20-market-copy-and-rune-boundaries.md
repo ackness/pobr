@@ -20,6 +20,11 @@ extra modifiers. Utility property placeholders are interpolated. Unknown
 modifier groups stay explicitly unmodeled, including conditional effects that
 cannot safely be injected as ordinary permanent stats.
 
+Search-only `pseudoMods` (including Sum and combined resistance) are excluded.
+The paste normalizer converts the older userscript's exact
+`Unmodeled market effect (pseudoMods):` prefix into reference metadata. It does
+not remove real unknown effects or infer effects from aggregate scores.
+
 Fetch failures never overwrite the clipboard. A failed clipboard write opens
 a selected manual-copy dialog only if the listing is still current. The
 script handles newly loaded rows and reused row IDs. It is served with the
@@ -56,6 +61,43 @@ effects from its name.
 Recovery descriptions are preserved for inspection. This is not a new flask
 uptime/healing or charm-trigger simulation. In particular, `Also grants 102
 Guard` remains unmodeled; it is not permanent life or unconditional EHP.
+
+## Replacement augment planning
+
+The complete-item comparison follows pinned PoB2 `ItemsTab:CopyAnointsAndAugments`:
+an item with existing augments stays as listed by default; an empty candidate
+inherits the current destination's identified augments, subject to its own
+base, socket capacity, augment limits and character level. Each destination
+gets its own prepared item text before a single batch comparison. The original
+build is the baseline; nothing is applied until the player explicitly applies
+the evaluated destination payload.
+
+Players can compare the original listing or customize sockets and augments.
+The UI shows assumed added sockets and omitted augments. This is a hypothetical
+post-socketing comparison; market price does not include those changes. Raw
+clipboard text is retained so returning to the listing does not stack effects.
+Pasting again resets the setup, including when the text is identical.
+
+`itemAugmentInfo` and `reforgeRunes` share item eligibility and restrictions.
+`base_item_overrides.socket_limit` and rune level/limit/type restrictions are
+extracted from pinned PoB2 instead of a universal frontend socket constant.
+Existing extra sockets are preserved. Corrupted/mirrored items cannot gain
+sockets in this editor. Unsupported special socket mechanics and unidentified
+existing augment effects remain read-only, preserving their original text.
+Reforging rebuilds modifier sections through `ItemDraft`, retaining real
+implicit/explicit effects and avoiding stale rolled-defence inputs.
+
+Both the Equipment editor and replacement picker consume this contract.
+PoB2 augment limits apply across equipped items, with shared groups keyed by
+`limit_id` when present (otherwise by name). The editor and comparison subtract
+usage on other currently active items, excluding the destination being replaced;
+inactive weapon-set inventory never enters that count. Inheritance skips a
+full group, while original/custom candidates that exceed it cannot be evaluated.
+Unknown occupied augment identities reserve limited choices conservatively and
+are explained in the UI. The backend also validates shared groups within each
+reforged item; its item-only endpoint does not claim to validate an entire build.
+Changing the build, weapon set or clipboard invalidates replacement results;
+augment edits disable application until the new calculation completes.
 
 ## Rune survival audit
 

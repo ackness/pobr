@@ -93,6 +93,21 @@ pub struct CatalystsDef {
 pub struct RuneSlotDef {
     /// Category literal (`type`: `Rune` / `SoulCore`).
     pub kind: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub required_level: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit: Option<u32>,
+    /// Shared whole-build limit group; absent means the augment's own name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limit_id: Option<String>,
+    #[serde(default)]
+    pub socket_bound: bool,
+    #[serde(default)]
+    pub can_socket_in_unique_items: bool,
+    #[serde(default)]
+    pub can_socket_in_jewellery: bool,
+    #[serde(default)]
+    pub can_socket_in_corrupted_sanctified: bool,
     /// Rendered mod lines (vendor table's array part).
     pub lines: Vec<String>,
     /// Sort weight (`rank`).

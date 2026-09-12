@@ -125,8 +125,14 @@ for name, base in pairs(itemBases) do
 			if type(base.req.dex) == "number" and base.req.dex > 0 then reqDex = base.req.dex end
 			if type(base.req.int) == "number" and base.req.int > 0 then reqInt = base.req.int end
 		end
-		if blockChance or spirit or reloadMs or charmBuff or tagsJson or reqStr or reqDex or reqInt then
+		if blockChance or spirit or reloadMs or charmBuff or tagsJson or reqStr or reqDex or reqInt or base.socketLimit then
 			local parts = { '"name":"' .. jsonEscape(name) .. '"' }
+			if type(base.socketLimit) == "number" then
+				parts[#parts + 1] = '"socket_limit":' .. jsonNum(base.socketLimit)
+			end
+			if type(base.subType) == "string" then
+				parts[#parts + 1] = '"sub_type":"' .. jsonEscape(base.subType) .. '"'
+			end
 			if blockChance then
 				parts[#parts + 1] = '"block_chance":' .. jsonNum(blockChance)
 			end
