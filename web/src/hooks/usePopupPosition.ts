@@ -31,12 +31,17 @@ export function usePopupPosition(
       const right = Math.min(document.documentElement.clientWidth, bounds?.right ?? document.documentElement.clientWidth) - 16;
       panel.style.left = `${Math.max(left - rect.left, Math.min(0, right - rect.right))}px`;
     };
+    const onScroll = (event: Event) => {
+      // Measuring again during menu scrolling would clamp its scroll offset.
+      if (event.target instanceof Node && panelRef.current?.contains(event.target)) return;
+      position();
+    };
     position();
     window.addEventListener('resize', position);
-    window.addEventListener('scroll', position, true);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       window.removeEventListener('resize', position);
-      window.removeEventListener('scroll', position, true);
+      window.removeEventListener('scroll', onScroll, true);
     };
   }, [rootRef, panelRef, open, contentKey, maxHeight]);
 }

@@ -764,7 +764,11 @@ export function useBuildSession(): BuildSession {
   const removeJewelSocket = useCallback((socket: number, allocatedNodes: number[]) => {
     const current = stateRef.current;
     if (!current) return;
-    apply({ ...current, allocatedNodes, jewels: current.jewels.filter(jewel => jewel.socket_node !== socket) });
+    const kept = new Set(allocatedNodes);
+    const attributeChoices = Object.fromEntries(
+      Object.entries(current.attributeChoices).filter(([skill]) => kept.has(Number(skill))),
+    );
+    apply({ ...current, allocatedNodes, attributeChoices, jewels: current.jewels.filter(jewel => jewel.socket_node !== socket) });
   }, [apply]);
 
   const setCharacter = useCallback(

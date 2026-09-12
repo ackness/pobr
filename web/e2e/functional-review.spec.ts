@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
@@ -7,6 +7,10 @@ const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getIte
 const ring = 'Rarity: RARE\nDraft Ring\nSapphire Ring\n+100 to maximum Life';
 const monk = readFileSync('../examples/demo-bd-test/builds/monk-invoker-frost-bomb/code.txt', 'utf8');
 const emptyNotes = deflateSync(`<PathOfBuilding2><Build level="40" className="Witch" mainSocketGroup="1"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills><Skill enabled="true"><Gem skillId="SparkPlayer" gemId="Metadata/Items/Gems/SkillGemSpark" level="5" quality="0" enabled="true"/></Skill><Skill enabled="true"><Gem skillId="FireballPlayer" gemId="Metadata/Items/Gems/SkillGemFireball" level="5" quality="0" enabled="true"/></Skill></Skills><Items/></PathOfBuilding2>`).toString('base64url');
+const remainingScroll = (menu: Locator) => menu.evaluate(element => new Promise<number>(resolve => {
+  // Read after scroll handlers and their layout updates have settled.
+  requestAnimationFrame(() => requestAnimationFrame(() => resolve(element.scrollHeight - element.clientHeight - element.scrollTop)));
+}));
 async function start(page: Page, code?: string) {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
@@ -93,6 +97,72 @@ test('weapon binding and gem menus remain clickable at the bottom of the scroll 
   expect(gemRect!.y + gemRect!.height).toBeLessThanOrEqual(mainRect!.y + mainRect!.height);
   await gemMenu.getByRole('option').first().click();
   await expect(search).toHaveValue('');
+});
+
+test('equipment menus in short viewports can scroll to and select the final position', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 500 });
+  await start(page);
+  await nav(page, 'Items').click();
+  await page.getByRole('button', { name: 'Ring 1', exact: true }).click();
+  const trigger = page.getByRole('button', { name: 'Equipment position', exact: true });
+  await trigger.click();
+  const menu = page.getByRole('listbox', { name: 'Equipment position', exact: true });
+  expect(await menu.evaluate(element => element.clientHeight)).toBeLessThan(280);
+  await menu.hover();
+  await page.mouse.wheel(0, 1500);
+  await expect.poll(() => remainingScroll(menu)).toBeLessThanOrEqual(1);
+  await menu.getByRole('option', { name: 'Charm 3', exact: true }).click();
+  await expect(trigger).toContainText('Charm 3');
+});
+
+test('nested gem lists in short viewports can scroll to and select their final result', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 500 });
+  await start(page);
+  await nav(page, 'Skills').click();
+  const search = page.locator('.skills-toolbar input');
+  await search.click();
+  const menu = page.locator('.gem-picker-list');
+  expect(await menu.evaluate(element => element.clientHeight)).toBeLessThan(280);
+  const last = menu.getByRole('option').last();
+  const name = await last.locator('.gem-primary').innerText();
+  await menu.hover();
+  await page.mouse.wheel(0, 100_000);
+  await expect.poll(() => remainingScroll(menu)).toBeLessThanOrEqual(1);
+  await last.click();
+  await expect(search).toHaveValue('');
+  await expect(page.locator('.skill-group-title')).toContainText(name);
+});
+
+test('cascading socket removal clears refunded attribute choices and preserves choices on retained nodes', async ({ page }) => {
+  // A connected Warrior path through socket 2491 to attribute node 51561.
+  const allocatedNodes = [47175, 38646, 23570, 41031, 54232, 16168, 25374, 53589, 48670, 51299, 35265, 31903, 37258, 28304, 2491, 51561];
+  await page.addInitScript(({ allocatedNodes }) => {
+    localStorage.setItem('pobr-tab', 'tree');
+    localStorage.setItem('pobr-build-state', JSON.stringify({ version: 1, notes: '', state: {
+      pobCode: null,
+      character: { level: 90, class_name: 'Warrior', ascendancy_name: '' },
+      allocatedNodes,
+      attributeChoices: { 23570: 'dex', 51561: 'str' },
+      items: [], flasks: [], socketGroups: [], annotations: {}, params: { config_inputs: {} },
+      jewels: [{ socket_node: 2491, text: 'Rarity: RARE\nBranch Jewel\nEmerald\n+50 to maximum Life' }],
+    } }));
+  }, { allocatedNodes });
+  await page.goto('/');
+  const socket = page.locator('circle[data-skill-id="2491"]');
+  await expect(socket).toHaveClass(/node-allocated/, { timeout: 90_000 });
+  await socket.dispatchEvent('click');
+  await page.getByRole('button', { name: 'Unallocate socket', exact: true }).click();
+  await expect(socket).not.toHaveClass(/node-allocated/);
+  const removed = await saved(page);
+  expect(removed.allocatedNodes).toEqual(allocatedNodes.filter(node => node !== 2491 && node !== 51561));
+  expect(removed.jewels).toEqual([]);
+  expect(removed.attributeChoices).toEqual({ 23570: 'dex' });
+
+  // Reallocating the branch must not silently restore its previous attribute.
+  await page.locator('circle[data-skill-id="25312"]').dispatchEvent('click');
+  await expect(page.locator('circle[data-skill-id="51561"]')).toHaveClass(/node-allocated/);
+  expect((await saved(page)).attributeChoices).toEqual({ 23570: 'dex' });
+  await expect(page.locator('.calc-error')).toHaveCount(0);
 });
 
 test('importing a build with no notes and starting a new character clear previous notes', async ({ page }) => {
