@@ -33,6 +33,24 @@ regression baseline; the rewrite exists to fix what a port can't:
   from GGG `.dat` exports, and most modifier/stat behaviour is data, not
   hard-coded rules.
 
+## Explore your build in the browser
+
+[Open PoBR](https://pobr-web.pages.dev) and import a PoB build or WeGame share
+link. Inspect your equipment and damage breakdown, compare a copied market item,
+then explore support combinations and connected passive routes under a shared
+DPS/EHP goal. Changes are previewed before you apply them.
+
+| Equipment and live character stats | Compare items and simulate affix tiers |
+| --- | --- |
+| [![Equipment layout with live damage, defence and resistance stats](docs/screenshots/equipment.png)](docs/screenshots/equipment.png) | [![A copied ring compared against both equipped rings, with a prefix and suffix editor](docs/screenshots/item-comparison.png)](docs/screenshots/item-comparison.png) |
+| **Filter unwanted supports and compare combinations** | **Preview connected passive upgrades** |
+| [![Support recommendations with a player-excluded gem and DPS/EHP changes](docs/screenshots/support-upgrades.png)](docs/screenshots/support-upgrades.png) | [![Passive tree with allocated nodes and a proposed upgrade route highlighted](docs/screenshots/passive-tree.png)](docs/screenshots/passive-tree.png) |
+
+Click any image to enlarge. Screenshots use a synthetic demonstration character,
+not a build guide. Recommendations cover the evaluated candidates and modeled
+effects; market affix scores are screening aids, so compare the complete item
+before buying.
+
 ## Getting started
 
 Standard cargo workflow ([`cargo-nextest`](https://nexte.st/) recommended for

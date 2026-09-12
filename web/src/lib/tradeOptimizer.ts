@@ -19,6 +19,8 @@ export interface TradeAffix {
   kind: 'prefix' | 'suffix';
   level: number;
   lines: string[];
+  /** Original PoB2 ranges, used only for manual item simulation. */
+  roll_lines?: string[];
   weights: [string, number][];
   stats: { id: string; line: string; value: number }[];
   domain?: string;

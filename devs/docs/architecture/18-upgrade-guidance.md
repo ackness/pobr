@@ -75,6 +75,29 @@ base-dependent categories, and local constraints that are not represented by
 the query. Even a fully mapped Sum is not a replacement DPS prediction. Removing
 an affix is a local approximation, not a cure for multiplicative interactions.
 
+## Manual affix simulation
+
+The complete-item comparison includes a structured prefix/suffix editor backed
+by all eligible tiers in the pinned PoB2 catalog. `roll_lines` retains each raw
+numeric range without changing maximum-roll trade weights. Item level, base
+spawn weights, affix groups, prefix/suffix capacity and character level constrain
+the choices. Minimum, midpoint and maximum rolls can be previewed; the midpoint
+is a range estimate, not a spawn-weighted crafting expectation or market price.
+
+Only uniquely identified explicit affixes receive an editable tier. Hybrid and
+merged stat lines can hide multiple affixes; conservative ambiguity detection
+leaves these unresolved and never infers a free slot from their line count.
+Unknown lines remain visible until explicitly replaced or removed. Corrupted,
+twice-corrupted, sanctified, mirrored and unidentified items cannot use ordinary
+affix simulation; fractured affixes are locked.
+
+Draft edits invalidate Apply until the player recalculates the complete item.
+The chosen destination slot and augment setup survive this recalculation.
+Unchanged implicits, rune effects, quality and metadata are retained; stale local
+defence and weapon property totals are removed so the engine derives them again.
+Real-WASM browser tests verify local armour/evasion and bow DPS stay unchanged
+when only an unrelated life affix changes, including after application.
+
 ## Real WASM comparison
 
 The opt-in [upgradeBench.test.ts](../../../web/src/lib/upgradeBench.test.ts) uses
@@ -159,6 +182,17 @@ level, socket capacity, overlapping families, source restrictions, and the
 default lineage-copy limit across groups, including inactive weapon groups.
 Unknown compatibility metadata is excluded with a count rather than guessed.
 
+Players can search candidates by localized or English name, uncheck unwanted
+supports, or exclude a gem directly from a recommendation. Exclusions use exact
+skill IDs (tiers remain separate) and persist per active-skill set in the browser.
+They apply before individual probes, current-set seeds and combination search;
+an excluded equipped support cannot re-enter through a replacement seed. The
+unchanged equipped build remains the comparison baseline. Editing exclusions
+cancels pending work and invalidates results before another plan can be applied.
+Restoring one or all exclusions does not modify the equipped build either.
+An empty allowed pool still evaluates removal of excluded equipped supports;
+with neither allowed nor equipped supports, the search is disabled.
+
 Individual probes seed a bounded combination search that retains neutral
 candidates and the current set. Complete group snapshots preserve active gems,
 other groups, and weapon bindings. The applied snapshot is the evaluated one.
@@ -219,6 +253,22 @@ Shortest paths, beam selection, and terminal-branch refunds restrict the space.
 The result is the best evaluated legal suggestion, not an optimal allocation
 over the entire passive tree. Existing allocated travel-attribute choices are
 preserved; newly considered travel nodes use the configured attribute choice.
+
+After the first explicit search, the open planner tracks build edits. It hides
+stale results immediately, cancels outstanding work, and waits 350 ms after the
+latest build calculation before searching again. Collapsing or cancelling pauses
+tracking. Application checks the exact evaluated request, connectivity, point
+budget and attribute choices; it never applies a refreshed recommendation
+automatically. Reallocation is optional and limits refunds to eight points.
+
+Tree panning keeps the root SVG viewport fixed and translates its inner scene
+at most once per animation frame. Memoized nodes and edges remain mounted, so
+previously clipped edge nodes become visible during the drag. Pointer release
+commits the viewBox and clears the temporary transform in one layout commit;
+pointer cancellation restores the original view. Captured node events skip
+hover updates while dragging. Browser regression tests cover edge visibility,
+node-origin drags, no unintended allocation, cancellation and sub-pixel release
+continuity; these do not establish a hardware-independent frame-rate guarantee.
 
 [passivePlanner.test.ts](../../../web/src/lib/passivePlanner.test.ts) compares
 small graphs with all legal connected allocations using synthetic evaluator

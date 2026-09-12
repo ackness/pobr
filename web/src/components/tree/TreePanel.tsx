@@ -116,27 +116,52 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
   });
   const [viewBox, setViewBox] = useState<ViewBox | null>(null);
   const dragRef = useRef<{
-    x: number;
-    y: number;
+    pointerId: number;
     startX: number;
     startY: number;
+    origin: DOMPoint;
+    inverse: DOMMatrix;
+    view: ViewBox;
+    next: ViewBox;
     moved: boolean;
   } | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const sceneRef = useRef<SVGGElement | null>(null);
+  const dragRafRef = useRef<number | null>(null);
+  const suppressClickRef = useRef(false);
+  const clickResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** 滚轮缩放的 rAF 合帧暂存（一帧最多提交一次 viewBox）。 */
   const wheelPendingRef = useRef<ViewBox | null>(null);
   const wheelRafRef = useRef<number | null>(null);
-  /** 拖动提交后待复位 CSS transform（与新 viewBox 同帧清除，防闪跳）。 */
+  /** Clear the scene offset in the same commit as the final viewBox. */
   const transformResetRef = useRef(false);
   useLayoutEffect(() => {
     if (!transformResetRef.current) return;
     transformResetRef.current = false;
     const svg = svgRef.current;
     if (svg) {
-      svg.style.transform = '';
+      sceneRef.current?.removeAttribute('transform');
       svg.classList.remove('is-dragging');
     }
   }, [viewBox]);
+
+  useEffect(() => () => {
+    if (wheelRafRef.current !== null) cancelAnimationFrame(wheelRafRef.current);
+    if (dragRafRef.current !== null) cancelAnimationFrame(dragRafRef.current);
+    if (clickResetRef.current !== null) clearTimeout(clickResetRef.current);
+    dragRef.current = null;
+    wheelPendingRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    // React's delegated wheel listener is passive. Consume scrolling only over
+    // the tree, so zooming does not also move the surrounding page.
+    const consume = (event: WheelEvent) => event.preventDefault();
+    svg.addEventListener('wheel', consume, { passive: false });
+    return () => svg.removeEventListener('wheel', consume);
+  }, [nodes]);
 
   useEffect(() => {
     getBackend()
@@ -331,7 +356,7 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
    */
   const handleNodeClick = useCallback(
     (node: PassiveNode, e: React.MouseEvent) => {
-      if (dragRef.current?.moved) return;
+      if (suppressClickRef.current || dragRef.current?.moved) return;
       const s = sessionRef.current;
       const allocated = new Set(s.allocatedNodes);
       const isAlloc = allocated.has(node.skill);
@@ -445,16 +470,22 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
                 />
               )}
               <circle
+                data-skill-id={node.skill}
                 cx={node.x}
                 cy={node.y}
                 r={r}
                 style={heat ? { fill: heat } : undefined}
                 className={`node node-${node.kind}${icon || frame ? ' node-art' : ''}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${plannedNodes?.allocate.includes(node.skill) ? ' node-planned-add' : ''}${plannedNodes?.deallocate.includes(node.skill) ? ' node-planned-remove' : ''}`}
                 onPointerEnter={(e) => {
+                  if (dragRef.current?.moved) return;
                   setHover(node);
                   setHoverPos({ x: e.clientX, y: e.clientY });
                 }}
-                onPointerMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
+                onPointerMove={(e) => {
+                  // Pointer capture keeps sending events to the original node,
+                  // even while dragging disables hit testing for other nodes.
+                  if (!dragRef.current) setHoverPos({ x: e.clientX, y: e.clientY });
+                }}
                 onPointerLeave={() => setHover((h) => (h?.skill === node.skill ? null : h))}
                 onClick={(e) => handleNodeClick(node, e)}
               />
@@ -623,23 +654,26 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
   if (error) return <div className="calc-error">{error}</div>;
   if (!nodes || !view) return <div className="empty-hint">{tt('tree.loading')}</div>;
 
-  // ── 平移/缩放的高性能路径 ────────────────────────────────────────────────
-  // viewBox 每帧改动会强制整树（~1 万 SVG 元素）重新栅格化；拖动期间只写
-  // CSS transform（GPU 合成器，与元素数量无关），pointerup 一次性提交
-  // viewBox（transform 复位在 useLayoutEffect 里与新 viewBox 同帧，防闪跳）。
-  // 滚轮缩放本就需要重绘内容，走 rAF 合帧（一帧最多一次栅格化）。
+  // Keep the SVG viewport fixed: translating the already clipped root layer
+  // exposes blank edges. Pan its scene once per animation frame instead, without
+  // reconciling the memoized node/edge subtrees. Commit the viewBox on release.
 
   const onWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    if (dragRef.current) return;
+    const matrix = svgRef.current?.getScreenCTM();
+    if (!matrix) return;
     const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
-    const rect = svgRef.current!.getBoundingClientRect();
+    const point = new DOMPoint(e.clientX, e.clientY).matrixTransform(matrix.inverse());
+    const tx = (point.x - view.x) / view.w;
+    const ty = (point.y - view.y) / view.h;
     const base = wheelPendingRef.current ?? view;
-    const px = base.x + ((e.clientX - rect.left) / rect.width) * base.w;
-    const py = base.y + ((e.clientY - rect.top) / rect.height) * base.h;
+    const px = base.x + tx * base.w;
+    const py = base.y + ty * base.h;
     const w = Math.min(Math.max(base.w * factor, 800), (fullExtent?.w ?? 1) * 2);
     const h = (w / base.w) * base.h;
     wheelPendingRef.current = {
-      x: px - ((px - base.x) / base.w) * w,
-      y: py - ((py - base.y) / base.h) * h,
+      x: px - tx * w,
+      y: py - ty * h,
       w,
       h,
     };
@@ -655,16 +689,40 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
   };
 
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    dragRef.current = { x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY, moved: false };
+    if (e.button !== 0 || !e.isPrimary || dragRef.current) return;
+    const svg = svgRef.current!;
+    const base = wheelPendingRef.current ?? view;
+    if (wheelRafRef.current !== null) cancelAnimationFrame(wheelRafRef.current);
+    wheelRafRef.current = null;
+    if (wheelPendingRef.current) {
+      const pending = fullExtent ? clampView(base, fullExtent) : base;
+      svg.setAttribute('viewBox', `${pending.x} ${pending.y} ${pending.w} ${pending.h}`);
+      setViewBox(pending);
+      wheelPendingRef.current = null;
+    }
+    const matrix = svg.getScreenCTM();
+    if (!matrix) return;
+    const inverse = matrix.inverse();
+    const committed = svg.viewBox.baseVal;
+    const start = { x: committed.x, y: committed.y, w: committed.width, h: committed.height };
+    dragRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY,
+      inverse, origin: new DOMPoint(e.clientX, e.clientY).matrixTransform(inverse), view: start, next: start, moved: false };
+    if (clickResetRef.current !== null) clearTimeout(clickResetRef.current);
+    suppressClickRef.current = false;
+    // Keep node clicks targeted at the original circle until a drag is confirmed.
     (e.target as Element).setPointerCapture?.(e.pointerId);
+  };
+
+  const panAt = (drag: NonNullable<typeof dragRef.current>, x: number, y: number) => {
+    const point = new DOMPoint(x, y).matrixTransform(drag.inverse);
+    const next = { ...drag.view, x: drag.view.x - point.x + drag.origin.x, y: drag.view.y - point.y + drag.origin.y };
+    return fullExtent ? clampView(next, fullExtent) : next;
   };
 
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
     const drag = dragRef.current;
     const svg = svgRef.current;
-    if (!drag || !svg) return;
-    drag.x = e.clientX;
-    drag.y = e.clientY;
+    if (!drag || !svg || e.pointerId !== drag.pointerId) return;
     const dx = e.clientX - drag.startX;
     const dy = e.clientY - drag.startY;
     if (!drag.moved && Math.abs(dx) + Math.abs(dy) > 3) {
@@ -675,25 +733,33 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
       setHover(null);
     }
     if (drag.moved) {
-      svg.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+      drag.next = panAt(drag, e.clientX, e.clientY);
+      if (dragRafRef.current === null) dragRafRef.current = requestAnimationFrame(() => {
+        dragRafRef.current = null;
+        if (dragRef.current === drag) sceneRef.current?.setAttribute('transform',
+          `translate(${drag.view.x - drag.next.x} ${drag.view.y - drag.next.y})`);
+      });
     }
   };
 
-  const onPointerUp = () => {
+  const finishDrag = (e: React.PointerEvent<SVGSVGElement>, cancelled = false) => {
     const drag = dragRef.current;
     const svg = svgRef.current;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    if (dragRafRef.current !== null) cancelAnimationFrame(dragRafRef.current);
+    dragRafRef.current = null;
+    dragRef.current = null;
     if (drag?.moved && svg) {
-      const rect = svg.getBoundingClientRect();
-      const dxUnits = ((drag.x - drag.startX) / rect.width) * view.w;
-      const dyUnits = ((drag.y - drag.startY) / rect.height) * view.h;
-      const panned = { ...view, x: view.x - dxUnits, y: view.y - dyUnits };
-      setViewBox(fullExtent ? clampView(panned, fullExtent) : panned);
-      transformResetRef.current = true;
+      if (cancelled) {
+        sceneRef.current?.removeAttribute('transform');
+        svg.classList.remove('is-dragging');
+      } else {
+        transformResetRef.current = true;
+        setViewBox(panAt(drag, e.clientX, e.clientY));
+      }
+      suppressClickRef.current = true;
+      clickResetRef.current = setTimeout(() => { suppressClickRef.current = false; clickResetRef.current = null; }, 0);
     }
-    // 保留 moved 标记到 click 事件之后（click 在 pointerup 后触发）。
-    setTimeout(() => {
-      dragRef.current = null;
-    }, 0);
   };
 
   return (
@@ -1019,7 +1085,9 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
           onWheel={onWheel}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
+          onPointerUp={e => finishDrag(e)}
+          onPointerCancel={e => finishDrag(e, true)}
+          onLostPointerCapture={e => finishDrag(e, true)}
           role="img"
           aria-label={tt('tree.title')}
         >
@@ -1029,6 +1097,7 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
               <circle cx="0.5" cy="0.5" r="0.5" />
             </clipPath>
           </defs>
+          <g ref={sceneRef} className="tree-scene">
           {ascExtent && (
             <circle
               className="asc-backdrop"
@@ -1039,6 +1108,7 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
           )}
           {edgesEl}
           {nodesEl}
+          </g>
         </svg>
         {hover && !attrPicker && (
           <TreeTooltip

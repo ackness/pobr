@@ -43,11 +43,9 @@
   display: block;
   cursor: grab;
   touch-action: none;
-  /* 拖动走 CSS transform（合成器），提示浏览器提层。 */
-  will-change: transform;
 }
 
-/* 拖动确立后：整树只做合成器平移，关闭节点命中测试（省每帧 hover 命中）。 */
+/* Avoid per-node hover hit testing while the scene is moving. */
 .tree-canvas svg.is-dragging .tree-nodes circle {
   pointer-events: none;
 }

@@ -14,6 +14,10 @@ for (const width of BREAKPOINTS) {
     await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({
       timeout: 90_000,
     });
+    const source = page.getByRole('link', { name: 'View source on GitHub (opens in a new tab)' });
+    await expect(source).toBeVisible();
+    await expect(source).toHaveAttribute('href', 'https://github.com/ackness/pobr');
+    await expect(source).toHaveAttribute('target', '_blank');
     for (const [tab, selector] of [
       ['Build', '.build-page'], ['Items', '.paper-doll'], ['Skills', '.skills-toolbar'],
       ['Calcs', '.calcs-page'], ['Config', '.config-section-header'], ['Tree', '.tree-canvas svg'], ['Upgrades', '.trade-setup'],

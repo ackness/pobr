@@ -23,6 +23,21 @@ PoBR 是把 [Path of Building (PoE2)](https://github.com/PathOfBuildingCommunity
   管线：游戏数据是从 GGG `.dat` 导出生成的版本化 JSON，大部分词条/属性行为
   是数据而非硬编码规则。
 
+## 在浏览器里分析你的 BD
+
+[打开 PoBR](https://pobr-web.pages.dev)，导入 PoB 构筑或 WeGame 分享链接，即可查看
+装备与伤害构成、粘贴市集物品比较换装，并按同一个 DPS/EHP 目标寻找辅助宝石搭配和
+连通的天赋升级路线。先查看变化，再决定是否应用。
+
+| 装备总览与实时角色属性 | 换装比较与词缀阶级模拟 |
+| --- | --- |
+| [![装备布局与实时伤害、防御、抗性数据](docs/screenshots/equipment.png)](docs/screenshots/equipment.png) | [![市集戒指与两个已装备戒指的换装比较，支持前后缀编辑](docs/screenshots/item-comparison.png)](docs/screenshots/item-comparison.png) |
+| **排除不想使用的辅助宝石，比较完整搭配** | **在天赋树上预览连通的升级路线** |
+| [![辅助宝石排除列表与搭配的 DPS、EHP 提升](docs/screenshots/support-upgrades.png)](docs/screenshots/support-upgrades.png) | [![高亮已分配节点和建议升级路线的天赋树](docs/screenshots/passive-tree.png)](docs/screenshots/passive-tree.png) |
+
+点击图片可查看大图。截图使用虚构的演示角色，不是 BD 攻略；推荐范围限于已计算的
+候选与已建模效果。市集词缀评分用于初筛，购买前请粘贴完整物品确认换装收益。
+
 ## 快速上手
 
 标准 cargo 工作流（推荐安装 [`cargo-nextest`](https://nexte.st/) 跑测试）：

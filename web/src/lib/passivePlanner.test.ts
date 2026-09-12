@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { PassiveNode } from '../api/types';
+import type { CalculateBuildRequest, PassiveNode } from '../api/types';
 import { connectedAllocation } from './passiveGraph';
 import { scoreOf, type EvaluateOptions, type Objective } from './optimize';
-import { allocationPaths, passivePlanningContext, planPassiveUpgrades, refundableBranches, withTravelAttributes, type PassivePlanningContext } from './passivePlanner';
+import { allocationPaths, passivePlanAllocation, passivePlanningContext, planPassiveUpgrades, refundableBranches, withTravelAttributes, type PassivePlanningContext } from './passivePlanner';
 
 const node = (skill: number, connections: number[] = [], extra: Partial<PassiveNode> = {}): PassiveNode => ({
   skill, id: String(skill), name: skill === 1 ? 'WITCH' : `Node ${skill}`, kind: 'normal', connections, ...extra,
@@ -72,6 +72,16 @@ describe('passive upgrade planner', () => {
     expect(refundableBranches(allocated, 3).some(plan => plan.deallocate.includes(2) || plan.deallocate.includes(3))).toBe(false);
   });
 
+  it('revokes a candidate gate after its prerequisite is refunded without losing retained ascendancy gates', () => {
+    const nodes = [node(1, [2, 3, 4]), node(2),
+      node(3, [], { unlock_constraint: { nodes: [2] } }),
+      node(4, [], { unlock_constraint: { nodes: [20] } }),
+      node(20, [], { ascendancy_id: 'Witch1' })];
+    const context = passivePlanningContext(nodes, [2, 20], 'Sorceress', [], [], 'Witch1');
+    expect(allocationPaths(context, context.allocated, 1).map(plan => plan.target)).toEqual([3, 4]);
+    expect(allocationPaths(context, new Set(), 1).map(plan => plan.target)).toEqual([2, 4]);
+  });
+
   it('outperforms an illegal heatmap pick and matches the exhaustive legal-path optimum', async () => {
     const nodes = [node(1, [2, 4]), node(2, [3]), node(3), node(4, [5]), node(5)];
     const context = passivePlanningContext(nodes, [], 'Sorceress');
@@ -138,6 +148,72 @@ describe('passive upgrade planner', () => {
     expect(cancelled.plans).toEqual([]);
   });
 
+  it('cancels an edited tree request and recomputes travel cost and baseline from the latest allocation', async () => {
+    const nodes = [node(1, [2]), node(2, [3], { name: 'Attribute' }), node(3)];
+    const oldRequest: CalculateBuildRequest = { allocated_nodes: [2], attribute_choices: { '2': 'str' } };
+    let finishOld!: () => void;
+    const blocked = new Promise<void>(resolve => { finishOld = resolve; });
+    const controller = new AbortController();
+    const oldRun = planPassiveUpgrades({ request: oldRequest,
+      context: passivePlanningContext(nodes, [2], 'Sorceress'), points: 2, mode: 'allocate', objective,
+      signal: controller.signal, evaluate: async options => {
+        await blocked;
+        return evaluator(options.request.allocated_nodes ?? [], ids => stats(100 + (ids.has(2) ? 5 : 0) + (ids.has(3) ? 20 : 0))).evaluate(options);
+      } });
+    // A manual refund invalidates both the in-flight result and its one-point route to node 3.
+    controller.abort();
+    const request = withTravelAttributes({ allocated_nodes: [], attribute_choices: {} }, nodes, 'int');
+    const context = passivePlanningContext(nodes, [], 'Sorceress');
+    const latest = await planPassiveUpgrades({ request, context, points: 2, mode: 'allocate', objective,
+      evaluate: options => evaluator(options.request.allocated_nodes ?? [], ids => stats(100 + (ids.has(2) ? 5 : 0) + (ids.has(3) ? 20 : 0))).evaluate(options) });
+    finishOld();
+    expect((await oldRun).plans).toEqual([]);
+    expect(latest.baseline.TotalDPS).toBe(100);
+    expect(latest.plans[0].allocate).toEqual([2, 3]);
+    expect(passivePlanAllocation(request, context, latest.plans[0], 2, 'allocate')).toEqual({
+      allocatedNodes: [2, 3], attributeChoices: { '2': 'int' },
+    });
+    // Never apply an old snapshot on top of the edited allocation.
+    expect(passivePlanAllocation(oldRequest, context, { allocate: [3], deallocate: [], target: 3 }, 2, 'allocate')).toBeNull();
+    expect(oldRequest.attribute_choices).toEqual({ '2': 'str' });
+  });
+
+  it('validates atomic application against connectivity, budgets, protected nodes and attribute choices', () => {
+    const nodes = [node(1, [2, 4]), node(2, [3], { name: 'Attribute' }), node(3),
+      node(4, [5], { name: 'Attribute' }), node(5, [], { kind: 'jewel_socket' }),
+      node(20, [], { ascendancy_id: 'Witch1' })];
+    const request = withTravelAttributes({ allocated_nodes: [2, 3, 20], attribute_choices: { '2': 'str' } }, nodes, 'int');
+    const context = passivePlanningContext(nodes, [2, 3, 20], 'Sorceress');
+    const plan = { allocate: [4], deallocate: [2, 3], target: 4 };
+    expect(passivePlanAllocation(request, context, plan, 2, 'reallocate')).toEqual({
+      allocatedNodes: [20, 4], attributeChoices: { '4': 'int' },
+    });
+    expect(passivePlanAllocation(request, context, plan, 1, 'reallocate')).toBeNull();
+    expect(passivePlanAllocation(request, context, plan, 2, 'allocate')).toBeNull();
+    expect(passivePlanAllocation(request, context, { ...plan, deallocate: [2] }, 2, 'reallocate')).toBeNull();
+    expect(passivePlanAllocation(request, context, { ...plan, deallocate: [20] }, 2, 'reallocate')).toBeNull();
+    expect(passivePlanAllocation(request, context, { allocate: [5], deallocate: [], target: 5 }, 2, 'allocate')).toBeNull();
+    const jewelRequest = { allocated_nodes: [4, 5] };
+    const protectedContext = passivePlanningContext(nodes, [4, 5], 'Sorceress', [], [5]);
+    expect(passivePlanAllocation(jewelRequest, protectedContext, { allocate: [2, 3], deallocate: [4, 5], target: 3 }, 2, 'reallocate')).toBeNull();
+    const weaponContext = passivePlanningContext(nodes, [2, 3, 20], 'Sorceress', [3]);
+    expect(passivePlanAllocation(request, weaponContext, plan, 2, 'reallocate')).toBeNull();
+  });
+
+  it('does not evaluate an already cancelled search or report new gated gains after refunding', async () => {
+    const nodes = [node(1, [2, 3]), node(2), node(3, [], { unlock_constraint: { nodes: [2] } })];
+    const context = passivePlanningContext(nodes, [2], 'Sorceress');
+    const engine = evaluator([2], ids => stats(100 + (ids.has(3) ? 200 : 0)));
+    const controller = new AbortController();
+    controller.abort();
+    const cancelled = await planPassiveUpgrades({ request: {}, context, points: 2, mode: 'allocate', objective,
+      signal: controller.signal, evaluate: engine.evaluate });
+    expect(cancelled.evaluated).toBe(0);
+    expect(engine.count()).toBe(0);
+    const result = await planPassiveUpgrades({ request: {}, context, points: 1, mode: 'reallocate', objective, evaluate: engine.evaluate });
+    expect(result.plans).toEqual([]);
+  });
+
   it('excludes newly unmodeled passive effects while retaining baseline warnings', async () => {
     const context = passivePlanningContext([node(1, [2, 3]), node(2), node(3)], [], 'Sorceress');
     const engine = evaluator([], ids => stats(ids.has(2) ? 200 : ids.has(3) ? 120 : 100));
@@ -161,5 +237,22 @@ describe('passive upgrade planner', () => {
     const result = await planPassiveUpgrades({ request: {}, context, points: 3, mode: 'allocate', objective, evaluate: engine.evaluate });
     expect(result.evaluated).toBeLessThanOrEqual(512);
     expect(result.limited).toBe(true);
+  });
+
+  it('caps refund searches and never increases the existing point count', async () => {
+    const nodes = [node(1, Array.from({ length: 350 }, (_, i) => i + 2)), ...Array.from({ length: 350 }, (_, i) => node(i + 2))];
+    const allocated = Array.from({ length: 80 }, (_, i) => i + 2);
+    const context = passivePlanningContext(nodes, allocated, 'Sorceress');
+    const engine = evaluator(allocated, ids => stats(100 + [...ids].reduce((sum, id) => sum + id, 0)));
+    const result = await planPassiveUpgrades({ request: { allocated_nodes: allocated }, context, points: 99,
+      mode: 'reallocate', objective, evaluate: engine.evaluate });
+    expect(result.evaluated).toBeLessThanOrEqual(512);
+    expect(result.limited).toBe(true);
+    expect(result.plans.length).toBeGreaterThan(0);
+    for (const plan of result.plans) {
+      expect(plan.deallocate.length).toBeLessThanOrEqual(8);
+      expect(passivePlanAllocation({ allocated_nodes: allocated }, context, plan, 8, 'reallocate')).not.toBeNull();
+      expect(plan.allocate.length).toBeLessThanOrEqual(plan.deallocate.length);
+    }
   });
 });

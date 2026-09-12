@@ -103,6 +103,8 @@ export function SkillsPanel({ session, lang, focusOptimizer }: Props) {
               { skill_id: gem.skill_id, level: usableSupportLevel(gem, session.character?.level ?? 1), quality: 0 }], tradeGems))
             .map(gem => gem.skill_id));
           const availableSupports = supports.filter(gem => eligibleIds.has(gem.skill_id));
+          const optimizerSkillKey = JSON.stringify(group.gems
+            .filter(gem => !tradeById.get(gem.skill_id)?.is_support).map(gem => gem.skill_id).sort());
           return (
             <div
               key={idx}
@@ -245,6 +247,8 @@ export function SkillsPanel({ session, lang, focusOptimizer }: Props) {
               )}
               {isOpen && (
                 <GemOptimizer
+                  key={optimizerSkillKey}
+                  skillKey={optimizerSkillKey}
                   session={session}
                   lang={lang}
                   groupIndex={idx}

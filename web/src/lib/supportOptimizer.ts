@@ -175,6 +175,7 @@ export async function optimizeSupports(options: {
   capacity: number;
   objective: Objective;
   includeLineage?: boolean;
+  excludedSkillIds?: readonly string[];
   signal?: AbortSignal;
   onProgress?: EvaluateOptions['onProgress'];
   evaluate?: typeof evaluateVariants;
@@ -185,11 +186,16 @@ export async function optimizeSupports(options: {
   if (!group?.enabled) throw new Error('Select an enabled skill before optimizing supports.');
   const capacity = Math.max(0, Math.min(5, Math.trunc(options.capacity)));
   const level = request.character?.level ?? 1;
+  const excluded = new Set(options.excludedSkillIds);
   const pool = eligibleSupports(group, catalog, level, options.includeLineage ?? true).gems
-    .filter(gem => lineageAvailable(gem, request.socket_groups ?? [], groupIndex));
+    .filter(gem => !excluded.has(gem.skill_id) && lineageAvailable(gem, request.socket_groups ?? [], groupIndex));
   const byId = new Map(catalog.map(gem => [gem.skill_id, gem]));
-  const current = group.gems.filter(gem => byId.get(gem.skill_id)?.is_support);
-  const toInput = (gem: SupportMetadata): GemInput => current.find(input => input.skill_id === gem.skill_id)
+  const equipped = group.gems.filter(gem => byId.get(gem.skill_id)?.is_support);
+  const allowedIds = new Set(pool.map(gem => gem.skill_id));
+  // Preferences restrict search seeds as well as new candidates. The unchanged
+  // request remains the baseline, even when an equipped support is excluded.
+  const current = equipped.filter(gem => allowedIds.has(gem.skill_id));
+  const toInput = (gem: SupportMetadata): GemInput => equipped.find(input => input.skill_id === gem.skill_id)
     ?? { skill_id: gem.skill_id, level: usableSupportLevel(gem, level), quality: 0 };
   const evaluate = options.evaluate ?? evaluateVariants;
   const identity = await evaluate({ request, variants: [{}], signal });
@@ -199,7 +205,7 @@ export async function optimizeSupports(options: {
   if (identityRow?.error) throw new Error(identityRow.error);
   const baseline = identity.baseline;
   const baselineUnsupported = new Set(identityRow?.unsupported ?? []);
-  const seen = new Set<string>([keyOf(current)]);
+  const seen = new Set<string>([keyOf(equipped)]);
   const rows: SupportPlan[] = [];
   let evaluated = 0;
   let unmodeled = 0;
@@ -208,7 +214,8 @@ export async function optimizeSupports(options: {
   const run = async (sets: GemInput[][]): Promise<SupportPlan[]> => {
     const candidates = sets.filter(supports => {
       const key = keyOf(supports);
-      if (supports.length > capacity || seen.has(key) || !supportSetCompatible(group, supports, catalog)
+      if (supports.length > capacity || seen.has(key) || supports.some(gem => !allowedIds.has(gem.skill_id))
+        || !supportSetCompatible(group, supports, catalog)
         || supports.some(input => !lineageAvailable(byId.get(input.skill_id)!, request.socket_groups ?? [], groupIndex))) return false;
       seen.add(key);
       return true;
@@ -233,6 +240,7 @@ export async function optimizeSupports(options: {
     }
     return accepted;
   };
+  await run([current]);
   const removals = await run(current.map((_, index) => current.filter((_, i) => i !== index)));
   removals.sort((a, b) => compareObjectiveStats(a.stats, b.stats, objective));
   const weakestRemoved = removals[0]?.supports ?? current.slice(0, Math.max(0, capacity - 1));

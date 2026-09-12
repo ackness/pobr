@@ -1,0 +1,26 @@
+.replacement-affix-editor { min-width: 0; padding: 16px; border: 1px solid var(--border-subtle); border-radius: 10px; background: var(--surface-panel); }
+.replacement-affix-editor > summary { color: var(--text-primary); font-weight: 600; cursor: pointer; }
+.replacement-affix-editor p { overflow-wrap: anywhere; }
+.affix-editor-hint { color: var(--text-muted); font-size: .82rem; line-height: 1.65; margin: 12px 0; }
+.affix-editor-warning { color: var(--accent-gold); font-size: .82rem; line-height: 1.6; }
+.affix-editor-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 14px 0; font-size: .8rem; }
+.affix-editor-meta label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.affix-editor-meta input { width: 64px; padding: 7px; }
+.affix-editor-meta b { margin-left: 5px; color: var(--accent-gold); }
+.affix-editor-rows { display: grid; gap: 10px; }
+.affix-editor-row { min-width: 0; padding: 12px; border: 1px solid var(--border-subtle); border-radius: 8px; background: var(--surface-page); }
+.affix-editor-row > p, .affix-editor-preview p { margin: 7px 0; font-size: .85rem; line-height: 1.55; }
+.affix-editor-row-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .76rem; color: var(--text-muted); }
+.affix-editor-row-heading > div, .affix-editor-roll > div, .affix-editor-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.affix-editor-row-heading button, .affix-editor-roll button { font-size: .73rem; padding: 4px 6px; }
+.affix-editor-roll { display: grid; gap: 7px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle); font-size: .75rem; color: var(--text-muted); }
+.affix-editor-roll input { width: 100%; min-width: 0; margin: 0; }
+.affix-editor-roll button[aria-pressed=true], .affix-editor-kind button[aria-pressed=true] { border-color: var(--accent-gold); color: var(--accent-gold); background: var(--surface-panel); }
+.affix-editor-add { display: grid; gap: 10px; padding: 14px 0; margin-top: 10px; border-top: 1px solid var(--border-subtle); }
+.affix-editor-kind { display: flex; gap: 6px; }
+.affix-editor-add > input { min-width: 0; width: 100%; padding: 8px; }
+.affix-editor-add > button { justify-self: start; }
+.affix-editor-add .app-select, .affix-editor-add .app-select-trigger { width: 100%; min-width: 0; max-width: 100%; }
+.affix-editor-preview { padding: 10px 12px; background: var(--surface-page); border-radius: 8px; }
+.affix-editor-preview small { color: var(--accent-gold); }
+.affix-editor-actions > button { max-width: 100%; white-space: normal; }
