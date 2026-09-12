@@ -11,12 +11,12 @@ for (const width of BREAKPOINTS) {
   test(`no horizontal overflow at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({
+    await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({
       timeout: 90_000,
     });
     for (const [tab, selector] of [
       ['Build', '.build-page'], ['Items', '.paper-doll'], ['Skills', '.skills-toolbar'],
-      ['Calcs', '.calcs-page'], ['Config', '.config-section-header'], ['Tree', '.tree-canvas svg'], ['Upgrades', '.trade-setup'],
+      ['Calcs', '.calcs-page'], ['Config', '.config-section-header'], ['Tree', '.tree-canvas svg'], ['Upgrades', '.trade-setup'], ['Build references', '.guidance-identity'],
     ]) {
       await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: tab, exact: true }).click();
       await expect(page.locator(selector).first()).toBeVisible();
@@ -39,10 +39,10 @@ for (const width of BREAKPOINTS) {
 
 test('keyboard: tab navigation reaches import textarea', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({
+  await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({
     timeout: 90_000,
   });
-  // 顶栏 7 个页签 + 语言切换后到达 textarea；直接断言 textarea 可聚焦。
+  // The import textbox remains keyboard-focusable as navigation grows.
   await page.getByRole('textbox', { name: 'Build code' }).focus();
   await expect(page.getByRole('textbox', { name: 'Build code' })).toBeFocused();
 });
@@ -50,7 +50,7 @@ test('keyboard: tab navigation reaches import textarea', async ({ page }) => {
 test('replacement header fits a narrow screen with classic scrollbar space', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 900 });
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Upgrades', exact: true }).click();
   await expect(page.locator('.replacement-heading')).toBeVisible();
   // Overlay scrollbars on macOS leave more room than Linux's classic scrollbars.

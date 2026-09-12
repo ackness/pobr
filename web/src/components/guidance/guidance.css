@@ -1,0 +1,66 @@
+.guidance-page { display: flex; flex-direction: column; gap: var(--space-4); }
+.guidance-page h3, .guidance-page h4, .guidance-page p { margin: 0; }
+.guidance-page h4 { font-size: var(--text-base); }
+.guidance-page p { line-height: 1.6; }
+.guidance-page a { color: var(--accent-gold); text-underline-offset: 3px; }
+.guidance-page label { display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--text-sm); }
+.guidance-page input:not([type="checkbox"]), .guidance-page select, .guidance-page textarea { box-sizing: border-box; max-width: 100%; min-width: 0; }
+.guidance-identity { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4); padding: var(--space-6); background: var(--surface-panel); border: 1px solid var(--accent-gold-dim); border-radius: var(--radius-md); }
+.guidance-identity h3 { font-size: var(--text-xl); margin-top: var(--space-2); }
+.guidance-identity p, .guidance-muted, .guidance-source { color: var(--text-secondary); }
+.guidance-identity label { min-width: 180px; max-width: 100%; }
+.guidance-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.guidance-card { background: var(--surface-panel); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-4); min-width: 0; }
+.guidance-actions .guidance-card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+.guidance-actions button { margin-top: auto; }
+.guidance-actions p, .guidance-live p, .guidance-paste p { color: var(--text-secondary); font-size: var(--text-sm); }
+.guidance-step { font-family: var(--font-mono); color: var(--accent-gold); }
+.guidance-config { align-self: flex-start; }
+.guidance-notice { padding: var(--space-3) var(--space-4); border-left: 2px solid var(--accent-gold-dim); color: var(--text-secondary); font-size: var(--text-sm); background: var(--surface-panel); }
+.guidance-gap-list { list-style: none; padding: 0; margin: 0; width: 100%; font-size: var(--text-sm); }
+.guidance-gap-list li { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); }
+.guidance-gap-list strong { color: var(--accent-gold); }
+.guidance-live { display: flex; flex-direction: column; gap: var(--space-4); }
+.guidance-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
+.guidance-page .guidance-checkbox { flex-direction: row; align-items: center; }
+.guidance-link { padding: var(--space-2) var(--space-3); border: 1px solid var(--accent-gold-dim); border-radius: var(--radius-sm); }
+.guidance-search { flex: 1; }
+.guidance-section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3); }
+.guidance-section-heading h3 span { color: var(--text-muted); font-weight: normal; margin-left: var(--space-2); }
+.guidance-section-heading details { max-width: 480px; font-size: var(--text-sm); }
+.guidance-results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.guidance-result { display: flex; flex-direction: column; gap: var(--space-3); }
+.guidance-result.is-selected { border-color: var(--accent-gold); }
+.guidance-result-top { display: flex; justify-content: space-between; gap: var(--space-3); }
+.guidance-result-top p { color: var(--text-secondary); font-size: var(--text-sm); }
+.guidance-score { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+.guidance-score strong { color: var(--accent-gold); font-size: var(--text-xl); }
+.guidance-score span { color: var(--text-muted); font-size: var(--text-xs); }
+.guidance-badges { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.guidance-badges span { padding: 3px 7px; border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--text-secondary); font-size: var(--text-xs); }
+.guidance-source { font-size: var(--text-xs); }
+.guidance-row-actions { display: flex; gap: var(--space-4); align-items: center; margin-top: auto; }
+.guidance-empty { color: var(--text-secondary); padding: var(--space-6); text-align: center; }
+.guidance-paste { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+.guidance-paste textarea { width: 100%; font-family: var(--font-mono); resize: vertical; }
+.guidance-detail { display: flex; flex-direction: column; gap: var(--space-4); scroll-margin-top: var(--space-4); }
+.guidance-table-wrap { overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.guidance-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.guidance-table th, .guidance-table td { text-align: left; padding: var(--space-3); border-bottom: 1px solid var(--border-subtle); }
+.guidance-table th { font-weight: 500; }
+.guidance-table thead { background: var(--surface-card); color: var(--text-secondary); }
+.guidance-gem--str { color: var(--color-life); }
+.guidance-gem--dex { color: var(--color-positive); }
+.guidance-gem--int { color: var(--color-es); }
+.guidance-equipment { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.guidance-equipment h4 { margin-bottom: var(--space-3); color: var(--accent-gold); }
+.guidance-equipment-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); font-size: var(--text-sm); }
+.guidance-equipment pre, .guidance-notes { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.6; }
+.guidance-passives { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.guidance-passives details { margin-top: var(--space-3); font-size: var(--text-sm); }
+.guidance-page summary { cursor: pointer; color: var(--text-secondary); }
+.guidance-page .guidance-skill-group { margin-top: var(--space-3); font-size: var(--text-sm); }
+.guidance-skill-group.is-disabled { color: var(--text-muted); text-decoration: line-through; }
+.guidance-page { overflow-wrap: anywhere; }
+@media (max-width: 1100px) { .guidance-actions { grid-template-columns: 1fr; } .guidance-equipment { grid-template-columns: 1fr; } }
+@media (max-width: 650px) { .guidance-results, .guidance-passives { grid-template-columns: 1fr; } .guidance-identity { padding: var(--space-4); } .guidance-filters { align-items: flex-start; flex-direction: column; } .guidance-search { width: 100%; } .guidance-equipment-pair { grid-template-columns: 1fr; } }

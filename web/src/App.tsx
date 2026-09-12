@@ -7,6 +7,7 @@ import { BuildPanel } from './components/import/BuildPanel';
 import { StatSidebar } from './components/sidebar/StatSidebar';
 import { ItemsPanel } from './components/items/ItemsPanel';
 import { TradePanel } from './components/trade/TradePanel';
+import { BuildGuidancePanel } from './components/guidance/BuildGuidancePanel';
 import { SkillsPanel } from './components/skills/SkillsPanel';
 import { CalcsPanel } from './components/calcs/CalcsPanel';
 import { TreePanel } from './components/tree/TreePanel';
@@ -24,6 +25,7 @@ function BuildApp() {
   const [upgradeFocus, setUpgradeFocus] = useState<{slot:string; nonce:number} | undefined>();
   const [skillFocus, setSkillFocus] = useState<{group:number; nonce:number} | undefined>();
   const [treeFocus, setTreeFocus] = useState<{nonce:number} | undefined>();
+  const [referenceItem, setReferenceItem] = useState<string | undefined>();
   // 界面偏好（页签/语言）实时持久化到浏览器。
   const [tab, setTabState] = useState<TabId>(() => {
     // 兜底：历史存的页签可能已下线（如原独立笔记页）。
@@ -34,6 +36,7 @@ function BuildApp() {
     () => (localStorage.getItem('pobr-lang') as Lang) || 'en-US',
   );
   const setTab = (next: TabId) => {
+    if (next !== 'trade') setReferenceItem(undefined);
     setTabState(next);
     localStorage.setItem('pobr-tab', next);
     // 各页签内容高度差异大，沿用上一页的滚动位置会露出页底黑区。
@@ -137,10 +140,16 @@ function BuildApp() {
             </div>
           )}
           {tab === 'build' && <BuildPanel session={session} lang={lang} onImported={() => setTab('items')} />}
+          {tab === 'guidance' && <BuildGuidancePanel session={session} lang={lang}
+            onSkills={group => { setSkillFocus({group, nonce: Date.now()}); setTab('skills'); }}
+            onEquipment={() => setTab('trade')}
+            onCompareItem={text => { setReferenceItem(text); setTab('trade'); }}
+            onTree={() => { setTreeFocus({nonce: Date.now()}); setTab('tree'); }}
+            onConfig={() => setTab('config')} />}
           {tab === 'tree' && <TreePanel session={session} lang={lang} focusPlanner={treeFocus} />}
           {tab === 'skills' && <SkillsPanel session={session} lang={lang} focusOptimizer={skillFocus} />}
           {tab === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({slot, nonce:Date.now()}); setTab('trade'); }} />}
-          {tab === 'trade' && <TradePanel session={session} lang={lang} focus={upgradeFocus}
+          {tab === 'trade' && <TradePanel session={session} lang={lang} focus={upgradeFocus} initialItemText={referenceItem}
             onSkills={group => { setSkillFocus({group, nonce:Date.now()}); setTab('skills'); }}
             onTree={() => { setTreeFocus({nonce:Date.now()}); setTab('tree'); }} />}
           {tab === 'calcs' && (

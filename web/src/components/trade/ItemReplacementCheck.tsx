@@ -12,15 +12,16 @@ import { ReplacementAugmentPicker } from './ReplacementAugmentPicker';
 interface ComparisonSnapshot { report: ReplacementReport; requestKey: string; input: string }
 
 /** One visible clipboard flow; choosing a destination never mutates the build. */
-export function ItemReplacementCheck({ session, lang, objective, catalog, jewelSockets, goalLabel, onEditGoal }: {
+export function ItemReplacementCheck({ session, lang, objective, catalog, jewelSockets, goalLabel, onEditGoal, initialItemText }: {
   session: BuildSession; lang: Lang; objective: Objective; catalog: TradeCatalog | null; jewelSockets: number[];
   goalLabel: string; onEditGoal: () => void;
+  initialItemText?: string;
 }) {
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialItemText ?? '');
   const [snapshot, setSnapshot] = useState<ComparisonSnapshot | null>(null);
   const [chosenSlot, setChosenSlot] = useState<string | null>(null);
-  const [pendingPaste, setPendingPaste] = useState<string | null>(null);
+  const [pendingPaste, setPendingPaste] = useState<string | null>(initialItemText ?? null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [augmentPlans, setAugmentPlans] = useState<Record<string, AugmentSelection>>({});

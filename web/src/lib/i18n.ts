@@ -87,6 +87,7 @@ const DICT = {
   'tab.skills': { 'en-US': 'Skills', 'zh-TW': '技能', 'zh-CN': '技能' },
   'tab.items': { 'en-US': 'Items', 'zh-TW': '裝備', 'zh-CN': '装备' },
   'tab.trade': { 'en-US': 'Upgrades', 'zh-TW': '提升', 'zh-CN': '提升' },
+  'tab.guidance': { 'en-US': 'Build references', 'zh-TW': '流派參考', 'zh-CN': '流派参考' },
   'tab.calcs': { 'en-US': 'Calcs', 'zh-TW': '計算', 'zh-CN': '计算' },
   'tab.config': { 'en-US': 'Config', 'zh-TW': '配置', 'zh-CN': '配置' },
   'tab.notes': { 'en-US': 'Notes', 'zh-TW': '筆記', 'zh-CN': '笔记' },
