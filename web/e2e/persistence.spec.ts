@@ -35,7 +35,7 @@ test('edits persist across reload; builtin config toggles recalc', async ({ page
   await page.getByLabel('Search config options…').fill('Onslaught');
   await expect(page.locator('.config-item.is-overridden input[type="checkbox"]').first()).toBeChecked();
 
-  await page.getByRole('button', { name: 'Build' }).click();
+  await page.getByRole('button', { name: 'Build', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Notes' })).toHaveValue(
     'my build notes 我的笔记',
   );
