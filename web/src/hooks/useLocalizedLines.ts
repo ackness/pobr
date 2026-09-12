@@ -104,7 +104,7 @@ export function useLocalizedLines(lines: string[], lang: Lang): string[] {
     // 符文命名行只送名称部分（"Rune: X" 整行不在词条模板里，X 是基底名可直译）。
     const pending = lines
       .filter((l) => l && !localizeStructLine(l, lang))
-      .map((l) => runeLineParts(l)?.name ?? l);
+      .map((l) => runeLineParts(l)?.name ?? l.replace(/^Bonded:\s*/, ''));
     if (pending.length === 0) return;
     let cancelled = false;
     getBackend()
@@ -133,6 +133,10 @@ export function useLocalizedLines(lines: string[], lang: Lang): string[] {
             const rune = runeLineParts(l);
             if (rune) {
               return `${RUNE_PREFIXES[rune.prefix][lang]}: ${translated[rune.name] ?? rune.name}`;
+            }
+            if (l.startsWith('Bonded:')) {
+              const effect = l.replace(/^Bonded:\s*/, '');
+              return `${lang === 'zh-CN' ? '纽带' : '紐帶'}: ${translated[effect] ?? effect}`;
             }
             return translated[l] ?? l;
           }),

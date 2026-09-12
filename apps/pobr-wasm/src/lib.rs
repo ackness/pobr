@@ -23,8 +23,9 @@ pub mod zh;
 pub use build_api::{
     attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
     decode_build_json, decode_build_loadout_json, encode_build_json, full_dps_json,
-    gem_catalog_json, import_trade_items_json, manage_loadout_json, node_power_json,
-    optimize_variants_json, reforge_runes_json, rune_catalog_json, translate_lines_to_zh_cn_json,
+    gem_catalog_json, import_trade_items_json, item_augment_info_json, manage_loadout_json,
+    node_power_json, optimize_variants_json, reforge_runes_json, rune_catalog_json,
+    translate_lines_to_zh_cn_json,
 };
 pub use i18n::translate;
 pub use session::calculate_json;
@@ -163,6 +164,12 @@ pub mod wasm {
     #[wasm_bindgen(js_name = runeCatalogJson)]
     pub fn rune_catalog_json(item_text: &str) -> Result<String, JsError> {
         crate::build_api::rune_catalog_json(item_text).map_err(|err| JsError::new(&err))
+    }
+
+    /// Inspect applicable augments and safe socket capacity for one item.
+    #[wasm_bindgen(js_name = itemAugmentInfoJson)]
+    pub fn item_augment_info_json(item_text: &str) -> Result<String, JsError> {
+        crate::build_api::item_augment_info_json(item_text).map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `reforgeRunesJson(requestJson) -> string` (re-socket runes -> rewritten item text).

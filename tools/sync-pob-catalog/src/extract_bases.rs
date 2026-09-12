@@ -192,6 +192,8 @@ mod tests {
         };
         let entries = vec![
             BaseItemOverrideEntry {
+                socket_limit: None,
+                sub_type: None,
                 req_str: None,
                 req_dex: None,
                 req_int: None,
@@ -203,6 +205,8 @@ mod tests {
                 tags: None,
             },
             BaseItemOverrideEntry {
+                socket_limit: None,
+                sub_type: None,
                 req_str: None,
                 req_dex: None,
                 req_int: None,
@@ -214,6 +218,8 @@ mod tests {
                 tags: None,
             },
             BaseItemOverrideEntry {
+                socket_limit: None,
+                sub_type: None,
                 req_str: None,
                 req_dex: None,
                 req_int: None,
@@ -225,6 +231,8 @@ mod tests {
                 tags: None,
             },
             BaseItemOverrideEntry {
+                socket_limit: None,
+                sub_type: None,
                 req_str: None,
                 req_dex: None,
                 req_int: None,

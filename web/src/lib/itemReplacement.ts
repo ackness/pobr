@@ -2,6 +2,8 @@ import type { CalculateBuildRequest, ItemLineJson, VariantInput } from '../api/t
 import { evaluateVariants } from './optimize';
 import { basesForSlot, loadTradeCatalog, tradeItemVariant, type TradeBase, type TradeCatalog } from './tradeOptimizer';
 import { getBackend } from '../api/backend';
+import type { PobrBackend } from '../api/backend';
+import { planReplacementAugments, type AugmentSelection, type ReplacementAugments } from './replacementAugments';
 
 /** Only structural clipboard headers are normalized; effect text remains available for diagnostics. */
 export function normalizeCopiedItem(input: string): string {
@@ -13,6 +15,8 @@ export function normalizeCopiedItem(input: string): string {
     '力量': 'Str', '敏捷': 'Dex', '智慧': 'Int', '智力': 'Int', '插槽': 'Sockets' };
   const lines = input.trim().replace(/\r/g, '').split('\n').map(line => {
     const value = line.trim();
+    // Older userscripts copied search aggregates as effects. Keep only metadata.
+    if (value.startsWith('Unmodeled market effect (pseudoMods):')) return `Note: ${value.slice('Unmodeled market effect (pseudoMods):'.length).trim()}`;
     const match = value.match(/^(稀有度|[\u3400-\u9fff]+)[:：]\s*(.*)$/);
     if (match?.[1] === '稀有度') return `Rarity: ${rarity[match[2]] ?? match[2]}`;
     if (match && headers[match[1]]) return `${headers[match[1]]}: ${match[2]}`.replace(/^(Requirements:)\s*(等级|等級)\s*[:：]?\s*/, '$1 Level: ').replace(/，/g, ',');
@@ -29,6 +33,10 @@ interface ComparisonDependencies {
   evaluate?: typeof evaluateVariants;
   classify?: (text: string) => Promise<ItemLineJson[]>;
   jewelSocketNodes?: readonly number[];
+  augmentInfo?: PobrBackend['itemAugmentInfo'];
+  reforge?: PobrBackend['reforgeRunes'];
+  runeCatalog?: PobrBackend['runeCatalog'];
+  augmentPlans?: Record<string, AugmentSelection>;
 }
 
 async function replacementContext(request: CalculateBuildRequest, text: string,
@@ -88,6 +96,8 @@ export interface ReplacementPosition {
   variant: VariantInput;
   stats: Record<string, number>;
   unsupported: string[];
+  lines: ItemLineJson[];
+  augments: ReplacementAugments;
 }
 
 export interface ReplacementReport {
@@ -112,7 +122,7 @@ export async function compareReplacementPositions(request: CalculateBuildRequest
   const normalized = normalizeCopiedItem(text);
   signal?.throwIfAborted();
   const catalog = dependencies.catalog ?? await loadTradeCatalog();
-  const backend = !dependencies.translate || !dependencies.classify ? await getBackend() : undefined;
+  const backend = !dependencies.translate || !dependencies.classify || !dependencies.augmentInfo || !dependencies.reforge || !dependencies.runeCatalog ? await getBackend() : undefined;
   const context = await replacementContext(request, normalized, catalog, dependencies.translate ?? backend!.translateLines);
   signal?.throwIfAborted();
   const allocated = new Set(request.allocated_nodes ?? []);
@@ -128,17 +138,45 @@ export async function compareReplacementPositions(request: CalculateBuildRequest
   if (!compatible.length) throw new Error(rejected[0]?.reason ?? 'no-compatible-slot');
   const lines = await (dependencies.classify ?? backend!.classifyItemLines)(normalized);
   signal?.throwIfAborted();
-  const variants = compatible.map(slot => tradeItemVariant(request, slot, normalized));
+  const augmentInfo = dependencies.augmentInfo ?? backend!.itemAugmentInfo;
+  const info = await augmentInfo(normalized);
+  signal?.throwIfAborted();
+  const augmentCatalog = await (dependencies.runeCatalog ?? backend!.runeCatalog)();
+  signal?.throwIfAborted();
+  const augmentLevel = Math.max(0, ...info.runes.map(name => info.options.find(option => option.name === name)?.required_level ?? 0));
+  if (augmentLevel > (request.character?.level ?? 1)) throw new Error('item-level');
+  const preparations = await Promise.allSettled(compatible.map(async slot => {
+    const selection = dependencies.augmentPlans?.[slot] ?? { mode: 'inherit' as const };
+    const currentText = request.items?.find(item => item.slot === slot)?.text;
+    const current = selection.mode === 'inherit' && info.editable && !info.runes.some(Boolean) && currentText
+      ? await augmentInfo(currentText) : undefined;
+    signal?.throwIfAborted();
+    const augments = planReplacementAugments(info, current, request.character?.level ?? 1, selection,
+      { catalog: augmentCatalog, items: request.items ?? [], slot });
+    const itemText = augments.source === 'original' ? normalized
+      : await (dependencies.reforge ?? backend!.reforgeRunes)(normalized, augments.runes, augments.sockets);
+    signal?.throwIfAborted();
+    const itemLines = itemText === normalized ? lines : await (dependencies.classify ?? backend!.classifyItemLines)(itemText);
+    return { slot, augments, lines: itemLines, variant: tradeItemVariant(request, slot, itemText) };
+  }));
+  signal?.throwIfAborted();
+  const prepared = preparations.flatMap((result, index) => {
+    if (result.status === 'fulfilled') return [result.value];
+    rejected.push({ slot: compatible[index], reason: result.reason instanceof Error ? result.reason.message : 'invalid-augments' });
+    return [];
+  });
+  if (!prepared.length) throw new Error(rejected[0]?.reason ?? 'invalid-augments');
+  const variants = prepared.map(item => item.variant);
   const result = await (dependencies.evaluate ?? evaluateVariants)({ request, signal, variants });
   if (result.aborted || signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
   const positions = result.results.flatMap(row => {
-    const slot = compatible[row.index];
+    const slot = prepared[row.index]?.slot;
     if (!slot) return [];
     if (row.error) { rejected.push({ slot, reason: row.error }); return []; }
-    return [{ slot, variant: variants[row.index], stats: row.stats, unsupported: row.unsupported ?? [] }];
+    return [{ ...prepared[row.index], stats: row.stats, unsupported: row.unsupported ?? [] }];
   });
   if (!positions.length) throw new Error(rejected[0]?.reason ?? 'No replacement result');
-  return { text: normalized, base: context.base, requiredLevel: context.requiredLevel, lines, baseline: result.baseline, positions, rejected };
+  return { text: normalized, base: context.base, requiredLevel: Math.max(context.requiredLevel, augmentLevel), lines, baseline: result.baseline, positions, rejected };
 }
 
 export async function compareReplacement(request: CalculateBuildRequest, slot: string, text: string,

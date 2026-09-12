@@ -23,6 +23,7 @@ import type {
   TreeArt,
   PassiveTreeMeta,
   RuneCatalogEntry,
+  ItemAugmentInfo,
 } from './types';
 import type { PobrBackend } from './backend';
 
@@ -46,6 +47,7 @@ interface WasmModule {
   translateLinesToZhCn(linesJson: string): string;
   classifyItemLinesJson(text: string): string;
   runeCatalogJson(itemText: string): string;
+  itemAugmentInfoJson(itemText: string): string;
   reforgeRunesJson(requestJson: string): string;
   nodePowerJson(requestJson: string): string;
   optimizeVariantsJson(requestJson: string): string;
@@ -224,6 +226,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     },
     async runeCatalog(itemText) {
       return JSON.parse(wasm.runeCatalogJson(itemText ?? '')) as RuneCatalogEntry[];
+    },
+    async itemAugmentInfo(text) {
+      return JSON.parse(wasm.itemAugmentInfoJson(text)) as ItemAugmentInfo;
     },
     async reforgeRunes(text, runes, sockets) {
       const out = JSON.parse(

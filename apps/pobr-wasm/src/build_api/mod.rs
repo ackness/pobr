@@ -20,6 +20,7 @@
 //! Small shared utilities stay in this file.
 
 mod analysis;
+mod augments;
 mod calculate;
 mod catalog;
 mod decode;
@@ -27,11 +28,9 @@ mod encode;
 mod request;
 
 pub use analysis::{AttributionRequest, attribution_json, node_power_json, optimize_variants_json};
+pub use augments::{item_augment_info_json, reforge_runes_json, rune_catalog_json};
 pub use calculate::{calculate_build_json, full_dps_json};
-pub use catalog::{
-    classify_item_lines_json, gem_catalog_json, reforge_runes_json, rune_catalog_json,
-    translate_lines_to_zh_cn_json,
-};
+pub use catalog::{classify_item_lines_json, gem_catalog_json, translate_lines_to_zh_cn_json};
 pub use decode::{
     decode_build_file_json, decode_build_json, decode_build_loadout_json, import_trade_items_json,
     manage_loadout_json,

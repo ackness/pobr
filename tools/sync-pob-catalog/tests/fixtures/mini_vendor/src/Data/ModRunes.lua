@@ -18,6 +18,11 @@ return {
                 statOrder = { 1077 },
             },
             levelReq = 15,
+            limit = 1,
+            limitId = "SharedFixtureAugment",
+            isSocketBound = true,
+            canSocketInUniqueItems = true,
+            canSocketInCorruptedSanctified = true,
         },
     },
 }

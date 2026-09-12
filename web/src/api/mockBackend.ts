@@ -103,6 +103,9 @@ export function createMockBackend(): PobrBackend {
     async reforgeRunes(text) {
       return text;
     },
+    async itemAugmentInfo() {
+      return { sockets: 0, max_sockets: 0, runes: [], editable: false, reason: 'missing_augment_data', options: [] };
+    },
     translate(_lang, key) {
       return key;
     },

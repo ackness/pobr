@@ -2,9 +2,9 @@ import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { SlotSymbol } from '../shared/SlotSymbol';
 import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { getBackend } from '../../api/backend';
-import type { ItemLineJson, RuneCatalogEntry } from '../../api/types';
+import type { ItemAugmentInfo, ItemLineJson, RuneCatalogEntry } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import {
   cleanLine,
@@ -14,6 +14,8 @@ import {
   useLocalizedLines,
 } from '../../hooks/useLocalizedLines';
 import { bindT, slotLabel, type Lang } from '../../lib/i18n';
+import { upgradeT } from '../../lib/upgradeText';
+import { applyEquippedAugmentLimits, planReplacementAugments } from '../../lib/replacementAugments';
 import { previewDiff, type DiffEntry } from '../../lib/compare';
 import { DiffList } from '../shared/DiffList';
 import { CopyButton } from '../shared/CopyButton';
@@ -227,104 +229,131 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
   const noteKey = (slot: string) => `${isUtilitySlot(slot) ? 'flask' : 'item'}:${slot}`;
   const hasNote = (slot: string) => Boolean(session.annotations[noteKey(slot)]?.trim());
 
-  // 符文目录（按选中物品重取：效果行随基底槽类变化；mock/加载失败为空 → 隐藏符文编辑器）。
-  const [runeCatalog, setRuneCatalog] = useState<RuneCatalogEntry[]>([]);
+  // Metadata belongs to an exact item selection; never display stale options
+  // while an asynchronous request for a different item is pending.
+  const [augmentResult, setAugmentResult] = useState<{
+    slot: string; text: string; info: ItemAugmentInfo; catalog: RuneCatalogEntry[];
+  } | null>(null);
+  const [runeError, setRuneError] = useState<{ slot: string; text: string; message: string } | null>(null);
+  const [runePending, setRunePending] = useState<{ slot: string; text: string } | null>(null);
+  const reforgeSequence = useRef(0);
+  const currentEdit = useRef({ selected, selectedText, editing, session });
+  currentEdit.current = { selected, selectedText, editing, session };
   useEffect(() => {
     let cancelled = false;
+    setAugmentResult(null);
+    setRuneError(null);
+    if (!selected || !selectedText || isUtilitySlot(selected)) return;
+    const slot = selected;
+    const text = selectedText;
     getBackend()
-      .then((b) => b.runeCatalog(selectedText))
-      .then((entries) => {
-        if (!cancelled) setRuneCatalog(entries);
+      .then(async backend => ({ info: await backend.itemAugmentInfo(text), catalog: await backend.runeCatalog() }))
+      .then(({ info, catalog }) => {
+        if (!cancelled) setAugmentResult({ slot, text, info, catalog });
       })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedText]);
-  const [runeError, setRuneError] = useState<string | null>(null);
-  useEffect(() => setRuneError(null), [selected]);
-
-  // 选中物品的符文位：`Sockets: S S` 容量 + 当前 `Rune:`/`Soul Core:` 命名行。
-  const socketInfo = useMemo(() => {
-    if (!selectedText) return null;
-    const m = selectedText.match(/^Sockets:\s*(.+)$/m);
-    if (!m) return null;
-    const capacity = m[1].split(/\s+/).filter((t) => t === 'S').length;
-    if (capacity === 0) return null;
-    const runes = [...selectedText.matchAll(/^(?:Rune|Soul Core):\s*(.+)$/gm)].map((x) =>
-      x[1].trim(),
-    );
-    return { capacity, runes };
-  }, [selectedText]);
+      .catch((error: unknown) => {
+        if (!cancelled) setRuneError({ slot, text, message: formatApiError(error) });
+      });
+    return () => { cancelled = true; };
+  }, [selected, selectedText]);
+  useEffect(() => () => { reforgeSequence.current++; }, []);
+  const rawAugmentInfo = augmentResult?.slot === selected && augmentResult.text === selectedText
+    ? augmentResult.info : null;
+  const augmentUsage = useMemo(() => ({ catalog: augmentResult?.catalog ?? [], items: session.items, slot: selected ?? '' }),
+    [augmentResult, session.items, selected]);
+  const limitedAugments = useMemo(() => rawAugmentInfo ? applyEquippedAugmentLimits(rawAugmentInfo, augmentUsage) : null,
+    [rawAugmentInfo, augmentUsage]);
+  const augmentInfo = limitedAugments?.info ?? null;
+  const runeBusy = runePending?.slot === selected && runePending.text === selectedText;
+  const visibleRuneError = runeError?.slot === selected && runeError.text === selectedText
+    ? runeError.message : null;
+  const characterLevel = session.character?.level ?? 1;
+  const runeCatalog = useMemo(() => (augmentInfo?.options ?? [])
+    .filter(entry => (entry.required_level ?? 0) <= characterLevel), [augmentInfo, characterLevel]);
+  const showAugments = augmentInfo && !isUtilitySlot(selected ?? '')
+    && (augmentInfo.sockets > 0 || augmentInfo.max_sockets > 0
+      || (!augmentInfo.editable && !['unsupported_item_type', 'no_augment_sockets'].includes(augmentInfo.reason ?? '')));
 
   const runeDisplayName = (entry: RuneCatalogEntry) =>
-    (lang === 'zh-CN' ? entry.name_zh_cn : lang === 'zh-TW' ? entry.name_zh_tw : null) ??
-    entry.name;
+    (lang === 'zh-CN' ? entry.name_zh_cn : lang === 'zh-TW' ? entry.name_zh_tw : null) ?? entry.name;
+  const existingRuneName = (name: string) => {
+    const entry = augmentInfo?.options.find(option => option.name === name);
+    return entry ? runeDisplayName(entry) : name || tt('items.emptySocket');
+  };
 
-  // 效果行本地化（flat 展开 → 按条目行数切回；en 直接原样）。
-  const runeEffectLines = useLocalizedLines(
-    runeCatalog.flatMap((r) => r.lines.map(cleanLine)),
-    lang,
-  );
+  const runeEffectLines = useLocalizedLines(runeCatalog.flatMap(entry => entry.lines.map(cleanLine)), lang);
   const runeHints = useMemo(() => {
     const map = new Map<string, string>();
     let offset = 0;
-    for (const r of runeCatalog) {
-      map.set(r.name, runeEffectLines.slice(offset, offset + r.lines.length).join(', '));
-      offset += r.lines.length;
+    for (const rune of runeCatalog) {
+      map.set(rune.name, runeEffectLines.slice(offset, offset + rune.lines.length).join(', '));
+      offset += rune.lines.length;
     }
     return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runeCatalog, runeEffectLines]);
-
-  // 符文槽下拉选项（各槽共用一份）：空槽 + 符文组 + 魂核组，选项带效果副行。
-  // 有物品上下文（任一条目带效果行）时滤掉对该基底不适用的符文。
   const runeOptions = useMemo<AppSelectOption[]>(() => {
-    const hasContext = runeCatalog.some((r) => r.lines.length > 0);
-    const visible = hasContext ? runeCatalog.filter((r) => r.lines.length > 0) : runeCatalog;
-    const toOption = (r: RuneCatalogEntry, group: string): AppSelectOption => ({
-      value: r.name,
-      label: runeDisplayName(r),
-      group,
-      hint: runeHints.get(r.name) || undefined,
-    });
+    const kindOf = (entry: RuneCatalogEntry) => entry.kind ?? (entry.is_soul_core ? 'SoulCore' : 'Rune');
+    const groupKeys = { Rune: 'augmentRune', SoulCore: 'augmentCore', Idol: 'augmentIdol' } as const;
     return [
       { value: '', label: tt('items.emptySocket') },
-      ...visible.filter((r) => !r.is_soul_core).map((r) => toOption(r, tt('items.runeGroup'))),
-      ...visible.filter((r) => r.is_soul_core).map((r) => toOption(r, tt('items.soulCoreGroup'))),
+      ...(['Rune', 'SoulCore', 'Idol'] as const).flatMap(kind => runeCatalog
+        .filter(entry => kindOf(entry) === kind)
+        .map(entry => ({ value: entry.name, label: runeDisplayName(entry),
+          group: upgradeT(lang, groupKeys[kind]), hint: runeHints.get(entry.name) || undefined }))),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runeCatalog, runeHints, lang]);
 
-  /** 调用后端重写符文/孔数并整件重算。 */
-  const reforge = async (runes: string[], sockets?: number) => {
-    if (!selectedText) return;
+  const runeAllowedAt = (index: number, name: string) => {
+    if (!name) return true;
+    const entry = runeCatalog.find(candidate => candidate.name === name);
+    return entry != null && (entry.limit == null
+      || (augmentInfo?.runes.filter((rune, slot) => slot !== index &&
+        (augmentInfo.options.find(option => option.name === rune)?.limit_id ?? rune) === (entry.limit_id ?? name)).length ?? 0) < entry.limit);
+  };
+
+  const reforge = async (runes: string[], sockets: number) => {
+    if (!selected || !selectedText || !augmentInfo?.editable || isUtilitySlot(selected) || runeBusy) return;
+    if (!Number.isInteger(sockets) || sockets < 0 || sockets > augmentInfo.max_sockets) return;
+    const origin = { slot: selected, text: selectedText, version: session.stateVersion };
+    const sequence = ++reforgeSequence.current;
+    const stillCurrent = () => {
+      const current = currentEdit.current;
+      return sequence === reforgeSequence.current && current.selected === origin.slot
+        && current.selectedText === origin.text && !current.editing
+        && current.session.stateVersion === origin.version;
+    };
+    setRunePending(origin);
+    setRuneError(null);
     try {
+      planReplacementAugments(rawAugmentInfo!, undefined, characterLevel, { mode: 'custom', runes, sockets }, augmentUsage);
       const backend = await getBackend();
-      const text = await backend.reforgeRunes(selectedText, runes, sockets);
-      setRuneError(null);
-      switchTo(text);
-    } catch (err) {
-      setRuneError(formatApiError(err));
+      if (!stillCurrent()) return;
+      const text = await backend.reforgeRunes(origin.text, runes, sockets);
+      if (!stillCurrent()) return;
+      const current = currentEdit.current.session;
+      current.setItems([...current.items.filter(item => item.slot !== origin.slot), { slot: origin.slot, text }]);
+      setDraft(text);
+      setEditing(false);
+    } catch (error) {
+      if (stillCurrent()) setRuneError({ ...origin, message: error instanceof Error && error.message === 'augment-limit'
+        ? upgradeT(lang, 'augmentLimit') : formatApiError(error) });
+    } finally {
+      if (sequence === reforgeSequence.current) setRunePending(null);
     }
   };
 
-  /** 重插符文（第 i 槽换为 name；空串=拔除该槽）。 */
   const resocketRune = (index: number, name: string) => {
-    if (!socketInfo) return;
-    const next = [...socketInfo.runes];
-    if (name === '') {
-      next.splice(index, 1);
-    } else {
-      next[index] = name;
-    }
-    void reforge(next.filter(Boolean).slice(0, socketInfo.capacity));
+    if (!augmentInfo || index < 0 || index >= augmentInfo.sockets) return;
+    if (!runeAllowedAt(index, name)) return;
+    const runes = Array.from({ length: augmentInfo.sockets }, (_, i) => augmentInfo.runes[i] ?? '');
+    runes[index] = name;
+    void reforge(runes, augmentInfo.sockets);
   };
-
-  /** 直接加减孔（不模拟通货）；减孔时裁掉超出的符文。 */
-  const setSocketCount = (capacity: number) => {
-    const clamped = Math.max(0, Math.min(6, capacity));
-    void reforge((socketInfo?.runes ?? []).slice(0, clamped), clamped);
+  const setSocketCount = (sockets: number) => {
+    if (!augmentInfo || !Number.isInteger(sockets) || sockets < 0 || sockets > augmentInfo.max_sockets) return;
+    const runes = Array.from({ length: sockets }, (_, i) => augmentInfo.runes[i] ?? '');
+    void reforge(runes, sockets);
   };
 
   // 槽位切换候选：只收库中槽位明确匹配（族归一，ring1/2 互通）的装备。
@@ -480,48 +509,47 @@ export function ItemsPanel({ session, lang, onUpgrade }: Props) {
             </div>
           ) : selectedText ? (
             <>
-              {!socketInfo && runeCatalog.length > 0 && !isUtilitySlot(selected) && (
-                <div className="rune-editor" role="group" aria-label={tt('items.runes')}>
-                  <button disabled={session.busy} onClick={() => setSocketCount(1)}>
-                    {tt('items.addSockets')}
-                  </button>
-                  {runeError && <span className="calc-error">{runeError}</span>}
-                </div>
-              )}
-              {socketInfo && runeCatalog.length > 0 && (
-                <div className="rune-editor" role="group" aria-label={tt('items.runes')}>
-                  <span className="rune-editor-title">{tt('items.runes')}</span>
-                  {Array.from({ length: socketInfo.capacity }, (_, i) => (
+              {showAugments && augmentInfo && (
+                <div className="rune-editor" role="group" aria-label={upgradeT(lang, 'augmentTitle')}>
+                  <span className="rune-editor-title">{upgradeT(lang, 'augmentTitle')}</span>
+                  {Array.from({ length: augmentInfo.sockets }, (_, index) => (
                     <AppSelect
-                      key={i}
-                      ariaLabel={`${tt('items.runes')} ${i + 1}`}
-                      value={socketInfo.runes[i] ?? ''}
-                      disabled={session.busy}
-                      options={runeOptions}
-                      onChange={(v) => resocketRune(i, v)}
+                      key={`${selected}:${selectedText}:${index}`}
+                      ariaLabel={`${upgradeT(lang, 'augmentSocket')} ${index + 1}`}
+                      value={augmentInfo.runes[index] ?? ''}
+                      placeholder={existingRuneName(augmentInfo.runes[index] ?? '')}
+                      disabled={session.busy || runeBusy || !augmentInfo.editable}
+                      options={runeOptions.filter(option => runeAllowedAt(index, option.value))}
+                      onChange={value => resocketRune(index, value)}
                     />
                   ))}
-                  <span className="socket-count-controls">
-                    <button
-                      disabled={session.busy || socketInfo.capacity <= 0}
-                      title={tt('items.socketRemove')}
-                      aria-label={tt('items.socketRemove')}
-                      onClick={() => setSocketCount(socketInfo.capacity - 1)}
-                    >
-                      −
+                  {!augmentInfo.editable ? (
+                    <p className="items-hint">{upgradeT(lang, augmentInfo.reason === 'unknown_base'
+                      ? 'unknownBase' : augmentInfo.reason === 'invalid_sockets' ? 'augmentInvalid' : 'augmentReadOnly')}</p>
+                  ) : augmentInfo.sockets === 0 ? (
+                    <button disabled={session.busy || runeBusy || augmentInfo.max_sockets <= 0} onClick={() => setSocketCount(1)}>
+                      {tt('items.addSockets')}
                     </button>
-                    <button
-                      disabled={session.busy || socketInfo.capacity >= 6}
-                      title={tt('items.socketAdd')}
-                      aria-label={tt('items.socketAdd')}
-                      onClick={() => setSocketCount(socketInfo.capacity + 1)}
-                    >
-                      +
-                    </button>
-                  </span>
-                  {runeError && <span className="calc-error">{runeError}</span>}
+                  ) : (
+                    <span className="socket-count-controls">
+                      <button
+                        disabled={session.busy || runeBusy}
+                        title={tt('items.socketRemove')}
+                        aria-label={tt('items.socketRemove')}
+                        onClick={() => setSocketCount(augmentInfo.sockets - 1)}
+                      >−</button>
+                      <button
+                        disabled={session.busy || runeBusy || augmentInfo.sockets >= augmentInfo.max_sockets}
+                        title={tt('items.socketAdd')}
+                        aria-label={tt('items.socketAdd')}
+                        onClick={() => setSocketCount(augmentInfo.sockets + 1)}
+                      >+</button>
+                    </span>
+                  )}
                 </div>
               )}
+              {limitedAugments?.limitWarning && <p className="items-hint">{upgradeT(lang, 'augmentLimitUnknown')}</p>}
+              {visibleRuneError && <p className="calc-error" role="alert">{visibleRuneError}</p>}
               <ItemText text={selectedText} lang={lang} />
               <NoteEditor
                 value={session.annotations[noteKey(selected)] ?? ''}

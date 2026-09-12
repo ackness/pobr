@@ -307,8 +307,22 @@ export interface RuneCatalogEntry {
   name_zh_tw: string | null;
   name_zh_cn: string | null;
   is_soul_core: boolean;
+  kind?: 'Rune' | 'SoulCore' | 'Idol';
+  required_level?: number;
+  limit?: number;
+  limit_id?: string;
   /** 对请求物品基底适用的效果词条行（无物品上下文或不适用为空）。 */
   lines: string[];
+}
+
+export interface ItemAugmentInfo {
+  sockets: number;
+  max_sockets: number;
+  /** One entry per socket; empty strings preserve empty positions. */
+  runes: string[];
+  editable: boolean;
+  reason?: string;
+  options: RuneCatalogEntry[];
 }
 
 /** `pob_code` 与 `character` 至少给一个（无 code = PoB2 新建 build 语义）。 */

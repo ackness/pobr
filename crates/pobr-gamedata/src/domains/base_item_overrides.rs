@@ -181,6 +181,8 @@ mod tests {
         let overrides = BaseItemOverridesDef {
             overrides: vec![
                 BaseItemOverrideEntry {
+                    socket_limit: None,
+                    sub_type: None,
                     req_str: None,
                     req_dex: None,
                     req_int: None,
@@ -192,6 +194,8 @@ mod tests {
                     tags: None,
                 },
                 BaseItemOverrideEntry {
+                    socket_limit: None,
+                    sub_type: None,
                     req_str: None,
                     req_dex: None,
                     req_int: None,
@@ -233,6 +237,8 @@ mod tests {
         let mut bases = vec![base("Phantom Buckler", None)];
         let overrides = BaseItemOverridesDef {
             overrides: vec![BaseItemOverrideEntry {
+                socket_limit: None,
+                sub_type: None,
                 req_str: None,
                 req_dex: None,
                 req_int: None,
@@ -256,6 +262,8 @@ mod tests {
         let mut bases = vec![base("Crude Tower Shield", Some(armour_stats(18)))];
         let overrides = BaseItemOverridesDef {
             overrides: vec![BaseItemOverrideEntry {
+                socket_limit: None,
+                sub_type: None,
                 req_str: None,
                 req_dex: None,
                 req_int: None,
@@ -290,6 +298,8 @@ mod tests {
         let overrides = BaseItemOverridesDef {
             overrides: vec![
                 BaseItemOverrideEntry {
+                    socket_limit: None,
+                    sub_type: None,
                     req_str: None,
                     req_dex: None,
                     req_int: None,
@@ -301,6 +311,8 @@ mod tests {
                     tags: None,
                 },
                 BaseItemOverrideEntry {
+                    socket_limit: None,
+                    sub_type: None,
                     req_str: None,
                     req_dex: None,
                     req_int: None,
@@ -345,6 +357,8 @@ mod tests {
         let overrides = BaseItemOverridesDef {
             overrides: vec![
                 BaseItemOverrideEntry {
+                    socket_limit: None,
+                    sub_type: None,
                     req_str: None,
                     req_dex: None,
                     req_int: None,
@@ -356,6 +370,8 @@ mod tests {
                     tags: None,
                 },
                 BaseItemOverrideEntry {
+                    socket_limit: None,
+                    sub_type: None,
                     req_str: None,
                     req_dex: None,
                     req_int: None,
@@ -369,6 +385,8 @@ mod tests {
                 // charm_buff None → left untouched (stays empty), and
                 // verifies a non-charm base is unaffected.
                 BaseItemOverrideEntry {
+                    socket_limit: None,
+                    sub_type: None,
                     req_str: None,
                     req_dex: None,
                     req_int: None,

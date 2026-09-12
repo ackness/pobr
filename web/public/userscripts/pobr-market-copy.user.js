@@ -2,7 +2,7 @@
 // @name         PoBR - Market item copy
 // @name:zh-CN   PoBR - 市集装备一键复制
 // @namespace    https://github.com/ackness/pobr
-// @version      0.1.0
+// @version      0.1.1
 // @description Copy one market item as complete PoBR text, including requirements and socket effects.
 // @description:zh-CN 在商品旁添加「复制到 PoBR」，保留需求、隐式、符文和其他词缀，直接粘贴比较。
 // @match        https://poe.game.qq.com/trade2/search/*
@@ -90,6 +90,9 @@
     }
     // Keep unknown effects visible to PoBR instead of inventing a numerical benefit.
     for (const [field, value] of Object.entries(item)) {
+      // Search aggregates (Sum, combined resistance, etc.) duplicate item stats
+      // or depend on the query; they are not item effects or unsupported mods.
+      if (field === 'pseudoMods') continue;
       if (field.endsWith('Mods') && !['implicitMods', 'enchantMods', 'runeMods', 'explicitMods', 'craftedMods', 'fracturedMods'].includes(field)) {
         lines.push(...array(value).flatMap(linesOf).map(line => `Unmodeled market effect (${field}): ${line}`));
       }
