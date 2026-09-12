@@ -46,3 +46,24 @@ test('keyboard: tab navigation reaches import textarea', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Build code' }).focus();
   await expect(page.getByRole('textbox', { name: 'Build code' })).toBeFocused();
 });
+
+test('replacement header fits a narrow screen with classic scrollbar space', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: /Import Build/i })).toBeVisible({ timeout: 90_000 });
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Upgrades', exact: true }).click();
+  await expect(page.locator('.replacement-heading')).toBeVisible();
+  // Overlay scrollbars on macOS leave more room than Linux's classic scrollbars.
+  // Reserve that space explicitly so this regression is reproducible on either OS.
+  await page.locator('main').evaluate(element => {
+    const main = element as HTMLElement;
+    const scrollbar = main.offsetWidth - main.clientWidth;
+    main.style.width = `calc(100% - ${Math.max(0, 16 - scrollbar)}px)`;
+  });
+  const overflow = await page.locator('.replacement-heading').evaluate(element => ({
+    heading: element.scrollWidth - element.clientWidth,
+    main: element.closest('main')!.scrollWidth - element.closest('main')!.clientWidth,
+  }));
+  expect(overflow.heading).toBeLessThanOrEqual(1);
+  expect(overflow.main).toBeLessThanOrEqual(1);
+});
