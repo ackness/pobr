@@ -57,6 +57,12 @@ echo "regen-all: patch=$PATCH  old=$OLD_PATCH  vendor=$VENDOR"
 ADAPTER=(cargo run --quiet -p pobr-data-adapter --)
 SYNC=(cargo run --quiet -p sync-pob-catalog --)
 
+# Verify the official quality input receipt before the remaining generators run.
+# A missing/stale receipt is fatal; never relabel an old vendor export as fresh data.
+echo "== gem quality: official tables and reviewed compatibility scope"
+die_on_fail "${ADAPTER[@]}" --gem-quality pipeline/tables/English \
+    --quality-source "pipeline/gem-quality/$PATCH.json" --out data --patch "$PATCH"
+
 # ---- 1) base/ + i18n/（GGG .dat → 物品/词缀/Stat/技能）----
 echo "== [1/8] adapter --raw（base/ + i18n/）"
 die_on_fail "${ADAPTER[@]}" --raw pipeline/tables --out data --patch "$PATCH"
@@ -109,7 +115,6 @@ soft_step catalysts       "${SYNC[@]}" extract-lua --what catalysts       --vend
 soft_step config_options  "${SYNC[@]}" extract-lua --what config-options  --vendor-root "$VENDOR" --out "$OVL/config_options.json"
 soft_step curse_priority  "${SYNC[@]}" extract-lua --what curse-priority  --vendor-root "$VENDOR" --out "$OVL/curse_priority.json"
 soft_step gem_effects     "${SYNC[@]}" extract-lua --what gem-effects     --vendor-root "$VENDOR" --out "$OVL/gem_effects.json"
-soft_step gem_quality_stats "${SYNC[@]}" extract-lua --what gem-quality   --vendor-root "$VENDOR" --files "$GEMFILES" --out "$OVL/gem_quality_stats.json"
 soft_step granted_effect_minions "${SYNC[@]}" extract-lua --what minion-list --vendor-root "$VENDOR" --out "$OVL/granted_effect_minions.json"
 soft_step minions         "${SYNC[@]}" extract-lua --what minions         --vendor-root "$VENDOR" --out "$OVL/minions.json"
 soft_step mod_parser_rules "${SYNC[@]}" extract-lua --what parser-rules   --vendor-root "$VENDOR" --out "$OVL/mod_parser_rules.json"
@@ -181,6 +186,16 @@ fi
 echo "== [6c] extract-lua --what special-mods (generated/special_vendor.json)"
 mkdir -p "$OUT_DIR/generated"
 soft_step special_vendor env POBR_DATA_VERSION="$PATCH" "${SYNC[@]}" extract-lua --what special-mods --vendor-root "$VENDOR" --out "$OUT_DIR/generated/special_vendor.json"
+
+# Audit all shipped modifier sources, not only the historical build corpus.
+# Keep the previous version's snapshot as the regression baseline when present.
+if [[ "${POBR_DEFER_MODIFIER_AUDIT:-0}" -eq 0 ]]; then
+    audit_args=(--data "$OUT_DIR" --audit-only)
+    if [[ -f "data/$OLD_PATCH/generated/modifier-audit.json" ]]; then
+        audit_args+=(--baseline "data/$OLD_PATCH/generated/modifier-audit.json")
+    fi
+    soft_step modifier_audit bash pipeline/refresh-modifiers.sh "${audit_args[@]}"
+fi
 
 # ---- 7) generated/（precompile-mods）----
 echo "== [7/9] precompile-mods（generated/）"

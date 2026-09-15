@@ -2,10 +2,11 @@
 //! (`effect_id → [{stat, per_quality_rate}]`), schema in
 //! [`pobr_data::catalog::skills`]'s `GemQualityStatsDef` section.
 //!
-//! Data source: vendor PoB2 `Data/Skills/*.lua`'s `qualityStats` field,
-//! deterministically extracted by
-//! `sync-pob-catalog extract-lua --what gem-quality` (schema id
-//! `gem_quality_stats/v1`). This table is a plain lookup table (no merge
+//! Current source: official quality tables projected by
+//! `pobr-data-adapter --gem-quality` with a reviewed input receipt.
+//! Older snapshots use `sync-pob-catalog extract-lua --what gem-quality`.
+//! Both retain the `gem_quality_stats/v1` schema and historical overlay path.
+//! This table is a plain lookup table (no merge
 //! semantics against a base with the same shape), loaded as a whole
 //! domain, indexed by the consumer (pobr-build's `BuildData`).
 

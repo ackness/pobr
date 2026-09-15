@@ -37,6 +37,8 @@ mkdirSync(dest, { recursive: true });
 const files = [];
 for (const path of walkJson(src)) {
   const rel = relative(src, path).split('\\').join('/');
+  // Source-wide maintenance reports are never browser calculation inputs.
+  if (rel === 'generated/modifier-audit.json') continue;
   cpSync(path, join(dest, rel));
   files.push(rel);
 }

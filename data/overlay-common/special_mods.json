@@ -2656,6 +2656,76 @@
       "verified": true,
       "batch": "affix-coverage",
       "source_note": "PoB2 Data/ModCache.lua Leeches physical damage as Mana; resource-specific physical leech, evaluated after damage conversion. Weapon sources receive hand-local attack gating during item ingestion."
+    },
+    {
+      "id": "item_rarity_increased",
+      "pattern": "(\\d+(?:\\.\\d+)?)% increased item rarity",
+      "mods": [
+        {
+          "name": "LootRarity",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "wording",
+      "source_note": "GGG/CN dictionary wording alias of Rarity of Items found (base_item_found_rarity_+%); canonical semantics from pinned PoB2 StatDescriptions and ModParser. Whole-line matching preserves scope; both signs are covered."
+    },
+    {
+      "id": "item_rarity_reduced",
+      "pattern": "(\\d+(?:\\.\\d+)?)% reduced item rarity",
+      "mods": [
+        {
+          "name": "LootRarity",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "wording",
+      "source_note": "GGG/CN dictionary wording alias of Rarity of Items found (base_item_found_rarity_+%); canonical semantics from pinned PoB2 StatDescriptions and ModParser. Whole-line matching preserves scope; both signs are covered."
+    },
+    {
+      "id": "projectiles_move_speed_increased",
+      "pattern": "projectiles move at (\\d+(?:\\.\\d+)?)% increased speed",
+      "mods": [
+        {
+          "name": "ProjectileSpeed",
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "verified": false,
+      "batch": "wording",
+      "source_note": "GGG/CN dictionary wording alias of Projectile Speed (base_projectile_speed_+%); canonical semantics from pinned PoB2 StatDescriptions and ModParser. Whole-line matching preserves scope; both signs are covered."
+    },
+    {
+      "id": "projectiles_move_speed_reduced",
+      "pattern": "projectiles move at (\\d+(?:\\.\\d+)?)% reduced speed",
+      "mods": [
+        {
+          "name": "ProjectileSpeed",
+          "type": "INC",
+          "value": {
+            "ref": "$1",
+            "ops": [
+              {
+                "negate": {}
+              }
+            ]
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "wording",
+      "source_note": "GGG/CN dictionary wording alias of Projectile Speed (base_projectile_speed_+%); canonical semantics from pinned PoB2 StatDescriptions and ModParser. Whole-line matching preserves scope; both signs are covered."
     }
   ]
 }

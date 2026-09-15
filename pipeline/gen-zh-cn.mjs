@@ -6,15 +6,14 @@
 //   data/<CURRENT>/i18n/zh-CN/_meta.json        来源与统计
 // 并把 manifest.json 的 languages 追加 zh-CN。
 //
-// 用法：node gen-zh-cn.mjs [--dict <本地词典目录>]
-//   缺省从 GitHub raw 下载三个文件到 .cache/zh-cn-dict/（词典成品直接提交在上游仓库，
-//   无需安装国服客户端）。注意：词典按上游当前补丁生成，与本仓库数据版本可能存在
-//   小版本偏差（与 vendor overlay 同性质，_meta 记录来源 commit 日期供追溯）。
+// Usage: node pipeline/gen-zh-cn.mjs [--version <version>] [--dict <directory> | --ref <sha> | --refresh]
+// Reuse the recorded immutable source commit by default. --refresh resolves the
+// current upstream commit once; all files are fetched from that same snapshot.
 
 import fs from 'node:fs';
 import path from 'node:path';
-
-const RAW = 'https://raw.githubusercontent.com/addohm/poe2-en-cn-dict/master/dictionary';
+import { fileURLToPath } from 'node:url';
+import { dictionarySource } from './dictionary-source.mjs';
 const FILES = [
   'lookup/stat_lines.json',
   'lookup/en_to_cn.json',
@@ -28,25 +27,30 @@ const FILES = [
   'meta.json',
 ];
 
-const repoRoot = path.join(import.meta.dirname, '..');
-const version = fs.readFileSync(path.join(repoRoot, 'data/CURRENT'), 'utf8').split('\n')[0].trim();
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.join(scriptDir, '..');
+const options = {};
+for (let i = 2; i < process.argv.length; i++) {
+  const arg = process.argv[i];
+  if (arg === '--refresh') options.refresh = true;
+  else if (['--dict', '--ref', '--version'].includes(arg) && process.argv[i + 1]) options[arg.slice(2)] = process.argv[++i];
+  else throw new Error(`Unknown or incomplete option: ${arg}`);
+}
+if ([options.dict, options.ref, options.refresh].filter(Boolean).length > 1) {
+  throw new Error('Choose one of --dict, --ref or --refresh.');
+}
+const version = options.version ?? fs.readFileSync(path.join(repoRoot, 'data/CURRENT'), 'utf8').split('\n')[0].trim();
+if (!/^[0-9]+(?:\.[0-9]+)+$/.test(version)) throw new Error('Invalid data version.');
 const outDir = path.join(repoRoot, 'data', version, 'i18n', 'zh-CN');
-
-const dictArg = process.argv.indexOf('--dict');
-let dictDir = dictArg > -1 ? process.argv[dictArg + 1] : null;
-
+let dictDir = options.dict;
+let sourceCommit = null;
 if (!dictDir) {
-  dictDir = path.join(import.meta.dirname, '.cache', 'zh-cn-dict');
-  for (const rel of FILES) {
-    const dest = path.join(dictDir, rel);
-    if (fs.existsSync(dest)) continue;
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    const url = `${RAW}/${rel}`;
-    console.log(`下载 ${url}`);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`fetch ${url}: ${res.status}`);
-    fs.writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
-  }
+  const metaPath = path.join(outDir, '_meta.json');
+  const previous = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : {};
+  const snapshot = await dictionarySource({ cacheRoot: path.join(scriptDir, '.cache', 'zh-cn-dict'),
+    files: FILES, ref: options.ref ?? previous.source_commit, refresh: options.refresh });
+  dictDir = snapshot.directory;
+  sourceCommit = snapshot.ref;
 }
 
 const read = (rel) => JSON.parse(fs.readFileSync(path.join(dictDir, rel), 'utf8'));
@@ -190,8 +194,9 @@ write('mods.json', affixNames);
 write('rare_words.json', rareWordsSorted);
 write('_meta.json', {
   source: 'https://github.com/addohm/poe2-en-cn-dict',
+  source_commit: sourceCommit,
   source_generated_at: upstreamMeta.generatedAt ?? null,
-  regen_command: 'node pipeline/gen-zh-cn.mjs',
+  regen_command: `node pipeline/gen-zh-cn.mjs --version ${version} ${sourceCommit ? `--ref ${sourceCommit}` : '--dict <dictionary-dir>'}`,
   counts: {
     base_items: Object.keys(baseItems).length,
     skills: Object.keys(skills).length,

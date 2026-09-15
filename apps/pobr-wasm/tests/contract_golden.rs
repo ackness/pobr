@@ -1245,10 +1245,33 @@ fn attribution_json_shape() {
 #[test]
 fn memory_backend_matches_dir_backend() {
     // The GameData in-memory backend (the wasm data-injection path)
-    // produces the same calculation result as the directory backend.
-    ensure_data();
-    let request = serde_json::json!({ "pob_code": demo_code() }).to_string();
-    let from_dir = pobr_wasm::calculate_build_json(&request).expect("dir backend");
+    // must cover both the historical golden and the current data producer.
+    let mut requests = Vec::new();
+    for fixture in [
+        "monk-invoker-frost-bomb",
+        "sorceress-stormweaver-comet",
+        "mercenary-gemling-legionnaire-explosive-grenade",
+    ] {
+        let code = std::fs::read_to_string(repo_data_root().join(format!(
+            "../examples/demo-bd-test/builds/{fixture}/code.txt"
+        )))
+        .expect("read demo code");
+        let decoded: Value =
+            serde_json::from_str(&pobr_wasm::decode_build_json(&code).expect("decode")).unwrap();
+        for quality in [0, 19, 20] {
+            let mut groups = decoded["socket_groups"].clone();
+            for group in groups.as_array_mut().unwrap() {
+                group.as_object_mut().unwrap().remove("active_skill_id");
+                for gem in group["gems"].as_array_mut().unwrap() {
+                    gem["quality"] = quality.into();
+                }
+            }
+            requests.push((
+                format!("{fixture}/q{quality}"),
+                serde_json::json!({ "pob_code": code, "socket_groups": groups }).to_string(),
+            ));
+        }
+    }
 
     // Reads the whole version directory into an in-memory table, rebuilt
     // via the stage/init path. The version-independent curation layer
@@ -1258,7 +1281,6 @@ fn memory_backend_matches_dir_backend() {
     // `pobr-gamedata::paths::overlay_common_path`); the production wasm
     // flow (web sync-data) packages this directory too — staging must
     // inject it as well, otherwise the in-memory backend silently loses every curated special_mods entry.
-    let root = repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION);
     let common_root = repo_data_root().join("overlay-common");
     let stage_tree = |tree_root: &std::path::Path, key_prefix: &str| {
         for entry in walk_files(tree_root) {
@@ -1275,14 +1297,24 @@ fn memory_backend_matches_dir_backend() {
             pobr_wasm::stage_data_file(&format!("{key_prefix}{rel}"), &content);
         }
     };
-    stage_tree(&root, "");
-    stage_tree(&common_root, "overlay-common/");
-    pobr_wasm::init_staged_data().expect("init memory backend");
-    let from_memory = pobr_wasm::calculate_build_json(&request).expect("memory backend");
-    assert_eq!(
-        from_dir, from_memory,
-        "the memory backend and directory backend should produce byte-identical results"
-    );
+    for version in [
+        pobr_data::GOLDEN_PARITY_DATA_VERSION,
+        pobr_data::DATA_VERSION,
+    ] {
+        let root = repo_data_root().join(version);
+        pobr_wasm::init_data_from_dir(root.to_str().unwrap()).expect("init dir backend");
+        let from_dir: Vec<_> = requests
+            .iter()
+            .map(|(_, request)| pobr_wasm::calculate_build_json(request).expect("dir backend"))
+            .collect();
+        stage_tree(&root, "");
+        stage_tree(&common_root, "overlay-common/");
+        pobr_wasm::init_staged_data().expect("init memory backend");
+        for ((label, request), expected) in requests.iter().zip(from_dir) {
+            let actual = pobr_wasm::calculate_build_json(request).expect("memory backend");
+            assert_eq!(expected, actual, "backend mismatch: {version}/{label}");
+        }
+    }
 
     // Restore the directory backend, to avoid affecting later tests on the same thread.
     let dir = repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION);

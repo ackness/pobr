@@ -1,18 +1,77 @@
 # PoBR 数据管线（pipeline）
 
 把 **GGG 官方游戏数据（`.dat` 表）** 抽取为 JSON，再适配为 PoBR 自有的最小 JSON schema
-（落在仓库根的 `data/<poe-version>/`）。**不使用 PoB 的生成 Lua，不在仓库存放大体积原始数据。**
+（落在仓库根的 `data/<poe-version>/`）。GGG 数据提供物品与技能的原始定义，
+固定提交的 PoB2 Lua 提供解析规则、机制映射及补充目录；不在仓库存放大体积原始数据。
 
 ## 数据来源（真源）
 
 | 域 | 真源 | 取法 |
 |----|------|------|
 | 物品基底 / 词缀 / Stat / 技能宝石 | 游戏 `Content.ggpk` 里的 `.dat` 表（GGG） | `pathofexile-dat` 按版本从 CDN 只下需要的表 bundle |
+| 宝石品质（从 `4.5.5.2` 起） | GGG `GrantedEffectQualityStats` / `GrantedEffects` / `Stats`，范围由版本收据固定 | `pobr-data-adapter --gem-quality`，见[品质生成说明](gem-quality/README.md) |
 | 词条显示文本 | `Metadata/StatDescriptions/*.txt`（GGG） | 同上，作为 `files` 导出 |
 | 被动天赋树 | GGG 官方 `github.com/grindinggear/poe2-skilltree-export` 的 `data.json` | 直接取 `data.json`（不取图集） |
 
 `.dat` 存的是 **id / 数值 / 外键关系**（规范化数据库表）；显示文本在 `StatDescriptions` 里。
 列名/表名见 [poe-tool-dev/dat-schema](https://github.com/poe-tool-dev/dat-schema)。
+
+## 词条更新与回归检查
+
+普通解析修复或同步当前固定版本的 PoB2 规则：
+
+```bash
+bash pipeline/refresh-modifiers.sh
+```
+
+命令依次提取普通规则与 `specialModList`、严格校验完整有效规则、用完整来源语料对照 PoB2、检查上一份审计，
+最后更新预解析缓存。它不下载游戏数据、不切换游戏版本，也不修改数值 golden。
+只检查已有数据和引擎时用 `--audit-only`；没有 vendor 时用 `--offline`，报告明确不含 PoB2 对照。
+可用 `--data data/<version>` 指定数据，`--baseline <audit.json>` 指定历史审计。
+
+语料来源包括 StatDescriptions 的稳定 stat ID、装备/珠宝/药剂/护符词缀、特殊制作词缀、
+基底隐式、传奇装备各变体、天赋树，以及中文导入实际输出的英文模板。
+数值范围抽取低/高样本，复合描述使用不同的占位值；特殊规则的 `examples` 也进入语料，无法渲染的条目另计数。
+这是**解析样本覆盖率**，包含地图和怪物描述，不能当作玩家机制或 DPS 覆盖率。
+
+产物：
+
+- `data/<version>/generated/modifier-audit.json`：可重现的完整审计与来源，作为下一次比较的快照；不进入 Web 下载清单。
+- `.cache/modifier-audit/<version>/validation.json`：严格校验报告，记录 common / version / patch / derived / vendor 文件的 SHA-256、有效规则顺序和覆盖来源；审计的 `rule_validation` 内嵌同一信息。
+- `.cache/modifier-audit/<version>/current.delta.json`：退化、新增缺口、已解决和移除条目。
+- 同目录的 `corpus.txt` / `oracle.jsonl`：本次 PoB2 对照的输入与输出。
+
+报告中的 `pobr_gap` 表示 PoB2 完整解析而 PoBR 未完整解析，优先检查提取器、枚举、标签映射。
+`upstream_gap` 表示 PoB2 也不能完整解析，需查游戏机制并实现对应计算，不能靠空规则消除提示。
+`recognized_empty` 单列零 modifier 的规则；有残余文本或丢失条件标签也不计为完整支持。
+没有 oracle 时缺口为 `uncompared_gap`。`mod_names` 便于定位计算消费者，但识别出名称不证明消费者已实现。
+
+每条样本的 `special_rule_id` 关联规则文件来源，`matching_special_rules` 按优先级列出所有候选，多个 ID 表示后续规则被遮蔽。该检查只覆盖样本，不证明任意文本都无重叠。结构化 LIST 等未参与计算的字段在 `non_effective_fields` 单列；现有装备 / 天赋的 `SourceId` 不由规则来源替代。严格校验与合并契约见[维护者规则说明](../docs/contributing-mods.md#7-validate-test-and-open-a-pr)。
+
+以前完整解析的文本退化，或同一来源移除旧措辞后新增无法解析的措辞，会使命令失败。
+失败时保留 `.cache` 报告与待检查的规则改动，**不覆盖上一份已通过的审计快照**；新增机制缺口单独列出。
+既有示例角色覆盖率及数值 parity 门禁仍独立保留。
+
+PoB2 本身把两层工作分开：`Data/StatDescriptions` 等从游戏数据导出文本，
+`Modules/ModParser.lua` 将文本映射到 modifier，`Modules/Calc*.lua` 消费这些 modifier。
+PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正放在 `data/overlay-common/special_mods.json`，
+更新数据后自动继承；真正的新机制仍需要实现和数值回归测试。
+
+### 中文词典来源
+
+中文导入使用 [poe2-en-cn-dict](https://github.com/addohm/poe2-en-cn-dict) 的游戏文本对照。
+普通再生成复用 `_meta.json` 中的固定提交；主动更新或精确重放：
+
+```bash
+node pipeline/gen-zh-cn.mjs --refresh
+node pipeline/gen-zh-cn.mjs --version <version> --ref <full-commit-sha>
+```
+
+所有文件从同一提交下载，下载完整后才启用缓存；失败不会混入半份新版词典。
+离线输入可用 `--dict <directory>`，其元数据明确没有已验证的上游提交。
+`bump-version.sh` 在联网升级时刷新词典，并在词典生成和完整词条审计通过后才推进活动版本标记。
+词典缓存与下载失败测试运行 `node --test pipeline/test-dictionary-source.mjs`，已接入 CI；
+升级失败保护由 `python3 devs/scripts/test_workflows.py` 覆盖。
 
 ## 版本钉定
 
@@ -40,7 +99,8 @@ cargo run -p pobr-data-adapter -- --raw ./tables --out ../data --patch <version>
 ```
 
 `./.cache/`（~113MB bundle 索引）、`./tables/`、`./files/` 均为中间物，**已 gitignore，不入库**。
-仓库只保存 `config.json`、脚本、本 README，以及第 3 步产出的 `data/<version>/*.json`（最小适配数据）。
+仓库保存配置、脚本、说明、受审的来源收据，以及产出的 `data/<version>/` 最小适配数据。
+上面的 `--raw` 命令不生成品质域；品质单独使用[独立生成命令](gem-quality/README.md#独立生成)。
 
 ## Vendor calc-delta 报告（`diff-vendor-calcs.sh`）
 
@@ -70,6 +130,8 @@ pipeline/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
 - 新 PoE2 版本：**`pipeline/bump-version.sh` 一条命令**（查补丁号 → 下载 → 树/vendor 对齐 →
   regen-all（含 test-pin bless）→ 推进 CURRENT/DATA_VERSION → zh-CN/web 同步 → 定向验证），
   末尾打印剩余人工决策（golden 翻转、引擎 delta triage）。分步等价操作见脚本头注释。
+  品质域要求预先准备该版本的[来源收据](gem-quality/README.md#更新版本或原始表)；
+  缺失或输入字节变化时会在 regen-all 中止，核对完成后用 `--patch <version> --skip-download` 重跑。
 - 新数据域：在 `config.json` 的 `tables` 增表/列，并在 `pobr-data-adapter` 增对应适配器。
 - **CDN 只保留当前补丁**：GGG patch CDN 会下线旧版本（M1-W0 时 4.5.0.3.4 已 404）。`.cache/`
   里已缓存的 bundle 可继续离线导出**既有表的全部列**（整张 `.datc64` 在同一 bundle 里）；

@@ -142,10 +142,11 @@ fn value_expr_negate_entry() {
     assert_eq!(expr.ops, vec![ValueOpDef::Negate {}]);
 }
 
-/// Non-S0 entries carrying vendor provenance **invariants** (not a
-/// snapshot): carries `vendor_pattern` (reconciliation input) + a
-/// non-empty `source_note` (provenance) + a product shape (mod or
-/// handler). **Doesn't pin `source_note`'s text format** — an
+/// Non-S0 entries carry a non-empty `source_note` (provenance) and a
+/// product shape (mod or handler). `vendor_pattern` is optional per the
+/// schema: pobr-only wording aliases have no matching vendor special key.
+/// When present, the reconciliation key must be non-empty.
+/// **Doesn't pin `source_note`'s text format** — an
 /// auto-transcribed entry anchors to `ModParser.lua:<line>`, but a
 /// hand-migrated "whole line" entry (Herald / armour-applies-chaos, etc.)
 /// spans multiple lines semantically with no single line number, so
@@ -153,14 +154,12 @@ fn value_expr_negate_entry() {
 /// hand-curated entries; the provenance invariant is "has a traceable
 /// note", not "must contain a specific line-number format".
 #[test]
-fn non_s0_has_vendor_provenance() {
+fn non_s0_has_traceable_provenance() {
     let def = load();
     for e in def.entries.iter().filter(|e| e.batch != "S0") {
-        assert!(
-            e.vendor_pattern.is_some(),
-            "{}: missing vendor_pattern",
-            e.id
-        );
+        if let Some(pattern) = &e.vendor_pattern {
+            assert!(!pattern.trim().is_empty(), "{}: empty vendor_pattern", e.id);
+        }
         assert!(
             e.source_note
                 .as_deref()

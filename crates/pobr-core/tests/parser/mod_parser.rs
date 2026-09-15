@@ -184,6 +184,47 @@ fn unsupported_text_returns_no_mods_and_original_line() {
 }
 
 #[test]
+fn imported_scalar_wording_matches_canonical_semantics() {
+    for (current, canonical) in [
+        (
+            "14% increased Item Rarity",
+            "14% increased Rarity of Items found",
+        ),
+        (
+            "14% reduced Item Rarity",
+            "14% reduced Rarity of Items found",
+        ),
+        (
+            "Projectiles move at 4% increased Speed",
+            "4% increased Projectile Speed",
+        ),
+        (
+            "Projectiles move at 4% reduced Speed",
+            "4% reduced Projectile Speed",
+        ),
+    ] {
+        let mut current = parse_mod(current).unwrap();
+        let mut canonical = parse_mod(canonical).unwrap();
+        assert_eq!(current.status, ParseStatus::Parsed);
+        assert!(current.unparsed.is_none());
+        assert_eq!(canonical.status, ParseStatus::Parsed);
+        assert!(canonical.unparsed.is_none());
+        for modifier in current.mods.iter_mut().chain(&mut canonical.mods) {
+            modifier.source = None;
+        }
+        assert_eq!(current.mods, canonical.mods);
+    }
+    let fractional = parse_mod("Projectiles move at 4.5% reduced Speed").unwrap();
+    assert_eq!(fractional.status, ParseStatus::Parsed);
+    assert!(fractional.unparsed.is_none());
+    assert_eq!(fractional.mods.len(), 1);
+    assert_eq!(fractional.mods[0].value, ModValue::Number(-4.5));
+    let scoped =
+        parse_mod("Projectiles move at 4% increased Speed if a Mystery Buff is active").unwrap();
+    assert!(scoped.status != ParseStatus::Parsed || scoped.unparsed.is_some());
+}
+
+#[test]
 fn unknown_text_is_unsupported_with_original_line() {
     // The engine never errors on unrecognized lines -- the whole line becomes
     // Unsupported, with the original text preserved in unparsed.

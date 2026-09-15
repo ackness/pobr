@@ -99,9 +99,9 @@ pub use crate::catalog::stat_map::StatMapValue;
 /// - `clamp{min,max}`: `v → min(max(v, min), max)`;
 /// - `div(n)`: `v → v / n`;
 /// - `mult(n)`: `v → v × n`;
-/// - `base(n)`: `v → v + n` (added first, before the rest of the operator chain).
+/// - `base(n)`: `v → v + n` at this position in the operator chain.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum ValueOpDef {
     /// Negation.
     Negate {},
@@ -122,6 +122,7 @@ pub enum ValueOpDef {
 
 /// A value expression with an operator chain (`{"ref": "$1", "ops": [{"negate": {}}, {"div": 100}]}`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ValueExprDef {
     /// Capture reference (`$1..$n`, in the order the capture groups appear
     /// in the pattern).
@@ -136,7 +137,7 @@ pub struct ValueExprDef {
 /// an expression with an operator chain | a nested mod payload | a scalar
 /// table. `Flag(bool)` covers the `value=true` literal for FLAG-type mods.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(untagged, deny_unknown_fields)]
 pub enum TemplateValueDef {
     /// FLAG boolean literal.
     Flag(bool),
@@ -169,7 +170,7 @@ pub enum TemplateValueDef {
 /// A scalar inside a template: a literal, or a `"$n"` capture /
 /// `{"enum": n}` closed-set reference.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(untagged, deny_unknown_fields)]
 pub enum TemplateScalarDef {
     /// Boolean literal.
     Bool(bool),
@@ -208,7 +209,7 @@ pub struct TemplateTagDef {
 
 /// A mod name in one of two shapes: a literal or a closed-set enums reference.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(untagged, deny_unknown_fields)]
 pub enum TemplateNameDef {
     /// ModName literal.
     Literal(String),
@@ -222,6 +223,7 @@ pub enum TemplateNameDef {
 
 /// A template that produces one mod (`ModTemplate`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ModTemplateDef {
     /// ModName (a literal or an enums reference).
     pub name: TemplateNameDef,
@@ -240,15 +242,15 @@ pub struct ModTemplateDef {
     /// Tag list.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<TemplateTagDef>,
-    /// The target: `player` (default) | `enemy` (wrapped as an
-    /// EnemyModifier LIST, forwarded) | `minion` (wrapped as a
-    /// MinionModifier LIST).
+    /// Only `player` (the default) is supported here. Enemy/minion effects
+    /// require an explicit typed LIST wrapper; targets are never inferred.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub target: Option<String>,
 }
 
 /// A single special mod-line template (`SpecialTemplateDef`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SpecialTemplateDef {
     /// Stable id (snake_case; referenced by diffs / reports / oracle
     /// reconciliation. A rename counts as delete+add).
@@ -274,9 +276,7 @@ pub struct SpecialTemplateDef {
     /// parse failure).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub mods: Vec<ModTemplateDef>,
-    /// Handler path: the stable id of an entry with real logic (looked up
-    /// at runtime in `pobr-core::rules::registry`; unregistered → matched
-    /// but produces empty mods plus a report flag).
+    /// Handler path: must exist in the registry at compilation time.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub handler_id: Option<String>,
     /// Handler arguments (captures forwarded in order, as `"$n"`).
@@ -296,6 +296,9 @@ pub struct SpecialTemplateDef {
     /// explanation).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_note: Option<String>,
+    /// Concrete source text for validation and first-match overlap auditing.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub examples: Vec<String>,
 }
 
 /// Top level of `overlay/special_mods.json` / `generated/special_derived.json`

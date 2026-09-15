@@ -21,7 +21,7 @@
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use precompile_mods::{check, corpus, parsed, report};
+use precompile_mods::{audit, check, corpus, parsed, report};
 
 /// Parsed command-line arguments.
 struct Args {
@@ -35,6 +35,10 @@ struct Args {
     top_n: usize,
     /// Only validate overlay JSON (no precompile artifacts); non-zero exit on invalid data.
     check_only: bool,
+    audit_out: Option<PathBuf>,
+    audit_corpus: Option<PathBuf>,
+    oracle_results: Option<PathBuf>,
+    baseline: Option<PathBuf>,
 }
 
 const DEFAULT_TOP_N: usize = 40;
@@ -45,6 +49,10 @@ fn parse_args() -> Result<Args, String> {
     let mut report = false;
     let mut top_n = DEFAULT_TOP_N;
     let mut check_only = false;
+    let mut audit_out = None;
+    let mut audit_corpus = None;
+    let mut oracle_results = None;
+    let mut baseline = None;
 
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
@@ -59,6 +67,18 @@ fn parse_args() -> Result<Args, String> {
             }
             "--report" => report = true,
             "--check" => check_only = true,
+            "--audit" | "--audit-corpus" | "--oracle-results" | "--baseline" => {
+                let path = PathBuf::from(
+                    it.next()
+                        .ok_or_else(|| format!("{arg} is missing a value"))?,
+                );
+                match arg.as_str() {
+                    "--audit" => audit_out = Some(path),
+                    "--audit-corpus" => audit_corpus = Some(path),
+                    "--oracle-results" => oracle_results = Some(path),
+                    _ => baseline = Some(path),
+                }
+            }
             "--top-n" => {
                 top_n = it
                     .next()
@@ -74,12 +94,22 @@ fn parse_args() -> Result<Args, String> {
     }
 
     let data_dir = data_dir.ok_or("missing required argument --data <version_dir>")?;
+    if (oracle_results.is_some() || baseline.is_some()) && audit_out.is_none() {
+        return Err("--oracle-results and --baseline require --audit <file>".into());
+    }
+    if (audit_out.is_some() || audit_corpus.is_some()) && (check_only || report) {
+        return Err("audit mode is separate from --check and --report".into());
+    }
     Ok(Args {
         data_dir,
         corpus_extra,
         report,
         top_n,
         check_only,
+        audit_out,
+        audit_corpus,
+        oracle_results,
+        baseline,
     })
 }
 
@@ -97,6 +127,10 @@ fn usage() {
          --check                only validate overlay JSON (deserialize + unknown fields + compile),\n                        \
                                non-zero exit on invalid data; writes no artifacts\n  \
          --top-n N              number of top coverage gaps to report (default {DEFAULT_TOP_N})\n\
+         --audit <file>         source-wide parser audit (does not write the runtime cache)\n\
+         --audit-corpus <file>  export the source-wide sample lines for the PoB2 oracle\n\
+         --oracle-results <file> compare audit samples with run-parsemod.sh JSONL\n\
+         --baseline <file>      compare a prior audit; regressions return a nonzero status\n\
          \n\
          artifacts:\n  \
          <data>/generated/parsed_mods.json     precompiled corpus (byte-stable)\n  \
@@ -124,15 +158,36 @@ fn run() -> Result<(), String> {
         ));
     }
 
+    if let Some(path) = &args.audit_corpus {
+        audit::write_corpus(&data_dir, path)?;
+    }
+    if let Some(path) = &args.audit_out {
+        return audit::run(
+            &data_dir,
+            path,
+            args.oracle_results.as_deref(),
+            args.baseline.as_deref(),
+        );
+    }
+    if args.audit_corpus.is_some() {
+        return Ok(());
+    }
+
     // --check: validate overlay JSON only; non-zero exit on invalid data, no artifacts written.
     if args.check_only {
-        check::check(&data_dir)?;
+        let validation = check::inspect(&data_dir)?;
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&validation).map_err(|e| e.to_string())?
+        );
         eprintln!(
             "precompile-mods: overlay JSON validation passed ({})",
             data_dir.display()
         );
         return Ok(());
     }
+
+    check::check(&data_dir)?;
 
     // 1) Collect the corpus (four layers, deduplicated, lexicographic order).
     let corpus = corpus::collect(&data_dir, args.corpus_extra.as_deref())?;

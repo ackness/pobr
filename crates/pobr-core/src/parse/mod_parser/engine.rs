@@ -28,7 +28,7 @@ use pobr_data::prelude::ModType;
 
 use super::compiled::CompiledParserRules;
 use super::forms::{FormReject, eval_form};
-use super::outcome::{ParseOutcome, ParseStatus};
+use super::outcome::{ParseOutcome, ParseStatus, SpecialMatchMeta};
 use super::template::{compile_flags, compile_keyword_flags, compile_tag};
 use crate::{ModTag, ModValue, Modifier};
 use pobr_data::modifier::{KeywordFlags, ModFlags};
@@ -73,6 +73,14 @@ pub fn parse_mod_engine_diag(
     (outcome, diag)
 }
 
+/// All matching special IDs, including shadowed entries, in runtime priority order.
+/// Uses the same normalization as parsing; an unsupported-table entry can still
+/// prevent these candidates from being selected (inspect ParseOutcome for the winner).
+pub fn matching_special_entry_ids<'a>(text: &str, rules: &'a CompiledParserRules) -> Vec<&'a str> {
+    let normalized = normalize_spaces(&strip_pob_brackets(text.trim())).to_ascii_lowercase();
+    rules.special.matching_entry_ids(&normalized)
+}
+
 fn parse_mod_engine_impl(
     text: &str,
     rules: &CompiledParserRules,
@@ -114,13 +122,16 @@ fn parse_mod_engine_impl(
             })
             .collect();
         // A vendor specialModList match consumes the whole line — no leftover unparsed. An
-        // empty mods result (pure recognition / unregistered handler) is still Parsed under
+        // empty mods result (pure recognition) is still Parsed under
         // vendor semantics (recognized but produced nothing).
         return ParseOutcome {
             mods,
             status: ParseStatus::Parsed,
             unparsed: None,
-            special_meta: None,
+            special_meta: Some(SpecialMatchMeta {
+                entry_id: matched.entry_id,
+                verified: matched.verified,
+            }),
         };
     }
 

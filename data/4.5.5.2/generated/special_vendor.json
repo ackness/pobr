@@ -434,21 +434,6 @@
       "source_note": "vendor specialModList 批量抽取（词类字典探针·单词降级）"
     },
     {
-      "id": "vnd_a_damage_is_pinning_10169df9",
-      "pattern": "() damage is pinning",
-      "vendor_pattern": "^(%a+) damage is pinning$",
-      "mods": [
-        {
-          "name": "CanPin",
-          "type": "FLAG",
-          "value": true
-        }
-      ],
-      "verified": false,
-      "batch": "V0",
-      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
-    },
-    {
       "id": "vnd_a_s_a_leech_recovers_based_on_y_o_u_r_a_4849ec43_life_chaos",
       "pattern": "(life) leech recovers based on y?o?u?r? ?(chaos) damage instead of physical damage",
       "vendor_pattern": "^(%a+%s?%a*) leech recovers based on y?o?u?r? ?(%a+) damage instead of physical damage$",
@@ -10163,6 +10148,29 @@
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
     },
     {
+      "id": "vnd_d_increased_bonuses_gained_from_lr_ei_fg_c6a9f41e",
+      "pattern": "(\\d+)% increased bonuses gained from (right|left) equipped ring",
+      "vendor_pattern": "^(%d+)%% increased bonuses gained from ([lr][ei][fg][th]t?) equipped ring$",
+      "mods": [
+        {
+          "name": {
+            "enum": 2
+          },
+          "type": "INC",
+          "value": "$1"
+        }
+      ],
+      "enums": {
+        "2": {
+          "left": "EffectOfBonusesFromRing 1",
+          "right": "EffectOfBonusesFromRing 2"
+        }
+      },
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
       "id": "vnd_d_increased_charm_cooldown_recovery_rate_2275fdf7",
       "pattern": "(\\d+)% increased charm cooldown recovery rate",
       "vendor_pattern": "^(%d+)%% increased charm cooldown recovery rate$",
@@ -10437,6 +10445,42 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
+    },
+    {
+      "id": "vnd_d_increased_effect_of_jewel_socket_passi_88efb283",
+      "pattern": "(\\d+)% increased effect of jewel socket passive skills containing corrupted (rage) jewels",
+      "vendor_pattern": "^(%d+)%% increased effect of jewel socket passive skills containing corrupted (m?r?ag?r?i?e?c?) jewels$",
+      "mods": [
+        {
+          "name": "JewelData",
+          "type": "LIST",
+          "value": {
+            "key": "corruptedRageJewelIncEffect",
+            "value": "$1"
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
+    },
+    {
+      "id": "vnd_d_increased_effect_of_jewel_socket_passi_e9301108",
+      "pattern": "(\\d+)% increased effect of jewel socket passive skills containing corrupted (rage) jewels, if not from cluster jewels",
+      "vendor_pattern": "^(%d+)%% increased effect of jewel socket passive skills containing corrupted (m?r?ag?r?i?e?c?) jewels, if not from cluster jewels$",
+      "mods": [
+        {
+          "name": "JewelData",
+          "type": "LIST",
+          "value": {
+            "key": "corruptedRageJewelIncEffect",
+            "value": "$1"
+          }
+        }
+      ],
+      "verified": false,
+      "batch": "V0",
+      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_d_increased_elemental_damage_with_hits_a_a727295f",
@@ -11605,7 +11649,7 @@
     },
     {
       "id": "vnd_d_of_armour_a_l_s_o_applies_to_elemental_e54b2a0b",
-      "pattern": "\\+?(\\d+)% of armour (a?l?s?o? ?)applies to elemental damage",
+      "pattern": "\\+?(\\d+)% of armour (also |)applies to elemental damage",
       "vendor_pattern": "^%+?(%d+)%% of armour (a?l?s?o? ?)applies to elemental damage$",
       "mods": [
         {
@@ -20633,7 +20677,7 @@
     },
     {
       "id": "vnd_gain_additional_maximum_life_equal_to_d_de73d126",
-      "pattern": "gain additional maximum life equal to (\\d+)% of the (i?t?e?m? ?)energy shield on equipped body armour",
+      "pattern": "gain additional maximum life equal to (\\d+)% of the (item |)energy shield on equipped body armour",
       "vendor_pattern": "^gain additional maximum life equal to (%d+)%% of the (i?t?e?m? ?)energy shield on equipped body armour$",
       "mods": [
         {
@@ -20655,7 +20699,7 @@
     },
     {
       "id": "vnd_gain_additional_stun_threshold_equal_to_301f4058",
-      "pattern": "gain additional stun threshold equal to (\\d+)% of (i?t?e?m? ?)armour on equipped armour items",
+      "pattern": "gain additional stun threshold equal to (\\d+)% of (item |)armour on equipped armour items",
       "vendor_pattern": "^gain additional stun threshold equal to (%d+)%% of (i?t?e?m? ?)armour on equipped armour items$",
       "mods": [
         {
@@ -38357,28 +38401,6 @@
       "verified": false,
       "batch": "V0",
       "source_note": "vendor specialModList 批量抽取（闭包探针）"
-    },
-    {
-      "id": "vnd_skills_reserve_d_less_2053870f",
-      "pattern": "skills reserve (\\d+)% less ()",
-      "vendor_pattern": "^skills reserve (%d+)%% less (.+)$",
-      "mods": [
-        {
-          "name": "Reserved",
-          "type": "MORE",
-          "value": {
-            "ref": "$1",
-            "ops": [
-              {
-                "negate": {}
-              }
-            ]
-          }
-        }
-      ],
-      "verified": false,
-      "batch": "V0",
-      "source_note": "vendor specialModList 批量抽取（词类字典探针）"
     },
     {
       "id": "vnd_skills_reserve_life_instead_of_mana_7b634655",

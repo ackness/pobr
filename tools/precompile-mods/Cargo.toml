@@ -10,3 +10,4 @@ pobr-gamedata.workspace = true
 serde.workspace = true
 serde_ignored = "0.1"
 serde_json.workspace = true
+sha2 = "0.10"

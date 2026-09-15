@@ -93,6 +93,8 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
+      - name: Dictionary snapshot tests
+        run: node --test ../pipeline/test-dictionary-source.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)

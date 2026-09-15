@@ -1,22 +1,1031 @@
 {
   "_meta": {
     "schema": "gem_quality_stats/v1",
-    "generator": "sync-pob-catalog extract-lua",
-    "vendor": "PathOfBuilding-PoE2",
-    "vendor_commit": "ce566eac45ea8a86477f513c7ee65a1ebe60014e",
-    "vendor_commit_subject": "ce566eac45ea8a86477f513c7ee65a1ebe60014e",
-    "extracted_files": [
-      "Data/Skills/act_dex.lua",
-      "Data/Skills/act_int.lua",
-      "Data/Skills/act_str.lua",
-      "Data/Skills/minion.lua",
-      "Data/Skills/other.lua",
-      "Data/Skills/spectre.lua",
-      "Data/Skills/sup_dex.lua",
-      "Data/Skills/sup_int.lua",
-      "Data/Skills/sup_str.lua"
-    ],
-    "regen_command": "cargo run -p sync-pob-catalog -- extract-lua --what gem-quality --vendor-root vendor/PathOfBuilding-PoE2/src --files act_dex,act_int,act_str,minion,other,spectre,sup_dex,sup_int,sup_str --out data/4.5.5.2/overlay/gem_quality_stats.json"
+    "generator": "pobr-data-adapter --gem-quality",
+    "poe_version": "4.5.5.2",
+    "source_receipt_sha256": "95091b6ae2e0cd847ee7cdd9082f71db66d28fca96d431ef14465eb11408e7c6",
+    "provenance": {
+      "bundles": {
+        "Folders/data/00/statdescriptions.bundle.bin": {
+          "sha256": "b3317fa57d6fff25ceebc98a0fcaf24c43fa06807f521b0e871bf6c2c1c021b3",
+          "verification": "matched_versioned_cdn"
+        },
+        "Folders/data/1C/statdescriptions.bundle.bin": {
+          "sha256": "b210c3b29de1cc9f7a5f0a3c476d67e56d7a6db91763bdc0cf92047f7fcd7c8a",
+          "verification": "matched_versioned_cdn"
+        },
+        "Folders/data/28/balance.datc64.bundle.bin": {
+          "sha256": "d173b368459a92fe10426470feb520caa9e93b1497bb29ef777a5db1db16ae3c",
+          "verification": "matched_versioned_cdn"
+        },
+        "_.index.bin": {
+          "sha256": "0a6172ac32f9f6e83500113f98186b498fae35e6e20ced86c503ba639f866b07",
+          "verification": "local_index"
+        }
+      },
+      "cdn_base": "https://patch-poe2.poecdn.com/4.5.5.2/Bundles2/",
+      "exporter": "pathofexile-dat@15.2.0",
+      "patch": "4.5.5.2",
+      "schema": {
+        "sha256": "4b51063be32f2a66c1047bf455784d2e85411bed401ffdee380c8603399b9656",
+        "url": "https://github.com/poe-tool-dev/dat-schema/releases/download/latest/schema.min.json"
+      },
+      "verification": "Re-exported tables byte-match the inputs. Three data bundles match versioned CDN bytes; the index was read from the local pinned cache."
+    },
+    "inputs": {
+      "GrantedEffectQualityStats.json": "fa50dca63eb08954965aaf2db7be661d1cd8aa4cb43e243873bb6cb700ca8f74",
+      "GrantedEffects.json": "638b0db3d0515e63e8f5234f92e892829914db33356883dfe99b619efce9695a",
+      "Stats.json": "a9136637886191774e7476ff93cdccbf639e0bca5d7a9e271bb72d5eb5dac9a2"
+    },
+    "compatibility": {
+      "reference_vendor_commit": "ce566eac45ea8a86477f513c7ee65a1ebe60014e",
+      "reference_sha256": "583415d9d5a49699c2581f3092dcb45ebb81b9fa0c9ad695b207a7f58f5fa85d",
+      "scope_policy": "preserve_effect_wide_quality",
+      "effects": [
+        "AcidicConcoctionPlayer",
+        "AlchemistsBoonPlayer",
+        "AlignFatePlayer",
+        "AmazonTriggerElementalSurgePlayer",
+        "AncestralCryPlayer",
+        "AncestralSpiritsPlayer",
+        "AncestralWarriorTotemPlayer",
+        "AncientGiftsPlayer",
+        "AnimusExchangePlayer",
+        "ApocalypsePlayer",
+        "ArcPlayer",
+        "ArchmagePlayer",
+        "ArchonOfChayulaPlayer",
+        "ArcticArmourPlayer",
+        "ArmourBreakerPlayer",
+        "ArmourPiercingBoltsPlayer",
+        "ArtilleryBallistaPlayer",
+        "ArtilleryBallistaProjectilePlayer",
+        "AttritionPlayer",
+        "AzmerianSwarmPlayer",
+        "BallLightningPlayer",
+        "BarkskinPlayer",
+        "BarragePlayer",
+        "BearFuryOfTheMountainPlayer",
+        "BearMaulPlayer",
+        "BearRampagePlayer",
+        "BerserkPlayer",
+        "BitterDeadPlayer",
+        "BlackPowderBlitzPlayer",
+        "BlasphemyPlayer",
+        "BleedingConcoctionPlayer",
+        "BlinkPlayer",
+        "BloodBoilPlayer",
+        "BloodHuntPlayer",
+        "BloodhoundsMarkExplosionPlayer",
+        "BloodhoundsMarkPlayer",
+        "BoneBlastPlayer",
+        "BoneCagePlayer",
+        "BoneOfferingPlayer",
+        "BoneshatterPlayer",
+        "BonestormPlayer",
+        "BriarpatchPlayer",
+        "ChargeRegulationPlayer",
+        "ChargedStaffPlayer",
+        "ChilledGroundBurstWaterDjinn",
+        "ChilledGroundOasisConvertWaterDjinn",
+        "ClusterGrenadePlayer",
+        "CoilingBoltsPlayer",
+        "CombatFrenzyPlayer",
+        "CometPlayer",
+        "ConductiveRunesPlayer",
+        "ContagionPlayer",
+        "ConvalescenceActivePlayer",
+        "CorpseBeetlesPlayer",
+        "CorpseCloudPlayer",
+        "CracklingPalmPlayer",
+        "CrossbowRequiemPlayer",
+        "CrushingFearPlayer",
+        "CullTheWeakPlayer",
+        "CurseOfRepulsionShockwavePlayer",
+        "DarkEffigyPlayer",
+        "DarkEffigyProjectilePlayer",
+        "DefianceBannerReservationPlayer",
+        "DemonFormPlayer",
+        "DespairPlayer",
+        "DestructiveLinkSkeletonBombadierMinion",
+        "DetonateDeadPlayer",
+        "DetonateLivingPlayer",
+        "DetonatingArrowPlayer",
+        "DisciplinePlayer",
+        "DisengagePlayer",
+        "DreadBannerReservationPlayer",
+        "ESRechargeForceRestartWaterDjinn",
+        "EarthquakePlayer",
+        "EarthshatterPlayer",
+        "ElectrocutingArrowPlayer",
+        "ElementalConfluxPlayer",
+        "ElementalExpressionTriggeredPlayer",
+        "ElementalStormPlayer",
+        "ElementalSunderingPlayer",
+        "ElementalWeaknessPlayer",
+        "EmberFusilladePlayer",
+        "EmergencyReloadPlayer",
+        "EncaseInJadePlayer",
+        "EnervatingNovaPlayer",
+        "EnfeeblePlayer",
+        "EntanglePlayer",
+        "EscapeShotPlayer",
+        "EssenceDrainPlayer",
+        "EternalMarchPlayer",
+        "EternalRagePlayer",
+        "ExplodingPoisonToadPlayer",
+        "ExplosiveConcoctionPlayer",
+        "ExplosiveGrenadePlayer",
+        "ExplosiveShotAmmoPlayer",
+        "ExplosiveShotPlayer",
+        "ExplosiveSpearPlayer",
+        "ExplosiveTeleportSandDjinn",
+        "ExsanguinatePlayer",
+        "EyeOfWinterPlayer",
+        "FallingThunderPlayer",
+        "FangsOfFrostPlayer",
+        "FeastOfFleshPlayer",
+        "FerociousRoarMetaPlayer",
+        "FireRuneFireDjinn",
+        "FireballPlayer",
+        "FireboltPlayer",
+        "FirestormPlayer",
+        "FlameSliceFireDjinn",
+        "FlameWallPlayer",
+        "FlameblastPlayer",
+        "FlashGrenadePlayer",
+        "FlickerStrikePlayer",
+        "ForgeHammerPlayer",
+        "FortifyingCryPlayer",
+        "FortifyingCryShockwavePlayer",
+        "FragmentationRoundsAmmoPlayer",
+        "FragmentationRoundsPlayer",
+        "FragmentsOfThePastFragmentPlayer",
+        "FragmentsOfThePastPlayer",
+        "FreezingMarkPlayer",
+        "FreezingSalvoPlayer",
+        "FreezingShardsPlayer",
+        "FrostBombPlayer",
+        "FrostDartsPlayer",
+        "FrostWallPlayer",
+        "FrostboltPlayer",
+        "FrostflameNovaPlayer",
+        "FrozenLocusPlayer",
+        "FulminatingConcoctionPlayer",
+        "FulminationPlayer",
+        "FuriousSlamPlayer",
+        "FuturePastPlayer",
+        "GaleStrikePlayer",
+        "GalvanicFieldBuffPlayer",
+        "GalvanicShardsAmmoPlayer",
+        "GalvanicShardsPlayer",
+        "GasArrowPlayer",
+        "GasShotSkeletonSniperMinion",
+        "GatheringStormPlayer",
+        "GeminiSurgePlayer",
+        "GhostDancePlayer",
+        "GlacialBoltAmmoPlayer",
+        "GlacialBoltPlayer",
+        "GlacialCascadePlayer",
+        "GlacialLancePlayer",
+        "GrimFeastPlayer",
+        "GrimPillarsPlayer",
+        "HailstormRoundsAmmoPlayer",
+        "HailstormRoundsPlayer",
+        "HammerOfTheGodsPlayer",
+        "HandSlamSandDjinn",
+        "HeartOfIcePlayer",
+        "HeraldOfAshPlayer",
+        "HeraldOfBloodPlayer",
+        "HeraldOfIcePlayer",
+        "HeraldOfPlaguePlayer",
+        "HeraldOfThunderPlayer",
+        "HexblastPlayer",
+        "HighVelocityRoundsPlayer",
+        "HisFoulEmergencePlayer",
+        "HisWinnowingFlamePlayer",
+        "HollowFocusPlayer",
+        "HollowResonancePlayer",
+        "HollowShellPlayer",
+        "HyenaCacklePlayer",
+        "IceNovaPlayer",
+        "IceShardsPlayer",
+        "IceShotPlayer",
+        "IceStrikePlayer",
+        "IceTippedArrowsPlayer",
+        "IcestormPlayer",
+        "ImpurityPlayer",
+        "IncendiaryShotPlayer",
+        "IncineratePlayer",
+        "InevitableAgonyPlayer",
+        "InfernalCryPlayer",
+        "IntoTheBreachPlayer",
+        "IronWardNovaPlayer",
+        "KillingPalmPlayer",
+        "KnifeThrowSandDjinn",
+        "LeapSlamPlayer",
+        "LeylinesPlayer",
+        "LifeRemnantsPlayer",
+        "LightningArrowPlayer",
+        "LightningBoltPlayer",
+        "LightningConduitPlayer",
+        "LightningRodPlayer",
+        "LightningSpearPlayer",
+        "LightningWarpPlayer",
+        "LingeringIllusionPlayer",
+        "LingeringIllusionSpawnPlayer",
+        "LivingBombFireDjinn",
+        "LivingBombPlayer",
+        "LunarAssaultPlayer",
+        "MagmaBarrierPlayer",
+        "MagneticSalvoPlayer",
+        "MalicePlayer",
+        "ManaDrainPlayer",
+        "ManaRemnantsPlayer",
+        "ManaTempestPlayer",
+        "ManifestWeaponPlayer",
+        "MantraOfDestructionPlayer",
+        "MassFusilladeFireDjinn",
+        "MeditatePlayer",
+        "MetaAnimusSplintersPlayer",
+        "MetaBarrierInvocationPlayer",
+        "MetaCastFireSpellOnHitPlayer",
+        "MetaCastLightningSpellOnHitPlayer",
+        "MetaCastOnBlockPlayer",
+        "MetaCastOnCharmUsePlayer",
+        "MetaCastOnCritPlayer",
+        "MetaCastOnDodgePlayer",
+        "MetaCastOnElementalAilmentPlayer",
+        "MetaCastOnMinionDeathPlayer",
+        "MetaDeadeyeMarksPlayer",
+        "MetaElementalInvocationPlayer",
+        "MetaFeralInvocationPlayer",
+        "MetaHollowFormPlayer",
+        "MetaMirageArcherPlayer",
+        "MetaMortarCannonPlayer",
+        "MetaReapersInvocationPlayer",
+        "MetaRemnantsOfKalguurPlayer",
+        "MetaSpellslingerPlayer",
+        "MeteorFireDjinn",
+        "MidnightStarPlayer",
+        "MirageArcherSpawnPlayer",
+        "MirageDeadeyeSpawnPlayer",
+        "MirrorOfRefractionPlayer",
+        "MoltenBlastPlayer",
+        "MoltenCrashPlayer",
+        "MomentOfVulnerabilityPlayer",
+        "NightfallSoaringMidnightPlayer",
+        "OilBarragePlayer",
+        "OilGrenadePlayer",
+        "OrbOfStormsPlayer",
+        "OverwhelmingPresencePlayer",
+        "PainOfferingPlayer",
+        "PassiveTriggeredManaWaveWaterDjinn",
+        "PerfectStrikePlayer",
+        "PermafrostBoltsAmmoPlayer",
+        "PermafrostBoltsPlayer",
+        "PhantasmalArrowPlayer",
+        "PinnacleOfPowerPlayer",
+        "PlagueBearerPlayer",
+        "PlasmaBlastPlayer",
+        "PoisonBurstArrowPlayer",
+        "PowerSiphonPlayer",
+        "PoweredByVerisiumPlayer",
+        "PrimalBountyPlayer",
+        "PrimalStrikesPlayer",
+        "ProfaneRitualPlayer",
+        "PurityOfFirePlayer",
+        "PurityOfIcePlayer",
+        "PurityOfLightningPlayer",
+        "RagingSpiritsPlayer",
+        "RainOfArrowsPlayer",
+        "RainOfBladesPlayer",
+        "RainOfBladesTriggeredPlayer",
+        "RaiseZombiePlayer",
+        "RakePlayer",
+        "RapidAssaultPlayer",
+        "RapidShotPlayer",
+        "RavenousSwarmPlayer",
+        "ReapPlayer",
+        "RefutationPlayer",
+        "ResonatingShieldPlayer",
+        "RhoaMountPlayer",
+        "RighteousDescentPlayer",
+        "RitualSacrificePlayer",
+        "RollingMagmaPlayer",
+        "RollingSlamPlayer",
+        "RunicReprievePlayer",
+        "SacredGroundPlayer",
+        "SacrificePlayer",
+        "SanguineRevelryPlayer",
+        "SavageFuryActivePlayer",
+        "ScatteringCalamityPlayer",
+        "ScavengedPlatingPlayer",
+        "SeismicCryPlayer",
+        "ShardScavengerPlayer",
+        "ShatteringConcoctionPlayer",
+        "ShatteringPalmExplosionPlayer",
+        "ShatteringPalmPlayer",
+        "ShatteringSpitePlayer",
+        "ShieldChargePlayer",
+        "ShieldWallPlayer",
+        "ShockGrenadePlayer",
+        "ShockburstRoundsAmmoPlayer",
+        "ShockburstRoundsPlayer",
+        "ShockchainArrowPlayer",
+        "ShockwaveTotemPlayer",
+        "SiegeBallistaPlayer",
+        "SiegeBallistaProjectilePlayer",
+        "SiegeCascadeAmmoPlayer",
+        "SiegeCascadePlayer",
+        "SigilOfPowerPlayer",
+        "SiphonElementsPlayer",
+        "SiphoningStrikePlayer",
+        "SkyfallPlayer",
+        "SnapPlayer",
+        "SnipePlayer",
+        "SnipersMarkPlayer",
+        "SolarOrbPlayer",
+        "SorceryWardPlayer",
+        "SoulOfferingPlayer",
+        "SoulrendPlayer",
+        "SparkPlayer",
+        "SpearOfSolarisPlayer",
+        "SpearfieldPlayer",
+        "SpiralVolleyPlayer",
+        "SpiritVesselPlayer",
+        "StaffConsecratePlayer",
+        "StaggeringPalmProjectilePlayer",
+        "StampedePlayer",
+        "StarbornOnslaughtPlayer",
+        "StormLancePlayer",
+        "StormWavePlayer",
+        "StormblastBoltsAmmoPlayer",
+        "StormblastBoltsPlayer",
+        "StormcallerArrowPlayer",
+        "SummonAzmerianWolfPlayer",
+        "SummonBeastPlayer",
+        "SummonInfernalHoundPlayer",
+        "SummonMetaTotemSpellTotemPlayer",
+        "SummonMistRavenPlayer",
+        "SummonSkeletalArsonistsPlayer",
+        "SummonSkeletalBrutesPlayer",
+        "SummonSkeletalClericsPlayer",
+        "SummonSkeletalFrostMagesPlayer",
+        "SummonSkeletalReaversPlayer",
+        "SummonSkeletalSnipersPlayer",
+        "SummonSkeletalStormMagesPlayer",
+        "SummonSkeletalWarriorsPlayer",
+        "SummonSpectrePlayer",
+        "SummonSpiralingConspiracyPlayer",
+        "SunderPlayer",
+        "SuperchargedSlamPlayer",
+        "SupportBlasphemyPlayer",
+        "SupportFerociousRoarPlayer",
+        "SupportHandOfChayulaPlayer",
+        "SupportMetaTotemSpellTotemPlayer",
+        "SupportingFirePlayer",
+        "TameBeastPlayer",
+        "TemperWeaponPlayer",
+        "TempestBellPlayer",
+        "TempestFlurryPlayer",
+        "TemporalChainsPlayer",
+        "TemporalRiftPlayer",
+        "TheStarsAnswerCometPlayer",
+        "ThrashingVinesPlayer",
+        "ThunderousLeapPlayer",
+        "ThunderstormPlayer",
+        "TimeFreezePlayer",
+        "TimeOfNeedPlayer",
+        "TimeSnapPlayer",
+        "TornadoPlayer",
+        "TornadoShotPlayer",
+        "ToxicDomainPlayer",
+        "ToxicGrenadePlayer",
+        "ToxicGrowthPlayer",
+        "TriggeredExplosiveTransmutationExplosionPlayer",
+        "TriggeredManifestRunePlayer",
+        "TriggeredMoltenShowerPlayer",
+        "TriggeredTrailOfCaltropsPlayer",
+        "TriggeredWindDancerPlayer",
+        "TrinityPlayer",
+        "TriskelionCascadePlayer",
+        "TwisterPlayer",
+        "UnboundAvatarPlayer",
+        "UnearthPlayer",
+        "UniqueAtziriHeraldPlayer",
+        "UnleashPlayer",
+        "ValakosChargePlayer",
+        "VaultingImpactPlayer",
+        "VileDisruptionPlayer",
+        "VineArrowPlayer",
+        "VirtuousBarrierPlayer",
+        "VividStampedePlayer",
+        "VoidIllusionSpawnPlayer",
+        "VolatileDeadPlayer",
+        "VolcanicFissurePlayer",
+        "VolcanoPlayer",
+        "VoltaicBarrierPlayer",
+        "VoltaicBarrierTriggeredChainLightningPlayer",
+        "VoltaicMarkPlayer",
+        "VulnerabilityPlayer",
+        "WalkingCalamityPlayer",
+        "WarBannerReservationPlayer",
+        "WardboundMinionsPlayer",
+        "WaterBubbleWaterDjinn",
+        "WaveOfFrostPlayer",
+        "WeaponGrantedChaosboltPlayer",
+        "WhirlingAssaultPlayer",
+        "WhirlingSlashPlayer",
+        "WhirlwindLancePlayer",
+        "WildProtectorPlayer",
+        "WindSerpentsFuryPlayer",
+        "WingBlastPlayer",
+        "WitheringPresencePlayer",
+        "WolfArcticHowlPlayer",
+        "WolfCrossSlashPlayer",
+        "WolfLunarBlessingPlayer",
+        "WolfPackPlayer",
+        "WolfPounceMarkPlayer",
+        "WolfPounceSummonWolfPlayer",
+        "WolfShredPlayer",
+        "WyvernDevourPlayer",
+        "WyvernFlameBreathPlayer",
+        "WyvernRendPlayer"
+      ],
+      "excluded_effects": {
+        "AbyssalLivingBomb": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "AbyssalPactPlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "BindSpectrePlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "ConductivityPlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "DarkPactPlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "FlammabilityPlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "GraveCommandPlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "HypothermiaPlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "MetaArcaneArcheryPlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "MetaCastOnFreezePlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "MetaCastOnIgnitePlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "MetaCastOnShockPlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "MetaRangedAttackOnFreezePlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "MetaRangedAttackOnIgnitePlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "MetaRangedAttackOnShockPlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "SoulCrystalPlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "SummonMercenaryCompanionPlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "UniqueEarthboundTriggeredSparkPlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR.",
+        "WitchHunterMarkPlayer": "Absent from all nine selected Export/Skills templates and Data/Skills exports at the reference vendor commit; not yet enabled by PoBR."
+      }
+    },
+    "unapplied_stat_set_scopes": {
+      "AcidicConcoctionPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "AncestralCryPlayer": {
+        "main": [
+          0
+        ],
+        "alt": [
+          0
+        ]
+      },
+      "ArcPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "BallLightningPlayer": {
+        "main": [
+          0
+        ],
+        "alt": [
+          0
+        ]
+      },
+      "BloodHuntPlayer": {
+        "main": [
+          1
+        ],
+        "alt": [
+          1
+        ]
+      },
+      "BoneshatterPlayer": {
+        "main": [],
+        "alt": [
+          1
+        ]
+      },
+      "ClusterGrenadePlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "CorpseCloudPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "DarkEffigyPlayer": {
+        "main": [],
+        "alt": [
+          0
+        ]
+      },
+      "DetonateLivingPlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "DisengagePlayer": {
+        "main": [
+          0
+        ],
+        "alt": [
+          0
+        ]
+      },
+      "EarthquakePlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "ElementalExpressionTriggeredPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "ElementalSunderingPlayer": {
+        "main": [],
+        "alt": [
+          0
+        ]
+      },
+      "EmberFusilladePlayer": {
+        "main": [
+          1,
+          2
+        ],
+        "alt": [
+          0
+        ]
+      },
+      "EntanglePlayer": {
+        "main": [
+          0
+        ],
+        "alt": [
+          0
+        ]
+      },
+      "EssenceDrainPlayer": {
+        "main": [
+          1
+        ],
+        "alt": [
+          0,
+          1
+        ]
+      },
+      "ExplosiveConcoctionPlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "ExplosiveSpearPlayer": {
+        "main": [
+          1,
+          2
+        ],
+        "alt": []
+      },
+      "ExsanguinatePlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "FallingThunderPlayer": {
+        "main": [
+          1
+        ],
+        "alt": [
+          1
+        ]
+      },
+      "FangsOfFrostPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "FireRuneFireDjinn": {
+        "main": [
+          1,
+          2
+        ],
+        "alt": []
+      },
+      "FireballPlayer": {
+        "main": [
+          0
+        ],
+        "alt": [
+          0
+        ]
+      },
+      "FlameWallPlayer": {
+        "main": [
+          0
+        ],
+        "alt": [
+          0
+        ]
+      },
+      "ForgeHammerPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "FrostDartsPlayer": {
+        "main": [
+          0
+        ],
+        "alt": [
+          0
+        ]
+      },
+      "FrostWallPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "FrostboltPlayer": {
+        "main": [],
+        "alt": [
+          0
+        ]
+      },
+      "FrostflameNovaPlayer": {
+        "main": [
+          0
+        ],
+        "alt": [
+          1
+        ]
+      },
+      "FrozenLocusPlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "GalvanicFieldBuffPlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "GalvanicShardsPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "GasArrowPlayer": {
+        "main": [
+          0,
+          1
+        ],
+        "alt": [
+          2
+        ]
+      },
+      "GatheringStormPlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "GlacialBoltPlayer": {
+        "main": [],
+        "alt": [
+          1
+        ]
+      },
+      "GlacialCascadePlayer": {
+        "main": [],
+        "alt": [
+          1
+        ]
+      },
+      "GrimPillarsPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "HeraldOfAshPlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "HeraldOfBloodPlayer": {
+        "main": [
+          1
+        ],
+        "alt": [
+          0
+        ]
+      },
+      "HeraldOfIcePlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "HeraldOfThunderPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "HollowFocusPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "IceShardsPlayer": {
+        "main": [
+          1
+        ],
+        "alt": [
+          1
+        ]
+      },
+      "KnifeThrowSandDjinn": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "LightningSpearPlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "MagneticSalvoPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "MetaArcaneArcheryPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "MetaRangedAttackOnFreezePlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "MetaRangedAttackOnIgnitePlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "MetaRangedAttackOnShockPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "MirageArcherSpawnPlayer": {
+        "main": [],
+        "alt": [
+          0
+        ]
+      },
+      "MoltenBlastPlayer": {
+        "main": [],
+        "alt": [
+          0
+        ]
+      },
+      "PlasmaBlastPlayer": {
+        "main": [],
+        "alt": [
+          0
+        ]
+      },
+      "RapidAssaultPlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "RollingSlamPlayer": {
+        "main": [
+          0,
+          1,
+          2
+        ],
+        "alt": []
+      },
+      "ShockburstRoundsPlayer": {
+        "main": [],
+        "alt": [
+          1
+        ]
+      },
+      "SiegeBallistaProjectilePlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "SiphoningStrikePlayer": {
+        "main": [
+          0,
+          1
+        ],
+        "alt": []
+      },
+      "SnipePlayer": {
+        "main": [
+          1,
+          2,
+          3
+        ],
+        "alt": [
+          0
+        ]
+      },
+      "SolarOrbPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "SoulrendPlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "SpearOfSolarisPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "SpearfieldPlayer": {
+        "main": [],
+        "alt": [
+          0
+        ]
+      },
+      "StormLancePlayer": {
+        "main": [
+          1,
+          2
+        ],
+        "alt": [
+          0
+        ]
+      },
+      "StormcallerArrowPlayer": {
+        "main": [],
+        "alt": [
+          0
+        ]
+      },
+      "SummonSpiralingConspiracyPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "SunderPlayer": {
+        "main": [],
+        "alt": [
+          0
+        ]
+      },
+      "TempestBellPlayer": {
+        "main": [
+          2
+        ],
+        "alt": [
+          0
+        ]
+      },
+      "TempestFlurryPlayer": {
+        "main": [],
+        "alt": [
+          2
+        ]
+      },
+      "TornadoShotPlayer": {
+        "main": [
+          1
+        ],
+        "alt": [
+          1
+        ]
+      },
+      "ToxicDomainPlayer": {
+        "main": [],
+        "alt": [
+          0
+        ]
+      },
+      "ToxicGrenadePlayer": {
+        "main": [
+          0
+        ],
+        "alt": [
+          2
+        ]
+      },
+      "ToxicGrowthPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "ValakosChargePlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "VaultingImpactPlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "VineArrowPlayer": {
+        "main": [
+          1
+        ],
+        "alt": [
+          1
+        ]
+      },
+      "VividStampedePlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "VolatileDeadPlayer": {
+        "main": [
+          0
+        ],
+        "alt": []
+      },
+      "WhirlingSlashPlayer": {
+        "main": [
+          1
+        ],
+        "alt": []
+      },
+      "WhirlwindLancePlayer": {
+        "main": [
+          1
+        ],
+        "alt": [
+          1
+        ]
+      },
+      "WindSerpentsFuryPlayer": {
+        "main": [
+          0,
+          1
+        ],
+        "alt": []
+      }
+    },
+    "regen_command": "cargo run -p pobr-data-adapter -- --gem-quality pipeline/tables/English --quality-source pipeline/gem-quality/4.5.5.2.json --out data --patch 4.5.5.2"
   },
   "effects": [
     {

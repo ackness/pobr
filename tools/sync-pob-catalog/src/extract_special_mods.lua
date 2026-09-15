@@ -225,6 +225,7 @@ local NUM_B = { "97", "103", "107", "109", "113" }
 
 local function captureSlots(pattern)
 	local slots = {}
+	local patterns = {}
 	local i = 1
 	local n = #pattern
 	while i <= n do
@@ -234,6 +235,7 @@ local function captureSlots(pattern)
 		elseif c == "(" then
 			local j = pattern:find(")", i + 1, true) or error("unbalanced capture in " .. pattern)
 			local content = pattern:sub(i + 1, j - 1)
+			patterns[#patterns + 1] = content
 			if content:find("%d", 1, true) then
 				slots[#slots + 1] = "num"
 			elseif content:find("%a", 1, true) or content:find("%D", 1, true) or content:find("%l", 1, true) then
@@ -246,7 +248,7 @@ local function captureSlots(pattern)
 			i = i + 1
 		end
 	end
-	return slots
+	return slots, patterns
 end
 
 local function firstToUpper(str)
@@ -475,7 +477,7 @@ for pattern, value in pairs(U.specialModList) do
 			emitFailed(pattern, "encode failed: " .. tostring(json))
 		end
 	elseif type(value) == "function" then
-		local slots = captureSlots(pattern)
+		local slots, capturePatterns = captureSlots(pattern)
 		local nonNum = false
 		for _, t in ipairs(slots) do
 			if t ~= "num" then
@@ -495,6 +497,19 @@ for pattern, value in pairs(U.specialModList) do
 				-- 3 词槽只跑伤害类型域（全字典立方组合数过大；语料里的
 				-- 3 词槽 pattern 全是元素/伤害类型互换形态）。
 				local dict = (#wordSlots >= 3) and DICT_DAMAGE or DICT_ALL
+				-- Probe only captures accepted by the actual Lua pattern. Record
+				-- each eligible dictionary size so unrestricted word captures do
+				-- not look closed merely because they reject spaces or digits.
+				local dictionaries, dictSizes = {}, {}
+				for i, slot in ipairs(wordSlots) do
+					local words = {}
+					for _, word in ipairs(dict) do
+						if word:match("^" .. capturePatterns[slot] .. "$") ~= nil then
+							words[#words + 1] = word
+						end
+					end
+					dictionaries[i], dictSizes[i] = words, #words
+				end
 				local variants = {}
 				local combo = {}
 				local function probeCombo()
@@ -542,7 +557,7 @@ for pattern, value in pairs(U.specialModList) do
 						probeCombo()
 						return
 					end
-					for _, w in ipairs(dict) do
+					for _, w in ipairs(dictionaries[depth]) do
 						combo[depth] = w
 						walk(depth + 1)
 					end
@@ -556,6 +571,7 @@ for pattern, value in pairs(U.specialModList) do
 						si[i] = tostring(s)
 					end
 					emit('{"pattern":' .. jsonStr(pattern) .. ',"kind":"enum","dict_size":' .. #dict
+						.. ',"word_dict_sizes":[' .. table.concat(dictSizes, ",") .. ']'
 						.. ',"word_slots":[' .. table.concat(si, ",")
 						.. '],"variants":[' .. table.concat(variants, ",") .. "]}")
 				end
