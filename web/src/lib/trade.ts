@@ -97,13 +97,26 @@ export async function loadTradeLeagues(realm: TradeRealm): Promise<string[]> {
   return data.leagues;
 }
 
-/**
- * 预算上限（trade2 Buyout Price 过滤器）。currency 取官方过滤器 id：
- * 缺省（undefined）= Exalted Orb Equivalent（崇高石等价，站方自动换算）。
- */
+/** Individual currencies accepted by both realms' /api/trade2/data/filters price filter. */
+export const TRADE_CURRENCIES = [
+  { value: 'exalted', labelKey: 'trade.curExalted' },
+  { value: 'divine', labelKey: 'trade.curDivine' },
+  { value: 'chaos', labelKey: 'trade.curChaos' },
+  { value: 'regal', labelKey: 'trade.curRegal' },
+  { value: 'alch', labelKey: 'trade.curAlchemy' },
+  { value: 'vaal', labelKey: 'trade.curVaal' },
+  { value: 'annul', labelKey: 'trade.curAnnulment' },
+  { value: 'aug', labelKey: 'trade.curAugmentation' },
+  { value: 'transmute', labelKey: 'trade.curTransmutation' },
+  { value: 'mirror', labelKey: 'trade.curMirror' },
+] as const;
+
+export type TradeCurrency = typeof TRADE_CURRENCIES[number]['value'];
+
+/** Buyout price cap; omitting currency uses the market's Exalted Orb Equivalent. */
 export interface TradePriceCap {
   max: number;
-  currency?: 'divine' | 'exalted' | 'chaos';
+  currency?: TradeCurrency;
 }
 
 export interface TradeQueryOptions {

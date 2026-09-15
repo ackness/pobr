@@ -28,6 +28,18 @@ test('local affix scores work for empty slots and budget edits only update marke
   await page.getByRole('spinbutton', { name: 'Max price' }).fill('50');
   expect(searchQuery((await link.getAttribute('href'))!).query.filters.trade_filters.filters.price.max).toBe(50);
   expect(await table.innerText()).toBe(originalScores);
+  const currency = page.getByRole('button', { name: 'Budget currency', exact: true });
+  for (const [label, id] of [
+    ['Divine', 'divine'], ['Chaos', 'chaos'], ['Exalted', 'exalted'],
+    ['Regal', 'regal'], ['Alchemy', 'alch'], ['Vaal', 'vaal'], ['Annulment', 'annul'],
+    ['Augmentation', 'aug'], ['Transmutation', 'transmute'], ['Mirror of Kalandra', 'mirror'],
+  ]) {
+    await currency.click();
+    await page.getByRole('option', { name: label, exact: true }).click();
+    expect(searchQuery((await link.getAttribute('href'))!).query.filters.trade_filters.filters.price).toEqual({ max: 50, option: id });
+    expect(await table.innerText()).toBe(originalScores);
+    expect(await page.evaluate(() => localStorage.getItem('pobr-trade-currency'))).toBe(id);
+  }
   await page.getByRole('checkbox', { name: 'Include unique items' }).check();
   expect(searchQuery((await link.getAttribute('href'))!).query.filters.type_filters.filters.rarity).toBeUndefined();
   expect(await table.innerText()).toBe(originalScores);
@@ -35,6 +47,18 @@ test('local affix scores work for empty slots and budget edits only update marke
   await expect(table).toHaveCount(0);
   await expect(link).toHaveCount(0);
   expect(marketCalls).toBe(0);
+  await page.reload();
+  await expect(currency).toContainText('Mirror of Kalandra', { timeout: 90_000 });
+  await expect(page.getByRole('spinbutton', { name: 'Max price' })).toHaveValue('50');
+});
+
+for (const savedCurrency of ['equiv', 'unknown-currency']) test(`saved ${savedCurrency} currency falls back to Exalted`, async ({ page }) => {
+  await page.addInitScript(value => localStorage.setItem('pobr-trade-currency', value), savedCurrency);
+  await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Character' })).toBeVisible({ timeout: 90_000 });
+  await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Budget currency', exact: true })).toContainText('Exalted');
 });
 
 test('WeGame quiver analysis opens the CN instant-buy market without JSON or base selection', async ({ page, context }) => {

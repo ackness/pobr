@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { buildTradeUrl, gemTradeUrl, lineValue, normalizeTradeLine, loadTradeLeagues } from './trade';
+import { TRADE_CURRENCIES, buildTradeUrl, gemTradeUrl, lineValue, normalizeTradeLine, loadTradeLeagues } from './trade';
 
 describe('normalizeTradeLine', () => {
   test('skeletonizes numbers and strips annotations', () => {
@@ -68,6 +68,20 @@ describe('buildTradeUrl', () => {
 });
 
 afterEach(() => vi.unstubAllGlobals());
+
+test.each(TRADE_CURRENCIES)('$value price caps reach equipment and gem links in both realms', ({ value: currency }) => {
+  for (const realm of ['intl', 'cn'] as const) {
+    const options = { realm, price: { max: 5, currency } };
+    const urls = [
+      buildTradeUrl('Standard', [], { ...options, category: 'accessory.amulet' }),
+      gemTradeUrl({ ...options, league: 'Standard', category: 'gem', gem: { name: 'Fireball', level: 16, quality: 20 } }),
+    ];
+    for (const url of urls) {
+      const query = JSON.parse(new URL(url).searchParams.get('q')!);
+      expect(query.query.filters.trade_filters.filters.price).toEqual({ max: 5, option: currency });
+    }
+  }
+});
 
 test('loads future official leagues instead of freezing the season list', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => Response.json({ leagues: ['Future League', 'Standard'] })));
