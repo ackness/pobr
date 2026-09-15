@@ -54,8 +54,7 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
   const [budget, setBudget] = useState(() => localStorage.getItem(BUDGET_KEY) ?? '100');
   const [currency, setCurrency] = useState<TradeCurrency>(() => {
     const saved = localStorage.getItem(CURRENCY_KEY);
-    // The legacy "equiv" preference also selected Exalted Orb listings.
-    return TRADE_CURRENCIES.find(option => option.value === saved)?.value ?? 'exalted';
+    return TRADE_CURRENCIES.find(option => option.value === saved)?.value ?? 'equiv';
   });
   const [running, setRunning] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);

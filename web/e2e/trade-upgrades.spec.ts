@@ -20,7 +20,7 @@ test('local affix scores work for empty slots and budget edits only update marke
   const link = page.locator('.trade-market-link').first();
   const query = searchQuery((await link.getAttribute('href'))!);
   expect(query.query.filters.type_filters.filters.category.option).toBe('accessory.amulet');
-  expect(query.query.filters.trade_filters.filters.price).toEqual({ max: 100, option: 'exalted' });
+  expect(query.query.filters.trade_filters.filters.price).toEqual({ max: 100 });
   expect(query.query.status.option).toBe('online');
   expect(query.query.stats[0].filters.length).toBeGreaterThan(0);
   expect(query.query.type).toBeUndefined();
@@ -30,13 +30,16 @@ test('local affix scores work for empty slots and budget edits only update marke
   expect(await table.innerText()).toBe(originalScores);
   const currency = page.getByRole('button', { name: 'Budget currency', exact: true });
   for (const [label, id] of [
+    ['Exalted or Divine Orbs', 'exalted_divine'], ['Exalted Orb Equivalent', 'equiv'],
     ['Divine', 'divine'], ['Chaos', 'chaos'], ['Exalted', 'exalted'],
     ['Regal', 'regal'], ['Alchemy', 'alch'], ['Vaal', 'vaal'], ['Annulment', 'annul'],
     ['Augmentation', 'aug'], ['Transmutation', 'transmute'], ['Mirror of Kalandra', 'mirror'],
   ]) {
     await currency.click();
     await page.getByRole('option', { name: label, exact: true }).click();
-    expect(searchQuery((await link.getAttribute('href'))!).query.filters.trade_filters.filters.price).toEqual({ max: 50, option: id });
+    expect(searchQuery((await link.getAttribute('href'))!).query.filters.trade_filters.filters.price).toEqual(
+      id === 'equiv' ? { max: 50 } : { max: 50, option: id },
+    );
     expect(await table.innerText()).toBe(originalScores);
     expect(await page.evaluate(() => localStorage.getItem('pobr-trade-currency'))).toBe(id);
   }
@@ -52,13 +55,16 @@ test('local affix scores work for empty slots and budget edits only update marke
   await expect(page.getByRole('spinbutton', { name: 'Max price' })).toHaveValue('50');
 });
 
-for (const savedCurrency of ['equiv', 'unknown-currency']) test(`saved ${savedCurrency} currency falls back to Exalted`, async ({ page }) => {
+for (const [savedCurrency, label] of [
+  ['equiv', 'Exalted Orb Equivalent'], ['exalted_divine', 'Exalted or Divine Orbs'],
+  ['exalted', 'Exalted'], ['unknown-currency', 'Exalted Orb Equivalent'],
+]) test(`saved ${savedCurrency} currency restores as ${label}`, async ({ page }) => {
   await page.addInitScript(value => localStorage.setItem('pobr-trade-currency', value), savedCurrency);
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Character' })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Budget currency', exact: true })).toContainText('Exalted');
+  await expect(page.getByRole('button', { name: 'Budget currency', exact: true }).locator('.app-select-value')).toHaveText(label);
 });
 
 test('WeGame quiver analysis opens the CN instant-buy market without JSON or base selection', async ({ page, context }) => {

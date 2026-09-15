@@ -97,8 +97,10 @@ export async function loadTradeLeagues(realm: TradeRealm): Promise<string[]> {
   return data.leagues;
 }
 
-/** Individual currencies accepted by both realms' /api/trade2/data/filters price filter. */
+/** Price options shared by both realms; "equiv" omits the official currency filter. */
 export const TRADE_CURRENCIES = [
+  { value: 'equiv', labelKey: 'trade.curExaltedEquivalent' },
+  { value: 'exalted_divine', labelKey: 'trade.curExaltedDivine' },
   { value: 'exalted', labelKey: 'trade.curExalted' },
   { value: 'divine', labelKey: 'trade.curDivine' },
   { value: 'chaos', labelKey: 'trade.curChaos' },
@@ -113,7 +115,7 @@ export const TRADE_CURRENCIES = [
 
 export type TradeCurrency = typeof TRADE_CURRENCIES[number]['value'];
 
-/** Buyout price cap; omitting currency uses the market's Exalted Orb Equivalent. */
+/** Buyout price cap; "equiv" or an omitted currency uses Exalted Orb Equivalent. */
 export interface TradePriceCap {
   max: number;
   currency?: TradeCurrency;
@@ -148,7 +150,7 @@ export function buildTradeQuery(weighted: WeightedStat[], options: TradeQueryOpt
           ...(!options.includeUnique && !category.startsWith('gem') ? { rarity: { option: 'nonunique' } } : {}),
         } },
         ...(price && price.max > 0 ? { trade_filters: { filters: {
-          price: { max: price.max, ...(price.currency ? { option: price.currency } : {}) },
+          price: { max: price.max, ...(price.currency && price.currency !== 'equiv' ? { option: price.currency } : {}) },
         } } } : {}),
         ...(maxLevel ? { req_filters: { filters: { lvl: { max: maxLevel } } } } : {}),
       },

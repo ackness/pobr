@@ -263,6 +263,8 @@ const DICT = {
   'trade.leagueCustom': { 'en-US': 'Custom…', 'zh-TW': '自定義…', 'zh-CN': '自定义…' },
   'trade.budget': { 'en-US': 'Max price', 'zh-TW': '預算上限', 'zh-CN': '预算上限' },
   'trade.budgetAny': { 'en-US': 'no limit', 'zh-TW': '不限', 'zh-CN': '不限' },
+  'trade.curExaltedEquivalent': { 'en-US': 'Exalted Orb Equivalent', 'zh-TW': '崇高石等價物', 'zh-CN': '崇高石等价物' },
+  'trade.curExaltedDivine': { 'en-US': 'Exalted or Divine Orbs', 'zh-TW': '崇高石或神聖石', 'zh-CN': '崇高石或神圣石' },
   'trade.curExalted': { 'en-US': 'Exalted', 'zh-TW': '崇高石', 'zh-CN': '崇高石' },
   'trade.curDivine': { 'en-US': 'Divine', 'zh-TW': '神聖石', 'zh-CN': '神圣石' },
   'trade.curChaos': { 'en-US': 'Chaos', 'zh-TW': '混沌石', 'zh-CN': '混沌石' },

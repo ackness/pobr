@@ -78,7 +78,9 @@ test.each(TRADE_CURRENCIES)('$value price caps reach equipment and gem links in 
     ];
     for (const url of urls) {
       const query = JSON.parse(new URL(url).searchParams.get('q')!);
-      expect(query.query.filters.trade_filters.filters.price).toEqual({ max: 5, option: currency });
+      expect(query.query.filters.trade_filters.filters.price).toEqual(
+        currency === 'equiv' ? { max: 5 } : { max: 5, option: currency },
+      );
     }
   }
 });
