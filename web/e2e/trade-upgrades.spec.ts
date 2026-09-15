@@ -1,6 +1,57 @@
 import { expect, test } from '@playwright/test';
+import { deflateSync } from 'node:zlib';
 
 const searchQuery = (href: string) => JSON.parse(new URL(href).searchParams.get('q')!);
+
+test('imported PoB armour and belt use their full explicit Sum as the market minimum', async ({ page }) => {
+  const code = deflateSync(`<PathOfBuilding2>
+    <Build level="85" className="Witch"/>
+    <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+    <Skills/>
+    <Items activeItemSet="1">
+      <Item id="1">
+        Rarity: RARE
+        Reference Robe
+        Vile Robe
+        Sockets: S
+        Rune: Iron Rune
+        Implicits: 1
+        {enchant}{rune}20% increased Armour, Evasion and Energy Shield
+        +97 to maximum Life
+      </Item>
+      <Item id="2">
+        Rarity: RARE
+        Reference Belt
+        Double Belt
+        Charm Slots: 3
+        Implicits: 1
+        Has 3 Charm Slots
+        +75 to maximum Life
+      </Item>
+      <ItemSet id="1"><Slot name="Body Armour" itemId="1"/><Slot name="Belt" itemId="2"/></ItemSet>
+    </Items>
+  </PathOfBuilding2>`).toString('base64url');
+  await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
+  await page.locator('.import-submit').click();
+  await expect(page.locator('.paper-doll')).toBeVisible();
+  await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
+  await page.getByRole('button', { name: 'Max Life', exact: true }).click();
+  for (const [slot, life] of [['Body Armour', 97], ['Belt', 75]] as const) {
+    await page.locator('.trade-position').filter({ hasText: slot }).click();
+    await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+    const reference = page.locator('.upgrade-score-reference');
+    await expect(reference).toContainText('Comparable stat score');
+    const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
+    const sum = query.query.stats[0];
+    const lifeWeight = sum.filters.find((filter: { id: string }) => filter.id === 'explicit.stat_3299347043').value.weight;
+    expect(lifeWeight).toBeGreaterThan(0);
+    expect(sum.value.min).toBeCloseTo(life * lifeWeight, 3);
+    expect(Number((await reference.locator('div > strong').first().innerText()).replaceAll(',', ''))).toBeCloseTo(life * lifeWeight, 3);
+  }
+});
 
 test('local affix scores work for empty slots and budget edits only update market links', async ({ page }) => {
   await page.route('**/api/trade/leagues?realm=intl', route => route.fulfill({ json: { leagues: ['Future League', 'Standard'] } }));

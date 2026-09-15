@@ -9,6 +9,29 @@ const stats: WeightedStat[] = [
 ];
 
 describe('current equipment market Sum', () => {
+  test('PoB XML indentation does not make a fully mapped item score incomplete', () => {
+    const text = '\n\t\tRarity: RARE\nReference\nIron Ring\n+70 to maximum Life\n\t\t';
+    expect(scoreEquipment(text, stats)).toMatchObject({ complete: true, matchedLines: 1, totalLines: 1, score: 70 * 1.235 });
+    expect(scoreEquipment('+70 to maximum Life', stats).complete).toBe(false);
+  });
+
+  test('counted rune and enchant lines leave every following explicit affix available for scoring and removal', () => {
+    const text = 'Rarity: RARE\nReference\nVile Robe\nImplicits: 3\n{enchant}{rune}+50 to maximum Life\n--------\nNote: retained metadata\n{enchant}+60 to maximum Life\n+30% to Fire Resistance (implicit)\n+75 to maximum Life\n+40% to Fire Resistance';
+    expect(explicitItemLines(text).map(row => row.line)).toEqual(['+75 to maximum Life', '+40% to Fire Resistance']);
+    expect(scoreEquipment(text, stats)).toMatchObject({ complete: true, matchedLines: 2, totalLines: 2,
+      score: 75 * 1.235 + 40 * 2.346 });
+    const removed = withoutTradeStat(text, stats[0], stats)!;
+    expect(removed.value).toBe(75);
+    expect(removed.text).toContain('{enchant}{rune}+50 to maximum Life');
+    expect(removed.text).toContain('{enchant}+60 to maximum Life');
+    expect(removed.text).not.toContain('+75 to maximum Life');
+  });
+
+  test('belt charm-slot metadata does not disable the current-item minimum', () => {
+    const text = 'Rarity: RARE\nReference\nDouble Belt\nCharm Slots: 3\nImplicits: 1\nHas 3 Charm Slots\n+70 to maximum Life';
+    expect(scoreEquipment(text, stats)).toMatchObject({ complete: true, matchedLines: 1, totalLines: 1, score: 70 * 1.235 });
+  });
+
   test('uses the exact rounded query weights and excludes implicit and augment sources', () => {
     const text = 'Rarity: RARE\nReference\nIron Ring\nItem Level: 80\nImplicits: 1\n+30% to Fire Resistance\n{enchant}{rune}+20 to maximum Life\n+75 to maximum Life\n+40% to Fire Resistance\nAdds 4 to 16 Physical Damage';
     const result = scoreEquipment(text, stats);

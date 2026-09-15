@@ -137,8 +137,8 @@ test('reference equipment and category affixes respect character level without c
   expect(categoryAffixPool(catalog, 'armour.quiver', 100, 20).map(mod => mod.id)).toEqual(['low']);
 });
 
-test('replacing the target slot preserves baseline gear elsewhere and calibrates the actual current Sum', async () => {
-  const current = `Rarity: RARE\nEquipped\n${base.name}\nImplicits: 0\n25 flat`;
+test('an indented PoB item with counted augments sets its actual current Sum without changing other gear', async () => {
+  const current = `\n\t\tRarity: RARE\nEquipped\n${base.name}\nImplicits: 2\n{enchant}{rune}20 effect\n10 implicit\n25 flat\n\t\t`;
   const requests: EvaluateOptions[] = [];
   const result = await optimizeTradeAffixes({ request: { items: [{ slot: 'weapon2', text: current }, { slot: 'ring1', text: 'keep' }] },
     slot: 'weapon2', base, pool: [affix('flat')], itemLevel: 82, objective, combinations: false,

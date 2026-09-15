@@ -22,7 +22,7 @@ export interface EquipmentScore {
 type StatTemplate = Pick<WeightedStat, 'id' | 'line' | 'value'>;
 interface ExplicitLine { index: number; line: string; uncertain?: boolean }
 
-const METADATA = /^(?:Item Class|Rarity|Item Level|Requirements|Level|LevelReq|Str|Dex|Int|Sockets|Rune|Soul Core|Armour|Evasion(?: Rating)?|Energy Shield|Spirit|Ward|Block|Quality|Physical Damage|Elemental Damage|Chaos Damage|Critical Hit Chance|Attacks per Second|Weapon Range|Unique ID|Item ID|Note|Selected Variant|Variant|Radius|Talisman Tier|Limited to|Crafted|Prefix|Suffix|Catalyst|CatalystQuality):|^(?:Corrupted|Mirrored|Unidentified|Has Alt Variant|Requires\b)/;
+const METADATA = /^(?:Item Class|Rarity|Item Level|Requirements|Level|LevelReq|Str|Dex|Int|Sockets|Rune|Soul Core|Charm Slots|Armour|Evasion(?: Rating)?|Energy Shield|Spirit|Ward|Block|Quality|Physical Damage|Elemental Damage|Chaos Damage|Critical Hit Chance|Attacks per Second|Weapon Range|Unique ID|Item ID|Note|Selected Variant|Variant|Radius|Talisman Tier|Limited to|Crafted|Prefix|Suffix|Catalyst|CatalystQuality):|^(?:Corrupted|Mirrored|Unidentified|Has Alt Variant|Requires\b)/;
 const NON_EXPLICIT = /\{(?:crafted|enchant|rune|implicit)\}|\((?:implicit|enchant|crafted|rune)\)/i;
 
 function cleanLine(line: string): string {
@@ -52,11 +52,9 @@ export function explicitItemLines(text: string): ExplicitLine[] {
     const count = raw.match(/^Implicits:\s*(\d+)/);
     if (count) { implicits = Number(count[1]); continue; }
     if (METADATA.test(raw)) continue;
-    if (NON_EXPLICIT.test(raw)) {
-      if (/\(implicit\)|\{implicit\}/i.test(raw) && implicits > 0) implicits -= 1;
-      continue;
-    }
+    // PoB's count includes rune and enchant lines as well as ordinary implicits.
     if (implicits > 0) { implicits -= 1; continue; }
+    if (NON_EXPLICIT.test(raw)) continue;
     result.push({ index, line: cleanLine(raw), ...(raw.includes('{variant:') ? { uncertain: true } : {}) });
   }
   return result;
@@ -89,7 +87,7 @@ export function scoreEquipment(text: string, weighted: readonly WeightedStat[], 
     if (weight !== 0) contributions.push({ ...match, line, weight, score: match.value * weight });
   }
   return { score: contributions.reduce((sum, row) => sum + row.score, 0),
-    complete: /^Rarity:/im.test(text) && unscoredLines.length === 0, matchedLines: lines.length - unscoredLines.length,
+    complete: /^\s*Rarity:/im.test(text) && unscoredLines.length === 0, matchedLines: lines.length - unscoredLines.length,
     totalLines: lines.length, contributions, unscoredLines };
 }
 
