@@ -1,33 +1,20 @@
-# PoBR — Path of Building in Rust
+# PoBR — 流放之路 2 在线 BD 规划工具
 
 [English](README.md) | **简体中文**
 
-**在线版：<https://pobr-web.pages.dev>** —— 每次 `v0.x` 版本 tag 通过 CI 后自动部署。
+**换装备、搭辅助宝石、点天赋之前，先看看你的 BD 会提升多少。**
 
-> **⚠️ 测试版。** PoBR 仍在活跃开发中：计算结果、游戏数据、wasm/JSON API 与
-> CLI 都在迭代，可能随时变动或不稳定——暂时不要把重要工作依赖在这些 API 上。
+PoBR（Path of Building in Rust）是一款开源的 **流放之路 2（Path of Exile 2 / PoE2）
+在线 BD 规划工具**。在浏览器里导入 PoB2 代码或 WeGame 分享链接，查看伤害与防御，
+比较下一步升级。使用 Rust + WebAssembly 计算，支持简体中文、繁体中文和英文界面。
 
-PoBR 是把 [Path of Building (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
-核心计算引擎从 Lua **重写**为 Rust 的项目。PoB2 兼容始终是硬性回归基准；重写要解决的是移植解决不了的问题：
+**[打开在线版](https://pobr-web.pages.dev)** ·
+[更新记录](https://github.com/ackness/pobr/releases) ·
+[反馈问题](https://github.com/ackness/pobr/issues)
 
-- **性能** — 消除大规模 Modifier 聚合、多技能计算的瓶颈；计算核心纯函数 +
-  确定性，重负载路径在只读快照上并行展开，词条解析热路径离线预编译、运行时零解析。
-- **source-level 归因** — 在 PoB2 对齐之外，每个输出都能回溯到是哪件装备 /
-  词条 / 天赋 / 宝石 / 配置贡献的（`TraceGraph` + `AttributionReport`）。
-- **原生 i18n** — 计算内部只用稳定 ID，显示文本全部走语言包（`en-US` 基准 +
-  `zh-TW`，Web 侧另有 zh-CN 边车），Web 前端甚至支持直接粘贴简中物品文本。
-  加一门语言是加数据，不是改代码。
-- **WASM 到处跑** — 引擎编译为 WebAssembly、以 JSON 契约暴露，Web 版完全在
-  浏览器内计算；WeGame / 市集 HTTP 适配由 Pages Worker 提供。同一个核心也驱动 CLI 与桌面占位入口。
-- **为扩展而设计** — 分层 workspace（data → core → build → apps）+ 数据驱动
-  管线：游戏数据是从 GGG `.dat` 导出生成的版本化 JSON，大部分词条/属性行为
-  是数据而非硬编码规则。
+> **测试版：** 已可体验，游戏机制覆盖仍不完整。比较升级收益前，请核对未支持效果和战斗配置。
 
-## 在浏览器里分析你的 BD
-
-[打开 PoBR](https://pobr-web.pages.dev)，导入 PoB 构筑或 WeGame 分享链接，即可查看
-装备与伤害构成、粘贴市集物品比较换装，并按同一个 DPS/EHP 目标寻找辅助宝石搭配和
-连通的天赋升级路线。先查看变化，再决定是否应用。
+## 看看下一步能怎么提升
 
 | 装备总览与实时角色属性 | 换装比较与词缀阶级模拟 |
 | --- | --- |
@@ -35,26 +22,70 @@ PoBR 是把 [Path of Building (PoE2)](https://github.com/PathOfBuildingCommunity
 | **排除不想使用的辅助宝石，比较完整搭配** | **在天赋树上预览连通的升级路线** |
 | [![辅助宝石排除列表与搭配的 DPS、EHP 提升](docs/screenshots/support-upgrades.png)](docs/screenshots/support-upgrades.png) | [![高亮已分配节点和建议升级路线的天赋树](docs/screenshots/passive-tree.png)](docs/screenshots/passive-tree.png) |
 
-点击图片可查看大图。截图使用虚构的演示角色，不是 BD 攻略；推荐范围限于已计算的
-候选与已建模效果。市集词缀评分用于初筛，购买前请粘贴完整物品确认换装收益。
+点击图片可查看大图。截图使用虚构的演示角色，不是 BD 攻略。
 
-## 快速上手
+## 你可以用它做什么
 
-从仓库根目录开始，选择改动相关的测试和 lint；以下以 Build Code 为例：
+- **买装备前比较换装。** 粘贴从市集复制的完整物品，在适用的装备位置比较每秒伤害（DPS）、
+  有效承伤量（EHP）与抗性变化。
+- **为主技能挑辅助宝石。** 比较已计算的整套搭配，排除不想用的辅助，并预览等级、品质升级。
+- **规划接下来的天赋点。** 寻找包含过路点成本的连通路线，预览节点变化，再决定是否应用。
+- **按自己的 BD 搜装备。** 生成带词缀权重、角色等级要求和预算筛选的 PoE2 官方市集链接。
+- **看懂数值来源。** 编辑装备、技能与战斗配置，同时查看伤害分解和词条来源。
+
+## 用你的 BD 试一试
+
+1. [打开在线版](https://pobr-web.pages.dev)，无需安装桌面软件。
+2. 在「构筑」页粘贴 **PoB2 代码**或 **WeGame PoE2 分享链接**并导入；也可以导入
+   `.build` 文件，或新建角色。
+3. 核对主技能、战斗配置与未支持效果，再到「提升」「技能」或「天赋树」比较改动。
+
+修改会自动保存在当前浏览器中。可以下载 JSON 备份以保留副本或换设备，也可以导出
+PoB2 代码分享修改后的 BD。导入其他构筑会替换当前内容，如需保留，请先下载备份。
+
+PoBR 是以 [Path of Building for PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
+为计算参考的独立实现，尚未覆盖全部 PoB2 机制。推荐范围限于已计算的候选与已建模效果；
+市集权重用于初筛，不保证找到最优购买方案，购买前请比较完整物品的换装收益。
+
+## 参与改进与关注更新
+
+发现计算差异或未支持词条？欢迎[提交 Issue](https://github.com/ackness/pobr/issues/new)，
+附上可公开分享的最小复现构筑、相关物品或技能，以及预期值与实际值。界面反馈和翻译修正也很有帮助。
+
+想参与开发，可以从[贡献指南](AGENTS.md)或[添加词条规则](docs/contributing-mods.md)开始。
+如果 PoBR 对你有用，可以 **Star 收藏仓库**；希望收到发版通知，可选择 **Watch → Custom → Releases**。
+
+## 开发者入口
+
+Rust 计算引擎由 WebAssembly 应用和 CLI 共用，支持词条离线预编译，并通过 `TraceGraph`
+和 `AttributionReport` 提供计算追踪与来源归因。计算使用稳定 ID，与显示翻译分离；游戏数据
+使用版本化 JSON 快照。PoB2 parity 测试保护已记录的回归基线，不代表所有机制均已覆盖。
+
+计算在浏览器内完成；WeGame 和市集 HTTP 适配由 Pages Worker 提供。桌面应用目前仍是
+占位入口，WASM/JSON API 与 CLI 仍在迭代，可能随版本变更。
+
+### 本地运行
+
+Web 应用请按 [Web 安装指南](web/README.zh-CN.md)准备 WASM、游戏数据并启动 Vite。
+体验 CLI 时，使用仓库配置的 Rust 工具链，在仓库根目录运行：
+
+```bash
+# CLI (binary name: pobr)
+cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
+cargo run -p pobr-cli -- decode-code <pob_code>        # PoB build code -> XML
+cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
+```
+
+修改代码时选择相关的测试和 lint，以下以 Build Code 为例：
 
 ```bash
 cargo test -p pobr-build --test codec
 bash .claude/skills/run-pobr/driver.sh lint -p pobr-build --lib --test codec
-
-# CLI（二进制名 pobr）
-cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
-cargo run -p pobr-cli -- decode-code <pob_code>        # PoB Build Code → XML
-cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
 ```
 
-普通本地提交无需全量检查；合并、发版或影响范围较大的修改按 [CLAUDE.md](CLAUDE.md) 运行一次 `driver.sh full`（nextest + doctest，无 nextest 时回退 Cargo）。
-
-Web 前端见 [`web/README.zh-CN.md`](web/README.zh-CN.md)（Vite + React + TS，通过 wasm JSON 契约与引擎解耦，不进 cargo workspace）。
+普通本地提交无需全量检查；合并、发版或影响范围较大的修改按 [CLAUDE.md](CLAUDE.md)
+运行一次 `driver.sh full`（nextest + doctest，无 nextest 时回退 Cargo）。在线版在 `v0.x`
+版本 tag 通过 CI 后自动部署。
 
 Rust **edition 2024**，全部 crate 共享一个 workspace 版本，与 `v0.x` 发布 tag 保持同步。
 

@@ -1,44 +1,22 @@
-# PoBR — Path of Building in Rust
+# PoBR — Path of Exile 2 Build Planner
 
 **English** | [简体中文](README.zh-CN.md)
 
-**Live web app: <https://pobr-web.pages.dev>** — deployed automatically from
-`v0.x` release tags once CI passes.
+**Compare gear, support gems and passive upgrades before changing your build.**
 
-> **⚠️ Beta.** PoBR is under active development. Calculation results, game
-> data, the wasm/JSON API and the CLI are all still evolving and may change
-> or break without notice — don't build anything load-bearing on the API yet.
+PoBR (Path of Building in Rust) is an open-source **Path of Exile 2 build planner
+that runs in your browser**. Import a PoB2 build code or WeGame share link, inspect
+your damage and defences, and preview your next upgrade. Powered by Rust and
+WebAssembly, with English, Simplified Chinese and Traditional Chinese interfaces.
 
-PoBR is a ground-up rewrite of the
-[Path of Building (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
-core calculation engine, from Lua to Rust. PoB2 compatibility stays the hard
-regression baseline; the rewrite exists to fix what a port can't:
+**[Try PoBR in your browser](https://pobr-web.pages.dev)** ·
+[Release notes](https://github.com/ackness/pobr/releases) ·
+[Report a problem](https://github.com/ackness/pobr/issues)
 
-- **Performance** — removes the bottlenecks in large-scale modifier
-  aggregation and multi-skill calculation; the core is pure-functional and
-  deterministic, so heavy paths parallelize over read-only snapshots and the
-  hot mod-parsing path is precompiled offline to zero-parse at runtime.
-- **Source-level attribution** — beyond PoB2 parity, every output can be
-  traced back to the item / mod line / passive / gem / config that
-  contributed it (`TraceGraph` + `AttributionReport`).
-- **Native i18n** — the calculation uses only stable IDs; all display text
-  goes through language packs (`en-US` canonical + `zh-TW`, with zh-CN
-  sidecars on the web). The web frontend even accepts item text pasted in
-  Simplified Chinese. Adding a language means adding data, not code.
-- **Runs anywhere via WASM** — the engine compiles to WebAssembly behind a
-  JSON contract. Calculation runs in the browser; WeGame and market HTTP
-  adapters use a Pages Worker. The same core powers the CLI and a desktop placeholder.
-- **Built to extend** — a layered workspace (data → core → build → apps)
-  with a data-driven pipeline: game data ships as versioned JSON generated
-  from GGG `.dat` exports, and most modifier/stat behaviour is data, not
-  hard-coded rules.
+> **Beta:** ready to try, with incomplete game-mechanic coverage. Check unsupported
+> effects and combat settings before relying on an upgrade comparison.
 
-## Explore your build in the browser
-
-[Open PoBR](https://pobr-web.pages.dev) and import a PoB build or WeGame share
-link. Inspect your equipment and damage breakdown, compare a copied market item,
-then explore support combinations and connected passive routes under a shared
-DPS/EHP goal. Changes are previewed before you apply them.
+## See your next upgrade
 
 | Equipment and live character stats | Compare items and simulate affix tiers |
 | --- | --- |
@@ -47,32 +25,91 @@ DPS/EHP goal. Changes are previewed before you apply them.
 | [![Support recommendations with a player-excluded gem and DPS/EHP changes](docs/screenshots/support-upgrades.png)](docs/screenshots/support-upgrades.png) | [![Passive tree with allocated nodes and a proposed upgrade route highlighted](docs/screenshots/passive-tree.png)](docs/screenshots/passive-tree.png) |
 
 Click any image to enlarge. Screenshots use a synthetic demonstration character,
-not a build guide. Recommendations cover the evaluated candidates and modeled
-effects; market affix scores are screening aids, so compare the complete item
-before buying.
+not a build guide.
 
-## Getting started
+## What you can do
 
-Run commands from the repository root and select checks for the changed behavior.
-For example, validate Build Code changes with:
+- **Compare an item before buying.** Paste a complete item copied from the market
+  and see its effect on damage per second (DPS), effective hit pool (EHP) and
+  resistances across compatible equipment slots.
+- **Find support combinations for your skill.** Compare evaluated gem sets,
+  exclude supports you do not want to use, and preview level or quality upgrades.
+- **Plan your next passive points.** Explore connected routes that include travel
+  costs, preview node changes, then apply a plan when you choose.
+- **Search the market for your build.** Generate official PoE2 market links with
+  relevant affix weights, character-level requirements and a budget filter.
+- **Understand the numbers.** Inspect damage breakdowns and modifier sources while
+  editing equipment, skills and combat configuration.
+
+## Try it with your build
+
+1. [Open the web app](https://pobr-web.pages.dev) — no desktop installation needed.
+2. On **Build**, paste a **PoB2 build code** or a **WeGame PoE2 share link** and
+   import it. You can also import a `.build` file or start a new character.
+3. Check your main skill, combat configuration and unsupported effects, then use
+   **Upgrades**, **Skills** or **Tree** to compare changes.
+
+Edits are saved in your browser. Download a JSON backup to keep a copy or move
+devices, or export a PoB2 build code to share your changes. Importing another
+build replaces the current one, so download a backup first if you want to keep it.
+
+PoBR is an independent implementation using
+[Path of Building for PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)
+as its calculation reference. It does not yet reproduce every PoB2 mechanic.
+Recommendations cover evaluated candidates and modeled effects; market weights
+help shortlist items and do not guarantee the best purchase. Compare the complete
+item before buying.
+
+## Contribute and follow along
+
+Found a calculation mismatch or an unsupported modifier?
+[Open an issue](https://github.com/ackness/pobr/issues/new) with a minimal build
+you can share publicly, the relevant item or skill, and expected versus actual
+results. UI feedback and translation corrections are welcome too.
+
+For implementation work, start with [the contributor guide](AGENTS.md) or
+[adding modifier rules](docs/contributing-mods.md). If PoBR is useful to you,
+**star the repository** to bookmark it, or use **Watch → Custom → Releases** for
+release notifications.
+
+## For developers
+
+The calculation engine is written in Rust and shared by the WebAssembly app and
+CLI. Modifier parsing supports offline precompilation; calculation tracing and
+source attribution are exposed through `TraceGraph` and `AttributionReport`.
+Stable IDs separate calculation from translated display text, and versioned
+JSON snapshots supply game data. PoB2 parity tests guard the recorded regression
+baseline; they do not imply complete mechanic coverage.
+
+Calculation runs locally in the browser; WeGame and market HTTP adapters use a
+Pages Worker. The desktop application is currently a placeholder. The WASM/JSON
+API and CLI are still evolving and may change between releases.
+
+### Run locally
+
+For the web app, follow the [web setup guide](web/README.md) to prepare WASM and
+game data and start Vite. To try the CLI, run from the repository root with the
+configured Rust toolchain:
+
+```bash
+# CLI (binary name: pobr)
+cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
+cargo run -p pobr-cli -- decode-code <pob_code>        # PoB build code -> XML
+cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
+```
+
+For changes, select checks for the affected behavior. For example, validate
+Build Code changes with:
 
 ```bash
 cargo test -p pobr-build --test codec
 bash .claude/skills/run-pobr/driver.sh lint -p pobr-build --lib --test codec
-
-# CLI (binary name: pobr)
-cargo run -p pobr-cli -- calculate --base-life 1000 --mod "+50 to maximum Life"
-cargo run -p pobr-cli -- decode-code <pob_code>        # PoB build code → XML
-cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
 ```
 
 Normal local commits use relevant checks. Before merge/release or broad changes,
 run `driver.sh full` as described in [CLAUDE.md](CLAUDE.md): nextest plus doctests,
-or Cargo when nextest is unavailable.
-
-For the web frontend see [`web/README.md`](web/README.md) (Vite + React + TS,
-decoupled from the engine through a wasm JSON contract; not part of the cargo
-workspace).
+or Cargo when nextest is unavailable. The live app deploys from `v0.x` release
+tags after CI passes.
 
 Rust **edition 2024**; all crates share one workspace version, kept in sync
 with the `v0.x` release tags.
