@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "source": "GGG EssenceMods/Essences/EssenceTargetItemCategories x BaseItemTypes/ItemClasses/Mods",
+    "source": "GGG EssenceMods/Essences/EssenceTargetItemCategories x BaseItemTypes/ItemClasses/Mods/Stats",
     "regen_command": "python3 pipeline/extract-trade-crafting.py pipeline/tables/English <out>"
   },
   "mods": [
@@ -21,6 +21,19 @@
         "Two Hand Mace",
         "Two Hand Sword",
         "Warstaff"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "accuracy_rating",
+          "min": 327,
+          "max": 427
+        },
+        {
+          "id": "local_attack_speed_+%",
+          "min": 5,
+          "max": 8
+        }
       ]
     },
     {
@@ -40,6 +53,14 @@
         "Two Hand Mace",
         "Two Hand Sword",
         "Warstaff"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "ailment_effect_+%",
+          "min": 20,
+          "max": 30
+        }
       ]
     },
     {
@@ -47,6 +68,14 @@
       "id": "AlloyArchonDuration1",
       "item_types": [
         "Helmet"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "archon_duration_+%",
+          "min": 35,
+          "max": 42
+        }
       ]
     },
     {
@@ -54,6 +83,14 @@
       "id": "AlloyAttackAreaOfEffect1",
       "item_types": [
         "Gloves"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "attack_area_of_effect_+%",
+          "min": 10,
+          "max": 15
+        }
       ]
     },
     {
@@ -61,6 +98,14 @@
       "id": "AlloyAttackSpeedIfMissingWardRecently1",
       "item_types": [
         "Gloves"
+      ],
+      "level": 25,
+      "stats": [
+        {
+          "id": "attack_speed_+%_while_missing_ward",
+          "min": 10,
+          "max": 15
+        }
       ]
     },
     {
@@ -68,6 +113,14 @@
       "id": "AlloyAttackSpeedRing1",
       "item_types": [
         "Ring"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "attack_speed_+%",
+          "min": 7,
+          "max": 9
+        }
       ]
     },
     {
@@ -87,6 +140,19 @@
         "Two Hand Mace",
         "Two Hand Sword",
         "Warstaff"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "base_all_attributes",
+          "min": 7,
+          "max": 10
+        },
+        {
+          "id": "local_physical_damage_+%",
+          "min": 15,
+          "max": 20
+        }
       ]
     },
     {
@@ -94,6 +160,14 @@
       "id": "AlloyBallistaLimit1",
       "item_types": [
         "Crossbow"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "additional_ballista_totems_allowed",
+          "min": 2,
+          "max": 2
+        }
       ]
     },
     {
@@ -101,6 +175,14 @@
       "id": "AlloyBellLimit1",
       "item_types": [
         "Warstaff"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "bell_hit_limit",
+          "min": 4,
+          "max": 5
+        }
       ]
     },
     {
@@ -108,6 +190,19 @@
       "id": "AlloyCastSpeedDamageAsExtraColdHybrid1",
       "item_types": [
         "Staff"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "base_cast_speed_+%",
+          "min": 39,
+          "max": 47
+        },
+        {
+          "id": "non_skill_base_elemental_damage_%_to_gain_as_cold",
+          "min": 11,
+          "max": 16
+        }
       ]
     },
     {
@@ -116,6 +211,19 @@
       "item_types": [
         "Focus",
         "Wand"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "base_cast_speed_+%",
+          "min": 26,
+          "max": 31
+        },
+        {
+          "id": "non_skill_base_elemental_damage_%_to_gain_as_cold",
+          "min": 7,
+          "max": 11
+        }
       ]
     },
     {
@@ -123,6 +231,14 @@
       "id": "AlloyCastSpeedGloves1",
       "item_types": [
         "Gloves"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "base_cast_speed_+%",
+          "min": 9,
+          "max": 12
+        }
       ]
     },
     {
@@ -130,6 +246,14 @@
       "id": "AlloyChanceToChain1",
       "item_types": [
         "Quiver"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "local_additional_attack_chain_chance_%",
+          "min": 25,
+          "max": 35
+        }
       ]
     },
     {
@@ -137,6 +261,14 @@
       "id": "AlloyDamageAsExtraFireTwoHandWhileMissingRunicWard1",
       "item_types": [
         "Staff"
+      ],
+      "level": 25,
+      "stats": [
+        {
+          "id": "non_skill_base_all_damage_%_to_gain_as_fire_while_missing_ward",
+          "min": 42,
+          "max": 52
+        }
       ]
     },
     {
@@ -144,6 +276,14 @@
       "id": "AlloyDamageAsExtraFireWhileMissingRunicWard1",
       "item_types": [
         "Wand"
+      ],
+      "level": 25,
+      "stats": [
+        {
+          "id": "non_skill_base_all_damage_%_to_gain_as_fire_while_missing_ward",
+          "min": 21,
+          "max": 26
+        }
       ]
     },
     {
@@ -151,6 +291,14 @@
       "id": "AlloyDamagingAilmentDuration1",
       "item_types": [
         "Gloves"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "damaging_ailment_duration_+%",
+          "min": 20,
+          "max": 25
+        }
       ]
     },
     {
@@ -160,6 +308,14 @@
         "Amulet",
         "Belt",
         "Ring"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "heist_enchantment_resistance_mod_effect_+%",
+          "min": 20,
+          "max": 30
+        }
       ]
     },
     {
@@ -182,6 +338,14 @@
         "Two Hand Sword",
         "Wand",
         "Warstaff"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "local_socketed_items_effect_+%",
+          "min": 20,
+          "max": 30
+        }
       ]
     },
     {
@@ -189,6 +353,14 @@
       "id": "AlloyElementalPenetration1",
       "item_types": [
         "Gloves"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "reduce_enemy_elemental_resistance_%",
+          "min": 9,
+          "max": 15
+        }
       ]
     },
     {
@@ -196,6 +368,14 @@
       "id": "AlloyElementalSkillLimit1",
       "item_types": [
         "Wand"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "elemental_skill_limit_+",
+          "min": 1,
+          "max": 1
+        }
       ]
     },
     {
@@ -205,6 +385,14 @@
         "Focus",
         "Staff",
         "Wand"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "exposure_effect_+%",
+          "min": 40,
+          "max": 50
+        }
       ]
     },
     {
@@ -212,6 +400,14 @@
       "id": "AlloyFlaskChargesPerSecond1",
       "item_types": [
         "Belt"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "generate_x_charges_for_any_flask_per_minute",
+          "min": 45,
+          "max": 60
+        }
       ]
     },
     {
@@ -219,6 +415,14 @@
       "id": "AlloyLightningDamageIgnites1",
       "item_types": [
         "Talisman"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "lightning_damage_can_ignite",
+          "min": 1,
+          "max": 1
+        }
       ]
     },
     {
@@ -232,6 +436,14 @@
         "Gloves",
         "Helmet",
         "Shield"
+      ],
+      "level": 25,
+      "stats": [
+        {
+          "id": "local_ward_+%",
+          "min": 24,
+          "max": 30
+        }
       ]
     },
     {
@@ -239,6 +451,14 @@
       "id": "AlloyManaCostEfficiency1",
       "item_types": [
         "Helmet"
+      ],
+      "level": 25,
+      "stats": [
+        {
+          "id": "base_mana_cost_efficiency_+%",
+          "min": 18,
+          "max": 29
+        }
       ]
     },
     {
@@ -246,6 +466,14 @@
       "id": "AlloyMarkEffect",
       "item_types": [
         "Bow"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "mark_effect_+%",
+          "min": 40,
+          "max": 50
+        }
       ]
     },
     {
@@ -255,6 +483,14 @@
         "Sceptre",
         "Staff",
         "Wand"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "additional_maximum_infusion_stacks",
+          "min": 1,
+          "max": 1
+        }
       ]
     },
     {
@@ -262,6 +498,14 @@
       "id": "AlloyMaximumRunicWard1",
       "item_types": [
         "Ring"
+      ],
+      "level": 13,
+      "stats": [
+        {
+          "id": "base_maximum_ward",
+          "min": 37,
+          "max": 49
+        }
       ]
     },
     {
@@ -269,6 +513,14 @@
       "id": "AlloyMaximumRunicWardPercent1",
       "item_types": [
         "Amulet"
+      ],
+      "level": 13,
+      "stats": [
+        {
+          "id": "maximum_ward_+%",
+          "min": 6,
+          "max": 10
+        }
       ]
     },
     {
@@ -291,6 +543,14 @@
         "Two Hand Sword",
         "Wand",
         "Warstaff"
+      ],
+      "level": 25,
+      "stats": [
+        {
+          "id": "base_maximum_ward",
+          "min": 51,
+          "max": 74
+        }
       ]
     },
     {
@@ -298,6 +558,14 @@
       "id": "AlloyMeleeStrikeRange1",
       "item_types": [
         "Spear"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "local_weapon_range_+",
+          "min": 8,
+          "max": 10
+        }
       ]
     },
     {
@@ -305,6 +573,14 @@
       "id": "AlloyMinionDamagingAilmentMagnitude1",
       "item_types": [
         "Sceptre"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "minion_base_damaging_ailment_effect_+%",
+          "min": 40,
+          "max": 49
+        }
       ]
     },
     {
@@ -312,6 +588,14 @@
       "id": "AlloyNaturesArchon1",
       "item_types": [
         "Staff"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "chance_%_to_gain_archon_of_nature_on_overgrowing_plant",
+          "min": 25,
+          "max": 50
+        }
       ]
     },
     {
@@ -319,6 +603,14 @@
       "id": "AlloyPresenceAreaOfEffect1",
       "item_types": [
         "Body Armour"
+      ],
+      "level": 25,
+      "stats": [
+        {
+          "id": "presence_area_+%",
+          "min": 35,
+          "max": 50
+        }
       ]
     },
     {
@@ -326,6 +618,14 @@
       "id": "AlloyPuppetMasterChance1",
       "item_types": [
         "Sceptre"
+      ],
+      "level": 25,
+      "stats": [
+        {
+          "id": "surpassing_chance_%_to_gain_1_puppeteer_stack_on_using_command_skill",
+          "min": 30,
+          "max": 50
+        }
       ]
     },
     {
@@ -333,6 +633,14 @@
       "id": "AlloyPuppeteerStacks1",
       "item_types": [
         "Sceptre"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "max_puppet_master_stacks_+",
+          "min": 4,
+          "max": 5
+        }
       ]
     },
     {
@@ -340,6 +648,14 @@
       "id": "AlloyRecoverRunicWardOnCharmUse1",
       "item_types": [
         "Belt"
+      ],
+      "level": 25,
+      "stats": [
+        {
+          "id": "recover_X_ward_on_charm_use",
+          "min": 32,
+          "max": 45
+        }
       ]
     },
     {
@@ -347,6 +663,14 @@
       "id": "AlloyReducedSlowPotency1",
       "item_types": [
         "Body Armour"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "base_slow_potency_+%",
+          "min": -30,
+          "max": -15
+        }
       ]
     },
     {
@@ -354,6 +678,14 @@
       "id": "AlloyRemnantPickupRange1",
       "item_types": [
         "Gloves"
+      ],
+      "level": 25,
+      "stats": [
+        {
+          "id": "remnant_pickup_range_+%",
+          "min": 35,
+          "max": 50
+        }
       ]
     },
     {
@@ -362,6 +694,14 @@
       "item_types": [
         "One Hand Mace",
         "Two Hand Mace"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "chance_to_retain_40%_of_glory_on_use_%",
+          "min": 60,
+          "max": 75
+        }
       ]
     },
     {
@@ -370,6 +710,14 @@
       "item_types": [
         "Buckler",
         "Shield"
+      ],
+      "level": 13,
+      "stats": [
+        {
+          "id": "recover_X_ward_on_block",
+          "min": 10,
+          "max": 15
+        }
       ]
     },
     {
@@ -377,6 +725,14 @@
       "id": "AlloyRunicWardRechargeRate1",
       "item_types": [
         "Belt"
+      ],
+      "level": 13,
+      "stats": [
+        {
+          "id": "ward_regeneration_rate_+%",
+          "min": 15,
+          "max": 20
+        }
       ]
     },
     {
@@ -384,6 +740,14 @@
       "id": "AlloySkillEffectDuration1",
       "item_types": [
         "Boots"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "skill_effect_duration_+%",
+          "min": 15,
+          "max": 19
+        }
       ]
     },
     {
@@ -391,6 +755,14 @@
       "id": "AlloySpellAreaOfEffect1",
       "item_types": [
         "Helmet"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "spell_area_of_effect_+%",
+          "min": 10,
+          "max": 15
+        }
       ]
     },
     {
@@ -399,6 +771,19 @@
       "item_types": [
         "Staff",
         "Wand"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "base_maximum_mana",
+          "min": 142,
+          "max": 188
+        },
+        {
+          "id": "spell_skill_gem_level_+",
+          "min": 1,
+          "max": 1
+        }
       ]
     },
     {
@@ -406,6 +791,14 @@
       "id": "AlloySpiritOnBoots1",
       "item_types": [
         "Boots"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "base_spirit_from_equipment",
+          "min": 10,
+          "max": 15
+        }
       ]
     },
     {
@@ -413,6 +806,14 @@
       "id": "AlloyTemporaryMinionSkillLimit1",
       "item_types": [
         "Boots"
+      ],
+      "level": 25,
+      "stats": [
+        {
+          "id": "temporary_minion_limit_+",
+          "min": 1,
+          "max": 2
+        }
       ]
     },
     {
@@ -422,6 +823,14 @@
         "Buckler",
         "Focus",
         "Shield"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "summon_totem_cast_speed_+%",
+          "min": 30,
+          "max": 49
+        }
       ]
     },
     {
@@ -429,6 +838,19 @@
       "id": "AttackerTakesDamage6",
       "item_types": [
         "Body Armour"
+      ],
+      "level": 63,
+      "stats": [
+        {
+          "id": "thorns_minimum_base_physical_damage",
+          "min": 64,
+          "max": 97
+        },
+        {
+          "id": "thorns_maximum_base_physical_damage",
+          "min": 98,
+          "max": 145
+        }
       ]
     },
     {
@@ -436,6 +858,14 @@
       "id": "CriticalMultiplier4",
       "item_types": [
         "Gloves"
+      ],
+      "level": 45,
+      "stats": [
+        {
+          "id": "base_critical_strike_multiplier_+",
+          "min": 25,
+          "max": 29
+        }
       ]
     },
     {
@@ -443,6 +873,14 @@
       "id": "DamageTakenGainedAsLife4_",
       "item_types": [
         "Amulet"
+      ],
+      "level": 68,
+      "stats": [
+        {
+          "id": "damage_taken_goes_to_life_over_4_seconds_%",
+          "min": 19,
+          "max": 21
+        }
       ]
     },
     {
@@ -450,6 +888,14 @@
       "id": "DamageWithBows5",
       "item_types": [
         "Quiver"
+      ],
+      "level": 60,
+      "stats": [
+        {
+          "id": "damage_+%_with_bow_skills",
+          "min": 43,
+          "max": 50
+        }
       ]
     },
     {
@@ -457,6 +903,14 @@
       "id": "EnergyShieldRechargeRate5______",
       "item_types": [
         "Focus"
+      ],
+      "level": 66,
+      "stats": [
+        {
+          "id": "energy_shield_recharge_rate_+%",
+          "min": 20,
+          "max": 23
+        }
       ]
     },
     {
@@ -490,6 +944,14 @@
         "Two Hand Sword",
         "Wand",
         "Warstaff"
+      ],
+      "level": 1,
+      "stats": [
+        {
+          "id": "essence_abyss_guaranteed_pick",
+          "min": 1,
+          "max": 1
+        }
       ]
     },
     {
@@ -523,6 +985,14 @@
         "Two Hand Sword",
         "Wand",
         "Warstaff"
+      ],
+      "level": 1,
+      "stats": [
+        {
+          "id": "essence_abyss_guaranteed_pick",
+          "min": 1,
+          "max": 1
+        }
       ]
     },
     {
@@ -536,6 +1006,14 @@
         "One Hand Mace",
         "One Hand Sword",
         "Spear"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "attack_skill_gem_level_+",
+          "min": 2,
+          "max": 2
+        }
       ]
     },
     {
@@ -548,6 +1026,14 @@
         "Two Hand Mace",
         "Two Hand Sword",
         "Warstaff"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "attack_skill_gem_level_+",
+          "min": 3,
+          "max": 3
+        }
       ]
     },
     {
@@ -555,6 +1041,14 @@
       "id": "EssenceAuraEffect1",
       "item_types": [
         "Sceptre"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "aura_effect_+%",
+          "min": 15,
+          "max": 20
+        }
       ]
     },
     {
@@ -563,6 +1057,14 @@
       "item_types": [
         "Amulet",
         "Ring"
+      ],
+      "level": 1,
+      "stats": [
+        {
+          "id": "local_maximum_quality_+",
+          "min": 20,
+          "max": 20
+        }
       ]
     },
     {
@@ -570,6 +1072,14 @@
       "id": "EssenceColdRecoupLife1",
       "item_types": [
         "Helmet"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "cold_damage_taken_goes_to_life_over_4_seconds_%",
+          "min": 26,
+          "max": 30
+        }
       ]
     },
     {
@@ -577,6 +1087,14 @@
       "id": "EssenceCorruptForTwoEnchantments1",
       "item_types": [
         "Belt"
+      ],
+      "level": 1,
+      "stats": [
+        {
+          "id": "local_force_corruption_outcome_two_enchants",
+          "min": 1,
+          "max": 1
+        }
       ]
     },
     {
@@ -590,6 +1108,14 @@
         "One Hand Mace",
         "One Hand Sword",
         "Spear"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "non_skill_base_all_damage_%_to_gain_as_cold",
+          "min": 15,
+          "max": 20
+        }
       ]
     },
     {
@@ -602,6 +1128,14 @@
         "Two Hand Mace",
         "Two Hand Sword",
         "Warstaff"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "non_skill_base_all_damage_%_to_gain_as_cold",
+          "min": 25,
+          "max": 33
+        }
       ]
     },
     {
@@ -615,6 +1149,14 @@
         "One Hand Mace",
         "One Hand Sword",
         "Spear"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "non_skill_base_all_damage_%_to_gain_as_fire",
+          "min": 15,
+          "max": 20
+        }
       ]
     },
     {
@@ -627,6 +1169,14 @@
         "Two Hand Mace",
         "Two Hand Sword",
         "Warstaff"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "non_skill_base_all_damage_%_to_gain_as_fire",
+          "min": 25,
+          "max": 33
+        }
       ]
     },
     {
@@ -640,6 +1190,14 @@
         "One Hand Mace",
         "One Hand Sword",
         "Spear"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "non_skill_base_all_damage_%_to_gain_as_lightning",
+          "min": 15,
+          "max": 20
+        }
       ]
     },
     {
@@ -652,6 +1210,14 @@
         "Two Hand Mace",
         "Two Hand Sword",
         "Warstaff"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "non_skill_base_all_damage_%_to_gain_as_lightning",
+          "min": 25,
+          "max": 33
+        }
       ]
     },
     {
@@ -665,6 +1231,14 @@
         "One Hand Mace",
         "One Hand Sword",
         "Spear"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "non_skill_base_all_damage_%_to_gain_as_physical",
+          "min": 15,
+          "max": 20
+        }
       ]
     },
     {
@@ -677,6 +1251,14 @@
         "Two Hand Mace",
         "Two Hand Sword",
         "Warstaff"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "non_skill_base_all_damage_%_to_gain_as_physical",
+          "min": 25,
+          "max": 33
+        }
       ]
     },
     {
@@ -684,6 +1266,14 @@
       "id": "EssenceFireRecoupLife1",
       "item_types": [
         "Belt"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "fire_damage_taken_goes_to_life_over_4_seconds_%",
+          "min": 26,
+          "max": 30
+        }
       ]
     },
     {
@@ -691,6 +1281,14 @@
       "id": "EssenceGlobalDefences1",
       "item_types": [
         "Amulet"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "global_armour_evasion_energy_shield_+%",
+          "min": 20,
+          "max": 30
+        }
       ]
     },
     {
@@ -698,6 +1296,14 @@
       "id": "EssenceGoldDropped1",
       "item_types": [
         "Gloves"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "gold_+%_from_enemies",
+          "min": 10,
+          "max": 15
+        }
       ]
     },
     {
@@ -705,6 +1311,14 @@
       "id": "EssenceGrantedPassive",
       "item_types": [
         "Body Armour"
+      ],
+      "level": 1,
+      "stats": [
+        {
+          "id": "mod_granted_passive_hash_essence",
+          "min": 0,
+          "max": 0
+        }
       ]
     },
     {
@@ -712,6 +1326,14 @@
       "id": "EssenceIncreasedLifePercent1",
       "item_types": [
         "Body Armour"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "maximum_life_+%",
+          "min": 8,
+          "max": 10
+        }
       ]
     },
     {
@@ -719,6 +1341,14 @@
       "id": "EssenceIncreasedManaPercent1",
       "item_types": [
         "Ring"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "maximum_mana_+%",
+          "min": 4,
+          "max": 6
+        }
       ]
     },
     {
@@ -726,6 +1356,14 @@
       "id": "EssenceLightningRecoupLife1",
       "item_types": [
         "Gloves"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "lightning_damage_taken_goes_to_life_over_4_seconds_%",
+          "min": 26,
+          "max": 30
+        }
       ]
     },
     {
@@ -734,6 +1372,14 @@
       "item_types": [
         "Boots",
         "Gloves"
+      ],
+      "level": 1,
+      "stats": [
+        {
+          "id": "local_socketed_items_effect_+%",
+          "min": 60,
+          "max": 60
+        }
       ]
     },
     {
@@ -742,6 +1388,14 @@
       "item_types": [
         "Focus",
         "Wand"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "base_mana_cost_efficiency_+%",
+          "min": 18,
+          "max": 20
+        }
       ]
     },
     {
@@ -749,6 +1403,14 @@
       "id": "EssenceManaCostReduction2H",
       "item_types": [
         "Staff"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "base_mana_cost_efficiency_+%",
+          "min": 28,
+          "max": 32
+        }
       ]
     },
     {
@@ -768,6 +1430,14 @@
         "Two Hand Mace",
         "Two Hand Sword",
         "Warstaff"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "local_chance_to_gain_onslaught_on_killing_blow_%",
+          "min": 20,
+          "max": 25
+        }
       ]
     },
     {
@@ -775,6 +1445,14 @@
       "id": "EssencePercentDexterity1",
       "item_types": [
         "Amulet"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "dexterity_+%",
+          "min": 7,
+          "max": 10
+        }
       ]
     },
     {
@@ -782,6 +1460,14 @@
       "id": "EssencePercentIntelligence1",
       "item_types": [
         "Amulet"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "intelligence_+%",
+          "min": 7,
+          "max": 10
+        }
       ]
     },
     {
@@ -789,6 +1475,14 @@
       "id": "EssencePercentStrength1",
       "item_types": [
         "Amulet"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "strength_+%",
+          "min": 7,
+          "max": 10
+        }
       ]
     },
     {
@@ -796,6 +1490,14 @@
       "id": "EssencePhysicalDamageTakenAsChaos1",
       "item_types": [
         "Body Armour"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "physical_damage_taken_%_as_chaos",
+          "min": 10,
+          "max": 15
+        }
       ]
     },
     {
@@ -803,6 +1505,14 @@
       "id": "EssenceReducedCriticalDamageAgainstYou1",
       "item_types": [
         "Body Armour"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "base_self_critical_strike_multiplier_-%",
+          "min": 40,
+          "max": 50
+        }
       ]
     },
     {
@@ -810,6 +1520,14 @@
       "id": "EssenceSpellSkillLevel1H1",
       "item_types": [
         "Wand"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "spell_skill_gem_level_+",
+          "min": 3,
+          "max": 3
+        }
       ]
     },
     {
@@ -817,6 +1535,14 @@
       "id": "EssenceSpellSkillLevel2H1",
       "item_types": [
         "Staff"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "spell_skill_gem_level_+",
+          "min": 5,
+          "max": 5
+        }
       ]
     },
     {
@@ -824,6 +1550,14 @@
       "id": "GlobalMinionSpellSkillGemLevel1",
       "item_types": [
         "Helmet"
+      ],
+      "level": 5,
+      "stats": [
+        {
+          "id": "minion_skill_gem_level_+",
+          "min": 1,
+          "max": 1
+        }
       ]
     },
     {
@@ -832,6 +1566,14 @@
       "item_types": [
         "Buckler",
         "Shield"
+      ],
+      "level": 33,
+      "stats": [
+        {
+          "id": "local_block_chance_+%",
+          "min": 20,
+          "max": 24
+        }
       ]
     },
     {
@@ -839,6 +1581,14 @@
       "id": "ManaRegeneration5",
       "item_types": [
         "Ring"
+      ],
+      "level": 55,
+      "stats": [
+        {
+          "id": "mana_regeneration_rate_+%",
+          "min": 50,
+          "max": 59
+        }
       ]
     },
     {
@@ -846,6 +1596,14 @@
       "id": "MovementVelocity5",
       "item_types": [
         "Boots"
+      ],
+      "level": 65,
+      "stats": [
+        {
+          "id": "base_movement_velocity_+%",
+          "min": 30,
+          "max": 30
+        }
       ]
     },
     {
@@ -853,6 +1611,14 @@
       "id": "StunThreshold10",
       "item_types": [
         "Belt"
+      ],
+      "level": 72,
+      "stats": [
+        {
+          "id": "stun_threshold_+",
+          "min": 254,
+          "max": 304
+        }
       ]
     }
   ]

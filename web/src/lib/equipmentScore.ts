@@ -138,17 +138,26 @@ export function scoreEquipment(text: string, weighted: readonly WeightedStat[], 
 
 /** Remove the complete official stat while retaining every other item source. */
 export function withoutTradeStat(text: string, stat: StatTemplate, templates: readonly StatTemplate[]): { text: string; value: number } | undefined {
-  const matched = matchedItemStats(text, new Set([stat.id.split('.')[0]]), templates).filter(group => group.match?.id === stat.id);
-  if (!matched.length) return;
-  const removed = new Set(matched.flatMap(group => group.rows.map(row => row.index)));
-  const counts = new Map<number, number>();
-  for (const row of matched.flatMap(group => group.rows)) {
-    if (row.implicitHeader !== undefined) counts.set(row.implicitHeader, (counts.get(row.implicitHeader) ?? 0) + 1);
+  return tradeStatRemovals(text, templates).get(stat.id);
+}
+
+/** Match the current item once, including large option-based passive catalogs. */
+export function tradeStatRemovals(text: string, templates: readonly StatTemplate[]): Map<string, { text: string; value: number }> {
+  const groups = matchedItemStats(text, new Set(templates.map(stat => stat.id.split('.')[0])), templates);
+  const result = new Map<string, { text: string; value: number }>();
+  for (const id of new Set(groups.flatMap(group => group.match ? [group.match.id] : []))) {
+    const matched = groups.filter(group => group.match?.id === id);
+    const removed = new Set(matched.flatMap(group => group.rows.map(row => row.index)));
+    const counts = new Map<number, number>();
+    for (const row of matched.flatMap(group => group.rows)) {
+      if (row.implicitHeader !== undefined) counts.set(row.implicitHeader, (counts.get(row.implicitHeader) ?? 0) + 1);
+    }
+    result.set(id, { text: text.split('\n').map((line, index) => counts.has(index)
+      ? line.replace(/(Implicits:\s*)(\d+)/, (_, prefix: string, count: string) => `${prefix}${Number(count) - counts.get(index)!}`) : line)
+      .filter((_, index) => !removed.has(index)).join('\n'),
+      value: matched.reduce((sum, group) => sum + group.match!.value, 0) });
   }
-  return { text: text.split('\n').map((line, index) => counts.has(index)
-    ? line.replace(/(Implicits:\s*)(\d+)/, (_, prefix: string, count: string) => `${prefix}${Number(count) - counts.get(index)!}`) : line)
-    .filter((_, index) => !removed.has(index)).join('\n'),
-    value: matched.reduce((sum, group) => sum + group.match!.value, 0) };
+  return result;
 }
 
 /** Rolled properties already contain local affixes; probe their recalculated values instead. */

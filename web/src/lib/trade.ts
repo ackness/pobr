@@ -45,7 +45,9 @@ export function lineValue(line: string): number | null {
 }
 
 export interface TradeStatTemplate {
-  /** Official namespaced trade ID, including pipe-separated aliases. */
+  /** Mutually exclusive passive outcomes from an essence craft. */
+  kind?: 'granted_passive';
+  /** Official namespaced trade ID; a pipe suffix selects a discrete option. */
   id: string;
   line: string;
   value: number;

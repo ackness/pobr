@@ -14,7 +14,9 @@ function M.load(vendor)
     for _, category in ipairs(dofile(vendor .. "/Data/TradeSiteStats.lua")) do
         for _, entry in ipairs(category.entries or {}) do
             entries[entry.id] = entry
-            local namespace, hashes = entry.id:match("^(%w+)%.stat_(.+)$")
+            -- Pipes select an option (e.g. a passive node), not another stat hash.
+            -- Comma-separated hashes are aliases for a single numeric trade stat.
+            local namespace, hashes = entry.id:match("^(%w+)%.stat_([%d,]+)$")
             if namespace then
                 for hash in hashes:gmatch("%d+") do entries[namespace .. ".stat_" .. hash] = entry end
             end
@@ -30,10 +32,20 @@ function M.extract(mod, namespace, entries)
     for _, hash in ipairs(hashes) do
         local id = namespace .. ".stat_" .. string.format("%.0f", hash)
         local entry = entries[id]
+        local source_lines = {}
+        for _, line in ipairs(mod.tradeHashes[hash]) do source_lines[#source_lines + 1] = M.maximum(line) end
+        local line = table.concat(source_lines, " "):gsub("%s+", " ")
+        if not entry then
+            -- Fixed option wording (e.g. jewel radius) identifies one full ID.
+            -- A numeric base hash alone cannot select an arbitrary option.
+            for option_id, option in pairs(entries) do
+                if option_id:sub(1, #id + 1) == id .. "|" and option.text == line then
+                    if entry then entry = nil; break end
+                    entry = option
+                end
+            end
+        end
         if entry then
-            local source_lines = {}
-            for _, line in ipairs(mod.tradeHashes[hash]) do source_lines[#source_lines + 1] = M.maximum(line) end
-            local line = table.concat(source_lines, " "):gsub("%s+", " ")
             local numbers = {}
             for number in line:gmatch("%-?%d+%.?%d*") do numbers[#numbers + 1] = tonumber(number) end
             local indices, token_count, constants_match = {}, 0, true

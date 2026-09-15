@@ -78,6 +78,38 @@ test('partially unmodeled compound probes do not publish inflated weights in sco
   expect(result.scoreWarnings).toContain('unmodeled-candidates');
 });
 
+test('all passive options are measured beyond the combination budget without stacking the current craft', async () => {
+  const stats = ['First', 'Last'].map((name, index) => ({ id: `explicit.stat_123|${index}`, kind: 'granted_passive' as const,
+    line: `Allocates ${name}`, value: 1, value_indices: [] }));
+  const visited: string[] = [];
+  const result = await optimizeTradeAffixes({ request: { items: [{ slot: 'weapon2', text: `Rarity: RARE\nReference\n${base.name}\nAllocates First` }] },
+    slot: 'weapon2', base, pool: [], searchMods: [{ ...special, stats }], itemLevel: 82, objective,
+    combinations: false, maxEvaluations: 2,
+    evaluate: evaluator(text => 100 + (text.includes('Allocates First') ? 10 : 0) + (text.includes('Allocates Last') ? 20 : 0), visited),
+  });
+  expect(visited.every(text => (text.match(/Allocates /g) ?? []).length <= 1)).toBe(true);
+  expect(result.weighted.map(stat => [stat.id, stat.weight])).toEqual([['explicit.stat_123|1', 200], ['explicit.stat_123|0', 100]]);
+  expect(result.evaluated).toBe(7);
+  expect(result.currentItemScore).toMatchObject({ complete: true, score: 100 });
+  expect(result.minimumWeight).toBe(100);
+});
+
+test('Puppet Master stays searchable without inventing a weight for its unmodeled trigger', async () => {
+  const chance = { id: 'explicit.stat_2840930496', line: '50% Surpassing Chance to gain a Puppet Master stack whenever you use a Command Skill', value: 50 };
+  const result = await optimizeTradeAffixes({ request: {}, slot: 'weapon2', base, pool: [],
+    searchMods: [{ ...special, stats: [chance] }], itemLevel: 82, objective, combinations: false,
+    evaluate: async options => {
+      const result = await evaluator(() => 100)(options);
+      return { ...result, results: result.results.map(row => ({ ...row,
+        unsupported: options.variants[row.index].set_items![0].text.includes('Puppet Master') ? [chance.line] : [],
+      })) };
+    },
+  });
+  expect(result.weighted).toEqual([]);
+  expect(result.situational).toEqual([{ ...chance, kind: 'buff' }]);
+  expect(result.scoreWarnings).toContain('unmodeled-candidates');
+});
+
 test('discovers new affixes and jointly beneficial pairs, not only current item lines', async () => {
   const pool = [affix('flat'), affix('speed', 'suffix'), affix('crit', 'suffix')];
   const result = await optimizeTradeAffixes({ request: { character: { level: 90, class_name: 'Ranger' } },

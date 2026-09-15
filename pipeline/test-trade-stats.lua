@@ -30,4 +30,10 @@ local alias = extract("#% increased Spirit Reservation Efficiency of Skills", { 
 assert(alias.trade_line == "12% increased Spirit Reservation Efficiency of Skills")
 assert(not extract("Grants Level # Fireball", { "Grants Level 20 Fireball" }))
 assert(not extract("# Damage per # Mana per # Strength", { "10 Damage per 20 Mana per 30 Strength" }))
+local options = {
+    ["explicit.stat_123|1"] = { id = "explicit.stat_123|1", text = "Upgrades Radius to Medium" },
+    ["explicit.stat_123|2"] = { id = "explicit.stat_123|2", text = "Upgrades Radius to Large" },
+}
+assert(trade.extract({ tradeHashes = { [123] = { "Upgrades Radius to Medium" } } }, "explicit", options)[1].id == "explicit.stat_123|1")
+assert(#trade.extract({ tradeHashes = { [123] = { "Unknown Radius" } } }, "explicit", options) == 0)
 print("trade stats: compound, conditional, flag, inverse and alias checks passed")

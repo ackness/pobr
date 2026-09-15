@@ -2,7 +2,7 @@ export interface SituationalAffix {
   id: string;
   line: string;
   value: number;
-  kind: 'projectiles' | 'area' | 'debuff';
+  kind: 'projectiles' | 'area' | 'debuff' | 'buff';
   delta?: number;
 }
 
@@ -12,6 +12,11 @@ export interface SituationalAffix {
  */
 export function situationalAffix(stat: { id: string; line: string; value: number },
   before: Record<string, number>, after: Record<string, number>): SituationalAffix | undefined {
+  // Neither the pinned PoB2 parser nor our engine models Puppet Master uptime.
+  // Keep its verified market filter usable without turning chance into damage.
+  if (/Surpassing Chance to gain a Puppet Master stack whenever you use a Command Skill/i.test(stat.line)) {
+    return { ...stat, kind: 'buff' };
+  }
   for (const [metric, kind] of [['ProjectileCount', 'projectiles'], ['AoeRadius', 'area']] as const) {
     const delta = (after[metric] ?? 0) - (before[metric] ?? 0);
     if ((before[metric] ?? 0) > 0 && Number.isFinite(delta) && delta > 0) return { ...stat, kind, delta };

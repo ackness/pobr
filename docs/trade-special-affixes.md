@@ -16,8 +16,9 @@ does not supply Alloy overrides. The game's same-version `EssenceMods`,
 `Essences`, and `EssenceTargetItemCategories` tables provide these recipes,
 including the actual alternatives in `OutcomeMods`. They also cover corrupted
 essences. The tables are fetched through the existing GGG data pipeline;
-`trade_crafting_sources.json` retains only modifier IDs, source kinds and item
-classes. Recipe categories take precedence over the PoB2 essence fallback.
+`trade_crafting_sources.json` retains modifier IDs, source kinds, item classes,
+required levels and the underlying stat IDs/roll ranges. Recipe categories take
+precedence over the PoB2 essence fallback.
 
 For example, `AlloyCastSpeedDamageAsExtraColdHybridOneHand1` belongs to Wands
 and Foci; the stronger `AlloyCastSpeedDamageAsExtraColdHybrid1` belongs to
@@ -41,6 +42,9 @@ weapon would produce incorrect categories.
   and inconsistent numeric templates are excluded instead of guessed.
 - `trade_line` preserves official wording when it differs from the PoB export,
   including inverse wording/signs. Both spellings match the same ID and value.
+- A pipe suffix is a discrete option, not a hash alias. Preserve the complete
+  ID in queries and scores. Fixed option wording selects the matching option;
+  jewel Medium/Large/Very Large radius no longer all resolve to Very Large.
 - Crafted, fractured and desecrated explicit modifiers use `explicit.stat_*`,
   as in PoB2. Source-specific duplicates would count the same effect twice.
   Corruption uses `enchant.stat_*`; rune augments and ordinary implicits remain
@@ -64,9 +68,34 @@ prevents an unmodeled part of a compound effect from producing an inflated
 coefficient. A parsed effect still depends on the engine's consumers and active
 configuration; a zero contribution does not establish that the effect is useless.
 
-The fixed vendor has no modifier text/hash records for `AlloyPuppetMasterChance1`
-and `EssenceGrantedPassive`. Extraction reports and records these missing IDs in
-`_meta.unmapped_crafting_mods`; it does not invent search IDs or gains.
+The fixed vendor omits `AlloyPuppetMasterChance1` and `EssenceGrantedPassive`
+from `ModItem.lua`, but its stat descriptions and official trade entries retain
+their definitions. The GGG stat IDs select the description; recovery requires
+an unambiguous official entry. Unknown multi-stat descriptions, transforms and
+limits remain unmapped. The current recipe pack has no unmapped modifier IDs.
+
+- `AlloyPuppetMasterChance1`: Sceptres, level 25, 30-50% Surpassing Chance to gain
+  a Puppet Master stack on using a Command Skill; `explicit.stat_2840930496`.
+  Neither the pinned PoB2 parser nor this engine models its trigger/stack uptime.
+  It appears as an optional required market filter with an explicit unmodeled
+  label, never an invented DPS coefficient.
+- `EssenceGrantedPassive`: Body Armour, level 1. Its `[0, 0]` roll is a dynamic
+  passive reference, not zero numeric power. Expand the official explicit
+  `Allocates <name>` options against `TreeData/0_5/tree.lua`, checking ID and
+  name. This yields 875 searchable outcomes with one-unit values and full
+  `explicit.stat_2954116742|<node>` IDs. This is the market candidate list, not
+  a guarantee about crafting probabilities or every node's modeled effects.
+- Passive probes use the existing `GrantedPassive` engine path, which deduplicates
+  already allocated/granted notables. Alternatives replace the current item's
+  allocation; other equipment anoints stay equipped. All mandatory stat probes
+  run before bounded combination search. The combination evaluation budget is
+  raised to this minimum when necessary, with batching/progress/cancellation
+  preserved. Current-item text is matched once for all removal probes.
+
+Future ordinary numeric recipes can use the same description fallback without
+new per-modifier code. New effect mechanics or description transforms still need
+their own calculation/search handling and regression coverage. A tree-version
+bump must update the fallback's tree input alongside the existing tree extractors.
 
 Reference combination search and the manual affix editor continue to use
 ordinary, base-compatible prefix/suffix pools. The special-source catalog is
@@ -84,10 +113,11 @@ luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src data/4.
 luajit pipeline/extract-trade-map.lua vendor/PathOfBuilding-PoE2/src data/4.5.5.2/overlay/trade_stat_map.json
 python3 pipeline/test-trade-crafting.py
 luajit pipeline/test-trade-stats.lua
+luajit pipeline/test-trade-crafting-fallback.lua
 pnpm --dir web test src/lib/tradeCatalog.test.ts src/lib/equipmentScore.test.ts src/lib/tradeOptimizer.test.ts
 pnpm --dir web sync-data
 pnpm --dir web build
-pnpm --dir web exec playwright test e2e/trade-upgrades.spec.ts --grep 'alloy hybrid|imported PoB armour' --workers=1
+pnpm --dir web exec playwright test e2e/trade-upgrades.spec.ts --workers=1
 ```
 
 `pipeline/regen-all.sh` runs both extraction stages in dependency order. The

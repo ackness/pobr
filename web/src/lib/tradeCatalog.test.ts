@@ -7,6 +7,26 @@ import { editableAffixPool } from './marketAffixEditor';
 const catalog = JSON.parse(readFileSync(new URL('../../../data/4.5.5.2/overlay/trade_catalog.json', import.meta.url), 'utf8')) as TradeCatalog;
 const special = (id: string) => catalog.search_mods!.find(mod => mod.id === id)!;
 
+test('missing crafting exports recover numeric chance and individual passive options', () => {
+  const chance = special('alloy:AlloyPuppetMasterChance1');
+  expect(chance.categories).toEqual(['weapon.sceptre']);
+  expect(chance.level).toBe(25);
+  expect(chance.stats[0]).toMatchObject({ id: 'explicit.stat_2840930496', value: 50 });
+  const essence = special('essence:EssenceGrantedPassive');
+  expect(essence.categories).toEqual(['armour.chest']);
+  expect(essence.stats).toHaveLength(875);
+  const goring = essence.stats.find(stat => stat.line === 'Allocates Goring')!;
+  expect(goring).toMatchObject({ id: 'explicit.stat_2954116742|47316', kind: 'granted_passive', value: 1, value_indices: [] });
+  const score = scoreEquipment('Rarity: RARE\nReference\nVile Robe\n{crafted}Allocates Goring', [{ ...goring, weight: 30 }], essence.stats);
+  expect(score).toMatchObject({ complete: true, score: 30 });
+  expect((catalog as TradeCatalog & { _meta: { unmapped_crafting_mods: string[] } })._meta.unmapped_crafting_mods).toEqual([]);
+});
+
+test('jewel radius options keep their distinct official IDs', () => {
+  const radius = catalog.mods.filter(mod => ['jewel:JewelRadiusLargeSize', 'jewel:JewelRadiusMediumSize'].includes(mod.id));
+  expect(radius.flatMap(mod => mod.stats.map(stat => stat.id)).sort()).toEqual(['explicit.stat_3891355829|1', 'explicit.stat_3891355829|2']);
+});
+
 test('GGG alloy recipes supply both hybrid components on the correct caster categories', () => {
   const alloy = special('alloy:AlloyCastSpeedDamageAsExtraColdHybridOneHand1');
   expect(alloy.categories).toEqual(['armour.focus', 'weapon.wand']);

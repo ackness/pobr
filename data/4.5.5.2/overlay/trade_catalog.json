@@ -2,7 +2,7 @@
   "_meta":{
     "source":"PoB2 ModItem/ModJewel/ModFlask/ModCharm/ModVeiled/ModCorrupted, Essence, Bases, Gems, Skills and TradeSiteStats; GGG trade_crafting_sources",
     "regen_command":"luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src <out> <crafting_sources>",
-    "unmapped_crafting_mods":["AlloyPuppetMasterChance1","EssenceGrantedPassive"]
+    "unmapped_crafting_mods":[]
   },
   "bases":[{
       "name":"Absent Amulet",
@@ -52863,10 +52863,9 @@
       "roll_lines":["Upgrades Radius to Large"],
       "weights":[["radius_jewel",1],["jewel",0]],
       "stats":[{
-          "id":"explicit.stat_3891355829|3",
+          "id":"explicit.stat_3891355829|2",
           "line":"Upgrades Radius to Large",
           "value":1,
-          "trade_line":"Upgrades Radius to Very Large",
           "value_indices":[]
         }]
     },{
@@ -53160,10 +53159,9 @@
       "roll_lines":["Upgrades Radius to Medium"],
       "weights":[["radius_jewel",1],["jewel",0]],
       "stats":[{
-          "id":"explicit.stat_3891355829|3",
+          "id":"explicit.stat_3891355829|1",
           "line":"Upgrades Radius to Medium",
           "value":1,
-          "trade_line":"Upgrades Radius to Very Large",
           "value_indices":[]
         }]
     },{
@@ -55085,6 +55083,17 @@
       "stats":[{
           "id":"explicit.stat_101878827",
           "line":"50% increased Presence Area of Effect",
+          "value":50
+        }]
+    },{
+      "source":"alloy",
+      "id":"alloy:AlloyPuppetMasterChance1",
+      "categories":["weapon.sceptre"],
+      "level":25,
+      "lines":["50% Surpassing Chance to gain a Puppet Master stack whenever you use a Command Skill"],
+      "stats":[{
+          "id":"explicit.stat_2840930496",
+          "line":"50% Surpassing Chance to gain a Puppet Master stack whenever you use a Command Skill",
           "value":50
         }]
     },{
@@ -61603,6 +61612,5263 @@
           "id":"explicit.stat_3175163625",
           "line":"15% increased Quantity of Gold Dropped by Slain Enemies",
           "value":15
+        }]
+    },{
+      "source":"essence",
+      "id":"essence:EssenceGrantedPassive",
+      "categories":["armour.chest"],
+      "level":1,
+      "lines":["Allocates Repulsion","Allocates Unfettered","Allocates Javelin","Allocates Overzealous","Allocates Easy Going","Allocates Sudden Escalation","Allocates Exposed to the Inferno","Allocates Necromantic Ward","Allocates Dazing Blocks","Allocates Reaving","Allocates Embodiment of Frost","Allocates Defensive Stance","Allocates Emboldening Casts","Allocates Bloodthirsty","Allocates Unyielding","Allocates Shockwaves","Allocates Bestial Rage","Allocates Strong Chin","Allocates Lust for Power","Allocates Zarokh's Gift","Allocates Volcanic Skin","Allocates Necrotic Touch","Allocates Molten Being","Allocates Sniper","Allocates Spreading Shocks","Allocates Insightfulness","Allocates Urgent Call","Allocates The Spring Hare","Allocates Heavy Ammunition","Allocates Dreamcatcher","Allocates Mauling Stuns","Allocates Arsonist","Allocates Flash Storm","Allocates Temporal Mastery","Allocates Harness the Elements","Allocates Asceticism","Allocates Vale Shelter","Allocates Adaptable Assault","Allocates Sitting Duck","Allocates Lone Warrior","Allocates Warm the Heart","Allocates Heartbreaking","Allocates Shadow Dancing","Allocates Punctured Lung","Allocates Unbreakable","Allocates Stormwalker","Allocates Unbending","Allocates Everlasting Glory","Allocates Loose Flesh","Allocates Rhythm of Ice","Allocates Curved Weapon","Allocates Deadly Force","Allocates Lightning Quick","Allocates Controlling Magic","Allocates Growing Peril","Allocates Precise Point","Allocates Split the Earth","Allocates Dizzying Sweep","Allocates Shredding Contraptions","Allocates Puppet Master chance","Allocates Pyromancer","Allocates Sacrificial Blood","Allocates Arcane Blossom","Allocates Deterioration","Allocates Suffusion","Allocates Bond of the Cat","Allocates Specialised Shots","Allocates Warlord Leader","Allocates Bravado","Allocates Spiral into Mania","Allocates Growing Swarm","Allocates Draiocht Cleansing","Allocates Consistent Intake","Allocates Remnant Attraction","Allocates Power Conduction","Allocates Boundless Growth","Allocates Hale Heart","Allocates Endured Suffering","Allocates Spiral into Depression","Allocates Thrill of the Fight","Allocates Heavy Drinker","Allocates Shedding Skin","Allocates Bhatair's Storm","Allocates Siphon","Allocates Building Toxins","Allocates Embodiment of Lightning","Allocates Storm Driven","Allocates Deep Freeze","Allocates Inspiring Ally","Allocates Ether Flow","Allocates Mental Alacrity","Allocates Lingering Whispers","Allocates Jack of all Trades","Allocates Impact Area","Allocates Efficient Casting","Allocates Pinpoint Shot","Allocates Arcane Nature","Allocates Blade Catcher","Allocates General's Bindings","Allocates Silent Guardian","Allocates Spell Haste","Allocates Piercing Claw","Allocates Utility Ordnance","Allocates Perforation","Allocates Adrenaline Rush","Allocates Reaching Strike","Allocates Moment of Truth","Allocates Thirsting Ally","Allocates Decisive Retreat","Allocates Augmented Flesh","Allocates Bonded Precision","Allocates Vengeance","Allocates Tactical Retreat","Allocates Escape Velocity","Allocates Volatile Grenades","Allocates Careful Consideration","Allocates Breath of Ice","Allocates Tempered Defences","Allocates Illuminated Crown","Allocates Bleeding Out","Allocates Savoured Blood","Allocates Ancestral Mending","Allocates Unstable Bond","Allocates Lasting Trauma","Allocates Crushing Verdict","Allocates Knight of Tarcus","Allocates Ruinic Helm","Allocates Arcane Intensity","Allocates Potent Incantation","Allocates Immaterial","Allocates Projectile Bulwark","Allocates Supportive Ancestors","Allocates Precision Salvo","Allocates Prolonged Assault","Allocates Favourable Odds","Allocates Left Hand of Darkness","Allocates Cremation","Allocates Thin Ice","Allocates Endless Blizzard","Allocates Unleash Fire","Allocates Erraticism","Allocates Wellspring","Allocates Splitting Ground","Allocates Frozen Claw","Allocates Regenerative Flesh","Allocates Authority","Allocates Reprisal","Allocates Grit","Allocates Dark Entropy","Allocates Cremating Cries","Allocates Among the Hordes","Allocates For the Jugular","Allocates Paragon","Allocates Blinding Strike","Allocates Martial Artistry","Allocates Fleshcrafting","Allocates Explosive Impact","Allocates Cirel of Tarth's Light","Allocates Replenishing Horde","Allocates Toxic Tolerance","Allocates The Quick Fox","Allocates Spiral into Insanity","Allocates Preemptive Strike","Allocates Breakage","Allocates Fervour","Allocates Impending Doom","Allocates Pack Encouragement","Allocates Fearful Paralysis","Allocates Irreparable","Allocates Storm's Rebuke","Allocates The Wild Cat","Allocates Inevitable Rupture","Allocates Tainted Strike","Allocates Vigilance","Allocates Holy Protector","Allocates Trick Shot","Allocates Initiative","Allocates Bounty Hunter","Allocates Turn the Clock Forward","Allocates Slippery Ice","Allocates Chilled to the Bone","Allocates Dimensional Weakspot","Allocates Self Immolation","Allocates Spray and Pray","Allocates Madness in the Bones","Allocates Alternating Current","Allocates Ice Storm","Allocates Glazed Flesh","Allocates Blade Flurry","Allocates Fortified Aegis","Allocates Last Stand","Allocates Immortal Infamy","Allocates Everlasting Infusions","Allocates Mental Toughness","Allocates Time Manipulation","Allocates Hardened Wood","Allocates Direct Approach","Allocates Invocated Echoes","Allocates Fulmination","Allocates Breath of Fire","Allocates Brain Freeze","Allocates Knight of Chitus","Allocates Determined Precision","Allocates Infusing Power","Allocates Paranoia","Allocates Stars Aligned","Allocates Sundering","Allocates Waning Hindrances","Allocates Resolute Reach","Allocates Chakra of Impact","Allocates Beef","Allocates Overwhelm","Allocates Sand in the Eyes","Allocates Meat Recycling","Allocates Thrill of Battle","Allocates Ancestral Alacrity","Allocates Blazing Arms","Allocates Tenfold Attacks","Allocates Bolstering Yell","Allocates Toxic Sludge","Allocates Spirit of the Wyvern","Allocates Kite Runner","Allocates Dominion","Allocates Electrifying Nature","Allocates Harsh Winter","Allocates Ancestral Artifice","Allocates Primed to Explode","Allocates Refocus","Allocates Skullcrusher","Allocates Steadfast Resolve","Allocates Cold Nature","Allocates Bone Chains","Allocates Archon of Undeath","Allocates Lust for Sacrifice","Allocates Mass Hysteria","Allocates The Power Within","Allocates Vulgar Methods","Allocates Aspiring Genius","Allocates Archon of the Storm","Allocates The Noble Wolf","Allocates Heavy Buffer","Allocates Material Solidification","Allocates Touch the Arcane","Allocates Greatest Defence","Allocates Grace of the Ancestors","Allocates Counterstancing","Allocates Lord of the Squall","Allocates General Electric","Allocates Polished Iron","Allocates Coming Calamity","Allocates Engineered Blaze","Allocates Desensitisation","Allocates Pressure Points","Allocates Invigorating Hate","Allocates Tolerant Equipment","Allocates Frantic Swings","Allocates Total Incineration","Allocates The Molten One's Gift","Allocates Roaring Cries","Allocates Perpetual Freeze","Allocates Primal Rage","Allocates Chakra of Rhythm","Allocates Pure Power","Allocates Deadly Invocations","Allocates Chakra of Thought","Allocates Sudden Infuriation","Allocates Cluster Bombs","Allocates First Approach","Allocates Guttural Roar","Allocates Shocking Limit","Allocates Surging Beast","Allocates Finish Them","Allocates Final Barrage","Allocates Wrapped Quiver","Allocates Master Fletching","Allocates Succour","Allocates Howling Beast","Allocates Efficient Contraptions","Allocates High Alert","Allocates Dead can Dance","Allocates Electrified Claw","Allocates Inner Faith","Allocates Entropic Incarnation","Allocates Controlled Chaos","Allocates Lifelong Friend","Allocates Falcon Technique","Allocates Grip of Evil","Allocates Unexpected Finesse","Allocates Slow Burn","Allocates Primal Protection","Allocates Vocal Empowerment","Allocates Catalysis","Allocates Iron Slippers","Allocates Lockdown","Allocates Resurging Archon","Allocates Long Distance Relationship","Allocates Revenge","Allocates Warding Fetish","Allocates Voll's Protection","Allocates Primal Growth","Allocates Flow of Time","Allocates Melding","Allocates Crystalline Resistance","Allocates Frazzled","Allocates Swift Claw","Allocates Defiance","Allocates Shockproof","Allocates Cut to the Bone","Allocates Unhindered","Allocates Hunting Companion","Allocates Chakra of Breathing","Allocates Distracted Target","Allocates Captivating Companionship","Allocates Dread Engineer's Concoction","Allocates Ichlotl's Inferno","Allocates Preservation","Allocates Gem Enthusiast","Allocates Back in Action","Allocates Effervescent","Allocates Hunter's Talisman","Allocates Deep Wounds","Allocates Haemorrhaging Cuts","Allocates Lord of Horrors","Allocates Reverberating Parry","Allocates Spirit of the Wolf","Allocates Quick Fingers","Allocates Unspoken Bond","Allocates Storm Swell","Allocates Focused Channel","Allocates Invocated Limit","Allocates Flurry","Allocates Full Salvo","Allocates Stripped Defences","Allocates Unstoppable Barrier","Allocates Conservative Casting","Allocates Personal Touch","Allocates One with the River","Allocates Spectral Ward","Allocates Mass Rejuvenation","Allocates Precise Volatility","Allocates Spaghettification","Allocates Bond of the Viper","Allocates Hallowed","Allocates Energising Deflection","Allocates The Frenzied Bear","Allocates Emboldening Lead","Allocates Conall the Hunted","Allocates Staunch Deflection","Allocates Void","Allocates In the Thick of It","Allocates Chakra of Life","Allocates Mystic Avalanche","Allocates Burnout","Allocates Investing Energies","Allocates Wyvern's Breath","Allocates Far Sighted","Allocates At your Command","Allocates Turn the Clock Back","Allocates Near at Hand","Allocates Cold Coat","Allocates Raw Mana","Allocates Crushing Judgement","Allocates Saqawal's Hide","Allocates Blood of Rage","Allocates Reinvigoration","Allocates Thickened Arteries","Allocates Fortifying Blood","Allocates Admonisher","Allocates One For All","Allocates Heart Tissue","Allocates Serrated Edges","Allocates Molten Claw","Allocates Explosive Empowerment","Allocates Cull the Hordes","Allocates Electrocution","Allocates Vile Mending","Allocates Convalescence","Allocates Kaom's Blessing","Allocates Incision","Allocates Spiked Shield","Allocates Dynamism","Allocates Concussive Attack","Allocates Marked for Death","Allocates Spike Pit","Allocates Heatproof","Allocates Shield Expertise","Allocates Nourishing Ally","Allocates Battle Trance","Allocates Kept at Bay","Allocates Staunching","Allocates Whirling Assault","Allocates Full Recovery","Allocates Rhythm of Fire","Allocates Manifold Method","Allocates Branching Bolts","Allocates Bastion of Light","Allocates Presence Present","Allocates Desert's Scorn","Allocates Deafening Cries","Allocates Pliable Flesh","Allocates Biting Frost","Allocates Stupefy","Allocates Apocalypse","Allocates Disorientation","Allocates Close Confines","Allocates Thirst for Power","Allocates Stormcharged","Allocates Heartstopping","Allocates Demolitionist","Allocates Psychic Fragmentation","Allocates Escalating Toxins","Allocates Unerring Impact","Allocates Crystal Elixir","Allocates Eldritch Will","Allocates Infused Limits","Allocates Finesse","Allocates Restless Dead","Allocates Exploit","Allocates Blood Rush","Allocates Fate Finding","Allocates Breaking Blows","Allocates Struck Through","Allocates Ingenuity","Allocates Magnum Opus","Allocates Forces of Nature","Allocates Staggering Palm","Allocates Searing Heat","Allocates Frantic Reach","Allocates Chronomancy","Allocates Drenched","Allocates Spiked Armour","Allocates Deep Trance","Allocates Taste for Blood","Allocates Frenetic","Allocates Nimble Strength","Allocates Icebreaker","Allocates Resolution","Allocates Master of Hexes","Allocates Energise","Allocates Harmonic Generator","Allocates Lead by Example","Allocates Sigil of Ice","Allocates Left Ventricle","Allocates Empowering Remnants","Allocates Exposed to the Storm","Allocates Utmost Offering","Allocates Invigorating Archon","Allocates Heavy Weaponry","Allocates Maiming Strike","Allocates Bear's Roar","Allocates Evocational Practitioner","Allocates Shatter Palm","Allocates Gravedigger","Allocates Hide of the Bear","Allocates Glaciation","Allocates Escalating Mayhem","Allocates Off-Balancing Retort","Allocates Archon of the Blizzard","Allocates Surging Currents","Allocates Saqawal's Guidance","Allocates Essence Infusion","Allocates Enduring Deflection","Allocates Blurred Motion","Allocates Efficient Inscriptions","Allocates Split Shot","Allocates Chakra of Sight","Allocates Blinding Flash","Allocates Versatile Arms","Allocates Overheating Blow","Allocates Commanding Rage","Allocates Thousand Cuts","Allocates Chakra of Stability","Allocates Tides of Change","Allocates Adverse Growth","Allocates Low Tolerance","Allocates Cruel Methods","Allocates Acceleration","Allocates Agonising Calamity","Allocates Electrotherapy","Allocates Stormbreaker","Allocates Adaptive Skin","Allocates Guided Hand","Allocates Ancestral Reach","Allocates Emboldened Avatar","Allocates Flare","Allocates Energising Archon","Allocates Crippling Toxins","Allocates Thornhide","Allocates Rallying Icon","Allocates Advanced Munitions","Allocates All For One","Allocates Melting Flames","Allocates Instability","Allocates Casting Cascade","Allocates Hastening Barrier","Allocates Enhanced Barrier","Allocates Coated Arms","Allocates Wither Away","Allocates Pin their Motivation","Allocates Lightning Rod","Allocates Disciplined Training","Allocates One With Flame","Allocates Marked Agility","Allocates Distracting Presence","Allocates Self Mortification","Allocates Made to Last","Allocates Hail","Allocates Finishing Blows","Allocates Strike True","Allocates Refills","Allocates Delayed Danger","Allocates Piercing Shot","Allocates The Raging Ox","Allocates The Ancient Serpent","Allocates Unnatural Resilience","Allocates Cross Strike","Allocates Lay Siege","Allocates Defensive Reflexes","Allocates Mind Eraser","Allocates Savouring","Allocates Frightening Shield","Allocates Hidden Barb","Allocates Unbothering Cold","Allocates Proliferating Weeds","Allocates Sigil of Lightning","Allocates Voracious","Allocates Arcane Remnants","Allocates Intense Dose","Allocates Careful Assassin","Allocates Arcane Alchemy","Allocates Climate Change","Allocates Short Shot","Allocates Gigantic Following","Allocates Wide Barrier","Allocates Guts","Allocates Inspiring Leader","Allocates Inherited Strength ","Allocates Efficient Alchemy","Allocates Impair","Allocates Hulking Smash","Allocates Arcane Mixtures","Allocates Sic 'Em","Allocates Near Sighted","Allocates Afterimage","Allocates Inescapable Cold","Allocates Goring","Allocates Colossal Weapon","Allocates Stormkeeper","Allocates Warding Potions","Allocates Expendable Army","Allocates Stigmata","Allocates Dizzying Hits","Allocates Multi Shot","Allocates Overload","Allocates Steady Footing","Allocates Bond of the Mamba","Allocates Devastation","Allocates Honourless","Allocates Sanguine Tolerance","Allocates Forcewave","Allocates Headshot","Allocates Quick Recovery","Allocates Hefty Unit","Allocates Blood Transfusion","Allocates Bringer of Order","Allocates Exploit the Elements","Allocates Hunter","Allocates Insulating Hide","Allocates Shattering","Allocates Frostwalker","Allocates The Howling Primate","Allocates Taut Flesh","Allocates Blessing of the Moon","Allocates Altered Brain Chemistry","Allocates Splintering Force","Allocates Precise Invocations","Allocates Blood of the Wolf","Allocates Dependable Ward","Allocates First Principle of the Hollow","Allocates Prolonged Fury","Allocates Heavy Frost","Allocates Deadly Flourish","Allocates Perfectly Placed Knife","Allocates Shattered Crystal","Allocates Flip the Script","Allocates Spellblade","Allocates Invigorating Grandeur","Allocates Barrier of Venarius","Allocates Seeing Stars","Allocates Mutewind Agility","Allocates Aftershocks","Allocates Brute Strength","Allocates Zone of Control","Allocates Brain Storm","Allocates Barbaric Strength","Allocates Avoiding Deflection","Allocates Coursing Energy","Allocates Frozen Limit","Allocates Careful Aim","Allocates Primal Sundering","Allocates Imbibed Power","Allocates Spirit Bond","Allocates Pile On","Allocates Soul Bloom","Allocates Wasting","Allocates Unimpeded","Allocates Leather Bound Gauntlets","Allocates Waters of Life","Allocates Unsight","Allocates Freedom of Movement","Allocates Enhanced Reflexes","Allocates Ancestral Conduits","Allocates Finality","Allocates Molten Carapace","Allocates Immortal Thirst","Allocates Lucidity","Allocates Bond of the Wolf","Allocates Invocated Efficiency","Allocates Trained Deflection","Allocates Event Horizon","Allocates Overexposure","Allocates Secrets of the Orb","Allocates Distant Dreamer","Allocates Conductive Embrace","Allocates Escape Strategy","Allocates Carved Earth","Allocates Singular Purpose","Allocates Bond of the Owl","Allocates Echoing Frost","Allocates Boon of the Beast","Allocates Flamekeeper","Allocates Eroding Chains","Allocates Mystical Rage","Allocates Hale Traveller","Allocates Shredding Force","Allocates The Soul Meridian","Allocates Immolation","Allocates Tukohama's Brew","Allocates Sharp Sight","Allocates The Winter Owl","Allocates Warlord Berserker","Allocates Nature's Bite","Allocates Burn Away","Allocates Crystallised Immunities","Allocates Shimmering Mirage","Allocates Symbol of Defiance","Allocates Shattering Blow","Allocates Run and Gun","Allocates Fortified Location","Allocates Efficient Loading","Allocates Towering Shield","Allocates Backup Plan","Allocates Unbreaking","Allocates Briny Carapace","Allocates Shimmering","Allocates The Great Boar","Allocates Channelled Heritage","Allocates Smoke Inhalation","Allocates Constricting","Allocates Hindered Capabilities","Allocates Profane Commander","Allocates Firestarter","Allocates Vengeful Fury","Allocates Bloodletting","Allocates Protraction","Allocates Fast Acting Toxins","Allocates Shrapnel","Allocates Light on your Feet","Allocates Pure Chaos","Allocates Relentless Fallen","Allocates Subterfuge Mask","Allocates Sling Shots","Allocates Licking Wounds","Allocates Rallying Form","Allocates Forthcoming","Allocates Electric Amplification","Allocates Watchtowers","Allocates Alchemical Oil","Allocates Exposed to the Cosmos","Allocates Ice Walls","Allocates Decrepifying Curse","Allocates Passthrough Rounds","Allocates Lingering Horror","Allocates Extinguishing Exhalation","Allocates Enhancing Attacks","Allocates Throatseeker","Allocates Reinforced Rallying","Allocates Behemoth","Allocates Killer Instinct","Allocates Glancing Deflection","Allocates Agile Succession","Allocates Desperate Times","Allocates Endurance","Allocates Thaumaturgic Generator","Allocates Swift Flight","Allocates Electrifying Daze","Allocates Cooked","Allocates Swift Blocking","Allocates Chillproof","Allocates Resolute Reprisal","Allocates Thicket Warding","Allocates Electric Blood","Allocates Heavy Contact","Allocates Locked On","Allocates Echoing Thunder","Allocates Polymathy","Allocates Infused Flesh","Allocates Doomsayer","Allocates Critical Exploit","Allocates Ancient Aegis","Allocates In Your Face","Allocates Overwhelming Strike","Allocates Hunker Down","Allocates Shifted Strikes","Allocates Trained Turrets","Allocates Clear Space","Allocates Wolf's Howl","Allocates All Natural","Allocates Stand and Deliver","Allocates Lasting Incantations","Allocates Blood Tearing","Allocates Well of Power","Allocates Sanguimantic Rituals","Allocates Proficiency","Allocates Pocket Sand","Allocates Grenadier","Allocates Artillery Strike","Allocates Dominus' Providence","Allocates Dispatch Foes","Allocates Enduring Archon","Allocates Frantic Fighter","Allocates Fated End","Allocates Lucky Rabbit Foot","Allocates Infusion of Power","Allocates Thirst for Endurance","Allocates Flow of Life","Allocates Necrotised Flesh","Allocates Heavy Armour","Allocates First Teachings of the Keeper","Allocates Beastial Skin","Allocates Embodiment of Death","Allocates Against the Elements","Allocates Falcon Dive","Allocates Pin and Run","Allocates Stylebender","Allocates Roil","Allocates Hindering Obstacles","Allocates Perfect Opportunity","Allocates Fan the Flames","Allocates Scales of the Wyvern","Allocates Echoing Flames","Allocates Feathered Fletching","Allocates Lightning Storm","Allocates Nurturing Guardian","Allocates Crystalline Flesh","Allocates Staggering Wounds","Allocates Roll and Strike","Allocates Redblade Discipline","Allocates Core of the Guardian","Allocates Breath of Lightning","Allocates Infernal Limit","Allocates Equilibrium","Allocates Wasting Casts","Allocates True Strike","Allocates Sharpened Claw","Allocates Lasting Toxins","Allocates Power Shots","Allocates Storm Surge","Allocates Prism Guard","Allocates Rattled","Allocates Puppet Master chance","Allocates Patient Barrier","Allocates Saqawal's Talon","Allocates Push the Advantage","Allocates Incendiary","Allocates Anticipation","Allocates Bannerman","Allocates Ancestral Unity","Allocates Woodland Aspect","Allocates Living Death","Allocates Flamewalker","Allocates Glorious Anticipation","Allocates Sigil of Fire","Allocates Stand Ground","Allocates Dark Entries","Allocates Savagery","Allocates Chakra of Elements","Allocates Leeching Toxins","Allocates Cranial Impact","Allocates Brush Off","Allocates Momentum","Allocates Thunderstruck","Allocates Vigorous Remnants","Allocates Stacking Toxins","Allocates Marked for Sickness","Allocates Marathon Runner","Allocates Rapid Reload","Allocates Battle Fever","Allocates Shattering Daze","Allocates Impact Force","Allocates Easy Target","Allocates Unbound Forces","Allocates Wary Dodging","Allocates Lasting Boons","Allocates Morgana, the Storm Seer","Allocates Flashy Parrying","Allocates Intense Flames","Allocates Impenetrable Shell","Allocates Cacophony","Allocates Titanic","Allocates Viciousness","Allocates Overflowing Power","Allocates Enveloping Presence","Allocates Widespread Coverage","Allocates Swift Interruption","Allocates Burning Strikes","Allocates Repeating Explosives","Allocates Aggravation","Allocates Reusable Ammunition","Allocates Bond of the Ape","Allocates Dangerous Blossom","Allocates Stimulants","Allocates Electrocuting Exposure","Allocates Echoing Pulse","Allocates Abasement","Allocates Ignore Pain","Allocates Retaliation","Allocates Splinters","Allocates Tribal Fury","Allocates Encompassing Domain","Allocates Rapid Strike","Allocates Pierce the Heart","Allocates Internal Bleeding","Allocates Breaking Point","Allocates Rupturing Pins","Allocates Wild Storm","Allocates The Fabled Stag","Allocates Endless Circuit","Allocates Empowering Remains","Allocates Ruin","Allocates Leaping Ambush","Allocates Burning Nature","Allocates Lavianga's Brew","Allocates Reverberation","Allocates Empowering Infusions","Allocates Sturdy Ally","Allocates Multitasking","Allocates Fast Metabolism","Allocates Tempered Mind","Allocates Unforgiving","Allocates Agile Sprinter","Allocates Death from Afar","Allocates Bashing Beast","Allocates Right Hand of Darkness","Allocates Return to Nature","Allocates Giantslayer","Allocates Escalation","Allocates Mental Perseverance","Allocates Focused Thrust","Allocates Rusted Pins","Allocates Craving Slaughter","Allocates Spirit of the Bear","Allocates Natural Immunity","Allocates Efficient Killing","Allocates Snowpiercer","Allocates One with the Storm","Allocates Catapult","Allocates Brinerot Ferocity","Allocates Mending Deflection","Allocates Insulated Treads","Allocates Knight of Izaro","Allocates Heartstopping Presence","Allocates Price of Freedom","Allocates Embracing Frost","Allocates Feel the Earth"],
+      "stats":[{
+          "id":"explicit.stat_2954116742|10029",
+          "kind":"granted_passive",
+          "line":"Allocates Repulsion",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10169",
+          "kind":"granted_passive",
+          "line":"Allocates Unfettered",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10265",
+          "kind":"granted_passive",
+          "line":"Allocates Javelin",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10295",
+          "kind":"granted_passive",
+          "line":"Allocates Overzealous",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10315",
+          "kind":"granted_passive",
+          "line":"Allocates Easy Going",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10398",
+          "kind":"granted_passive",
+          "line":"Allocates Sudden Escalation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10423",
+          "kind":"granted_passive",
+          "line":"Allocates Exposed to the Inferno",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10499",
+          "kind":"granted_passive",
+          "line":"Allocates Necromantic Ward",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10500",
+          "kind":"granted_passive",
+          "line":"Allocates Dazing Blocks",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10602",
+          "kind":"granted_passive",
+          "line":"Allocates Reaving",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10612",
+          "kind":"granted_passive",
+          "line":"Allocates Embodiment of Frost",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10681",
+          "kind":"granted_passive",
+          "line":"Allocates Defensive Stance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10727",
+          "kind":"granted_passive",
+          "line":"Allocates Emboldening Casts",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10772",
+          "kind":"granted_passive",
+          "line":"Allocates Bloodthirsty",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10774",
+          "kind":"granted_passive",
+          "line":"Allocates Unyielding",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|1087",
+          "kind":"granted_passive",
+          "line":"Allocates Shockwaves",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10873",
+          "kind":"granted_passive",
+          "line":"Allocates Bestial Rage",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|10998",
+          "kind":"granted_passive",
+          "line":"Allocates Strong Chin",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|1104",
+          "kind":"granted_passive",
+          "line":"Allocates Lust for Power",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|11184",
+          "kind":"granted_passive",
+          "line":"Allocates Zarokh's Gift",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|11366",
+          "kind":"granted_passive",
+          "line":"Allocates Volcanic Skin",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|11376",
+          "kind":"granted_passive",
+          "line":"Allocates Necrotic Touch",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|11392",
+          "kind":"granted_passive",
+          "line":"Allocates Molten Being",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|11526",
+          "kind":"granted_passive",
+          "line":"Allocates Sniper",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|11578",
+          "kind":"granted_passive",
+          "line":"Allocates Spreading Shocks",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|116",
+          "kind":"granted_passive",
+          "line":"Allocates Insightfulness",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|1169",
+          "kind":"granted_passive",
+          "line":"Allocates Urgent Call",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|11774",
+          "kind":"granted_passive",
+          "line":"Allocates The Spring Hare",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|11826",
+          "kind":"granted_passive",
+          "line":"Allocates Heavy Ammunition",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|11838",
+          "kind":"granted_passive",
+          "line":"Allocates Dreamcatcher",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|11886",
+          "kind":"granted_passive",
+          "line":"Allocates Mauling Stuns",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|12245",
+          "kind":"granted_passive",
+          "line":"Allocates Arsonist",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|12337",
+          "kind":"granted_passive",
+          "line":"Allocates Flash Storm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|12412",
+          "kind":"granted_passive",
+          "line":"Allocates Temporal Mastery",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|12611",
+          "kind":"granted_passive",
+          "line":"Allocates Harness the Elements",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|12661",
+          "kind":"granted_passive",
+          "line":"Allocates Asceticism",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|12750",
+          "kind":"granted_passive",
+          "line":"Allocates Vale Shelter",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|12822",
+          "kind":"granted_passive",
+          "line":"Allocates Adaptable Assault",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|12906",
+          "kind":"granted_passive",
+          "line":"Allocates Sitting Duck",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|12964",
+          "kind":"granted_passive",
+          "line":"Allocates Lone Warrior",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|12998",
+          "kind":"granted_passive",
+          "line":"Allocates Warm the Heart",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13407",
+          "kind":"granted_passive",
+          "line":"Allocates Heartbreaking",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13457",
+          "kind":"granted_passive",
+          "line":"Allocates Shadow Dancing",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13482",
+          "kind":"granted_passive",
+          "line":"Allocates Punctured Lung",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13489",
+          "kind":"granted_passive",
+          "line":"Allocates Unbreakable",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13515",
+          "kind":"granted_passive",
+          "line":"Allocates Stormwalker",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|1352",
+          "kind":"granted_passive",
+          "line":"Allocates Unbending",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13524",
+          "kind":"granted_passive",
+          "line":"Allocates Everlasting Glory",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13542",
+          "kind":"granted_passive",
+          "line":"Allocates Loose Flesh",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13693",
+          "kind":"granted_passive",
+          "line":"Allocates Rhythm of Ice",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13708",
+          "kind":"granted_passive",
+          "line":"Allocates Curved Weapon",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13724",
+          "kind":"granted_passive",
+          "line":"Allocates Deadly Force",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13738",
+          "kind":"granted_passive",
+          "line":"Allocates Lightning Quick",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13823",
+          "kind":"granted_passive",
+          "line":"Allocates Controlling Magic",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13844",
+          "kind":"granted_passive",
+          "line":"Allocates Growing Peril",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13895",
+          "kind":"granted_passive",
+          "line":"Allocates Precise Point",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|13980",
+          "kind":"granted_passive",
+          "line":"Allocates Split the Earth",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|1420",
+          "kind":"granted_passive",
+          "line":"Allocates Dizzying Sweep",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|14211",
+          "kind":"granted_passive",
+          "line":"Allocates Shredding Contraptions",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|14258",
+          "kind":"granted_passive",
+          "line":"Allocates Puppet Master chance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|14265",
+          "kind":"granted_passive",
+          "line":"Allocates Pyromancer",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|14294",
+          "kind":"granted_passive",
+          "line":"Allocates Sacrificial Blood",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|14324",
+          "kind":"granted_passive",
+          "line":"Allocates Arcane Blossom",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|14343",
+          "kind":"granted_passive",
+          "line":"Allocates Deterioration",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|14383",
+          "kind":"granted_passive",
+          "line":"Allocates Suffusion",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|1448",
+          "kind":"granted_passive",
+          "line":"Allocates Bond of the Cat",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|14602",
+          "kind":"granted_passive",
+          "line":"Allocates Specialised Shots",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|14761",
+          "kind":"granted_passive",
+          "line":"Allocates Warlord Leader",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|14777",
+          "kind":"granted_passive",
+          "line":"Allocates Bravado",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|14934",
+          "kind":"granted_passive",
+          "line":"Allocates Spiral into Mania",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|14945",
+          "kind":"granted_passive",
+          "line":"Allocates Growing Swarm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|1502",
+          "kind":"granted_passive",
+          "line":"Allocates Draiocht Cleansing",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|15030",
+          "kind":"granted_passive",
+          "line":"Allocates Consistent Intake",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|1506",
+          "kind":"granted_passive",
+          "line":"Allocates Remnant Attraction",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|15083",
+          "kind":"granted_passive",
+          "line":"Allocates Power Conduction",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|15114",
+          "kind":"granted_passive",
+          "line":"Allocates Boundless Growth",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|15374",
+          "kind":"granted_passive",
+          "line":"Allocates Hale Heart",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|15443",
+          "kind":"granted_passive",
+          "line":"Allocates Endured Suffering",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|1546",
+          "kind":"granted_passive",
+          "line":"Allocates Spiral into Depression",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|15606",
+          "kind":"granted_passive",
+          "line":"Allocates Thrill of the Fight",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|15617",
+          "kind":"granted_passive",
+          "line":"Allocates Heavy Drinker",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|15644",
+          "kind":"granted_passive",
+          "line":"Allocates Shedding Skin",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|15825",
+          "kind":"granted_passive",
+          "line":"Allocates Bhatair's Storm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|15829",
+          "kind":"granted_passive",
+          "line":"Allocates Siphon",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|15986",
+          "kind":"granted_passive",
+          "line":"Allocates Building Toxins",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|15991",
+          "kind":"granted_passive",
+          "line":"Allocates Embodiment of Lightning",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|1603",
+          "kind":"granted_passive",
+          "line":"Allocates Storm Driven",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|16142",
+          "kind":"granted_passive",
+          "line":"Allocates Deep Freeze",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|16150",
+          "kind":"granted_passive",
+          "line":"Allocates Inspiring Ally",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|16256",
+          "kind":"granted_passive",
+          "line":"Allocates Ether Flow",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|16466",
+          "kind":"granted_passive",
+          "line":"Allocates Mental Alacrity",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|16499",
+          "kind":"granted_passive",
+          "line":"Allocates Lingering Whispers",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|16618",
+          "kind":"granted_passive",
+          "line":"Allocates Jack of all Trades",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|16626",
+          "kind":"granted_passive",
+          "line":"Allocates Impact Area",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|16790",
+          "kind":"granted_passive",
+          "line":"Allocates Efficient Casting",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|16816",
+          "kind":"granted_passive",
+          "line":"Allocates Pinpoint Shot",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|16940",
+          "kind":"granted_passive",
+          "line":"Allocates Arcane Nature",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17029",
+          "kind":"granted_passive",
+          "line":"Allocates Blade Catcher",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17150",
+          "kind":"granted_passive",
+          "line":"Allocates General's Bindings",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17229",
+          "kind":"granted_passive",
+          "line":"Allocates Silent Guardian",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17254",
+          "kind":"granted_passive",
+          "line":"Allocates Spell Haste",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17260",
+          "kind":"granted_passive",
+          "line":"Allocates Piercing Claw",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17303",
+          "kind":"granted_passive",
+          "line":"Allocates Utility Ordnance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17330",
+          "kind":"granted_passive",
+          "line":"Allocates Perforation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17340",
+          "kind":"granted_passive",
+          "line":"Allocates Adrenaline Rush",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17372",
+          "kind":"granted_passive",
+          "line":"Allocates Reaching Strike",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17548",
+          "kind":"granted_passive",
+          "line":"Allocates Moment of Truth",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17600",
+          "kind":"granted_passive",
+          "line":"Allocates Thirsting Ally",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17664",
+          "kind":"granted_passive",
+          "line":"Allocates Decisive Retreat",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17696",
+          "kind":"granted_passive",
+          "line":"Allocates Augmented Flesh",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17725",
+          "kind":"granted_passive",
+          "line":"Allocates Bonded Precision",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17762",
+          "kind":"granted_passive",
+          "line":"Allocates Vengeance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17825",
+          "kind":"granted_passive",
+          "line":"Allocates Tactical Retreat",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17854",
+          "kind":"granted_passive",
+          "line":"Allocates Escape Velocity",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17882",
+          "kind":"granted_passive",
+          "line":"Allocates Volatile Grenades",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|17955",
+          "kind":"granted_passive",
+          "line":"Allocates Careful Consideration",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|18086",
+          "kind":"granted_passive",
+          "line":"Allocates Breath of Ice",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|18157",
+          "kind":"granted_passive",
+          "line":"Allocates Tempered Defences",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|1823",
+          "kind":"granted_passive",
+          "line":"Allocates Illuminated Crown",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|18308",
+          "kind":"granted_passive",
+          "line":"Allocates Bleeding Out",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|18397",
+          "kind":"granted_passive",
+          "line":"Allocates Savoured Blood",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|18419",
+          "kind":"granted_passive",
+          "line":"Allocates Ancestral Mending",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|18485",
+          "kind":"granted_passive",
+          "line":"Allocates Unstable Bond",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|18496",
+          "kind":"granted_passive",
+          "line":"Allocates Lasting Trauma",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|18505",
+          "kind":"granted_passive",
+          "line":"Allocates Crushing Verdict",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|1861",
+          "kind":"granted_passive",
+          "line":"Allocates Knight of Tarcus",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|18959",
+          "kind":"granted_passive",
+          "line":"Allocates Ruinic Helm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|19044",
+          "kind":"granted_passive",
+          "line":"Allocates Arcane Intensity",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|19125",
+          "kind":"granted_passive",
+          "line":"Allocates Potent Incantation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|19156",
+          "kind":"granted_passive",
+          "line":"Allocates Immaterial",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|19236",
+          "kind":"granted_passive",
+          "line":"Allocates Projectile Bulwark",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|19249",
+          "kind":"granted_passive",
+          "line":"Allocates Supportive Ancestors",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|19337",
+          "kind":"granted_passive",
+          "line":"Allocates Precision Salvo",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|19442",
+          "kind":"granted_passive",
+          "line":"Allocates Prolonged Assault",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|19546",
+          "kind":"granted_passive",
+          "line":"Allocates Favourable Odds",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|19644",
+          "kind":"granted_passive",
+          "line":"Allocates Left Hand of Darkness",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|19715",
+          "kind":"granted_passive",
+          "line":"Allocates Cremation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|19722",
+          "kind":"granted_passive",
+          "line":"Allocates Thin Ice",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|19955",
+          "kind":"granted_passive",
+          "line":"Allocates Endless Blizzard",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20008",
+          "kind":"granted_passive",
+          "line":"Allocates Unleash Fire",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20032",
+          "kind":"granted_passive",
+          "line":"Allocates Erraticism",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2021",
+          "kind":"granted_passive",
+          "line":"Allocates Wellspring",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20251",
+          "kind":"granted_passive",
+          "line":"Allocates Splitting Ground",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20289",
+          "kind":"granted_passive",
+          "line":"Allocates Frozen Claw",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20388",
+          "kind":"granted_passive",
+          "line":"Allocates Regenerative Flesh",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20397",
+          "kind":"granted_passive",
+          "line":"Allocates Authority",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20414",
+          "kind":"granted_passive",
+          "line":"Allocates Reprisal",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20416",
+          "kind":"granted_passive",
+          "line":"Allocates Grit",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20495",
+          "kind":"granted_passive",
+          "line":"Allocates Dark Entropy",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20511",
+          "kind":"granted_passive",
+          "line":"Allocates Cremating Cries",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20558",
+          "kind":"granted_passive",
+          "line":"Allocates Among the Hordes",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20677",
+          "kind":"granted_passive",
+          "line":"Allocates For the Jugular",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20686",
+          "kind":"granted_passive",
+          "line":"Allocates Paragon",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|20916",
+          "kind":"granted_passive",
+          "line":"Allocates Blinding Strike",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2113",
+          "kind":"granted_passive",
+          "line":"Allocates Martial Artistry",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|21164",
+          "kind":"granted_passive",
+          "line":"Allocates Fleshcrafting",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|21206",
+          "kind":"granted_passive",
+          "line":"Allocates Explosive Impact",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|21213",
+          "kind":"granted_passive",
+          "line":"Allocates Cirel of Tarth's Light",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|21251",
+          "kind":"granted_passive",
+          "line":"Allocates Replenishing Horde",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2134",
+          "kind":"granted_passive",
+          "line":"Allocates Toxic Tolerance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|21349",
+          "kind":"granted_passive",
+          "line":"Allocates The Quick Fox",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2138",
+          "kind":"granted_passive",
+          "line":"Allocates Spiral into Insanity",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|21380",
+          "kind":"granted_passive",
+          "line":"Allocates Preemptive Strike",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|21453",
+          "kind":"granted_passive",
+          "line":"Allocates Breakage",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|21537",
+          "kind":"granted_passive",
+          "line":"Allocates Fervour",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|21748",
+          "kind":"granted_passive",
+          "line":"Allocates Impending Doom",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|21784",
+          "kind":"granted_passive",
+          "line":"Allocates Pack Encouragement",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|22532",
+          "kind":"granted_passive",
+          "line":"Allocates Fearful Paralysis",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|22626",
+          "kind":"granted_passive",
+          "line":"Allocates Irreparable",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|22726",
+          "kind":"granted_passive",
+          "line":"Allocates Storm's Rebuke",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|22811",
+          "kind":"granted_passive",
+          "line":"Allocates The Wild Cat",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|22817",
+          "kind":"granted_passive",
+          "line":"Allocates Inevitable Rupture",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|22864",
+          "kind":"granted_passive",
+          "line":"Allocates Tainted Strike",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|22967",
+          "kind":"granted_passive",
+          "line":"Allocates Vigilance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|23078",
+          "kind":"granted_passive",
+          "line":"Allocates Holy Protector",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|23221",
+          "kind":"granted_passive",
+          "line":"Allocates Trick Shot",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|23227",
+          "kind":"granted_passive",
+          "line":"Allocates Initiative",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|23244",
+          "kind":"granted_passive",
+          "line":"Allocates Bounty Hunter",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2335",
+          "kind":"granted_passive",
+          "line":"Allocates Turn the Clock Forward",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|23362",
+          "kind":"granted_passive",
+          "line":"Allocates Slippery Ice",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|23427",
+          "kind":"granted_passive",
+          "line":"Allocates Chilled to the Bone",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2344",
+          "kind":"granted_passive",
+          "line":"Allocates Dimensional Weakspot",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|23630",
+          "kind":"granted_passive",
+          "line":"Allocates Self Immolation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|23736",
+          "kind":"granted_passive",
+          "line":"Allocates Spray and Pray",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|23738",
+          "kind":"granted_passive",
+          "line":"Allocates Madness in the Bones",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|23764",
+          "kind":"granted_passive",
+          "line":"Allocates Alternating Current",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|23907",
+          "kind":"granted_passive",
+          "line":"Allocates Ice Storm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|23939",
+          "kind":"granted_passive",
+          "line":"Allocates Glazed Flesh",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2394",
+          "kind":"granted_passive",
+          "line":"Allocates Blade Flurry",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|23940",
+          "kind":"granted_passive",
+          "line":"Allocates Fortified Aegis",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2397",
+          "kind":"granted_passive",
+          "line":"Allocates Last Stand",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24062",
+          "kind":"granted_passive",
+          "line":"Allocates Immortal Infamy",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24087",
+          "kind":"granted_passive",
+          "line":"Allocates Everlasting Infusions",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24120",
+          "kind":"granted_passive",
+          "line":"Allocates Mental Toughness",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24240",
+          "kind":"granted_passive",
+          "line":"Allocates Time Manipulation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24438",
+          "kind":"granted_passive",
+          "line":"Allocates Hardened Wood",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24483",
+          "kind":"granted_passive",
+          "line":"Allocates Direct Approach",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24491",
+          "kind":"granted_passive",
+          "line":"Allocates Invocated Echoes",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24630",
+          "kind":"granted_passive",
+          "line":"Allocates Fulmination",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24655",
+          "kind":"granted_passive",
+          "line":"Allocates Breath of Fire",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24721",
+          "kind":"granted_passive",
+          "line":"Allocates Brain Freeze",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24736",
+          "kind":"granted_passive",
+          "line":"Allocates Knight of Chitus",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24753",
+          "kind":"granted_passive",
+          "line":"Allocates Determined Precision",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24764",
+          "kind":"granted_passive",
+          "line":"Allocates Infusing Power",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|24766",
+          "kind":"granted_passive",
+          "line":"Allocates Paranoia",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2486",
+          "kind":"granted_passive",
+          "line":"Allocates Stars Aligned",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2511",
+          "kind":"granted_passive",
+          "line":"Allocates Sundering",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|25211",
+          "kind":"granted_passive",
+          "line":"Allocates Waning Hindrances",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|25361",
+          "kind":"granted_passive",
+          "line":"Allocates Resolute Reach",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|25362",
+          "kind":"granted_passive",
+          "line":"Allocates Chakra of Impact",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|25482",
+          "kind":"granted_passive",
+          "line":"Allocates Beef",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|25513",
+          "kind":"granted_passive",
+          "line":"Allocates Overwhelm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|25619",
+          "kind":"granted_passive",
+          "line":"Allocates Sand in the Eyes",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|25620",
+          "kind":"granted_passive",
+          "line":"Allocates Meat Recycling",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|25711",
+          "kind":"granted_passive",
+          "line":"Allocates Thrill of Battle",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2575",
+          "kind":"granted_passive",
+          "line":"Allocates Ancestral Alacrity",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|25753",
+          "kind":"granted_passive",
+          "line":"Allocates Blazing Arms",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|25971",
+          "kind":"granted_passive",
+          "line":"Allocates Tenfold Attacks",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|26070",
+          "kind":"granted_passive",
+          "line":"Allocates Bolstering Yell",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|261",
+          "kind":"granted_passive",
+          "line":"Allocates Toxic Sludge",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|26104",
+          "kind":"granted_passive",
+          "line":"Allocates Spirit of the Wyvern",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|26107",
+          "kind":"granted_passive",
+          "line":"Allocates Kite Runner",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|26214",
+          "kind":"granted_passive",
+          "line":"Allocates Dominion",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|26291",
+          "kind":"granted_passive",
+          "line":"Allocates Electrifying Nature",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|26331",
+          "kind":"granted_passive",
+          "line":"Allocates Harsh Winter",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|26339",
+          "kind":"granted_passive",
+          "line":"Allocates Ancestral Artifice",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|26356",
+          "kind":"granted_passive",
+          "line":"Allocates Primed to Explode",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|26447",
+          "kind":"granted_passive",
+          "line":"Allocates Refocus",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2645",
+          "kind":"granted_passive",
+          "line":"Allocates Skullcrusher",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|26479",
+          "kind":"granted_passive",
+          "line":"Allocates Steadfast Resolve",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|26518",
+          "kind":"granted_passive",
+          "line":"Allocates Cold Nature",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|26563",
+          "kind":"granted_passive",
+          "line":"Allocates Bone Chains",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|26926",
+          "kind":"granted_passive",
+          "line":"Allocates Archon of Undeath",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27009",
+          "kind":"granted_passive",
+          "line":"Allocates Lust for Sacrifice",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27108",
+          "kind":"granted_passive",
+          "line":"Allocates Mass Hysteria",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27176",
+          "kind":"granted_passive",
+          "line":"Allocates The Power Within",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27303",
+          "kind":"granted_passive",
+          "line":"Allocates Vulgar Methods",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27388",
+          "kind":"granted_passive",
+          "line":"Allocates Aspiring Genius",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27434",
+          "kind":"granted_passive",
+          "line":"Allocates Archon of the Storm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2745",
+          "kind":"granted_passive",
+          "line":"Allocates The Noble Wolf",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27491",
+          "kind":"granted_passive",
+          "line":"Allocates Heavy Buffer",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27513",
+          "kind":"granted_passive",
+          "line":"Allocates Material Solidification",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27626",
+          "kind":"granted_passive",
+          "line":"Allocates Touch the Arcane",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27687",
+          "kind":"granted_passive",
+          "line":"Allocates Greatest Defence",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27704",
+          "kind":"granted_passive",
+          "line":"Allocates Grace of the Ancestors",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27761",
+          "kind":"granted_passive",
+          "line":"Allocates Counterstancing",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27779",
+          "kind":"granted_passive",
+          "line":"Allocates Lord of the Squall",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27875",
+          "kind":"granted_passive",
+          "line":"Allocates General Electric",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|27950",
+          "kind":"granted_passive",
+          "line":"Allocates Polished Iron",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|28044",
+          "kind":"granted_passive",
+          "line":"Allocates Coming Calamity",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2814",
+          "kind":"granted_passive",
+          "line":"Allocates Engineered Blaze",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|28267",
+          "kind":"granted_passive",
+          "line":"Allocates Desensitisation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|28329",
+          "kind":"granted_passive",
+          "line":"Allocates Pressure Points",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|28408",
+          "kind":"granted_passive",
+          "line":"Allocates Invigorating Hate",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2843",
+          "kind":"granted_passive",
+          "line":"Allocates Tolerant Equipment",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|28441",
+          "kind":"granted_passive",
+          "line":"Allocates Frantic Swings",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|28482",
+          "kind":"granted_passive",
+          "line":"Allocates Total Incineration",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|28542",
+          "kind":"granted_passive",
+          "line":"Allocates The Molten One's Gift",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|28613",
+          "kind":"granted_passive",
+          "line":"Allocates Roaring Cries",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2863",
+          "kind":"granted_passive",
+          "line":"Allocates Perpetual Freeze",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|28892",
+          "kind":"granted_passive",
+          "line":"Allocates Primal Rage",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|28963",
+          "kind":"granted_passive",
+          "line":"Allocates Chakra of Rhythm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|28975",
+          "kind":"granted_passive",
+          "line":"Allocates Pure Power",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|29288",
+          "kind":"granted_passive",
+          "line":"Allocates Deadly Invocations",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|29306",
+          "kind":"granted_passive",
+          "line":"Allocates Chakra of Thought",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|29372",
+          "kind":"granted_passive",
+          "line":"Allocates Sudden Infuriation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|29514",
+          "kind":"granted_passive",
+          "line":"Allocates Cluster Bombs",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|29527",
+          "kind":"granted_passive",
+          "line":"Allocates First Approach",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|29762",
+          "kind":"granted_passive",
+          "line":"Allocates Guttural Roar",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|29800",
+          "kind":"granted_passive",
+          "line":"Allocates Shocking Limit",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|29881",
+          "kind":"granted_passive",
+          "line":"Allocates Surging Beast",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|29899",
+          "kind":"granted_passive",
+          "line":"Allocates Finish Them",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|2999",
+          "kind":"granted_passive",
+          "line":"Allocates Final Barrage",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|30132",
+          "kind":"granted_passive",
+          "line":"Allocates Wrapped Quiver",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|30341",
+          "kind":"granted_passive",
+          "line":"Allocates Master Fletching",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|30392",
+          "kind":"granted_passive",
+          "line":"Allocates Succour",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|30395",
+          "kind":"granted_passive",
+          "line":"Allocates Howling Beast",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|30408",
+          "kind":"granted_passive",
+          "line":"Allocates Efficient Contraptions",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|30456",
+          "kind":"granted_passive",
+          "line":"Allocates High Alert",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|30523",
+          "kind":"granted_passive",
+          "line":"Allocates Dead can Dance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|30546",
+          "kind":"granted_passive",
+          "line":"Allocates Electrified Claw",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|30562",
+          "kind":"granted_passive",
+          "line":"Allocates Inner Faith",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|30720",
+          "kind":"granted_passive",
+          "line":"Allocates Entropic Incarnation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|30748",
+          "kind":"granted_passive",
+          "line":"Allocates Controlled Chaos",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31129",
+          "kind":"granted_passive",
+          "line":"Allocates Lifelong Friend",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31172",
+          "kind":"granted_passive",
+          "line":"Allocates Falcon Technique",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31175",
+          "kind":"granted_passive",
+          "line":"Allocates Grip of Evil",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31189",
+          "kind":"granted_passive",
+          "line":"Allocates Unexpected Finesse",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31326",
+          "kind":"granted_passive",
+          "line":"Allocates Slow Burn",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31364",
+          "kind":"granted_passive",
+          "line":"Allocates Primal Protection",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31373",
+          "kind":"granted_passive",
+          "line":"Allocates Vocal Empowerment",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31433",
+          "kind":"granted_passive",
+          "line":"Allocates Catalysis",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31724",
+          "kind":"granted_passive",
+          "line":"Allocates Iron Slippers",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31745",
+          "kind":"granted_passive",
+          "line":"Allocates Lockdown",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31773",
+          "kind":"granted_passive",
+          "line":"Allocates Resurging Archon",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31826",
+          "kind":"granted_passive",
+          "line":"Allocates Long Distance Relationship",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|3188",
+          "kind":"granted_passive",
+          "line":"Allocates Revenge",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31925",
+          "kind":"granted_passive",
+          "line":"Allocates Warding Fetish",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|31955",
+          "kind":"granted_passive",
+          "line":"Allocates Voll's Protection",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32071",
+          "kind":"granted_passive",
+          "line":"Allocates Primal Growth",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32128",
+          "kind":"granted_passive",
+          "line":"Allocates Flow of Time",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|3215",
+          "kind":"granted_passive",
+          "line":"Allocates Melding",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32151",
+          "kind":"granted_passive",
+          "line":"Allocates Crystalline Resistance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32301",
+          "kind":"granted_passive",
+          "line":"Allocates Frazzled",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32353",
+          "kind":"granted_passive",
+          "line":"Allocates Swift Claw",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32354",
+          "kind":"granted_passive",
+          "line":"Allocates Defiance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32448",
+          "kind":"granted_passive",
+          "line":"Allocates Shockproof",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32507",
+          "kind":"granted_passive",
+          "line":"Allocates Cut to the Bone",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32543",
+          "kind":"granted_passive",
+          "line":"Allocates Unhindered",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32655",
+          "kind":"granted_passive",
+          "line":"Allocates Hunting Companion",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32664",
+          "kind":"granted_passive",
+          "line":"Allocates Chakra of Breathing",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32721",
+          "kind":"granted_passive",
+          "line":"Allocates Distracted Target",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32799",
+          "kind":"granted_passive",
+          "line":"Allocates Captivating Companionship",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32858",
+          "kind":"granted_passive",
+          "line":"Allocates Dread Engineer's Concoction",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32932",
+          "kind":"granted_passive",
+          "line":"Allocates Ichlotl's Inferno",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32951",
+          "kind":"granted_passive",
+          "line":"Allocates Preservation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|32976",
+          "kind":"granted_passive",
+          "line":"Allocates Gem Enthusiast",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33059",
+          "kind":"granted_passive",
+          "line":"Allocates Back in Action",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33093",
+          "kind":"granted_passive",
+          "line":"Allocates Effervescent",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33099",
+          "kind":"granted_passive",
+          "line":"Allocates Hunter's Talisman",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33216",
+          "kind":"granted_passive",
+          "line":"Allocates Deep Wounds",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33229",
+          "kind":"granted_passive",
+          "line":"Allocates Haemorrhaging Cuts",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33240",
+          "kind":"granted_passive",
+          "line":"Allocates Lord of Horrors",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33400",
+          "kind":"granted_passive",
+          "line":"Allocates Reverberating Parry",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|3348",
+          "kind":"granted_passive",
+          "line":"Allocates Spirit of the Wolf",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33542",
+          "kind":"granted_passive",
+          "line":"Allocates Quick Fingers",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33585",
+          "kind":"granted_passive",
+          "line":"Allocates Unspoken Bond",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|336",
+          "kind":"granted_passive",
+          "line":"Allocates Storm Swell",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33730",
+          "kind":"granted_passive",
+          "line":"Allocates Focused Channel",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|338",
+          "kind":"granted_passive",
+          "line":"Allocates Invocated Limit",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33852",
+          "kind":"granted_passive",
+          "line":"Allocates Flurry",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33887",
+          "kind":"granted_passive",
+          "line":"Allocates Full Salvo",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33922",
+          "kind":"granted_passive",
+          "line":"Allocates Stripped Defences",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|33978",
+          "kind":"granted_passive",
+          "line":"Allocates Unstoppable Barrier",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34300",
+          "kind":"granted_passive",
+          "line":"Allocates Conservative Casting",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34308",
+          "kind":"granted_passive",
+          "line":"Allocates Personal Touch",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34316",
+          "kind":"granted_passive",
+          "line":"Allocates One with the River",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34324",
+          "kind":"granted_passive",
+          "line":"Allocates Spectral Ward",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34340",
+          "kind":"granted_passive",
+          "line":"Allocates Mass Rejuvenation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34425",
+          "kind":"granted_passive",
+          "line":"Allocates Precise Volatility",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34473",
+          "kind":"granted_passive",
+          "line":"Allocates Spaghettification",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34478",
+          "kind":"granted_passive",
+          "line":"Allocates Bond of the Viper",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34531",
+          "kind":"granted_passive",
+          "line":"Allocates Hallowed",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34541",
+          "kind":"granted_passive",
+          "line":"Allocates Energising Deflection",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34543",
+          "kind":"granted_passive",
+          "line":"Allocates The Frenzied Bear",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34553",
+          "kind":"granted_passive",
+          "line":"Allocates Emboldening Lead",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34617",
+          "kind":"granted_passive",
+          "line":"Allocates Conall the Hunted",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|34908",
+          "kind":"granted_passive",
+          "line":"Allocates Staunch Deflection",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|3492",
+          "kind":"granted_passive",
+          "line":"Allocates Void",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35028",
+          "kind":"granted_passive",
+          "line":"Allocates In the Thick of It",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35031",
+          "kind":"granted_passive",
+          "line":"Allocates Chakra of Life",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35046",
+          "kind":"granted_passive",
+          "line":"Allocates Mystic Avalanche",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35324",
+          "kind":"granted_passive",
+          "line":"Allocates Burnout",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35369",
+          "kind":"granted_passive",
+          "line":"Allocates Investing Energies",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35417",
+          "kind":"granted_passive",
+          "line":"Allocates Wyvern's Breath",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35477",
+          "kind":"granted_passive",
+          "line":"Allocates Far Sighted",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35560",
+          "kind":"granted_passive",
+          "line":"Allocates At your Command",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35564",
+          "kind":"granted_passive",
+          "line":"Allocates Turn the Clock Back",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35581",
+          "kind":"granted_passive",
+          "line":"Allocates Near at Hand",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35618",
+          "kind":"granted_passive",
+          "line":"Allocates Cold Coat",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|3567",
+          "kind":"granted_passive",
+          "line":"Allocates Raw Mana",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35739",
+          "kind":"granted_passive",
+          "line":"Allocates Crushing Judgement",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35743",
+          "kind":"granted_passive",
+          "line":"Allocates Saqawal's Hide",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35792",
+          "kind":"granted_passive",
+          "line":"Allocates Blood of Rage",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35809",
+          "kind":"granted_passive",
+          "line":"Allocates Reinvigoration",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35849",
+          "kind":"granted_passive",
+          "line":"Allocates Thickened Arteries",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35855",
+          "kind":"granted_passive",
+          "line":"Allocates Fortifying Blood",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35876",
+          "kind":"granted_passive",
+          "line":"Allocates Admonisher",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35918",
+          "kind":"granted_passive",
+          "line":"Allocates One For All",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|35966",
+          "kind":"granted_passive",
+          "line":"Allocates Heart Tissue",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|36085",
+          "kind":"granted_passive",
+          "line":"Allocates Serrated Edges",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|36100",
+          "kind":"granted_passive",
+          "line":"Allocates Molten Claw",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|36333",
+          "kind":"granted_passive",
+          "line":"Allocates Explosive Empowerment",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|36341",
+          "kind":"granted_passive",
+          "line":"Allocates Cull the Hordes",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|36364",
+          "kind":"granted_passive",
+          "line":"Allocates Electrocution",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|36507",
+          "kind":"granted_passive",
+          "line":"Allocates Vile Mending",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|36623",
+          "kind":"granted_passive",
+          "line":"Allocates Convalescence",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|3663",
+          "kind":"granted_passive",
+          "line":"Allocates Kaom's Blessing",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|36630",
+          "kind":"granted_passive",
+          "line":"Allocates Incision",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|36808",
+          "kind":"granted_passive",
+          "line":"Allocates Spiked Shield",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|3688",
+          "kind":"granted_passive",
+          "line":"Allocates Dynamism",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|36931",
+          "kind":"granted_passive",
+          "line":"Allocates Concussive Attack",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|36976",
+          "kind":"granted_passive",
+          "line":"Allocates Marked for Death",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|3698",
+          "kind":"granted_passive",
+          "line":"Allocates Spike Pit",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|372",
+          "kind":"granted_passive",
+          "line":"Allocates Heatproof",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|37244",
+          "kind":"granted_passive",
+          "line":"Allocates Shield Expertise",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|37266",
+          "kind":"granted_passive",
+          "line":"Allocates Nourishing Ally",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|37276",
+          "kind":"granted_passive",
+          "line":"Allocates Battle Trance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|37302",
+          "kind":"granted_passive",
+          "line":"Allocates Kept at Bay",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|37408",
+          "kind":"granted_passive",
+          "line":"Allocates Staunching",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|37514",
+          "kind":"granted_passive",
+          "line":"Allocates Whirling Assault",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|37543",
+          "kind":"granted_passive",
+          "line":"Allocates Full Recovery",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|37619",
+          "kind":"granted_passive",
+          "line":"Allocates Rhythm of Fire",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|37742",
+          "kind":"granted_passive",
+          "line":"Allocates Manifold Method",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|37806",
+          "kind":"granted_passive",
+          "line":"Allocates Branching Bolts",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|37846",
+          "kind":"granted_passive",
+          "line":"Allocates Bastion of Light",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|37872",
+          "kind":"granted_passive",
+          "line":"Allocates Presence Present",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|37967",
+          "kind":"granted_passive",
+          "line":"Allocates Desert's Scorn",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38053",
+          "kind":"granted_passive",
+          "line":"Allocates Deafening Cries",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38111",
+          "kind":"granted_passive",
+          "line":"Allocates Pliable Flesh",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38329",
+          "kind":"granted_passive",
+          "line":"Allocates Biting Frost",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38342",
+          "kind":"granted_passive",
+          "line":"Allocates Stupefy",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38398",
+          "kind":"granted_passive",
+          "line":"Allocates Apocalypse",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38459",
+          "kind":"granted_passive",
+          "line":"Allocates Disorientation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38479",
+          "kind":"granted_passive",
+          "line":"Allocates Close Confines",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38532",
+          "kind":"granted_passive",
+          "line":"Allocates Thirst for Power",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38535",
+          "kind":"granted_passive",
+          "line":"Allocates Stormcharged",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38537",
+          "kind":"granted_passive",
+          "line":"Allocates Heartstopping",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38570",
+          "kind":"granted_passive",
+          "line":"Allocates Demolitionist",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38614",
+          "kind":"granted_passive",
+          "line":"Allocates Psychic Fragmentation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38628",
+          "kind":"granted_passive",
+          "line":"Allocates Escalating Toxins",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38888",
+          "kind":"granted_passive",
+          "line":"Allocates Unerring Impact",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38895",
+          "kind":"granted_passive",
+          "line":"Allocates Crystal Elixir",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|3894",
+          "kind":"granted_passive",
+          "line":"Allocates Eldritch Will",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38965",
+          "kind":"granted_passive",
+          "line":"Allocates Infused Limits",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38969",
+          "kind":"granted_passive",
+          "line":"Allocates Finesse",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|38972",
+          "kind":"granted_passive",
+          "line":"Allocates Restless Dead",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|39050",
+          "kind":"granted_passive",
+          "line":"Allocates Exploit",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|39083",
+          "kind":"granted_passive",
+          "line":"Allocates Blood Rush",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|3921",
+          "kind":"granted_passive",
+          "line":"Allocates Fate Finding",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|39347",
+          "kind":"granted_passive",
+          "line":"Allocates Breaking Blows",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|39369",
+          "kind":"granted_passive",
+          "line":"Allocates Struck Through",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|39567",
+          "kind":"granted_passive",
+          "line":"Allocates Ingenuity",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|39568",
+          "kind":"granted_passive",
+          "line":"Allocates Magnum Opus",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|3985",
+          "kind":"granted_passive",
+          "line":"Allocates Forces of Nature",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|39881",
+          "kind":"granted_passive",
+          "line":"Allocates Staggering Palm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|39884",
+          "kind":"granted_passive",
+          "line":"Allocates Searing Heat",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|39911",
+          "kind":"granted_passive",
+          "line":"Allocates Frantic Reach",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|39990",
+          "kind":"granted_passive",
+          "line":"Allocates Chronomancy",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40073",
+          "kind":"granted_passive",
+          "line":"Allocates Drenched",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40117",
+          "kind":"granted_passive",
+          "line":"Allocates Spiked Armour",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40166",
+          "kind":"granted_passive",
+          "line":"Allocates Deep Trance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40213",
+          "kind":"granted_passive",
+          "line":"Allocates Taste for Blood",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40270",
+          "kind":"granted_passive",
+          "line":"Allocates Frenetic",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40292",
+          "kind":"granted_passive",
+          "line":"Allocates Nimble Strength",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4031",
+          "kind":"granted_passive",
+          "line":"Allocates Icebreaker",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40325",
+          "kind":"granted_passive",
+          "line":"Allocates Resolution",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40345",
+          "kind":"granted_passive",
+          "line":"Allocates Master of Hexes",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40399",
+          "kind":"granted_passive",
+          "line":"Allocates Energise",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40480",
+          "kind":"granted_passive",
+          "line":"Allocates Harmonic Generator",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40687",
+          "kind":"granted_passive",
+          "line":"Allocates Lead by Example",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40803",
+          "kind":"granted_passive",
+          "line":"Allocates Sigil of Ice",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4091",
+          "kind":"granted_passive",
+          "line":"Allocates Left Ventricle",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40985",
+          "kind":"granted_passive",
+          "line":"Allocates Empowering Remnants",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|40990",
+          "kind":"granted_passive",
+          "line":"Allocates Exposed to the Storm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|41033",
+          "kind":"granted_passive",
+          "line":"Allocates Utmost Offering",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|41394",
+          "kind":"granted_passive",
+          "line":"Allocates Invigorating Archon",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|41512",
+          "kind":"granted_passive",
+          "line":"Allocates Heavy Weaponry",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|41580",
+          "kind":"granted_passive",
+          "line":"Allocates Maiming Strike",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|41620",
+          "kind":"granted_passive",
+          "line":"Allocates Bear's Roar",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|41753",
+          "kind":"granted_passive",
+          "line":"Allocates Evocational Practitioner",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|41811",
+          "kind":"granted_passive",
+          "line":"Allocates Shatter Palm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|41905",
+          "kind":"granted_passive",
+          "line":"Allocates Gravedigger",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|41935",
+          "kind":"granted_passive",
+          "line":"Allocates Hide of the Bear",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|41972",
+          "kind":"granted_passive",
+          "line":"Allocates Glaciation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42032",
+          "kind":"granted_passive",
+          "line":"Allocates Escalating Mayhem",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42036",
+          "kind":"granted_passive",
+          "line":"Allocates Off-Balancing Retort",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42045",
+          "kind":"granted_passive",
+          "line":"Allocates Archon of the Blizzard",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42065",
+          "kind":"granted_passive",
+          "line":"Allocates Surging Currents",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42070",
+          "kind":"granted_passive",
+          "line":"Allocates Saqawal's Guidance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42077",
+          "kind":"granted_passive",
+          "line":"Allocates Essence Infusion",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42103",
+          "kind":"granted_passive",
+          "line":"Allocates Enduring Deflection",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42177",
+          "kind":"granted_passive",
+          "line":"Allocates Blurred Motion",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42245",
+          "kind":"granted_passive",
+          "line":"Allocates Efficient Inscriptions",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42302",
+          "kind":"granted_passive",
+          "line":"Allocates Split Shot",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42347",
+          "kind":"granted_passive",
+          "line":"Allocates Chakra of Sight",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42354",
+          "kind":"granted_passive",
+          "line":"Allocates Blinding Flash",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4238",
+          "kind":"granted_passive",
+          "line":"Allocates Versatile Arms",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42390",
+          "kind":"granted_passive",
+          "line":"Allocates Overheating Blow",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42660",
+          "kind":"granted_passive",
+          "line":"Allocates Commanding Rage",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42714",
+          "kind":"granted_passive",
+          "line":"Allocates Thousand Cuts",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42760",
+          "kind":"granted_passive",
+          "line":"Allocates Chakra of Stability",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42813",
+          "kind":"granted_passive",
+          "line":"Allocates Tides of Change",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4295",
+          "kind":"granted_passive",
+          "line":"Allocates Adverse Growth",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42959",
+          "kind":"granted_passive",
+          "line":"Allocates Low Tolerance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|42981",
+          "kind":"granted_passive",
+          "line":"Allocates Cruel Methods",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43082",
+          "kind":"granted_passive",
+          "line":"Allocates Acceleration",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43088",
+          "kind":"granted_passive",
+          "line":"Allocates Agonising Calamity",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43090",
+          "kind":"granted_passive",
+          "line":"Allocates Electrotherapy",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43139",
+          "kind":"granted_passive",
+          "line":"Allocates Stormbreaker",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43250",
+          "kind":"granted_passive",
+          "line":"Allocates Adaptive Skin",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4331",
+          "kind":"granted_passive",
+          "line":"Allocates Guided Hand",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43396",
+          "kind":"granted_passive",
+          "line":"Allocates Ancestral Reach",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43423",
+          "kind":"granted_passive",
+          "line":"Allocates Emboldened Avatar",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43584",
+          "kind":"granted_passive",
+          "line":"Allocates Flare",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43633",
+          "kind":"granted_passive",
+          "line":"Allocates Energising Archon",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43677",
+          "kind":"granted_passive",
+          "line":"Allocates Crippling Toxins",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43711",
+          "kind":"granted_passive",
+          "line":"Allocates Thornhide",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43791",
+          "kind":"granted_passive",
+          "line":"Allocates Rallying Icon",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43829",
+          "kind":"granted_passive",
+          "line":"Allocates Advanced Munitions",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43854",
+          "kind":"granted_passive",
+          "line":"Allocates All For One",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43939",
+          "kind":"granted_passive",
+          "line":"Allocates Melting Flames",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|43944",
+          "kind":"granted_passive",
+          "line":"Allocates Instability",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|44005",
+          "kind":"granted_passive",
+          "line":"Allocates Casting Cascade",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|44293",
+          "kind":"granted_passive",
+          "line":"Allocates Hastening Barrier",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|44299",
+          "kind":"granted_passive",
+          "line":"Allocates Enhanced Barrier",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|44330",
+          "kind":"granted_passive",
+          "line":"Allocates Coated Arms",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|44373",
+          "kind":"granted_passive",
+          "line":"Allocates Wither Away",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4447",
+          "kind":"granted_passive",
+          "line":"Allocates Pin their Motivation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|44566",
+          "kind":"granted_passive",
+          "line":"Allocates Lightning Rod",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|44573",
+          "kind":"granted_passive",
+          "line":"Allocates Disciplined Training",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|44753",
+          "kind":"granted_passive",
+          "line":"Allocates One With Flame",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|44756",
+          "kind":"granted_passive",
+          "line":"Allocates Marked Agility",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|44765",
+          "kind":"granted_passive",
+          "line":"Allocates Distracting Presence",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|44917",
+          "kind":"granted_passive",
+          "line":"Allocates Self Mortification",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|44952",
+          "kind":"granted_passive",
+          "line":"Allocates Made to Last",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|44974",
+          "kind":"granted_passive",
+          "line":"Allocates Hail",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|45013",
+          "kind":"granted_passive",
+          "line":"Allocates Finishing Blows",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|45177",
+          "kind":"granted_passive",
+          "line":"Allocates Strike True",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|45244",
+          "kind":"granted_passive",
+          "line":"Allocates Refills",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|45329",
+          "kind":"granted_passive",
+          "line":"Allocates Delayed Danger",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4534",
+          "kind":"granted_passive",
+          "line":"Allocates Piercing Shot",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|45370",
+          "kind":"granted_passive",
+          "line":"Allocates The Raging Ox",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4544",
+          "kind":"granted_passive",
+          "line":"Allocates The Ancient Serpent",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4547",
+          "kind":"granted_passive",
+          "line":"Allocates Unnatural Resilience",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|45488",
+          "kind":"granted_passive",
+          "line":"Allocates Cross Strike",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|45599",
+          "kind":"granted_passive",
+          "line":"Allocates Lay Siege",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|45612",
+          "kind":"granted_passive",
+          "line":"Allocates Defensive Reflexes",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|45632",
+          "kind":"granted_passive",
+          "line":"Allocates Mind Eraser",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|45713",
+          "kind":"granted_passive",
+          "line":"Allocates Savouring",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|45751",
+          "kind":"granted_passive",
+          "line":"Allocates Frightening Shield",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|45777",
+          "kind":"granted_passive",
+          "line":"Allocates Hidden Barb",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4579",
+          "kind":"granted_passive",
+          "line":"Allocates Unbothering Cold",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|45874",
+          "kind":"granted_passive",
+          "line":"Allocates Proliferating Weeds",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46024",
+          "kind":"granted_passive",
+          "line":"Allocates Sigil of Lightning",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46060",
+          "kind":"granted_passive",
+          "line":"Allocates Voracious",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46124",
+          "kind":"granted_passive",
+          "line":"Allocates Arcane Remnants",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46182",
+          "kind":"granted_passive",
+          "line":"Allocates Intense Dose",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46197",
+          "kind":"granted_passive",
+          "line":"Allocates Careful Assassin",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46224",
+          "kind":"granted_passive",
+          "line":"Allocates Arcane Alchemy",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4627",
+          "kind":"granted_passive",
+          "line":"Allocates Climate Change",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46296",
+          "kind":"granted_passive",
+          "line":"Allocates Short Shot",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46365",
+          "kind":"granted_passive",
+          "line":"Allocates Gigantic Following",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46384",
+          "kind":"granted_passive",
+          "line":"Allocates Wide Barrier",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46499",
+          "kind":"granted_passive",
+          "line":"Allocates Guts",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4661",
+          "kind":"granted_passive",
+          "line":"Allocates Inspiring Leader",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46683",
+          "kind":"granted_passive",
+          "line":"Allocates Inherited Strength ",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46692",
+          "kind":"granted_passive",
+          "line":"Allocates Efficient Alchemy",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46696",
+          "kind":"granted_passive",
+          "line":"Allocates Impair",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4673",
+          "kind":"granted_passive",
+          "line":"Allocates Hulking Smash",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|46972",
+          "kind":"granted_passive",
+          "line":"Allocates Arcane Mixtures",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|47088",
+          "kind":"granted_passive",
+          "line":"Allocates Sic 'Em",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4709",
+          "kind":"granted_passive",
+          "line":"Allocates Near Sighted",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4716",
+          "kind":"granted_passive",
+          "line":"Allocates Afterimage",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|47270",
+          "kind":"granted_passive",
+          "line":"Allocates Inescapable Cold",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|47316",
+          "kind":"granted_passive",
+          "line":"Allocates Goring",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|47363",
+          "kind":"granted_passive",
+          "line":"Allocates Colossal Weapon",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|47387",
+          "kind":"granted_passive",
+          "line":"Allocates Stormkeeper",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|47418",
+          "kind":"granted_passive",
+          "line":"Allocates Warding Potions",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|47420",
+          "kind":"granted_passive",
+          "line":"Allocates Expendable Army",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|47441",
+          "kind":"granted_passive",
+          "line":"Allocates Stigmata",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|47514",
+          "kind":"granted_passive",
+          "line":"Allocates Dizzying Hits",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|47560",
+          "kind":"granted_passive",
+          "line":"Allocates Multi Shot",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|47635",
+          "kind":"granted_passive",
+          "line":"Allocates Overload",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|47782",
+          "kind":"granted_passive",
+          "line":"Allocates Steady Footing",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|47853",
+          "kind":"granted_passive",
+          "line":"Allocates Bond of the Mamba",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48006",
+          "kind":"granted_passive",
+          "line":"Allocates Devastation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48014",
+          "kind":"granted_passive",
+          "line":"Allocates Honourless",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4810",
+          "kind":"granted_passive",
+          "line":"Allocates Sanguine Tolerance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48103",
+          "kind":"granted_passive",
+          "line":"Allocates Forcewave",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48215",
+          "kind":"granted_passive",
+          "line":"Allocates Headshot",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48240",
+          "kind":"granted_passive",
+          "line":"Allocates Quick Recovery",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48418",
+          "kind":"granted_passive",
+          "line":"Allocates Hefty Unit",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48524",
+          "kind":"granted_passive",
+          "line":"Allocates Blood Transfusion",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48565",
+          "kind":"granted_passive",
+          "line":"Allocates Bringer of Order",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48581",
+          "kind":"granted_passive",
+          "line":"Allocates Exploit the Elements",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48617",
+          "kind":"granted_passive",
+          "line":"Allocates Hunter",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48649",
+          "kind":"granted_passive",
+          "line":"Allocates Insulating Hide",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48658",
+          "kind":"granted_passive",
+          "line":"Allocates Shattering",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48699",
+          "kind":"granted_passive",
+          "line":"Allocates Frostwalker",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48734",
+          "kind":"granted_passive",
+          "line":"Allocates The Howling Primate",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48774",
+          "kind":"granted_passive",
+          "line":"Allocates Taut Flesh",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48925",
+          "kind":"granted_passive",
+          "line":"Allocates Blessing of the Moon",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|48974",
+          "kind":"granted_passive",
+          "line":"Allocates Altered Brain Chemistry",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|49088",
+          "kind":"granted_passive",
+          "line":"Allocates Splintering Force",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|49150",
+          "kind":"granted_passive",
+          "line":"Allocates Precise Invocations",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|49214",
+          "kind":"granted_passive",
+          "line":"Allocates Blood of the Wolf",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4931",
+          "kind":"granted_passive",
+          "line":"Allocates Dependable Ward",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|49356",
+          "kind":"granted_passive",
+          "line":"Allocates First Principle of the Hollow",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|49550",
+          "kind":"granted_passive",
+          "line":"Allocates Prolonged Fury",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4959",
+          "kind":"granted_passive",
+          "line":"Allocates Heavy Frost",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|49618",
+          "kind":"granted_passive",
+          "line":"Allocates Deadly Flourish",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|49661",
+          "kind":"granted_passive",
+          "line":"Allocates Perfectly Placed Knife",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|49740",
+          "kind":"granted_passive",
+          "line":"Allocates Shattered Crystal",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|4985",
+          "kind":"granted_passive",
+          "line":"Allocates Flip the Script",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|49984",
+          "kind":"granted_passive",
+          "line":"Allocates Spellblade",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50023",
+          "kind":"granted_passive",
+          "line":"Allocates Invigorating Grandeur",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50062",
+          "kind":"granted_passive",
+          "line":"Allocates Barrier of Venarius",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5009",
+          "kind":"granted_passive",
+          "line":"Allocates Seeing Stars",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50239",
+          "kind":"granted_passive",
+          "line":"Allocates Mutewind Agility",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50253",
+          "kind":"granted_passive",
+          "line":"Allocates Aftershocks",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50392",
+          "kind":"granted_passive",
+          "line":"Allocates Brute Strength",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50485",
+          "kind":"granted_passive",
+          "line":"Allocates Zone of Control",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50498",
+          "kind":"granted_passive",
+          "line":"Allocates Brain Storm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50562",
+          "kind":"granted_passive",
+          "line":"Allocates Barbaric Strength",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50673",
+          "kind":"granted_passive",
+          "line":"Allocates Avoiding Deflection",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50687",
+          "kind":"granted_passive",
+          "line":"Allocates Coursing Energy",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50715",
+          "kind":"granted_passive",
+          "line":"Allocates Frozen Limit",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50795",
+          "kind":"granted_passive",
+          "line":"Allocates Careful Aim",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50884",
+          "kind":"granted_passive",
+          "line":"Allocates Primal Sundering",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|50912",
+          "kind":"granted_passive",
+          "line":"Allocates Imbibed Power",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51105",
+          "kind":"granted_passive",
+          "line":"Allocates Spirit Bond",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51129",
+          "kind":"granted_passive",
+          "line":"Allocates Pile On",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51169",
+          "kind":"granted_passive",
+          "line":"Allocates Soul Bloom",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51213",
+          "kind":"granted_passive",
+          "line":"Allocates Wasting",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51394",
+          "kind":"granted_passive",
+          "line":"Allocates Unimpeded",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51446",
+          "kind":"granted_passive",
+          "line":"Allocates Leather Bound Gauntlets",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51509",
+          "kind":"granted_passive",
+          "line":"Allocates Waters of Life",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51602",
+          "kind":"granted_passive",
+          "line":"Allocates Unsight",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51606",
+          "kind":"granted_passive",
+          "line":"Allocates Freedom of Movement",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51707",
+          "kind":"granted_passive",
+          "line":"Allocates Enhanced Reflexes",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51820",
+          "kind":"granted_passive",
+          "line":"Allocates Ancestral Conduits",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51867",
+          "kind":"granted_passive",
+          "line":"Allocates Finality",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51868",
+          "kind":"granted_passive",
+          "line":"Allocates Molten Carapace",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51871",
+          "kind":"granted_passive",
+          "line":"Allocates Immortal Thirst",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51891",
+          "kind":"granted_passive",
+          "line":"Allocates Lucidity",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5191",
+          "kind":"granted_passive",
+          "line":"Allocates Bond of the Wolf",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|51934",
+          "kind":"granted_passive",
+          "line":"Allocates Invocated Efficiency",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52180",
+          "kind":"granted_passive",
+          "line":"Allocates Trained Deflection",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52191",
+          "kind":"granted_passive",
+          "line":"Allocates Event Horizon",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52199",
+          "kind":"granted_passive",
+          "line":"Allocates Overexposure",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52229",
+          "kind":"granted_passive",
+          "line":"Allocates Secrets of the Orb",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52245",
+          "kind":"granted_passive",
+          "line":"Allocates Distant Dreamer",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52257",
+          "kind":"granted_passive",
+          "line":"Allocates Conductive Embrace",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5227",
+          "kind":"granted_passive",
+          "line":"Allocates Escape Strategy",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52348",
+          "kind":"granted_passive",
+          "line":"Allocates Carved Earth",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52392",
+          "kind":"granted_passive",
+          "line":"Allocates Singular Purpose",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52568",
+          "kind":"granted_passive",
+          "line":"Allocates Bond of the Owl",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5257",
+          "kind":"granted_passive",
+          "line":"Allocates Echoing Frost",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52618",
+          "kind":"granted_passive",
+          "line":"Allocates Boon of the Beast",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52669",
+          "kind":"granted_passive",
+          "line":"Allocates Flamekeeper",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52684",
+          "kind":"granted_passive",
+          "line":"Allocates Eroding Chains",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52764",
+          "kind":"granted_passive",
+          "line":"Allocates Mystical Rage",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52803",
+          "kind":"granted_passive",
+          "line":"Allocates Hale Traveller",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5284",
+          "kind":"granted_passive",
+          "line":"Allocates Shredding Force",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|52971",
+          "kind":"granted_passive",
+          "line":"Allocates The Soul Meridian",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53030",
+          "kind":"granted_passive",
+          "line":"Allocates Immolation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53131",
+          "kind":"granted_passive",
+          "line":"Allocates Tukohama's Brew",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53150",
+          "kind":"granted_passive",
+          "line":"Allocates Sharp Sight",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53185",
+          "kind":"granted_passive",
+          "line":"Allocates The Winter Owl",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53187",
+          "kind":"granted_passive",
+          "line":"Allocates Warlord Berserker",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53265",
+          "kind":"granted_passive",
+          "line":"Allocates Nature's Bite",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53294",
+          "kind":"granted_passive",
+          "line":"Allocates Burn Away",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5332",
+          "kind":"granted_passive",
+          "line":"Allocates Crystallised Immunities",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5335",
+          "kind":"granted_passive",
+          "line":"Allocates Shimmering Mirage",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53367",
+          "kind":"granted_passive",
+          "line":"Allocates Symbol of Defiance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53527",
+          "kind":"granted_passive",
+          "line":"Allocates Shattering Blow",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53566",
+          "kind":"granted_passive",
+          "line":"Allocates Run and Gun",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53607",
+          "kind":"granted_passive",
+          "line":"Allocates Fortified Location",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53683",
+          "kind":"granted_passive",
+          "line":"Allocates Efficient Loading",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53823",
+          "kind":"granted_passive",
+          "line":"Allocates Towering Shield",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53853",
+          "kind":"granted_passive",
+          "line":"Allocates Backup Plan",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53921",
+          "kind":"granted_passive",
+          "line":"Allocates Unbreaking",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53935",
+          "kind":"granted_passive",
+          "line":"Allocates Briny Carapace",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|53941",
+          "kind":"granted_passive",
+          "line":"Allocates Shimmering",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|54031",
+          "kind":"granted_passive",
+          "line":"Allocates The Great Boar",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5410",
+          "kind":"granted_passive",
+          "line":"Allocates Channelled Heritage",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|54148",
+          "kind":"granted_passive",
+          "line":"Allocates Smoke Inhalation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|54640",
+          "kind":"granted_passive",
+          "line":"Allocates Constricting",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|54805",
+          "kind":"granted_passive",
+          "line":"Allocates Hindered Capabilities",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|54814",
+          "kind":"granted_passive",
+          "line":"Allocates Profane Commander",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|54911",
+          "kind":"granted_passive",
+          "line":"Allocates Firestarter",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|54937",
+          "kind":"granted_passive",
+          "line":"Allocates Vengeful Fury",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|54990",
+          "kind":"granted_passive",
+          "line":"Allocates Bloodletting",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|54998",
+          "kind":"granted_passive",
+          "line":"Allocates Protraction",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55",
+          "kind":"granted_passive",
+          "line":"Allocates Fast Acting Toxins",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55060",
+          "kind":"granted_passive",
+          "line":"Allocates Shrapnel",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55131",
+          "kind":"granted_passive",
+          "line":"Allocates Light on your Feet",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55149",
+          "kind":"granted_passive",
+          "line":"Allocates Pure Chaos",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55180",
+          "kind":"granted_passive",
+          "line":"Allocates Relentless Fallen",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55193",
+          "kind":"granted_passive",
+          "line":"Allocates Subterfuge Mask",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55308",
+          "kind":"granted_passive",
+          "line":"Allocates Sling Shots",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55375",
+          "kind":"granted_passive",
+          "line":"Allocates Licking Wounds",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55450",
+          "kind":"granted_passive",
+          "line":"Allocates Rallying Form",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55568",
+          "kind":"granted_passive",
+          "line":"Allocates Forthcoming",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55708",
+          "kind":"granted_passive",
+          "line":"Allocates Electric Amplification",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5580",
+          "kind":"granted_passive",
+          "line":"Allocates Watchtowers",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55817",
+          "kind":"granted_passive",
+          "line":"Allocates Alchemical Oil",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55835",
+          "kind":"granted_passive",
+          "line":"Allocates Exposed to the Cosmos",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|55847",
+          "kind":"granted_passive",
+          "line":"Allocates Ice Walls",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5594",
+          "kind":"granted_passive",
+          "line":"Allocates Decrepifying Curse",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56016",
+          "kind":"granted_passive",
+          "line":"Allocates Passthrough Rounds",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56063",
+          "kind":"granted_passive",
+          "line":"Allocates Lingering Horror",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56112",
+          "kind":"granted_passive",
+          "line":"Allocates Extinguishing Exhalation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56237",
+          "kind":"granted_passive",
+          "line":"Allocates Enhancing Attacks",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56265",
+          "kind":"granted_passive",
+          "line":"Allocates Throatseeker",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56388",
+          "kind":"granted_passive",
+          "line":"Allocates Reinforced Rallying",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5642",
+          "kind":"granted_passive",
+          "line":"Allocates Behemoth",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56453",
+          "kind":"granted_passive",
+          "line":"Allocates Killer Instinct",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56488",
+          "kind":"granted_passive",
+          "line":"Allocates Glancing Deflection",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56493",
+          "kind":"granted_passive",
+          "line":"Allocates Agile Succession",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56616",
+          "kind":"granted_passive",
+          "line":"Allocates Desperate Times",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5663",
+          "kind":"granted_passive",
+          "line":"Allocates Endurance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56666",
+          "kind":"granted_passive",
+          "line":"Allocates Thaumaturgic Generator",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56714",
+          "kind":"granted_passive",
+          "line":"Allocates Swift Flight",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56767",
+          "kind":"granted_passive",
+          "line":"Allocates Electrifying Daze",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56776",
+          "kind":"granted_passive",
+          "line":"Allocates Cooked",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56806",
+          "kind":"granted_passive",
+          "line":"Allocates Swift Blocking",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5686",
+          "kind":"granted_passive",
+          "line":"Allocates Chillproof",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56860",
+          "kind":"granted_passive",
+          "line":"Allocates Resolute Reprisal",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56893",
+          "kind":"granted_passive",
+          "line":"Allocates Thicket Warding",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56988",
+          "kind":"granted_passive",
+          "line":"Allocates Electric Blood",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56997",
+          "kind":"granted_passive",
+          "line":"Allocates Heavy Contact",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|56999",
+          "kind":"granted_passive",
+          "line":"Allocates Locked On",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5703",
+          "kind":"granted_passive",
+          "line":"Allocates Echoing Thunder",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|57047",
+          "kind":"granted_passive",
+          "line":"Allocates Polymathy",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|57110",
+          "kind":"granted_passive",
+          "line":"Allocates Infused Flesh",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|57190",
+          "kind":"granted_passive",
+          "line":"Allocates Doomsayer",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|57204",
+          "kind":"granted_passive",
+          "line":"Allocates Critical Exploit",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5728",
+          "kind":"granted_passive",
+          "line":"Allocates Ancient Aegis",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|57379",
+          "kind":"granted_passive",
+          "line":"Allocates In Your Face",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|57388",
+          "kind":"granted_passive",
+          "line":"Allocates Overwhelming Strike",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|57471",
+          "kind":"granted_passive",
+          "line":"Allocates Hunker Down",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|57617",
+          "kind":"granted_passive",
+          "line":"Allocates Shifted Strikes",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|57785",
+          "kind":"granted_passive",
+          "line":"Allocates Trained Turrets",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|57805",
+          "kind":"granted_passive",
+          "line":"Allocates Clear Space",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|57921",
+          "kind":"granted_passive",
+          "line":"Allocates Wolf's Howl",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|58016",
+          "kind":"granted_passive",
+          "line":"Allocates All Natural",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|5802",
+          "kind":"granted_passive",
+          "line":"Allocates Stand and Deliver",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|58096",
+          "kind":"granted_passive",
+          "line":"Allocates Lasting Incantations",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|58183",
+          "kind":"granted_passive",
+          "line":"Allocates Blood Tearing",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|58198",
+          "kind":"granted_passive",
+          "line":"Allocates Well of Power",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|58215",
+          "kind":"granted_passive",
+          "line":"Allocates Sanguimantic Rituals",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|58397",
+          "kind":"granted_passive",
+          "line":"Allocates Proficiency",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|58426",
+          "kind":"granted_passive",
+          "line":"Allocates Pocket Sand",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|58714",
+          "kind":"granted_passive",
+          "line":"Allocates Grenadier",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|58817",
+          "kind":"granted_passive",
+          "line":"Allocates Artillery Strike",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|58894",
+          "kind":"granted_passive",
+          "line":"Allocates Dominus' Providence",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|58939",
+          "kind":"granted_passive",
+          "line":"Allocates Dispatch Foes",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|59070",
+          "kind":"granted_passive",
+          "line":"Allocates Enduring Archon",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|59208",
+          "kind":"granted_passive",
+          "line":"Allocates Frantic Fighter",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|59214",
+          "kind":"granted_passive",
+          "line":"Allocates Fated End",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|59303",
+          "kind":"granted_passive",
+          "line":"Allocates Lucky Rabbit Foot",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|59387",
+          "kind":"granted_passive",
+          "line":"Allocates Infusion of Power",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|59433",
+          "kind":"granted_passive",
+          "line":"Allocates Thirst for Endurance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|59438",
+          "kind":"granted_passive",
+          "line":"Allocates Flow of Life",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|59541",
+          "kind":"granted_passive",
+          "line":"Allocates Necrotised Flesh",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|59589",
+          "kind":"granted_passive",
+          "line":"Allocates Heavy Armour",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|59657",
+          "kind":"granted_passive",
+          "line":"Allocates First Teachings of the Keeper",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|59720",
+          "kind":"granted_passive",
+          "line":"Allocates Beastial Skin",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|59781",
+          "kind":"granted_passive",
+          "line":"Allocates Embodiment of Death",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|59938",
+          "kind":"granted_passive",
+          "line":"Allocates Against the Elements",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|60034",
+          "kind":"granted_passive",
+          "line":"Allocates Falcon Dive",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|60083",
+          "kind":"granted_passive",
+          "line":"Allocates Pin and Run",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|60138",
+          "kind":"granted_passive",
+          "line":"Allocates Stylebender",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|60269",
+          "kind":"granted_passive",
+          "line":"Allocates Roil",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|60273",
+          "kind":"granted_passive",
+          "line":"Allocates Hindering Obstacles",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|60404",
+          "kind":"granted_passive",
+          "line":"Allocates Perfect Opportunity",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|60464",
+          "kind":"granted_passive",
+          "line":"Allocates Fan the Flames",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|60619",
+          "kind":"granted_passive",
+          "line":"Allocates Scales of the Wyvern",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|60692",
+          "kind":"granted_passive",
+          "line":"Allocates Echoing Flames",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|60764",
+          "kind":"granted_passive",
+          "line":"Allocates Feathered Fletching",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|60878",
+          "kind":"granted_passive",
+          "line":"Allocates Lightning Storm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|60992",
+          "kind":"granted_passive",
+          "line":"Allocates Nurturing Guardian",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|61026",
+          "kind":"granted_passive",
+          "line":"Allocates Crystalline Flesh",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|61104",
+          "kind":"granted_passive",
+          "line":"Allocates Staggering Wounds",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|61112",
+          "kind":"granted_passive",
+          "line":"Allocates Roll and Strike",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|61309",
+          "kind":"granted_passive",
+          "line":"Allocates Redblade Discipline",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|6133",
+          "kind":"granted_passive",
+          "line":"Allocates Core of the Guardian",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|61338",
+          "kind":"granted_passive",
+          "line":"Allocates Breath of Lightning",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|61354",
+          "kind":"granted_passive",
+          "line":"Allocates Infernal Limit",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|61404",
+          "kind":"granted_passive",
+          "line":"Allocates Equilibrium",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|61444",
+          "kind":"granted_passive",
+          "line":"Allocates Wasting Casts",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|61601",
+          "kind":"granted_passive",
+          "line":"Allocates True Strike",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|61703",
+          "kind":"granted_passive",
+          "line":"Allocates Sharpened Claw",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|61741",
+          "kind":"granted_passive",
+          "line":"Allocates Lasting Toxins",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|6178",
+          "kind":"granted_passive",
+          "line":"Allocates Power Shots",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|61921",
+          "kind":"granted_passive",
+          "line":"Allocates Storm Surge",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|62034",
+          "kind":"granted_passive",
+          "line":"Allocates Prism Guard",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|62185",
+          "kind":"granted_passive",
+          "line":"Allocates Rattled",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|62210",
+          "kind":"granted_passive",
+          "line":"Allocates Puppet Master chance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|62230",
+          "kind":"granted_passive",
+          "line":"Allocates Patient Barrier",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|62237",
+          "kind":"granted_passive",
+          "line":"Allocates Saqawal's Talon",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|6229",
+          "kind":"granted_passive",
+          "line":"Allocates Push the Advantage",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|62310",
+          "kind":"granted_passive",
+          "line":"Allocates Incendiary",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|62431",
+          "kind":"granted_passive",
+          "line":"Allocates Anticipation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|62455",
+          "kind":"granted_passive",
+          "line":"Allocates Bannerman",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|62609",
+          "kind":"granted_passive",
+          "line":"Allocates Ancestral Unity",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|62803",
+          "kind":"granted_passive",
+          "line":"Allocates Woodland Aspect",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|62887",
+          "kind":"granted_passive",
+          "line":"Allocates Living Death",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|62963",
+          "kind":"granted_passive",
+          "line":"Allocates Flamewalker",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|63031",
+          "kind":"granted_passive",
+          "line":"Allocates Glorious Anticipation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|63037",
+          "kind":"granted_passive",
+          "line":"Allocates Sigil of Fire",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|6304",
+          "kind":"granted_passive",
+          "line":"Allocates Stand Ground",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|63074",
+          "kind":"granted_passive",
+          "line":"Allocates Dark Entries",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|63255",
+          "kind":"granted_passive",
+          "line":"Allocates Savagery",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|63400",
+          "kind":"granted_passive",
+          "line":"Allocates Chakra of Elements",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|63431",
+          "kind":"granted_passive",
+          "line":"Allocates Leeching Toxins",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|63451",
+          "kind":"granted_passive",
+          "line":"Allocates Cranial Impact",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|63541",
+          "kind":"granted_passive",
+          "line":"Allocates Brush Off",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|63579",
+          "kind":"granted_passive",
+          "line":"Allocates Momentum",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|63585",
+          "kind":"granted_passive",
+          "line":"Allocates Thunderstruck",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|63739",
+          "kind":"granted_passive",
+          "line":"Allocates Vigorous Remnants",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|63759",
+          "kind":"granted_passive",
+          "line":"Allocates Stacking Toxins",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|63830",
+          "kind":"granted_passive",
+          "line":"Allocates Marked for Sickness",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|64050",
+          "kind":"granted_passive",
+          "line":"Allocates Marathon Runner",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|64119",
+          "kind":"granted_passive",
+          "line":"Allocates Rapid Reload",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|64240",
+          "kind":"granted_passive",
+          "line":"Allocates Battle Fever",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|64415",
+          "kind":"granted_passive",
+          "line":"Allocates Shattering Daze",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|64443",
+          "kind":"granted_passive",
+          "line":"Allocates Impact Force",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|64525",
+          "kind":"granted_passive",
+          "line":"Allocates Easy Target",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|64543",
+          "kind":"granted_passive",
+          "line":"Allocates Unbound Forces",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|64650",
+          "kind":"granted_passive",
+          "line":"Allocates Wary Dodging",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|64659",
+          "kind":"granted_passive",
+          "line":"Allocates Lasting Boons",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|64770",
+          "kind":"granted_passive",
+          "line":"Allocates Morgana, the Storm Seer",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|64851",
+          "kind":"granted_passive",
+          "line":"Allocates Flashy Parrying",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|65016",
+          "kind":"granted_passive",
+          "line":"Allocates Intense Flames",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|65023",
+          "kind":"granted_passive",
+          "line":"Allocates Impenetrable Shell",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|6514",
+          "kind":"granted_passive",
+          "line":"Allocates Cacophony",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|65160",
+          "kind":"granted_passive",
+          "line":"Allocates Titanic",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|65193",
+          "kind":"granted_passive",
+          "line":"Allocates Viciousness",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|65204",
+          "kind":"granted_passive",
+          "line":"Allocates Overflowing Power",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|65243",
+          "kind":"granted_passive",
+          "line":"Allocates Enveloping Presence",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|65256",
+          "kind":"granted_passive",
+          "line":"Allocates Widespread Coverage",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|65265",
+          "kind":"granted_passive",
+          "line":"Allocates Swift Interruption",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|6544",
+          "kind":"granted_passive",
+          "line":"Allocates Burning Strikes",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|65468",
+          "kind":"granted_passive",
+          "line":"Allocates Repeating Explosives",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|6655",
+          "kind":"granted_passive",
+          "line":"Allocates Aggravation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7062",
+          "kind":"granted_passive",
+          "line":"Allocates Reusable Ammunition",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|712",
+          "kind":"granted_passive",
+          "line":"Allocates Bond of the Ape",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7128",
+          "kind":"granted_passive",
+          "line":"Allocates Dangerous Blossom",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7163",
+          "kind":"granted_passive",
+          "line":"Allocates Stimulants",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7275",
+          "kind":"granted_passive",
+          "line":"Allocates Electrocuting Exposure",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7302",
+          "kind":"granted_passive",
+          "line":"Allocates Echoing Pulse",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7338",
+          "kind":"granted_passive",
+          "line":"Allocates Abasement",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7341",
+          "kind":"granted_passive",
+          "line":"Allocates Ignore Pain",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7395",
+          "kind":"granted_passive",
+          "line":"Allocates Retaliation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7449",
+          "kind":"granted_passive",
+          "line":"Allocates Splinters",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|750",
+          "kind":"granted_passive",
+          "line":"Allocates Tribal Fury",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7542",
+          "kind":"granted_passive",
+          "line":"Allocates Encompassing Domain",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7604",
+          "kind":"granted_passive",
+          "line":"Allocates Rapid Strike",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7651",
+          "kind":"granted_passive",
+          "line":"Allocates Pierce the Heart",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7668",
+          "kind":"granted_passive",
+          "line":"Allocates Internal Bleeding",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7777",
+          "kind":"granted_passive",
+          "line":"Allocates Breaking Point",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7782",
+          "kind":"granted_passive",
+          "line":"Allocates Rupturing Pins",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7809",
+          "kind":"granted_passive",
+          "line":"Allocates Wild Storm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|7847",
+          "kind":"granted_passive",
+          "line":"Allocates The Fabled Stag",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8273",
+          "kind":"granted_passive",
+          "line":"Allocates Endless Circuit",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8397",
+          "kind":"granted_passive",
+          "line":"Allocates Empowering Remains",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8483",
+          "kind":"granted_passive",
+          "line":"Allocates Ruin",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8531",
+          "kind":"granted_passive",
+          "line":"Allocates Leaping Ambush",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8554",
+          "kind":"granted_passive",
+          "line":"Allocates Burning Nature",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8607",
+          "kind":"granted_passive",
+          "line":"Allocates Lavianga's Brew",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8660",
+          "kind":"granted_passive",
+          "line":"Allocates Reverberation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8782",
+          "kind":"granted_passive",
+          "line":"Allocates Empowering Infusions",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8791",
+          "kind":"granted_passive",
+          "line":"Allocates Sturdy Ally",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8810",
+          "kind":"granted_passive",
+          "line":"Allocates Multitasking",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8827",
+          "kind":"granted_passive",
+          "line":"Allocates Fast Metabolism",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8831",
+          "kind":"granted_passive",
+          "line":"Allocates Tempered Mind",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8881",
+          "kind":"granted_passive",
+          "line":"Allocates Unforgiving",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8896",
+          "kind":"granted_passive",
+          "line":"Allocates Agile Sprinter",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8904",
+          "kind":"granted_passive",
+          "line":"Allocates Death from Afar",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8916",
+          "kind":"granted_passive",
+          "line":"Allocates Bashing Beast",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|8957",
+          "kind":"granted_passive",
+          "line":"Allocates Right Hand of Darkness",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9009",
+          "kind":"granted_passive",
+          "line":"Allocates Return to Nature",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9020",
+          "kind":"granted_passive",
+          "line":"Allocates Giantslayer",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9187",
+          "kind":"granted_passive",
+          "line":"Allocates Escalation",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9226",
+          "kind":"granted_passive",
+          "line":"Allocates Mental Perseverance",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9227",
+          "kind":"granted_passive",
+          "line":"Allocates Focused Thrust",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9290",
+          "kind":"granted_passive",
+          "line":"Allocates Rusted Pins",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9323",
+          "kind":"granted_passive",
+          "line":"Allocates Craving Slaughter",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9328",
+          "kind":"granted_passive",
+          "line":"Allocates Spirit of the Bear",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|934",
+          "kind":"granted_passive",
+          "line":"Allocates Natural Immunity",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|94",
+          "kind":"granted_passive",
+          "line":"Allocates Efficient Killing",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9421",
+          "kind":"granted_passive",
+          "line":"Allocates Snowpiercer",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9444",
+          "kind":"granted_passive",
+          "line":"Allocates One with the Storm",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9472",
+          "kind":"granted_passive",
+          "line":"Allocates Catapult",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9535",
+          "kind":"granted_passive",
+          "line":"Allocates Brinerot Ferocity",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9652",
+          "kind":"granted_passive",
+          "line":"Allocates Mending Deflection",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9736",
+          "kind":"granted_passive",
+          "line":"Allocates Insulated Treads",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9863",
+          "kind":"granted_passive",
+          "line":"Allocates Knight of Izaro",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9896",
+          "kind":"granted_passive",
+          "line":"Allocates Heartstopping Presence",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9908",
+          "kind":"granted_passive",
+          "line":"Allocates Price of Freedom",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9928",
+          "kind":"granted_passive",
+          "line":"Allocates Embracing Frost",
+          "value":1,
+          "value_indices":[]
+        },{
+          "id":"explicit.stat_2954116742|9968",
+          "kind":"granted_passive",
+          "line":"Allocates Feel the Earth",
+          "value":1,
+          "value_indices":[]
         }]
     },{
       "source":"essence",

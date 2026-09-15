@@ -72,9 +72,9 @@ end
 -- Searchable special sources do not imply an ordinary rollable affix combination.
 -- Follow TradeQueryGenerator.InitMods category overrides for non-spawning crafts.
 local search_mods, special = {}, {}
-local function add_search(source, id, mod, allowed, namespace)
+local function add_search(source, id, mod, allowed, namespace, recovered_stats)
     if not mod or #allowed == 0 then return end
-    local stats = trade.extract(mod, namespace or "explicit", valid_stats)
+    local stats = recovered_stats or trade.extract(mod, namespace or "explicit", valid_stats)
     if #stats == 0 then return end
     local key = source .. ":" .. id
     if not special[key] then
@@ -144,6 +144,7 @@ if crafting_path then
     local file = assert(io.open(crafting_path, "r"))
     local crafting = assert(json.decode(file:read("*a"))); file:close()
     local veiled = dofile(vendor .. "/Data/ModVeiled.lua")
+    local recover = dofile((arg[0]:match("^(.*[/\\])") or "") .. "trade-crafting-fallback.lua").load(vendor, valid_stats, trade)
     for _, recipe in ipairs(crafting.mods) do
         local allowed = {}
         for _, item_type in ipairs(recipe.item_types) do
@@ -151,12 +152,17 @@ if crafting_path then
             if category then allowed[#allowed + 1] = category end
         end
         local mod = raw_mods["equipment:" .. recipe.id] or veiled[recipe.id]
+        local recovered_stats = not mod and recover(recipe)
+        if recovered_stats and #recovered_stats > 0 then
+            mod = { level = recipe.level }
+            for _, stat in ipairs(recovered_stats) do mod[#mod + 1] = stat.line end
+        end
         if not mod and #allowed > 0 then
             unmapped_crafting_mods[#unmapped_crafting_mods + 1] = recipe.id
             io.stderr:write("trade catalog: no pinned PoB2 text/hash for crafting mod " .. recipe.id .. "\n")
         end
         special[recipe.source .. ":" .. recipe.id] = nil
-        add_search(recipe.source, recipe.id, mod, allowed)
+        add_search(recipe.source, recipe.id, mod, allowed, "explicit", recovered_stats)
     end
 end
 for _, key in ipairs(sorted_keys(special)) do

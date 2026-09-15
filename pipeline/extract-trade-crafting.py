@@ -20,8 +20,16 @@ def extract(tables):
         outcomes = row["OutcomeMods"] or ([row["Mod"]] if row["Mod"] is not None else [])
         for index in outcomes:
             key = (source, mods[index]["Id"])
-            result.setdefault(key, set()).update(item_types)
-    return [{"source": source, "id": mod, "item_types": sorted(types)} for (source, mod), types in sorted(result.items())]
+            result.setdefault(key, {"row": mods[index], "types": set()})["types"].update(item_types)
+    recipes = []
+    for (source, mod), entry in sorted(result.items()):
+        row = entry["row"]
+        stats = [{"id": tables["Stats"][row[f"Stat{i}"]]["Id"],
+                  "min": row[f"Stat{i}Value"][0], "max": row[f"Stat{i}Value"][1]}
+                 for i in range(1, 5) if row.get(f"Stat{i}") is not None]
+        recipes.append({"source": source, "id": mod, "item_types": sorted(entry["types"]),
+                        "level": row["Level"], "stats": stats})
+    return recipes
 
 
 if __name__ == "__main__":
@@ -29,10 +37,10 @@ if __name__ == "__main__":
     parser.add_argument("tables", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
-    names = ("BaseItemTypes", "ItemClasses", "Mods", "Essences", "EssenceTargetItemCategories", "EssenceMods")
+    names = ("BaseItemTypes", "ItemClasses", "Mods", "Stats", "Essences", "EssenceTargetItemCategories", "EssenceMods")
     tables = {name: json.loads((args.tables / f"{name}.json").read_text(encoding="utf-8")) for name in names}
     recipes = extract(tables)
-    result = {"_meta": {"source": "GGG EssenceMods/Essences/EssenceTargetItemCategories x BaseItemTypes/ItemClasses/Mods",
+    result = {"_meta": {"source": "GGG EssenceMods/Essences/EssenceTargetItemCategories x BaseItemTypes/ItemClasses/Mods/Stats",
         "regen_command": "python3 pipeline/extract-trade-crafting.py pipeline/tables/English <out>"}, "mods": recipes}
     args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"trade crafting: {len(recipes)} special currency modifiers")

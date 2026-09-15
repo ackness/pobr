@@ -3,6 +3,60 @@ import { deflateSync } from 'node:zlib';
 
 const searchQuery = (href: string) => JSON.parse(new URL(href).searchParams.get('q')!);
 
+test('essence passive options use real-WASM gains and Puppet Master can be required without a damage weight', async ({ page }) => {
+  const code = (nodes: string) => deflateSync(`<PathOfBuilding2>
+    <Build level="85" className="Witch"/>
+    <Tree activeSpec="1"><Spec nodes="${nodes}" treeVersion="0_5"/></Tree>
+    <Skills/>
+    <Items activeItemSet="1">
+      <Item id="1">Rarity: RARE
+Reference Robe
+Vile Robe
+Implicits: 0
++97 to maximum Life
+{crafted}Allocates Goring</Item>
+      <Item id="2">Rarity: RARE
+Reference Sceptre
+Rattling Sceptre
+Implicits: 0</Item>
+      <ItemSet id="1"><Slot name="Body Armour" itemId="1"/><Slot name="Weapon 1" itemId="2"/></ItemSet>
+    </Items>
+  </PathOfBuilding2>`).toString('base64url');
+  await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  for (const nodes of ['', '47316']) {
+    await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code(nodes));
+    await page.locator('.import-submit').click();
+    await expect(page.locator('.paper-doll')).toBeVisible();
+    await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
+    await page.getByRole('button', { name: 'Max Life', exact: true }).click();
+    await page.locator('.trade-position').filter({ hasText: 'Body Armour' }).click();
+    await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+    const reference = page.locator('.upgrade-score-reference');
+    await expect(reference).toContainText('Comparable stat score', { timeout: 60_000 });
+    const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
+    const sum = query.query.stats[0];
+    const value = (id: string) => sum.filters.find((filter: { id: string }) => filter.id === id)?.value.weight;
+    const goring = value('explicit.stat_2954116742|47316');
+    const life = value('explicit.stat_3299347043');
+    if (nodes) expect(goring).toBeUndefined();
+    else expect(goring).toBeGreaterThan(0);
+    expect(sum.value.min).toBeCloseTo(97 * life + (goring ?? 0), 3);
+    if (!nodes) await page.getByRole('button', { name: 'Build', exact: true }).click();
+  }
+  await page.locator('.trade-position').filter({ hasText: /^Main Hand/ }).click();
+  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  const puppet = page.locator('.trade-situational label').filter({ hasText: 'Puppet Master stack' });
+  await expect(puppet).toContainText('not modeled', { timeout: 60_000 });
+  await puppet.getByRole('checkbox').check();
+  const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
+  const required = query.query.stats.find((group: { type: string }) => group.type === 'and');
+  expect(required.filters).toContainEqual({ id: 'explicit.stat_2840930496' });
+  const weighted = query.query.stats.find((group: { type: string }) => group.type === 'weight');
+  expect(weighted?.filters.some((filter: { id: string }) => filter.id === 'explicit.stat_2840930496') ?? false).toBe(false);
+});
+
 test('alloy hybrid effects enter real-WASM weights and the crafted item market minimum', async ({ page }) => {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await page.route('**/api/import/wegame', route => route.fulfill({ json: {

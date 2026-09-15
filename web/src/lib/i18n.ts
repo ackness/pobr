@@ -48,6 +48,7 @@ const DICT = {
   "trade.mechanic.projectiles": {"en-US": "Expected projectiles per use; not same-target hits", "zh-TW": "每次使用的投射物期望數；不等於同目標命中次數", "zh-CN": "每次使用的投射物期望数；不等于同目标命中次数"},
   "trade.mechanic.area": {"en-US": "Calculated radius change; damage depends on overlap", "zh-TW": "計算半徑變化；傷害取決於重疊", "zh-CN": "计算半径变化；伤害取决于重叠"},
   "trade.mechanic.debuff": {"en-US": "Needs enemy conditions; benefit not quantified", "zh-TW": "需確認敵人條件，收益尚未量化", "zh-CN": "需确认敌人条件，收益尚未量化"},
+  "trade.mechanic.buff": {"en-US": "Command trigger and stack uptime are not modeled; search requirement only", "zh-TW": "尚未計算號令觸發與層數覆蓋率；可作搜尋條件", "zh-CN": "尚未计算号令触发与层数覆盖率；可作搜索条件"},
 
   "weapons.active": {"en-US": "Active weapon set", "zh-TW": "目前武器組", "zh-CN": "当前武器组"},
   "weapons.set": {"en-US": "Set", "zh-TW": "武器組", "zh-CN": "武器组"},
