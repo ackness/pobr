@@ -11,8 +11,8 @@ import { useItemDisplayNames, useLocalizedLines } from '../../hooks/useLocalized
 import { useSkillName } from '../../hooks/useSkillName';
 import { bindT, slotLabel, statNameLabel, type Lang, type UiKey } from '../../lib/i18n';
 import { OBJECTIVE_PRESETS, scoreOf, type Objective } from '../../lib/optimize';
-import { REALM_DEFAULT_LEAGUE, REALM_LEAGUES, buildTradeUrl, gemTradeUrl, loadTradeLeagues, type TradePriceCap, type TradeRealm } from '../../lib/trade';
-import { affixPool, basesForSlot, categoryAffixPool, loadTradeCatalog, optimizeTradeAffixes, referenceBase, type TradeCatalog } from '../../lib/tradeOptimizer';
+import { REALM_DEFAULT_LEAGUE, REALM_LEAGUES, TRADE_CURRENCIES, buildTradeUrl, gemTradeUrl, loadTradeLeagues, type TradeCurrency, type TradePriceCap, type TradeRealm } from '../../lib/trade';
+import { affixPool, basesForSlot, categoryAffixPool, categorySearchMods, loadTradeCatalog, optimizeTradeAffixes, referenceBase, type TradeCatalog } from '../../lib/tradeOptimizer';
 import { planGemUpgrades } from '../../lib/tradeMarket';
 import { AppSelect } from '../shared/AppSelect';
 import { CopyButton } from '../shared/CopyButton';
@@ -27,7 +27,6 @@ const REALM_KEY = 'pobr-trade-realm';
 const leagueKey = (realm: TradeRealm) => `pobr-trade-league-${realm}`;
 const BUDGET_KEY = 'pobr-trade-budget';
 const CURRENCY_KEY = 'pobr-trade-currency';
-type Currency = 'equiv' | 'divine' | 'chaos';
 type SlotResult = PositionAnalysis;
 
 /** Local build analysis produces official search links; login and buying stay on the market. */
@@ -53,9 +52,9 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
   const preset = goal.preset;
   const setPreset = (preset: string) => setGoal({ ...goal, preset });
   const [budget, setBudget] = useState(() => localStorage.getItem(BUDGET_KEY) ?? '100');
-  const [currency, setCurrency] = useState<Currency>(() => {
+  const [currency, setCurrency] = useState<TradeCurrency>(() => {
     const saved = localStorage.getItem(CURRENCY_KEY);
-    return saved === 'divine' || saved === 'chaos' ? saved : 'equiv';
+    return TRADE_CURRENCIES.find(option => option.value === saved)?.value ?? 'equiv';
   });
   const [running, setRunning] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -111,7 +110,7 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
   const visibleSlots = slots.filter(slot => showEmpty || !hasEquipment || bySlot.has(slot) || slot === selected || slot.startsWith('Jewel@'));
   const priceCap = useMemo<TradePriceCap | undefined>(() => {
     const max = Number(budget);
-    return Number.isFinite(max) && max > 0 ? { max, currency: currency === 'equiv' ? 'exalted' : currency } : undefined;
+    return Number.isFinite(max) && max > 0 ? { max, currency } : undefined;
   }, [budget, currency]);
   const objective = useMemo<Objective>(() => objectiveOf(goal,
     Object.fromEntries([...statMap(session.calc?.stats ?? [])].filter((entry): entry is [string, number] => entry[1] !== null))), [goal, session.calc]);
@@ -156,6 +155,7 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
             const itemLevel = Math.min(100, Math.ceil(((request.character?.level ?? 1) + 1) / 0.8) - 1);
             next = { category: base.category, weights: await optimizeTradeAffixes({
               request, slot, base, pool: categoryAffixPool(catalog, base.category, itemLevel, request.character?.level), itemLevel,
+              searchMods: categorySearchMods(catalog, base.category, itemLevel),
               objective, combinations: all || overview, combinationPool: affixPool(catalog, base, itemLevel),
               maxEvaluations: all || overview ? 768 : undefined, beamWidth: 6, ...options,
             }) };
@@ -214,9 +214,9 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
       <label className="trade-price-field"><span className="trade-field-label">{tt('trade.budget')}</span>
         <span className="trade-budget"><input type="number" min={0} aria-label={tt('trade.budget')} value={budget} placeholder={tt('trade.budgetAny')}
           onChange={event => { setBudget(event.target.value); localStorage.setItem(BUDGET_KEY, event.target.value); }} />
-          <AppSelect value={currency} ariaLabel={tt('trade.currency')} options={[
-            { value: 'equiv', label: tt('trade.curExalted') }, { value: 'divine', label: tt('trade.curDivine') }, { value: 'chaos', label: tt('trade.curChaos') },
-          ]} onChange={value => { setCurrency(value as Currency); localStorage.setItem(CURRENCY_KEY, value); }} /></span>
+          <AppSelect value={currency} ariaLabel={tt('trade.currency')}
+            options={TRADE_CURRENCIES.map(option => ({ value: option.value, label: tt(option.labelKey) }))}
+            onChange={value => { setCurrency(value as TradeCurrency); localStorage.setItem(CURRENCY_KEY, value); }} /></span>
       </label>
       <div className="trade-market-fields">
         <label><span className="trade-field-label">{tt('trade.realm')}</span><AppSelect value={realm} ariaLabel={tt('trade.realm')}

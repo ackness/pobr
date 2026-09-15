@@ -44,15 +44,24 @@ export function lineValue(line: string): number | null {
   return m ? Number(m[0]) : null;
 }
 
-export interface WeightedStat {
-  /** 官方 trade stat id（explicit.stat_N）。 */
+export interface TradeStatTemplate {
+  /** Mutually exclusive passive outcomes from an essence craft. */
+  kind?: 'granted_passive';
+  /** Official namespaced trade ID; a pipe suffix selects a discrete option. */
   id: string;
-  /** 每单位词条数值的目标收益（trade2 weight 系数）。 */
-  weight: number;
-  /** 原词条行（展示用）。 */
   line: string;
-  /** 当前数值（加权和门槛用）。 */
   value: number;
+  /** Official wording at the same reference roll, when different from PoB text. */
+  trade_line?: string;
+  /** Exported lines belonging to one official stat, scored together. */
+  source_lines?: string[];
+  /** Zero-based numeric variable positions; [] means a one-unit flag. */
+  value_indices?: number[];
+}
+
+export interface WeightedStat extends TradeStatTemplate {
+  /** Objective gain per official trade stat unit. */
+  weight: number;
 }
 
 /** Keep the displayed reference and the official query on exactly the same scale. */
@@ -97,13 +106,28 @@ export async function loadTradeLeagues(realm: TradeRealm): Promise<string[]> {
   return data.leagues;
 }
 
-/**
- * 预算上限（trade2 Buyout Price 过滤器）。currency 取官方过滤器 id：
- * 缺省（undefined）= Exalted Orb Equivalent（崇高石等价，站方自动换算）。
- */
+/** Price options shared by both realms; "equiv" omits the official currency filter. */
+export const TRADE_CURRENCIES = [
+  { value: 'equiv', labelKey: 'trade.curExaltedEquivalent' },
+  { value: 'exalted_divine', labelKey: 'trade.curExaltedDivine' },
+  { value: 'exalted', labelKey: 'trade.curExalted' },
+  { value: 'divine', labelKey: 'trade.curDivine' },
+  { value: 'chaos', labelKey: 'trade.curChaos' },
+  { value: 'regal', labelKey: 'trade.curRegal' },
+  { value: 'alch', labelKey: 'trade.curAlchemy' },
+  { value: 'vaal', labelKey: 'trade.curVaal' },
+  { value: 'annul', labelKey: 'trade.curAnnulment' },
+  { value: 'aug', labelKey: 'trade.curAugmentation' },
+  { value: 'transmute', labelKey: 'trade.curTransmutation' },
+  { value: 'mirror', labelKey: 'trade.curMirror' },
+] as const;
+
+export type TradeCurrency = typeof TRADE_CURRENCIES[number]['value'];
+
+/** Buyout price cap; "equiv" or an omitted currency uses Exalted Orb Equivalent. */
 export interface TradePriceCap {
   max: number;
-  currency?: 'divine' | 'exalted' | 'chaos';
+  currency?: TradeCurrency;
 }
 
 export interface TradeQueryOptions {
@@ -135,7 +159,7 @@ export function buildTradeQuery(weighted: WeightedStat[], options: TradeQueryOpt
           ...(!options.includeUnique && !category.startsWith('gem') ? { rarity: { option: 'nonunique' } } : {}),
         } },
         ...(price && price.max > 0 ? { trade_filters: { filters: {
-          price: { max: price.max, ...(price.currency ? { option: price.currency } : {}) },
+          price: { max: price.max, ...(price.currency && price.currency !== 'equiv' ? { option: price.currency } : {}) },
         } } } : {}),
         ...(maxLevel ? { req_filters: { filters: { lvl: { max: maxLevel } } } } : {}),
       },

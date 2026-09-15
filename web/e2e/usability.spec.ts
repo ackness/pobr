@@ -145,12 +145,12 @@ test('selects support keyboard selection, Escape and leaving the control', async
   await expect(list).toHaveAttribute('aria-activedescendant', /.+-0$/);
   await list.press('End');
   await list.press('Enter');
-  await expect(currency).toContainText('Chaos');
+  await expect(currency).toContainText('Mirror of Kalandra');
   await expect(currency).toBeFocused();
   await currency.press('Enter');
   await list.press('Home');
   await list.press('Escape');
-  await expect(currency).toContainText('Chaos');
+  await expect(currency).toContainText('Mirror of Kalandra');
   await expect(currency).toBeFocused();
   await currency.press('Enter');
   await list.press('Tab');

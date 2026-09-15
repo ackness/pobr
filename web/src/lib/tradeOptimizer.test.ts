@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { affixPool, basesForSlot, categoryAffixPool, referenceBase, combinationLegal, tradeItemVariant, optimizeTradeAffixes, type TradeAffix, type TradeBase } from './tradeOptimizer';
+import { affixPool, basesForSlot, categoryAffixPool, categorySearchMods, referenceBase, combinationLegal, tradeItemVariant, optimizeTradeAffixes, type TradeAffix, type TradeBase, type TradeSearchMod } from './tradeOptimizer';
 import type { EvaluateOptions, EvaluateResult } from './optimize';
 import { scoreEquipment } from './equipmentScore';
 import { buildTradeQuery, type WeightedStat } from './trade';
@@ -10,6 +10,8 @@ function affix(id: string, kind: TradeAffix['kind'] = 'prefix', group = id): Tra
     stats: [{ id: `explicit.${id}`, line: `10 ${id}`, value: 10 }] };
 }
 const objective = { stat: 'TotalDPS', constraints: [] };
+const special: TradeSearchMod = { id: 'alloy:hybrid', source: 'alloy', categories: [base.category], level: 65,
+  lines: ['10 flat', '10 speed'], stats: [affix('flat').stats[0], affix('speed').stats[0]] };
 const evaluator = (score: (text: string) => number, visited: string[] = []) => async ({ variants }: EvaluateOptions): Promise<EvaluateResult> => ({
   baseline: { TotalDPS: 100 }, aborted: false,
   results: variants.map((variant, index) => {
@@ -20,6 +22,14 @@ const evaluator = (score: (text: string) => number, visited: string[] = []) => a
 });
 
 describe('legal affix pool', () => {
+  test('special crafting sources respect categories and levels without inventing ordinary crafting recipes', () => {
+    const catalog = { bases: [base], mods: [affix('ordinary')], search_mods: [special] };
+    expect(categorySearchMods(catalog, base.category, 64)).toEqual([]);
+    expect(categorySearchMods(catalog, 'accessory.ring')).toEqual([]);
+    expect(categorySearchMods(catalog, base.category, 65)).toEqual([special]);
+    expect(affixPool(catalog, base, 100).map(mod => mod.id)).toEqual(['ordinary']);
+    expect(categorySearchMods({ bases: [], mods: [] }, base.category)).toEqual([]);
+  });
   test('honors first matching exclusions, item level, and strongest tier', () => {
     const weak = affix('weak');
     const strong = { ...weak, id: 'strong', level: 80, lines: ['20 weak'] };
@@ -35,6 +45,69 @@ describe('legal affix pool', () => {
     expect(combinationLegal([affix('a'), affix('b', 'suffix', 'a')])).toBe(false);
     expect(combinationLegal(['a', 'b', 'c', 'd'].map(id => affix(id)))).toBe(false);
   });
+});
+
+test('special hybrid components get independent, deduplicated query weights and the actual crafted current minimum', async () => {
+  const current = `Rarity: RARE\nEquipped\n${base.name}\n{crafted}5 flat\n{crafted}8 speed`;
+  const result = await optimizeTradeAffixes({ request: { items: [{ slot: 'weapon2', text: current }] },
+    slot: 'weapon2', base, pool: [affix('flat')], searchMods: [special], itemLevel: 82, objective,
+    evaluate: evaluator(text => 100 + Number(text.match(/(\d+) flat/)?.[1] ?? 0) + Number(text.match(/(\d+) speed/)?.[1] ?? 0) * 2),
+  });
+  expect(result.weighted).toEqual(expect.arrayContaining([
+    expect.objectContaining({ id: 'explicit.flat', weight: 10, gain: 10 }),
+    expect.objectContaining({ id: 'explicit.speed', weight: 20, gain: 20 }),
+  ]));
+  expect(result.weighted).toHaveLength(2);
+  expect(result.currentItemScore).toMatchObject({ complete: true, score: 210 });
+  expect(result.minimumWeight).toBe(210);
+  expect(result.combinations.every(combo => combo.mods.every(mod => mod.id === 'flat'))).toBe(true);
+});
+
+test('partially unmodeled compound probes do not publish inflated weights in score-only mode', async () => {
+  const unsafe = { ...special, stats: [{ id: 'explicit.compound', line: '1000 boost Unmodeled drawback', value: 1000 }] };
+  const result = await optimizeTradeAffixes({ request: {}, slot: 'weapon2', base, pool: [affix('safe')],
+    searchMods: [unsafe], itemLevel: 82, objective, combinations: false,
+    evaluate: async options => {
+      const result = await evaluator(text => text.includes('boost') ? 1100 : text.includes('safe') ? 120 : 100)(options);
+      return { ...result, results: result.results.map(row => ({ ...row,
+        unsupported: options.variants[row.index].set_items![0].text.includes('Unmodeled') ? ['Unmodeled drawback'] : [],
+      })) };
+    },
+  });
+  expect(result.weighted.map(stat => stat.id)).toEqual(['explicit.safe']);
+  expect(result.scoreWarnings).toContain('unmodeled-candidates');
+});
+
+test('all passive options are measured beyond the combination budget without stacking the current craft', async () => {
+  const stats = ['First', 'Last'].map((name, index) => ({ id: `explicit.stat_123|${index}`, kind: 'granted_passive' as const,
+    line: `Allocates ${name}`, value: 1, value_indices: [] }));
+  const visited: string[] = [];
+  const result = await optimizeTradeAffixes({ request: { items: [{ slot: 'weapon2', text: `Rarity: RARE\nReference\n${base.name}\nAllocates First` }] },
+    slot: 'weapon2', base, pool: [], searchMods: [{ ...special, stats }], itemLevel: 82, objective,
+    combinations: false, maxEvaluations: 2,
+    evaluate: evaluator(text => 100 + (text.includes('Allocates First') ? 10 : 0) + (text.includes('Allocates Last') ? 20 : 0), visited),
+  });
+  expect(visited.every(text => (text.match(/Allocates /g) ?? []).length <= 1)).toBe(true);
+  expect(result.weighted.map(stat => [stat.id, stat.weight])).toEqual([['explicit.stat_123|1', 200], ['explicit.stat_123|0', 100]]);
+  expect(result.evaluated).toBe(7);
+  expect(result.currentItemScore).toMatchObject({ complete: true, score: 100 });
+  expect(result.minimumWeight).toBe(100);
+});
+
+test('Puppet Master stays searchable without inventing a weight for its unmodeled trigger', async () => {
+  const chance = { id: 'explicit.stat_2840930496', line: '50% Surpassing Chance to gain a Puppet Master stack whenever you use a Command Skill', value: 50 };
+  const result = await optimizeTradeAffixes({ request: {}, slot: 'weapon2', base, pool: [],
+    searchMods: [{ ...special, stats: [chance] }], itemLevel: 82, objective, combinations: false,
+    evaluate: async options => {
+      const result = await evaluator(() => 100)(options);
+      return { ...result, results: result.results.map(row => ({ ...row,
+        unsupported: options.variants[row.index].set_items![0].text.includes('Puppet Master') ? [chance.line] : [],
+      })) };
+    },
+  });
+  expect(result.weighted).toEqual([]);
+  expect(result.situational).toEqual([{ ...chance, kind: 'buff' }]);
+  expect(result.scoreWarnings).toContain('unmodeled-candidates');
 });
 
 test('discovers new affixes and jointly beneficial pairs, not only current item lines', async () => {
@@ -137,8 +210,8 @@ test('reference equipment and category affixes respect character level without c
   expect(categoryAffixPool(catalog, 'armour.quiver', 100, 20).map(mod => mod.id)).toEqual(['low']);
 });
 
-test('replacing the target slot preserves baseline gear elsewhere and calibrates the actual current Sum', async () => {
-  const current = `Rarity: RARE\nEquipped\n${base.name}\nImplicits: 0\n25 flat`;
+test('an indented PoB item with counted augments sets its actual current Sum without changing other gear', async () => {
+  const current = `\n\t\tRarity: RARE\nEquipped\n${base.name}\nImplicits: 2\n{enchant}{rune}20 effect\n10 implicit\n25 flat\n\t\t`;
   const requests: EvaluateOptions[] = [];
   const result = await optimizeTradeAffixes({ request: { items: [{ slot: 'weapon2', text: current }, { slot: 'ring1', text: 'keep' }] },
     slot: 'weapon2', base, pool: [affix('flat')], itemLevel: 82, objective, combinations: false,
