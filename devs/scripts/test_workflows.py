@@ -248,6 +248,8 @@ class ModifierWorkflowTests(unittest.TestCase):
         self.cargo.write_text('''#!/usr/bin/env python3
 import os, pathlib, sys
 args = sys.argv[1:]
+if "--check" in args:
+    sys.exit(int(os.environ.get("CHECK_EXIT", "0")))
 assert "--audit" in args, "Offline audit must not extract or precompile"
 assert pathlib.Path(args[args.index("--baseline") + 1]).read_text() == "previous snapshot"
 out = pathlib.Path(args[args.index("--audit") + 1])
@@ -256,16 +258,22 @@ sys.exit(int(os.environ.get("AUDIT_EXIT", "0")))
 ''', encoding="utf-8")
         self.cargo.chmod(0o755)
 
-    def run_audit(self, code):
+    def run_audit(self, code, check_code=0):
         return subprocess.run(["bash", "pipeline/refresh-modifiers.sh", "--offline"],
             cwd=self.root, env={**os.environ, "PATH": f"{self.root / 'bin'}{os.pathsep}{os.environ['PATH']}",
-                "AUDIT_EXIT": str(code)}, capture_output=True, text=True, timeout=15)
+                "AUDIT_EXIT": str(code), "CHECK_EXIT": str(check_code)}, capture_output=True, text=True, timeout=15)
 
     def test_failed_audit_preserves_previous_snapshot_and_exposes_report(self):
         result = self.run_audit(17)
         self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
         self.assertEqual(self.snapshot.read_text(encoding="utf-8"), "previous snapshot")
         self.assertEqual((self.root / ".cache/modifier-audit/test/current.json").read_text(encoding="utf-8"), "candidate snapshot")
+
+    def test_invalid_rules_stop_before_audit_and_publication(self):
+        result = self.run_audit(0, check_code=19)
+        self.assertEqual(result.returncode, 19, result.stdout + result.stderr)
+        self.assertEqual(self.snapshot.read_text(encoding="utf-8"), "previous snapshot")
+        self.assertFalse((self.root / ".cache/modifier-audit/test/current.json").exists())
 
     def test_successful_audit_publishes_snapshot_without_extracting(self):
         result = self.run_audit(0)

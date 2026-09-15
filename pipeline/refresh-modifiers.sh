@@ -66,6 +66,9 @@ if [[ "$AUDIT_ONLY" -eq 0 ]]; then
     POBR_DATA_VERSION="$VERSION" "${SYNC[@]}" extract-lua --what special-mods --vendor-root "$VENDOR" --out "$DATA/generated/special_vendor.json"
 fi
 
+# Validate the effective rules before publishing audit or parser artifacts.
+"${PRECOMPILE[@]}" --check > "$REPORT_DIR/validation.json"
+
 AUDIT_ARGS=(--audit "$REPORT_DIR/current.json" --baseline "$PREVIOUS")
 if [[ "$ORACLE" -eq 1 ]]; then
     "${PRECOMPILE[@]}" --audit-corpus "$REPORT_DIR/corpus.txt"

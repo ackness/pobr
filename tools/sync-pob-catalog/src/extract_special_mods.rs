@@ -246,6 +246,7 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
         }
         let is_empty = mods.is_empty();
         let entry = SpecialTemplateDef {
+            examples: Vec::new(),
             id,
             pattern: regex,
             vendor_pattern: Some(row.pattern.clone()),
@@ -782,6 +783,7 @@ fn build_enum_entry(
         return Err("dedup_id".into());
     }
     let entry = SpecialTemplateDef {
+        examples: Vec::new(),
         id,
         pattern: regex,
         vendor_pattern: Some(row.pattern.clone()),
@@ -859,6 +861,7 @@ fn build_singleton_entries(
             continue;
         }
         let entry = SpecialTemplateDef {
+            examples: Vec::new(),
             id,
             pattern: regex,
             vendor_pattern: Some(row.pattern.clone()),

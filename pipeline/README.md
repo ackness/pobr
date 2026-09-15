@@ -24,19 +24,20 @@
 bash pipeline/refresh-modifiers.sh
 ```
 
-命令依次提取普通规则与 `specialModList`、用完整来源语料对照 PoB2、检查上一份审计，
+命令依次提取普通规则与 `specialModList`、严格校验完整有效规则、用完整来源语料对照 PoB2、检查上一份审计，
 最后更新预解析缓存。它不下载游戏数据、不切换游戏版本，也不修改数值 golden。
 只检查已有数据和引擎时用 `--audit-only`；没有 vendor 时用 `--offline`，报告明确不含 PoB2 对照。
 可用 `--data data/<version>` 指定数据，`--baseline <audit.json>` 指定历史审计。
 
 语料来源包括 StatDescriptions 的稳定 stat ID、装备/珠宝/药剂/护符词缀、特殊制作词缀、
 基底隐式、传奇装备各变体、天赋树，以及中文导入实际输出的英文模板。
-数值范围抽取低/高样本，复合描述使用不同的占位值；无法渲染的条目另计数。
+数值范围抽取低/高样本，复合描述使用不同的占位值；特殊规则的 `examples` 也进入语料，无法渲染的条目另计数。
 这是**解析样本覆盖率**，包含地图和怪物描述，不能当作玩家机制或 DPS 覆盖率。
 
 产物：
 
 - `data/<version>/generated/modifier-audit.json`：可重现的完整审计与来源，作为下一次比较的快照；不进入 Web 下载清单。
+- `.cache/modifier-audit/<version>/validation.json`：严格校验报告，记录 common / version / patch / derived / vendor 文件的 SHA-256、有效规则顺序和覆盖来源；审计的 `rule_validation` 内嵌同一信息。
 - `.cache/modifier-audit/<version>/current.delta.json`：退化、新增缺口、已解决和移除条目。
 - 同目录的 `corpus.txt` / `oracle.jsonl`：本次 PoB2 对照的输入与输出。
 
@@ -44,6 +45,8 @@ bash pipeline/refresh-modifiers.sh
 `upstream_gap` 表示 PoB2 也不能完整解析，需查游戏机制并实现对应计算，不能靠空规则消除提示。
 `recognized_empty` 单列零 modifier 的规则；有残余文本或丢失条件标签也不计为完整支持。
 没有 oracle 时缺口为 `uncompared_gap`。`mod_names` 便于定位计算消费者，但识别出名称不证明消费者已实现。
+
+每条样本的 `special_rule_id` 关联规则文件来源，`matching_special_rules` 按优先级列出所有候选，多个 ID 表示后续规则被遮蔽。该检查只覆盖样本，不证明任意文本都无重叠。结构化 LIST 等未参与计算的字段在 `non_effective_fields` 单列；现有装备 / 天赋的 `SourceId` 不由规则来源替代。严格校验与合并契约见[维护者规则说明](../docs/contributing-mods.md#7-validate-test-and-open-a-pr)。
 
 以前完整解析的文本退化，或同一来源移除旧措辞后新增无法解析的措辞，会使命令失败。
 失败时保留 `.cache` 报告与待检查的规则改动，**不覆盖上一份已通过的审计快照**；新增机制缺口单独列出。

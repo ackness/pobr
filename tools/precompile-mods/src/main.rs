@@ -175,13 +175,19 @@ fn run() -> Result<(), String> {
 
     // --check: validate overlay JSON only; non-zero exit on invalid data, no artifacts written.
     if args.check_only {
-        check::check(&data_dir)?;
+        let validation = check::inspect(&data_dir)?;
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&validation).map_err(|e| e.to_string())?
+        );
         eprintln!(
             "precompile-mods: overlay JSON validation passed ({})",
             data_dir.display()
         );
         return Ok(());
     }
+
+    check::check(&data_dir)?;
 
     // 1) Collect the corpus (four layers, deduplicated, lexicographic order).
     let corpus = corpus::collect(&data_dir, args.corpus_extra.as_deref())?;

@@ -12,8 +12,8 @@
 //! operators, and restricted predicates is shared with
 //! [`crate::rules::value_expr`] (config / special / parser all use the same
 //! restricted language — no third dialect). This module is only responsible
-//! for (1) compiling a [`ValueOpDef`] operator chain into a
-//! `value_expr::ValueExpr` tree and calling `value_expr::eval`; (2) enum
+//! for (1) applying each [`ValueOpDef`] in order through
+//! `value_expr::eval`; (2) enum
 //! closed-set lookups (a small approved DSL extension — every output is an
 //! explicit literal from the table, never string concatenation).
 //!
@@ -24,13 +24,10 @@
 //! (compilation only checks that the regex itself is valid) — shape
 //! conformance is enforced by curation plus the gate test (C-4).
 //!
-//! **Conservative gating**: this batch of entries carries a few native PoB2
-//! tag shapes (`ItemCondition` / `GlobalEffect` / complex LIST payloads,
-//! etc.) that have no pobr `ModTag` counterpart yet. Such tags are
-//! **skipped** at instantiation (the mod is still produced, just without
-//! that tag), and the entry stays `verified:false`, guarded by differential
-//! testing (Track D) and the parity report. See [`compile_tag`] for the
-//! list of what can be mapped.
+//! Conditions, flags and value operations are validated before compilation.
+//! Unsupported scopes fail loading; `verified:false` never permits dropping a
+//! condition. Structured LIST payloads still have no general consumer and are
+//! reported separately by the offline audit.
 
 use std::collections::BTreeMap;
 
@@ -50,9 +47,17 @@ use crate::rules::registry::{HandlerCtx, HandlerRegistry};
 use crate::rules::stat_map_engine::damage_bound_mod_name;
 use crate::rules::value_expr::eval;
 
+mod validate;
+
 /// Compile-time error (fail-fast at load time, never silent).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SpecialCompileError {
+    /// Invalid field or semantics, including nested modifier paths.
+    InvalidRule {
+        entry_id: String,
+        field: String,
+        reason: String,
+    },
     /// Pattern is not a valid regex.
     BadPattern {
         /// Entry id.
@@ -93,6 +98,11 @@ pub enum SpecialCompileError {
 impl std::fmt::Display for SpecialCompileError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::InvalidRule {
+                entry_id,
+                field,
+                reason,
+            } => write!(f, "special `{entry_id}` {field}: {reason}"),
             Self::BadPattern {
                 entry_id,
                 pattern,
@@ -153,8 +163,7 @@ struct CompiledModTemplate {
     value: TemplateValueDef,
     flags: ModFlags,
     keyword_flags: KeywordFlags,
-    /// Tags that were successfully mapped (unmappable tags are dropped at
-    /// compile time, see `compile_tag`).
+    /// Validated tags; unsupported fields fail compilation.
     tags: Vec<CompiledTag>,
     #[allow(dead_code)]
     target: Option<ActorRef>,
@@ -167,14 +176,14 @@ enum CompiledTag {
 }
 
 impl CompiledTag {
-    fn instantiate(&self, captures: &[String]) -> ModTag {
-        match self {
+    fn instantiate(&self, captures: &[String]) -> Option<ModTag> {
+        Some(match self {
             Self::Literal(tag) => tag.clone(),
             Self::PercentStatCapture { stat, capture } => ModTag::PercentStat {
                 stat: stat.clone(),
-                percent: Some(resolve_capture_number(capture, captures)),
+                percent: Some(capture_number(capture, captures)?),
             },
-        }
+        })
     }
 }
 
@@ -206,7 +215,7 @@ impl SpecialModRules {
     /// unknown mod_type.
     pub fn compile(
         defs: &[SpecialTemplateDef],
-        _registry: &HandlerRegistry,
+        registry: &HandlerRegistry,
     ) -> Result<Self, SpecialCompileError> {
         let mut seen_ids = std::collections::BTreeSet::new();
         let mut entries = Vec::with_capacity(defs.len());
@@ -233,6 +242,7 @@ impl SpecialModRules {
                 pattern: def.pattern.clone(),
                 reason: e.to_string(),
             })?;
+            validate::entry(def, regex.captures_len() - 1, registry)?;
             patterns.push(anchored);
 
             // enums table (keys converted to u32).
@@ -286,6 +296,15 @@ impl SpecialModRules {
     /// Whether the rule set is empty.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
+    }
+
+    /// Matching IDs in actual first-match priority order, for overlap diagnostics.
+    pub fn matching_entry_ids(&self, line: &str) -> Vec<&str> {
+        self.set
+            .matches(line)
+            .iter()
+            .map(|i| self.entries[i].id.as_str())
+            .collect()
     }
 
     /// Matches a single (already-lowercased) line against the whole
@@ -465,7 +484,7 @@ fn validate_nested_value(
 }
 
 /// ModFlags name → bit (shared vendor names for damage mode / weapon type).
-/// Unknown names are skipped (conservative).
+/// Unknown names are rejected by validation before compilation.
 fn flag_bit(name: &str) -> Option<ModFlags> {
     Some(match name {
         "Attack" => ModFlags::ATTACK,
@@ -502,8 +521,7 @@ fn keyword_bit(name: &str) -> Option<KeywordFlags> {
         "Poison" => KeywordFlags::POISON,
         "Bleed" => KeywordFlags::BLEED,
         "Ignite" => KeywordFlags::IGNITE,
-        // Unmapped keywords are conservatively skipped — the
-        // entry stays verified:false.
+        // Validation rejects unknown keywords before compilation.
         _ => return None,
     })
 }
@@ -520,10 +538,8 @@ fn compile_keyword_flags(names: &[String]) -> KeywordFlags {
 
 fn parse_target(target: &str) -> Option<ActorRef> {
     match target {
-        // The enemy wrapper (EnemyModifier LIST) is handled by the consumer
-        // side in env_finalize stage 2; this batch's enemy-target entries
-        // stay verified:false (target is forwarded here purely as
-        // metadata).
+        // Legacy representation only: validation now rejects non-player
+        // targets. Use explicit LIST wrappers for cross-actor effects.
         "minion" => Some(ActorRef::Minion),
         _ => None,
     }
@@ -569,8 +585,7 @@ fn damage_type_bit(name: &str) -> Option<DamageType> {
 ///
 /// **Unmappable** (no pobr counterpart): `ItemCondition` / `GlobalEffect` /
 /// a `Multiplier` with a `$n`-captured field value — returns `None`, and the
-/// entry stays `verified:false` (conservative gating, so we never produce a
-/// possibly-wrong tag).
+/// validator rejects the entry before instantiation.
 fn compile_tag(tag: &TemplateTagDef) -> Option<CompiledTag> {
     if tag.tag_type == "PercentStat"
         && let Some(TemplateScalarDef::Text(capture)) = tag.fields.get("percent")
@@ -603,20 +618,32 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             let actor = tag.fields.get("actor").and_then(scalar_text);
             match actor.as_deref() {
                 Some("enemy") => Some(ModTag::condition(format!("Enemy{var}"), neg)),
-                _ => Some(ModTag::condition(var, neg)),
+                Some("player") => Some(ModTag::Condition {
+                    var,
+                    negated: neg,
+                    actor: Some(ActorRef::Player),
+                }),
+                Some("parent") => Some(ModTag::Condition {
+                    var,
+                    negated: neg,
+                    actor: Some(ActorRef::Parent),
+                }),
+                Some("minion") => Some(ModTag::Condition {
+                    var,
+                    negated: neg,
+                    actor: Some(ActorRef::Minion),
+                }),
+                _ => None,
             }
         }
         "SkillType" => {
             // Full enum table (data-driven A1, single source of truth
             // `SkillTypes::from_pob2_name`): special_vendor names come from
             // a reverse lookup on vendor's enum, so a miss means corrupt
-            // data — panics in debug builds (visible per A2), conservatively
-            // drops the tag in release.
+            // data; validation rejects it in debug and release builds.
             let lookup = |name: &str| {
                 let bare = name.strip_prefix("SkillType:").unwrap_or(name);
-                let st = SkillTypes::from_pob2_name(bare);
-                debug_assert!(st.is_some(), "unknown SkillType name: {bare}");
-                st
+                SkillTypes::from_pob2_name(bare)
             };
             if let Some(v) = tag.fields.get("skillType") {
                 return lookup(&scalar_text(v)?).map(ModTag::SkillTypes);
@@ -625,7 +652,7 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             // SkillType branch fires on any match) → folded into a single
             // SkillTypes bitset (ModTag::SkillTypes matches via
             // `intersects`, which is OR semantics). If any name misses, the
-            // whole tag is conservatively dropped.
+            // tag is rejected during validation.
             let TemplateScalarDef::TextList(items) = tag.fields.get("skillTypeList")? else {
                 return None;
             };
@@ -642,8 +669,7 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
         "Multiplier" => {
             // Multiplier with literal var/div/limit (linear scaling by a
             // resource/attribute, reads cfg.multiplier(var)). A var with a
-            // `$n` capture is still conservatively skipped (consistent with
-            // the doc-level gating, to avoid misproducing it). This batch
+            // `$n` capture is rejected by validation. This batch
             // only has literal vars (e.g. Blood Mage's
             // `EnergyShieldOnbodyarmour`; the per-slot multiplier is filled
             // in by the orchestrator's per_slot_defence_multipliers).
@@ -778,7 +804,7 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
             }
             (!ramp.is_empty()).then_some(ModTag::DistanceRamp { ramp })
         }
-        // Unmapped tag shape: conservatively skipped.
+        // Unmapped tag shape: validation rejects the containing entry.
         _ => None,
     }
 }
@@ -838,16 +864,15 @@ fn translate_vendor_name(name: &str, flags: &[String]) -> (String, Vec<String>) 
 
 /// Precheck for the offline extractor (`sync-pob-catalog extract-lua --what
 /// special-mods`): whether a tag can be faithfully mapped by
-/// [`compile_tag`]. Unmappable tags are silently dropped at compile time —
-/// bulk extraction must **skip these entries entirely** rather than drop
-/// the tag (otherwise a conditional mod turns into an always-on one).
+/// [`compile_tag`]. Bulk extraction must skip entries with unsupported tags;
+/// emitting a modifier without its scope would broaden its effect. The same
+/// field validation runs when compiling the resulting rules.
 pub fn tag_is_mappable(tag: &TemplateTagDef) -> bool {
-    compile_tag(tag).is_some()
+    validate::tag(tag, usize::MAX).is_ok()
 }
 
-/// Same precheck: whether a ModFlags bit name can be mapped ([`flag_bit`];
-/// an unknown name is silently skipped at compile time, which widens the
-/// mod's applicability).
+/// Same precheck: whether a ModFlags bit name can be mapped ([`flag_bit`]).
+/// Unknown names are rejected, never discarded from an effective modifier.
 pub fn flag_name_is_mappable(name: &str) -> bool {
     flag_bit(name).is_some()
 }
@@ -894,60 +919,53 @@ fn resolve_capture_number(arg: &str, captures: &[String]) -> f64 {
     }
 }
 
+// Numeric template values cannot use the handler's zero fallback for text captures.
+fn capture_number(arg: &str, captures: &[String]) -> Option<f64> {
+    let index = capture_index(arg)?.checked_sub(1)?;
+    captures
+        .get(index)?
+        .parse::<f64>()
+        .ok()
+        .filter(|n| n.is_finite())
+}
+
 /// `"$3"` → `Some(3)`; anything else → `None`.
 fn capture_index(s: &str) -> Option<usize> {
     s.strip_prefix('$').and_then(|n| n.parse::<usize>().ok())
 }
 
-/// Compiles a [`ValueOpDef`] operator chain into a `value_expr::ValueExpr`
-/// tree (reusing the single evaluator).
-///
-/// The leading run of linear operators (div/mult/base) is folded into the
-/// `Input` node; any wrapping operators (negate/clamp) that follow are
-/// layered outward from there. A linear operator appearing *after* a
-/// wrapping operator can't be expressed by the single `ValueExpr` (`Input`
-/// only reads the raw capture) — every entry in this batch has an operator
-/// chain of "one linear segment plus optional negate/clamp", which
-/// satisfies this constraint; out-of-scope shapes are conservatively
-/// ignored (caught by differential testing as a backstop).
-fn build_value_expr(ops: &[ValueOpDef]) -> ValueExpr {
-    let mut mult = 1.0;
-    let mut div = 1.0;
-    let mut base = 0.0;
-    let mut i = 0;
-    while i < ops.len() {
-        match &ops[i] {
-            ValueOpDef::Div(n) => div *= *n,
-            ValueOpDef::Mult(n) => mult *= *n,
-            ValueOpDef::Base(n) => base += *n,
-            _ => break,
-        }
-        i += 1;
-    }
-    let mut expr = ValueExpr::Input { mult, div, base };
-    for op in &ops[i..] {
-        expr = match op {
+/// Apply every operation in order through the shared scalar evaluator.
+fn eval_value_expr_def(def: &ValueExprDef, captures: &[String]) -> Option<f64> {
+    let value = capture_number(&def.capture, captures)?;
+    def.ops.iter().try_fold(value, |value, op| {
+        let expr = match op {
+            ValueOpDef::Div(n) => ValueExpr::Input {
+                mult: 1.0,
+                div: *n,
+                base: 0.0,
+            },
+            ValueOpDef::Mult(n) => ValueExpr::Input {
+                mult: *n,
+                div: 1.0,
+                base: 0.0,
+            },
+            ValueOpDef::Base(n) => ValueExpr::Input {
+                mult: 1.0,
+                div: 1.0,
+                base: *n,
+            },
             ValueOpDef::Negate {} => ValueExpr::Negate {
-                inner: Box::new(expr),
+                inner: Box::new(ValueExpr::input()),
             },
             ValueOpDef::Clamp { min, max } => ValueExpr::Clamp {
                 min: Some(*min),
                 max: Some(*max),
-                inner: Box::new(expr),
+                inner: Box::new(ValueExpr::input()),
             },
-            ValueOpDef::Div(_) | ValueOpDef::Mult(_) | ValueOpDef::Base(_) => expr,
         };
-    }
-    expr
-}
-
-fn eval_value_expr_def(def: &ValueExprDef, captures: &[String]) -> f64 {
-    let capture = capture_index(&def.capture)
-        .and_then(|idx| captures.get(idx - 1))
-        .and_then(|s| s.parse::<f64>().ok())
-        .unwrap_or(0.0);
-    let expr = build_value_expr(&def.ops);
-    eval(&expr, capture)
+        let value = eval(&expr, value);
+        value.is_finite().then_some(value)
+    })
 }
 
 fn instantiate_template(
@@ -957,8 +975,8 @@ fn instantiate_template(
     source: &str,
 ) -> Vec<Modifier> {
     let mut out = Vec::with_capacity(template.mods.len());
-    for m in &template.mods {
-        let Some(name) = resolve_name(&m.name, captures, enums) else {
+    'modifiers: for m in &template.mods {
+        let Some(name) = resolve_name(&m.name, captures, enums).filter(|n| !n.is_empty()) else {
             continue;
         };
         let value = match instantiate_value(&m.value, captures, m.mod_type, enums, source) {
@@ -973,7 +991,10 @@ fn instantiate_template(
             modifier = modifier.with_keyword_flags(m.keyword_flags);
         }
         for tag in &m.tags {
-            modifier = modifier.with_tag(tag.instantiate(captures));
+            let Some(tag) = tag.instantiate(captures) else {
+                continue 'modifiers;
+            };
+            modifier = modifier.with_tag(tag);
         }
         out.push(modifier);
     }
@@ -992,7 +1013,7 @@ fn instantiate_mod_def(
     source: &str,
 ) -> Option<Modifier> {
     let mod_type = parse_mod_type(&def.mod_type)?;
-    let name = resolve_name(&def.name, captures, enums)?;
+    let name = resolve_name(&def.name, captures, enums).filter(|n| !n.is_empty())?;
     // Same vendor→PoBR name translation as compile_template (on-demand
     // compile path for nested payloads).
     let (name, flag_names) = translate_vendor_name(&name, &def.flags);
@@ -1007,7 +1028,7 @@ fn instantiate_mod_def(
         modifier = modifier.with_keyword_flags(keyword_flags);
     }
     for tag in def.tags.iter().filter_map(compile_tag) {
-        modifier = modifier.with_tag(tag.instantiate(captures));
+        modifier = modifier.with_tag(tag.instantiate(captures)?);
     }
     Some(modifier)
 }
@@ -1051,7 +1072,10 @@ fn instantiate_value(
                 if matches!(mod_type, ModType::List) {
                     Some(ModValue::Text(raw.clone()))
                 } else {
-                    raw.parse::<f64>().ok().map(ModValue::Number)
+                    raw.parse::<f64>()
+                        .ok()
+                        .filter(|n| n.is_finite())
+                        .map(ModValue::Number)
                 }
             } else {
                 // Literal string (a LIST text value, e.g. a GrantedPassive
@@ -1059,7 +1083,10 @@ fn instantiate_value(
                 Some(ModValue::Text(s.clone()))
             }
         }
-        TemplateValueDef::Expr(expr) => Some(ModValue::Number(eval_value_expr_def(expr, captures))),
+        TemplateValueDef::Expr(expr) => {
+            let value = eval_value_expr_def(expr, captures)?;
+            value.is_finite().then_some(ModValue::Number(value))
+        }
         // Nested mod payload (the `{ mod = mod(...) }` shape) →
         // ModValue::NestedMods, forwarded by the orchestration layer
         // through `ModDb::list_nested` (EnemyModifier/MinionModifier,
@@ -1077,8 +1104,8 @@ fn instantiate_value(
             }
         }
         // Complex LIST payloads (PoB2 tables like explode/level grant) have
-        // no pobr counterpart yet — skip this mod (the entry stays
-        // verified:false; a handler_id can take over later).
+        // no pobr counterpart yet. The validation report lists these fields
+        // as non-effective regardless of the verified marker.
         TemplateValueDef::List(_) => None,
     }
 }
@@ -1351,7 +1378,7 @@ mod tests {
     /// SkillName tag mapping: a single name or a list, both lowercased
     /// uniformly; includeTransfigured is ignored (PoE2 has no transfigured
     /// gems, so it degenerates to plain equality); a missing name field →
-    /// tag skipped.
+    /// compile error.
     #[test]
     fn skill_name_tag_maps() {
         let d = def(r#"{"id":"t","pattern":"fireball explodes twice","mods":[
@@ -1379,14 +1406,11 @@ mod tests {
             }]
         );
 
-        // Missing name field → tag conservatively skipped (mod is kept,
-        // just without the tag).
+        // A missing name must not broaden the modifier to every skill.
         let d = def(r#"{"id":"t3","pattern":"noop","mods":[
                 {"name":"X","type":"BASE","value":1,
                  "tags":[{"type":"SkillName"}]}],"batch":"V2"}"#);
-        let r = rules(vec![d]);
-        let m = r.try_match("noop", &reg).unwrap();
-        assert!(m.mods[0].tags.is_empty());
+        assert!(SpecialModRules::compile(&[d], &reg).is_err());
     }
 
     /// Compile-time validation of a nested mod payload: unknown inner
@@ -1492,32 +1516,22 @@ mod tests {
         ));
     }
 
-    /// An unmappable tag (ItemCondition) is silently skipped; the mod is
-    /// still produced.
     #[test]
-    fn unmapped_tag_skipped() {
+    fn unmapped_tag_fails_instead_of_widening_the_effect() {
         let d = def(r#"{"id":"t","pattern":"body armour grants x","mods":[
                 {"name":"X","type":"FLAG","value":true,
                  "tags":[{"type":"ItemCondition","itemSlot":"Body Armour","rarityCond":"NORMAL"}]}],"batch":"S2"}"#);
-        let r = rules(vec![d]);
-        let reg = HandlerRegistry::new();
-        let m = r.try_match("body armour grants x", &reg).unwrap();
-        assert_eq!(m.mods.len(), 1);
-        assert!(m.mods[0].tags.is_empty());
+        let error = SpecialModRules::compile(&[d], &HandlerRegistry::new()).unwrap_err();
+        assert!(error.to_string().contains("unsupported tag ItemCondition"));
     }
 
-    /// handler_id not registered: matches but produces empty mods, and is
-    /// flagged.
     #[test]
-    fn unregistered_handler_marked() {
+    fn unregistered_handler_fails_at_compile_time() {
         let d = def(
-            r#"{"id":"t","pattern":"explode on kill","handler_id":"special:explode","handler_args":["$1"],"batch":"S2"}"#,
+            r#"{"id":"t","pattern":"explode on kill","handler_id":"special:explode","batch":"S2"}"#,
         );
-        let r = rules(vec![d]);
-        let reg = HandlerRegistry::new();
-        let m = r.try_match("explode on kill", &reg).unwrap();
-        assert!(m.mods.is_empty());
-        assert_eq!(m.unregistered_handler.as_deref(), Some("special:explode"));
+        let error = SpecialModRules::compile(&[d], &HandlerRegistry::new()).unwrap_err();
+        assert!(error.to_string().contains("unregistered handler"));
     }
 
     /// Compile error: duplicate id.
@@ -1623,7 +1637,9 @@ mod tests {
             entries.extend(doc.entries);
         }
         assert!(!entries.is_empty(), "special_mods both layers empty?");
-        let rules = SpecialModRules::compile(&entries, &HandlerRegistry::new())
+        let mut registry = HandlerRegistry::new();
+        crate::rules::register_special_handlers(&mut registry).unwrap();
+        let rules = SpecialModRules::compile(&entries, &registry)
             .expect("all repo special_mods should compile successfully");
         assert_eq!(rules.len(), entries.len());
     }

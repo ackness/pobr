@@ -7,8 +7,8 @@
 > `crates/pobr-data/src/catalog/parser_rules.rs` (the `ModParserRulesDoc` and
 > `SpecialModsDef` families). **That file is the authority.** If you change the
 > schema (add/rename a field, add a value-DSL operator, move a table), update
-> this doc in the same PR. Command lines below were run and verified against
-> `data/4.5.0.3.4`.
+> this doc in the same PR. Validate the active version from `data/CURRENT` and
+> the separately pinned parity version when changing shared rules.
 
 ---
 
@@ -30,9 +30,9 @@ A line that neither layer understands is not an error: it is collected as
 `ParseStatus::Unsupported` and shows up in the coverage report. Nothing crashes.
 
 At app startup, `pobr-build::build_data` loads both files and compiles them via
-`CompiledParserRules::compile_with_special`. A malformed edit either errors at
-load time or — worse — is **silently ignored** (unknown fields are dropped by
-serde). Run `--check` (§7) before you commit to catch both.
+`CompiledParserRules::compile_with_special`. Special templates reject unknown fields,
+invalid operations and unsupported scopes before use. Run `--check` (§7) to validate
+the complete effective snapshot and the generic parser schema before committing.
 
 ---
 
@@ -56,7 +56,8 @@ top of the machine-generated `.dat` import. The two files this guide is about:
 > 2. `data/<version>/overlay/special_mods.json` — **version-specific** layer,
 >    merged on top. Only entries that genuinely differ for one game version
 >    belong here; a same-`id` entry here overrides the common layer, and new ids
->    are appended.
+>    are appended. Replacement keeps the common entry's position and replaces
+>    the entire entry; this is not a recursive merge.
 >
 > Practically: add your entry to `data/overlay-common/special_mods.json` unless
 > it is a correction that only applies to a single game version. `regen-all.sh`
@@ -81,7 +82,9 @@ they become a common contribution surface.
 > **User patch layer (no PR needed).** For local-only additions you don't want
 > to upstream, drop a JSON at `data/<version>/patch/<same-relative-path>` (e.g.
 > `patch/overlay/uniques.json`). `pobr-gamedata` merges it over the official data
-> at load time (object keys override, arrays merge by `id`). See
+> at load time (objects merge recursively, arrays merge by `id` only when both
+> arrays contain ID objects; other arrays replace). Patches apply to version
+> files before common/version merging; common files have no version patch. See
 > `GameData::load_json_at` in `crates/pobr-gamedata/src/lib.rs`.
 
 ---
@@ -133,7 +136,9 @@ layer — see §2) unless it is a correction specific to one game version. Each 
 is a `SpecialTemplateDef` (schema in `parser_rules.rs`). The parser
 matches the **whole line** (case-insensitive, auto-anchored `^…$`) against
 `pattern` (**Rust regex** — `(\d+)`, alternation, *no* look-around/back-refs),
-and instantiates the `mods` template using the captures.
+and instantiates the `mods` template using the captures. Put alternatives inside
+an explicit group, such as `(fire|cold)`, so the existing anchors apply to all
+branches. The check does not certify Lua-to-regex translation semantics.
 
 Minimal real entry (a keystone-style FLAG):
 
@@ -186,6 +191,7 @@ Field summary:
 | `verified` | ✔ (`false` ok) | `true` only after an oracle diff confirmed the numbers |
 | `batch` | ✔ | curation batch tag (`S0`/`S1`/`S2`/…) |
 | `source_note` | optional | where it came from (unique name, `ModParser.lua:NNNN`, …) |
+| `examples` | optional | concrete source lines; checked against this rule and included in overlap/oracle audits |
 
 A `ModTemplateDef` (`mods[]`):
 
@@ -195,9 +201,9 @@ A `ModTemplateDef` (`mods[]`):
   "type": "BASE",              // BASE | INC | MORE | FLAG | OVERRIDE | LIST
   "value": "$1",               // see the value forms below
   "flags": ["Attack"],         // optional ModFlag names
-  "keyword_flags": ["Fire"],   // optional KeywordFlag names
+  "keyword_flags": ["Hit"],    // optional known KeywordFlag names
   "tags": [ { "type": "Condition", "var": "Combat" } ],
-  "target": "enemy"            // optional: player (default) | enemy | minion
+  "target": "player"           // optional; other targets require an explicit LIST wrapper
 }
 ```
 
@@ -217,7 +223,7 @@ related surfaces:
 | capture | `"$1"` | the captured number |
 | expression | `{ "ref": "$1", "ops": [ {"negate":{}}, {"div":100} ] }` | capture through an operator chain |
 | nested mod | `{ "mods": [ … ] }` | vendor `LIST { mod = mod(...) }` payload |
-| list table | `{ "Key": "…" }` | structured LIST value (literals / `$n` / enums only) |
+| list table | `{ "Key": "…" }` | retained metadata; no general interpreter consumer, listed as non-effective in validation |
 
 **Value operators** (the whitelist, applied left-to-right; single evaluator in
 `crates/pobr-core/src/rules/value_expr.rs`):
@@ -244,7 +250,7 @@ Tag field strings (and handler string args) use an inline dialect
 ### DSL hard boundary
 
 Allowed: `$n`, the five value operators, `:cap`/`:mult`/`:div`/`:base`, `enums`
-closed sets, `target(player|enemy|minion)`. **Forbidden:** loops, recursion,
+closed sets, `target(player)`, explicit nested modifier wrappers. **Forbidden:** loops, arbitrary recursion,
 free expressions, cross-entry references, string concatenation of arbitrary
 values. If a modifier needs any of that, it goes to a handler (§6). Adding a new
 DSL capability requires ≥20 entries that would benefit — otherwise use a handler.
@@ -290,26 +296,44 @@ signal the data split failed; template it instead.
 **Step 1 — validate the JSON you edited** (cheap, run this first and always):
 
 ```bash
-cargo run -p precompile-mods -- --data data/4.5.0.3.4 --check
+cargo run -p precompile-mods -- --data "data/$(cat data/CURRENT)" --check
 ```
 
-This deserializes `mod_parser_rules.json` + `special_mods.json` (+
-`generated/special_derived.json`; `generated/special_vendor.json` is
-**required** — a missing file is an error, regenerate it via
-`extract-lua --what special-mods`), reports **unknown/misspelled fields**
-(via `serde_ignored`) and **type/syntax errors**, then compiles the rules —
-catching **bad regex/Lua patterns, duplicate special `id`s, and `handler_id`s
-with no registered handler**. Any problem → non-zero exit with every error
-listed.
+The check covers the generic parser schema/compilation and the effective special
+rules from common, version, patch, derived and vendor files. `special_vendor.json`
+is required; missing generated data must be regenerated, not skipped. Derived and
+vendor rules are concatenated after curated rules; duplicate IDs there are errors.
+Duplicates within a raw file or patch also fail. Removing an override re-exposes
+the common entry, so always recheck the complete snapshot.
 
-Two limits to be aware of:
-- It does **not** validate `ModName`/`StatId` spelling — `StatId` is an open
-  string with no registry, so a typo'd name just aggregates to nothing. The
-  parity tests (below) are the backstop.
-- Unknown-field detection sees top-level and non-flattened fields
-  (e.g. a typo in `forms[]`, or a stray `special_mods` entry key). Fields that
-  land in the flattened `RuleEffectsDef` (`flags`, `keyword_flags`, `tags`, …)
-  are a serde-flatten blind spot — double-check those by eye.
+Special validation covers nested modifiers, registered handlers, capture/enum
+references, finite numbers, division and clamp bounds, flags, keyword flags, tag
+fields/types and actor scopes. Unknown conditions/scopes are never discarded to
+make a modifier apply. `verified:false` does not relax validation. Numeric value
+operations run left-to-right, including operations after negation or clamping.
+
+`--check` writes a JSON report to stdout (redirect it to a local report file).
+It records the engine package version, data version, SHA-256 of each rule input
+including common and patches, effective order, replaced sources and non-effective
+metadata fields. `--report` also validates before writing the runtime cache.
+
+Scope limits:
+
+- `StatId` is open. Literal/enum name syntax is checked, but only a consumer and a
+  calculation regression prove that a name has an effect. For each added rule,
+  record the consumer and stage, and test enabled, disabled and boundary cases.
+- Cross-actor conditions read `CalcConfig.actor_multipliers`. The caller must
+  supply the actor snapshot; this gate does not establish complete minion Build
+  context injection or prove minion DPS support.
+- Structured LIST tables and empty-name PoB config-discovery markers are reported
+  as non-effective metadata; recognition alone is not calculation support.
+- Generic parser flattened effects still have separate validation limitations;
+  the strict special-tag checks do not claim to cover that entire language.
+- `refresh-modifiers.sh` audits all source samples and rule examples. Each row's
+  `special_rule_id` selects its provenance in `rule_validation.effective_rules`;
+  `matching_special_rules` lists candidates in first-match order, including
+  shadowed rules. This cannot prove disjoint regexes for every possible input.
+  Modifier text and equipment/passive `SourceId` attribution remain independent.
 
 **Step 2 — regenerate the precompiled corpus** (only if your edit changes how
 existing lines parse — e.g. a new `special_mods` entry that now matches a line

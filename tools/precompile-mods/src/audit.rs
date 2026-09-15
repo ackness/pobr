@@ -28,6 +28,11 @@ pub struct Entry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vendor_status: Option<Status>,
     pub mod_names: BTreeSet<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub special_rule_id: Option<String>,
+    /// Candidates in priority order; the parser unsupported table can veto all.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub matching_special_rules: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -36,6 +41,8 @@ pub struct Audit {
     pub vendor_commit: String,
     #[serde(default)]
     pub source_metadata: BTreeMap<String, Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rule_validation: Option<crate::check::ValidationReport>,
     pub source_counts: BTreeMap<String, usize>,
     pub summary: BTreeMap<String, usize>,
     pub entries: BTreeMap<String, Entry>,
@@ -230,6 +237,20 @@ fn collect(data: &Path) -> Result<(Corpus, BTreeMap<String, usize>), String> {
             *counts.entry(domain.into()).or_default() += 1;
         }
     }
+    let game = pobr_gamedata::GameData::new(data);
+    for domain in [
+        game.special_mods(),
+        game.special_derived(),
+        game.special_vendor(),
+    ] {
+        if let Some(def) = domain.map_err(|e| e.to_string())? {
+            for rule in def.entries {
+                for example in &rule.examples {
+                    add(&mut corpus, example, format!("rule:{}", rule.id));
+                }
+            }
+        }
+    }
     Ok((corpus, counts))
 }
 
@@ -270,6 +291,7 @@ fn vendor_results(path: &Path) -> Result<BTreeMap<String, Status>, String> {
 }
 
 pub fn build(data: &Path, oracle: Option<&Path>) -> Result<Audit, String> {
+    let validation = crate::check::inspect(data)?;
     let (corpus, source_counts) = collect(data)?;
     let rules = crate::parsed::compile_parser_rules(data)?;
     let vendor = oracle.map(vendor_results).transpose()?;
@@ -309,12 +331,19 @@ pub fn build(data: &Path, oracle: Option<&Path>) -> Result<Audit, String> {
         };
         *summary.entry(class.into()).or_default() += 1;
         entries.insert(
-            text,
+            text.clone(),
             Entry {
                 sources,
                 status,
                 vendor_status,
                 mod_names: outcome.mods.iter().map(|m| m.name.to_string()).collect(),
+                special_rule_id: outcome.special_meta.map(|m| m.entry_id),
+                matching_special_rules: pobr_core::mod_parser::engine::matching_special_entry_ids(
+                    &text, &rules,
+                )
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
             },
         );
     }
@@ -351,6 +380,7 @@ pub fn build(data: &Path, oracle: Option<&Path>) -> Result<Audit, String> {
             .unwrap_or("unknown")
             .into(),
         source_metadata,
+        rule_validation: Some(validation),
         source_counts,
         summary,
         entries,
@@ -465,6 +495,7 @@ mod tests {
             schema: "modifier-audit/v1".into(),
             vendor_commit: "synthetic".into(),
             source_metadata: BTreeMap::new(),
+            rule_validation: None,
             source_counts: BTreeMap::new(),
             summary: BTreeMap::new(),
             entries: rows
@@ -477,6 +508,8 @@ mod tests {
                             status: *status,
                             vendor_status: None,
                             mod_names: BTreeSet::new(),
+                            special_rule_id: None,
+                            matching_special_rules: Vec::new(),
                         },
                     )
                 })
