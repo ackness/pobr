@@ -182,6 +182,16 @@ echo "== [6c] extract-lua --what special-mods (generated/special_vendor.json)"
 mkdir -p "$OUT_DIR/generated"
 soft_step special_vendor env POBR_DATA_VERSION="$PATCH" "${SYNC[@]}" extract-lua --what special-mods --vendor-root "$VENDOR" --out "$OUT_DIR/generated/special_vendor.json"
 
+# Audit all shipped modifier sources, not only the historical build corpus.
+# Keep the previous version's snapshot as the regression baseline when present.
+if [[ "${POBR_DEFER_MODIFIER_AUDIT:-0}" -eq 0 ]]; then
+    audit_args=(--data "$OUT_DIR" --audit-only)
+    if [[ -f "data/$OLD_PATCH/generated/modifier-audit.json" ]]; then
+        audit_args+=(--baseline "data/$OLD_PATCH/generated/modifier-audit.json")
+    fi
+    soft_step modifier_audit bash pipeline/refresh-modifiers.sh "${audit_args[@]}"
+fi
+
 # ---- 7) generated/（precompile-mods）----
 echo "== [7/9] precompile-mods（generated/）"
 soft_step precompile_mods cargo run --quiet -p precompile-mods -- --data "$OUT_DIR" --report

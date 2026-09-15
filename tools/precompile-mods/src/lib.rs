@@ -7,6 +7,7 @@
 //! - [`report`]: coverage report → `parse-coverage.json`;
 //! - [`check`]: `--check` overlay JSON validity check (contributor gate).
 
+pub mod audit;
 pub mod canonical;
 pub mod check;
 pub mod corpus;

@@ -56,6 +56,41 @@ fn close(actual: f64, expected: f64) {
 }
 
 #[test]
+fn extracted_ring_effects_preserve_left_and_right_slot_scaling() {
+    let data = data();
+    let baseline = build("SparkPlayer")
+        .set_item(
+            EquipmentSlot::Ring1,
+            item("Sapphire Ring", &["+100 to maximum Life"]),
+        )
+        .set_item(
+            EquipmentSlot::Ring2,
+            item("Ruby Ring", &["+200 to maximum Life"]),
+        );
+    let base = run(&baseline, &data);
+    for (line, extra_life) in [
+        ("27% increased bonuses gained from left Equipped Ring", 27.0),
+        (
+            "21% increased bonuses gained from right Equipped Ring",
+            42.0,
+        ),
+    ] {
+        let result = run(
+            &baseline
+                .clone()
+                .set_item(EquipmentSlot::Belt, item("Linen Belt", &[line])),
+            &data,
+        );
+        assert!(
+            result.unsupported_modifier_texts().is_empty(),
+            "{:?}",
+            result.unsupported_modifier_texts()
+        );
+        close(result.output().life - base.output().life, extra_life);
+    }
+}
+
+#[test]
 fn ordinary_jewel_scales_quiver_like_other_global_sources() {
     let data = data();
     let baseline = build("IceShotPlayer")

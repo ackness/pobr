@@ -173,7 +173,7 @@ pub fn precompile(corpus: &Corpus, data_dir: &Path) -> Result<PrecompileOutcome,
 /// error: with the legacy parser removed there's no fallback, and
 /// precompiling a ruleless data pack is pointless (fail fast beats
 /// producing an all-unsupported artifact).
-fn compile_parser_rules(data_dir: &Path) -> Result<CompiledParserRules, String> {
+pub(crate) fn compile_parser_rules(data_dir: &Path) -> Result<CompiledParserRules, String> {
     let data = GameData::new(data_dir);
 
     let doc = data

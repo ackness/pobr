@@ -7,8 +7,8 @@
 #   [3] 刷新被动树导出（GGG poe2-skilltree-export；官方停更时沿用现有，软失败）
 #   [4] vendor 对齐（--vendor-sha 时 fetch-by-sha 换检出 + 更新 .pob2-version.txt）
 #   [5] OLD_PATCH=<旧> regen-all.sh（含末步 test-pin bless）
-#   [6] 推进版本标记：data/CURRENT + pobr-data DATA_VERSION 常量
-#   [7] gen-zh-cn.mjs（读 data/CURRENT）+ web pnpm sync-data
+#   [6] Generate the pinned CN dictionary and audit all modifier sources
+#   [7] Advance data/CURRENT + DATA_VERSION, then sync Web data
 #   [8] 定向验证（多版本 smoke + gamedata 套件；parity 仅报告不判失败）
 #   [9] 摘要 + 剩余人工决策清单
 #
@@ -60,7 +60,7 @@ die_on_fail() { "$@" || { echo "bump-version: 关键步骤失败，中止：$*" 
 
 # OLD_PATCH 读 lib.rs 的 DATA_VERSION 常量而非 config.json：config.json 在步骤 [1]
 # 就被推进，失败后重跑会把 OLD_PATCH 读成新版本（自沿用→6b 拷空、[6] sed 落空）；
-# DATA_VERSION 在步骤 [6] 末尾才推进，重跑时仍指向上一个完整交付的版本。
+# DATA_VERSION advances only after the dictionary and modifier audit succeed.
 OLD_PATCH="$(sed -n 's/^pub const DATA_VERSION: &str = "\([^"]*\)";/\1/p' crates/pobr-data/src/lib.rs)"
 [[ -n "${OLD_PATCH}" ]] || { echo "bump-version: 无法从 crates/pobr-data/src/lib.rs 读取 DATA_VERSION" >&2; exit 1; }
 
@@ -136,10 +136,22 @@ fi
 
 # ---- [5] 全量重生成（含 test-pin bless 末步）----
 echo "== [5/9] regen-all（OLD_PATCH=${OLD_PATCH}）"
-die_on_fail env OLD_PATCH="${OLD_PATCH}" pipeline/regen-all.sh
+die_on_fail env OLD_PATCH="${OLD_PATCH}" POBR_DEFER_MODIFIER_AUDIT=1 pipeline/regen-all.sh
 
-# ---- [6] 推进活动版本标记 ----
-echo "== [6/9] data/CURRENT + pobr_data::DATA_VERSION"
+# ---- [6] Generate and audit before advancing the active version ----
+echo "== [6/9] 简中语言包 + 完整词条审计"
+dict_args=(--version "$NEW_PATCH")
+if [[ "$SKIP_DOWNLOAD" -eq 0 ]]; then dict_args+=(--refresh); fi
+die_on_fail node pipeline/gen-zh-cn.mjs "${dict_args[@]}"
+# Include the refreshed import dictionary in the final parser audit.
+audit_args=(--data "data/$NEW_PATCH" --audit-only)
+if [[ -f "data/$OLD_PATCH/generated/modifier-audit.json" ]]; then
+    audit_args+=(--baseline "data/$OLD_PATCH/generated/modifier-audit.json")
+fi
+die_on_fail bash pipeline/refresh-modifiers.sh "${audit_args[@]}"
+
+# ---- [7] 推进活动版本标记 ----
+echo "== [7/9] data/CURRENT + pobr_data::DATA_VERSION"
 printf '%s\n' "${NEW_PATCH}" > data/CURRENT
 # 只动 DATA_VERSION 一行；GOLDEN_PARITY_DATA_VERSION 是人工决策，绝不自动推进。
 die_on_fail sed_replace \
@@ -147,10 +159,6 @@ die_on_fail sed_replace \
     crates/pobr-data/src/lib.rs
 grep -q "pub const DATA_VERSION: &str = \"${NEW_PATCH}\";" crates/pobr-data/src/lib.rs \
     || { echo "bump-version: DATA_VERSION 常量替换失败（crates/pobr-data/src/lib.rs 格式变了？）" >&2; exit 1; }
-
-# ---- [7] 衍生数据 ----
-echo "== [7/9] 简中语言包 + web 数据同步"
-soft_step gen_zh_cn node pipeline/gen-zh-cn.mjs
 if [[ -d web/node_modules ]]; then
     soft_step web_sync_data bash -c "cd web && pnpm run sync-data"
 else

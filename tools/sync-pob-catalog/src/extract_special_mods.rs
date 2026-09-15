@@ -76,6 +76,9 @@ struct RawRow {
     /// and mods depend on that word, the closed-set assumption fails and the whole entry is skipped).
     #[serde(default)]
     dict_size: usize,
+    /// Eligible dictionary size after matching each capture's Lua pattern.
+    #[serde(default)]
+    word_dict_sizes: Vec<usize>,
     /// `kind:"enum"` rows: the inferred result for each word combination.
     #[serde(default)]
     variants: Vec<RawEnumVariant>,
@@ -115,7 +118,7 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
         }
     }
 
-    for row in rows {
+    for mut row in rows {
         bump(&mut stats, "total");
         if row.kind == "failed" {
             let reason = row.reason.as_deref().unwrap_or("unknown");
@@ -139,6 +142,12 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
         // structural difference, fall back to per-word singleton entries
         // (word-specific values become plain literals, resolving tag differences naturally).
         if row.kind == "enum" {
+            // A closure can return a default branch for arbitrary words. Only
+            // captures accepted by its Lua pattern are evidence of a variant.
+            if let Err(reason) = filter_enum_captures(&mut row) {
+                bump(&mut stats, &format!("skip_{reason}"));
+                continue;
+            }
             let rescued = match rescue_open_variants(&row, &known_names) {
                 Ok(v) => v,
                 Err(reason) => {
@@ -272,17 +281,16 @@ pub fn run_extract_special_mods(args: &ExtractLuaArgs) -> io::Result<String> {
     }
 
     entries.sort_by(|a, b| a.id.cmp(&b.id));
+    eprintln!("extract-special-mods: {} candidate entries", entries.len());
+    for (key, count) in &stats {
+        eprintln!("extract-special-mods:   {key}: {count}");
+    }
     // Recompile everything once more: a final backstop for within-batch id/pattern uniqueness (same function as the consumption-side gate).
     SpecialModRules::compile(&entries, &registry).map_err(|error| {
         io::Error::other(format!(
             "special_vendor full compile failed (should not happen): {error}"
         ))
     })?;
-
-    eprintln!("extract-special-mods: ---- stats ----");
-    for (key, count) in &stats {
-        eprintln!("extract-special-mods:   {key}: {count}");
-    }
 
     let doc = SpecialVendorDoc {
         meta: build_meta(args)?,
@@ -727,11 +735,11 @@ fn build_enum_entry(
         let hits: BTreeSet<String> = variants.iter().map(|v| v.words[p].clone()).collect();
         let relevant = enums.contains_key(&slot.to_string());
         if relevant {
-            if hits.len() >= row.dict_size {
+            if is_open_word_slot(row, p, hits.len()) {
                 return Err("enum_open_vocabulary".into());
             }
             word_alts.insert(slot, WordAlt::Alternation(hits.into_iter().collect()));
-        } else if hits.len() >= row.dict_size {
+        } else if is_open_word_slot(row, p, hits.len()) {
             // Full-dictionary hit with mods not depending on this word: only
             // a **pure optional-prefix capture** (`(i?t?e?m? ?)` and the
             // like, with no wildcard atoms) can be trusted as "the closure
@@ -810,7 +818,7 @@ fn build_singleton_entries(
     let slot_count = row.word_slots.len();
     for p in 0..slot_count {
         let hits: BTreeSet<&str> = variants.iter().map(|v| v.words[p].as_str()).collect();
-        if hits.len() >= row.dict_size {
+        if is_open_word_slot(row, p, hits.len()) {
             return Err("enum_open_vocabulary".into());
         }
     }
@@ -894,14 +902,64 @@ fn collect_mod_names(v: &serde_json::Value, out: &mut BTreeSet<String>) {
     }
 }
 
-/// Open-slot rescue: when a word slot hits the whole dictionary and isn't an
-/// optional-prefix capture, filter combinations using the whole database's
-/// known name set — a string-concatenation closure's noise-word-derived
-/// name (`StrengthResist`) is unique across the database, whereas a valid
-/// word's name (`FireResist`) recurs across other mods. Whatever remains
-/// open after filtering is left to the caller's step-4 judgment; filtering
-/// everything out -> skipped as open vocabulary. Rows with no open slot are
-/// returned unchanged (avoids wrongly rejecting a name that's legitimately unique to this entry).
+/// A bounded capture supplies its own closed domain; wildcard captures need
+/// closure evidence beyond accepting every eligible dictionary word.
+fn is_open_word_slot(row: &RawRow, position: usize, hits: usize) -> bool {
+    let contents = capture_contents(&row.pattern);
+    let Some(content) = row
+        .word_slots
+        .get(position)
+        .and_then(|slot| slot.checked_sub(1))
+        .and_then(|slot| contents.get(slot))
+    else {
+        return true;
+    };
+    // Literal and bounded character-choice patterns (left/right, optional
+    // prefixes) define their own finite domain, even if every candidate hits.
+    let unbounded = content.chars().any(|c| matches!(c, '.' | '+' | '*' | '-'))
+        || ["%a", "%l", "%D", "%w", "%s"]
+            .iter()
+            .any(|class| content.contains(class));
+    unbounded
+        && hits
+            >= row
+                .word_dict_sizes
+                .get(position)
+                .copied()
+                .unwrap_or(row.dict_size)
+}
+
+fn filter_enum_captures(row: &mut RawRow) -> Result<(), String> {
+    use pobr_core::mod_parser::scan::LuaPattern;
+
+    let contents = capture_contents(&row.pattern);
+    let patterns = row
+        .word_slots
+        .iter()
+        .map(|slot| {
+            let content = contents
+                .get(slot.saturating_sub(1))
+                .ok_or("enum_row_malformed")?;
+            LuaPattern::compile(&format!("^{content}$"))
+                .map_err(|_| "enum_capture_pattern_unsupported")
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    row.variants.retain(|variant| {
+        variant.words.len() == patterns.len()
+            && variant
+                .words
+                .iter()
+                .zip(&patterns)
+                .all(|(word, pattern)| pattern.find(word).is_some())
+    });
+    if row.variants.is_empty() {
+        return Err("enum_no_matching_captures".into());
+    }
+    Ok(())
+}
+
+/// Filter open captures by independently known modifier names; otherwise a
+/// closure's fallback branch can fabricate names such as StrengthResist.
 fn rescue_open_variants<'a>(
     row: &'a RawRow,
     known_names: &BTreeSet<String>,
@@ -909,7 +967,7 @@ fn rescue_open_variants<'a>(
     let contents = capture_contents(&row.pattern);
     let has_open_word_slot = (0..row.word_slots.len()).any(|p| {
         let hits: BTreeSet<&str> = row.variants.iter().map(|v| v.words[p].as_str()).collect();
-        hits.len() >= row.dict_size
+        is_open_word_slot(row, p, hits.len())
             && !contents
                 .get(row.word_slots[p].saturating_sub(1))
                 .is_some_and(|c| is_optional_junk(c))
@@ -1444,6 +1502,59 @@ fn build_meta(args: &ExtractLuaArgs) -> io::Result<OverlayMeta> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn enum_probes_respect_capture_patterns_before_open_set_detection() {
+        let mut row: RawRow = serde_json::from_value(serde_json::json!({
+            "pattern": "(%d+)%% increased bonuses gained from ([lr][ei][fg][th]t?) equipped ring",
+            "kind": "enum", "dict_size": 3, "word_slots": [2],
+            "variants": [
+                {"words": ["left"], "mods": [{"name": "EffectOfBonusesFromRing 1", "type": "INC", "value": "$1"}]},
+                {"words": ["right"], "mods": [{"name": "EffectOfBonusesFromRing 2", "type": "INC", "value": "$1"}]},
+                {"words": ["fire"], "mods": [{"name": "EffectOfBonusesFromRing 2", "type": "INC", "value": "$1"}]}
+            ]
+        })).unwrap();
+        filter_enum_captures(&mut row).unwrap();
+        assert_eq!(row.variants.len(), 2);
+        let variants = rescue_open_variants(&row, &BTreeSet::new()).unwrap();
+        let entry = build_enum_entry(
+            &row,
+            &variants,
+            &HandlerRegistry::new(),
+            &BTreeSet::new(),
+            &mut BTreeSet::new(),
+            &mut BTreeSet::new(),
+        )
+        .unwrap();
+        assert_eq!(entry.enums["2"].len(), 2);
+        assert_eq!(entry.enums["2"]["left"], "EffectOfBonusesFromRing 1");
+        assert_eq!(entry.enums["2"]["right"], "EffectOfBonusesFromRing 2");
+
+        // Filtering must not convert genuinely open captures into a closed set.
+        row.pattern = "(%d+)%% increased bonuses gained from (.+) equipped ring".into();
+        row.dict_size = 2;
+        filter_enum_captures(&mut row).unwrap();
+        assert!(rescue_open_variants(&row, &BTreeSet::new()).is_err());
+    }
+
+    #[test]
+    fn open_capture_uses_eligible_dictionary_size() {
+        let mut row: RawRow = serde_json::from_value(serde_json::json!({
+            "pattern": "(%a+) damage", "kind": "enum", "dict_size": 4,
+            "word_dict_sizes": [3], "word_slots": [1],
+            "variants": [
+                {"words": ["fire"], "mods": [{"name": "FireDamage", "type": "INC", "value": 10}]},
+                {"words": ["cold"], "mods": [{"name": "ColdDamage", "type": "INC", "value": 10}]},
+                {"words": ["unknown"], "mods": [{"name": "UnknownDamage", "type": "INC", "value": 10}]}
+            ]
+        })).unwrap();
+        filter_enum_captures(&mut row).unwrap();
+        assert!(is_open_word_slot(&row, 0, 3));
+        let known = BTreeSet::from(["FireDamage".into(), "ColdDamage".into()]);
+        assert_eq!(rescue_open_variants(&row, &known).unwrap().len(), 2);
+        row.pattern = "([fc][io][rl][ed]) damage".into();
+        assert!(!is_open_word_slot(&row, 0, 3));
+    }
 
     #[test]
     fn numeric_captures_convert_faithfully() {
