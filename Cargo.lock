@@ -381,7 +381,7 @@ checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 
 [[package]]
 name = "lint-i18n"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "pobr-i18n",
 ]
@@ -441,7 +441,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-build"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "base64",
  "criterion",
@@ -458,7 +458,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-cli"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "clap",
  "pobr-build",
@@ -472,7 +472,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-core"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "aho-corasick",
  "criterion",
@@ -483,7 +483,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-data"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "serde",
  "serde_json",
@@ -491,7 +491,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-data-adapter"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "pobr-data",
  "serde",
@@ -501,7 +501,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-desktop"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "pobr-build",
  "pobr-core",
@@ -511,7 +511,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-gamedata"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "pobr-core",
  "pobr-data",
@@ -522,7 +522,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-i18n"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "pobr-data",
  "serde",
@@ -532,7 +532,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-item"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "pobr-core",
  "pobr-data",
@@ -540,7 +540,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-tree"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "pobr-data",
  "serde",
@@ -550,7 +550,7 @@ dependencies = [
 
 [[package]]
 name = "pobr-wasm"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "pobr-build",
  "pobr-core",
@@ -565,7 +565,7 @@ dependencies = [
 
 [[package]]
 name = "precompile-mods"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "pobr-core",
  "pobr-data",
@@ -751,7 +751,7 @@ dependencies = [
 
 [[package]]
 name = "sync-pob-catalog"
-version = "0.0.24"
+version = "0.0.25"
 dependencies = [
  "pobr-core",
  "pobr-data",
