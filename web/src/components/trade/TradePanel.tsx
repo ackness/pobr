@@ -12,7 +12,7 @@ import { useSkillName } from '../../hooks/useSkillName';
 import { bindT, slotLabel, statNameLabel, type Lang, type UiKey } from '../../lib/i18n';
 import { OBJECTIVE_PRESETS, scoreOf, type Objective } from '../../lib/optimize';
 import { REALM_DEFAULT_LEAGUE, REALM_LEAGUES, TRADE_CURRENCIES, buildTradeUrl, gemTradeUrl, loadTradeLeagues, type TradeCurrency, type TradePriceCap, type TradeRealm } from '../../lib/trade';
-import { affixPool, basesForSlot, categoryAffixPool, loadTradeCatalog, optimizeTradeAffixes, referenceBase, type TradeCatalog } from '../../lib/tradeOptimizer';
+import { affixPool, basesForSlot, categoryAffixPool, categorySearchMods, loadTradeCatalog, optimizeTradeAffixes, referenceBase, type TradeCatalog } from '../../lib/tradeOptimizer';
 import { planGemUpgrades } from '../../lib/tradeMarket';
 import { AppSelect } from '../shared/AppSelect';
 import { CopyButton } from '../shared/CopyButton';
@@ -155,6 +155,7 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
             const itemLevel = Math.min(100, Math.ceil(((request.character?.level ?? 1) + 1) / 0.8) - 1);
             next = { category: base.category, weights: await optimizeTradeAffixes({
               request, slot, base, pool: categoryAffixPool(catalog, base.category, itemLevel, request.character?.level), itemLevel,
+              searchMods: categorySearchMods(catalog, base.category, itemLevel),
               objective, combinations: all || overview, combinationPool: affixPool(catalog, base, itemLevel),
               maxEvaluations: all || overview ? 768 : undefined, beamWidth: 6, ...options,
             }) };

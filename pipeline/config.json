@@ -2,6 +2,9 @@
   "patch": "4.5.5.2",
   "translations": ["English", "Traditional Chinese"],
   "tables": [
+    { "name": "Essences", "columns": ["BaseItemType"] },
+    { "name": "EssenceMods", "columns": ["Essence","TargetItemCategory","Mod","OutcomeMods"] },
+    { "name": "EssenceTargetItemCategories", "columns": ["Id","ItemClasses"] },
     { "name": "BaseItemTypes", "columns": ["Id","Name","ItemClass","DropLevel","Width","Height","Tags","Implicit_Mods","ModDomain"] },
     { "name": "ItemClasses", "columns": ["Id","Name"] },
     { "name": "Tags", "columns": ["Id","DisplayString"] },

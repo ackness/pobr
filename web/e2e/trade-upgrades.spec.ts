@@ -3,6 +3,39 @@ import { deflateSync } from 'node:zlib';
 
 const searchQuery = (href: string) => JSON.parse(new URL(href).searchParams.get('q')!);
 
+test('alloy hybrid effects enter real-WASM weights and the crafted item market minimum', async ({ page }) => {
+  await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
+  await page.route('**/api/import/wegame', route => route.fulfill({ json: {
+    format: 'wegame', version: 1, role: { level: 85, class_name: 'Sorceress' },
+    equipments: [{ inventoryId: 'Weapon', baseType: 'Attuned Wand', name: 'Crafted Reference', frameType: 2,
+      craftedMods: ['28% increased Cast Speed', 'Gain 8% of Elemental Damage as Extra Cold Damage'] }],
+    talent_tree: { hashes: [54447, 4739, 22419, 18407], quest_stats: [] }, jewel_data: '[]',
+    skills: [{ baseType: 'Fireball', support: false, properties: [{ type: 5, values: [['16', 0]] }] }],
+  } }));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticAlloyFixture');
+  await page.locator('.import-submit').click();
+  await expect(page.locator('.paper-doll')).toBeVisible();
+  await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
+  await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+  await page.locator('.trade-position').filter({ hasText: /^Main Hand/ }).click();
+  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  const reference = page.locator('.upgrade-score-reference');
+  await expect(reference).toContainText('Comparable stat score');
+  const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
+  const sum = query.query.stats[0];
+  const value = (id: string) => sum.filters.find((filter: { id: string }) => filter.id === id)?.value.weight;
+  const cold = value('explicit.stat_1158842087');
+  const speed = value('explicit.stat_2891184298');
+  expect(cold).toBeGreaterThan(0);
+  expect(speed).toBeGreaterThan(0);
+  expect(new Set(sum.filters.map((filter: { id: string }) => filter.id)).size).toBe(sum.filters.length);
+  expect(sum.value.min).toBeCloseTo(8 * cold + 28 * speed, 3);
+  await reference.getByText(/Current item score breakdown/).click();
+  await expect(reference.locator('li')).toHaveCount(2);
+});
+
 test('imported PoB armour and belt use their full explicit Sum as the market minimum', async ({ page }) => {
   const code = deflateSync(`<PathOfBuilding2>
     <Build level="85" className="Witch"/>
@@ -18,6 +51,8 @@ test('imported PoB armour and belt use their full explicit Sum as the market min
         Implicits: 1
         {enchant}{rune}20% increased Armour, Evasion and Energy Shield
         +97 to maximum Life
+        {crafted}8% increased maximum Life
+        {desecrated}12% increased Spirit Reservation Efficiency of Skills
       </Item>
       <Item id="2">
         Rarity: RARE
@@ -48,8 +83,10 @@ test('imported PoB armour and belt use their full explicit Sum as the market min
     const sum = query.query.stats[0];
     const lifeWeight = sum.filters.find((filter: { id: string }) => filter.id === 'explicit.stat_3299347043').value.weight;
     expect(lifeWeight).toBeGreaterThan(0);
-    expect(sum.value.min).toBeCloseTo(life * lifeWeight, 3);
-    expect(Number((await reference.locator('div > strong').first().innerText()).replaceAll(',', ''))).toBeCloseTo(life * lifeWeight, 3);
+    const percent = slot === 'Body Armour' ? sum.filters.find((filter: { id: string }) => filter.id === 'explicit.stat_983749596')?.value.weight : 0;
+    if (slot === 'Body Armour') expect(percent).toBeGreaterThan(0);
+    expect(sum.value.min).toBeCloseTo(life * lifeWeight + 8 * percent, 3);
+    expect(Number((await reference.locator('div > strong').first().innerText()).replaceAll(',', ''))).toBeCloseTo(life * lifeWeight + 8 * percent, 3);
   }
 });
 

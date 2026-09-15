@@ -1,0 +1,859 @@
+{
+  "_meta": {
+    "source": "GGG EssenceMods/Essences/EssenceTargetItemCategories x BaseItemTypes/ItemClasses/Mods",
+    "regen_command": "python3 pipeline/extract-trade-crafting.py pipeline/tables/English <out>"
+  },
+  "mods": [
+    {
+      "source": "alloy",
+      "id": "AlloyAccuracyAttackSpeedHybrid1",
+      "item_types": [
+        "Bow",
+        "Crossbow",
+        "Dagger",
+        "Flail",
+        "One Hand Axe",
+        "One Hand Mace",
+        "One Hand Sword",
+        "Spear",
+        "Talisman",
+        "Two Hand Axe",
+        "Two Hand Mace",
+        "Two Hand Sword",
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyAilmentMagnitude1",
+      "item_types": [
+        "Bow",
+        "Crossbow",
+        "Dagger",
+        "Flail",
+        "One Hand Axe",
+        "One Hand Mace",
+        "One Hand Sword",
+        "Spear",
+        "Talisman",
+        "Two Hand Axe",
+        "Two Hand Mace",
+        "Two Hand Sword",
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyArchonDuration1",
+      "item_types": [
+        "Helmet"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyAttackAreaOfEffect1",
+      "item_types": [
+        "Gloves"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyAttackSpeedIfMissingWardRecently1",
+      "item_types": [
+        "Gloves"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyAttackSpeedRing1",
+      "item_types": [
+        "Ring"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyAttributeIncreasedLocalPhysicalDamageHybrid1",
+      "item_types": [
+        "Bow",
+        "Crossbow",
+        "Dagger",
+        "Flail",
+        "One Hand Axe",
+        "One Hand Mace",
+        "One Hand Sword",
+        "Spear",
+        "Talisman",
+        "Two Hand Axe",
+        "Two Hand Mace",
+        "Two Hand Sword",
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyBallistaLimit1",
+      "item_types": [
+        "Crossbow"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyBellLimit1",
+      "item_types": [
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyCastSpeedDamageAsExtraColdHybrid1",
+      "item_types": [
+        "Staff"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyCastSpeedDamageAsExtraColdHybridOneHand1",
+      "item_types": [
+        "Focus",
+        "Wand"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyCastSpeedGloves1",
+      "item_types": [
+        "Gloves"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyChanceToChain1",
+      "item_types": [
+        "Quiver"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyDamageAsExtraFireTwoHandWhileMissingRunicWard1",
+      "item_types": [
+        "Staff"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyDamageAsExtraFireWhileMissingRunicWard1",
+      "item_types": [
+        "Wand"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyDamagingAilmentDuration1",
+      "item_types": [
+        "Gloves"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyEffectOfResistanceMods1",
+      "item_types": [
+        "Amulet",
+        "Belt",
+        "Ring"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyEffectOfSocketedAugments1",
+      "item_types": [
+        "Bow",
+        "Crossbow",
+        "Dagger",
+        "Flail",
+        "One Hand Axe",
+        "One Hand Mace",
+        "One Hand Sword",
+        "Sceptre",
+        "Spear",
+        "Staff",
+        "Talisman",
+        "Two Hand Axe",
+        "Two Hand Mace",
+        "Two Hand Sword",
+        "Wand",
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyElementalPenetration1",
+      "item_types": [
+        "Gloves"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyElementalSkillLimit1",
+      "item_types": [
+        "Wand"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyExposureEffect1",
+      "item_types": [
+        "Focus",
+        "Staff",
+        "Wand"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyFlaskChargesPerSecond1",
+      "item_types": [
+        "Belt"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyLightningDamageIgnites1",
+      "item_types": [
+        "Talisman"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyLocalWardIncreasePercent1",
+      "item_types": [
+        "Body Armour",
+        "Boots",
+        "Buckler",
+        "Focus",
+        "Gloves",
+        "Helmet",
+        "Shield"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyManaCostEfficiency1",
+      "item_types": [
+        "Helmet"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyMarkEffect",
+      "item_types": [
+        "Bow"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyMaximumElementalInfusions1",
+      "item_types": [
+        "Sceptre",
+        "Staff",
+        "Wand"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyMaximumRunicWard1",
+      "item_types": [
+        "Ring"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyMaximumRunicWardPercent1",
+      "item_types": [
+        "Amulet"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyMaximumRunicWardWeapon1",
+      "item_types": [
+        "Bow",
+        "Crossbow",
+        "Dagger",
+        "Flail",
+        "One Hand Axe",
+        "One Hand Mace",
+        "One Hand Sword",
+        "Sceptre",
+        "Spear",
+        "Staff",
+        "Talisman",
+        "Two Hand Axe",
+        "Two Hand Mace",
+        "Two Hand Sword",
+        "Wand",
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyMeleeStrikeRange1",
+      "item_types": [
+        "Spear"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyMinionDamagingAilmentMagnitude1",
+      "item_types": [
+        "Sceptre"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyNaturesArchon1",
+      "item_types": [
+        "Staff"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyPresenceAreaOfEffect1",
+      "item_types": [
+        "Body Armour"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyPuppetMasterChance1",
+      "item_types": [
+        "Sceptre"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyPuppeteerStacks1",
+      "item_types": [
+        "Sceptre"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyRecoverRunicWardOnCharmUse1",
+      "item_types": [
+        "Belt"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyReducedSlowPotency1",
+      "item_types": [
+        "Body Armour"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyRemnantPickupRange1",
+      "item_types": [
+        "Gloves"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyRetainGlory1",
+      "item_types": [
+        "One Hand Mace",
+        "Two Hand Mace"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyRunicWardOnBlock1",
+      "item_types": [
+        "Buckler",
+        "Shield"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyRunicWardRechargeRate1",
+      "item_types": [
+        "Belt"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloySkillEffectDuration1",
+      "item_types": [
+        "Boots"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloySpellAreaOfEffect1",
+      "item_types": [
+        "Helmet"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloySpellLevelManaHybrid1",
+      "item_types": [
+        "Staff",
+        "Wand"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloySpiritOnBoots1",
+      "item_types": [
+        "Boots"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyTemporaryMinionSkillLimit1",
+      "item_types": [
+        "Boots"
+      ]
+    },
+    {
+      "source": "alloy",
+      "id": "AlloyTotemPlacementSpeed1",
+      "item_types": [
+        "Buckler",
+        "Focus",
+        "Shield"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "AttackerTakesDamage6",
+      "item_types": [
+        "Body Armour"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "CriticalMultiplier4",
+      "item_types": [
+        "Gloves"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "DamageTakenGainedAsLife4_",
+      "item_types": [
+        "Amulet"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "DamageWithBows5",
+      "item_types": [
+        "Quiver"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EnergyShieldRechargeRate5______",
+      "item_types": [
+        "Focus"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceAbyssPrefix",
+      "item_types": [
+        "Amulet",
+        "Belt",
+        "Body Armour",
+        "Boots",
+        "Bow",
+        "Buckler",
+        "Crossbow",
+        "Dagger",
+        "Flail",
+        "Focus",
+        "Gloves",
+        "Helmet",
+        "One Hand Axe",
+        "One Hand Mace",
+        "One Hand Sword",
+        "Quiver",
+        "Ring",
+        "Sceptre",
+        "Shield",
+        "Spear",
+        "Staff",
+        "Talisman",
+        "Two Hand Axe",
+        "Two Hand Mace",
+        "Two Hand Sword",
+        "Wand",
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceAbyssSuffix",
+      "item_types": [
+        "Amulet",
+        "Belt",
+        "Body Armour",
+        "Boots",
+        "Bow",
+        "Buckler",
+        "Crossbow",
+        "Dagger",
+        "Flail",
+        "Focus",
+        "Gloves",
+        "Helmet",
+        "One Hand Axe",
+        "One Hand Mace",
+        "One Hand Sword",
+        "Quiver",
+        "Ring",
+        "Sceptre",
+        "Shield",
+        "Spear",
+        "Staff",
+        "Talisman",
+        "Two Hand Axe",
+        "Two Hand Mace",
+        "Two Hand Sword",
+        "Wand",
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceAttackSkillLevel1H1",
+      "item_types": [
+        "Bow",
+        "Dagger",
+        "Flail",
+        "One Hand Axe",
+        "One Hand Mace",
+        "One Hand Sword",
+        "Spear"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceAttackSkillLevel2H1",
+      "item_types": [
+        "Crossbow",
+        "Talisman",
+        "Two Hand Axe",
+        "Two Hand Mace",
+        "Two Hand Sword",
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceAuraEffect1",
+      "item_types": [
+        "Sceptre"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceBreach",
+      "item_types": [
+        "Amulet",
+        "Ring"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceColdRecoupLife1",
+      "item_types": [
+        "Helmet"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceCorruptForTwoEnchantments1",
+      "item_types": [
+        "Belt"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceDamageasExtraCold1",
+      "item_types": [
+        "Bow",
+        "Dagger",
+        "Flail",
+        "One Hand Axe",
+        "One Hand Mace",
+        "One Hand Sword",
+        "Spear"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceDamageasExtraCold2H",
+      "item_types": [
+        "Crossbow",
+        "Talisman",
+        "Two Hand Axe",
+        "Two Hand Mace",
+        "Two Hand Sword",
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceDamageasExtraFire1",
+      "item_types": [
+        "Bow",
+        "Dagger",
+        "Flail",
+        "One Hand Axe",
+        "One Hand Mace",
+        "One Hand Sword",
+        "Spear"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceDamageasExtraFire2H",
+      "item_types": [
+        "Crossbow",
+        "Talisman",
+        "Two Hand Axe",
+        "Two Hand Mace",
+        "Two Hand Sword",
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceDamageasExtraLightning1",
+      "item_types": [
+        "Bow",
+        "Dagger",
+        "Flail",
+        "One Hand Axe",
+        "One Hand Mace",
+        "One Hand Sword",
+        "Spear"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceDamageasExtraLightning2H",
+      "item_types": [
+        "Crossbow",
+        "Talisman",
+        "Two Hand Axe",
+        "Two Hand Mace",
+        "Two Hand Sword",
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceDamageasExtraPhysical1",
+      "item_types": [
+        "Bow",
+        "Dagger",
+        "Flail",
+        "One Hand Axe",
+        "One Hand Mace",
+        "One Hand Sword",
+        "Spear"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceDamageasExtraPhysical2H",
+      "item_types": [
+        "Crossbow",
+        "Talisman",
+        "Two Hand Axe",
+        "Two Hand Mace",
+        "Two Hand Sword",
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceFireRecoupLife1",
+      "item_types": [
+        "Belt"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceGlobalDefences1",
+      "item_types": [
+        "Amulet"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceGoldDropped1",
+      "item_types": [
+        "Gloves"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceGrantedPassive",
+      "item_types": [
+        "Body Armour"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceIncreasedLifePercent1",
+      "item_types": [
+        "Body Armour"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceIncreasedManaPercent1",
+      "item_types": [
+        "Ring"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceLightningRecoupLife1",
+      "item_types": [
+        "Gloves"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceLocalRuneAndSoulCoreEffect1",
+      "item_types": [
+        "Boots",
+        "Gloves"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceManaCostReduction",
+      "item_types": [
+        "Focus",
+        "Wand"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceManaCostReduction2H",
+      "item_types": [
+        "Staff"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceOnslaughtonKill1",
+      "item_types": [
+        "Bow",
+        "Crossbow",
+        "Dagger",
+        "Flail",
+        "One Hand Axe",
+        "One Hand Mace",
+        "One Hand Sword",
+        "Spear",
+        "Talisman",
+        "Two Hand Axe",
+        "Two Hand Mace",
+        "Two Hand Sword",
+        "Warstaff"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssencePercentDexterity1",
+      "item_types": [
+        "Amulet"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssencePercentIntelligence1",
+      "item_types": [
+        "Amulet"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssencePercentStrength1",
+      "item_types": [
+        "Amulet"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssencePhysicalDamageTakenAsChaos1",
+      "item_types": [
+        "Body Armour"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceReducedCriticalDamageAgainstYou1",
+      "item_types": [
+        "Body Armour"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceSpellSkillLevel1H1",
+      "item_types": [
+        "Wand"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "EssenceSpellSkillLevel2H1",
+      "item_types": [
+        "Staff"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "GlobalMinionSpellSkillGemLevel1",
+      "item_types": [
+        "Helmet"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "LocalBlockChance2",
+      "item_types": [
+        "Buckler",
+        "Shield"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "ManaRegeneration5",
+      "item_types": [
+        "Ring"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "MovementVelocity5",
+      "item_types": [
+        "Boots"
+      ]
+    },
+    {
+      "source": "essence",
+      "id": "StunThreshold10",
+      "item_types": [
+        "Belt"
+      ]
+    }
+  ]
+}

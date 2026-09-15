@@ -44,15 +44,22 @@ export function lineValue(line: string): number | null {
   return m ? Number(m[0]) : null;
 }
 
-export interface WeightedStat {
-  /** 官方 trade stat id（explicit.stat_N）。 */
+export interface TradeStatTemplate {
+  /** Official namespaced trade ID, including pipe-separated aliases. */
   id: string;
-  /** 每单位词条数值的目标收益（trade2 weight 系数）。 */
-  weight: number;
-  /** 原词条行（展示用）。 */
   line: string;
-  /** 当前数值（加权和门槛用）。 */
   value: number;
+  /** Official wording at the same reference roll, when different from PoB text. */
+  trade_line?: string;
+  /** Exported lines belonging to one official stat, scored together. */
+  source_lines?: string[];
+  /** Zero-based numeric variable positions; [] means a one-unit flag. */
+  value_indices?: number[];
+}
+
+export interface WeightedStat extends TradeStatTemplate {
+  /** Objective gain per official trade stat unit. */
+  weight: number;
 }
 
 /** Keep the displayed reference and the official query on exactly the same scale. */

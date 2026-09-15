@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { affixPool, basesForSlot, categoryAffixPool, referenceBase, combinationLegal, tradeItemVariant, optimizeTradeAffixes, type TradeAffix, type TradeBase } from './tradeOptimizer';
+import { affixPool, basesForSlot, categoryAffixPool, categorySearchMods, referenceBase, combinationLegal, tradeItemVariant, optimizeTradeAffixes, type TradeAffix, type TradeBase, type TradeSearchMod } from './tradeOptimizer';
 import type { EvaluateOptions, EvaluateResult } from './optimize';
 import { scoreEquipment } from './equipmentScore';
 import { buildTradeQuery, type WeightedStat } from './trade';
@@ -10,6 +10,8 @@ function affix(id: string, kind: TradeAffix['kind'] = 'prefix', group = id): Tra
     stats: [{ id: `explicit.${id}`, line: `10 ${id}`, value: 10 }] };
 }
 const objective = { stat: 'TotalDPS', constraints: [] };
+const special: TradeSearchMod = { id: 'alloy:hybrid', source: 'alloy', categories: [base.category], level: 65,
+  lines: ['10 flat', '10 speed'], stats: [affix('flat').stats[0], affix('speed').stats[0]] };
 const evaluator = (score: (text: string) => number, visited: string[] = []) => async ({ variants }: EvaluateOptions): Promise<EvaluateResult> => ({
   baseline: { TotalDPS: 100 }, aborted: false,
   results: variants.map((variant, index) => {
@@ -20,6 +22,14 @@ const evaluator = (score: (text: string) => number, visited: string[] = []) => a
 });
 
 describe('legal affix pool', () => {
+  test('special crafting sources respect categories and levels without inventing ordinary crafting recipes', () => {
+    const catalog = { bases: [base], mods: [affix('ordinary')], search_mods: [special] };
+    expect(categorySearchMods(catalog, base.category, 64)).toEqual([]);
+    expect(categorySearchMods(catalog, 'accessory.ring')).toEqual([]);
+    expect(categorySearchMods(catalog, base.category, 65)).toEqual([special]);
+    expect(affixPool(catalog, base, 100).map(mod => mod.id)).toEqual(['ordinary']);
+    expect(categorySearchMods({ bases: [], mods: [] }, base.category)).toEqual([]);
+  });
   test('honors first matching exclusions, item level, and strongest tier', () => {
     const weak = affix('weak');
     const strong = { ...weak, id: 'strong', level: 80, lines: ['20 weak'] };
@@ -35,6 +45,37 @@ describe('legal affix pool', () => {
     expect(combinationLegal([affix('a'), affix('b', 'suffix', 'a')])).toBe(false);
     expect(combinationLegal(['a', 'b', 'c', 'd'].map(id => affix(id)))).toBe(false);
   });
+});
+
+test('special hybrid components get independent, deduplicated query weights and the actual crafted current minimum', async () => {
+  const current = `Rarity: RARE\nEquipped\n${base.name}\n{crafted}5 flat\n{crafted}8 speed`;
+  const result = await optimizeTradeAffixes({ request: { items: [{ slot: 'weapon2', text: current }] },
+    slot: 'weapon2', base, pool: [affix('flat')], searchMods: [special], itemLevel: 82, objective,
+    evaluate: evaluator(text => 100 + Number(text.match(/(\d+) flat/)?.[1] ?? 0) + Number(text.match(/(\d+) speed/)?.[1] ?? 0) * 2),
+  });
+  expect(result.weighted).toEqual(expect.arrayContaining([
+    expect.objectContaining({ id: 'explicit.flat', weight: 10, gain: 10 }),
+    expect.objectContaining({ id: 'explicit.speed', weight: 20, gain: 20 }),
+  ]));
+  expect(result.weighted).toHaveLength(2);
+  expect(result.currentItemScore).toMatchObject({ complete: true, score: 210 });
+  expect(result.minimumWeight).toBe(210);
+  expect(result.combinations.every(combo => combo.mods.every(mod => mod.id === 'flat'))).toBe(true);
+});
+
+test('partially unmodeled compound probes do not publish inflated weights in score-only mode', async () => {
+  const unsafe = { ...special, stats: [{ id: 'explicit.compound', line: '1000 boost Unmodeled drawback', value: 1000 }] };
+  const result = await optimizeTradeAffixes({ request: {}, slot: 'weapon2', base, pool: [affix('safe')],
+    searchMods: [unsafe], itemLevel: 82, objective, combinations: false,
+    evaluate: async options => {
+      const result = await evaluator(text => text.includes('boost') ? 1100 : text.includes('safe') ? 120 : 100)(options);
+      return { ...result, results: result.results.map(row => ({ ...row,
+        unsupported: options.variants[row.index].set_items![0].text.includes('Unmodeled') ? ['Unmodeled drawback'] : [],
+      })) };
+    },
+  });
+  expect(result.weighted.map(stat => stat.id)).toEqual(['explicit.safe']);
+  expect(result.scoreWarnings).toContain('unmodeled-candidates');
 });
 
 test('discovers new affixes and jointly beneficial pairs, not only current item lines', async () => {

@@ -10,19 +10,8 @@
 local vendor_src, out_path = arg[1], arg[2]
 assert(vendor_src and out_path, "usage: extract-trade-map.lua <vendor_src> <out.json>")
 
-local stats = dofile(vendor_src .. "/Data/TradeSiteStats.lua")
--- explicit 域：hash → 官方展示文案。
-local valid = {}
-for _, group in ipairs(stats) do
-    for _, e in ipairs(group.entries or {}) do
-        if e.type == "explicit" then
-            local h = e.id:match("^explicit%.stat_(%d+)$")
-            if h then
-                valid[tonumber(h)] = e.text
-            end
-        end
-    end
-end
+local trade = dofile((arg[0]:match("^(.*[/\\])") or "") .. "trade-stats.lua")
+local valid = trade.load(vendor_src)
 
 -- 数字骨架化：范围 (a-b) 与裸数字都归一成 #（与 web/src/lib/trade.ts 同规则）。
 local function normalize(line)
@@ -36,26 +25,17 @@ local function json_escape(s)
     return s
 end
 
-local mods = dofile(vendor_src .. "/Data/ModItem.lua")
-local map = {}
-local skipped_multiline = 0
-for _, mod in pairs(mods) do
-    for hash, lines in pairs(mod.tradeHashes or {}) do
-        if valid[hash] then
-            if #lines == 1 then
-                local tpl = normalize(lines[1])
-                map[tpl] = map[tpl]
-                    or {
-                        id = string.format("explicit.stat_%.0f", hash),
-                        text = valid[hash],
-                    }
-            else
-                -- 混合词条（一 hash 多行）单行匹配语义不成立，v1 跳过。
-                skipped_multiline = skipped_multiline + 1
-            end
+local map, ambiguous = {}, {}
+for _, source in ipairs({ "ModItem", "ModJewel", "ModFlask", "ModCharm", "ModVeiled" }) do
+    for _, mod in pairs(dofile(vendor_src .. "/Data/" .. source .. ".lua")) do
+        for _, stat in ipairs(trade.extract(mod, "explicit", valid)) do
+            local template = normalize(stat.line)
+            if map[template] and map[template].id ~= stat.id then ambiguous[template] = true end
+            map[template] = { id = stat.id, text = valid[stat.id].text }
         end
     end
 end
+for template in pairs(ambiguous) do map[template] = nil end
 
 local keys = {}
 for k in pairs(map) do
@@ -64,7 +44,7 @@ end
 table.sort(keys)
 
 local parts = {}
-parts[#parts + 1] = '{\n  "_meta": {\n    "source": "vendor ModItem.lua tradeHashes x TradeSiteStats.lua (explicit)",\n    "regen_command": "luajit pipeline/extract-trade-map.lua vendor/PathOfBuilding-PoE2/src <out>"\n  },\n  "templates": {'
+parts[#parts + 1] = '{\n  "_meta": {\n    "source": "PoB2 item/jewel/flask/charm/desecrated tradeHashes x TradeSiteStats.lua (explicit)",\n    "regen_command": "luajit pipeline/extract-trade-map.lua vendor/PathOfBuilding-PoE2/src <out>"\n  },\n  "templates": {'
 for i, k in ipairs(keys) do
     local e = map[k]
     parts[#parts + 1] = string.format(
@@ -80,4 +60,4 @@ parts[#parts + 1] = "  }\n}"
 local f = assert(io.open(out_path, "w"))
 f:write(table.concat(parts, "\n"))
 f:close()
-print(string.format("trade map: %d templates (skipped %d multi-line)", #keys, skipped_multiline))
+print(string.format("trade map: %d unambiguous explicit templates", #keys))
