@@ -46,10 +46,16 @@ if os.environ.get("FAIL_COMMAND") == args[0]:
     sys.exit(17)
 if os.environ.get("FAIL_TEST") and args[0] == "test":
     sys.exit(19)
+if "--gem-quality" in args and os.environ.get("FAIL_QUALITY"):
+    sys.exit(29)
 if "pobr-data-adapter" in args:
     dest = pathlib.Path(args[args.index("--out") + 1]) / "test/generated"
     dest.mkdir(parents=True, exist_ok=True)
     (dest / "special_derived.json").write_text("{}", encoding="utf-8")
+    if "--gem-quality" in args:
+        quality = dest.parent / "overlay/gem_quality_stats.json"
+        quality.parent.mkdir(parents=True, exist_ok=True)
+        quality.write_text("{}", encoding="utf-8")
 if "precompile-mods" in args:
     dest = pathlib.Path(args[args.index("--data") + 1])
     assert dest != pathlib.Path(os.environ["SOURCE_DATA"])
@@ -71,7 +77,7 @@ if "precompile-mods" in args:
             "TMPDIR": str(self.root / "tmp"),
             "POBR_PATCH": "test",
         }
-        for key in ["HAS_NEXTEST", "FAIL_COMMAND", "FAIL_TEST", "FAIL_REGEN"]:
+        for key in ["HAS_NEXTEST", "FAIL_COMMAND", "FAIL_TEST", "FAIL_REGEN", "FAIL_QUALITY"]:
             self.env.pop(key, None)
 
     def write(self, rel, text):
@@ -97,6 +103,27 @@ if "precompile-mods" in args:
 
     def test_regen_success_preserves_sources(self):
         self.assert_regen_preserves_tree(0)
+
+    def test_quality_regeneration_uses_receipt_and_preserves_sources(self):
+        self.write("pipeline/tables/English/GrantedEffectQualityStats.json", "[]")
+        self.write("pipeline/gem-quality/test.json", "{}")
+        self.write("data/test/overlay/gem_quality_stats.json", "{}")
+        self.assert_regen_preserves_tree(0)
+        quality = [args for args in self.calls() if "--gem-quality" in args]
+        self.assertEqual(len(quality), 1)
+        self.assertEqual(quality[0][quality[0].index("--quality-source") + 1],
+                         str(self.root / "pipeline/gem-quality/test.json"))
+
+    def test_quality_failure_aborts_full_regeneration_before_other_generators(self):
+        shutil.copyfile(REPO / "pipeline/regen-all.sh", self.root / "pipeline/regen-all.sh")
+        self.write("data/test/overlay/gem_quality_stats.json", "previous quality data")
+        self.env["FAIL_QUALITY"] = "1"
+        result = self.run_script("pipeline/regen-all.sh")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(len(self.calls()), 1)
+        self.assertIn("--gem-quality", self.calls()[0])
+        self.assertEqual((self.root / "data/test/overlay/gem_quality_stats.json").read_text(),
+                         "previous quality data")
 
     def test_regen_drift_preserves_uncommitted_artifact(self):
         self.write("data/test/generated/parsed_mods.json", "uncommitted edit")

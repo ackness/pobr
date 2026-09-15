@@ -483,12 +483,10 @@ fn is_zero_f64(v: &f64) -> bool {
 
 /// A single gem-quality stat slope.
 ///
-/// Sourced from PoB2's exported `Data/Skills/*.lua` `qualityStats` field (raw
-/// `.dat` is `GrantedEffectQualityStats.StatValues / 1000`, see vendor
-/// `Export/Scripts/skills.lua:304-313`; that table's bundle isn't
-/// downloadable at the currently pinned patch, so it goes through the
-/// extract-lua channel — see `pipeline/config.json`'s
-/// `_tablesUnavailableForPinnedPatch`).
+/// Current snapshots use the official `GrantedEffectQualityStats` table:
+/// main and alt permille values / 1000, projected onto a reviewed effect scope.
+/// Older snapshots use the equivalent PoB2 `Data/Skills/*.lua` export.
+/// The historical `overlay/` path and runtime schema remain compatible.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct QualityStat {
     /// Stable stat id (e.g. `base_spell_%_chance_to_echo`).
@@ -514,15 +512,12 @@ fn is_false(v: &bool) -> bool {
 /// Quality-stat table for a granted effect (a single entry of
 /// `overlay/gem_quality_stats.json`).
 ///
-/// Support-gem effects aren't in this table (PoB2's export condition
-/// `not (skillGem and granted.IsSupport)` already applies on the vendor data
-/// side; extraction is a faithful transcription).
-///
-/// TODO (pending restoration of the `.dat` table channel):
-/// `GrantedEffectQualityStats`'s Alt columns
-/// (`AltStats`/`AltStatValuesPermille`/`AltApplyToStatSets`/`ApplyToStatSets`)
-/// are stored as-is but not consumed — PoB2's export also only reads the
-/// primary columns, so behavior is aligned; the semantics are deferred.
+/// The reviewed compatibility scope preserves the existing exported effects;
+/// it must not blanket-filter `IsSupport` (non-gem support effects can have quality).
+/// Alt stats are preserved and gated by the existing GemlingQuality consumers.
+/// `ApplyToStatSets` / `AltApplyToStatSets` are retained in generation metadata,
+/// not applied by current effect-wide consumers. Adding their semantics is a
+/// separate behavior change, not part of the data-source migration.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GemQualityStatDef {
     /// Granted effect id (aligned with [`GrantedEffectDef::id`], e.g.

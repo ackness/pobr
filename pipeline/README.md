@@ -9,6 +9,7 @@
 | 域 | 真源 | 取法 |
 |----|------|------|
 | 物品基底 / 词缀 / Stat / 技能宝石 | 游戏 `Content.ggpk` 里的 `.dat` 表（GGG） | `pathofexile-dat` 按版本从 CDN 只下需要的表 bundle |
+| 宝石品质（从 `4.5.5.2` 起） | GGG `GrantedEffectQualityStats` / `GrantedEffects` / `Stats`，范围由版本收据固定 | `pobr-data-adapter --gem-quality`，见[品质生成说明](gem-quality/README.md) |
 | 词条显示文本 | `Metadata/StatDescriptions/*.txt`（GGG） | 同上，作为 `files` 导出 |
 | 被动天赋树 | GGG 官方 `github.com/grindinggear/poe2-skilltree-export` 的 `data.json` | 直接取 `data.json`（不取图集） |
 
@@ -95,7 +96,8 @@ cargo run -p pobr-data-adapter -- --raw ./tables --out ../data --patch <version>
 ```
 
 `./.cache/`（~113MB bundle 索引）、`./tables/`、`./files/` 均为中间物，**已 gitignore，不入库**。
-仓库只保存 `config.json`、脚本、本 README，以及第 3 步产出的 `data/<version>/*.json`（最小适配数据）。
+仓库保存配置、脚本、说明、受审的来源收据，以及产出的 `data/<version>/` 最小适配数据。
+上面的 `--raw` 命令不生成品质域；品质单独使用[独立生成命令](gem-quality/README.md#独立生成)。
 
 ## Vendor calc-delta 报告（`diff-vendor-calcs.sh`）
 
@@ -125,6 +127,8 @@ pipeline/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
 - 新 PoE2 版本：**`pipeline/bump-version.sh` 一条命令**（查补丁号 → 下载 → 树/vendor 对齐 →
   regen-all（含 test-pin bless）→ 推进 CURRENT/DATA_VERSION → zh-CN/web 同步 → 定向验证），
   末尾打印剩余人工决策（golden 翻转、引擎 delta triage）。分步等价操作见脚本头注释。
+  品质域要求预先准备该版本的[来源收据](gem-quality/README.md#更新版本或原始表)；
+  缺失或输入字节变化时会在 regen-all 中止，核对完成后用 `--patch <version> --skip-download` 重跑。
 - 新数据域：在 `config.json` 的 `tables` 增表/列，并在 `pobr-data-adapter` 增对应适配器。
 - **CDN 只保留当前补丁**：GGG patch CDN 会下线旧版本（M1-W0 时 4.5.0.3.4 已 404）。`.cache/`
   里已缓存的 bundle 可继续离线导出**既有表的全部列**（整张 `.datc64` 在同一 bundle 里）；

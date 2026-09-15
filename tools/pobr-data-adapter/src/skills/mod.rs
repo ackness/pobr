@@ -22,7 +22,7 @@
 mod effects;
 mod gems;
 mod levels;
-mod quality;
+pub(crate) mod quality;
 mod stat_sets;
 
 use std::collections::BTreeMap;

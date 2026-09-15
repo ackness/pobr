@@ -52,6 +52,7 @@ fn main() -> ExitCode {
         Ok(Mode::TreeAnoints(args)) => tree_anoints::run(args),
         Ok(Mode::TreeVersions(args)) => tree_versions::run(args),
         Ok(Mode::SpecialDerived(args)) => special_derived::run(args),
+        Ok(Mode::GemQuality(args)) => skills::quality::run(args),
         Err(err) => Err(err),
     };
     match result {
@@ -74,9 +75,10 @@ struct Args {
     strict_columns: bool,
 }
 
-/// Adapter subcommands: item base domain (`--raw`) or passive tree domain (`--tree`), mutually exclusive.
+/// Independent data-domain adapter modes, mutually exclusive.
 enum Mode {
     BaseItems(Args),
+    GemQuality(skills::quality::QualityArgs),
     Tree(tree::TreeArgs),
     /// Backfill node x/y coordinates into the existing `passive_tree.json` from vendor `tree.lua`.
     TreeCoords(tree_coords::TreeCoordsArgs),
@@ -93,6 +95,8 @@ enum Mode {
 
 fn parse_args() -> Result<Mode, String> {
     let mut raw = None;
+    let mut gem_quality = None;
+    let mut quality_source = None;
     let mut tree = None;
     let mut tree_coords = None;
     let mut tree_variants = None;
@@ -111,6 +115,8 @@ fn parse_args() -> Result<Mode, String> {
         };
         match flag.as_str() {
             "--raw" => raw = Some(PathBuf::from(take("--raw")?)),
+            "--gem-quality" => gem_quality = Some(PathBuf::from(take("--gem-quality")?)),
+            "--quality-source" => quality_source = Some(PathBuf::from(take("--quality-source")?)),
             "--tree" => tree = Some(PathBuf::from(take("--tree")?)),
             "--tree-coords" => tree_coords = Some(PathBuf::from(take("--tree-coords")?)),
             "--tree-variants" => tree_variants = Some(PathBuf::from(take("--tree-variants")?)),
@@ -132,6 +138,7 @@ fn parse_args() -> Result<Mode, String> {
     let patch = patch.ok_or("missing --patch <version>")?;
     let mode_count = [
         raw.is_some(),
+        gem_quality.is_some(),
         tree.is_some(),
         tree_coords.is_some(),
         tree_variants.is_some(),
@@ -144,10 +151,22 @@ fn parse_args() -> Result<Mode, String> {
     .count();
     if mode_count > 1 {
         return Err(
-            "--raw / --tree / --tree-coords / --tree-variants / --tree-anoints / \
+            "--raw / --gem-quality / --tree / --tree-coords / --tree-variants / --tree-anoints / \
              --emit-special-derived are mutually exclusive, run them separately"
                 .into(),
         );
+    }
+    if let Some(raw) = gem_quality {
+        return Ok(Mode::GemQuality(skills::quality::QualityArgs {
+            raw,
+            source: quality_source
+                .ok_or("--gem-quality requires --quality-source <receipt.json>")?,
+            out,
+            patch,
+        }));
+    }
+    if quality_source.is_some() {
+        return Err("--quality-source requires --gem-quality <English tables directory>".into());
     }
     if let Some(tree_json) = special_derived {
         return Ok(Mode::SpecialDerived(special_derived::SpecialDerivedArgs {
@@ -195,7 +214,7 @@ fn parse_args() -> Result<Mode, String> {
             patch,
         }))
     } else {
-        Err("missing --raw <pipeline/tables> / --tree <data.json> / \
+        Err("missing --raw <pipeline/tables> / --gem-quality <English tables directory> / --tree <data.json> / \
              --tree-coords <tree.lua> / --tree-variants <tree.lua> / \
              --tree-anoints <tree.lua>"
             .into())

@@ -123,6 +123,10 @@ Web 的 `api/wasmBackend.ts` 在浏览器中加载 WASM，调用 `apps/pobr-wasm
 
 **数据管线**：`GGG .dat 导出` →（`pobr-data-adapter` 离线适配）→ `data/<poe_version>/*.json`（schema = `pobr-data::catalog`，默认版本见 `data/CURRENT`，含 `overlay/` 人工修正层）→（`pobr-gamedata` 运行时 loader）→ 上层计算。游戏数据文件访问收口在 `pobr-gamedata`；下载、剪贴板及 HTTP 适配属于应用或工具边界。
 
+宝石品质自 `4.5.5.2` 起由 adapter 的 `--gem-quality` 独立生成，沿用历史 `overlay/` 路径。
+该入口始终严格校验三张官方输入表及版本收据；不受通用 `--strict-columns` 开关控制，
+也不从 vendor 或旧产物动态推导范围。来源、兼容边界与升版步骤见[品质生成说明](pipeline/gem-quality/README.md)。
+
 ## 计算引擎架构（pobr-core）
 
 目录按 Modifier 的生命周期拆分（见 [pobr-core/src/lib.rs](crates/pobr-core/src/lib.rs)）：

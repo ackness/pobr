@@ -1,17 +1,12 @@
-//! `extract-lua --what gem-quality`: extracts the `qualityStats` field from
+//! Legacy / oracle `extract-lua --what gem-quality`: extracts the `qualityStats` field from
 //! vendor PoB2's `Data/Skills/*.lua` into `data/<version>/overlay/gem_quality_stats.json`
 //!
-//! **Channel note**: originally planned to come from the `.dat` table
-//! `GrantedEffectQualityStats` via the adapter into `base/`, but the bundle
-//! containing that table is no longer downloadable at the pinned patch
-//! 4.5.0.3.4 (verified — see `_tablesUnavailableForPinnedPatch` in
-//! `pipeline/config.json`). Per the owner's call to "let the producing tool
-//! define the layer," it's extracted via extract-lua into **overlay/**
-//! instead. The vendor data file is itself an export artifact (rate already
-//! `/1000`, support gems already skipped per export conditions,
-//! `Export/Scripts/skills.lua:304-313`), so the extraction is a faithful
-//! transcription. If the `.dat` table channel comes back, this should
-//! migrate back to `base/` (a byte-equivalent migration commit).
+//! Current snapshots are produced by `pobr-data-adapter --gem-quality` from
+//! official tables and a reviewed compatibility scope. This extractor remains
+//! available for pinned historical regeneration and independent comparisons;
+//! it must not overwrite the current artifact during routine regeneration.
+//! Use a separate output directory for comparisons. Both channels retain the
+//! historical overlay path and equivalent ordered quality data.
 //!
 //! Responsibility split matches [`crate::extract_lua`]: the Lua bootstrap
 //! script (`extract_gem_quality.lua`, embedded at compile time) only does

@@ -23,6 +23,26 @@ async function saved(page: Page) {
   return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!));
 }
 
+test('gem quality edits recalculate real WASM results and restore the baseline', async ({ page }) => {
+  const code = readFileSync(new URL('../../examples/demo-bd-test/builds/mercenary-gemling-legionnaire-explosive-grenade/code.txt', import.meta.url), 'utf8').trim();
+  const zeroQuality = inflateSync(Buffer.from(code, 'base64url')).toString('utf8').replace(/quality="\d+"/g, 'quality="0"');
+  await page.goto('/');
+  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+  await importCode(page, deflateSync(zeroQuality).toString('base64url'));
+  const dps = page.locator('.main-skill-section .stat-row dd').first();
+  const baseline = await dps.textContent();
+  await page.getByRole('button', { name: 'Skills', exact: true }).click();
+  const main = page.locator('.skill-group.is-main');
+  await expect(main.locator('.skill-group-name')).toHaveText('Explosive Grenade');
+  await main.locator('.skill-group-title').click();
+  const quality = main.getByRole('spinbutton', { name: 'Quality', exact: true }).first();
+  await expect(quality).toHaveValue('0');
+  await quality.fill('20');
+  await expect(dps).not.toHaveText(baseline!, { timeout: 30_000 });
+  await quality.fill('0');
+  await expect(dps).toHaveText(baseline!, { timeout: 30_000 });
+});
+
 test('an imported trigger group retains its main active skill through edits, reload and share', async ({ page }) => {
   const source = readFileSync(new URL('../../crates/pobr-build/tests/fixtures/coc_cast_on_crit.xml', import.meta.url), 'utf8');
   await page.goto('/');

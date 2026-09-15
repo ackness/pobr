@@ -75,10 +75,16 @@ fn quality_segment_truncates_toward_zero() {
                 per_quality_rate: -0.55,
                 alt: false,
             },
+            QualityStat {
+                stat: "synth_alt".into(),
+                per_quality_rate: -0.05,
+                alt: true,
+            },
         ],
     );
 
     let es = bd.effect_stats("SynthSkill", 20, 19, None);
+    assert_eq!(es.quality.len(), 2, "alt rows require a separate consumer");
     let get = |stat: &str| {
         es.quality
             .iter()
@@ -100,6 +106,14 @@ fn quality_segment_truncates_toward_zero() {
             .is_empty()
     );
     assert!(bd.effect_stats("NoSuch", 20, 20, None).quality.is_empty());
+    // The alternative channel uses the same per-row truncation boundary.
+    assert!(bd.alt_quality_stats("SynthSkill", 0).is_empty());
+    for (quality, expected) in [(19, 0.0), (20, -1.0)] {
+        let alt = bd.alt_quality_stats("SynthSkill", quality);
+        assert_eq!(alt.len(), 1);
+        assert_eq!(alt[0].stat, "synth_alt");
+        assert_eq!(alt[0].value, expected);
+    }
 }
 
 /// Real data + oracle comparison: each effect's q20 quality segment matches
