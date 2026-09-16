@@ -1,36 +1,44 @@
 #!/usr/bin/env node
-// 向 GGG patch 协议服务器查询当前 PoE2 补丁版本号。
-//
-// 握手：TCP 连接后发送 [0x01,0x07]，服务器回包内含 UTF-16LE 的 CDN 根 URL，
-// 形如 `https://patch-poe2.poecdn.com/4.5.0.3.4/`，末段即版本号。
-// PoE2 patch 协议服务器：patch.pathofexile2.com:13060（PoE1 为 patch.pathofexile.com:12995）。
-
+// Discover the current official patch; TCP chunks are not complete messages.
 import net from 'node:net';
+import { pathToFileURL } from 'node:url';
 
-const HOST = process.argv[2] || 'patch.pathofexile2.com';
-const PORT = Number(process.argv[3] || 13060);
-
-const url = await new Promise((resolve) => {
-  const sock = net.connect({ host: HOST, port: PORT }, () => sock.write(Buffer.from([1, 7])));
-  let buf = Buffer.alloc(0);
-  const timer = setTimeout(() => { sock.destroy(); resolve(null); }, 8000);
-  sock.on('data', (d) => {
-    buf = Buffer.concat([buf, d]);
-    if (buf.length <= 8) return;
-    clearTimeout(timer);
-    sock.destroy();
-    let txt = '';
-    for (let i = 0; i < buf.length - 1; i++) {
-      const c = buf.readUInt16LE(i);
-      if (c >= 32 && c < 127) { txt += String.fromCharCode(c); i++; }
-      else if (txt.length > 4) break;
-      else txt = '';
-    }
-    resolve(txt);
+export function queryPatchVersion({ host = 'patch.pathofexile2.com', port = 13060, timeoutMs = 8000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const socket = net.connect({ host, port }, () => socket.write(Buffer.from([1, 7])));
+    let buffer = Buffer.alloc(0);
+    let finished = false;
+    const finish = (error, result) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      socket.destroy();
+      if (error) reject(error); else resolve(result);
+    };
+    const timer = setTimeout(() => finish(new Error('Patch discovery timed out')), timeoutMs);
+    socket.on('data', chunk => {
+      buffer = Buffer.concat([buffer, chunk]);
+      if (buffer.length > 65536) return finish(new Error('Patch response exceeds 64 KiB'));
+      // A binary header can place UTF-16LE on either byte alignment. Require
+      // a complete official CDN URL before accepting the version number.
+      for (const offset of [0, 1]) {
+        const text = buffer.subarray(offset).toString('utf16le');
+        const match = text.match(/https?:\/\/patch-poe2\.poecdn\.com\/(\d+(?:\.\d+)+)\//);
+        if (match) return finish(null, { cdn: match[0], version: match[1] });
+      }
+    });
+    socket.on('error', error => finish(error));
+    socket.on('end', () => finish(new Error('Patch response ended without a complete official CDN URL')));
+    socket.on('close', () => finish(new Error('Patch connection closed before discovery')));
   });
-  sock.on('error', () => { clearTimeout(timer); resolve(null); });
-});
+}
 
-if (!url) { console.error(`查询失败：${HOST}:${PORT}`); process.exit(1); }
-const version = url.replace(/\/+$/, '').split('/').pop();
-console.log(JSON.stringify({ cdn: url, version }, null, 2));
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    const result = await queryPatchVersion({ host: process.argv[2], port: Number(process.argv[3] ?? 13060) });
+    console.log(JSON.stringify(result, null, 2));
+  } catch (error) {
+    console.error(`Patch discovery failed: ${error.message}`);
+    process.exitCode = 1;
+  }
+}

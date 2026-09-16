@@ -90,6 +90,16 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     let (items, jewels, flask_charms, _) = parse_items_and_slots(xml, &allocated_set)?;
     let attribute_overrides = parse_attribute_overrides(xml)?;
     let radius_jewels = parse_radius_jewels(xml, &allocated_set)?;
+    let socket_texts = parse_raw_item_texts(xml)?;
+    let granted_socket_jewels = parse_socket_node_items(xml)?
+        .into_iter()
+        .filter(|(node, _)| !allocated_set.contains(node))
+        .filter_map(|(node, id)| {
+            let text = socket_texts.get(&id)?;
+            let item = parse_pob_xml_item(text).ok()?;
+            Some((node, item, radius_jewel_from_text(node, text)))
+        })
+        .collect();
     let socket_groups = parse_socket_groups(xml)?;
     let main_socket_group = parse_main_socket_group(xml);
 
@@ -113,6 +123,7 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     for (slot, item) in items {
         build = build.set_item(slot, item);
     }
+    build.granted_socket_jewels = granted_socket_jewels;
     if !jewels.is_empty() {
         build = build.with_jewels(jewels);
     }
@@ -702,57 +713,11 @@ fn parse_items_and_slots(
     // Tree jewels live in `<Tree><Spec><Sockets><Socket nodeId itemId/>` (not ItemSet),
     // collected separately; only jewels in an allocated socket node are kept.
     let socket_items = parse_socket_node_items(xml)?;
-    // Voices (a 0.5.4b unique): "Allocates N Sinister Jewel sockets" — when a jewel in
-    // an allocated socket carries this mod, the first N sinister sockets (in vendor's
-    // alias order) are treated as allocated too (vendor PassiveSpec.lua:1067-1090's
-    // `voices_jewel_slot1..5` → 0_5 tree node ids, pinned from TreeData/0_5/tree.lua's
-    // `sinister=true` + `aliasPassiveSocket`).
-    // ponytail: node ids are pinned to the 0_5 tree (sinister sockets only exist from
-    // 0.5.4+; older tree versions have no source for this mod, so zero behavior change
-    // there). The parity gate will call this out when the tree version iterates again;
-    // switch to reading the node id list from tree data at that point.
-    const SINISTER_SOCKETS_0_5: [u32; 5] = [62152, 26178, 23960, 39087, 3367];
-    let sinister_count: usize = socket_items
-        .iter()
-        .filter(|(node, _)| allocated.contains(node))
-        .filter_map(|(_, id)| items.get(id))
-        .flat_map(|it| it.implicit_texts.iter().chain(&it.modifier_texts))
-        .filter_map(|t| sinister_socket_alloc_count(t))
-        .sum();
-    let mut sinister_allocated: std::collections::HashSet<u32> = SINISTER_SOCKETS_0_5
-        .iter()
-        .copied()
-        .take(sinister_count)
-        .collect();
-    // Named jewel sockets' "Allocates <name>" grant (vendor PassiveSpec.lua:1106-1114's
-    // ResolveGrantedPassiveNodes name-matching fallback): an amulet anoint like
-    // `{enchant}Allocates Zarokh's Gift` allocates the socket node, so the jewel in that
-    // socket enters the calculation too.
-    // ponytail: the only named socket in the 0_5 tree is Zarokh's Gift (everything else
-    // is called Sinister Jewel Socket and goes through the Voices counting channel
-    // above); the parity gate will call this out when a future tree version adds more
-    // named sockets, switch to reading the name table from tree data at that point.
-    const NAMED_SOCKETS_0_5: [(&str, u32); 1] = [("zarokh's gift", 11184)];
-    let equipped_texts = out.iter().flat_map(|(_, item)| {
-        item.implicit_texts
-            .iter()
-            .chain(&item.modifier_texts)
-            .chain(&item.enchant_texts)
-    });
-    for text in equipped_texts {
-        if let Some(name) = text.trim().strip_prefix("Allocates ")
-            && let Some((_, node)) = NAMED_SOCKETS_0_5
-                .iter()
-                .find(|(n, _)| name.trim().eq_ignore_ascii_case(n))
-        {
-            sinister_allocated.insert(*node);
-        }
-    }
     let mut all_jewel_ids = jewel_ids;
     all_jewel_ids.extend(
         socket_items
             .into_iter()
-            .filter(|(node, _)| allocated.contains(node) || sinister_allocated.contains(node))
+            .filter(|(node, _)| allocated.contains(node))
             .map(|(_, item)| item),
     );
     all_jewel_ids.sort_unstable();
@@ -769,33 +734,30 @@ fn parse_items_and_slots(
     Ok((out, jewels, flask_charms, use_second_weapon_set))
 }
 
-/// Parses the "Allocates N Sinister Jewel socket(s)" mod → N (matching vendor
-/// ModParser.lua's `allocates (%d+) sinister jewel sockets?` →
-/// GrantedPassive SinisterJewelSockets). Returns None for any other mod text.
-fn sinister_socket_alloc_count(text: &str) -> Option<usize> {
-    let rest = text.trim().strip_prefix("Allocates ")?;
-    let (num, tail) = rest.split_once(' ')?;
-    matches!(
-        tail.trim().to_ascii_lowercase().as_str(),
-        "sinister jewel sockets" | "sinister jewel socket"
-    )
-    .then(|| num.parse().ok())?
-}
-
 /// Parses tree socket `<Socket nodeId="N" itemId="M"/>` → `(socket_node, item_id)` (itemId≠0).
 fn parse_socket_node_items(xml: &str) -> Result<Vec<(u32, u32)>, XmlError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
     let mut out = Vec::new();
+    let mut specs: Vec<Vec<(u32, u32)>> = Vec::new();
+    let mut active_spec: usize = 1;
     loop {
         match reader.read_event() {
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == "Tree" => {
+                if let Some(index) = attr_value(&e, b"activeSpec").and_then(|s| s.parse().ok()) {
+                    active_spec = index;
+                }
+            }
+            Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == "Spec" => {
+                specs.push(Vec::new());
+            }
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) if element_name(&e) == "Socket" => {
                 let node = attr_value(&e, b"nodeId").and_then(|v| v.parse::<u32>().ok());
                 let item = attr_value(&e, b"itemId").and_then(|v| v.parse::<u32>().ok());
                 if let (Some(node), Some(item)) = (node, item)
                     && item != 0
                 {
-                    out.push((node, item));
+                    specs.last_mut().unwrap_or(&mut out).push((node, item));
                 }
             }
             Ok(Event::Eof) => break,
@@ -803,7 +765,13 @@ fn parse_socket_node_items(xml: &str) -> Result<Vec<(u32, u32)>, XmlError> {
             _ => {}
         }
     }
-    Ok(out)
+    if specs.is_empty() {
+        return Ok(out);
+    }
+    // Match passive-node and attribute-override selection, including its
+    // out-of-range clamp. Other Specs remain stored, but are inactive.
+    let index = active_spec.saturating_sub(1).min(specs.len() - 1);
+    Ok(specs.swap_remove(index))
 }
 
 /// Parses the **raw text** of every `<Item id="N">…</Item>` into `id -> text block`
@@ -1000,31 +968,38 @@ pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewe
         .filter(|l| l.contains("in Radius also grant"))
         .map(strip_brace_tags)
         .collect();
-    // `N% increased Effect of Notable Passive Skills in Radius` (vendor
-    // ModParser.lua:6847): the last of multiple such lines on the same jewel wins (matching vendor's overwrite-on-write semantics).
-    let notable_effect_inc: u32 = text
-        .lines()
-        .map(str::trim)
-        .map(strip_brace_tags)
-        .filter_map(|l| {
-            l.strip_suffix("% increased Effect of Notable Passive Skills in Radius")
-                .and_then(|n| n.trim().parse::<u32>().ok())
-        })
-        .next_back()
-        .unwrap_or(0);
-    if grant_lines.is_empty() && notable_effect_inc == 0 {
+    let effect = |kind: &str| -> u32 {
+        let suffix = format!("% increased Effect of {kind} Passive Skills in Radius");
+        text.lines()
+            .map(str::trim)
+            .map(strip_brace_tags)
+            .filter_map(|line| {
+                line.strip_suffix(&suffix)
+                    .and_then(|n| n.trim().parse().ok())
+            })
+            .next_back()
+            .unwrap_or(0)
+    };
+    let notable_effect_inc = effect("Notable");
+    let small_effect_inc = effect("Small");
+    if grant_lines.is_empty() && notable_effect_inc == 0 && small_effect_inc == 0 {
         return None;
     }
-    let radius_label = text
-        .lines()
+    let lines: Vec<_> = text.lines().map(str::trim).map(strip_brace_tags).collect();
+    let radius_label = lines
+        .iter()
+        .filter_map(|line| line.strip_prefix("Upgrades Radius to "))
+        .next_back()
+        .or_else(|| lines.iter().find_map(|line| line.strip_prefix("Radius:")))
         .map(str::trim)
-        .find_map(|l| l.strip_prefix("Radius:").map(|r| r.trim().to_string()))
-        .filter(|s| !s.is_empty());
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
     Some(RadiusJewel {
         socket_node,
         radius_label,
         grant_lines,
         notable_effect_inc,
+        small_effect_inc,
     })
 }
 
@@ -1620,6 +1595,25 @@ Item Level: 80
                 _ => {}
             }
         }
+    }
+
+    #[test]
+    fn socket_items_follow_active_spec_without_merging_loadouts() {
+        let xml = r#"<Tree activeSpec="2">
+          <Spec><Sockets><Socket nodeId="10" itemId="1"/></Sockets></Spec>
+          <Spec><Sockets><Socket nodeId="10" itemId="2"/></Sockets></Spec>
+          <Spec/>
+        </Tree>"#;
+        assert_eq!(parse_socket_node_items(xml).unwrap(), [(10, 2)]);
+        assert_eq!(
+            parse_socket_node_items(&xml.replace("activeSpec=\"2\"", "activeSpec=\"1\"")).unwrap(),
+            [(10, 1)]
+        );
+        assert!(
+            parse_socket_node_items(&xml.replace("activeSpec=\"2\"", "activeSpec=\"3\""))
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]

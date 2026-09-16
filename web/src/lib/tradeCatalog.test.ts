@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import { categoryAffixPool, categorySearchMods, type TradeCatalog } from './tradeOptimizer';
+import { affixPool, combinationText, referenceBase, categoryAffixPool, categorySearchMods, type TradeCatalog } from './tradeOptimizer';
 import { scoreEquipment } from './equipmentScore';
 import { editableAffixPool } from './marketAffixEditor';
 
-const catalog = JSON.parse(readFileSync(new URL('../../../data/4.5.5.2/overlay/trade_catalog.json', import.meta.url), 'utf8')) as TradeCatalog;
+const version = readFileSync(new URL('../../../data/CURRENT', import.meta.url), 'utf8').trim();
+const catalog = JSON.parse(readFileSync(new URL(`../../../data/${version}/overlay/trade_catalog.json`, import.meta.url), 'utf8')) as TradeCatalog;
 const special = (id: string) => catalog.search_mods!.find(mod => mod.id === id)!;
 
 test('missing crafting exports recover numeric chance and individual passive options', () => {
@@ -61,4 +62,27 @@ test.each([
   expect(result.unscoredLines).toEqual([]);
   expect(result.complete).toBe(true);
   expect(result.matchedLines).toBe(2);
+});
+
+test('Time-Lost probes use radius bases and independent radius spawn pools', () => {
+  const base = referenceBase(catalog, 'Jewel@123', 'Rarity: RARE\nOld\nEmerald', undefined, 100, 'radius')!;
+  expect(base.tags).toContain('radius_jewel');
+  expect(base.radius).toBe('Small');
+  expect(combinationText(base, [], 100)).toContain('Radius: Small');
+  const radius = categoryAffixPool(catalog, 'jewel', 100, 100, 'radius');
+  const ordinary = categoryAffixPool(catalog, 'jewel', 100, 100, 'base');
+  expect(radius.some(mod => mod.lines.some(line => line.includes('Small Passive Skills in Radius')))).toBe(true);
+  expect(radius.some(mod => mod.id === 'jewel:JewelRadiusMediumSize')).toBe(true);
+  const spell = radius.find(mod => mod.id === 'jewel:JewelRadiusSpellDamage')!;
+  expect(spell.lines).toEqual(['Small Passive Skills in Radius also grant 2% increased Spell Damage']);
+  expect(spell.roll_lines).toEqual(['Small Passive Skills in Radius also grant (1-2)% increased Spell Damage']);
+  expect(combinationText(base, [spell], 100)).toContain(spell.stats[0].line);
+  expect(ordinary.some(mod => mod.id === 'jewel:JewelRadiusMediumSize')).toBe(false);
+  expect(affixPool(catalog, base, 100).every(mod => radius.includes(mod))).toBe(true);
+  expect(referenceBase(catalog, 'Jewel@123', `Rarity: RARE\nOld\n${base.name}`)?.name).toBe(base.name);
+  const specialRadius = categorySearchMods(catalog, 'jewel', 100, 'radius');
+  const specialBase = categorySearchMods(catalog, 'jewel', 100, 'base');
+  expect(specialRadius.some(mod => mod.jewel_types?.includes('radius'))).toBe(true);
+  expect(specialBase.every(mod => !mod.jewel_types || mod.jewel_types.includes('base'))).toBe(true);
+  expect(specialBase.flatMap(mod => mod.stats).some(stat => stat.line.includes('Passive Skills in Radius also grant'))).toBe(false);
 });

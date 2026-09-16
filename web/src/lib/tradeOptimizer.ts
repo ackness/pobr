@@ -12,6 +12,7 @@ export interface TradeBase {
   implicits: string[];
   domain?: string;
   affix_limit?: number;
+  radius?: string;
 }
 export interface TradeAffix {
   id: string;
@@ -41,6 +42,7 @@ export interface TradeSearchMod {
   id: string;
   source: 'alloy' | 'essence' | 'desecrated' | 'breach' | 'influence' | 'corrupted';
   categories: string[];
+  jewel_types?: JewelSearchType[];
   level: number;
   lines: string[];
   stats: TradeStatTemplate[];
@@ -75,9 +77,16 @@ export function basesForSlot(catalog: TradeCatalog, slot: string): TradeBase[] {
   });
 }
 
+export type JewelSearchType = 'base' | 'radius';
+
+export function jewelSearchType(base: TradeBase): JewelSearchType {
+  return base.tags.includes('radius_jewel') ? 'radius' : 'base';
+}
+
 /** The base is an internal probe reference, never a market base restriction. */
-export function referenceBase(catalog: TradeCatalog, slot: string, itemText = '', category?: string, maxLevel = 100): TradeBase | undefined {
-  const available = basesForSlot(catalog, slot);
+export function referenceBase(catalog: TradeCatalog, slot: string, itemText = '', category?: string, maxLevel = 100, jewelType?: JewelSearchType): TradeBase | undefined {
+  const available = basesForSlot(catalog, slot).filter(base => !jewelType || jewelSearchType(base) === jewelType)
+    .sort((a, b) => slot.startsWith('Jewel@') ? a.tags.length - b.tags.length : 0);
   const lines = new Set(itemText.split('\n').map(line => line.trim()));
   const equipped = available.find(base => lines.has(base.name));
   const searchCategory = category ?? equipped?.category;
@@ -85,14 +94,15 @@ export function referenceBase(catalog: TradeCatalog, slot: string, itemText = ''
     : available.find(base => base.level <= maxLevel && (!searchCategory || base.category === searchCategory));
 }
 
-export function categoryAffixPool(catalog: TradeCatalog, category: string, itemLevel = 100, maxLevel = 100): TradeAffix[] {
-  return [...new Map(catalog.bases.filter(base => base.category === category && base.level <= maxLevel)
+export function categoryAffixPool(catalog: TradeCatalog, category: string, itemLevel = 100, maxLevel = 100, jewelType?: JewelSearchType): TradeAffix[] {
+  return [...new Map(catalog.bases.filter(base => base.category === category && base.level <= maxLevel && (!jewelType || jewelSearchType(base) === jewelType))
     .flatMap(base => affixPool(catalog, base, itemLevel)).map(mod => [mod.id, mod])).values()];
 }
 
 /** PoB2 and GGG crafting categories apply independently of natural spawn weights. */
-export function categorySearchMods(catalog: TradeCatalog, category: string, itemLevel = 100): TradeSearchMod[] {
-  return (catalog.search_mods ?? []).filter(mod => mod.categories.includes(category) && mod.level <= itemLevel);
+export function categorySearchMods(catalog: TradeCatalog, category: string, itemLevel = 100, jewelType?: JewelSearchType): TradeSearchMod[] {
+  return (catalog.search_mods ?? []).filter(mod => mod.categories.includes(category) && mod.level <= itemLevel
+    && (!jewelType || !mod.jewel_types || mod.jewel_types.includes(jewelType)));
 }
 
 /** First matching spawn weight wins, including a zero-weight exclusion (PoB2 semantics). */
@@ -117,7 +127,7 @@ export function combinationLegal(mods: TradeAffix[], limit = 3): boolean {
 
 export function combinationText(base: TradeBase, mods: TradeAffix[], itemLevel: number): string {
   const header = base.affix_limit === 1 ? ['Rarity: MAGIC', base.name] : ['Rarity: RARE', 'Upgrade Reference', base.name];
-  return [...header, `Item Level: ${itemLevel}`,
+  return [...header, `Item Level: ${itemLevel}`, ...(base.radius ? [`Radius: ${base.radius}`] : []),
     `Implicits: ${base.implicits.length}`, ...base.implicits, ...mods.flatMap(mod => mod.lines)].join('\n');
 }
 

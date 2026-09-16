@@ -335,17 +335,37 @@ Scope limits:
   shadowed rules. This cannot prove disjoint regexes for every possible input.
   Modifier text and equipment/passive `SourceId` attribution remain independent.
 
+For a complete example, see the common rule
+`body_armour_grants_reduced_crit_damage_bonus_100`. Its historical ID is preserved
+for overrides, but the value is now captured rather than fixed at 100. PoB2's
+`ItemCondition { Body Armour, NORMAL }` maps to the existing build-derived
+`NormalBodyArmourEquipped` condition. The consumer is
+`defence::calc_crit_extra_reduction`, called by `perform::fill_mechanics`; it clamps
+the summed bonus reduction to 0..100 and feeds defensive output/EHP. The full
+Build regression in
+[`equipment_affix_effects.rs`](../crates/pobr-build/tests/skills/equipment_affix_effects.rs)
+checks absent/normal/magic/rare/unique chests, six roll values, both active and
+golden data, and item `SourceId`. The precompile check test links the parsed rule
+ID to its common-file hash; the WASM contract and browser roundtrip tests cover
+loading and equipment edits. Parser-oracle agreement and these formula assertions
+do not certify unrelated rules or replace a version-matched full Build oracle.
+
 **Step 2 — regenerate the precompiled corpus** (only if your edit changes how
 existing lines parse — e.g. a new `special_mods` entry that now matches a line
 already in the corpus):
 
 ```bash
-cargo run -p precompile-mods -- --data data/4.5.0.3.4 --report
+cargo run -p precompile-mods -- --data "data/$(cat data/CURRENT)" --report
 ```
 
-Commit the regenerated `data/4.5.0.3.4/generated/parsed_mods.json` and
-`parse-coverage.json`. The committed coverage is golden-checked, so a stale
-product fails CI.
+Use the active version from `data/CURRENT` for release artifacts and commit its
+regenerated `generated/parsed_mods.json` and `parse-coverage.json` when changed.
+The committed active coverage is golden-checked, so a stale product fails CI.
+Validate shared rules against the pinned calculation-golden version too, without
+rewriting historical artifacts to absorb unrelated parser changes. Production
+`ParseCtx` uses the compiled rules; `parsed_mods.json` is currently an offline
+regression artifact, not a runtime cache loader. `ModCache` is an in-memory memo
+whose lifetime must stay within one immutable rule snapshot.
 
 **Step 3 — run the relevant tests:**
 

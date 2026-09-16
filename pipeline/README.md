@@ -127,11 +127,15 @@ pipeline/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
 
 ## 扩展 / 升版
 
-- 新 PoE2 版本：**`pipeline/bump-version.sh` 一条命令**（查补丁号 → 下载 → 树/vendor 对齐 →
-  regen-all（含 test-pin bless）→ 推进 CURRENT/DATA_VERSION → zh-CN/web 同步 → 定向验证），
-  末尾打印剩余人工决策（golden 翻转、引擎 delta triage）。分步等价操作见脚本头注释。
-  品质域要求预先准备该版本的[来源收据](gem-quality/README.md#更新版本或原始表)；
-  缺失或输入字节变化时会在 regen-all 中止，核对完成后用 `--patch <version> --skip-download` 重跑。
+- 新 PoE2 版本：**`bash pipeline/bump-version.sh` 一条命令**自动查询最新补丁，已是最新时直接退出；
+  有更新则下载 → 树/vendor 对齐 → 品质兼容检查 → regen-all（含 test-pin bless）→
+  zh-CN / 完整词条审计 → 多版本、gamedata 与固定 golden 验证 → 推进 `data/CURRENT` → Web 同步。
+  `DATA_VERSION` 编译默认值直接读取 `data/CURRENT`，无需修改 Rust；运行时仍支持环境变量覆盖。
+  vendor 树路径由其 `GameVersions.lua` 选择，升级不再修改 `TreeData/0_5` 字面量。
+  品质数值变化和表内索引变动自动继承已验证的稳定 ID / 作用域决定，生成新[来源收据](gem-quality/README.md#更新版本或原始表)。
+  新效果、属性身份或作用域变化会输出诊断并中止，核对后用 `--patch <version> --skip-download` 重跑。
+  数值 / 词条文本更新复用已实现机制；新的计算语义仍需实现。vendor pin 和数值 golden 保持显式选择，
+  脚本不会把最新社区提交自动当作与游戏补丁匹配，也不在应用启动时联网改写数据。
 - 新数据域：在 `config.json` 的 `tables` 增表/列，并在 `pobr-data-adapter` 增对应适配器。
 - **CDN 只保留当前补丁**：GGG patch CDN 会下线旧版本（M1-W0 时 4.5.0.3.4 已 404）。`.cache/`
   里已缓存的 bundle 可继续离线导出**既有表的全部列**（整张 `.datc64` 在同一 bundle 里）；

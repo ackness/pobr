@@ -20,7 +20,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT"
 
-DATA_VER="$(cat data/CURRENT 2>/dev/null | tr -d '[:space:]' || echo 4.5.0.3.4)"
+DATA_VER="${POBR_DATA_VERSION:-$(cat data/CURRENT)}"
 RULES="data/$DATA_VER/overlay/mod_parser_rules.json"
 VENDOR_DIR="vendor/PathOfBuilding-PoE2"
 VENDOR_REPO="https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2.git"
@@ -144,7 +144,7 @@ cmd_lua() {
 cmd_versions() {
   say "已入库数据版本 + 多版本无关性 smoke"
   echo "data/ 版本目录："; ls -d data/[0-9]*/ 2>/dev/null | sed 's#data/##; s#/##' | sed 's/^/    /'
-  echo "活动默认（data/CURRENT / pobr_data::DATA_VERSION）：${DATA_VER}（= golden 校验版本）"
+  echo "本次数据版本：${DATA_VER}（golden 独立固定，不随活动版本推进）"
   echo "切到更新版本运行（零代码改动）：export POBR_DATA_VERSION=<ver>  或  写 data/CURRENT"
   echo "→ multi_version smoke（对每个版本 BuildData::load + calc）："
   cargo test -p pobr-build --test parity multi_version -- --nocapture 2>&1 \

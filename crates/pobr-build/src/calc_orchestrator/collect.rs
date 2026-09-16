@@ -2,6 +2,81 @@
 
 use super::*;
 
+/// Resolve item-granted sockets using the selected tree's stable IDs and names.
+/// Numeric node IDs and the number of available sockets belong to the data pack.
+pub(crate) fn resolve_granted_socket_jewels(build: &Build, data: &BuildData) -> Option<Build> {
+    use pobr_data::catalog::PassiveNodeKind;
+
+    if build.granted_socket_jewels.is_empty() {
+        return None;
+    }
+    let nodes = data.passive_nodes_for(build.tree_version.as_deref());
+    let mut sinister: Vec<_> = nodes
+        .values()
+        .filter(|node| node.kind == PassiveNodeKind::JewelSocket)
+        .filter_map(|node| {
+            // GGG IDs can have disambiguating trailing underscores; vendor uses
+            // the corresponding voices_jewel_slot<N> aliases in the same order.
+            let ordinal = node
+                .id
+                .strip_prefix("voices_jewel_slot")?
+                .trim_end_matches('_')
+                .parse::<usize>()
+                .ok()?;
+            Some((ordinal, node.skill))
+        })
+        .collect();
+    sinister.sort_unstable();
+    let count = build
+        .jewels
+        .iter()
+        .flat_map(|item| item.implicit_texts.iter().chain(&item.modifier_texts))
+        .filter_map(|text| {
+            let (number, suffix) = text.trim().strip_prefix("Allocates ")?.split_once(' ')?;
+            matches!(
+                suffix.trim().to_ascii_lowercase().as_str(),
+                "sinister jewel socket" | "sinister jewel sockets"
+            )
+            .then(|| number.parse::<usize>().ok())
+            .flatten()
+        })
+        .fold(0usize, usize::saturating_add);
+    let mut granted: std::collections::HashSet<u32> = sinister
+        .into_iter()
+        .take(count)
+        .map(|(_, skill)| skill)
+        .collect();
+    for text in build.items.values().flat_map(|item| {
+        item.implicit_texts
+            .iter()
+            .chain(&item.modifier_texts)
+            .chain(&item.enchant_texts)
+    }) {
+        if let Some(name) = text.trim().strip_prefix("Allocates ")
+            && let Some(node) = nodes
+                .values()
+                .filter(|node| node.kind == PassiveNodeKind::JewelSocket)
+                .filter(|node| {
+                    node.name
+                        .as_ref()
+                        .is_some_and(|n| n.eq_ignore_ascii_case(name.trim()))
+                })
+                .min_by_key(|node| node.skill)
+        {
+            granted.insert(node.skill);
+        }
+    }
+    let mut resolved = build.clone();
+    for (node, item, radius) in &build.granted_socket_jewels {
+        if granted.contains(node) {
+            resolved.jewels.push(item.clone());
+            resolved.radius_jewels.extend(radius.iter().cloned());
+        }
+    }
+    resolved.granted_socket_jewels.clear();
+    Some(resolved)
+}
+
 /// Derives [`CharacterBase`] from class name + level (attributes come from the class's
 /// starting values; tree/item attribute boosts go through the modifier pipeline, this
 /// entry point only lands the inherent derivation). Returns `None` for an unknown class
@@ -302,7 +377,7 @@ pub(crate) struct RadiusJewelExpansion<'a> {
     /// Allocated Notable node ids within radius (includes attribute notables; the
     /// effect-scaling consumer filters further on its own).
     notable_nodes: Vec<u32>,
-    small_count: usize,
+    small_nodes: Vec<u32>,
 }
 
 /// Runs radius geometric expansion on every radius jewel (circle center = socket node
@@ -310,8 +385,8 @@ pub(crate) struct RadiusJewelExpansion<'a> {
 ///
 /// Candidates are filtered only from the **allocated** node set; a jewel with missing
 /// socket coordinates or a failed geometry computation is skipped (nothing is invented).
-/// Shared between [`radius_jewel_grant_texts`] (grant-mod expansion) and
-/// [`radius_jewel_notable_effect_copies`] (notable effect scaling).
+/// Shared between [`radius_jewel_grant_modifiers`] (grant-mod expansion) and
+/// [`passive_effect_copies`] (notable effect scaling).
 pub(crate) fn radius_jewel_expansions<'a>(
     build: &'a Build,
     data: &BuildData,
@@ -332,13 +407,14 @@ pub(crate) fn radius_jewel_expansions<'a>(
     // contributes +7 (critModList has exactly one entry `7 @ Tree:32763`, CritChance
     // 8.55). PoBR's parse layer already strips non-active-set exclusive points, so using
     // `tree.allocated_nodes` directly here is equivalent.
+    let tree_nodes = data.passive_nodes_for(build.tree_version.as_deref());
     let allocated: std::collections::HashSet<u32> =
         build.tree.allocated_nodes.iter().map(|n| n.0).collect();
 
     // Position table: the socket itself + every allocated node (candidates are filtered only from the allocated set).
     let mut positions: std::collections::HashMap<u32, (f64, f64)> =
         std::collections::HashMap::new();
-    for (&skill, def) in &data.passive_nodes {
+    for (&skill, def) in tree_nodes {
         if let (Some(x), Some(y)) = (def.x, def.y)
             && allocated.contains(&skill)
         {
@@ -350,18 +426,20 @@ pub(crate) fn radius_jewel_expansions<'a>(
     for jewel in &build.radius_jewels {
         // The socket's coordinates must be available, or the circle center can't be
         // determined (skipped, nothing invented).
-        let Some(socket_pos) =
-            data.passive_nodes
-                .get(&jewel.socket_node)
-                .and_then(|d| match (d.x, d.y) {
-                    (Some(x), Some(y)) => Some((x, y)),
-                    _ => None,
-                })
+        let Some(socket_pos) = tree_nodes
+            .get(&jewel.socket_node)
+            .and_then(|d| match (d.x, d.y) {
+                (Some(x), Some(y)) => Some((x, y)),
+                _ => None,
+            })
         else {
             continue;
         };
 
-        let radius = parse_jewel_radius(jewel.radius_label.as_deref());
+        let radius = JewelRadius::Custom(
+            parse_jewel_radius(jewel.radius_label.as_deref())
+                .units_for_tree(&data.jewel_radii, build.tree_version.as_deref()),
+        );
 
         // Merge the socket's coordinates into the position table (compute excludes the socket itself).
         let mut pos = positions.clone();
@@ -387,138 +465,130 @@ pub(crate) fn radius_jewel_expansions<'a>(
         // `node.type == "Normal" and not node.isAttribute` (PoB2 ModParser.lua:6855-6857;
         // the corresponding tree.lua node carries `isAttribute=true`).
         let mut notable_nodes: Vec<u32> = Vec::new();
-        let mut small_count = 0usize;
+        let mut small_nodes = Vec::new();
         for &skill in &effect.affected_nodes {
-            let Some(def) = data.passive_nodes.get(&skill) else {
+            let Some(def) = tree_nodes.get(&skill) else {
                 continue;
             };
+            if def.ascendancy_id.is_some() {
+                continue;
+            }
             match def.kind {
                 pobr_data::catalog::PassiveNodeKind::Notable => notable_nodes.push(skill),
                 pobr_data::catalog::PassiveNodeKind::Normal if !is_attribute_node(def) => {
-                    small_count += 1;
+                    small_nodes.push(skill);
                 }
                 _ => {}
             }
         }
         notable_nodes.sort_unstable();
+        small_nodes.sort_unstable();
         out.push(RadiusJewelExpansion {
             jewel,
             notable_nodes,
-            small_count,
+            small_nodes,
         });
     }
     out
 }
 
-/// The numeric scaling semantics of vendor's `ModStore:ScaleAddMod` (ModStore.lua:45-80):
-/// `m_modf(round(value * scale, 2))` — rounds to two decimal places first, then
-/// **truncates** (toward zero, e.g. `30.5 → 30`, `14.76 → 14`).
+/// ScaleAddMod's default integer branch: round to two decimal places, then
+/// truncate toward zero. Scaling that needs the precision exception table uses
+/// the core ScaleAddMod primitive instead.
 pub(crate) fn vendor_scale_mod_value(value: f64, scale: f64) -> f64 {
     let rounded = (value * scale * 100.0).round() / 100.0;
     rounded.trunc()
 }
 
-/// Scales the **first** numeric token in a mod's text via [`vendor_scale_mod_value`] and
-/// writes it back (e.g. `10% increased X` ×1.22 → `12% increased X`). Returns None when
-/// there's no numeric token (flag-type mods aren't scaled, matching vendor's semantics —
-/// a non-numeric mod is AddMod'd as-is).
-pub(crate) fn scale_leading_number(text: &str, scale: f64) -> Option<String> {
-    let start = text.find(|c: char| c.is_ascii_digit())?;
-    let end = text[start..]
-        .find(|c: char| !c.is_ascii_digit() && c != '.')
-        .map(|i| start + i)
-        .unwrap_or(text.len());
-    let value: f64 = text[start..end].parse().ok()?;
-    let scaled = vendor_scale_mod_value(value, scale);
-    Some(format!("{}{}{}", &text[..start], scaled, &text[end..]))
-}
-
-/// Expands every radius jewel's `also grant` mod by radius geometry into global modifier text.
-///
-/// For each jewel: with the socket node's coordinates as the circle center, filters
-/// **allocated** nodes by the `Radius:` tier, tallied by kind (notable /
-/// small=normal); each `also grant` line is injected `count` times as grant mod text.
-/// This replicates PoB2's accumulation effect of "each allocated node of the matching
-/// kind within radius gets its own copy of the grant".
-///
-/// Notable effect scaling (a Time-Lost jewel's "N% increased Effect of Notable Passive
-/// Skills in Radius"): vendor writes the grant mod into the node's modList and then
-/// applies a whole-list `ScaleAddList` to Notable nodes (CalcSetup.lua:246-275),
-/// equivalent to scaling the granted value by ×(1+inc/100) (truncated,
-/// [`vendor_scale_mod_value`]). On overlapping radii, vendor's last write on the same
-/// node overwrites to a single effect; PoBR approximates it as the granting jewel's own
-/// effect (no overlap in the current corpus).
-pub(crate) fn radius_jewel_grant_texts(build: &Build, data: &BuildData) -> Vec<String> {
-    let mut out: Vec<String> = Vec::new();
-    for exp in radius_jewel_expansions(build, data) {
-        let notable_scale = 1.0 + f64::from(exp.jewel.notable_effect_inc) / 100.0;
+/// Parse each radius grant once and scale its modifiers for each allocated node.
+/// Structured scaling preserves multiple values and the data pack's precision
+/// rules; rewriting only the first number in the source text loses both.
+pub(crate) fn radius_jewel_grant_modifiers(build: &Build, data: &BuildData) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    let expansions = radius_jewel_expansions(build, data);
+    let effects = radius_node_effects(&expansions);
+    let global_small = small_passive_effect_inc(build, data);
+    let ctx = engine_ctx(data);
+    for exp in &expansions {
         for line in &exp.jewel.grant_lines {
             let Some((kind, granted)) = parse_grant_line(line) else {
                 continue;
             };
-            let (count, text) = match kind {
-                GrantTargetKind::Notable => {
-                    let scaled = if exp.jewel.notable_effect_inc > 0 {
-                        scale_leading_number(&granted, notable_scale).unwrap_or(granted)
-                    } else {
-                        granted
-                    };
-                    (exp.notable_nodes.len(), scaled)
-                }
-                GrantTargetKind::Small => (exp.small_count, granted),
+            if !gate_parses(ctx, &granted) {
+                continue;
+            }
+            let Ok(parsed) = ctx.parse(&granted) else {
+                continue;
             };
-            for _ in 0..count {
-                out.push(text.clone());
+            let nodes = match kind {
+                GrantTargetKind::Notable => &exp.notable_nodes,
+                GrantTargetKind::Small => &exp.small_nodes,
+            };
+            for node in nodes {
+                let inc = f64::from(*effects.get(node).unwrap_or(&0))
+                    + if kind == GrantTargetKind::Small {
+                        global_small
+                    } else {
+                        0.0
+                    };
+                for modifier in &parsed.mods {
+                    let mut scaled = pobr_core::ModDb::new();
+                    scaled.scale_add_mod(modifier.clone(), 1.0 + inc / 100.0, &data.high_precision);
+                    mods.extend(scaled.iter_mods().cloned());
+                }
             }
         }
     }
-    out
+    mods
 }
 
-/// The scaled copy of a radius jewel's Notable effect against a **node's own mods**.
-///
-/// Vendor CalcSetup.lua:246-275: applies a whole-list `ScaleAddList ×(1+inc/100)`
-/// (value using [`vendor_scale_mod_value`]'s truncation semantics) to every
-/// "Notable and non-attribute and non-ascendancy" node's modList within radius. PoBR's
-/// equivalent: the base copy is already injected at 1.0 (by add_passive_nodes), and here
-/// a **numeric delta copy** is appended, `trunc(round(v×scale,2)) − v` (BASE/INC; MORE's
-/// multiplicative scaling has no additive equivalent, and tree notables currently have
-/// no MORE-type numeric mods, so skipped). On overlapping radii from multiple jewels,
-/// the same node's last write overwrites to a single effect (matching vendor's
-/// `localNotableIncEffect = mod.value` semantics).
-pub(crate) fn radius_jewel_notable_effect_copies(
+/// Local effects overwrite in jewel order, matching PoB2's node-local values.
+fn radius_node_effects(
+    expansions: &[RadiusJewelExpansion<'_>],
+) -> std::collections::BTreeMap<u32, u32> {
+    let mut effects = std::collections::BTreeMap::new();
+    for exp in expansions {
+        for (nodes, inc) in [
+            (&exp.notable_nodes, exp.jewel.notable_effect_inc),
+            (&exp.small_nodes, exp.jewel.small_effect_inc),
+        ] {
+            if inc > 0 {
+                for node in nodes {
+                    effects.insert(*node, inc);
+                }
+            }
+        }
+    }
+    effects
+}
+
+/// Scale each node once: global and local small effects add before truncation.
+pub(crate) fn passive_effect_copies(
     build: &Build,
     data: &BuildData,
     passive_nodes: &[AllocatedNode],
 ) -> Result<Vec<Modifier>, BuildError> {
-    let mut node_effect: std::collections::BTreeMap<u32, u32> = Default::default();
-    for exp in radius_jewel_expansions(build, data) {
-        if exp.jewel.notable_effect_inc == 0 {
-            continue;
-        }
-        for &n in &exp.notable_nodes {
-            node_effect.insert(n, exp.jewel.notable_effect_inc);
-        }
-    }
-    if node_effect.is_empty() {
-        return Ok(Vec::new());
-    }
+    let node_effect = radius_node_effects(&radius_jewel_expansions(build, data));
+    let global_small = small_passive_effect_inc(build, data);
+    let tree_nodes = data.passive_nodes_for(build.tree_version.as_deref());
     let mut out: Vec<Modifier> = Vec::new();
     for node in passive_nodes {
-        let Some(&inc) = node_effect.get(&node.node_id.0) else {
+        let Some(def) = tree_nodes.get(&node.node_id.0) else {
             continue;
         };
-        let Some(def) = data.passive_nodes.get(&node.node_id.0) else {
-            continue;
-        };
-        // vendor's scaling condition (CalcSetup.lua:269): Notable and non-attribute and non-ascendancy.
-        if def.kind != pobr_data::catalog::PassiveNodeKind::Notable
-            || def.ascendancy_id.is_some()
-            || is_attribute_node(def)
-        {
+        if def.ascendancy_id.is_some() || is_attribute_node(def) {
             continue;
         }
-        let scale = 1.0 + f64::from(inc) / 100.0;
+        let inc = f64::from(*node_effect.get(&node.node_id.0).unwrap_or(&0))
+            + if def.kind == pobr_data::catalog::PassiveNodeKind::Normal {
+                global_small
+            } else {
+                0.0
+            };
+        if inc <= 0.0 {
+            continue;
+        }
+        let scale = 1.0 + inc / 100.0;
         let ingest = pobr_core::passive::ingest_passive_nodes_with_ctx(
             std::slice::from_ref(node),
             engine_ctx(data),
@@ -531,7 +601,13 @@ pub(crate) fn radius_jewel_notable_effect_copies(
                 .filter(|m| matches!(m.mod_type, ModType::Base | ModType::Inc))
                 .filter_map(|m| match m.value {
                     pobr_core::ModValue::Number(v) => {
-                        let delta = vendor_scale_mod_value(v, scale) - v;
+                        let delta = pobr_core::calc::buff_pass::scale_value(
+                            &data.high_precision,
+                            m.name.as_str(),
+                            m.mod_type,
+                            v,
+                            scale,
+                        ) - v;
                         (delta != 0.0).then_some(Modifier {
                             value: pobr_core::ModValue::Number(delta),
                             ..m
@@ -598,6 +674,7 @@ pub(crate) fn filter_item_parseable(
     item: &Item,
     ctx: ParseCtx<'_>,
     session: &mut CalculationSession,
+    dedicated_texts: &[String],
 ) -> Item {
     // These sources have dedicated orchestration consumers even when they do
     // not yield ordinary ModDb modifiers. The Adorned's real clipboard/XML
@@ -622,6 +699,7 @@ pub(crate) fn filter_item_parseable(
         texts.retain(|text| {
             let accepted = gate_parses(ctx, text);
             if !accepted
+                && !dedicated_texts.contains(text)
                 && parse_gem_property_bonus(text).is_none()
                 && !adorned_pair.is_some_and(|pair| pair.contains(text))
             {

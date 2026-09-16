@@ -15,6 +15,10 @@ export const LANGS: Lang[] = ['en-US', 'zh-TW', 'zh-CN'];
 type Entry = { 'en-US': string; 'zh-TW': string; 'zh-CN': string };
 
 const DICT = {
+  'trade.jewelType': { 'en-US': 'Jewel type', 'zh-TW': '珠寶類型', 'zh-CN': '珠宝类型' },
+  'trade.baseJewel': { 'en-US': 'Basic jewels', 'zh-TW': '普通珠寶', 'zh-CN': '普通珠宝' },
+  'trade.radiusJewel': { 'en-US': 'Time-Lost jewel search', 'zh-TW': '時迭珠寶搜尋', 'zh-CN': '时迭珠宝搜索' },
+  'trade.radiusHint': { 'en-US': 'Scores use the allocated passives around this socket in the active weapon set. New jewels use Small radius; an equipped jewel retains its radius upgrades. Paste a market item to compare the complete jewel.', 'zh-TW': '依此插槽周圍、目前武器組已配置的天賦評分。新珠寶以小範圍估算，已裝備珠寶保留半徑升級。貼上市集物品可比較完整珠寶。', 'zh-CN': '按此插槽周围、当前武器组已分配的天赋评分。新珠宝以小范围估算，已装备珠宝保留半径升级。粘贴市集物品可比较完整珠宝。' },
   'trade.goalHelp': { 'en-US': 'How this goal is evaluated', 'zh-TW': '目標如何評估', 'zh-CN': '目标如何评估' },
   'items.position': { 'en-US': 'Equipment position', 'zh-TW': '裝備位置', 'zh-CN': '装备位置' },
   'skills.editMain': { 'en-US': 'Edit main skill', 'zh-TW': '編輯主技能', 'zh-CN': '编辑主技能' },

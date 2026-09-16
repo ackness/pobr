@@ -12,7 +12,7 @@ import { useSkillName } from '../../hooks/useSkillName';
 import { bindT, slotLabel, statNameLabel, type Lang, type UiKey } from '../../lib/i18n';
 import { OBJECTIVE_PRESETS, scoreOf, type Objective } from '../../lib/optimize';
 import { REALM_DEFAULT_LEAGUE, REALM_LEAGUES, TRADE_CURRENCIES, buildTradeUrl, gemTradeUrl, loadTradeLeagues, type TradeCurrency, type TradePriceCap, type TradeRealm } from '../../lib/trade';
-import { affixPool, basesForSlot, categoryAffixPool, categorySearchMods, loadTradeCatalog, optimizeTradeAffixes, referenceBase, type TradeCatalog } from '../../lib/tradeOptimizer';
+import { affixPool, basesForSlot, categoryAffixPool, categorySearchMods, loadTradeCatalog, optimizeTradeAffixes, referenceBase, jewelSearchType, type JewelSearchType, type TradeCatalog } from '../../lib/tradeOptimizer';
 import { planGemUpgrades } from '../../lib/tradeMarket';
 import { AppSelect } from '../shared/AppSelect';
 import { CopyButton } from '../shared/CopyButton';
@@ -31,7 +31,7 @@ type SlotResult = PositionAnalysis;
 
 /** Local build analysis produces official search links; login and buying stay on the market. */
 export function TradePanel({ session, lang, focus, onSkills, onTree, initialItemText }: {
-  session: BuildSession; lang: Lang; focus?: {slot:string; nonce:number};
+  session: BuildSession; lang: Lang; focus?: {slot:string; nonce:number; jewelType?: JewelSearchType};
   onSkills?: (group:number) => void; onTree?: () => void;
   initialItemText?: string;
 }) {
@@ -44,6 +44,7 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
   const [catalogError, setCatalogError] = useState(false);
   const [jewelSockets, setJewelSockets] = useState<number[]>([]);
   const [selected, setSelected] = useState('weapon1');
+  const [jewelTypes, setJewelTypes] = useState<Record<string, JewelSearchType>>({});
   const [categories, setCategories] = useState<Record<string, string>>({});
   const [realm, setRealm] = useState<TradeRealm>(() => localStorage.getItem(REALM_KEY) === 'cn' ? 'cn' : 'intl');
   const [league, setLeague] = useState(() => localStorage.getItem(leagueKey(realm)) ?? REALM_DEFAULT_LEAGUE[realm]);
@@ -74,7 +75,10 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
   const analysisRef = useRef<HTMLDivElement>(null);
   const goalRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  useEffect(() => { if (focus) setSelected(focus.slot); }, [focus]);
+  useEffect(() => { if (focus) {
+    setSelected(focus.slot);
+    if (focus.jewelType) setJewelTypes(prev => ({ ...prev, [focus.slot]: focus.jewelType! }));
+  } }, [focus]);
   const mainGroup = session.calcParams.main_socket_group ?? session.calc?.main_skill?.group_index ?? 0;
 
   useEffect(() => {
@@ -96,7 +100,7 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
   // Market-only changes update links immediately; they do not rerun local calculations.
   useEffect(() => {
     abortRef.current?.abort(); setResults({}); setAllProgress(null); setRequiredStats({});
-  }, [goal, session.currentRequest, categories]);
+  }, [goal, session.currentRequest, categories, jewelTypes]);
   useEffect(() => () => abortRef.current?.abort(), []);
 
   const slots = [...TRADE_SLOTS, ...jewelSockets.filter(node => session.allocatedNodes.includes(node)).map(node => `Jewel@${node}`)];
@@ -105,7 +109,7 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
   ].map(item => [item.slot, item.text]));
   const slotNames = useItemDisplayNames(slots.map(slot => bySlot.get(slot)), lang);
   const labelOf = (slot: string) => slot === 'gems' ? tt('trade.gems') : slot.startsWith('Jewel@') ? `${tt('trade.jewelSocket')} ${slot.slice(6)}` : slotLabel(lang, slot);
-  const baseOf = (slot: string) => catalog ? referenceBase(catalog, slot, bySlot.get(slot), categories[slot], session.character?.level) : undefined;
+  const baseOf = (slot: string) => catalog ? referenceBase(catalog, slot, bySlot.get(slot), categories[slot], session.character?.level, jewelTypes[slot]) : undefined;
   const hasEquipment = slots.some(slot => bySlot.has(slot));
   const visibleSlots = slots.filter(slot => showEmpty || !hasEquipment || bySlot.has(slot) || slot === selected || slot.startsWith('Jewel@'));
   const priceCap = useMemo<TradePriceCap | undefined>(() => {
@@ -154,8 +158,8 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
             // PoB2 Item:Craft derives affix requirements as floor(mod.level * 0.8).
             const itemLevel = Math.min(100, Math.ceil(((request.character?.level ?? 1) + 1) / 0.8) - 1);
             next = { category: base.category, weights: await optimizeTradeAffixes({
-              request, slot, base, pool: categoryAffixPool(catalog, base.category, itemLevel, request.character?.level), itemLevel,
-              searchMods: categorySearchMods(catalog, base.category, itemLevel),
+              request, slot, base, pool: categoryAffixPool(catalog, base.category, itemLevel, request.character?.level, slot.startsWith('Jewel@') ? jewelSearchType(base) : undefined), itemLevel,
+              searchMods: categorySearchMods(catalog, base.category, itemLevel, slot.startsWith('Jewel@') ? jewelSearchType(base) : undefined),
               objective, combinations: all || overview, combinationPool: affixPool(catalog, base, itemLevel),
               maxEvaluations: all || overview ? 768 : undefined, beamWidth: 6, ...options,
             }) };
@@ -285,6 +289,12 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
             onClick={() => void analyze([selected])}>{tt(running === selected ? 'opt.running' : weights || result?.gems ? 'trade.recalculate' : 'trade.analyze')}</button>
           {searchUrl && league.trim() && <a className="trade-primary trade-market-link" href={searchUrl} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}<span aria-hidden>↗</span></a>}</div>
         </header>
+        {selected.startsWith('Jewel@') && selectedBase && <div className="trade-range">
+          <AppSelect value={jewelSearchType(selectedBase)} ariaLabel={tt('trade.jewelType')}
+            options={[{ value: 'base', label: tt('trade.baseJewel') }, { value: 'radius', label: tt('trade.radiusJewel') }]}
+            onChange={value => setJewelTypes(prev => ({ ...prev, [selected]: value as JewelSearchType }))} />
+          {selectedBase.radius && <p>{tt('trade.radiusHint')}</p>}
+        </div>}
         {selected !== 'gems' && choices.length > 1 && <details className="trade-range">
           <summary>{tt('trade.changeType')}</summary><AppSelect value={selectedBase?.category ?? ''} ariaLabel={`${labelOf(selected)} ${tt('trade.category')}`}
             options={choices.map(category => ({ value: category, label: tt(`trade.category.${category}` as UiKey) }))}

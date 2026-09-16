@@ -320,16 +320,14 @@ pub(crate) fn apply_request_overrides(
         }
     }
     if let Some(jewels) = &req.jewels {
-        // Gating: only jewels in an allocated socket are accepted (matching
-        // XML import's parse_radius_jewels semantics).
+        // Explicit allocations can be resolved now. Item-granted sockets are
+        // resolved against the selected tree by the shared calculation path.
         let allocated: std::collections::HashSet<u32> =
             build.tree.allocated_nodes.iter().map(|n| n.0).collect();
         let mut plain = Vec::new();
         let mut radius = Vec::new();
+        build.granted_socket_jewels.clear();
         for jewel in jewels {
-            if !allocated.contains(&jewel.socket_node) {
-                continue;
-            }
             let text = localize_input_text(&jewel.text);
             let parsed = match parse_pob_xml_item(&text) {
                 Ok(p) => p,
@@ -341,8 +339,15 @@ pub(crate) fn apply_request_overrides(
                     continue;
                 }
             };
+            let radius_jewel = radius_jewel_from_text(jewel.socket_node, &text);
+            if !allocated.contains(&jewel.socket_node) {
+                build
+                    .granted_socket_jewels
+                    .push((jewel.socket_node, parsed, radius_jewel));
+                continue;
+            }
             plain.push(parsed);
-            if let Some(rj) = radius_jewel_from_text(jewel.socket_node, &text) {
+            if let Some(rj) = radius_jewel {
                 radius.push(rj);
             }
         }

@@ -960,7 +960,8 @@ const BASELINE_DEF_HIT10: usize = 450; // #13+#14 merged, measured 450/450 = 100
 // PassiveSpec.lua:1106-1114's sockets-name-match fallback), so the jewels in
 // that socket (blood-mage: Pandemonium Ornament -- CritChance INC 24 +
 // CritMult INC 25/28; abyssal: an ES/defence jewel in the same slot) were
-// dropped entirely. See xml_build.rs::NAMED_SOCKETS_0_5 for the fix.
+// dropped entirely. The current fix resolves names from the selected tree in
+// calc_orchestrator::collect::resolve_granted_socket_jewels.
 // blood-mage TotalDPS 0.880x->1.00x (CritChance 88.5->92.1, CritMult
 // 5.34->5.87, both exact), abyssal-lich TotalDPS 0.926x->1.00x
 // (CritChance/CritMult 1.00x; ES 12124->12437 vs golden 12434, MaxHit's five
@@ -1360,7 +1361,14 @@ fn collect_corpus_lines(dir: &Path, data: &BuildData) -> Vec<CorpusLine> {
     for item in item_slots {
         push_item(item, LineSource::Item, &mut lines);
     }
-    for jewel in &build.jewels {
+    // Preserve imported text coverage when activation is deferred until the
+    // selected tree data is available. This is a parser corpus, not an assertion
+    // that every stored socket is active in the calculation.
+    for jewel in build
+        .jewels
+        .iter()
+        .chain(build.granted_socket_jewels.iter().map(|(_, item, _)| item))
+    {
         push_item(jewel, LineSource::Jewel, &mut lines);
     }
     // Allocated tree-node stats (with `\n`-wrapped lines flattened out -- same convention as pobr_tree::split_lines).

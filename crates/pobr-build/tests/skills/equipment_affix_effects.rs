@@ -9,7 +9,7 @@ use pobr_data::monster::EnemyTier;
 use pobr_gamedata::{GameData, repo_data_root};
 
 fn data() -> BuildData {
-    BuildData::load(&GameData::new(repo_data_root().join("4.5.5.2"))).unwrap()
+    BuildData::load(&GameData::new(pobr_gamedata::current_data_dir())).unwrap()
 }
 
 fn item(base: &str, mods: &[&str]) -> Item {
@@ -53,6 +53,177 @@ fn run(build: &Build, data: &BuildData) -> CalculationSession {
 
 fn close(actual: f64, expected: f64) {
     assert!((actual - expected).abs() < 1e-7, "{actual} != {expected}");
+}
+
+#[test]
+fn granted_jewel_sockets_follow_selected_tree_data_after_renumbering() {
+    let mut data = data();
+    let mut nodes = std::collections::HashMap::new();
+    for (skill, id, name) in [
+        (900001, "voices_jewel_slot1__", "Sinister Jewel Socket"),
+        (900002, "voices_jewel_slot2", "Sinister Jewel Socket"),
+        (900003, "future_named_socket", "Future Gift"),
+    ] {
+        let node = serde_json::from_value(serde_json::json!({
+            "skill": skill, "id": id, "name": name, "kind": "jewel_socket"
+        }))
+        .unwrap();
+        nodes.insert(skill, node);
+    }
+    data.versioned_passive_nodes
+        .insert("future_tree".into(), nodes);
+    let xml = |allocated: &str, count: usize, grant: &str, version: &str| {
+        format!(
+            r#"<PathOfBuilding2><Build level="85" className="Warrior"/>
+        <Tree activeSpec="1"><Spec nodes="{allocated}" treeVersion="{version}"><Sockets>
+        <Socket nodeId="1234" itemId="1"/><Socket nodeId="900001" itemId="2"/>
+        <Socket nodeId="900002" itemId="3"/><Socket nodeId="900003" itemId="4"/>
+        </Sockets></Spec></Tree><Items activeItemSet="1">
+        <Item id="1">Rarity: UNIQUE
+Voices
+Diamond
+Implicits: 0
+Allocates {count} Sinister Jewel sockets</Item>
+        <Item id="2">Rarity: MAGIC
+Ruby
+Implicits: 0
++11 to maximum Life</Item>
+        <Item id="3">Rarity: MAGIC
+Ruby
+Implicits: 0
++23 to maximum Life</Item>
+        <Item id="4">Rarity: MAGIC
+Ruby
+Implicits: 0
++47 to maximum Life</Item>
+        <Item id="5">Rarity: RARE
+Test Amulet
+Amber Amulet
+Implicits: 0
+{grant}</Item>
+        <ItemSet id="1"><Slot name="Amulet" itemId="5"/></ItemSet>
+        </Items></PathOfBuilding2>"#
+        )
+    };
+    let life = |allocated, count, grant, version| {
+        let build = pobr_build::parse_build(&xml(allocated, count, grant, version)).unwrap();
+        run(&build, &data).output().life
+    };
+    let baseline = life("1234", 0, "", "future_tree");
+    let mut direct = pobr_build::parse_build(&xml("1234", 0, "", "future_tree")).unwrap();
+    direct.jewels.push(item("Ruby", &["+100 to maximum Life"]));
+    let life_scale = (run(&direct, &data).output().life - baseline) / 100.0;
+    assert!(life_scale > 0.0);
+    close(
+        life("1234", 1, "", "future_tree") - baseline,
+        11.0 * life_scale,
+    );
+    close(
+        life("1234", 99, "", "future_tree") - baseline,
+        34.0 * life_scale,
+    );
+    close(life("", 2, "", "future_tree"), baseline);
+    close(
+        life("1234", 2, "Allocates Future Gift", "future_tree") - baseline,
+        81.0 * life_scale,
+    );
+    close(
+        life("1234", 2, "Allocates Future Gift", "unknown_tree"),
+        baseline,
+    );
+    // An inactive tree can reuse the same socket with another item. Neither
+    // XML calculation nor the editable view may mix its jewels into this set.
+    let first = xml("1234", 1, "", "future_tree").replace(
+        "</Spec></Tree>",
+        "</Spec><Spec nodes=\"900001\" treeVersion=\"future_tree\"><Sockets><Socket nodeId=\"900001\" itemId=\"4\"/></Sockets></Spec></Tree>",
+    );
+    close(
+        run(&pobr_build::parse_build(&first).unwrap(), &data)
+            .output()
+            .life
+            - baseline,
+        11.0 * life_scale,
+    );
+    let second = first.replace("activeSpec=\"1\"", "activeSpec=\"2\"");
+    close(
+        run(&pobr_build::parse_build(&second).unwrap(), &data)
+            .output()
+            .life
+            - baseline,
+        47.0 * life_scale,
+    );
+}
+
+#[test]
+fn body_armour_granted_crit_reduction_requires_normal_chest() {
+    for version in [
+        pobr_data::DATA_VERSION,
+        pobr_data::GOLDEN_PARITY_DATA_VERSION,
+    ] {
+        let data = BuildData::load(&GameData::new(repo_data_root().join(version))).unwrap();
+        for rarity in [
+            None,
+            Some(ItemRarity::Normal),
+            Some(ItemRarity::Magic),
+            Some(ItemRarity::Rare),
+            Some(ItemRarity::Unique),
+        ] {
+            let mut baseline = build("SparkPlayer");
+            if let Some(rarity) = rarity {
+                let mut chest = item("Plate Vest", &[]);
+                chest.rarity = rarity;
+                baseline = baseline.set_item(EquipmentSlot::BodyArmour, chest);
+            }
+            let base = run(&baseline, &data);
+            for percent in [100, 0, 1, 50, 99, 150] {
+                let line = format!(
+                    "Body Armour grants Hits against you have {percent}% reduced Critical Damage Bonus"
+                );
+                let parsed = pobr_core::mod_parser::ParseCtx::with_engine(
+                    data.parser_rules.as_deref().unwrap(),
+                )
+                .parse(&line)
+                .unwrap();
+                assert_eq!(
+                    parsed.special_meta.unwrap().entry_id,
+                    "body_armour_grants_reduced_crit_damage_bonus_100"
+                );
+                let imported = pobr_core::parse_pob_xml_item(&format!(
+                    "Rarity: RARE\nRule Acceptance Ring\nSapphire Ring\nImplicits: 0\n{line}"
+                ))
+                .unwrap();
+                let result = run(
+                    &baseline.clone().set_item(EquipmentSlot::Ring1, imported),
+                    &data,
+                );
+                let expected = if rarity == Some(ItemRarity::Normal) {
+                    f64::from(percent.min(100))
+                } else {
+                    0.0
+                };
+                close(result.output().crit_extra_damage_reduction, expected);
+                close(result.output().life, base.output().life);
+                close(result.output().dps, base.output().dps);
+                if expected > 0.0 {
+                    assert!(result.output().total_ehp > base.output().total_ehp);
+                } else {
+                    close(result.output().total_ehp, base.output().total_ehp);
+                }
+                assert!(result.unsupported_modifier_texts().is_empty());
+                let modifiers = result.mods_named("ReduceCritExtraDamage");
+                assert_eq!(modifiers.len(), 1, "{version}: {line}");
+                assert_eq!(modifiers[0].value.as_number(), Some(f64::from(percent)));
+                let origin = modifiers[0].origin.as_ref().unwrap();
+                assert_eq!(
+                    origin.source_id.kind,
+                    pobr_data::source::SourceKind::ItemAffix
+                );
+                assert_eq!(origin.source_id.id, "item.ring1.explicit");
+                assert_eq!(origin.slot.as_deref(), Some("ring1"));
+                assert_eq!(origin.raw_text.as_deref(), Some(line.as_str()));
+            }
+        }
+    }
 }
 
 #[test]
@@ -508,4 +679,189 @@ fn clipboard_metadata_and_locally_consumed_defences_are_not_unsupported() {
     );
     close(result.output().energy_shield, 200.0);
     assert!(result.output().life > baseline.output().life);
+}
+
+#[test]
+fn time_lost_jewels_use_selected_geometry_radius_upgrades_and_combined_effects() {
+    let mut data = data();
+    let mut nodes = std::collections::HashMap::new();
+    for (skill, kind, x, stats) in [
+        (900010, "jewel_socket", 0.0, vec![]),
+        (900011, "normal", 100.0, vec!["+7 to maximum Life"]),
+        (900012, "normal", 1300.0, vec!["+7 to maximum Life"]),
+        (900013, "notable", 100.0, vec!["+11 to maximum Life"]),
+        (900014, "normal", 100.0, vec!["+5 to any Attribute"]),
+        (
+            900015,
+            "notable",
+            2000.0,
+            vec!["50% increased effect of Small Passive Skills"],
+        ),
+    ] {
+        nodes.insert(skill, serde_json::from_value(serde_json::json!({
+            "skill": skill, "id": format!("fixture_{skill}"), "kind": kind, "x": x, "y": 0.0, "stats": stats
+        })).unwrap());
+    }
+    // The current tree deliberately has different coordinates. The request must
+    // select the historical geometry instead of borrowing current node positions.
+    data.passive_nodes = nodes.clone();
+    data.passive_nodes.get_mut(&900012).unwrap().x = Some(100.0);
+    data.versioned_passive_nodes.insert("9_10".into(), nodes);
+    let mut base = build("SparkPlayer").with_tree(pobr_data::passive_tree::PassiveTreeSpec {
+        allocated_nodes: (900010..=900015)
+            .map(pobr_data::passive_tree::NodeId)
+            .collect(),
+        ..Default::default()
+    });
+    base.tree_version = Some("9_10".into());
+    let baseline = run(&base, &data).output().life;
+    let life_scale = (run(
+        &base.clone().set_item(
+            EquipmentSlot::Ring1,
+            item("Sapphire Ring", &["+100 to maximum Life"]),
+        ),
+        &data,
+    )
+    .output()
+    .life
+        - baseline)
+        / 100.0;
+    let calc = |upgrade: &str, effect: u32| {
+        let text = format!(
+            "Rarity: RARE\nReference\nTime-Lost Ruby\nRadius: Small\nImplicits: 0\n{upgrade}\n{effect}% increased Effect of Small Passive Skills in Radius\n25% increased Effect of Notable Passive Skills in Radius\nSmall Passive Skills in Radius also grant +3 to maximum Life\nNotable Passive Skills in Radius also grant +3 to maximum Life"
+        );
+        let jewel = pobr_build::radius_jewel_from_text(900010, &text).unwrap();
+        run(
+            &base
+                .clone()
+                .with_jewels(vec![pobr_core::parse_pob_xml_item(&text).unwrap()])
+                .with_radius_jewels(vec![jewel]),
+            &data,
+        )
+    };
+    // 7 * (1 + .50 + .25) -> 12, versus global-only 10. Small grant
+    // 3 * 1.75 -> 5; notable 11 * 1.25 -> 13 and grant 3 * 1.25 -> 3.
+    let small = calc("", 25);
+    assert!(
+        small.unsupported_modifier_texts().is_empty(),
+        "{:?}",
+        small.unsupported_modifier_texts()
+    );
+    close(small.output().life - baseline, 12.0 * life_scale);
+    close(
+        calc("Upgrades Radius to Medium", 25).output().life - baseline,
+        19.0 * life_scale,
+    );
+    // Numeric balance changes require no new handler or version-specific branch.
+    close(
+        calc("Upgrades Radius to Large", 50).output().life - baseline,
+        25.0 * life_scale,
+    );
+}
+
+#[test]
+fn time_lost_scaling_preserves_fractional_recovery_and_both_damage_endpoints() {
+    let mut data = data();
+    let mut nodes = std::collections::HashMap::new();
+    for (skill, kind, stats) in [
+        (900020, "jewel_socket", vec![]),
+        (
+            900021,
+            "notable",
+            vec!["Regenerate 0.07% of maximum Life per second"],
+        ),
+    ] {
+        nodes.insert(
+            skill,
+            serde_json::from_value(serde_json::json!({
+                "skill": skill, "id": format!("fixture_{skill}"), "kind": kind,
+                "x": (skill - 900020) * 50, "y": 0.0, "stats": stats
+            }))
+            .unwrap(),
+        );
+    }
+    data.passive_nodes = nodes;
+    let base = build("SparkPlayer").with_tree(pobr_data::passive_tree::PassiveTreeSpec {
+        allocated_nodes: vec![
+            pobr_data::passive_tree::NodeId(900020),
+            pobr_data::passive_tree::NodeId(900021),
+        ],
+        ..Default::default()
+    });
+    let text = "Rarity: RARE\nReference\nTime-Lost Sapphire\nRadius: Small\nImplicits: 0\n50% increased Effect of Notable Passive Skills in Radius\nNotable Passive Skills in Radius also grant Regenerate 0.07% of maximum Life per second\nNotable Passive Skills in Radius also grant Adds 2 to 5 Cold Damage to Spells";
+    let equipped = base
+        .with_jewels(vec![pobr_core::parse_pob_xml_item(text).unwrap()])
+        .with_radius_jewels(vec![
+            pobr_build::radius_jewel_from_text(900020, text).unwrap(),
+        ]);
+    let result = run(&equipped, &data);
+    assert!(
+        result.unsupported_modifier_texts().is_empty(),
+        "{:?}",
+        result.unsupported_modifier_texts()
+    );
+    // LifeRegenPercent uses two decimal places from the loaded JSON table:
+    // the notable's own 0.07 and the granted 0.07 both scale to 0.10.
+    close(result.output().life_regen, result.output().life * 0.002);
+    for (name, expected) in [("ColdDamageMin", 3.0), ("ColdDamageMax", 7.0)] {
+        let values: Vec<_> = result
+            .mods_named(name)
+            .into_iter()
+            .filter_map(|m| m.value.as_number())
+            .collect();
+        close(values.iter().sum(), expected);
+    }
+}
+
+#[test]
+fn overlapping_time_lost_jewels_share_the_last_local_effect_per_node() {
+    let mut data = data();
+    data.passive_nodes.clear();
+    for (skill, kind, stats) in [
+        (900031, "jewel_socket", vec![]),
+        (900032, "jewel_socket", vec![]),
+        (900033, "normal", vec!["+7 to maximum Life"]),
+    ] {
+        data.passive_nodes.insert(
+            skill,
+            serde_json::from_value(serde_json::json!({
+                "skill": skill, "id": format!("fixture_{skill}"), "kind": kind,
+                "x": (skill - 900031) * 50, "y": 0.0, "stats": stats
+            }))
+            .unwrap(),
+        );
+    }
+    let base = build("SparkPlayer").with_tree(pobr_data::passive_tree::PassiveTreeSpec {
+        allocated_nodes: (900031..=900033)
+            .map(pobr_data::passive_tree::NodeId)
+            .collect(),
+        ..Default::default()
+    });
+    let baseline = run(&base, &data).output().life;
+    let life_scale = (run(
+        &base.clone().set_item(
+            EquipmentSlot::Ring1,
+            item("Sapphire Ring", &["+100 to maximum Life"]),
+        ),
+        &data,
+    )
+    .output()
+    .life
+        - baseline)
+        / 100.0;
+    let jewels: Vec<_> = [(900031, 25, 3), (900032, 50, 5)].into_iter().map(|(socket, effect, value)| {
+        let text = format!("Rarity: RARE\nReference\nTime-Lost Ruby\nRadius: Small\nImplicits: 0\n{effect}% increased Effect of Small Passive Skills in Radius\nSmall Passive Skills in Radius also grant +{value} to maximum Life");
+        (pobr_core::parse_pob_xml_item(&text).unwrap(), pobr_build::radius_jewel_from_text(socket, &text).unwrap())
+    }).collect();
+    for (order, expected) in [([0, 1], 14.0), ([1, 0], 10.0)] {
+        let equipped = base
+            .clone()
+            .with_jewels(order.iter().map(|&i| jewels[i].0.clone()).collect())
+            .with_radius_jewels(order.iter().map(|&i| jewels[i].1.clone()).collect());
+        // At 50%: own node delta 3, grants 4 + 7. At 25%: 1 + 3 + 6.
+        close(
+            run(&equipped, &data).output().life - baseline,
+            expected * life_scale,
+        );
+    }
 }

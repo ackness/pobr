@@ -192,7 +192,7 @@ pub struct BuildData {
     pub constants: RuntimeConstants,
     /// Radius jewel ring tier table (`base/jewel_radii.json`): distance multipliers +
     /// tier label→inner/outer. Consumed by this crate's tree geometry
-    /// (`radius_jewel_grant_texts` → pobr-tree's
+    /// (`radius_jewel_grant_modifiers` → pobr-tree's
     /// `compute_radius_jewel_effect_with_radii`), doesn't flow into pobr-core through
     /// `RuntimeConstants`. Falls back to `Default` when data is missing (value-for-value
     /// equal to the JSON).
@@ -626,9 +626,8 @@ impl BuildData {
     /// matching historical tree version (`base/passive_trees/<v>.json` already
     /// extracted) if one exists, otherwise (current default version / not extracted /
     /// not annotated) falls back to the default tree [`Self::passive_nodes`] — PoBR's
-    /// counterpart to PoB2's multi-version TreeData. Historical trees only have a
-    /// minimal field set (no topology/coordinates), so advanced features like radius
-    /// jewel geometry still approximate with the default tree.
+    /// counterpart to PoB2's multi-version TreeData. Radius geometry uses the selected
+    /// tree as well; nodes without coordinates cannot contribute radius effects.
     pub fn passive_nodes_for(&self, tree_version: Option<&str>) -> &HashMap<u32, PassiveNodeDef> {
         tree_version
             .and_then(|v| self.versioned_passive_nodes.get(v))

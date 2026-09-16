@@ -10,6 +10,17 @@ which retro-identifies Mageblood without parity archaeology); P1-3 →
 `GameData::special_mods`; P1-4 → `pipeline/bump-version.sh`; P2-5 → `.gitattributes`.
 The acceptance test remains the next real GGG patch (§5).
 
+Current implementation update (2026-09-17): `bump-version.sh` discovers the latest
+official patch and exits when it is already active. Compatible quality balance
+updates now advance receipts by stable effect/stat IDs; changed semantic scopes
+require review. All candidate data/audit/parity gates run before `data/CURRENT`
+is promoted, and Rust's fallback derives directly from that marker. Vendor tree
+selection reads `GameVersions.lua`; item-granted socket activation resolves IDs
+from the loaded tree instead of pinning league node numbers. Offline regression
+tests exercise unseen patch versions, renumbered nodes and failed promotion.
+The historical plan below is context; [pipeline/README.md](../pipeline/README.md)
+documents the current command and the remaining explicit vendor/golden decisions.
+
 ## 1. Anatomy of the v0.0.1 → v0.0.2 diff (the evidence)
 
 The release diff is `672 files, +101,068 / -25,386`. Broken down by what the

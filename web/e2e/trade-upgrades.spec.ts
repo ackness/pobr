@@ -353,3 +353,40 @@ test('default damage skill, weapon binding and whole-build priority use the same
   await page.getByRole('group', { name: 'Active weapon set' }).getByRole('button', { name: 'Set 2', exact: true }).click();
   await expect(page.locator('.paper-doll')).toContainText('Spell Staff');
 });
+
+test('Time-Lost jewel search scores only allocated nearby passives with real WASM', async ({ page }) => {
+  const code = (nodes: string) => deflateSync(`<PathOfBuilding2>
+    <Build level="85" className="Witch" mainSocketGroup="1"/>
+    <Tree activeSpec="1"><Spec nodes="${nodes}" treeVersion="0_5"><Sockets><Socket nodeId="2491" itemId="1"/></Sockets></Spec></Tree>
+    <Skills><Skill enabled="true"><Gem gemId="Metadata/Items/Gems/SkillGemFireball" skillId="FireballPlayer" level="16" quality="0" enabled="true"/></Skill></Skills>
+    <Items activeItemSet="1"><Item id="1">Rarity: RARE
+Radius Reference
+Time-Lost Sapphire
+Radius: Small
+Implicits: 0
+Small Passive Skills in Radius also grant 2% increased Spell Damage</Item><ItemSet id="1"/></Items>
+  </PathOfBuilding2>`).toString('base64url');
+  await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });
+  for (const nodes of ['2491,9583,47316', '2491']) {
+    await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code(nodes));
+    await page.locator('.import-submit').click();
+    await expect(page.locator('.paper-doll')).toBeVisible();
+    await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
+    await page.locator('.trade-position').filter({ hasText: 'Jewel socket 2491' }).click();
+    await expect(page.getByRole('button', { name: 'Jewel type' })).toContainText('Time-Lost jewel search');
+    await page.getByRole('button', { name: 'Max total DPS', exact: true }).click();
+    await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+    await expect(page.locator('.upgrade-score-reference')).toBeVisible({ timeout: 60_000 });
+    const query = searchQuery((await page.locator('.trade-market-link').first().getAttribute('href'))!);
+    const weights = query.query.stats.find((group: { type: string }) => group.type === 'weight')?.filters ?? [];
+    const spell = weights.find((stat: { id: string }) => stat.id === 'explicit.stat_1137305356');
+    if (nodes.includes('9583')) {
+      expect(spell.value.weight).toBeGreaterThan(0);
+      expect(weights.some((stat: { id: string }) => stat.id === 'explicit.stat_1022759479')).toBe(true);
+      await page.screenshot({ path: test.info().outputPath('time-lost-search.png'), fullPage: true });
+    } else expect(weights).toHaveLength(0);
+    await page.getByRole('button', { name: 'Build', exact: true }).click();
+  }
+});

@@ -282,8 +282,8 @@ sys.exit(int(os.environ.get("AUDIT_EXIT", "0")))
 
 
 class VersionPromotionTests(unittest.TestCase):
-    def test_dictionary_or_audit_failure_does_not_promote_current(self):
-        for failure in ["dictionary", "audit"]:
+    def test_candidate_checks_gate_promotion_without_editing_rust(self):
+        for failure in ["dictionary", "audit", "versions", "gamedata", "parity", None]:
             with self.subTest(failure=failure), tempfile.TemporaryDirectory(prefix="pobr version gate ") as directory:
                 root = Path(directory)
                 def write(rel, text):
@@ -293,11 +293,23 @@ class VersionPromotionTests(unittest.TestCase):
                     return destination
                 write("pipeline/bump-version.sh", (REPO / "pipeline/bump-version.sh").read_text(encoding="utf-8"))
                 write("pipeline/regen-all.sh", "#!/usr/bin/env bash\nexit 0\n").chmod(0o755)
-                write("pipeline/refresh-modifiers.sh", "#!/usr/bin/env bash\nexit 17\n")
-                write("pipeline/config.json", '{"patch": "1.2.3"}')
+                write("pipeline/refresh-modifiers.sh", f"#!/usr/bin/env bash\nexit {17 if failure == 'audit' else 0}\n")
+                # Simulate resuming after a different failed candidate.
+                write("pipeline/config.json", '{"patch": "1.2.99"}')
+                write("pipeline/gem-quality/1.2.4.json", "{}")
                 write("pipeline/tree/data.json", "{}")
                 write("data/CURRENT", "1.2.3\n")
-                write("crates/pobr-data/src/lib.rs", 'pub const DATA_VERSION: &str = "1.2.3";\n')
+                rust = 'pub const DATA_VERSION: &str = include_str!("../../../data/CURRENT").trim_ascii();\n'
+                write("crates/pobr-data/src/lib.rs", rust)
+                write(".claude/skills/run-pobr/driver.sh", f"#!/usr/bin/env bash\nexit {17 if failure == 'versions' else 0}\n")
+                write("bin/cargo", f'''#!/usr/bin/env python3
+import sys
+args = sys.argv[1:]
+failure = {failure!r}
+sys.exit(17 if (failure == "gamedata" and "pobr-gamedata" in args) or (failure == "parity" and "parity_no_regression" in args) else 0)
+''').chmod(0o755)
+                (root / "web/node_modules").mkdir(parents=True)
+                write("bin/pnpm", "#!/usr/bin/env bash\nexit 0\n").chmod(0o755)
                 write("bin/node", f"#!/usr/bin/env bash\nexit {19 if failure == 'dictionary' else 0}\n").chmod(0o755)
                 write("bin/curl", '''#!/usr/bin/env python3
 import pathlib, sys
@@ -306,10 +318,15 @@ pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-
                 result = subprocess.run(["bash", "pipeline/bump-version.sh", "--patch", "1.2.4", "--skip-download"],
                     cwd=root, env={**os.environ, "PATH": f"{root / 'bin'}{os.pathsep}{os.environ['PATH']}"},
                     capture_output=True, text=True, timeout=15)
-                self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
-                self.assertEqual((root / "data/CURRENT").read_text(encoding="utf-8"), "1.2.3\n")
-                self.assertIn('"1.2.3"', (root / "crates/pobr-data/src/lib.rs").read_text(encoding="utf-8"))
-                self.assertIn("gen-zh-cn.mjs" if failure == "dictionary" else "refresh-modifiers.sh", result.stderr)
+                self.assertEqual(result.returncode == 0, failure is None, result.stdout + result.stderr)
+                self.assertEqual((root / "data/CURRENT").read_text(encoding="utf-8"),
+                                 "1.2.3\n" if failure else "1.2.4\n")
+                self.assertEqual((root / "crates/pobr-data/src/lib.rs").read_text(encoding="utf-8"), rust)
+                self.assertEqual(json.loads((root / "pipeline/config.json").read_text(encoding="utf-8"))["patch"], "1.2.4")
+                if failure:
+                    expected = {"dictionary": "gen-zh-cn.mjs", "audit": "refresh-modifiers.sh",
+                                "versions": "driver.sh", "gamedata": "pobr-gamedata", "parity": "parity_no_regression"}
+                    self.assertIn(expected[failure], result.stderr)
 
 
 if __name__ == "__main__":

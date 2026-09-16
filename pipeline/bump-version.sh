@@ -8,8 +8,8 @@
 #   [4] vendor 对齐（--vendor-sha 时 fetch-by-sha 换检出 + 更新 .pob2-version.txt）
 #   [5] OLD_PATCH=<旧> regen-all.sh（含末步 test-pin bless）
 #   [6] Generate the pinned CN dictionary and audit all modifier sources
-#   [7] Advance data/CURRENT + DATA_VERSION, then sync Web data
-#   [8] 定向验证（多版本 smoke + gamedata 套件；parity 仅报告不判失败）
+#   [7] Validate the candidate snapshot before promotion
+#   [8] Advance data/CURRENT, then sync Web data
 #   [9] 摘要 + 剩余人工决策清单
 #
 # 刻意保留为人工决策（不自动化）：
@@ -36,11 +36,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}" || exit 1
 
 NEW_PATCH=""
+EXPLICIT_PATCH=0
 VENDOR_SHA=""
 SKIP_DOWNLOAD=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --patch)         NEW_PATCH="$2";   shift 2 ;;
+        --patch)         NEW_PATCH="$2"; EXPLICIT_PATCH=1; shift 2 ;;
         --vendor-sha)    VENDOR_SHA="$2";  shift 2 ;;
         --skip-download) SKIP_DOWNLOAD=1;  shift ;;
         *) echo "bump-version: 未知参数 $1" >&2; exit 2 ;;
@@ -58,11 +59,10 @@ soft_step() {
 }
 die_on_fail() { "$@" || { echo "bump-version: 关键步骤失败，中止：$*" >&2; exit 1; }; }
 
-# OLD_PATCH 读 lib.rs 的 DATA_VERSION 常量而非 config.json：config.json 在步骤 [1]
-# 就被推进，失败后重跑会把 OLD_PATCH 读成新版本（自沿用→6b 拷空、[6] sed 落空）；
-# DATA_VERSION advances only after the dictionary and modifier audit succeed.
-OLD_PATCH="$(sed -n 's/^pub const DATA_VERSION: &str = "\([^"]*\)";/\1/p' crates/pobr-data/src/lib.rs)"
-[[ -n "${OLD_PATCH}" ]] || { echo "bump-version: 无法从 crates/pobr-data/src/lib.rs 读取 DATA_VERSION" >&2; exit 1; }
+# CURRENT is the sole active marker. config.json may already name an unpromoted
+# candidate after a failed attempt; Rust derives its fallback from CURRENT.
+OLD_PATCH="$(cat data/CURRENT)"
+[[ -n "${OLD_PATCH}" ]] || { echo "bump-version: data/CURRENT is empty" >&2; exit 1; }
 
 # ---- [1] 目标补丁号 ----
 echo "== [1/9] 目标补丁号"
@@ -72,16 +72,22 @@ if [[ -z "${NEW_PATCH}" ]]; then
 fi
 echo "   ${OLD_PATCH} → ${NEW_PATCH}"
 if [[ "${NEW_PATCH}" == "${OLD_PATCH}" ]]; then
+    if [[ "$EXPLICIT_PATCH" -eq 0 && "$SKIP_DOWNLOAD" -eq 0 && -z "$VENDOR_SHA" ]]; then
+        echo "   已是最新；无需下载或重新生成"
+        exit 0
+    fi
     echo "   已是最新（同版本重放请用 devs/scripts/version-bump-drill.sh）——继续执行属刷新语义"
 fi
-# 只改 "patch" 一行；config.json 其余（表清单）人工维护。sed -i 的 in-place 语法
-# BSD/GNU 不兼容，统一走 tmp+mv。
-sed_replace() {
-    local pattern="$1" file="$2" tmp
-    tmp="$(mktemp)"
-    sed "${pattern}" "${file}" > "${tmp}" && mv "${tmp}" "${file}"
-}
-die_on_fail sed_replace "s/\"patch\": \"${OLD_PATCH}\"/\"patch\": \"${NEW_PATCH}\"/" pipeline/config.json
+[[ "$NEW_PATCH" =~ ^[0-9]+(\.[0-9]+)+$ ]] || { echo "bump-version: invalid patch" >&2; exit 2; }
+# Replace the actual config value, including when resuming a different failed
+# candidate. Never interpolate an untrusted patch into shell code or a sed regex.
+die_on_fail python3 - "$NEW_PATCH" <<'PY'
+import json, pathlib, sys
+path = pathlib.Path("pipeline/config.json")
+config = json.loads(path.read_text(encoding="utf-8"))
+config["patch"] = sys.argv[1]
+path.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+PY
 
 # ---- [2] .dat 表下载 ----
 echo "== [2/9] GGG .dat 表下载（pipeline/tables/）"
@@ -91,6 +97,9 @@ else
     # CDN 只保留当前补丁（pipeline/README.md）——下载失败通常意味着补丁号过期，重查步骤 1。
     die_on_fail bash -c "cd pipeline && node download-index.mjs"
     die_on_fail bash -c "cd pipeline && npx -y pathofexile-dat@15"
+    die_on_fail python3 pipeline/gem-quality/advance-receipt.py record-export \
+        --config pipeline/config.json --raw pipeline/tables/English \
+        --out pipeline/tables/quality-export-source.json
 fi
 
 # ---- [3] 被动树导出 ----
@@ -136,6 +145,15 @@ fi
 
 # ---- [5] 全量重生成（含 test-pin bless 末步）----
 echo "== [5/9] regen-all（OLD_PATCH=${OLD_PATCH}）"
+# Compatible value-only quality updates inherit reviewed semantic scope. New
+# stats/effects/scopes remain explicit diagnostics rather than silently enabled.
+if [[ ! -f "pipeline/gem-quality/$NEW_PATCH.json" ]]; then
+    die_on_fail python3 pipeline/gem-quality/advance-receipt.py advance \
+        --raw pipeline/tables/English --export pipeline/tables/quality-export-source.json \
+        --previous-receipt "pipeline/gem-quality/$OLD_PATCH.json" \
+        --previous-quality "data/$OLD_PATCH/overlay/gem_quality_stats.json" \
+        --patch "$NEW_PATCH" --out "pipeline/gem-quality/$NEW_PATCH.json"
+fi
 die_on_fail env OLD_PATCH="${OLD_PATCH}" POBR_DEFER_MODIFIER_AUDIT=1 pipeline/regen-all.sh
 
 # ---- [6] Generate and audit before advancing the active version ----
@@ -150,29 +168,23 @@ if [[ -f "data/$OLD_PATCH/generated/modifier-audit.json" ]]; then
 fi
 die_on_fail bash pipeline/refresh-modifiers.sh "${audit_args[@]}"
 
-# ---- [7] 推进活动版本标记 ----
-echo "== [7/9] data/CURRENT + pobr_data::DATA_VERSION"
-printf '%s\n' "${NEW_PATCH}" > data/CURRENT
-# 只动 DATA_VERSION 一行；GOLDEN_PARITY_DATA_VERSION 是人工决策，绝不自动推进。
-die_on_fail sed_replace \
-    "s/^pub const DATA_VERSION: &str = \"${OLD_PATCH}\";/pub const DATA_VERSION: \&str = \"${NEW_PATCH}\";/" \
-    crates/pobr-data/src/lib.rs
-grep -q "pub const DATA_VERSION: &str = \"${NEW_PATCH}\";" crates/pobr-data/src/lib.rs \
-    || { echo "bump-version: DATA_VERSION 常量替换失败（crates/pobr-data/src/lib.rs 格式变了？）" >&2; exit 1; }
+# ---- [7] Validate before changing the active snapshot ----
+echo "== [7/9] candidate validation"
+die_on_fail env POBR_DATA_VERSION="$NEW_PATCH" bash .claude/skills/run-pobr/driver.sh versions
+die_on_fail env POBR_DATA_VERSION="$NEW_PATCH" cargo test --quiet -p pobr-gamedata
+die_on_fail cargo test --quiet -p pobr-build --test parity parity_no_regression
+
+# ---- [8] Promote data only; golden remains a separate recorded reference ----
+echo "== [8/9] data/CURRENT"
+CURRENT_TMP="$(mktemp data/.CURRENT.XXXXXX)"
+printf '%s\n' "$NEW_PATCH" > "$CURRENT_TMP"
+die_on_fail mv "$CURRENT_TMP" data/CURRENT
 if [[ -d web/node_modules ]]; then
     soft_step web_sync_data bash -c "cd web && pnpm run sync-data"
 else
     echo "   web/node_modules 缺失——跳过 sync-data（web 下次 pnpm install 后手动跑）"
     FAILURES+=("web sync-data 未跑（无 node_modules）")
 fi
-
-# ---- [8] 定向验证（禁全量，见 CLAUDE.md 验证分层）----
-echo "== [8/9] 定向验证"
-soft_step smoke_versions bash .claude/skills/run-pobr/driver.sh versions
-soft_step gamedata_tests env CARGO_BUILD_RUSTC_WRAPPER="" cargo test --quiet -p pobr-gamedata
-# parity 只报告不判失败：golden 仍钉旧版本时本就不应红；红/绿都由人读。
-echo "---- parity（信息性，不计失败）"
-env CARGO_BUILD_RUSTC_WRAPPER="" cargo test --quiet -p pobr-build --test parity 2>&1 | tail -5 || true
 
 # ---- [9] 摘要 ----
 echo "== [9/9] 摘要"

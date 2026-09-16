@@ -39,19 +39,28 @@ for _, name in ipairs(sorted_keys(raw_bases)) do
     if base.type == "Flask" then category = base.subType == "Life" and "flask.life" or "flask.mana" end
     local domain = base.type == "Jewel" and "jewel" or base.type == "Charm" and "charm"
         or base.type == "Flask" and "flask" or "equipment"
-    if category and not base.hidden and not (base.tags or {}).not_for_sale then
+    if category and not base.hidden and (not (base.tags or {}).not_for_sale or base.subType == "Radius") then
         local implicits = {}
         for line in (base.implicit or ""):gmatch("[^\n]+") do implicits[#implicits + 1] = maximum(line) end
         bases[#bases + 1] = { name = name, category = category, tags = sorted_keys(base.tags or {}),
             level = (base.req or {}).level or 1, implicits = implicits, domain = domain,
-            affix_limit = domain == "equipment" and 3 or domain == "jewel" and 2 or 1 }
+            affix_limit = domain == "equipment" and 3 or domain == "jewel" and 2 or 1,
+            radius = base.subType == "Radius" and "Small" or nil }
     end
+end
+-- PoB2 Data.lua decorates radius grants after loading the raw ModJewel table.
+local function radius_lines(mod)
+    local kind = ({ [1] = "Small", [2] = "Notable" })[mod.nodeType]
+    if kind and mod[1] and not mod[1]:find("Passive Skills in Radius", 1, true) then
+        mod[1] = kind .. " Passive Skills in Radius also grant " .. mod[1]
+    end
+    return mod
 end
 local raw_mods = {}
 for _, source in ipairs({ { "equipment", "ModItem" }, { "jewel", "ModJewel" }, { "flask", "ModFlask" }, { "charm", "ModCharm" } }) do
     for id, mod in pairs(dofile(vendor .. "/Data/" .. source[2] .. ".lua")) do
         mod.domain = source[1]
-        raw_mods[source[1] .. ":" .. id] = mod
+        raw_mods[source[1] .. ":" .. id] = radius_lines(mod)
     end
 end
 local mods = {}
@@ -74,13 +83,27 @@ end
 local search_mods, special = {}, {}
 local function add_search(source, id, mod, allowed, namespace, recovered_stats)
     if not mod or #allowed == 0 then return end
+    radius_lines(mod)
     local stats = recovered_stats or trade.extract(mod, namespace or "explicit", valid_stats)
     if #stats == 0 then return end
     local key = source .. ":" .. id
     if not special[key] then
         local lines = {}
         for _, line in ipairs(mod) do lines[#lines + 1] = maximum(line) end
-        special[key] = { id = key, source = source, level = mod.level or 1, lines = lines, stats = stats, categories = {} }
+        local jewel_types = {}
+        for _, base in ipairs(bases) do
+            if base.category == "jewel" then
+                local tags = {}; for _, tag in ipairs(base.tags) do tags[tag] = true end
+                for i, tag in ipairs(mod.weightKey or {}) do
+                    if tags[tag] then
+                        if mod.weightVal[i] > 0 then jewel_types[base.radius and "radius" or "base"] = true end
+                        break
+                    end
+                end
+            end
+        end
+        special[key] = { id = key, source = source, level = mod.level or 1, lines = lines, stats = stats, categories = {},
+            jewel_types = next(jewel_types) and sorted_keys(jewel_types) or nil }
     end
     for _, category in ipairs(allowed) do special[key].categories[category] = true end
 end
@@ -231,8 +254,8 @@ for _, gem in ipairs(gems) do
 end
 local f = assert(io.open(output, "w"))
 f:write(json.encode(result, { indent = true, keyorder = {
-    "_meta", "source", "regen_command", "unmapped_crafting_mods", "bases", "mods", "search_mods", "gems", "id", "name", "category", "categories", "tags",
-    "group", "kind", "level", "implicits", "domain", "affix_limit", "lines", "roll_lines", "weights", "stats", "line", "value", "trade_line", "source_lines", "value_indices",
+    "_meta", "source", "regen_command", "unmapped_crafting_mods", "bases", "mods", "search_mods", "gems", "id", "name", "category", "categories", "jewel_types", "tags",
+    "group", "kind", "level", "implicits", "domain", "affix_limit", "radius", "lines", "roll_lines", "weights", "stats", "line", "value", "trade_line", "source_lines", "value_indices",
     "skill_id", "family", "is_support", "max_level", "level_requirements", "is_lineage",
     "compatibility_known", "skill_types", "require_skill_types", "exclude_skill_types", "add_skill_types",
     "support_gems_only", "cannot_be_supported", "families",

@@ -20,7 +20,7 @@
     }
   },
   "rule_validation": {
-    "engine_version": "0.0.23",
+    "engine_version": "0.0.25",
     "data_version": "4.5.5.2",
     "scope": "Special-rule schemas, handlers, captures, operations and scopes; generic parser schema/compile. StatId is open; recognition is not calculation support. Overlap audit covers sampled source text only.",
     "input_sha256": {
@@ -28,7 +28,7 @@
       "4.5.5.2/generated/special_vendor.json": "65e9c01a4c7663080fefbfbff9937948582f36a089fd105acb619d413517fc25",
       "4.5.5.2/overlay/mod_parser_rules.json": "67a0cb285aaf212da8663355748577b4e8a2296d1a0e610184574e46cfd535c4",
       "4.5.5.2/overlay/special_mods.json": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e",
-      "overlay-common/special_mods.json": "ec556634abbf1b5b211acf6c02762321878d8c045b013aa5b9a907e0c52e5100"
+      "overlay-common/special_mods.json": "0134b79c699e2e6d560129dfa14b99809f597247b12d16547e3f46f8076983e2"
     },
     "effective_rules": [
       {
@@ -17991,8 +17991,8 @@
     "unsampled_translations": 170
   },
   "summary": {
-    "parsed": 14324,
-    "pobr_gap": 2030,
+    "parsed": 14328,
+    "pobr_gap": 2028,
     "recognized_empty": 323,
     "upstream_gap": 24980
   },
@@ -227331,9 +227331,29 @@
       "sources": [
         "stat:stat_descriptions:body_armour_grants_x_base_self_critical_strike_multiplier_-%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ReduceCritExtraDamage"
+      ],
+      "special_rule_id": "body_armour_grants_reduced_crit_damage_bonus_100",
+      "matching_special_rules": [
+        "body_armour_grants_reduced_crit_damage_bonus_100"
+      ]
+    },
+    "Body Armour grants Hits against you have 100% reduced Critical Damage Bonus": {
+      "sources": [
+        "rule:body_armour_grants_reduced_crit_damage_bonus_100"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "ReduceCritExtraDamage"
+      ],
+      "special_rule_id": "body_armour_grants_reduced_crit_damage_bonus_100",
+      "matching_special_rules": [
+        "body_armour_grants_reduced_crit_damage_bonus_100"
+      ]
     },
     "Body Armour grants Hits against you have 17% increased Critical Damage Bonus": {
       "sources": [
@@ -227347,9 +227367,29 @@
       "sources": [
         "translation:胸甲使对你的击中的暴击伤害加成降低 {0}%"
       ],
-      "status": "partial",
+      "status": "parsed",
       "vendor_status": "parsed",
-      "mod_names": []
+      "mod_names": [
+        "ReduceCritExtraDamage"
+      ],
+      "special_rule_id": "body_armour_grants_reduced_crit_damage_bonus_100",
+      "matching_special_rules": [
+        "body_armour_grants_reduced_crit_damage_bonus_100"
+      ]
+    },
+    "Body Armour grants Hits against you have 50% reduced Critical Damage Bonus": {
+      "sources": [
+        "rule:body_armour_grants_reduced_crit_damage_bonus_100"
+      ],
+      "status": "parsed",
+      "vendor_status": "parsed",
+      "mod_names": [
+        "ReduceCritExtraDamage"
+      ],
+      "special_rule_id": "body_armour_grants_reduced_crit_damage_bonus_100",
+      "matching_special_rules": [
+        "body_armour_grants_reduced_crit_damage_bonus_100"
+      ]
     },
     "Body Armour grants Unaffected by Damaging Ailments": {
       "sources": [

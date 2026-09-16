@@ -23,6 +23,48 @@ async function saved(page: Page) {
   return page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!));
 }
 
+test('body armour granted mitigation follows chest rarity after import and editing', async ({ page }) => {
+  const source = `<PathOfBuilding2>
+    <Build level="85" className="Warrior" mainSocketGroup="1"/>
+    <Items activeItemSet="1">
+      <Item id="1">Rarity: NORMAL
+Plate Vest
+Implicits: 0</Item>
+      <Item id="2">Rarity: RARE
+Rule Acceptance Ring
+Sapphire Ring
+Implicits: 0
+Body Armour grants Hits against you have 100% reduced Critical Damage Bonus</Item>
+      <ItemSet id="1"><Slot name="Body Armour" itemId="1"/><Slot name="Ring 1" itemId="2"/></ItemSet>
+    </Items>
+  </PathOfBuilding2>`;
+  await page.goto('/');
+  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+  await importCode(page, deflateSync(source).toString('base64url'));
+  const ehp = page.locator('.stat-row').filter({ hasText: /^Effective HP/ }).locator('dd');
+  const normalEhp = await ehp.innerText();
+  const number = (text: string) => Number(text.replaceAll(',', ''));
+  expect(number(normalEhp)).toBeGreaterThan(0);
+
+  for (const rarity of ['MAGIC', 'RARE', 'UNIQUE', 'NORMAL']) {
+    await page.locator('.paper-doll').getByRole('button', { name: 'Body Armour', exact: true }).click();
+    await page.locator('.item-detail').getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.getByRole('textbox', { name: 'bodyarmour item text' }).fill(
+      `Rarity: ${rarity}\n${['NORMAL', 'MAGIC'].includes(rarity) ? '' : 'Rule Acceptance Chest\n'}Plate Vest\nImplicits: 0`,
+    );
+    await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+    await expect(page.locator('.item-editor')).toHaveCount(0);
+    await expect(page.locator('.topbar-busy')).toHaveCount(0);
+    if (rarity === 'NORMAL') {
+      await expect(ehp).toHaveText(normalEhp);
+    } else {
+      await expect.poll(async () => number(await ehp.innerText())).toBeLessThan(number(normalEhp));
+    }
+  }
+  await page.reload();
+  await expect(ehp).toHaveText(normalEhp, { timeout: 90_000 });
+});
+
 test('gem quality edits recalculate real WASM results and restore the baseline', async ({ page }) => {
   const code = readFileSync(new URL('../../examples/demo-bd-test/builds/mercenary-gemling-legionnaire-explosive-grenade/code.txt', import.meta.url), 'utf8').trim();
   const zeroQuality = inflateSync(Buffer.from(code, 'base64url')).toString('utf8').replace(/quality="\d+"/g, 'quality="0"');

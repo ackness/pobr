@@ -9,7 +9,7 @@ function M.load(vendor, entries, trade)
             descriptions[group.stats[1]] = group[1]
         end
     end
-    local tree = dofile(vendor .. "/TreeData/0_5/tree.lua")
+    local tree = dofile(dofile("pipeline/vendor-tree.lua").path(vendor))
     return function(recipe)
         if not recipe.stats or #recipe.stats ~= 1 then return end
         local raw = recipe.stats[1]

@@ -10349,6 +10349,42 @@
       "domain":"equipment",
       "affix_limit":3
     },{
+      "name":"Time-Lost Diamond",
+      "category":"jewel",
+      "tags":["default","dex_radius_jewel","int_radius_jewel","jewel","not_for_sale","radius_jewel","str_radius_jewel"],
+      "level":1,
+      "implicits":[],
+      "domain":"jewel",
+      "affix_limit":2,
+      "radius":"Small"
+    },{
+      "name":"Time-Lost Emerald",
+      "category":"jewel",
+      "tags":["default","dex_radius_jewel","jewel","not_for_sale","radius_jewel"],
+      "level":1,
+      "implicits":[],
+      "domain":"jewel",
+      "affix_limit":2,
+      "radius":"Small"
+    },{
+      "name":"Time-Lost Ruby",
+      "category":"jewel",
+      "tags":["default","jewel","not_for_sale","radius_jewel","str_radius_jewel"],
+      "level":1,
+      "implicits":[],
+      "domain":"jewel",
+      "affix_limit":2,
+      "radius":"Small"
+    },{
+      "name":"Time-Lost Sapphire",
+      "category":"jewel",
+      "tags":["default","int_radius_jewel","jewel","not_for_sale","radius_jewel"],
+      "level":1,
+      "implicits":[],
+      "domain":"jewel",
+      "affix_limit":2,
+      "radius":"Small"
+    },{
       "name":"Titan Mitts",
       "category":"armour.gloves",
       "tags":["armour","default","gloves","str_armour"],
@@ -49585,8 +49621,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["+5% to Chaos Resistance"],
-      "roll_lines":["+(4-5)% to Chaos Resistance"],
+      "lines":["Notable Passive Skills in Radius also grant +5% to Chaos Resistance"],
+      "roll_lines":["Notable Passive Skills in Radius also grant +(4-5)% to Chaos Resistance"],
       "weights":[["jewel",0]],
       "stats":[{
           "id":"explicit.stat_248192092",
@@ -49600,8 +49636,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["+7% to Cold Resistance"],
-      "roll_lines":["+(5-7)% to Cold Resistance"],
+      "lines":["Notable Passive Skills in Radius also grant +7% to Cold Resistance"],
+      "roll_lines":["Notable Passive Skills in Radius also grant +(5-7)% to Cold Resistance"],
       "weights":[["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3946450303",
@@ -49630,8 +49666,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["+7% to Fire Resistance"],
-      "roll_lines":["+(5-7)% to Fire Resistance"],
+      "lines":["Notable Passive Skills in Radius also grant +7% to Fire Resistance"],
+      "roll_lines":["Notable Passive Skills in Radius also grant +(5-7)% to Fire Resistance"],
       "weights":[["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2670212285",
@@ -49645,8 +49681,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["+7% to Lightning Resistance"],
-      "roll_lines":["+(5-7)% to Lightning Resistance"],
+      "lines":["Notable Passive Skills in Radius also grant +7% to Lightning Resistance"],
+      "roll_lines":["Notable Passive Skills in Radius also grant +(5-7)% to Lightning Resistance"],
       "weights":[["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1687542781",
@@ -51645,8 +51681,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Accuracy Rating"],
-      "roll_lines":["(1-2)% increased Accuracy Rating"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Accuracy Rating"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Accuracy Rating"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_533892981",
@@ -51659,8 +51695,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased chance to inflict Ailments"],
-      "roll_lines":["(3-7)% increased chance to inflict Ailments"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased chance to inflict Ailments"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased chance to inflict Ailments"],
       "weights":[["dex_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_412709880",
@@ -51673,8 +51709,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Magnitude of Ailments you inflict"],
-      "roll_lines":["(3-7)% increased Magnitude of Ailments you inflict"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Magnitude of Ailments you inflict"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Magnitude of Ailments you inflict"],
       "weights":[["dex_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1321104829",
@@ -51687,8 +51723,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Elemental Ailment Threshold"],
-      "roll_lines":["(2-3)% increased Elemental Ailment Threshold"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Elemental Ailment Threshold"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Elemental Ailment Threshold"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3409275777",
@@ -51701,8 +51737,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Gain additional Ailment Threshold equal to 2% of maximum Energy Shield"],
-      "roll_lines":["Gain additional Ailment Threshold equal to (1-2)% of maximum Energy Shield"],
+      "lines":["Small Passive Skills in Radius also grant Gain additional Ailment Threshold equal to 2% of maximum Energy Shield"],
+      "roll_lines":["Small Passive Skills in Radius also grant Gain additional Ailment Threshold equal to (1-2)% of maximum Energy Shield"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_693237939",
@@ -51715,8 +51751,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Area of Effect"],
-      "roll_lines":["(2-3)% increased Area of Effect"],
+      "lines":["Notable Passive Skills in Radius also grant 3% increased Area of Effect"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (2-3)% increased Area of Effect"],
       "weights":[["str_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3391917254",
@@ -51729,8 +51765,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Armour"],
-      "roll_lines":["(2-3)% increased Armour"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Armour"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Armour"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3858398337",
@@ -51743,8 +51779,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Break 2% increased Armour"],
-      "roll_lines":["Break (1-2)% increased Armour"],
+      "lines":["Small Passive Skills in Radius also grant Break 2% increased Armour"],
+      "roll_lines":["Small Passive Skills in Radius also grant Break (1-2)% increased Armour"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_4089835882",
@@ -51757,8 +51793,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% increased Armour Break Duration"],
-      "roll_lines":["(5-10)% increased Armour Break Duration"],
+      "lines":["Notable Passive Skills in Radius also grant 10% increased Armour Break Duration"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% increased Armour Break Duration"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_504915064",
@@ -51771,8 +51807,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Critical Hit Chance for Attacks"],
-      "roll_lines":["(3-7)% increased Critical Hit Chance for Attacks"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Critical Hit Chance for Attacks"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Critical Hit Chance for Attacks"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3865605585",
@@ -51785,8 +51821,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% increased Critical Damage Bonus for Attack Damage"],
-      "roll_lines":["(5-10)% increased Critical Damage Bonus for Attack Damage"],
+      "lines":["Notable Passive Skills in Radius also grant 10% increased Critical Damage Bonus for Attack Damage"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% increased Critical Damage Bonus for Attack Damage"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1352561456",
@@ -51799,8 +51835,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Attack Damage"],
-      "roll_lines":["(1-2)% increased Attack Damage"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Attack Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Attack Damage"],
       "weights":[["str_radius_jewel",1],["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1426522529",
@@ -51813,8 +51849,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Attack Speed"],
-      "roll_lines":["(1-2)% increased Attack Speed"],
+      "lines":["Notable Passive Skills in Radius also grant 2% increased Attack Speed"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (1-2)% increased Attack Speed"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2822644689",
@@ -51827,8 +51863,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Aura Skills have 3% increased Magnitudes"],
-      "roll_lines":["Aura Skills have (1-3)% increased Magnitudes"],
+      "lines":["Notable Passive Skills in Radius also grant Aura Skills have 3% increased Magnitudes"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Aura Skills have (1-3)% increased Magnitudes"],
       "weights":[["int_radius_jewel",0],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3243034867",
@@ -51841,8 +51877,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Damage with Axes"],
-      "roll_lines":["(2-3)% increased Damage with Axes"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Damage with Axes"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Damage with Axes"],
       "weights":[["str_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -51851,8 +51887,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Attack Speed with Axes"],
-      "roll_lines":["(1-2)% increased Attack Speed with Axes"],
+      "lines":["Notable Passive Skills in Radius also grant 2% increased Attack Speed with Axes"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (1-2)% increased Attack Speed with Axes"],
       "weights":[["str_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -51861,8 +51897,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Banner Skills have 3% increased Area of Effect"],
-      "roll_lines":["Banner Skills have (2-3)% increased Area of Effect"],
+      "lines":["Small Passive Skills in Radius also grant Banner Skills have 3% increased Area of Effect"],
+      "roll_lines":["Small Passive Skills in Radius also grant Banner Skills have (2-3)% increased Area of Effect"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_4142814612",
@@ -51875,8 +51911,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Banner Skills have 4% increased Duration"],
-      "roll_lines":["Banner Skills have (3-4)% increased Duration"],
+      "lines":["Small Passive Skills in Radius also grant Banner Skills have 4% increased Duration"],
+      "roll_lines":["Small Passive Skills in Radius also grant Banner Skills have (3-4)% increased Duration"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2690740379",
@@ -51889,8 +51925,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["12% increased Glory generation for Banner Skills"],
-      "roll_lines":["(8-12)% increased Glory generation for Banner Skills"],
+      "lines":["Notable Passive Skills in Radius also grant 12% increased Glory generation for Banner Skills"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (8-12)% increased Glory generation for Banner Skills"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2907381231",
@@ -51903,8 +51939,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["1% chance to inflict Bleeding on Hit"],
-      "roll_lines":["1% chance to inflict Bleeding on Hit"],
+      "lines":["Small Passive Skills in Radius also grant 1% chance to inflict Bleeding on Hit"],
+      "roll_lines":["Small Passive Skills in Radius also grant 1% chance to inflict Bleeding on Hit"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_944643028",
@@ -51917,8 +51953,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Bleeding Duration"],
-      "roll_lines":["(3-7)% increased Bleeding Duration"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Bleeding Duration"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Bleeding Duration"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1505023559",
@@ -51931,8 +51967,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Magnitude of Bleeding you inflict"],
-      "roll_lines":["(3-7)% increased Magnitude of Bleeding you inflict"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Magnitude of Bleeding you inflict"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Magnitude of Bleeding you inflict"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_391602279",
@@ -51945,8 +51981,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["5% increased Blind Effect"],
-      "roll_lines":["(3-5)% increased Blind Effect"],
+      "lines":["Notable Passive Skills in Radius also grant 5% increased Blind Effect"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-5)% increased Blind Effect"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2912416697",
@@ -51959,8 +51995,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["1% chance to Blind Enemies on Hit with Attacks"],
-      "roll_lines":["1% chance to Blind Enemies on Hit with Attacks"],
+      "lines":["Small Passive Skills in Radius also grant 1% chance to Blind Enemies on Hit with Attacks"],
+      "roll_lines":["Small Passive Skills in Radius also grant 1% chance to Blind Enemies on Hit with Attacks"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2610562860",
@@ -51973,8 +52009,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Block chance"],
-      "roll_lines":["(1-3)% increased Block chance"],
+      "lines":["Notable Passive Skills in Radius also grant 3% increased Block chance"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (1-3)% increased Block chance"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3821543413",
@@ -51987,8 +52023,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Accuracy Rating with Bows"],
-      "roll_lines":["(1-2)% increased Accuracy Rating with Bows"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Accuracy Rating with Bows"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Accuracy Rating with Bows"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1285594161",
@@ -52001,8 +52037,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Damage with Bows"],
-      "roll_lines":["(2-3)% increased Damage with Bows"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Damage with Bows"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Damage with Bows"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_945774314",
@@ -52015,8 +52051,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Attack Speed with Bows"],
-      "roll_lines":["(1-2)% increased Attack Speed with Bows"],
+      "lines":["Notable Passive Skills in Radius also grant 2% increased Attack Speed with Bows"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (1-2)% increased Attack Speed with Bows"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3641543553",
@@ -52029,8 +52065,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Cast Speed"],
-      "roll_lines":["(1-2)% increased Cast Speed"],
+      "lines":["Notable Passive Skills in Radius also grant 2% increased Cast Speed"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (1-2)% increased Cast Speed"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1022759479",
@@ -52043,8 +52079,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Projectiles have 2% chance to Chain an additional time from terrain"],
-      "roll_lines":["Projectiles have (1-2)% chance to Chain an additional time from terrain"],
+      "lines":["Notable Passive Skills in Radius also grant Projectiles have 2% chance to Chain an additional time from terrain"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Projectiles have (1-2)% chance to Chain an additional time from terrain"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2334956771",
@@ -52057,8 +52093,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Chaos Damage"],
-      "roll_lines":["(1-2)% increased Chaos Damage"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Chaos Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Chaos Damage"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1309799717",
@@ -52071,8 +52107,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Charm Charges gained"],
-      "roll_lines":["(3-7)% increased Charm Charges gained"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Charm Charges gained"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Charm Charges gained"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2320654813",
@@ -52085,8 +52121,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Damage while you have an active Charm"],
-      "roll_lines":["(2-3)% increased Damage while you have an active Charm"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Damage while you have an active Charm"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Damage while you have an active Charm"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3752589831",
@@ -52099,8 +52135,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Charm Effect Duration"],
-      "roll_lines":["(1-2)% increased Charm Effect Duration"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Charm Effect Duration"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Charm Effect Duration"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3088348485",
@@ -52113,8 +52149,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["12% increased Chill Duration on Enemies"],
-      "roll_lines":["(6-12)% increased Chill Duration on Enemies"],
+      "lines":["Notable Passive Skills in Radius also grant 12% increased Chill Duration on Enemies"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (6-12)% increased Chill Duration on Enemies"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_61644361",
@@ -52127,8 +52163,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Cold Damage"],
-      "roll_lines":["(1-2)% increased Cold Damage"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Cold Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Cold Damage"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2442527254",
@@ -52141,8 +52177,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Damage Penetrates 2% Cold Resistance"],
-      "roll_lines":["Damage Penetrates (1-2)% Cold Resistance"],
+      "lines":["Small Passive Skills in Radius also grant Damage Penetrates 2% Cold Resistance"],
+      "roll_lines":["Small Passive Skills in Radius also grant Damage Penetrates (1-2)% Cold Resistance"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1896066427",
@@ -52155,8 +52191,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Companions deal 3% increased Damage"],
-      "roll_lines":["Companions deal (2-3)% increased Damage"],
+      "lines":["Small Passive Skills in Radius also grant Companions deal 3% increased Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant Companions deal (2-3)% increased Damage"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1494950893",
@@ -52169,8 +52205,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Companions have 3% increased maximum Life"],
-      "roll_lines":["Companions have (2-3)% increased maximum Life"],
+      "lines":["Small Passive Skills in Radius also grant Companions have 3% increased maximum Life"],
+      "roll_lines":["Small Passive Skills in Radius also grant Companions have (2-3)% increased maximum Life"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2638756573",
@@ -52183,8 +52219,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Cooldown Recovery Rate"],
-      "roll_lines":["(1-3)% increased Cooldown Recovery Rate"],
+      "lines":["Notable Passive Skills in Radius also grant 3% increased Cooldown Recovery Rate"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (1-3)% increased Cooldown Recovery Rate"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2149603090",
@@ -52197,8 +52233,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Damage if you have Consumed a Corpse Recently"],
-      "roll_lines":["(2-3)% increased Damage if you have Consumed a Corpse Recently"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Damage if you have Consumed a Corpse Recently"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Damage if you have Consumed a Corpse Recently"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1892122971",
@@ -52211,8 +52247,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% increased Magnitude of Damaging Ailments you inflict with Critical Hits"],
-      "roll_lines":["(5-10)% increased Magnitude of Damaging Ailments you inflict with Critical Hits"],
+      "lines":["Notable Passive Skills in Radius also grant 10% increased Magnitude of Damaging Ailments you inflict with Critical Hits"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% increased Magnitude of Damaging Ailments you inflict with Critical Hits"],
       "weights":[["dex_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_4092130601",
@@ -52225,8 +52261,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Critical Hit Chance"],
-      "roll_lines":["(3-7)% increased Critical Hit Chance"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Critical Hit Chance"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Critical Hit Chance"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2077117738",
@@ -52239,8 +52275,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% increased Critical Damage Bonus"],
-      "roll_lines":["(5-10)% increased Critical Damage Bonus"],
+      "lines":["Notable Passive Skills in Radius also grant 10% increased Critical Damage Bonus"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% increased Critical Damage Bonus"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2359002191",
@@ -52253,8 +52289,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Damage with Crossbows"],
-      "roll_lines":["(2-3)% increased Damage with Crossbows"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Damage with Crossbows"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Damage with Crossbows"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_517664839",
@@ -52267,8 +52303,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Crossbow Reload Speed"],
-      "roll_lines":["(5-7)% increased Crossbow Reload Speed"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Crossbow Reload Speed"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-7)% increased Crossbow Reload Speed"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3856744003",
@@ -52281,8 +52317,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Attack Speed with Crossbows"],
-      "roll_lines":["(1-2)% increased Attack Speed with Crossbows"],
+      "lines":["Notable Passive Skills in Radius also grant 2% increased Attack Speed with Crossbows"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (1-2)% increased Attack Speed with Crossbows"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_715957346",
@@ -52295,8 +52331,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["6% increased Area of Effect of Curses"],
-      "roll_lines":["(3-6)% increased Area of Effect of Curses"],
+      "lines":["Notable Passive Skills in Radius also grant 6% increased Area of Effect of Curses"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-6)% increased Area of Effect of Curses"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3859848445",
@@ -52309,8 +52345,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["4% increased Curse Duration"],
-      "roll_lines":["(2-4)% increased Curse Duration"],
+      "lines":["Small Passive Skills in Radius also grant 4% increased Curse Duration"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-4)% increased Curse Duration"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1087108135",
@@ -52323,8 +52359,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["1% increased Curse Magnitudes"],
-      "roll_lines":["1% increased Curse Magnitudes"],
+      "lines":["Notable Passive Skills in Radius also grant 1% increased Curse Magnitudes"],
+      "roll_lines":["Notable Passive Skills in Radius also grant 1% increased Curse Magnitudes"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2770044702",
@@ -52337,8 +52373,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Critical Hit Chance with Daggers"],
-      "roll_lines":["(3-7)% increased Critical Hit Chance with Daggers"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Critical Hit Chance with Daggers"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Critical Hit Chance with Daggers"],
       "weights":[["int_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -52347,8 +52383,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Damage with Daggers"],
-      "roll_lines":["(2-3)% increased Damage with Daggers"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Damage with Daggers"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Damage with Daggers"],
       "weights":[["int_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -52357,8 +52393,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Attack Speed with Daggers"],
-      "roll_lines":["(1-2)% increased Attack Speed with Daggers"],
+      "lines":["Notable Passive Skills in Radius also grant 2% increased Attack Speed with Daggers"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (1-2)% increased Attack Speed with Daggers"],
       "weights":[["int_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -52367,8 +52403,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Damage with Hits against Rare and Unique Enemies"],
-      "roll_lines":["(2-3)% increased Damage with Hits against Rare and Unique Enemies"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Damage with Hits against Rare and Unique Enemies"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Damage with Hits against Rare and Unique Enemies"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_147764878",
@@ -52381,8 +52417,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["1% of Damage is taken from Mana before Life"],
-      "roll_lines":["1% of Damage is taken from Mana before Life"],
+      "lines":["Notable Passive Skills in Radius also grant 1% of Damage is taken from Mana before Life"],
+      "roll_lines":["Notable Passive Skills in Radius also grant 1% of Damage is taken from Mana before Life"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2709646369",
@@ -52395,8 +52431,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["4% increased Damage against Enemies with Fully Broken Armour"],
-      "roll_lines":["(2-4)% increased Damage against Enemies with Fully Broken Armour"],
+      "lines":["Small Passive Skills in Radius also grant 4% increased Damage against Enemies with Fully Broken Armour"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-4)% increased Damage against Enemies with Fully Broken Armour"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1834658952",
@@ -52409,8 +52445,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["5% increased Duration of Damaging Ailments on Enemies"],
-      "roll_lines":["(3-5)% increased Duration of Damaging Ailments on Enemies"],
+      "lines":["Notable Passive Skills in Radius also grant 5% increased Duration of Damaging Ailments on Enemies"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-5)% increased Duration of Damaging Ailments on Enemies"],
       "weights":[["dex_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2272980012",
@@ -52423,8 +52459,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["1% chance to Daze on Hit"],
-      "roll_lines":["1% chance to Daze on Hit"],
+      "lines":["Small Passive Skills in Radius also grant 1% chance to Daze on Hit"],
+      "roll_lines":["Small Passive Skills in Radius also grant 1% chance to Daze on Hit"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_4258000627",
@@ -52439,8 +52475,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Debuffs on you expire 5% faster"],
-      "roll_lines":["Debuffs on you expire (3-5)% faster"],
+      "lines":["Notable Passive Skills in Radius also grant Debuffs on you expire 5% faster"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Debuffs on you expire (3-5)% faster"],
       "weights":[["int_radius_jewel",1],["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2256120736",
@@ -52453,8 +52489,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["5% increased Duration of Ignite, Shock and Chill on Enemies"],
-      "roll_lines":["(3-5)% increased Duration of Ignite, Shock and Chill on Enemies"],
+      "lines":["Notable Passive Skills in Radius also grant 5% increased Duration of Ignite, Shock and Chill on Enemies"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-5)% increased Duration of Ignite, Shock and Chill on Enemies"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1323216174",
@@ -52467,8 +52503,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Elemental Damage"],
-      "roll_lines":["(1-2)% increased Elemental Damage"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Elemental Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Elemental Damage"],
       "weights":[["str_radius_jewel",1],["int_radius_jewel",1],["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3222402650",
@@ -52481,8 +52517,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Empowered Attacks deal 3% increased Damage"],
-      "roll_lines":["Empowered Attacks deal (2-3)% increased Damage"],
+      "lines":["Small Passive Skills in Radius also grant Empowered Attacks deal 3% increased Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant Empowered Attacks deal (2-3)% increased Damage"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3395186672",
@@ -52495,8 +52531,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Meta Skills gain 4% increased Energy"],
-      "roll_lines":["Meta Skills gain (2-4)% increased Energy"],
+      "lines":["Notable Passive Skills in Radius also grant Meta Skills gain 4% increased Energy"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Meta Skills gain (2-4)% increased Energy"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2849546516",
@@ -52509,8 +52545,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased maximum Energy Shield"],
-      "roll_lines":["(2-3)% increased maximum Energy Shield"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased maximum Energy Shield"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased maximum Energy Shield"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3665922113",
@@ -52523,8 +52559,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% faster start of Energy Shield Recharge"],
-      "roll_lines":["(5-7)% faster start of Energy Shield Recharge"],
+      "lines":["Notable Passive Skills in Radius also grant 7% faster start of Energy Shield Recharge"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-7)% faster start of Energy Shield Recharge"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3394832998",
@@ -52537,8 +52573,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Energy Shield Recharge Rate"],
-      "roll_lines":["(2-3)% increased Energy Shield Recharge Rate"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Energy Shield Recharge Rate"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Energy Shield Recharge Rate"],
       "weights":[["int_radius_jewel",0],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1552666713",
@@ -52551,8 +52587,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Evasion Rating"],
-      "roll_lines":["(2-3)% increased Evasion Rating"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Evasion Rating"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Evasion Rating"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1994296038",
@@ -52565,8 +52601,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Damaging Ailments deal damage 3% faster"],
-      "roll_lines":["Damaging Ailments deal damage (2-3)% faster"],
+      "lines":["Notable Passive Skills in Radius also grant Damaging Ailments deal damage 3% faster"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Damaging Ailments deal damage (2-3)% faster"],
       "weights":[["dex_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3173882956",
@@ -52579,8 +52615,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Fire Damage"],
-      "roll_lines":["(1-2)% increased Fire Damage"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Fire Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Fire Damage"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_139889694",
@@ -52593,8 +52629,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Damage Penetrates 2% Fire Resistance"],
-      "roll_lines":["Damage Penetrates (1-2)% Fire Resistance"],
+      "lines":["Small Passive Skills in Radius also grant Damage Penetrates 2% Fire Resistance"],
+      "roll_lines":["Small Passive Skills in Radius also grant Damage Penetrates (1-2)% Fire Resistance"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1432756708",
@@ -52607,8 +52643,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Critical Hit Chance with Flails"],
-      "roll_lines":["(3-7)% increased Critical Hit Chance with Flails"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Critical Hit Chance with Flails"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Critical Hit Chance with Flails"],
       "weights":[["str_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -52617,8 +52653,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Damage with Flails"],
-      "roll_lines":["(1-2)% increased Damage with Flails"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Damage with Flails"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Damage with Flails"],
       "weights":[["str_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -52627,8 +52663,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["5% increased Flask Charges gained"],
-      "roll_lines":["(3-5)% increased Flask Charges gained"],
+      "lines":["Notable Passive Skills in Radius also grant 5% increased Flask Charges gained"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-5)% increased Flask Charges gained"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2066964205",
@@ -52641,8 +52677,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Flask Effect Duration"],
-      "roll_lines":["(1-2)% increased Flask Effect Duration"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Flask Effect Duration"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Flask Effect Duration"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1773308808",
@@ -52655,8 +52691,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["25% increased Energy Shield from Equipped Focus"],
-      "roll_lines":["(15-25)% increased Energy Shield from Equipped Focus"],
+      "lines":["Notable Passive Skills in Radius also grant 25% increased Energy Shield from Equipped Focus"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (15-25)% increased Energy Shield from Equipped Focus"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3419203492",
@@ -52669,8 +52705,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Projectiles have 7% chance for an additional Projectile when Forking"],
-      "roll_lines":["Projectiles have (5-7)% chance for an additional Projectile when Forking"],
+      "lines":["Notable Passive Skills in Radius also grant Projectiles have 7% chance for an additional Projectile when Forking"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Projectiles have (5-7)% chance for an additional Projectile when Forking"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_4258720395",
@@ -52683,8 +52719,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% increased Freeze Buildup"],
-      "roll_lines":["(5-10)% increased Freeze Buildup"],
+      "lines":["Notable Passive Skills in Radius also grant 10% increased Freeze Buildup"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% increased Freeze Buildup"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1087531620",
@@ -52697,8 +52733,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["4% increased Freeze Threshold"],
-      "roll_lines":["(2-4)% increased Freeze Threshold"],
+      "lines":["Small Passive Skills in Radius also grant 4% increased Freeze Threshold"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-4)% increased Freeze Threshold"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_830345042",
@@ -52711,8 +52747,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Hazard Damage"],
-      "roll_lines":["(2-3)% increased Hazard Damage"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Hazard Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Hazard Damage"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_255840549",
@@ -52725,8 +52761,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Herald Skills deal 4% increased Damage"],
-      "roll_lines":["Herald Skills deal (2-4)% increased Damage"],
+      "lines":["Small Passive Skills in Radius also grant Herald Skills deal 4% increased Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant Herald Skills deal (2-4)% increased Damage"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3065378291",
@@ -52739,8 +52775,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Flammability Magnitude"],
-      "roll_lines":["(2-3)% increased Flammability Magnitude"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Flammability Magnitude"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Flammability Magnitude"],
       "weights":[["str_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_394473632",
@@ -52753,8 +52789,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Ignite Magnitude"],
-      "roll_lines":["(3-7)% increased Ignite Magnitude"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Ignite Magnitude"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Ignite Magnitude"],
       "weights":[["str_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_253641217",
@@ -52815,8 +52851,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["5% chance for Attack Hits to apply Incision"],
-      "roll_lines":["(3-5)% chance for Attack Hits to apply Incision"],
+      "lines":["Small Passive Skills in Radius also grant 5% chance for Attack Hits to apply Incision"],
+      "roll_lines":["Small Passive Skills in Radius also grant (3-5)% chance for Attack Hits to apply Incision"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_318092306",
@@ -52831,8 +52867,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["5% increased Skill Effect Duration"],
-      "roll_lines":["(3-5)% increased Skill Effect Duration"],
+      "lines":["Notable Passive Skills in Radius also grant 5% increased Skill Effect Duration"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-5)% increased Skill Effect Duration"],
       "weights":[["str_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3113764475",
@@ -52845,8 +52881,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Knockback Distance"],
-      "roll_lines":["(3-7)% increased Knockback Distance"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Knockback Distance"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Knockback Distance"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2976476845",
@@ -52874,8 +52910,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% of Skill Mana Costs Converted to Life Costs"],
-      "roll_lines":["(2-3)% of Skill Mana Costs Converted to Life Costs"],
+      "lines":["Notable Passive Skills in Radius also grant 3% of Skill Mana Costs Converted to Life Costs"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (2-3)% of Skill Mana Costs Converted to Life Costs"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3386297724",
@@ -52888,8 +52924,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% increased Life Flask Charges gained"],
-      "roll_lines":["(5-10)% increased Life Flask Charges gained"],
+      "lines":["Notable Passive Skills in Radius also grant 10% increased Life Flask Charges gained"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% increased Life Flask Charges gained"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_942519401",
@@ -52902,8 +52938,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Life Recovery from Flasks"],
-      "roll_lines":["(2-3)% increased Life Recovery from Flasks"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Life Recovery from Flasks"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Life Recovery from Flasks"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_980177976",
@@ -52916,8 +52952,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased amount of Life Leeched"],
-      "roll_lines":["(2-3)% increased amount of Life Leeched"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased amount of Life Leeched"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased amount of Life Leeched"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3666476747",
@@ -52930,8 +52966,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["1% of Damage taken Recouped as Life"],
-      "roll_lines":["1% of Damage taken Recouped as Life"],
+      "lines":["Notable Passive Skills in Radius also grant 1% of Damage taken Recouped as Life"],
+      "roll_lines":["Notable Passive Skills in Radius also grant 1% of Damage taken Recouped as Life"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3669820740",
@@ -52944,8 +52980,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["5% increased Life Regeneration rate"],
-      "roll_lines":["(3-5)% increased Life Regeneration rate"],
+      "lines":["Notable Passive Skills in Radius also grant 5% increased Life Regeneration rate"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-5)% increased Life Regeneration rate"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1185341308",
@@ -52958,8 +52994,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Recover 1% of maximum Life on Kill"],
-      "roll_lines":["Recover 1% of maximum Life on Kill"],
+      "lines":["Notable Passive Skills in Radius also grant Recover 1% of maximum Life on Kill"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Recover 1% of maximum Life on Kill"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2726713579",
@@ -52972,8 +53008,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Lightning Damage"],
-      "roll_lines":["(1-2)% increased Lightning Damage"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Lightning Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Lightning Damage"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2768899959",
@@ -52986,8 +53022,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Damage Penetrates 2% Lightning Resistance"],
-      "roll_lines":["Damage Penetrates (1-2)% Lightning Resistance"],
+      "lines":["Small Passive Skills in Radius also grant Damage Penetrates 2% Lightning Resistance"],
+      "roll_lines":["Small Passive Skills in Radius also grant Damage Penetrates (1-2)% Lightning Resistance"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_868556494",
@@ -53000,8 +53036,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Damage with Maces"],
-      "roll_lines":["(1-2)% increased Damage with Maces"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Damage with Maces"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Damage with Maces"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1852184471",
@@ -53014,8 +53050,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["12% increased Stun Buildup with Maces"],
-      "roll_lines":["(6-12)% increased Stun Buildup with Maces"],
+      "lines":["Notable Passive Skills in Radius also grant 12% increased Stun Buildup with Maces"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (6-12)% increased Stun Buildup with Maces"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2392824305",
@@ -53028,8 +53064,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% increased Mana Flask Charges gained"],
-      "roll_lines":["(5-10)% increased Mana Flask Charges gained"],
+      "lines":["Notable Passive Skills in Radius also grant 10% increased Mana Flask Charges gained"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% increased Mana Flask Charges gained"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3171212276",
@@ -53042,8 +53078,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Mana Recovery from Flasks"],
-      "roll_lines":["(1-2)% increased Mana Recovery from Flasks"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Mana Recovery from Flasks"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Mana Recovery from Flasks"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3774951878",
@@ -53056,8 +53092,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased amount of Mana Leeched"],
-      "roll_lines":["(1-2)% increased amount of Mana Leeched"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased amount of Mana Leeched"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased amount of Mana Leeched"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3700202631",
@@ -53070,8 +53106,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Mana Regeneration Rate"],
-      "roll_lines":["(1-2)% increased Mana Regeneration Rate"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Mana Regeneration Rate"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Mana Regeneration Rate"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3256879910",
@@ -53084,8 +53120,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Recover 1% of maximum Mana on Kill"],
-      "roll_lines":["Recover 1% of maximum Mana on Kill"],
+      "lines":["Notable Passive Skills in Radius also grant Recover 1% of maximum Mana on Kill"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Recover 1% of maximum Mana on Kill"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_525523040",
@@ -53098,8 +53134,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Mark Skills have 3% increased Use Speed"],
-      "roll_lines":["Mark Skills have (2-3)% increased Use Speed"],
+      "lines":["Small Passive Skills in Radius also grant Mark Skills have 3% increased Use Speed"],
+      "roll_lines":["Small Passive Skills in Radius also grant Mark Skills have (2-3)% increased Use Speed"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2202308025",
@@ -53112,8 +53148,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Mark Skills have 4% increased Skill Effect Duration"],
-      "roll_lines":["Mark Skills have (3-4)% increased Skill Effect Duration"],
+      "lines":["Small Passive Skills in Radius also grant Mark Skills have 4% increased Skill Effect Duration"],
+      "roll_lines":["Small Passive Skills in Radius also grant Mark Skills have (3-4)% increased Skill Effect Duration"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_4162678661",
@@ -53126,8 +53162,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Effect of your Mark Skills"],
-      "roll_lines":["(2-3)% increased Effect of your Mark Skills"],
+      "lines":["Notable Passive Skills in Radius also grant 3% increased Effect of your Mark Skills"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (2-3)% increased Effect of your Mark Skills"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_179541474",
@@ -53140,8 +53176,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["+1 to Maximum Rage"],
-      "roll_lines":["+1 to Maximum Rage"],
+      "lines":["Notable Passive Skills in Radius also grant +1 to Maximum Rage"],
+      "roll_lines":["Notable Passive Skills in Radius also grant +1 to Maximum Rage"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1846980580",
@@ -53170,8 +53206,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Melee Damage"],
-      "roll_lines":["(1-2)% increased Melee Damage"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Melee Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Melee Damage"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1337740333",
@@ -53184,8 +53220,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Melee Damage if you've dealt a Projectile Attack Hit in the past eight seconds"],
-      "roll_lines":["(2-3)% increased Melee Damage if you've dealt a Projectile Attack Hit in the past eight seconds"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Melee Damage if you've dealt a Projectile Attack Hit in the past eight seconds"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Melee Damage if you've dealt a Projectile Attack Hit in the past eight seconds"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2421151933",
@@ -53198,8 +53234,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Minion Accuracy Rating"],
-      "roll_lines":["(2-3)% increased Minion Accuracy Rating"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Minion Accuracy Rating"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Minion Accuracy Rating"],
       "weights":[["int_radius_jewel",0],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_793875384",
@@ -53212,8 +53248,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Minions have 5% increased Area of Effect"],
-      "roll_lines":["Minions have (3-5)% increased Area of Effect"],
+      "lines":["Notable Passive Skills in Radius also grant Minions have 5% increased Area of Effect"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Minions have (3-5)% increased Area of Effect"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2534359663",
@@ -53226,8 +53262,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Minions have 2% increased Attack and Cast Speed"],
-      "roll_lines":["Minions have (1-2)% increased Attack and Cast Speed"],
+      "lines":["Notable Passive Skills in Radius also grant Minions have 2% increased Attack and Cast Speed"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Minions have (1-2)% increased Attack and Cast Speed"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3106718406",
@@ -53240,8 +53276,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Minions have +2% to Chaos Resistance"],
-      "roll_lines":["Minions have +(1-2)% to Chaos Resistance"],
+      "lines":["Small Passive Skills in Radius also grant Minions have +2% to Chaos Resistance"],
+      "roll_lines":["Small Passive Skills in Radius also grant Minions have +(1-2)% to Chaos Resistance"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1756380435",
@@ -53255,8 +53291,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Minions have 10% increased Critical Hit Chance"],
-      "roll_lines":["Minions have (5-10)% increased Critical Hit Chance"],
+      "lines":["Notable Passive Skills in Radius also grant Minions have 10% increased Critical Hit Chance"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Minions have (5-10)% increased Critical Hit Chance"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3628935286",
@@ -53269,8 +53305,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Minions have 12% increased Critical Damage Bonus"],
-      "roll_lines":["Minions have (6-12)% increased Critical Damage Bonus"],
+      "lines":["Notable Passive Skills in Radius also grant Minions have 12% increased Critical Damage Bonus"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Minions have (6-12)% increased Critical Damage Bonus"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_593241812",
@@ -53283,8 +53319,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Minions deal 2% increased Damage"],
-      "roll_lines":["Minions deal (1-2)% increased Damage"],
+      "lines":["Small Passive Skills in Radius also grant Minions deal 2% increased Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant Minions deal (1-2)% increased Damage"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2954360902",
@@ -53297,8 +53333,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Minions have 2% increased maximum Life"],
-      "roll_lines":["Minions have (1-2)% increased maximum Life"],
+      "lines":["Small Passive Skills in Radius also grant Minions have 2% increased maximum Life"],
+      "roll_lines":["Small Passive Skills in Radius also grant Minions have (1-2)% increased maximum Life"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_378796798",
@@ -53311,8 +53347,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Minions have 2% additional Physical Damage Reduction"],
-      "roll_lines":["Minions have (1-2)% additional Physical Damage Reduction"],
+      "lines":["Small Passive Skills in Radius also grant Minions have 2% additional Physical Damage Reduction"],
+      "roll_lines":["Small Passive Skills in Radius also grant Minions have (1-2)% additional Physical Damage Reduction"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_30438393",
@@ -53325,8 +53361,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Minions have +2% to all Elemental Resistances"],
-      "roll_lines":["Minions have +(1-2)% to all Elemental Resistances"],
+      "lines":["Small Passive Skills in Radius also grant Minions have +2% to all Elemental Resistances"],
+      "roll_lines":["Small Passive Skills in Radius also grant Minions have +(1-2)% to all Elemental Resistances"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3225608889",
@@ -53340,8 +53376,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Minions Revive 7% faster"],
-      "roll_lines":["Minions Revive (3-7)% faster"],
+      "lines":["Notable Passive Skills in Radius also grant Minions Revive 7% faster"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Minions Revive (3-7)% faster"],
       "weights":[["int_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -53350,8 +53386,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["1% increased Movement Speed"],
-      "roll_lines":["1% increased Movement Speed"],
+      "lines":["Notable Passive Skills in Radius also grant 1% increased Movement Speed"],
+      "roll_lines":["Notable Passive Skills in Radius also grant 1% increased Movement Speed"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_844449513",
@@ -53392,8 +53428,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Offering Skills have 12% increased Duration"],
-      "roll_lines":["Offering Skills have (6-12)% increased Duration"],
+      "lines":["Notable Passive Skills in Radius also grant Offering Skills have 12% increased Duration"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Offering Skills have (6-12)% increased Duration"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2374711847",
@@ -53406,8 +53442,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Offerings have 3% increased Maximum Life"],
-      "roll_lines":["Offerings have (2-3)% increased Maximum Life"],
+      "lines":["Small Passive Skills in Radius also grant Offerings have 3% increased Maximum Life"],
+      "roll_lines":["Small Passive Skills in Radius also grant Offerings have (2-3)% increased Maximum Life"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2107703111",
@@ -53420,8 +53456,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% increased Parried Debuff Duration"],
-      "roll_lines":["(5-10)% increased Parried Debuff Duration"],
+      "lines":["Notable Passive Skills in Radius also grant 10% increased Parried Debuff Duration"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% increased Parried Debuff Duration"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1514844108",
@@ -53434,8 +53470,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Parry Damage"],
-      "roll_lines":["(2-3)% increased Parry Damage"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Parry Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Parry Damage"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1007380041",
@@ -53448,8 +53484,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Global Physical Damage"],
-      "roll_lines":["(1-2)% increased Global Physical Damage"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Global Physical Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Global Physical Damage"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1417267954",
@@ -53462,8 +53498,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% chance to Pierce an Enemy"],
-      "roll_lines":["(5-10)% chance to Pierce an Enemy"],
+      "lines":["Notable Passive Skills in Radius also grant 10% chance to Pierce an Enemy"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% chance to Pierce an Enemy"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1800303440",
@@ -53476,8 +53512,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% increased Pin Buildup"],
-      "roll_lines":["(5-10)% increased Pin Buildup"],
+      "lines":["Notable Passive Skills in Radius also grant 10% increased Pin Buildup"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% increased Pin Buildup"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1944020877",
@@ -53490,8 +53526,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Damage with Plant Skills"],
-      "roll_lines":["(1-2)% increased Damage with Plant Skills"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Damage with Plant Skills"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Damage with Plant Skills"],
       "weights":[["int_radius_jewel",1],["str_radius_jewel",1],["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1590846356",
@@ -53504,8 +53540,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["1% chance to Poison on Hit"],
-      "roll_lines":["1% chance to Poison on Hit"],
+      "lines":["Small Passive Skills in Radius also grant 1% chance to Poison on Hit"],
+      "roll_lines":["Small Passive Skills in Radius also grant 1% chance to Poison on Hit"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2840989393",
@@ -53518,8 +53554,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Magnitude of Poison you inflict"],
-      "roll_lines":["(3-7)% increased Magnitude of Poison you inflict"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Magnitude of Poison you inflict"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Magnitude of Poison you inflict"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_462424929",
@@ -53532,8 +53568,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Poison Duration"],
-      "roll_lines":["(3-7)% increased Poison Duration"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Poison Duration"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Poison Duration"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_221701169",
@@ -53546,8 +53582,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["12% increased Presence Area of Effect"],
-      "roll_lines":["(8-12)% increased Presence Area of Effect"],
+      "lines":["Notable Passive Skills in Radius also grant 12% increased Presence Area of Effect"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (8-12)% increased Presence Area of Effect"],
       "weights":[["str_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_4032352472",
@@ -53560,8 +53596,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Projectile Damage"],
-      "roll_lines":["(1-2)% increased Projectile Damage"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Projectile Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Projectile Damage"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_455816363",
@@ -53574,8 +53610,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Projectile Damage if you've dealt a Melee Hit in the past eight seconds"],
-      "roll_lines":["(2-3)% increased Projectile Damage if you've dealt a Melee Hit in the past eight seconds"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Projectile Damage if you've dealt a Melee Hit in the past eight seconds"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Projectile Damage if you've dealt a Melee Hit in the past eight seconds"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_288364275",
@@ -53588,8 +53624,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Projectile Speed"],
-      "roll_lines":["(2-3)% increased Projectile Speed"],
+      "lines":["Notable Passive Skills in Radius also grant 3% increased Projectile Speed"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (2-3)% increased Projectile Speed"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1777421941",
@@ -53602,8 +53638,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Damage with Quarterstaves"],
-      "roll_lines":["(1-2)% increased Damage with Quarterstaves"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Damage with Quarterstaves"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Damage with Quarterstaves"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_821948283",
@@ -53616,8 +53652,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% increased Freeze Buildup with Quarterstaves"],
-      "roll_lines":["(5-10)% increased Freeze Buildup with Quarterstaves"],
+      "lines":["Notable Passive Skills in Radius also grant 10% increased Freeze Buildup with Quarterstaves"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% increased Freeze Buildup with Quarterstaves"],
       "weights":[["dex_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_127081978",
@@ -53630,8 +53666,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Attack Speed with Quarterstaves"],
-      "roll_lines":["(1-2)% increased Attack Speed with Quarterstaves"],
+      "lines":["Notable Passive Skills in Radius also grant 2% increased Attack Speed with Quarterstaves"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (1-2)% increased Attack Speed with Quarterstaves"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_111835965",
@@ -53644,8 +53680,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased bonuses gained from Equipped Quiver"],
-      "roll_lines":["(2-3)% increased bonuses gained from Equipped Quiver"],
+      "lines":["Notable Passive Skills in Radius also grant 3% increased bonuses gained from Equipped Quiver"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (2-3)% increased bonuses gained from Equipped Quiver"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_4180952808",
@@ -53658,8 +53694,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Gain 1 Rage on Melee Hit"],
-      "roll_lines":["Gain 1 Rage on Melee Hit"],
+      "lines":["Notable Passive Skills in Radius also grant Gain 1 Rage on Melee Hit"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Gain 1 Rage on Melee Hit"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2969557004",
@@ -53672,8 +53708,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Gain 2 Rage when Hit by an Enemy"],
-      "roll_lines":["Gain (1-2) Rage when Hit by an Enemy"],
+      "lines":["Notable Passive Skills in Radius also grant Gain 2 Rage when Hit by an Enemy"],
+      "roll_lines":["Notable Passive Skills in Radius also grant Gain (1-2) Rage when Hit by an Enemy"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2131720304",
@@ -53686,8 +53722,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Damage while Shapeshifted"],
-      "roll_lines":["(1-2)% increased Damage while Shapeshifted"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Damage while Shapeshifted"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Damage while Shapeshifted"],
       "weights":[["int_radius_jewel",1],["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_266564538",
@@ -53700,8 +53736,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Skill Speed while Shapeshifted"],
-      "roll_lines":["(1-2)% increased Skill Speed while Shapeshifted"],
+      "lines":["Notable Passive Skills in Radius also grant 2% increased Skill Speed while Shapeshifted"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (1-2)% increased Skill Speed while Shapeshifted"],
       "weights":[["int_radius_jewel",1],["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3579898587",
@@ -53714,8 +53750,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["15% increased Armour, Evasion and Energy Shield from Equipped Shield"],
-      "roll_lines":["(8-15)% increased Armour, Evasion and Energy Shield from Equipped Shield"],
+      "lines":["Notable Passive Skills in Radius also grant 15% increased Armour, Evasion and Energy Shield from Equipped Shield"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (8-15)% increased Armour, Evasion and Energy Shield from Equipped Shield"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3429148113",
@@ -53728,8 +53764,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased chance to Shock"],
-      "roll_lines":["(2-3)% increased chance to Shock"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased chance to Shock"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased chance to Shock"],
       "weights":[["dex_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1039268420",
@@ -53742,8 +53778,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Shock Duration"],
-      "roll_lines":["(2-3)% increased Shock Duration"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Shock Duration"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Shock Duration"],
       "weights":[["dex_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3513818125",
@@ -53756,8 +53792,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Magnitude of Shock you inflict"],
-      "roll_lines":["(5-7)% increased Magnitude of Shock you inflict"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Magnitude of Shock you inflict"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-7)% increased Magnitude of Shock you inflict"],
       "weights":[["dex_radius_jewel",1],["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1166140625",
@@ -53770,8 +53806,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["5% reduced Slowing Potency of Debuffs on You"],
-      "roll_lines":["(2-5)% reduced Slowing Potency of Debuffs on You"],
+      "lines":["Notable Passive Skills in Radius also grant 5% reduced Slowing Potency of Debuffs on You"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (2-5)% reduced Slowing Potency of Debuffs on You"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2580617872",
@@ -53799,8 +53835,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Attack Speed with Spears"],
-      "roll_lines":["(1-2)% increased Attack Speed with Spears"],
+      "lines":["Notable Passive Skills in Radius also grant 2% increased Attack Speed with Spears"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (1-2)% increased Attack Speed with Spears"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1266413530",
@@ -53813,8 +53849,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% increased Critical Damage Bonus with Spears"],
-      "roll_lines":["(5-10)% increased Critical Damage Bonus with Spears"],
+      "lines":["Notable Passive Skills in Radius also grant 10% increased Critical Damage Bonus with Spears"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% increased Critical Damage Bonus with Spears"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_138421180",
@@ -53827,8 +53863,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Damage with Spears"],
-      "roll_lines":["(1-2)% increased Damage with Spears"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Damage with Spears"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Damage with Spears"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2809428780",
@@ -53841,8 +53877,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Critical Hit Chance for Spells"],
-      "roll_lines":["(3-7)% increased Critical Hit Chance for Spells"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Critical Hit Chance for Spells"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Critical Hit Chance for Spells"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2704905000",
@@ -53855,8 +53891,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% increased Critical Spell Damage Bonus"],
-      "roll_lines":["(5-10)% increased Critical Spell Damage Bonus"],
+      "lines":["Notable Passive Skills in Radius also grant 10% increased Critical Spell Damage Bonus"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% increased Critical Spell Damage Bonus"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2466785537",
@@ -53869,8 +53905,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Spell Damage"],
-      "roll_lines":["(1-2)% increased Spell Damage"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Spell Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Spell Damage"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1137305356",
@@ -53883,8 +53919,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["10% increased Stun Buildup"],
-      "roll_lines":["(5-10)% increased Stun Buildup"],
+      "lines":["Notable Passive Skills in Radius also grant 10% increased Stun Buildup"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (5-10)% increased Stun Buildup"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_4173554949",
@@ -53897,8 +53933,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Stun Threshold"],
-      "roll_lines":["(1-2)% increased Stun Threshold"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Stun Threshold"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Stun Threshold"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_484792219",
@@ -53911,8 +53947,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["12% increased Stun Threshold while Parrying"],
-      "roll_lines":["(8-12)% increased Stun Threshold while Parrying"],
+      "lines":["Notable Passive Skills in Radius also grant 12% increased Stun Threshold while Parrying"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (8-12)% increased Stun Threshold while Parrying"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1495814176",
@@ -53925,8 +53961,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Stun Threshold if you haven't been Stunned Recently"],
-      "roll_lines":["(2-3)% increased Stun Threshold if you haven't been Stunned Recently"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Stun Threshold if you haven't been Stunned Recently"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Stun Threshold if you haven't been Stunned Recently"],
       "weights":[["dex_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_654207792",
@@ -53939,8 +53975,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["Gain additional Stun Threshold equal to 2% of maximum Energy Shield"],
-      "roll_lines":["Gain additional Stun Threshold equal to (1-2)% of maximum Energy Shield"],
+      "lines":["Small Passive Skills in Radius also grant Gain additional Stun Threshold equal to 2% of maximum Energy Shield"],
+      "roll_lines":["Small Passive Skills in Radius also grant Gain additional Stun Threshold equal to (1-2)% of maximum Energy Shield"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1653682082",
@@ -53953,8 +53989,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Damage with Swords"],
-      "roll_lines":["(1-2)% increased Damage with Swords"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Damage with Swords"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Damage with Swords"],
       "weights":[["str_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -53963,8 +53999,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Attack Speed with Swords"],
-      "roll_lines":["(1-2)% increased Attack Speed with Swords"],
+      "lines":["Notable Passive Skills in Radius also grant 2% increased Attack Speed with Swords"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (1-2)% increased Attack Speed with Swords"],
       "weights":[["str_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -53973,8 +54009,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Thorns damage"],
-      "roll_lines":["(2-3)% increased Thorns damage"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Thorns damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Thorns damage"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1320662475",
@@ -53987,8 +54023,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Totem Damage"],
-      "roll_lines":["(2-3)% increased Totem Damage"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Totem Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Totem Damage"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2108821127",
@@ -54001,8 +54037,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Totem Life"],
-      "roll_lines":["(2-3)% increased Totem Life"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Totem Life"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Totem Life"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_442393998",
@@ -54015,8 +54051,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Totem Placement speed"],
-      "roll_lines":["(2-3)% increased Totem Placement speed"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Totem Placement speed"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Totem Placement speed"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1145481685",
@@ -54029,8 +54065,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Trap Damage"],
-      "roll_lines":["(1-2)% increased Trap Damage"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Trap Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Trap Damage"],
       "weights":[["int_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -54039,8 +54075,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["4% increased Trap Throwing Speed"],
-      "roll_lines":["(2-4)% increased Trap Throwing Speed"],
+      "lines":["Notable Passive Skills in Radius also grant 4% increased Trap Throwing Speed"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (2-4)% increased Trap Throwing Speed"],
       "weights":[["int_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -54049,8 +54085,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["Triggered Spells deal 3% increased Spell Damage"],
-      "roll_lines":["Triggered Spells deal (2-3)% increased Spell Damage"],
+      "lines":["Small Passive Skills in Radius also grant Triggered Spells deal 3% increased Spell Damage"],
+      "roll_lines":["Small Passive Skills in Radius also grant Triggered Spells deal (2-3)% increased Spell Damage"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_473917671",
@@ -54063,8 +54099,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Unarmed Attack Speed"],
-      "roll_lines":["(1-2)% increased Unarmed Attack Speed"],
+      "lines":["Notable Passive Skills in Radius also grant 2% increased Unarmed Attack Speed"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (1-2)% increased Unarmed Attack Speed"],
       "weights":[["dex_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -54073,8 +54109,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["2% increased Damage with Unarmed Attacks"],
-      "roll_lines":["(1-2)% increased Damage with Unarmed Attacks"],
+      "lines":["Small Passive Skills in Radius also grant 2% increased Damage with Unarmed Attacks"],
+      "roll_lines":["Small Passive Skills in Radius also grant (1-2)% increased Damage with Unarmed Attacks"],
       "weights":[["dex_radius_jewel",0],["jewel",0]],
       "stats":[]
     },{
@@ -54083,8 +54119,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["1% chance to gain Volatility on Kill"],
-      "roll_lines":["1% chance to gain Volatility on Kill"],
+      "lines":["Notable Passive Skills in Radius also grant 1% chance to gain Volatility on Kill"],
+      "roll_lines":["Notable Passive Skills in Radius also grant 1% chance to gain Volatility on Kill"],
       "weights":[["jewel",0]],
       "stats":[{
           "id":"explicit.stat_4225700219",
@@ -54097,8 +54133,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Warcry Buff Effect"],
-      "roll_lines":["(3-7)% increased Warcry Buff Effect"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Warcry Buff Effect"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Warcry Buff Effect"],
       "weights":[["str_radius_jewel",0],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2675129731",
@@ -54111,8 +54147,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["7% increased Warcry Cooldown Recovery Rate"],
-      "roll_lines":["(3-7)% increased Warcry Cooldown Recovery Rate"],
+      "lines":["Notable Passive Skills in Radius also grant 7% increased Warcry Cooldown Recovery Rate"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-7)% increased Warcry Cooldown Recovery Rate"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_2056107438",
@@ -54125,8 +54161,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Damage with Warcries"],
-      "roll_lines":["(2-3)% increased Damage with Warcries"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Damage with Warcries"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Damage with Warcries"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1160637284",
@@ -54139,8 +54175,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["3% increased Warcry Speed"],
-      "roll_lines":["(2-3)% increased Warcry Speed"],
+      "lines":["Small Passive Skills in Radius also grant 3% increased Warcry Speed"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-3)% increased Warcry Speed"],
       "weights":[["str_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1602294220",
@@ -54153,8 +54189,8 @@
       "kind":"suffix",
       "level":1,
       "domain":"jewel",
-      "lines":["4% increased Weapon Swap Speed"],
-      "roll_lines":["(2-4)% increased Weapon Swap Speed"],
+      "lines":["Small Passive Skills in Radius also grant 4% increased Weapon Swap Speed"],
+      "roll_lines":["Small Passive Skills in Radius also grant (2-4)% increased Weapon Swap Speed"],
       "weights":[["jewel",0]],
       "stats":[{
           "id":"explicit.stat_1129429646",
@@ -54167,8 +54203,8 @@
       "kind":"prefix",
       "level":1,
       "domain":"jewel",
-      "lines":["5% increased Withered Magnitude"],
-      "roll_lines":["(3-5)% increased Withered Magnitude"],
+      "lines":["Notable Passive Skills in Radius also grant 5% increased Withered Magnitude"],
+      "roll_lines":["Notable Passive Skills in Radius also grant (3-5)% increased Withered Magnitude"],
       "weights":[["int_radius_jewel",1],["jewel",0]],
       "stats":[{
           "id":"explicit.stat_3936121440",
@@ -57857,6 +57893,7 @@
       "source":"corrupted",
       "id":"corrupted:CorruptionJewelBlindImmunity1",
       "categories":["jewel"],
+      "jewel_types":["base","radius"],
       "level":1,
       "lines":["Cannot be Blinded"],
       "stats":[{
@@ -57869,6 +57906,7 @@
       "source":"corrupted",
       "id":"corrupted:CorruptionJewelChaosResist1",
       "categories":["jewel"],
+      "jewel_types":["base","radius"],
       "level":1,
       "lines":["+7% to Chaos Resistance"],
       "stats":[{
@@ -57881,6 +57919,7 @@
       "source":"corrupted",
       "id":"corrupted:CorruptionJewelColdResist1",
       "categories":["jewel"],
+      "jewel_types":["base","radius"],
       "level":1,
       "lines":["+10% to Cold Resistance"],
       "stats":[{
@@ -57893,6 +57932,7 @@
       "source":"corrupted",
       "id":"corrupted:CorruptionJewelCorruptedBloodImmunity1",
       "categories":["jewel"],
+      "jewel_types":["base","radius"],
       "level":1,
       "lines":["Corrupted Blood cannot be inflicted on you"],
       "stats":[{
@@ -57905,6 +57945,7 @@
       "source":"corrupted",
       "id":"corrupted:CorruptionJewelDexterity1",
       "categories":["jewel"],
+      "jewel_types":["base","radius"],
       "level":1,
       "lines":["+6 to Dexterity"],
       "stats":[{
@@ -57917,6 +57958,7 @@
       "source":"corrupted",
       "id":"corrupted:CorruptionJewelFireResist1",
       "categories":["jewel"],
+      "jewel_types":["base","radius"],
       "level":1,
       "lines":["+10% to Fire Resistance"],
       "stats":[{
@@ -57929,6 +57971,7 @@
       "source":"corrupted",
       "id":"corrupted:CorruptionJewelHinderImmunity1",
       "categories":["jewel"],
+      "jewel_types":["base","radius"],
       "level":1,
       "lines":["You cannot be Hindered"],
       "stats":[{
@@ -57941,6 +57984,7 @@
       "source":"corrupted",
       "id":"corrupted:CorruptionJewelIntelligence1",
       "categories":["jewel"],
+      "jewel_types":["base","radius"],
       "level":1,
       "lines":["+6 to Intelligence"],
       "stats":[{
@@ -57953,6 +57997,7 @@
       "source":"corrupted",
       "id":"corrupted:CorruptionJewelLightningResist1",
       "categories":["jewel"],
+      "jewel_types":["base","radius"],
       "level":1,
       "lines":["+10% to Lightning Resistance"],
       "stats":[{
@@ -57965,6 +58010,7 @@
       "source":"corrupted",
       "id":"corrupted:CorruptionJewelMaimImmunity1",
       "categories":["jewel"],
+      "jewel_types":["base","radius"],
       "level":1,
       "lines":["Immune to Maim"],
       "stats":[{
@@ -57977,6 +58023,7 @@
       "source":"corrupted",
       "id":"corrupted:CorruptionJewelStrength1",
       "categories":["jewel"],
+      "jewel_types":["base","radius"],
       "level":1,
       "lines":["+6 to Strength"],
       "stats":[{
@@ -60056,6 +60103,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixAbyssalWastingEffect",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["20% increased Magnitude of Abyssal Wasting you inflict"],
       "stats":[{
@@ -60067,6 +60115,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixAttackDamageArmour",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["10% increased Armour","8% increased Attack Damage"],
       "stats":[{
@@ -60082,6 +60131,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixAttackDamageEnergyShield",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["10% increased maximum Energy Shield","8% increased Attack Damage"],
       "stats":[{
@@ -60097,6 +60147,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixAttackDamageEvasion",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["10% increased Evasion Rating","8% increased Attack Damage"],
       "stats":[{
@@ -60112,6 +60163,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixAuraSkillEffectPresenceAreaOfEffect",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["15% increased Presence Area of Effect","Aura Skills have 4% increased Magnitudes"],
       "stats":[{
@@ -60127,6 +60179,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixBleedChanceAndMagnitude",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["15% increased chance to inflict Bleeding","10% increased Magnitude of Bleeding you inflict"],
       "stats":[{
@@ -60142,6 +60195,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixChaosDamageWitherEffect",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["8% increased Chaos Damage","6% increased Withered Magnitude"],
       "stats":[{
@@ -60157,6 +60211,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixColdDamageAndPen",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["8% increased Cold Damage","Damage Penetrates 7% Cold Resistance"],
       "stats":[{
@@ -60172,6 +60227,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixCompanionLifeAndDamage",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["Companions deal 10% increased Damage","Companions have 10% increased maximum Life"],
       "stats":[{
@@ -60187,6 +60243,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixElementalDamageAilmentMagnitude",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["8% increased Elemental Damage","8% increased Magnitude of Ailments you inflict"],
       "stats":[{
@@ -60202,6 +60259,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixElementalExposureEffect",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["8% increased Exposure Effect"],
       "stats":[{
@@ -60213,6 +60271,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixFireDamageAndPen",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["8% increased Fire Damage","Damage Penetrates 7% Fire Resistance"],
       "stats":[{
@@ -60228,6 +60287,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixGlobalPhysicalDamageArmourBreak",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["8% increased Global Physical Damage","Break 8% increased Armour"],
       "stats":[{
@@ -60243,6 +60303,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixLightningDamageAndPen",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["8% increased Lightning Damage","Damage Penetrates 7% Lightning Resistance"],
       "stats":[{
@@ -60258,6 +60319,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixMinionAreaAndLife",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["Minions have 8% increased maximum Life"],
       "stats":[{
@@ -60269,6 +60331,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixMinionDamageArmour",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["10% increased Armour","Minions deal 8% increased Damage"],
       "stats":[{
@@ -60284,6 +60347,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixMinionDamageEnergyShield",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["10% increased maximum Energy Shield","Minions deal 8% increased Damage"],
       "stats":[{
@@ -60299,6 +60363,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixMinionDamageEvasion",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["10% increased Evasion Rating","Minions deal 8% increased Damage"],
       "stats":[{
@@ -60314,6 +60379,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixPoisonChanceAndMagnitude",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["15% increased chance to Poison","10% increased Magnitude of Poison you inflict"],
       "stats":[{
@@ -60329,6 +60395,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixSpellDamageArmour",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["8% increased Spell Damage","10% increased Armour"],
       "stats":[{
@@ -60344,6 +60411,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixSpellDamageEnergyShield",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["8% increased Spell Damage","10% increased maximum Energy Shield"],
       "stats":[{
@@ -60359,6 +60427,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixSpellDamageEvasion",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["8% increased Spell Damage","10% increased Evasion Rating"],
       "stats":[{
@@ -60374,6 +60443,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixThornsDamageArmour",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["10% increased Armour","8% increased Thorns damage"],
       "stats":[{
@@ -60389,6 +60459,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixThornsDamageEnergyShield",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["10% increased maximum Energy Shield","8% increased Thorns damage"],
       "stats":[{
@@ -60404,6 +60475,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixThornsDamageEvasion",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["10% increased Evasion Rating","8% increased Thorns damage"],
       "stats":[{
@@ -60419,6 +60491,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixTotemDamageArmour",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["10% increased Armour","8% increased Totem Damage"],
       "stats":[{
@@ -60434,6 +60507,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixTotemDamageEnergyShield",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["10% increased maximum Energy Shield","8% increased Totem Damage"],
       "stats":[{
@@ -60449,6 +60523,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixTotemDamageEvasion",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["10% increased Evasion Rating","8% increased Totem Damage"],
       "stats":[{
@@ -60464,6 +60539,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelPrefixWarcryBuffEffectAndDamage",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["8% increased Warcry Buff Effect","10% increased Damage with Warcries"],
       "stats":[{
@@ -60479,6 +60555,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelSuffixIncreasedDexterity",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["2% increased Dexterity"],
       "stats":[{
@@ -60490,6 +60567,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelSuffixIncreasedIntelligence",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["2% increased Intelligence"],
       "stats":[{
@@ -60501,6 +60579,7 @@
       "source":"desecrated",
       "id":"desecrated:AbyssModJewelSuffixIncreasedStrength",
       "categories":["jewel"],
+      "jewel_types":["base"],
       "level":1,
       "lines":["2% increased Strength"],
       "stats":[{
@@ -60669,6 +60748,152 @@
           "id":"explicit.stat_3932115504",
           "line":"Projectile Attacks have a 12% chance to fire two additional Projectiles while moving",
           "value":12
+        }]
+    },{
+      "source":"desecrated",
+      "id":"desecrated:AbyssModRadiusJewelPrefixCharmChargesPerSecond",
+      "categories":["jewel"],
+      "jewel_types":["radius"],
+      "level":1,
+      "lines":["Notable Passive Skills in Radius also grant Charms gain 0.1 charges per Second"],
+      "stats":[{
+          "id":"explicit.stat_1034611536",
+          "line":"Notable Passive Skills in Radius also grant Charms gain 0.1 charges per Second",
+          "value":0.1,
+          "trade_line":"Notable Passive Skills in Radius also grant Charms gain 0.1 charge per Second"
+        }]
+    },{
+      "source":"desecrated",
+      "id":"desecrated:AbyssModRadiusJewelPrefixDamageTakenFromManaBeforeLife",
+      "categories":["jewel"],
+      "jewel_types":["radius"],
+      "level":1,
+      "lines":["Notable Passive Skills in Radius also grant 1% of Damage is taken from Mana before Life"],
+      "stats":[{
+          "id":"explicit.stat_2709646369",
+          "line":"Notable Passive Skills in Radius also grant 1% of Damage is taken from Mana before Life",
+          "value":1
+        }]
+    },{
+      "source":"desecrated",
+      "id":"desecrated:AbyssModRadiusJewelPrefixDamageTakenRecoupLife",
+      "categories":["jewel"],
+      "jewel_types":["radius"],
+      "level":1,
+      "lines":["Notable Passive Skills in Radius also grant 1% of Damage taken Recouped as Life"],
+      "stats":[{
+          "id":"explicit.stat_3669820740",
+          "line":"Notable Passive Skills in Radius also grant 1% of Damage taken Recouped as Life",
+          "value":1
+        }]
+    },{
+      "source":"desecrated",
+      "id":"desecrated:AbyssModRadiusJewelPrefixDamageTakenRecoupMana",
+      "categories":["jewel"],
+      "jewel_types":["radius"],
+      "level":1,
+      "lines":["Notable Passive Skills in Radius also grant 1% of Damage taken Recouped as Mana"],
+      "stats":[{
+          "id":"explicit.stat_85367160",
+          "line":"Notable Passive Skills in Radius also grant 1% of Damage taken Recouped as Mana",
+          "value":1
+        }]
+    },{
+      "source":"desecrated",
+      "id":"desecrated:AbyssModRadiusJewelPrefixGlobalDefences",
+      "categories":["jewel"],
+      "jewel_types":["radius"],
+      "level":1,
+      "lines":["Notable Passive Skills in Radius also grant 3% increased Global Armour, Evasion and Energy Shield"],
+      "stats":[{
+          "id":"explicit.stat_2783157569",
+          "line":"Notable Passive Skills in Radius also grant 3% increased Global Armour, Evasion and Energy Shield",
+          "value":3
+        }]
+    },{
+      "source":"desecrated",
+      "id":"desecrated:AbyssModRadiusJewelPrefixLifeFlaskChargesPerSecond",
+      "categories":["jewel"],
+      "jewel_types":["radius"],
+      "level":1,
+      "lines":["Notable Passive Skills in Radius also grant Life Flasks gain 0.1 charges per Second"],
+      "stats":[{
+          "id":"explicit.stat_1148433552",
+          "line":"Notable Passive Skills in Radius also grant Life Flasks gain 0.1 charges per Second",
+          "value":0.1
+        }]
+    },{
+      "source":"desecrated",
+      "id":"desecrated:AbyssModRadiusJewelPrefixManaCostEfficiency",
+      "categories":["jewel"],
+      "jewel_types":["radius"],
+      "level":1,
+      "lines":["Notable Passive Skills in Radius also grant 3% increased Mana Cost Efficiency"],
+      "stats":[{
+          "id":"explicit.stat_4257790560",
+          "line":"Notable Passive Skills in Radius also grant 3% increased Mana Cost Efficiency",
+          "value":3
+        }]
+    },{
+      "source":"desecrated",
+      "id":"desecrated:AbyssModRadiusJewelPrefixManaFlaskChargesPerSecond",
+      "categories":["jewel"],
+      "jewel_types":["radius"],
+      "level":1,
+      "lines":["Notable Passive Skills in Radius also grant Mana Flasks gain 0.1 charges per Second"],
+      "stats":[{
+          "id":"explicit.stat_3939216292",
+          "line":"Notable Passive Skills in Radius also grant Mana Flasks gain 0.1 charges per Second",
+          "value":0.1
+        }]
+    },{
+      "source":"desecrated",
+      "id":"desecrated:AbyssModRadiusJewelPrefixPercentMaximumLife",
+      "categories":["jewel"],
+      "jewel_types":["radius"],
+      "level":1,
+      "lines":["Notable Passive Skills in Radius also grant 1% increased maximum Life"],
+      "stats":[{
+          "id":"explicit.stat_160888068",
+          "line":"Notable Passive Skills in Radius also grant 1% increased maximum Life",
+          "value":1
+        }]
+    },{
+      "source":"desecrated",
+      "id":"desecrated:AbyssModRadiusJewelPrefixPercentMaximumMana",
+      "categories":["jewel"],
+      "jewel_types":["radius"],
+      "level":1,
+      "lines":["Notable Passive Skills in Radius also grant 1% increased maximum Mana"],
+      "stats":[{
+          "id":"explicit.stat_2589572664",
+          "line":"Notable Passive Skills in Radius also grant 1% increased maximum Mana",
+          "value":1
+        }]
+    },{
+      "source":"desecrated",
+      "id":"desecrated:AbyssModRadiusJewelPrefixReducedCriticalHitChanceAgainstYou",
+      "categories":["jewel"],
+      "jewel_types":["radius"],
+      "level":1,
+      "lines":["Notable Passive Skills in Radius also grant Hits have 5% reduced Critical Hit Chance against you"],
+      "stats":[{
+          "id":"explicit.stat_2135541924",
+          "line":"Notable Passive Skills in Radius also grant Hits have 5% reduced Critical Hit Chance against you",
+          "value":-5,
+          "trade_line":"Notable Passive Skills in Radius also grant Hits have -5% increased Critical Hit Chance against you"
+        }]
+    },{
+      "source":"desecrated",
+      "id":"desecrated:AbyssModRadiusJewelPrefixRegeneratePercentLifePerSecond",
+      "categories":["jewel"],
+      "jewel_types":["radius"],
+      "level":1,
+      "lines":["Notable Passive Skills in Radius also grant Regenerate 0.07% of maximum Life per second"],
+      "stats":[{
+          "id":"explicit.stat_3566150527",
+          "line":"Notable Passive Skills in Radius also grant Regenerate 0.07% of maximum Life per second",
+          "value":0.07
         }]
     },{
       "source":"desecrated",

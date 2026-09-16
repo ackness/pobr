@@ -110,13 +110,21 @@ impl JewelRadius {
     /// PoB2's `outerSquared` semantics in `setJewelRadiiGlobally`). `Custom`
     /// returns the caller-provided value directly (scaling factor already applied).
     ///
-    /// Tree version selection: PoB2 picks the newest version group `<=` the
-    /// target tree version — currently there's only the `0_1` group, so
-    /// taking the max key of `tree_versions` (the last `BTreeMap` entry) is
-    /// equivalent. If the data is missing the requested named band
-    /// (malformed/truncated data), this falls back to the hardcoded
-    /// constants (value-for-value equal to the default data, so behaviour is unchanged).
+    /// Selects the newest numeric version, never lexicographic ordering.
     pub fn units_with_radii(self, radii: &JewelRadiiDef) -> f64 {
+        self.units_for_tree(radii, None)
+    }
+
+    /// Resolves the newest radius table no newer than the selected tree.
+    pub fn units_for_tree(self, radii: &JewelRadiiDef, tree_version: Option<&str>) -> f64 {
+        fn version(value: &str) -> Option<Vec<u32>> {
+            value
+                .split('_')
+                .map(str::parse)
+                .collect::<Result<_, _>>()
+                .ok()
+        }
+        let target = tree_version.and_then(version);
         let label = match self {
             JewelRadius::Small => "Small",
             JewelRadius::Medium => "Medium",
@@ -126,9 +134,11 @@ impl JewelRadius {
         };
         radii
             .tree_versions
-            .values()
-            .next_back()
-            .and_then(|bands| bands.iter().find(|band| band.label == label))
+            .iter()
+            .filter_map(|(key, bands)| version(key).map(|v| (v, bands)))
+            .filter(|(v, _)| target.as_ref().is_none_or(|target| v <= target))
+            .max_by(|(a, _), (b, _)| a.cmp(b))
+            .and_then(|(_, bands)| bands.iter().find(|band| band.label == label))
             .map(|band| f64::from(band.outer) * radii.distance_multiplier)
             .unwrap_or_else(|| self.units())
     }

@@ -24,6 +24,7 @@ interface Props {
   session: BuildSession;
   lang: Lang;
   focusPlanner?: { nonce: number };
+  onJewelSearch?: (socket: number) => void;
 }
 
 const NODE_RADIUS: Record<string, number> = {
@@ -87,7 +88,7 @@ function isAttrNode(node: PassiveNode): boolean {
 const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 
 /** 天赋树查看器：SVG 渲染 + 已加点高亮 + 缩放平移 / hover 词条 + 点选加点重算。 */
-export function TreePanel({ session, lang, focusPlanner }: Props) {
+export function TreePanel({ session, lang, focusPlanner, onJewelSearch }: Props) {
   const tt = bindT(lang);
   const [nodes, setNodes] = useState<PassiveNode[] | null>(null);
   const [art, setArt] = useState<TreeArt | null>(null);
@@ -1184,6 +1185,8 @@ export function TreePanel({ session, lang, focusPlanner }: Props) {
               })()}
             </div>
           )}
+          {onJewelSearch && session.allocatedNodes.includes(jewelEdit.socket) && <button
+            onClick={() => onJewelSearch(jewelEdit.socket)}>{tt('trade.radiusJewel')}</button>}
           <textarea
             rows={7}
             value={jewelEdit.draft}
