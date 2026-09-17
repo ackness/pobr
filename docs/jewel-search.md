@@ -20,6 +20,8 @@
 同基础的已装备珠宝保留实际半径和升级词缀。加权分数不能完整表达所有词缀间的
 交互，购买前可把完整商品文本粘贴到换装比较中重算。
 
+![合成构筑中的珠宝环带与编辑器](images/v0.0.26/jewel-ring.png)
+
 ## 实现依据
 
 - [TradeQueryGenerator.lua](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/ce566eac45ea8a86477f513c7ee65a1ebe60014e/src/Classes/TradeQueryGenerator.lua)：
