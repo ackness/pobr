@@ -9,6 +9,7 @@
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
 import { defaultMainSkill } from '../lib/mainSkill';
+import { reconcileJewelAllocation } from '../lib/passiveGraph';
 import { groupsForWeaponSet, skillWeaponSet, switchWeapons, validWeaponSwap } from '../lib/weaponSets';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getBackend } from '../api/backend';
@@ -754,22 +755,68 @@ export function useBuildSession(): BuildSession {
   );
 
   const setJewels = useCallback(
-    (jewels: JewelInput[]) => {
-      if (!state) return;
-      apply({ ...state, jewels });
+    (jewels: JewelInput[], allocation?: number[]) => {
+      const current = stateRef.current;
+      if (!current) return;
+      const next = { ...current, jewels, allocatedNodes: allocation ?? current.allocatedNodes };
+      const commit = (removed: Set<number>) => {
+        const allocatedNodes = next.allocatedNodes.filter(id => !removed.has(id));
+        const weaponSwap = next.weaponSwap ? { ...next.weaponSwap,
+          exclusive_nodes: next.weaponSwap.exclusive_nodes.map(nodes => nodes.filter(id => !removed.has(id))) as [number[], number[]],
+        } : next.weaponSwap;
+        const kept = new Set([...allocatedNodes, ...(weaponSwap?.exclusive_nodes.flat() ?? [])]);
+        const attributeChoices = Object.fromEntries(Object.entries(next.attributeChoices)
+          .filter(([id]) => kept.has(Number(id))));
+        apply({ ...next, allocatedNodes, weaponSwap, attributeChoices });
+      };
+      const inactive = current.weaponSwap?.exclusive_nodes.some(nodes => nodes.length > 0);
+      if (!calc?.tree_effects?.allocation_grants.length && !busy && !inactive) {
+        commit(new Set(current.allocatedNodes.filter(id => !next.allocatedNodes.includes(id))));
+        return;
+      }
+      const seq = ++seqRef.current;
+      setBusy(true);
+      setError(null);
+      getBackend().then(async backend => {
+        const nodes = await backend.loadPassiveTree();
+        const active = current.weaponSwap?.active ?? 1;
+        const sets: (1 | 2)[] = inactive ? [active, active === 1 ? 2 : 1] : [active];
+        const removed = new Set<number>();
+        const views: { previous: BuildState; candidate: BuildState; before: CalculateBuildResponse; after: CalculateBuildResponse }[] = [];
+        for (const set of sets) {
+          const previous = switchWeapons(current, set);
+          const candidate = switchWeapons(next, set);
+          const before = set === active && !busy && calc ? calc : await backend.calculateBuild(toRequest(previous));
+          const after = await backend.calculateBuild(toRequest(candidate));
+          if (seqRef.current !== seq || stateRef.current !== current) return;
+          views.push({ previous, candidate, before, after });
+        }
+        // Shared points must remain legal in both sets. Removing one can revoke
+        // another provider, so converge on the retained allocations before saving.
+        let changed = true;
+        while (changed) {
+          const count = removed.size;
+          for (const { previous, candidate, before, after } of views) {
+            const kept = new Set(reconcileJewelAllocation(nodes, previous.allocatedNodes,
+              current.character.class_name, before.tree_effects, after.tree_effects,
+              candidate.allocatedNodes.filter(id => !removed.has(id))));
+            previous.allocatedNodes.forEach(id => { if (!kept.has(id)) removed.add(id); });
+          }
+          changed = removed.size !== count;
+        }
+        commit(removed);
+      }).catch(err => {
+        if (seqRef.current === seq) { setError(formatApiError(err)); setBusy(false); }
+      });
     },
-    [apply, state],
+    [apply, busy, calc],
   );
 
   const removeJewelSocket = useCallback((socket: number, allocatedNodes: number[]) => {
     const current = stateRef.current;
     if (!current) return;
-    const kept = new Set(allocatedNodes);
-    const attributeChoices = Object.fromEntries(
-      Object.entries(current.attributeChoices).filter(([skill]) => kept.has(Number(skill))),
-    );
-    apply({ ...current, allocatedNodes, attributeChoices, jewels: current.jewels.filter(jewel => jewel.socket_node !== socket) });
-  }, [apply]);
+    setJewels(current.jewels.filter(jewel => jewel.socket_node !== socket), allocatedNodes);
+  }, [setJewels]);
 
   const setCharacter = useCallback(
     (patch: Partial<CharacterState>) => {

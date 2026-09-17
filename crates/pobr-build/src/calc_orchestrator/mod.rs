@@ -641,6 +641,10 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
         build = Cow::Owned(gated);
     }
 
+    if let Some(resolved) = collect::resolve_granted_socket_jewels(&build, data) {
+        build = Cow::Owned(resolved);
+    }
+
     // Item-granted skills (`Grants Skill: [Level N] X`) → synthesized skill groups
     // (matching vendor CalcSetup.lua:1414-1453, which builds an independent socket
     // group; deduplicated by source, slot, skill and level — zero behavior change when
@@ -667,6 +671,14 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
     }
 
     build
+}
+
+/// Resolve the same active item/socket view used by the calculation pipeline.
+pub fn passive_jewel_state(
+    build: &Build,
+    data: &BuildData,
+) -> crate::jewel_tree::PassiveJewelState {
+    crate::jewel_tree::passive_jewel_state(&stage_build_view(build, data), data)
 }
 
 /// Resolves a `GemSkillRef { skill_id: "", name_spec: Some(name) }`'s display name into
@@ -1217,8 +1229,63 @@ fn stage_inject_jewels(
     ctx: &StageCtx<'_>,
 ) -> Result<(), BuildError> {
     let adorned_inc = adorned_corrupted_magic_jewel_inc(&ctx.build.jewels);
+    // Radius directives are consumed by geometry, not the global mod parser.
+    // Exempt only validated directives with available socket geometry; unknown
+    // nested grants must remain visible to the trade optimizer's safety gate.
+    let nodes = ctx
+        .data
+        .passive_nodes_for(ctx.build.tree_version.as_deref());
+    let mut radius_texts = Vec::new();
+    let tree_state = crate::jewel_tree::passive_jewel_state(ctx.build, ctx.data);
+    radius_texts.extend(tree_state.handled_modifiers);
+    for node in &ctx.build.tree.allocated_nodes {
+        if tree_state.unresolved.contains(&node.0) {
+            session.record_unsupported_modifier_text(format!(
+                "Tree:{}: missing timeless jewel seed data",
+                node.0
+            ));
+        }
+        if let Some(change) = tree_state.nodes.get(&node.0) {
+            for text in &change.stats {
+                if !gate_parses(engine_ctx(ctx.data), text) {
+                    session.record_unsupported_modifier_text(format!("Tree:{}: {}", node.0, text));
+                }
+            }
+        }
+    }
+    for radius in &ctx.build.radius_jewels {
+        if !nodes
+            .get(&radius.socket_node)
+            .is_some_and(|n| n.x.is_some() && n.y.is_some())
+        {
+            continue;
+        }
+        radius_texts.extend(
+            radius
+                .grant_lines
+                .iter()
+                .filter(|line| {
+                    parse_grant_line(line)
+                        .is_some_and(|(_, grant)| gate_parses(engine_ctx(ctx.data), &grant))
+                })
+                .cloned(),
+        );
+        for (kind, inc) in [
+            ("Small", radius.small_effect_inc),
+            ("Notable", radius.notable_effect_inc),
+        ] {
+            if inc > 0 {
+                radius_texts.push(format!(
+                    "{inc}% increased Effect of {kind} Passive Skills in Radius"
+                ));
+            }
+        }
+        if let Some(label) = &radius.radius_label {
+            radius_texts.push(format!("Upgrades Radius to {label}"));
+        }
+    }
     for jewel in &ctx.build.jewels {
-        let filtered = filter_item_parseable(jewel, engine_ctx(ctx.data), session);
+        let filtered = filter_item_parseable(jewel, engine_ctx(ctx.data), session, &radius_texts);
         let texts: Vec<&str> = filtered
             .implicit_texts
             .iter()
@@ -1291,23 +1358,13 @@ fn scale_trunc_2dp(value: f64, scale: f64) -> f64 {
     ((value * scale * 100.0).round() / 100.0).trunc()
 }
 
-/// 2b'. Radius jewels' `... Passive Skills in Radius also grant <mod>`: expanded by
-///      the jewel socket's **allocated node count of the matching kind within radius** ×
-///      the grant, injected as global modifier text (matching PoB2's geometric semantics).
-///      Consistent with the equipment/passive path: hard-failing mods are filtered via
-///      skip-and-collect first, so a single bad line doesn't abort the whole batch.
+/// Radius grants are parsed and scaled per affected allocated node. Invalid
+/// grant text remains diagnosed by the dedicated item gate above.
 fn stage_inject_radius_jewels(
     session: &mut CalculationSession,
     ctx: &StageCtx<'_>,
 ) -> Result<(), BuildError> {
-    let (build, data) = (ctx.build, ctx.data);
-    let radius_texts = filter_parseable(radius_jewel_grant_texts(build, data), engine_ctx(data));
-    if !radius_texts.is_empty() {
-        let refs: Vec<&str> = radius_texts.iter().map(String::as_str).collect();
-        session
-            .add_modifier_texts(&refs)
-            .map_err(|e| BuildError::Parse(e.to_string()))?;
-    }
+    session.add_modifiers(radius_jewel_grant_modifiers(ctx.build, ctx.data));
     Ok(())
 }
 
@@ -1390,65 +1447,7 @@ fn stage_inject_passives(
             .add_passive_nodes(&passive_nodes)
             .map_err(|e| BuildError::Parse(e.to_string()))?;
 
-        // 3b. Small-passive effect scaling (Titan's "Hulking Form" and similar
-        //     "N% increased effect of Small Passive Skills"): vendor
-        //     CalcSetup.lua:286-292 first sums the SmallPassiveSkillEffect INC
-        //     across all allocated nodes, then :271-277 scales each "Normal,
-        //     non-attribute, non-ascendancy" node's modList as a whole via
-        //     ScaleAddList ×(1+inc/100) — the value scaling truncates
-        //     ([`vendor_scale_mod_value`], e.g. 3×1.5=4.5→4). PoBR's equivalent:
-        //     the base share is already injected at 1.0 (add_passive_nodes above),
-        //     so here we append a **numeric delta copy** for affected small passives:
-        //     `trunc(round(v×scale,2)) − v` (BASE/INC only; small passives have no
-        //     MORE-type numeric mods, and flag copies would be a no-op, so both are skipped).
-        let small_inc = small_passive_effect_inc(build, data);
-        if small_inc > 0.0 {
-            let small_scale = 1.0 + small_inc / 100.0;
-            let small_nodes: Vec<AllocatedNode> = passive_nodes
-                .iter()
-                .filter(|n| {
-                    data.passive_nodes.get(&n.node_id.0).is_some_and(|def| {
-                        def.kind == pobr_data::catalog::PassiveNodeKind::Normal
-                            && def.ascendancy_id.is_none()
-                            && !is_attribute_node(def)
-                    })
-                })
-                .cloned()
-                .collect();
-            if !small_nodes.is_empty() {
-                let ingest = pobr_core::passive::ingest_passive_nodes_with_ctx(
-                    &small_nodes,
-                    engine_ctx(data),
-                )
-                .map_err(|e| BuildError::Parse(e.to_string()))?;
-                let scaled: Vec<Modifier> = ingest
-                    .modifiers
-                    .into_iter()
-                    .filter(|m| matches!(m.mod_type, ModType::Base | ModType::Inc))
-                    .filter_map(|m| match m.value {
-                        pobr_core::ModValue::Number(v) => {
-                            let delta = vendor_scale_mod_value(v, small_scale) - v;
-                            (delta != 0.0).then_some(Modifier {
-                                value: pobr_core::ModValue::Number(delta),
-                                ..m
-                            })
-                        }
-                        _ => None,
-                    })
-                    .collect();
-                session.add_modifiers(scaled);
-            }
-        }
-
-        // 3b'. Radius-jewel Notable effect scaling (Time-Lost's "N% increased
-        //      Effect of Notable Passive Skills in Radius"): appends a scaling
-        //      delta copy for the own mods of allocated notables within radius
-        //      (vendor CalcSetup.lua:246-275 ScaleAddList; the equivalent scaling
-        //      on the granted-mod side is handled inline in radius_jewel_grant_texts).
-        let notable_copies = radius_jewel_notable_effect_copies(build, data, &passive_nodes)?;
-        if !notable_copies.is_empty() {
-            session.add_modifiers(notable_copies);
-        }
+        session.add_modifiers(passive_effect_copies(build, data, &passive_nodes)?);
     }
 
     // 3c. Mod-granted keystone mapping: stats on tree keystone nodes (**excluding
@@ -2010,6 +2009,7 @@ mod tests {
 
         let data = BuildData {
             passive_nodes,
+            parser_rules: Some(super::test_parser_rules()),
             ..BuildData::empty()
         };
 
@@ -2020,6 +2020,8 @@ mod tests {
                 "Small Passive Skills in Radius also grant +10 to maximum Mana".into(),
             ],
             notable_effect_inc: 0,
+            small_effect_inc: 0,
+            tree_texts: vec![],
         };
         let build = Build::new()
             .with_tree(PassiveTreeSpec {
@@ -2028,15 +2030,15 @@ mod tests {
             })
             .with_radius_jewels(vec![jewel]);
 
-        let texts = radius_jewel_grant_texts(&build, &data);
-        // Only 1 non-attribute Small node → the grant text appears once (the attribute small passive is excluded, otherwise it would be 2).
-        let count = texts
+        let mods = radius_jewel_grant_modifiers(&build, &data);
+        // Only the non-attribute Small node receives the parsed mana grant.
+        let count = mods
             .iter()
-            .filter(|t| t.contains("+10 to maximum Mana"))
+            .filter(|m| m.name.as_str() == "MaximumMana" && m.value.as_number() == Some(10.0))
             .count();
         assert_eq!(
             count, 1,
-            "attribute-choice nodes should not count toward the Small grant tally, got {texts:?}"
+            "attribute-choice nodes should not count toward the Small grant tally, got {mods:?}"
         );
     }
 

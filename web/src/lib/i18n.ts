@@ -15,6 +15,10 @@ export const LANGS: Lang[] = ['en-US', 'zh-TW', 'zh-CN'];
 type Entry = { 'en-US': string; 'zh-TW': string; 'zh-CN': string };
 
 const DICT = {
+  'trade.jewelType': { 'en-US': 'Jewel type', 'zh-TW': '珠寶類型', 'zh-CN': '珠宝类型' },
+  'trade.baseJewel': { 'en-US': 'Basic jewels', 'zh-TW': '普通珠寶', 'zh-CN': '普通珠宝' },
+  'trade.radiusJewel': { 'en-US': 'Time-Lost jewel search', 'zh-TW': '時迭珠寶搜尋', 'zh-CN': '时迭珠宝搜索' },
+  'trade.radiusHint': { 'en-US': 'Scores use the allocated passives around this socket in the active weapon set. New jewels use Small radius; an equipped jewel retains its radius upgrades. Paste a market item to compare the complete jewel.', 'zh-TW': '依此插槽周圍、目前武器組已配置的天賦評分。新珠寶以小範圍估算，已裝備珠寶保留半徑升級。貼上市集物品可比較完整珠寶。', 'zh-CN': '按此插槽周围、当前武器组已分配的天赋评分。新珠宝以小范围估算，已装备珠宝保留半径升级。粘贴市集物品可比较完整珠宝。' },
   'trade.goalHelp': { 'en-US': 'How this goal is evaluated', 'zh-TW': '目標如何評估', 'zh-CN': '目标如何评估' },
   'items.position': { 'en-US': 'Equipment position', 'zh-TW': '裝備位置', 'zh-CN': '装备位置' },
   'skills.editMain': { 'en-US': 'Edit main skill', 'zh-TW': '編輯主技能', 'zh-CN': '编辑主技能' },
@@ -485,6 +489,7 @@ const DICT = {
   'tree.attrUnassigned': { 'en-US': 'unassigned', 'zh-TW': '未分配', 'zh-CN': '未分配' },
   'tree.jewel': { 'en-US': 'Jewel socket', 'zh-TW': '珠寶插槽', 'zh-CN': '珠宝插槽' },
   'tree.unallocSocket': { 'en-US': 'Unallocate socket', 'zh-TW': '取消插槽加點', 'zh-CN': '取消插槽加点' },
+  'tree.jewelSeedMissing': { 'en-US': 'Known jewel transformations are shown. Seed-dependent passives remain unresolved and are excluded from upgrade recommendations.', 'zh-TW': '已顯示已知的珠寶轉換。依賴種子的天賦尚未解析，提升建議會排除這些效果。', 'zh-CN': '已显示已知的珠宝转换。依赖种子的天赋尚未解析，提升建议会排除这些效果。' },
   'tree.jewelHint': {
     'en-US': 'PoB jewel text (mods may be English or Simplified Chinese). Radius jewels ("... in Radius also grant ...") reshape nearby passives automatically.',
     'zh-TW': 'PoB 珠寶文本（詞條可英文或簡中）。範圍珠寶（「範圍內…同時給予…」）會自動改寫半徑內天賦詞條。',

@@ -192,11 +192,12 @@ pub struct BuildData {
     pub constants: RuntimeConstants,
     /// Radius jewel ring tier table (`base/jewel_radii.json`): distance multipliers +
     /// tier label→inner/outer. Consumed by this crate's tree geometry
-    /// (`radius_jewel_grant_texts` → pobr-tree's
+    /// (`radius_jewel_grant_modifiers` → pobr-tree's
     /// `compute_radius_jewel_effect_with_radii`), doesn't flow into pobr-core through
     /// `RuntimeConstants`. Falls back to `Default` when data is missing (value-for-value
     /// equal to the JSON).
     pub jewel_radii: JewelRadiiDef,
+    pub passive_jewels: pobr_data::catalog::passive_jewels::PassiveJewelData,
     /// Local mod allowlist (`overlay/local_mods.json`).
     /// Falls back to the built-in [`LocalModsDef::default`] when a data pack lacks this
     /// overlay file (a mirror that matches the JSON value-for-value, no behavior change).
@@ -493,6 +494,7 @@ impl BuildData {
             base_items,
             constants,
             jewel_radii,
+            passive_jewels: data.passive_jewels()?.unwrap_or_default(),
             local_mods,
             stat_map_catalog,
             buff_definitions,
@@ -524,6 +526,7 @@ impl BuildData {
             base_items: HashMap::new(),
             constants: RuntimeConstants::default(),
             jewel_radii: JewelRadiiDef::default(),
+            passive_jewels: Default::default(),
             local_mods: LocalModsDef::default(),
             stat_map_catalog: None,
             buff_definitions: Vec::new(),
@@ -626,9 +629,8 @@ impl BuildData {
     /// matching historical tree version (`base/passive_trees/<v>.json` already
     /// extracted) if one exists, otherwise (current default version / not extracted /
     /// not annotated) falls back to the default tree [`Self::passive_nodes`] — PoBR's
-    /// counterpart to PoB2's multi-version TreeData. Historical trees only have a
-    /// minimal field set (no topology/coordinates), so advanced features like radius
-    /// jewel geometry still approximate with the default tree.
+    /// counterpart to PoB2's multi-version TreeData. Radius geometry uses the selected
+    /// tree as well; nodes without coordinates cannot contribute radius effects.
     pub fn passive_nodes_for(&self, tree_version: Option<&str>) -> &HashMap<u32, PassiveNodeDef> {
         tree_version
             .and_then(|v| self.versioned_passive_nodes.get(v))

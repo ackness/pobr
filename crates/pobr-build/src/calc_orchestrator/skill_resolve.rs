@@ -796,14 +796,26 @@ pub(crate) fn slot_bonus_effect_scales(
             texts.extend(def.stats.iter().map(|s| clean_grant_text(s)));
         }
     }
-    // Radius jewels' "Notable/Small Passive Skills in Radius also grant …" expanded
-    // text (per-node copy count already multiplied out) — vendor also lands it in the
-    // global modDB and picks it up via Sum("INC").
-    texts.extend(
-        radius_jewel_grant_texts(build, data)
-            .iter()
-            .map(|s| clean_grant_text(s)),
-    );
+    // Radius grants have already been scaled as structured modifiers, including
+    // the data-driven precision rules. Read stable stat IDs instead of rebuilding text.
+    for modifier in radius_jewel_grant_modifiers(build, data) {
+        if modifier.mod_type != ModType::Inc {
+            continue;
+        }
+        let Some(value) = modifier.value.as_number() else {
+            continue;
+        };
+        let slot = match modifier.name.as_str() {
+            "EffectOfBonusesFromRing 1" => Ring1,
+            "EffectOfBonusesFromRing 2" => Ring2,
+            "EffectOfBonusesFromRing 3" => Ring3,
+            "EffectOfBonusesFromAmulet" => Amulet,
+            "EffectOfBonusesFromQuiver" if weapon2_is_quiver => Weapon2,
+            "EffectOfBonusesFromFocus" if weapon2_is_focus => Weapon2,
+            _ => continue,
+        };
+        add(&[slot], value / 100.0);
+    }
     for (_, item) in build.equipped_items() {
         for t in item
             .implicit_texts
@@ -918,8 +930,9 @@ pub(crate) fn clean_grant_text(text: &str) -> String {
 /// mechanism, not consumed here.
 pub(crate) fn small_passive_effect_inc(build: &Build, data: &BuildData) -> f64 {
     let mut inc = 0.0;
+    let nodes = data.passive_nodes_for(build.tree_version.as_deref());
     for id in &build.tree.allocated_nodes {
-        let Some(node) = data.passive_nodes.get(&id.0) else {
+        let Some(node) = nodes.get(&id.0) else {
             continue;
         };
         for s in &node.stats {

@@ -2,16 +2,16 @@
 /// of the `data/<DATA_VERSION>/` directory. This is the compile-time default;
 /// [`data_version`] applies the runtime override on top.
 ///
-/// Shipping a different version means editing this constant and nothing else.
+/// The shipped default is derived from `data/CURRENT`, without editing Rust.
 /// To point somewhere else temporarily, set `POBR_DATA_VERSION` or write a
 /// `data/CURRENT` marker file rather than touching code — see [`data_version`]
 /// and `pobr_gamedata::current_data_dir`.
 ///
-/// Kept in sync with `data/CURRENT`. Golden and parity tests deliberately do
+/// Golden and parity tests deliberately do
 /// not read this constant, so it can move ahead to newer data without turning
 /// them red; see [`GOLDEN_PARITY_DATA_VERSION`]. That the newer data still runs
 /// at all is covered by the `multi_version` smoke test.
-pub const DATA_VERSION: &str = "4.5.5.2";
+pub const DATA_VERSION: &str = include_str!("../../../data/CURRENT").trim_ascii();
 
 /// Data version the checked-in golden and parity numbers were recorded against.
 ///

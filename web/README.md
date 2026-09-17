@@ -142,3 +142,5 @@ Changing the build, skill or goal clears scores. Changing budget, server or leag
    1 + number of sources).
 5. Passive tree: `public/data/<version>/base/passive_tree.json` is loaded
    statically (not through wasm).
+
+时迭珠宝搜索的使用方式、PoB2 对照及传奇珠宝支持边界见 [珠宝搜索](../docs/jewel-search.md)。

@@ -57,7 +57,9 @@ jobs:
       # skip gracefully in CI by design (see CLAUDE.md "Parity 体系"). Installed
       # after clippy so a lint failure skips it too.
       - name: Install luajit
-        run: sudo apt-get update && sudo apt-get install -y luajit
+        run: sudo apt-get update && sudo apt-get install -y luajit lua-dkjson
+      - name: Data update compatibility tests
+        run: python3 pipeline/test-data-update.py
       - name: Test (nextest)
         run: cargo nextest run --workspace
       # nextest does not run doctests; cover them separately.
@@ -94,7 +96,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - name: Dictionary snapshot tests
-        run: node --test ../pipeline/test-dictionary-source.mjs
+        run: node --test ../pipeline/test-dictionary-source.mjs ../pipeline/test-query-patch-version.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)

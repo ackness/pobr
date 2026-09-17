@@ -403,3 +403,26 @@ fn tree_method_matches_free_function() {
     // 600/1000/1300/1400 (11/12/13/14).
     assert_eq!(via_method.affected_nodes, vec![11, 12, 13, 14]);
 }
+
+#[test]
+fn radius_tables_select_numeric_versions_without_future_leakage() {
+    let mut radii = JewelRadiiDef::default();
+    let mut newer = radii.tree_versions.values().next().unwrap().clone();
+    newer[0].outer = 2000;
+    radii.tree_versions.insert("0_9".into(), newer.clone());
+    newer[0].outer = 3000;
+    radii.tree_versions.insert("0_10".into(), newer);
+    assert_eq!(
+        JewelRadius::Small.units_for_tree(&radii, Some("0_5")),
+        1200.0
+    );
+    assert_eq!(
+        JewelRadius::Small.units_for_tree(&radii, Some("0_9")),
+        2400.0
+    );
+    assert_eq!(
+        JewelRadius::Small.units_for_tree(&radii, Some("0_10")),
+        3600.0
+    );
+    assert_eq!(JewelRadius::Small.units_with_radii(&radii), 3600.0);
+}

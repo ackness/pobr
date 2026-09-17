@@ -22,7 +22,7 @@ function BuildApp() {
   const session = useBuildSession();
   const mainRef = useRef<HTMLElement>(null);
   const [statsOpen, setStatsOpen] = useState(false);
-  const [upgradeFocus, setUpgradeFocus] = useState<{slot:string; nonce:number} | undefined>();
+  const [upgradeFocus, setUpgradeFocus] = useState<{slot:string; nonce:number; jewelType?: 'base' | 'radius'} | undefined>();
   const [skillFocus, setSkillFocus] = useState<{group:number; nonce:number} | undefined>();
   const [treeFocus, setTreeFocus] = useState<{nonce:number} | undefined>();
   const [referenceItem, setReferenceItem] = useState<string | undefined>();
@@ -151,7 +151,8 @@ function BuildApp() {
             onCompareItem={text => { setReferenceItem(text); setTab('trade'); }}
             onTree={() => { setTreeFocus({nonce: Date.now()}); setTab('tree'); }}
             onConfig={() => setTab('config')} />}
-          {tab === 'tree' && <TreePanel session={session} lang={lang} focusPlanner={treeFocus} />}
+          {tab === 'tree' && <TreePanel session={session} lang={lang} focusPlanner={treeFocus}
+            onJewelSearch={socket => { setUpgradeFocus({slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius'}); setTab('trade'); }} />}
           {tab === 'skills' && <SkillsPanel session={session} lang={lang} focusOptimizer={skillFocus} />}
           {tab === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({slot, nonce:Date.now()}); setTab('trade'); }} />}
           {tab === 'trade' && <TradePanel session={session} lang={lang} focus={upgradeFocus} initialItemText={referenceItem}

@@ -1,4 +1,4 @@
-import type { AttributeChoice, CalculateBuildRequest, PassiveNode, VariantInput, VariantStats } from '../api/types';
+import type { AttributeChoice, CalculateBuildRequest, PassiveNode, PassiveAllocationGrant, PassiveJewelState, VariantInput, VariantStats } from '../api/types';
 import {
   compareObjectiveStats,
   evaluateVariants,
@@ -7,7 +7,7 @@ import {
   type EvaluateResult,
   type Objective,
 } from './optimize';
-import { buildPassiveGraph, classStartSkill, connectedAllocation, type PassiveGraph } from './passiveGraph';
+import { allocationRoutes, buildPassiveGraph, classStartSkill, connectedAllocation, type PassiveGraph } from './passiveGraph';
 
 const CLASS_START_NAMES = new Set(['TEMPLAR', 'DUELIST', 'RANGER', 'MARAUDER', 'SIX', 'WITCH']);
 export const PASSIVE_PLAN_LIMIT = 512;
@@ -25,6 +25,8 @@ export interface PassivePlanningContext {
   byId: Map<number, PassiveNode>;
   allocated: Set<number>;
   root: number | null;
+  grants: readonly PassiveAllocationGrant[];
+  roots: Set<number>;
   canRefund: boolean;
   protectedNodes: Set<number>;
 }
@@ -37,26 +39,30 @@ export function passivePlanningContext(
   exclusiveNodes: readonly number[] = [],
   filledSockets: readonly number[] = [],
   ascendancy?: string,
+  treeEffects?: PassiveJewelState,
 ): PassivePlanningContext {
-  const root = classStartSkill(nodes, className);
+  const root = treeEffects?.class_starts[className?.toLowerCase() ?? ''] ?? classStartSkill(nodes, className);
+  const grants = treeEffects?.allocation_grants ?? [];
+  const classStarts = new Set(Object.values(treeEffects?.class_starts ?? {}));
+  const roots = new Set([...(root === null ? [] : [root]), ...grants.flatMap(grant => grant.roots)]);
   const exclusive = new Set(exclusiveNodes);
   const allAllocated = new Set(allocated);
   const eligible = nodes.filter(node => !node.ascendancy_id && node.kind !== 'mastery'
     && !exclusive.has(node.skill)
-    && (!CLASS_START_NAMES.has(node.name ?? '') || node.skill === root)
+    && (!(classStarts.has(node.skill) || CLASS_START_NAMES.has(node.name ?? '')) || roots.has(node.skill))
     && (!node.unlock_constraint || ((!node.unlock_constraint.ascendancy || node.unlock_constraint.ascendancy === ascendancy)
       && node.unlock_constraint.nodes.every(id => allAllocated.has(id) && !exclusive.has(id)))));
   const allNodes = new Map(nodes.map(node => [node.skill, node]));
   const byId = new Map(eligible.map(node => [node.skill, node]));
   const graph = buildPassiveGraph(eligible);
   const current = new Set(allocated.filter(id => byId.has(id)));
-  const rooted = root !== null && connectedAllocation(graph, current, root).size === current.size;
+  const rooted = root !== null && connectedAllocation(graph, current, root, grants).size === current.size;
   const omittedMainNodes = allocated.some(id => !byId.has(id) && !allNodes.get(id)?.ascendancy_id);
   return {
-    graph, byId, allocated: current, root,
+    graph, byId, allocated: current, root, grants, roots,
     // Imports with unexplained topology remain extendable but must never be pruned automatically.
     canRefund: rooted && exclusive.size === 0 && !omittedMainNodes,
-    protectedNodes: new Set([...(root === null ? [] : [root]), ...filledSockets,
+    protectedNodes: new Set([...roots, ...filledSockets, ...(treeEffects?.unresolved ?? []),
       ...nodes.filter(node => allAllocated.has(node.skill)).flatMap(node => node.unlock_constraint?.nodes ?? [])]),
   };
 }
@@ -81,28 +87,16 @@ export function allocationPaths(
   allocated: ReadonlySet<number>,
   budget: number,
 ): PassivePlan[] {
-  const sources = new Set([...allocated].filter(id => context.graph.has(id)));
-  if (context.root !== null && context.graph.has(context.root)) sources.add(context.root);
-  const queue = [...sources].sort((a, b) => a - b);
-  const paths = new Map<number, number[]>(queue.map(id => [id, []]));
+  const eligible = (id: number) => !context.byId.get(id)?.unlock_constraint?.nodes
+    .some(required => context.allocated.has(required) && !allocated.has(required));
+  const graph = new Map([...context.graph].filter(([id]) => eligible(id))
+    .map(([id, neighbours]) => [id, neighbours.filter(eligible)]));
+  const routes = allocationRoutes(graph, allocated, context.root, context.grants, budget);
   const out: PassivePlan[] = [];
-  for (let index = 0; index < queue.length; index += 1) {
-    const current = queue[index];
-    const path = paths.get(current)!;
-    if (path.length >= budget) continue;
-    for (const next of context.graph.get(current) ?? []) {
-      if (paths.has(next)) continue;
-      const node = context.byId.get(next)!;
-      // A refund can revoke a gate that was eligible in the original graph.
-      if (node.unlock_constraint?.nodes.some(id => context.allocated.has(id) && !allocated.has(id))) continue;
-      const nextPath = [...path, next];
-      paths.set(next, nextPath);
-      queue.push(next);
-      // A new empty socket has no known jewel value. It can still be a travel node.
-      if (node.kind !== 'jewel_socket' || context.protectedNodes.has(next)) {
-        out.push({ allocate: nextPath, deallocate: [], target: next });
-      }
-    }
+  for (const [target, allocate] of routes) {
+    if (allocate.length === 0 || allocated.has(target) || context.roots.has(target)) continue;
+    const node = context.byId.get(target)!;
+    if (node.kind !== 'jewel_socket' || context.protectedNodes.has(target)) out.push({ allocate, deallocate: [], target });
   }
   return out.sort((a, b) => a.allocate.length - b.allocate.length
     || Number(context.byId.get(b.target)?.kind === 'notable') - Number(context.byId.get(a.target)?.kind === 'notable')
@@ -117,7 +111,7 @@ export function refundableBranches(context: PassivePlanningContext, budget: numb
     if (context.protectedNodes.has(id)) continue;
     const remaining = new Set(context.allocated);
     remaining.delete(id);
-    const connected = connectedAllocation(context.graph, remaining, context.root);
+    const connected = connectedAllocation(context.graph, remaining, context.root, context.grants);
     const removed = [...context.allocated].filter(node => !connected.has(node)).sort((a, b) => a - b);
     if (removed.length === 0 || removed.length > budget || removed.some(node => context.protectedNodes.has(node))) continue;
     out.set(removed.join(','), { allocate: [], deallocate: removed, target: id });
@@ -162,24 +156,21 @@ export function passivePlanAllocation(
     || [...current].filter(id => context.byId.has(id)).some(id => !context.allocated.has(id))
     || [...context.allocated].some(id => !current.has(id))
     || [...removed].some(id => !context.allocated.has(id) || context.protectedNodes.has(id))
-    || [...added].some(id => current.has(id) || removed.has(id) || !context.byId.has(id) || id === context.root)) return null;
+    || [...added].some(id => current.has(id) || removed.has(id) || !context.byId.has(id) || context.roots.has(id))) return null;
   if (mode === 'allocate' ? removed.size > 0 || added.size > budget
     : !context.canRefund || removed.size === 0 || removed.size > budget || added.size > removed.size) return null;
   const allocatedNodes = [...current].filter(id => !removed.has(id)).concat([...added]);
   const final = new Set(allocatedNodes);
   if ([...added].some(id => context.byId.get(id)?.unlock_constraint?.nodes.some(required => !final.has(required)))) return null;
   const main = new Set(allocatedNodes.filter(id => context.byId.has(id)));
-  if (mode === 'reallocate' && connectedAllocation(context.graph, main, context.root).size !== main.size) return null;
+  if (mode === 'reallocate' && connectedAllocation(context.graph, main, context.root, context.grants).size !== main.size) return null;
   // Unexplained imported components may be extended, but a new disconnected island is never legal.
-  const reached = new Set([...context.allocated].filter(id => !removed.has(id)));
-  reached.add(context.root);
-  const queue = [...reached];
-  for (let index = 0; index < queue.length; index += 1) {
-    for (const id of context.graph.get(queue[index]) ?? []) {
-      if (main.has(id) && !reached.has(id)) { reached.add(id); queue.push(id); }
-    }
-  }
-  if ([...added].some(id => !reached.has(id))) return null;
+  const retained = new Set([...context.allocated].filter(id => !removed.has(id)));
+  const permitted = (id: number) => main.has(id) || context.roots.has(id);
+  const finalGraph = new Map([...context.graph].filter(([id]) => permitted(id))
+    .map(([id, neighbours]) => [id, neighbours.filter(permitted)]));
+  const reachable = allocationRoutes(finalGraph, retained, context.root, context.grants, added.size);
+  if ([...added].some(id => !reachable.has(id))) return null;
   return { allocatedNodes, attributeChoices: Object.fromEntries(Object.entries(request.attribute_choices ?? {})
     .filter(([id]) => final.has(Number(id)))) };
 }

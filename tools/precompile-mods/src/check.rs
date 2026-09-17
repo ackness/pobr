@@ -353,6 +353,31 @@ fn deserialize_strict<T: DeserializeOwned>(
 mod tests {
     use super::*;
 
+    #[test]
+    fn body_armour_crit_rule_has_effective_common_provenance() {
+        for version in [
+            pobr_data::DATA_VERSION,
+            pobr_data::GOLDEN_PARITY_DATA_VERSION,
+        ] {
+            let data = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../data")
+                .join(version);
+            let report = inspect(&data).unwrap();
+            let rules = crate::parsed::compile_parser_rules(&data).unwrap();
+            let parsed = pobr_core::mod_parser::parse_mod_engine(
+                "Body Armour grants Hits against you have 50% reduced Critical Damage Bonus",
+                &rules,
+            );
+            let id = parsed.special_meta.unwrap().entry_id;
+            assert_eq!(id, "body_armour_grants_reduced_crit_damage_bonus_100");
+            let origin = report.effective_rules.iter().find(|r| r.id == id).unwrap();
+            assert_eq!(origin.files, ["overlay-common/special_mods.json"]);
+            assert!(origin.replaced_files.is_empty());
+            assert!(origin.non_effective_fields.is_empty());
+            assert_eq!(report.input_sha256[&origin.files[0]].len(), 64);
+        }
+    }
+
     /// The committed repo data passes `--check` (deserialize + compile clean)
     /// for the active and parity-golden versions. Versions come from the
     /// `pobr_data` constants (auto-advance on data bumps, no literal to

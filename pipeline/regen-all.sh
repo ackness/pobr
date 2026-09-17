@@ -72,14 +72,15 @@ echo "== [2/8] adapter --tree"
 die_on_fail "${ADAPTER[@]}" --tree pipeline/tree/data.json --out data --patch "$PATCH"
 
 echo "== [3/8] adapter --tree-variants / --tree-coords / --tree-anoints（vendor tree.lua 回填）"
-die_on_fail "${ADAPTER[@]}" --tree-variants "$VENDOR/TreeData/0_5/tree.lua" --out data --patch "$PATCH"
+VENDOR_TREE="$(luajit pipeline/vendor-tree.lua "$VENDOR")" || exit 1
+die_on_fail "${ADAPTER[@]}" --tree-variants "$VENDOR_TREE" --out data --patch "$PATCH"
 # 节点平面坐标（web 树渲染依赖 x/y；漏跑则前端树永远空白）。
-die_on_fail "${ADAPTER[@]}" --tree-coords "$VENDOR/TreeData/0_5/tree.lua" --out data --patch "$PATCH"
+die_on_fail "${ADAPTER[@]}" --tree-coords "$VENDOR_TREE" --out data --patch "$PATCH"
 # tree-anoints 在“无缺失 notable 需回填”时硬报错退出（tree_anoints.rs:111）。新版 GGG
 # 树导出 data.json 已自带油涂专属 notable（如 Paragon），回填成 no-op 属正常——
 # 仅当报错信息是该 no-op 时告警放行；其他错误（真解析失败等）仍致命。
 anoint_log="$(mktemp)"
-if "${ADAPTER[@]}" --tree-anoints "$VENDOR/TreeData/0_5/tree.lua" --out data --patch "$PATCH" >"$anoint_log" 2>&1; then
+if "${ADAPTER[@]}" --tree-anoints "$VENDOR_TREE" --out data --patch "$PATCH" >"$anoint_log" 2>&1; then
     cat "$anoint_log"
 elif grep -q "no missing notables were parsed" "$anoint_log"; then
     echo "   tree-anoints: 无缺失 notable 需回填（新树已自带油涂 notable）——跳过"
@@ -127,6 +128,7 @@ soft_step stat_descriptions "${SYNC[@]}" extract-lua --what stat-descriptions --
 soft_step stat_set_labels "${SYNC[@]}" extract-lua --what stat-set-labels --vendor-root "$VENDOR" --files "$GEMFILES" --out "$OVL/stat_set_labels.json"
 soft_step uniques         "${SYNC[@]}" extract-lua --what uniques         --vendor-root "$VENDOR" --out "$OVL/uniques.json"
 soft_step trade_stat_map  luajit pipeline/extract-trade-map.lua "$VENDOR" "$OVL/trade_stat_map.json"
+soft_step passive_jewels  luajit pipeline/extract-passive-jewels.lua "$VENDOR" "$OVL/passive_jewels.json"
 soft_step trade_crafting  python3 pipeline/extract-trade-crafting.py pipeline/tables/English "$OVL/trade_crafting_sources.json"
 soft_step trade_catalog   luajit pipeline/extract-trade-catalog.lua "$VENDOR" "$OVL/trade_catalog.json" "$OVL/trade_crafting_sources.json"
 soft_step mirage_configs  "${SYNC[@]}" gen-mirage-configs  --vendor-root "$VENDOR" --out "$OVL/mirage_configs.json"

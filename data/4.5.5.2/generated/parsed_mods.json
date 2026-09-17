@@ -34007,7 +34007,10 @@
         {
           "name": "ReduceCritExtraDamage",
           "type": "Base",
-          "value": 100.0
+          "value": 100.0,
+          "tags": [
+            "Condition { var: \"NormalBodyArmourEquipped\", negated: false, actor: None }"
+          ]
         }
       ]
     },

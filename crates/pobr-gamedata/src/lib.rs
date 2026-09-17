@@ -521,6 +521,21 @@ impl GameData {
         self.load_domain("passive_tree_meta.json")
     }
 
+    /// Optional in historical snapshots; malformed present data is an error.
+    pub fn passive_jewels(
+        &self,
+    ) -> Result<Option<pobr_data::catalog::passive_jewels::PassiveJewelData>, LoadError> {
+        match self.load_json_at(self.overlay_path("passive_jewels.json")) {
+            Ok(data) => Ok(Some(data)),
+            Err(LoadError::Io { ref source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound =>
+            {
+                Ok(None)
+            }
+            Err(error) => Err(error),
+        }
+    }
+
     /// Loads a historical season's tree-version node table
     /// (`base/passive_trees/<v>.json`, extracted from vendor
     /// `TreeData/<v>/tree.lua` via `pobr-data-adapter --tree-full` — a

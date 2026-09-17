@@ -110,8 +110,9 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
   const context = useMemo(() => passivePlanningContext(nodes, session.allocatedNodes,
     session.character?.class_name, session.weaponSwap?.exclusive_nodes.flat() ?? [],
     session.jewels.map(jewel => jewel.socket_node), session.treeMeta?.classes.flatMap(entry => entry.ascendancies ?? [])
-      .find(entry => entry.name === session.character?.ascendancy_name)?.id ?? session.character?.ascendancy_name),
-  [nodes, session.allocatedNodes, session.character?.class_name, session.weaponSwap, session.jewels, session.treeMeta, session.character?.ascendancy_name]);
+      .find(entry => entry.name === session.character?.ascendancy_name)?.id ?? session.character?.ascendancy_name,
+    session.calc?.tree_effects),
+  [nodes, session.allocatedNodes, session.character?.class_name, session.weaponSwap, session.jewels, session.treeMeta, session.character?.ascendancy_name, session.calc?.tree_effects]);
   const baselineStats = useMemo(() => Object.fromEntries((session.calc?.stats ?? []).map(stat => [stat.id, stat.value ?? 0])), [session.calc]);
   const objective = useMemo(() => objectiveOf(goal, baselineStats), [goal, baselineStats]);
   const request = useMemo(() => session.currentRequest(), [session.currentRequest, session.stateVersion]);

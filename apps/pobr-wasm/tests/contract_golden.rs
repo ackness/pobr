@@ -143,6 +143,7 @@ fn calculate_build_json_shape() {
             "breakdowns",
             "main_skill",
             "item_errors",
+            "tree_effects",
         ],
         "CalculateBuildResponse",
     );
@@ -1273,6 +1274,26 @@ fn memory_backend_matches_dir_backend() {
         }
     }
 
+    // The common rule's equipment condition must survive the file/memory
+    // boundary. Keep equal ordinary chest stats so only rarity gates the rule.
+    for rarity in ["NORMAL", "MAGIC", "RARE", "UNIQUE"] {
+        let name = if matches!(rarity, "NORMAL" | "MAGIC") {
+            ""
+        } else {
+            "Rule Chest\n"
+        };
+        requests.push((
+            format!("body-armour-crit/{rarity}"),
+            serde_json::json!({
+                "character": { "class_name": "Warrior", "level": 85 },
+                "items": [
+                    { "slot": "bodyarmour", "text": format!("Rarity: {rarity}\n{name}Plate Vest\nImplicits: 0") },
+                    { "slot": "ring1", "text": "Rarity: RARE\nRule Ring\nSapphire Ring\nImplicits: 0\nBody Armour grants Hits against you have 100% reduced Critical Damage Bonus" }
+                ]
+            }).to_string(),
+        ));
+    }
+
     // Reads the whole version directory into an in-memory table, rebuilt
     // via the stage/init path. The version-independent curation layer
     // `data/overlay-common/` (P1-3) sits as a sibling path to the version
@@ -1302,6 +1323,57 @@ fn memory_backend_matches_dir_backend() {
         pobr_data::DATA_VERSION,
     ] {
         let root = repo_data_root().join(version);
+        let nodes: Vec<pobr_data::catalog::PassiveNodeDef> = serde_json::from_str(
+            &std::fs::read_to_string(root.join("base/passive_tree.json")).unwrap(),
+        )
+        .unwrap();
+        let socket = nodes
+            .iter()
+            .find(|node| node.id == "voices_jewel_slot1")
+            .unwrap()
+            .skill;
+        let ordinary = nodes
+            .iter()
+            .find(|node| {
+                node.kind == pobr_data::catalog::PassiveNodeKind::JewelSocket
+                    && node.id.starts_with("jewel_slot")
+            })
+            .unwrap()
+            .skill;
+        let mut requests = requests.clone();
+        for (name, text) in [
+            (
+                "ring",
+                "Radius: Variable\nOnly affects Passives in Medium Ring\nPassives in Radius can be Allocated without being connected to your tree",
+            ),
+            (
+                "start",
+                "Can Allocate Passive Skills from the Ranger's starting point",
+            ),
+            (
+                "conquest",
+                "Radius: Very Large\nRemembrancing 1234 songworthy deeds by the line of Vorana\nPassives in radius are Conquered by the Kalguur\nHistoric",
+            ),
+        ] {
+            for enabled in [false, true] {
+                requests.push((format!("passive-jewel/{name}/{enabled}"), serde_json::json!({
+                    "character": { "class_name": "Witch", "level": 85 },
+                    "allocated_nodes": if enabled { vec![ordinary] } else { vec![] },
+                    "jewels": [{ "socket_node": ordinary, "text": format!("Rarity: UNIQUE\nSynthetic Jewel\nDiamond\n{text}") }]
+                }).to_string()));
+            }
+        }
+        for enabled in [false, true] {
+            requests.push((format!("granted-socket/{enabled}"), serde_json::json!({
+                "character": { "class_name": "Witch", "level": 1 },
+                "allocated_nodes": if enabled { vec![ordinary] } else { vec![] },
+                "jewels": [
+                    { "socket_node": ordinary, "text": "Rarity: UNIQUE\nVoices\nDiamond\nImplicits: 0\nAllocates 1 Sinister Jewel socket" },
+                    { "socket_node": socket, "text": "Rarity: MAGIC\nRuby\nImplicits: 0\n+50 to maximum Life" }
+                ],
+                "config_inputs": { "questInterlude 2Khari CrossingMolten Shrine": false }
+            }).to_string()));
+        }
         pobr_wasm::init_data_from_dir(root.to_str().unwrap()).expect("init dir backend");
         let from_dir: Vec<_> = requests
             .iter()
@@ -1310,10 +1382,68 @@ fn memory_backend_matches_dir_backend() {
         stage_tree(&root, "");
         stage_tree(&common_root, "overlay-common/");
         pobr_wasm::init_staged_data().expect("init memory backend");
+        let mut socket_life = Vec::new();
         for ((label, request), expected) in requests.iter().zip(from_dir) {
             let actual = pobr_wasm::calculate_build_json(request).expect("memory backend");
             assert_eq!(expected, actual, "backend mismatch: {version}/{label}");
+            if label.starts_with("passive-jewel/") {
+                let response: Value = serde_json::from_str(&actual).unwrap();
+                let effects = &response["tree_effects"];
+                if !root.join("overlay/passive_jewels.json").exists() || label.ends_with("/false") {
+                    assert!(
+                        effects["allocation_grants"].as_array().unwrap().is_empty(),
+                        "{label}"
+                    );
+                    assert!(effects["nodes"].as_object().unwrap().is_empty(), "{label}");
+                } else if label.contains("/start/") {
+                    assert_eq!(
+                        effects["allocation_grants"][0]["roots"][0],
+                        effects["class_starts"]["ranger"]
+                    );
+                } else {
+                    assert!(!effects["rings"].as_array().unwrap().is_empty(), "{label}");
+                }
+            }
+            if label.starts_with("granted-socket/") {
+                let response: Value = serde_json::from_str(&actual).unwrap();
+                socket_life.push(
+                    response["stats"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .find(|stat| stat["id"] == "Life")
+                        .unwrap()["value"]
+                        .as_f64()
+                        .unwrap(),
+                );
+            }
+            if let Some(rarity) = label.strip_prefix("body-armour-crit/") {
+                let response: Value = serde_json::from_str(&actual).unwrap();
+                let reduction = response["stats"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|stat| stat["id"] == "CritExtraDamageReduction")
+                    .unwrap();
+                assert_eq!(
+                    reduction["value"],
+                    if rarity == "NORMAL" { 100.0 } else { 0.0 }
+                );
+                assert!(
+                    response["unsupported_modifiers"]
+                        .as_array()
+                        .unwrap()
+                        .is_empty(),
+                    "{version}/{label}: {}",
+                    response["unsupported_modifiers"]
+                );
+            }
         }
+        assert_eq!(
+            socket_life[1] - socket_life[0],
+            50.0,
+            "{version}: granted socket activation"
+        );
     }
 
     // Restore the directory backend, to avoid affecting later tests on the same thread.

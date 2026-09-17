@@ -1674,18 +1674,28 @@
     },
     {
       "id": "body_armour_grants_reduced_crit_damage_bonus_100",
-      "pattern": "body armour grants hits against you have 100% reduced critical damage bonus",
+      "pattern": "body armour grants hits against you have (\\d+)% reduced critical damage bonus",
       "vendor_pattern": "body armour grants hits against you have (%d+)%% reduced critical damage bonus",
       "mods": [
         {
           "name": "ReduceCritExtraDamage",
           "type": "BASE",
-          "value": 100
+          "value": "$1",
+          "tags": [
+            {
+              "type": "Condition",
+              "var": "NormalBodyArmourEquipped"
+            }
+          ]
         }
       ],
       "verified": false,
       "batch": "a2-real-gaps",
-      "source_note": "ModParser.lua:3284（mod(ReduceCritExtraDamage, BASE, num, ItemCondition{Body Armour, rarityCond=NORMAL})；ItemCondition 无 PoBR 落点按 body-armour-grants pre_flag 族同口径丢弃（dropped-tag 报表 7 行同款欠条）——Smith of Kitava 机制要求白装胸甲，语料 build 满足故不 over-apply。语料数值集 {100} 钉值。消费方 defence.rs CritExtraDamageReduction 已存在"
+      "source_note": "Smith of Kitava; ModParser.lua (ce566eac): ReduceCritExtraDamage BASE with ItemCondition{Body Armour, NORMAL}. The build orchestrator supplies NormalBodyArmourEquipped; defence::calc_crit_extra_reduction clamps the total to 0..100 in perform::fill_mechanics and EHP. Keep the historical ID for overrides. Regression: equipment_affix_effects::body_armour_granted_crit_reduction_requires_normal_chest. verified remains false: parser oracle and formula assertions are not a full Build oracle recording.",
+      "examples": [
+        "Body Armour grants Hits against you have 100% reduced Critical Damage Bonus",
+        "Body Armour grants Hits against you have 50% reduced Critical Damage Bonus"
+      ]
     },
     {
       "id": "body_armour_grants_unaffected_by_damaging_ailments",
@@ -2726,6 +2736,23 @@
       "verified": false,
       "batch": "wording",
       "source_note": "GGG/CN dictionary wording alias of Projectile Speed (base_projectile_speed_+%); canonical semantics from pinned PoB2 StatDescriptions and ModParser. Whole-line matching preserves scope; both signs are covered."
+    },
+    {
+      "id": "no_dexterity_inherent_bonus",
+      "pattern": "gain no inherent bonus from dexterity",
+      "mods": [
+        {
+          "name": "NoDexBonusToAccuracy",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "passive-jewels",
+      "examples": [
+        "Gain no inherent bonus from Dexterity"
+      ],
+      "source_note": "LegionPassives.lua Circular Teachings; CalcPerform.lua NoDexBonusToAccuracy. Consumed by pobr-build inject_attribute_derivation; tested with transformed keystone and complete character attributes."
     }
   ]
 }

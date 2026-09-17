@@ -216,10 +216,32 @@ pub(super) fn inject_attribute_derivation(
         // `cls_str × life_per_strength`; the delta here is injected as
         // "target total − baked-in segment", making the Str-derived life total =
         // str_total × the halved coefficient (confirmed against oracle's per-source Life values, wolf-pack: 802→401).
-        let life_per_str = if session.has_flag("HalvesLifeFromStrength") {
+        let no_attributes = session.has_flag("NoAttributeBonuses");
+        let life_per_str = if no_attributes
+            || session.has_flag("NoStrBonusToLife")
+            || session.has_flag("NoStrengthAttributeBonuses")
+        {
+            0.0
+        } else if session.has_flag("HalvesLifeFromStrength") {
             cc.life_per_strength / 2.0
         } else {
             cc.life_per_strength
+        };
+        let mana_per_int = if no_attributes
+            || session.has_flag("NoIntBonusToMana")
+            || session.has_flag("NoIntelligenceAttributeBonuses")
+        {
+            0.0
+        } else {
+            cc.mana_per_intelligence
+        };
+        let accuracy_per_dex = if no_attributes
+            || session.has_flag("NoDexBonusToAccuracy")
+            || session.has_flag("NoDexterityAttributeBonuses")
+        {
+            0.0
+        } else {
+            cc.accuracy_per_dexterity
         };
         let mk = |stat: &str, value: f64| {
             let origin = ModifierSource::new(SourceId::new(
@@ -236,11 +258,11 @@ pub(super) fn inject_attribute_derivation(
             ),
             mk(
                 "MaximumMana",
-                cc.mana_per_intelligence * (int_total - cls_int),
+                mana_per_int * int_total - cc.mana_per_intelligence * cls_int,
             ),
             mk(
                 "Accuracy",
-                cc.accuracy_per_dexterity * (dex_total - cls_dex),
+                accuracy_per_dex * dex_total - cc.accuracy_per_dexterity * cls_dex,
             ),
         ]);
     }
@@ -328,6 +350,9 @@ pub(super) fn inject_per_x_multipliers(
     session.set_stat("Strength", str_total);
     session.set_stat("Dexterity", dex_total);
     session.set_stat("Intelligence", int_total);
+    let tribute = session.base_sum("Tribute");
+    session.set_stat("Tribute", tribute);
+    session.set_multiplier("Tribute", tribute);
     session.set_stat("Spirit", spirit_total);
     session.set_stat("Mana", mana_total);
     session.set_stat("Life", life_total);
@@ -684,7 +709,7 @@ pub(super) fn inject_items(
         // the opposite slot (matching vendor CalcSetup.lua:1221-1243), while the source
         // is still attributed to the slot Kalandra's Touch is in.
         let item = kalandra_reflected_ring(build, slot, item).unwrap_or(item);
-        let mut filtered = filter_item_parseable(item, engine_ctx(data), session);
+        let mut filtered = filter_item_parseable(item, engine_ctx(data), session, &[]);
         // Main-hand weapon: strips local physical damage boost/added (already counted
         // into weapon_contribution as an independent weapon-source multiplier zone ×
         // baseMultiplier); leaving it in the global set would double-count and

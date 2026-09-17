@@ -11,8 +11,8 @@
 ```bash
 cargo run -p pobr-data-adapter -- \
   --gem-quality pipeline/tables/English \
-  --quality-source pipeline/gem-quality/4.5.5.2.json \
-  --out data --patch 4.5.5.2
+  --quality-source "pipeline/gem-quality/$(cat data/CURRENT).json" \
+  --out data --patch "$(cat data/CURRENT)"
 ```
 
 输入只有 `GrantedEffectQualityStats.json`、`GrantedEffects.json`、`Stats.json`
@@ -66,6 +66,17 @@ schema 的 `latest` URL 会变化；精确重放应使用按收据指纹保存�
 
 ## 更新版本或原始表
 
+通常运行 `bash pipeline/bump-version.sh` 即可。下载器成功导出官方表后，
+`advance-receipt.py record-export` 记录目标补丁、配置指纹和三张表的 SHA-256；
+仅目标版本还没有收据时，`advance` 核对上一版收据与品质产物，并以稳定 ID 比较语义。
+效果集合、主 / 备用属性 ID 及顺序、stat-set 作用域不变时，数值斜率可自动更新，
+表内 `_index` 重排也无需修改代码。原有启用 / 排除决定和原始对照依据保持不变。
+新收据注明它证明成功的 exporter 执行与输入字节绑定，不冒充首次迁移的独立 CDN 字节比对。
+
+新效果、效果删除、属性身份或作用域变化会停止自动推进，避免未知机制静默参与计算。
+已有受审收据不会被覆盖；`--skip-download` 复用缓存时仍必须通过补丁和输入字节核验。
+需要新兼容决定或同版本输入变化时：
+
 1. 从目标补丁导出表，记录 exporter、实际 schema、bundle 与表的指纹。
    重导出时使用独立目录，避免 exporter 清空现有 `tables/English` 后中途失败。
 2. 核对旧版与新表的效果、属性、单位、主 / 备用品质和作用域差异。
@@ -76,8 +87,8 @@ schema 的 `latest` URL 会变化；精确重放应使用按收据指纹保存�
    跑 adapter、品质 / 保留和相关完整 Build 回归，再更新版本产物。
 5. 完成完整数据更新、词条审计和项目要求的检查后，再通过现有流程推进活动版本。
 
-新版本没有收据，或同版本重新导出后字节变化时，`regen-all.sh` 会中止。
-`bump-version.sh` 因此可能在生成步骤暂停；准备并验证收据后，可使用
+直接运行 `regen-all.sh` 仍要求已有匹配收据，不负责下载或推断来源。
+自动兼容检查未通过时，准备并验证收据后，可使用
 `bash pipeline/bump-version.sh --patch <patch> --skip-download` 重跑。
 原始表必须已经对应目标版本，不能将上一版输入重新标记为新版。
 此门禁只保证品质域的输入与输出；不使整个升级脚本成为跨域事务。
@@ -90,6 +101,8 @@ cargo test -p pobr-build --test skills gem_quality
 cargo test -p pobr-build --test skills spirit_reservation::
 cargo test -p pobr-wasm --test contract_golden memory_backend_matches_dir_backend
 python3 devs/scripts/test_workflows.py
+python3 pipeline/test-data-update.py
+node --test pipeline/test-query-patch-version.mjs
 ```
 
 主机契约测试覆盖历史和活动数据版本、三份完整 Build 的 q0/q19/q20，比较文件和内存加载。
@@ -101,5 +114,6 @@ Web 回归用爆炸手雷验证 q0 → q20 导致重算、再改回 q0 恢复原
 pnpm --dir web exec playwright test e2e/build-roundtrip.spec.ts -g 'gem quality edits' --workers=1
 ```
 
-首次验收只覆盖 `4.5.5.2`，未验证未来版本升级。
+首次真实数据验收覆盖 `4.5.5.2`。后续离线测试使用未出现过的版本号和重排索引，
+覆盖数值更新、未知机制拒绝、来源不匹配以及失败不推进活动版本；它们不代表已验收尚未发布的真实补丁。
 Lua 提取器保留为历史重放 / 对照工具；对照时输出到临时目录，不覆盖当前正式产物。

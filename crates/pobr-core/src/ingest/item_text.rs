@@ -56,6 +56,9 @@
 
 use pobr_data::prelude::*;
 
+mod selection;
+use selection::ItemSelection;
+
 /// The item text block's section separator line.
 const SECTION_SEPARATOR: &str = "--------";
 
@@ -98,6 +101,7 @@ impl std::error::Error for ItemTextError {}
 /// Structural errors (empty input / missing Rarity / missing base) return
 /// [`Err`]; unrecognized modifier lines are kept as explicit, without erroring.
 pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
+    let selection = ItemSelection::new(raw);
     let sections = split_sections(raw);
     if sections.is_empty() {
         return Err(ItemTextError::Empty);
@@ -128,7 +132,7 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
                 implicit_count = count;
             } else if accumulate_rolled_defence(line, &mut rolled_defence) {
                 // A rolled defence value line: recorded into rolled_defence, not counted as a modifier.
-            } else if is_metadata_line(line) {
+            } else if is_xml_metadata_line(line) {
                 // Metadata lines aren't counted as modifiers; a `Corrupted` marker line sets the corrupted state.
                 if line.trim() == "Corrupted" {
                     corrupted = true;
@@ -140,6 +144,7 @@ pub fn parse_item_text(raw: &str) -> Result<Item, ItemTextError> {
 
         classify_mod_lines(
             &mod_lines,
+            &selection,
             &mut implicit_count,
             &mut implicit_texts,
             &mut enchant_texts,
@@ -199,6 +204,7 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
     if raw.lines().any(|line| line.trim() == SECTION_SEPARATOR) {
         return parse_item_text(raw);
     }
+    let selection = ItemSelection::new(raw);
     let lines: Vec<&str> = raw
         .lines()
         .map(str::trim)
@@ -261,6 +267,7 @@ pub fn parse_pob_xml_item(raw: &str) -> Result<Item, ItemTextError> {
     let mut modifier_texts = Vec::new();
     classify_mod_lines(
         &mod_lines,
+        &selection,
         &mut implicit_count,
         &mut implicit_texts,
         &mut enchant_texts,
@@ -291,7 +298,12 @@ fn is_xml_metadata_line(line: &str) -> bool {
         "Rune:",
         "Sockets:",
         "Implicits:",
-        "Selected Variant:",
+        "Selected Variant",
+        "Selected Alt Variant",
+        "Selected Version:",
+        "Selected Base Variant:",
+        "Version:",
+        "Base Variant:",
         "Variant:",
         "Has Alt Variant",
         "Radius:",
@@ -578,23 +590,19 @@ pub fn strip_pob_annotations(text: &str) -> String {
     s.trim().to_string()
 }
 
-/// Strips an enchant / crafted / rune marker. Returns the marker-stripped text and `true` on a match.
-///
-/// Note: `{crafted}` / `{enchant}` / `{rune}` act as a **line-start prefix**
-/// used for section classification (rune-socketed modifiers and enchants are
-/// both "extra sources that come from a socket", so they're unified into the
-/// enchant section). This step runs before [`strip_pob_annotations`] so the
-/// section classification semantics are preserved. For the compound
-/// `{enchant}{rune}` prefix, `{enchant}` matches first per the array order,
-/// and the leftover `{rune}` is stripped afterward by [`strip_pob_annotations`].
+/// Recognizes section markers anywhere in the leading annotation sequence.
+/// Selection and range annotations may precede an enchant or socket marker.
 fn strip_enchant_marker(line: &str) -> (String, bool) {
-    const ENCHANT_MARKERS: &[&str] = &["{crafted}", "{enchant}", "{rune}"];
-    for marker in ENCHANT_MARKERS {
-        if let Some(rest) = line.strip_prefix(marker) {
-            return (rest.trim().to_string(), true);
-        }
+    let mut rest = line;
+    let mut is_enchant = false;
+    while let Some(tagged) = rest.strip_prefix('{') {
+        let Some((tag, tail)) = tagged.split_once('}') else {
+            break;
+        };
+        is_enchant |= matches!(tag, "crafted" | "enchant" | "rune");
+        rest = tail.trim_start();
     }
-    (line.to_string(), false)
+    (rest.to_string(), is_enchant)
 }
 
 /// Classifies a section's modifier lines into implicit / enchant / explicit.
@@ -609,6 +617,7 @@ fn strip_enchant_marker(line: &str) -> (String, bool) {
 /// parsed correctly by `mod_parser`.
 fn classify_mod_lines(
     lines: &[&str],
+    selection: &ItemSelection,
     implicit_remaining: &mut usize,
     implicit_texts: &mut Vec<String>,
     enchant_texts: &mut Vec<String>,
@@ -619,11 +628,23 @@ fn classify_mod_lines(
         // prefix semantics), then strip PoB export meta-annotations from
         // the remaining text.
         let (text_after_enchant_marker, is_enchant) = strip_enchant_marker(line);
+        let implicit = !is_enchant && *implicit_remaining > 0;
+        if implicit {
+            *implicit_remaining -= 1;
+        }
+        if !selection.accepts(line) {
+            continue;
+        }
         let clean_text = strip_pob_annotations(&text_after_enchant_marker);
+        let range = selection::annotation(line, "range")
+            .and_then(|value| value.parse::<f64>().ok())
+            .filter(|value| value.is_finite())
+            .unwrap_or(1.0)
+            .clamp(0.0, 1.0);
+        let clean_text = crate::apply_range::apply_range(&clean_text, range, None, 1.0);
         if is_enchant {
             enchant_texts.push(clean_text);
-        } else if *implicit_remaining > 0 {
-            *implicit_remaining -= 1;
+        } else if implicit {
             implicit_texts.push(clean_text);
         } else {
             modifier_texts.push(clean_text);

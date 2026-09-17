@@ -216,6 +216,10 @@ pub struct RadiusJewel {
     /// nodes within radius). When a jewel has multiple such lines, the last one wins
     /// (vendor overwrites via `localNotableIncEffect = mod.value`).
     pub notable_effect_inc: u32,
+    /// Local small-passive effect, additive with global small-passive effect.
+    pub small_effect_inc: u32,
+    /// Normalized active modifier lines for allocation and conquest consumers.
+    pub tree_texts: Vec<String>,
 }
 
 /// In-memory state of a PoB Build.
@@ -244,9 +248,13 @@ pub struct Build {
     /// change the REAL type).
     pub items: HashMap<EquipmentSlot, Item>,
     /// Jewels (passive tree / abyss sockets, no fixed [`EquipmentSlot`]). Their mods are
-    /// injected as global (most jewels are global; radius jewels are currently
-    /// approximated as global too).
+    /// injected as global. Radius directives are consumed separately below,
+    /// using the selected tree's geometry and allocated nodes.
     pub jewels: Vec<Item>,
+    /// Jewels in sockets not explicitly allocated by the imported tree. Their
+    /// activation depends on item grants and the selected tree data, so XML parsing
+    /// preserves them until calculation instead of pinning numeric node IDs.
+    pub granted_socket_jewels: Vec<(u32, Item, Option<RadiusJewel>)>,
     /// Geometric expansion input for radius jewels (`... in Radius also grant <mod>`).
     /// Coexists with `jewels`: `jewels` injects the jewel's **own** global mods, while
     /// this list additionally expands `also grant` lines by radius geometry into global

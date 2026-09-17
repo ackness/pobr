@@ -1,0 +1,387 @@
+{
+  "_meta":{
+    "regen_command":"luajit pipeline/extract-passive-jewels.lua <vendor_src> <output.json>",
+    "schema":"passive-jewels/v1",
+    "seed_tables":"unavailable",
+    "source":"PoB2 GameVersions, TreeData, ModParser, LegionPassives and PassiveSpec"
+  },
+  "class_starts":{
+    "druid":"templar598",
+    "duelist":"duelist597",
+    "huntress":"ranger596",
+    "marauder":"marauder594",
+    "mercenary":"duelist597",
+    "monk":"six704",
+    "ranger":"ranger596",
+    "shadow":"six704",
+    "sorceress":"witch595",
+    "templar":"templar598",
+    "warrior":"marauder594",
+    "witch":"witch595"
+  },
+  "conquerors":{
+    "amanamu":{
+      "family":"abyss",
+      "keystone":"abyss_keystone_1"
+    },
+    "kulemak":{
+      "family":"abyss",
+      "keystone":"abyss_keystone_2"
+    },
+    "kurgal":{
+      "family":"abyss",
+      "keystone":"abyss_keystone_3"
+    },
+    "medved":{
+      "family":"kalguur",
+      "keystone":"kalguur_keystone_2"
+    },
+    "olroth":{
+      "family":"kalguur",
+      "keystone":"kalguur_keystone_3"
+    },
+    "tecrod":{
+      "family":"abyss",
+      "keystone":"abyss_keystone_4"
+    },
+    "ulaman":{
+      "family":"abyss",
+      "keystone":"abyss_keystone_5"
+    },
+    "vorana":{
+      "family":"kalguur",
+      "keystone":"kalguur_keystone_1"
+    }
+  },
+  "families":{
+    "abyss":{
+      "attribute_additions":["+3 to Tribute"],
+      "small_replacement":"abyss_small_tribute"
+    },
+    "kalguur":{
+      "attribute_additions":[]
+    }
+  },
+  "nodes":{
+    "abyss_keystone_1":{
+      "name":"Sacrifice of Flesh",
+      "stats":["When taking damage from Hits, 20% of Life Loss is prevented, then 150% of Life Loss prevented this way is Lost over 4 seconds"]
+    },
+    "abyss_keystone_2":{
+      "name":"Sacrifice of Loyalty",
+      "stats":["You deal 1% more Damage per 2 total Power of your Undead Minions","Undead Minions have 25% less maximum Life"]
+    },
+    "abyss_keystone_3":{
+      "name":"Sacrifice of Mind",
+      "stats":["Mana Recovery from Regeneration Overflows maximum Mana","50% less Mana Regeneration Rate"]
+    },
+    "abyss_keystone_4":{
+      "name":"Sacrifice of Blood",
+      "stats":["Regenerate 1 Life per second per 16 Life spent in the past 4 seconds","20% more Life Cost of Skills"]
+    },
+    "abyss_keystone_5":{
+      "name":"Sacrifice of Sight",
+      "stats":["Projectiles do one of the following at random:","Fork an additional time","Chain an additional time","Chain from Terrain an additional time","Cannot collide with targets"]
+    },
+    "abyss_notable_1":{
+      "name":"Disciple of Darkness",
+      "stats":["20% increased Tribute"]
+    },
+    "abyss_notable_10":{
+      "name":"Expedited Horrors",
+      "stats":["3% faster Curse Activation per 20 Tribute","3% increased Curse Duration per 10 Tribute"]
+    },
+    "abyss_notable_11":{
+      "name":"Confined Exaltation",
+      "stats":["1% increased Spirit Reservation Efficiency of Skills per 20 Tribute","2% reduced Presence Area of Effect per 10 Tribute"]
+    },
+    "abyss_notable_12":{
+      "name":"Arcane Ascension",
+      "stats":["1% of Maximum Life Converted to Energy Shield per 20 Tribute"]
+    },
+    "abyss_notable_13":{
+      "name":"Ravenous Mind",
+      "stats":["2% increased Mana Recovery rate per 10 Tribute"]
+    },
+    "abyss_notable_14":{
+      "name":"Gluttonous Presence",
+      "stats":["2% increased Life Recovery rate per 10 Tribute"]
+    },
+    "abyss_notable_15":{
+      "name":"Unrestrained Intellect",
+      "stats":["1% increased Cooldown Recovery Rate per 10 Tribute","+2 to Intelligence per 25 Tribute"]
+    },
+    "abyss_notable_16":{
+      "name":"Cruel Strength",
+      "stats":["+2 to Strength per 25 Tribute","2% increased Stun Buildup per 10 Tribute"]
+    },
+    "abyss_notable_17":{
+      "name":"Opportunistic Dexterity",
+      "stats":["+2 to Dexterity per 25 Tribute","2% increased Parried Debuff Duration per 10 Tribute"]
+    },
+    "abyss_notable_18":{
+      "name":"Unreal Potential",
+      "stats":["1% chance when you gain a Charge to gain an additional Charge per 10 Tribute"]
+    },
+    "abyss_notable_19":{
+      "name":"I Have Darkvision",
+      "stats":["2% increased Accuracy Rating per 10 Tribute","2% reduced Light Radius per 10 Tribute"]
+    },
+    "abyss_notable_2":{
+      "name":"Creature of Death",
+      "stats":["1% of damage taken Recouped as Life per 10 Tribute","Recover 1% of maximum Life on Kill per 50 Tribute"]
+    },
+    "abyss_notable_20":{
+      "name":"Domineering Commands",
+      "stats":["Empowered Attacks deal 2% increased damage per 10 Tribute","4% increased Warcry Speed per 25 Tribute"]
+    },
+    "abyss_notable_21":{
+      "name":"Worthy Tithes",
+      "stats":["Remnants you create have 2% increased effect per 10 Tribute"]
+    },
+    "abyss_notable_22":{
+      "name":"Buried Animosity",
+      "stats":["+1 to Maximum Rage per 50 Tribute","Inherent loss of Rage is 2% slower per 10 Tribute"]
+    },
+    "abyss_notable_23":{
+      "name":"Fast Rot",
+      "stats":["2% increased Magnitude of Damaging Ailments you inflict per 10 Tribute","1% reduced Duration of Damaging Ailments per 10 Tribute"]
+    },
+    "abyss_notable_24":{
+      "name":"Hollow Bones",
+      "stats":["Gain Deflection Rating equal to 2% of Evasion Rating per 25 Tribute","2% increased Evasion Rating per 10 Tribute"]
+    },
+    "abyss_notable_25":{
+      "name":"Ancient Bastion",
+      "stats":["2% reduced Energy Shield Recharge Rate per 25 Tribute","4% increased maximum Energy Shield per 10 Tribute"]
+    },
+    "abyss_notable_26":{
+      "name":"Deformed Steel",
+      "stats":["2% increased Armour per 10 Tribute","5% increased Stun Threshold per 25 Tribute"]
+    },
+    "abyss_notable_27":{
+      "name":"Mystic Brew",
+      "stats":["3% increased Flask Effect Duration per 25 Tribute","1% increased Life and Mana Recovery from Flasks per 10 Tribute"]
+    },
+    "abyss_notable_28":{
+      "name":"Resilient Wards",
+      "stats":["3% increased Charm Effect Duration per 25 Tribute","Charms applied to you have 1% increased Effect per 10 Tribute"]
+    },
+    "abyss_notable_29":{
+      "name":"Dreadful Fortitude",
+      "stats":["Your Heavy Stun buildup empties 1% faster per 10 Tribute","5% increased Armour, Evasion and Energy Shield from Equipped Shield per 25 Tribute"]
+    },
+    "abyss_notable_3":{
+      "name":"Creature of Magic",
+      "stats":["1% of damage taken Recouped as Mana per 10 Tribute","Recover 1% of maximum Mana on Kill per 50 Tribute"]
+    },
+    "abyss_notable_30":{
+      "name":"Barbed Allegiance",
+      "stats":["+0.5% to Thorns Critical Hit Chance per 50 Tribute","2% increased Thorns damage per 10 Tribute"]
+    },
+    "abyss_notable_4":{
+      "name":"Quickened Corpses",
+      "stats":["Minions have 3% increased Attack and Cast Speed per 50 Tribute","Minions deal 1% increased damage per 10 Tribute"]
+    },
+    "abyss_notable_5":{
+      "name":"Ambivalent Command",
+      "stats":["Minions have 4% increased Cooldown Recovery Rate per 10 Tribute","Minions lose 2% Life per 10 Tribute you have when following Commands"]
+    },
+    "abyss_notable_6":{
+      "name":"Boneshedder",
+      "stats":["Projectiles have 10% chance for an additional Projectile when Forking per 10 Tribute"]
+    },
+    "abyss_notable_7":{
+      "name":"Unfiltered Brutality",
+      "stats":["8% increased Attack Damage per 10 Tribute","1% increased damage taken per 10 Tribute"]
+    },
+    "abyss_notable_8":{
+      "name":"Derogatory Gaze",
+      "stats":["3% reduced Accuracy Rating per 25 Tribute","5% increased Attack Critical Hit Chance per 10 Tribute"]
+    },
+    "abyss_notable_9":{
+      "name":"Abyssal Conduit",
+      "stats":["2% increased Mana Cost Efficiency per 10 Tribute"]
+    },
+    "abyss_small_tribute":{
+      "name":"Tribute",
+      "stats":["+5 to Tribute"]
+    },
+    "kalguur_keystone_1":{
+      "name":"Black Scythe Training",
+      "stats":["Gain no inherent bonus from Strength","1% increased Energy Shield per 2 Strength"]
+    },
+    "kalguur_keystone_2":{
+      "name":"Circular Teachings",
+      "stats":["Gain no inherent bonus from Dexterity","1% increased Armour per 2 Dexterity"]
+    },
+    "kalguur_keystone_3":{
+      "name":"Knightly Tenets",
+      "stats":["Gain no inherent bonus from Intelligence","1% increased Evasion Rating per 2 Intelligence"]
+    },
+    "kalguur_notable1":{
+      "name":"Scorched Earth",
+      "stats":["40% increased Fire Damage","+15 to Intelligence"]
+    },
+    "kalguur_notable10":{
+      "name":"Druidic Alliance",
+      "stats":["+7% to Chaos Resistance","40% increased Totem Damage"]
+    },
+    "kalguur_notable11":{
+      "name":"Steel and Sorcery",
+      "stats":["10% increased effect of Arcane Surge on you","20% increased Magnitude of Bleeding you inflict"]
+    },
+    "kalguur_notable12":{
+      "name":"Triskelion's Light",
+      "stats":["10% increased Cold Exposure Effect","Empowered Attacks deal 50% increased Damage","10% increased Fire Exposure Effect","10% increased Lightning Exposure Effect"]
+    },
+    "kalguur_notable13":{
+      "name":"Stormtossed Voyager",
+      "stats":["+2% to Maximum Lightning Resistance","10% reduced Ignite Duration on you"]
+    },
+    "kalguur_notable14":{
+      "name":"Wrest Control",
+      "stats":["40% increased Lightning Damage","+15 to Strength"]
+    },
+    "kalguur_notable15":{
+      "name":"Firedancer",
+      "stats":["40% increased Evasion Rating","+10% to Fire Resistance"]
+    },
+    "kalguur_notable16":{
+      "name":"Mercenary's Lot",
+      "stats":["10% increased Attack Speed","15% increased Stun Threshold"]
+    },
+    "kalguur_notable17":{
+      "name":"Vorana's Fury",
+      "stats":["40% increased Projectile Damage","Gain 1 Rage on Melee Hit"]
+    },
+    "kalguur_notable18":{
+      "name":"Sensible Precautions",
+      "stats":["6% increased Block chance","40% increased Life Recovery from Flasks"]
+    },
+    "kalguur_notable19":{
+      "name":"Aim for the Jugular",
+      "stats":["30% increased Accuracy Rating","10% increased Magnitude of Bleeding you inflict"]
+    },
+    "kalguur_notable2":{
+      "name":"War Tactics",
+      "stats":["20% increased Mana Regeneration Rate","40% increased Physical Damage"]
+    },
+    "kalguur_notable20":{
+      "name":"Survival Plan",
+      "stats":["2% increased maximum Life","40% increased Mana Recovery from Flasks"]
+    },
+    "kalguur_notable21":{
+      "name":"War of Attrition",
+      "stats":["10% increased amount of Life Leeched","20% increased Magnitude of Poison you inflict"]
+    },
+    "kalguur_notable22":{
+      "name":"Guerilla Warfare",
+      "stats":["40% increased chance to Shock","15% increased Totem Life"]
+    },
+    "kalguur_notable23":{
+      "name":"One for the Road",
+      "stats":["30% increased Flask Effect Duration","15% increased Warcry Cooldown Recovery Rate"]
+    },
+    "kalguur_notable24":{
+      "name":"Targeted Strike",
+      "stats":["8% increased Skill Effect Duration","20% increased Effect of your Mark Skills"]
+    },
+    "kalguur_notable25":{
+      "name":"Steel Bastion",
+      "stats":["40% increased Elemental Damage","20% increased Armour, Evasion and Energy Shield from Equipped Shield"]
+    },
+    "kalguur_notable26":{
+      "name":"Forceful Energies",
+      "stats":["10% increased Cast Speed","10% chance to Pierce an Enemy"]
+    },
+    "kalguur_notable27":{
+      "name":"Winter Forest",
+      "stats":["40% increased Cold Damage","+15 to Dexterity"]
+    },
+    "kalguur_notable28":{
+      "name":"Fight as One",
+      "stats":["8% increased Accuracy Rating","Minions deal 40% increased Damage"]
+    },
+    "kalguur_notable29":{
+      "name":"Summer Meadows",
+      "stats":["15% increased Evasion Rating","Minions have 30% increased maximum Life"]
+    },
+    "kalguur_notable3":{
+      "name":"Kalguuran Forged",
+      "stats":["+2% to Maximum Fire Resistance","10% reduced Freeze Duration on you"]
+    },
+    "kalguur_notable30":{
+      "name":"Druidic Training",
+      "stats":["40% increased Spell Damage","10% increased Flask and Charm Charges gained"]
+    },
+    "kalguur_notable31":{
+      "name":"Corrupted Vision",
+      "stats":["30% increased Critical Hit Chance for Spells","5% chance to Blind Enemies on Hit"]
+    },
+    "kalguur_notable32":{
+      "name":"Runic Tattoos",
+      "stats":["30% increased Mana Regeneration Rate","15% increased Elemental Ailment Threshold"]
+    },
+    "kalguur_notable33":{
+      "name":"Furs and Leather",
+      "stats":["+2% to Maximum Cold Resistance","10% reduced Shock duration on you"]
+    },
+    "kalguur_notable34":{
+      "name":"Sudden Hail",
+      "stats":["8% increased Projectile Speed","30% increased Freeze Buildup"]
+    },
+    "kalguur_notable35":{
+      "name":"Natural Energies",
+      "stats":["40% increased maximum Energy Shield","+10% to Lightning Resistance"]
+    },
+    "kalguur_notable36":{
+      "name":"Oaken Form",
+      "stats":["10% increased Charm Effect Duration","10% of Damage taken Recouped as Life"]
+    },
+    "kalguur_notable37":{
+      "name":"Spider's Lesson",
+      "stats":["37% increased Chaos Damage","Projectiles have 6% chance to Chain an additional time from terrain"]
+    },
+    "kalguur_notable4":{
+      "name":"Born of Middengard",
+      "stats":["40% increased Armour","+10% to Cold Resistance"]
+    },
+    "kalguur_notable5":{
+      "name":"Force of Will",
+      "stats":["2% increased maximum Mana","30% increased Stun Buildup"]
+    },
+    "kalguur_notable6":{
+      "name":"Runic Flows",
+      "stats":["10% increased Curse Duration","Regenerate 1.5% of maximum Life per second"]
+    },
+    "kalguur_notable7":{
+      "name":"Siege Mentality",
+      "stats":["10% faster start of Energy Shield Recharge","Break 40% increased Armour"]
+    },
+    "kalguur_notable8":{
+      "name":"Rune Knight",
+      "stats":["15% increased Critical Spell Damage Bonus","40% increased Melee Damage"]
+    },
+    "kalguur_notable9":{
+      "name":"Fiery Leadership",
+      "stats":["40% increased Flammability Magnitude","Minions have +15% to all Elemental Resistances"]
+    }
+  },
+  "ring_sizes":{
+    "affects passives in large ring":10,
+    "affects passives in massive ring":12,
+    "affects passives in medium ring":8,
+    "affects passives in small ring":6,
+    "affects passives in very large ring":11,
+    "only affects passives in large ring":10,
+    "only affects passives in massive ring":12,
+    "only affects passives in medium ring":8,
+    "only affects passives in medium-large ring":9,
+    "only affects passives in medium-small ring":7,
+    "only affects passives in small ring":6,
+    "only affects passives in very large ring":11,
+    "only affects passives in very small ring":5
+  },
+  "tree_version":"0_5"
+}
