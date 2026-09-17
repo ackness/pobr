@@ -197,6 +197,7 @@ pub struct BuildData {
     /// `RuntimeConstants`. Falls back to `Default` when data is missing (value-for-value
     /// equal to the JSON).
     pub jewel_radii: JewelRadiiDef,
+    pub passive_jewels: pobr_data::catalog::passive_jewels::PassiveJewelData,
     /// Local mod allowlist (`overlay/local_mods.json`).
     /// Falls back to the built-in [`LocalModsDef::default`] when a data pack lacks this
     /// overlay file (a mirror that matches the JSON value-for-value, no behavior change).
@@ -493,6 +494,7 @@ impl BuildData {
             base_items,
             constants,
             jewel_radii,
+            passive_jewels: data.passive_jewels()?.unwrap_or_default(),
             local_mods,
             stat_map_catalog,
             buff_definitions,
@@ -524,6 +526,7 @@ impl BuildData {
             base_items: HashMap::new(),
             constants: RuntimeConstants::default(),
             jewel_radii: JewelRadiiDef::default(),
+            passive_jewels: Default::default(),
             local_mods: LocalModsDef::default(),
             stat_map_catalog: None,
             buff_definitions: Vec::new(),

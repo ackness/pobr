@@ -184,6 +184,7 @@ struct CalculateBuildResponse {
     /// calculates; the frontend flags it red by slot). An empty array means
     /// everything parsed successfully.
     item_errors: Vec<super::request::SlotIssue>,
+    tree_effects: pobr_build::jewel_tree::PassiveJewelState,
 }
 
 /// 0.2 + 0.3: full build calculation -> the full display_catalog key/values
@@ -214,6 +215,7 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         breakdowns,
         main_skill: main_skill_json(&build, &data, session.output()),
         item_errors,
+        tree_effects: pobr_build::calc_orchestrator::passive_jewel_state(&build, &data),
     };
     Ok(serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))?)
 }

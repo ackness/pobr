@@ -1,6 +1,7 @@
 //! collect — collecting character base / passive nodes / jewel radius expansion / keystones / items·gems.
 
 use super::*;
+pub(crate) use pobr_core::passive::{GrantTargetKind, parse_grant_line};
 
 /// Resolve item-granted sockets using the selected tree's stable IDs and names.
 /// Numeric node IDs and the number of available sockets belong to the data pack.
@@ -106,19 +107,38 @@ pub(crate) fn resolve_passive_nodes(build: &Build, data: &BuildData) -> Vec<Allo
     // Plan" has two mod lines 50/50 in 0_3 vs three lines 20/40/40 in 0_5); falls back
     // to the default tree when there's no matching historical tree data.
     let nodes = data.passive_nodes_for(build.tree_version.as_deref());
-    collect_allocated_mods_for_class(&build.tree, nodes, class)
-        .into_iter()
-        .map(|node| {
+    let transformations = crate::jewel_tree::passive_jewel_state(build, data);
+    let mut collected: std::collections::HashMap<_, _> =
+        collect_allocated_mods_for_class(&build.tree, nodes, class)
+            .into_iter()
+            .map(|node| (node.node_id, node.modifier_texts))
+            .collect();
+    build
+        .tree
+        .allocated_nodes
+        .iter()
+        .filter_map(|node_id| {
+            let mut modifier_texts = collected.remove(node_id).unwrap_or_default();
+            if let Some(change) = transformations.nodes.get(&node_id.0) {
+                if change.replace {
+                    modifier_texts = change.stats.clone();
+                } else {
+                    modifier_texts.extend(change.stats.iter().cloned());
+                }
+            }
+            if modifier_texts.is_empty() {
+                return None;
+            }
             // Ascendancy nodes are determined by their PassiveNodeDef::ascendancy_id.
             let ascendancy = nodes
-                .get(&node.node_id.0)
+                .get(&node_id.0)
                 .map(|def| def.ascendancy_id.is_some())
                 .unwrap_or(false);
-            AllocatedNode {
-                node_id: node.node_id,
+            Some(AllocatedNode {
+                node_id: *node_id,
                 ascendancy,
-                modifier_texts: combine_wrapped_then_filter(node.modifier_texts, engine_ctx(data)),
-            }
+                modifier_texts: combine_wrapped_then_filter(modifier_texts, engine_ctx(data)),
+            })
         })
         .collect()
 }
@@ -327,35 +347,6 @@ pub(crate) fn parse_jewel_radius(label: Option<&str>) -> JewelRadius {
         Some("large") => JewelRadius::Large,
         Some("very large") => JewelRadius::VeryLarge,
         _ => JewelRadius::Large,
-    }
-}
-
-/// The target node kind for a radius jewel's `also grant` line (the granted object is determined by its prefix).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum GrantTargetKind {
-    Notable,
-    /// `Small Passive Skills` = a normal (non-notable/keystone/socket/mastery) node.
-    Small,
-}
-
-/// Parses a `<Kind> Passive Skills in Radius also grant <mod>` line → (target kind, granted mod text).
-///
-/// Only recognizes the `Notable` / `Small` prefixes; any other prefix (e.g. keystone
-/// grants, no samples seen so far) returns None.
-pub(crate) fn parse_grant_line(line: &str) -> Option<(GrantTargetKind, String)> {
-    const MARKER: &str = "Passive Skills in Radius also grant";
-    let idx = line.find(MARKER)?;
-    let prefix = line[..idx].trim();
-    let kind = match prefix.to_ascii_lowercase().as_str() {
-        "notable" => GrantTargetKind::Notable,
-        "small" => GrantTargetKind::Small,
-        _ => return None,
-    };
-    let granted = line[idx + MARKER.len()..].trim();
-    if granted.is_empty() {
-        None
-    } else {
-        Some((kind, granted.to_string()))
     }
 }
 

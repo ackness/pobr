@@ -24,6 +24,35 @@ use pobr_data::prelude::*;
 use crate::Modifier;
 use crate::mod_parser::{ParseError, ParseStatus};
 
+/// The target node kind for a radius jewel's `also grant` line (the granted object is determined by its prefix).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GrantTargetKind {
+    Notable,
+    /// `Small Passive Skills` = a normal (non-notable/keystone/socket/mastery) node.
+    Small,
+}
+
+/// Parses a `<Kind> Passive Skills in Radius also grant <mod>` line → (target kind, granted mod text).
+///
+/// Only recognizes the `Notable` / `Small` prefixes; any other prefix (e.g. keystone
+/// grants, no samples seen so far) returns None.
+pub fn parse_grant_line(line: &str) -> Option<(GrantTargetKind, String)> {
+    const MARKER: &str = "Passive Skills in Radius also grant";
+    let idx = line.find(MARKER)?;
+    let prefix = line[..idx].trim();
+    let kind = match prefix.to_ascii_lowercase().as_str() {
+        "notable" => GrantTargetKind::Notable,
+        "small" => GrantTargetKind::Small,
+        _ => return None,
+    };
+    let granted = line[idx + MARKER.len()..].trim();
+    if granted.is_empty() {
+        None
+    } else {
+        Some((kind, granted.to_string()))
+    }
+}
+
 /// An allocated passive node: stable `NodeId` + modifier text + ascendancy flag.
 #[derive(Debug, Clone, Default)]
 pub struct AllocatedNode {

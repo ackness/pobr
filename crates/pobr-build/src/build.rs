@@ -218,6 +218,8 @@ pub struct RadiusJewel {
     pub notable_effect_inc: u32,
     /// Local small-passive effect, additive with global small-passive effect.
     pub small_effect_inc: u32,
+    /// Normalized active modifier lines for allocation and conquest consumers.
+    pub tree_texts: Vec<String>,
 }
 
 /// In-memory state of a PoB Build.

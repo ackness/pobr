@@ -128,6 +128,7 @@ soft_step stat_descriptions "${SYNC[@]}" extract-lua --what stat-descriptions --
 soft_step stat_set_labels "${SYNC[@]}" extract-lua --what stat-set-labels --vendor-root "$VENDOR" --files "$GEMFILES" --out "$OVL/stat_set_labels.json"
 soft_step uniques         "${SYNC[@]}" extract-lua --what uniques         --vendor-root "$VENDOR" --out "$OVL/uniques.json"
 soft_step trade_stat_map  luajit pipeline/extract-trade-map.lua "$VENDOR" "$OVL/trade_stat_map.json"
+soft_step passive_jewels  luajit pipeline/extract-passive-jewels.lua "$VENDOR" "$OVL/passive_jewels.json"
 soft_step trade_crafting  python3 pipeline/extract-trade-crafting.py pipeline/tables/English "$OVL/trade_crafting_sources.json"
 soft_step trade_catalog   luajit pipeline/extract-trade-catalog.lua "$VENDOR" "$OVL/trade_catalog.json" "$OVL/trade_crafting_sources.json"
 soft_step mirage_configs  "${SYNC[@]}" gen-mirage-configs  --vendor-root "$VENDOR" --out "$OVL/mirage_configs.json"

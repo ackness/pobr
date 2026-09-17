@@ -40,6 +40,35 @@ function exhaustive(context: PassivePlanningContext, budget: number, calculate: 
 }
 
 describe('passive upgrade planner', () => {
+  it('plans one-point radius upgrades, protects providers, and rejects outward island travel at apply time', () => {
+    const nodes = [node(1,[2,3]),node(2,[],{kind:'jewel_socket'}),node(3,[4]),node(4,[5]),node(5,[6]),node(6)];
+    const effects = { class_starts: { witch: 1 }, allocation_grants: [{source:2,nodes:[5],roots:[]}],
+      nodes:{},conquered:[],unresolved:[],rings:[],warnings:[] };
+    const context = passivePlanningContext(nodes,[2,5],'Witch',[],[2],undefined,effects);
+    expect(context.canRefund).toBe(true);
+    expect(allocationPaths(context,context.allocated,1).map(p=>p.target)).not.toContain(6);
+    const route = allocationPaths(context,context.allocated,3).find(p=>p.target===6)!;
+    expect(route.allocate).toEqual([3,4,6]);
+    expect(passivePlanAllocation({allocated_nodes:[2,5]},context,{allocate:[6],deallocate:[],target:6},1,'allocate')).toBeNull();
+    expect(passivePlanAllocation({allocated_nodes:[2,5]},context,route,3,'allocate')?.allocatedNodes.sort()).toEqual([2,3,4,5,6]);
+    expect(refundableBranches(context,2).some(p=>p.deallocate.includes(2))).toBe(false);
+    expect(refundableBranches(context,1).map(p=>p.deallocate)).toContainEqual([5]);
+    const empty = passivePlanningContext(nodes,[2],'Witch',[],[2],undefined,effects);
+    expect(allocationPaths(empty,empty.allocated,1).map(p=>p.allocate)).toContainEqual([5]);
+    const unresolved = passivePlanningContext(nodes,[2,5],'Witch',[],[2],undefined,{...effects,unresolved:[5]});
+    expect(refundableBranches(unresolved,2)).toEqual([]);
+  });
+
+  it('reads renumbered alternate starts from backend data and excludes inactive weapon-set providers', () => {
+    const nodes = [node(901,[902],{name:'Future Start'}),node(902,[],{kind:'jewel_socket'}),node(910,[911],{name:'RANGER'}),node(911,[912]),node(912)];
+    const effects = { class_starts:{ future:901 },allocation_grants:[{source:902,nodes:[],roots:[910]}],
+      nodes:{},conquered:[],unresolved:[],rings:[],warnings:[] };
+    const context = passivePlanningContext(nodes,[902],'Future',[],[902],undefined,effects);
+    expect(allocationPaths(context,context.allocated,2).map(p=>p.allocate)).toContainEqual([911,912]);
+    expect(allocationPaths(context,context.allocated,2).map(p=>p.target)).not.toContain(910);
+    const inactive = passivePlanningContext(nodes,[902],'Future',[902],[902],undefined,effects);
+    expect(allocationPaths(inactive,inactive.allocated,2)).toEqual([]);
+  });
   it('preserves allocated weapon-set attribute choices while preparing new travel attributes', () => {
     const request = { allocated_nodes: [2], attribute_choices: { '2': 'str' as const } };
     const result = withTravelAttributes(request, [node(2, [], { name: 'Attribute' }), node(3, [], { name: 'Attribute' })], 'int');

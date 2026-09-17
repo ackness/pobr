@@ -30,6 +30,7 @@ pub mod game_constants;
 pub mod jewel_radii;
 pub mod monster_scaling;
 pub mod non_damaging_ailments;
+pub mod passive_jewels;
 pub mod unarmed_data;
 pub mod weapon_types;
 

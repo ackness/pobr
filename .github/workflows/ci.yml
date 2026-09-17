@@ -57,7 +57,7 @@ jobs:
       # skip gracefully in CI by design (see CLAUDE.md "Parity 体系"). Installed
       # after clippy so a lint failure skips it too.
       - name: Install luajit
-        run: sudo apt-get update && sudo apt-get install -y luajit
+        run: sudo apt-get update && sudo apt-get install -y luajit lua-dkjson
       - name: Data update compatibility tests
         run: python3 pipeline/test-data-update.py
       - name: Test (nextest)

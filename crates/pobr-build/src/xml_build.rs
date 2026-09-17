@@ -958,21 +958,27 @@ pub fn parse_raw_items_view(xml: &str) -> Result<RawItemsView, XmlError> {
     })
 }
 
-/// Extracts radius jewel info from a jewel's raw text (the `... in Radius also grant
-/// ...` line + the `Radius:` tier + the Notable-effect-boost line); returns `None` when
-/// there's no radius mod. Shared logic between XML import and manually-entered web jewels.
+/// Extracts radius effects and allocation/transform directives from the selected
+/// item variant. Shared by XML import and manually entered jewels; raw text remains
+/// available separately for editing and export.
 pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewel> {
-    let grant_lines: Vec<String> = text
-        .lines()
-        .map(str::trim)
+    let item = parse_pob_xml_item(text).ok()?;
+    let tree_texts: Vec<String> = item
+        .implicit_texts
+        .into_iter()
+        .chain(item.modifier_texts)
+        .chain(item.enchant_texts)
+        .collect();
+    let grant_lines: Vec<String> = tree_texts
+        .iter()
+        .map(String::as_str)
         .filter(|l| l.contains("in Radius also grant"))
         .map(strip_brace_tags)
         .collect();
     let effect = |kind: &str| -> u32 {
         let suffix = format!("% increased Effect of {kind} Passive Skills in Radius");
-        text.lines()
-            .map(str::trim)
-            .map(strip_brace_tags)
+        tree_texts
+            .iter()
             .filter_map(|line| {
                 line.strip_suffix(&suffix)
                     .and_then(|n| n.trim().parse().ok())
@@ -982,11 +988,19 @@ pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewe
     };
     let notable_effect_inc = effect("Notable");
     let small_effect_inc = effect("Small");
-    if grant_lines.is_empty() && notable_effect_inc == 0 && small_effect_inc == 0 {
+    if grant_lines.is_empty()
+        && notable_effect_inc == 0
+        && small_effect_inc == 0
+        && !text.lines().any(|line| line.trim().starts_with("Radius:"))
+        && !tree_texts.iter().any(|line| {
+            line.to_ascii_lowercase()
+                .starts_with("can allocate passive")
+        })
+    {
         return None;
     }
     let lines: Vec<_> = text.lines().map(str::trim).map(strip_brace_tags).collect();
-    let radius_label = lines
+    let radius_label = tree_texts
         .iter()
         .filter_map(|line| line.strip_prefix("Upgrades Radius to "))
         .next_back()
@@ -1000,6 +1014,7 @@ pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewe
         grant_lines,
         notable_effect_inc,
         small_effect_inc,
+        tree_texts,
     })
 }
 
@@ -1007,8 +1022,8 @@ pub fn radius_jewel_from_text(socket_node: u32, text: &str) -> Option<RadiusJewe
 /// carry an `... in Radius also grant ...` mod, along with their `Radius:` tier, into
 /// [`RadiusJewel`]s (the geometric expansion input).
 ///
-/// Only collects jewels that **actually carry an `also grant` line**; jewels without it
-/// produce no entry (their global mods are still injected via the `jewels` path, no duplication).
+/// Includes jewels with a radius or alternate-start directive. Global modifiers
+/// still enter through the ordinary jewel path, without duplication.
 fn parse_radius_jewels(
     xml: &str,
     allocated: &std::collections::HashSet<u32>,

@@ -19,6 +19,44 @@ use pobr_core::item_text::{
 use pobr_data::prelude::*;
 
 #[test]
+fn selected_variants_and_ranges_preserve_section_boundaries() {
+    let header = "Rarity: UNIQUE\nSynthetic Jewel\nDiamond\n";
+    let body = "Variant: Old\nVariant: Current\nSelected Variant: 2\nImplicits: 2\n{variant:1}+50 to maximum Life\n{variant:2}{range:0.5}+(10-20) to maximum Mana\n{variant:1}+100 to Strength\n{variant:2}{range:0.5}{enchant}+(20-40) to Dexterity\n{variant:2}{range:0.5}-(20-10)% to all Elemental Resistances";
+    for separator in ["", "--------\n"] {
+        let item = parse_pob_xml_item(&format!("{header}{separator}{body}")).unwrap();
+        assert_eq!(item.implicit_texts, ["+15 to maximum Mana"]);
+        assert_eq!(item.enchant_texts, ["+30 to Dexterity"]);
+        assert_eq!(item.modifier_texts, ["-15% to all Elemental Resistances"]);
+    }
+}
+
+#[test]
+fn legacy_alt_variants_and_versioned_groups_select_only_active_lines() {
+    let legacy = "Rarity: UNIQUE\nSynthetic\nDiamond\nVariant: One\nVariant: Two\nVariant: Three\nSelected Variant: 1\nHas Alt Variant: true\nSelected Alt Variant: 2\nImplicits: 0\n{variant:1}+10 to Strength\n{variant:2}+10 to Dexterity\n{variant:3}+10 to Intelligence";
+    assert_eq!(
+        parse_pob_xml_item(legacy).unwrap().modifier_texts,
+        ["+10 to Strength", "+10 to Dexterity"]
+    );
+    let versioned = legacy.replace(
+        "Implicits: 0",
+        "Version: Old\nVersion: New\nSelected Version: 2\nImplicits: 0",
+    );
+    assert_eq!(
+        parse_pob_xml_item(&versioned).unwrap().modifier_texts,
+        ["+10 to Strength"]
+    );
+    let grouped = "Rarity: UNIQUE\nSynthetic\nDiamond\nVersion: Old\nVersion: New\nVariant: One\nVariant: Two\nVariant: Three\nSelected Variant Group: 1=2\nSelected Variant Group: 2=2\nImplicits: 0\n{version:1}{group:1}{variant:1}+99 to Strength\n{version:2}{group:1,2}{variant:2}+10 to Dexterity\n{version:2}{group:2}{variant:3}+10 to Intelligence\n+10 to maximum Life";
+    assert_eq!(
+        parse_pob_xml_item(grouped).unwrap().modifier_texts,
+        [
+            "+10 to Dexterity",
+            "+10 to Intelligence",
+            "+10 to maximum Life"
+        ]
+    );
+}
+
+#[test]
 fn xml_entry_accepts_clipboard_utility_items_without_structural_modifiers() {
     for base in [
         "Ultimate Mana Flask",
@@ -553,4 +591,10 @@ Implicits: 1
         !ingest.modifiers.is_empty(),
         "ingest should produce a modifier (with parseable text)"
     );
+}
+
+#[test]
+fn selected_base_annotation_does_not_require_variant_name_headers() {
+    let item = parse_pob_xml_item("Rarity: UNIQUE\nSynthetic\nDiamond\nSelected Base Variant: 2\nImplicits: 0\n{base:1}+10 to maximum Life\n{base:2}+20 to maximum Life").unwrap();
+    assert_eq!(item.modifier_texts, ["+20 to maximum Life"]);
 }

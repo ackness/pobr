@@ -433,6 +433,23 @@ export interface CalculateBuildResponse {
   main_skill: MainSkillInfo | null;
   /** 单件装备/药剂/珠宝文本解析失败的降级记录（据 slot 标红；空 = 全部成功）。 */
   item_errors: SlotIssue[];
+  tree_effects?: PassiveJewelState;
+}
+
+export interface PassiveAllocationGrant {
+  source: number;
+  nodes: number[];
+  roots: number[];
+}
+
+export interface PassiveJewelState {
+  class_starts: Record<string, number>;
+  allocation_grants: PassiveAllocationGrant[];
+  nodes: Record<string, { name: string; stats: string[]; replace: boolean }>;
+  conquered: number[];
+  unresolved: number[];
+  rings: { source: number; center: number; inner: number; outer: number }[];
+  warnings: string[];
 }
 
 // ---------------------------------------------------------------------------

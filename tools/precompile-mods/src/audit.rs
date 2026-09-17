@@ -25,6 +25,9 @@ pub enum Status {
 pub struct Entry {
     pub sources: BTreeSet<String>,
     pub status: Status,
+    /// Payload parsed by the build radius-grant consumer, not a global modifier.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub radius_grant: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vendor_status: Option<Status>,
     pub mod_names: BTreeSet<String>,
@@ -76,6 +79,45 @@ fn add(corpus: &mut Corpus, text: &str, source: String) {
             }
         }
     }
+}
+
+fn add_passive_jewels(
+    corpus: &mut Corpus,
+    jewels: &pobr_data::catalog::passive_jewels::PassiveJewelData,
+) {
+    for (id, node) in &jewels.nodes {
+        for text in &node.stats {
+            add(corpus, text, format!("jewel_node:{id}"));
+        }
+    }
+    for (id, family) in &jewels.families {
+        for text in &family.attribute_additions {
+            add(corpus, text, format!("jewel_family:{id}:attribute"));
+        }
+    }
+}
+
+fn add_unique(corpus: &mut Corpus, name: &str, raw: &str) -> Result<(), String> {
+    // Audit every variant and both endpoints before the calculation view resolves rolls.
+    let raw = raw
+        .lines()
+        .map(strip_pob_annotations)
+        .collect::<Vec<_>>()
+        .join("\n");
+    for roll in [0.0, 1.0] {
+        let rolled = apply_range(&raw, roll, None, 1.0);
+        let item = parse_pob_xml_item(&format!("Rarity: UNIQUE\n{rolled}"))
+            .map_err(|e| format!("invalid unique {name}: {e}"))?;
+        for text in item
+            .implicit_texts
+            .iter()
+            .chain(&item.modifier_texts)
+            .chain(&item.enchant_texts)
+        {
+            add(corpus, text, format!("unique:{name}"));
+        }
+    }
+    Ok(())
 }
 
 /// Render numeric description placeholders, retaining unsupported formats for review.
@@ -165,29 +207,11 @@ fn collect(data: &Path) -> Result<(Corpus, BTreeMap<String, usize>), String> {
     let uniques = read_json(&data.join("overlay/uniques.json"))?;
     for row in uniques["uniques"].as_array().ok_or("missing uniques")? {
         let raw = row["raw"].as_str().ok_or("missing unique text")?;
-        // Strip variant gates before ingest so archived and current variants are audited.
-        let raw = raw
-            .lines()
-            .map(strip_pob_annotations)
-            .collect::<Vec<_>>()
-            .join("\n");
-        let item = parse_pob_xml_item(&format!("Rarity: UNIQUE\n{raw}"))
-            .map_err(|e| format!("invalid unique {}: {e}", row["name"]))?;
-        for text in item
-            .implicit_texts
-            .iter()
-            .chain(&item.modifier_texts)
-            .chain(&item.enchant_texts)
-        {
-            add(
-                &mut corpus,
-                text,
-                format!(
-                    "unique:{}",
-                    row["name"].as_str().ok_or("missing unique name")?
-                ),
-            );
-        }
+        add_unique(
+            &mut corpus,
+            row["name"].as_str().ok_or("missing unique name")?,
+            raw,
+        )?;
     }
     let tree = read_json(&data.join("base/passive_tree.json"))?;
     // The adapter stores node arrays; accept the documented wrapper too.
@@ -203,6 +227,10 @@ fn collect(data: &Path) -> Result<(Corpus, BTreeMap<String, usize>), String> {
                 format!("passive:{}", row["skill"]),
             );
         }
+    }
+    let game = pobr_gamedata::GameData::new(data);
+    if let Some(jewels) = game.passive_jewels().map_err(|e| e.to_string())? {
+        add_passive_jewels(&mut corpus, &jewels);
     }
     // These English templates are the actual output of CN import translation.
     let translations_path = data.join("i18n/zh-CN/stat_lines.json");
@@ -237,7 +265,6 @@ fn collect(data: &Path) -> Result<(Corpus, BTreeMap<String, usize>), String> {
             *counts.entry(domain.into()).or_default() += 1;
         }
     }
-    let game = pobr_gamedata::GameData::new(data);
     for domain in [
         game.special_mods(),
         game.special_derived(),
@@ -290,6 +317,46 @@ fn vendor_results(path: &Path) -> Result<BTreeMap<String, Status>, String> {
     Ok(results)
 }
 
+fn parse_entry(
+    text: &str,
+    sources: BTreeSet<String>,
+    rules: &pobr_core::mod_parser::CompiledParserRules,
+    vendor_status: Option<Status>,
+) -> Entry {
+    let radius_grant = pobr_core::passive::parse_grant_line(text).map(|(_, payload)| payload);
+    let parsed_text = radius_grant.as_deref().unwrap_or(text);
+    let (outcome, diag) = parse_mod_engine_diag(parsed_text, rules);
+    let status = if diag.dropped_pre_flag_tags > 0
+        || outcome
+            .unparsed
+            .as_ref()
+            .is_some_and(|s| !s.trim().is_empty())
+            && outcome.status == ParseStatus::Parsed
+    {
+        Status::Partial
+    } else if outcome.status == ParseStatus::Unsupported {
+        Status::Unsupported
+    } else if outcome.mods.is_empty() {
+        Status::RecognizedEmpty
+    } else {
+        Status::Parsed
+    };
+    let matching_special_rules =
+        pobr_core::mod_parser::engine::matching_special_entry_ids(parsed_text, rules)
+            .into_iter()
+            .map(str::to_owned)
+            .collect();
+    Entry {
+        sources,
+        status,
+        radius_grant,
+        vendor_status,
+        mod_names: outcome.mods.iter().map(|m| m.name.to_string()).collect(),
+        special_rule_id: outcome.special_meta.map(|m| m.entry_id),
+        matching_special_rules,
+    }
+}
+
 pub fn build(data: &Path, oracle: Option<&Path>) -> Result<Audit, String> {
     let validation = crate::check::inspect(data)?;
     let (corpus, source_counts) = collect(data)?;
@@ -298,22 +365,6 @@ pub fn build(data: &Path, oracle: Option<&Path>) -> Result<Audit, String> {
     let mut entries = BTreeMap::new();
     let mut summary = BTreeMap::new();
     for (text, sources) in corpus {
-        let (outcome, diag) = parse_mod_engine_diag(&text, &rules);
-        let status = if diag.dropped_pre_flag_tags > 0
-            || outcome
-                .unparsed
-                .as_ref()
-                .is_some_and(|s| !s.trim().is_empty())
-                && outcome.status == ParseStatus::Parsed
-        {
-            Status::Partial
-        } else if outcome.status == ParseStatus::Unsupported {
-            Status::Unsupported
-        } else if outcome.mods.is_empty() {
-            Status::RecognizedEmpty
-        } else {
-            Status::Parsed
-        };
         let vendor_status = match &vendor {
             Some(rows) => Some(
                 *rows
@@ -322,7 +373,8 @@ pub fn build(data: &Path, oracle: Option<&Path>) -> Result<Audit, String> {
             ),
             None => None,
         };
-        let class = match (status, vendor_status) {
+        let entry = parse_entry(&text, sources, &rules, vendor_status);
+        let class = match (entry.status, vendor_status) {
             (Status::Parsed, _) => "parsed",
             (Status::RecognizedEmpty, _) => "recognized_empty",
             (_, Some(Status::Parsed)) => "pobr_gap",
@@ -330,22 +382,7 @@ pub fn build(data: &Path, oracle: Option<&Path>) -> Result<Audit, String> {
             _ => "uncompared_gap",
         };
         *summary.entry(class.into()).or_default() += 1;
-        entries.insert(
-            text.clone(),
-            Entry {
-                sources,
-                status,
-                vendor_status,
-                mod_names: outcome.mods.iter().map(|m| m.name.to_string()).collect(),
-                special_rule_id: outcome.special_meta.map(|m| m.entry_id),
-                matching_special_rules: pobr_core::mod_parser::engine::matching_special_entry_ids(
-                    &text, &rules,
-                )
-                .into_iter()
-                .map(str::to_owned)
-                .collect(),
-            },
-        );
+        entries.insert(text, entry);
     }
     let mut source_metadata = BTreeMap::new();
     for file in [
@@ -353,6 +390,7 @@ pub fn build(data: &Path, oracle: Option<&Path>) -> Result<Audit, String> {
         "overlay/stat_descriptions.json",
         "overlay/trade_catalog.json",
         "overlay/uniques.json",
+        "overlay/passive_jewels.json",
         "generated/special_vendor.json",
         "i18n/zh-CN/_meta.json",
     ] {
@@ -490,6 +528,77 @@ pub fn run(
 mod tests {
     use super::*;
 
+    #[test]
+    fn jewel_replacements_and_additions_keep_distinct_sources_and_roll_boundaries() {
+        let jewels = serde_json::from_value(serde_json::json!({
+            "tree_version": "9_20", "class_starts": {}, "ring_sizes": {}, "conquerors": {},
+            "nodes": { "future_small": { "name": "Future", "stats": ["+(11-17) to Tribute"] } },
+            "families": { "future": { "attribute_additions": ["+11 to Tribute", "+3 to maximum Life"] } }
+        })).unwrap();
+        let mut corpus = Corpus::new();
+        add_passive_jewels(&mut corpus, &jewels);
+        assert_eq!(corpus.len(), 3);
+        assert_eq!(
+            corpus["+11 to Tribute"],
+            BTreeSet::from([
+                "jewel_node:future_small".into(),
+                "jewel_family:future:attribute".into(),
+            ])
+        );
+        assert_eq!(
+            corpus["+17 to Tribute"],
+            BTreeSet::from(["jewel_node:future_small".into()])
+        );
+        assert_eq!(
+            corpus["+3 to maximum Life"],
+            BTreeSet::from(["jewel_family:future:attribute".into()])
+        );
+    }
+
+    #[test]
+    fn unique_audit_retains_archived_variants_and_low_roll_samples() {
+        let mut corpus = Corpus::new();
+        add_unique(&mut corpus, "Synthetic", "Synthetic\nRuby\nVariant: Old\nVariant: Current\nSelected Variant: 2\nImplicits: 0\n{variant:1}+(3-7) to maximum Life\n{variant:2}+(11-17) to Tribute").unwrap();
+        assert_eq!(
+            corpus.keys().map(String::as_str).collect::<Vec<_>>(),
+            [
+                "+11 to Tribute",
+                "+17 to Tribute",
+                "+3 to maximum Life",
+                "+7 to maximum Life",
+            ]
+        );
+        assert!(
+            corpus
+                .values()
+                .all(|sources| sources == &BTreeSet::from(["unique:Synthetic".into()]))
+        );
+    }
+
+    #[test]
+    fn radius_grant_audit_uses_the_runtime_target_parser_and_rejects_unknown_payloads() {
+        let rules =
+            crate::parsed::compile_parser_rules(&pobr_gamedata::current_data_dir()).unwrap();
+        for kind in ["Small", "Notable"] {
+            let text = format!("{kind} Passive Skills in Radius also grant +10 to maximum Life");
+            let entry = parse_entry(&text, BTreeSet::new(), &rules, None);
+            assert_eq!(entry.status, Status::Parsed);
+            assert_eq!(entry.radius_grant.as_deref(), Some("+10 to maximum Life"));
+            assert!(entry.mod_names.contains("MaximumLife"));
+        }
+        for text in [
+            "Small Passive Skills in Radius also grant Unknown Future Mechanic",
+            "Keystone Passive Skills in Radius also grant +10 to maximum Life",
+            "Small Passive Skills in Radius also grant",
+        ] {
+            assert_ne!(
+                parse_entry(text, BTreeSet::new(), &rules, None).status,
+                Status::Parsed,
+                "{text}"
+            );
+        }
+    }
+
     fn snapshot(rows: &[(&str, &str, Status)]) -> Audit {
         Audit {
             schema: "modifier-audit/v1".into(),
@@ -506,6 +615,7 @@ mod tests {
                         Entry {
                             sources: BTreeSet::from([source.to_string()]),
                             status: *status,
+                            radius_grant: None,
                             vendor_status: None,
                             mod_names: BTreeSet::new(),
                             special_rule_id: None,

@@ -143,6 +143,7 @@ fn calculate_build_json_shape() {
             "breakdowns",
             "main_skill",
             "item_errors",
+            "tree_effects",
         ],
         "CalculateBuildResponse",
     );
@@ -1340,6 +1341,28 @@ fn memory_backend_matches_dir_backend() {
             .unwrap()
             .skill;
         let mut requests = requests.clone();
+        for (name, text) in [
+            (
+                "ring",
+                "Radius: Variable\nOnly affects Passives in Medium Ring\nPassives in Radius can be Allocated without being connected to your tree",
+            ),
+            (
+                "start",
+                "Can Allocate Passive Skills from the Ranger's starting point",
+            ),
+            (
+                "conquest",
+                "Radius: Very Large\nRemembrancing 1234 songworthy deeds by the line of Vorana\nPassives in radius are Conquered by the Kalguur\nHistoric",
+            ),
+        ] {
+            for enabled in [false, true] {
+                requests.push((format!("passive-jewel/{name}/{enabled}"), serde_json::json!({
+                    "character": { "class_name": "Witch", "level": 85 },
+                    "allocated_nodes": if enabled { vec![ordinary] } else { vec![] },
+                    "jewels": [{ "socket_node": ordinary, "text": format!("Rarity: UNIQUE\nSynthetic Jewel\nDiamond\n{text}") }]
+                }).to_string()));
+            }
+        }
         for enabled in [false, true] {
             requests.push((format!("granted-socket/{enabled}"), serde_json::json!({
                 "character": { "class_name": "Witch", "level": 1 },
@@ -1363,6 +1386,24 @@ fn memory_backend_matches_dir_backend() {
         for ((label, request), expected) in requests.iter().zip(from_dir) {
             let actual = pobr_wasm::calculate_build_json(request).expect("memory backend");
             assert_eq!(expected, actual, "backend mismatch: {version}/{label}");
+            if label.starts_with("passive-jewel/") {
+                let response: Value = serde_json::from_str(&actual).unwrap();
+                let effects = &response["tree_effects"];
+                if !root.join("overlay/passive_jewels.json").exists() || label.ends_with("/false") {
+                    assert!(
+                        effects["allocation_grants"].as_array().unwrap().is_empty(),
+                        "{label}"
+                    );
+                    assert!(effects["nodes"].as_object().unwrap().is_empty(), "{label}");
+                } else if label.contains("/start/") {
+                    assert_eq!(
+                        effects["allocation_grants"][0]["roots"][0],
+                        effects["class_starts"]["ranger"]
+                    );
+                } else {
+                    assert!(!effects["rings"].as_array().unwrap().is_empty(), "{label}");
+                }
+            }
             if label.starts_with("granted-socket/") {
                 let response: Value = serde_json::from_str(&actual).unwrap();
                 socket_life.push(

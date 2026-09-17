@@ -1,6 +1,7 @@
 """Offline compatibility tests: unseen versions, balance edits and failure isolation."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -118,6 +119,48 @@ class CompatibleUpdateTests(unittest.TestCase):
 
 
 class VendorTreeTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("luajit"), "LuaJIT required for passive jewel extraction")
+    def test_jewel_export_tracks_future_tree_numbers_and_mechanics(self):
+        with tempfile.TemporaryDirectory(prefix="pobr jewel data ") as directory:
+            root = Path(directory)
+            def write(path, text):
+                target = root / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(text, encoding="utf-8")
+            write("GameVersions.lua", 'latestTreeVersion="7_42"')
+            write("TreeData/7_42/tree.lua", 'return {nodes={{stringId="future_start", classesStart={"FutureClass"}}}}')
+            write("Modules/ModParser.lua", '''local conquerorList = { ["future"] = { id = 9, type = "abyss" } }
+local rules = { ["only affects passives in future ring"] = { mod("JewelData", "LIST", { key = "radiusIndex", value = 19 }) } }''')
+            write("Data/TimelessJewelData/LegionPassives.lua", '''return {nodes={
+{id="abyss_keystone_9", dn="Future Keystone", sd={"+73 to maximum Life"}},
+{id="abyss_small_new", dn="Future Small", sd={"+17 to Tribute"}}}}''')
+            write("Classes/PassiveSpec.lua", '''if conqueredBy.conqueror.type == "abyss" then
+if isValueInArray(attributes, node.dn) then
+NodeAdditionOrReplacementFromString(node, "+11 to Tribute")
+else local legionNode = legionNodes[2] end
+self:ReconnectNodeToClassStart(node) end''')
+            output = root / "result.json"
+            env = dict(os.environ)
+            # Fresh CI uses lua-dkjson; a local checkout can reuse PoB2's copy.
+            env["LUA_PATH"] = str(ROOT / "vendor/PathOfBuilding-PoE2/runtime/lua/?.lua") + ";;"
+            command = ["luajit", str(ROOT / "pipeline/extract-passive-jewels.lua"), str(root), str(output)]
+            result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            before = output.read_bytes()
+            data = json.loads(before)
+            self.assertEqual(data["tree_version"], "7_42")
+            self.assertEqual(data["class_starts"], {"futureclass": "future_start"})
+            self.assertEqual(data["ring_sizes"], {"only affects passives in future ring": 19})
+            self.assertEqual(data["families"]["abyss"], {"attribute_additions": ["+11 to Tribute"], "small_replacement": "abyss_small_new"})
+            self.assertEqual(data["nodes"][data["conquerors"]["future"]["keystone"]]["stats"], ["+73 to maximum Life"])
+            subprocess.run(command, env=env, check=True, capture_output=True, timeout=10)
+            self.assertEqual(before, output.read_bytes())
+            write("Classes/PassiveSpec.lua", "-- upstream changed its mechanism")
+            result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("transformation changed", result.stderr)
+            self.assertEqual(before, output.read_bytes(), "failed extraction must preserve the previous snapshot")
+
     @unittest.skipUnless(shutil.which("luajit"), "LuaJIT required for vendor tree resolution")
     def test_vendor_selected_future_tree_and_missing_tree(self):
         with tempfile.TemporaryDirectory(prefix="pobr future tree ") as directory:

@@ -673,6 +673,14 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
     build
 }
 
+/// Resolve the same active item/socket view used by the calculation pipeline.
+pub fn passive_jewel_state(
+    build: &Build,
+    data: &BuildData,
+) -> crate::jewel_tree::PassiveJewelState {
+    crate::jewel_tree::passive_jewel_state(&stage_build_view(build, data), data)
+}
+
 /// Resolves a `GemSkillRef { skill_id: "", name_spec: Some(name) }`'s display name into
 /// a granted effect id. Normalization = lowercase + keep only alphanumerics; candidate
 /// ids have the `Player` suffix stripped (lineage variants like `PlayerTwo/Three` not
@@ -1228,6 +1236,23 @@ fn stage_inject_jewels(
         .data
         .passive_nodes_for(ctx.build.tree_version.as_deref());
     let mut radius_texts = Vec::new();
+    let tree_state = crate::jewel_tree::passive_jewel_state(ctx.build, ctx.data);
+    radius_texts.extend(tree_state.handled_modifiers);
+    for node in &ctx.build.tree.allocated_nodes {
+        if tree_state.unresolved.contains(&node.0) {
+            session.record_unsupported_modifier_text(format!(
+                "Tree:{}: missing timeless jewel seed data",
+                node.0
+            ));
+        }
+        if let Some(change) = tree_state.nodes.get(&node.0) {
+            for text in &change.stats {
+                if !gate_parses(engine_ctx(ctx.data), text) {
+                    session.record_unsupported_modifier_text(format!("Tree:{}: {}", node.0, text));
+                }
+            }
+        }
+    }
     for radius in &ctx.build.radius_jewels {
         if !nodes
             .get(&radius.socket_node)
@@ -1996,6 +2021,7 @@ mod tests {
             ],
             notable_effect_inc: 0,
             small_effect_inc: 0,
+            tree_texts: vec![],
         };
         let build = Build::new()
             .with_tree(PassiveTreeSpec {

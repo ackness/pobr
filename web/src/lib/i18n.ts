@@ -489,6 +489,7 @@ const DICT = {
   'tree.attrUnassigned': { 'en-US': 'unassigned', 'zh-TW': '未分配', 'zh-CN': '未分配' },
   'tree.jewel': { 'en-US': 'Jewel socket', 'zh-TW': '珠寶插槽', 'zh-CN': '珠宝插槽' },
   'tree.unallocSocket': { 'en-US': 'Unallocate socket', 'zh-TW': '取消插槽加點', 'zh-CN': '取消插槽加点' },
+  'tree.jewelSeedMissing': { 'en-US': 'Known jewel transformations are shown. Seed-dependent passives remain unresolved and are excluded from upgrade recommendations.', 'zh-TW': '已顯示已知的珠寶轉換。依賴種子的天賦尚未解析，提升建議會排除這些效果。', 'zh-CN': '已显示已知的珠宝转换。依赖种子的天赋尚未解析，提升建议会排除这些效果。' },
   'tree.jewelHint': {
     'en-US': 'PoB jewel text (mods may be English or Simplified Chinese). Radius jewels ("... in Radius also grant ...") reshape nearby passives automatically.',
     'zh-TW': 'PoB 珠寶文本（詞條可英文或簡中）。範圍珠寶（「範圍內…同時給予…」）會自動改寫半徑內天賦詞條。',

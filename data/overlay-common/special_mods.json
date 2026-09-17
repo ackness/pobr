@@ -2736,6 +2736,23 @@
       "verified": false,
       "batch": "wording",
       "source_note": "GGG/CN dictionary wording alias of Projectile Speed (base_projectile_speed_+%); canonical semantics from pinned PoB2 StatDescriptions and ModParser. Whole-line matching preserves scope; both signs are covered."
+    },
+    {
+      "id": "no_dexterity_inherent_bonus",
+      "pattern": "gain no inherent bonus from dexterity",
+      "mods": [
+        {
+          "name": "NoDexBonusToAccuracy",
+          "type": "FLAG",
+          "value": true
+        }
+      ],
+      "verified": false,
+      "batch": "passive-jewels",
+      "examples": [
+        "Gain no inherent bonus from Dexterity"
+      ],
+      "source_note": "LegionPassives.lua Circular Teachings; CalcPerform.lua NoDexBonusToAccuracy. Consumed by pobr-build inject_attribute_derivation; tested with transformed keystone and complete character attributes."
     }
   ]
 }

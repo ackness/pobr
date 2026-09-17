@@ -452,6 +452,7 @@ dependencies = [
  "pobr-item",
  "pobr-tree",
  "quick-xml",
+ "serde",
  "serde_json",
  "thiserror",
 ]

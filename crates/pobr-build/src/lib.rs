@@ -34,6 +34,7 @@ pub mod corpus;
 pub mod error;
 pub mod handlers;
 pub mod import_detect;
+pub mod jewel_tree;
 pub mod loadout;
 pub mod snapshot;
 pub mod xml_build;

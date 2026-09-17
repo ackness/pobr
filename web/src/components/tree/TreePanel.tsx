@@ -7,6 +7,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { useItemDisplayNames } from '../../hooks/useLocalizedLines';
 import { bindT, statNameLabel, type Lang } from '../../lib/i18n';
 import {
+  allocationAccess,
   buildPassiveGraph,
   classStartSkill,
   deallocateNode,
@@ -90,7 +91,14 @@ const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 /** 天赋树查看器：SVG 渲染 + 已加点高亮 + 缩放平移 / hover 词条 + 点选加点重算。 */
 export function TreePanel({ session, lang, focusPlanner, onJewelSearch }: Props) {
   const tt = bindT(lang);
-  const [nodes, setNodes] = useState<PassiveNode[] | null>(null);
+  const [rawNodes, setNodes] = useState<PassiveNode[] | null>(null);
+  const treeEffects = session.calc?.tree_effects;
+  const grants = useMemo(() => treeEffects?.allocation_grants ?? [], [treeEffects]);
+  const nodes = useMemo(() => rawNodes?.map(node => {
+    const change = treeEffects?.nodes[String(node.skill)];
+    return change ? { ...node, name: change.name,
+      stats: change.replace ? change.stats : [...(node.stats ?? []), ...change.stats] } : node;
+  }) ?? null, [rawNodes, treeEffects]);
   const [art, setArt] = useState<TreeArt | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hover, setHover] = useState<PassiveNode | null>(null);
@@ -273,12 +281,18 @@ export function TreePanel({ session, lang, focusPlanner, onJewelSearch }: Props)
    * 寻路图与职业起点。用 `nodes` 全集而非 `placed`——后者按当前飞升过滤，拿它建图
    * 会让路径在飞升边界断裂；`buildPassiveGraph` 内部已跳过跨飞升的伪边。
    */
-  const graph = useMemo(() => buildPassiveGraph(nodes ?? []), [nodes]);
   const startSkill = useMemo(
-    () => classStartSkill(nodes ?? [], session.character?.class_name),
-    [nodes, session.character?.class_name],
+    () => treeEffects?.class_starts[session.character?.class_name.toLowerCase() ?? ''] ?? classStartSkill(nodes ?? [], session.character?.class_name),
+    [nodes, session.character?.class_name, treeEffects],
   );
 
+  const graph = useMemo(() => {
+    const starts = new Set(Object.values(treeEffects?.class_starts ?? {}));
+    const allowed = new Set([startSkill, ...grants.flatMap(grant => grant.roots)]);
+    return buildPassiveGraph((nodes ?? []).filter(node => !starts.has(node.skill) || allowed.has(node.skill)));
+  }, [nodes, treeEffects, startSkill, grants]);
+  const freeNodes = useMemo(() => allocationAccess(graph, allocated, startSkill, grants).free,
+    [graph, allocated, startSkill, grants]);
   /** 搜索命中集（名称 + 词条文本，剥 `[a|b]` 标记后不分大小写子串匹配）。 */
   const searchHits = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -377,6 +391,7 @@ export function TreePanel({ session, lang, focusPlanner, onJewelSearch }: Props)
     (node: PassiveNode, e: React.MouseEvent) => {
       if (suppressClickRef.current || dragRef.current?.moved) return;
       const s = sessionRef.current;
+      if (s.busy) return;
       const allocated = new Set(s.allocatedNodes);
       const isAlloc = allocated.has(node.skill);
 
@@ -385,7 +400,7 @@ export function TreePanel({ session, lang, focusPlanner, onJewelSearch }: Props)
         if (!isAlloc) {
           s.setAllocatedNodes([
             ...s.allocatedNodes,
-            ...shortestAllocationPath(graph, allocated, startSkill, node.skill),
+            ...shortestAllocationPath(graph, allocated, startSkill, node.skill, grants),
           ]);
         }
         setJewelSocket(node.skill);
@@ -394,11 +409,12 @@ export function TreePanel({ session, lang, focusPlanner, onJewelSearch }: Props)
 
       if (isAlloc) {
         setAttrPicker(null);
-        s.setAllocatedNodes([...deallocateNode(graph, allocated, startSkill, node.skill)]);
+        s.setAllocatedNodes([...deallocateNode(graph, allocated, startSkill, node.skill, grants)]);
         return;
       }
 
-      const path = shortestAllocationPath(graph, allocated, startSkill, node.skill);
+      const path = shortestAllocationPath(graph, allocated, startSkill, node.skill, grants);
+      if (path.length === 0) return;
       // 相邻单点仍弹三选一（原行为）；多步路径穿过的属性小点只点亮、不定选择，
       // 比例交给工具栏的批量调配面板（choice 留空＝引擎语义无贡献）。
       if (path.length <= 1 && isAttrNode(node)) {
@@ -409,7 +425,7 @@ export function TreePanel({ session, lang, focusPlanner, onJewelSearch }: Props)
       setAttrPicker(null);
       s.setAllocatedNodes([...s.allocatedNodes, ...path]);
     },
-    [graph, startSkill],
+    [graph, startSkill, grants],
   );
 
   const edgesEl = useMemo(
@@ -493,7 +509,7 @@ export function TreePanel({ session, lang, focusPlanner, onJewelSearch }: Props)
                 cy={node.y}
                 r={r}
                 style={heat ? { fill: heat } : undefined}
-                className={`node node-${node.kind}${icon || frame ? ' node-art' : ''}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${plannedNodes?.allocate.includes(node.skill) ? ' node-planned-add' : ''}${plannedNodes?.deallocate.includes(node.skill) ? ' node-planned-remove' : ''}`}
+                className={`node node-${node.kind}${icon || frame ? ' node-art' : ''}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${freeNodes.has(node.skill) ? ' node-jewel-allocatable' : ''}${treeEffects?.nodes[String(node.skill)] ? ' node-transformed' : ''}${plannedNodes?.allocate.includes(node.skill) ? ' node-planned-add' : ''}${plannedNodes?.deallocate.includes(node.skill) ? ' node-planned-remove' : ''}`}
                 onPointerEnter={(e) => {
                   if (dragRef.current?.moved) return;
                   setHover(node);
@@ -512,7 +528,7 @@ export function TreePanel({ session, lang, focusPlanner, onJewelSearch }: Props)
         })}
       </g>
     );
-  }, [placed, allocated, filledJewelSockets, searchHits, heatStat, heatData, heatMax, handleNodeClick, art, plannedNodes]);
+  }, [placed, allocated, filledJewelSockets, searchHits, heatStat, heatData, heatMax, handleNodeClick, art, plannedNodes, freeNodes, treeEffects]);
 
   const fullExtent = useMemo((): ViewBox | null => {
     if (placed.length === 0) return null;
@@ -934,6 +950,13 @@ export function TreePanel({ session, lang, focusPlanner, onJewelSearch }: Props)
               r={Math.max(ascExtent.w, ascExtent.h) / 2}
             />
           )}
+          {(treeEffects?.rings ?? []).filter(ring => ring.source === jewelSocket).map(ring => {
+            const center = byId.get(ring.center);
+            if (center?.x === undefined || center.y === undefined) return null;
+            const circle = (r: number) => `M ${center.x! + r} ${center.y} a ${r} ${r} 0 1 0 ${-2 * r} 0 a ${r} ${r} 0 1 0 ${2 * r} 0`;
+            return <path key={`${ring.source}:${ring.center}`} className="jewel-radius" data-jewel-source={ring.source}
+              fillRule="evenodd" d={`${circle(ring.outer)} ${ring.inner > 0 ? circle(ring.inner) : ''}`} />;
+          })}
           {edgesEl}
           {nodesEl}
           </g>
@@ -1072,6 +1095,7 @@ export function TreePanel({ session, lang, focusPlanner, onJewelSearch }: Props)
             </label>
           </span>
       </div>
+      {Boolean(treeEffects?.warnings.length) && <p className="tree-hint" role="status">{tt('tree.jewelSeedMissing')}</p>}
       <TreeOptimizer
         session={session}
         lang={lang}
@@ -1118,7 +1142,7 @@ export function TreePanel({ session, lang, focusPlanner, onJewelSearch }: Props)
                 disabled={session.busy}
                 onClick={() => {
                   session.removeJewelSocket(jewelEdit.socket,
-                    [...deallocateNode(graph, allocated, startSkill, jewelEdit.socket)]);
+                    [...deallocateNode(graph, allocated, startSkill, jewelEdit.socket, grants)]);
                   closeJewelEditor();
                 }}
               >

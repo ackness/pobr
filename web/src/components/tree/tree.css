@@ -442,3 +442,7 @@
 @media (max-width: 1280px) {
   .tree-workspace { grid-template-columns: minmax(0, 1fr); }
 }
+
+.jewel-radius { fill: #d5b66a20; stroke: #d5b66a; stroke-width: 8; pointer-events: none; }
+.node-jewel-allocatable { stroke: #65d6bd; stroke-width: 8; }
+.node-transformed { stroke: #c78cdb; stroke-width: 10; }
