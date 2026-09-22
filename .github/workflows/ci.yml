@@ -65,6 +65,8 @@ jobs:
       # nextest does not run doctests; cover them separately.
       - name: Doctests
         run: cargo test --workspace --doc
+      - name: Language catalog lint
+        run: cargo run -p lint-i18n
 
   # Web frontend gate (TODO.md 6.4): independent job so it never blocks the
   # Rust gate above. Builds the real wasm artifact (validates the wasm32
