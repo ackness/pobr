@@ -102,6 +102,10 @@ fn tier_context(text: &str) -> Option<(std::rc::Rc<pobr_item::TierIndex>, Vec<St
 struct GemCatalogEntry {
     /// The granted effect id (the key sent up as [`GemInput::skill_id`]).
     skill_id: String,
+    /// Secondary effect/stat-set IDs used to localize calculated skill names.
+    /// They are aliases of this gem, not additional gem-picker entries.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    additional_skill_ids: Vec<String>,
     /// The display name (base_items' canonical name; falls back to the gem id if missing).
     name: String,
     /// The Traditional Chinese name (the `i18n/zh-TW/base_items.json` sidecar; `null` if missing).
@@ -166,8 +170,23 @@ fn gem_catalog_impl() -> Result<String, super::ApiError> {
             .unwrap_or_default();
         tags.sort();
         tags.dedup();
+        let mut additional_skill_ids = data
+            .gem_effects
+            .get(&skill_id)
+            .map(|link| {
+                link.additional_granted_effect_ids
+                    .iter()
+                    .chain(&link.additional_stat_set_ids)
+                    .filter(|id| *id != &skill_id)
+                    .cloned()
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_else(|| gem.additional_granted_effect_ids.clone());
+        additional_skill_ids.sort();
+        additional_skill_ids.dedup();
         by_skill.entry(skill_id.clone()).or_insert(GemCatalogEntry {
             skill_id,
+            additional_skill_ids,
             name: name_by_gem_id
                 .get(gem.id.as_str())
                 .map(|s| s.to_string())

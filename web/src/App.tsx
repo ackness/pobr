@@ -22,6 +22,7 @@ function BuildApp() {
   const session = useBuildSession();
   const mainRef = useRef<HTMLElement>(null);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [reviewImportedConfig, setReviewImportedConfig] = useState(false);
   const [upgradeFocus, setUpgradeFocus] = useState<{slot:string; nonce:number; jewelType?: 'base' | 'radius'} | undefined>();
   const [skillFocus, setSkillFocus] = useState<{group:number; nonce:number} | undefined>();
   const [treeFocus, setTreeFocus] = useState<{nonce:number} | undefined>();
@@ -134,6 +135,11 @@ function BuildApp() {
       <div className={`app-body${statsOpen ? ' stats-open' : ''}`}>
         <StatSidebar session={session} lang={lang} onStatClick={focusStat} />
         <main className="app-main" ref={mainRef}>
+          {reviewImportedConfig && <div className="import-config-review" role="note">
+            <p>{t(lang, 'config.importReview')}</p>
+            <button onClick={() => { setReviewImportedConfig(false); setTab('config'); }}>{t(lang, 'config.review')}</button>
+            <button onClick={() => setReviewImportedConfig(false)}>{t(lang, 'config.reviewDismiss')}</button>
+          </div>}
           {Object.keys(session.editorDrafts).length > 0 && <div className="editor-draft-notice" role="status">
             <p>{t(lang, 'editor.draftHint')}</p>
             {tab !== 'items' && Object.keys(session.editorDrafts).some(key => key.startsWith('item:')) && <button onClick={() => setTab('items')}>{t(lang, 'editor.reviewItems')}</button>}
@@ -144,7 +150,10 @@ function BuildApp() {
               {session.error}
             </div>
           )}
-          {tab === 'build' && <BuildPanel session={session} lang={lang} onImported={() => setTab('items')} />}
+          {tab === 'build' && <BuildPanel session={session} lang={lang} onImported={() => {
+            setReviewImportedConfig(true);
+            setTab('items');
+          }} />}
           {tab === 'guidance' && <BuildGuidancePanel session={session} lang={lang}
             onSkills={group => { setSkillFocus({group, nonce: Date.now()}); setTab('skills'); }}
             onEquipment={() => setTab('trade')}

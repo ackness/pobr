@@ -543,6 +543,30 @@ fn manual_skills_and_items_without_code() {
     assert!(err.contains("unknown equipment slot"), "unexpected: {err}");
 }
 
+#[test]
+fn gem_catalog_links_secondary_skills_without_adding_picker_entries() {
+    ensure_data();
+    let catalog: Value = serde_json::from_str(&pobr_wasm::gem_catalog_json().unwrap()).unwrap();
+    let entries = catalog.as_array().unwrap();
+    let wind = entries
+        .iter()
+        .find(|entry| entry["skill_id"] == "WindDancerPlayer")
+        .unwrap();
+    assert!(
+        wind["additional_skill_ids"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|id| id == "TriggeredWindDancerPlayer")
+    );
+    assert!(wind["name_zh_cn"].is_string());
+    assert!(
+        !entries
+            .iter()
+            .any(|entry| entry["skill_id"] == "TriggeredWindDancerPlayer")
+    );
+}
+
 /// After importing a build (pob_code), switching a quest reward on the
 /// Config page takes effect: quest overrides are wholesale rebuilt from the
 /// merged inputs before calculation (the old behaviour = fixed at decode

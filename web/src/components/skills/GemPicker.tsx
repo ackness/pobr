@@ -3,6 +3,8 @@ import type { GemCatalogEntry } from '../../api/types';
 import { bindT, type Lang } from '../../lib/i18n';
 import { gemTagLabels, gemTagMatches } from '../../lib/gemTags';
 import { usePopupPosition } from '../../hooks/usePopupPosition';
+import { gemDisplayName } from '../../lib/skillNames';
+export { gemDisplayName } from '../../lib/skillNames';
 
 /** 宝石颜色 → 语义 CSS 变量（tokens.css）。 */
 const COLOUR_VAR: Record<string, string> = {
@@ -19,13 +21,6 @@ interface Props {
   disabled: boolean;
   lang: Lang;
   onPick: (skillId: string) => void;
-}
-
-/** 宝石显示名：简中界面优先简中名、繁中界面优先繁中名，逐级回退到英文。 */
-export function gemDisplayName(entry: GemCatalogEntry, lang: Lang): string {
-  if (lang === 'zh-CN') return entry.name_zh_cn ?? entry.name_zh_tw ?? entry.name;
-  if (lang === 'zh-TW') return entry.name_zh_tw ?? entry.name_zh_cn ?? entry.name;
-  return entry.name;
 }
 
 /**

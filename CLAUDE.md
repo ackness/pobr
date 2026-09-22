@@ -209,6 +209,8 @@ PoB2 兼容是硬回归基准，三层校验互补：
 
 ## Web weapon sets and skill selection
 
+- Config controls resolve the typed catalog defaults (`state_bool`, `state_number`, `placeholder_number`, 1-based list `index`) without materializing overrides. Fixed quest rewards default on and choice rewards default to None, matching PoB2; explicit imported false/zero values take priority. Imports show a dismissible inline configuration review note. Gem catalog `additional_skill_ids` is optional display metadata for secondary effects/stat sets, not extra gem-picker entries; shared skill naming uses the parent gem's locale at display boundaries.
+
 - WeGame and PoB XML decoding preserve the inactive weapon pair and exclusive passive nodes in `weapon_swap`. The web session swaps only the weapon pair and exclusive nodes; shared gear, passives and jewels remain common. Empty offhands stay empty. Skills can bind set 1/2 or follow the active set. Changing the main skill selects its binding before recalculation, comparison or market analysis.
 - `toRequest` sends one materialized weapon context. Groups exclusive to the other set are disabled with stable indices; `runFullDps` evaluates each required set and counts shared groups once. This does not model transient buffs persisting across swaps or an alternating-skill rotation. The low-level Rust calculation API still consumes an active equipment snapshot; `weapon_swap` is editable export metadata.
 - WeGame's public response lacks confirmed skill-to-set bindings; retain the equipment and ask players to assign bindings on Skills. Do not infer bindings from response order or invent them. Existing saves whose earlier import discarded alternate gear need reimporting the source.

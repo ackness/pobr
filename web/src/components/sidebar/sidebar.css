@@ -69,16 +69,14 @@ button.stat-row--link:hover dt {
 .main-skill-select {
   width: 100%;
   margin: var(--space-1) 0 var(--space-2);
-  padding: var(--space-1) var(--space-2);
   font-size: var(--text-sm);
-  background: rgb(255 255 255 / 0.04);
-  color: inherit;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
 }
 
-.main-skill-select:focus-visible {
-  outline: 2px solid var(--accent-gold);
+.main-skill-select .app-select,
+.main-skill-select .app-select-trigger,
+.main-skill-select .app-select-panel {
+  width: 100%;
+  max-width: 100%;
 }
 
 .main-skill-empty {

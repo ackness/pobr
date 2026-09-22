@@ -3,6 +3,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { useSkillName } from '../../hooks/useSkillName';
 import { STAT_SECTIONS, formatStatValue, statMap, type Lang } from '../../lib/statDisplay';
 import { bindT, damageTypeLabel } from '../../lib/i18n';
+import { AppSelect } from '../shared/AppSelect';
 import './sidebar.css';
 
 interface Props {
@@ -40,25 +41,18 @@ function MainSkillSection({ session, lang }: { session: BuildSession; lang: Lang
   return (
     <section className="stat-section main-skill-section">
       <h3>{tt('sidebar.mainSkill')}</h3>
-      <select
-        className="main-skill-select"
-        aria-label={tt('sidebar.mainSkill')}
-        value={selected}
+      <div className="main-skill-select"><AppSelect
+        ariaLabel={tt('sidebar.mainSkill')}
+        value={String(selected)}
         disabled={session.busy}
-        onChange={(e) => session.updateParams({ main_socket_group: Number(e.target.value) })}
-      >
-        {groups.map((group, idx) => {
+        onChange={(value) => session.updateParams({ main_socket_group: Number(value) })}
+        options={groups.map((group, idx) => {
           const [active] = group.gems;
           const name = mainSkill?.group_index === idx ? skillName(mainSkill.skill_id)
             : active ? skillName(active.skill_id) : tt('skills.emptyGroup');
-          return (
-            <option key={idx} value={idx}>
-              {idx + 1}. {name}
-              {group.enabled ? '' : ` ${tt('sidebar.disabledGroup')}`}
-            </option>
-          );
+          return { value: String(idx), label: `${idx + 1}. ${name}${group.enabled ? '' : ` ${tt('sidebar.disabledGroup')}`}` };
         })}
-      </select>
+      /></div>
       {!mainSkill && <p className="main-skill-empty">{tt('sidebar.noMainSkill')}</p>}
       {mainSkill && mainSkill.group_index !== selected && (
         // 选中组无伤害技能时引擎回退到别组（resolve_main_skill 语义）——标明实际计算对象。

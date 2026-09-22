@@ -281,3 +281,18 @@
 }
 .editor-draft-notice p { margin: 0 0 0.5rem; }
 .editor-draft-notice button + button { margin-left: 0.5rem; }
+.import-config-review {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-panel);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.import-config-review p { flex: 1 1 360px; margin: 0; }

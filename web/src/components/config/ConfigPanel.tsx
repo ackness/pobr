@@ -5,6 +5,7 @@ import type { ConfigInputValue, ConfigOption, EnemyTier } from '../../api/types'
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, configSectionLabel, enemyTierLabel, type Lang } from '../../lib/i18n';
 import { CONFIG_LABEL_ZH, LIST_OPTION_ZH } from '../../lib/configLabels';
+import { configDefaultValue } from '../../lib/configDefaults';
 import './config.css';
 
 interface Props {
@@ -38,15 +39,6 @@ function optionLabel(lang: Lang, option: ConfigOption): string {
   return en;
 }
 
-/** list 型 default（1-based index）→ 选项值。 */
-function listDefault(option: ConfigOption): string | undefined {
-  const def = option.default;
-  if (def && typeof def === 'object' && 'index' in def && def.index) {
-    return option.list_options?.[def.index - 1]?.value;
-  }
-  return undefined;
-}
-
 function OptionRow({
   option,
   value,
@@ -68,6 +60,8 @@ function OptionRow({
 }) {
   const tt = bindT(lang);
   const label = optionLabel(lang, option);
+  const fallback = configDefaultValue(option);
+  const effective = value ?? fallback;
   const [draft, setDraft] = useState(String(value ?? ''));
   useEffect(() => setDraft(String(value ?? '')), [value]);
   return (
@@ -77,7 +71,7 @@ function OptionRow({
         <input
           id={`config-${option.var}`}
           type="checkbox"
-          checked={value === undefined ? option.default === true : value === true}
+          checked={typeof effective === 'number' ? effective !== 0 : effective === true}
           disabled={busy}
           onChange={(e) => onChange(e.target.checked)}
           aria-label={label}
@@ -85,14 +79,19 @@ function OptionRow({
       ) : option.input_type === 'list' ? (
         <select
           id={`config-${option.var}`}
-          value={String(value ?? listDefault(option) ?? '')}
+          value={String(effective ?? '')}
           disabled={busy}
           onChange={(e) => onChange(e.target.value)}
           aria-label={label}
         >
           {(option.list_options ?? []).map((opt) => {
             const en = stripColorCodes(opt.label);
-            const zh = lang !== 'en-US' ? (LIST_OPTION_ZH[en] ?? listLabels[en] ?? en) : en;
+            const zh = lang !== 'en-US'
+              ? en.split(/\r?\n/).map(line => {
+                const text = line.trim();
+                return LIST_OPTION_ZH[text] ?? listLabels[text] ?? text;
+              }).join(' / ')
+              : en;
             return (
               <option key={opt.value} value={opt.value}>
                 {zh}
@@ -107,8 +106,8 @@ function OptionRow({
           type={option.input_type === 'text' ? 'text' : 'number'}
           value={draft}
           placeholder={
-            typeof option.default === 'number' || typeof option.default === 'string'
-              ? String(option.default)
+            typeof fallback === 'number' || typeof fallback === 'string'
+              ? String(fallback)
               : ''
           }
           disabled={busy}
@@ -146,7 +145,7 @@ export function ConfigPanel({ session, lang }: Props) {
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [query, setQuery] = useState('');
   const [configuredOnly, setConfiguredOnly] = useState(false);
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['General']));
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['General', 'Quest Rewards', 'When In Combat']));
   // 词条文本型 list 选项（如任务奖励 "+5 to all Attributes"）的反查翻译缓存。
   const [listLabels, setListLabels] = useState<Record<string, string>>({});
 
@@ -171,7 +170,7 @@ export function ConfigPanel({ session, lang }: Props) {
       ...new Set(
         options
           .flatMap((o) => o.list_options ?? [])
-          .map((o) => stripColorCodes(o.label))
+          .flatMap((o) => stripColorCodes(o.label).split(/\r?\n/).map(line => line.trim()))
           .filter((l) => !(l in LIST_OPTION_ZH)),
       ),
     ];
@@ -183,7 +182,7 @@ export function ConfigPanel({ session, lang }: Props) {
         if (cancelled) return;
         const map: Record<string, string> = {};
         pending.forEach((en, i) => {
-          if (translated[i] !== en) map[en] = translated[i];
+          if (translated[i] && translated[i] !== en) map[en] = translated[i];
         });
         setListLabels(map);
       })
@@ -271,6 +270,7 @@ export function ConfigPanel({ session, lang }: Props) {
           onChange={event => setConfiguredOnly(event.target.checked)} />{tt('config.configuredOnly')} ({configuredCount})</label>
       </div>
       <p className="config-hint">{tt('config.editHint')}</p>
+      <p className="config-hint">{tt('config.defaultsHint')}</p>
       {loadState === 'loading' && <p role="status">{tt('config.loading')}</p>}
       {loadState === 'error' && <div className="calc-error" role="alert">
         {tt('config.loadFailed')} <button onClick={() => setLoadAttempt(value => value + 1)}>{tt('common.retry')}</button>
