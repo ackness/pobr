@@ -80,6 +80,7 @@ tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle�
 - `perf_timing` / `perf_phases` 是按需计时诊断，运行时加 `-- --ignored --nocapture`；正确性、覆盖率、parity 门禁仍默认执行。
 - `node web/scripts/bench-calc.mjs` measures uncached real-WASM calculation and 16-item batches on three committed builds. It requires built WASM and synced data; `--reference <old-pkg>` additionally checks complete output equality for behavior-preserving optimizations. Reports stay under ignored `.cache/`; this benchmark is opt-in, outside the CI gate.
 - `python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，不调用真实 Cargo。
+- `pnpm --dir web package-wasm`：将已构建 WASM 与同步数据打包到 `.cache/wasm-release/`，包含 `use-pobr-wasm` 技能、demo、校验和及体积比较；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。打包脚本改动运行 `node --test web/scripts/package-wasm.test.mjs`，发布流程见 [WASM 打包说明](docs/wasm-package.md)。tag CI 在 Rust/Web 门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
 - `cd web && pnpm test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
 - 计划发版时，在功能 PR 中一并更新 workspace 版本。完成本地门禁后合并，再推送一次 tag；tag CI 通过后自动部署，无需在 master 额外手动运行同一套 CI。
 - `devs/scripts/regen-check.sh` 在临时副本中重生成，保留 `overlay-common` 与 examples 语料，不写入或恢复工作区文件。
@@ -207,6 +208,8 @@ PoB2 兼容是硬回归基准，三层校验互补：
 - `web/public/_worker.js` discovers live leagues and retains fixed-host listing endpoints for programmatic consumers. It never accepts credentials, rejects redirects, bounds listing fetches, and surfaces verification/rate limits without retries. `web/src/lib/tradeMarket.ts` retains whole-listing import/recalculation helpers. These are separate from the player's direct-market flow. Validate the Worker in actual workerd and the player flow in Playwright with real WASM and synthetic HTTP.
 
 ## Web weapon sets and skill selection
+
+- Config controls resolve the typed catalog defaults (`state_bool`, `state_number`, `placeholder_number`, 1-based list `index`) without materializing overrides. Fixed quest rewards default on and choice rewards default to None, matching PoB2; explicit imported false/zero values take priority. Imports show a dismissible inline configuration review note. Gem catalog `additional_skill_ids` is optional display metadata for secondary effects/stat sets, not extra gem-picker entries; shared skill naming uses the parent gem's locale at display boundaries.
 
 - WeGame and PoB XML decoding preserve the inactive weapon pair and exclusive passive nodes in `weapon_swap`. The web session swaps only the weapon pair and exclusive nodes; shared gear, passives and jewels remain common. Empty offhands stay empty. Skills can bind set 1/2 or follow the active set. Changing the main skill selects its binding before recalculation, comparison or market analysis.
 - `toRequest` sends one materialized weapon context. Groups exclusive to the other set are disabled with stable indices; `runFullDps` evaluates each required set and counts shared groups once. This does not model transient buffs persisting across swaps or an alternating-skill rotation. The low-level Rust calculation API still consumes an active equipment snapshot; `weapon_swap` is editable export metadata.

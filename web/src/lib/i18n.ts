@@ -23,6 +23,10 @@ const DICT = {
   'items.position': { 'en-US': 'Equipment position', 'zh-TW': '裝備位置', 'zh-CN': '装备位置' },
   'skills.editMain': { 'en-US': 'Edit main skill', 'zh-TW': '編輯主技能', 'zh-CN': '编辑主技能' },
   'config.configuredOnly': { 'en-US': 'Configured only', 'zh-TW': '僅顯示已設定', 'zh-CN': '仅显示已配置' },
+  'config.defaultsHint': { 'en-US': 'Fixed quest rewards and combat defaults follow PoB2. Choice rewards default to None; imported settings take priority. Check rewards, resources and combat conditions against your actual character.', 'zh-TW': '固定任務獎勵與戰鬥預設依照 PoB2；多選獎勵預設為「無」，匯入設定優先。請依角色實際情況核對獎勵、資源與戰鬥條件。', 'zh-CN': '固定任务奖励与战斗默认值依照 PoB2；多选奖励默认为“无”，导入设置优先。请按角色实际情况核对奖励、资源与战斗条件。' },
+  'config.importReview': { 'en-US': 'Build imported. Review quest rewards, enemy tier and combat conditions in Config so the calculations match your character and the fight you want to model.', 'zh-TW': '構築已匯入。建議到「配置」核對任務獎勵、敵人階級與戰鬥狀態，讓數值符合角色實際情況與預期戰鬥。', 'zh-CN': '构筑已导入。建议到“配置”核对任务奖励、敌人档位与战斗状态，让数值符合角色实际情况与预期战斗。' },
+  'config.review': { 'en-US': 'Review configuration', 'zh-TW': '檢查配置', 'zh-CN': '检查配置' },
+  'config.reviewDismiss': { 'en-US': 'Dismiss reminder', 'zh-TW': '關閉提醒', 'zh-CN': '关闭提醒' },
   'config.showAll': { 'en-US': 'Show all options', 'zh-TW': '顯示全部選項', 'zh-CN': '显示全部选项' },
   'tree.editOptions': { 'en-US': 'Attributes & planning', 'zh-TW': '屬性與規劃', 'zh-CN': '属性与规划' },
 

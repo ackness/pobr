@@ -325,7 +325,7 @@ test('default damage skill, weapon binding and whole-build priority use the same
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator('.main-skill-select')).toHaveValue('1');
+  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('2. Fireball');
   await page.getByRole('button', { name: 'Skills', exact: true }).click();
   await page.locator('.skill-group-title').filter({ hasText: 'Fireball' }).click();
   await page.getByRole('button', { name: 'Skill weapon set', exact: true }).click();

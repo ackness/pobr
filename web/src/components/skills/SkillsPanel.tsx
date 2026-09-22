@@ -5,7 +5,9 @@ import { getBackend } from '../../api/backend';
 import type { GemCatalogEntry, SocketGroupInput } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, grantedSourceLabel, type Lang } from '../../lib/i18n';
-import { GemPicker, gemDisplayName } from './GemPicker';
+import { GemPicker } from './GemPicker';
+import { skillDisplayName } from '../../lib/skillNames';
+export { prettySkillId } from '../../lib/skillNames';
 import { GemOptimizer } from './GemOptimizer';
 import { NoteEditor } from '../shared/NoteEditor';
 import { AppSelect } from '../shared/AppSelect';
@@ -18,14 +20,6 @@ interface Props {
   session: BuildSession;
   lang: Lang;
   focusOptimizer?: { group: number; nonce: number };
-}
-
-/** `ExplosiveGrenadePlayer` → `Explosive Grenade`（目录查不到时的展示名退化）。 */
-export function prettySkillId(id: string): string {
-  return id
-    .replace(/Player(Two)?$/, '')
-    .replace(/^Support/, '')
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2');
 }
 
 export function SkillsPanel({ session, lang, focusOptimizer }: Props) {
@@ -49,10 +43,7 @@ export function SkillsPanel({ session, lang, focusOptimizer }: Props) {
   const actives = useMemo(() => catalog.filter((e) => !e.is_support), [catalog]);
   const supports = useMemo(() => catalog.filter((e) => e.is_support), [catalog]);
   const tradeById = useMemo(() => new Map(tradeGems.map(gem => [gem.skill_id, gem])), [tradeGems]);
-  const gemName = (skillId: string) => {
-    const entry = byId.get(skillId);
-    return entry ? gemDisplayName(entry, lang) : prettySkillId(skillId);
-  };
+  const gemName = (skillId: string) => skillDisplayName(skillId, lang, byId);
 
   const groups = session.socketGroups;
   const mainIndex = session.calcParams.main_socket_group ?? session.build?.main_socket_group ?? 0;
@@ -301,7 +292,7 @@ function SkillSets({ session, lang }: { session: BuildSession; lang: Lang }) {
       <span className="skill-sets-title">{tt('sets.title')}</span>
       {session.library.skillSets.map((set) => (
         <span key={set.id} className="skill-set-chip">
-          {set.name}（{set.groups.length}）
+          {lang === 'en-US' ? set.name : session.classNames.ascendancies[set.name] ?? session.classNames.classes[set.name] ?? set.name}（{set.groups.length}）
           <button disabled={session.busy} onClick={() => session.applySkillSet(set.id)}>
             {tt('sets.apply')}
           </button>

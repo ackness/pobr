@@ -6,8 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../api/backend';
 import type { GemCatalogEntry } from '../api/types';
-import { gemDisplayName } from '../components/skills/GemPicker';
-import { prettySkillId } from '../components/skills/SkillsPanel';
+import { skillDisplayName } from '../lib/skillNames';
 import type { Lang } from '../lib/i18n';
 
 export function useSkillName(lang: Lang): (skillId: string) => string {
@@ -19,8 +18,5 @@ export function useSkillName(lang: Lang): (skillId: string) => string {
       .catch(() => {});
   }, []);
   const byId = useMemo(() => new Map(catalog.map((e) => [e.skill_id, e])), [catalog]);
-  return (skillId: string) => {
-    const entry = byId.get(skillId);
-    return entry ? gemDisplayName(entry, lang) : prettySkillId(skillId);
-  };
+  return (skillId: string) => skillDisplayName(skillId, lang, byId);
 }

@@ -65,6 +65,8 @@ jobs:
       # nextest does not run doctests; cover them separately.
       - name: Doctests
         run: cargo test --workspace --doc
+      - name: Language catalog lint
+        run: cargo run -p lint-i18n
 
   # Web frontend gate (TODO.md 6.4): independent job so it never blocks the
   # Rust gate above. Builds the real wasm artifact (validates the wasm32
@@ -97,6 +99,8 @@ jobs:
           cache-dependency-path: web/pnpm-lock.yaml
       - name: Dictionary snapshot tests
         run: node --test ../pipeline/test-dictionary-source.mjs ../pipeline/test-query-patch-version.mjs
+      - name: WASM packaging tests
+        run: node --test scripts/package-wasm.test.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)
@@ -123,6 +127,19 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: E2E smoke
         run: pnpm exec playwright test
+      - name: Package standalone WASM and report size
+        run: |
+          pnpm package-wasm
+          pnpm smoke-wasm-package
+          cat ../.cache/wasm-release/wasm-size.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload WASM release assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: wasm-release
+          path: .cache/wasm-release/*
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload E2E failure artifacts
         if: failure()
         uses: actions/upload-artifact@v7
@@ -131,6 +148,35 @@ jobs:
           path: web/test-results
           if-no-files-found: ignore
           retention-days: 7
+
+  release-wasm:
+    name: publish standalone WASM
+    needs: [ci, web]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-release
+          path: wasm-release
+      - name: Attach WASM assets to version release
+        working-directory: wasm-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          sha256sum --check SHA256SUMS
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" pobr-wasm-*-web.tar.gz wasm-size.json wasm-size.md SHA256SUMS --clobber
+          else
+            flags=()
+            if [[ "$RELEASE_TAG" == *-* ]]; then flags+=(--prerelease); fi
+            gh release create "$RELEASE_TAG" pobr-wasm-*-web.tar.gz wasm-size.json wasm-size.md SHA256SUMS \
+              --verify-tag --generate-notes --notes-file wasm-size.md "${flags[@]}"
+          fi
 
   # Auto-deploy to Cloudflare Pages on v0.x release tags, only after BOTH the
   # Rust gate and the web gate pass. Reuses the dist built by the web job —

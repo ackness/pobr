@@ -206,6 +206,8 @@ export interface JewelInput {
 /** 宝石目录条目（gem_catalog_json）。 */
 export interface GemCatalogEntry {
   skill_id: string;
+  /** Secondary effects supplied by this gem; display aliases, not picker entries. */
+  additional_skill_ids?: string[];
   name: string;
   /** 繁中名（数据包 i18n 边车）。 */
   name_zh_tw: string | null;
@@ -581,7 +583,7 @@ export interface ConfigOption {
   label?: string;
   /** list 型的选项；default 的 {index} 是 1-based。 */
   list_options?: ConfigListOption[];
-  default?: { index?: number } | number | boolean | string;
+  default?: { index?: number; state_bool?: boolean; state_number?: number; placeholder_number?: number } | number | boolean | string;
 }
 
 export interface ConfigCatalogFile {

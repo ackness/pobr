@@ -10,8 +10,7 @@ import { guidanceT } from '../../lib/guidanceText';
 import { slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
 import { parsePobColorText } from '../../lib/pobColors';
 import { splitNotes } from '../../lib/annotations';
-import { gemDisplayName } from '../skills/GemPicker';
-import { prettySkillId } from '../skills/SkillsPanel';
+import { skillDisplayName } from '../../lib/skillNames';
 import { PageHeader } from '../shared/PageHeader';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import './guidance.css';
@@ -71,7 +70,7 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
   }, [attempt]);
 
   const byId = useMemo(() => new Map(catalog.map(gem => [gem.skill_id, gem])), [catalog]);
-  const gemName = (id: string) => byId.has(id) ? gemDisplayName(byId.get(id)!, lang) : prettySkillId(id);
+  const gemName = (id: string) => skillDisplayName(id, lang, byId);
   const className = (name: string) => lang === 'en-US' ? name : session.classNames.ascendancies[name] ?? session.classNames.classes[name] ?? name;
   const request = session.currentRequest() ?? {};
   const current = buildProfile(request, byId, session.calc?.main_skill?.skill_id);
