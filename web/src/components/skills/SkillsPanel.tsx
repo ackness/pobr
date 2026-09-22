@@ -12,7 +12,7 @@ import { GemOptimizer } from './GemOptimizer';
 import { NoteEditor } from '../shared/NoteEditor';
 import { AppSelect } from '../shared/AppSelect';
 import { loadTradeCatalog } from '../../lib/tradeOptimizer';
-import { eligibleSupports, lineageAvailable, supportSetCompatible, usableSupportLevel, type SupportMetadata } from '../../lib/supportOptimizer';
+import { eligibleSupports, lineageAvailable, supportSetsCompatible, usableSupportLevel, type SupportMetadata } from '../../lib/supportOptimizer';
 import { supportText } from '../../lib/supportI18n';
 import './skills.css';
 
@@ -54,6 +54,25 @@ export function SkillsPanel({ session, lang, focusOptimizer }: Props) {
     if (!focusOptimizer) return;
     setOpenIdx(focusOptimizer.group);
   }, [focusOptimizer]);
+
+  const pickerGroup = openIdx === null ? undefined : groups[openIdx];
+  const supportPickerKey = JSON.stringify([openIdx, groups, session.character?.level]);
+  const [compatibleSupports, setCompatibleSupports] = useState<{ key: string; catalog: SupportMetadata[]; ids: Set<string> }>();
+  useEffect(() => {
+    let active = true;
+    if (!pickerGroup || openIdx === null || !tradeGems.length) return;
+    const currentSupports = pickerGroup.gems.filter(gem => tradeById.get(gem.skill_id)?.is_support);
+    const pool = eligibleSupports(pickerGroup, tradeGems, session.character?.level ?? 1).gems
+      .filter(gem => lineageAvailable(gem, groups, openIdx));
+    const candidates = pool.map(gem => [...currentSupports,
+      { skill_id: gem.skill_id, level: usableSupportLevel(gem, session.character?.level ?? 1), quality: 0 }]);
+    supportSetsCompatible(pickerGroup, candidates, tradeGems).then(compatible => {
+      if (!active) return;
+      setCompatibleSupports({ key: supportPickerKey, catalog: tradeGems,
+        ids: new Set(pool.filter((_, index) => compatible[index]).map(gem => gem.skill_id)) });
+    }).catch(() => { if (active) setCatalogError(true); });
+    return () => { active = false; };
+  }, [supportPickerKey, tradeGems]);
 
   const updateGroup = (idx: number, patch: Partial<SocketGroupInput>) => {
     session.setSocketGroups(groups.map((g, i) => (i === idx ? { ...g, ...patch } : g)));
@@ -99,11 +118,8 @@ export function SkillsPanel({ session, lang, focusOptimizer }: Props) {
             : selectedActive;
           const supportGems = group.gems.filter(gem => gem !== active);
           const currentSupports = group.gems.filter(gem => tradeById.get(gem.skill_id)?.is_support);
-          const eligibleIds = new Set((isOpen ? eligibleSupports(group, tradeGems, session.character?.level ?? 1).gems : [])
-            .filter(gem => lineageAvailable(gem, groups, idx) && supportSetCompatible(group, [...currentSupports,
-              { skill_id: gem.skill_id, level: usableSupportLevel(gem, session.character?.level ?? 1), quality: 0 }], tradeGems))
-            .map(gem => gem.skill_id));
-          const availableSupports = supports.filter(gem => eligibleIds.has(gem.skill_id));
+          const availableSupports = supports.filter(gem => isOpen && compatibleSupports?.key === supportPickerKey
+            && compatibleSupports.catalog === tradeGems && compatibleSupports.ids.has(gem.skill_id));
           const optimizerSkillKey = JSON.stringify(group.gems
             .filter(gem => !tradeById.get(gem.skill_id)?.is_support).map(gem => gem.skill_id).sort());
           return (

@@ -52,6 +52,7 @@ interface WasmModule {
   reforgeRunesJson(requestJson: string): string;
   nodePowerJson(requestJson: string): string;
   optimizeVariantsJson(requestJson: string): string;
+  supportGroupsCompatibleJson(requestJson: string): string;
   translate(lang: string, key: string): string;
 }
 
@@ -235,6 +236,9 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       return JSON.parse(
         wasm.optimizeVariantsJson(JSON.stringify(request)),
       ) as OptimizeVariantsResponse;
+    },
+    async supportGroupsCompatible(groups) {
+      return JSON.parse(wasm.supportGroupsCompatibleJson(JSON.stringify({ groups }))) as boolean[];
     },
     async runeCatalog(itemText) {
       return JSON.parse(wasm.runeCatalogJson(itemText ?? '')) as RuneCatalogEntry[];

@@ -96,6 +96,10 @@ export function createMockBackend(): PobrBackend {
     async importTradeItems(items) {
       return items.map(() => ({ error: 'Trade item import requires the calculation backend' }));
     },
+    async supportGroupsCompatible(groups) {
+      // The UI fixture backend has no rule data; never guess legal candidates.
+      return groups.map(() => false);
+    },
     async runeCatalog() {
       // mock 无符文目录；面板隐藏符文编辑器。
       return [];

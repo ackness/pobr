@@ -378,7 +378,7 @@ pub(crate) fn exposure_support_modifiers(
                 gem.stat_set_index,
             );
             let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
-            let judgement = judge_group_supports(group, data, &gem.skill_id);
+            let judgement = judge_group_supports(group, data, &gem.skill_id, group.from_gem());
             let is_host = has_debuff_payload(context, &es, &gem.skill_id, set_key.as_deref())
                 || has_exposure_inflict_stats(context, &es, &gem.skill_id, set_key.as_deref())
                 || judgement.compatible.iter().any(|sup| {

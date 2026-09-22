@@ -56,7 +56,7 @@
 //! [`ingest_support_gem`] returns `Err(SupportIngestError::Gating)` when
 //! rejected. The group-level addSkillTypes fixed point
 //! (CalcActiveSkill.lua:179-210) is implemented by pobr-build
-//! orchestrator's `judge_group_supports` (contract C2).
+//! `support::judge_group_supports`, shared with the WASM group gate (contract C2).
 //!
 //! ## level/quality scaling
 //!

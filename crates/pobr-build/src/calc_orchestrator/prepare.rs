@@ -51,10 +51,11 @@ pub(super) fn stage_resolve_main_skill<'a>(
     let main_skill_types = main_skill
         .as_ref()
         .map(|(_, group, skill_id)| {
-            let mut types: Vec<String> = judge_group_supports(group, data, skill_id)
-                .final_skill_types
-                .into_iter()
-                .collect();
+            let mut types: Vec<String> =
+                judge_group_supports(group, data, skill_id, group.from_gem())
+                    .final_skill_types
+                    .into_iter()
+                    .collect();
             // A meta trigger shell's `Triggered`: vendor injects this from the gem's
             // **support half** (e.g. Cast on Critical → SupportMetaCastOnCritPlayer's
             // addSkillTypes=[Triggered]); PoBR's cataloged data doesn't model a gem's

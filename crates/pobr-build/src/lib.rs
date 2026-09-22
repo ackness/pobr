@@ -37,6 +37,7 @@ pub mod import_detect;
 pub mod jewel_tree;
 pub mod loadout;
 pub mod snapshot;
+pub mod support;
 pub mod xml_build;
 pub mod xml_merge;
 pub mod xml_serde;

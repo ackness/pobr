@@ -16,11 +16,7 @@
 use super::*;
 
 /// Stage 1d: item base defence (armour/evasion/ES) + shield base block + per-item Spirit/Ward → BASE mods.
-pub(super) fn inject_defence_base(
-    session: &mut CalculationSession,
-    build: &Build,
-    data: &BuildData,
-) {
+pub(super) fn inject_defence_base(session: &mut SourceWriter, build: &Build, data: &BuildData) {
     // 1d. Item base defence (armour/evasion/ES) → Item-attributed BASE mods (× quality).
     //     Item `increased Armour/Evasion/EnergyShield` mods are injected as INC via
     //     add_item, scaling this base.
@@ -40,11 +36,7 @@ pub(super) fn inject_defence_base(
 }
 
 /// Stage 2b'': active flask/charm payload injection (consumed by env_finalize stage 3's merge).
-pub(super) fn inject_flasks_charms(
-    session: &mut CalculationSession,
-    build: &Build,
-    data: &BuildData,
-) {
+pub(super) fn inject_flasks_charms(session: &mut SourceWriter, build: &Build, data: &BuildData) {
     // 2b''. Active flasks/charms (PoB's `<Slot name="Flask N|Charm N" active="true">`,
     //       already gated by `active` in xml_build — matching vendor
     //       CalcSetup.lua:1014-1028's `slot.active` deciding env.flasks/charms):
@@ -92,7 +84,7 @@ pub(super) fn inject_flasks_charms(
 
 /// Stage 4: skill gems classified as active/support, each injected via its own attribution entry point.
 pub(super) fn inject_skill_gems(
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     build: &Build,
     data: &BuildData,
 ) -> Result<(), BuildError> {
@@ -114,7 +106,7 @@ pub(super) fn inject_skill_gems(
 /// Stages 4b/4b'/4b'': aura/curse BuffSpec + support-granted buffs + herald presence count/condition injection.
 pub(super) fn inject_buffs_and_heralds(
     context: &mut CalculationContext,
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     build: &Build,
     data: &BuildData,
 ) {
@@ -345,7 +337,7 @@ pub(super) fn virtuous_mote_counts(build: &Build, data: &BuildData) -> (f64, f64
 
 /// Stages 5/5a/5b: enemy configuration (setup_enemy) + the config interpreter's enemy bucket + player-applied elemental exposure.
 pub(super) fn inject_enemy(
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     build: &Build,
     options: &DataOrchestratorOptions,
     enemy_tier: EnemyTier,
@@ -407,7 +399,7 @@ pub(super) fn inject_enemy(
 /// multiplier MORE. Weapon base crit is injected with the hand sources.
 pub(super) fn inject_main_skill_mods(
     context: &mut CalculationContext,
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     ctx: &StageCtx<'_>,
 ) {
     let (build, data, options) = (ctx.build, ctx.data, ctx.options);
@@ -485,7 +477,7 @@ pub(super) fn inject_main_skill_mods(
 
 /// Stage 1: character base (level + class-derived attributes → BASE) + elemental resistance penalty (campaign progress tier).
 pub(super) fn inject_character_base(
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
@@ -516,7 +508,7 @@ pub(super) fn inject_character_base(
 /// copies. `off_weapon_active` = whether the off-hand weapon source is consumed;
 /// `main_weapon_active` = whether the main skill uses Weapon1 as its damage source (a weapon attack).
 pub(super) fn inject_items(
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     build: &Build,
     data: &BuildData,
     off_weapon_active: bool,
@@ -709,10 +701,10 @@ pub(super) fn inject_items(
     Ok(())
 }
 
-/// Stages 4c/4c'/4d: Mark's self offensive buff (gain-as-extra) + non-main-group exposure supports + Spirit reservation aggregation.
-pub(super) fn inject_self_buff_exposure_spirit(
+/// Mark's self offensive buff and non-main-group exposure support sources.
+pub(super) fn inject_self_buff_exposure(
     context: &mut CalculationContext,
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     build: &Build,
     data: &BuildData,
     main_skill_group: Option<&SocketGroup>,
@@ -734,6 +726,14 @@ pub(super) fn inject_self_buff_exposure_spirit(
         data,
         main_skill_group,
     ));
+}
+
+/// Reads the complete source database before actor snapshots and condition bridging.
+pub(super) fn inject_spirit_reservation(
+    session: &mut CalculationSession,
+    build: &Build,
+    data: &BuildData,
+) {
     // 4d. Spirit reservation aggregation for persistent-reservation effects →
     //     `SkillSpiritReservationBase` BASE, summed by perform's fill into
     //     OutputTable::spirit_reserved (overload is only reported, not blocked). db is

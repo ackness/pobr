@@ -2,6 +2,10 @@ import { expect, test, vi } from 'vitest';
 import type { EvaluateOptions } from './optimize';
 import { evaluateMarket, gemAcquisition, gemVariant, planGemUpgrades, rankMarket, usableGemLevel, type MarketResponse, type MarketUpgrade } from './tradeMarket';
 
+vi.mock('../api/backend', () => ({ getBackend: async () => ({
+  supportGroupsCompatible: async (groups: unknown[]) => groups.map(() => true),
+}) }));
+
 const market: MarketResponse = { url: 'https://www.pathofexile.com/trade2/search/poe2/Standard/synthetic',
   total: 50, sampled: 3, listings: [
     { id: 'a', price: { amount: 90, currency: 'exalted' }, item: { name: 'High linear weight' } },

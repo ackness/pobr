@@ -412,7 +412,7 @@ fn curse_local_effect_scale(
         }
     };
     absorb(skill_id, curse_level, gem.quality, gem.stat_set_index);
-    let judgement = super::triggers::judge_group_supports(group, data, skill_id);
+    let judgement = crate::support::judge_group_supports(group, data, skill_id, group.from_gem());
     for sup in &judgement.compatible {
         let host = &group.gem_skills[sup.gem_index];
         absorb(
@@ -482,7 +482,7 @@ pub(crate) fn support_buff_specs(
         // Included if compatible with any active skill (vendor: a support is judged against each active skill in the group individually).
         let mut compatible: HashSet<(usize, String)> = HashSet::new();
         for active_id in &active_ids {
-            for sup in judge_group_supports(group, data, active_id).compatible {
+            for sup in judge_group_supports(group, data, active_id, group.from_gem()).compatible {
                 compatible.insert((sup.gem_index, sup.effect_id));
             }
         }

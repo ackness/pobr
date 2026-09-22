@@ -203,7 +203,7 @@ fn json_to_config_value(v: &serde_json::Value) -> Result<ConfigInputValue, Strin
 /// non-support gem in the group (determined by a data-table lookup, more
 /// robust than XML's "the first one is active"); the gem id is
 /// reverse-looked-up from the `gem_effects` table by effect id (support classification depends on it).
-fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData) -> SocketGroup {
+pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData) -> SocketGroup {
     let mut group = SocketGroup {
         weapon_set: input.weapon_set,
         slot: input.slot.clone(),

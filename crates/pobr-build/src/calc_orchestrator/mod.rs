@@ -75,6 +75,7 @@ use conditions::*;
 mod weapon;
 use weapon::*;
 mod skill_mods;
+use crate::support::judge_group_supports;
 use skill_mods::*;
 mod triggers;
 use triggers::*;
@@ -89,6 +90,8 @@ mod prepare;
 use prepare::*;
 mod context;
 use context::CalculationContext;
+mod sources;
+use sources::SourceWriter;
 mod inject;
 use inject::*;
 
@@ -521,8 +524,8 @@ fn calculate_with_context(
     // 4b/4b'/4b''. Aura·curse BuffSpec + support-granted buffs + herald presence count/conditions.
     inject_buffs_and_heralds(context, &mut session, build, data);
 
-    // 4c/4c'/4d. Mark's self offensive buff + non-main-group exposure supports + Spirit reservation aggregation.
-    inject_self_buff_exposure_spirit(
+    // Mark's self offensive buff + non-main-group exposure supports.
+    inject_self_buff_exposure(
         context,
         &mut session,
         build,
@@ -541,6 +544,11 @@ fn calculate_with_context(
 
     // 6. Extra global text (campaign rewards / debug overrides).
     stage_inject_extra_texts(&mut session, &ctx)?;
+
+    // All source writes are complete. Consuming the writer enables ModDb reads;
+    // reservation must see equipment, passives, config, and extra modifier texts.
+    let mut session = session.finish_sources();
+    inject_spirit_reservation(&mut session, build, data);
 
     // Core owns actor-derived values; build supplies starting attributes and equipment facts.
     let class = options.inject_character_base.then(|| {
@@ -698,7 +706,7 @@ fn resolve_name_spec_gems(build: &Build, data: &BuildData) -> Option<Build> {
 /// parser rules, buff definitions / handlers, curse priority, rounding precision).
 /// Rule injection must precede any subsequent `add_item` / `add_passive_nodes` /
 /// `add_gem` (each injection point's comment notes the basis).
-fn stage_create_session(ctx: &StageCtx<'_>, cfg: CalcConfig) -> CalculationSession {
+fn stage_create_session(ctx: &StageCtx<'_>, cfg: CalcConfig) -> SourceWriter {
     let data = ctx.data;
     let mut session = CalculationSession::new(ctx.weapons.base_input).with_config(cfg);
     // The injection pipeline: injects the runtime constants bundle loaded by GameData
@@ -740,7 +748,7 @@ fn stage_create_session(ctx: &StageCtx<'_>, cfg: CalcConfig) -> CalculationSessi
     // the same rule set; the overlay data mirrors the earlier hardcoded name family,
     // value-for-value equal across every cataloged entry, verified by ninja_parity).
     session.set_high_precision_rules(data.high_precision.clone());
-    session
+    SourceWriter::new(session)
 }
 
 /// Stage 6: weapon base injected via HandSource — depends on stage 4's converted WeaponBase.
@@ -751,7 +759,7 @@ fn stage_create_session(ctx: &StageCtx<'_>, cfg: CalcConfig) -> CalculationSessi
 /// following WeaponBase::flags into the hand pass; data channels like
 /// doubleHitsWhenDualWielding are always false. A non-weapon attack's (Shield Wall type)
 /// source is off-hand (matching PoB2 CalcOffence L2418-2431).
-fn stage_hand_sources(session: &mut CalculationSession, ctx: &StageCtx<'_>) {
+fn stage_hand_sources(session: &mut SourceWriter, ctx: &StageCtx<'_>) {
     if let Some(wb) = ctx.weapons.hand_weapon {
         let is_off_hand_source = ctx
             .main
@@ -801,7 +809,7 @@ fn stage_hand_sources(session: &mut CalculationSession, ctx: &StageCtx<'_>) {
 }
 
 /// Stage 7: cooldown-bypass flag injection (determined in stage 4; `CooldownBypass`'s single source).
-fn stage_cooldown_bypass(session: &mut CalculationSession, ctx: &StageCtx<'_>) {
+fn stage_cooldown_bypass(session: &mut SourceWriter, ctx: &StageCtx<'_>) {
     if ctx.weapons.bypasses_cooldown {
         let origin =
             ModifierSource::new(SourceId::new(SourceKind::SkillGem, "skill.cooldownBypass"))
@@ -813,10 +821,7 @@ fn stage_cooldown_bypass(session: &mut CalculationSession, ctx: &StageCtx<'_>) {
 /// 2b. Jewels (passive tree/abyss sockets): mods injected **globally** (most jewels
 ///     are global mods; radius jewels are currently approximated as global too). Follows
 ///     add_item's skip-and-collect error tolerance.
-fn stage_inject_jewels(
-    session: &mut CalculationSession,
-    ctx: &StageCtx<'_>,
-) -> Result<(), BuildError> {
+fn stage_inject_jewels(session: &mut SourceWriter, ctx: &StageCtx<'_>) -> Result<(), BuildError> {
     let adorned_inc = adorned_corrupted_magic_jewel_inc(&ctx.build.jewels);
     // Radius directives are consumed by geometry, not the global mod parser.
     // Exempt only validated directives with available socket geometry; unknown
@@ -950,7 +955,7 @@ fn scale_trunc_2dp(value: f64, scale: f64) -> f64 {
 /// Radius grants are parsed and scaled per affected allocated node. Invalid
 /// grant text remains diagnosed by the dedicated item gate above.
 fn stage_inject_radius_jewels(
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     ctx: &StageCtx<'_>,
 ) -> Result<(), BuildError> {
     session.add_modifiers(radius_jewel_grant_modifiers(ctx.build, ctx.data));
@@ -962,7 +967,7 @@ fn stage_inject_radius_jewels(
 /// [`ResolvedConfig`](crate::config_resolve::ResolvedConfig) output, injected adjacent
 /// to each other per the existing assembly order.
 fn stage_inject_config_mods(
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     ctx: &StageCtx<'_>,
 ) -> Result<(), BuildError> {
     let (data, resolved_config) = (ctx.data, &ctx.resolved_config);
@@ -1018,10 +1023,7 @@ fn stage_inject_config_mods(
 /// anointed notables → small-passive effect scaling delta → radius-jewel Notable
 /// effect scaling delta → mod-granted keystone mapping. Positioned per the
 /// existing assembly order: after equipment and config injection, before skill gems.
-fn stage_inject_passives(
-    session: &mut CalculationSession,
-    ctx: &StageCtx<'_>,
-) -> Result<(), BuildError> {
+fn stage_inject_passives(session: &mut SourceWriter, ctx: &StageCtx<'_>) -> Result<(), BuildError> {
     let (build, data) = (ctx.build, ctx.data);
     // 3. Passive tree: NodeId → node mod text (node-level attribution).
     let mut passive_nodes = resolve_passive_nodes(build, data);
@@ -1054,7 +1056,7 @@ fn stage_inject_passives(
 
 /// 6. Inject extra global texts (campaign rewards / debug overrides).
 fn stage_inject_extra_texts(
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     ctx: &StageCtx<'_>,
 ) -> Result<(), BuildError> {
     if !ctx.options.extra_modifier_texts.is_empty() {

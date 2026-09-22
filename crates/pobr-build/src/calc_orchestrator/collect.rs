@@ -664,7 +664,7 @@ pub(crate) fn filter_parseable(texts: Vec<String>, ctx: ParseCtx<'_>) -> Vec<Str
 pub(crate) fn filter_item_parseable(
     item: &Item,
     ctx: ParseCtx<'_>,
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     dedicated_texts: &[String],
 ) -> Item {
     // These sources have dedicated orchestration consumers even when they do

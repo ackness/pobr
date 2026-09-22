@@ -1,3 +1,4 @@
+import { getBackend } from '../api/backend';
 import type { CalculateBuildRequest, GemInput, SocketGroupInput, VariantInput } from '../api/types';
 import { compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type Objective } from './optimize';
 import type { TradeGem } from './tradeOptimizer';
@@ -15,22 +16,6 @@ export interface SupportMetadata extends TradeGem {
   families?: string[];
 }
 
-export function typeExpressionMatches(expression: string[], types: Set<string>): boolean {
-  const stack: boolean[] = [];
-  for (const token of expression) {
-    if (token === 'NOT') {
-      if (!stack.length) return false;
-      stack.push(!stack.pop());
-    } else if (token === 'AND' || token === 'OR') {
-      if (stack.length < 2) return false;
-      const right = stack.pop()!;
-      const left = stack.pop()!;
-      stack.push(token === 'AND' ? left && right : left || right);
-    } else stack.push(types.has(token));
-  }
-  return stack.some(Boolean);
-}
-
 export function usableSupportLevel(gem: TradeGem, characterLevel: number): number {
   return (gem.level_requirements ?? []).reduce((best, required, index) =>
     Number.isFinite(required) && required <= characterLevel && index < gem.max_level ? index + 1 : best, 0);
@@ -46,38 +31,33 @@ export function sameSupportFamily(a: SupportMetadata, b: SupportMetadata): boole
   return a.skill_id === b.skill_id || aFamilies.some(family => bFamilies.includes(family));
 }
 
-function accepts(support: SupportMetadata, active: SupportMetadata, types: Set<string>, fromGem: boolean): boolean {
-  if (!known(support) || !known(active) || active.cannot_be_supported || (support.support_gems_only && !fromGem)) return false;
-  return !typeExpressionMatches(support.exclude_skill_types ?? [], types)
-    && (!(support.require_skill_types?.length) || typeExpressionMatches(support.require_skill_types, types));
+/** Local candidate policy only; the engine owns skill-type compatibility. */
+function supportSetAllowed(gems: GemInput[], catalog: SupportMetadata[]): boolean {
+  const entries = gems.map(input => catalog.find(gem => gem.skill_id === input.skill_id));
+  if (entries.some(gem => !known(gem) || !gem.is_support)) return false;
+  return !entries.some((gem, index) => entries.slice(0, index).some(other => sameSupportFamily(gem!, other!)));
 }
 
-/** Match PoB's fixed point, including the final exclusion check after type additions. */
-function supportedBy(active: SupportMetadata, supports: SupportMetadata[], fromGem: boolean): Set<string> {
-  const types = new Set(active.skill_types ?? []);
-  const pending = new Set(supports);
-  for (let pass = 0; pass <= supports.length; pass++) {
-    let changed = false;
-    for (const support of pending) {
-      if (!accepts(support, active, types, fromGem)) continue;
-      for (const type of support.add_skill_types ?? []) types.add(type);
-      pending.delete(support);
-      changed = true;
-    }
-    if (!changed) break;
+/** Batch the authoritative group judgement before scoring, preserving candidate order. */
+export async function supportSetsCompatible(group: SocketGroupInput, sets: GemInput[][],
+  catalog: SupportMetadata[]): Promise<boolean[]> {
+  const result = sets.map(() => false);
+  const eligible = sets.flatMap((gems, index) => supportSetAllowed(gems, catalog) ? [{ gems, index }] : []);
+  if (!eligible.length) return result;
+  const active = group.gems.filter(input => !catalog.find(gem => gem.skill_id === input.skill_id)?.is_support);
+  const backend = await getBackend();
+  for (let start = 0; start < eligible.length; start += 512) {
+    const batch = eligible.slice(start, start + 512);
+    const compatible = await backend.supportGroupsCompatible(batch.map(({ gems }) => ({ ...group, gems: [...active, ...gems] })));
+    if (compatible.length !== batch.length) throw new Error('Invalid support compatibility response.');
+    batch.forEach(({ index }, i) => { result[index] = compatible[i]; });
   }
-  return new Set(supports.filter(support => accepts(support, active, types, fromGem)).map(support => support.skill_id));
+  return result;
 }
 
-export function supportSetCompatible(group: SocketGroupInput, gems: GemInput[], catalog: SupportMetadata[]): boolean {
-  const byId = new Map(catalog.map(gem => [gem.skill_id, gem]));
-  const active = group.gems.map(gem => byId.get(gem.skill_id)).filter(gem => known(gem) && !gem.is_support);
-  const supports = gems.map(gem => byId.get(gem.skill_id));
-  if (!active.length || supports.some(gem => !known(gem) || !gem.is_support)) return false;
-  const entries = supports as SupportMetadata[];
-  if (entries.some((gem, index) => entries.slice(0, index).some(other => sameSupportFamily(gem, other)))) return false;
-  const accepted = new Set(active.flatMap(gem => [...supportedBy(gem!, entries, !group.source)]));
-  return entries.every(gem => accepted.has(gem.skill_id));
+export async function supportSetCompatible(group: SocketGroupInput, gems: GemInput[],
+  catalog: SupportMetadata[]): Promise<boolean> {
+  return (await supportSetsCompatible(group, [gems], catalog))[0];
 }
 
 /** Without a modeled copy-limit modifier, keep the game's default of one copy.
@@ -211,15 +191,17 @@ export async function optimizeSupports(options: {
   let unmodeled = 0;
   const refinementBudget = 768;
   const estimate = pool.length * 2 + current.length + refinementBudget;
-  const run = async (sets: GemInput[][]): Promise<SupportPlan[]> => {
-    const candidates = sets.filter(supports => {
+  const run = async (sets: GemInput[][], limit = Infinity): Promise<SupportPlan[]> => {
+    const proposed = sets.filter(supports => {
       const key = keyOf(supports);
       if (supports.length > capacity || seen.has(key) || supports.some(gem => !allowedIds.has(gem.skill_id))
-        || !supportSetCompatible(group, supports, catalog)
         || supports.some(input => !lineageAvailable(byId.get(input.skill_id)!, request.socket_groups ?? [], groupIndex))) return false;
       seen.add(key);
       return true;
     });
+    const compatible = await supportSetsCompatible(group, proposed, catalog);
+    signal?.throwIfAborted();
+    const candidates = proposed.filter((_, index) => compatible[index]).slice(0, limit);
     const accepted: SupportPlan[] = [];
     for (let start = 0; start < candidates.length; start += 512) {
       signal?.throwIfAborted();
@@ -265,9 +247,9 @@ export async function optimizeSupports(options: {
     const proposals = beam.flatMap(state => shortlist
       .filter(gem => !state.supports.some(input => sameSupportFamily(byId.get(input.skill_id)!, gem)))
       .map(gem => [...state.supports, toInput(gem)]));
-    const fresh = proposals.filter(supports => !seen.has(keyOf(supports)) && supportSetCompatible(group, supports, catalog));
-    const round = await run(fresh.slice(0, remaining));
-    remaining -= fresh.slice(0, remaining).length;
+    const before = evaluated;
+    const round = await run(proposals, remaining);
+    remaining -= evaluated - before;
     const depthRows = rows.filter(plan => plan.supports.length === depth).sort(compare);
     beam = depthRows.slice(0, 6);
     if (!beam.length && !round.length) break;
