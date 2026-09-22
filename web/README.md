@@ -43,6 +43,9 @@ cargo test -p pobr-wasm --test gen_fixtures -- --ignored
 
 ## Development and validation
 
+For standalone engine downloads, Browser/Node.js integration, the agent skill
+and the Release CI size comparison, see [WASM packages](../docs/wasm-package.md).
+
 Follow the change-scoped validation policy in [CLAUDE.md](../CLAUDE.md).
 Run the relevant Vitest files and typecheck; add the matching Playwright spec
 for interaction changes. Rebuild WASM if missing or after changes to its Rust
@@ -66,6 +69,8 @@ calculations. Validate Worker changes in the actual workerd runtime.
 | `pnpm --dir web test:worker` | Worker tests in the actual workerd runtime |
 | `pnpm --dir web exec playwright test e2e/build-roundtrip.spec.ts` | Selected E2E spec; requires current dist and prepared WASM/data |
 | `pnpm --dir web build-wasm` | rebuild the wasm package |
+| `pnpm --dir web package-wasm` | package prepared WASM/data and report size in `.cache/wasm-release/` |
+| `pnpm --dir web smoke-wasm-package` | extract and calculate using the standalone archive |
 | `pnpm --dir web sync-data` | re-sync game data into public/ |
 | `pnpm --dir web build-tree-art` | regenerate committed PoB2 tree node icons/frames in public/tree-art/ from vendor DDS — only after a data/vendor bump (needs vendor checkout + zstd + ImageMagick) |
 

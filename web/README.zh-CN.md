@@ -38,6 +38,9 @@ cargo test -p pobr-wasm --test gen_fixtures -- --ignored
 
 ## 开发与验证
 
+独立引擎下载、Browser/Node.js 接入、agent 技能、Release 附件及 CI 体积比较见
+[WASM 打包说明](../docs/wasm-package.md)。
+
 验证范围遵循根目录 [CLAUDE.md](../CLAUDE.md#验证分层本地提交默认定向验证)。
 日常修改运行相关 Vitest 文件与 typecheck；交互变化补对应 Playwright spec。
 WASM 产物缺失或其 Rust 源码、依赖、features、工具链变化时重建 WASM；源数据变化或同步数据缺失时

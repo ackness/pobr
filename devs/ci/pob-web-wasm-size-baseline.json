@@ -1,0 +1,10 @@
+{
+  "project": "krauthaufen/pob-web",
+  "source": "https://github.com/krauthaufen/pob-web",
+  "provenance": "User-provided approximate disk sizes; upstream revision and measurement date unknown. Not a live measurement or a feature-parity claim.",
+  "files": [
+    { "name": "lua.wasm", "bytes": 262144, "approximate": true },
+    { "name": "lua.mjs", "bytes": 69120, "approximate": true },
+    { "name": "pob-lua.json.gz", "bytes": 4875878, "approximate": true }
+  ]
+}
