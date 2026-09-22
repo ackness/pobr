@@ -202,7 +202,7 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         // 4 (GlobalEffect/Buff + SkillType Channel negated + SkillType Spell
         // + PerStat Mana div 100). Same consumer as DamageGainAsFire =
         // `calc::damage`'s gain-as matrix; the Mana denominator is
-        // pre-loaded by the orchestration layer's `inject_per_x_multipliers`
+        // populated by core actor preparation and refreshed after resource conversion
         // (cfg.multipliers["Mana"] = the full-pipeline pool value). Root
         // cause of monk-invoker-frost-bomb's 0.66x TotalDPS (missing 80%
         // lightning gain-as).

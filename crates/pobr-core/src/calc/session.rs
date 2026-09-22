@@ -1,3 +1,5 @@
+pub(super) mod preparation;
+
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -621,18 +623,10 @@ impl CalculationSession {
         (base * (1.0 + inc / 100.0) * more).round().max(0.0)
     }
 
-    /// Final total resource pool value (life/mana): runs the same pipeline
-    /// as offence's pool value calculation inside `perform` (OVERRIDE wins →
-    /// `(actor_base + Σbase) × (1 + Σinc/100) × Πmore`, sharing `offence::scaled_pool`),
-    /// i.e. vendor's `output.Life/Mana` (CalcOffence's pool section). Used
-    /// by the orchestration layer, after every source is injected, to copy
-    /// back a PerStat resource denominator (vendor's PerStat tag reads an
-    /// actor's **output**, ModStore.lua:440-460's GetStat) --
-    /// [`base_sum`](Self::base_sum) only sums BASE and misses the post-inc/more pool value.
     /// Final Spirit pool value (vendor `output.Spirit`, sharing
     /// [`calc_spirit_pool`]'s source: OVERRIDE → (base + Extra) ×
     /// unconverted ratio × (1+Σinc/100) × Πmore, rounded).
-    /// Used by the orchestration layer to copy back the PerStat `Spirit`
+    /// Used by actor preparation to populate the PerStat `Spirit`
     /// denominator -- vendor's PerStat reads the actor output
     /// (ModStore.lua:440-460's GetStat), and BASE-only would under-count
     /// "+2 Armour per 1 Spirit" (wolf-pack's Perfidy, Spirit 336 vs base 300).
@@ -642,6 +636,9 @@ impl CalculationSession {
         super::calc_spirit_pool(&self.env.player.mod_db, &self.env.cfg)
     }
 
+    /// Current life/mana pool, using the same OVERRIDE/base/INC/MORE calculation as
+    /// offence. Before `perform`, this excludes later buff expansion and defensive
+    /// resource conversion. Actor preparation and `perform` own the two snapshot times.
     pub fn pool_total(&self, name: &str) -> f64 {
         let actor_base = match name {
             "MaximumLife" => self.env.player.base.life,

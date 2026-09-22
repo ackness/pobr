@@ -83,8 +83,12 @@ use buffs::*;
 mod collect;
 use collect::*;
 mod stat_map;
+pub use stat_map::StatMapCompareRecord;
 use stat_map::*;
-pub use stat_map::{StatMapCompareRecord, take_stat_map_compare_records};
+mod prepare;
+use prepare::*;
+mod context;
+use context::CalculationContext;
 mod inject;
 use inject::*;
 
@@ -121,7 +125,7 @@ pub struct DataOrchestratorOptions {
     pub mode_effective: bool,
     /// The statmap mapping channel. Defaults to [`StatMapMode::Data`]; `Compare` is a
     /// pure observation mode (output identical to Data; the outcome record is retrieved
-    /// via [`take_stat_map_compare_records`]).
+    /// via [`calculate_with_data_report`]).
     pub stat_map_mode: StatMapMode,
     /// The statmap data catalog (`overlay/skill_stat_map.json` loaded and injected via
     /// gamedata). `None` (default) = falls back to [`BuildData::stat_map_catalog`]
@@ -159,7 +163,7 @@ pub enum StatMapMode {
     Data,
     /// Observation comparison: the Data computation + recording a mapping outcome per
     /// stat (**output identical to Data**; pure observation that changes no computed
-    /// result; records are retrieved via [`take_stat_map_compare_records`]). Kept as a
+    /// result; records are retrieved via [`calculate_with_data_report`]). Kept as a
     /// long-term comparison framework after the Legacy heuristic was removed (T2.4) —
     /// config / parser dual-runs reuse the same pattern. Reverting after old code
     /// removal = reverting the removal commit.
@@ -421,31 +425,56 @@ pub fn calculate_with_data_session(
     data: &BuildData,
     options: &DataOrchestratorOptions,
 ) -> Result<CalculationSession, BuildError> {
-    // The statmap channel context: the guard's scope = this calculation; defaults to
-    // Data (the T2.4 switch). The catalog prefers what the orchestrator options
-    // explicitly inject, falling back to BuildData's catalog loaded alongside the data
-    // pack when absent; Compare is pure observation (the diff record is taken by the caller).
-    let _stat_map_guard = install_stat_map_context(
-        options.stat_map_mode,
-        options
-            .stat_map_catalog
-            .clone()
-            .or_else(|| data.stat_map_catalog.clone()),
-    );
+    calculate_with_data_report(build, data, options).map(|report| report.session)
+}
 
+/// A completed calculation and its mapping diagnostics, including trigger sources.
+/// Each report owns its records; subsequent calculations cannot overwrite them.
+pub struct CalculationReport {
+    pub session: CalculationSession,
+    pub stat_map_records: Vec<StatMapCompareRecord>,
+}
+
+/// Calculates a build and returns the observations requested by `stat_map_mode`.
+pub fn calculate_with_data_report(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+) -> Result<CalculationReport, BuildError> {
+    let mut context = CalculationContext::new(data, options);
+    let session = calculate_with_context(build, data, options, &mut context)?;
+    Ok(CalculationReport {
+        session,
+        stat_map_records: context.compare_records,
+    })
+}
+
+fn calculate_with_context(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+    context: &mut CalculationContext,
+) -> Result<CalculationSession, BuildError> {
     // Stage 0: build view transformation (Ring3 gate → item-granted skill synthesis → quality conversion)
     let build = stage_build_view(build, data);
     let build: &Build = &build;
 
-    // Stages 1-4: pre-session resolution (order = dependency: main skill → config → cfg → weapon base)
-    let mut ctx = StageCtx::new(build, data, options);
-    stage_resolve_main_skill(&mut ctx);
-    stage_resolve_config(&mut ctx);
-    stage_build_cfg(&mut ctx);
-    stage_weapon_bases(&mut ctx);
+    let main = stage_resolve_main_skill(build, data);
+    let (resolved_config, base_cfg) = stage_resolve_config(build, data, options);
+    let (cfg, enemy_tier) =
+        stage_build_cfg(build, data, options, &main, &resolved_config, base_cfg);
+    let weapons = stage_weapon_bases(build, data, &main, options.base_input);
+    let ctx = StageCtx {
+        build,
+        data,
+        options,
+        main,
+        weapons,
+        resolved_config,
+        enemy_tier,
+    };
 
-    // Stage 5+: session assembly + source injection (numbering follows the existing assembly-order doc)
-    let mut session = stage_create_session(&mut ctx);
+    let mut session = stage_create_session(&ctx, cfg);
     stage_hand_sources(&mut session, &ctx);
     stage_cooldown_bypass(&mut session, &ctx);
 
@@ -453,27 +482,21 @@ pub fn calculate_with_data_session(
     inject_character_base(&mut session, build, data, options, &ctx.resolved_config);
 
     // 1b/1b-ii/1c. Main skill base/quality/unselected-set/DoT/corpse-explosion/crossbow/support/trigger + damage multiplier + weapon crit.
-    inject_main_skill_mods(
-        &mut session,
-        build,
-        data,
-        options,
-        &ctx.main_skill,
-        ctx.dmg_mult,
-    );
+    inject_main_skill_mods(context, &mut session, &ctx);
 
     // 1d. Item base defence / shield base block / per-item Spirit / Ward → BASE mods.
     inject_defence_base(&mut session, build, data);
 
     // 2. Equipment: attribution-path injection (per-item filter / Kalandra mirroring / local mod stripping / slot bonus numeric copies).
     let main_weapon_active = ctx
+        .main
         .main_effect
         .is_some_and(|e| e.is_attack() && !e.is_non_weapon_attack());
     inject_items(
         &mut session,
         build,
         data,
-        ctx.off_weapon.is_some(),
+        ctx.weapons.off_hand_weapon.is_some(),
         main_weapon_active,
     )?;
 
@@ -496,14 +519,15 @@ pub fn calculate_with_data_session(
     inject_skill_gems(&mut session, build, data)?;
 
     // 4b/4b'/4b''. Aura·curse BuffSpec + support-granted buffs + herald presence count/conditions.
-    inject_buffs_and_heralds(&mut session, build, data);
+    inject_buffs_and_heralds(context, &mut session, build, data);
 
     // 4c/4c'/4d. Mark's self offensive buff + non-main-group exposure supports + Spirit reservation aggregation.
     inject_self_buff_exposure_spirit(
+        context,
         &mut session,
         build,
         data,
-        ctx.main_skill.as_ref().map(|(_, g, _)| *g),
+        ctx.main.main_skill.as_ref().map(|(_, g, _)| *g),
     );
 
     // 5/5a/5b. Enemy configuration (setup_enemy) + the config interpreter's enemy bucket + player-applied elemental exposure.
@@ -518,11 +542,17 @@ pub fn calculate_with_data_session(
     // 6. Extra global text (campaign rewards / debug overrides).
     stage_inject_extra_texts(&mut session, &ctx)?;
 
-    // 6b. PoE2 attribute derivation (final Str/Dex/Int → Life/Mana/Accuracy delta).
-    inject_attribute_derivation(&mut session, build, data, options);
-
-    // 6c. Backfills per-X resource/attribute scaling amounts (PoB2's PerStat denominator variables).
-    inject_per_x_multipliers(&mut session, build, data);
+    // Core owns actor-derived values; build supplies starting attributes and equipment facts.
+    let class = options.inject_character_base.then(|| {
+        character_base(build, data).unwrap_or(CharacterBase {
+            level: build.character.level,
+            strength: 0.0,
+            dexterity: 0.0,
+            intelligence: 0.0,
+        })
+    });
+    session.prepare_player_stats(build.character.level, class);
+    inject_build_multipliers(&mut session, build, data);
 
     // 6c2. Equipped support gems counted by color (matching PoB2
     //      CalcSetup.lua:2015-2044) → Red/Green/BlueSupportGems multipliers (the
@@ -530,13 +560,7 @@ pub fn calculate_with_data_session(
     //      least 10 <color> Support Gems Socketed").
     inject_support_gem_counts(&mut session, build, data);
 
-    // 6d. Source-granted condition flags → cfg condition bridging (Bonded modifiers / Arcane Surge).
-    inject_condition_bridges(&mut session);
-
-    // 6e. The low-life automatic condition (matching vendor CalcDefence.lua:335-350:
-    //     unreserved ratio ≤ 0.35 → Condition:LowLife). Must run after reservation
-    //     mods are injected (4d) and pool values are computable (6c).
-    session.bridge_low_pool_conditions();
+    session.bridge_player_conditions();
 
     // Diagnostic dumps (POBR_DBG_UNSUPPORTED / ALLMODS / STAT, for parity investigation).
     stage_debug_dumps(&session);
@@ -557,78 +581,15 @@ pub fn calculate_with_data_session(
     Ok(session)
 }
 
-/// The inter-stage context for [`calculate_with_data_session`]: each pre-session
-/// resolution stage ([`stage_resolve_main_skill`] → [`stage_resolve_config`] →
-/// [`stage_build_cfg`] → [`stage_weapon_bases`]) fills in fields in order, and the
-/// session stage only reads them. Each field's comment notes which stage produces it;
-/// see each stage fn's doc comment for the ordering constraints between stages.
+/// Fully resolved inputs used by source injection. No field is filled by a later stage.
 struct StageCtx<'a> {
     build: &'a Build,
     data: &'a BuildData,
     options: &'a DataOrchestratorOptions,
-    /// The main skill's per-level parameters + owning group + real skill id (from stage_resolve_main_skill).
-    main_skill: Option<(ResolvedSkillLevel, &'a SocketGroup, &'a str)>,
-    /// The main skill's granted effect definition (from stage_resolve_main_skill; meta/trigger shells already skipped).
-    main_effect: Option<&'a GrantedEffectDef>,
-    /// The main skill's **final** type set (from stage_resolve_main_skill; the addSkillTypes fixed point).
-    main_skill_types: Vec<String>,
-    /// Main skill type → cfg damage flags (from stage_resolve_main_skill).
-    skill_flags: ModFlags,
-    /// Main skill type → `cfg.skill_types` classification bits (from stage_resolve_main_skill).
-    skill_type_bits: SkillTypes,
-    /// Main skill keyword + main weapon category → extra damage-scaling ModName (from
-    /// stage_resolve_main_skill; taken by stage_build_cfg and folded into cfg).
-    dmg_keywords: Vec<String>,
-    /// The config consumption view (from stage_resolve_config).
+    main: ResolvedMainSkill<'a>,
+    weapons: ResolvedWeapons,
     resolved_config: crate::config_resolve::ResolvedConfig,
-    /// The calc context (stage_resolve_config produces the base, stage_build_cfg layers
-    /// on skill-derived pieces; reset to default once stage_create_session takes it).
-    cfg: CalcConfig,
-    /// Enemy tier (from stage_build_cfg: the build XML's explicit value takes priority,
-    /// falling back to the orchestrator option when absent).
     enemy_tier: EnemyTier,
-    /// The base calculation input (new() takes it from the orchestrator options,
-    /// stage_weapon_bases backfills the action rate).
-    base_input: MinimalInput,
-    /// The skill damage multiplier (from stage_weapon_bases).
-    dmg_mult: f64,
-    /// The main-hand weapon base contribution (from stage_weapon_bases; attack skills only).
-    weapon: Option<WeaponContribution>,
-    /// The dual-wielding off-hand weapon base contribution (from stage_weapon_bases).
-    off_weapon: Option<WeaponContribution>,
-    /// The main hand's converted HandSource value (from stage_weapon_bases).
-    hand_weapon: Option<pobr_core::calc::WeaponBase>,
-    /// The off hand's converted HandSource value (from stage_weapon_bases).
-    off_hand_weapon: Option<pobr_core::calc::WeaponBase>,
-    /// Whether the main skill bypasses cooldown (from stage_weapon_bases; used the
-    /// instant a charge is consumed, e.g. Flicker).
-    bypasses_cooldown: bool,
-}
-
-impl<'a> StageCtx<'a> {
-    fn new(build: &'a Build, data: &'a BuildData, options: &'a DataOrchestratorOptions) -> Self {
-        Self {
-            build,
-            data,
-            options,
-            main_skill: None,
-            main_effect: None,
-            main_skill_types: Vec::new(),
-            skill_flags: ModFlags::NONE,
-            skill_type_bits: SkillTypes::NONE,
-            dmg_keywords: Vec::new(),
-            resolved_config: crate::config_resolve::ResolvedConfig::default(),
-            cfg: CalcConfig::default(),
-            enemy_tier: options.enemy_tier,
-            base_input: options.base_input,
-            dmg_mult: 1.0,
-            weapon: None,
-            off_weapon: None,
-            hand_weapon: None,
-            off_hand_weapon: None,
-            bypasses_cooldown: false,
-        }
-    }
 }
 
 /// Stage 0: build view transformation (the collapsed form of what was originally a
@@ -733,401 +694,20 @@ fn resolve_name_spec_gems(build: &Build, data: &BuildData) -> Option<Build> {
     changed.then_some(out)
 }
 
-/// Stage 1: main skill resolution — per-level parameters, the final skillTypes fixed
-/// point (matching vendor CalcActiveSkill.lua:179-214), damage flags / classification
-/// bits / damage keywords. Must run first: the action rate needs to go into base_input
-/// (stage_weapon_bases), and the type flags / combat conditions need to go into cfg
-/// (stage_build_cfg) — both consume this stage's output.
-fn stage_resolve_main_skill(ctx: &mut StageCtx<'_>) {
-    let (build, data) = (ctx.build, ctx.data);
-    // The main skill's per-level parameters (cast/attack time → action rate; cost /
-    // cooldown injected via BASE mods). Resolved before building the session, so the
-    // action rate can be written into base_input + the cfg damage flags can be set based on its type.
-    ctx.main_skill = resolve_main_skill(build, data);
-
-    // Main skill type → cfg damage flags (Attack/Spell/Projectile/Area/Melee), making
-    // `increased <Projectile|Area|Spell|Melee> Damage` apply to this skill (damage
-    // aggregation picks these up by flag name). Main skill's effect definition: uses the
-    // **real main skill id** resolved by resolve_main_skill (meta/trigger shells already
-    // skipped), not the first gem's active_skill_id in the group (which is a meta shell
-    // in a multi-active-skill group, causing flag/damage-type mismatches).
-    ctx.main_effect = ctx
-        .main_skill
-        .as_ref()
-        .and_then(|(_, _, skill_id)| data.granted_effects.get(*skill_id));
-    // The main skill's **final** type set = its own skill_types + the addSkillTypes
-    // fixed point over compatible supports (matching vendor CalcActiveSkill.lua:179-214,
-    // which merges addSkillTypes into activeSkill.skillTypes, with every downstream
-    // flag/condition derivation using the final set — e.g. Cast on Critical adds
-    // `Triggered` to the triggered spell, making the "Triggered Spells deal …" mod
-    // family hit + the combat-condition trigger exemption apply per vendor :248).
-    // Sorted for determinism.
-    ctx.main_skill_types = ctx
-        .main_skill
-        .as_ref()
-        .map(|(_, group, skill_id)| {
-            let mut types: Vec<String> = judge_group_supports(group, data, skill_id)
-                .final_skill_types
-                .into_iter()
-                .collect();
-            // A meta trigger shell's `Triggered`: vendor injects this from the gem's
-            // **support half** (e.g. Cast on Critical → SupportMetaCastOnCritPlayer's
-            // addSkillTypes=[Triggered]); PoBR's cataloged data doesn't model a gem's
-            // second granted-effect half (skill_gems only has the primary
-            // grantedEffect half), so this backfills equivalently using the existing
-            // trigger recognition (trigger_configs's four-level key, the same
-            // determination as trigger_modifiers).
-            if !types.iter().any(|t| t == "Triggered")
-                && recognize_trigger_config(data, group, skill_id).is_some()
-            {
-                types.push("Triggered".to_string());
-            }
-            types.sort();
-            types
-        })
-        .unwrap_or_default();
-    ctx.skill_flags = ctx
-        .main_effect
-        .map(|_| skill_type_flags(&ctx.main_skill_types))
-        .unwrap_or(ModFlags::NONE);
-    // Main skill type → `cfg.skill_types` classification bits: `is_attack()` drives the
-    // hit-chance check (only attacks do an accuracy/evasion check, vendor
-    // CalcOffence.lua:2611); see skill_type_bits's doc.
-    ctx.skill_type_bits = ctx
-        .main_effect
-        .map(|_| skill_type_bits(&ctx.main_skill_types))
-        .unwrap_or(SkillTypes::NONE);
-    ctx.dmg_keywords = damage_keywords(
-        build,
-        data,
-        ctx.main_effect
-            .map(|_| ctx.main_skill_types.as_slice())
-            .unwrap_or(&[]),
-    );
-}
-
-/// Stage 2: closes out config consumption (the primary-path switch) — goes through
-/// `config_interpreter::interpret` when a ConfigCatalog is available (raw_inputs →
-/// conditions/multipliers/scalar wrapping/Config-attributed modifiers); falls back to
-/// the legacy parse_config output when the catalog is missing (tolerant of a missing
-/// table). Produces the base cfg (including backfilling the config multiplier bridge
-/// for the Effective gate); stage_build_cfg layers skill-derived pieces on top of it.
-fn stage_resolve_config(ctx: &mut StageCtx<'_>) {
-    ctx.resolved_config =
-        crate::config_resolve::resolve_config(ctx.build, ctx.data.config_catalog.as_deref());
-    let mut base_cfg = ctx.resolved_config.config.to_calc_config();
-    // The config multiplier bridge for the Effective gate: the interpreter's bare-effect
-    // Condition bridge only accepts "tagless" entries, so a count-type placeholder for
-    // `Multiplier:<X>` carrying a `Condition:Effective` tag (e.g. vendor
-    // ConfigOptions.lua:1642's `multiplierDifferentGrenadeFired`'s
-    // defaultPlaceholderState=1) doesn't land in cfg.multipliers. Vendor's semantics =
-    // `GetMultiplier` queries modDB directly (the tag is evaluated against cfg; under
-    // EFFECTIVE mode, Effective is always true, CalcSetup.lua:583-588); PoBR's
-    // multiplier goes through a cfg snapshot → backfilled here after evaluating against
-    // mode_effective (only for the single-tag Effective shape; other tag shapes stay on
-    // the mod channel).
-    if ctx.options.mode_effective {
-        for m in &ctx.resolved_config.player_mods {
-            // Only accepts the shape "has tags and they're all Effective" — **an empty-tag
-            // entry must be excluded**: a bare `Multiplier:` effect is already backfilled
-            // into cfg.multipliers by the interpreter's bare-effect path
-            // (config_interpreter.rs:362-377); adding it again here would double-count
-            // (confirmed: sigilOfPowerStages's placeholder 1 got boosted to 2 under
-            // effective semantics, making Sigil of Power's per-stage MORE falsely go
-            // from 17→34). `Combat` and `Effective` share the same gate (vendor's main
-            // output env has both always true, CalcSetup.lua:583-588 + mode_combat;
-            // e.g. `multiplierNearbyAlly`'s `Multiplier:NearbyAlly BASE +
-            // Condition{Combat}` — the denominator for the NearbyAlly≥1 threshold row,
-            // ConfigOptions.lua:1018).
-            if m.mod_type == ModType::Base
-                && let Some(var) = m.name.as_str().strip_prefix("Multiplier:")
-                && let pobr_core::ModValue::Number(n) = m.value
-                && !m.tags.is_empty()
-                && m.tags.iter().all(|t| {
-                    matches!(t, pobr_core::ModTag::Condition { var, negated: false, actor: None } if var == "Effective" || var == "Combat")
-                })
-            {
-                *base_cfg.multipliers.entry(var.to_string()).or_insert(0.0) += n;
-            }
-        }
-    }
-    ctx.cfg = base_cfg;
-}
-
-/// Stage 3: cfg assembly — layers the main skill's damage flags / classification bits /
-/// display name / keywords / mode toggles onto the base cfg (matching vendor
-/// CalcSetup.lua:583-597's buffMode "EFFECTIVE" semantics), then adds combat
-/// conditions, enemy tier conditions, PoB2's condition implication chain, and
-/// build-state equipment/weapon conditions. Depends on stage 1/2's output
-/// (skill_flags / base cfg), must run before session creation (with_config replaces cfg wholesale).
-fn stage_build_cfg(ctx: &mut StageCtx<'_>) {
-    let (build, data, options) = (ctx.build, ctx.data, ctx.options);
-    let base_cfg = std::mem::take(&mut ctx.cfg);
-    let base_flags = base_cfg.flags;
-    let mut cfg = base_cfg
-        .with_flags(base_flags | ctx.skill_flags)
-        .with_skill_types(ctx.skill_type_bits)
-        // Main skill's display name (matching vendor's `skillCfg.skillName`): the
-        // matching semantics for the special channel's `SkillName` tag. Same source as
-        // gem_level_category_matches (skill_name_from_id, lowercase).
-        .with_skill_name(
-            ctx.main_skill
-                .as_ref()
-                .map(|(_, _, skill_id)| skill_resolve::skill_name_from_id(skill_id)),
-        )
-        .with_damage_keywords(std::mem::take(&mut ctx.dmg_keywords))
-        .with_mode_effective(options.mode_effective)
-        // Vendor's buffMode is always "EFFECTIVE" outside CALCS mode
-        // (CalcSetup.lua:583-597 → env.mode_buffs = true), so mode_buffs is always set
-        // here — enabling buff_pass (the aura multiplier zone / curse priority+limit).
-        // mode_effective still follows the caller's option.
-        .with_mode_buffs(true)
-        // Same as above (CalcSetup.lua:583-597's buffMode "EFFECTIVE" →
-        // env.mode_combat = true). Activation surface: automatic combat condition
-        // setting (combat_conditions below) + env_finalize stage 3's flask/charm merge +
-        // stage 6's buff_expander.
-        .with_mode_combat(true);
-    // DistanceRamp's skillDist (matching vendor CalcActiveSkill.lua:671+684, 0.22.0):
-    // `effectiveRange = env.configInput.enemyDistance or env.configPlaceholder.enemyDistance`,
-    // `skillDist = env.mode_effective and effectiveRange`. From 0.22.0 on, **a
-    // placeholder feeds skillDist as a fallback** (old vendor only read the explicit
-    // `<Input>` — back then, the demo suite was all placeholders → None → the Close
-    // Combat distance MORE was skipped entirely). The fallback chain matches vendor
-    // ConfigTab: explicit `<Input>` → XML `<Placeholder>` → the catalog's
-    // `defaultPlaceholderState` (ConfigTab.lua:559 pre-fills a placeholder default for
-    // an entry with no value, enemyDistance = 20).
-    let skill_distance = options
-        .mode_effective
-        .then(|| {
-            let raw = &build.config.raw_inputs;
-            raw.values
-                .get("enemyDistance")
-                .or_else(|| raw.placeholders.get("enemyDistance"))
-                .and_then(|v| v.as_number())
-                .or_else(|| {
-                    data.config_catalog
-                        .as_deref()
-                        .and_then(|c| c.get("enemyDistance"))
-                        .and_then(|def| def.default.as_ref())
-                        .and_then(|d| d.placeholder_number)
-                })
-        })
-        .flatten();
-    cfg = cfg.with_skill_distance(skill_distance);
-    // SkillStatMap's skill_can_fire_arrows -> skillFlags.arrow ->
-    // CalcActiveSkill's KeywordFlag.Arrow. Use the selected stat set, since
-    // secondary projectiles need not be arrows even when fired from a bow.
-    if ctx.main_skill.as_ref().is_some_and(|(skill, _, _)| {
-        skill
-            .base_damage
-            .iter()
-            .any(|stat| stat.stat == "skill_can_fire_arrows" && stat.value != 0.0)
-    }) {
-        cfg.keyword_flags = cfg.keyword_flags | pobr_data::modifier::KeywordFlags::ARROW;
-    }
-    // Main skill-derived combat conditions (read directly from vendor
-    // CalcPerform.lua:242-266's `if env.mode_combat` section): attack/spell/Movement/
-    // Minion/Vaal/Channel → "...Recently"/Channelling conditions;
-    // triggered/trap/mine/totem exempted (using the **final** type set — a meta
-    // support's addSkillTypes `Triggered` makes the exemption apply, matching vendor :248).
-    if ctx.main_effect.is_some() {
-        for cond in combat_conditions(&ctx.main_skill_types, ctx.skill_flags) {
-            cfg = cfg.with_condition(cond, true);
-        }
-    }
-    // Enemy tier (19-G3 wiring): the build XML Config's explicitly saved `enemyIsBoss`
-    // takes priority; falls back to the caller's orchestrator option when omitted
-    // (PoB2's defaultIndex=3 = Pinnacle, matching existing callers).
-    ctx.enemy_tier = ctx
-        .resolved_config
-        .config
-        .enemy_tier
-        .unwrap_or(options.enemy_tier);
-    // Enemy rarity condition: the default DPS view vs. Boss/Pinnacle/Uber (= Unique) →
-    // set true, making condition-type damage boosts like "... against Rare or Unique
-    // Enemies" apply (PoB's boss-DPS semantics).
-    if matches!(
-        ctx.enemy_tier,
-        EnemyTier::Boss | EnemyTier::Pinnacle | EnemyTier::Uber
-    ) {
-        cfg = cfg
-            .with_condition("Unique", true)
-            .with_condition("RareOrUnique", true);
-    }
-
-    // PoB2's condition implication chain (ConfigOptions.lua's `implyCond`/
-    // `implyCondList`): a parent condition checked in build config automatically sets
-    // several child conditions true. PoBR only reads build config's parent condition
-    // names, so implications must be filled in here, or child-condition-type mods
-    // (already parsed by PoBR as condition tags) wouldn't apply. Generic, independent of build/skill.
-    cfg = apply_condition_implications(cfg);
-
-    // PoB2's `Condition:UsingShield` (CalcSetup: set true when the off-hand is a
-    // shield). Determined from whether the current active equipment group's off-hand
-    // slot has a shield-category base — a build-state default, consistent across the
-    // whole build, not specialized.
-    if main_hand_offhand_is_shield(build, data) {
-        cfg = cfg.with_condition("UsingShield", true);
-    }
-    // Enemy within Presence (matching vendor CalcPerform.lua:524's
-    // `condList["EnemyInPresence"] = PresenceRadius >= enemyDistance`): the default
-    // Presence radius (a few meters) is always greater than the default enemy distance
-    // → true by default, making the "Enemies in your Presence ..." enemy-side mod
-    // family apply.
-    // ponytail: pobr doesn't model a numeric PresenceRadius/enemyDistance comparison,
-    // always sets it true; if a user pulls enemyDistance out far, the semantics gap is
-    // left for the parity gate to flag before being wired up.
-    if !cfg.conditions.contains_key("EnemyInPresence") {
-        cfg = cfg.with_condition("EnemyInPresence", true);
-    }
-    // Companion-in-presence condition (matching vendor ConfigOptions.lua:1012-1014's
-    // `companionInPresence`, defaultState=true, gated by ifSkillType=CreatesCompanion):
-    // set true by default when an enabled skill includes `CreatesCompanion`, making the
-    // "while your Companion is in your Presence" mod family apply (twister's tree node
-    // Tree:37769's +10 INC). An explicit config input (the XML's `companionInPresence`)
-    // takes priority; falls back to the default only when absent.
-    if !cfg.conditions.contains_key("CompanionInPresence") && build_has_companion_skill(build, data)
-    {
-        cfg = cfg.with_condition("CompanionInPresence", true);
-    }
-    // The equipment condition for the "Body Armour grants <mod>" prefix family
-    // (matching PoB2 ModParser.lua:1418 / :3255-3268's
-    // `ItemCondition{itemSlot="Body Armour", rarityCond="NORMAL"}`): set true when the
-    // body armour slot has an item equipped with Normal rarity. A build-state default,
-    // consistent across the whole build, not specialized.
-    if build
-        .items
-        .get(&EquipmentSlot::BodyArmour)
-        .is_some_and(|item| item.rarity == pobr_data::item::ItemRarity::Normal)
-    {
-        cfg = cfg.with_condition("NormalBodyArmourEquipped", true);
-    }
-    // Main-hand weapon category → grip conditions (makes tree/mods like "... with
-    // Quarterstaves" or "while Dual Wielding" apply). Cooldown-limited main skills
-    // (grenades) are no longer a special case — the old "attack-speed compensates
-    // throughput" approximation has been removed; the end of the speed chain uniformly
-    // uses `min(rate, repeats/effective_cooldown)` (matching vendor's ordering), so
-    // weapon-category attack-speed mods no longer incorrectly amplify grenade rate;
-    // weapon-category conditions / weapon bit flags are enabled fully, matching vendor.
-    for var in weapon_type_conditions(build, data) {
-        cfg = cfg.with_condition(var, true);
-    }
-    // Main-hand weapon bits → cfg.flags: derived from the **same source**
-    // (weapon_type_info table) with the **same gating** as the Using* conditions above
-    // — the mod-side dual-written weapon-bit channel doesn't get a separate activation
-    // path outside the condition channel.
-    let weapon_bits = weapon_cfg_flags(build, data);
-    if !weapon_bits.is_empty() {
-        cfg.flags |= weapon_bits;
-    }
-    ctx.cfg = cfg;
-}
-
-/// Stage 4: weapon base assembly — main skill's use_time → action rate, skill damage
-/// multiplier, main-/off-hand weapon base contribution converted into
-/// [`pobr_core::calc::WeaponBase`] for HandSource, cooldown-bypass determination.
-/// Depends on stage 1's main skill output; must run before session creation (base_input goes into `CalculationSession::new`).
-fn stage_weapon_bases(ctx: &mut StageCtx<'_>) {
-    let (build, data) = (ctx.build, ctx.data);
-    if let Some((skill, _, skill_id)) = &ctx.main_skill
-        && let Some(use_time) = skill.use_time_s
-        && use_time > 0.0
-    {
-        if pobr_core::dbg_env!("POBR_DBG_SPEED").is_some() {
-            eprintln!("[POBR_DBG_SPEED] main skill_id={skill_id} use_time={use_time}");
-        }
-        ctx.base_input.base_action_rate = 1.0 / use_time;
-    }
-
-    // Skill damage multiplier (PoB's baseMultiplier, e.g. a grenade's 7.57): scales weapon hit + added damage.
-    ctx.dmg_mult = ctx
-        .main_skill
-        .as_ref()
-        .map(|(s, _, _)| s.damage_multiplier)
-        .filter(|m| *m > 0.0)
-        .unwrap_or(1.0);
-
-    // Weapon base contribution (attack skills only): hit physical damage (× skill
-    // multiplier) + attack rate override. Uses the resolved real main skill id (meta
-    // shells skipped), ensuring correct attack/spell determination and weighting.
-    //
-    // Weapon base no longer folds directly into `base_input`; it's now assembled into a
-    // `HandSource` and injected via `set_hand_sources`, and `perform`'s internal
-    // `run_hand_passes` injects the same set of values into a per-hand `MinimalInput`
-    // copy — a single HandSource is value-for-value equal to the old conversion (a
-    // direct pass-through, pinned by an equivalence test). The conversion semantics are
-    // unchanged: phys × dmg_mult, attack_rate × attackSpeedMultiplier (matching
-    // CalcOffence L2721-2723).
-    ctx.weapon = ctx
-        .main_skill
-        .as_ref()
-        .and_then(|(skill, _, skill_id)| weapon_contribution(build, data, skill_id, skill));
-    // Dual-wielding off-hand: when the main hand is a real one-handed weapon and
-    // Weapon2 is also a weapon base, assembles a second off-hand weapon source
-    // (matching vendor's weapon2Attack pass, CalcOffence.lua:2369-2449).
-    ctx.off_weapon = ctx
-        .weapon
-        .as_ref()
-        .and_then(|_| dual_wield_off_hand_contribution(build, data, ctx.main_effect));
-    let asm = ctx
-        .main_skill
-        .as_ref()
-        .and_then(|(s, _, _)| s.attack_speed_multiplier)
-        .map_or(1.0, |m| 1.0 + m / 100.0);
-    let dmg_mult = ctx.dmg_mult;
-    let to_hand_base = |w: &WeaponContribution| pobr_core::calc::WeaponBase {
-        hit_min: w.phys_min * dmg_mult,
-        hit_max: w.phys_max * dmg_mult,
-        attack_rate: (w.attack_rate > 0.0).then_some(w.attack_rate * asm),
-        crit_chance: w.crit_chance,
-        flags: w.flags,
-    };
-    ctx.hand_weapon = ctx.weapon.as_ref().map(to_hand_base);
-    ctx.off_hand_weapon = ctx.off_weapon.as_ref().map(to_hand_base);
-
-    // Cooldown-limited rate: PoB's order — first fully compute every speed inc/more,
-    // then apply `min(rate, 1/effective_cooldown)` (effective_cooldown shortened via
-    // `CooldownRecovery`). This min is pushed down into offence.rs's
-    // `apply_cooldown_cap`, which reads `SkillCooldownBase` BASE (injected by
-    // `skill_base_modifiers`) + `CooldownRecovery` (aggregated across the whole
-    // statmap/quality/tree/quest chain) + `SkillStoredUsesBase` (no rounding to a
-    // frame when stored uses >1). Spells and cooldown-limited attacks (grenades)
-    // uniformly go through this semantics (the old "attack speed compensates
-    // throughput" pre-truncation approximation has been removed — the throughput
-    // multiplier is now handled by GrenadeActivateTwice → dps_end_factors, matching
-    // vendor CalcOffence.lua:2852-2856's ordering).
-    //
-    // Exception (bypasses cooldown): a skill whose cooldown resets by consuming charges
-    // (e.g. Flicker Strike's `SkillConsumesPowerChargesOnUse`) → PoB2's Cooldown=nil,
-    // fires at attack speed unrestricted → `CooldownBypass`.
-    //
-    // Whether the main skill bypasses cooldown (used the instant a charge is consumed,
-    // e.g. Flicker) → injects `CooldownBypass` (single source).
-    ctx.bypasses_cooldown = ctx
-        .main_effect
-        .map(|e| {
-            e.skill_types
-                .iter()
-                .any(|t| t == "SkillConsumesPowerChargesOnUse")
-        })
-        .unwrap_or(false);
-}
-
 /// Stage 5: session creation + runtime rule-pack injection (constants / special /
 /// parser rules, buff definitions / handlers, curse priority, rounding precision).
 /// Rule injection must precede any subsequent `add_item` / `add_passive_nodes` /
 /// `add_gem` (each injection point's comment notes the basis).
-fn stage_create_session(ctx: &mut StageCtx<'_>) -> CalculationSession {
+fn stage_create_session(ctx: &StageCtx<'_>, cfg: CalcConfig) -> CalculationSession {
     let data = ctx.data;
-    let mut session =
-        CalculationSession::new(ctx.base_input).with_config(std::mem::take(&mut ctx.cfg));
+    let mut session = CalculationSession::new(ctx.weapons.base_input).with_config(cfg);
     // The injection pipeline: injects the runtime constants bundle loaded by GameData
     // into calc (must come after with_config — with_config replaces cfg wholesale). The
     // data is value-for-value equal to the Default fallback, zero behavior change.
     session.set_constants(data.constants.clone());
     // CalcSetup supplies one base projectile; SkillStatMap count overrides
     // subtract that one. Only projectile skills expose this output.
-    if ctx.skill_flags.intersects(ModFlags::PROJECTILE) {
+    if ctx.main.skill_flags.intersects(ModFlags::PROJECTILE) {
         session.add_modifiers(vec![
             Modifier::number("ProjectileCount", ModType::Base, 1.0)
                 .with_source("Base projectile count"),
@@ -1172,14 +752,15 @@ fn stage_create_session(ctx: &mut StageCtx<'_>) -> CalculationSession {
 /// doubleHitsWhenDualWielding are always false. A non-weapon attack's (Shield Wall type)
 /// source is off-hand (matching PoB2 CalcOffence L2418-2431).
 fn stage_hand_sources(session: &mut CalculationSession, ctx: &StageCtx<'_>) {
-    if let Some(wb) = ctx.hand_weapon {
+    if let Some(wb) = ctx.weapons.hand_weapon {
         let is_off_hand_source = ctx
+            .main
             .main_effect
             .map(|e| e.is_attack() && e.is_non_weapon_attack())
             .unwrap_or(false);
         let sources = if is_off_hand_source {
             vec![pobr_core::calc::HandSource::off_hand(wb)]
-        } else if let Some(ohb) = ctx.off_hand_weapon {
+        } else if let Some(ohb) = ctx.weapons.off_hand_weapon {
             vec![
                 pobr_core::calc::HandSource::main_hand(wb),
                 pobr_core::calc::HandSource::off_hand(ohb),
@@ -1192,6 +773,7 @@ fn stage_hand_sources(session: &mut CalculationSession, ctx: &StageCtx<'_>) {
         // CriticalStrikeChance increases. The main-hand value also serves the
         // preliminary unscoped offence pass; the off-hand pass replaces it.
         let skill_has_own_crit = ctx
+            .main
             .main_skill
             .as_ref()
             .is_some_and(|(skill, _, _)| skill.crit_chance.is_some_and(|c| c > 0.0));
@@ -1220,7 +802,7 @@ fn stage_hand_sources(session: &mut CalculationSession, ctx: &StageCtx<'_>) {
 
 /// Stage 7: cooldown-bypass flag injection (determined in stage 4; `CooldownBypass`'s single source).
 fn stage_cooldown_bypass(session: &mut CalculationSession, ctx: &StageCtx<'_>) {
-    if ctx.bypasses_cooldown {
+    if ctx.weapons.bypasses_cooldown {
         let origin =
             ModifierSource::new(SourceId::new(SourceKind::SkillGem, "skill.cooldownBypass"))
                 .with_raw_text("skill bypasses cooldown (consumes charges on use)");
@@ -1528,6 +1110,11 @@ fn gate_locked_ring3(build: &Build, data: &BuildData) -> Option<Build> {
     let mut gated = build.clone();
     gated.items.remove(&EquipmentSlot::Ring3);
     Some(gated)
+}
+
+#[cfg(test)]
+fn test_context(data: &BuildData) -> CalculationContext {
+    CalculationContext::new(data, &DataOrchestratorOptions::default())
 }
 
 #[cfg(test)]
@@ -2446,14 +2033,10 @@ mod tests {
                 alt: false,
             }],
         );
-        // Calling the number-crunching directly (not via calculate_with_data):
-        // manually install the Data-channel context (after the T2.4 switchover the
-        // data engine is the default; the catalog comes from the directory BuildData loads alongside the data pack).
-        let _guard =
-            install_stat_map_context(StatMapMode::default(), data.stat_map_catalog.clone());
         // q19: trunc(0.55 × 19) = trunc(10.45) = 10 (math.modf semantics, not round).
         let group = SocketGroup::new().with_gem_skill_quality("FireballPlayer", 20, 19);
-        let mods = main_skill_quality_modifiers(&group, &data, "FireballPlayer");
+        let mods =
+            main_skill_quality_modifiers(&mut test_context(&data), &group, &data, "FireballPlayer");
         assert_eq!(mods.len(), 1, "damage_+% should map to a single Damage INC");
         let m = &mods[0];
         assert_eq!(m.name.as_str(), "Damage");
@@ -2469,7 +2052,15 @@ mod tests {
 
         // Quality 0: no quality modifier produced.
         let group0 = SocketGroup::new().with_gem_skill("FireballPlayer", 20);
-        assert!(main_skill_quality_modifiers(&group0, &data, "FireballPlayer").is_empty());
+        assert!(
+            main_skill_quality_modifiers(
+                &mut test_context(&data),
+                &group0,
+                &data,
+                "FireballPlayer"
+            )
+            .is_empty()
+        );
     }
 
     /// The per-set override key of the selected statSet threads through to the
@@ -2502,8 +2093,7 @@ mod tests {
             )
             .expect("synthetic statmap is valid"),
         );
-        let _guard =
-            install_stat_map_context(StatMapMode::default(), Some(std::sync::Arc::new(catalog)));
+        data.stat_map_catalog = Some(std::sync::Arc::new(catalog));
         let skill = ResolvedSkillLevel {
             base_damage: vec![pobr_data::catalog::SkillDamageStat {
                 stat: "synth_stat_+%".into(),
@@ -2515,7 +2105,12 @@ mod tests {
         // statSetIndex=2 → the per-set override hits (ColdDamage).
         let set_key = data.selected_set_key("SynthEff", Some(2));
         assert_eq!(set_key.as_deref(), Some("2"));
-        let mods = skill_base_modifiers(&skill, "SynthEff", set_key.as_deref());
+        let mods = skill_base_modifiers(
+            &mut test_context(&data),
+            &skill,
+            "SynthEff",
+            set_key.as_deref(),
+        );
         let mapped: Vec<&str> = mods
             .iter()
             .filter(|m| m.mod_type == ModType::Inc)
@@ -2525,7 +2120,12 @@ mod tests {
         // Default (primary set, key "1", no override) → falls back to global (Damage).
         let set_key = data.selected_set_key("SynthEff", None);
         assert_eq!(set_key.as_deref(), Some("1"));
-        let mods = skill_base_modifiers(&skill, "SynthEff", set_key.as_deref());
+        let mods = skill_base_modifiers(
+            &mut test_context(&data),
+            &skill,
+            "SynthEff",
+            set_key.as_deref(),
+        );
         let mapped: Vec<&str> = mods
             .iter()
             .filter(|m| m.mod_type == ModType::Inc)
@@ -2571,17 +2171,28 @@ mod tests {
             !unsel.is_empty(),
             "FlameWallPlayer should have an unselected set (set 2 = projectile buff form)"
         );
-        let _guard =
-            install_stat_map_context(StatMapMode::default(), data.stat_map_catalog.clone());
         let group = SocketGroup::new().with_gem_skill("FlameWallPlayer", 20);
-        let mods = unselected_set_global_modifiers(&group, &data, "FlameWallPlayer");
+        let mods = unselected_set_global_modifiers(
+            &mut test_context(&data),
+            &group,
+            &data,
+            "FlameWallPlayer",
+        );
         assert!(
             mods.is_empty(),
             "before M3 wires up the GlobalEffect tag, unselected-set injection should be zero, got {mods:?}"
         );
         // Builder path (no gem_skills): no statSet context → empty.
         let empty_group = SocketGroup::new();
-        assert!(unselected_set_global_modifiers(&empty_group, &data, "FlameWallPlayer").is_empty());
+        assert!(
+            unselected_set_global_modifiers(
+                &mut test_context(&data),
+                &empty_group,
+                &data,
+                "FlameWallPlayer"
+            )
+            .is_empty()
+        );
     }
 
     #[test]
@@ -2656,7 +2267,7 @@ mod tests {
             )
         };
 
-        let specs = support_buff_specs(&host("HeraldOfAshPlayer"), &data);
+        let specs = support_buff_specs(&mut test_context(&data), &host("HeraldOfAshPlayer"), &data);
         assert_eq!(
             specs.len(),
             1,
@@ -2672,7 +2283,7 @@ mod tests {
         assert_eq!(m.value.as_number(), Some(50.0));
 
         assert!(
-            support_buff_specs(&host("FireballPlayer"), &data).is_empty(),
+            support_buff_specs(&mut test_context(&data), &host("FireballPlayer"), &data).is_empty(),
             "non-Persistent-Buff host: require check rejects it, nothing injected"
         );
     }
@@ -2688,16 +2299,12 @@ mod tests {
     #[test]
     fn exposure_support_modifiers_detects_support_granted_inflict() {
         let data = repo_data();
-        // mapped_stat_modifiers reads from a thread-local ctx catalog (the
-        // production path installs it via calculate_with_data) — the test installs it too.
-        let _guard =
-            install_stat_map_context(StatMapMode::default(), data.stat_map_catalog.clone());
         let aux = SocketGroup::new()
             .with_gem_skill("ElementalStormPlayer", 20)
             .with_gem_skill("SupportFireExposurePlayer", 1)
             .with_gem_skill("SupportPotentExposurePlayer", 1);
         let build = Build::new().add_socket_group(aux);
-        let mods = exposure_support_modifiers(&build, &data, None);
+        let mods = exposure_support_modifiers(&mut test_context(&data), &build, &data, None);
         let names: Vec<&str> = mods.iter().map(|m| m.name.as_str()).collect();
         for el in ["Fire", "Cold", "Lightning"] {
             let name = format!("{el}ExposureEffect");
@@ -2715,7 +2322,7 @@ mod tests {
                 .with_gem_skill("SupportPotentExposurePlayer", 1),
         );
         assert!(
-            exposure_support_modifiers(&plain, &data, None).is_empty(),
+            exposure_support_modifiers(&mut test_context(&data), &plain, &data, None).is_empty(),
             "host with no exposure source: the Potent effect mod does not leak globally"
         );
     }
@@ -2731,7 +2338,7 @@ mod tests {
         let build =
             Build::new().add_socket_group(SocketGroup::new().with_gem_skill("WarBannerPlayer", 10));
 
-        let specs = buff_skill_specs(&build, &data);
+        let specs = buff_skill_specs(&mut test_context(&data), &build, &data);
         let banner = specs
             .iter()
             .find(|s| s.skill_id == "WarBannerPlayer")
@@ -2772,7 +2379,7 @@ mod tests {
         let build = Build::new()
             .add_socket_group(SocketGroup::new().with_gem_skill("PinnacleOfPowerPlayer", 20));
 
-        let specs = buff_skill_specs(&build, &data);
+        let specs = buff_skill_specs(&mut test_context(&data), &build, &data);
         let pinnacle = specs
             .iter()
             .find(|s| s.skill_id == "PinnacleOfPowerPlayer")
@@ -2907,7 +2514,7 @@ mod tests {
                     .with_gem_skill("FreezingMarkPlayer", 20),
             );
 
-        let specs = buff_skill_specs(&build, &data);
+        let specs = buff_skill_specs(&mut test_context(&data), &build, &data);
         assert_eq!(specs.len(), 3, "one spec each for aura + hex + mark");
 
         let aura = specs
@@ -2968,7 +2575,7 @@ mod tests {
                 ascendancy_name: String::new(),
             })
             .add_socket_group(SocketGroup::new().with_gem_skill("FireballPlayer", 20));
-        assert!(buff_skill_specs(&bare, &data).is_empty());
+        assert!(buff_skill_specs(&mut test_context(&data), &bare, &data).is_empty());
     }
 
     /// Precondition for vendor curse registration: a curse skill with no
@@ -2993,7 +2600,7 @@ mod tests {
                     .with_gem_skill("TemporalChainsPlayer", 20),
             );
 
-        let specs = buff_skill_specs(&build, &data);
+        let specs = buff_skill_specs(&mut test_context(&data), &build, &data);
         assert!(
             data.granted_effects.contains_key("CurseOfRepulsionPlayer"),
             "precondition: the Repulsion effect should be in the data pack (otherwise this test degenerates)"
@@ -3028,7 +2635,7 @@ mod tests {
             })
             .add_socket_group(SocketGroup::new().with_gem_skill("FrostBombPlayer", 18));
 
-        let specs = buff_skill_specs(&build, &data);
+        let specs = buff_skill_specs(&mut test_context(&data), &build, &data);
         let bomb = specs
             .iter()
             .find(|s| s.skill_id == "FrostBombPlayer")
@@ -3066,7 +2673,7 @@ mod tests {
         // Manual session: only the BuffSpec → buff_pass channel (same mode_buffs convention as the orchestrator).
         let mut manual = CalculationSession::new(MinimalInput::default())
             .with_config(CalcConfig::attack().with_mode_buffs(true));
-        for spec in buff_skill_specs(&build, &data) {
+        for spec in buff_skill_specs(&mut test_context(&data), &build, &data) {
             manual.add_buff_skill(spec);
         }
         let manual_es = {
@@ -3107,7 +2714,7 @@ mod tests {
                     aura_effect_inc,
                 )]);
             }
-            for spec in buff_skill_specs(&build, &data) {
+            for spec in buff_skill_specs(&mut test_context(&data), &build, &data) {
                 session.add_buff_skill(spec);
             }
             session.perform_minimal();
@@ -3149,7 +2756,7 @@ mod tests {
                     .with_gem_skill("SnipersMarkPlayer", 20)
                     .with_gem_skill("TemporalChainsPlayer", 20),
             );
-        let specs = buff_skill_specs(&build, &data);
+        let specs = buff_skill_specs(&mut test_context(&data), &build, &data);
 
         let despair = specs
             .iter()
@@ -3235,13 +2842,15 @@ mod tests {
                     .with_gem_skill("DespairPlayer", 20)
                     .with_gem_skill("TemporalChainsPlayer", 20),
             );
-        let _ = take_stat_map_compare_records(); // Clear leftovers
-        {
-            let _guard =
-                install_stat_map_context(StatMapMode::Compare, data.stat_map_catalog.clone());
-            let _ = buff_skill_specs(&build, &data);
-        }
-        let records = take_stat_map_compare_records();
+        let mut context = CalculationContext::new(
+            &data,
+            &DataOrchestratorOptions {
+                stat_map_mode: StatMapMode::Compare,
+                ..Default::default()
+            },
+        );
+        let _ = buff_skill_specs(&mut context, &build, &data);
+        let records = context.compare_records;
         assert!(
             records.iter().any(|r| r.label == "curse.DespairPlayer"
                 && r.classification == "mapped"
@@ -3376,7 +2985,7 @@ mod tests {
                 )]);
             }
             if let Some(build) = build {
-                for spec in buff_skill_specs(build, &data) {
+                for spec in buff_skill_specs(&mut test_context(&data), build, &data) {
                     session.add_buff_skill(spec);
                 }
             }
@@ -3711,7 +3320,15 @@ mod tests {
             ..ResolvedSkillLevel::default()
         };
         let opts = DataOrchestratorOptions::default();
-        let mods = trigger_modifiers(&build, &data, &opts, &triggered, &group, "TrigSkill");
+        let mods = trigger_modifiers(
+            &mut test_context(&data),
+            &build,
+            &data,
+            &opts,
+            &triggered,
+            &group,
+            "TrigSkill",
+        );
         let names: Vec<&str> = mods.iter().map(|m| m.name.as_str()).collect();
         assert!(names.contains(&"TriggeredSkillCooldown"));
         assert!(names.contains(&"TriggerCooldownBase"));
@@ -3721,7 +3338,15 @@ mod tests {
             cooldown_s: Some(0.5),
             ..ResolvedSkillLevel::default()
         };
-        let mods_none = trigger_modifiers(&build, &data, &opts, &normal, &group, "NormalSkill");
+        let mods_none = trigger_modifiers(
+            &mut test_context(&data),
+            &build,
+            &data,
+            &opts,
+            &normal,
+            &group,
+            "NormalSkill",
+        );
         assert!(
             mods_none.is_empty(),
             "a non-triggered skill should not inject trigger mods"
@@ -3765,6 +3390,7 @@ mod tests {
         );
         // Crit folded in (trigger_on_crit): the trigger rate should be noticeably lower than the source's attack rate (source crit chance ≪ 100%).
         let source_stats = trigger_source_stats(
+            &mut test_context(&data),
             &build,
             &data,
             &DataOrchestratorOptions::default(),
@@ -3779,6 +3405,84 @@ mod tests {
             out.skill_trigger_rate,
             source_stats.action_rate
         );
+    }
+
+    #[test]
+    fn trigger_subcalc_preserves_outer_exposure_supports() {
+        let data = repo_data();
+        let build = Build::new()
+            .with_character(CharacterIdentity {
+                level: 80,
+                class_name: "Sorceress".into(),
+                ascendancy_name: String::new(),
+            })
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_gem_skill("ArmourBreakerPlayer", 10)
+                    .with_gem_skill("MetaCastOnCritPlayer", 10)
+                    .with_gem_skill("FireballPlayer", 10)
+                    .with_main_active_skill(3),
+            )
+            .add_socket_group(
+                SocketGroup::new()
+                    .with_gem_skill("ElementalStormPlayer", 20)
+                    .with_gem_skill("SupportFireExposurePlayer", 1)
+                    .with_gem_skill("SupportPotentExposurePlayer", 1),
+            )
+            .with_main_socket_group(1);
+        let session =
+            calculate_with_data_session(&build, &data, &DataOrchestratorOptions::default())
+                .expect("trigger calculation");
+        assert!(session.output().skill_trigger_rate > 0.0);
+        for element in ["Fire", "Cold", "Lightning"] {
+            assert!(
+                session
+                    .mods_named(&format!("{element}ExposureEffect"))
+                    .iter()
+                    .any(|m| { m.mod_type == ModType::Inc && m.value.as_number() == Some(20.0) }),
+                "trigger source calculation must preserve the outer exposure support mapping: {element}"
+            );
+        }
+        let compare_options = DataOrchestratorOptions {
+            stat_map_mode: StatMapMode::Compare,
+            ..Default::default()
+        };
+        let report = calculate_with_data_report(&build, &data, &compare_options).unwrap();
+        assert_eq!(report.session.output(), session.output());
+        assert_eq!(
+            report
+                .stat_map_records
+                .iter()
+                .filter(|r| {
+                    r.label == "SupportPotentExposurePlayer" && r.stat == "exposure_effect_+%"
+                })
+                .count(),
+            2,
+            "both the trigger source and the outer calculation must record exposure mapping"
+        );
+
+        // An explicit empty catalog must override BuildData for all mapping domains,
+        // including the outer calculation after its trigger source has completed.
+        let override_options = DataOrchestratorOptions {
+            stat_map_catalog: Some(std::sync::Arc::new(StatMapCatalog::new(
+                serde_json::from_str(r#"{"global":{}}"#).unwrap(),
+            ))),
+            ..Default::default()
+        };
+        let overridden = calculate_with_data_report(&build, &data, &override_options).unwrap();
+        assert!(overridden.stat_map_records.is_empty());
+        assert!(
+            overridden
+                .session
+                .mods_named("FireExposureEffect")
+                .is_empty()
+        );
+
+        // Keeping an earlier report alive requires no take/clear protocol. A later
+        // calculation starts with fresh diagnostics and the original data catalog.
+        let repeated = calculate_with_data_report(&build, &data, &compare_options).unwrap();
+        assert_eq!(repeated.stat_map_records, report.stat_map_records);
+        assert_eq!(repeated.session.output(), report.session.output());
     }
 
     /// CoC directional assertion: source skill +100% attack speed → trigger rate
@@ -3819,8 +3523,8 @@ mod tests {
     }
 
     /// Recursion guards: ① a cycle (source == the triggered skill itself) → None
-    /// (falls back to the base convention); ② inside the depth guard (a sub-calc
-    /// already in progress) → None; ③ inside the guard, trigger_modifiers strips the whole relationship.
+    /// (falls back to the base convention); ② a trigger-source context rejects a nested
+    /// sub-calculation; ③ that context strips the whole trigger relationship.
     #[test]
     fn trigger_subcalc_recursion_guards() {
         let data = repo_data();
@@ -3837,11 +3541,13 @@ mod tests {
             )
             .with_main_socket_group(1);
         let opts = DataOrchestratorOptions::default();
+        let mut context = test_context(&data);
         let group = &build.socket_groups[0];
 
         // ① Cycle detection: source gem id == the triggered main skill's id.
         assert!(
             trigger_source_stats(
+                &mut context,
                 &build,
                 &data,
                 &opts,
@@ -3853,11 +3559,12 @@ mod tests {
             "source == the triggered skill itself should fall back to None (base use_time convention)"
         );
 
-        // ② Depth guard: a sub-calc already in progress won't expand another one.
+        // ② A trigger-source context cannot expand another sub-calculation.
         {
-            let _guard = TriggerDepthGuard::enter();
+            let mut child = context.trigger_source();
             assert!(
                 trigger_source_stats(
+                    &mut child,
                     &build,
                     &data,
                     &opts,
@@ -3868,13 +3575,14 @@ mod tests {
                 .is_none(),
                 "depth ≥1 should reject expanding another sub-calc"
             );
-            // ③ Inside the guard, the trigger relationship is stripped entirely.
+            // ③ The trigger-source context strips trigger relationships entirely.
             let resolved = ResolvedSkillLevel {
                 cooldown_s: Some(0.5),
                 ..ResolvedSkillLevel::default()
             };
             assert!(
                 trigger_modifiers(
+                    &mut child,
                     &build,
                     &data,
                     &opts,
@@ -3886,9 +3594,10 @@ mod tests {
                 "the trigger relationship should be stripped in the sub-calc env"
             );
         }
-        // After the guard exits, normal expansion resumes.
+        // The parent context remains usable after the child context is dropped.
         assert!(
             trigger_source_stats(
+                &mut context,
                 &build,
                 &data,
                 &opts,
@@ -3897,7 +3606,7 @@ mod tests {
                 "FireballPlayer"
             )
             .is_some(),
-            "after the guard exits, sub-calc should be usable again"
+            "the parent calculation should still be able to expand a trigger source"
         );
     }
 
@@ -3969,6 +3678,7 @@ mod tests {
         // Condition unmet (build config has no Phasing) → recognition hits but injection is empty.
         let build = Build::new();
         let mods = trigger_modifiers(
+            &mut test_context(&data),
             &build,
             &data,
             &opts,
@@ -3988,6 +3698,7 @@ mod tests {
             .conditions
             .insert("Phasing".to_string(), true);
         let mods = trigger_modifiers(
+            &mut test_context(&data),
             &build_phasing,
             &data,
             &opts,

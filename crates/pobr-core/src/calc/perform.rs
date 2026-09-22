@@ -103,32 +103,11 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
             "LowestOfArmourAndEvasion".into(),
             resources.armour.min(resources.evasion),
         );
-        // Refresh the Life/Mana pool snapshots: the orchestration layer's 6c backfill runs before
-        // perform and doesn't include the ExtraLife/ExtraMana defence conversion just injected
-        // above — this recomputes them via the same source pipeline as offence, so the snapshot
-        // matches the pool values hand_pass actually uses (bit-for-bit equal to the 6c values
-        // when there are no conversion mods).
-        let life_pool = super::offence::scaled_pool(
-            &env.player.mod_db,
-            &env.cfg,
-            env.player.base.life,
-            "MaximumLife",
-        );
-        let mana_pool = super::offence::scaled_pool(
-            &env.player.mod_db,
-            &env.cfg,
-            env.player.base.mana,
-            "MaximumMana",
-        );
+        // Refresh the initial actor snapshots after buffs and defence conversion.
+        let (life_pool, mana_pool) = super::session::preparation::life_mana_pools(env);
         env.cfg.stats.insert("Life".into(), life_pool);
         env.cfg.stats.insert("Mana".into(), mana_pool);
-        // "per 100 maximum Mana/Life" mods (`ModTag::Multiplier{var:"Mana"/"Life"}`, e.g. Arcane
-        // Intensity) read from cfg.multipliers, which the orchestration layer's 6c fills in
-        // **before** the defence-resource conversion above (Eldritch Battery ES→Mana / MoM extra
-        // pool), so its value is the pre-conversion pool. Refresh it to the post-conversion pool
-        // so it scales with output.Mana/Life (vendor's PerStat reads the actor's final
-        // post-conversion value). For builds with no pool conversion: mana_pool/life_pool == the
-        // 6c value, so the multiplier is unchanged bit-for-bit (safe).
+        // Multiplier and GetStat consumers must read the same post-conversion pools.
         env.cfg.multipliers.insert("Mana".into(), mana_pool);
         env.cfg.multipliers.insert("Life".into(), life_pool);
     }

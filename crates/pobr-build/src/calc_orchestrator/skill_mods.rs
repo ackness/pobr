@@ -21,6 +21,7 @@ use crate::build_data::{BuildData, ResolvedSkillLevel};
 /// [`calculate_with_data`]). `set_key` = the selected statSet's per-set override key
 /// (wired through, see [`mapped_stat_modifiers`]).
 pub(crate) fn skill_base_modifiers(
+    context: &mut CalculationContext,
     skill: &ResolvedSkillLevel,
     skill_id: &str,
     set_key: Option<&str>,
@@ -92,6 +93,7 @@ pub(crate) fn skill_base_modifiers(
         .cloned()
         .collect();
     mods.extend(mapped_stat_modifiers(
+        context,
         &base_damage,
         SourceKind::SkillGem,
         "skill",
@@ -169,6 +171,7 @@ pub(crate) fn dot_flag_modifiers(
 ///
 /// Returns empty (zero injection) for a non-corpse skill / no multiplier stat / no catalog.
 pub(crate) fn corpse_explosion_modifiers(
+    context: &mut CalculationContext,
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
@@ -184,9 +187,7 @@ pub(crate) fn corpse_explosion_modifiers(
     if !data.selected_set_explode_corpse(skill_id, set_index) {
         return Vec::new();
     }
-    let catalog = STAT_MAP_CTX
-        .with(|ctx| ctx.borrow().catalog.clone())
-        .or_else(|| data.stat_map_catalog.clone());
+    let catalog = context.catalog.clone();
     let Some(catalog) = catalog else {
         return Vec::new(); // No catalog (old data pack): the multiplier is unavailable, conservatively zero injection.
     };
@@ -356,6 +357,7 @@ pub(crate) fn crossbow_reload_modifiers(
 /// `.<stat>` to further split it to a single stat. Returns empty for quality 0 / no
 /// quality table entry (e.g. supports, which are skipped at export).
 pub(crate) fn main_skill_quality_modifiers(
+    context: &mut CalculationContext,
     group: &SocketGroup,
     data: &BuildData,
     skill_id: &str,
@@ -376,6 +378,7 @@ pub(crate) fn main_skill_quality_modifiers(
     // maps), the per-set override key matches the primary path.
     let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
     mapped_stat_modifiers(
+        context,
         &stats.quality,
         SourceKind::GemQuality,
         &format!("gem.{skill_id}.q{}", gem.quality),
@@ -403,6 +406,7 @@ pub(crate) fn main_skill_quality_modifiers(
 /// automatically be produced (FlameWall's projectile buff etc.). Zero values
 /// are skipped (matching every other fetch point's semantics).
 pub(crate) fn unselected_set_global_modifiers(
+    context: &mut CalculationContext,
     group: &SocketGroup,
     data: &BuildData,
     skill_id: &str,
@@ -419,7 +423,7 @@ pub(crate) fn unselected_set_global_modifiers(
     if unselected.is_empty() {
         return Vec::new();
     }
-    let Some(catalog) = STAT_MAP_CTX.with(|ctx| ctx.borrow().catalog.clone()) else {
+    let Some(catalog) = context.catalog.clone() else {
         return Vec::new(); // No catalog: the data channel misses entirely, matching mapped_stat_modifiers's semantics.
     };
     // selectedGlobalStats accounting (:104-106): a stat in the selected set's stats

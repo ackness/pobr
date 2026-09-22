@@ -105,7 +105,11 @@ pub(crate) fn buff_skill_name(data: &BuildData, skill_id: &str) -> String {
 /// gem's ordinal in the group (1-based, matching vendor's `ipairs(gemList)` order).
 /// The same effect appearing in multiple groups is deduplicated by id (matching the
 /// existing injection semantics).
-pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
+pub(crate) fn buff_skill_specs(
+    context: &mut CalculationContext,
+    build: &Build,
+    data: &BuildData,
+) -> Vec<BuffSpec> {
     use std::collections::HashSet;
     let mut specs = Vec::new();
     let mut seen: HashSet<&str> = HashSet::new();
@@ -156,7 +160,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                         data.effect_stats(skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
                     let debuff_mods =
-                        debuff_stat_modifiers(data, &es, skill_id, set_key.as_deref());
+                        debuff_stat_modifiers(context, &es, skill_id, set_key.as_deref());
                     // Player-side Buff payload: buff-granting active skills (e.g. an
                     // item-granted Pinnacle of Power, other.lua:12503, fromItem — PoB
                     // writes `Grants Skill` as a socket group with `source="Item:…"`,
@@ -191,7 +195,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                         data.effect_stats(skill_id, buff_level, gem.quality, gem.stat_set_index)
                     };
                     let buff_mods =
-                        player_buff_stat_modifiers(data, &es_buff, skill_id, set_key.as_deref());
+                        player_buff_stat_modifiers(context, &es_buff, skill_id, set_key.as_deref());
                     if (debuff_mods.is_empty() && buff_mods.is_empty()) || !seen.insert(skill_id) {
                         continue;
                     }
@@ -270,7 +274,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                     // (the ES/resistance family), so no double injection.
                     let set_key = data.selected_set_key(skill_id, gem.stat_set_index);
                     mods.extend(player_buff_stat_modifiers(
-                        data,
+                        context,
                         &es,
                         skill_id,
                         set_key.as_deref(),
@@ -320,7 +324,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                     // payload — both still count, vendor also gives them a slot).
                     // Without a catalog (old data pack), keeps the existing behavior
                     // (always registers).
-                    if let Some(catalog) = resolve_stat_map_catalog(data)
+                    if let Some(catalog) = context.catalog.clone()
                         && !es.all().any(|ds| {
                             stat_map_engine::has_curse_payload(
                                 &catalog,
@@ -332,7 +336,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                     {
                         continue;
                     }
-                    let mods = curse_stat_modifiers(data, &es, skill_id, set_key.as_deref());
+                    let mods = curse_stat_modifiers(context, &es, skill_id, set_key.as_deref());
                     // (Pre-existing #7-1) The skill-local CurseEffect segment (vendor's
                     // curse multiplier zone, CalcPerform.lua:2423/:2427, reads
                     // skillModList): the curse gem's own quality segment (EW's
@@ -341,7 +345,7 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
                     // MORE -20) payload, pre-scaled via the statmap global segment
                     // `curse_local_effect` and folded into the spec.
                     let (local_effect_inc, local_effect_more) =
-                        curse_local_effect_scale(group, data, gem, skill_id, curse_level);
+                        curse_local_effect_scale(context, group, data, gem, skill_id, curse_level);
                     specs.push(BuffSpec {
                         name: buff_skill_name(data, skill_id),
                         kind: BuffKind::Curse,
@@ -378,13 +382,14 @@ pub(crate) fn buff_skill_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec>
 /// ([`stat_map_engine::curse_local_effect`], where the global segment's
 /// `curse_effect_+%` → a bare `CurseEffect INC`). No catalog → (0, 1).
 fn curse_local_effect_scale(
+    context: &mut CalculationContext,
     group: &crate::build::SocketGroup,
     data: &BuildData,
     gem: &crate::build::GemSkillRef,
     skill_id: &str,
     curse_level: u32,
 ) -> (f64, f64) {
-    let Some(catalog) = resolve_stat_map_catalog(data) else {
+    let Some(catalog) = context.catalog.clone() else {
         return (0.0, 1.0);
     };
     let (mut inc, mut more) = (0.0, 1.0);
@@ -443,7 +448,11 @@ fn curse_local_effect_scale(
 /// active_skill → falls back to the effect id), while vendor uses statMap's
 /// effectName (this only affects `AffectedBy<name>` condition naming, which has no
 /// consumer currently).
-pub(crate) fn support_buff_specs(build: &Build, data: &BuildData) -> Vec<BuffSpec> {
+pub(crate) fn support_buff_specs(
+    context: &mut CalculationContext,
+    build: &Build,
+    data: &BuildData,
+) -> Vec<BuffSpec> {
     use std::collections::HashSet;
     let mut specs = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
@@ -490,7 +499,7 @@ pub(crate) fn support_buff_specs(build: &Build, data: &BuildData) -> Vec<BuffSpe
                 .flatten();
             let es = data.effect_stats(&effect_id, gem.gem_level, gem.quality, set_index);
             let set_key = data.selected_set_key(&effect_id, set_index);
-            let mods = player_buff_stat_modifiers(data, &es, &effect_id, set_key.as_deref());
+            let mods = player_buff_stat_modifiers(context, &es, &effect_id, set_key.as_deref());
             if mods.is_empty() {
                 continue;
             }
@@ -878,6 +887,7 @@ pub(crate) fn spirit_reservation_modifiers(
 /// The same effect appearing in multiple groups is deduplicated by id (matching
 /// vendor's `not globalOutput.<X>CryCalculated` responsibility).
 pub(crate) fn warcry_skill_specs(
+    context: &mut CalculationContext,
     build: &Build,
     data: &BuildData,
 ) -> Vec<pobr_core::calc::WarcrySpec> {
@@ -917,13 +927,14 @@ pub(crate) fn warcry_skill_specs(
                 );
             }
             let mut mods = mapped_stat_modifiers(
+                context,
                 &stats,
                 SourceKind::SkillGem,
                 &gem.skill_id,
                 &gem.skill_id,
                 set_key.as_deref(),
             );
-            mods.extend(support_modifiers(group, data, &gem.skill_id));
+            mods.extend(support_modifiers(context, group, data, &gem.skill_id));
             if let Some(ms) = effect.cast_time {
                 mods.push(
                     Modifier::number("WarcryCastTime", ModType::Base, f64::from(ms) / 1000.0)

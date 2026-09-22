@@ -2,33 +2,6 @@
 
 use super::*;
 
-// Trigger section
-
-thread_local! {
-    /// Trigger sub-calculation recursion depth:
-    /// while a source skill's sub-calculation is in progress (>0), [`trigger_modifiers`]
-    /// bails out entirely — the sub-calc's env forcibly strips trigger relations (one
-    /// level of depth), preventing infinite recursion from triggers that reference each
-    /// other in a cycle.
-    static TRIGGER_SUBCALC_DEPTH: std::cell::Cell<u8> = const { std::cell::Cell::new(0) };
-}
-
-/// RAII depth guard (panic-safe: Drop restores the count).
-pub(crate) struct TriggerDepthGuard;
-
-impl TriggerDepthGuard {
-    pub(crate) fn enter() -> Self {
-        TRIGGER_SUBCALC_DEPTH.with(|d| d.set(d.get().saturating_add(1)));
-        TriggerDepthGuard
-    }
-}
-
-impl Drop for TriggerDepthGuard {
-    fn drop(&mut self) {
-        TRIGGER_SUBCALC_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
-    }
-}
-
 /// The result of data-driven recognition: the matched trigger config + the trigger gem
 /// (a meta/support gem in the group; `None` when the main skill itself matched a
 /// skill-kind key).
@@ -62,7 +35,7 @@ pub(crate) struct RecognizedTrigger<'a> {
 /// speed multiplier zone. Hit/crit is injected via `TriggerSourceHitChance`/
 /// `TriggerSourceCritChance` BASE (as a percentage); perform's `fill_trigger` builds a
 /// [`pobr_core::calc::TriggerSourceStats`] (contract 4) and folds it into trigger chance
-/// (`:716-770`). Sub-calculation guards: stripped whenever depth >0 (this function's
+/// (`:716-770`). Sub-calculation guards: stripped inside a trigger-source context (this function's
 /// top-level early return), and source = the triggered skill itself (a cycle) falls back
 /// to the base `1/use_time`.
 ///
@@ -75,6 +48,7 @@ pub(crate) struct RecognizedTrigger<'a> {
 /// cache-layer overhaul (within a single calculation, a sub-calc only runs once, so the
 /// hot path is currently manageable).
 pub(crate) fn trigger_modifiers(
+    context: &mut CalculationContext,
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
@@ -84,14 +58,20 @@ pub(crate) fn trigger_modifiers(
 ) -> Vec<Modifier> {
     // Recursion guard: no trigger relation is recognized/injected within a source
     // skill's sub-calculation env (one level of depth stripped).
-    if TRIGGER_SUBCALC_DEPTH.with(|d| d.get()) > 0 {
+    if context.is_trigger_source {
         return Vec::new();
     }
 
     // — Path 1: data-driven recognition (returns as soon as it matches, including "recognized but the gate isn't satisfied → empty").
-    if let Some(mods) =
-        config_trigger_modifiers(build, data, options, main_skill, group, main_skill_id)
-    {
+    if let Some(mods) = config_trigger_modifiers(
+        context,
+        build,
+        data,
+        options,
+        main_skill,
+        group,
+        main_skill_id,
+    ) {
         return mods;
     }
 
@@ -131,7 +111,9 @@ pub(crate) fn trigger_modifiers(
     // (post-calculation attack speed) + source hit folded in. Nothing is injected when
     // there's no candidate in the group — fill_trigger falls back to the main skill's
     // rate (a placeholder semantics).
-    if let Some(stats) = in_group_trigger_source_stats(build, data, options, group, main_skill_id) {
+    if let Some(stats) =
+        in_group_trigger_source_stats(context, build, data, options, group, main_skill_id)
+    {
         push_source_stat_mods(
             &mut mods, &stats, /* fold_hit */ true, /* fold_crit */ false,
         );
@@ -196,6 +178,7 @@ pub(crate) fn push_source_stat_mods(
 /// matching vendor's disable — the trigger panel stays at 0 and **does not fall through**
 /// to the built-in trigger path); returns `None` on no match (falls through to path 2).
 pub(crate) fn config_trigger_modifiers(
+    context: &mut CalculationContext,
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
@@ -292,15 +275,23 @@ pub(crate) fn config_trigger_modifiers(
     if let Some(source_gem) =
         find_trigger_source_gem(build, data, group, main_skill_id, &recognized)
     {
-        let stats = trigger_source_stats(build, data, options, group, source_gem, main_skill_id)
-            .or_else(|| {
-                base_rate_of(build, data, group, source_gem).map(|rate| {
-                    pobr_core::calc::TriggerSourceStats {
-                        action_rate: rate,
-                        ..Default::default()
-                    }
-                })
-            });
+        let stats = trigger_source_stats(
+            context,
+            build,
+            data,
+            options,
+            group,
+            source_gem,
+            main_skill_id,
+        )
+        .or_else(|| {
+            base_rate_of(build, data, group, source_gem).map(|rate| {
+                pobr_core::calc::TriggerSourceStats {
+                    action_rate: rate,
+                    ..Default::default()
+                }
+            })
+        });
         if let Some(stats) = stats {
             // The triggerOnUse chain doesn't fold hit/crit (matching vendor :721's `not config.triggerOnUse`).
             let fold_hit = !config.trigger_on_use;
@@ -475,11 +466,12 @@ pub(crate) fn base_rate_of(
 ///
 /// Guards:
 /// - **Cycle detection**: source = the triggered skill itself → `None` (the caller falls back to base `1/use_time`);
-/// - **One level of depth**: depth ≥1 returns `None` directly (deep trigger relations
+/// - **One level of depth**: a trigger-source context returns `None` directly (deep trigger relations
 ///   are already stripped at the top of [`trigger_modifiers`]; this is a redundant guard
 ///   for direct calls);
 /// - Sub-calculation failure (a data gap etc.) → `None`, doesn't amplify the error.
 pub(crate) fn trigger_source_stats(
+    context: &mut CalculationContext,
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
@@ -491,7 +483,7 @@ pub(crate) fn trigger_source_stats(
         // Trigger cycle (the source skill is also the triggered skill): falls back to base use_time semantics.
         return None;
     }
-    if TRIGGER_SUBCALC_DEPTH.with(|d| d.get()) >= 1 {
+    if context.is_trigger_source {
         return None;
     }
 
@@ -517,8 +509,11 @@ pub(crate) fn trigger_source_stats(
     sub_build.main_socket_group = Some(group_idx + 1);
     sub_build.socket_groups[group_idx].main_active_skill = Some(active_pos);
 
-    let _guard = TriggerDepthGuard::enter();
-    let out = calculate_with_data(&sub_build, data, options).ok()?;
+    let mut child = context.trigger_source();
+    let result = calculate_with_context(&sub_build, data, options, &mut child);
+    context.compare_records.extend(child.compare_records);
+    let session = result.ok()?;
+    let out = session.output();
     let action_rate = if out.effective_action_rate > 0.0 {
         out.effective_action_rate
     } else {
@@ -540,6 +535,7 @@ pub(crate) fn trigger_source_stats(
 /// sub-calculation; falls back to the base `1/use_time` when the sub-calculation is
 /// unavailable (the legacy semantics from before 14-G2 was fixed, kept as the fallback surface).
 pub(crate) fn in_group_trigger_source_stats(
+    context: &mut CalculationContext,
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
@@ -572,12 +568,19 @@ pub(crate) fn in_group_trigger_source_stats(
     }
     let (source_gem, base_rate) = best?;
     Some(
-        trigger_source_stats(build, data, options, group, source_gem, main_skill_id).unwrap_or(
-            pobr_core::calc::TriggerSourceStats {
-                action_rate: base_rate,
-                ..Default::default()
-            },
-        ),
+        trigger_source_stats(
+            context,
+            build,
+            data,
+            options,
+            group,
+            source_gem,
+            main_skill_id,
+        )
+        .unwrap_or(pobr_core::calc::TriggerSourceStats {
+            action_rate: base_rate,
+            ..Default::default()
+        }),
     )
 }
 
@@ -768,6 +771,7 @@ pub(crate) fn judge_group_supports(
 /// until the flag system is wired up. The active main skill's own damage is already
 /// injected by [`skill_base_modifiers`]; this only handles supports.
 pub(crate) fn support_modifiers(
+    context: &mut CalculationContext,
     group: &SocketGroup,
     data: &BuildData,
     active_skill_id: &str,
@@ -788,6 +792,7 @@ pub(crate) fn support_modifiers(
         // the full merge for a multi-set support's additional sets is a current gap.
         let set_key = data.selected_set_key(&sup.effect_id, set_index);
         mods.extend(mapped_stat_modifiers(
+            context,
             &stats.base,
             SourceKind::SupportGem,
             &sup.effect_id,
@@ -830,6 +835,7 @@ mod support_judgement_tests {
     //! T3.5 unit tests for group-level support judgement + the addSkillTypes fixed
     //! point (matching PoB2 `Modules/CalcActiveSkill.lua:179-210`).
 
+    use super::super::test_context;
     use super::{BuildData, GroupSupportJudgement, judge_group_supports, support_modifiers};
     use crate::build::SocketGroup;
     use std::collections::HashMap;
@@ -1025,7 +1031,7 @@ mod support_judgement_tests {
         let group = SocketGroup::new()
             .with_gem_skill("MainSpell", 20)
             .with_gem_skill("SupMelee", 20);
-        let mods = support_modifiers(&group, &data, "MainSpell");
+        let mods = support_modifiers(&mut test_context(&data), &group, &data, "MainSpell");
         assert!(
             mods.is_empty(),
             "a rejected support must not inject any modifier"

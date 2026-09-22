@@ -1,13 +1,4 @@
-//! stat_map — StatMap/curse/debuff/exposure/player_buff mapping + the STAT_MAP_CTX dual-run collector.
-//!
-//! **Dual-run context**: [`mapped_stat_modifiers`] is a free function; its three call
-//! sites (skill_base / quality / support) don't hold the orchestrator options — per the
-//! §3.2 sharing rule (only touch `mapped_stat_modifiers` + an `OrchestratorOptions`
-//! field, ≤3 lines of wiring in the main flow), mode and catalog are passed through the
-//! thread-local context [`STAT_MAP_CTX`]: installed at the start of
-//! `calculate_with_data`, reset by a guard when it goes out of scope. A single
-//! calculation runs on one thread, and install/reset is deterministic, so this doesn't
-//! constitute shared mutable state.
+//! Skill-stat mapping with an explicit, calculation-owned catalog and diagnostics.
 
 use super::*;
 
@@ -18,23 +9,8 @@ use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 use crate::build::{Build, SocketGroup};
 use crate::build_data::BuildData;
 
-use std::cell::RefCell;
-
-thread_local! {
-    pub(crate) static STAT_MAP_CTX: RefCell<StatMapCtx> = RefCell::new(StatMapCtx::default());
-}
-
-#[derive(Default)]
-pub(crate) struct StatMapCtx {
-    mode: StatMapMode,
-    pub(crate) catalog: Option<std::sync::Arc<StatMapCatalog>>,
-    /// Compare mode's mapping-level outcome observation records (outlives the guard,
-    /// retrieved via [`take_stat_map_compare_records`]).
-    compare_records: Vec<StatMapCompareRecord>,
-}
-
 /// A single mapping-level outcome observation record produced by Compare mode (one per stat).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StatMapCompareRecord {
     /// The stat's stable id.
     pub stat: String,
@@ -47,43 +23,12 @@ pub struct StatMapCompareRecord {
     pub detail: String,
 }
 
-/// Installs this calculation's statmap context, returning a guard that resets it automatically when it goes out of scope.
-pub(crate) fn install_stat_map_context(
-    mode: StatMapMode,
-    catalog: Option<std::sync::Arc<StatMapCatalog>>,
-) -> StatMapCtxGuard {
-    STAT_MAP_CTX.with(|ctx| {
-        let mut ctx = ctx.borrow_mut();
-        ctx.mode = mode;
-        ctx.catalog = catalog;
-    });
-    StatMapCtxGuard
-}
-
-pub(crate) struct StatMapCtxGuard;
-
-impl Drop for StatMapCtxGuard {
-    fn drop(&mut self) {
-        STAT_MAP_CTX.with(|ctx| {
-            let mut ctx = ctx.borrow_mut();
-            ctx.mode = StatMapMode::default();
-            ctx.catalog = None;
-            // compare_records is kept — the caller takes it after calculate returns.
-        });
-    }
-}
-
-/// Takes (and clears) the current thread's accumulated Compare mode outcome observation records.
-pub fn take_stat_map_compare_records() -> Vec<StatMapCompareRecord> {
-    STAT_MAP_CTX.with(|ctx| std::mem::take(&mut ctx.borrow_mut().compare_records))
-}
-
 /// Maps a set of resolved stats into modifiers attributed with `source_kind` — the
 /// statmap channel's dispatch point: Data goes through the
 /// [`stat_map_engine::map_stat`] data engine; Compare = the Data computation + recording
 /// a mapping outcome observation per stat (**output identical to Data**, pure
 /// observation that doesn't change the result; records are retrieved via
-/// [`take_stat_map_compare_records`]). Stats that can't be mapped (Unsupported /
+/// [`CalculationReport::stat_map_records`]). Stats that can't be mapped (Unsupported /
 /// Unknown) are silently skipped; zero values are skipped.
 ///
 /// `effect_id`: the granted effect the stat belongs to, for per-statSet override lookup.
@@ -94,41 +39,32 @@ pub fn take_stat_map_compare_records() -> Vec<StatMapCompareRecord> {
 /// is equivalent to None). The global-only merge for unselected sets goes through
 /// [`unselected_set_global_modifiers`], not this dispatch point.
 pub(crate) fn mapped_stat_modifiers(
+    context: &mut CalculationContext,
     stats: &[pobr_data::catalog::SkillDamageStat],
     source_kind: SourceKind,
     label_prefix: &str,
     effect_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
-    let (mode, catalog) =
-        STAT_MAP_CTX.with(|ctx| (ctx.borrow().mode, ctx.borrow().catalog.clone()));
-    match mode {
-        StatMapMode::Data => data_mapped_stat_modifiers(
+    let catalog = context.catalog.clone();
+    if context.mode == StatMapMode::Compare {
+        record_stat_map_observation(
+            context,
             stats,
-            source_kind,
             label_prefix,
             effect_id,
             set_key,
             catalog.as_deref(),
-        ),
-        StatMapMode::Compare => {
-            record_stat_map_observation(
-                stats,
-                label_prefix,
-                effect_id,
-                set_key,
-                catalog.as_deref(),
-            );
-            data_mapped_stat_modifiers(
-                stats,
-                source_kind,
-                label_prefix,
-                effect_id,
-                set_key,
-                catalog.as_deref(),
-            )
-        }
+        );
     }
+    data_mapped_stat_modifiers(
+        stats,
+        source_kind,
+        label_prefix,
+        effect_id,
+        set_key,
+        catalog.as_deref(),
+    )
 }
 
 /// Data channel: the statmap data engine. See [`mapped_stat_modifiers`]'s doc for the
@@ -171,25 +107,12 @@ pub(crate) fn data_mapped_stat_modifiers(
     mods
 }
 
-/// Fetches the statmap catalog (thread-local context first — injected via the
-/// orchestrator options installed by `calculate_with_data`; falls back to
-/// `data.stat_map_catalog` outside that context — e.g. test/tool paths that call
-/// [`buff_skill_specs`] directly — both point to the same Arc in the main orchestration flow).
-pub(crate) fn resolve_stat_map_catalog(data: &BuildData) -> Option<std::sync::Arc<StatMapCatalog>> {
-    STAT_MAP_CTX
-        .with(|ctx| ctx.borrow().catalog.clone())
-        .or_else(|| data.stat_map_catalog.clone())
-}
-
 /// The curse-effect mod fetch point: maps every stat in a curse skill's statset,
 /// through [`stat_map_engine::map_curse_stat`] (the curse domain's data channel), into
 /// a list of **enemy-side** modifiers (BuffSpec.mods payload, consumed by buff_pass's
 /// curse path).
 ///
-/// - Catalog fetch: thread-local context first (injected by the orchestrator options
-///   installed by `calculate_with_data`), falls back to `data.stat_map_catalog` outside
-///   that context (e.g. test/tool paths that call [`buff_skill_specs`] directly) — both
-///   point to the same Arc in the main orchestration flow.
+/// - Catalog: resolved once from the calculation options and BuildData.
 /// - Attribution: `(SkillGem, "curse.<skill_id>.<stat>")` (same semantics as the aura
 ///   path), buff_pass scaling preserves origin (not dropped in trace).
 /// - Visibility (not silent): Compare mode records each stat's curse payload as
@@ -200,13 +123,13 @@ pub(crate) fn resolve_stat_map_catalog(data: &BuildData) -> Option<std::sync::Ar
 ///   matching the statmap primary channel's semantics (classification observation goes
 ///   through Compare).
 pub(crate) fn curse_stat_modifiers(
-    data: &BuildData,
+    context: &mut CalculationContext,
     stats: &crate::build_data::EffectStats,
     skill_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
-    let mode = STAT_MAP_CTX.with(|ctx| ctx.borrow().mode);
-    let Some(catalog) = resolve_stat_map_catalog(data) else {
+    let mode = context.mode;
+    let Some(catalog) = context.catalog.clone() else {
         return Vec::new(); // No catalog (old data pack): curse mods miss entirely (matching the primary channel's semantics).
     };
     let mut mods = Vec::new();
@@ -239,13 +162,11 @@ pub(crate) fn curse_stat_modifiers(
                 _ => None, // Mapped(empty)/Unknown = not a curse payload, not recorded.
             };
             if let Some((classification, detail)) = record {
-                STAT_MAP_CTX.with(|ctx| {
-                    ctx.borrow_mut().compare_records.push(StatMapCompareRecord {
-                        stat: ds.stat.clone(),
-                        label: format!("curse.{skill_id}"),
-                        classification,
-                        detail,
-                    });
+                context.compare_records.push(StatMapCompareRecord {
+                    stat: ds.stat.clone(),
+                    label: format!("curse.{skill_id}"),
+                    classification,
+                    detail,
                 });
             }
         }
@@ -272,20 +193,18 @@ pub(crate) fn curse_stat_modifiers(
 /// enemy-side allowlist is currently the elemental exposure family), into a list of
 /// **enemy-side** modifiers (BuffSpec.mods payload, consumed by buff_pass's Debuff
 /// path). Isomorphic to [`curse_stat_modifiers`]:
-/// - Catalog fetch: thread-local context first, falls back to `data.stat_map_catalog`;
+/// - Catalog: resolved once in the calculation context;
 /// - Attribution: `(SkillGem, "debuff.<skill_id>.<stat>")`, buff_pass scaling preserves origin;
 /// - Visibility: Compare mode records each stat into [`StatMapCompareRecord`] (label =
 ///   `debuff.<skill_id>`); `Mapped(empty)` / `Unknown` aren't recorded (not a debuff payload).
 pub(crate) fn debuff_stat_modifiers(
-    data: &BuildData,
+    context: &mut CalculationContext,
     stats: &crate::build_data::EffectStats,
     skill_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
-    let (mode, ctx_catalog) =
-        STAT_MAP_CTX.with(|ctx| (ctx.borrow().mode, ctx.borrow().catalog.clone()));
-    let catalog = ctx_catalog.or_else(|| data.stat_map_catalog.clone());
-    let Some(catalog) = catalog else {
+    let mode = context.mode;
+    let Some(catalog) = context.catalog.clone() else {
         return Vec::new(); // No catalog (old data pack): debuff mods miss entirely (matching the primary channel's semantics).
     };
     let mut mods = Vec::new();
@@ -317,13 +236,11 @@ pub(crate) fn debuff_stat_modifiers(
                 _ => None, // Mapped(empty)/Unknown = not a debuff payload, not recorded.
             };
             if let Some((classification, detail)) = record {
-                STAT_MAP_CTX.with(|ctx| {
-                    ctx.borrow_mut().compare_records.push(StatMapCompareRecord {
-                        stat: ds.stat.clone(),
-                        label: format!("debuff.{skill_id}"),
-                        classification,
-                        detail,
-                    });
+                context.compare_records.push(StatMapCompareRecord {
+                    stat: ds.stat.clone(),
+                    label: format!("debuff.{skill_id}"),
+                    classification,
+                    detail,
                 });
             }
         }
@@ -351,19 +268,18 @@ pub(crate) fn debuff_stat_modifiers(
 /// the same stat is already recorded by buff_skill_specs's Debuff branch, so a duplicate
 /// record from this probe would just be noise).
 pub(crate) fn has_debuff_payload(
-    data: &BuildData,
+    context: &CalculationContext,
     stats: &crate::build_data::EffectStats,
     skill_id: &str,
     set_key: Option<&str>,
 ) -> bool {
-    let ctx_catalog = STAT_MAP_CTX.with(|ctx| ctx.borrow().catalog.clone());
-    let Some(catalog) = ctx_catalog.or_else(|| data.stat_map_catalog.clone()) else {
+    let Some(catalog) = context.catalog.as_deref() else {
         return false;
     };
     stats.all().any(|ds| {
         ds.value != 0.0
             && matches!(
-                stat_map_engine::map_debuff_stat(&catalog, skill_id, set_key, &ds.stat, ds.value),
+                stat_map_engine::map_debuff_stat(catalog, skill_id, set_key, &ds.stat, ds.value),
                 MappedOutcome::Mapped(items) if !items.is_empty()
             )
     })
@@ -380,18 +296,17 @@ pub(crate) fn has_debuff_payload(
 /// `HasMod("FLAG", "InflictExposure")` checks the skillModList after supports are
 /// merged in). A zero-value stat doesn't count (same semantics as [`has_debuff_payload`]).
 pub(crate) fn has_exposure_inflict_stats(
-    data: &BuildData,
+    context: &CalculationContext,
     stats: &crate::build_data::EffectStats,
     skill_id: &str,
     set_key: Option<&str>,
 ) -> bool {
-    let ctx_catalog = STAT_MAP_CTX.with(|ctx| ctx.borrow().catalog.clone());
-    let Some(catalog) = ctx_catalog.or_else(|| data.stat_map_catalog.clone()) else {
+    let Some(catalog) = context.catalog.as_deref() else {
         return false;
     };
     stats.all().any(|ds| {
         ds.value != 0.0
-            && stat_map_engine::has_exposure_inflict_payload(&catalog, skill_id, set_key, &ds.stat)
+            && stat_map_engine::has_exposure_inflict_payload(catalog, skill_id, set_key, &ds.stat)
     })
 }
 
@@ -434,6 +349,7 @@ pub(crate) fn has_exposure_inflict_stats(
 /// `Condition:Has<El>Exposure` flag (:3242-3244) aren't implemented (no corpus sample
 /// combines EE + exposure, and there's no consumer for that condition).
 pub(crate) fn exposure_support_modifiers(
+    context: &mut CalculationContext,
     build: &Build,
     data: &BuildData,
     main_group: Option<&SocketGroup>,
@@ -463,15 +379,20 @@ pub(crate) fn exposure_support_modifiers(
             );
             let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
             let judgement = judge_group_supports(group, data, &gem.skill_id);
-            let is_host = has_debuff_payload(data, &es, &gem.skill_id, set_key.as_deref())
-                || has_exposure_inflict_stats(data, &es, &gem.skill_id, set_key.as_deref())
+            let is_host = has_debuff_payload(context, &es, &gem.skill_id, set_key.as_deref())
+                || has_exposure_inflict_stats(context, &es, &gem.skill_id, set_key.as_deref())
                 || judgement.compatible.iter().any(|sup| {
                     let host = &group.gem_skills[sup.gem_index];
                     // Quality passed as 0, matching support_modifiers's semantics.
                     let set_index = sup.stat_set_index(group);
                     let sup_stats = data.effect_stats(&sup.effect_id, host.gem_level, 0, set_index);
                     let sup_key = data.selected_set_key(&sup.effect_id, set_index);
-                    has_exposure_inflict_stats(data, &sup_stats, &sup.effect_id, sup_key.as_deref())
+                    has_exposure_inflict_stats(
+                        context,
+                        &sup_stats,
+                        &sup.effect_id,
+                        sup_key.as_deref(),
+                    )
                 });
             if !is_host {
                 continue;
@@ -490,6 +411,7 @@ pub(crate) fn exposure_support_modifiers(
             let set_key = data.selected_set_key(&effect_id, set_index);
             mods.extend(
                 mapped_stat_modifiers(
+                    context,
                     &stats.base,
                     SourceKind::SupportGem,
                     &effect_id,
@@ -509,20 +431,18 @@ pub(crate) fn exposure_support_modifiers(
 /// (the buff domain's data channel, the player-side allowlist), into a list of
 /// **player-side** modifiers (BuffSpec.mods payload, consumed by buff_pass's Buff/Aura
 /// path). Isomorphic to [`curse_stat_modifiers`]:
-/// - Catalog fetch: thread-local context first, falls back to `data.stat_map_catalog`;
+/// - Catalog: resolved once in the calculation context;
 /// - Attribution: `(SkillGem, "buff.<skill_id>.<stat>")`, buff_pass scaling preserves origin;
 /// - Visibility: Compare mode records each stat into [`StatMapCompareRecord`] (label =
 ///   `buff.<skill_id>`); `Mapped(empty)` / `Unknown` aren't recorded (not a buff payload).
 pub(crate) fn player_buff_stat_modifiers(
-    data: &BuildData,
+    context: &mut CalculationContext,
     stats: &crate::build_data::EffectStats,
     skill_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
-    let (mode, ctx_catalog) =
-        STAT_MAP_CTX.with(|ctx| (ctx.borrow().mode, ctx.borrow().catalog.clone()));
-    let catalog = ctx_catalog.or_else(|| data.stat_map_catalog.clone());
-    let Some(catalog) = catalog else {
+    let mode = context.mode;
+    let Some(catalog) = context.catalog.clone() else {
         return Vec::new(); // No catalog (old data pack): buff mods miss entirely (matching the primary channel's semantics).
     };
     // Same-named stats are added together first (matching vendor CalcTools.lua:138-200's
@@ -568,13 +488,11 @@ pub(crate) fn player_buff_stat_modifiers(
                 _ => None, // Mapped(empty)/Unknown = not a player-side buff payload, not recorded.
             };
             if let Some((classification, detail)) = record {
-                STAT_MAP_CTX.with(|ctx| {
-                    ctx.borrow_mut().compare_records.push(StatMapCompareRecord {
-                        stat: stat.clone(),
-                        label: format!("buff.{skill_id}"),
-                        classification,
-                        detail,
-                    });
+                context.compare_records.push(StatMapCompareRecord {
+                    stat: stat.clone(),
+                    label: format!("buff.{skill_id}"),
+                    classification,
+                    detail,
                 });
             }
         }
@@ -597,11 +515,12 @@ pub(crate) fn player_buff_stat_modifiers(
 }
 
 /// Compare mode: records the data channel's mapping outcome observation per stat
-/// (classified as `mapped` / `unsupported:<category>` / `unknown`) into the thread-local
-/// buffer. The Legacy heuristic has been removed (T2.4); this function is kept as a
+/// (classified as `mapped` / `unsupported:<category>` / `unknown`) into this calculation's
+/// report. The Legacy heuristic has been removed (T2.4); this function is kept as a
 /// long-term comparison/observation framework — config / parser dual-runs reuse the same
 /// pattern (a deliberate decision to keep the enum and reporting framework around).
 pub(crate) fn record_stat_map_observation(
+    context: &mut CalculationContext,
     stats: &[pobr_data::catalog::SkillDamageStat],
     label_prefix: &str,
     effect_id: &str,
@@ -638,13 +557,11 @@ pub(crate) fn record_stat_map_observation(
             }
             MappedOutcome::Unknown => ("unknown", String::new()),
         };
-        STAT_MAP_CTX.with(|ctx| {
-            ctx.borrow_mut().compare_records.push(StatMapCompareRecord {
-                stat: ds.stat.clone(),
-                label: label_prefix.to_string(),
-                classification,
-                detail,
-            });
+        context.compare_records.push(StatMapCompareRecord {
+            stat: ds.stat.clone(),
+            label: label_prefix.to_string(),
+            classification,
+            detail,
         });
     }
 }
