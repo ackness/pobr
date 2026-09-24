@@ -10,6 +10,7 @@ mod support;
 
 pub use mods::{
     dot_flag_modifiers, is_off_hand_weapon_base_stat, resolved_enemy_level, skill_base_modifiers,
+    support_mana_multiplier_modifier,
 };
 pub use support::{
     CompatibleSupport, GroupSupportJudgement, SupportCandidate, judge_group_supports,

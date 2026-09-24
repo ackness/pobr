@@ -478,25 +478,18 @@ pub(crate) fn support_modifiers(
         // doesn't apply, matching PoB2's rejection. Consumed by
         // `skill_mechanics::calc_skill_cost` (the multipliers are chained and truncated
         // to 4 decimal places, then applied to base cost before the inc/more chain).
-        if let Some(mm) = data
-            .granted_effect_levels
-            .get(&sup.effect_id)
-            .and_then(|rows| {
-                rows.iter()
-                    .rfind(|r| r.level <= gem.gem_level)
-                    .or(rows.first())
-            })
-            .and_then(|row| row.mana_multiplier)
-            .filter(|&v| v != 0.0)
-        {
-            let origin = ModifierSource::new(SourceId::new(
-                SourceKind::SupportGem,
-                format!("support.{}.manaMultiplier", sup.effect_id),
-            ))
-            .with_raw_text(format!("support {} cost multiplier {mm}%", sup.effect_id));
-            mods.push(
-                Modifier::number("SupportManaMultiplier", ModType::More, mm).with_origin(origin),
-            );
+        if let Some(m) = pobr_core::skill_env::support_mana_multiplier_modifier(
+            &sup.effect_id,
+            data.granted_effect_levels
+                .get(&sup.effect_id)
+                .and_then(|rows| {
+                    rows.iter()
+                        .rfind(|r| r.level <= gem.gem_level)
+                        .or(rows.first())
+                })
+                .and_then(|row| row.mana_multiplier),
+        ) {
+            mods.push(m);
         }
     }
     mods

@@ -127,3 +127,26 @@ pub fn skill_base_modifiers(
     let _ = skill_id; // reserved for future per-skill attribution
     mods
 }
+
+/// A compatible support's per-level cost multiplier → `SupportManaMultiplier` `MORE`
+/// (matching PoB2's `CalcActiveSkill.lua:689-691`:
+/// `NewMod("SupportManaMultiplier","MORE", level.manaMultiplier, modSource)`).
+///
+/// Only injected for the **compatible list** — a rejected support's multiplier
+/// doesn't apply. Consumed by `skill_mechanics::calc_skill_cost` (the multipliers
+/// are chained and truncated to 4 decimal places, then applied to base cost before
+/// the inc/more chain).
+///
+/// Returns `None` when the effect has no level table or the multiplier is zero.
+pub fn support_mana_multiplier_modifier(
+    effect_id: &str,
+    mana_multiplier: Option<f64>,
+) -> Option<Modifier> {
+    let mm = mana_multiplier.filter(|&v| v != 0.0)?;
+    let origin = ModifierSource::new(SourceId::new(
+        SourceKind::SupportGem,
+        format!("support.{effect_id}.manaMultiplier"),
+    ))
+    .with_raw_text(format!("support {effect_id} cost multiplier {mm}%"));
+    Some(Modifier::number("SupportManaMultiplier", ModType::More, mm).with_origin(origin))
+}
