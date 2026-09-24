@@ -212,43 +212,13 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
 /// globally". An unknown name (the data is a subset of the enum; a miss means corrupt
 /// data) panics in debug builds, ignored in release.
 pub(crate) fn skill_type_bits(skill_types: &[String]) -> SkillTypes {
-    let mut bits = SkillTypes::NONE;
-    for t in skill_types {
-        match SkillTypes::from_pob2_name(t) {
-            Some(st) => bits |= st,
-            None => debug_assert!(false, "unknown SkillType name: {t}"),
-        }
-    }
-    bits
+    pobr_core::skill_env::skill_type_bits(skill_types)
 }
 
 /// Skill type name (`ActiveSkillType.Id`) → cfg damage flags. Used by damage
 /// aggregation to pull `<Projectile|Area|Spell|Melee>Damage` boosts by skill category.
 pub(crate) fn skill_type_flags(skill_types: &[String]) -> ModFlags {
-    let mut flags = ModFlags::NONE;
-    for t in skill_types {
-        match t.as_str() {
-            "Attack" => flags |= ModFlags::ATTACK,
-            "Spell" => flags |= ModFlags::SPELL,
-            "Melee" => flags |= ModFlags::MELEE,
-            "Projectile" | "ProjectilesFromUser" => flags |= ModFlags::PROJECTILE,
-            "Area" | "AreaSpell" => flags |= ModFlags::AREA,
-            _ => {}
-        }
-    }
-    // A hit skill → ModFlag.Hit (matching vendor CalcActiveSkill.lua:176's
-    // `skillFlags.hit = … or skillTypes[Attack] or skillTypes[Damage] or
-    // skillTypes[Projectile]` + :523-525's `skillModFlags |= ModFlag.Hit`).
-    // Makes mods carrying the HIT flag (e.g. the "Spell Hits Gain …" family) apply to
-    // hit skills; DoT cfg already strips this bit, matching vendor
-    // (calc::skill_dot's `flags.without(HIT)`).
-    if skill_types
-        .iter()
-        .any(|t| matches!(t.as_str(), "Attack" | "Damage" | "Projectile"))
-    {
-        flags |= ModFlags::HIT;
-    }
-    flags
+    pobr_core::skill_env::skill_type_flags(skill_types)
 }
 
 /// Whether any enabled skill summons a companion (`SkillType.CreatesCompanion`) —

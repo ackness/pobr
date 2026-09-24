@@ -150,3 +150,47 @@ pub fn support_mana_multiplier_modifier(
     .with_raw_text(format!("support {effect_id} cost multiplier {mm}%"));
     Some(Modifier::number("SupportManaMultiplier", ModType::More, mm).with_origin(origin))
 }
+
+/// Skill type name (`ActiveSkillType.Id`) → `SkillTypes` bitset.
+///
+/// Used by the orchestrator to translate a granted effect's `skill_types` list into
+/// the bitset consumed by `stat_map_engine::collect_skill_data`.
+pub fn skill_type_bits(skill_types: &[String]) -> pobr_data::skill::SkillTypes {
+    let mut bits = pobr_data::skill::SkillTypes::NONE;
+    for t in skill_types {
+        match pobr_data::skill::SkillTypes::from_pob2_name(t) {
+            Some(st) => bits |= st,
+            None => debug_assert!(false, "unknown SkillType name: {t}"),
+        }
+    }
+    bits
+}
+
+/// Skill type name (`ActiveSkillType.Id`) → cfg damage flags.
+///
+/// Used by damage aggregation to pull `<Projectile|Area|Spell|Melee>Damage` boosts by
+/// skill category. A hit skill → `ModFlag.Hit` (matching vendor
+/// `CalcActiveSkill.lua:176`'s `skillFlags.hit = … or skillTypes[Attack] or
+/// skillTypes[Damage] or skillTypes[Projectile]`).
+pub fn skill_type_flags(skill_types: &[String]) -> pobr_data::modifier::ModFlags {
+    let mut flags = pobr_data::modifier::ModFlags::NONE;
+    for t in skill_types {
+        match t.as_str() {
+            "Attack" => flags |= pobr_data::modifier::ModFlags::ATTACK,
+            "Spell" => flags |= pobr_data::modifier::ModFlags::SPELL,
+            "Melee" => flags |= pobr_data::modifier::ModFlags::MELEE,
+            "Projectile" | "ProjectilesFromUser" => {
+                flags |= pobr_data::modifier::ModFlags::PROJECTILE
+            }
+            "Area" | "AreaSpell" => flags |= pobr_data::modifier::ModFlags::AREA,
+            _ => {}
+        }
+    }
+    if skill_types
+        .iter()
+        .any(|t| matches!(t.as_str(), "Attack" | "Damage" | "Projectile"))
+    {
+        flags |= pobr_data::modifier::ModFlags::HIT;
+    }
+    flags
+}
