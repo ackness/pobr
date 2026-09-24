@@ -371,10 +371,7 @@ pub(crate) fn parse_jewel_radius(label: Option<&str>) -> JewelRadius {
 /// three-way-choice form. The catalog carries no isAttribute flag, so this is determined
 /// from the node's mod text (matching the text form used by pobr-tree's attribute-choice rewrite).
 pub(crate) fn is_attribute_node(def: &pobr_data::catalog::PassiveNodeDef) -> bool {
-    def.stats.iter().any(|s| {
-        let lower = s.to_ascii_lowercase();
-        lower.contains(" to any ") && lower.contains("attribute")
-    })
+    pobr_core::skill_env::is_attribute_node(def)
 }
 
 /// The geometric expansion result for one radius jewel: the list of **allocated**

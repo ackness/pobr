@@ -201,3 +201,15 @@ pub fn vendor_scale_mod_value(value: f64, scale: f64) -> f64 {
     let rounded = (value * scale * 100.0).round() / 100.0;
     rounded.trunc()
 }
+
+/// Determines an attribute-choice node (PoBR's equivalent of PoB2 tree.lua's
+/// `isAttribute=true` nodes): its mod is the "+N to any [Attributes|Attribute]"
+/// three-way-choice form. The catalog carries no isAttribute flag, so this is
+/// determined from the node's mod text (matching the text form used by pobr-tree's
+/// attribute-choice rewrite).
+pub fn is_attribute_node(def: &pobr_data::catalog::PassiveNodeDef) -> bool {
+    def.stats.iter().any(|s| {
+        let lower = s.to_ascii_lowercase();
+        lower.contains(" to any ") && lower.contains("attribute")
+    })
+}
