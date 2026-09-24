@@ -1,6 +1,12 @@
 //! weapon — weapon/unarmed base contribution + local weapon/defence mod parsing + clean_item_text.
 
-use super::*;
+use pobr_data::item::{EquipmentSlot, Item};
+use pobr_data::modifier::{ModFlags, ModType};
+
+use super::super::conditions::weapon_type_info;
+use crate::build::Build;
+use crate::build_data::{BuildData, ResolvedSkillLevel};
+use pobr_data::catalog::local_mods::WeaponLocalModsDef;
 
 /// An attack skill's weapon base contribution: physical hit damage (quality already
 /// applied) + attack rate + crit chance.

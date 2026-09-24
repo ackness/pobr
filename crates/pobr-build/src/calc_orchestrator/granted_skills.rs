@@ -22,7 +22,7 @@ use std::collections::{HashMap, HashSet};
 use crate::build::{Build, GemSkillRef, SocketGroup};
 use crate::build_data::BuildData;
 
-use super::skill_resolve::clean_grant_text;
+use super::skill::resolve::clean_grant_text;
 
 /// PoBR's synthesized groups have no PoB item id/name, so a source category marker is
 /// used instead; a single equipment slot in one Build only ever holds one item, so

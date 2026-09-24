@@ -1,6 +1,8 @@
 //! Skill-stat mapping with an explicit, calculation-owned catalog and diagnostics.
 
-use super::*;
+use super::StatMapMode;
+use super::context::CalculationContext;
+use crate::support::judge_group_supports;
 
 use pobr_core::Modifier;
 use pobr_core::rules::stat_map_engine::{self, MappedItem, MappedOutcome, StatMapCatalog};

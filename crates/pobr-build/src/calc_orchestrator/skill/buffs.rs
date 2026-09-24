@@ -1,6 +1,22 @@
 //! buffs — herald/aura/buff specs + spirit reservation (pure migration, no logic change).
 
-use super::*;
+use pobr_core::Modifier;
+use pobr_core::calc::{BuffKind, BuffSpec};
+use pobr_core::rules::stat_map_engine::{self};
+use pobr_data::modifier::ModType;
+use pobr_data::source::{ModifierSource, SourceId, SourceKind};
+
+use super::super::conditions::skill_type_bits;
+use super::super::context::CalculationContext;
+use super::super::skill::mods::support_modifiers;
+use super::super::skill::resolve::{additional_gem_levels, support_granted_gem_levels};
+use super::super::stat_map::{
+    curse_stat_modifiers, debuff_stat_modifiers, mapped_stat_modifiers, player_buff_stat_modifiers,
+};
+use crate::buff_stat_map::{map_aura_buff_stat, map_self_buff_offensive_stat};
+use crate::build::Build;
+use crate::build_data::BuildData;
+use crate::support::judge_group_supports;
 
 /// The buff display names of all **herald active skills** among the enabled groups
 /// (deduplicated by name, deterministically sorted).
@@ -295,7 +311,7 @@ pub(crate) fn buff_skill_specs(
                         // matches domain-scoped mods — e.g. the SkillTypes(Banner) tag
                         // on "Banner Skills have N% increased Aura Magnitudes" — against
                         // this effect's own type bits).
-                        skill_types: super::conditions::skill_type_bits(&effect.skill_types),
+                        skill_types: super::super::conditions::skill_type_bits(&effect.skill_types),
                     });
                 } else {
                     // Curse effect mods: statset stats mapped through the statmap curse
@@ -625,7 +641,7 @@ pub(crate) fn spirit_reservation_modifiers(
     // (CalcTools.lua:147-152), and reservation efficiency gets some through this (e.g.
     // Mirage Archer's alt `base_reservation_efficiency_+%` ×2, Eternal Rage's alt
     // `base_spirit_reservation_efficiency_+%` ×0.75).
-    let use_alt_quality = super::skill_resolve::gemling_quality_flag(build, data);
+    let use_alt_quality = super::resolve::gemling_quality_flag(build, data);
     for group in build.enabled_socket_groups() {
         for gem in &group.gem_skills {
             let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
@@ -740,8 +756,9 @@ pub(crate) fn spirit_reservation_modifiers(
                 .filter(|s| EFFICIENCY_STATS.contains(&s.stat.as_str()))
                 .map(|s| s.value)
                 .sum();
-            let gem_cfg = pobr_core::CalcConfig::new()
-                .with_skill_types(super::conditions::skill_type_bits(&effect.skill_types));
+            let gem_cfg = pobr_core::CalcConfig::new().with_skill_types(
+                super::super::conditions::skill_type_bits(&effect.skill_types),
+            );
             let mod_eff = db.sum(
                 pobr_data::prelude::ModType::Inc,
                 &gem_cfg,

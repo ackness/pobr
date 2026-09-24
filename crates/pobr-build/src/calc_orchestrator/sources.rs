@@ -4,11 +4,13 @@
 //! Injection helpers accept this type; reservation and minion readers require the
 //! completed CalculationSession returned by finish_sources.
 
-use super::*;
+use pobr_core::Modifier;
+use pobr_core::calc::{BuffSpec, CalculationSession};
 use pobr_core::mod_parser::ParseError;
 use pobr_core::passive::AllocatedNode;
 use pobr_core::skill_source::GemModSource;
-use pobr_data::item::Item;
+use pobr_data::item::{EquipmentSlot, Item};
+use pobr_data::monster::EnemyTier;
 
 pub(super) struct SourceWriter {
     session: CalculationSession,

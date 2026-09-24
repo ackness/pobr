@@ -1,6 +1,22 @@
 //! collect — collecting character base / passive nodes / jewel radius expansion / keystones / items·gems.
 
-use super::*;
+use pobr_core::Modifier;
+use pobr_core::mod_parser::ParseCtx;
+use pobr_core::skill_source::GemModSource;
+use pobr_data::item::Item;
+use pobr_data::modifier::ModType;
+use pobr_tree::{ClassContext, JewelRadius};
+
+use super::sources::SourceWriter;
+use crate::build::Build;
+use crate::build::RadiusJewel;
+use crate::build_data::BuildData;
+use crate::error::BuildError;
+use pobr_core::CharacterBase;
+use pobr_core::passive::AllocatedNode;
+use pobr_tree::{collect_allocated_mods_for_class, compute_radius_jewel_effect_with_radii};
+
+use super::skill::resolve::{parse_gem_property_bonus, small_passive_effect_inc};
 pub(crate) use pobr_core::passive::{GrantTargetKind, parse_grant_line};
 
 /// Resolve item-granted sockets using the selected tree's stable IDs and names.

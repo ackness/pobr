@@ -1,6 +1,10 @@
 //! skill_mods — modifier injection for skill base mods / DoT / corpse explosion / crossbow reload / quality / unselected sets.
 
-use super::*;
+use super::super::DataOrchestratorOptions;
+use super::super::context::CalculationContext;
+use super::super::skill::resolve::config_enemy_level;
+use super::super::stat_map::mapped_stat_modifiers;
+use crate::support::judge_group_supports;
 
 use pobr_core::Modifier;
 use pobr_core::rules::stat_map_engine::{self, MappedItem, MappedOutcome};
@@ -491,4 +495,79 @@ pub(crate) fn is_off_hand_weapon_base_stat(stat: &str) -> bool {
         stat,
         "off_hand_weapon_minimum_physical_damage" | "off_hand_weapon_maximum_physical_damage"
     )
+}
+
+/// Maps the **compatible support gems'** per-level stats in the main skill's group
+/// through [`map_skill_stat`] into SupportGem-attributed modifiers, injected into the
+/// supported skill (e.g. "added lightning damage" → `LightningDamageMin/Max` BASE,
+/// "more damage" → `Damage` MORE).
+///
+/// Before injection, [`judge_group_supports`] produces the compatible list: **a rejected
+/// support doesn't participate at all** (neither its numeric values nor its
+/// manaMultiplier applies, matching PoB2's `CalcActiveSkill.lua:210-214` semantics of
+/// only putting compatible supports into effectList).
+///
+/// The current scope is **global** (correct semantics under a single-main-skill build:
+/// every support's multiplier applies to the one skill being calculated); per-skill tag
+/// isolation for multiple main skills (applying only to the supported skill) is deferred
+/// until the flag system is wired up. The active main skill's own damage is already
+/// injected by [`skill_base_modifiers`]; this only handles supports.
+pub(crate) fn support_modifiers(
+    context: &mut CalculationContext,
+    group: &SocketGroup,
+    data: &BuildData,
+    active_skill_id: &str,
+) -> Vec<Modifier> {
+    let judgement = judge_group_supports(group, data, active_skill_id, group.from_gem());
+    let mut mods = Vec::new();
+    for sup in &judgement.compatible {
+        let gem = &group.gem_skills[sup.gem_index];
+        let set_index = sup.stat_set_index(group);
+        // TODO(T1, add after rebasing post-T3.6 merge): change the quality argument to
+        // gem.quality — supports have no quality table entries (PoB2 skips them at
+        // export), so this segment is currently always empty and passing 0 is
+        // equivalent to passing gem.quality.
+        let stats = data.effect_stats(&sup.effect_id, gem.gem_level, 0, set_index);
+        // A support's set_key is taken from its own selected set (per-set overrides are
+        // located by the support's effect id). Note: vendor doesn't pass a statSet for
+        // support effects (CalcActiveSkill.lua:130 does a full merge across all sets) —
+        // the full merge for a multi-set support's additional sets is a current gap.
+        let set_key = data.selected_set_key(&sup.effect_id, set_index);
+        mods.extend(mapped_stat_modifiers(
+            context,
+            &stats.base,
+            SourceKind::SupportGem,
+            &sup.effect_id,
+            &sup.effect_id,
+            set_key.as_deref(),
+        ));
+        // A compatible support's per-level cost multiplier → `SupportManaMultiplier`
+        // MORE (matching PoB2's `CalcActiveSkill.lua:689-691`:
+        // `NewMod("SupportManaMultiplier","MORE", level.manaMultiplier, modSource)`).
+        // Only injected for the **compatible list** — a rejected support's multiplier
+        // doesn't apply, matching PoB2's rejection. Consumed by
+        // `skill_mechanics::calc_skill_cost` (the multipliers are chained and truncated
+        // to 4 decimal places, then applied to base cost before the inc/more chain).
+        if let Some(mm) = data
+            .granted_effect_levels
+            .get(&sup.effect_id)
+            .and_then(|rows| {
+                rows.iter()
+                    .rfind(|r| r.level <= gem.gem_level)
+                    .or(rows.first())
+            })
+            .and_then(|row| row.mana_multiplier)
+            .filter(|&v| v != 0.0)
+        {
+            let origin = ModifierSource::new(SourceId::new(
+                SourceKind::SupportGem,
+                format!("support.{}.manaMultiplier", sup.effect_id),
+            ))
+            .with_raw_text(format!("support {} cost multiplier {mm}%", sup.effect_id));
+            mods.push(
+                Modifier::number("SupportManaMultiplier", ModType::More, mm).with_origin(origin),
+            );
+        }
+    }
+    mods
 }

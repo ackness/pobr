@@ -39,53 +39,32 @@
 
 use std::borrow::Cow;
 
-use pobr_core::calc::minion::AttributeInfusion;
-use pobr_core::calc::{BuffKind, BuffSpec, CalculationSession, MinimalInput, OutputTable};
-use pobr_core::mod_parser::ParseCtx;
-use pobr_core::passive::AllocatedNode;
-use pobr_core::rules::stat_map_engine::{self, StatMapCatalog};
-use pobr_core::skill_source::GemModSource;
-use pobr_core::{CalcConfig, CampaignProgress, CharacterBase, ModTag, Modifier};
-use pobr_data::catalog::GrantedEffectDef;
-use pobr_data::catalog::local_mods::WeaponLocalModsDef;
+use pobr_core::calc::{CalculationSession, MinimalInput, OutputTable};
+use pobr_core::rules::stat_map_engine::StatMapCatalog;
+use pobr_core::{CalcConfig, CharacterBase, Modifier};
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::monster::EnemyTier;
-use pobr_data::skill::SkillTypes;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
-use pobr_tree::{
-    ClassContext, JewelRadius, collect_allocated_mods_for_class,
-    compute_radius_jewel_effect_with_radii,
-};
 
-use crate::buff_stat_map::{map_aura_buff_stat, map_self_buff_offensive_stat};
-use crate::build::{Build, RadiusJewel, SocketGroup};
-use crate::build_data::{BuildData, ResolvedSkillLevel};
+use crate::build::Build;
+use crate::build_data::BuildData;
 use crate::error::BuildError;
 
-mod defence;
 mod granted_skills;
-mod skill_resolve;
-use defence::*;
+mod item;
+mod skill;
 use granted_skills::*;
-pub use skill_resolve::resolve_main_skill_selection;
-use skill_resolve::*;
-mod conditions;
-use conditions::*;
-mod weapon;
-use weapon::*;
-mod skill_mods;
-use crate::support::judge_group_supports;
-use skill_mods::*;
-mod triggers;
-use triggers::*;
-mod buffs;
-use buffs::*;
+pub use skill::resolve::resolve_main_skill_selection;
+use skill::{
+    minions::spawn_minions,
+    resolve::{additional_ring_slot_allocated, apply_gem_quality_bonuses, pick_group_main_skill},
+};
 mod collect;
+mod conditions;
 use collect::*;
 mod stat_map;
 pub use stat_map::StatMapCompareRecord;
-use stat_map::*;
 mod prepare;
 use prepare::*;
 mod context;
@@ -1229,10 +1208,31 @@ mod ring3_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use super::item::mirror::slot_bonus_effect_scales;
+    use super::item::weapon::unarmed_contribution;
+    use super::skill::buffs::{
+        buff_skill_specs, herald_skill_names, self_buff_offensive_modifiers, support_buff_specs,
+    };
+
+    use super::conditions::{combat_conditions, weapon_cfg_flags, weapon_type_conditions};
+    use super::skill::mods::{
+        main_skill_quality_modifiers, skill_base_modifiers, unselected_set_global_modifiers,
+    };
+    use super::skill::resolve::{
+        GemPropertyBonus, GemPropertyKind, gem_property_bonuses, pick_group_main_skill,
+    };
+    use super::skill::triggers::{trigger_modifiers, trigger_source_stats};
+    use super::stat_map::exposure_support_modifiers;
+    use crate::build::{Build, RadiusJewel};
     use crate::build::{CharacterIdentity, SocketGroup};
     use crate::build_data::ClassBaseAttributes;
+    use crate::build_data::ResolvedSkillLevel;
     use pobr_core::CalcConfig;
+    use pobr_core::CampaignProgress;
+    use pobr_core::calc::BuffKind;
     use pobr_core::calc::CalculationSession;
+    use pobr_core::mod_parser::ParseCtx;
     use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
     use pobr_data::passive_tree::{NodeId, PassiveTreeSpec};
     use pobr_gamedata::{GameData, repo_data_root};

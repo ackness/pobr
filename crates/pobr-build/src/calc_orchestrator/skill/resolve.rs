@@ -1,223 +1,12 @@
-//! skill_resolve — minion spawning / main skill selection / gem attribute·quality·level
-//! bonuses / Kalandra mirroring.
+//! skill/resolve — main skill selection (gem group → active skill), gem level/quality
+//! bonuses, and skill-name derivation.
 
-use super::*;
+use super::super::collect::granted_passive_defs;
+use super::super::item::mirror::kalandra_reflected_ring;
+use super::super::item::weapon::clean_item_text;
+use crate::build::{Build, SocketGroup};
+use crate::build_data::{BuildData, ResolvedSkillLevel};
 
-/// Recognizes summoning gems → wires them into `Env.minions`.
-///
-/// Walks the enabled socket groups, and for each **active skill**'s (non-support)
-/// granted effect, checks [`BuildData::effect_minion_list`]: nonempty means it's a
-/// summoning skill. For each minion id in the list, [`BuildData::minion_def`] fetches
-/// the real base data, and a minion actor is wired in, derived from the summoning gem's level.
-///
-/// **Minion level**: the raw gem_level is passed to `add_minion_from_def`, which
-/// internally maps it to a monster level via `minion_level_from_gem_level` (vendor's
-/// default rule, `CalcActiveSkill.lua:896`'s `minionLevelTable[gem_level]`, clamped to
-/// [1,100]). Special rules like `minionLevelIsEnemyLevel` / `minionLevelIsPlayerLevel` /
-/// an explicit `skillData.minionLevel` are category C, deferred; the first version
-/// follows the default rule (covering the vast majority of summoning gems).
-///
-/// **Quantity cap**: per vendor `CalcPerform.lua:1183-1187`, takes the sum of the
-/// minion's `limit` stat's BASE in the player modList
-/// ([`CalculationSession::base_sum`]), falling back to 1 when missing (at least one
-/// minion, so life/DPS is visible). The `ActiveMinionLimit` MORE multiplier zone and
-/// Override semantics are deferred.
-///
-/// **The MinionModifier channel (B3)**: the `Minions deal/have …` mod family's engine
-/// output as a `MinionModifier` LIST is wrapped into a `MinionModifierEntry` via
-/// [`extract_minion_modifier_entries`](pobr_core::calc::minion::extract_minion_modifier_entries)
-/// and injected into the minion ModDb. The first version collects from **equipment mods
-/// and extra_modifier_texts**, which covers minion mods sourced from items and config;
-/// minion mods granted by the tree or by gems are a residual gap, since catching those
-/// would mean intercepting at every source's injection point. `ally_buff` and
-/// attribute-infusion consumption are deferred.
-pub(crate) fn spawn_minions(
-    session: &mut CalculationSession,
-    build: &Build,
-    data: &BuildData,
-    extra_texts: &[String],
-) {
-    use pobr_core::calc::minion::MinionModifierEntry;
-    use std::collections::BTreeSet;
-
-    // B3: collects `Minions deal/have …` mods (equipment + extra), wrapped into
-    // MinionModifierEntry. These mods don't participate in the player's own aggregation
-    // in the main flow (the engine produces a `MinionModifier` LIST mod, and LIST
-    // doesn't participate in sum/more/flag) — they only enter the minion ModDb here.
-    // Each line is run through `parse_mod_engine`, and `extract_minion_modifier_entries`
-    // extracts the `MinionModifier` wrapper from the output. Missing rules (an old data
-    // pack) = no parser → produces no minion mods (matching the global "rules not
-    // injected → everything Unsupported" semantics).
-    let mut minion_modifiers: Vec<MinionModifierEntry> = Vec::new();
-    if let Some(rules) = data.parser_rules.as_deref() {
-        for text in collect_item_texts(build).iter().chain(extra_texts.iter()) {
-            let outcome = pobr_core::mod_parser::parse_mod_engine(text, rules);
-            minion_modifiers.extend(pobr_core::calc::minion::extract_minion_modifier_entries(
-                &outcome.mods,
-            ));
-        }
-    }
-
-    // Deduplication: the same minion id (referenced by the same minion from different
-    // skills/groups) is only wired in once, to avoid double-counting.
-    let mut seen: BTreeSet<String> = BTreeSet::new();
-
-    for group in build.enabled_socket_groups() {
-        // This group's each **active skill** gem's (granted effect id, gem level).
-        // Prefers `gem_skills` (the real import path, includes both active + support);
-        // falls back to `active_skill_id` when empty (constructed by the builder/test
-        // path's with_active_skill, the same fallback source as resolve_main_skill).
-        let candidates: Vec<(&str, u32)> = if group.gem_skills.is_empty() {
-            group
-                .active_skill_id
-                .as_deref()
-                .map(|id| vec![(id, group.active_gem_level.unwrap_or(1))])
-                .unwrap_or_default()
-        } else {
-            group
-                .gem_skills
-                .iter()
-                .map(|g| (g.skill_id.as_str(), g.gem_level))
-                .collect()
-        };
-        for (skill_id, gem_level) in candidates {
-            // A support itself doesn't summon — its addMinionList appends to the active
-            // skill's minion_list, which is deferred; the first version only wires up
-            // the active skill's minion_list.
-            let is_support = data
-                .granted_effects
-                .get(skill_id)
-                .map(|e| e.is_support)
-                .unwrap_or(false);
-            if is_support {
-                continue;
-            }
-            let minion_ids = data.effect_minion_list(skill_id);
-            if minion_ids.is_empty() {
-                continue;
-            }
-            // Minion level uses the **effective gem level** (matching vendor's
-            // `data.minionLevelTable[activeEffect.level]`, CalcActiveSkill.lua:948 —
-            // activeEffect.level includes applyGemMods's `+N to Level of all <X>
-            // Skills` and levels granted by supports). wolf-pack's "+4 to Level of all
-            // Minion Skills": gem 18 → 22 → monster level 44 (pinned by oracle; before
-            // the fix, 36 → life 1013 vs 2262).
-            let effective_gem_level = gem_level
-                .saturating_add(additional_gem_levels(build, data, skill_id))
-                .saturating_add(support_granted_gem_levels(group, data, skill_id));
-            // (#12 companion) Companion determination: the granted skill has
-            // `SkillType.Companion` and not `MinionsAreUndamagable` (matching vendor
-            // CalcPerform.lua:3365-3367's includeSkill predicate) → this skill's
-            // minions count toward `TotalCompanionLife`.
-            let is_companion = data.granted_effects.get(skill_id).is_some_and(|e| {
-                e.skill_types.iter().any(|t| t == "Companion")
-                    && !e.skill_types.iter().any(|t| t == "MinionsAreUndamagable")
-            });
-            // (#12) The minion-side payload of a compatible support in the same group
-            // (vendor: a support statmap's `MinionModifier LIST` is merged into the
-            // supported skill's skillModList → `addMinionModifiers` injects it into
-            // **that skill's** minion modDB, in-group scope). Data channel =
-            // `map_minion_life_stat` (the first batch only covers inner Life, e.g.
-            // Loyalty's −30% more minion life).
-            let mut group_minion_modifiers = minion_modifiers.clone();
-            if let Some(catalog) = data.stat_map_catalog.as_deref() {
-                use pobr_core::calc::minion::MinionModifierEntry;
-                use pobr_core::rules::stat_map_engine::map_minion_life_stat;
-                for sup in
-                    crate::support::judge_group_supports(group, data, skill_id, group.from_gem())
-                        .compatible
-                {
-                    let sup_gem = &group.gem_skills[sup.gem_index];
-                    let set_index = (sup_gem.skill_id == sup.effect_id)
-                        .then_some(sup_gem.stat_set_index)
-                        .flatten();
-                    // Quality passed as 0, matching support_modifiers's semantics (supports have no quality table entries).
-                    let stats = data.effect_stats(&sup.effect_id, sup_gem.gem_level, 0, set_index);
-                    let set_key = data.selected_set_key(&sup.effect_id, set_index);
-                    for ds in stats.all() {
-                        if ds.value == 0.0 {
-                            continue;
-                        }
-                        for inner in map_minion_life_stat(
-                            catalog,
-                            &sup.effect_id,
-                            set_key.as_deref(),
-                            &ds.stat,
-                            ds.value,
-                        ) {
-                            let origin = ModifierSource::new(SourceId::new(
-                                SourceKind::SupportGem,
-                                format!("minion.{}.{}", sup.effect_id, ds.stat),
-                            ))
-                            .with_raw_text(format!(
-                                "minion {} {} ({})",
-                                sup.effect_id, ds.stat, ds.value
-                            ));
-                            group_minion_modifiers.push(MinionModifierEntry {
-                                inner: inner.with_origin(origin),
-                                minion_type: None,
-                            });
-                        }
-                    }
-                }
-            }
-            for minion_id in minion_ids {
-                if !seen.insert(minion_id.clone()) {
-                    continue;
-                }
-                let Some(def) = data.minion_def(minion_id) else {
-                    // minion_list references a minion not in the catalog (the foreign
-                    // key is verified to have zero dangling references — defensive
-                    // skip, theoretically unreachable).
-                    continue;
-                };
-                // Quantity cap: the sum of the minion's limit stat's (e.g.
-                // `ActiveZombieLimit`) player BASE; falls back to 1 when missing. The
-                // limit only affects `Multiplier:SummonedMinion` (per-minion mods +
-                // DPS aggregation count), not a single minion's life/defence.
-                let limit_stat = def.limit.to_pob2_str();
-                let limit = if limit_stat.is_empty() {
-                    1
-                } else {
-                    let summed = session.base_sum(limit_stat);
-                    if summed >= 1.0 { summed as u32 } else { 1 }
-                };
-                let def = def.clone();
-                // `add_minion_from_def` internally maps gem level to monster level via
-                // `minion_level_from_gem_level` (the default rule at
-                // CalcActiveSkill.lua:948), so the effective gem level (including the
-                // +N to Level bonus) is passed here and must not be pre-resolved
-                // (otherwise the mapping would apply twice).
-                session.add_minion_from_def(
-                    &def,
-                    effective_gem_level,
-                    limit,
-                    group_minion_modifiers.clone(),
-                    Vec::new(),
-                    AttributeInfusion::default(),
-                    is_companion,
-                );
-            }
-        }
-    }
-}
-
-/// Determines whether a granted effect is a candidate "actively-cast damaging skill":
-/// attack or spell, and not a meta/trigger shell (`skill_types` includes `"Meta"`, e.g.
-/// Cast on Crit / Mirage Deadeye).
-///
-/// PoB's `socketGroupSkillList` treats every non-support gem (including meta shells) as
-/// an active skill entry, and `mainActiveSkill` selects among them by ordinal; but a
-/// meta shell has no independent damage/cast time of its own, and must be pierced
-/// through to the group's real damaging skill. This determination is generic, filtering
-/// by tags (is_attack/is_spell + non-Meta), never targeting a specific skill id.
-/// The build XML Config's `enemyLevel` scalar (matching vendor's
-/// `build.configTab.enemyLevel`, which **takes priority over** the character-level
-/// derivation at CalcSetup.lua:529). The read order matches ConfigTab.lua:872-877: an
-/// `<Input>` explicit value → a `<Placeholder>` value (a common shape in ninja exports)
-/// → treated as absent if both are missing/non-positive (returns None, and the caller
-/// falls back to the character-level derivation). Vendor clamps both paths to
-/// `MaxEnemyLevel`; setup_enemy's hundred-level table lookup already clamps, so this doesn't repeat it.
 pub(crate) fn config_enemy_level(build: &Build) -> Option<u32> {
     use pobr_core::rules::config_interpreter::ConfigInputValue;
     let raw = &build.config.raw_inputs;
@@ -229,6 +18,15 @@ pub(crate) fn config_enemy_level(build: &Build) -> Option<u32> {
     read(&raw.values).or_else(|| read(&raw.placeholders))
 }
 
+/// Determines whether a granted effect is a candidate "actively-cast damaging skill":
+/// attack or spell, and not a meta/trigger shell (`skill_types` includes `"Meta"`, e.g.
+/// Cast on Crit / Mirage Deadeye).
+///
+/// PoB's `socketGroupSkillList` treats every non-support gem (including meta shells) as
+/// an active skill entry, and `mainActiveSkill` selects among them by ordinal; but a
+/// meta shell has no independent damage/cast time of its own, and must be pierced
+/// through to the group's real damaging skill. This determination is generic, filtering
+/// by tags (is_attack/is_spell + non-Meta), never targeting a specific skill id.
 pub(crate) fn is_damage_skill(data: &BuildData, skill_id: &str) -> bool {
     data.granted_effects
         .get(skill_id)
@@ -745,158 +543,6 @@ pub(crate) fn additional_ring_slot_allocated(build: &Build, data: &BuildData) ->
 /// Source scan: allocated tree node mods + every equipment mod (vendor does a global
 /// modDB `Sum("INC")`, CalcPerform.lua:1326). Text is stripped of `{tag}`/`[A|B]`
 /// markers first, then compared lowercase.
-pub(crate) fn slot_bonus_effect_scales(
-    build: &Build,
-    data: &BuildData,
-) -> Vec<(EquipmentSlot, f64)> {
-    use EquipmentSlot::{Amulet, Ring1, Ring2, Ring3, Weapon2};
-    let mut scales: Vec<(EquipmentSlot, f64)> = Vec::new();
-    let mut add = |slots: &[EquipmentSlot], inc: f64| {
-        for s in slots {
-            match scales.iter_mut().find(|(slot, _)| slot == s) {
-                Some((_, v)) => *v += inc,
-                None => scales.push((*s, inc)),
-            }
-        }
-    };
-    // The quiver variant (matching vendor CalcSetup.lua:1366-1373: when
-    // `itemList["Weapon 2"].type == "Quiver"`, each of its modList entries gets
-    // ScaleAddMod'd; the oracle source records "Many Sources:N% Quiver Bonus
-    // Effect") — only collected when the off-hand slot is actually a quiver.
-    let weapon2_is_quiver = build
-        .items
-        .get(&Weapon2)
-        .and_then(|item| data.base_items.get(&item.base.to_string()))
-        .is_some_and(|def| def.item_class == "Quiver");
-    // The focus variant (matching vendor CalcSetup.lua:1209-1220: when
-    // `item.type == "Focus"`, that item's whole global modList gets
-    // ScaleAddList(scale-1) applied, with scale coming from
-    // `EffectOfBonusesFromFocus`, ModParser.lua:4867's "N% reduced bonuses gained
-    // from equipped focus" → INC -N; carried by the Disciple of Varashta
-    // ascendancy's "Instruments of Power" node 20701) — only collected when the
-    // off-hand slot is actually a focus.
-    let weapon2_is_focus = build
-        .items
-        .get(&Weapon2)
-        .and_then(|item| data.base_items.get(&item.base.to_string()))
-        .is_some_and(|def| def.item_class == "Focus");
-    let mut texts: Vec<String> = Vec::new();
-    for id in &build.tree.allocated_nodes {
-        if let Some(node) = data.passive_nodes.get(&id.0) {
-            texts.extend(node.stats.iter().map(|s| clean_grant_text(s)));
-        }
-    }
-    // Granted notables (`Allocates <name>` enchant, same semantics as
-    // gem_property_bonuses: vendor puts a granted node's modList into the global modDB
-    // the same as an allocated node, CalcSetup.lua:1322-1331).
-    {
-        let allocated: std::collections::HashSet<u32> =
-            build.tree.allocated_nodes.iter().map(|id| id.0).collect();
-        for def in granted_passive_defs(build, data) {
-            if allocated.contains(&def.skill) {
-                continue;
-            }
-            texts.extend(def.stats.iter().map(|s| clean_grant_text(s)));
-        }
-    }
-    // Radius grants have already been scaled as structured modifiers, including
-    // the data-driven precision rules. Read stable stat IDs instead of rebuilding text.
-    for modifier in radius_jewel_grant_modifiers(build, data) {
-        if modifier.mod_type != ModType::Inc {
-            continue;
-        }
-        let Some(value) = modifier.value.as_number() else {
-            continue;
-        };
-        let slot = match modifier.name.as_str() {
-            "EffectOfBonusesFromRing 1" => Ring1,
-            "EffectOfBonusesFromRing 2" => Ring2,
-            "EffectOfBonusesFromRing 3" => Ring3,
-            "EffectOfBonusesFromAmulet" => Amulet,
-            "EffectOfBonusesFromQuiver" if weapon2_is_quiver => Weapon2,
-            "EffectOfBonusesFromFocus" if weapon2_is_focus => Weapon2,
-            _ => continue,
-        };
-        add(&[slot], value / 100.0);
-    }
-    for (_, item) in build.equipped_items() {
-        for t in item
-            .implicit_texts
-            .iter()
-            .chain(&item.modifier_texts)
-            .chain(&item.enchant_texts)
-        {
-            texts.push(clean_grant_text(t));
-        }
-    }
-    // Ordinary socketed jewels enter the same global ModDb as equipment. Match
-    // their injection scaling (including The Adorned) before scaling the quiver.
-    let adorned_inc = adorned_corrupted_magic_jewel_inc(&build.jewels);
-    for jewel in &build.jewels {
-        let scale = if jewel.rarity == pobr_data::item::ItemRarity::Magic && jewel.corrupted {
-            1.0 + adorned_inc.unwrap_or(0.0) / 100.0
-        } else {
-            1.0
-        };
-        for text in jewel
-            .implicit_texts
-            .iter()
-            .chain(&jewel.modifier_texts)
-            .chain(&jewel.enchant_texts)
-        {
-            let text = clean_grant_text(text);
-            if scale != 1.0 {
-                if let Some((number, rest)) = text.split_once('%')
-                    && let Ok(value) = number.parse::<f64>()
-                {
-                    texts.push(format!("{}%{rest}", scale_trunc_2dp(value, scale)));
-                }
-            } else {
-                texts.push(text);
-            }
-        }
-    }
-    for t in &texts {
-        // Two prefixes: increased (positive) and reduced (negative, vendor only has this for the focus variant).
-        const INC_NEEDLE: &str = "% increased bonuses gained from ";
-        const RED_NEEDLE: &str = "% reduced bonuses gained from ";
-        let (idx, needle, sign) = match t.find(INC_NEEDLE) {
-            Some(i) => (i, INC_NEEDLE, 1.0),
-            None => match t.find(RED_NEEDLE) {
-                Some(i) => (i, RED_NEEDLE, -1.0),
-                None => continue,
-            },
-        };
-        let Ok(num) = t[..idx].trim().parse::<f64>() else {
-            continue;
-        };
-        let num = num * sign;
-        let target = t[idx + needle.len()..].trim();
-        // Vendor ModParser.lua:4866-4880's ring/amulet variants + :4866's quiver
-        // variant (`EffectOfBonusesFromQuiver`, consumed at CalcSetup.lua:1366-1373's
-        // Weapon 2 quiver special case) + :4867's focus variant
-        // (`EffectOfBonusesFromFocus` INC -N, consumed at CalcSetup.lua:1209-1220's
-        // Focus item special case — only numeric BASE/INC/MORE mods are scaled;
-        // LIST/FLAG mods have their scaled copy dropped via
-        // MergeMod(skipNonAdditive), keeping the full value, matching this consumer's Number-only filter).
-        match (target, sign > 0.0) {
-            ("equipped rings and amulets", true) => {
-                add(&[Ring1, Ring2, Ring3, Amulet], num / 100.0)
-            }
-            ("equipped rings", true) => add(&[Ring1, Ring2, Ring3], num / 100.0),
-            ("left equipped ring", true) => add(&[Ring1], num / 100.0),
-            ("right equipped ring", true) => add(&[Ring2], num / 100.0),
-            ("equipped quiver", true) if weapon2_is_quiver => add(&[Weapon2], num / 100.0),
-            ("equipped focus", false) if weapon2_is_focus => add(&[Weapon2], num / 100.0),
-            _ => {}
-        }
-    }
-    scales
-}
-
-/// Strips `{tag}` and `[A|B]` (takes display name B) / `[A]` markers and lowercases the
-/// text, for [`slot_bonus_effect_scales`]'s fixed-pattern comparisons (matching
-/// mod_parser's internal cleaning semantics).
 pub(crate) fn clean_grant_text(text: &str) -> String {
     let no_braces = clean_item_text(text);
     if !no_braces.contains('[') {
@@ -968,33 +614,6 @@ pub(crate) fn small_passive_effect_inc(build: &Build, data: &BuildData) -> f64 {
 /// from display name. On a match, returns the opposite ring (the caller injects using
 /// its mods in place of the Kalandra slot's own, with attribution still going to the
 /// slot Kalandra's Touch is in).
-pub(crate) fn kalandra_reflected_ring<'a>(
-    build: &'a Build,
-    slot: EquipmentSlot,
-    item: &Item,
-) -> Option<&'a Item> {
-    let reflects = |it: &Item| {
-        it.implicit_texts
-            .iter()
-            .chain(&it.modifier_texts)
-            .chain(&it.enchant_texts)
-            .any(|t| clean_item_text(t).eq_ignore_ascii_case("reflects opposite ring"))
-    };
-    if !reflects(item) {
-        return None;
-    }
-    let other_slot = match slot {
-        EquipmentSlot::Ring1 => EquipmentSlot::Ring2,
-        EquipmentSlot::Ring2 => EquipmentSlot::Ring1,
-        _ => return None,
-    };
-    let other = build.items.get(&other_slot)?;
-    if reflects(other) {
-        return None;
-    }
-    Some(other)
-}
-
 /// A GemProperty mod's attribute dimension (matching vendor `ModParser.lua:3468`'s
 /// `(%a+)` property capture: `level` / `quality`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1018,18 +637,6 @@ pub(crate) struct GemPropertyBonus {
     pub(crate) attr_req: Option<&'static str>,
 }
 
-/// Parses a GemProperty mod (extended; matching vendor ModParser.lua:3468's
-/// `([%+%-]%d+)%%? to (%a+) of all ?([%a%-' ]*) skills? ?w?i?t?h? ?a?n?
-/// ?(%a+) ?r?e?q?u?i?r?e?m?e?n?t?`):
-/// - `+N to Level of all [<category> ]Skills` → Level
-/// - `+N% to Quality of all [<category> ]Skills` → Quality (the tree's "Skill Gem
-///   Quality" small passive / the Gemling ascendancy etc.)
-/// - the suffix `with a <Strength|Dexterity|Intelligence> requirement` →
-///   `attr_req` (vendor's gemRequirements)
-///
-/// First strips `{fractured}` braces and `[internal name|display name]` bracket markers
-/// and lowercases via [`clean_grant_text`] (the `[Quality]` shape a tree stat can take).
-/// Returns `None` for any other form.
 pub(crate) fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
     let clean = clean_grant_text(text);
     let body = clean.strip_prefix('+')?;
@@ -1124,7 +731,7 @@ pub(crate) fn skill_name_from_id(skill_id: &str) -> String {
 
 #[cfg(test)]
 mod kalandra_tests {
-    use super::kalandra_reflected_ring;
+    use super::super::super::item::mirror::kalandra_reflected_ring;
     use crate::build::Build;
     use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 

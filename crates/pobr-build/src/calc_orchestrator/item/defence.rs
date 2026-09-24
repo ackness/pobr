@@ -1,6 +1,16 @@
 //! defence — armour/evasion/ES/ward/spirit/block + per-slot defence scaling.
 
-use super::*;
+use pobr_core::Modifier;
+use pobr_data::item::{EquipmentSlot, Item};
+use pobr_data::modifier::ModType;
+use pobr_data::source::{ModifierSource, SourceId, SourceKind};
+
+use super::super::item::weapon::{
+    clean_item_text, item_local_defence_flat, item_local_defence_inc, weapon_mod_texts,
+};
+use crate::build::Build;
+use crate::build_data::BuildData;
+use pobr_core::ModTag;
 
 /// Injects every armour piece's **per-item** defence base value (armour/evasion/ES) as
 /// an Item-attributed BASE mod, for `scaled_defence_stat` to layer global (tree/aura)
