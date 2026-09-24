@@ -503,8 +503,7 @@ pub(crate) fn radius_jewel_expansions<'a>(
 /// truncate toward zero. Scaling that needs the precision exception table uses
 /// the core ScaleAddMod primitive instead.
 pub(crate) fn vendor_scale_mod_value(value: f64, scale: f64) -> f64 {
-    let rounded = (value * scale * 100.0).round() / 100.0;
-    rounded.trunc()
+    pobr_core::skill_env::vendor_scale_mod_value(value, scale)
 }
 
 /// Parse each radius grant once and scale its modifiers for each allocated node.

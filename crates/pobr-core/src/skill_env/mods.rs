@@ -194,3 +194,10 @@ pub fn skill_type_flags(skill_types: &[String]) -> pobr_data::modifier::ModFlags
     }
     flags
 }
+
+/// Vendor `math.floor(value * scale * 100 + 0.5) / 100` scaling (PoB2's `modValue`
+/// rounding for radius jewel grants). Returns the truncated-to-integer result.
+pub fn vendor_scale_mod_value(value: f64, scale: f64) -> f64 {
+    let rounded = (value * scale * 100.0).round() / 100.0;
+    rounded.trunc()
+}
