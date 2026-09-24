@@ -231,7 +231,9 @@ pub fn calculate(build: &Build, options: &OrchestratorOptions) -> Result<OutputT
             .map_err(|e| BuildError::Parse(e.to_string()))?;
     }
 
-    let minimal = session.perform_minimal();
+    let minimal = session
+        .perform_minimal()
+        .map_err(|e| BuildError::Calc(e.to_string()))?;
     Ok(OutputTable::from(&minimal))
 }
 
@@ -585,7 +587,9 @@ fn calculate_with_context(
     // perform fills env.player.output entirely (including every fill-stage field of
     // calc_defence — armour/evasion/ES, ailments, EHP, etc.); the full OutputTable is
     // taken, not the MinimalOutput subset (which loses defence etc.).
-    session.perform_minimal();
+    session
+        .perform_minimal()
+        .map_err(|e| BuildError::Calc(e.to_string()))?;
     Ok(session)
 }
 
@@ -1755,7 +1759,7 @@ mod tests {
         let mut session = CalculationSession::new(base)
             .with_config(CalcConfig::attack().with_mode_effective(true));
         session.setup_enemy(80, EnemyTier::Pinnacle);
-        let out = session.perform_minimal();
+        let out = session.perform_minimal().expect("perform");
         assert!(
             out.hit_chance < 1.0,
             "attacks should run the accuracy/evasion check: hit_chance={}",
@@ -1860,7 +1864,7 @@ mod tests {
         })
         .with_config(CalcConfig::attack().with_mode_effective(true));
         session.setup_enemy(80, EnemyTier::Pinnacle);
-        let out = session.perform_minimal();
+        let out = session.perform_minimal().expect("perform");
         assert!(out.hit_chance <= 1.0);
     }
 
@@ -2679,7 +2683,7 @@ mod tests {
             manual.add_buff_skill(spec);
         }
         let manual_es = {
-            manual.perform_minimal();
+            manual.perform_minimal().expect("perform");
             manual.output().energy_shield
         };
         assert!(
@@ -2719,7 +2723,7 @@ mod tests {
             for spec in buff_skill_specs(&mut test_context(&data), &build, &data) {
                 session.add_buff_skill(spec);
             }
-            session.perform_minimal();
+            session.perform_minimal().expect("perform");
             session.output().energy_shield
         };
 
@@ -2992,7 +2996,7 @@ mod tests {
                 }
             }
             session.setup_enemy(80, EnemyTier::Pinnacle);
-            session.perform_minimal();
+            session.perform_minimal().expect("perform");
             (session.output().dps, session.output().curse_slots.clone())
         };
 

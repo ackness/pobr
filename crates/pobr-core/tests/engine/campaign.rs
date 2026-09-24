@@ -154,7 +154,7 @@ fn session_ingests_character_base_and_campaign_modifiers() {
     session.add_modifiers(base.modifiers(&CharacterConstantsDef::default()));
     session.add_modifiers(state.modifiers());
 
-    let output = session.perform_minimal();
+    let output = session.perform_minimal().expect("perform");
 
     // Character base life: 12*1 + 16 + 2*15 = 58 (PoB2 `Life BASE 12 × Level + 16`).
     assert_eq!(output.life, 58.0);

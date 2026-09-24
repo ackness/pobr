@@ -761,7 +761,7 @@ mod forward_enemy_modifiers_tests {
             session
                 .add_modifier_texts(["Enemies you Curse take 6% increased Damage"])
                 .expect("parses");
-            session.perform_minimal().dps
+            session.perform_minimal().expect("perform").dps
         };
 
         let base = dps(false);

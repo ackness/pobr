@@ -95,7 +95,7 @@ fn session_with_onslaught(mode_combat: bool) -> CalculationSession {
 #[test]
 fn onslaught_expands_through_perform() {
     let mut session = session_with_onslaught(true);
-    let out = session.perform_minimal();
+    let out = session.perform_minimal().expect("perform");
     assert_eq!(out.action_rate, 2.4);
 }
 
@@ -108,7 +108,7 @@ fn onslaught_effect_scaling_floor_end_to_end() {
         Modifier::number("OnslaughtEffect", ModType::Inc, 23.0),
         Modifier::number("BuffEffectOnSelf", ModType::Inc, 10.0),
     ]);
-    let out = session.perform_minimal();
+    let out = session.perform_minimal().expect("perform");
     assert_eq!(out.action_rate, 2.0 * 1.26);
 }
 
@@ -116,12 +116,12 @@ fn onslaught_effect_scaling_floor_end_to_end() {
 #[test]
 fn mode_combat_false_is_value_identical() {
     let mut with_defs = session_with_onslaught(false);
-    let out_with_defs = with_defs.perform_minimal();
+    let out_with_defs = with_defs.perform_minimal().expect("perform");
 
     let mut without_defs =
         CalculationSession::new(input()).with_config(CalcConfig::attack().with_mode_combat(false));
     without_defs.add_modifiers([Modifier::flag("Onslaught").with_source("test grant")]);
-    let out_without_defs = without_defs.perform_minimal();
+    let out_without_defs = without_defs.perform_minimal().expect("perform");
 
     assert_eq!(out_with_defs.action_rate, 2.0);
     assert_eq!(out_with_defs, out_without_defs);
@@ -133,7 +133,7 @@ fn flag_unset_yields_no_expansion() {
     let mut session =
         CalculationSession::new(input()).with_config(CalcConfig::attack().with_mode_combat(true));
     session.set_buff_definitions(vec![onslaught_def()]);
-    let out = session.perform_minimal();
+    let out = session.perform_minimal().expect("perform");
     assert_eq!(out.action_rate, 2.0);
 }
 
@@ -162,7 +162,7 @@ fn conditions_set_activates_condition_tagged_mods() {
             .with_tag(ModTag::condition("HerEmbrace", false)),
     ]);
     session.set_buff_definitions(vec![def]);
-    let out = session.perform_minimal();
+    let out = session.perform_minimal().expect("perform");
     assert_eq!(
         out.action_rate, 2.2,
         "the HerEmbrace condition should be set and activate the mod"
@@ -173,8 +173,8 @@ fn conditions_set_activates_condition_tagged_mods() {
 #[test]
 fn repeated_perform_does_not_double_count() {
     let mut session = session_with_onslaught(true);
-    let first = session.perform_minimal();
-    let second = session.perform_minimal();
+    let first = session.perform_minimal().expect("perform");
+    let second = session.perform_minimal().expect("perform");
     assert_eq!(first.action_rate, 2.4);
     assert_eq!(second.action_rate, 2.4);
 }

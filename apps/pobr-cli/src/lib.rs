@@ -126,7 +126,9 @@ pub fn calculate(req: &CalculateRequest) -> Result<CalculateResult, CliError> {
         .add_modifier_texts(&req.modifier_texts)
         .map_err(|e| CliError::ModParse(e.to_string()))?;
 
-    let output = session.perform_minimal();
+    let output = session
+        .perform_minimal()
+        .map_err(|e| CliError::ModParse(e.to_string()))?;
     let unsupported = session.unsupported_modifier_texts().to_vec();
 
     Ok(CalculateResult {

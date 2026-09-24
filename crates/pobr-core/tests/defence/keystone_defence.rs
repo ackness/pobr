@@ -150,7 +150,7 @@ fn ci_build_ehp_uses_es_pool_and_chaos_immunity() {
         .unwrap();
 
     // Act
-    session.perform_minimal();
+    session.perform_minimal().expect("perform");
     let output = session.output().clone();
 
     // Assert: CI -> Life Override 1; chaos immunity; fire max hit = ES pool / (1-0%) = 500.
@@ -479,7 +479,7 @@ fn perform_injects_matrix_extra_mana() {
         .unwrap();
 
     // Act
-    session.perform_minimal();
+    session.perform_minimal().expect("perform");
     let output = session.output().clone();
 
     // Assert: ES panel 0; Mana = 100 + 500 (the converted amount picks up Mana's

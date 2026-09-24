@@ -300,7 +300,10 @@ fn end_to_end_charm_resistance_reaches_output_under_mode_combat() {
             mods.push(Modifier::number("CharmLimit", ModType::Base, 1.0));
             session.add_modifiers(mods);
         }
-        session.perform_minimal().lightning_resistance
+        session
+            .perform_minimal()
+            .expect("perform")
+            .lightning_resistance
     };
 
     let baseline = run(false, false);
@@ -341,7 +344,10 @@ fn end_to_end_belt_charm_slots_text_unlocks_charm_budget() {
             "Sapphire Charm of Lightning",
             &["+15% to Lightning Resistance"],
         ));
-        session.perform_minimal().lightning_resistance
+        session
+            .perform_minimal()
+            .expect("perform")
+            .lightning_resistance
     };
     assert_eq!(
         run(true) - run(false),

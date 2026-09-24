@@ -1244,7 +1244,7 @@ mod tests {
         session.add_modifiers([Modifier::number("AuraEffect", ModType::Inc, 20.0)]);
         session.add_buff_skill(aura_spec("Discipline", 100.0));
 
-        session.perform_minimal();
+        session.perform_minimal().expect("perform");
 
         assert_eq!(session.output().energy_shield, 120.0);
     }

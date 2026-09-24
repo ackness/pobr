@@ -123,7 +123,7 @@ fn session_add_skill_gem_feeds_minimal_calc() {
     );
     session.add_skill_gem(&active).unwrap();
 
-    let output = session.perform_minimal();
+    let output = session.perform_minimal().expect("perform");
 
     // (100 base + 40 gem) * (1 + 20/100) = 168。
     assert_eq!(output.life, 168.0);
@@ -142,7 +142,7 @@ fn session_add_support_gem_feeds_minimal_calc() {
         GemModSource::support("added_fire", ["+50 to maximum Life"]).supporting("fireball");
     session.add_support_gem(&support).unwrap();
 
-    let output = session.perform_minimal();
+    let output = session.perform_minimal().expect("perform");
     assert_eq!(output.life, 150.0);
 }
 

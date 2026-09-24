@@ -138,7 +138,7 @@ fn defence_no_armour_max_hits() {
     let mut session = CalculationSession::new(input).with_config(CalcConfig::attack());
     // Chaos resistance isn't in MinimalInput, so inject -60% separately.
     session.add_modifiers([Modifier::number("ChaosResistance", ModType::Base, -60.0)]);
-    session.perform_minimal();
+    session.perform_minimal().expect("perform");
     let o = session.output();
 
     assert!(
@@ -183,7 +183,7 @@ fn defence_capped_res_and_pdr() {
         Modifier::number("ChaosResistance", ModType::Base, 200.0),
         Modifier::number("PhysicalDamageReduction", ModType::Base, 200.0),
     ]);
-    session.perform_minimal();
+    session.perform_minimal().expect("perform");
     let o = session.output();
     assert!(
         within_10pct(o.physical_max_hit, 600.0),
@@ -273,7 +273,7 @@ fn defence_armoured_max_hits() {
         Modifier::number("ChaosResistance", ModType::Base, -60.0),
         Modifier::number("Armour", ModType::Base, 10000.0),
     ]);
-    session.perform_minimal();
+    session.perform_minimal().expect("perform");
     let o = session.output();
     assert!(
         within_10pct(o.physical_max_hit, 1618.0),
@@ -311,7 +311,7 @@ fn defence_max_hits(mods: &[(&str, ModType, f64)]) -> (f64, f64, f64, f64, f64) 
         list.push(Modifier::number(*n, *t, *v));
     }
     session.add_modifiers(list);
-    session.perform_minimal();
+    session.perform_minimal().expect("perform");
     let o = session.output();
     (
         o.physical_max_hit,
@@ -397,7 +397,7 @@ fn defence_es_pool_and_chaos_half() {
         Modifier::number("DamageTaken", ModType::More, -50.0), // 50% less
         Modifier::number("DamageTaken", ModType::More, -20.0), // nearby enemies 20% less
     ]);
-    session.perform_minimal();
+    session.perform_minimal().expect("perform");
     let o = session.output();
     assert!(
         within_10pct(o.physical_max_hit, 600.0),
@@ -489,7 +489,7 @@ fn defence_armour_applies_to_element() {
         Modifier::number("ArmourAppliesToLightningDamageTaken", ModType::Base, 100.0),
         Modifier::flag("ArmourDoesNotApplyToPhysicalDamageTaken"),
     ]);
-    session.perform_minimal();
+    session.perform_minimal().expect("perform");
     let o = session.output();
     assert!(
         within_10pct(o.physical_max_hit, 1000.0),
@@ -537,7 +537,7 @@ fn defence_physical_overwhelm() {
         Modifier::number("ChaosResistance", ModType::Base, -60.0),
         Modifier::number("EnemyPhysicalOverwhelm", ModType::Base, 15.0),
     ]);
-    session.perform_minimal();
+    session.perform_minimal().expect("perform");
     let o = session.output();
     assert!(
         within_10pct(o.physical_max_hit, 4000.0),
