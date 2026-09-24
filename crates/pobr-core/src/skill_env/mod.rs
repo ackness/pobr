@@ -6,6 +6,7 @@
 //! WASM, CLI, and test harnesses without going through the full orchestrator.
 
 mod item_text;
+mod lookup;
 mod mods;
 mod support;
 
@@ -16,6 +17,7 @@ pub use item_text::{
     parse_weapon_local_crit, weapon_local_attack_speed, weapon_local_phys_adds,
     weapon_local_phys_inc, weapon_mod_texts,
 };
+pub use lookup::{EffectLookup, EffectStats, StatSetLookup};
 pub use mods::{
     GemPropertyBonus, GemPropertyKind, adorned_corrupted_magic_jewel_inc, clean_grant_text,
     dot_flag_modifiers, gem_level_category_matches, is_attribute_node,
