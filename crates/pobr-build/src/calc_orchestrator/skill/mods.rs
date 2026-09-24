@@ -128,25 +128,7 @@ pub(crate) fn dot_flag_modifiers(
         .find(|g| g.skill_id == skill_id)
         .and_then(|g| g.stat_set_index);
     let flags = data.selected_set_dot_flags(skill_id, set_index);
-    let pairs = [
-        ("DotIsArea", flags.area),
-        ("DotIsProjectile", flags.projectile),
-        ("DotIsSpell", flags.spell),
-        ("DotIsAttack", flags.attack),
-        ("DotIsHit", flags.hit),
-    ];
-    pairs
-        .iter()
-        .filter(|(_, on)| *on)
-        .map(|(name, _)| {
-            let origin = ModifierSource::new(SourceId::new(
-                SourceKind::SkillGem,
-                format!("skill.{skill_id}.{name}"),
-            ))
-            .with_raw_text(format!("statSet dot flag {name}"));
-            Modifier::flag(*name).with_origin(origin)
-        })
-        .collect()
+    pobr_core::skill_env::dot_flag_modifiers(flags, skill_id)
 }
 
 /// Corpse explosion base damage (vendor `CalcOffence.lua:2211-2217`):
@@ -491,10 +473,7 @@ pub(crate) fn unselected_set_global_modifiers(
 /// weapon source by `non_weapon_attack_contribution`, so excluded from the stat-map
 /// injection path to avoid double-counting).
 pub(crate) fn is_off_hand_weapon_base_stat(stat: &str) -> bool {
-    matches!(
-        stat,
-        "off_hand_weapon_minimum_physical_damage" | "off_hand_weapon_maximum_physical_damage"
-    )
+    pobr_core::skill_env::is_off_hand_weapon_base_stat(stat)
 }
 
 /// Maps the **compatible support gems'** per-level stats in the main skill's group

@@ -5,8 +5,10 @@
 //! it to the engine-semantics functions. This lets the same functions be reused by
 //! WASM, CLI, and test harnesses without going through the full orchestrator.
 
+mod mods;
 mod support;
 
+pub use mods::{dot_flag_modifiers, is_off_hand_weapon_base_stat};
 pub use support::{
     CompatibleSupport, GroupSupportJudgement, SupportCandidate, judge_group_supports,
 };
