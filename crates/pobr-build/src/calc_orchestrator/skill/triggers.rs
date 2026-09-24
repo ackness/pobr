@@ -607,8 +607,8 @@ mod support_judgement_tests {
     use super::super::super::test_context;
     use super::super::mods::support_modifiers;
     use crate::build::SocketGroup;
-    use crate::support::GroupSupportJudgement;
     use crate::support::judge_group_supports;
+    use pobr_core::skill_env::GroupSupportJudgement;
     use std::collections::HashMap;
 
     /// Constructs a minimal GrantedEffectDef (judgement-relevant fields configurable, rest default).

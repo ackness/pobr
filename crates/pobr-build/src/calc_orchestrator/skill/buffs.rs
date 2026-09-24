@@ -435,7 +435,7 @@ fn curse_local_effect_scale(
             &sup.effect_id,
             host.gem_level,
             host.quality,
-            sup.stat_set_index(group),
+            crate::support::support_stat_set_index(sup, group),
         );
     }
     (inc, more)

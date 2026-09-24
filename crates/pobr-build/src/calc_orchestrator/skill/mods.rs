@@ -522,7 +522,7 @@ pub(crate) fn support_modifiers(
     let mut mods = Vec::new();
     for sup in &judgement.compatible {
         let gem = &group.gem_skills[sup.gem_index];
-        let set_index = sup.stat_set_index(group);
+        let set_index = crate::support::support_stat_set_index(sup, group);
         // TODO(T1, add after rebasing post-T3.6 merge): change the quality argument to
         // gem.quality — supports have no quality table entries (PoB2 skips them at
         // export), so this segment is currently always empty and passing 0 is

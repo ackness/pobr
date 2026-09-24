@@ -320,7 +320,7 @@ pub(crate) fn support_granted_gem_levels(
             &sup.effect_id,
             host.gem_level,
             host.quality,
-            sup.stat_set_index(group),
+            crate::support::support_stat_set_index(sup, group),
         );
         for s in &stats.base {
             let Some(rest) = s.stat.strip_prefix("supported_") else {

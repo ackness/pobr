@@ -386,7 +386,7 @@ pub(crate) fn exposure_support_modifiers(
                 || judgement.compatible.iter().any(|sup| {
                     let host = &group.gem_skills[sup.gem_index];
                     // Quality passed as 0, matching support_modifiers's semantics.
-                    let set_index = sup.stat_set_index(group);
+                    let set_index = crate::support::support_stat_set_index(sup, group);
                     let sup_stats = data.effect_stats(&sup.effect_id, host.gem_level, 0, set_index);
                     let sup_key = data.selected_set_key(&sup.effect_id, set_index);
                     has_exposure_inflict_stats(
