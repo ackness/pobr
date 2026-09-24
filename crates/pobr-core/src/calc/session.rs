@@ -183,10 +183,7 @@ impl CalculationSession {
     /// current cfg). Used by the orchestration layer to bridge a source-granted
     /// `Condition:<X>` flag (e.g. a Bonded activation source) into a cfg condition.
     pub fn has_flag(&self, name: &str) -> bool {
-        self.env
-            .player
-            .mod_db
-            .flag(&self.env.cfg, ModName::from(name))
+        self.env.player.mod_db.flag(&self.env.cfg, name)
     }
 
     /// Automatic low-life condition bridge (vendor CalcDefence.lua:335-350:

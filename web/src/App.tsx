@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { UpgradeGoalProvider } from './hooks/useUpgradeGoal';
 import { useBuildSession } from './hooks/useBuildSession';
 import { t, type Lang } from './lib/i18n';
@@ -6,13 +6,14 @@ import { TAB_IDS, TopBar, type TabId } from './components/shell/TopBar';
 import { BuildPanel } from './components/import/BuildPanel';
 import { StatSidebar } from './components/sidebar/StatSidebar';
 import { ItemsPanel } from './components/items/ItemsPanel';
-import { TradePanel } from './components/trade/TradePanel';
 import { BuildGuidancePanel } from './components/guidance/BuildGuidancePanel';
 import { SkillsPanel } from './components/skills/SkillsPanel';
-import { CalcsPanel } from './components/calcs/CalcsPanel';
-import { TreePanel } from './components/tree/TreePanel';
 import { ConfigPanel } from './components/config/ConfigPanel';
 import './components/shell/shell.css';
+
+const TradePanel = lazy(() => import('./components/trade/TradePanel').then(module => ({ default: module.TradePanel })));
+const CalcsPanel = lazy(() => import('./components/calcs/CalcsPanel').then(module => ({ default: module.CalcsPanel })));
+const TreePanel = lazy(() => import('./components/tree/TreePanel').then(module => ({ default: module.TreePanel })));
 
 export default function App() {
   return <UpgradeGoalProvider><BuildApp /></UpgradeGoalProvider>;
@@ -160,6 +161,7 @@ function BuildApp() {
             onCompareItem={text => { setReferenceItem(text); setTab('trade'); }}
             onTree={() => { setTreeFocus({nonce: Date.now()}); setTab('tree'); }}
             onConfig={() => setTab('config')} />}
+          <Suspense fallback={<p className="panel-loading" role="status">{t(lang, 'ui.loadingPanel')}</p>}>
           {tab === 'tree' && <TreePanel session={session} lang={lang} focusPlanner={treeFocus}
             onJewelSearch={socket => { setUpgradeFocus({slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius'}); setTab('trade'); }} />}
           {tab === 'skills' && <SkillsPanel session={session} lang={lang} focusOptimizer={skillFocus} />}
@@ -175,6 +177,7 @@ function BuildApp() {
               onFocusConsumed={() => setCalcsFocus(null)}
             />
           )}
+          </Suspense>
           {tab === 'config' && <ConfigPanel session={session} lang={lang} />}
         </main>
       </div>

@@ -369,11 +369,11 @@ pub fn merge_flasks_charms(env: &mut Env) {
     let charm_effect_inc = db.sum(ModType::Inc, cfg, &[ModName::from("CharmEffect")]);
     let charm_limit_name = ModName::from("CharmLimit");
     let mut charm_budget = db
-        .override_(cfg, charm_limit_name.clone())
+        .override_(cfg, charm_limit_name.as_str())
         .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[charm_limit_name]))
         .min(cfg.constants.game().charm_limit_cap);
-    let flasks_do_not_apply = db.flag(cfg, ModName::from("FlasksDoNotApplyToPlayer"));
-    let cannot_recover_life = db.flag(cfg, ModName::from("CannotRecoverLifeOutsideLeech"));
+    let flasks_do_not_apply = db.flag(cfg, "FlasksDoNotApplyToPlayer");
+    let cannot_recover_life = db.flag(cfg, "CannotRecoverLifeOutsideLeech");
 
     // mergeBuff grouping: `(is_charm, base name)` → same group, same params take the max (BTreeMap for a deterministic order).
     let mut groups: BTreeMap<(bool, String), Vec<Modifier>> = BTreeMap::new();
@@ -540,7 +540,7 @@ fn bridge_enemy_condition_flags(env: &mut Env) {
     const BRIDGED: &[&str] = &["Intimidated"];
     for cond in BRIDGED {
         let flag = ModName::from(format!("Condition:{cond}"));
-        if env.enemy.mod_db.flag(&env.cfg, flag) {
+        if env.enemy.mod_db.flag(&env.cfg, flag.as_str()) {
             env.cfg.conditions.insert(format!("Enemy{cond}"), true);
         }
     }

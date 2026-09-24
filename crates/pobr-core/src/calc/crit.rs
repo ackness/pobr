@@ -146,7 +146,7 @@ fn resolve_crit_impl(
     let source_base_pct =
         base_crit * 100.0 + player.sum(ModType::Base, cfg, &[ModName::from("SkillBaseCritChance")]);
     let source_base_pct = player
-        .override_(cfg, ModName::from("CritChanceBase"))
+        .override_(cfg, "CritChanceBase")
         .unwrap_or(source_base_pct);
 
     // 1) Base sum (including enemy crit weakness SelfCritChance, mode_effective only)
@@ -185,14 +185,14 @@ fn resolve_crit_impl(
     }
 
     // 4) Lucky crit
-    if mode_effective && player.flag(cfg, ModName::from("CritChanceLucky")) {
+    if mode_effective && player.flag(cfg, "CritChanceLucky") {
         let c = crit_pct / 100.0;
         crit_pct = (1.0 - (1.0 - c).powi(2)) * 100.0;
     }
 
     // 5) Bifurcate crit (records PreBifurcate for the extra crit damage term)
     let pre_bifurcate_pct = crit_pct;
-    let bifurcate = mode_effective && player.flag(cfg, ModName::from("BifurcateCrit"));
+    let bifurcate = mode_effective && player.flag(cfg, "BifurcateCrit");
     if bifurcate {
         let c = crit_pct / 100.0;
         crit_pct = (1.0 - (1.0 - c).powi(2)) * 100.0;
@@ -200,9 +200,7 @@ fn resolve_crit_impl(
 
     // 6) Inevitable crit: set to 100% plus a geometric-series less-damage penalty
     let mut inevitable_less_more: Option<f64> = None;
-    let inevitable = mode_effective
-        && player.flag(cfg, ModName::from("InevitableCriticalHits"))
-        && crit_pct > 0.0;
+    let inevitable = mode_effective && player.flag(cfg, "InevitableCriticalHits") && crit_pct > 0.0;
     if inevitable {
         inevitable_less_more = Some(inevitable_less_crit_bonus(
             crit_pct,
@@ -245,7 +243,7 @@ fn resolve_crit_impl(
 
 /// Crit chance cap (percentage points). PoB2: `Override("CritChanceCap") or Sum("BASE","CritChanceCap")`, default 100.
 fn crit_chance_cap(player: &ModDb, cfg: &CalcConfig) -> f64 {
-    if let Some(override_cap) = player.override_(cfg, ModName::from("CritChanceCap")) {
+    if let Some(override_cap) = player.override_(cfg, "CritChanceCap") {
         return override_cap;
     }
     let summed = player.sum(ModType::Base, cfg, &[ModName::from("CritChanceCap")]);
@@ -275,7 +273,7 @@ fn resolve_crit_multiplier(
     inevitable_less_more: Option<f64>,
 ) -> f64 {
     // NoCritMultiplier: crit damage has no effect (CalcOffence.lua L3782).
-    if player.flag(cfg, ModName::from("NoCritMultiplier")) {
+    if player.flag(cfg, "NoCritMultiplier") {
         return 1.0;
     }
 
@@ -300,15 +298,14 @@ fn resolve_crit_multiplier(
     // `mode_effective` (the effective view); the panel view is unaffected.
     // The two co-occurring (an inevitable-crit build plus a "crit damage is
     // N%" keystone) is an edge case, currently resolved as the OVERRIDE final value.
-    let mut extra =
-        if let Some(ov) = player.override_(cfg, ModName::from("CriticalStrikeMultiplier")) {
-            ov / 100.0
-        } else {
-            //  Player's base crit damage bonus now reads from the injected constants pack (fallback == old const, value unchanged).
-            (cfg.constants.character().base_critical_hit_damage_bonus + base) / 100.0
-                * (1.0 + inc / 100.0)
-                * more
-        };
+    let mut extra = if let Some(ov) = player.override_(cfg, "CriticalStrikeMultiplier") {
+        ov / 100.0
+    } else {
+        //  Player's base crit damage bonus now reads from the injected constants pack (fallback == old const, value unchanged).
+        (cfg.constants.character().base_critical_hit_damage_bonus + base) / 100.0
+            * (1.0 + inc / 100.0)
+            * more
+    };
 
     // Bifurcate: the conditional probability "given at least one crit, both
     // hits crit" adds an extra weighted share of crit damage
@@ -468,7 +465,7 @@ fn record_trace(
         "InevitableCriticalHits",
         "NoCritMultiplier",
     ] {
-        if player.flag(cfg, ModName::from(flag)) {
+        if player.flag(cfg, flag) {
             let flag_node =
                 trace.add_source_node(format!("{flag} flag"), 1.0, flag_source(player, cfg, flag));
             trace.add_edge(flag_node, crit_node);
@@ -481,6 +478,6 @@ fn record_trace(
 /// Gets the attribution `SourceId` of the modifier that set a given flag (falls back to Derived `<flag>.FLAG` when there's no origin).
 fn flag_source(player: &ModDb, cfg: &CalcConfig, flag: &str) -> SourceId {
     player
-        .flag_origin(cfg, ModName::from(flag))
+        .flag_origin(cfg, flag)
         .unwrap_or_else(|| SourceId::new(SourceKind::Derived, format!("{flag}.FLAG")))
 }

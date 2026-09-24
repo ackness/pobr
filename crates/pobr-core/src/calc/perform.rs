@@ -229,7 +229,7 @@ fn inject_companion_life(env: &mut Env) {
     if env
         .player
         .mod_db
-        .override_(&env.cfg, ModName::from("TotalCompanionLife"))
+        .override_(&env.cfg, "TotalCompanionLife")
         .is_some()
     {
         return;
@@ -540,7 +540,7 @@ fn fill_mechanics(env: &mut Env) {
     );
 
     // ES recharge (Lane2: recharge is independent of regen; the energy_shield_regen field keeps its existing logic)
-    let zealots_oath = db.flag(cfg, ModName::from("ZealotsOath"));
+    let zealots_oath = db.flag(cfg, "ZealotsOath");
     let es_recharge = calc_es_recharge(db, cfg, env.player.output.energy_shield, zealots_oath);
     env.player.output.es_recharge_rate = es_recharge.rate_fraction;
     env.player.output.es_recharge_delay = es_recharge.delay_seconds;
@@ -867,8 +867,7 @@ fn fill_trigger(env: &mut Env) {
     let has_source_stats = source_stats.hit_chance > 0.0 || source_stats.crit_chance > 0.0;
     // triggerOnCrit (the CoC path): either a cfg condition (the legacy channel) or the build
     // layer's data-driven recognition injecting the `TriggerOnCrit` FLAG.
-    let trigger_on_crit =
-        cfg.condition("TriggerOnCrit") || db.flag(cfg, ModName::from("TriggerOnCrit"));
+    let trigger_on_crit = cfg.condition("TriggerOnCrit") || db.flag(cfg, "TriggerOnCrit");
     // Trigger-chance conversion (PoB2 CalcTriggers.lua's defaultTriggerHandler L715-777):
     // defaults to 1.0 (=100%), only slows down when the attack source doesn't always hit /
     // triggerOnCrit / an explicit trigger chance <100%. When source stats are injected, prefers
@@ -887,13 +886,13 @@ fn fill_trigger(env: &mut Env) {
     //   (e.g. The Hidden Blade = 2/s).
     // - `SkillIsTriggered` FLAG: gates a recognized trigger relationship with no cooldown data
     //   (vendor's triggerCD=nil → the simulation degenerates to pure source rate).
-    let is_global = db.flag(cfg, ModName::from("TriggerSourceGlobal"));
+    let is_global = db.flag(cfg, "TriggerSourceGlobal");
     let rate_cap_override = db.sum(
         ModType::Base,
         cfg,
         &[ModName::from("TriggerRateCapOverride")],
     );
-    let is_triggered_flagged = db.flag(cfg, ModName::from("SkillIsTriggered"));
+    let is_triggered_flagged = db.flag(cfg, "SkillIsTriggered");
 
     let mut trace = TraceGraph::new();
 
@@ -1345,7 +1344,7 @@ fn copy_projectile_speed_as_damage(
     source_subset: ModFlags,
     target_flags: ModFlags,
 ) {
-    if !env.player.mod_db.flag(&env.cfg, ModName::from(flag)) {
+    if !env.player.mod_db.flag(&env.cfg, flag) {
         return;
     }
     let proj_speed = ModName::from("ProjectileSpeed");
@@ -1390,10 +1389,7 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
         1.0
     };
     let crit_chance = env.player.output.crit_chance;
-    let never_from_crit = env
-        .player
-        .mod_db
-        .flag(cfg, ModName::from("AilmentsAreNeverFromCrit"));
+    let never_from_crit = env.player.mod_db.flag(cfg, "AilmentsAreNeverFromCrit");
 
     // The panel signals needed for the active-stack estimate (PoB2's
     // `ailmentStacks = hitChance × applyChance × duration × speed`). `output.hit_chance` is
@@ -1591,9 +1587,9 @@ fn resolve_stack_config(
     // exists" approximation with a flag gate + the Override/MORE leg (Escalating Poison and
     // similar statmap sources inject `PoisonStacks BASE + PoisonCanStack flag` as a pair).
     let stacks_name = ModName::from(format!("{ailment}Stacks"));
-    let can_stack = db.flag(cfg, ModName::from(format!("{ailment}CanStack")));
+    let can_stack = db.flag(cfg, &format!("{ailment}CanStack"));
     let max_stacks = if can_stack {
-        match db.override_(cfg, stacks_name.clone()) {
+        match db.override_(cfg, stacks_name.as_str()) {
             Some(v) => v.max(1.0) as u32,
             None => {
                 let base = db.sum(ModType::Base, cfg, std::slice::from_ref(&stacks_name));

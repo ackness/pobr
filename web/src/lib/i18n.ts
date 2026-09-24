@@ -48,6 +48,7 @@ const DICT = {
   "common.noResults": {"en-US": "No matches. Try a different keyword or clear the search.", "zh-TW": "沒有符合的結果，請更換關鍵字或清除搜尋。", "zh-CN": "没有匹配的结果，请更换关键词或清除搜索。"},
   "common.retry": {"en-US": "Retry", "zh-TW": "重試", "zh-CN": "重试"},
   "config.loading": {"en-US": "Loading combat options…", "zh-TW": "正在載入戰鬥配置…", "zh-CN": "正在加载战斗配置…"},
+  "ui.loadingPanel": {"en-US": "Loading panel…", "zh-TW": "正在載入面板…", "zh-CN": "正在加载面板…"},
   "config.loadFailed": {"en-US": "Combat options could not be loaded. Retry to show the settings.", "zh-TW": "戰鬥配置載入失敗，請重試。", "zh-CN": "战斗配置加载失败，请重试。"},
   "config.editHint": {"en-US": "Checkboxes and lists apply immediately. Number and text edits apply when you leave the field or press Enter. Reset restores the imported value, or the default for a new build.", "zh-TW": "勾選與下拉選擇立即生效；數字和文字在離開輸入框或按 Enter 後生效。還原會恢復匯入值，新構築則使用預設值。", "zh-CN": "勾选与下拉选择立即生效；数字和文本在离开输入框或按 Enter 后生效。还原会恢复导入值，新构筑则使用默认值。"},
   "picker.colour": {"en-US": "Gem attribute filter", "zh-TW": "寶石屬性篩選", "zh-CN": "宝石属性筛选"},

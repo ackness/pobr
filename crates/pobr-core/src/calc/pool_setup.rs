@@ -58,14 +58,14 @@ pub fn build_pool_ctx(
 ) -> PoolCtx {
     // Per-type ES bypass (:2710-2721): UnblockedDamageDoesBypassES → 100 for
     // all types; otherwise Override takes priority, falling back to Σ BASE; clamped 0-100.
-    let unblocked_bypass = db.flag(cfg, ModName::from("UnblockedDamageDoesBypassES"));
+    let unblocked_bypass = db.flag(cfg, "UnblockedDamageDoesBypassES");
     let mut es_bypass_by_type = [0.0_f64; 5];
     for (idx, type_name) in TYPE_NAMES.iter().enumerate() {
         let name = ModName::from(format!("{type_name}EnergyShieldBypass"));
         es_bypass_by_type[idx] = if unblocked_bypass {
             100.0
         } else {
-            db.override_(cfg, name.clone())
+            db.override_(cfg, name.as_str())
                 .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[name]))
         }
         .clamp(0.0, 100.0);
@@ -99,7 +99,7 @@ pub fn build_pool_ctx(
         ward_bypass: db.sum(ModType::Base, cfg, &[ModName::from("WardBypass")]),
         eternal_life: keystones.eternal_life,
         eb: keystones.energy_shield_protects_mana,
-        chaos_not_double_es: db.flag(cfg, ModName::from("ChaosNotDoubleESDamage")),
+        chaos_not_double_es: db.flag(cfg, "ChaosNotDoubleESDamage"),
         ward_not_break: keystones.ward_not_break,
         // :2662 `min(Σ LifeLossPrevented, 100)`; :2664 belowHalf is the raw BASE sum.
         prevented_life_loss: db
@@ -178,7 +178,7 @@ pub fn build_pool_state(db: &ModDb, cfg: &CalcConfig, base: &PoolBaseStats) -> P
     if companion_rate != 0.0 {
         let companion_life_name = ModName::from("TotalCompanionLife");
         let companion_life = db
-            .override_(cfg, companion_life_name.clone())
+            .override_(cfg, companion_life_name.as_str())
             .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[companion_life_name]));
         if companion_life > 0.0 {
             allies.push(AllyLayer {

@@ -107,7 +107,7 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
 
     // :961-965 attack block chance ceiling.
     let block_max = db
-        .override_(cfg, ModName::from("BlockChanceMax"))
+        .override_(cfg, "BlockChanceMax")
         .unwrap_or_else(|| {
             inherent_max
                 + db.sum(ModType::Base, cfg, &[ModName::from("BaseBlockChanceMax")])
@@ -134,10 +134,10 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
     .min(block_max);
 
     // :995-998 spell block chance ceiling.
-    let spell_max = if db.flag(cfg, ModName::from("SpellBlockChanceMaxIsBlockChanceMax")) {
+    let spell_max = if db.flag(cfg, "SpellBlockChanceMaxIsBlockChanceMax") {
         block_max
     } else {
-        db.override_(cfg, ModName::from("BlockChanceMax"))
+        db.override_(cfg, "BlockChanceMax")
             .unwrap_or_else(|| {
                 inherent_max
                     + db.sum(
@@ -152,9 +152,7 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
 
     // :1003-1014 spell / spell projectile block chance.
     let spell_names = [ModName::from("SpellBlockChance")];
-    let (mut spell, mut spell_projectile) = if db
-        .flag(cfg, ModName::from("SpellBlockChanceIsBlockChance"))
-    {
+    let (mut spell, mut spell_projectile) = if db.flag(cfg, "SpellBlockChanceIsBlockChance") {
         (block, projectile)
     } else {
         let spell = (db.sum(ModType::Base, cfg, &spell_names) * scaling_mod(db, cfg, &spell_names))
@@ -172,19 +170,19 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
     };
 
     // :1026-1033 cannot-block flags.
-    if db.flag(cfg, ModName::from("CannotBlockAttacks")) {
+    if db.flag(cfg, "CannotBlockAttacks") {
         block = 0.0;
         projectile = 0.0;
     }
-    if db.flag(cfg, ModName::from("CannotBlockSpells")) {
+    if db.flag(cfg, "CannotBlockSpells") {
         spell = 0.0;
         spell_projectile = 0.0;
     }
 
     // :1034-1052 effective values (the lucky/unlucky power).
     let effective = |v: f64, kind: &str| -> f64 {
-        let lucky = db.flag(cfg, ModName::from(format!("{kind}IsLucky").as_str()));
-        let unlucky = db.flag(cfg, ModName::from(format!("{kind}IsUnlucky").as_str()));
+        let lucky = db.flag(cfg, &format!("{kind}IsLucky"));
+        let unlucky = db.flag(cfg, &format!("{kind}IsUnlucky"));
         round(luck_transform(v, lucky, unlucky))
     };
 
@@ -312,7 +310,7 @@ pub fn calc_deflection(
         cfg.constants.game().deflection_chance_cap,
     );
     // :1518-1521 the DeflectIsLucky power.
-    if db.flag(cfg, ModName::from("DeflectIsLucky")) {
+    if db.flag(cfg, "DeflectIsLucky") {
         chance = luck_transform(chance, true, false);
     }
     let effect_pct = (cfg.constants.game().deflect_effect
@@ -340,7 +338,7 @@ pub fn calc_deflection(
 /// Spirit` (a global mod from xml_build), plus tree/equipment `+N to Spirit`.
 pub fn calc_spirit_pool(db: &ModDb, cfg: &CalcConfig) -> f64 {
     let names = [ModName::from("Spirit")];
-    if let Some(v) = db.override_(cfg, ModName::from("Spirit")) {
+    if let Some(v) = db.override_(cfg, "Spirit") {
         return v;
     }
     let base = db.sum(ModType::Base, cfg, &names);

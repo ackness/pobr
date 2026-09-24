@@ -822,7 +822,7 @@ fn slot_tag_is_transparent_to_normal_sum_but_scoped_in_per_slot() {
     );
     // slot_bases retrieves that slot's base.
     assert_eq!(
-        db.slot_bases(&cfg, &ModName::from("Armour")),
+        db.slot_bases(&cfg, "Armour"),
         vec![("bodyarmour".to_string(), 1000.0)]
     );
 }

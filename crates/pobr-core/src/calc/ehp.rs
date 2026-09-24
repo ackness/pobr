@@ -541,9 +541,9 @@ pub fn enemy_crit_effect_ehp(
     crit_extra_reduction_pct: f64,
 ) -> f64 {
     let presets = &cfg.constants.enemy_presets;
-    let mut chance = if enemy_db.flag(cfg, ModName::from("NeverCrit")) {
+    let mut chance = if enemy_db.flag(cfg, "NeverCrit") {
         0.0
-    } else if enemy_db.flag(cfg, ModName::from("AlwaysCrit")) {
+    } else if enemy_db.flag(cfg, "AlwaysCrit") {
         100.0
     } else {
         (presets.default_enemy_crit_chance
@@ -554,7 +554,7 @@ pub fn enemy_crit_effect_ehp(
             .clamp(0.0, 100.0)
     };
     // :2066 EnemyUnluckyCrit → the worst-of-two power.
-    if player_db.flag(cfg, ModName::from("EnemyUnluckyCrit")) {
+    if player_db.flag(cfg, "EnemyUnluckyCrit") {
         chance = chance / 100.0 * chance;
     }
     let crit_damage = ((presets.default_enemy_crit_damage_bonus

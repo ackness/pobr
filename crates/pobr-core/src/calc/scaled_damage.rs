@@ -214,10 +214,10 @@ pub fn dps_end_factors(
     // coverage and is not implemented for now.
     let barrage_repeats_more = {
         let barrageable = cfg.skill_types.intersects(SkillTypes::BARRAGEABLE)
-            && db.flag(cfg, ModName::from("SequentialProjectiles"))
-            && !db.flag(cfg, ModName::from("OneShotProj"))
-            && !db.flag(cfg, ModName::from("NoAdditionalProjectiles"))
-            && !db.flag(cfg, ModName::from("TriggeredBySnipe"));
+            && db.flag(cfg, "SequentialProjectiles")
+            && !db.flag(cfg, "OneShotProj")
+            && !db.flag(cfg, "NoAdditionalProjectiles")
+            && !db.flag(cfg, "TriggeredBySnipe");
         let repeats = db.sum(ModType::Base, cfg, &[ModName::from("BarrageRepeats")]);
         if barrageable && repeats > 0.0 {
             let repeat_damage_names = [ModName::from("BarrageRepeatDamage")];

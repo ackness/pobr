@@ -208,8 +208,8 @@ pub(crate) fn resolve_resistance(
     }
 
     let total = db
-        .override_(cfg, long)
-        .or_else(|| db.override_(cfg, short))
+        .override_(cfg, long.as_str())
+        .or_else(|| db.override_(cfg, short.as_str()))
         .unwrap_or_else(|| {
             let summed = base + db.sum(ModType::Base, cfg, &res_names);
             let factor = ((1.0 + db.sum(ModType::Inc, cfg, &res_names) / 100.0)
@@ -218,8 +218,8 @@ pub(crate) fn resolve_resistance(
             summed * factor
         });
     let max = db
-        .override_(cfg, max_long)
-        .or_else(|| db.override_(cfg, max_short))
+        .override_(cfg, max_long.as_str())
+        .or_else(|| db.override_(cfg, max_short.as_str()))
         .unwrap_or_else(|| {
             //  The default max resistance / hard cap now reads from the injected constants pack (fallback == old const, value unchanged).
             (cfg.constants.character().base_maximum_all_resistances_pct
@@ -323,8 +323,8 @@ pub fn calculate_minimal_vs_enemy(
     // - `CannotBeEvaded` (a player flag) / under effective view, enemy
     //   `CannotEvade` → set to 100%, skipping the accuracy formula.
     // - Finally, enemy block is deducted: `HitChance = AccuracyHitChance * (1 - enemyBlockChance/100)`.
-    let cannot_be_evaded = db.flag(cfg, ModName::from("CannotBeEvaded"))
-        || (cfg.mode_effective && enemy_db.flag(cfg, ModName::from("CannotEvade")));
+    let cannot_be_evaded =
+        db.flag(cfg, "CannotBeEvaded") || (cfg.mode_effective && enemy_db.flag(cfg, "CannotEvade"));
     let accuracy_hit_chance = if !cfg.is_attack() || cannot_be_evaded {
         1.0
     } else {
@@ -648,8 +648,8 @@ fn total_dps_traced(
         SourceId::new(SourceKind::EnemyConfig, "enemy.evasion"),
     );
     // PoE2 non-attacks always hit (vendor :2611) + the effective-view CannotEvade (same as calculate_minimal_vs_enemy).
-    let cannot_be_evaded = db.flag(cfg, ModName::from("CannotBeEvaded"))
-        || (cfg.mode_effective && enemy_db.flag(cfg, ModName::from("CannotEvade")));
+    let cannot_be_evaded =
+        db.flag(cfg, "CannotBeEvaded") || (cfg.mode_effective && enemy_db.flag(cfg, "CannotEvade"));
     let accuracy_hit_chance = if !cfg.is_attack() || cannot_be_evaded {
         1.0
     } else {
@@ -1070,7 +1070,7 @@ pub(crate) fn enemy_resist_final(
     };
     let resist_name = ModName::from(format!("{type_prefix}Resist"));
     let max_resist = enemy_max_resist_for(enemy_db, type_cfg, type_prefix, &resist_name);
-    let resist = match enemy_db.override_(type_cfg, resist_name.clone()) {
+    let resist = match enemy_db.override_(type_cfg, resist_name.as_str()) {
         Some(value) => value,
         None => {
             // Elemental types share the `ElementalResist` name (vendor's isElemental applies to the three elements; chaos excluded).
@@ -1106,7 +1106,7 @@ fn enemy_max_resist_for(
     type_prefix: &str,
     resist_name: &ModName,
 ) -> f64 {
-    if enemy_db.flag(type_cfg, ModName::from("DoNotChangeMaxResFromConfig")) {
+    if enemy_db.flag(type_cfg, "DoNotChangeMaxResFromConfig") {
         return ENEMY_MAX_RESIST;
     }
     let config_source_id = format!("config.enemy{type_prefix}Resist");
@@ -1244,7 +1244,7 @@ fn enemy_physical_multiplier(
     raw_hit: f64,
 ) -> f64 {
     let armour_names = [ModName::from("Armour")];
-    let mut armour = match enemy_db.override_(cfg, ModName::from("Armour")) {
+    let mut armour = match enemy_db.override_(cfg, "Armour") {
         Some(value) => value,
         None => {
             enemy_db.sum(ModType::Base, cfg, &armour_names)
@@ -1252,7 +1252,7 @@ fn enemy_physical_multiplier(
                 * enemy_db.more(cfg, &armour_names)
         }
     };
-    if armour > 0.0 && player_db.flag(cfg, ModName::from("IgnoreEnemyArmour")) {
+    if armour > 0.0 && player_db.flag(cfg, "IgnoreEnemyArmour") {
         armour = 0.0;
     }
     let as_though_dealing = player_db.more(cfg, &[ModName::from("CalcArmourAsThoughDealing")]);
@@ -1398,7 +1398,7 @@ fn apply_total_time(db: &ModDb, cfg: &CalcConfig, scaled_rate: f64) -> f64 {
 /// `pub(crate)`: perform's fill stage (`effective_action_rate`, consumed by
 /// ailment/reload) and offence's main chain share this same cooldown cap (a single source across the whole chain).
 pub(crate) fn apply_cooldown_cap(db: &ModDb, cfg: &CalcConfig, uncapped_rate: f64) -> f64 {
-    if db.flag(cfg, ModName::from("CooldownBypass")) {
+    if db.flag(cfg, "CooldownBypass") {
         return uncapped_rate;
     }
     let base_cd = db.sum(ModType::Base, cfg, &[ModName::from("SkillCooldownBase")]);
@@ -1450,7 +1450,7 @@ pub(crate) fn scaled_pool(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -
     // vendor CalcDefence.lua:92-95: `(base × (1 − conv/100) + extra) × (1+inc) × more`.
     // OVERRIDE still wins over everything (ChaosInoculation etc. pool clamping).
     for n in &names {
-        if let Some(value) = db.override_(cfg, n.clone()) {
+        if let Some(value) = db.override_(cfg, n.as_str()) {
             return round(value);
         }
     }
@@ -1494,7 +1494,7 @@ fn scaled_numeric_stat(db: &ModDb, cfg: &CalcConfig, base: f64, names: &[ModName
     // clamp the pool value directly). A later write overrides an earlier
     // one; the first matching override is taken.
     for name in names {
-        if let Some(value) = db.override_(cfg, name.clone()) {
+        if let Some(value) = db.override_(cfg, name.as_str()) {
             return round(value);
         }
     }
@@ -1514,12 +1514,8 @@ fn scaled_pool_traced(
 ) -> TracedValue {
     let names = [ModName::from(stat_name)];
     // OVERRIDE wins over base/inc/more (PoB2's keystone pool-clamping semantics, see scaled_numeric_stat).
-    let (override_value, override_node) = db.override_traced(
-        cfg,
-        ModName::from(stat_name),
-        trace,
-        format!("{stat_name} OVERRIDE"),
-    );
+    let (override_value, override_node) =
+        db.override_traced(cfg, stat_name, trace, format!("{stat_name} OVERRIDE"));
     if let Some(value) = override_value {
         let final_value = round(value);
         let final_node = trace.add_node(

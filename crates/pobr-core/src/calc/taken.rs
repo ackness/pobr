@@ -127,10 +127,7 @@ pub fn damage_shift_table(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
 ///   (independently gated by the `ArmourDoesNotApplyToElementalDamageTaken` flag).
 pub fn armour_applies_pct(db: &ModDb, cfg: &CalcConfig, dtype: DamageType) -> f64 {
     let name = dt_prefix(dtype);
-    let mut pct = if db.flag(
-        cfg,
-        ModName::from(format!("ArmourDoesNotApplyTo{name}DamageTaken")),
-    ) {
+    let mut pct = if db.flag(cfg, &format!("ArmourDoesNotApplyTo{name}DamageTaken")) {
         0.0
     } else {
         let base = db.sum(
@@ -145,12 +142,7 @@ pub fn armour_applies_pct(db: &ModDb, cfg: &CalcConfig, dtype: DamageType) -> f6
             base
         }
     };
-    if dtype.is_elemental()
-        && !db.flag(
-            cfg,
-            ModName::from("ArmourDoesNotApplyToElementalDamageTaken"),
-        )
-    {
+    if dtype.is_elemental() && !db.flag(cfg, "ArmourDoesNotApplyToElementalDamageTaken") {
         pct += db.sum(
             ModType::Base,
             cfg,
@@ -183,10 +175,7 @@ pub fn effective_applied_armour(
         .max(0.0)
         / 100.0;
     let other_pct = |def: &str| -> f64 {
-        if db.flag(
-            cfg,
-            ModName::from(format!("{def}DoesNotApplyTo{name}DamageTaken")),
-        ) {
+        if db.flag(cfg, &format!("{def}DoesNotApplyTo{name}DamageTaken")) {
             0.0
         } else {
             db.sum(

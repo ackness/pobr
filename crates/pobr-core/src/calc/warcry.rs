@@ -114,14 +114,12 @@ fn total_empowers(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig) -> f64 {
     // priority, otherwise the max of BASE×(1+INC/100) and MinimumWarcryPower
     // (BASE 20 comes from the enemy preset's player_mods, shared across
     // Boss/Pinnacle/Uber, ConfigOptions.lua:2007).
-    let warcry_power = db
-        .override_(cfg, ModName::from("WarcryPower"))
-        .unwrap_or_else(|| {
-            let base = db.sum(ModType::Base, cfg, &[ModName::from("WarcryPower")]);
-            let inc = db.sum(ModType::Inc, cfg, &[ModName::from("WarcryPower")]);
-            let min = db.sum(ModType::Base, cfg, &[ModName::from("MinimumWarcryPower")]);
-            (base * (1.0 + inc / 100.0)).max(min)
-        });
+    let warcry_power = db.override_(cfg, "WarcryPower").unwrap_or_else(|| {
+        let base = db.sum(ModType::Base, cfg, &[ModName::from("WarcryPower")]);
+        let inc = db.sum(ModType::Inc, cfg, &[ModName::from("WarcryPower")]);
+        let min = db.sum(ModType::Base, cfg, &[ModName::from("MinimumWarcryPower")]);
+        (base * (1.0 + inc / 100.0)).max(min)
+    });
     // :2121-2123 -- per/cap are skillModList-side stats (Infernal's constant stat 10/50).
     let power_cap = scoped_sum(db, spec, cfg, ModType::Base, "WarcryPowerCap");
     let power_per = scoped_sum(db, spec, cfg, ModType::Base, "WarcryPowerPer");
@@ -156,7 +154,7 @@ fn actual_cooldown(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig, tick_s: f64)
     let base = spec.cooldown_base_s + added;
     let recovery = (1.0 + scoped_sum(db, spec, cfg, ModType::Inc, name) / 100.0)
         * scoped_more(db, spec, cfg, name);
-    let cooldown = match db.override_(cfg, ModName::from(name)) {
+    let cooldown = match db.override_(cfg, name) {
         Some(v) => v,
         None => base / recovery.max(0.0),
     };
@@ -172,7 +170,7 @@ fn actual_cooldown(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig, tick_s: f64)
 /// `calcWarcryCastTime` (CalcOffence.lua:350-359).
 /// Not modeled: `SupportedByAutoexertion` (:355 second half) -- no fixture source.
 fn warcry_cast_time(db: &ModDb, spec: &WarcrySpec, cfg: &CalcConfig, tick_s: f64) -> f64 {
-    if db.flag(cfg, ModName::from("InstantWarcry")) {
+    if db.flag(cfg, "InstantWarcry") {
         return 0.0;
     }
     let base = scoped_sum(db, spec, cfg, ModType::Base, "WarcryCastTime");
@@ -323,10 +321,7 @@ pub fn apply_warcry_uptime(env: &mut Env) {
         );
         if gain > 0.0 && env.cfg.skill_types.intersects(SkillTypes::MELEE) {
             // :3253 -- uses full uptime when `Condition:WarcryMaxHit` (config) is set.
-            let uptime_used = if env
-                .player
-                .mod_db
-                .flag(&env.cfg, ModName::from("Condition:WarcryMaxHit"))
+            let uptime_used = if env.player.mod_db.flag(&env.cfg, "Condition:WarcryMaxHit")
                 || env.cfg.condition("WarcryMaxHit")
             {
                 100.0

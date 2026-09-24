@@ -703,7 +703,7 @@ impl ModDb {
     /// [`ModTag::SlotName`]). Slot-less BASE values are read separately by
     /// the caller via [`sum_global_only`](Self::sum_global_only) (as the
     /// "slot-less base", which only benefits from the global multiplier bucket).
-    pub fn slot_bases(&self, cfg: &CalcConfig, name: &ModName) -> Vec<(String, f64)> {
+    pub fn slot_bases(&self, cfg: &CalcConfig, name: &str) -> Vec<(String, f64)> {
         self.mods
             .get(name)
             .into_iter()
@@ -717,9 +717,9 @@ impl ModDb {
             .collect()
     }
 
-    pub fn flag(&self, cfg: &CalcConfig, name: ModName) -> bool {
+    pub fn flag(&self, cfg: &CalcConfig, name: &str) -> bool {
         self.mods
-            .get(&name)
+            .get(name)
             .into_iter()
             .flat_map(|mods| mods.iter())
             .any(|modifier| {
@@ -733,9 +733,9 @@ impl ModDb {
     /// activates this flag (`None` if no origin or no match). Lets the
     /// attribution path trace a flag's behavior back to its source (e.g.
     /// which passive/gem grants `CritChanceLucky`).
-    pub fn flag_origin(&self, cfg: &CalcConfig, name: ModName) -> Option<SourceId> {
+    pub fn flag_origin(&self, cfg: &CalcConfig, name: &str) -> Option<SourceId> {
         self.mods
-            .get(&name)
+            .get(name)
             .into_iter()
             .flat_map(|mods| mods.iter())
             .find(|modifier| {
@@ -757,21 +757,17 @@ impl ModDb {
     pub fn flag_traced(
         &self,
         cfg: &CalcConfig,
-        name: ModName,
+        name: &str,
         trace: &mut TraceGraph,
         label: impl Into<String>,
     ) -> bool {
-        let active = self.flag(cfg, name.clone());
+        let active = self.flag(cfg, name);
         let flag_node = trace.add_node(
             label,
             if active { 1.0 } else { 0.0 },
             TraceOperation::QueryFlag,
         );
-        let matching = self
-            .mods
-            .get(&name)
-            .into_iter()
-            .flat_map(|mods| mods.iter());
+        let matching = self.mods.get(name).into_iter().flat_map(|mods| mods.iter());
         for modifier in matching {
             if modifier.mod_type != ModType::Flag
                 || !modifier.matches(cfg)
@@ -796,9 +792,9 @@ impl ModDb {
         active
     }
 
-    pub fn override_(&self, cfg: &CalcConfig, name: ModName) -> Option<f64> {
+    pub fn override_(&self, cfg: &CalcConfig, name: &str) -> Option<f64> {
         self.mods
-            .get(&name)
+            .get(name)
             .into_iter()
             .flat_map(|mods| mods.iter().rev())
             .filter(|modifier| modifier.mod_type == ModType::Override && modifier.matches(cfg))
@@ -824,11 +820,11 @@ impl ModDb {
     /// yet; this covers PoB2's main-path baseline of Override /
     /// multipliers / Sum(BASE).
     pub fn get_multiplier(&self, var: &str, cfg: &CalcConfig) -> f64 {
-        let name = ModName::from(format!("Multiplier:{var}"));
-        if let Some(overridden) = self.override_(cfg, name.clone()) {
+        let name = format!("Multiplier:{var}");
+        if let Some(overridden) = self.override_(cfg, &name) {
             return overridden;
         }
-        cfg.multiplier(var) + self.sum(ModType::Base, cfg, &[name])
+        cfg.multiplier(var) + self.sum(ModType::Base, cfg, &[ModName::from(name)])
     }
 
     /// The traced version of [`override_`](Self::override_): records a
@@ -838,16 +834,16 @@ impl ModDb {
     pub fn override_traced(
         &self,
         cfg: &CalcConfig,
-        name: ModName,
+        name: &str,
         trace: &mut TraceGraph,
         label: impl Into<String>,
     ) -> (Option<f64>, TraceNodeId) {
-        let value = self.override_(cfg, name.clone());
+        let value = self.override_(cfg, name);
         let override_node =
             trace.add_node(label, value.unwrap_or(0.0), TraceOperation::QueryOverride);
         if let Some(winning) = self
             .mods
-            .get(&name)
+            .get(name)
             .into_iter()
             .flat_map(|mods| mods.iter().rev())
             .find(|modifier| modifier.mod_type == ModType::Override && modifier.matches(cfg))
@@ -888,9 +884,9 @@ impl ModDb {
         self.mods.values().flat_map(|mods| mods.iter())
     }
 
-    pub fn list(&self, cfg: &CalcConfig, name: ModName) -> Vec<String> {
+    pub fn list(&self, cfg: &CalcConfig, name: &str) -> Vec<String> {
         self.mods
-            .get(&name)
+            .get(name)
             .into_iter()
             .flat_map(|mods| mods.iter())
             .filter(|modifier| modifier.mod_type == ModType::List && modifier.matches(cfg))
@@ -912,9 +908,9 @@ impl ModDb {
     /// `forward_enemy_modifiers`); this method only passes them through
     /// without evaluating — the inner mods' `matches`/`effective_number` are
     /// settled by the target db's aggregation under its own context.
-    pub fn list_nested(&self, cfg: &CalcConfig, name: ModName) -> Vec<Modifier> {
+    pub fn list_nested(&self, cfg: &CalcConfig, name: &str) -> Vec<Modifier> {
         self.mods
-            .get(&name)
+            .get(name)
             .into_iter()
             .flat_map(|mods| mods.iter())
             .filter(|modifier| modifier.mod_type == ModType::List && modifier.matches(cfg))

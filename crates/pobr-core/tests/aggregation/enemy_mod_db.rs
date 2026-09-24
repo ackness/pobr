@@ -933,7 +933,7 @@ fn setup_enemy_injects_pinnacle_defaults() {
     );
     // Condition:PinnacleBoss is set.
     assert!(
-        db.flag(&cfg, ModName::from("Condition:PinnacleBoss")),
+        db.flag(&cfg, "Condition:PinnacleBoss"),
         "Pinnacle sets the condition flag"
     );
     // Level is raised to >=82 by Pinnacle (85 here).
@@ -1006,10 +1006,10 @@ fn setup_enemy_none_tier_has_no_resist_or_boss_debuff() {
         0.0
     );
     assert!(
-        !db.flag(&cfg, ModName::from("Condition:Unique")),
+        !db.flag(&cfg, "Condition:Unique"),
         "a plain monster has no Unique condition"
     );
-    assert!(!db.flag(&cfg, ModName::from("Condition:PinnacleBoss")));
+    assert!(!db.flag(&cfg, "Condition:PinnacleBoss"));
     // A plain monster has no innate penetration → the player db should not receive ElementalPenetration.
     assert_eq!(
         env.player.mod_db.sum(

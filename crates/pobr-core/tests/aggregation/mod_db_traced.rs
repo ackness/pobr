@@ -31,7 +31,7 @@ fn flag_traced_returns_flag_state_and_records_node() {
     let cfg = CalcConfig::attack();
     let mut trace = TraceGraph::new();
 
-    let active = db.flag_traced(&cfg, ModName::from("Onslaught"), &mut trace, "Onslaught");
+    let active = db.flag_traced(&cfg, "Onslaught", &mut trace, "Onslaught");
 
     assert!(active);
     assert!(!trace.nodes().is_empty());
@@ -46,12 +46,7 @@ fn override_traced_picks_last_written_value() {
     let cfg = CalcConfig::attack();
     let mut trace = TraceGraph::new();
 
-    let (value, _node) = db.override_traced(
-        &cfg,
-        ModName::from("CritChance"),
-        &mut trace,
-        "Crit override",
-    );
+    let (value, _node) = db.override_traced(&cfg, "CritChance", &mut trace, "Crit override");
 
     assert_eq!(value, Some(100.0));
 }
