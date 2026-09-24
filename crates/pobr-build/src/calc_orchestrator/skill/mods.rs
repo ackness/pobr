@@ -30,61 +30,14 @@ pub(crate) fn skill_base_modifiers(
     skill_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
-    let mut mods = Vec::new();
-    let mk = |stat: &str, value: f64, label: &str| {
-        let origin =
-            ModifierSource::new(SourceId::new(SourceKind::SkillGem, format!("skill.{stat}")))
-                .with_raw_text(label);
-        Modifier::number(stat, ModType::Base, value).with_origin(origin)
-    };
-    if let Some(cd) = skill.cooldown_s
-        && cd > 0.0
-    {
-        mods.push(mk("SkillCooldownBase", cd, "main skill base cooldown"));
-    }
-    // Number of stored uses (PoB's `skillData.storedUses`, e.g. grenade=3) →
-    // SkillStoredUsesBase BASE. Consumed by `calc_cooldown` / `apply_cooldown_cap`: when
-    // stored uses > 1, cooldown does **not** round up to a server frame (vendor
-    // CalcOffence.lua:338-345).
-    if let Some(stored) = skill.stored_uses
-        && stored > 1
-    {
-        mods.push(mk(
-            "SkillStoredUsesBase",
-            f64::from(stored),
-            "main skill stored uses",
-        ));
-    }
-    if let Some(mc) = skill.mana_cost
-        && mc > 0.0
-    {
-        mods.push(mk("SkillManaCostBase", mc, "main skill base mana cost"));
-    }
-    // The skill's inherent base crit chance (percentage points, e.g. Comet 13.0) →
-    // SkillBaseCritChance BASE (the **base-material bucket**, distinct from the mod
-    // bucket CriticalStrikeChance — vendor keeps `baseCrit = source.CritChance` and
-    // `Sum BASE CritChance` as two separate buckets, CalcOffence.lua:3665-3689;
-    // CritChanceBase OVERRIDE only replaces the base-material bucket). A spell's base
-    // crit comes from the skill itself (not the weapon); for attack skills this field is
-    // None, and base crit is instead injected from the weapon (see calc's main flow 1c).
-    if let Some(cc) = skill.crit_chance
-        && cc > 0.0
-    {
-        mods.push(mk("SkillBaseCritChance", cc, "main skill base crit chance"));
-    }
-    // statSet baseMods' inherent attack speed MORE (PoB2's
-    // `mod("Speed","MORE",N,ModFlag.Attack)`; e.g. Flicker 285). Injected as
-    // `AttackSpeed` MORE — the attack speed multiplier zone reads AttackSpeed by
-    // ModName (attack chain only), matching PoB2's `skillModList:More(cfg,"Speed")`.
-    // Spells never read AttackSpeed, so they're naturally unaffected.
-    if let Some(more) = skill.skill_attack_speed_more
-        && more != 0.0
-    {
-        let origin =
-            ModifierSource::new(SourceId::new(SourceKind::SkillGem, "skill.AttackSpeedMore"))
-                .with_raw_text("main skill statSet base attack speed MORE");
-        mods.push(Modifier::number("AttackSpeed", ModType::More, more).with_origin(origin));
-    }
+    let mut mods = pobr_core::skill_env::skill_base_modifiers(
+        skill_id,
+        skill.cooldown_s,
+        skill.stored_uses,
+        skill.mana_cost,
+        skill.crit_chance,
+        skill.skill_attack_speed_more,
+    );
     // The skill's stats (base damage + its own damage% scaling) are injected via
     // SkillStatMap mapping. Exception: `off_hand_weapon_*physical_damage` (base hit
     // damage for a non-weapon attack) is already counted into `base_hit_min/max` as a

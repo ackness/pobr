@@ -5,6 +5,7 @@
 //! letting the same logic be reused by WASM, CLI, and test harnesses.
 
 use pobr_data::catalog::DotFlags;
+use pobr_data::modifier::ModType;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::Modifier;
@@ -66,4 +67,63 @@ pub fn resolved_enemy_level(
             .unwrap_or_else(|| character_level.min(max_enemy_level))
             .min(max_enemy_level)
     }
+}
+
+/// A resolved skill's base parameters → `BASE`/`MORE` modifiers.
+///
+/// This is the **pure** half of `pobr-build`'s `skill_base_modifiers`: the
+/// cooldown/stored-uses/mana-cost/crit-chance/attack-speed-more translations that
+/// don't need the stat-map catalog. The caller appends the stat-map-mapped
+/// `base_damage` segment separately.
+///
+/// `skill_id` is used only for `SourceId` attribution labels.
+pub fn skill_base_modifiers(
+    skill_id: &str,
+    cooldown_s: Option<f64>,
+    stored_uses: Option<u32>,
+    mana_cost: Option<f64>,
+    crit_chance: Option<f64>,
+    attack_speed_more: Option<f64>,
+) -> Vec<Modifier> {
+    let mut mods = Vec::new();
+    let mk = |stat: &str, value: f64, label: &str| {
+        let origin =
+            ModifierSource::new(SourceId::new(SourceKind::SkillGem, format!("skill.{stat}")))
+                .with_raw_text(label);
+        Modifier::number(stat, ModType::Base, value).with_origin(origin)
+    };
+    if let Some(cd) = cooldown_s
+        && cd > 0.0
+    {
+        mods.push(mk("SkillCooldownBase", cd, "main skill base cooldown"));
+    }
+    if let Some(stored) = stored_uses
+        && stored > 1
+    {
+        mods.push(mk(
+            "SkillStoredUsesBase",
+            f64::from(stored),
+            "main skill stored uses",
+        ));
+    }
+    if let Some(mc) = mana_cost
+        && mc > 0.0
+    {
+        mods.push(mk("SkillManaCostBase", mc, "main skill base mana cost"));
+    }
+    if let Some(cc) = crit_chance
+        && cc > 0.0
+    {
+        mods.push(mk("SkillBaseCritChance", cc, "main skill base crit chance"));
+    }
+    if let Some(more) = attack_speed_more
+        && more != 0.0
+    {
+        let origin =
+            ModifierSource::new(SourceId::new(SourceKind::SkillGem, "skill.AttackSpeedMore"))
+                .with_raw_text("main skill statSet base attack speed MORE");
+        mods.push(Modifier::number("AttackSpeed", ModType::More, more).with_origin(origin));
+    }
+    let _ = skill_id; // reserved for future per-skill attribution
+    mods
 }
