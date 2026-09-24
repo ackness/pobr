@@ -230,3 +230,52 @@ pub fn item_local_defence_flat(item: &Item) -> [f64; 3] {
     }
     out
 }
+
+/// Whether a mod text is a local Spirit mod (matches `+N to Spirit` / `N% increased Spirit` /
+/// `N% reduced Spirit`).
+pub fn is_local_spirit_mod(clean: &str) -> bool {
+    let parse_n = |s: &str| -> bool { s.trim().parse::<f64>().is_ok() };
+    if let Some(rest) = clean.strip_suffix("% increased spirit") {
+        return parse_n(rest);
+    }
+    if let Some(rest) = clean.strip_suffix("% reduced spirit") {
+        return parse_n(rest);
+    }
+    if let Some(body) = clean.strip_suffix(" to spirit")
+        && let Some(num) = body.strip_prefix('+')
+    {
+        return parse_n(num);
+    }
+    false
+}
+
+/// Sum of "has +N to <armour/evasion rating/maximum energy shield> per player level" on the item.
+pub fn item_per_level_defence(item: &Item) -> [f64; 3] {
+    let mut total = [0.0; 3];
+    for t in weapon_mod_texts(item) {
+        if let Some(per) = parse_has_per_level_defence(&clean_item_text(t)) {
+            for i in 0..3 {
+                total[i] += per[i];
+            }
+        }
+    }
+    total
+}
+
+/// Parses "has +N to <armour/evasion rating/maximum energy shield> per player level" →
+/// `[armour, evasion, es]` (+N per level). Returns `None` for any other form.
+pub fn parse_has_per_level_defence(clean: &str) -> Option<[f64; 3]> {
+    let body = clean
+        .strip_prefix("has +")?
+        .strip_suffix(" per player level")?;
+    let (num, rest) = body.split_once(" to ")?;
+    let n: f64 = num.trim().parse().ok()?;
+    let mut out = [0.0; 3];
+    match rest.replace(" rating", "").trim() {
+        "armour" => out[0] = n,
+        "evasion" => out[1] = n,
+        "energy shield" | "maximum energy shield" => out[2] = n,
+        _ => return None,
+    }
+    Some(out)
+}
