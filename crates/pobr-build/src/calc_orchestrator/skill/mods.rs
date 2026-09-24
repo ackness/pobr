@@ -8,7 +8,6 @@ use crate::support::judge_group_supports;
 
 use pobr_core::Modifier;
 use pobr_core::rules::stat_map_engine::{self, MappedItem, MappedOutcome};
-use pobr_data::item::EquipmentSlot;
 use pobr_data::modifier::ModType;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
@@ -212,74 +211,17 @@ pub(crate) fn crossbow_reload_modifiers(
     group: &SocketGroup,
     skill_id: &str,
 ) -> Vec<Modifier> {
-    let Some(effect) = data.granted_effects.get(skill_id) else {
-        return Vec::new();
-    };
-    let has_type = |t: &str| effect.skill_types.iter().any(|x| x == t);
-    if !has_type("CrossbowSkill") || has_type("Grenade") || has_type("CrossbowAmmoSkill") {
-        return Vec::new();
-    }
-    // Weapon reload base value (main-hand only; matching vendor's `actor.weaponData1.ReloadTime`).
-    let Some(reload_ms) = build
-        .items
-        .get(&EquipmentSlot::Weapon1)
-        .and_then(|item| data.weapon_base(&item.base.to_string()))
-        .and_then(|w| w.reload_time_ms)
-        .filter(|&ms| ms > 0)
-    else {
-        return Vec::new();
-    };
-    let mk = |name: &str, value: f64, label: String| {
-        let origin = ModifierSource::new(SourceId::new(
-            SourceKind::SkillGem,
-            format!("skill.{skill_id}.{name}"),
-        ))
-        .with_raw_text(label);
-        Modifier::number(name, ModType::Base, value).with_origin(origin)
-    };
-    let mut mods = vec![mk(
-        "CrossbowReloadTimeBase",
-        f64::from(reload_ms) / 1000.0,
-        format!("crossbow weapon reload {reload_ms}ms"),
-    )];
-    // Magazine capacity from the sibling ammo skill: the first `CrossbowAmmoSkill`
-    // among the group's own gems or their additional granted effects, taking its
-    // selected level's `base_number_of_crossbow_bolts` stat.
-    let ammo = group.gem_skills.iter().find_map(|g| {
-        let mut candidates: Vec<&str> = vec![g.skill_id.as_str()];
-        if let Some(link) = data.gem_effects.get(&g.skill_id) {
-            candidates.extend(
-                link.additional_granted_effect_ids
-                    .iter()
-                    .map(String::as_str),
-            );
-        }
-        candidates
-            .into_iter()
-            .find(|eid| {
-                data.granted_effects
-                    .get(*eid)
-                    .is_some_and(|e| e.skill_types.iter().any(|t| t == "CrossbowAmmoSkill"))
-            })
-            .map(|eid| (eid.to_string(), g.gem_level))
-    });
-    if let Some((ammo_id, gem_level)) = ammo {
-        let bolts: f64 = data
-            .effect_stats(&ammo_id, gem_level, 0, None)
-            .base
-            .iter()
-            .filter(|ds| ds.stat == "base_number_of_crossbow_bolts")
-            .map(|ds| ds.value)
-            .sum();
-        if bolts > 0.0 {
-            mods.push(mk(
-                "CrossbowBoltCount",
-                bolts,
-                format!("ammo skill {ammo_id} bolt count"),
-            ));
-        }
-    }
-    mods
+    let gems: Vec<pobr_core::skill_env::GemInput> = group
+        .gem_skills
+        .iter()
+        .map(|g| pobr_core::skill_env::GemInput {
+            skill_id: g.skill_id.clone(),
+            gem_level: g.gem_level,
+            quality: g.quality,
+            stat_set_index: g.stat_set_index,
+        })
+        .collect();
+    pobr_core::skill_env::crossbow_reload_modifiers(data, data, build, data, &gems, skill_id)
 }
 
 /// Maps the main skill gem's **quality stat segment** into `SourceKind::GemQuality`

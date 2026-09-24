@@ -51,3 +51,15 @@ pub struct EffectStats {
     /// The quality-stacking segment.
     pub quality: Vec<SkillDamageStat>,
 }
+
+/// Equipment view (the `Build.items` domain) — read-only access to equipped items.
+pub trait EquipmentView {
+    /// Returns the item in `slot`, or `None` if empty.
+    fn item(&self, slot: pobr_data::item::EquipmentSlot) -> Option<&pobr_data::item::Item>;
+}
+
+/// Weapon base stats lookup (the `base_items` + `weapon_types` domains).
+pub trait WeaponBaseLookup {
+    /// Returns the weapon base stats for `base_name`, or `None` if not a weapon base.
+    fn weapon_base(&self, base_name: &str) -> Option<&pobr_data::catalog::WeaponBaseStats>;
+}

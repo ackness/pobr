@@ -392,3 +392,112 @@ pub fn adorned_corrupted_magic_jewel_inc(jewels: &[pobr_data::item::Item]) -> Op
 pub fn scale_trunc_2dp(value: f64, scale: f64) -> f64 {
     ((value * scale * 100.0).round() / 100.0).trunc()
 }
+
+/// A gem's socketed-skill reference (the `gem_skills` domain).
+#[derive(Debug, Clone)]
+pub struct GemInput {
+    /// The granted effect id this gem provides.
+    pub skill_id: String,
+    /// The gem's level.
+    pub gem_level: u32,
+    /// The gem's quality.
+    pub quality: u32,
+    /// The gem's selected statSet index (0-based; `None` = default).
+    pub stat_set_index: Option<u32>,
+}
+
+/// Crossbow reload data channel (matching vendor `CalcOffence.lua:1118-1122`'s
+/// skillData assembly + `:283-320`'s calcCrossbowAmmoStats/calcCrossbowReloadTime data
+/// fetching):
+///
+/// - Gate = main skill's `skill_types` includes `CrossbowSkill` and excludes `Grenade` /
+///   `CrossbowAmmoSkill` (matching vendor `:1118`'s same three predicates; grenades
+///   don't consume ammo);
+/// - `CrossbowReloadTimeBase` BASE (seconds) ← the main-hand weapon's
+///   `weapon.reload_time_ms` (WeaponTypes' ReloadTime; falls back to the overlay's
+///   base_item_overrides, 33 crossbows already cataloged). When the weapon has no
+///   reload data (not holding a crossbow) → returns empty entirely (matching vendor's
+///   baseReloadTime nil semantics);
+/// - `CrossbowBoltCount` BASE ← the stat `base_number_of_crossbow_bolts` from the
+///   sibling ammo skill in the same group (either directly in the group, or linked via
+///   gem_effects' additional effects) (matching vendor's ammo skill modList transfer
+///   `:303-307`). Not injected when there's no ammo data (the calc side falls back to a
+///   minimum magazine of 1).
+///
+/// `ReloadSpeed`/`ChanceToNotConsumeAmmo`/`InstantReloadChance` mods go through the
+/// generic modifier bus, aggregated on the calc side (`fill_crossbow_reload`).
+pub fn crossbow_reload_modifiers(
+    effects: &dyn crate::skill_env::EffectLookup,
+    weapons: &dyn crate::skill_env::WeaponBaseLookup,
+    equipment: &dyn crate::skill_env::EquipmentView,
+    stat_sets: &dyn crate::skill_env::StatSetLookup,
+    gems: &[GemInput],
+    skill_id: &str,
+) -> Vec<Modifier> {
+    let Some(effect) = effects.effect(skill_id) else {
+        return Vec::new();
+    };
+    let has_type = |t: &str| effect.skill_types.iter().any(|x| x == t);
+    if !has_type("CrossbowSkill") || has_type("Grenade") || has_type("CrossbowAmmoSkill") {
+        return Vec::new();
+    }
+    // Weapon reload base value (main-hand only; matching vendor's `actor.weaponData1.ReloadTime`).
+    let Some(reload_ms) = equipment
+        .item(pobr_data::item::EquipmentSlot::Weapon1)
+        .and_then(|item| weapons.weapon_base(&item.base.to_string()))
+        .and_then(|w| w.reload_time_ms)
+        .filter(|&ms| ms > 0)
+    else {
+        return Vec::new();
+    };
+    let mk = |name: &str, value: f64, label: String| {
+        let origin = ModifierSource::new(SourceId::new(
+            SourceKind::SkillGem,
+            format!("skill.{skill_id}.{name}"),
+        ))
+        .with_raw_text(label);
+        Modifier::number(name, ModType::Base, value).with_origin(origin)
+    };
+    let mut mods = vec![mk(
+        "CrossbowReloadTimeBase",
+        f64::from(reload_ms) / 1000.0,
+        format!("crossbow weapon reload {reload_ms}ms"),
+    )];
+    // Magazine capacity from the sibling ammo skill: the first `CrossbowAmmoSkill`
+    // among the group's own gems or their additional granted effects, taking its
+    // selected level's `base_number_of_crossbow_bolts` stat.
+    let ammo = gems.iter().find_map(|g| {
+        let mut candidates: Vec<&str> = vec![g.skill_id.as_str()];
+        candidates.extend(
+            effects
+                .additional_effects(&g.skill_id)
+                .iter()
+                .map(String::as_str),
+        );
+        candidates
+            .into_iter()
+            .find(|eid| {
+                effects
+                    .effect(eid)
+                    .is_some_and(|e| e.skill_types.iter().any(|t| t == "CrossbowAmmoSkill"))
+            })
+            .map(|eid| (eid.to_string(), g.gem_level))
+    });
+    if let Some((ammo_id, gem_level)) = ammo {
+        let bolts: f64 = stat_sets
+            .effect_stats(&ammo_id, gem_level, 0, None)
+            .base
+            .iter()
+            .filter(|ds| ds.stat == "base_number_of_crossbow_bolts")
+            .map(|ds| ds.value)
+            .sum();
+        if bolts > 0.0 {
+            mods.push(mk(
+                "CrossbowBoltCount",
+                bolts,
+                format!("ammo skill {ammo_id} bolt count"),
+            ));
+        }
+    }
+    mods
+}

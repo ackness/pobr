@@ -1058,6 +1058,12 @@ impl pobr_core::skill_env::StatSetLookup for BuildData {
     }
 }
 
+impl pobr_core::skill_env::WeaponBaseLookup for BuildData {
+    fn weapon_base(&self, base_name: &str) -> Option<&WeaponBaseStats> {
+        self.weapon_base(base_name)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

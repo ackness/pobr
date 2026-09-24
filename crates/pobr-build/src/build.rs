@@ -368,6 +368,12 @@ impl Build {
     }
 }
 
+impl pobr_core::skill_env::EquipmentView for Build {
+    fn item(&self, slot: pobr_data::item::EquipmentSlot) -> Option<&pobr_data::item::Item> {
+        self.items.get(&slot)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
