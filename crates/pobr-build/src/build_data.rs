@@ -1064,6 +1064,12 @@ impl pobr_core::skill_env::WeaponBaseLookup for BuildData {
     }
 }
 
+impl pobr_core::skill_env::StatMapLookup for BuildData {
+    fn stat_map_catalog(&self) -> Option<&pobr_core::rules::stat_map_engine::StatMapCatalog> {
+        self.stat_map_catalog.as_deref()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

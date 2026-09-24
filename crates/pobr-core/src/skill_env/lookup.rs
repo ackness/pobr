@@ -63,3 +63,9 @@ pub trait WeaponBaseLookup {
     /// Returns the weapon base stats for `base_name`, or `None` if not a weapon base.
     fn weapon_base(&self, base_name: &str) -> Option<&pobr_data::catalog::WeaponBaseStats>;
 }
+
+/// Stat-map catalog lookup (the `stat_map_catalog` domain).
+pub trait StatMapLookup {
+    /// Returns the stat-map catalog, or `None` when the overlay is missing.
+    fn stat_map_catalog(&self) -> Option<&crate::rules::stat_map_engine::StatMapCatalog>;
+}

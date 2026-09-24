@@ -17,7 +17,9 @@ pub use item_text::{
     parse_weapon_local_crit, weapon_local_attack_speed, weapon_local_phys_adds,
     weapon_local_phys_inc, weapon_mod_texts,
 };
-pub use lookup::{EffectLookup, EffectStats, EquipmentView, StatSetLookup, WeaponBaseLookup};
+pub use lookup::{
+    EffectLookup, EffectStats, EquipmentView, StatMapLookup, StatSetLookup, WeaponBaseLookup,
+};
 pub use mods::{
     GemInput, GemPropertyBonus, GemPropertyKind, adorned_corrupted_magic_jewel_inc,
     clean_grant_text, crossbow_reload_modifiers, dot_flag_modifiers, gem_level_category_matches,
