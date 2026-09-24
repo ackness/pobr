@@ -6,6 +6,7 @@
  */
 
 import type {
+  SocketGroupInput,
   AttributionRequest,
   ClassNames,
   AttributionResponse,
@@ -86,6 +87,8 @@ export interface PobrBackend {
   ): Promise<NodePowerResponse>;
   /** 通用变体评估（寻优框架计算面：变体 → 全量重算 → 属性值；打分在前端）。 */
   optimizeVariants(request: OptimizeVariantsRequest): Promise<OptimizeVariantsResponse>;
+  /** One result per group; shares the calculation engine's support fixed point. */
+  supportGroupsCompatible(groups: SocketGroupInput[]): Promise<boolean[]>;
   /** 符文/魂核目录（符文槽选择器）；`itemText` 给定时逐符文附对该物品适用的效果行。 */
   runeCatalog(itemText?: string): Promise<RuneCatalogEntry[]>;
   itemAugmentInfo(text: string): Promise<ItemAugmentInfo>;

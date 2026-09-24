@@ -34,7 +34,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use pobr_build::{
-    BuildData, DataOrchestratorOptions, StatMapMode, calculate_with_data, parse_build_from_code,
+    BuildData, DataOrchestratorOptions, StatMapMode, calculate_with_data,
+    calculate_with_data_report, parse_build_from_code,
 };
 use pobr_core::calc::{MinimalInput, OutputTable};
 use pobr_core::modifier::{ModTag, Modifier};
@@ -146,9 +147,7 @@ fn compare_mode_is_pure_observation() {
 
     let data_out =
         calculate_with_data(&build, &data, &opts(StatMapMode::Data, None)).expect("data run");
-    // Clears any leftover records so we retrieve only this Compare run's.
-    let _ = pobr_build::take_stat_map_compare_records();
-    let compare_out = calculate_with_data(
+    let report = calculate_with_data_report(
         &build,
         &data,
         &opts(StatMapMode::Compare, Some(catalog.clone())),
@@ -156,14 +155,14 @@ fn compare_mode_is_pure_observation() {
     .expect("compare run");
     for ((label, dv), (_, cv)) in scalar_fields(&data_out)
         .into_iter()
-        .zip(scalar_fields(&compare_out))
+        .zip(scalar_fields(report.session.output()))
     {
         assert!(
             (dv - cv).abs() < 1e-12,
             "Compare mode changed output field {label}: data={dv} compare={cv}"
         );
     }
-    let records = pobr_build::take_stat_map_compare_records();
+    let records = report.stat_map_records;
     assert!(
         !records.is_empty(),
         "Compare mode should record mapping-level outcomes (at least one of main-skill/quality/support sampling points)"
@@ -174,8 +173,6 @@ fn compare_mode_is_pure_observation() {
             .all(|r| matches!(r.classification, "mapped" | "unsupported" | "unknown")),
         "an observation record's classification should be mapped/unsupported/unknown"
     );
-    // Records have been taken -> taking again should be empty (take semantics).
-    assert!(pobr_build::take_stat_map_compare_records().is_empty());
 }
 
 /// Observation-record locator helper: runs a single build (env
@@ -194,10 +191,10 @@ fn l2_runtime_compare_records() {
     let code = std::fs::read_to_string(builds_dir().join(&build_name).join("code.txt"))
         .expect("build code.txt");
     let build = parse_build_from_code(code.trim()).expect("parse build");
-    let _ = pobr_build::take_stat_map_compare_records();
-    let _ = calculate_with_data(&build, &data, &opts(StatMapMode::Compare, Some(catalog)))
-        .expect("compare run");
-    let records = pobr_build::take_stat_map_compare_records();
+    let report =
+        calculate_with_data_report(&build, &data, &opts(StatMapMode::Compare, Some(catalog)))
+            .expect("compare run");
+    let records = report.stat_map_records;
     println!(
         "== {build_name} runtime mapping-level outcome observations ({} records) ==",
         records.len()

@@ -26,6 +26,8 @@ mod catalog;
 mod decode;
 mod encode;
 mod request;
+mod support;
+pub use support::support_groups_compatible_json;
 
 pub use analysis::{AttributionRequest, attribution_json, node_power_json, optimize_variants_json};
 pub use augments::{item_augment_info_json, reforge_runes_json, rune_catalog_json};

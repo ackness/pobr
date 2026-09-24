@@ -9,7 +9,7 @@
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 4;
+export const EXPECTED_SCHEMA_VERSION = 5;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）

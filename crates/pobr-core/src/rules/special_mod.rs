@@ -813,7 +813,7 @@ fn compile_literal_tag(tag: &TemplateTagDef) -> Option<ModTag> {
 /// vendor's short attribute names (`Str`→`Strength`) and normalizes the
 /// `On<Slot>` slot suffix (`OnBoots`→`Onboots`), matching the statmap
 /// engine's convention (`template.rs::compile_tag`) — the key space written
-/// back by the orchestrator (`inject_per_x_multipliers` writing
+/// back by actor preparation and build equipment facts (writing
 /// `cfg.stats`) is `Strength`/`<Stat>On<slot.id()>`; without normalization
 /// the lookup key is missing and reads back as 0.
 fn normalize_stat_name(stat: &str) -> String {

@@ -256,3 +256,30 @@ test('editing passives automatically replans from the new tree and applying neve
   await expect(page.locator('.tree-planner-run')).toBeEnabled();
   await expect(page.locator('.calc-error')).toHaveCount(0);
 });
+
+
+test('support picker follows the selected group with shared engine compatibility', async ({ page }) => {
+  await caster(page);
+  await nav(page, 'Skills').click();
+  const addSkill = page.locator('.skills-toolbar input');
+  await expect(addSkill).toBeEnabled();
+  await addSkill.fill('Ice Shot');
+  await page.locator('.skills-toolbar').getByRole('option', { name: /Ice Shot/ }).first().click();
+  const groups = page.locator('.skill-group');
+  await expect(groups).toHaveCount(2);
+  const check = async (index: number, accepted: string, rejected: string) => {
+    const picker = groups.nth(index).locator('.skill-group-picker input');
+    await expect(picker).toBeEnabled();
+    await picker.fill('Rapid');
+    await expect(groups.nth(index).getByRole('option', { name: new RegExp(accepted) }).first()).toBeVisible();
+    await expect(groups.nth(index).getByRole('option', { name: new RegExp(rejected) })).toHaveCount(0);
+  };
+  await check(1, 'Rapid Attacks', 'Rapid Casting');
+  await groups.nth(0).locator('.skill-group-title').click();
+  await check(0, 'Rapid Casting', 'Rapid Attacks');
+  // Switch twice while compatibility is being refreshed. An old group's result
+  // must never populate the newly opened picker.
+  await groups.nth(1).locator('.skill-group-title').click();
+  await groups.nth(0).locator('.skill-group-title').click();
+  await check(0, 'Rapid Casting', 'Rapid Attacks');
+});

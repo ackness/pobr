@@ -3,6 +3,97 @@ use pobr_core::calc::MinimalInput;
 use crate::support::session;
 
 #[test]
+fn player_preparation_preserves_attribute_bonus_rules_and_sources() {
+    use pobr_core::{CharacterBase, Modifier};
+    use pobr_data::prelude::ModType;
+
+    let class = CharacterBase {
+        level: 1,
+        strength: 10.0,
+        dexterity: 0.0,
+        intelligence: 5.0,
+    };
+    for (flag, life, mana) in [
+        (None, 88.0, 84.0),
+        (Some("HalvesLifeFromStrength"), 58.0, 84.0),
+        (Some("NoAttributeBonuses"), 28.0, 34.0),
+    ] {
+        let mut session = session(MinimalInput::default());
+        session.add_modifiers(class.modifiers(&Default::default()));
+        session.add_modifiers([
+            Modifier::number("Strength", ModType::Base, 10.0),
+            Modifier::number("Strength", ModType::Inc, 50.0),
+            Modifier::number("Intelligence", ModType::Base, 20.0),
+        ]);
+        if let Some(flag) = flag {
+            session.add_modifiers([Modifier::flag(flag)]);
+        }
+        session.prepare_player_stats(class.level, Some(class));
+        let output = session.perform_minimal();
+        assert_eq!(output.life, life, "{flag:?}");
+        assert_eq!(output.mana, mana, "{flag:?}");
+        assert!(session.mods_named("MaximumLife").iter().any(|m| {
+            m.origin
+                .as_ref()
+                .is_some_and(|source| source.source_id.id == "base.attr_derived")
+        }));
+    }
+}
+
+#[test]
+fn player_condition_bridge_preserves_explicit_low_life_choice() {
+    use pobr_core::{CalcConfig, Modifier};
+    use pobr_data::prelude::ModType;
+
+    for explicit in [None, Some(false), Some(true)] {
+        let mut cfg = CalcConfig::default();
+        if let Some(value) = explicit {
+            cfg = cfg.with_condition("LowLife", value);
+        }
+        let mut session = session(MinimalInput {
+            base_life: 100.0,
+            ..Default::default()
+        })
+        .with_config(cfg);
+        session.add_modifiers([Modifier::number("LifeReserved", ModType::Base, 70.0)]);
+        session
+            .add_modifier_texts(["+20 to maximum Mana while on Low Life"])
+            .unwrap();
+        session.prepare_player_stats(1, None);
+        session.bridge_player_conditions();
+        assert_eq!(
+            session.pool_total("MaximumMana"),
+            if explicit == Some(false) { 0.0 } else { 20.0 }
+        );
+    }
+}
+
+#[test]
+fn per_mana_damage_uses_the_pool_after_defence_conversion() {
+    use pobr_core::{ModTag, Modifier};
+    use pobr_data::prelude::ModType;
+
+    let mut session = session(MinimalInput {
+        base_life: 100.0,
+        base_mana: 100.0,
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        ..Default::default()
+    });
+    session.add_modifiers([
+        Modifier::number("EnergyShield", ModType::Base, 200.0),
+        Modifier::number("EnergyShieldConvertToMana", ModType::Base, 100.0),
+        Modifier::number("Damage", ModType::Inc, 10.0)
+            .with_tag(ModTag::multiplier("Mana", 100.0, None)),
+    ]);
+    session.prepare_player_stats(1, None);
+    assert_eq!(session.pool_total("MaximumMana"), 100.0);
+    let output = session.perform_minimal();
+    assert_eq!(output.mana, 300.0);
+    assert!((output.total_hit_avg - 130.0).abs() < 1e-10);
+}
+
+#[test]
 fn session_parses_modifier_texts_and_calculates_minimal_output() {
     let input = MinimalInput {
         base_life: 1_000.0,

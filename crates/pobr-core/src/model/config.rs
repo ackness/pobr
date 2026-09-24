@@ -49,8 +49,8 @@ impl<'a> EvalContext<'a> {
     /// `(self.actor.output and self.actor.output[stat]) or ... or 0`).
     ///
     /// Read priority: `stat_lookup` (the consumer's compute-on-demand channel)
-    /// → [`CalcConfig::stats`] snapshot (backfilled by the orchestration
-    /// layer's stage 6c, same source as `multipliers`; see the
+    /// → [`CalcConfig::stats`] snapshot (backfilled by actor preparation
+    /// and build equipment facts, same source as `multipliers`; see the
     /// [`CalcConfig::stats`] doc for the shared backfill source of both
     /// channels) → 0.
     pub fn stat(&self, name: &str) -> f64 {
@@ -85,8 +85,8 @@ pub struct CalcConfig {
     pub multipliers: HashMap<String, f64>,
     /// Snapshot of already-computed stats (V2s4; PoB2's `StatThreshold`/
     /// `PerStat`/`PercentStat` tags read actor **output** via GetStat,
-    /// ModStore.lua:556-573). Backfilled by the orchestration layer after
-    /// source injection (`inject_per_x_multipliers` stage 6c, same source and
+    /// ModStore.lua:556-573). Backfilled after source injection by actor
+    /// preparation and build equipment facts (same source and
     /// values as `multipliers`); missing key → 0 (matches a missing stat in
     /// vendor output, which is also 0). Shares its backfill source with
     /// [`EvalContext`]'s `stat_lookup` (the PerStat/PercentStat evaluation
@@ -94,11 +94,10 @@ pub struct CalcConfig {
     /// directly, while the evaluation side falls back to this snapshot via
     /// `EvalContext::stat` when there's no lookup.
     ///
-    /// Backfill scope = the subset computable before `perform` (attributes /
-    /// life / mana pool values / per-slot equipment defence); globals only
-    /// computed inside `perform` (Armour/Evasion/EnergyShield/Ward, etc.) are
-    /// left at 0 (conservative: those entries stay dormant until the output
-    /// snapshot channel is wired in).
+    /// Actor preparation supplies the initial attributes and pools; build supplies
+    /// equipment facts. `perform` refreshes Life/Mana after resource conversion and
+    /// snapshots Armour/Evasion/EnergyShield before offence. Other keys remain zero
+    /// unless explicitly populated.
     pub stats: HashMap<String, f64>,
     /// Extra damage-scaling ModNames (derived from main skill keywords /
     /// weapon category, e.g. `GrenadeDamage`, `CrossbowDamage`).

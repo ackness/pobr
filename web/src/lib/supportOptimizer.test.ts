@@ -1,8 +1,20 @@
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import type { CalculateBuildRequest, GemInput, SocketGroupInput } from '../api/types';
 import type { EvaluateOptions } from './optimize';
 import { eligibleSupports, lineageAvailable, optimizeSupports, sameSupportFamily, supportSetCompatible, supportVariant,
-  typeExpressionMatches, type SupportMetadata } from './supportOptimizer';
+  type SupportMetadata } from './supportOptimizer';
+
+// Canned engine decisions for the synthetic search fixtures. Rule semantics and
+// fixed-point ordering are tested in Rust; these tests exercise search policy.
+const engine = vi.hoisted(() => ({ judge: vi.fn(async (groups: SocketGroupInput[]) => groups.map(group => {
+  const ids = group.gems.map(gem => gem.skill_id);
+  if (group.source && ids.includes('GemOnly')) return false;
+  if (ids.includes('NeedsMinion') && !ids.some(id => ['AddsMinion', 'Enabler'].includes(id))) return false;
+  if (ids.includes('NoMinion') && ids.includes('AddsMinion')) return false;
+  if (ids.includes('MinionWithoutArea') && (!ids.includes('AddsMinion') || ids.includes('AddsArea'))) return false;
+  return true;
+})) }));
+vi.mock('../api/backend', () => ({ getBackend: async () => ({ supportGroupsCompatible: engine.judge }) }));
 
 const gem = (id: string, extra: Partial<SupportMetadata> = {}): SupportMetadata => ({
   skill_id: id, name: id, family: id, max_level: 1, level_requirements: [0], is_support: true,
@@ -14,15 +26,7 @@ const input = (id: string): GemInput => ({ skill_id: id, level: 1, quality: 0 })
 const group = (ids: string[] = []): SocketGroupInput => ({ enabled: true, gems: [input('Fireball'), ...ids.map(input)] });
 const objective = { stat: 'TotalDPS', constraints: [] };
 
-test('postfix support expressions retain logical order and the implicit OR between results', () => {
-  expect(typeExpressionMatches(['Attack', 'Bow', 'AND'], new Set(['Spell', 'Bow']))).toBe(false);
-  expect(typeExpressionMatches(['Spell', 'Channel', 'NOT', 'AND'], new Set(['Spell']))).toBe(true);
-  expect(typeExpressionMatches(['Spell', 'Channel', 'NOT', 'AND'], new Set(['Spell', 'Channel']))).toBe(false);
-  expect(typeExpressionMatches(['Attack', 'Spell'], new Set(['Spell']))).toBe(true);
-  expect(typeExpressionMatches(['AND'], new Set(['Spell']))).toBe(false);
-});
-
-test('automatic pool includes conditional pairs but rejects wrong types, level and unknown metadata', () => {
+test('automatic pool includes conditional pairs but rejects wrong types, level and unknown metadata', async () => {
   const adds = gem('AddsMinion', { add_skill_types: ['Minion'] });
   const needs = gem('NeedsMinion', { require_skill_types: ['Minion'] });
   const catalog = [active, adds, needs,
@@ -32,19 +36,19 @@ test('automatic pool includes conditional pairs but rejects wrong types, level a
   const result = eligibleSupports(group(), catalog, 50, false);
   expect(result.gems.map(gem => gem.skill_id)).toEqual(['AddsMinion', 'NeedsMinion']);
   expect(result).toMatchObject({ unknown: 1, levelBlocked: 1, incompatible: 1 });
-  expect(supportSetCompatible(group(), [input('NeedsMinion'), input('AddsMinion')], catalog)).toBe(true);
-  expect(supportSetCompatible(group(), [input('NeedsMinion')], catalog)).toBe(false);
+  expect(await supportSetCompatible(group(), [input('NeedsMinion'), input('AddsMinion')], catalog)).toBe(true);
+  expect(await supportSetCompatible(group(), [input('NeedsMinion')], catalog)).toBe(false);
 });
 
-test('compatibility rechecks exclusions after additions and overlapping families, including item-granted skills', () => {
+test('compatibility rechecks exclusions after additions and overlapping families, including item-granted skills', async () => {
   const catalog = [active, gem('AddsMinion', { add_skill_types: ['Minion'] }),
     gem('NoMinion', { exclude_skill_types: ['Minion'] }), gem('GemOnly', { support_gems_only: true }),
     gem('Arrow', { families: ['Arrow'] }), gem('Alignment', { families: ['Alignment', 'Arrow'] })];
-  expect(supportSetCompatible(group(), [input('NoMinion'), input('AddsMinion')], catalog)).toBe(false);
-  expect(supportSetCompatible(group(), [input('Arrow'), input('Alignment')], catalog)).toBe(false);
+  expect(await supportSetCompatible(group(), [input('NoMinion'), input('AddsMinion')], catalog)).toBe(false);
+  expect(await supportSetCompatible(group(), [input('Arrow'), input('Alignment')], catalog)).toBe(false);
   expect(sameSupportFamily(catalog[4], catalog[5])).toBe(true);
-  expect(supportSetCompatible({ ...group(), source: 'Weapon 1' }, [input('GemOnly')], catalog)).toBe(false);
-  expect(supportSetCompatible(group(), [input('GemOnly')], catalog)).toBe(true);
+  expect(await supportSetCompatible({ ...group(), source: 'Weapon 1' }, [input('GemOnly')], catalog)).toBe(false);
+  expect(await supportSetCompatible(group(), [input('GemOnly')], catalog)).toBe(true);
 });
 
 test('a support replacement preserves active gems and every other group, including weapon bindings', () => {
@@ -69,13 +73,13 @@ function evaluator(score: (ids: string[]) => number, options: { unsupported?: st
   };
 }
 
-function exhaustiveSupports(catalog: SupportMetadata[], capacity: number, score: (ids: string[]) => number) {
+async function exhaustiveSupports(catalog: SupportMetadata[], capacity: number, score: (ids: string[]) => number) {
   const supports = catalog.filter(gem => gem.is_support);
   let best = 0;
   let evaluations = 0;
   for (let mask = 0; mask < 2 ** supports.length; mask++) {
     const chosen = supports.filter((_, index) => (mask & 2 ** index) !== 0);
-    if (chosen.length > capacity || !supportSetCompatible(group(), chosen.map(gem => input(gem.skill_id)), catalog)) continue;
+    if (chosen.length > capacity || !await supportSetCompatible(group(), chosen.map(gem => input(gem.skill_id)), catalog)) continue;
     best = Math.max(best, score(chosen.map(gem => gem.skill_id)));
     evaluations++;
   }
@@ -95,8 +99,9 @@ test('bounded combinations match exhaustive optimum and beat isolated support ra
     const request: CalculateBuildRequest = { character: { level: 80 }, socket_groups: [group()] };
     const result = await optimizeSupports({ request, groupIndex: 0, catalog, capacity: 2, objective,
       evaluate: evaluator(scenario.score) });
-    const oracle = exhaustiveSupports(catalog, 2, scenario.score);
-    const isolated = scenario.supports.filter(gem => supportSetCompatible(group(), [input(gem.skill_id)], catalog))
+    const oracle = await exhaustiveSupports(catalog, 2, scenario.score);
+    const isolatedCompatible = await Promise.all(scenario.supports.map(gem => supportSetCompatible(group(), [input(gem.skill_id)], catalog)));
+    const isolated = scenario.supports.filter((_, index) => isolatedCompatible[index])
       .sort((a, b) => scenario.score([b.skill_id]) - scenario.score([a.skill_id])).slice(0, 2).map(gem => gem.skill_id);
     const oldScore = scenario.score(isolated);
     const newScore = result.plans[0].stats.TotalDPS;
@@ -151,7 +156,7 @@ test('player exclusions constrain probes and current-set seeds without changing 
   expect(result.candidates).toBe(3);
   expect(probed.every(ids => !ids.includes('Costly') && !ids.includes('Greedy'))).toBe(true);
   expect(probed.some(ids => ids.includes('CostlyII'))).toBe(true);
-  const oracle = exhaustiveSupports(catalog.filter(gem => !['Costly', 'Greedy'].includes(gem.skill_id)), 2, score);
+  const oracle = await exhaustiveSupports(catalog.filter(gem => !['Costly', 'Greedy'].includes(gem.skill_id)), 2, score);
   expect(result.plans[0].stats.TotalDPS).toBe(oracle.best);
   expect(result.plans[0].supports.map(gem => gem.skill_id).sort()).toEqual(['A', 'B']);
 });
@@ -190,11 +195,30 @@ test('lineage supports respect the default copy limit across skill and weapon gr
 });
 
 
-test('candidate screening does not let a different optional support suppress a legal conditional pair', () => {
+test('candidate screening does not let a different optional support suppress a legal conditional pair', async () => {
   const catalog = [active, gem('AddsMinion', { add_skill_types: ['Minion'] }),
     gem('AddsArea', { add_skill_types: ['Area'] }),
     gem('MinionWithoutArea', { require_skill_types: ['Minion'], exclude_skill_types: ['Area'] })];
   expect(eligibleSupports(group(), catalog, 50).gems.map(gem => gem.skill_id)).toContain('MinionWithoutArea');
-  expect(supportSetCompatible(group(), [input('AddsMinion'), input('MinionWithoutArea')], catalog)).toBe(true);
-  expect(supportSetCompatible(group(), [input('AddsArea'), input('AddsMinion'), input('MinionWithoutArea')], catalog)).toBe(false);
+  expect(await supportSetCompatible(group(), [input('AddsMinion'), input('MinionWithoutArea')], catalog)).toBe(true);
+  expect(await supportSetCompatible(group(), [input('AddsArea'), input('AddsMinion'), input('MinionWithoutArea')], catalog)).toBe(false);
+});
+
+
+test('engine rejection filters candidates before scoring and retains item provenance', async () => {
+  engine.judge.mockResolvedValueOnce([false]);
+  const itemGroup = { ...group(), source: 'Weapon 1' };
+  expect(await supportSetCompatible(itemGroup, [input('New')], [active, gem('New')])).toBe(false);
+  expect(engine.judge).toHaveBeenLastCalledWith([{ ...itemGroup, gems: [input('Fireball'), input('New')] }]);
+});
+
+
+test('engine-rejected sets never reach variant scoring', async () => {
+  engine.judge.mockResolvedValueOnce([false]);
+  const evaluate = vi.fn(evaluator(() => 100));
+  const result = await optimizeSupports({ request: { socket_groups: [group()] }, groupIndex: 0,
+    catalog: [active, gem('New')], capacity: 1, objective, evaluate });
+  expect(result.evaluated).toBe(0);
+  expect(result.plans).toEqual([]);
+  expect(evaluate).toHaveBeenCalledTimes(1); // Only the unchanged baseline.
 });

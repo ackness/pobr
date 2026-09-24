@@ -123,7 +123,10 @@ pub(crate) fn spawn_minions(
             if let Some(catalog) = data.stat_map_catalog.as_deref() {
                 use pobr_core::calc::minion::MinionModifierEntry;
                 use pobr_core::rules::stat_map_engine::map_minion_life_stat;
-                for sup in super::triggers::judge_group_supports(group, data, skill_id).compatible {
+                for sup in
+                    crate::support::judge_group_supports(group, data, skill_id, group.from_gem())
+                        .compatible
+                {
                     let sup_gem = &group.gem_skills[sup.gem_index];
                     let set_index = (sup_gem.skill_id == sup.effect_id)
                         .then_some(sup_gem.stat_set_index)
@@ -495,7 +498,7 @@ pub(crate) fn resolve_skill_level_with_gem_bonus(
 /// - Scope: the caller supplies the skill's actual group, including an explicitly
 ///   selected disabled group. Repeated skill ids in other groups cannot contribute.
 ///   A support does not receive granted levels itself.
-/// - Compatibility: goes through [`super::triggers::judge_group_supports`]'s
+/// - Compatibility: goes through [`crate::support::judge_group_supports`]'s
 ///   four-stage judgement (an incompatible support's grant doesn't apply, matching
 ///   vendor's effectList gate); a typed variant (chaos/fire/…) matches against the
 ///   post-judgement `final_skill_types` (including the addSkillTypes fixed point), the same basis as vendor's tag evaluation.
@@ -511,7 +514,7 @@ pub(crate) fn support_granted_gem_levels(
     {
         return 0;
     }
-    let judgement = super::triggers::judge_group_supports(group, data, skill_id);
+    let judgement = crate::support::judge_group_supports(group, data, skill_id, group.from_gem());
     let mut total = 0u32;
     for sup in &judgement.compatible {
         let host = &group.gem_skills[sup.gem_index];

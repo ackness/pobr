@@ -2,33 +2,6 @@
 
 use super::*;
 
-// Trigger section
-
-thread_local! {
-    /// Trigger sub-calculation recursion depth:
-    /// while a source skill's sub-calculation is in progress (>0), [`trigger_modifiers`]
-    /// bails out entirely — the sub-calc's env forcibly strips trigger relations (one
-    /// level of depth), preventing infinite recursion from triggers that reference each
-    /// other in a cycle.
-    static TRIGGER_SUBCALC_DEPTH: std::cell::Cell<u8> = const { std::cell::Cell::new(0) };
-}
-
-/// RAII depth guard (panic-safe: Drop restores the count).
-pub(crate) struct TriggerDepthGuard;
-
-impl TriggerDepthGuard {
-    pub(crate) fn enter() -> Self {
-        TRIGGER_SUBCALC_DEPTH.with(|d| d.set(d.get().saturating_add(1)));
-        TriggerDepthGuard
-    }
-}
-
-impl Drop for TriggerDepthGuard {
-    fn drop(&mut self) {
-        TRIGGER_SUBCALC_DEPTH.with(|d| d.set(d.get().saturating_sub(1)));
-    }
-}
-
 /// The result of data-driven recognition: the matched trigger config + the trigger gem
 /// (a meta/support gem in the group; `None` when the main skill itself matched a
 /// skill-kind key).
@@ -62,7 +35,7 @@ pub(crate) struct RecognizedTrigger<'a> {
 /// speed multiplier zone. Hit/crit is injected via `TriggerSourceHitChance`/
 /// `TriggerSourceCritChance` BASE (as a percentage); perform's `fill_trigger` builds a
 /// [`pobr_core::calc::TriggerSourceStats`] (contract 4) and folds it into trigger chance
-/// (`:716-770`). Sub-calculation guards: stripped whenever depth >0 (this function's
+/// (`:716-770`). Sub-calculation guards: stripped inside a trigger-source context (this function's
 /// top-level early return), and source = the triggered skill itself (a cycle) falls back
 /// to the base `1/use_time`.
 ///
@@ -75,6 +48,7 @@ pub(crate) struct RecognizedTrigger<'a> {
 /// cache-layer overhaul (within a single calculation, a sub-calc only runs once, so the
 /// hot path is currently manageable).
 pub(crate) fn trigger_modifiers(
+    context: &mut CalculationContext,
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
@@ -84,14 +58,20 @@ pub(crate) fn trigger_modifiers(
 ) -> Vec<Modifier> {
     // Recursion guard: no trigger relation is recognized/injected within a source
     // skill's sub-calculation env (one level of depth stripped).
-    if TRIGGER_SUBCALC_DEPTH.with(|d| d.get()) > 0 {
+    if context.is_trigger_source {
         return Vec::new();
     }
 
     // — Path 1: data-driven recognition (returns as soon as it matches, including "recognized but the gate isn't satisfied → empty").
-    if let Some(mods) =
-        config_trigger_modifiers(build, data, options, main_skill, group, main_skill_id)
-    {
+    if let Some(mods) = config_trigger_modifiers(
+        context,
+        build,
+        data,
+        options,
+        main_skill,
+        group,
+        main_skill_id,
+    ) {
         return mods;
     }
 
@@ -131,7 +111,9 @@ pub(crate) fn trigger_modifiers(
     // (post-calculation attack speed) + source hit folded in. Nothing is injected when
     // there's no candidate in the group — fill_trigger falls back to the main skill's
     // rate (a placeholder semantics).
-    if let Some(stats) = in_group_trigger_source_stats(build, data, options, group, main_skill_id) {
+    if let Some(stats) =
+        in_group_trigger_source_stats(context, build, data, options, group, main_skill_id)
+    {
         push_source_stat_mods(
             &mut mods, &stats, /* fold_hit */ true, /* fold_crit */ false,
         );
@@ -196,6 +178,7 @@ pub(crate) fn push_source_stat_mods(
 /// matching vendor's disable — the trigger panel stays at 0 and **does not fall through**
 /// to the built-in trigger path); returns `None` on no match (falls through to path 2).
 pub(crate) fn config_trigger_modifiers(
+    context: &mut CalculationContext,
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
@@ -292,15 +275,23 @@ pub(crate) fn config_trigger_modifiers(
     if let Some(source_gem) =
         find_trigger_source_gem(build, data, group, main_skill_id, &recognized)
     {
-        let stats = trigger_source_stats(build, data, options, group, source_gem, main_skill_id)
-            .or_else(|| {
-                base_rate_of(build, data, group, source_gem).map(|rate| {
-                    pobr_core::calc::TriggerSourceStats {
-                        action_rate: rate,
-                        ..Default::default()
-                    }
-                })
-            });
+        let stats = trigger_source_stats(
+            context,
+            build,
+            data,
+            options,
+            group,
+            source_gem,
+            main_skill_id,
+        )
+        .or_else(|| {
+            base_rate_of(build, data, group, source_gem).map(|rate| {
+                pobr_core::calc::TriggerSourceStats {
+                    action_rate: rate,
+                    ..Default::default()
+                }
+            })
+        });
         if let Some(stats) = stats {
             // The triggerOnUse chain doesn't fold hit/crit (matching vendor :721's `not config.triggerOnUse`).
             let fold_hit = !config.trigger_on_use;
@@ -475,11 +466,12 @@ pub(crate) fn base_rate_of(
 ///
 /// Guards:
 /// - **Cycle detection**: source = the triggered skill itself → `None` (the caller falls back to base `1/use_time`);
-/// - **One level of depth**: depth ≥1 returns `None` directly (deep trigger relations
+/// - **One level of depth**: a trigger-source context returns `None` directly (deep trigger relations
 ///   are already stripped at the top of [`trigger_modifiers`]; this is a redundant guard
 ///   for direct calls);
 /// - Sub-calculation failure (a data gap etc.) → `None`, doesn't amplify the error.
 pub(crate) fn trigger_source_stats(
+    context: &mut CalculationContext,
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
@@ -491,7 +483,7 @@ pub(crate) fn trigger_source_stats(
         // Trigger cycle (the source skill is also the triggered skill): falls back to base use_time semantics.
         return None;
     }
-    if TRIGGER_SUBCALC_DEPTH.with(|d| d.get()) >= 1 {
+    if context.is_trigger_source {
         return None;
     }
 
@@ -517,8 +509,11 @@ pub(crate) fn trigger_source_stats(
     sub_build.main_socket_group = Some(group_idx + 1);
     sub_build.socket_groups[group_idx].main_active_skill = Some(active_pos);
 
-    let _guard = TriggerDepthGuard::enter();
-    let out = calculate_with_data(&sub_build, data, options).ok()?;
+    let mut child = context.trigger_source();
+    let result = calculate_with_context(&sub_build, data, options, &mut child);
+    context.compare_records.extend(child.compare_records);
+    let session = result.ok()?;
+    let out = session.output();
     let action_rate = if out.effective_action_rate > 0.0 {
         out.effective_action_rate
     } else {
@@ -540,6 +535,7 @@ pub(crate) fn trigger_source_stats(
 /// sub-calculation; falls back to the base `1/use_time` when the sub-calculation is
 /// unavailable (the legacy semantics from before 14-G2 was fixed, kept as the fallback surface).
 pub(crate) fn in_group_trigger_source_stats(
+    context: &mut CalculationContext,
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
@@ -572,185 +568,23 @@ pub(crate) fn in_group_trigger_source_stats(
     }
     let (source_gem, base_rate) = best?;
     Some(
-        trigger_source_stats(build, data, options, group, source_gem, main_skill_id).unwrap_or(
-            pobr_core::calc::TriggerSourceStats {
-                action_rate: base_rate,
-                ..Default::default()
-            },
-        ),
+        trigger_source_stats(
+            context,
+            build,
+            data,
+            options,
+            group,
+            source_gem,
+            main_skill_id,
+        )
+        .unwrap_or(pobr_core::calc::TriggerSourceStats {
+            action_rate: base_rate,
+            ..Default::default()
+        }),
     )
 }
 
 // End of trigger section
-
-/// The result of a group-level support-applicability judgement.
-///
-/// `compatible` is the list of support effect references that **passed PoB2's four-stage
-/// judgement** (slot order preserved); `final_skill_types` is the active skill's type
-/// set after the addSkillTypes fixed point converges (seeded from the active effect's
-/// `skill_types`, merged with every compatible support's `add_skill_types`).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct GroupSupportJudgement {
-    /// Compatible supports (slot order; includes the support half of an additionally-granted effect, see [`CompatibleSupport`]).
-    pub(crate) compatible: Vec<CompatibleSupport>,
-    /// The skill type set after the fixed point converges.
-    pub(crate) final_skill_types: std::collections::HashSet<String>,
-}
-
-/// A reference to one compatible support's effect: level/quality/statSet index are
-/// taken from the host gem instance (`gem_index`), while stat fetching uses
-/// `effect_id` — for a normal support these come from the same source (effect_id = the
-/// gem's primary effect); for a meta gem (Blasphemy), the primary effect is an active
-/// skill, and the support half lives in an additional granted effect slot (the
-/// `gem_effects` foreign key `additionalGrantedEffectId1..N`; vendor routes each effect
-/// in grantedEffectList by its `support` flag, assembled in CalcSetup.lua's gemList).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct CompatibleSupport {
-    /// This support's index into the host gem in `group.gem_skills`.
-    pub(crate) gem_index: usize,
-    /// The support's granted effect id (the fetch key for stat / manaMultiplier / set_key).
-    pub(crate) effect_id: String,
-}
-
-impl CompatibleSupport {
-    /// This support effect's statSet selection: the gem instance's `statSetIndex` is
-    /// only meaningful for the **primary effect**; an additionally-granted support half
-    /// uses the default set (vendor's additional effects share the gemInstance but the
-    /// set selection doesn't carry across effects).
-    pub(crate) fn stat_set_index(&self, group: &SocketGroup) -> Option<u32> {
-        let gem = &group.gem_skills[self.gem_index];
-        (gem.skill_id == self.effect_id)
-            .then_some(gem.stat_set_index)
-            .flatten()
-    }
-}
-
-/// Runs **support-applicability judgement + the addSkillTypes fixed point** on a socket
-/// group (matching PoB2 `Modules/CalcActiveSkill.lua:179-210`, contract C2):
-///
-/// 1. Seed: the active skill's (`active_skill_id`) effect's `skill_types` set;
-/// 2. pass1 (:182-191): each support in slot order goes through
-///    [`pobr_core::skill_source::can_support`]'s four-stage judgement — a compatible one
-///    merges its `add_skill_types` (a plain token list, not an expression) into the set;
-///    an incompatible one goes into the rejected list;
-/// 3. repeat-until fixed point (:193-208): rescans the rejected list until a pass adds
-///    nothing new — guaranteeing the judgement result is independent of support slot
-///    order (a BA arrangement of "A adds a type, B requires that type" also converges);
-/// 4. pass2 (:210-214): **fully re-judges** against the final type set to produce the
-///    compatible list (matching PoB2: a support pass1 accepted can be rejected here if
-///    it's hit by an exclude from a type merged in later; its already-merged add types
-///    are kept, matching PoB2's no-rollback behavior).
-///
-/// Contract C2 note: this signature carries one extra parameter, `active_skill_id`,
-/// compared to the prototype — PoB2's judgement targets a **single active skill** (in a
-/// meta group, the first non-support slot might be a meta shell rather than the real
-/// main skill picked by `resolve_main_skill`), and since the caller already holds the
-/// resolution result, passing it in avoids re-deriving or mis-deriving it here.
-pub(crate) fn judge_group_supports(
-    group: &SocketGroup,
-    data: &BuildData,
-    active_skill_id: &str,
-) -> GroupSupportJudgement {
-    use pobr_core::skill_source::{ActiveSkillJudgeInput, SupportJudgeInput, can_support};
-    use std::collections::HashSet;
-
-    let active_effect = data.granted_effects.get(active_skill_id);
-    let mut skill_types: HashSet<String> = active_effect
-        .map(|e| e.skill_types.iter().cloned().collect())
-        .unwrap_or_default();
-    let cannot_be_supported = active_effect.is_some_and(|e| e.cannot_be_supported);
-
-    // In-group support candidates (slot order preserved): among each gem's primary
-    // granted effect + additional granted effects (the `gem_effects` foreign key),
-    // whichever are `is_support` — vendor routes each effect in grantedEffectList by its
-    // support flag, and a meta gem's (Blasphemy) support half lives in the additional
-    // slot (SupportBlasphemyPlayer, carrying skill-local segments like `CurseEffect MORE`).
-    // Active / unknown effects don't participate in the judgement.
-    let support_candidates: Vec<(usize, &str)> = group
-        .gem_skills
-        .iter()
-        .enumerate()
-        .flat_map(|(i, g)| {
-            std::iter::once(g.skill_id.as_str())
-                .chain(
-                    data.gem_effects
-                        .get(&g.skill_id)
-                        .into_iter()
-                        .flat_map(|l| l.additional_granted_effect_ids.iter().map(String::as_str)),
-                )
-                .filter(|id| data.granted_effects.get(*id).is_some_and(|e| e.is_support))
-                .map(move |id| (i, id))
-        })
-        .collect();
-
-    // Four-stage judgement (matching CalcTools.lua:84-110): cannotBeSupported →
-    // supportGemsOnly → exclude expression → require expression (empty = accept). A
-    // skill in a socket group is always gem-granted (from_gem=true); the fromItem
-    // special case and the minionTypes secondary set are deferred.
-    let judge = |effect_id: &str, types: &HashSet<String>| -> bool {
-        data.granted_effects.get(effect_id).is_some_and(|effect| {
-            can_support(
-                &SupportJudgeInput {
-                    support_gems_only: effect.support_gems_only,
-                    exclude_skill_types: &effect.exclude_skill_types,
-                    require_skill_types: &effect.require_skill_types,
-                },
-                &ActiveSkillJudgeInput {
-                    cannot_be_supported,
-                    from_gem: true,
-                    skill_types: types,
-                },
-            )
-        })
-    };
-    let merge_add = |effect_id: &str, types: &mut HashSet<String>| {
-        if let Some(effect) = data.granted_effects.get(effect_id) {
-            for t in &effect.add_skill_types {
-                types.insert(t.clone());
-            }
-        }
-    };
-
-    // pass1: a compatible support merges addSkillTypes; an incompatible one goes into the rejected list.
-    let mut rejected: Vec<&(usize, &str)> = Vec::new();
-    for cand in &support_candidates {
-        if judge(cand.1, &skill_types) {
-            merge_add(cand.1, &mut skill_types);
-        } else {
-            rejected.push(cand);
-        }
-    }
-    // repeat-until fixed point: rescans the rejected list until a pass adds nothing new.
-    loop {
-        let mut newly_accepted = false;
-        let mut still_rejected = Vec::with_capacity(rejected.len());
-        for cand in rejected {
-            if judge(cand.1, &skill_types) {
-                newly_accepted = true;
-                merge_add(cand.1, &mut skill_types);
-            } else {
-                still_rejected.push(cand);
-            }
-        }
-        rejected = still_rejected;
-        if !newly_accepted {
-            break;
-        }
-    }
-    // pass2: fully re-judge against the final type set.
-    let compatible: Vec<CompatibleSupport> = support_candidates
-        .iter()
-        .filter(|(_, id)| judge(id, &skill_types))
-        .map(|&(i, id)| CompatibleSupport {
-            gem_index: i,
-            effect_id: id.to_string(),
-        })
-        .collect();
-    GroupSupportJudgement {
-        compatible,
-        final_skill_types: skill_types,
-    }
-}
 
 /// Maps the **compatible support gems'** per-level stats in the main skill's group
 /// through [`map_skill_stat`] into SupportGem-attributed modifiers, injected into the
@@ -768,11 +602,12 @@ pub(crate) fn judge_group_supports(
 /// until the flag system is wired up. The active main skill's own damage is already
 /// injected by [`skill_base_modifiers`]; this only handles supports.
 pub(crate) fn support_modifiers(
+    context: &mut CalculationContext,
     group: &SocketGroup,
     data: &BuildData,
     active_skill_id: &str,
 ) -> Vec<Modifier> {
-    let judgement = judge_group_supports(group, data, active_skill_id);
+    let judgement = judge_group_supports(group, data, active_skill_id, group.from_gem());
     let mut mods = Vec::new();
     for sup in &judgement.compatible {
         let gem = &group.gem_skills[sup.gem_index];
@@ -788,6 +623,7 @@ pub(crate) fn support_modifiers(
         // the full merge for a multi-set support's additional sets is a current gap.
         let set_key = data.selected_set_key(&sup.effect_id, set_index);
         mods.extend(mapped_stat_modifiers(
+            context,
             &stats.base,
             SourceKind::SupportGem,
             &sup.effect_id,
@@ -830,8 +666,10 @@ mod support_judgement_tests {
     //! T3.5 unit tests for group-level support judgement + the addSkillTypes fixed
     //! point (matching PoB2 `Modules/CalcActiveSkill.lua:179-210`).
 
-    use super::{BuildData, GroupSupportJudgement, judge_group_supports, support_modifiers};
+    use super::super::test_context;
+    use super::{BuildData, judge_group_supports, support_modifiers};
     use crate::build::SocketGroup;
+    use crate::support::GroupSupportJudgement;
     use std::collections::HashMap;
 
     /// Constructs a minimal GrantedEffectDef (judgement-relevant fields configurable, rest default).
@@ -883,7 +721,7 @@ mod support_judgement_tests {
         for id in gem_order {
             group = group.with_gem_skill(*id, 20);
         }
-        judge_group_supports(&group, &data, "MainSpell")
+        judge_group_supports(&group, &data, "MainSpell", group.from_gem())
     }
 
     /// Converts the compatible list back to effect ids (for assertion readability).
@@ -1025,7 +863,7 @@ mod support_judgement_tests {
         let group = SocketGroup::new()
             .with_gem_skill("MainSpell", 20)
             .with_gem_skill("SupMelee", 20);
-        let mods = support_modifiers(&group, &data, "MainSpell");
+        let mods = support_modifiers(&mut test_context(&data), &group, &data, "MainSpell");
         assert!(
             mods.is_empty(),
             "a rejected support must not inject any modifier"

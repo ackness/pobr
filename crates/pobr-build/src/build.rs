@@ -94,6 +94,11 @@ pub struct SocketGroup {
 }
 
 impl SocketGroup {
+    /// Whether the active skills are socketed gems rather than granted by equipment.
+    pub fn from_gem(&self) -> bool {
+        self.source.as_deref().is_none_or(str::is_empty)
+    }
+
     pub fn new() -> Self {
         Self {
             weapon_set: None,

@@ -20,6 +20,7 @@ pub mod state;
 mod xml_write;
 pub mod zh;
 
+pub use build_api::support_groups_compatible_json;
 pub use build_api::{
     attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
     decode_build_json, decode_build_loadout_json, encode_build_json, full_dps_json,
@@ -37,7 +38,7 @@ pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_
 /// compares them at boot (see [`wasm::schema_version`]); a mismatch prompts
 /// a hard refresh — closing the door on "stale frontend cache + new wasm
 /// assets" silently breaking.
-pub const SCHEMA_VERSION: u32 = 4;
+pub const SCHEMA_VERSION: u32 = 5;
 
 /// wasm-bindgen bindings: compiled only under the `wasm` feature, exposing
 /// functions with the same names as the host API to JS.
@@ -92,6 +93,12 @@ pub mod wasm {
     #[wasm_bindgen(js_name = calculateBuildJson)]
     pub fn calculate_build_json(request_json: &str) -> Result<String, JsError> {
         crate::build_api::calculate_build_json(request_json).map_err(|err| JsError::new(&err))
+    }
+
+    /// JS entry point: batch group compatibility for the editor and support planner.
+    #[wasm_bindgen(js_name = supportGroupsCompatibleJson)]
+    pub fn support_groups_compatible_json(input: &str) -> Result<String, JsError> {
+        crate::support_groups_compatible_json(input).map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `fullDpsJson(requestJson) -> string` (per-socket-group DPS plus the FullDPS summary).

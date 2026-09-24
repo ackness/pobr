@@ -13,8 +13,8 @@ use serde_json::Value;
 /// with defaults can be added without changing the existing version.
 #[test]
 fn schema_version_pinned() {
-    // v4: BuildJson preserves weapon sets; socket groups carry their set binding.
-    assert_eq!(pobr_wasm::SCHEMA_VERSION, 4);
+    // v5: the frontend requires the shared support-group judgement entry point.
+    assert_eq!(pobr_wasm::SCHEMA_VERSION, 5);
 }
 
 /// A real demo build (shared with ninja_parity).
@@ -2002,4 +2002,38 @@ fn managing_loadouts_duplicates_renames_and_removes() {
     let removed: String =
         serde_json::from_str(&pobr_wasm::manage_loadout_json(&req).expect("remove")).unwrap();
     assert_eq!(loadout_names(&removed).len(), 1);
+}
+
+#[test]
+fn support_group_batch_preserves_order_and_rejects_unknown_skills() {
+    use serde_json::json;
+    ensure_data();
+    let compatible =
+        json!({"gems":[{"skill_id":"FireballPlayer"}, {"skill_id":"SupportRapidCastingPlayer"}]});
+    let request = json!({"groups":[
+        compatible.clone(),
+        {"gems":[{"skill_id":"IceShotPlayer"}, {"skill_id":"SupportRapidCastingPlayer"}]},
+        {"source":"Item:weapon1", "gems":[{"skill_id":"FireballPlayer"}]},
+        {"gems":[{"skill_id":"FireballPlayer"}, {"skill_id":"UnknownSupport"}]},
+        {"gems":[{"skill_id":"FireballPlayer"}, {"skill_id":""}]},
+        {"gems":[]},
+        compatible,
+    ]});
+    let response: Value = serde_json::from_str(
+        &pobr_wasm::support_groups_compatible_json(&request.to_string()).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        response,
+        json!([true, false, true, false, false, false, true])
+    );
+    assert_eq!(
+        pobr_wasm::support_groups_compatible_json(r#"{"groups":[]}"#).unwrap(),
+        "[]"
+    );
+    let error: Value = serde_json::from_str(
+        &pobr_wasm::support_groups_compatible_json(r#"{"groups":"invalid"}"#).unwrap_err(),
+    )
+    .unwrap();
+    assert_eq!(error["code"], "bad_request");
 }

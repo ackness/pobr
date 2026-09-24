@@ -16,11 +16,7 @@
 use super::*;
 
 /// Stage 1d: item base defence (armour/evasion/ES) + shield base block + per-item Spirit/Ward → BASE mods.
-pub(super) fn inject_defence_base(
-    session: &mut CalculationSession,
-    build: &Build,
-    data: &BuildData,
-) {
+pub(super) fn inject_defence_base(session: &mut SourceWriter, build: &Build, data: &BuildData) {
     // 1d. Item base defence (armour/evasion/ES) → Item-attributed BASE mods (× quality).
     //     Item `increased Armour/Evasion/EnergyShield` mods are injected as INC via
     //     add_item, scaling this base.
@@ -40,11 +36,7 @@ pub(super) fn inject_defence_base(
 }
 
 /// Stage 2b'': active flask/charm payload injection (consumed by env_finalize stage 3's merge).
-pub(super) fn inject_flasks_charms(
-    session: &mut CalculationSession,
-    build: &Build,
-    data: &BuildData,
-) {
+pub(super) fn inject_flasks_charms(session: &mut SourceWriter, build: &Build, data: &BuildData) {
     // 2b''. Active flasks/charms (PoB's `<Slot name="Flask N|Charm N" active="true">`,
     //       already gated by `active` in xml_build — matching vendor
     //       CalcSetup.lua:1014-1028's `slot.active` deciding env.flasks/charms):
@@ -92,7 +84,7 @@ pub(super) fn inject_flasks_charms(
 
 /// Stage 4: skill gems classified as active/support, each injected via its own attribution entry point.
 pub(super) fn inject_skill_gems(
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     build: &Build,
     data: &BuildData,
 ) -> Result<(), BuildError> {
@@ -113,7 +105,8 @@ pub(super) fn inject_skill_gems(
 
 /// Stages 4b/4b'/4b'': aura/curse BuffSpec + support-granted buffs + herald presence count/condition injection.
 pub(super) fn inject_buffs_and_heralds(
-    session: &mut CalculationSession,
+    context: &mut CalculationContext,
+    session: &mut SourceWriter,
     build: &Build,
     data: &BuildData,
 ) {
@@ -125,7 +118,7 @@ pub(super) fn inject_buffs_and_heralds(
     //     player db; a curse goes through priority/limit/slot assignment (:2829-2896).
     //     The static direct injection `aura_buff_modifiers` used before the C5-2 switch
     //     is now off.
-    for spec in buff_skill_specs(build, data) {
+    for spec in buff_skill_specs(context, build, data) {
         // A `Multiplier:<X>` BASE in the buff payload → bridged to cfg.multipliers
         // (matching vendor's GetMultiplier, which sums modDB's `Multiplier:<X>`
         // globally, ModStore.lua:369; PoBR's ModTag::Multiplier reads from a
@@ -146,7 +139,7 @@ pub(super) fn inject_buffs_and_heralds(
     // 4b'. Player-side buffs granted by supports (Precision I/II → Accuracy INC,
     //     sup_dex.lua:4181-4250) → BuffSpec(kind=Buff); buff_pass's Buff branch
     //     (CalcPerform.lua:1949-1962) applies the BuffEffect multiplier zone before merging into the player db.
-    for spec in support_buff_specs(build, data) {
+    for spec in support_buff_specs(context, build, data) {
         session.add_buff_skill(spec);
     }
 
@@ -156,7 +149,7 @@ pub(super) fn inject_buffs_and_heralds(
     //     `min((exert count/main skill speed)/(cooldown+cast time), 1)`, then the
     //     warcry's offensive effect (Infernal Cry's `DamageGainAsFire`) is scaled and
     //     injected accordingly (CalcOffence.lua:3203-3256).
-    for spec in warcry_skill_specs(build, data) {
+    for spec in warcry_skill_specs(context, build, data) {
         session.add_warcry_skill(spec);
     }
 
@@ -179,97 +172,6 @@ pub(super) fn inject_buffs_and_heralds(
     }
 }
 
-/// Stage 6b: PoE2 attribute derivation (final Str/Dex/Int → Life/Mana/Accuracy delta), must run after every source is injected.
-pub(super) fn inject_attribute_derivation(
-    session: &mut CalculationSession,
-    build: &Build,
-    data: &BuildData,
-    options: &DataOrchestratorOptions,
-) {
-    // 6b. Attribute derivation (PoE2): life/mana/accuracy must use the **final**
-    //     attributes (class base + item/tree/jewel +Strength/Dex/Int, scaled by
-    //     `N% increased <Attr>` — matching PoB2's `calculateAttributes`,
-    //     CalcPerform.lua:381-388's
-    //     `output[stat] = m_max(round(calcLib.val(modDB, stat)), 0)`).
-    //     character_base already injects the "class-starting, not INC-scaled" portion
-    //     of the derivation; this backfills the delta of `final total − class starting`
-    //     (2 life/strength, 2 mana/intelligence, 6 accuracy/dexterity, matching vendor
-    //     :424-441's Life/Accuracy/Mana from Str/Dex/Int), and must run after every source is injected.
-    if options.inject_character_base {
-        // PoE2's attribute derivation coefficients (+2 life per strength, +2 mana per
-        // intelligence, +6 accuracy per dexterity): read from the injected
-        // character_constants domain, the same source CharacterBase derives from.
-        let cc = &data.constants.character_constants;
-        // Class starting attributes (the portion CharacterBase bakes in; an unknown
-        // class = CharacterBase not injected → 0).
-        let cls = character_base(build, data);
-        let (cls_str, cls_dex, cls_int) = cls
-            .map(|c| (c.strength, c.dexterity, c.intelligence))
-            .unwrap_or((0.0, 0.0, 0.0));
-        let str_total = session.attribute_total("Strength", cls_str);
-        let dex_total = session.attribute_total("Dexterity", cls_dex);
-        let int_total = session.attribute_total("Intelligence", cls_int);
-        // (Pre-existing #7-4) The Giant's Blood keystone's "Inherent Life granted by
-        // Strength is halved" (matching vendor CalcPerform.lua:500-505: the
-        // HalvesLifeFromStrength flag → `Life BASE = Str × 1` instead of ×2).
-        // CharacterBase already bakes in the class-starting segment
-        // `cls_str × life_per_strength`; the delta here is injected as
-        // "target total − baked-in segment", making the Str-derived life total =
-        // str_total × the halved coefficient (confirmed against oracle's per-source Life values, wolf-pack: 802→401).
-        let no_attributes = session.has_flag("NoAttributeBonuses");
-        let life_per_str = if no_attributes
-            || session.has_flag("NoStrBonusToLife")
-            || session.has_flag("NoStrengthAttributeBonuses")
-        {
-            0.0
-        } else if session.has_flag("HalvesLifeFromStrength") {
-            cc.life_per_strength / 2.0
-        } else {
-            cc.life_per_strength
-        };
-        let mana_per_int = if no_attributes
-            || session.has_flag("NoIntBonusToMana")
-            || session.has_flag("NoIntelligenceAttributeBonuses")
-        {
-            0.0
-        } else {
-            cc.mana_per_intelligence
-        };
-        let accuracy_per_dex = if no_attributes
-            || session.has_flag("NoDexBonusToAccuracy")
-            || session.has_flag("NoDexterityAttributeBonuses")
-        {
-            0.0
-        } else {
-            cc.accuracy_per_dexterity
-        };
-        let mk = |stat: &str, value: f64| {
-            let origin = ModifierSource::new(SourceId::new(
-                SourceKind::CharacterBase,
-                "base.attr_derived",
-            ))
-            .with_raw_text(format!("{stat} from attributes"));
-            Modifier::number(stat, ModType::Base, value).with_origin(origin)
-        };
-        session.add_modifiers([
-            mk(
-                "MaximumLife",
-                str_total * life_per_str - cls_str * cc.life_per_strength,
-            ),
-            mk(
-                "MaximumMana",
-                mana_per_int * int_total - cc.mana_per_intelligence * cls_int,
-            ),
-            mk(
-                "Accuracy",
-                accuracy_per_dex * dex_total - cc.accuracy_per_dexterity * cls_dex,
-            ),
-        ]);
-    }
-}
-
-/// Stage 6c: backfills per-X resource/attribute scaling amounts (PoB2's PerStat
-/// denominator variables), must run after every source is injected, before perform.
 /// Equipped support gems counted by color → `Red/Green/BlueSupportGems` multipliers
 /// (matching PoB2 CalcSetup.lua:2015-2044: walks **enabled** socket groups, counting
 /// support gems by `grantedEffect.color` (1=R/2=G/3=B, the same enum as GGG's
@@ -306,65 +208,12 @@ pub(super) fn inject_support_gem_counts(
     session.set_multiplier("BlueSupportGems", b);
 }
 
-pub(super) fn inject_per_x_multipliers(
+/// Build-derived counts and equipment facts; actor-derived values belong to core.
+pub(super) fn inject_build_multipliers(
     session: &mut CalculationSession,
     build: &Build,
     data: &BuildData,
 ) {
-    // 6c. Backfills per-X resource/attribute scaling amounts (PoB2's PerStat
-    //     denominator variables): writes the total attribute / Spirit BASE (after every
-    //     source is injected) and character level into cfg.multipliers, so mods like
-    //     `+N to <stat> per M <resource>` (parsed as ModTag::Multiplier{var, div}) can
-    //     expand by count/div when queried during perform. Must run after every source
-    //     is injected, before perform; attributes/Spirit don't participate in per-X
-    //     self-scaling, so base_sum's value is stable. The Life/Mana denominator =
-    //     **the full-pipeline pool value** (OVERRIDE → base×(1+inc)×more,
-    //     `CalculationSession::pool_total`, the same source as offence's pool
-    //     computation inside perform) — vendor's PerStat reads the actor's **output**
-    //     (ModStore.lua:440-460's GetStat → output.Mana/Life); BASE-only would badly
-    //     under-count "3% increased Spell Damage per 100 maximum Mana" (the druid
-    //     ember-fusillade node Tree:19044, vendor's value 234 = 3×floor(7889/100)).
-    let str_total = session.base_sum("Strength");
-    let dex_total = session.base_sum("Dexterity");
-    let int_total = session.base_sum("Intelligence");
-    // (Pre-existing #7-4) The Spirit denominator = **the final pool value**
-    // (calc_spirit_pool, including INC/MORE and conversion deductions) — vendor's
-    // PerStat reads output.Spirit; BASE-only would under-count wolf-pack's Perfidy
-    // "+2 Armour per 1 Spirit" by 72 base (Spirit 336 vs base 300).
-    let spirit_total = session.spirit_total();
-    let mana_total = session.pool_total("MaximumMana");
-    let life_total = session.pool_total("MaximumLife");
-    session.set_multiplier("Strength", str_total);
-    session.set_multiplier("Dexterity", dex_total);
-    session.set_multiplier("Intelligence", int_total);
-    session.set_multiplier("Spirit", spirit_total);
-    session.set_multiplier("Mana", mana_total);
-    session.set_multiplier("Life", life_total);
-    session.set_multiplier("Level", f64::from(build.character.level));
-    // cfg.stats snapshot backfill (a value-mirroring copy): the fetch channel for
-    // PerStat/PercentStat (EvalContext::stat falls back to cfg.stats) and
-    // StatThreshold (the matches gate), sharing the same key space as the multiplier
-    // side (aligned after special_mod::normalize_stat_name normalization). Only
-    // backfills the subset computable before perform; globals only computable inside
-    // perform (Armour/ES etc.) stay 0 (see CalcConfig::stats's doc).
-    session.set_stat("Strength", str_total);
-    session.set_stat("Dexterity", dex_total);
-    session.set_stat("Intelligence", int_total);
-    let tribute = session.base_sum("Tribute");
-    session.set_stat("Tribute", tribute);
-    session.set_multiplier("Tribute", tribute);
-    session.set_stat("Spirit", spirit_total);
-    session.set_stat("Mana", mana_total);
-    session.set_stat("Life", life_total);
-    // The main skill's Life cost snapshot (matching vendor's output.LifeCost): the
-    // fetch source for per-life-cost mods (PerStat stat=LifeCost, e.g. Atalui's
-    // Bloodletting's gain-as-physical). Cost is resolved before damage, matching
-    // vendor's CalcOffence ordering.
-    let life_cost = session.life_cost_snapshot();
-    if life_cost > 0.0 {
-        session.set_stat("LifeCost", life_cost);
-        session.set_multiplier("LifeCost", life_cost);
-    }
     // Per-slot defence scaling (`<Stat>On<Slot>`): makes mods like "+N to Armour per M
     // Item Energy Shield on Equipped Boots" (which scale by a specific item's defence
     // value) take effect (PoB2's PerStat `<Stat>On<Slot>`).
@@ -486,46 +335,9 @@ pub(super) fn virtuous_mote_counts(build: &Build, data: &BuildData) -> (f64, f64
     (s, d, i)
 }
 
-/// Stage 6d: source-granted condition flags → cfg condition bridging (Bonded modifiers / Arcane Surge).
-pub(super) fn inject_condition_bridges(session: &mut CalculationSession) {
-    // 6d. Source-granted condition flags → cfg condition bridging: e.g. once "Gain the
-    //     benefits of Bonded modifiers on Runes and Idols" grants the
-    //     `Condition:CanUseBondedModifiers` flag, a rune's `Bonded: <mod>` mod (which
-    //     carries a Condition tag) takes effect (matching PoB2 ModParser's
-    //     `["^bonded: "]` semantics).
-    if session.has_flag("Condition:CanUseBondedModifiers") {
-        session.set_condition("CanUseBondedModifiers", true);
-    }
-    // The Arcane Surge bridge (matching vendor CalcDefence.lua:1580-1582: the
-    // `Condition:ArcaneSurge` flag → the `AffectedByArcaneSurge` condition): when a
-    // tree/mod-granted "chance to Gain Arcane Surge …" FLAG (which carries trigger
-    // condition tags like CritRecently, evaluated against the current cfg) is true, it
-    // makes the "while you have Arcane Surge" mod family (carrying the
-    // Condition:AffectedByArcaneSurge tag) take effect. The druid ember-fusillade
-    // example: Tree:27388 activates the source → Tree:16940 gets +30 INC.
-    if session.has_flag("Condition:ArcaneSurge") {
-        session.set_condition("AffectedByArcaneSurge", true);
-    }
-    // The Chaos Inoculation → FullLife bridge (matching vendor CalcDefence.lua:123-126:
-    // under CI, `output.Life=1` and `condList["FullLife"]=true` — a CI build is always
-    // treated as at full life). PoBR's existing CI wiring only models Life=1 / chaos
-    // immunity (perform.rs:320-334's EhpOptions), without bridging FullLife into cfg,
-    // which caused "while on Full Life"-family damage boosts (e.g. tree node
-    // Tree:56453's +40% Attack Damage) to fail to apply on CI builds. Only triggers on
-    // CI builds (flicker's AvgDamage: 0.90x→0.99x); non-CI builds (including ordinary
-    // builds at full life) are unaffected — FullLife in PoB is determined by actual
-    // life state, and a non-CI build being at full life is a separate case (not
-    // modeled); this only adds back vendor's explicit CI branch, avoiding the
-    // over-count that setting it globally-true would cause for builds like deadeye
-    // (confirmed: setting it globally true regresses off by −2).
-    if session.has_flag("ChaosInoculation") {
-        session.set_condition("FullLife", true);
-    }
-}
-
 /// Stages 5/5a/5b: enemy configuration (setup_enemy) + the config interpreter's enemy bucket + player-applied elemental exposure.
 pub(super) fn inject_enemy(
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     build: &Build,
     options: &DataOrchestratorOptions,
     enemy_tier: EnemyTier,
@@ -586,13 +398,13 @@ pub(super) fn inject_enemy(
 /// corpse explosion / crossbow reload / support / trigger injection + skill damage
 /// multiplier MORE. Weapon base crit is injected with the hand sources.
 pub(super) fn inject_main_skill_mods(
-    session: &mut CalculationSession,
-    build: &Build,
-    data: &BuildData,
-    options: &DataOrchestratorOptions,
-    main_skill: &Option<(ResolvedSkillLevel, &SocketGroup, &str)>,
-    dmg_mult: f64,
+    context: &mut CalculationContext,
+    session: &mut SourceWriter,
+    ctx: &StageCtx<'_>,
 ) {
+    let (build, data, options) = (ctx.build, ctx.data, ctx.options);
+    let main_skill = &ctx.main.main_skill;
+    let dmg_mult = ctx.weapons.dmg_mult;
     // 1b. Main skill cost / cooldown / base damage + this group's support gems'
     // multipliers → attributed modifiers. Attack/cast speed all go through the generic
     // chain (charges / support more / skill quality / attackSpeedMultiplier), no more
@@ -605,6 +417,7 @@ pub(super) fn inject_main_skill_mods(
             .find(|g| g.skill_id == *skill_id)
             .and_then(|g| data.selected_set_key(skill_id, g.stat_set_index));
         session.add_modifiers(skill_base_modifiers(
+            context,
             skill,
             skill_id,
             main_set_key.as_deref(),
@@ -612,9 +425,11 @@ pub(super) fn inject_main_skill_mods(
         // 1b-i-q. Main skill gem's quality stats (T1.7): the quality segment is
         //         mapped via stat-map and injected with SourceKind::GemQuality
         //         attribution (id prefix gem.<effect id>.q<Q>).
-        session.add_modifiers(main_skill_quality_modifiers(group, data, skill_id));
+        session.add_modifiers(main_skill_quality_modifiers(context, group, data, skill_id));
         // 1b-i-g. Main skill's unselected statSet global-only merge (CalcActiveSkill.lua:124-140).
-        session.add_modifiers(unselected_set_global_modifiers(group, data, skill_id));
+        session.add_modifiers(unselected_set_global_modifiers(
+            context, group, data, skill_id,
+        ));
         // 1b-i-d. The selected statSet's dotIs* flags → `DotIs<X>` FLAG (booleans hung
         //         directly on statSet baseMods; calc::skill_dot preserves the dotCfg
         //         bits based on these).
@@ -623,14 +438,14 @@ pub(super) fn inject_main_skill_mods(
         //         `monsterLife × corpseExplosionLifeMultiplier` → Physical BASE
         //         (matching vendor CalcOffence.lua:2211-2217; e.g. Detonate Dead).
         session.add_modifiers(corpse_explosion_modifiers(
-            build, data, options, group, skill, skill_id,
+            context, build, data, options, group, skill, skill_id,
         ));
         // 1b-i-x. Crossbow reload data channel: CrossbowReloadTimeBase (the weapon's
         //         reload_time_ms) + CrossbowBoltCount (the ammo sibling skill's stat),
         //         consumed by perform's `fill_crossbow_reload`. Returns empty for a
         //         non-crossbow/grenade skill.
         session.add_modifiers(crossbow_reload_modifiers(build, data, group, skill_id));
-        session.add_modifiers(support_modifiers(group, data, skill_id));
+        session.add_modifiers(support_modifiers(context, group, data, skill_id));
 
         // 1b-iii. Trigger chain:
         // ① Data-driven recognition (trigger_configs.json's four-level key → a match
@@ -643,7 +458,7 @@ pub(super) fn inject_main_skill_mods(
         // skill_trigger_rate. Returns empty with no trigger relation, keeping the panel
         // at 0 (backward compatible).
         session.add_modifiers(trigger_modifiers(
-            build, data, options, skill, group, skill_id,
+            context, build, data, options, skill, group, skill_id,
         ));
     }
 
@@ -662,7 +477,7 @@ pub(super) fn inject_main_skill_mods(
 
 /// Stage 1: character base (level + class-derived attributes → BASE) + elemental resistance penalty (campaign progress tier).
 pub(super) fn inject_character_base(
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
@@ -693,7 +508,7 @@ pub(super) fn inject_character_base(
 /// copies. `off_weapon_active` = whether the off-hand weapon source is consumed;
 /// `main_weapon_active` = whether the main skill uses Weapon1 as its damage source (a weapon attack).
 pub(super) fn inject_items(
-    session: &mut CalculationSession,
+    session: &mut SourceWriter,
     build: &Build,
     data: &BuildData,
     off_weapon_active: bool,
@@ -886,9 +701,10 @@ pub(super) fn inject_items(
     Ok(())
 }
 
-/// Stages 4c/4c'/4d: Mark's self offensive buff (gain-as-extra) + non-main-group exposure supports + Spirit reservation aggregation.
-pub(super) fn inject_self_buff_exposure_spirit(
-    session: &mut CalculationSession,
+/// Mark's self offensive buff and non-main-group exposure support sources.
+pub(super) fn inject_self_buff_exposure(
+    context: &mut CalculationContext,
+    session: &mut SourceWriter,
     build: &Build,
     data: &BuildData,
     main_skill_group: Option<&SocketGroup>,
@@ -904,7 +720,20 @@ pub(super) fn inject_self_buff_exposure_spirit(
     //     lives is injected globally. The main group's supports are already fully
     //     injected by support_modifiers, and are skipped inside this function to avoid
     //     double injection.
-    session.add_modifiers(exposure_support_modifiers(build, data, main_skill_group));
+    session.add_modifiers(exposure_support_modifiers(
+        context,
+        build,
+        data,
+        main_skill_group,
+    ));
+}
+
+/// Reads the complete source database before actor snapshots and condition bridging.
+pub(super) fn inject_spirit_reservation(
+    session: &mut CalculationSession,
+    build: &Build,
+    data: &BuildData,
+) {
     // 4d. Spirit reservation aggregation for persistent-reservation effects →
     //     `SkillSpiritReservationBase` BASE, summed by perform's fill into
     //     OutputTable::spirit_reserved (overload is only reported, not blocked). db is

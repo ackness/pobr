@@ -4,12 +4,13 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { env } from 'node:process';
 import type { CalculateBuildRequest, CalculateBuildResponse, GemInput, OptimizeVariantsResponse, SocketGroupInput } from '../api/types';
 import { compareObjectiveStats, evaluateVariants, scoreOf, type Objective } from './optimize';
-import { applySupportPlan, eligibleSupports, optimizeSupports, supportSetCompatible, supportVariant, usableSupportLevel, type SupportMetadata } from './supportOptimizer';
+import { applySupportPlan, eligibleSupports, optimizeSupports, supportSetCompatible, supportSetsCompatible, supportVariant, usableSupportLevel, type SupportMetadata } from './supportOptimizer';
 import { groupsForWeaponSet, switchWeapons, type WeaponSetState } from './weaponSets';
 import type { TradeCatalog } from './tradeOptimizer';
 
-const bridge = vi.hoisted(() => ({ optimize: undefined as undefined | ((input: string) => string) }));
-vi.mock('../api/backend', () => ({ getBackend: async () => ({ optimizeVariants: async (request: unknown) =>
+const bridge = vi.hoisted(() => ({ optimize: undefined as undefined | ((input: string) => string), judge: undefined as undefined | ((input: string) => string) }));
+vi.mock('../api/backend', () => ({ getBackend: async () => ({ supportGroupsCompatible: async (groups: SocketGroupInput[]) => JSON.parse(bridge.judge!(JSON.stringify({ groups }))) as boolean[],
+  optimizeVariants: async (request: unknown) =>
   JSON.parse(bridge.optimize!(JSON.stringify(request))) as OptimizeVariantsResponse }) }));
 
 const fixtures = [
@@ -75,6 +76,7 @@ describe.skipIf(env.POBR_UPGRADE_BENCH !== '1')('real WASM support planner compa
     for (const file of manifest.files) wasm.stageDataFile(file, await readFile(new URL(`${version}/${file}`, root), 'utf8'));
     wasm.initStagedData();
     bridge.optimize = wasm.optimizeVariantsJson;
+    bridge.judge = wasm.supportGroupsCompatibleJson;
     calculate = request => JSON.parse(wasm.calculateBuildJson(JSON.stringify(request))) as CalculateBuildResponse;
     // Eligibility metadata is regenerated separately from engine assets. Use its tracked source.
     const source = new URL(`../../../data/${version}/overlay/trade_catalog.json`, import.meta.url);
@@ -113,9 +115,11 @@ describe.skipIf(env.POBR_UPGRADE_BENCH !== '1')('real WASM support planner compa
       expect(baseline.TotalEHP).toBeGreaterThan(0);
       const objective: Objective = { stat: 'TotalDPS', secondaryStat: 'TotalEHP', constraints: [{ stat: 'TotalEHP', min: baseline.TotalEHP }] };
       const smallCatalog = [active, ...supportPool];
-      const subsets = Array.from({ length: 1 << supportPool.length }, (_, mask) => supportPool
+      const proposed = Array.from({ length: 1 << supportPool.length }, (_, mask) => supportPool
         .filter((_, index) => Boolean(mask & 1 << index)).map(gemInput))
-        .filter(supports => supports.length <= 2 && supportSetCompatible(group, supports, smallCatalog));
+        .filter(supports => supports.length <= 2);
+      const compatible = await supportSetsCompatible(group, proposed, smallCatalog);
+      const subsets = proposed.filter((_, index) => compatible[index]);
       const truthStart = performance.now();
       const truth = await evaluateVariants({ request,
         variants: subsets.map(supports => supportVariant(request, 0, supports, smallCatalog)) });
@@ -137,7 +141,7 @@ describe.skipIf(env.POBR_UPGRADE_BENCH !== '1')('real WASM support planner compa
       const greedy: GemInput[] = [];
       for (const row of [...singles.results].sort((a, b) => compareObjectiveStats(a.stats, b.stats, objective))) {
         const next = [...greedy, gemInput(supportPool[row.index])];
-        if (supportSetCompatible(group, next, smallCatalog)) greedy.push(gemInput(supportPool[row.index]));
+        if (await supportSetCompatible(group, next, smallCatalog)) greedy.push(gemInput(supportPool[row.index]));
         if (greedy.length === 2) break;
       }
       const greedyStats = statsOf(calculate({ ...request, ...supportVariant(request, 0, greedy, smallCatalog) }));

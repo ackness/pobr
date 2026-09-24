@@ -242,3 +242,17 @@ fn gem_quality_reservation_efficiency_scales_flat() {
         assert_eq!(calc(&build, &data), 30.0);
     }
 }
+
+#[test]
+fn reservation_reads_extra_modifiers_after_all_sources_are_injected() {
+    let data = repo_data();
+    let build = build_with_group(SocketGroup::new().with_gem_skill("AlchemistsBoonPlayer", 1));
+    let opts = DataOrchestratorOptions {
+        extra_modifier_texts: vec!["100% increased Spirit Reservation Efficiency".into()],
+        ..Default::default()
+    };
+    assert_eq!(calc(&build, &data), 30.0);
+    let session = pobr_build::calculate_with_data_session(&build, &data, &opts).unwrap();
+    assert!(session.unsupported_modifier_texts().is_empty());
+    assert_eq!(session.output().spirit_reserved, 15.0);
+}

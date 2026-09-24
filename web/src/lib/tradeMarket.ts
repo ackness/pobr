@@ -3,7 +3,7 @@ import type { CalculateBuildRequest, VariantInput } from '../api/types';
 import { compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type Objective } from './optimize';
 import type { TradePriceCap, TradeRealm, WeightedStat } from './trade';
 import { tradeItemVariant, type TradeCatalog, type TradeGem } from './tradeOptimizer';
-import { eligibleSupports, lineageAvailable, sameSupportFamily, supportSetCompatible, type SupportMetadata } from './supportOptimizer';
+import { eligibleSupports, lineageAvailable, sameSupportFamily, supportSetsCompatible, type SupportMetadata } from './supportOptimizer';
 
 export interface MarketItem {
   name?: string; baseType?: string; typeLine?: string;
@@ -110,8 +110,7 @@ export async function planGemUpgrades(request: CalculateBuildRequest, catalog: T
     const variant = gemVariant(request, group, position, gem, level, quality);
     const replacement = variant.socket_groups![group];
     const supportInputs = replacement.gems.filter(input => byId.get(input.skill_id)?.is_support);
-    if (gem.is_support && (!supportSetCompatible(current, supportInputs, gems)
-      || supportInputs.some(input => !lineageAvailable(byId.get(input.skill_id)!, request.socket_groups ?? [], group)))) return;
+    if (gem.is_support && supportInputs.some(input => !lineageAvailable(byId.get(input.skill_id)!, request.socket_groups ?? [], group))) return;
     plans.push({ acquisition: gemAcquisition(gem), gem, group, position, level, quality, variant });
   };
   for (const gem of eligibleSupports(current, gems, characterLevel).gems) {
@@ -131,6 +130,13 @@ export async function planGemUpgrades(request: CalculateBuildRequest, catalog: T
     const level = Math.min(gem.max_level + 1, usableGemLevel(gem, characterLevel));
     if (!gem.is_support && entry.level < level) add(gem, position, level, Math.max(entry.quality, 20));
   });
+  if (!plans.length) return [];
+  const compatible = await supportSetsCompatible(current, plans.map(plan => plan.variant.socket_groups![group].gems
+    .filter(input => byId.get(input.skill_id)?.is_support)), gems);
+  signal?.throwIfAborted();
+  // Active-gem quality/level edits do not change the support type set.
+  const legal = plans.filter((plan, index) => !plan.gem.is_support || compatible[index]);
+  plans.splice(0, plans.length, ...legal);
   if (!plans.length) return [];
   const identity = await evaluate({ request, variants: [{}], signal });
   if (identity.aborted) throw new DOMException('Search cancelled', 'AbortError');
