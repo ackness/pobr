@@ -610,10 +610,7 @@ pub(crate) fn spirit_reservation_modifiers(
     // `AncestralBond` FLAG): SummonsTotem skills are pulled into the reservation loop
     // because of it (vendor CalcDefence.lua:197's `isTotemAndAncestralBond`). The flag
     // carries no tag, so any cfg can look it up.
-    let ancestral_bond = db.flag(
-        &pobr_core::CalcConfig::new(),
-        pobr_data::prelude::ModName::from("AncestralBond"),
-    );
+    let ancestral_bond = db.flag(&pobr_core::CalcConfig::new(), "AncestralBond");
     // GemlingQuality (the Gemling ascendancy's "Gem Quality grants Socketed Skills an
     // additional effect"): when active, a gem's altQualityStats quality stats apply
     // (CalcTools.lua:147-152), and reservation efficiency gets some through this (e.g.

@@ -100,16 +100,16 @@ impl DefenceKeystones {
             )
             .clamp(0.0, ES_TO_MANA_FULL_CONVERSION_PCT);
         Self {
-            chaos_inoculation: db.flag(cfg, ModName::from("ChaosInoculation")),
+            chaos_inoculation: db.flag(cfg, "ChaosInoculation"),
             eldritch_battery_es_to_mana: es_to_mana_pct >= ES_TO_MANA_FULL_CONVERSION_PCT,
-            energy_shield_protects_mana: db.flag(cfg, ModName::from("EnergyShieldProtectsMana")),
-            eternal_life: db.flag(cfg, ModName::from("EternalLife")),
-            iron_reflexes: db.flag(cfg, ModName::from("IronReflexes")),
-            unbreakable: db.flag(cfg, ModName::from("Unbreakable")),
-            double_body_armour_defence: db.flag(cfg, ModName::from("DoubleBodyArmourDefence")),
-            energy_shield_to_ward: db.flag(cfg, ModName::from("EnergyShieldToWard")),
-            ward_not_break: db.flag(cfg, ModName::from("WardNotBreak")),
-            blood_magic: db.flag(cfg, ModName::from("BloodMagic")),
+            energy_shield_protects_mana: db.flag(cfg, "EnergyShieldProtectsMana"),
+            eternal_life: db.flag(cfg, "EternalLife"),
+            iron_reflexes: db.flag(cfg, "IronReflexes"),
+            unbreakable: db.flag(cfg, "Unbreakable"),
+            double_body_armour_defence: db.flag(cfg, "DoubleBodyArmourDefence"),
+            energy_shield_to_ward: db.flag(cfg, "EnergyShieldToWard"),
+            ward_not_break: db.flag(cfg, "WardNotBreak"),
+            blood_magic: db.flag(cfg, "BloodMagic"),
         }
     }
 }

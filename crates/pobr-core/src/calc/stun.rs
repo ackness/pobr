@@ -75,17 +75,14 @@ pub struct StunResult {
 /// Aggregation (:2549-2552): `(base + ΣBASE StunThreshold) × (1 + ΣINC/100) × ΠMORE`.
 pub fn calc_stun_threshold(db: &ModDb, cfg: &CalcConfig, inp: &StunInputs) -> f64 {
     let names = [ModName::from("StunThreshold")];
-    let base = if db.flag(
-        cfg,
-        ModName::from("StunThresholdBasedOnEnergyShieldInsteadOfLife"),
-    ) {
+    let base = if db.flag(cfg, "StunThresholdBasedOnEnergyShieldInsteadOfLife") {
         let pct = db.sum(
             ModType::Base,
             cfg,
             &[ModName::from("StunThresholdEnergyShieldPercent")],
         );
         inp.energy_shield * pct / 100.0
-    } else if db.flag(cfg, ModName::from("StunThresholdBasedOnManaInsteadOfLife")) {
+    } else if db.flag(cfg, "StunThresholdBasedOnManaInsteadOfLife") {
         let pct = db.sum(
             ModType::Base,
             cfg,
@@ -100,7 +97,7 @@ pub fn calc_stun_threshold(db: &ModDb, cfg: &CalcConfig, inp: &StunInputs) -> f6
     } else {
         inp.life
     };
-    let base = if db.flag(cfg, ModName::from("AddESToStunThreshold")) {
+    let base = if db.flag(cfg, "AddESToStunThreshold") {
         let pct = db.sum(
             ModType::Base,
             cfg,

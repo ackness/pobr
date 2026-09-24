@@ -452,7 +452,7 @@ pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &crate::Cal
         let mut magnitude =
             ((raw + extra) * (1.0 + effect_inc / 100.0) * exposure_effect_on_self).floor();
         // :3238-3241 the player's ExposureMin Override raises the floor.
-        if let Some(min) = player_db.override_(cfg, ModName::from("ExposureMin")) {
+        if let Some(min) = player_db.override_(cfg, "ExposureMin") {
             magnitude = magnitude.max(min);
         }
         if magnitude > 0.0 {

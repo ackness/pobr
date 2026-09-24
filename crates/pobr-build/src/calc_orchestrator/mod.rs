@@ -341,6 +341,7 @@ pub fn calculate_full_dps(
         None => build,
     };
     let primary = calculate_with_data(build, data, options)?;
+    let primary_group = resolve_main_skill_selection(build, data).map(|(index, _)| index);
 
     let mut per_skill = Vec::new();
     let mut full_dps = 0.0;
@@ -355,7 +356,13 @@ pub fn calculate_full_dps(
 
         let mut scoped = build.clone();
         scoped.main_socket_group = Some(i + 1);
-        let out = calculate_with_data(&scoped, data, options)?;
+        // Reuse the primary result when this group is the one actually selected.
+        // This also covers an absent or out-of-range main socket group.
+        let out = if primary_group == Some(i) {
+            primary.clone()
+        } else {
+            calculate_with_data(&scoped, data, options)?
+        };
         if out.combined_dps > 0.0 {
             full_dps += out.combined_dps;
             per_skill.push(SkillDps {

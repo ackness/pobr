@@ -284,14 +284,14 @@ pub fn calc_defence_resources(
 
     // 2) Defence slot base values + Body Armour doubling flag
     let mut slots: [Vec<(String, f64)>; MATRIX_DEFENCE_COUNT] = [
-        db.slot_bases(cfg, &ModName::from("Armour")),
-        db.slot_bases(cfg, &ModName::from("Evasion")),
+        db.slot_bases(cfg, "Armour"),
+        db.slot_bases(cfg, "Evasion"),
         // EnergyShieldToWard: the equipped ES slot base converts to Ward (Track D), no longer
         // aggregated into ES (:1192-1205).
         if keystones.energy_shield_to_ward {
             Vec::new()
         } else {
-            db.slot_bases(cfg, &ModName::from("EnergyShield"))
+            db.slot_bases(cfg, "EnergyShield")
         },
     ];
     for (idx, slot_list) in slots.iter_mut().enumerate() {
@@ -567,7 +567,7 @@ pub fn calc_es_recharge(
     //   delay = rechargeBase / (1 + Sum('INC','EnergyShieldRechargeFaster')/100)  // INC is "%", shortens the delay
     // BASE and INC are different ModTypes in different positions (numerator vs denominator), not interchangeable.
     let recharge_base = db
-        .override_(cfg, ModName::from("EnergyShieldRechargeBase"))
+        .override_(cfg, "EnergyShieldRechargeBase")
         .unwrap_or_else(|| {
             ES_RECHARGE_DELAY_BASE
                 + db.sum(
@@ -664,12 +664,11 @@ pub fn calc_avoidance(
     // Ailment avoidance (capped at 100%; Immune flags set it straight to 100)
 
     // Stormshroud: shock avoidance also applies to all elemental ailments
-    let shock_applies_to_elemental =
-        db.flag(cfg, ModName::from("ShockAvoidAppliesToElementalAilments"));
-    let elemental_ailment_immune = db.flag(cfg, ModName::from("ElementalAilmentImmune"));
+    let shock_applies_to_elemental = db.flag(cfg, "ShockAvoidAppliesToElementalAilments");
+    let elemental_ailment_immune = db.flag(cfg, "ElementalAilmentImmune");
 
     // Shock avoidance (used by the Stormshroud interaction; ElementalAilmentImmune also covers shock)
-    let shock_immune = db.flag(cfg, ModName::from("ShockImmune")) || elemental_ailment_immune;
+    let shock_immune = db.flag(cfg, "ShockImmune") || elemental_ailment_immune;
     let shock_avoid_raw = if shock_immune {
         100.0
     } else {
@@ -689,7 +688,7 @@ pub fn calc_avoidance(
         &[ModName::from("AvoidElementalAilments")],
     ) + elemental_extra;
 
-    let ignite_immune = db.flag(cfg, ModName::from("IgniteImmune")) || elemental_ailment_immune;
+    let ignite_immune = db.flag(cfg, "IgniteImmune") || elemental_ailment_immune;
     let avoid_ignite_raw = if ignite_immune {
         100.0
     } else {
@@ -697,7 +696,7 @@ pub fn calc_avoidance(
     };
     let avoid_ignite = round(avoid_ignite_raw.clamp(0.0, AVOID_AILMENT_CAP));
 
-    let chill_immune = db.flag(cfg, ModName::from("ChillImmune")) || elemental_ailment_immune;
+    let chill_immune = db.flag(cfg, "ChillImmune") || elemental_ailment_immune;
     let avoid_chill_raw = if chill_immune {
         100.0
     } else {
@@ -705,7 +704,7 @@ pub fn calc_avoidance(
     };
     let avoid_chill = round(avoid_chill_raw.clamp(0.0, AVOID_AILMENT_CAP));
 
-    let freeze_immune = db.flag(cfg, ModName::from("FreezeImmune")) || elemental_ailment_immune;
+    let freeze_immune = db.flag(cfg, "FreezeImmune") || elemental_ailment_immune;
     let avoid_freeze_raw = if freeze_immune {
         100.0
     } else {
@@ -713,7 +712,7 @@ pub fn calc_avoidance(
     };
     let avoid_freeze = round(avoid_freeze_raw.clamp(0.0, AVOID_AILMENT_CAP));
 
-    let poison_immune = db.flag(cfg, ModName::from("PoisonImmune"));
+    let poison_immune = db.flag(cfg, "PoisonImmune");
     let avoid_poison_raw = if poison_immune {
         100.0
     } else {
@@ -721,7 +720,7 @@ pub fn calc_avoidance(
     };
     let avoid_poison = round(avoid_poison_raw.clamp(0.0, AVOID_AILMENT_CAP));
 
-    let bleed_immune = db.flag(cfg, ModName::from("BleedImmune"));
+    let bleed_immune = db.flag(cfg, "BleedImmune");
     let avoid_bleeding_raw = if bleed_immune {
         100.0
     } else {
@@ -734,7 +733,7 @@ pub fn calc_avoidance(
     //   notAvoidChance = StunImmune ? 0 : 100 - min(AvoidStun, 100)
     //   if ES > totalTakenHit and not EnergyShieldProtectsMana: notAvoidChance *= 0.5
     //   StunAvoidChance = 100 - notAvoidChance
-    let stun_immune = db.flag(cfg, ModName::from("StunImmune"));
+    let stun_immune = db.flag(cfg, "StunImmune");
     let avoid_stun = if stun_immune {
         100.0
     } else {
@@ -856,11 +855,11 @@ pub fn calc_evade_suite(
     enemy_cannot_be_evaded: bool,
 ) -> EvadeSuite {
     // :1421-1426 CannotEvade / enemy CannotBeEvaded → all 0.
-    if db.flag(cfg, ModName::from("CannotEvade")) || enemy_cannot_be_evaded {
+    if db.flag(cfg, "CannotEvade") || enemy_cannot_be_evaded {
         return EvadeSuite::uniform(0.0);
     }
     // :1427-1433 AlwaysEvade ("Attacks cannot Hit you") → all 100.
-    if db.flag(cfg, ModName::from("AlwaysEvade")) {
+    if db.flag(cfg, "AlwaysEvade") {
         return EvadeSuite::uniform(100.0);
     }
 
@@ -878,7 +877,7 @@ pub fn calc_evade_suite(
     // :1435-1436 combined BASE and the cap.
     let evade_base = db.sum(ModType::Base, cfg, &[ModName::from("EvadeChance")]);
     let evade_max = db
-        .override_(cfg, ModName::from("EvadeChanceMax"))
+        .override_(cfg, "EvadeChanceMax")
         .unwrap_or(cfg.constants.game().evade_chance_cap)
         .max(0.0);
 
@@ -931,7 +930,7 @@ pub fn calc_evade_suite(
     evade_chance = evade_chance.min(evade_max);
 
     // :1450-1456 UnluckyEvade → each value becomes x²/100.
-    let unlucky = db.flag(cfg, ModName::from("UnluckyEvade"));
+    let unlucky = db.flag(cfg, "UnluckyEvade");
     let finish = |v: f64| -> f64 {
         if unlucky {
             round(v * v / 100.0)
@@ -964,10 +963,7 @@ pub fn fill_evade_stun(env: &mut Env, keystones: &crate::rules::DefenceKeystones
     let hit_names = [ModName::from("HitChance")];
     let enemy_hit_mult = (1.0 + env.enemy.mod_db.sum(ModType::Inc, &env.cfg, &hit_names) / 100.0)
         * env.enemy.mod_db.more(&env.cfg, &hit_names);
-    let enemy_cannot_be_evaded = env
-        .enemy
-        .mod_db
-        .flag(&env.cfg, ModName::from("CannotBeEvaded"));
+    let enemy_cannot_be_evaded = env.enemy.mod_db.flag(&env.cfg, "CannotBeEvaded");
     let enemy_accuracy = env.enemy.base.accuracy;
 
     let suite = calc_evade_suite(

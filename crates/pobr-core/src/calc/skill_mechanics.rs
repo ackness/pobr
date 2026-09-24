@@ -328,7 +328,7 @@ pub struct ProjectileCountResult {
 /// Source: `agent-docs/skill-mechanics.md` §Projectile count; PoB2 `CalcOffence.lua` L1286-1291.
 pub fn calc_projectile_count(db: &ModDb, cfg: &CalcConfig) -> ProjectileCountResult {
     // NoAdditionalProjectiles: locks to 1 shot
-    if db.flag(cfg, ModName::from("NoAdditionalProjectiles")) {
+    if db.flag(cfg, "NoAdditionalProjectiles") {
         return ProjectileCountResult {
             projectile_count: 1.0,
             base_count: 1.0,
@@ -433,7 +433,7 @@ pub fn calc_cooldown(
     let cooldown_base = base_cooldown_s + added_cooldown;
 
     // Override check (PoB2 L326)
-    let override_val = db.override_(cfg, ModName::from("CooldownRecovery"));
+    let override_val = db.override_(cfg, "CooldownRecovery");
     let recovery_rate = if let Some(ov) = override_val {
         // Override gives the final cooldown directly (seconds); recovery_rate is set to 1.0 to mean no scaling
         let _ = ov; // returns directly when using the override value
@@ -594,7 +594,7 @@ pub fn calc_skill_cost(
     base_cost: f64,
 ) -> SkillCostResult {
     // HasNoCost waives it entirely
-    if db.flag(cfg, ModName::from("HasNoCost")) {
+    if db.flag(cfg, "HasNoCost") {
         return SkillCostResult {
             kind,
             base_cost,
@@ -725,7 +725,7 @@ pub fn calc_life_cost_hybrid(
     if hybrid <= 0.0 {
         return calc_life_cost(db, cfg, base_life_cost);
     }
-    if db.flag(cfg, ModName::from("HasNoCost")) {
+    if db.flag(cfg, "HasNoCost") {
         return SkillCostResult {
             kind: SkillCostKind::Life,
             base_cost: base_life_cost,
@@ -762,7 +762,7 @@ pub fn calc_spirit_reservation(
     cfg: &CalcConfig,
     base_spirit_reservation: f64,
 ) -> SkillCostResult {
-    if db.flag(cfg, ModName::from("HasNoCost")) {
+    if db.flag(cfg, "HasNoCost") {
         return SkillCostResult {
             kind: SkillCostKind::Spirit,
             base_cost: base_spirit_reservation,

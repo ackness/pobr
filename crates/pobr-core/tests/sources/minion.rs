@@ -67,10 +67,7 @@ fn base_crit(ctx: &pobr_core::calc::minion::MinionContext) -> f64 {
 #[test]
 fn minion_always_hit_flag_present() {
     let ctx = build_minion_context(&empty_input(20, MinionData::default()));
-    assert!(
-        ctx.mod_db
-            .flag(&CalcConfig::attack(), ModName::from("CannotBeEvaded"))
-    );
+    assert!(ctx.mod_db.flag(&CalcConfig::attack(), "CannotBeEvaded"));
     assert!(ctx.base.always_hit);
 }
 

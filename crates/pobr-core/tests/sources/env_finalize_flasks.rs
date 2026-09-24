@@ -124,7 +124,7 @@ fn flask_local_and_global_effect_inc_stack_additively() {
         "10 x 1.45 = 14.5 -> m_modf(round(...,2)) truncates to 14"
     );
     assert!(
-        !env.player.mod_db.flag(&env.cfg, ModName::from("Onslaught")),
+        !env.player.mod_db.flag(&env.cfg, "Onslaught"),
         "Grants Onslaught during effect is Unsupported matching PoB2, no Onslaught flag set"
     );
     assert_eq!(env.cfg.conditions.get("UsingFlask"), Some(&true));

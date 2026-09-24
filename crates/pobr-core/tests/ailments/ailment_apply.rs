@@ -114,9 +114,7 @@ fn override_and_val_take_max() {
     );
     // An Override source -> sets Condition:Shocked (vendor :3136-3138) + bridges into cfg.
     assert!(
-        env.enemy
-            .mod_db
-            .flag(&env.cfg, ModName::from("Condition:Shocked")),
+        env.enemy.mod_db.flag(&env.cfg, "Condition:Shocked"),
         "an Override source sets enemy Condition:Shocked"
     );
     assert!(
@@ -225,9 +223,7 @@ fn second_application_is_noop_after_already_flag() {
     let taken_after_first = enemy_inc(&env, "DamageTaken");
     let mods_after_first = env.enemy.mod_db.iter_mods().count();
     assert!(
-        env.enemy
-            .mod_db
-            .flag(&env.cfg, ModName::from("Condition:AlreadyShocked")),
+        env.enemy.mod_db.flag(&env.cfg, "Condition:AlreadyShocked"),
         "the first application sets Condition:AlreadyShocked"
     );
 

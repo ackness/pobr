@@ -103,7 +103,7 @@ const MAGEBLOOD_SOURCE: &str = "Mageblood";
 pub fn apply_mageblood_legacies(env: &mut Env) {
     let db = &env.player.mod_db;
     let cfg = &env.cfg;
-    if !db.flag(cfg, ModName::from("MagebloodEquipped")) {
+    if !db.flag(cfg, "MagebloodEquipped") {
         return;
     }
     // Idempotency guard: already injected for this Env (repeated perform).

@@ -22,6 +22,11 @@
   margin: 0;
 }
 
+.panel-loading {
+  margin: var(--space-6);
+  color: var(--text-secondary);
+}
+
 .boot-error {
   max-width: 640px;
   white-space: pre-wrap;

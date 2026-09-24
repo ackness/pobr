@@ -546,10 +546,7 @@ mod tests {
             attribute_infusion: AttributeInfusion::default(),
             minion_type: None,
         });
-        assert!(
-            ctx.mod_db
-                .flag(&CalcConfig::attack(), ModName::from("CannotBeEvaded"))
-        );
+        assert!(ctx.mod_db.flag(&CalcConfig::attack(), "CannotBeEvaded"));
     }
 
     // MinionData::from_def tests
@@ -592,7 +589,7 @@ mod tests {
             .sum(ModType::Base, &cfg, &[ModName::from("CritMultiplier")]);
         assert_eq!(crit_mult, 100.0);
         // Always hits
-        assert!(ctx.mod_db.flag(&cfg, ModName::from("CannotBeEvaded")));
+        assert!(ctx.mod_db.flag(&cfg, "CannotBeEvaded"));
         // minion_type is bound to def.id
         assert_eq!(ctx.base.level, minion_level_from_gem_level(20));
     }

@@ -161,7 +161,7 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> f64 {
     }
     // `Condition:Already<cond>` prevents duplicate application (:3130).
     let already_name = ModName::from(format!("Condition:Already{}", spec.condition));
-    if enemy.flag(&cfg, already_name.clone()) {
+    if enemy.flag(&cfg, already_name.as_str()) {
         return 0.0;
     }
 
@@ -194,9 +194,11 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> f64 {
 
     // Maximum<X>: Override takes priority, otherwise data max + Σ <X>Max BASE (:3153-3163).
     let max_name = ModName::from(format!("{}Max", spec.name));
-    let maximum = player.override_(&cfg, max_name.clone()).unwrap_or_else(|| {
-        spec.data_max(&cfg) + player.sum(ModType::Base, &cfg, std::slice::from_ref(&max_name))
-    });
+    let maximum = player
+        .override_(&cfg, max_name.as_str())
+        .unwrap_or_else(|| {
+            spec.data_max(&cfg) + player.sum(ModType::Base, &cfg, std::slice::from_ref(&max_name))
+        });
 
     // Current<X> = floor(min(max(override, Σ Val), Maximum) × 10^prec)/10^prec (:3164);
     // prec=0 (non_damaging_ailments.json Chill/Shock) → integer floor.
@@ -204,11 +206,11 @@ fn apply_ailment(env: &mut Env, spec: &AilmentSpec) -> f64 {
 
     // Condition-bridging decision must read before writing (override source / existing enemy db condition flag).
     let cond_flag_name = ModName::from(format!("Condition:{}", spec.condition));
-    let condition_active = override_seen || enemy.flag(&cfg, cond_flag_name.clone());
+    let condition_active = override_seen || enemy.flag(&cfg, cond_flag_name.as_str());
 
     // Bonechill branch decision (Chill-only, :3092-3094; see the module doc's "Known differences" for the approximation).
     let bonechill = spec.name == "Chill"
-        && player.flag(&cfg, ModName::from("HasBonechill"))
+        && player.flag(&cfg, "HasBonechill")
         && (enemy_val > 0.0 || override_seen);
 
     // Write stage (all writes to the enemy db / cfg.conditions are applied together after reads are done)

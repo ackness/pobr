@@ -99,7 +99,7 @@ fn fortify_handler() -> Handler {
         };
         let max_name = StatId::new("MaximumFortification");
         let max_stacks = db
-            .override_(cfg, max_name.clone())
+            .override_(cfg, max_name.as_str())
             .unwrap_or_else(|| db.sum(ModType::Base, cfg, &[max_name]));
         let min_stacks = db
             .sum(ModType::Base, cfg, &[StatId::new("MinimumFortification")])
@@ -107,7 +107,7 @@ fn fortify_handler() -> Handler {
         // vendor :526's lookup chain (a Lua `or` chain; 0 is truthy in Lua,
         // so Override(0) really means 0 stacks).
         let stacks = db
-            .override_(cfg, StatId::new("FortificationStacks"))
+            .override_(cfg, "FortificationStacks")
             .unwrap_or(if min_stacks > 0.0 {
                 min_stacks
             } else {
@@ -115,7 +115,7 @@ fn fortify_handler() -> Handler {
             });
 
         let mut out = HandlerOutcome::default();
-        if !db.flag(cfg, StatId::new("Condition:NoFortificationMitigation")) {
+        if !db.flag(cfg, "Condition:NoFortificationMitigation") {
             let effect_scale =
                 1.0 + db.sum(ModType::Inc, cfg, &[StatId::new("BuffEffectOnSelf")]) / 100.0;
             let effect = (effect_scale * stacks).floor();
@@ -151,11 +151,11 @@ fn elusive_handler() -> Handler {
         let elusive_effect_mod = (1.0 + inc / 100.0) * db.more(cfg, &names) * 100.0;
         // vendor :620's decaying-average convention: (effectMod + MinThreshold)/2.
         let min_threshold = db
-            .override_(cfg, StatId::new("ElusiveEffectMinThreshold"))
+            .override_(cfg, "ElusiveEffectMinThreshold")
             .unwrap_or(0.0);
         let mut effect_mod = (elusive_effect_mod + min_threshold) / 2.0;
         // vendor :624-626 Override(ElusiveEffect) → min(override, effectMod).
-        if let Some(over) = db.override_(cfg, StatId::new("ElusiveEffect")) {
+        if let Some(over) = db.override_(cfg, "ElusiveEffect") {
             effect_mod = over.min(elusive_effect_mod);
         }
         let effect = effect_mod / 100.0;
@@ -259,10 +259,7 @@ pub fn expand_misc_buffs(
             BuffModeGate::Combat => {}
         }
         // Trigger flag not set → zero output.
-        if !state
-            .db
-            .flag(state.cfg, StatId::new(def.trigger_flag.as_str()))
-        {
+        if !state.db.flag(state.cfg, def.trigger_flag.as_str()) {
             continue;
         }
         expand_one(state, def, registry, &mut out);

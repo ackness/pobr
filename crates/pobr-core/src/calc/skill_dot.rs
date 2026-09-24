@@ -112,11 +112,11 @@ impl DotIsFlags {
     /// point for both the stat-driven and statSet-flag-injected paths).
     pub fn from_db(db: &ModDb, cfg: &CalcConfig) -> Self {
         Self {
-            area: db.flag(cfg, ModName::from("DotIsArea")),
-            projectile: db.flag(cfg, ModName::from("DotIsProjectile")),
-            spell: db.flag(cfg, ModName::from("DotIsSpell")),
-            attack: db.flag(cfg, ModName::from("DotIsAttack")),
-            hit: db.flag(cfg, ModName::from("DotIsHit")),
+            area: db.flag(cfg, "DotIsArea"),
+            projectile: db.flag(cfg, "DotIsProjectile"),
+            spell: db.flag(cfg, "DotIsSpell"),
+            attack: db.flag(cfg, "DotIsAttack"),
+            hit: db.flag(cfg, "DotIsHit"),
         }
     }
 }
@@ -251,7 +251,7 @@ pub fn calc_skill_dot(
         dot_cfg.clone()
     };
 
-    let deal_no_damage = db.flag(&dot_cfg, ModName::from("DealNoDamage"));
+    let deal_no_damage = db.flag(&dot_cfg, "DealNoDamage");
     let mut instance = 0.0_f64;
     let mut dot_active = false;
     for damage_type in DAMAGE_TYPES {
@@ -261,8 +261,7 @@ pub fn calc_skill_dot(
             .with_damage_type(damage_type)
             .with_keyword_flags(dot_cfg.keyword_flags | dot_keyword(damage_type));
         // canDeal gate (same-source flags: `DealNoDamage` / `DealNo<Type>`).
-        let can_deal =
-            !deal_no_damage && !db.flag(&dot_type_cfg, ModName::from(format!("DealNo{prefix}")));
+        let can_deal = !deal_no_damage && !db.flag(&dot_type_cfg, &format!("DealNo{prefix}"));
         if !can_deal {
             continue;
         }
@@ -285,7 +284,7 @@ pub fn calc_skill_dot(
         let (inc, more) = aggregate_inc_more(db, &dot_type_cfg, damage_type);
         // DotMultiplier: Override takes priority, otherwise Sum(DotMultiplier) + Sum(<Type>DotMultiplier) (`:5897`).
         let mult = db
-            .override_(&dot_type_cfg, ModName::from("DotMultiplier"))
+            .override_(&dot_type_cfg, "DotMultiplier")
             .unwrap_or_else(|| {
                 db.sum(
                     ModType::Base,
@@ -305,7 +304,7 @@ pub fn calc_skill_dot(
     // TotalDot (`:5931-5973`): under DotCanStack, instance × speed × duration
     // × dpsMultiplier × quantityMultiplier; the three ground-dot flags are
     // not modeled; otherwise = instance.
-    let total_dot = if db.flag(cfg, ModName::from("DotCanStack")) && inputs.duration > 0.0 {
+    let total_dot = if db.flag(cfg, "DotCanStack") && inputs.duration > 0.0 {
         // Rate branch (`:5934-5940`): switches to
         // MineLayingSpeed/TrapThrowingSpeed when keywordFlags has Mine/Trap
         // -- pobr has no totem/trap throughput (12-G11, not implemented)

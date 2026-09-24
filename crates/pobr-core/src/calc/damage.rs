@@ -151,12 +151,12 @@ pub fn lucky_hit_chance(
     damage_type: DamageType,
     is_crit_pass: bool,
 ) -> f64 {
-    if db.flag(cfg, ModName::from("LuckyHits"))
+    if db.flag(cfg, "LuckyHits")
         || (!is_crit_pass
             && damage_type == DamageType::Lightning
-            && db.flag(cfg, ModName::from("LightningNoCritLucky")))
-        || (is_crit_pass && db.flag(cfg, ModName::from("CritLucky")))
-        || (damage_type.is_elemental() && db.flag(cfg, ModName::from("ElementalLuckHits")))
+            && db.flag(cfg, "LightningNoCritLucky"))
+        || (is_crit_pass && db.flag(cfg, "CritLucky"))
+        || (damage_type.is_elemental() && db.flag(cfg, "ElementalLuckHits"))
     {
         return 1.0;
     }
@@ -187,12 +187,12 @@ pub fn lucky_hit_chance(
 /// (clippy's `ptr_arg`), which callers passing `&mut vec` are directly
 /// compatible with via deref -- the call shape is unchanged.
 pub fn apply_can_deal(components: &mut [DamageComponent], db: &ModDb, cfg: &CalcConfig) {
-    let deal_no_damage = db.flag(cfg, ModName::from("DealNoDamage"));
+    let deal_no_damage = db.flag(cfg, "DealNoDamage");
     for component in components.iter_mut() {
         let gated = deal_no_damage
             || db.flag(
                 cfg,
-                ModName::from(format!("DealNo{}", type_prefix(component.damage_type))),
+                &format!("DealNo{}", type_prefix(component.damage_type)),
             );
         if gated {
             component.min = 0.0;

@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
@@ -25,6 +26,12 @@ impl From<&str> for StatId {
 impl From<String> for StatId {
     fn from(value: String) -> Self {
         Self::new(value)
+    }
+}
+
+impl Borrow<str> for StatId {
+    fn borrow(&self) -> &str {
+        self.as_str()
     }
 }
 

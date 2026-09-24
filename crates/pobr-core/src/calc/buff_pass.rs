@@ -417,11 +417,8 @@ pub fn buff_pass(env: &mut Env) {
             }
             BuffKind::Curse => {
                 // vendor :2289's gate: `(mode_effective and (not Hexproof or exempt)) or mark`.
-                let hexproof = env.enemy.mod_db.flag(&env.cfg, ModName::from("Hexproof"));
-                let ignores_hexproof = env
-                    .player
-                    .mod_db
-                    .flag(&env.cfg, ModName::from("CursesIgnoreHexproof"))
+                let hexproof = env.enemy.mod_db.flag(&env.cfg, "Hexproof");
+                let ignores_hexproof = env.player.mod_db.flag(&env.cfg, "CursesIgnoreHexproof")
                     || spec.ignore_curse_limit;
                 if !((env.cfg.mode_effective && (!hexproof || ignores_hexproof)) || spec.is_mark) {
                     continue;
@@ -477,12 +474,10 @@ pub fn buff_pass(env: &mut Env) {
                     })
                     .collect();
                 // vendor :2294's `ignoreCurseLimit = (...) and not mark or false`.
-                let ignore_curse_limit = (env
-                    .player
-                    .mod_db
-                    .flag(&env.cfg, ModName::from("CursesIgnoreCurseLimit"))
-                    || spec.ignore_curse_limit)
-                    && !spec.is_mark;
+                let ignore_curse_limit =
+                    (env.player.mod_db.flag(&env.cfg, "CursesIgnoreCurseLimit")
+                        || spec.ignore_curse_limit)
+                        && !spec.is_mark;
                 curses.push(CurseEntry {
                     name: spec.name.clone(),
                     priority: determine_curse_priority(
@@ -538,7 +533,7 @@ pub fn buff_pass(env: &mut Env) {
     let curse_limit = if env
         .player
         .mod_db
-        .flag(&env.cfg, ModName::from("CurseLimitIsMaximumPowerCharges"))
+        .flag(&env.cfg, "CurseLimitIsMaximumPowerCharges")
     {
         f64::from(charge_maximum(
             &env.player.mod_db,

@@ -1472,10 +1472,7 @@ pub fn cross_type_source_hit_at_roll(
         if is_default_source(ailment, dt)
             || player.flag(
                 cfg,
-                ModName::from(format!(
-                    "{prefix}Can{ailment_name}",
-                    prefix = type_prefix(dt)
-                )),
+                &format!("{prefix}Can{ailment_name}", prefix = type_prefix(dt)),
             )
         {
             total += component.min + (component.max - component.min) * roll;
@@ -1512,8 +1509,7 @@ pub fn stored_source_at_roll(
     for range in ranges {
         let dt = range.damage_type;
         let prefix = type_prefix(dt);
-        if is_default_source(ailment, dt)
-            || player.flag(cfg, ModName::from(format!("{prefix}Can{ailment_name}")))
+        if is_default_source(ailment, dt) || player.flag(cfg, &format!("{prefix}Can{ailment_name}"))
         {
             // vendor `:4844`: `more = More(damageType .. ailment .. "Buildup")`.
             let more = player.more(

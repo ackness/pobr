@@ -271,7 +271,7 @@ pub fn charge_minimum(db: &ModDb, cfg: &CalcConfig, kind: ChargeKind, maximum: u
         ChargeKind::Frenzy => "MinimumFrenzyChargesIsMaximumFrenzyCharges",
         ChargeKind::Endurance => "MinimumEnduranceChargesIsMaximumEnduranceCharges",
     };
-    if db.flag(cfg, ModName::from(full_flag_name)) {
+    if db.flag(cfg, full_flag_name) {
         return maximum;
     }
 
@@ -529,7 +529,7 @@ pub fn calc_leech_from_db(
         LeechResource::Mana => "CannotLeechMana",
         LeechResource::EnergyShield => "CannotLeechEnergyShield",
     };
-    if db.flag(cfg, ModName::from(cannot_flag)) {
+    if db.flag(cfg, cannot_flag) {
         return LeechResult::zero(pool, resource);
     }
     // The typed names are emitted by PoB's equipment/passive parser. The
@@ -674,8 +674,8 @@ pub fn calc_recoup_from_db(
     }
 
     // Duration: the global 4s flag or the per-resource 4s flag
-    let four_sec = db.flag(cfg, ModName::from(RecoupResource::four_sec_flag_global()))
-        || db.flag(cfg, ModName::from(resource.four_sec_flag()));
+    let four_sec = db.flag(cfg, RecoupResource::four_sec_flag_global())
+        || db.flag(cfg, resource.four_sec_flag());
     let duration = if four_sec {
         RECOUP_DURATION_4S
     } else {

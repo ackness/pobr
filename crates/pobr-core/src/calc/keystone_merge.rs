@@ -53,10 +53,7 @@ pub fn merge_keystones(env: &mut Env) {
         return;
     }
 
-    let granted = env
-        .player
-        .mod_db
-        .list(&env.cfg, ModName::from(KEYSTONE_LIST_NAME));
+    let granted = env.player.mod_db.list(&env.cfg, KEYSTONE_LIST_NAME);
     if granted.is_empty() {
         return;
     }

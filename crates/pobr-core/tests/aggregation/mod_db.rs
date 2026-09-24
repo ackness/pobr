@@ -110,13 +110,10 @@ fn flag_override_and_list_queries_return_matching_mods() {
 
     let cfg = CalcConfig::new();
 
-    assert!(db.flag(&cfg, ModName::from("CanIgnite")));
+    assert!(db.flag(&cfg, "CanIgnite"));
+    assert_eq!(db.override_(&cfg, "MaximumFireResistance"), Some(80.0));
     assert_eq!(
-        db.override_(&cfg, ModName::from("MaximumFireResistance")),
-        Some(80.0)
-    );
-    assert_eq!(
-        db.list(&cfg, ModName::from("GrantedSkill")),
+        db.list(&cfg, "GrantedSkill"),
         vec!["Level 20 Fireball".to_string()]
     );
 }
@@ -374,14 +371,17 @@ fn list_nested_passes_through_nested_mods_without_evaluating() {
     let cfg = CalcConfig::new();
     let name = ModName::from("EnemyModifier");
 
-    assert_eq!(db.list_nested(&cfg, name.clone()), vec![inner]);
-    assert_eq!(db.list(&cfg, name.clone()), vec!["placeholder".to_string()]);
+    assert_eq!(db.list_nested(&cfg, name.as_str()), vec![inner]);
+    assert_eq!(
+        db.list(&cfg, name.as_str()),
+        vec!["placeholder".to_string()]
+    );
     // Nested payloads never enter any scalar aggregation channel.
     assert_eq!(
         db.sum(ModType::List, &cfg, std::slice::from_ref(&name)),
         0.0
     );
-    assert!(!db.flag(&cfg, name));
+    assert!(!db.flag(&cfg, name.as_str()));
 }
 
 #[test]
@@ -567,10 +567,7 @@ fn scale_add_mod_non_number_payloads() {
     let mut db = ModDb::new();
 
     db.scale_add_mod(Modifier::flag("SomeFlag"), 0.5, &rules);
-    assert!(
-        db.flag(&cfg, ModName::from("SomeFlag")),
-        "a Bool payload is not scaled"
-    );
+    assert!(db.flag(&cfg, "SomeFlag"), "a Bool payload is not scaled");
 
     db.scale_add_mod(
         Modifier::new(
@@ -581,7 +578,7 @@ fn scale_add_mod_non_number_payloads() {
         0.5,
         &rules,
     );
-    let nested = db.list_nested(&cfg, ModName::from("EnemyModifier"));
+    let nested = db.list_nested(&cfg, "EnemyModifier");
     assert_eq!(
         nested[0].value,
         ModValue::Number(3.0),
@@ -808,14 +805,14 @@ fn stat_threshold_gates_in_matches_for_all_query_paths() {
     // No snapshot (missing key = 0): lower gate is closed (0 < 5), upper gate is open (0 <= 100) —
     // matches vendor value-for-value when output is missing the stat (GetStat=0).
     let cfg = CalcConfig::new();
-    assert!(!db.flag(&cfg, ModName::from("StunImmune")));
+    assert!(!db.flag(&cfg, "StunImmune"));
     assert_eq!(db.more(&cfg, &names), 1.3);
 
     // Snapshot crosses the threshold: lower opens, upper closes.
     let cfg = CalcConfig::new()
         .with_stat("CrabBarriers", 5.0)
         .with_stat("EnergyShield", 250.0);
-    assert!(db.flag(&cfg, ModName::from("StunImmune")));
+    assert!(db.flag(&cfg, "StunImmune"));
     assert_eq!(db.more(&cfg, &names), 1.0);
 }
 
