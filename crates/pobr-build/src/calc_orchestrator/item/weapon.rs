@@ -322,20 +322,7 @@ pub(crate) fn unarmed_contribution(build: &Build, data: &BuildData) -> WeaponCon
 
 /// Strips PoB item mod `{tag}` markers (e.g. `{desecrated}{enchant}`), returning the untagged lowercase text.
 pub(crate) fn clean_item_text(text: &str) -> String {
-    if !text.contains(['{', '}']) {
-        return text.trim().to_lowercase();
-    }
-    let mut out = String::with_capacity(text.len());
-    let mut depth = 0u32;
-    for c in text.chars() {
-        match c {
-            '{' => depth += 1,
-            '}' => depth = depth.saturating_sub(1),
-            _ if depth == 0 => out.push(c),
-            _ => {}
-        }
-    }
-    out.trim().to_lowercase()
+    pobr_core::skill_env::clean_item_text(text)
 }
 
 /// Sum of "N% increased Physical Damage" (local mod) on the weapon.
@@ -398,7 +385,7 @@ pub(crate) fn weapon_local_phys_adds(item: &Item) -> (f64, f64) {
 
 /// Parses "adds N to M physical damage" → (N, M). Returns `None` for any other form.
 pub(crate) fn parse_adds_physical(clean: &str) -> Option<(f64, f64)> {
-    parse_adds_with_suffix(clean, "physical damage")
+    pobr_core::skill_env::parse_adds_physical(clean)
 }
 
 /// Parses "adds N to M <suffix>" → (N, M) (suffix is a damage suffix with no leading
