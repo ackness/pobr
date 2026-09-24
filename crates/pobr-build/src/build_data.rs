@@ -984,6 +984,80 @@ impl BuildData {
     }
 }
 
+// ---------------------------------------------------------------------------
+// pobr-core skill_env trait implementations — the lookup surface that
+// engine-semantics functions consume without touching `Build`/`BuildData`.
+// ---------------------------------------------------------------------------
+
+impl pobr_core::skill_env::EffectLookup for BuildData {
+    fn effect(&self, id: &str) -> Option<&GrantedEffectDef> {
+        self.granted_effects.get(id)
+    }
+
+    fn additional_effects(&self, primary_id: &str) -> &[String] {
+        self.gem_effects
+            .get(primary_id)
+            .map(|g| g.additional_granted_effect_ids.as_slice())
+            .unwrap_or(&[])
+    }
+}
+
+impl pobr_core::skill_env::StatSetLookup for BuildData {
+    fn effect_stats(
+        &self,
+        effect_id: &str,
+        level: u32,
+        quality: u32,
+        set_index: Option<u32>,
+    ) -> pobr_core::skill_env::EffectStats {
+        let es = self.effect_stats(effect_id, level, quality, set_index);
+        pobr_core::skill_env::EffectStats {
+            base: es.base,
+            quality: es.quality,
+        }
+    }
+
+    fn selected_set_key(&self, effect_id: &str, set_index: Option<u32>) -> Option<String> {
+        self.selected_set_key(effect_id, set_index)
+    }
+
+    fn selected_set_dot_flags(
+        &self,
+        effect_id: &str,
+        set_index: Option<u32>,
+    ) -> pobr_data::catalog::DotFlags {
+        self.selected_set_dot_flags(effect_id, set_index)
+    }
+
+    fn selected_set_explode_corpse(&self, effect_id: &str, set_index: Option<u32>) -> bool {
+        self.selected_set_explode_corpse(effect_id, set_index)
+    }
+
+    fn effect_level_row(&self, effect_id: &str, level: u32) -> Option<&SkillLevelDef> {
+        self.granted_effect_levels
+            .get(effect_id)
+            .and_then(|rows| rows.iter().rfind(|r| r.level <= level).or(rows.first()))
+    }
+
+    fn quality_stats(&self, effect_id: &str, quality: u32) -> Vec<SkillDamageStat> {
+        if quality == 0 {
+            return Vec::new();
+        }
+        self.gem_quality_stats
+            .get(effect_id)
+            .map(|rows| {
+                rows.iter()
+                    .filter(|q| !q.alt)
+                    .map(|q| SkillDamageStat {
+                        stat: q.stat.clone(),
+                        value: (q.per_quality_rate * f64::from(quality)).trunc(),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1213,79 +1287,5 @@ mod tests {
             assert_eq!(bd.is_support_gem(&g.id), Some(false));
         }
         assert_eq!(bd.is_support_gem("Metadata/Items/Gem/DoesNotExist"), None);
-    }
-}
-
-// ---------------------------------------------------------------------------
-// pobr-core skill_env trait implementations — the lookup surface that
-// engine-semantics functions consume without touching `Build`/`BuildData`.
-// ---------------------------------------------------------------------------
-
-impl pobr_core::skill_env::EffectLookup for BuildData {
-    fn effect(&self, id: &str) -> Option<&GrantedEffectDef> {
-        self.granted_effects.get(id)
-    }
-
-    fn additional_effects(&self, primary_id: &str) -> &[String] {
-        self.gem_effects
-            .get(primary_id)
-            .map(|g| g.additional_granted_effect_ids.as_slice())
-            .unwrap_or(&[])
-    }
-}
-
-impl pobr_core::skill_env::StatSetLookup for BuildData {
-    fn effect_stats(
-        &self,
-        effect_id: &str,
-        level: u32,
-        quality: u32,
-        set_index: Option<u32>,
-    ) -> pobr_core::skill_env::EffectStats {
-        let es = self.effect_stats(effect_id, level, quality, set_index);
-        pobr_core::skill_env::EffectStats {
-            base: es.base,
-            quality: es.quality,
-        }
-    }
-
-    fn selected_set_key(&self, effect_id: &str, set_index: Option<u32>) -> Option<String> {
-        self.selected_set_key(effect_id, set_index)
-    }
-
-    fn selected_set_dot_flags(
-        &self,
-        effect_id: &str,
-        set_index: Option<u32>,
-    ) -> pobr_data::catalog::DotFlags {
-        self.selected_set_dot_flags(effect_id, set_index)
-    }
-
-    fn selected_set_explode_corpse(&self, effect_id: &str, set_index: Option<u32>) -> bool {
-        self.selected_set_explode_corpse(effect_id, set_index)
-    }
-
-    fn effect_level_row(&self, effect_id: &str, level: u32) -> Option<&SkillLevelDef> {
-        self.granted_effect_levels
-            .get(effect_id)
-            .and_then(|rows| rows.iter().rfind(|r| r.level <= level).or(rows.first()))
-    }
-
-    fn quality_stats(&self, effect_id: &str, quality: u32) -> Vec<SkillDamageStat> {
-        if quality == 0 {
-            return Vec::new();
-        }
-        self.gem_quality_stats
-            .get(effect_id)
-            .map(|rows| {
-                rows.iter()
-                    .filter(|q| !q.alt)
-                    .map(|q| SkillDamageStat {
-                        stat: q.stat.clone(),
-                        value: (q.per_quality_rate * f64::from(quality)).trunc(),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default()
     }
 }
