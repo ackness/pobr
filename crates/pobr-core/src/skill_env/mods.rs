@@ -48,3 +48,22 @@ pub fn is_off_hand_weapon_base_stat(stat: &str) -> bool {
         "off_hand_weapon_minimum_physical_damage" | "off_hand_weapon_maximum_physical_damage"
     )
 }
+
+/// Resolves the enemy level for calculations (matching vendor `CalcSetup.lua:529`'s
+/// `enemyLevel = m_min(data.misc.MaxEnemyLevel, config.enemyLevel or characterLevel)`).
+///
+/// Priority: orchestrator option → config `enemyLevel` → `min(maxEnemyLevel, characterLevel)`.
+pub fn resolved_enemy_level(
+    option_enemy_level: u32,
+    config_enemy_level: Option<u32>,
+    character_level: u32,
+    max_enemy_level: u32,
+) -> u32 {
+    if option_enemy_level != 0 {
+        option_enemy_level
+    } else {
+        config_enemy_level
+            .unwrap_or_else(|| character_level.min(max_enemy_level))
+            .min(max_enemy_level)
+    }
+}

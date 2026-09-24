@@ -225,14 +225,12 @@ pub(crate) fn resolved_enemy_level(
     data: &BuildData,
     options: &DataOrchestratorOptions,
 ) -> u32 {
-    if options.enemy_level != 0 {
-        options.enemy_level
-    } else {
-        let cap = data.constants.enemy_presets.max_enemy_level;
-        config_enemy_level(build)
-            .unwrap_or_else(|| build.character.level.min(cap))
-            .min(cap)
-    }
+    pobr_core::skill_env::resolved_enemy_level(
+        options.enemy_level,
+        config_enemy_level(build),
+        build.character.level,
+        data.constants.enemy_presets.max_enemy_level,
+    )
 }
 
 /// Crossbow reload data channel (matching vendor `CalcOffence.lua:1118-1122`'s
