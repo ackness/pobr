@@ -909,30 +909,13 @@ fn stage_inject_jewels(session: &mut SourceWriter, ctx: &StageCtx<'_>) -> Result
 /// physical lines in the XML; matched after joining with a space; vendor parses it as
 /// `JewelData{corruptedMagicJewelIncEffect}`). Returns `None` when this jewel isn't present.
 fn adorned_corrupted_magic_jewel_inc(jewels: &[Item]) -> Option<f64> {
-    const SUFFIX: &str =
-        "% increased Effect of Jewel Socket Passive Skills containing Corrupted Magic Jewels";
-    for jewel in jewels {
-        if jewel.rarity != pobr_data::item::ItemRarity::Unique {
-            continue;
-        }
-        let joined = jewel.modifier_texts.join(" ");
-        if let Some(pos) = joined.find(SUFFIX) {
-            let head = &joined[..pos];
-            let num_start = head
-                .rfind(|c: char| !c.is_ascii_digit())
-                .map_or(0, |i| i + 1);
-            if let Ok(v) = head[num_start..].parse::<f64>() {
-                return Some(v);
-            }
-        }
-    }
-    None
+    pobr_core::skill_env::adorned_corrupted_magic_jewel_inc(jewels)
 }
 
 /// Vendor's `ModStore:ScaleAddMod` numeric scaling semantics (ModStore.lua:70-79):
 /// `m_modf(round(v × scale, 2))` — rounds to 2 decimal places first, then truncates.
 fn scale_trunc_2dp(value: f64, scale: f64) -> f64 {
-    ((value * scale * 100.0).round() / 100.0).trunc()
+    pobr_core::skill_env::scale_trunc_2dp(value, scale)
 }
 
 /// Radius grants are parsed and scaled per affected allocated node. Invalid

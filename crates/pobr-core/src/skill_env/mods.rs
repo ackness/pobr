@@ -362,3 +362,33 @@ pub fn mk_trigger_flag(name: &str, label: &str) -> Modifier {
     .with_raw_text(label);
     Modifier::flag(name).with_origin(origin)
 }
+
+/// Finds the "N% increased Effect of Jewel Socket Passive Skills containing Corrupted
+/// Magic Jewels" value on a unique jewel (the Adorned). Returns `None` when no unique
+/// jewel carries the suffix.
+pub fn adorned_corrupted_magic_jewel_inc(jewels: &[pobr_data::item::Item]) -> Option<f64> {
+    const SUFFIX: &str =
+        "% increased Effect of Jewel Socket Passive Skills containing Corrupted Magic Jewels";
+    for jewel in jewels {
+        if jewel.rarity != pobr_data::item::ItemRarity::Unique {
+            continue;
+        }
+        let joined = jewel.modifier_texts.join(" ");
+        if let Some(pos) = joined.find(SUFFIX) {
+            let head = &joined[..pos];
+            let num_start = head
+                .rfind(|c: char| !c.is_ascii_digit())
+                .map_or(0, |i| i + 1);
+            if let Ok(v) = head[num_start..].parse::<f64>() {
+                return Some(v);
+            }
+        }
+    }
+    None
+}
+
+/// Vendor's `ModStore:ScaleAddMod` numeric scaling semantics (ModStore.lua:70-79):
+/// `m_modf(round(v × scale, 2))` — rounds to 2 decimal places first, then truncates.
+pub fn scale_trunc_2dp(value: f64, scale: f64) -> f64 {
+    ((value * scale * 100.0).round() / 100.0).trunc()
+}

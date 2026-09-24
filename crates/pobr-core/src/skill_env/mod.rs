@@ -17,11 +17,12 @@ pub use item_text::{
     weapon_local_phys_inc, weapon_mod_texts,
 };
 pub use mods::{
-    GemPropertyBonus, GemPropertyKind, clean_grant_text, dot_flag_modifiers,
-    gem_level_category_matches, is_attribute_node, is_off_hand_weapon_base_stat, mk_trigger_flag,
-    mk_trigger_mod, parse_gem_level_bonus, parse_gem_property_bonus, resolved_enemy_level,
-    skill_base_modifiers, skill_name_from_id, skill_type_bits, skill_type_flags,
-    support_mana_multiplier_modifier, vendor_scale_mod_value,
+    GemPropertyBonus, GemPropertyKind, adorned_corrupted_magic_jewel_inc, clean_grant_text,
+    dot_flag_modifiers, gem_level_category_matches, is_attribute_node,
+    is_off_hand_weapon_base_stat, mk_trigger_flag, mk_trigger_mod, parse_gem_level_bonus,
+    parse_gem_property_bonus, resolved_enemy_level, scale_trunc_2dp, skill_base_modifiers,
+    skill_name_from_id, skill_type_bits, skill_type_flags, support_mana_multiplier_modifier,
+    vendor_scale_mod_value,
 };
 pub use support::{
     CompatibleSupport, GroupSupportJudgement, SupportCandidate, judge_group_supports,
