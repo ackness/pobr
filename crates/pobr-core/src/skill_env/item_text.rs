@@ -34,37 +34,94 @@ pub fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
         .chain(item.enchant_texts.iter())
 }
 
-/// Parses a local weapon crit mod (e.g. `+38% to Critical Hit Chance` / `+2.1% to Critical Hit Chance`).
-/// Returns `(ModType, value)` — `Inc` for percentage, `Base` for flat percentage points.
-pub fn parse_weapon_local_crit(text: &str) -> Option<(ModType, f64)> {
-    let clean = clean_item_text(text);
-    let (value, suffix) = clean.split_once('%')?;
-    let value: f64 = value.trim_start_matches('+').trim().parse().ok()?;
-    if suffix.contains("critical hit chance") {
-        Some((ModType::Inc, value))
-    } else if suffix.contains("critical strike chance") {
-        Some((ModType::Base, value))
-    } else {
-        None
-    }
+/// Sum of "N% increased Physical Damage" (local mod) on the weapon.
+pub fn weapon_local_phys_inc(item: &Item) -> f64 {
+    weapon_mod_texts(item)
+        .filter_map(|t| {
+            clean_item_text(t)
+                .strip_suffix("% increased physical damage")
+                .and_then(|n| n.trim().parse::<f64>().ok())
+        })
+        .sum()
 }
 
-/// Parses a local "adds X to Y physical damage" mod.
+/// Sum of "N% increased Attack Speed" (local mod, no condition suffix) on the weapon.
+pub fn weapon_local_attack_speed(item: &Item) -> f64 {
+    weapon_mod_texts(item)
+        .filter_map(|t| {
+            clean_item_text(t)
+                .strip_suffix("% increased attack speed")
+                .and_then(|n| n.trim().parse::<f64>().ok())
+        })
+        .sum()
+}
+
+/// Bare weapon critical chance is local (Item.lua `calcLocal("CritChance")`).
+/// Exact numeric forms leave global, attack/spell-specific and conditional
+/// modifiers in the global pipeline. Shared by weapon base assembly and stripping.
+pub fn parse_weapon_local_crit(text: &str) -> Option<(ModType, f64)> {
+    let clean = clean_item_text(text);
+    let prefix = clean
+        .strip_suffix("critical hit chance")
+        .or_else(|| clean.strip_suffix("critical strike chance"))?;
+    for (suffix, kind, sign) in [
+        ("% increased ", ModType::Inc, 1.0),
+        ("% reduced ", ModType::Inc, -1.0),
+        ("% to ", ModType::Base, 1.0),
+        ("% ", ModType::Base, 1.0),
+    ] {
+        if let Some(number) = prefix.strip_suffix(suffix)
+            && let Ok(value) = number.trim().parse::<f64>()
+        {
+            return Some((kind, value * sign));
+        }
+    }
+    None
+}
+
+/// Range sum of "Adds N to M Physical Damage" (local mod) on the weapon.
+pub fn weapon_local_phys_adds(item: &Item) -> (f64, f64) {
+    let mut min_sum = 0.0;
+    let mut max_sum = 0.0;
+    for t in weapon_mod_texts(item) {
+        if let Some((lo, hi)) = parse_adds_physical(&clean_item_text(t)) {
+            min_sum += lo;
+            max_sum += hi;
+        }
+    }
+    (min_sum, max_sum)
+}
+
+/// Parses "adds N to M physical damage" → (N, M). Returns `None` for any other form.
 pub fn parse_adds_physical(clean: &str) -> Option<(f64, f64)> {
     parse_adds_with_suffix(clean, "physical damage")
 }
 
-/// Parses a local "adds X to Y <suffix>" mod (e.g. `adds 5 to 12 physical damage`).
+/// Parses "adds N to M <suffix>" → (N, M) (suffix is a damage suffix with no leading
+/// space, e.g. `physical damage`). Returns `None` for any other form.
 pub fn parse_adds_with_suffix(clean: &str, suffix: &str) -> Option<(f64, f64)> {
-    let clean = clean.trim();
-    if !clean.starts_with("adds ") || !clean.ends_with(suffix) {
-        return None;
-    }
-    let inner = clean[5..clean.len() - suffix.len()].trim();
-    let (min_s, max_s) = inner.split_once(" to ")?;
-    let min: f64 = min_s.parse().ok()?;
-    let max: f64 = max_s.parse().ok()?;
-    Some((min, max))
+    let body = clean
+        .strip_prefix("adds ")?
+        .strip_suffix(suffix)?
+        .strip_suffix(' ')?;
+    let (lo, hi) = body.split_once(" to ")?;
+    Some((lo.trim().parse().ok()?, hi.trim().parse().ok()?))
+}
+
+/// Whether a mod text is a weapon-local mod (matches the `local_mods.weapon` rules).
+pub fn is_weapon_local_mod(
+    text: &str,
+    rules: &pobr_data::catalog::local_mods::WeaponLocalModsDef,
+) -> bool {
+    let clean = clean_item_text(text);
+    rules
+        .increased_suffixes
+        .iter()
+        .any(|s| clean.ends_with(s.as_str()))
+        || rules
+            .adds_damage_suffixes
+            .iter()
+            .any(|s| parse_adds_with_suffix(&clean, s).is_some())
 }
 
 /// Parses a local defence increased% mod (e.g. `+12% increased Armour` / `+8% increased Evasion and Energy Shield`).
@@ -146,4 +203,30 @@ pub fn parse_local_defence_flat(clean: &str) -> Option<[f64; 3]> {
         }
     }
     matched.then_some(out)
+}
+
+/// Sum of local defence increased% on the item.
+pub fn item_local_defence_inc(item: &Item) -> [f64; 3] {
+    let mut out = [0.0; 3];
+    for t in weapon_mod_texts(item) {
+        if let Some(inc) = parse_local_defence_inc(&clean_item_text(t)) {
+            out[0] += inc[0];
+            out[1] += inc[1];
+            out[2] += inc[2];
+        }
+    }
+    out
+}
+
+/// Sum of local defence flat on the item.
+pub fn item_local_defence_flat(item: &Item) -> [f64; 3] {
+    let mut out = [0.0; 3];
+    for t in weapon_mod_texts(item) {
+        if let Some(flat) = parse_local_defence_flat(&clean_item_text(t)) {
+            out[0] += flat[0];
+            out[1] += flat[1];
+            out[2] += flat[2];
+        }
+    }
+    out
 }

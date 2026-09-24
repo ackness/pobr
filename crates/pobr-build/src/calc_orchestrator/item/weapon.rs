@@ -327,24 +327,12 @@ pub(crate) fn clean_item_text(text: &str) -> String {
 
 /// Sum of "N% increased Physical Damage" (local mod) on the weapon.
 pub(crate) fn weapon_local_phys_inc(item: &Item) -> f64 {
-    weapon_mod_texts(item)
-        .filter_map(|t| {
-            clean_item_text(t)
-                .strip_suffix("% increased physical damage")
-                .and_then(|n| n.trim().parse::<f64>().ok())
-        })
-        .sum()
+    pobr_core::skill_env::weapon_local_phys_inc(item)
 }
 
 /// Sum of "N% increased Attack Speed" (local mod, no condition suffix) on the weapon.
 pub(crate) fn weapon_local_attack_speed(item: &Item) -> f64 {
-    weapon_mod_texts(item)
-        .filter_map(|t| {
-            clean_item_text(t)
-                .strip_suffix("% increased attack speed")
-                .and_then(|n| n.trim().parse::<f64>().ok())
-        })
-        .sum()
+    pobr_core::skill_env::weapon_local_attack_speed(item)
 }
 
 /// Bare weapon critical chance is local (Item.lua `calcLocal("CritChance")`).
@@ -372,20 +360,7 @@ pub(crate) fn parse_weapon_local_crit(text: &str) -> Option<(ModType, f64)> {
 
 /// Range sum of "Adds N to M Physical Damage" (local mod) on the weapon.
 pub(crate) fn weapon_local_phys_adds(item: &Item) -> (f64, f64) {
-    let mut min_sum = 0.0;
-    let mut max_sum = 0.0;
-    for t in weapon_mod_texts(item) {
-        if let Some((lo, hi)) = parse_adds_physical(&clean_item_text(t)) {
-            min_sum += lo;
-            max_sum += hi;
-        }
-    }
-    (min_sum, max_sum)
-}
-
-/// Parses "adds N to M physical damage" → (N, M). Returns `None` for any other form.
-pub(crate) fn parse_adds_physical(clean: &str) -> Option<(f64, f64)> {
-    pobr_core::skill_env::parse_adds_physical(clean)
+    pobr_core::skill_env::weapon_local_phys_adds(item)
 }
 
 /// Parses "adds N to M <suffix>" → (N, M) (suffix is a damage suffix with no leading
