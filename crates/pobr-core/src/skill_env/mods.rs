@@ -213,3 +213,132 @@ pub fn is_attribute_node(def: &pobr_data::catalog::PassiveNodeDef) -> bool {
         lower.contains(" to any ") && lower.contains("attribute")
     })
 }
+
+/// The parsed result of a GemProperty mod (matching vendor's
+/// `mod("GemProperty", "LIST", { keyword, key, value, gemRequirements })`,
+/// ModParser.lua:3468-3497).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GemPropertyBonus {
+    pub value: u32,
+    pub kind: GemPropertyKind,
+    /// The category (lowercase; empty = a bare "all Skills" matches unconditionally).
+    pub category: String,
+    /// Attribute requirement filter (matching vendor's
+    /// `gemRequirements[reqStr|reqDex|reqInt] ≥ 1`, the `with a <Attr> requirement`
+    /// suffix): Some("str"|"dex"|"int").
+    pub attr_req: Option<&'static str>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GemPropertyKind {
+    Level,
+    Quality,
+}
+
+/// Strips PoB item mod `{tag}` markers and `[a|b]` variant brackets, returning the
+/// resolved text (matching vendor's `modLib.parseMod` pre-processing).
+pub fn clean_grant_text(text: &str) -> String {
+    let no_braces = crate::skill_env::clean_item_text(text);
+    if !no_braces.contains('[') {
+        return no_braces;
+    }
+    let mut out = String::with_capacity(no_braces.len());
+    let mut chars = no_braces.chars();
+    while let Some(c) = chars.next() {
+        if c == '[' {
+            let mut inner = String::new();
+            for ic in chars.by_ref() {
+                if ic == ']' {
+                    break;
+                }
+                inner.push(ic);
+            }
+            out.push_str(inner.rsplit('|').next().unwrap_or(&inner));
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// Parses a `+N to [Level|Quality] of all <category> Skills [with a <Attr> requirement]`
+/// mod into a [`GemPropertyBonus`]. Returns `None` for any other form.
+pub fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
+    let clean = clean_grant_text(text);
+    let body = clean.strip_prefix('+')?;
+    let (num, rest) = body.split_once(" to ")?;
+    let num = num.strip_suffix('%').unwrap_or(num);
+    let value: u32 = num.trim().parse().ok()?;
+    let (kind, rest) = if let Some(r) = rest.strip_prefix("level of all") {
+        (GemPropertyKind::Level, r)
+    } else {
+        (
+            GemPropertyKind::Quality,
+            rest.strip_prefix("quality of all")?,
+        )
+    };
+    let mut rest = rest.trim();
+    let mut attr_req = None;
+    if let Some((head, req)) = rest.split_once(" with a ") {
+        attr_req = Some(match req.trim() {
+            "strength requirement" => "str",
+            "dexterity requirement" => "dex",
+            "intelligence requirement" => "int",
+            _ => return None,
+        });
+        rest = head.trim_end();
+    }
+    let category = rest.strip_suffix("skills").unwrap_or(rest).trim();
+    Some(GemPropertyBonus {
+        value,
+        kind,
+        category: category.to_string(),
+        attr_req,
+    })
+}
+
+/// Compatibility shim for the old call surface: `+N to Level of all <category> Skills`
+/// (no attribute-requirement suffix) → `(N, category)`. Delegates to
+/// [`parse_gem_property_bonus`].
+pub fn parse_gem_level_bonus(text: &str) -> Option<(u32, String)> {
+    let bonus = parse_gem_property_bonus(text)?;
+    (bonus.kind == GemPropertyKind::Level && bonus.attr_req.is_none())
+        .then_some((bonus.value, bonus.category))
+}
+
+/// Whether a gem-level-bonus's `<category>` applies to the main skill. Matches PoB2
+/// semantics (`ModParser.lua:3480-3496`'s GemProperty construction +
+/// `CalcSetup.lua:404-435`'s `applyGemMods` + `CalcTools.lua:113-126`'s `gemIsType`):
+/// - a bare "all skills"/"skill gems" matches unconditionally;
+/// - the whole string = a skill name (PoB2's `gemIdLookup` match branch) → matches by
+///   the main skill's name (derived from the granted effect id);
+/// - otherwise, split on whitespace (PoB2's multi-word category = `keywordList`):
+///   **every** token must hit the main skill's `skill_types`.
+pub fn gem_level_category_matches(category: &str, skill_types: &[String], skill_id: &str) -> bool {
+    if category.is_empty() || category == "skill gems" {
+        return true;
+    }
+    if category == skill_name_from_id(skill_id) {
+        return true;
+    }
+    category
+        .split_whitespace()
+        .all(|tok| skill_types.iter().any(|t| t.eq_ignore_ascii_case(tok)))
+}
+
+/// Derives a skill's display name from its granted effect id (lowercase, CamelCase
+/// split): strips the `Player` suffix, then inserts a space at each uppercase boundary
+/// (`ShieldWallPlayer` → `shield wall`). Matches PoB2's exported skillId naming
+/// convention (`Export/Scripts/skills.lua`: id = display name with spaces stripped +
+/// an actor suffix), used by `gem_level_category_matches`'s skill-name category branch.
+pub fn skill_name_from_id(skill_id: &str) -> String {
+    let stem = skill_id.strip_suffix("Player").unwrap_or(skill_id);
+    let mut out = String::with_capacity(stem.len() + 4);
+    for (i, ch) in stem.chars().enumerate() {
+        if ch.is_ascii_uppercase() && i > 0 {
+            out.push(' ');
+        }
+        out.push(ch.to_ascii_lowercase());
+    }
+    out
+}

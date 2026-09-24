@@ -3,7 +3,6 @@
 
 use super::super::collect::granted_passive_defs;
 use super::super::item::mirror::kalandra_reflected_ring;
-use super::super::item::weapon::clean_item_text;
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
 
@@ -544,27 +543,7 @@ pub(crate) fn additional_ring_slot_allocated(build: &Build, data: &BuildData) ->
 /// modDB `Sum("INC")`, CalcPerform.lua:1326). Text is stripped of `{tag}`/`[A|B]`
 /// markers first, then compared lowercase.
 pub(crate) fn clean_grant_text(text: &str) -> String {
-    let no_braces = clean_item_text(text);
-    if !no_braces.contains('[') {
-        return no_braces;
-    }
-    let mut out = String::with_capacity(no_braces.len());
-    let mut chars = no_braces.chars();
-    while let Some(c) = chars.next() {
-        if c == '[' {
-            let mut inner = String::new();
-            for ic in chars.by_ref() {
-                if ic == ']' {
-                    break;
-                }
-                inner.push(ic);
-            }
-            out.push_str(inner.rsplit('|').next().unwrap_or(&inner));
-        } else {
-            out.push(c);
-        }
-    }
-    out
+    pobr_core::skill_env::clean_grant_text(text)
 }
 
 /// Total INC for small-passive effect (the "N% increased effect of Small Passive
@@ -616,61 +595,10 @@ pub(crate) fn small_passive_effect_inc(build: &Build, data: &BuildData) -> f64 {
 /// slot Kalandra's Touch is in).
 /// A GemProperty mod's attribute dimension (matching vendor `ModParser.lua:3468`'s
 /// `(%a+)` property capture: `level` / `quality`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum GemPropertyKind {
-    Level,
-    Quality,
-}
-
-/// The parsed result of a GemProperty mod (matching vendor's
-/// `mod("GemProperty", "LIST", { keyword, key, value, gemRequirements })`,
-/// ModParser.lua:3468-3497).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct GemPropertyBonus {
-    pub(crate) value: u32,
-    pub(crate) kind: GemPropertyKind,
-    /// The category (lowercase; empty = a bare "all Skills" matches unconditionally).
-    pub(crate) category: String,
-    /// Attribute requirement filter (matching vendor's
-    /// `gemRequirements[reqStr|reqDex|reqInt] ≥ 1`, the `with a <Attr> requirement`
-    /// suffix): Some("str"|"dex"|"int").
-    pub(crate) attr_req: Option<&'static str>,
-}
+pub(crate) use pobr_core::skill_env::{GemPropertyBonus, GemPropertyKind};
 
 pub(crate) fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
-    let clean = clean_grant_text(text);
-    let body = clean.strip_prefix('+')?;
-    let (num, rest) = body.split_once(" to ")?;
-    let num = num.strip_suffix('%').unwrap_or(num);
-    let value: u32 = num.trim().parse().ok()?;
-    let (kind, rest) = if let Some(r) = rest.strip_prefix("level of all") {
-        (GemPropertyKind::Level, r)
-    } else {
-        (
-            GemPropertyKind::Quality,
-            rest.strip_prefix("quality of all")?,
-        )
-    };
-    let mut rest = rest.trim();
-    // Attribute requirement suffix (vendor's gemRequirements construction branch).
-    let mut attr_req = None;
-    if let Some((head, req)) = rest.split_once(" with a ") {
-        attr_req = Some(match req.trim() {
-            "strength requirement" => "str",
-            "dexterity requirement" => "dex",
-            "intelligence requirement" => "int",
-            _ => return None,
-        });
-        rest = head.trim_end();
-    }
-    // The `... skills` trailing word (a bare "all skills" leaves the category empty).
-    let category = rest.strip_suffix("skills").unwrap_or(rest).trim();
-    Some(GemPropertyBonus {
-        value,
-        kind,
-        category: category.to_string(),
-        attr_req,
-    })
+    pobr_core::skill_env::parse_gem_property_bonus(text)
 }
 
 /// Compatibility shim for the old call surface: `+N to Level of all <category> Skills`
@@ -678,9 +606,7 @@ pub(crate) fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
 /// [`parse_gem_property_bonus`].
 #[cfg(test)]
 pub(crate) fn parse_gem_level_bonus(text: &str) -> Option<(u32, String)> {
-    let bonus = parse_gem_property_bonus(text)?;
-    (bonus.kind == GemPropertyKind::Level && bonus.attr_req.is_none())
-        .then_some((bonus.value, bonus.category))
+    pobr_core::skill_env::parse_gem_level_bonus(text)
 }
 
 /// Whether a gem-level-bonus's `<category>` applies to the main skill. Matches PoB2
@@ -700,15 +626,7 @@ pub(crate) fn gem_level_category_matches(
     skill_types: &[String],
     skill_id: &str,
 ) -> bool {
-    if category.is_empty() || category == "skill gems" {
-        return true;
-    }
-    if category == skill_name_from_id(skill_id) {
-        return true;
-    }
-    category
-        .split_whitespace()
-        .all(|tok| skill_types.iter().any(|t| t.eq_ignore_ascii_case(tok)))
+    pobr_core::skill_env::gem_level_category_matches(category, skill_types, skill_id)
 }
 
 /// Derives a skill's display name from its granted effect id (lowercase, CamelCase
@@ -718,15 +636,7 @@ pub(crate) fn gem_level_category_matches(
 /// an actor suffix), used by `gem_level_category_matches`'s skill-name category branch
 /// (equivalent to `gemIdLookup`).
 pub(crate) fn skill_name_from_id(skill_id: &str) -> String {
-    let stem = skill_id.strip_suffix("Player").unwrap_or(skill_id);
-    let mut out = String::with_capacity(stem.len() + 4);
-    for (i, ch) in stem.chars().enumerate() {
-        if ch.is_ascii_uppercase() && i > 0 {
-            out.push(' ');
-        }
-        out.push(ch.to_ascii_lowercase());
-    }
-    out
+    pobr_core::skill_env::skill_name_from_id(skill_id)
 }
 
 #[cfg(test)]
