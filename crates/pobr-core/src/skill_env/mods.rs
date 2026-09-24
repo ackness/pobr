@@ -342,3 +342,23 @@ pub fn skill_name_from_id(skill_id: &str) -> String {
     }
     out
 }
+
+/// Builds a trigger `BASE` mod (SkillGem attribution, `trigger.<stat>` source id).
+pub fn mk_trigger_mod(stat: &str, value: f64, label: &str) -> Modifier {
+    let origin = ModifierSource::new(SourceId::new(
+        SourceKind::SkillGem,
+        format!("trigger.{stat}"),
+    ))
+    .with_raw_text(label);
+    Modifier::number(stat, ModType::Base, value).with_origin(origin)
+}
+
+/// Builds a trigger `FLAG` mod (SkillGem attribution, `trigger.<name>` source id).
+pub fn mk_trigger_flag(name: &str, label: &str) -> Modifier {
+    let origin = ModifierSource::new(SourceId::new(
+        SourceKind::SkillGem,
+        format!("trigger.{name}"),
+    ))
+    .with_raw_text(label);
+    Modifier::flag(name).with_origin(origin)
+}

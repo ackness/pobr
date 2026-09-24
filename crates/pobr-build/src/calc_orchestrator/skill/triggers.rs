@@ -2,8 +2,6 @@
 
 use pobr_core::Modifier;
 use pobr_data::item::EquipmentSlot;
-use pobr_data::modifier::ModType;
-use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use super::super::DataOrchestratorOptions;
 use super::super::calculate_with_context;
@@ -136,22 +134,12 @@ pub(crate) fn trigger_modifiers(
 
 /// Builds a trigger BASE mod (SkillGem attribution, id prefix `trigger.`).
 pub(crate) fn mk_trigger_mod(stat: &str, value: f64, label: &str) -> Modifier {
-    let origin = ModifierSource::new(SourceId::new(
-        SourceKind::SkillGem,
-        format!("trigger.{stat}"),
-    ))
-    .with_raw_text(label);
-    Modifier::number(stat, ModType::Base, value).with_origin(origin)
+    pobr_core::skill_env::mk_trigger_mod(stat, value, label)
 }
 
 /// Builds a trigger FLAG mod (SkillGem attribution).
 pub(crate) fn mk_trigger_flag(name: &str, label: &str) -> Modifier {
-    let origin = ModifierSource::new(SourceId::new(
-        SourceKind::SkillGem,
-        format!("trigger.{name}"),
-    ))
-    .with_raw_text(label);
-    Modifier::flag(name).with_origin(origin)
+    pobr_core::skill_env::mk_trigger_flag(name, label)
 }
 
 /// Source statistics injection (contract 4's transport surface): rate is always
