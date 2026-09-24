@@ -501,3 +501,75 @@ pub fn crossbow_reload_modifiers(
     }
     mods
 }
+
+/// Whether a granted effect is a damaging skill (attack or spell, not Meta).
+pub fn is_damage_skill(effect: &pobr_data::catalog::GrantedEffectDef) -> bool {
+    (effect.is_attack() || effect.is_spell()) && !effect.skill_types.iter().any(|t| t == "Meta")
+}
+
+/// Selects the main skill `(skill_id, gem_level, stat_set_index)` within a single gem
+/// group (matching PoB's `socketGroupSkillList` + `mainActiveSkill` semantics):
+///
+/// 1. Collects **non-support** gems (order preserved, includes meta shells);
+/// 2. Selects the Nth one using `main_active_skill` (1-based, defaults to 1, clamped);
+/// 3. If the selected entry is a damaging skill → uses it directly; otherwise (a meta
+///    shell / non-damaging) pierces through to the group's first damaging skill;
+/// 4. When every gem is non-damaging, expands via `gem_effects`'s additional granted
+///    effects (the meta/composite gem foreign key) — takes the first additional
+///    damaging effect (e.g. ShockwaveTotem → ShockwaveTotemQuakePlayer);
+/// 5. Fallback: when `gems` is empty (constructed by the builder's `with_active_skill`),
+///    uses `active_skill_id` (the builder path has no statSetIndex concept).
+///
+/// Returns `None` when the group has no damaging skill candidate at all.
+pub fn pick_group_main_skill<'a>(
+    gems: &'a [GemInput],
+    effects: &'a (dyn crate::skill_env::EffectLookup + 'a),
+    main_active_skill: Option<usize>,
+    active_skill_id: Option<&'a str>,
+    active_gem_level: Option<u32>,
+) -> Option<(&'a str, u32, Option<u32>)> {
+    // The group's non-support gem list (meta shells count).
+    let actives: Vec<&GemInput> = gems
+        .iter()
+        .filter(|g| {
+            effects
+                .effect(&g.skill_id)
+                .map(|e| !e.is_support)
+                .unwrap_or(true)
+        })
+        .collect();
+
+    if !actives.is_empty() {
+        let idx = main_active_skill
+            .unwrap_or(1)
+            .saturating_sub(1)
+            .min(actives.len() - 1);
+        let chosen = actives[idx];
+
+        if effects
+            .effect(&chosen.skill_id)
+            .is_some_and(is_damage_skill)
+        {
+            return Some((&chosen.skill_id, chosen.gem_level, chosen.stat_set_index));
+        }
+        if let Some(dmg) = actives
+            .iter()
+            .find(|g| effects.effect(&g.skill_id).is_some_and(is_damage_skill))
+        {
+            return Some((&dmg.skill_id, dmg.gem_level, dmg.stat_set_index));
+        }
+        // T5.6: every gem is non-damaging → expand additional granted effects.
+        if let Some(expanded) = actives.iter().find_map(|g| {
+            effects
+                .additional_effects(&g.skill_id)
+                .iter()
+                .find(|eid| effects.effect(eid).is_some_and(is_damage_skill))
+                .map(|eid| (eid.as_str(), g.gem_level, g.stat_set_index))
+        }) {
+            return Some(expanded);
+        }
+        return None;
+    }
+
+    active_skill_id.map(|id| (id, active_gem_level.unwrap_or(1), None))
+}

@@ -57,53 +57,37 @@ pub(crate) fn pick_group_main_skill<'b>(
     build_data: &'b BuildData,
     group: &'b SocketGroup,
 ) -> Option<(&'b str, u32, Option<u32>)> {
-    let actives = group_active_gems(build_data, group);
-
-    if !actives.is_empty() {
-        let chosen = group_chosen_active(group, &actives);
-
-        // The designated entry is itself a damaging skill → used directly; otherwise (a meta shell etc.) pierces through to the group's first damaging skill.
-        if is_damage_skill(build_data, &chosen.skill_id) {
-            return Some((
-                chosen.skill_id.as_str(),
-                chosen.gem_level,
-                chosen.stat_set_index,
-            ));
-        }
-        if let Some(dmg) = actives
-            .iter()
-            .find(|g| is_damage_skill(build_data, &g.skill_id))
-        {
-            return Some((dmg.skill_id.as_str(), dmg.gem_level, dmg.stat_set_index));
-        }
-        // T5.6: every gem in the group is itself non-damaging → expand the additional
-        // granted effects (the meta/composite gem foreign key,
-        // overlay/gem_effects.json). Level/form follow the host gem (PoB2's additional
-        // effects share the host's gemInstance).
-        if let Some(expanded) = actives.iter().find_map(|g| {
-            build_data
-                .gem_effects
-                .get(&g.skill_id)
-                .and_then(|link| {
-                    link.additional_granted_effect_ids
-                        .iter()
-                        .find(|eid| is_damage_skill(build_data, eid))
-                })
-                .map(|eid| (eid.as_str(), g.gem_level, g.stat_set_index))
-        }) {
-            return Some(expanded);
-        }
-        // gem_skills is nonempty but no damaging skill candidate → this group has no main skill (a pure meta/aura group).
-        return None;
+    let gems: Vec<pobr_core::skill_env::GemInput> = group
+        .gem_skills
+        .iter()
+        .map(|g| pobr_core::skill_env::GemInput {
+            skill_id: g.skill_id.clone(),
+            gem_level: g.gem_level,
+            quality: g.quality,
+            stat_set_index: g.stat_set_index,
+        })
+        .collect();
+    let (skill_id, level, set_index) = pobr_core::skill_env::pick_group_main_skill(
+        &gems,
+        build_data,
+        group.main_active_skill,
+        group.active_skill_id.as_deref(),
+        group.active_gem_level,
+    )?;
+    // Map the returned skill_id back to a reference into group.gem_skills or
+    // build_data's additional effects (the pobr-core function returns &str tied to
+    // the local `gems` Vec, so we re-resolve it here).
+    if let Some(g) = group.gem_skills.iter().find(|g| g.skill_id == skill_id) {
+        return Some((g.skill_id.as_str(), level, set_index));
     }
-
-    // Fallback: when there are no gem_skills (constructed by the builder/test path's
-    // with_active_skill), uses active_skill_id (the builder path has no statSetIndex
-    // concept → defaults to the primary set).
-    group
-        .active_skill_id
-        .as_deref()
-        .map(|id| (id, group.active_gem_level.unwrap_or(1), None))
+    // Expanded additional effect: the id isn't in gem_skills, so we return a
+    // reference into the gem_effects table (which lives as long as build_data).
+    build_data
+        .gem_effects
+        .values()
+        .flat_map(|l| l.additional_granted_effect_ids.iter())
+        .find(|eid| eid.as_str() == skill_id)
+        .map(|eid| (eid.as_str(), level, set_index))
 }
 
 /// The group's non-support gem list (meta shells count), matching PoB's
