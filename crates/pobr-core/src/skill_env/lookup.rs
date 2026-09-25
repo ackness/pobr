@@ -154,6 +154,11 @@ pub struct EnabledGroup<'a> {
     pub from_gem: bool,
     /// The group's socket slot label (e.g. `"weapon1"`; `None` = slotless source).
     pub slot: Option<&'a str>,
+    /// The builder-path fallback active skill (PoB `<Gem skillId>`) — only consulted
+    /// when `gems` is empty (a `with_active_skill`-constructed group).
+    pub active_skill_id: Option<&'a str>,
+    /// The fallback active gem level paired with `active_skill_id`.
+    pub active_gem_level: u32,
 }
 
 /// Weapon base stats lookup (the `base_items` + `weapon_types` domains).

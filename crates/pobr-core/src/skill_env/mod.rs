@@ -8,6 +8,7 @@
 pub mod buff_stat_map;
 mod buffs;
 mod item_text;
+mod minions;
 mod lookup;
 mod mods;
 mod resolve;
@@ -53,6 +54,7 @@ pub use weapon::{
     weapon_item_contribution,
 };
 pub use buffs::{
-    buff_skill_name, herald_skill_names, self_buff_offensive_modifiers,
-    spirit_reservation_modifiers,
+    ReservationDb, ReservationLookup, buff_skill_name, herald_skill_names,
+    self_buff_offensive_modifiers, spirit_reservation_modifiers,
 };
+pub use minions::{MinionEnv, MinionSession, spawn_minions};

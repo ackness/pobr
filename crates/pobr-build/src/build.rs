@@ -393,6 +393,8 @@ impl pobr_core::skill_env::SocketGroupView for Build {
                 gems: &gems,
                 from_gem: group.from_gem(),
                 slot: group.slot.as_deref(),
+                active_skill_id: group.active_skill_id.as_deref(),
+                active_gem_level: group.active_gem_level.unwrap_or(1),
             });
         }
     }
