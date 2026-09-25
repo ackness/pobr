@@ -573,3 +573,50 @@ pub fn pick_group_main_skill<'a>(
 
     active_skill_id.map(|id| (id, active_gem_level.unwrap_or(1), None))
 }
+
+/// Data channel: the statmap data engine. Maps a stat list through
+/// [`stat_map_engine::map_stat`] into `Modifier`s with `SourceId` attribution.
+///
+/// `SkillData` items have no consumer yet and are ignored (don't participate in the
+/// calculation, can't cause miscalculation); `Unsupported` / `Unknown` are silently
+/// skipped (classification observation goes through Compare mode).
+///
+/// Returns empty when `catalog` is `None` (old data pack — the data channel misses
+/// entirely, matching `mapped_stat_modifiers`'s semantics).
+pub fn data_mapped_stat_modifiers(
+    stats: &[pobr_data::catalog::SkillDamageStat],
+    source_kind: SourceKind,
+    label_prefix: &str,
+    effect_id: &str,
+    set_key: Option<&str>,
+    catalog: Option<&crate::rules::stat_map_engine::StatMapCatalog>,
+) -> Vec<Modifier> {
+    let Some(catalog) = catalog else {
+        return Vec::new();
+    };
+    let mut mods = Vec::new();
+    for ds in stats {
+        if ds.value == 0.0 {
+            continue;
+        }
+        let crate::rules::stat_map_engine::MappedOutcome::Mapped(items) =
+            crate::rules::stat_map_engine::map_stat(
+                catalog, effect_id, set_key, &ds.stat, ds.value,
+            )
+        else {
+            continue;
+        };
+        for item in items {
+            let crate::rules::stat_map_engine::MappedItem::Modifier(modifier) = item else {
+                continue;
+            };
+            let origin = ModifierSource::new(SourceId::new(
+                source_kind.clone(),
+                format!("{label_prefix}.{}", ds.stat),
+            ))
+            .with_raw_text(format!("{label_prefix} {} ({})", ds.stat, ds.value));
+            mods.push(modifier.with_origin(origin));
+        }
+    }
+    mods
+}

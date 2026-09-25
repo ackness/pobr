@@ -81,32 +81,14 @@ pub(crate) fn data_mapped_stat_modifiers(
     set_key: Option<&str>,
     catalog: Option<&StatMapCatalog>,
 ) -> Vec<Modifier> {
-    let Some(catalog) = catalog else {
-        return Vec::new(); // No catalog injected: the data channel misses entirely (the blueprint's Data mode always carries a catalog).
-    };
-    let mut mods = Vec::new();
-    for ds in stats {
-        if ds.value == 0.0 {
-            continue; // Skip zero-value stats (no information, matching historical semantics).
-        }
-        let MappedOutcome::Mapped(items) =
-            stat_map_engine::map_stat(catalog, effect_id, set_key, &ds.stat, ds.value)
-        else {
-            continue;
-        };
-        for item in items {
-            let MappedItem::Modifier(modifier) = item else {
-                continue; // SkillData: no consumer in the first batch.
-            };
-            let origin = ModifierSource::new(SourceId::new(
-                source_kind.clone(),
-                format!("{label_prefix}.{}", ds.stat),
-            ))
-            .with_raw_text(format!("{label_prefix} {} ({})", ds.stat, ds.value));
-            mods.push(modifier.with_origin(origin));
-        }
-    }
-    mods
+    pobr_core::skill_env::data_mapped_stat_modifiers(
+        stats,
+        source_kind,
+        label_prefix,
+        effect_id,
+        set_key,
+        catalog,
+    )
 }
 
 /// The curse-effect mod fetch point: maps every stat in a curse skill's statset,
