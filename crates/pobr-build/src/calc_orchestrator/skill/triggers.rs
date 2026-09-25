@@ -52,23 +52,8 @@ pub(crate) fn recognize_trigger_config(
     group: &SocketGroup,
     main_skill_id: &str,
 ) -> bool {
-    let gems: Vec<pobr_core::skill_env::GemInput> = group
-        .gem_skills
-        .iter()
-        .map(|g| pobr_core::skill_env::GemInput {
-            skill_id: g.skill_id.clone(),
-            gem_level: g.gem_level,
-            quality: g.quality,
-            stat_set_index: g.stat_set_index,
-        })
-        .collect();
-    let eg = pobr_core::skill_env::EnabledGroup {
-        gems: &gems,
-        from_gem: group.from_gem(),
-        slot: group.slot.as_deref(),
-        active_skill_id: group.active_skill_id.as_deref(),
-        active_gem_level: group.active_gem_level.unwrap_or(1),
-    };
+    let gems = group.gem_inputs();
+    let eg = group.enabled_group(&gems);
     pobr_core::skill_env::recognize_trigger_config(data, &eg, main_skill_id).is_some()
 }
 
@@ -184,23 +169,8 @@ pub(crate) fn trigger_modifiers(
     let group_index = build
         .enabled_socket_groups()
         .position(|g| std::ptr::eq(g, group));
-    let gems: Vec<pobr_core::skill_env::GemInput> = group
-        .gem_skills
-        .iter()
-        .map(|g| pobr_core::skill_env::GemInput {
-            skill_id: g.skill_id.clone(),
-            gem_level: g.gem_level,
-            quality: g.quality,
-            stat_set_index: g.stat_set_index,
-        })
-        .collect();
-    let eg = pobr_core::skill_env::EnabledGroup {
-        gems: &gems,
-        from_gem: group.from_gem(),
-        slot: group.slot.as_deref(),
-        active_skill_id: group.active_skill_id.as_deref(),
-        active_gem_level: group.active_gem_level.unwrap_or(1),
-    };
+    let gems = group.gem_inputs();
+    let eg = group.enabled_group(&gems);
     let bonuses = super::resolve::gem_property_bonuses(build, data);
     let build_cfg = build.config.to_calc_config();
     let is_trigger_source = context.is_trigger_source;

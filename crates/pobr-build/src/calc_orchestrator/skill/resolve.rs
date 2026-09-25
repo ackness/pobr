@@ -40,16 +40,7 @@ pub(crate) fn pick_group_main_skill<'b>(
     build_data: &'b BuildData,
     group: &'b SocketGroup,
 ) -> Option<(&'b str, u32, Option<u32>)> {
-    let gems: Vec<pobr_core::skill_env::GemInput> = group
-        .gem_skills
-        .iter()
-        .map(|g| pobr_core::skill_env::GemInput {
-            skill_id: g.skill_id.clone(),
-            gem_level: g.gem_level,
-            quality: g.quality,
-            stat_set_index: g.stat_set_index,
-        })
-        .collect();
+    let gems = group.gem_inputs();
     let (skill_id, level, set_index) = pobr_core::skill_env::pick_group_main_skill(
         &gems,
         build_data,
@@ -292,16 +283,7 @@ pub(crate) fn support_granted_gem_levels(
         return 0;
     }
     let judgement = crate::support::judge_group_supports(group, data, skill_id, group.from_gem());
-    let gems: Vec<pobr_core::skill_env::GemInput> = group
-        .gem_skills
-        .iter()
-        .map(|g| pobr_core::skill_env::GemInput {
-            skill_id: g.skill_id.clone(),
-            gem_level: g.gem_level,
-            quality: g.quality,
-            stat_set_index: g.stat_set_index,
-        })
-        .collect();
+    let gems = group.gem_inputs();
     pobr_core::skill_env::support_granted_gem_levels(&judgement, &gems, data)
 }
 

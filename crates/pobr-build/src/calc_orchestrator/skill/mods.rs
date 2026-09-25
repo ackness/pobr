@@ -210,16 +210,7 @@ pub(crate) fn crossbow_reload_modifiers(
     group: &SocketGroup,
     skill_id: &str,
 ) -> Vec<Modifier> {
-    let gems: Vec<pobr_core::skill_env::GemInput> = group
-        .gem_skills
-        .iter()
-        .map(|g| pobr_core::skill_env::GemInput {
-            skill_id: g.skill_id.clone(),
-            gem_level: g.gem_level,
-            quality: g.quality,
-            stat_set_index: g.stat_set_index,
-        })
-        .collect();
+    let gems = group.gem_inputs();
     pobr_core::skill_env::crossbow_reload_modifiers(data, data, build, data, &gems, skill_id)
 }
 
@@ -389,23 +380,8 @@ pub(crate) fn support_modifiers(
     data: &BuildData,
     active_skill_id: &str,
 ) -> Vec<Modifier> {
-    let gems: Vec<pobr_core::skill_env::GemInput> = group
-        .gem_skills
-        .iter()
-        .map(|g| pobr_core::skill_env::GemInput {
-            skill_id: g.skill_id.clone(),
-            gem_level: g.gem_level,
-            quality: g.quality,
-            stat_set_index: g.stat_set_index,
-        })
-        .collect();
-    let eg = pobr_core::skill_env::EnabledGroup {
-        gems: &gems,
-        from_gem: group.from_gem(),
-        slot: group.slot.as_deref(),
-        active_skill_id: group.active_skill_id.as_deref(),
-        active_gem_level: group.active_gem_level.unwrap_or(1),
-    };
+    let gems = group.gem_inputs();
+    let eg = group.enabled_group(&gems);
     let mut ctx = context.stat_map_ctx();
     pobr_core::skill_env::support_modifiers(&mut ctx, &eg, data, active_skill_id)
 }

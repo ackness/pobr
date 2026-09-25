@@ -99,6 +99,36 @@ impl SocketGroup {
         self.source.as_deref().is_none_or(str::is_empty)
     }
 
+    /// The `GemInput` view of this group's gem list (the engine-semantics adapter:
+    /// every pobr-build caller that feeds a group into `pobr_core::skill_env`
+    /// functions builds this list; collecting it into a Vec keeps the borrow local).
+    pub fn gem_inputs(&self) -> Vec<pobr_core::skill_env::GemInput> {
+        self.gem_skills
+            .iter()
+            .map(|g| pobr_core::skill_env::GemInput {
+                skill_id: g.skill_id.clone(),
+                gem_level: g.gem_level,
+                quality: g.quality,
+                stat_set_index: g.stat_set_index,
+            })
+            .collect()
+    }
+
+    /// The `EnabledGroup` view (pairs with [`Self::gem_inputs`]'s Vec; the borrow
+    /// lives as long as that Vec is alive).
+    pub fn enabled_group<'a>(
+        &'a self,
+        gems: &'a [pobr_core::skill_env::GemInput],
+    ) -> pobr_core::skill_env::EnabledGroup<'a> {
+        pobr_core::skill_env::EnabledGroup {
+            gems,
+            from_gem: self.from_gem(),
+            slot: self.slot.as_deref(),
+            active_skill_id: self.active_skill_id.as_deref(),
+            active_gem_level: self.active_gem_level.unwrap_or(1),
+        }
+    }
+
     pub fn new() -> Self {
         Self {
             weapon_set: None,
