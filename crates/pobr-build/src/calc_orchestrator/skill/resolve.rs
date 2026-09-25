@@ -2,7 +2,6 @@
 //! bonuses, and skill-name derivation.
 
 use super::super::collect::granted_passive_defs;
-use super::super::item::mirror::kalandra_reflected_ring;
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
 
@@ -266,7 +265,12 @@ pub(crate) fn resolve_skill_level_with_gem_bonus(
     if pobr_core::dbg_env!("POBR_DBG_GEMLVL").is_some() {
         eprintln!("[POBR_GEMLVL] {skill_id} base={base_level} bonus={bonus}");
     }
-    data.resolve_skill_level_with_set(skill_id, base_level.saturating_add(bonus), set_index)
+    pobr_core::skill_env::resolve_skill_level(
+        data,
+        skill_id,
+        base_level.saturating_add(bonus),
+        set_index,
+    )
 }
 
 /// The +N gem level granted by a **compatible** support gem in the same group (matching
@@ -296,36 +300,17 @@ pub(crate) fn support_granted_gem_levels(
         return 0;
     }
     let judgement = crate::support::judge_group_supports(group, data, skill_id, group.from_gem());
-    let mut total = 0u32;
-    for sup in &judgement.compatible {
-        let host = &group.gem_skills[sup.gem_index];
-        let stats = data.effect_stats(
-            &sup.effect_id,
-            host.gem_level,
-            host.quality,
-            crate::support::support_stat_set_index(sup, group),
-        );
-        for s in &stats.base {
-            let Some(rest) = s.stat.strip_prefix("supported_") else {
-                continue;
-            };
-            let Some(kind) = rest.strip_suffix("_skill_gem_level_+") else {
-                continue;
-            };
-            let type_name = {
-                let mut c = kind.chars();
-                c.next()
-                    .map(|f| f.to_ascii_uppercase().to_string() + c.as_str())
-                    .unwrap_or_default()
-            };
-            if (kind == "active" || judgement.final_skill_types.contains(&type_name))
-                && s.value > 0.0
-            {
-                total += s.value as u32;
-            }
-        }
-    }
-    total
+    let gems: Vec<pobr_core::skill_env::GemInput> = group
+        .gem_skills
+        .iter()
+        .map(|g| pobr_core::skill_env::GemInput {
+            skill_id: g.skill_id.clone(),
+            gem_level: g.gem_level,
+            quality: g.quality,
+            stat_set_index: g.stat_set_index,
+        })
+        .collect();
+    pobr_core::skill_env::support_granted_gem_levels(&judgement, &gems, data)
 }
 
 /// Scans every GemProperty mod source (equipment implicit/explicit/enchant + jewels +
@@ -334,59 +319,25 @@ pub(crate) fn support_granted_gem_levels(
 /// passive's `+2% to Quality of all Skills`, "Motoric Implants"'s `+2 to Level of all
 /// Skills with a Dexterity requirement`), returning the parsed results.
 pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPropertyBonus> {
-    let mut out = Vec::new();
-    let mut scan_text = |text: &str| {
-        if let Some(bonus) = parse_gem_property_bonus(text) {
-            out.push(bonus);
-        }
-    };
-    for (slot, item) in build.equipped_items() {
-        // Kalandra's Touch mirrors the opposite ring's mods (including "+N to Level of
-        // all <X> Skills"), matching the primary injection path's semantics (vendor
-        // CalcSetup.lua:1221-1243 copies the whole modList).
-        let item = kalandra_reflected_ring(build, slot, item).unwrap_or(item);
-        for text in item
-            .implicit_texts
-            .iter()
-            .chain(&item.modifier_texts)
-            .chain(&item.enchant_texts)
-        {
-            scan_text(text);
-        }
-    }
-    for jewel in &build.jewels {
-        for text in jewel
-            .implicit_texts
-            .iter()
-            .chain(&jewel.modifier_texts)
-            .chain(&jewel.enchant_texts)
-        {
-            scan_text(text);
-        }
-    }
-    for node_id in &build.tree.allocated_nodes {
-        if let Some(node) = data.passive_nodes.get(&node_id.0) {
-            for stat in &node.stats {
-                scan_text(stat);
-            }
-        }
-    }
-    // Anointed notables (`Allocates <name>` enchant → GrantedPassive, parsed by the same
-    // logic as append_granted_passives): vendor puts a granted node's modList into the
-    // global modDB the same as an allocated node (CalcSetup.lua:1322-1331), so the
-    // GemProperty scan must cover it equally (e.g. the gemling ascendancy's "Allocates
-    // Paragon"'s `+5% to Quality of all Skills`).
+    // Anointed notables (`Allocates <name>` enchant → GrantedPassive, parsed by the
+    // same logic as append_granted_passives): vendor puts a granted node's modList
+    // into the global modDB the same as an allocated node (CalcSetup.lua:1322-1331),
+    // so the GemProperty scan must cover it equally (e.g. the gemling ascendancy's
+    // "Allocates Paragon"'s `+5% to Quality of all Skills`).
     let allocated: std::collections::HashSet<u32> =
         build.tree.allocated_nodes.iter().map(|id| id.0).collect();
-    for def in granted_passive_defs(build, data) {
-        if allocated.contains(&def.skill) {
-            continue; // Already allocated, idempotent (matching the granting injection's semantics).
-        }
-        for stat in &def.stats {
-            scan_text(stat);
-        }
-    }
-    out
+    let granted_stats: Vec<String> = granted_passive_defs(build, data)
+        .iter()
+        .filter(|def| !allocated.contains(&def.skill))
+        .flat_map(|def| def.stats.iter().cloned())
+        .collect();
+    let allocated_ids: Vec<u32> = build.tree.allocated_nodes.iter().map(|id| id.0).collect();
+    pobr_core::skill_env::gem_property_bonuses(
+        build,
+        &allocated_ids,
+        &granted_stats,
+        data,
+    )
 }
 
 /// Whether the build carries the GemlingQuality flag (matching vendor
@@ -396,22 +347,15 @@ pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPr
 /// tree nodes + anointed notables (same source as [`gem_property_bonuses`]; vendor's
 /// flag only checks nodesModsList).
 pub(crate) fn gemling_quality_flag(build: &Build, data: &BuildData) -> bool {
-    const FLAG_TEXT: &str = "gem quality grants socketed skills an additional effect";
-    let matches = |stat: &str| {
-        clean_grant_text(stat)
-            .trim()
-            .eq_ignore_ascii_case(FLAG_TEXT)
-    };
-    for node_id in &build.tree.allocated_nodes {
-        if let Some(node) = data.passive_nodes.get(&node_id.0)
-            && node.stats.iter().any(|s| matches(s))
-        {
-            return true;
-        }
-    }
-    granted_passive_defs(build, data)
+    let allocated: std::collections::HashSet<u32> =
+        build.tree.allocated_nodes.iter().map(|id| id.0).collect();
+    let granted_stats: Vec<String> = granted_passive_defs(build, data)
         .iter()
-        .any(|def| def.stats.iter().any(|s| matches(s)))
+        .filter(|def| !allocated.contains(&def.skill))
+        .flat_map(|def| def.stats.iter().cloned())
+        .collect();
+    let allocated_ids: Vec<u32> = build.tree.allocated_nodes.iter().map(|id| id.0).collect();
+    pobr_core::skill_env::gemling_quality_flag(&allocated_ids, &granted_stats, data)
 }
 
 /// Whether a GemProperty mod applies to the gem of a given granted effect (matching
@@ -423,44 +367,14 @@ pub(crate) fn gem_property_applies(
     skill_types: &[String],
     skill_id: &str,
 ) -> bool {
-    if !gem_level_category_matches(&bonus.category, skill_types, skill_id) {
-        return false;
-    }
-    match bonus.attr_req {
-        None => true,
-        Some(attr) => {
-            // Granted effect → gem base → attribute requirement weight (matching vendor's `effect.gemData[reqX] > 0`).
-            let Some(gem_def) = data
-                .gem_effects
-                .get(skill_id)
-                .and_then(|ge| data.skill_gems.get(&ge.gem_id))
-            else {
-                return false;
-            };
-            match attr {
-                "str" => gem_def.str_pct > 0,
-                "dex" => gem_def.dex_pct > 0,
-                "int" => gem_def.int_pct > 0,
-                _ => false,
-            }
-        }
-    }
+    pobr_core::skill_env::gem_property_applies(bonus, data, skill_types, skill_id)
 }
 
 /// The sum of "`+N to Level of all <X> Skills`" level bonuses that apply to the main
 /// skill (the Level dimension of [`gem_property_bonuses`], filtered against the main skill and summed).
 pub(crate) fn additional_gem_levels(build: &Build, data: &BuildData, skill_id: &str) -> u32 {
-    let skill_types = data
-        .granted_effects
-        .get(skill_id)
-        .map(|e| e.skill_types.as_slice())
-        .unwrap_or(&[]);
-    gem_property_bonuses(build, data)
-        .iter()
-        .filter(|b| b.kind == GemPropertyKind::Level)
-        .filter(|b| gem_property_applies(b, data, skill_types, skill_id))
-        .map(|b| b.value)
-        .sum()
+    let bonuses = gem_property_bonuses(build, data);
+    pobr_core::skill_env::additional_gem_levels(&bonuses, data, skill_id)
 }
 
 /// Applies gem quality bonuses (matching vendor's `applyGemMods`, which stacks
@@ -593,25 +507,6 @@ pub(crate) fn parse_gem_level_bonus(text: &str) -> Option<(u32, String)> {
     pobr_core::skill_env::parse_gem_level_bonus(text)
 }
 
-/// Whether a gem-level-bonus's `<category>` applies to the main skill. Matches PoB2
-/// semantics (`ModParser.lua:3480-3496`'s GemProperty construction +
-/// `CalcSetup.lua:404-435`'s `applyGemMods` + `CalcTools.lua:113-126`'s `gemIsType`):
-/// - a bare "all skills"/"skill gems" matches unconditionally;
-/// - the whole string = a skill name (PoB2's `gemIdLookup` match branch, corresponding
-///   to `gemIsType`'s `type == gemData.name:lower()`, e.g. "Shield Wall Skills",
-///   "Ember Fusillade Skills") → matches by the main skill's name (derived from the granted effect id);
-/// - otherwise, split on whitespace (PoB2's multi-word category = `keywordList`):
-///   **every** token must hit the main skill's `skill_types` (`applyGemMods` runs
-///   `gemIsType` on each keywordList entry; a single miss means the whole entry doesn't
-///   apply — e.g. "Cold Spell" requires both `Cold` and `Spell`). A single-word category
-///   is just the degenerate case of this rule, same semantics.
-pub(crate) fn gem_level_category_matches(
-    category: &str,
-    skill_types: &[String],
-    skill_id: &str,
-) -> bool {
-    pobr_core::skill_env::gem_level_category_matches(category, skill_types, skill_id)
-}
 
 /// Derives a skill's display name from its granted effect id (lowercase, CamelCase
 /// split): strips the `Player` suffix, then inserts a space at each uppercase boundary
@@ -675,9 +570,10 @@ mod kalandra_tests {
 #[cfg(test)]
 mod gem_level_tests {
     use super::{
-        GemPropertyBonus, GemPropertyKind, gem_level_category_matches, parse_gem_level_bonus,
-        parse_gem_property_bonus, skill_name_from_id,
+        GemPropertyBonus, GemPropertyKind, parse_gem_level_bonus, parse_gem_property_bonus,
+        skill_name_from_id,
     };
+    use pobr_core::skill_env::gem_level_category_matches;
 
     fn types(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| s.to_string()).collect()

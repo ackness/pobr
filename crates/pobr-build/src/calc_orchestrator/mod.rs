@@ -52,7 +52,7 @@ use crate::build_data::BuildData;
 use crate::error::BuildError;
 
 mod granted_skills;
-mod item;
+pub(crate) mod item;
 mod skill;
 use granted_skills::*;
 pub use skill::resolve::resolve_main_skill_selection;

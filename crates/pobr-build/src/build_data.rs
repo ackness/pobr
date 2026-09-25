@@ -40,103 +40,21 @@ pub struct ClassBaseAttributes {
 }
 
 /// Calc-relevant parameters resolved for an active skill at a given level (all time
-/// units are seconds).
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct ResolvedSkillLevel {
-    /// Use time (seconds): attack time for attack skills, otherwise cast time. `None` =
-    /// determined by weapon/default.
-    pub use_time_s: Option<f64>,
-    /// Cooldown (seconds). `None` = no cooldown.
-    pub cooldown_s: Option<f64>,
-    /// Mana cost (resource = `Mana`). `None` = no mana cost (may still cost Life/ES/etc, see `costs`).
-    pub mana_cost: Option<f64>,
-    /// The skill's resolved **base damage stat** at this level (e.g.
-    /// `spell_minimum_base_fire_damage` → value). Mapped by the calc side into
-    /// `<Type>DamageMin/Max` BASE mod injection. Empty = no stat-set damage data.
-    pub base_damage: Vec<SkillDamageStat>,
-    /// All resource costs (resource name resolved via `CostTypes`, amount already
-    /// divided by the divisor). Covers Mana/Life/ES/Rage/Ward etc. and per-second costs.
-    /// Empty = no CostTypes data or no cost.
-    pub costs: Vec<ResolvedCost>,
-    /// Skill damage multiplier (PoB `baseMultiplier`; scales an attack skill's
-    /// weapon + added damage). `1.0` = none.
-    pub damage_multiplier: f64,
-    /// Attack speed multiplier (PoB `attackSpeedMultiplier`, percentage points, can be
-    /// negative). Applies to weapon attack rate as `AttackRate × (1 + v/100)` (e.g.
-    /// Flicker -50). `None` = none (weapon rate unchanged).
-    pub attack_speed_multiplier: Option<f64>,
-    /// Skill's base crit chance (PoB `critChance`, percentage points; e.g. Comet
-    /// 13.0=13%). An inherent crit source for spells; attack skills fall back to the
-    /// weapon base crit chance when `None`. `None` = data missing (old data pack, or the
-    /// skill has no critChance row).
-    pub crit_chance: Option<f64>,
-    /// statSet `baseMods`' inherent **attack speed MORE**
-    /// (PoB2 `mod("Speed","MORE",N,ModFlag.Attack)`, percentage points; e.g. Flicker
-    /// Strike=285). Injected as an `AttackSpeed` MORE mod in the speed bucket (consumed
-    /// only by attack skills). `None` = none.
-    pub skill_attack_speed_more: Option<f64>,
-    /// Number of stored uses (PoB `storedUses`, e.g. grenade=3). `None` = 0 (no storage).
-    /// Injected on the consumer side via a `SkillStoredUsesBase` BASE mod —
-    /// `calc_cooldown` uses it to decide whether the cooldown should round up to a
-    /// server frame (PoB2 CalcOffence.lua:340: no rounding when stored uses >1).
-    pub stored_uses: Option<u32>,
-}
+/// units are seconds). Re-exported from `pobr-core::skill_env` (the engine-semantics
+/// layer owns the resolution; `BuildData` implements its lookup traits).
+pub use pobr_core::skill_env::ResolvedSkillLevel;
 
-/// A granted effect's mappable stats at a given (gem level, quality), split into two
-/// segments by source (contract C1): `base` = stat-set per-level row + level-independent
-/// constants; `quality` = the quality-stacking segment
-/// (`trunc(per_quality_rate × quality)`, matching PoB2 CalcTools.lua:140-145's
-/// `buildSkillInstanceStats` up-front quality stacking).
-///
-/// The split preserves attribution granularity (a PoBR-specific asset, 20-target §1.1):
-/// when the quality segment is injected via `mapped_stat_modifiers`, it's tagged with
-/// `SourceKind::GemQuality` (id prefix `gem.<effect id>.q<Q>`). Consumers that don't
-/// care about attribution can iterate the merged view via [`Self::all`] (equivalent to
-/// PoB2's numeric semantics of adding quality into the same stats table up front — same
-/// stat's BASE/INC add together in mod_db regardless, so this matches merge-then-map).
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct EffectStats {
-    /// stat-set per-level row + level-independent constants (the existing base segment).
-    pub base: Vec<SkillDamageStat>,
-    /// Quality-stacking segment (empty when quality = 0 or there's no quality table entry).
-    pub quality: Vec<SkillDamageStat>,
-}
+/// A granted effect's mappable stats at a given (gem level, quality), split into
+/// `base`/`quality` segments by source (contract C1). Re-exported from
+/// `pobr-core::skill_env`.
+pub use pobr_core::skill_env::EffectStats;
 
-impl EffectStats {
-    /// A merged view chaining base + quality in order (for consumers that don't need attribution).
-    pub fn all(&self) -> impl Iterator<Item = &SkillDamageStat> {
-        self.base.iter().chain(self.quality.iter())
-    }
-}
+/// A stat snapshot for one **unselected statSet** of a granted effect (the data
+/// source for global-only merge). Re-exported from `pobr-core::skill_env`.
+pub use pobr_core::skill_env::UnselectedSetStats;
 
-/// A stat snapshot for one **unselected statSet** of a granted effect (the data source
-/// for global-only merge, see [`BuildData::unselected_set_stats`]).
-#[derive(Debug, Clone, PartialEq)]
-pub struct UnselectedSetStats {
-    /// statmap per-set override lookup key = the decimal string of vendor's 1-based
-    /// export index (following the key convention of
-    /// [`pobr_data::catalog::stat_map::SkillStatMapDef::per_stat_set`], fed directly as
-    /// `stat_map_engine::map_stat_global_only`'s `set_key`).
-    pub set_key: String,
-    /// statSet's stable id (for attribution labels / debugging, e.g.
-    /// `FlameWallProjectileBuffPlayer`).
-    pub set_id: String,
-    /// This set's stat table at (gem_level, quality) — same stats already merged
-    /// additively, sorted by stat name (matching vendor's `buildSkillInstanceStats`
-    /// table semantics, CalcTools.lua:138-200).
-    pub stats: Vec<SkillDamageStat>,
-}
-
-/// One resolved skill resource cost.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ResolvedCost {
-    /// Resource id (`Mana` / `Life` / `ES` / `Rage` / `Ward` / `ManaPercent` / `ManaPerMinute` …).
-    pub resource: String,
-    /// Cost amount (already divided by `CostTypes.Divisor`: a per-minute resource is ÷60 to get the per-second amount).
-    pub amount: f64,
-    /// Whether this is an ongoing per-second cost.
-    pub per_second: bool,
-}
+/// One resolved skill resource cost. Re-exported from `pobr-core::skill_env`.
+pub use pobr_core::skill_env::ResolvedCost;
 
 /// In-memory indexes projected from [`GameData`] for the orchestrator's calculations.
 ///
@@ -663,106 +581,7 @@ impl BuildData {
         gem_level: u32,
         set_index: Option<u32>,
     ) -> Option<ResolvedSkillLevel> {
-        let effect = self.granted_effects.get(skill_id)?;
-        if effect.is_support {
-            return None;
-        }
-        let rows = self.granted_effect_levels.get(skill_id)?;
-        if rows.is_empty() {
-            return None;
-        }
-        // Take the highest row with level ≤ gem_level; if every row is above gem_level, take the first.
-        let row = rows
-            .iter()
-            .rfind(|r| r.level <= gem_level)
-            .unwrap_or(&rows[0]);
-
-        // Use time: prefer this level's attack time, falling back to the granted effect's cast time (milliseconds → seconds).
-        let use_time_ms = row.attack_time_ms.or(effect.cast_time);
-        let use_time_s = use_time_ms
-            .filter(|&t| t > 0)
-            .map(|t| f64::from(t) / 1000.0);
-        let cooldown_s = row
-            .cooldown_ms
-            .filter(|&c| c > 0)
-            .map(|c| f64::from(c) / 1000.0);
-
-        // Costs: pair effect.cost_types (resource type indexes) with row.cost_amounts by
-        // position, resolved via the CostTypes table into a resource name + amount
-        // divided by the divisor (a per-minute resource is ÷60 to get the per-second
-        // amount). Falls back to the "index 0 = mana" heuristic when there's no
-        // CostTypes data (backward compatible).
-        let mut costs = Vec::new();
-        for (i, &type_idx) in effect.cost_types.iter().enumerate() {
-            let Some(&raw_amount) = row.cost_amounts.get(i) else {
-                continue;
-            };
-            if raw_amount == 0 {
-                continue;
-            }
-            match self.cost_types.get(type_idx as usize) {
-                Some(def) if !def.id.is_empty() => costs.push(ResolvedCost {
-                    resource: def.id.clone(),
-                    amount: f64::from(raw_amount) / f64::from(def.divisor.max(1)),
-                    per_second: def.per_minute,
-                }),
-                _ if type_idx == 0 => costs.push(ResolvedCost {
-                    resource: "Mana".into(),
-                    amount: f64::from(raw_amount),
-                    per_second: false,
-                }),
-                _ => {}
-            }
-        }
-        // Mana cost (the instantaneous `Mana` resource), read by fill_skill_mechanics's SkillManaCostBase.
-        let mana_cost = costs
-            .iter()
-            .find(|c| c.resource == "Mana" && !c.per_second)
-            .map(|c| c.amount);
-
-        // Skill stat (base damage value + damage% scaling): the selected set's per-level
-        // row + level-independent constants, for mapping and injection. The quality
-        // segment isn't handled here (the main skill's quality is fetched and injected
-        // separately by the orchestrator via effect_stats's quality segment, preserving
-        // SourceKind::GemQuality attribution granularity), so quality is passed as 0.
-        let base_damage = self.effect_stats(skill_id, gem_level, 0, set_index).base;
-
-        // Skill damage multiplier (PoB baseMultiplier): prefers the row from the
-        // **selected statSet** (default primary set); falls back to
-        // GrantedEffectsPerLevel's base_multiplier when the stat-set is missing (e.g.
-        // skills like Flicker whose stat-set is empty) — they're synonymous, PoB carries
-        // both tables (grenade's stat-set 7.57 matches per-level, so unaffected).
-        let damage_multiplier = self
-            .select_stat_set(skill_id, set_index)
-            .and_then(|set| {
-                set.levels
-                    .iter()
-                    .rfind(|l| l.gem_level <= gem_level)
-                    .or(set.levels.first())
-            })
-            .map(|l| l.damage_multiplier)
-            .or(row.base_multiplier)
-            .unwrap_or(1.0);
-
-        // statSet baseMods' inherent attack speed MORE (a PoB2-built-in constant, e.g.
-        // Flicker 285). Level-independent; written into the primary set by the overlay
-        // merge, so it's absent (None) when a secondary set is selected.
-        let skill_attack_speed_more = self
-            .select_stat_set(skill_id, set_index)
-            .and_then(|set| set.skill_attack_speed_more);
-
-        Some(ResolvedSkillLevel {
-            use_time_s,
-            cooldown_s,
-            mana_cost,
-            base_damage,
-            costs,
-            damage_multiplier,
-            attack_speed_multiplier: row.attack_speed_multiplier,
-            crit_chance: row.crit_chance,
-            skill_attack_speed_more,
-            stored_uses: row.stored_uses,
-        })
+        pobr_core::skill_env::resolve_skill_level(self, skill_id, gem_level, set_index)
     }
 
     /// Fetches all mappable stats of a granted effect at a given (gem level, quality,
@@ -1055,6 +874,138 @@ impl pobr_core::skill_env::StatSetLookup for BuildData {
                     .collect()
             })
             .unwrap_or_default()
+    }
+
+    fn alt_quality_stats(&self, effect_id: &str, quality: u32) -> Vec<SkillDamageStat> {
+        self.alt_quality_stats(effect_id, quality)
+    }
+
+    fn unselected_set_stats(
+        &self,
+        effect_id: &str,
+        level: u32,
+        quality: u32,
+        set_index: Option<u32>,
+    ) -> Vec<pobr_core::skill_env::UnselectedSetStats> {
+        self.unselected_set_stats(effect_id, level, quality, set_index)
+            .into_iter()
+            .map(|s| pobr_core::skill_env::UnselectedSetStats {
+                set_key: s.set_key,
+                set_id: s.set_id,
+                stats: s.stats,
+            })
+            .collect()
+    }
+
+    fn selected_set_level_row(
+        &self,
+        effect_id: &str,
+        level: u32,
+        set_index: Option<u32>,
+    ) -> Option<pobr_core::skill_env::SelectedSetLevelRow> {
+        let set = self.select_stat_set(effect_id, set_index)?;
+        let row = set
+            .levels
+            .iter()
+            .rfind(|l| l.gem_level <= level)
+            .or(set.levels.first())?;
+        Some(pobr_core::skill_env::SelectedSetLevelRow {
+            damage_multiplier: row.damage_multiplier,
+            skill_attack_speed_more: set.skill_attack_speed_more,
+        })
+    }
+}
+
+impl pobr_core::skill_env::CostTypeLookup for BuildData {
+    fn cost_type(&self, index: usize) -> Option<pobr_core::skill_env::CostTypeRef<'_>> {
+        self.cost_types
+            .get(index)
+            .map(|def| pobr_core::skill_env::CostTypeRef {
+                id: def.id.as_str(),
+                divisor: def.divisor,
+                per_minute: def.per_minute,
+            })
+    }
+}
+
+impl pobr_core::skill_env::ArmourBaseLookup for BuildData {
+    fn armour_base(&self, base_name: &str) -> Option<&ArmourBaseStats> {
+        self.armour_base(base_name)
+    }
+}
+
+impl pobr_core::skill_env::BaseItemLookup for BuildData {
+    fn base_item(&self, base_name: &str) -> Option<&BaseItemDef> {
+        self.base_items.get(base_name)
+    }
+}
+
+impl pobr_core::skill_env::WeaponTypeLookup for BuildData {
+    fn weapon_type_info(
+        &self,
+        item_class: &str,
+    ) -> Option<&pobr_data::catalog::WeaponTypeDef> {
+        let key = match item_class {
+            "Warstaff" => "Staff",
+            "Staff" => return None,
+            "FishingRod" => "Fishing Rod",
+            other => other,
+        };
+        self.constants.weapon_types.get(key)
+    }
+}
+
+impl pobr_core::skill_env::UnarmedDataLookup for BuildData {
+    fn unarmed_for_class(&self, class_name: &str) -> Option<&pobr_data::catalog::UnarmedWeaponDef> {
+        self.constants.unarmed_data.for_class(class_name)
+    }
+}
+
+impl pobr_core::skill_env::PassiveNodeLookup for BuildData {
+    fn passive_node(&self, node_id: u32) -> Option<&PassiveNodeDef> {
+        self.passive_nodes.get(&node_id)
+    }
+
+    fn notable_by_name(&self, name: &str) -> Option<&PassiveNodeDef> {
+        self.passive_nodes
+            .values()
+            .filter(|def| def.kind == pobr_data::catalog::PassiveNodeKind::Notable)
+            .filter(|def| {
+                def.name
+                    .as_ref()
+                    .is_some_and(|n| n.eq_ignore_ascii_case(name))
+            })
+            .min_by_key(|def| def.skill)
+    }
+}
+
+impl pobr_core::skill_env::GemDefLookup for BuildData {
+    fn gem_def_for_effect(&self, effect_id: &str) -> Option<&SkillGemDef> {
+        self.gem_effects
+            .get(effect_id)
+            .and_then(|ge| self.skill_gems.get(&ge.gem_id))
+    }
+}
+
+impl pobr_core::skill_env::ParserRulesLookup for BuildData {
+    fn parser_rules(&self) -> Option<&pobr_core::mod_parser::CompiledParserRules> {
+        self.parser_rules.as_deref()
+    }
+}
+
+impl pobr_core::skill_env::MinionLookup for BuildData {
+    fn minion_def(&self, id: &str) -> Option<&MinionDef> {
+        self.minion_def(id)
+    }
+
+    fn effect_minion_list(&self, effect_id: &str) -> &[String] {
+        self.effect_minion_list(effect_id)
+    }
+}
+
+impl pobr_core::skill_env::TriggerConfigLookup for BuildData {
+    fn trigger_config(&self, effect_id: &str) -> Option<&TriggerConfigDef> {
+        self.trigger_configs.get(effect_id)
     }
 }
 

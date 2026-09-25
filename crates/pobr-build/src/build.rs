@@ -374,6 +374,62 @@ impl pobr_core::skill_env::EquipmentView for Build {
     }
 }
 
+impl pobr_core::skill_env::SocketGroupView for Build {
+    fn for_each_enabled_group(&self, f: &mut dyn FnMut(pobr_core::skill_env::EnabledGroup<'_>)) {
+        for group in self.enabled_socket_groups() {
+            // Project the concrete `GemSkillRef`s into the engine-semantics
+            // `GemInput` view (same field order, zero semantics change).
+            let gems: Vec<pobr_core::skill_env::GemInput> = group
+                .gem_skills
+                .iter()
+                .map(|g| pobr_core::skill_env::GemInput {
+                    skill_id: g.skill_id.clone(),
+                    gem_level: g.gem_level,
+                    quality: g.quality,
+                    stat_set_index: g.stat_set_index,
+                })
+                .collect();
+            f(pobr_core::skill_env::EnabledGroup {
+                gems: &gems,
+                from_gem: group.from_gem(),
+                slot: group.slot.as_deref(),
+            });
+        }
+    }
+}
+
+impl pobr_core::skill_env::GemPropertyScanView for Build {
+    fn for_each_scanned_text(&self, f: &mut dyn FnMut(&str)) {
+        for (slot, item) in self.equipped_items() {
+            // Kalandra's Touch mirrors the opposite ring's mods (including "+N to
+            // Level of all <X> Skills"), matching the primary injection path's
+            // semantics (vendor CalcSetup.lua:1221-1243 copies the whole modList).
+            let item = crate::calc_orchestrator::item::mirror::kalandra_reflected_ring(
+                self, slot, item,
+            )
+            .unwrap_or(item);
+            for text in item
+                .implicit_texts
+                .iter()
+                .chain(&item.modifier_texts)
+                .chain(&item.enchant_texts)
+            {
+                f(text);
+            }
+        }
+        for jewel in &self.jewels {
+            for text in jewel
+                .implicit_texts
+                .iter()
+                .chain(&jewel.modifier_texts)
+                .chain(&jewel.enchant_texts)
+            {
+                f(text);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

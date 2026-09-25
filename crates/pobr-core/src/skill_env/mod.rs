@@ -5,10 +5,14 @@
 //! it to the engine-semantics functions. This lets the same functions be reused by
 //! WASM, CLI, and test harnesses without going through the full orchestrator.
 
+pub mod buff_stat_map;
+mod buffs;
 mod item_text;
 mod lookup;
 mod mods;
+mod resolve;
 mod support;
+mod weapon;
 
 pub use item_text::{
     clean_item_text, is_local_spirit_mod, is_weapon_local_mod, item_local_defence_flat,
@@ -18,7 +22,17 @@ pub use item_text::{
     weapon_local_phys_inc, weapon_mod_texts,
 };
 pub use lookup::{
-    EffectLookup, EffectStats, EquipmentView, StatMapLookup, StatSetLookup, WeaponBaseLookup,
+    ArmourBaseLookup, BaseItemLookup, CostTypeLookup, CostTypeRef, EffectLookup,
+    EffectStats, EnabledGroup, EquipmentView, GemDefLookup, MinionLookup,
+    ParserRulesLookup, PassiveNodeLookup, SelectedSetLevelRow, SocketGroupView,
+    StatMapLookup, StatSetLookup, TriggerConfigLookup, UnarmedDataLookup,
+    UnselectedSetStats, WeaponBaseLookup, WeaponTypeLookup,
+};
+pub use resolve::{
+    GemPropertyLookup, GemPropertyScanView, GrantedPassiveLookup, ResolvedCost,
+    ResolvedSkillLevel, SkillLevelLookup, additional_gem_levels, gem_property_applies,
+    gem_property_bonuses, gemling_quality_flag, granted_passive_stats,
+    resolve_skill_level, support_granted_gem_levels, support_stat_set_index,
 };
 pub use mods::{
     GemInput, GemPropertyBonus, GemPropertyKind, adorned_corrupted_magic_jewel_inc,
@@ -31,4 +45,14 @@ pub use mods::{
 };
 pub use support::{
     CompatibleSupport, GroupSupportJudgement, SupportCandidate, judge_group_supports,
+};
+pub use weapon::{
+    WeaponContribution, WeaponContributionLookup, WeaponItemLookup,
+    dual_wield_off_hand_contribution, non_weapon_attack_contribution, off_hand_defence,
+    per_shield_defence_scale, unarmed_contribution, weapon_contribution,
+    weapon_item_contribution,
+};
+pub use buffs::{
+    buff_skill_name, herald_skill_names, self_buff_offensive_modifiers,
+    spirit_reservation_modifiers,
 };

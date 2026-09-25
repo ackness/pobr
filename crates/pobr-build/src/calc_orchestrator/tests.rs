@@ -4,7 +4,7 @@ use super::collect::{combine_wrapped_then_filter, granted_passive_defs};
 use super::conditions::{combat_conditions, weapon_cfg_flags, weapon_type_conditions};
 use super::context::CalculationContext;
 use super::item::mirror::slot_bonus_effect_scales;
-use super::item::weapon::unarmed_contribution;
+use pobr_core::skill_env::unarmed_contribution;
 use super::skill::buffs::{
     buff_skill_specs, herald_skill_names, self_buff_offensive_modifiers, support_buff_specs,
 };
@@ -2630,7 +2630,7 @@ fn unarmed_contribution_matches_legacy_hardcoded_values() {
             class_name: class.into(),
             ascendancy_name: String::new(),
         });
-        let c = unarmed_contribution(&build, &data);
+        let c = unarmed_contribution(&data, &build.character.class_name);
         assert_eq!(c.phys_min, 2.0, "{class} phys_min");
         assert_eq!(c.phys_max, phys_max, "{class} phys_max");
         assert_eq!(c.attack_rate, 1.65, "{class} attack_rate");
