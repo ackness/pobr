@@ -1,0 +1,177 @@
+{
+  "builds": {
+    "druid-oracle-comet": {
+      "code_sha256": "90fc80c345a250ee2a13dc959ca2a42bfc61c5301a72b82f142b0fb492ba116d",
+      "player_stats": {
+        "CritChance": 39.52,
+        "CritMultiplier": 5.87,
+        "Speed": 0.63768115942029,
+        "TotalDPS": 39936.630822957
+      }
+    },
+    "druid-oracle-ember-fusillade": {
+      "code_sha256": "934b896d92bf51607dbd85edefc0ce6e8892c57f6d84b6095e2e23f43f08e97b",
+      "player_stats": {
+        "CritChance": 19.74,
+        "CritMultiplier": 3.48,
+        "Speed": 6.15,
+        "TotalDPS": 254508.392406
+      }
+    },
+    "huntress-ritualist-bow-shot": {
+      "code_sha256": "d4f7e90de20401f5cb4cd9dccaec1b2e0368d43d63e76ade36849f856e756e29",
+      "player_stats": {
+        "AverageDamage": 77885.68447,
+        "CritChance": 29.1,
+        "CritMultiplier": 4.74,
+        "Speed": 1.342,
+        "TotalDPS": 104522.58855874
+      }
+    },
+    "huntress-spirit-walker-twister": {
+      "code_sha256": "3277669b69d04a89202be9d0037548609e9f146f1381e68d67af40f7075ccbda",
+      "player_stats": {
+        "AverageDamage": 20508.0314637,
+        "CritChance": 40.8954,
+        "CritMultiplier": 4.3,
+        "Speed": 2.3072,
+        "TotalDPS": 48262.45279691
+      }
+    },
+    "mercenary-gemling-legionnaire-explosive-grenade": {
+      "code_sha256": "8f2c3b4c33cdf5aad625ad0b403ac32c35dd7a6425293a1b067067c967e8f7e2",
+      "player_stats": {
+        "AverageDamage": 84052.436,
+        "CritChance": 8.55,
+        "CritMultiplier": 2,
+        "Speed": 0.41,
+        "TotalDPS": 56861.472954
+      }
+    },
+    "mercenary-tactician-wolf-pack": {
+      "code_sha256": "acde6f7b106b327411bd5aa576af46380724d258694cdaaaf8fa2945db084a73",
+      "player_stats": {
+        "CritMultiplier": 2,
+        "Speed": 1,
+        "TotalDPS": 0
+      }
+    },
+    "monk-invoker-frost-bomb": {
+      "code_sha256": "e08d6147c325f15a5a8fc723390fdc2a5a8de50b6f721955bacad0dc4c481164",
+      "player_stats": {
+        "CritChance": 67.86,
+        "CritMultiplier": 4.59,
+        "Speed": 0.2047502047502,
+        "TotalDPS": 4383.1621662572
+      }
+    },
+    "monk-martial-artist-flicker-strike": {
+      "code_sha256": "acb26108d733d55d04613ae495cdbe01b4d8db41f4f256ae5e61869b8123110d",
+      "player_stats": {
+        "AverageDamage": 75197.57775,
+        "CritChance": 83.6784,
+        "CritMultiplier": 4.85,
+        "Speed": 6.13375,
+        "TotalDPS": 461243.14252406
+      }
+    },
+    "monk-martial-artist-twister": {
+      "code_sha256": "91f678a18831a5e6bec3eb5c5bc2f85a0a0e6eaee15c6f58ac9b12cfb6f79df6",
+      "player_stats": {
+        "AverageDamage": 43841.880527587,
+        "CritChance": 71.93152,
+        "CritMultiplier": 4.269,
+        "Speed": 2.3408,
+        "TotalDPS": 104677.57541776
+      }
+    },
+    "ranger-deadeye-explosive-grenade": {
+      "code_sha256": "b158bc0d4c12101948bc5c3ca331b3c88754651d491353bbe5c85feb9916e394",
+      "player_stats": {
+        "AverageDamage": 95621.05,
+        "CritChance": 5,
+        "CritMultiplier": 2,
+        "Speed": 0.254,
+        "TotalDPS": 36431.62005
+      }
+    },
+    "ranger-pathfinder-ice-shot": {
+      "code_sha256": "6f7690a0c3089811221eecc7a663c1e244196ff9e5d7038fe43da049ddcfeb4c",
+      "player_stats": {
+        "AverageDamage": 399236.78250599,
+        "CritChance": 49.7046,
+        "CritMultiplier": 9.0125,
+        "Speed": 1.9224,
+        "TotalDPS": 782842.6465033
+      }
+    },
+    "sorceress-chronomancer-essence-drain": {
+      "code_sha256": "b04fb30633a0abbeaaf7776726c4d440ef4790a89127c764574813a3992b677a",
+      "player_stats": {
+        "CritChance": 7.49,
+        "CritMultiplier": 2,
+        "Speed": 1.15,
+        "TotalDPS": 0
+      }
+    },
+    "sorceress-disciple-of-varashta-comet": {
+      "code_sha256": "f0032108b2dcdacef297755ee183454fc34fe56b0c2359eed8695d754a731082",
+      "player_stats": {
+        "CritChance": 100,
+        "CritMultiplier": 3.5,
+        "Speed": 0.70414201183432,
+        "TotalDPS": 300239.81656805
+      }
+    },
+    "sorceress-stormweaver-comet": {
+      "code_sha256": "0cc5be607de26109bde9e1f25b1a165421ca43c15e3c544740d778b31b22094a",
+      "player_stats": {
+        "CritChance": 91.104,
+        "CritMultiplier": 3.5,
+        "Speed": 0.71428571428571,
+        "TotalDPS": 25976.150571429
+      }
+    },
+    "warrior-smith-of-kitava-shield-wall": {
+      "code_sha256": "d713de39a5e06de4c36406190a46e414535930963dc0aea991b61e9ae658bfaf",
+      "player_stats": {
+        "AverageDamage": 80109.75,
+        "CritChance": 5,
+        "CritMultiplier": 2,
+        "Speed": 1.512,
+        "TotalDPS": 121125.942
+      }
+    },
+    "warrior-titan-shield-wall": {
+      "code_sha256": "50a5b890b1926bf4609955b8746c2877049b2de96eb9eb2f5a08a12084254f1c",
+      "player_stats": {
+        "AverageDamage": 37168.3100547,
+        "CritChance": 5.85,
+        "CritMultiplier": 4.88,
+        "Speed": 1.48,
+        "TotalDPS": 55009.098880956
+      }
+    },
+    "witch-abyssal-lich-detonate-dead": {
+      "code_sha256": "fe3ef6f3b2c52a348ecd631da585aadf21cd91fa3c3724fbd20e2455b8ee0374",
+      "player_stats": {
+        "CritChance": 60.48,
+        "CritMultiplier": 8.982,
+        "Speed": 2.875,
+        "TotalDPS": 1071516.9448788
+      }
+    },
+    "witch-blood-mage-coiling-bolts": {
+      "code_sha256": "88d6310d198addd6e6c5c036f4c629b3c49c01365fc4e32f7398f9371f40219f",
+      "player_stats": {
+        "CritChance": 92.1,
+        "CritMultiplier": 5.87,
+        "Speed": 2,
+        "TotalDPS": 199252.43275
+      }
+    }
+  },
+  "data_version": "4.5.4.8",
+  "mode": "COMBAT",
+  "vendor_commit": "7d6f530cbdab20389ff8bc6ba97a37ac27f74e41"
+}

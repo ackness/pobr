@@ -37,6 +37,22 @@ demo-bd-test/
 
 `stats.json` 与 `player_stats` 的区别：前者是 poe.ninja 站点展示的计算结果（含 EHP、各类型最大承伤、压制/闪避等防御口径和逐技能 DPS），后者是 PoB2 导出码内嵌的全量 PlayerStat。两者可互为校验。
 
+`panel-golden.json` 单独记录 `GOLDEN_PARITY_DATA_VERSION` 对应 PoB2 的
+COMBAT 输出，用于 `mode_effective=false` 的五列进攻回归门禁。原有
+`meta.json::player_stats` 保持 EFFECTIVE 口径。两者不能混用：例如 Boss
+专属加成在 COMBAT 中不生效，错误启用它反而可能更接近 EFFECTIVE 数字。
+
+重录面板参考值时，传入该数据版本钉定 commit 的独立 vendor 检出目录：
+
+```bash
+python3 examples/demo-bd-test/tools/recapture_panel_golden.py --vendor-root <pinned-vendor-checkout>
+```
+
+脚本校验 vendor commit、构筑码和 XML，并将 CALCS 的技能、stat set 等选择
+对齐导出的主技能。它先核对 EFFECTIVE 输出与原有参考值一致，再记录 COMBAT
+的相同列；全部构筑成功后才写文件。参考文件包含数据版本、vendor commit 和
+每个构筑码的 SHA-256，原有 Effective 参考值不改写。
+
 ## 用法
 
 ```bash

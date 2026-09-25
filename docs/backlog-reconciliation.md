@@ -133,3 +133,18 @@ the fix. The integrated Web/WASM results above predate this follow-up.
 Follow-up validation passed: `cargo test -p pobr-build --lib` (214 tests),
 `cargo test -p pobr-build --test parity parity_no_regression` (unchanged
 baseline), and `driver.sh lint -p pobr-build --lib` (rustfmt and Clippy).
+
+Release CI subsequently exposed a panel-gate convention mismatch: the panel
+gate compared COMBAT calculations with EFFECTIVE exports. Removing leaked boss
+rarity bonuses moved Smith of Kitava's two damage columns outside that mismatched
+10% band (47 to 45). At the pinned 4.5.4.8 vendor, its COMBAT TotalDPS is
+121125.942; the fixed engine produces 121467.488 (0.28% error).
+
+Separate COMBAT references now cover the same 80 populated offence cells across
+all 18 fixtures. Capture checks that EFFECTIVE outputs still match the existing
+exports and that CALCS uses the same skill/stat-set selections. With these
+references the previous engine scores 65/73 at 5%/10%, and the fixed engine scores
+69/79. The panel bounds increase from 45/47 to 69/79; EFFECTIVE references and
+bounds are unchanged. The full browser suite also exposed a test that assumed
+the Items panel remounts after a lazy-tab switch. It now explicitly selects
+Ring 1 before checking the retained draft, and passes against the CI WASM build.

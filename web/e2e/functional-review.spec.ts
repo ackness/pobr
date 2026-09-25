@@ -31,6 +31,7 @@ test('item drafts survive slot and page switches; cancel discards them and savin
   await nav(page, 'Calcs').click();
   expect((await saved(page)).items).toEqual([]);
   await nav(page, 'Items').click();
+  await page.getByRole('button', { name: 'Ring 1', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'ring1 item text' })).toHaveValue(ring);
   await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
   await expect.poll(async () => (await saved(page)).items).toEqual([{ slot: 'ring1', text: ring }]);

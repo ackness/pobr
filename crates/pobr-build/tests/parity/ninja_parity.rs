@@ -79,6 +79,35 @@ fn golden_stats(dir: &Path) -> serde_json::Map<String, serde_json::Value> {
         .unwrap_or_default()
 }
 
+/// COMBAT references recorded from the same pinned vendor and skill as the
+/// EFFECTIVE export. Comparing panel damage with EFFECTIVE values can reward
+/// incorrectly active enemy conditions and reject a correct scope fix.
+fn panel_golden_stats(dir: &Path) -> serde_json::Map<String, serde_json::Value> {
+    static PANEL: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+    let panel = PANEL.get_or_init(|| {
+        serde_json::from_str(include_str!(
+            "../../../../examples/demo-bd-test/panel-golden.json"
+        ))
+        .expect("parse panel references")
+    });
+    assert_eq!(panel["data_version"], pobr_data::GOLDEN_PARITY_DATA_VERSION);
+    assert_eq!(panel["mode"], "COMBAT");
+    let fixture = &panel["builds"][dir.file_name().unwrap().to_str().unwrap()];
+    let text = std::fs::read_to_string(dir.join("meta.json")).expect("read fixture metadata");
+    let metadata: serde_json::Value = serde_json::from_str(
+        &text
+            .replace("-Infinity", "-1e308")
+            .replace("Infinity", "1e308")
+            .replace("NaN", "0"),
+    )
+    .expect("parse fixture metadata");
+    assert_eq!(fixture["code_sha256"], metadata["pob"]["code_sha256"]);
+    fixture["player_stats"]
+        .as_object()
+        .expect("panel reference for every fixture")
+        .clone()
+}
+
 fn golden(stats: &serde_json::Map<String, serde_json::Value>, key: &str) -> Option<f64> {
     stats.get(key).and_then(|v| v.as_f64())
 }
@@ -483,9 +512,14 @@ fn compute_tallies_mode(
             }
             continue;
         };
+        let off_golden = if mode_effective {
+            g.clone()
+        } else {
+            panel_golden_stats(dir)
+        };
         let (def_rows, off_rows, dot_rows) = (
             defensive_rows(&out, &g),
-            offensive_rows(&out, &g),
+            offensive_rows(&out, &off_golden),
             dot_rows(&out, &g),
         );
         def_core.add(tally_rows(&defensive_core_rows(&out, &g)));
@@ -1169,34 +1203,14 @@ const BASELINE_OFF_HIT10: usize = 80; // #15 full marks 80/80 (78 after #10; 76 
 const BASELINE_DOT_HIT5: usize = 37; // #15 full marks 37/37 (gemling TotalDotDPS enters the band following the crit fix; #10+#11 merged: 36; migration baseline: 9; 0.5.0=26)
 const BASELINE_DOT_HIT10: usize = 37; // #15 full marks 37/37 (#10+#11 merged: 36; migration baseline: 11; 0.5.0=28)
 
-/// Baseline guarding the panel convention (`mode_effective=false`): prevents
-/// a convention regression from going unnoticed (defence is identical
-/// value-for-value between effective and panel, so only offence needs
-/// guarding). Measured at the switch commit.
-///
-/// **Reviewed exception (-1 @10%)**: witch-abyssal-lich-detonate-dead's panel
-/// TotalDPS 1.09x->1.12x -- wiring in the `CritInPast8Sec` phrase family
-/// (vendor ModParser.lua:1904-1906, confirmed applied by vendor via oracle)
-/// pushed the panel convention's pre-existing 9% over-count (panel has no
-/// enemy mitigation) past the 10% band edge. The same change is a pure
-/// convergence for the effective main convention (TotalDPS 0.81x->0.83x, the
-/// main baseline 41/47 doesn't regress; the dot column twister at 0.96x
-/// newly enters the band, 3->4). The panel side will be re-recorded once the
-/// effective damage-mitigation line closes DD's over-count root cause.
-/// Same commit: panel @5% 35->36 (titan enters the band); the lower bound is
-/// kept conservative and not raised.
-/// **Re-recorded for full SkillType enumeration (data-driven A1, panel +8
-/// @5% / +6 @10%)**: the cfg side's `skill_type_bits` switched from a
-/// hand-maintained allowlist (a dozen-odd bits for Attack/Spell/…) to a full
-/// enumeration bitset (`SkillTypes::from_pob2_name`, generated from vendor
-/// Global.lua's 290-name table); the tag side (template.rs / special_mod.rs)
-/// was fully enumerated in the same commit -- a batch of `ModTag::SkillTypes`
-/// domain mods (Area/Projectile/Grenade etc.) start matching correctly under
-/// the panel convention. The effective main convention's
-/// defence/offence/dot baselines hold steady value-for-value (a pure
-/// panel-side convergence).
-const PANEL_OFF_HIT5: usize = 45; // #15 measured 45 (gemling CritChance + wolf-pack Speed/DPS converge together on the panel); #6+#7 combined: 42; migration baseline: 27; 0.5.0=44
-const PANEL_OFF_HIT10: usize = 47; // #15 measured 47 (same as above); #6+#7 combined: 43; migration baseline: 30; 0.5.0=46
+/// Panel offence is compared with pinned PoB2 COMBAT references for the same
+/// 80 populated cells as the EFFECTIVE exports. The old cross-convention
+/// comparison measured 45/47 after #15 and rewarded leaked boss bonuses.
+/// With proper COMBAT references, the pre-fix engine measures 65/73 and the
+/// boss-rarity fix measures 69/79. Neither EFFECTIVE references nor its gates
+/// change; the panel gate is raised from 45/47 to the verified 69/79.
+const PANEL_OFF_HIT5: usize = 69;
+const PANEL_OFF_HIT10: usize = 79;
 
 /// Regression gate: the aggregate hit count must not fall below the recorded baseline ([`BASELINE_*`]). CI gate, prevents changes from regressing parity.
 #[test]
@@ -1242,13 +1256,15 @@ fn parity_no_regression() {
 }
 
 /// Panel-convention guard: the offence aggregate under `mode_effective=false`
-/// must not fall below the level measured at the switch
+/// must not fall below the recorded level
 /// ([`PANEL_OFF_HIT5`]/[`PANEL_OFF_HIT10`]). Defence is identical
 /// value-for-value to effective, so it's covered by the main gate. Prevents a
 /// regression in the convention switch's upstream wiring from going unnoticed.
+/// Offence uses PoB2 COMBAT references; EFFECTIVE references remain unchanged.
 #[test]
 fn panel_mode_no_regression() {
-    // The DoT three columns are only guarded by the effective main gate (the panel convention has no independent golden values, so no separate guard is set up).
+    // DoT remains guarded by the effective main gate; panel references cover
+    // the same five offence columns as the original panel gate.
     let (_, _, off, _dot, failed) = compute_tallies_mode(false, false);
     assert!(failed.is_empty(), "builds failed to parse/calc: {failed:?}");
     assert!(
@@ -1609,7 +1625,8 @@ fn corpus_unsupported_report() {
 /// `CalcSetup.lua:583-588`), printing a three-column output per stat
 /// (panel / effective / PoB2 golden) plus convergence/regression markers.
 ///
-/// A print-only dashboard (no gate):
+/// A print-only cross-convention dashboard (no gate). Both modes are shown
+/// against EFFECTIVE exports here; the panel gate uses COMBAT references:
 /// `cargo test -p pobr-build --test ninja_parity -- effective_switch_dual_run_report --nocapture`
 #[test]
 fn effective_switch_dual_run_report() {
