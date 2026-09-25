@@ -24,6 +24,12 @@ const LANG_LABEL: Record<Lang, string> = {
   'zh-CN': '简',
 };
 
+const VERSION_LABEL: Record<Lang, { app: string; data: string }> = {
+  'en-US': { app: 'App', data: 'Data' },
+  'zh-TW': { app: '應用', data: '資料' },
+  'zh-CN': { app: '应用', data: '数据' },
+};
+
 interface Props {
   tab: TabId;
   onTab: (tab: TabId) => void;
@@ -32,6 +38,7 @@ interface Props {
   character: CharacterState | null;
   classNames: ClassNames;
   busy: boolean;
+  dataVersion: string | null;
   /** 成组切换清单；≤1 条时不渲染下拉（无可切的组）。 */
   loadouts: LoadoutJson[];
   activeLoadout: number | null;
@@ -48,6 +55,7 @@ export function TopBar({
   character,
   classNames,
   busy,
+  dataVersion,
   loadouts,
   activeLoadout,
   onLoadout,
@@ -61,9 +69,14 @@ export function TopBar({
     return map[raw] ?? raw;
   };
   const nextLang = LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length];
+  const versionLabel = VERSION_LABEL[lang];
   return (
     <header className="topbar">
       <span className="topbar-brand">PoBR</span>
+      <span className="topbar-versions" title={`${versionLabel.app} v${__POBR_APP_VERSION__} · ${versionLabel.data} ${dataVersion ?? '—'}`}>
+        <span>v{__POBR_APP_VERSION__}</span>
+        <span>{versionLabel.data} {dataVersion ?? '—'}</span>
+      </span>
       <span className="topbar-beta">BETA</span>
       <nav className="topbar-tabs" aria-label="Main navigation">
         {TABS.map((entry) => (

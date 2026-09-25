@@ -128,13 +128,13 @@ test('switch, reload, edit and share preserve the selected loadout and global fi
   await page.goto('/');
   await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
   await importCode(page, deflateSync(xml).toString('base64url'));
-  await page.getByLabel('Loadout', { exact: true }).selectOption('1');
-  await expect(page.getByLabel('Loadout', { exact: true })).toHaveValue('1');
-  await expect(page.getByLabel('Loadout', { exact: true })).toBeEnabled();
+  await page.getByLabel('PoB loadout', { exact: true }).selectOption('1');
+  await expect(page.getByLabel('PoB loadout', { exact: true })).toHaveValue('1');
+  await expect(page.getByLabel('PoB loadout', { exact: true })).toBeEnabled();
 
   await page.reload();
-  await expect(page.getByLabel('Loadout', { exact: true })).toHaveValue('1', { timeout: 90_000 });
-  await expect(page.getByLabel('Loadout', { exact: true })).toBeEnabled();
+  await expect(page.getByLabel('PoB loadout', { exact: true })).toHaveValue('1', { timeout: 90_000 });
+  await expect(page.getByLabel('PoB loadout', { exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Build', exact: true }).click();
   await page.getByLabel('Level', { exact: true }).fill('90');
   await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('Edited <notes> & 中文');
@@ -163,11 +163,11 @@ test('switch, reload, edit and share preserve the selected loadout and global fi
   expect(after.state.params.config_inputs).toMatchObject(before.state.params.config_inputs);
   expect(after.state.socketGroups).toEqual(before.state.socketGroups);
   expect(after.notes).toBe(before.notes);
-  await expect(page.getByLabel('Loadout', { exact: true })).toHaveValue('1');
+  await expect(page.getByLabel('PoB loadout', { exact: true })).toHaveValue('1');
 
-  await page.getByLabel('Loadout', { exact: true }).selectOption('0');
-  await expect(page.getByLabel('Loadout', { exact: true })).toHaveValue('0');
-  await expect(page.getByLabel('Loadout', { exact: true })).toBeEnabled();
+  await page.getByLabel('PoB loadout', { exact: true }).selectOption('0');
+  await expect(page.getByLabel('PoB loadout', { exact: true })).toHaveValue('0');
+  await expect(page.getByLabel('PoB loadout', { exact: true })).toBeEnabled();
   const other = await saved(page);
   expect(other.state.allocatedNodes).toEqual([1, 2]);
   expect(other.state.socketGroups[0].gems[0].skill_id).toBe('SparkPlayer');

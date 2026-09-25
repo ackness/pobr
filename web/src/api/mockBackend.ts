@@ -24,6 +24,7 @@ import configOptionsFixture from '../fixtures/config_options.json';
 
 export function createMockBackend(): PobrBackend {
   return {
+    dataVersion: 'mock',
     async init(onProgress) {
       onProgress?.('mock 后端就绪');
     },

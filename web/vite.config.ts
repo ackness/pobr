@@ -1,7 +1,13 @@
 /// <reference types="vitest/config" />
 import { defineConfig, type Plugin, type PreviewServer, type ViteDevServer } from 'vite';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import worker from './public/_worker.js';
+
+const cargoManifest = readFileSync(resolve(process.cwd(), '../Cargo.toml'), 'utf8');
+const appVersion = cargoManifest.match(/\[workspace\.package\]\s*\nversion\s*=\s*"([^"]+)"/)?.[1];
+if (!appVersion) throw new Error('Missing [workspace.package].version in Cargo.toml');
 
 // Use the production Pages handler in dev and preview, including upstream limits.
 function importService(): Plugin {
@@ -40,6 +46,7 @@ function importService(): Plugin {
 }
 
 export default defineConfig({
+  define: { __POBR_APP_VERSION__: JSON.stringify(appVersion) },
   plugins: [react(), importService()],
   test: {
     // e2e/ 归 Playwright；vitest 只跑 src 内单测。

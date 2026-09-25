@@ -96,19 +96,19 @@ const DICT = {
   'beta.dismiss': { 'en-US': 'Got it', 'zh-TW': '知道了', 'zh-CN': '知道了' },
 
   // 页签
-  'loadout.switch': { 'en-US': 'Loadout', 'zh-TW': '配置組', 'zh-CN': '配置组' },
-  "loadout.new": {"en-US": "Duplicate this stage…", "zh-TW": "複製目前階段…", "zh-CN": "复制当前阶段…"},
+  'loadout.switch': { 'en-US': 'PoB loadout', 'zh-TW': 'PoB 配置組', 'zh-CN': 'PoB 配置组' },
+  "loadout.new": {"en-US": "Duplicate PoB loadout…", "zh-TW": "複製 PoB 配置組…", "zh-CN": "复制 PoB 配置组…"},
   'loadout.rename': { 'en-US': 'Rename…', 'zh-TW': '重新命名…', 'zh-CN': '重命名…' },
-  'loadout.remove': { 'en-US': 'Delete this stage', 'zh-TW': '刪除此階段', 'zh-CN': '删除此阶段' },
+  'loadout.remove': { 'en-US': 'Delete PoB loadout', 'zh-TW': '刪除 PoB 配置組', 'zh-CN': '删除 PoB 配置组' },
   'loadout.namePrompt': {
-    'en-US': 'Stage name (e.g. "1-30", "mapping"). Tree, gear and skills are grouped by this name.',
-    'zh-TW': '階段名稱（如「1-30 級」「mapping」）。天賦、裝備、技能以同名成組。',
-    'zh-CN': '阶段名称（如「1-30 级」「mapping」）。天赋、装备、技能以同名成组。',
+    'en-US': 'PoB loadout name (e.g. "1-30", "mapping"). Tree, gear and skills are grouped by this name.',
+    'zh-TW': 'PoB 配置組名稱（如「1-30 級」「mapping」）。天賦、裝備、技能以同名成組。',
+    'zh-CN': 'PoB 配置组名称（如「1-30 级」「mapping」）。天赋、装备、技能以同名成组。',
   },
   'loadout.confirmRemove': {
-    'en-US': 'Delete this stage? Its tree, gear and skill set are removed from the build.',
-    'zh-TW': '刪除此階段？其天賦、裝備與技能組會一併從 build 移除。',
-    'zh-CN': '删除此阶段？其天赋、装备与技能组会一并从 build 移除。',
+    'en-US': 'Delete this PoB loadout? Its tree, gear and skill set are removed from the build.',
+    'zh-TW': '刪除此 PoB 配置組？其天賦、裝備與技能組會一併從 build 移除。',
+    'zh-CN': '删除此 PoB 配置组？其天赋、装备与技能组会一并从 build 移除。',
   },
   "loadout.confirmDiscard": {"en-US": "This reloads the original imported build and discards local edits, including auto-saved changes. Export a backup first if you want to keep them. Continue?", "zh-TW": "此操作會重新載入原始構築，捨棄本地修改（包括自動儲存的修改）。若要保留，請先下載備份。繼續？", "zh-CN": "此操作会重新加载原始构筑，丢弃本地修改（包括自动保存的修改）。如需保留，请先下载备份。继续？"},
   'tab.build': { 'en-US': 'Build', 'zh-TW': '構築', 'zh-CN': '构筑' },
@@ -141,7 +141,7 @@ const DICT = {
   "build.newHint": {"en-US": "Changing class starts an empty level 1 build. Set passives on the Tree tab and add gems on Skills.", "zh-TW": "更換職業會新建 1 級空白構築。可到天賦樹加點、技能頁添加寶石。", "zh-CN": "更换职业会新建 1 级空白构筑。可到天赋树加点、技能页添加宝石。"},
   'build.import': { 'en-US': 'Import Build', 'zh-TW': '匯入配置', 'zh-CN': '导入配置' },
   'build.importPlaceholder': { 'en-US': 'Paste a PoB2 build code, WeGame PoE2 share URL, or .build JSON…', 'zh-TW': '貼上 PoB2 Build Code、WeGame 分享連結或 .build JSON…', 'zh-CN': '粘贴 PoB2 Build Code、WeGame 分享链接或 .build JSON…' },
-  "build.importButton": {"en-US": "Import & replace build", "zh-TW": "匯入並替換構築", "zh-CN": "导入并替换构筑"},
+  "build.importButton": {"en-US": "Import into current stage", "zh-TW": "匯入目前階段", "zh-CN": "导入当前阶段"},
   'build.calculating': { 'en-US': 'Calculating…', 'zh-TW': '計算中…', 'zh-CN': '计算中…' },
   'build.imported': { 'en-US': 'Imported: ', 'zh-TW': '已匯入：', 'zh-CN': '已导入：' },
   'build.passives': { 'en-US': 'passives', 'zh-TW': '天賦點', 'zh-CN': '天赋点' },
@@ -569,7 +569,7 @@ const DICT = {
   },
 
   // Notes 页
-  "notes.hint": {"en-US": "Keep build ideas and upgrade plans here. Notes are saved in this browser and included in backups and share codes.", "zh-TW": "記錄構築思路與升級計畫。筆記會儲存在此瀏覽器，並包含在備份和分享碼中。", "zh-CN": "记录构筑思路与升级计划。笔记会保存在此浏览器，并包含在备份和分享码中。"},
+  "notes.hint": {"en-US": "Describe this stage's passive route, gear priorities and playstyle. Each stage keeps its own notes, included when you share the build.", "zh-TW": "記錄目前階段的加點順序、配裝優先級與操作細節。每個階段保留獨立筆記，分享 BD 時一併帶上。", "zh-CN": "记录当前阶段的加点顺序、配装优先级与操作细节。每个阶段保留独立笔记，分享 BD 时一并带上。"},
   'notes.placeholder2': { 'en-US': 'Write anything about this build…', 'zh-TW': '寫點關於這個 build 的東西…', 'zh-CN': '写点关于这个 build 的东西…' },
   'notes.preview': { 'en-US': 'Colored preview', 'zh-TW': '著色預覽', 'zh-CN': '着色预览' },
 
@@ -580,7 +580,7 @@ const DICT = {
 
   // 本地存档
   'save.title': { 'en-US': 'Local Save', 'zh-TW': '本地存檔', 'zh-CN': '本地存档' },
-  "save.hint": {"en-US": "Build edits are auto-saved in this browser. Download a JSON backup to keep a copy or move devices. Import a backup, .build file or code text file to replace the current build.", "zh-TW": "構築修改會自動儲存在此瀏覽器。下載 JSON 備份可另存或跨裝置使用；匯入備份、.build 或代碼文字檔會替換目前構築。", "zh-CN": "构筑修改会自动保存在此浏览器。下载 JSON 备份可另存或跨设备使用；导入备份、.build 或代码文本文件会替换当前构筑。"},
+  "save.hint": {"en-US": "All builds and stages are saved in this browser. Download a full JSON backup to keep a copy or move devices. Restoring a full backup replaces your local build library.", "zh-TW": "所有 BD 與階段會儲存在此瀏覽器。下載完整 JSON 備份可另存或跨裝置使用；還原完整備份會取代本機全部 BD。", "zh-CN": "所有 BD 与阶段会保存在此浏览器。下载完整 JSON 备份可另存或跨设备使用；恢复完整备份会替换本机全部 BD。"},
   "save.export": {"en-US": "Download backup", "zh-TW": "下載備份", "zh-CN": "下载备份"},
   "save.import": {"en-US": "Import from file…", "zh-TW": "從檔案匯入…", "zh-CN": "从文件导入…"},
 } as const satisfies Record<string, Entry>;

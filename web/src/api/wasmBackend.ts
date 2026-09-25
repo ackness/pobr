@@ -108,6 +108,7 @@ export async function createWasmBackend(): Promise<PobrBackend> {
   }
 
   let manifest: DataManifest | null = null;
+  let loadedDataVersion: string | undefined;
   const fetchedFiles = new Map<string, Promise<string>>();
   const fetchVersionFile = (version: string, rel: string): Promise<string> => {
     const url = `/data/${version}/${rel}`;
@@ -140,10 +141,14 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     });
     onProgress?.('构建数据索引…');
     wasm.initStagedData();
+    loadedDataVersion = version;
     onProgress?.('就绪');
   };
 
   const backend: PobrBackend = {
+    get dataVersion() {
+      return loadedDataVersion;
+    },
     init(onProgress) {
       // 失败后清掉缓存的 Promise，允许刷新/重试重新初始化。
       initPromise ??= doInit(onProgress).catch((err: unknown) => {

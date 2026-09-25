@@ -32,6 +32,8 @@ import type {
 export interface PobrBackend {
   /** 初始化（wasm 模块加载 + 游戏数据注入）；幂等。 */
   init(onProgress?: (message: string) => void): Promise<void>;
+  /** Version of the game data successfully loaded into this backend. */
+  readonly dataVersion?: string;
   decodeBuild(pobCode: string): Promise<BuildJson>;
   /**
    * 切到指定 loadout 后重新解码（成组切换天赋/装备/技能）。
