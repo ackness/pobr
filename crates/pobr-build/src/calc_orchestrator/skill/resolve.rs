@@ -63,6 +63,14 @@ pub(crate) fn pick_group_main_skill<'b>(
     if let Some(g) = group.gem_skills.iter().find(|g| g.skill_id == skill_id) {
         return Some((g.skill_id.as_str(), level, set_index));
     }
+    // Builder path: `gem_skills` is empty and the id came from `active_skill_id`
+    // (a field reference into `group`, same lifetime). `skill_id` here borrows the
+    // local `gems` Vec, so re-borrow the field instead of returning `skill_id`.
+    if let Some(id) = group.active_skill_id.as_deref()
+        && id == skill_id
+    {
+        return Some((id, level, set_index));
+    }
     // Expanded additional effect: the id isn't in gem_skills, so we return a
     // reference into the gem_effects table (which lives as long as build_data).
     build_data
