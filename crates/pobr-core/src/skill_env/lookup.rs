@@ -4,9 +4,8 @@
 
 use pobr_data::catalog::DotFlags;
 use pobr_data::catalog::{
-    ArmourBaseStats, BaseItemDef, GrantedEffectDef, PassiveNodeDef, SkillDamageStat,
-    SkillGemDef, SkillLevelDef, TriggerConfigDef, UnarmedWeaponDef, WeaponBaseStats,
-    WeaponTypeDef,
+    ArmourBaseStats, BaseItemDef, GrantedEffectDef, PassiveNodeDef, SkillDamageStat, SkillGemDef,
+    SkillLevelDef, TriggerConfigDef, UnarmedWeaponDef, WeaponBaseStats, WeaponTypeDef,
 };
 use pobr_data::minion::MinionDef;
 

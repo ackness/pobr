@@ -316,12 +316,7 @@ pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPr
         .flat_map(|def| def.stats.iter().cloned())
         .collect();
     let allocated_ids: Vec<u32> = build.tree.allocated_nodes.iter().map(|id| id.0).collect();
-    pobr_core::skill_env::gem_property_bonuses(
-        build,
-        &allocated_ids,
-        &granted_stats,
-        data,
-    )
+    pobr_core::skill_env::gem_property_bonuses(build, &allocated_ids, &granted_stats, data)
 }
 
 /// Whether the build carries the GemlingQuality flag (matching vendor
@@ -490,7 +485,6 @@ pub(crate) fn parse_gem_property_bonus(text: &str) -> Option<GemPropertyBonus> {
 pub(crate) fn parse_gem_level_bonus(text: &str) -> Option<(u32, String)> {
     pobr_core::skill_env::parse_gem_level_bonus(text)
 }
-
 
 /// Derives a skill's display name from its granted effect id (lowercase, CamelCase
 /// split): strips the `Player` suffix, then inserts a space at each uppercase boundary

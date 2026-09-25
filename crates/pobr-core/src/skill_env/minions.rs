@@ -9,15 +9,14 @@
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::calc::minion::{AttributeInfusion, MinionModifierEntry};
+use crate::skill_env::SupportCandidate;
 use crate::skill_env::lookup::{
-    EffectLookup, MinionLookup, ParserRulesLookup, SocketGroupView, StatMapLookup,
-    StatSetLookup,
+    EffectLookup, MinionLookup, ParserRulesLookup, SocketGroupView, StatMapLookup, StatSetLookup,
 };
 use crate::skill_env::resolve::{
     GemPropertyLookup, support_granted_gem_levels, support_stat_set_index,
 };
 use crate::skill_env::support::judge_group_supports;
-use crate::skill_env::SupportCandidate;
 
 /// The session write surface [`spawn_minions`] needs: the minion quantity limit's
 /// player-side BASE sum + the per-minion spawn sink.
@@ -30,6 +29,7 @@ pub trait MinionSession {
 
     /// Spawns one minion from its catalog definition (see
     /// [`crate::calc::CalculationSession::add_minion_from_def`]).
+    #[allow(clippy::too_many_arguments)]
     fn add_minion_from_def(
         &mut self,
         def: &pobr_data::minion::MinionDef,
@@ -47,6 +47,7 @@ impl MinionSession for crate::calc::CalculationSession {
         crate::calc::CalculationSession::base_sum(self, name)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn add_minion_from_def(
         &mut self,
         def: &pobr_data::minion::MinionDef,
@@ -72,12 +73,7 @@ impl MinionSession for crate::calc::CalculationSession {
 
 /// The lookup surface [`spawn_minions`] needs.
 pub trait MinionEnv:
-    MinionLookup
-    + EffectLookup
-    + StatSetLookup
-    + StatMapLookup
-    + ParserRulesLookup
-    + GemPropertyLookup
+    MinionLookup + EffectLookup + StatSetLookup + StatMapLookup + ParserRulesLookup + GemPropertyLookup
 {
 }
 impl<T> MinionEnv for T where
@@ -197,8 +193,7 @@ pub fn spawn_minions(
                     let sup_gem = &group.gems[sup.gem_index];
                     let set_index = support_stat_set_index(sup, group.gems);
                     // Quality passed as 0, matching support_modifiers's semantics (supports have no quality table entries).
-                    let stats =
-                        data.effect_stats(&sup.effect_id, sup_gem.gem_level, 0, set_index);
+                    let stats = data.effect_stats(&sup.effect_id, sup_gem.gem_level, 0, set_index);
                     let set_key = data.selected_set_key(&sup.effect_id, set_index);
                     for ds in stats.all() {
                         if ds.value == 0.0 {
@@ -282,9 +277,7 @@ fn group_judgement(
         .effect(skill_id)
         .map(|e| e.skill_types.iter().cloned().collect())
         .unwrap_or_default();
-    let cannot_be_supported = data
-        .effect(skill_id)
-        .is_some_and(|e| e.cannot_be_supported);
+    let cannot_be_supported = data.effect(skill_id).is_some_and(|e| e.cannot_be_supported);
 
     let candidates: Vec<SupportCandidate<'_>> = group
         .gems
@@ -292,7 +285,11 @@ fn group_judgement(
         .enumerate()
         .flat_map(|(i, g)| {
             std::iter::once(g.skill_id.as_str())
-                .chain(data.additional_effects(&g.skill_id).iter().map(String::as_str))
+                .chain(
+                    data.additional_effects(&g.skill_id)
+                        .iter()
+                        .map(String::as_str),
+                )
                 .filter_map(move |id| {
                     data.effect(id)
                         .filter(|e| e.is_support)

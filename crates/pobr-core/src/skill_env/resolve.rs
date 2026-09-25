@@ -11,8 +11,7 @@ use pobr_data::catalog::SkillDamageStat;
 
 use crate::skill_env::GemInput;
 use crate::skill_env::lookup::{
-    CostTypeLookup, EffectLookup, GemDefLookup, ParserRulesLookup, PassiveNodeLookup,
-    StatSetLookup,
+    CostTypeLookup, EffectLookup, GemDefLookup, ParserRulesLookup, PassiveNodeLookup, StatSetLookup,
 };
 use crate::skill_env::mods::{
     GemPropertyBonus, GemPropertyKind, clean_grant_text, gem_level_category_matches,
@@ -236,10 +235,7 @@ pub fn gem_property_bonuses(
 pub trait GrantedPassiveLookup: PassiveNodeLookup + ParserRulesLookup {}
 impl<T: PassiveNodeLookup + ParserRulesLookup> GrantedPassiveLookup for T {}
 
-pub fn granted_passive_stats(
-    texts: &[String],
-    data: &dyn GrantedPassiveLookup,
-) -> Vec<String> {
+pub fn granted_passive_stats(texts: &[String], data: &dyn GrantedPassiveLookup) -> Vec<String> {
     use crate::ModValue;
 
     let Some(rules) = data.parser_rules() else {
@@ -347,7 +343,12 @@ pub fn support_granted_gem_levels(
     for sup in &judgement.compatible {
         let host = &gems[sup.gem_index];
         let set_index = support_stat_set_index(sup, gems);
-        let stats = data.effect_stats(sup.effect_id.as_str(), host.gem_level, host.quality, set_index);
+        let stats = data.effect_stats(
+            sup.effect_id.as_str(),
+            host.gem_level,
+            host.quality,
+            set_index,
+        );
         for s in &stats.base {
             let Some(rest) = s.stat.strip_prefix("supported_") else {
                 continue;
@@ -375,10 +376,7 @@ pub fn support_granted_gem_levels(
 /// meaningful for the **primary effect**; an additionally-granted support half uses the
 /// default set (vendor's additional effects share the gemInstance but the set selection
 /// doesn't carry across effects).
-pub fn support_stat_set_index(
-    sup: &CompatibleSupport,
-    gems: &[GemInput],
-) -> Option<u32> {
+pub fn support_stat_set_index(sup: &CompatibleSupport, gems: &[GemInput]) -> Option<u32> {
     let gem = &gems[sup.gem_index];
     (gem.skill_id == sup.effect_id.as_str())
         .then_some(gem.stat_set_index)

@@ -136,7 +136,6 @@ impl Default for DataOrchestratorOptions {
 /// parser dual-runs reuse the same pattern). Re-exported from `pobr-core::skill_env`.
 pub use pobr_core::skill_env::StatMapMode;
 
-
 /// The default parse rules for the text-only path ([`calculate`]): loaded and compiled
 /// once from the repo data directory (`pobr_gamedata::current_data_dir()`), cached
 /// process-wide.

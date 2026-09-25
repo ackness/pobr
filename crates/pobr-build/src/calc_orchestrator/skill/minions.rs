@@ -19,12 +19,5 @@ pub(crate) fn spawn_minions(
 ) {
     let item_texts = collect_item_texts(build);
     let bonuses = gem_property_bonuses(build, data);
-    pobr_core::skill_env::spawn_minions(
-        session,
-        build,
-        data,
-        &item_texts,
-        extra_texts,
-        &bonuses,
-    );
+    pobr_core::skill_env::spawn_minions(session, build, data, &item_texts, extra_texts, &bonuses);
 }

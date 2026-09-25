@@ -10,8 +10,7 @@ use pobr_data::modifier::ModFlags;
 
 use crate::skill_env::item_text::{
     item_local_defence_flat, item_local_defence_inc, parse_weapon_local_crit,
-    weapon_local_attack_speed, weapon_local_phys_adds, weapon_local_phys_inc,
-    weapon_mod_texts,
+    weapon_local_attack_speed, weapon_local_phys_adds, weapon_local_phys_inc, weapon_mod_texts,
 };
 use crate::skill_env::lookup::{
     ArmourBaseLookup, BaseItemLookup, EffectLookup, EquipmentView, UnarmedDataLookup,
@@ -128,8 +127,7 @@ pub fn weapon_item_contribution(
     let local_as = 1.0 + weapon_local_attack_speed(item) / 100.0;
     let mut crit_base = f64::from(w.crit_chance) / 100.0;
     let mut crit_inc = 0.0;
-    for (kind, value) in weapon_mod_texts(item).filter_map(|t| parse_weapon_local_crit(t))
-    {
+    for (kind, value) in weapon_mod_texts(item).filter_map(|t| parse_weapon_local_crit(t)) {
         match kind {
             pobr_data::modifier::ModType::Base => crit_base += value,
             pobr_data::modifier::ModType::Inc => crit_inc += value,
@@ -224,8 +222,7 @@ pub fn non_weapon_attack_contribution(
             // physical. Matches PoB2 SkillStatMap's
             // `mod("PhysicalMin/Max","BASE",val,{PerStat,stat="ArmourOnWeapon 2",div=N})`.
             stat => {
-                if let Some((is_max, mult)) = per_shield_defence_scale(stat, equipment, data)
-                {
+                if let Some((is_max, mult)) = per_shield_defence_scale(stat, equipment, data) {
                     if is_max {
                         phys_max += ds.value * mult;
                     } else {
@@ -334,10 +331,7 @@ pub fn off_hand_defence(
 /// `raw crit / 100` produces `5.0`) (same TODO as the schema doc) — this switch only
 /// migrated the code without changing the value; unit alignment is left for its own
 /// behavior commit.
-pub fn unarmed_contribution(
-    data: &dyn UnarmedDataLookup,
-    class_name: &str,
-) -> WeaponContribution {
+pub fn unarmed_contribution(data: &dyn UnarmedDataLookup, class_name: &str) -> WeaponContribution {
     if let Some(e) = data.unarmed_for_class(class_name) {
         return WeaponContribution {
             phys_min: e.physical_min,

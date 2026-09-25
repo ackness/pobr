@@ -4,7 +4,6 @@ use super::collect::{combine_wrapped_then_filter, granted_passive_defs};
 use super::conditions::{combat_conditions, weapon_cfg_flags, weapon_type_conditions};
 use super::context::CalculationContext;
 use super::item::mirror::slot_bonus_effect_scales;
-use pobr_core::skill_env::unarmed_contribution;
 use super::skill::buffs::{
     buff_skill_specs, herald_skill_names, self_buff_offensive_modifiers, support_buff_specs,
 };
@@ -29,6 +28,7 @@ use pobr_core::calc::CalculationSession;
 use pobr_core::calc::MinimalInput;
 use pobr_core::mod_parser::ParseCtx;
 use pobr_core::rules::stat_map_engine::StatMapCatalog;
+use pobr_core::skill_env::unarmed_contribution;
 use pobr_data::item::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 use pobr_data::modifier::{ModFlags, ModType};
 use pobr_data::monster::EnemyTier;

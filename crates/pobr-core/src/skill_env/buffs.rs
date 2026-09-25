@@ -24,10 +24,7 @@ use crate::skill_env::resolve::GemPropertyLookup;
 /// snake_case form, with connector words (of/the) kept lowercase to match vendor's
 /// `buff.name:gsub(" ","")` condition naming ("Herald of Plague" →
 /// `AffectedByHeraldofPlague`, matching the shape of oracle condVars).
-pub fn herald_skill_names(
-    groups: &dyn SocketGroupView,
-    data: &dyn EffectLookup,
-) -> Vec<String> {
+pub fn herald_skill_names(groups: &dyn SocketGroupView, data: &dyn EffectLookup) -> Vec<String> {
     use std::collections::BTreeSet;
     let mut names: BTreeSet<String> = BTreeSet::new();
     groups.for_each_enabled_group(&mut |group| {
@@ -236,8 +233,7 @@ pub fn spirit_reservation_modifiers(
             }
             let own = data.effect_level_row(&gem.skill_id, gem.gem_level);
             let mut flat = own.and_then(|r| r.spirit_reservation_flat).unwrap_or(0.0);
-            let mut mult =
-                1.0 + own.and_then(|r| r.reservation_multiplier).unwrap_or(0.0) / 100.0;
+            let mut mult = 1.0 + own.and_then(|r| r.reservation_multiplier).unwrap_or(0.0) / 100.0;
             // Spirit→Life reservation conversion (vendor CalcDefence.lua:248-254, added
             // in 0.5.4b; Atziri's Communion support's constant stat
             // `skill_reserves_X_life_permyriad_per_spirit_instead_of_spirit` = 66,
@@ -247,10 +243,7 @@ pub fn spirit_reservation_modifiers(
             let mut spirit_to_life = 0.0;
             // The same group's supports: spirit flat (ExtraSpirit) + reservation_multiplier MORE.
             for sup in group.gems {
-                if data
-                    .effect(&sup.skill_id)
-                    .is_none_or(|e| !e.is_support)
-                {
+                if data.effect(&sup.skill_id).is_none_or(|e| !e.is_support) {
                     continue;
                 }
                 if let Some(row) = data.effect_level_row(&sup.skill_id, sup.gem_level) {
@@ -334,8 +327,8 @@ pub fn spirit_reservation_modifiers(
                 .filter(|s| EFFICIENCY_STATS.contains(&s.stat.as_str()))
                 .map(|s| s.value)
                 .sum();
-            let gem_cfg = crate::CalcConfig::new()
-                .with_skill_types(skill_type_bits(&effect.skill_types));
+            let gem_cfg =
+                crate::CalcConfig::new().with_skill_types(skill_type_bits(&effect.skill_types));
             let eff_names = [
                 pobr_data::prelude::ModName::from("SpiritReservationEfficiency"),
                 pobr_data::prelude::ModName::from("ReservationEfficiency"),
@@ -398,12 +391,11 @@ pub fn spirit_reservation_modifiers(
                 let l_eff =
                     (quality_eff + db.sum(ModType::Inc, &gem_cfg, &l_eff_names)).max(-100.0);
                 let l_eff_more = db.more(&gem_cfg, &l_eff_names);
-                let percent = (flat * spirit_to_life * mult * l_factor
-                    / (1.0 + l_eff / 100.0)
-                    / l_eff_more
-                    * 100.0)
-                    .round()
-                    / 100.0;
+                let percent =
+                    (flat * spirit_to_life * mult * l_factor / (1.0 + l_eff / 100.0) / l_eff_more
+                        * 100.0)
+                        .round()
+                        / 100.0;
                 if percent > 0.0 {
                     let origin = ModifierSource::new(SourceId::new(
                         SourceKind::SkillGem,

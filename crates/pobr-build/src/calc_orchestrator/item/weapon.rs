@@ -62,7 +62,6 @@ pub(crate) fn dual_wield_off_hand_contribution(
     pobr_core::skill_env::dual_wield_off_hand_contribution(build, data, main_effect)
 }
 
-
 /// Strips PoB item mod `{tag}` markers (e.g. `{desecrated}{enchant}`), returning the untagged lowercase text.
 pub(crate) fn clean_item_text(text: &str) -> String {
     pobr_core::skill_env::clean_item_text(text)

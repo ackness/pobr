@@ -65,7 +65,6 @@ pub(crate) fn buff_skill_specs(
     pobr_core::skill_env::buff_skill_specs(&mut ctx, build, data, &bonuses)
 }
 
-
 /// The **player-side buff** granted by a support → [`BuffSpec`] (kind =
 /// [`BuffKind::Buff`], applied by buff_pass's Buff branch,
 /// CalcPerform.lua:1949-1962, which applies the BuffEffect multiplier zone before

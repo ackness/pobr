@@ -9,9 +9,7 @@
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use crate::Modifier;
-use crate::rules::stat_map_engine::{
-    self, MappedItem, MappedOutcome, StatMapCatalog,
-};
+use crate::rules::stat_map_engine::{self, MappedItem, MappedOutcome, StatMapCatalog};
 use crate::skill_env::EffectStats;
 
 /// The statmap mapping channel.
@@ -85,10 +83,7 @@ impl<'a> StatMapCtx<'a> {
 /// Classifies one mapping outcome for Compare-mode recording (shared shape across the
 /// domain fetch points): `mapped` (with the domain-prefixed injected list),
 /// `unsupported:<category>`, or `None` (Mapped-empty / Unknown — not recorded).
-fn classify_outcome(
-    outcome: &MappedOutcome,
-    domain: &str,
-) -> Option<(&'static str, String)> {
+fn classify_outcome(outcome: &MappedOutcome, domain: &str) -> Option<(&'static str, String)> {
     match outcome {
         MappedOutcome::Mapped(items) if !items.is_empty() => {
             let mut injected: Vec<(String, &'static str, f64)> = items
@@ -151,14 +146,12 @@ pub fn mapped_stat_modifiers(
                             MappedItem::SkillData { .. } => None,
                         })
                         .collect();
-                    injected
-                        .sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                    injected.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
                     Some(("mapped", format!("data={injected:?}")))
                 }
-                MappedOutcome::Unsupported(reason) => Some((
-                    "unsupported",
-                    format!("unsupported:{}", reason.category()),
-                )),
+                MappedOutcome::Unsupported(reason) => {
+                    Some(("unsupported", format!("unsupported:{}", reason.category())))
+                }
                 MappedOutcome::Unknown => Some(("unknown", String::new())),
             };
             if let Some((classification, detail)) = record {
@@ -166,7 +159,14 @@ pub fn mapped_stat_modifiers(
             }
         }
     }
-    data_mapped_stat_modifiers(stats, source_kind, label_prefix, effect_id, set_key, ctx.catalog)
+    data_mapped_stat_modifiers(
+        stats,
+        source_kind,
+        label_prefix,
+        effect_id,
+        set_key,
+        ctx.catalog,
+    )
 }
 
 /// Data channel: the statmap data engine. See [`mapped_stat_modifiers`]'s doc for the
@@ -216,7 +216,12 @@ pub fn curse_stat_modifiers(
         let outcome =
             stat_map_engine::map_curse_stat(catalog, skill_id, set_key, &ds.stat, ds.value);
         if let Some((classification, detail)) = classify_outcome(&outcome, "curse") {
-            ctx.record(&ds.stat, format!("curse.{skill_id}"), classification, detail);
+            ctx.record(
+                &ds.stat,
+                format!("curse.{skill_id}"),
+                classification,
+                detail,
+            );
         }
         let MappedOutcome::Mapped(items) = outcome else {
             continue;
@@ -256,7 +261,12 @@ pub fn debuff_stat_modifiers(
         let outcome =
             stat_map_engine::map_debuff_stat(catalog, skill_id, set_key, &ds.stat, ds.value);
         if let Some((classification, detail)) = classify_outcome(&outcome, "debuff") {
-            ctx.record(&ds.stat, format!("debuff.{skill_id}"), classification, detail);
+            ctx.record(
+                &ds.stat,
+                format!("debuff.{skill_id}"),
+                classification,
+                detail,
+            );
         }
         let MappedOutcome::Mapped(items) = outcome else {
             continue;
@@ -310,12 +320,7 @@ pub fn has_exposure_inflict_stats(
     };
     stats.all().any(|ds| {
         ds.value != 0.0
-            && stat_map_engine::has_exposure_inflict_payload(
-                catalog,
-                skill_id,
-                set_key,
-                &ds.stat,
-            )
+            && stat_map_engine::has_exposure_inflict_payload(catalog, skill_id, set_key, &ds.stat)
     })
 }
 

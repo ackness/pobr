@@ -941,10 +941,7 @@ impl pobr_core::skill_env::BaseItemLookup for BuildData {
 }
 
 impl pobr_core::skill_env::WeaponTypeLookup for BuildData {
-    fn weapon_type_info(
-        &self,
-        item_class: &str,
-    ) -> Option<&pobr_data::catalog::WeaponTypeDef> {
+    fn weapon_type_info(&self, item_class: &str) -> Option<&pobr_data::catalog::WeaponTypeDef> {
         let key = match item_class {
             "Warstaff" => "Staff",
             "Staff" => return None,

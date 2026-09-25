@@ -12,7 +12,6 @@ use crate::build_data::BuildData;
 /// Re-exported from `pobr-core::skill_env`.
 pub use pobr_core::skill_env::StatMapCompareRecord;
 
-
 /// Maps a set of resolved stats into modifiers attributed with `source_kind` — the
 /// statmap channel's dispatch point: Data goes through the
 /// [`stat_map_engine::map_stat`] data engine; Compare = the Data computation + recording

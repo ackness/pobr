@@ -132,7 +132,6 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
     }
 }
 
-
 /// The main skill's trigger-chain modifiers (build-layer wiring for findings
 /// 03-01/03-02/03-06; expanded since).
 ///

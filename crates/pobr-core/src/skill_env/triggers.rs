@@ -11,8 +11,7 @@ use pobr_data::item::EquipmentSlot;
 use crate::Modifier;
 use crate::calc::TriggerSourceStats;
 use crate::skill_env::lookup::{
-    BaseItemLookup, EquipmentView, SocketGroupView, TriggerConfigLookup,
-    WeaponTypeLookup,
+    BaseItemLookup, EquipmentView, SocketGroupView, TriggerConfigLookup, WeaponTypeLookup,
 };
 use crate::skill_env::mods::{is_damage_skill, mk_trigger_flag, mk_trigger_mod};
 use crate::skill_env::resolve::{ResolvedSkillLevel, SkillLevelLookup, resolve_skill_level};
@@ -38,12 +37,13 @@ pub trait TriggerEnv:
     /// Upcast to the weapon-contribution view.
     fn as_weapon(&self) -> &dyn WeaponContributionLookup;
 }
-impl<T> TriggerEnv for T where
+impl<T> TriggerEnv for T
+where
     T: TriggerConfigLookup
         + crate::skill_env::BuffEnv
         + SkillLevelLookup
         + WeaponContributionLookup
-        + SourceCondLookup
+        + SourceCondLookup,
 {
     fn as_buff_env(&self) -> &dyn crate::skill_env::BuffEnv {
         self
@@ -77,11 +77,7 @@ pub trait TriggerSubCalc {
     /// ordinal `pick_group_main_skill` selects by). Returns `None` when the
     /// sub-calculation is unavailable (cycle / recursion guard / data gap) — the
     /// caller falls back to the base `1/use_time`.
-    fn source_stats(
-        &mut self,
-        group_index: usize,
-        gem_index: usize,
-    ) -> Option<TriggerSourceStats>;
+    fn source_stats(&mut self, group_index: usize, gem_index: usize) -> Option<TriggerSourceStats>;
 }
 
 /// The trigger-chain injection surface: groups + equipment + the sub-calculation
@@ -334,11 +330,16 @@ fn config_trigger_modifiers<S: TriggerSubCalc>(
     // predicate (the one with the highest base rate, matching PoB2's findTriggerSkill
     // highest-APS) → sub-calculation fetches post-calculation statistics; falls back
     // to the base `1/use_time` when the sub-calculation is unavailable.
-    if let Some((source_idx, base_rate)) =
-        find_trigger_source_gem(ctx, data, gem_level_bonuses, group, main_skill_id, &recognized)
-    {
-        let stats = source_stats_for(ctx, group_index, group, source_idx, main_skill_id)
-            .or_else(|| {
+    if let Some((source_idx, base_rate)) = find_trigger_source_gem(
+        ctx,
+        data,
+        gem_level_bonuses,
+        group,
+        main_skill_id,
+        &recognized,
+    ) {
+        let stats =
+            source_stats_for(ctx, group_index, group, source_idx, main_skill_id).or_else(|| {
                 Some(TriggerSourceStats {
                     action_rate: base_rate,
                     ..Default::default()
@@ -420,7 +421,12 @@ fn find_trigger_source_gem<S: TriggerSubCalc>(
             continue;
         }
         if let Some(cond) = &recognized.config.source_skill_cond
-            && !source_cond_matches(ctx.equipment, data.as_source_cond(), &effect.skill_types, cond)
+            && !source_cond_matches(
+                ctx.equipment,
+                data.as_source_cond(),
+                &effect.skill_types,
+                cond,
+            )
         {
             continue;
         }

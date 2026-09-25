@@ -406,10 +406,9 @@ impl pobr_core::skill_env::GemPropertyScanView for Build {
             // Kalandra's Touch mirrors the opposite ring's mods (including "+N to
             // Level of all <X> Skills"), matching the primary injection path's
             // semantics (vendor CalcSetup.lua:1221-1243 copies the whole modList).
-            let item = crate::calc_orchestrator::item::mirror::kalandra_reflected_ring(
-                self, slot, item,
-            )
-            .unwrap_or(item);
+            let item =
+                crate::calc_orchestrator::item::mirror::kalandra_reflected_ring(self, slot, item)
+                    .unwrap_or(item);
             for text in item
                 .implicit_texts
                 .iter()
