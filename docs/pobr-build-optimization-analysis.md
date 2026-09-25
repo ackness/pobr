@@ -164,9 +164,42 @@ pub struct SkillEnv<'a> {
 
 ## 5. 验收标准（第一波）
 
-- [ ] `calc_orchestrator/` 无 `use super::*`（全部显式 `use`）；
-- [ ] `skill_resolve.rs` 拆为 `skill/resolve.rs` + `skill/minions.rs` + `item/kalandra.rs` + `item/slot_bonus.rs`；
-- [ ] `triggers.rs` 的 `support_modifiers` 移到 `skill/mods.rs`；
-- [ ] `mod.rs` 测试按被测对象外迁，生产代码 ≤1,200 行；
-- [ ] `cargo test -p pobr-build --test parity parity_no_regression` 通过；
-- [ ] `cargo clippy --lib --tests -D warnings` 零告警。
+- [x] `calc_orchestrator/` 无 `use super::*`（全部显式 `use`，仅 `tests.rs` 保留）；
+- [x] `skill_resolve.rs` 拆为 `skill/resolve.rs` + `skill/minions.rs` + `item/kalandra.rs` + `item/slot_bonus.rs`；
+- [x] `triggers.rs` 的 `support_modifiers` 移到 `skill/mods.rs`；
+- [x] `mod.rs` 测试按被测对象外迁到 `tests.rs`，生产代码 1,089 行（≤1,200）；
+- [x] `cargo test -p pobr-build --test parity parity_no_regression` 通过；
+- [x] `cargo clippy --lib --tests -D warnings` 零告警。
+
+## 6. 第二波执行记录（已完成，`2206fad`）
+
+**目标**：引擎语义（技能组 → Modifier 的翻译）下沉到 `pobr_core::skill_env`，pobr-build 只留编排薄壳。
+
+**已下沉的语义**（全部走 trait 抽象，零 `Build`/`BuildData` 依赖）：
+
+| 域 | pobr-core 位置 | 关键 trait |
+|---|---|---|
+| support 兼容判定 + addSkillTypes 不动点 | `skill_env::support` (`judge_group_supports`) | `SupportJudgeLookup` |
+| 技能组 → Modifier 纯翻译 | `skill_env::mods` (`skill_base_modifiers`, `dot_flag`, `corpse_explosion`, `crossbow_reload`, `mk_trigger_mod`) | `EffectLookup`, `StatMapLookup` |
+| 技能等级/品质/宝石加成 | `skill_env::resolve` (`resolve_skill_level`, `gem_property_bonuses`, `additional_gem_levels`, `support_granted_gem_levels`, `pick_group_main_skill`) | `SkillLevelLookup`, `GemPropertyLookup`, `GemPropertyScanView`, `PassiveNodeLookup`, `GemDefLookup`, `ParserRulesLookup`, `CostTypeLookup` |
+| 武器/双持/徒手基础贡献 | `skill_env::weapon` (`weapon_contribution`, `dual_wield_off_hand_contribution`, `unarmed_contribution`, `per_shield_defence_scale`) | `WeaponContributionLookup`, `WeaponItemLookup`, `EquipmentView` |
+| Herald/aura/buff 名 + spirit 预留 | `skill_env::buffs` (`herald_skill_names`, `buff_skill_name`, `self_buff_offensive_modifiers`, `spirit_reservation_modifiers`) | `SocketGroupView`, `ReservationDb`/`ReservationLookup` |
+| Buff/Warcry/Exposure specs | `skill_env::buff_specs` (`buff_skill_specs`, `support_buff_specs`, `warcry_skill_specs`, `support_modifiers`, `exposure_support_modifiers`, `group_judgement`) | `BuffEnv`, `WarcryEnv`, `StatMapCtx` |
+| Stat-map 域通道 | `skill_env::stat_map` (`mapped_stat_modifiers`, `stat_map_data_mapped`, `curse_stat_modifiers`, `debuff_stat_modifiers`, `player_buff_stat_modifiers`, `classify_outcome`) + `buff_stat_map` 模块 | `StatMapCtx`（catalog+mode+record sink，替代 `CalculationContext`） |
+| Minion 装配 | `skill_env::minions` (`spawn_minions`) | `MinionEnv`, `MinionSession`（`base_sum` + `add_minion_from_def`） |
+| 触发链全链 | `skill_env::triggers` (`trigger_modifiers`, `config_trigger_modifiers`, `recognize_trigger_config`, `find_trigger_source_gem`, `source_cond_matches`, `base_rate_of`) | `TriggerEnv`, `TriggerCtx`, `TriggerSubCalc`（子计算回调） |
+
+**关键设计**：
+- `StatMapCtx { catalog, mode, records }`：statmap 引擎函数从消费 `CalculationContext` 改为消费该 ctx；`CalculationContext::stat_map_ctx()` 提供借用适配。
+- `TriggerSubCalc`：触发源技能的子计算抽象为 trait 回调；编排层 `OrchestratorSubCalc` 实现（clone build → 指向源 gem → 一层深 `calculate_with_context`）。`group_index: Option<usize>` 表示 detached/测试组（无子计算，回退 `1/use_time`）。
+- 组合 trait + `as_*()` upcast：`TriggerEnv`/`BuffEnv`/`WeaponContributionLookup` 等组合多个查询 trait，解决 Rust trait object 只能单 trait 的限制。
+- `Build`/`BuildData` 实现所有 `*Lookup` trait（`build.rs`/`build_data.rs`），`Build` 另实现 `EquipmentView`/`SocketGroupView`/`GemPropertyScanView`。
+
+**回归修复**（`2206fad`）：`pick_group_main_skill` wrapper 漏了 builder 路径（`gem_skills` 空、id 来自 `active_skill_id`）的引用回映射，导致 19 个 skills 集成测试主技能解析失败。
+
+**验证**：`cargo test --workspace` 2291 全过；`parity_no_regression` 硬门禁通过；`clippy --all-targets` 零告警。
+
+**仍未做（第三波/可选收尾）**：
+- `resolve_main_skill`/`pick_group_chosen_active`/`stage_build_view` 等编排骨架留在 pobr-build（本就是编排职责，返回 `&SocketGroup` 绑死 Build 类型）；
+- `BuildData` 按 trait 分域重组（2.3，纯内部结构，可选）；
+- 增量计算/缓存（`calculate_with_data` 无缓存、触发子计算跨调用缓存）—— 依赖 TraceGraph 归因基建，远期工程。
