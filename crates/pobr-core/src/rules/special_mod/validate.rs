@@ -478,7 +478,7 @@ mod tests {
             .with_config(crate::CalcConfig::new().with_condition("RuleActive", active));
             session.set_parser_rules(compiled.clone());
             session.add_modifier_texts([&text]).unwrap();
-            assert_eq!(session.perform_minimal().life, expected);
+            assert_eq!(session.perform_minimal().expect("perform").life, expected);
         }
     }
 

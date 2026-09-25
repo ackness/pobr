@@ -46,20 +46,19 @@ fn values_match_existing_rust_table() {
         assert_eq!(e.physical_min, min, "{} physical_min", e.class_name);
         assert_eq!(e.physical_max, max, "{} physical_max", e.class_name);
         assert_eq!(e.attack_rate, rate, "{} attack_rate", e.class_name);
-        // pobr's current value is 0.05 (vendor's is the percentage 5; the
-        // discrepancy is already recorded in the schema's TODO(parity),
-        // not fixed by this task).
+        // Serialized legacy fraction remains 0.05; the calc boundary
+        // converts it to vendor's 5 percentage points.
         assert_eq!(e.crit_chance, crit, "{} crit_chance", e.class_name);
     }
 }
 
-/// Spot-checks vendor-only fields (vendor `src/Modules/Data.lua:554-562`:
+/// Spot-checks vendor-only fields (vendor `src/Modules/Data.lua:627-635`:
 /// the classId table key + the trailing class-name comment; `type = "None"`).
 #[test]
 fn vendor_only_fields_sampled() {
     let entries = game_data().unarmed_data().unwrap();
 
-    // The full classId → class-name set (Data.lua:554-562's trailing
+    // The full classId → class-name set (Data.lua:627-635's trailing
     // comments; PoE2 skips ids 3/4/5, they don't exist).
     let expected_ids: &[(u32, &str)] = &[
         (0, "Scion"),
@@ -81,13 +80,13 @@ fn vendor_only_fields_sampled() {
         "classId↔class name should match vendor and be ascending by class_id"
     );
 
-    // Spot check: Warrior (Data.lua:557) has PhysicalMax = 8; type = "None".
+    // Spot check: Warrior (Data.lua:630) has PhysicalMax = 8; type = "None".
     let warrior = entries.iter().find(|e| e.class_id == 6).unwrap();
     assert_eq!(warrior.class_name, "Warrior");
     assert_eq!(warrior.weapon_type, "None");
     assert_eq!(warrior.physical_max, 8.0);
 
-    // Spot check: Witch (Data.lua:555) has PhysicalMax = 5, AttackRate = 1.65.
+    // Spot check: Witch (Data.lua:628) has PhysicalMax = 5, AttackRate = 1.65.
     let witch = entries.iter().find(|e| e.class_id == 1).unwrap();
     assert_eq!(witch.physical_max, 5.0);
     assert_eq!(witch.attack_rate, 1.65);

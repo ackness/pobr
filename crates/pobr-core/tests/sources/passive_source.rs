@@ -115,7 +115,7 @@ fn session_add_passive_nodes_feeds_minimal_calc() {
     ];
 
     session.add_passive_nodes(&nodes).unwrap();
-    let output = session.perform_minimal();
+    let output = session.perform_minimal().expect("perform");
 
     // (100 base + 40 node) * (1 + 20/100) = 168.
     assert_eq!(output.life, 168.0);

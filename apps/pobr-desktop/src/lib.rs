@@ -13,7 +13,7 @@
 //! split out here as pure functions, so unit tests can assert the summary
 //! contains expected fields (e.g. `"DPS"`) without depending on the GUI runtime.
 
-use pobr_build::{Build, CharacterIdentity, OrchestratorOptions, calculate};
+use pobr_build::{Build, CalcCache, CharacterIdentity, OrchestratorOptions};
 use pobr_core::calc::MinimalInput;
 use pobr_data::prelude::{EquipmentSlot, Item, ItemBaseId, ItemRarity, RolledDefence};
 use pobr_i18n::{CANONICAL_LANGUAGE, LanguageId, Translator};
@@ -27,6 +27,14 @@ const EXAMPLE_CLASS_NAME: &str = "Ranger";
 /// The example Build's base life (from character setup, injected into
 /// orchestration as [`MinimalInput`]).
 const EXAMPLE_BASE_LIFE: f64 = 50.0;
+
+/// Process-wide calculation cache (the GUI renders repeatedly; an unchanged
+/// build must not recompute). Lazily built; `Mutex` keeps it `Sync` without
+/// pulling in a concurrency framework.
+fn cache() -> &'static std::sync::Mutex<CalcCache> {
+    static CACHE: std::sync::OnceLock<std::sync::Mutex<CalcCache>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(|| std::sync::Mutex::new(CalcCache::new()))
+}
 
 /// Builds a minimal built-in example Build (level 1, a single ring with a parseable modifier).
 ///
@@ -88,7 +96,14 @@ pub fn build_summary(build: &Build, language: &str) -> Result<String, pobr_build
         },
         extra_modifier_texts: vec![],
     };
-    let out = calculate(build, &options)?;
+    // Route through CalcCache: the text-only `calculate` path is the cache's
+    // intended consumer (BuildSnapshot covers exactly its inputs), and the
+    // future GUI will recompute on every edit — this keeps repeated renders
+    // of an unchanged build free.
+    let out = cache()
+        .lock()
+        .expect("calc cache mutex poisoned")
+        .get_or_compute(build, &options)?;
 
     let title = app_title(language);
     let mut summary = String::new();

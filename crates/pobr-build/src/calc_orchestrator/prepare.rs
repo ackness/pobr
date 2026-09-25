@@ -1,6 +1,28 @@
 //! Resolve build inputs before constructing the calculation session.
 
-use super::*;
+use pobr_core::CalcConfig;
+use pobr_core::calc::MinimalInput;
+use pobr_data::item::EquipmentSlot;
+use pobr_data::modifier::{ModFlags, ModType};
+use pobr_data::monster::EnemyTier;
+use pobr_data::skill::SkillTypes;
+
+use super::DataOrchestratorOptions;
+use super::conditions::{apply_condition_implications, build_has_companion_skill};
+use super::conditions::{
+    combat_conditions, damage_keywords, main_hand_offhand_is_shield, skill_type_bits,
+    skill_type_flags, weapon_cfg_flags, weapon_type_conditions,
+};
+use crate::build::{Build, SocketGroup};
+use crate::build_data::{BuildData, ResolvedSkillLevel};
+use crate::support::judge_group_supports;
+use pobr_data::catalog::GrantedEffectDef;
+
+use super::item::weapon::{
+    WeaponContribution, dual_wield_off_hand_contribution, weapon_contribution,
+};
+use super::skill::resolve::resolve_main_skill;
+use super::skill::triggers::recognize_trigger_config;
 
 pub(super) struct ResolvedMainSkill<'a> {
     pub main_skill: Option<(ResolvedSkillLevel, &'a SocketGroup, &'a str)>,
@@ -64,7 +86,7 @@ pub(super) fn stage_resolve_main_skill<'a>(
             // trigger recognition (trigger_configs's four-level key, the same
             // determination as trigger_modifiers).
             if !types.iter().any(|t| t == "Triggered")
-                && recognize_trigger_config(data, group, skill_id).is_some()
+                && recognize_trigger_config(data, group, skill_id)
             {
                 types.push("Triggered".to_string());
             }
@@ -166,7 +188,7 @@ pub(super) fn stage_build_cfg(
         .with_skill_name(
             main.main_skill
                 .as_ref()
-                .map(|(_, _, skill_id)| skill_resolve::skill_name_from_id(skill_id)),
+                .map(|(_, _, skill_id)| super::skill::resolve::skill_name_from_id(skill_id)),
         )
         .with_damage_keywords(damage_keywords(
             build,
@@ -241,13 +263,9 @@ pub(super) fn stage_build_cfg(
         .config
         .enemy_tier
         .unwrap_or(options.enemy_tier);
-    // Enemy rarity condition: the default DPS view vs. Boss/Pinnacle/Uber (= Unique) →
-    // set true, making condition-type damage boosts like "... against Rare or Unique
-    // Enemies" apply (PoB's boss-DPS semantics).
-    if matches!(
-        enemy_tier,
-        EnemyTier::Boss | EnemyTier::Pinnacle | EnemyTier::Uber
-    ) {
+    // Match setup_enemy's Effective gate when bridging the selected boss tier
+    // into player-side conditions. Panel mode must not gain rarity bonuses.
+    if cfg.mode_effective && enemy_tier.is_boss() {
         cfg = cfg
             .with_condition("Unique", true)
             .with_condition("RareOrUnique", true);

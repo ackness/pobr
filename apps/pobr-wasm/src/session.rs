@@ -115,7 +115,9 @@ pub fn calculate_json(input_json: &str) -> Result<String, String> {
         .add_modifier_texts(&request.modifiers)
         .map_err(|err| format!("failed to parse modifier: {err}"))?;
 
-    let output = session.perform_minimal();
+    let output = session
+        .perform_minimal()
+        .map_err(|err| format!("calculation failed: {err}"))?;
     let response = CalculateResponse::from_output(&output, session.unsupported_modifier_texts());
 
     serde_json::to_string(&response).map_err(|err| format!("failed to serialize output: {err}"))

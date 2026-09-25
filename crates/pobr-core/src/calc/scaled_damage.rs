@@ -38,10 +38,9 @@ pub struct ScaledDamage {
 /// - `TripleDamageChanceOnCrit = min(Sum(BASE), 100)`; `TripleDamageChance =
 ///   min(Sum(BASE) + enemy.SelfTripleDamageChance(effective mode only) + OnCrit×crit, 100)`.
 /// - Double mirrors the same structure (`:3848-3849`).
-/// - Intimidate (`:3850-3854`): DD=100 under `Condition:WarcryMaxHit`,
-///   otherwise `+IntimidatingUpTimeRatio` — the warcry mechanic is not
-///   implemented, so this input is always absent and the whole section is
-///   skipped (TODO(warcry): fill in this branch once `IntimidatingUpTimeRatio` is wired up).
+/// - Intimidating Cry (`:4052-4055`): only when an active cry publishes an
+///   `IntimidatingUpTimeRatio` (including zero), DD=100 under WarcryMaxHit;
+///   otherwise its uptime is added and capped before Triple's deduction.
 /// - Triple deducts from Double (`:3855-3859`): `DD = max(DD − TD×DD/100, 0)`.
 /// - `ScaledDamageEffect = 1 × (1 + DD/100 + 2×TD/100)` (`:3860-3861`).
 ///
@@ -52,9 +51,6 @@ pub struct ScaledDamage {
 /// `or`), so this is judged a vendor typo; this implementation follows the
 /// apparent **intended semantics** (mirroring Double).
 ///
-/// TODO(globalLimit): the DOUBLED form of `chance to deal Double Damage` mods
-/// carries a globalLimit — this depends on the T1 limit primitive; once that
-/// lands it takes effect on the Sum side, and this function needs no changes.
 pub fn scaled_damage_effect(
     db: &ModDb,
     enemy_db: &ModDb,
@@ -102,6 +98,25 @@ pub fn scaled_damage_effect(
         + enemy_self_double
         + double_on_crit * crit_chance)
         .min(100.0);
+    // The ratio is an injected BASE mod rather than a defaulted output: its
+    // presence (not its nonzero value) is the vendor globalOutput gate.
+    if db.iter_mods().any(|m| {
+        m.name.as_str() == "IntimidatingUpTimeRatio"
+            && m.mod_type == ModType::Base
+            && m.matches(cfg)
+    }) {
+        if db.flag(cfg, "Condition:WarcryMaxHit") || cfg.condition("WarcryMaxHit") {
+            double_chance = 100.0;
+        } else {
+            double_chance = (double_chance
+                + db.sum(
+                    ModType::Base,
+                    cfg,
+                    &[ModName::from("IntimidatingUpTimeRatio")],
+                ))
+            .min(100.0);
+        }
+    }
 
     // Triple deducts from Double: when both roll, Triple takes precedence, so the overlapping probability is subtracted (:3855-3859).
     if triple_chance > 0.0 {

@@ -5,8 +5,8 @@
 //! text (e.g. `"25% increased Fire Damage"`) into [`Modifier`](crate::Modifier).
 //! - [`mod_parser`]: the data-driven scan engine (consumes
 //!   `overlay/mod_parser_rules.json`, replicating PoB2 `ModParser.lua`'s
-//!   `scan()` + `parseMod()`) plus the legacy hand-written parser pending
-//!   removal.
+//!   `scan()` + `parseMod()`). The legacy hand-written parser was removed;
+//!   the engine is the sole parser.
 //! - [`apply_range`]: resolves range-bearing modifiers like `+(40-50) to
 //!   maximum Life` to a single-value string via `range` (0..1) before
 //!   feeding them to the parser (mirrors PoB2 `ItemTools.lua::applyRange`).

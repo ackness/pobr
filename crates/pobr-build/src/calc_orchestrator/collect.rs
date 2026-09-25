@@ -1,6 +1,22 @@
 //! collect — collecting character base / passive nodes / jewel radius expansion / keystones / items·gems.
 
-use super::*;
+use pobr_core::Modifier;
+use pobr_core::mod_parser::ParseCtx;
+use pobr_core::skill_source::GemModSource;
+use pobr_data::item::Item;
+use pobr_data::modifier::ModType;
+use pobr_tree::{ClassContext, JewelRadius};
+
+use super::sources::SourceWriter;
+use crate::build::Build;
+use crate::build::RadiusJewel;
+use crate::build_data::BuildData;
+use crate::error::BuildError;
+use pobr_core::CharacterBase;
+use pobr_core::passive::AllocatedNode;
+use pobr_tree::{collect_allocated_mods_for_class, compute_radius_jewel_effect_with_radii};
+
+use super::skill::resolve::{parse_gem_property_bonus, small_passive_effect_inc};
 pub(crate) use pobr_core::passive::{GrantTargetKind, parse_grant_line};
 
 /// Resolve item-granted sockets using the selected tree's stable IDs and names.
@@ -355,10 +371,7 @@ pub(crate) fn parse_jewel_radius(label: Option<&str>) -> JewelRadius {
 /// three-way-choice form. The catalog carries no isAttribute flag, so this is determined
 /// from the node's mod text (matching the text form used by pobr-tree's attribute-choice rewrite).
 pub(crate) fn is_attribute_node(def: &pobr_data::catalog::PassiveNodeDef) -> bool {
-    def.stats.iter().any(|s| {
-        let lower = s.to_ascii_lowercase();
-        lower.contains(" to any ") && lower.contains("attribute")
-    })
+    pobr_core::skill_env::is_attribute_node(def)
 }
 
 /// The geometric expansion result for one radius jewel: the list of **allocated**
@@ -487,8 +500,7 @@ pub(crate) fn radius_jewel_expansions<'a>(
 /// truncate toward zero. Scaling that needs the precision exception table uses
 /// the core ScaleAddMod primitive instead.
 pub(crate) fn vendor_scale_mod_value(value: f64, scale: f64) -> f64 {
-    let rounded = (value * scale * 100.0).round() / 100.0;
-    rounded.trunc()
+    pobr_core::skill_env::vendor_scale_mod_value(value, scale)
 }
 
 /// Parse each radius grant once and scale its modifiers for each allocated node.

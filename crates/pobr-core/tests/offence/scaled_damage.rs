@@ -14,6 +14,37 @@ fn base(name: &str, value: f64) -> Modifier {
 
 // ----------------------------------------------------------------
 
+/// CalcOffence.lua:4050-4063: Intimidating presence gates max-hit, uptime
+/// is added before the 100% clamp and before Triple's overlap deduction.
+#[test]
+fn intimidating_ratio_presence_clamp_and_triple_order() {
+    let cfg = CalcConfig::attack().with_condition("WarcryMaxHit", true);
+    let mut db = ModDb::new();
+    db.add_mod(base("DoubleDamageChance", 40.0));
+    db.add_mod(base("TripleDamageChance", 50.0));
+    // No active cry: max-hit condition alone cannot force DD=100.
+    assert_eq!(
+        scaled_damage_effect(&db, &ModDb::new(), &cfg, 0.0).double_chance,
+        20.0
+    );
+    db.add_mod(base("IntimidatingUpTimeRatio", 0.0));
+    assert_eq!(
+        scaled_damage_effect(&db, &ModDb::new(), &cfg, 0.0).double_chance,
+        50.0
+    );
+    let mut ordinary = ModDb::new();
+    ordinary.add_list([
+        base("DoubleDamageChance", 80.0),
+        base("TripleDamageChance", 50.0),
+        base("IntimidatingUpTimeRatio", 40.0),
+    ]);
+    // min(80+40,100)=100; triple deducts 50 => DD=50, not 60.
+    assert_eq!(
+        scaled_damage_effect(&ordinary, &ModDb::new(), &CalcConfig::attack(), 0.0).double_chance,
+        50.0
+    );
+}
+
 /// Hand calc: DoubleDamageChance 30 alone → DD=30, TD=0, effect = 1 + 30/100 = 1.3.
 #[test]
 fn double_damage_only_hand_calc() {

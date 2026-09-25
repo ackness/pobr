@@ -99,6 +99,36 @@ impl SocketGroup {
         self.source.as_deref().is_none_or(str::is_empty)
     }
 
+    /// The `GemInput` view of this group's gem list (the engine-semantics adapter:
+    /// every pobr-build caller that feeds a group into `pobr_core::skill_env`
+    /// functions builds this list; collecting it into a Vec keeps the borrow local).
+    pub fn gem_inputs(&self) -> Vec<pobr_core::skill_env::GemInput> {
+        self.gem_skills
+            .iter()
+            .map(|g| pobr_core::skill_env::GemInput {
+                skill_id: g.skill_id.clone(),
+                gem_level: g.gem_level,
+                quality: g.quality,
+                stat_set_index: g.stat_set_index,
+            })
+            .collect()
+    }
+
+    /// The `EnabledGroup` view (pairs with [`Self::gem_inputs`]'s Vec; the borrow
+    /// lives as long as that Vec is alive).
+    pub fn enabled_group<'a>(
+        &'a self,
+        gems: &'a [pobr_core::skill_env::GemInput],
+    ) -> pobr_core::skill_env::EnabledGroup<'a> {
+        pobr_core::skill_env::EnabledGroup {
+            gems,
+            from_gem: self.from_gem(),
+            slot: self.slot.as_deref(),
+            active_skill_id: self.active_skill_id.as_deref(),
+            active_gem_level: self.active_gem_level.unwrap_or(1),
+        }
+    }
+
     pub fn new() -> Self {
         Self {
             weapon_set: None,
@@ -365,6 +395,69 @@ impl Build {
     /// Enabled skill gem groups.
     pub fn enabled_socket_groups(&self) -> impl Iterator<Item = &SocketGroup> {
         self.socket_groups.iter().filter(|g| g.enabled)
+    }
+}
+
+impl pobr_core::skill_env::EquipmentView for Build {
+    fn item(&self, slot: pobr_data::item::EquipmentSlot) -> Option<&pobr_data::item::Item> {
+        self.items.get(&slot)
+    }
+}
+
+impl pobr_core::skill_env::SocketGroupView for Build {
+    fn for_each_enabled_group(&self, f: &mut dyn FnMut(pobr_core::skill_env::EnabledGroup<'_>)) {
+        for group in self.enabled_socket_groups() {
+            // Project the concrete `GemSkillRef`s into the engine-semantics
+            // `GemInput` view (same field order, zero semantics change).
+            let gems: Vec<pobr_core::skill_env::GemInput> = group
+                .gem_skills
+                .iter()
+                .map(|g| pobr_core::skill_env::GemInput {
+                    skill_id: g.skill_id.clone(),
+                    gem_level: g.gem_level,
+                    quality: g.quality,
+                    stat_set_index: g.stat_set_index,
+                })
+                .collect();
+            f(pobr_core::skill_env::EnabledGroup {
+                gems: &gems,
+                from_gem: group.from_gem(),
+                slot: group.slot.as_deref(),
+                active_skill_id: group.active_skill_id.as_deref(),
+                active_gem_level: group.active_gem_level.unwrap_or(1),
+            });
+        }
+    }
+}
+
+impl pobr_core::skill_env::GemPropertyScanView for Build {
+    fn for_each_scanned_text(&self, f: &mut dyn FnMut(&str)) {
+        for (slot, item) in self.equipped_items() {
+            // Kalandra's Touch mirrors the opposite ring's mods (including "+N to
+            // Level of all <X> Skills"), matching the primary injection path's
+            // semantics (vendor CalcSetup.lua:1221-1243 copies the whole modList).
+            let item =
+                crate::calc_orchestrator::item::mirror::kalandra_reflected_ring(self, slot, item)
+                    .unwrap_or(item);
+            for text in item
+                .implicit_texts
+                .iter()
+                .chain(&item.modifier_texts)
+                .chain(&item.enchant_texts)
+            {
+                f(text);
+            }
+        }
+        for jewel in &self.jewels {
+            for text in jewel
+                .implicit_texts
+                .iter()
+                .chain(&jewel.modifier_texts)
+                .chain(&jewel.enchant_texts)
+            {
+                f(text);
+            }
+        }
     }
 }
 

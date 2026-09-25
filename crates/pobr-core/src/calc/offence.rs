@@ -1223,16 +1223,15 @@ fn penetration_value(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: Dama
 ///
 /// - Enemy armour value (`:4080-4081`): `Override(Armour)` takes priority,
 ///   otherwise `calcLib.val = Σ BASE × (1 + ΣINC/100) × ΠMORE`;
-/// - The player's `IgnoreEnemyArmour` flag (`:4084-4085`) → enemy armour
-///   treated as 0 (positive armour fully waived; vendor doesn't strip
-///   negative armour, so this likewise only applies when armour > 0);
+/// - The player's `IgnoreEnemyArmour` flag (`:4084-4085`) waives positive
+///   armour; otherwise the enemy's numeric `IgnoreArmour` reduces positive
+///   armour, floored at zero. Neither changes negative armour;
 /// - `CalcArmourAsThoughDealing` MORE (`:4087`): computes armour mitigation
 ///   using an amplified hit amount;
 /// - Negative armour (broken past zero) takes [`armour_reduction_pct_signed`]'s negative branch (damage bonus).
 ///
 /// Not wired up (present in vendor, PoBR currently has no producer,
-/// TODO(parity)): `IgnoreArmour`'s numeric reduction (`:4084`),
-/// `ChanceToIgnoreEnemyArmour` (`:4082`/`:4087`),
+/// TODO(parity)): `ChanceToIgnoreEnemyArmour` (`:4082`/`:4087`),
 /// `ChanceToIgnoreEnemyPhysicalDamageReduction` + the MIN/MAX config mode
 /// (`:4088-4094`), `PartialIgnoreEnemyPhysicalDamageReduction` (`:4096`).
 ///
@@ -1252,8 +1251,17 @@ fn enemy_physical_multiplier(
                 * enemy_db.more(cfg, &armour_names)
         }
     };
-    if armour > 0.0 && player_db.flag(cfg, "IgnoreEnemyArmour") {
-        armour = 0.0;
+    if armour > 0.0 {
+        if player_db.flag(cfg, "IgnoreEnemyArmour") {
+            armour = 0.0;
+        } else {
+            // Vendor :4301 reads the enemy's calcLib.val, not a player-side
+            // ignore stat. A negative broken armour value must remain negative.
+            let ignore = enemy_db.sum(ModType::Base, cfg, &[ModName::from("IgnoreArmour")])
+                * (1.0 + enemy_db.sum(ModType::Inc, cfg, &[ModName::from("IgnoreArmour")]) / 100.0)
+                * enemy_db.more(cfg, &[ModName::from("IgnoreArmour")]);
+            armour = (armour - ignore).max(0.0);
+        }
     }
     let as_though_dealing = player_db.more(cfg, &[ModName::from("CalcArmourAsThoughDealing")]);
     let from_armour = armour_reduction_pct_signed(
@@ -1620,6 +1628,44 @@ fn additive_stat_traced(
 #[cfg(test)]
 mod speed_tests {
     use super::*;
+
+    /// CalcOffence.lua:4300-4303: numeric IgnoreArmour is enemy-side,
+    /// reduces only positive armour before mitigation, and never also
+    /// applies when the player's IgnoreEnemyArmour flag waives it.
+    #[test]
+    fn numeric_ignore_armour_is_enemy_side_and_preserves_negative_armour() {
+        let cfg = CalcConfig::attack();
+        let player = ModDb::new();
+        let mut enemy = ModDb::new();
+        enemy.add_mod(Modifier::number("Armour", ModType::Base, 1000.0));
+        enemy.add_mod(Modifier::number("IgnoreArmour", ModType::Base, 500.0));
+        // ratio=10: 500 / (500 + 1000) = 1/3 mitigation.
+        let expected = 1.0 - 500.0 / 1500.0;
+        assert!((enemy_physical_multiplier(&player, &enemy, &cfg, 100.0) - expected).abs() < 1e-9);
+        enemy.add_mod(Modifier::number("IgnoreArmour", ModType::Base, 2000.0));
+        assert_eq!(enemy_physical_multiplier(&player, &enemy, &cfg, 100.0), 1.0);
+
+        let mut broken = ModDb::new();
+        broken.add_mod(Modifier::number("Armour", ModType::Base, -500.0));
+        broken.add_mod(Modifier::number("IgnoreArmour", ModType::Base, 500.0));
+        assert!(
+            (enemy_physical_multiplier(&player, &broken, &cfg, 100.0) - (1.0 + 500.0 / 1500.0))
+                .abs()
+                < 1e-9
+        );
+        let mut wrong_side = ModDb::new();
+        wrong_side.add_mod(Modifier::number("IgnoreArmour", ModType::Base, 1000.0));
+        let mut plain_enemy = ModDb::new();
+        plain_enemy.add_mod(Modifier::number("Armour", ModType::Base, 1000.0));
+        assert!(
+            (enemy_physical_multiplier(&wrong_side, &plain_enemy, &cfg, 100.0) - 0.5).abs() < 1e-9
+        );
+        wrong_side.add_mod(Modifier::flag("IgnoreEnemyArmour"));
+        assert_eq!(
+            enemy_physical_multiplier(&wrong_side, &plain_enemy, &cfg, 100.0),
+            1.0
+        );
+    }
     use crate::Modifier;
 
     /// base rate=1, with no speed mod at all → action_rate is unchanged.

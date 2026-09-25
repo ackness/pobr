@@ -1,20 +1,52 @@
-//! weapon — weapon/unarmed base contribution + local weapon/defence mod parsing + clean_item_text.
+//! Weapon/unarmed base contribution semantics (engine-semantics layer).
+//!
+//! Moved from `pobr-build`'s `item/weapon.rs`: an attack skill's weapon base →
+//! `WeaponContribution` (physical hit damage + attack rate + crit chance + weapon
+//! ModFlags bits), driven entirely by lookup traits + the equipment view so the same
+//! logic can be reused without `Build`/`BuildData`.
 
-use super::*;
+use pobr_data::item::{EquipmentSlot, Item};
+use pobr_data::modifier::ModFlags;
+
+use crate::skill_env::item_text::{
+    item_local_defence_flat, item_local_defence_inc, parse_weapon_local_crit,
+    weapon_local_attack_speed, weapon_local_phys_adds, weapon_local_phys_inc, weapon_mod_texts,
+};
+use crate::skill_env::lookup::{
+    ArmourBaseLookup, BaseItemLookup, EffectLookup, EquipmentView, UnarmedDataLookup,
+    WeaponBaseLookup, WeaponTypeLookup,
+};
+use crate::skill_env::resolve::ResolvedSkillLevel;
 
 /// An attack skill's weapon base contribution: physical hit damage (quality already
 /// applied) + attack rate + crit chance.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct WeaponContribution {
-    pub(crate) phys_min: f64,
-    pub(crate) phys_max: f64,
-    pub(crate) attack_rate: f64,
-    pub(crate) crit_chance: f64,
+pub struct WeaponContribution {
+    pub phys_min: f64,
+    pub phys_max: f64,
+    pub attack_rate: f64,
+    pub crit_chance: f64,
     /// This weapon source's ModFlags weapon bits (matching vendor's `getWeaponFlags`,
     /// derived from `weapon_types.json` via [`ModFlags::weapon_flags`]). Consumed by T2
     /// hand_pass's per-hand cfg weapon-bit replacement (`WeaponBase::flags` →
     /// `replace_weapon_flags`).
-    pub(crate) flags: ModFlags,
+    pub flags: ModFlags,
+}
+
+/// The lookup surface weapon contribution resolution needs.
+pub trait WeaponContributionLookup:
+    WeaponItemLookup + ArmourBaseLookup + UnarmedDataLookup + EffectLookup
+{
+    /// Upcast helper for the narrower [`WeaponItemLookup`] view.
+    fn as_weapon_item_lookup(&self) -> &dyn WeaponItemLookup;
+}
+impl<T> WeaponContributionLookup for T
+where
+    T: WeaponItemLookup + ArmourBaseLookup + UnarmedDataLookup + EffectLookup,
+{
+    fn as_weapon_item_lookup(&self) -> &dyn WeaponItemLookup {
+        self
+    }
 }
 
 /// Resolves the main weapon's (Weapon1) base contribution to an **attack skill**,
@@ -29,13 +61,14 @@ pub(crate) struct WeaponContribution {
 /// don't yet apply to the weapon base individually — this currently only establishes the
 /// **bare-item base** semantics (roadmap chain A #1 acceptance: bare-item attack build
 /// DPS aligned); local vs. global mod separation is a later slice.
-pub(crate) fn weapon_contribution(
-    build: &Build,
-    data: &BuildData,
+pub fn weapon_contribution(
+    equipment: &dyn EquipmentView,
+    data: &dyn WeaponContributionLookup,
+    class_name: &str,
     main_skill_id: &str,
     skill: &ResolvedSkillLevel,
 ) -> Option<WeaponContribution> {
-    let effect = data.granted_effects.get(main_skill_id)?;
+    let effect = data.effect(main_skill_id)?;
     // Only attack skills use weapon damage (spells use stat-set spell base damage).
     if !effect.is_attack() {
         return None;
@@ -46,15 +79,15 @@ pub(crate) fn weapon_contribution(
     // `skillFlags.shieldAttack`: source = off-hand, `setOffHandPhysical*` provides phys,
     // `source.AttackRate = 1000/skillData.attackTime`.
     if effect.is_non_weapon_attack() {
-        return Some(non_weapon_attack_contribution(skill, build, data));
+        return Some(non_weapon_attack_contribution(skill, equipment, data));
     }
     // No main-hand weapon → unarmed (PoB2's `data.unarmedWeaponData[classId]`): physical
     // 2–N (per class), attack rate 1.65, crit 5%. Gives unarmed attack/channel skills
     // (e.g. Flame Breath, Monk) a nonzero base damage.
-    let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
-        return Some(unarmed_contribution(build, data));
+    let Some(item) = equipment.item(EquipmentSlot::Weapon1) else {
+        return Some(unarmed_contribution(data, class_name));
     };
-    weapon_item_contribution(item, data)
+    weapon_item_contribution(item, WeaponContributionLookup::as_weapon_item_lookup(data))
 }
 
 /// A single weapon entry → weapon source contribution (shared semantics for MH/OH,
@@ -65,16 +98,27 @@ pub(crate) fn weapon_contribution(
 /// - Crit chance = `(base crit + local flat) × (1 + local increased%)`, rounded to two decimals;
 /// - Weapon bits derived from **this item's** own base category (matching vendor's
 ///   getWeaponFlags; the same `weapon_types.json` table as the cfg side's
-///   [`weapon_cfg_flags`], so the Weapon1 item's bits match the global cfg bits).
+///   `weapon_cfg_flags`, so the Weapon1 item's bits match the global cfg bits).
 ///
 /// Local physical/attack-speed mods form an independent multiplier zone (multiplied
 /// against global, not folded into the global additive bucket); the hand source slot
 /// that consumes this contribution must strip the same-named local mods at add_item time
-/// (see calculate_with_data) to avoid double-counting. Returns `None` for a non-weapon
-/// base (shield/quiver/foci etc.).
-pub(crate) fn weapon_item_contribution(
+/// to avoid double-counting. Returns `None` for a non-weapon base (shield/quiver/foci etc.).
+/// The lookup surface [`weapon_item_contribution`] needs (item's own base + type bits).
+pub trait WeaponItemLookup: WeaponBaseLookup + BaseItemLookup + WeaponTypeLookup {
+    /// Upcast helper: trait objects can't be re-sliced, so `WeaponContributionLookup`
+    /// callers route through this to get the narrower view.
+    fn as_weapon_item_lookup(&self) -> &dyn WeaponItemLookup;
+}
+impl<T: WeaponBaseLookup + BaseItemLookup + WeaponTypeLookup> WeaponItemLookup for T {
+    fn as_weapon_item_lookup(&self) -> &dyn WeaponItemLookup {
+        self
+    }
+}
+
+pub fn weapon_item_contribution(
     item: &Item,
-    data: &BuildData,
+    data: &dyn WeaponItemLookup,
 ) -> Option<WeaponContribution> {
     let w = data.weapon_base(&item.base.to_string())?;
     let quality = 1.0 + f64::from(item.quality) / 100.0;
@@ -85,8 +129,8 @@ pub(crate) fn weapon_item_contribution(
     let mut crit_inc = 0.0;
     for (kind, value) in weapon_mod_texts(item).filter_map(|t| parse_weapon_local_crit(t)) {
         match kind {
-            ModType::Base => crit_base += value,
-            ModType::Inc => crit_inc += value,
+            pobr_data::modifier::ModType::Base => crit_base += value,
+            pobr_data::modifier::ModType::Inc => crit_inc += value,
             _ => unreachable!("local crit parser only returns BASE or INC"),
         }
     }
@@ -96,9 +140,8 @@ pub(crate) fn weapon_item_contribution(
         0.0
     };
     let flags = data
-        .base_items
-        .get(&item.base.to_string())
-        .and_then(|def| weapon_type_info(data, &def.item_class))
+        .base_item(&item.base.to_string())
+        .and_then(|def| data.weapon_type_info(&def.item_class))
         .map(|wt| ModFlags::weapon_flags(&wt.id, &wt.flag, wt.one_hand, wt.melee))
         .unwrap_or(ModFlags::NONE);
     Some(WeaponContribution {
@@ -128,9 +171,9 @@ pub(crate) fn weapon_item_contribution(
 /// - vendor also trims this pass by the skill's weapon restrictions (a `weaponTypes`
 ///   allowlist); PoBR doesn't model weapon restrictions, and approximates it as
 ///   "dual wielding always produces one";
-pub(crate) fn dual_wield_off_hand_contribution(
-    build: &Build,
-    data: &BuildData,
+pub fn dual_wield_off_hand_contribution(
+    equipment: &dyn EquipmentView,
+    data: &dyn WeaponContributionLookup,
     main_effect: Option<&pobr_data::catalog::GrantedEffectDef>,
 ) -> Option<WeaponContribution> {
     let is_weapon_attack = main_effect
@@ -140,14 +183,16 @@ pub(crate) fn dual_wield_off_hand_contribution(
         return None;
     }
     // The main hand must be an equipped one-handed weapon (per the weapon_types table).
-    let mh = build.items.get(&EquipmentSlot::Weapon1)?;
-    let mh_def = data.base_items.get(&mh.base.to_string())?;
-    let mh_one_hand = weapon_type_info(data, &mh_def.item_class).is_some_and(|w| w.one_hand);
+    let mh = equipment.item(EquipmentSlot::Weapon1)?;
+    let mh_def = data.base_item(&mh.base.to_string())?;
+    let mh_one_hand = data
+        .weapon_type_info(&mh_def.item_class)
+        .is_some_and(|w| w.one_hand);
     if !mh_one_hand || data.weapon_base(&mh.base.to_string()).is_none() {
         return None;
     }
-    let off = build.items.get(&EquipmentSlot::Weapon2)?;
-    weapon_item_contribution(off, data)
+    let off = equipment.item(EquipmentSlot::Weapon2)?;
+    weapon_item_contribution(off, WeaponContributionLookup::as_weapon_item_lookup(data))
 }
 
 /// The weapon source contribution for a non-weapon attack (e.g. Shield Wall): base
@@ -160,10 +205,10 @@ pub(crate) fn dual_wield_off_hand_contribution(
 /// `baseMultiplier` (the skill's damage multiplier, e.g. Shield Wall's 0.65) is applied
 /// by the caller at `phys × dmg_mult`, the same semantics as a normal weapon attack —
 /// so this only returns the bare off-hand base damage **before** the multiplier.
-pub(crate) fn non_weapon_attack_contribution(
+pub fn non_weapon_attack_contribution(
     skill: &ResolvedSkillLevel,
-    build: &Build,
-    data: &BuildData,
+    equipment: &dyn EquipmentView,
+    data: &dyn ArmourBaseLookup,
 ) -> WeaponContribution {
     let mut phys_min = 0.0;
     let mut phys_max = 0.0;
@@ -177,7 +222,7 @@ pub(crate) fn non_weapon_attack_contribution(
             // physical. Matches PoB2 SkillStatMap's
             // `mod("PhysicalMin/Max","BASE",val,{PerStat,stat="ArmourOnWeapon 2",div=N})`.
             stat => {
-                if let Some((is_max, mult)) = per_shield_defence_scale(stat, build, data) {
+                if let Some((is_max, mult)) = per_shield_defence_scale(stat, equipment, data) {
                     if is_max {
                         phys_max += ds.value * mult;
                     } else {
@@ -212,10 +257,10 @@ pub(crate) fn non_weapon_attack_contribution(
 /// — the scaling source is the **off-hand's own** (the shield in Weapon2) armour/evasion/energy
 /// shield (including its local boosts), not the global total defence. Generic: covers
 /// the whole family of per_5/per_15_shield_armour/evasion/energy_shield mods.
-pub(crate) fn per_shield_defence_scale(
+pub fn per_shield_defence_scale(
     stat: &str,
-    build: &Build,
-    data: &BuildData,
+    equipment: &dyn EquipmentView,
+    data: &dyn ArmourBaseLookup,
 ) -> Option<(bool, f64)> {
     let rest = stat.strip_prefix("off_hand_")?;
     let (is_max, rest) = if let Some(r) = rest.strip_prefix("maximum_added_physical_damage_per_") {
@@ -233,9 +278,9 @@ pub(crate) fn per_shield_defence_scale(
         return None;
     }
     let defence_value = match defence {
-        "armour" => off_hand_defence(build, data, 0),
-        "evasion" => off_hand_defence(build, data, 1),
-        "energy_shield" => off_hand_defence(build, data, 2),
+        "armour" => off_hand_defence(equipment, data, 0),
+        "evasion" => off_hand_defence(equipment, data, 1),
+        "energy_shield" => off_hand_defence(equipment, data, 2),
         _ => return None,
     };
     Some((is_max, defence_value / div))
@@ -243,11 +288,15 @@ pub(crate) fn per_shield_defence_scale(
 
 /// The off-hand's own (the shield in [`EquipmentSlot::Weapon2`]) defence value (`idx`
 /// 0=armour/1=evasion/2=energy shield), using the same semantics as
-/// [`defence_base_modifiers`]'s per-item base value: prefers the rolled per-item value
+/// `defence_base_modifiers`'s per-item base value: prefers the rolled per-item value
 /// (includes local increased + quality), falling back to `base default × (1+local
 /// increased) × (1+quality)` when missing. Matches PoB2's `ArmourOnWeapon 2` etc.
-pub(crate) fn off_hand_defence(build: &Build, data: &BuildData, idx: usize) -> f64 {
-    let Some(item) = build.items.get(&EquipmentSlot::Weapon2) else {
+pub fn off_hand_defence(
+    equipment: &dyn EquipmentView,
+    data: &dyn ArmourBaseLookup,
+    idx: usize,
+) -> f64 {
+    let Some(item) = equipment.item(EquipmentSlot::Weapon2) else {
         return 0.0;
     };
     let rolled = &item.rolled_defence;
@@ -277,224 +326,62 @@ pub(crate) fn off_hand_defence(build: &Build, data: &BuildData, idx: usize) -> f
 /// Unarmed weapon contribution (PoB2's `data.unarmedWeaponData[classId]`): the attack
 /// skill base when there's no main-hand weapon.
 ///
-/// Switched from a hardcoded match to the injected per-class unarmed base table
-/// (`data.constants.unarmed_data` ← `base/unarmed_data.json`; falls back to Default
-/// when there's no GameData, which is value-for-value equal to the JSON — a pure
-/// migration, output unchanged).
-///
-/// TODO(parity): the table's `crit_chance = 0.05` (the old hardcoded value) is off by a
-/// factor of 100 from the weapon-holding path's units (`weapon_contribution`'s
-/// `raw crit / 100` produces `5.0`) (same TODO as the schema doc) — this switch only
-/// migrated the code without changing the value; unit alignment is left for its own
-/// behavior commit.
-pub(crate) fn unarmed_contribution(build: &Build, data: &BuildData) -> WeaponContribution {
-    if let Some(e) = data
-        .constants
-        .unarmed_data
-        .for_class(&build.character.class_name)
-    {
+/// The committed unarmed table stores crit as a legacy fraction (0.05 = 5%);
+/// convert to percentage points once at this boundary, matching armed weapon
+/// contributions and PoB2 Data.lua's `unarmedWeaponData.CritChance = 500 / 100`.
+pub fn unarmed_contribution(data: &dyn UnarmedDataLookup, class_name: &str) -> WeaponContribution {
+    if let Some(e) = data.unarmed_for_class(class_name) {
         return WeaponContribution {
             phys_min: e.physical_min,
             phys_max: e.physical_max,
             attack_rate: e.attack_rate,
-            crit_chance: e.crit_chance,
+            crit_chance: e.crit_chance * 100.0,
             // Unarmed: matching vendor's `weaponData.type = "None"` → only the Unarmed bit (always NONE when the feature is off).
             flags: ModFlags::weapon_flags("None", "Unarmed", true, true),
         };
     }
     // Unknown-class fallback: same values as the old match's "other classes" branch
-    // (physical 2–5, attack rate 1.65, crit 0.05) — all 9 known classes hit the table,
+    // (physical 2–5, attack rate 1.65, crit 5 percentage points) — all 9 known classes hit the table,
     // this branch only guards against an unknown class name (behavior matches the old implementation).
     WeaponContribution {
         phys_min: 2.0,
         phys_max: 5.0,
         attack_rate: 1.65,
-        crit_chance: 0.05,
+        crit_chance: 5.0,
         flags: ModFlags::weapon_flags("None", "Unarmed", true, true),
     }
 }
 
-/// Strips PoB item mod `{tag}` markers (e.g. `{desecrated}{enchant}`), returning the untagged lowercase text.
-pub(crate) fn clean_item_text(text: &str) -> String {
-    if !text.contains(['{', '}']) {
-        return text.trim().to_lowercase();
-    }
-    let mut out = String::with_capacity(text.len());
-    let mut depth = 0u32;
-    for c in text.chars() {
-        match c {
-            '{' => depth += 1,
-            '}' => depth = depth.saturating_sub(1),
-            _ if depth == 0 => out.push(c),
-            _ => {}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pobr_data::catalog::UnarmedWeaponDef;
+
+    struct UnarmedTable(UnarmedWeaponDef);
+
+    impl UnarmedDataLookup for UnarmedTable {
+        fn unarmed_for_class(&self, name: &str) -> Option<&UnarmedWeaponDef> {
+            (self.0.class_name == name).then_some(&self.0)
         }
     }
-    out.trim().to_lowercase()
-}
 
-/// Sum of "N% increased Physical Damage" (local mod) on the weapon.
-pub(crate) fn weapon_local_phys_inc(item: &Item) -> f64 {
-    weapon_mod_texts(item)
-        .filter_map(|t| {
-            clean_item_text(t)
-                .strip_suffix("% increased physical damage")
-                .and_then(|n| n.trim().parse::<f64>().ok())
-        })
-        .sum()
-}
-
-/// Sum of "N% increased Attack Speed" (local mod, no condition suffix) on the weapon.
-pub(crate) fn weapon_local_attack_speed(item: &Item) -> f64 {
-    weapon_mod_texts(item)
-        .filter_map(|t| {
-            clean_item_text(t)
-                .strip_suffix("% increased attack speed")
-                .and_then(|n| n.trim().parse::<f64>().ok())
-        })
-        .sum()
-}
-
-/// Bare weapon critical chance is local (Item.lua `calcLocal("CritChance")`).
-/// Exact numeric forms leave global, attack/spell-specific and conditional
-/// modifiers in the global pipeline. Shared by weapon base assembly and stripping.
-pub(crate) fn parse_weapon_local_crit(text: &str) -> Option<(ModType, f64)> {
-    let clean = clean_item_text(text);
-    let prefix = clean
-        .strip_suffix("critical hit chance")
-        .or_else(|| clean.strip_suffix("critical strike chance"))?;
-    for (suffix, kind, sign) in [
-        ("% increased ", ModType::Inc, 1.0),
-        ("% reduced ", ModType::Inc, -1.0),
-        ("% to ", ModType::Base, 1.0),
-        ("% ", ModType::Base, 1.0),
-    ] {
-        if let Some(number) = prefix.strip_suffix(suffix)
-            && let Ok(value) = number.trim().parse::<f64>()
-        {
-            return Some((kind, value * sign));
-        }
+    #[test]
+    fn unarmed_legacy_fraction_converts_once_to_crit_percentage_points() {
+        let table = UnarmedTable(UnarmedWeaponDef {
+            class_id: 10,
+            class_name: "Monk".into(),
+            weapon_type: "None".into(),
+            attack_rate: 1.65,
+            crit_chance: 0.075,
+            physical_min: 2.0,
+            physical_max: 5.0,
+        });
+        let known = unarmed_contribution(&table, "Monk");
+        assert_eq!(known.crit_chance, 7.5);
+        assert_eq!(known.phys_max, 5.0);
+        assert_eq!(known.flags, ModFlags::UNARMED);
+        let unknown = unarmed_contribution(&table, "Unknown");
+        assert_eq!(unknown.crit_chance, 5.0);
+        assert_eq!(unknown.flags, ModFlags::UNARMED);
     }
-    None
-}
-
-/// Range sum of "Adds N to M Physical Damage" (local mod) on the weapon.
-pub(crate) fn weapon_local_phys_adds(item: &Item) -> (f64, f64) {
-    let mut min_sum = 0.0;
-    let mut max_sum = 0.0;
-    for t in weapon_mod_texts(item) {
-        if let Some((lo, hi)) = parse_adds_physical(&clean_item_text(t)) {
-            min_sum += lo;
-            max_sum += hi;
-        }
-    }
-    (min_sum, max_sum)
-}
-
-/// Parses "adds N to M physical damage" → (N, M). Returns `None` for any other form.
-pub(crate) fn parse_adds_physical(clean: &str) -> Option<(f64, f64)> {
-    parse_adds_with_suffix(clean, "physical damage")
-}
-
-/// Parses "adds N to M <suffix>" → (N, M) (suffix is a damage suffix with no leading
-/// space, e.g. `physical damage`). Returns `None` for any other form.
-pub(crate) fn parse_adds_with_suffix(clean: &str, suffix: &str) -> Option<(f64, f64)> {
-    let body = clean
-        .strip_prefix("adds ")?
-        .strip_suffix(suffix)?
-        .strip_suffix(' ')?;
-    let (lo, hi) = body.split_once(" to ")?;
-    Some((lo.trim().parse().ok()?, hi.trim().parse().ok()?))
-}
-
-/// Iterator over the main-hand weapon's mod text (implicit + explicit + enchant).
-pub(crate) fn weapon_mod_texts(item: &Item) -> impl Iterator<Item = &String> {
-    item.implicit_texts
-        .iter()
-        .chain(&item.modifier_texts)
-        .chain(&item.enchant_texts)
-}
-
-/// Whether a mod is a **weapon-local** mod that should be stripped from the global set
-/// (already counted in the weapon source's multiplier zone): local physical
-/// increased/added + local attack speed (the latter applies to weapon attack speed, not
-/// the global additive bucket).
-///
-/// The allowlist is injected via `rules` (`overlay/local_mods.json`, data-driven;
-/// falls back to [`WeaponLocalModsDef::default`], value-for-value matching the original
-/// hardcoded enum).
-pub(crate) fn is_weapon_local_mod(text: &str, rules: &WeaponLocalModsDef) -> bool {
-    let clean = clean_item_text(text);
-    rules
-        .increased_suffixes
-        .iter()
-        .any(|suffix| clean.ends_with(suffix.as_str()))
-        || rules
-            .adds_damage_suffixes
-            .iter()
-            .any(|suffix| parse_adds_with_suffix(&clean, suffix).is_some())
-}
-
-/// Parses an armour item's **local** "N% increased <combination of Armour/Evasion/Energy
-/// Shield>" → per-type boost `[armour, evasion, es]` (affected types get N). Returns
-/// `None` for anything containing `global` or a non-pure-defence combination.
-pub(crate) fn parse_local_defence_inc(clean: &str) -> Option<[f64; 3]> {
-    let (pct_str, rest) = clean.split_once("% increased ")?;
-    let pct: f64 = pct_str.trim().parse().ok()?;
-    if rest.contains("global") {
-        return None; // Global defence boosts aren't treated as local
-    }
-    let normalized = rest.replace(" rating", "").replace(" and ", ", ");
-    let mut out = [0.0; 3];
-    let mut any = false;
-    for part in normalized.split(", ") {
-        match part.trim() {
-            "armour" => out[0] = pct,
-            "evasion" => out[1] = pct,
-            "energy shield" | "maximum energy shield" => out[2] = pct,
-            _ => return None, // Contains a non-defence term → not a pure local defence boost
-        }
-        any = true;
-    }
-    any.then_some(out)
-}
-
-/// Sum of local defence boosts across all mods on an armour item, `[armour, evasion, es]` (percentage points).
-pub(crate) fn item_local_defence_inc(item: &Item) -> [f64; 3] {
-    let mut total = [0.0; 3];
-    for t in weapon_mod_texts(item) {
-        if let Some(inc) = parse_local_defence_inc(&clean_item_text(t)) {
-            for i in 0..3 {
-                total[i] += inc[i];
-            }
-        }
-    }
-    total
-}
-
-/// Parses an armour item's **local** "+N to <Armour/Evasion Rating/maximum Energy
-/// Shield>" → `[armour, evasion, es]`.
-pub(crate) fn parse_local_defence_flat(clean: &str) -> Option<[f64; 3]> {
-    let (num, rest) = clean.strip_prefix('+')?.split_once(" to ")?;
-    let n: f64 = num.trim().parse().ok()?;
-    let mut out = [0.0; 3];
-    match rest.replace(" rating", "").trim() {
-        "armour" => out[0] = n,
-        "evasion" => out[1] = n,
-        "energy shield" | "maximum energy shield" => out[2] = n,
-        _ => return None,
-    }
-    Some(out)
-}
-
-/// Sum of local flat defence across all mods on an armour item, `[armour, evasion, es]`.
-pub(crate) fn item_local_defence_flat(item: &Item) -> [f64; 3] {
-    let mut total = [0.0; 3];
-    for t in weapon_mod_texts(item) {
-        if let Some(flat) = parse_local_defence_flat(&clean_item_text(t)) {
-            for i in 0..3 {
-                total[i] += flat[i];
-            }
-        }
-    }
-    total
 }

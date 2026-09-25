@@ -18,7 +18,7 @@ Detailed repository guidance for coding agents and contributors. [AGENTS.md](AGE
 | 改动 | 最小相关验证 |
 |------|------|
 | Rust 局部逻辑 | `driver.sh test -p <crate> --test <suite> [filter]`；收尾跑 `driver.sh lint -p <crate> --lib --test <suite>` |
-| 计算 / Modifier / parser | 对应集成套件；改变完整 build 数值时再跑 `cargo test -p pobr-build --test parity parity_no_regression` |
+| 计算 / Modifier / parser | 对应集成套件；改变完整 build 数值时再跑 `cargo test -p pobr-build --test parity no_regression` |
 | 跨 crate API / 数据结构 | 相关 crate 测试 + 直接使用者的契约或集成测试；边界无法明确时扩大到 workspace |
 | Web TS / React | `pnpm --dir web test <test-file>` + `pnpm --dir web typecheck`；交互改动补相关 Playwright spec |
 | Rust → WASM / Web 契约 | Rust 契约测试 + 重建 WASM + 相关真实 WASM / E2E 测试 |
@@ -152,6 +152,17 @@ Web 的 `api/wasmBackend.ts` 在浏览器中加载 WASM，调用 `apps/pobr-wasm
 `calc/session.rs::CalculationSession` 是底层会话入口；完整 Build 由 `crates/pobr-build/src/calc_orchestrator/mod.rs` 编排。该目录按 `skill_resolve.rs`、`weapon.rs`、`inject.rs`、`buffs.rs`、`triggers.rs` 等拆分技能解析、武器来源、注入和触发逻辑。`calc/perform.rs` 执行计算阶段，`display_catalog.rs` 定义可展示字段。
 
 编排前置解析由 `calc_orchestrator/prepare.rs` 返回完整的技能、配置和武器结果，不使用默认值占位后分阶段修改。`CalculationContext` 显式携带 stat-map catalog、观察模式和触发子计算状态；计算热路径不使用线程局部上下文。需要映射诊断时使用 `calculate_with_data_report`，记录由返回的 `CalculationReport.stat_map_records` 独占（含触发子计算），原 `take_stat_map_compare_records` 接口已移除。
+
+`DataCalcCache::new(&BuildData, &DataOrchestratorOptions, capacity)` is an opt-in,
+caller-owned bounded output/trigger memo. Its immutable borrows bind data and
+options; complete structural Build identity includes config placeholders.
+Compare mode and report/session entry points remain uncached. Manual key
+projections destructure every field without `..`; keep that safeguard when
+adding inputs. The legacy text `CalcCache` defaults to 64 entries and verifies
+structural equality for computation; `peek(u64)` remains hash-only. Neither
+cache provides dependency-driven stage recomputation or automatically changes
+application caching. `BuildData` retains its flat public fields and constructors,
+with lookup implementations organized under `build_data/{skills,equipment,passives,rules}.rs`.
 
 来源写入阶段只持有 `calc_orchestrator/sources.rs::SourceWriter`，不暴露 `mod_db()`、聚合查询或 `Deref`。`finish_sources` 消费写入对象后才开放读取：精神保留读取完整来源（含额外词条），召唤物数量在属性准备与条件桥接之后读取。保留线性编排，不为每个注入函数增加状态类型。
 

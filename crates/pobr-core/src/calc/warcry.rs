@@ -272,6 +272,7 @@ pub fn apply_warcry_uptime(env: &mut Env) {
 
     let dbg = dbg_env!("POBR_DBG_WARCRY").is_some();
     let mut gain_mods: Vec<Modifier> = Vec::new();
+    let mut intimidating_calculated = false;
     for spec in &env.warcry_skills {
         // Per-skill scope cfg (vendor skillCfg): the warcry's own type bits;
         // flags/keywords cleared (a warcry is neither an attack nor a spell,
@@ -284,6 +285,35 @@ pub fn apply_warcry_uptime(env: &mut Env) {
             .with_flags(ModFlags::NONE)
             .with_keyword_flags(KeywordFlags::NONE);
         let uptime = uptime_ratio(&env.player.mod_db, spec, &scope_cfg, &env.cfg, speed);
+        // CalcOffence.lua:3510-3519 reads NumIntimidatingExerts from the
+        // player (not the warcry's empowered attack count). Publish even a
+        // zero ratio: WarcryMaxHit is gated on the active cry's presence.
+        if spec.name == "Intimidating"
+            && !intimidating_calculated
+            && env.cfg.skill_types.intersects(SkillTypes::MELEE)
+        {
+            let exerts = env.player.mod_db.sum(
+                ModType::Base,
+                &env.cfg,
+                &[ModName::from("NumIntimidatingExerts")],
+            );
+            let tick_s = env.cfg.constants.game().server_tick_seconds;
+            let cooldown = actual_cooldown(&env.player.mod_db, spec, &scope_cfg, tick_s);
+            let cast_time = warcry_cast_time(&env.player.mod_db, spec, &scope_cfg, tick_s);
+            let ratio = if speed > 0.0 && cooldown + cast_time > 0.0 {
+                // Lua `storedUses or 0 + AdditionalCooldownUses`: a present
+                // storedUses takes priority; it is never added to Additional.
+                ((exerts / speed) / (cooldown + cast_time)).min(1.0) * 100.0 * spec.stored_uses
+            } else {
+                0.0
+            };
+            gain_mods.push(Modifier::number(
+                "IntimidatingUpTimeRatio",
+                ModType::Base,
+                ratio.min(100.0),
+            ));
+            intimidating_calculated = true;
+        }
         if dbg {
             let tick_s = env.cfg.constants.game().server_tick_seconds;
             eprintln!(
@@ -392,6 +422,108 @@ mod tests {
             Modifier::number("WarcrySpeed", ModType::Inc, 47.0),
         ]);
         db
+    }
+
+    /// CalcOffence.lua:3510-3519: Intimidating uses Exerts, not Empowers;
+    /// a zero-valued active cry must still publish a presence marker.
+    #[test]
+    fn intimidating_exerts_uptime_gates_and_deduplicates() {
+        use crate::calc::{Actor, ActorBaseStats};
+        let make_env = || {
+            let mut env = Env::new(Actor::new(
+                80,
+                ActorBaseStats {
+                    action_rate: 1.0,
+                    ..ActorBaseStats::default()
+                },
+            ));
+            env.cfg = CalcConfig::attack()
+                .with_skill_types(SkillTypes::ATTACK | SkillTypes::MELEE)
+                .with_mode_buffs(true);
+            let spec = WarcrySpec {
+                name: "Intimidating".into(),
+                skill_id: "IntimidatingCryPlayer".into(),
+                cooldown_base_s: 5.0,
+                stored_uses: 1.0,
+                skill_types: SkillTypes::WARCRY,
+                mods: vec![
+                    Modifier::number("WarcryCastTime", ModType::Base, 1.0),
+                    Modifier::number("AdditionalCooldownUses", ModType::Base, 3.0),
+                ],
+            };
+            env.warcry_skills = vec![spec.clone(), spec];
+            env
+        };
+        let mut env = make_env();
+        env.player.mod_db.add_mod(Modifier::number(
+            "NumIntimidatingExerts",
+            ModType::Base,
+            2.0,
+        ));
+        apply_warcry_uptime(&mut env);
+        let ratio = env.player.mod_db.sum(
+            ModType::Base,
+            &env.cfg,
+            &[ModName::from("IntimidatingUpTimeRatio")],
+        );
+        // With AdditionalCooldownUses present the cooldown is not tick-rounded:
+        // 2 exerts / 1 action/s / (5 cooldown + 1 cast) = 33.33%.
+        // Lua's `storedUses or 0 + Additional` uses storedUses=1, not 4.
+        assert!((ratio - 100.0 / 3.0).abs() < 1e-6, "{ratio}");
+        assert_eq!(
+            env.player
+                .mod_db
+                .iter_mods()
+                .filter(|m| m.name.as_str() == "IntimidatingUpTimeRatio")
+                .count(),
+            1
+        );
+        apply_warcry_uptime(&mut env);
+        assert_eq!(
+            env.player.mod_db.sum(
+                ModType::Base,
+                &env.cfg,
+                &[ModName::from("IntimidatingUpTimeRatio")]
+            ),
+            ratio
+        );
+        let mut empty = make_env();
+        apply_warcry_uptime(&mut empty);
+        assert!(
+            empty
+                .player
+                .mod_db
+                .iter_mods()
+                .any(|m| m.name.as_str() == "IntimidatingUpTimeRatio")
+        );
+        assert_eq!(
+            empty.player.mod_db.sum(
+                ModType::Base,
+                &empty.cfg,
+                &[ModName::from("IntimidatingUpTimeRatio")]
+            ),
+            0.0
+        );
+        let mut non_melee = make_env();
+        non_melee.cfg = CalcConfig::attack().with_mode_buffs(true);
+        apply_warcry_uptime(&mut non_melee);
+        assert!(
+            !non_melee
+                .player
+                .mod_db
+                .iter_mods()
+                .any(|m| m.name.as_str() == "IntimidatingUpTimeRatio")
+        );
+        let mut no_buffs = make_env();
+        no_buffs.cfg.mode_buffs = false;
+        apply_warcry_uptime(&mut no_buffs);
+        assert!(
+            !no_buffs
+                .player
+                .mod_db
+                .iter_mods()
+                .any(|m| m.name.as_str() == "IntimidatingUpTimeRatio")
+        );
     }
 
     #[test]

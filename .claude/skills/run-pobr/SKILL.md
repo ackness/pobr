@@ -102,7 +102,7 @@ Prove it runs on every committed version (the `multi_version` smoke — `BuildDa
 bash .claude/skills/run-pobr/driver.sh versions
 ```
 
-The active default is recorded in `data/CURRENT` and `pobr_data::DATA_VERSION`. PoB2 golden/parity values are version-specific, so golden tests pin `pobr_data::GOLDEN_PARITY_DATA_VERSION` (= `4.5.0.3.4`, decoupled from the active default) — advancing the default doesn't false-red parity; re-pinning golden to a newer version requires **re-recording** it. `driver.sh data` prints the regen pipeline; the committed data is the source of truth.
+The active default is recorded in `data/CURRENT` and `pobr_data::DATA_VERSION`. PoB2 golden/parity values are version-specific, so golden tests pin `pobr_data::GOLDEN_PARITY_DATA_VERSION` (= `4.5.4.8`, decoupled from the active default) — advancing the default doesn't false-red parity; re-pinning golden to a newer version requires **re-recording** it. `driver.sh data` prints the regen pipeline; the committed data is the source of truth.
 
 To see *what actually changed* between two committed versions (the iteration input PoB2 gets from export+CHANGELOG — added/removed/renumbered nodes, skill stat deltas, mod-pool removals, overlay drift):
 

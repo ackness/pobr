@@ -1,7 +1,7 @@
 //! Weapon type domain schema (`base/weapon_types.json`).
 //!
 //! Source table: PoB2's `data.weaponTypeInfo`
-//! (`vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:532-551`, 19 entries).
+//! (`vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:605-624`, 19 entries).
 //! This table is a **line-for-line migration** (a migration invariant):
 //! field values match vendor exactly; discrepancies between pobr's existing
 //! scattered Rust judgments (see below) and vendor are only recorded, not
@@ -21,17 +21,10 @@
 //! - Fishing rod: this table's `id = "Fishing Rod"` (with a space), GGG's
 //!   item_class is `FishingRod`.
 //!
-//! Known discrepancies with pobr's existing Rust judgments (recorded only;
-//! bringing behavior into alignment is a separate follow-up commit):
-//! - TODO(parity): `pobr-build::calc_orchestrator::weapon_type_conditions`'s
-//!   melee-class list (the `matches!` branch) doesn't include `Talisman` /
-//!   `FishingRod`, while vendor treats both `Talisman` and `Fishing Rod` as
-//!   `melee = true`.
-//! - TODO(parity): the same function's `two_handed` predicate
-//!   (`starts_with("Two Hand") || "Warstaff" || "Staff"`) evaluates to
-//!   false (i.e. treated as one-handed) for `Bow` / `Crossbow` /
-//!   `Talisman` / `FishingRod`, while vendor has `oneHand = false` for all
-//!   of these types.
+//! `pobr-build::calc_orchestrator::weapon_type_conditions` uses this table's
+//! `one_hand` / `melee` for grip conditions (including bow, crossbow,
+//! talisman and fishing rod). Per-skill `ModFlags` are separately derived
+//! from the selected weapon source; the two channels must not be conflated.
 //!
 //! Ranged derivation: vendor has no separate range field; ranged =
 //! `!melee`; deriving `ModFlags` bits from `flag` stays in code.
@@ -98,7 +91,7 @@ impl WeaponTypeDef {
     ///
     /// Migration invariant: value-equal to the JSON (locked by a
     /// `pobr-gamedata` test). Values sourced from vendor's
-    /// `data.weaponTypeInfo` (`Data.lua:532-551`, all 19 entries copied
+    /// `data.weaponTypeInfo` (`Data.lua:605-624`, all 19 entries copied
     /// verbatim); pobr's old Rust side has no complete equivalent table
     /// (scattered predicates instead — see the module doc's
     /// TODO(parity) for the discrepancies), so this is a literal table with

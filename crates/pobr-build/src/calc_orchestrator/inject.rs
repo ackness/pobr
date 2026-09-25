@@ -13,7 +13,47 @@
 
 // The orchestration backbone's (`mod.rs`) types and sibling-module helpers are brought
 // in via glob import — matching the style of the rest of the `calc_orchestrator::*` submodules.
-use super::*;
+use pobr_core::Modifier;
+use pobr_core::calc::CalculationSession;
+use pobr_data::item::EquipmentSlot;
+use pobr_data::modifier::ModType;
+use pobr_data::monster::EnemyTier;
+use pobr_data::source::{ModifierSource, SourceId, SourceKind};
+
+use super::EXPOSURE_MAGNITUDE;
+use super::collect::{
+    character_base, engine_ctx, filter_item_parseable, resolve_gems, vendor_scale_mod_value,
+};
+use super::conditions::grenade_type_count;
+use super::context::CalculationContext;
+use super::item::defence::{
+    defence_base_modifiers, is_local_spirit_mod, item_per_level_defence, item_spirit_modifiers,
+    item_ward_modifiers, parse_has_per_level_defence, per_slot_defence_multipliers,
+    per_slot_socket_multipliers, shield_block_modifiers,
+};
+use super::item::mirror::{kalandra_reflected_ring, slot_bonus_effect_scales};
+use super::item::weapon::{
+    clean_item_text, is_weapon_local_mod, parse_adds_with_suffix, parse_local_defence_flat,
+    parse_local_defence_inc, parse_weapon_local_crit,
+};
+use super::skill::buffs::{
+    buff_skill_specs, herald_skill_names, self_buff_offensive_modifiers,
+    spirit_reservation_modifiers, support_buff_specs, warcry_skill_specs,
+};
+use super::skill::mods::{
+    corpse_explosion_modifiers, crossbow_reload_modifiers, dot_flag_modifiers,
+    main_skill_quality_modifiers, skill_base_modifiers, support_modifiers,
+    unselected_set_global_modifiers,
+};
+use super::skill::resolve::config_enemy_level;
+use super::skill::triggers::trigger_modifiers;
+use super::sources::SourceWriter;
+use super::stat_map::exposure_support_modifiers;
+use super::{DataOrchestratorOptions, StageCtx};
+use crate::build::{Build, SocketGroup};
+use crate::build_data::BuildData;
+use crate::error::BuildError;
+use pobr_core::CampaignProgress;
 
 /// Stage 1d: item base defence (armour/evasion/ES) + shield base block + per-item Spirit/Ward → BASE mods.
 pub(super) fn inject_defence_base(session: &mut SourceWriter, build: &Build, data: &BuildData) {

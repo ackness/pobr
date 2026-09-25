@@ -33,7 +33,7 @@ fn reload_cycle_average_scales_rate_and_dps() {
         Modifier::number("CrossbowReloadTimeBase", ModType::Base, 0.8),
         Modifier::number("CrossbowBoltCount", ModType::Base, 5.0),
     ]);
-    session.perform_minimal();
+    session.perform_minimal().expect("perform");
     let out = session.output();
 
     let expected_rate = 5.0 / (5.0 / 3.0 + 0.8); // ≈ 2.027027
@@ -71,7 +71,7 @@ fn not_consume_ammo_100_keeps_firing_rate() {
         Modifier::number("CrossbowBoltCount", ModType::Base, 5.0),
         Modifier::number("ChanceToNotConsumeAmmo", ModType::Base, 100.0),
     ]);
-    session.perform_minimal();
+    session.perform_minimal().expect("perform");
     let out = session.output();
     assert!(
         (out.effective_action_rate - 3.0).abs() < 1e-9,
@@ -89,7 +89,7 @@ fn not_consume_ammo_100_keeps_firing_rate() {
 #[test]
 fn no_reload_data_is_neutral() {
     let mut baseline = CalculationSession::new(crossbow_input());
-    baseline.perform_minimal();
+    baseline.perform_minimal().expect("perform");
     let base_out = baseline.output().clone();
 
     let mut with_bolts_only = CalculationSession::new(crossbow_input());
@@ -99,7 +99,7 @@ fn no_reload_data_is_neutral() {
         ModType::Base,
         5.0,
     )]);
-    with_bolts_only.perform_minimal();
+    with_bolts_only.perform_minimal().expect("perform");
     let out = with_bolts_only.output();
     assert_eq!(out.effective_action_rate, base_out.effective_action_rate);
     assert_eq!(out.dps, base_out.dps);
@@ -115,7 +115,7 @@ fn attack_speed_scales_reload_too() {
         Modifier::number("CrossbowBoltCount", ModType::Base, 5.0),
         Modifier::number("AttackSpeed", ModType::Inc, 50.0),
     ]);
-    session.perform_minimal();
+    session.perform_minimal().expect("perform");
     let out = session.output();
     // Fire rate 4.5/s; reload = 0.8 / 1.5 ≈ 0.5333 → 5 / (5/4.5 + 0.5333) ≈ 3.0405.
     let expected = 5.0 / (5.0 / 4.5 + 0.8 / 1.5);

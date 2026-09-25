@@ -1,10 +1,12 @@
 //! skill_mods — modifier injection for skill base mods / DoT / corpse explosion / crossbow reload / quality / unselected sets.
 
-use super::*;
+use super::super::DataOrchestratorOptions;
+use super::super::context::CalculationContext;
+use super::super::skill::resolve::config_enemy_level;
+use super::super::stat_map::mapped_stat_modifiers;
 
 use pobr_core::Modifier;
 use pobr_core::rules::stat_map_engine::{self, MappedItem, MappedOutcome};
-use pobr_data::item::EquipmentSlot;
 use pobr_data::modifier::ModType;
 use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
@@ -26,61 +28,14 @@ pub(crate) fn skill_base_modifiers(
     skill_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
-    let mut mods = Vec::new();
-    let mk = |stat: &str, value: f64, label: &str| {
-        let origin =
-            ModifierSource::new(SourceId::new(SourceKind::SkillGem, format!("skill.{stat}")))
-                .with_raw_text(label);
-        Modifier::number(stat, ModType::Base, value).with_origin(origin)
-    };
-    if let Some(cd) = skill.cooldown_s
-        && cd > 0.0
-    {
-        mods.push(mk("SkillCooldownBase", cd, "main skill base cooldown"));
-    }
-    // Number of stored uses (PoB's `skillData.storedUses`, e.g. grenade=3) →
-    // SkillStoredUsesBase BASE. Consumed by `calc_cooldown` / `apply_cooldown_cap`: when
-    // stored uses > 1, cooldown does **not** round up to a server frame (vendor
-    // CalcOffence.lua:338-345).
-    if let Some(stored) = skill.stored_uses
-        && stored > 1
-    {
-        mods.push(mk(
-            "SkillStoredUsesBase",
-            f64::from(stored),
-            "main skill stored uses",
-        ));
-    }
-    if let Some(mc) = skill.mana_cost
-        && mc > 0.0
-    {
-        mods.push(mk("SkillManaCostBase", mc, "main skill base mana cost"));
-    }
-    // The skill's inherent base crit chance (percentage points, e.g. Comet 13.0) →
-    // SkillBaseCritChance BASE (the **base-material bucket**, distinct from the mod
-    // bucket CriticalStrikeChance — vendor keeps `baseCrit = source.CritChance` and
-    // `Sum BASE CritChance` as two separate buckets, CalcOffence.lua:3665-3689;
-    // CritChanceBase OVERRIDE only replaces the base-material bucket). A spell's base
-    // crit comes from the skill itself (not the weapon); for attack skills this field is
-    // None, and base crit is instead injected from the weapon (see calc's main flow 1c).
-    if let Some(cc) = skill.crit_chance
-        && cc > 0.0
-    {
-        mods.push(mk("SkillBaseCritChance", cc, "main skill base crit chance"));
-    }
-    // statSet baseMods' inherent attack speed MORE (PoB2's
-    // `mod("Speed","MORE",N,ModFlag.Attack)`; e.g. Flicker 285). Injected as
-    // `AttackSpeed` MORE — the attack speed multiplier zone reads AttackSpeed by
-    // ModName (attack chain only), matching PoB2's `skillModList:More(cfg,"Speed")`.
-    // Spells never read AttackSpeed, so they're naturally unaffected.
-    if let Some(more) = skill.skill_attack_speed_more
-        && more != 0.0
-    {
-        let origin =
-            ModifierSource::new(SourceId::new(SourceKind::SkillGem, "skill.AttackSpeedMore"))
-                .with_raw_text("main skill statSet base attack speed MORE");
-        mods.push(Modifier::number("AttackSpeed", ModType::More, more).with_origin(origin));
-    }
+    let mut mods = pobr_core::skill_env::skill_base_modifiers(
+        skill_id,
+        skill.cooldown_s,
+        skill.stored_uses,
+        skill.mana_cost,
+        skill.crit_chance,
+        skill.skill_attack_speed_more,
+    );
     // The skill's stats (base damage + its own damage% scaling) are injected via
     // SkillStatMap mapping. Exception: `off_hand_weapon_*physical_damage` (base hit
     // damage for a non-weapon attack) is already counted into `base_hit_min/max` as a
@@ -124,25 +79,7 @@ pub(crate) fn dot_flag_modifiers(
         .find(|g| g.skill_id == skill_id)
         .and_then(|g| g.stat_set_index);
     let flags = data.selected_set_dot_flags(skill_id, set_index);
-    let pairs = [
-        ("DotIsArea", flags.area),
-        ("DotIsProjectile", flags.projectile),
-        ("DotIsSpell", flags.spell),
-        ("DotIsAttack", flags.attack),
-        ("DotIsHit", flags.hit),
-    ];
-    pairs
-        .iter()
-        .filter(|(_, on)| *on)
-        .map(|(name, _)| {
-            let origin = ModifierSource::new(SourceId::new(
-                SourceKind::SkillGem,
-                format!("skill.{skill_id}.{name}"),
-            ))
-            .with_raw_text(format!("statSet dot flag {name}"));
-            Modifier::flag(*name).with_origin(origin)
-        })
-        .collect()
+    pobr_core::skill_env::dot_flag_modifiers(flags, skill_id)
 }
 
 /// Corpse explosion base damage (vendor `CalcOffence.lua:2211-2217`):
@@ -239,14 +176,12 @@ pub(crate) fn resolved_enemy_level(
     data: &BuildData,
     options: &DataOrchestratorOptions,
 ) -> u32 {
-    if options.enemy_level != 0 {
-        options.enemy_level
-    } else {
-        let cap = data.constants.enemy_presets.max_enemy_level;
-        config_enemy_level(build)
-            .unwrap_or_else(|| build.character.level.min(cap))
-            .min(cap)
-    }
+    pobr_core::skill_env::resolved_enemy_level(
+        options.enemy_level,
+        config_enemy_level(build),
+        build.character.level,
+        data.constants.enemy_presets.max_enemy_level,
+    )
 }
 
 /// Crossbow reload data channel (matching vendor `CalcOffence.lua:1118-1122`'s
@@ -275,74 +210,8 @@ pub(crate) fn crossbow_reload_modifiers(
     group: &SocketGroup,
     skill_id: &str,
 ) -> Vec<Modifier> {
-    let Some(effect) = data.granted_effects.get(skill_id) else {
-        return Vec::new();
-    };
-    let has_type = |t: &str| effect.skill_types.iter().any(|x| x == t);
-    if !has_type("CrossbowSkill") || has_type("Grenade") || has_type("CrossbowAmmoSkill") {
-        return Vec::new();
-    }
-    // Weapon reload base value (main-hand only; matching vendor's `actor.weaponData1.ReloadTime`).
-    let Some(reload_ms) = build
-        .items
-        .get(&EquipmentSlot::Weapon1)
-        .and_then(|item| data.weapon_base(&item.base.to_string()))
-        .and_then(|w| w.reload_time_ms)
-        .filter(|&ms| ms > 0)
-    else {
-        return Vec::new();
-    };
-    let mk = |name: &str, value: f64, label: String| {
-        let origin = ModifierSource::new(SourceId::new(
-            SourceKind::SkillGem,
-            format!("skill.{skill_id}.{name}"),
-        ))
-        .with_raw_text(label);
-        Modifier::number(name, ModType::Base, value).with_origin(origin)
-    };
-    let mut mods = vec![mk(
-        "CrossbowReloadTimeBase",
-        f64::from(reload_ms) / 1000.0,
-        format!("crossbow weapon reload {reload_ms}ms"),
-    )];
-    // Magazine capacity from the sibling ammo skill: the first `CrossbowAmmoSkill`
-    // among the group's own gems or their additional granted effects, taking its
-    // selected level's `base_number_of_crossbow_bolts` stat.
-    let ammo = group.gem_skills.iter().find_map(|g| {
-        let mut candidates: Vec<&str> = vec![g.skill_id.as_str()];
-        if let Some(link) = data.gem_effects.get(&g.skill_id) {
-            candidates.extend(
-                link.additional_granted_effect_ids
-                    .iter()
-                    .map(String::as_str),
-            );
-        }
-        candidates
-            .into_iter()
-            .find(|eid| {
-                data.granted_effects
-                    .get(*eid)
-                    .is_some_and(|e| e.skill_types.iter().any(|t| t == "CrossbowAmmoSkill"))
-            })
-            .map(|eid| (eid.to_string(), g.gem_level))
-    });
-    if let Some((ammo_id, gem_level)) = ammo {
-        let bolts: f64 = data
-            .effect_stats(&ammo_id, gem_level, 0, None)
-            .base
-            .iter()
-            .filter(|ds| ds.stat == "base_number_of_crossbow_bolts")
-            .map(|ds| ds.value)
-            .sum();
-        if bolts > 0.0 {
-            mods.push(mk(
-                "CrossbowBoltCount",
-                bolts,
-                format!("ammo skill {ammo_id} bolt count"),
-            ));
-        }
-    }
-    mods
+    let gems = group.gem_inputs();
+    pobr_core::skill_env::crossbow_reload_modifiers(data, data, build, data, &gems, skill_id)
 }
 
 /// Maps the main skill gem's **quality stat segment** into `SourceKind::GemQuality`
@@ -487,8 +356,32 @@ pub(crate) fn unselected_set_global_modifiers(
 /// weapon source by `non_weapon_attack_contribution`, so excluded from the stat-map
 /// injection path to avoid double-counting).
 pub(crate) fn is_off_hand_weapon_base_stat(stat: &str) -> bool {
-    matches!(
-        stat,
-        "off_hand_weapon_minimum_physical_damage" | "off_hand_weapon_maximum_physical_damage"
-    )
+    pobr_core::skill_env::is_off_hand_weapon_base_stat(stat)
+}
+
+/// Maps the **compatible support gems'** per-level stats in the main skill's group
+/// through [`map_skill_stat`] into SupportGem-attributed modifiers, injected into the
+/// supported skill (e.g. "added lightning damage" → `LightningDamageMin/Max` BASE,
+/// "more damage" → `Damage` MORE).
+///
+/// Before injection, [`judge_group_supports`] produces the compatible list: **a rejected
+/// support doesn't participate at all** (neither its numeric values nor its
+/// manaMultiplier applies, matching PoB2's `CalcActiveSkill.lua:210-214` semantics of
+/// only putting compatible supports into effectList).
+///
+/// The current scope is **global** (correct semantics under a single-main-skill build:
+/// every support's multiplier applies to the one skill being calculated); per-skill tag
+/// isolation for multiple main skills (applying only to the supported skill) is deferred
+/// until the flag system is wired up. The active main skill's own damage is already
+/// injected by [`skill_base_modifiers`]; this only handles supports.
+pub(crate) fn support_modifiers(
+    context: &mut CalculationContext,
+    group: &SocketGroup,
+    data: &BuildData,
+    active_skill_id: &str,
+) -> Vec<Modifier> {
+    let gems = group.gem_inputs();
+    let eg = group.enabled_group(&gems);
+    let mut ctx = context.stat_map_ctx();
+    pobr_core::skill_env::support_modifiers(&mut ctx, &eg, data, active_skill_id)
 }

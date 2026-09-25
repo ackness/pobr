@@ -29,7 +29,7 @@ fn player_preparation_preserves_attribute_bonus_rules_and_sources() {
             session.add_modifiers([Modifier::flag(flag)]);
         }
         session.prepare_player_stats(class.level, Some(class));
-        let output = session.perform_minimal();
+        let output = session.perform_minimal().expect("perform");
         assert_eq!(output.life, life, "{flag:?}");
         assert_eq!(output.mana, mana, "{flag:?}");
         assert!(session.mods_named("MaximumLife").iter().any(|m| {
@@ -88,7 +88,7 @@ fn per_mana_damage_uses_the_pool_after_defence_conversion() {
     ]);
     session.prepare_player_stats(1, None);
     assert_eq!(session.pool_total("MaximumMana"), 100.0);
-    let output = session.perform_minimal();
+    let output = session.perform_minimal().expect("perform");
     assert_eq!(output.mana, 300.0);
     assert!((output.total_hit_avg - 130.0).abs() < 1e-10);
 }
@@ -120,7 +120,7 @@ fn session_parses_modifier_texts_and_calculates_minimal_output() {
         ])
         .unwrap();
 
-    let output = session.perform_minimal();
+    let output = session.perform_minimal().expect("perform");
 
     assert_eq!(output.life, 1_260.0);
     assert_eq!(output.fire_resistance, 35.0);
@@ -148,7 +148,7 @@ fn session_preserves_accuracy_inputs_for_hit_chance_and_dps() {
         .add_modifier_texts(["+200 to Accuracy Rating"])
         .unwrap();
 
-    let output = session.perform_minimal();
+    let output = session.perform_minimal().expect("perform");
     let expected_hit_chance = pobr_core::calc::hit_chance(1_000.0, 600.0);
 
     assert_eq!(output.total_hit_avg, 100.0);
@@ -198,7 +198,7 @@ fn pool_total_applies_full_pool_pipeline() {
 
     // The pool value shares its source with perform's output (the same scaled_pool
     // pipeline).
-    let output = session.perform_minimal();
+    let output = session.perform_minimal().expect("perform");
     assert_eq!(output.mana, 450.0);
 }
 
@@ -270,7 +270,7 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
     without
         .add_modifier_texts(["8% increased Projectile Speed"])
         .unwrap();
-    let base = without.perform_minimal();
+    let base = without.perform_minimal().expect("perform");
     assert_eq!(base.total_hit_avg, 100.0);
 
     // Flag active: 8% Projectile Speed -> 8% increased Damage (Projectile).
@@ -278,7 +278,7 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
     with.add_modifier_texts(["8% increased Projectile Speed"])
         .unwrap();
     with.add_modifiers([Modifier::flag("ProjectileSpeedAppliesToProjectileDamage")]);
-    let converted = with.perform_minimal();
+    let converted = with.perform_minimal().expect("perform");
     assert_eq!(converted.total_hit_avg, 108.0);
 
     // A source mod scoped by flags (e.g. "for Spell Skills") doesn't participate in
@@ -296,7 +296,7 @@ fn projectile_speed_applies_to_projectile_damage_conversion() {
         .add_modifier_texts(["8% increased Projectile Speed for Spell Skills"])
         .unwrap();
     scoped.add_modifiers([Modifier::flag("ProjectileSpeedAppliesToProjectileDamage")]);
-    let scoped_out = scoped.perform_minimal();
+    let scoped_out = scoped.perform_minimal().expect("perform");
     assert_eq!(scoped_out.total_hit_avg, 100.0);
 }
 
@@ -327,7 +327,7 @@ fn projectile_speed_applies_to_bow_damage_conversion() {
         "Increases and Reductions to [Projectile|Projectile] Speed also apply to Damage with [Bow|Bows]",
     ])
     .unwrap();
-    let converted = with.perform_minimal();
+    let converted = with.perform_minimal().expect("perform");
     assert_eq!(converted.total_hit_avg, 146.0);
 
     // Non-bow skill cfg (no BOW bit): the copy's flags=Bow|Hit are not a subset of
@@ -339,6 +339,6 @@ fn projectile_speed_applies_to_bow_damage_conversion() {
         .add_modifier_texts(["46% increased Projectile Speed"])
         .unwrap();
     non_bow.add_modifiers([Modifier::flag("ProjectileSpeedAppliesToBowDamage")]);
-    let non_bow_out = non_bow.perform_minimal();
+    let non_bow_out = non_bow.perform_minimal().expect("perform");
     assert_eq!(non_bow_out.total_hit_avg, 100.0);
 }

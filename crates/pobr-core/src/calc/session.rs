@@ -557,12 +557,18 @@ impl CalculationSession {
         }
     }
 
-    pub fn perform_minimal(&mut self) -> MinimalOutput {
-        perform(&mut self.env).expect("CalculationSession constructs a valid player actor");
-        MinimalOutput::from_output_and_breakdown(
+    /// Runs the full perform stage and returns the minimal output view.
+    ///
+    /// Errors only when the actor state is invalid (currently: `player.level == 0`,
+    /// see [`perform`]); callers that construct the session from a valid
+    /// [`MinimalInput`]/[`CharacterBase`] never hit it, but the error is
+    /// propagated rather than panicking so embedders (wasm / CLI) can surface it.
+    pub fn perform_minimal(&mut self) -> Result<MinimalOutput, super::CalcError> {
+        perform(&mut self.env)?;
+        Ok(MinimalOutput::from_output_and_breakdown(
             &self.env.player.output,
             &self.env.player.breakdown,
-        )
+        ))
     }
 
     pub fn unsupported_modifier_texts(&self) -> &[String] {

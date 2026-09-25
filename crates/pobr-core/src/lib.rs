@@ -40,6 +40,7 @@ pub mod ingest;
 pub mod model;
 pub mod parse;
 pub mod rules;
+pub mod skill_env;
 
 pub mod display_catalog;
 
@@ -85,3 +86,4 @@ pub use rules::{
     DefenceKeystones, DuplicateHandlerError, Handler, HandlerCtx, HandlerOutcome, HandlerRegistry,
     MainSkillCtx,
 };
+pub use skill_env::{CompatibleSupport, GroupSupportJudgement, SupportCandidate};

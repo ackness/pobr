@@ -608,6 +608,11 @@ fn lua_pattern_to_regex(
                 out.push_str("*?");
                 i += 1;
             }
+            '+' if out.is_empty() => {
+                // Lua treats an unescaped + at the start (also after ^) as a literal.
+                out.push_str(r"\+");
+                i += 1;
+            }
             '*' | '+' | '?' => {
                 out.push(c);
                 i += 1;
@@ -1590,6 +1595,46 @@ mod tests {
         assert_eq!(re, "off-hand");
         let (re, _) = lua_pattern_to_regex("a-b", true, &BTreeMap::new()).unwrap();
         assert_eq!(re, "a*?b");
+    }
+
+    #[test]
+    fn vendor_suppression_patterns_keep_leading_literal_plus() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../data/4.5.5.2/generated/special_vendor.json");
+        let raw = std::fs::read_to_string(path).unwrap();
+        let golden: SpecialModsDef = serde_json::from_str(&raw).unwrap();
+        let cases = [
+            (
+                "^+(%d+)%% chance to suppress spell damage for each dagger you're wielding$",
+                "+12% chance to suppress spell damage for each dagger you're wielding",
+            ),
+            (
+                "^+(%d+)%% chance to suppress spell damage if your e?q?u?i?p?p?e?d? ?boots, helmet and gloves have evasion$",
+                "+12% chance to suppress spell damage if your equipped boots, helmet and gloves have evasion",
+            ),
+        ];
+        for (vendor_pattern, matching_line) in cases {
+            let entry = golden
+                .entries
+                .iter()
+                .find(|entry| entry.vendor_pattern.as_deref() == Some(vendor_pattern))
+                .expect("pinned vendor suppression pattern should appear in golden output");
+            let (converted, caps) =
+                lua_pattern_to_regex(vendor_pattern, true, &BTreeMap::new()).unwrap();
+            assert_eq!(caps, 1);
+            assert_eq!(entry.pattern, converted);
+            let compiled = regex::Regex::new(&format!(r"^(?:{converted})$")).unwrap();
+            assert!(compiled.is_match(matching_line), "{vendor_pattern}");
+            assert!(!compiled.is_match(&matching_line[1..]), "{vendor_pattern}");
+            assert!(
+                !compiled.is_match(&format!("+{matching_line}")),
+                "{vendor_pattern}"
+            );
+            assert!(
+                !compiled.is_match(&format!("{matching_line} extra")),
+                "{vendor_pattern}"
+            );
+        }
     }
 
     #[test]

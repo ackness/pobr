@@ -71,7 +71,9 @@ fn push_enemy_effective_number(
     );
 }
 
-/// Injects a boolean condition state (`Condition:<name>`) into the enemy modDB.
+/// Injects an Effective-only boss condition (`Condition:<name>`).
+/// Mirrors ConfigOptions.lua's enemyIsBoss presets; panel calculations must
+/// not acquire Unique/RareOrUnique/PinnacleBoss merely from the selected tier.
 fn push_enemy_condition(db: &mut ModDb, condition: &str, id: &str) {
     db.add_mod(
         Modifier::number(
@@ -80,7 +82,8 @@ fn push_enemy_condition(db: &mut ModDb, condition: &str, id: &str) {
             1.0,
         )
         .with_source(format!("enemy {id}"))
-        .with_origin(enemy_source(id)),
+        .with_origin(enemy_source(id))
+        .with_tag(ModTag::condition("Effective", false)),
     );
 }
 
@@ -220,11 +223,10 @@ pub fn setup_enemy(env: &mut Env, config_level: u32, tier: EnemyTier) {
 /// Note: the Boss common mod group (Curse/Exposure/Slow `-50`,
 /// `PoiseThreshold 500`, condition states) is still hardcoded here as pobr
 /// currently stands -- `enemy_presets.json`'s `tiers[].enemy_mods` additionally
-/// contains vendor-only entries (Knockback/MinimumMovementSpeed/extra
-/// Poise/player_mods), and this pass **doesn't** convert the whole group to
-/// data-driven, per the migration invariant (zero parity change); behavior
-/// alignment (including the Effective-gating semantic gap) is tracked as
-/// TODO(parity) in the `enemy_presets.rs` module docs, belonging to a future, separate commit.
+/// contains Knockback/MinimumMovementSpeed/extra Poise entries that this
+/// function does not yet inject. Boss conditions and the common Poise bonus
+/// are Effective-gated, matching ConfigOptions.lua's enemyIsBoss presets;
+/// this also corrects legacy tables that recorded Poise's gate as false.
 fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTier) {
     // Monster scaling: accuracy / evasion / armour (tier multiplier already applied within defaults).
     push_enemy_number(
@@ -308,7 +310,7 @@ fn inject_enemy_mods(db: &mut ModDb, defaults: &EnemyTierDefaults, tier: EnemyTi
             -50.0,
             "boss_slow_effect",
         );
-        push_enemy_number(
+        push_enemy_effective_number(
             db,
             "PoiseThreshold",
             ModType::More,
