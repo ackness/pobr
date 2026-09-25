@@ -6,12 +6,14 @@
 //! WASM, CLI, and test harnesses without going through the full orchestrator.
 
 pub mod buff_stat_map;
+mod buff_specs;
 mod buffs;
 mod item_text;
 mod minions;
 mod lookup;
 mod mods;
 mod resolve;
+mod stat_map;
 mod support;
 mod weapon;
 
@@ -58,3 +60,13 @@ pub use buffs::{
     self_buff_offensive_modifiers, spirit_reservation_modifiers,
 };
 pub use minions::{MinionEnv, MinionSession, spawn_minions};
+pub use buff_specs::{
+    BuffEnv, buff_skill_specs, exposure_support_modifiers, group_judgement,
+    support_buff_specs, support_modifiers, warcry_skill_specs,
+};
+pub use stat_map::{
+    StatMapCompareRecord, StatMapCtx, StatMapMode, curse_stat_modifiers,
+    data_mapped_stat_modifiers as stat_map_data_mapped, debuff_stat_modifiers,
+    has_debuff_payload, has_exposure_inflict_stats, mapped_stat_modifiers,
+    player_buff_stat_modifiers,
+};

@@ -132,25 +132,10 @@ impl Default for DataOrchestratorOptions {
 }
 
 /// The statmap mapping channel selection (a dual-run framework, contract C3; a
-/// deliberate decision: Compare is kept as a long-term comparison tool — config / parser
-/// dual-runs reuse the same pattern).
-///
-/// A runtime enum rather than a cargo feature: the 18-build dual-run completes within a
-/// single process, making reporting easy.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum StatMapMode {
-    /// The data engine (`overlay/skill_stat_map.json` + `rules/stat_map_engine`).
-    /// **Default** (the switch commit, gated on a four-precondition checklist).
-    #[default]
-    Data,
-    /// Observation comparison: the Data computation + recording a mapping outcome per
-    /// stat (**output identical to Data**; pure observation that changes no computed
-    /// result; records are retrieved via [`calculate_with_data_report`]). Kept as a
-    /// long-term comparison framework after the Legacy heuristic was removed (T2.4) —
-    /// config / parser dual-runs reuse the same pattern. Reverting after old code
-    /// removal = reverting the removal commit.
-    Compare,
-}
+/// deliberate decision: Compare is kept as a long-term comparison tool — config /
+/// parser dual-runs reuse the same pattern). Re-exported from `pobr-core::skill_env`.
+pub use pobr_core::skill_env::StatMapMode;
+
 
 /// The default parse rules for the text-only path ([`calculate`]): loaded and compiled
 /// once from the repo data directory (`pobr_gamedata::current_data_dir()`), cached

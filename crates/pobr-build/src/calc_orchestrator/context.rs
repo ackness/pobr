@@ -13,6 +13,21 @@ pub(super) struct CalculationContext {
 }
 
 impl CalculationContext {
+    /// Borrows this context as the engine-semantics [`StatMapCtx`] (catalog + mode +
+    /// the Compare-mode record sink), for delegating to `pobr_core::skill_env`
+    /// functions without exposing `CalculationContext` to the engine layer.
+    pub fn stat_map_ctx(&mut self) -> pobr_core::skill_env::StatMapCtx<'_> {
+        pobr_core::skill_env::StatMapCtx {
+            catalog: self.catalog.as_deref(),
+            mode: self.mode,
+            records: if self.mode == StatMapMode::Compare {
+                Some(&mut self.compare_records)
+            } else {
+                None
+            },
+        }
+    }
+
     pub fn new(data: &BuildData, options: &DataOrchestratorOptions) -> Self {
         Self {
             mode: options.stat_map_mode,

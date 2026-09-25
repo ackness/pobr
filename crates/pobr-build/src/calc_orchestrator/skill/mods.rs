@@ -4,7 +4,6 @@ use super::super::DataOrchestratorOptions;
 use super::super::context::CalculationContext;
 use super::super::skill::resolve::config_enemy_level;
 use super::super::stat_map::mapped_stat_modifiers;
-use crate::support::judge_group_supports;
 
 use pobr_core::Modifier;
 use pobr_core::rules::stat_map_engine::{self, MappedItem, MappedOutcome};
@@ -390,49 +389,23 @@ pub(crate) fn support_modifiers(
     data: &BuildData,
     active_skill_id: &str,
 ) -> Vec<Modifier> {
-    let judgement = judge_group_supports(group, data, active_skill_id, group.from_gem());
-    let mut mods = Vec::new();
-    for sup in &judgement.compatible {
-        let gem = &group.gem_skills[sup.gem_index];
-        let set_index = crate::support::support_stat_set_index(sup, group);
-        // TODO(T1, add after rebasing post-T3.6 merge): change the quality argument to
-        // gem.quality — supports have no quality table entries (PoB2 skips them at
-        // export), so this segment is currently always empty and passing 0 is
-        // equivalent to passing gem.quality.
-        let stats = data.effect_stats(&sup.effect_id, gem.gem_level, 0, set_index);
-        // A support's set_key is taken from its own selected set (per-set overrides are
-        // located by the support's effect id). Note: vendor doesn't pass a statSet for
-        // support effects (CalcActiveSkill.lua:130 does a full merge across all sets) —
-        // the full merge for a multi-set support's additional sets is a current gap.
-        let set_key = data.selected_set_key(&sup.effect_id, set_index);
-        mods.extend(mapped_stat_modifiers(
-            context,
-            &stats.base,
-            SourceKind::SupportGem,
-            &sup.effect_id,
-            &sup.effect_id,
-            set_key.as_deref(),
-        ));
-        // A compatible support's per-level cost multiplier → `SupportManaMultiplier`
-        // MORE (matching PoB2's `CalcActiveSkill.lua:689-691`:
-        // `NewMod("SupportManaMultiplier","MORE", level.manaMultiplier, modSource)`).
-        // Only injected for the **compatible list** — a rejected support's multiplier
-        // doesn't apply, matching PoB2's rejection. Consumed by
-        // `skill_mechanics::calc_skill_cost` (the multipliers are chained and truncated
-        // to 4 decimal places, then applied to base cost before the inc/more chain).
-        if let Some(m) = pobr_core::skill_env::support_mana_multiplier_modifier(
-            &sup.effect_id,
-            data.granted_effect_levels
-                .get(&sup.effect_id)
-                .and_then(|rows| {
-                    rows.iter()
-                        .rfind(|r| r.level <= gem.gem_level)
-                        .or(rows.first())
-                })
-                .and_then(|row| row.mana_multiplier),
-        ) {
-            mods.push(m);
-        }
-    }
-    mods
+    let gems: Vec<pobr_core::skill_env::GemInput> = group
+        .gem_skills
+        .iter()
+        .map(|g| pobr_core::skill_env::GemInput {
+            skill_id: g.skill_id.clone(),
+            gem_level: g.gem_level,
+            quality: g.quality,
+            stat_set_index: g.stat_set_index,
+        })
+        .collect();
+    let eg = pobr_core::skill_env::EnabledGroup {
+        gems: &gems,
+        from_gem: group.from_gem(),
+        slot: group.slot.as_deref(),
+        active_skill_id: group.active_skill_id.as_deref(),
+        active_gem_level: group.active_gem_level.unwrap_or(1),
+    };
+    let mut ctx = context.stat_map_ctx();
+    pobr_core::skill_env::support_modifiers(&mut ctx, &eg, data, active_skill_id)
 }
