@@ -16,22 +16,6 @@ pub(crate) fn config_enemy_level(build: &Build) -> Option<u32> {
     read(&raw.values).or_else(|| read(&raw.placeholders))
 }
 
-/// Determines whether a granted effect is a candidate "actively-cast damaging skill":
-/// attack or spell, and not a meta/trigger shell (`skill_types` includes `"Meta"`, e.g.
-/// Cast on Crit / Mirage Deadeye).
-///
-/// PoB's `socketGroupSkillList` treats every non-support gem (including meta shells) as
-/// an active skill entry, and `mainActiveSkill` selects among them by ordinal; but a
-/// meta shell has no independent damage/cast time of its own, and must be pierced
-/// through to the group's real damaging skill. This determination is generic, filtering
-/// by tags (is_attack/is_spell + non-Meta), never targeting a specific skill id.
-pub(crate) fn is_damage_skill(data: &BuildData, skill_id: &str) -> bool {
-    data.granted_effects
-        .get(skill_id)
-        .map(|e| (e.is_attack() || e.is_spell()) && !e.skill_types.iter().any(|t| t == "Meta"))
-        .unwrap_or(false)
-}
-
 /// Selects the main skill `(skill_id, gem_level, stat_set_index)` within a single gem group:
 /// 1. Collects **non-support** gems (order preserved, includes meta shells) = PoB's `socketGroupSkillList`.
 /// 2. Selects the Nth one using `main_active_skill` (1-based, defaults to 1, clamped when out of range).

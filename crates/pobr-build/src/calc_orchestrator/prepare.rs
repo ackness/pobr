@@ -86,7 +86,7 @@ pub(super) fn stage_resolve_main_skill<'a>(
             // trigger recognition (trigger_configs's four-level key, the same
             // determination as trigger_modifiers).
             if !types.iter().any(|t| t == "Triggered")
-                && recognize_trigger_config(data, group, skill_id).is_some()
+                && recognize_trigger_config(data, group, skill_id)
             {
                 types.push("Triggered".to_string());
             }

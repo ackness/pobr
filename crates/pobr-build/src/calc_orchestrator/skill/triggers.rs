@@ -1,24 +1,137 @@
 //! triggers — trigger fixed point + support-applicability judgement (pure migration from calc_orchestrator, no logic change).
 
 use pobr_core::Modifier;
-use pobr_data::item::EquipmentSlot;
 
 use super::super::DataOrchestratorOptions;
 use super::super::calculate_with_context;
-use super::super::conditions::weapon_type_info;
 use super::super::context::CalculationContext;
-use super::super::item::weapon::weapon_contribution;
-use super::super::skill::resolve::{is_damage_skill, resolve_skill_level_with_gem_bonus};
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
 
-/// The result of data-driven recognition: the matched trigger config + the trigger gem
-/// (a meta/support gem in the group; `None` when the main skill itself matched a
-/// skill-kind key).
-pub(crate) struct RecognizedTrigger<'a> {
-    config: &'a pobr_data::catalog::TriggerConfigDef,
-    trigger_gem: Option<&'a crate::build::GemSkillRef>,
+/// The source skill's full sub-calculation statistics (contract 4's transport
+/// surface): resolves `source_gem` to its `(group_index, gem_index)` and delegates to
+/// the [`OrchestratorSubCalc`] channel (the same sub-calculation
+/// `trigger_modifiers` runs for its source rate).
+///
+/// Guards: source = the triggered skill itself (a cycle) → `None`; a trigger-source
+/// context → `None` (one level of depth); sub-calculation failure → `None`.
+#[cfg(test)]
+pub(crate) fn trigger_source_stats(
+    context: &mut CalculationContext,
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+    group: &SocketGroup,
+    source_gem: &crate::build::GemSkillRef,
+    main_skill_id: &str,
+) -> Option<pobr_core::calc::TriggerSourceStats> {
+    if source_gem.skill_id == main_skill_id || context.is_trigger_source {
+        return None;
+    }
+    let group_index = build
+        .enabled_socket_groups()
+        .position(|g| std::ptr::eq(g, group))?;
+    let gem_index = group
+        .gem_skills
+        .iter()
+        .position(|g| std::ptr::eq(g, source_gem))?;
+    let mut sub = OrchestratorSubCalc {
+        context,
+        build,
+        data,
+        options,
+    };
+    pobr_core::skill_env::TriggerSubCalc::source_stats(&mut sub, group_index, gem_index)
 }
+
+/// Whether `main_skill_id` or another gem in `group` matches a `trigger_configs`
+/// entry (the meta-shell `Triggered` backfill in `prepare.rs`; the same four-level
+/// recognition `trigger_modifiers` runs).
+pub(crate) fn recognize_trigger_config(
+    data: &BuildData,
+    group: &SocketGroup,
+    main_skill_id: &str,
+) -> bool {
+    let gems: Vec<pobr_core::skill_env::GemInput> = group
+        .gem_skills
+        .iter()
+        .map(|g| pobr_core::skill_env::GemInput {
+            skill_id: g.skill_id.clone(),
+            gem_level: g.gem_level,
+            quality: g.quality,
+            stat_set_index: g.stat_set_index,
+        })
+        .collect();
+    let eg = pobr_core::skill_env::EnabledGroup {
+        gems: &gems,
+        from_gem: group.from_gem(),
+        slot: group.slot.as_deref(),
+        active_skill_id: group.active_skill_id.as_deref(),
+        active_gem_level: group.active_gem_level.unwrap_or(1),
+    };
+    pobr_core::skill_env::recognize_trigger_config(data, &eg, main_skill_id).is_some()
+}
+
+/// The orchestrator's [`pobr_core::skill_env::TriggerSubCalc`] implementation: clones
+/// the build, points `main_socket_group`/`main_active_skill` at the source gem, and
+/// runs a one-level-deep `calculate_with_context` (trigger relations stripped inside
+/// via `context.trigger_source()`).
+struct OrchestratorSubCalc<'a> {
+    context: &'a mut CalculationContext,
+    build: &'a Build,
+    data: &'a BuildData,
+    options: &'a DataOrchestratorOptions,
+}
+
+impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
+    fn source_stats(
+        &mut self,
+        group_index: usize,
+        gem_index: usize,
+    ) -> Option<pobr_core::calc::TriggerSourceStats> {
+        let group = self.build.enabled_socket_groups().nth(group_index)?;
+        let source_gem = group.gem_skills.get(gem_index)?;
+        // The source gem's 1-based ordinal in the group's **non-support** sequence
+        // (the selection key of pick_group_main_skill).
+        let active_pos = group
+            .gem_skills
+            .iter()
+            .filter(|g| {
+                !self
+                    .data
+                    .granted_effects
+                    .get(&g.skill_id)
+                    .map(|e| e.is_support)
+                    .unwrap_or(false)
+            })
+            .position(|g| std::ptr::eq(g, source_gem))?
+            + 1;
+
+        let mut sub_build = self.build.clone();
+        sub_build.main_socket_group = Some(group_index + 1);
+        sub_build.socket_groups[group_index].main_active_skill = Some(active_pos);
+
+        let mut child = self.context.trigger_source();
+        let result = calculate_with_context(&sub_build, self.data, self.options, &mut child);
+        self.context.compare_records.extend(child.compare_records);
+        let session = result.ok()?;
+        let out = session.output();
+        let action_rate = if out.effective_action_rate > 0.0 {
+            out.effective_action_rate
+        } else {
+            out.action_rate
+        };
+        if action_rate <= 0.0 {
+            return None;
+        }
+        Some(pobr_core::calc::TriggerSourceStats {
+            action_rate,
+            hit_chance: out.hit_chance,
+            crit_chance: out.crit_chance,
+        })
+    }
+}
+
 
 /// The main skill's trigger-chain modifiers (build-layer wiring for findings
 /// 03-01/03-02/03-06; expanded since).
@@ -66,521 +179,54 @@ pub(crate) fn trigger_modifiers(
     group: &SocketGroup,
     main_skill_id: &str,
 ) -> Vec<Modifier> {
-    // Recursion guard: no trigger relation is recognized/injected within a source
-    // skill's sub-calculation env (one level of depth stripped).
-    if context.is_trigger_source {
-        return Vec::new();
-    }
-
-    // — Path 1: data-driven recognition (returns as soon as it matches, including "recognized but the gate isn't satisfied → empty").
-    if let Some(mods) = config_trigger_modifiers(
+    // `None` (a detached/test group not in the build's socket_groups) = the
+    // sub-calculation channel is unavailable; cooldown/flag mods still inject, the
+    // source rate falls back to base `1/use_time` semantics.
+    let group_index = build
+        .enabled_socket_groups()
+        .position(|g| std::ptr::eq(g, group));
+    let gems: Vec<pobr_core::skill_env::GemInput> = group
+        .gem_skills
+        .iter()
+        .map(|g| pobr_core::skill_env::GemInput {
+            skill_id: g.skill_id.clone(),
+            gem_level: g.gem_level,
+            quality: g.quality,
+            stat_set_index: g.stat_set_index,
+        })
+        .collect();
+    let eg = pobr_core::skill_env::EnabledGroup {
+        gems: &gems,
+        from_gem: group.from_gem(),
+        slot: group.slot.as_deref(),
+        active_skill_id: group.active_skill_id.as_deref(),
+        active_gem_level: group.active_gem_level.unwrap_or(1),
+    };
+    let bonuses = super::resolve::gem_property_bonuses(build, data);
+    let build_cfg = build.config.to_calc_config();
+    let is_trigger_source = context.is_trigger_source;
+    let mut sub = OrchestratorSubCalc {
         context,
         build,
         data,
         options,
-        main_skill,
-        group,
-        main_skill_id,
-    ) {
-        return mods;
-    }
-
-    // — Path 2: built-in trigger (matching PoB2's isTriggered: skillTypes includes Triggered or InbuiltTrigger).
-    let Some(effect) = data.granted_effects.get(main_skill_id) else {
-        return Vec::new();
     };
-    let is_triggered = effect
-        .skill_types
-        .iter()
-        .any(|t| t == "Triggered" || t == "InbuiltTrigger");
-    if !is_triggered {
-        return Vec::new();
-    }
-
-    let mut mods = Vec::new();
-
-    // Triggered skill's cooldown → trigger cooldown + triggered cooldown BASE (same
-    // value; without separate trigger-gem cooldown data, PoB2's
-    // `actionCooldown = max(triggerCD, triggeredCD)` degenerates to this single cooldown).
-    if let Some(cd) = main_skill.cooldown_s
-        && cd > 0.0
-    {
-        mods.push(mk_trigger_mod(
-            "TriggeredSkillCooldown",
-            cd,
-            "triggered skill base cooldown",
-        ));
-        mods.push(mk_trigger_mod(
-            "TriggerCooldownBase",
-            cd,
-            "trigger base cooldown",
-        ));
-    }
-
-    // The in-group trigger source skill → sub-calculation statistics → TriggerSourceRate
-    // (post-calculation attack speed) + source hit folded in. Nothing is injected when
-    // there's no candidate in the group — fill_trigger falls back to the main skill's
-    // rate (a placeholder semantics).
-    if let Some(stats) =
-        in_group_trigger_source_stats(context, build, data, options, group, main_skill_id)
-    {
-        push_source_stat_mods(
-            &mut mods, &stats, /* fold_hit */ true, /* fold_crit */ false,
-        );
-    }
-
-    mods
-}
-
-/// Builds a trigger BASE mod (SkillGem attribution, id prefix `trigger.`).
-pub(crate) fn mk_trigger_mod(stat: &str, value: f64, label: &str) -> Modifier {
-    pobr_core::skill_env::mk_trigger_mod(stat, value, label)
-}
-
-/// Builds a trigger FLAG mod (SkillGem attribution).
-pub(crate) fn mk_trigger_flag(name: &str, label: &str) -> Modifier {
-    pobr_core::skill_env::mk_trigger_flag(name, label)
-}
-
-/// Source statistics injection (contract 4's transport surface): rate is always
-/// injected; hit/crit are injected as percentages per the chain's semantics (`fold_hit`
-/// = the default handler folds hit for anything other than triggerOnUse; `fold_crit` =
-/// the CoC chain).
-pub(crate) fn push_source_stat_mods(
-    mods: &mut Vec<Modifier>,
-    stats: &pobr_core::calc::TriggerSourceStats,
-    fold_hit: bool,
-    fold_crit: bool,
-) {
-    mods.push(mk_trigger_mod(
-        "TriggerSourceRate",
-        stats.action_rate,
-        "trigger source effective rate (sub-calculated)",
-    ));
-    if fold_hit && stats.hit_chance > 0.0 {
-        mods.push(mk_trigger_mod(
-            "TriggerSourceHitChance",
-            stats.hit_chance * 100.0,
-            "trigger source hit chance",
-        ));
-    }
-    if fold_crit && stats.crit_chance > 0.0 {
-        mods.push(mk_trigger_mod(
-            "TriggerSourceCritChance",
-            stats.crit_chance * 100.0,
-            "trigger source crit chance",
-        ));
-    }
-}
-
-/// Data-driven trigger wiring: on a recognition match, returns the injected mods
-/// (`Some(vec![])` = recognized but the `requires_condition` gate isn't satisfied,
-/// matching vendor's disable — the trigger panel stays at 0 and **does not fall through**
-/// to the built-in trigger path); returns `None` on no match (falls through to path 2).
-pub(crate) fn config_trigger_modifiers(
-    context: &mut CalculationContext,
-    build: &Build,
-    data: &BuildData,
-    options: &DataOrchestratorOptions,
-    main_skill: &ResolvedSkillLevel,
-    group: &SocketGroup,
-    main_skill_id: &str,
-) -> Option<Vec<Modifier>> {
-    let recognized = recognize_trigger_config(data, group, main_skill_id)?;
-    let config = recognized.config;
-
-    // The requires_condition gate (matching vendor's `modDB:Flag(nil, "Condition:X")`,
-    // e.g. The Hidden Blade needs Phasing, Cast on Melee Kill needs KilledRecently;
-    // when unsatisfied, vendor sets disable / degrades to self-cast).
-    if let Some(cond_name) = &config.requires_condition {
-        let build_cfg = build.config.to_calc_config();
-        if !build_cfg.condition(cond_name) {
-            return Some(Vec::new());
-        }
-    }
-
-    let mut mods = vec![mk_trigger_flag(
-        "SkillIsTriggered",
-        "trigger relation recognized (trigger_configs)",
-    )];
-
-    // Triggered skill's cooldown.
-    if let Some(cd) = main_skill.cooldown_s
-        && cd > 0.0
-    {
-        mods.push(mk_trigger_mod(
-            "TriggeredSkillCooldown",
-            cd,
-            "triggered skill base cooldown",
-        ));
-    }
-    // Trigger cooldown: entry override value (matching vendor's `skillData.cooldown = N`)
-    // > the trigger gem's own cooldown (`triggeredBy.grantedEffect.levels[lvl].cooldown`)
-    // > the triggered skill's cooldown.
-    let trigger_gem_cd = recognized.trigger_gem.and_then(|gem| {
-        resolve_skill_level_with_gem_bonus(
-            build,
-            data,
-            group,
-            &gem.skill_id,
-            gem.gem_level,
-            gem.stat_set_index,
-        )
-        .and_then(|resolved| resolved.cooldown_s)
-    });
-    if let Some(cd) = config
-        .cooldown_override_s
-        .or(trigger_gem_cd)
-        .or(main_skill.cooldown_s)
-        && cd > 0.0
-    {
-        mods.push(mk_trigger_mod(
-            "TriggerCooldownBase",
-            cd,
-            "trigger base cooldown",
-        ));
-    }
-    // Rate cap override (matching vendor's `skillData.triggerRateCapOverride`, e.g. Hidden Blade's 2/s).
-    if let Some(cap) = config.trigger_rate_cap_override
-        && cap > 0.0
-    {
-        mods.push(mk_trigger_mod(
-            "TriggerRateCapOverride",
-            cap,
-            "trigger rate cap override",
-        ));
-    }
-
-    // global / source = self: doesn't depend on a source skill's rate (matching vendor's `EffectiveSourceRate = TriggerRateCap`).
-    if config.global_trigger || config.source_is_self {
-        mods.push(mk_trigger_flag(
-            "TriggerSourceGlobal",
-            "global trigger (source rate = rate cap)",
-        ));
-        return Some(mods);
-    }
-
-    if config.trigger_on_crit {
-        mods.push(mk_trigger_flag(
-            "TriggerOnCrit",
-            "trigger chance folds source crit chance",
-        ));
-    }
-
-    // Source skill: the group's non-triggered damaging skill matching the restricted
-    // predicate (the one with the highest base rate, matching PoB2's findTriggerSkill
-    // highest-APS) → sub-calculation fetches post-calculation statistics; falls back to
-    // the base `1/use_time` when the sub-calculation is unavailable (recursion
-    // guard/cycle/failure).
-    if let Some(source_gem) =
-        find_trigger_source_gem(build, data, group, main_skill_id, &recognized)
-    {
-        let stats = trigger_source_stats(
-            context,
-            build,
-            data,
-            options,
-            group,
-            source_gem,
-            main_skill_id,
-        )
-        .or_else(|| {
-            base_rate_of(build, data, group, source_gem).map(|rate| {
-                pobr_core::calc::TriggerSourceStats {
-                    action_rate: rate,
-                    ..Default::default()
-                }
-            })
-        });
-        if let Some(stats) = stats {
-            // The triggerOnUse chain doesn't fold hit/crit (matching vendor :721's `not config.triggerOnUse`).
-            let fold_hit = !config.trigger_on_use;
-            let fold_crit = config.trigger_on_crit;
-            push_source_stat_mods(&mut mods, &stats, fold_hit, fold_crit);
-        }
-    }
-
-    Some(mods)
-}
-
-/// Recognizes a trigger relation (PoBR's projection of the four-level key, keyed by
-/// `match_effect_ids`): checks the main skill itself first (a skill-kind key, e.g.
-/// Tempest Shield), then scans the rest of the group's gems (a triggeredBy / unique
-/// trigger, e.g. `MetaCastOnCritPlayer`).
-pub(crate) fn recognize_trigger_config<'a>(
-    data: &'a BuildData,
-    group: &'a SocketGroup,
-    main_skill_id: &str,
-) -> Option<RecognizedTrigger<'a>> {
-    if data.trigger_configs.is_empty() {
-        return None;
-    }
-    if let Some(config) = data.trigger_configs.get(main_skill_id) {
-        return Some(RecognizedTrigger {
-            config,
-            trigger_gem: None,
-        });
-    }
-    for gem in &group.gem_skills {
-        if gem.skill_id == main_skill_id {
-            continue;
-        }
-        if let Some(config) = data.trigger_configs.get(&gem.skill_id) {
-            return Some(RecognizedTrigger {
-                config,
-                trigger_gem: Some(gem),
-            });
-        }
-    }
-    None
-}
-
-/// Selects the trigger source gem within the group (matching vendor's `findTriggerSkill`
-/// same-socket semantics + the restricted predicate filter): non-support, non-triggered,
-/// a damaging skill, ≠ the main skill, ≠ the trigger gem, and passes
-/// `source_skill_cond`; among multiple candidates, takes the one with the highest base
-/// rate (`1/use_time`).
-pub(crate) fn find_trigger_source_gem<'b>(
-    build: &Build,
-    data: &BuildData,
-    group: &'b SocketGroup,
-    main_skill_id: &str,
-    recognized: &RecognizedTrigger<'_>,
-) -> Option<&'b crate::build::GemSkillRef> {
-    let mut best: Option<(&crate::build::GemSkillRef, f64)> = None;
-    for gem in &group.gem_skills {
-        if gem.skill_id == main_skill_id {
-            continue;
-        }
-        if let Some(trigger_gem) = recognized.trigger_gem
-            && gem.skill_id == trigger_gem.skill_id
-        {
-            continue;
-        }
-        let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
-            continue;
-        };
-        if effect.is_support
-            || effect
-                .skill_types
-                .iter()
-                .any(|t| t == "Triggered" || t == "InbuiltTrigger")
-            || !is_damage_skill(data, &gem.skill_id)
-        {
-            continue;
-        }
-        if let Some(cond) = &recognized.config.source_skill_cond
-            && !source_cond_matches(build, data, &effect.skill_types, cond)
-        {
-            continue;
-        }
-        let Some(rate) = base_rate_of(build, data, group, gem) else {
-            continue;
-        };
-        if best.is_none_or(|(_, b)| rate > b) {
-            best = Some((gem, rate));
-        }
-    }
-    best.map(|(gem, _)| gem)
-}
-
-/// Evaluates the restricted predicate (three fields: any_skill_types / all_mod_flags /
-/// not_skill_types). Mod flags are approximated by the main-hand weapon's type bits
-/// (`weapon_types` table's flag + one_hand) — the skill cfg flags' weapon bits are
-/// themselves derived from the main-hand weapon (matching vendor's skillCfg.flags source).
-pub(crate) fn source_cond_matches(
-    build: &Build,
-    data: &BuildData,
-    skill_types: &[String],
-    cond: &pobr_data::catalog::TriggerSkillCondDef,
-) -> bool {
-    if !cond.any_skill_types.is_empty()
-        && !cond.any_skill_types.iter().any(|t| skill_types.contains(t))
-    {
-        return false;
-    }
-    if cond.not_skill_types.iter().any(|t| skill_types.contains(t)) {
-        return false;
-    }
-    if !cond.all_mod_flags.is_empty() {
-        let Some(weapon) = build
-            .items
-            .get(&EquipmentSlot::Weapon1)
-            .and_then(|item| data.base_items.get(&item.base.to_string()))
-            .and_then(|def| weapon_type_info(data, &def.item_class))
-        else {
-            return false;
-        };
-        for flag in &cond.all_mod_flags {
-            let matched = match flag.as_str() {
-                "Weapon1H" => weapon.one_hand,
-                "Weapon2H" => !weapon.one_hand,
-                other => weapon.flag == other,
-            };
-            if !matched {
-                return false;
-            }
-        }
-    }
-    true
-}
-
-/// The source gem's base rate (used both as the sub-calculation fallback and the
-/// candidate sort key): `1/use_time`; when an attack skill has no use_time of its own,
-/// takes the weapon base attack speed (including attackSpeedMultiplier, sourced the same
-/// way as the main assembly path `weapon_contribution` — vendor's attack source rate is
-/// determined by the weapon in the first place).
-pub(crate) fn base_rate_of(
-    build: &Build,
-    data: &BuildData,
-    group: &SocketGroup,
-    gem: &crate::build::GemSkillRef,
-) -> Option<f64> {
-    let resolved = resolve_skill_level_with_gem_bonus(
-        build,
+    let mut ctx = pobr_core::skill_env::TriggerCtx {
+        groups: build,
+        equipment: build,
+        sub_calc: &mut sub,
+        condition: &|name| build_cfg.condition(name),
+        is_trigger_source,
+        class_name: &build.character.class_name,
+    };
+    pobr_core::skill_env::trigger_modifiers(
+        &mut ctx,
         data,
-        group,
-        &gem.skill_id,
-        gem.gem_level,
-        gem.stat_set_index,
-    )?;
-    if let Some(use_time) = resolved.use_time_s
-        && use_time > 0.0
-    {
-        return Some(1.0 / use_time);
-    }
-    let weapon = weapon_contribution(build, data, &gem.skill_id, &resolved)?;
-    if weapon.attack_rate <= 0.0 {
-        return None;
-    }
-    let asm = resolved
-        .attack_speed_multiplier
-        .map_or(1.0, |m| 1.0 + m / 100.0);
-    Some(weapon.attack_rate * asm)
-}
-
-/// The source skill's full sub-calculation (a minimal equivalent of PoB2's GlobalCache):
-/// same build / same group, swaps the active skill for the source gem
-/// (`main_active_skill` points to its ordinal in the group's non-support list), runs a
-/// full [`calculate_with_data`] to get `{effective_action_rate, hit_chance, crit_chance}`.
-///
-/// Guards:
-/// - **Cycle detection**: source = the triggered skill itself → `None` (the caller falls back to base `1/use_time`);
-/// - **One level of depth**: a trigger-source context returns `None` directly (deep trigger relations
-///   are already stripped at the top of [`trigger_modifiers`]; this is a redundant guard
-///   for direct calls);
-/// - Sub-calculation failure (a data gap etc.) → `None`, doesn't amplify the error.
-pub(crate) fn trigger_source_stats(
-    context: &mut CalculationContext,
-    build: &Build,
-    data: &BuildData,
-    options: &DataOrchestratorOptions,
-    group: &SocketGroup,
-    source_gem: &crate::build::GemSkillRef,
-    main_skill_id: &str,
-) -> Option<pobr_core::calc::TriggerSourceStats> {
-    if source_gem.skill_id == main_skill_id {
-        // Trigger cycle (the source skill is also the triggered skill): falls back to base use_time semantics.
-        return None;
-    }
-    if context.is_trigger_source {
-        return None;
-    }
-
-    let group_idx = build
-        .socket_groups
-        .iter()
-        .position(|g| std::ptr::eq(g, group))?;
-    // The source gem's 1-based ordinal in the group's **non-support** sequence (the selection key of pick_group_main_skill).
-    let active_pos = group
-        .gem_skills
-        .iter()
-        .filter(|g| {
-            !data
-                .granted_effects
-                .get(&g.skill_id)
-                .map(|e| e.is_support)
-                .unwrap_or(false)
-        })
-        .position(|g| std::ptr::eq(g, source_gem))?
-        + 1;
-
-    let mut sub_build = build.clone();
-    sub_build.main_socket_group = Some(group_idx + 1);
-    sub_build.socket_groups[group_idx].main_active_skill = Some(active_pos);
-
-    let mut child = context.trigger_source();
-    let result = calculate_with_context(&sub_build, data, options, &mut child);
-    context.compare_records.extend(child.compare_records);
-    let session = result.ok()?;
-    let out = session.output();
-    let action_rate = if out.effective_action_rate > 0.0 {
-        out.effective_action_rate
-    } else {
-        out.action_rate
-    };
-    if action_rate <= 0.0 {
-        return None;
-    }
-    Some(pobr_core::calc::TriggerSourceStats {
-        action_rate,
-        hit_chance: out.hit_chance,
-        crit_chance: out.crit_chance,
-    })
-}
-
-/// Built-in trigger's in-group source skill statistics: selects the highest-base-rate
-/// candidate per the existing candidate rule (non-support, non-triggered, damaging
-/// skill, ≠ main skill), then fetches **post-calculation** statistics via
-/// sub-calculation; falls back to the base `1/use_time` when the sub-calculation is
-/// unavailable (the legacy semantics from before 14-G2 was fixed, kept as the fallback surface).
-pub(crate) fn in_group_trigger_source_stats(
-    context: &mut CalculationContext,
-    build: &Build,
-    data: &BuildData,
-    options: &DataOrchestratorOptions,
-    group: &SocketGroup,
-    main_skill_id: &str,
-) -> Option<pobr_core::calc::TriggerSourceStats> {
-    let mut best: Option<(&crate::build::GemSkillRef, f64)> = None;
-    for gem in &group.gem_skills {
-        if gem.skill_id == main_skill_id {
-            continue;
-        }
-        let Some(effect) = data.granted_effects.get(&gem.skill_id) else {
-            continue;
-        };
-        if effect.is_support
-            || effect
-                .skill_types
-                .iter()
-                .any(|t| t == "Triggered" || t == "InbuiltTrigger")
-            || !is_damage_skill(data, &gem.skill_id)
-        {
-            continue;
-        }
-        let Some(rate) = base_rate_of(build, data, group, gem) else {
-            continue;
-        };
-        if best.is_none_or(|(_, b)| rate > b) {
-            best = Some((gem, rate));
-        }
-    }
-    let (source_gem, base_rate) = best?;
-    Some(
-        trigger_source_stats(
-            context,
-            build,
-            data,
-            options,
-            group,
-            source_gem,
-            main_skill_id,
-        )
-        .unwrap_or(pobr_core::calc::TriggerSourceStats {
-            action_rate: base_rate,
-            ..Default::default()
-        }),
+        &bonuses,
+        main_skill,
+        &eg,
+        group_index,
+        main_skill_id,
     )
 }
 

@@ -15,6 +15,7 @@ mod mods;
 mod resolve;
 mod stat_map;
 mod support;
+mod triggers;
 mod weapon;
 
 pub use item_text::{
@@ -63,6 +64,10 @@ pub use minions::{MinionEnv, MinionSession, spawn_minions};
 pub use buff_specs::{
     BuffEnv, buff_skill_specs, exposure_support_modifiers, group_judgement,
     support_buff_specs, support_modifiers, warcry_skill_specs,
+};
+pub use triggers::{
+    RecognizedTrigger, TriggerCtx, TriggerEnv, TriggerSubCalc, push_source_stat_mods,
+    recognize_trigger_config, source_cond_matches, trigger_modifiers,
 };
 pub use stat_map::{
     StatMapCompareRecord, StatMapCtx, StatMapMode, curse_stat_modifiers,
