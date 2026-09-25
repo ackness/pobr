@@ -5,10 +5,9 @@
 //! `pobr-build::calc_orchestrator::weapon_type_conditions`), so this table
 //! is asserted as a whole against vendor's source of truth
 //! `data.weaponTypeInfo`
-//! (`vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:532-551`) with
-//! hardcoded values line by line; it also checks consistency for the
-//! melee/ranged subset pobr's existing predicates already cover — known
-//! discrepancies are recorded only, not fixed here.
+//! (`vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:605-624`) with
+//! hardcoded values line by line; the calc conditions now consume its
+//! `one_hand` and `melee` predicates directly.
 
 use pobr_data::catalog::weapon_types::WeaponTypeDef;
 use pobr_gamedata::{GameData, repo_data_root};
@@ -35,32 +34,32 @@ fn find<'a>(table: &'a [WeaponTypeDef], id: &str) -> &'a WeaponTypeDef {
 }
 
 /// The full table is value-equal to vendor's `data.weaponTypeInfo`
-/// (Modules/Data.lua:532-551, 19 entries).
+/// (Modules/Data.lua:605-624, 19 entries).
 /// Tuple order: (id, one_hand, melee, flag, label).
 #[test]
 fn full_table_matches_vendor_weapon_type_info() {
-    // Hardcoded vendor values, corresponding line by line to Data.lua:533-551.
+    // Hardcoded vendor values, corresponding line by line to Data.lua:606-624.
     #[rustfmt::skip]
     let expected: &[(&str, bool, bool, &str, Option<&str>)] = &[
-        ("None",                     true,  true,  "Unarmed",  None),                    // Data.lua:533
-        ("Bow",                      false, false, "Bow",      None),                    // Data.lua:534
-        ("Crossbow",                 false, false, "Crossbow", None),                    // Data.lua:535
-        ("Claw",                     true,  true,  "Claw",     None),                    // Data.lua:536
-        ("Dagger",                   true,  true,  "Dagger",   None),                    // Data.lua:537
-        ("Spear",                    true,  true,  "Spear",    None),                    // Data.lua:538
-        ("Flail",                    true,  true,  "Flail",    None),                    // Data.lua:539
-        ("Staff",                    false, true,  "Staff",    Some("Quarterstaff")),    // Data.lua:540
-        ("Warstaff",                 false, true,  "Warstaff", None),                    // Data.lua:541
-        ("Wand",                     true,  false, "Wand",     None),                    // Data.lua:542
-        ("One Hand Axe",             true,  true,  "Axe",      None),                    // Data.lua:543
-        ("One Hand Mace",            true,  true,  "Mace",     None),                    // Data.lua:544
-        ("One Hand Sword",           true,  true,  "Sword",    None),                    // Data.lua:545
-        ("Thrusting One Hand Sword", true,  true,  "Sword",    Some("One Hand Sword")),  // Data.lua:546
-        ("Fishing Rod",              false, true,  "Fishing",  None),                    // Data.lua:547
-        ("Two Hand Axe",             false, true,  "Axe",      None),                    // Data.lua:548
-        ("Two Hand Mace",            false, true,  "Mace",     None),                    // Data.lua:549
-        ("Two Hand Sword",           false, true,  "Sword",    None),                    // Data.lua:550
-        ("Talisman",                 false, true,  "Talisman", None),                    // Data.lua:551
+        ("None",                     true,  true,  "Unarmed",  None),                    // Data.lua:606
+        ("Bow",                      false, false, "Bow",      None),                    // Data.lua:607
+        ("Crossbow",                 false, false, "Crossbow", None),                    // Data.lua:608
+        ("Claw",                     true,  true,  "Claw",     None),                    // Data.lua:609
+        ("Dagger",                   true,  true,  "Dagger",   None),                    // Data.lua:610
+        ("Spear",                    true,  true,  "Spear",    None),                    // Data.lua:611
+        ("Flail",                    true,  true,  "Flail",    None),                    // Data.lua:612
+        ("Staff",                    false, true,  "Staff",    Some("Quarterstaff")),    // Data.lua:613
+        ("Warstaff",                 false, true,  "Warstaff", None),                    // Data.lua:614
+        ("Wand",                     true,  false, "Wand",     None),                    // Data.lua:615
+        ("One Hand Axe",             true,  true,  "Axe",      None),                    // Data.lua:616
+        ("One Hand Mace",            true,  true,  "Mace",     None),                    // Data.lua:617
+        ("One Hand Sword",           true,  true,  "Sword",    None),                    // Data.lua:618
+        ("Thrusting One Hand Sword", true,  true,  "Sword",    Some("One Hand Sword")),  // Data.lua:619
+        ("Fishing Rod",              false, true,  "Fishing",  None),                    // Data.lua:620
+        ("Two Hand Axe",             false, true,  "Axe",      None),                    // Data.lua:621
+        ("Two Hand Mace",            false, true,  "Mace",     None),                    // Data.lua:622
+        ("Two Hand Sword",           false, true,  "Sword",    None),                    // Data.lua:623
+        ("Talisman",                 false, true,  "Talisman", None),                    // Data.lua:624
     ];
 
     let table = load();
@@ -126,26 +125,20 @@ fn melee_subset_consistent_with_pobr_weapon_type_conditions() {
     }
 }
 
-/// Known pobr↔vendor discrepancies (this test pins **vendor's values**;
-/// the discrepancy is recorded only, behavior isn't changed here):
-/// - TODO(parity): pobr's `weapon_type_conditions` doesn't count
-///   Talisman/FishingRod as melee, while vendor has both
-///   `Talisman`/`Fishing Rod` as `melee = true` (Data.lua:547,551).
-/// - TODO(parity): pobr's `two_handed` predicate treats Bow/Crossbow as
-///   "not two-handed", while vendor has both as `oneHand = false`
-///   (Data.lua:534-535).
+/// Cases where the old class-string conditions differed from vendor;
+/// the calc conditions now use these table values.
 #[test]
 fn divergences_pinned_to_vendor_values() {
     let table = load();
-    assert!(find(&table, "Talisman").melee, "vendor Data.lua:551");
-    assert!(find(&table, "Fishing Rod").melee, "vendor Data.lua:547");
-    assert!(!find(&table, "Bow").one_hand, "vendor Data.lua:534");
-    assert!(!find(&table, "Crossbow").one_hand, "vendor Data.lua:535");
+    assert!(find(&table, "Talisman").melee, "vendor Data.lua:624");
+    assert!(find(&table, "Fishing Rod").melee, "vendor Data.lua:620");
+    assert!(!find(&table, "Bow").one_hand, "vendor Data.lua:607");
+    assert!(!find(&table, "Crossbow").one_hand, "vendor Data.lua:608");
 }
 
 /// A semantic spot check on unarmed (`None`) and the quarterstaff
 /// (`Staff`, label=Quarterstaff): unarmed counts as one-handed melee,
-/// flag=Unarmed (Data.lua:533); PoE2's quarterstaff base has
+/// flag=Unarmed (Data.lua:606); PoE2's quarterstaff base has
 /// `type = "Staff"` (Data/Bases/staff.lua:159-167, recorded by GGG's
 /// item_class as `Warstaff`).
 #[test]

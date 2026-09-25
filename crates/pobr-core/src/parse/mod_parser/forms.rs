@@ -9,6 +9,7 @@
 
 use super::compiled::CompiledParserRules;
 use super::scan::LuaMatch;
+use crate::ModTag;
 use pobr_data::catalog::parser_rules::RuleEffectsDef;
 use pobr_data::modifier::{KeywordFlags, ModFlags};
 use pobr_data::prelude::ModType;
@@ -44,6 +45,8 @@ pub struct FormResult {
     /// damage-specific name). The engine side absorbs this into the
     /// accumulator.
     pub name_effects: Option<RuleEffectsDef>,
+    /// Runtime-only form tags (DOUBLED's MORE global cap).
+    pub form_tags: Vec<ModTag>,
     /// Remaining text (after the form's internal scan spliced its match out).
     pub remaining: String,
 }
@@ -102,6 +105,7 @@ pub fn eval_form(
         default_keyword: KeywordFlags::NONE,
         hand_attack_condition: false,
         name_effects: None,
+        form_tags: Vec::new(),
         remaining: name_original.to_string(),
     };
 
@@ -287,13 +291,10 @@ pub fn eval_form(
             result.remaining.clear();
         }
         "DOUBLED" => {
-            // Vendor produces modName + {Name} MORE 100 +
-            // Multiplier:{Name}Doubled OVERRIDE 1 (vendor :6618-6655, which
-            // relies on globalLimit aggregation). Simplified here: we only
-            // produce the main MORE 100 mod; the Multiplier mod's
-            // globalLimit form is left for the engine to handle later (this
-            // batch only produces the main mod — tracked separately in the
-            // coverage report, see the DOUBLED table note).
+            // Vendor ModParser.lua:6904-6919 caps this MORE at 100%
+            // across copies. Its paired OVERRIDE indirection is omitted:
+            // PoBR has no ModDb OVERRIDE -> CalcConfig multiplier bridge,
+            // so a direct MORE preserves the active numeric effect.
             let (idx, rest) = scan_name(name_lower, name_original, rules)?;
             let names = rules.name_map.payload(idx).names.clone();
             result.remaining = rest;
@@ -301,10 +302,10 @@ pub fn eval_form(
             result.names.push(first.clone());
             result.types.push(ModType::More);
             result.values.push(100.0);
-            // The second mod, Multiplier:{Name}Doubled OVERRIDE 1, carries
-            // its globalLimit via a tag; this batch doesn't wire up
-            // globalLimit, so we conservatively produce only the main MORE
-            // mod (see the note above).
+            result.form_tags.push(ModTag::GlobalLimit {
+                value: 100.0,
+                key: format!("{first}DoubledLimit"),
+            });
         }
         // Unknown form id (data out of range) -> treat as nil.
         _ => return Err(FormReject::Nil),

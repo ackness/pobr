@@ -9724,7 +9724,7 @@
     },
     {
       "id": "vnd_d_chance_to_suppress_spell_damage_for_ea_beae8277",
-      "pattern": "+(\\d+)% chance to suppress spell damage for each dagger you're wielding",
+      "pattern": "\\+(\\d+)% chance to suppress spell damage for each dagger you're wielding",
       "vendor_pattern": "^+(%d+)%% chance to suppress spell damage for each dagger you're wielding$",
       "mods": [
         {
@@ -9756,7 +9756,7 @@
     },
     {
       "id": "vnd_d_chance_to_suppress_spell_damage_if_you_4bb9e590",
-      "pattern": "+(\\d+)% chance to suppress spell damage if your e?q?u?i?p?p?e?d? ?boots, helmet and gloves have evasion",
+      "pattern": "\\+(\\d+)% chance to suppress spell damage if your e?q?u?i?p?p?e?d? ?boots, helmet and gloves have evasion",
       "vendor_pattern": "^+(%d+)%% chance to suppress spell damage if your e?q?u?i?p?p?e?d? ?boots, helmet and gloves have evasion$",
       "mods": [
         {

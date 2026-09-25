@@ -295,6 +295,9 @@ fn parse_mod_engine_impl(
         for t in &tags {
             m = m.with_tag(t.clone());
         }
+        for tag in &form_result.form_tags {
+            m = m.with_tag(tag.clone());
+        }
         if let Some(dt) = norm.damage_type {
             m = m.with_tag(ModTag::DamageType(dt));
         }

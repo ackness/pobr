@@ -3,6 +3,9 @@
 use super::{
     BuildData, DataOrchestratorOptions, StatMapCatalog, StatMapCompareRecord, StatMapMode,
 };
+use crate::calc_cache::TriggerMemo;
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::Arc;
 
 pub(super) struct CalculationContext {
@@ -10,6 +13,7 @@ pub(super) struct CalculationContext {
     pub catalog: Option<Arc<StatMapCatalog>>,
     pub compare_records: Vec<StatMapCompareRecord>,
     pub is_trigger_source: bool,
+    pub trigger_memo: Option<Rc<RefCell<TriggerMemo>>>,
 }
 
 impl CalculationContext {
@@ -37,6 +41,7 @@ impl CalculationContext {
                 .or_else(|| data.stat_map_catalog.clone()),
             compare_records: Vec::new(),
             is_trigger_source: false,
+            trigger_memo: None,
         }
     }
 
@@ -46,6 +51,7 @@ impl CalculationContext {
             catalog: self.catalog.clone(),
             compare_records: Vec::new(),
             is_trigger_source: true,
+            trigger_memo: None,
         }
     }
 }

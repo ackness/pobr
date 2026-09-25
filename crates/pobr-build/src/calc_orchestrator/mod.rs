@@ -417,6 +417,18 @@ pub fn calculate_with_data_report(
     })
 }
 
+pub(crate) fn calculate_with_data_memo(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+    memo: std::rc::Rc<std::cell::RefCell<crate::calc_cache::TriggerMemo>>,
+) -> Result<OutputTable, BuildError> {
+    let mut context = CalculationContext::new(data, options);
+    context.trigger_memo = Some(memo);
+    calculate_with_context(build, data, options, &mut context)
+        .map(|session| session.output().clone())
+}
+
 fn calculate_with_context(
     build: &Build,
     data: &BuildData,

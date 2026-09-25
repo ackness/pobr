@@ -46,7 +46,7 @@ pub use build::{Build, CharacterIdentity, SocketGroup};
 pub use build_code::{decode_pob_code, encode_pob_code};
 pub use build_config::BuildConfig;
 pub use build_data::{BuildData, ClassBaseAttributes, EffectStats, ResolvedSkillLevel};
-pub use calc_cache::CalcCache;
+pub use calc_cache::{CalcCache, DataCalcCache};
 pub use calc_orchestrator::{
     CalculationReport, DataOrchestratorOptions, FullDpsReport, OrchestratorOptions, SkillDps,
     StatMapCompareRecord, StatMapMode, TreeVersionReport, calculate, calculate_full_dps,

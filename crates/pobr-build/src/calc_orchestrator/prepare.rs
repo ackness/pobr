@@ -263,13 +263,9 @@ pub(super) fn stage_build_cfg(
         .config
         .enemy_tier
         .unwrap_or(options.enemy_tier);
-    // Enemy rarity condition: the default DPS view vs. Boss/Pinnacle/Uber (= Unique) →
-    // set true, making condition-type damage boosts like "... against Rare or Unique
-    // Enemies" apply (PoB's boss-DPS semantics).
-    if matches!(
-        enemy_tier,
-        EnemyTier::Boss | EnemyTier::Pinnacle | EnemyTier::Uber
-    ) {
+    // Match setup_enemy's Effective gate when bridging the selected boss tier
+    // into player-side conditions. Panel mode must not gain rarity bonuses.
+    if cfg.mode_effective && enemy_tier.is_boss() {
         cfg = cfg
             .with_condition("Unique", true)
             .with_condition("RareOrUnique", true);

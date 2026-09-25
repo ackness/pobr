@@ -23,19 +23,18 @@
 //! end
 //! ```
 //! The caller supplies it via [`SupportGemSpec::mana_multiplier`] (e.g. read
-//! from a gem level table), and [`ingest_support_gem`] injects it as a
-//! `ModName::SupportManaMultiplier` More modifier, attributed to that support
+//! from a gem level table), and [`ingest_support_gem_with_ctx`] injects it as a
+//! `SupportManaMultiplier` More modifier, attributed to that support
 //! gem's `SourceId`.
 //!
 //! ## more-multiplier isolation
 //!
-//! A support gem's `more`/`less` modifiers are constrained to the matching
-//! active skill via [`ModTag::SkillTypes`]
-//! (`CalcConfig::skill_types.intersects(support.skill_types)`), ensuring they
-//! only affect the supported skill rather than applying globally. When
-//! [`SupportGemSpec::supported_skill_types`] is `SkillTypes::NONE`, no
-//! SkillTypes tag is attached (unrestricted by default, matching the
-//! original behavior).
+//! Parsed and caller-supplied level/quality `More` modifiers (including
+//! negative More / less) can be restricted by [`ModTag::SkillTypes`]. This
+//! filters by type, not by unique active skill: overlapping types can match in
+//! a shared ModDb. `SkillTypes::NONE` leaves these modifiers unrestricted.
+//! The dedicated `SupportManaMultiplier` remains scoped by its caller's
+//! per-skill ModDb.
 //!
 //! ## skill-type-gating (compatibility gate)
 //!
@@ -53,7 +52,7 @@
 //! (CalcTools.lua:98-103, the minion pathway).
 //!
 //! [`can_support`]/[`judge_support`] let the caller decide before injecting;
-//! [`ingest_support_gem`] returns `Err(SupportIngestError::Gating)` when
+//! [`ingest_support_gem_with_ctx`] returns `Err(SupportIngestError::Gating)` when
 //! rejected. The group-level addSkillTypes fixed point
 //! (CalcActiveSkill.lua:179-210) is implemented by pobr-build
 //! `support::judge_group_supports`, shared with the WASM group gate (contract C2).
@@ -205,9 +204,9 @@ impl GemModSource {
     }
 }
 
-// SupportGemSpec — the full support-gem spec (covers 4 TODO extensions)
+// SupportGemSpec — the full support-gem spec
 
-/// The full ingest spec for a **support gem**, covering 4 extension points.
+/// The full ingest spec for a **support gem**.
 ///
 /// Minimal usage: set only `gem_id` + `modifier_texts`; every other field
 /// defaults to "no extra constraint applied".
@@ -221,7 +220,6 @@ pub struct SupportGemSpec {
     /// `None` → no parent source is linked.
     pub supported_gem_id: Option<String>,
 
-    // TODO(mana-multiplier)
     /// The support gem's mana multiplier (PoB2's `SupportManaMultiplier` More range).
     ///
     /// Semantics match PoB2's `level.manaMultiplier`: expressed as a
@@ -230,14 +228,11 @@ pub struct SupportGemSpec {
     /// `SupportManaMultiplier` modifier is injected.
     pub mana_multiplier: Option<f64>,
 
-    // TODO(more-multiplier isolation)
     /// The skill types the support gem's more/less multiplier applies to (for `ModTag::SkillTypes` isolation).
     ///
-    /// If non-empty, every parsed `More` modifier gets a
-    /// `ModTag::SkillTypes(supported_skill_types)` tag attached, ensuring it
-    /// only applies to skills where
-    /// `CalcConfig::skill_types.intersects(this)`. `SkillTypes::NONE` → no
-    /// tag attached (applies globally, matching the original behavior).
+    /// If non-empty, parsed and level/quality `More` modifiers get a
+    /// `ModTag::SkillTypes` tag. This filters by type, not unique active skill;
+    /// `SkillTypes::NONE` leaves them unrestricted.
     pub supported_skill_types: SkillTypes,
 
     // skill-type-gating
@@ -253,23 +248,22 @@ pub struct SupportGemSpec {
     /// Only able to support gem-granted skills (compatibility gate stage 2, PoB2's `supportGemsOnly`).
     pub support_gems_only: bool,
 
-    // TODO(level/quality attribution)
     /// The current gem level (for `SourceKind::SkillLevel` attribution).
-    /// `None` → no level-specific attribution, folded into the gem-level source (original behavior).
+    /// `None` → no level modifiers are injected.
     pub level: Option<u8>,
-    /// The current gem quality (0–23, for `SourceKind::GemQuality` attribution).
+    /// The current gem quality (for `SourceKind::GemQuality` attribution).
     /// `None` → no quality attribution is injected.
     pub quality: Option<u8>,
-    /// Extra Base modifiers from level (attributed to `SourceKind::SkillLevel`).
+    /// Caller-computed modifiers from level (attributed to `SourceKind::SkillLevel`).
     ///
-    /// Each entry is `(mod_name, base_value)`, e.g. `("ManaCost", 10.0)`.
+    /// Each entry is `(mod_name, mod_type, value)`, e.g. `("ManaCost", Base, 10.0)`.
     /// Supplied by the caller after reading a gem level table; PoBR doesn't
     /// hold level table data itself.
     pub level_mods: Vec<(String, ModType, f64)>,
-    /// Extra Base modifiers from quality (attributed to `SourceKind::GemQuality`).
+    /// Caller-computed modifiers from quality (attributed to `SourceKind::GemQuality`).
     ///
-    /// Each entry is `(mod_name, base_value)`; when quality is a percentage,
-    /// `base_value` is typically `quality * rate`.
+    /// Each entry is `(mod_name, mod_type, value)`; the caller computes and
+    /// truncates any per-quality values before ingest.
     pub quality_mods: Vec<(String, ModType, f64)>,
 }
 
@@ -371,7 +365,7 @@ impl SupportGemSpec {
             .map(|id| SourceId::new(SourceKind::SkillGem, format!("gem.{id}")))
     }
 
-    /// The level source id (`SourceKind::SkillLevel`, id = `gem.<id>.level<N>`).
+    /// The level source id (`SourceKind::SkillLevel`, id = `support.<id>.level<N>`).
     pub fn level_source_id(&self) -> Option<SourceId> {
         self.level.map(|lvl| {
             SourceId::new(
@@ -381,7 +375,7 @@ impl SupportGemSpec {
         })
     }
 
-    /// The quality source id (`SourceKind::GemQuality`, id = `gem.<id>.q<Q>`).
+    /// The quality source id (`SourceKind::GemQuality`, id = `support.<id>.q<Q>`).
     pub fn quality_source_id(&self) -> Option<SourceId> {
         self.quality.map(|q| {
             SourceId::new(
@@ -581,7 +575,7 @@ pub fn ingest_active_gem_with_ctx(
     Ok(ingest)
 }
 
-// ingest_support_gem — full support-gem ingest (4 TODOs)
+// ingest_support_gem — full support-gem ingest
 
 /// An error from ingesting a support gem.
 #[derive(Debug)]
@@ -620,14 +614,14 @@ impl std::error::Error for SupportIngestError {
     }
 }
 
-/// Fully ingests a support gem into the calculation, implementing 4 extension points:
+/// Fully ingests a support gem into the calculation:
 ///
 /// 1. **mana-multiplier**: if `spec.mana_multiplier` has a value, injects a
 ///    `ModName("SupportManaMultiplier")` More modifier (attributed to the
 ///    support gem's source).
 /// 2. **more-multiplier isolation**: if `spec.supported_skill_types` is
-///    non-empty, attaches `ModTag::SkillTypes` to every `More` modifier so it
-///    only applies to matching skills.
+///    non-empty, attaches `ModTag::SkillTypes` to parsed and level/quality
+///    `More` modifiers. This filters types, not unique active skills.
 /// 3. **skill-type-gating**: checks compatibility with `active_skill_types`
 ///    via [`judge_support`], returning `Err(SupportIngestError::Gating(...))`
 ///    when rejected. This minimal path assumes the active skill comes from a
@@ -661,7 +655,6 @@ pub fn ingest_support_gem_with_ctx(
     let parent_source_id = spec.parent_source_id();
     let mut ingest = GemIngest::default();
 
-    // TODO(mana-multiplier)
     // Mirrors PoB2 CalcActiveSkill.lua:
     //   skillModList:NewMod("SupportManaMultiplier", "MORE", level.manaMultiplier, ...)
     // The "MORE" range, in percentage units (e.g. 40 = +40% more = ×1.4).
@@ -689,18 +682,7 @@ pub fn ingest_support_gem_with_ctx(
                     }
                     let modifier = modifier.with_origin(origin);
 
-                    // TODO(more-multiplier isolation)
-                    // If the support gem specifies target skill types, attach
-                    // a SkillTypes tag to the More modifier, ensuring it only
-                    // applies to the supported skill (matches only when
-                    // CalcConfig's skill_types intersects it).
-                    let modifier = if !spec.supported_skill_types.is_empty()
-                        && modifier.mod_type == ModType::More
-                    {
-                        modifier.with_tag(ModTag::SkillTypes(spec.supported_skill_types))
-                    } else {
-                        modifier
-                    };
+                    let modifier = isolate_support_more(modifier, spec.supported_skill_types);
 
                     ingest.modifiers.push(modifier);
                 }
@@ -713,7 +695,6 @@ pub fn ingest_support_gem_with_ctx(
         }
     }
 
-    // TODO(level/quality scaling)
     // level_mods → SourceKind::SkillLevel attribution
     if let Some(level_source) = spec.level_source_id() {
         for (name, mod_type, value) in &spec.level_mods {
@@ -724,7 +705,9 @@ pub fn ingest_support_gem_with_ctx(
             }
             let modifier = Modifier::number(ModName::from(name.as_str()), *mod_type, *value)
                 .with_origin(origin);
-            ingest.modifiers.push(modifier);
+            ingest
+                .modifiers
+                .push(isolate_support_more(modifier, spec.supported_skill_types));
         }
     }
 
@@ -738,11 +721,22 @@ pub fn ingest_support_gem_with_ctx(
             }
             let modifier = Modifier::number(ModName::from(name.as_str()), *mod_type, *value)
                 .with_origin(origin);
-            ingest.modifiers.push(modifier);
+            ingest
+                .modifiers
+                .push(isolate_support_more(modifier, spec.supported_skill_types));
         }
     }
 
     Ok(ingest)
+}
+
+/// Apply the optional type restriction without replacing existing modifier tags.
+fn isolate_support_more(modifier: Modifier, skill_types: SkillTypes) -> Modifier {
+    if modifier.mod_type == ModType::More && !skill_types.is_empty() {
+        modifier.with_tag(ModTag::SkillTypes(skill_types))
+    } else {
+        modifier
+    }
 }
 
 // ingest_gem_leveled — active skill gem level/quality attribution variant

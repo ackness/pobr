@@ -2,11 +2,13 @@
 //! physical/attack-speed/crit bases).
 //!
 //! Corresponds to PoB2's `data.unarmedWeaponData`:
-//! `vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:553-563` (indexed by
+//! `vendor/PathOfBuilding-PoE2/src/Modules/Data.lua:626-635` (indexed by
 //! PoE2 classId, 9 class entries); the crit constant is sourced from
-//! `src/Data/Misc.lua:155`
+//! `src/Data/Misc.lua:159`
 //! (`characterConstants["unarmed_base_critical_strike_chance"] = 500`,
-//! divided by 100 on vendor's side to get the percentage `5`).
+//! divided by 100 on vendor's side to get the percentage `5`). Committed
+//! snapshots retain the legacy 0.05 fraction; the calc boundary converts to
+//! percentage points once without changing serialized data.
 //!
 //! Migration invariant: values are migrated verbatim from pobr's existing
 //! Rust source of truth,
@@ -23,7 +25,7 @@ use serde::{Deserialize, Serialize};
 /// `copyTable(env.data.unarmedWeaponData[env.classId])`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UnarmedWeaponDef {
-    /// PoE2 classId (the table key in vendor `Data.lua:554-562`): 0=Scion
+    /// PoE2 classId (the table key in vendor `Data.lua:627-635`): 0=Scion
     /// (a PoE2 legacy placeholder), 1=Witch, 2=Ranger, 6=Warrior,
     /// 7=Sorceress, 8=Huntress, 9=Mercenary, 10=Monk, 11=Druid. Vendor-only
     /// (pobr has no classId channel currently).
@@ -33,20 +35,14 @@ pub struct UnarmedWeaponDef {
     pub class_name: String,
     /// Weapon type (vendor's `type = "None"`, corresponding to
     /// `data.weaponTypeInfo["None"]` → the `Unarmed` flag, see
-    /// `Data.lua:533`). Vendor-only.
+    /// `Data.lua:606`). Vendor-only.
     pub weapon_type: String,
     /// Base attack rate (per second; vendor's `AttackRate`, 1.65 for every class).
     pub attack_rate: f64,
-    /// Base crit chance. pobr's current value is `0.05` (the decimal form
-    /// matching `unarmed_contribution`'s comment saying "5% crit"), copied
-    /// verbatim per the migration invariant.
-    ///
-    /// TODO(parity): vendor's same field is the percentage `5`
-    /// (`Data.lua:554-562` = `Misc.lua:155`'s 500 / 100), and pobr's own
-    /// weapon path (`weapon_contribution`'s `raw crit / 100`) produces
-    /// `5.0` — the unarmed and armed paths disagree on units. This task
-    /// only migrates the value without changing it; bringing behavior into
-    /// alignment is a separate follow-up commit.
+    /// Stored legacy fraction (`0.05` = 5%). The calc boundary multiplies
+    /// by 100 into percentage points, matching vendor Data.lua:627-635
+    /// (`Misc.lua:159`'s 500 / 100) and armed weapon contributions.
+    /// Existing data snapshots and fallback defaults keep this fraction unit.
     pub crit_chance: f64,
     /// Base physical damage minimum (vendor's `PhysicalMin`, 2 for every class).
     pub physical_min: f64,
@@ -90,12 +86,13 @@ impl UnarmedWeaponDef {
     /// truth, `pobr-build::calc_orchestrator::unarmed_contribution` (which
     /// lives in an upper-layer crate unreachable in the dependency
     /// direction, so it's transcribed here as literals with sourcing docs)
-    /// plus vendor `Data.lua:554-562` (class_id / weapon_type and other
+    /// plus vendor `Data.lua:627-635` (class_id / weapon_type and other
     /// vendor-only fields).
     pub fn default_table() -> Vec<Self> {
         /// Builds a single entry: weapon_type is `"None"`, attack_rate is
         /// 1.65, crit_chance is 0.05, and physical_min is 2 for every class
-        /// (all from the same vendor source) — only class_id/class name/
+        /// (the crit fraction is from the legacy Rust source, the other
+        /// fields match vendor Data.lua:627-635) — only class_id/class name/
         /// physical_max vary by class.
         fn entry(class_id: u32, class_name: &str, physical_max: f64) -> UnarmedWeaponDef {
             UnarmedWeaponDef {

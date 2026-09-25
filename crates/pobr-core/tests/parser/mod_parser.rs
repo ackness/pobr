@@ -1,8 +1,52 @@
 use crate::support::parse_mod;
 use pobr_core::mod_cache::ModCache;
 use pobr_core::mod_parser::{ParseOutcome, ParseStatus};
-use pobr_core::{CalcConfig, ModTag, ModValue};
+use pobr_core::{CalcConfig, ModDb, ModTag, ModValue};
 use pobr_data::prelude::*;
+
+/// ModParser.lua:6904-6919: the MORE is capped across copies; PoBR
+/// represents its active effect directly, without vendor's OVERRIDE indirection.
+#[test]
+fn doubled_form_caps_repeats_without_affecting_ordinary_more() {
+    let parsed = parse_mod("Damage is Doubled").unwrap();
+    assert_eq!(parsed.status, ParseStatus::Parsed, "{parsed:?}");
+    assert_eq!(parsed.mods.len(), 1);
+    let more = &parsed.mods[0];
+    assert_eq!(more.name.as_str(), "Damage");
+    assert_eq!(more.mod_type, ModType::More);
+    assert_eq!(more.value, ModValue::Number(100.0));
+    assert!(more.tags.contains(&ModTag::GlobalLimit {
+        value: 100.0,
+        key: "DamageDoubledLimit".into(),
+    }));
+
+    let mut db = ModDb::new();
+    db.add_list(parsed.mods.clone());
+    db.add_list(parsed.mods);
+    db.add_mod(pobr_core::Modifier::number("Damage", ModType::More, 20.0));
+    assert!((db.more(&CalcConfig::attack(), &[ModName::from("Damage")]) - 2.4).abs() < 1e-9);
+
+    let conditional = parse_mod("Damage is Doubled while on Full Life").unwrap();
+    assert_eq!(conditional.status, ParseStatus::Parsed, "{conditional:?}");
+    assert!(
+        conditional.mods[0]
+            .tags
+            .contains(&ModTag::condition("FullLife", false))
+    );
+    let mut scoped = ModDb::new();
+    scoped.add_list(conditional.mods);
+    assert_eq!(
+        scoped.more(&CalcConfig::attack(), &[ModName::from("Damage")]),
+        1.0
+    );
+    assert_eq!(
+        scoped.more(
+            &CalcConfig::attack().with_condition("FullLife", true),
+            &[ModName::from("Damage")]
+        ),
+        2.0
+    );
+}
 
 #[test]
 fn immunity_forms_cover_statuses_and_reject_false_positives() {

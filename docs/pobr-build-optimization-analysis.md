@@ -3,6 +3,32 @@
 > 调研日期：2026-09-24。基线：`fix/audit-followups`（`bb61e0f`）。
 > 目标：解决历史审计遗留的"编排层越界承载引擎语义"问题，同时不破坏 parity 门禁。
 
+## 2026-09-25 implementation status
+
+The sections below are the original investigation, not an unchecked current task list.
+`BuildData` lookup methods now live in private `skills`, `equipment`, `passives`
+and `rules` modules; its flat public fields and loading contract remain intact.
+
+Wave 3 now has an opt-in `DataCalcCache::new(&data, &options, capacity)`:
+immutable borrowing binds all data/options, bounded LRU entries compare complete
+Build inputs structurally (including config placeholders), and trigger-source
+results can be reused across calls. Compare/report/session paths remain uncached.
+The existing text `CalcCache` is also bounded and checks structural equality;
+its legacy `peek(u64)` remains hash-only. These APIs do not automatically cache
+existing application calls, and no end-user speedup is claimed without measurement.
+
+**Dependency-driven incremental recomputation is not implemented.** It needs
+explicit input-to-stage read sets (including negative lookups), immutable stage
+outputs and downstream invalidation across conditions, buffs, minions and
+triggers. Validate full output, diagnostics and provenance against uncached
+mutation sequences before enabling it; arithmetic TraceGraph edges alone are
+not a computation dependency graph.
+
+See [backlog reconciliation](backlog-reconciliation.md) for actual fixes,
+existing implementations and remaining limits. Main-skill selection and Build
+assembly stay in pobr-build; the historical placement table below is not a new
+migration mandate.
+
 ## 1. 现状量化
 
 `calc_orchestrator/` 目录 **11,688 行**（占 pobr-build src 的 57%）：

@@ -21,8 +21,8 @@
 //!   (1 + (Override(DotMultiplier) or Sum(DotMultiplier)+Sum(<type>DotMultiplier))/100)
 //!   × aura × effMult`; `TotalDotInstance` accumulates and is clamped to `DotDpsCap`.
 //!   `<Type>Dot` BASE is injected into the ModDb via the statmap's
-//!   `base_<type>_damage_to_deal_per_minute / 60`. Aura factor: pobr has no
-//!   aura-DoT-consuming build, so this is skipped as 1.0 (TODO(aura-dot): wire up `AuraEffect × Magnitude`).
+//!   `base_<type>_damage_to_deal_per_minute / 60`. Aura factor applies only
+//!   for Aura skills that are not RemoteMined: `mod(AuraEffect, dotTypeCfg) × mod(Magnitude, skillCfg)`.
 //! - `DotCanStack` (`:5931`): `TotalDot = min(instance × speed × Duration ×
 //!   dpsMultiplier × quantityMultiplier, DotDpsCap)`; the rate switches to
 //!   `MineLayingSpeed/TrapThrowingSpeed` per keywordFlags Mine/Trap -- pobr
@@ -251,6 +251,14 @@ pub fn calc_skill_dot(
         dot_cfg.clone()
     };
 
+    let is_dot_aura = cfg.skill_types.intersects(SkillTypes::AURA)
+        && !cfg.skill_types.intersects(SkillTypes::REMOTE_MINED);
+    let aura_magnitude = if is_dot_aura {
+        let names = [ModName::from("Magnitude")];
+        (1.0 + db.sum(ModType::Inc, cfg, &names) / 100.0) * db.more(cfg, &names)
+    } else {
+        1.0
+    };
     let deal_no_damage = db.flag(&dot_cfg, "DealNoDamage");
     let mut instance = 0.0_f64;
     let mut dot_active = false;
@@ -296,8 +304,17 @@ pub fn calc_skill_dot(
                     &[ModName::from(format!("{prefix}DotMultiplier"))],
                 )
             });
-        // Aura factor (`:5898`): aura-DoT is not modeled, taken as 1.0 (TODO(aura-dot)).
-        let total = base_val * (1.0 + inc / 100.0) * more * (1.0 + mult / 100.0) * eff_mult;
+        // Vendor :6114: AuraEffect uses the per-type DoT config, while
+        // Magnitude uses the original skill config (not the stripped dot config).
+        let aura = if is_dot_aura {
+            let names = [ModName::from("AuraEffect")];
+            (1.0 + db.sum(ModType::Inc, &dot_type_cfg, &names) / 100.0)
+                * db.more(&dot_type_cfg, &names)
+                * aura_magnitude
+        } else {
+            1.0
+        };
+        let total = base_val * (1.0 + inc / 100.0) * more * (1.0 + mult / 100.0) * aura * eff_mult;
         instance = (instance + total).min(cap);
     }
 
@@ -391,6 +408,30 @@ mod tests {
         assert_eq!(out.total_dot_dps, 3.0);
         assert_eq!(out.with_dot_dps, 4.0);
         assert_eq!(out.combined_dps, 5.0);
+    }
+
+    /// CalcOffence.lua:6114: AuraEffect sees dotTypeCfg, Magnitude sees
+    /// skillCfg; RemoteMined and non-Aura skills receive neither multiplier.
+    #[test]
+    fn aura_dot_multiplies_once_and_respects_skill_type_gates() {
+        let db = db_with(vec![
+            Modifier::number("FireDot", ModType::Base, 100.0),
+            Modifier::number("AuraEffect", ModType::Inc, 50.0),
+            Modifier::number("Magnitude", ModType::More, 20.0),
+            // The original skill config has HIT, but dotTypeCfg strips it.
+            Modifier::number("AuraEffect", ModType::More, 100.0).with_flags(ModFlags::HIT),
+        ]);
+        let enemy = ModDb::new();
+        let base = CalcConfig::spell().with_flags(ModFlags::HIT);
+        for (types, expected) in [
+            (SkillTypes::AURA, 180.0),
+            (SkillTypes::AURA | SkillTypes::REMOTE_MINED, 100.0),
+            (SkillTypes::NONE, 100.0),
+        ] {
+            let cfg = base.clone().with_skill_types(types);
+            let out = calc_skill_dot(&db, &enemy, &cfg, &SkillDotInputs::default());
+            assert_eq!(out.skill_dot_instance, expected, "{types:?}");
+        }
     }
 
     /// Baseline formula: base × (1+inc) × more × (1+DotMultiplier) (panel view, effMult=1).

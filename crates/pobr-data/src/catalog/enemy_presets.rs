@@ -36,22 +36,18 @@
 //! - `player_mods` (`WarcryPower BASE 20`, `Multiplier:EnemyPower BASE 20`,
 //!   L2007-2008, etc.).
 //!
-//! Known pobr ↔ vendor behavior discrepancies (**this table only records
-//! them, it doesn't change the values** — bringing behavior into alignment
-//! is a separate follow-up commit):
-//! - TODO(parity): vendor gates `Condition:Unique/RareOrUnique/PinnacleBoss`
-//!   and `PoiseThreshold MORE 500` behind `Condition:Effective`; pobr's
-//!   `setup_env.rs` currently does **not** gate these two behind Effective
-//!   (only the Curse/Exposure/Slow trio are gated). The `effective_only`
-//!   field is set per pobr's current behavior (PoiseThreshold 500 = false);
-//!   vendor-only entries are set per vendor's behavior.
-//! - TODO(parity): vendor's per-type damage default is
-//!   `round(damageTable[lv] * 1.5 * DPSMult)` — rounded; pobr's
-//!   `EnemyTierDefaults::base_damage_for_ehp` doesn't round.
-//! - TODO(parity): vendor injects tier penetration per-element into
-//!   `enemy{Fire,Cold,Lightning}Pen`; pobr merges it into a single
-//!   `ElementalPenetration BASE` on the player modDB (semantically
-//!   equivalent, structurally different).
+//! Compatibility and remaining runtime boundaries:
+//! - `setup_env.rs` gates `Condition:Unique/RareOrUnique/PinnacleBoss`
+//!   and the common `PoiseThreshold MORE 500` behind `Condition:Effective`,
+//!   matching vendor. Legacy JSON records Poise's `effective_only` as false;
+//!   the runtime normalizes that gate without rewriting historical snapshots.
+//! - The EHP consumer rounds per-type damage placeholders and injects tier
+//!   penetration into enemy `Enemy{Fire,Cold,Lightning}Pen`, never the player's
+//!   offensive penetration. The legacy `EnemyTierDefaults::base_damage_for_ehp`
+//!   scalar remains unrounded but is not used by the EHP pipeline.
+//! - The enemy runtime still omits the table's Knockback/MinimumMovementSpeed
+//!   and additional Map Boss/Xesht Poise modifiers; the presence of these
+//!   extracted entries alone does not establish calculation support.
 
 use serde::{Deserialize, Serialize};
 
@@ -186,8 +182,8 @@ pub struct EnemyTierPreset {
     /// Evasion multiplier (%; pobr `EnemyTier::evasion_mult_pct()`;
     /// Pinnacle/Uber means `100 + 548/22`, `100 + 116/7`).
     pub evasion_mult_pct: ExactRatio,
-    /// Elemental penetration (%; pobr `EnemyTier::pen()` — see the module
-    /// doc's TODO for the injection-shape difference).
+    /// Elemental penetration (%; pobr `EnemyTier::pen()`), applied to
+    /// incoming damage through the enemy's per-element penetration channel.
     pub pen: f64,
     /// DPS multiplier for EHP (pobr `EnemyTier::dps_mult()`; vendor
     /// `data.misc.*DPSMult`, written as fractions `1/4.40`, `4/4.40`,

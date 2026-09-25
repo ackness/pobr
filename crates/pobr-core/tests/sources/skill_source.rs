@@ -146,7 +146,7 @@ fn session_add_support_gem_feeds_minimal_calc() {
     assert_eq!(output.life, 150.0);
 }
 
-// TODO(mana-multiplier): SupportManaMultiplier injection tests
+// SupportManaMultiplier injection
 
 /// A support gem carrying mana_multiplier = 40 → injects SupportManaMultiplier More +40.
 #[test]
@@ -205,7 +205,7 @@ fn support_mana_multiplier_contributes_to_more_product() {
     assert!((factor - 1.5).abs() < 1e-9, "expected 1.5, got {factor}");
 }
 
-// TODO(more-multiplier isolation): supported_skill_types tag tests
+// supported_skill_types filtering
 
 /// Once supported_skill_types is set, the More modifier carries a SkillTypes tag
 /// and doesn't apply under a non-matching CalcConfig.
@@ -497,7 +497,7 @@ fn ingest_support_gem_no_require_always_ok() {
     }
 }
 
-// TODO(level/quality scaling): level/quality attribution tests
+// Level/quality attribution
 
 /// ingest_support_gem attributes level modifiers to SourceKind::SkillLevel.
 #[test]
@@ -707,4 +707,71 @@ fn ingest_active_gem_spec_attribution() {
     let origin = ingest.modifiers[0].origin.as_ref().unwrap();
     assert_eq!(origin.source_id.kind, SourceKind::SkillGem);
     assert_eq!(origin.source_id.id, "gem.fireball");
+}
+
+/// Caller-supplied level/quality More must obey the same type filter as parsed
+/// More, including negative More (less), without changing the cost multiplier.
+#[test]
+fn support_level_quality_more_respects_skill_type_filter() {
+    let spec = SupportGemSpec::new("test_support", [] as [&str; 0])
+        .supporting("cleave")
+        .with_supported_skill_types(SkillTypes::ATTACK)
+        .with_mana_multiplier(40.0)
+        .with_level(10, [("Damage", ModType::More, 30.0)])
+        .with_quality(20, [("Speed", ModType::More, -20.0)]);
+    let ingest = ingest_support_gem(&spec, &type_set(&["Attack"])).unwrap();
+    let mut db = ModDb::new();
+    for modifier in &ingest.modifiers {
+        let origin = modifier.origin.as_ref().unwrap();
+        assert_eq!(origin.parent_source_id.as_ref().unwrap().id, "gem.cleave");
+        if modifier.name != ModName::from("SupportManaMultiplier") {
+            assert!(
+                modifier
+                    .tags
+                    .iter()
+                    .any(|tag| matches!(tag, ModTag::SkillTypes(t) if *t == SkillTypes::ATTACK))
+            );
+        }
+    }
+    assert_eq!(
+        ingest.modifiers[1].origin.as_ref().unwrap().source_id.id,
+        "support.test_support.level10"
+    );
+    assert_eq!(
+        ingest.modifiers[2].origin.as_ref().unwrap().source_id.id,
+        "support.test_support.q20"
+    );
+    db.add_list(ingest.modifiers);
+    let damage = [ModName::from("Damage")];
+    let speed = [ModName::from("Speed")];
+    assert!((db.more(&CalcConfig::attack(), &damage) - 1.3).abs() < 1e-9);
+    assert!((db.more(&CalcConfig::attack(), &speed) - 0.8).abs() < 1e-9);
+    assert!((db.more(&CalcConfig::spell(), &damage) - 1.0).abs() < 1e-9);
+    assert!((db.more(&CalcConfig::spell(), &speed) - 1.0).abs() < 1e-9);
+    assert!(
+        (db.more(
+            &CalcConfig::spell(),
+            &[ModName::from("SupportManaMultiplier")]
+        ) - 1.4)
+            .abs()
+            < 1e-9
+    );
+}
+
+#[test]
+fn support_level_quality_more_without_type_filter_remains_unrestricted() {
+    let spec = SupportGemSpec::new("test_support", [] as [&str; 0])
+        .with_level(10, [("Damage", ModType::More, 30.0)])
+        .with_quality(20, [("Speed", ModType::More, -20.0)]);
+    let ingest = ingest_support_gem(&spec, &type_set(&[])).unwrap();
+    assert!(ingest.modifiers.iter().all(|modifier| {
+        !modifier
+            .tags
+            .iter()
+            .any(|tag| matches!(tag, ModTag::SkillTypes(_)))
+    }));
+    let mut db = ModDb::new();
+    db.add_list(ingest.modifiers);
+    assert!((db.more(&CalcConfig::spell(), &[ModName::from("Damage")]) - 1.3).abs() < 1e-9);
+    assert!((db.more(&CalcConfig::spell(), &[ModName::from("Speed")]) - 0.8).abs() < 1e-9);
 }

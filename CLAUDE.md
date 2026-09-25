@@ -153,6 +153,17 @@ Web 的 `api/wasmBackend.ts` 在浏览器中加载 WASM，调用 `apps/pobr-wasm
 
 编排前置解析由 `calc_orchestrator/prepare.rs` 返回完整的技能、配置和武器结果，不使用默认值占位后分阶段修改。`CalculationContext` 显式携带 stat-map catalog、观察模式和触发子计算状态；计算热路径不使用线程局部上下文。需要映射诊断时使用 `calculate_with_data_report`，记录由返回的 `CalculationReport.stat_map_records` 独占（含触发子计算），原 `take_stat_map_compare_records` 接口已移除。
 
+`DataCalcCache::new(&BuildData, &DataOrchestratorOptions, capacity)` is an opt-in,
+caller-owned bounded output/trigger memo. Its immutable borrows bind data and
+options; complete structural Build identity includes config placeholders.
+Compare mode and report/session entry points remain uncached. Manual key
+projections destructure every field without `..`; keep that safeguard when
+adding inputs. The legacy text `CalcCache` defaults to 64 entries and verifies
+structural equality for computation; `peek(u64)` remains hash-only. Neither
+cache provides dependency-driven stage recomputation or automatically changes
+application caching. `BuildData` retains its flat public fields and constructors,
+with lookup implementations organized under `build_data/{skills,equipment,passives,rules}.rs`.
+
 来源写入阶段只持有 `calc_orchestrator/sources.rs::SourceWriter`，不暴露 `mod_db()`、聚合查询或 `Deref`。`finish_sources` 消费写入对象后才开放读取：精神保留读取完整来源（含额外词条），召唤物数量在属性准备与条件桥接之后读取。保留线性编排，不为每个注入函数增加状态类型。
 
 角色属性派生和初始资源快照由 `CalculationSession::prepare_player_stats` 负责；build 只补装备事实、计数和来源，再调用 `bridge_player_conditions`。初始快照位于 buff 展开之前，`perform` 在防御资源转换后刷新 Life/Mana 的 stats 与 multipliers；两处共用 core 的资源池计算。保留这两个时点的既有求值顺序，不能把初始快照当成转换后的最终值。

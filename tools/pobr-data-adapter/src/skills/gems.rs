@@ -60,10 +60,10 @@ pub(super) fn adapt_gems(
             dex_pct: clamp_u32(raw.dex_pct),
             int_pct: clamp_u32(raw.int_pct),
             is_support,
-            // The gem -> effect link isn't in the adapter's output
-            // (GemEffects table isn't downloadable, T5.1) — it's merged in
-            // from overlay/gem_effects.json during gamedata loading (serde
-            // skip, so the base artifact stays byte-identical).
+            // GemEffects is included in the official export configuration,
+            // but this adapter does not yet join its foreign keys. Runtime
+            // loading merges links from overlay/gem_effects.json; preserve
+            // that source until the direct-table join is validated.
             granted_effect_id: None,
             additional_granted_effect_ids: Vec::new(),
         });

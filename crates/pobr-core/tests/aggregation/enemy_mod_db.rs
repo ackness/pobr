@@ -774,6 +774,51 @@ fn boss_debuff_effect_on_self_gated_by_effective() {
     }
 }
 
+/// ConfigOptions.lua:2017-2025,2058-2067,2098-2108 gates boss
+/// identity and PoiseThreshold behind Effective, not only debuff resistance.
+#[test]
+fn boss_identity_and_poise_are_effective_only_for_every_tier() {
+    for tier in [
+        EnemyTier::None,
+        EnemyTier::Boss,
+        EnemyTier::Pinnacle,
+        EnemyTier::Uber,
+    ] {
+        let mut env = Env::new(Actor::new(85, ActorBaseStats::default()));
+        setup_enemy(&mut env, 85, tier);
+        let db = &env.enemy.mod_db;
+        let panel = CalcConfig::attack();
+        let effective = effective_attack();
+        for name in [
+            "Condition:Unique",
+            "Condition:RareOrUnique",
+            "Condition:PinnacleBoss",
+        ] {
+            assert!(
+                !db.flag(&panel, name),
+                "{tier:?}: {name} must not leak into panel mode"
+            );
+            let expected = if name == "Condition:PinnacleBoss" {
+                tier.is_pinnacle_or_uber()
+            } else {
+                tier.is_boss()
+            };
+            assert_eq!(db.flag(&effective, name), expected, "{tier:?}: {name}");
+        }
+        let poise = [ModName::from("PoiseThreshold")];
+        assert_eq!(db.more(&panel, &poise), 1.0, "{tier:?}: panel Poise");
+        assert_eq!(
+            db.more(&effective, &poise),
+            if tier.is_boss() { 6.0 } else { 1.0 }
+        );
+        // The gate must not erase the defence-side tier inputs.
+        assert_eq!(
+            db.sum(ModType::Base, &panel, &[ModName::from("FireResist")]),
+            db.sum(ModType::Base, &effective, &[ModName::from("FireResist")])
+        );
+    }
+}
+
 #[test]
 fn max_of_empty_is_zero() {
     let enemy = ModDb::new();
@@ -931,10 +976,11 @@ fn setup_enemy_injects_pinnacle_defaults() {
         "effective scope CurseEffectOnSelf MORE -50 -> 0.5, got {}",
         curse_eff
     );
-    // Condition:PinnacleBoss is set.
+    // Boss identity conditions apply only to Effective calculations.
+    assert!(!db.flag(&cfg, "Condition:PinnacleBoss"));
     assert!(
-        db.flag(&cfg, "Condition:PinnacleBoss"),
-        "Pinnacle sets the condition flag"
+        db.flag(&cfg_eff, "Condition:PinnacleBoss"),
+        "Pinnacle sets the condition flag in Effective mode"
     );
     // Level is raised to >=82 by Pinnacle (85 here).
     assert_eq!(env.enemy.level, 85);

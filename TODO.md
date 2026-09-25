@@ -54,7 +54,9 @@
 
 - [x] 4.1 字段点击 → 展开 breakdown：base/inc/more 分解 + 逐来源贡献列表（消费 0.3） (PR#56)
 - [x] 4.2 归因视图：按装备/天赋/宝石/配置分组的贡献占比（消费 0.4） (PR#56)
-- [ ] 4.3 与 PoB2 Calcs 页对照走查一轮，记录展示口径差异
+- [ ] 4.3 与 PoB2 Calcs 页对照走查一轮，记录展示口径差异。
+      2026-09-25 已完成[源码／契约口径对照](docs/calcs-display-comparison.md)，
+      尚缺同构筑的 PoB2 桌面 UI 走查与截图，不能用源码对照替代人工验收。
 
 ## Phase 5 — 天赋树查看器（只读，工作量最大，放最后）
 
@@ -95,11 +97,14 @@
       **(PR#56 已落地)**：`i18n/zh-CN/{base_items,skills}.json` 边车（4902 基底名 +
       854 技能名），宝石目录 `name_zh_cn` + 选择器简中搜索/显示，manifest languages
       含 zh-CN
-- [ ] 7.2b ⚠️ 数据管线上游风险（顺手发现）：CDN 当前补丁 4.5.4.3 的 bundle
-      `pathofexile-dat@15.2.0`（最新版）解压失败（ooz "Failed to decode"，
-      索引完整性已校验排除下载损坏）——疑似 GGG 换了 oodle 版本；下次版本
-      升级前需确认上游修复，否则英文/繁中通道同样被阻塞。
-      2026-07-14 复查：npm 上 15.2.0 仍为最新版，上游未动，继续等待
+- [x] 7.2b 复核历史解压阻塞：2026-07-14 曾记录 4.5.4.3 某 bundle 在
+      `pathofexile-dat@15.2.0` 下报 ooz "Failed to decode"；Oodle 版本变化
+      的根因未证实。2026-09-25 npm 最新版仍为 15.2.0，但活动数据已为 4.5.5.2；
+      用同版本工具从缓存的真实 bundles 在临时目录重导出 `Stats`、`GrantedEffects`、
+      `GrantedEffectQualityStats` 成功，字节哈希与
+      [4.5.5.2 品质来源收据](pipeline/gem-quality/4.5.5.2.json) 一致。
+      旧记录不再是这些当前版本表的升级阻塞；未证明上游修复了原失败 bundle，
+      也未重跑全表／全新 CDN 下载。下一次实际升版仍须做目标表解压与版本收据验证。
 - [x] 7.3 技能/职业/天赋节点名的完整本地化边车覆盖面审计。
       审计工具 = `apps/pobr-wasm/tests/zh_gap_probe.rs`（#[ignore]，树全节点
       stats + demo builds 物品行过翻译层 dump 未命中）；边车已覆盖：

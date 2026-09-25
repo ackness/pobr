@@ -108,6 +108,166 @@ impl BuildSnapshot {
     }
 }
 
+/// Complete, collision-free equality of the Build input to data-backed calculation.
+/// Keep each field explicit so new Build fields require review at this boundary.
+pub(crate) fn same_build(a: &Build, b: &Build) -> bool {
+    // No `..`: adding an input field must update this cache boundary.
+    let Build {
+        character,
+        view_mode,
+        tree,
+        tree_version,
+        items,
+        jewels,
+        granted_socket_jewels,
+        radius_jewels,
+        utility_slots,
+        socket_groups,
+        main_socket_group,
+        config,
+    } = a;
+    let pobr_data::passive_tree::PassiveTreeSpec {
+        allocated_nodes,
+        mastery_effects,
+        attribute_overrides,
+    } = tree;
+    character == &b.character
+        && view_mode == &b.view_mode
+        && allocated_nodes == &b.tree.allocated_nodes
+        && mastery_effects == &b.tree.mastery_effects
+        && attribute_overrides == &b.tree.attribute_overrides
+        && tree_version == &b.tree_version
+        && same_item_map(items, &b.items)
+        && same_items(jewels, &b.jewels)
+        && granted_socket_jewels.len() == b.granted_socket_jewels.len()
+        && granted_socket_jewels
+            .iter()
+            .zip(&b.granted_socket_jewels)
+            .all(|(a, b)| a.0 == b.0 && same_item(&a.1, &b.1) && a.2 == b.2)
+        && radius_jewels == &b.radius_jewels
+        && utility_slots.len() == b.utility_slots.len()
+        && utility_slots
+            .iter()
+            .zip(&b.utility_slots)
+            .all(|(a, b)| a.0 == b.0 && same_item(&a.1, &b.1))
+        && socket_groups == &b.socket_groups
+        && main_socket_group == &b.main_socket_group
+        && same_config(config, &b.config)
+}
+
+fn same_item_map(
+    a: &std::collections::HashMap<EquipmentSlot, pobr_data::item::Item>,
+    b: &std::collections::HashMap<EquipmentSlot, pobr_data::item::Item>,
+) -> bool {
+    a.len() == b.len()
+        && a.iter()
+            .all(|(slot, item)| b.get(slot).is_some_and(|other| same_item(item, other)))
+}
+
+fn same_items(a: &[pobr_data::item::Item], b: &[pobr_data::item::Item]) -> bool {
+    a.len() == b.len() && a.iter().zip(b).all(|(a, b)| same_item(a, b))
+}
+
+fn same_item(a: &pobr_data::item::Item, b: &pobr_data::item::Item) -> bool {
+    fn bits(a: Option<f64>, b: Option<f64>) -> bool {
+        a.map(f64::to_bits) == b.map(f64::to_bits)
+    }
+    let pobr_data::item::Item {
+        base,
+        rarity,
+        quality,
+        corrupted,
+        implicit_texts,
+        modifier_texts,
+        enchant_texts,
+        rolled_defence,
+        parsed_stats,
+    } = a;
+    let pobr_data::item::RolledDefence {
+        armour,
+        evasion,
+        energy_shield,
+        spirit,
+        ward,
+        sockets_filled,
+    } = rolled_defence;
+    base == &b.base
+        && rarity == &b.rarity
+        && quality == &b.quality
+        && corrupted == &b.corrupted
+        && implicit_texts == &b.implicit_texts
+        && modifier_texts == &b.modifier_texts
+        && enchant_texts == &b.enchant_texts
+        && bits(*armour, b.rolled_defence.armour)
+        && bits(*evasion, b.rolled_defence.evasion)
+        && bits(*energy_shield, b.rolled_defence.energy_shield)
+        && bits(*spirit, b.rolled_defence.spirit)
+        && bits(*ward, b.rolled_defence.ward)
+        && sockets_filled == &b.rolled_defence.sockets_filled
+        && parsed_stats == &b.parsed_stats
+}
+
+fn same_config(a: &crate::build_config::BuildConfig, b: &crate::build_config::BuildConfig) -> bool {
+    let crate::build_config::BuildConfig {
+        is_attack,
+        is_spell,
+        damage_type,
+        bandit,
+        conditions,
+        multipliers,
+        global_modifier_texts,
+        campaign_progress,
+        enemy_tier,
+        raw_inputs,
+    } = a;
+    is_attack == &b.is_attack
+        && is_spell == &b.is_spell
+        && damage_type == &b.damage_type
+        && bandit == &b.bandit
+        && conditions == &b.conditions
+        && multipliers.len() == b.multipliers.len()
+        && multipliers.iter().all(|(key, v)| {
+            b.multipliers
+                .get(key)
+                .is_some_and(|other| v.to_bits() == other.to_bits())
+        })
+        && global_modifier_texts == &b.global_modifier_texts
+        && campaign_progress == &b.campaign_progress
+        && enemy_tier == &b.enemy_tier
+        && same_raw_inputs(raw_inputs, &b.raw_inputs)
+}
+
+fn same_raw_inputs(
+    a: &pobr_core::rules::config_interpreter::RawConfigInputs,
+    b: &pobr_core::rules::config_interpreter::RawConfigInputs,
+) -> bool {
+    use pobr_core::rules::config_interpreter::{ConfigInputValue, RawConfigInputs};
+    fn same_values(
+        a: &std::collections::BTreeMap<String, ConfigInputValue>,
+        b: &std::collections::BTreeMap<String, ConfigInputValue>,
+    ) -> bool {
+        a.len() == b.len()
+            && a.iter().all(|(key, value)| {
+                b.get(key).is_some_and(|other| match value {
+                    ConfigInputValue::Bool(v) => {
+                        matches!(other, ConfigInputValue::Bool(o) if v == o)
+                    }
+                    ConfigInputValue::Number(v) => {
+                        matches!(other, ConfigInputValue::Number(o) if v.to_bits() == o.to_bits())
+                    }
+                    ConfigInputValue::Text(v) => {
+                        matches!(other, ConfigInputValue::Text(o) if v == o)
+                    }
+                })
+            })
+    }
+    let RawConfigInputs {
+        values,
+        placeholders,
+    } = a;
+    same_values(values, &b.values) && same_values(placeholders, &b.placeholders)
+}
+
 fn collect_items(build: &Build) -> Vec<(String, Vec<String>)> {
     build
         .equipped_items()
@@ -213,6 +373,38 @@ mod tests {
             class_name: "Ranger".into(),
             ascendancy_name: "Deadeye".into(),
         })
+    }
+
+    #[test]
+    fn data_build_identity_covers_gem_jewel_and_selection() {
+        use crate::build::RadiusJewel;
+        let a = build_with_level(90);
+        let mut b = a.clone();
+        assert!(same_build(&a, &b));
+        b.main_socket_group = Some(2);
+        assert!(!same_build(&a, &b));
+        b = a.clone();
+        b.radius_jewels.push(RadiusJewel {
+            socket_node: 123,
+            radius_label: None,
+            grant_lines: vec![],
+            notable_effect_inc: 0,
+            small_effect_inc: 0,
+            tree_texts: vec![],
+        });
+        assert!(!same_build(&a, &b));
+        b = a.clone();
+        b.socket_groups
+            .push(SocketGroup::new().with_gem_skill_quality("SparkPlayer", 1, 20));
+        let c = b.clone();
+        b.socket_groups[0].gem_skills[0].gem_level = 2;
+        assert!(!same_build(&b, &c));
+        b = c.clone();
+        b.socket_groups[0].gem_skills[0].quality = 21;
+        assert!(!same_build(&b, &c));
+        b = c.clone();
+        b.socket_groups[0].gem_skills[0].name_spec = Some("Spark".into());
+        assert!(!same_build(&b, &c));
     }
 
     #[test]

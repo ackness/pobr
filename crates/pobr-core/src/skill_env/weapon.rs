@@ -326,30 +326,62 @@ pub fn off_hand_defence(
 /// Unarmed weapon contribution (PoB2's `data.unarmedWeaponData[classId]`): the attack
 /// skill base when there's no main-hand weapon.
 ///
-/// TODO(parity): the table's `crit_chance = 0.05` (the old hardcoded value) is off by a
-/// factor of 100 from the weapon-holding path's units (`weapon_contribution`'s
-/// `raw crit / 100` produces `5.0`) (same TODO as the schema doc) — this switch only
-/// migrated the code without changing the value; unit alignment is left for its own
-/// behavior commit.
+/// The committed unarmed table stores crit as a legacy fraction (0.05 = 5%);
+/// convert to percentage points once at this boundary, matching armed weapon
+/// contributions and PoB2 Data.lua's `unarmedWeaponData.CritChance = 500 / 100`.
 pub fn unarmed_contribution(data: &dyn UnarmedDataLookup, class_name: &str) -> WeaponContribution {
     if let Some(e) = data.unarmed_for_class(class_name) {
         return WeaponContribution {
             phys_min: e.physical_min,
             phys_max: e.physical_max,
             attack_rate: e.attack_rate,
-            crit_chance: e.crit_chance,
+            crit_chance: e.crit_chance * 100.0,
             // Unarmed: matching vendor's `weaponData.type = "None"` → only the Unarmed bit (always NONE when the feature is off).
             flags: ModFlags::weapon_flags("None", "Unarmed", true, true),
         };
     }
     // Unknown-class fallback: same values as the old match's "other classes" branch
-    // (physical 2–5, attack rate 1.65, crit 0.05) — all 9 known classes hit the table,
+    // (physical 2–5, attack rate 1.65, crit 5 percentage points) — all 9 known classes hit the table,
     // this branch only guards against an unknown class name (behavior matches the old implementation).
     WeaponContribution {
         phys_min: 2.0,
         phys_max: 5.0,
         attack_rate: 1.65,
-        crit_chance: 0.05,
+        crit_chance: 5.0,
         flags: ModFlags::weapon_flags("None", "Unarmed", true, true),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pobr_data::catalog::UnarmedWeaponDef;
+
+    struct UnarmedTable(UnarmedWeaponDef);
+
+    impl UnarmedDataLookup for UnarmedTable {
+        fn unarmed_for_class(&self, name: &str) -> Option<&UnarmedWeaponDef> {
+            (self.0.class_name == name).then_some(&self.0)
+        }
+    }
+
+    #[test]
+    fn unarmed_legacy_fraction_converts_once_to_crit_percentage_points() {
+        let table = UnarmedTable(UnarmedWeaponDef {
+            class_id: 10,
+            class_name: "Monk".into(),
+            weapon_type: "None".into(),
+            attack_rate: 1.65,
+            crit_chance: 0.075,
+            physical_min: 2.0,
+            physical_max: 5.0,
+        });
+        let known = unarmed_contribution(&table, "Monk");
+        assert_eq!(known.crit_chance, 7.5);
+        assert_eq!(known.phys_max, 5.0);
+        assert_eq!(known.flags, ModFlags::UNARMED);
+        let unknown = unarmed_contribution(&table, "Unknown");
+        assert_eq!(unknown.crit_chance, 5.0);
+        assert_eq!(unknown.flags, ModFlags::UNARMED);
     }
 }

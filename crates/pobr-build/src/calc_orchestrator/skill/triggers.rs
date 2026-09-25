@@ -96,6 +96,11 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
         sub_build.main_socket_group = Some(group_index + 1);
         sub_build.socket_groups[group_index].main_active_skill = Some(active_pos);
 
+        if let Some(memo) = &self.context.trigger_memo
+            && let Some(stats) = memo.borrow_mut().get(&sub_build)
+        {
+            return Some(stats);
+        }
         let mut child = self.context.trigger_source();
         let result = calculate_with_context(&sub_build, self.data, self.options, &mut child);
         self.context.compare_records.extend(child.compare_records);
@@ -109,11 +114,15 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
         if action_rate <= 0.0 {
             return None;
         }
-        Some(pobr_core::calc::TriggerSourceStats {
+        let stats = pobr_core::calc::TriggerSourceStats {
             action_rate,
             hit_chance: out.hit_chance,
             crit_chance: out.crit_chance,
-        })
+        };
+        if let Some(memo) = &self.context.trigger_memo {
+            memo.borrow_mut().insert(sub_build, stats);
+        }
+        Some(stats)
     }
 }
 
@@ -150,10 +159,9 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
 /// (the values live in the build mod domain, injection source not wired up yet); ②
 /// handler entries' real logic (the registry is pending, count monitored to stay <100);
 /// ③ per-skill cooldown rotation for multiple triggered skills (needs the full gem-link
-/// list); ④ cross-call sub-calculation caching — the existing `CalcCache` only wraps
-/// text-only `calculate`, extending it to a `(build hash, skill id)` key is pending a
-/// cache-layer overhaul (within a single calculation, a sub-calc only runs once, so the
-/// hot path is currently manageable).
+/// list). Cross-call source sub-calculations can be reused through the caller-owned
+/// `DataCalcCache`, keyed by the complete selected source Build and bound immutable
+/// data/options. Uncached/report APIs and Compare mode do not reuse that memo.
 pub(crate) fn trigger_modifiers(
     context: &mut CalculationContext,
     build: &Build,

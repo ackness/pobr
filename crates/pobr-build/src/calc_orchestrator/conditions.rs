@@ -76,11 +76,10 @@ pub(crate) fn weapon_type_info<'a>(
 /// commit on): used so mod-side weapon-bit matching (mod.flags ⊆ cfg.flags subset
 /// match) can hit.
 ///
-/// Derived from the same source as [`weapon_type_conditions`]
-/// ([`weapon_type_info`], the same `weapon_types.json` table): for every dual-written
-/// mod, the bit channel's determination is implied by the condition channel (the two
-/// channels ANDed together ≡ the old single condition channel), see
-/// weapon_type_conditions's guard-semantics comparison. An empty main hand → matching
+/// Derived from [`weapon_type_info`] and the same `weapon_types.json` table as
+/// [`weapon_type_conditions`]. Unlike grip conditions (which consider both hands),
+/// these per-skill matching bits describe the main-hand weapon source; the per-hand
+/// attack pass can replace them with its offhand bits. An empty main hand →
 /// vendor's `weaponData.type = "None"` → only the `Unarmed` bit.
 pub(crate) fn weapon_cfg_flags(build: &Build, data: &BuildData) -> ModFlags {
     let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
@@ -124,9 +123,10 @@ pub(crate) fn apply_condition_implications(mut cfg: CalcConfig) -> CalcConfig {
     cfg
 }
 
-/// Main-hand weapon category → weapon type / grip condition vars (for tree/mods like
-/// "... with <weapon class>" or "while dual wielding"). PoE2's internal class name:
-/// Quarterstaff = `Warstaff`. Returns the list of condition vars to set true.
+/// Equipped weapon categories → weapon type / grip conditions. PoE2's GGG
+/// item class for Quarterstaff is `Warstaff`. Grip and melee use vendor's
+/// `weaponTypeInfo` predicates (CalcPerform.lua:305-351), independently of
+/// `ModFlags::Weapon1H/2H` used by per-skill weapon matching.
 pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'static str> {
     let Some(item) = build.items.get(&EquipmentSlot::Weapon1) else {
         return Vec::new();
@@ -134,57 +134,61 @@ pub(crate) fn weapon_type_conditions(build: &Build, data: &BuildData) -> Vec<&'s
     let Some(def) = data.base_items.get(&item.base.to_string()) else {
         return Vec::new();
     };
-    let cls = def.item_class.as_str();
-    // Grip/melee determination moved from scattered string predicates to the injected
-    // weapon_types table (`data.constants.weapon_types` ← `base/weapon_types.json`,
-    // sourced from vendor's `data.weaponTypeInfo`; see [`weapon_type_info`] for the GGG
-    // item_class → table key mapping).
-    let info = weapon_type_info(data, cls);
+    // An unmapped caster Staff has no main-hand type; it must not become
+    // a one-handed dual-wield source, but a valid offhand still has conditions.
+    let main = weapon_type_info(data, &def.item_class);
     let mut vars = Vec::new();
-    // Weapon type condition var: an allowlist mapping table flag → the `Using*`
-    // conditions pobr already consumes (an L4 code-side derivation, equivalent per
-    // category to the old contains-based check). TODO(parity): vendor also has
-    // Sword/Axe/Claw/Flail/Wand etc. flags, but pobr currently has no matching `Using*`
-    // consumer, so those aren't set.
-    if let Some(var) = info.and_then(|w| match w.flag.as_str() {
-        // vendor records the Quarterstaff's flag as "Staff" (label = Quarterstaff).
-        "Staff" => Some("UsingQuarterstaff"),
-        "Mace" => Some("UsingMace"),
-        "Crossbow" => Some("UsingCrossbow"),
-        "Bow" => Some("UsingBow"),
-        "Spear" => Some("UsingSpear"),
-        "Dagger" => Some("UsingDagger"),
-        _ => None,
-    }) {
-        vars.push(var);
+    // The vendor considers both hands for Using* conditions. Only the subset of
+    // flag conditions consumed by PoBR is surfaced here; grip/melee comes from
+    // the table, not from an item-class string predicate.
+    for info in [
+        main,
+        build.items.get(&EquipmentSlot::Weapon2).and_then(|off| {
+            let off_def = data.base_items.get(&off.base.to_string())?;
+            data.weapon_base(&off.base.to_string())?;
+            weapon_type_info(data, &off_def.item_class)
+        }),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        let category = match info.flag.as_str() {
+            "Staff" => Some("UsingQuarterstaff"),
+            "Mace" => Some("UsingMace"),
+            "Crossbow" => Some("UsingCrossbow"),
+            "Bow" => Some("UsingBow"),
+            "Spear" => Some("UsingSpear"),
+            "Dagger" => Some("UsingDagger"),
+            _ => None,
+        };
+        if let Some(var) = category
+            && !vars.contains(&var)
+        {
+            vars.push(var);
+        }
+        if info.melee {
+            let grip = if info.one_hand {
+                "UsingOneHandedMelee"
+            } else {
+                "UsingTwoHandedMelee"
+            };
+            if !vars.contains(&grip) {
+                vars.push(grip);
+            }
+        }
     }
-    // Melee / two-handed classification (table's melee / !one_hand). A ported invariant
-    // guard (zero behavior change): TODO(parity): vendor records melee=true for
-    // Talisman / Fishing Rod, and oneHand=false for Bow/Crossbow/Talisman/Fishing Rod;
-    // pobr's old predicates instead treated them as non-melee / one-handed
-    // respectively (affecting the Using<X>HandedMelee and DualWielding
-    // determinations) — this guard pins down the old behavior (same TODO as the
-    // schema doc); aligning with vendor's data is left for its own behavior commit.
-    let melee = info.is_some_and(|w| w.melee) && !matches!(cls, "Talisman" | "FishingRod");
-    let two_handed = match cls {
-        // The old predicate treats these classes as one-handed (vendor's
-        // oneHand=false, see the TODO(parity) above).
-        "Bow" | "Crossbow" | "Talisman" | "FishingRod" => false,
-        // GGG's staff class: vendor's table has no entry (see weapon_type_info), and the old predicate treats it as two-handed.
-        "Staff" => true,
-        _ => info.is_some_and(|w| !w.one_hand),
-    };
-    if melee {
-        vars.push(if two_handed {
-            "UsingTwoHandedMelee"
-        } else {
-            "UsingOneHandedMelee"
-        });
-    }
-    // Dual wielding: the off-hand is also a weapon base (not a shield/quiver/foci off-hand).
-    if !two_handed
-        && let Some(off) = build.items.get(&EquipmentSlot::Weapon2)
-        && data.weapon_base(&off.base.to_string()).is_some()
+    // A valid second one-handed weapon is required for a dual-wield attack;
+    // shields, quivers, and unmapped bases aren't second weapon sources.
+    if main.is_some_and(|w| w.one_hand)
+        && build.items.get(&EquipmentSlot::Weapon2).is_some_and(|off| {
+            data.weapon_base(&off.base.to_string()).is_some()
+                && data
+                    .base_items
+                    .get(&off.base.to_string())
+                    .is_some_and(|def| {
+                        weapon_type_info(data, &def.item_class).is_some_and(|w| w.one_hand)
+                    })
+        })
     {
         vars.push("DualWielding");
     }
@@ -304,4 +308,103 @@ pub(crate) fn combat_conditions(
         conds.push("Channelling");
     }
     conds
+}
+
+#[cfg(test)]
+mod weapon_condition_tests {
+    use super::*;
+    use pobr_data::catalog::{BaseItemDef, WeaponBaseStats};
+    use pobr_data::item::{Item, ItemBaseId, ItemRarity, RolledDefence};
+
+    fn equip(build: Build, data: &mut BuildData, slot: EquipmentSlot, class: &str) -> Build {
+        let name = format!("Test {class}");
+        data.base_items.insert(
+            name.clone(),
+            BaseItemDef {
+                id: format!("Test/{class}"),
+                name: name.clone(),
+                item_class: class.into(),
+                req_str: 0,
+                req_dex: 0,
+                req_int: 0,
+                drop_level: 1,
+                width: 1,
+                height: 1,
+                tags: vec![],
+                implicits: vec![],
+                mod_domain: 1,
+                weapon: Some(WeaponBaseStats {
+                    physical_min: 2,
+                    physical_max: 5,
+                    speed_ms: 600,
+                    crit_chance: 500,
+                    range: 0,
+                    reload_time_ms: None,
+                }),
+                armour: None,
+                spirit: None,
+                charm_buff: vec![],
+            },
+        );
+        build.set_item(
+            slot,
+            Item {
+                base: ItemBaseId::from(name.as_str()),
+                rarity: ItemRarity::Normal,
+                quality: 0,
+                corrupted: false,
+                implicit_texts: vec![],
+                modifier_texts: vec![],
+                enchant_texts: vec![],
+                rolled_defence: RolledDefence::default(),
+                parsed_stats: vec![],
+            },
+        )
+    }
+
+    #[test]
+    fn vendor_grip_conditions_and_dual_wield_require_known_one_hand_sources() {
+        let mut data = BuildData::empty();
+        for (class, expected) in [
+            ("Bow", vec!["UsingBow"]),
+            ("Crossbow", vec!["UsingCrossbow"]),
+            ("Wand", vec![]),
+            ("Warstaff", vec!["UsingQuarterstaff", "UsingTwoHandedMelee"]),
+            ("Staff", vec![]),
+            ("Talisman", vec!["UsingTwoHandedMelee"]),
+            ("FishingRod", vec!["UsingTwoHandedMelee"]),
+        ] {
+            let build = equip(Build::new(), &mut data, EquipmentSlot::Weapon1, class);
+            assert_eq!(weapon_type_conditions(&build, &data), expected, "{class}");
+            let dual = equip(build, &mut data, EquipmentSlot::Weapon2, "Dagger");
+            let conditions = weapon_type_conditions(&dual, &data);
+            assert_eq!(
+                conditions.contains(&"DualWielding"),
+                class == "Wand",
+                "{class}"
+            );
+            assert!(
+                conditions.contains(&"UsingDagger"),
+                "offhand category: {class}"
+            );
+        }
+        let main = equip(
+            Build::new(),
+            &mut data,
+            EquipmentSlot::Weapon1,
+            "One Hand Mace",
+        );
+        let dual = equip(main, &mut data, EquipmentSlot::Weapon2, "Dagger");
+        assert_eq!(
+            weapon_type_conditions(&dual, &data),
+            [
+                "UsingMace",
+                "UsingOneHandedMelee",
+                "UsingDagger",
+                "DualWielding"
+            ]
+        );
+        let swapped = equip(dual, &mut data, EquipmentSlot::Weapon2, "Bow");
+        assert!(!weapon_type_conditions(&swapped, &data).contains(&"DualWielding"));
+    }
 }

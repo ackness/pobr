@@ -797,6 +797,62 @@ fn resistance_penalty_follows_campaign_progress() {
 }
 
 #[test]
+fn boss_rarity_damage_requires_effective_mode_in_full_build() {
+    let data = repo_data();
+    let build = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("SparkPlayer", 10))
+        .with_main_socket_group(1);
+    for mode_effective in [false, true] {
+        for tier in [
+            EnemyTier::None,
+            EnemyTier::Boss,
+            EnemyTier::Pinnacle,
+            EnemyTier::Uber,
+        ] {
+            // Exercise both the option fallback and the explicit build override.
+            for explicit_tier in [false, true] {
+                let mut build = build.clone();
+                if explicit_tier {
+                    build.config.enemy_tier = Some(tier);
+                }
+                let mut options = DataOrchestratorOptions {
+                    mode_effective,
+                    enemy_tier: if explicit_tier {
+                        if tier.is_boss() {
+                            EnemyTier::None
+                        } else {
+                            EnemyTier::Pinnacle
+                        }
+                    } else {
+                        tier
+                    },
+                    ..Default::default()
+                };
+                let baseline = calculate_with_data(&build, &data, &options).unwrap();
+                options.extra_modifier_texts = vec!["50% increased Damage".into()];
+                let unconditional = calculate_with_data(&build, &data, &options).unwrap();
+                assert!(unconditional.dps > baseline.dps && baseline.dps > 0.0);
+                for condition in ["Rare or Unique", "Unique"] {
+                    options.extra_modifier_texts =
+                        vec![format!("50% increased Damage against {condition} Enemies")];
+                    let actual = calculate_with_data(&build, &data, &options).unwrap();
+                    let expected = if mode_effective && tier.is_boss() {
+                        unconditional.dps
+                    } else {
+                        baseline.dps
+                    };
+                    assert!(
+                        (actual.dps - expected).abs() < 1e-9,
+                        "{condition}: effective={mode_effective}, tier={tier:?}, explicit={explicit_tier}: DPS {} != {expected}",
+                        actual.dps
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn xml_enemy_tier_overrides_orchestrator_option() {
     // enemyIsBoss wiring (19-G3): an explicit None tier in the build XML config
     // should override the caller-supplied Pinnacle — a normal monster's
@@ -2634,8 +2690,8 @@ fn unarmed_contribution_matches_legacy_hardcoded_values() {
         assert_eq!(c.phys_min, 2.0, "{class} phys_min");
         assert_eq!(c.phys_max, phys_max, "{class} phys_max");
         assert_eq!(c.attack_rate, 1.65, "{class} attack_rate");
-        // Old hardcoded value 0.05 (unit-convention TODO(parity), see the unarmed_contribution doc).
-        assert_eq!(c.crit_chance, 0.05, "{class} crit_chance");
+        // Stored 0.05 fraction converts to 5 percentage points in the calc view.
+        assert_eq!(c.crit_chance, 5.0, "{class} crit_chance");
     }
 }
 
@@ -2661,12 +2717,10 @@ fn weapon_base_item(name: &str, item_class: &str) -> pobr_data::catalog::BaseIte
     }
 }
 
-/// After switching weapon-type conditions to the injected table, they're
-/// equivalent class-by-class to the old scattered predicates (including a
-/// parity guard: Talisman / FishingRod aren't melee, and GGG's `Staff`
-/// (quarterstaff) gets no conditions — vendor discrepancies are pinned to the old behavior).
+/// Weapon type and grip conditions match vendor weaponTypeInfo, including
+/// non-martial entries and an unmapped caster Staff.
 #[test]
-fn weapon_type_conditions_match_legacy_predicates() {
+fn weapon_type_conditions_match_vendor_type_info() {
     let mut data = BuildData::empty();
     let cases: &[(&str, &[&str])] = &[
         // GGG `Warstaff` (quarterstaff) → table key `Staff` (label=Quarterstaff).
@@ -2682,12 +2736,9 @@ fn weapon_type_conditions_match_legacy_predicates() {
         ("One Hand Sword", &["UsingOneHandedMelee"]),
         ("Two Hand Sword", &["UsingTwoHandedMelee"]),
         ("Two Hand Axe", &["UsingTwoHandedMelee"]),
-        // parity guard: the old predicates didn't treat Talisman / FishingRod
-        // as melee (vendor has melee=true; the discrepancy is recorded as a
-        // schema TODO(parity), behavior alignment left for a separate commit).
-        ("Talisman", &[]),
-        ("FishingRod", &[]),
-        // GGG `Staff` (quarterstaff class): the vendor table has no matching entry, so no weapon-type condition at all.
+        ("Talisman", &["UsingTwoHandedMelee"]),
+        ("FishingRod", &["UsingTwoHandedMelee"]),
+        // GGG caster `Staff` has no matching vendor weapon type entry.
         ("Staff", &[]),
         ("Wand", &[]),
         ("Sceptre", &[]),
