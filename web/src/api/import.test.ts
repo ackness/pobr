@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { resolveBuildInput } from './import';
+import { buildFileKind, resolveBuildInput } from './import';
 // The exact module deployed to Pages is also exercised by the Vite tests.
 // @ts-expect-error Plain worker module has no TypeScript declarations.
 import worker, { fetchShare, shareKey } from '../../public/_worker.js';
@@ -57,5 +57,28 @@ describe('WeGame import', () => {
     expect(await resolveBuildInput('  eNexample  ')).toBe('eNexample');
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'Share expired' }, { status: 502 })));
     await expect(resolveBuildInput(url)).rejects.toThrow('Share expired');
+  });
+});
+
+
+describe('build-file format ownership', () => {
+  test.each([
+    { version: 1, state: { flasks: {} }, notes: '' },
+    { version: 2, state: null },
+    { format: 'pobr-build', version: 2, build: null },
+    { version: 1, notes: 'Missing state' },
+  ])('keeps malformed PoBR saves on the session validation path: %j', input => {
+    expect(buildFileKind(JSON.stringify(input))).toBe('session');
+  });
+  test.each([null, {}, false])('recognizes even a malformed workspace for explicit backup handling: %j', workspace => {
+    expect(buildFileKind(JSON.stringify({ version: 1, workspace }))).toBe('workspace');
+  });
+  test.each([
+    'eNexample',
+    'https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456',
+    JSON.stringify({ format: 'wegame', version: 1, role: { level: 80, class_name: 'Witch' } }),
+    JSON.stringify({ name: 'Character Lv.80', ascendancy: 'Witch1', passives: [], items: [], skills: [] }),
+  ])('preserves external build import handling: %s', input => {
+    expect(buildFileKind(input)).toBe('external');
   });
 });

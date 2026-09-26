@@ -142,7 +142,7 @@ export function applySupportPlan(groups: SocketGroupInput[], groupIndex: number,
   return gems ? groups.map((group, index) => index === groupIndex ? { ...group, gems } : group) : groups;
 }
 
-const keyOf = (supports: GemInput[]) => supports.map(gem => `${gem.skill_id}:${gem.level}:${gem.quality}`).sort().join('|');
+const keyOf = (supports: GemInput[]) => supports.map(gem => `${gem.skill_id}:${gem.level}:${gem.quality}:${gem.stat_set_index ?? 1}`).sort().join('|');
 
 /** Every eligible support gets an individual probe. A bounded beam then explores combinations,
  * retaining the current set and neutral candidates so replacements and pair interactions can win.

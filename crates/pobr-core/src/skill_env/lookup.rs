@@ -219,6 +219,25 @@ pub trait PassiveNodeLookup {
     fn notable_by_name(&self, name: &str) -> Option<&PassiveNodeDef>;
 }
 
+/// A selected tree table is a complete lookup view; its version is chosen by the
+/// caller before entering skill translation, without copying the game's data.
+impl PassiveNodeLookup for std::collections::HashMap<u32, PassiveNodeDef> {
+    fn passive_node(&self, node_id: u32) -> Option<&PassiveNodeDef> {
+        self.get(&node_id)
+    }
+
+    fn notable_by_name(&self, name: &str) -> Option<&PassiveNodeDef> {
+        self.values()
+            .filter(|def| def.kind == pobr_data::catalog::PassiveNodeKind::Notable)
+            .filter(|def| {
+                def.name
+                    .as_ref()
+                    .is_some_and(|n| n.eq_ignore_ascii_case(name))
+            })
+            .min_by_key(|def| def.skill)
+    }
+}
+
 /// Gem base definition lookup (`gem_effects` FK → `skill_gems` domain), for the
 /// `gemRequirements` attribute-weight check (vendor `effect.gemData[reqX] > 0`).
 pub trait GemDefLookup {

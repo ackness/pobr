@@ -55,6 +55,9 @@ export function createMockBackend(): PobrBackend {
     async attribution() {
       return attributionFixture as unknown as AttributionResponse;
     },
+    async loadTradeCatalog() {
+      return { bases: [], mods: [], gems: [] };
+    },
     async loadPassiveTree() {
       return treeFixture as unknown as PassiveNode[];
     },

@@ -123,13 +123,16 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
 
     def test_quality_failure_aborts_full_regeneration_before_other_generators(self):
         shutil.copyfile(REPO / "pipeline/regen-all.sh", self.root / "pipeline/regen-all.sh")
-        self.write("data/test/overlay/gem_quality_stats.json", "previous quality data")
+        shutil.copyfile(REPO / "pipeline/data_snapshot.py", self.root / "pipeline/data_snapshot.py")
+        self.write("pipeline/config.json", '{"patch":"9.1"}')
+        self.write("data/CURRENT", "9.1\n")
+        self.write("data/9.1/overlay/gem_quality_stats.json", "previous quality data")
         self.env["FAIL_QUALITY"] = "1"
         result = self.run_script("pipeline/regen-all.sh")
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertEqual(len(self.calls()), 1)
         self.assertIn("--gem-quality", self.calls()[0])
-        self.assertEqual((self.root / "data/test/overlay/gem_quality_stats.json").read_text(),
+        self.assertEqual((self.root / "data/9.1/overlay/gem_quality_stats.json").read_text(),
                          "previous quality data")
 
     def test_regen_drift_preserves_uncommitted_artifact(self):
@@ -342,7 +345,11 @@ class VersionPromotionTests(unittest.TestCase):
                     destination.write_text(text, encoding="utf-8")
                     return destination
                 write("pipeline/bump-version.sh", (REPO / "pipeline/bump-version.sh").read_text(encoding="utf-8"))
-                write("pipeline/regen-all.sh", "#!/usr/bin/env bash\nexit 0\n").chmod(0o755)
+                write("pipeline/data_snapshot.py", (REPO / "pipeline/data_snapshot.py").read_text(encoding="utf-8"))
+                write("pipeline/regen-all.sh", '''#!/usr/bin/env bash
+mkdir -p "$POBR_DATA_ROOT/1.2.4/base"
+printf '[]\\n' > "$POBR_DATA_ROOT/1.2.4/base/skill_gems.json"
+''').chmod(0o755)
                 write("pipeline/refresh-modifiers.sh", f"#!/usr/bin/env bash\nexit {17 if failure == 'audit' else 0}\n")
                 # Simulate resuming after a different failed candidate.
                 write("pipeline/config.json", '{"patch": "1.2.99"}')

@@ -41,3 +41,59 @@ fn node_power_within_depth_and_finds_positive_nodes() {
         "there should be a Life-raising node near the frontier"
     );
 }
+
+#[test]
+fn identical_passive_text_keeps_node_specific_radius_grants() {
+    let dir = repo_data_root().join(pobr_gamedata::data_version());
+    pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).unwrap();
+    let request = json!({
+        "character": { "class_name": "Witch", "level": 80 },
+        "allocated_nodes": [7960],
+        "jewels": [{ "socket_node": 7960,
+            "text": "Rarity: RARE\nRadius Test\nTime-Lost Ruby\nRadius: Small\nImplicits: 0\nSmall Passive Skills in Radius also grant +10 to maximum Mana" }],
+    });
+    let output: Value = serde_json::from_str(
+        &pobr_wasm::node_power_json(
+            &json!({
+                "request": request, "power_stat": "Mana", "max_depth": 5,
+            })
+            .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let mana = |nodes: Vec<u32>| {
+        let mut trial = request.clone();
+        trial["allocated_nodes"] = json!(nodes);
+        let result: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&trial.to_string()).unwrap())
+                .unwrap();
+        result["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|stat| stat["id"] == "Mana")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    let baseline = mana(vec![7960]);
+    let mut deltas = Vec::new();
+    // Both nodes grant 12% increased Fire Damage. Only the first is inside the radius.
+    for node in [9884, 23091] {
+        let delta = output["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["skill"] == node)
+            .unwrap()["delta"]
+            .as_f64()
+            .unwrap();
+        assert!((delta - (mana(vec![7960, node]) - baseline)).abs() < 1e-8);
+        deltas.push(delta);
+    }
+    assert!(
+        deltas[0] > deltas[1],
+        "in-radius grant must distinguish identical node text"
+    );
+}

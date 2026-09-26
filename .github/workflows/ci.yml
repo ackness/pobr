@@ -62,7 +62,9 @@ jobs:
       - name: Install luajit
         run: sudo apt-get update && sudo apt-get install -y luajit lua-dkjson
       - name: Data update compatibility tests
-        run: python3 pipeline/test-data-update.py
+        run: |
+          python3 pipeline/test-data-update.py
+          python3 pipeline/test-data-snapshot.py
       - name: Test (nextest)
         run: cargo nextest run --workspace
       # nextest does not run doctests; cover them separately.
@@ -103,7 +105,7 @@ jobs:
       - name: Dictionary snapshot tests
         run: node --test ../pipeline/test-dictionary-source.mjs ../pipeline/test-query-patch-version.mjs
       - name: WASM packaging tests
-        run: node --test scripts/package-wasm.test.mjs
+        run: node --test scripts/package-wasm.test.mjs scripts/sync-data.test.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)

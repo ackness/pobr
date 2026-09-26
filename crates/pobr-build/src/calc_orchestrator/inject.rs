@@ -296,7 +296,7 @@ pub(super) fn inject_build_multipliers(
         .allocated_nodes
         .iter()
         .filter(|id| {
-            data.passive_nodes
+            data.passive_nodes_for(build.tree_version.as_deref())
                 .get(&id.0)
                 .is_some_and(|n| n.apply_to_armour)
         })

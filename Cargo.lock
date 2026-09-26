@@ -519,6 +519,7 @@ dependencies = [
  "pobr-tree",
  "serde",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]
@@ -756,6 +757,7 @@ version = "0.0.29"
 dependencies = [
  "pobr-core",
  "pobr-data",
+ "pobr-gamedata",
  "regex",
  "serde",
  "serde_json",

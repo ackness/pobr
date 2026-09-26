@@ -85,8 +85,9 @@ pub(crate) fn slot_bonus_effect_scales(
         .and_then(|item| data.base_items.get(&item.base.to_string()))
         .is_some_and(|def| def.item_class == "Focus");
     let mut texts: Vec<String> = Vec::new();
+    let nodes = data.passive_nodes_for(build.tree_version.as_deref());
     for id in &build.tree.allocated_nodes {
-        if let Some(node) = data.passive_nodes.get(&id.0) {
+        if let Some(node) = nodes.get(&id.0) {
             texts.extend(node.stats.iter().map(|s| clean_grant_text(s)));
         }
     }

@@ -755,12 +755,7 @@ pub mod test_support {
 
     /// Path to the repo's real mod_parser_rules.json.
     pub fn real_rules_path() -> PathBuf {
-        // engine.rs lives in crates/pobr-core/src/mod_parser/, 4 levels up to the repo root.
-        let manifest = env!("CARGO_MANIFEST_DIR"); // crates/pobr-core
-        PathBuf::from(manifest)
-            .join("../../data")
-            .join(pobr_data::data_version())
-            .join("overlay/mod_parser_rules.json")
+        crate::mod_parser::test_data_dir().join("overlay/mod_parser_rules.json")
     }
 }
 

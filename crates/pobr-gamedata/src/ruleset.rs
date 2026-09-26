@@ -128,51 +128,69 @@ impl GameData {
     pub fn load_ruleset(&self) -> Result<RuleSet, LoadError> {
         let game_constants = match self.game_constants() {
             Ok(v) => Some(v),
-            Err(LoadError::Io { .. }) => None,
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                None
+            }
             Err(e) => return Err(e),
         };
         let character_constants = match self.character_constants() {
             Ok(v) => Some(v),
-            Err(LoadError::Io { .. }) => None,
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                None
+            }
             Err(e) => return Err(e),
         };
         let jewel_radii = match self.jewel_radii() {
             Ok(v) => Some(v),
-            Err(LoadError::Io { .. }) => None,
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                None
+            }
             Err(e) => return Err(e),
         };
         let monster_scaling = match self.monster_scaling() {
             Ok(v) => Some(v),
-            Err(LoadError::Io { .. }) => None,
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                None
+            }
             Err(e) => return Err(e),
         };
         let enemy_presets = match self.enemy_presets() {
             Ok(v) => Some(v),
-            Err(LoadError::Io { .. }) => None,
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                None
+            }
             Err(e) => return Err(e),
         };
         // The domain loader returns a Vec (W2's convention); wrapped here
         // into the injection-table newtype.
         let unarmed_data = match self.unarmed_data() {
             Ok(v) => Some(UnarmedDataTable(v)),
-            Err(LoadError::Io { .. }) => None,
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                None
+            }
             Err(e) => return Err(e),
         };
         let weapon_types = match self.weapon_types() {
             Ok(v) => Some(WeaponTypeTable(v)),
-            Err(LoadError::Io { .. }) => None,
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                None
+            }
             Err(e) => return Err(e),
         };
         // Missing-table tolerance: table absent → None, the consumer falls
         // back to the old parse_config path.
         let config_catalog = match self.config_options() {
             Ok(v) => Some(ConfigCatalog::new(v.options)),
-            Err(LoadError::Io { .. }) => None,
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                None
+            }
             Err(e) => return Err(e),
         };
         let high_precision_mods = match self.high_precision_mods() {
             Ok(v) => Some(v),
-            Err(LoadError::Io { .. }) => None,
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                None
+            }
             Err(e) => return Err(e),
         };
         // Special mod-line templates: overlay (hand-curated, takes
@@ -232,6 +250,15 @@ mod tests {
         assert!(ruleset.config_catalog.is_none());
         assert!(ruleset.high_precision_mods.is_none());
         assert!(ruleset.special_mods.is_none());
+    }
+
+    #[test]
+    fn existing_unreadable_domain_does_not_use_legacy_fallback() {
+        let root = std::env::temp_dir().join(format!("pobr-ruleset-io-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("game_constants.json")).unwrap();
+        let result = GameData::new(&root).load_ruleset();
+        std::fs::remove_dir_all(root).unwrap();
+        assert!(matches!(result, Err(crate::LoadError::Io { .. })));
     }
 
     /// The repo data directory: the special_mods domain is wired up (the

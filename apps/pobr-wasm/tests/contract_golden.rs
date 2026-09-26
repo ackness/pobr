@@ -13,8 +13,8 @@ use serde_json::Value;
 /// with defaults can be added without changing the existing version.
 #[test]
 fn schema_version_pinned() {
-    // v5: the frontend requires the shared support-group judgement entry point.
-    assert_eq!(pobr_wasm::SCHEMA_VERSION, 5);
+    // v6: materialized builds preserve skill forms and passive-tree versions.
+    assert_eq!(pobr_wasm::SCHEMA_VERSION, 6);
 }
 
 /// A real demo build (shared with ninja_parity).
@@ -1343,10 +1343,10 @@ fn memory_backend_matches_dir_backend() {
         }
     };
     for version in [
-        pobr_data::GOLDEN_PARITY_DATA_VERSION,
-        pobr_data::DATA_VERSION,
+        pobr_data::GOLDEN_PARITY_DATA_VERSION.to_string(),
+        pobr_gamedata::data_version(),
     ] {
-        let root = repo_data_root().join(version);
+        let root = repo_data_root().join(&version);
         let nodes: Vec<pobr_data::catalog::PassiveNodeDef> = serde_json::from_str(
             &std::fs::read_to_string(root.join("base/passive_tree.json")).unwrap(),
         )
@@ -2036,4 +2036,68 @@ fn support_group_batch_preserves_order_and_rejects_unknown_skills() {
     )
     .unwrap();
     assert_eq!(error["code"], "bad_request");
+}
+
+#[test]
+fn materialized_skill_form_and_historical_tree_match_import_and_export() {
+    let dir = repo_data_root().join(pobr_gamedata::data_version());
+    pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).unwrap();
+    let original = serde_json::json!({
+        "character": { "class_name": "Witch", "level": 80 },
+        "tree_version": "0_1",
+        "allocated_nodes": [770],
+        "socket_groups": [{ "gems": [{ "skill_id": "IceNovaPlayer", "level": 20, "quality": 0, "stat_set_index": 2 }] }],
+    });
+    let code = pobr_wasm::encode_build_json(&original.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    assert_eq!(decoded["tree"]["tree_version"], "0_1");
+    assert_eq!(decoded["socket_groups"][0]["gems"][0]["stat_set_index"], 2);
+    let mut groups = decoded["socket_groups"].clone();
+    for group in groups.as_array_mut().unwrap() {
+        group.as_object_mut().unwrap().remove("active_skill_id");
+    }
+    let request = serde_json::json!({
+        "character": decoded["character"],
+        "tree_version": decoded["tree"]["tree_version"],
+        "allocated_nodes": decoded["tree"]["allocated_nodes"],
+        "attribute_choices": decoded["tree"]["attribute_choices"],
+        "socket_groups": groups,
+        "main_socket_group": decoded["main_socket_group"],
+        "config_inputs": decoded["config_inputs"],
+    });
+    let calc = |request: &Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap()
+    };
+    let expected = calc(&serde_json::json!({"pob_code": code}));
+    let actual = calc(&request);
+    assert_eq!(actual["stats"], expected["stats"]);
+    assert_eq!(actual["main_skill"], expected["main_skill"]);
+
+    let stat = |response: &Value, id: &str| {
+        response["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|stat| stat["id"] == id)
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    let mut primary = request.clone();
+    primary["socket_groups"][0]["gems"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("stat_set_index");
+    assert_ne!(stat(&calc(&primary), "TotalDPS"), stat(&actual, "TotalDPS"));
+    let mut current_tree = request.clone();
+    current_tree.as_object_mut().unwrap().remove("tree_version");
+    assert_ne!(stat(&calc(&current_tree), "Mana"), stat(&actual, "Mana"));
+
+    let exported = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    assert_eq!(
+        calc(&serde_json::json!({"pob_code": exported}))["stats"],
+        actual["stats"]
+    );
 }

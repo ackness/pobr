@@ -106,7 +106,10 @@ pub fn response_cache_hits() -> u64 {
 }
 
 /// Clears the response cache whenever data is (re-)initialized — results are sensitive to the data version.
-fn clear_response_cache() {
+fn clear_data_caches() {
+    ZH_TRANSLATOR.with_borrow_mut(|slot| *slot = None);
+    EN_TO_ZH_TRANSLATOR.with_borrow_mut(|slot| *slot = None);
+    TIER_INDEX.with_borrow_mut(|slot| *slot = None);
     RESPONSE_CACHE.with_borrow_mut(|c| {
         c.entries.clear();
         c.order.clear();
@@ -135,7 +138,7 @@ pub fn init_staged_data() -> Result<(), String> {
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
     BUILD_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(build_data)));
     GAME_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(data)));
-    clear_response_cache();
+    clear_data_caches();
     Ok(())
 }
 
@@ -146,7 +149,7 @@ pub fn init_data_from_dir(version_dir: &str) -> Result<(), String> {
     let build_data = BuildData::load(&data).map_err(|e| format!("load BuildData: {e}"))?;
     BUILD_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(build_data)));
     GAME_DATA.with_borrow_mut(|slot| *slot = Some(Rc::new(data)));
-    clear_response_cache();
+    clear_data_caches();
     Ok(())
 }
 
@@ -285,4 +288,27 @@ fn build_zh_translator() -> Option<Rc<crate::zh::LineTranslator>> {
     Some(Rc::new(crate::zh::LineTranslator::new(
         &templates, base_names,
     )))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn initialization_recovers_preinit_misses_and_invalidates_derived_indexes() {
+        // A caller may request translation before loading the game data.
+        assert!(zh_translator().is_none());
+        assert!(en_to_zh_translator().is_none());
+        assert!(tier_index().is_none());
+        let dir = pobr_gamedata::repo_data_root().join(pobr_gamedata::data_version());
+        init_data_from_dir(dir.to_str().unwrap()).unwrap();
+        assert!(zh_translator().is_some());
+        assert!(en_to_zh_translator().is_some());
+        assert!(tier_index().is_some());
+        // Reloading replaces all data-dependent caches, including cached misses.
+        init_data_from_dir(dir.to_str().unwrap()).unwrap();
+        ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
+        EN_TO_ZH_TRANSLATOR.with_borrow(|slot| assert!(slot.is_none()));
+        TIER_INDEX.with_borrow(|slot| assert!(slot.is_none()));
+    }
 }

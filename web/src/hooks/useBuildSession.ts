@@ -49,6 +49,7 @@ export interface CalcParams {
 
 /** 会话完整可编辑状态（重算请求由此派生）。 */
 interface BuildState {
+  treeVersion?: string | null;
   weaponSwap?: WeaponSwap | null;
   pobCode: string | null;
   character: CharacterState;
@@ -69,6 +70,7 @@ interface BuildState {
 }
 
 export interface BuildSession {
+  treeVersion?: string | null;
   dataVersion: string | null;
   workspace: BuildWorkspace | null;
   storageFailed: boolean;
@@ -170,6 +172,7 @@ export interface BuildSession {
 // 一遍然后立刻被覆盖项冲掉。state.pobCode 仅存档用（恢复会话时重建 build 视图）。
 function toRequest(state: BuildState): CalculateBuildRequest {
   return {
+    tree_version: state.treeVersion,
     character: state.character,
     allocated_nodes: state.allocatedNodes,
     attribute_choices: state.attributeChoices,
@@ -236,33 +239,80 @@ const STORAGE_KEY = 'pobr-build-state';
 /** 解析并校验存档信封（导入文件 / localStorage 共用）；非法返回 null。 */
 export function parseSaved(json: string): SavedSession | null {
   try {
-    const parsed = JSON.parse(json) as SavedSession;
-    if (parsed.version !== 1 || typeof parsed.state !== 'object' || parsed.state === null) {
-      return null;
-    }
+    const record = (value: unknown): value is Record<string, unknown> =>
+      value !== null && typeof value === 'object' && !Array.isArray(value);
+    const uint = (value: unknown): value is number => Number.isInteger(value) && Number(value) >= 0 && Number(value) <= 0xffffffff;
+    const optionalText = (value: unknown) => value == null || typeof value === 'string';
+    const optionalIndex = (value: unknown, min = 0) => value == null || uint(value) && value >= min;
+    const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every(entry => typeof entry === 'string');
+    const nodes = (value: unknown): value is number[] => Array.isArray(value) && value.every(uint);
+    const textMap = (value: unknown) => record(value) && Object.values(value).every(entry => typeof entry === 'string');
+    const itemList = (value: unknown, slots: RegExp): value is SlotItemInput[] => Array.isArray(value)
+      && value.every(item => record(item) && typeof item.slot === 'string' && slots.test(item.slot) && typeof item.text === 'string');
+    const parsed: unknown = JSON.parse(json);
+    if (!record(parsed) || parsed.version !== 1 || !record(parsed.state)) return null;
     const state = parsed.state;
-    if (
-      typeof state.character?.class_name !== 'string' ||
-      !Array.isArray(state.allocatedNodes) ||
-      !Array.isArray(state.socketGroups) ||
-      !Array.isArray(state.items)
-    ) {
-      return null;
+    const character = state.character;
+    if (!record(character) || typeof character.class_name !== 'string'
+      || !optionalText(character.ascendancy_name) || !optionalIndex(character.level, 1)
+      || Number(character.level ?? 1) > 100 || !optionalText(state.pobCode) || !optionalText(state.treeVersion)
+      || !nodes(state.allocatedNodes) || !Array.isArray(state.socketGroups)
+      || !itemList(state.items, /^(weapon[12]|helmet|bodyarmour|gloves|boots|amulet|ring[123]|belt)$/)) return null;
+    const socketGroups: SocketGroupInput[] = [];
+    for (const group of state.socketGroups) {
+      if (!record(group) || !Array.isArray(group.gems) || !optionalText(group.slot) || !optionalText(group.source)
+        || group.enabled != null && typeof group.enabled !== 'boolean'
+        || group.weapon_set != null && ![1, 2].includes(Number(group.weapon_set))
+        || group.weapon_set != null && typeof group.weapon_set !== 'number'
+        || !optionalIndex(group.main_active_skill, 1)) return null;
+      const gems: SocketGroupInput['gems'] = [];
+      for (const gem of group.gems) {
+        if (!record(gem) || typeof gem.skill_id !== 'string' || !uint(gem.level) || gem.level < 1
+          || !uint(gem.quality) || !optionalIndex(gem.stat_set_index, 1)) return null;
+        gems.push({ skill_id: gem.skill_id, level: gem.level, quality: gem.quality,
+          ...(gem.stat_set_index != null ? { stat_set_index: Number(gem.stat_set_index) } : {}) });
+      }
+      socketGroups.push({ enabled: group.enabled == null ? true : group.enabled as boolean,
+        slot: group.slot as string | null | undefined, source: group.source as string | null | undefined,
+        weapon_set: group.weapon_set as 1 | 2 | null | undefined,
+        main_active_skill: group.main_active_skill as number | null | undefined, gems });
     }
+    const flasks = state.flasks ?? [];
+    const jewels = state.jewels ?? [];
+    const annotations = state.annotations ?? {};
+    const attributeChoices = state.attributeChoices ?? {};
+    const params = state.params ?? {};
+    if (!itemList(flasks, /^(Flask [12]|Charm [123])$/)
+      || !Array.isArray(jewels) || !jewels.every(jewel => record(jewel) && uint(jewel.socket_node) && typeof jewel.text === 'string')
+      || !textMap(annotations) || !record(attributeChoices)
+      || !Object.entries(attributeChoices).every(([node, choice]) => /^\d+$/.test(node) && uint(Number(node)) && typeof choice === 'string' && ['str', 'dex', 'int'].includes(choice))
+      || !record(params) || !optionalIndex(params.main_socket_group)
+      || params.enemy_tier != null && (typeof params.enemy_tier !== 'string' || !['none', 'boss', 'pinnacle', 'uber'].includes(params.enemy_tier))
+      || params.extra_modifiers != null && !strings(params.extra_modifiers)) return null;
+    const configInputs = params.config_inputs ?? {};
+    if (!record(configInputs) || !Object.values(configInputs).every(value =>
+      typeof value === 'boolean' || typeof value === 'string' || typeof value === 'number' && Number.isFinite(value))) return null;
+    const weaponSwap = validWeaponSwap(state.weaponSwap);
+    if (state.weaponSwap != null && !weaponSwap) return null;
     return {
       version: 1,
       state: {
+        treeVersion: state.treeVersion as string | null | undefined,
         pobCode: typeof state.pobCode === 'string' ? state.pobCode : null,
-        character: state.character,
+        character: { class_name: character.class_name, level: Number(character.level ?? 1),
+          ascendancy_name: typeof character.ascendancy_name === 'string' ? character.ascendancy_name : '' },
         allocatedNodes: state.allocatedNodes,
-        attributeChoices: state.attributeChoices ?? {},
-        socketGroups: state.socketGroups,
+        attributeChoices: attributeChoices as Record<string, AttributeChoice>,
+        socketGroups,
         items: state.items,
-        weaponSwap: validWeaponSwap(state.weaponSwap),
-        flasks: state.flasks ?? [],
-        jewels: state.jewels ?? [],
-        annotations: state.annotations ?? {},
-        params: state.params ?? { config_inputs: {} },
+        weaponSwap,
+        flasks,
+        jewels: jewels as JewelInput[],
+        annotations: annotations as Annotations,
+        params: { config_inputs: configInputs as Record<string, ConfigInputValue>,
+          ...(params.main_socket_group != null ? { main_socket_group: Number(params.main_socket_group) } : {}),
+          ...(params.enemy_tier != null ? { enemy_tier: params.enemy_tier as EnemyTier } : {}),
+          ...(params.extra_modifiers != null ? { extra_modifiers: params.extra_modifiers as string[] } : {}) },
       },
       notes: typeof parsed.notes === 'string' ? parsed.notes : '',
     };
@@ -288,14 +338,19 @@ function itemName(text: string): string {
 function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState {
   return {
     ...state,
+    treeVersion: state.treeVersion ?? decoded.tree.tree_version,
     socketGroups: state.socketGroups.map((group, index) => {
       const original = decoded.socket_groups[index];
       // Only restore missing metadata when the saved gem order still matches
       // the source. Edited groups cannot safely inherit an old ordinal.
-      return group.main_active_skill === undefined && original?.main_active_skill != null
-        && group.gems.length === original.gems.length
-        && group.gems.every((gem, i) => gem.skill_id === original.gems[i].skill_id)
-        ? { ...group, main_active_skill: original.main_active_skill } : group;
+      if (!original || group.gems.length !== original.gems.length
+        || !group.gems.every((gem, i) => gem.skill_id === original.gems[i].skill_id)) return group;
+      return { ...group,
+        main_active_skill: group.main_active_skill ?? original.main_active_skill,
+        gems: group.gems.map((gem, i) => ({ ...gem,
+          stat_set_index: gem.stat_set_index ?? original.gems[i].stat_set_index,
+        })),
+      };
     }),
     params: {
       ...state.params,
@@ -308,8 +363,9 @@ function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState 
 /** 解码结果 → 可编辑技能组/装备状态（物化，之后全走覆盖）。 */
 function materialize(
   decoded: BuildJson,
-): Pick<BuildState, 'socketGroups' | 'items' | 'flasks' | 'jewels' | 'weaponSwap'> {
+): Pick<BuildState, 'treeVersion' | 'socketGroups' | 'items' | 'flasks' | 'jewels' | 'weaponSwap'> {
   return {
+    treeVersion: decoded.tree.tree_version,
     weaponSwap: decoded.weapon_swap,
     socketGroups: decoded.socket_groups.map((g) => ({
       weapon_set: g.weapon_set,
@@ -321,6 +377,7 @@ function materialize(
         skill_id: gem.skill_id,
         level: gem.level,
         quality: gem.quality,
+        stat_set_index: gem.stat_set_index,
       })),
     })),
     items: decoded.items.equipped.map((item) => ({ slot: item.slot, text: item.text })),
@@ -489,10 +546,11 @@ export function useBuildSession(): BuildSession {
         setBootMessage(null);
         const raw = localStorage.getItem(STORAGE_KEY) ?? '';
         const saved = parseSaved(raw);
+        if (raw && !saved) throw new Error('浏览器存档格式无效，原始数据已保留。请下载原始存档备份以便修复。');
         if (saved) {
           const envelope = JSON.parse(raw);
           const restored = envelope.workspace === undefined ? createWorkspace(saved) : parseWorkspace(envelope.workspace, parseSaved);
-          if (!restored) throw new Error('Invalid build workspace. Export the browser save before resetting it.');
+          if (!restored) throw new Error('浏览器工作区格式无效，原始数据已保留。请下载原始存档备份以便修复。');
           workspaceRef.current = restored;
           setWorkspace(restored);
           draftsRef.current = activeWorkspaceStage(restored).drafts;
@@ -807,7 +865,7 @@ export function useBuildSession(): BuildSession {
       setBusy(true);
       setError(null);
       getBackend().then(async backend => {
-        const nodes = await backend.loadPassiveTree();
+        const nodes = await backend.loadPassiveTree(current.treeVersion);
         const active = current.weaponSwap?.active ?? 1;
         const sets: (1 | 2)[] = inactive ? [active, active === 1 ? 2 : 1] : [active];
         const removed = new Set<number>();
@@ -1167,6 +1225,7 @@ export function useBuildSession(): BuildSession {
   }, [state]);
 
   return {
+    treeVersion: state?.treeVersion,
     dataVersion, workspace, storageFailed, selectStage, createLocalBuild, duplicateStage, renameWorkspace, exportWorkspace, exportLocalBuild,
     activeWeaponSet: state?.weaponSwap?.active ?? 1,
     weaponSwap: state?.weaponSwap,

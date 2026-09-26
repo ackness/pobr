@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { deflateSync } from 'node:zlib';
+import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 
 const code = (level: number, nodes: string, notes: string) => deflateSync(`<PathOfBuilding2>
@@ -138,4 +138,78 @@ test('failed browser persistence stays visible while in-memory stages remain edi
   await expect(page.getByLabel('Level', { exact: true })).toHaveValue('42');
   await expect(page.locator('.workspace-save-error')).toBeVisible();
   await expect(page.locator('.workspace-saved')).toHaveCount(0);
+});
+
+test('malformed shared files leave the active stage and browser save untouched', async ({ page }) => {
+  await page.goto('/');
+  await ready(page);
+  await importCode(page, code(30, '1,2', 'Keep this build'));
+  const before = await snapshot(page);
+  const invalid = { version: 1, notes: 'Invalid import', state: { ...before.state,
+    flasks: {}, socketGroups: [{ enabled: true, gems: [null] }], params: { config_inputs: {} } } };
+  await page.locator('input[type=file]').setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(invalid)) });
+  await expect(page.locator('.calc-error')).toBeVisible();
+  expect(await snapshot(page)).toEqual(before);
+  await page.reload();
+  await ready(page);
+  await expect(page.getByLabel('Level', { exact: true })).toHaveValue('30');
+  expect((await snapshot(page)).notes).toBe('Keep this build');
+});
+
+test('imported skill forms and historical tree versions survive editing, reload and export', async ({ page }) => {
+  const historical = deflateSync(`<PathOfBuilding2><Build level="80" className="Witch"/>
+<Tree activeSpec="1"><Spec nodes="770" treeVersion="0_1"/></Tree>
+<Skills><Skill enabled="true"><Gem gemId="Metadata/Items/Gems/SkillGemIceNova" skillId="IceNovaPlayer" level="20" quality="0" statSetIndex="2" enabled="true"/></Skill></Skills><Items/></PathOfBuilding2>`).toString('base64url');
+  await page.goto('/');
+  await ready(page);
+  await importCode(page, historical);
+  await page.getByLabel('Level', { exact: true }).fill('81');
+  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await page.reload();
+  await ready(page);
+  const restored = await snapshot(page);
+  expect(restored.state.treeVersion).toBe('0_1');
+  expect(restored.state.socketGroups[0].gems[0].stat_set_index).toBe(2);
+  await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
+  const shared = await page.getByRole('textbox', { name: 'Share Code', exact: true }).inputValue();
+  const xml = inflateSync(Buffer.from(shared, 'base64url')).toString('utf8');
+  expect(xml).toContain('treeVersion="0_1"');
+  expect(xml).toContain('statSetIndex="2"');
+  await page.getByRole('button', { name: 'Tree', exact: true }).click();
+  await expect(page.getByRole('main').getByText('Interactive tree editing and route planning are unavailable for historical trees.', { exact: false })).toBeVisible();
+  await expect(page.locator('svg.tree-svg')).toHaveCount(0);
+});
+
+test('planning catalogs stay on the initialized snapshot after a deployment', async ({ page }) => {
+  await page.goto('/');
+  await ready(page);
+  let manifestReads = 0;
+  const unexpected: string[] = [];
+  await page.route('**/data/manifest.json', route => {
+    manifestReads += 1;
+    return route.fulfill({ json: { version: '99.99', files: [] } });
+  });
+  await page.route('**/data/99.99/**', route => {
+    unexpected.push(route.request().url());
+    return route.abort();
+  });
+  await page.getByRole('button', { name: 'Skills', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Socket Groups', exact: true })).toBeVisible();
+  await expect(page.getByPlaceholder('Search an active gem to add a group…')).toBeEnabled();
+  await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Plan your next upgrade', exact: true })).toBeVisible();
+  expect(manifestReads).toBe(0);
+  expect(unexpected).toEqual([]);
+});
+
+test('an invalid browser workspace is preserved and can be downloaded for recovery', async ({ page }) => {
+  const raw = JSON.stringify({ version: 1, state: { character: { class_name: 'Witch' }, allocatedNodes: [], socketGroups: [], items: [], flasks: {} }, notes: 'Recover me' });
+  await page.addInitScript(value => localStorage.setItem('pobr-build-state', value), raw);
+  await page.goto('/');
+  await expect(page.locator('.boot-error')).toContainText('原始数据已保留', { timeout: 90_000 });
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download original browser save', exact: true }).click();
+  const download = await downloadPromise;
+  expect(readFileSync((await download.path())!, 'utf8')).toBe(raw);
+  expect(await page.evaluate(() => localStorage.getItem('pobr-build-state'))).toBe(raw);
 });

@@ -66,7 +66,9 @@ export interface PobrBackend {
   fullDps(request: CalculateBuildRequest): Promise<FullDpsResponse>;
   attribution(request: AttributionRequest): Promise<AttributionResponse>;
   /** 天赋树静态数据（静态资产，不经 wasm）。 */
-  loadPassiveTree(): Promise<PassiveNode[]>;
+  loadPassiveTree(treeVersion?: string | null): Promise<PassiveNode[]>;
+  /** Catalog from the same immutable data snapshot used by calculation. */
+  loadTradeCatalog(): Promise<unknown>;
   /** 天赋树节点美术边车（未生成时返回 null，界面回退纯 SVG 圆点）。 */
   loadTreeArt(): Promise<TreeArt | null>;
   /** 职业/升华元数据（新建 build 选择器）。 */

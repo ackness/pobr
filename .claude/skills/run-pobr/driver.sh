@@ -20,8 +20,9 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT" || exit 1
 
-DATA_VER="${POBR_DATA_VERSION:-$(cat data/CURRENT)}"
-RULES="data/$DATA_VER/overlay/mod_parser_rules.json"
+DATA_ROOT="${POBR_DATA_ROOT:-$ROOT/data}"
+DATA_VER="${POBR_DATA_VERSION:-$(head -n 1 "$DATA_ROOT/CURRENT")}"
+RULES="$DATA_ROOT/$DATA_VER/overlay/mod_parser_rules.json"
 VENDOR_DIR="vendor/PathOfBuilding-PoE2"
 VENDOR_REPO="https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2.git"
 
@@ -207,18 +208,18 @@ cmd_smoke() {
 
 cmd_data() {
   say "数据现状自检"
-  if [ -d "data/$DATA_VER" ]; then
+  if [ -d "$DATA_ROOT/$DATA_VER" ]; then
     echo "✓ data/$DATA_VER 已入库（base/overlay/generated/i18n）——测试无需联网下载"
-    ls "data/$DATA_VER" | sed 's/^/    /'
+    ls "$DATA_ROOT/$DATA_VER" | sed 's/^/    /'
   else
     echo "✗ data/$DATA_VER 缺失"
   fi
   cat <<'EOF'
 
 数据再生管线（仅版本升级时需要；详见 pipeline/README.md + pipeline/regen-all.sh）：
-  1) GGG .dat 下载    : cd pipeline && node download-index.mjs && npx -y pathofexile-dat@15
-  2) 适配 → base JSON : cargo run -p pobr-data-adapter -- --raw pipeline/tables --out data --patch <ver>
-  3) vendor Lua → overlay : pipeline/regen-all.sh（需 luajit + vendor 检出）
+  1) GGG .dat 下载    : (cd pipeline && node download-index.mjs) && bash pipeline/export-tables.sh
+  2) 仅刷新 base JSON : mise run data:adapt（候选目录生成和校验）
+  3) 完整再生成       : bash pipeline/regen-all.sh（需 luajit + vendor 检出，校验后发布）
   4) precompile 缓存  : cargo run -p precompile-mods -- --data data/<ver> --report
 云端约束（本会话实测）：
   - GGG patch CDN 对旧 pin 版本（4.5.0.3.4）返回 404 → .dat 下载步不可跑；
@@ -240,7 +241,7 @@ cmd_lua() {
 
 cmd_versions() {
   say "已入库数据版本 + 多版本无关性 smoke"
-  echo "data/ 版本目录："; ls -d data/[0-9]*/ 2>/dev/null | sed 's#data/##; s#/##' | sed 's/^/    /'
+  echo "data/ 版本目录："; ls -d "$DATA_ROOT"/[0-9]*/ 2>/dev/null | sed 's#/$##; s#.*/##' | sed 's/^/    /'
   echo "本次数据版本：${DATA_VER}（golden 独立固定，不随活动版本推进）"
   echo "切到更新版本运行（零代码改动）：export POBR_DATA_VERSION=<ver>  或  写 data/CURRENT"
   echo "→ multi_version smoke（对每个版本 BuildData::load + calc）："
@@ -252,11 +253,11 @@ cmd_diff() {
   local a="${2:-}" b="${3:-}"
   if [ -z "$a" ] || [ -z "$b" ]; then
     echo "usage: driver.sh diff <verA> <verB> [--domain tree|mods|bases|skill_levels|skill_stats|special_mods|uniques] [--limit N]"
-    echo "已入库版本："; ls -d data/[0-9]*/ 2>/dev/null | sed 's#data/##; s#/##; s/^/    /'
+    echo "已入库版本："; ls -d "$DATA_ROOT"/[0-9]*/ 2>/dev/null | sed 's#/$##; s#.*/##; s/^/    /'
     return 2
   fi
   say "语义数据 diff: $a → ${b}（节点/技能/词条的增删改）"
-  python3 pipeline/diff-data.py "data/$a" "data/$b" --semantic "${@:4}"
+  python3 pipeline/diff-data.py "$DATA_ROOT/$a" "$DATA_ROOT/$b" --semantic "${@:4}"
 }
 
 cmd_status() {
@@ -267,7 +268,7 @@ cmd_status() {
     local have; have="$(git -C "$VENDOR_DIR" rev-parse HEAD 2>/dev/null)"
     [ "$have" = "$sha" ] && echo "✓ vendor: 钉定 commit $sha" || echo "~ vendor: 在 ${have}（钉定 ${sha}，driver.sh vendor 对齐）"
   else echo "✗ vendor 未克隆（driver.sh vendor）"; fi
-  [ -d "data/$DATA_VER" ] && echo "✓ data: $DATA_VER 已入库" || echo "✗ data: $DATA_VER 缺失"
+  [ -d "$DATA_ROOT/$DATA_VER" ] && echo "✓ data: $DATA_VER 已入库" || echo "✗ data: $DATA_VER 缺失"
   command -v cargo >/dev/null && echo "✓ cargo: $(cargo --version)" || echo "✗ cargo 缺失"
   echo "注：oracle（tools/pob2-oracle）+ extract-lua 与旧版 4.5.0.3.4 的 vendor（2df5a74）不兼容（见 SKILL.md Gotchas）。"
 }

@@ -1,18 +1,3 @@
-/// PoE2 data version shipped with the repo — the CDN patch number, and the name
-/// of the `data/<DATA_VERSION>/` directory. This is the compile-time default;
-/// [`data_version`] applies the runtime override on top.
-///
-/// The shipped default is derived from `data/CURRENT`, without editing Rust.
-/// To point somewhere else temporarily, set `POBR_DATA_VERSION` or write a
-/// `data/CURRENT` marker file rather than touching code — see [`data_version`]
-/// and `pobr_gamedata::current_data_dir`.
-///
-/// Golden and parity tests deliberately do
-/// not read this constant, so it can move ahead to newer data without turning
-/// them red; see [`GOLDEN_PARITY_DATA_VERSION`]. That the newer data still runs
-/// at all is covered by the `multi_version` smoke test.
-pub const DATA_VERSION: &str = include_str!("../../../data/CURRENT").trim_ascii();
-
 /// Data version the checked-in golden and parity numbers were recorded against.
 ///
 /// Those numbers are version-specific — the PoB2 `player_stats` in
@@ -23,18 +8,6 @@ pub const DATA_VERSION: &str = include_str!("../../../data/CURRENT").trim_ascii(
 /// `multi_version` smoke test: it runs a calc against every `data/<ver>/` and
 /// asserts the results are dimensionally sane without comparing to goldens.
 pub const GOLDEN_PARITY_DATA_VERSION: &str = "4.5.4.8";
-
-/// Data version to use at runtime: `POBR_DATA_VERSION` when set, otherwise the
-/// [`DATA_VERSION`] constant.
-///
-/// This crate does no file I/O, so reading the process environment is as far as
-/// discovery goes here. To also honour the `data/CURRENT` marker file, call
-/// `pobr_gamedata::data_version` instead. Exporting `POBR_DATA_VERSION=<version>`
-/// after dropping in new data repoints every caller, tests included, with no
-/// code change.
-pub fn data_version() -> String {
-    std::env::var("POBR_DATA_VERSION").unwrap_or_else(|_| DATA_VERSION.to_string())
-}
 
 pub mod build_config;
 pub mod catalog;

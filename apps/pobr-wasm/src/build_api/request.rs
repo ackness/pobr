@@ -65,6 +65,8 @@ pub struct GemInput {
     pub(crate) skill_id: String,
     pub(crate) level: u32,
     pub(crate) quality: u32,
+    /// PoB stat-set selection (1-based); omitted selects the primary form.
+    pub(crate) stat_set_index: Option<u32>,
 }
 
 impl Default for GemInput {
@@ -73,6 +75,7 @@ impl Default for GemInput {
             skill_id: String::new(),
             level: 20,
             quality: 0,
+            stat_set_index: None,
         }
     }
 }
@@ -141,6 +144,8 @@ pub struct CalculateBuildRequest {
     /// Editable inactive equipment and weapon-set passives, used for export.
     pub(crate) weapon_swap: Option<WeaponSwapInput>,
     pub(crate) pob_code: String,
+    /// Preserve the imported passive tree instead of implicitly migrating it.
+    pub(crate) tree_version: Option<String>,
     /// The character-identity override (level / class / ascendancy; each field optional).
     pub(crate) character: Option<CharacterOverride>,
     /// The allocated-node-set override (interactive point allocation:
@@ -233,7 +238,7 @@ pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData
             skill_id: gem.skill_id.clone(),
             gem_level: gem.level,
             quality: gem.quality,
-            stat_set_index: None,
+            stat_set_index: gem.stat_set_index,
             name_spec: None,
         });
         if let Some(gem_id) = gem_id {
@@ -251,6 +256,9 @@ pub(crate) fn apply_request_overrides(
     data: &BuildData,
 ) -> Result<Vec<SlotIssue>, ApiError> {
     let mut issues = Vec::new();
+    if let Some(version) = &req.tree_version {
+        build.tree_version = Some(version.clone());
+    }
     if let Some(ch) = &req.character {
         if let Some(level) = ch.level {
             build.character.level = level;

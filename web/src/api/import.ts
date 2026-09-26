@@ -18,3 +18,18 @@ export async function resolveBuildInput(input: string): Promise<string> {
   }
   return JSON.stringify(data);
 }
+
+/** Classify ownership before validation; a rejected PoBR save must never reach
+ * another format's permissive decoder. Presence, not validity, identifies it.
+ */
+export function buildFileKind(input: string): 'workspace' | 'session' | 'external' {
+  let parsed: unknown;
+  try { parsed = JSON.parse(input); } catch { return 'external'; }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return 'external';
+  if (Object.hasOwn(parsed, 'workspace')) return 'workspace';
+  if (Object.hasOwn(parsed, 'state') || 'format' in parsed && parsed.format === 'pobr-build') return 'session';
+  // Older session envelopes have no format marker. A damaged envelope may
+  // have lost its state, but its version/notes pair still belongs to PoBR.
+  if (Object.hasOwn(parsed, 'version') && Object.hasOwn(parsed, 'notes')) return 'session';
+  return 'external';
+}

@@ -94,7 +94,7 @@ echo "regen-check: patch=${PATCH}，输出临时目录 ${TMP_OUT}"
 if [[ "$HAVE_TABLES" -eq 1 ]]; then
     echo "regen-check: 重跑物品/词缀/技能域（--raw pipeline/tables）……"
     cargo run --quiet -p pobr-data-adapter --manifest-path "$ROOT/Cargo.toml" -- \
-        --raw "$TABLES_DIR" --out "$TMP_OUT" --patch "$PATCH"
+        --raw "$TABLES_DIR" --out "$TMP_OUT" --patch "$PATCH" --strict-columns
 else
     echo "regen-check: SKIP 物品/词缀/技能域 —— 缺 pipeline/tables/{English,Traditional Chinese}/"
 fi

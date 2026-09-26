@@ -24,10 +24,12 @@ fn repo_root() -> PathBuf {
 // Regeneration validates the active parser artifact. Historical calculation
 // goldens keep their own data pin; parser improvements must not require
 // rewriting archived snapshots to keep this artifact-consistency gate green.
-const PATCH: &str = pobr_data::DATA_VERSION;
+fn patch() -> String {
+    pobr_gamedata::data_version()
+}
 
 fn data_dir() -> PathBuf {
-    repo_root().join("data").join(PATCH)
+    repo_root().join("data").join(patch())
 }
 
 /// Regen consistency: two precompile runs on the same isolated data copy produce byte-identical output.
@@ -41,7 +43,7 @@ fn precompile_is_byte_stable() {
     );
 
     let tmp = mirror_data_dir(&src_data);
-    let tmp_data = tmp.join("data").join(PATCH);
+    let tmp_data = tmp.join("data").join(patch());
 
     let corpus1 = corpus::collect(&tmp_data, None).expect("collect 1");
     let outcome1 = parsed::precompile(&corpus1, &tmp_data).expect("precompile 1");
@@ -74,7 +76,7 @@ fn precompile_is_byte_stable() {
 fn coverage_counts_are_consistent() {
     let src_data = data_dir();
     let tmp = mirror_data_dir(&src_data);
-    let tmp_data = tmp.join("data").join(PATCH);
+    let tmp_data = tmp.join("data").join(patch());
 
     let corpus = corpus::collect(&tmp_data, None).expect("collect");
     let outcome = parsed::precompile(&corpus, &tmp_data).expect("precompile");
@@ -126,7 +128,7 @@ fn committed_coverage_matches_fresh_run() {
 
     let src_data = data_dir();
     let tmp = mirror_data_dir(&src_data);
-    let tmp_data = tmp.join("data").join(PATCH);
+    let tmp_data = tmp.join("data").join(patch());
     let corpus = corpus::collect(&tmp_data, None).expect("collect");
     let outcome = parsed::precompile(&corpus, &tmp_data).expect("precompile");
     let cov = outcome.coverage;
@@ -139,7 +141,7 @@ fn committed_coverage_matches_fresh_run() {
     assert_eq!(
         committed_summary, &fresh["summary"],
         "committed parse-coverage.json summary does not match a fresh rerun -- data/generated/ was \
-         hand-edited or the artifact is stale; rerun cargo run -p precompile-mods -- --data data/{PATCH} --report and commit"
+         hand-edited or the artifact is stale; rerun cargo run -p precompile-mods -- --data data/<active-version> --report and commit"
     );
 
     // Coverage ratchet: the committed artifact must not fall below the
@@ -185,7 +187,7 @@ fn mirror_data_dir(src_data: &Path) -> PathBuf {
         NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     );
     let tmp = std::env::temp_dir().join(unique);
-    let tmp_data = tmp.join("data").join(PATCH);
+    let tmp_data = tmp.join("data").join(patch());
     std::fs::create_dir_all(tmp_data.join("base")).unwrap();
     std::fs::create_dir_all(tmp_data.join("generated")).unwrap();
     std::fs::create_dir_all(tmp_data.join("overlay")).unwrap();

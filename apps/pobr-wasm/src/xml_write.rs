@@ -35,9 +35,9 @@ pub(crate) struct XmlSkillGroup {
     /// The source marker for a group granted by equipment (written back as
     /// `<Skill source>`, so round-tripping can tell it apart).
     pub source: Option<String>,
-    /// `(gem_id, skill_id, level, quality)`; `gem_id` is an empty string
+    /// `(gem_id, skill_id, level, quality, stat_set_index)`; `gem_id` is an empty string
     /// when the reverse lookup fails (the attribute is then omitted).
-    pub gems: Vec<(String, String, u32, u32)>,
+    pub gems: Vec<(String, String, u32, u32, Option<u32>)>,
 }
 
 /// The write-out input (all sourced from the calculation request — the web
@@ -202,10 +202,13 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
             w!(w, r#" mainActiveSkill="{main}""#);
         }
         wln!(w, ">");
-        for (gem_id, skill_id, level, quality) in &group.gems {
+        for (gem_id, skill_id, level, quality, stat_set_index) in &group.gems {
             w!(w, r#"        <Gem skillId="{}""#, esc_attr(skill_id));
             if !gem_id.is_empty() {
                 w!(w, r#" gemId="{}""#, esc_attr(gem_id));
+            }
+            if let Some(index) = stat_set_index {
+                w!(w, r#" statSetIndex="{index}""#);
             }
             wln!(
                 w,

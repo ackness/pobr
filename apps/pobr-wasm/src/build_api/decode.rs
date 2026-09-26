@@ -71,6 +71,8 @@ struct GemJson {
     skill_id: String,
     level: u32,
     quality: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stat_set_index: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -215,6 +217,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                         skill_id: gem.skill_id.clone(),
                         level: gem.gem_level,
                         quality: gem.quality,
+                        stat_set_index: gem.stat_set_index,
                     })
                     .collect(),
             })
@@ -562,6 +565,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 skill_id: active.clone(),
                 level: 20,
                 quality: 0,
+                stat_set_index: None,
             }];
             for support in &group.support_skills {
                 match cn_gem_effect_id(&data, &support.id) {
@@ -569,6 +573,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                         skill_id: id,
                         level: 20,
                         quality: 0,
+                        stat_set_index: None,
                     }),
                     None => unknown_gems += 1,
                 }

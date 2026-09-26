@@ -225,15 +225,16 @@ impl TreeVersionReport {
     }
 }
 
-/// Reconciles the build's allocated passive nodes against the loaded tree
-/// ([`BuildData::passive_nodes`]) — see [`TreeVersionReport`]. Purely read-only, zero calc behavior change.
+/// Reconciles allocated nodes against the build's selected tree, using the same
+/// fallback as calculation when the requested historical tree is unavailable.
 pub fn diagnose_tree_version(build: &Build, data: &BuildData) -> TreeVersionReport {
+    let nodes = data.passive_nodes_for(build.tree_version.as_deref());
     let unknown_nodes = build
         .tree
         .allocated_nodes
         .iter()
         .map(|n| n.0)
-        .filter(|id| !data.passive_nodes.contains_key(id))
+        .filter(|id| !nodes.contains_key(id))
         .collect();
     TreeVersionReport {
         build_tree_version: build.tree_version.clone(),
@@ -1012,7 +1013,7 @@ fn stage_inject_passives(session: &mut SourceWriter, ctx: &StageCtx<'_>) -> Resu
     //     the map is PoBR's equivalent of PoB2's `env.keystonesAdded` dedup
     //     (CalcPerform.lua:66-76; see the keystone_merge.rs module doc for the
     //     tree-path modelling difference).
-    session.set_keystone_mods(keystone_mod_map(data, &passive_nodes));
+    session.set_keystone_mods(keystone_mod_map(build, data, &passive_nodes));
     Ok(())
 }
 

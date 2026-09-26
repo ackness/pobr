@@ -186,12 +186,18 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async attribution(request: AttributionRequest) {
       return JSON.parse(wasm.attributionJson(JSON.stringify(request))) as AttributionResponse;
     },
-    async loadPassiveTree() {
-      if (!manifest) {
-        manifest = JSON.parse(await fetchText('/data/manifest.json')) as DataManifest;
-      }
-      const text = await fetchVersionFile(manifest.version, 'base/passive_tree.json');
-      return JSON.parse(text) as PassiveNode[];
+    async loadTradeCatalog() {
+      await backend.init();
+      // Reuse the exact bytes staged into WASM, including after a new deployment.
+      return JSON.parse(await fetchVersionFile(manifest!.version, 'overlay/trade_catalog.json'));
+    },
+    async loadPassiveTree(treeVersion) {
+      await backend.init();
+      const currentTree = `0_${manifest!.version.split('.')[1]}`;
+      const rel = treeVersion && treeVersion !== currentTree && treeVersion !== 'Default'
+        ? `base/passive_trees/${treeVersion}.json` : 'base/passive_tree.json';
+      if (!manifest!.files.includes(rel)) throw new Error(`Passive tree ${treeVersion} is unavailable in the loaded data.`);
+      return JSON.parse(await fetchVersionFile(manifest!.version, rel)) as PassiveNode[];
     },
     async loadTreeArt(): Promise<TreeArt | null> {
       if (!manifest) {

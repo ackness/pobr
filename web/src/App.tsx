@@ -72,10 +72,24 @@ function BuildApp() {
   };
 
   if (session.bootError) {
+    let storedSave: string | null = null;
+    try { storedSave = localStorage.getItem('pobr-build-state'); } catch { /* Storage may be unavailable. */ }
+    const downloadStoredSave = () => {
+      if (!storedSave) return;
+      const url = URL.createObjectURL(new Blob([storedSave], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'pobr-workspace-recovery.json';
+      link.click();
+      URL.revokeObjectURL(url);
+    };
     return (
       <div className="boot-screen" role="alert">
         <h1>PoBR</h1>
         <pre className="boot-error">{session.bootError}</pre>
+        {storedSave && <button onClick={downloadStoredSave}>
+          {lang === 'en-US' ? 'Download original browser save' : lang === 'zh-TW' ? '下載原始瀏覽器存檔' : '下载原始浏览器存档'}
+        </button>}
       </div>
     );
   }

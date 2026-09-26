@@ -21,27 +21,16 @@ use pobr_core::rules::{HandlerRegistry, SpecialModRules};
 use pobr_data::catalog::parser_rules::{SpecialModsDef, SpecialTemplateDef};
 
 fn overlay_common_special_mods_path() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../data")
-        .join("overlay-common/special_mods.json")
+    crate::support::test_data_dir().join("../overlay-common/special_mods.json")
 }
 fn special_mods_path() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../data")
-        .join(pobr_data::data_version())
-        .join("overlay/special_mods.json")
+    crate::support::test_data_dir().join("overlay/special_mods.json")
 }
 fn special_derived_path() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../data")
-        .join(pobr_data::data_version())
-        .join("generated/special_derived.json")
+    crate::support::test_data_dir().join("generated/special_derived.json")
 }
 fn special_vendor_path() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../data")
-        .join(pobr_data::data_version())
-        .join("generated/special_vendor.json")
+    crate::support::test_data_dir().join("generated/special_vendor.json")
 }
 
 /// Load the repo's special entries (overlay-common version-independent layer + version

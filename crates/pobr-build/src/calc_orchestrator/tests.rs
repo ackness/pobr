@@ -201,6 +201,71 @@ fn life_item(amount: &str) -> Item {
     }
 }
 
+#[test]
+fn selected_tree_controls_gem_properties_and_equipment_effects() {
+    let mut data = repo_data();
+    let mut build = Build::new().with_tree(PassiveTreeSpec {
+        allocated_nodes: vec![NodeId(11641)],
+        ..Default::default()
+    });
+    build.tree_version = Some("0_4".into());
+    assert!(
+        gem_property_bonuses(&build, &data).contains(&GemPropertyBonus {
+            value: 10,
+            kind: GemPropertyKind::Quality,
+            category: String::new(),
+            attr_req: None,
+        })
+    );
+    let current = Build {
+        tree_version: None,
+        ..build.clone()
+    };
+    assert!(
+        !gem_property_bonuses(&current, &data)
+            .iter()
+            .any(|b| b.kind == GemPropertyKind::Quality)
+    );
+
+    // Different definitions for one stable ID must affect every consumer through
+    // the same selected table, including equipment effects and granted notables.
+    let mut old_node = data.passive_nodes_for(Some("0_4"))[&11641].clone();
+    old_node.skill = 900_001;
+    old_node.name = Some("Historical Test Notable".into());
+    old_node.stats = vec![
+        "+1 Ring Slot".into(),
+        "+2 to Level of all Skills".into(),
+        "50% increased bonuses gained from Equipped Rings".into(),
+    ];
+    data.versioned_passive_nodes
+        .get_mut("0_4")
+        .unwrap()
+        .insert(old_node.skill, old_node);
+    build.tree.allocated_nodes = vec![NodeId(900_001)];
+    assert!(diagnose_tree_version(&build, &data).is_clean());
+    assert!(skill::resolve::additional_ring_slot_allocated(
+        &build, &data
+    ));
+    assert!(
+        gem_property_bonuses(&build, &data)
+            .iter()
+            .any(|b| b.kind == GemPropertyKind::Level && b.value == 2)
+    );
+    assert!(slot_bonus_effect_scales(&build, &data).contains(&(EquipmentSlot::Ring1, 0.5)));
+
+    let mut amulet = life_item("0");
+    amulet.enchant_texts = vec!["Allocates Historical Test Notable".into()];
+    let mut granted = Build::new().set_item(EquipmentSlot::Amulet, amulet);
+    granted.tree_version = Some("0_4".into());
+    assert_eq!(
+        granted_passive_defs(&granted, &data)
+            .iter()
+            .map(|n| n.skill)
+            .collect::<Vec<_>>(),
+        vec![900_001]
+    );
+}
+
 /// Anointed notables feed into the GemProperty scan (vendor: a granted node's
 /// modList joins the global modDB just like an allocated node,
 /// CalcSetup.lua:1322-1331 + applyGemMods): an amulet enchant "Allocates

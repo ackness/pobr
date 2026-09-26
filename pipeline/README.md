@@ -49,7 +49,7 @@ bash pipeline/refresh-modifiers.sh
 每条样本的 `special_rule_id` 关联规则文件来源，`matching_special_rules` 按优先级列出所有候选，多个 ID 表示后续规则被遮蔽。该检查只覆盖样本，不证明任意文本都无重叠。结构化 LIST 等未参与计算的字段在 `non_effective_fields` 单列；现有装备 / 天赋的 `SourceId` 不由规则来源替代。严格校验与合并契约见[维护者规则说明](../docs/contributing-mods.md#7-validate-test-and-open-a-pr)。
 
 以前完整解析的文本退化，或同一来源移除旧措辞后新增无法解析的措辞，会使命令失败。
-失败时保留 `.cache` 报告与待检查的规则改动，**不覆盖上一份已通过的审计快照**；新增机制缺口单独列出。
+失败时保留 `.cache` 报告，丢弃候选目录，**不覆盖正式数据和上一份已通过的审计快照**；新增机制缺口单独列出。
 既有示例角色覆盖率及数值 parity 门禁仍独立保留。
 
 PoB2 本身把两层工作分开：`Data/StatDescriptions` 等从游戏数据导出文本，
@@ -89,18 +89,32 @@ node query-patch-version.mjs   # 见本目录
 ## 运行（再生成数据）
 
 ```bash
-cd pipeline
-# 1) 预热索引缓存（弹性分块下载，规避大文件单流中断）：
-node download-index.mjs
-# 2) 抽取 .dat → 原始 JSON（产物在 ./tables/，已 gitignore）：
-npx -y pathofexile-dat@15
-# 3) 适配原始 JSON → PoBR 最小 JSON（落到 ../data/<version>/）：
-cargo run -p pobr-data-adapter -- --raw ./tables --out ../data --patch <version>
+# Run from the repository root.
+(cd pipeline && node download-index.mjs)
+bash pipeline/export-tables.sh
+bash pipeline/regen-all.sh
+# Only adapt base tables into an existing snapshot, with the same validation gates.
+mise run data:adapt
 ```
+
+`export-tables.sh` 在全部配置表导出成功后记录补丁、配置哈希和每张表的 SHA-256。
+原始表缺失、改变或目标补丁不匹配时，adapter 在写入前失败；旧导出目录应重新执行导出。
+正式再生成强制检查必需列，在独立候选目录完成词典、规则审计、manifest 和回归检查，
+成功后才替换正式快照。同版本刷新使用相同路径，不会原地截断 manifest。
+更新锁防止两个生成器同时发布；发布前还会检查原快照是否被其他编辑改动。
+失败回滚若遇到文件系统错误，保留备份并报告位置。
+
+新快照的 schema 3 manifest 是运行时文件清单与 SHA-256 校验契约；
+Web 同步沿用该清单，维护报告不进入浏览器包。共享人工规则和用户 patch 仍单独加载。
+旧 schema 1/2 快照继续兼容。`manifest` 子命令仅用于人工维护后重新封装已核验数据，
+不会代替生成器的语料、来源和数值验证。
+
+脚本回归检查：`python3 pipeline/test-data-snapshot.py`、
+`python3 pipeline/test-data-update.py`、`node --test web/scripts/sync-data.test.mjs`。
 
 `./.cache/`（~113MB bundle 索引）、`./tables/`、`./files/` 均为中间物，**已 gitignore，不入库**。
 仓库保存配置、脚本、说明、受审的来源收据，以及产出的 `data/<version>/` 最小适配数据。
-上面的 `--raw` 命令不生成品质域；品质单独使用[独立生成命令](gem-quality/README.md#独立生成)。
+`data:adapt` 只适配原始表，不生成品质域；完整 `regen-all.sh` 包含品质，独立更新可使用[独立生成命令](gem-quality/README.md#独立生成)。
 
 ## Vendor calc-delta 报告（`diff-vendor-calcs.sh`）
 
@@ -128,9 +142,10 @@ pipeline/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
 ## 扩展 / 升版
 
 - 新 PoE2 版本：**`bash pipeline/bump-version.sh` 一条命令**自动查询最新补丁，已是最新时直接退出；
-  有更新则下载 → 树/vendor 对齐 → 品质兼容检查 → regen-all（含 test-pin bless）→
-  zh-CN / 完整词条审计 → 多版本、gamedata 与固定 golden 验证 → 推进 `data/CURRENT` → Web 同步。
-  `DATA_VERSION` 编译默认值直接读取 `data/CURRENT`，无需修改 Rust；运行时仍支持环境变量覆盖。
+  有更新则下载 → 树/vendor 对齐 → 品质兼容检查 → 候选目录内 regen-all、zh-CN / 完整词条审计 →
+  manifest 封装、多版本、gamedata 与固定 golden 验证 → 发布目录、推进 `data/CURRENT` → Web 同步。
+  活动版本在运行时读取 `data/CURRENT`，数据更新无需重编译基础 crate；可用 `POBR_DATA_ROOT` / `POBR_DATA_VERSION` 覆盖。
+  不自动修改 count pins 或数值 golden，失败时保留正式快照。
   vendor 树路径由其 `GameVersions.lua` 选择，升级不再修改 `TreeData/0_5` 字面量。
   品质数值变化和表内索引变动自动继承已验证的稳定 ID / 作用域决定，生成新[来源收据](gem-quality/README.md#更新版本或原始表)。
   新效果、属性身份或作用域变化会输出诊断并中止，核对后用 `--patch <version> --skip-download` 重跑。

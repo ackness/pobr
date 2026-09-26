@@ -14,26 +14,14 @@
 //! rules, same special-channel concatenation) — this is that logic
 //! extracted for reuse.
 
-use std::path::PathBuf;
-
 use pobr_data::catalog::parser_rules::{ModParserRulesDoc, SpecialModsDef, SpecialTemplateDef};
 
-use super::compiled::CompiledParserRules;
-
-/// The repository root (two levels up from `crates/pobr-core`).
-fn repo_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
-}
-
-/// The data version directory (currently `4.5.0.3.4`).
-fn data_root() -> PathBuf {
-    repo_root().join("data").join(pobr_data::data_version())
-}
+use super::{compiled::CompiledParserRules, test_data_dir};
 
 /// Loads one special_mods data file (a missing file yields empty, handled by
 /// the concatenation on the caller side).
 fn load_special(rel: &str) -> Vec<SpecialTemplateDef> {
-    let path = data_root().join(rel);
+    let path = test_data_dir().join(rel);
     let Ok(json) = std::fs::read_to_string(&path) else {
         return Vec::new();
     };
@@ -55,7 +43,7 @@ fn load_special(rel: &str) -> Vec<SpecialTemplateDef> {
 /// files panic directly (this is a test environment; the repo's data
 /// package is always present).
 pub fn test_compiled_rules() -> CompiledParserRules {
-    let path = data_root().join("overlay/mod_parser_rules.json");
+    let path = test_data_dir().join("overlay/mod_parser_rules.json");
     let json = std::fs::read_to_string(&path).expect("read mod_parser_rules.json");
     let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("deserialize the rule table");
     let mut special = load_special("overlay/special_mods.json");

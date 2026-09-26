@@ -51,6 +51,8 @@ pub enum LoadError {
     /// An overlay merge failed (e.g. `skill_overrides.json` names a stat
     /// the consumer hasn't wired up).
     Overlay { path: PathBuf, message: String },
+    /// A snapshot contradicts its declared schema, inventory or file digests.
+    Integrity { path: PathBuf, message: String },
 }
 
 impl fmt::Display for LoadError {
@@ -62,6 +64,9 @@ impl fmt::Display for LoadError {
             }
             Self::Overlay { path, message } => {
                 write!(f, "failed to apply overlay {}: {message}", path.display())
+            }
+            Self::Integrity { path, message } => {
+                write!(f, "invalid data snapshot {}: {message}", path.display())
             }
         }
     }
@@ -405,12 +410,15 @@ impl GameData {
     /// - `skill_overrides.json`'s dotIs* booleans (merged after labels,
     ///   since locating the set depends on the vendor index).
     pub fn skill_stat_sets(&self) -> Result<Vec<SkillStatSetDef>, LoadError> {
-        let mut sets =
-            match self.load_domain::<Vec<SkillStatSetDef>>("granted_effect_stat_sets.json") {
-                Ok(v) => v,
-                Err(LoadError::Io { .. }) => Vec::new(),
-                Err(e) => return Err(e),
-            };
+        let mut sets = match self
+            .load_domain::<Vec<SkillStatSetDef>>("granted_effect_stat_sets.json")
+        {
+            Ok(v) => v,
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                Vec::new()
+            }
+            Err(e) => return Err(e),
+        };
         let overrides = self.skill_overrides()?;
         if let Some(overrides) = &overrides {
             domains::skill_overrides::apply_stat_set_overrides(&mut sets, overrides).map_err(
@@ -474,7 +482,9 @@ impl GameData {
     pub fn cost_types(&self) -> Result<Vec<CostTypeDef>, LoadError> {
         match self.load_domain::<Vec<CostTypeDef>>("cost_types.json") {
             Ok(v) => Ok(v),
-            Err(LoadError::Io { .. }) => Ok(Vec::new()),
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                Ok(Vec::new())
+            }
             Err(e) => Err(e),
         }
     }
@@ -605,6 +615,9 @@ impl GameData {
 /// The root of the repo's built-in data directory (`<workspace>/data`).
 /// Used for tests and the default load path.
 pub fn repo_data_root() -> PathBuf {
+    if let Some(root) = std::env::var_os("POBR_DATA_ROOT").filter(|v| !v.is_empty()) {
+        return PathBuf::from(root);
+    }
     // crates/pobr-gamedata/ → two levels up is the workspace root.
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../data")
@@ -612,15 +625,15 @@ pub fn repo_data_root() -> PathBuf {
         .unwrap_or_else(|_| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data"))
 }
 
-/// Re-export of the compile-time default data version
-/// ([`pobr_data::DATA_VERSION`]).
-pub use pobr_data::DATA_VERSION;
+/// Stable fallback for legacy standalone callers without a CURRENT marker.
+/// Active snapshots are discovered at runtime, never embedded in domain crates.
+pub const DATA_VERSION: &str = pobr_data::GOLDEN_PARITY_DATA_VERSION;
 
 /// Runtime data version (fully discovered at the I/O layer):
 /// 1. the `POBR_DATA_VERSION` environment variable;
 /// 2. the `data/CURRENT` marker file (first line, trimmed, written by the
 ///    update script);
-/// 3. falls back to the [`pobr_data::DATA_VERSION`] compile-time constant.
+/// 3. falls back to the [`DATA_VERSION`] compile-time constant.
 ///
 /// This is what makes "switch versions after updating data with zero code
 /// changes" work: the update script just writes `data/CURRENT`, and every

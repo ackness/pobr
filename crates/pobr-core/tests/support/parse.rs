@@ -7,25 +7,20 @@
 //! own integration tests can't enable that crate's own feature (dev-deps already
 //! pull in serde_json).
 
-use std::path::PathBuf;
 use std::sync::LazyLock;
+
+#[path = "../../src/parse/mod_parser/test_data.rs"]
+mod test_data;
+pub use test_data::test_data_dir;
 
 use pobr_core::mod_parser::{
     CompiledParserRules, ParseCtx, ParseError, ParseOutcome, parse_mod_engine,
 };
 use pobr_data::catalog::parser_rules::{ModParserRulesDoc, SpecialModsDef, SpecialTemplateDef};
 
-/// The data version directory (two levels up from `crates/pobr-core` to the repo root).
-fn data_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .join("data")
-        .join(pobr_data::data_version())
-}
-
 /// Loads a special_mods data file (missing file → empty; the caller handles fallback).
 fn load_special(rel: &str) -> Vec<SpecialTemplateDef> {
-    let path = data_root().join(rel);
+    let path = test_data_dir().join(rel);
     let Ok(json) = std::fs::read_to_string(&path) else {
         return Vec::new();
     };
@@ -34,7 +29,7 @@ fn load_special(rel: &str) -> Vec<SpecialTemplateDef> {
 }
 
 static RULES: LazyLock<std::sync::Arc<CompiledParserRules>> = LazyLock::new(|| {
-    let path = data_root().join("overlay/mod_parser_rules.json");
+    let path = test_data_dir().join("overlay/mod_parser_rules.json");
     let json = std::fs::read_to_string(&path).expect("read mod_parser_rules.json");
     let doc: ModParserRulesDoc = serde_json::from_str(&json).expect("deserialize the rule table");
     // special_mods has two layers (same order as pobr-gamedata's `load_ruleset`): the

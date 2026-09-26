@@ -247,7 +247,7 @@ pub(crate) fn granted_passive_defs<'d>(
         // A build grants only a few notables. Resolve those names directly instead
         // of allocating a lowercase index of the entire tree on every gem scan.
         let def = data
-            .passive_nodes
+            .passive_nodes_for(build.tree_version.as_deref())
             .values()
             .filter(|def| def.kind == pobr_data::catalog::PassiveNodeKind::Notable)
             .filter(|def| {
@@ -322,13 +322,14 @@ pub(crate) fn combine_wrapped_then_filter(texts: Vec<String>, ctx: ParseCtx<'_>)
 /// skips it — equivalent to PoB2's `env.keystonesAdded` deduplication across the
 /// tree/mod dual sources.
 pub(crate) fn keystone_mod_map(
+    build: &Build,
     data: &BuildData,
     allocated: &[AllocatedNode],
 ) -> std::collections::BTreeMap<String, Vec<Modifier>> {
     let allocated_ids: std::collections::HashSet<u32> =
         allocated.iter().map(|n| n.node_id.0).collect();
     let mut map = std::collections::BTreeMap::new();
-    for (id, def) in &data.passive_nodes {
+    for (id, def) in data.passive_nodes_for(build.tree_version.as_deref()) {
         if def.kind != pobr_data::catalog::PassiveNodeKind::Keystone || allocated_ids.contains(id) {
             continue;
         }

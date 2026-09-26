@@ -101,3 +101,10 @@ test('gem planning checks compatibility, current sockets, overlapping families a
   expect(plans.map(plan => plan.acquisition)).toEqual(['market-lineage', 'skill-adjustment']);
   expect(plans[1].variant.socket_groups![0].gems.map(gem => gem.skill_id)).toEqual(['Fireball', 'Ordinary']);
 });
+
+test('level and quality upgrades preserve the current skill form without transferring it to other gems', () => {
+  const request = { socket_groups: [{ enabled: true, gems: [{ skill_id: 'IceNovaPlayer', level: 19, quality: 0, stat_set_index: 2 }] }] };
+  const gem = { skill_id: 'IceNovaPlayer', name: 'Ice Nova', family: 'IceNova', is_support: false, max_level: 20 };
+  expect(gemVariant(request, 0, 0, gem, 20, 20).socket_groups![0].gems[0]).toEqual({ skill_id: 'IceNovaPlayer', level: 20, quality: 20, stat_set_index: 2 });
+  expect(gemVariant(request, 0, 0, { ...gem, skill_id: 'FireballPlayer' }, 20, 20).socket_groups![0].gems[0].stat_set_index).toBeUndefined();
+});

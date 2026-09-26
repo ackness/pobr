@@ -2,6 +2,7 @@ import { BuildWorkspace } from './BuildWorkspace';
 import { workspaceText } from '../../lib/workspaceText';
 import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
+import { buildFileKind } from '../../api/import';
 import { useRef, useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
@@ -56,14 +57,13 @@ export function BuildPanel({ session, lang, onImported }: Props) {
     setImporting(true);
     try {
       const text = await file.text();
-      let parsed: { workspace?: unknown } | null = null;
-      try { parsed = JSON.parse(text); } catch { /* PoB codes are not JSON. */ }
-      if (parsed?.workspace && !window.confirm(workspaceText(lang).backupConfirm)) return;
-      try {
+      const kind = buildFileKind(text);
+      if (kind === 'workspace' && !window.confirm(workspaceText(lang).backupConfirm)) return;
+      if (kind === 'external') {
+        if (await session.importCode(text.trim())) onImported();
+      } else {
         session.importSession(text);
         onImported();
-      } catch {
-        if (await session.importCode(text.trim())) onImported();
       }
     } catch (err) {
       setFileError(formatApiError(err));

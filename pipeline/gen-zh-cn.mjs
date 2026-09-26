@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { dictionarySource } from './dictionary-source.mjs';
 const FILES = [
   'lookup/stat_lines.json',
@@ -29,6 +30,12 @@ const FILES = [
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(scriptDir, '..');
+if (process.env.POBR_CANDIDATE !== '1') {
+  const result = spawnSync('python3', [path.join(scriptDir, 'data_snapshot.py'), 'dictionary', '--', ...process.argv.slice(2)],
+    { cwd: repoRoot, stdio: 'inherit' });
+  if (result.error) throw result.error;
+  process.exit(result.status ?? 1);
+}
 const options = {};
 for (let i = 2; i < process.argv.length; i++) {
   const arg = process.argv[i];
@@ -41,7 +48,8 @@ if ([options.dict, options.ref, options.refresh].filter(Boolean).length > 1) {
 }
 const version = options.version ?? fs.readFileSync(path.join(repoRoot, 'data/CURRENT'), 'utf8').split('\n')[0].trim();
 if (!/^[0-9]+(?:\.[0-9]+)+$/.test(version)) throw new Error('Invalid data version.');
-const outDir = path.join(repoRoot, 'data', version, 'i18n', 'zh-CN');
+const dataRoot = process.env.POBR_DATA_ROOT ?? path.join(repoRoot, 'data');
+const outDir = path.join(dataRoot, version, 'i18n', 'zh-CN');
 let dictDir = options.dict;
 let sourceCommit = null;
 if (!dictDir) {
@@ -210,7 +218,7 @@ write('_meta.json', {
 });
 
 // manifest languages 追加 zh-CN。
-const manifestPath = path.join(repoRoot, 'data', version, 'manifest.json');
+const manifestPath = path.join(dataRoot, version, 'manifest.json');
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 if (!manifest.languages.includes('zh-CN')) {
   manifest.languages.push('zh-CN');

@@ -5,6 +5,15 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+if [[ "${POBR_CANDIDATE:-0}" != 1 ]]; then
+    mutates_rules=1
+    for arg in "$@"; do
+        case "$arg" in --audit-only|--offline|--help) mutates_rules=0 ;; esac
+    done
+    if [[ "$mutates_rules" -eq 1 ]]; then
+        exec python3 pipeline/data_snapshot.py modifiers -- "$@"
+    fi
+fi
 DATA="data/$(cat data/CURRENT)"
 BASELINE=""
 AUDIT_ONLY=0
@@ -26,7 +35,7 @@ done
 [[ -d "$DATA" ]] || { echo "Missing data directory: $DATA" >&2; exit 2; }
 DATA="$(cd "$DATA" && pwd)"
 VERSION="$(basename "$DATA")"
-if [[ "$AUDIT_ONLY" -eq 0 && "$DATA" != "$ROOT/data/$VERSION" ]]; then
+if [[ "$AUDIT_ONLY" -eq 0 && "$DATA" != "${POBR_DATA_ROOT:-$ROOT/data}/$VERSION" ]]; then
     echo "Rule extraction requires a repository data/<version> directory; use --audit-only for external data." >&2
     exit 2
 fi

@@ -58,9 +58,8 @@ fn display_stat_value(session: &CalculationSession, stat_id: &str) -> f64 {
 /// allocated node set as the frontier, and for every unallocated,
 /// stat-carrying node within depth, does a full recalculation with that
 /// single node trial-allocated, producing the target stat's delta. Nodes
-/// sharing the same stat combination share one calculation (matching PoB2's
-/// modKey caching basis); attribute-choice small nodes (which need a
-/// three-way choice) are skipped.
+/// are evaluated individually because radius effects depend on node identity;
+/// attribute-choice small nodes (which need a three-way choice) are skipped.
 pub fn node_power_json(request_json: &str) -> Result<String, String> {
     state::cached_response("node_power", request_json, || {
         node_power_impl(request_json).map_err(super::ApiError::into_json)
@@ -83,7 +82,10 @@ fn node_power_impl(request_json: &str) -> Result<String, super::ApiError> {
     // Topology: skill id -> node definition plus undirected adjacency.
     let mut by_skill: BTreeMap<u32, &pobr_data::catalog::PassiveNodeDef> = BTreeMap::new();
     let mut adjacency: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
-    for node in data.passive_nodes.values() {
+    for node in data
+        .passive_nodes_for(base_build.tree_version.as_deref())
+        .values()
+    {
         by_skill.insert(node.skill, node);
         for &target in &node.connections {
             adjacency.entry(node.skill).or_default().push(target);
@@ -118,8 +120,8 @@ fn node_power_impl(request_json: &str) -> Result<String, super::ApiError> {
         frontier = next;
     }
 
-    // Single-node trial allocation: nodes sharing the same stat combination share one full recalculation.
-    let mut cache: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+    // Node identity matters: radius grants and transformations can distinguish
+    // nodes with identical original text. Recalculate every candidate.
     let mut entries: Vec<NodePowerEntry> = Vec::new();
     for (&skill, &dist) in &distance {
         let Some(node) = by_skill.get(&skill) else {
@@ -128,18 +130,10 @@ fn node_power_impl(request_json: &str) -> Result<String, super::ApiError> {
         if node.stats.is_empty() || node.name.as_deref() == Some("Attribute") {
             continue;
         }
-        let key = node.stats.join("\n");
-        let delta = match cache.get(&key) {
-            Some(&d) => d,
-            None => {
-                let mut variant = base_build.clone();
-                variant.tree.allocated_nodes.push(NodeId(skill));
-                let session = run_session_for_build(&variant, &req.request)?;
-                let d = display_stat_value(&session, &req.power_stat) - base;
-                cache.insert(key, d);
-                d
-            }
-        };
+        let mut variant = base_build.clone();
+        variant.tree.allocated_nodes.push(NodeId(skill));
+        let session = run_session_for_build(&variant, &req.request)?;
+        let delta = display_stat_value(&session, &req.power_stat) - base;
         entries.push(NodePowerEntry {
             skill,
             delta,
@@ -272,7 +266,7 @@ fn apply_variant(
                 skill_id: gem.skill_id.clone(),
                 gem_level: gem.level,
                 quality: gem.quality,
-                stat_set_index: None,
+                stat_set_index: gem.stat_set_index,
                 name_spec: None,
             });
             if let Some(effect) = data.gem_effects.get(&gem.skill_id) {

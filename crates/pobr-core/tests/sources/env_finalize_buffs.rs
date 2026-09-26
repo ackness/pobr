@@ -9,7 +9,7 @@
 //! Key invariant: with `mode_combat` false (the default), injecting the definitions or
 //! not must leave every output value unchanged.
 
-use pobr_core::calc::{CalculationSession, MinimalInput};
+use pobr_core::calc::{CalcError, CalculationSession, MinimalInput};
 use pobr_core::{CalcConfig, ModTag, Modifier};
 use pobr_data::catalog::buffs::{
     BuffDef, BuffEffectFormula, BuffModTemplate, BuffModValue, BuffModeGate, Rounding, VendorRef,
@@ -169,12 +169,14 @@ fn conditions_set_activates_condition_tagged_mods() {
     );
 }
 
-/// Idempotency guard: repeated perform calls on the same session must not double-count buff expansion.
+/// Rejected repeat execution must preserve the expanded buff and its output.
 #[test]
 fn repeated_perform_does_not_double_count() {
     let mut session = session_with_onslaught(true);
     let first = session.perform_minimal().expect("perform");
-    let second = session.perform_minimal().expect("perform");
+    let modifier_count = session.all_mods().len();
+    assert_eq!(session.perform_minimal(), Err(CalcError::AlreadyPerformed));
     assert_eq!(first.action_rate, 2.4);
-    assert_eq!(second.action_rate, 2.4);
+    assert_eq!(session.output().action_rate, 2.4);
+    assert_eq!(session.all_mods().len(), modifier_count);
 }

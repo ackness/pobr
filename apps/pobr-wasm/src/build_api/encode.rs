@@ -26,17 +26,18 @@ fn pob_slot_name(slot: EquipmentSlot) -> &'static str {
     }
 }
 
-/// The PoB2 tree version tag matching the current data version.
-///
-/// ponytail: derived from `GOLDEN_PARITY_DATA_VERSION` (`4.<n>.…` = PoE2
-/// `0.<n>`); automatically follows the golden-version constant on a major
-/// data version bump, with no separate config entry.
-fn current_tree_version() -> String {
-    let minor = pobr_data::GOLDEN_PARITY_DATA_VERSION
-        .split('.')
-        .nth(1)
-        .unwrap_or("5");
-    format!("0_{minor}")
+/// The PoB2 tree tag for the data actually loaded into this instance.
+fn current_tree_version() -> Result<String, String> {
+    let manifest = state::game_data()?
+        .manifest()
+        .map_err(|error| error.to_string())?;
+    let minor = manifest.poe_version.split('.').nth(1).ok_or_else(|| {
+        format!(
+            "cannot resolve passive tree version from {}",
+            manifest.poe_version
+        )
+    })?;
+    Ok(format!("0_{minor}"))
 }
 
 /// Edit state -> a PoB2 share code.
@@ -144,7 +145,7 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         .unwrap_or_default()
         .iter()
         .map(|g| {
-            let mut gems: Vec<(String, String, u32, u32)> = g
+            let mut gems: Vec<(String, String, u32, u32, Option<u32>)> = g
                 .gems
                 .iter()
                 .filter(|gem| !gem.skill_id.is_empty())
@@ -154,7 +155,13 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
                         .get(&gem.skill_id)
                         .map(|e| e.gem_id.clone())
                         .unwrap_or_default();
-                    (gem_id, gem.skill_id.clone(), gem.level, gem.quality)
+                    (
+                        gem_id,
+                        gem.skill_id.clone(),
+                        gem.level,
+                        gem.quality,
+                        gem.stat_set_index,
+                    )
                 })
                 .collect();
             // The XML parse path determines the active skill as "the first
@@ -162,7 +169,7 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
             // non-support" (via a data-table lookup). Moving the first
             // non-support gem to the front makes both determinations
             // converge, guaranteeing the active skill doesn't drift after an encode -> decode round trip.
-            if let Some(active_pos) = gems.iter().position(|(gem_id, _, _, _)| {
+            if let Some(active_pos) = gems.iter().position(|(gem_id, _, _, _, _)| {
                 // A gem with an empty gemId gets dropped by XML parsing, so it can't be an active candidate.
                 !gem_id.is_empty() && !data.is_support_gem(gem_id).unwrap_or(false)
             }) && active_pos > 0
@@ -195,7 +202,10 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     }
 
     let empty_choices = BTreeMap::new();
-    let tree_version = current_tree_version();
+    let tree_version = match &req.tree_version {
+        Some(version) => version.clone(),
+        None => current_tree_version()?,
+    };
     let xml = crate::xml_write::write_build_xml(&crate::xml_write::XmlInput {
         active_weapon_set,
         weapon_set_nodes,

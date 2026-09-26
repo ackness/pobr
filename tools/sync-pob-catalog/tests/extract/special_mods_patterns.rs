@@ -5,8 +5,6 @@
 //! regex, so the compile check lives here; the interpreter (the full error
 //! path of `SpecialModRules::compile`) belongs to B-2.
 
-use std::path::Path;
-
 use regex::Regex;
 
 /// The two special_mods layers (tools/sync-pob-catalog/ -> up two levels to
@@ -14,10 +12,10 @@ use regex::Regex;
 /// `data/overlay-common/` (P1-3, the bulk with 133 entries) plus the version
 /// layer `data/<ver>/overlay/`. Their union covers every curated pattern.
 fn special_mods_paths() -> Vec<std::path::PathBuf> {
-    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data");
+    let data = pobr_gamedata::repo_data_root();
     vec![
         data.join("overlay-common/special_mods.json"),
-        data.join(pobr_data::data_version())
+        data.join(pobr_gamedata::data_version())
             .join("overlay/special_mods.json"),
     ]
 }
