@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
+import { installTradeCatalogFixture } from './tradeCatalogFixture';
 
 const code = deflateSync(`<PathOfBuilding2>
   <Build level="70" className="Witch"/>
@@ -17,11 +18,9 @@ Implicits: 0
 
 test('completed trade analysis survives market changes and resets for a new goal', async ({ page }) => {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
-  await page.route('**/overlay/trade_catalog.json', async route => {
-    const catalog = await (await route.fetch()).json();
+  await installTradeCatalogFixture(page, catalog => {
     catalog.mods = catalog.mods.filter((mod: { lines: string[] }) =>
       mod.lines.some(line => /to maximum Life|to Fire Resistance/.test(line))).slice(0, 10);
-    await route.fulfill({ json: catalog });
   });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Character', exact: true })).toBeVisible({ timeout: 90_000 });

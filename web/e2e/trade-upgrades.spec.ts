@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { deflateSync } from 'node:zlib';
+import { installTradeCatalogFixture } from './tradeCatalogFixture';
 
 const searchQuery = (href: string) => JSON.parse(new URL(href).searchParams.get('q')!);
 
@@ -260,11 +261,9 @@ test('WeGame quiver analysis opens the CN instant-buy market without JSON or bas
 
 for (const [characterLevel, gemLevel] of [[71, 16], [90, 21]]) test(`gem plans at character level ${characterLevel} use wearable levels and localized links`, async ({ page }) => {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
-  await page.route('**/overlay/trade_catalog.json', async route => {
-    const catalog = await (await route.fetch()).json();
+  await installTradeCatalogFixture(page, catalog => {
     // Bound the integration pool; retain real gem data and real WASM calculations.
-    catalog.gems = catalog.gems.filter((gem: { name: string }) => ['Fireball', 'Controlled Destruction'].includes(gem.name));
-    await route.fulfill({ json: catalog });
+    catalog.gems = catalog.gems?.filter(gem => ['Fireball', 'Controlled Destruction'].includes(gem.name));
   });
   await page.route('**/api/import/wegame', route => route.fulfill({ json: {
     format: 'wegame', version: 1, role: { level: characterLevel, class_name: 'Witch' }, equipments: [],
@@ -301,12 +300,10 @@ for (const [characterLevel, gemLevel] of [[71, 16], [90, 21]]) test(`gem plans a
 
 test('default damage skill, weapon binding and whole-build priority use the same build context', async ({ page }) => {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
-  await page.route('**/overlay/trade_catalog.json', async route => {
-    const catalog = await (await route.fetch()).json();
+  await installTradeCatalogFixture(page, catalog => {
     // Exercise real calculations with a small legal pool so the integration test stays fast.
-    catalog.mods = catalog.mods.filter((mod: { lines: string[] }) => mod.lines.some(line => /to maximum Life|increased Spell Damage|increased Cast Speed|to Fire Resistance/.test(line))).slice(0, 12);
-    catalog.gems = catalog.gems.filter((gem: { name: string }) => gem.name === 'Fireball');
-    await route.fulfill({ json: catalog });
+    catalog.mods = catalog.mods.filter(mod => mod.lines.some(line => /to maximum Life|increased Spell Damage|increased Cast Speed|to Fire Resistance/.test(line))).slice(0, 12);
+    catalog.gems = catalog.gems?.filter(gem => gem.name === 'Fireball');
   });
   await page.route('**/api/import/wegame', route => route.fulfill({ json: {
     format: 'wegame', version: 1, role: { level: 71, class_name: 'Witch' },
