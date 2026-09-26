@@ -1,3 +1,5 @@
+import { BuildWorkspace } from './BuildWorkspace';
+import { workspaceText } from '../../lib/workspaceText';
 import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
 import { useRef, useState } from 'react';
@@ -40,11 +42,11 @@ export function BuildPanel({ session, lang, onImported }: Props) {
   };
 
   const exportFile = () => {
-    const blob = new Blob([session.exportSession()], { type: 'application/json' });
+    const blob = new Blob([session.exportWorkspace()], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'pobr-build.json';
+    a.download = 'pobr-workspace.json';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -54,6 +56,9 @@ export function BuildPanel({ session, lang, onImported }: Props) {
     setImporting(true);
     try {
       const text = await file.text();
+      let parsed: { workspace?: unknown } | null = null;
+      try { parsed = JSON.parse(text); } catch { /* PoB codes are not JSON. */ }
+      if (parsed?.workspace && !window.confirm(workspaceText(lang).backupConfirm)) return;
       try {
         session.importSession(text);
         onImported();
@@ -87,6 +92,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
     <section className="ui-page build-page" aria-labelledby="build-heading">
       <PageHeader id="build-heading" title={tt('ui.buildTitle')} description={tt('ui.buildHint')} />
       <div className="build-grid">
+        <BuildWorkspace session={session} lang={lang} />
         <article className="build-card">
           <h3>{tt('build.character')}</h3>
           <div className="character-form">
@@ -157,8 +163,34 @@ export function BuildPanel({ session, lang, onImported }: Props) {
           )}
         </article>
 
+        <article className="build-card build-card--notes">
+          <h3>{tt('tab.notes')}</h3>
+          <p className="build-card-hint">{tt('notes.hint')}</p>
+          <textarea
+            className="notes-editor"
+            value={session.notes}
+            placeholder={tt('notes.placeholder2')}
+            spellCheck={false}
+            aria-label={tt('tab.notes')}
+            onChange={(e) => session.setNotes(e.target.value)}
+          />
+          {notesColored && (
+            <div className="notes-preview" aria-label={tt('notes.preview')}>
+              <span className="notes-preview-title">{tt('notes.preview')}</span>
+              <pre className="notes-preview-body">
+                {parsePobColorText(session.notes).map((seg, i) => (
+                  <span key={i} style={seg.color ? { color: seg.color } : undefined}>
+                    {seg.text}
+                  </span>
+                ))}
+              </pre>
+            </div>
+          )}
+        </article>
+
         <article className="build-card build-card--import">
           <h3>{tt('build.import')}</h3>
+          <p className="build-card-hint">{workspaceText(lang).importHint}</p>
           <p className="build-card-hint" id="import-hint">{tt('build.importHint')}</p>
           <textarea
             className="import-code"
@@ -229,30 +261,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
 
           </div>
         </article>
-        <article className="build-card build-card--notes">
-          <h3>{tt('tab.notes')}</h3>
-          <p className="build-card-hint">{tt('notes.hint')}</p>
-          <textarea
-            className="notes-editor"
-            value={session.notes}
-            placeholder={tt('notes.placeholder2')}
-            spellCheck={false}
-            aria-label={tt('tab.notes')}
-            onChange={(e) => session.setNotes(e.target.value)}
-          />
-          {notesColored && (
-            <div className="notes-preview" aria-label={tt('notes.preview')}>
-              <span className="notes-preview-title">{tt('notes.preview')}</span>
-              <pre className="notes-preview-body">
-                {parsePobColorText(session.notes).map((seg, i) => (
-                  <span key={i} style={seg.color ? { color: seg.color } : undefined}>
-                    {seg.text}
-                  </span>
-                ))}
-              </pre>
-            </div>
-          )}
-        </article>
+
 
       </div>
 

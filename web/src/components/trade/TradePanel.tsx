@@ -19,6 +19,8 @@ import { CopyButton } from '../shared/CopyButton';
 import { objectiveOf, ObjectiveEditor, OptimizerProgress } from '../shared/OptimizerControls';
 import { statMap } from '../../lib/statDisplay';
 import { rankUpgradePositions, type PositionAnalysis } from '../../lib/tradePriority';
+import { hasReusableTradeAnalysis, reusableTradeCount, type CachedTradeAnalysis, type TradeAnalysisMode } from '../../lib/tradeAnalysis';
+import { tradeAnalysisText } from '../../lib/tradeAnalysisText';
 import './trade.css';
 
 const TRADE_OBJECTIVES = OBJECTIVE_PRESETS;
@@ -72,9 +74,11 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
   const setKeepEhp = (value:boolean) => setGoal({ ...goal, keepEhp:value });
   const [allProgress, setAllProgress] = useState<{ done: number; total: number } | null>(null);
   const [overview, setOverview] = useState(false);
+  const [interrupted, setInterrupted] = useState(false);
   const analysisRef = useRef<HTMLDivElement>(null);
   const goalRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const cacheRef = useRef<Record<string, CachedTradeAnalysis<SlotResult>>>({});
   useEffect(() => { if (focus) {
     setSelected(focus.slot);
     if (focus.jewelType) setJewelTypes(prev => ({ ...prev, [focus.slot]: focus.jewelType! }));
@@ -99,9 +103,11 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
   }, [realm]);
   // Market-only changes update links immediately; they do not rerun local calculations.
   useEffect(() => {
-    abortRef.current?.abort(); setResults({}); setAllProgress(null); setRequiredStats({});
+    abortRef.current?.abort(); abortRef.current = null;
+    cacheRef.current = {};
+    setRunning(null); setProgress(null); setResults({}); setAllProgress(null); setInterrupted(false); setRequiredStats({});
   }, [goal, session.currentRequest, categories, jewelTypes]);
-  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => () => { abortRef.current?.abort(); abortRef.current = null; }, []);
 
   const slots = [...TRADE_SLOTS, ...jewelSockets.filter(node => session.allocatedNodes.includes(node)).map(node => `Jewel@${node}`)];
   const bySlot = new Map([...session.items, ...session.flasks,
@@ -138,16 +144,30 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
   const priorities = rankUpgradePositions(results, objective);
   const fullTargets = [...slots.filter(slot => (bySlot.has(slot) || slot.startsWith('Jewel@')) && baseOf(slot)),
     ...(session.socketGroups[mainGroup]?.enabled && !session.socketGroups[mainGroup]?.source ? ['gems'] : [])];
-  const analyze = async (targets: string[], all = false) => {
+  const reusableAllCount = reusableTradeCount(fullTargets, cacheRef.current, 'all');
+  const allComplete = fullTargets.length > 0 && reusableAllCount === fullTargets.length;
+  const cancelAnalysis = () => {
+    if (!abortRef.current) return;
+    abortRef.current.abort(); abortRef.current = null;
+    setRunning(null); setProgress(null); setInterrupted(true);
+  };
+  const analyze = async (targets: string[], all = false, force = false) => {
     const request = session.currentRequest();
     if (!request || !catalog) return;
     const controller = new AbortController(); abortRef.current = controller;
-    if (all) { setOverview(true); setAllProgress({ done: 0, total: targets.length }); }
+    const mode: TradeAnalysisMode = all || overview ? 'all' : 'single';
+    const completed = all && !force ? reusableTradeCount(targets, cacheRef.current, 'all') : 0;
+    if (all) { setOverview(true); setAllProgress({ done: completed, total: targets.length }); }
+    setInterrupted(false);
+    let done = completed;
     try {
       for (const slot of targets) {
         controller.signal.throwIfAborted();
+        if (all && !force && hasReusableTradeAnalysis(slot, cacheRef.current[slot], 'all')) continue;
         setRunning(slot); setProgress({ done: 0, total: 1 });
-        const options = { signal: controller.signal, onProgress: (done: number, total: number) => setProgress({ done, total }) };
+        const options = { signal: controller.signal, onProgress: (done: number, total: number) => {
+          if (abortRef.current === controller && !controller.signal.aborted) setProgress({ done, total });
+        } };
         try {
           let next: SlotResult;
           if (slot === 'gems') {
@@ -160,17 +180,20 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
             next = { category: base.category, weights: await optimizeTradeAffixes({
               request, slot, base, pool: categoryAffixPool(catalog, base.category, itemLevel, request.character?.level, slot.startsWith('Jewel@') ? jewelSearchType(base) : undefined), itemLevel,
               searchMods: categorySearchMods(catalog, base.category, itemLevel, slot.startsWith('Jewel@') ? jewelSearchType(base) : undefined),
-              objective, combinations: all || overview, combinationPool: affixPool(catalog, base, itemLevel),
-              maxEvaluations: all || overview ? 768 : undefined, beamWidth: 6, ...options,
+              objective, combinations: mode === 'all', combinationPool: affixPool(catalog, base, itemLevel),
+              maxEvaluations: mode === 'all' ? 768 : undefined, beamWidth: 6, ...options,
             }) };
           }
           controller.signal.throwIfAborted();
+          if (abortRef.current !== controller) break;
+          cacheRef.current[slot] = { result: next, mode };
           setResults(prev => ({ ...prev, [slot]: next }));
-          if (all) setAllProgress({ done: targets.indexOf(slot) + 1, total: targets.length });
+          if (all) setAllProgress({ done: ++done, total: targets.length });
+          else if (overview) setAllProgress({ done: reusableTradeCount(fullTargets, cacheRef.current, 'all'), total: fullTargets.length });
         } catch (error) {
-          if (controller.signal.aborted) break;
+          if (controller.signal.aborted || abortRef.current !== controller) break;
+          delete cacheRef.current[slot];
           setResults(prev => ({ ...prev, [slot]: { error: error instanceof Error ? error.message : String(error) } }));
-          if (all) setAllProgress({ done: targets.indexOf(slot) + 1, total: targets.length });
         }
       }
     } catch (error) {
@@ -237,15 +260,16 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
     <div className="trade-overview-toolbar">
       <div><h3>{tt('trade.overviewTitle')}</h3><p>{tt('trade.overviewHint')}</p></div>
       <button className="trade-primary trade-analyze-all" disabled={disabled || fullTargets.length === 0}
-        onClick={() => void analyze(fullTargets, true)}>{tt('trade.analyzeAll')}</button>
+        onClick={() => void analyze(fullTargets, true, allComplete)}>{allComplete ? tradeAnalysisText(lang, 'refresh') : reusableAllCount > 0 ? tradeAnalysisText(lang, 'resume') : tt('trade.analyzeAll')}</button>
       <label className="trade-unique"><input type="checkbox" checked={includeUnique} onChange={event => setIncludeUnique(event.target.checked)} />{tt('trade.includeUnique')}</label>
     </div>
     {overview && <section className="trade-priorities ui-card" aria-label={tt('trade.overviewTitle')}>
       <div className="trade-results-heading"><h4>{tt('trade.priorityOrder')}</h4>
-        {allProgress && <span className="ui-badge">{allProgress.done} / {allProgress.total} {tt('trade.positions')}</span>}</div>
+        {allProgress && <span className="ui-badge" role="status">{allProgress.done} / {allProgress.total} {tt('trade.positions')}</span>}</div>
       <p className="trade-priority-hint">{tt('trade.priorityHint')}</p>
+      {interrupted && <p className="trade-notice" role="status">{tradeAnalysisText(lang, 'stopped')}</p>}
       {running && <div className="trade-progress"><span>{tt('trade.analyzingSlot')}: {labelOf(running)}</span>
-        {progress && <OptimizerProgress {...progress} onCancel={() => abortRef.current?.abort()} lang={lang} />}</div>}
+        {progress && <OptimizerProgress {...progress} onCancel={cancelAnalysis} lang={lang} />}</div>}
       <ol className="trade-priority-list">
         {priorities.map((entry, index) => <li key={entry.slot}>
           <button className="trade-priority-position" onClick={() => {
@@ -300,8 +324,9 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
             options={choices.map(category => ({ value: category, label: tt(`trade.category.${category}` as UiKey) }))}
             onChange={category => setCategories(prev => ({ ...prev, [selected]: category }))} />
         </details>}
+        {!overview && interrupted && <p className="trade-notice" role="status">{tradeAnalysisText(lang, 'stopped')}</p>}
         {!overview && running && progress && <div className="trade-progress"><span>{tt('trade.analyzingSlot')}: {labelOf(running)}</span>
-          <OptimizerProgress {...progress} onCancel={() => abortRef.current?.abort()} lang={lang} /></div>}
+          <OptimizerProgress {...progress} onCancel={cancelAnalysis} lang={lang} /></div>}
         {result?.error && <div role="alert" className="trade-notice trade-error">{tt('trade.analysisFailed')}<details><summary>{tt('trade.errorDetails')}</summary>{result.error}</details></div>}
         {!weights && !result?.gems && running !== selected && <div className="trade-empty-state">
           <span className="trade-empty-symbol" aria-hidden><SlotSymbol slot={selected} /></span>

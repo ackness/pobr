@@ -41,6 +41,7 @@ test('failed code and file imports retain the editor and current build; a valid 
   expect((await saved(page)).state.character.class_name).toBe('Witch');
 
   await nav(page, 'Build').click();
+  page.once('dialog', dialog => dialog.accept());
   await page.locator('input[type="file"]').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(before)) });
   await expect(page.locator('.paper-doll')).toBeVisible();
   expect(await saved(page)).toEqual(before);
@@ -54,7 +55,7 @@ test('share codes expire after edits and clipboard failure offers selectable tex
   const oldCode = await output.inputValue();
   await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('Latest upgrade plan');
   await expect(output).toHaveCount(0);
-  await expect(page.getByRole('status')).toContainText('Your build has changed');
+  await expect(page.getByRole('main').getByRole('status')).toContainText('Your build has changed');
   await generate.click();
   await expect(output).toBeVisible();
   const currentCode = await output.inputValue();

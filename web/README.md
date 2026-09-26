@@ -11,6 +11,27 @@ engine**: it only consumes the JSON contract of `apps/pobr-wasm`
 `apps/pobr-wasm/tests/contract_golden.rs` on the Rust side) — no Rust type imports, no
 formula duplication.
 
+## Builds and stages
+
+Use **Manage builds** to keep separate builds for different skills. Copy the current
+stage for leveling, progression or endgame; each stage preserves its own passive
+allocation, equipment, skills, configuration and notes. Switching saves the current
+stage, including unapplied item drafts. Existing single saves migrate automatically.
+
+**Share this build · all stages** downloads a PoBR JSON file with every stage and
+its notes. Importing it adds an independent build without replacing existing ones.
+Unapplied drafts stay private to local storage and full backups. PoB share codes
+continue to export the current stage and its imported PoB loadouts.
+**Download backup** and **Back up all builds** include the entire local build library;
+restoring a full backup replaces it after confirmation. Saves are local to this
+browser; use files to share or move devices. Storage failures appear beside the
+build selector so you can download a backup before closing the page.
+
+The header shows the app release and successfully loaded data version. On Upgrades,
+cancelled all-position analysis can resume completed work while the build and goal
+stay unchanged. Budget/realm/league edits only change market links. Leaving the
+panel or changing build, goal or category discards those temporary results.
+
 ## Quick start
 
 Run these commands from the repository root. Use the pnpm version pinned in

@@ -6,6 +6,7 @@
  * 防止乱序返回覆盖新状态。所有后端交互经 `api/backend`。
  */
 
+import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage, parseWorkspace, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, type BuildWorkspace } from '../lib/buildWorkspace';
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
 import { defaultMainSkill } from '../lib/mainSkill';
@@ -68,6 +69,15 @@ interface BuildState {
 }
 
 export interface BuildSession {
+  dataVersion: string | null;
+  workspace: BuildWorkspace | null;
+  storageFailed: boolean;
+  selectStage: (buildId: string, stageId?: string) => void;
+  createLocalBuild: (name: string) => void;
+  duplicateStage: (name: string) => void;
+  renameWorkspace: (kind: 'build' | 'stage', name: string) => void;
+  exportWorkspace: () => string;
+  exportLocalBuild: () => string;
   activeWeaponSet: 1 | 2;
   weaponSwap?: WeaponSwap | null;
   setWeaponSet: (set: 1 | 2) => void;
@@ -223,17 +233,8 @@ export interface SavedSession {
 
 const STORAGE_KEY = 'pobr-build-state';
 
-function saveToStorage(state: BuildState, notes: string) {
-  try {
-    const saved: SavedSession = { version: 1, state, notes };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-  } catch {
-    // 配额/隐私模式失败时静默——持久化是增强，不阻断编辑。
-  }
-}
-
 /** 解析并校验存档信封（导入文件 / localStorage 共用）；非法返回 null。 */
-function parseSaved(json: string): SavedSession | null {
+export function parseSaved(json: string): SavedSession | null {
   try {
     const parsed = JSON.parse(json) as SavedSession;
     if (parsed.version !== 1 || typeof parsed.state !== 'object' || parsed.state === null) {
@@ -349,6 +350,10 @@ async function fullDpsForState(state: BuildState): Promise<FullDpsResponse> {
 }
 
 export function useBuildSession(): BuildSession {
+  const [dataVersion, setDataVersion] = useState<string | null>(null);
+  const [workspace, setWorkspace] = useState<BuildWorkspace | null>(null);
+  const workspaceRef = useRef<BuildWorkspace | null>(null);
+  const [storageFailed, setStorageFailed] = useState(false);
   const [bootMessage, setBootMessage] = useState<string | null>('初始化…');
   const [bootError, setBootError] = useState<string | null>(null);
   const [treeMeta, setTreeMeta] = useState<PassiveTreeMeta | null>(null);
@@ -365,14 +370,27 @@ export function useBuildSession(): BuildSession {
   const notesRef = useRef(notes);
   const stateRef = useRef<BuildState | null>(null);
   const [editorDrafts, setEditorDrafts] = useState<Record<string, string>>({});
-  const setEditorDraft = useCallback((key: string, text: string | null) => {
-    setEditorDrafts(previous => {
-      const next = { ...previous };
-      if (text === null) delete next[key];
-      else next[key] = text;
-      return next;
-    });
+  const draftsRef = useRef<Record<string, string>>({});
+  const persistWorkspace = useCallback((next: BuildWorkspace) => {
+    workspaceRef.current = next;
+    setWorkspace(next);
+    try {
+      localStorage.setItem(STORAGE_KEY, workspaceEnvelope(next));
+      setStorageFailed(false);
+    } catch { setStorageFailed(true); }
   }, []);
+  const saveToStorage = useCallback((next: BuildState, text: string) => {
+    const saved: SavedSession = { version: 1, state: next, notes: text };
+    persistWorkspace(updateWorkspaceStage(workspaceRef.current ?? createWorkspace(saved), saved, draftsRef.current));
+  }, [persistWorkspace]);
+  const setEditorDraft = useCallback((key: string, text: string | null) => {
+    const next = { ...draftsRef.current };
+    if (text === null) delete next[key];
+    else next[key] = text;
+    draftsRef.current = next;
+    setEditorDrafts(next);
+    if (stateRef.current) saveToStorage(stateRef.current, notesRef.current);
+  }, [saveToStorage]);
   const hasDrafts = Object.keys(editorDrafts).length > 0;
   useEffect(() => {
     if (!hasDrafts) return;
@@ -384,9 +402,8 @@ export function useBuildSession(): BuildSession {
   const setNotes = useCallback((text: string) => {
     setNotesState(text);
     notesRef.current = text;
-    localStorage.setItem('pobr-notes', text);
     if (stateRef.current) saveToStorage(stateRef.current, text);
-  }, []);
+  }, [saveToStorage]);
   const [library, setLibrary] = useState<Library>(loadLibrary);
   const [stateVersion, setStateVersion] = useState(0);
   /**
@@ -445,12 +462,13 @@ export function useBuildSession(): BuildSession {
       if (opts?.clean) {
         cleanVersionRef.current = versionRef.current;
         cleanNotesRef.current = notesRef.current;
+        draftsRef.current = {};
         setEditorDrafts({});
       }
       saveToStorage(next, notesRef.current);
       recalc(next);
     },
-    [recalc],
+    [recalc, saveToStorage],
   );
 
 
@@ -461,6 +479,7 @@ export function useBuildSession(): BuildSession {
       .then(async (backend) => {
         await backend.init((msg) => !cancelled && setBootMessage(msg));
         const meta = await backend.loadTreeMeta();
+        if (!cancelled) setDataVersion(backend.dataVersion ?? null);
         backend
           .loadClassNames()
           .then((names) => !cancelled && setClassNames(names))
@@ -468,7 +487,17 @@ export function useBuildSession(): BuildSession {
         if (cancelled) return;
         setTreeMeta(meta);
         setBootMessage(null);
-        const saved = parseSaved(localStorage.getItem(STORAGE_KEY) ?? '');
+        const raw = localStorage.getItem(STORAGE_KEY) ?? '';
+        const saved = parseSaved(raw);
+        if (saved) {
+          const envelope = JSON.parse(raw);
+          const restored = envelope.workspace === undefined ? createWorkspace(saved) : parseWorkspace(envelope.workspace, parseSaved);
+          if (!restored) throw new Error('Invalid build workspace. Export the browser save before resetting it.');
+          workspaceRef.current = restored;
+          setWorkspace(restored);
+          draftsRef.current = activeWorkspaceStage(restored).drafts;
+          setEditorDrafts(draftsRef.current);
+        }
         if (saved) {
           notesRef.current = saved.notes;
           setNotesState(saved.notes);
@@ -484,7 +513,7 @@ export function useBuildSession(): BuildSession {
               .catch(() => !cancelled && apply(saved.state));
             return;
           }
-          apply(saved.state, { clean: true });
+          apply(saved.state);
           return;
         }
         const firstClass = meta.classes[0]?.name ?? 'Warrior';
@@ -905,7 +934,7 @@ export function useBuildSession(): BuildSession {
       stateRef.current = next;
       saveToStorage(next, notesRef.current);
     },
-    [state],
+    [state, saveToStorage],
   );
 
   const removeSocketGroup = useCallback(
@@ -957,31 +986,101 @@ export function useBuildSession(): BuildSession {
     });
   }, [state, notes]);
 
-  const importSession = useCallback(
-    (json: string) => {
-      const saved = parseSaved(json);
-      if (!saved) {
-        throw new Error('invalid session file');
-      }
-      setEditorDrafts({});
-      setBuild(null);
-      notesRef.current = saved.notes;
-      setNotesState(saved.notes);
-      localStorage.setItem('pobr-notes', saved.notes);
-      if (saved.state.pobCode) {
-        getBackend()
-          .then((b) => b.decodeBuild(saved.state.pobCode!))
-          .then((decoded) => {
-            setBuild(decoded);
-            apply(backfillFromDecoded(saved.state, decoded));
-          })
-          .catch(() => apply(saved.state));
-      } else {
-        apply(saved.state);
-      }
-    },
-    [apply],
-  );
+  const restoreSession = useCallback((saved: SavedSession, drafts: Record<string, string>) => {
+    setBuild(null);
+    setCalc(null);
+    notesRef.current = saved.notes;
+    setNotesState(saved.notes);
+    draftsRef.current = drafts;
+    setEditorDrafts(drafts);
+    apply(saved.state);
+    // Decode only display/export metadata. A delayed response must never replace
+    // a newer stage or edits made while it was loading.
+    const restoredState = stateRef.current;
+    const restoredStageId = workspaceRef.current ? activeWorkspaceStage(workspaceRef.current).id : null;
+    if (saved.state.pobCode) {
+      void getBackend().then(backend => backend.decodeBuild(saved.state.pobCode!)).then(decoded => {
+        if (!workspaceRef.current || activeWorkspaceStage(workspaceRef.current).id !== restoredStageId
+          || stateRef.current?.pobCode !== saved.state.pobCode) return;
+        setBuild(decoded);
+        if (stateRef.current !== restoredState) return;
+        const restored = backfillFromDecoded(saved.state, decoded);
+        if (JSON.stringify(restored) !== JSON.stringify(saved.state)) apply(restored);
+      }).catch(() => {});
+    }
+  }, [apply]);
+
+  const importSession = useCallback((json: string) => {
+    const input = JSON.parse(json);
+    if (input.format === 'pobr-build' && input.version === 1) {
+      const imported = parseWorkspace({ version: 1, activeBuild: input.build?.id, builds: [input.build] }, parseSaved);
+      if (!imported || !workspaceRef.current) throw new Error('invalid multi-stage build file');
+      const source = imported.builds[0];
+      const stages = source.stages.map(stage => ({ ...stage, id: crypto.randomUUID() }));
+      const build = { ...source, id: crypto.randomUUID(), stages,
+        activeStage: stages[source.stages.findIndex(stage => stage.id === source.activeStage)].id };
+      workspaceRef.current = { ...workspaceRef.current, activeBuild: build.id, builds: [...workspaceRef.current.builds, build] };
+      const stage = activeWorkspaceStage(workspaceRef.current);
+      restoreSession(stage.saved, stage.drafts);
+      return;
+    }
+    const saved = parseSaved(json);
+    if (!saved) throw new Error('invalid session file');
+    const envelope = JSON.parse(json);
+    if (envelope.workspace !== undefined) {
+      const restored = parseWorkspace(envelope.workspace, parseSaved);
+      if (!restored) throw new Error('invalid workspace file');
+      workspaceRef.current = restored;
+      const stage = activeWorkspaceStage(restored);
+      restoreSession(stage.saved, stage.drafts);
+    } else restoreSession(saved, {});
+  }, [restoreSession]);
+
+  const selectStage = useCallback((buildId: string, stageId?: string) => {
+    if (!workspaceRef.current || busy) return;
+    const next = selectWorkspaceStage(workspaceRef.current, buildId, stageId);
+    if (next === workspaceRef.current) return;
+    const stage = activeWorkspaceStage(next);
+    workspaceRef.current = next;
+    restoreSession(stage.saved, stage.drafts);
+  }, [busy, restoreSession]);
+
+  const createLocalBuild = useCallback((name: string) => {
+    if (!workspaceRef.current || !stateRef.current || busy || !name.trim()) return;
+    const saved: SavedSession = { version: 1, notes: '', state: {
+      pobCode: null, character: { ...stateRef.current.character, level: 1 },
+      allocatedNodes: [], attributeChoices: {}, socketGroups: [], items: [], flasks: [], jewels: [], annotations: {}, params: { config_inputs: {} },
+    } };
+    workspaceRef.current = addWorkspaceBuild(workspaceRef.current, name, saved);
+    restoreSession(saved, {});
+  }, [busy, restoreSession]);
+
+  const duplicateStage = useCallback((name: string) => {
+    if (!workspaceRef.current || busy || !name.trim()) return;
+    const next = duplicateWorkspaceStage(workspaceRef.current, name);
+    workspaceRef.current = next;
+    const stage = activeWorkspaceStage(next);
+    restoreSession(stage.saved, stage.drafts);
+  }, [busy, restoreSession]);
+
+  const renameWorkspace = useCallback((kind: 'build' | 'stage', name: string) => {
+    if (workspaceRef.current) persistWorkspace(renameWorkspaceEntry(workspaceRef.current, kind, name));
+  }, [persistWorkspace]);
+
+  const exportWorkspace = useCallback(() => {
+    if (!workspaceRef.current) throw new Error('build not ready');
+    return workspaceEnvelope(workspaceRef.current);
+  }, []);
+
+  const exportLocalBuild = useCallback(() => {
+    const current = workspaceRef.current;
+    if (!current) throw new Error('build not ready');
+    const build = current.builds.find(entry => entry.id === current.activeBuild)!;
+    // Unapplied editor drafts stay in backups, not in files shared with players.
+    return JSON.stringify({ format: 'pobr-build', version: 1, build: {
+      ...build, stages: build.stages.map(stage => ({ ...stage, drafts: {} })),
+    } }, null, 2);
+  }, []);
 
   const currentRequest = useCallback(
     (): CalculateBuildRequest | null => (state ? toRequest(state) : null),
@@ -1068,6 +1167,7 @@ export function useBuildSession(): BuildSession {
   }, [state]);
 
   return {
+    dataVersion, workspace, storageFailed, selectStage, createLocalBuild, duplicateStage, renameWorkspace, exportWorkspace, exportLocalBuild,
     activeWeaponSet: state?.weaponSwap?.active ?? 1,
     weaponSwap: state?.weaponSwap,
     setWeaponSet,

@@ -1,8 +1,9 @@
-import { lazy, Suspense, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { UpgradeGoalProvider } from './hooks/useUpgradeGoal';
 import { useBuildSession } from './hooks/useBuildSession';
 import { t, type Lang } from './lib/i18n';
 import { TAB_IDS, TopBar, type TabId } from './components/shell/TopBar';
+import { WorkspaceSwitcher } from './components/import/BuildWorkspace';
 import { BuildPanel } from './components/import/BuildPanel';
 import { StatSidebar } from './components/sidebar/StatSidebar';
 import { ItemsPanel } from './components/items/ItemsPanel';
@@ -58,6 +59,13 @@ function BuildApp() {
   };
   // 侧边栏数值点击 → 跳 Calcs 并展开对应 breakdown（对象每次新建，重复点击同一项也触发）。
   const [calcsFocus, setCalcsFocus] = useState<{ id: string } | null>(null);
+  const activeBuild = session.workspace?.builds.find(entry => entry.id === session.workspace?.activeBuild);
+  const stageKey = activeBuild?.activeStage;
+  useEffect(() => {
+    setReviewImportedConfig(false);
+    setUpgradeFocus(undefined); setSkillFocus(undefined); setTreeFocus(undefined);
+    setReferenceItem(undefined); setCalcsFocus(null);
+  }, [stageKey]);
   const focusStat = (id: string) => {
     setCalcsFocus({ id });
     setTab('calcs');
@@ -83,6 +91,7 @@ function BuildApp() {
   return (
     <div className="app-shell">
       <TopBar
+        dataVersion={session.dataVersion}
         tab={tab}
         onTab={setTab}
         lang={lang}
@@ -121,6 +130,7 @@ function BuildApp() {
             : undefined
         }
       />
+      <WorkspaceSwitcher session={session} lang={lang} onManage={() => setTab('build')} />
       {!betaDismissed && (
         <div className="beta-banner" role="note">
           <span>{t(lang, 'beta.notice')}</span>
@@ -135,7 +145,7 @@ function BuildApp() {
       </button>
       <div className={`app-body${statsOpen ? ' stats-open' : ''}`}>
         <StatSidebar session={session} lang={lang} onStatClick={focusStat} />
-        <main className="app-main" ref={mainRef}>
+        <main className="app-main" ref={mainRef} key={stageKey}>
           {reviewImportedConfig && <div className="import-config-review" role="note">
             <p>{t(lang, 'config.importReview')}</p>
             <button onClick={() => { setReviewImportedConfig(false); setTab('config'); }}>{t(lang, 'config.review')}</button>

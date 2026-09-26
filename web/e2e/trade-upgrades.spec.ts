@@ -339,7 +339,7 @@ test('default damage skill, weapon binding and whole-build priority use the same
   await expect(page.getByRole('checkbox', { name: 'Keep at least current EHP' })).toBeChecked();
   await page.getByRole('button', { name: 'Analyze all positions', exact: true }).click();
   await expect(page.locator('.trade-priorities')).toBeVisible({ timeout: 90_000 });
-  await expect(page.getByRole('button', { name: 'Analyze all positions', exact: true })).toBeEnabled({ timeout: 90_000 });
+  await expect(page.locator('.trade-analyze-all')).toBeEnabled({ timeout: 90_000 });
   const ranking = await page.locator('.trade-priorities').innerText();
   expect(ranking).toContain('DPS');
   expect(ranking).toContain('EHP');
