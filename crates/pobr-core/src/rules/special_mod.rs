@@ -1619,13 +1619,11 @@ mod tests {
     /// loader).
     #[test]
     fn repo_special_mods_compile() {
-        let data_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data");
+        let data_root = crate::mod_parser::test_data_dir();
         let mut entries = Vec::new();
         for path in [
-            data_root.join("overlay-common/special_mods.json"),
-            data_root
-                .join(pobr_data::data_version())
-                .join("overlay/special_mods.json"),
+            data_root.join("../overlay-common/special_mods.json"),
+            data_root.join("overlay/special_mods.json"),
         ] {
             let raw = match std::fs::read_to_string(&path) {
                 Ok(raw) => raw,

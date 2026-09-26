@@ -30,7 +30,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use pobr_core::rules::{
@@ -369,9 +369,7 @@ fn invoke_headless_jsonl(args: &ExtractLuaArgs) -> io::Result<Vec<RawRow>> {
 // Deduplication input: vendor keys and patterns already covered by an existing overlay / derived table
 
 fn repo_data_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../data")
-        .join(pobr_data::data_version())
+    pobr_gamedata::current_data_dir()
 }
 
 /// Returns (raw key set = vendor_pattern ∪ pattern; regex pattern set).
@@ -1599,7 +1597,7 @@ mod tests {
 
     #[test]
     fn vendor_suppression_patterns_keep_leading_literal_plus() {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../data/4.5.5.2/generated/special_vendor.json");
         let raw = std::fs::read_to_string(path).unwrap();
         let golden: SpecialModsDef = serde_json::from_str(&raw).unwrap();

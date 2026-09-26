@@ -559,10 +559,9 @@ impl CalculationSession {
 
     /// Runs the full perform stage and returns the minimal output view.
     ///
-    /// Errors only when the actor state is invalid (currently: `player.level == 0`,
-    /// see [`perform`]); callers that construct the session from a valid
-    /// [`MinimalInput`]/[`CharacterBase`] never hit it, but the error is
-    /// propagated rather than panicking so embedders (wasm / CLI) can surface it.
+    /// A session can be performed once: later calls return [`super::CalcError::AlreadyPerformed`]
+    /// without changing its output or adding derived modifiers. Create a new session
+    /// to recalculate changed inputs. Invalid actor state also returns an error.
     pub fn perform_minimal(&mut self) -> Result<MinimalOutput, super::CalcError> {
         perform(&mut self.env)?;
         Ok(MinimalOutput::from_output_and_breakdown(
@@ -581,11 +580,9 @@ impl CalculationSession {
         self.unsupported_modifier_texts.push(text);
     }
 
-    /// Gets the sum of a ModName's BASE in the player modDB (per the current
-    /// cfg). Used by the orchestration layer, after every source is
-    /// injected, to read total attributes (Strength/Dexterity/Intelligence)
-    /// in order to derive life/mana/accuracy (attribute derivation needs the
-    /// **final** attribute, not just the class base).
+    /// Gets the sum of a ModName's BASE in the player ModDb for the current cfg.
+    /// This excludes actor bases and INC/MORE scaling; use [`Self::attribute_total`]
+    /// when a consumer needs a final attribute value.
     pub fn base_sum(&self, name: &str) -> f64 {
         self.env
             .player

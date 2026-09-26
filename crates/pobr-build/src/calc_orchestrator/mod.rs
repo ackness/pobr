@@ -225,15 +225,16 @@ impl TreeVersionReport {
     }
 }
 
-/// Reconciles the build's allocated passive nodes against the loaded tree
-/// ([`BuildData::passive_nodes`]) — see [`TreeVersionReport`]. Purely read-only, zero calc behavior change.
+/// Reconciles allocated nodes against the build's selected tree, using the same
+/// fallback as calculation when the requested historical tree is unavailable.
 pub fn diagnose_tree_version(build: &Build, data: &BuildData) -> TreeVersionReport {
+    let nodes = data.passive_nodes_for(build.tree_version.as_deref());
     let unknown_nodes = build
         .tree
         .allocated_nodes
         .iter()
         .map(|n| n.0)
-        .filter(|id| !data.passive_nodes.contains_key(id))
+        .filter(|id| !nodes.contains_key(id))
         .collect();
     TreeVersionReport {
         build_tree_version: build.tree_version.clone(),
@@ -437,8 +438,17 @@ fn calculate_with_context(
 ) -> Result<CalculationSession, BuildError> {
     // Stage 0: build view transformation (Ring3 gate → item-granted skill synthesis → quality conversion)
     let build = stage_build_view(build, data);
-    let build: &Build = &build;
+    calculate_prepared_with_context(&build, data, options, context)
+}
 
+/// Calculates a prepared build view. Trigger sources change only skill selection,
+/// so they reuse this entry point without applying additive gem quality again.
+fn calculate_prepared_with_context(
+    build: &Build,
+    data: &BuildData,
+    options: &DataOrchestratorOptions,
+    context: &mut CalculationContext,
+) -> Result<CalculationSession, BuildError> {
     let main = stage_resolve_main_skill(build, data);
     let (resolved_config, base_cfg) = stage_resolve_config(build, data, options);
     let (cfg, enemy_tier) =
@@ -581,9 +591,9 @@ struct StageCtx<'a> {
 
 /// Stage 0: build view transformation (the collapsed form of what was originally a
 /// chain of shadow variables) — each step clones only when it actually takes effect
-/// (Cow), value-equal to mutating the build in place. The three steps run in the order
-/// of vendor CalcSetup's item pre-processing: first strips inactive items, then
-/// synthesizes granted skill groups from the remaining items, and finally converts gem quality.
+/// (Cow), value-equal to mutating the build in place. Following vendor CalcSetup's
+/// item pre-processing, strips inactive items and synthesizes granted skill groups.
+/// Gem identities are resolved before applying type-dependent quality bonuses.
 fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
     let mut build = Cow::Borrowed(build);
 
@@ -608,14 +618,6 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
         build = Cow::Owned(augmented);
     }
 
-    // Gem quality bonuses: "+N% to Quality of all <X> Skills" (tree small passives/items)
-    // is pre-folded into each gem's quality (matching vendor's applyGemMods, which
-    // stacks effect.quality onto every gem effect, CalcSetup.lua:410-435), so it applies
-    // consistently at every downstream quality consumption point.
-    if let Some(adjusted) = apply_gem_quality_bonuses(&build, data) {
-        build = Cow::Owned(adjusted);
-    }
-
     // nameSpec-only gem references → skill_id backfilled (matching PoB2 SkillsTab
     // looking up a gem's equivalent by nameSpec): a lineage support (e.g. Atziri's
     // Communion) lacks skillId/gemId in the XML, only a display name. Matched against
@@ -623,6 +625,15 @@ fn stage_build_view<'a>(build: &'a Build, data: &BuildData) -> Cow<'a, Build> {
     // silently skips it).
     if let Some(resolved) = resolve_name_spec_gems(&build, data) {
         build = Cow::Owned(resolved);
+    }
+
+    // Gem quality bonuses: "+N% to Quality of all <X> Skills" (tree small passives/items)
+    // is pre-folded into each gem's quality (matching vendor's applyGemMods, which
+    // stacks effect.quality onto every gem effect, CalcSetup.lua:410-435), so it applies
+    // consistently at every downstream quality consumption point. Resolved skill ids
+    // are required to match skill types and gem attribute requirements.
+    if let Some(adjusted) = apply_gem_quality_bonuses(&build, data) {
+        build = Cow::Owned(adjusted);
     }
 
     build
@@ -1012,7 +1023,7 @@ fn stage_inject_passives(session: &mut SourceWriter, ctx: &StageCtx<'_>) -> Resu
     //     the map is PoBR's equivalent of PoB2's `env.keystonesAdded` dedup
     //     (CalcPerform.lua:66-76; see the keystone_merge.rs module doc for the
     //     tree-path modelling difference).
-    session.set_keystone_mods(keystone_mod_map(data, &passive_nodes));
+    session.set_keystone_mods(keystone_mod_map(build, data, &passive_nodes));
     Ok(())
 }
 

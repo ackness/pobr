@@ -85,7 +85,8 @@ export function gemVariant(request: CalculateBuildRequest, group: number, positi
   return { socket_groups: (request.socket_groups ?? []).map((entry, index) => {
     if (index !== group) return entry;
     const gems = [...entry.gems];
-    gems[position] = { skill_id: gem.skill_id, level, quality };
+    gems[position] = { ...(gems[position]?.skill_id === gem.skill_id ? gems[position] : {}),
+      skill_id: gem.skill_id, level, quality };
     return { ...entry, gems };
   }) };
 }

@@ -1,7 +1,7 @@
 import { PageHeader } from '../shared/PageHeader';
 import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../../api/backend';
-import type { ConfigInputValue, ConfigOption, EnemyTier } from '../../api/types';
+import type { ConfigInputValue, ConfigOption, CustomModifierBlock, EnemyTier } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, configSectionLabel, enemyTierLabel, type Lang } from '../../lib/i18n';
 import { CONFIG_LABEL_ZH, LIST_OPTION_ZH } from '../../lib/configLabels';
@@ -203,6 +203,7 @@ export function ConfigPanel({ session, lang }: Props) {
     const q = query.trim().toLowerCase();
     const filtered = options.filter(
       (o) =>
+        o.var !== 'customMods' && o.var !== 'enemyIsBoss' &&
         (!configuredOnly || effective(o.var) !== undefined) && (q === '' ||
         (o.label ?? '').toLowerCase().includes(q) ||
         o.var.toLowerCase().includes(q) ||
@@ -220,18 +221,31 @@ export function ConfigPanel({ session, lang }: Props) {
   }, [options, query, configuredOnly, overrides, buildInputs]);
 
   const searching = query.trim() !== '' || configuredOnly;
-  const configuredCount = options.filter(option => effective(option.var) !== undefined).length;
+  const configuredCount = options.filter(option =>
+    option.var !== 'customMods' && option.var !== 'enemyIsBoss' && effective(option.var) !== undefined).length;
 
   // build 自带但不在目录里的键（导入 build 的自定义/未映射 Input）→ 高级区可见。
   const extraKeys = useMemo(() => {
     const known = new Set(options.map((o) => o.var));
     return [...new Set([...Object.keys(buildInputs), ...Object.keys(overrides)])]
-      .filter((k) => !known.has(k))
+      .filter((k) => k !== 'customMods' && k !== 'enemyIsBoss' && !known.has(k))
       .sort();
   }, [options, buildInputs, overrides]);
 
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('true');
+  const modifierBlocks: CustomModifierBlock[] = session.calcParams.custom_modifier_blocks ?? [{
+    title: 'Default',
+    enabled: true,
+    text: (session.calcParams.extra_modifiers ?? []).join('\n'),
+  }];
+  const updateModifierBlocks = (blocks: CustomModifierBlock[]) => {
+    session.updateParams({ custom_modifier_blocks: blocks, extra_modifiers: undefined });
+  };
+  const updateModifierBlock = (index: number, patch: Partial<CustomModifierBlock>) => {
+    updateModifierBlocks(modifierBlocks.map((block, currentIndex) =>
+      currentIndex === index ? { ...block, ...patch } : block));
+  };
   const parseValue = (raw: string): ConfigInputValue => {
     if (raw === 'true') return true;
     if (raw === 'false') return false;
@@ -324,28 +338,54 @@ export function ConfigPanel({ session, lang }: Props) {
       <article className="ui-card config-custom">
       <h3 className="section-heading">{tt('config.extraMods')}</h3>
       <p className="config-hint">{tt('config.extraModsHint')}</p>
-      <textarea
-        className="config-extra-mods"
-        // 应用后的值变化时重挂载刷新（blur 即应用，不会打断输入中的草稿）。
-        key={(session.calcParams.extra_modifiers ?? []).join('\n')}
-        rows={4}
-        spellCheck={false}
-        placeholder={'20% increased Fire Damage\n+50 to maximum Life'}
-        defaultValue={(session.calcParams.extra_modifiers ?? []).join('\n')}
-        disabled={session.busy}
-        aria-label={tt('config.extraMods')}
-        onBlur={(e) => {
-          const lines = e.target.value
-            .split('\n')
-            .map((l) => l.trim())
-            .filter(Boolean);
-          const current = session.calcParams.extra_modifiers ?? [];
-          if (lines.join('\n') !== current.join('\n')) {
-            session.updateParams({ extra_modifiers: lines.length ? lines : undefined });
-          }
-        }}
-      />
-
+      <div className="config-modifier-blocks">
+        {modifierBlocks.map((block, index) => (
+          <div className="config-modifier-block" key={index}>
+            <div className="config-modifier-block-header">
+              <label className="config-modifier-enabled">
+                <input type="checkbox" checked={block.enabled} disabled={session.busy}
+                  onChange={event => updateModifierBlock(index, { enabled: event.target.checked })} />
+                {tt('config.groupEnabled')}
+              </label>
+              <label className="config-modifier-title">
+                <span>{tt('config.groupTitle')}</span>
+                <input type="text" key={block.title} defaultValue={block.title}
+                  placeholder={tt('config.groupUntitled')} disabled={session.busy}
+                  onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+                  onBlur={event => {
+                    if (event.target.value !== block.title) {
+                      updateModifierBlock(index, { title: event.target.value });
+                    }
+                  }} />
+              </label>
+              <button type="button" disabled={session.busy}
+                aria-label={`${tt('config.groupRemove')}: ${block.title || `${index + 1}`}`}
+                onClick={() => updateModifierBlocks(modifierBlocks.filter((_, currentIndex) => currentIndex !== index))}>
+                {tt('config.groupRemove')}
+              </button>
+            </div>
+            <textarea
+              className="config-extra-mods"
+              key={block.text}
+              rows={4}
+              spellCheck={false}
+              placeholder={'20% increased Fire Damage\n+50 to maximum Life'}
+              defaultValue={block.text}
+              disabled={session.busy}
+              aria-label={`${tt('config.groupText')}: ${block.title || index + 1}`}
+              onBlur={event => {
+                if (event.target.value !== block.text) {
+                  updateModifierBlock(index, { text: event.target.value });
+                }
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      <button type="button" className="config-modifier-add" disabled={session.busy}
+        onClick={() => updateModifierBlocks([...modifierBlocks, { title: '', enabled: true, text: '' }])}>
+        {tt('config.groupAdd')}
+      </button>
       </article>
       <details className="ui-card config-advanced">
       <summary>{tt('config.addTitle')}</summary>

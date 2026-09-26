@@ -306,7 +306,12 @@ pub(crate) fn gem_property_bonuses(build: &Build, data: &BuildData) -> Vec<GemPr
         .flat_map(|def| def.stats.iter().cloned())
         .collect();
     let allocated_ids: Vec<u32> = build.tree.allocated_nodes.iter().map(|id| id.0).collect();
-    pobr_core::skill_env::gem_property_bonuses(build, &allocated_ids, &granted_stats, data)
+    pobr_core::skill_env::gem_property_bonuses(
+        build,
+        &allocated_ids,
+        &granted_stats,
+        data.passive_nodes_for(build.tree_version.as_deref()),
+    )
 }
 
 /// Whether the build carries the GemlingQuality flag (matching vendor
@@ -324,7 +329,11 @@ pub(crate) fn gemling_quality_flag(build: &Build, data: &BuildData) -> bool {
         .flat_map(|def| def.stats.iter().cloned())
         .collect();
     let allocated_ids: Vec<u32> = build.tree.allocated_nodes.iter().map(|id| id.0).collect();
-    pobr_core::skill_env::gemling_quality_flag(&allocated_ids, &granted_stats, data)
+    pobr_core::skill_env::gemling_quality_flag(
+        &allocated_ids,
+        &granted_stats,
+        data.passive_nodes_for(build.tree_version.as_deref()),
+    )
 }
 
 /// Whether a GemProperty mod applies to the gem of a given granted effect (matching
@@ -392,8 +401,9 @@ pub(crate) fn apply_gem_quality_bonuses(build: &Build, data: &BuildData) -> Opti
 /// CalcSetup.lua:821 — "ignore item in Ring 3" when unallocated). Determined by node mod
 /// text, decoupled from any specific ascendancy.
 pub(crate) fn additional_ring_slot_allocated(build: &Build, data: &BuildData) -> bool {
+    let nodes = data.passive_nodes_for(build.tree_version.as_deref());
     build.tree.allocated_nodes.iter().any(|id| {
-        data.passive_nodes.get(&id.0).is_some_and(|node| {
+        nodes.get(&id.0).is_some_and(|node| {
             node.stats
                 .iter()
                 .any(|s| s.trim().eq_ignore_ascii_case("+1 ring slot"))

@@ -2,6 +2,7 @@ import { BuildWorkspace } from './BuildWorkspace';
 import { workspaceText } from '../../lib/workspaceText';
 import { PageHeader } from '../shared/PageHeader';
 import { formatApiError } from '../../api/error';
+import { buildFileKind } from '../../api/import';
 import { useRef, useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
@@ -15,9 +16,13 @@ interface Props {
   onImported: () => void;
 }
 
-/** Build 页（PoB2 语义）：角色身份 + 总览笔记 + 导入/分享/存档，卡片式布局。 */
+/** Build library, current-stage editing, import and scoped sharing. */
 export function BuildPanel({ session, lang, onImported }: Props) {
   const tt = bindT(lang);
+  const text = workspaceText(lang);
+  const [destination, setDestination] = useState<'newBuild' | 'currentStage'>('newBuild');
+  const activeBuild = session.workspace?.builds.find(entry => entry.id === session.workspace?.activeBuild);
+  const activeStage = activeBuild?.stages.find(entry => entry.id === activeBuild.activeStage);
   const zhName = (map: Record<string, string>, name: string) =>
     lang !== 'en-US' ? (map[name] ?? name) : name;
   const [code, setCode] = useState('');
@@ -41,29 +46,31 @@ export function BuildPanel({ session, lang, onImported }: Props) {
     }
   };
 
-  const exportFile = () => {
-    const blob = new Blob([session.exportWorkspace()], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'pobr-workspace.json';
-    a.click();
+  const exportFile = (content: string, filename: string) => {
+    const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
     URL.revokeObjectURL(url);
   };
+
+  const confirmReplacement = () => destination !== 'currentStage' || window.confirm(text.replaceConfirm);
 
   const importFile = async (file: File) => {
     setFileError(null);
     setImporting(true);
     try {
-      const text = await file.text();
-      let parsed: { workspace?: unknown } | null = null;
-      try { parsed = JSON.parse(text); } catch { /* PoB codes are not JSON. */ }
-      if (parsed?.workspace && !window.confirm(workspaceText(lang).backupConfirm)) return;
-      try {
-        session.importSession(text);
+      const content = await file.text();
+      const kind = buildFileKind(content);
+      if (kind === 'workspace' && !window.confirm(text.backupConfirm)) return;
+      const isSharedBuild = kind === 'session' && JSON.parse(content).format === 'pobr-build';
+      if (kind !== 'workspace' && !isSharedBuild && !confirmReplacement()) return;
+      if (kind === 'external') {
+        if (await session.importCode(content.trim(), { destination, name: file.name.replace(/\.[^.]+$/, '') })) onImported();
+      } else {
+        session.importSession(content, destination);
         onImported();
-      } catch {
-        if (await session.importCode(text.trim())) onImported();
       }
     } catch (err) {
       setFileError(formatApiError(err));
@@ -77,10 +84,10 @@ export function BuildPanel({ session, lang, onImported }: Props) {
   const ascendancies = currentClass?.ascendancies ?? [];
 
   const doImport = async () => {
-    if (!code.trim() || importing || session.busy) return;
+    if (!code.trim() || importing || session.busy || !confirmReplacement()) return;
     setImporting(true);
     try {
-      if (await session.importCode(code.trim())) onImported();
+      if (await session.importCode(code.trim(), { destination })) onImported();
     } finally {
       setImporting(false);
     }
@@ -93,6 +100,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
       <PageHeader id="build-heading" title={tt('ui.buildTitle')} description={tt('ui.buildHint')} />
       <div className="build-grid">
         <BuildWorkspace session={session} lang={lang} />
+        <p className="build-stage-scope" role="note">{text.stageScope} <strong>{activeBuild?.name || text.initialBuild} / {activeStage?.name || text.initialStage}</strong></p>
         <article className="build-card">
           <h3>{tt('build.character')}</h3>
           <div className="character-form">
@@ -190,7 +198,13 @@ export function BuildPanel({ session, lang, onImported }: Props) {
 
         <article className="build-card build-card--import">
           <h3>{tt('build.import')}</h3>
-          <p className="build-card-hint">{workspaceText(lang).importHint}</p>
+          <p className="build-card-hint">{text.importHint}</p>
+          <label className="import-destination">{text.importDestination}
+            <select value={destination} disabled={importing || session.busy} onChange={event => setDestination(event.target.value as 'newBuild' | 'currentStage')}>
+              <option value="newBuild">{text.importNew}</option>
+              <option value="currentStage">{text.importCurrent} · {activeStage?.name || text.initialStage}</option>
+            </select>
+          </label>
           <p className="build-card-hint" id="import-hint">{tt('build.importHint')}</p>
           <textarea
             className="import-code"
@@ -209,7 +223,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
               onClick={doImport}
               disabled={session.busy || importing || !code.trim()}
             >
-              {importing ? tt('build.importing') : tt('build.importButton')}
+              {importing ? tt('build.importing') : destination === 'newBuild' ? tt('build.importButton') : text.importCurrent}
             </button>
             <button onClick={() => fileRef.current?.click()} disabled={session.busy || importing}>
               {tt('save.import')}
@@ -227,12 +241,18 @@ export function BuildPanel({ session, lang, onImported }: Props) {
               }}
             />
           </div>
+          <p className="build-card-hint import-file-hint">{text.importFileHint}</p>
           {fileError && <div className="calc-error" role="alert">{fileError}</div>}
         </article>
 
 
         <article className="build-card">
-          <h3>{tt('share.title')}</h3>
+          <h3>{text.exportTitle}</h3>
+          <p className="build-card-hint">{text.shareHint}</p>
+          <div className="build-card-actions">
+            <button disabled={session.busy} onClick={() => exportFile(session.exportLocalBuild(), 'pobr-build-stages.json')}>{text.share}</button>
+          </div>
+          <h4 className="build-export-heading">{text.currentStageShare}</h4>
           <p className="build-card-hint">{tt('share.hint')}</p>
           <div className="build-card-actions">
             <button onClick={generateCode} disabled={session.busy || generating}>
@@ -254,10 +274,10 @@ export function BuildPanel({ session, lang, onImported }: Props) {
             />
           )}
 
-          <h3 className="build-card-divide">{tt('save.title')}</h3>
-          <p className="build-card-hint">{tt('save.hint')}</p>
+          <h4 className="build-export-heading">{text.backup}</h4>
+          <p className="build-card-hint">{text.backupHint}</p>
           <div className="build-card-actions">
-            <button onClick={exportFile} disabled={session.busy || importing}>{tt('save.export')}</button>
+            <button onClick={() => exportFile(session.exportWorkspace(), 'pobr-workspace.json')} disabled={session.busy || importing}>{tt('save.export')}</button>
 
           </div>
         </article>

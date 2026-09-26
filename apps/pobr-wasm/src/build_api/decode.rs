@@ -71,6 +71,8 @@ struct GemJson {
     skill_id: String,
     level: u32,
     quality: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stat_set_index: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -112,6 +114,8 @@ struct BuildJson {
     main_socket_group: Option<usize>,
     /// The raw `<Config>` input key/values (the initial state shown/edited on the Config page).
     config_inputs: BTreeMap<String, serde_json::Value>,
+    /// Editable groups from the selected ConfigSet, including disabled text.
+    custom_modifier_blocks: Vec<pobr_data::build_config::CustomModifierBlock>,
     /// Free-text `<Notes>` (PoB's notes page; `null` if that section is absent).
     notes: Option<String>,
     /// The list of switchable loadouts (PoB2's loadout concept: passives /
@@ -215,6 +219,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                         skill_id: gem.skill_id.clone(),
                         level: gem.gem_level,
                         quality: gem.quality,
+                        stat_set_index: gem.stat_set_index,
                     })
                     .collect(),
             })
@@ -228,6 +233,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
             .iter()
             .map(|(k, v)| (k.clone(), config_value_json(v)))
             .collect(),
+        custom_modifier_blocks: pobr_build::parse_custom_modifier_blocks(xml),
         notes: parse_notes(xml).map_err(|e| format!("parse notes: {e}"))?,
         loadouts,
         active_loadout,
@@ -562,6 +568,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 skill_id: active.clone(),
                 level: 20,
                 quality: 0,
+                stat_set_index: None,
             }];
             for support in &group.support_skills {
                 match cn_gem_effect_id(&data, &support.id) {
@@ -569,6 +576,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                         skill_id: id,
                         level: 20,
                         quality: 0,
+                        stat_set_index: None,
                     }),
                     None => unknown_gems += 1,
                 }
@@ -606,6 +614,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
         socket_groups,
         main_socket_group: None,
         config_inputs: BTreeMap::new(),
+        custom_modifier_blocks: Vec::new(),
         notes: (!file.name.trim().is_empty()).then(|| {
             let mut note = file.name.trim().to_string();
             if unknown_passives + unknown_gems > 0 {

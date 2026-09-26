@@ -1,0 +1,82 @@
+[
+  {
+    "id": "Mana",
+    "divisor": 1
+  },
+  {
+    "id": "Life",
+    "divisor": 1
+  },
+  {
+    "id": "ES",
+    "divisor": 1
+  },
+  {
+    "id": "Rage",
+    "divisor": 1
+  },
+  {
+    "id": "Ward",
+    "divisor": 1
+  },
+  {
+    "id": "ManaPercent",
+    "divisor": 1
+  },
+  {
+    "id": "LifePercent",
+    "divisor": 1
+  },
+  {
+    "id": "WardPercent",
+    "divisor": 1
+  },
+  {
+    "id": "UnreservedManaPercent",
+    "divisor": 1
+  },
+  {
+    "id": "ManaPerMinute",
+    "divisor": 60,
+    "per_minute": true
+  },
+  {
+    "id": "LifePerMinute",
+    "divisor": 60,
+    "per_minute": true
+  },
+  {
+    "id": "ManaPercentPerMinute",
+    "divisor": 60,
+    "per_minute": true
+  },
+  {
+    "id": "LifePercentPerMinute",
+    "divisor": 60,
+    "per_minute": true
+  },
+  {
+    "id": "ESPerMinute",
+    "divisor": 60,
+    "per_minute": true
+  },
+  {
+    "id": "ESPercentPerMinute",
+    "divisor": 60,
+    "per_minute": true
+  },
+  {
+    "id": "ESPercent",
+    "divisor": 1
+  },
+  {
+    "id": "RagePerMinute",
+    "divisor": 60,
+    "per_minute": true
+  },
+  {
+    "id": "WardPerMinute",
+    "divisor": 60,
+    "per_minute": true
+  }
+]

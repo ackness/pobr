@@ -29,6 +29,9 @@ use super::{
 use crate::{TraceGraph, TraceOperation};
 
 pub fn perform(env: &mut Env) -> Result<(), CalcError> {
+    if env.performed {
+        return Err(CalcError::AlreadyPerformed);
+    }
     if env.player.level == 0 {
         return Err(CalcError::InvalidActorState(
             "player level must be greater than 0",
@@ -189,6 +192,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // current bleed/poison/ignite values from the ailment side (ailment.rs is untouched, per the T4 wave agreement).
     fill_skill_dot_stage(env);
 
+    env.performed = true;
     Ok(())
 }
 

@@ -87,10 +87,10 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
 
   useEffect(() => {
     loadTradeCatalog().then(setCatalog).catch(() => setCatalogError(true));
-    getBackend().then(backend => backend.loadPassiveTree()).then(nodes => {
+    getBackend().then(backend => backend.loadPassiveTree(session.treeVersion)).then(nodes => {
       setJewelSockets(nodes.filter(node => node.kind === 'jewel_socket').map(node => node.skill));
     }).catch(() => {});
-  }, []);
+  }, [session.treeVersion]);
   useEffect(() => {
     let cancelled = false;
     setLeagues(REALM_LEAGUES[realm]); setLeagueFallback(false);

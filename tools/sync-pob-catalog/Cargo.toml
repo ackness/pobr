@@ -8,6 +8,7 @@ edition.workspace = true
 # stat_id → modifier 映射；仅工具用，不进运行时计算路径。
 pobr-core.workspace = true
 pobr-data.workspace = true
+pobr-gamedata.workspace = true
 regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true

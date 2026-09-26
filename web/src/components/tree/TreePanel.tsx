@@ -89,7 +89,22 @@ function isAttrNode(node: PassiveNode): boolean {
 const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 
 /** 天赋树查看器：SVG 渲染 + 已加点高亮 + 缩放平移 / hover 词条 + 点选加点重算。 */
-export function TreePanel({ session, lang, focusPlanner, onJewelSearch }: Props) {
+export function TreePanel(props: Props) {
+  const { session, lang } = props;
+  const currentTree = session.dataVersion && /^\d+\.\d+/.test(session.dataVersion)
+    ? `0_${session.dataVersion.split('.')[1]}` : null;
+  if (session.treeVersion && session.treeVersion !== 'Default' && currentTree && session.treeVersion !== currentTree) {
+    const text = lang === 'en-US'
+      ? `This build uses passive tree ${session.treeVersion}. Calculation and export preserve that version. Interactive tree editing and route planning are unavailable for historical trees.`
+      : lang === 'zh-TW'
+        ? `此角色使用 ${session.treeVersion} 天賦樹。計算與匯出會保留該版本，歷史天賦樹暫不支援互動編輯和路線規劃。`
+        : `此角色使用 ${session.treeVersion} 天赋树。计算与导出会保留该版本，历史天赋树暂不支持交互编辑和路线规划。`;
+    return <section className="ui-page"><p role="status">{text}</p></section>;
+  }
+  return <EditableTreePanel {...props} />;
+}
+
+function EditableTreePanel({ session, lang, focusPlanner, onJewelSearch }: Props) {
   const tt = bindT(lang);
   const [rawNodes, setNodes] = useState<PassiveNode[] | null>(null);
   const treeEffects = session.calc?.tree_effects;

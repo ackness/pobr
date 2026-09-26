@@ -14,15 +14,15 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use pobr_core::mod_parser::{CompiledParserRules, parse_mod_engine};
 use pobr_data::catalog::parser_rules::ModParserRulesDoc;
 
+#[path = "../src/parse/mod_parser/test_data.rs"]
+mod test_data;
+
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
 fn load_doc() -> ModParserRulesDoc {
-    let path = repo_root()
-        .join("data")
-        .join(pobr_data::data_version())
-        .join("overlay/mod_parser_rules.json");
+    let path = test_data::test_data_dir().join("overlay/mod_parser_rules.json");
     let json = std::fs::read_to_string(&path).expect("read mod_parser_rules.json");
     serde_json::from_str(&json).expect("deserialize the rule table")
 }

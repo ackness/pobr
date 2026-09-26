@@ -9,9 +9,8 @@ name: CI
 #     to validate a branch on demand.
 # Day-to-day commits cost nothing; you pay only when releasing or when you ask.
 #
-# Rust and Web run in parallel. Within each job, cheap checks fail before builds.
-# Prepare the workspace version in the feature PR, then use one tag run for the
-# full release gate; do not also dispatch an identical full run on master.
+# Rust lint, Rust tests and Web run in parallel. Release CI owns the complete
+# gate; local development only needs relevant checks, not a duplicate full run.
 on:
   push:
     tags:
@@ -28,8 +27,8 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  ci:
-    name: fmt + clippy + test
+  lint:
+    name: fmt + clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -40,11 +39,6 @@ jobs:
       # infrequent, so a cache often evicts (7-day idle) before reuse — that is
       # expected; a release run starting cold is fine.
       - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: nextest
-
-      # Cheapest first — fail fast before the expensive test compile.
       - name: Format
         run: cargo fmt --all --check
       - name: Workflow script tests
@@ -52,14 +46,25 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+  ci:
+    name: Rust tests + data compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
       # luajit lets the fixture-based extract-lua tooling tests run instead of
       # self-skipping. Tests that need the gitignored vendor PoB2 checkout still
-      # skip gracefully in CI by design (see CLAUDE.md "Parity 体系"). Installed
-      # after clippy so a lint failure skips it too.
+      # skip gracefully in CI by design (see CLAUDE.md "Parity 体系").
       - name: Install luajit
         run: sudo apt-get update && sudo apt-get install -y luajit lua-dkjson
       - name: Data update compatibility tests
-        run: python3 pipeline/test-data-update.py
+        run: |
+          python3 pipeline/test-data-update.py
+          python3 pipeline/test-data-snapshot.py
       - name: Test (nextest)
         run: cargo nextest run --workspace
       # nextest does not run doctests; cover them separately.
@@ -100,7 +105,7 @@ jobs:
       - name: Dictionary snapshot tests
         run: node --test ../pipeline/test-dictionary-source.mjs ../pipeline/test-query-patch-version.mjs
       - name: WASM packaging tests
-        run: node --test scripts/package-wasm.test.mjs
+        run: node --test scripts/package-wasm.test.mjs scripts/sync-data.test.mjs
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Typecheck (pre-wasm placeholder tolerated via ts-ignore)
@@ -113,8 +118,9 @@ jobs:
         run: pnpm build-wasm
       - name: Sync game data
         run: pnpm sync-data
+      # Typecheck already passed above; bundle without repeating tsc.
       - name: Build
-        run: pnpm build
+        run: pnpm exec vite build
       # Hand the built site to the deploy job (path is workspace-relative,
       # unaffected by the job-level working-directory).
       - name: Upload dist for deploy
@@ -151,7 +157,7 @@ jobs:
 
   release-wasm:
     name: publish standalone WASM
-    needs: [ci, web]
+    needs: [lint, ci, web]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -178,14 +184,14 @@ jobs:
               --verify-tag --generate-notes --notes-file wasm-size.md "${flags[@]}"
           fi
 
-  # Auto-deploy to Cloudflare Pages on v0.x release tags, only after BOTH the
-  # Rust gate and the web gate pass. Reuses the dist built by the web job —
+  # Auto-deploy to Cloudflare Pages on v0.x release tags after all gates pass.
+  # Reuses the dist built by the web job —
   # no rebuild. One-time setup: create the Pages project and add the
   # CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID repo secrets (see PR/commit).
   deploy:
     name: deploy to Cloudflare Pages
-    needs: [ci, web]
-    if: startsWith(github.ref, 'refs/tags/v0.')
+    needs: [lint, ci, web]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v0.')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8

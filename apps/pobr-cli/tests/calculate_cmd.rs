@@ -179,6 +179,53 @@ fn repo_data_dir() -> std::path::PathBuf {
 }
 
 #[test]
+fn full_build_and_marginal_reports_preserve_rejected_modifiers() {
+    let unknown = "Synthetic unsupported architecture audit modifier";
+    let xml = decode_code(DEADEYE_CODE).unwrap();
+    assert!(xml.contains("</Item>"));
+    let code = encode_code(&xml.replacen("</Item>", &format!("\n{unknown}\n</Item>"), 1)).unwrap();
+    let report = calculate_build(&CalculateBuildRequest {
+        code: code.clone(),
+        data_dir: repo_data_dir(),
+        enemy_level: 80,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+    })
+    .unwrap();
+    assert!(
+        report
+            .unsupported_modifiers
+            .iter()
+            .any(|text| text == unknown)
+    );
+    assert_eq!(report.data_version, pobr_gamedata::data_version());
+    let extra = "Another unsupported candidate modifier";
+    let marginal = pobr_cli::marginal_contribution(&pobr_cli::MarginalRequest {
+        build_code: code,
+        data_dir: repo_data_dir(),
+        enemy_level: 80,
+        enemy_tier: EnemyTier::Pinnacle,
+        mode_effective: true,
+        mod_texts: vec![extra.into()],
+    })
+    .unwrap();
+    assert!(
+        marginal
+            .baseline_unsupported_modifiers
+            .iter()
+            .any(|text| text == unknown)
+    );
+    assert!(
+        marginal
+            .unsupported_modifiers
+            .iter()
+            .any(|text| text == extra)
+    );
+    assert!(pobr_cli::render_marginal(&marginal).contains(extra));
+    assert_eq!(marginal.data_version, report.data_version);
+}
+
+#[test]
 fn calculate_build_summarizes_and_computes_from_code() {
     let req = CalculateBuildRequest {
         code: DEADEYE_CODE.to_string(),

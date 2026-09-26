@@ -14,6 +14,8 @@ use super::{Actor, ActorBaseStats};
 
 #[derive(Debug, Clone)]
 pub struct Env {
+    /// Derived modifiers are appended during perform, so an environment is single-use.
+    pub(crate) performed: bool,
     pub player: Actor,
     pub enemy: Actor,
     pub cfg: CalcConfig,
@@ -93,6 +95,7 @@ pub struct Env {
 impl Env {
     pub fn new(player: Actor) -> Self {
         Self {
+            performed: false,
             player,
             enemy: Actor::new(1, ActorBaseStats::default()),
             cfg: CalcConfig::attack().with_damage_type(DamageType::Physical),

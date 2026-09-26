@@ -3,7 +3,7 @@
 use pobr_core::Modifier;
 
 use super::super::DataOrchestratorOptions;
-use super::super::calculate_with_context;
+use super::super::calculate_prepared_with_context;
 use super::super::context::CalculationContext;
 use crate::build::{Build, SocketGroup};
 use crate::build_data::{BuildData, ResolvedSkillLevel};
@@ -58,8 +58,8 @@ pub(crate) fn recognize_trigger_config(
 }
 
 /// The orchestrator's [`pobr_core::skill_env::TriggerSubCalc`] implementation: clones
-/// the build, points `main_socket_group`/`main_active_skill` at the source gem, and
-/// runs a one-level-deep `calculate_with_context` (trigger relations stripped inside
+/// the prepared build, points `main_socket_group`/`main_active_skill` at the source gem,
+/// and runs a one-level-deep calculation (trigger relations stripped inside
 /// via `context.trigger_source()`).
 struct OrchestratorSubCalc<'a> {
     context: &'a mut CalculationContext,
@@ -74,7 +74,15 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
         group_index: usize,
         gem_index: usize,
     ) -> Option<pobr_core::calc::TriggerSourceStats> {
-        let group = self.build.enabled_socket_groups().nth(group_index)?;
+        // The engine enumerates enabled groups; Build selection stores positions
+        // in the complete list, including disabled groups.
+        let (group_index, group) = self
+            .build
+            .socket_groups
+            .iter()
+            .enumerate()
+            .filter(|(_, group)| group.enabled)
+            .nth(group_index)?;
         let source_gem = group.gem_skills.get(gem_index)?;
         // The source gem's 1-based ordinal in the group's **non-support** sequence
         // (the selection key of pick_group_main_skill).
@@ -102,7 +110,8 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
             return Some(stats);
         }
         let mut child = self.context.trigger_source();
-        let result = calculate_with_context(&sub_build, self.data, self.options, &mut child);
+        let result =
+            calculate_prepared_with_context(&sub_build, self.data, self.options, &mut child);
         self.context.compare_records.extend(child.compare_records);
         let session = result.ok()?;
         let out = session.output();

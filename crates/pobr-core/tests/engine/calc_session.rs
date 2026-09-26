@@ -3,6 +3,70 @@ use pobr_core::calc::MinimalInput;
 use crate::support::session;
 
 #[test]
+fn per_attribute_modifiers_use_final_attributes_with_class_and_inc_more() {
+    use pobr_core::{CalcConfig, CharacterBase, Modifier};
+    use pobr_data::prelude::ModType;
+
+    let class = CharacterBase {
+        level: 1,
+        strength: 10.0,
+        dexterity: 10.0,
+        intelligence: 10.0,
+    };
+    let mut s = session(MinimalInput {
+        base_hit_min: 100.0,
+        base_hit_max: 100.0,
+        ..Default::default()
+    })
+    .with_config(CalcConfig::spell());
+    s.add_modifiers(class.modifiers(&Default::default()));
+    for attribute in ["Strength", "Dexterity", "Intelligence"] {
+        s.add_modifiers([
+            Modifier::number(attribute, ModType::Base, 10.0),
+            Modifier::number(attribute, ModType::Inc, 50.0),
+            Modifier::number(attribute, ModType::More, 20.0),
+        ]);
+    }
+    // Real passive/item wording: final attributes are (10 + 10) * 1.5 * 1.2 = 36.
+    s.add_modifier_texts([
+        "2% increased Spell Damage per 10 Strength",
+        "+1 Life per 4 Dexterity",
+        "+5 to maximum Mana per 10 Intelligence",
+    ])
+    .unwrap();
+    assert!(s.unsupported_modifier_texts().is_empty());
+    s.prepare_player_stats(1, Some(class));
+    assert_eq!(s.pool_total("MaximumLife"), 109.0); // 28 + 36 * 2 + floor(36 / 4)
+    assert_eq!(s.pool_total("MaximumMana"), 121.0); // 34 + 36 * 2 + floor(36 / 10) * 5
+    let out = s.perform_minimal().unwrap();
+    assert_eq!(out.life, 109.0);
+    assert_eq!(out.mana, 121.0);
+    assert!((out.total_hit_avg - 106.0).abs() < 1e-9);
+}
+
+#[test]
+fn completed_session_rejects_recalculation_without_mutating_derived_resources() {
+    use pobr_core::{Modifier, calc::CalcError};
+    use pobr_data::prelude::ModType;
+    let mut s = session(MinimalInput {
+        base_life: 100.0,
+        base_mana: 100.0,
+        ..Default::default()
+    });
+    s.add_modifiers([
+        Modifier::number("EnergyShield", ModType::Base, 200.0),
+        Modifier::number("EnergyShieldConvertToMana", ModType::Base, 100.0),
+    ]);
+    s.prepare_player_stats(1, None);
+    assert_eq!(s.perform_minimal().unwrap().mana, 300.0);
+    let output = s.output().clone();
+    let modifier_count = s.all_mods().len();
+    assert_eq!(s.perform_minimal(), Err(CalcError::AlreadyPerformed));
+    assert_eq!(s.output(), &output);
+    assert_eq!(s.all_mods().len(), modifier_count);
+}
+
+#[test]
 fn player_preparation_preserves_attribute_bonus_rules_and_sources() {
     use pobr_core::{CharacterBase, Modifier};
     use pobr_data::prelude::ModType;

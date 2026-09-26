@@ -1,7 +1,8 @@
 # PoE2 0.5.5 data update
 
-GGG's patch protocol returned `4.5.5.2` on 2026-09-11. This is the active
-data snapshot, advanced from `4.5.4.8`. Raw tables come from the GGG CDN;
+GGG's patch protocol returned `4.5.5.2` on 2026-09-11. That update advanced
+the data snapshot from `4.5.4.8`. For the subsequent active snapshot, see
+[the 0.5.5c update](adapting-to-0.5.5c.md). Raw tables come from the GGG CDN;
 the tree comes from GGG's skill-tree export, supplemented by the pinned
 PoB2 tree for coordinates, variants and anoint-only nodes.
 

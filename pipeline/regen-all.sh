@@ -1,28 +1,12 @@
 #!/usr/bin/env bash
-# 全量重生成 data/<patch>/——把 pipeline 输入（tables/ + tree/data.json）+ vendor Lua
-# 适配为完整的 PoBR 入库 JSON（base/ + i18n/ + overlay/ + generated/ + manifest.json）。
-#
-# 与 devs/scripts/regen-check.sh 的区别：regen-check 是“重生成到临时目录并 byte-diff 校验”
-# 的 CI 防线；本脚本是“真正产出/刷新 data/<patch>/”的生产编排。
-#
-# 前置：
-#   1) pipeline/config.json 的 "patch" 已指向目标版本；
-#   2) pipeline/tables/{English,Traditional Chinese}/*.json 已由 `npx pathofexile-dat` 产出；
-#   3) pipeline/tree/data.json 已下载（GGG poe2-skilltree-export）；
-#   4) vendor/PathOfBuilding-PoE2/ 已检出目标版本，vendor/.pob2-version.txt 已更新。
-#
-# 用法：
-#   pipeline/regen-all.sh                       # patch 读 config.json；手工域从同 patch 旧产物沿用
-#   OLD_PATCH=4.5.0.3.4 pipeline/regen-all.sh    # 手工域从指定旧版本沿用（跨版本升级）
-#
-# 手工策展 overlay（无 vendor/官方自动通道）全部已迁到版本无关的
-# data/overlay-common/（special_mods / buff_definitions / high_precision_mods /
-# local_mods / vendor_name_aliases）：新版本目录由 gamedata 加载期自动合并/兜底
-# 继承，无需逐版本沿用（P1-3）。真正版本特有的修正才放 data/<patch>/overlay/<域>.json
-# （加载期按 id 覆盖 common，或对单对象域整份覆盖）。
-
-# 韧性化：不用 -e 全局中止。前置步骤（adapter base/tree）失败仍立即退出（无 base
-# 数据则后续无意义）；overlay 单步失败只记录、续跑其余，末尾汇总。
+# Regenerate every game-data domain inside a candidate snapshot.
+# Public invocation delegates copying, dictionary generation, auditing, manifest
+# sealing, validation and publication to data_snapshot.py. No golden pins are blessed.
+# The internal invocation requires POBR_CANDIDATE=1 and an isolated POBR_DATA_ROOT.
+# Inputs: pipeline/config.json patch, matching exported tables/receipt, tree data,
+# and the explicitly pinned vendor. Curated common/version/user-patch layers survive.
+# Usage: bash pipeline/regen-all.sh; OLD_PATCH may select a carry-over source.
+# Individual generator failures are collected, but a failed candidate is never published.
 set -uo pipefail
 
 # sccache 本机偶发拒绝启动会连坐所有 cargo 步骤；进程内禁用 wrapper（同 bump-version.sh）。
@@ -30,6 +14,15 @@ export CARGO_BUILD_RUSTC_WRAPPER=""
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+
+# Public regeneration always owns an isolated candidate and validation transaction.
+if [[ "${POBR_CANDIDATE:-0}" != 1 ]]; then
+    exec python3 pipeline/data_snapshot.py regenerate
+fi
+DATA_ROOT="${POBR_DATA_ROOT:?candidate data root is required}"
+[[ "$DATA_ROOT" != "$ROOT/data" && "$DATA_ROOT" != data ]] || {
+    echo "regen-all: refusing in-place generation" >&2; exit 2;
+}
 
 # 关键前置步骤：失败即致命（用于 adapter base/tree）。
 die_on_fail() { "$@" || { echo "regen-all: 关键步骤失败，中止：$*" >&2; exit 1; }; }
@@ -43,13 +36,13 @@ soft_step() {
     fi
 }
 
-PATCH="$(sed -n 's/.*"patch"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' pipeline/config.json | head -1)"
+PATCH="${POBR_DATA_VERSION:?candidate data version is required}"
 [[ -n "$PATCH" ]] || { echo "regen-all: 无法从 config.json 读取 patch" >&2; exit 1; }
 OLD_PATCH="${OLD_PATCH:-$PATCH}"
 # 绝对路径：部分 extract runner 会 cd 到 vendor_root 并由它派生 LUA_PATH；relative
 # vendor_root 在 cd 后会让派生的 runtime/lua 路径双重嵌套（找不到 xml/dkjson 等）。
 VENDOR="$ROOT/vendor/PathOfBuilding-PoE2/src"
-OUT_DIR="data/$PATCH"
+OUT_DIR="$DATA_ROOT/$PATCH"
 OVL="$OUT_DIR/overlay"
 
 echo "regen-all: patch=$PATCH  old=$OLD_PATCH  vendor=$VENDOR"
@@ -61,26 +54,26 @@ SYNC=(cargo run --quiet -p sync-pob-catalog --)
 # A missing/stale receipt is fatal; never relabel an old vendor export as fresh data.
 echo "== gem quality: official tables and reviewed compatibility scope"
 die_on_fail "${ADAPTER[@]}" --gem-quality pipeline/tables/English \
-    --quality-source "pipeline/gem-quality/$PATCH.json" --out data --patch "$PATCH"
+    --quality-source "pipeline/gem-quality/$PATCH.json" --out "$DATA_ROOT" --patch "$PATCH"
 
 # ---- 1) base/ + i18n/（GGG .dat → 物品/词缀/Stat/技能）----
 echo "== [1/8] adapter --raw（base/ + i18n/）"
-die_on_fail "${ADAPTER[@]}" --raw pipeline/tables --out data --patch "$PATCH"
+die_on_fail "${ADAPTER[@]}" --raw pipeline/tables --out "$DATA_ROOT" --patch "$PATCH" --strict-columns
 
 # ---- 2) 被动天赋树（GGG 官方 data.json）----
 echo "== [2/8] adapter --tree"
-die_on_fail "${ADAPTER[@]}" --tree pipeline/tree/data.json --out data --patch "$PATCH"
+die_on_fail "${ADAPTER[@]}" --tree pipeline/tree/data.json --out "$DATA_ROOT" --patch "$PATCH"
 
 echo "== [3/8] adapter --tree-variants / --tree-coords / --tree-anoints（vendor tree.lua 回填）"
 VENDOR_TREE="$(luajit pipeline/vendor-tree.lua "$VENDOR")" || exit 1
-die_on_fail "${ADAPTER[@]}" --tree-variants "$VENDOR_TREE" --out data --patch "$PATCH"
+die_on_fail "${ADAPTER[@]}" --tree-variants "$VENDOR_TREE" --out "$DATA_ROOT" --patch "$PATCH"
 # 节点平面坐标（web 树渲染依赖 x/y；漏跑则前端树永远空白）。
-die_on_fail "${ADAPTER[@]}" --tree-coords "$VENDOR_TREE" --out data --patch "$PATCH"
+die_on_fail "${ADAPTER[@]}" --tree-coords "$VENDOR_TREE" --out "$DATA_ROOT" --patch "$PATCH"
 # tree-anoints 在“无缺失 notable 需回填”时硬报错退出（tree_anoints.rs:111）。新版 GGG
 # 树导出 data.json 已自带油涂专属 notable（如 Paragon），回填成 no-op 属正常——
 # 仅当报错信息是该 no-op 时告警放行；其他错误（真解析失败等）仍致命。
 anoint_log="$(mktemp)"
-if "${ADAPTER[@]}" --tree-anoints "$VENDOR_TREE" --out data --patch "$PATCH" >"$anoint_log" 2>&1; then
+if "${ADAPTER[@]}" --tree-anoints "$VENDOR_TREE" --out "$DATA_ROOT" --patch "$PATCH" >"$anoint_log" 2>&1; then
     cat "$anoint_log"
 elif grep -q "no missing notables were parsed" "$anoint_log"; then
     echo "   tree-anoints: 无缺失 notable 需回填（新树已自带油涂 notable）——跳过"
@@ -94,7 +87,7 @@ rm -f "$anoint_log"
 
 # ---- 4) keystone 派生 special 表（输入 = 刚产出的 passive_tree.json）----
 echo "== [4/8] adapter --emit-special-derived"
-die_on_fail "${ADAPTER[@]}" --emit-special-derived "$OUT_DIR/base/passive_tree.json" --out data --patch "$PATCH"
+die_on_fail "${ADAPTER[@]}" --emit-special-derived "$OUT_DIR/base/passive_tree.json" --out "$DATA_ROOT" --patch "$PATCH"
 
 # ---- 5) overlay（自动通道：sync-pob-catalog extract-lua / gen-* / extract-bases）----
 echo "== [5/8] overlay 自动重生成（对新 vendor）"
@@ -164,20 +157,6 @@ for f in base_player_mods character_constants enemy_presets game_constants \
     fi
 done
 
-# ---- 5b) 失败 overlay 回退：从 OLD_PATCH 沿用（降级而非缺失，使新数据目录完整）----
-# 韧性化核心：某 overlay 抽取失败时，不让它在新版缺席而拖垮加载/计算——若新版未
-# 产出且旧版有，则沿用旧版并标记（数据/代码隔离：坏的那一块用旧值兜底，其余照常）。
-if [[ ${#OVERLAY_FAILURES[@]} -gt 0 ]]; then
-    echo "== [5b] 失败 overlay 回退沿用 $OLD_PATCH"
-    for label in "${OVERLAY_FAILURES[@]}"; do
-        new="$OVL/$label.json"; old="data/$OLD_PATCH/overlay/$label.json"
-        if [[ ! -f "$new" && -f "$old" ]]; then
-            cp "$old" "$new"
-            echo "   fallback: $label.json ← ${OLD_PATCH}（抽取失败，沿用旧值待复核）"
-        fi
-    done
-fi
-
 # ---- 6c) vendor specialModList 批量抽取 (generated/special_vendor.json) ----
 # 必须在 special_derived (步骤 4) 之后：抽取器对 special_mods（overlay-common +
 # 版本 overlay 两层）/ special_derived 做 key 去重。注意去重读的是
@@ -203,28 +182,13 @@ fi
 echo "== [7/9] precompile-mods（generated/）"
 soft_step precompile_mods cargo run --quiet -p precompile-mods -- --data "$OUT_DIR" --report
 
-# ---- 8) manifest.json：以 OLD_PATCH 结构为模板，仅换版本号 ----
-echo "== [8/9] manifest.json"
-if [[ -f "data/$OLD_PATCH/manifest.json" ]]; then
-    sed "s/\"${OLD_PATCH}\"/\"${PATCH}\"/g" "data/${OLD_PATCH}/manifest.json" > "${OUT_DIR}/manifest.json"
-fi
-
-# ---- 9) test-pin 快照 bless（generated/test_pins.json，v0.0.3 P0-1）----
-# 数据内容计数钉（parser 规则段计数 / minion 系数等）不再手写在测试里，而是存
-# 每版本一份的 generated/test_pins.json；这里以 POBR_BLESS_PINS=1 重跑对应定向
-# 测试把实际值写回快照（与 regen 同一提交）。注意：
-#   - 快照落在各测试实际加载的版本目录；golden 测试继续钉定
-#     GOLDEN_PARITY_DATA_VERSION，升级活动数据不会改写黄金基准。
-#   - 必须用 cargo test（单进程多线程，写回有进程内锁），勿换 nextest
-#     （进程/测试并发写同一快照会互相覆盖）。
-echo "== [9/9] test-pin bless（generated/test_pins.json）"
-soft_step pin_parser_rules env POBR_BLESS_PINS=1 cargo test --quiet -p pobr-gamedata --lib parser_rules
-soft_step pin_minions env POBR_BLESS_PINS=1 cargo test --quiet -p pobr-build --test skills minions::build_data_minion_def
+# The transaction wrapper seals manifest v3 only after all generators and audits.
+# Do not bless golden test pins: these are independent read-only validation inputs.
 
 # ---- 汇总 ----
 echo "regen-all: 完成 → $OUT_DIR"
 if [[ ${#OVERLAY_FAILURES[@]} -gt 0 ]]; then
-    echo "regen-all: ⚠ ${#OVERLAY_FAILURES[@]} 个 overlay 抽取失败（已尽量回退沿用旧版）：${OVERLAY_FAILURES[*]}" >&2
-    echo "regen-all: 数据目录仍完整可用；请复核上述域是否需手工修复抽取通道。" >&2
+    echo "regen-all: ⚠ ${#OVERLAY_FAILURES[@]} 个 overlay 抽取失败（候选不会发布）：${OVERLAY_FAILURES[*]}" >&2
+    echo "regen-all: 生成失败，原有快照未修改；请修复上述抽取通道后重跑。" >&2
     exit 2
 fi

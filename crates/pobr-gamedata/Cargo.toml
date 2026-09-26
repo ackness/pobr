@@ -1,12 +1,13 @@
 [package]
 name = "pobr-gamedata"
-version.workspace = true
+version = "0.0.29"
 edition.workspace = true
 
 [dependencies]
 pobr-data.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2 = "0.10"
 
 [dev-dependencies]
 # 仅测试用：load_jewel_radii 逐值对照 pobr-tree 现有 Rust 准源常量（搬迁不变式）。

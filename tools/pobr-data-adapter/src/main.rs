@@ -32,12 +32,12 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use pobr_data::catalog::{
-    ArmourBaseStats, BaseItemDef, CATALOG_SCHEMA_VERSION, DataManifest, DomainSections,
-    WeaponBaseStats,
+    ArmourBaseStats, BaseItemDef, DataManifest, DomainSections, WeaponBaseStats,
 };
 use serde::Deserialize;
 
 mod mods;
+mod raw_source;
 mod required_columns;
 mod skills;
 
@@ -390,6 +390,7 @@ pub(crate) fn is_placeholder(name: &str) -> bool {
 }
 
 fn run(args: Args) -> Result<String, String> {
+    raw_source::verify(&args.raw, &args.patch)?;
     let en = args.raw.join("English");
     let tw = args.raw.join(ZH_TW);
 
@@ -550,12 +551,15 @@ fn run(args: Args) -> Result<String, String> {
         .ok()
         .and_then(|s| serde_json::from_str::<DataManifest>(&s).ok())
         .unwrap_or_else(|| DataManifest {
-            schema_version: CATALOG_SCHEMA_VERSION,
+            schema_version: 2,
             poe_version: args.patch.clone(),
             languages: Vec::new(),
             domains: DomainSections::default(),
+            files: Default::default(),
         });
-    manifest.schema_version = CATALOG_SCHEMA_VERSION;
+    // Only the final snapshot packager can seal all domains as schema v3.
+    manifest.schema_version = 2;
+    manifest.files.clear();
     manifest.poe_version = args.patch.clone();
     if !manifest.languages.iter().any(|l| l == "zh-TW") {
         manifest.languages.push("zh-TW".into());

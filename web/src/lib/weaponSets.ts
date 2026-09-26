@@ -43,6 +43,6 @@ export function validWeaponSwap(value: unknown): WeaponSwap | undefined {
   if (![1, 2].includes(swap.active) || !Array.isArray(swap.alternate_items) ||
       swap.alternate_items.some(item => !item || !isWeapon(item) || typeof item.text !== 'string') ||
       !Array.isArray(swap.exclusive_nodes) || swap.exclusive_nodes.length !== 2 ||
-      swap.exclusive_nodes.some(nodes => !Array.isArray(nodes) || nodes.some(node => !Number.isInteger(node)))) return undefined;
+      swap.exclusive_nodes.some(nodes => !Array.isArray(nodes) || nodes.some(node => !Number.isInteger(node) || node < 0 || node > 0xffffffff))) return undefined;
   return swap;
 }

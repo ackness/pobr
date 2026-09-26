@@ -11,7 +11,8 @@ use serde::{Deserialize, Serialize};
 ///
 /// v2: manifest's `domains` changed from a flat array to the three-section
 /// [`DomainSections`].
-pub const CATALOG_SCHEMA_VERSION: u32 = 2;
+/// v3: required immutable runtime file inventory with SHA-256 digests.
+pub const CATALOG_SCHEMA_VERSION: u32 = 3;
 
 /// The data-pack envelope: describes which domains and languages are
 /// stored for a given PoE2 version.
@@ -26,6 +27,11 @@ pub struct DataManifest {
     /// The data-domain filenames that have been generated (without
     /// extension), split by the three directory layers.
     pub domains: DomainSections,
+    /// Required unpatched snapshot files and their SHA-256 digests (schema 3).
+    /// Legacy schemas omit this inventory. Shared overlays and user patches
+    /// remain separate layers and are not hashed as snapshot contents.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub files: std::collections::BTreeMap<String, String>,
 }
 
 /// Manifest v2's three-section domains (corresponds to
@@ -149,7 +155,8 @@ mod tests {
     fn serializes_v2_shape_roundtrip() {
         let manifest = DataManifest {
             schema_version: CATALOG_SCHEMA_VERSION,
-            poe_version: crate::DATA_VERSION.into(),
+            poe_version: "test-version".into(),
+            files: Default::default(),
             languages: vec!["zh-TW".into()],
             domains: DomainSections {
                 base: vec!["base_items".into()],

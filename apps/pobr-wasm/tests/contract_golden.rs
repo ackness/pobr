@@ -13,8 +13,8 @@ use serde_json::Value;
 /// with defaults can be added without changing the existing version.
 #[test]
 fn schema_version_pinned() {
-    // v5: the frontend requires the shared support-group judgement entry point.
-    assert_eq!(pobr_wasm::SCHEMA_VERSION, 5);
+    // v7: selected custom modifier groups survive decode/edit/export.
+    assert_eq!(pobr_wasm::SCHEMA_VERSION, 7);
 }
 
 /// A real demo build (shared with ninja_parity).
@@ -62,6 +62,7 @@ fn decode_build_json_shape() {
             "socket_groups",
             "main_socket_group",
             "config_inputs",
+            "custom_modifier_blocks",
             "notes",
             "loadouts",
             "active_loadout",
@@ -1343,10 +1344,10 @@ fn memory_backend_matches_dir_backend() {
         }
     };
     for version in [
-        pobr_data::GOLDEN_PARITY_DATA_VERSION,
-        pobr_data::DATA_VERSION,
+        pobr_data::GOLDEN_PARITY_DATA_VERSION.to_string(),
+        pobr_gamedata::data_version(),
     ] {
-        let root = repo_data_root().join(version);
+        let root = repo_data_root().join(&version);
         let nodes: Vec<pobr_data::catalog::PassiveNodeDef> = serde_json::from_str(
             &std::fs::read_to_string(root.join("base/passive_tree.json")).unwrap(),
         )
@@ -1805,6 +1806,209 @@ fn exporting_imported_build_writes_global_edits_and_clears_removed_values() {
 }
 
 #[test]
+fn exported_config_restores_custom_modifiers_and_enemy_tier() {
+    ensure_data();
+    let calculate = |request: &Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap()
+    };
+    let stat = |response: &Value, id: &str| -> f64 {
+        response["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["id"] == id)
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+
+    let warrior = serde_json::json!({
+        "character": { "class_name": "Warrior", "level": 80 },
+        "extra_modifiers": ["+100 to maximum Life"],
+    });
+    let warrior_before = calculate(&warrior);
+    let warrior_code = pobr_wasm::encode_build_json(&warrior.to_string()).unwrap();
+    let warrior_xml = pobr_build::decode_pob_code(&warrior_code).unwrap();
+    assert!(warrior_xml.contains("<CustomModifierBlock"));
+    let warrior_decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&warrior_code).unwrap()).unwrap();
+    assert_eq!(
+        warrior_decoded["config_inputs"]["customMods"],
+        "+100 to maximum Life"
+    );
+    let warrior_after = calculate(&serde_json::json!({"pob_code": warrior_code}));
+    assert_eq!(stat(&warrior_before, "Life"), stat(&warrior_after, "Life"));
+
+    let mut combined_mods = warrior.clone();
+    combined_mods["config_inputs"] = serde_json::json!({ "customMods": "+50 to maximum Life" });
+    combined_mods["extra_modifiers"] = serde_json::json!(["+50 to maximum Life"]);
+    let combined_before = calculate(&combined_mods);
+    let combined_code = pobr_wasm::encode_build_json(&combined_mods.to_string()).unwrap();
+    let combined_decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&combined_code).unwrap()).unwrap();
+    assert_eq!(
+        combined_decoded["config_inputs"]["customMods"],
+        "+50 to maximum Life\n+50 to maximum Life"
+    );
+    assert_eq!(
+        stat(&combined_before, "Life"),
+        stat(
+            &calculate(&serde_json::json!({"pob_code": combined_code})),
+            "Life"
+        )
+    );
+
+    let sorceress = serde_json::json!({
+        "character": { "class_name": "Sorceress", "level": 80 },
+        "socket_groups": [{ "gems": [{ "skill_id": "SparkPlayer", "level": 20 }] }],
+        "enemy_tier": "none",
+    });
+    let sorceress_before = calculate(&sorceress);
+    let sorceress_code = pobr_wasm::encode_build_json(&sorceress.to_string()).unwrap();
+    let sorceress_decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&sorceress_code).unwrap()).unwrap();
+    assert_eq!(sorceress_decoded["config_inputs"]["enemyIsBoss"], "None");
+    let sorceress_after = calculate(&serde_json::json!({"pob_code": sorceress_code}));
+    assert_eq!(
+        sorceress_before["main_skill"]["combined_dps"],
+        sorceress_after["main_skill"]["combined_dps"]
+    );
+
+    let mut conflicting_tiers = sorceress;
+    conflicting_tiers["config_inputs"] = serde_json::json!({ "enemyIsBoss": "Boss" });
+    let conflict_before = calculate(&conflicting_tiers);
+    let conflict_code = pobr_wasm::encode_build_json(&conflicting_tiers.to_string()).unwrap();
+    let conflict_decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&conflict_code).unwrap()).unwrap();
+    assert_eq!(conflict_decoded["config_inputs"]["enemyIsBoss"], "Boss");
+    assert_eq!(
+        conflict_before["main_skill"]["combined_dps"],
+        calculate(&serde_json::json!({"pob_code": conflict_code}))["main_skill"]["combined_dps"]
+    );
+}
+
+#[test]
+fn custom_modifier_blocks_roundtrip_and_calculate_once() {
+    ensure_data();
+    let xml = r#"<PathOfBuilding2>
+      <Build level="80" className="Warrior"/>
+      <Config activeConfigSet="2">
+        <ConfigSet id="1" title="Inactive"><CustomModifierBlock title="Keep" enabled="true">+900 to maximum Life</CustomModifierBlock></ConfigSet>
+        <ConfigSet id="2" title="Current">
+          <Input name="customMods" string="+700 to maximum Life"/>
+          <CustomModifierBlock title="Life &amp; &quot;Spirit&quot;" enabled="true"><![CDATA[+100 to maximum Life]]></CustomModifierBlock>
+          <CustomModifierBlock title="Same again" enabled="true">+100 to maximum Life</CustomModifierBlock>
+          <CustomModifierBlock title="Saved" enabled="false">+500 to maximum Life&#10;A &amp; B</CustomModifierBlock>
+          <CustomModifierBlock title="Empty" enabled="false"/>
+        </ConfigSet>
+      </Config>
+    </PathOfBuilding2>"#;
+    let code = pobr_build::encode_pob_code(xml).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    let expected = serde_json::json!([
+      { "title": "Life & \"Spirit\"", "enabled": true, "text": "+100 to maximum Life" },
+      { "title": "Same again", "enabled": true, "text": "+100 to maximum Life" },
+      { "title": "Saved", "enabled": false, "text": "+500 to maximum Life\nA & B" },
+      { "title": "Empty", "enabled": false, "text": "" }
+    ]);
+    assert_eq!(decoded["custom_modifier_blocks"], expected);
+    assert_eq!(
+        decoded["config_inputs"]["customMods"],
+        "+100 to maximum Life\n+100 to maximum Life"
+    );
+
+    let life = |request: Value| -> f64 {
+        let result: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+                .unwrap();
+        result["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["id"] == "Life")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    let baseline =
+        life(serde_json::json!({ "character": { "class_name": "Warrior", "level": 80 } }));
+    let from_code = life(serde_json::json!({ "pob_code": code }));
+    let direct = serde_json::json!({
+      "character": { "class_name": "Warrior", "level": 80 },
+      "config_inputs": { "customMods": "+700 to maximum Life" },
+      "custom_modifier_blocks": expected
+    });
+    let from_direct = life(direct.clone());
+    assert_eq!(from_code, from_direct);
+    let expected_life = life(serde_json::json!({
+        "character": { "class_name": "Warrior", "level": 80 },
+        "extra_modifiers": ["+200 to maximum Life"]
+    }));
+    assert!(from_code > baseline);
+    assert_eq!(
+        from_code, expected_life,
+        "two identical active groups must stack once each"
+    );
+
+    let chinese_blocks = serde_json::json!([
+        { "title": "中文词缀", "enabled": true, "text": "+200 生命上限" }
+    ]);
+    let chinese_request = serde_json::json!({
+        "character": { "class_name": "Warrior", "level": 80 },
+        "custom_modifier_blocks": chinese_blocks
+    });
+    assert_eq!(life(chinese_request.clone()), expected_life);
+    let chinese_code = pobr_wasm::encode_build_json(&chinese_request.to_string()).unwrap();
+    let chinese_decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&chinese_code).unwrap()).unwrap();
+    assert_eq!(chinese_decoded["custom_modifier_blocks"], chinese_blocks);
+    assert_eq!(
+        life(serde_json::json!({ "pob_code": chinese_code })),
+        expected_life
+    );
+
+    let materialized = serde_json::json!({
+      "character": decoded["character"],
+      "config_inputs": decoded["config_inputs"],
+      "custom_modifier_blocks": decoded["custom_modifier_blocks"]
+    });
+    assert_eq!(life(materialized.clone()), from_code);
+
+    let mut export = materialized;
+    export["base_code"] = serde_json::json!(pobr_build::encode_pob_code(xml).unwrap());
+    let exported = pobr_wasm::encode_build_json(&export.to_string()).unwrap();
+    let exported_xml = pobr_build::decode_pob_code(&exported).unwrap();
+    assert!(
+        exported_xml
+            .contains("<ConfigSet id=\"1\" title=\"Inactive\"><CustomModifierBlock title=\"Keep\"")
+    );
+    let roundtrip: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&exported).unwrap()).unwrap();
+    assert_eq!(roundtrip["custom_modifier_blocks"], expected);
+    assert_eq!(life(serde_json::json!({ "pob_code": exported })), from_code);
+
+    let clear = serde_json::json!({
+      "pob_code": pobr_build::encode_pob_code(xml).unwrap(),
+      "base_code": pobr_build::encode_pob_code(xml).unwrap(),
+      "character": { "class_name": "Warrior", "level": 80 },
+      "config_inputs": { "customMods": "+700 to maximum Life" },
+      "custom_modifier_blocks": []
+    });
+    assert_eq!(life(clear.clone()), baseline);
+    let cleared_code = pobr_wasm::encode_build_json(&clear.to_string()).unwrap();
+    let cleared: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&cleared_code).unwrap()).unwrap();
+    assert_eq!(cleared["custom_modifier_blocks"], serde_json::json!([]));
+    assert!(cleared["config_inputs"].get("customMods").is_none());
+    assert_eq!(
+        life(serde_json::json!({ "pob_code": cleared_code })),
+        baseline
+    );
+}
+
+#[test]
 fn exporting_second_loadout_preserves_set_identity_and_item_references() {
     ensure_data();
     let ring = "Rarity: RARE\nNew Ring\nSapphire Ring\n+50 to maximum Life";
@@ -2036,4 +2240,68 @@ fn support_group_batch_preserves_order_and_rejects_unknown_skills() {
     )
     .unwrap();
     assert_eq!(error["code"], "bad_request");
+}
+
+#[test]
+fn materialized_skill_form_and_historical_tree_match_import_and_export() {
+    let dir = repo_data_root().join(pobr_gamedata::data_version());
+    pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).unwrap();
+    let original = serde_json::json!({
+        "character": { "class_name": "Witch", "level": 80 },
+        "tree_version": "0_1",
+        "allocated_nodes": [770],
+        "socket_groups": [{ "gems": [{ "skill_id": "IceNovaPlayer", "level": 20, "quality": 0, "stat_set_index": 2 }] }],
+    });
+    let code = pobr_wasm::encode_build_json(&original.to_string()).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    assert_eq!(decoded["tree"]["tree_version"], "0_1");
+    assert_eq!(decoded["socket_groups"][0]["gems"][0]["stat_set_index"], 2);
+    let mut groups = decoded["socket_groups"].clone();
+    for group in groups.as_array_mut().unwrap() {
+        group.as_object_mut().unwrap().remove("active_skill_id");
+    }
+    let request = serde_json::json!({
+        "character": decoded["character"],
+        "tree_version": decoded["tree"]["tree_version"],
+        "allocated_nodes": decoded["tree"]["allocated_nodes"],
+        "attribute_choices": decoded["tree"]["attribute_choices"],
+        "socket_groups": groups,
+        "main_socket_group": decoded["main_socket_group"],
+        "config_inputs": decoded["config_inputs"],
+    });
+    let calc = |request: &Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap()
+    };
+    let expected = calc(&serde_json::json!({"pob_code": code}));
+    let actual = calc(&request);
+    assert_eq!(actual["stats"], expected["stats"]);
+    assert_eq!(actual["main_skill"], expected["main_skill"]);
+
+    let stat = |response: &Value, id: &str| {
+        response["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|stat| stat["id"] == id)
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    let mut primary = request.clone();
+    primary["socket_groups"][0]["gems"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("stat_set_index");
+    assert_ne!(stat(&calc(&primary), "TotalDPS"), stat(&actual, "TotalDPS"));
+    let mut current_tree = request.clone();
+    current_tree.as_object_mut().unwrap().remove("tree_version");
+    assert_ne!(stat(&calc(&current_tree), "Mana"), stat(&actual, "Mana"));
+
+    let exported = pobr_wasm::encode_build_json(&request.to_string()).unwrap();
+    assert_eq!(
+        calc(&serde_json::json!({"pob_code": exported}))["stats"],
+        actual["stats"]
+    );
 }

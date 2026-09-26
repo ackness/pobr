@@ -1,31 +1,10 @@
 #!/usr/bin/env bash
-# bump-version.sh —— 游戏数据版本升级一条命令编排（v0.0.3 P1-4，docs/version-bump-architecture.md）。
-#
-# 把此前散在 memory/README 里的升级 drill 串成单入口：
-#   [1] 查询最新补丁号（query-patch-version.mjs），改 pipeline/config.json "patch"
-#   [2] 下载 .dat 表（download-index.mjs 预热索引 + npx pathofexile-dat）
-#   [3] 刷新被动树导出（GGG poe2-skilltree-export；官方停更时沿用现有，软失败）
-#   [4] vendor 对齐（--vendor-sha 时 fetch-by-sha 换检出 + 更新 .pob2-version.txt）
-#   [5] OLD_PATCH=<旧> regen-all.sh（含末步 test-pin bless）
-#   [6] Generate the pinned CN dictionary and audit all modifier sources
-#   [7] Validate the candidate snapshot before promotion
-#   [8] Advance data/CURRENT, then sync Web data
-#   [9] 摘要 + 剩余人工决策清单
-#
-# 刻意保留为人工决策（不自动化）：
-#   - golden 翻转（GOLDEN_PARITY_DATA_VERSION + recapture_golden.py）——是否把
-#     parity 基准挪到新版本取决于引擎适配进度，见 docs/adapting-to-0.5.4b.md 的教训；
-#   - vendor 新 pin 的选取（PoB2 社区哪个 commit 对应新补丁）；
-#   - 引擎公式适配本身（先跑 pipeline/diff-vendor-calcs.sh 拿 delta 清单）。
-#
-# 用法：
-#   pipeline/bump-version.sh                          # 补丁号自动查询，vendor 不动
-#   pipeline/bump-version.sh --patch 4.5.5.1          # 显式补丁号
-#   pipeline/bump-version.sh --vendor-sha <全长sha>   # 同时换 vendor 检出
-#   pipeline/bump-version.sh --skip-download          # 表已下好，从 regen 开始
-#
-# 各步幂等（下载有缓存、regen 整目录覆写），失败后修好直接重跑即可。
-
+# Download a selected patch, prepare its reviewed quality receipt, then generate,
+# audit and validate an isolated complete snapshot before publication and CURRENT.
+# Explicit vendor pin selection and numerical golden updates remain separate decisions.
+# Usage: pipeline/bump-version.sh [--patch <version>] [--vendor-sha <full-sha>]
+#                               [--skip-download]
+# Same-version refreshes use the same candidate/rollback boundary as upgrades.
 set -uo pipefail
 
 # sccache 本机偶发拒绝启动会连坐所有 cargo 步骤（2026-08-01 两次中断实录）；
@@ -96,10 +75,7 @@ if [[ "${SKIP_DOWNLOAD}" -eq 1 ]]; then
 else
     # CDN 只保留当前补丁（pipeline/README.md）——下载失败通常意味着补丁号过期，重查步骤 1。
     die_on_fail bash -c "cd pipeline && node download-index.mjs"
-    die_on_fail bash -c "cd pipeline && npx -y pathofexile-dat@15"
-    die_on_fail python3 pipeline/gem-quality/advance-receipt.py record-export \
-        --config pipeline/config.json --raw pipeline/tables/English \
-        --out pipeline/tables/quality-export-source.json
+    die_on_fail bash pipeline/export-tables.sh
 fi
 
 # ---- [3] 被动树导出 ----
@@ -129,12 +105,26 @@ OLD_VENDOR_SHA="$(cat vendor/.pob2-version.txt 2>/dev/null || echo '')"
 if [[ -n "${VENDOR_SHA}" ]]; then
     [[ "${#VENDOR_SHA}" -eq 40 ]] || { echo "bump-version: --vendor-sha 需全长 40 位（gh api 查，别猜短 sha）" >&2; exit 1; }
     swap_vendor() {
-        mkdir -p "${VENDOR_DIR}"
-        git -C "${VENDOR_DIR}" rev-parse --git-dir >/dev/null 2>&1 || git -C "${VENDOR_DIR}" init -q
+        mkdir -p "${VENDOR_DIR}" || return 1
+        local vendor_root
+        vendor_root="$(git -C "${VENDOR_DIR}" rev-parse --show-toplevel 2>/dev/null)" || vendor_root=""
+        if [[ -n "$vendor_root" && "$(cd "$vendor_root" && pwd -P)" != "$(cd "$VENDOR_DIR" && pwd -P)" ]]; then
+            vendor_root=""
+        fi
+        if [[ -z "$vendor_root" ]]; then
+            [[ -z "$(ls -A "$VENDOR_DIR")" ]] || { echo "bump-version: vendor 目录非空且不是独立 Git 仓库" >&2; return 1; }
+            git -C "${VENDOR_DIR}" init -q || return 1
+        fi
+        local vendor_changes
+        vendor_changes="$(git -C "${VENDOR_DIR}" status --porcelain --untracked-files=no)" || return 1
+        [[ -z "$vendor_changes" ]] \
+            || { echo "bump-version: vendor 有未提交修改，拒绝切换 commit" >&2; return 1; }
         git -C "${VENDOR_DIR}" remote get-url origin >/dev/null 2>&1 \
-            || git -C "${VENDOR_DIR}" remote add origin https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2
+            || git -C "${VENDOR_DIR}" remote add origin https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2 \
+            || return 1
         git -C "${VENDOR_DIR}" fetch -q --depth 1 origin "${VENDOR_SHA}" \
             && git -C "${VENDOR_DIR}" checkout -q FETCH_HEAD \
+            && [[ "$(git -C "${VENDOR_DIR}" rev-parse HEAD)" == "${VENDOR_SHA}" ]] \
             && printf '%s\n' "${VENDOR_SHA}" > vendor/.pob2-version.txt
     }
     die_on_fail swap_vendor
@@ -143,8 +133,8 @@ else
     echo "   未指定 --vendor-sha：vendor 保持 ${OLD_VENDOR_SHA:-<未检出>}（overlay 抽取将基于旧 vendor）"
 fi
 
-# ---- [5] 全量重生成（含 test-pin bless 末步）----
-echo "== [5/9] regen-all（OLD_PATCH=${OLD_PATCH}）"
+# ---- [5] Generate and validate the candidate snapshot ----
+echo "== [5/9] candidate snapshot (OLD_PATCH=${OLD_PATCH})"
 # Compatible value-only quality updates inherit reviewed semantic scope. New
 # stats/effects/scopes remain explicit diagnostics rather than silently enabled.
 if [[ ! -f "pipeline/gem-quality/$NEW_PATCH.json" ]]; then
@@ -154,31 +144,11 @@ if [[ ! -f "pipeline/gem-quality/$NEW_PATCH.json" ]]; then
         --previous-quality "data/$OLD_PATCH/overlay/gem_quality_stats.json" \
         --patch "$NEW_PATCH" --out "pipeline/gem-quality/$NEW_PATCH.json"
 fi
-die_on_fail env OLD_PATCH="${OLD_PATCH}" POBR_DEFER_MODIFIER_AUDIT=1 pipeline/regen-all.sh
+# Generate, audit, seal and validate an isolated candidate before publishing it.
+transaction_args=(regenerate --activate)
+if [[ "$SKIP_DOWNLOAD" -eq 0 ]]; then transaction_args+=(--refresh-dictionary); fi
+die_on_fail env OLD_PATCH="$OLD_PATCH" POBR_EXPECTED_PATCH="$NEW_PATCH" python3 pipeline/data_snapshot.py "${transaction_args[@]}"
 
-# ---- [6] Generate and audit before advancing the active version ----
-echo "== [6/9] 简中语言包 + 完整词条审计"
-dict_args=(--version "$NEW_PATCH")
-if [[ "$SKIP_DOWNLOAD" -eq 0 ]]; then dict_args+=(--refresh); fi
-die_on_fail node pipeline/gen-zh-cn.mjs "${dict_args[@]}"
-# Include the refreshed import dictionary in the final parser audit.
-audit_args=(--data "data/$NEW_PATCH" --audit-only)
-if [[ -f "data/$OLD_PATCH/generated/modifier-audit.json" ]]; then
-    audit_args+=(--baseline "data/$OLD_PATCH/generated/modifier-audit.json")
-fi
-die_on_fail bash pipeline/refresh-modifiers.sh "${audit_args[@]}"
-
-# ---- [7] Validate before changing the active snapshot ----
-echo "== [7/9] candidate validation"
-die_on_fail env POBR_DATA_VERSION="$NEW_PATCH" bash .claude/skills/run-pobr/driver.sh versions
-die_on_fail env POBR_DATA_VERSION="$NEW_PATCH" cargo test --quiet -p pobr-gamedata
-die_on_fail cargo test --quiet -p pobr-build --test parity parity_no_regression
-
-# ---- [8] Promote data only; golden remains a separate recorded reference ----
-echo "== [8/9] data/CURRENT"
-CURRENT_TMP="$(mktemp data/.CURRENT.XXXXXX)"
-printf '%s\n' "$NEW_PATCH" > "$CURRENT_TMP"
-die_on_fail mv "$CURRENT_TMP" data/CURRENT
 if [[ -d web/node_modules ]]; then
     soft_step web_sync_data bash -c "cd web && pnpm run sync-data"
 else

@@ -356,12 +356,12 @@ mod tests {
     #[test]
     fn body_armour_crit_rule_has_effective_common_provenance() {
         for version in [
-            pobr_data::DATA_VERSION,
-            pobr_data::GOLDEN_PARITY_DATA_VERSION,
+            pobr_gamedata::data_version(),
+            pobr_data::GOLDEN_PARITY_DATA_VERSION.to_string(),
         ] {
             let data = Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../data")
-                .join(version);
+                .join(&version);
             let report = inspect(&data).unwrap();
             let rules = crate::parsed::compile_parser_rules(&data).unwrap();
             let parsed = pobr_core::mod_parser::parse_mod_engine(
@@ -385,14 +385,14 @@ mod tests {
     #[test]
     fn repo_overlay_passes_check() {
         let mut versions = vec![
-            pobr_data::DATA_VERSION,
-            pobr_data::GOLDEN_PARITY_DATA_VERSION,
+            pobr_gamedata::data_version(),
+            pobr_data::GOLDEN_PARITY_DATA_VERSION.to_string(),
         ];
         versions.dedup();
         for version in versions {
             let data_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../data")
-                .join(version);
+                .join(&version);
             if !data_dir.join("overlay/mod_parser_rules.json").is_file() {
                 eprintln!("SKIP: repo data dir {version} not present");
                 continue;

@@ -8,7 +8,7 @@
 //! consume as needed.
 //!
 //! Module breakdown:
-//! - [`manifest`]: manifest v1/v2 loading;
+//! - [`manifest`]: manifest loading and sealed snapshot validation;
 //! - [`paths`]: locates a domain's file across the three directory layers
 //!   (`base/` first, falling back to the version root for compatibility
 //!   with the old layout);
@@ -51,6 +51,8 @@ pub enum LoadError {
     /// An overlay merge failed (e.g. `skill_overrides.json` names a stat
     /// the consumer hasn't wired up).
     Overlay { path: PathBuf, message: String },
+    /// A snapshot contradicts its declared schema, inventory or file digests.
+    Integrity { path: PathBuf, message: String },
 }
 
 impl fmt::Display for LoadError {
@@ -62,6 +64,9 @@ impl fmt::Display for LoadError {
             }
             Self::Overlay { path, message } => {
                 write!(f, "failed to apply overlay {}: {message}", path.display())
+            }
+            Self::Integrity { path, message } => {
+                write!(f, "invalid data snapshot {}: {message}", path.display())
             }
         }
     }
@@ -79,6 +84,12 @@ impl std::error::Error for LoadError {}
 ///   front by the caller as `relative path -> bytes`, with zero file I/O
 ///   after that — for filesystem-less environments like wasm (the JS side
 ///   fetches the data files and passes them in).
+///
+/// The backing snapshot must remain unchanged for the loader's lifetime.
+/// Manifest validation (including absence or failure) is cached on first
+/// domain access and shared by clones. After replacing or repairing files,
+/// construct a new loader. Schema 3 exposes only inventoried snapshot files;
+/// user patches and shared `overlay-common` files remain separate layers.
 #[derive(Debug, Clone)]
 pub struct GameData {
     root: PathBuf,
@@ -86,6 +97,11 @@ pub struct GameData {
     /// paths relative to the version directory, always using forward
     /// slashes (e.g. `base/stats.json`, `overlay/uniques.json`).
     files: Option<std::sync::Arc<std::collections::BTreeMap<String, Vec<u8>>>>,
+    /// Validation and inventory are fixed on first access, shared by clones.
+    /// Create a new loader after replacing a snapshot on disk.
+    snapshot: std::sync::Arc<
+        std::sync::OnceLock<Result<Option<pobr_data::catalog::DataManifest>, String>>,
+    >,
 }
 
 impl GameData {
@@ -94,6 +110,7 @@ impl GameData {
         Self {
             root: version_dir.into(),
             files: None,
+            snapshot: Default::default(),
         }
     }
 
@@ -108,6 +125,7 @@ impl GameData {
         Self {
             root: PathBuf::from("<memory>"),
             files: Some(std::sync::Arc::new(files)),
+            snapshot: Default::default(),
         }
     }
 
@@ -131,6 +149,13 @@ impl GameData {
     /// Checks whether a data file exists (dispatched by backend; used by
     /// `domain_path` / the patch layer's probing).
     pub(crate) fn file_exists(&self, path: &Path) -> bool {
+        match self.snapshot_allows(path) {
+            Ok(false) => return false,
+            // Let the following load report an invalid snapshot instead of
+            // silently taking an optional-domain fallback.
+            Err(_) => return true,
+            Ok(true) => {}
+        }
         match &self.files {
             Some(map) => map.contains_key(&self.memory_key(path)),
             None => path.is_file(),
@@ -158,6 +183,15 @@ impl GameData {
         &self,
         path: PathBuf,
     ) -> Result<T, LoadError> {
+        if !self.snapshot_allows(&path)? {
+            return Err(LoadError::Io {
+                path,
+                source: std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "file not in snapshot inventory",
+                ),
+            });
+        }
         let bytes = self.read_bytes(&path).map_err(|source| LoadError::Io {
             path: path.clone(),
             source,
@@ -405,12 +439,15 @@ impl GameData {
     /// - `skill_overrides.json`'s dotIs* booleans (merged after labels,
     ///   since locating the set depends on the vendor index).
     pub fn skill_stat_sets(&self) -> Result<Vec<SkillStatSetDef>, LoadError> {
-        let mut sets =
-            match self.load_domain::<Vec<SkillStatSetDef>>("granted_effect_stat_sets.json") {
-                Ok(v) => v,
-                Err(LoadError::Io { .. }) => Vec::new(),
-                Err(e) => return Err(e),
-            };
+        let mut sets = match self
+            .load_domain::<Vec<SkillStatSetDef>>("granted_effect_stat_sets.json")
+        {
+            Ok(v) => v,
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                Vec::new()
+            }
+            Err(e) => return Err(e),
+        };
         let overrides = self.skill_overrides()?;
         if let Some(overrides) = &overrides {
             domains::skill_overrides::apply_stat_set_overrides(&mut sets, overrides).map_err(
@@ -474,7 +511,9 @@ impl GameData {
     pub fn cost_types(&self) -> Result<Vec<CostTypeDef>, LoadError> {
         match self.load_domain::<Vec<CostTypeDef>>("cost_types.json") {
             Ok(v) => Ok(v),
-            Err(LoadError::Io { .. }) => Ok(Vec::new()),
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                Ok(Vec::new())
+            }
             Err(e) => Err(e),
         }
     }
@@ -576,6 +615,19 @@ impl GameData {
     /// (`base/passive_trees/*.json` filenames). A missing directory means
     /// an empty list.
     pub fn available_tree_versions(&self) -> Vec<String> {
+        match self.snapshot_manifest() {
+            Ok(Some(manifest)) if manifest.schema_version >= 3 => {
+                return manifest
+                    .files
+                    .keys()
+                    .filter_map(|key| key.strip_prefix("base/passive_trees/"))
+                    .filter(|name| !name.contains('/'))
+                    .filter_map(|name| name.strip_suffix(".json").map(str::to_string))
+                    .collect();
+            }
+            Err(_) => return Vec::new(),
+            _ => {}
+        }
         if let Some(map) = &self.files {
             // In-memory backend: enumerate `base/passive_trees/*.json` keys
             // (a BTreeMap is already ordered).
@@ -605,6 +657,9 @@ impl GameData {
 /// The root of the repo's built-in data directory (`<workspace>/data`).
 /// Used for tests and the default load path.
 pub fn repo_data_root() -> PathBuf {
+    if let Some(root) = std::env::var_os("POBR_DATA_ROOT").filter(|v| !v.is_empty()) {
+        return PathBuf::from(root);
+    }
     // crates/pobr-gamedata/ → two levels up is the workspace root.
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../data")
@@ -612,15 +667,15 @@ pub fn repo_data_root() -> PathBuf {
         .unwrap_or_else(|_| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data"))
 }
 
-/// Re-export of the compile-time default data version
-/// ([`pobr_data::DATA_VERSION`]).
-pub use pobr_data::DATA_VERSION;
+/// Stable fallback for legacy standalone callers without a CURRENT marker.
+/// Active snapshots are discovered at runtime, never embedded in domain crates.
+pub const DATA_VERSION: &str = pobr_data::GOLDEN_PARITY_DATA_VERSION;
 
 /// Runtime data version (fully discovered at the I/O layer):
 /// 1. the `POBR_DATA_VERSION` environment variable;
 /// 2. the `data/CURRENT` marker file (first line, trimmed, written by the
 ///    update script);
-/// 3. falls back to the [`pobr_data::DATA_VERSION`] compile-time constant.
+/// 3. falls back to the [`DATA_VERSION`] compile-time constant.
 ///
 /// This is what makes "switch versions after updating data with zero code
 /// changes" work: the update script just writes `data/CURRENT`, and every

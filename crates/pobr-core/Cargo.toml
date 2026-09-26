@@ -1,6 +1,6 @@
 [package]
 name = "pobr-core"
-version.workspace = true
+version = "0.0.29"
 edition.workspace = true
 
 [features]

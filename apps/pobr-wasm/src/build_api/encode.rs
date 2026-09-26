@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 
 use pobr_build::{decode_pob_code, encode_pob_code, merge_active_sets};
+use pobr_data::build_config::CustomModifierBlock;
 use pobr_data::item::EquipmentSlot;
 
 use super::request::CalculateBuildRequest;
@@ -26,17 +27,18 @@ fn pob_slot_name(slot: EquipmentSlot) -> &'static str {
     }
 }
 
-/// The PoB2 tree version tag matching the current data version.
-///
-/// ponytail: derived from `GOLDEN_PARITY_DATA_VERSION` (`4.<n>.…` = PoE2
-/// `0.<n>`); automatically follows the golden-version constant on a major
-/// data version bump, with no separate config entry.
-fn current_tree_version() -> String {
-    let minor = pobr_data::GOLDEN_PARITY_DATA_VERSION
-        .split('.')
-        .nth(1)
-        .unwrap_or("5");
-    format!("0_{minor}")
+/// The PoB2 tree tag for the data actually loaded into this instance.
+fn current_tree_version() -> Result<String, String> {
+    let manifest = state::game_data()?
+        .manifest()
+        .map_err(|error| error.to_string())?;
+    let minor = manifest.poe_version.split('.').nth(1).ok_or_else(|| {
+        format!(
+            "cannot resolve passive tree version from {}",
+            manifest.poe_version
+        )
+    })?;
+    Ok(format!("0_{minor}"))
 }
 
 /// Edit state -> a PoB2 share code.
@@ -44,8 +46,9 @@ fn current_tree_version() -> String {
 /// The request shape is the same as [`CalculateBuildRequest`] (the web side
 /// always sends a full override, plus optional `notes`); `character.class_name`
 /// is required. Round-trip contract: re-decoding and calculating the
-/// produced code matches calculating directly from the request
-/// (`contract_golden::encode_build_roundtrip`).
+/// produced code matches calculating directly from the request with the same
+/// runtime calculation options (`contract_golden::encode_build_roundtrip`).
+/// `mode_effective` selects a calculation view and is not stored in PoB XML.
 ///
 /// **Multi-set preservation**: when the request carries `base_code` (the
 /// original code from import), the output is based on it, replacing only
@@ -144,7 +147,7 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         .unwrap_or_default()
         .iter()
         .map(|g| {
-            let mut gems: Vec<(String, String, u32, u32)> = g
+            let mut gems: Vec<(String, String, u32, u32, Option<u32>)> = g
                 .gems
                 .iter()
                 .filter(|gem| !gem.skill_id.is_empty())
@@ -154,7 +157,13 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
                         .get(&gem.skill_id)
                         .map(|e| e.gem_id.clone())
                         .unwrap_or_default();
-                    (gem_id, gem.skill_id.clone(), gem.level, gem.quality)
+                    (
+                        gem_id,
+                        gem.skill_id.clone(),
+                        gem.level,
+                        gem.quality,
+                        gem.stat_set_index,
+                    )
                 })
                 .collect();
             // The XML parse path determines the active skill as "the first
@@ -162,7 +171,7 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
             // non-support" (via a data-table lookup). Moving the first
             // non-support gem to the front makes both determinations
             // converge, guaranteeing the active skill doesn't drift after an encode -> decode round trip.
-            if let Some(active_pos) = gems.iter().position(|(gem_id, _, _, _)| {
+            if let Some(active_pos) = gems.iter().position(|(gem_id, _, _, _, _)| {
                 // A gem with an empty gemId gets dropped by XML parsing, so it can't be an active candidate.
                 !gem_id.is_empty() && !data.is_support_gem(gem_id).unwrap_or(false)
             }) && active_pos > 0
@@ -188,6 +197,66 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     // defaultState=true on both sides (the XML path's parse_config, the
     // direct-construction path's parse_build_from_request), so omitting them stays consistent.
     let mut config_inputs = req.config_inputs.clone();
+    // PoB2 stores current custom modifiers as a CustomModifierBlock. Older
+    // callers may still send the legacy customMods Input; keep accepting it,
+    // but write only one source so PoB and PoBR cannot apply the lines twice.
+    let legacy_custom_mods = config_inputs
+        .remove("customMods")
+        .and_then(|value| value.as_str().map(str::to_owned));
+    let custom_modifier_blocks = if let Some(blocks) = &req.custom_modifier_blocks {
+        let mut blocks = blocks.clone();
+        if !req.extra_modifiers.is_empty() {
+            blocks.push(CustomModifierBlock {
+                title: "Default".into(),
+                enabled: true,
+                text: req
+                    .extra_modifiers
+                    .iter()
+                    .map(|line| super::localize_input_text(line))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+            });
+        }
+        blocks
+    } else {
+        let mut lines = Vec::new();
+        if let Some(legacy) = legacy_custom_mods {
+            lines.extend(legacy.lines().map(str::to_owned));
+        }
+        lines.extend(
+            req.extra_modifiers
+                .iter()
+                .map(|line| super::localize_input_text(line)),
+        );
+        let text = lines.join("\n");
+        if text.is_empty() {
+            Vec::new()
+        } else {
+            vec![CustomModifierBlock {
+                title: "Default".into(),
+                enabled: true,
+                text,
+            }]
+        }
+    };
+    if let Some(tier) = &req.enemy_tier {
+        let pob_tier = match tier.as_str() {
+            "none" => "None",
+            "boss" => "Boss",
+            "pinnacle" => "Pinnacle",
+            "uber" => "Uber",
+            _ => {
+                return Err(super::ApiError::bad_request(format!(
+                    "unknown enemy_tier: {tier}"
+                )));
+            }
+        };
+        // A raw Config Input has precedence in calculation, so preserve it
+        // when both request surfaces are supplied by an older caller.
+        config_inputs
+            .entry("enemyIsBoss".to_string())
+            .or_insert_with(|| serde_json::Value::String(pob_tier.to_string()));
+    }
     for key in pobr_build::default_true_condition_keys() {
         config_inputs
             .entry(key.to_string())
@@ -195,7 +264,10 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     }
 
     let empty_choices = BTreeMap::new();
-    let tree_version = current_tree_version();
+    let tree_version = match &req.tree_version {
+        Some(version) => version.clone(),
+        None => current_tree_version()?,
+    };
     let xml = crate::xml_write::write_build_xml(&crate::xml_write::XmlInput {
         active_weapon_set,
         weapon_set_nodes,
@@ -211,6 +283,7 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         socket_groups,
         main_socket_group: req.main_socket_group,
         config_inputs: &config_inputs,
+        custom_modifier_blocks: &custom_modifier_blocks,
         notes: req.notes.as_deref(),
     });
     // With a base draft, write back the active sets and global fields, preserving

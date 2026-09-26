@@ -27,9 +27,6 @@ describe('TopBar versions', () => {
         classNames={{ classes: {}, ascendancies: {} }}
         busy={false}
         dataVersion="4.5.5.2"
-        loadouts={[]}
-        activeLoadout={null}
-        onLoadout={vi.fn()}
       />,
     );
     expect(html).toContain(`v${__POBR_APP_VERSION__}`);

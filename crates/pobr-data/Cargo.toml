@@ -1,6 +1,6 @@
 [package]
 name = "pobr-data"
-version.workspace = true
+version = "0.0.29"
 edition.workspace = true
 
 [dependencies]

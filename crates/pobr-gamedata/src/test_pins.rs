@@ -7,8 +7,7 @@
 //! is stored uniformly in `data/<ver>/generated/test_pins.json` (a flat
 //! map: pin name → JSON value), checked by tests via [`assert_pin`];
 //! after a regen, rerunning the same tests with `POBR_BLESS_PINS=1`
-//! refreshes them in one step (the last step of `pipeline/regen-all.sh`
-//! already orchestrates this).
+//! refreshes them explicitly after review. Regeneration does not bless them.
 //!
 //! Boundary: **structural guards** (a non-empty schema, monotonic
 //! ratchets, dedup invariants) still live hardcoded in the code, not in
@@ -40,7 +39,7 @@ static WRITE_LOCK: Mutex<()> = Mutex::new(());
 /// `version_dir` = the version directory the test actually loaded its data
 /// from (a golden test passes the directory for
 /// `GOLDEN_PARITY_DATA_VERSION`, an active-version test passes the
-/// directory for `DATA_VERSION`) — a pin lives alongside its data, so
+/// directory from `data_version()`) — a pin lives alongside its data, so
 /// regenning one version only refreshes that version's snapshot.
 ///
 /// Normal mode: a missing pin or a value mismatch → panics, with the error
@@ -74,8 +73,8 @@ pub fn assert_pin(version_dir: &Path, name: &str, actual: impl Into<Value>) {
             panic!(
                 "test pin `{name}` out of date in {}:\n  blessed: {expected}\n  actual:  {actual}\n\
                  The data content changed (expected after a regen). To refresh: rerun this test \
-                 with POBR_BLESS_PINS=1 (the last step of pipeline/regen-all.sh already batches \
-                 the refresh and commits the snapshot).",
+                 with POBR_BLESS_PINS=1 after reviewing the change; regeneration never blesses \
+                 golden snapshots automatically.",
                 path.display()
             );
         }

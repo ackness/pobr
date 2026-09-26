@@ -487,10 +487,7 @@ mod tests {
         use crate::mod_parser::{CompiledParserRules, parse_mod_engine};
         use crate::{CalcConfig, ModDb};
         use pobr_data::catalog::parser_rules::{ModParserRulesDoc, SpecialModsDef};
-        let file = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../data")
-            .join(pobr_data::DATA_VERSION)
-            .join("generated/special_vendor.json");
+        let file = crate::mod_parser::test_data_dir().join("generated/special_vendor.json");
         let data: SpecialModsDef = serde_json::from_slice(&std::fs::read(file).unwrap()).unwrap();
         let definition = data
             .entries

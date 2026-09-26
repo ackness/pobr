@@ -6,7 +6,7 @@ Detailed repository guidance for coding agents and contributors. [AGENTS.md](AGE
 
 ## 构建环境
 
-直接使用普通 cargo 命令，无特殊环境要求（推荐安装 `cargo-nextest` 跑测试）。
+开发入口是根目录 `./pobr`（`./pobr help` 查看命令），也可直接使用 Cargo。`cargo-nextest` 用于完整门禁，定向测试默认用 Cargo。
 
 - 每个 worktree / 并行会话使用**自己的 `./target`**。**禁止**设置共享 `CARGO_TARGET_DIR`——并发 cargo 会在构建目录锁上串行排队（症状：长时间无输出；stderr 的 `Blocking waiting for file lock` 提示不要用 `| tail` 等管道吞掉）。
 - 同一 target 目录下 cargo 命令**一次一条、前台执行**，禁止后台叠加。
@@ -31,7 +31,7 @@ Detailed repository guidance for coding agents and contributors. [AGENTS.md](AGE
 - 编辑中只有需要快速定位编译错误时才单独 `cargo check -p <crate> --lib`。Clippy 按改动选择 `--lib` / `--bin <name>` / `--test <suite>`；测试专属改动无需扩大到 `--all-targets`。
 - 同一代码、依赖、工具链、features、数据版本下已通过的检查复用结果；后续只改文档不使代码测试失效。失败后先重跑失败目标，只有新改动、失败或明确影响范围才扩大验证。
 - Web 纯 TS/CSS 改动复用已构建 WASM；WASM 产物缺失，或 WASM 及其 Rust 依赖的源码、features、工具链改变时重建。`pnpm build` 已包含 typecheck，最终需要 build 时不额外重复 typecheck。E2E 前确认 dist 对应当前代码。
-- **合并 / 发版、工具链 / Cargo features / workspace 依赖变更、影响范围不明的核心改动**运行一次 `driver.sh full`。当前 CI 仅 tag / 手动触发，不会替普通提交兜底；全量未跑时如实说明。已验证的相同代码不因创建本地提交再跑一遍。
+- **合并 / 发版、工具链 / Cargo features / workspace 依赖变更、影响范围不明的核心改动**需要完整门禁，优先交给 CI。发版由 tag CI 完成；其他场景先推送分支，再运行 `./pobr ci <remote-ref>`，并检查该提交的结果。本地不再强制先跑 `full`；离线或排查 CI 时可显式运行 `./pobr full`（仅 Rust 门禁，Web 另验）。CI 仍仅 tag / 手动触发，普通提交不会自动验证；发起 CI 不等于通过。相同代码不重复运行本地和云端全量门禁。
 - 不自动 `cargo clean`、改 profile / features / `RUSTFLAGS` 或共享 target 来“加速”；这些可能使缓存失效。看到构建锁先检查已有进程，不叠加 Cargo 命令。
 
 ## 常用命令
@@ -48,7 +48,7 @@ cargo test -p pobr-build --test skills support_gating::
 cargo bench -p pobr-core --bench mod_db_bench          # ModDB 热查询基准（criterion）
 
 # PoB2 parity 仪表盘：逐 build 打印 PoBR vs PoB2 对照 + 聚合命中率
-cargo test -p pobr-build --test parity -- --nocapture
+./pobr test build parity parity_baseline_report -- --ignored --nocapture
 # 其中 parity_no_regression 用例是回归门禁（命中率不得低于已记录基线）
 
 # CLI（apps/pobr-cli，二进制名 pobr）
@@ -66,23 +66,24 @@ cargo run -p lint-i18n                                  # 语言包完整性检�
 tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle：dump Lua 侧完整计算分解为 JSON（需 luajit；非 workspace 成员）
 ```
 
-- Rust **edition 2024**；workspace 版本统一（根 Cargo.toml，与 v0.x tag 同步）。
-- 根 `Cargo.toml` 设置 `[profile.dev] debug = "line-tables-only"` 以加速 ~100 个测试二进制的链接（保留 panic 回溯行号）；需要 lldb 单步调试时临时改回 `debug = true`（会触发全量重编译）。
+- Rust **edition 2024**；根 `[workspace.package].version` 是应用/工具发布版本，与 v0.x tag 同步。七个 `crates/` 库使用独立版本，日常应用发版不改库版本，避免仅改发布号就使底层库和所有使用者重新编译。库版本不代表当前应用发布号；将来单独发布库时再按 API 兼容性管理。
+- 根 `Cargo.toml` 设置 `[profile.dev] debug = "line-tables-only"` 以减少测试二进制的链接成本（保留 panic 回溯行号）；需要 lldb 单步调试时临时改回 `debug = true`（会触发全量重编译）。
 - CI 以已入库的 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) 为准：Rust 检查 fmt / Clippy / nextest / doctest，Web 独立检查类型、单测、Worker、WASM 构建与 E2E。涉及计算/Modifier/parser 的改动需补对应的集成测试或 golden fixture。
 
 ### 快速检查与发版
 
+- `./pobr targets` 列出当前 crate / 测试目标，不编译；`./pobr verify build skills support_gating::` 一次执行定向测试和 lint；`./pobr timings build parity` 只编译指定套件并写入 Cargo HTML 耗时报告。更多说明见 [开发与 CI 工作流](docs/development-workflow.md)。
 - `bash .claude/skills/run-pobr/driver.sh smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
 - `bash .claude/skills/run-pobr/driver.sh test -p <crate> --test <suite> [filter]`：原样传递 Cargo 参数，不过滤编译/错误输出。
 - `bash .claude/skills/run-pobr/driver.sh lint -p <crate> --lib --test <suite>`：fmt + 指定目标的 Clippy，不隐式扩大到 workspace / all-targets。
 - `bash .claude/skills/run-pobr/driver.sh full`：fmt + clippy + workspace tests（含 doctest/parity）+ i18n lint。优先 nextest，未安装时用 Cargo；用于上述完整门禁场景，不是每次本地提交的收尾动作。
 - 本地 `.agents/skills/run-pobr/driver.sh` 转发到同一驱动（`.agents` 按仓库规则不入库）。`smoke` 是环境检查，已有相关测试通过后无需再补一次。
-- `perf_timing` / `perf_phases` 是按需计时诊断，运行时加 `-- --ignored --nocapture`；正确性、覆盖率、parity 门禁仍默认执行。
+- `perf_timing` / `perf_phases` 及 parity 中的 `parity_baseline_report`、`effective_switch_dual_run_report`、`ehp_dual_run_report` 是按需诊断，运行时加 `-- --ignored --nocapture`；正确性、语料健康、覆盖率和两种模式的 parity 回归门禁仍默认执行。
 - `node web/scripts/bench-calc.mjs` measures uncached real-WASM calculation and 16-item batches on three committed builds. It requires built WASM and synced data; `--reference <old-pkg>` additionally checks complete output equality for behavior-preserving optimizations. Reports stay under ignored `.cache/`; this benchmark is opt-in, outside the CI gate.
 - `python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，不调用真实 Cargo。
-- `pnpm --dir web package-wasm`：将已构建 WASM 与同步数据打包到 `.cache/wasm-release/`，包含 `use-pobr-wasm` 技能、demo、校验和及体积比较；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。打包脚本改动运行 `node --test web/scripts/package-wasm.test.mjs`，发布流程见 [WASM 打包说明](docs/wasm-package.md)。tag CI 在 Rust/Web 门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
+- `pnpm --dir web package-wasm`：将已构建 WASM 与同步数据打包到 `.cache/wasm-release/`，包含 `use-pobr-wasm` 技能、demo、校验和及体积比较；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 写入编译来源收据；打包校验源码/绑定指纹、实际 WASM schema 和当前数据快照，同版本修改也必须重新构建或同步，来源 commit 保留编译时值。打包脚本改动运行 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`，发布流程见 [WASM 打包说明](docs/wasm-package.md)。tag CI 在 Rust/Web 门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
 - `cd web && pnpm test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
-- 计划发版时，在功能 PR 中一并更新 workspace 版本。完成本地门禁后合并，再推送一次 tag；tag CI 通过后自动部署，无需在 master 额外手动运行同一套 CI。
+- 计划发版时，在功能 PR 中一并更新 workspace 版本。本地完成相关验证后合并，再推送一次 tag；tag CI 完成全量门禁，通过后自动部署，无需在 master 额外手动运行同一套 CI。
 - `devs/scripts/regen-check.sh` 在临时副本中重生成，保留 `overlay-common` 与 examples 语料，不写入或恢复工作区文件。
 
 
@@ -104,7 +105,7 @@ tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle�
 | `apps/pobr-cli` | CLI：`calculate` / `parse-mod` / `decode-code` / `encode-code`（命令逻辑在 lib，便于测试） | `pobr-build`/`pobr-core`/`pobr-i18n` |
 | `apps/pobr-wasm` | `build_api/` 提供 JSON 契约；默认 features 可在宿主测试，`wasm` feature 启用 wasm-bindgen 绑定 | `pobr-build`/`pobr-core`/`pobr-data`/`pobr-gamedata`/`pobr-item`/`pobr-i18n` |
 | `apps/pobr-desktop` | 示例 build 计算与文本摘要；尚未引入 GUI 框架 | `pobr-build`/`pobr-core`/`pobr-data`/`pobr-i18n` |
-| `tools/pobr-data-adapter` | 数据管线适配器——GGG `.dat` 导出 → 解析外键、反范式化为入库最小 JSON 落到 `data/<poe_version>/`。缺列默认告警降级（不中止，serde 按 `Option`/`default` 兜底），`--strict-columns` 才致命；产物 `_meta.regen_command` 记录再生成命令 | `pobr-data` |
+| `tools/pobr-data-adapter` | 数据管线适配器——GGG `.dat` 导出 → 解析外键、反范式化为入库最小 JSON 落到 `data/<poe_version>/`。直接调用时缺列默认告警降级，正式再生成始终使用 `--strict-columns` 并校验原始表版本收据；产物 `_meta.regen_command` 记录再生成命令 | `pobr-data` |
 | `tools/sync-pob-catalog` | 从 PoB 核心 Lua 抽取属性 catalog、parity 检查/diff、vendor Lua → overlay JSON | `pobr-data` |
 | `tools/lint-i18n` | 语言包完整性检查（非 canonical 语言不得有 en-US 之外的多余 key） | `pobr-i18n` |
 | `tools/precompile-mods` | M6 mod-parser 规则离线预编译 / codegen 工具：把四层语料（build XML / passive_tree / special_derived / `--corpus-extra`）去重后逐行过 `pobr-core::parse_mod` 预解析，产出 `data/<version>/generated/parsed_mods.json` + 覆盖率报表（当前为离线回归产物；生产 `ParseCtx` 使用编译后的规则，`ModCache` 仅为单一规则快照内的内存 memo） | `pobr-data` + `pobr-core` + `pobr-gamedata` |
@@ -122,6 +123,8 @@ tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle�
 
 Web 的 `api/wasmBackend.ts` 在浏览器中加载 WASM，调用 `apps/pobr-wasm/src/build_api/`；`web/src/api/types.ts` 镜像 JSON DTO，`apps/pobr-wasm/tests/contract_golden.rs` 约束契约。启动时由 JS fetch 数据，经 `stageDataFile` / `initStagedData` 建立内存 `GameData` / `BuildData`，随后计算读取内存数据。Pages Worker 处理受限的 HTTP 适配，计算仍在浏览器 WASM 中执行。原生调用通过 `GameData::new` 读取文件，WASM 使用 `GameData::from_memory`。
 
+schema 3 的运行时域读取与历史树枚举受 manifest inventory 约束；未列文件在原生与内存端均视为不存在，patch 和 overlay-common 保留独立层语义。GameData 首次访问验证并缓存不可变快照，替换磁盘快照后必须创建新实例。触发源子计算复用已准备的 Build 视图，不能再次叠加品质；传入核心的 enabled-group 序号必须映射回原始组索引后才能修改选择。
+
 **数据管线**：`GGG .dat 导出` →（`pobr-data-adapter` 离线适配）→ `data/<poe_version>/*.json`（schema = `pobr-data::catalog`，默认版本见 `data/CURRENT`，含 `overlay/` 人工修正层）→（`pobr-gamedata` 运行时 loader）→ 上层计算。游戏数据文件访问收口在 `pobr-gamedata`；下载、剪贴板及 HTTP 适配属于应用或工具边界。
 
 宝石品质自 `4.5.5.2` 起由 adapter 的 `--gem-quality` 独立生成，沿用历史 `overlay/` 路径。
@@ -132,6 +135,18 @@ Web 的 `api/wasmBackend.ts` 在浏览器中加载 WASM，调用 `apps/pobr-wasm
 `precompile-mods --check` 校验运行时合并后的完整集合，并输出文件哈希、顺序和规则来源；
 `refresh-modifiers.sh` 在审计和发布产物前执行此检查。`StatId` 仍是开放名称，解析通过不证明计算支持。
 覆盖语义与边界见[维护者规则说明](docs/contributing-mods.md#7-validate-test-and-open-a-pr)。
+
+### 数据与计算上下文约束
+
+活动数据版本由 `pobr_gamedata::data_version()` 在运行时解析：`POBR_DATA_VERSION` → `POBR_DATA_ROOT/CURRENT`（默认仓库 `data/`）→ 固定兼容回退。`pobr-data` 不再编译嵌入 `data/CURRENT`；其旧 `DATA_VERSION` / `data_version()` 调用需迁移到 loader。数值 golden 仍单独固定。
+
+schema 3 的 `manifest.json` 列出运行时文件及 SHA-256；`BuildData::load` 在可选域降级前校验完整快照。旧 schema 1/2 保留兼容行为。`patch/` 与 `overlay-common/` 是独立覆盖层，不属于快照哈希清单。正式数据和 Web 同步先完成候选生成/校验，再替换目录；失败恢复旧目录，不自动 bless golden。
+
+`CalculationSession` / `Env` 只执行一次；再次 `perform` 返回 `AlreadyPerformed`。重算应创建新会话，避免再次应用资源转换。属性缩放与资源派生共享包含职业基础值及 INC/MORE 的最终属性；天赋关联的装备、品质和诊断查询都使用所选树。
+
+Web 的计算、市场目录和天赋树使用初始化时固定的数据版本；重新初始化清除翻译与词缀层级缓存。节点规划逐节点计算，不能按原始词条文本共享包含位置/半径效应的结果。缺少历史树展示元数据时保留导入和计算，禁用不可靠的历史树编辑/规划。存档导入校验嵌套结构，非法存档不覆盖当前内容；启动失败保留原始字节并提供下载恢复。
+
+CLI 完整构筑与 marginal 结果包含数据版本、树版本和未支持词条，调用方必须保留诊断，不能把未支持内容视为零效果。
 
 ## 计算引擎架构（pobr-core）
 
@@ -218,7 +233,7 @@ PoB2 兼容是硬回归基准，三层校验互补：
 - `web/public/userscripts/pobr-market-copy.user.js` adds an explicit per-listing copy action on official PoE2 market search pages. It reads only the clicked item through the current market's same-origin API, preserves complete item text and excludes seller/account data. Unknown modifier groups remain unmodeled diagnostics. The Upgrade paste card links to the script and installation guide; tests cover actual script output entering real-WASM replacement comparison. See `devs/docs/architecture/20-market-copy-and-rune-boundaries.md` for rune provenance and remaining survival gaps.
 - The equipment/jewel parseability gate records rejected modifier text in session diagnostics while preserving the existing no-partial-item-injection rule. A parsed modifier does not by itself prove that every effect has a calculation consumer. Physical leech now consumes typed Life/Mana names with per-weapon attack scope and post-conversion physical hits; its panel still uses the existing strongest-single-instance approximation, not a full sustained recovery simulation.
 - `web/src/lib/trade.ts` builds category/price/required-level constrained links and excludes uniques by default (opt-in available; gems exempt). CN uses instant-buy stock (`status: any`); international uses online stock. Official pages may default to price sorting even when the query requests weight sorting; players can click a listing's Sum to sort by weight. Gem type names follow the market realm independently of UI language.
-- Group support compatibility uses `pobr_build::support::judge_group_supports` in both calculation and the WASM `supportGroupsCompatibleJson` batch API. Pass `from_gem` from the group's source marker; equipment-granted skills must reject `supportGemsOnly`. Type additions and final exclusions have one Rust implementation. TS retains search, permissive pool screening, budgets, family conflicts and lineage copy limits. JSON handshake version 5 requires this entry point; group responses preserve batch order.
+- Group support compatibility uses `pobr_build::support::judge_group_supports` in both calculation and the WASM `supportGroupsCompatibleJson` batch API. Pass `from_gem` from the group's source marker; equipment-granted skills must reject `supportGemsOnly`. Type additions and final exclusions have one Rust implementation. TS retains search, permissive pool screening, budgets, family conflicts and lineage copy limits. JSON handshake version 6 requires this entry point and preserves `stat_set_index` / `tree_version` across decode, edit, calculation and export; group responses preserve batch order.
 - Gem planning preserves the selected skill group and current gem level/quality upgrades. Ordinary supports are configuration adjustments without purchase links; active gems and lineage supports have separate market plans. Lineage comes from PoB tags, not an ID substring. Skills automatically screens all known compatible wearable supports using postfix skill-type requirements/exclusions, type additions and family overlap, then performs bounded complete-set comparisons. New unsupported effects are excluded; the default one-copy lineage limit is enforced conservatively across groups. Missing level requirements are not guessed; old catalogs retain current-gem quality probes. Equipment-granted skills cannot be purchased as gems. Plans only apply on explicit player action and preserve other groups and weapon bindings. Imported support capacity is unknown, so players can set their actual unlocked capacity.
 - Equipment, skill and passive planners share a persisted goal. Support exclusions persist by active-skill set and must constrain every probe and seed without changing the equipped baseline. Passive planning uses connected routes and path unions including travel cost, and bounded leaf-branch refunds with paths recomputed after refund. Preserve `unlock_constraint` from game tree data (ascendancy and prerequisite nodes), protect its prerequisites and filled sockets, and reject new unsupported effects. New travel-attribute choices are evaluated and applied atomically with nodes. Weapon-exclusive/unknown/disconnected imports disable automatic refunds. After its first search, the open passive planner refreshes from completed build edits with a 350 ms debounce; cancellation or collapse pauses it. Stale plans cannot apply, and refreshed plans never apply automatically.
 - Passive jewel allocation and deterministic transformations share the backend `tree_effects` contract. `overlay/passive_jewels.json` supplies stable class starts, ring selectors, conquerors and replacement stats; regenerate it from the pinned vendor with `pipeline/extract-passive-jewels.lua`. Radius-only points cannot extend paths until connected to a class root. Missing seed transformations remain diagnosed and protected from automatic refunds. Item calculation views filter selected variants/versions before resolving roll ranges; original text remains the export/edit source. See [jewel support and limits](docs/jewel-search.md).
@@ -243,6 +258,9 @@ PoB2 兼容是硬回归基准，三层校验互补：
 - Imports without an explicit main group compare positive finite Full DPS entries and prefer player groups over equipment-granted groups. Explicit PoB selections remain intact. The heuristic does not infer a player's rotation; the sidebar and trade selector remain editable.
 - JSON saves and PoB export preserve both weapon pairs and exclusive passives. Skill bindings round-trip through PoB's `set1` / `set2` flags. Core XML parsing retains these bindings as metadata.
 - Imported-build exports update character identity, main skill, config and notes while retaining other loadouts and the selected sets' IDs. `decodeBuildLoadoutJson` also returns `code` with the new selection; persist it as the next export base. Item-pool renumbering applies to both equipment slots and tree jewel references. Removing a skill group shifts the selected index; removing the main group selects a remaining enabled group and its weapon binding.
+- PoB export preserves the selected enemy tier and custom modifiers through `enemyIsBoss` and native `CustomModifierBlock` elements. Only the active ConfigSet contributes; export preserves inactive ConfigSets. Import accepts legacy `customMods`, normalizes enabled blocks into one calculation input, and materializes dedicated Web controls without applying modifiers twice.
+- Schema 7 exposes ordered `custom_modifier_blocks` with title, enabled state and raw text. The editor preserves disabled and empty blocks across saves and PoB exports; only enabled blocks contribute once. An explicit empty array clears source modifiers. Legacy flat saves remain readable. `mode_effective` is a runtime calculation view, not an exported build setting.
+- The Web build library separates independent builds, complete local stage snapshots and source PoB loadouts. Code and legacy-session imports default to adding a build; replacement is scoped explicitly to the current stage. Shared multi-stage files add a build, while workspace backups restore the entire library. Source loadout switching reloads imported data into the current stage and retains its discard warning.
 - Socket groups preserve the optional 1-based `main_active_skill` ordinal across decode, editable state, calculation and export. It counts non-support gems. Removing a preceding active gem shifts the ordinal; support edits leave it unchanged. Omitted ordinals retain the first-active default for older requests and saves.
 - Shared page headers, card/control tokens and slot symbols live under `web/src/components/shared` and `web/src/styles`. UI verification covers the seven visible tabs from 320px through 3440px with real WASM. Wide screens use a larger workspace and additional skill, equipment and calculation columns.
 

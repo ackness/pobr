@@ -191,6 +191,7 @@ impl BuildData {
     /// [`LoadError`] on failure (missing file / parse error). Callers should cache the
     /// return value rather than reloading the same version directory repeatedly.
     pub fn load(data: &GameData) -> Result<Self, LoadError> {
+        data.validate_manifest()?;
         let passive_nodes = data
             .passive_nodes()?
             .into_iter()

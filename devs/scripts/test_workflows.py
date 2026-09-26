@@ -17,7 +17,7 @@ class WorkflowTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="pobr script tests ")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        scripts = ["devs/scripts/regen-check.sh", ".claude/skills/run-pobr/driver.sh"]
+        scripts = ["pobr", "devs/scripts/regen-check.sh", ".claude/skills/run-pobr/driver.sh"]
         if (REPO / ".agents/skills/run-pobr/driver.sh").is_file():
             scripts.append(".agents/skills/run-pobr/driver.sh")
         for rel in scripts:
@@ -68,6 +68,13 @@ if "precompile-mods" in args:
     (dest / "generated/parse-coverage.json").write_text('{"coverage_ratio": 1.0}', encoding="utf-8")
 ''')
         (self.root / "bin/cargo").chmod(0o755)
+        self.write("bin/gh", '''#!/usr/bin/env python3
+import json, os, sys
+with open(os.environ["CALLS"], "a", encoding="utf-8") as out:
+    out.write(json.dumps(["gh", *sys.argv[1:]]) + "\\n")
+sys.exit(int(os.environ.get("GH_EXIT", "0")))
+''')
+        (self.root / "bin/gh").chmod(0o755)
         (self.root / "tmp").mkdir()
         self.env = {
             **os.environ,
@@ -77,7 +84,7 @@ if "precompile-mods" in args:
             "TMPDIR": str(self.root / "tmp"),
             "POBR_PATCH": "test",
         }
-        for key in ["HAS_NEXTEST", "FAIL_COMMAND", "FAIL_TEST", "FAIL_REGEN", "FAIL_QUALITY"]:
+        for key in ["HAS_NEXTEST", "FAIL_COMMAND", "FAIL_TEST", "FAIL_REGEN", "FAIL_QUALITY", "GH_EXIT"]:
             self.env.pop(key, None)
 
     def write(self, rel, text):
@@ -116,13 +123,16 @@ if "precompile-mods" in args:
 
     def test_quality_failure_aborts_full_regeneration_before_other_generators(self):
         shutil.copyfile(REPO / "pipeline/regen-all.sh", self.root / "pipeline/regen-all.sh")
-        self.write("data/test/overlay/gem_quality_stats.json", "previous quality data")
+        shutil.copyfile(REPO / "pipeline/data_snapshot.py", self.root / "pipeline/data_snapshot.py")
+        self.write("pipeline/config.json", '{"patch":"9.1"}')
+        self.write("data/CURRENT", "9.1\n")
+        self.write("data/9.1/overlay/gem_quality_stats.json", "previous quality data")
         self.env["FAIL_QUALITY"] = "1"
         result = self.run_script("pipeline/regen-all.sh")
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertEqual(len(self.calls()), 1)
         self.assertIn("--gem-quality", self.calls()[0])
-        self.assertEqual((self.root / "data/test/overlay/gem_quality_stats.json").read_text(),
+        self.assertEqual((self.root / "data/9.1/overlay/gem_quality_stats.json").read_text(),
                          "previous quality data")
 
     def test_regen_drift_preserves_uncommitted_artifact(self):
@@ -160,6 +170,49 @@ if "precompile-mods" in args:
         result = self.run_script(".claude/skills/run-pobr/driver.sh", "test")
         self.assertEqual(result.returncode, 2)
         self.assertFalse((self.root / "calls.jsonl").exists())
+
+    def test_short_commands_select_only_requested_suite_and_preserve_filter(self):
+        result = self.run_script("pobr", "verify", "build", "skills", "a filter with spaces")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [
+            ["test", "-p", "pobr-build", "--test", "skills", "a filter with spaces"],
+            ["fmt", "--all", "--check"],
+            ["clippy", "-p", "pobr-build", "--test", "skills", "--", "-D", "warnings"],
+        ])
+
+    def test_verify_does_not_lint_after_test_failure(self):
+        self.env["FAIL_TEST"] = "1"
+        result = self.run_script("pobr", "verify", "core", "lib")
+        self.assertEqual(result.returncode, 19, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [["test", "-p", "pobr-core", "--lib"]])
+
+    def test_timings_compiles_only_the_selected_suite(self):
+        result = self.run_script("pobr", "timings", "pobr-build", "parity")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [
+            ["test", "--no-run", "--timings", "-p", "pobr-build", "--test", "parity"],
+        ])
+
+    def test_build_defaults_to_application_only(self):
+        result = self.run_script("pobr", "build")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [["build", "-p", "pobr-cli"]])
+
+    def test_short_commands_require_explicit_targets(self):
+        for args in [["test", "core"], ["lint", "core"], ["timings"],
+                     ["verify", "core"], ["verify", "core", "--workspace"],
+                     ["verify", "core", "lib", "--workspace"], ["ci"]]:
+            with self.subTest(args=args):
+                result = self.run_script("pobr", *args)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertFalse((self.root / "calls.jsonl").exists())
+
+    def test_ci_uses_explicit_remote_ref_and_propagates_failure(self):
+        self.env["GH_EXIT"] = "31"
+        result = self.run_script("pobr", "ci", "feature/ci-workflow")
+        self.assertEqual(result.returncode, 31, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [["gh", "workflow", "run", "ci.yml", "--ref", "feature/ci-workflow"]])
+        self.assertNotIn("CI requested", result.stdout)
 
     def calls(self):
         return [json.loads(line) for line in
@@ -292,7 +345,11 @@ class VersionPromotionTests(unittest.TestCase):
                     destination.write_text(text, encoding="utf-8")
                     return destination
                 write("pipeline/bump-version.sh", (REPO / "pipeline/bump-version.sh").read_text(encoding="utf-8"))
-                write("pipeline/regen-all.sh", "#!/usr/bin/env bash\nexit 0\n").chmod(0o755)
+                write("pipeline/data_snapshot.py", (REPO / "pipeline/data_snapshot.py").read_text(encoding="utf-8"))
+                write("pipeline/regen-all.sh", '''#!/usr/bin/env bash
+mkdir -p "$POBR_DATA_ROOT/1.2.4/base"
+printf '[]\\n' > "$POBR_DATA_ROOT/1.2.4/base/skill_gems.json"
+''').chmod(0o755)
                 write("pipeline/refresh-modifiers.sh", f"#!/usr/bin/env bash\nexit {17 if failure == 'audit' else 0}\n")
                 # Simulate resuming after a different failed candidate.
                 write("pipeline/config.json", '{"patch": "1.2.99"}')
@@ -327,6 +384,96 @@ pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-
                     expected = {"dictionary": "gen-zh-cn.mjs", "audit": "refresh-modifiers.sh",
                                 "versions": "driver.sh", "gamedata": "pobr-gamedata", "parity": "parity_no_regression"}
                     self.assertIn(expected[failure], result.stderr)
+
+
+class VendorRepositoryIsolationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="pobr vendor isolation ")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.real_git = shutil.which("git")
+        assert self.real_git is not None
+        for rel in [".claude/skills/run-pobr/driver.sh", "pipeline/bump-version.sh"]:
+            self.write(rel, (REPO / rel).read_text(encoding="utf-8"))
+        self.write("data/CURRENT", "1.2.3\n")
+        self.sha = "a" * 40
+        self.write("data/1.2.3/overlay/mod_parser_rules.json",
+                   json.dumps({"_meta": {"vendor_commit": self.sha}}))
+        self.write("pipeline/config.json", '{"patch": "1.2.3"}\n')
+        self.write("vendor/.pob2-version.txt", "previous\n")
+        self.write("bin/git", '''#!/usr/bin/env python3
+import os, pathlib, subprocess, sys
+real = os.environ["REAL_GIT"]
+args = sys.argv[1:]
+if "fetch" in args:
+    vendor = args[args.index("-C") + 1]
+    root = subprocess.check_output([real, "-C", vendor, "rev-parse", "--show-toplevel"], text=True).strip()
+    pathlib.Path(os.environ["FETCH_ROOTS"]).write_text(root, encoding="utf-8")
+    sys.exit(47)
+os.execv(real, [real, *args])
+''').chmod(0o755)
+        self.write("bin/curl", '''#!/usr/bin/env python3
+import pathlib, sys
+pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-8")
+''').chmod(0o755)
+        subprocess.run([self.real_git, "init", "--quiet"], cwd=self.root, check=True)
+        subprocess.run([self.real_git, "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+                        "-c", "commit.gpgsign=false", "commit", "--quiet", "--allow-empty", "-m", "parent"],
+                       cwd=self.root, check=True)
+        subprocess.run([self.real_git, "remote", "add", "origin", "https://example.invalid/parent.git"],
+                       cwd=self.root, check=True)
+        self.parent_head = subprocess.check_output([self.real_git, "rev-parse", "HEAD"], cwd=self.root, text=True).strip()
+        self.env = {**os.environ, "PATH": f"{self.root / 'bin'}{os.pathsep}{os.environ['PATH']}",
+                    "REAL_GIT": self.real_git, "FETCH_ROOTS": str(self.root / "fetch-root")}
+
+    def write(self, rel, text):
+        path = self.root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def assert_failed_fetch_is_isolated(self, result):
+        vendor = self.root / "vendor/PathOfBuilding-PoE2"
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue((vendor / ".git").is_dir())
+        self.assertEqual(Path((self.root / "fetch-root").read_text(encoding="utf-8")).resolve(),
+                         vendor.resolve())
+        self.assertEqual((self.root / "vendor/.pob2-version.txt").read_text(encoding="utf-8"), "previous\n")
+        self.assertEqual(subprocess.check_output([self.real_git, "rev-parse", "HEAD"],
+                                                 cwd=self.root, text=True).strip(), self.parent_head)
+        self.assertEqual(subprocess.check_output([self.real_git, "remote", "get-url", "origin"],
+                                                 cwd=self.root, text=True).strip(), "https://example.invalid/parent.git")
+
+    def test_driver_vendor_initializes_own_repo_and_propagates_fetch_failure(self):
+        result = subprocess.run(["bash", ".claude/skills/run-pobr/driver.sh", "vendor"], cwd=self.root,
+                                env=self.env, capture_output=True, text=True, timeout=10)
+        self.assert_failed_fetch_is_isolated(result)
+        self.assertNotIn("OK:", result.stdout)
+
+    def test_bump_vendor_initializes_own_repo_and_does_not_promote_on_fetch_failure(self):
+        result = subprocess.run(["bash", "pipeline/bump-version.sh", "--patch", "1.2.4",
+                                 "--skip-download", "--vendor-sha", self.sha], cwd=self.root,
+                                env=self.env, capture_output=True, text=True, timeout=10)
+        self.assert_failed_fetch_is_isolated(result)
+        self.assertEqual((self.root / "data/CURRENT").read_text(encoding="utf-8"), "1.2.3\n")
+        self.assertNotIn("vendor →", result.stdout)
+
+    def test_driver_preserves_existing_vendor_changes(self):
+        vendor = self.root / "vendor/PathOfBuilding-PoE2"
+        vendor.mkdir()
+        subprocess.run([self.real_git, "init", "--quiet"], cwd=vendor, check=True)
+        (vendor / "keep.txt").write_text("original\n", encoding="utf-8")
+        subprocess.run([self.real_git, "add", "keep.txt"], cwd=vendor, check=True)
+        subprocess.run([self.real_git, "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+                        "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "vendor"],
+                       cwd=vendor, check=True)
+        (vendor / "keep.txt").write_text("user edit\n", encoding="utf-8")
+        result = subprocess.run(["bash", ".claude/skills/run-pobr/driver.sh", "vendor"], cwd=self.root,
+                                env=self.env, capture_output=True, text=True, timeout=10)
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((vendor / "keep.txt").read_text(encoding="utf-8"), "user edit\n")
+        self.assertFalse((self.root / "fetch-root").exists())
+        self.assertEqual((self.root / "vendor/.pob2-version.txt").read_text(encoding="utf-8"), "previous\n")
 
 
 if __name__ == "__main__":

@@ -25,6 +25,7 @@ function BuildApp() {
   const mainRef = useRef<HTMLElement>(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const [reviewImportedConfig, setReviewImportedConfig] = useState(false);
+  const importedReviewStage = useRef<string | null>(null);
   const [upgradeFocus, setUpgradeFocus] = useState<{slot:string; nonce:number; jewelType?: 'base' | 'radius'} | undefined>();
   const [skillFocus, setSkillFocus] = useState<{group:number; nonce:number} | undefined>();
   const [treeFocus, setTreeFocus] = useState<{nonce:number} | undefined>();
@@ -62,20 +63,38 @@ function BuildApp() {
   const activeBuild = session.workspace?.builds.find(entry => entry.id === session.workspace?.activeBuild);
   const stageKey = activeBuild?.activeStage;
   useEffect(() => {
-    setReviewImportedConfig(false);
     setUpgradeFocus(undefined); setSkillFocus(undefined); setTreeFocus(undefined);
     setReferenceItem(undefined); setCalcsFocus(null);
   }, [stageKey]);
+  useEffect(() => {
+    if (!reviewImportedConfig || !stageKey) return;
+    if (importedReviewStage.current === null) importedReviewStage.current = stageKey;
+    else if (importedReviewStage.current !== stageKey) setReviewImportedConfig(false);
+  }, [stageKey, reviewImportedConfig]);
   const focusStat = (id: string) => {
     setCalcsFocus({ id });
     setTab('calcs');
   };
 
   if (session.bootError) {
+    let storedSave: string | null = null;
+    try { storedSave = localStorage.getItem('pobr-build-state'); } catch { /* Storage may be unavailable. */ }
+    const downloadStoredSave = () => {
+      if (!storedSave) return;
+      const url = URL.createObjectURL(new Blob([storedSave], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'pobr-workspace-recovery.json';
+      link.click();
+      URL.revokeObjectURL(url);
+    };
     return (
       <div className="boot-screen" role="alert">
         <h1>PoBR</h1>
         <pre className="boot-error">{session.bootError}</pre>
+        {storedSave && <button onClick={downloadStoredSave}>
+          {lang === 'en-US' ? 'Download original browser save' : lang === 'zh-TW' ? '下載原始瀏覽器存檔' : '下载原始浏览器存档'}
+        </button>}
       </div>
     );
   }
@@ -99,36 +118,6 @@ function BuildApp() {
         character={session.character}
         classNames={session.classNames}
         busy={session.busy}
-        loadouts={session.loadouts}
-        activeLoadout={session.activeLoadout}
-        onLoadout={(i) => {
-          const l = session.loadouts[i];
-          if (!l) return;
-          // 切换是整份重解码——有未保存编辑时先确认（见 useBuildSession.switchLoadout）。
-          if (session.isDirty && !window.confirm(t(lang, 'loadout.confirmDiscard'))) return;
-          void session.switchLoadout({ tree: l.tree, item: l.item, skill: l.skill });
-        }}
-        onManageLoadout={
-          // 需要原始 code 才能改组；手搓 build 没有，隐藏整个下拉。
-          session.build && session.loadouts.length > 0
-            ? (op) => {
-                // 三种操作都会整份重载，先按未保存改动确认。
-                if (session.isDirty && !window.confirm(t(lang, 'loadout.confirmDiscard'))) return;
-                if (op === 'remove') {
-                  if (!window.confirm(t(lang, 'loadout.confirmRemove'))) return;
-                  void session.manageLoadout('remove');
-                  return;
-                }
-                const current = session.loadouts[session.activeLoadout ?? 0]?.name ?? '';
-                const name = window.prompt(
-                  t(lang, 'loadout.namePrompt'),
-                  op === 'rename' ? current : '',
-                );
-                if (!name?.trim()) return;
-                void session.manageLoadout(op, name.trim());
-              }
-            : undefined
-        }
       />
       <WorkspaceSwitcher session={session} lang={lang} onManage={() => setTab('build')} />
       {!betaDismissed && (
@@ -162,6 +151,7 @@ function BuildApp() {
             </div>
           )}
           {tab === 'build' && <BuildPanel session={session} lang={lang} onImported={() => {
+            importedReviewStage.current = null;
             setReviewImportedConfig(true);
             setTab('items');
           }} />}

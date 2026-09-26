@@ -8,6 +8,7 @@
 //! contract test). Gem writes both `gemId` (PoB2's import key) and
 //! `skillId` (PoBR's key).
 
+use pobr_data::build_config::CustomModifierBlock;
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
@@ -35,9 +36,9 @@ pub(crate) struct XmlSkillGroup {
     /// The source marker for a group granted by equipment (written back as
     /// `<Skill source>`, so round-tripping can tell it apart).
     pub source: Option<String>,
-    /// `(gem_id, skill_id, level, quality)`; `gem_id` is an empty string
+    /// `(gem_id, skill_id, level, quality, stat_set_index)`; `gem_id` is an empty string
     /// when the reverse lookup fails (the attribute is then omitted).
-    pub gems: Vec<(String, String, u32, u32)>,
+    pub gems: Vec<(String, String, u32, u32, Option<u32>)>,
 }
 
 /// The write-out input (all sourced from the calculation request — the web
@@ -63,6 +64,8 @@ pub(crate) struct XmlInput<'a> {
     /// 0-based (written as 1-based in the XML).
     pub main_socket_group: Option<usize>,
     pub config_inputs: &'a BTreeMap<String, serde_json::Value>,
+    /// Ordered editable custom modifier groups, including disabled and empty ones.
+    pub custom_modifier_blocks: &'a [CustomModifierBlock],
     pub notes: Option<&'a str>,
 }
 
@@ -75,7 +78,9 @@ fn esc_attr(s: &str) -> String {
 
 /// Escapes an XML text node.
 fn esc_text(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 fn csv(nodes: impl Iterator<Item = u32>) -> String {
@@ -202,10 +207,13 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
             w!(w, r#" mainActiveSkill="{main}""#);
         }
         wln!(w, ">");
-        for (gem_id, skill_id, level, quality) in &group.gems {
+        for (gem_id, skill_id, level, quality, stat_set_index) in &group.gems {
             w!(w, r#"        <Gem skillId="{}""#, esc_attr(skill_id));
             if !gem_id.is_empty() {
                 w!(w, r#" gemId="{}""#, esc_attr(gem_id));
+            }
+            if let Some(index) = stat_set_index {
+                w!(w, r#" statSetIndex="{index}""#);
             }
             wln!(
                 w,
@@ -236,8 +244,9 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
     wln!(w, "  </Items>");
 
     // Config.
-    if !input.config_inputs.is_empty() {
-        wln!(w, "  <Config>");
+    if !input.config_inputs.is_empty() || !input.custom_modifier_blocks.is_empty() {
+        wln!(w, "  <Config activeConfigSet=\"1\">");
+        wln!(w, "    <ConfigSet id=\"1\" title=\"Default\">");
         for (name, value) in input.config_inputs {
             let attr = match value {
                 serde_json::Value::Bool(b) => format!(r#"boolean="{b}""#),
@@ -247,8 +256,18 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
                     esc_attr(other.as_str().unwrap_or_default())
                 ),
             };
-            wln!(w, r#"    <Input name="{}" {attr}/>"#, esc_attr(name));
+            wln!(w, r#"      <Input name="{}" {attr}/>"#, esc_attr(name));
         }
+        for block in input.custom_modifier_blocks {
+            wln!(
+                w,
+                "      <CustomModifierBlock title=\"{}\" enabled=\"{}\">{}</CustomModifierBlock>",
+                esc_attr(&block.title),
+                block.enabled,
+                esc_text(&block.text)
+            );
+        }
+        wln!(w, "    </ConfigSet>");
         wln!(w, "  </Config>");
     }
 

@@ -15,7 +15,7 @@
 use std::path::PathBuf;
 
 use pobr_build::{
-    Build, BuildData, DataOrchestratorOptions, calculate_with_data, diagnose_tree_version,
+    Build, BuildData, DataOrchestratorOptions, calculate_with_data_session, diagnose_tree_version,
     parse_build_from_code,
 };
 use pobr_core::calc::{CalculationSession, MinimalInput, MinimalOutput, OutputTable};
@@ -935,13 +935,16 @@ pub struct TreeVersionDiag {
 /// The `calculate-build` report: Build summary plus calc output plus passive-tree version reconciliation diagnostics.
 #[derive(Debug, Clone, Serialize)]
 pub struct CalculateBuildReport {
+    pub data_version: String,
+    /// Rejected modifier text; successful calculation does not imply complete support.
+    pub unsupported_modifiers: Vec<String>,
     pub build: BuildSummary,
     pub output: CalculateBuildOutput,
     pub tree_version: TreeVersionDiag,
 }
 
 /// Computes end-to-end from a PoB Build Code: decode -> [`parse_build_from_code`]
-/// -> [`BuildData::load`] -> [`calculate_with_data`], returning a Build summary plus the key output fields.
+/// -> [`BuildData::load`] -> [`calculate_with_data_session`], returning a Build summary plus the key output fields.
 ///
 /// This is the CLI entry point for build-layer integration: it drives every
 /// source (equipment / passive tree / skill gems / character base / enemy)
@@ -962,7 +965,8 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
         mode_effective: req.mode_effective,
         ..Default::default()
     };
-    let out = calculate_with_data(&build, &build_data, &opts)?;
+    let session = calculate_with_data_session(&build, &build_data, &opts)?;
+    let out = session.output();
     let tree_report = diagnose_tree_version(&build, &build_data);
 
     let summary = build_summary(&build);
@@ -996,6 +1000,8 @@ pub fn calculate_build(req: &CalculateBuildRequest) -> Result<CalculateBuildRepo
     };
 
     Ok(CalculateBuildReport {
+        data_version: game_data.manifest()?.poe_version,
+        unsupported_modifiers: session.unsupported_modifier_texts().to_vec(),
         build: summary,
         output,
         tree_version: TreeVersionDiag {
@@ -1069,6 +1075,10 @@ pub struct MarginalRequest {
 /// plus the output fields that changed.
 #[derive(Debug, Clone, Serialize)]
 pub struct MarginalReport {
+    pub data_version: String,
+    pub tree_version: TreeVersionDiag,
+    pub baseline_unsupported_modifiers: Vec<String>,
+    pub unsupported_modifiers: Vec<String>,
     /// The build summary (character identity plus per-source counts).
     pub build: BuildSummary,
     /// The candidate mod text added to the build.
@@ -1082,7 +1092,7 @@ pub struct MarginalReport {
 /// Computes a candidate mod line's marginal contribution to a build:
 /// baseline vs. baseline+mod, diffed field by field.
 ///
-/// The two [`calculate_with_data`] calls only differ in
+/// The two [`calculate_with_data_session`] calls only differ in
 /// `extra_modifier_texts`; every other orchestration option (enemy /
 /// basis / character-base injection) is identical, so the delta is caused purely by the candidate mod line.
 pub fn marginal_contribution(req: &MarginalRequest) -> Result<MarginalReport, CliError> {
@@ -1099,18 +1109,27 @@ pub fn marginal_contribution(req: &MarginalRequest) -> Result<MarginalReport, Cl
         mode_effective: req.mode_effective,
         ..Default::default()
     };
-    let before = calculate_with_data(&build, &build_data, &base_opts)?;
+    let before = calculate_with_data_session(&build, &build_data, &base_opts)?;
 
     let with_opts = DataOrchestratorOptions {
         extra_modifier_texts: req.mod_texts.clone(),
         ..base_opts.clone()
     };
-    let after = calculate_with_data(&build, &build_data, &with_opts)?;
+    let after = calculate_with_data_session(&build, &build_data, &with_opts)?;
+    let tree = diagnose_tree_version(&build, &build_data);
 
     Ok(MarginalReport {
+        data_version: game_data.manifest()?.poe_version,
+        tree_version: TreeVersionDiag {
+            build_tree_version: tree.build_tree_version,
+            unknown_node_count: tree.unknown_nodes.len(),
+            unknown_nodes: tree.unknown_nodes,
+        },
+        baseline_unsupported_modifiers: before.unsupported_modifier_texts().to_vec(),
+        unsupported_modifiers: after.unsupported_modifier_texts().to_vec(),
         build: build_summary(&build),
         added_mod_texts: req.mod_texts.clone(),
-        deltas: build_deltas(&before, &after),
+        deltas: build_deltas(before.output(), after.output()),
     })
 }
 
@@ -1194,6 +1213,17 @@ pub fn render_marginal(report: &MarginalReport) -> String {
         b.equipped_item_count,
         b.socket_group_count
     );
+    let _ = writeln!(s, "Data version: {}", report.data_version);
+    for text in &report.unsupported_modifiers {
+        let _ = writeln!(s, "Unsupported modifier: {text}");
+    }
+    if report.tree_version.unknown_node_count > 0 {
+        let _ = writeln!(
+            s,
+            "Unknown passive nodes: {:?}",
+            report.tree_version.unknown_nodes
+        );
+    }
     let _ = writeln!(s, "Added mod: {}", report.added_mod_texts.join(" / "));
     if report.deltas.is_empty() {
         let _ = writeln!(
@@ -1417,6 +1447,14 @@ mod marginal_tests {
     #[test]
     fn render_marginal_reports_no_impact_when_empty() {
         let report = MarginalReport {
+            data_version: "test".into(),
+            tree_version: TreeVersionDiag {
+                build_tree_version: None,
+                unknown_node_count: 0,
+                unknown_nodes: vec![],
+            },
+            baseline_unsupported_modifiers: vec![],
+            unsupported_modifiers: vec![],
             build: BuildSummary {
                 level: 92,
                 class_name: "Ranger".to_string(),

@@ -4,7 +4,8 @@ description: Bootstrap, build, test, and drive the pobr (Path of Building in Rus
 ---
 
 pobr is a Rust workspace with a Web frontend. Read the validation policy in
-[`CLAUDE.md`](../../../CLAUDE.md) before choosing checks. The canonical driver is
+[`CLAUDE.md`](../../../CLAUDE.md) before choosing checks. The public development
+CLI is `./pobr`, backed by
 `.claude/skills/run-pobr/driver.sh`; the optional, gitignored `.agents` entry forwards to it. Run commands
 from the repository root so the configured Rust/Node toolchains stay consistent.
 
@@ -20,7 +21,8 @@ Use the configured Rust toolchain. Web checks use Node and the pnpm version in
 `web/package.json`; CI uses Node 22. Lua extraction/oracle checks need `luajit`.
 Do not bootstrap an already working checkout. On a fresh Ubuntu machine the
 `bootstrap` command installs LuaJIT through apt, clones the pinned vendor and
-builds the workspace. On other platforms install missing prerequisites using
+builds the application CLI. Use `./pobr build --workspace` only when all binaries
+are needed. On other platforms install missing prerequisites using
 the appropriate package manager before using the driver.
 
 `cargo-nextest` is optional locally. The full gate detects it and otherwise uses
@@ -34,11 +36,16 @@ can still compile unrelated integration targets; specify `--test` or `--lib`.
 For example, a change to support gating needs:
 
 ```bash
-bash .claude/skills/run-pobr/driver.sh test -p pobr-build --test skills support_gating::
-bash .claude/skills/run-pobr/driver.sh lint -p pobr-build --lib --test skills
+./pobr verify build skills support_gating::
 ```
 
-`test` forwards ordinary `cargo test` arguments unchanged. `lint` runs fmt and
+Use `./pobr targets` to discover suites. For slow compilation diagnostics only,
+use `./pobr timings build parity`; it is not an extra validation step.
+
+`test` accepts `<crate> <suite|lib> [filter]` or forwards raw `cargo test`
+arguments unchanged. `verify` runs the selected tests followed by lint; a failure
+stops the command. `timings` compiles selected tests without executing them.
+`lint` runs fmt and
 Clippy for exactly the supplied Cargo targets. Both require explicit arguments.
 They preserve compiler diagnostics and build-lock messages.
 
@@ -56,11 +63,14 @@ They preserve compiler diagnostics and build-lock messages.
 
 ## Full gate
 
-Before merge/release, or for toolchain/features/workspace dependency changes and
-core changes whose impact cannot be bounded:
+Full merge/release and broad-change gates should run in cloud CI. Release tags
+trigger the gate automatically; for another pushed ref use `./pobr ci <ref>`
+and inspect `./pobr ci-status`. This tests the remote ref, never local edits.
+A dispatch request is not a passing result. Do not require a duplicate local
+full gate before cloud CI. When local full Rust validation is explicitly needed:
 
 ```bash
-bash .claude/skills/run-pobr/driver.sh full
+./pobr full
 ```
 
 This runs fmt, workspace Clippy, nextest plus separate doctests (or `cargo test --workspace` when nextest is absent), and i18n lint. It stops at the first failure.
@@ -68,10 +78,13 @@ CI retains its full Rust and Web gates on tags/manual dispatch; ordinary pushes
 and PRs do not trigger CI automatically. Do not repeat a successful full gate for
 an unchanged local commit, or dispatch an identical CI run in addition to a tag.
 Publishing, PR updates and version bumps follow the user's authorized scope.
+See [workflow commands](../../../docs/development-workflow.md). Application version
+bumps leave the seven `crates/` library versions unchanged.
 
-Timing diagnostics and data-version drills are opt-in, not everyday gates:
+Timing diagnostics, parity dashboards and data-version drills are opt-in, not everyday gates:
 
 ```bash
+./pobr test build parity parity_baseline_report -- --ignored --nocapture
 cargo test -p pobr-wasm --test perf_timing --test perf_phases -- --ignored --nocapture
 bash .claude/skills/run-pobr/driver.sh drill
 ```

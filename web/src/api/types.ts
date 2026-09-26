@@ -9,7 +9,7 @@
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 5;
+export const EXPECTED_SCHEMA_VERSION = 7;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -97,6 +97,7 @@ export interface ItemsJson {
 }
 
 export interface GemJson {
+  stat_set_index?: number | null;
   skill_id: string;
   level: number;
   quality: number;
@@ -122,7 +123,14 @@ export interface WeaponSwap {
   exclusive_nodes: [number[], number[]];
 }
 
+export interface CustomModifierBlock {
+  title: string;
+  enabled: boolean;
+  text: string;
+}
+
 export interface BuildJson {
+  custom_modifier_blocks?: CustomModifierBlock[];
   weapon_swap?: WeaponSwap | null;
   character: CharacterJson;
   tree: TreeJson;
@@ -174,6 +182,7 @@ export interface CharacterOverride {
 
 /** 手动技能组宝石条目（gem id 由后端按 skill_id 反查）。 */
 export interface GemInput {
+  stat_set_index?: number | null;
   skill_id: string;
   level: number;
   quality: number;
@@ -338,6 +347,7 @@ export interface ItemAugmentInfo {
 
 /** `pob_code` 与 `character` 至少给一个（无 code = PoB2 新建 build 语义）。 */
 export interface CalculateBuildRequest {
+  tree_version?: string | null;
   pob_code?: string;
   character?: CharacterOverride;
   /** 整份替换已加点集合（交互加点）。 */
@@ -356,6 +366,7 @@ export interface CalculateBuildRequest {
   mode_effective?: boolean;
   enemy_tier?: EnemyTier;
   extra_modifiers?: string[];
+  custom_modifier_blocks?: CustomModifierBlock[];
   config_inputs?: Record<string, ConfigInputValue>;
 }
 

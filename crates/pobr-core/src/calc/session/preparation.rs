@@ -22,21 +22,30 @@ impl CalculationSession {
     /// `class` contains the starting attributes already baked into CharacterBase mods;
     /// `None` disables attribute derivation for callers supplying their own base input.
     pub fn prepare_player_stats(&mut self, level: u32, class: Option<crate::CharacterBase>) {
+        let bases = class.map_or([0.0; 3], |c| [c.strength, c.dexterity, c.intelligence]);
+        let attributes = [
+            self.attribute_total("Strength", bases[0]),
+            self.attribute_total("Dexterity", bases[1]),
+            self.attribute_total("Intelligence", bases[2]),
+        ];
         if let Some(class) = class {
-            self.derive_attribute_bonuses(class);
+            self.derive_attribute_bonuses(class, attributes);
         }
-        let str_total = self.base_sum("Strength");
-        let dex_total = self.base_sum("Dexterity");
-        let int_total = self.base_sum("Intelligence");
+        // Derived resources and per-attribute modifiers must read the same final
+        // attributes, including class bases and INC/MORE scaling.
+        let [str_total, dex_total, int_total] = attributes;
+        self.set_multiplier("Strength", str_total);
+        self.set_multiplier("Dexterity", dex_total);
+        self.set_multiplier("Intelligence", int_total);
+        self.set_stat("Strength", str_total);
+        self.set_stat("Dexterity", dex_total);
+        self.set_stat("Intelligence", int_total);
         // (Pre-existing #7-4) The Spirit denominator = **the final pool value**
         // (calc_spirit_pool, including INC/MORE and conversion deductions) — vendor's
         // PerStat reads output.Spirit; BASE-only would under-count wolf-pack's Perfidy
         // "+2 Armour per 1 Spirit" by 72 base (Spirit 336 vs base 300).
         let spirit_total = self.spirit_total();
         let (life_total, mana_total) = life_mana_pools(&self.env);
-        self.set_multiplier("Strength", str_total);
-        self.set_multiplier("Dexterity", dex_total);
-        self.set_multiplier("Intelligence", int_total);
         self.set_multiplier("Spirit", spirit_total);
         self.set_multiplier("Mana", mana_total);
         self.set_multiplier("Life", life_total);
@@ -47,9 +56,6 @@ impl CalculationSession {
         // side (aligned after special_mod::normalize_stat_name normalization). Only
         // backfills the subset computable before perform; globals only computable inside
         // perform (Armour/ES etc.) stay 0 (see CalcConfig::stats's doc).
-        self.set_stat("Strength", str_total);
-        self.set_stat("Dexterity", dex_total);
-        self.set_stat("Intelligence", int_total);
         let tribute = self.base_sum("Tribute");
         self.set_stat("Tribute", tribute);
         self.set_multiplier("Tribute", tribute);
@@ -67,12 +73,10 @@ impl CalculationSession {
         }
     }
 
-    fn derive_attribute_bonuses(&mut self, class: crate::CharacterBase) {
+    fn derive_attribute_bonuses(&mut self, class: crate::CharacterBase, attributes: [f64; 3]) {
         let cc = &self.env.cfg.constants.character_constants;
         let (cls_str, cls_dex, cls_int) = (class.strength, class.dexterity, class.intelligence);
-        let str_total = self.attribute_total("Strength", cls_str);
-        let dex_total = self.attribute_total("Dexterity", cls_dex);
-        let int_total = self.attribute_total("Intelligence", cls_int);
+        let [str_total, dex_total, int_total] = attributes;
         // (Pre-existing #7-4) The Giant's Blood keystone's "Inherent Life granted by
         // Strength is halved" (matching vendor CalcPerform.lua:500-505: the
         // HalvesLifeFromStrength flag → `Life BASE = Str × 1` instead of ×2).

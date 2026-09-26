@@ -19,18 +19,10 @@ impl BuildData {
 
 impl pobr_core::skill_env::PassiveNodeLookup for BuildData {
     fn passive_node(&self, node_id: u32) -> Option<&PassiveNodeDef> {
-        self.passive_nodes.get(&node_id)
+        self.passive_nodes.passive_node(node_id)
     }
 
     fn notable_by_name(&self, name: &str) -> Option<&PassiveNodeDef> {
-        self.passive_nodes
-            .values()
-            .filter(|def| def.kind == pobr_data::catalog::PassiveNodeKind::Notable)
-            .filter(|def| {
-                def.name
-                    .as_ref()
-                    .is_some_and(|n| n.eq_ignore_ascii_case(name))
-            })
-            .min_by_key(|def| def.skill)
+        self.passive_nodes.notable_by_name(name)
     }
 }

@@ -3,18 +3,22 @@
 Status: **all five items delivered on v0.0.3-dev** (2026-07-17). Companion to
 `adapting-to-0.5.4b.md` (which tracks the remaining 0.5.4b engine gaps).
 Delivery map: P0-1 → `pobr_gamedata::test_pins` + `data/<ver>/generated/test_pins.json`
-(bless: `POBR_BLESS_PINS=1`, wired as regen-all's final step); P0-2 →
+(historical bless entry: `POBR_BLESS_PINS=1`; no longer run automatically); P0-2 →
 `pipeline/diff-vendor-calcs.sh` (sample report: `devs/docs/audits/vendor-delta-ce8bffab.md`,
 which retro-identifies Mageblood without parity archaeology); P1-3 →
 `data/overlay-common/special_mods.json` (133 entries) with id-override merge in
 `GameData::special_mods`; P1-4 → `pipeline/bump-version.sh`; P2-5 → `.gitattributes`.
 The acceptance test remains the next real GGG patch (§5).
 
-Current implementation update (2026-09-17): `bump-version.sh` discovers the latest
+Current implementation update (2026-09-26): `bump-version.sh` discovers the latest
 official patch and exits when it is already active. Compatible quality balance
 updates now advance receipts by stable effect/stat IDs; changed semantic scopes
 require review. All candidate data/audit/parity gates run before `data/CURRENT`
-is promoted, and Rust's fallback derives directly from that marker. Vendor tree
+is promoted. Regeneration uses an isolated candidate directory, schema 3 file
+hashes, strict raw-column checks and exporter receipts; failed validation preserves
+the published snapshot. Count pins and numerical goldens are never automatically
+blessed. Active version discovery reads CURRENT at runtime rather than embedding
+it into the foundational data crate. Vendor tree
 selection reads `GameVersions.lua`; item-granted socket activation resolves IDs
 from the loaded tree instead of pinning league node numbers. Offline regression
 tests exercise unseen patch versions, renumbered nodes and failed promotion.

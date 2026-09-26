@@ -26,7 +26,8 @@ reward explicitly disabled and verifies that a synthetic
 and schema versions, Life and diagnostic counts. The imported-build mode checks
 positive Life and reports unsupported modifiers/item errors.
 
-`manifest.json` records the package version, source commit, JSON schema version,
+`manifest.json` records the package version, build-time source commit and dirty
+state, compile-input fingerprint, tool versions, compiled JSON schema version,
 data version, file sizes and SHA-256 hashes. `SHA256SUMS` next to the archive
 covers the release assets. The API is beta: pin an engine/data pair and compare
 `schemaVersion()` with your supported JSON schema. Unchanged schema numbers do
@@ -62,8 +63,15 @@ pnpm --dir web smoke-wasm-package
 Outputs go under `.cache/wasm-release/`. Packaging reuses the built WASM and the
 complete synchronized Web data manifest, including shared overlays and i18n.
 It excludes the UI, images, example player builds and maintenance audit report.
-Rebuild/sync before packaging; version checks catch mismatched release/data
-versions but cannot detect every stale artifact from the same version.
+`build-wasm` writes a receipt only after a successful build with unchanged
+compile inputs. Packaging verifies that receipt against the current Rust sources,
+embedded locales, manifests, lockfile, build configuration and JSON types, checks
+the generated binding hashes, and reads the schema from the compiled engine.
+It also compares synchronized data with the current snapshot and patch/common
+layers, including same-version changes. Stale inputs require a rebuild or sync;
+packaging itself never rebuilds or downloads. Direct `wasm-pack` builds without
+the receipt cannot be packaged. An unrelated later commit does not relabel the
+binary: its original build commit and dirty flag remain in the release manifest.
 
 The existing tag/manual CI runs packaging tests, builds WASM, packages it, and
 extracts the archive in a temporary directory to calculate both a new character

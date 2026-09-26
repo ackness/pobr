@@ -24,8 +24,8 @@ Run from the repository root, using the configured toolchains:
 
 ```bash
 cargo build -p pobr-cli
-cargo test -p pobr-build --test skills support_gating::
-bash .claude/skills/run-pobr/driver.sh lint -p pobr-build --lib --test skills
+./pobr verify build skills support_gating::
+./pobr targets
 pnpm --dir web dev
 pnpm --dir web test src/lib/mainSkill.test.ts
 ```
@@ -47,8 +47,10 @@ imported item text and JSON compatibility.
 Use Rust tests, Vitest `*.test.ts` files, and Playwright `*.spec.ts` files.
 Add regression assertions for changed behavior; calculation changes also need
 relevant parity coverage. Specify `--test` or `--lib` to limit compilation.
-Local commits require relevant checks; reserve `driver.sh full` for merge,
-release, or broad changes. Reuse passing checks for unchanged inputs.
+Local commits require relevant checks. Full merge/release gates run in CI; do
+not require a duplicate local full run. Use `./pobr ci <pushed-ref>` for manual
+cloud validation and `./pobr full` for explicit local Rust validation. Reuse
+passing checks for unchanged inputs. See [workflow commands](docs/development-workflow.md).
 Documentation-only changes need diff/link review, not builds.
 
 ## Commit & Pull Request Guidelines

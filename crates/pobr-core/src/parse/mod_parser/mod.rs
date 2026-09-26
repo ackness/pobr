@@ -43,6 +43,10 @@ pub use engine::{EngineDiag, parse_mod_engine, parse_mod_engine_diag};
 // (serde_json comes in as a dev-dependency; the zero-I/O invariant only
 // constrains production builds).
 #[cfg(any(test, feature = "test-rules"))]
+mod test_data;
+#[cfg(any(test, feature = "test-rules"))]
 mod test_rules;
+#[cfg(any(test, feature = "test-rules"))]
+pub use test_data::test_data_dir;
 #[cfg(any(test, feature = "test-rules"))]
 pub use test_rules::test_compiled_rules;

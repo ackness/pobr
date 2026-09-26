@@ -10,9 +10,10 @@ fn game_data() -> GameData {
 
 #[test]
 fn manifest_describes_committed_bundle() {
-    let manifest = game_data().manifest().expect("manifest should load");
+    let manifest = game_data()
+        .validate_manifest()
+        .expect("snapshot should validate");
     assert_eq!(manifest.poe_version, version());
-    assert_eq!(manifest.schema_version, 2);
     assert!(manifest.domains.base.iter().any(|d| d == "base_items"));
     assert!(manifest.languages.iter().any(|l| l == "zh-TW"));
 }

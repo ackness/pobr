@@ -92,7 +92,7 @@ TREE_JSON="$ROOT/pipeline/tree/data.json"
 step 2 "pobr-data-adapter 重放（base 域）"
 if [[ "$HAVE_TABLES" -eq 1 ]]; then
     if cargo run --quiet -p pobr-data-adapter --manifest-path "$ROOT/Cargo.toml" -- \
-        --raw "$DATA_EXPORT" --out "$TMP/regen" --patch "$VERSION"; then
+        --raw "$DATA_EXPORT" --out "$TMP/regen" --patch "$VERSION" --strict-columns; then
         N=0
         while IFS= read -r f; do
             rel="${f#"$TMP/regen/$VERSION/"}"

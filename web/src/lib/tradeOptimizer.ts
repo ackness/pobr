@@ -1,3 +1,4 @@
+import { getBackend } from '../api/backend';
 import { situationalAffix, type SituationalAffix } from './tradeMechanics';
 import type { CalculateBuildRequest, VariantInput } from '../api/types';
 import { compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type EvaluateResult, type Objective } from './optimize';
@@ -50,11 +51,8 @@ export interface TradeSearchMod {
 export interface TradeCatalog { bases: TradeBase[]; mods: TradeAffix[]; search_mods?: TradeSearchMod[]; gems?: TradeGem[] }
 
 export async function loadTradeCatalog(): Promise<TradeCatalog> {
-  const manifest = await (await fetch('/data/manifest.json')).json() as { version: string };
-  const response = await fetch(`/data/${manifest.version}/overlay/trade_catalog.json`);
-  if (!response.ok) throw new Error('Trade affix catalog unavailable');
-  const data = await response.json() as TradeCatalog;
-  if (!Array.isArray(data.bases) || !Array.isArray(data.mods)) throw new Error('Invalid trade catalog');
+  const data = await (await getBackend()).loadTradeCatalog() as TradeCatalog;
+  if (!data || !Array.isArray(data.bases) || !Array.isArray(data.mods)) throw new Error('Invalid trade catalog');
   return data;
 }
 

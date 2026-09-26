@@ -16,6 +16,7 @@ use pobr_build::{
 use pobr_core::calc::{CalculationSession, MinimalInput};
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::ConfigInputValue;
+use pobr_data::build_config::CustomModifierBlock;
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId};
 use serde::{Deserialize, Serialize};
@@ -65,6 +66,8 @@ pub struct GemInput {
     pub(crate) skill_id: String,
     pub(crate) level: u32,
     pub(crate) quality: u32,
+    /// PoB stat-set selection (1-based); omitted selects the primary form.
+    pub(crate) stat_set_index: Option<u32>,
 }
 
 impl Default for GemInput {
@@ -73,6 +76,7 @@ impl Default for GemInput {
             skill_id: String::new(),
             level: 20,
             quality: 0,
+            stat_set_index: None,
         }
     }
 }
@@ -141,6 +145,8 @@ pub struct CalculateBuildRequest {
     /// Editable inactive equipment and weapon-set passives, used for export.
     pub(crate) weapon_swap: Option<WeaponSwapInput>,
     pub(crate) pob_code: String,
+    /// Preserve the imported passive tree instead of implicitly migrating it.
+    pub(crate) tree_version: Option<String>,
     /// The character-identity override (level / class / ascendancy; each field optional).
     pub(crate) character: Option<CharacterOverride>,
     /// The allocated-node-set override (interactive point allocation:
@@ -168,6 +174,9 @@ pub struct CalculateBuildRequest {
     pub(crate) enemy_tier: Option<String>,
     /// Extra global modifier text (for debugging / hypothetical analysis).
     pub(crate) extra_modifiers: Vec<String>,
+    /// Editable PoB groups. `None` keeps the legacy request behavior; an
+    /// explicit empty array clears imported custom modifiers.
+    pub(crate) custom_modifier_blocks: Option<Vec<CustomModifierBlock>>,
     /// The `<Config>` input override (Config page toggles; bool/number/string).
     pub(crate) config_inputs: BTreeMap<String, serde_json::Value>,
     /// Notes (only written into `<Notes>` by `encode_build_json`; ignored by the calculation path).
@@ -233,7 +242,7 @@ pub(super) fn socket_group_from_input(input: &SocketGroupInput, data: &BuildData
             skill_id: gem.skill_id.clone(),
             gem_level: gem.level,
             quality: gem.quality,
-            stat_set_index: None,
+            stat_set_index: gem.stat_set_index,
             name_spec: None,
         });
         if let Some(gem_id) = gem_id {
@@ -251,6 +260,9 @@ pub(crate) fn apply_request_overrides(
     data: &BuildData,
 ) -> Result<Vec<SlotIssue>, ApiError> {
     let mut issues = Vec::new();
+    if let Some(version) = &req.tree_version {
+        build.tree_version = Some(version.clone());
+    }
     if let Some(ch) = &req.character {
         if let Some(level) = ch.level {
             build.character.level = level;
@@ -364,6 +376,27 @@ pub(crate) fn apply_request_overrides(
             key.clone(),
             json_to_config_value(value).map_err(ApiError::bad_request)?,
         );
+    }
+    if let Some(blocks) = &req.custom_modifier_blocks {
+        build.config.raw_inputs.values.remove("customMods");
+        let active_texts: Vec<&str> = blocks
+            .iter()
+            .filter(|block| block.enabled && !block.text.trim().is_empty())
+            .map(|block| block.text.as_str())
+            .collect();
+        if !active_texts.is_empty() {
+            build.config.raw_inputs.values.insert(
+                "customMods".into(),
+                ConfigInputValue::Text(active_texts.join("\n")),
+            );
+        }
+    }
+
+    // Localize only the calculation view. Editable group text stays raw in
+    // decode/export, and source-code requests use the same lane after reimport.
+    if let Some(ConfigInputValue::Text(text)) = build.config.raw_inputs.values.get_mut("customMods")
+    {
+        *text = localize_input_text(text);
     }
 
     // Quest rewards are wholesale rebuilt on top of the merged config

@@ -389,6 +389,7 @@ fn gem(
         skill_id: id.clone(),
         level,
         quality: property(item, 6).unwrap_or(0),
+        stat_set_index: None,
     })
 }
 
@@ -599,6 +600,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
         socket_groups: groups,
         main_socket_group: None,
         config_inputs,
+        custom_modifier_blocks: Vec::new(),
         notes: Some(notes),
         loadouts: vec![LoadoutJson {
             name: "Default".into(),
