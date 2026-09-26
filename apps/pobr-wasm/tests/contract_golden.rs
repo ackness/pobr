@@ -1805,6 +1805,89 @@ fn exporting_imported_build_writes_global_edits_and_clears_removed_values() {
 }
 
 #[test]
+fn exported_config_restores_custom_modifiers_and_enemy_tier() {
+    ensure_data();
+    let calculate = |request: &Value| -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap()
+    };
+    let stat = |response: &Value, id: &str| -> f64 {
+        response["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["id"] == id)
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+
+    let warrior = serde_json::json!({
+        "character": { "class_name": "Warrior", "level": 80 },
+        "extra_modifiers": ["+100 to maximum Life"],
+    });
+    let warrior_before = calculate(&warrior);
+    let warrior_code = pobr_wasm::encode_build_json(&warrior.to_string()).unwrap();
+    let warrior_xml = pobr_build::decode_pob_code(&warrior_code).unwrap();
+    assert!(warrior_xml.contains("<CustomModifierBlock"));
+    let warrior_decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&warrior_code).unwrap()).unwrap();
+    assert_eq!(
+        warrior_decoded["config_inputs"]["customMods"],
+        "+100 to maximum Life"
+    );
+    let warrior_after = calculate(&serde_json::json!({"pob_code": warrior_code}));
+    assert_eq!(stat(&warrior_before, "Life"), stat(&warrior_after, "Life"));
+
+    let mut combined_mods = warrior.clone();
+    combined_mods["config_inputs"] = serde_json::json!({ "customMods": "+50 to maximum Life" });
+    combined_mods["extra_modifiers"] = serde_json::json!(["+50 to maximum Life"]);
+    let combined_before = calculate(&combined_mods);
+    let combined_code = pobr_wasm::encode_build_json(&combined_mods.to_string()).unwrap();
+    let combined_decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&combined_code).unwrap()).unwrap();
+    assert_eq!(
+        combined_decoded["config_inputs"]["customMods"],
+        "+50 to maximum Life\n+50 to maximum Life"
+    );
+    assert_eq!(
+        stat(&combined_before, "Life"),
+        stat(
+            &calculate(&serde_json::json!({"pob_code": combined_code})),
+            "Life"
+        )
+    );
+
+    let sorceress = serde_json::json!({
+        "character": { "class_name": "Sorceress", "level": 80 },
+        "socket_groups": [{ "gems": [{ "skill_id": "SparkPlayer", "level": 20 }] }],
+        "enemy_tier": "none",
+    });
+    let sorceress_before = calculate(&sorceress);
+    let sorceress_code = pobr_wasm::encode_build_json(&sorceress.to_string()).unwrap();
+    let sorceress_decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&sorceress_code).unwrap()).unwrap();
+    assert_eq!(sorceress_decoded["config_inputs"]["enemyIsBoss"], "None");
+    let sorceress_after = calculate(&serde_json::json!({"pob_code": sorceress_code}));
+    assert_eq!(
+        sorceress_before["main_skill"]["combined_dps"],
+        sorceress_after["main_skill"]["combined_dps"]
+    );
+
+    let mut conflicting_tiers = sorceress;
+    conflicting_tiers["config_inputs"] = serde_json::json!({ "enemyIsBoss": "Boss" });
+    let conflict_before = calculate(&conflicting_tiers);
+    let conflict_code = pobr_wasm::encode_build_json(&conflicting_tiers.to_string()).unwrap();
+    let conflict_decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&conflict_code).unwrap()).unwrap();
+    assert_eq!(conflict_decoded["config_inputs"]["enemyIsBoss"], "Boss");
+    assert_eq!(
+        conflict_before["main_skill"]["combined_dps"],
+        calculate(&serde_json::json!({"pob_code": conflict_code}))["main_skill"]["combined_dps"]
+    );
+}
+
+#[test]
 fn exporting_second_loadout_preserves_set_identity_and_item_references() {
     ensure_data();
     let ring = "Rarity: RARE\nNew Ring\nSapphire Ring\n+50 to maximum Life";

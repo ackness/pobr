@@ -203,6 +203,7 @@ export function ConfigPanel({ session, lang }: Props) {
     const q = query.trim().toLowerCase();
     const filtered = options.filter(
       (o) =>
+        o.var !== 'customMods' && o.var !== 'enemyIsBoss' &&
         (!configuredOnly || effective(o.var) !== undefined) && (q === '' ||
         (o.label ?? '').toLowerCase().includes(q) ||
         o.var.toLowerCase().includes(q) ||
@@ -220,13 +221,14 @@ export function ConfigPanel({ session, lang }: Props) {
   }, [options, query, configuredOnly, overrides, buildInputs]);
 
   const searching = query.trim() !== '' || configuredOnly;
-  const configuredCount = options.filter(option => effective(option.var) !== undefined).length;
+  const configuredCount = options.filter(option =>
+    option.var !== 'customMods' && option.var !== 'enemyIsBoss' && effective(option.var) !== undefined).length;
 
   // build 自带但不在目录里的键（导入 build 的自定义/未映射 Input）→ 高级区可见。
   const extraKeys = useMemo(() => {
     const known = new Set(options.map((o) => o.var));
     return [...new Set([...Object.keys(buildInputs), ...Object.keys(overrides)])]
-      .filter((k) => !known.has(k))
+      .filter((k) => k !== 'customMods' && k !== 'enemyIsBoss' && !known.has(k))
       .sort();
   }, [options, buildInputs, overrides]);
 

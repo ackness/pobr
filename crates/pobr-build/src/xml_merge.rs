@@ -32,9 +32,10 @@ pub fn merge_active_sets(base: &str, edited: &str) -> String {
     let sel = active_selection(base);
     let mut out = base.to_string();
 
-    for tag in ["Build", "Config", "Notes"] {
+    for tag in ["Build", "Notes"] {
         replace_global(&mut out, edited, tag);
     }
+    merge_active_config(&mut out, edited);
 
     // Tree sockets reference the same item pool as equipment slots.
     let renumbered = renumber_items(edited, max_item_id(&out));
@@ -73,6 +74,60 @@ pub fn merge_active_sets(base: &str, edited: &str) -> String {
     }
 
     out
+}
+
+/// ConfigSet is a PoB2 loadout dimension of its own. Replace the selected
+/// configuration while retaining other sets and the activeConfigSet id.
+fn merge_active_config(out: &mut String, edited: &str) {
+    let Some(base_range) = nth_element(out, "Config", 1) else {
+        replace_global(out, edited, "Config");
+        return;
+    };
+    let base = &out[base_range.clone()];
+    let Some(first_set) = nth_element(base, "ConfigSet", 1) else {
+        replace_global(out, edited, "Config");
+        return;
+    };
+    let config_open = &base[..base.find('>').unwrap_or(0)];
+    let active_id = attrs(config_open)
+        .into_iter()
+        .find(|(name, _)| name == "activeConfigSet")
+        .map_or_else(|| "1".to_string(), |(_, value)| value);
+    let mut selected = first_set;
+    let mut ordinal = 1;
+    while let Some(range) = nth_element(base, "ConfigSet", ordinal) {
+        let open = &base[range.start..range.start + base[range.clone()].find('>').unwrap_or(0)];
+        if attrs(open)
+            .iter()
+            .any(|(name, value)| name == "id" && value == &active_id)
+        {
+            selected = range;
+            break;
+        }
+        ordinal += 1;
+    }
+    let edited_set = nth_element(edited, "Config", 1)
+        .map(|range| &edited[range])
+        .map(|config| {
+            if let Some(range) = nth_element(config, "ConfigSet", 1) {
+                config[range].to_string()
+            } else {
+                // Existing callers also pass a flat legacy Config. Its Inputs
+                // replace only the selected set, just like a generated set.
+                let start = config.find('>').map_or(config.len(), |at| at + 1);
+                let end = config.rfind("</Config>").unwrap_or(start);
+                format!(
+                    "<ConfigSet id=\"1\" title=\"Default\">{}</ConfigSet>",
+                    &config[start..end]
+                )
+            }
+        })
+        .unwrap_or_else(|| "<ConfigSet id=\"1\" title=\"Default\"/>".to_string());
+    let merged = merge_attrs(&base[selected.clone()], &edited_set, "ConfigSet");
+    out.replace_range(
+        base_range.start + selected.start..base_range.start + selected.end,
+        &merged,
+    );
 }
 
 fn replace_global(out: &mut String, edited: &str, tag: &str) {
@@ -361,6 +416,25 @@ fn set_title(element: &str, tag: &str, title: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn editing_active_config_keeps_other_config_sets() {
+        let base = r#"<PathOfBuilding2><Config activeConfigSet="2"><ConfigSet id="1" title="Other"><Input name="enemyIsBoss" string="Uber"/></ConfigSet><ConfigSet id="2" title="Current"><Input name="enemyIsBoss" string="Pinnacle"/></ConfigSet></Config></PathOfBuilding2>"#;
+        let edited = r#"<PathOfBuilding2><Config activeConfigSet="1"><ConfigSet id="1" title="Default"><Input name="enemyIsBoss" string="None"/><CustomModifierBlock enabled="true">+100 to maximum Life</CustomModifierBlock></ConfigSet></Config></PathOfBuilding2>"#;
+        let out = merge_active_sets(base, edited);
+        assert!(out.contains(r#"<Config activeConfigSet="2">"#));
+        assert!(out.contains(r#"<ConfigSet id="1" title="Other"><Input name="enemyIsBoss" string="Uber"/></ConfigSet>"#));
+        assert!(out.contains(r#"<ConfigSet id="2" title="Current"><Input name="enemyIsBoss" string="None"/><CustomModifierBlock enabled="true">+100 to maximum Life</CustomModifierBlock></ConfigSet>"#));
+    }
+
+    #[test]
+    fn legacy_flat_config_edit_replaces_only_selected_set() {
+        let base = r#"<PathOfBuilding2><Config activeConfigSet="2"><ConfigSet id="1" title="Other"><Input name="enemyIsBoss" string="Uber"/></ConfigSet><ConfigSet id="2" title="Current"><Input name="enemyIsBoss" string="Pinnacle"/></ConfigSet></Config></PathOfBuilding2>"#;
+        let edited = r#"<PathOfBuilding2><Config><Input name="enemyIsBoss" string="None"/></Config></PathOfBuilding2>"#;
+        let out = merge_active_sets(base, edited);
+        assert!(out.contains(r#"<ConfigSet id="1" title="Other"><Input name="enemyIsBoss" string="Uber"/></ConfigSet>"#));
+        assert!(out.contains(r#"<ConfigSet id="2" title="Current"><Input name="enemyIsBoss" string="None"/></ConfigSet>"#));
+    }
 
     #[test]
     fn global_fields_can_be_added_and_cleared() {

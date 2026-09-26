@@ -187,6 +187,34 @@ function toRequest(state: BuildState): CalculateBuildRequest {
   };
 }
 
+/** PoB config keys with dedicated editable controls use one request lane. */
+function paramsFromConfigInputs(rawInputs: Record<string, ConfigInputValue>, overrides: Partial<CalcParams> = {}): CalcParams {
+  const config_inputs = { ...rawInputs };
+  const rawTier = config_inputs.enemyIsBoss;
+  const tier = typeof rawTier === 'string' ? rawTier.toLowerCase() : '';
+  const enemy_tier = ['none', 'boss', 'pinnacle', 'uber'].includes(tier)
+    ? tier as EnemyTier : undefined;
+  if (enemy_tier) delete config_inputs.enemyIsBoss;
+  const rawMods = config_inputs.customMods;
+  const legacyMods = typeof rawMods === 'string'
+    ? rawMods.split(/\r?\n/).filter(line => line.trim().length > 0) : undefined;
+  if (legacyMods) delete config_inputs.customMods;
+  const params: CalcParams = { ...overrides, config_inputs };
+  // The old request sent raw Inputs and dedicated overrides together. Raw
+  // enemyIsBoss took precedence, while both custom-modifier lanes stacked.
+  const selectedTier = enemy_tier ?? overrides.enemy_tier;
+  const selectedMods = legacyMods
+    ? [...legacyMods, ...(overrides.extra_modifiers ?? [])]
+    : overrides.extra_modifiers;
+  if (selectedTier !== undefined) params.enemy_tier = selectedTier;
+  if (selectedMods !== undefined) params.extra_modifiers = selectedMods;
+  return params;
+}
+
+export function paramsFromDecoded(decoded: BuildJson): CalcParams {
+  return paramsFromConfigInputs(decoded.config_inputs);
+}
+
 /** 库条目：可复用的装备/珠宝（PoB 文本）。 */
 export interface LibraryItem {
   id: string;
@@ -309,10 +337,11 @@ export function parseSaved(json: string): SavedSession | null {
         flasks,
         jewels: jewels as JewelInput[],
         annotations: annotations as Annotations,
-        params: { config_inputs: configInputs as Record<string, ConfigInputValue>,
+        params: paramsFromConfigInputs(configInputs as Record<string, ConfigInputValue>, {
           ...(params.main_socket_group != null ? { main_socket_group: Number(params.main_socket_group) } : {}),
           ...(params.enemy_tier != null ? { enemy_tier: params.enemy_tier as EnemyTier } : {}),
-          ...(params.extra_modifiers != null ? { extra_modifiers: params.extra_modifiers as string[] } : {}) },
+          ...(params.extra_modifiers != null ? { extra_modifiers: params.extra_modifiers as string[] } : {}),
+        }),
       },
       notes: typeof parsed.notes === 'string' ? parsed.notes : '',
     };
@@ -336,6 +365,8 @@ function itemName(text: string): string {
  * 兜底的 XML config / 主技能组，恢复会话时从解码结果回填（已保存的显式值优先）。
  */
 function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState {
+  const decodedParams = paramsFromDecoded(decoded);
+  const savedParams = paramsFromConfigInputs(state.params.config_inputs, state.params);
   return {
     ...state,
     treeVersion: state.treeVersion ?? decoded.tree.tree_version,
@@ -353,9 +384,11 @@ function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState 
       };
     }),
     params: {
-      ...state.params,
+      ...savedParams,
       main_socket_group: state.params.main_socket_group ?? decoded.main_socket_group ?? undefined,
-      config_inputs: { ...decoded.config_inputs, ...state.params.config_inputs },
+      enemy_tier: savedParams.enemy_tier ?? decodedParams.enemy_tier,
+      extra_modifiers: savedParams.extra_modifiers ?? decodedParams.extra_modifiers,
+      config_inputs: { ...decodedParams.config_inputs, ...savedParams.config_inputs },
     },
   };
 }
@@ -670,7 +703,7 @@ export function useBuildSession(): BuildSession {
             ...materialized, pobCode: null, character: decoded.character,
             allocatedNodes: decoded.tree.allocated_nodes,
             attributeChoices: decoded.tree.attribute_choices ?? {}, annotations: {},
-            params: { config_inputs: decoded.config_inputs ?? {} },
+            params: paramsFromDecoded(decoded),
           });
           decoded = { ...decoded, main_socket_group: defaultMainSkill(materialized.socketGroups, report) ?? null };
         }
@@ -692,10 +725,7 @@ export function useBuildSession(): BuildSession {
           annotations,
           // XML 的 <Config> 与主技能组一并物化——calc 请求不再回传 pob_code，
           // 这里就是它们唯一的入口（Config 页也因此能直接显示导入值）。
-          params: {
-            config_inputs: decoded.config_inputs ?? {},
-            main_socket_group: decoded.main_socket_group ?? undefined,
-          },
+          params: { ...paramsFromDecoded(decoded), main_socket_group: decoded.main_socket_group ?? undefined },
         }, { clean: true });
         return true;
       } catch (err) {
@@ -739,10 +769,7 @@ export function useBuildSession(): BuildSession {
           attributeChoices: decoded.tree.attribute_choices ?? {},
           ...materialize(decoded),
           annotations,
-          params: {
-            config_inputs: decoded.config_inputs ?? {},
-            main_socket_group: decoded.main_socket_group ?? undefined,
-          },
+          params: { ...paramsFromDecoded(decoded), main_socket_group: decoded.main_socket_group ?? undefined },
         }, { clean: true });
       } catch (err) {
         setError(formatApiError(err));

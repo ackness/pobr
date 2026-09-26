@@ -30,14 +30,19 @@ function safePath(name) {
   return name;
 }
 
-export function syncData({ dataRoot = join(repoRoot, 'data'), destRoot = join(webRoot, 'public', 'data'), version } = {}, rename = renameSync) {
+export function snapshotFiles({ dataRoot = join(repoRoot, 'data'), version } = {}) {
   version ??= process.env.POBR_DATA_VERSION ?? readFileSync(join(dataRoot, 'CURRENT'), 'utf8').trim();
   if (!/^[0-9]+(?:\.[0-9]+)+$/.test(version)) throw new Error('Invalid data version');
   const src = join(dataRoot, version);
   const manifest = JSON.parse(readFileSync(join(src, 'manifest.json'), 'utf8'));
   const copies = new Map();
   if (manifest.schema_version === 3) {
-    if (manifest.poe_version !== version || !manifest.files || Object.keys(manifest.files).length === 0) {
+    const strings = (value) => Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+    const domains = Array.isArray(manifest.domains) ? { base: manifest.domains } : manifest.domains;
+    if (manifest.poe_version !== version || !manifest.files || Array.isArray(manifest.files)
+      || typeof manifest.files !== 'object' || Object.keys(manifest.files).length === 0
+      || !strings(manifest.languages) || !domains || !strings(domains.base)
+      || !strings(domains.overlay ?? []) || !strings(domains.generated ?? [])) {
       throw new Error('Invalid runtime snapshot manifest');
     }
     for (const [name, expected] of Object.entries(manifest.files)) {
@@ -50,6 +55,18 @@ export function syncData({ dataRoot = join(repoRoot, 'data'), destRoot = join(we
       if (actual !== expected) throw new Error(`Snapshot fingerprint mismatch: ${rel}`);
       copies.set(rel, path);
     }
+    for (const section of ['base', 'overlay', 'generated']) {
+      for (const domain of domains[section] ?? []) {
+        if (!copies.has(`${section}/${domain}.json`)) {
+          throw new Error(`Declared domain lacks an inventory entry: ${section}/${domain}`);
+        }
+      }
+    }
+    for (const language of manifest.languages) {
+      if (![...copies.keys()].some((name) => name.startsWith(`i18n/${language}/`))) {
+        throw new Error(`Declared language lacks files: ${language}`);
+      }
+    }
   } else if (manifest.schema_version === 1 || manifest.schema_version === 2) {
     for (const path of walkJson(src)) {
       const rel = relative(src, path).split('\\').join('/');
@@ -61,6 +78,13 @@ export function syncData({ dataRoot = join(repoRoot, 'data'), destRoot = join(we
   for (const [directory, prefix] of [[join(src, 'patch'), 'patch'], [join(dataRoot, 'overlay-common'), 'overlay-common']]) {
     for (const path of walkJson(directory)) copies.set(`${prefix}/${relative(directory, path).split('\\').join('/')}`, path);
   }
+  return { version, copies };
+}
+
+export function syncData({ dataRoot = join(repoRoot, 'data'), destRoot = join(webRoot, 'public', 'data'), version } = {}, rename = renameSync) {
+  const snapshot = snapshotFiles({ dataRoot, version });
+  version = snapshot.version;
+  const copies = snapshot.copies;
   const files = [...copies.keys()].sort();
   mkdirSync(dirname(destRoot), { recursive: true });
   const staging = mkdtempSync(join(dirname(destRoot), '.data-sync-'));

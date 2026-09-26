@@ -22,6 +22,59 @@ use pobr_gamedata::ruleset::ConfigCatalog;
 use pobr_gamedata::{GameData, repo_data_root};
 use std::path::{Path, PathBuf};
 
+#[test]
+fn selected_config_set_uses_enabled_native_custom_blocks_once() {
+    let xml = r#"<PathOfBuilding2>
+      <Build level="80" className="Warrior"/>
+      <Config activeConfigSet="2">
+        <ConfigSet id="1"><Input name="enemyIsBoss" string="Uber"/>
+          <CustomModifierBlock enabled="true">+999 to maximum Life</CustomModifierBlock></ConfigSet>
+        <ConfigSet id="2"><Input name="enemyIsBoss" string="None"/>
+          <Input name="customMods" string="+7 to maximum Life"/>
+          <CustomModifierBlock enabled="true">+100 to maximum Life&#10;+20 to Spirit</CustomModifierBlock>
+          <CustomModifierBlock enabled="false">+500 to maximum Life</CustomModifierBlock>
+        </ConfigSet>
+      </Config>
+    </PathOfBuilding2>"#;
+    let inputs = parse_config_inputs(xml);
+    assert_eq!(
+        inputs.values.get("enemyIsBoss"),
+        Some(&ConfigInputValue::Text("None".into()))
+    );
+    assert_eq!(
+        inputs.values.get("customMods"),
+        Some(&ConfigInputValue::Text(
+            "+100 to maximum Life\n+20 to Spirit".into()
+        ))
+    );
+    let build = pobr_build::parse_build(xml).expect("parse selected config");
+    assert_eq!(build.config.enemy_tier, Some(EnemyTier::None));
+
+    let legacy = xml.replace("<CustomModifierBlock enabled=\"true\">+100 to maximum Life&#10;+20 to Spirit</CustomModifierBlock>", "")
+        .replace("<CustomModifierBlock enabled=\"false\">+500 to maximum Life</CustomModifierBlock>", "");
+    assert_eq!(
+        parse_config_inputs(&legacy).values.get("customMods"),
+        Some(&ConfigInputValue::Text("+7 to maximum Life".into()))
+    );
+    let migrated = legacy.replace(
+        "</ConfigSet>",
+        "<CustomModifierBlock title=\"Default\" enabled=\"true\"/></ConfigSet>",
+    );
+    assert_eq!(
+        parse_config_inputs(&migrated).values.get("customMods"),
+        Some(&ConfigInputValue::Text("+7 to maximum Life".into()))
+    );
+
+    let cdata = r#"<Config><CustomModifierBlock enabled="true"><![CDATA[+10 to maximum Life
++20 to Spirit]]></CustomModifierBlock></Config>"#;
+    assert_eq!(
+        parse_config_inputs(cdata).values.get("customMods"),
+        Some(&ConfigInputValue::Text(
+            "+10 to maximum Life\n+20 to Spirit".into()
+        ))
+    );
+}
+
 /// Single-line parse via the engine (real rules, signature matches the historical `parse_mod`; the engine never returns `Err`).
 fn parse_mod(
     text: &str,

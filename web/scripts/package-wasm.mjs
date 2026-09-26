@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
+import { verifyBuildReceipt } from './wasm-build-inputs.mjs';
+import { snapshotFiles } from './sync-data.mjs';
 
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 const json = path => JSON.parse(readFileSync(path, 'utf8'));
@@ -51,11 +53,15 @@ export function packageWasm({ root = repoRoot, outDir = join(root, '.cache/wasm-
     JSON.parse(content);
     Object.defineProperty(dataFiles, file, { value: content, enumerable: true });
   }
+  const snapshot = snapshotFiles({ dataRoot: join(root, 'data'), version });
+  if (snapshot.copies.size !== dataManifest.files.length || [...snapshot.copies].some(([file, source]) =>
+    !Object.hasOwn(dataFiles, file) || dataFiles[file] !== readFileSync(source, 'utf8'))) {
+    throw new Error('Stale game data snapshot: run pnpm --dir web sync-data');
+  }
   const data = Buffer.from(JSON.stringify({ version, files: dataFiles }));
   const compressedData = gzipSync(data, { level: 9 });
-  const schemaVersion = Number(readFileSync(join(root, 'apps/pobr-wasm/src/lib.rs'), 'utf8')
-    .match(/pub const SCHEMA_VERSION: u32 = (\d+);/)?.[1]);
-  if (!schemaVersion) throw new Error('Missing JSON schema version');
+  const build = verifyBuildReceipt(root, pkgRoot);
+  const schemaVersion = build.schemaVersion;
   const baseline = json(join(root, 'devs/ci/pob-web-wasm-size-baseline.json'));
   const baselineBytes = baseline.files.reduce((sum, file) => sum + file.bytes, 0);
   const temp = mkdtempSync(join(tmpdir(), 'pobr-wasm-release-'));
@@ -82,8 +88,8 @@ export function packageWasm({ root = repoRoot, outDir = join(root, '.cache/wasm-
       ['docs/wasm-package.md', 'README.md'], ['.claude/skills/use-pobr-wasm/scripts/demo.mjs', 'example.mjs'],
     ]) cpSync(join(root, source), join(stage, dest));
     cpSync(join(root, '.claude/skills/use-pobr-wasm'), join(stage, 'skills/use-pobr-wasm'), { recursive: true });
-    const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
-    const manifest = { packageVersion: pkg.version, schemaVersion, dataVersion: version, commit,
+    const commit = build.commit;
+    const manifest = { packageVersion: pkg.version, schemaVersion, dataVersion: version, commit, build,
       target: 'web', dataFileCount: dataManifest.files.length,
       files: [...runtime, { name: 'pobr-data.json.gz', bytes: compressedData.length,
         uncompressedBytes: data.length, sha256: sha256(compressedData) }] };
@@ -101,7 +107,8 @@ export function packageWasm({ root = repoRoot, outDir = join(root, '.cache/wasm-
       ratioToApproximateReference: hybridBytes / baselineBytes };
     const markdown = [
       `# PoBR WASM v${pkg.version}`, '',
-      `Data: ${version}; JSON schema: ${schemaVersion}; source commit: ${commit}.`, '',
+      `Data: ${version}; JSON schema: ${schemaVersion}; source commit: ${commit}${build.dirty ? ' (with local changes)' : ''}.`,
+      `Build source fingerprint: ${build.sourceFingerprint}.`, '',
       '| Component | Raw bytes | gzip bytes (level 9) |', '| --- | ---: | ---: |',
       ...runtime.map(file => `| ${file.name} | ${file.bytes} | ${file.gzipBytes} |`),
       `| Data bundle (${dataManifest.files.length} files) | ${data.length} | ${compressedData.length} |`, '',

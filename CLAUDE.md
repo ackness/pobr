@@ -81,7 +81,7 @@ tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle�
 - `perf_timing` / `perf_phases` 及 parity 中的 `parity_baseline_report`、`effective_switch_dual_run_report`、`ehp_dual_run_report` 是按需诊断，运行时加 `-- --ignored --nocapture`；正确性、语料健康、覆盖率和两种模式的 parity 回归门禁仍默认执行。
 - `node web/scripts/bench-calc.mjs` measures uncached real-WASM calculation and 16-item batches on three committed builds. It requires built WASM and synced data; `--reference <old-pkg>` additionally checks complete output equality for behavior-preserving optimizations. Reports stay under ignored `.cache/`; this benchmark is opt-in, outside the CI gate.
 - `python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，不调用真实 Cargo。
-- `pnpm --dir web package-wasm`：将已构建 WASM 与同步数据打包到 `.cache/wasm-release/`，包含 `use-pobr-wasm` 技能、demo、校验和及体积比较；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。打包脚本改动运行 `node --test web/scripts/package-wasm.test.mjs`，发布流程见 [WASM 打包说明](docs/wasm-package.md)。tag CI 在 Rust/Web 门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
+- `pnpm --dir web package-wasm`：将已构建 WASM 与同步数据打包到 `.cache/wasm-release/`，包含 `use-pobr-wasm` 技能、demo、校验和及体积比较；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 写入编译来源收据；打包校验源码/绑定指纹、实际 WASM schema 和当前数据快照，同版本修改也必须重新构建或同步，来源 commit 保留编译时值。打包脚本改动运行 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`，发布流程见 [WASM 打包说明](docs/wasm-package.md)。tag CI 在 Rust/Web 门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
 - `cd web && pnpm test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
 - 计划发版时，在功能 PR 中一并更新 workspace 版本。本地完成相关验证后合并，再推送一次 tag；tag CI 完成全量门禁，通过后自动部署，无需在 master 额外手动运行同一套 CI。
 - `devs/scripts/regen-check.sh` 在临时副本中重生成，保留 `overlay-common` 与 examples 语料，不写入或恢复工作区文件。
@@ -122,6 +122,8 @@ tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle�
 | `pipeline/` | 数据下载、抽取、再生与版本差异工具 |
 
 Web 的 `api/wasmBackend.ts` 在浏览器中加载 WASM，调用 `apps/pobr-wasm/src/build_api/`；`web/src/api/types.ts` 镜像 JSON DTO，`apps/pobr-wasm/tests/contract_golden.rs` 约束契约。启动时由 JS fetch 数据，经 `stageDataFile` / `initStagedData` 建立内存 `GameData` / `BuildData`，随后计算读取内存数据。Pages Worker 处理受限的 HTTP 适配，计算仍在浏览器 WASM 中执行。原生调用通过 `GameData::new` 读取文件，WASM 使用 `GameData::from_memory`。
+
+schema 3 的运行时域读取与历史树枚举受 manifest inventory 约束；未列文件在原生与内存端均视为不存在，patch 和 overlay-common 保留独立层语义。GameData 首次访问验证并缓存不可变快照，替换磁盘快照后必须创建新实例。触发源子计算复用已准备的 Build 视图，不能再次叠加品质；传入核心的 enabled-group 序号必须映射回原始组索引后才能修改选择。
 
 **数据管线**：`GGG .dat 导出` →（`pobr-data-adapter` 离线适配）→ `data/<poe_version>/*.json`（schema = `pobr-data::catalog`，默认版本见 `data/CURRENT`，含 `overlay/` 人工修正层）→（`pobr-gamedata` 运行时 loader）→ 上层计算。游戏数据文件访问收口在 `pobr-gamedata`；下载、剪贴板及 HTTP 适配属于应用或工具边界。
 
@@ -256,6 +258,8 @@ PoB2 兼容是硬回归基准，三层校验互补：
 - Imports without an explicit main group compare positive finite Full DPS entries and prefer player groups over equipment-granted groups. Explicit PoB selections remain intact. The heuristic does not infer a player's rotation; the sidebar and trade selector remain editable.
 - JSON saves and PoB export preserve both weapon pairs and exclusive passives. Skill bindings round-trip through PoB's `set1` / `set2` flags. Core XML parsing retains these bindings as metadata.
 - Imported-build exports update character identity, main skill, config and notes while retaining other loadouts and the selected sets' IDs. `decodeBuildLoadoutJson` also returns `code` with the new selection; persist it as the next export base. Item-pool renumbering applies to both equipment slots and tree jewel references. Removing a skill group shifts the selected index; removing the main group selects a remaining enabled group and its weapon binding.
+- PoB export preserves the selected enemy tier and custom modifiers through `enemyIsBoss` and native `CustomModifierBlock` elements. Only the active ConfigSet contributes; export preserves inactive ConfigSets. Import accepts legacy `customMods`, normalizes enabled blocks into one calculation input, and materializes dedicated Web controls without applying modifiers twice.
+- The current editor stores active custom modifier lines as one list; exporting the active ConfigSet flattens block titles and does not retain disabled blocks. `mode_effective` is a runtime calculation view, not an exported build setting.
 - Socket groups preserve the optional 1-based `main_active_skill` ordinal across decode, editable state, calculation and export. It counts non-support gems. Removing a preceding active gem shifts the ordinal; support edits leave it unchanged. Omitted ordinals retain the first-active default for older requests and saves.
 - Shared page headers, card/control tokens and slot symbols live under `web/src/components/shared` and `web/src/styles`. UI verification covers the seven visible tabs from 320px through 3440px with real WASM. Wide screens use a larger workspace and additional skill, equipment and calculation columns.
 

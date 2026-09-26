@@ -2369,6 +2369,165 @@ fn trigger_modifiers_gates_on_triggered_skill_type() {
 
 // trigger_configs recognition + source-rate sub-calc
 
+fn trigger_boundary_build(source_skill: &str) -> Build {
+    Build::new()
+        .with_character(CharacterIdentity {
+            level: 80,
+            class_name: "Ranger".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill(source_skill, 10)
+                .with_gem_skill("MetaCastOnCritPlayer", 10)
+                .with_gem_skill("FireballPlayer", 10)
+                .with_main_active_skill(3),
+        )
+        .with_main_socket_group(1)
+}
+
+fn trigger_source_values(session: &CalculationSession) -> [f64; 3] {
+    [
+        "TriggerSourceRate",
+        "TriggerSourceHitChance",
+        "TriggerSourceCritChance",
+    ]
+    .map(|name| {
+        session
+            .mods_named(name)
+            .iter()
+            .map(|modifier| modifier.value.as_number().expect("numeric source stat"))
+            .sum()
+    })
+}
+
+fn assert_trigger_source_matches_direct(
+    build: &Build,
+    data: &BuildData,
+    triggered: &CalculationSession,
+) {
+    let mut direct = build.clone();
+    let group_index = direct.main_socket_group.unwrap() - 1;
+    direct.socket_groups[group_index].main_active_skill = Some(1);
+    let source = calculate_with_data(&direct, data, &DataOrchestratorOptions::default())
+        .expect("direct source calculation");
+    let rate = if source.effective_action_rate > 0.0 {
+        source.effective_action_rate
+    } else {
+        source.action_rate
+    };
+    assert_eq!(
+        trigger_source_values(triggered),
+        [rate, source.hit_chance * 100.0, source.crit_chance * 100.0],
+        "trigger source stats must match selecting the source directly"
+    );
+}
+
+#[test]
+fn trigger_subcalc_preserves_disabled_group_positions() {
+    let data = repo_data();
+    let options = DataOrchestratorOptions::default();
+    let mut build = trigger_boundary_build("ArmourBreakerPlayer");
+    // An enabled prefix makes the engine index nonzero before disabled entries
+    // are inserted on both sides of it.
+    build.socket_groups.insert(0, SocketGroup::new());
+    build.main_socket_group = Some(2);
+    let baseline = calculate_with_data_session(&build, &data, &options).unwrap();
+    assert!(baseline.output().skill_trigger_rate > 0.0);
+    assert_trigger_source_matches_direct(&build, &data, &baseline);
+
+    let mut disabled = SocketGroup::new().with_gem_skill("SparkPlayer", 10);
+    disabled.enabled = false;
+    build.socket_groups.insert(0, disabled.clone());
+    build.socket_groups.insert(2, disabled);
+    build.main_socket_group = Some(4);
+    let shifted = calculate_with_data_session(&build, &data, &options).unwrap();
+    assert_eq!(
+        trigger_source_values(&shifted),
+        trigger_source_values(&baseline)
+    );
+    assert_eq!(shifted.output(), baseline.output());
+    assert_trigger_source_matches_direct(&build, &data, &shifted);
+}
+
+#[test]
+fn trigger_subcalc_resolves_named_gems_before_scoped_quality() {
+    let mut data = repo_data();
+    let quality_node = data
+        .passive_nodes_for(Some("0_4"))
+        .values()
+        .find(|node| node.stats == ["+2% to Quality of all Skills"])
+        .expect("quality-only passive")
+        .skill;
+    let mut build = trigger_boundary_build("BoneshatterPlayer");
+    build.tree_version = Some("0_4".into());
+    build.tree.allocated_nodes = vec![NodeId(quality_node)];
+    let mut named = build.clone();
+    named.socket_groups[0].gem_skills[0].skill_id.clear();
+    named.socket_groups[0].gem_skills[0].name_spec = Some("Boneshatter".into());
+    for modifier in [
+        "+2% to Quality of all Attack Skills",
+        "+2% to Quality of all Skills with a Strength requirement",
+    ] {
+        data.versioned_passive_nodes
+            .get_mut("0_4")
+            .unwrap()
+            .get_mut(&quality_node)
+            .unwrap()
+            .stats = vec![modifier.into()];
+        let options = DataOrchestratorOptions::default();
+        let explicit = calculate_with_data_session(&build, &data, &options).unwrap();
+        let resolved = calculate_with_data_session(&named, &data, &options).unwrap();
+        assert_eq!(
+            trigger_source_values(&resolved),
+            trigger_source_values(&explicit)
+        );
+        assert_eq!(resolved.output(), explicit.output());
+        assert_trigger_source_matches_direct(&named, &data, &resolved);
+    }
+}
+
+#[test]
+fn trigger_subcalc_applies_quality_bonuses_once() {
+    let data = repo_data();
+    let options = DataOrchestratorOptions::default();
+    let quality_node = data
+        .passive_nodes_for(Some("0_4"))
+        .values()
+        .find(|node| node.stats == ["+2% to Quality of all Skills"])
+        .expect("quality-only passive");
+    let mut build = trigger_boundary_build("BoneshatterPlayer");
+    build.tree_version = Some("0_4".into());
+    build.tree.allocated_nodes = vec![NodeId(quality_node.skill)];
+    let bonus = calculate_with_data_session(&build, &data, &options).unwrap();
+    assert_trigger_source_matches_direct(&build, &data, &bonus);
+
+    let mut explicit = build.clone();
+    explicit.tree.allocated_nodes.clear();
+    for gem in &mut explicit.socket_groups[0].gem_skills {
+        gem.quality = 2;
+    }
+    let q2 = calculate_with_data_session(&explicit, &data, &options).unwrap();
+    assert_eq!(trigger_source_values(&bonus), trigger_source_values(&q2));
+    assert_eq!(
+        bonus.output().skill_trigger_rate,
+        q2.output().skill_trigger_rate
+    );
+    assert_trigger_source_matches_direct(&explicit, &data, &q2);
+
+    // Boneshatter quality changes attack speed, making a second application
+    // observable rather than merely checking an unchanged quality-insensitive skill.
+    for gem in &mut explicit.socket_groups[0].gem_skills {
+        gem.quality = 4;
+    }
+    let q4 = calculate_with_data_session(&explicit, &data, &options).unwrap();
+    assert_ne!(trigger_source_values(&q2)[0], trigger_source_values(&q4)[0]);
+
+    let mut cache = crate::calc_cache::DataCalcCache::new(&data, &options, 4);
+    assert_eq!(cache.get_or_compute(&build).unwrap(), *bonus.output());
+    assert_eq!(cache.get_or_compute(&explicit).unwrap(), *q4.output());
+}
+
 /// CoC fixture (a named gate item): group = [attack, MetaCastOnCritPlayer,
 /// spell], main skill = spell. `trigger_configs`'s `match_effect_ids`
 /// recognizes the CoC trigger relationship (the trigger panel no longer

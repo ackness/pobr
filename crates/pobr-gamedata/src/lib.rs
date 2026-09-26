@@ -8,7 +8,7 @@
 //! consume as needed.
 //!
 //! Module breakdown:
-//! - [`manifest`]: manifest v1/v2 loading;
+//! - [`manifest`]: manifest loading and sealed snapshot validation;
 //! - [`paths`]: locates a domain's file across the three directory layers
 //!   (`base/` first, falling back to the version root for compatibility
 //!   with the old layout);
@@ -84,6 +84,12 @@ impl std::error::Error for LoadError {}
 ///   front by the caller as `relative path -> bytes`, with zero file I/O
 ///   after that — for filesystem-less environments like wasm (the JS side
 ///   fetches the data files and passes them in).
+///
+/// The backing snapshot must remain unchanged for the loader's lifetime.
+/// Manifest validation (including absence or failure) is cached on first
+/// domain access and shared by clones. After replacing or repairing files,
+/// construct a new loader. Schema 3 exposes only inventoried snapshot files;
+/// user patches and shared `overlay-common` files remain separate layers.
 #[derive(Debug, Clone)]
 pub struct GameData {
     root: PathBuf,
@@ -91,6 +97,11 @@ pub struct GameData {
     /// paths relative to the version directory, always using forward
     /// slashes (e.g. `base/stats.json`, `overlay/uniques.json`).
     files: Option<std::sync::Arc<std::collections::BTreeMap<String, Vec<u8>>>>,
+    /// Validation and inventory are fixed on first access, shared by clones.
+    /// Create a new loader after replacing a snapshot on disk.
+    snapshot: std::sync::Arc<
+        std::sync::OnceLock<Result<Option<pobr_data::catalog::DataManifest>, String>>,
+    >,
 }
 
 impl GameData {
@@ -99,6 +110,7 @@ impl GameData {
         Self {
             root: version_dir.into(),
             files: None,
+            snapshot: Default::default(),
         }
     }
 
@@ -113,6 +125,7 @@ impl GameData {
         Self {
             root: PathBuf::from("<memory>"),
             files: Some(std::sync::Arc::new(files)),
+            snapshot: Default::default(),
         }
     }
 
@@ -136,6 +149,13 @@ impl GameData {
     /// Checks whether a data file exists (dispatched by backend; used by
     /// `domain_path` / the patch layer's probing).
     pub(crate) fn file_exists(&self, path: &Path) -> bool {
+        match self.snapshot_allows(path) {
+            Ok(false) => return false,
+            // Let the following load report an invalid snapshot instead of
+            // silently taking an optional-domain fallback.
+            Err(_) => return true,
+            Ok(true) => {}
+        }
         match &self.files {
             Some(map) => map.contains_key(&self.memory_key(path)),
             None => path.is_file(),
@@ -163,6 +183,15 @@ impl GameData {
         &self,
         path: PathBuf,
     ) -> Result<T, LoadError> {
+        if !self.snapshot_allows(&path)? {
+            return Err(LoadError::Io {
+                path,
+                source: std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "file not in snapshot inventory",
+                ),
+            });
+        }
         let bytes = self.read_bytes(&path).map_err(|source| LoadError::Io {
             path: path.clone(),
             source,
@@ -586,6 +615,19 @@ impl GameData {
     /// (`base/passive_trees/*.json` filenames). A missing directory means
     /// an empty list.
     pub fn available_tree_versions(&self) -> Vec<String> {
+        match self.snapshot_manifest() {
+            Ok(Some(manifest)) if manifest.schema_version >= 3 => {
+                return manifest
+                    .files
+                    .keys()
+                    .filter_map(|key| key.strip_prefix("base/passive_trees/"))
+                    .filter(|name| !name.contains('/'))
+                    .filter_map(|name| name.strip_suffix(".json").map(str::to_string))
+                    .collect();
+            }
+            Err(_) => return Vec::new(),
+            _ => {}
+        }
         if let Some(map) = &self.files {
             // In-memory backend: enumerate `base/passive_trees/*.json` keys
             // (a BTreeMap is already ordered).

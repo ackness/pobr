@@ -45,8 +45,9 @@ fn current_tree_version() -> Result<String, String> {
 /// The request shape is the same as [`CalculateBuildRequest`] (the web side
 /// always sends a full override, plus optional `notes`); `character.class_name`
 /// is required. Round-trip contract: re-decoding and calculating the
-/// produced code matches calculating directly from the request
-/// (`contract_golden::encode_build_roundtrip`).
+/// produced code matches calculating directly from the request with the same
+/// runtime calculation options (`contract_golden::encode_build_roundtrip`).
+/// `mode_effective` selects a calculation view and is not stored in PoB XML.
 ///
 /// **Multi-set preservation**: when the request carries `base_code` (the
 /// original code from import), the output is based on it, replacing only
@@ -195,6 +196,40 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     // defaultState=true on both sides (the XML path's parse_config, the
     // direct-construction path's parse_build_from_request), so omitting them stays consistent.
     let mut config_inputs = req.config_inputs.clone();
+    // PoB2 stores current custom modifiers as a CustomModifierBlock. Older
+    // callers may still send the legacy customMods Input; keep accepting it,
+    // but write only one source so PoB and PoBR cannot apply the lines twice.
+    let legacy_custom_mods = config_inputs
+        .remove("customMods")
+        .and_then(|value| value.as_str().map(str::to_owned));
+    let mut custom_mod_lines = Vec::new();
+    if let Some(legacy) = legacy_custom_mods {
+        custom_mod_lines.extend(legacy.lines().map(str::to_owned));
+    }
+    custom_mod_lines.extend(
+        req.extra_modifiers
+            .iter()
+            .map(|line| super::localize_input_text(line)),
+    );
+    let custom_mods = custom_mod_lines.join("\n");
+    if let Some(tier) = &req.enemy_tier {
+        let pob_tier = match tier.as_str() {
+            "none" => "None",
+            "boss" => "Boss",
+            "pinnacle" => "Pinnacle",
+            "uber" => "Uber",
+            _ => {
+                return Err(super::ApiError::bad_request(format!(
+                    "unknown enemy_tier: {tier}"
+                )));
+            }
+        };
+        // A raw Config Input has precedence in calculation, so preserve it
+        // when both request surfaces are supplied by an older caller.
+        config_inputs
+            .entry("enemyIsBoss".to_string())
+            .or_insert_with(|| serde_json::Value::String(pob_tier.to_string()));
+    }
     for key in pobr_build::default_true_condition_keys() {
         config_inputs
             .entry(key.to_string())
@@ -221,6 +256,7 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         socket_groups,
         main_socket_group: req.main_socket_group,
         config_inputs: &config_inputs,
+        custom_mods: &custom_mods,
         notes: req.notes.as_deref(),
     });
     // With a base draft, write back the active sets and global fields, preserving

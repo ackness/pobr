@@ -24,7 +24,58 @@ impl GameData {
     /// Schemas 1/2 retain legacy missing-domain compatibility. Schema 3 requires
     /// every declared file and verifies original bytes before user patches merge.
     pub fn validate_manifest(&self) -> Result<DataManifest, LoadError> {
-        let manifest = self.manifest()?;
+        self.snapshot_manifest()?
+            .cloned()
+            .ok_or_else(|| LoadError::Io {
+                path: self.root().join("manifest.json"),
+                source: std::io::Error::new(std::io::ErrorKind::NotFound, "missing manifest"),
+            })
+    }
+
+    /// The manifest is optional for legacy standalone domain loaders. Present
+    /// manifests are validated once, including all hashes, before any domain can
+    /// degrade to an optional fallback. Clones share the same immutable inventory.
+    pub(crate) fn snapshot_manifest(&self) -> Result<Option<&DataManifest>, LoadError> {
+        match self.snapshot.get_or_init(|| match self.manifest() {
+            Err(LoadError::Io { source, .. }) if source.kind() == std::io::ErrorKind::NotFound => {
+                Ok(None)
+            }
+            Err(error) => Err(error.to_string()),
+            Ok(manifest) => self
+                .validate_snapshot(manifest)
+                .map(Some)
+                .map_err(|error| error.to_string()),
+        }) {
+            Ok(manifest) => Ok(manifest.as_ref()),
+            Err(message) => Err(LoadError::Integrity {
+                path: self.root().join("manifest.json"),
+                message: message.clone(),
+            }),
+        }
+    }
+
+    pub(crate) fn snapshot_allows(&self, path: &std::path::Path) -> Result<bool, LoadError> {
+        let Some(manifest) = self.snapshot_manifest()? else {
+            return Ok(true);
+        };
+        if manifest.schema_version < 3 {
+            return Ok(true);
+        }
+        // Shared curation is outside the sealed version directory on disk,
+        // and uses the same relative key in the in-memory backend.
+        if self
+            .overlay_common_path("")
+            .is_some_and(|common| path.starts_with(common))
+        {
+            return Ok(true);
+        }
+        let relative = self.memory_key(path);
+        Ok(relative == "manifest.json"
+            || relative.starts_with("patch/")
+            || manifest.files.contains_key(&relative))
+    }
+
+    fn validate_snapshot(&self, manifest: DataManifest) -> Result<DataManifest, LoadError> {
         let invalid = |message| LoadError::Integrity {
             path: self.root().join("manifest.json"),
             message,
@@ -148,6 +199,140 @@ mod tests {
             b"{\"effects\":[]}".to_vec(),
         );
         GameData::from_memory(files).validate_manifest().unwrap();
+    }
+
+    fn with_backends(tag: &str, files: BTreeMap<String, Vec<u8>>, check: impl Fn(&GameData)) {
+        check(&GameData::from_memory(files.clone()));
+        let root = std::env::temp_dir().join(format!(
+            "pobr-gamedata-inventory-{tag}-{}",
+            std::process::id()
+        ));
+        let version = root.join("test");
+        for (name, bytes) in files {
+            let path = if name.starts_with("overlay-common/") {
+                root.join(name)
+            } else {
+                version.join(name)
+            };
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, bytes).unwrap();
+        }
+        check(&GameData::new(version));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn strict_inventory_controls_direct_loads_fallbacks_and_tree_enumeration() {
+        let mut files = strict_files();
+        let mut manifest: serde_json::Value =
+            serde_json::from_slice(&files["manifest.json"]).unwrap();
+        manifest["files"]["base/passive_trees/listed.json"] =
+            format!("{:x}", Sha256::digest(b"[]")).into();
+        files.insert(
+            "manifest.json".into(),
+            serde_json::to_vec(&manifest).unwrap(),
+        );
+        files.insert("base/passive_trees/listed.json".into(), b"[]".to_vec());
+        for name in [
+            "base/passive_trees/unlisted.json",
+            "base/stats.json",
+            "stats.json",
+        ] {
+            files.insert(name.into(), b"[]".to_vec());
+        }
+        files.insert(
+            "overlay/stat_descriptions.json".into(),
+            b"invalid JSON".to_vec(),
+        );
+        files.insert(
+            "i18n/zh-TW/words.json".into(),
+            br#"{"hidden":"value"}"#.to_vec(),
+        );
+        files.insert(
+            "overlay/example.json".into(),
+            br#"{"value":"unlisted"}"#.to_vec(),
+        );
+        files.insert(
+            "overlay-common/example.json".into(),
+            br#"{"value":"common"}"#.to_vec(),
+        );
+        files.insert(
+            "patch/overlay/gem_quality_stats.json".into(),
+            br#"{"effects":[{"effect_id":"Patched","stats":[]}]}"#.to_vec(),
+        );
+        with_backends("closed", files, |data| {
+            // Domain calls enforce the inventory without a prior explicit validate.
+            assert_eq!(
+                data.gem_quality_stats().unwrap().unwrap().effects[0].effect_id,
+                "Patched"
+            );
+            assert!(data.stat_descriptions().unwrap().is_none());
+            assert!(data.word_names("zh-TW").unwrap().is_empty());
+            assert!(
+                matches!(data.stats(), Err(crate::LoadError::Io { source, .. })
+                if source.kind() == std::io::ErrorKind::NotFound)
+            );
+            assert_eq!(data.available_tree_versions(), ["listed"]);
+            assert!(data.passive_nodes_versioned("listed").unwrap().is_some());
+            assert!(data.passive_nodes_versioned("unlisted").unwrap().is_none());
+            let common: serde_json::Value = data.load_overlay_or_common("example.json").unwrap();
+            assert_eq!(common["value"], "common");
+            assert_eq!(data.validate_manifest().unwrap().schema_version, 3);
+        });
+    }
+
+    #[test]
+    fn direct_optional_loads_cannot_hide_broken_inventory() {
+        for missing in [true, false] {
+            let mut files = strict_files();
+            if missing {
+                files.remove("overlay/gem_quality_stats.json");
+            } else {
+                files.insert("overlay/gem_quality_stats.json".into(), b"{}".to_vec());
+            }
+            with_backends(if missing { "missing" } else { "changed" }, files, |data| {
+                assert!(matches!(
+                    data.gem_quality_stats(),
+                    Err(crate::LoadError::Integrity { .. })
+                ));
+                // This loader probes existence before reading, and must still fail.
+                assert!(matches!(
+                    data.stat_descriptions(),
+                    Err(crate::LoadError::Integrity { .. })
+                ));
+            });
+        }
+    }
+
+    #[test]
+    fn unlisted_quality_is_absent_only_in_strict_snapshots() {
+        for schema in [1, 2, 3] {
+            let mut files = strict_files();
+            let manifest = serde_json::json!({
+                "schema_version": schema, "poe_version": "test", "languages": [],
+                "domains": { "base": ["stats"] },
+                "files": { "base/stats.json": format!("{:x}", Sha256::digest(b"[]")) }
+            });
+            files.insert(
+                "manifest.json".into(),
+                serde_json::to_vec(&manifest).unwrap(),
+            );
+            files.insert("base/stats.json".into(), b"[]".to_vec());
+            with_backends(&format!("schema-{schema}"), files, |data| {
+                assert_eq!(data.gem_quality_stats().unwrap().is_some(), schema < 3);
+                assert!(data.stats().unwrap().is_empty());
+            });
+        }
+    }
+
+    #[test]
+    fn standalone_domains_without_manifest_keep_legacy_loading() {
+        let mut files = strict_files();
+        files.remove("manifest.json");
+        with_backends("no-manifest", files, |data| {
+            assert!(data.gem_quality_stats().unwrap().is_some());
+            assert!(data.validate_manifest().is_err());
+        });
     }
 
     #[test]

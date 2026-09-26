@@ -63,6 +63,8 @@ pub(crate) struct XmlInput<'a> {
     /// 0-based (written as 1-based in the XML).
     pub main_socket_group: Option<usize>,
     pub config_inputs: &'a BTreeMap<String, serde_json::Value>,
+    /// Active custom modifier lines, stored in PoB2's native block format.
+    pub custom_mods: &'a str,
     pub notes: Option<&'a str>,
 }
 
@@ -239,8 +241,9 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
     wln!(w, "  </Items>");
 
     // Config.
-    if !input.config_inputs.is_empty() {
-        wln!(w, "  <Config>");
+    if !input.config_inputs.is_empty() || !input.custom_mods.is_empty() {
+        wln!(w, "  <Config activeConfigSet=\"1\">");
+        wln!(w, "    <ConfigSet id=\"1\" title=\"Default\">");
         for (name, value) in input.config_inputs {
             let attr = match value {
                 serde_json::Value::Bool(b) => format!(r#"boolean="{b}""#),
@@ -250,8 +253,16 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
                     esc_attr(other.as_str().unwrap_or_default())
                 ),
             };
-            wln!(w, r#"    <Input name="{}" {attr}/>"#, esc_attr(name));
+            wln!(w, r#"      <Input name="{}" {attr}/>"#, esc_attr(name));
         }
+        if !input.custom_mods.is_empty() {
+            wln!(
+                w,
+                "      <CustomModifierBlock title=\"Default\" enabled=\"true\">{}</CustomModifierBlock>",
+                esc_text(input.custom_mods)
+            );
+        }
+        wln!(w, "    </ConfigSet>");
         wln!(w, "  </Config>");
     }
 

@@ -141,11 +141,16 @@ test('switch, reload, edit and share preserve the selected loadout and global fi
   await page.getByRole('button', { name: 'Config', exact: true }).click();
   await page.getByLabel('Search config options…').fill('Onslaught');
   await page.locator('.config-item input[type="checkbox"]').first().check();
+  await page.locator('.config-toolbar select').selectOption('none');
+  await page.locator('.config-extra-mods').fill('+100 to maximum Life');
   await page.getByRole('button', { name: 'Skills', exact: true }).click();
   await page.locator('.skill-main-toggle').nth(1).click();
   await expect(page.locator('.skill-group.is-main .skill-group-name')).toHaveText('Firestorm');
   await expect(page.locator('.topbar-busy')).toHaveCount(0);
   const before = await saved(page);
+  const beforeDps = await page.locator('.main-skill-section .stat-row dd').first().textContent();
+  expect(before.state.params.enemy_tier).toBe('none');
+  expect(before.state.params.extra_modifiers).toEqual(['+100 to maximum Life']);
 
   await page.getByRole('button', { name: 'Build', exact: true }).click();
   await page.getByRole('button', { name: 'Generate share code', exact: true }).click();
@@ -154,6 +159,8 @@ test('switch, reload, edit and share preserve the selected loadout and global fi
   expect(exported).toContain('<Spec title="A" nodes="1,2" treeVersion="0_5"/>');
   expect(exported.match(/<SkillSet\b[^>]*id="2"/g)).toHaveLength(1);
   expect(exported.match(/<ItemSet\b[^>]*id="2"/g)).toHaveLength(1);
+  expect(exported).toContain('<Input name="enemyIsBoss" string="None"/>');
+  expect(exported).toContain('<CustomModifierBlock title="Default" enabled="true">+100 to maximum Life</CustomModifierBlock>');
 
   await importCode(page, code);
   const after = await saved(page);
@@ -161,8 +168,11 @@ test('switch, reload, edit and share preserve the selected loadout and global fi
   expect(after.state.params.main_socket_group).toBe(before.state.params.main_socket_group);
   // Export also materializes default-false condition keys.
   expect(after.state.params.config_inputs).toMatchObject(before.state.params.config_inputs);
+  expect(after.state.params.enemy_tier).toBe('none');
+  expect(after.state.params.extra_modifiers).toEqual(['+100 to maximum Life']);
   expect(after.state.socketGroups).toEqual(before.state.socketGroups);
   expect(after.notes).toBe(before.notes);
+  await expect(page.locator('.main-skill-section .stat-row dd').first()).toHaveText(beforeDps!);
   await expect(page.getByLabel('PoB loadout', { exact: true })).toHaveValue('1');
 
   await page.getByLabel('PoB loadout', { exact: true }).selectOption('0');

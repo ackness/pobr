@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { parseSaved, type SavedSession } from './useBuildSession';
+import { paramsFromDecoded, parseSaved, type SavedSession } from './useBuildSession';
+import type { BuildJson } from '../api/types';
 import { parseWorkspace, createWorkspace } from '../lib/buildWorkspace';
 
 const saved: SavedSession = {
@@ -15,6 +16,40 @@ const saved: SavedSession = {
 const parseState = (patch: Record<string, unknown>) => parseSaved(JSON.stringify({ ...saved, state: { ...saved.state, ...patch } }));
 
 describe('saved-session validation', () => {
+  test('restores PoB enemy tier and custom modifier controls from config', () => {
+    const decoded = { config_inputs: {
+      enemyIsBoss: 'None', customMods: '+100 to maximum Life\n+20 to Spirit',
+      conditionFullLife: false,
+    } } as unknown as BuildJson;
+    expect(paramsFromDecoded(decoded)).toEqual({
+      enemy_tier: 'none',
+      extra_modifiers: ['+100 to maximum Life', '+20 to Spirit'],
+      config_inputs: { conditionFullLife: false },
+    });
+  });
+
+  test('migrates saved legacy config keys into dedicated controls', () => {
+    const restored = parseState({ params: { config_inputs: {
+      enemyIsBoss: 'Boss', customMods: '+50 to maximum Life', conditionFullLife: false,
+    } } });
+    expect(restored?.state.params).toEqual({
+      config_inputs: { conditionFullLife: false },
+      enemy_tier: 'boss',
+      extra_modifiers: ['+50 to maximum Life'],
+    });
+  });
+
+  test('keeps both legacy and dedicated custom modifier lanes in saved requests', () => {
+    const restored = parseState({ params: {
+      config_inputs: { enemyIsBoss: 'Boss', customMods: '+50 to maximum Life' },
+      enemy_tier: 'none', extra_modifiers: ['+50 to maximum Life', '+20 to Spirit'],
+    } });
+    expect(restored?.state.params).toEqual({
+      config_inputs: {}, enemy_tier: 'boss',
+      extra_modifiers: ['+50 to maximum Life', '+50 to maximum Life', '+20 to Spirit'],
+    });
+  });
+
   test('preserves imported skill forms, historical trees and explicit false/zero settings', () => {
     expect(parseSaved(JSON.stringify(saved))).toEqual(saved);
   });
