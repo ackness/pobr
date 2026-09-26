@@ -37,6 +37,7 @@ use quick_xml::events::{BytesRef, BytesStart, Event};
 use pobr_core::CampaignProgress;
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_core::rules::config_interpreter::{ConfigInputValue, RawConfigInputs};
+use pobr_data::build_config::CustomModifierBlock;
 use pobr_data::item::{EquipmentSlot, Item};
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::{AttributeChoice, NodeId, PassiveTreeSpec};
@@ -263,6 +264,18 @@ pub struct ParsedConfig {
 /// Placeholder fallback" (e.g. `enemyLevel`, ConfigTab.lua:872-877); the interpreter's
 /// main flow doesn't read this table.
 pub fn parse_config_inputs(xml: &str) -> RawConfigInputs {
+    parse_config_document(xml).0
+}
+
+/// Returns the selected ConfigSet's editable custom modifier groups. Legacy
+/// `customMods` Input text is migrated to a Default group as PoB2 does.
+pub fn parse_custom_modifier_blocks(xml: &str) -> Vec<CustomModifierBlock> {
+    parse_config_document(xml).1
+}
+
+/// Scan Inputs and custom groups together so calculation and editing share
+/// the same selected-set, XML entity, and legacy migration semantics.
+fn parse_config_document(xml: &str) -> (RawConfigInputs, Vec<CustomModifierBlock>) {
     let mut inputs = RawConfigInputs::new();
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
@@ -270,9 +283,8 @@ pub fn parse_config_inputs(xml: &str) -> RawConfigInputs {
     let mut in_set = false;
     let mut active_set = String::from("1");
     let mut selected_set = false;
-    let mut block_text: Option<String> = None;
-    let mut block_enabled = false;
-    let mut blocks: Vec<(bool, String)> = Vec::new();
+    let mut current_block: Option<CustomModifierBlock> = None;
+    let mut blocks = Vec::new();
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) if element_name(&e) == "Config" => {
@@ -285,34 +297,38 @@ pub fn parse_config_inputs(xml: &str) -> RawConfigInputs {
             }
             Ok(Event::Start(e)) if in_config && element_name(&e) == "CustomModifierBlock" => {
                 if !in_set || selected_set {
-                    block_enabled = attr_value(&e, b"enabled").as_deref() != Some("false");
-                    block_text = Some(String::new());
+                    current_block = Some(CustomModifierBlock {
+                        title: attr_value(&e, b"title").unwrap_or_else(|| "Default".into()),
+                        enabled: attr_value(&e, b"enabled").as_deref() != Some("false"),
+                        text: String::new(),
+                    });
                 }
             }
             Ok(Event::Empty(e)) if in_config && element_name(&e) == "CustomModifierBlock" => {
                 if !in_set || selected_set {
-                    blocks.push((
-                        attr_value(&e, b"enabled").as_deref() != Some("false"),
-                        String::new(),
-                    ));
+                    blocks.push(CustomModifierBlock {
+                        title: attr_value(&e, b"title").unwrap_or_else(|| "Default".into()),
+                        enabled: attr_value(&e, b"enabled").as_deref() != Some("false"),
+                        text: String::new(),
+                    });
                 }
             }
-            Ok(Event::Text(text)) if block_text.is_some() => {
+            Ok(Event::Text(text)) if current_block.is_some() => {
                 if let Ok(decoded) = text.decode() {
-                    block_text.as_mut().unwrap().push_str(&decoded);
+                    current_block.as_mut().unwrap().text.push_str(&decoded);
                 }
             }
-            Ok(Event::GeneralRef(reference)) if block_text.is_some() => {
-                append_general_ref(block_text.as_mut().unwrap(), &reference);
+            Ok(Event::GeneralRef(reference)) if current_block.is_some() => {
+                append_general_ref(&mut current_block.as_mut().unwrap().text, &reference);
             }
-            Ok(Event::CData(text)) if block_text.is_some() => {
+            Ok(Event::CData(text)) if current_block.is_some() => {
                 if let Ok(decoded) = text.decode() {
-                    block_text.as_mut().unwrap().push_str(&decoded);
+                    current_block.as_mut().unwrap().text.push_str(&decoded);
                 }
             }
             Ok(Event::End(e)) if element_name_end(&e) == "CustomModifierBlock" => {
-                if let Some(text) = block_text.take() {
-                    blocks.push((block_enabled, text));
+                if let Some(block) = current_block.take() {
+                    blocks.push(block);
                 }
             }
             Ok(Event::End(e)) if element_name_end(&e) == "ConfigSet" => {
@@ -360,21 +376,32 @@ pub fn parse_config_inputs(xml: &str) -> RawConfigInputs {
     // PoB2 migrates legacy customMods into a block, then removes the Input.
     // Only the selected ConfigSet's enabled blocks contribute. One canonical
     // customMods value feeds the existing interpreter and avoids double use.
-    if !blocks.is_empty() && !(blocks.len() == 1 && blocks[0].1.is_empty()) {
-        inputs.values.remove("customMods");
-        let active_blocks: Vec<&str> = blocks
-            .iter()
-            .filter(|(enabled, text)| *enabled && !text.trim().is_empty())
-            .map(|(_, text)| text.as_str())
-            .collect();
-        if !active_blocks.is_empty() {
-            inputs.values.insert(
-                "customMods".into(),
-                ConfigInputValue::Text(active_blocks.join("\n")),
-            );
-        }
+    let legacy = inputs.values.remove("customMods");
+    let legacy_text = match legacy {
+        Some(ConfigInputValue::Text(text)) if !text.is_empty() => Some(text),
+        _ => None,
+    };
+    if let Some(text) = legacy_text
+        && (blocks.is_empty() || (blocks.len() == 1 && blocks[0].text.is_empty()))
+    {
+        blocks = vec![CustomModifierBlock {
+            title: "Default".into(),
+            enabled: true,
+            text,
+        }];
     }
-    inputs
+    let active_blocks: Vec<&str> = blocks
+        .iter()
+        .filter(|block| block.enabled && !block.text.trim().is_empty())
+        .map(|block| block.text.as_str())
+        .collect();
+    if !active_blocks.is_empty() {
+        inputs.values.insert(
+            "customMods".into(),
+            ConfigInputValue::Text(active_blocks.join("\n")),
+        );
+    }
+    (inputs, blocks)
 }
 
 /// **Temporary export during the dual-run period**: the legacy `<Config>` parse path

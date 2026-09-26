@@ -256,21 +256,6 @@
   }
 }
 
-/* Loadout 切换下拉：与语言按钮同级，仅存在多个组时渲染。 */
-.topbar-loadout {
-  background: var(--surface-card);
-  color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
-  padding: 2px var(--space-1);
-  max-width: 12rem;
-}
-
-.topbar-loadout:disabled {
-  opacity: 0.5;
-}
-
  .stats-toggle { display: none; }
 @media (max-width: 1100px) {
   .app-main { padding: var(--space-6); }
@@ -283,7 +268,6 @@
   .topbar-tabs { order: 3; flex: 1 0 100%; min-height: 44px; }
   .topbar-tab { flex: 1; min-width: max-content; }
   .topbar-right { margin-left: auto; gap: var(--space-2); min-width: 0; }
-  .topbar-loadout { max-width: 100px; }
   .topbar-beta, .topbar-character { display: none; }
   .beta-banner { font-size: var(--text-xs); }
   .stats-toggle { display: flex; align-items: center; justify-content: space-between; flex: none; width: 100%; padding: var(--space-2) var(--space-4); background: var(--surface-panel); border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; font-size: var(--text-sm); color: var(--accent-gold); }

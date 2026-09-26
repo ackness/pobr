@@ -11,7 +11,7 @@
 //! customMods (including one unparseable line), and list-type options.
 
 use pobr_build::handlers::{build_registry, campaign_progress_from_config, enemy_tier_from_config};
-use pobr_build::xml_build::parse_config_inputs;
+use pobr_build::xml_build::{parse_config_inputs, parse_custom_modifier_blocks};
 use pobr_core::CampaignProgress;
 use pobr_core::mod_parser::ParseStatus;
 use pobr_core::modifier::Modifier;
@@ -73,6 +73,43 @@ fn selected_config_set_uses_enabled_native_custom_blocks_once() {
             "+10 to maximum Life\n+20 to Spirit".into()
         ))
     );
+}
+
+#[test]
+fn custom_blocks_preserve_selected_group_text_and_legacy_migration() {
+    let xml = r#"<Config activeConfigSet="2">
+      <ConfigSet id="1"><CustomModifierBlock title="Inactive">+999 to maximum Life</CustomModifierBlock></ConfigSet>
+      <ConfigSet id="2">
+        <Input name="customMods" string="+700 to maximum Life"/>
+        <CustomModifierBlock title="Life &amp; &quot;Spirit&quot;" enabled="true">+100 to maximum Life&#10;A &amp; B</CustomModifierBlock>
+        <CustomModifierBlock title="Saved" enabled="false"><![CDATA[+500 to maximum Life
++20 to Spirit]]></CustomModifierBlock>
+        <CustomModifierBlock title="Empty" enabled="true"/>
+      </ConfigSet>
+    </Config>"#;
+    let blocks = parse_custom_modifier_blocks(xml);
+    assert_eq!(blocks.len(), 3);
+    assert_eq!(blocks[0].title, "Life & \"Spirit\"");
+    assert_eq!(blocks[0].text, "+100 to maximum Life\nA & B");
+    assert_eq!(blocks[1].title, "Saved");
+    assert!(!blocks[1].enabled);
+    assert_eq!(blocks[1].text, "+500 to maximum Life\n+20 to Spirit");
+    assert_eq!(blocks[2].text, "");
+    assert_eq!(
+        parse_config_inputs(xml).values.get("customMods"),
+        Some(&ConfigInputValue::Text(
+            "+100 to maximum Life\nA & B".into()
+        ))
+    );
+
+    let legacy = r#"<Config><Input name="customMods" string="+7 to maximum Life"/>
+      <CustomModifierBlock title="Unfilled" enabled="false"/></Config>"#;
+    let migrated = parse_custom_modifier_blocks(legacy);
+    assert_eq!(migrated.len(), 1);
+    assert_eq!(migrated[0].title, "Default");
+    assert!(migrated[0].enabled);
+    assert_eq!(migrated[0].text, "+7 to maximum Life");
+    assert!(parse_custom_modifier_blocks("<Config/>").is_empty());
 }
 
 /// Single-line parse via the engine (real rules, signature matches the historical `parse_mod`; the engine never returns `Err`).

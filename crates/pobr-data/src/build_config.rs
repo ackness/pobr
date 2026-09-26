@@ -6,6 +6,16 @@
 
 use serde::{Deserialize, Serialize};
 
+/// A PoB custom modifier group in its editable form. Text is retained even
+/// when the group is disabled so exporting a build does not discard it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CustomModifierBlock {
+    pub title: String,
+    pub enabled: bool,
+    pub text: String,
+}
+
 /// Which tab the build is currently showing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum ViewMode {

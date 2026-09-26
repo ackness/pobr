@@ -38,7 +38,7 @@ pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_
 /// compares them at boot (see [`wasm::schema_version`]); a mismatch prompts
 /// a hard refresh — closing the door on "stale frontend cache + new wasm
 /// assets" silently breaking.
-pub const SCHEMA_VERSION: u32 = 6;
+pub const SCHEMA_VERSION: u32 = 7;
 
 /// wasm-bindgen bindings: compiled only under the `wasm` feature, exposing
 /// functions with the same names as the host API to JS.

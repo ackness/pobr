@@ -114,6 +114,8 @@ struct BuildJson {
     main_socket_group: Option<usize>,
     /// The raw `<Config>` input key/values (the initial state shown/edited on the Config page).
     config_inputs: BTreeMap<String, serde_json::Value>,
+    /// Editable groups from the selected ConfigSet, including disabled text.
+    custom_modifier_blocks: Vec<pobr_data::build_config::CustomModifierBlock>,
     /// Free-text `<Notes>` (PoB's notes page; `null` if that section is absent).
     notes: Option<String>,
     /// The list of switchable loadouts (PoB2's loadout concept: passives /
@@ -231,6 +233,7 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
             .iter()
             .map(|(k, v)| (k.clone(), config_value_json(v)))
             .collect(),
+        custom_modifier_blocks: pobr_build::parse_custom_modifier_blocks(xml),
         notes: parse_notes(xml).map_err(|e| format!("parse notes: {e}"))?,
         loadouts,
         active_loadout,
@@ -611,6 +614,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
         socket_groups,
         main_socket_group: None,
         config_inputs: BTreeMap::new(),
+        custom_modifier_blocks: Vec::new(),
         notes: (!file.name.trim().is_empty()).then(|| {
             let mut note = file.name.trim().to_string();
             if unknown_passives + unknown_gems > 0 {

@@ -62,8 +62,8 @@ pub use loadout::{
 pub use snapshot::BuildSnapshot;
 pub use xml_build::{
     RawItemsView, default_quest_stat_reward_texts, default_true_condition_keys, parse_build,
-    parse_build_from_code, parse_build_sets, parse_notes, parse_raw_items_view,
-    radius_jewel_from_text,
+    parse_build_from_code, parse_build_sets, parse_custom_modifier_blocks, parse_notes,
+    parse_raw_items_view, radius_jewel_from_text,
 };
 pub use xml_merge::{SetKind, duplicate_set, merge_active_sets, remove_set, rename_set};
 pub use xml_serde::{ParsedBuildHeader, is_pob_xml, parse_build_header};

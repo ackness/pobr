@@ -16,7 +16,9 @@ async function editName(page: Page, action: string, name: string) {
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('.topbar-busy')).toHaveCount(0);
 }
-async function importCode(page: Page, value: string) {
+async function importCode(page: Page, value: string, destination: 'newBuild' | 'currentStage' = 'newBuild') {
+  await page.getByRole('combobox', { name: 'Import into', exact: true }).selectOption(destination);
+  if (destination === 'currentStage') page.once('dialog', dialog => dialog.accept());
   await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(value);
   await page.locator('.import-submit').click();
   await expect(page.locator('.paper-doll')).toBeVisible();
@@ -34,7 +36,7 @@ test('independent builds and stages preserve passive routes and notes across rel
   await editName(page, 'Rename build', 'Ice Shot');
   await editName(page, 'Rename stage', 'Starter');
   await editName(page, 'Copy current stage', 'Endgame');
-  await importCode(page, code(90, '3,4', 'Endgame equipment and passive route'));
+  await importCode(page, code(90, '3,4', 'Endgame equipment and passive route'), 'currentStage');
   await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: 'Starter' });
   await expect(page.getByLabel('Level', { exact: true })).toHaveValue('30');
   expect((await snapshot(page)).state.allocatedNodes).toEqual([1, 2]);
@@ -47,7 +49,7 @@ test('independent builds and stages preserve passive routes and notes across rel
   await page.reload();
   await ready(page);
   await expect(page.getByLabel('Level', { exact: true })).toHaveValue('55');
-  await page.getByRole('combobox', { name: 'Build', exact: true }).selectOption({ label: 'Ice Shot' });
+  await page.getByRole('group', { name: 'My builds', exact: true }).getByRole('button', { name: /^Ice Shot/ }).click();
   await expect(page.getByLabel('Level', { exact: true })).toHaveValue('30');
   await expect(page.locator('.topbar-busy')).toHaveCount(0);
   await page.getByRole('combobox', { name: 'Stage', exact: true }).selectOption({ label: 'Endgame' });
@@ -65,21 +67,21 @@ test('independent builds and stages preserve passive routes and notes across rel
   await expect(page.locator('.paper-doll')).toBeVisible();
   await expect(page.locator('.topbar-busy')).toHaveCount(0);
   const restored = await snapshot(page);
-  expect(restored.workspace.builds).toHaveLength(3);
-  const imported = restored.workspace.builds[2];
+  expect(restored.workspace.builds).toHaveLength(4);
+  const imported = restored.workspace.builds[3];
   expect(imported.name).toBe('Ice Shot');
-  expect(imported.id).not.toBe(restored.workspace.builds[0].id);
+  expect(imported.id).not.toBe(restored.workspace.builds[1].id);
   expect(imported.stages.map((stage: { saved: { notes: string } }) => stage.saved.notes)).toEqual(['Leveling Ice Shot', 'Endgame equipment and passive route']);
   await page.getByRole('button', { name: 'Build', exact: true }).click();
   const backupPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download backup', exact: true }).click();
   const backup = await backupPromise;
-  expect(JSON.parse(readFileSync((await backup.path())!, 'utf8')).workspace.builds).toHaveLength(3);
+  expect(JSON.parse(readFileSync((await backup.path())!, 'utf8')).workspace.builds).toHaveLength(4);
   await editName(page, 'New build', 'Temporary');
   page.once('dialog', dialog => dialog.accept());
   await page.locator('input[type=file]').setInputFiles((await backup.path())!);
   await expect(page.locator('.paper-doll')).toBeVisible();
-  expect((await snapshot(page)).workspace.builds).toHaveLength(3);
+  expect((await snapshot(page)).workspace.builds).toHaveLength(4);
 });
 
 test('stage switching preserves unapplied item drafts and fits a narrow viewport', async ({ page }) => {
@@ -99,7 +101,7 @@ test('stage switching preserves unapplied item drafts and fits a narrow viewport
   await expect(editor).toHaveValue(/123/);
   await page.setViewportSize({ width: 320, height: 780 });
   await page.getByRole('button', { name: 'Manage builds', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Builds & stages', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'My builds', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
@@ -212,4 +214,41 @@ test('an invalid browser workspace is preserved and can be downloaded for recove
   const download = await downloadPromise;
   expect(readFileSync((await download.path())!, 'utf8')).toBe(raw);
   expect(await page.evaluate(() => localStorage.getItem('pobr-build-state'))).toBe(raw);
+});
+
+
+test('new imports keep the current build and replacement requires an explicit destination', async ({ page }) => {
+  await page.goto('/');
+  await ready(page);
+  await editName(page, 'Rename build', 'Keep this build');
+  await page.getByLabel('Level', { exact: true }).fill('42');
+  await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('My original notes');
+  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  const original = await snapshot(page);
+  await expect(page.getByRole('combobox', { name: 'Import into', exact: true })).toHaveValue('newBuild');
+  await importCode(page, code(80, '1,2', 'Imported notes'));
+  const imported = await snapshot(page);
+  expect(imported.workspace.builds).toHaveLength(2);
+  expect(imported.workspace.builds[0]).toEqual(original.workspace.builds[0]);
+  await expect(page.locator('.workspace-switcher select')).toHaveCount(0);
+  await expect(page.locator('.topbar').getByLabel('PoB loadout', { exact: true })).toHaveCount(0);
+  await page.getByRole('group', { name: 'My builds', exact: true }).getByRole('button', { name: /^Keep this build/ }).click();
+  await expect(page.getByLabel('Level', { exact: true })).toHaveValue('42');
+  await expect(page.getByRole('textbox', { name: 'Notes', exact: true })).toHaveValue('My original notes');
+  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await page.getByRole('combobox', { name: 'Import into', exact: true }).selectOption('currentStage');
+  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code(95, '3,4', 'Replacement'));
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.locator('.import-submit').click();
+  expect((await snapshot(page)).state.character.level).toBe(42);
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('.import-submit').click();
+  await expect(page.locator('.paper-doll')).toBeVisible();
+  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  const replaced = await snapshot(page);
+  expect(replaced.workspace.builds).toHaveLength(2);
+  expect(replaced.workspace.activeBuild).toBe(original.workspace.activeBuild);
+  expect(replaced.state.character.level).toBe(95);
+  expect(replaced.notes).toBe('Replacement');
+  expect(replaced.workspace.builds[1]).toEqual(imported.workspace.builds[1]);
 });

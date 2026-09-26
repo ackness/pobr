@@ -600,6 +600,7 @@ pub(super) fn decode(value: Value) -> Result<String, super::super::ApiError> {
         socket_groups: groups,
         main_socket_group: None,
         config_inputs,
+        custom_modifier_blocks: Vec::new(),
         notes: Some(notes),
         loadouts: vec![LoadoutJson {
             name: "Default".into(),

@@ -8,6 +8,7 @@
 //! contract test). Gem writes both `gemId` (PoB2's import key) and
 //! `skillId` (PoBR's key).
 
+use pobr_data::build_config::CustomModifierBlock;
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
@@ -63,8 +64,8 @@ pub(crate) struct XmlInput<'a> {
     /// 0-based (written as 1-based in the XML).
     pub main_socket_group: Option<usize>,
     pub config_inputs: &'a BTreeMap<String, serde_json::Value>,
-    /// Active custom modifier lines, stored in PoB2's native block format.
-    pub custom_mods: &'a str,
+    /// Ordered editable custom modifier groups, including disabled and empty ones.
+    pub custom_modifier_blocks: &'a [CustomModifierBlock],
     pub notes: Option<&'a str>,
 }
 
@@ -77,7 +78,9 @@ fn esc_attr(s: &str) -> String {
 
 /// Escapes an XML text node.
 fn esc_text(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 fn csv(nodes: impl Iterator<Item = u32>) -> String {
@@ -241,7 +244,7 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
     wln!(w, "  </Items>");
 
     // Config.
-    if !input.config_inputs.is_empty() || !input.custom_mods.is_empty() {
+    if !input.config_inputs.is_empty() || !input.custom_modifier_blocks.is_empty() {
         wln!(w, "  <Config activeConfigSet=\"1\">");
         wln!(w, "    <ConfigSet id=\"1\" title=\"Default\">");
         for (name, value) in input.config_inputs {
@@ -255,11 +258,13 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
             };
             wln!(w, r#"      <Input name="{}" {attr}/>"#, esc_attr(name));
         }
-        if !input.custom_mods.is_empty() {
+        for block in input.custom_modifier_blocks {
             wln!(
                 w,
-                "      <CustomModifierBlock title=\"Default\" enabled=\"true\">{}</CustomModifierBlock>",
-                esc_text(input.custom_mods)
+                "      <CustomModifierBlock title=\"{}\" enabled=\"{}\">{}</CustomModifierBlock>",
+                esc_attr(&block.title),
+                block.enabled,
+                esc_text(&block.text)
             );
         }
         wln!(w, "    </ConfigSet>");

@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 
 use pobr_build::{decode_pob_code, encode_pob_code, merge_active_sets};
+use pobr_data::build_config::CustomModifierBlock;
 use pobr_data::item::EquipmentSlot;
 
 use super::request::CalculateBuildRequest;
@@ -202,16 +203,42 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     let legacy_custom_mods = config_inputs
         .remove("customMods")
         .and_then(|value| value.as_str().map(str::to_owned));
-    let mut custom_mod_lines = Vec::new();
-    if let Some(legacy) = legacy_custom_mods {
-        custom_mod_lines.extend(legacy.lines().map(str::to_owned));
-    }
-    custom_mod_lines.extend(
-        req.extra_modifiers
-            .iter()
-            .map(|line| super::localize_input_text(line)),
-    );
-    let custom_mods = custom_mod_lines.join("\n");
+    let custom_modifier_blocks = if let Some(blocks) = &req.custom_modifier_blocks {
+        let mut blocks = blocks.clone();
+        if !req.extra_modifiers.is_empty() {
+            blocks.push(CustomModifierBlock {
+                title: "Default".into(),
+                enabled: true,
+                text: req
+                    .extra_modifiers
+                    .iter()
+                    .map(|line| super::localize_input_text(line))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+            });
+        }
+        blocks
+    } else {
+        let mut lines = Vec::new();
+        if let Some(legacy) = legacy_custom_mods {
+            lines.extend(legacy.lines().map(str::to_owned));
+        }
+        lines.extend(
+            req.extra_modifiers
+                .iter()
+                .map(|line| super::localize_input_text(line)),
+        );
+        let text = lines.join("\n");
+        if text.is_empty() {
+            Vec::new()
+        } else {
+            vec![CustomModifierBlock {
+                title: "Default".into(),
+                enabled: true,
+                text,
+            }]
+        }
+    };
     if let Some(tier) = &req.enemy_tier {
         let pob_tier = match tier.as_str() {
             "none" => "None",
@@ -256,7 +283,7 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         socket_groups,
         main_socket_group: req.main_socket_group,
         config_inputs: &config_inputs,
-        custom_mods: &custom_mods,
+        custom_modifier_blocks: &custom_modifier_blocks,
         notes: req.notes.as_deref(),
     });
     // With a base draft, write back the active sets and global fields, preserving

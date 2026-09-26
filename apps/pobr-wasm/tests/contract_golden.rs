@@ -13,8 +13,8 @@ use serde_json::Value;
 /// with defaults can be added without changing the existing version.
 #[test]
 fn schema_version_pinned() {
-    // v6: materialized builds preserve skill forms and passive-tree versions.
-    assert_eq!(pobr_wasm::SCHEMA_VERSION, 6);
+    // v7: selected custom modifier groups survive decode/edit/export.
+    assert_eq!(pobr_wasm::SCHEMA_VERSION, 7);
 }
 
 /// A real demo build (shared with ninja_parity).
@@ -62,6 +62,7 @@ fn decode_build_json_shape() {
             "socket_groups",
             "main_socket_group",
             "config_inputs",
+            "custom_modifier_blocks",
             "notes",
             "loadouts",
             "active_loadout",
@@ -1884,6 +1885,126 @@ fn exported_config_restores_custom_modifiers_and_enemy_tier() {
     assert_eq!(
         conflict_before["main_skill"]["combined_dps"],
         calculate(&serde_json::json!({"pob_code": conflict_code}))["main_skill"]["combined_dps"]
+    );
+}
+
+#[test]
+fn custom_modifier_blocks_roundtrip_and_calculate_once() {
+    ensure_data();
+    let xml = r#"<PathOfBuilding2>
+      <Build level="80" className="Warrior"/>
+      <Config activeConfigSet="2">
+        <ConfigSet id="1" title="Inactive"><CustomModifierBlock title="Keep" enabled="true">+900 to maximum Life</CustomModifierBlock></ConfigSet>
+        <ConfigSet id="2" title="Current">
+          <Input name="customMods" string="+700 to maximum Life"/>
+          <CustomModifierBlock title="Life &amp; &quot;Spirit&quot;" enabled="true"><![CDATA[+100 to maximum Life]]></CustomModifierBlock>
+          <CustomModifierBlock title="Same again" enabled="true">+100 to maximum Life</CustomModifierBlock>
+          <CustomModifierBlock title="Saved" enabled="false">+500 to maximum Life&#10;A &amp; B</CustomModifierBlock>
+          <CustomModifierBlock title="Empty" enabled="false"/>
+        </ConfigSet>
+      </Config>
+    </PathOfBuilding2>"#;
+    let code = pobr_build::encode_pob_code(xml).unwrap();
+    let decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&code).unwrap()).unwrap();
+    let expected = serde_json::json!([
+      { "title": "Life & \"Spirit\"", "enabled": true, "text": "+100 to maximum Life" },
+      { "title": "Same again", "enabled": true, "text": "+100 to maximum Life" },
+      { "title": "Saved", "enabled": false, "text": "+500 to maximum Life\nA & B" },
+      { "title": "Empty", "enabled": false, "text": "" }
+    ]);
+    assert_eq!(decoded["custom_modifier_blocks"], expected);
+    assert_eq!(
+        decoded["config_inputs"]["customMods"],
+        "+100 to maximum Life\n+100 to maximum Life"
+    );
+
+    let life = |request: Value| -> f64 {
+        let result: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+                .unwrap();
+        result["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["id"] == "Life")
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    };
+    let baseline =
+        life(serde_json::json!({ "character": { "class_name": "Warrior", "level": 80 } }));
+    let from_code = life(serde_json::json!({ "pob_code": code }));
+    let direct = serde_json::json!({
+      "character": { "class_name": "Warrior", "level": 80 },
+      "config_inputs": { "customMods": "+700 to maximum Life" },
+      "custom_modifier_blocks": expected
+    });
+    let from_direct = life(direct.clone());
+    assert_eq!(from_code, from_direct);
+    let expected_life = life(serde_json::json!({
+        "character": { "class_name": "Warrior", "level": 80 },
+        "extra_modifiers": ["+200 to maximum Life"]
+    }));
+    assert!(from_code > baseline);
+    assert_eq!(
+        from_code, expected_life,
+        "two identical active groups must stack once each"
+    );
+
+    let chinese_blocks = serde_json::json!([
+        { "title": "中文词缀", "enabled": true, "text": "+200 生命上限" }
+    ]);
+    let chinese_request = serde_json::json!({
+        "character": { "class_name": "Warrior", "level": 80 },
+        "custom_modifier_blocks": chinese_blocks
+    });
+    assert_eq!(life(chinese_request.clone()), expected_life);
+    let chinese_code = pobr_wasm::encode_build_json(&chinese_request.to_string()).unwrap();
+    let chinese_decoded: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&chinese_code).unwrap()).unwrap();
+    assert_eq!(chinese_decoded["custom_modifier_blocks"], chinese_blocks);
+    assert_eq!(
+        life(serde_json::json!({ "pob_code": chinese_code })),
+        expected_life
+    );
+
+    let materialized = serde_json::json!({
+      "character": decoded["character"],
+      "config_inputs": decoded["config_inputs"],
+      "custom_modifier_blocks": decoded["custom_modifier_blocks"]
+    });
+    assert_eq!(life(materialized.clone()), from_code);
+
+    let mut export = materialized;
+    export["base_code"] = serde_json::json!(pobr_build::encode_pob_code(xml).unwrap());
+    let exported = pobr_wasm::encode_build_json(&export.to_string()).unwrap();
+    let exported_xml = pobr_build::decode_pob_code(&exported).unwrap();
+    assert!(
+        exported_xml
+            .contains("<ConfigSet id=\"1\" title=\"Inactive\"><CustomModifierBlock title=\"Keep\"")
+    );
+    let roundtrip: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&exported).unwrap()).unwrap();
+    assert_eq!(roundtrip["custom_modifier_blocks"], expected);
+    assert_eq!(life(serde_json::json!({ "pob_code": exported })), from_code);
+
+    let clear = serde_json::json!({
+      "pob_code": pobr_build::encode_pob_code(xml).unwrap(),
+      "base_code": pobr_build::encode_pob_code(xml).unwrap(),
+      "character": { "class_name": "Warrior", "level": 80 },
+      "config_inputs": { "customMods": "+700 to maximum Life" },
+      "custom_modifier_blocks": []
+    });
+    assert_eq!(life(clear.clone()), baseline);
+    let cleared_code = pobr_wasm::encode_build_json(&clear.to_string()).unwrap();
+    let cleared: Value =
+        serde_json::from_str(&pobr_wasm::decode_build_json(&cleared_code).unwrap()).unwrap();
+    assert_eq!(cleared["custom_modifier_blocks"], serde_json::json!([]));
+    assert!(cleared["config_inputs"].get("customMods").is_none());
+    assert_eq!(
+        life(serde_json::json!({ "pob_code": cleared_code })),
+        baseline
     );
 }
 

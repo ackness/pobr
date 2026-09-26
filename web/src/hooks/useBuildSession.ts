@@ -23,6 +23,7 @@ import type {
   CalculateBuildRequest,
   CalculateBuildResponse,
   ConfigInputValue,
+  CustomModifierBlock,
   EnemyTier,
   FullDpsResponse,
   JewelInput,
@@ -45,6 +46,7 @@ export interface CalcParams {
   config_inputs: Record<string, ConfigInputValue>;
   /** 额外全局 modifier 文本（Config 页自定义词缀，一行一条）。 */
   extra_modifiers?: string[];
+  custom_modifier_blocks?: CustomModifierBlock[];
 }
 
 /** 会话完整可编辑状态（重算请求由此派生）。 */
@@ -68,6 +70,9 @@ interface BuildState {
   annotations: Annotations;
   params: CalcParams;
 }
+
+export type ImportDestination = 'newBuild' | 'currentStage';
+export interface ImportOptions { destination: ImportDestination; name?: string }
 
 export interface BuildSession {
   treeVersion?: string | null;
@@ -118,8 +123,8 @@ export interface BuildSession {
   /** 编辑态 → PoB2 分享 code（可粘回 PoB2 / 二次导入）。 */
   exportCode: () => Promise<string>;
   /** 从导出的 JSON 恢复会话；非法输入抛错。 */
-  importSession: (json: string) => void;
-  importCode: (code: string) => Promise<boolean>;
+  importSession: (json: string, destination?: ImportDestination) => void;
+  importCode: (code: string, options?: ImportOptions) => Promise<boolean>;
   /** 切到指定 loadout（成组换天赋/装备/技能）；会覆盖本地编辑。 */
   switchLoadout: (sel: { tree: number; item: number | null; skill: number | null }) => Promise<void>;
   /** 当前 build 的 loadout 清单（导入后可用；手搓 build 为空）。 */
@@ -183,6 +188,7 @@ function toRequest(state: BuildState): CalculateBuildRequest {
     main_socket_group: state.params.main_socket_group,
     enemy_tier: state.params.enemy_tier,
     extra_modifiers: state.params.extra_modifiers,
+    custom_modifier_blocks: state.params.custom_modifier_blocks,
     config_inputs: state.params.config_inputs,
   };
 }
@@ -207,12 +213,16 @@ function paramsFromConfigInputs(rawInputs: Record<string, ConfigInputValue>, ove
     ? [...legacyMods, ...(overrides.extra_modifiers ?? [])]
     : overrides.extra_modifiers;
   if (selectedTier !== undefined) params.enemy_tier = selectedTier;
-  if (selectedMods !== undefined) params.extra_modifiers = selectedMods;
+  if (overrides.custom_modifier_blocks !== undefined) {
+    delete params.extra_modifiers;
+    delete config_inputs.customMods;
+  } else if (selectedMods !== undefined) params.extra_modifiers = selectedMods;
   return params;
 }
 
 export function paramsFromDecoded(decoded: BuildJson): CalcParams {
-  return paramsFromConfigInputs(decoded.config_inputs);
+  return paramsFromConfigInputs(decoded.config_inputs, decoded.custom_modifier_blocks === undefined
+    ? {} : { custom_modifier_blocks: decoded.custom_modifier_blocks });
 }
 
 /** 库条目：可复用的装备/珠宝（PoB 文本）。 */
@@ -316,7 +326,10 @@ export function parseSaved(json: string): SavedSession | null {
       || !Object.entries(attributeChoices).every(([node, choice]) => /^\d+$/.test(node) && uint(Number(node)) && typeof choice === 'string' && ['str', 'dex', 'int'].includes(choice))
       || !record(params) || !optionalIndex(params.main_socket_group)
       || params.enemy_tier != null && (typeof params.enemy_tier !== 'string' || !['none', 'boss', 'pinnacle', 'uber'].includes(params.enemy_tier))
-      || params.extra_modifiers != null && !strings(params.extra_modifiers)) return null;
+      || params.extra_modifiers != null && !strings(params.extra_modifiers)
+      || params.custom_modifier_blocks !== undefined && (!Array.isArray(params.custom_modifier_blocks)
+        || !params.custom_modifier_blocks.every(block => record(block) && typeof block.title === 'string'
+          && typeof block.enabled === 'boolean' && typeof block.text === 'string'))) return null;
     const configInputs = params.config_inputs ?? {};
     if (!record(configInputs) || !Object.values(configInputs).every(value =>
       typeof value === 'boolean' || typeof value === 'string' || typeof value === 'number' && Number.isFinite(value))) return null;
@@ -341,6 +354,7 @@ export function parseSaved(json: string): SavedSession | null {
           ...(params.main_socket_group != null ? { main_socket_group: Number(params.main_socket_group) } : {}),
           ...(params.enemy_tier != null ? { enemy_tier: params.enemy_tier as EnemyTier } : {}),
           ...(params.extra_modifiers != null ? { extra_modifiers: params.extra_modifiers as string[] } : {}),
+          ...(params.custom_modifier_blocks !== undefined ? { custom_modifier_blocks: params.custom_modifier_blocks as CustomModifierBlock[] } : {}),
         }),
       },
       notes: typeof parsed.notes === 'string' ? parsed.notes : '',
@@ -364,9 +378,16 @@ function itemName(text: string): string {
  * 旧会话迁移：calc 请求已不带 pob_code（见 toRequest），此前靠 code 在 Rust 侧
  * 兜底的 XML config / 主技能组，恢复会话时从解码结果回填（已保存的显式值优先）。
  */
-function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState {
+export function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState {
   const decodedParams = paramsFromDecoded(decoded);
   const savedParams = paramsFromConfigInputs(state.params.config_inputs, state.params);
+  const sourceBlocks = decodedParams.custom_modifier_blocks;
+  const sourceLines = sourceBlocks?.filter(block => block.enabled)
+    .flatMap(block => block.text.split(/\r?\n/).filter(line => line.trim().length > 0));
+  // Recover source metadata only when historical flattened edits still match.
+  // Changed legacy lines remain authoritative; their old grouping is unknown.
+  const restoredBlocks = savedParams.custom_modifier_blocks ?? (savedParams.extra_modifiers === undefined
+    || JSON.stringify(savedParams.extra_modifiers) === JSON.stringify(sourceLines) ? sourceBlocks : undefined);
   return {
     ...state,
     treeVersion: state.treeVersion ?? decoded.tree.tree_version,
@@ -387,7 +408,12 @@ function backfillFromDecoded(state: BuildState, decoded: BuildJson): BuildState 
       ...savedParams,
       main_socket_group: state.params.main_socket_group ?? decoded.main_socket_group ?? undefined,
       enemy_tier: savedParams.enemy_tier ?? decodedParams.enemy_tier,
-      extra_modifiers: savedParams.extra_modifiers ?? decodedParams.extra_modifiers,
+      // An explicit empty block list must not resurrect source modifiers.
+      ...(restoredBlocks !== undefined
+        ? { custom_modifier_blocks: restoredBlocks, extra_modifiers: undefined }
+        : savedParams.extra_modifiers !== undefined
+          ? { extra_modifiers: savedParams.extra_modifiers }
+          : { custom_modifier_blocks: decodedParams.custom_modifier_blocks, extra_modifiers: decodedParams.extra_modifiers }),
       config_inputs: { ...decodedParams.config_inputs, ...savedParams.config_inputs },
     },
   };
@@ -686,7 +712,7 @@ export function useBuildSession(): BuildSession {
   }, []);
 
   const importCode = useCallback(
-    async (code: string) => {
+    async (code: string, options: ImportOptions = { destination: 'newBuild' }) => {
       setBusy(true);
       setError(null);
       try {
@@ -711,8 +737,7 @@ export function useBuildSession(): BuildSession {
         mergeImportedIntoLibrary(decoded);
         // <Notes> 里可能带 PoBR 注释标记段：拆成总览笔记 + 局部注释。
         const { overview, annotations } = splitNotes(decoded.notes ?? '');
-        setNotes(overview);
-        apply({
+        const importedState: BuildState = {
           pobCode: isBuildFile ? null : code,
           character: {
             level: decoded.character.level,
@@ -726,7 +751,15 @@ export function useBuildSession(): BuildSession {
           // XML 的 <Config> 与主技能组一并物化——calc 请求不再回传 pob_code，
           // 这里就是它们唯一的入口（Config 页也因此能直接显示导入值）。
           params: { ...paramsFromDecoded(decoded), main_socket_group: decoded.main_socket_group ?? undefined },
-        }, { clean: true });
+        };
+        if (options.destination === 'newBuild' && workspaceRef.current) {
+          const name = options.name?.trim() || decoded.character.ascendancy_name || decoded.character.class_name;
+          workspaceRef.current = addWorkspaceBuild(workspaceRef.current, name, { version: 1, state: importedState, notes: overview });
+        }
+        // Do not persist imported notes into the stage being left behind.
+        notesRef.current = overview;
+        setNotesState(overview);
+        apply(importedState, { clean: true });
         return true;
       } catch (err) {
         setError(formatApiError(err));
@@ -734,7 +767,7 @@ export function useBuildSession(): BuildSession {
         return false;
       }
     },
-    [apply, setNotes, mergeImportedIntoLibrary],
+    [apply, mergeImportedIntoLibrary],
   );
 
   /**
@@ -985,7 +1018,7 @@ export function useBuildSession(): BuildSession {
   const updateParams = useCallback(
     (patch: Partial<CalcParams>) => {
       if (!state) return;
-      apply({ ...state, params: { ...state.params, ...patch } });
+      apply({ ...state, params: paramsFromConfigInputs(patch.config_inputs ?? state.params.config_inputs, { ...state.params, ...patch }) });
     },
     [apply, state],
   );
@@ -1095,7 +1128,7 @@ export function useBuildSession(): BuildSession {
     }
   }, [apply]);
 
-  const importSession = useCallback((json: string) => {
+  const importSession = useCallback((json: string, destination: ImportDestination = 'newBuild') => {
     const input = JSON.parse(json);
     if (input.format === 'pobr-build' && input.version === 1) {
       const imported = parseWorkspace({ version: 1, activeBuild: input.build?.id, builds: [input.build] }, parseSaved);
@@ -1118,7 +1151,13 @@ export function useBuildSession(): BuildSession {
       workspaceRef.current = restored;
       const stage = activeWorkspaceStage(restored);
       restoreSession(stage.saved, stage.drafts);
-    } else restoreSession(saved, {});
+    } else {
+      if (destination === 'newBuild' && workspaceRef.current) {
+        workspaceRef.current = addWorkspaceBuild(workspaceRef.current,
+          saved.state.character.ascendancy_name || saved.state.character.class_name, saved);
+      }
+      restoreSession(saved, {});
+    }
   }, [restoreSession]);
 
   const selectStage = useCallback((buildId: string, stageId?: string) => {

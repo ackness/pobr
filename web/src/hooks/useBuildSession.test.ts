@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { paramsFromDecoded, parseSaved, type SavedSession } from './useBuildSession';
+import { backfillFromDecoded, paramsFromDecoded, parseSaved, type SavedSession } from './useBuildSession';
 import type { BuildJson } from '../api/types';
 import { parseWorkspace, createWorkspace } from '../lib/buildWorkspace';
 
@@ -28,6 +28,21 @@ describe('saved-session validation', () => {
     });
   });
 
+  test('keeps decoded native blocks in source order with raw text and disabled state', () => {
+    const blocks = [
+      { title: ' Life & Spirit ', enabled: true, text: '\n+100 to maximum Life\n\n+20 to Spirit\n' },
+      { title: 'Later', enabled: false, text: '+500 to maximum Life\r\n' },
+    ];
+    const decoded = { config_inputs: {
+      customMods: '+100 to maximum Life\n+500 to maximum Life',
+      conditionFullLife: false,
+    }, custom_modifier_blocks: blocks } as unknown as BuildJson;
+    expect(paramsFromDecoded(decoded)).toEqual({
+      config_inputs: { conditionFullLife: false },
+      custom_modifier_blocks: blocks,
+    });
+  });
+
   test('migrates saved legacy config keys into dedicated controls', () => {
     const restored = parseState({ params: { config_inputs: {
       enemyIsBoss: 'Boss', customMods: '+50 to maximum Life', conditionFullLife: false,
@@ -47,6 +62,35 @@ describe('saved-session validation', () => {
     expect(restored?.state.params).toEqual({
       config_inputs: {}, enemy_tier: 'boss',
       extra_modifiers: ['+50 to maximum Life', '+50 to maximum Life', '+20 to Spirit'],
+    });
+  });
+
+  test('grouped saved modifiers replace both legacy calculation lanes without altering raw blocks', () => {
+    const blocks = [
+      { title: 'Active', enabled: true, text: ' +50 to maximum Life\n\n+20 to Spirit ' },
+      { title: 'Paused', enabled: false, text: '+500 to maximum Life' },
+    ];
+    const restored = parseState({ params: {
+      config_inputs: { customMods: '+50 to maximum Life', conditionFullLife: false },
+      extra_modifiers: ['+50 to maximum Life'],
+      custom_modifier_blocks: blocks,
+    } });
+    expect(restored?.state.params).toEqual({
+      config_inputs: { conditionFullLife: false }, custom_modifier_blocks: blocks,
+    });
+    expect(restored?.state.params.custom_modifier_blocks).toEqual(blocks);
+  });
+
+  test('explicit empty grouped list clears legacy saved modifiers', () => {
+    const restored = parseState({ params: {
+      config_inputs: { customMods: '+50 to maximum Life' },
+      extra_modifiers: ['+100 to maximum Life'],
+      custom_modifier_blocks: [],
+    } });
+    expect(restored?.state.params).toEqual({ config_inputs: {}, custom_modifier_blocks: [] });
+    expect(paramsFromDecoded({ config_inputs: { customMods: '+300 to maximum Life' },
+      custom_modifier_blocks: [] } as unknown as BuildJson)).toEqual({
+      config_inputs: {}, custom_modifier_blocks: [],
     });
   });
 
@@ -85,6 +129,13 @@ describe('saved-session validation', () => {
     { params: { config_inputs: [] } },
     { params: { config_inputs: { conditionFullLife: {} } } },
     { params: { extra_modifiers: [false] } },
+    { params: { custom_modifier_blocks: null } },
+    { params: { custom_modifier_blocks: {} } },
+    { params: { custom_modifier_blocks: [null] } },
+    { params: { custom_modifier_blocks: [{ title: 'Active', enabled: true }] } },
+    { params: { custom_modifier_blocks: [{ title: 1, enabled: true, text: '+10 to maximum Life' }] } },
+    { params: { custom_modifier_blocks: [{ title: 'Active', enabled: 'true', text: '+10 to maximum Life' }] } },
+    { params: { custom_modifier_blocks: [{ title: 'Active', enabled: true, text: ['+10 to maximum Life'] }] } },
     { params: { enemy_tier: 'invalid' } },
     { weaponSwap: { active: 3, alternate_items: [], exclusive_nodes: [[], []] } },
   ])('rejects malformed nested state %j', patch => {
@@ -98,4 +149,21 @@ describe('saved-session validation', () => {
     expect(parseWorkspace(malformed, parseSaved)).toBeNull();
     expect(workspace.builds[0].stages[0].saved).toEqual(saved);
   });
+});
+
+
+test('restores source groups from unchanged legacy lines without overwriting edited or cleared saves', () => {
+  const blocks = [
+    { title: 'Active', enabled: true, text: '+100 to maximum Life' },
+    { title: 'Later', enabled: false, text: '+200 to maximum Life' },
+  ];
+  const decoded = { config_inputs: {}, custom_modifier_blocks: blocks, tree: {}, socket_groups: [] } as unknown as BuildJson;
+  const state = { ...saved.state, params: { config_inputs: {}, extra_modifiers: ['+100 to maximum Life'] } };
+  expect(backfillFromDecoded(state, decoded).params.custom_modifier_blocks).toEqual(blocks);
+  const changed = { ...state, params: { ...state.params, extra_modifiers: ['+50 to maximum Life'] } };
+  expect(backfillFromDecoded(changed, decoded).params.extra_modifiers).toEqual(['+50 to maximum Life']);
+  expect(backfillFromDecoded(changed, decoded).params.custom_modifier_blocks).toBeUndefined();
+  const cleared = { ...state, params: { config_inputs: {}, custom_modifier_blocks: [] } };
+  expect(backfillFromDecoded(cleared, decoded).params.custom_modifier_blocks).toEqual([]);
+  expect(backfillFromDecoded(cleared, decoded).params.extra_modifiers).toBeUndefined();
 });

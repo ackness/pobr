@@ -168,3 +168,10 @@
 @media (max-width: 600px) {
   .build-card { padding: var(--space-4); }
 }
+
+.build-stage-scope { grid-column: 1 / -1; margin: 0; padding: var(--space-3) var(--space-4); border-left: 3px solid var(--accent-gold); background: var(--surface-panel); color: var(--text-secondary); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.build-stage-scope strong { color: var(--text-primary); }
+.import-destination { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); font-size: var(--text-sm); color: var(--text-secondary); }
+.import-destination select { min-width: 0; max-width: 100%; }
+.import-file-hint { margin: var(--space-3) 0 0; }
+.build-export-heading { margin: var(--space-6) 0 var(--space-2); font-size: var(--text-sm); color: var(--text-primary); }
