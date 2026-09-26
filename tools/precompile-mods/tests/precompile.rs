@@ -170,8 +170,8 @@ fn committed_coverage_matches_fresh_run() {
 }
 
 /// Mirror the version data directory into a unique temp `<tmp>/data/<patch>/`
-/// layout. Copies precompile's inputs
-/// (base/passive_tree.json + generated/special_derived.json) and symlinks
+/// layout. Copies the manifest's complete immutable runtime inventory plus
+/// precompile's legacy inputs, and symlinks
 /// `examples/demo-bd-test/builds` under the temp root so the C1 build XML
 /// corpus is reachable via the grandparent lookup — the golden comparison
 /// only holds if the isolated copy's four corpus layers match the real data directory.
@@ -197,10 +197,19 @@ fn mirror_data_dir(src_data: &Path) -> PathBuf {
     if tree.is_file() {
         std::fs::copy(&tree, tmp_data.join("base/passive_tree.json")).unwrap();
     }
-    // base/manifest.json (the gamedata loader may need it; copy if present).
+    // A schema-3 manifest validates every inventoried file before loading any
+    // domain, so the isolated copy needs the complete immutable snapshot.
     let manifest = src_data.join("manifest.json");
     if manifest.is_file() {
+        let snapshot = pobr_gamedata::GameData::new(src_data)
+            .validate_manifest()
+            .expect("validate source data snapshot");
         std::fs::copy(&manifest, tmp_data.join("manifest.json")).unwrap();
+        for file in snapshot.files.keys() {
+            let dst = tmp_data.join(file);
+            std::fs::create_dir_all(dst.parent().unwrap()).unwrap();
+            std::fs::copy(src_data.join(file), dst).unwrap();
+        }
     }
     // generated/special_derived.json (SD) + generated/special_vendor.json (V0
     // batch) — the ruleset splices three sources into the engine's special
