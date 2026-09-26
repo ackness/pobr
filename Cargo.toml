@@ -18,6 +18,7 @@ members = [
 ]
 resolver = "2"
 
+# Release version for apps and tools; library crate versions stay stable for build reuse.
 [workspace.package]
 version = "0.0.29"
 edition = "2024"
@@ -36,7 +37,7 @@ aho-corasick = "1.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# 削减 debug info 以加速 99 个测试二进制的链接（保留 panic 回溯行号）。
+# Reduce test link cost while retaining source locations in panic backtraces.
 # 需要 lldb 单步调试时临时改回 debug = true。
 [profile.dev]
 debug = "line-tables-only"

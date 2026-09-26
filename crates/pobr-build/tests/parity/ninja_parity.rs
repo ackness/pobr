@@ -8,7 +8,7 @@
 //! - **Baseline measurement**: doesn't hard-fail by default; prints a
 //!   "PoBR vs PoB2" comparison per build plus an aggregate hit rate, serving
 //!   as a live dashboard of alignment progress
-//!   (`cargo test -p pobr-build --test ninja_parity -- --nocapture`).
+//!   (`./pobr test build parity parity_baseline_report -- --ignored --nocapture`).
 //! - **Regression gate**: `parity_no_regression` asserts the aggregate hit
 //!   rate doesn't fall below the recorded baseline (prevents changes from regressing).
 //!
@@ -1281,6 +1281,7 @@ fn panel_mode_no_regression() {
 
 /// Main baseline report: prints the defence + offence comparison per build and summarizes the aggregate hit rate.
 #[test]
+#[ignore = "parity dashboard; run explicitly with --ignored --nocapture"]
 fn parity_baseline_report() {
     let (def_core, def, off, dot, failed_parse) = compute_tallies(true);
     let builds = discover_builds();
@@ -1627,8 +1628,9 @@ fn corpus_unsupported_report() {
 ///
 /// A print-only cross-convention dashboard (no gate). Both modes are shown
 /// against EFFECTIVE exports here; the panel gate uses COMBAT references:
-/// `cargo test -p pobr-build --test ninja_parity -- effective_switch_dual_run_report --nocapture`
+/// `./pobr test build parity effective_switch_dual_run_report -- --ignored --nocapture`
 #[test]
+#[ignore = "convention dashboard; run explicitly with --ignored --nocapture"]
 fn effective_switch_dual_run_report() {
     let data = load_data();
     let builds = discover_builds();
@@ -1751,8 +1753,9 @@ fn effective_switch_dual_run_report() {
 /// per-type max-hit values are no longer listed separately (old and new are
 /// mathematically equivalent under neutral input, see the F-2 report §3.1).
 /// A print-only dashboard (no gate):
-/// `cargo test -p pobr-build --test ninja_parity -- ehp_dual_run_report --nocapture`
+/// `./pobr test build parity ehp_dual_run_report -- --ignored --nocapture`
 #[test]
+#[ignore = "EHP dashboard; run explicitly with --ignored --nocapture"]
 fn ehp_dual_run_report() {
     let data = load_data();
     let builds = discover_builds();

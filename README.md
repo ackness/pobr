@@ -102,17 +102,20 @@ For changes, select checks for the affected behavior. For example, validate
 Build Code changes with:
 
 ```bash
-cargo test -p pobr-build --test codec
-bash .claude/skills/run-pobr/driver.sh lint -p pobr-build --lib --test codec
+./pobr verify build codec
+./pobr targets                     # List suites without compiling
+./pobr timings build parity        # Compile one suite and report timings
 ```
 
-Normal local commits use relevant checks. Before merge/release or broad changes,
-run `driver.sh full` as described in [CLAUDE.md](CLAUDE.md): nextest plus doctests,
-or Cargo when nextest is unavailable. The live app deploys from `v0.x` release
-tags after CI passes.
+Normal local commits use relevant checks. Full gates run in cloud CI: push a
+release tag, or request a branch run with `./pobr ci <pushed-ref>`. No duplicate
+local full run is required. `./pobr full` remains available for local Rust
+validation. The live app deploys from `v0.x` release tags after all CI jobs pass.
+See [development workflow](docs/development-workflow.md) for commands and timing.
 
-Rust **edition 2024**; all crates share one workspace version, kept in sync
-with the `v0.x` release tags.
+Rust **edition 2024**; apps and tools inherit the workspace release version.
+The seven internal libraries keep independent versions, so application version
+bumps do not invalidate the entire library dependency chain.
 
 ## Architecture at a glance
 

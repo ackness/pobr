@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Repository development CLI. The application binary remains `cargo run -p pobr-cli`.
+set -euo pipefail
+exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.claude/skills/run-pobr/driver.sh" "$@"

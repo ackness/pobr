@@ -3,10 +3,10 @@
 #
 # 把"新环境从零到能跑测试 + 能查 PoB2 公式"的流程脚本化（会话 2026-06-18 实跑得出）。
 # 子命令：
-#   bootstrap  安装 luajit/构建依赖 + 克隆 vendor（钉定 commit）+ workspace build
+#   bootstrap  安装 luajit/构建依赖 + 克隆 vendor（钉定 commit）+ CLI build
 #   deps       仅安装系统依赖（luajit）
 #   vendor     仅克隆/对齐 PoB2 vendor 到钉定 commit（gitignored，永不提交）
-#   build      cargo build --workspace
+#   build      Build the application CLI, or forward explicit Cargo selectors.
 #   test <args> Forward targeted cargo test arguments (package, suite, filter).
 #   lint <args> Format check plus Clippy for explicitly selected Cargo targets.
 #   full       fmt + clippy + all workspace tests + i18n lint
@@ -18,7 +18,7 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-cd "$ROOT"
+cd "$ROOT" || exit 1
 
 DATA_VER="${POBR_DATA_VERSION:-$(cat data/CURRENT)}"
 RULES="data/$DATA_VER/overlay/mod_parser_rules.json"
@@ -61,25 +61,109 @@ cmd_vendor() {
   echo "OK: $(git -C "$VENDOR_DIR" log -1 --oneline)"
 }
 
-cmd_build() { say "cargo build --workspace"; cargo build --workspace && echo "build OK"; }
+cmd_build() {
+  if [[ $# -eq 0 ]]; then set -- -p pobr-cli; fi
+  say "cargo build $*"
+  cargo build "$@"
+}
 
-cmd_test() {
+# Accept a package/suite shorthand without changing the legacy Cargo interface.
+# Keep arguments in an array: filters may contain whitespace or shell characters.
+select_targets() {
+  CARGO_ARGS=()
   if [[ $# -eq 0 ]]; then
-    echo "usage: driver.sh test -p <crate> [--test <suite>] [filter] [-- <test options>]" >&2
-    echo "Use 'smoke' for quick checks or 'full' for the complete gate." >&2
+    echo "usage: ./pobr <test|lint|timings> <crate> <suite|lib> [args]" >&2
+    echo "Raw Cargo selectors also work: -p <crate> --test <suite>" >&2
     return 2
   fi
-  say "cargo test $*"
-  cargo test "$@"
+  if [[ "$1" == -* ]]; then CARGO_ARGS=("$@"); return 0; fi
+  if [[ $# -lt 2 || "$2" == -* ]]; then
+    echo "Select a suite explicitly; use './pobr targets' to list them." >&2
+    return 2
+  fi
+  local package="$1" suite="$2"
+  [[ "$package" == *-* ]] || package="pobr-$package"
+  CARGO_ARGS=(-p "$package")
+  if [[ "$suite" == lib ]]; then
+    CARGO_ARGS+=(--lib)
+  else
+    CARGO_ARGS+=(--test "$suite")
+  fi
+  shift 2
+  CARGO_ARGS+=("$@")
+}
+
+cmd_test() {
+  select_targets "$@" || return $?
+  say "cargo test ${CARGO_ARGS[*]}"
+  cargo test "${CARGO_ARGS[@]}"
 }
 
 cmd_lint() {
-  if [[ $# -eq 0 ]]; then
-    echo "usage: driver.sh lint -p <crate> [--lib] [--bin <name>] [--test <suite>]" >&2
+  select_targets "$@" || return $?
+  say "Targeted lint: fmt and cargo clippy ${CARGO_ARGS[*]}"
+  cargo fmt --all --check && cargo clippy "${CARGO_ARGS[@]}" -- -D warnings
+}
+
+cmd_verify() {
+  if [[ $# -lt 2 || $# -gt 3 || "$1" == -* || "$2" == -* || "${3:-}" == -* ]]; then
+    echo "usage: ./pobr verify <crate> <suite|lib> [filter]" >&2
     return 2
   fi
-  say "Targeted lint: fmt and cargo clippy $*"
-  cargo fmt --all --check && cargo clippy "$@" -- -D warnings
+  cmd_test "$@" && cmd_lint "$1" "$2"
+}
+
+cmd_timings() {
+  select_targets "$@" || return $?
+  say "Compile only; Cargo writes target/cargo-timings/cargo-timing.html"
+  cargo test --no-run --timings "${CARGO_ARGS[@]}"
+}
+
+cmd_targets() {
+  cargo metadata --no-deps --format-version 1 --locked | python3 -c '
+import json, sys
+metadata = json.load(sys.stdin)
+members = set(metadata["workspace_members"])
+for package in sorted(metadata["packages"], key=lambda p: p["name"]):
+    if package["id"] not in members:
+        continue
+    targets = ["lib" if "lib" in t["kind"] or "rlib" in t["kind"] else t["name"]
+               for t in package["targets"] if t["test"] and
+               any(k in t["kind"] for k in ("lib", "rlib", "test"))]
+    if targets:
+        print(package["name"] + ": " + " ".join(targets))
+'
+}
+
+cmd_ci() {
+  if [[ $# -ne 1 || "$1" == -* ]]; then
+    echo "usage: ./pobr ci <pushed-branch-or-tag>" >&2
+    echo "Runs the remote ref, not uncommitted or unpushed local changes." >&2
+    return 2
+  fi
+  gh workflow run ci.yml --ref "$1" &&
+    echo "CI requested for remote ref '$1'. Check './pobr ci-status'; this is not a passing result."
+}
+
+cmd_help() {
+  cat <<'EOF'
+PoBR development commands (run from any directory via this script's path):
+  ./pobr targets                          List Rust suites without compiling
+  ./pobr verify build skills [filter]      Targeted test + fmt + Clippy
+  ./pobr test core parser [filter]         Test one suite (or use 'lib')
+  ./pobr lint build skills                fmt + targeted Clippy
+  ./pobr timings build parity             Compile only, with HTML timings
+  ./pobr build [-p <crate>]               Build application CLI by default
+  ./pobr smoke                            Representative environment checks
+  ./pobr full                             Explicit full local Rust gate
+  ./pobr ci <pushed-branch-or-tag>         Request full cloud CI via gh
+  ./pobr ci-status [--branch <branch>]     List cloud CI results via gh
+
+test/lint/timings also accept raw Cargo arguments (-p, --test, --lib, ...).
+Use --test/--lib to bound compilation; a test-name filter alone cannot do that.
+Full release CI runs on tags. Do not run an identical full gate locally first.
+Data/setup: status, deps, vendor, bootstrap, data, versions, diff, drill, lua.
+EOF
 }
 
 cmd_workspace_tests() {
@@ -179,9 +263,15 @@ case "${1:-}" in
   deps)      cmd_deps ;;
   vendor)    cmd_vendor ;;
   bootstrap) cmd_deps && cmd_vendor && cmd_build ;;
-  build)     cmd_build ;;
+  build)     shift; cmd_build "$@" ;;
   test)      shift; cmd_test "$@" ;;
   lint)      shift; cmd_lint "$@" ;;
+  verify)    shift; cmd_verify "$@" ;;
+  timings)   shift; cmd_timings "$@" ;;
+  targets)   cmd_targets ;;
+  ci)        shift; cmd_ci "$@" ;;
+  ci-status) shift; gh run list --workflow ci.yml "$@" ;;
+  help|--help|-h) cmd_help ;;
   full)      cmd_full ;;
   drill)     cmd_drill ;;
   smoke)     cmd_smoke ;;
@@ -190,5 +280,5 @@ case "${1:-}" in
   diff)      cmd_diff "$@" ;;
   lua)       cmd_lua "$@" ;;
   status)    cmd_status ;;
-  *) echo "usage: driver.sh {bootstrap|deps|vendor|build|test <cargo args>|lint <cargo targets>|full|drill|smoke|data|versions|diff <verA> <verB>|lua <pat>|status}"; exit 2 ;;
+  *) cmd_help; exit 2 ;;
 esac

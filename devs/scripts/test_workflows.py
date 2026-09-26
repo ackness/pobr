@@ -17,7 +17,7 @@ class WorkflowTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="pobr script tests ")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        scripts = ["devs/scripts/regen-check.sh", ".claude/skills/run-pobr/driver.sh"]
+        scripts = ["pobr", "devs/scripts/regen-check.sh", ".claude/skills/run-pobr/driver.sh"]
         if (REPO / ".agents/skills/run-pobr/driver.sh").is_file():
             scripts.append(".agents/skills/run-pobr/driver.sh")
         for rel in scripts:
@@ -68,6 +68,13 @@ if "precompile-mods" in args:
     (dest / "generated/parse-coverage.json").write_text('{"coverage_ratio": 1.0}', encoding="utf-8")
 ''')
         (self.root / "bin/cargo").chmod(0o755)
+        self.write("bin/gh", '''#!/usr/bin/env python3
+import json, os, sys
+with open(os.environ["CALLS"], "a", encoding="utf-8") as out:
+    out.write(json.dumps(["gh", *sys.argv[1:]]) + "\\n")
+sys.exit(int(os.environ.get("GH_EXIT", "0")))
+''')
+        (self.root / "bin/gh").chmod(0o755)
         (self.root / "tmp").mkdir()
         self.env = {
             **os.environ,
@@ -77,7 +84,7 @@ if "precompile-mods" in args:
             "TMPDIR": str(self.root / "tmp"),
             "POBR_PATCH": "test",
         }
-        for key in ["HAS_NEXTEST", "FAIL_COMMAND", "FAIL_TEST", "FAIL_REGEN", "FAIL_QUALITY"]:
+        for key in ["HAS_NEXTEST", "FAIL_COMMAND", "FAIL_TEST", "FAIL_REGEN", "FAIL_QUALITY", "GH_EXIT"]:
             self.env.pop(key, None)
 
     def write(self, rel, text):
@@ -160,6 +167,49 @@ if "precompile-mods" in args:
         result = self.run_script(".claude/skills/run-pobr/driver.sh", "test")
         self.assertEqual(result.returncode, 2)
         self.assertFalse((self.root / "calls.jsonl").exists())
+
+    def test_short_commands_select_only_requested_suite_and_preserve_filter(self):
+        result = self.run_script("pobr", "verify", "build", "skills", "a filter with spaces")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [
+            ["test", "-p", "pobr-build", "--test", "skills", "a filter with spaces"],
+            ["fmt", "--all", "--check"],
+            ["clippy", "-p", "pobr-build", "--test", "skills", "--", "-D", "warnings"],
+        ])
+
+    def test_verify_does_not_lint_after_test_failure(self):
+        self.env["FAIL_TEST"] = "1"
+        result = self.run_script("pobr", "verify", "core", "lib")
+        self.assertEqual(result.returncode, 19, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [["test", "-p", "pobr-core", "--lib"]])
+
+    def test_timings_compiles_only_the_selected_suite(self):
+        result = self.run_script("pobr", "timings", "pobr-build", "parity")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [
+            ["test", "--no-run", "--timings", "-p", "pobr-build", "--test", "parity"],
+        ])
+
+    def test_build_defaults_to_application_only(self):
+        result = self.run_script("pobr", "build")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [["build", "-p", "pobr-cli"]])
+
+    def test_short_commands_require_explicit_targets(self):
+        for args in [["test", "core"], ["lint", "core"], ["timings"],
+                     ["verify", "core"], ["verify", "core", "--workspace"],
+                     ["verify", "core", "lib", "--workspace"], ["ci"]]:
+            with self.subTest(args=args):
+                result = self.run_script("pobr", *args)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertFalse((self.root / "calls.jsonl").exists())
+
+    def test_ci_uses_explicit_remote_ref_and_propagates_failure(self):
+        self.env["GH_EXIT"] = "31"
+        result = self.run_script("pobr", "ci", "feature/ci-workflow")
+        self.assertEqual(result.returncode, 31, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [["gh", "workflow", "run", "ci.yml", "--ref", "feature/ci-workflow"]])
+        self.assertNotIn("CI requested", result.stdout)
 
     def calls(self):
         return [json.loads(line) for line in

@@ -6,7 +6,7 @@ Detailed repository guidance for coding agents and contributors. [AGENTS.md](AGE
 
 ## 构建环境
 
-直接使用普通 cargo 命令，无特殊环境要求（推荐安装 `cargo-nextest` 跑测试）。
+开发入口是根目录 `./pobr`（`./pobr help` 查看命令），也可直接使用 Cargo。`cargo-nextest` 用于完整门禁，定向测试默认用 Cargo。
 
 - 每个 worktree / 并行会话使用**自己的 `./target`**。**禁止**设置共享 `CARGO_TARGET_DIR`——并发 cargo 会在构建目录锁上串行排队（症状：长时间无输出；stderr 的 `Blocking waiting for file lock` 提示不要用 `| tail` 等管道吞掉）。
 - 同一 target 目录下 cargo 命令**一次一条、前台执行**，禁止后台叠加。
@@ -31,7 +31,7 @@ Detailed repository guidance for coding agents and contributors. [AGENTS.md](AGE
 - 编辑中只有需要快速定位编译错误时才单独 `cargo check -p <crate> --lib`。Clippy 按改动选择 `--lib` / `--bin <name>` / `--test <suite>`；测试专属改动无需扩大到 `--all-targets`。
 - 同一代码、依赖、工具链、features、数据版本下已通过的检查复用结果；后续只改文档不使代码测试失效。失败后先重跑失败目标，只有新改动、失败或明确影响范围才扩大验证。
 - Web 纯 TS/CSS 改动复用已构建 WASM；WASM 产物缺失，或 WASM 及其 Rust 依赖的源码、features、工具链改变时重建。`pnpm build` 已包含 typecheck，最终需要 build 时不额外重复 typecheck。E2E 前确认 dist 对应当前代码。
-- **合并 / 发版、工具链 / Cargo features / workspace 依赖变更、影响范围不明的核心改动**运行一次 `driver.sh full`。当前 CI 仅 tag / 手动触发，不会替普通提交兜底；全量未跑时如实说明。已验证的相同代码不因创建本地提交再跑一遍。
+- **合并 / 发版、工具链 / Cargo features / workspace 依赖变更、影响范围不明的核心改动**需要完整门禁，优先交给 CI。发版由 tag CI 完成；其他场景先推送分支，再运行 `./pobr ci <remote-ref>`，并检查该提交的结果。本地不再强制先跑 `full`；离线或排查 CI 时可显式运行 `./pobr full`（仅 Rust 门禁，Web 另验）。CI 仍仅 tag / 手动触发，普通提交不会自动验证；发起 CI 不等于通过。相同代码不重复运行本地和云端全量门禁。
 - 不自动 `cargo clean`、改 profile / features / `RUSTFLAGS` 或共享 target 来“加速”；这些可能使缓存失效。看到构建锁先检查已有进程，不叠加 Cargo 命令。
 
 ## 常用命令
@@ -48,7 +48,7 @@ cargo test -p pobr-build --test skills support_gating::
 cargo bench -p pobr-core --bench mod_db_bench          # ModDB 热查询基准（criterion）
 
 # PoB2 parity 仪表盘：逐 build 打印 PoBR vs PoB2 对照 + 聚合命中率
-cargo test -p pobr-build --test parity -- --nocapture
+./pobr test build parity parity_baseline_report -- --ignored --nocapture
 # 其中 parity_no_regression 用例是回归门禁（命中率不得低于已记录基线）
 
 # CLI（apps/pobr-cli，二进制名 pobr）
@@ -66,23 +66,24 @@ cargo run -p lint-i18n                                  # 语言包完整性检�
 tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle：dump Lua 侧完整计算分解为 JSON（需 luajit；非 workspace 成员）
 ```
 
-- Rust **edition 2024**；workspace 版本统一（根 Cargo.toml，与 v0.x tag 同步）。
-- 根 `Cargo.toml` 设置 `[profile.dev] debug = "line-tables-only"` 以加速 ~100 个测试二进制的链接（保留 panic 回溯行号）；需要 lldb 单步调试时临时改回 `debug = true`（会触发全量重编译）。
+- Rust **edition 2024**；根 `[workspace.package].version` 是应用/工具发布版本，与 v0.x tag 同步。七个 `crates/` 库使用独立版本，日常应用发版不改库版本，避免仅改发布号就使底层库和所有使用者重新编译。库版本不代表当前应用发布号；将来单独发布库时再按 API 兼容性管理。
+- 根 `Cargo.toml` 设置 `[profile.dev] debug = "line-tables-only"` 以减少测试二进制的链接成本（保留 panic 回溯行号）；需要 lldb 单步调试时临时改回 `debug = true`（会触发全量重编译）。
 - CI 以已入库的 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) 为准：Rust 检查 fmt / Clippy / nextest / doctest，Web 独立检查类型、单测、Worker、WASM 构建与 E2E。涉及计算/Modifier/parser 的改动需补对应的集成测试或 golden fixture。
 
 ### 快速检查与发版
 
+- `./pobr targets` 列出当前 crate / 测试目标，不编译；`./pobr verify build skills support_gating::` 一次执行定向测试和 lint；`./pobr timings build parity` 只编译指定套件并写入 Cargo HTML 耗时报告。更多说明见 [开发与 CI 工作流](docs/development-workflow.md)。
 - `bash .claude/skills/run-pobr/driver.sh smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
 - `bash .claude/skills/run-pobr/driver.sh test -p <crate> --test <suite> [filter]`：原样传递 Cargo 参数，不过滤编译/错误输出。
 - `bash .claude/skills/run-pobr/driver.sh lint -p <crate> --lib --test <suite>`：fmt + 指定目标的 Clippy，不隐式扩大到 workspace / all-targets。
 - `bash .claude/skills/run-pobr/driver.sh full`：fmt + clippy + workspace tests（含 doctest/parity）+ i18n lint。优先 nextest，未安装时用 Cargo；用于上述完整门禁场景，不是每次本地提交的收尾动作。
 - 本地 `.agents/skills/run-pobr/driver.sh` 转发到同一驱动（`.agents` 按仓库规则不入库）。`smoke` 是环境检查，已有相关测试通过后无需再补一次。
-- `perf_timing` / `perf_phases` 是按需计时诊断，运行时加 `-- --ignored --nocapture`；正确性、覆盖率、parity 门禁仍默认执行。
+- `perf_timing` / `perf_phases` 及 parity 中的 `parity_baseline_report`、`effective_switch_dual_run_report`、`ehp_dual_run_report` 是按需诊断，运行时加 `-- --ignored --nocapture`；正确性、语料健康、覆盖率和两种模式的 parity 回归门禁仍默认执行。
 - `node web/scripts/bench-calc.mjs` measures uncached real-WASM calculation and 16-item batches on three committed builds. It requires built WASM and synced data; `--reference <old-pkg>` additionally checks complete output equality for behavior-preserving optimizations. Reports stay under ignored `.cache/`; this benchmark is opt-in, outside the CI gate.
 - `python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，不调用真实 Cargo。
 - `pnpm --dir web package-wasm`：将已构建 WASM 与同步数据打包到 `.cache/wasm-release/`，包含 `use-pobr-wasm` 技能、demo、校验和及体积比较；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。打包脚本改动运行 `node --test web/scripts/package-wasm.test.mjs`，发布流程见 [WASM 打包说明](docs/wasm-package.md)。tag CI 在 Rust/Web 门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
 - `cd web && pnpm test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
-- 计划发版时，在功能 PR 中一并更新 workspace 版本。完成本地门禁后合并，再推送一次 tag；tag CI 通过后自动部署，无需在 master 额外手动运行同一套 CI。
+- 计划发版时，在功能 PR 中一并更新 workspace 版本。本地完成相关验证后合并，再推送一次 tag；tag CI 完成全量门禁，通过后自动部署，无需在 master 额外手动运行同一套 CI。
 - `devs/scripts/regen-check.sh` 在临时副本中重生成，保留 `overlay-common` 与 examples 语料，不写入或恢复工作区文件。
 
 
