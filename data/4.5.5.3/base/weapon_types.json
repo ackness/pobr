@@ -1,0 +1,118 @@
+[
+  {
+    "id": "Bow",
+    "one_hand": false,
+    "melee": false,
+    "flag": "Bow"
+  },
+  {
+    "id": "Claw",
+    "one_hand": true,
+    "melee": true,
+    "flag": "Claw"
+  },
+  {
+    "id": "Crossbow",
+    "one_hand": false,
+    "melee": false,
+    "flag": "Crossbow"
+  },
+  {
+    "id": "Dagger",
+    "one_hand": true,
+    "melee": true,
+    "flag": "Dagger"
+  },
+  {
+    "id": "Fishing Rod",
+    "one_hand": false,
+    "melee": true,
+    "flag": "Fishing"
+  },
+  {
+    "id": "Flail",
+    "one_hand": true,
+    "melee": true,
+    "flag": "Flail"
+  },
+  {
+    "id": "None",
+    "one_hand": true,
+    "melee": true,
+    "flag": "Unarmed"
+  },
+  {
+    "id": "One Hand Axe",
+    "one_hand": true,
+    "melee": true,
+    "flag": "Axe"
+  },
+  {
+    "id": "One Hand Mace",
+    "one_hand": true,
+    "melee": true,
+    "flag": "Mace"
+  },
+  {
+    "id": "One Hand Sword",
+    "one_hand": true,
+    "melee": true,
+    "flag": "Sword"
+  },
+  {
+    "id": "Spear",
+    "one_hand": true,
+    "melee": true,
+    "flag": "Spear"
+  },
+  {
+    "id": "Staff",
+    "one_hand": false,
+    "melee": true,
+    "flag": "Staff",
+    "label": "Quarterstaff"
+  },
+  {
+    "id": "Talisman",
+    "one_hand": false,
+    "melee": true,
+    "flag": "Talisman"
+  },
+  {
+    "id": "Thrusting One Hand Sword",
+    "one_hand": true,
+    "melee": true,
+    "flag": "Sword",
+    "label": "One Hand Sword"
+  },
+  {
+    "id": "Two Hand Axe",
+    "one_hand": false,
+    "melee": true,
+    "flag": "Axe"
+  },
+  {
+    "id": "Two Hand Mace",
+    "one_hand": false,
+    "melee": true,
+    "flag": "Mace"
+  },
+  {
+    "id": "Two Hand Sword",
+    "one_hand": false,
+    "melee": true,
+    "flag": "Sword"
+  },
+  {
+    "id": "Wand",
+    "one_hand": true,
+    "melee": false,
+    "flag": "Wand"
+  },
+  {
+    "id": "Warstaff",
+    "one_hand": false,
+    "melee": true,
+    "flag": "Warstaff"
+  }
+]

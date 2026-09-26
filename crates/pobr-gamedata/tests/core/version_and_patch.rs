@@ -3,15 +3,24 @@
 
 use pobr_gamedata::{GameData, current_data_dir, data_version};
 
-/// Runtime version discovery: falls back to the `data/CURRENT` marker when
-/// there's no env var (in the repo, this equals DATA_VERSION);
+/// Runtime version discovery: the environment override precedes `data/CURRENT`;
 /// `current_data_dir()` points at that version's directory.
 #[test]
 fn data_version_resolves_and_dir_matches() {
     let v = data_version();
     assert!(!v.trim().is_empty(), "data_version should not be empty");
-    // The repo's data/CURRENT matches the compile-time DATA_VERSION (unchanged behavior).
-    assert_eq!(v, pobr_gamedata::DATA_VERSION);
+    let expected = std::env::var("POBR_DATA_VERSION")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| {
+            std::fs::read_to_string(pobr_gamedata::repo_data_root().join("CURRENT"))
+                .expect("repository data/CURRENT")
+                .lines()
+                .next()
+                .expect("nonempty data/CURRENT")
+                .to_string()
+        });
+    assert_eq!(v, expected.trim());
     assert!(
         current_data_dir().ends_with(&v),
         "current_data_dir should end with the discovered version: {:?}",
