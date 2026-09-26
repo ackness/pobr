@@ -46,18 +46,31 @@ cmd_vendor() {
   say "PoB2 vendor 参考克隆（gitignored，不提交）"
   local sha; sha="$(vendor_commit)"
   [ -n "$sha" ] || { echo "ERROR: 无法从 $RULES 读 vendor_commit"; return 1; }
+  mkdir -p "$VENDOR_DIR" || return 1
+  local vendor_root
+  vendor_root="$(git -C "$VENDOR_DIR" rev-parse --show-toplevel 2>/dev/null)" || vendor_root=""
+  if [[ -n "$vendor_root" && "$(cd "$vendor_root" && pwd -P)" != "$(cd "$VENDOR_DIR" && pwd -P)" ]]; then
+    vendor_root=""
+  fi
+  if [[ -z "$vendor_root" ]]; then
+    [[ -z "$(ls -A "$VENDOR_DIR")" ]] || { echo "ERROR: vendor 目录非空且不是独立 Git 仓库" >&2; return 1; }
+    git -C "$VENDOR_DIR" init -q || return 1
+  fi
   if [ -f "$VENDOR_DIR/src/Modules/ModParser.lua" ] \
      && [ "$(git -C "$VENDOR_DIR" rev-parse HEAD 2>/dev/null)" = "$sha" ]; then
     echo "vendor 已在钉定 commit $sha"; return 0
   fi
+  local vendor_changes
+  vendor_changes="$(git -C "$VENDOR_DIR" status --porcelain --untracked-files=no)" || return 1
+  [[ -z "$vendor_changes" ]] \
+    || { echo "ERROR: vendor 有未提交修改，拒绝切换 commit" >&2; return 1; }
   echo "克隆 PoB2 @ ${sha}（depth 1 fetch-by-sha）..."
-  mkdir -p "$VENDOR_DIR"
-  git -C "$VENDOR_DIR" rev-parse --git-dir >/dev/null 2>&1 || git -C "$VENDOR_DIR" init -q
   git -C "$VENDOR_DIR" remote get-url origin >/dev/null 2>&1 \
-    || git -C "$VENDOR_DIR" remote add origin "$VENDOR_REPO"
-  git -C "$VENDOR_DIR" fetch -q --depth 1 origin "$sha"
-  git -C "$VENDOR_DIR" checkout -q FETCH_HEAD
-  printf '%s\n' "$sha" > vendor/.pob2-version.txt
+    || git -C "$VENDOR_DIR" remote add origin "$VENDOR_REPO" || return 1
+  git -C "$VENDOR_DIR" fetch -q --depth 1 origin "$sha" || return 1
+  git -C "$VENDOR_DIR" checkout -q FETCH_HEAD || return 1
+  [[ "$(git -C "$VENDOR_DIR" rev-parse HEAD)" == "$sha" ]] || return 1
+  printf '%s\n' "$sha" > vendor/.pob2-version.txt || return 1
   echo "OK: $(git -C "$VENDOR_DIR" log -1 --oneline)"
 }
 

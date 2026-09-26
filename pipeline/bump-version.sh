@@ -129,12 +129,26 @@ OLD_VENDOR_SHA="$(cat vendor/.pob2-version.txt 2>/dev/null || echo '')"
 if [[ -n "${VENDOR_SHA}" ]]; then
     [[ "${#VENDOR_SHA}" -eq 40 ]] || { echo "bump-version: --vendor-sha 需全长 40 位（gh api 查，别猜短 sha）" >&2; exit 1; }
     swap_vendor() {
-        mkdir -p "${VENDOR_DIR}"
-        git -C "${VENDOR_DIR}" rev-parse --git-dir >/dev/null 2>&1 || git -C "${VENDOR_DIR}" init -q
+        mkdir -p "${VENDOR_DIR}" || return 1
+        local vendor_root
+        vendor_root="$(git -C "${VENDOR_DIR}" rev-parse --show-toplevel 2>/dev/null)" || vendor_root=""
+        if [[ -n "$vendor_root" && "$(cd "$vendor_root" && pwd -P)" != "$(cd "$VENDOR_DIR" && pwd -P)" ]]; then
+            vendor_root=""
+        fi
+        if [[ -z "$vendor_root" ]]; then
+            [[ -z "$(ls -A "$VENDOR_DIR")" ]] || { echo "bump-version: vendor 目录非空且不是独立 Git 仓库" >&2; return 1; }
+            git -C "${VENDOR_DIR}" init -q || return 1
+        fi
+        local vendor_changes
+        vendor_changes="$(git -C "${VENDOR_DIR}" status --porcelain --untracked-files=no)" || return 1
+        [[ -z "$vendor_changes" ]] \
+            || { echo "bump-version: vendor 有未提交修改，拒绝切换 commit" >&2; return 1; }
         git -C "${VENDOR_DIR}" remote get-url origin >/dev/null 2>&1 \
-            || git -C "${VENDOR_DIR}" remote add origin https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2
+            || git -C "${VENDOR_DIR}" remote add origin https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2 \
+            || return 1
         git -C "${VENDOR_DIR}" fetch -q --depth 1 origin "${VENDOR_SHA}" \
             && git -C "${VENDOR_DIR}" checkout -q FETCH_HEAD \
+            && [[ "$(git -C "${VENDOR_DIR}" rev-parse HEAD)" == "${VENDOR_SHA}" ]] \
             && printf '%s\n' "${VENDOR_SHA}" > vendor/.pob2-version.txt
     }
     die_on_fail swap_vendor

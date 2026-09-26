@@ -5,7 +5,7 @@ import path from 'node:path';
 export async function dictionarySource({ cacheRoot, files, ref, refresh = false, fetcher = fetch }) {
   if (ref && !/^[a-f0-9]{40}$/.test(ref)) throw new Error('Dictionary ref must be a full commit SHA.');
   if (refresh || !ref) {
-    const response = await fetcher('https://api.github.com/repos/addohm/poe2-en-cn-dict/commits/master', {
+    const response = await fetcher('https://api.github.com/repos/addohm/poe2-en-cn-dict/commits/HEAD', {
       headers: { accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) throw new Error(`Dictionary commit lookup: HTTP ${response.status}`);

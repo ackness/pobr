@@ -379,5 +379,95 @@ pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-
                     self.assertIn(expected[failure], result.stderr)
 
 
+class VendorRepositoryIsolationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="pobr vendor isolation ")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.real_git = shutil.which("git")
+        assert self.real_git is not None
+        for rel in [".claude/skills/run-pobr/driver.sh", "pipeline/bump-version.sh"]:
+            self.write(rel, (REPO / rel).read_text(encoding="utf-8"))
+        self.write("data/CURRENT", "1.2.3\n")
+        self.sha = "a" * 40
+        self.write("data/1.2.3/overlay/mod_parser_rules.json",
+                   json.dumps({"_meta": {"vendor_commit": self.sha}}))
+        self.write("pipeline/config.json", '{"patch": "1.2.3"}\n')
+        self.write("vendor/.pob2-version.txt", "previous\n")
+        self.write("bin/git", '''#!/usr/bin/env python3
+import os, pathlib, subprocess, sys
+real = os.environ["REAL_GIT"]
+args = sys.argv[1:]
+if "fetch" in args:
+    vendor = args[args.index("-C") + 1]
+    root = subprocess.check_output([real, "-C", vendor, "rev-parse", "--show-toplevel"], text=True).strip()
+    pathlib.Path(os.environ["FETCH_ROOTS"]).write_text(root, encoding="utf-8")
+    sys.exit(47)
+os.execv(real, [real, *args])
+''').chmod(0o755)
+        self.write("bin/curl", '''#!/usr/bin/env python3
+import pathlib, sys
+pathlib.Path(sys.argv[sys.argv.index("-o") + 1]).write_text("{}", encoding="utf-8")
+''').chmod(0o755)
+        subprocess.run([self.real_git, "init", "--quiet"], cwd=self.root, check=True)
+        subprocess.run([self.real_git, "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+                        "-c", "commit.gpgsign=false", "commit", "--quiet", "--allow-empty", "-m", "parent"],
+                       cwd=self.root, check=True)
+        subprocess.run([self.real_git, "remote", "add", "origin", "https://example.invalid/parent.git"],
+                       cwd=self.root, check=True)
+        self.parent_head = subprocess.check_output([self.real_git, "rev-parse", "HEAD"], cwd=self.root, text=True).strip()
+        self.env = {**os.environ, "PATH": f"{self.root / 'bin'}{os.pathsep}{os.environ['PATH']}",
+                    "REAL_GIT": self.real_git, "FETCH_ROOTS": str(self.root / "fetch-root")}
+
+    def write(self, rel, text):
+        path = self.root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def assert_failed_fetch_is_isolated(self, result):
+        vendor = self.root / "vendor/PathOfBuilding-PoE2"
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue((vendor / ".git").is_dir())
+        self.assertEqual(Path((self.root / "fetch-root").read_text(encoding="utf-8")).resolve(),
+                         vendor.resolve())
+        self.assertEqual((self.root / "vendor/.pob2-version.txt").read_text(encoding="utf-8"), "previous\n")
+        self.assertEqual(subprocess.check_output([self.real_git, "rev-parse", "HEAD"],
+                                                 cwd=self.root, text=True).strip(), self.parent_head)
+        self.assertEqual(subprocess.check_output([self.real_git, "remote", "get-url", "origin"],
+                                                 cwd=self.root, text=True).strip(), "https://example.invalid/parent.git")
+
+    def test_driver_vendor_initializes_own_repo_and_propagates_fetch_failure(self):
+        result = subprocess.run(["bash", ".claude/skills/run-pobr/driver.sh", "vendor"], cwd=self.root,
+                                env=self.env, capture_output=True, text=True, timeout=10)
+        self.assert_failed_fetch_is_isolated(result)
+        self.assertNotIn("OK:", result.stdout)
+
+    def test_bump_vendor_initializes_own_repo_and_does_not_promote_on_fetch_failure(self):
+        result = subprocess.run(["bash", "pipeline/bump-version.sh", "--patch", "1.2.4",
+                                 "--skip-download", "--vendor-sha", self.sha], cwd=self.root,
+                                env=self.env, capture_output=True, text=True, timeout=10)
+        self.assert_failed_fetch_is_isolated(result)
+        self.assertEqual((self.root / "data/CURRENT").read_text(encoding="utf-8"), "1.2.3\n")
+        self.assertNotIn("vendor →", result.stdout)
+
+    def test_driver_preserves_existing_vendor_changes(self):
+        vendor = self.root / "vendor/PathOfBuilding-PoE2"
+        vendor.mkdir()
+        subprocess.run([self.real_git, "init", "--quiet"], cwd=vendor, check=True)
+        (vendor / "keep.txt").write_text("original\n", encoding="utf-8")
+        subprocess.run([self.real_git, "add", "keep.txt"], cwd=vendor, check=True)
+        subprocess.run([self.real_git, "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+                        "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "vendor"],
+                       cwd=vendor, check=True)
+        (vendor / "keep.txt").write_text("user edit\n", encoding="utf-8")
+        result = subprocess.run(["bash", ".claude/skills/run-pobr/driver.sh", "vendor"], cwd=self.root,
+                                env=self.env, capture_output=True, text=True, timeout=10)
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((vendor / "keep.txt").read_text(encoding="utf-8"), "user edit\n")
+        self.assertFalse((self.root / "fetch-root").exists())
+        self.assertEqual((self.root / "vendor/.pob2-version.txt").read_text(encoding="utf-8"), "previous\n")
+
+
 if __name__ == "__main__":
     unittest.main()
