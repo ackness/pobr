@@ -11,7 +11,8 @@ use std::collections::BTreeMap;
 use pobr_build::build::GemSkillRef;
 use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup,
-    calculate_with_data_session, decode_pob_code, parse_build, radius_jewel_from_text,
+    calculate_with_data_session, decode_pob_code, parse_build, parse_build_with_allocated_nodes,
+    radius_jewel_from_text,
 };
 use pobr_core::calc::{CalculationSession, MinimalInput};
 use pobr_core::item_text::parse_pob_xml_item;
@@ -479,7 +480,12 @@ pub(crate) fn parse_build_from_request(req: &CalculateBuildRequest) -> Result<Bu
     }
     let xml = decode_pob_code(req.pob_code.trim())
         .map_err(|e| ApiError::decode_error(format!("decode: {e}")))?;
-    parse_build(&xml).map_err(|e| ApiError::decode_error(format!("parse build: {e}")))
+    let parsed = if let Some(nodes) = &req.allocated_nodes {
+        parse_build_with_allocated_nodes(&xml, nodes)
+    } else {
+        parse_build(&xml)
+    };
+    parsed.map_err(|e| ApiError::decode_error(format!("parse build: {e}")))
 }
 
 pub(crate) fn run_session_for_build(

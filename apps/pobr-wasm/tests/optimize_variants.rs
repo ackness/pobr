@@ -148,3 +148,195 @@ fn trade_replacements_match_normal_edits_and_keep_socket_gating() {
             < output["baseline"]["Life"].as_f64().unwrap()
     );
 }
+
+fn assert_variant_matches_final(base: &Value, variant: Value, final_request: &Value) -> Value {
+    let output: Value = serde_json::from_str(
+        &pobr_wasm::optimize_variants_json(
+            &json!({
+                "request": base,
+                "stats": ["Life", "Mana"],
+                "variants": [variant],
+            })
+            .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let row = &output["variants"][0];
+    assert!(row["error"].is_null(), "{output}");
+    let final_calc: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&final_request.to_string()).unwrap())
+            .unwrap();
+    for stat in ["Life", "Mana"] {
+        let expected = final_calc["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|value| value["id"] == stat)
+            .unwrap();
+        assert_eq!(row["stats"][stat], expected["value"], "{stat}: {output}");
+    }
+    assert_eq!(row["unsupported"], final_calc["unsupported_modifiers"]);
+    row.clone()
+}
+
+#[test]
+fn socket_jewel_variants_use_the_final_allocation() {
+    setup();
+    let radius = "Rarity: RARE\nRadius Test\nTime-Lost Ruby\nRadius: Small\nImplicits: 0\n+50 to maximum Life\nSmall Passive Skills in Radius also grant +10 to maximum Mana";
+    let upgraded = radius.replace("+50 to maximum Life", "+80 to maximum Life");
+    let inactive = json!({
+        "character": {"class_name": "Witch", "level": 80},
+        "allocated_nodes": [9884],
+        "jewels": [{"socket_node": 7960, "text": radius}],
+    });
+    let mut activated = inactive.clone();
+    activated["allocated_nodes"] = json!([9884, 7960]);
+    let gained =
+        assert_variant_matches_final(&inactive, json!({"allocate_nodes": [7960]}), &activated);
+    assert!(gained["stats"]["Life"].as_f64().unwrap() > 0.0);
+
+    let mut replaced = activated.clone();
+    replaced["jewels"] = json!([{"socket_node": 7960, "text": upgraded}]);
+    let replacement = assert_variant_matches_final(
+        &inactive,
+        json!({
+            "allocate_nodes": [7960], "jewels": replaced["jewels"],
+        }),
+        &replaced,
+    );
+    assert!(
+        replacement["stats"]["Life"].as_f64().unwrap() > gained["stats"]["Life"].as_f64().unwrap()
+    );
+
+    let mut refunded = activated.clone();
+    refunded["allocated_nodes"] = json!([9884]);
+    let lost =
+        assert_variant_matches_final(&activated, json!({"deallocate_nodes": [7960]}), &refunded);
+    assert!(lost["stats"]["Life"].as_f64().unwrap() < gained["stats"]["Life"].as_f64().unwrap());
+    assert!(lost["stats"]["Mana"].as_f64().unwrap() < gained["stats"]["Mana"].as_f64().unwrap());
+
+    let mut removed = activated.clone();
+    removed["jewels"] = json!([]);
+    let taken_out = assert_variant_matches_final(&activated, json!({"jewels": []}), &removed);
+    assert_eq!(taken_out["stats"], lost["stats"]);
+
+    let plain = json!({
+        "character": {"class_name": "Witch", "level": 80},
+        "allocated_nodes": [7960],
+        "jewels": [{"socket_node": 7960,
+            "text": "Rarity: RARE\nPlain Jewel\nEmerald\nImplicits: 0\n+70 to maximum Life"}],
+    });
+    let mut plain_refunded = plain.clone();
+    plain_refunded["allocated_nodes"] = json!([]);
+    let plain_lost =
+        assert_variant_matches_final(&plain, json!({"deallocate_nodes": [7960]}), &plain_refunded);
+    let plain_base: Value =
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&plain.to_string()).unwrap())
+            .unwrap();
+    let plain_base_life = plain_base["stats"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|value| value["id"] == "Life")
+        .unwrap()["value"]
+        .as_f64()
+        .unwrap();
+    assert!(plain_lost["stats"]["Life"].as_f64().unwrap() < plain_base_life);
+}
+
+#[test]
+fn repeated_node_in_one_variant_is_allocated_once() {
+    setup();
+    let base = json!({
+        "character": {"class_name": "Witch", "level": 80},
+        "allocated_nodes": [],
+    });
+    let mut final_request = base.clone();
+    final_request["allocated_nodes"] = json!([57110]);
+    assert_variant_matches_final(
+        &base,
+        json!({"allocate_nodes": [57110, 57110]}),
+        &final_request,
+    );
+}
+
+#[test]
+fn imported_socket_edits_preserve_itemset_jewels_and_shared_item_ids() {
+    setup();
+    for shared in [false, true] {
+        for initially_allocated in [false, true] {
+            let nodes = if initially_allocated {
+                "7960,9884"
+            } else {
+                "9884"
+            };
+            let shared_slot = if shared {
+                "<Slot name=\"Jewel 1\" itemId=\"1\"/>"
+            } else {
+                ""
+            };
+            let xml = format!(
+                r#"<PathOfBuilding2><Build level="80" className="Witch"/>
+                <Tree activeSpec="1"><Spec nodes="{nodes}"><Sockets>
+                <Socket nodeId="7960" itemId="1"/></Sockets></Spec></Tree>
+                <Items activeItemSet="1">
+                <Item id="1">Rarity: RARE
+Radius Test
+Time-Lost Ruby
+Radius: Small
+Implicits: 0
++50 to maximum Life
+Small Passive Skills in Radius also grant +10 to maximum Mana</Item>
+                <Item id="2">Rarity: MAGIC
+Ruby
+Implicits: 0
++40 to maximum Life</Item>
+                <ItemSet id="1">{shared_slot}<Slot name="Jewel 2" itemId="2"/></ItemSet>
+                </Items></PathOfBuilding2>"#
+            );
+            let code = pobr_build::encode_pob_code(&xml).unwrap();
+            let base = json!({"pob_code": code});
+            let mut final_request = base.clone();
+            let variant = if initially_allocated {
+                final_request["allocated_nodes"] = json!([9884]);
+                json!({"deallocate_nodes": [7960]})
+            } else {
+                final_request["allocated_nodes"] = json!([9884, 7960]);
+                json!({"allocate_nodes": [7960]})
+            };
+            let row = assert_variant_matches_final(&base, variant, &final_request);
+            let base_calc: Value =
+                serde_json::from_str(&pobr_wasm::calculate_build_json(&base.to_string()).unwrap())
+                    .unwrap();
+            let base_mana = base_calc["stats"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|value| value["id"] == "Mana")
+                .unwrap()["value"]
+                .as_f64()
+                .unwrap();
+            let final_mana = row["stats"]["Mana"].as_f64().unwrap();
+            assert_eq!(
+                final_mana > base_mana,
+                !initially_allocated,
+                "shared={shared}"
+            );
+            let base_life = base_calc["stats"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|value| value["id"] == "Life")
+                .unwrap()["value"]
+                .as_f64()
+                .unwrap();
+            let final_life = row["stats"]["Life"].as_f64().unwrap();
+            if shared {
+                assert_eq!(final_life, base_life, "shared item ID must remain active");
+            } else {
+                assert_eq!(final_life > base_life, !initially_allocated);
+            }
+        }
+    }
+}

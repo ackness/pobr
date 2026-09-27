@@ -74,6 +74,22 @@ pub fn parse_build_from_code(code: &str) -> Result<Build, BuildError> {
 
 /// Parses a PoB Build XML into a complete [`Build`] (character + passive tree + equipment + skill gem groups).
 pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
+    parse_build_with_allocated_nodes_impl(xml, None)
+}
+
+/// Parse the original XML while using a final passive allocation to gate tree
+/// socket jewels. ItemSet jewels retain their original item identity and state.
+pub fn parse_build_with_allocated_nodes(
+    xml: &str,
+    allocated_nodes: &[u32],
+) -> Result<Build, XmlError> {
+    parse_build_with_allocated_nodes_impl(xml, Some(allocated_nodes))
+}
+
+fn parse_build_with_allocated_nodes_impl(
+    xml: &str,
+    allocation_override: Option<&[u32]>,
+) -> Result<Build, XmlError> {
     let header = parse_build_header(xml)?;
 
     // The active ItemSet's `useSecondWeaponSet` determines which set of weapon-set-only
@@ -83,9 +99,12 @@ pub fn parse_build(xml: &str) -> Result<Build, XmlError> {
     // node — PoB2 CalcSetup.lua:175-244 only walks `spec.allocNodes`).
     let use_second_weapon_set = parse_active_item_set(xml)?.3;
     let ParsedPassives {
-        allocated: allocated_nodes,
+        allocated: imported_nodes,
         tree_version,
     } = parse_passive_nodes(xml, use_second_weapon_set)?;
+    let allocated_nodes = allocation_override
+        .map(|nodes| nodes.iter().copied().map(NodeId).collect())
+        .unwrap_or(imported_nodes);
     let allocated_set: std::collections::HashSet<u32> =
         allocated_nodes.iter().map(|n| n.0).collect();
     let (items, jewels, flask_charms, _) = parse_items_and_slots(xml, &allocated_set)?;

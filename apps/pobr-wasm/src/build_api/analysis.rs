@@ -3,11 +3,15 @@
 //! `attribution_json` (source-contribution attribution). All three share
 //! the "a what-if = a full orchestration pass" basis: the baseline build is
 //! assembled once, and each variant is a clone with incremental changes stacked on top, fully recalculated.
+//! Imported tree-socket edits reparse the original XML to preserve socket item identity.
 
 use std::collections::BTreeMap;
 
 use pobr_build::build::GemSkillRef;
-use pobr_build::{Build, BuildData, DataOrchestratorOptions, calculate_with_data_session};
+use pobr_build::{
+    Build, BuildData, DataOrchestratorOptions, calculate_with_data_session, decode_pob_code,
+    parse_build_with_allocated_nodes,
+};
 use pobr_core::calc::CalculationSession;
 use pobr_core::item_text::parse_pob_xml_item;
 use pobr_data::passive_tree::NodeId;
@@ -233,11 +237,74 @@ fn apply_variant(
     build: &mut Build,
     opts: &mut DataOrchestratorOptions,
     variant: &VariantInput,
+    baseline_request: &CalculateBuildRequest,
     data: &BuildData,
+    imported_xml: &mut Option<String>,
 ) -> Result<(), String> {
-    if variant.jewels.is_some() || variant.flasks.is_some() || variant.socket_groups.is_some() {
+    let previously_allocated: std::collections::HashSet<u32> = build
+        .tree
+        .allocated_nodes
+        .iter()
+        .map(|node| node.0)
+        .collect();
+    if !variant.allocate_nodes.is_empty() {
+        let mut allocated = previously_allocated.clone();
+        for &node in &variant.allocate_nodes {
+            if allocated.insert(node) {
+                build.tree.allocated_nodes.push(NodeId(node));
+            }
+        }
+    }
+    if !variant.deallocate_nodes.is_empty() {
+        build
+            .tree
+            .allocated_nodes
+            .retain(|node| !variant.deallocate_nodes.contains(&node.0));
+    }
+    let final_nodes: Vec<u32> = build
+        .tree
+        .allocated_nodes
+        .iter()
+        .map(|node| node.0)
+        .collect();
+    let final_set: std::collections::HashSet<u32> = final_nodes.iter().copied().collect();
+    let socket_changed = variant
+        .allocate_nodes
+        .iter()
+        .chain(&variant.deallocate_nodes)
+        .any(|id| {
+            previously_allocated.contains(id) != final_set.contains(id)
+                && data
+                    .passive_nodes_for(build.tree_version.as_deref())
+                    .get(id)
+                    .is_some_and(|node| {
+                        node.kind == pobr_data::catalog::PassiveNodeKind::JewelSocket
+                    })
+        });
+    // Imported active socket jewels lose their socket identity in Build.jewels.
+    // Reparse the original XML against the final allocation only when a socket
+    // changed; this also retains ItemSet jewels and shared item IDs exactly.
+    if socket_changed
+        && variant.jewels.is_none()
+        && baseline_request.jewels.is_none()
+        && !baseline_request.pob_code.trim().is_empty()
+    {
+        let xml = if let Some(xml) = imported_xml.as_deref() {
+            xml
+        } else {
+            let xml = decode_pob_code(baseline_request.pob_code.trim())
+                .map_err(|e| format!("decode: {e}"))?;
+            imported_xml.insert(xml)
+        };
+        let mut rebuilt = parse_build_with_allocated_nodes(xml, &final_nodes)
+            .map_err(|e| format!("parse build: {e}"))?;
+        let mut final_request = baseline_request.clone();
+        final_request.allocated_nodes = Some(final_nodes);
+        apply_request_overrides(&mut rebuilt, &final_request, data).map_err(|e| e.into_json())?;
+        *build = rebuilt;
+    }
+    if variant.flasks.is_some() || variant.socket_groups.is_some() {
         let overrides = CalculateBuildRequest {
-            jewels: variant.jewels.clone(),
             flasks: variant.flasks.clone(),
             socket_groups: variant.socket_groups.clone(),
             ..Default::default()
@@ -285,22 +352,24 @@ fn apply_variant(
             build.items.insert(slot, parsed);
         }
     }
-    if !variant.allocate_nodes.is_empty() {
-        let existing: std::collections::HashSet<u32> =
-            build.tree.allocated_nodes.iter().map(|n| n.0).collect();
-        build.tree.allocated_nodes.extend(
-            variant
-                .allocate_nodes
-                .iter()
-                .filter(|n| !existing.contains(n))
-                .map(|&n| NodeId(n)),
-        );
-    }
-    if !variant.deallocate_nodes.is_empty() {
-        build
-            .tree
-            .allocated_nodes
-            .retain(|n| !variant.deallocate_nodes.contains(&n.0));
+    // Socket jewels are gated by the final allocation, not the baseline tree.
+    // Reapply the complete list when points change so an existing jewel is
+    // activated or deactivated along with its socket.
+    let tree_changed = !variant.allocate_nodes.is_empty() || !variant.deallocate_nodes.is_empty();
+    let jewels = variant.jewels.as_deref().or(if tree_changed {
+        baseline_request.jewels.as_deref()
+    } else {
+        None
+    });
+    if let Some(jewels) = jewels {
+        let overrides = CalculateBuildRequest {
+            jewels: Some(jewels.to_vec()),
+            ..Default::default()
+        };
+        let issues = apply_request_overrides(build, &overrides, data).map_err(|e| e.into_json())?;
+        if let Some(issue) = issues.first() {
+            return Err(format!("{}: {}", issue.slot, issue.message));
+        }
     }
     opts.extra_modifier_texts.extend(
         variant
@@ -311,10 +380,10 @@ fn apply_variant(
     Ok(())
 }
 
-/// Generic variant evaluation: the baseline build is decoded/assembled only
-/// once, and each variant is a clone with incremental changes stacked on
-/// top for a full recalculation (the same "a what-if = a full
-/// orchestration pass" basis as node_power), returning a stat-value matrix.
+/// Generic variant evaluation: the baseline build is decoded/assembled once,
+/// and each variant is a clone with incremental changes stacked on top for a
+/// full recalculation. An imported build is reparsed only when a variant
+/// changes a tree-socket allocation without an explicit jewel list.
 pub fn optimize_variants_json(request_json: &str) -> Result<String, String> {
     state::cached_response("optimize_variants", request_json, || {
         optimize_variants_impl(request_json).map_err(super::ApiError::into_json)
@@ -350,10 +419,19 @@ fn optimize_variants_impl(request_json: &str) -> Result<String, super::ApiError>
     };
 
     let mut variants = Vec::with_capacity(req.variants.len());
+    let mut imported_xml = None;
     for (index, variant) in req.variants.iter().enumerate() {
         let mut build = base_build.clone();
         let mut opts = base_opts.clone();
-        let session = apply_variant(&mut build, &mut opts, variant, &data).and_then(|()| {
+        let session = apply_variant(
+            &mut build,
+            &mut opts,
+            variant,
+            &req.request,
+            &data,
+            &mut imported_xml,
+        )
+        .and_then(|()| {
             calculate_with_data_session(&build, &data, &opts).map_err(|e| format!("calculate: {e}"))
         });
         variants.push(match session {
