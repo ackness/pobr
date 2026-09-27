@@ -164,15 +164,17 @@ Changing the build, skill or goal clears scores. Changing budget, server or leag
 ### Compare equipment combinations
 
 After comparing a pasted item, choose a destination and **Add to combinations**.
-Add other items the same way, then **Compare one- and two-item plans**. The planner
-fully recalculates keeping the current equipment, every single replacement, and
-every pair using different slots and different copied items. A ring can be added
+Add other items the same way, then choose **Maximum replacements** (1–10, default 2).
+The planner fully recalculates keeping the current equipment, every single replacement, and
+every pair within the selected limit, using different slots and different copied items. A ring can be added
 at both positions to compare placements, but the same copied item is never equipped
 twice in one plan. Up to 16 candidate placements are retained while the panel is open.
 
 The results show up to five alternatives plus the current equipment. Individual
-losses are not pruned before evaluating pairs. The shared goal and constraints rank
-the complete results; changing the goal re-ranks them, while changing the build,
+losses are not pruned before evaluating pairs. Larger combinations are exhaustive
+when they fit within 512 evaluations; otherwise a goal-guided search reserves evaluations
+for each reachable combination size and reports the limit. The shared goal and constraints rank
+the complete results; changing the goal re-ranks one-/two-item searches and invalidates larger searches, while changing the build,
 weapon context or candidate list invalidates them. **Apply equipment plan** commits
 all evaluated replacement texts together, preserving other equipment and the
 inactive weapon set. Prepared rune/socket choices are retained exactly and equipped
@@ -182,8 +184,25 @@ Plans with calculation errors, unsupported effects, uncertain augment limits or
 unmet goal constraints cannot be applied from this planner. This compares only the
 supplied candidates and destinations, without market prices or a total purchase
 budget. Attribute requirements and special equip restrictions still need player
-review. Flask, charm and passive-jewel candidates keep their separate comparison
-flows; the equipment planner does not yet search jewel/passive combinations.
+review. Flask and charm candidates keep their separate comparison flows.
+
+### Compare jewels with passive routes
+
+Expand **Plan passive upgrades** on the Tree tab. Under **Jewels and passive routes**,
+paste a jewel and add one or more socket placements. The search compares keeping
+current jewels with each candidate placement, jointly evaluating connected passive
+routes using the selected goal, travel attributes and up-to-8-point budget. Reaching
+an empty socket costs points. Refund mode counts points disconnected by replacing
+an allocation jewel toward its refund budget and retains the original total point limit.
+
+The calculation engine supplies each candidate's topology for the selected tree version.
+Up to 8 placements are accepted, with 512 route evaluations per placement and for the
+current jewels, followed by exact final-state checks. New unsupported effects,
+unresolved seed nodes and unsafe allocations are excluded with diagnostics.
+**Apply jewel and passive plan** writes the exact jewels, nodes and attribute choices
+in one edit; build, goal or budget changes invalidate previews. This bounded search
+handles one candidate jewel placement per plan on the shared tree; weapon-exclusive
+passives, simultaneous multiple-jewel swaps and equipment-plus-tree searches are excluded.
 
 ## Data flow
 

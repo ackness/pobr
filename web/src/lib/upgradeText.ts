@@ -2,12 +2,17 @@ import type { Lang } from './i18n';
 
 const labels = {
   jointEquipment: ['Compare equipment combinations', '比較裝備組合', '比较装备组合'],
-  jointEquipmentHint: ['Add items from the comparison above. Compare keeping your gear, replacing one item, or replacing two together. Add a ring at each position to compare both placements; one copied item can only be used once per plan.', '從上方比較加入候選，評估保留現狀、單件及雙件換裝。戒指可分別加入兩個位置，比較不同落位；同一件物品在一個方案中只使用一次。', '从上方比较加入候选，评估保留现状、单件及双件换装。戒指可分别加入两个位置，比较不同落位；同一件物品在一个方案中只使用一次。'],
+  jointEquipmentHint: ['Add items from the comparison above, then choose how many pieces to replace together. Add a ring at each position to compare both placements; one copied item can only be used once per plan.', '從上方比較加入候選，再選擇同時替換的件數。戒指可分別加入兩個位置，比較不同落位；同一件物品在一個方案中只使用一次。', '从上方比较加入候选，再选择同时替换的件数。戒指可分别加入两个位置，比较不同落位；同一件物品在一个方案中只使用一次。'],
+  jointMaxChanges: ['Maximum replacements', '最多替換件數', '最多替换件数'],
+  jointLimited: ['Search limit reached. Larger combinations were selected using the current goal; the best plan is not guaranteed.', '已達搜尋上限。較大的組合按目前目標篩選，無法保證找到最佳方案。', '已达搜索上限。较大的组合按当前目标筛选，无法保证找到最佳方案。'],
   jointEmpty: ['Choose a replacement position above, then add the item to combinations.', '在上方選擇替換位置，再將物品加入組合。', '在上方选择替换位置，再将物品加入组合。'],
   jointAdd: ['Add to combinations', '加入裝備組合', '加入装备组合'],
   jointAdded: ['Added to combinations', '已加入裝備組合', '已加入装备组合'],
   jointRemove: ['Remove candidate', '移除候選', '移除候选'],
   jointCompare: ['Compare one- and two-item plans', '比較單件與雙件方案', '比较单件与双件方案'],
+  jointCompareOne: ['Compare one-item plans', '比較單件方案', '比较单件方案'],
+  jointCompareMany: ['Compare up to', '比較最多', '比较最多'],
+  jointItems: ['items together', '件裝備的組合', '件装备的组合'],
   jointKeep: ['Keep current equipment', '保留目前裝備', '保留当前装备'],
   jointEvaluated: ['Plans calculated:', '已計算方案數', '已计算方案数'],
   jointTop: ['Showing up to five alternatives and your current equipment.', '顯示至多五個換裝方案及目前裝備。', '显示至多五个换装方案及当前装备。'],

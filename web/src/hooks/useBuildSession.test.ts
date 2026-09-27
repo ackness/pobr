@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { backfillFromDecoded, paramsFromDecoded, parseSaved, type SavedSession } from './useBuildSession';
-import type { BuildJson } from '../api/types';
+import { backfillFromDecoded, paramsFromDecoded, parseSaved, prepareTreePlan, type SavedSession } from './useBuildSession';
+import type { BuildJson, CalculateBuildRequest } from '../api/types';
 import { parseWorkspace, createWorkspace } from '../lib/buildWorkspace';
 
 const saved: SavedSession = {
@@ -14,6 +14,52 @@ const saved: SavedSession = {
 };
 
 const parseState = (patch: Record<string, unknown>) => parseSaved(JSON.stringify({ ...saved, state: { ...saved.state, ...patch } }));
+
+describe('complete jewel/passive plan application', () => {
+  const current: SavedSession['state'] = {
+    ...saved.state,
+    allocatedNodes: [770, 99], attributeChoices: { '770': 'int', '99': 'str' },
+    jewels: [{ socket_node: 99, text: 'Old Jewel' }],
+    weaponSwap: { active: 1, alternate_items: [{ slot: 'weapon1', text: 'Other Weapon' }], exclusive_nodes: [[], []] },
+  };
+  const expected: CalculateBuildRequest = {
+    tree_version: current.treeVersion, character: current.character,
+    allocated_nodes: current.allocatedNodes, attribute_choices: current.attributeChoices,
+    socket_groups: current.socketGroups, items: current.items, flasks: current.flasks,
+    jewels: current.jewels, main_socket_group: current.params.main_socket_group,
+    enemy_tier: current.params.enemy_tier, extra_modifiers: current.params.extra_modifiers,
+    custom_modifier_blocks: current.params.custom_modifier_blocks,
+    config_inputs: current.params.config_inputs,
+  };
+  const plan = {
+    jewels: [{ socket_node: 10, text: 'New Jewel' }],
+    allocatedNodes: [770, 10, 12], attributeChoices: { '12': 'dex' as const },
+  };
+
+  test('updates all three tree fields together and preserves unrelated session state', () => {
+    const next = prepareTreePlan(current, expected, plan, false);
+    expect(next).toMatchObject({
+      jewels: plan.jewels, allocatedNodes: plan.allocatedNodes,
+      attributeChoices: { '770': 'int', '12': 'dex' },
+    });
+    expect(next?.attributeChoices).not.toHaveProperty('99');
+    for (const key of ['character', 'socketGroups', 'items', 'flasks', 'weaponSwap', 'params', 'annotations', 'pobCode'] as const) {
+      expect(next?.[key]).toBe(current[key]);
+    }
+    expect(current.jewels).toEqual([{ socket_node: 99, text: 'Old Jewel' }]);
+  });
+
+  test('rejects stale, busy, weapon-exclusive and malformed plans without changing state', () => {
+    expect(prepareTreePlan(current, { ...expected, items: [] }, plan, false)).toBeNull();
+    expect(prepareTreePlan(current, expected, plan, true)).toBeNull();
+    expect(prepareTreePlan({ ...current, weaponSwap: { ...current.weaponSwap!, exclusive_nodes: [[99], []] } },
+      expected, plan, false)).toBeNull();
+    expect(prepareTreePlan(current, expected, { ...plan, allocatedNodes: [770, 770] }, false)).toBeNull();
+    expect(prepareTreePlan(current, expected, { ...plan, jewels: [plan.jewels[0], plan.jewels[0]] }, false)).toBeNull();
+    expect(prepareTreePlan(current, expected, { ...plan, attributeChoices: { '12': 'invalid' } as never }, false)).toBeNull();
+    expect(current.allocatedNodes).toEqual([770, 99]);
+  });
+});
 
 describe('saved-session validation', () => {
   test('restores PoB enemy tier and custom modifier controls from config', () => {

@@ -29,6 +29,14 @@ import type {
   ItemAugmentInfo,
 } from './types';
 
+/** Authoritative jewel bases, including unique-only bases absent from crafting catalogs. */
+export interface JewelBase {
+  name: string;
+  drop_level: number;
+  tags: string[];
+  implicits: string[];
+}
+
 export interface PobrBackend {
   /** 初始化（wasm 模块加载 + 游戏数据注入）；幂等。 */
   init(onProgress?: (message: string) => void): Promise<void>;
@@ -69,6 +77,7 @@ export interface PobrBackend {
   loadPassiveTree(treeVersion?: string | null): Promise<PassiveNode[]>;
   /** Catalog from the same immutable data snapshot used by calculation. */
   loadTradeCatalog(): Promise<unknown>;
+  loadJewelBases(): Promise<JewelBase[]>;
   /** 天赋树节点美术边车（未生成时返回 null，界面回退纯 SVG 圆点）。 */
   loadTreeArt(): Promise<TreeArt | null>;
   /** 职业/升华元数据（新建 build 选择器）。 */

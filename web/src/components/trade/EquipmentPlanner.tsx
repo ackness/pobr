@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { planEquipmentUpgrades, EQUIPMENT_CANDIDATE_LIMIT, type EquipmentCandidate, type EquipmentPlan, type EquipmentPlanningResult } from '../../lib/equipmentPlanner';
+import { planEquipmentUpgrades, EQUIPMENT_CANDIDATE_LIMIT, EQUIPMENT_MAX_REPLACEMENTS, type EquipmentCandidate, type EquipmentPlan, type EquipmentPlanningResult } from '../../lib/equipmentPlanner';
 import { compareObjectiveStats, feasibleOf, type Objective } from '../../lib/optimize';
 import { slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
 import { upgradeT } from '../../lib/upgradeText';
@@ -16,8 +16,10 @@ export function EquipmentPlanner({ session, lang, objective, catalog, candidates
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState('');
+  const [maxReplacements, setMaxReplacements] = useState(2);
   const controller = useRef<AbortController | null>(null);
-  const key = JSON.stringify([session.activeWeaponSet, session.currentRequest(), candidates]);
+  const key = JSON.stringify([session.activeWeaponSet, session.currentRequest(), candidates, maxReplacements,
+    maxReplacements > 2 ? objective : null]);
   const result = snapshot?.key === key ? snapshot.result : null;
   useEffect(() => {
     controller.current?.abort(); setSnapshot(null); setBusy(false); setError('');
@@ -42,7 +44,7 @@ export function EquipmentPlanner({ session, lang, objective, catalog, candidates
     const abort = new AbortController(); controller.current = abort;
     setBusy(true); setError(''); setSnapshot(null); setProgress({ done: 0, total: 0 });
     try {
-      const result = await planEquipmentUpgrades({ request, candidates, signal: abort.signal,
+      const result = await planEquipmentUpgrades({ request, candidates, maxReplacements, objective, signal: abort.signal,
         onProgress: (done, total) => { if (!abort.signal.aborted) setProgress({ done, total }); } }, { catalog });
       if (!abort.signal.aborted) setSnapshot({ key, result });
     } catch (error) {
@@ -52,7 +54,8 @@ export function EquipmentPlanner({ session, lang, objective, catalog, candidates
     }
   };
   const apply = (plan: EquipmentPlan) => {
-    const currentKey = JSON.stringify([session.activeWeaponSet, session.currentRequest(), candidates]);
+    const currentKey = JSON.stringify([session.activeWeaponSet, session.currentRequest(), candidates, maxReplacements,
+      maxReplacements > 2 ? objective : null]);
     if (busy || session.busy || !result || snapshot?.key !== currentKey || !usable(plan)
       || !feasibleOf(plan.stats, objective) || !plan.items.length) return;
     session.setItems([...session.items.filter(item => !plan.items.some(next => next.slot === item.slot)), ...plan.items]);
@@ -63,19 +66,26 @@ export function EquipmentPlanner({ session, lang, objective, catalog, candidates
     <div className="equipment-planner-heading"><h4 id="equipment-planner-title">{ut('jointEquipment')}</h4>
       <span>{candidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</span></div>
     <p>{ut('jointEquipmentHint')}</p>
+    <label>{ut('jointMaxChanges')} <select value={maxReplacements} disabled={busy}
+      onChange={event => setMaxReplacements(Number(event.target.value))}>
+      {Array.from({ length: EQUIPMENT_MAX_REPLACEMENTS }, (_, index) => index + 1).map(count =>
+        <option key={count} value={count}>{count}</option>)}</select></label>
     {!candidates.length && <p className="trade-notice">{ut('jointEmpty')}</p>}
     <ul className="equipment-candidates">{candidates.map(candidate => <li key={candidate.id}>
       <details><summary><strong>{candidate.label}</strong> · {slotLabel(lang, candidate.slot)}</summary><pre>{candidate.text}</pre></details>
       <button aria-label={`${ut('jointRemove')} ${candidate.label} · ${slotLabel(lang, candidate.slot)}`} disabled={busy} onClick={() => onRemove(candidate.id)}>{ut('jointRemove')}</button>
     </li>)}</ul>
     {!!candidates.length && <div className="replacement-actions">
-      <button className="trade-primary" disabled={busy || session.busy || !catalog} onClick={() => void run()}>{ut('jointCompare')}</button>
+      <button className="trade-primary" disabled={busy || session.busy || !catalog} onClick={() => void run()}>
+        {maxReplacements === 2 ? ut('jointCompare') : maxReplacements === 1 ? ut('jointCompareOne')
+          : `${ut('jointCompareMany')} ${maxReplacements} ${ut('jointItems')}`}</button>
       {busy && <><span role="status">{ut('comparingPositions')} {progress.done} / {progress.total}</span>
         <button onClick={() => { controller.current?.abort(); controller.current = null; setBusy(false); }}>{ut('cancelCompare')}</button></>}
     </div>}
     {error && <p role="alert" className="trade-error">{error}</p>}
     {result && <div className="equipment-plan-results" aria-live="polite">
       <p>{ut('jointEvaluated')} {result.evaluated} · {ut('jointTop')}</p>
+      {result.limited && <p className="trade-notice">{ut('jointLimited')}</p>}
       <ol>{plans.map(plan => {
         const chosen = plan.candidateIds.map(id => candidates.find(candidate => candidate.id === id)!);
         const canApply = usable(plan) && feasibleOf(plan.stats, objective);

@@ -18,6 +18,7 @@ import {
 import { AppSelect } from '../shared/AppSelect';
 import { ObjectiveEditor, OptimizerProgress, objectiveOf } from '../shared/OptimizerControls';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
+import { JewelPassivePlanner } from './JewelPassivePlanner';
 
 interface Props {
   session: BuildSession;
@@ -258,6 +259,9 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
           </ol>
           <p className="tree-planner-hint">{text.bounded}</p>
         </>}
+        <JewelPassivePlanner session={session} lang={lang} nodes={nodes} nodeLabel={nodeLabel}
+          mode={mode} points={points} attribute={attribute} objective={objective} onPreview={onPreview}
+          onStart={() => { cancel(); setPreview(null); }} />
       </div>}
     </div>
   );

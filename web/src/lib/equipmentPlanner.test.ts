@@ -50,6 +50,81 @@ test('a beneficial pair survives individually harmful singles and retains unrela
   expect(request).toEqual(before);
 });
 
+test('a beneficial triple is evaluated as a complete loadout despite losing singles and pairs', async () => {
+  const choices = [candidate('a', 'ring1'), candidate('b', 'ring2'), candidate('c', 'helmet', helmet.name)];
+  const result = await planEquipmentUpgrades({ request, candidates: choices, maxReplacements: 3 }, dependencies({
+    evaluate: async ({ variants }) => ({ baseline: { TotalDPS: 100 }, aborted: false,
+      results: variants.map((variant, index) => {
+        const count = variant.set_items?.length ?? 0;
+        return { index, label: null, error: null, stats: { TotalDPS: count === 3 ? 150 : 100 - 10 * count }, unsupported: [] };
+      }) }),
+  }));
+  expect(result.plans.find(plan => plan.candidateIds.join(',') === 'a,b,c')?.stats.TotalDPS).toBe(150);
+  expect(result.evaluated).toBe(8);
+  expect(result.limited).toBe(false);
+  expect(result.plans.filter(plan => plan.candidateIds.length === 2).every(plan => plan.stats.TotalDPS === 80)).toBe(true);
+});
+
+test('maximum one replacement omits pairs and rejects invalid maximums', async () => {
+  const choices = [candidate('a', 'ring1'), candidate('b', 'ring2')];
+  const result = await planEquipmentUpgrades({ request, candidates: choices, maxReplacements: 1 }, dependencies());
+  expect(result.plans.map(plan => plan.candidateIds)).toEqual([[], ['a'], ['b']]);
+  expect(result.evaluated).toBe(3);
+  await expect(planEquipmentUpgrades({ request, candidates: choices, maxReplacements: 11 }, dependencies()))
+    .rejects.toThrow('Maximum equipment replacements');
+});
+
+test('three-piece plans never reuse a pasted item across destinations', async () => {
+  const choices = [candidate('a', 'ring1'), candidate('b', 'ring2'),
+    candidate('c', 'helmet', helmet.name, 'a'), candidate('d', 'helmet', helmet.name)];
+  const result = await planEquipmentUpgrades({ request, candidates: choices, maxReplacements: 3 }, dependencies());
+  expect(result.plans.find(plan => plan.candidateIds.join(',') === 'a,b,c')).toBeUndefined();
+  expect(result.plans.find(plan => plan.candidateIds.join(',') === 'a,b,d')).toBeDefined();
+});
+
+test('bounded search retains every legal single and pair and reports its limit', async () => {
+  const glove = { ...ring, name: 'Iron Gloves', category: 'armour.gloves' };
+  const slots = ['ring1', 'ring2', 'helmet', 'gloves'];
+  const bases = [ring.name, ring.name, helmet.name, glove.name];
+  const choices = slots.flatMap((slot, slotIndex) => Array.from({ length: 4 }, (_, index) =>
+    candidate(`${slot}-${index}`, slot, bases[slotIndex])));
+  const result = await planEquipmentUpgrades({ request, candidates: choices, maxReplacements: 4 },
+    dependencies({ catalog: { bases: [ring, helmet, glove], mods: [] }, evaluate: async ({ variants }) => ({
+      baseline: { TotalDPS: 100 }, aborted: false,
+      results: variants.map((variant, index) => ({ index, label: null, error: null,
+        stats: { TotalDPS: 100 + (variant.set_items?.length ?? 0) }, unsupported: [] })),
+    }) }));
+  expect(result.limited).toBe(true);
+  expect(result.evaluated).toBeLessThanOrEqual(512);
+  expect(result.plans.filter(plan => plan.candidateIds.length === 1)).toHaveLength(16);
+  expect(result.plans.filter(plan => plan.candidateIds.length === 2)).toHaveLength(96);
+  expect(result.plans.some(plan => plan.candidateIds.length === 3)).toBe(true);
+});
+
+test('a limited ten-piece search reserves evaluations for its deepest reachable combinations', async () => {
+  const definitions = [
+    ['weapon1', 'Practice Sword', 'weapon.onesword'], ['weapon2', 'Practice Shield', 'armour.shield'],
+    ['helmet', 'Iron Hat', 'armour.helmet'], ['bodyarmour', 'Iron Coat', 'armour.chest'],
+    ['gloves', 'Iron Gloves', 'armour.gloves'], ['boots', 'Iron Boots', 'armour.boots'],
+    ['amulet', 'Iron Amulet', 'accessory.amulet'], ['ring1', 'Sapphire Ring', 'accessory.ring'],
+    ['ring2', 'Sapphire Ring', 'accessory.ring'], ['belt', 'Iron Belt', 'accessory.belt'],
+  ] as const;
+  const bases = definitions.map(([, name, category]) => ({ ...ring, name, category }));
+  const choices = definitions.flatMap(([slot, name], index) => [
+    candidate(`${slot}-first`, slot, name),
+    ...(index < 6 ? [candidate(`${slot}-second`, slot, name)] : []),
+  ]);
+  const result = await planEquipmentUpgrades({ request, candidates: choices, maxReplacements: 10 },
+    dependencies({ catalog: { bases, mods: [] }, evaluate: async ({ variants }) => ({
+      baseline: { TotalDPS: 100 }, aborted: false,
+      results: variants.map((variant, index) => ({ index, label: null, error: null,
+        stats: { TotalDPS: 100 + (variant.set_items?.length ?? 0) }, unsupported: [] })),
+    }) }));
+  expect(result.limited).toBe(true);
+  expect(result.evaluated).toBeLessThanOrEqual(512);
+  expect(Math.max(...result.plans.filter(plan => !plan.error).map(plan => plan.candidateIds.length))).toBe(10);
+});
+
 test('two different rings can exchange destinations, but one pasted item cannot occupy both', async () => {
   const choices = [candidate('left-to-right', 'ring2', ring.name, 'left'),
     candidate('right-to-left', 'ring1', ring.name, 'right'),
@@ -159,4 +234,19 @@ test('cancelled evaluations and non-finite values never enter a published rankin
       results: rows(options).map(row => row.index ? { ...row, stats: { TotalDPS: Number.NaN } } : row) }),
   }));
   expect(result.plans[1]).toMatchObject({ error: 'non-finite-stats', stats: {} });
+});
+
+test('cancellation after the first phase stops multi-item expansion', async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  const choices = [candidate('a', 'ring1'), candidate('b', 'ring2'), candidate('c', 'helmet', helmet.name)];
+  await expect(planEquipmentUpgrades({ request, candidates: choices, maxReplacements: 3, signal: controller.signal },
+    dependencies({ evaluate: async ({ variants }) => {
+      calls += 1;
+      controller.abort();
+      return { baseline: { TotalDPS: 100 }, aborted: false,
+        results: variants.map((_, index) => ({ index, label: null, error: null,
+          stats: { TotalDPS: 100 }, unsupported: [] })) };
+    } }))).rejects.toThrow('cancelled');
+  expect(calls).toBe(1);
 });

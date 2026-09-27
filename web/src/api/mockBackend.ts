@@ -58,6 +58,9 @@ export function createMockBackend(): PobrBackend {
     async loadTradeCatalog() {
       return { bases: [], mods: [], gems: [] };
     },
+    async loadJewelBases() {
+      return [];
+    },
     async loadPassiveTree() {
       return treeFixture as unknown as PassiveNode[];
     },

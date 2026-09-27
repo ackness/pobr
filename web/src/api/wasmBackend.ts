@@ -26,7 +26,7 @@ import type {
   RuneCatalogEntry,
   ItemAugmentInfo,
 } from './types';
-import type { PobrBackend } from './backend';
+import type { JewelBase, PobrBackend } from './backend';
 
 interface WasmModule {
   default: () => Promise<unknown>;
@@ -190,6 +190,11 @@ export async function createWasmBackend(): Promise<PobrBackend> {
       await backend.init();
       // Reuse the exact bytes staged into WASM, including after a new deployment.
       return JSON.parse(await fetchVersionFile(manifest!.version, 'overlay/trade_catalog.json'));
+    },
+    async loadJewelBases() {
+      await backend.init();
+      const bases = JSON.parse(await fetchVersionFile(manifest!.version, 'base/base_items.json')) as (JewelBase & { item_class: string })[];
+      return bases.filter(base => base.item_class === 'Jewel').map(({ name, drop_level, tags, implicits }) => ({ name, drop_level, tags, implicits }));
     },
     async loadPassiveTree(treeVersion) {
       await backend.init();

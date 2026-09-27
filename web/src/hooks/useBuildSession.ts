@@ -164,6 +164,8 @@ export interface BuildSession {
   setFlasks: (flasks: SlotItemInput[]) => void;
   /** 整份替换树插槽珠宝（Tree 页珠宝编辑器）。 */
   setJewels: (jewels: JewelInput[]) => void;
+  /** Apply a complete shared-tree jewel/passive plan against its original request. */
+  applyTreePlan: (expectedRequest: CalculateBuildRequest, plan: TreePlan) => boolean;
   removeJewelSocket: (socket: number, allocatedNodes: number[]) => void;
   updateParams: (patch: Partial<CalcParams>) => void;
   setConfigInput: (key: string, value: ConfigInputValue | null) => void;
@@ -191,6 +193,37 @@ function toRequest(state: BuildState): CalculateBuildRequest {
     custom_modifier_blocks: state.params.custom_modifier_blocks,
     config_inputs: state.params.config_inputs,
   };
+}
+
+export interface TreePlan {
+  jewels: JewelInput[];
+  allocatedNodes: number[];
+  attributeChoices: Record<string, AttributeChoice>;
+}
+
+/** Prepare the one state update for a plan, or reject an obsolete or malformed result. */
+export function prepareTreePlan(current: BuildState | null, expectedRequest: CalculateBuildRequest,
+  plan: TreePlan, busy: boolean): BuildState | null {
+  if (!current || busy || current.weaponSwap?.exclusive_nodes.some(nodes => nodes.length > 0)
+    || JSON.stringify(toRequest(current)) !== JSON.stringify(expectedRequest)
+    || !plan || !Array.isArray(plan.jewels) || !Array.isArray(plan.allocatedNodes)
+    || !plan.attributeChoices || typeof plan.attributeChoices !== 'object'
+    || Array.isArray(plan.attributeChoices)) return null;
+
+  const nodeIds = plan.allocatedNodes;
+  if (nodeIds.some(id => !Number.isInteger(id) || id < 0 || id > 0xffffffff)
+    || new Set(nodeIds).size !== nodeIds.length
+    || plan.jewels.some(jewel => !jewel || !Number.isInteger(jewel.socket_node)
+      || jewel.socket_node < 0 || jewel.socket_node > 0xffffffff || typeof jewel.text !== 'string')
+    || new Set(plan.jewels.map(jewel => jewel.socket_node)).size !== plan.jewels.length
+    || Object.entries(plan.attributeChoices).some(([id, choice]) =>
+      !/^(0|[1-9]\d*)$/.test(id) || !Number.isInteger(Number(id)) || Number(id) > 0xffffffff
+      || !['str', 'dex', 'int'].includes(choice))) return null;
+
+  const kept = new Set(nodeIds);
+  const attributeChoices = Object.fromEntries(Object.entries({ ...current.attributeChoices, ...plan.attributeChoices })
+    .filter(([id]) => kept.has(Number(id)))) as Record<string, AttributeChoice>;
+  return { ...current, jewels: plan.jewels, allocatedNodes: nodeIds, attributeChoices };
 }
 
 /** PoB config keys with dedicated editable controls use one request lane. */
@@ -959,6 +992,13 @@ export function useBuildSession(): BuildSession {
     [apply, busy, calc],
   );
 
+  const applyTreePlan = useCallback((expectedRequest: CalculateBuildRequest, plan: TreePlan): boolean => {
+    const next = prepareTreePlan(stateRef.current, expectedRequest, plan, busy);
+    if (!next) return false;
+    apply(next);
+    return true;
+  }, [apply, busy]);
+
   const removeJewelSocket = useCallback((socket: number, allocatedNodes: number[]) => {
     const current = stateRef.current;
     if (!current) return;
@@ -1336,6 +1376,7 @@ export function useBuildSession(): BuildSession {
     setItems,
     setFlasks,
     setJewels,
+    applyTreePlan,
     removeJewelSocket,
     currentRequest,
     stateVersion,
