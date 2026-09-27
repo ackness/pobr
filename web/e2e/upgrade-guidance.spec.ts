@@ -72,7 +72,7 @@ test('shared goals link automatic supports and connected passive plans with real
   await page.locator('.upgrade-paths > button').nth(2).click();
   await expect(page.locator('.tree-planner-body')).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Prioritize capped elemental resistances' })).toBeChecked();
-  await page.locator('.tree-planner-run').click();
+  await page.getByRole('button', { name: 'Find upgrade routes', exact: true }).click();
   const route = page.locator('.tree-planner-results > li').first();
   await expect(route).toBeVisible({ timeout: 30_000 });
   await route.getByRole('button', { name: 'Show on tree' }).click();
@@ -225,7 +225,7 @@ test('editing passives automatically replans from the new tree and applying neve
   const before = await dps(page).innerText();
   await nav(page, 'Tree').click();
   await page.locator('.tree-planner-toggle').click();
-  await page.locator('.tree-planner-run').click();
+  await page.getByRole('button', { name: 'Find upgrade routes', exact: true }).click();
   const plans = page.locator('.tree-planner-results > li');
   await expect(plans.first()).toBeVisible({ timeout: 30_000 });
   // Invoke the same node click handler without depending on tiny default-zoom hit boxes.
@@ -253,7 +253,7 @@ test('editing passives automatically replans from the new tree and applying neve
   await page.locator('circle[data-skill-id="4739"]').dispatchEvent('click');
   await page.locator('.tree-planner-toggle').click();
   await expect(page.locator('.tree-planner-summary')).toHaveCount(0);
-  await expect(page.locator('.tree-planner-run')).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Find upgrade routes', exact: true })).toBeEnabled();
   await expect(page.locator('.calc-error')).toHaveCount(0);
 });
 
