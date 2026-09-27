@@ -10,6 +10,8 @@ import type { AugmentSelection } from '../../lib/replacementAugments';
 import { ReplacementAugmentPicker } from './ReplacementAugmentPicker';
 import { ReplacementAffixEditor } from './ReplacementAffixEditor';
 import { affixT } from '../../lib/marketAffixText';
+import { EquipmentPlanner } from './EquipmentPlanner';
+import { EQUIPMENT_CANDIDATE_LIMIT, type EquipmentCandidate } from '../../lib/equipmentPlanner';
 
 interface ComparisonSnapshot { report: ReplacementReport; requestKey: string; input: string }
 
@@ -28,6 +30,8 @@ export function ItemReplacementCheck({ session, lang, objective, catalog, jewelS
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [augmentPlans, setAugmentPlans] = useState<Record<string, AugmentSelection>>({});
+  const [equipmentCandidates, setEquipmentCandidates] = useState<EquipmentCandidate[]>([]);
+  const candidateSequence = useRef(0);
   const controller = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const requestKey = JSON.stringify([session.activeWeaponSet, session.currentRequest()]);
@@ -43,6 +47,9 @@ export function ItemReplacementCheck({ session, lang, objective, catalog, jewelS
   const nameLine = report?.lines.find(line => line.kind === 'name')?.text;
   const requiredLevel = Math.max(report?.requiredLevel ?? 0, ...(selected?.augments.runes.map(name =>
     selected.augments.info.options.find(option => option.name === name)?.required_level ?? 0) ?? []));
+  const selectedItem = selected?.variant.set_items?.length === 1 ? selected.variant.set_items[0] : undefined;
+  const alreadyAdded = !!report && !!selectedItem && equipmentCandidates.some(candidate =>
+    candidate.itemId === report.text && candidate.slot === selectedItem.slot && candidate.text === selectedItem.text);
   const format = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 2 });
   const deltaText = (value: number) => `${value > 0 ? '+' : ''}${format(value)}`;
   const positionLabel = (slot: string) => slot.startsWith('Jewel@') ? `${ut('jewelPosition')} ${slot.slice(6)}` : slotLabel(lang, slot);
@@ -96,6 +103,13 @@ export function ItemReplacementCheck({ session, lang, objective, catalog, jewelS
       session.setItems([...session.items.filter(item => !replacements.some(row => row.slot === item.slot)), ...replacements]);
     }
     setSnapshot(null); setChosenSlot(null);
+  };
+  const addCandidate = () => {
+    if (busy || affixDirty || session.busy || !report || !selectedItem || alreadyAdded
+      || equipmentCandidates.length >= EQUIPMENT_CANDIDATE_LIMIT) return;
+    const candidate = { id: String(++candidateSequence.current), itemId: report.text,
+      label: nameLine || translated[0] || report.base.name, slot: selectedItem.slot, text: selectedItem.text };
+    setEquipmentCandidates(current => [...current, candidate]);
   };
   return <section className="upgrade-item-check ui-card" aria-labelledby="replacement-heading">
     <header className="replacement-heading"><div><span className="trade-section-label">{ut('pasteEyebrow')}</span>
@@ -162,7 +176,12 @@ export function ItemReplacementCheck({ session, lang, objective, catalog, jewelS
         {!!selected.unsupported.length && <details className="trade-notice replacement-unsupported"><summary>{ut('incomplete')} ({selected.unsupported.length})</summary><ul>{selected.unsupported.map((line, index) => <li key={index}>{line}</li>)}</ul></details>}
         {!!report.rejected.length && <p className="trade-notice">{report.rejected.map(row => `${positionLabel(row.slot)}: ${errorText(row.reason)}`).join('\n')}</p>}
         <div className="replacement-apply"><button className="trade-primary" disabled={busy || affixDirty || session.busy} onClick={apply}>{busy ? ut('comparingPositions') : `${ut('apply')} · ${positionLabel(selected.slot)}`}</button><span>{affixDirty ? affixT(lang, 'dirty') : ut('applyHint')}</span></div>
+        {selectedItem && <div className="replacement-actions"><button disabled={busy || affixDirty || session.busy || alreadyAdded || equipmentCandidates.length >= EQUIPMENT_CANDIDATE_LIMIT}
+          onClick={addCandidate}>{ut(alreadyAdded ? 'jointAdded' : 'jointAdd')}</button>
+          <span>{equipmentCandidates.length} / {EQUIPMENT_CANDIDATE_LIMIT}</span></div>}
       </div>
     </div>}
+    <EquipmentPlanner session={session} lang={lang} objective={objective} catalog={catalog} candidates={equipmentCandidates}
+      onRemove={id => setEquipmentCandidates(current => current.filter(candidate => candidate.id !== id))} />
   </section>;
 }

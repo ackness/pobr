@@ -161,6 +161,30 @@ Affix estimates average probes on a reference item and current gear. They descri
 
 Changing the build, skill or goal clears scores. Changing budget, server or league updates search links immediately without repeating calculations.
 
+### Compare equipment combinations
+
+After comparing a pasted item, choose a destination and **Add to combinations**.
+Add other items the same way, then **Compare one- and two-item plans**. The planner
+fully recalculates keeping the current equipment, every single replacement, and
+every pair using different slots and different copied items. A ring can be added
+at both positions to compare placements, but the same copied item is never equipped
+twice in one plan. Up to 16 candidate placements are retained while the panel is open.
+
+The results show up to five alternatives plus the current equipment. Individual
+losses are not pruned before evaluating pairs. The shared goal and constraints rank
+the complete results; changing the goal re-ranks them, while changing the build,
+weapon context or candidate list invalidates them. **Apply equipment plan** commits
+all evaluated replacement texts together, preserving other equipment and the
+inactive weapon set. Prepared rune/socket choices are retained exactly and equipped
+augment limits are checked against each final combination.
+
+Plans with calculation errors, unsupported effects, uncertain augment limits or
+unmet goal constraints cannot be applied from this planner. This compares only the
+supplied candidates and destinations, without market prices or a total purchase
+budget. Attribute requirements and special equip restrictions still need player
+review. Flask, charm and passive-jewel candidates keep their separate comparison
+flows; the equipment planner does not yet search jewel/passive combinations.
+
 ## Data flow
 
 1. Startup: JS fetches every JSON listed in `public/data/manifest.json` →

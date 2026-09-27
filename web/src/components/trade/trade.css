@@ -290,6 +290,25 @@
 
 .trade-goal-help { flex-basis: 100%; color: var(--text-secondary); font-size: var(--text-xs); }
 .trade-goal-help summary { cursor: pointer; }
+.equipment-planner { border-top: 1px solid var(--border-subtle); padding-top: var(--space-4); margin-top: var(--space-4); min-width: 0; }
+.equipment-planner-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.equipment-planner-heading h4 { margin: 0; }
+.equipment-planner-heading > span, .equipment-planner > p, .equipment-plan-results > p { font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.8; }
+.equipment-candidates, .equipment-plan-results > ol { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 12px; }
+.equipment-candidates > li { display: flex; align-items: start; gap: 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 12px; }
+.equipment-candidates details { flex: 1; min-width: 0; font-size: var(--text-sm); overflow-wrap: anywhere; }
+.equipment-candidates summary { cursor: pointer; }
+.equipment-candidates pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-xs); color: var(--text-secondary); }
+.equipment-candidates button { flex-shrink: 0; font-size: var(--text-xs); }
+.equipment-plan { border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 16px; min-width: 0; }
+.equipment-plan h5 { margin: 0 0 12px; font-size: var(--text-sm); overflow-wrap: anywhere; }
+.equipment-plan-resists { display: flex; gap: 8px 16px; flex-wrap: wrap; font-size: var(--text-xs); color: var(--text-secondary); }
+.equipment-plan .replacement-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 600px) {
+  .equipment-plan { padding: 12px; }
+  .equipment-plan .replacement-metrics { grid-template-columns: minmax(0, 1fr); }
+  .equipment-candidates > li { flex-wrap: wrap; }
+}
 @media (max-width: 640px) {
   .upgrade-paths { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .upgrade-paths > button { grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--space-2); padding: var(--space-3); }

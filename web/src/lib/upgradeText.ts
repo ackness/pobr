@@ -1,6 +1,20 @@
 import type { Lang } from './i18n';
 
 const labels = {
+  jointEquipment: ['Compare equipment combinations', '比較裝備組合', '比较装备组合'],
+  jointEquipmentHint: ['Add items from the comparison above. Compare keeping your gear, replacing one item, or replacing two together. Add a ring at each position to compare both placements; one copied item can only be used once per plan.', '從上方比較加入候選，評估保留現狀、單件及雙件換裝。戒指可分別加入兩個位置，比較不同落位；同一件物品在一個方案中只使用一次。', '从上方比较加入候选，评估保留现状、单件及双件换装。戒指可分别加入两个位置，比较不同落位；同一件物品在一个方案中只使用一次。'],
+  jointEmpty: ['Choose a replacement position above, then add the item to combinations.', '在上方選擇替換位置，再將物品加入組合。', '在上方选择替换位置，再将物品加入组合。'],
+  jointAdd: ['Add to combinations', '加入裝備組合', '加入装备组合'],
+  jointAdded: ['Added to combinations', '已加入裝備組合', '已加入装备组合'],
+  jointRemove: ['Remove candidate', '移除候選', '移除候选'],
+  jointCompare: ['Compare one- and two-item plans', '比較單件與雙件方案', '比较单件与双件方案'],
+  jointKeep: ['Keep current equipment', '保留目前裝備', '保留当前装备'],
+  jointEvaluated: ['Plans calculated:', '已計算方案數', '已计算方案数'],
+  jointTop: ['Showing up to five alternatives and your current equipment.', '顯示至多五個換裝方案及目前裝備。', '显示至多五个换装方案及当前装备。'],
+  jointRejected: ['Plans requiring correction', '需要修正的方案', '需要修正的方案'],
+  jointApply: ['Apply equipment plan', '套用裝備方案', '应用装备方案'],
+  jointInvalid: ['This plan cannot be applied:', '此方案無法套用', '此方案无法应用'],
+  jointLimits: ['Compares only these candidates and positions. Prices, attribute requirements and special equip restrictions are not verified. Candidates are kept while this panel is open.', '僅比較這些候選與位置；價格、屬性需求及特殊裝備限制未驗證。候選在此面板開啟期間保留。', '仅比较这些候选与位置；价格、属性需求及特殊装备限制未验证。候选在此面板开启期间保留。'],
   equipment: ['Equipment upgrades', '裝備提升', '装备提升'],
   equipmentHint: ['Rank positions and compare complete replacement items.', '比較全身提升空間與整件換裝收益。', '比较全身提升空间与整件换装收益。'],
   supports: ['Skill and support setup', '技能與輔助搭配', '技能与辅助搭配'],
