@@ -73,10 +73,10 @@ jobs:
       - name: Language catalog lint
         run: cargo run -p lint-i18n
 
-  # Web frontend gate (TODO.md 6.4): independent job so it never blocks the
-  # Rust gate above. Builds the real wasm artifact (validates the wasm32
-  # compile of the whole pobr-build chain), then typecheck + unit + build +
-  # Playwright smoke against the built dist.
+  # Independent Web gate: script tests, typecheck, unit tests and Worker checks.
+  # Then build real WASM, sync data and bundle the site once. Playwright and
+  # standalone package smoke validate the compiled engine. Release and deploy
+  # wait for this job and both Rust gates to pass.
   web:
     name: web (tsc + vitest + build + e2e)
     runs-on: ubuntu-latest
