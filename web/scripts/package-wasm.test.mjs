@@ -148,11 +148,13 @@ test('build wrapper invalidates receipts on failure or concurrent edits and seal
   }
   const wrapper = join(root, 'web/scripts/build-wasm.mjs');
   const receipt = join(root, 'web/src/wasm/pkg/build-receipt.json');
-  const env = { ...process.env, PATH: `${join(root, 'bin')}${delimiter}${process.env.PATH}` };
+  const env = { ...process.env, CARGO_HOME: join(root, 'cargo-home'), PATH: `${join(root, 'bin')}${delimiter}${process.env.PATH}` };
   const tool = script => {
-    write('bin/wasm-pack', `#!/bin/sh\n${script}\n`);
+    write('bin/wasm-pack', `#!/bin/sh\nif [ "$1" = "--version" ]; then echo "wasm-pack fixture"; exit 0; fi\n${script}\n`);
     chmodSync(join(root, 'bin/wasm-pack'), 0o755);
   };
+  write('bin/rustc', '#!/bin/sh\necho "rustc fixture"\n');
+  chmodSync(join(root, 'bin/rustc'), 0o755);
   const run = () => execFileSync(process.execPath, [wrapper], { cwd: root, env, stdio: 'pipe' });
   tool('exit 17');
   assert.throws(run);
@@ -168,4 +170,78 @@ test('build wrapper invalidates receipts on failure or concurrent edits and seal
   assert.equal(report.schemaVersion, 4);
   assert.equal(report.build.rustc, 'rustc fixture');
   assert.equal(report.build.wasmPack, 'wasm-pack fixture');
+});
+
+test('build wrapper reuses verified inputs and rebuilds only changed build inputs or forced output', t => {
+  const { root, write } = fixture(t);
+  for (const file of ['build-wasm.mjs', 'wasm-build-inputs.mjs']) {
+    mkdirSync(join(root, 'web/scripts'), { recursive: true });
+    cpSync(join(repo, 'web/scripts', file), join(root, 'web/scripts', file));
+  }
+  const wrapper = join(root, 'web/scripts/build-wasm.mjs');
+  const receiptPath = join(root, 'web/src/wasm/pkg/build-receipt.json');
+  write('bin/wasm-pack', '#!/bin/sh\nif [ "$1" = "--version" ]; then cat tool-version; exit 0; fi\necho build >> build-calls\n');
+  write('bin/rustc', '#!/bin/sh\ncat rustc-version\n');
+  for (const tool of ['wasm-pack', 'rustc']) chmodSync(join(root, 'bin', tool), 0o755);
+  write('tool-version', 'wasm-pack fixture');
+  write('rustc-version', 'rustc fixture\nhost: fixture-host');
+  const env = { ...process.env, CARGO_HOME: join(root, 'cargo-home'), PATH: `${join(root, 'bin')}${delimiter}${process.env.PATH}` };
+  const run = (args = [], extraEnv = {}) => execFileSync(process.execPath, [wrapper, ...args],
+    { cwd: root, env: { ...env, ...extraEnv }, stdio: 'pipe' });
+  const count = () => readFileSync(join(root, 'build-calls'), 'utf8').trim().split('\n').length;
+  run();
+  assert.equal(count(), 1);
+  const originalReceipt = readFileSync(receiptPath, 'utf8');
+  write('web/src/components/Unrelated.tsx', 'UI only');
+  write('data/1.2.3/base/items.json', '[]');
+  write('docs/unrelated.md', 'docs only');
+  execFileSync('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+    '-c', 'commit.gpgsign=false', 'commit', '--quiet', '--allow-empty', '-m', 'unrelated'], { cwd: root });
+  run();
+  assert.equal(count(), 1);
+  assert.equal(readFileSync(receiptPath, 'utf8'), originalReceipt);
+  for (const [path, content] of [
+    ['apps/pobr-wasm/src/lib.rs', 'changed source'],
+    ['crates/pobr-i18n/locales/en-US/ui.toml', 'embedded = "changed"'],
+    ['rustc-version', 'rustc fixture\nhost: changed-host'],
+    ['tool-version', 'wasm-pack changed'],
+    ['.cargo/config.toml', '[build]\njobs = 2\n'],
+    ['apps/.cargo/config.toml', '[build]\njobs = 2\n'],
+    ['apps/pobr-wasm/.cargo/config.toml', '[build]\njobs = 2\n'],
+    ['cargo-home/config.toml', '[build]\njobs = 3\n'],
+    ['web/src/wasm/pkg/pobr_wasm.d.ts', 'changed binding'],
+  ]) {
+    const previous = count();
+    write(path, content);
+    run();
+    assert.equal(count(), previous + 1, path);
+    run();
+    assert.equal(count(), previous + 1, `${path}: warm reuse`);
+  }
+  const beforeFlags = count();
+  run([], { RUSTFLAGS: '--cfg synthetic_secret_value' });
+  assert.equal(count(), beforeFlags + 1);
+  assert.equal(readFileSync(receiptPath, 'utf8').includes('synthetic_secret_value'), false);
+  run([], { RUSTFLAGS: '--cfg synthetic_secret_value' });
+  assert.equal(count(), beforeFlags + 1);
+  run(['--force'], { RUSTFLAGS: '--cfg synthetic_secret_value' });
+  assert.equal(count(), beforeFlags + 2);
+  for (const damagedReceipt of ['{bad json', '{}']) {
+    const previous = count();
+    write(receiptPath.slice(root.length + 1), damagedReceipt);
+    run();
+    assert.equal(count(), previous + 1);
+  }
+  rmSync(receiptPath);
+  const beforeMissing = count();
+  run();
+  assert.equal(count(), beforeMissing + 1);
+  symlinkSync(join(root, 'docs/unrelated.md'), join(root, 'apps/pobr-wasm/src/symlink.rs'));
+  assert.throws(() => run(), /Symlink in WASM build input/);
+  assert.equal(count(), beforeMissing + 1);
+  rmSync(join(root, 'apps/pobr-wasm/src/symlink.rs'));
+  rmSync(join(root, 'web/src/wasm/pkg/pobr_wasm.d.ts'));
+  assert.throws(() => run());
+  assert.equal(count(), beforeMissing + 2);
+  assert.equal(existsSync(receiptPath), false);
 });

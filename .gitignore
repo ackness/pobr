@@ -1,7 +1,7 @@
 # ── 构建产物 ──
 /target/
 **/target/
-# 门禁 / 并行会话隔离 target（CARGO_TARGET_DIR=$PWD/target-* 等）
+# Legacy target directories remain ignored; new sessions reuse this worktree's target/.
 /target-gate/
 /target-master/
 /target-dualrun/

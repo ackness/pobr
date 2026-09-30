@@ -67,7 +67,7 @@ Rust 计算引擎由 WebAssembly 应用和 CLI 共用，支持词条离线预编
 ### 本地运行
 
 Web 应用请按 [Web 安装指南](web/README.zh-CN.md)准备 WASM、游戏数据并启动 Vite。
-体验 CLI 时，使用仓库配置的 Rust 工具链，在仓库根目录运行：
+体验 CLI 时，复用本机 stable Rust 工具链，在仓库根目录运行：
 
 ```bash
 # CLI (binary name: pobr)
@@ -79,15 +79,16 @@ cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
 修改代码时选择相关的测试和 lint，以下以 Build Code 为例：
 
 ```bash
-cargo test -p pobr-build --test codec
-bash .claude/skills/run-pobr/driver.sh lint -p pobr-build --lib --test codec
+./pobr verify build codec
 ```
 
-普通本地提交无需全量检查；合并、发版或影响范围较大的修改按 [CLAUDE.md](CLAUDE.md)
-运行一次 `driver.sh full`（nextest + doctest，无 nextest 时回退 Cargo）。在线版在 `v0.x`
-版本 tag 通过 CI 后自动部署。
+普通本地提交只运行相关检查；合并、发版或影响范围较大的修改由云端 CI 完成完整门禁。
+推送发版 tag，或对已推送分支运行 `./pobr ci <pushed-ref>`；本地无需再跑同一套全量验证。
+`./pobr full` 保留为显式本地 Rust 门禁，在线版在 `v0.x` tag 通过 CI 后自动部署。
+命令、缓存复用和磁盘统计见 [开发工作流](docs/development-workflow.md)。
 
-Rust **edition 2024**，全部 crate 共享一个 workspace 版本，与 `v0.x` 发布 tag 保持同步。
+Rust **edition 2024**；应用与工具使用 workspace 发布版本，与 `v0.x` tag 同步。
+七个内部库保持独立版本，避免应用版本更新使整个库依赖链重新编译。
 
 ## 架构一览
 
@@ -144,7 +145,7 @@ PoB2 兼容是硬回归门禁，三层校验互补：
 3. **`tools/pob2-oracle`** — 需要逐分量定位偏差时，从 vendored PoB2 直接 dump Lua 侧计算分解对照。
 
 ```bash
-cargo test -p pobr-build --test parity -- --nocapture   # parity 仪表盘
+./pobr test build parity parity_baseline_report -- --ignored --nocapture
 ```
 
 `vendor/PathOfBuilding-PoE2/` 是完整检出，公式核对直接读本地 Lua，不必上网找。

@@ -44,7 +44,9 @@ panel or changing build, goal or category discards those temporary results.
 ## Quick start
 
 Run these commands from the repository root. Use the pnpm version pinned in
-`web/package.json`; CI uses Node 22. Skip tool installation when already configured.
+`web/package.json`; local mise selects Node 26 and CI uses Node 22. Rust is not
+version-pinned in this repository; reuse an installed stable toolchain.
+Skip tool installation when already configured.
 
 ```bash
 # one-time prerequisites (repo root)
@@ -52,7 +54,7 @@ rustup target add wasm32-unknown-unknown
 cargo install wasm-pack
 
 pnpm --dir web install --frozen-lockfile
-pnpm --dir web build-wasm    # wasm-pack builds pobr-wasm → src/wasm/pkg/ (gitignored)
+pnpm --dir web build-wasm    # build or reuse verified src/wasm/pkg/ (gitignored)
 pnpm --dir web sync-data     # data/<version>/ JSON → public/data/ (gitignored)
 pnpm --dir web dev           # http://localhost:5173
 ```
@@ -83,6 +85,11 @@ sources, dependencies, features, or toolchain. Sync data when source data change
 or prepared data is missing. E2E uses production dist, so build current Web code
 first. `build` already includes typecheck.
 
+`build-wasm` skips wasm-pack when sources, toolchain, build settings and verified
+bindings are unchanged. Use `pnpm --dir web build-wasm --force` for an explicit
+rebuild without clearing Cargo caches. See [development workflow](../docs/development-workflow.md)
+for storage reporting, the shared dev/test profile and cache tradeoffs.
+
 `src/api/wasmBackend.ts` invokes WASM in the browser; planners reuse calculation
 results. `public/_worker.js` is the Cloudflare Pages HTTP adapter for WeGame and
 market endpoints, also used by Vite locally. It does not execute Rust
@@ -98,7 +105,7 @@ calculations. Validate Worker changes in the actual workerd runtime.
 | `pnpm --dir web test src/lib/mainSkill.test.ts` | selected Vitest unit tests |
 | `pnpm --dir web test:worker` | Worker tests in the actual workerd runtime |
 | `pnpm --dir web exec playwright test e2e/build-roundtrip.spec.ts` | Selected E2E spec; requires current dist and prepared WASM/data |
-| `pnpm --dir web build-wasm` | rebuild the wasm package |
+| `pnpm --dir web build-wasm` | build or reuse verified WASM; `--force` rebuilds |
 | `pnpm --dir web package-wasm` | package prepared WASM/data and report size in `.cache/wasm-release/` |
 | `pnpm --dir web smoke-wasm-package` | extract and calculate using the standalone archive |
 | `pnpm --dir web sync-data` | re-sync game data into public/ |

@@ -26,7 +26,8 @@ PoB 分享码继续导出当前阶段及其导入的 PoB 配置组。“下载�
 
 ## 快速开始
 
-以下命令均在仓库根目录运行，使用 `web/package.json` 指定的 pnpm 版本；CI 使用 Node 22。已有可用工具链时跳过安装步骤。
+以下命令均在仓库根目录运行，使用 `web/package.json` 指定的 pnpm 版本；本地 mise 使用 Node 26，CI 使用 Node 22。
+仓库未钉定 Rust 版本，复用本机 stable 工具链。已有可用工具链时跳过安装步骤。
 
 ```bash
 # 一次性前置（仓库根目录）
@@ -34,7 +35,7 @@ rustup target add wasm32-unknown-unknown
 cargo install wasm-pack
 
 pnpm --dir web install --frozen-lockfile
-pnpm --dir web build-wasm    # wasm-pack 构建 pobr-wasm → src/wasm/pkg/（gitignored）
+pnpm --dir web build-wasm    # build or reuse verified src/wasm/pkg/ (gitignored)
 pnpm --dir web sync-data     # data/<version>/ JSON → public/data/（gitignored）
 pnpm --dir web dev           # http://localhost:5173
 ```
@@ -61,6 +62,10 @@ cargo test -p pobr-wasm --test gen_fixtures -- --ignored
 WASM 产物缺失或其 Rust 源码、依赖、features、工具链变化时重建 WASM；源数据变化或同步数据缺失时
 运行 `sync-data`。E2E 使用生产 dist，需要构建当前 Web 代码；`build` 已含 typecheck。
 
+`build-wasm` 在源码、工具链、构建设置和绑定未变时跳过 wasm-pack。
+`pnpm --dir web build-wasm --force` 显式重建但保留 Cargo 缓存。
+磁盘统计、dev/test profile 与缓存取舍见 [开发工作流](../docs/development-workflow.md)。
+
 Web 经 `src/api/wasmBackend.ts` 在浏览器中调用 WASM，规划器复用计算结果。
 `public/_worker.js` 是部署于 Cloudflare Pages 的 HTTP 适配层，Vite 本地复用它处理
 WeGame / 市集接口；它不运行 Rust 计算。修改该文件需运行实际 workerd 测试。
@@ -75,8 +80,11 @@ WeGame / 市集接口；它不运行 Rust 计算。修改该文件需运行实�
 | `pnpm --dir web test src/lib/mainSkill.test.ts` | 指定 Vitest 单元测试 |
 | `pnpm --dir web test:worker` | Worker 的实际 workerd 运行时测试 |
 | `pnpm --dir web exec playwright test e2e/build-roundtrip.spec.ts` | 指定 E2E spec；需要当前 dist 和已准备的 WASM/数据 |
-| `pnpm --dir web build-wasm` | 重建 wasm 包 |
+| `pnpm --dir web build-wasm` | 构建或复用已验证的 WASM；`--force` 重建 |
+| `pnpm --dir web package-wasm` | 将已准备 WASM/数据打包到 `.cache/wasm-release/` |
+| `pnpm --dir web smoke-wasm-package` | 解压独立包并运行真实计算 |
 | `pnpm --dir web sync-data` | 重新同步游戏数据到 public/ |
+| `pnpm --dir web build-tree-art` | 数据/vendor 更新后再生成树图标；需要 vendor、zstd、ImageMagick |
 
 ## 结构
 

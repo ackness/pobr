@@ -17,7 +17,8 @@ class WorkflowTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="pobr script tests ")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        scripts = ["pobr", "devs/scripts/regen-check.sh", ".claude/skills/run-pobr/driver.sh"]
+        scripts = ["pobr", "devs/scripts/regen-check.sh", "devs/scripts/cache-report.py",
+                   ".claude/skills/run-pobr/driver.sh"]
         if (REPO / ".agents/skills/run-pobr/driver.sh").is_file():
             scripts.append(".agents/skills/run-pobr/driver.sh")
         for rel in scripts:
@@ -42,6 +43,9 @@ with open(os.environ["CALLS"], "a", encoding="utf-8") as out:
     out.write(json.dumps(args) + "\\n")
 if args == ["nextest", "--version"]:
     sys.exit(0 if os.environ.get("HAS_NEXTEST") else 1)
+if args[:1] == ["metadata"]:
+    print(json.dumps({"target_directory": str(pathlib.Path.cwd() / "target")}))
+    sys.exit(0)
 if os.environ.get("FAIL_COMMAND") == args[0]:
     sys.exit(17)
 if os.environ.get("FAIL_TEST") and args[0] == "test":
@@ -197,6 +201,29 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         result = self.run_script("pobr", "build")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [["build", "-p", "pobr-cli"]])
+
+    def test_cache_report_counts_files_without_building_or_following_symlinks(self):
+        self.write("target/debug/incremental/session/object.o", "cache")
+        self.write("target/debug/deps/test-binary", "binary")
+        self.write(".cache/report.json", "local report")
+        self.write("outside/secret", "must not be counted")
+        (self.root / "target/debug/linked").symlink_to(self.root / "outside", target_is_directory=True)
+        result = self.run_script("pobr", "cache")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("debug/incremental", result.stdout)
+        self.assertRegex(result.stdout, r"\s2  target\n")
+        self.assertNotIn("secret", result.stdout)
+        self.assertNotIn("linked", result.stdout)
+        self.assertEqual(self.calls(), [["metadata", "--no-deps", "--format-version", "1", "--locked", "--offline"]])
+        self.assertEqual((self.root / "outside/secret").read_text(encoding="utf-8"), "must not be counted")
+        self.assertTrue((self.root / "target/debug/incremental/session/object.o").is_file())
+
+    def test_cache_report_propagates_metadata_failure(self):
+        # Substitute a failing metadata tool, keeping Cargo diagnostics visible.
+        self.write("bin/cargo", "#!/bin/sh\necho 'metadata failure' >&2\nexit 17\n")
+        result = self.run_script("pobr", "cache")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("metadata failure", result.stderr)
 
     def test_short_commands_require_explicit_targets(self):
         for args in [["test", "core"], ["lint", "core"], ["timings"],

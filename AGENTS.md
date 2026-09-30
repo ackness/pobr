@@ -26,13 +26,15 @@ Run from the repository root, using the configured toolchains:
 cargo build -p pobr-cli
 ./pobr verify build skills support_gating::
 ./pobr targets
+./pobr cache
 pnpm --dir web dev
 pnpm --dir web test src/lib/mainSkill.test.ts
 ```
 
 These build the CLI, test support behavior, check formatting/Clippy, start Vite,
-and run a selected Vitest file. See [Web setup](web/README.md) for initial
-WASM/data preparation. Run one Cargo command at a time per worktree target.
+report cache usage, and run a selected Vitest file. See [Web setup](web/README.md)
+for initial WASM/data preparation and [development workflow](docs/development-workflow.md)
+for cache policy. Reuse one target per worktree and run Cargo commands sequentially.
 
 ## Coding Style & Naming Conventions
 

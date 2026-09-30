@@ -89,7 +89,7 @@ API and CLI are still evolving and may change between releases.
 
 For the web app, follow the [web setup guide](web/README.md) to prepare WASM and
 game data and start Vite. To try the CLI, run from the repository root with the
-configured Rust toolchain:
+installed stable Rust toolchain:
 
 ```bash
 # CLI (binary name: pobr)
@@ -111,7 +111,8 @@ Normal local commits use relevant checks. Full gates run in cloud CI: push a
 release tag, or request a branch run with `./pobr ci <pushed-ref>`. No duplicate
 local full run is required. `./pobr full` remains available for local Rust
 validation. The live app deploys from `v0.x` release tags after all CI jobs pass.
-See [development workflow](docs/development-workflow.md) for commands and timing.
+See [development workflow](docs/development-workflow.md) for commands, cache reuse,
+storage reporting and timing.
 
 Rust **edition 2024**; apps and tools inherit the workspace release version.
 The seven internal libraries keep independent versions, so application version
@@ -188,7 +189,7 @@ layers:
    dumps the Lua-side calculation breakdown straight from the vendored PoB2.
 
 ```bash
-cargo test -p pobr-build --test parity -- --nocapture   # parity dashboard
+./pobr test build parity parity_baseline_report -- --ignored --nocapture
 ```
 
 `vendor/PathOfBuilding-PoE2/` is a full checkout; verify formulas by reading

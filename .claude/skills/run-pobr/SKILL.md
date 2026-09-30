@@ -17,8 +17,9 @@ Inspect the existing environment first:
 bash .claude/skills/run-pobr/driver.sh status
 ```
 
-Use the configured Rust toolchain. Web checks use Node and the pnpm version in
-`web/package.json`; CI uses Node 22. Lua extraction/oracle checks need `luajit`.
+Reuse the installed stable Rust toolchain with rustfmt/Clippy; this repository
+does not pin a Rust version. `mise.toml` selects Node 26 locally; CI uses Node 22.
+Use the pnpm version in `web/package.json`. Lua extraction/oracle checks need `luajit`.
 Do not bootstrap an already working checkout. On a fresh Ubuntu machine the
 `bootstrap` command installs LuaJIT through apt, clones the pinned vendor and
 builds the application CLI. Use `./pobr build --workspace` only when all binaries
@@ -55,8 +56,13 @@ They preserve compiler diagnostics and build-lock messages.
 - A normal local commit requires relevant tests and lint, not `full`. Reuse
   passing checks for unchanged code/dependencies/toolchain/features/data. Stop after relevant checks
   pass, and report the scope actually verified.
-- Run only one Cargo command at a time per target directory. Keep each worktree's
-  default `target`; do not change profiles or clean caches as routine preparation.
+- Reuse one default `target` per worktree, including its parallel sessions; run
+  Cargo commands sequentially. Do not create per-session/gate targets or share
+  writable targets across worktrees. Dev/test disable incremental object caches
+  but retain Cargo artifact reuse; do not toggle profiles or clean as routine preparation.
+- `./pobr cache` reports storage and file counts without building or deleting.
+  `pnpm --dir web build-wasm` reuses verified unchanged bindings; `--force`
+  bypasses receipt reuse without cleaning Cargo. See [cache policy](../../../docs/development-workflow.md#缓存与磁盘占用).
 - For an environment smoke check with no specific changed behavior, use `smoke`.
   It runs representative aggregation, parser and codec tests without a workspace
   build. It is unnecessary after relevant tests already passed.
@@ -107,7 +113,12 @@ needed, not as preparation for a test command.
 
 The game data is **committed** under `data/<version>/` (`base`/`overlay`/`generated`/`i18n`) — **testing needs no download**. Multiple versions live side by side; inspect `data/CURRENT` for the active default.
 
-The calc is **version-agnostic**: `pobr_gamedata::data_version()` resolves `POBR_DATA_VERSION` env → `data/CURRENT` → `pobr_data::DATA_VERSION` const. Switching the active version is **zero-code** — `export POBR_DATA_VERSION=4.5.0.3.4` or write `data/CURRENT`.
+The calc is **version-agnostic**: `pobr_gamedata::data_version()` resolves
+`POBR_DATA_VERSION` → the loader data root's `CURRENT` → the legacy
+`pobr_gamedata::DATA_VERSION` fallback (the golden version). `POBR_DATA_ROOT`
+overrides the loader data root; otherwise it is the repository's `data/`.
+Switching the active version needs no code change: set `POBR_DATA_VERSION`
+or update the selected data root's `CURRENT`.
 
 Prove it runs on every committed version (the `multi_version` smoke — `BuildData::load` + full calc per version):
 
@@ -115,7 +126,11 @@ Prove it runs on every committed version (the `multi_version` smoke — `BuildDa
 bash .claude/skills/run-pobr/driver.sh versions
 ```
 
-The active default is recorded in `data/CURRENT` and `pobr_data::DATA_VERSION`. PoB2 golden/parity values are version-specific, so golden tests pin `pobr_data::GOLDEN_PARITY_DATA_VERSION` (= `4.5.4.8`, decoupled from the active default) — advancing the default doesn't false-red parity; re-pinning golden to a newer version requires **re-recording** it. `driver.sh data` prints the regen pipeline; the committed data is the source of truth.
+The active default is discovered from `data/CURRENT` at runtime. PoB2
+golden/parity values pin `pobr_data::GOLDEN_PARITY_DATA_VERSION` independently;
+advancing the default does not re-pin golden tests. Moving golden to another
+version requires re-recording its baseline. `driver.sh data` prints the regen
+pipeline; committed data is the source of truth.
 
 To see *what actually changed* between two committed versions (the iteration input PoB2 gets from export+CHANGELOG — added/removed/renumbered nodes, skill stat deltas, mod-pool removals, overlay drift):
 

@@ -149,6 +149,14 @@ for package in sorted(metadata["packages"], key=lambda p: p["name"]):
 '
 }
 
+cmd_cache() {
+  if [[ $# -ne 0 ]]; then
+    echo "usage: ./pobr cache (read-only disk usage and file counts)" >&2
+    return 2
+  fi
+  python3 devs/scripts/cache-report.py
+}
+
 cmd_ci() {
   if [[ $# -ne 1 || "$1" == -* ]]; then
     echo "usage: ./pobr ci <pushed-branch-or-tag>" >&2
@@ -163,6 +171,7 @@ cmd_help() {
   cat <<'EOF'
 PoBR development commands (run from any directory via this script's path):
   ./pobr targets                          List Rust suites without compiling
+  ./pobr cache                            Report cache size and file counts (read-only)
   ./pobr verify build skills [filter]      Targeted test + fmt + Clippy
   ./pobr test core parser [filter]         Test one suite (or use 'lib')
   ./pobr lint build skills                fmt + targeted Clippy
@@ -283,6 +292,7 @@ case "${1:-}" in
   verify)    shift; cmd_verify "$@" ;;
   timings)   shift; cmd_timings "$@" ;;
   targets)   cmd_targets ;;
+  cache)     shift; cmd_cache "$@" ;;
   ci)        shift; cmd_ci "$@" ;;
   ci-status) shift; gh run list --workflow ci.yml "$@" ;;
   help|--help|-h) cmd_help ;;

@@ -63,8 +63,13 @@ pnpm --dir web smoke-wasm-package
 Outputs go under `.cache/wasm-release/`. Packaging reuses the built WASM and the
 complete synchronized Web data manifest, including shared overlays and i18n.
 It excludes the UI, images, example player builds and maintenance audit report.
-`build-wasm` writes a receipt only after a successful build with unchanged
-compile inputs. Packaging verifies that receipt against the current Rust sources,
+`build-wasm` first checks the source fingerprint, tool versions, relevant build
+environment/Cargo configuration, generated binding hashes and compiled schema.
+Unchanged inputs reuse the existing package and its original receipt without
+calling wasm-pack. `pnpm --dir web build-wasm --force` explicitly rebuilds through
+Cargo without cleaning its cache. Missing or old receipts cause one normal build.
+A new receipt is written only after a successful build with unchanged compile
+inputs. Packaging verifies that receipt against the current Rust sources,
 embedded locales, manifests, lockfile, build configuration and JSON types, checks
 the generated binding hashes, and reads the schema from the compiled engine.
 It also compares synchronized data with the current snapshot and patch/common
@@ -72,6 +77,9 @@ layers, including same-version changes. Stale inputs require a rebuild or sync;
 packaging itself never rebuilds or downloads. Direct `wasm-pack` builds without
 the receipt cannot be packaged. An unrelated later commit does not relabel the
 binary: its original build commit and dirty flag remain in the release manifest.
+See [development workflow](development-workflow.md) for cache storage reporting
+and the dev/test profile policy. Old versioned archives in `.cache/wasm-release/`
+are retained until explicitly removed; packaging does not delete release history.
 
 The existing tag/manual CI runs packaging tests, builds WASM, packages it, and
 extracts the archive in a temporary directory to calculate both a new character
