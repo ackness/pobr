@@ -598,3 +598,59 @@ fn selected_base_annotation_does_not_require_variant_name_headers() {
     let item = parse_pob_xml_item("Rarity: UNIQUE\nSynthetic\nDiamond\nSelected Base Variant: 2\nImplicits: 0\n{base:1}+10 to maximum Life\n{base:2}+20 to maximum Life").unwrap();
     assert_eq!(item.modifier_texts, ["+20 to maximum Life"]);
 }
+
+#[test]
+fn displayed_roll_ranges_preserve_actual_values() {
+    let examples = [
+        (
+            "4(2-4)% increased Attack Speed",
+            "4% increased Attack Speed",
+        ),
+        (
+            "14(6-16)% increased Damage with Quarterstaves",
+            "14% increased Damage with Quarterstaves",
+        ),
+        (
+            "16(6-16)% increased Critical Hit Chance for Attacks",
+            "16% increased Critical Hit Chance for Attacks",
+        ),
+        (
+            "Adds 3(1-5) to 8(6-10) Physical Damage",
+            "Adds 3 to 8 Physical Damage",
+        ),
+        (
+            "+12.5(10.0-15.0)% to Fire Resistance",
+            "+12.5% to Fire Resistance",
+        ),
+        ("-5(-10--1)% to Cold Resistance", "-5% to Cold Resistance"),
+        (
+            "0.8(0.5-1.2)% of Attack Damage Leeched as Life",
+            "0.8% of Attack Damage Leeched as Life",
+        ),
+        (
+            "+30 to maximum Life (while active)",
+            "+30 to maximum Life (while active)",
+        ),
+    ];
+    for (line, expected) in examples {
+        for separator in ["--------", "Implicits: 0"] {
+            let raw = format!("Rarity: RARE\nSynthetic\nEmerald\n{separator}\n{line}");
+            let item = parse_pob_xml_item(&raw).unwrap();
+            assert_eq!(item.modifier_texts, [expected], "{raw}");
+        }
+    }
+}
+
+#[test]
+fn displayed_rolls_do_not_override_xml_range_selection() {
+    let raw = "Rarity: RARE\nSynthetic\nEmerald\nImplicits: 0\n{range:0.25}+(40-60) to maximum Life\n{range:0.25}Adds (2-6) to (10-18) Physical Damage\n{range:0.25}4(2-4)% increased Attack Speed";
+    let item = parse_pob_xml_item(raw).unwrap();
+    assert_eq!(
+        item.modifier_texts,
+        [
+            "+45 to maximum Life",
+            "Adds 3 to 12 Physical Damage",
+            "4% increased Attack Speed"
+        ]
+    );
+}

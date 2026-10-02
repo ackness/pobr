@@ -45,6 +45,7 @@
 //! | ` (lowercase)` | ` (augmented)`, ` (fractured)` | an all-lowercase parenthetical annotation |
 //! | `(tier: N)` | `(tier: 3)` | an affix tier annotation |
 //! | `[word]` | `[augmented]`, `[crafted]` | a bracketed annotation |
+//! | `value(min-max)` | `4(2-4)%` | a displayed roll followed by its tier range; keep the displayed value |
 //!
 //! See [`strip_pob_annotations`] for the stripping logic; the `{crafted}` /
 //! `{enchant}` prefix is only stripped after section classification.
@@ -506,13 +507,14 @@ fn is_metadata_line(line: &str) -> bool {
 ///    ` %((%l+)%)` → `""`.
 /// 3. `(tier: N)` affix tier annotations (contains digits/colon, not covered by the above rules).
 /// 4. `[word]` bracketed annotations (` [augmented]`, `[crafted]`).
+/// 5. `value(min-max)` displayed-roll ranges, retaining the displayed value.
 ///
 /// Source: PoB2 `src/Classes/Item.lua`'s `BuildAndParseRaw` function, lines 708-734 and 926.
 pub fn strip_pob_annotations(text: &str) -> String {
     let mut s = text.to_string();
 
     // 1. Strip curly-brace annotations: {key:value} or {key}.
-    //    Uses a scan instead of regex, to avoid a regex dependency.
+    //    Uses a simple scan for paired braces.
     //    Corresponds to PoB2 Lua `{(%a*):?([^}]*)}` → `""` (Item.lua:708).
     while let Some(open) = s.find('{') {
         let Some(close_rel) = s[open..].find('}') else {
@@ -587,7 +589,18 @@ pub fn strip_pob_annotations(text: &str) -> String {
         s = format!("{}{}", &s[..strip_start], &s[close + 1..]);
     }
 
-    s.trim().to_string()
+    // Advanced clipboard text includes the actual roll immediately before its
+    // tier range. Remove only that annotation before XML range substitution,
+    // otherwise `4(2-4)` becomes `44`. Bare ranges such as `+(40-60)` must remain
+    // available to the caller's `{range:...}` selection.
+    static DISPLAYED_ROLL: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    let pattern = DISPLAYED_ROLL.get_or_init(|| {
+        regex::Regex::new(
+            r"([+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+))\([+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)-[+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)\)",
+        )
+        .expect("constant displayed-roll pattern")
+    });
+    pattern.replace_all(s.trim(), "$1").into_owned()
 }
 
 /// Recognizes section markers anywhere in the leading annotation sequence.
