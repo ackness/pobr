@@ -23,6 +23,8 @@ mod spirit_reservation;
 mod support_gating;
 #[path = "skills/support_gem_count.rs"]
 mod support_gem_count;
+#[path = "skills/wind_dancer.rs"]
+mod wind_dancer;
 
 #[path = "skills/passive_jewels.rs"]
 mod passive_jewels;
