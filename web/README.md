@@ -160,6 +160,14 @@ web/src/
 - **Optimizers & trade**: objective-driven gem/item/tree suggestions and a
   category-constrained official market links with local affix scores and budget filters.
 
+The selected support planner retains its completed recommendations, socket capacity,
+lineage choice and filters while you visit other pages in the same build stage.
+Leaving Skills cancels active analysis; returning does not restart it automatically.
+Build or goal edits invalidate recommendations, and **Apply** equips only the
+evaluated complete support set. Selecting another group, replacing a skill set,
+deleting a group or switching stages resets the selected workspace; it is not a
+per-group or reload-persistent cache. Passive planning continuity is not yet retained.
+
 ## Trade upgrade planning
 
 On the Trade tab, choose a position, goal, budget and market. The current item's type is detected automatically; you do not need to select a base. Equipment, accessories, allocated passive jewels, flasks/charms and skill/support gems have dedicated positions.

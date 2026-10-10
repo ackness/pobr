@@ -63,8 +63,12 @@ function BuildApp() {
   const activeBuild = session.workspace?.builds.find(entry => entry.id === session.workspace?.activeBuild);
   const stageKey = activeBuild?.activeStage;
   const [tradeStage, setTradeStage] = useState<string>();
+  const [skillsStage, setSkillsStage] = useState<string>();
   useEffect(() => {
     if (tab === 'trade' && stageKey) setTradeStage(stageKey);
+  }, [tab, stageKey]);
+  useEffect(() => {
+    if (tab === 'skills' && stageKey) setSkillsStage(stageKey);
   }, [tab, stageKey]);
   useEffect(() => {
     setUpgradeFocus(undefined); setSkillFocus(undefined); setTreeFocus(undefined);
@@ -168,7 +172,6 @@ function BuildApp() {
           <Suspense fallback={<p className="panel-loading" role="status">{t(lang, 'ui.loadingPanel')}</p>}>
           {tab === 'tree' && <TreePanel session={session} lang={lang} focusPlanner={treeFocus}
             onJewelSearch={socket => { setUpgradeFocus({slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius'}); setTab('trade'); }} />}
-          {tab === 'skills' && <SkillsPanel session={session} lang={lang} focusOptimizer={skillFocus} />}
           {tab === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({slot, nonce:Date.now()}); setTab('trade'); }} />}
           {tab === 'calcs' && (
             <CalcsPanel
@@ -179,6 +182,12 @@ function BuildApp() {
             />
           )}
           </Suspense>
+          {(tab === 'skills' || (stageKey !== undefined && skillsStage === stageKey)) && (
+            <div hidden={tab !== 'skills'}>
+              <SkillsPanel session={session} lang={lang} active={tab === 'skills'}
+                focusOptimizer={skillsStage === stageKey ? skillFocus : undefined} />
+            </div>
+          )}
           {(tab === 'trade' || (stageKey !== undefined && tradeStage === stageKey)) && (
             <div hidden={tab !== 'trade'}>
               <Suspense fallback={<p className="panel-loading" role="status">{t(lang, 'ui.loadingPanel')}</p>}>

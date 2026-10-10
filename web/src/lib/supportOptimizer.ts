@@ -40,15 +40,18 @@ function supportSetAllowed(gems: GemInput[], catalog: SupportMetadata[]): boolea
 
 /** Batch the authoritative group judgement before scoring, preserving candidate order. */
 export async function supportSetsCompatible(group: SocketGroupInput, sets: GemInput[][],
-  catalog: SupportMetadata[]): Promise<boolean[]> {
+  catalog: SupportMetadata[], signal?: AbortSignal): Promise<boolean[]> {
+  signal?.throwIfAborted();
   const result = sets.map(() => false);
   const eligible = sets.flatMap((gems, index) => supportSetAllowed(gems, catalog) ? [{ gems, index }] : []);
   if (!eligible.length) return result;
   const active = group.gems.filter(input => !catalog.find(gem => gem.skill_id === input.skill_id)?.is_support);
   const backend = await getBackend();
   for (let start = 0; start < eligible.length; start += 512) {
+    signal?.throwIfAborted();
     const batch = eligible.slice(start, start + 512);
     const compatible = await backend.supportGroupsCompatible(batch.map(({ gems }) => ({ ...group, gems: [...active, ...gems] })));
+    signal?.throwIfAborted();
     if (compatible.length !== batch.length) throw new Error('Invalid support compatibility response.');
     batch.forEach(({ index }, i) => { result[index] = compatible[i]; });
   }
@@ -199,7 +202,7 @@ export async function optimizeSupports(options: {
       seen.add(key);
       return true;
     });
-    const compatible = await supportSetsCompatible(group, proposed, catalog);
+    const compatible = await supportSetsCompatible(group, proposed, catalog, signal);
     signal?.throwIfAborted();
     const candidates = proposed.filter((_, index) => compatible[index]).slice(0, limit);
     const accepted: SupportPlan[] = [];

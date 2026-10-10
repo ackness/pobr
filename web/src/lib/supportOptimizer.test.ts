@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest';
 import type { CalculateBuildRequest, GemInput, SocketGroupInput } from '../api/types';
 import type { EvaluateOptions } from './optimize';
-import { eligibleSupports, lineageAvailable, optimizeSupports, sameSupportFamily, supportSetCompatible, supportVariant,
+import { eligibleSupports, lineageAvailable, optimizeSupports, sameSupportFamily, supportSetCompatible, supportSetsCompatible, supportVariant,
   type SupportMetadata } from './supportOptimizer';
 
 // Canned engine decisions for the synthetic search fixtures. Rule semantics and
@@ -221,4 +221,19 @@ test('engine-rejected sets never reach variant scoring', async () => {
   expect(result.evaluated).toBe(0);
   expect(result.plans).toEqual([]);
   expect(evaluate).toHaveBeenCalledTimes(1); // Only the unchanged baseline.
+});
+
+test('cancelling compatibility rejects the late batch and never starts the next batch', async () => {
+  const controller = new AbortController();
+  let release!: (rows: boolean[]) => void;
+  engine.judge.mockImplementationOnce(async () => new Promise<boolean[]>(resolve => { release = resolve; }));
+  const before = engine.judge.mock.calls.length;
+  const pending = supportSetsCompatible(group(), Array.from({ length: 513 }, () => [input('New')]),
+    [active, gem('New')], controller.signal);
+  const rejected = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  await vi.waitFor(() => expect(engine.judge.mock.calls.length).toBe(before + 1));
+  controller.abort();
+  release(Array(512).fill(true));
+  await rejected;
+  expect(engine.judge.mock.calls.length).toBe(before + 1);
 });

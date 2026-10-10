@@ -99,6 +99,8 @@ export interface BuildSession {
   allocatedNodes: number[];
   attributeChoices: Record<string, AttributeChoice>;
   socketGroups: SocketGroupInput[];
+  /** Ownership epoch for wholesale skill-set replacement or group compaction. */
+  socketGroupRevision: number;
   items: SlotItemInput[];
   flasks: SlotItemInput[];
   jewels: JewelInput[];
@@ -555,6 +557,7 @@ export function useBuildSession(): BuildSession {
   }, [saveToStorage]);
   const [library, setLibrary] = useState<Library>(loadLibrary);
   const [stateVersion, setStateVersion] = useState(0);
+  const [socketGroupRevision, setSocketGroupRevision] = useState(0);
   /**
    * 「干净」基线：导入 / 切换 loadout 落地时记下当时的版本号。之后每次编辑
    * `stateVersion` 递增，超过基线即视为有未保存改动——切换 loadout 会整份重解码
@@ -609,6 +612,7 @@ export function useBuildSession(): BuildSession {
       setStateVersion(versionRef.current);
       // 整份替换（导入 / 切 loadout）落地即为新基线，不算「未保存改动」。
       if (opts?.clean) {
+        setSocketGroupRevision(value => value + 1);
         cleanVersionRef.current = versionRef.current;
         cleanNotesRef.current = notesRef.current;
         draftsRef.current = {};
@@ -1098,6 +1102,7 @@ export function useBuildSession(): BuildSession {
   const removeSocketGroup = useCallback(
     (index: number) => {
       if (!state) return;
+      setSocketGroupRevision(value => value + 1);
       const socketGroups = state.socketGroups.filter((_, i) => i !== index);
       // Keep the same selected group after compaction; replace it only if removed.
       const main = state.params.main_socket_group ?? 0;
@@ -1145,6 +1150,7 @@ export function useBuildSession(): BuildSession {
   }, [state, notes]);
 
   const restoreSession = useCallback((saved: SavedSession, drafts: Record<string, string>) => {
+    setSocketGroupRevision(value => value + 1);
     setBuild(null);
     setCalc(null);
     notesRef.current = saved.notes;
@@ -1295,6 +1301,7 @@ export function useBuildSession(): BuildSession {
       if (!state) return;
       const set = library.skillSets.find((s) => s.id === id);
       if (!set) return;
+      setSocketGroupRevision(value => value + 1);
       // 整套换组后旧的 `skill:<index>` 注释指向已不存在的组——一并清掉。
       const annotations = Object.fromEntries(
         Object.entries(state.annotations).filter(([key]) => !key.startsWith('skill:')),
@@ -1345,6 +1352,7 @@ export function useBuildSession(): BuildSession {
     allocatedNodes: state?.allocatedNodes ?? [],
     attributeChoices: state?.attributeChoices ?? {},
     socketGroups: state?.socketGroups ?? [],
+    socketGroupRevision,
     items: state?.items ?? [],
     flasks: state?.flasks ?? [],
     jewels: state?.jewels ?? [],

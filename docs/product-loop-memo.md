@@ -14,6 +14,10 @@
   Do not optimize for task completion, agent volume or producing commits.
 - No push, PR or deployment authorization was given. Keep work on the existing
   `multi-agent-self-improvement` branch and preserve unrelated changes.
+- 2026-10-11 I2 trigger: reaffirm tool-only scope, durable pause on every entry,
+  atomic ownership, genuine parallel slices, real-WASM/browser proof and independent
+  review. Main alone integrates/commits/tags; no push/publication/deployment.
+  Do not close M1 from equipment/support-only evidence.
 
 ## Active milestone M1: trustworthy, continuous upgrade decisions
 
@@ -41,7 +45,7 @@ Do not expand M1 into a complete engine rewrite or revive hidden build-reference
 navigation. Current calculation parity, data versions and source diagnostics stay
 protected. Select the next milestone only after these exit scenarios pass.
 
-## Latest verified iteration: I1
+## Previous verified iteration: I1
 
 Starting checkpoint: `89364d456699a348e24dfae029ef75fb6e4671c0` (`v0.0.33`).
 Initial worktree was clean; active data `4.5.5.3`; application version `0.0.33`.
@@ -127,16 +131,20 @@ design proposals; no support/passive runtime result is claimed by I1.
 
 ## Ranked continuation
 
-1. I2: retain one selected support workspace per stage, pause hidden scoring and
-   compatibility batches, preserve request/settings/diagnostic identity and safe
-   Apply. Reproduce the current navigation loss before implementing; use the
-   scout findings above, not whole-page/per-group indefinite retention.
-2. Lift passive/joint-jewel planning state without retaining hidden canvas effects.
-   Keep exact original-versus-prepared request distinctions and transient previews.
-3. Exercise the complete cross-page upgrade/apply journey; fix the most important
-   observed trust/usability gap. Keep M1 active until all four exit scenarios pass.
+1. I3: retain stage-scoped passive planner settings, completed route receipts and
+   joint-jewel candidates/results while unmounting the canvas. Reproduce route and
+   joint-result navigation loss first. Preserve the original request separately
+   from travel-attribute-prepared evaluations; no hidden auto-refresh/search,
+   keyboard/hover/heatmap effects or stale late batch may survive leaving Tree.
+   Prove unchanged return, hidden input/goal invalidation, stage/tree/data reset,
+   exact node/attribute/jewel Apply and cancellation before committing.
+2. Exercise equipment → supports → passives → replacement/apply with real WASM.
+   Review desktop, narrow layout and keyboard behavior; distinguish baseline,
+   preview, diagnostics and stage ownership. Fix the highest-impact observed gap.
+3. Close M1 only after all four exits have integrated runtime proof and independent
+   review. Until then no next milestone, version bump or release tag.
 
-Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1
+Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1/I2
 desktop and 390px inspection. Keep the same space for the ongoing M1 journey;
 do not claim a user-owned space or overwrite existing browser builds. Named
 development service `pobr-product-loop-dev` serves current source on port 5173;
@@ -146,9 +154,10 @@ check availability before reusing it. WASM and active data are already prepared.
 
 ### I1 — retained upgrade analysis and safe recurring coordination
 
-Checkpoint: the Conventional Commit containing this completed ledger entry;
-exact resulting hash is recorded in `.cache/product-loop-checkpoint.json` and
-must be copied into this tracked ledger when I2 starts. Base `89364d456699a348e24dfae029ef75fb6e4671c0`.
+Checkpoint: `3b0f7a629385f72463c357f0b85f8c936aa64ff5`
+(`feat: retain upgrade analysis and start product loop`).
+Base: `89364d456699a348e24dfae029ef75fb6e4671c0`. Hourly automation was
+observed enabled at I2 entry; the worktree was clean.
 
 Product outcome: same-stage affix analysis, position and completed all-position
 work survive navigation; hidden work aborts and resumes only unfinished positions.
@@ -188,3 +197,88 @@ do not push or deploy without separate authorization.
 Operational continuation: activate the registered hourly trigger and immediately
 trigger I2 only after this verified commit and I1 ownership release. The next
 coordinator must record its own claim/Run and absorb any new human steering.
+
+### I2 — latest verified checkpoint: stage-scoped support planning continuity
+
+Starting checkpoint: `3b0f7a629385f72463c357f0b85f8c936aa64ff5`.
+Checkpoint: the Conventional Commit containing this completed I2 row;
+its exact resulting hash is recorded in `.cache/product-loop-checkpoint.json`
+and must be copied into this tracked ledger at I3 entry.
+Application `0.0.33`, active data `4.5.5.3`, branch `multi-agent-self-improvement`.
+
+Outcome and decisions:
+
+- The selected support group retains completed recommendations, socket capacity,
+  lineage, search/exclusions and the full evaluated request/settings/objective,
+  catalog and diagnostic receipt across same-stage page navigation.
+- Leaving Skills cancels scoring and selected-group compatibility; no automatic
+  scoring restart on return. Hidden ordinary pickers/editors and optimizer controls
+  unmount. Changed build/goal/settings invalidate even while hidden.
+- Exact-request Apply equips the displayed complete support set. Retargeting
+  discards the previous workspace; deletion/compaction, identical skill-set
+  replacement, import and stage replacement reset ownership. No per-group cache,
+  reload persistence, passive retention or formula/data change was added.
+- Shared compatibility batching now checks cancellation before/after each backend
+  batch; scoring and market callers forward their existing signals. An already
+  running synchronous WASM call cannot be preempted; its response is rejected and
+  subsequent batches do not start after cancellation.
+- Independent review identified result loss when lazy Calcs/Tree reconnect layout
+  effects under shared Suspense. Main moved retained Skills outside that boundary.
+  Main also blocked prior-stage focus during remount. Retarget regressions were
+  corrected to single-workspace scope rather than introducing per-group caching.
+
+Observed verification:
+
+- Before: Ego's imported Frost Bomb build completed 824 recalculations, then
+  Calcs → Skills removed the optimizer/result. A current-source regression failed
+  at the missing completed result. The compatibility-cancellation unit regression
+  also failed before the fix: its delayed response resolved instead of rejecting.
+- Final production build, including TypeScript checks, passed. Main chunk remains
+  above the existing threshold at 507.13 kB; no startup/runtime speedup was measured.
+- Scoped units: 14 support optimizer, 8 market planner and 41 build-session tests
+  passed. Final isolated production preview: 12 support-continuity and 6 existing
+  upgrade-guidance cases passed with real WASM. The 6 trade-analysis cases passed
+  in the prior integrated run and reuse that result for unchanged inputs.
+- Continuity cases exercise displayed-preview Apply, hidden request/shared-goal
+  edits, identical stage/skill-set resets, group retarget/compaction, cancellation,
+  late real-engine continuations and stale-stage/fresh-focus transitions.
+  Synthetic WeGame fixtures are explicitly identified. Clock control pauses only
+  the actual inter-batch yield, never replacing engine scoring.
+- Ego: actual imported Frost Bomb build retained identical result text after
+  Skills → Calcs → Upgrades → Skills, capacity 5 and lineage disabled; 955 complete
+  recalculations, baseline DPS 7,552.3 / EHP 26,098.5, first preview DPS 25,312.9.
+  Hidden Skills exposed zero visible controls. Desktop and 390px screenshots were
+  inspected; horizontal overflow was zero, Tab reached the lineage checkbox and
+  Apply had visible keyboard focus. Existing browser builds were not edited.
+  Images: `.cache/product-loop-I2-{desktop,mobile}.png`.
+- Independent Spec/Standards source reviewers confirmed both findings resolved,
+  including the added identical-set and stale-stage focus regressions.
+- An initial browser harness mixed innerText/textContent and overbroad Apply
+  selectors (including saved skill sets). Those failures were not product proof;
+  corrected assertions preserve the consumer-visible acceptance requirements.
+- Rust/WASM sources and pinned data/parity baselines were unchanged; prepared real
+  WASM was reused. No Rust/full-release/parity gate, real market purchase, touch
+  device, screen-reader, reload persistence or broad performance proof is claimed.
+
+Operational provenance:
+
+- Run `run_538df68ce827`; coordinator
+  `term_44e32632-f150-48de-ad9a-4712a77adaf7`; I2 acquired the atomic claim with no
+  pause marker and rechecked pause afterward. Current steering was persisted before
+  dispatch. Automation `0f3538b3-37df-44be-b888-d085f05d6e8d` remains hourly.
+- Parallel supervised editors: implementation `ctx_79eb8b81687b` owned only the two
+  skill modules; regressions `ctx_b8af9dc81b0b` owned only the new continuity spec.
+  Main owned App/session/shared cancellation, integration fixes, docs and Git.
+  Both succeeded and were released after accepted settlement; reclaimable fleet
+  was empty. Read-only Spec and Standards review ran independently in parallel.
+- Implementation worker attempted an extra browser page before main clarified
+  browser ownership; it timed out without evidence. Main inspected TaskSpace 5:
+  only agent-owned `p1` existed, so no extra tab remained to reclaim.
+- Temporary isolated preview configuration is removed after verification; port
+  5173's existing development service and agent-owned page remain for M1.
+
+M1 stays open: equipment/support continuity have scoped proof, but passive/joint
+retention and the complete cross-domain acceptance journey do not. No next
+milestone is defined, no application version changes and no new tag. No push,
+publication or deployment. End at this useful local checkpoint, release only I2's
+own claim and leave the recurring trigger enabled for the ranked I3 slice above.
