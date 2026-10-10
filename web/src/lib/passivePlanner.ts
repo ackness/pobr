@@ -133,6 +133,9 @@ export interface PassivePlanResult extends PassivePlan {
 
 export interface PassivePlannerResult {
   baseline: Record<string, number>;
+  baselineUnsupported: string[];
+  /** Rejected complete edits; unsupported contains only effects absent from the baseline. */
+  excluded: { plan: PassivePlan; unsupported: string[]; error?: string }[];
   plans: PassivePlanResult[];
   evaluated: number;
   limited: boolean;
@@ -189,17 +192,17 @@ interface PlannerOptions {
 /** Bounded full-build search: connected paths, then interacting path unions or legal branch swaps. */
 export async function planPassiveUpgrades(options: PlannerOptions): Promise<PassivePlannerResult> {
   const { context, objective, request, signal } = options;
-  if (signal?.aborted) return { baseline: {}, plans: [], evaluated: 0, limited: false, unmodeled: 0 };
+  if (signal?.aborted) return { baseline: {}, baselineUnsupported: [], excluded: [], plans: [], evaluated: 0, limited: false, unmodeled: 0 };
   const budget = Number.isFinite(options.points) ? Math.max(1, Math.min(PASSIVE_POINT_LIMIT, Math.floor(options.points))) : 1;
   const evaluate = options.evaluate ?? evaluateVariants;
   const paths = allocationPaths(context, context.allocated, budget);
   const refunds = options.mode === 'reallocate' ? refundableBranches(context, budget) : [];
   if (options.mode === 'reallocate' && refunds.length === 0) {
-    return { baseline: {}, plans: [], evaluated: 0, limited: false, unmodeled: 0 };
+    return { baseline: {}, baselineUnsupported: [], excluded: [], plans: [], evaluated: 0, limited: false, unmodeled: 0 };
   }
   const pathCap = options.mode === 'reallocate' ? PROBE_LIMIT - 65 : PROBE_LIMIT - 1;
   const probes = [{ allocate: [], deallocate: [], target: context.root ?? 0 }, ...paths.slice(0, pathCap), ...refunds.slice(0, 64)];
-  if (probes.length === 1) return { baseline: {}, plans: [], evaluated: 0, limited: false, unmodeled: 0 };
+  if (probes.length === 1) return { baseline: {}, baselineUnsupported: [], excluded: [], plans: [], evaluated: 0, limited: false, unmodeled: 0 };
   let count = 0;
   let limited = paths.length > pathCap || refunds.length > 64;
   const run = async (plans: PassivePlan[]) => {
@@ -209,11 +212,25 @@ export async function planPassiveUpgrades(options: PlannerOptions): Promise<Pass
     return result;
   };
   const first = await run(probes);
-  if (signal?.aborted || first.aborted) return { baseline: first.baseline, plans: [], evaluated: count, limited, unmodeled: 0 };
   const identity = first.results.find(value => value.index === 0);
+  const baselineUnsupported = identity?.unsupported ?? [];
+  const baselineLimits = new Set(baselineUnsupported);
+  const hasNewUnsupported = (value: VariantStats) => value.unsupported?.some(line => !baselineLimits.has(line)) ?? false;
+  const excluded: PassivePlannerResult['excluded'] = [];
+  const collectExcluded = (values: VariantStats[], batch: PassivePlan[]) => {
+    for (const value of values) {
+      const plan = batch[value.index];
+      if (plan.allocate.length === 0 && plan.deallocate.length === 0) continue;
+      const unsupported = (value.unsupported ?? []).filter(line => !baselineLimits.has(line));
+      if (value.error || unsupported.length > 0 || !Object.values(value.stats).every(Number.isFinite)) {
+        excluded.push({ plan, unsupported, ...(value.error ? { error: value.error } : {}) });
+      }
+    }
+  };
+  collectExcluded(first.results, probes);
+  if (signal?.aborted || first.aborted) return { baseline: first.baseline, baselineUnsupported, excluded,
+    plans: [], evaluated: count, limited, unmodeled: 0 };
   if (!identity || identity.error) throw new Error(identity?.error ?? 'Passive baseline calculation is unavailable');
-  const baselineUnsupported = new Set(identity.unsupported ?? []);
-  const hasNewUnsupported = (value: VariantStats) => value.unsupported?.some(line => !baselineUnsupported.has(line)) ?? false;
   const good = (values: VariantStats[]) => values.filter(value => !value.error && !hasNewUnsupported(value) && Object.values(value.stats).every(Number.isFinite));
   const sorted = good(first.results).sort((a, b) => compareObjectiveStats(a.stats, b.stats, objective));
   const rankedPaths = sorted.filter(value => probes[value.index].allocate.length > 0);
@@ -256,7 +273,9 @@ export async function planPassiveUpgrades(options: PlannerOptions): Promise<Pass
   limited ||= next.size > remainingCapacity;
   const combinations = [...next.values()].slice(0, remainingCapacity);
   const second = combinations.length > 0 ? await run(combinations) : null;
-  if (signal?.aborted || second?.aborted) return { baseline: first.baseline, plans: [], evaluated: count, limited, unmodeled: 0 };
+  collectExcluded(second?.results ?? [], combinations);
+  if (signal?.aborted || second?.aborted) return { baseline: first.baseline, baselineUnsupported, excluded,
+    plans: [], evaluated: count, limited, unmodeled: 0 };
   const candidates = [
     ...(options.mode === 'allocate' ? good(first.results).map(value => ({ ...probes[value.index], stats: value.stats })) : []),
     ...good(second?.results ?? []).map(value => ({ ...combinations[value.index], stats: value.stats })),
@@ -266,6 +285,6 @@ export async function planPassiveUpgrades(options: PlannerOptions): Promise<Pass
     .sort((a, b) => compareObjectiveStats(a.stats, b.stats, objective)
       || (a.allocate.length - a.deallocate.length) - (b.allocate.length - b.deallocate.length));
   options.onProgress?.(count, count);
-  return { baseline: first.baseline, plans: plans.slice(0, 10), evaluated: count, limited,
+  return { baseline: first.baseline, baselineUnsupported, excluded, plans: plans.slice(0, 10), evaluated: count, limited,
     unmodeled: [...first.results, ...(second?.results ?? [])].filter(hasNewUnsupported).length };
 }

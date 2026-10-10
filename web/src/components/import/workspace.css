@@ -35,9 +35,9 @@
 @media (max-width: 480px) {
   .workspace-switcher { gap: var(--space-2); padding: var(--space-2); }
   .workspace-switcher > button { flex-shrink: 0; }
-  .workspace-current-name { flex: 1; min-width: 0; }
-  .workspace-switcher label { flex: 1; white-space: nowrap; }
-  .workspace-switcher select { flex: 1; width: 0; }
+  .workspace-current-name { flex: 1; min-width: 6rem; }
+  .workspace-switcher label { flex: 1 1 200px; white-space: nowrap; }
+  .workspace-switcher select { flex: 1; width: auto; }
   .workspace-saved { font-size: var(--text-xs); }
   .workspace-save-error { width: 100%; }
 }

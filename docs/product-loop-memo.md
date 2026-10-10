@@ -22,6 +22,13 @@
   pause precedence on manual/reused entry, atomic single ownership, supervised
   parallel work, real-WASM/browser proof and independent review. Continue M1;
   main alone integrates/commits/tags. No push/publication/deployment.
+- 2026-10-11 I4 trigger: reaffirm all existing tool-only, pause/atomic ownership,
+  supervised parallel work, real-WASM/browser and independent-review constraints.
+  Continue M1 with route diagnostic provenance and the cross-domain journey;
+  main alone integrates/commits/tags. No push/publication/deployment; no partial
+  M1 closure. Entry checkpoint `c35c037010c325b076b42bac060d798816ea0e7a`
+  (`feat: retain stage-scoped passive planning`); clean worktree, pause absent,
+  new claim rechecked after acquisition, automation observed enabled.
 
 ## Active milestone M1: trustworthy, continuous upgrade decisions
 
@@ -135,21 +142,27 @@ design proposals; no support/passive runtime result is claimed by I1.
 
 ## Ranked continuation
 
-1. I4: complete route diagnostic provenance at the existing real-engine seam.
-   Independent I3 review found `passivePlanner.ts` discards baseline unsupported
-   strings and individual excluded-candidate reasons, retaining only the count.
-   Preserve/display those engine-provided limits with the evaluated request,
-   baseline/preview and data/tree/stage identity; do not invent scoring/formulas.
-   This inherited gap remains M1 exit work, not a new I3 lifecycle regression.
-2. Exercise equipment → supports → passives → replacement/apply with real WASM
-   on a new/copied stage, without overwriting existing browser builds. Review
-   desktop, narrow layout and keyboard behavior, baseline/preview distinctions,
-   unsupported effects, navigation and safe stage switching. Fix observed gaps.
-3. Close M1 only after all four exits have integrated runtime proof and independent
-   review. Until then no next milestone, version bump or release tag.
+1. I5: retain the complete replacement comparison workspace within the current
+   stage. I4's actual copied-stage Ego journey reproduced a filled complete item
+   and evaluated replacement disappearing on Upgrades → Skills → Upgrades,
+   while no build inputs changed. Retain text, selected replacement position,
+   valid complete receipt and equipment candidates; stop hidden calculation/
+   debounces, reject late responses, invalidate request/goal/data/stage changes.
+   Preserve exact evaluated item/augment Apply and do not introduce background
+   scoring, a per-build cache or reload persistence.
+2. Preserve support diagnostic provenance at its existing engine seam. I4 source
+   research found baseline strings and individual rejected-combination reasons
+   reduced to a count by `supportOptimizer.ts`; actual Frost Bomb support UI
+   showed recommendations without named baseline limits. Do not infer complete
+   modeled behavior from that count; keep existing compatibility/family/lineage
+   and exact-request Apply boundaries, no Rust/formula/data scope expansion.
+3. Repeat the copied-stage equipment → supports → passives → replacement/apply
+   journey after those two seams are integrated, including unsupported limits,
+   desktop/narrow/keyboard, stage safety and independent review. Close M1 only
+   when all four exits have runtime proof; no next milestone/version/tag yet.
 
-Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1–I3
-desktop and 390px inspection. Keep the same space for the ongoing M1 journey;
+Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1–I4
+desktop, 390px and 320px inspection. Keep the same space for the ongoing M1 journey;
 do not claim a user-owned space or overwrite existing browser builds. Named
 development service `pobr-product-loop-dev` serves current source on port 5173;
 check availability before reusing it. WASM and active data are already prepared.
@@ -287,13 +300,13 @@ milestone is defined, no application version changes and no new tag. No push,
 publication or deployment. End at this useful local checkpoint, release only I2's
 own claim and leave the recurring trigger enabled for the ranked I3 slice above.
 
-### I3 — latest verified checkpoint: stage-scoped passive planning continuity
+### I3 — stage-scoped passive planning continuity
 
 Starting checkpoint: `ff7181bb50458cfeeabec7e036eab35dcdd70fdc`
 (`feat: retain stage-scoped support planning`); entry worktree was clean.
-Checkpoint: the Conventional Commit containing this completed I3 row; its exact
-resulting hash is recorded immediately in `.cache/product-loop-checkpoint.json`
-and must be copied into this ledger at I4 entry.
+Checkpoint: `c35c037010c325b076b42bac060d798816ea0e7a`
+(`feat: retain stage-scoped passive planning`), confirmed at I4 entry against
+existing history and `.cache/product-loop-checkpoint.json`.
 Application `0.0.33`, active data `4.5.5.3`, branch `multi-agent-self-improvement`.
 
 Outcome and decisions:
@@ -397,3 +410,111 @@ Operational provenance:
   5173 development service and agent-owned browser page remain for M1. After this
   verified commit, release only I3's own claim; retain the enabled recurring
   trigger for the precise ranked I4 slice above.
+
+### I4 — latest verified checkpoint: passive route diagnostic provenance
+
+Starting checkpoint: `c35c037010c325b076b42bac060d798816ea0e7a`
+(`feat: retain stage-scoped passive planning`); entry worktree was clean.
+Checkpoint: the Conventional Commit containing this completed I4 ledger row;
+exact resulting hash is written to `.cache/product-loop-checkpoint.json` after
+commit and must be copied here at I5 entry.
+Application `0.0.33`, active data `4.5.5.3`, existing branch unchanged.
+
+Outcome and decisions:
+
+- Route receipts preserve baseline unsupported strings verbatim, and associate
+  new unsupported reasons/engine errors with complete probe and combination
+  allocations/refunds. Existing search, ranking and unmodeled-count semantics
+  remain unchanged. Excluded routes are separate diagnostic disclosures without
+  preview/Apply controls; Apply additionally requires a recommended receipt plan.
+- The existing original/travel-prepared request distinction, captured objective,
+  stage invalidation, cancellation and hidden-response rejection remain. The
+  receipt displays captured active data and requested tree identity; absent tree
+  annotation is labeled Default, not Unavailable or a guessed numeric version.
+- Localized native disclosures explain baseline limits, new excluded effects and
+  preview/current distinction. Main resolved independent review findings by
+  separating diagnostic/recommendation classes, limiting card styles to direct
+  children and wrapping raw diagnostic strings without rewriting them.
+- Actual 390px inspection found Stage collapsed to ~38px while the build remained
+  editable. Main adjusted only the narrow toolbar flex sizing, then inspected
+  readable stage/build context at 390px and 320px with zero horizontal overflow.
+- No Rust/WASM source, formulas, JSON handshake, pinned data or parity baseline
+  changed. Existing prepared real WASM/data reused. Ordinary tree text can still
+  be filtered before diagnostics; this change exposes existing engine reports,
+  not complete diagnostic-ingestion coverage or complete numerical parity.
+
+Observed verification:
+
+- Failing-before: both new real-WASM diagnostic scenarios completed an actual
+  route search against preserved I3 production dist, then failed because the
+  baseline diagnostic receipt was absent. Pinned Vorana/Very Large timeless
+  fixture gives `Tree:46819: missing timeless jewel seed data` in baseline and
+  complete excluded route `[49512,5936]` with each node's new seed-data reason.
+- Passing units: 19 passive planner, 14 joint planner and 11 graph cases. Probe,
+  reversed batch-local combination indexes and allocation/refund exclusions
+  preserve exact engine reasons/errors and reject unsafe recommendations. An
+  added incidental top-ranked tie expectation failed; main deleted it rather than
+  changing legitimate ranking or repinning incidental order.
+- Integrated production build/typecheck passed. Initial integrated real-WASM
+  run passed both diagnostic, all 16 passive-continuity and all 6 guidance cases.
+  Main-chunk warning remains 507.39 kB; no runtime speedup/performance claim.
+- Final production build/typecheck and isolated preview passed 12 real-WASM
+  diagnostic/guidance/layout cases after all class, wrapping, default-tree and
+  narrow-stage fixes. The 16 lifecycle-continuity cases reuse their passing
+  integrated result: lifecycle/library inputs were unchanged by those refinements.
+- Ego imported Frost Bomb copied stage `M1 I4 verified planning`: equipment
+  reference Sum 26.842, baseline DPS 7,552.35/EHP 26,098.45; 824 complete support
+  recalculations, first support preview DPS 29,387.7; 392 route evaluations,
+  first route preview DPS 9,085.53. Preview and same-stage page navigation did
+  not change the build; equipment reference survived support/passive navigation.
+- Complete synthetic NORMAL Sapphire Ring replacement displayed DPS 7,125.3
+  against current 7,552.35, warned of a downgrade and 10 unresolved effects.
+  Keyboard-focused Apply had visible focus; Enter applied only `ring1`, actual
+  sidebar DPS matched the preview, and old support/route/equipment receipts
+  disappeared. Stored non-ring state and original stage were compared exactly:
+  unchanged. Switching original/copy restored DPS 7,552/7,125 respectively.
+- Fresh post-replacement route baseline was DPS 7,125.3 and first preview 8,570.1.
+  Its 10 actual engine baseline limitations were disclosed by keyboard Enter
+  with visible focus at 390px. At 390/320/1440px, document/main horizontal
+  overflow was zero; stage selector widths were 249/179/238px. Screenshots:
+  `.cache/product-loop-I4-diagnostics-{mobile,desktop}.png`.
+- Actual replacement draft continuity gap reproduced separately on the copied
+  stage: synthetic complete `M1 Preview Ring` and one evaluated result became
+  empty text/zero results after Upgrades → Skills → Upgrades. No Apply occurred
+  in that observation. This is I5 work, not a successful continuity claim.
+- Browser harness limits: Ego automatic scrolling over the tree canvas failed
+  to reach offscreen planner controls; real wheel input over the outer margin
+  reached them. A CSS subtree snapshot root and a relative Ego filesystem path
+  were invalid; corrected observation/artifact calls did not change product
+  behavior. No touch-device, screen-reader, actual trade purchase, reload
+  persistence, broad performance or Rust/full-release/parity proof is claimed.
+
+Independent review and milestone evaluation:
+
+- Independent Spec found default-tree annotation displayed as Unavailable;
+  Standards found diagnostic cards sharing recommendation selectors/styles and
+  unwrapped baseline text. All three were corrected and targeted source
+  followups confirmed resolution. Narrow-stage sizing was independently
+  reviewed without a new correctness concern. Runtime proof remains main-owned.
+- M1 remains open: replacement workspace loss and support count-only provenance
+  prevent claiming the full trustworthy cross-domain outcome. The next slice is
+  the ranked I5 retention seam above, followed by support diagnostic provenance
+  and renewed complete journey proof. No M2, version bump or release tag.
+
+Operational provenance:
+
+- Run `run_4000ff95fd7b`, coordinator
+  `term_dd87e2a4-2cb7-4e4c-aa88-c3862a8ec790`. Entry/post-acquisition pause
+  checks passed; atomic new claim and current steering persisted before dispatch.
+  Automation `0f3538b3-37df-44be-b888-d085f05d6e8d` observed enabled.
+- Disjoint implementation `ctx_28856930367d`, regressions `ctx_03e420c5e15c`
+  and read-only journey research `ctx_816240e10bae` ran in a parallel supervised
+  wave. Main alone owned integration fixes, browser/services, docs and Git.
+  Independent Spec `ctx_e579f5c3c000` and Standards `ctx_33d32fffd311` ran in
+  parallel; accepted reviewer terminals were reused only for targeted followups
+  `ctx_20588ffff104` and `ctx_0b181d8b265c`, then released after settlement.
+  Reclaimable Run fleet was empty. No worker Git mutation or browser ownership.
+- Retain agent-owned Ego 5/p1 and existing port 5173 for M1. Temporary I4
+  production preview/configuration are removed after final verification.
+  Release only this coordinator's claim after its verified commit; leave the
+  recurring trigger enabled. No push/publication/deployment.

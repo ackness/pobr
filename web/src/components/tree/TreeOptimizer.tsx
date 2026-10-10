@@ -37,6 +37,8 @@ interface PassiveReceipt {
   preparedRequest: CalculateBuildRequest;
   result: PassivePlannerResult;
   objective: Objective;
+  dataVersion: BuildSession['dataVersion'];
+  treeVersion: BuildSession['treeVersion'];
 }
 
 export interface TreeOptimizerState {
@@ -79,12 +81,17 @@ const COPY = {
     noResults: 'No improving legal plan was found within this budget and search range.',
     bounded: 'Bounded search, not a global optimum. It compares connected routes and combinations; review the route before spending or refunding points.',
     skipped: 'Skipped plans with new unmodeled effects', evaluated: 'Plans evaluated', add: 'Allocate', remove: 'Refund', cost: 'Net points', score: 'Goal gain',
-    needsBuild: 'Import or create a build to plan upgrades.', route: 'Complete route', baseline: 'Current build',
+    needsBuild: 'Import or create a build to plan upgrades.', route: 'Complete route', baseline: 'Evaluated baseline',
     unavailable: 'The class start or passive graph is unavailable.',
     refresh: 'After the first search, changes refresh this open planner automatically. Cancel or collapse to pause.',
     waiting: 'Waiting for the current build calculation, then searching the updated tree…',
     limits: 'At most 8 new or refunded points and 512 full-plan evaluations per search. Refund mode moves terminal branches within the current total point count.',
     limited: 'The search limit was reached; results cover only the evaluated routes.',
+    data: 'Data version', tree: 'Tree version', defaultTree: 'Default', unknownVersion: 'Unavailable',
+    baselineLimits: 'Baseline calculation limits', baselineLimitsHint: 'These engine-reported effects are already present in the evaluated baseline. They are not new route effects; calculated gains do not resolve these limits.',
+    excluded: 'Excluded complete routes', excludedHint: 'These evaluated edits are excluded from recommendations and cannot be applied.',
+    newLimits: 'New unsupported effects', engineError: 'Engine error', invalidStats: 'The engine returned non-finite calculated values.',
+    previewHint: 'The tree preview highlights a proposed route, not the current allocation. Gains compare the recalculated route with the evaluated baseline.',
   },
   'zh-TW': {
     title: '天賦提升規劃', hint: '自動尋找目前天賦樹可連接的路線，過路點計入預算。每個完整方案都按目前裝備和主技能重新計算。',
@@ -96,12 +103,17 @@ const COPY = {
     noResults: '在本次點數預算和搜尋範圍內，未找到合法且優於目前配置的方案。',
     bounded: '這是有限範圍的路線與組合搜尋，不保證全域最優。請先查看路線，再投入或退還天賦點。',
     skipped: '已排除含新增未建模效果的方案', evaluated: '已重算方案', add: '新增', remove: '退還', cost: '淨投入', score: '目標提升',
-    needsBuild: '匯入或新建角色後可規劃天賦提升。', route: '完整路線', baseline: '目前配置',
+    needsBuild: '匯入或新建角色後可規劃天賦提升。', route: '完整路線', baseline: '評估基準',
     unavailable: '缺少職業起點或天賦連接資料。',
     refresh: '首次搜尋後，修改配置會自動更新已展開的規劃。取消或收起可暫停。',
     waiting: '等待目前角色重算完成，再搜尋修改後的天賦樹…',
     limits: '每次最多投入或退還 8 點、重算 512 個完整方案。洗點模式在目前總點數內搬移末端分支。',
     limited: '已達搜尋上限；結果僅涵蓋本次已評估的路線。',
+    data: '資料版本', tree: '天賦樹版本', defaultTree: '預設', unknownVersion: '無法取得',
+    baselineLimits: '基準計算限制', baselineLimitsHint: '這些引擎回報的效果已存在於評估基準，並非路線新增效果；計算出的提升不代表已解決這些限制。',
+    excluded: '已排除的完整路線', excludedHint: '這些已評估的變更不列入推薦，也無法套用。',
+    newLimits: '新增未支援效果', engineError: '引擎錯誤', invalidStats: '引擎回傳了非有限數值的計算結果。',
+    previewHint: '樹上預覽標示的是提案路線，而非目前配置。提升數值比較重算路線與評估基準。',
   },
   'zh-CN': {
     title: '天赋提升规划', hint: '自动寻找当前天赋树可连接的路线，过路点计入预算。每个完整方案都按当前装备和主技能重新计算。',
@@ -113,12 +125,17 @@ const COPY = {
     noResults: '在本次点数预算和搜索范围内，未找到合法且优于当前配置的方案。',
     bounded: '这是有限范围的路线与组合搜索，不保证全局最优。请先查看路线，再投入或退还天赋点。',
     skipped: '已排除含新增未建模效果的方案', evaluated: '已重算方案', add: '新增', remove: '退还', cost: '净投入', score: '目标提升',
-    needsBuild: '导入或新建角色后可规划天赋提升。', route: '完整路线', baseline: '当前配置',
+    needsBuild: '导入或新建角色后可规划天赋提升。', route: '完整路线', baseline: '评估基准',
     unavailable: '缺少职业起点或天赋连接数据。',
     refresh: '首次搜索后，修改配置会自动更新已展开的规划。取消或收起可暂停。',
     waiting: '等待当前角色重算完成，再搜索修改后的天赋树…',
     limits: '每次最多投入或退还 8 点、重算 512 个完整方案。洗点模式在当前总点数内搬移末端分支。',
     limited: '已达搜索上限；结果仅涵盖本次已评估的路线。',
+    data: '数据版本', tree: '天赋树版本', defaultTree: '默认', unknownVersion: '无法取得',
+    baselineLimits: '基准计算限制', baselineLimitsHint: '这些引擎报告的效果已存在于评估基准，并非路线新增效果；计算出的提升不代表已解决这些限制。',
+    excluded: '已排除的完整路线', excludedHint: '这些已评估的变更不列入推荐，也无法应用。',
+    newLimits: '新增未支持效果', engineError: '引擎错误', invalidStats: '引擎返回了非有限数值的计算结果。',
+    previewHint: '树上预览标示的是提案路线，而非当前配置。提升数值比较重算路线与评估基准。',
   },
 };
 
@@ -224,7 +241,8 @@ export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPr
             if (activeRef.current && !controller.signal.aborted && abortRef.current === controller && latestKeyRef.current === snapshotKey) setProgress({ done, total });
           } });
         if (activeRef.current && !controller.signal.aborted && abortRef.current === controller && latestKeyRef.current === snapshotKey) {
-          setCompleted({ key: snapshotKey, request, preparedRequest: prepared, result, objective });
+          setCompleted({ key: snapshotKey, request, preparedRequest: prepared, result, objective,
+            dataVersion: session.dataVersion, treeVersion: session.treeVersion });
         }
       } catch (err) {
         if (activeRef.current && !controller.signal.aborted && abortRef.current === controller && latestKeyRef.current === snapshotKey) setError(formatApiError(err));
@@ -258,7 +276,8 @@ export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPr
   };
   const apply = (plan: PassivePlan) => {
     if (!active || !completed || completed.key !== latestKeyRef.current || session.busy
-      || JSON.stringify(session.currentRequest()) !== JSON.stringify(completed.request)) return;
+      || JSON.stringify(session.currentRequest()) !== JSON.stringify(completed.request)
+      || !completed.result.plans.some(candidate => candidate === plan)) return;
     const next = passivePlanAllocation(completed.preparedRequest, context, plan, points, mode);
     if (!next) return;
     // Apply the same full allocation and attribute choices used by the successful evaluation.
@@ -318,10 +337,32 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
         {evaluated && <>
           <div className="tree-planner-summary"><span>{text.evaluated}: {evaluated.evaluated}</span>
             {evaluated.evaluated > 0 && <span>{text.baseline}: DPS {number(currentStats.TotalDPS ?? 0)} · EHP {number(currentStats.TotalEHP ?? 0)}</span>}
+            <span>{text.data}: {completed!.dataVersion ?? text.unknownVersion} · {text.tree}: {completed!.treeVersion ?? text.defaultTree}</span>
             {preview !== null && <button onClick={() => show(null)}>{text.clear}</button>}
           </div>
           {evaluated.limited && <p className="tree-planner-hint">{text.limited}</p>}
           {evaluated.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}: {evaluated.unmodeled}</p>}
+          {preview !== null && <p className="tree-planner-hint" role="status">{text.previewHint}</p>}
+          {evaluated.baselineUnsupported.length > 0 && <details className="tree-planner-diagnostics tree-planner-baseline-unsupported">
+            <summary>{text.baselineLimits}: {evaluated.baselineUnsupported.length}</summary>
+            <p className="tree-planner-hint">{text.baselineLimitsHint}</p>
+            <ul>{evaluated.baselineUnsupported.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
+          </details>}
+          {evaluated.excluded.length > 0 && <details className="tree-planner-diagnostics">
+            <summary>{text.excluded}: {evaluated.excluded.length}</summary>
+            <p className="tree-planner-hint">{text.excludedHint}</p>
+            <ol className="tree-planner-excluded">{evaluated.excluded.map(({ plan, unsupported, error: engineError }, index) => <li key={index}>
+              <details>
+                <summary>{text.route}: {nodeLabel(plan.target)} · {text.add} {plan.allocate.length} · {text.remove} {plan.deallocate.length}</summary>
+                <p>{text.add}: {plan.allocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}</p>
+                <p>{text.remove}: {plan.deallocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}</p>
+                {unsupported.length > 0 && <><p>{text.newLimits}</p>
+                  <ul>{unsupported.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul></>}
+                {engineError && <p className="opt-error">{text.engineError}: {engineError}</p>}
+                {unsupported.length === 0 && !engineError && <p className="opt-error">{text.invalidStats}</p>}
+              </details>
+            </li>)}</ol>
+          </details>}
           {evaluated.plans.length === 0 && <p className="tree-planner-hint">{text.noResults}</p>}
           <ol className="tree-planner-results">
             {evaluated.plans.map((plan, index) => <li key={index} className={preview === index ? 'is-previewed' : ''}>
