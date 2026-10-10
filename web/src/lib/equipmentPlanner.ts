@@ -132,8 +132,10 @@ export async function planEquipmentUpgrades(
   }
   abortIfRequested(signal);
   const catalog = dependencies.catalog ?? await loadTradeCatalog();
+  abortIfRequested(signal);
   const backend = !dependencies.translate || !dependencies.augmentInfo || !dependencies.runeCatalog
     ? await getBackend() : undefined;
+  abortIfRequested(signal);
   const translate = dependencies.translate ?? backend!.translateLines;
   const augmentInfo = dependencies.augmentInfo ?? backend!.itemAugmentInfo;
   const runeCatalog = dependencies.runeCatalog ?? backend!.runeCatalog;
@@ -198,6 +200,7 @@ export async function planEquipmentUpgrades(
       if (!plan.error) calculated.push(plans.length - 1);
     }
     if (!calculated.length) return;
+    abortIfRequested(signal);
     if (evaluated + calculated.length > VARIANT_TOTAL_CAP) throw new Error('equipment-evaluation-limit');
     const variants = calculated.map(index => ({ set_items: plans[index].items }));
     const previous = evaluated;

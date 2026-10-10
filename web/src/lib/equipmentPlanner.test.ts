@@ -1,8 +1,12 @@
+/// <reference lib="es2024.promise" />
 import { expect, test, vi } from 'vitest';
 import type { CalculateBuildRequest, ItemAugmentInfo, RuneCatalogEntry } from '../api/types';
 import { EQUIPMENT_CANDIDATE_LIMIT, planEquipmentUpgrades, type EquipmentCandidate, type EquipmentPlanningDependencies } from './equipmentPlanner';
 import type { EvaluateOptions, EvaluateResult } from './optimize';
 import type { TradeCatalog } from './tradeOptimizer';
+import { getBackend, type PobrBackend } from '../api/backend';
+
+vi.mock('../api/backend', () => ({ getBackend: vi.fn() }));
 
 const ring = { name: 'Sapphire Ring', category: 'accessory.ring', domain: 'item', tags: [], level: 1, implicits: [] };
 const helmet = { name: 'Iron Hat', category: 'armour.helmet', domain: 'item', tags: [], level: 1, implicits: [] };
@@ -249,4 +253,42 @@ test('cancellation after the first phase stops multi-item expansion', async () =
           stats: { TotalDPS: 100 }, unsupported: [] })) };
     } }))).rejects.toThrow('cancelled');
   expect(calls).toBe(1);
+});
+
+test('cancellation during final offhand validation stops evaluation entry', async () => {
+  const sword = { ...ring, name: 'Practice Sword', category: 'weapon.onesword' };
+  const shield = { ...ring, name: 'Practice Shield', category: 'armour.shield' };
+  const controller = new AbortController();
+  const stopped = vi.fn();
+  let translations = 0;
+  const build: CalculateBuildRequest = { character: { level: 90 }, items: [
+    { slot: 'weapon1', text: 'Rarity: NORMAL\nPractice Sword' },
+    { slot: 'weapon2', text: 'Rarity: NORMAL\nPractice Shield\nNote: 中文' },
+  ] };
+  await expect(planEquipmentUpgrades({
+    request: build, candidates: [candidate('new-sword', 'weapon1', sword.name)], signal: controller.signal,
+  }, dependencies({
+    catalog: { bases: [sword, shield], mods: [] },
+    translate: async lines => {
+      // Candidate validation, final candidate validation, then final offhand.
+      if (++translations === 3) controller.abort();
+      return lines;
+    },
+    evaluate: stopped,
+  }))).rejects.toMatchObject({ name: 'AbortError' });
+  expect(stopped).not.toHaveBeenCalled();
+});
+
+test('cancelled backend acquisition never starts rune catalog work', async () => {
+  const controller = new AbortController();
+  const lateRunes = vi.fn(async () => []);
+  const { promise, resolve } = Promise.withResolvers<PobrBackend>();
+  vi.mocked(getBackend).mockReturnValueOnce(promise);
+  const pending = planEquipmentUpgrades({
+    request, candidates: [candidate('a', 'ring1')], signal: controller.signal,
+  }, { catalog });
+  controller.abort();
+  resolve({ runeCatalog: lateRunes } as unknown as PobrBackend);
+  await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  expect(lateRunes).not.toHaveBeenCalled();
 });

@@ -29,6 +29,13 @@
   M1 closure. Entry checkpoint `c35c037010c325b076b42bac060d798816ea0e7a`
   (`feat: retain stage-scoped passive planning`); clean worktree, pause absent,
   new claim rechecked after acquisition, automation observed enabled.
+- 2026-10-11 I5 trigger: reaffirm current tool-only, durable pause/atomic ownership,
+  genuine parallel work, real-WASM/browser, independent review and main-only Git
+  constraints. Continue M1's ranked replacement workspace retention seam; support
+  diagnostic provenance remains separate. No partial M1 closure, next milestone,
+  version/tag, push, external publication or deployment. Entry checkpoint
+  `0634e3fe4747d667f240e5f71e771e6356bfdb21`; clean existing branch, pause absent
+  before and after new atomic claim, recurring automation observed enabled.
 
 ## Active milestone M1: trustworthy, continuous upgrade decisions
 
@@ -58,7 +65,7 @@ protected. Select the next milestone only after these exit scenarios pass.
 
 ## Previous verified iteration: I1
 
-Starting checkpoint: `89364d456699a348e24dfae029ef75fb6e4671c0` (`v0.0.33`).
+Starting checkpoint: `89364d456699a348e24dfae029ef75fb6e4671c0` (application `0.0.33`).
 Initial worktree was clean; active data `4.5.5.3`; application version `0.0.33`.
 
 Evidence used to prioritize:
@@ -142,26 +149,28 @@ design proposals; no support/passive runtime result is claimed by I1.
 
 ## Ranked continuation
 
-1. I5: retain the complete replacement comparison workspace within the current
-   stage. I4's actual copied-stage Ego journey reproduced a filled complete item
-   and evaluated replacement disappearing on Upgrades → Skills → Upgrades,
-   while no build inputs changed. Retain text, selected replacement position,
-   valid complete receipt and equipment candidates; stop hidden calculation/
-   debounces, reject late responses, invalidate request/goal/data/stage changes.
-   Preserve exact evaluated item/augment Apply and do not introduce background
-   scoring, a per-build cache or reload persistence.
-2. Preserve support diagnostic provenance at its existing engine seam. I4 source
-   research found baseline strings and individual rejected-combination reasons
-   reduced to a count by `supportOptimizer.ts`; actual Frost Bomb support UI
-   showed recommendations without named baseline limits. Do not infer complete
-   modeled behavior from that count; keep existing compatibility/family/lineage
-   and exact-request Apply boundaries, no Rust/formula/data scope expansion.
-3. Repeat the copied-stage equipment → supports → passives → replacement/apply
-   journey after those two seams are integrated, including unsupported limits,
-   desktop/narrow/keyboard, stage safety and independent review. Close M1 only
-   when all four exits have runtime proof; no next milestone/version/tag yet.
+1. I6: preserve support diagnostic provenance at the existing frontend engine seam.
+   `supportOptimizer.ts` reduces identity-row baseline strings to a Set/count and
+   discards new candidate reasons/errors before returning its complete receipt.
+   Follow the existing route `baselineUnsupported` / `excluded` convention:
+   retain raw baseline lines and associate exact new reasons/errors with the
+   complete evaluated support set/variant, including removal/replacement probes.
+   Keep diagnostic exclusions separate from manual/compatibility exclusions and
+   recommendations; no Apply on excluded edits, no scoring/count-policy change.
+   Preserve current retained owner, exact-request Apply, family/lineage boundaries.
+   No Rust/formula/data/DTO scope expansion. A real baseline Guard fixture plus
+   safe exact Apply is proposed, not yet run. Reversed-index, combination-only,
+   error/non-finite and removal policy cases can use the existing injected seam;
+   do not claim those synthetic reasons are real-engine diagnostic proof.
+2. Repeat the copied-stage equipment → supports → passives → replacement/apply
+   journey after support provenance is integrated, including supported-effect
+   caveats, desktop/narrow/keyboard, stage safety and independent review. I5
+   replacement continuity is complete scoped proof, not the renewed full journey.
+   Close M1 only when all four exits have runtime evidence; no next milestone,
+   version bump or release tag yet. Never treat absent diagnostic strings or known
+   compatibility metadata as proof that every support mechanic is modeled.
 
-Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1–I4
+Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1–I5
 desktop, 390px and 320px inspection. Keep the same space for the ongoing M1 journey;
 do not claim a user-owned space or overwrite existing browser builds. Named
 development service `pobr-product-loop-dev` serves current source on port 5173;
@@ -411,13 +420,13 @@ Operational provenance:
   verified commit, release only I3's own claim; retain the enabled recurring
   trigger for the precise ranked I4 slice above.
 
-### I4 — latest verified checkpoint: passive route diagnostic provenance
+### I4 — passive route diagnostic provenance
 
 Starting checkpoint: `c35c037010c325b076b42bac060d798816ea0e7a`
 (`feat: retain stage-scoped passive planning`); entry worktree was clean.
-Checkpoint: the Conventional Commit containing this completed I4 ledger row;
-exact resulting hash is written to `.cache/product-loop-checkpoint.json` after
-commit and must be copied here at I5 entry.
+Checkpoint: `0634e3fe4747d667f240e5f71e771e6356bfdb21`
+(`feat: preserve passive route diagnostic provenance`), confirmed at I5 entry
+against branch history and `.cache/product-loop-checkpoint.json`.
 Application `0.0.33`, active data `4.5.5.3`, existing branch unchanged.
 
 Outcome and decisions:
@@ -518,3 +527,123 @@ Operational provenance:
   production preview/configuration are removed after final verification.
   Release only this coordinator's claim after its verified commit; leave the
   recurring trigger enabled. No push/publication/deployment.
+
+### I5 — latest verified checkpoint: stage-scoped replacement continuity
+
+Starting checkpoint: `0634e3fe4747d667f240e5f71e771e6356bfdb21`
+(`feat: preserve passive route diagnostic provenance`); entry worktree was clean.
+Checkpoint: the Conventional Commit containing this completed I5 ledger row;
+exact resulting hash is written to `.cache/product-loop-checkpoint.json` after
+commit and must be copied here at I6 entry.
+Application `0.0.33`, active data `4.5.5.3`, existing branch unchanged.
+At I5 settlement, `v0.0.33^{commit}` resolves to
+`d11a69317c452cde614b62fedd806352a91014ff`; I1's application-0.0.33 starting
+checkpoint is not that tag's target. No tag was created or moved.
+
+Outcome and decisions:
+
+- The stage-keyed retained Upgrades owner now retains complete replacement text,
+  chosen position, exact evaluated report/request/objective/catalog/data/tree
+  receipt and per-position augment choices. Equipment candidates, maximum
+  replacement count and compatible completed equipment receipts survive same-stage
+  page navigation. Unapplied local affix drafts also survive and still block Apply.
+- Leaving synchronously aborts both controllers, clears pending paste/debounce,
+  busy/progress and disables child pickers; late generations cannot publish or
+  clear a newer run. Returning displays completed receipts without scoring.
+  Existing picker disable handling closes menus and releases document listeners.
+- Changed materialized requests, weapon set, objective, catalog/data/tree/socket
+  identity invalidate incompatible evaluated receipts even while hidden. Text and
+  candidates remain current-stage preferences; identical copied-stage transitions
+  remount and reset all workspace state. Objective changes invalidate equipment
+  receipts at every replacement cap; this is a conservative receipt policy, not
+  a formula/search/ranking change. Users explicitly recalculate under the new goal.
+- Apply/add-candidate recheck the current receipt and request synchronously. Single
+  Apply uses the exact selected prepared item/augment payload; joint Apply uses the
+  complete evaluated plan. Raw copied text, unrelated sources, existing unsupported
+  diagnostics and feasibility gates remain intact. Render keys are memoized rather
+  than serializing the full build on every progress update.
+- Main added abort checks after catalog/backend acquisition and before equipment
+  evaluation entry. The existing evaluator already checks cancellation before its
+  engine batch; the final-offhand fix additionally avoids entering its prerequisites.
+  A synchronous WASM call already running still cannot be preempted.
+- No Rust/WASM source, formulas, pinned data, parity baselines or JSON contract
+  changed. No per-build cache, reload persistence or hidden background scoring.
+
+Observed verification:
+
+- Before: Ego populated a complete synthetic Sapphire Ring and real replacement
+  receipt, then observed empty text/zero results after Skills → Upgrades. All
+  three new navigation/raw-Apply, prepared-augment-Apply and joint-plan regressions
+  failed against preserved I4 production dist at lost text or cap reset 3 → 2.
+- Four prerequisite-cancellation regressions failed before the library fixes:
+  translation ran after cancelled single/position backend acquisition, rune
+  catalog ran after cancelled equipment acquisition, and offhand cancellation
+  still entered evaluation. Final tests assert AbortError and no subsequent work.
+- Production build including TypeScript passed. Scoped units: 24 replacement,
+  17 equipment, 15 augment and 20 affix cases passed. After strengthening only
+  cancellation error assertions, the 41 affected replacement/equipment cases
+  passed again; unchanged augment/affix cases reuse their result.
+- Integrated isolated production preview: all 30 real-WASM cases passed
+  (13 new replacement-continuity, 10 existing item-replacement, one affix-editor,
+  six upgrade-guidance). They prove exact raw/prepared/joint Apply, navigation,
+  hidden build/goal invalidation at caps 1/2/3, identical-stage resets, debounce
+  cancellation and delayed/overlapping real-engine generations. Import/items and
+  league fixtures are synthetic; scoring, parsing, augment preparation and Apply
+  use shipped WASM/data. Scheduling holds only actual post-batch continuations.
+- Ego 5/p1: copied original stage to `M1 I5 replacement continuity`; original and
+  existing I4 stages were compared exactly and remained unchanged. Full replacement
+  text, selected Ring 2, one prepared candidate, cap 3 and both completed receipts
+  were identical after Skills/Calcs/Tree round trips; hidden replacement control
+  counts were zero and preview/navigation did not change the build.
+- Actual Frost Bomb baseline DPS 7,552.35 / EHP 26,098.45; the explicitly synthetic
+  ring preview warned of a downgrade and ten engine limits, with DPS 7,125.3 /
+  EHP 24,947.48. Keyboard Enter applied only exact `ring2`; all other state was
+  compared exactly, and visible actual DPS 7,125 / EHP 24,947 matched rounding.
+  Original/copy stage switching restored DPS 7,552/7,125 and reset the workspace.
+- Desktop/390px screenshots inspected; Enter disclosed ten raw limitations and
+  Tab reached Apply with visible focus. At 320/390/1440px document/main horizontal
+  overflow was zero; narrow stage widths were ~181/251px. Images:
+  `.cache/product-loop-I5-{desktop,mobile}.png`.
+- Separate actual affix-draft smoke removed a Life affix locally, retained the
+  unapplied draft through Skills navigation and kept Apply disabled. Build bytes
+  stayed exact; Discard restored the affix and enabled the still-valid Apply.
+- Existing 507.39 kB main-chunk warning remains; no runtime speedup or broad
+  performance claim. Catalog/data/tree invalidation was independently source
+  reviewed, not exercised through a mutable initialized backend. No Rust/full
+  release/parity gate, actual market purchase, touch device, screen-reader or
+  reload-persistence proof. One overly exact Ego text selector failed; the observed
+  Ring 2 target was then selected with the documented scoped selector, not a fix.
+
+Independent review and M1 evaluation:
+
+- Independent supervised Spec and Standards reviews reported no actionable
+  correctness, lifecycle-safety or documented-standard finding within source scope.
+  Runtime verification remained main-owned; neither review claims complete M1 proof.
+- Supplemental read-only research located support baseline/rejection loss and
+  established the minimum route-equivalent frontend receipt shape. It also found
+  normal support stat-map ingestion silently skips some unsupported/unknown stats;
+  preserving emitted strings cannot certify full modeled support coverage. No
+  shipped support-only new-reason/error fixture was established. I6 must distinguish
+  real baseline provenance/Apply proof from synthetic exclusion-policy coverage,
+  disclose existing engine limits and avoid expanding into an engine rewrite.
+- M1 remains open for support diagnostic provenance and renewed integrated
+  cross-domain journey proof. No M2, version bump, release tag or publication.
+
+Operational provenance:
+
+- Run `run_cdfbf0307100`, coordinator
+  `term_6f1d743e-583f-40af-b5f1-1c79efaedaee`. Entry/post-acquisition and settlement
+  pause checks passed; atomic new claim and current steering persisted before
+  dispatch. Automation `0f3538b3-37df-44be-b888-d085f05d6e8d` observed enabled.
+- Disjoint supervised implementation `ctx_10afe0579b40` and regressions
+  `ctx_db56bf15170b` ran in parallel; Spec `ctx_0821cb56ec99` and Standards
+  `ctx_d6a5ef8d8d43` reviewed independently in parallel. Main alone owned parent/
+  library integration, browser/services, docs and Git. All four succeeded within
+  assigned scope and were released after accepted settlement; reclaimable fleet
+  was empty. Supplemental support-seam scout and cancellation reviewer were
+  read-only tool subagents, not Orca editors; their source research is not runtime
+  evidence. No worker Git mutation or browser ownership.
+- Retain agent-owned Ego 5/p1 and existing port 5173 for the continuing M1 journey.
+  Temporary I5 production previews are stopped and isolated config is removed.
+  After verified commit, release only this coordinator's owner.json and claim;
+  leave the recurring trigger enabled. No push/publication/deployment.

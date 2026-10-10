@@ -246,9 +246,9 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
       <button disabled={!onTree} onClick={onTree}><SlotSymbol slot="Jewel@" /><strong>{ut('tree')}</strong><span>{ut('treeHint')}</span></button>
     </div>
     <p className="upgrade-shared-goal">{ut('sharedGoal')}</p>
-    {active && <ItemReplacementCheck session={session} lang={lang} objective={objective} catalog={catalog} jewelSockets={jewelSockets} initialItemText={initialItemText}
+    <ItemReplacementCheck session={session} lang={lang} active={active} objective={objective} catalog={catalog} jewelSockets={jewelSockets} initialItemText={initialItemText}
       goalLabel={tt(TRADE_OBJECTIVES.find(entry => entry.id === preset)!.labelKey as UiKey)}
-      onEditGoal={() => { goalRef.current?.scrollIntoView({ block: 'start' }); goalRef.current?.focus({ preventScroll: true }); }} />}
+      onEditGoal={() => { goalRef.current?.scrollIntoView({ block: 'start' }); goalRef.current?.focus({ preventScroll: true }); }} />
     <div className="trade-setup">
       <label className="trade-price-field"><span className="trade-field-label">{tt('trade.budget')}</span>
         <span className="trade-budget"><input type="number" min={0} aria-label={tt('trade.budget')} value={budget} placeholder={tt('trade.budgetAny')}
