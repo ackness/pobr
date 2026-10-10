@@ -42,6 +42,13 @@
   closure, push, publication or deployment. Entry checkpoint
   `ad16946638ebb8f81f5670db12e1d4e799f63a6b`; clean existing branch, pause absent
   before and after the new atomic claim, recurring automation observed enabled.
+- 2026-10-11 I7 trigger: reaffirm tool-only scope, pause precedence on manual/reused
+  entries, atomic ownership, supervised disjoint work, real-WASM/browser proof and
+  independent review. Main alone integrates/commits/tags; no push/publication/
+  deployment. Entry checkpoint `30c48a188e847d5536c3113b4a75b25c7f377041`,
+  clean existing branch; pause absent before and after atomic acquisition;
+  recurring automation observed enabled. Preserve I6's scoped M1 exit evidence,
+  continue M2 only after proving its source inference in runtime.
 
 ## Completed milestone M1: trustworthy, continuous upgrade decisions
 
@@ -69,23 +76,21 @@ Do not expand M1 into a complete engine rewrite or revive hidden build-reference
 navigation. Current calculation parity, data versions and source diagnostics stay
 protected. Select the next milestone only after these exit scenarios pass.
 
-## Active milestone M2: honest source-specific support coverage limits
+## Completed milestone M2: honest source-specific support coverage limits
 
 Outcome: support comparisons disclose confirmed skipped numerical support effects
 from the actual calculated payload, without pretending every support effect is
 modeled or rejecting effects already handled elsewhere.
 
-Priority evidence: source-only investigation found pinned `SupportForkPlayer`
+Origin: I6 source research found pinned `SupportForkPlayer`
 `support_fork_forked_projectile_damage_+%_final = -30` in data `4.5.5.3`
 (`base/granted_effect_stat_sets.json`, pointer `/5347/sets/0/constant_stats/1`).
-Its override is conditional `StatThreshold(ForkedCount >= 1)`. Normal stat-map
-ingestion skips non-Mapped outcomes; Compare observations do not reach normal
-WASM unsupported strings. **[INFERENCE from source]** this mapping yields
-UnsupportedTag(StatThreshold). This is not an observed primary-hit DPS defect:
-the penalty applies to forked projectiles, not necessarily the initial hit.
-I7 must establish the runtime failure before changing diagnostics.
+I7 exercised the real conditional `StatThreshold(ForkedCount >= 1)` mapping:
+`UnsupportedTag("StatThreshold")`; normal native/WASM diagnostics omitted it
+before the change. Data/Compare numerical outputs were equal. This is not an
+observed primary-hit DPS defect: the penalty concerns forked projectiles.
 
-Exit scenarios:
+Exit scenarios (all passed at I7; proof and limits in the I7 ledger below):
 
 1. A real compatible projectile build proves the pinned mapping outcome and
    exposes its source/effect, selected set, stat/value and calculated-host limit
@@ -110,6 +115,36 @@ Scope confirmed support mapping failures, not formula rewriting, all stat domain
 coverage percentages, generated-data changes or a hard-coded Fork exception.
 Observe existing outcomes once; do not run full Compare mapping twice per candidate.
 Retain data `4.5.5.3`; no version/tag/publication decision until applicable gates.
+
+## Active milestone M3: honest build-context configuration guidance
+
+Outcome: a player can find and understand a bounded set of appropriate encounter
+and combat settings without mistaking “configured” for “effective” or losing
+access to the full catalog and imported values.
+
+Priority evidence: `docs/frontend-usability-review.md:53` records the unresolved
+common-condition/relevance seam. I7's actual caster Config page still presents
+the full category catalog, search and “Configured only (0)”, without a current-build
+guidance entry. General labels translated during EN → zh-TW → zh-CN inspection;
+no blanket missing-translation defect is claimed. Loading work stays lower
+priority because the chunk warning is not an observed runtime bottleneck.
+
+Exit scenarios:
+
+1. Current caster and attack builds have a useful, clearly explained quick-access
+   entry for a bounded set of combat/encounter conditions. Any build-specific
+   applicability claim has positive metadata/consumer and real-WASM evidence;
+   uncertain options remain available in the full catalog, not falsely “effective”.
+2. Full catalog/search/configured-only access and original raw imported values
+   remain intact. Guidance does not silently toggle, coerce or delete settings;
+   default/quest and user encounter assumptions remain explicit.
+3. Actual setting edits and reset have verified calculation effects where claimed.
+   Main-skill, build and stage changes refresh guidance without dirtying the build
+   or restoring stale upgrade plans; retained planning keeps its existing guards.
+4. Independent review, relevant contracts and actual English/Chinese,
+   desktop/narrow/keyboard interaction pass. No formula expansion, invented
+   support percentage or assertion that all catalog mechanics are modeled.
+
 
 
 ## Previous verified iteration: I1
@@ -198,23 +233,21 @@ design proposals; no support/passive runtime result is claimed by I1.
 
 ## Ranked continuation
 
-1. I7/M2: first exercise Fork on a real compatible projectile host in Data/Compare
-   modes and normal WASM, capturing actual mapping/unsupported output. If source
-   inference holds, collect confirmed nonzero numerical support mapping failures
-   at the existing mapping seam and carry a deterministic source-specific limit
-   through the existing calculation/session unsupported channel. Do not alter
-   damage formulas or treat every unknown support stat as an error.
-2. Parallel disjoint engine/contract work and behavior regressions after the shared
-   runtime premise is established. Prove baseline disclosure, newly limited edit
-   exclusion with no Apply, selected-set/group/removal identity and real handled
-   negative controls. Rebuild WASM and run relevant Rust/parity gates sequentially;
-   retain independent reviews and actual browser evidence before committing.
-3. Defer configuration relevance/translation and measured loading work behind
-   this concrete trust gap. The existing chunk warning alone is not a demonstrated
-   runtime regression. M1 is complete only under the scoped evidence recorded in
-   I6; M2 has source research, not completed implementation or runtime proof.
+1. I8/M3: absorb current steering/pause/claim and verify I7's exact checkpoint.
+   Revisit Config on real caster and attack builds. Inspect the existing catalog,
+   visibility metadata, translation and actual interpreter/consumer seams before
+   selecting the first bounded quick-access set. Preserve imported raw values.
+2. Prove the selected conditions' applicability and on/off/reset effects with
+   normal real WASM before adding guidance. Reuse the existing controls and full
+   catalog rather than introducing a second configuration model or hiding unknowns.
+   Split substantive independent UI/contract and behavior work only after the shared
+   scope is established; retain independent review and actual browser proof.
+3. M1 and M2 are complete only under their recorded scoped exits, not complete
+   game-mechanic coverage or release qualification. Defer broad engine coverage,
+   active-form numerical routing beyond observed cases, touch-canvas redesign and
+   unmeasured loading work unless fresh product evidence changes the priority.
 
-Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1–I6
+Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1–I7
 desktop, 390px and 320px inspection. Keep the same space for the ongoing tool loop;
 do not claim a user-owned space or overwrite existing browser builds. Named
 development service `pobr-product-loop-dev` serves current source on port 5173;
@@ -841,3 +874,154 @@ Operational provenance:
   checks. Existing agent-owned browser 5/p1 and port 5173 remain for continuation.
   Release only this coordinator's owner.json/claim after the verified commit;
   leave the recurring trigger enabled. No push/publication/deployment.
+
+### I7 — source-specific conditional support coverage limits
+
+Starting checkpoint: `30c48a188e847d5536c3113b4a75b25c7f377041`
+(`feat: preserve support diagnostic provenance`); entry worktree was clean.
+Checkpoint: the commit containing this ledger row,
+`feat: disclose conditional support coverage limits`; record its exact resulting
+hash in `.cache/product-loop-checkpoint.json` immediately after main commits.
+Application `0.0.33`, active data `4.5.5.3`, existing branch
+`multi-agent-self-improvement`; no version, data, golden or tag change.
+
+Outcome and decisions:
+
+- Normal sessions, JSON calculations and complete variant scoring now disclose
+  confirmed skipped conditional/scaling numerical effects from the actual
+  compatible selected support payload. Identity carries support effect/set,
+  stat/raw value and the resolved calculated host/form; successful trigger-source
+  children retain `TriggerSource:` provenance separately from main-host limits.
+- Admission is deliberately bounded: known finite nonzero numerical constructors
+  and failed conditional/scaling tags in the effective catalog entry. Unknown,
+  empty/metadata/control, FLAG/LIST, scalar/unextractable and separately routed
+  GlobalEffect payloads are not blanket failures. A separately handled sibling
+  cannot mask a genuinely skipped local conditional number.
+- Existing baseline limits remain visible; newly introduced limits reject the
+  complete support edit before ranking, with no recommendation or Apply. No
+  support-position identity, exhaustive coverage claim or all-hit Fork correction.
+- The mapper observes each primary outcome once. Shared borrowed name/flag
+  translation and one const-materialization tag grammar avoid constructing
+  successful owned names, flag copies, strings or ramp vectors just for observation.
+  The unused stat-map alias/forwarding wrapper was removed; genuine auxiliary
+  warcry/no-limit and secondary exposure consumers remain.
+- Independent review found duplicate active IDs reconstructed the first gem's
+  host set. A real-WASM selected-second-copy probe failed before the correction;
+  main now preserves the already resolved set into diagnostic ingestion. Review
+  also caught avoidable name/tag materialization and two invalid synthetic merge
+  fixtures; all were corrected without changing damage formulas.
+- Actual 390px Build disclosure exposed 440px of main-container horizontal
+  overflow from the long source receipt. The existing unsupported list now wraps
+  identifiers; measured main overflow became zero, with a consumer geometry
+  regression rather than a source-text assertion.
+
+Observed verification:
+
+- Before: actual native Data/Compare Fork mapping was UnsupportedTag StatThreshold
+  while normal unsupported strings were empty; the real-WASM diagnostic assertion
+  failed. Native Fireball/Fork DPS was unchanged by the skipped secondary effect.
+  Controlled Destruction mapped +25% damage; Close Combat mapped a real
+  DistanceRamp; Fire Mastery's primary LIST failure was separately consumed as a
+  gem-level increase and increased Fireball DPS without a limit.
+- Final native gates passed: 75 core stat-map tests, 15 support-gating session
+  cases, 4 source-coverage JSON contracts, the actual Data/Compare pure-observation
+  case, both panel/effective parity no-regression gates and 4 CoC trigger goldens.
+  Scoped core/build/WASM library and changed-test Clippy passed with warnings
+  denied; repository formatting passed.
+- Final WASM rebuilt and production build/typecheck passed. Complete pre/post
+  real-WASM JSON/numerical equality held for eleven normal scenarios and four
+  complete support variants after removing only intended unsupported strings.
+  Native contracts, differential probes and browser transitions jointly covered
+  removal, disabled/incompatible/uncalculated hosts, compaction, effective set
+  fallback and multiple hosts with exact diagnostic/negative-control behavior.
+- Real selected duplicate Fireball forms now report host sets 1/2 correctly.
+  A synthetic CoC socket layout calculates Comet from a Lightning Arrow source:
+  its only Fork limit names `TriggerSource`/LightningArrow, not incompatible
+  Comet. All trigger response fields apart from diagnostics matched the old WASM;
+  observed trigger rate stayed `0.042830307`.
+- Supplemental active-form research compared real Fireball forms 1/2/3 singly
+  and as the selected second duplicate: display stats, main-skill output and
+  diagnostic identity matched. The older active-modifier set-key reconstruction
+  was not changed; these observations do not prove every effect's numerical
+  multi-active-form routing or establish a new formula defect.
+- Final isolated production preview: all 4 new desktop/narrow coverage scenarios
+  passed, then all 29 existing support-diagnostic/continuity, passive-diagnostic
+  and replacement-continuity cases passed with real WASM. Synthetic import/league
+  fixtures are identified; engine scoring, exclusions and Apply are not mocked.
+- Actual Ego: added a separate `M2 I7 synthetic support limits` build and imported
+  a minimal caster through the UI. Equipped Fork's raw baseline limit survived
+  first Calcs/Tree/Upgrades visits. Removing it cleared the receipt/results and
+  preserved primary DPS; a fresh real search rejected the actual Fork singleton
+  with no Apply and no recommended Fork.
+- The new rejection and modeled recommendations survived Calcs/Upgrades. Tab
+  reached the first recommendation's Apply with visible 2px focus; Enter equipped
+  exactly displayed Extraction + Fire Penetration at level 1/quality 0/effective
+  set 1. Displayed preview DPS `287.1` matched applied `287.12`; every unrelated
+  current-stage field stayed exact, and stale receipts/results disappeared.
+- Desktop, 390px baseline/rejection and keyboard-Apply images were inspected;
+  document/main horizontal overflow was zero at 1440/390/320px. Images:
+  `.cache/product-loop-I7-{support-desktop,support-narrow,rejected-narrow,apply-desktop}.png`.
+- Original My build still has its four stages. Its original current-stage
+  payload and all 30 original items/two original skill sets matched before/after
+  exactly. Import added one own Sorceress skill-set snapshot; the whole library
+  therefore is not byte-identical. EN was restored after language inspection.
+
+Verification corrections and limits:
+
+- Initial new browser cases had two harness failures from comparing innerText to
+  textContent; semantic rejected-edit/gem/metric receipts replaced incidental
+  recommendation wording. Final four cases passed. An initial dual-run filter
+  selected zero tests; the actual named observation case was subsequently run.
+- Initial lint attempts exposed unformatted owned files, invalid repeated
+  `--lib` CLI flags and two borrowed-code lint suggestions. Formatting, exact
+  per-package Clippy and the affected mapping checks passed after correction.
+  Ego broad/hidden wrapper selectors, ambiguous multi-plan waits and a language
+  cycle assumption were corrected from inspected state, not suppressed errors.
+- Main JS remains `511.80 kB` with the existing >500kB warning; final WASM is
+  `5,120.07 kB`. No startup/search-speed improvement or measured runtime regression
+  is claimed. Live vendored Lua oracle was unavailable; pinned-data parity passed,
+  not new vendor-oracle formula validation. No full-release gate, real transaction,
+  touch-device, screen-reader, mutable backend switch or exhaustive coverage proof.
+- Synthetic support set 2, effective-zero and mixed routed-sibling inputs exercise
+  real mapping/consumers; the pinned support corpus has no real multiset support.
+  Receipt/result artifacts remain under ignored `.cache/product-loop-I7-*`;
+  throwaway probes, native example and isolated Playwright config are removed.
+
+M2 exit disposition — **complete**:
+
+1. Actual mapped failure, normal source/host disclosure, baseline visibility and
+   newly limited complete-edit exclusion/no Apply: native/JSON/WASM plus new
+   desktop/narrow cases and actual Ego searches.
+2. No false rejection at the bounded zero/disabled/incompatible/unselected/control
+   boundaries: session/JSON/differential probes; real DistanceRamp and separately
+   effective Fire Mastery controls. No Unknown/empty-stat coverage invention.
+3. Deterministic removal/set/group/compaction and duplicate-host identity, exact
+   retained modeled Apply and M1 safety: adversarial native contracts, real WASM,
+   29 existing browser cases and the actual keyboard/nav journey.
+4. Independent Spec/Standards and targeted followups have no unresolved actionable
+   source finding; scoped gates, numerical differential and inspected real product
+   behavior passed. Eligibility changes and limits above remain explicit.
+
+Refinement: choose M3's documented/current configuration-discovery gap over an
+unmeasured loading optimization or unproven active-form formula rewrite. Start I8
+with two actual build contexts and proven existing metadata/consumer semantics;
+do not infer effectiveness merely from configured values or catalog labels.
+
+Operational provenance:
+
+- Run `run_7a50357a7aa7`, coordinator
+  `term_30e4d26d-a816-4aa2-acf9-c5f4c060717b`. Pause absent before/after atomic
+  acquisition and at integration checkpoints; no marker was cleared.
+  Automation `0f3538b3-37df-44be-b888-d085f05d6e8d` remains the hourly trigger.
+- Parallel disjoint engine `ctx_41d23a9916e1`, regressions `ctx_ff47a5b056c7`
+  and read-only controls `ctx_36c89b028af9` completed. Independent initial Spec
+  `ctx_c66faa8b69e0`/Standards `ctx_737cfb7da94c`, final Spec
+  `ctx_9613fe93b2a3`/Standards `ctx_ef2b172a6462` and same-terminal tag followup
+  `ctx_69f2f7f8bc23` completed with precise findings/resolutions. Every accepted
+  settlement received release/reuse before acknowledgment; reclaimable fleet empty.
+  Main alone owned integration, fixes, browser, validation, documentation and Git.
+- Owned port 4187 preview stopped; existing port 5173 and agent-owned 5/p1 remain
+  for the ongoing loop. After recording the exact verified commit, release only
+  the matching own owner.json/claim. Recurring trigger observed enabled at I7 close.
+- This is a scoped product checkpoint, not a release-qualified build. Retain
+  application `0.0.33`; no new tag, push, publication or deployment.

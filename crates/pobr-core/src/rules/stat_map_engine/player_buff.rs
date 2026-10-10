@@ -371,7 +371,7 @@ fn collect_player_buff_mod(
     // has flags=ModFlag.Spell, so the matching semantics agree on both
     // sides; tokens outside the subset are still reported wholesale). The
     // `Hit` ModFlag routes to the HIT keyword (see translate_mod_flags).
-    let (flags, kw_from_flags) = translate_mod_flags(&element.flags)?;
+    let (flags, kw_from_flags) = translate_mod_flags(element.flags.iter().map(String::as_str))?;
     if !element.keyword_flags.is_empty() {
         return Err(UnsupportedReason::UnsupportedKeywordFlags(
             element.keyword_flags.join("|"),

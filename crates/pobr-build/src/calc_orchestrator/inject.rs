@@ -485,7 +485,13 @@ pub(super) fn inject_main_skill_mods(
         //         consumed by perform's `fill_crossbow_reload`. Returns empty for a
         //         non-crossbow/grenade skill.
         session.add_modifiers(crossbow_reload_modifiers(build, data, group, skill_id));
-        session.add_modifiers(support_modifiers(context, group, data, skill_id));
+        session.add_modifiers(support_modifiers(
+            context,
+            group,
+            data,
+            skill_id,
+            ctx.main.main_stat_set_index,
+        ));
 
         // 1b-iii. Trigger chain:
         // ① Data-driven recognition (trigger_configs.json's four-level key → a match

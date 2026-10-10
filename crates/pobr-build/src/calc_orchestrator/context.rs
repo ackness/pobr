@@ -12,6 +12,8 @@ pub(super) struct CalculationContext {
     pub mode: StatMapMode,
     pub catalog: Option<Arc<StatMapCatalog>>,
     pub compare_records: Vec<StatMapCompareRecord>,
+    /// Whole calculated support-payload limits, including explicitly scoped trigger sources.
+    pub support_limits: Vec<String>,
     pub is_trigger_source: bool,
     pub trigger_memo: Option<Rc<RefCell<TriggerMemo>>>,
 }
@@ -40,6 +42,7 @@ impl CalculationContext {
                 .clone()
                 .or_else(|| data.stat_map_catalog.clone()),
             compare_records: Vec::new(),
+            support_limits: Vec::new(),
             is_trigger_source: false,
             trigger_memo: None,
         }
@@ -50,6 +53,7 @@ impl CalculationContext {
             mode: self.mode,
             catalog: self.catalog.clone(),
             compare_records: Vec::new(),
+            support_limits: Vec::new(),
             is_trigger_source: true,
             trigger_memo: None,
         }

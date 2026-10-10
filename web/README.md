@@ -177,6 +177,14 @@ and have no Apply action. Recommendations show evaluated gem level/quality and
 stat-set choices. A gain does not repair baseline limits; missing diagnostics
 do not establish that every support mechanic is modeled.
 
+Normal calculations disclose confirmed skipped conditional/scaling numerical
+support effects from the compatible, selected payload. Receipts identify the
+support effect/set, stat/value and calculated host/form; trigger-source limits
+retain their own provenance. For example, Fork's unmodeled forked-projectile
+penalty is disclosed, not applied to every primary hit. Zero, unselected,
+incompatible and separately handled metadata/control effects are not blanket
+rejections. This bounded diagnostic path is not a complete coverage audit.
+
 Passive-route and joint-jewel planning likewise retain compatible completed
 receipts and constraints in the current stage. Leaving unmounts the tree canvas
 and stops tracking, scoring, hover/keyboard and heatmap work. Input changes

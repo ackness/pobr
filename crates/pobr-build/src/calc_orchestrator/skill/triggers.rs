@@ -114,6 +114,11 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
             calculate_prepared_with_context(&sub_build, self.data, self.options, &mut child);
         self.context.compare_records.extend(child.compare_records);
         let session = result.ok()?;
+        // These limits describe the calculated trigger source, not the main host's
+        // damage payload. The child already assigned explicit TriggerSource scope.
+        self.context
+            .support_limits
+            .append(&mut child.support_limits);
         let out = session.output();
         let action_rate = if out.effective_action_rate > 0.0 {
             out.effective_action_rate
@@ -422,7 +427,7 @@ mod support_judgement_tests {
         let group = SocketGroup::new()
             .with_gem_skill("MainSpell", 20)
             .with_gem_skill("SupMelee", 20);
-        let mods = support_modifiers(&mut test_context(&data), &group, &data, "MainSpell");
+        let mods = support_modifiers(&mut test_context(&data), &group, &data, "MainSpell", None);
         assert!(
             mods.is_empty(),
             "a rejected support must not inject any modifier"

@@ -20,7 +20,7 @@ mod weapon;
 
 pub use buff_specs::{
     BuffEnv, buff_skill_specs, exposure_support_modifiers, group_judgement, support_buff_specs,
-    support_modifiers, warcry_skill_specs,
+    support_modifiers, support_modifiers_with_limits, warcry_skill_specs,
 };
 pub use buffs::{
     ReservationDb, ReservationLookup, buff_skill_name, herald_skill_names,
@@ -56,9 +56,9 @@ pub use resolve::{
     support_stat_set_index,
 };
 pub use stat_map::{
-    StatMapCompareRecord, StatMapCtx, StatMapMode, curse_stat_modifiers,
-    data_mapped_stat_modifiers as stat_map_data_mapped, debuff_stat_modifiers, has_debuff_payload,
-    has_exposure_inflict_stats, mapped_stat_modifiers, player_buff_stat_modifiers,
+    StatMapCompareRecord, StatMapCtx, StatMapMode, curse_stat_modifiers, debuff_stat_modifiers,
+    has_debuff_payload, has_exposure_inflict_stats, mapped_stat_modifiers,
+    player_buff_stat_modifiers,
 };
 pub use support::{
     CompatibleSupport, GroupSupportJudgement, SupportCandidate, judge_group_supports,

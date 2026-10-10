@@ -2305,3 +2305,213 @@ fn materialized_skill_form_and_historical_tree_match_import_and_export() {
         actual["stats"]
     );
 }
+
+mod support_coverage {
+    use serde_json::{Value, json};
+
+    const FORK: &str = "SupportForkPlayer";
+    const STAT: &str = "support_fork_forked_projectile_damage_+%_final";
+
+    fn init() {
+        pobr_wasm::init_data_from_dir(&pobr_gamedata::current_data_dir().to_string_lossy())
+            .unwrap();
+    }
+
+    fn group(host: &str, supports: &[&str]) -> Value {
+        let mut gems = vec![json!({"skill_id": host, "level": 20, "quality": 0})];
+        gems.extend(
+            supports
+                .iter()
+                .map(|id| json!({"skill_id": id, "level": 1, "quality": 0})),
+        );
+        json!({"enabled": true, "gems": gems})
+    }
+
+    fn request(groups: Vec<Value>, main: usize) -> Value {
+        json!({
+            "character": {"level": 85, "class_name": "Sorceress"},
+            "socket_groups": groups,
+            "main_socket_group": main,
+        })
+    }
+
+    fn calc(request: &Value) -> Value {
+        serde_json::from_str(&pobr_wasm::calculate_build_json(&request.to_string()).unwrap())
+            .unwrap()
+    }
+
+    fn receipt(response: &Value, host: &str) -> String {
+        let rows: Vec<_> = response["unsupported_modifiers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(Value::as_str)
+            .filter(|text| text.contains(STAT))
+            .collect();
+        assert_eq!(rows.len(), 1, "one source-specific Fork limit");
+        for token in [
+            format!("Support:{FORK}:"),
+            "set=1:".into(),
+            format!("stat={STAT}:"),
+            "value=-30:".into(),
+            format!("host={host}:"),
+        ] {
+            assert!(
+                rows[0].contains(&token),
+                "missing {token:?} in {:?}",
+                rows[0]
+            );
+        }
+        rows[0].to_owned()
+    }
+
+    fn stat(response: &Value, id: &str) -> f64 {
+        response["stats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["id"] == id)
+            .unwrap()["value"]
+            .as_f64()
+            .unwrap()
+    }
+
+    #[test]
+    fn normal_json_discloses_fork_and_preserves_primary_hit_numbers() {
+        init();
+        let bare_request = request(vec![group("FireballPlayer", &[])], 0);
+        let equipped_request = request(vec![group("FireballPlayer", &[FORK])], 0);
+        let bare = calc(&bare_request);
+        let equipped = calc(&equipped_request);
+        let identity = receipt(&equipped, "FireballPlayer");
+        for id in ["TotalDPS", "TotalHitAvg", "Life", "Mana"] {
+            assert_eq!(stat(&equipped, id), stat(&bare, id));
+        }
+        assert!(stat(&equipped, "ManaCost") > stat(&bare, "ManaCost"));
+        assert_eq!(equipped["main_skill"], bare["main_skill"]);
+        assert!(stat(&bare, "TotalDPS") > 0.0);
+        assert_eq!(
+            calc(&equipped_request),
+            equipped,
+            "unchanged request is deterministic"
+        );
+        assert!(
+            calc(&bare_request)["unsupported_modifiers"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(
+            receipt(&calc(&equipped_request), "FireballPlayer"),
+            identity
+        );
+
+        let mut fallback = equipped_request.clone();
+        fallback["socket_groups"][0]["gems"][1]["stat_set_index"] = json!(999);
+        assert_eq!(
+            calc(&fallback),
+            equipped,
+            "identity uses the effective set, not the requested invalid index"
+        );
+        fallback["socket_groups"][0]["gems"][1]["stat_set_index"] = json!(1);
+        assert_eq!(calc(&fallback), equipped);
+    }
+
+    #[test]
+    fn other_disabled_or_incompatible_groups_do_not_leak_limits() {
+        init();
+        let mut disabled = group("FireballPlayer", &[FORK]);
+        disabled["enabled"] = json!(false);
+        let groups = vec![
+            group("FireballPlayer", &[]),
+            group("FireballPlayer", &[FORK]),
+            group("BallLightningPlayer", &[FORK]),
+            group("ArmourBreakerPlayer", &[FORK]),
+            disabled,
+        ];
+        let bare = calc(&request(groups.clone(), 0));
+        assert!(bare["unsupported_modifiers"].as_array().unwrap().is_empty());
+        let fire = calc(&request(groups.clone(), 1));
+        let lightning = calc(&request(groups.clone(), 2));
+        assert_ne!(
+            receipt(&fire, "FireballPlayer"),
+            receipt(&lightning, "BallLightningPlayer")
+        );
+        for (response, host) in [
+            (&fire, "FireballPlayer"),
+            (&lightning, "BallLightningPlayer"),
+        ] {
+            let single = calc(&request(vec![group(host, &[FORK])], 0));
+            assert_eq!(response["stats"], single["stats"]);
+            assert_eq!(
+                response["unsupported_modifiers"],
+                single["unsupported_modifiers"]
+            );
+        }
+        let incompatible = calc(&request(groups.clone(), 3));
+        assert!(
+            incompatible["unsupported_modifiers"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(
+            incompatible["stats"],
+            calc(&request(vec![group("ArmourBreakerPlayer", &[])], 0))["stats"]
+        );
+        assert_eq!(calc(&request(groups, 0)), bare);
+    }
+
+    #[test]
+    fn separately_handled_levels_remain_eligible_and_support_compaction_keeps_identity() {
+        init();
+        let bare = calc(&request(vec![group("FireballPlayer", &[])], 0));
+        let mastery = calc(&request(
+            vec![group("FireballPlayer", &["SupportFireMasteryPlayer"])],
+            0,
+        ));
+        assert!(stat(&mastery, "TotalDPS") > stat(&bare, "TotalDPS"));
+        assert!(
+            mastery["unsupported_modifiers"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+        let expanded = calc(&request(
+            vec![group("FireballPlayer", &["SupportFireMasteryPlayer", FORK])],
+            0,
+        ));
+        let compacted = calc(&request(vec![group("FireballPlayer", &[FORK])], 0));
+        assert_eq!(
+            receipt(&expanded, "FireballPlayer"),
+            receipt(&compacted, "FireballPlayer")
+        );
+        assert_eq!(expanded["main_skill"], mastery["main_skill"]);
+        assert_eq!(stat(&expanded, "TotalDPS"), stat(&mastery, "TotalDPS"));
+        assert!(stat(&expanded, "ManaCost") > stat(&mastery, "ManaCost"));
+        let ramp = calc(&request(
+            vec![group("ArmourBreakerPlayer", &["SupportCloseCombatPlayer"])],
+            0,
+        ));
+        assert!(ramp["unsupported_modifiers"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn real_host_form_changes_limit_identity_but_not_the_support_set() {
+        init();
+        let mut request = request(vec![group("FireballPlayer", &[FORK])], 0);
+        let primary = calc(&request);
+        let mut identities = std::collections::BTreeSet::new();
+        for set in 1..=3 {
+            request["socket_groups"][0]["gems"][0]["stat_set_index"] = json!(set);
+            let response = calc(&request);
+            let identity = receipt(&response, "FireballPlayer");
+            assert!(identity.contains(&format!("host_set={set}:")));
+            identities.insert(identity);
+            assert_eq!(calc(&request), response);
+        }
+        assert_eq!(identities.len(), 3);
+        request["socket_groups"][0]["gems"][0]["stat_set_index"] = json!(999);
+        assert_eq!(calc(&request), primary);
+    }
+}

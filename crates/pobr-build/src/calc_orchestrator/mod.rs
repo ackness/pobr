@@ -532,6 +532,14 @@ fn calculate_prepared_with_context(
     // 6. Extra global text (campaign rewards / debug overrides).
     stage_inject_extra_texts(&mut session, &ctx)?;
 
+    // Trigger children retain limits in their context for the parent to consume;
+    // do not clone strings into an internal session that only supplies source rates.
+    if !context.is_trigger_source {
+        for limit in std::mem::take(&mut context.support_limits) {
+            session.record_unsupported_modifier_text(limit);
+        }
+    }
+
     // All source writes are complete. Consuming the writer enables ModDb reads;
     // reservation must see equipment, passives, config, and extra modifier texts.
     let mut session = session.finish_sources();
