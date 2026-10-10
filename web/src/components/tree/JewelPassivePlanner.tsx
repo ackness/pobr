@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { bindT, type Lang } from '../../lib/i18n';
@@ -55,17 +55,51 @@ const COPY = {
   },
 };
 
-export function JewelPassivePlanner({ session, lang, nodes, nodeLabel, mode, points, attribute, objective, onPreview, onStart }: {
+interface Props {
   session: BuildSession; lang: Lang; nodes: PassiveNode[]; nodeLabel: (id: number) => string;
+  active: boolean;
   mode: 'allocate' | 'reallocate'; points: number; attribute: AttributeChoice; objective: Objective;
   onPreview: (plan: PassivePlan | null) => void; onStart: () => void;
-}) {
+}
+
+interface JewelPassiveReceipt {
+  key: string;
+  request: CalculateBuildRequest;
+  objective: Objective;
+  candidates: JewelPassiveCandidate[];
+  result: JewelPassivePlannerResult;
+}
+
+export interface JewelPassivePlannerState {
+  session: BuildSession;
+  lang: Lang;
+  nodeLabel: (id: number) => string;
+  raw: string;
+  setRaw: (value: string) => void;
+  selectedSocket: string;
+  setSocket: (value: string) => void;
+  sockets: { node: PassiveNode; cost: number }[];
+  candidates: JewelPassiveCandidate[];
+  remove: (id: string) => void;
+  completed: JewelPassiveReceipt | null;
+  result: JewelPassivePlannerResult | null;
+  progress: { done: number; total: number } | null;
+  error: string;
+  preview: number | null;
+  exclusive: number[];
+  add: () => void;
+  run: () => Promise<void>;
+  apply: (plan: JewelPassivePlan) => void;
+  stop: () => void;
+  show: (index: number | null) => void;
+}
+
+export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active, mode, points, attribute, objective, onPreview, onStart }: Props): JewelPassivePlannerState {
   const text = COPY[lang];
-  const tt = bindT(lang);
   const [raw, setRaw] = useState('');
   const [socket, setSocket] = useState('');
   const [candidates, setCandidates] = useState<JewelPassiveCandidate[]>([]);
-  const [completed, setCompleted] = useState<{ key: string; request: CalculateBuildRequest; result: JewelPassivePlannerResult } | null>(null);
+  const [completed, setCompleted] = useState<JewelPassiveReceipt | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<number | null>(null);
@@ -87,19 +121,30 @@ export function JewelPassivePlanner({ session, lang, nodes, nodeLabel, mode, poi
       .sort((a, b) => a.cost - b.cost || a.node.skill - b.node.skill);
   }, [context, nodes, points]);
   const selectedSocket = sockets.some(entry => String(entry.node.skill) === socket) ? socket : String(sockets[0]?.node.skill ?? '');
-  const key = JSON.stringify([session.stateVersion, session.activeWeaponSet, request, candidates, mode, points, attribute, objective]);
+  const key = JSON.stringify([session.stateVersion, session.dataVersion, session.treeVersion,
+    session.activeWeaponSet, request, session.calc?.tree_effects, candidates, mode, points, attribute, objective]);
   const latestKey = useRef(key);
   latestKey.current = key;
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const result = completed?.key === key ? completed.result : null;
-  useEffect(() => {
+  const stop = () => {
     controller.current?.abort(); controller.current = null;
-    setCompleted(null); setProgress(null); setError(''); setPreview(null);
-    previewRef.current(null);
+    setProgress(null); setPreview(null); previewRef.current(null);
+  };
+  useLayoutEffect(() => {
+    stop();
+    setCompleted(null); setError('');
   }, [key]);
-  useEffect(() => () => { controller.current?.abort(); previewRef.current(null); }, []);
+  useLayoutEffect(() => {
+    if (!active) { stop(); setError(''); }
+  }, [active]);
+  useLayoutEffect(() => () => {
+    controller.current?.abort(); controller.current = null;
+  }, []);
 
   const add = () => {
-    if (!selectedSocket || candidates.length >= JEWEL_PASSIVE_CANDIDATE_LIMIT) return;
+    if (!active || !selectedSocket || candidates.length >= JEWEL_PASSIVE_CANDIDATE_LIMIT) return;
     try {
       const normalized = normalizeCopiedItem(raw);
       if (candidates.some(candidate => candidate.jewel.socket_node === Number(selectedSocket) && candidate.jewel.text === normalized)) return;
@@ -112,33 +157,53 @@ export function JewelPassivePlanner({ session, lang, nodes, nodeLabel, mode, poi
     } catch { setError(text.invalid); }
   };
   const run = async () => {
-    if (!request || session.busy || exclusive.length || !candidates.length) return;
+    if (!active || !request || session.busy || session.error || exclusive.length || !candidates.length) return;
     onStart();
     controller.current?.abort();
     const abort = new AbortController(); controller.current = abort;
     setError(''); setCompleted(null); setPreview(null); onPreview(null); setProgress({ done: 0, total: 0 });
+    const preparedRequest = withTravelAttributes(request, nodes, attribute);
     try {
-      const result = await planJewelPassiveUpgrades({ request: withTravelAttributes(request, nodes, attribute), nodes,
+      const result = await planJewelPassiveUpgrades({ request: preparedRequest, nodes,
         className: session.character?.class_name, ascendancy, exclusiveNodes: exclusive, candidates, points, mode, objective,
         signal: abort.signal, onProgress: (done, total) => {
-          if (!abort.signal.aborted && latestKey.current === key) setProgress({ done, total });
+          if (activeRef.current && !abort.signal.aborted && controller.current === abort && latestKey.current === key) setProgress({ done, total });
         } });
-      if (!abort.signal.aborted && !result.aborted && latestKey.current === key) setCompleted({ key, request, result });
+      if (activeRef.current && !abort.signal.aborted && controller.current === abort && !result.aborted && latestKey.current === key) {
+        setCompleted({ key, request, objective, candidates, result });
+      }
     } catch (error) {
-      if (!abort.signal.aborted && latestKey.current === key) setError(error instanceof Error ? error.message : String(error));
+      if (activeRef.current && !abort.signal.aborted && controller.current === abort && latestKey.current === key) setError(error instanceof Error ? error.message : String(error));
     } finally {
       if (controller.current === abort) { controller.current = null; setProgress(null); }
     }
   };
   const apply = (plan: JewelPassivePlan) => {
-    if (!completed || completed.key !== latestKey.current || session.busy || !feasibleOf(plan.stats, objective)) return;
+    if (!active || !completed || completed.key !== latestKey.current || session.busy
+      || JSON.stringify(session.currentRequest()) !== JSON.stringify(completed.request)
+      || !feasibleOf(plan.stats, completed.objective)) return;
+    // The guard compares the original build, not travel choices prepared for evaluation.
     if (!session.applyTreePlan(completed.request, plan)) { setError(text.stale); return; }
-    setCompleted(null); setPreview(null); onPreview(null);
+    stop(); setCompleted(null);
   };
+  const show = (index: number | null) => {
+    if (!active || completed?.key !== latestKey.current || (index !== null && !result?.plans[index])) return;
+    setPreview(index); onPreview(index === null ? null : result!.plans[index]);
+  };
+  const remove = (id: string) => setCandidates(values => values.filter(value => value.id !== id));
+
+  return { session, lang, nodeLabel, raw, setRaw, selectedSocket, setSocket, sockets,
+    candidates, remove, completed, result, progress, error, preview, exclusive, add, run, apply, stop, show };
+}
+
+export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerState }) {
+  const { session, lang, nodeLabel, raw, setRaw, selectedSocket, setSocket, sockets,
+    candidates, remove, completed, result, progress, error, preview, exclusive, add, run, apply, stop, show } = planner;
+  const text = COPY[lang];
+  const tt = bindT(lang);
   const format = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 2 });
   const delta = (value: number, baseline: number) => baseline === 0 ? `${value >= 0 ? '+' : ''}${format(value)}`
     : `${value >= baseline ? '+' : ''}${format((value / baseline - 1) * 100)}%`;
-
   return <section className="jewel-passive-planner" aria-label={text.title}>
     <h4>{text.title}</h4><p className="tree-planner-hint">{text.hint}</p>
     <label className="jewel-plan-input">{text.text}<textarea aria-label={text.text} value={raw} onChange={event => setRaw(event.target.value)} rows={5} /></label>
@@ -151,15 +216,13 @@ export function JewelPassivePlanner({ session, lang, nodes, nodeLabel, mode, poi
     {!candidates.length && <p className="tree-planner-hint">{text.empty}</p>}
     <ul className="jewel-plan-candidates">{candidates.map(candidate => <li key={candidate.id}>
       <details><summary>{candidate.label} · {nodeLabel(candidate.jewel.socket_node)} #{candidate.jewel.socket_node}</summary><pre>{candidate.jewel.text}</pre></details>
-      <button disabled={Boolean(progress)} onClick={() => setCandidates(values => values.filter(value => value.id !== candidate.id))}>{text.remove}</button>
+      <button disabled={Boolean(progress)} onClick={() => remove(candidate.id)}>{text.remove}</button>
     </li>)}</ul>
     <p className="tree-planner-hint">{text.limit}</p>
     {exclusive.length > 0 && <p className="tree-planner-hint">{text.exclusive}</p>}
     <button className="tree-planner-run" disabled={!candidates.length || session.busy || Boolean(session.error) || Boolean(progress) || exclusive.length > 0}
       onClick={() => void run()}>{text.run}</button>
-    {progress && <OptimizerProgress {...progress} lang={lang} onCancel={() => {
-      controller.current?.abort(); controller.current = null; setProgress(null);
-    }} />}
+    {progress && <OptimizerProgress {...progress} lang={lang} onCancel={stop} />}
     {error && <p className="opt-error" role="alert">{error}</p>}
     {result && <div className="jewel-plan-results" aria-live="polite">
       <p className="tree-planner-hint">{text.evaluated}: {result.evaluated}</p>
@@ -167,7 +230,7 @@ export function JewelPassivePlanner({ session, lang, nodes, nodeLabel, mode, poi
       {result.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}: {result.unmodeled}</p>}
       {result.diagnostics.length > 0 && <details><summary>{text.diagnostics}</summary><ul>{result.diagnostics.map((reason, index) => <li key={index}>{reason}</li>)}</ul></details>}
       {!result.plans.length && <p>{text.none}</p>}
-      {preview !== null && <button onClick={() => { setPreview(null); onPreview(null); }}>{text.clear}</button>}
+      {preview !== null && <button onClick={() => show(null)}>{text.clear}</button>}
       <ol className="tree-planner-results">{result.plans.map((plan, index) => <li key={index} className={preview === index ? 'is-previewed' : ''}>
         <div className="tree-plan-heading"><strong>{plan.candidateId === null ? text.current : plan.candidateLabel}</strong>
           <span>{text.addNodes} {plan.allocate.length} · {text.removeNodes} {plan.deallocate.length}</span></div>
@@ -177,9 +240,9 @@ export function JewelPassivePlanner({ session, lang, nodes, nodeLabel, mode, poi
         </span>)}</div>
         <details><summary>{text.route}</summary><p>{text.addNodes}: {plan.allocate.map(nodeLabel).join(' · ') || '—'}</p>
           <p>{text.removeNodes}: {plan.deallocate.map(nodeLabel).join(' · ') || '—'}</p>
-          {plan.candidateId !== null && <pre>{candidates.find(candidate => candidate.id === plan.candidateId)?.jewel.text}</pre>}</details>
-        <div className="tree-plan-actions"><button onClick={() => { setPreview(index); onPreview(plan); }}>{text.preview}</button>
-          <button disabled={session.busy || !feasibleOf(plan.stats, objective)} onClick={() => apply(plan)}>{text.apply}</button></div>
+          {plan.candidateId !== null && <pre>{completed!.candidates.find(candidate => candidate.id === plan.candidateId)?.jewel.text}</pre>}</details>
+        <div className="tree-plan-actions"><button onClick={() => show(index)}>{text.preview}</button>
+          <button disabled={session.busy || !feasibleOf(plan.stats, completed!.objective)} onClick={() => apply(plan)}>{text.apply}</button></div>
       </li>)}</ol>
     </div>}
   </section>;

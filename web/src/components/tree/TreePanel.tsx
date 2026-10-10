@@ -17,13 +17,14 @@ import { previewDiff, type DiffEntry } from '../../lib/compare';
 import { DiffList } from '../shared/DiffList';
 import { AppSelect } from '../shared/AppSelect';
 import { NoteEditor } from '../shared/NoteEditor';
-import { TreeOptimizer } from './TreeOptimizer';
+import { TreeOptimizer, useTreeOptimizer, type TreeOptimizerState } from './TreeOptimizer';
 import type { PassivePlan } from '../../lib/passivePlanner';
 import './tree.css';
 
 interface Props {
   session: BuildSession;
   lang: Lang;
+  active: boolean;
   focusPlanner?: { nonce: number };
   onJewelSearch?: (socket: number) => void;
 }
@@ -90,10 +91,11 @@ const JEWEL_TEMPLATE = 'Rarity: RARE\nMy Jewel\nEmerald\n+50 to maximum Life';
 
 /** 天赋树查看器：SVG 渲染 + 已加点高亮 + 缩放平移 / hover 词条 + 点选加点重算。 */
 export function TreePanel(props: Props) {
-  const { session, lang } = props;
+  const { session, lang, active } = props;
   const currentTree = session.dataVersion && /^\d+\.\d+/.test(session.dataVersion)
     ? `0_${session.dataVersion.split('.')[1]}` : null;
   if (session.treeVersion && session.treeVersion !== 'Default' && currentTree && session.treeVersion !== currentTree) {
+    if (!active) return null;
     const text = lang === 'en-US'
       ? `This build uses passive tree ${session.treeVersion}. Calculation and export preserve that version. Interactive tree editing and route planning are unavailable for historical trees.`
       : lang === 'zh-TW'
@@ -101,27 +103,63 @@ export function TreePanel(props: Props) {
         : `此角色使用 ${session.treeVersion} 天赋树。计算与导出会保留该版本，历史天赋树暂不支持交互编辑和路线规划。`;
     return <section className="ui-page"><p role="status">{text}</p></section>;
   }
-  return <EditableTreePanel {...props} />;
+  return <EditableTreePanel key={JSON.stringify([session.dataVersion, session.treeVersion])} {...props} />;
 }
 
-function EditableTreePanel({ session, lang, focusPlanner, onJewelSearch }: Props) {
-  const tt = bindT(lang);
+/** Retain planner inputs and complete receipts, never the interactive canvas. */
+function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch }: Props) {
   const [rawNodes, setNodes] = useState<PassiveNode[] | null>(null);
   const treeEffects = session.calc?.tree_effects;
-  const grants = useMemo(() => treeEffects?.allocation_grants ?? [], [treeEffects]);
   const nodes = useMemo(() => rawNodes?.map(node => {
     const change = treeEffects?.nodes[String(node.skill)];
     return change ? { ...node, name: change.name,
       stats: change.replace ? change.stats : [...(node.stats ?? []), ...change.stats] } : node;
-  }) ?? null, [rawNodes, treeEffects]);
+  }) ?? [], [rawNodes, treeEffects]);
   const [art, setArt] = useState<TreeArt | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [plannedNodes, setPlannedNodes] = useState<PassivePlan | null>(null);
+  const byId = useMemo(() => new Map(nodes.map(node => [node.skill, node])), [nodes]);
+  const planner = useTreeOptimizer({ session, lang, active, nodes,
+    nodeLabel: skill => byId.get(skill)?.name ?? `#${skill}`,
+    onPreview: setPlannedNodes, focusPlanner });
+  useEffect(() => {
+    let cancelled = false;
+    getBackend()
+      .then(b => Promise.all([b.loadPassiveTree(), b.loadTreeArt()]))
+      .then(([loadedNodes, loadedArt]) => {
+        if (cancelled) return;
+        setNodes(loadedNodes); setArt(loadedArt);
+      })
+      .catch(err => { if (!cancelled) setError(formatApiError(err)); });
+    return () => { cancelled = true; };
+  }, []);
+  if (!active) return null;
+  return <TreeCanvas session={session} lang={lang} onJewelSearch={onJewelSearch}
+    nodes={rawNodes ? nodes : null} art={art} error={error} plannedNodes={plannedNodes} planner={planner} />;
+}
+
+interface CanvasProps {
+  session: BuildSession;
+  lang: Lang;
+  onJewelSearch?: (socket: number) => void;
+  nodes: PassiveNode[] | null;
+  art: TreeArt | null;
+  error: string | null;
+  plannedNodes: PassivePlan | null;
+  planner: TreeOptimizerState;
+}
+
+function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNodes, planner }: CanvasProps) {
+  const tt = bindT(lang);
+  const treeEffects = session.calc?.tree_effects;
+  const grants = useMemo(() => treeEffects?.allocation_grants ?? [], [treeEffects]);
+  const canvasGeneration = useRef(0);
+  useLayoutEffect(() => () => { canvasGeneration.current += 1; }, []);
   const [hover, setHover] = useState<PassiveNode | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [hoverStats, setHoverStats] = useState<string[] | null>(null);
   /** hover 节点名的中文翻译（词典命中才有；null = 显示英文原名）。 */
   const [hoverName, setHoverName] = useState<string | null>(null);
-  const [plannedNodes, setPlannedNodes] = useState<PassivePlan | null>(null);
   /** 节点搜索串（名称/词条子串匹配，高亮命中节点）。 */
   const [search, setSearch] = useState('');
   /** 「下一个命中」轮转下标（搜索串变化时归零）。 */
@@ -187,7 +225,7 @@ function EditableTreePanel({ session, lang, focusPlanner, onJewelSearch }: Props
     }
   }, [viewBox]);
 
-  useEffect(() => () => {
+  useLayoutEffect(() => () => {
     if (wheelRafRef.current !== null) cancelAnimationFrame(wheelRafRef.current);
     if (dragRafRef.current !== null) cancelAnimationFrame(dragRafRef.current);
     if (clickResetRef.current !== null) clearTimeout(clickResetRef.current);
@@ -195,7 +233,7 @@ function EditableTreePanel({ session, lang, focusPlanner, onJewelSearch }: Props
     wheelPendingRef.current = null;
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
     // React's delegated wheel listener is passive. Consume scrolling only over
@@ -204,16 +242,6 @@ function EditableTreePanel({ session, lang, focusPlanner, onJewelSearch }: Props
     svg.addEventListener('wheel', consume, { passive: false });
     return () => svg.removeEventListener('wheel', consume);
   }, [nodes]);
-
-  useEffect(() => {
-    getBackend()
-      .then((b) => Promise.all([b.loadPassiveTree(), b.loadTreeArt()]))
-      .then(([n, a]) => {
-        setNodes(n);
-        setArt(a); // null = 美术未生成，回退纯圆点渲染。
-      })
-      .catch((err) => setError(formatApiError(err)));
-  }, []);
 
   const allocated = useMemo(() => new Set(session.allocatedNodes), [session.allocatedNodes]);
 
@@ -238,15 +266,17 @@ function EditableTreePanel({ session, lang, focusPlanner, onJewelSearch }: Props
     const request = session.currentRequest();
     if (!request) return;
     const version = session.stateVersion;
+    const generation = canvasGeneration.current;
     setHeatBusy(true);
     getBackend()
-      .then((b) => b.nodePower(request, heatStat, heatDepth))
+      .then(b => generation === canvasGeneration.current ? b.nodePower(request, heatStat, heatDepth) : null)
       .then((res) => {
+        if (!res || generation !== canvasGeneration.current) return;
         setHeatData(new Map(res.entries.map((e) => [e.skill, e.delta])));
         setHeatVersion(version);
       })
-      .catch(() => setHeatData(null))
-      .finally(() => setHeatBusy(false));
+      .catch(() => { if (generation === canvasGeneration.current) setHeatData(null); })
+      .finally(() => { if (generation === canvasGeneration.current) setHeatBusy(false); });
   };
 
   const heatMax = useMemo(() => {
@@ -557,10 +587,9 @@ function EditableTreePanel({ session, lang, focusPlanner, onJewelSearch }: Props
     return { x: minX - pad, y: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2 };
   }, [placed]);
 
-  const previewPlan = useCallback((plan: PassivePlan | null) => {
-    setPlannedNodes(plan);
-    if (!plan || !fullExtent) return;
-    const route = [...plan.allocate, ...plan.deallocate].map(id => byId.get(id))
+  useEffect(() => {
+    if (!plannedNodes || !fullExtent) return;
+    const route = [...plannedNodes.allocate, ...plannedNodes.deallocate].map(id => byId.get(id))
       .filter((node): node is PassiveNode => node?.x !== undefined && node.y !== undefined);
     if (route.length === 0) return;
     const xs = route.map(node => node.x!);
@@ -569,8 +598,9 @@ function EditableTreePanel({ session, lang, focusPlanner, onJewelSearch }: Props
     const height = Math.max(1600, Math.max(...ys) - Math.min(...ys) + 900);
     setViewBox(clampView({ x: (Math.max(...xs) + Math.min(...xs) - width) / 2,
       y: (Math.max(...ys) + Math.min(...ys) - height) / 2, w: width, h: height }, fullExtent));
-    requestAnimationFrame(() => svgRef.current?.closest('.tree-canvas')?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
-  }, [byId, fullExtent]);
+    const frame = requestAnimationFrame(() => svgRef.current?.closest('.tree-canvas')?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+    return () => cancelAnimationFrame(frame);
+  }, [plannedNodes, byId, fullExtent]);
 
   // 中文界面下把 hover 节点名 + 词条经词典/模板反查翻成简中（异步，结果晚到时
   // 校验仍是当前节点）。
@@ -592,15 +622,16 @@ function EditableTreePanel({ session, lang, focusPlanner, onJewelSearch }: Props
     }
     const name = hover.name ?? hover.id;
     let cancelled = false;
+    const generation = canvasGeneration.current;
     getBackend()
-      .then((b) => b.translateLines([name, ...raw]))
+      .then(b => !cancelled && generation === canvasGeneration.current ? b.translateLines([name, ...raw]) : null)
       .then((translated) => {
-        if (cancelled) return;
+        if (!translated || cancelled || generation !== canvasGeneration.current) return;
         setHoverName(translated[0] !== name ? translated[0] : null);
         setHoverStats(translated.slice(1));
       })
       .catch(() => {
-        if (cancelled) return;
+        if (cancelled || generation !== canvasGeneration.current) return;
         setHoverStats(raw);
         setHoverName(null);
       });
@@ -648,24 +679,28 @@ function EditableTreePanel({ session, lang, focusPlanner, onJewelSearch }: Props
     const request = session.currentRequest();
     if (!request) return;
     const skill = hover.skill;
+    let cancelled = false;
+    const generation = canvasGeneration.current;
     const timer = setTimeout(() => {
+      if (cancelled || generation !== canvasGeneration.current) return;
       const has = session.allocatedNodes.includes(skill);
       const nodes = has
         ? session.allocatedNodes.filter((n) => n !== skill)
         : [...session.allocatedNodes, skill];
       previewDiff({ ...request, allocated_nodes: nodes }, session.calc!)
         .then((diffs) => {
+          if (cancelled || generation !== canvasGeneration.current) return;
           cache.map.set(skill, diffs);
           setHoverDiff((current) => (hover.skill === skill ? diffs : current));
         })
         .catch(() => {});
     }, 300);
-    return () => clearTimeout(timer);
+    return () => { cancelled = true; clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hover, session.stateVersion, session.busy]);
 
   // 快捷键 S/D/I（或 1/2/3）：弹窗打开时选择；hover 属性小点时直接加点或改选。
-  useEffect(() => {
+  useLayoutEffect(() => {
     const KEYMAP: Record<string, AttributeChoice> = {
       s: 'str', d: 'dex', i: 'int', '1': 'str', '2': 'dex', '3': 'int',
     };
@@ -1111,14 +1146,7 @@ function EditableTreePanel({ session, lang, focusPlanner, onJewelSearch }: Props
           </span>
       </div>
       {Boolean(treeEffects?.warnings.length) && <p className="tree-hint" role="status">{tt('tree.jewelSeedMissing')}</p>}
-      <TreeOptimizer
-        session={session}
-        lang={lang}
-        nodes={nodes ?? []}
-        nodeLabel={(skill) => byId.get(skill)?.name ?? `#${skill}`}
-        onPreview={previewPlan}
-        focusPlanner={focusPlanner}
-      />
+      <TreeOptimizer planner={planner} />
       {Object.keys(session.editorDrafts).filter(key => key.startsWith('jewel:')).map(key => (
         <button key={key} onClick={() => setJewelSocket(Number(key.slice(6)))}>
           {tt('editor.draft')} · {tt('tree.jewel')} #{key.slice(6)}

@@ -64,11 +64,15 @@ function BuildApp() {
   const stageKey = activeBuild?.activeStage;
   const [tradeStage, setTradeStage] = useState<string>();
   const [skillsStage, setSkillsStage] = useState<string>();
+  const [treeStage, setTreeStage] = useState<string>();
   useEffect(() => {
     if (tab === 'trade' && stageKey) setTradeStage(stageKey);
   }, [tab, stageKey]);
   useEffect(() => {
     if (tab === 'skills' && stageKey) setSkillsStage(stageKey);
+  }, [tab, stageKey]);
+  useEffect(() => {
+    if (tab === 'tree' && stageKey) setTreeStage(stageKey);
   }, [tab, stageKey]);
   useEffect(() => {
     setUpgradeFocus(undefined); setSkillFocus(undefined); setTreeFocus(undefined);
@@ -170,8 +174,6 @@ function BuildApp() {
             onTree={() => { setTreeFocus({nonce: Date.now()}); setTab('tree'); }}
             onConfig={() => setTab('config')} />}
           <Suspense fallback={<p className="panel-loading" role="status">{t(lang, 'ui.loadingPanel')}</p>}>
-          {tab === 'tree' && <TreePanel session={session} lang={lang} focusPlanner={treeFocus}
-            onJewelSearch={socket => { setUpgradeFocus({slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius'}); setTab('trade'); }} />}
           {tab === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({slot, nonce:Date.now()}); setTab('trade'); }} />}
           {tab === 'calcs' && (
             <CalcsPanel
@@ -182,6 +184,15 @@ function BuildApp() {
             />
           )}
           </Suspense>
+          {(tab === 'tree' || (stageKey !== undefined && treeStage === stageKey)) && (
+            <div hidden={tab !== 'tree'}>
+              <Suspense fallback={<p className="panel-loading" role="status">{t(lang, 'ui.loadingPanel')}</p>}>
+                <TreePanel session={session} lang={lang} active={tab === 'tree'}
+                  focusPlanner={treeStage === stageKey ? treeFocus : undefined}
+                  onJewelSearch={socket => { setUpgradeFocus({slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius'}); setTab('trade'); }} />
+              </Suspense>
+            </div>
+          )}
           {(tab === 'skills' || (stageKey !== undefined && skillsStage === stageKey)) && (
             <div hidden={tab !== 'skills'}>
               <SkillsPanel session={session} lang={lang} active={tab === 'skills'}

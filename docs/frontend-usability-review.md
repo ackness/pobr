@@ -52,7 +52,7 @@
 
 1. **战斗配置的常用项入口。** 本轮增加了“仅显示已配置”，但已配置不等于对当前技能生效。按技能筛选常用条件和补齐人工核对后的翻译仍需进一步设计。
 2. **移动端天赋树的独立操作设计。** SVG 画布适合鼠标，触屏加点、缩放、节点说明和键盘节点导航需要专门设计与真实设备验证，不能仅凭页面没有横向溢出判定完成。
-3. **优化结果的跨页保留。** 可让用户在装备、技能、天赋之间来回查看时保留规划进度，同时明确标记构筑变更后的过期结果；需要先确定结果与构筑版本的对应规则。
+3. **Cross-page planning continuity.** Product-loop M1 checkpoints now retain same-stage equipment analysis, the selected support workspace, passive-route settings/results and joint-jewel candidates/results. Leaving stops active work; input/goal changes invalidate incompatible results, and stage/tree/data replacement resets ownership. The tree canvas and keyboard/hover/heatmap effects unmount while away. This is session retention, not reload persistence or background planning. Complete cross-domain Apply and route diagnostic provenance remain M1 exit work; see [product-loop memo](product-loop-memo.md).
 4. **资源加载拆分。** 当前生产构建提示主 JS chunk 超过 500 kB。后续可测量首屏与切页耗时，再决定是否按功能懒加载；本次未为消除提示而调整依赖或构建配置。
 
 ## 验证范围与记录

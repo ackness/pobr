@@ -18,6 +18,10 @@
   atomic ownership, genuine parallel slices, real-WASM/browser proof and independent
   review. Main alone integrates/commits/tags; no push/publication/deployment.
   Do not close M1 from equipment/support-only evidence.
+- 2026-10-11 I3 trigger: current user steering reaffirms tool-only scope, durable
+  pause precedence on manual/reused entry, atomic single ownership, supervised
+  parallel work, real-WASM/browser proof and independent review. Continue M1;
+  main alone integrates/commits/tags. No push/publication/deployment.
 
 ## Active milestone M1: trustworthy, continuous upgrade decisions
 
@@ -131,20 +135,20 @@ design proposals; no support/passive runtime result is claimed by I1.
 
 ## Ranked continuation
 
-1. I3: retain stage-scoped passive planner settings, completed route receipts and
-   joint-jewel candidates/results while unmounting the canvas. Reproduce route and
-   joint-result navigation loss first. Preserve the original request separately
-   from travel-attribute-prepared evaluations; no hidden auto-refresh/search,
-   keyboard/hover/heatmap effects or stale late batch may survive leaving Tree.
-   Prove unchanged return, hidden input/goal invalidation, stage/tree/data reset,
-   exact node/attribute/jewel Apply and cancellation before committing.
-2. Exercise equipment → supports → passives → replacement/apply with real WASM.
-   Review desktop, narrow layout and keyboard behavior; distinguish baseline,
-   preview, diagnostics and stage ownership. Fix the highest-impact observed gap.
+1. I4: complete route diagnostic provenance at the existing real-engine seam.
+   Independent I3 review found `passivePlanner.ts` discards baseline unsupported
+   strings and individual excluded-candidate reasons, retaining only the count.
+   Preserve/display those engine-provided limits with the evaluated request,
+   baseline/preview and data/tree/stage identity; do not invent scoring/formulas.
+   This inherited gap remains M1 exit work, not a new I3 lifecycle regression.
+2. Exercise equipment → supports → passives → replacement/apply with real WASM
+   on a new/copied stage, without overwriting existing browser builds. Review
+   desktop, narrow layout and keyboard behavior, baseline/preview distinctions,
+   unsupported effects, navigation and safe stage switching. Fix observed gaps.
 3. Close M1 only after all four exits have integrated runtime proof and independent
    review. Until then no next milestone, version bump or release tag.
 
-Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1/I2
+Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1–I3
 desktop and 390px inspection. Keep the same space for the ongoing M1 journey;
 do not claim a user-owned space or overwrite existing browser builds. Named
 development service `pobr-product-loop-dev` serves current source on port 5173;
@@ -198,12 +202,12 @@ Operational continuation: activate the registered hourly trigger and immediately
 trigger I2 only after this verified commit and I1 ownership release. The next
 coordinator must record its own claim/Run and absorb any new human steering.
 
-### I2 — latest verified checkpoint: stage-scoped support planning continuity
+### I2 — stage-scoped support planning continuity
 
 Starting checkpoint: `3b0f7a629385f72463c357f0b85f8c936aa64ff5`.
-Checkpoint: the Conventional Commit containing this completed I2 row;
-its exact resulting hash is recorded in `.cache/product-loop-checkpoint.json`
-and must be copied into this tracked ledger at I3 entry.
+Checkpoint: `ff7181bb50458cfeeabec7e036eab35dcdd70fdc`
+(`feat: retain stage-scoped support planning`), confirmed at I3 entry against
+the existing branch history; the entry worktree was clean.
 Application `0.0.33`, active data `4.5.5.3`, branch `multi-agent-self-improvement`.
 
 Outcome and decisions:
@@ -282,3 +286,114 @@ retention and the complete cross-domain acceptance journey do not. No next
 milestone is defined, no application version changes and no new tag. No push,
 publication or deployment. End at this useful local checkpoint, release only I2's
 own claim and leave the recurring trigger enabled for the ranked I3 slice above.
+
+### I3 — latest verified checkpoint: stage-scoped passive planning continuity
+
+Starting checkpoint: `ff7181bb50458cfeeabec7e036eab35dcdd70fdc`
+(`feat: retain stage-scoped support planning`); entry worktree was clean.
+Checkpoint: the Conventional Commit containing this completed I3 row; its exact
+resulting hash is recorded immediately in `.cache/product-loop-checkpoint.json`
+and must be copied into this ledger at I4 entry.
+Application `0.0.33`, active data `4.5.5.3`, branch `multi-agent-self-improvement`.
+
+Outcome and decisions:
+
+- Tree retains route expansion/mode/point budget/travel attributes and compatible
+  completed route receipts, plus joint jewel raw/socket/candidates/results.
+  Existing evaluated objective, baseline, bounded-search/unsupported counts and
+  joint diagnostic strings remain paired with original request and tree/data
+  identity. Route receipts additionally retain the travel-prepared request for
+  exact attribute Apply; joint Apply guards the original request and uses the
+  complete evaluated node/attribute/jewel plan, not an unused prepared copy.
+- A stage-keyed, independently suspended Tree owner survives navigation while the
+  entire canvas/edit surface unmounts. Leaving cancels both searches/debounce,
+  pauses tracking and clears transient previews; no hidden controls, keyboard,
+  hover/heatmap publication or automatic scoring restart survives. Hidden input/
+  shared-goal changes invalidate incompatible results. Same-context return is
+  display-only; explicit Run can restart. Intentional visible route auto-refresh,
+  including Apply, remains; collapse/cancel pauses it.
+- Tree/data identity changes reset the owner; delayed old loads are rejected.
+  Copied identical stages reset settings/candidates/receipts and cannot replay old
+  focus. Historical tree calculation/export remains supported without exposing
+  current-tree editing. Route cards now show absolute baseline → preview values.
+- Main added joint-library abort checks after asynchronous backend/catalog/base
+  and candidate-validation prerequisites, before another engine call can begin.
+  Running synchronous WASM cannot be preempted; retired responses are rejected.
+  No engine formulas, pinned data, parity baselines or JSON contract changed.
+
+Observed verification:
+
+- Before: actual imported Frost Bomb route search evaluated 392 plans, displayed
+  10 recommendations, then lost its receipt/expansion on Tree → Calcs → Tree.
+  Joint search evaluated 1,046 plans with one Ruby placement and lost both on the
+  same round trip. Both real-WASM navigation regressions failed against baseline
+  production dist at the missing returned planner body before Apply assertions.
+- Final production build including TypeScript passed; existing main-chunk warning
+  remains at 507.39 kB. Restored route-key memoization avoids repeated complete
+  request/topology serialization on progress renders; no runtime speedup measured.
+- Scoped units: 17 passive planner, 14 joint planner, 11 passive graph and 41
+  build-session tests passed. The new cancellation edge initially exposed an
+  extra candidate evaluation after translation cancellation; the corrected
+  boundary expectation distinguishes baseline/identity work already completed.
+- Final isolated production preview: all 16 passive-continuity cases and 6
+  existing upgrade-guidance cases passed across the final scoped runs. Coverage
+  includes exact displayed node/attribute/jewel Apply, original/prepared request
+  distinction, hidden equipment/goal invalidation, identical stages, stale focus,
+  historical trees, hidden keyboard safety, cancellation/late continuation, and
+  retired generation A settling while real generation B remains pending.
+- Existing 8 passive-jewel and 12 support-continuity cases passed in the prior
+  integrated run; those unchanged behavior checks reuse that result after the
+  receipt-storage-only review refinements. No additional full release gate run.
+- Synthetic Witch/item/league fixtures are explicitly identified, including the
+  deliberately synthetic +1,000 Life candidate; scoring/topology/Apply stay real
+  WASM. Scheduling controls hold only actual inter-batch continuations after
+  positive incomplete progress, never substituting engine responses.
+- Ego TaskSpace 5/p1: imported Frost Bomb route and joint receipt text identical
+  after Calcs/Skills/Upgrades round trips; hidden canvas/run control counts zero,
+  no resumed progress. Baseline DPS 7,552.35 / EHP 26,098.45; first route preview
+  DPS 9,085.53. Existing saved build was not edited. Desktop and 390px screenshots
+  inspected; document/main horizontal overflow zero; Tab reached Apply with
+  visible keyboard focus. Images: `.cache/product-loop-I3-{desktop,mobile}.png`.
+- Initial new harness used an invalid display slot instead of stable `ring1`,
+  mixed innerText/textContent expectations, and selected a remote attribute whose
+  click legitimately allocates a path instead of opening the one-point picker.
+  Corrected fixture/observations preserve acceptance; those failures were not
+  treated as product regressions.
+
+Independent review and M1 evaluation:
+
+- Spec and Standards source reviews ran independently in parallel. No new
+  correctness/lifecycle safety defect or documented standards breach identified.
+  Main preserved visible Apply tracking, restored key memoization and removed
+  unused joint prepared-request storage. The Spec overlap-coverage finding is
+  resolved by two passing real-engine overlapping-generation scenarios.
+- Spec identified an inherited route diagnostic-provenance gap: the existing
+  route library retains an unsupported count but discards baseline unsupported
+  strings and individual excluded-candidate reasons. I3 preserves existing
+  receipts, not a claim that this gap is solved. Explicitly prioritize it with the
+  complete cross-domain journey for I4; M1 exit 3 remains unfulfilled.
+- Equipment/support/passive continuity now have scoped proof. The complete
+  equipment → supports → passives → replacement/apply journey, including paired
+  unsupported-effect limits and safe stage context, is not yet integrated proof.
+  M1 stays open; no M2, version bump, tag, push, publication or deployment.
+- Limits: prepared WASM reused; no Rust/full-release/parity gate, real market
+  purchase, real touch device, screen-reader, reload persistence or broad
+  performance claim. Server manifest changes do not replace initialized data;
+  no artificial mutable-backend data-version switch was tested.
+
+Operational provenance:
+
+- Run `run_ffc72017bb93`; coordinator
+  `term_21034ed0-4c1e-4105-bd08-71f298a8b81c`; new atomic claim, pause checked at
+  entry/post-acquisition and before settlement. Current steering persisted before
+  dispatch. Automation `0f3538b3-37df-44be-b888-d085f05d6e8d` observed enabled.
+- Disjoint supervised development `ctx_f72cd69b81a8` and regression
+  `ctx_814e8b4e50c5` ran alongside read-only lifecycle research `ctx_33588f97e202`.
+  Main alone owned App/library/integration fixes, documentation, runtime proof
+  and Git. Independent Spec `ctx_b0241ab9a941` and Standards `ctx_26175703be85`
+  reviewers were read-only. Every worker succeeded within its assigned scope
+  and was released after accepted settlement; reclaimable Run fleet was empty.
+- Temporary isolated preview/configuration removed after proof. Existing port
+  5173 development service and agent-owned browser page remain for M1. After this
+  verified commit, release only I3's own claim; retain the enabled recurring
+  trigger for the precise ranked I4 slice above.

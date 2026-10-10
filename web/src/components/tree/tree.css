@@ -416,6 +416,7 @@
 .tree-plan-heading > span { color: var(--text-muted); font-size: var(--text-xs); }
 .tree-plan-metrics { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: var(--space-3) 0; font-size: var(--text-sm); }
 .tree-plan-metrics span { display: flex; flex-direction: column; color: var(--text-secondary); }
+.tree-plan-metrics small { display: block; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .tree-plan-metrics b { color: var(--accent-gold-bright); font-variant-numeric: tabular-nums; }
 .tree-plan-metrics b.is-positive { color: var(--color-positive); }
 .tree-plan-metrics b.is-negative { color: var(--color-negative); }
@@ -442,7 +443,6 @@
 .jewel-plan-candidates > li { display: flex; align-items: start; gap: var(--space-2); }
 .jewel-plan-candidates details { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .jewel-passive-planner pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-sm); }
-.jewel-passive-planner .tree-plan-metrics small { display: block; color: var(--text-muted); }
 .tree-edit-tools .jewel-editor { min-width: 0; scroll-margin-top: var(--space-3); }
 @media (min-width: 1281px) {
   .tree-workspace > .tree-canvas { position: sticky; top: var(--space-3); }
