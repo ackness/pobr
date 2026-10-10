@@ -27,6 +27,7 @@ interface SupportEvaluation extends SupportOptimization {
   settingsKey: string;
   objective: Objective;
   catalog: SupportMetadata[];
+  dataVersion: BuildSession['dataVersion'];
 }
 
 function savedExclusions(key: string): string[] {
@@ -131,7 +132,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
           if (!controller.signal.aborted && abortRef.current === controller) setProgress({ done, total });
         } });
       if (!controller.signal.aborted && abortRef.current === controller) {
-        setEvaluated({ ...result, request, requestKey, settingsKey, objective, catalog });
+        setEvaluated({ ...result, request, requestKey, settingsKey, objective, catalog, dataVersion: session.dataVersion });
       }
     } catch (err: unknown) {
       if (!controller.signal.aborted && abortRef.current === controller) setError(formatApiError(err));
@@ -211,10 +212,34 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
             <span>DPS {number(result.baseline.TotalDPS ?? 0)}</span><span>EHP {number(result.baseline.TotalEHP ?? 0)}</span>
           </div>
           <p className="skills-hint">{st('results')} {result.evaluated} · {st('unsupported')} {result.unmodeled}</p>
+          <p className="skills-hint">{st('data')}: {result.dataVersion ?? st('unknownVersion')} · {st('tree')}: {result.request.tree_version ?? st('defaultTree')}</p>
+          {result.baselineUnsupported.length > 0 && <details className="support-diagnostics support-baseline-unsupported">
+            <summary>{st('baselineLimits')}: {result.baselineUnsupported.length}</summary>
+            <p className="skills-hint">{st('baselineLimitsHint')}</p>
+            <ul>{result.baselineUnsupported.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
+          </details>}
+          {result.excluded.length > 0 && <details className="support-diagnostics">
+            <summary>{st('diagnosticExcluded')}: {result.excluded.length}</summary>
+            <p className="skills-hint">{st('diagnosticExcludedHint')}</p>
+            <ol className="support-diagnostic-excluded">{result.excluded.map((edit, index) => <li key={index}>
+              <details>
+                <summary>{st('completeSet')}: {edit.supports.map(gem => gemName(gem.skill_id)).join(' · ') || st('noSupports')}</summary>
+                <ul className="support-diagnostic-gems">{edit.supports.map(gem => <li key={gem.skill_id} data-skill-id={gem.skill_id}>
+                  {gemName(gem.skill_id)} · {st('level')} {gem.level} · {st('quality')} {gem.quality} · {st('statSet')} {gem.stat_set_index ?? 1}
+                </li>)}</ul>
+                {edit.unsupported.length > 0 && <><p>{st('newLimits')}</p>
+                  <ul>{edit.unsupported.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul></>}
+                {edit.error && <p className="opt-error">{st('engineError')}: {edit.error}</p>}
+                {edit.invalidStats && <p className="opt-error">{st('invalidStats')}</p>}
+              </details>
+            </li>)}</ol>
+          </details>}
           {!result.plans.length && <p className="skills-hint">{st('noGain')}</p>}
           {result.plans.map((plan, index) => <article className="support-plan" key={index}>
-            <div className="support-plan-gems">{plan.supports.map(gem => <span className="opt-chip" key={gem.skill_id} data-skill-id={gem.skill_id}>
+            <div className="support-plan-gems">{plan.supports.map(gem => <span className="opt-chip" key={gem.skill_id} data-skill-id={gem.skill_id}
+              data-level={gem.level} data-quality={gem.quality} data-stat-set-index={gem.stat_set_index ?? undefined}>
               {gemName(gem.skill_id)}{byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
+              <small>{st('level')} {gem.level} · {st('quality')} {gem.quality}{gem.stat_set_index != null && <> · {st('statSet')} {gem.stat_set_index}</>}</small>
               <button className="support-exclude-button" aria-label={`${st('exclude')} ${gemName(gem.skill_id)}`}
                 title={`${st('exclude')} ${gemName(gem.skill_id)}`} onClick={() => exclude(gem.skill_id)}><span aria-hidden>×</span></button>
             </span>)}</div>

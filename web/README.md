@@ -42,8 +42,10 @@ the current stage. Leaving pauses active scoring; cancelled all-position analysi
 can resume completed positions while the build and goal stay unchanged.
 Budget/realm/league edits only change market links. Build, goal, category or stage
 changes discard temporary analysis results; reloading also starts fresh.
-Whole-item comparisons and equipment candidate plans still reset when leaving
-Upgrades, so their independent calculations do not continue while hidden.
+Complete-item text, selected position, augment choices, completed comparisons and
+equipment candidates also survive same-stage navigation. Leaving cancels their
+work and paste debounce; returning does not restart scoring. Changed calculation
+inputs invalidate evaluated results; switching stages resets the workspace.
 
 ## Quick start
 
@@ -166,7 +168,21 @@ Leaving Skills cancels active analysis; returning does not restart it automatica
 Build or goal edits invalidate recommendations, and **Apply** equips only the
 evaluated complete support set. Selecting another group, replacing a skill set,
 deleting a group or switching stages resets the selected workspace; it is not a
-per-group or reload-persistent cache. Passive planning continuity is not yet retained.
+per-group or reload-persistent cache.
+
+Support results disclose verbatim engine-reported baseline limits and identify
+excluded complete support sets with their new limits, raw errors and invalid
+statistics. Excluded sets are separate from manual filters and recommendations
+and have no Apply action. Recommendations show evaluated gem level/quality and
+stat-set choices. A gain does not repair baseline limits; missing diagnostics
+do not establish that every support mechanic is modeled.
+
+Passive-route and joint-jewel planning likewise retain compatible completed
+receipts and constraints in the current stage. Leaving unmounts the tree canvas
+and stops tracking, scoring, hover/keyboard and heatmap work. Input changes
+invalidate incompatible results; stages reset ownership. Route receipts disclose
+baseline limits and pair excluded complete allocation/refund edits with exact
+new reasons or errors.
 
 ## Trade upgrade planning
 
@@ -187,14 +203,15 @@ Add other items the same way, then choose **Maximum replacements** (1–10, defa
 The planner fully recalculates keeping the current equipment, every single replacement, and
 every pair within the selected limit, using different slots and different copied items. A ring can be added
 at both positions to compare placements, but the same copied item is never equipped
-twice in one plan. Up to 16 candidate placements are retained while the panel is open.
+twice in one plan. Up to 16 candidate placements survive page navigation within the current stage.
 
 The results show up to five alternatives plus the current equipment. Individual
 losses are not pruned before evaluating pairs. Larger combinations are exhaustive
 when they fit within 512 evaluations; otherwise a goal-guided search reserves evaluations
 for each reachable combination size and reports the limit. The shared goal and constraints rank
-the complete results; changing the goal re-ranks one-/two-item searches and invalidates larger searches, while changing the build,
-weapon context or candidate list invalidates them. **Apply equipment plan** commits
+the complete results. Changing the goal invalidates evaluated results at every
+replacement limit; recalculate under the new goal. Build, weapon context or candidate
+changes also invalidate results. **Apply equipment plan** commits
 all evaluated replacement texts together, preserving other equipment and the
 inactive weapon set. Prepared rune/socket choices are retained exactly and equipped
 augment limits are checked against each final combination.

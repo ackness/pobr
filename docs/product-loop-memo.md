@@ -36,14 +36,20 @@
   version/tag, push, external publication or deployment. Entry checkpoint
   `0634e3fe4747d667f240e5f71e771e6356bfdb21`; clean existing branch, pause absent
   before and after new atomic claim, recurring automation observed enabled.
+- 2026-10-11 I6 trigger: reaffirm tool-only scope, pause precedence for all entries,
+  atomic single ownership, supervised parallel work, real-WASM/browser proof,
+  independent review and main-only integration/Git. Continue M1; no partial
+  closure, push, publication or deployment. Entry checkpoint
+  `ad16946638ebb8f81f5670db12e1d4e799f63a6b`; clean existing branch, pause absent
+  before and after the new atomic claim, recurring automation observed enabled.
 
-## Active milestone M1: trustworthy, continuous upgrade decisions
+## Completed milestone M1: trustworthy, continuous upgrade decisions
 
 Outcome: a player can inspect a build, compare equipment/support/passive options,
 move between the relevant pages and apply an improvement without losing useful
 planning context or mistaking an old result for the current build.
 
-Exit scenarios (all required before closing M1):
+Exit scenarios (all passed at I6; proof and limits in the I6 ledger below):
 
 1. Completed equipment/market analysis survives page navigation for the same
    build stage. Leaving the page stops active work without losing completed
@@ -62,6 +68,49 @@ Exit scenarios (all required before closing M1):
 Do not expand M1 into a complete engine rewrite or revive hidden build-reference
 navigation. Current calculation parity, data versions and source diagnostics stay
 protected. Select the next milestone only after these exit scenarios pass.
+
+## Active milestone M2: honest source-specific support coverage limits
+
+Outcome: support comparisons disclose confirmed skipped numerical support effects
+from the actual calculated payload, without pretending every support effect is
+modeled or rejecting effects already handled elsewhere.
+
+Priority evidence: source-only investigation found pinned `SupportForkPlayer`
+`support_fork_forked_projectile_damage_+%_final = -30` in data `4.5.5.3`
+(`base/granted_effect_stat_sets.json`, pointer `/5347/sets/0/constant_stats/1`).
+Its override is conditional `StatThreshold(ForkedCount >= 1)`. Normal stat-map
+ingestion skips non-Mapped outcomes; Compare observations do not reach normal
+WASM unsupported strings. **[INFERENCE from source]** this mapping yields
+UnsupportedTag(StatThreshold). This is not an observed primary-hit DPS defect:
+the penalty applies to forked projectiles, not necessarily the initial hit.
+I7 must establish the runtime failure before changing diagnostics.
+
+Exit scenarios:
+
+1. A real compatible projectile build proves the pinned mapping outcome and
+   exposes its source/effect, selected set, stat/value and calculated-host limit
+   through the normal engine/session diagnostic path. Already-equipped baseline
+   limits remain visible; a newly introduced limit excludes the complete support
+   edit from recommendations/Apply. No fabricated all-hit damage correction.
+2. No false rejection from zero/disabled/incompatible/unselected payloads or
+   metadata/control stats. Actually mapped Close Combat DistanceRamp and at least
+   one verified separately handled support payload provide real negative controls.
+   Do not classify from stale headers, empty mappings or corpus-wide Unknowns.
+3. Diagnostic identity is deterministic under unchanged baseline, removal,
+   selected-set and multiple-group probes; another host's payload cannot leak into
+   this calculation. Exact modeled recommendation/Apply and M1 retention remain safe.
+4. Independent source review, focused Rust mapping/ingestion and relevant parity
+   checks, rebuilt real WASM and actual desktop/narrow/keyboard browser interaction
+   pass. Diagnostic observation leaves numerical outputs unchanged; deliberate
+   eligibility changes and verification limits are documented.
+
+Policy: conservatively exclude newly disclosed unmodeled conditional numerical
+support effects. Absence of a diagnostic is still not full coverage evidence.
+Scope confirmed support mapping failures, not formula rewriting, all stat domains,
+coverage percentages, generated-data changes or a hard-coded Fork exception.
+Observe existing outcomes once; do not run full Compare mapping twice per candidate.
+Retain data `4.5.5.3`; no version/tag/publication decision until applicable gates.
+
 
 ## Previous verified iteration: I1
 
@@ -149,29 +198,24 @@ design proposals; no support/passive runtime result is claimed by I1.
 
 ## Ranked continuation
 
-1. I6: preserve support diagnostic provenance at the existing frontend engine seam.
-   `supportOptimizer.ts` reduces identity-row baseline strings to a Set/count and
-   discards new candidate reasons/errors before returning its complete receipt.
-   Follow the existing route `baselineUnsupported` / `excluded` convention:
-   retain raw baseline lines and associate exact new reasons/errors with the
-   complete evaluated support set/variant, including removal/replacement probes.
-   Keep diagnostic exclusions separate from manual/compatibility exclusions and
-   recommendations; no Apply on excluded edits, no scoring/count-policy change.
-   Preserve current retained owner, exact-request Apply, family/lineage boundaries.
-   No Rust/formula/data/DTO scope expansion. A real baseline Guard fixture plus
-   safe exact Apply is proposed, not yet run. Reversed-index, combination-only,
-   error/non-finite and removal policy cases can use the existing injected seam;
-   do not claim those synthetic reasons are real-engine diagnostic proof.
-2. Repeat the copied-stage equipment → supports → passives → replacement/apply
-   journey after support provenance is integrated, including supported-effect
-   caveats, desktop/narrow/keyboard, stage safety and independent review. I5
-   replacement continuity is complete scoped proof, not the renewed full journey.
-   Close M1 only when all four exits have runtime evidence; no next milestone,
-   version bump or release tag yet. Never treat absent diagnostic strings or known
-   compatibility metadata as proof that every support mechanic is modeled.
+1. I7/M2: first exercise Fork on a real compatible projectile host in Data/Compare
+   modes and normal WASM, capturing actual mapping/unsupported output. If source
+   inference holds, collect confirmed nonzero numerical support mapping failures
+   at the existing mapping seam and carry a deterministic source-specific limit
+   through the existing calculation/session unsupported channel. Do not alter
+   damage formulas or treat every unknown support stat as an error.
+2. Parallel disjoint engine/contract work and behavior regressions after the shared
+   runtime premise is established. Prove baseline disclosure, newly limited edit
+   exclusion with no Apply, selected-set/group/removal identity and real handled
+   negative controls. Rebuild WASM and run relevant Rust/parity gates sequentially;
+   retain independent reviews and actual browser evidence before committing.
+3. Defer configuration relevance/translation and measured loading work behind
+   this concrete trust gap. The existing chunk warning alone is not a demonstrated
+   runtime regression. M1 is complete only under the scoped evidence recorded in
+   I6; M2 has source research, not completed implementation or runtime proof.
 
-Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1–I5
-desktop, 390px and 320px inspection. Keep the same space for the ongoing M1 journey;
+Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1–I6
+desktop, 390px and 320px inspection. Keep the same space for the ongoing tool loop;
 do not claim a user-owned space or overwrite existing browser builds. Named
 development service `pobr-product-loop-dev` serves current source on port 5173;
 check availability before reusing it. WASM and active data are already prepared.
@@ -528,13 +572,13 @@ Operational provenance:
   Release only this coordinator's claim after its verified commit; leave the
   recurring trigger enabled. No push/publication/deployment.
 
-### I5 — latest verified checkpoint: stage-scoped replacement continuity
+### I5 — stage-scoped replacement continuity
 
 Starting checkpoint: `0634e3fe4747d667f240e5f71e771e6356bfdb21`
 (`feat: preserve passive route diagnostic provenance`); entry worktree was clean.
-Checkpoint: the Conventional Commit containing this completed I5 ledger row;
-exact resulting hash is written to `.cache/product-loop-checkpoint.json` after
-commit and must be copied here at I6 entry.
+Checkpoint: `ad16946638ebb8f81f5670db12e1d4e799f63a6b`
+(`feat: retain stage-scoped replacement comparisons`), confirmed at I6 entry
+against branch history and the ignored checkpoint receipt.
 Application `0.0.33`, active data `4.5.5.3`, existing branch unchanged.
 At I5 settlement, `v0.0.33^{commit}` resolves to
 `d11a69317c452cde614b62fedd806352a91014ff`; I1's application-0.0.33 starting
@@ -646,4 +690,154 @@ Operational provenance:
 - Retain agent-owned Ego 5/p1 and existing port 5173 for the continuing M1 journey.
   Temporary I5 production previews are stopped and isolated config is removed.
   After verified commit, release only this coordinator's owner.json and claim;
+  leave the recurring trigger enabled. No push/publication/deployment.
+
+### I6 — support diagnostic provenance and renewed integrated journey
+
+Starting checkpoint: `ad16946638ebb8f81f5670db12e1d4e799f63a6b`
+(`feat: retain stage-scoped replacement comparisons`); entry worktree was clean.
+Checkpoint: the Conventional Commit containing this completed I6 row; main writes
+its exact resulting hash to `.cache/product-loop-checkpoint.json` after commit.
+Application `0.0.33`, active data `4.5.5.3`, existing branch unchanged.
+
+Outcome and decisions:
+
+- Complete support receipts preserve verbatim ordered baseline limits and pair
+  each rejected complete support set/variant with its exact new reasons, raw
+  engine error and explicit non-finite-statistics cause. Removal, replacement and
+  combination probes use the same indexed receipt. No guessed culprit gem.
+- Baseline limits and rejected edits are separately disclosed; diagnostic edits
+  have no recommendation/Apply action and do not become manual preferences.
+  Recommended gem level/quality/stat-set metadata is visible. Data/tree labels
+  identify the captured request; absence of a tree annotation means its default
+  data snapshot. Gains do not resolve baseline limitations.
+- Existing search/scoring/ranking/count policy, family/lineage boundaries,
+  exact-request Apply, retained owner, cancellation and stale-response guards stay
+  unchanged. Error/non-finite exclusions do not increment the existing
+  `unmodeled` counter; their separate receipt still preserves coexisting reasons.
+- No Rust/WASM source, formula, data snapshot, parity baseline or JSON DTO change.
+  Only emitted diagnostics are exposed; absent strings and known compatibility
+  metadata cannot certify every support mechanic is modeled.
+
+Observed verification:
+
+- Failing-before: preserved I5 production completed a real support search, then
+  the new Guard scenario failed at missing baseline diagnostic disclosure.
+  The second scenario was intentionally not run after `max-failures=1`.
+- Scoped units: 18 support, 19 passive and five optimizer cases passed. Spec review
+  found loss of the non-finite cause when new reasons coexist. Strengthening the
+  mixed synthetic case failed (`undefined` instead of `true`); after retaining
+  `invalidStats`, all 18 support cases passed again. Other 24 unchanged results
+  are reused. Injected error/new-reason/non-finite fixtures are synthetic policy
+  evidence, not real-engine diagnostic coverage.
+- Final production build including TypeScript passed. Initial integrated real-WASM
+  support diagnostics/continuity/guidance: 20 cases passed. Final post-review build:
+  39 support-diagnostics/passive-continuity/passive-diagnostics/replacement-
+  continuity/trade-analysis cases passed. Both new Guard scenarios passed against
+  final production; unchanged support/guidance lifecycle results are reused.
+- Real Guard fixture emitted exact `Also grants 102 Guard`; raw reasons survived
+  first Calcs/Tree/Upgrades visits. Apply equipped recommended complete gem IDs,
+  levels/qualities/canonical stat sets and matched preview DPS. Input edits and
+  identical copied-stage switches invalidated diagnostic receipts.
+- Ego 5/p1 copied the original stage to `M1 I6 integrated decisions`. Ring 1 Sum
+  `26.842`, DPS `7,552.35`, EHP `26,098.45` survived equipment → supports → passives.
+  Non-lineage capacity-four support search completed 816 recalculations; first
+  preview DPS `20,353` / EHP `26,098.5`. Three-point passive search evaluated 392
+  routes; first preview DPS `9,085.53` / EHP `26,098.45`, with its bounded-search
+  limit visible. Both exposed the same ten raw baseline limits in order.
+- Support/passive receipts and saved state remained exact across round trips.
+  Keyboard Show on tree disclosed proposed-route-only status; actual sidebar
+  DPS `7,552` and saved build bytes stayed unchanged. Manual journey did not apply
+  support/passive plans; exact Apply/cancellation/late generations are covered
+  by real-WASM continuity suites, not inferred from that preview.
+- An explicitly synthetic complete Sapphire Ring was compared, then its full text
+  and receipt survived Skills/Tree/Upgrades. Default Ring 1 preview DPS `8,284.42` /
+  EHP `26,153.88`; keyboard Enter applied the exact raw Ring 1 payload. Every other
+  state field/item stayed exact, including skills/passives. Actual sidebar
+  `8,284` / `26,154` matched rounding. Old support/passive receipts/Apply actions
+  and hidden progress were zero after returning.
+- Original/copy stage switching restored DPS `7,552` / `8,284` and reset planner
+  ownership. All three pre-existing stages and their drafts compared exactly
+  before/after; only the I6 stage was added.
+- Desktop/390px diagnostic images were inspected. Enter disclosed ten raw limits
+  at 390px with a visible 2px focus outline; Tab reached recommendation controls
+  at 1440px with visible focus. Document/main horizontal overflow was zero at
+  320/390/1440px. Images: `.cache/product-loop-I6-support-{desktop,mobile}.png`.
+- Supplemental fresh category boundary: a completed real-WASM Wand reference
+  (Sum `410.197`, DPS `8,284.42`, EHP `26,153.88`) was changed to Quarterstaff.
+  References/market links/progress became zero, stayed zero through Skills, and
+  restoring Wand did not resurrect the old receipt. Saved build bytes stayed exact.
+- Main chunk is `511.80 kB` (I5 `507.39 kB`), retaining the existing >500kB warning.
+  No runtime-speed improvement or measured runtime regression is claimed.
+  No mutable initialized backend identity switch, Rust/full-release/parity gate,
+  actual market purchase, touch-device, screen-reader or reload-persistence proof.
+- Harness-only corrections: collapsed `.trade-reference` was not a visible
+  completion selector; manual text fill requires Calculate replacement rather
+  than a paste event. The first Apply assertion wrongly retained array position;
+  captured state proved the existing filter/append slot ordering and exact raw
+  payload. These observations required no product source change.
+
+Independent review:
+
+- Supervised Standards found no actionable finding. Supervised Spec found the
+  mixed non-finite provenance issue; main fixed it and a same-terminal followup
+  independently confirmed resolution with no remaining actionable source issue.
+  Runtime verification remained main-owned. Supplemental milestone evidence
+  assessment and bounded next-slice research are read-only, not new editors.
+- Supplemental independent `MilestoneExitReview` inspected the four exits,
+  checkpoint/test source and actual receipt/screenshot artifacts. It reported
+  sufficient scoped evidence for every exit and no unresolved acceptance blocker;
+  it did not execute new runtime checks or bless release/complete modeling.
+
+M1 exit disposition — **complete**, not partial closure:
+
+1. Equipment/market retention, hidden cancellation/resume and market-only link
+   changes: I1 proof plus final trade-analysis cases and the fresh category smoke.
+   Build/goal/stage/category changes cannot reuse incompatible results.
+2. Support, route/joint-passive and replacement retention/constraints/exact Apply:
+   I2/I3/I5 and final relevant real-WASM cases, including hidden input changes,
+   identical copied-stage ownership, cancellation and late/overlapping responses.
+3. Renewed copied-stage equipment → supports → passives → replacement/keyboard
+   Apply: actual I6 Ego journey, ordered engine limits, baseline/preview distinction,
+   desktop/narrow inspection and safe stage switching. Exact support/passive
+   Apply proof comes from complementary real-WASM cases, not cumulative gains.
+4. Independent reviews/followup have no unresolved correctness/safety finding;
+   scoped contract/regression checks and product interaction passed. The chunk
+   increase is disclosed, with no invented runtime-performance verdict.
+
+Version/release decision: retain application `0.0.33` and existing `v0.0.33`;
+no new tag, version bump or release authorization claim. This is a verified product
+checkpoint, not a release-qualified build: full release gates were not run.
+Prioritize the next trust gap without presenting preserved diagnostics as
+comprehensive mechanic coverage. No push/publication/deployment.
+
+Next-milestone decision:
+
+- Read-only `SupportCoverageScout` established the shipped Fork fixture and
+  traced compatible support → selected-set stat mapping → silent failure → normal
+  WASM diagnostic omission. Main checked the pinned payload, conditional override
+  and skip seam. Source inference is explicitly not a runtime DPS-defect claim.
+- Select M2's bounded support-coverage disclosure over unmeasured loading work or
+  a broad formula rewrite. The conditional secondary-projectile effect needs
+  honest limits and conservative eligibility, not a blanket -30% DPS correction.
+  Precisely start I7 with real Data/Compare/WASM reproduction and handled controls;
+  then disjoint implementation/regressions, independent review and parity/browser
+  proof. All M1 exits passed before this selection.
+
+
+Operational provenance:
+
+- Run `run_962c046d7120`, coordinator
+  `term_198bfe9a-f5c1-4053-8aaa-7438c45918d8`. Pause absent before/after new atomic
+  claim and at final integration checks. Automation
+  `0f3538b3-37df-44be-b888-d085f05d6e8d` observed enabled.
+- Parallel disjoint supervised implementation `ctx_33dda3e41e8d` and regressions
+  `ctx_84830cf9fb30`; parallel read-only Spec `ctx_2a386f0d7a68` and Standards
+  `ctx_21da7cfa5b56`. Spec terminal reused for targeted `ctx_8950a9a7fbe0`.
+  All accepted settlements received release/reuse decisions before acknowledgment;
+  reclaimable fleet was empty. Main alone owned UI integration, fixes, browser,
+  documentation, validation and Git. No worker Git mutation or user takeover.
+- Owned port 4186 production preview stopped; isolated I6 config removed after
+  checks. Existing agent-owned browser 5/p1 and port 5173 remain for continuation.
+  Release only this coordinator's owner.json/claim after the verified commit;
   leave the recurring trigger enabled. No push/publication/deployment.

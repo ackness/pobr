@@ -237,3 +237,117 @@ test('cancelling compatibility rejects the late batch and never starts the next 
   await rejected;
   expect(engine.judge.mock.calls.length).toBe(before + 1);
 });
+
+// Explicitly synthetic raw engine diagnostics; these are not claims about real
+// game-effect coverage. Reversed rows model backend index-based association.
+function diagnosticEvaluator(baselineUnsupported: string[], diagnose: (supports: GemInput[]) => {
+  stats: Record<string, number>; unsupported: string[]; error?: string;
+}) {
+  return async ({ request, variants }: EvaluateOptions) => ({
+    baseline: { TotalDPS: 100, TotalEHP: 1000 },
+    aborted: false,
+    results: variants.map((variant, index) => {
+      const identity = !variant.socket_groups;
+      const supports = (variant.socket_groups ?? request.socket_groups)![0].gems.slice(1);
+      const row = identity
+        ? { stats: { TotalDPS: 100, TotalEHP: 1000 }, unsupported: baselineUnsupported, error: undefined }
+        : diagnose(supports);
+      return { index, label: null, error: row.error ?? null, stats: row.stats, unsupported: row.unsupported };
+    }).reverse(),
+  });
+}
+
+test('raw baseline reasons retain order and duplicates while reversed results attach only new reasons to their exact complete set', async () => {
+  const shared = ['Synthetic baseline Z', 'Synthetic baseline A', 'Synthetic baseline Z'];
+  const request = { character: { level: 80 }, socket_groups: [group()] };
+  const result = await optimizeSupports({ request, groupIndex: 0, catalog: [active, gem('BadA'), gem('BadB'), gem('Good')],
+    capacity: 1, objective, evaluate: diagnosticEvaluator(shared, supports => {
+      const id = supports[0]?.skill_id;
+      return { stats: { TotalDPS: id?.startsWith('Bad') ? 900 : 200, TotalEHP: 1000 },
+        unsupported: id?.startsWith('Bad')
+          ? [shared[0], `Synthetic ${id} first`, shared[1], `Synthetic ${id} second`, `Synthetic ${id} first`]
+          : [shared[1], shared[0]] };
+    }) });
+  expect(result.baselineUnsupported).toEqual(shared);
+  expect(result.unmodeled).toBe(2);
+  expect(result.excluded).toHaveLength(2);
+  for (const id of ['BadA', 'BadB']) {
+    const edit = result.excluded.find(edit => edit.supports[0]?.skill_id === id)!;
+    expect(edit.supports).toEqual([input(id)]);
+    expect(edit.variant).toEqual({ socket_groups: [group([id])] });
+    expect(edit.unsupported).toEqual([`Synthetic ${id} first`, `Synthetic ${id} second`, `Synthetic ${id} first`]);
+    expect(edit.error).toBeUndefined();
+  }
+  expect(result.plans.map(plan => plan.supports)).toEqual([[input('Good')]]);
+});
+
+test('combination-only diagnostics reject the complete pair but keep both individually modeled improvements', async () => {
+  const result = await optimizeSupports({ request: { character: { level: 80 }, socket_groups: [group()] },
+    groupIndex: 0, catalog: [active, gem('A'), gem('B')], capacity: 2, objective,
+    evaluate: diagnosticEvaluator(['Synthetic shared Guard'], supports => ({
+      stats: { TotalDPS: supports.length === 2 ? 1000 : supports.length ? 200 : 100, TotalEHP: 1000 },
+      unsupported: ['Synthetic shared Guard', ...(supports.length === 2 ? ['Synthetic pair-only limit'] : [])],
+    })) });
+  expect(result.excluded).toHaveLength(1);
+  expect(result.excluded[0].supports.map(gem => gem.skill_id).sort()).toEqual(['A', 'B']);
+  expect(result.excluded[0].variant.socket_groups![0].gems.slice(1)).toEqual(result.excluded[0].supports);
+  expect(result.excluded[0].unsupported).toEqual(['Synthetic pair-only limit']);
+  expect(result.unmodeled).toBe(1);
+  expect(result.plans.map(plan => plan.supports[0].skill_id).sort()).toEqual(['A', 'B']);
+  expect(result.plans.every(plan => plan.supports.length === 1)).toBe(true);
+});
+
+test('errors and nonfinite stats retain diagnostics without changing unmodeled precedence or entering recommendations', async () => {
+  const shared = 'Synthetic shared Guard';
+  const outcomes = [
+    { id: 'Error', stats: { TotalDPS: 1000, TotalEHP: 1000 }, error: 'Synthetic engine failure: exact raw text',
+      unsupported: [shared, 'Synthetic error limit', 'Synthetic error limit'] },
+    { id: 'Nonfinite', stats: { TotalDPS: Infinity, TotalEHP: 1000 }, unsupported: [shared, 'Synthetic nonfinite limit'] },
+    { id: 'NonfiniteOnly', stats: { TotalDPS: 1000, TotalEHP: NaN }, unsupported: [shared] },
+    { id: 'FiniteLimit', stats: { TotalDPS: 1000, TotalEHP: 1000 }, unsupported: [shared, 'Synthetic finite limit'] },
+    { id: 'Good', stats: { TotalDPS: 200, TotalEHP: 1000 }, unsupported: [shared] },
+  ];
+  const result = await optimizeSupports({ request: { character: { level: 80 }, socket_groups: [group()] },
+    groupIndex: 0, catalog: [active, ...outcomes.map(row => gem(row.id))], capacity: 1, objective,
+    evaluate: diagnosticEvaluator([shared], supports => outcomes.find(row => row.id === supports[0]?.skill_id)
+      ?? { stats: { TotalDPS: 100, TotalEHP: 1000 }, unsupported: [shared] }) });
+  expect(result.unmodeled).toBe(1);
+  expect(result.excluded).toHaveLength(4);
+  for (const outcome of outcomes.filter(row => row.id !== 'Good')) {
+    const edit = result.excluded.find(edit => edit.supports[0]?.skill_id === outcome.id)!;
+    expect(edit.supports).toEqual([input(outcome.id)]);
+    expect(edit.variant.socket_groups).toEqual([group([outcome.id])]);
+    expect(edit.unsupported).toEqual(outcome.unsupported.filter(reason => reason !== shared));
+    expect(edit.error).toBe('error' in outcome ? outcome.error : undefined);
+    expect(edit.invalidStats).toBe(Object.values(outcome.stats).some(value => !Number.isFinite(value)) ? true : undefined);
+  }
+  expect(result.plans.map(plan => plan.supports)).toEqual([[input('Good')]]);
+});
+
+test('rejected removals and replacements record full evaluated sets with equipped metadata and other-group provenance', async () => {
+  const old = { ...input('Old'), level: 3, quality: 17, stat_set_index: 2 };
+  const keep = { ...input('Keep'), level: 2, quality: 13, stat_set_index: 3 };
+  const other = { ...group(['Other']), enabled: false, weapon_set: 2 as const };
+  const target = { ...group(), gems: [input('Fireball'), old, keep], source: 'Weapon 1', weapon_set: 1 as const };
+  const request = { character: { level: 80 }, socket_groups: [target, other] };
+  const original = structuredClone(request);
+  const result = await optimizeSupports({ request, groupIndex: 0,
+    catalog: [active, gem('Old'), gem('Keep'), gem('New'), gem('Other')], capacity: 2, objective,
+    excludedSkillIds: ['Other'], evaluate: diagnosticEvaluator(['Synthetic shared Guard'], supports => {
+      const ids = supports.map(gem => gem.skill_id);
+      const rejected = ids.length === 1 && ids[0] === 'Keep' || ids.includes('New');
+      return { stats: { TotalDPS: rejected ? 1000 : 100, TotalEHP: 1000 },
+        unsupported: ['Synthetic shared Guard', ...(rejected ? [`Synthetic set limit: ${ids.join('+')}`] : [])] };
+    }) });
+  const removal = result.excluded.find(edit => edit.supports.length === 1 && edit.supports[0].skill_id === 'Keep')!;
+  expect(removal.supports).toEqual([keep]);
+  expect(removal.variant.socket_groups).toEqual([{ ...target, gems: [input('Fireball'), keep] }, other]);
+  expect(removal.unsupported).toEqual(['Synthetic set limit: Keep']);
+  const replacement = result.excluded.find(edit => edit.supports.some(gem => gem.skill_id === 'New')
+    && edit.supports.some(gem => gem.skill_id === 'Old'))!;
+  expect(replacement.supports).toEqual([old, input('New')]);
+  expect(replacement.variant.socket_groups).toEqual([{ ...target, gems: [input('Fireball'), old, input('New')] }, other]);
+  expect(replacement.unsupported).toEqual(['Synthetic set limit: Old+New']);
+  expect(result.plans).toEqual([]);
+  expect(request).toEqual(original);
+});
