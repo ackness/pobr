@@ -62,6 +62,10 @@ function BuildApp() {
   const [calcsFocus, setCalcsFocus] = useState<{ id: string } | null>(null);
   const activeBuild = session.workspace?.builds.find(entry => entry.id === session.workspace?.activeBuild);
   const stageKey = activeBuild?.activeStage;
+  const [tradeStage, setTradeStage] = useState<string>();
+  useEffect(() => {
+    if (tab === 'trade' && stageKey) setTradeStage(stageKey);
+  }, [tab, stageKey]);
   useEffect(() => {
     setUpgradeFocus(undefined); setSkillFocus(undefined); setTreeFocus(undefined);
     setReferenceItem(undefined); setCalcsFocus(null);
@@ -166,9 +170,6 @@ function BuildApp() {
             onJewelSearch={socket => { setUpgradeFocus({slot: `Jewel@${socket}`, nonce: Date.now(), jewelType: 'radius'}); setTab('trade'); }} />}
           {tab === 'skills' && <SkillsPanel session={session} lang={lang} focusOptimizer={skillFocus} />}
           {tab === 'items' && <ItemsPanel session={session} lang={lang} onUpgrade={slot => { setUpgradeFocus({slot, nonce:Date.now()}); setTab('trade'); }} />}
-          {tab === 'trade' && <TradePanel session={session} lang={lang} focus={upgradeFocus} initialItemText={referenceItem}
-            onSkills={group => { setSkillFocus({group, nonce:Date.now()}); setTab('skills'); }}
-            onTree={() => { setTreeFocus({nonce:Date.now()}); setTab('tree'); }} />}
           {tab === 'calcs' && (
             <CalcsPanel
               session={session}
@@ -178,6 +179,15 @@ function BuildApp() {
             />
           )}
           </Suspense>
+          {(tab === 'trade' || (stageKey !== undefined && tradeStage === stageKey)) && (
+            <div hidden={tab !== 'trade'}>
+              <Suspense fallback={<p className="panel-loading" role="status">{t(lang, 'ui.loadingPanel')}</p>}>
+                <TradePanel session={session} lang={lang} active={tab === 'trade'} focus={upgradeFocus} initialItemText={referenceItem}
+                  onSkills={group => { setSkillFocus({group, nonce:Date.now()}); setTab('skills'); }}
+                  onTree={() => { setTreeFocus({nonce:Date.now()}); setTab('tree'); }} />
+              </Suspense>
+            </div>
+          )}
           {tab === 'config' && <ConfigPanel session={session} lang={lang} />}
         </main>
       </div>

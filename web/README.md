@@ -37,9 +37,13 @@ recover groups from their source code; edited flat legacy modifiers keep their
 saved text because the original grouping cannot be inferred reliably.
 
 The header shows the app release and successfully loaded data version. On Upgrades,
-cancelled all-position analysis can resume completed work while the build and goal
-stay unchanged. Budget/realm/league edits only change market links. Leaving the
-panel or changing build, goal or category discards those temporary results.
+completed affix analyses and position selections survive page navigation within
+the current stage. Leaving pauses active scoring; cancelled all-position analysis
+can resume completed positions while the build and goal stay unchanged.
+Budget/realm/league edits only change market links. Build, goal, category or stage
+changes discard temporary analysis results; reloading also starts fresh.
+Whole-item comparisons and equipment candidate plans still reset when leaving
+Upgrades, so their independent calculations do not continue while hidden.
 
 ## Quick start
 
