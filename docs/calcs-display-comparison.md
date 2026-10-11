@@ -21,6 +21,11 @@ same-build visual check below; passing calculation tests cannot replace it.
 | Attribution | Modifier/formula breakdown is not the same as source removal. | `analysis.rs::attribution_impl` recomputes after removing equipment, disabling skill groups and removing utility slots, returning baseline minus variant. | These are removal marginals, not additive shares or a complete passive/jewel attribution census. Nonlinear interactions mean percentages need not sum to 100%. |
 | Formatting | Field-specific presentation. | `statDisplay.ts` uses field formats in the sidebar; Calcs bucket values use `float2`, rounding values ≥1000 to integers. Raw row values show at most two decimals. Null/nonfinite values render as infinity. | Compare unrounded JSON before treating a displayed rounding or missing-value difference as a formula bug. |
 
+Socket-group attribution labels list the group's saved gems in source order,
+using localized names and retained source names for unresolved slots. The variant
+removes the entire group, not just its first gem or selected active gem. The label
+does not assert that every listed gem is enabled or contributes to the result.
+
 PoBR source anchors:
 
 - `web/src/components/calcs/CalcsPanel.tsx`: bucket rendering, group selection,

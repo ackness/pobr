@@ -265,8 +265,9 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
   const label = (kind: string, id: string) => {
     if (kind === 'socket_group') {
       const group = session.socketGroups[Number(id)];
-      const skill = group?.gems[0]?.skill_id;
-      return `${tt('calcs.group')} ${Number(id) + 1}${skill ? ` · ${skillName(skill)}` : ''}`;
+      const gems = group?.gems.map(gem =>
+        gem.skill_id ? skillName(gem.skill_id) : gem.name_spec || tt('skills.unresolved')).join(' + ');
+      return `${tt('calcs.group')} ${Number(id) + 1}${gems ? ` · ${gems}` : ''}`;
     }
     if (kind === 'item') return slotLabel(lang, id);
     if (kind === 'flask') return slotLabel(lang, id);

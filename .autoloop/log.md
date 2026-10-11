@@ -42,3 +42,13 @@
 - Updated contract explicitly distinguishes raw text and observed hand role; previously missing candidates recover on reimport.
 - Commit: `fix: preserve imported weapon hand candidates`; no push.
 - Next: re-evaluate a different player workflow. No broader dual-wield calculation claim or milestone-completion tag.
+
+## Iteration 5 — attribution source identity
+
+- Baseline `281c082`, clean. Moved to the Calcs player workflow. Existing selected-skill stale-result regression already covers invalidation; no stale-result bug claimed.
+- Reproduced a source-label defect with a group containing Spark then selected Fireball: sidebar identified Fireball, while attribution identified only Spark.
+- Fix: list the group's saved gems in source order, including unresolved source-name fallback. Attribution removes a whole group; naming only its first gem misrepresents that scope. No numerical or state changes.
+- New real-WASM regression failed before the fix on missing Fireball, then passed. Existing selected-skill attribution invalidation also passed (2/2 targeted E2E).
+- Web build including typecheck passed. Independent Ego browser smoke showed selected Fireball and attribution source `Group 1 · Spark + Fireball`. DOM evidence; no screenshot captured.
+- Updated calculation display contract. Commit: `fix: identify complete attribution skill groups`; no push.
+- Next: inspect another substantive Calcs interpretation boundary before adding coverage; do not infer numeric correctness from source labels.

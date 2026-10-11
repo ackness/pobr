@@ -39,3 +39,9 @@ Exit criteria:
 - Verified the new regression red before/green after, 88 focused unit tests, production build/typecheck and all 13 workspace E2E tests. Separate Ego browser import and actual offhand Equip confirmed the visible item changed; screenshot capture timed out.
 - This tests library eligibility/state, not dual-wield damage or item-base coverage. Prior imports require reimport to recover missing candidates.
 - Next: assess a different player workflow rather than extending import coverage without a demonstrated gap. Invalid-import planning suites were not rerun in iteration 4; do not tag the broader milestone complete.
+
+## Iteration 5
+- Calcs attribution was naming only the first gem even when a different active gem was selected. It now lists the saved group, matching whole-group removal semantics without claiming all gems contribute.
+- New multi-active identity regression went red/green; both targeted attribution E2E checks and Web build/typecheck passed. Independent browser smoke confirmed the corrected label.
+- Existing selected-skill stale-result protection passed unchanged. No new invalidation or numerical fix is claimed.
+- Next focus: evidence-led Calcs interpretation gaps; import regressions remain covered by earlier iterations.
