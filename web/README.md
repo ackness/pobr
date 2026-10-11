@@ -34,8 +34,10 @@ remain visible. Use **Import from file…** for PoBR build files and backups.
 
 **Share this build · all stages** downloads a PoBR JSON file with every stage and
 its notes. Importing it adds an independent build without replacing existing ones.
-Unapplied drafts stay private to local storage and full backups. PoB share codes
-continue to export the current stage and its imported PoB loadouts.
+Unapplied drafts stay private to local storage and full backups. The editor's
+draft notice distinguishes this persistence from applying changes to calculations
+and shared builds. Cancel discards the draft.
+PoB share codes continue to export the current stage and its imported PoB loadouts.
 **Download backup** under **Back up all builds** includes the entire local build library;
 restoring a full backup replaces it after confirmation. Saves are local to this
 browser; use files to share or move devices. Storage failures appear beside the

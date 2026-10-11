@@ -33,7 +33,7 @@ const DICT = {
   'tree.editOptions': { 'en-US': 'Attributes & planning', 'zh-TW': '屬性與規劃', 'zh-CN': '属性与规划' },
 
   "editor.draft": {"en-US": "Draft", "zh-TW": "草稿", "zh-CN": "草稿"},
-  "editor.draftHint": {"en-US": "Draft kept while switching pages in this session. Save to apply it to calculations, sharing and backups; Cancel discards it.", "zh-TW": "切換頁面會保留本次開啟期間的草稿。儲存後才會計入數值、分享與備份；取消會丟棄草稿。", "zh-CN": "切换页面会保留本次打开期间的草稿。保存后才会计入数值、分享与备份；取消会丢弃草稿。"},
+  "editor.draftHint": {"en-US": "Drafts are kept with this stage locally and in workspace backups, but excluded from shared builds and calculations until saved. Cancel discards the draft.", "zh-TW": "草稿會隨此階段保留在本機與工作區備份中，儲存後才會用於分享構築與數值計算。取消會丟棄草稿。", "zh-CN": "草稿会随此阶段保留在本地与工作区备份中，保存后才会用于分享构筑与数值计算。取消会丢弃草稿。"},
   "editor.reviewItems": {"en-US": "Review item drafts", "zh-TW": "查看裝備草稿", "zh-CN": "查看装备草稿"},
   "editor.reviewJewels": {"en-US": "Review jewel drafts", "zh-TW": "查看珠寶草稿", "zh-CN": "查看珠宝草稿"},
   "lib.wrongSlot": {"en-US": "Select a compatible equipment position first", "zh-TW": "請先選擇相容的裝備位置", "zh-CN": "请先选择兼容的装备位置"},

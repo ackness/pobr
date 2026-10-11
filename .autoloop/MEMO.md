@@ -23,7 +23,19 @@ Exit criteria:
 - `gh issue list --state open --limit 15` succeeded with no open issue rows.
 - Confirmed documentation gap: README says importing another build replaces the current one, contradicting the current workspace contract and test scenarios. Correct this first without claiming runtime verification.
 
+## Verified lifecycle evidence
+- Iteration 2 built release WASM and synced data 4.5.5.3 in this worktree, then ran Vite on 127.0.0.1:5181.
+- Real browser: Starter level 30 and Endgame level 90 retained distinct notes across stage selection and reload. Importing a synthetic level-75 Deadeye added a second build without overwriting either stage.
+- Downloaded workspace backup restored two builds after creating a third temporary build; confirmation appeared before replacement.
+- Rejected arbitrary JSON preserved the active level, notes and collection. The raw `invalid .build json: missing field passives` error remained visible across pages; actionable/localized import guidance merits review.
+- An unapplied +123-life ring draft survived page navigation and reload without becoming equipped. The downloaded workspace backup contained it; the shared build file excluded it.
+- Corrected the observed obsolete editor notice in all three languages. English surface visually verified; workspace unit tests (5) and TypeScript check passed.
+
+## Operational notes
+- Driver state reports PR publication failure resolving base branch `autoloop-base`. No publishing commands were run; repair remains outside commit-only scope.
+- Browser confirmation handling worked when upload and acceptDialog occurred in one ego-browser invocation; splitting across rounds did not restore. Reported tooling discrepancy, not an application defect.
+
 ## Priority queue
-1. Correct bilingual onboarding for workspace semantics.
-2. Establish the local real-WASM browser run and exercise lifecycle acceptance scenarios.
-3. Use runtime findings to select the next implementation change; do not invent defects or expand mechanic coverage without parity evidence.
+1. Exercise explicit stage replacement/cancellation and shared-build reimport with non-empty skills/equipment; check planning continuity after rejected imports.
+2. Improve evidenced import-error guidance without losing engine details or suppressing failures.
+3. Close lifecycle milestone only after remaining acceptance paths have runtime evidence.
