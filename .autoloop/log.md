@@ -10,3 +10,13 @@
 - No production-code changes or permanent tests were justified by this investigation. No full test/parity pass is claimed. Branch-local build, live WASM calculations, UI actions and screenshots are the evidence.
 - Removed temporary screenshots and finished browser space 29. Retained the Vite service for the next iteration. Commit: this entry's checkpoint commit (`chore: record populated passive route verification`).
 - Next: a connected positive refund/reallocation fixture with a replacement travel attribute, protected sockets and exact preview/apply/reload checks.
+
+## 2 — Positive refunds, travel attributes and stage isolation
+
+- Imported a synthetic connected Witch through the real encoder and normal code-import UI: 13 allocated nodes, a protected occupied socket and a three-node refundable crit branch. Reused unchanged branch-local WASM and data.
+- Real refund search evaluated 228 plans. Preview did not mutate saved state. Apply replaced three crit nodes with three Strength attributes, kept 13 connected nodes, retained the complete socket path and all old attribute choices, and changed no unrelated state field.
+- Recalculated DPS 75.345833303, Life 2352 and EHP 1731.785923019 agreed with the visible preview. Visually inspected both allocation and refund markers; removed the screenshot afterward.
+- Copied-stage planning discarded old receipts. Three-point results refreshed to one-point results after a budget change without applying automatically. Applying in the copy preserved the original stage exactly. Reload retained the copied state; switching back restored the original refunded state.
+- One smoke wait assumed a recommendation would exist after copying. The reset Intelligence travel choice legitimately produced no improving Max Life routes in 512 evaluations. Inspected completion, selected Strength explicitly and continued; no product fix was warranted.
+- No production code or permanent tests changed. These live checks advance the milestone but do not prove all passive mechanics. Browser space 30 finished; Vite remains on 5182. Commit: this entry's checkpoint commit (`chore: verify passive refunds and stage isolation`).
+- Next: real excluded-edit diagnostics and completed-plan invalidation after a build edit, then conclude the bounded milestone.
