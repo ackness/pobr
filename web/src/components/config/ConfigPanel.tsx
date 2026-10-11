@@ -223,8 +223,8 @@ export function ConfigPanel({ session, lang }: Props) {
   const isOverridden = (key: string) => key in overrides && overrides[key] !== buildInputs[key];
   const resetInput = (key: string) => session.setConfigInput(key, buildInputs[key] ?? null);
 
-  // Previous calculation output remains in the session while recalculating or on error.
-  const calculatedMain = !session.busy && !session.error ? session.calc?.main_skill : null;
+  // Previous output remains visible while the baseline recalculates or has failed.
+  const calculatedMain = !session.busy && !session.calcError ? session.calc?.main_skill : null;
   const quickOptions = QUICK_OPTIONS.flatMap(({ key, damageType }) => {
     if (damageType && !calculatedMain?.hit_damage.some(part =>
       part.damage_type === damageType && Number.isFinite(part.avg) && part.avg > 0)) return [];

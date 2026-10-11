@@ -223,7 +223,7 @@ export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPr
     abortRef.current = null;
     setProgress(null);
     if (!active || !tracking || !expanded || completed?.key === snapshotKey
-      || session.busy || session.error || !session.character
+      || session.busy || session.calcError || !session.calc || !session.character
       || !request || context.root === null || (mode === 'reallocate' && !context.canRefund)) return;
     const controller = new AbortController();
     abortRef.current = controller;
@@ -257,11 +257,11 @@ export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPr
       controller.abort();
       if (abortRef.current === controller) abortRef.current = null;
     };
-  }, [active, snapshotKey, tracking, expanded, completed, session.busy, session.error, session.character, request,
+  }, [active, snapshotKey, tracking, expanded, completed, session.busy, session.calcError, session.calc, session.character, request,
     context, nodes, attribute, points, mode, objective, runId]);
 
   const run = () => {
-    if (!active || session.busy || session.error) return;
+    if (!active || session.busy || session.calcError || !session.calc) return;
     stop();
     jewelPlanner.stop();
     setCompleted(null);
@@ -328,9 +328,9 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
         {mode === 'reallocate' && !context.canRefund && <p className="tree-planner-hint">{text.refundUnavailable}</p>}
         {!session.character && <p className="tree-planner-hint">{text.needsBuild}</p>}
         {context.root === null && session.character && <p className="tree-planner-hint">{text.unavailable}</p>}
-        <button className="tree-planner-run" onClick={run} disabled={session.busy || Boolean(session.error) || progress !== null || !session.character
+        <button className="tree-planner-run" onClick={run} disabled={session.busy || Boolean(session.calcError) || !session.calc || progress !== null || !session.character
           || context.root === null || (mode === 'reallocate' && !context.canRefund)}>{text.run}</button>
-        {tracking && !evaluated && !progress && !error && !session.error && context.root !== null
+        {tracking && !evaluated && !progress && !error && !session.calcError && context.root !== null
           && (mode === 'allocate' || context.canRefund) && <p className="tree-planner-hint" role="status">{text.waiting}</p>}
         {progress && <OptimizerProgress {...progress} lang={lang} onCancel={cancel} />}
         {error && <p className="opt-error">{error}</p>}

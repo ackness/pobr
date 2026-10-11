@@ -26,7 +26,11 @@ The pasted JSON input accepts recognized China-server `.build` and WeGame
 sources, not arbitrary JSON or PoBR saved-session envelopes. A legacy `.build`
 must include typed `passives`, `items` and `skills` arrays, even when empty.
 Rejected imports report an error without changing saved builds, stages or the
-item library. Use **Import from file…** for PoBR build files and backups.
+item library. The unchanged valid calculation remains available for fresh passive
+and joint-jewel planning; compatible completed plans and their settings remain
+usable. Import feedback does not clear a genuine calculation failure: failed or
+pending calculations still block fresh passive planning, even when older stats
+remain visible. Use **Import from file…** for PoBR build files and backups.
 
 **Share this build · all stages** downloads a PoBR JSON file with every stage and
 its notes. Importing it adds an independent build without replacing existing ones.

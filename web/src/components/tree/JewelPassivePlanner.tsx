@@ -157,7 +157,7 @@ export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active
     } catch { setError(text.invalid); }
   };
   const run = async () => {
-    if (!active || !request || session.busy || session.error || exclusive.length || !candidates.length) return;
+    if (!active || !request || session.busy || session.calcError || !session.calc || exclusive.length || !candidates.length) return;
     onStart();
     controller.current?.abort();
     const abort = new AbortController(); controller.current = abort;
@@ -220,7 +220,7 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
     </li>)}</ul>
     <p className="tree-planner-hint">{text.limit}</p>
     {exclusive.length > 0 && <p className="tree-planner-hint">{text.exclusive}</p>}
-    <button className="tree-planner-run" disabled={!candidates.length || session.busy || Boolean(session.error) || Boolean(progress) || exclusive.length > 0}
+    <button className="tree-planner-run" disabled={!candidates.length || session.busy || Boolean(session.calcError) || !session.calc || Boolean(progress) || exclusive.length > 0}
       onClick={() => void run()}>{text.run}</button>
     {progress && <OptimizerProgress {...progress} lang={lang} onCancel={stop} />}
     {error && <p className="opt-error" role="alert">{error}</p>}

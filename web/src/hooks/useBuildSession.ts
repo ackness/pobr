@@ -107,7 +107,10 @@ export interface BuildSession {
   calc: CalculateBuildResponse | null;
   calcParams: CalcParams;
   busy: boolean;
-  error: string | null;
+  /** Failure of the latest baseline calculation; retained output is not a valid baseline. */
+  calcError: string | null;
+  /** Rejected source/edit operation; does not invalidate the unchanged calculation. */
+  operationError: string | null;
   /** 笔记（本地持久化；导入 build 时被其 <Notes> 覆盖）。 */
   notes: string;
   setNotes: (text: string) => void;
@@ -524,8 +527,12 @@ export function useBuildSession(): BuildSession {
   const [build, setBuild] = useState<BuildJson | null>(null);
   const [state, setState] = useState<BuildState | null>(null);
   const [calc, setCalc] = useState<CalculateBuildResponse | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [calculating, setCalculating] = useState(false);
+  // Source operations can overlap a recalc or nest (manageLoadout imports its result).
+  const [pendingOperations, setPendingOperations] = useState(0);
+  const busy = calculating || pendingOperations > 0;
+  const [calcError, setCalcError] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
   const [notes, setNotesState] = useState<string>(
     () => localStorage.getItem('pobr-notes') ?? '',
   );
@@ -591,21 +598,23 @@ export function useBuildSession(): BuildSession {
 
   // 重算请求序号：只应用最新一次的结果（快速连点加点时防乱序覆盖）。
   const seqRef = useRef(0);
+  // Jewel preflight may be rejected without superseding the current baseline calculation.
+  const jewelSeqRef = useRef(0);
 
   const recalc = useCallback((next: BuildState) => {
     const seq = ++seqRef.current;
-    setBusy(true);
-    setError(null);
+    setCalculating(true);
+    setCalcError(null);
     getBackend()
       .then((backend) => backend.calculateBuild(toRequest(next)))
       .then((result) => {
         if (seqRef.current === seq) setCalc(result);
       })
       .catch((err) => {
-        if (seqRef.current === seq) setError(formatApiError(err));
+        if (seqRef.current === seq) setCalcError(formatApiError(err));
       })
       .finally(() => {
-        if (seqRef.current === seq) setBusy(false);
+        if (seqRef.current === seq) setCalculating(false);
       });
   }, []);
 
@@ -619,6 +628,7 @@ export function useBuildSession(): BuildSession {
       }
       next = switchWeapons(next, skillWeaponSet(next, next.params.main_socket_group));
       setState(next);
+      setOperationError(null);
       stateRef.current = next;
       versionRef.current += 1;
       setStateVersion(versionRef.current);
@@ -762,8 +772,8 @@ export function useBuildSession(): BuildSession {
 
   const importCode = useCallback(
     async (code: string, options: ImportOptions = { destination: 'newBuild' }) => {
-      setBusy(true);
-      setError(null);
+      setPendingOperations(count => count + 1);
+      setOperationError(null);
       try {
         const backend = await getBackend();
         code = await resolveBuildInput(code);
@@ -811,9 +821,10 @@ export function useBuildSession(): BuildSession {
         apply(importedState, { clean: true });
         return true;
       } catch (err) {
-        setError(formatApiError(err));
-        setBusy(false);
+        setOperationError(formatApiError(err));
         return false;
+      } finally {
+        setPendingOperations(count => count - 1);
       }
     },
     [apply, mergeImportedIntoLibrary],
@@ -833,8 +844,8 @@ export function useBuildSession(): BuildSession {
     async (sel: { tree: number; item: number | null; skill: number | null }) => {
       const code = state?.pobCode;
       if (!code) return;
-      setBusy(true);
-      setError(null);
+      setPendingOperations(count => count + 1);
+      setOperationError(null);
       try {
         const decoded = await (await getBackend()).switchLoadout(code, sel);
         setBuild(decoded);
@@ -854,8 +865,9 @@ export function useBuildSession(): BuildSession {
           params: { ...paramsFromDecoded(decoded), main_socket_group: decoded.main_socket_group ?? undefined },
         }, { clean: true });
       } catch (err) {
-        setError(formatApiError(err));
-        setBusy(false);
+        setOperationError(formatApiError(err));
+      } finally {
+        setPendingOperations(count => count - 1);
       }
     },
     [apply, setNotes, state?.pobCode],
@@ -874,8 +886,8 @@ export function useBuildSession(): BuildSession {
     async (op: 'duplicate' | 'rename' | 'remove', name?: string) => {
       const code = stateRef.current?.pobCode;
       if (!code) return;
-      setBusy(true);
-      setError(null);
+      setPendingOperations(count => count + 1);
+      setOperationError(null);
       try {
         const backend = await getBackend();
         // 目标 = 当前选中组（后端缺省即 active，这里显式传以免竞态）。
@@ -890,8 +902,9 @@ export function useBuildSession(): BuildSession {
         );
         await importCode(nextCode);
       } catch (err) {
-        setError(formatApiError(err));
-        setBusy(false);
+        setOperationError(formatApiError(err));
+      } finally {
+        setPendingOperations(count => count - 1);
       }
     },
     [importCode, build],
@@ -970,9 +983,9 @@ export function useBuildSession(): BuildSession {
         commit(new Set(current.allocatedNodes.filter(id => !next.allocatedNodes.includes(id))));
         return;
       }
-      const seq = ++seqRef.current;
-      setBusy(true);
-      setError(null);
+      const seq = ++jewelSeqRef.current;
+      setPendingOperations(count => count + 1);
+      setOperationError(null);
       getBackend().then(async backend => {
         const nodes = await backend.loadPassiveTree(current.treeVersion);
         const active = current.weaponSwap?.active ?? 1;
@@ -982,9 +995,9 @@ export function useBuildSession(): BuildSession {
         for (const set of sets) {
           const previous = switchWeapons(current, set);
           const candidate = switchWeapons(next, set);
-          const before = set === active && !busy && calc ? calc : await backend.calculateBuild(toRequest(previous));
+          const before = set === active && !busy && !calcError && calc ? calc : await backend.calculateBuild(toRequest(previous));
           const after = await backend.calculateBuild(toRequest(candidate));
-          if (seqRef.current !== seq || stateRef.current !== current) return;
+          if (jewelSeqRef.current !== seq || stateRef.current !== current) return;
           views.push({ previous, candidate, before, after });
         }
         // Shared points must remain legal in both sets. Removing one can revoke
@@ -1002,10 +1015,12 @@ export function useBuildSession(): BuildSession {
         }
         commit(removed);
       }).catch(err => {
-        if (seqRef.current === seq) { setError(formatApiError(err)); setBusy(false); }
+        if (jewelSeqRef.current === seq && stateRef.current === current) setOperationError(formatApiError(err));
+      }).finally(() => {
+        setPendingOperations(count => count - 1);
       });
     },
-    [apply, busy, calc],
+    [apply, busy, calc, calcError],
   );
 
   const applyTreePlan = useCallback((expectedRequest: CalculateBuildRequest, plan: TreePlan): boolean => {
@@ -1371,7 +1386,8 @@ export function useBuildSession(): BuildSession {
     calc,
     calcParams: state?.params ?? { config_inputs: {} },
     busy,
-    error,
+    calcError,
+    operationError,
     notes,
     setNotes,
     editorDrafts,

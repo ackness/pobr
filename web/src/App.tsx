@@ -157,9 +157,14 @@ function BuildApp() {
             {tab !== 'items' && Object.keys(session.editorDrafts).some(key => key.startsWith('item:')) && <button onClick={() => setTab('items')}>{t(lang, 'editor.reviewItems')}</button>}
             {tab !== 'tree' && Object.keys(session.editorDrafts).some(key => key.startsWith('jewel:')) && <button onClick={() => setTab('tree')}>{t(lang, 'editor.reviewJewels')}</button>}
           </div>}
-          {session.error && (
+          {session.calcError && (
             <div className="calc-error" role="alert">
-              {session.error}
+              {session.calcError}
+            </div>
+          )}
+          {session.operationError && (
+            <div className="calc-error" role="alert">
+              {session.operationError}
             </div>
           )}
           {tab === 'build' && <BuildPanel session={session} lang={lang} onImported={() => {
