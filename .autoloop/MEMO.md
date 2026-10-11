@@ -30,12 +30,15 @@ Exit criteria:
 - Rejected arbitrary JSON preserved the active level, notes and collection. The raw `invalid .build json: missing field passives` error remained visible across pages; actionable/localized import guidance merits review.
 - An unapplied +123-life ring draft survived page navigation and reload without becoming equipped. The downloaded workspace backup contained it; the shared build file excluded it.
 - Corrected the observed obsolete editor notice in all three languages. English surface visually verified; workspace unit tests (5) and TypeScript check passed.
+- Iteration 3 used the committed monk-invoker-frost-bomb code: level 98, 13 socket groups, 10 equipped items, 131 passives. Replacement cancellation preserved exact workspace bytes. Confirmed replacement changed only its copied target stage to level 45; the original populated stage remained intact.
+- Sharing and reimporting the two-stage build added an independent build with fresh build/stage IDs and semantically equal saved stages. An initial JSON-string comparison failed only because property order changed; deepStrictEqual passed.
+- A one-point passive search produced a 6265.34 → 6488.01 DPS recommendation. Rejecting arbitrary JSON preserved the workspace bytes, displayed stats and completed plan text. Applying the retained recommendation gave 132 allocated nodes and displayed hit DPS 6488.
 
 ## Operational notes
 - Driver state reports PR publication failure resolving base branch `autoloop-base`. No publishing commands were run; repair remains outside commit-only scope.
 - Browser confirmation handling worked when upload and acceptDialog occurred in one ego-browser invocation; splitting across rounds did not restore. Reported tooling discrepancy, not an application defect.
 
 ## Priority queue
-1. Exercise explicit stage replacement/cancellation and shared-build reimport with non-empty skills/equipment; check planning continuity after rejected imports.
-2. Improve evidenced import-error guidance without losing engine details or suppressing failures.
-3. Close lifecycle milestone only after remaining acceptance paths have runtime evidence.
+1. Improve the observed raw import-error feedback with localized, actionable recovery guidance while retaining the original engine diagnostic and preserving valid plans.
+2. Verify that feedback for pasted PoBR saves versus external build input explains the correct import path without changing accepted formats.
+3. Then close the lifecycle milestone and select the next product gap from actual upgrade-comparison use.

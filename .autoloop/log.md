@@ -18,3 +18,13 @@
 - Driver reports a PR base-ref failure for `autoloop-base`; did not push or change publication configuration.
 - Commit: this entry accompanies `fix: explain persisted editor drafts accurately`.
 - Next: explicit replacement/cancellation, shared-build reimport and non-empty planner continuity; investigate actionable import-error guidance. Lifecycle milestone stays open.
+
+## Iteration 3 — 2026-10-11
+- Used the existing real-WASM Vite server and the committed monk-invoker-frost-bomb example (level 98, 13 groups, 10 items, 131 passives).
+- Copied a stage, cancelled replacement and asserted exact workspace-byte preservation. Confirmed replacement then changed only the copied stage to a synthetic level-45 character.
+- Downloaded and reimported the two-stage shared file. Verified new build/stage identities and deep equality of both saved snapshots. An overly strict initial JSON-string check detected property ordering, not a semantic difference; corrected the throwaway assertion.
+- Ran a one-point passive search. After a rejected arbitrary-JSON import, exact workspace bytes, displayed stats and completed result text remained unchanged. Applied the retained first recommendation: allocation grew 131 → 132 and displayed hit DPS became 6488, matching the preview's 6488.01 rounded display.
+- No application lifecycle defect surfaced in these scenarios. The raw `invalid .build json: missing field passives` error still offers no recovery action. Next iteration should improve localized import guidance without suppressing the diagnostic or changing accepted formats.
+- Tool limits: ego-browser auto-scroll failed on the below-fold planner button; explicit scrollIntoView followed by a real click worked. Reported the discrepancy. A canvas wait was an incorrect smoke selector for the SVG tree, not an app failure.
+- Investigation only: no product code, permanent tests or runtime dependencies changed. Reused iteration-2 WASM; no duplicate build/test run. Removed temporary shared file and screenshot; closed browser space.
+- Commit: this entry accompanies `chore: record populated workspace lifecycle verification`.
