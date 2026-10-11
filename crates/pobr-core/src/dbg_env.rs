@@ -11,6 +11,11 @@
 //! trade-off is that **changing the env var after process start has no
 //! effect** — these switches are only ever set at startup anyway, so this
 //! doesn't matter in practice.
+//!
+//! The switches exist only in builds with debug assertions (`cargo test`,
+//! `cargo run`). In release builds — the shipped CLI and the WASM engine —
+//! [`dbg_env!`] is a constant `None`, so no diagnostic switch can alter a
+//! calculation and the guarded reporting code is compiled out.
 
 /// Reads a diagnostic env var, snapshotted per process. Returns `Option<&'static str>`.
 ///
@@ -24,9 +29,15 @@
 #[macro_export]
 macro_rules! dbg_env {
     ($name:literal) => {{
-        static SNAPSHOT: std::sync::LazyLock<Option<String>> =
-            std::sync::LazyLock::new(|| std::env::var($name).ok());
-        SNAPSHOT.as_deref()
+        #[cfg(debug_assertions)]
+        let value: Option<&'static str> = {
+            static SNAPSHOT: std::sync::LazyLock<Option<String>> =
+                std::sync::LazyLock::new(|| std::env::var($name).ok());
+            SNAPSHOT.as_deref()
+        };
+        #[cfg(not(debug_assertions))]
+        let value: Option<&'static str> = None;
+        value
     }};
 }
 

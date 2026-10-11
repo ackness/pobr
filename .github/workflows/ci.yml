@@ -2,12 +2,14 @@ name: CI
 
 # Gate per CLAUDE.md: fmt + clippy + test.
 #
-# Trigger strategy (cost-optimized for a private repo): CI does NOT run on every
-# push/PR. It runs only on:
+# Trigger strategy: this full gate does NOT run on every push/PR (pull requests
+# get the lightweight checks in pr.yml instead). It runs only on:
 #   - a pushed version tag (v0.0.1, v1.2.3, ...) — i.e. on release;
+#   - a release PR: a pull request that changes the workspace version in the
+#     root Cargo.toml, so gate failures surface before the tag is pushed;
 #   - a manual dispatch (Actions tab "Run workflow", or `gh workflow run ci.yml`),
 #     to validate a branch on demand.
-# Day-to-day commits cost nothing; you pay only when releasing or when you ask.
+# The full gate takes about 20 minutes, so it is reserved for releases and requests.
 #
 # Rust lint, Rust tests and Web run in parallel. Release CI owns the complete
 # gate; local development only needs relevant checks, not a duplicate full run.
@@ -15,7 +17,16 @@ on:
   push:
     tags:
       - 'v*'
+  pull_request:
+    branches: [master]
+    paths:
+      - Cargo.toml
   workflow_dispatch:
+    inputs:
+      e2e:
+        description: Also run the Playwright E2E suite (about 15 minutes)
+        type: boolean
+        default: false
 
 # Cancel superseded runs for the same ref (e.g. re-dispatch on the same branch).
 concurrency:
@@ -27,8 +38,30 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
+  # On pull requests, decides whether this is a release PR and validates its
+  # version metadata. Other events always run the full gate.
+  release-check:
+    name: release metadata
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.decide.outputs.release }}
+    steps:
+      # The default PR checkout is the merge commit; its first parent is the base.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - id: decide
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            devs/scripts/release-check.sh HEAD^1
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
   lint:
     name: fmt + clippy
+    needs: release-check
+    if: needs.release-check.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -48,6 +81,8 @@ jobs:
 
   ci:
     name: Rust tests + data compatibility
+    needs: release-check
+    if: needs.release-check.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -74,11 +109,13 @@ jobs:
         run: cargo run -p lint-i18n
 
   # Independent Web gate: script tests, typecheck, unit tests and Worker checks.
-  # Then build real WASM, sync data and bundle the site once. Playwright and
-  # standalone package smoke validate the compiled engine. Release and deploy
+  # Then build real WASM, sync data and bundle the site once. The standalone
+  # package smoke validates the compiled engine; Playwright E2E is opt-in. Release and deploy
   # wait for this job and both Rust gates to pass.
   web:
-    name: web (tsc + vitest + build + e2e)
+    name: web (tsc + vitest + build + package)
+    needs: release-check
+    if: needs.release-check.outputs.run == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -129,9 +166,13 @@ jobs:
           name: web-dist
           path: web/dist
           retention-days: 3
+      # E2E is opt-in: it runs only for a manual dispatch with `e2e` enabled
+      # (`mise run ci <ref> --e2e`), never on tags or release PRs.
       - name: Install Playwright
+        if: inputs.e2e
         run: pnpm exec playwright install --with-deps chromium
       - name: E2E smoke
+        if: inputs.e2e
         run: pnpm exec playwright test
       - name: Package standalone WASM and report size
         run: |

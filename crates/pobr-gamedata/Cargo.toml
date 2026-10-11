@@ -9,6 +9,12 @@ serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.10"
 
+[features]
+# Test-only snapshot pins (`test_pins::assert_pin`, with opt-in write-back).
+# Off by default so the CLI and WASM builds carry no test helpers; downstream
+# crates enable it from their dev-dependencies.
+test-pins = []
+
 [dev-dependencies]
 # 仅测试用：load_jewel_radii 逐值对照 pobr-tree 现有 Rust 准源常量（搬迁不变式）。
 pobr-tree.workspace = true

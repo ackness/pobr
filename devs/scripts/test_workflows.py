@@ -17,7 +17,7 @@ class WorkflowTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="pobr script tests ")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        scripts = ["pobr", "devs/scripts/regen-check.sh", "devs/scripts/cache-report.py",
+        scripts = ["devs/scripts/regen-check.sh", "devs/scripts/cache-report.py",
                    ".claude/skills/run-pobr/driver.sh"]
         if (REPO / ".agents/skills/run-pobr/driver.sh").is_file():
             scripts.append(".agents/skills/run-pobr/driver.sh")
@@ -176,7 +176,7 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         self.assertFalse((self.root / "calls.jsonl").exists())
 
     def test_short_commands_select_only_requested_suite_and_preserve_filter(self):
-        result = self.run_script("pobr", "verify", "build", "skills", "a filter with spaces")
+        result = self.run_script(".claude/skills/run-pobr/driver.sh", "verify", "build", "skills", "a filter with spaces")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [
             ["test", "-p", "pobr-build", "--test", "skills", "a filter with spaces"],
@@ -186,19 +186,19 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
 
     def test_verify_does_not_lint_after_test_failure(self):
         self.env["FAIL_TEST"] = "1"
-        result = self.run_script("pobr", "verify", "core", "lib")
+        result = self.run_script(".claude/skills/run-pobr/driver.sh", "verify", "core", "lib")
         self.assertEqual(result.returncode, 19, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [["test", "-p", "pobr-core", "--lib"]])
 
     def test_timings_compiles_only_the_selected_suite(self):
-        result = self.run_script("pobr", "timings", "pobr-build", "parity")
+        result = self.run_script(".claude/skills/run-pobr/driver.sh", "timings", "pobr-build", "parity")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [
             ["test", "--no-run", "--timings", "-p", "pobr-build", "--test", "parity"],
         ])
 
     def test_build_defaults_to_application_only(self):
-        result = self.run_script("pobr", "build")
+        result = self.run_script(".claude/skills/run-pobr/driver.sh", "build")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [["build", "-p", "pobr-cli"]])
 
@@ -208,7 +208,7 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         self.write(".cache/report.json", "local report")
         self.write("outside/secret", "must not be counted")
         (self.root / "target/debug/linked").symlink_to(self.root / "outside", target_is_directory=True)
-        result = self.run_script("pobr", "cache")
+        result = self.run_script(".claude/skills/run-pobr/driver.sh", "cache")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("debug/incremental", result.stdout)
         self.assertRegex(result.stdout, r"\s2  target\n")
@@ -221,25 +221,32 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
     def test_cache_report_propagates_metadata_failure(self):
         # Substitute a failing metadata tool, keeping Cargo diagnostics visible.
         self.write("bin/cargo", "#!/bin/sh\necho 'metadata failure' >&2\nexit 17\n")
-        result = self.run_script("pobr", "cache")
+        result = self.run_script(".claude/skills/run-pobr/driver.sh", "cache")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("metadata failure", result.stderr)
 
     def test_short_commands_require_explicit_targets(self):
         for args in [["test", "core"], ["lint", "core"], ["timings"],
                      ["verify", "core"], ["verify", "core", "--workspace"],
-                     ["verify", "core", "lib", "--workspace"], ["ci"]]:
+                     ["verify", "core", "lib", "--workspace"], ["ci"],
+                     ["ci", "feature/x", "--unknown"]]:
             with self.subTest(args=args):
-                result = self.run_script("pobr", *args)
+                result = self.run_script(".claude/skills/run-pobr/driver.sh", *args)
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
                 self.assertFalse((self.root / "calls.jsonl").exists())
 
     def test_ci_uses_explicit_remote_ref_and_propagates_failure(self):
         self.env["GH_EXIT"] = "31"
-        result = self.run_script("pobr", "ci", "feature/ci-workflow")
+        result = self.run_script(".claude/skills/run-pobr/driver.sh", "ci", "feature/ci-workflow")
         self.assertEqual(result.returncode, 31, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [["gh", "workflow", "run", "ci.yml", "--ref", "feature/ci-workflow"]])
         self.assertNotIn("CI requested", result.stdout)
+
+    def test_ci_requests_e2e_only_when_asked(self):
+        result = self.run_script(".claude/skills/run-pobr/driver.sh", "ci", "feature/ci-workflow", "--e2e")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [["gh", "workflow", "run", "ci.yml", "--ref", "feature/ci-workflow",
+                                         "-f", "e2e=true"]])
 
     def calls(self):
         return [json.loads(line) for line in

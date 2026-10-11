@@ -1,7 +1,9 @@
 # Development and CI workflow
 
-根目录 `./pobr` 是 Rust 开发入口，与应用二进制 `pobr` 分开。
-它转发到 `.claude/skills/run-pobr/driver.sh`；本机可选的 `.agents` 入口也转发到同一驱动。
+开发命令是根 `mise.toml` 中的 mise task：`mise tasks` 列出全部，`mise run <task> [参数]` 执行，
+任务名之后的参数原样传递。它们转发到 `.claude/skills/run-pobr/driver.sh`；没有安装 mise 时可直接运行
+`bash .claude/skills/run-pobr/driver.sh <命令>`，本机可选的 `.agents` 入口也转发到同一驱动。
+游戏 CLI（`cargo run -p pobr-cli`，二进制 `pobr`）只提供游戏计算命令，不包含任何开发命令。
 本文维护构建、测试、缓存和 CI 操作；验证范围与计算约定见 [CLAUDE.md](../CLAUDE.md)，
 Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/README.md](../pipeline/README.md)。
 
@@ -16,19 +18,19 @@ Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/R
 | cargo-nextest | 本地可选，CI 安装；完整门禁另跑 doctest |
 | LuaJIT | vendor 抽取、oracle 及相关工具测试需要；普通计算使用已入库数据 |
 
-`./pobr status` 查看环境就绪态。已有可用环境时跳过 bootstrap 和安装，
+`mise run status` 查看环境就绪态。已有可用环境时跳过 bootstrap 和安装，
 不为日常测试更新工具链或重复构建整个 workspace。
 
 ## 日常命令
 
 ```bash
-./pobr targets                              # List current suites without compiling
-./pobr verify build skills support_gating:: # Selected tests, fmt and Clippy
-./pobr test core parser mod_parser::        # One integration suite and filter
-./pobr test item lib                        # Library unit tests
-./pobr lint build skills                    # fmt and selected Clippy target
-./pobr build                                # Application CLI only
-./pobr cache                                # Read-only storage and file counts
+mise run targets                              # List current suites without compiling
+mise run verify build skills support_gating:: # Selected tests, fmt and Clippy
+mise run test core parser mod_parser::        # One integration suite and filter
+mise run test item lib                        # Library unit tests
+mise run lint build skills                    # fmt and selected Clippy target
+mise run build                                # Application CLI only
+mise run cache                                # Read-only storage and file counts
 ```
 
 短参数 `build` 对应 `pobr-build`，`core` 对应 `pobr-core`；完整包名也可用。
@@ -36,10 +38,10 @@ Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/R
 不会默认启动全量测试。多个目标、features 或其他选项直接传 Cargo 参数。
 
 ```bash
-./pobr test -p pobr-build --test skills --test codec
-./pobr lint -p pobr-build --lib --test skills
-./pobr test build parity no_regression
-./pobr build --workspace                    # Only when all binaries are needed
+mise run test -p pobr-build --test skills --test codec
+mise run lint -p pobr-build --lib --test skills
+mise run test build parity no_regression
+mise run build --workspace                    # Only when all binaries are needed
 ```
 
 测试本身会编译，不必先执行 `check` 或 `build`。只有测试名称过滤仍可能编译
@@ -58,7 +60,11 @@ Web 纯 TS/CSS 修改复用 WASM，运行相关 Vitest 与 typecheck；`pnpm --d
 不按会话、测试或门禁创建 `target-gate` 等副本；不同 worktree 不共享可写 target。
 看到 `Blocking waiting for file lock` 时检查已有进程，不再叠加 Cargo。
 
-根 `Cargo.toml` 的 dev/test 使用 `debug = "line-tables-only"` 和 `incremental = false`。
+根 `Cargo.toml` 的 dev/test 对第三方依赖使用 `opt-level = 3`，workspace crate 保持未优化。
+多数集成测试每个用例加载一次游戏数据快照（JSON 解析加 SHA-256 校验）；依赖未优化时一次加载约 3.4 s，
+优化后约 0.65 s。依赖只编译一次并长期缓存，不影响日常修改 workspace 代码后的重编译速度。
+
+根 `Cargo.toml` 的 dev/test 还使用 `debug = "line-tables-only"` 和 `incremental = false`。
 前者保留回溯行号，后者停止积累每个 crate 的增量对象图和中间文件。
 Cargo 仍按输入指纹复用未变的依赖、库和测试程序；重复相同测试无需重新编译。
 修改源码时会重新编译受影响的 crate，关闭增量编译可能增加这一步的耗时。
@@ -74,7 +80,7 @@ Cargo 仍按输入指纹复用未变的依赖、库和测试程序；重复相�
 测试使用 `CARGO_PROFILE_TEST_DEBUG=2`，完成后恢复日常设置。
 
 ```bash
-./pobr cache
+mise run cache
 pnpm --dir web build-wasm                   # Verify and reuse unchanged output
 pnpm --dir web build-wasm --force           # Rebuild through Cargo, without cleaning
 ```
@@ -102,50 +108,103 @@ WASM 构建凭据校验 Rust 源码、嵌入语言文件、manifest/lockfile、J
 
 ```bash
 # Push the intended commit first; requires authenticated gh.
-./pobr ci feature/my-change
-./pobr ci-status --branch feature/my-change
+mise run ci feature/my-change
+mise run ci feature/my-change --e2e          # Also run Playwright E2E (opt-in)
+mise run ci-status --branch feature/my-change
 
 # Explicit local Rust gate; Web checks are separate.
-./pobr full
+mise run full
 ```
 
 合并、发版、工具链/features/依赖变更或影响范围不明的核心修改需要完整门禁，
 优先使用 CI。`ci` 测试已推送的远端分支/tag，不推送本地代码；必须核对结果的提交 SHA，
-请求成功不等于验证通过。普通 push/PR 不自动触发 CI。
+请求成功不等于验证通过。普通 push 不触发 CI；PR 只自动运行下述轻量检查，不是完整门禁。
+
+[pr.yml](../.github/workflows/pr.yml) 在每个指向 master 的 PR 上运行，包括 fork 提交的 PR：
+
+| 改动范围 | 自动检查 |
+|----------|----------|
+| Rust 源码、`data/`、`examples/`、脚本或工作流 | fmt、workspace Clippy、脚本测试、`mise run smoke`、`parity no_regression` |
+| `web/` | `pnpm typecheck` 与 Vitest 单测（不构建 WASM，不跑 E2E） |
+| 仅文档 | 不运行 |
+| 发版 PR（根 `Cargo.toml` 的 workspace 版本变化） | 版本元数据校验和 [ci.yml](../.github/workflows/ci.yml) 的完整 Rust / Web 门禁；它已覆盖上面的轻量检查，后者不再重复运行 |
+
+fork PR 使用只读令牌且读不到仓库密钥；首次贡献者的运行需要维护者在 Actions 页批准。
+轻量检查通过不代表完整门禁通过：定向套件、Worker、真实 WASM 和 E2E 仍按改动在本地或手动 CI 验证。
 
 当前 [ci.yml](../.github/workflows/ci.yml) 包含独立的 Rust lint、Rust 测试和 Web 门禁。
 Rust 检查 fmt/Clippy/nextest/doctest/i18n 与数据兼容；Web 检查脚本、类型、单测、Worker、
-真实 WASM、打包与 E2E。`./pobr full` 仅运行 Rust 门禁，包含 fmt/Clippy、nextest + doctest
+真实 WASM 与打包。Playwright E2E 默认不运行：tag、发版 PR 和普通手动触发都跳过，
+只有 `mise run ci <ref> --e2e`（或在 Actions 页勾选 `e2e`）才运行，约 15 分钟。
+界面交互改动需要时在本地跑对应 spec，或显式请求一次云端 E2E。`mise run full` 仅运行 Rust 门禁，包含 fmt/Clippy、nextest + doctest
 （无 nextest 时使用 Cargo）和 i18n。离线或排查 CI 时可显式使用，无需重复已通过的云端全量验证。
 
 应用发版更新 `[workspace.package].version`，用 `cargo metadata --format-version 1 > /dev/null`
 刷新应用/工具的锁文件版本，保留七个库的独立版本。数据活动版本在运行时读取 `data/CURRENT`，
 与应用版本分开。版本更新仍需对应检查，但不因应用版本或活动数据标记变化使所有基础库失去缓存。
 
+发版 PR 在合并前就运行完整门禁：`devs/scripts/release-check.sh <base>` 比较 workspace 版本，
+版本变化时要求新版本高于基线版本、`v<版本>` tag 尚不存在、`Cargo.lock` 已带新版本，然后启动与 tag 相同的 Rust / Web 门禁
+（不发布资产、不部署，不含 E2E）。等这些检查通过再合并、打 tag，避免门禁在 tag 上失败而浪费版本号。
+修改根 `Cargo.toml` 但版本不变的 PR 只运行这一步校验，随后跳过完整门禁。
+
 推送 `v*` tag 后由 CI 完成门禁，通过后发布 WASM 资产；Cloudflare 部署仅接受 `v0.*` tag。
 不要为同一个 tag 再请求相同的 CI，
 也不要求本地先跑一次 full。CI 依赖缓存可能过期，不能保证每次都是热构建。
 发布包与凭据规则见 [WASM 打包说明](wasm-package.md)。
 
+## 处理外部 PR
+
+贡献者须知见 [CONTRIBUTING.md](../CONTRIBUTING.md)。维护者按下面的顺序处理 fork 提交的 PR：
+
+1. **先读 diff，再运行。** 外部代码在本机执行前完整读一遍，确认只包含声明的改动。
+2. **在当前 master 上验证。** PR 的基点可能已落后；取回后叠在最新 master 上，按
+   [CLAUDE.md](../CLAUDE.md) 的验证分层运行对应套件，计算类改动加 `parity no_regression`。
+
+   ```bash
+   git fetch origin master pull/<N>/head:pr-<N>
+   git merge-tree --write-tree origin/master pr-<N>   # Conflict check without touching the worktree
+   git switch -c review/pr-<N> origin/master && git merge --no-edit pr-<N>
+   ```
+
+3. **按项目约定审查。** 重点看三件事：公式或数据引用是否带 PoB2 Lua 行号；是否能用一条通用规则
+   代替逐技能 / 逐词条条目；同一机制下是否还有其他受影响的技能。修复必须带能复现错误的断言。
+4. **需要调整时在贡献者提交之上追加。** 保留原提交和署名，在 `review/pr-<N>` 上追加提交并另开 PR，
+   在原 PR 评论里说明改了什么、为什么；或在贡献者允许时直接推送到其分支。不要重写对方的提交。
+5. **合并后收尾。** squash 合并会生成新提交，GitHub 不会把原 PR 标为已合并：手动关闭原 PR 并注明
+   合入的 PR 和提交；确认 squash 提交带有 `Co-authored-by`。想让原 PR 自动显示 Merged 时改用
+   merge commit 或 rebase 合并。最后删除本地和远端的临时分支。
+
 ## 慢构建与按需报告
 
 ```bash
-./pobr timings build parity                # Compile selected suite with Cargo HTML timings
+mise run timings build parity                # Compile selected suite with Cargo HTML timings
 # Open target/cargo-timings/cargo-timing.html
 
-time ./pobr test build parity              # Compare unchanged cold/warm inputs
+time mise run test build parity              # Compare unchanged cold/warm inputs
 cargo nextest run -p pobr-build --test parity
 
-./pobr test build parity parity_baseline_report -- --ignored --nocapture
-./pobr test build parity effective_switch_dual_run_report -- --ignored --nocapture
-./pobr test build parity ehp_dual_run_report -- --ignored --nocapture
+mise run test build parity parity_baseline_report -- --ignored --nocapture
+mise run test build parity effective_switch_dual_run_report -- --ignored --nocapture
+mise run test build parity ehp_dual_run_report -- --ignored --nocapture
 ```
 
 `--timings` 显示编译单元耗时与依赖等待。使用重定向后的 target 时按 Cargo 输出定位报告。
-不要为了测量清缓存。测试目标由 `./pobr targets` 读取当前 manifest；深层 tests 文件通常是
+不要为了测量清缓存。测试目标由 `mise run targets` 读取当前 manifest；深层 tests 文件通常是
 汇总套件的模块，并非每个文件都会单独链接。
 
 nextest 按用例启动独立进程，进程间不共享 `OnceLock`；大量游戏数据初始化时应实测运行成本。
 日常定向测试默认 Cargo，完整门禁使用 nextest 并补 doctest。
 上述三个 parity 报告仅作诊断，默认忽略；两种模式的 no_regression、golden、契约和
 独立语料健康断言继续默认执行，不为加速删减回归覆盖。
+
+## 其他按需检查
+
+- `bash .claude/skills/run-pobr/driver.sh smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
+- 本地 `.agents/skills/run-pobr/driver.sh` 转发到同一驱动（`.agents` 按仓库规则不入库）。`smoke` 是环境检查，已有相关测试通过后无需再补一次。
+- `python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，不调用真实 Cargo。
+- `devs/scripts/regen-check.sh` 在临时副本中重生成，保留 `overlay-common` 与 examples 语料，不写入或恢复工作区文件。
+- `node web/scripts/bench-calc.mjs` measures uncached real-WASM calculation and 16-item batches on three committed builds. It requires built WASM and synced data; `--reference <old-pkg>` additionally checks complete output equality for behavior-preserving optimizations. Reports stay under ignored `.cache/`; this benchmark is opt-in, outside the CI gate.
+- `pnpm --dir web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物凭据，未变时直接复用；`pnpm --dir web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码/绑定指纹、实际 schema 和数据快照，来源 commit 保留编译时值。脚本改动运行 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；发布流程见 [WASM 打包说明](wasm-package.md)。tag CI 在 Rust/Web 门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
+- `cd web && pnpm test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
+- 计划发版时，在功能 PR 中一并更新 workspace 版本。本地完成相关验证后合并，再推送一次 tag；tag CI 完成全量门禁，通过后自动部署，无需在 master 额外手动运行同一套 CI。

@@ -4,9 +4,9 @@ description: Bootstrap, build, test, and drive the pobr (Path of Building in Rus
 ---
 
 pobr is a Rust workspace with a Web frontend. Read the validation policy in
-[`CLAUDE.md`](../../../CLAUDE.md) before choosing checks. The public development
-CLI is `./pobr`, backed by
-`.claude/skills/run-pobr/driver.sh`; the optional, gitignored `.agents` entry forwards to it. Run commands
+[`CLAUDE.md`](../../../CLAUDE.md) before choosing checks. Development commands
+are mise tasks in the root `mise.toml` (`mise tasks`, `mise run <task> [args]`), backed by
+`.claude/skills/run-pobr/driver.sh`; the game CLI binary `pobr` carries none of them; the optional, gitignored `.agents` entry forwards to it. Run commands
 from the repository root so the configured Rust/Node toolchains stay consistent.
 
 ## Prerequisites
@@ -22,7 +22,7 @@ does not pin a Rust version. `mise.toml` selects Node 26 locally; CI uses Node 2
 Use the pnpm version in `web/package.json`. Lua extraction/oracle checks need `luajit`.
 Do not bootstrap an already working checkout. On a fresh Ubuntu machine the
 `bootstrap` command installs LuaJIT through apt, clones the pinned vendor and
-builds the application CLI. Use `./pobr build --workspace` only when all binaries
+builds the application CLI. Use `mise run build --workspace` only when all binaries
 are needed. On other platforms install missing prerequisites using
 the appropriate package manager before using the driver.
 
@@ -37,11 +37,11 @@ can still compile unrelated integration targets; specify `--test` or `--lib`.
 For example, a change to support gating needs:
 
 ```bash
-./pobr verify build skills support_gating::
+mise run verify build skills support_gating::
 ```
 
-Use `./pobr targets` to discover suites. For slow compilation diagnostics only,
-use `./pobr timings build parity`; it is not an extra validation step.
+Use `mise run targets` to discover suites. For slow compilation diagnostics only,
+use `mise run timings build parity`; it is not an extra validation step.
 
 `test` accepts `<crate> <suite|lib> [filter]` or forwards raw `cargo test`
 arguments unchanged. `verify` runs the selected tests followed by lint; a failure
@@ -60,7 +60,7 @@ They preserve compiler diagnostics and build-lock messages.
   Cargo commands sequentially. Do not create per-session/gate targets or share
   writable targets across worktrees. Dev/test disable incremental object caches
   but retain Cargo artifact reuse; do not toggle profiles or clean as routine preparation.
-- `./pobr cache` reports storage and file counts without building or deleting.
+- `mise run cache` reports storage and file counts without building or deleting.
   `pnpm --dir web build-wasm` reuses verified unchanged bindings; `--force`
   bypasses receipt reuse without cleaning Cargo. See [cache policy](../../../docs/development-workflow.md#缓存与磁盘占用).
 - For an environment smoke check with no specific changed behavior, use `smoke`.
@@ -70,18 +70,18 @@ They preserve compiler diagnostics and build-lock messages.
 ## Full gate
 
 Full merge/release and broad-change gates should run in cloud CI. Release tags
-trigger the gate automatically; for another pushed ref use `./pobr ci <ref>`
-and inspect `./pobr ci-status`. This tests the remote ref, never local edits.
+trigger the gate automatically; for another pushed ref use `mise run ci <ref>`
+and inspect `mise run ci-status`. This tests the remote ref, never local edits.
 A dispatch request is not a passing result. Do not require a duplicate local
 full gate before cloud CI. When local full Rust validation is explicitly needed:
 
 ```bash
-./pobr full
+mise run full
 ```
 
 This runs fmt, workspace Clippy, nextest plus separate doctests (or `cargo test --workspace` when nextest is absent), and i18n lint. It stops at the first failure.
 CI retains its full Rust and Web gates on tags/manual dispatch; ordinary pushes
-and PRs do not trigger CI automatically. Do not repeat a successful full gate for
+do not trigger CI, and pull requests only run the lightweight checks in `pr.yml`. Do not repeat a successful full gate for
 an unchanged local commit, or dispatch an identical CI run in addition to a tag.
 Publishing, PR updates and version bumps follow the user's authorized scope.
 See [workflow commands](../../../docs/development-workflow.md). Application version
@@ -90,7 +90,7 @@ bumps leave the seven `crates/` library versions unchanged.
 Timing diagnostics, parity dashboards and data-version drills are opt-in, not everyday gates:
 
 ```bash
-./pobr test build parity parity_baseline_report -- --ignored --nocapture
+mise run test build parity parity_baseline_report -- --ignored --nocapture
 cargo test -p pobr-wasm --test perf_timing --test perf_phases -- --ignored --nocapture
 bash .claude/skills/run-pobr/driver.sh drill
 ```

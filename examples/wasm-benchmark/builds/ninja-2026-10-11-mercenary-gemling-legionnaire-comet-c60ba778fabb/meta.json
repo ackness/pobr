@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-11-mercenary-gemling-legionnaire-comet-c60ba778fabb",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1056758881-1572/%E5%8C%97%E6%9E%81%E6%98%9F%E7%A5%9E%E5%8C%96%E8%BA%AB",
+    "account": "1056758881-1572",
+    "character": "北极星神化身",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-11T07:04:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1056758881-1572&name=%E5%8C%97%E6%9E%81%E6%98%9F%E7%A5%9E%E5%8C%96%E8%BA%AB&overview=forbidden-rites",
+    "snapshot": "0632-20261011-47556",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+    "selection": "base-class-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Mercenary",
+    "ascendancy": "Gemling Legionnaire",
+    "level": 100,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 13,
+    "code_sha256": "531dd37484a358bf6d78be5b8ab7f5a25dba2af237c7138c5aae08feb65484f1",
+    "code_chars": 15032,
+    "decoded_bytes": 63795
+  }
+}

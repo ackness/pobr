@@ -1,10 +1,38 @@
 {
   "project": "krauthaufen/pob-web",
   "source": "https://github.com/krauthaufen/pob-web",
-  "provenance": "User-provided approximate disk sizes; upstream revision and measurement date unknown. Not a live measurement or a feature-parity claim.",
+  "measuredAt": "2026-10-11T06:59:46.894Z",
+  "acquiredAt": "2026-10-11T06:21:03.379Z",
+  "artifactSource": "https://pob.awx.at/",
+  "deployedRevision": null,
+  "wrapperSourceCommit": "ee33ce63920f23e634cc30e37d8ad339244dbf34",
+  "compression": {
+    "algorithm": "gzip",
+    "level": 9,
+    "node": "v26.10.0",
+    "zlib": "1.3.2.1-motley-285e94b"
+  },
+  "provenance": "Measured from hash-verified deployed Lua WASM, JS and Lua/data bundle. Deployment revision unknown; wrapper source revision does not identify the binary/data. Data is gzip level 9; runtime transfer estimates also gzip WASM/JS. Different datasets and supported mechanics; not a feature-parity or runtime-memory claim.",
   "files": [
-    { "name": "lua.wasm", "bytes": 262144, "approximate": true },
-    { "name": "lua.mjs", "bytes": 69120, "approximate": true },
-    { "name": "pob-lua.json.gz", "bytes": 4875878, "approximate": true }
+    {
+      "name": "lua.wasm",
+      "bytes": 262158,
+      "gzipBytes": 116517,
+      "sha256": "3e286259ddd6d66b733222cb6aa86998fdaf11a9ac2743b7967d9432f7bdae25"
+    },
+    {
+      "name": "lua.mjs",
+      "bytes": 69105,
+      "gzipBytes": 19144,
+      "sha256": "f6a8df99c68d11c40178f5971bba2e1d51d5414bb864de9a3a5676deb9c85fdc"
+    },
+    {
+      "name": "pob-lua.json.gz",
+      "bytes": 4858503,
+      "gzipBytes": 4858503,
+      "uncompressedBytes": 45082029,
+      "sha256": "811f8b207b4460fb0ab54200dc8791ffd5c60e5dcf7f6e8890d751dadf2aa9b5",
+      "uncompressedSha256": "a4183b98e08dacb257ab47652d76ff675790e3a287637d4e28119db1589c911e"
+    }
   ]
 }

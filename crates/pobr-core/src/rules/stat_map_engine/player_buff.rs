@@ -178,13 +178,6 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         "ArmourAppliesToFireDamageTaken" => Ok(vec!["ArmourAppliesToFireDamageTaken"]),
         "ArmourAppliesToColdDamageTaken" => Ok(vec!["ArmourAppliesToColdDamageTaken"]),
         "ArmourAppliesToLightningDamageTaken" => Ok(vec!["ArmourAppliesToLightningDamageTaken"]),
-        // Sigil of Power's `circle_of_power_max_stages` → player
-        // `Multiplier:SigilOfPowerMaxStages` BASE (vendor's consumption point
-        // is the dynamic cap in GetMultiplier, ModStore.lua:369; PoBR's
-        // orchestration layer bridges `Multiplier:` BASE from buff payloads
-        // into cfg.multipliers -- see the buff-specs injection point in
-        // calc_orchestrator).
-        "Multiplier:SigilOfPowerMaxStages" => Ok(vec!["Multiplier:SigilOfPowerMaxStages"]),
         // (0.5.4b #5) Blazing Critical support (sup_int.lua:959): 0.22.0 added
         // a GlobalEffect/Buff tag to
         // `support_blazing_crits_gain_%_fire_damage_with_attacks_on_critical_hit`
@@ -404,7 +397,21 @@ fn collect_player_buff_mod(
         }
         tags.push(translate_tag(tag)?);
     }
-    for translated in translate_player_buff_mod_name(name)? {
+    // A buff's `Multiplier:<X>` BASE is a stage/stack cap or threshold read
+    // back through GetMultiplier (ModStore.lua:369), e.g. Sigil of Power's
+    // `circle_of_power_max_stages` (act_int.lua), Wind Dancer's
+    // `wind_dancer_maximum_number_of_stages` (act_dex.lua:11045) and
+    // Scavenged Plating's `scavenged_plating_maximum_stacks_display`
+    // (act_str.lua:16694). It has no aggregate consumer of its own, so the
+    // name passes through unchanged; the orchestration layer bridges it into
+    // cfg.multipliers at the buff-specs injection point. Dropping it leaves
+    // the payload's limitVar at zero and suppresses the whole buff.
+    let names = if mod_type == ModType::Base && name.starts_with("Multiplier:") {
+        vec![name]
+    } else {
+        translate_player_buff_mod_name(name)?
+    };
+    for translated in names {
         let mut modifier = if mod_type == ModType::Flag {
             Modifier::flag(translated)
         } else {

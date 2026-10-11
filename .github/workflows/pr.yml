@@ -1,0 +1,98 @@
+name: PR checks
+
+# Lightweight checks for pull requests, including those from forks. The full
+# Rust and Web gates stay in ci.yml (version tags and manual dispatch).
+#
+# Fork PRs run with a read-only token and no repository secrets. GitHub holds
+# runs from first-time contributors until a maintainer approves them.
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  changes:
+    name: detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+      web: ${{ steps.filter.outputs.web }}
+      release: ${{ steps.release.outputs.release }}
+    steps:
+      # The default checkout is the merge commit; its first parent is the base.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - id: filter
+        run: |
+          files="$(git diff --name-only HEAD^1 HEAD)"
+          echo "$files"
+          rust=false
+          web=false
+          if grep -qE '^(crates|apps|tools|data|examples|devs/scripts|\.claude/skills/run-pobr|\.github/workflows)/|^(Cargo\.(toml|lock)|mise\.toml)$' <<< "$files"; then rust=true; fi
+          if grep -qE '^(web|\.github/workflows)/' <<< "$files"; then web=true; fi
+          echo "rust=$rust" >> "$GITHUB_OUTPUT"
+          echo "web=$web" >> "$GITHUB_OUTPUT"
+      # A release PR runs the full gate in ci.yml, which covers every check
+      # below, so the lightweight jobs are skipped to avoid running them twice.
+      - id: release
+        run: devs/scripts/release-check.sh --detect-only HEAD^1
+
+  rust:
+    name: fmt + clippy + smoke + parity
+    needs: changes
+    if: needs.changes.outputs.rust == 'true' && needs.changes.outputs.release != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Workflow script tests
+        run: python3 devs/scripts/test_workflows.py
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Smoke tests
+        run: bash .claude/skills/run-pobr/driver.sh smoke
+      # The parity baseline must not drop; see CLAUDE.md "Parity 体系".
+      - name: Parity regression gate
+        run: cargo test -p pobr-build --test parity no_regression
+
+  web:
+    name: web typecheck + unit tests
+    needs: changes
+    if: needs.changes.outputs.web == 'true' && needs.changes.outputs.release != 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      # Same order as ci.yml: both run before the WASM build.
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm test
