@@ -327,3 +327,40 @@ test('import recovers legacy library slot eligibility without deleting user-owne
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-library')!).items)).toEqual(expected);
 });
+
+test('alternate weapon imports remain usable candidates without changing the inactive pair', async ({ page }) => {
+  const main = 'Rarity: RARE\nPrimary Bow\nCrude Bow\nImplicits: 0\n+10 to maximum Life';
+  const alternate = main.replace('Primary Bow', 'Alternate Bow').replace('+10', '+20');
+  const offhand = 'Rarity: NORMAL\nBroadhead Quiver\nImplicits: 0';
+  await page.goto('/');
+  await ready(page);
+  await importCode(page, deflateSync(`<PathOfBuilding2>
+    <Build level="80" className="Ranger"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+    <Skills/><Items activeItemSet="1">
+    <Item id="1">${main}</Item><Item id="2">${alternate}</Item><Item id="3">${offhand}</Item>
+    <ItemSet id="1" useSecondWeaponSet="false">
+    <Slot name="Weapon 1" itemId="1"/><Slot name="Weapon 2" itemId="3"/>
+    <Slot name="Weapon 1 Swap" itemId="2"/></ItemSet></Items></PathOfBuilding2>`).toString('base64url'));
+  const imported = (await snapshot(page)).state;
+  expect(imported.weaponSwap.alternate_items).toEqual([{ slot: 'weapon1', text: alternate }]);
+  await page.getByRole('button', { name: 'Items', exact: true }).click();
+  await page.locator('.paper-doll').getByRole('button', { name: 'Main Hand', exact: true }).click();
+  const library = page.locator('.items-library');
+  await expect(library.getByRole('button', { name: 'Equip', exact: true })).toHaveCount(2);
+  await expect(library).not.toContainText('Broadhead Quiver');
+  await library.getByRole('searchbox').fill('Alternate Bow');
+  await library.getByRole('button', { name: 'Equip', exact: true }).click();
+  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  const equipped = (await snapshot(page)).state;
+  expect(equipped.items).toEqual(expect.arrayContaining([
+    { slot: 'weapon1', text: alternate }, { slot: 'weapon2', text: offhand },
+  ]));
+  expect(equipped.weaponSwap).toEqual(imported.weaponSwap);
+  await page.getByRole('group', { name: 'Active weapon set', exact: true }).getByRole('button', { name: 'Set 2', exact: true }).click();
+  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  expect((await snapshot(page)).state.items).toEqual([{ slot: 'weapon1', text: alternate }]);
+  await page.reload();
+  await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
+  expect((await snapshot(page)).state.weaponSwap.active).toBe(2);
+  expect((await snapshot(page)).state.items).toEqual([{ slot: 'weapon1', text: alternate }]);
+});
