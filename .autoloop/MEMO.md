@@ -180,7 +180,7 @@ Exit criteria:
 
 ## Current milestone: Verify source-stated support tradeoffs
 
-The explained-and-applied Elemental Focus plan returned `IgniteDPS=38.352778282`, while its pinned source prose says supported hits cannot inflict elemental ailments. This is a concrete current-engine lead, not yet proof of a bug: the stat might represent potential damage independently of ailment eligibility.
+The explained-and-applied Elemental Focus plan initially returned `IgniteDPS=38.352778282` despite its canonical elemental-ailment prohibition. Iteration 9 confirmed and fixed that discrepancy. Continue checking source-stated tradeoffs without confusing potential damage, ailment eligibility and configured enemy conditions.
 
 Exit criteria:
 
@@ -189,4 +189,17 @@ Exit criteria:
 3. If a correction is warranted, keep its effects support/host-local, preserve unrelated numerical behavior and source attribution, and verify with targeted regressions, relevant parity and rebuilt real WASM.
 4. Keep unsupported semantics explicit rather than guessing. If the reported stat is correct by contract, record that evidence and choose the next concrete gap instead of changing a correct calculation.
 
-Next iteration: investigate the Elemental Focus / Ignite lead on the now-applied test Invoker, then minimize it. Work and commits remain exclusively in this worktree; no publishing or changes to other branches.
+## Iteration 9: Canonical elemental ailment prohibitions
+
+- Minimal real WASM reproduced the defect: Fireball 20 had IgniteDPS 0.088695624 bare versus 0.138587011 with Elemental Focus, with no warning. The core prohibition regression failed before implementation: expected zero, got 8000. This is actual chance/uptime-derived DPS, not merely potential magnitude.
+- Pinned `sup_int.lua:3771-3805` provides 25% more elemental damage plus implicit `cannot_inflict_elemental_ailments`. The existing stat map produced five `Cannot` flags, but extraction dropped the implicit key and no consumers admitted or honored those flags.
+- Added one private attributed prohibition helper at the five existing elemental trace entry points. The ordinary flag-check path does not allocate. Ignite returns zero chance/magnitude/duration/DPS; Shock zero chance/effect; Chill/Freeze/Electrocute zero effect/buildup. Each flag remains independent of the others and of bleed/poison.
+- Damaging-ailment orchestration now stops on zero probe chance before the maximum-stack fallback, so prohibited ailments and zero-chance bleed/poison do not report active instances. A regression confirms zero chance means no stacks and 100% chance still creates them.
+- Native real-data regression checks all five nonzero baselines, prohibition, retained 25% elemental hit benefit, zero Ignite active stacks, and unchanged complete output in another group, in both effective modes. Core regression covers independent flags, bonuses, disabling source ancestry and unaffected bleed/poison.
+- Regeneration added exactly two implicit entries: Elemental Focus and Elemental Armament III. The latter's `sup_str.lua:2891-2920` explicitly carries the same prohibition. All other override metadata/entries are unchanged; manifest changes only that file's hash.
+- Passed 76 core ailment tests, 21 support tests, two parity no-regression tests and scoped core/build fmt/Clippy. Rebuilt release WASM and synced data; no full-suite or fresh Lua-oracle claim.
+- Rebuilt WASM: minimal supported Fireball keeps hit DPS 156.041666604 but Ignite is zero; bare remains hit DPS 124.833333283 / Ignite 0.088695624. Added elemental hit inputs prove all five outputs are positive bare and zero supported, for both Focus/Fireball and Armament III/Armour Breaker. No other group is mutated.
+- Inspected the populated Invoker UI: hit DPS remains 20,129, invalid Ignite is absent and combined DPS now matches the hit result. `ReviewElementalProhibition` approved without findings. Finished browser space 37 and removed the screenshot.
+- Follow-up lead, not a confirmed defect: Armament III's source promises 12% more attack damage per elemental ailment on the enemy. Direct probes with `config_inputs.conditionEnemyShocked` or `conditionEnemyChilled` left both bare/supported DPS at 288642.172580676, no warnings. Those inputs might be inactive/unrecognized under the request's calculation mode; verify accepted configuration and multiplier semantics before deciding whether the benefit is missing.
+
+Next iteration: resolve the Armament III conditional-benefit lead with actual config definitions, current mapper consumers and pinned source. Distinguish unsupported conditions from a valid zero-ailment baseline; do not guess a numerical multiplier. Work and commits remain exclusively in this worktree; no publishing or changes to other branches.

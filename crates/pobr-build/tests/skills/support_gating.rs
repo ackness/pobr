@@ -185,6 +185,61 @@ fn controlled_destruction_disables_critical_hits_only_in_its_group() {
     );
 }
 
+#[test]
+fn elemental_focus_disables_elemental_ailments_only_in_its_group() {
+    use pobr_build::{Build, SocketGroup};
+
+    let data = load_build_data();
+    let plain = SocketGroup::new().with_gem_skill("FireballPlayer", 20);
+    let build = Build::new()
+        .add_socket_group(
+            plain
+                .clone()
+                .with_gem_skill("SupportElementalFocusPlayer", 1),
+        )
+        .add_socket_group(plain);
+    for effective in [false, true] {
+        let mut opts = panel_opts();
+        opts.mode_effective = effective;
+        opts.extra_modifier_texts = vec![
+            "Adds 100000 to 100000 Cold Damage to Spells".into(),
+            "Adds 100000 to 100000 Lightning Damage to Spells".into(),
+        ];
+        let bare =
+            calculate_with_data(&build.clone().with_main_socket_group(2), &data, &opts).unwrap();
+        let blocked =
+            calculate_with_data(&build.clone().with_main_socket_group(1), &data, &opts).unwrap();
+        for (name, normal, prohibited) in [
+            ("Ignite", bare.ignite_dps, blocked.ignite_dps),
+            ("Chill", bare.chill_effect, blocked.chill_effect),
+            ("Shock", bare.shock_effect, blocked.shock_effect),
+            (
+                "Freeze",
+                bare.freeze_buildup_pct,
+                blocked.freeze_buildup_pct,
+            ),
+            (
+                "Electrocute",
+                bare.electrocute_buildup_pct,
+                blocked.electrocute_buildup_pct,
+            ),
+        ] {
+            assert!(normal > 0.0, "fixture must inflict {name}");
+            assert_eq!(prohibited, 0.0, "{name}");
+        }
+        assert_eq!(blocked.ignite_stacked_dps, 0.0);
+        assert_eq!(blocked.ignite_active_stacks, 0.0);
+        assert!((blocked.total_hit_avg - bare.total_hit_avg * 1.25).abs() < 1e-6);
+        let mut without_support = build.clone().with_main_socket_group(2);
+        without_support.socket_groups[0].gem_skills.remove(1);
+        assert_eq!(
+            calculate_with_data(&without_support, &data, &opts).unwrap(),
+            bare,
+            "the support must not change another group's output",
+        );
+    }
+}
+
 /// Supported levels belong to a gem instance's group, not the first matching
 /// skill id in the build. This also applies to an explicitly selected disabled group.
 #[test]

@@ -77,3 +77,12 @@
 - Applied the top plan: exact gem groups, all preview stats and unrelated state preservation passed, DPS 20129.498504087. Reload removed the metadata injection and restored canonical descriptions. Finished browser space 36 and removed screenshots; the applied synthetic test build remains available.
 - Closed the explanation milestone. New lead: Elemental Focus's source prohibits elemental ailments, but that applied plan reports IgniteDPS 38.352778282. Next iteration must check canonical eligibility versus potential-DPS semantics before assuming a defect.
 - Commit: this entry's checkpoint commit (`feat: expose sourced support effect descriptions`).
+
+## 9 — Enforce elemental ailment prohibitions
+
+- Confirmed the Elemental Focus lead through minimal real WASM and a failing native regression. Its canonical implicit prohibition was missing from extraction and its five mapped flags had no consumers.
+- Added attributed early gates for Ignite/Shock/Chill/Freeze/Electrocute, admitted the implemented flags and retained the implicit stat. Fixed zero-chance damaging ailments falling into assumed maximum active stacks. Positive-chance bleed/poison and separately configured enemy effects remain independent.
+- Generated delta is exactly two implicit entries (Focus and Armament III) plus the override manifest hash. Passed 76 ailment tests, 21 support tests, two parity gates, scoped lint, release WASM build and data sync.
+- Real WASM verified all five nonzero bare ailments become zero for supported spell and attack hosts, retaining hit damage. Populated UI no longer includes invalid Ignite while hit DPS stays 20,129. Independent review approved; updated contract, closed space 37 and removed screenshot.
+- Next: Armament III's conditional damage bonus showed no response to preliminary shocked/chilled config-input probes. This is not yet a proven missing mechanic: inspect accepted keys/mode and canonical multiplier wiring before changing calculations.
+- Commit: this entry's checkpoint commit (`fix: enforce elemental ailment prohibitions`).

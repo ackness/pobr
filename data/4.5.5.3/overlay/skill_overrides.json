@@ -22589,6 +22589,18 @@
       "stat_id": "attack_damage_is_lucky_if_surrounded"
     },
     {
+      "skill": "SupportElementalArmamentPlayerThree",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "cannot_inflict_elemental_ailments"
+    },
+    {
+      "skill": "SupportElementalFocusPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "cannot_inflict_elemental_ailments"
+    },
+    {
       "skill": "SupportGarukhansResolvePlayer",
       "stat": "implicit_stat",
       "stat_set": 1,
