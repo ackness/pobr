@@ -69,3 +69,15 @@
 - Closed the browser and removed the screenshot. No temporary hooks or scripts remain. The browser fixture's exclusions were restored to all candidates during this iteration; equipped supports were not changed.
 - Support decision-path milestone complete. Next: investigate the observed Controlled Destruction/100%-Crit-Chance discrepancy using effective outputs and pinned mechanics before asserting or fixing a calculation bug.
 - Commit: this entry accompanies `feat: expose sourced support effect descriptions`.
+
+## Iteration 8 — 2026-10-11
+- Reproduced Controlled Destruction's missing downside in real WASM. Minimal Frost Bomb retained 13% crit and gained 25% DPS with no unsupported diagnostic; the populated fixture retained 100% crit. Captured a failing browser assertion and failing permanent core/build regressions.
+- Pinned PoB2 oracle ce566eac45ea8a86477f513c7ee65a1ebe60014e confirmed zero crit chance and multiplier. Two read-only traces found three gaps: missing implicit-stat export, rejected NeverCrit flag mapping, and no shared crit consumer.
+- Fixed the existing extraction/mapping/resolver chain. NeverCrit precedes crit bonuses, returns chance/pre-effective chance/multiplier zero and average factor one, and preserves the disabling source in traced attribution. No schema or public API change.
+- Regenerated overrides and manifest. Exactly five canonical implicit entries were added: Controlled Destruction plus four Elemental Storm stat sets; all earlier override content and provenance were unchanged.
+- Verification: 21 critical-pipeline tests, 16 support-gating tests, two no-regression parity tests, and scoped fmt/Clippy passed. Rebuilt release WASM and synced 67 runtime files. Independent review approved with no findings.
+- Browser: minimal fixture now has zero crit/multiplier and DPS32.529970128. Populated baseline changed from inflated19799.75 to4419.6; top eight recommendations omit Controlled Destruction. Applied the top plan: preview28546.6 displayed28547, crit returned to100%, other twelve groups stayed identical, and reload retained it.
+- A throwaway Elemental Storm probe incorrectly required positive DPS in a direct fixture without trigger throughput. Raw inspection showed preserved Fire/Lightning/Cold hits for sets2–4 and zero crit across all four; no claim of full trigger or full-DPS oracle parity. No production workaround was added.
+- Closed the browser and removed temporary XML/oracle/screenshot artifacts. Settled both prior-iteration research agents and this iteration's completed agents.
+- Milestone complete for this mechanic. Next: trace source-described resource costs of Atziri's Impatience into actual consumers/diagnostics; its presence in all top plans is not proof those costs are modeled.
+- Commit: this entry accompanies `fix: enforce canonical never-crit effects`.

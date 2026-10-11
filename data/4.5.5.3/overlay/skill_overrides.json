@@ -4607,6 +4607,30 @@
       "stat_id": "skill_can_fire_arrows"
     },
     {
+      "skill": "ElementalStormPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "global_cannot_crit"
+    },
+    {
+      "skill": "ElementalStormPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 2,
+      "stat_id": "global_cannot_crit"
+    },
+    {
+      "skill": "ElementalStormPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 3,
+      "stat_id": "global_cannot_crit"
+    },
+    {
+      "skill": "ElementalStormPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 4,
+      "stat_id": "global_cannot_crit"
+    },
+    {
       "skill": "EnemyExplode",
       "stat": "base_multiplier",
       "value": 1.0
@@ -22545,6 +22569,12 @@
           9.21
         ]
       ]
+    },
+    {
+      "skill": "SupportControlledDestructionPlayer",
+      "stat": "implicit_stat",
+      "stat_set": 1,
+      "stat_id": "global_cannot_crit"
     },
     {
       "skill": "SupportDefyPlayer",

@@ -627,6 +627,7 @@ fn is_consumable_flag(name: &str) -> bool {
             | "CritChanceLucky"
             | "InevitableCriticalHits"
             | "NoCritMultiplier"
+            | "NeverCrit"
             | "LuckyHits"
             | "CritLucky"
             | "ElementalLuckHits"

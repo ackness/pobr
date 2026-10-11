@@ -8,6 +8,7 @@
 //!
 //! Calculation order (must not be reordered; a literal mirror of
 //! `CalcOffence.lua` L3681–3838):
+//! 0. `Flag(NeverCrit)` bypasses the pipeline: chance/multiplier = 0, effect = 1.
 //! 1. `crit_chance = (baseCrit + ΣBase + enemy.SelfCritChance) × (1 + (Σinc + enemy.IncSelfCritChance)/100) × Πmore`
 //! 2. clamp to `[0, CritChanceCap]` (default 100%, overridable by `Override`/`Sum BASE`) → PreEffectiveCritChance
 //! 3. under `mode_effective`, multiply by the hit-chance downgrade (the evasion re-roll)
@@ -126,6 +127,29 @@ fn resolve_crit_impl(
     mode_effective: bool,
     sink: Option<&mut TraceSink<'_>>,
 ) -> CritOutcome {
+    // PoB2 CalcOffence.lua:3818-3823: this prohibition precedes every
+    // chance/multiplier bonus, including inevitable critical hits.
+    if player.flag(cfg, "NeverCrit") {
+        if let Some(sink) = sink {
+            let source = sink.trace.add_source_node(
+                "NeverCrit flag",
+                1.0,
+                flag_source(player, cfg, "NeverCrit"),
+            );
+            let node = sink
+                .trace
+                .add_node("crit average factor", 1.0, TraceOperation::Chance);
+            sink.trace.add_edge(source, node);
+            sink.node_id = Some(node);
+        }
+        return CritOutcome {
+            chance: 0.0,
+            multiplier: 0.0,
+            effect: 1.0,
+            pre_effective_chance: 0.0,
+        };
+    }
+
     let crit_chance_names = [ModName::from("CriticalStrikeChance")];
     let self_crit_chance = [ModName::from("SelfCritChance")];
 

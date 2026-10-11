@@ -149,6 +149,42 @@ fn compatible_support_still_injects() {
     );
 }
 
+/// Pinned PoB2 Controlled Destruction supplies 25% more hit damage and
+/// global_cannot_crit. The downside belongs only to its supported group.
+#[test]
+fn controlled_destruction_disables_critical_hits_only_in_its_group() {
+    use pobr_build::{Build, CharacterIdentity, SocketGroup};
+    let data = load_build_data();
+    let plain = SocketGroup::new().with_gem_skill("FrostBombPlayer", 19);
+    let supported = plain
+        .clone()
+        .with_gem_skill("SupportControlledDestructionPlayer", 1);
+    let build = Build::new()
+        .with_character(CharacterIdentity {
+            level: 98,
+            class_name: "Monk".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(supported)
+        .add_socket_group(plain);
+    let bare = calculate_with_data(
+        &build.clone().with_main_socket_group(2),
+        &data,
+        &panel_opts(),
+    )
+    .unwrap();
+    let blocked =
+        calculate_with_data(&build.with_main_socket_group(1), &data, &panel_opts()).unwrap();
+    assert!(bare.crit_chance > 0.0);
+    assert_eq!(blocked.crit_chance, 0.0);
+    assert_eq!(blocked.crit_multiplier, 0.0);
+    let non_crit_hit: f64 = bare.damage_components.iter().map(|c| c.avg()).sum();
+    assert!(
+        (blocked.total_hit_avg - non_crit_hit * 1.25).abs() < 1e-8,
+        "retain the damage benefit without multiplying by critical damage"
+    );
+}
+
 /// Supported levels belong to a gem instance's group, not the first matching
 /// skill id in the build. This also applies to an explicitly selected disabled group.
 #[test]
