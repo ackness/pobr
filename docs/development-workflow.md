@@ -1,7 +1,9 @@
 # Development and CI workflow
 
-根目录 `./pobr` 是 Rust 开发入口，与应用二进制 `pobr` 分开。
-它转发到 `.claude/skills/run-pobr/driver.sh`；本机可选的 `.agents` 入口也转发到同一驱动。
+开发命令是根 `mise.toml` 中的 mise task：`mise tasks` 列出全部，`mise run <task> [参数]` 执行，
+任务名之后的参数原样传递。它们转发到 `.claude/skills/run-pobr/driver.sh`；没有安装 mise 时可直接运行
+`bash .claude/skills/run-pobr/driver.sh <命令>`，本机可选的 `.agents` 入口也转发到同一驱动。
+游戏 CLI（`cargo run -p pobr-cli`，二进制 `pobr`）只提供游戏计算命令，不包含任何开发命令。
 本文维护构建、测试、缓存和 CI 操作；验证范围与计算约定见 [CLAUDE.md](../CLAUDE.md)，
 Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/README.md](../pipeline/README.md)。
 
@@ -16,19 +18,19 @@ Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/R
 | cargo-nextest | 本地可选，CI 安装；完整门禁另跑 doctest |
 | LuaJIT | vendor 抽取、oracle 及相关工具测试需要；普通计算使用已入库数据 |
 
-`./pobr status` 查看环境就绪态。已有可用环境时跳过 bootstrap 和安装，
+`mise run status` 查看环境就绪态。已有可用环境时跳过 bootstrap 和安装，
 不为日常测试更新工具链或重复构建整个 workspace。
 
 ## 日常命令
 
 ```bash
-./pobr targets                              # List current suites without compiling
-./pobr verify build skills support_gating:: # Selected tests, fmt and Clippy
-./pobr test core parser mod_parser::        # One integration suite and filter
-./pobr test item lib                        # Library unit tests
-./pobr lint build skills                    # fmt and selected Clippy target
-./pobr build                                # Application CLI only
-./pobr cache                                # Read-only storage and file counts
+mise run targets                              # List current suites without compiling
+mise run verify build skills support_gating:: # Selected tests, fmt and Clippy
+mise run test core parser mod_parser::        # One integration suite and filter
+mise run test item lib                        # Library unit tests
+mise run lint build skills                    # fmt and selected Clippy target
+mise run build                                # Application CLI only
+mise run cache                                # Read-only storage and file counts
 ```
 
 短参数 `build` 对应 `pobr-build`，`core` 对应 `pobr-core`；完整包名也可用。
@@ -36,10 +38,10 @@ Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/R
 不会默认启动全量测试。多个目标、features 或其他选项直接传 Cargo 参数。
 
 ```bash
-./pobr test -p pobr-build --test skills --test codec
-./pobr lint -p pobr-build --lib --test skills
-./pobr test build parity no_regression
-./pobr build --workspace                    # Only when all binaries are needed
+mise run test -p pobr-build --test skills --test codec
+mise run lint -p pobr-build --lib --test skills
+mise run test build parity no_regression
+mise run build --workspace                    # Only when all binaries are needed
 ```
 
 测试本身会编译，不必先执行 `check` 或 `build`。只有测试名称过滤仍可能编译
@@ -74,7 +76,7 @@ Cargo 仍按输入指纹复用未变的依赖、库和测试程序；重复相�
 测试使用 `CARGO_PROFILE_TEST_DEBUG=2`，完成后恢复日常设置。
 
 ```bash
-./pobr cache
+mise run cache
 pnpm --dir web build-wasm                   # Verify and reuse unchanged output
 pnpm --dir web build-wasm --force           # Rebuild through Cargo, without cleaning
 ```
@@ -102,12 +104,12 @@ WASM 构建凭据校验 Rust 源码、嵌入语言文件、manifest/lockfile、J
 
 ```bash
 # Push the intended commit first; requires authenticated gh.
-./pobr ci feature/my-change
-./pobr ci feature/my-change --e2e          # Also run Playwright E2E (opt-in)
-./pobr ci-status --branch feature/my-change
+mise run ci feature/my-change
+mise run ci feature/my-change --e2e          # Also run Playwright E2E (opt-in)
+mise run ci-status --branch feature/my-change
 
 # Explicit local Rust gate; Web checks are separate.
-./pobr full
+mise run full
 ```
 
 合并、发版、工具链/features/依赖变更或影响范围不明的核心修改需要完整门禁，
@@ -118,7 +120,7 @@ WASM 构建凭据校验 Rust 源码、嵌入语言文件、manifest/lockfile、J
 
 | 改动范围 | 自动检查 |
 |----------|----------|
-| Rust 源码、`data/`、`examples/`、脚本或工作流 | fmt、workspace Clippy、脚本测试、`./pobr smoke`、`parity no_regression` |
+| Rust 源码、`data/`、`examples/`、脚本或工作流 | fmt、workspace Clippy、脚本测试、`mise run smoke`、`parity no_regression` |
 | `web/` | `pnpm typecheck` 与 Vitest 单测（不构建 WASM，不跑 E2E） |
 | 仅文档 | 不运行 |
 | 发版 PR（根 `Cargo.toml` 的 workspace 版本变化） | 版本元数据校验和 [ci.yml](../.github/workflows/ci.yml) 的完整 Rust / Web 门禁；它已覆盖上面的轻量检查，后者不再重复运行 |
@@ -129,8 +131,8 @@ fork PR 使用只读令牌且读不到仓库密钥；首次贡献者的运行需
 当前 [ci.yml](../.github/workflows/ci.yml) 包含独立的 Rust lint、Rust 测试和 Web 门禁。
 Rust 检查 fmt/Clippy/nextest/doctest/i18n 与数据兼容；Web 检查脚本、类型、单测、Worker、
 真实 WASM 与打包。Playwright E2E 默认不运行：tag、发版 PR 和普通手动触发都跳过，
-只有 `./pobr ci <ref> --e2e`（或在 Actions 页勾选 `e2e`）才运行，约 15 分钟。
-界面交互改动需要时在本地跑对应 spec，或显式请求一次云端 E2E。`./pobr full` 仅运行 Rust 门禁，包含 fmt/Clippy、nextest + doctest
+只有 `mise run ci <ref> --e2e`（或在 Actions 页勾选 `e2e`）才运行，约 15 分钟。
+界面交互改动需要时在本地跑对应 spec，或显式请求一次云端 E2E。`mise run full` 仅运行 Rust 门禁，包含 fmt/Clippy、nextest + doctest
 （无 nextest 时使用 Cargo）和 i18n。离线或排查 CI 时可显式使用，无需重复已通过的云端全量验证。
 
 应用发版更新 `[workspace.package].version`，用 `cargo metadata --format-version 1 > /dev/null`
@@ -172,19 +174,19 @@ Rust 检查 fmt/Clippy/nextest/doctest/i18n 与数据兼容；Web 检查脚本�
 ## 慢构建与按需报告
 
 ```bash
-./pobr timings build parity                # Compile selected suite with Cargo HTML timings
+mise run timings build parity                # Compile selected suite with Cargo HTML timings
 # Open target/cargo-timings/cargo-timing.html
 
-time ./pobr test build parity              # Compare unchanged cold/warm inputs
+time mise run test build parity              # Compare unchanged cold/warm inputs
 cargo nextest run -p pobr-build --test parity
 
-./pobr test build parity parity_baseline_report -- --ignored --nocapture
-./pobr test build parity effective_switch_dual_run_report -- --ignored --nocapture
-./pobr test build parity ehp_dual_run_report -- --ignored --nocapture
+mise run test build parity parity_baseline_report -- --ignored --nocapture
+mise run test build parity effective_switch_dual_run_report -- --ignored --nocapture
+mise run test build parity ehp_dual_run_report -- --ignored --nocapture
 ```
 
 `--timings` 显示编译单元耗时与依赖等待。使用重定向后的 target 时按 Cargo 输出定位报告。
-不要为了测量清缓存。测试目标由 `./pobr targets` 读取当前 manifest；深层 tests 文件通常是
+不要为了测量清缓存。测试目标由 `mise run targets` 读取当前 manifest；深层 tests 文件通常是
 汇总套件的模块，并非每个文件都会单独链接。
 
 nextest 按用例启动独立进程，进程间不共享 `OnceLock`；大量游戏数据初始化时应实测运行成本。

@@ -43,3 +43,87 @@ run = "bash pipeline/regen-all.sh"
 description = "取数 + 候选快照完整再生成、验证后发布"
 dir = "pipeline"
 run = ["node download-index.mjs", "bash export-tables.sh", "cd .. && bash pipeline/regen-all.sh"]
+
+# Development commands. These forward to the repository driver script; extra
+# arguments after the task name are passed through unchanged. The game CLI
+# (`cargo run -p pobr-cli`, binary `pobr`) contains no development commands.
+
+[tasks.targets]
+description = "List Rust crates and test suites without compiling"
+run = "bash .claude/skills/run-pobr/driver.sh targets"
+
+[tasks.test]
+description = "Run selected tests: `mise run test build skills [filter]` or raw Cargo arguments"
+run = "bash .claude/skills/run-pobr/driver.sh test"
+
+[tasks.lint]
+description = "fmt check plus Clippy for selected targets: `mise run lint build skills`"
+run = "bash .claude/skills/run-pobr/driver.sh lint"
+
+[tasks.verify]
+description = "Selected tests, then fmt and Clippy: `mise run verify build skills [filter]`"
+run = "bash .claude/skills/run-pobr/driver.sh verify"
+
+[tasks.timings]
+description = "Compile one suite with Cargo HTML timings: `mise run timings build parity`"
+run = "bash .claude/skills/run-pobr/driver.sh timings"
+
+[tasks.build]
+description = "Build the game CLI, or forward explicit Cargo selectors"
+run = "bash .claude/skills/run-pobr/driver.sh build"
+
+[tasks.smoke]
+description = "Representative aggregation, parser and Build Code checks"
+run = "bash .claude/skills/run-pobr/driver.sh smoke"
+
+[tasks.full]
+description = "Explicit full local Rust gate: fmt, Clippy, workspace tests, doctests, i18n"
+run = "bash .claude/skills/run-pobr/driver.sh full"
+
+[tasks.cache]
+description = "Read-only report of cache sizes and file counts"
+run = "bash .claude/skills/run-pobr/driver.sh cache"
+
+[tasks.ci]
+description = "Request full cloud CI for a pushed ref: `mise run ci <ref> [--e2e]`"
+run = "bash .claude/skills/run-pobr/driver.sh ci"
+
+[tasks."ci-status"]
+description = "List cloud CI results: `mise run ci-status [--branch <branch>]`"
+run = "bash .claude/skills/run-pobr/driver.sh ci-status"
+
+[tasks.status]
+description = "Report toolchain, vendor and data readiness"
+run = "bash .claude/skills/run-pobr/driver.sh status"
+
+[tasks.deps]
+description = "Install system dependencies (LuaJIT)"
+run = "bash .claude/skills/run-pobr/driver.sh deps"
+
+[tasks.vendor]
+description = "Clone or align the pinned PoB2 vendor checkout"
+run = "bash .claude/skills/run-pobr/driver.sh vendor"
+
+[tasks.bootstrap]
+description = "Install dependencies, clone vendor and build the game CLI"
+run = "bash .claude/skills/run-pobr/driver.sh bootstrap"
+
+[tasks.drill]
+description = "Version-bump drill: data regeneration, compile and parity"
+run = "bash .claude/skills/run-pobr/driver.sh drill"
+
+[tasks.versions]
+description = "List committed data versions and run the version-independence smoke"
+run = "bash .claude/skills/run-pobr/driver.sh versions"
+
+[tasks."data:status"]
+description = "Check the committed data snapshot and explain regeneration"
+run = "bash .claude/skills/run-pobr/driver.sh data"
+
+[tasks."data:diff"]
+description = "Diff two committed data versions: `mise run data:diff <verA> <verB> [--domain ...]`"
+run = "bash .claude/skills/run-pobr/driver.sh diff"
+
+[tasks."vendor:lua"]
+description = "Search the vendored PoB2 Lua for a pattern"
+run = "bash .claude/skills/run-pobr/driver.sh lua"

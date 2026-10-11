@@ -8,7 +8,7 @@
 //! - **Baseline measurement**: doesn't hard-fail by default; prints a
 //!   "PoBR vs PoB2" comparison per build plus an aggregate hit rate, serving
 //!   as a live dashboard of alignment progress
-//!   (`./pobr test build parity parity_baseline_report -- --ignored --nocapture`).
+//!   (`mise run test build parity parity_baseline_report -- --ignored --nocapture`).
 //! - **Regression gate**: `parity_no_regression` asserts the aggregate hit
 //!   rate doesn't fall below the recorded baseline (prevents changes from regressing).
 //!
@@ -1628,7 +1628,7 @@ fn corpus_unsupported_report() {
 ///
 /// A print-only cross-convention dashboard (no gate). Both modes are shown
 /// against EFFECTIVE exports here; the panel gate uses COMBAT references:
-/// `./pobr test build parity effective_switch_dual_run_report -- --ignored --nocapture`
+/// `mise run test build parity effective_switch_dual_run_report -- --ignored --nocapture`
 #[test]
 #[ignore = "convention dashboard; run explicitly with --ignored --nocapture"]
 fn effective_switch_dual_run_report() {
@@ -1753,7 +1753,7 @@ fn effective_switch_dual_run_report() {
 /// per-type max-hit values are no longer listed separately (old and new are
 /// mathematically equivalent under neutral input, see the F-2 report §3.1).
 /// A print-only dashboard (no gate):
-/// `./pobr test build parity ehp_dual_run_report -- --ignored --nocapture`
+/// `mise run test build parity ehp_dual_run_report -- --ignored --nocapture`
 #[test]
 #[ignore = "EHP dashboard; run explicitly with --ignored --nocapture"]
 fn ehp_dual_run_report() {

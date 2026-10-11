@@ -237,12 +237,12 @@ cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
 修改代码时选择相关的测试和 lint，以下以 Build Code 为例：
 
 ```bash
-./pobr verify build codec
+mise run verify build codec
 ```
 
 普通本地提交只运行相关检查；合并、发版或影响范围较大的修改由云端 CI 完成完整门禁。
-推送发版 tag，或对已推送分支运行 `./pobr ci <pushed-ref>`；本地无需再跑同一套全量验证。
-`./pobr full` 保留为显式本地 Rust 门禁，在线版在 `v0.x` tag 通过 CI 后自动部署。
+推送发版 tag，或对已推送分支运行 `mise run ci <pushed-ref>`；本地无需再跑同一套全量验证。
+`mise run full` 保留为显式本地 Rust 门禁，在线版在 `v0.x` tag 通过 CI 后自动部署。
 PR 会自动运行轻量检查，贡献要求见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 命令、缓存复用和磁盘统计见 [开发工作流](docs/development-workflow.md)。
 
@@ -304,7 +304,7 @@ PoB2 兼容是硬回归门禁，三层校验互补：
 3. **`tools/pob2-oracle`** — 需要逐分量定位偏差时，从 vendored PoB2 直接 dump Lua 侧计算分解对照。
 
 ```bash
-./pobr test build parity parity_baseline_report -- --ignored --nocapture
+mise run test build parity parity_baseline_report -- --ignored --nocapture
 ```
 
 `vendor/PathOfBuilding-PoE2/` 是完整检出，公式核对直接读本地 Lua，不必上网找。
