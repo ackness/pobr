@@ -12,8 +12,9 @@
 - Verified, independently valuable progress gets focused Conventional Commits.
   Release-worthy integrated milestones get annotated tags under existing rules.
   Do not optimize for task completion, agent volume or producing commits.
-- No push, PR or deployment authorization was given. Keep work on the existing
-  `multi-agent-self-improvement` branch and preserve unrelated changes.
+- Initial iteration authorization excluded push, PR and deployment; the
+  2026-10-11 explicit release instruction below supersedes that restriction for
+  the v0.0.34 release only. Preserve unrelated changes and the loop branch.
 - 2026-10-11 I2 trigger: reaffirm tool-only scope, durable pause on every entry,
   atomic ownership, genuine parallel slices, real-WASM/browser proof and independent
   review. Main alone integrates/commits/tags; no push/publication/deployment.
@@ -85,6 +86,35 @@
   pause absent before/after new atomic claim, automation observed enabled.
   Retained 18-request real-WASM replay fails all 12 explicit 1/2 cases, while
   six absent controls pass. No resume, version/tag, push/publication/deployment.
+- 2026-10-11 release steering: user explicitly requests committing the current
+  version, merging into the main branch and publishing a new release. Release
+  v0.0.34 includes I1–I11 through `a519ba85b0f9fe0601b1f3491226e21aa070422d`,
+  including the newly completed explicit player charge-count correction.
+  Main owns the release claim to fence recurring integration during publication.
+  Bump only app/tool versions, merge into `master`, and use tag CI for complete
+  Rust/Web gates, standalone WASM publication and production Pages deployment.
+  Existing scoped runtime evidence remains valid; release completion requires
+  observing the tag workflow's actual result, not dispatch alone.
+
+## v0.0.34 release changes
+
+- Retain same-stage equipment analysis, complete-item comparisons, support
+  planning and passive/joint-planner receipts across page navigation. Hidden
+  pages stop work; changed calculation inputs invalidate stale results.
+- Preserve route/support diagnostic provenance and excluded-combination causes.
+  Disclose confirmed conditional support coverage limits without inventing Fork
+  damage corrections; newly limited complete edits cannot be recommended/applied.
+- Add bounded Config quick access without mutating untouched imported values.
+  Explicit charge-use/exposure Boolean edits override legacy imported conditions.
+- Preserve unresolved imported gem slots and source names in saves and sharing,
+  excluding unidentified gems from calculation. Deletion cannot synthesize a
+  zero main-active ordinal that breaks reload.
+- Honor explicit player Power/Frenzy/Endurance counts at the shared multiplier
+  seam, including minimum, zero/default, fractional and above-maximum semantics.
+  Preserve raw input types and isolate the Combat projection.
+- Data remains `4.5.5.3`, JSON schema remains 7, and library crate versions remain
+  unchanged. Mechanic coverage is bounded; no exhaustive support/minion claim.
+
 
 ## Completed milestone M1: trustworthy, continuous upgrade decisions
 
