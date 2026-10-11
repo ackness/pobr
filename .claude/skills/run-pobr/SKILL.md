@@ -81,7 +81,7 @@ full gate before cloud CI. When local full Rust validation is explicitly needed:
 
 This runs fmt, workspace Clippy, nextest plus separate doctests (or `cargo test --workspace` when nextest is absent), and i18n lint. It stops at the first failure.
 CI retains its full Rust and Web gates on tags/manual dispatch; ordinary pushes
-and PRs do not trigger CI automatically. Do not repeat a successful full gate for
+do not trigger CI, and pull requests only run the lightweight checks in `pr.yml`. Do not repeat a successful full gate for
 an unchanged local commit, or dispatch an identical CI run in addition to a tag.
 Publishing, PR updates and version bumps follow the user's authorized scope.
 See [workflow commands](../../../docs/development-workflow.md). Application version

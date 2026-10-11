@@ -243,6 +243,7 @@ cargo run -p pobr-cli -- parse-mod "20% increased Fire Damage"
 普通本地提交只运行相关检查；合并、发版或影响范围较大的修改由云端 CI 完成完整门禁。
 推送发版 tag，或对已推送分支运行 `./pobr ci <pushed-ref>`；本地无需再跑同一套全量验证。
 `./pobr full` 保留为显式本地 Rust 门禁，在线版在 `v0.x` tag 通过 CI 后自动部署。
+PR 会自动运行轻量检查，贡献要求见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 命令、缓存复用和磁盘统计见 [开发工作流](docs/development-workflow.md)。
 
 Rust **edition 2024**；应用与工具使用 workspace 发布版本，与 `v0.x` tag 同步。
