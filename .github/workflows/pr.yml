@@ -27,6 +27,7 @@ jobs:
     outputs:
       rust: ${{ steps.filter.outputs.rust }}
       web: ${{ steps.filter.outputs.web }}
+      release: ${{ steps.release.outputs.release }}
     steps:
       # The default checkout is the merge commit; its first parent is the base.
       - uses: actions/checkout@v7
@@ -42,11 +43,15 @@ jobs:
           if grep -qE '^(web|\.github/workflows)/' <<< "$files"; then web=true; fi
           echo "rust=$rust" >> "$GITHUB_OUTPUT"
           echo "web=$web" >> "$GITHUB_OUTPUT"
+      # A release PR runs the full gate in ci.yml, which covers every check
+      # below, so the lightweight jobs are skipped to avoid running them twice.
+      - id: release
+        run: devs/scripts/release-check.sh --detect-only HEAD^1
 
   rust:
     name: fmt + clippy + smoke + parity
     needs: changes
-    if: needs.changes.outputs.rust == 'true'
+    if: needs.changes.outputs.rust == 'true' && needs.changes.outputs.release != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -69,7 +74,7 @@ jobs:
   web:
     name: web typecheck + unit tests
     needs: changes
-    if: needs.changes.outputs.web == 'true'
+    if: needs.changes.outputs.web == 'true' && needs.changes.outputs.release != 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
