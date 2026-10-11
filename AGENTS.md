@@ -51,7 +51,8 @@ Add regression assertions for changed behavior; calculation changes also need
 relevant parity coverage. Specify `--test` or `--lib` to limit compilation.
 Local commits require relevant checks. Pull requests run lightweight checks
 automatically (`.github/workflows/pr.yml`); full merge/release gates run in CI on
-tags or manual dispatch, so do not require a duplicate local full run. Use `./pobr ci <pushed-ref>` for manual
+tags, manual dispatch and release PRs (a changed workspace version), so do not
+require a duplicate local full run. Use `./pobr ci <pushed-ref>` for manual
 cloud validation and `./pobr full` for explicit local Rust validation. Reuse
 passing checks for unchanged inputs. See [workflow commands](docs/development-workflow.md).
 Documentation-only changes need diff/link review, not builds.

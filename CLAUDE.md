@@ -31,7 +31,7 @@ Detailed repository guidance for coding agents and contributors. [AGENTS.md](AGE
 - 编辑中只有需要快速定位编译错误时才单独 `cargo check -p <crate> --lib`。Clippy 按改动选择 `--lib` / `--bin <name>` / `--test <suite>`；测试专属改动无需扩大到 `--all-targets`。
 - 同一代码、依赖、工具链、features、数据版本下已通过的检查复用结果；后续只改文档不使代码测试失效。失败后先重跑失败目标，只有新改动、失败或明确影响范围才扩大验证。
 - Web 纯 TS/CSS 改动复用已构建 WASM；WASM 产物缺失，或 WASM 及其 Rust 依赖的源码、features、工具链改变时重建。`pnpm build` 已包含 typecheck，最终需要 build 时不额外重复 typecheck。E2E 前确认 dist 对应当前代码。
-- **合并 / 发版、工具链 / Cargo features / workspace 依赖变更、影响范围不明的核心改动**需要完整门禁，优先交给 CI。发版由 tag CI 完成；其他场景先推送分支，再运行 `./pobr ci <remote-ref>`，并检查该提交的结果。本地不再强制先跑 `full`；离线或排查 CI 时可显式运行 `./pobr full`（仅 Rust 门禁，Web 另验）。完整 CI 仍仅 tag / 手动触发；PR 自动运行的是轻量检查（[pr.yml](.github/workflows/pr.yml)），不能替代完整门禁；发起 CI 不等于通过。相同代码不重复运行本地和云端全量门禁。
+- **合并 / 发版、工具链 / Cargo features / workspace 依赖变更、影响范围不明的核心改动**需要完整门禁，优先交给 CI。发版由 tag CI 完成；其他场景先推送分支，再运行 `./pobr ci <remote-ref>`，并检查该提交的结果。本地不再强制先跑 `full`；离线或排查 CI 时可显式运行 `./pobr full`（仅 Rust 门禁，Web 另验）。完整 CI 在 tag、手动触发和发版 PR（workspace 版本变化）时运行；普通 PR 自动运行的是轻量检查（[pr.yml](.github/workflows/pr.yml)），不能替代完整门禁；发起 CI 不等于通过。相同代码不重复运行本地和云端全量门禁。
 - 不自动 `cargo clean`、改 profile / features / `RUSTFLAGS` 或共享 target 来“加速”；这些可能使缓存失效。看到构建锁先检查已有进程，不叠加 Cargo 命令。
 
 ## 常用命令
@@ -77,7 +77,7 @@ tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle�
 
 - `./pobr verify build skills support_gating::` 一次执行定向测试和 lint；`./pobr targets` 列出测试目标，不编译。
 - `bash .claude/skills/run-pobr/driver.sh full` 是完整 Rust 门禁，只用于上面列出的完整门禁场景，不是每次本地提交的收尾动作。
-- PR 自动运行轻量检查（fmt / Clippy / 冒烟 / parity 回归；改动 `web/` 时加类型检查和单测）；完整门禁仍在 tag 和手动触发时运行。
+- PR 自动运行轻量检查（fmt / Clippy / 冒烟 / parity 回归；改动 `web/` 时加类型检查和单测）；完整门禁在 tag、手动触发和发版 PR 时运行。发版 PR 的完整门禁通过后再合并、打 tag。
 
 
 ## Workspace 结构
