@@ -1128,7 +1128,7 @@ fn rewrite_percent_capture(
         .enumerate()
         .filter(|(_, t)| {
             t.get("type").and_then(serde_json::Value::as_str) == Some("PercentStat")
-                && t.get("percent").is_some_and(&is_pure_capture)
+                && t.get("percent").is_some_and(is_pure_capture)
         })
         .map(|(i, _)| i)
         .collect();
