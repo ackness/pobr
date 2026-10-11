@@ -184,3 +184,75 @@
 
 .config-toolbar { position: sticky; top: 0; z-index: 5; background: var(--surface-page); padding-block: var(--space-3); border-bottom: 1px solid var(--border-subtle); }
 .config-filter { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--text-secondary); }
+
+.config-quick-access {
+  margin-bottom: var(--space-4);
+  min-width: 0;
+}
+
+.config-quick-context {
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.config-quick-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0 0;
+}
+
+.config-quick-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+}
+
+.config-quick-description {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.config-quick-description p {
+  margin: var(--space-2) 0 0;
+}
+
+.config-quick-value {
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.config-quick-value code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.config-quick-entry button {
+  flex: none;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.config-quick-entry button:focus-visible,
+.config-item:focus-within {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .config-quick-entry {
+    flex-direction: column;
+  }
+
+  .config-quick-entry button {
+    align-self: flex-start;
+  }
+}

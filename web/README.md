@@ -47,6 +47,15 @@ equipment candidates also survive same-stage navigation. Leaving cancels their
 work and paste debounce; returning does not restart scoring. Changed calculation
 inputs invalidate evaluated results; switching stages resets the workspace.
 
+On Config, **Quick access** explains optional shock state/magnitude assumptions and
+links to enemy mitigation settings matching the calculated main skill's non-zero
+hit damage. **Open setting** clears catalog filters and focuses the original
+control without changing the build. The full catalog, search, configured-only
+filter and advanced imported inputs remain available. This hit-only shortlist
+does not establish DoT/minion relevance, mechanic coverage or a guaranteed gain;
+configured does not mean effective. Reset restores the imported value, or the
+catalog default when no value was imported.
+
 ## Quick start
 
 Run these commands from the repository root. Use the pnpm version pinned in

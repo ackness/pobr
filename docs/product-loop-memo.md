@@ -49,6 +49,13 @@
   clean existing branch; pause absent before and after atomic acquisition;
   recurring automation observed enabled. Preserve I6's scoped M1 exit evidence,
   continue M2 only after proving its source inference in runtime.
+- 2026-10-11 I8 trigger: reaffirm tool-only scope, pause precedence on all entries,
+  atomic single ownership, supervised disjoint parallel work, real-WASM/browser
+  proof, independent review and main-only integration/Git. No push/publication/
+  deployment. Entry checkpoint `9c70155839728d876a4aa0f06a9d72e2b96e7641`;
+  existing branch clean, pause absent before/after new atomic acquisition.
+  Continue M3; preserve the completed M1/M2 scoped evidence, not broad coverage
+  or release qualification. Automation observed enabled.
 
 ## Completed milestone M1: trustworthy, continuous upgrade decisions
 
@@ -116,20 +123,21 @@ coverage percentages, generated-data changes or a hard-coded Fork exception.
 Observe existing outcomes once; do not run full Compare mapping twice per candidate.
 Retain data `4.5.5.3`; no version/tag/publication decision until applicable gates.
 
-## Active milestone M3: honest build-context configuration guidance
+## Completed milestone M3: honest build-context configuration guidance
 
 Outcome: a player can find and understand a bounded set of appropriate encounter
 and combat settings without mistaking “configured” for “effective” or losing
 access to the full catalog and imported values.
 
-Priority evidence: `docs/frontend-usability-review.md:53` records the unresolved
-common-condition/relevance seam. I7's actual caster Config page still presents
+Starting priority evidence: `docs/frontend-usability-review.md:53` recorded the
+common-condition/relevance seam, now addressed within I8's bounded scope below.
+I7's actual caster Config page presented
 the full category catalog, search and “Configured only (0)”, without a current-build
 guidance entry. General labels translated during EN → zh-TW → zh-CN inspection;
 no blanket missing-translation defect is claimed. Loading work stays lower
 priority because the chunk warning is not an observed runtime bottleneck.
 
-Exit scenarios:
+Exit scenarios (all passed at I8; proof and limits in the I8 ledger below):
 
 1. Current caster and attack builds have a useful, clearly explained quick-access
    entry for a bounded set of combat/encounter conditions. Any build-specific
@@ -144,6 +152,40 @@ Exit scenarios:
 4. Independent review, relevant contracts and actual English/Chinese,
    desktop/narrow/keyboard interaction pass. No formula expansion, invented
    support percentage or assertion that all catalog mechanics are modeled.
+
+## Active milestone M4: trustworthy imported encounter-condition edits
+
+Outcome: changing a supported charge-use or elemental-exposure assumption after
+import has the same calculation semantics as importing that final assumption.
+An imported legacy condition must not silently defeat an explicit current edit.
+
+Priority evidence: I8's source research identified legacy/raw-input precedence
+risks. Main's synthetic Fireball **real-WASM** probe in data `4.5.5.3` confirmed:
+`usePowerCharges` imported false → current false/true gives 0/3 charges, while
+imported true → current false/true remains 3/3. Fire exposure imported false
+remains off under true override (hit DPS `150.691666606`); imported true remains
+on under false override (`180.829999928`). These are observed condition-edit
+failures, not claims of inherent charge damage bonuses or new formula defects.
+Exact requests/responses: `.cache/product-loop-I8-config-transitions.json`.
+
+Exit scenarios:
+
+1. Native/session/normal real-WASM reproduction and failing-before regressions
+   distinguish imported/raw/legacy precedence for charge-use and exposure in both
+   directions. Equivalent independently imported final settings are controls.
+2. Explicit false and true edits reach existing numerical consumers; absence,
+   imported values and reset retain their intended semantics. Do not change raw
+   text/types, catalog defaults, placeholders, enemy tiers or formulas to mask it.
+3. Actual Config edits/reset, export/reimport and stage switching agree with the
+   displayed charge state or damage result. Real support/passive/replacement
+   receipts cannot retain or apply results from the previous assumption.
+4. Independent Spec/Standards review, relevant native/JSON/parity checks, rebuilt
+   real WASM and desktop/narrow/English/Chinese keyboard interaction pass.
+
+Scope: repair the confirmed condition-state precedence seam. Numeric charge
+overrides, all catalog coverage, parser/formula expansion and broad diagnostics
+remain unproven and out of scope unless separate evidence requires a decision.
+
 
 
 
@@ -233,21 +275,20 @@ design proposals; no support/passive runtime result is claimed by I1.
 
 ## Ranked continuation
 
-1. I8/M3: absorb current steering/pause/claim and verify I7's exact checkpoint.
-   Revisit Config on real caster and attack builds. Inspect the existing catalog,
-   visibility metadata, translation and actual interpreter/consumer seams before
-   selecting the first bounded quick-access set. Preserve imported raw values.
-2. Prove the selected conditions' applicability and on/off/reset effects with
-   normal real WASM before adding guidance. Reuse the existing controls and full
-   catalog rather than introducing a second configuration model or hiding unknowns.
-   Split substantive independent UI/contract and behavior work only after the shared
-   scope is established; retain independent review and actual browser proof.
-3. M1 and M2 are complete only under their recorded scoped exits, not complete
-   game-mechanic coverage or release qualification. Defer broad engine coverage,
-   active-form numerical routing beyond observed cases, touch-canvas redesign and
-   unmeasured loading work unless fresh product evidence changes the priority.
+1. I9/M4: enforce steering/pause/atomic ownership; verify I8's exact checkpoint.
+   Replay the eight charge/exposure requests above, add independently imported
+   final-state controls and inspect current raw/legacy condition resolution before
+   selecting the bounded correction. Shock opposite-state controls already pass.
+2. Use disjoint supervised engine and consumer-regression ownership, independent
+   review and main-only integration. Preserve defaults/placeholders/raw values;
+   run relevant native/session/JSON and parity gates, rebuild WASM, then verify
+   real Config toggles/reset/export and planner invalidation across stages.
+3. M1–M3 are complete under their recorded scoped exits, not complete mechanic
+   coverage or release qualification. Defer numeric charge overrides, broad engine
+   coverage, unproven active-form routing, touch-canvas redesign and unmeasured
+   loading work unless fresh evidence changes priority.
 
-Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1–I7
+Browser continuity: Ego TaskSpace `5`, Page `p1`, agent-owned; reused for I1–I8
 desktop, 390px and 320px inspection. Keep the same space for the ongoing tool loop;
 do not claim a user-owned space or overwrite existing browser builds. Named
 development service `pobr-product-loop-dev` serves current source on port 5173;
@@ -1025,3 +1066,142 @@ Operational provenance:
   the matching own owner.json/claim. Recurring trigger observed enabled at I7 close.
 - This is a scoped product checkpoint, not a release-qualified build. Retain
   application `0.0.33`; no new tag, push, publication or deployment.
+
+### I8 — bounded build-context configuration review
+
+Starting checkpoint: `9c70155839728d876a4aa0f06a9d72e2b96e7641`
+(`feat: disclose conditional support coverage limits`); clean existing branch.
+Previous release: `v0.0.33` at `d11a69317c452cde614b62fedd806352a91014ff`.
+Checkpoint: the commit containing this row,
+`feat: guide build-context configuration review`; main records its exact resulting
+hash in `.cache/product-loop-checkpoint.json` immediately after committing.
+Application `0.0.33`, active data `4.5.5.3`, branch
+`multi-agent-self-improvement`; no version/data/golden/tag change.
+
+Outcome and decisions:
+
+- Actual caster and attack Config pages had no quick-access entry. Source/consumer
+  research and normal real-WASM Comet/Ice Shot probes selected a seven-key maximum:
+  optional enemy shock state/magnitude, and physical reduction/four resistances
+  only for corresponding finite positive returned main-skill hit components.
+- Adopt the conservative review-and-jump card, not render modes, duplicated inputs
+  or a broad visibility evaluator. Show actual calculated identity, typed current
+  values/provenance and reasons. Open setting clears filters, opens the existing
+  section and focuses its unique control without changing configuration.
+- Full catalog, search, configured-only, advanced imported keys, quest/default
+  hints and reset precedence remain. Hit-derived shortcuts are not DoT/minion/full
+  relevance or coverage evidence; configured does not mean effective. Shock must
+  reflect an actual encounter state and magnitude, not guaranteed infliction,
+  automatic maximum, uptime or a checkbox-only DPS gain.
+- Busy/error/unavailable context suppresses stale hit-derived entries. No cached
+  guidance state, request/schema/data change or new numerical formula was added.
+- Independent Spec review found untouched numeric blur coerced imported `"23"`
+  to number `23`, or called Reset/apply for an untouched absent input, invalidating
+  retained receipts. The raw roundtrip regression failed before main's fix.
+  An unchanged-draft return now preserves both cases and actual edits still commit.
+- Actual desktop Reset was intercepted after the initial shortcut scroll. Both
+  320/390px geometry regressions failed before correction. Native centered scrolling
+  replaces toolbar-height/ref/inline-margin bookkeeping; focus and mouse Reset
+  now pass, including a permanent 1440px geometry case.
+- Main compacted repeated explanations and changed the ambiguous “Computing”
+  caption to “Calculated main skill”. Existing localization/name APIs remain.
+
+Observed verification:
+
+- Normal real-WASM Comet returns Lightning/Cold/Chaos hits, while Ice Shot returns
+  Physical/Lightning/Cold/Fire. Matching resistance/PDR inputs reached existing
+  consumers; unrelated types can be unchanged, and resistance inversion can reverse
+  the DPS direction. The shortcut promises review, not monotonic improvement.
+- Explicit shocked=true with magnitude 5/20 changed both normal builds' DPS.
+  Synthetic Fireball imported false/true × override false/true gave off/on DPS
+  `75.345833303` / `90.414999964` at magnitude 20. Restoring the imported state
+  reproduced every normal response field exactly. Checkbox-only benefit is not claimed.
+- Final production build/typecheck passed; 7 existing config-default/main-skill/
+  skill-name unit contracts passed. Rust/WASM/data sources are unchanged: reuse
+  the verified I7 WASM and native/parity inputs, rather than duplicate Rust gates.
+- Production real-WASM E2E: all 14 new configuration-guidance scenarios and the
+  4 existing config/localization cases passed after targeted correction/rerun.
+  The full catalog case exercised 562 controls and 664 control/list choices.
+  New scenarios cover returned caster/attack identity and absent hit types,
+  unique full catalog/filter/keyboard focus, actual resistance/shock edits/reset,
+  false/zero/numeric/string/unknown raw export/reimport/reload, skill/stage/build
+  refresh, all three locales and 320/390/1440px unobscured focus/overflow.
+- Real completed support and replacement receipts survived Config review, filter
+  changes and focus/Tab from an untouched absent number with exact saved requests.
+  Actual shock edits removed stale receipts/Apply; reset did not resurrect them.
+- One integration harness assertion matched an unrelated saved skill-set Apply
+  button after support results were correctly invalidated. Main scoped it to the
+  actual gem optimizer; the affected support scenario passed its targeted rerun.
+  An unspecified summary assertion was also corrected to use its semantic output,
+  rather than assume it always contains a numeric code element.
+- Actual Ego: imported two own committed-data caster/attack builds through the UI.
+  Ice Shot's filtered Enter jump cleared both filters, focused the one original
+  control below the toolbar with 2px focus, and did not change the request on Tab.
+  Cold resistance 60 changed displayed DPS `2,032,513` → `2,274,206`; mouse Reset
+  restored `2,032,513` and the entire original stage state exactly.
+- Actual Comet showed only the expected five entries and returned identity, not
+  its first imported trigger gem. EN → zh-TW → zh-CN updated labels/actions;
+  390px keyboard jump/Tab preserved the entire saved build. Main/document overflow
+  was zero at 320/390px, with desktop/narrow screenshots inspected:
+  `.cache/product-loop-I8-{caster-desktop,zhTW-narrow,zhCN-keyboard-narrow,zhCN-guidance-narrow}.png`.
+- Both preexisting browser builds (including My build's four stages) remained
+  byte-identical as complete build objects. All 30 original items and 3 original
+  skill sets remain exact. The two own imports added 28 item/2 skill-set entries;
+  the whole library is therefore not byte-identical. English/1440px was restored.
+- Independent final Spec/Standards followups found no unresolved actionable
+  source issue; their source-only review does not substitute for main's runtime.
+
+Limits and next-priority evidence:
+
+- Initial in-flight HMR briefly showed an empty root while new dictionary keys
+  were being inserted. Reloading finished source and production execution worked;
+  a specific transient cause was not proven. No error was suppressed.
+- Busy/error-with-old-calculation branches were source-reviewed, not artificially
+  delayed/rejected through a fake backend. Valid build/main-skill/stage/no-skill
+  transitions were exercised. No touch-device, screen-reader or all-mechanic proof.
+- Main JS is `518.26 kB`, retaining the existing >500kB warning; WASM unchanged
+  `5,120.07 kB`. No measured loading/search-speed or runtime-regression verdict.
+  No new vendor-oracle run, broad formula parity audit or full-release gate.
+- Source research separately raised imported charge/exposure legacy-state risks.
+  Main's eight real-WASM opposing-state probes confirmed the failures documented
+  in M4 above; numerical charge overrides remain an inference, not a confirmed
+  defect. Keep this evidence visible, do not expand I8's presentation fix into
+  unreviewed engine work or imply the full catalog is effective.
+
+M3 exit disposition — **complete**:
+
+1. Useful bounded caster/attack entry and consumer-backed, honestly limited
+   hit-context reasons: normal WASM probes, committed-build E2E and actual Ego.
+2. Full catalog/search/configured-only, raw/default/import/reset preservation:
+   exhaustive existing controls and typed export/reimport/reload plus unchanged
+   original browser build objects. Untouched blur mutation was fixed and regressed.
+3. Real edit/reset effects, fresh skill/build/stage/no-skill context, compatible
+   retained receipts and stale Apply removal: new real-WASM scenarios and actual
+   keyboard/edit/mouse Reset. No guide navigation dirties an untouched setting.
+4. Independent reviews/followups have no unresolved actionable finding; relevant
+   contracts, production build and English/Chinese desktop/narrow keyboard surfaces
+   passed. Scope/coverage and unexercised branches remain explicit above.
+
+Refinement: select M4's confirmed imported condition precedence failure over
+unmeasured loading work or broad formula changes. I9 starts with the exact eight
+requests and independent final-state controls, then a bounded engine correction
+and native/JSON/parity/rebuilt-WASM/browser proof. M1/M2 scope stays unchanged.
+
+Operational provenance:
+
+- Run `run_f9fa1f9a9cf8`, coordinator
+  `term_d9b8932e-53c8-4dbc-9979-9d303a024915`. Pause absent before/after new atomic
+  claim and integration checks; no marker cleared. Recurring automation
+  `0f3538b3-37df-44be-b888-d085f05d6e8d` observed enabled at entry/final checks.
+- Parallel read-only consumer `ctx_5fb122a3c016` and guidance `ctx_945138da8a53`;
+  guidance terminal reused for UI `ctx_bf19282a9b97`, parallel disjoint regressions
+  `ctx_d46d5f1b1722`. Independent Spec `ctx_9b32906ccc49` and Standards
+  `ctx_b99273a56054`, reused for final followups `ctx_010875a0716d` and
+  `ctx_aed4d52b88a4`. Every accepted settlement got release/reuse before ack;
+  final inbox/reclaimable fleet empty. Main alone fixed/integrated/validated/Git.
+- Isolated production preview used port 4188 and ended with its Playwright run.
+  Existing 5173 and agent-owned Ego 5/p1 remain for continuation. Throwaway probe
+  scripts/runner config are removed; exact JSON receipts/reviews/images stay ignored.
+  After the exact verified commit, release only this owner.json/atomic claim.
+- Verified product checkpoint, not application release: retain `0.0.33` and
+  `v0.0.33`; no new version/tag, push, external publication or deployment.

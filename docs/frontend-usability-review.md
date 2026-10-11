@@ -48,9 +48,9 @@
 
 ## 后续优化方向
 
-以下属于需要单独设计或进一步验证的工作，本次未实现：
+以下记录各方向的当前状态与仍需单独验证的边界：
 
-1. **战斗配置的常用项入口。** 本轮增加了“仅显示已配置”，但已配置不等于对当前技能生效。按技能筛选常用条件和补齐人工核对后的翻译仍需进一步设计。
+1. **战斗配置的常用项入口。** Product-loop I8/M3 adds a bounded Quick access review-and-jump card: paired optional shock assumptions and matching enemy mitigation from returned non-zero main-skill hit damage. It focuses the original unique control, preserves full catalog/search/configured-only/raw values, and explicitly avoids configured-equals-effective or DoT/minion/full-coverage claims. Real-WASM caster/attack, edit/reset, raw-type roundtrip, retained support/replacement receipts, EN/zh-TW/zh-CN and 320/390/1440px keyboard geometry passed. Independent review caught untouched numeric-string coercion; unchanged blur is now navigation-only. Imported charge/exposure opposing-state failures were separately reproduced and prioritized as M4, not fixed or advertised by this presentation-only slice.
 2. **移动端天赋树的独立操作设计。** SVG 画布适合鼠标，触屏加点、缩放、节点说明和键盘节点导航需要专门设计与真实设备验证，不能仅凭页面没有横向溢出判定完成。
 3. **Cross-page planning continuity.** Product-loop M1 checkpoints retain same-stage equipment analysis, complete replacement text/position/augment receipts, equipment candidates and joint results, the selected support workspace, passive-route settings/results and joint-jewel candidates/results. Leaving cancels active work and paste debounces without restarting on return; input/goal changes invalidate incompatible results, and stage/tree/data replacement resets ownership. Exact evaluated item/augment and plan payloads apply after navigation. The tree canvas and keyboard/hover/heatmap effects unmount while away. Support and route receipts disclose raw baseline limits and pair rejected complete edits with new reasons/errors; support non-finite causes remain independently visible. I6 renewed the copied-stage equipment → supports → passives → replacement/Apply journey with real WASM, desktop/narrow/keyboard inspection and safe stage switching. This is session retention, not reload persistence, background planning or exhaustive engine-effect coverage; see [product-loop memo](product-loop-memo.md) for exact proof and limits.
 4. **资源加载拆分。** 当前生产构建提示主 JS chunk 超过 500 kB。后续可测量首屏与切页耗时，再决定是否按功能懒加载；本次未为消除提示而调整依赖或构建配置。
