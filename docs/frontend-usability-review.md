@@ -80,4 +80,11 @@ Review 后续修复：
 - 取消珠宝插槽时，同步清理级联撤销节点的属性选择，保留仍已分配节点的选择。回归覆盖 Warrior 连通路径中的 #2491 插槽及下游 #51561 属性节点，并验证重新分配路径不会恢复旧属性选择。
 - 修复前新增测试复现了菜单距底部仍差 63 px、已撤销属性选择残留的问题。修复后生产构建（含类型检查）、天赋图与武器组的 10 项单元测试，以及功能复查、页面动线、可用性、提升规划的 26 项浏览器测试全部通过。仅本地修复，未推送、发布或更新版本号。
 
+Product-loop I9/M4 follow-up:
+
+- The native/source-code-plus-raw-override path now honors explicit Boolean charge-use and elemental-exposure edits over imported legacy conditions. Normal frontend Config already passed the opposing-state interaction before this repair; no blanket claim that previous UI edits were broken.
+- Independent final-import controls, native/JSON/parity checks and rebuilt real WASM passed. Config edit/reset, raw-type export/reimport, opposite stages and support/passive/replacement invalidation passed in 31 new production-browser scenarios; 17 unchanged guidance/localization scenarios also passed. Targeted reruns corrected harness assumptions about normalized enemy tiers, hidden receipt text and the multi-stage selector.
+- Actual Ego production interaction verified EN/zh-TW/zh-CN keyboard/reset at 390/1440px, displayed fire hit DPS 90.41 → 75.35 → 90.41, export/reimport and copied-stage isolation. No touch-device, screen-reader or exhaustive formula-coverage claim.
+- Reloading the prior long-lived Comet workspace exposes a separate preexisting unresolved level-0 gem validation failure. Original build/library entries and raw bytes are retained. This is active M5, not repaired or hidden by M4; see the [product-loop memo](product-loop-memo.md) for exact evidence and next slice.
+
 用于 v0.0.21 PR 评审的截图：[桌面天赋布局](images/v0.0.21/tree-desktop.png)、[手机装备编辑](images/v0.0.21/items-mobile.png)。截图使用仓库中的示例构筑。

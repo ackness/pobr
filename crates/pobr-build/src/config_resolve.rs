@@ -12,6 +12,8 @@
 //! - When the catalog is missing (old data pack / [`BuildData::empty`](crate::BuildData::empty))
 //!   → falls back to the legacy `parse_config` output (`build.config`'s existing fields,
 //!   tolerant of a missing table).
+//! - In both paths, explicit booleans for charge use and elemental exposure override
+//!   their legacy conditions. Absent inputs retain the existing fallback behavior.
 //!
 //! ## Dual-run period semantics (commit cluster opened category by category)
 //!
@@ -48,18 +50,17 @@ use crate::build::Build;
 use crate::build_config::BuildConfig;
 use crate::handlers::{build_registry, campaign_progress_from_config, enemy_tier_from_config};
 
-/// Legacy-path `conditionEnemy<X>Exposure` → cfg condition bridge (vendor
-/// ConfigOptions.lua:1864-1872: enemy bucket `<X>Exposure` BASE 20 + ActorCondition
-/// tag). After the §3-⑦ backfill, the interpreter already produces this enemy numeric
-/// mod (the actor tag is translated to `ModTag::Condition{actor: Player, var:
-/// CanApply<X>Exposure}`), but there's still no source that sets the player-side actor
-/// snapshot (`cfg.actor_multipliers["player.CanApply<X>Exposure"]`) — that mod is
-/// inert. The orchestrator's stage 5b `apply_enemy_exposure` still drives off the cfg
-/// condition, so this bridge reads straight from the raw input to keep current
-/// production behavior. **Retirement condition**: once the actor snapshot channel is
-/// wired up (CanApply*Exposure set from the skill side), this bridge must be removed or
-/// it will double-count against the interpreter's mod.
-const EXPOSURE_CONDITION_BRIDGE: &[(&str, &str)] = &[
+/// Explicit raw booleans whose legacy conditions must not defeat a current edit.
+/// Charge-use false emits no interpreter FLAG, so it needs an authoritative override.
+///
+/// Exposure still uses the orchestrator's stage 5b `apply_enemy_exposure`: the
+/// interpreter's enemy numeric mod has a `CanApply<X>Exposure` actor tag, but its
+/// player-side snapshot is not wired up. Retire the three exposure mappings when
+/// that channel is activated, or exposure will be counted twice.
+const EXPLICIT_BOOLEAN_CONDITIONS: &[(&str, &str)] = &[
+    ("usePowerCharges", "UsePowerCharges"),
+    ("useFrenzyCharges", "UseFrenzyCharges"),
+    ("useEnduranceCharges", "UseEnduranceCharges"),
     ("conditionEnemyFireExposure", "EnemyFireExposure"),
     ("conditionEnemyColdExposure", "EnemyColdExposure"),
     ("conditionEnemyLightningExposure", "EnemyLightningExposure"),
@@ -98,10 +99,12 @@ pub(crate) struct ResolvedConfig {
 
 /// Resolves the consumption view of build config (see module doc for details).
 pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> ResolvedConfig {
+    let mut config = build.config.clone();
     let Some(catalog) = catalog else {
-        // Tolerant of a missing table: fall back to the legacy parse_config output (build.config's existing fields).
+        // Keep legacy fields without a catalog, except for the explicit booleans below.
+        apply_explicit_boolean_conditions(&mut config.conditions, build);
         return ResolvedConfig {
-            config: build.config.clone(),
+            config,
             player_mods: Vec::new(),
             enemy_mods: Vec::new(),
             custom_mod_lines: Vec::new(),
@@ -113,13 +116,12 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
         &build.config.raw_inputs,
         &build_registry(),
     );
-    let mut config = build.config.clone();
 
     merge_conditions(&mut config.conditions, &outcome);
     merge_multipliers(&mut config.multipliers, &outcome);
     bridge_enemy_conditions(&mut config.conditions, &outcome);
     bridge_combat_player_conditions(&mut config.conditions, &outcome);
-    bridge_exposure_conditions(&mut config.conditions, build);
+    apply_explicit_boolean_conditions(&mut config.conditions, build);
 
     // Scalar wrapping (only overrides on explicit input; omitted = keep the existing
     // fallback chain, see module doc).
@@ -281,16 +283,19 @@ fn bridge_combat_player_conditions(
     }
 }
 
-/// Bridges the raw `conditionEnemy<X>Exposure` input to a cfg condition (see
-/// [`EXPOSURE_CONDITION_BRIDGE`]).
-fn bridge_exposure_conditions(conditions: &mut HashMap<String, bool>, build: &Build) {
-    for (input_name, cond_var) in EXPOSURE_CONDITION_BRIDGE {
+/// Applies the bounded raw boolean authority after interpreter merges and bridges.
+/// Missing or non-boolean inputs leave existing behavior intact; raw inputs are not
+/// modified, so resolving a calculation cannot change imported values or types.
+fn apply_explicit_boolean_conditions(conditions: &mut HashMap<String, bool>, build: &Build) {
+    for (input_name, cond_var) in EXPLICIT_BOOLEAN_CONDITIONS {
         if let Some(pobr_core::rules::config_interpreter::ConfigInputValue::Bool(enabled)) =
             build.config.raw_inputs.values.get(*input_name)
         {
-            conditions
-                .entry((*cond_var).to_string())
-                .or_insert(*enabled);
+            if let Some(condition) = conditions.get_mut(*cond_var) {
+                *condition = *enabled;
+            } else {
+                conditions.insert((*cond_var).to_string(), *enabled);
+            }
         }
     }
 }

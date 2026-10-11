@@ -3027,3 +3027,170 @@ fn weapon_cfg_flags_dual_write_channel() {
         "empty main hand → only the Unarmed bit"
     );
 }
+
+mod imported_condition_edits {
+    use super::*;
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+
+    const CASES: &[(&str, &str)] = &[
+        ("usePowerCharges", "Fireball"),
+        ("useFrenzyCharges", "Fireball"),
+        ("useEnduranceCharges", "Fireball"),
+        ("conditionEnemyFireExposure", "Fireball"),
+        ("conditionEnemyColdExposure", "Comet"),
+        ("conditionEnemyLightningExposure", "Spark"),
+    ];
+
+    fn imported(key: &str, value: Option<bool>, skill: &str) -> Build {
+        // Synthetic XML input; parsing, skill data and the completed session are real.
+        let input = value
+            .map(|value| format!(r#"<Input name="{key}" boolean="{value}"/>"#))
+            .unwrap_or_default();
+        crate::xml_build::parse_build(&format!(
+            r#"<PathOfBuilding2>
+              <Build level="85" className="Sorceress" ascendClassName="None" mainSocketGroup="1"/>
+              <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+              <Skills activeSkillSet="1"><SkillSet id="1"><Skill enabled="true">
+                <Gem skillId="{skill}Player" gemId="Metadata/Items/Gems/SkillGem{skill}" level="16" quality="0" enabled="true"/>
+              </Skill></SkillSet></Skills>
+              <Items activeItemSet="1"><ItemSet id="1"/></Items>
+              <Config>{input}
+                <Input name="syntheticFalse" boolean="false"/>
+                <Input name="syntheticZero" number="0"/>
+                <Input name="syntheticNumber" number="7.5"/>
+                <Input name="syntheticString" string="0042 &amp; raw"/>
+                <Input name="enemyFireResist" string="23"/>
+                <Placeholder name="enemyDistance" number="17"/>
+              </Config>
+            </PathOfBuilding2>"#
+        ))
+        .expect("parse synthetic condition build")
+    }
+
+    fn output(build: &Build, data: &BuildData) -> pobr_core::calc::OutputTable {
+        calculate_with_data_session(
+            build,
+            data,
+            &DataOrchestratorOptions {
+                enemy_tier: EnemyTier::None,
+                mode_effective: true,
+                ..Default::default()
+            },
+        )
+        .expect("complete real build session")
+        .output()
+        .clone()
+    }
+
+    #[test]
+    fn raw_edits_in_both_directions_match_independently_imported_final_state() {
+        let data = repo_data();
+        for &(key, skill) in CASES {
+            let off = output(&imported(key, Some(false), skill), &data);
+            let on = output(&imported(key, Some(true), skill), &data);
+            match key {
+                "usePowerCharges" => {
+                    assert_eq!(off.charge_power_current, 0);
+                    assert_eq!(on.charge_power_current, on.charge_power_maximum);
+                    assert!(on.charge_power_current > 0);
+                }
+                "useFrenzyCharges" => {
+                    assert_eq!(off.charge_frenzy_current, 0);
+                    assert_eq!(on.charge_frenzy_current, on.charge_frenzy_maximum);
+                    assert!(on.charge_frenzy_current > 0);
+                }
+                "useEnduranceCharges" => {
+                    assert_eq!(off.charge_endurance_current, 0);
+                    assert_eq!(on.charge_endurance_current, on.charge_endurance_maximum);
+                    assert!(on.charge_endurance_current > 0);
+                }
+                _ => assert!(on.dps > off.dps && off.dps > 0.0, "{key} exposure consumer"),
+            }
+            for initial in [false, true] {
+                let mut edited = imported(key, Some(initial), skill);
+                let original_raw = edited.config.raw_inputs.clone();
+                for final_value in [!initial, initial] {
+                    edited
+                        .config
+                        .raw_inputs
+                        .values
+                        .insert(key.into(), ConfigInputValue::Bool(final_value));
+                    let control = imported(key, Some(final_value), skill);
+                    assert_eq!(
+                        output(&edited, &data),
+                        output(&control, &data),
+                        "{key}: imported {initial}, current {final_value}"
+                    );
+                    assert_eq!(edited.config.raw_inputs, control.config.raw_inputs);
+                }
+                edited.config.raw_inputs = original_raw;
+                assert_eq!(
+                    output(&edited, &data),
+                    output(&imported(key, Some(initial), skill), &data),
+                    "{key}: restoring the imported raw state"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn absence_no_raw_and_missing_catalog_preserve_legacy_state() {
+        let data = repo_data();
+        let mut legacy_data = repo_data();
+        legacy_data.config_catalog = None;
+        for &(key, skill) in CASES {
+            let absent = imported(key, None, skill);
+            assert_eq!(
+                output(&absent, &data),
+                output(&imported(key, Some(false), skill), &data),
+                "{key}: an absent assumption is not enabled"
+            );
+            for enabled in [false, true] {
+                let mut edited_absent = absent.clone();
+                edited_absent
+                    .config
+                    .raw_inputs
+                    .values
+                    .insert(key.into(), ConfigInputValue::Bool(enabled));
+                for current_data in [&data, &legacy_data] {
+                    assert_eq!(
+                        output(&edited_absent, current_data),
+                        output(&imported(key, Some(enabled), skill), current_data),
+                        "{key}: explicit {enabled} on absent imported state"
+                    );
+                }
+            }
+            for initial in [false, true] {
+                let original = imported(key, Some(initial), skill);
+                let expected = output(&original, &data);
+                let mut without_key = original.clone();
+                without_key.config.raw_inputs.values.remove(key);
+                assert_eq!(
+                    output(&without_key, &data),
+                    expected,
+                    "{key}: legacy fallback"
+                );
+                let mut without_raw = original.clone();
+                without_raw.config.raw_inputs = Default::default();
+                assert_eq!(
+                    output(&without_raw, &data),
+                    expected,
+                    "{key}: no raw inputs"
+                );
+                let legacy_expected = output(&original, &legacy_data);
+                assert_eq!(output(&without_raw, &legacy_data), legacy_expected);
+                let mut raw_edit = original;
+                raw_edit
+                    .config
+                    .raw_inputs
+                    .values
+                    .insert(key.into(), ConfigInputValue::Bool(!initial));
+                assert_eq!(
+                    output(&raw_edit, &legacy_data),
+                    output(&imported(key, Some(!initial), skill), &legacy_data),
+                    "{key}: explicit raw Bool is authoritative even without a catalog"
+                );
+            }
+        }
+    }
+}

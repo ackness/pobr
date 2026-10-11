@@ -51,9 +51,9 @@ pub struct BuildConfig {
     /// `parse_build` captures these losslessly via `parse_config_inputs`; when a
     /// `ConfigCatalog` is available the orchestrator consumes them through the
     /// `config_interpreter::interpret` primary path (see `crate::config_resolve`).
-    /// When the catalog is missing (old data pack / `BuildData::empty`), it falls back
-    /// to the legacy parse_config output carried by this struct's other fields (tolerant
-    /// of a missing catalog).
+    /// When the catalog is missing (old data pack / `BuildData::empty`), legacy fields
+    /// remain the fallback. Explicit raw booleans for charge-use and elemental-exposure
+    /// assumptions override their matching legacy conditions in either path.
     pub raw_inputs: RawConfigInputs,
 }
 

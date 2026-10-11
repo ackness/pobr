@@ -56,6 +56,14 @@
   existing branch clean, pause absent before/after new atomic acquisition.
   Continue M3; preserve the completed M1/M2 scoped evidence, not broad coverage
   or release qualification. Automation observed enabled.
+- 2026-10-11 I9 trigger: reaffirm tool-only scope, pause precedence on every entry,
+  atomic single ownership, supervised disjoint parallel work, real-WASM/browser
+  proof, independent review and main-only integration/Git. No push/publication/
+  deployment; no partial M1 closure or broadening its recorded evidence. Entry
+  checkpoint `b09f84060e45e3a4574c32cb4013040119066c63`; clean existing branch,
+  pause absent before/after atomic acquisition, recurring automation enabled.
+  Continue active M4. Exact eight-request real-WASM/final-import controls failed
+  three transitions; evidence `.cache/product-loop-I9-before.json`.
 
 ## Completed milestone M1: trustworthy, continuous upgrade decisions
 
@@ -153,7 +161,7 @@ Exit scenarios (all passed at I8; proof and limits in the I8 ledger below):
    desktop/narrow/keyboard interaction pass. No formula expansion, invented
    support percentage or assertion that all catalog mechanics are modeled.
 
-## Active milestone M4: trustworthy imported encounter-condition edits
+## Completed milestone M4: trustworthy imported encounter-condition edits
 
 Outcome: changing a supported charge-use or elemental-exposure assumption after
 import has the same calculation semantics as importing that final assumption.
@@ -182,9 +190,64 @@ Exit scenarios:
 4. Independent Spec/Standards review, relevant native/JSON/parity checks, rebuilt
    real WASM and desktop/narrow/English/Chinese keyboard interaction pass.
 
-Scope: repair the confirmed condition-state precedence seam. Numeric charge
-overrides, all catalog coverage, parser/formula expansion and broad diagnostics
-remain unproven and out of scope unless separate evidence requires a decision.
+I9 closes all four bounded exits. The confirmed defect was the native/host
+source-code-plus-raw-override path: false charge-use emitted no interpreted
+condition, and an exposure bridge retained the imported legacy value. Normal
+frontend Config already materialized a fresh request and passed before repair;
+this is not a claim that all previous UI edits were broken. Six explicit raw
+Boolean inputs now override only their matching legacy conditions, including
+the missing-catalog fallback; absent/non-Boolean inputs keep existing behavior.
+Independent final-import controls, native/JSON/parity gates, rebuilt-WASM
+matrices and actual production Config/keyboard/stage interaction passed. The
+ledger below records exact proof, harness corrections and limits.
+
+Scope: condition-state precedence only; no raw-type/default/placeholder,
+enemy-tier/formula/data/schema change. Numeric charge overrides are separately
+confirmed ineffective for tested values 1/2 and remain outside this repair.
+
+## Active milestone M5: restorable imports with unresolved gem slots
+
+Outcome: importing and saving a supported build with an unresolved gem slot
+must not make the entire browser workspace unusable after reload. Preserve the
+unknown slot and original import rather than dropping it or pretending it has
+modeled effects; keep rejection of genuinely malformed saved files.
+
+Priority evidence: reloading the long-lived Ego 5/p1 workspace displayed the
+fatal invalid-workspace alert. The pre-I9 storage backup already fails current
+saved-state validation: only Stormweaver is invalid; its imported group 8 contains
+an empty stable skill ID at level 0. The committed Comet source has an Unleash gem
+without a stable gem ID and with level 0 (`decoded.xml:200` under
+`examples/demo-bd-test/builds/sorceress-stormweaver-comet/`). `parseSaved` rejects
+the level; `parseWorkspace` then rejects every build. All four original complete
+build objects, 58 original items and five original skill sets are exact after
+I9's own import. Original bytes and the error surface were retained, not cleared
+or silently repaired. Evidence: `.cache/product-loop-I9-browser-before.json`,
+`-browser-reload-error.json`, and `-reload-provenance.json`.
+
+Exit scenarios:
+
+1. Fresh committed-Comet import → saved storage → actual reload reproduces before
+   repair, with the unresolved slot traced through native import, frontend
+   normalization and saved-state validation. Independently saved valid builds
+   remain controls; use an isolated browser origin, not destructive edits to p1.
+2. A bounded representation/validation repair preserves imported raw text,
+   unresolved identity and slots, all existing stage fields and strict
+   malformed-file rejection. No blanket validation bypass, dropped gems or
+   fabricated numerical contribution.
+3. Reload, export/reimport, stage/build switching and later deliberate editing
+   remain usable and agree with pre-reload calculation/diagnostic controls.
+   The preserved pre-I9 multi-build workspace can be restored without losing
+   any original build, stage, item or skill-set entry.
+4. Independent Spec/Standards review, affected saved-state/import contracts,
+   relevant native/JSON/parity checks if touched, rebuilt real WASM if needed,
+   and actual desktop/narrow/English/Chinese browser interaction pass.
+
+Precise next slice I10: reproduce the committed Comet import on a fresh origin;
+map the unresolved-slot contract and existing validation before choosing the
+smallest repair. Parallelize disjoint import/representation research and
+saved-state/reload evidence; main owns integration and runtime gates. Preserve
+the existing p1 failure and raw backups. Numeric charge override consumers rank
+next; touch-tree usability remains source-inferred, not a runtime-proven defect.
 
 
 
@@ -1205,3 +1268,124 @@ Operational provenance:
   After the exact verified commit, release only this owner.json/atomic claim.
 - Verified product checkpoint, not application release: retain `0.0.33` and
   `v0.0.33`; no new version/tag, push, external publication or deployment.
+
+### I9 — authoritative imported encounter-condition edits
+
+Starting checkpoint: `b09f84060e45e3a4574c32cb4013040119066c63`
+(`feat: guide build-context configuration review`), clean existing
+`multi-agent-self-improvement` branch; application `0.0.33`, data `4.5.5.3`.
+Current steering retained tool-only scope, pause/claim precedence, milestone
+continuity, real runtime proof, independent review and no external publication.
+
+**Outcome and decision**
+
+- M4's four bounded exits are complete. Imported legacy state no longer defeats
+  explicit raw Booleans for Power/Frenzy/Endurance use or Fire/Cold/Lightning
+  exposure. Interpretation intentionally omits false charge conditions; the
+  former exposure bridge used `or_insert`. Main selected authority at the shared
+  config-resolution seam, not a UI workaround or deletion of all legacy state.
+- `config_resolve.rs` updates only the six matching conditions after existing
+  interpretation/bridges, including missing-catalog fallback. Only Boolean raw
+  values participate; absence/non-Boolean behavior, unrelated conditions,
+  numeric API multipliers, raw imported text/types, defaults, placeholders and
+  existing formulas are unchanged. Existing keys update without key allocation.
+  `BuildConfig.config_inputs` documentation now states the bounded exception.
+- Normal frontend Config already materialized a fresh direct request and passed
+  actual exposure true → false before repair. The reproduced defect affected
+  native/session and host `pob_code` plus raw overrides. No broad UI-defect claim.
+- M1–M3 retain their previously recorded scoped closures; no partial work
+  re-closes or expands them. M5 replaces numeric overrides as highest priority
+  because an actual reload rejects the whole prior multi-build workspace.
+
+**Runtime and gate evidence**
+
+- Original eight real-WASM requests: three opposing-state failures before, all
+  eight complete responses equal independent final imports after. Expanded
+  six-key absent/false/true import × absent/false/true edit matrix: nine failures
+  before, all 54 exact after. Receipts:
+  `.cache/product-loop-I9-before.json`, `-after.json`,
+  `-matrix-before.json`, `-matrix-after.json`.
+- Numerical consumers after repair: charge count 0/3; effective Fireball fire DPS
+  `150.691666606/180.829999928`, Comet cold `316.4/379.68`, Spark lightning
+  `110.55714289/132.668571468`. Synthetic per-charge ring modifiers prove charge
+  damage consumption without claiming inherent PoE2 charge bonuses.
+- Latest real-WASM negative controls: three panel-mode exposure toggles preserve
+  every response field; cold/lightning exposure do not change pure-fire Fireball
+  DPS. Five passed in `.cache/product-loop-I9-exposure-boundaries.json`.
+- Native true → false charge regression failed before. Full native library after
+  repair: 221 passed, one new exposure fixture failed because it had panel rather
+  than effective mode. After that test-only correction, both new native cases
+  passed; reuse the 220 unchanged existing passes. Host source-code regression
+  also failed before; final two new JSON cases and 39 existing golden contracts
+  passed. Raw export checks preserve every original key/type/value rather than
+  pinning encoder-added compatibility defaults.
+- `config_dualrun::` passed; both panel-mode and effective `no_regression` parity
+  cases passed. Scoped `./pobr lint` passed for build lib/dualrun/parity and WASM
+  lib/new JSON/golden contracts. Cargo commands ran sequentially in this worktree.
+  No data/golden/version mutation or new local pinned-vendor oracle.
+- Latest `pnpm --dir web build-wasm && pnpm --dir web build` passed with TypeScript.
+  WASM 5,118.47 kB; main JS 518.26 kB retains the existing >500 kB warning.
+  No performance improvement or full-release-gate claim.
+- Production browser scenarios: 31 new condition-edit cases plus 17 unchanged
+  guidance/localization cases passed, reusing unchanged passing inputs. First
+  48-case run: 23 passed/25 harness failures. The affected rerun passed 24 with
+  one stage-selector timeout; its corrected multi-stage selector then passed.
+  Corrections cover existing enemy-tier normalization into `params.enemy_tier`,
+  hidden diagnostic text versus `innerText`, and the Stage select replacing the
+  single-stage label. No production behavior was weakened to pass these checks.
+- New cases cover all six keys in both directions, absence/reset, raw typed
+  export/reimport, opposite stages, support/passive/replacement edit/reset/stage
+  invalidation with no stale Apply resurrection, and all three locales at
+  390/1440px with keyboard/reset/overflow checks. Real WASM/data throughout;
+  only unrelated league discovery intercepted.
+- Actual Ego 5/p2 on isolated production port 4190: EN/zh-TW/zh-CN keyboard Space,
+  Tab-to-Reset and Enter; displayed fire DPS 90.41 → 75.35 → 90.41, exact restored
+  saved state and zero horizontal overflow. Export false/reimport remains 75.35;
+  copied-stage edit 90.41, original 75.35, return 90.41 and Reset 75.35 preserve
+  exact original/edited/restored states. Receipts `-ego-after.json`,
+  `-ego-stages.json` and locale/width PNGs; desktop/narrow images visually read.
+- Independent Spec and Standards reviews found no blocking issue. Standards'
+  missing-catalog public-field doc omission was fixed. Optional same-key
+  non-Boolean preservation and stronger-source exposure behavior are
+  source-reviewed only, not freshly runtime-proven. No touch-device,
+  screen-reader, full-catalog numerical coverage or broad mechanics claim.
+
+**Refined priority and preserved state**
+
+- Original Ego 5/p1 reload displayed the invalid-workspace alert. Revalidating
+  the exact pre-I9 storage proves the defect predates this repair: only the
+  earlier Stormweaver/Comet stage has an unresolved empty-ID level-0 gem.
+  Original storage, error surface and provenance remain retained. Exact JSON
+  comparison including raw types proves all four original build objects,
+  58 original items and five original skill sets unchanged; I9's own import adds
+  one build/skill set. Receipt `-original-preservation.json`.
+- M5/I10 is the bounded unresolved-slot import → save → reload repair defined
+  above; first reproduce the committed source on a fresh origin and map the
+  representation/validation contract before editing. Do not clear p1 storage,
+  drop unknown slots, suppress all validation or fabricate modeled gem effects.
+- Separate observed priority: actual Config stores `overridePowerCharges=1`,
+  but real-WASM source and materialized requests with override absent/1/2 all
+  report count 3 for all three charge kinds (18 responses). Receipt
+  `-charge-count-probe.json`; no fix or full zero/min/max semantics claim here.
+
+**Ownership, review and checkpoint**
+
+- Run `run_702bc78ba6a1`, coordinator
+  `term_d16636fa-81f6-4d7d-b413-748621bfc697`, iteration I9. Pause absent before
+  atomic claim and after acquisition; no marker cleared and no foreign claim
+  stolen. Independent engine `ctx_d86f27acde71`, regressions `ctx_09a74b5193bf`,
+  consumer research `ctx_5daa25b6458f` used disjoint edit ownership; engine waited
+  for main's native/host failing-before proof. Spec `ctx_1f121deb3403` and
+  Standards `ctx_751f796b00cc` were read-only. All accepted settlements released
+  before ack; final inbox and reclaimable fleet empty. Main alone integrates,
+  runs gates, updates docs and commits.
+- Exact Conventional Commit: `fix: honor imported condition edits`. Main records
+  verified hash/time, evidence and next slice in
+  `.cache/product-loop-checkpoint.json` immediately after the commit.
+- Owned throwaway probes and preview-runner config removed; ignored JSON,
+  review reports and images retained. Owned 4190 preview/p2 are closed at
+  checkpoint; existing 5173 and p1's preserved failure remain for I10.
+- Recurring automation `0f3538b3-37df-44be-b888-d085f05d6e8d` observed enabled at
+  entry/final check; release only this exact owner's claim after the verified
+  commit. Local product checkpoint, not release: retain `0.0.33`/`v0.0.33`,
+  no new tag/version, push, external publication or deployment.
