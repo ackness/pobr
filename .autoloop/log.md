@@ -57,3 +57,13 @@
 - Live populated Invoker UI showed 0% crit/0 multiplier with Controlled Destruction and restored 100%/4.59 after removal. The 953-recalculation support search returned eight plans without that support; removal invalidated stale results. Four Elemental Storm sets returned zero crit/multiplier, but the triggerless fixture does not prove their full DPS behavior.
 - Independent review approved with no findings. Updated the web contract, closed browser space 34 and removed the temporary screenshot. No full-suite or fresh Lua-oracle claim.
 - Commit: this entry's checkpoint commit (`fix: enforce canonical never-crit effects`). Next: reconcile the existing resource-loss and life-sacrifice diagnostic corrections; Atziri's Impatience still appears in the live top recommendation.
+
+## 7 — Resource downside disclosure and support-fidelity closure
+
+- Reconciled and combined prior fixes `94392bc` / `650b70c` against identical current source/test inputs. Added source-attributed limits for unknown finite nonzero on-use maximum-resource loss and Life sacrifice; preserved canonical semantic distinctions, existing conditional diagnostics and numerical outputs.
+- Real pre-fix WASM omitted both limits; a native regression failed with zero receipts instead of one. Rebuilt WASM now emits each exact support/set/stat/value/host receipt with all stats unchanged from the before response.
+- Passed 19 support tests and four WASM contract tests, then four resource tests including reviewer-requested invalid-value/recognized-mapping guards (20 unique support tests total). Scoped core/build fmt/Clippy and release WASM build passed. Corrected a test-only private lookup compile error through the existing raw catalog fixture; no production API change.
+- Populated bare-baseline search: 987 recalculations, eight plans excluding both new resource downsides, 12 attributed complete-edit exclusions without Apply controls. Equipped-Atziri search: 1121 recalculations, its baseline warning remains visible while all eight plans may retain it; new Extraction remains excluded. Removal restored original DPS and invalidated plans.
+- Independent review approved, low boundary-coverage finding resolved. Verified 390px receipt wrapping without horizontal overflow, finished browser space 35 and removed the screenshot. Updated web contract. No numeric/data changes, fresh parity/oracle or full-suite claim.
+- Closed canonical support-fidelity milestone. Next: source-based support effect explanations; reconcile existing `22b9a63` before integration. No release tag under commit-only scope.
+- Commit: this entry's checkpoint commit (`fix: disclose unmodeled support resource downsides`).

@@ -117,9 +117,9 @@ Exit criteria:
 - `ReviewJointReceipt` approved with no findings and is settled done. Actual screen-reader speech remains unverified. Finished browser space 33 and removed temporary screenshots/Playwright config; Vite remains on 5182.
 - Feedback milestone complete across ordinary and joint application, recommendation/candidate edits, same-stage navigation, subsequent edits/restoration, copied stages, pending/failure states and localization.
 
-## Current milestone: Reconcile canonical support-effect fidelity
+## Completed milestone: Reconcile canonical support-effect fidelity
 
-Next priority is calculation trust, not more passive UI verification. A targeted static check found no `NeverCrit` or `global_cannot_crit` in this branch's `calc/crit.rs`, `rules/stat_map_engine.rs` or `extract_skill_overrides.lua`. This is a concrete lead, not yet a current-branch runtime reproduction. Prior-loop corrections are available in this repository:
+At milestone start, a targeted static check found no `NeverCrit` or `global_cannot_crit` in this branch's `calc/crit.rs`, `rules/stat_map_engine.rs` or `extract_skill_overrides.lua`. Prior-loop corrections provided concrete leads, requiring current-branch reproduction before integration:
 
 - `d7863a1` — enforce canonical never-crit effects.
 - `94392bc` — disclose unmodeled support resource loss.
@@ -143,4 +143,27 @@ Exit criteria:
 - Populated Invoker browser smoke: adding Controlled Destruction changed displayed crit from 100%/4.59 to 0%/0 and DPS from 6,265 to 1,706. Support search completed 953 recalculations and returned eight plans, none retaining Controlled Destruction. Removing it restored the original displayed stats and invalidated stale plans. Top recommendation still included Atziri's Impatience, reinforcing the next resource-limit investigation; no recommendation was applied.
 - `ReviewNeverCritReconcile` approved with no findings. Inspected the real UI screenshot, finished browser space 34 and removed the temporary image. Vite remains on 5182; pinned vendor and rebuilt WASM are ready for the next integration.
 
-Next iteration: reconcile `94392bc` and `650b70c` with the current source, reproduce resource-loss/sacrifice diagnostic gaps, then integrate relevant existing corrections. Keep pool semantics and ordinary costs distinct. Work and commits remain exclusively in this worktree; no publishing or changes to other branches.
+## Iteration 7: Resource diagnostics and milestone closure
+
+- Confirmed the three relevant source/test inputs exactly matched `94392bc^`; combined existing corrections `94392bc` and `650b70c` through surgical edits. No data, frontend or numerical calculation changes.
+- Before integration, real WASM returned no limits for Frost Bomb 19 + Atziri's Impatience (DPS 58.814185814) or Extraction (46.561230576), both with ManaCost 89 / LifeCost 0. The native positive receipt regression failed: expected one, got zero.
+- Compatible support observation now classifies only the two established finite nonzero unknown raw stats, preserving support/set/stat/value/host identity. Maximum Life/Mana/ES loss and unspecified-pool Life sacrifice remain distinct. Existing conditional diagnostics and numeric benefits/costs are unchanged.
+- Reused three prior behavioral regressions. Review suggested stronger guards: extended zero coverage to NaN and both infinities and added recognition-transition coverage using real empty, numerical and LIST catalog entries applied to both exact stat IDs. Fixed an initial test-only private-method compile error by reading the raw catalog fixture; no production API was exposed.
+- Passed the 19-test support suite and four WASM support contract tests, then all four resource regressions after the review additions (20 distinct support tests verified in total). Scoped core/build fmt/Clippy passed. Rebuilt release WASM. Numeric outputs did not change, so no new parity or data generation was needed.
+- Rebuilt browser WASM returned exactly one correctly attributed receipt per support and every stat matched the pre-fix response. On the populated Invoker, bare-baseline search completed 987 recalculations, returned eight recommendations without Atziri/Extraction and recorded 12 complete-edit exclusions. Both resource effects appeared in explicit exclusion receipts without Apply controls.
+- With Atziri equipped, search completed 1121 recalculations: its known limitation remained visible, all eight recommendations retained it, and newly introduced Extraction was still excluded. Removing the smoke support restored displayed DPS 6,265 and cleared stale recommendations.
+- Inspected the 390px exclusion view: raw identity/reason wrapped without horizontal overflow. Finished browser space 35 and removed the temporary screenshot. `ReviewResourceReconcile` approved; its one low coverage finding is resolved. Vite remains on 5182.
+- Milestone exit criteria met across canonical never-crit precedence/host scope, distinct resource-limit semantics, attributed receipts and actual recommendation consequences. No claim of complete support mechanics, resource sustain, or Elemental Storm trigger-DPS coverage. Commit-only scope means no release tag.
+
+## Current milestone: Explain support recommendations with canonical effects
+
+The live recommendation cards still show names, levels, quality and predicted gains rather than the support's intended effects; raw exclusion receipts are useful evidence but not a substitute for mechanic explanations. Prior commit `22b9a63` (`feat: expose sourced support effect descriptions`) is a lead to reconcile, not proof of current integration.
+
+Exit criteria:
+
+1. Compare that correction with current ancestry/source/data before reuse; preserve newer trade-catalog, attribution and planner work.
+2. Use pinned-source support descriptions as optional qualitative English prose, clearly labeled as source text, not level/quality-specific values or modeled-coverage evidence. Do not infer effects from names or stat templates.
+3. Provide accessible localized disclosure controls and an explicit missing-description state, including older catalogs, without changing planning or Apply semantics.
+4. Verify the real recommendation surface, keyboard operation, EN/TW/CN and narrow layouts with appropriate targeted checks and reproducible data generation.
+
+Next iteration: reconcile `22b9a63`, inspect current support-card/data seams and integrate the smallest useful source-description slice. Work and commits remain exclusively in this worktree; no publishing or changes to other branches.

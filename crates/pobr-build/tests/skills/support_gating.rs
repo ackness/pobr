@@ -243,6 +243,168 @@ fn supported_levels_stay_in_the_selected_group() {
     assert_eq!(disabled.dps, mastery_out.dps);
 }
 
+// Distinct canonical mechanics: maximum-pool loss versus Life sacrifice.
+const UNMODELED_RESOURCE_EFFECTS: [(&str, &str, f64, &str); 2] = [
+    (
+        "SupportAtzirisImpatiencePlayer",
+        "lose_%_of_life_es_and_mana_when_skill_is_used",
+        25.0,
+        "FireballPlayer",
+    ),
+    (
+        "SupportExtractionPlayer",
+        "sacrifice_%_life_on_skill_use",
+        10.0,
+        "ArmourBreakerPlayer",
+    ),
+];
+
+#[test]
+fn support_coverage_resource_effects_are_attributed_without_inventing_costs() {
+    for (support, stat, value, _) in UNMODELED_RESOURCE_EFFECTS {
+        let mut data = load_build_data();
+        let build = coverage_build("FrostBombPlayer", Some(support));
+        let supported = coverage_session(&build, &data);
+        let receipts: Vec<_> = supported
+            .unsupported_modifier_texts()
+            .iter()
+            .filter(|text| text.contains(stat))
+            .collect();
+        assert_eq!(receipts.len(), 1, "{support}");
+        for token in [
+            format!("Support:{support}:"),
+            format!("stat={stat}:"),
+            "set=1:".into(),
+            format!("value={value}:"),
+            "host=FrostBombPlayer:".into(),
+        ] {
+            assert!(receipts[0].contains(&token));
+        }
+        let bare = coverage_session(&coverage_build("FrostBombPlayer", None), &data);
+        assert!(bare.unsupported_modifier_texts().is_empty());
+        assert!(supported.output().dps > bare.output().dps);
+        assert_eq!(supported.output().mana_cost, bare.output().mana_cost);
+        assert_eq!(supported.output().life_cost, bare.output().life_cost);
+
+        // Zero or invalid downside values must not invent a numeric limit.
+        for downside in [0.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            data.skill_stat_sets.get_mut(support).unwrap().sets[0]
+                .constant_stats
+                .iter_mut()
+                .find(|entry| entry.stat == stat)
+                .unwrap()
+                .value = downside;
+            let ignored = coverage_session(&build, &data);
+            assert!(ignored.unsupported_modifier_texts().is_empty());
+            assert_eq!(ignored.output(), supported.output());
+        }
+    }
+}
+
+#[test]
+fn support_coverage_resource_receipts_stop_when_the_stat_is_recognized() {
+    use pobr_core::rules::stat_map_engine::{MappedOutcome, StatMapCatalog, map_stat};
+    use std::sync::Arc;
+
+    for (support, stat, value, _) in UNMODELED_RESOURCE_EFFECTS {
+        let mut data = load_build_data();
+        let build = coverage_build("FrostBombPlayer", Some(support));
+        // Reuse real empty, numerical and separately-consumed LIST mappings.
+        // A later recognized mapping must not retain an Unknown-only receipt.
+        for (source, source_stat) in [
+            (
+                "SupportHourglassPlayer",
+                "support_hourglass_display_cooldown_time_ms",
+            ),
+            (
+                "SupportExtractionPlayer",
+                "non_skill_base_all_damage_%_to_gain_as_chaos",
+            ),
+            (
+                "SupportFireMasteryPlayer",
+                "supported_fire_skill_gem_level_+",
+            ),
+        ] {
+            let mut mapping = coverage_mapping();
+            let entry = mapping
+                .per_stat_set
+                .get(source)
+                .and_then(|sets| sets.get("1"))
+                .and_then(|stats| stats.get(source_stat))
+                .or_else(|| mapping.global.get(source_stat))
+                .unwrap()
+                .clone();
+            mapping
+                .per_stat_set
+                .entry(support.into())
+                .or_default()
+                .entry("1".into())
+                .or_default()
+                .insert(stat.into(), entry);
+            data.stat_map_catalog = Some(Arc::new(StatMapCatalog::new(mapping)));
+            assert!(!matches!(
+                map_stat(
+                    data.stat_map_catalog.as_deref().unwrap(),
+                    support,
+                    Some("1"),
+                    stat,
+                    value
+                ),
+                MappedOutcome::Unknown
+            ));
+            let recognized = coverage_session(&build, &data);
+            assert!(
+                recognized.unsupported_modifier_texts().is_empty(),
+                "{support}/{source}"
+            );
+        }
+    }
+}
+
+#[test]
+fn support_coverage_resource_effects_do_not_leak_from_other_or_incompatible_groups() {
+    for (support, _, _, incompatible_host) in UNMODELED_RESOURCE_EFFECTS {
+        let data = load_build_data();
+        let build = coverage_build("FrostBombPlayer", Some(support))
+            .add_socket_group(pobr_build::SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+            .with_main_socket_group(2);
+        let other = coverage_session(&build, &data);
+        let mut without_other_support = build.clone();
+        without_other_support.socket_groups[0].gem_skills.remove(1);
+        let other_bare = coverage_session(&without_other_support, &data);
+        let incompatible =
+            coverage_session(&coverage_build(incompatible_host, Some(support)), &data);
+        let bare = coverage_session(&coverage_build(incompatible_host, None), &data);
+        assert!(other.unsupported_modifier_texts().is_empty());
+        assert!(incompatible.unsupported_modifier_texts().is_empty());
+        assert_eq!(other.output(), other_bare.output());
+        assert_eq!(incompatible.output(), bare.output());
+    }
+}
+
+#[test]
+fn support_coverage_resource_effects_follow_the_stat_not_the_gem_name() {
+    for (source, stat, _, _) in UNMODELED_RESOURCE_EFFECTS {
+        let mut data = load_build_data();
+        let effect = data.skill_stat_sets[source].sets[0]
+            .constant_stats
+            .iter()
+            .find(|entry| entry.stat == stat)
+            .unwrap()
+            .clone();
+        let support = "SupportEfficiencyPlayerTwo";
+        data.skill_stat_sets.get_mut(support).unwrap().sets[0]
+            .constant_stats
+            .push(effect);
+        let session = coverage_session(&coverage_build("FrostBombPlayer", Some(support)), &data);
+        assert!(
+            session.unsupported_modifier_texts().iter().any(|text| {
+                text.contains(stat) && text.contains(&format!("Support:{support}:"))
+            })
+        );
+    }
+}
+
 const FORK: &str = "SupportForkPlayer";
 const FORK_STAT: &str = "support_fork_forked_projectile_damage_+%_final";
 
