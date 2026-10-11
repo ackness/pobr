@@ -14,7 +14,7 @@ Reliable imports into the build workspace and equipment library.
 
 Exit criteria:
 - Invalid inputs preserve the current valid build and usable planning state (existing contracts and regressions).
-- Imported equipment remains lossless in its equipped slots; automatic library collection does not add duplicate raw texts within a batch or on reimport.
+- Imported equipment remains lossless in its equipped slots; automatic library collection deduplicates raw text within each observed weapon-hand role (other equipment by raw text), both within a batch and on reimport.
 - Changed behavior is exercised in the real Web/WASM product and focused browser regressions.
 
 ## Current evidence
@@ -30,3 +30,12 @@ Exit criteria:
 - Existing Vite >500 kB chunk warning remains outside this iteration's scope.
 - Next: inspect legacy slot backfill and alternate-weapon candidate collection for user-visible gaps before choosing another change. Do not broaden into automatic cleanup of player-owned library entries.
 - Milestone remains open; this iteration did not re-run the separate invalid-import/planning suites.
+
+## Iterations 2–4
+- `6bf0d08`: verified legacy slot backfill, preserved user-owned duplicate entries and actual Equip/reload behavior.
+- `a1e4f84`: verified distinct alternate weapon candidates, hand isolation and empty-offhand preservation.
+- Iteration 4 reproduced a real loss: text-only deduplication discards the offhand candidate when identical text was already collected as a main hand.
+- Corrected import identity to include observed weapon-hand role without changing the saved schema, equipped state or calculation. Same-hand cross-set duplicates still merge; other equipment keeps text-only deduplication.
+- Verified the new regression red before/green after, 88 focused unit tests, production build/typecheck and all 13 workspace E2E tests. Separate Ego browser import and actual offhand Equip confirmed the visible item changed; screenshot capture timed out.
+- This tests library eligibility/state, not dual-wield damage or item-base coverage. Prior imports require reimport to recover missing candidates.
+- Next: assess a different player workflow rather than extending import coverage without a demonstrated gap. Invalid-import planning suites were not rerun in iteration 4; do not tag the broader milestone complete.

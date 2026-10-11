@@ -31,3 +31,14 @@
 - Verification: Web typecheck and targeted real-WASM Playwright scenario passed (1/1), using unchanged production dist.
 - Commit: `test: cover alternate weapon library candidates`; no push.
 - Next: stop adding adjacent coverage without a demonstrated gap. Re-evaluate product priorities through a fresh player workflow; identical dual-wield texts across different hand roles remain outside this scenario's evidence.
+
+## Iteration 4 — preserve observed weapon-hand roles
+
+- Baseline `a1e4f84`, clean. Reproduced identical text imported first as a main hand and later as an alternate offhand: the offhand library showed only one of two expected candidates.
+- Root cause: raw-text-only identity loses the second role because each library entry stores a single slot.
+- Fix: include main/offhand role in the import identity. Preserve same-hand cross-set deduplication and existing ring behavior; no saved-schema or calculation changes.
+- Regression exercises main-only exclusion, later offhand recovery, actual Equip, unchanged alternate pair, repeat-import identity and reload. Failed before the fix at the missing offhand candidate assertion.
+- Verification: 88 focused Vitest tests, Web build/typecheck, all 13 real-WASM workspace E2E tests passed. Independent Ego browser import and Equip confirmed the visible offhand changed and both weapon pairs retained exact text. Screenshot capture timed out; DOM/state evidence only.
+- Updated contract explicitly distinguishes raw text and observed hand role; previously missing candidates recover on reimport.
+- Commit: `fix: preserve imported weapon hand candidates`; no push.
+- Next: re-evaluate a different player workflow. No broader dual-wield calculation claim or milestone-completion tag.
