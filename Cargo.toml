@@ -44,3 +44,10 @@ debug = "line-tables-only"
 # Reuse Cargo artifacts without retaining per-crate incremental object graphs.
 # The test profile inherits this; opt in with CARGO_INCREMENTAL=1 when needed.
 incremental = false
+
+# Optimize third-party dependencies in dev/test builds. Tests load the JSON game
+# data snapshot per test; with unoptimized serde_json and sha2 one load takes
+# about 3.4 s, with optimized dependencies about 0.65 s. Dependencies compile
+# once and stay cached, so workspace crates keep their fast unoptimized builds.
+[profile.dev.package."*"]
+opt-level = 3
