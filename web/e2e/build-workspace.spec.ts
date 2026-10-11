@@ -290,3 +290,40 @@ test('automatic import collection deduplicates raw text without losing equipped 
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
   expect(await library()).toEqual(beforeReload);
 });
+
+test('import recovers legacy library slot eligibility without deleting user-owned duplicates', async ({ page }) => {
+  const ring = 'Rarity: RARE\nLegacy Ring\nSapphire Ring\nImplicits: 0\n+50 to maximum Life';
+  const entries = [
+    { id: 'legacy-ring', kind: 'item', name: 'My legacy ring', text: ring },
+    { id: 'manual-copy', kind: 'item', name: 'My comparison copy', text: ring, slot: 'ring1' },
+  ];
+  await page.addInitScript(items => {
+    if (!localStorage.getItem('pobr-library')) {
+      localStorage.setItem('pobr-library', JSON.stringify({ items, skillSets: [] }));
+    }
+  }, entries);
+  await page.goto('/');
+  await ready(page);
+  await page.getByRole('button', { name: 'Items', exact: true }).click();
+  await page.locator('.paper-doll').getByRole('button', { name: 'Ring 2', exact: true }).click();
+  await expect(page.locator('.items-library').getByRole('button', { name: 'Equip', exact: true })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Build', exact: true }).click();
+  await importCode(page, deflateSync(`<PathOfBuilding2>
+    <Build level="80" className="Ranger"/><Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+    <Skills/><Items activeItemSet="1"><Item id="1">${ring}</Item>
+    <ItemSet id="1"><Slot name="Ring 2" itemId="1"/></ItemSet></Items></PathOfBuilding2>`).toString('base64url'));
+  const expected = [{ ...entries[0], slot: 'ring2' }, entries[1]];
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-library')!).items)).toEqual(expected);
+  await page.getByRole('button', { name: 'Items', exact: true }).click();
+  await page.locator('.paper-doll').getByRole('button', { name: 'Ring 1', exact: true }).click();
+  const equip = page.locator('.items-library').getByRole('button', { name: 'Equip', exact: true });
+  await expect(equip).toHaveCount(2);
+  await equip.first().click();
+  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  expect((await snapshot(page)).state.items).toEqual(expect.arrayContaining([
+    { slot: 'ring1', text: ring }, { slot: 'ring2', text: ring },
+  ]));
+  await page.reload();
+  await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-library')!).items)).toEqual(expected);
+});

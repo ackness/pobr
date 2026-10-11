@@ -11,3 +11,13 @@
 - Limits: old/manual duplicates intentionally retained; calculation logic unchanged; existing bundle-size warning not addressed. No controller tool exposed, so no automatic scheduling or checkpoint API call is claimed.
 - Checkpoint: this log and the implementation are committed together as `fix: deduplicate items within build imports`; no push.
 - Next: inspect legacy missing-slot backfill and alternate-weapon candidate collection, requiring reproduction before another fix.
+
+## Iteration 2 — legacy library recovery coverage
+
+- Confirmed iteration 1 is committed as `c9340ed`; worktree started clean.
+- Exercised the next legacy-slot boundary with real WASM: an entry without a slot is initially excluded from slot-filtered candidates; importing matching equipment restores eligibility while preserving its ID and custom name.
+- Added a regression covering recovery, preservation of an existing manual duplicate and its slot, actual Equip into the other ring position, and reload persistence.
+- Result: existing production behavior is correct for this scenario. No runtime change or new bug fix claimed; value is permanent coverage of the player-data preservation boundary.
+- Verification: Web typecheck and the new targeted Playwright scenario passed (1/1). Reused unchanged production dist/WASM from iteration 1.
+- Commit: `test: cover legacy library recovery on import`; no push.
+- Next: alternate-weapon candidate collection remains unexamined. Milestone stays open.
