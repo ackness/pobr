@@ -103,6 +103,7 @@ WASM 构建凭据校验 Rust 源码、嵌入语言文件、manifest/lockfile、J
 ```bash
 # Push the intended commit first; requires authenticated gh.
 ./pobr ci feature/my-change
+./pobr ci feature/my-change --e2e          # Also run Playwright E2E (opt-in)
 ./pobr ci-status --branch feature/my-change
 
 # Explicit local Rust gate; Web checks are separate.
@@ -120,18 +121,26 @@ WASM 构建凭据校验 Rust 源码、嵌入语言文件、manifest/lockfile、J
 | Rust 源码、`data/`、`examples/`、脚本或工作流 | fmt、workspace Clippy、脚本测试、`./pobr smoke`、`parity no_regression` |
 | `web/` | `pnpm typecheck` 与 Vitest 单测（不构建 WASM，不跑 E2E） |
 | 仅文档 | 不运行 |
+| 发版 PR（根 `Cargo.toml` 的 workspace 版本变化） | 版本元数据校验和 [ci.yml](../.github/workflows/ci.yml) 的完整 Rust / Web 门禁；它已覆盖上面的轻量检查，后者不再重复运行 |
 
 fork PR 使用只读令牌且读不到仓库密钥；首次贡献者的运行需要维护者在 Actions 页批准。
 轻量检查通过不代表完整门禁通过：定向套件、Worker、真实 WASM 和 E2E 仍按改动在本地或手动 CI 验证。
 
 当前 [ci.yml](../.github/workflows/ci.yml) 包含独立的 Rust lint、Rust 测试和 Web 门禁。
 Rust 检查 fmt/Clippy/nextest/doctest/i18n 与数据兼容；Web 检查脚本、类型、单测、Worker、
-真实 WASM、打包与 E2E。`./pobr full` 仅运行 Rust 门禁，包含 fmt/Clippy、nextest + doctest
+真实 WASM 与打包。Playwright E2E 默认不运行：tag、发版 PR 和普通手动触发都跳过，
+只有 `./pobr ci <ref> --e2e`（或在 Actions 页勾选 `e2e`）才运行，约 15 分钟。
+界面交互改动需要时在本地跑对应 spec，或显式请求一次云端 E2E。`./pobr full` 仅运行 Rust 门禁，包含 fmt/Clippy、nextest + doctest
 （无 nextest 时使用 Cargo）和 i18n。离线或排查 CI 时可显式使用，无需重复已通过的云端全量验证。
 
 应用发版更新 `[workspace.package].version`，用 `cargo metadata --format-version 1 > /dev/null`
 刷新应用/工具的锁文件版本，保留七个库的独立版本。数据活动版本在运行时读取 `data/CURRENT`，
 与应用版本分开。版本更新仍需对应检查，但不因应用版本或活动数据标记变化使所有基础库失去缓存。
+
+发版 PR 在合并前就运行完整门禁：`devs/scripts/release-check.sh <base>` 比较 workspace 版本，
+版本变化时要求新版本高于基线版本、`v<版本>` tag 尚不存在、`Cargo.lock` 已带新版本，然后启动与 tag 相同的 Rust / Web 门禁
+（不发布资产、不部署，不含 E2E）。等这些检查通过再合并、打 tag，避免门禁在 tag 上失败而浪费版本号。
+修改根 `Cargo.toml` 但版本不变的 PR 只运行这一步校验，随后跳过完整门禁。
 
 推送 `v*` tag 后由 CI 完成门禁，通过后发布 WASM 资产；Cloudflare 部署仅接受 `v0.*` tag。
 不要为同一个 tag 再请求相同的 CI，

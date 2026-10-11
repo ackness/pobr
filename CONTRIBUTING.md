@@ -45,7 +45,8 @@ for commands and caches.
 Pull requests run lightweight checks automatically: formatting, Clippy, smoke
 tests and the parity regression gate for Rust changes; typecheck and unit tests
 for `web/` changes. Runs from first-time contributors wait for a maintainer's
-approval. The full gate runs on release tags.
+approval. The full gate runs on release tags and on pull requests that change
+the workspace version.
 
 ## Pull requests
 
