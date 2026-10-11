@@ -153,47 +153,71 @@ async function assertExactApply(page: Page, planner: Planner, card: Locator, bef
   await expect(page.locator('.calc-error')).toHaveCount(0);
 }
 
-test('route application confirmation follows the applied revision across refresh, navigation and edits', async ({ page }) => {
+for (const planner of ['route', 'joint'] as const) {
+  test(`${planner} application confirmation follows the applied revision across refresh, navigation and edits`, async ({ page }) => {
+    await syntheticWitch(page);
+    await configure(page);
+    if (planner === 'joint') await addPlacement(page);
+    const firstCard = planner === 'route' ? routeResults(page).locator(':scope > li').first()
+      : joint(page).locator('.tree-planner-results > li').first();
+    await complete(page, planner);
+    await awayAndBack(page);
+    const before = await saved(page);
+    await assertExactApply(page, planner, firstCard, before);
+    const confirmation = page.locator(`${planner === 'route' ? '.tree-planner-applied' : '.jewel-plan-applied'}[role="status"]`);
+    await expect(confirmation).toBeVisible();
+    const applied = await saved(page);
+    for (const id of applied.allocatedNodes.filter(id => !before.allocatedNodes.includes(id))) {
+      await expect(confirmation).toContainText(`#${id}`);
+    }
+    if (planner === 'joint') {
+      await expect(confirmation).toContainText('Ruby');
+      await expect(confirmation).toContainText(`#${socket.skill}`);
+    }
+    const receipt = await confirmation.innerText();
+    await complete(page, planner);
+    await expect(confirmation).toHaveText(receipt, { useInnerText: true });
+    await awayAndBack(page);
+    await expect(confirmation).toHaveText(receipt, { useInnerText: true });
+
+    // Restoring identical calculation inputs must not revive an older success message.
+    for (const text of ['Rarity: MAGIC\nRuby\nImplicits: 0\n+20 to maximum Life', applied.jewels[0].text]) {
+      await page.locator(`circle[data-skill-id="${socket.skill}"]`).dispatchEvent('click');
+      await page.getByRole('textbox', { name: 'Jewel socket', exact: true }).fill(text);
+      await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
+      await expect.poll(async () => (await saved(page)).jewels[0].text).toBe(text);
+      await expect(page.locator('.topbar-busy')).toHaveCount(0);
+      await expect(confirmation).toHaveCount(0);
+    }
+    expect(await saved(page)).toEqual(applied);
+
+    await complete(page, planner);
+    await awayAndBack(page);
+    await assertExactApply(page, planner, firstCard, await saved(page));
+    await expect(confirmation).toBeVisible();
+    await nav(page, 'Build').click();
+    await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Independent confirmation stage');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await nav(page, 'Tree').click();
+    await open(page);
+    await expect(confirmation).toHaveCount(0);
+  });
+}
+
+test('joint and route application confirmations invalidate each other', async ({ page }) => {
   await syntheticWitch(page);
   await configure(page);
-  await complete(page, 'route');
-  await awayAndBack(page);
-  const before = await saved(page);
-  await assertExactApply(page, 'route', routeResults(page).locator(':scope > li').first(), before);
-  const confirmation = page.locator('.tree-planner-applied[role="status"]');
-  await expect(confirmation).toBeVisible();
-  const applied = await saved(page);
-  for (const id of applied.allocatedNodes.filter(id => !before.allocatedNodes.includes(id))) {
-    await expect(confirmation).toContainText(`#${id}`);
+  await addPlacement(page);
+  for (const planner of ['joint', 'route', 'joint'] as const) {
+    await complete(page, planner);
+    await awayAndBack(page);
+    const card = planner === 'route' ? routeResults(page).locator(':scope > li').first()
+      : joint(page).locator('.tree-planner-results > li').first();
+    await assertExactApply(page, planner, card, await saved(page));
+    await expect(page.locator('.jewel-plan-applied')).toHaveCount(planner === 'joint' ? 1 : 0);
+    await expect(page.locator('.tree-planner-applied')).toHaveCount(planner === 'route' ? 1 : 0);
   }
-  const receipt = await confirmation.innerText();
-  await complete(page, 'route');
-  await expect(confirmation).toHaveText(receipt, { useInnerText: true });
-  await awayAndBack(page);
-  await expect(confirmation).toHaveText(receipt, { useInnerText: true });
-
-  // Restoring identical calculation inputs must not revive an older success message.
-  for (const text of [jewel, applied.jewels[0].text]) {
-    await page.locator(`circle[data-skill-id="${socket.skill}"]`).dispatchEvent('click');
-    await page.getByRole('textbox', { name: 'Jewel socket', exact: true }).fill(text);
-    await page.getByRole('button', { name: 'Save & recalculate', exact: true }).click();
-    await expect.poll(async () => (await saved(page)).jewels[0].text).toBe(text);
-    await expect(page.locator('.topbar-busy')).toHaveCount(0);
-    await expect(confirmation).toHaveCount(0);
-  }
-  expect(await saved(page)).toEqual(applied);
-
-  await complete(page, 'route');
-  await awayAndBack(page);
-  await assertExactApply(page, 'route', routeResults(page).locator(':scope > li').first(), await saved(page));
-  await expect(confirmation).toBeVisible();
-  await nav(page, 'Build').click();
-  await page.getByRole('button', { name: 'Copy current stage', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Independent confirmation stage');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await nav(page, 'Tree').click();
-  await open(page);
-  await expect(confirmation).toHaveCount(0);
 });
 
 for (const planner of ['route', 'joint'] as const) {

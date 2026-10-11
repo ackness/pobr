@@ -22,6 +22,7 @@ const COPY = {
     limit: 'Up to 8 placements and 512 route evaluations per placement, plus current jewels. Search is bounded; the global optimum is not guaranteed.',
     exclusive: 'Joint jewel planning requires a shared tree without weapon-set-only passives.',
     current: 'Keep current jewels', preview: 'Show joint route on tree', apply: 'Apply jewel and passive plan', clear: 'Clear joint preview',
+    applied: 'Jewel and passive plan applied',
     evaluated: 'Plans evaluated', bounded: 'Search was limited; only evaluated routes are covered.', none: 'No improving legal plan was found.',
     addNodes: 'Allocate', removeNodes: 'Refund', route: 'Complete route and jewel', diagnostics: 'Excluded or unmodeled candidates',
     invalid: 'Paste one complete jewel item.', stale: 'The build changed. Run the search again.', skipped: 'Plans with new unmodeled effects skipped',
@@ -35,6 +36,7 @@ const COPY = {
     limit: '最多比较 8 个珠宝位置，每个位置及当前珠宝分别评估最多 512 条路线。搜索范围有限，不保证全局最优。',
     exclusive: '联合珠宝规划仅支持没有武器组专属天赋的共用主树。',
     current: '保留当前珠宝', preview: '在树上查看联合路线', apply: '应用珠宝与天赋方案', clear: '清除联合预览',
+    applied: '已应用珠宝与天赋方案',
     evaluated: '已重算方案', bounded: '已达搜索上限，结果仅涵盖已评估路线。', none: '未找到合法且优于当前配置的方案。',
     addNodes: '新增', removeNodes: '退还', route: '完整路线与珠宝', diagnostics: '排除原因与未建模效果',
     invalid: '请粘贴一件完整珠宝的物品文本。', stale: '角色配置已变化，请重新搜索。', skipped: '已排除含新增未建模效果的方案',
@@ -48,6 +50,7 @@ const COPY = {
     limit: '最多比較 8 個珠寶位置，每個位置及目前珠寶分別評估最多 512 條路線。搜尋範圍有限，不保證全域最優。',
     exclusive: '聯合珠寶規劃僅支援沒有武器組專屬天賦的共用主樹。',
     current: '保留目前珠寶', preview: '在樹上查看聯合路線', apply: '套用珠寶與天賦方案', clear: '清除聯合預覽',
+    applied: '已套用珠寶與天賦方案',
     evaluated: '已重算方案', bounded: '已達搜尋上限，結果僅涵蓋已評估路線。', none: '未找到合法且優於目前配置的方案。',
     addNodes: '新增', removeNodes: '退還', route: '完整路線與珠寶', diagnostics: '排除原因與未建模效果',
     invalid: '請貼上一件完整珠寶的物品文字。', stale: '角色配置已變更，請重新搜尋。', skipped: '已排除含新增未建模效果的方案',
@@ -86,6 +89,7 @@ export interface JewelPassivePlannerState {
   progress: { done: number; total: number } | null;
   error: string;
   preview: number | null;
+  applied: { plan: JewelPassivePlan; candidate: JewelPassiveCandidate | null } | null;
   exclusive: number[];
   add: () => void;
   run: () => Promise<void>;
@@ -100,6 +104,9 @@ export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active
   const [socket, setSocket] = useState('');
   const [candidates, setCandidates] = useState<JewelPassiveCandidate[]>([]);
   const [completed, setCompleted] = useState<JewelPassiveReceipt | null>(null);
+  const [applied, setApplied] = useState<{
+    version: number; plan: JewelPassivePlan; candidate: JewelPassiveCandidate | null;
+  } | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<number | null>(null);
@@ -184,6 +191,9 @@ export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active
       || !feasibleOf(plan.stats, completed.objective)) return;
     // The guard compares the original build, not travel choices prepared for evaluation.
     if (!session.applyTreePlan(completed.request, plan)) { setError(text.stale); return; }
+    // Match the ordinary planner's receipt lifetime to the successful atomic edit.
+    setApplied({ version: session.stateVersion + 1, plan,
+      candidate: completed.candidates.find(candidate => candidate.id === plan.candidateId) ?? null });
     stop(); setCompleted(null);
   };
   const show = (index: number | null) => {
@@ -193,12 +203,13 @@ export function useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active
   const remove = (id: string) => setCandidates(values => values.filter(value => value.id !== id));
 
   return { session, lang, nodeLabel, raw, setRaw, selectedSocket, setSocket, sockets,
+    applied: applied?.version === session.stateVersion && !session.busy && !session.calcError ? applied : null,
     candidates, remove, completed, result, progress, error, preview, exclusive, add, run, apply, stop, show };
 }
 
 export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerState }) {
   const { session, lang, nodeLabel, raw, setRaw, selectedSocket, setSocket, sockets,
-    candidates, remove, completed, result, progress, error, preview, exclusive, add, run, apply, stop, show } = planner;
+    candidates, remove, completed, result, progress, error, preview, exclusive, applied, add, run, apply, stop, show } = planner;
   const text = COPY[lang];
   const tt = bindT(lang);
   const format = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 2 });
@@ -206,6 +217,14 @@ export function JewelPassivePlanner({ planner }: { planner: JewelPassivePlannerS
     : `${value >= baseline ? '+' : ''}${format((value / baseline - 1) * 100)}%`;
   return <section className="jewel-passive-planner" aria-label={text.title}>
     <h4>{text.title}</h4><p className="tree-planner-hint">{text.hint}</p>
+    {applied && <p className="tree-planner-hint jewel-plan-applied" role="status">
+      <strong>{text.applied}</strong><br />
+      {applied.candidate
+        ? `${applied.candidate.label} · ${nodeLabel(applied.candidate.jewel.socket_node)} #${applied.candidate.jewel.socket_node}`
+        : text.current}<br />
+      {text.addNodes} {applied.plan.allocate.length}: {applied.plan.allocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}<br />
+      {text.removeNodes} {applied.plan.deallocate.length}: {applied.plan.deallocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}
+    </p>}
     <label className="jewel-plan-input">{text.text}<textarea aria-label={text.text} value={raw} onChange={event => setRaw(event.target.value)} rows={5} /></label>
     <div className="tree-planner-controls"><label>{text.socket}<AppSelect value={selectedSocket} ariaLabel={text.socket}
       onChange={setSocket} disabled={!sockets.length} placeholder={text.noSockets} options={sockets.map(({ node, cost }) => ({ value: String(node.skill),

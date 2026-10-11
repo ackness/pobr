@@ -39,3 +39,12 @@
 - Live browser verified exact allocated and refunded nodes, automatic refresh, EN/TW/CN copy and 390px layout. Held a real result before delivery to verify pending suppression; injected a rejection after real calculation to verify failure suppression, then reloaded to remove the injection.
 - Independent reviewer approved with no blocking findings. Actual screen-reader speech remains unverified. Browser space 32 finished; temporary screenshots/config removed; no Rust/WASM/data changes.
 - Commit: this entry's checkpoint commit (`feat: confirm applied passive routes`). Next: equivalent feedback for joint jewel/passive plans and cross-planner lifetime verification.
+
+## 5 — Joint feedback and application-outcome milestone closure
+
+- Added revision-scoped joint jewel/passive success feedback, capturing the selected placement from the completed search. Shows kept jewels when appropriate and exact allocation/refund details; later candidate edits cannot rewrite it.
+- Extended lifetime regression to both planners and added joint → route → joint invalidation. Passed 97 targeted unit tests, production build/typecheck and three real-WASM Playwright tests.
+- Live browser verified replacement plus nodes, candidate removal/fresh-search retention, identical-jewel no-op exclusion, kept-jewel wording, EN/TW/CN and 390px layout. Scheduling/rejection fault injection confirmed pending/failed calculations cannot show success; reload removed the injection.
+- Independent review approved with no findings. Updated web contract, finished browser space 33 and removed temporary artifacts. Actual screen-reader speech remains untested; no Rust/WASM/data changes.
+- Closed the application-outcome milestone. Next priority is canonical support fidelity: this branch's targeted extraction/mapping/crit files lack the known never-crit symbols, and prior corrections d7863a1/94392bc/650b70c exist locally. This static lead requires current-branch reproduction and ancestry/content reconciliation before integration, not duplicated implementation.
+- Commit: this entry's checkpoint commit (`feat: confirm applied jewel and passive plans`). Next: reconcile and verify the existing never-crit correction against this branch.

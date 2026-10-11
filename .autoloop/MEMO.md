@@ -82,7 +82,7 @@ Establish this branch's runnable browser surface and inspect the passive plannin
 - Closed the bounded milestone: populated multi-point routes, conservative import refund guard, connected positive refunds, atomic travel attributes, protected sockets, exact preview/application agreement, stage isolation/reload, baseline/new diagnostic separation, and stale-result invalidation were exercised across iterations 1–3. This is not a claim of complete passive mechanics, exhaustive graph search, all languages or all device sizes.
 - Browser space 31 finished and temporary screenshot removed. No production defect was found in the checked correctness paths; no production files or permanent tests were changed. Do not extend verification indefinitely.
 
-## Current milestone: Clear passive-plan application outcomes
+## Completed milestone: Clear passive-plan application outcomes
 
 Observed gap: after applying two nodes `[42736,4203]` in iteration 3, automatic search replaced the selected result with a new 115-plan baseline. The planner had no status message or applied confirmation. Iterations 1–2 similarly required inspecting stored state and sidebar numbers to establish what Apply did.
 
@@ -105,4 +105,31 @@ Exit criteria:
 - `ReviewPassiveReceipt` approved without blocking findings; its low-risk coverage suggestions were addressed by actual-ID assertions and the live boundary checks. Reviewer is settled done. Actual screen-reader speech was not tested; only semantic live-status markup and visible behavior are verified.
 - Finished browser space 32. Removed temporary screenshots and isolated Playwright config. Vite remains on 5182. Unchanged Rust/WASM/data reused.
 
-Next iteration: add equivalent state-scoped success feedback to joint jewel/passive Apply. Keep the existing ordinary acknowledgment contract; applying either planner should invalidate the other's old receipt through the session revision. Verify jewel replacement plus node changes, no-op/stale rejection, refreshed recommendations and stage lifetime before closing the milestone.
+## Iteration 5 implementation and milestone closure
+
+- Joint `JewelPassivePlanner` now records its applied revision, plan and candidate snapshot only after `session.applyTreePlan` returns true. Uses the ordinary planner's busy/error/revision lifetime; no new abstraction, mutation API or persisted state.
+- Localized status identifies the applied jewel label/socket or kept-current-jewels choice, and allocation/refund counts, names and IDs. Capturing from the completed search prevents later candidate-list changes from rewriting the acknowledgment.
+- Parameterized the existing real-WASM lifetime regression for both planners; added joint → ordinary → joint mutual invalidation coverage. Tests validate actual applied nodes/attributes/jewels and numeric previews through the existing exact-Apply helper, not synthetic callback echoes.
+- Passed 14 joint-planner tests, 83 session tests, production web build/typecheck and all three scoped Playwright application-confirmation cases. Existing chunk-size advisory remains. No Rust/WASM/data changes; no full parity claim.
+- Live joint Apply replaced socket 61419 with a synthetic Ruby granting +1200 maximum Life and added nodes `[29148,34840,1433]`; status matched the actual persisted changes. Removed the candidate afterward: the captured placement stayed correct. Fresh search retained the acknowledgment.
+- Verified EN/TW/CN copy and inspected desktop/390px screenshots. Adding the identical equipped jewel produced no zero-node/no-refund plan among the 20 recommendations. Applying a kept-jewel route reported Keep current jewels and added `[3025,38732,17672]`, without claiming a replacement.
+- Held a completed real calculation before delivery: no success while busy, receipt after release. Injected rejection after real calculation: error displayed, receipt absent. Reload removed the injection and recovered normal calculation without a persisted acknowledgment. These are lifecycle fault-injection checks.
+- `ReviewJointReceipt` approved with no findings and is settled done. Actual screen-reader speech remains unverified. Finished browser space 33 and removed temporary screenshots/Playwright config; Vite remains on 5182.
+- Feedback milestone complete across ordinary and joint application, recommendation/candidate edits, same-stage navigation, subsequent edits/restoration, copied stages, pending/failure states and localization.
+
+## Current milestone: Reconcile canonical support-effect fidelity
+
+Next priority is calculation trust, not more passive UI verification. A targeted static check found no `NeverCrit` or `global_cannot_crit` in this branch's `calc/crit.rs`, `rules/stat_map_engine.rs` or `extract_skill_overrides.lua`. This is a concrete lead, not yet a current-branch runtime reproduction. Prior-loop corrections are available in this repository:
+
+- `d7863a1` — enforce canonical never-crit effects.
+- `94392bc` — disclose unmodeled support resource loss.
+- `650b70c` — disclose unmodeled support life sacrifice.
+
+Exit criteria:
+
+1. Check current ancestry/content and integration status before reusing prior work; do not independently reimplement an existing fix or overwrite newer code.
+2. Reproduce affected support behavior with this branch's real engine. Integrate only still-relevant corrections, preserving current attribution/import/planner work.
+3. Verify canonical crit precedence and host scope, accurate source-attributed resource limitations, and actual recommendation consequences with required targeted/parity checks and rebuilt WASM.
+4. Keep unmodeled resource loss distinct from ordinary costs; do not invent maximum/current-pool semantics or claim complete mechanic coverage.
+
+Next iteration: begin with the never-crit lead and prior commit reconciliation, then choose the smallest verified integration. Work and commits remain exclusively in this worktree; no publishing or changes to other branches.
