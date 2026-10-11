@@ -77,6 +77,14 @@
   dispatches and preserved I10 ownership. Main re-read the protocol/steering,
   rechecked absent pause and exact own owner.json, and continues this iteration
   to its verified checkpoint, not a second iteration. No resume was requested.
+- 2026-10-11 I11 trigger: reaffirm tool-only scope, durable pause precedence on
+  manual/reused entry, atomic single ownership, supervised disjoint parallel
+  work, real-WASM/browser proof, independent review and main-only Git. Continue
+  M6; retain M1–M5's scoped closures without broadening evidence. Entry
+  checkpoint `df664e05a57e40eb53f8ac6a1399c0e45a10c9bf`, clean existing branch;
+  pause absent before/after new atomic claim, automation observed enabled.
+  Retained 18-request real-WASM replay fails all 12 explicit 1/2 cases, while
+  six absent controls pass. No resume, version/tag, push/publication/deployment.
 
 ## Completed milestone M1: trustworthy, continuous upgrade decisions
 
@@ -262,7 +270,7 @@ original fields and library entries intact, plus one safely recovered source
 name. Complete serialized calculation/diagnostic responses agree for all seven
 stages. The I10 ledger records the final runtime, independent review and limits.
 
-## Active milestone M6: trustworthy explicit charge counts
+## Completed milestone M6: trustworthy explicit charge counts
 
 Outcome: explicit Power/Frenzy/Endurance count inputs must agree with reported
 current counts and existing charge-dependent consumers, under the reference
@@ -291,12 +299,59 @@ Exit scenarios:
 4. Independent Spec/Standards review, relevant native/JSON/parity gates, rebuilt
    real WASM and actual English/Chinese desktop/narrow keyboard interaction pass.
 
-Precise next slice I11: read current steering/pause/ownership first, reproduce
-the 18 retained requests and map the count-setting/charge-dependent consumer
-seams against PoB2. Parallelize disjoint consumer/reference research and
-regressions; main captures failing-before proof and owns the bounded integration.
-Touch-tree usability remains source-inferred and ranks below this confirmed
-calculation discrepancy. M1–M5 retain only their recorded scoped closures.
+I11 closes all four bounded exits. The retained 18-request replay reproduced
+12 explicit failures; all 18 final real-WASM requests now report the expected
+count. Reference-derived count/use boundaries, native multiplier consumers,
+independently controlled per-charge damage, source/direct lanes and actual
+Config edit/reset/reload are verified. Seven host regressions, 25 new browser
+scenarios and the unchanged 31 condition-edit scenarios pass. Six inspected
+EN/zh-TW/zh-CN desktop/narrow keyboard screenshots cover all requested locales.
+Spec and Standards reviews completed; Standards' avoidable allocation finding
+was corrected and independently cleared. The I11 ledger states exact gates,
+intermediate harness corrections and coverage limits; this does not claim
+complete charge, minion, skill-specific or Config-catalog implementation.
+
+## Active milestone M7: unambiguous actor-specific charge controls
+
+Outcome: players can distinguish and deliberately edit the main-character and
+minion Power/Frenzy/Endurance count controls using visible labels, keyboard and
+accessible names, without changing raw keys/types or calculation identity.
+
+Priority evidence: all six I11 production screenshots display two identically
+labeled Power count inputs. Actual Ego Config shows `overridePowerCharges` and
+`minionsOverridePowerCharges` with exactly the same accessible label. Editing
+the first to 2 changes only the minion key; the main count remains 1 and hit DPS
+81.37. Receipt `.cache/product-loop-I11-actor-label-probe.json`. Current overlay
+metadata confirms the same duplicate labels for all three pairs and explicit
+nested `MinionModifier` effects for the minion keys. This is actor-selection
+ambiguity, not a claim that an intended minion edit should alter player DPS.
+
+Exit scenarios:
+
+1. Reproduce ambiguous actor selection in the real app; establish the three
+   pairs' identities from current catalog/reference metadata, not name heuristics.
+2. Give the bounded count pairs clear localized visible and accessible actor
+   identity. Keep the full catalog available; do not infer relevance or conceal
+   imported/unknown controls. Preserve raw save/export keys and types.
+3. In EN/zh-TW/zh-CN at desktop/narrow widths, keyboard-edit/reset each intended
+   actor independently, preserve the other actor, and retain exact state across
+   reload, stages and export/reimport. Existing supported player consumers must
+   still agree; labeling must not assert unsupported minion mechanics.
+4. Independent Spec/Standards review and relevant frontend/native-contract
+   gates pass with rebuilt real WASM and inspected production visuals.
+
+Precise next slice I12: read steering, enforce pause and own the atomic claim
+before dispatch. Map existing Config labeling/localization and catalog metadata;
+parallelize independent actor/reference review and bounded browser regressions
+with disjoint edit ownership. Main integrates the display-only correction and
+captures failing-before/passing-after intended-actor interaction. No numerical
+minion implementation, broad Config redesign, tag/version or publication scope.
+
+Alternative ranking: a live real-WASM probe of a no-Frenzy-charge critical-bonus
+line returns it in `unsupported_mods`, not silent support; do not invent a
+numerical defect from that probe. Touch-tree usability remains source-inferred.
+The observed, localized actor ambiguity has stronger current product evidence.
+M1–M6 retain only their recorded scoped closures.
 
 
 
@@ -1607,3 +1662,124 @@ regressions; no charge-count fix or new inherent charge effects are claimed here
   release only this exact owner's claim after verified commit. Local product
   checkpoint, not application release: retain `0.0.33`/`v0.0.33`; no new
   tag/version, push, external publication or deployment.
+
+### I11 — explicit player charge counts
+
+Entry: `df664e05a57e40eb53f8ac6a1399c0e45a10c9bf`
+(`fix: preserve unresolved imported gem slots`), clean existing
+`multi-agent-self-improvement` branch, application `0.0.33`, data `4.5.5.3`.
+Current steering is retained above. Pause was absent before the atomic claim,
+after acquisition and before checkpoint; no pause marker was cleared.
+
+#### Product evidence and bounded correction
+
+- Replayed all 18 retained source/materialized Power/Frenzy/Endurance requests:
+  12 explicit-count failures before, six absent controls passing. The final
+  rebuilt real WASM reports the expected current count in all 18. Receipts:
+  `.cache/product-loop-I11-before.json`, `-after.json` and `-final.json`.
+- The original production-browser regression expected independently controlled
+  one-charge DPS 223.02 but received maximum-charge DPS 247.13. The initial
+  naked-skill Ego import had no charge-dependent effect, so unchanged DPS there
+  was not used as a defect. A first synthetic XML attempt omitted Items and was
+  corrected before claiming consumer proof.
+- Pinned PoB2 `ce566eac45ea8a86477f513c7ee65a1ebe60014e` source
+  (`ConfigOptions.lua:818-831`, `CalcPerform.lua:928-963`) establishes override,
+  use/minimum, zero/unset, fractional and above-maximum semantics. The research
+  report is `.cache/product-loop-I11-reference.md`; vendor preparation completed
+  locally, without tracked vendor/data edits or a fresh Lua oracle run.
+- `charge_multipliers_panel_default` now consumes interpreted player `*Charges`
+  overrides. The Combat tag uses a local lazy mode projection; the original
+  condition map is restored and unrelated Combat effects remain unchanged.
+  Disabled use retains the minimum; absent/zero inputs retain maximum defaults.
+  Explicit counts floor at minimum, retain fractions and are not upper-capped.
+  Ordinary per-charge tags independently floor consumed stacks.
+- Current charge fields become native `f64`; minimum/maximum stay `u32`.
+  Display/JSON values remain numeric. All affected callers and regressions were
+  migrated; the obsolete upper-clamp assertion was removed. No alias, validation
+  shim, frontend formula, schema/data/version bump or inherent charge bonus.
+- An intermediate lookup-only repair failed host tests because the raw effects
+  carry Combat tags absent from the ordinary condition bridge. Native isolation
+  regression now proves the bounded projection rather than globally activating
+  those effects.
+- Seven real native-host regressions exercise independent legacy/flat-item
+  controls, 72 transition states, 54 boundary states and 24 Bool/Text states.
+  Raw typed inputs remain save/export provenance. Numeric JSON 1 and 1.0 equality
+  was an incidental harness assumption, corrected to numerical equality while
+  keeping strict Bool/Text and key-presence checks.
+
+#### Exercised verification
+
+- Failing-before native regression:
+  `cargo test -p pobr-core --test defence explicit_charge_overrides_reach_multipliers_with_reference_boundaries`
+  returned Power current 3 instead of 1; it passes after integration.
+- `cargo test -p pobr-core --test defence --test engine --test golden`:
+  195 + 131 + 35 pass. `cargo test -p pobr-build --lib`: 222 pass.
+  Relevant parity `panel_mode_no_regression` / `parity_no_regression`: two pass,
+  with no baseline blessing.
+- `cargo test -p pobr-wasm --test config_charge_counts --test config_condition_edits --test contract_golden`:
+  7 + 2 + 39 pass. After Standards' lazy-allocation refinement, native
+  `recovery::` (48) and the seven host count tests were rerun and pass.
+- Scoped `cargo clippy` with `-D warnings` passes separately for core
+  lib/defence/engine/golden, build lib/parity and WASM lib/the three host suites.
+  `cargo fmt --check` passes. An initial malformed repeated `--lib` invocation
+  was rejected before checks and replaced by these sequential package commands.
+- `pnpm --dir web build-wasm && pnpm --dir web build` passes after the final
+  correction, including TypeScript checking. The existing JS chunk-size warning
+  remains; no measured performance bottleneck or release-gate claim.
+- Production `config-condition-edits.spec.ts`: all 31 unchanged cases pass.
+  The first combined run had 12 failures solely because PoB reimport materializes
+  seven existing false config keys. Post-reimport checks now assert the original
+  typed subset, not incidental whole-key equality. Exact edit/reset/reload
+  snapshots remain strict. No production behavior was weakened to satisfy tests.
+- Final rebuilt production `config-charge-counts.spec.ts`: all 25 pass. Coverage
+  includes all three count kinds, independent DPS, zero/fraction/above-max,
+  absent/use-off, reset/reload, PoB export/reimport, copied-stage isolation and
+  support/passive/replacement receipt invalidation. Untouched raw-string blur
+  retains compatible receipts.
+- Actual Ego preview on owned 4193, TaskSpace 7/p1: synthetic 8%-per-Power-charge
+  item, count 1 → 2 → imported reset 1, hit DPS 81.37 → 87.4 → 81.37.
+  Exact serialized saved-state equality across reload:
+  `.cache/product-loop-I11-ego-after.json`. Refiltering after reload and keyboard
+  reset avoided pointer interception by a distant full-catalog row.
+- All six EN/zh-TW/zh-CN 390/1440 production screenshots were inspected.
+  Input/reset remain visible, localized and keyboard-operated. Ego screenshot
+  capture timed out after successful interaction; production Playwright images
+  supply visual evidence. No touch-device, screen-reader, live-WeGame, fresh Lua,
+  all-skill/minion, exhaustive Config or full-release validation claim.
+
+#### Independent review, evaluation and checkpoint
+
+- Genuine parallel supervised reference/native-host/browser-development slices
+  had disjoint ownership; main owned core integration, gates, documentation and
+  Git. Spec report `.cache/product-loop-I11-spec.md` found no actionable bounded
+  correctness defect. Standards `.cache/product-loop-I11-standards.md` found an
+  avoidable unconditional Combat key allocation; lazy projection/get_mut fixes
+  it. Follow-up `.cache/product-loop-I11-standards-final.md` independently clears
+  the allocation, restoration and corrected reimport assertions. Reviews are
+  source evidence, not worker-run test claims. Rust LSP initialization failed;
+  reference investigation used current source instead.
+- M6 exits are closed only for the stated player count/multiplier/consumer
+  behavior. Charge conversion, maximum linking, removable/total-charge systems,
+  every skill-specific effect and minion mechanics remain outside this repair.
+- Actual duplicate player/minion labels are the next product priority; the
+  three pairs' current overlay effects confirm identity. M7/I12 above is the
+  precise display-only slice. A no-Frenzy-charge critical-bonus probe reports
+  `unsupported_mods`, not silently supported damage; retained receipt
+  `.cache/product-loop-I11-next-condition-probe.json`. Touch-tree work remains
+  inferred and lower-ranked.
+- Run `run_ce082c48190b`, coordinator
+  `term_b7d0302c-dd81-427e-a396-db0d0bd55796`; exact-owner claim only.
+  All supervised inbox deliveries processed and acknowledged; all current
+  resources released/exited, no reclaimable worker. Standards' original dispatch
+  has a stale retained projection after reuse, but the linked current resource
+  is authoritatively released; reported to tool QA, not treated as live ownership.
+- Owned throwaway replay/priority scripts removed; JSON/review/visual receipts
+  retained. Owned 4193 preview stopped and TaskSpace 7/p1 closed; existing user
+  services/spaces were not operated.
+- Exact Conventional Commit: `fix: honor explicit charge counts`. Main records
+  resulting full hash/time, evidence/limits and I12 in
+  `.cache/product-loop-checkpoint.json` immediately after commit. Release only
+  this owner's claim after that verified checkpoint.
+- Hourly automation `0f3538b3-37df-44be-b888-d085f05d6e8d` remains enabled.
+  Local product checkpoint, not application release: retain `0.0.33`/`v0.0.33`.
+  No tag, push, external publication or deployment.

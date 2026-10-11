@@ -365,11 +365,11 @@ fn extract_wave2_defence_values_from_output_table() {
 #[test]
 fn extract_wave2_charges_leech_recoup_from_output_table() {
     let output = OutputTable {
-        charge_power_current: 3,
+        charge_power_current: 3.0,
         charge_power_maximum: 3,
-        charge_frenzy_current: 2,
+        charge_frenzy_current: 2.0,
         charge_frenzy_maximum: 4,
-        charge_endurance_current: 1,
+        charge_endurance_current: 1.0,
         charge_endurance_maximum: 3,
         life_leech_rate: 500.0,
         mana_leech_rate: 100.0,

@@ -582,11 +582,11 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "EnemyCritEffect" => output.enemy_crit_effect,
 
         // Charges
-        "ChargePowerCurrent" => output.charge_power_current as f64,
+        "ChargePowerCurrent" => output.charge_power_current,
         "ChargePowerMaximum" => output.charge_power_maximum as f64,
-        "ChargeFrenzyCurrent" => output.charge_frenzy_current as f64,
+        "ChargeFrenzyCurrent" => output.charge_frenzy_current,
         "ChargeFrenzyMaximum" => output.charge_frenzy_maximum as f64,
-        "ChargeEnduranceCurrent" => output.charge_endurance_current as f64,
+        "ChargeEnduranceCurrent" => output.charge_endurance_current,
         "ChargeEnduranceMaximum" => output.charge_endurance_maximum as f64,
 
         // Leech / Recoup

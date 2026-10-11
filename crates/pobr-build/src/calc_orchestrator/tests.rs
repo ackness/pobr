@@ -3090,19 +3090,25 @@ mod imported_condition_edits {
             let on = output(&imported(key, Some(true), skill), &data);
             match key {
                 "usePowerCharges" => {
-                    assert_eq!(off.charge_power_current, 0);
-                    assert_eq!(on.charge_power_current, on.charge_power_maximum);
-                    assert!(on.charge_power_current > 0);
+                    assert_eq!(off.charge_power_current, 0.0);
+                    assert_eq!(on.charge_power_current, f64::from(on.charge_power_maximum));
+                    assert!(on.charge_power_current > 0.0);
                 }
                 "useFrenzyCharges" => {
-                    assert_eq!(off.charge_frenzy_current, 0);
-                    assert_eq!(on.charge_frenzy_current, on.charge_frenzy_maximum);
-                    assert!(on.charge_frenzy_current > 0);
+                    assert_eq!(off.charge_frenzy_current, 0.0);
+                    assert_eq!(
+                        on.charge_frenzy_current,
+                        f64::from(on.charge_frenzy_maximum)
+                    );
+                    assert!(on.charge_frenzy_current > 0.0);
                 }
                 "useEnduranceCharges" => {
-                    assert_eq!(off.charge_endurance_current, 0);
-                    assert_eq!(on.charge_endurance_current, on.charge_endurance_maximum);
-                    assert!(on.charge_endurance_current > 0);
+                    assert_eq!(off.charge_endurance_current, 0.0);
+                    assert_eq!(
+                        on.charge_endurance_current,
+                        f64::from(on.charge_endurance_maximum)
+                    );
+                    assert!(on.charge_endurance_current > 0.0);
                 }
                 _ => assert!(on.dps > off.dps && off.dps > 0.0, "{key} exposure consumer"),
             }

@@ -87,4 +87,12 @@ Product-loop I9/M4 follow-up:
 - Actual Ego production interaction verified EN/zh-TW/zh-CN keyboard/reset at 390/1440px, displayed fire hit DPS 90.41 → 75.35 → 90.41, export/reimport and copied-stage isolation. No touch-device, screen-reader or exhaustive formula-coverage claim.
 - Reloading the prior long-lived Comet workspace exposes a separate preexisting unresolved level-0 gem validation failure. Original build/library entries and raw bytes are retained. This is active M5, not repaired or hidden by M4; see the [product-loop memo](product-loop-memo.md) for exact evidence and next slice.
 
+Product-loop I11/M6 follow-up:
+
+- Explicit player Power/Frenzy/Endurance counts now reach reported counts and existing per-charge damage modifiers through both source-code and materialized requests. The retained 18-state real-WASM probe had 12 explicit failures before and none after; absent controls still default to maximum.
+- Reference-derived zero/unset, disabled-use/minimum, fractional and above-maximum behavior is preserved without coercing imported Bool/Text inputs. Seven native host regressions include independently controlled damage, 72 transition states, 54 boundary states and 24 typed-input states.
+- The rebuilt production app passed 25 new browser scenarios plus 31 unchanged condition-edit scenarios. Six inspected EN/zh-TW/zh-CN screenshots cover 390/1440px keyboard edits, reset and raw types. Actual Ego Config interaction with an explicit synthetic per-charge item produced hit DPS 81.37 → 87.4 → 81.37 for count 1 → 2 → imported reset, with exact saved-state reload equality.
+- Separate next usability defect: main-character and minion count controls have identical visible/accessibility labels. In actual Config, editing `minionsOverridePowerCharges` changed only that raw input while the main count remained 1 and hit DPS remained 81.37. M7 will distinguish the three actor-specific count pairs without hiding catalog settings or promising minion formula coverage.
+- Spec and Standards reviews completed; scoped native/JSON/parity/Clippy/format gates passed. No fresh Lua oracle, touch-device, screen-reader or full-release coverage claim. Ego screenshot capture timed out after successful interaction; the six production Playwright screenshots supply the inspected visual evidence. Local checkpoint only; no version bump, push, publication or deployment.
+
 用于 v0.0.21 PR 评审的截图：[桌面天赋布局](images/v0.0.21/tree-desktop.png)、[手机装备编辑](images/v0.0.21/items-mobile.png)。截图使用仓库中的示例构筑。

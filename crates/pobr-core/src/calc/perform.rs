@@ -46,10 +46,8 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // Must run after env_finalize (buff/flask sources already merged) and before aggregation.
     apply_projectile_speed_to_damage(env);
 
-    // Charge multiplier: per PoB2's convention, PowerCharge/FrenzyCharge/EnduranceCharge are set
-    // to their max stack (so `per X charge` mods can expand) only when `Condition:UseXCharges` is
-    // true (or permanently full). When that charge isn't enabled, it stays at 0 (PoB2's panel
-    // shows current=0), avoiding wrongly applying per-charge bonuses/penalties.
+    // Resolve charge overrides/defaults before per-charge modifiers expand.
+    // Charges have no inherent bonuses; disabled use retains only the minimum.
     env.cfg = super::survivability::charge_multipliers_panel_default(&env.player.mod_db, &env.cfg);
 
     // Five-way defensive resource conversion matrix (PoB2 CalcDefence.lua:1301-1390): the amount
