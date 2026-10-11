@@ -158,12 +158,15 @@ cmd_cache() {
 }
 
 cmd_ci() {
-  if [[ $# -ne 1 || "$1" == -* ]]; then
-    echo "usage: ./pobr ci <pushed-branch-or-tag>" >&2
+  if [[ $# -lt 1 || $# -gt 2 || "$1" == -* || ( $# -eq 2 && "$2" != "--e2e" ) ]]; then
+    echo "usage: ./pobr ci <pushed-branch-or-tag> [--e2e]" >&2
     echo "Runs the remote ref, not uncommitted or unpushed local changes." >&2
+    echo "E2E is skipped unless --e2e is given." >&2
     return 2
   fi
-  gh workflow run ci.yml --ref "$1" &&
+  local extra=()
+  if [[ $# -eq 2 ]]; then extra=(-f e2e=true); fi
+  gh workflow run ci.yml --ref "$1" ${extra[@]+"${extra[@]}"} &&
     echo "CI requested for remote ref '$1'. Check './pobr ci-status'; this is not a passing result."
 }
 
@@ -179,7 +182,7 @@ PoBR development commands (run from any directory via this script's path):
   ./pobr build [-p <crate>]               Build application CLI by default
   ./pobr smoke                            Representative environment checks
   ./pobr full                             Explicit full local Rust gate
-  ./pobr ci <pushed-branch-or-tag>         Request full cloud CI via gh
+  ./pobr ci <pushed-branch-or-tag> [--e2e] Request full cloud CI via gh (E2E only with --e2e)
   ./pobr ci-status [--branch <branch>]     List cloud CI results via gh
 
 test/lint/timings also accept raw Cargo arguments (-p, --test, --lib, ...).

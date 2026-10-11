@@ -228,7 +228,8 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
     def test_short_commands_require_explicit_targets(self):
         for args in [["test", "core"], ["lint", "core"], ["timings"],
                      ["verify", "core"], ["verify", "core", "--workspace"],
-                     ["verify", "core", "lib", "--workspace"], ["ci"]]:
+                     ["verify", "core", "lib", "--workspace"], ["ci"],
+                     ["ci", "feature/x", "--unknown"]]:
             with self.subTest(args=args):
                 result = self.run_script("pobr", *args)
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
@@ -240,6 +241,12 @@ sys.exit(int(os.environ.get("GH_EXIT", "0")))
         self.assertEqual(result.returncode, 31, result.stdout + result.stderr)
         self.assertEqual(self.calls(), [["gh", "workflow", "run", "ci.yml", "--ref", "feature/ci-workflow"]])
         self.assertNotIn("CI requested", result.stdout)
+
+    def test_ci_requests_e2e_only_when_asked(self):
+        result = self.run_script("pobr", "ci", "feature/ci-workflow", "--e2e")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.calls(), [["gh", "workflow", "run", "ci.yml", "--ref", "feature/ci-workflow",
+                                         "-f", "e2e=true"]])
 
     def calls(self):
         return [json.loads(line) for line in
