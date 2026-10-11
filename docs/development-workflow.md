@@ -111,7 +111,18 @@ WASM 构建凭据校验 Rust 源码、嵌入语言文件、manifest/lockfile、J
 
 合并、发版、工具链/features/依赖变更或影响范围不明的核心修改需要完整门禁，
 优先使用 CI。`ci` 测试已推送的远端分支/tag，不推送本地代码；必须核对结果的提交 SHA，
-请求成功不等于验证通过。普通 push/PR 不自动触发 CI。
+请求成功不等于验证通过。普通 push 不触发 CI；PR 只自动运行下述轻量检查，不是完整门禁。
+
+[pr.yml](../.github/workflows/pr.yml) 在每个指向 master 的 PR 上运行，包括 fork 提交的 PR：
+
+| 改动范围 | 自动检查 |
+|----------|----------|
+| Rust 源码、`data/`、`examples/`、脚本或工作流 | fmt、workspace Clippy、脚本测试、`./pobr smoke`、`parity no_regression` |
+| `web/` | `pnpm typecheck` 与 Vitest 单测（不构建 WASM，不跑 E2E） |
+| 仅文档 | 不运行 |
+
+fork PR 使用只读令牌且读不到仓库密钥；首次贡献者的运行需要维护者在 Actions 页批准。
+轻量检查通过不代表完整门禁通过：定向套件、Worker、真实 WASM 和 E2E 仍按改动在本地或手动 CI 验证。
 
 当前 [ci.yml](../.github/workflows/ci.yml) 包含独立的 Rust lint、Rust 测试和 Web 门禁。
 Rust 检查 fmt/Clippy/nextest/doctest/i18n 与数据兼容；Web 检查脚本、类型、单测、Worker、
@@ -126,6 +137,28 @@ Rust 检查 fmt/Clippy/nextest/doctest/i18n 与数据兼容；Web 检查脚本�
 不要为同一个 tag 再请求相同的 CI，
 也不要求本地先跑一次 full。CI 依赖缓存可能过期，不能保证每次都是热构建。
 发布包与凭据规则见 [WASM 打包说明](wasm-package.md)。
+
+## 处理外部 PR
+
+贡献者须知见 [CONTRIBUTING.md](../CONTRIBUTING.md)。维护者按下面的顺序处理 fork 提交的 PR：
+
+1. **先读 diff，再运行。** 外部代码在本机执行前完整读一遍，确认只包含声明的改动。
+2. **在当前 master 上验证。** PR 的基点可能已落后；取回后叠在最新 master 上，按
+   [CLAUDE.md](../CLAUDE.md) 的验证分层运行对应套件，计算类改动加 `parity no_regression`。
+
+   ```bash
+   git fetch origin master pull/<N>/head:pr-<N>
+   git merge-tree --write-tree origin/master pr-<N>   # Conflict check without touching the worktree
+   git switch -c review/pr-<N> origin/master && git merge --no-edit pr-<N>
+   ```
+
+3. **按项目约定审查。** 重点看三件事：公式或数据引用是否带 PoB2 Lua 行号；是否能用一条通用规则
+   代替逐技能 / 逐词条条目；同一机制下是否还有其他受影响的技能。修复必须带能复现错误的断言。
+4. **需要调整时在贡献者提交之上追加。** 保留原提交和署名，在 `review/pr-<N>` 上追加提交并另开 PR，
+   在原 PR 评论里说明改了什么、为什么；或在贡献者允许时直接推送到其分支。不要重写对方的提交。
+5. **合并后收尾。** squash 合并会生成新提交，GitHub 不会把原 PR 标为已合并：手动关闭原 PR 并注明
+   合入的 PR 和提交；确认 squash 提交带有 `Co-authored-by`。想让原 PR 自动显示 Merged 时改用
+   merge commit 或 rebase 合并。最后删除本地和远端的临时分支。
 
 ## 慢构建与按需报告
 
@@ -149,3 +182,14 @@ nextest 按用例启动独立进程，进程间不共享 `OnceLock`；大量游�
 日常定向测试默认 Cargo，完整门禁使用 nextest 并补 doctest。
 上述三个 parity 报告仅作诊断，默认忽略；两种模式的 no_regression、golden、契约和
 独立语料健康断言继续默认执行，不为加速删减回归覆盖。
+
+## 其他按需检查
+
+- `bash .claude/skills/run-pobr/driver.sh smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
+- 本地 `.agents/skills/run-pobr/driver.sh` 转发到同一驱动（`.agents` 按仓库规则不入库）。`smoke` 是环境检查，已有相关测试通过后无需再补一次。
+- `python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，不调用真实 Cargo。
+- `devs/scripts/regen-check.sh` 在临时副本中重生成，保留 `overlay-common` 与 examples 语料，不写入或恢复工作区文件。
+- `node web/scripts/bench-calc.mjs` measures uncached real-WASM calculation and 16-item batches on three committed builds. It requires built WASM and synced data; `--reference <old-pkg>` additionally checks complete output equality for behavior-preserving optimizations. Reports stay under ignored `.cache/`; this benchmark is opt-in, outside the CI gate.
+- `pnpm --dir web package-wasm`：将已准备 WASM 与同步数据打包到 `.cache/wasm-release/`；`pnpm --dir web smoke-wasm-package` 解压后执行真实计算。`build-wasm` 校验源码、工具链、构建设置和产物凭据，未变时直接复用；`pnpm --dir web build-wasm --force` 显式重建但不清 Cargo 缓存。打包继续校验源码/绑定指纹、实际 schema 和数据快照，来源 commit 保留编译时值。脚本改动运行 `node --test web/scripts/package-wasm.test.mjs web/scripts/sync-data.test.mjs`；发布流程见 [WASM 打包说明](wasm-package.md)。tag CI 在 Rust/Web 门禁通过后自动附加 Release 资产，手动 CI 仅保存 Actions artifact。
+- `cd web && pnpm test:worker`：在实际 workerd 运行时测试 Worker，使用合成上游响应，无外网依赖。E2E 失败的截图与 trace 由 CI 上传为 `playwright-failure`。
+- 计划发版时，在功能 PR 中一并更新 workspace 版本。本地完成相关验证后合并，再推送一次 tag；tag CI 完成全量门禁，通过后自动部署，无需在 master 额外手动运行同一套 CI。

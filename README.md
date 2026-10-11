@@ -285,7 +285,8 @@ Build Code changes with:
 Normal local commits use relevant checks. Full gates run in cloud CI: push a
 release tag, or request a branch run with `./pobr ci <pushed-ref>`. No duplicate
 local full run is required. `./pobr full` remains available for local Rust
-validation. The live app deploys from `v0.x` release tags after all CI jobs pass.
+validation. Pull requests run lightweight checks automatically; see
+[CONTRIBUTING.md](CONTRIBUTING.md). The live app deploys from `v0.x` release tags after all CI jobs pass.
 See [development workflow](docs/development-workflow.md) for commands, cache reuse,
 storage reporting and timing.
 

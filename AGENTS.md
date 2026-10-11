@@ -49,8 +49,9 @@ imported item text and JSON compatibility.
 Use Rust tests, Vitest `*.test.ts` files, and Playwright `*.spec.ts` files.
 Add regression assertions for changed behavior; calculation changes also need
 relevant parity coverage. Specify `--test` or `--lib` to limit compilation.
-Local commits require relevant checks. Full merge/release gates run in CI; do
-not require a duplicate local full run. Use `./pobr ci <pushed-ref>` for manual
+Local commits require relevant checks. Pull requests run lightweight checks
+automatically (`.github/workflows/pr.yml`); full merge/release gates run in CI on
+tags or manual dispatch, so do not require a duplicate local full run. Use `./pobr ci <pushed-ref>` for manual
 cloud validation and `./pobr full` for explicit local Rust validation. Reuse
 passing checks for unchanged inputs. See [workflow commands](docs/development-workflow.md).
 Documentation-only changes need diff/link review, not builds.
@@ -61,9 +62,14 @@ Follow existing subjects such as `fix: preserve skill selection` and
 `chore: scope agent validation`. Keep commits focused. PRs should explain the
 problem, resulting behavior, validation, and remaining limits; link relevant
 issues and include screenshots for visible UI changes. Pushes, PR updates,
-and releases follow the user's authorized scope.
+and releases follow the user's authorized scope. Contributor requirements are in
+[CONTRIBUTING.md](CONTRIBUTING.md); maintainers handling fork PRs follow
+[the external PR steps](docs/development-workflow.md#处理外部-pr).
 
 ## Reference Material
+
+[docs/README.md](docs/README.md) separates current guides and contracts from
+dated records. Web feature contracts are in [docs/web-contracts.md](docs/web-contracts.md).
 
 `agent-docs/` contains mechanics research, not final authority. Older
 `devs/docs/architecture/` notes may exist only locally; they are optional
