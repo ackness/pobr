@@ -3,6 +3,8 @@
 //! Aggregated test binary: originally separate test files, merged into submodules (22→4) to cut the number of linked test binaries and speed up builds.
 #![allow(clippy::all)]
 
+#[path = "skills/buff_stack_limits.rs"]
+mod buff_stack_limits;
 #[path = "skills/corpse_explosion.rs"]
 mod corpse_explosion;
 #[path = "skills/cost_multiplier.rs"]
@@ -23,8 +25,6 @@ mod spirit_reservation;
 mod support_gating;
 #[path = "skills/support_gem_count.rs"]
 mod support_gem_count;
-#[path = "skills/wind_dancer.rs"]
-mod wind_dancer;
 
 #[path = "skills/passive_jewels.rs"]
 mod passive_jewels;
