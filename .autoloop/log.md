@@ -86,3 +86,12 @@
 - Real WASM verified all five nonzero bare ailments become zero for supported spell and attack hosts, retaining hit damage. Populated UI no longer includes invalid Ignite while hit DPS stays 20,129. Independent review approved; updated contract, closed space 37 and removed screenshot.
 - Next: Armament III's conditional damage bonus showed no response to preliminary shocked/chilled config-input probes. This is not yet a proven missing mechanic: inspect accepted keys/mode and canonical multiplier wiring before changing calculations.
 - Commit: this entry's checkpoint commit (`fix: enforce elemental ailment prohibitions`).
+
+## 10 — Disclose Armament III's unmodeled conditional benefit
+
+- Confirmed the input works: a known chilled-enemy damage modifier responds in real WASM, while Armament III's canonical 12%-per-ailment benefit remains absent with no warning. Traced its exact unknown stat and pinned wording; no separate consumer exists.
+- Extended the existing Unknown-only support receipt boundary for that mechanic. This is a coverage correction, not an invented damage multiplier; the implemented elemental-ailment prohibition remains independent.
+- Regression failed before the fix and passed afterward. Passed five support JSON contract tests, 21 native support tests, scoped core/WASM lint and release WASM build. Live before/after DPS values match.
+- Real planner UI proves equipped-baseline disclosure, newly introduced candidate exclusion, no Apply action on the excluded Armament set, and no stale baseline warning after removal. Restored the prior Invoker, closed space 38, removed screenshots; the isolated named test build remains available.
+- Closed the source-tradeoff milestone. Next worthwhile work is authoritative conditional-ailment counting and numerical modeling, with the current diagnostic retained until implemented. No claim of full mechanical coverage or completion of the broad goal; no tag/push/PR, and paused `/goal` unchanged.
+- Commit: this entry's checkpoint commit (`fix: disclose unmodeled Armament damage bonus`).

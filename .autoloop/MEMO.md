@@ -178,7 +178,7 @@ Exit criteria:
 - Applied the top legacy-catalog plan: exact selected gems/groups and every recalculated stat matched the preview, DPS 20129.498504087; unrelated state remained unchanged. The saved test Invoker now has Considered Casting, Concentrated Area, Elemental Focus, Cooldown Recovery II and Deliberation in main group 4. Other saved builds remain intact.
 - `ReviewSupportDescriptions-2` approved with no findings. Updated the web contract, finished browser space 36 and removed both temporary screenshots. Explanation milestone exit criteria met; no release tag under commit-only scope.
 
-## Current milestone: Verify source-stated support tradeoffs
+## Closed milestone: Verify source-stated support tradeoffs
 
 The explained-and-applied Elemental Focus plan initially returned `IgniteDPS=38.352778282` despite its canonical elemental-ailment prohibition. Iteration 9 confirmed and fixed that discrepancy. Continue checking source-stated tradeoffs without confusing potential damage, ailment eligibility and configured enemy conditions.
 
@@ -202,4 +202,16 @@ Exit criteria:
 - Inspected the populated Invoker UI: hit DPS remains 20,129, invalid Ignite is absent and combined DPS now matches the hit result. `ReviewElementalProhibition` approved without findings. Finished browser space 37 and removed the screenshot.
 - Follow-up lead, not a confirmed defect: Armament III's source promises 12% more attack damage per elemental ailment on the enemy. Direct probes with `config_inputs.conditionEnemyShocked` or `conditionEnemyChilled` left both bare/supported DPS at 288642.172580676, no warnings. Those inputs might be inactive/unrecognized under the request's calculation mode; verify accepted configuration and multiplier semantics before deciding whether the benefit is missing.
 
-Next iteration: resolve the Armament III conditional-benefit lead with actual config definitions, current mapper consumers and pinned source. Distinguish unsupported conditions from a valid zero-ailment baseline; do not guess a numerical multiplier. Work and commits remain exclusively in this worktree; no publishing or changes to other branches.
+## Iteration 10: Disclose Armament III's unmodeled conditional benefit
+
+- Resolved the configuration ambiguity: `loadConfigOptions` exposes `conditionEnemyChilled` as an accepted checkbox, and WASM requests default to effective mode. A known `100% increased Damage against Chilled Enemies` modifier responds to that input: the minimal Armour Breaker fixture changes from DPS 2520.807363666 to 5042.010631836. Adding Armament III leaves both results unchanged and originally reported no limit.
+- Pinned `sup_str.lua:2891-2920` carries `support_elemental_armament_attack_damage_+%_final_per_elemental_ailment_on_target=12`; `gem_stat_descriptions.lua` entry 954 explicitly describes more/less Attack Damage per elemental ailment on the enemy. The stat is unknown to the mapper and has no separate consumer. This is a missing benefit, not an inactive configuration or the already-corrected prohibition.
+- Added only that exact stat to the existing finite/nonzero Unknown-only `SupportStatLimit` classifier. No guessed ailment counts, numerical model, new JSON fields, data regeneration or frontend special case. Existing recognized-mapping, compatibility, source identity and group boundaries remain in force.
+- Added a JSON regression for the source-specific receipt with enemy Chill off/on and absence of leaked limits from another or incompatible main group. It failed before the change (zero receipts, expected one), then passed. All five support JSON contract tests, 21 native support tests and scoped core/WASM fmt/Clippy passed. Rebuilt release WASM; no fresh parity/full-suite/Lua-oracle claim for this diagnostic-only change.
+- Rebuilt real WASM preserves the four repro DPS values exactly, with one receipt only for equipped Armament III. Real UI testing in the isolated `Armament coverage verification` build shows the receipt in current-build limits while equipped. After removal and recalculation, its candidate appears among excluded complete edits, with no Apply button and no Armament recommendation; the stale baseline warning disappears.
+- Inspected the exclusion screenshot. Restored the previously selected Invoker, finished browser space 38 and removed both screenshot files. The named synthetic test build remains in the local library; the seven pre-existing builds remain listed.
+- Source-tradeoff milestone exit criteria are met: the demonstrated prohibition error is corrected and the demonstrated missing conditional benefit is explicitly disclosed. Commit-only scope means no tag, push or PR action. The paused `/goal` remains untouched.
+
+## Next milestone: Conditional support damage fidelity
+
+Armament III's numerical benefit is still unmodeled, now safely disclosed. Before implementing it, establish authoritative ailment-type counting, frozen/chilled implications, externally supplied versus self-inflicted conditions and effective-mode behavior with a source-backed native/runtime or oracle fixture. Do not infer those semantics from a zero-response probe. Preserve the implemented prohibition and retire its Unknown-only receipt only when the real mapping/consumer exists. The broad trustworthy-workspace goal is not declared complete; the driver governs the ten-iteration limit.

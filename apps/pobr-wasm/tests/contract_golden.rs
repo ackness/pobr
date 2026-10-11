@@ -2377,6 +2377,55 @@ mod support_coverage {
     }
 
     #[test]
+    fn armament_conditional_benefit_discloses_only_for_its_compatible_main_group() {
+        init();
+        let support = "SupportElementalArmamentPlayerThree";
+        let stat =
+            "support_elemental_armament_attack_damage_+%_final_per_elemental_ailment_on_target";
+        let groups = vec![
+            group("ArmourBreakerPlayer", &[]),
+            group("ArmourBreakerPlayer", &[support]),
+            group("FireballPlayer", &[support]),
+        ];
+        for chilled in [false, true] {
+            let mut input = request(groups.clone(), 1);
+            input["config_inputs"] = json!({"conditionEnemyChilled": chilled});
+            let supported = calc(&input);
+            let limits = supported["unsupported_modifiers"].as_array().unwrap();
+            let receipts: Vec<_> = limits
+                .iter()
+                .filter_map(Value::as_str)
+                .filter(|text| text.contains(stat))
+                .collect();
+            assert_eq!(
+                receipts.len(),
+                1,
+                "missing conditional benefit, chilled={chilled}"
+            );
+            for token in [
+                format!("Support:{support}:"),
+                format!("stat={stat}:"),
+                "set=1:".into(),
+                "value=12:".into(),
+                "host=ArmourBreakerPlayer:".into(),
+            ] {
+                assert!(receipts[0].contains(&token), "missing {token:?}");
+            }
+
+            for main in [0, 2] {
+                input["main_socket_group"] = json!(main);
+                assert!(
+                    calc(&input)["unsupported_modifiers"]
+                        .as_array()
+                        .unwrap()
+                        .is_empty(),
+                    "other or incompatible groups must not leak the Armament limit"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn normal_json_discloses_fork_and_preserves_primary_hit_numbers() {
         init();
         let bare_request = request(vec![group("FireballPlayer", &[])], 0);
