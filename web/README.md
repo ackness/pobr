@@ -31,15 +31,39 @@ restoring a full backup replaces it after confirmation. Saves are local to this
 browser; use files to share or move devices. Storage failures appear beside the
 current-build strip so you can download a backup before closing the page.
 
+Imported gem slots without a stable skill ID remain in local saves, all-stage
+build files and backups, including imported level-zero slots. Skills shows their
+raw source name with **Unresolved gem**; they are excluded from the stage calculation.
+PoB share codes retain named unresolved slots at their current positions and
+preserve their edited level, quality and stat set. Legacy saves recover a missing
+source name only when the original slot can be matched unambiguously. If no name
+can be recovered safely, PoB export reports an error rather than dropping the
+slot or inventing its identity; PoBR JSON sharing and backups remain lossless.
+
 Custom modifiers keep ordered groups, titles, raw text and enabled state in saves
 and PoB exports. Only enabled groups affect calculations. Unchanged legacy saves
 recover groups from their source code; edited flat legacy modifiers keep their
 saved text because the original grouping cannot be inferred reliably.
 
 The header shows the app release and successfully loaded data version. On Upgrades,
-cancelled all-position analysis can resume completed work while the build and goal
-stay unchanged. Budget/realm/league edits only change market links. Leaving the
-panel or changing build, goal or category discards those temporary results.
+completed affix analyses and position selections survive page navigation within
+the current stage. Leaving pauses active scoring; cancelled all-position analysis
+can resume completed positions while the build and goal stay unchanged.
+Budget/realm/league edits only change market links. Build, goal, category or stage
+changes discard temporary analysis results; reloading also starts fresh.
+Complete-item text, selected position, augment choices, completed comparisons and
+equipment candidates also survive same-stage navigation. Leaving cancels their
+work and paste debounce; returning does not restart scoring. Changed calculation
+inputs invalidate evaluated results; switching stages resets the workspace.
+
+On Config, **Quick access** explains optional shock state/magnitude assumptions and
+links to enemy mitigation settings matching the calculated main skill's non-zero
+hit damage. **Open setting** clears catalog filters and focuses the original
+control without changing the build. The full catalog, search, configured-only
+filter and advanced imported inputs remain available. This hit-only shortlist
+does not establish DoT/minion relevance, mechanic coverage or a guaranteed gain;
+configured does not mean effective. Reset restores the imported value, or the
+catalog default when no value was imported.
 
 ## Quick start
 
@@ -156,6 +180,36 @@ web/src/
 - **Optimizers & trade**: objective-driven gem/item/tree suggestions and a
   category-constrained official market links with local affix scores and budget filters.
 
+The selected support planner retains its completed recommendations, socket capacity,
+lineage choice and filters while you visit other pages in the same build stage.
+Leaving Skills cancels active analysis; returning does not restart it automatically.
+Build or goal edits invalidate recommendations, and **Apply** equips only the
+evaluated complete support set. Selecting another group, replacing a skill set,
+deleting a group or switching stages resets the selected workspace; it is not a
+per-group or reload-persistent cache.
+
+Support results disclose verbatim engine-reported baseline limits and identify
+excluded complete support sets with their new limits, raw errors and invalid
+statistics. Excluded sets are separate from manual filters and recommendations
+and have no Apply action. Recommendations show evaluated gem level/quality and
+stat-set choices. A gain does not repair baseline limits; missing diagnostics
+do not establish that every support mechanic is modeled.
+
+Normal calculations disclose confirmed skipped conditional/scaling numerical
+support effects from the compatible, selected payload. Receipts identify the
+support effect/set, stat/value and calculated host/form; trigger-source limits
+retain their own provenance. For example, Fork's unmodeled forked-projectile
+penalty is disclosed, not applied to every primary hit. Zero, unselected,
+incompatible and separately handled metadata/control effects are not blanket
+rejections. This bounded diagnostic path is not a complete coverage audit.
+
+Passive-route and joint-jewel planning likewise retain compatible completed
+receipts and constraints in the current stage. Leaving unmounts the tree canvas
+and stops tracking, scoring, hover/keyboard and heatmap work. Input changes
+invalidate incompatible results; stages reset ownership. Route receipts disclose
+baseline limits and pair excluded complete allocation/refund edits with exact
+new reasons or errors.
+
 ## Trade upgrade planning
 
 On the Trade tab, choose a position, goal, budget and market. The current item's type is detected automatically; you do not need to select a base. Equipment, accessories, allocated passive jewels, flasks/charms and skill/support gems have dedicated positions.
@@ -175,14 +229,15 @@ Add other items the same way, then choose **Maximum replacements** (1–10, defa
 The planner fully recalculates keeping the current equipment, every single replacement, and
 every pair within the selected limit, using different slots and different copied items. A ring can be added
 at both positions to compare placements, but the same copied item is never equipped
-twice in one plan. Up to 16 candidate placements are retained while the panel is open.
+twice in one plan. Up to 16 candidate placements survive page navigation within the current stage.
 
 The results show up to five alternatives plus the current equipment. Individual
 losses are not pruned before evaluating pairs. Larger combinations are exhaustive
 when they fit within 512 evaluations; otherwise a goal-guided search reserves evaluations
 for each reachable combination size and reports the limit. The shared goal and constraints rank
-the complete results; changing the goal re-ranks one-/two-item searches and invalidates larger searches, while changing the build,
-weapon context or candidate list invalidates them. **Apply equipment plan** commits
+the complete results. Changing the goal invalidates evaluated results at every
+replacement limit; recalculate under the new goal. Build, weapon context or candidate
+changes also invalidate results. **Apply equipment plan** commits
 all evaluated replacement texts together, preserving other equipment and the
 inactive weapon set. Prepared rune/socket choices are retained exactly and equipped
 augment limits are checked against each final combination.

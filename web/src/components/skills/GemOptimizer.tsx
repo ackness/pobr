@@ -1,21 +1,33 @@
 import { formatApiError } from '../../api/error';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { CalculateBuildRequest } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import { bindT, type Lang } from '../../lib/i18n';
 import { statMap } from '../../lib/statDisplay';
 import { supportText } from '../../lib/supportI18n';
+import type { Objective } from '../../lib/optimize';
 import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, type SupportMetadata, type SupportOptimization } from '../../lib/supportOptimizer';
 import { ObjectiveEditor, OptimizerProgress, objectiveOf } from '../shared/OptimizerControls';
 
 interface Props {
   session: BuildSession;
   lang: Lang;
+  active: boolean;
   groupIndex: number;
   catalog: SupportMetadata[];
   gemName: (skillId: string) => string;
   skillKey: string;
   focusNonce?: number;
+}
+
+interface SupportEvaluation extends SupportOptimization {
+  request: CalculateBuildRequest;
+  requestKey: string;
+  settingsKey: string;
+  objective: Objective;
+  catalog: SupportMetadata[];
+  dataVersion: BuildSession['dataVersion'];
 }
 
 function savedExclusions(key: string): string[] {
@@ -26,7 +38,7 @@ function savedExclusions(key: string): string[] {
   return [];
 }
 
-export function GemOptimizer({ session, lang, groupIndex, catalog, gemName, skillKey, focusNonce }: Props) {
+export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemName, skillKey, focusNonce }: Props) {
   const tt = bindT(lang);
   const st = (key: Parameters<typeof supportText>[1]) => supportText(lang, key);
   const { goal, setGoal } = useUpgradeGoal();
@@ -43,9 +55,10 @@ export function GemOptimizer({ session, lang, groupIndex, catalog, gemName, skil
   useEffect(() => setCapacity(value => Math.max(value, Math.min(5, occupied))), [occupied]);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [evaluated, setEvaluated] = useState<(SupportOptimization & { requestKey: string; settingsKey: string }) | null>(null);
+  const [evaluated, setEvaluated] = useState<SupportEvaluation | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const consumedFocus = useRef<number | undefined>(undefined);
   const pool = useMemo(() => {
     if (!group) return { gems: [], unknown: 0, levelBlocked: 0, incompatible: 0 };
     const eligible = eligibleSupports(group, catalog, session.character?.level ?? 1, includeLineage);
@@ -56,16 +69,24 @@ export function GemOptimizer({ session, lang, groupIndex, catalog, gemName, skil
   const canSearch = candidateCount > 0 || occupied > 0;
   const query = search.trim().toLocaleLowerCase(lang);
   const visibleGems = pool.gems.filter(gem => !query || `${gemName(gem.skill_id)} ${gem.name}`.toLocaleLowerCase(lang).includes(query));
-  const settingsKey = JSON.stringify([session.stateVersion, groupIndex, capacity, includeLineage, goal, excludedIds]);
-  const result = evaluated?.settingsKey === settingsKey ? evaluated : null;
-  const updateExclusions = (next: string[]) => {
-    // Invalidate synchronously so a running batch or an old Apply action cannot
-    // publish a plan containing a support the player has just excluded.
+  const requestKey = JSON.stringify(session.currentRequest());
+  const settingsKey = JSON.stringify([requestKey, session.stateVersion, session.socketGroupRevision,
+    session.dataVersion, session.treeVersion, session.activeWeaponSet, groupIndex, capacity, includeLineage, goal, excludedIds]);
+  const result = evaluated?.settingsKey === settingsKey && evaluated.requestKey === requestKey
+    && evaluated.catalog === catalog ? evaluated : null;
+  const stop = () => {
     abortRef.current?.abort();
     abortRef.current = null;
     setProgress(null);
+  };
+  const invalidate = () => {
+    stop();
     setEvaluated(null);
     setError(null);
+  };
+  const updateExclusions = (next: string[]) => {
+    // Invalidate before publishing new settings or allowing another Apply action.
+    invalidate();
     setExcludedIds(next);
     try { localStorage.setItem(preferenceKey, JSON.stringify(next)); } catch { /* In-memory filtering still works. */ }
   };
@@ -75,39 +96,44 @@ export function GemOptimizer({ session, lang, groupIndex, catalog, gemName, skil
   const select = () => {
     if (mainIndex !== groupIndex) session.updateParams({ main_socket_group: groupIndex });
   };
-  useEffect(() => {
-    if (focusNonce === undefined) return;
+  useLayoutEffect(() => {
+    if (!active || focusNonce === undefined || consumedFocus.current === focusNonce) return;
+    consumedFocus.current = focusNonce;
     setExpanded(true);
     rootRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, [focusNonce]);
-  useEffect(() => {
+  }, [active, focusNonce]);
+  useLayoutEffect(() => {
+    invalidate();
+  }, [settingsKey, catalog]);
+  useLayoutEffect(() => {
+    if (!active) stop();
+  }, [active]);
+  useLayoutEffect(() => () => {
     abortRef.current?.abort();
     abortRef.current = null;
-    setProgress(null);
-    setEvaluated(null);
-    setError(null);
-  }, [settingsKey]);
-  useEffect(() => () => abortRef.current?.abort(), []);
+  }, []);
 
   const run = async () => {
+    if (!active || session.busy || progress !== null || !group?.enabled) return;
     if (mainIndex !== groupIndex) { select(); return; }
     const request = session.currentRequest();
     if (!request || !canSearch) return;
+    const objective = objectiveOf(goal, Object.fromEntries([...statMap(session.calc?.stats ?? [])]
+      .map(([key, value]) => [key, value ?? 0])));
+    invalidate();
     const controller = new AbortController();
-    abortRef.current?.abort();
     abortRef.current = controller;
     const requestKey = JSON.stringify(request);
     setProgress({ done: 0, total: candidateCount });
-    setError(null);
-    setEvaluated(null);
     try {
       const result = await optimizeSupports({ request, groupIndex, catalog, capacity, includeLineage,
-        excludedSkillIds: excludedIds,
-        objective: objectiveOf(goal, Object.fromEntries([...statMap(session.calc?.stats ?? [])].map(([key, value]) => [key, value ?? 0]))),
+        excludedSkillIds: excludedIds, objective,
         signal: controller.signal, onProgress: (done, total) => {
-          if (!controller.signal.aborted) setProgress({ done, total });
+          if (!controller.signal.aborted && abortRef.current === controller) setProgress({ done, total });
         } });
-      if (!controller.signal.aborted && abortRef.current === controller) setEvaluated({ ...result, requestKey, settingsKey });
+      if (!controller.signal.aborted && abortRef.current === controller) {
+        setEvaluated({ ...result, request, requestKey, settingsKey, objective, catalog, dataVersion: session.dataVersion });
+      }
     } catch (err: unknown) {
       if (!controller.signal.aborted && abortRef.current === controller) setError(formatApiError(err));
     } finally {
@@ -115,12 +141,17 @@ export function GemOptimizer({ session, lang, groupIndex, catalog, gemName, skil
     }
   };
   const apply = (index: number) => {
-    if (!result || result.requestKey !== JSON.stringify(session.currentRequest())) return;
-    session.setSocketGroups(applySupportPlan(session.socketGroups, groupIndex, result.plans[index]));
+    if (!active || session.busy || progress !== null || !result || !result.plans[index]
+      || result.requestKey !== JSON.stringify(session.currentRequest())) return;
+    const groups = applySupportPlan(session.socketGroups, groupIndex, result.plans[index]);
+    invalidate();
+    session.setSocketGroups(groups);
   };
   const number = (value: number) => value.toLocaleString(lang, { maximumFractionDigits: 1 });
   const change = (before: number, after: number) => before > 0
     ? `${after >= before ? '+' : ''}${((after / before - 1) * 100).toFixed(1)}%` : `${after >= before ? '+' : ''}${number(after - before)}`;
+
+  if (!active) return null;
 
   return (
     <div className="gem-optimizer" ref={rootRef}>
@@ -159,17 +190,20 @@ export function GemOptimizer({ session, lang, groupIndex, catalog, gemName, skil
         <div className="opt-row">
           <label>{st('capacity')}<input type="number" min={2} max={5} value={capacity} onChange={event => {
             const value = Number(event.target.value);
-            if (Number.isInteger(value) && value >= 2 && value <= 5) setCapacity(value);
+            if (Number.isInteger(value) && value >= 2 && value <= 5) {
+              invalidate();
+              setCapacity(value);
+            }
           }} /></label>
-          <ObjectiveEditor value={goal} onChange={setGoal} lang={lang} />
+          <ObjectiveEditor value={goal} onChange={next => { invalidate(); setGoal(next); }} lang={lang} />
           <button className="opt-run" disabled={session.busy || progress !== null || !canSearch || !group?.enabled} onClick={run}>
             {progress ? tt('opt.running') : mainIndex !== groupIndex ? st('selectMain') : st('run')}
           </button>
         </div>
         <label className="support-lineage-option"><input type="checkbox" checked={includeLineage}
-          onChange={event => setIncludeLineage(event.target.checked)} />{st('lineage')}</label>
+          onChange={event => { invalidate(); setIncludeLineage(event.target.checked); }} />{st('lineage')}</label>
         <p className="skills-hint">{st('capacityHint')}</p>
-        {progress && <OptimizerProgress {...progress} onCancel={() => abortRef.current?.abort()} lang={lang} />}
+        {progress && <OptimizerProgress {...progress} onCancel={stop} lang={lang} />}
         {!pool.gems.length && <p className="skills-hint">{st('empty')}</p>}
         {pool.gems.length > 0 && !candidateCount && <p className="skills-hint">{st(occupied ? 'removeOnly' : 'allExcluded')}</p>}
         {error && <p className="opt-error">{error}</p>}
@@ -178,10 +212,34 @@ export function GemOptimizer({ session, lang, groupIndex, catalog, gemName, skil
             <span>DPS {number(result.baseline.TotalDPS ?? 0)}</span><span>EHP {number(result.baseline.TotalEHP ?? 0)}</span>
           </div>
           <p className="skills-hint">{st('results')} {result.evaluated} · {st('unsupported')} {result.unmodeled}</p>
+          <p className="skills-hint">{st('data')}: {result.dataVersion ?? st('unknownVersion')} · {st('tree')}: {result.request.tree_version ?? st('defaultTree')}</p>
+          {result.baselineUnsupported.length > 0 && <details className="support-diagnostics support-baseline-unsupported">
+            <summary>{st('baselineLimits')}: {result.baselineUnsupported.length}</summary>
+            <p className="skills-hint">{st('baselineLimitsHint')}</p>
+            <ul>{result.baselineUnsupported.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
+          </details>}
+          {result.excluded.length > 0 && <details className="support-diagnostics">
+            <summary>{st('diagnosticExcluded')}: {result.excluded.length}</summary>
+            <p className="skills-hint">{st('diagnosticExcludedHint')}</p>
+            <ol className="support-diagnostic-excluded">{result.excluded.map((edit, index) => <li key={index}>
+              <details>
+                <summary>{st('completeSet')}: {edit.supports.map(gem => gemName(gem.skill_id)).join(' · ') || st('noSupports')}</summary>
+                <ul className="support-diagnostic-gems">{edit.supports.map(gem => <li key={gem.skill_id} data-skill-id={gem.skill_id}>
+                  {gemName(gem.skill_id)} · {st('level')} {gem.level} · {st('quality')} {gem.quality} · {st('statSet')} {gem.stat_set_index ?? 1}
+                </li>)}</ul>
+                {edit.unsupported.length > 0 && <><p>{st('newLimits')}</p>
+                  <ul>{edit.unsupported.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul></>}
+                {edit.error && <p className="opt-error">{st('engineError')}: {edit.error}</p>}
+                {edit.invalidStats && <p className="opt-error">{st('invalidStats')}</p>}
+              </details>
+            </li>)}</ol>
+          </details>}
           {!result.plans.length && <p className="skills-hint">{st('noGain')}</p>}
           {result.plans.map((plan, index) => <article className="support-plan" key={index}>
-            <div className="support-plan-gems">{plan.supports.map(gem => <span className="opt-chip" key={gem.skill_id} data-skill-id={gem.skill_id}>
+            <div className="support-plan-gems">{plan.supports.map(gem => <span className="opt-chip" key={gem.skill_id} data-skill-id={gem.skill_id}
+              data-level={gem.level} data-quality={gem.quality} data-stat-set-index={gem.stat_set_index ?? undefined}>
               {gemName(gem.skill_id)}{byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
+              <small>{st('level')} {gem.level} · {st('quality')} {gem.quality}{gem.stat_set_index != null && <> · {st('statSet')} {gem.stat_set_index}</>}</small>
               <button className="support-exclude-button" aria-label={`${st('exclude')} ${gemName(gem.skill_id)}`}
                 title={`${st('exclude')} ${gemName(gem.skill_id)}`} onClick={() => exclude(gem.skill_id)}><span aria-hidden>×</span></button>
             </span>)}</div>

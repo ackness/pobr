@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { ConfigInputValue, ConfigOption, CustomModifierBlock, EnemyTier } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { bindT, configSectionLabel, enemyTierLabel, type Lang } from '../../lib/i18n';
+import { useSkillName } from '../../hooks/useSkillName';
+import { bindT, configSectionLabel, damageTypeLabel, enemyTierLabel, type Lang } from '../../lib/i18n';
 import { CONFIG_LABEL_ZH, LIST_OPTION_ZH } from '../../lib/configLabels';
 import { configDefaultValue } from '../../lib/configDefaults';
 import './config.css';
@@ -14,6 +15,16 @@ interface Props {
 }
 
 const ENEMY_TIERS: EnemyTier[] = ['none', 'boss', 'pinnacle', 'uber'];
+
+const QUICK_OPTIONS = [
+  { key: 'conditionEnemyShocked', damageType: null },
+  { key: 'conditionShockEffect', damageType: null },
+  { key: 'enemyPhysicalReduction', damageType: 'Physical' },
+  { key: 'enemyFireResist', damageType: 'Fire' },
+  { key: 'enemyColdResist', damageType: 'Cold' },
+  { key: 'enemyLightningResist', damageType: 'Lightning' },
+  { key: 'enemyChaosResist', damageType: 'Chaos' },
+] as const;
 
 /** PoB2 Config 页分区展示顺序（目录里的 section 原名）。 */
 const SECTION_ORDER = [
@@ -116,8 +127,9 @@ function OptionRow({
           onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}
           onBlur={(e) => {
             const raw = e.target.value;
+            if (raw === String(value ?? '')) return;
             if (option.input_type === 'text') {
-              if (raw !== String(value ?? '')) onChange(raw);
+              onChange(raw);
             } else if (raw.trim() === '') {
               setDraft(String(value ?? ''));
               onReset();
@@ -140,6 +152,8 @@ function OptionRow({
 /** Config 页：敌人档位 + 内置配置目录（分区/搜索）+ build 原始 `<Input>` 高级区。 */
 export function ConfigPanel({ session, lang }: Props) {
   const tt = bindT(lang);
+  const skillName = useSkillName(lang);
+  const [focusTarget, setFocusTarget] = useState<string | null>(null);
   const [options, setOptions] = useState<ConfigOption[]>([]);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -199,6 +213,21 @@ export function ConfigPanel({ session, lang }: Props) {
   const isOverridden = (key: string) => key in overrides && overrides[key] !== buildInputs[key];
   const resetInput = (key: string) => session.setConfigInput(key, buildInputs[key] ?? null);
 
+  // Previous calculation output remains in the session while recalculating or on error.
+  const calculatedMain = !session.busy && !session.error ? session.calc?.main_skill : null;
+  const quickOptions = QUICK_OPTIONS.flatMap(({ key, damageType }) => {
+    if (damageType && !calculatedMain?.hit_damage.some(part =>
+      part.damage_type === damageType && Number.isFinite(part.avg) && part.avg > 0)) return [];
+    const option = options.find(candidate => candidate.var === key);
+    return option ? [{ option, damageType }] : [];
+  });
+  const openSetting = (option: ConfigOption) => {
+    setQuery('');
+    setConfiguredOnly(false);
+    setOpenSections(previous => new Set([...previous, option.section ?? 'General']));
+    setFocusTarget(option.var);
+  };
+
   const sections = useMemo(() => {
     const q = query.trim().toLowerCase();
     const filtered = options.filter(
@@ -219,6 +248,16 @@ export function ConfigPanel({ session, lang }: Props) {
     const rest = [...bySection.keys()].filter((s) => !SECTION_ORDER.includes(s)).sort();
     return [...known, ...rest].map((name) => ({ name, options: bySection.get(name)! }));
   }, [options, query, configuredOnly, overrides, buildInputs]);
+
+  useEffect(() => {
+    if (!focusTarget || session.busy) return;
+    const control = document.getElementById(`config-${focusTarget}`);
+    if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement) {
+      control.focus({ preventScroll: true });
+      control.scrollIntoView({ block: 'center' });
+    }
+    setFocusTarget(null);
+  }, [focusTarget, sections, session.busy]);
 
   const searching = query.trim() !== '' || configuredOnly;
   const configuredCount = options.filter(option =>
@@ -289,6 +328,50 @@ export function ConfigPanel({ session, lang }: Props) {
       {loadState === 'error' && <div className="calc-error" role="alert">
         {tt('config.loadFailed')} <button onClick={() => setLoadAttempt(value => value + 1)}>{tt('common.retry')}</button>
       </div>}
+      <article className="ui-card config-quick-access" aria-labelledby="config-quick-heading">
+        <h3 id="config-quick-heading" className="section-heading">{tt('config.quickTitle')}</h3>
+        <p className="config-hint">{tt('config.quickHint')}</p>
+        <p className="config-quick-context" role="status">
+          {session.busy ? tt('config.quickUpdating')
+            : calculatedMain ? <>{tt('config.quickSkill')}: <span className="config-quick-skill">{skillName(calculatedMain.skill_id)}</span></>
+            : tt('config.quickUnavailable')}
+        </p>
+        <p className="config-hint">{tt('config.quickScope')}</p>
+        <ul className="config-quick-list">
+          {quickOptions.map(({ option, damageType }) => {
+            const raw = effective(option.var);
+            const value = raw ?? configDefaultValue(option);
+            const source = raw === undefined ? tt('config.quickDefault')
+              : isOverridden(option.var) || buildInputs[option.var] === undefined
+                ? tt('config.quickConfigured') : tt('config.quickImported');
+            const type = typeof value === 'boolean' ? tt('config.quickBoolean')
+              : typeof value === 'number' ? tt('config.quickNumber') : tt('config.quickString');
+            const label = optionLabel(lang, option);
+            return (
+              <li key={option.var} className="config-quick-entry" data-config-var={option.var}>
+                <div className="config-quick-description">
+                  <strong>{label}</strong>
+                  <p className="config-quick-value">
+                    {source}: <output aria-label={`${tt('config.valueLabel')}: ${label}`}>
+                      {value === undefined ? tt('config.quickUnset')
+                        : <><span>{type}</span> <code>{JSON.stringify(value)}</code></>}
+                    </output>
+                  </p>
+                  <p className="config-hint">
+                    {damageType
+                      ? `${tt('config.quickHitReason')}: ${damageTypeLabel(lang, damageType)}. ${tt('config.quickMitigationReason')}`
+                      : tt(option.var === 'conditionShockEffect' ? 'config.quickShockMagnitude' : 'config.quickShockState')}
+                  </p>
+                </div>
+                <button type="button" disabled={session.busy || loadState !== 'ready'}
+                  aria-label={`${tt('config.quickOpen')}: ${label}`} onClick={() => openSetting(option)}>
+                  {tt('config.quickOpen')}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </article>
       {loadState === 'ready' && searching && sections.length === 0 && <div className="search-empty" role="status">
         <p>{tt('common.noResults')}</p>
         <button onClick={() => { setQuery(''); setConfiguredOnly(false); }}>{tt(configuredOnly ? 'config.showAll' : 'common.clearSearch')}</button>

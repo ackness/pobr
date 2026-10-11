@@ -115,21 +115,11 @@ fn resolve_charge_state_reads_from_cfg_multipliers() {
     assert_eq!(
         state,
         ChargeState {
-            current: 2,
+            current: 2.0,
             maximum: 3,
             minimum: 0,
         }
     );
-}
-
-#[test]
-fn resolve_charge_state_clamps_current_to_max() {
-    let db = ModDb::new();
-    // Claims 10 stacks (over the cap of 3) -> clamped to 3
-    let cfg = CalcConfig::new().with_multiplier("EnduranceCharge", 10.0);
-    let state = resolve_charge_state(&db, &cfg, ChargeKind::Endurance);
-    assert_eq!(state.current, 3);
-    assert_eq!(state.maximum, 3);
 }
 
 #[test]
@@ -139,7 +129,7 @@ fn resolve_charge_state_clamps_current_to_min() {
     db.add_mod(make_modifier("FrenzyChargesMin", ModType::Base, 1.0));
     let cfg = CalcConfig::new().with_multiplier("FrenzyCharge", 0.0);
     let state = resolve_charge_state(&db, &cfg, ChargeKind::Frenzy);
-    assert_eq!(state.current, 1);
+    assert_eq!(state.current, 1.0);
     assert_eq!(state.minimum, 1);
 }
 
@@ -153,7 +143,7 @@ fn all_charges_total_sums_three_kinds() {
         .with_multiplier("FrenzyCharge", 2.0)
         .with_multiplier("EnduranceCharge", 3.0);
     let all = resolve_all_charges(&db, &cfg);
-    assert_eq!(all.total(), 6);
+    assert_eq!(all.total(), 6.0);
 }
 
 #[test]
@@ -161,27 +151,121 @@ fn all_charges_zero_when_no_multipliers_set() {
     let db = ModDb::new();
     let cfg = CalcConfig::new();
     let all = resolve_all_charges(&db, &cfg);
-    assert_eq!(all.total(), 0);
+    assert_eq!(all.total(), 0.0);
     assert_eq!(
         all,
         AllChargeStates {
             power: ChargeState {
-                current: 0,
+                current: 0.0,
                 maximum: 3,
                 minimum: 0,
             },
             frenzy: ChargeState {
-                current: 0,
+                current: 0.0,
                 maximum: 3,
                 minimum: 0,
             },
             endurance: ChargeState {
-                current: 0,
+                current: 0.0,
                 maximum: 3,
                 minimum: 0,
             },
         }
     );
+}
+
+#[test]
+fn explicit_charge_overrides_reach_multipliers_with_reference_boundaries() {
+    use pobr_core::calc::survivability::charge_multipliers_panel_default;
+    for (kind, key, stat, use_condition) in [
+        (
+            ChargeKind::Power,
+            "PowerCharge",
+            "PowerCharges",
+            "UsePowerCharges",
+        ),
+        (
+            ChargeKind::Frenzy,
+            "FrenzyCharge",
+            "FrenzyCharges",
+            "UseFrenzyCharges",
+        ),
+        (
+            ChargeKind::Endurance,
+            "EnduranceCharge",
+            "EnduranceCharges",
+            "UseEnduranceCharges",
+        ),
+    ] {
+        for minimum in [0, 2] {
+            let mut db = ModDb::new();
+            db.add_mod(make_modifier(
+                kind.min_mod_name().as_str(),
+                ModType::Base,
+                f64::from(minimum),
+            ));
+            for (override_count, expected) in
+                [(1.0_f64, 1.0_f64), (1.75, 1.75), (5.0, 5.0), (-1.0, 0.0)]
+            {
+                let mut current_db = db.clone();
+                current_db.add_mod(make_modifier(stat, ModType::Override, override_count));
+                let cfg = CalcConfig::new().with_condition(use_condition, true);
+                let resolved = charge_multipliers_panel_default(&current_db, &cfg);
+                assert_eq!(
+                    resolved.multiplier(key),
+                    expected.max(f64::from(minimum)),
+                    "{stat} override {override_count}"
+                );
+                assert_eq!(
+                    resolve_charge_state(&current_db, &resolved, kind).current,
+                    resolved.multiplier(key)
+                );
+                let disabled = charge_multipliers_panel_default(&current_db, &CalcConfig::new());
+                assert_eq!(
+                    disabled.multiplier(key),
+                    f64::from(minimum),
+                    "{stat} disabled"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn charge_override_combat_projection_does_not_activate_other_effects() {
+    use pobr_core::calc::survivability::charge_multipliers_panel_default;
+    let mut db = ModDb::new();
+    let combat_tag = pobr_core::ModTag::Condition {
+        var: "Combat".into(),
+        negated: false,
+        actor: None,
+    };
+    db.add_mod(make_modifier("PowerCharges", ModType::Override, 1.0).with_tag(combat_tag.clone()));
+    db.add_mod(make_modifier("Damage", ModType::Inc, 50.0).with_tag(combat_tag));
+    for combat in [false, true] {
+        for original_condition in [None, Some(false), Some(true)] {
+            let mut cfg = CalcConfig::new()
+                .with_condition("UsePowerCharges", true)
+                .with_mode_combat(combat);
+            if let Some(condition) = original_condition {
+                cfg = cfg.with_condition("Combat", condition);
+            }
+            let resolved = charge_multipliers_panel_default(&db, &cfg);
+            assert_eq!(
+                resolved.multiplier("PowerCharge"),
+                if combat { 1.0 } else { 3.0 }
+            );
+            assert_eq!(resolved.conditions, cfg.conditions);
+            assert_eq!(
+                db.sum(ModType::Inc, &resolved, &[ModName::from("Damage")]),
+                if original_condition == Some(true) {
+                    50.0
+                } else {
+                    0.0
+                }
+            );
+        }
+    }
 }
 
 // regen & regen_with_rate

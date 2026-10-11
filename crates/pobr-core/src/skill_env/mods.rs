@@ -591,32 +591,13 @@ pub fn data_mapped_stat_modifiers(
     set_key: Option<&str>,
     catalog: Option<&crate::rules::stat_map_engine::StatMapCatalog>,
 ) -> Vec<Modifier> {
-    let Some(catalog) = catalog else {
-        return Vec::new();
-    };
-    let mut mods = Vec::new();
-    for ds in stats {
-        if ds.value == 0.0 {
-            continue;
-        }
-        let crate::rules::stat_map_engine::MappedOutcome::Mapped(items) =
-            crate::rules::stat_map_engine::map_stat(
-                catalog, effect_id, set_key, &ds.stat, ds.value,
-            )
-        else {
-            continue;
-        };
-        for item in items {
-            let crate::rules::stat_map_engine::MappedItem::Modifier(modifier) = item else {
-                continue;
-            };
-            let origin = ModifierSource::new(SourceId::new(
-                source_kind.clone(),
-                format!("{label_prefix}.{}", ds.stat),
-            ))
-            .with_raw_text(format!("{label_prefix} {} ({})", ds.stat, ds.value));
-            mods.push(modifier.with_origin(origin));
-        }
-    }
-    mods
+    let mut ctx = crate::skill_env::StatMapCtx::data(catalog);
+    crate::skill_env::mapped_stat_modifiers(
+        &mut ctx,
+        stats,
+        source_kind,
+        label_prefix,
+        effect_id,
+        set_key,
+    )
 }

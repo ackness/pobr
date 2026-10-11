@@ -379,9 +379,25 @@ pub(crate) fn support_modifiers(
     group: &SocketGroup,
     data: &BuildData,
     active_skill_id: &str,
+    host_stat_set_index: Option<u32>,
 ) -> Vec<Modifier> {
     let gems = group.gem_inputs();
     let eg = group.enabled_group(&gems);
+    let mut limits = Vec::new();
     let mut ctx = context.stat_map_ctx();
-    pobr_core::skill_env::support_modifiers(&mut ctx, &eg, data, active_skill_id)
+    let mods = pobr_core::skill_env::support_modifiers_with_limits(
+        &mut ctx,
+        &eg,
+        data,
+        active_skill_id,
+        host_stat_set_index,
+        &mut limits,
+    );
+    if context.is_trigger_source {
+        for limit in &mut limits {
+            limit.insert_str(0, "TriggerSource:");
+        }
+    }
+    context.support_limits.extend(limits);
+    mods
 }

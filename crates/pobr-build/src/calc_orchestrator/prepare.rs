@@ -26,6 +26,7 @@ use super::skill::triggers::recognize_trigger_config;
 
 pub(super) struct ResolvedMainSkill<'a> {
     pub main_skill: Option<(ResolvedSkillLevel, &'a SocketGroup, &'a str)>,
+    pub main_stat_set_index: Option<u32>,
     pub main_effect: Option<&'a GrantedEffectDef>,
     pub main_skill_types: Vec<String>,
     pub skill_flags: ModFlags,
@@ -52,7 +53,9 @@ pub(super) fn stage_resolve_main_skill<'a>(
     // The main skill's per-level parameters (cast/attack time → action rate; cost /
     // cooldown injected via BASE mods). Resolved before building the session, so the
     // action rate can be written into base_input + the cfg damage flags can be set based on its type.
-    let main_skill = resolve_main_skill(build, data);
+    let resolved = resolve_main_skill(build, data);
+    let main_stat_set_index = resolved.as_ref().and_then(|(_, _, _, set)| *set);
+    let main_skill = resolved.map(|(skill, group, id, _)| (skill, group, id));
 
     // Main skill type → cfg damage flags (Attack/Spell/Projectile/Area/Melee), making
     // `increased <Projectile|Area|Spell|Melee> Damage` apply to this skill (damage
@@ -105,6 +108,7 @@ pub(super) fn stage_resolve_main_skill<'a>(
         .unwrap_or(SkillTypes::NONE);
     ResolvedMainSkill {
         main_skill,
+        main_stat_set_index,
         main_effect,
         main_skill_types,
         skill_flags,

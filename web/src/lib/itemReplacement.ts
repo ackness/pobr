@@ -122,7 +122,9 @@ export async function compareReplacementPositions(request: CalculateBuildRequest
   const normalized = normalizeCopiedItem(text);
   signal?.throwIfAborted();
   const catalog = dependencies.catalog ?? await loadTradeCatalog();
+  signal?.throwIfAborted();
   const backend = !dependencies.translate || !dependencies.classify || !dependencies.augmentInfo || !dependencies.reforge || !dependencies.runeCatalog ? await getBackend() : undefined;
+  signal?.throwIfAborted();
   const context = await replacementContext(request, normalized, catalog, dependencies.translate ?? backend!.translateLines);
   signal?.throwIfAborted();
   const allocated = new Set(request.allocated_nodes ?? []);
@@ -184,7 +186,9 @@ export async function compareReplacement(request: CalculateBuildRequest, slot: s
   const normalized = normalizeCopiedItem(text);
   signal?.throwIfAborted();
   const catalog = dependencies.catalog ?? await loadTradeCatalog();
+  signal?.throwIfAborted();
   const translate = dependencies.translate ?? (await getBackend()).translateLines;
+  signal?.throwIfAborted();
   await validateReplacement(request, slot, normalized, catalog, translate);
   signal?.throwIfAborted();
   const evaluate = dependencies.evaluate ?? evaluateVariants;

@@ -44,3 +44,25 @@ fn handles_trailing_whitespace_in_fixture() {
     let xml = decode_pob_code(&with_ws).expect("decode with surrounding whitespace");
     assert!(xml.contains("<PathOfBuilding"));
 }
+
+#[test]
+fn unidentified_only_groups_keep_source_slots_and_later_group_indices() {
+    let xml = r#"<PathOfBuilding2><Build className="Sorceress" level="85" mainSocketGroup="2"/>
+<Skills activeSkillSet="1"><SkillSet id="1">
+<Skill enabled="true"><Gem nameSpec="Unresolved first" level="0" quality="0"/></Skill>
+<Skill enabled="true"><Gem gemId="Metadata/Items/Gems/SkillGemFireball" skillId="FireballPlayer" level="20" quality="0"/></Skill>
+</SkillSet></Skills></PathOfBuilding2>"#;
+    let build = pobr_build::xml_build::parse_build(xml).unwrap();
+    assert_eq!(build.socket_groups.len(), 2);
+    assert_eq!(build.socket_groups[0].gem_skills[0].skill_id, "");
+    assert_eq!(
+        build.socket_groups[0].gem_skills[0].name_spec.as_deref(),
+        Some("Unresolved first")
+    );
+    assert_eq!(build.socket_groups[0].gem_skills[0].gem_level, 0);
+    assert_eq!(
+        build.socket_groups[1].gem_skills[0].skill_id,
+        "FireballPlayer"
+    );
+    assert_eq!(build.main_socket_group, Some(2));
+}

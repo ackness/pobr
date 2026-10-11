@@ -90,7 +90,41 @@ pub fn support_modifiers(
     data: &dyn BuffEnv,
     active_skill_id: &str,
 ) -> Vec<Modifier> {
+    support_modifiers_observed(ctx, group, data, active_skill_id, None, None)
+}
+
+/// Maps the calculated host's complete compatible support payload and records
+/// confirmed skipped conditional numbers in the existing unsupported-text shape.
+/// The no-limit entry point remains useful for partial/auxiliary consumers such as
+/// warcry spec assembly; those callers must not disclose whole-host coverage.
+pub fn support_modifiers_with_limits(
+    ctx: &mut StatMapCtx<'_>,
+    group: &EnabledGroup<'_>,
+    data: &dyn BuffEnv,
+    active_skill_id: &str,
+    host_stat_set_index: Option<u32>,
+    limits: &mut Vec<String>,
+) -> Vec<Modifier> {
+    support_modifiers_observed(
+        ctx,
+        group,
+        data,
+        active_skill_id,
+        host_stat_set_index,
+        Some(limits),
+    )
+}
+
+fn support_modifiers_observed(
+    ctx: &mut StatMapCtx<'_>,
+    group: &EnabledGroup<'_>,
+    data: &dyn BuffEnv,
+    active_skill_id: &str,
+    host_stat_set_index: Option<u32>,
+    mut limits: Option<&mut Vec<String>>,
+) -> Vec<Modifier> {
     let judgement = group_judgement(group, data, active_skill_id);
+    let mut host_set_key = None;
     let mut mods = Vec::new();
     for sup in &judgement.compatible {
         let gem = &group.gems[sup.gem_index];
@@ -105,13 +139,47 @@ pub fn support_modifiers(
         // support effects (CalcActiveSkill.lua:130 does a full merge across all sets) —
         // the full merge for a multi-set support's additional sets is a current gap.
         let set_key = data.selected_set_key(&sup.effect_id, set_index);
-        mods.extend(mapped_stat_modifiers(
+        let catalog = ctx.catalog;
+        mods.extend(crate::skill_env::stat_map::mapped_stat_modifiers_observed(
             ctx,
             &stats.base,
             SourceKind::SupportGem,
             &sup.effect_id,
             &sup.effect_id,
             set_key.as_deref(),
+            |stat, outcome| {
+                if let Some(limits) = limits.as_deref_mut()
+                    && let Some(catalog) = catalog
+                    && let Some(condition_reason) = crate::skill_env::stat_map::skipped_support_condition(
+                        catalog,
+                        &sup.effect_id,
+                        set_key.as_deref(),
+                        stat,
+                        outcome,
+                    )
+                    && let stat_map_engine::MappedOutcome::Unsupported(reason) = outcome
+                {
+                    use std::fmt::Write;
+
+                    let host_set_key = host_set_key.get_or_insert_with(|| {
+                        data.selected_set_key(active_skill_id, host_stat_set_index)
+                    });
+                    let mut limit = format!(
+                        "Support:{}:set={}:stat={}:value={}:host={active_skill_id}:host_set={}: conditional numerical effect not modeled ({condition_reason:?}",
+                        sup.effect_id,
+                        set_key.as_deref().unwrap_or("1"),
+                        stat.stat,
+                        stat.value,
+                        host_set_key.as_deref().unwrap_or("1"),
+                    );
+                    if condition_reason != *reason {
+                        write!(limit, "; primary mapping {reason:?}")
+                            .expect("writing to a String cannot fail");
+                    }
+                    limit.push(')');
+                    limits.push(limit);
+                }
+            },
         ));
         // A compatible support's per-level cost multiplier → `SupportManaMultiplier`
         // MORE (matching PoB2's `CalcActiveSkill.lua:689-691`:

@@ -40,15 +40,18 @@ function supportSetAllowed(gems: GemInput[], catalog: SupportMetadata[]): boolea
 
 /** Batch the authoritative group judgement before scoring, preserving candidate order. */
 export async function supportSetsCompatible(group: SocketGroupInput, sets: GemInput[][],
-  catalog: SupportMetadata[]): Promise<boolean[]> {
+  catalog: SupportMetadata[], signal?: AbortSignal): Promise<boolean[]> {
+  signal?.throwIfAborted();
   const result = sets.map(() => false);
   const eligible = sets.flatMap((gems, index) => supportSetAllowed(gems, catalog) ? [{ gems, index }] : []);
   if (!eligible.length) return result;
   const active = group.gems.filter(input => !catalog.find(gem => gem.skill_id === input.skill_id)?.is_support);
   const backend = await getBackend();
   for (let start = 0; start < eligible.length; start += 512) {
+    signal?.throwIfAborted();
     const batch = eligible.slice(start, start + 512);
     const compatible = await backend.supportGroupsCompatible(batch.map(({ gems }) => ({ ...group, gems: [...active, ...gems] })));
+    signal?.throwIfAborted();
     if (compatible.length !== batch.length) throw new Error('Invalid support compatibility response.');
     batch.forEach(({ index }, i) => { result[index] = compatible[i]; });
   }
@@ -121,9 +124,18 @@ export interface SupportPlan {
   variant: VariantInput;
   stats: Record<string, number>;
 }
+export interface SupportExclusion {
+  supports: GemInput[];
+  variant: VariantInput;
+  unsupported: string[];
+  error?: string;
+  invalidStats?: true;
+}
 export interface SupportOptimization {
   baseline: Record<string, number>;
+  baselineUnsupported: string[];
   plans: SupportPlan[];
+  excluded: SupportExclusion[];
   candidates: number;
   evaluated: number;
   unmodeled: number;
@@ -166,9 +178,9 @@ export async function optimizeSupports(options: {
   if (!group?.enabled) throw new Error('Select an enabled skill before optimizing supports.');
   const capacity = Math.max(0, Math.min(5, Math.trunc(options.capacity)));
   const level = request.character?.level ?? 1;
-  const excluded = new Set(options.excludedSkillIds);
+  const excludedIds = new Set(options.excludedSkillIds);
   const pool = eligibleSupports(group, catalog, level, options.includeLineage ?? true).gems
-    .filter(gem => !excluded.has(gem.skill_id) && lineageAvailable(gem, request.socket_groups ?? [], groupIndex));
+    .filter(gem => !excludedIds.has(gem.skill_id) && lineageAvailable(gem, request.socket_groups ?? [], groupIndex));
   const byId = new Map(catalog.map(gem => [gem.skill_id, gem]));
   const equipped = group.gems.filter(gem => byId.get(gem.skill_id)?.is_support);
   const allowedIds = new Set(pool.map(gem => gem.skill_id));
@@ -184,9 +196,11 @@ export async function optimizeSupports(options: {
   const identityRow = identity.results[0];
   if (identityRow?.error) throw new Error(identityRow.error);
   const baseline = identity.baseline;
-  const baselineUnsupported = new Set(identityRow?.unsupported ?? []);
+  const baselineUnsupported = identityRow?.unsupported ?? [];
+  const baselineUnsupportedSet = new Set(baselineUnsupported);
   const seen = new Set<string>([keyOf(equipped)]);
   const rows: SupportPlan[] = [];
+  const excluded: SupportExclusion[] = [];
   let evaluated = 0;
   let unmodeled = 0;
   const refinementBudget = 768;
@@ -199,7 +213,7 @@ export async function optimizeSupports(options: {
       seen.add(key);
       return true;
     });
-    const compatible = await supportSetsCompatible(group, proposed, catalog);
+    const compatible = await supportSetsCompatible(group, proposed, catalog, signal);
     signal?.throwIfAborted();
     const candidates = proposed.filter((_, index) => compatible[index]).slice(0, limit);
     const accepted: SupportPlan[] = [];
@@ -213,8 +227,15 @@ export async function optimizeSupports(options: {
       signal?.throwIfAborted();
       evaluated += selected.length;
       for (const row of result.results) {
-        if (row.error || Object.values(row.stats).some(value => !Number.isFinite(value))) continue;
-        if (row.unsupported?.some(line => !baselineUnsupported.has(line))) { unmodeled++; continue; }
+        const unsupported = (row.unsupported ?? []).filter(line => !baselineUnsupportedSet.has(line));
+        const invalidStats = Object.values(row.stats).some(value => !Number.isFinite(value));
+        const invalid = Boolean(row.error) || invalidStats;
+        if (invalid || unsupported.length) {
+          excluded.push({ supports: selected[row.index], variant: variants[row.index], unsupported,
+            ...(row.error != null ? { error: row.error } : {}), ...(invalidStats ? { invalidStats: true } : {}) });
+          if (!invalid) unmodeled++;
+          continue;
+        }
         const plan = { supports: selected[row.index], variant: variants[row.index], stats: row.stats };
         accepted.push(plan);
         rows.push(plan);
@@ -262,5 +283,6 @@ export async function optimizeSupports(options: {
     unique.set(keyOf(plan.supports), plan);
   }
   onProgress?.(evaluated, evaluated);
-  return { baseline, plans: [...unique.values()].slice(0, 8), candidates: pool.length, evaluated, unmodeled };
+  return { baseline, baselineUnsupported, plans: [...unique.values()].slice(0, 8), excluded,
+    candidates: pool.length, evaluated, unmodeled };
 }

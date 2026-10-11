@@ -48,11 +48,11 @@
 
 ## 后续优化方向
 
-以下属于需要单独设计或进一步验证的工作，本次未实现：
+以下记录各方向的当前状态与仍需单独验证的边界：
 
-1. **战斗配置的常用项入口。** 本轮增加了“仅显示已配置”，但已配置不等于对当前技能生效。按技能筛选常用条件和补齐人工核对后的翻译仍需进一步设计。
+1. **战斗配置的常用项入口。** Product-loop I8/M3 adds a bounded Quick access review-and-jump card: paired optional shock assumptions and matching enemy mitigation from returned non-zero main-skill hit damage. It focuses the original unique control, preserves full catalog/search/configured-only/raw values, and explicitly avoids configured-equals-effective or DoT/minion/full-coverage claims. Real-WASM caster/attack, edit/reset, raw-type roundtrip, retained support/replacement receipts, EN/zh-TW/zh-CN and 320/390/1440px keyboard geometry passed. Independent review caught untouched numeric-string coercion; unchanged blur is now navigation-only. Imported charge/exposure opposing-state failures were separately reproduced and prioritized as M4, not fixed or advertised by this presentation-only slice.
 2. **移动端天赋树的独立操作设计。** SVG 画布适合鼠标，触屏加点、缩放、节点说明和键盘节点导航需要专门设计与真实设备验证，不能仅凭页面没有横向溢出判定完成。
-3. **优化结果的跨页保留。** 可让用户在装备、技能、天赋之间来回查看时保留规划进度，同时明确标记构筑变更后的过期结果；需要先确定结果与构筑版本的对应规则。
+3. **Cross-page planning continuity.** Product-loop M1 checkpoints retain same-stage equipment analysis, complete replacement text/position/augment receipts, equipment candidates and joint results, the selected support workspace, passive-route settings/results and joint-jewel candidates/results. Leaving cancels active work and paste debounces without restarting on return; input/goal changes invalidate incompatible results, and stage/tree/data replacement resets ownership. Exact evaluated item/augment and plan payloads apply after navigation. The tree canvas and keyboard/hover/heatmap effects unmount while away. Support and route receipts disclose raw baseline limits and pair rejected complete edits with new reasons/errors; support non-finite causes remain independently visible. I6 renewed the copied-stage equipment → supports → passives → replacement/Apply journey with real WASM, desktop/narrow/keyboard inspection and safe stage switching. This is session retention, not reload persistence, background planning or exhaustive engine-effect coverage; see [product-loop memo](product-loop-memo.md) for exact proof and limits.
 4. **资源加载拆分。** 当前生产构建提示主 JS chunk 超过 500 kB。后续可测量首屏与切页耗时，再决定是否按功能懒加载；本次未为消除提示而调整依赖或构建配置。
 
 ## 验证范围与记录
@@ -79,5 +79,20 @@ Review 后续修复：
 - 在 390 × 500 窗口中，装备菜单自身的滚动会触发重新测量高度，导致滚动位置回跳、末尾选项不可达。定位逻辑现在忽略菜单及内部列表的滚动，仍响应页面滚动和窗口变化；实测滚轮滚至末尾并选择最后一项，另覆盖宝石内部列表。
 - 取消珠宝插槽时，同步清理级联撤销节点的属性选择，保留仍已分配节点的选择。回归覆盖 Warrior 连通路径中的 #2491 插槽及下游 #51561 属性节点，并验证重新分配路径不会恢复旧属性选择。
 - 修复前新增测试复现了菜单距底部仍差 63 px、已撤销属性选择残留的问题。修复后生产构建（含类型检查）、天赋图与武器组的 10 项单元测试，以及功能复查、页面动线、可用性、提升规划的 26 项浏览器测试全部通过。仅本地修复，未推送、发布或更新版本号。
+
+Product-loop I9/M4 follow-up:
+
+- The native/source-code-plus-raw-override path now honors explicit Boolean charge-use and elemental-exposure edits over imported legacy conditions. Normal frontend Config already passed the opposing-state interaction before this repair; no blanket claim that previous UI edits were broken.
+- Independent final-import controls, native/JSON/parity checks and rebuilt real WASM passed. Config edit/reset, raw-type export/reimport, opposite stages and support/passive/replacement invalidation passed in 31 new production-browser scenarios; 17 unchanged guidance/localization scenarios also passed. Targeted reruns corrected harness assumptions about normalized enemy tiers, hidden receipt text and the multi-stage selector.
+- Actual Ego production interaction verified EN/zh-TW/zh-CN keyboard/reset at 390/1440px, displayed fire hit DPS 90.41 → 75.35 → 90.41, export/reimport and copied-stage isolation. No touch-device, screen-reader or exhaustive formula-coverage claim.
+- Reloading the prior long-lived Comet workspace exposes a separate preexisting unresolved level-0 gem validation failure. Original build/library entries and raw bytes are retained. This is active M5, not repaired or hidden by M4; see the [product-loop memo](product-loop-memo.md) for exact evidence and next slice.
+
+Product-loop I11/M6 follow-up:
+
+- Explicit player Power/Frenzy/Endurance counts now reach reported counts and existing per-charge damage modifiers through both source-code and materialized requests. The retained 18-state real-WASM probe had 12 explicit failures before and none after; absent controls still default to maximum.
+- Reference-derived zero/unset, disabled-use/minimum, fractional and above-maximum behavior is preserved without coercing imported Bool/Text inputs. Seven native host regressions include independently controlled damage, 72 transition states, 54 boundary states and 24 typed-input states.
+- The rebuilt production app passed 25 new browser scenarios plus 31 unchanged condition-edit scenarios. Six inspected EN/zh-TW/zh-CN screenshots cover 390/1440px keyboard edits, reset and raw types. Actual Ego Config interaction with an explicit synthetic per-charge item produced hit DPS 81.37 → 87.4 → 81.37 for count 1 → 2 → imported reset, with exact saved-state reload equality.
+- Separate next usability defect: main-character and minion count controls have identical visible/accessibility labels. In actual Config, editing `minionsOverridePowerCharges` changed only that raw input while the main count remained 1 and hit DPS remained 81.37. M7 will distinguish the three actor-specific count pairs without hiding catalog settings or promising minion formula coverage.
+- Spec and Standards reviews completed; scoped native/JSON/parity/Clippy/format gates passed. No fresh Lua oracle, touch-device, screen-reader or full-release coverage claim. Ego screenshot capture timed out after successful interaction; the six production Playwright screenshots supply the inspected visual evidence. Local checkpoint only; no version bump, push, publication or deployment.
 
 用于 v0.0.21 PR 评审的截图：[桌面天赋布局](images/v0.0.21/tree-desktop.png)、[手机装备编辑](images/v0.0.21/items-mobile.png)。截图使用仓库中的示例构筑。

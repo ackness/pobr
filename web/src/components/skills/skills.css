@@ -545,7 +545,8 @@
 .support-excluded-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); font-size: var(--text-sm); }
 .support-excluded .opt-chip { padding: var(--space-1) var(--space-2); max-width: 100%; overflow-wrap: anywhere; text-align: start; }
 .support-excluded .skills-hint { margin: 0; }
-.support-plan-gems > .opt-chip { max-width: 100%; overflow-wrap: anywhere; }
+.support-plan-gems > .opt-chip { max-width: 100%; flex-wrap: wrap; overflow-wrap: anywhere; }
+.support-plan-gems > .opt-chip > small { color: var(--text-muted); }
 .support-exclude-button { display: inline-grid; place-items: center; flex: none; min-width: 28px; min-height: 28px; padding: 0; border: 0; background: transparent; color: var(--text-muted); font-size: var(--text-lg); }
 .support-exclude-button:hover { color: var(--color-negative); background: var(--surface-page); }
 .support-lineage-option { display: flex; gap: var(--space-2); align-items: center; color: var(--text-secondary); font-size: var(--text-sm); }
@@ -557,6 +558,12 @@
 .support-plan-metrics { display: flex; flex-wrap: wrap; gap: var(--space-4); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 .support-plan-metrics .is-positive { color: var(--color-positive); }
 .support-plan-metrics .is-negative { color: var(--color-negative); }
+.support-diagnostics { padding: var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface-page); font-size: var(--text-sm); overflow-wrap: anywhere; min-width: 0; }
+.support-diagnostics summary { cursor: pointer; color: var(--text-secondary); }
+.support-diagnostics summary:focus-visible { outline: 2px solid var(--accent-gold-dim); outline-offset: 2px; }
+.support-diagnostics ul, .support-diagnostic-excluded { padding-left: var(--space-6); }
+.support-diagnostic-excluded { display: grid; gap: var(--space-3); }
+.support-diagnostic-excluded > li { padding: var(--space-2); border: 1px dashed var(--border-subtle); border-radius: var(--radius-sm); }
 .gem-name > .gem-lineage-badge { margin-left: var(--space-2); }
 @media (max-width: 600px) {
   .support-plan { grid-template-columns: minmax(0, 1fr); }

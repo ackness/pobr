@@ -241,8 +241,8 @@ impl ChargeKind {
 /// Charge stack resolution result.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ChargeState {
-    /// Current charge stacks (already clamped to the max/min).
-    pub current: u32,
+    /// Current charge stacks, floored at the minimum; explicit counts may exceed the maximum.
+    pub current: f64,
     /// Max charge stacks (includes `+N to Maximum X Charges` mods).
     pub maximum: u32,
     /// Min charge stacks (the always-on stack count).
@@ -280,7 +280,7 @@ pub fn charge_minimum(db: &ModDb, cfg: &CalcConfig, kind: ChargeKind, maximum: u
 }
 
 /// Resolves charge state: reads the current stack count from
-/// `CalcConfig.multipliers`, clamped by the ModDb's max/min.
+/// `CalcConfig.multipliers`, floored at the ModDb's minimum without truncation.
 ///
 /// PoB2 exposes the current stack count via
 /// `modDB.multipliers["PowerCharge"]` for per-charge mods to reference (the
@@ -297,7 +297,7 @@ pub fn resolve_charge_state(db: &ModDb, cfg: &CalcConfig, kind: ChargeKind) -> C
     let maximum = charge_maximum(db, cfg, kind);
     let minimum = charge_minimum(db, cfg, kind, maximum);
     let raw_current = cfg.multiplier(kind.multiplier_key());
-    let current = (raw_current.max(0.0) as u32).clamp(minimum, maximum);
+    let current = raw_current.max(f64::from(minimum));
     ChargeState {
         current,
         maximum,
@@ -318,7 +318,7 @@ impl AllChargeStates {
     ///
     /// Source: agent-docs/recovery-charges-buffs.md §Charge multipliers;
     ///       PoB2 `CalcSetup.lua`: `modDB.multipliers["TotalCharges"]`.
-    pub fn total(&self) -> u32 {
+    pub fn total(&self) -> f64 {
         self.power.current + self.frenzy.current + self.endurance.current
     }
 }
@@ -334,42 +334,65 @@ pub fn resolve_all_charges(db: &ModDb, cfg: &CalcConfig) -> AllChargeStates {
 
 /// Fills the charge-stack multipliers per PoB2's charge semantics, returning a derived cfg.
 ///
-/// PoB2 (CalcPerform.lua L831-832 / L899): only when `Condition:UseXCharges`
-/// is true does `output.XCharges = output.XChargesMax`, after which
-/// `modDB.multipliers["XCharge"] = output.XCharges`, causing `per X charge`
-/// mods to expand at full stacks. **For a build that hasn't enabled this
-/// charge, PoB2's panel shows current=0** (e.g. stormweaver's
-/// `PowerCharges value="0"`), so this also stays at 0, avoiding incorrectly
-/// applying `per charge` penalties/bonuses. pobr mirrors this with
-/// `CalcConfig.multipliers` and `Condition:UseXCharges`.
+/// PoB2 `CalcPerform.lua:928-963`: when `UseXCharges` is enabled, a matching
+/// `XCharges` OVERRIDE supplies the count, otherwise the maximum is used.
+/// The result is floored at the always-on minimum, including when use is off.
+/// Explicit counts are neither truncated nor upper-clamped. The config interpreter
+/// already treats a count input of zero as unset and applies the Combat tag.
 ///
-/// **Override semantics**: if cfg already has an explicit positive value
-/// (a build-imported `XCharges` count override / not at full stacks), that
-/// value is kept as-is; under `MinimumXChargesIsMaximumXCharges` (always at
-/// full stacks), `charge_minimum` returns maximum, so it's filled at the always-on stack count even without the use condition checked.
+/// Positive legacy/programmatic multipliers retain their existing fallback
+/// precedence when no enabled OVERRIDE applies.
 pub fn charge_multipliers_panel_default(db: &ModDb, cfg: &CalcConfig) -> CalcConfig {
     let mut out = cfg.clone();
-    for kind in [ChargeKind::Power, ChargeKind::Frenzy, ChargeKind::Endurance] {
+    // Project the runtime mode only for charge-override queries. Do not activate
+    // unrelated Combat-tagged effects in the returned calculation context.
+    let original_combat = cfg.conditions.get("Combat").copied();
+    let mut projected_combat = false;
+    for (kind, override_name, use_condition) in [
+        (ChargeKind::Power, "PowerCharges", "UsePowerCharges"),
+        (ChargeKind::Frenzy, "FrenzyCharges", "UseFrenzyCharges"),
+        (
+            ChargeKind::Endurance,
+            "EnduranceCharges",
+            "UseEnduranceCharges",
+        ),
+    ] {
         let key = kind.multiplier_key();
-        // Respect the build's override when it's already explicitly set to a positive value.
-        if out.multiplier(key) > 0.0 {
-            continue;
-        }
         let maximum = charge_maximum(db, cfg, kind);
-        let minimum = charge_minimum(db, cfg, kind, maximum);
-        // Use condition (PoB2's `Condition:UseXCharges`): checked → full stacks, otherwise the always-on minimum (usually 0).
-        let use_cond = match kind {
-            ChargeKind::Power => "UsePowerCharges",
-            ChargeKind::Frenzy => "UseFrenzyCharges",
-            ChargeKind::Endurance => "UseEnduranceCharges",
-        };
-        let current = if cfg.condition(use_cond) {
-            maximum.max(minimum)
+        let minimum = f64::from(charge_minimum(db, cfg, kind, maximum));
+        let enabled = cfg.condition(use_condition);
+        if enabled && !projected_combat {
+            if let Some(combat) = out.conditions.get_mut("Combat") {
+                *combat = cfg.mode_combat;
+            } else {
+                out.conditions.insert("Combat".into(), cfg.mode_combat);
+            }
+            projected_combat = true;
+        }
+        let explicit = enabled.then(|| db.override_(&out, override_name)).flatten();
+        let legacy = cfg.multiplier(key);
+        let current = explicit
+            .unwrap_or_else(|| {
+                if legacy > 0.0 {
+                    legacy
+                } else if enabled {
+                    f64::from(maximum)
+                } else {
+                    minimum
+                }
+            })
+            .max(minimum);
+        if current != legacy {
+            out = out.with_multiplier(key, current);
+        }
+    }
+    if projected_combat {
+        if let Some(original) = original_combat {
+            *out.conditions
+                .get_mut("Combat")
+                .expect("temporary Combat projection") = original;
         } else {
-            minimum
-        };
-        if current > 0 {
-            out = out.with_multiplier(key, current as f64);
+            out.conditions.remove("Combat");
         }
     }
     out

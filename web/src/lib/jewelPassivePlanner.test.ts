@@ -110,6 +110,19 @@ describe('joint jewel and passive planning', () => {
     expect(result.plans).toEqual([]);
   });
 
+  it('stops before evaluating a candidate when cancelled during item translation', async () => {
+    const { options } = setup([node(1, [2]), node(2, [], { kind: 'jewel_socket' })],
+      { allocated_nodes: [2] }, request => wearing(request, '候选') ? 130 : 100);
+    const controller = new AbortController();
+    const result = await planJewelPassiveUpgrades({
+      ...options, candidates: [candidate('候选')], signal: controller.signal,
+      translate: async lines => { controller.abort(); return lines; },
+    });
+    expect(result.aborted).toBe(true);
+    expect(result.plans).toEqual([]);
+    expect(result.evaluated).toBe(2); // Baseline and unchanged-jewel identity, both before cancellation.
+  });
+
   it('never returns partial plans on cancellation and rejects weapon-set allocations', async () => {
     const { options } = setup([node(1, [2]), node(2, [], { kind: 'jewel_socket' })], { allocated_nodes: [2] }, request => wearing(request, 'Synergy') ? 130 : 100);
     const controller = new AbortController();

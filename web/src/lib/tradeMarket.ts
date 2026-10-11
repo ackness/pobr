@@ -133,7 +133,7 @@ export async function planGemUpgrades(request: CalculateBuildRequest, catalog: T
   });
   if (!plans.length) return [];
   const compatible = await supportSetsCompatible(current, plans.map(plan => plan.variant.socket_groups![group].gems
-    .filter(input => byId.get(input.skill_id)?.is_support)), gems);
+    .filter(input => byId.get(input.skill_id)?.is_support)), gems, signal);
   signal?.throwIfAborted();
   // Active-gem quality/level edits do not change the support type set.
   const legal = plans.filter((plan, index) => !plan.gem.is_support || compatible[index]);

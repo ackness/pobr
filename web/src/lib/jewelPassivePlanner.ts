@@ -60,12 +60,15 @@ export async function planJewelPassiveUpgrades(options: JewelPassivePlannerOptio
   const budget = Math.floor(options.points);
   if (!Number.isFinite(budget) || budget < 1 || budget > PASSIVE_POINT_LIMIT) throw new Error('Passive point budget must be between 1 and 8');
   const backend = !options.calculateBuild || !options.translate ? await getBackend() : undefined;
+  if (signal?.aborted) return cancel();
   const calculate = options.calculateBuild ?? backend!.calculateBuild.bind(backend);
   const evaluate = options.evaluate ?? evaluateVariants;
   const translate = options.translate ?? backend!.translateLines.bind(backend);
   let catalog = options.candidates.length ? options.catalog ?? await loadTradeCatalog() : undefined;
+  if (signal?.aborted) return cancel();
   if (catalog) {
     const bases = options.jewelBases ?? (options.catalog ? [] : await (backend ?? await getBackend()).loadJewelBases());
+    if (signal?.aborted) return cancel();
     // Unique-only bases belong in item validation, never in the craftable market search pool.
     catalog = { ...catalog, bases: [...catalog.bases, ...bases.filter(base => !catalog!.bases.some(existing => existing.name === base.name))
       .map(base => ({ name: base.name, category: 'jewel', level: base.drop_level, tags: base.tags, implicits: base.implicits }))] };
@@ -130,6 +133,7 @@ export async function planJewelPassiveUpgrades(options: JewelPassivePlannerOptio
         path = route;
         const text = normalizeCopiedItem(choice.jewel.text);
         await validateReplacement({ ...request, allocated_nodes: [...original, ...path] }, `Jewel@${socket}`, text, catalog!, translate);
+        if (signal?.aborted) return cancel();
         jewels = [...currentJewels.filter(jewel => jewel.socket_node !== socket), { socket_node: socket!, text }];
         const uniqueName = (raw: string) => raw.match(/^Rarity:\s*UNIQUE\s*\n([^\n]+)/im)?.[1].trim();
         const limitLine = text.match(/^Limited to:\s*(.+)$/im)?.[1].trim();

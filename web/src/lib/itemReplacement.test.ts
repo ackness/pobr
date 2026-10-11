@@ -1,14 +1,16 @@
+/// <reference lib="es2024.promise" />
 import { expect, test, vi } from 'vitest';
 import { compareReplacement, compareReplacementPositions, normalizeCopiedItem, replacementAffixes, validateReplacement } from './itemReplacement';
 import type { TradeCatalog } from './tradeOptimizer';
 import type { CalculateBuildRequest, ItemAugmentInfo, RuneCatalogEntry } from '../api/types';
 import type { EvaluateOptions, EvaluateResult } from './optimize';
+import { getBackend } from '../api/backend';
 
-vi.mock('../api/backend', () => ({ getBackend: async () => ({
+vi.mock('../api/backend', () => ({ getBackend: vi.fn(async () => ({
   itemAugmentInfo: async () => ({ sockets: 0, max_sockets: 0, runes: [], editable: false, options: [] }),
   reforgeRunes: async (text: string) => text,
   runeCatalog: async () => [],
-}) }));
+})) }));
 
 const catalog: TradeCatalog = { mods: [], bases: [
   { name: 'Sapphire Ring', category: 'accessory.ring', tags: [], level: 12, implicits: [] },
@@ -301,4 +303,20 @@ test('aborting metadata lookup or reforge preparation never sends partial varian
     })).rejects.toThrow();
     expect(evaluate).not.toHaveBeenCalled();
   }
+});
+
+test.each(['single', 'positions'] as const)('cancelled %s backend acquisition never starts translation', async mode => {
+  const controller = new AbortController();
+  const base = await getBackend();
+  const lateTranslation = vi.fn(translate);
+  const { promise, resolve } = Promise.withResolvers<typeof base>();
+  vi.mocked(getBackend).mockReturnValueOnce(promise);
+  const text = copied.replace('Sapphire Ring', '蓝玉戒指');
+  const pending = mode === 'single'
+    ? compareReplacement(request, 'ring1', text, controller.signal, { catalog })
+    : compareReplacementPositions(request, text, controller.signal, { catalog });
+  controller.abort();
+  resolve({ ...base, translateLines: lateTranslation });
+  await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  expect(lateTranslation).not.toHaveBeenCalled();
 });

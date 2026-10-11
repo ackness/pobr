@@ -427,7 +427,7 @@ fn perform_recovery_ext_defaults_are_neutral() {
 
     let o = &env.player.output;
     // Charges default to maximum 3, current 0 (no multiplier config).
-    assert_eq!(o.charge_power_current, 0);
+    assert_eq!(o.charge_power_current, 0.0);
     assert_eq!(o.charge_power_maximum, 3);
     assert_eq!(o.charge_frenzy_maximum, 3);
     assert_eq!(o.charge_endurance_maximum, 3);
@@ -455,7 +455,7 @@ fn perform_fills_charge_maximum_and_current() {
     perform(&mut env).unwrap();
 
     assert_eq!(env.player.output.charge_power_maximum, 5);
-    assert_eq!(env.player.output.charge_power_current, 4);
+    assert_eq!(env.player.output.charge_power_current, 4.0);
 }
 
 /// Leech wiring: physical hit + LifeLeech BASE → life_leech_rate > 0.

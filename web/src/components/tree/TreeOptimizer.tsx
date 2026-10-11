@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { formatApiError } from '../../api/error';
 import type { AttributeChoice, CalculateBuildRequest, PassiveNode } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
@@ -14,19 +14,60 @@ import {
   withTravelAttributes,
   type PassivePlan,
   type PassivePlannerResult,
+  type PassivePlanningContext,
 } from '../../lib/passivePlanner';
 import { AppSelect } from '../shared/AppSelect';
-import { ObjectiveEditor, OptimizerProgress, objectiveOf } from '../shared/OptimizerControls';
+import { ObjectiveEditor, OptimizerProgress, objectiveOf, type ObjectiveState } from '../shared/OptimizerControls';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
-import { JewelPassivePlanner } from './JewelPassivePlanner';
+import { JewelPassivePlanner, useJewelPassivePlanner, type JewelPassivePlannerState } from './JewelPassivePlanner';
 
 interface Props {
   session: BuildSession;
   lang: Lang;
+  active: boolean;
   nodes: PassiveNode[];
   nodeLabel: (skill: number) => string;
   onPreview: (plan: PassivePlan | null) => void;
   focusPlanner?: { nonce: number };
+}
+
+interface PassiveReceipt {
+  key: string;
+  request: CalculateBuildRequest;
+  preparedRequest: CalculateBuildRequest;
+  result: PassivePlannerResult;
+  objective: Objective;
+  dataVersion: BuildSession['dataVersion'];
+  treeVersion: BuildSession['treeVersion'];
+}
+
+export interface TreeOptimizerState {
+  session: BuildSession;
+  lang: Lang;
+  nodeLabel: (skill: number) => string;
+  containerRef: RefObject<HTMLDivElement | null>;
+  expanded: boolean;
+  setExpanded: (value: boolean) => void;
+  mode: 'allocate' | 'reallocate';
+  setMode: (value: 'allocate' | 'reallocate') => void;
+  points: number;
+  setPoints: (value: number) => void;
+  goal: ObjectiveState;
+  setGoal: (value: ObjectiveState) => void;
+  attribute: AttributeChoice;
+  setAttribute: (value: AttributeChoice) => void;
+  context: PassivePlanningContext;
+  tracking: boolean;
+  progress: { done: number; total: number } | null;
+  error: string | null;
+  completed: PassiveReceipt | null;
+  evaluated: PassivePlannerResult | null;
+  preview: number | null;
+  run: () => void;
+  cancel: () => void;
+  show: (index: number | null) => void;
+  apply: (plan: PassivePlan) => void;
+  jewelPlanner: JewelPassivePlannerState;
 }
 
 const COPY = {
@@ -40,12 +81,17 @@ const COPY = {
     noResults: 'No improving legal plan was found within this budget and search range.',
     bounded: 'Bounded search, not a global optimum. It compares connected routes and combinations; review the route before spending or refunding points.',
     skipped: 'Skipped plans with new unmodeled effects', evaluated: 'Plans evaluated', add: 'Allocate', remove: 'Refund', cost: 'Net points', score: 'Goal gain',
-    needsBuild: 'Import or create a build to plan upgrades.', route: 'Complete route', baseline: 'Current build',
+    needsBuild: 'Import or create a build to plan upgrades.', route: 'Complete route', baseline: 'Evaluated baseline',
     unavailable: 'The class start or passive graph is unavailable.',
     refresh: 'After the first search, changes refresh this open planner automatically. Cancel or collapse to pause.',
     waiting: 'Waiting for the current build calculation, then searching the updated tree…',
     limits: 'At most 8 new or refunded points and 512 full-plan evaluations per search. Refund mode moves terminal branches within the current total point count.',
     limited: 'The search limit was reached; results cover only the evaluated routes.',
+    data: 'Data version', tree: 'Tree version', defaultTree: 'Default', unknownVersion: 'Unavailable',
+    baselineLimits: 'Baseline calculation limits', baselineLimitsHint: 'These engine-reported effects are already present in the evaluated baseline. They are not new route effects; calculated gains do not resolve these limits.',
+    excluded: 'Excluded complete routes', excludedHint: 'These evaluated edits are excluded from recommendations and cannot be applied.',
+    newLimits: 'New unsupported effects', engineError: 'Engine error', invalidStats: 'The engine returned non-finite calculated values.',
+    previewHint: 'The tree preview highlights a proposed route, not the current allocation. Gains compare the recalculated route with the evaluated baseline.',
   },
   'zh-TW': {
     title: '天賦提升規劃', hint: '自動尋找目前天賦樹可連接的路線，過路點計入預算。每個完整方案都按目前裝備和主技能重新計算。',
@@ -57,12 +103,17 @@ const COPY = {
     noResults: '在本次點數預算和搜尋範圍內，未找到合法且優於目前配置的方案。',
     bounded: '這是有限範圍的路線與組合搜尋，不保證全域最優。請先查看路線，再投入或退還天賦點。',
     skipped: '已排除含新增未建模效果的方案', evaluated: '已重算方案', add: '新增', remove: '退還', cost: '淨投入', score: '目標提升',
-    needsBuild: '匯入或新建角色後可規劃天賦提升。', route: '完整路線', baseline: '目前配置',
+    needsBuild: '匯入或新建角色後可規劃天賦提升。', route: '完整路線', baseline: '評估基準',
     unavailable: '缺少職業起點或天賦連接資料。',
     refresh: '首次搜尋後，修改配置會自動更新已展開的規劃。取消或收起可暫停。',
     waiting: '等待目前角色重算完成，再搜尋修改後的天賦樹…',
     limits: '每次最多投入或退還 8 點、重算 512 個完整方案。洗點模式在目前總點數內搬移末端分支。',
     limited: '已達搜尋上限；結果僅涵蓋本次已評估的路線。',
+    data: '資料版本', tree: '天賦樹版本', defaultTree: '預設', unknownVersion: '無法取得',
+    baselineLimits: '基準計算限制', baselineLimitsHint: '這些引擎回報的效果已存在於評估基準，並非路線新增效果；計算出的提升不代表已解決這些限制。',
+    excluded: '已排除的完整路線', excludedHint: '這些已評估的變更不列入推薦，也無法套用。',
+    newLimits: '新增未支援效果', engineError: '引擎錯誤', invalidStats: '引擎回傳了非有限數值的計算結果。',
+    previewHint: '樹上預覽標示的是提案路線，而非目前配置。提升數值比較重算路線與評估基準。',
   },
   'zh-CN': {
     title: '天赋提升规划', hint: '自动寻找当前天赋树可连接的路线，过路点计入预算。每个完整方案都按当前装备和主技能重新计算。',
@@ -74,18 +125,21 @@ const COPY = {
     noResults: '在本次点数预算和搜索范围内，未找到合法且优于当前配置的方案。',
     bounded: '这是有限范围的路线与组合搜索，不保证全局最优。请先查看路线，再投入或退还天赋点。',
     skipped: '已排除含新增未建模效果的方案', evaluated: '已重算方案', add: '新增', remove: '退还', cost: '净投入', score: '目标提升',
-    needsBuild: '导入或新建角色后可规划天赋提升。', route: '完整路线', baseline: '当前配置',
+    needsBuild: '导入或新建角色后可规划天赋提升。', route: '完整路线', baseline: '评估基准',
     unavailable: '缺少职业起点或天赋连接数据。',
     refresh: '首次搜索后，修改配置会自动更新已展开的规划。取消或收起可暂停。',
     waiting: '等待当前角色重算完成，再搜索修改后的天赋树…',
     limits: '每次最多投入或退还 8 点、重算 512 个完整方案。洗点模式在当前总点数内搬移末端分支。',
     limited: '已达搜索上限；结果仅涵盖本次已评估的路线。',
+    data: '数据版本', tree: '天赋树版本', defaultTree: '默认', unknownVersion: '无法取得',
+    baselineLimits: '基准计算限制', baselineLimitsHint: '这些引擎报告的效果已存在于评估基准，并非路线新增效果；计算出的提升不代表已解决这些限制。',
+    excluded: '已排除的完整路线', excludedHint: '这些已评估的变更不列入推荐，也无法应用。',
+    newLimits: '新增未支持效果', engineError: '引擎错误', invalidStats: '引擎返回了非有限数值的计算结果。',
+    previewHint: '树上预览标示的是提案路线，而非当前配置。提升数值比较重算路线与评估基准。',
   },
 };
 
-export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focusPlanner }: Props) {
-  const text = COPY[lang];
-  const tt = bindT(lang);
+export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPreview, focusPlanner }: Props): TreeOptimizerState {
   const [expanded, setExpanded] = useState(Boolean(focusPlanner));
   const [mode, setMode] = useState<'allocate' | 'reallocate'>('allocate');
   const [points, setPoints] = useState(3);
@@ -99,13 +153,14 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
   });
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [completed, setCompleted] = useState<{ key: string; request: CalculateBuildRequest;
-    result: PassivePlannerResult; objective: Objective } | null>(null);
+  const [completed, setCompleted] = useState<PassiveReceipt | null>(null);
   const [tracking, setTracking] = useState(false);
   const [runId, setRunId] = useState(0);
   const [preview, setPreview] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const timerRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const consumedFocus = useRef<number | undefined>(undefined);
   const previewRef = useRef(onPreview);
   previewRef.current = onPreview;
   const context = useMemo(() => passivePlanningContext(nodes, session.allocatedNodes,
@@ -117,37 +172,65 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
   const baselineStats = useMemo(() => Object.fromEntries((session.calc?.stats ?? []).map(stat => [stat.id, stat.value ?? 0])), [session.calc]);
   const objective = useMemo(() => objectiveOf(goal, baselineStats), [goal, baselineStats]);
   const request = useMemo(() => session.currentRequest(), [session.currentRequest, session.stateVersion]);
-  // Include the materialized request as well as the revision: results never migrate to another tree.
-  const snapshotKey = useMemo(() => JSON.stringify([session.stateVersion, request, mode, points, goal, attribute]),
-    [session.stateVersion, request, mode, points, goal, attribute]);
+  // Pair the full evaluation with its effective goal and authoritative jewel topology.
+  const snapshotKey = useMemo(() => JSON.stringify([session.stateVersion, session.dataVersion, session.treeVersion,
+    session.activeWeaponSet, request, session.calc?.tree_effects, mode, points, goal, attribute, objective]),
+  [session.stateVersion, session.dataVersion, session.treeVersion, session.activeWeaponSet, request,
+    session.calc?.tree_effects, mode, points, goal, attribute, objective]);
   const latestKeyRef = useRef(snapshotKey);
   latestKeyRef.current = snapshotKey;
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const evaluated = completed?.key === snapshotKey ? completed.result : null;
 
-  useEffect(() => {
-    if (!focusPlanner) return;
+  useLayoutEffect(() => {
+    if (!active || !focusPlanner || !containerRef.current || consumedFocus.current === focusPlanner.nonce) return;
+    consumedFocus.current = focusPlanner.nonce;
     setExpanded(true);
     containerRef.current?.scrollIntoView({ block: 'start' });
-  }, [focusPlanner?.nonce]);
+  }, [active, focusPlanner?.nonce, nodes]);
 
-  useEffect(() => {
+  const stop = () => {
     abortRef.current?.abort();
-    setCompleted(null);
-    setError(null);
+    abortRef.current = null;
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    timerRef.current = null;
+    setProgress(null);
     setPreview(null);
     previewRef.current(null);
+  };
+  const cancel = () => {
+    stop();
+    setTracking(false);
+  };
+  useLayoutEffect(() => {
+    stop();
+    setCompleted(null);
+    setError(null);
   }, [snapshotKey]);
+  useLayoutEffect(() => {
+    if (!active) { cancel(); setError(null); }
+  }, [active]);
+  useLayoutEffect(() => () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    timerRef.current = null;
+  }, []);
 
   useEffect(() => {
     abortRef.current?.abort();
     abortRef.current = null;
     setProgress(null);
-    if (!tracking || !expanded || session.busy || session.error || !session.character
+    if (!active || !tracking || !expanded || completed?.key === snapshotKey
+      || session.busy || session.error || !session.character
       || !request || context.root === null || (mode === 'reallocate' && !context.canRefund)) return;
     const controller = new AbortController();
     abortRef.current = controller;
     // Coalesce rapid edits and wait for the session's new baseline before spending the search budget.
-    const timer = setTimeout(async () => {
+    const timer = window.setTimeout(async () => {
+      if (timerRef.current === timer) timerRef.current = null;
+      if (!activeRef.current || controller.signal.aborted || abortRef.current !== controller || latestKeyRef.current !== snapshotKey) return;
       const prepared = withTravelAttributes(request, nodes, attribute);
       setProgress({ done: 0, total: PASSIVE_PLAN_LIMIT });
       setCompleted(null);
@@ -155,52 +238,67 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
       try {
         const result = await planPassiveUpgrades({ request: prepared, context, points, mode, objective,
           signal: controller.signal, onProgress: (done, total) => {
-            if (!controller.signal.aborted && latestKeyRef.current === snapshotKey) setProgress({ done, total });
+            if (activeRef.current && !controller.signal.aborted && abortRef.current === controller && latestKeyRef.current === snapshotKey) setProgress({ done, total });
           } });
-        if (!controller.signal.aborted && abortRef.current === controller && latestKeyRef.current === snapshotKey) {
-          setCompleted({ key: snapshotKey, request: prepared, result, objective });
+        if (activeRef.current && !controller.signal.aborted && abortRef.current === controller && latestKeyRef.current === snapshotKey) {
+          setCompleted({ key: snapshotKey, request, preparedRequest: prepared, result, objective,
+            dataVersion: session.dataVersion, treeVersion: session.treeVersion });
         }
       } catch (err) {
-        if (!controller.signal.aborted && latestKeyRef.current === snapshotKey) setError(formatApiError(err));
+        if (activeRef.current && !controller.signal.aborted && abortRef.current === controller && latestKeyRef.current === snapshotKey) setError(formatApiError(err));
       } finally {
         if (abortRef.current === controller) { setProgress(null); abortRef.current = null; }
       }
     }, 350);
+    timerRef.current = timer;
     return () => {
-      clearTimeout(timer);
+      window.clearTimeout(timer);
+      if (timerRef.current === timer) timerRef.current = null;
       controller.abort();
       if (abortRef.current === controller) abortRef.current = null;
     };
-  }, [snapshotKey, tracking, expanded, session.busy, session.error, session.character, request,
+  }, [active, snapshotKey, tracking, expanded, completed, session.busy, session.error, session.character, request,
     context, nodes, attribute, points, mode, objective, runId]);
 
   const run = () => {
+    if (!active || session.busy || session.error) return;
+    stop();
+    jewelPlanner.stop();
     setCompleted(null);
     setError(null);
-    setPreview(null);
-    previewRef.current(null);
     setTracking(true);
     setRunId(value => value + 1);
   };
-  const cancel = () => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setTracking(false);
-    setProgress(null);
-  };
   const show = (index: number | null) => {
-    if (latestKeyRef.current !== snapshotKey || (index !== null && !evaluated)) return;
+    if (!active || latestKeyRef.current !== snapshotKey || (index !== null && !evaluated?.plans[index])) return;
     setPreview(index);
     previewRef.current(index === null ? null : evaluated?.plans[index] ?? null);
   };
   const apply = (plan: PassivePlan) => {
-    if (!completed || completed.key !== latestKeyRef.current || session.busy) return;
-    const next = passivePlanAllocation(completed.request, context, plan, points, mode);
+    if (!active || !completed || completed.key !== latestKeyRef.current || session.busy
+      || JSON.stringify(session.currentRequest()) !== JSON.stringify(completed.request)
+      || !completed.result.plans.some(candidate => candidate === plan)) return;
+    const next = passivePlanAllocation(completed.preparedRequest, context, plan, points, mode);
     if (!next) return;
     // Apply the same full allocation and attribute choices used by the successful evaluation.
+    stop();
+    setCompleted(null);
     session.setAllocatedNodes(next.allocatedNodes, next.attributeChoices);
   };
-  const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 1 });
+  const jewelPlanner = useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active: active && expanded,
+    mode, points, attribute, objective, onPreview, onStart: cancel });
+  return { session, lang, nodeLabel, containerRef, expanded, setExpanded, mode, setMode, points, setPoints,
+    goal, setGoal, attribute, setAttribute, context, tracking, progress, error, completed, evaluated, preview,
+    run, cancel, show, apply, jewelPlanner };
+}
+
+export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
+  const { session, lang, nodeLabel, containerRef, expanded, setExpanded, mode, setMode, points, setPoints,
+    goal, setGoal, attribute, setAttribute, context, tracking, progress, error, completed, evaluated, preview,
+    run, cancel, show, apply, jewelPlanner } = planner;
+  const text = COPY[lang];
+  const tt = bindT(lang);
+  const number = (value: number) => value.toLocaleString('en-US', { maximumFractionDigits: 2 });
   const delta = (value: number, baseline: number) => baseline > 0
     ? `${value >= baseline ? '+' : ''}${((value / baseline - 1) * 100).toFixed(1)}%`
     : `${value >= baseline ? '+' : ''}${number(value - baseline)}`;
@@ -239,10 +337,32 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
         {evaluated && <>
           <div className="tree-planner-summary"><span>{text.evaluated}: {evaluated.evaluated}</span>
             {evaluated.evaluated > 0 && <span>{text.baseline}: DPS {number(currentStats.TotalDPS ?? 0)} · EHP {number(currentStats.TotalEHP ?? 0)}</span>}
+            <span>{text.data}: {completed!.dataVersion ?? text.unknownVersion} · {text.tree}: {completed!.treeVersion ?? text.defaultTree}</span>
             {preview !== null && <button onClick={() => show(null)}>{text.clear}</button>}
           </div>
           {evaluated.limited && <p className="tree-planner-hint">{text.limited}</p>}
           {evaluated.unmodeled > 0 && <p className="tree-planner-hint">{text.skipped}: {evaluated.unmodeled}</p>}
+          {preview !== null && <p className="tree-planner-hint" role="status">{text.previewHint}</p>}
+          {evaluated.baselineUnsupported.length > 0 && <details className="tree-planner-diagnostics tree-planner-baseline-unsupported">
+            <summary>{text.baselineLimits}: {evaluated.baselineUnsupported.length}</summary>
+            <p className="tree-planner-hint">{text.baselineLimitsHint}</p>
+            <ul>{evaluated.baselineUnsupported.map((reason, index) => <li key={index}>{reason}</li>)}</ul>
+          </details>}
+          {evaluated.excluded.length > 0 && <details className="tree-planner-diagnostics">
+            <summary>{text.excluded}: {evaluated.excluded.length}</summary>
+            <p className="tree-planner-hint">{text.excludedHint}</p>
+            <ol className="tree-planner-excluded">{evaluated.excluded.map(({ plan, unsupported, error: engineError }, index) => <li key={index}>
+              <details>
+                <summary>{text.route}: {nodeLabel(plan.target)} · {text.add} {plan.allocate.length} · {text.remove} {plan.deallocate.length}</summary>
+                <p>{text.add}: {plan.allocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}</p>
+                <p>{text.remove}: {plan.deallocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}</p>
+                {unsupported.length > 0 && <><p>{text.newLimits}</p>
+                  <ul>{unsupported.map((reason, reasonIndex) => <li key={reasonIndex}>{reason}</li>)}</ul></>}
+                {engineError && <p className="opt-error">{text.engineError}: {engineError}</p>}
+                {unsupported.length === 0 && !engineError && <p className="opt-error">{text.invalidStats}</p>}
+              </details>
+            </li>)}</ol>
+          </details>}
           {evaluated.plans.length === 0 && <p className="tree-planner-hint">{text.noResults}</p>}
           <ol className="tree-planner-results">
             {evaluated.plans.map((plan, index) => <li key={index} className={preview === index ? 'is-previewed' : ''}>
@@ -250,7 +370,10 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
                 <span>{text.cost} {plan.allocate.length - plan.deallocate.length} · {text.add} {plan.allocate.length}{plan.deallocate.length > 0 ? ` · ${text.remove} ${plan.deallocate.length}` : ''}</span></div>
               <div className="tree-plan-metrics">
                 <span>{text.score} <b>{delta(scoreOf(plan.stats, completed!.objective), scoreOf(currentStats, completed!.objective))}</b></span>
-                {(['TotalDPS', 'TotalEHP', 'Life'] as const).map(stat => <span key={stat}>{stat === 'TotalDPS' ? 'DPS' : stat === 'TotalEHP' ? 'EHP' : tt('opt.objLife')} <b className={(plan.stats[stat] ?? 0) >= (currentStats[stat] ?? 0) ? 'is-positive' : 'is-negative'}>{delta(plan.stats[stat] ?? 0, currentStats[stat] ?? 0)}</b></span>)}
+                {(['TotalDPS', 'TotalEHP', 'Life'] as const).map(stat => <span key={stat}>
+                  {stat === 'TotalDPS' ? 'DPS' : stat === 'TotalEHP' ? 'EHP' : tt('opt.objLife')} <b className={(plan.stats[stat] ?? 0) >= (currentStats[stat] ?? 0) ? 'is-positive' : 'is-negative'}>{delta(plan.stats[stat] ?? 0, currentStats[stat] ?? 0)}</b>
+                  <small>{number(currentStats[stat] ?? 0)} → <output data-stat={stat}>{number(plan.stats[stat] ?? 0)}</output></small>
+                </span>)}
               </div>
               <details><summary>{text.route}</summary><p>{text.add}: {plan.allocate.map(nodeLabel).join(' · ')}</p>
                 {plan.deallocate.length > 0 && <p>{text.remove}: {plan.deallocate.map(nodeLabel).join(' · ')}</p>}</details>
@@ -259,9 +382,7 @@ export function TreeOptimizer({ session, lang, nodes, nodeLabel, onPreview, focu
           </ol>
           <p className="tree-planner-hint">{text.bounded}</p>
         </>}
-        <JewelPassivePlanner session={session} lang={lang} nodes={nodes} nodeLabel={nodeLabel}
-          mode={mode} points={points} attribute={attribute} objective={objective} onPreview={onPreview}
-          onStart={() => { cancel(); setPreview(null); }} />
+        <JewelPassivePlanner planner={jewelPlanner} />
       </div>}
     </div>
   );

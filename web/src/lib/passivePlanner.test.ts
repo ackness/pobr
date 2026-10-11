@@ -243,20 +243,86 @@ describe('passive upgrade planner', () => {
     expect(result.plans).toEqual([]);
   });
 
-  it('excludes newly unmodeled passive effects while retaining baseline warnings', async () => {
-    const context = passivePlanningContext([node(1, [2, 3]), node(2), node(3)], [], 'Sorceress');
-    const engine = evaluator([], ids => stats(ids.has(2) ? 200 : ids.has(3) ? 120 : 100));
-    const result = await planPassiveUpgrades({ request: {}, context, points: 1, mode: 'allocate', objective,
+  it('preserves baseline reasons and pairs new probe diagnostics with the complete excluded route', async () => {
+    // Synthetic graph and evaluator: diagnostics use the real timeless engine reason format.
+    const baselineReason = 'Tree:8: missing timeless jewel seed data';
+    const newReason = 'Tree:3: missing timeless jewel seed data';
+    const error = 'Passive calculation failed for node 5';
+    const context = passivePlanningContext([node(1, [2, 4, 6, 8]), node(2, [3]), node(3),
+      node(4, [5]), node(5), node(6), node(8)], [8], 'Sorceress');
+    const engine = evaluator([8], ids => stats(100 + (ids.has(3) ? 80 : 0) + (ids.has(5) ? 60 : 0) + (ids.has(6) ? 20 : 0)));
+    const result = await planPassiveUpgrades({ request: { allocated_nodes: [8] }, context, points: 2, mode: 'allocate', objective,
       evaluate: async options => {
         const response = await engine.evaluate(options);
         return { ...response, results: response.results.map(row => ({ ...row,
-          unsupported: ['Also grants 102 Guard', ...(options.variants[row.index].allocate_nodes?.includes(2) ? ['Unknown drawback'] : [])],
-        })) };
+          unsupported: [baselineReason, ...(options.variants[row.index].allocate_nodes?.includes(3) ? [newReason] : [])],
+          error: options.variants[row.index].allocate_nodes?.includes(5) ? error : null,
+        })).reverse() };
       },
     });
-    expect(result.plans[0].allocate).toEqual([3]);
-    expect(result.plans.some(plan => plan.allocate.includes(2))).toBe(false);
+    expect(result.baselineUnsupported).toEqual([baselineReason]);
+    expect(result.excluded).toEqual(expect.arrayContaining([
+      { plan: { allocate: [2, 3], deallocate: [], target: 3 }, unsupported: [newReason] },
+      { plan: { allocate: [4, 5], deallocate: [], target: 5 }, unsupported: [], error },
+    ]));
+    expect(result.excluded).toHaveLength(2);
     expect(result.unmodeled).toBe(1);
+    expect(result.plans[0].allocate).toEqual([6]);
+    expect(result.plans.some(plan => plan.allocate.includes(3) || plan.allocate.includes(5))).toBe(false);
+  });
+
+  it('retains new combination reasons and engine errors without confusing batch-local route indexes', async () => {
+    // Synthetic interaction fixture: each complete branch is supported alone.
+    const baselineReason = 'Also grants 102 Guard';
+    const interactionReason = 'Tree:3: missing timeless jewel seed data';
+    const error = 'Combined passive calculation failed';
+    const nodes = [node(1, [2, 4, 6]), node(2, [3]), node(3), node(4, [5]), node(5), node(6, [7]), node(7)];
+    const context = passivePlanningContext(nodes, [], 'Sorceress');
+    const engine = evaluator([], ids => stats(100 + (ids.has(3) ? 30 : 0) + (ids.has(5) ? 20 : 0) + (ids.has(7) ? 10 : 0)));
+    const result = await planPassiveUpgrades({ request: {}, context, points: 4, mode: 'allocate', objective,
+      evaluate: async options => {
+        const response = await engine.evaluate(options);
+        return { ...response, results: response.results.map(row => {
+          const ids = options.variants[row.index].allocate_nodes ?? [];
+          return { ...row, unsupported: [baselineReason, ...(ids.includes(3) && ids.includes(5) ? [interactionReason] : [])],
+            error: ids.includes(3) && ids.includes(7) ? error : null };
+        }).reverse() };
+      },
+    });
+    expect(result.baselineUnsupported).toEqual([baselineReason]);
+    expect(result.excluded).toEqual(expect.arrayContaining([
+      { plan: { allocate: [2, 3, 4, 5], deallocate: [], target: 3 }, unsupported: [interactionReason] },
+      { plan: { allocate: [2, 3, 6, 7], deallocate: [], target: 3 }, unsupported: [], error },
+    ]));
+    expect(result.excluded).toHaveLength(2);
+    expect(result.unmodeled).toBe(1);
+    expect(result.plans.some(plan => plan.allocate.includes(3) && (plan.allocate.includes(5) || plan.allocate.includes(7)))).toBe(false);
+  });
+
+  it('pairs rejected reallocation combinations with both the complete refund and replacement branches', async () => {
+    // Synthetic branch-swap fixture: the failure belongs to the swap, not either probe.
+    const baselineReason = 'Also grants 102 Guard';
+    const newReason = 'Tree:5: missing timeless jewel seed data';
+    const error = 'Replacement branch calculation failed';
+    const nodes = [node(1, [2, 4]), node(2, [3]), node(3), node(4, [5]), node(5)];
+    const context = passivePlanningContext(nodes, [2, 3], 'Sorceress');
+    const engine = evaluator([2, 3], ids => stats(100 + (ids.has(3) ? 5 : 0) + (ids.has(5) ? 50 : 0)));
+    const result = await planPassiveUpgrades({ request: { allocated_nodes: [2, 3] }, context, points: 2, mode: 'reallocate', objective,
+      evaluate: async options => {
+        const response = await engine.evaluate(options);
+        return { ...response, results: response.results.map(row => {
+          const variant = options.variants[row.index];
+          const swap = Boolean(variant.deallocate_nodes?.includes(2) && variant.allocate_nodes?.includes(5));
+          return { ...row, unsupported: [baselineReason, ...(swap ? [newReason] : [])], error: swap ? error : null };
+        }).reverse() };
+      },
+    });
+    expect(result.baselineUnsupported).toEqual([baselineReason]);
+    expect(result.excluded).toEqual([
+      { plan: { allocate: [4, 5], deallocate: [2, 3], target: 5 }, unsupported: [newReason], error },
+    ]);
+    expect(result.unmodeled).toBe(1);
+    expect(result.plans.some(plan => plan.allocate.includes(5))).toBe(false);
   });
 
   it('caps broad searches deterministically', async () => {

@@ -840,7 +840,7 @@ fn normalize_stat_name(stat: &str) -> String {
 /// through, and the dormant LIST channel is left alone).
 fn translate_vendor_name(name: &str, flags: &[String]) -> (String, Vec<String>) {
     if let Some(bound) = damage_bound_mod_name(name) {
-        return (bound, flags.to_vec());
+        return (bound.to_owned(), flags.to_vec());
     }
     match name {
         "CritChance" => ("CriticalStrikeChance".into(), flags.to_vec()),

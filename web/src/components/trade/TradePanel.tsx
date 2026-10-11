@@ -4,7 +4,7 @@ import { ItemReplacementCheck } from './ItemReplacementCheck';
 import { WeaponSetControl } from '../shared/WeaponSetControl';
 import { SlotSymbol } from '../shared/SlotSymbol';
 import { PageHeader } from '../shared/PageHeader';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useItemDisplayNames, useLocalizedLines } from '../../hooks/useLocalizedLines';
@@ -32,8 +32,8 @@ const CURRENCY_KEY = 'pobr-trade-currency';
 type SlotResult = PositionAnalysis;
 
 /** Local build analysis produces official search links; login and buying stay on the market. */
-export function TradePanel({ session, lang, focus, onSkills, onTree, initialItemText }: {
-  session: BuildSession; lang: Lang; focus?: {slot:string; nonce:number; jewelType?: JewelSearchType};
+export function TradePanel({ session, lang, active, focus, onSkills, onTree, initialItemText }: {
+  session: BuildSession; lang: Lang; active: boolean; focus?: {slot:string; nonce:number; jewelType?: JewelSearchType};
   onSkills?: (group:number) => void; onTree?: () => void;
   initialItemText?: string;
 }) {
@@ -101,13 +101,24 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
     }).catch(() => { if (!cancelled) setLeagueFallback(true); });
     return () => { cancelled = true; };
   }, [realm]);
-  // Market-only changes update links immediately; they do not rerun local calculations.
-  useEffect(() => {
+  // Invalidate before async work can publish against a newly committed build or goal,
+  // including while hidden. Market-only changes still update links without recalculation.
+  useLayoutEffect(() => {
     abortRef.current?.abort(); abortRef.current = null;
     cacheRef.current = {};
     setRunning(null); setProgress(null); setResults({}); setAllProgress(null); setInterrupted(false); setRequiredStats({});
   }, [goal, session.currentRequest, categories, jewelTypes]);
-  useEffect(() => () => { abortRef.current?.abort(); abortRef.current = null; }, []);
+  useLayoutEffect(() => {
+    if (active || !abortRef.current) return;
+    abortRef.current.abort(); abortRef.current = null;
+    setRunning(null); setProgress(null); setInterrupted(true);
+  }, [active]);
+  useLayoutEffect(() => () => { abortRef.current?.abort(); abortRef.current = null; }, []);
+  useLayoutEffect(() => {
+    if (selected.startsWith('Jewel@') && !session.allocatedNodes.includes(Number(selected.slice(6)))) {
+      setSelected('weapon1');
+    }
+  }, [selected, session.allocatedNodes]);
 
   const slots = [...TRADE_SLOTS, ...jewelSockets.filter(node => session.allocatedNodes.includes(node)).map(node => `Jewel@${node}`)];
   const bySlot = new Map([...session.items, ...session.flasks,
@@ -138,7 +149,7 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
     requiredStats: requiredStats[selected],
   }) : null;
   const maxGain = Math.max(...(weights?.weighted.map(weight => weight.gain) ?? []), 1e-9);
-  const disabled = running !== null || session.busy || !catalog;
+  const disabled = !active || running !== null || session.busy || !catalog;
   const number = (value: number, digits = 2) => value.toLocaleString(lang, { maximumFractionDigits: digits });
 
   const priorities = rankUpgradePositions(results, objective);
@@ -152,6 +163,7 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
     setRunning(null); setProgress(null); setInterrupted(true);
   };
   const analyze = async (targets: string[], all = false, force = false) => {
+    if (!active) return;
     const request = session.currentRequest();
     if (!request || !catalog) return;
     const controller = new AbortController(); abortRef.current = controller;
@@ -234,7 +246,7 @@ export function TradePanel({ session, lang, focus, onSkills, onTree, initialItem
       <button disabled={!onTree} onClick={onTree}><SlotSymbol slot="Jewel@" /><strong>{ut('tree')}</strong><span>{ut('treeHint')}</span></button>
     </div>
     <p className="upgrade-shared-goal">{ut('sharedGoal')}</p>
-    <ItemReplacementCheck session={session} lang={lang} objective={objective} catalog={catalog} jewelSockets={jewelSockets} initialItemText={initialItemText}
+    <ItemReplacementCheck session={session} lang={lang} active={active} objective={objective} catalog={catalog} jewelSockets={jewelSockets} initialItemText={initialItemText}
       goalLabel={tt(TRADE_OBJECTIVES.find(entry => entry.id === preset)!.labelKey as UiKey)}
       onEditGoal={() => { goalRef.current?.scrollIntoView({ block: 'start' }); goalRef.current?.focus({ preventScroll: true }); }} />
     <div className="trade-setup">

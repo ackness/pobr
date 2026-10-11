@@ -124,70 +124,167 @@ pub fn mapped_stat_modifiers(
     effect_id: &str,
     set_key: Option<&str>,
 ) -> Vec<Modifier> {
-    if ctx.mode == StatMapMode::Compare {
-        for ds in stats {
-            if ds.value == 0.0 {
-                continue;
-            }
-            let outcome = match ctx.catalog {
-                Some(c) => stat_map_engine::map_stat(c, effect_id, set_key, &ds.stat, ds.value),
-                None => MappedOutcome::Unknown,
-            };
-            let record = match &outcome {
-                MappedOutcome::Mapped(items) => {
-                    let mut injected: Vec<(String, &'static str, f64)> = items
-                        .iter()
-                        .filter_map(|item| match item {
-                            MappedItem::Modifier(m) => Some((
-                                m.name.to_string(),
-                                m.mod_type.as_trace_label(),
-                                m.value.as_number().unwrap_or(0.0),
-                            )),
-                            MappedItem::SkillData { .. } => None,
-                        })
-                        .collect();
-                    injected.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-                    Some(("mapped", format!("data={injected:?}")))
-                }
-                MappedOutcome::Unsupported(reason) => {
-                    Some(("unsupported", format!("unsupported:{}", reason.category())))
-                }
-                MappedOutcome::Unknown => Some(("unknown", String::new())),
-            };
-            if let Some((classification, detail)) = record {
-                ctx.record(&ds.stat, label_prefix.to_string(), classification, detail);
-            }
-        }
-    }
-    data_mapped_stat_modifiers(
+    mapped_stat_modifiers_observed(
+        ctx,
         stats,
         source_kind,
         label_prefix,
         effect_id,
         set_key,
-        ctx.catalog,
+        |_, _| {},
     )
 }
 
-/// Data channel: the statmap data engine. See [`mapped_stat_modifiers`]'s doc for the
-/// effect context + selected-set override key; `SkillData` items have no consumer yet
-/// and are ignored; Unsupported / Unknown are silently skipped.
-pub fn data_mapped_stat_modifiers(
+/// Shares the actual primary mapping outcome with a scoped payload observer.
+/// Callers that only retain a subset of the mapped modifiers must not attach
+/// whole-payload limits here (for example, non-main exposure support ingestion).
+pub(super) fn mapped_stat_modifiers_observed(
+    ctx: &mut StatMapCtx<'_>,
     stats: &[pobr_data::catalog::SkillDamageStat],
     source_kind: SourceKind,
     label_prefix: &str,
     effect_id: &str,
     set_key: Option<&str>,
-    catalog: Option<&StatMapCatalog>,
+    mut observe: impl FnMut(&pobr_data::catalog::SkillDamageStat, &MappedOutcome),
 ) -> Vec<Modifier> {
-    crate::skill_env::data_mapped_stat_modifiers(
-        stats,
-        source_kind,
-        label_prefix,
-        effect_id,
-        set_key,
-        catalog,
-    )
+    let mut mods = Vec::new();
+    for ds in stats {
+        if ds.value == 0.0 {
+            continue;
+        }
+        let outcome = match ctx.catalog {
+            Some(catalog) => {
+                stat_map_engine::map_stat(catalog, effect_id, set_key, &ds.stat, ds.value)
+            }
+            None => MappedOutcome::Unknown,
+        };
+        if ctx.mode == StatMapMode::Compare && ctx.records.is_some() {
+            let (classification, detail) = match &outcome {
+                MappedOutcome::Mapped(items) if items.is_empty() => {
+                    ("mapped", "data=[]".to_string())
+                }
+                MappedOutcome::Mapped(_) | MappedOutcome::Unsupported(_) => {
+                    classify_outcome(&outcome, "data").expect("nonempty or unsupported outcome")
+                }
+                MappedOutcome::Unknown => ("unknown", String::new()),
+            };
+            ctx.record(&ds.stat, label_prefix.to_string(), classification, detail);
+        }
+        observe(ds, &outcome);
+        let MappedOutcome::Mapped(items) = outcome else {
+            continue;
+        };
+        for item in items {
+            let MappedItem::Modifier(modifier) = item else {
+                continue;
+            };
+            let origin = ModifierSource::new(SourceId::new(
+                source_kind.clone(),
+                format!("{label_prefix}.{}", ds.stat),
+            ))
+            .with_raw_text(format!("{label_prefix} {} ({})", ds.stat, ds.value));
+            mods.push(modifier.with_origin(origin));
+        }
+    }
+    mods
+}
+
+/// Confirms a skipped primary conditional number, not an unknown/control stat.
+/// GlobalEffect mods belong to curse/debuff/player-buff consumers; LIST payloads
+/// include supported gem levels and minion Life, and skill_data/flags have their
+/// own consumers. None of those shapes establish a primary numerical limit.
+pub(super) fn skipped_support_condition(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &pobr_data::catalog::SkillDamageStat,
+    outcome: &MappedOutcome,
+) -> Option<stat_map_engine::UnsupportedReason> {
+    if !matches!(outcome, MappedOutcome::Unsupported(_)) {
+        return None;
+    }
+    let entry = catalog.lookup(effect_id, set_key, &stat.stat)?;
+    if entry.unextractable || entry.skill_flag.is_some() || !stat.value.is_finite() {
+        return None;
+    }
+    let value = stat_map_engine::merged_stat_value(
+        entry.div,
+        entry.mult,
+        entry.base,
+        entry.value,
+        stat.value,
+    );
+    entry
+        .mods
+        .iter()
+        .find_map(|element| skipped_conditional_number(element, value, stat.value))
+}
+
+fn skipped_conditional_number(
+    element: &pobr_data::catalog::stat_map::StatMapMod,
+    value: f64,
+    stat_value: f64,
+) -> Option<stat_map_engine::UnsupportedReason> {
+    use pobr_data::catalog::stat_map::StatMapValue;
+
+    if element.scalar.is_some() {
+        return None;
+    }
+    if element.kind == "group" {
+        let literal = match &element.value {
+            Some(StatMapValue::Number(value)) => Some(*value),
+            Some(_) => return None,
+            None => None,
+        };
+        let value = stat_map_engine::merged_stat_value(
+            element.div,
+            element.mult,
+            element.base,
+            literal,
+            stat_value,
+        );
+        return element
+            .mods
+            .iter()
+            .find_map(|nested| skipped_conditional_number(nested, value, stat_value));
+    }
+    if element.kind != "mod"
+        || !matches!(
+            element.mod_type.as_deref(),
+            Some("BASE" | "INC" | "MORE" | "OVERRIDE" | "CHANCE")
+        )
+        || value == 0.0
+        || !value.is_finite()
+        || stat_map_engine::is_global_effect(element)
+    {
+        return None;
+    }
+    let reason = element.tags.iter().find_map(|tag| {
+        let Some(StatMapValue::Text(kind)) = tag.get("type") else {
+            return None;
+        };
+        if !matches!(
+            kind.as_str(),
+            "Condition"
+                | "ActorCondition"
+                | "StatThreshold"
+                | "MultiplierThreshold"
+                | "SkillType"
+                | "DistanceRamp"
+                | "PerStat"
+                | "Multiplier"
+        ) {
+            return None;
+        }
+        // The primary mapper stops at its first failure. Inspecting this tag
+        // (not remapping the stat) prevents an unrelated routed sibling from
+        // masking a later unsupported conditional number in the skipped entry.
+        stat_map_engine::unsupported_tag_reason(tag)
+    })?;
+    let name = element.name.as_deref()?;
+    stat_map_engine::translated_mod_name_parts(name, &element.flags, &element.keyword_flags)
+        .ok()
+        .map(|_| reason)
 }
 
 /// The curse-effect mod fetch point: maps every stat in a curse skill's statset,

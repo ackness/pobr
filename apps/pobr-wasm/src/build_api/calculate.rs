@@ -173,7 +173,8 @@ fn main_skill_json(
 struct CalculateBuildResponse {
     /// The full set of display_catalog Computed fields (id/value/category).
     stats: Vec<pobr_data::display_stat::DisplayStatValue>,
-    /// Modifier text that couldn't be parsed (output directly to the frontend's hint area).
+    /// Unparsed modifier text and confirmed source-specific calculation limits,
+    /// preserved verbatim for display and baseline-versus-edit comparison.
     unsupported_modifiers: Vec<String>,
     /// The mod-line breakdown for aggregated stats (keyed by ModName, see [`BREAKDOWN_MOD_NAMES`]).
     breakdowns: BTreeMap<String, BreakdownJson>,

@@ -195,3 +195,24 @@ test('joint planner rejects unmodeled jewels and invalidates results after budge
   await page.getByRole('spinbutton', { name: 'Point budget', exact: true }).fill('2');
   await expect(planner.locator('.jewel-plan-results')).toHaveCount(0);
 });
+
+test('Upgrades drops a retained jewel position when its socket is unallocated on Tree', async ({ page }) => {
+  await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
+  await start(page, 'Rarity: MAGIC\nRuby\nImplicits: 0\n+20 to maximum Life');
+  const nav = (name: string) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name, exact: true });
+  const position = page.locator('.trade-position').filter({ hasText: `Jewel socket ${socket.skill}` });
+  await nav('Upgrades').click();
+  await position.click();
+  await expect(position).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Calculate affix scores', exact: true })).toBeEnabled();
+
+  await nav('Tree').click();
+  await circle(page, socket.skill).dispatchEvent('click');
+  await page.getByRole('button', { name: 'Unallocate socket', exact: true }).click();
+  await expect(circle(page, socket.skill)).not.toHaveClass(/node-allocated/);
+  expect((await saved(page)).allocatedNodes).not.toContain(socket.skill);
+
+  await nav('Upgrades').click();
+  await expect(position).toHaveCount(0);
+  await expect(page.locator('.trade-position[aria-pressed="true"] strong')).toHaveText('Main Hand');
+});

@@ -349,11 +349,14 @@ fn deadeye_golden_wave2_charges_leech_recoup_fields() {
     let out = calculate(&build, &default_opts()).expect("calc");
 
     // Charges: no mods -> current/maximum both 0.
-    assert_eq!(out.charge_power_current, 0, "charge_power_current");
+    assert_eq!(out.charge_power_current, 0.0, "charge_power_current");
     assert_eq!(out.charge_power_maximum, 0, "charge_power_maximum");
-    assert_eq!(out.charge_frenzy_current, 0, "charge_frenzy_current");
+    assert_eq!(out.charge_frenzy_current, 0.0, "charge_frenzy_current");
     assert_eq!(out.charge_frenzy_maximum, 0, "charge_frenzy_maximum");
-    assert_eq!(out.charge_endurance_current, 0, "charge_endurance_current");
+    assert_eq!(
+        out.charge_endurance_current, 0.0,
+        "charge_endurance_current"
+    );
     assert_eq!(out.charge_endurance_maximum, 0, "charge_endurance_maximum");
 
     // Leech rates: no mods -> 0.

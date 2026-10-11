@@ -109,11 +109,11 @@ pub struct OutputTable {
     // Defence recovery extensions (Lane A: charges / leech / Recoup; written
     // by perform fill, neutral 0 with no source)
     /// Charge current/max stacks (Power / Frenzy / Endurance).
-    pub charge_power_current: u32,
+    pub charge_power_current: f64,
     pub charge_power_maximum: u32,
-    pub charge_frenzy_current: u32,
+    pub charge_frenzy_current: f64,
     pub charge_frenzy_maximum: u32,
-    pub charge_endurance_current: u32,
+    pub charge_endurance_current: f64,
     pub charge_endurance_maximum: u32,
     /// Leech panel rate (per second; 0 = no leech).
     pub life_leech_rate: f64,
@@ -434,11 +434,11 @@ impl Default for OutputTable {
             trigger_rate_cap: 0.0,
             skill_trigger_rate: 0.0,
             // Lane A: charges / leech / Recoup default to neutral 0 (no effect on the panel without a source mod).
-            charge_power_current: 0,
+            charge_power_current: 0.0,
             charge_power_maximum: 0,
-            charge_frenzy_current: 0,
+            charge_frenzy_current: 0.0,
             charge_frenzy_maximum: 0,
-            charge_endurance_current: 0,
+            charge_endurance_current: 0.0,
             charge_endurance_maximum: 0,
             life_leech_rate: 0.0,
             mana_leech_rate: 0.0,

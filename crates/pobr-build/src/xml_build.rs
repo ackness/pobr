@@ -1549,7 +1549,7 @@ fn parse_socket_groups(xml: &str) -> Result<Vec<SocketGroup>, XmlError> {
             Ok(Event::End(e)) => match element_name_end(&e).as_str() {
                 "Skill" if in_target_set => {
                     if let Some(group) = current.take()
-                        && !group.gem_ids.is_empty()
+                        && (!group.gem_ids.is_empty() || !group.gem_skills.is_empty())
                     {
                         groups.push(group);
                     }

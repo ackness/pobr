@@ -158,7 +158,7 @@ pub(crate) fn pick_group_chosen_active<'b>(
 pub(crate) fn resolve_main_skill<'b>(
     build: &'b Build,
     data: &'b BuildData,
-) -> Option<(ResolvedSkillLevel, &'b SocketGroup, &'b str)> {
+) -> Option<(ResolvedSkillLevel, &'b SocketGroup, &'b str, Option<u32>)> {
     // Prefers PoB's designated main skill group (`mainSocketGroup`, 1-based) + the
     // group's mainActiveSkill. Falls back to whichever active skill is selected when
     // the group has no damaging skill candidate (vendor's semantics have no damage
@@ -171,7 +171,7 @@ pub(crate) fn resolve_main_skill<'b>(
         && let Some(resolved) =
             resolve_skill_level_with_gem_bonus(build, data, group, skill_id, level, set_index)
     {
-        return Some((resolved, group, skill_id));
+        return Some((resolved, group, skill_id, set_index));
     }
 
     // Fallback: scans every enabled group, taking the first one with a damaging skill candidate (also selected within the group by mainActiveSkill).
@@ -180,7 +180,7 @@ pub(crate) fn resolve_main_skill<'b>(
             && let Some(resolved) =
                 resolve_skill_level_with_gem_bonus(build, data, group, skill_id, level, set_index)
         {
-            return Some((resolved, group, skill_id));
+            return Some((resolved, group, skill_id, set_index));
         }
     }
     None

@@ -90,7 +90,12 @@ impl StatMapCatalog {
     /// Overrides on sets other than "1" only get hit with an explicit
     /// `set_key` (statSetIndex selection wiring is planned for the T5
     /// multi-statSet model).
-    fn lookup(&self, effect_id: &str, set_key: Option<&str>, stat: &str) -> Option<&StatMapEntry> {
+    pub(crate) fn lookup(
+        &self,
+        effect_id: &str,
+        set_key: Option<&str>,
+        stat: &str,
+    ) -> Option<&StatMapEntry> {
         let key = set_key.unwrap_or("1");
         if let Some(entry) = self
             .def
@@ -524,6 +529,23 @@ impl MergeParams {
     }
 }
 
+/// Reuses the engine's merge formula for observation of a skipped numerical payload.
+pub(crate) fn merged_stat_value(
+    div: Option<f64>,
+    mult: Option<f64>,
+    base: Option<f64>,
+    value: Option<f64>,
+    stat_value: f64,
+) -> f64 {
+    MergeParams {
+        div,
+        mult,
+        base,
+        value,
+    }
+    .merge(stat_value)
+}
+
 /// Translates a single element (mod / flag / skill_data / group). Groups
 /// recurse, and the nested mods use group-level parameters
 /// (CalcActiveSkill.lua:117).
@@ -798,15 +820,20 @@ const DAMAGE_TYPES: [&str; 5] = ["Physical", "Fire", "Cold", "Lightning", "Chaos
 /// `<Type>Min` / `<Type>Max` -> `<Type>DamageMin/Max` (shared by mod and
 /// skill_data: vendor uses this same set of key names for base damage on
 /// both channels).
-pub(crate) fn damage_bound_mod_name(name: &str) -> Option<String> {
-    for ty in DAMAGE_TYPES {
-        if let Some(bound) = name.strip_prefix(ty)
-            && (bound == "Min" || bound == "Max")
-        {
-            return Some(format!("{ty}Damage{bound}"));
-        }
-    }
-    None
+pub(crate) fn damage_bound_mod_name(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "PhysicalMin" => "PhysicalDamageMin",
+        "PhysicalMax" => "PhysicalDamageMax",
+        "FireMin" => "FireDamageMin",
+        "FireMax" => "FireDamageMax",
+        "ColdMin" => "ColdDamageMin",
+        "ColdMax" => "ColdDamageMax",
+        "LightningMin" => "LightningDamageMin",
+        "LightningMax" => "LightningDamageMax",
+        "ChaosMin" => "ChaosDamageMin",
+        "ChaosMax" => "ChaosDamageMax",
+        _ => return None,
+    })
 }
 
 /// The output of name translation: a PoBR ModName plus the directly
@@ -829,16 +856,6 @@ pub struct TranslatedName {
     pub keyword_flags: KeywordFlags,
 }
 
-impl TranslatedName {
-    fn bare(name: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            flags: ModFlags::NONE,
-            keyword_flags: KeywordFlags::NONE,
-        }
-    }
-}
-
 /// Direct translation of ModFlag tokens (PoBR's [`ModFlags`] already ports
 /// this subset; matching semantics agree on both sides -- PoB2's
 /// `ModList.lua` subset check equals PoBR `Modifier::matches`'s
@@ -854,11 +871,13 @@ impl TranslatedName {
 /// ModFlag is routed to the HIT keyword: the matching semantics agree with
 /// vendor bit for bit (applies on a hit, not on ailments/DoT), using the same
 /// rule as [`translate_keyword_flags`]'s handling of `KeywordFlag.Hit`.
-fn translate_mod_flags(tokens: &[String]) -> Result<(ModFlags, KeywordFlags), UnsupportedReason> {
+fn translate_mod_flags<'a>(
+    tokens: impl Iterator<Item = &'a str> + Clone,
+) -> Result<(ModFlags, KeywordFlags), UnsupportedReason> {
     let mut flags = ModFlags::NONE;
     let mut keyword_flags = KeywordFlags::NONE;
-    for token in tokens {
-        match token.as_str() {
+    for token in tokens.clone() {
+        match token {
             "Attack" => flags |= ModFlags::ATTACK,
             "Spell" => flags |= ModFlags::SPELL,
             "Melee" => flags |= ModFlags::MELEE,
@@ -873,7 +892,18 @@ fn translate_mod_flags(tokens: &[String]) -> Result<(ModFlags, KeywordFlags), Un
             // Vendor's `ModFlag.Hit` routes to PoBR's keyword HIT channel
             // (see the function doc).
             "Hit" => keyword_flags = keyword_flags | KeywordFlags::HIT,
-            _ => return Err(UnsupportedReason::UnsupportedFlags(tokens.join("|"))),
+            _ => {
+                let capacity = tokens.clone().map(str::len).sum::<usize>()
+                    + tokens.clone().count().saturating_sub(1);
+                let mut description = String::with_capacity(capacity);
+                for (index, token) in tokens.enumerate() {
+                    if index > 0 {
+                        description.push('|');
+                    }
+                    description.push_str(token);
+                }
+                return Err(UnsupportedReason::UnsupportedFlags(description));
+            }
         }
     }
     Ok((flags, keyword_flags))
@@ -978,6 +1008,20 @@ pub fn translate_mod_name(
     flags: &[String],
     keyword_flags: &[String],
 ) -> Result<TranslatedName, UnsupportedReason> {
+    let (name, flags, keyword_flags) = translated_mod_name_parts(name, flags, keyword_flags)?;
+    Ok(TranslatedName {
+        name: name.to_owned(),
+        flags,
+        keyword_flags,
+    })
+}
+
+/// Shared borrowed translation for modifier injection and support-limit inspection.
+pub(crate) fn translated_mod_name_parts<'a>(
+    name: &'a str,
+    flags: &[String],
+    keyword_flags: &[String],
+) -> Result<(&'a str, ModFlags, KeywordFlags), UnsupportedReason> {
     // Base-damage family: allowed to drop the Attack/Spell flag and
     // KeywordFlag (scope qualification makes no difference for a single main
     // skill; legacy is likewise flag-blind here).
@@ -991,40 +1035,41 @@ pub fn translate_mod_name(
                 keyword_flags.join("|"),
             ));
         }
-        return Ok(TranslatedName::bare(bound_name));
+        return Ok((bound_name, ModFlags::NONE, KeywordFlags::NONE));
     }
     // Name-dispatch family: the flag consumed by dispatch is removed from
     // the direct-translation set; remaining flags are translated as usual.
-    let (base_name, remaining_flags): (&str, Vec<String>) = match name {
+    let (base_name, consumed_flag) = match name {
         "Speed" => {
             if let Some(pos) = flags.iter().position(|f| f == "Attack") {
-                let mut rest = flags.to_vec();
-                rest.remove(pos);
-                ("AttackSpeed", rest)
+                ("AttackSpeed", Some(pos))
             } else if let Some(pos) = flags.iter().position(|f| f == "Cast") {
-                let mut rest = flags.to_vec();
-                rest.remove(pos);
-                ("CastSpeed", rest)
+                ("CastSpeed", Some(pos))
             } else {
-                ("SkillSpeed", flags.to_vec())
+                ("SkillSpeed", None)
             }
         }
         "Damage" => match flags {
-            [f] if f == "Attack" => ("AttackDamage", Vec::new()),
-            [f] if f == "Spell" => ("Damage", Vec::new()),
-            [f] if f == "Area" => ("AreaDamage", Vec::new()),
-            _ => ("Damage", flags.to_vec()),
+            [f] if f == "Attack" => ("AttackDamage", Some(0)),
+            [f] if f == "Spell" => ("Damage", Some(0)),
+            [f] if f == "Area" => ("AreaDamage", Some(0)),
+            _ => ("Damage", None),
         },
-        _ => (name, flags.to_vec()),
+        _ => (name, None),
     };
+    let remaining_flags = flags
+        .iter()
+        .enumerate()
+        .filter(move |(index, _)| Some(*index) != consumed_flag)
+        .map(|(_, flag)| flag.as_str());
     // Name translation (base_name after dispatch).
-    let translated: String = match base_name {
-        "CritChance" => "CriticalStrikeChance".to_string(),
-        "CritMultiplier" => "CriticalStrikeMultiplier".to_string(),
+    let translated = match base_name {
+        "CritChance" => "CriticalStrikeChance",
+        "CritMultiplier" => "CriticalStrikeMultiplier",
         // Crit chance cap: same name as vendor (e.g. Garukhan's Resolve's
         // `maximum_critical_strike_chance_is_%` -> CritChanceCap OVERRIDE 50);
         // consumer = `calc::crit::crit_chance_cap`.
-        "CritChanceCap" => base_name.to_string(),
+        "CritChanceCap" => base_name,
         // Same-name pass-through family (names either consumed directly by
         // PoBR calc or scope names with no consumer).
         "Damage"
@@ -1088,7 +1133,7 @@ pub fn translate_mod_name(
         // reduce_enemy_exposure's doc).
         | "FireExposureEffect"
         | "ColdExposureEffect"
-        | "LightningExposureEffect" => base_name.to_string(),
+        | "LightningExposureEffect" => base_name,
         //  Treats the enemy's elemental resistance as inverted on hit
         // (Rakiata's Flow's
         // `treat_enemy_resistances_as_negated_on_elemental_damage_hit_%_chance`
@@ -1096,14 +1141,14 @@ pub fn translate_mod_name(
         // Consumer = the resistance section of
         // `offence::enemy_damage_multiplier` (CalcOffence.lua:4145-4148
         // `resist = resist - 2 * invertChance * resist`).
-        "HitsInvertEleResChance" => base_name.to_string(),
+        "HitsInvertEleResChance" => base_name,
         //  Grenade's chance to detonate twice (vendor
         // SkillStatMap.lua:2795-2797's
         // `grenade_skill_%_chance_to_explode_twice` -> GrenadeActivateTwice
         // BASE; only a SupportPayload produces this stat). Consumer =
         // `calc::scaled_damage::dps_end_factors` (vendor
         // CalcOffence.lua:1124-1127 folds it into a DPS MORE).
-        "GrenadeActivateTwice" => base_name.to_string(),
+        "GrenadeActivateTwice" => base_name,
         //  Damage-ailment family pass-through (consumer = `calc::ailment` +
         // `calc::perform::fill_ailments`). Infliction chance: bleed/poison's
         // intrinsic `<Ailment>Chance` (vendor
@@ -1120,14 +1165,14 @@ pub fn translate_mod_name(
         // `<Ailment>CanStack` flag).
         "PoisonChance" | "BleedChance" | "EnemyIgniteChance" | "EnemyShockChance"
         | "AilmentMagnitude" | "EnemyShockMagnitude" | "EnemyChillMagnitude" | "PoisonStacks"
-        | "BleedStacks" | "IgniteStacks" => base_name.to_string(),
+        | "BleedStacks" | "IgniteStacks" => base_name,
         // (k3 backlog) Ailment stack-rate rateMod name pass-through (vendor
         // `faster_burn_%`/`faster_poison_%`/`faster_bleed_%`/
         // `damaging_ailments_deal_damage_+%_faster` -> `<Ailment>Faster` INC,
         // SkillStatMap.lua:843-848/:1255/:1479-1483). Consumer =
         // `calc::ailment::ailment_rate_mod` (CalcOffence.lua:5036 rateMod,
         // calcLib.mod's combined INC+MORE set under the same name).
-        "BleedFaster" | "PoisonFaster" | "IgniteFaster" => base_name.to_string(),
+        "BleedFaster" | "PoisonFaster" | "IgniteFaster" => base_name,
         // Backlog #9: warcry uptime-machinery pass-through family (vendor
         // `warcry_empowers_per_X_monster_power[_mp_cap]` -> WarcryPowerPer/Cap
         // (SkillStatMap.lua:608-613), Infernal Cry's per-set
@@ -1136,7 +1181,7 @@ pub fn translate_mod_name(
         // = `calc::warcry` (empower-count math CalcPerform.lua:2121-2123 +
         // the uptime-scaled DamageGainAsFire injection CalcOffence.lua:3251-3254).
         "WarcryPowerPer" | "WarcryPowerCap" | "InfernalExtraFireDamageMultiplier" => {
-            base_name.to_string()
+            base_name
         }
         //  Ailment duration -- vendor's infliction-side mod names carry an
         // Enemy prefix (the debuff duration applied to the enemy,
@@ -1145,28 +1190,24 @@ pub fn translate_mod_name(
         // while PoBR's `ailment_duration`/`scale_duration` aggregate under
         // `<Ailment>Duration`/`AilmentDuration` (the same family in
         // mod_parser) -> translation normalizes between the two.
-        "EnemyPoisonDuration" => "PoisonDuration".to_string(),
-        "EnemyBleedDuration" => "BleedDuration".to_string(),
-        "EnemyIgniteDuration" => "IgniteDuration".to_string(),
-        "EnemyAilmentDuration" | "DamagingAilmentDuration" => "AilmentDuration".to_string(),
+        "EnemyPoisonDuration" => "PoisonDuration",
+        "EnemyBleedDuration" => "BleedDuration",
+        "EnemyIgniteDuration" => "IgniteDuration",
+        "EnemyAilmentDuration" | "DamagingAilmentDuration" => "AilmentDuration",
         other => {
             // Conversion / gain-as family (`Skill<From>DamageConvertTo<To>` /
             // `[Skill]<From>DamageGainAs<To>`): PoB2 and PoBR use the same
             // naming, so it passes through by shape.
             if is_conversion_mod_name(other) {
-                other.to_string()
+                other
             } else {
                 return Err(UnsupportedReason::UnknownModName(other.to_string()));
             }
         }
     };
-    let (kw, extra_mod_flags) = translate_keyword_flags(keyword_flags, &translated)?;
-    let (mod_flags, kw_from_flags) = translate_mod_flags(&remaining_flags)?;
-    Ok(TranslatedName {
-        flags: mod_flags | extra_mod_flags,
-        keyword_flags: kw | kw_from_flags,
-        name: translated,
-    })
+    let (kw, extra_mod_flags) = translate_keyword_flags(keyword_flags, translated)?;
+    let (mod_flags, kw_from_flags) = translate_mod_flags(remaining_flags)?;
+    Ok((translated, mod_flags | extra_mod_flags, kw | kw_from_flags))
 }
 
 /// Validates the shape of a conversion / gain-as ModName:
@@ -1196,12 +1237,26 @@ fn is_conversion_mod_name(name: &str) -> bool {
 /// comparison can use it (vendor's modList tags are compared after going
 /// through the same normalizing translation).
 pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, UnsupportedReason> {
+    translate_tag_internal::<true>(tag)
+        .map(|tag| tag.expect("materializing tag translation returns a tag"))
+}
+
+/// Validate with the same grammar without constructing successful owned tags.
+pub(crate) fn unsupported_tag_reason(
+    tag: &BTreeMap<String, StatMapValue>,
+) -> Option<UnsupportedReason> {
+    translate_tag_internal::<false>(tag).err()
+}
+
+fn translate_tag_internal<const MATERIALIZE: bool>(
+    tag: &BTreeMap<String, StatMapValue>,
+) -> Result<Option<ModTag>, UnsupportedReason> {
     let tag_type = match tag.get("type") {
         Some(StatMapValue::Text(t)) => t.as_str(),
         _ => return Err(UnsupportedReason::UnsupportedTag("<missing type>".into())),
     };
     let text = |key: &str| match tag.get(key) {
-        Some(StatMapValue::Text(v)) => Some(v.clone()),
+        Some(StatMapValue::Text(v)) => Some(v.as_str()),
         _ => None,
     };
     let number = |key: &str| match tag.get(key) {
@@ -1224,7 +1279,7 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 ));
             };
             let negated = matches!(tag.get("neg"), Some(StatMapValue::Bool(true)));
-            Ok(ModTag::condition(var, negated))
+            Ok(MATERIALIZE.then(|| ModTag::condition(var, negated)))
         }
         // Enemy state condition (vendor e.g. `SkillStatMap.lua:1119`
         // `{ type = "ActorCondition", actor = "enemy", var = "Burning" }`):
@@ -1241,7 +1296,7 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                     tag.keys().collect::<Vec<_>>()
                 )));
             }
-            if text("actor").as_deref() != Some("enemy") {
+            if text("actor") != Some("enemy") {
                 return Err(UnsupportedReason::UnsupportedTag(
                     "ActorCondition actor is not enemy".into(),
                 ));
@@ -1252,7 +1307,7 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 ));
             };
             let negated = matches!(tag.get("neg"), Some(StatMapValue::Bool(true)));
-            Ok(ModTag::condition(format!("Enemy{var}"), negated))
+            Ok(MATERIALIZE.then(|| ModTag::condition(format!("Enemy{var}"), negated)))
         }
         "Multiplier" => {
             if !keys_subset_of(&[
@@ -1281,16 +1336,16 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
             // `ElementalConflux<El>Effect` as 1/N), and limitTotal (:370-371 +
             // 402-404's total cap, e.g. "each poison stack gives +N% damage,
             // up to +M% total") translate directly into ModTag fields.
-            Ok(ModTag::Multiplier {
-                var,
+            Ok(MATERIALIZE.then(|| ModTag::Multiplier {
+                var: var.to_owned(),
                 div: number("div").unwrap_or(1.0),
                 limit: number("limit"),
                 actor: None,
-                limit_var: text("limitVar"),
+                limit_var: text("limitVar").map(str::to_owned),
                 limit_actor: None,
                 invert: matches!(tag.get("invert"), Some(StatMapValue::Bool(true))),
                 limit_total: matches!(tag.get("limitTotal"), Some(StatMapValue::Bool(true))),
-            })
+            }))
         }
         // Threshold gate (vendor ModStore.lua:429-459): `mult =
         // GetMultiplier(var)`, `threshold = tag.threshold or
@@ -1321,7 +1376,7 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 // (sup_str.lua:5978-6024): no setter anywhere in the vendor
                 // tree -> always 0 (ValourStacks ≥ 0 always passes the gate,
                 // matching vendor's default-config behaviour).
-                (None, Some(v)) if v == "RefractionMinimumValour" => 0.0,
+                (None, Some("RefractionMinimumValour")) => 0.0,
                 (None, Some(v)) => {
                     return Err(UnsupportedReason::UnsupportedTag(format!(
                         "MultiplierThreshold thresholdVar has an unverified non-zero setter: {v}"
@@ -1333,11 +1388,11 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                     ));
                 }
             };
-            Ok(ModTag::MultiplierThreshold {
-                var,
+            Ok(MATERIALIZE.then(|| ModTag::MultiplierThreshold {
+                var: var.to_owned(),
                 threshold,
                 upper: matches!(tag.get("upper"), Some(StatMapValue::Bool(true))),
-            })
+            }))
         }
         "PerStat" => {
             if !keys_subset_of(&["type", "stat", "div", "limit", "limitTotal"]) {
@@ -1355,23 +1410,26 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
             // same-named variable through cfg.multipliers (abbreviations are
             // normalized to PoBR resource names). If the variable was never
             // injected it multiplies by 0 -> contributes 0 (safe undercount).
-            let var = match stat.as_str() {
-                "Str" => "Strength".to_string(),
-                "Dex" => "Dexterity".to_string(),
-                "Int" => "Intelligence".to_string(),
-                other => other.to_string(),
+            let var = match stat {
+                "Str" => "Strength",
+                "Dex" => "Dexterity",
+                "Int" => "Intelligence",
+                other => other,
             };
             // limit / limitTotal (vendor ModStore.lua:461-468 + :402-404;
             // e.g. Atalui's Bloodletting's
             // `PerStat{stat=LifeCost,div=20,limit=40,limitTotal}` -- +1% per
             // 20 life cost, capped at +40% total).
-            let mut mtag = ModTag::multiplier(var, number("div").unwrap_or(1.0), number("limit"));
-            if let (ModTag::Multiplier { limit_total, .. }, Some(StatMapValue::Bool(true))) =
-                (&mut mtag, tag.get("limitTotal"))
-            {
-                *limit_total = true;
-            }
-            Ok(mtag)
+            Ok(MATERIALIZE.then(|| {
+                let mut mtag =
+                    ModTag::multiplier(var, number("div").unwrap_or(1.0), number("limit"));
+                if let (ModTag::Multiplier { limit_total, .. }, Some(StatMapValue::Bool(true))) =
+                    (&mut mtag, tag.get("limitTotal"))
+                {
+                    *limit_total = true;
+                }
+                mtag
+            }))
         }
         // Skill-type qualifier (vendor `{ type = "SkillType", skillType =
         // SkillType.X, [neg = true] }`, e.g. Garukhan's
@@ -1392,16 +1450,18 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                 )));
             }
             let name = text("skillType");
-            let Some(bits) = name.as_deref().and_then(SkillTypes::from_pob2_name) else {
+            let Some(bits) = name.and_then(SkillTypes::from_pob2_name) else {
                 return Err(UnsupportedReason::UnsupportedTag(format!(
                     "SkillType has an unsupported type: {name:?}"
                 )));
             };
-            if matches!(tag.get("neg"), Some(StatMapValue::Bool(true))) {
-                Ok(ModTag::SkillTypesNeg(bits))
-            } else {
-                Ok(ModTag::SkillTypes(bits))
-            }
+            Ok(MATERIALIZE.then(|| {
+                if matches!(tag.get("neg"), Some(StatMapValue::Bool(true))) {
+                    ModTag::SkillTypesNeg(bits)
+                } else {
+                    ModTag::SkillTypes(bits)
+                }
+            }))
         }
         // Distance interpolation (vendor `{ type = "DistanceRamp", ramp =
         // {{d,m},...} }`, e.g. Close Combat's
@@ -1420,7 +1480,11 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                     "DistanceRamp is missing the ramp point list".into(),
                 ));
             };
-            let mut ramp = Vec::with_capacity(points.len());
+            let mut ramp = if MATERIALIZE {
+                Vec::with_capacity(points.len())
+            } else {
+                Vec::new()
+            };
             for point in points {
                 // Each point must be a `[distance, multiplier]` pair.
                 let StatMapValue::List(pair) = point else {
@@ -1436,14 +1500,20 @@ pub fn translate_tag(tag: &BTreeMap<String, StatMapValue>) -> Result<ModTag, Uns
                             .into(),
                     ));
                 };
-                ramp.push((*d, *m));
+                if MATERIALIZE {
+                    ramp.push((*d, *m));
+                }
             }
-            if ramp.is_empty() {
+            if points.is_empty() {
                 return Err(UnsupportedReason::UnsupportedTag(
                     "DistanceRamp ramp point list is empty".into(),
                 ));
             }
-            Ok(ModTag::DistanceRamp { ramp })
+            if MATERIALIZE {
+                Ok(Some(ModTag::DistanceRamp { ramp }))
+            } else {
+                Ok(None)
+            }
         }
         other => Err(UnsupportedReason::UnsupportedTag(other.to_string())),
     }
