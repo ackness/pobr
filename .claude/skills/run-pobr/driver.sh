@@ -86,13 +86,13 @@ cmd_build() {
 select_targets() {
   CARGO_ARGS=()
   if [[ $# -eq 0 ]]; then
-    echo "usage: ./pobr <test|lint|timings> <crate> <suite|lib> [args]" >&2
+    echo "usage: mise run <test|lint|timings> <crate> <suite|lib> [args]" >&2
     echo "Raw Cargo selectors also work: -p <crate> --test <suite>" >&2
     return 2
   fi
   if [[ "$1" == -* ]]; then CARGO_ARGS=("$@"); return 0; fi
   if [[ $# -lt 2 || "$2" == -* ]]; then
-    echo "Select a suite explicitly; use './pobr targets' to list them." >&2
+    echo "Select a suite explicitly; use 'mise run targets' to list them." >&2
     return 2
   fi
   local package="$1" suite="$2"
@@ -121,7 +121,7 @@ cmd_lint() {
 
 cmd_verify() {
   if [[ $# -lt 2 || $# -gt 3 || "$1" == -* || "$2" == -* || "${3:-}" == -* ]]; then
-    echo "usage: ./pobr verify <crate> <suite|lib> [filter]" >&2
+    echo "usage: mise run verify <crate> <suite|lib> [filter]" >&2
     return 2
   fi
   cmd_test "$@" && cmd_lint "$1" "$2"
@@ -151,7 +151,7 @@ for package in sorted(metadata["packages"], key=lambda p: p["name"]):
 
 cmd_cache() {
   if [[ $# -ne 0 ]]; then
-    echo "usage: ./pobr cache (read-only disk usage and file counts)" >&2
+    echo "usage: mise run cache (read-only disk usage and file counts)" >&2
     return 2
   fi
   python3 devs/scripts/cache-report.py
@@ -159,7 +159,7 @@ cmd_cache() {
 
 cmd_ci() {
   if [[ $# -lt 1 || $# -gt 2 || "$1" == -* || ( $# -eq 2 && "$2" != "--e2e" ) ]]; then
-    echo "usage: ./pobr ci <pushed-branch-or-tag> [--e2e]" >&2
+    echo "usage: mise run ci <pushed-branch-or-tag> [--e2e]" >&2
     echo "Runs the remote ref, not uncommitted or unpushed local changes." >&2
     echo "E2E is skipped unless --e2e is given." >&2
     return 2
@@ -167,28 +167,29 @@ cmd_ci() {
   local extra=()
   if [[ $# -eq 2 ]]; then extra=(-f e2e=true); fi
   gh workflow run ci.yml --ref "$1" ${extra[@]+"${extra[@]}"} &&
-    echo "CI requested for remote ref '$1'. Check './pobr ci-status'; this is not a passing result."
+    echo "CI requested for remote ref '$1'. Check 'mise run ci-status'; this is not a passing result."
 }
 
 cmd_help() {
   cat <<'EOF'
-PoBR development commands (run from any directory via this script's path):
-  ./pobr targets                          List Rust suites without compiling
-  ./pobr cache                            Report cache size and file counts (read-only)
-  ./pobr verify build skills [filter]      Targeted test + fmt + Clippy
-  ./pobr test core parser [filter]         Test one suite (or use 'lib')
-  ./pobr lint build skills                fmt + targeted Clippy
-  ./pobr timings build parity             Compile only, with HTML timings
-  ./pobr build [-p <crate>]               Build application CLI by default
-  ./pobr smoke                            Representative environment checks
-  ./pobr full                             Explicit full local Rust gate
-  ./pobr ci <pushed-branch-or-tag> [--e2e] Request full cloud CI via gh (E2E only with --e2e)
-  ./pobr ci-status [--branch <branch>]     List cloud CI results via gh
+PoBR development commands (mise tasks; without mise run this script with the same arguments):
+  mise run targets                          List Rust suites without compiling
+  mise run cache                            Report cache size and file counts (read-only)
+  mise run verify build skills [filter]      Targeted test + fmt + Clippy
+  mise run test core parser [filter]         Test one suite (or use 'lib')
+  mise run lint build skills                fmt + targeted Clippy
+  mise run timings build parity             Compile only, with HTML timings
+  mise run build [-p <crate>]               Build application CLI by default
+  mise run smoke                            Representative environment checks
+  mise run full                             Explicit full local Rust gate
+  mise run ci <pushed-branch-or-tag> [--e2e] Request full cloud CI via gh (E2E only with --e2e)
+  mise run ci-status [--branch <branch>]     List cloud CI results via gh
 
 test/lint/timings also accept raw Cargo arguments (-p, --test, --lib, ...).
 Use --test/--lib to bound compilation; a test-name filter alone cannot do that.
 Full release CI runs on tags. Do not run an identical full gate locally first.
-Data/setup: status, deps, vendor, bootstrap, data, versions, diff, drill, lua.
+Data/setup tasks: status, deps, vendor, bootstrap, data:status, versions, data:diff, drill, vendor:lua.
+Script subcommands for the renamed tasks: data, diff, lua.
 EOF
 }
 

@@ -33,8 +33,8 @@ rules live in the documents linked below.
 Run the checks that match your change; a full workspace run is not required.
 
 ```bash
-./pobr verify build skills <filter>      # Selected tests, fmt and Clippy
-./pobr test build parity no_regression   # Required for calculation, modifier or parser changes
+mise run verify build skills <filter>      # Selected tests, fmt and Clippy
+mise run test build parity no_regression   # Required for calculation, modifier or parser changes
 pnpm --dir web test <file> && pnpm --dir web typecheck
 ```
 

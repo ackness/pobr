@@ -6,7 +6,7 @@ Detailed repository guidance for coding agents and contributors. [AGENTS.md](AGE
 
 ## 构建环境
 
-开发入口是根目录 `./pobr`（`./pobr help` 查看命令），也可直接使用 Cargo。日常命令、工具链来源和缓存管理统一见 [开发与 CI 工作流](docs/development-workflow.md)。`cargo-nextest` 用于完整门禁，定向测试默认用 Cargo。
+开发命令是根 `mise.toml` 里的 mise task（`mise tasks` 查看全部，如 `mise run verify build skills`），也可直接使用 Cargo。游戏 CLI（`apps/pobr-cli`，二进制 `pobr`）和 WASM 包只包含游戏计算能力，不承载测试、lint、CI 等开发命令；新增开发命令加到 mise task，不要加进 CLI 或 WASM 接口。日常命令、工具链来源和缓存管理统一见 [开发与 CI 工作流](docs/development-workflow.md)。`cargo-nextest` 用于完整门禁，定向测试默认用 Cargo。
 
 - 每个 worktree 复用**自己的 `./target`**。同一 worktree 的多个会话共用该目录、串行运行 Cargo，不为会话或门禁创建额外 target。**禁止**不同 worktree 共享可写 `CARGO_TARGET_DIR`——并发 cargo 会在构建目录锁上串行排队（症状：长时间无输出；stderr 的 `Blocking waiting for file lock` 提示不要用 `| tail` 等管道吞掉）。
 - 同一 target 目录下 cargo 命令**一次一条、前台执行**，禁止后台叠加。
@@ -31,7 +31,7 @@ Detailed repository guidance for coding agents and contributors. [AGENTS.md](AGE
 - 编辑中只有需要快速定位编译错误时才单独 `cargo check -p <crate> --lib`。Clippy 按改动选择 `--lib` / `--bin <name>` / `--test <suite>`；测试专属改动无需扩大到 `--all-targets`。
 - 同一代码、依赖、工具链、features、数据版本下已通过的检查复用结果；后续只改文档不使代码测试失效。失败后先重跑失败目标，只有新改动、失败或明确影响范围才扩大验证。
 - Web 纯 TS/CSS 改动复用已构建 WASM；WASM 产物缺失，或 WASM 及其 Rust 依赖的源码、features、工具链改变时重建。`pnpm build` 已包含 typecheck，最终需要 build 时不额外重复 typecheck。E2E 前确认 dist 对应当前代码。
-- **合并 / 发版、工具链 / Cargo features / workspace 依赖变更、影响范围不明的核心改动**需要完整门禁，优先交给 CI。发版由 tag CI 完成；其他场景先推送分支，再运行 `./pobr ci <remote-ref>`，并检查该提交的结果。本地不再强制先跑 `full`；离线或排查 CI 时可显式运行 `./pobr full`（仅 Rust 门禁，Web 另验）。完整 CI 在 tag、手动触发和发版 PR（workspace 版本变化）时运行；普通 PR 自动运行的是轻量检查（[pr.yml](.github/workflows/pr.yml)），不能替代完整门禁；发起 CI 不等于通过。相同代码不重复运行本地和云端全量门禁。
+- **合并 / 发版、工具链 / Cargo features / workspace 依赖变更、影响范围不明的核心改动**需要完整门禁，优先交给 CI。发版由 tag CI 完成；其他场景先推送分支，再运行 `mise run ci <remote-ref>`，并检查该提交的结果。本地不再强制先跑 `full`；离线或排查 CI 时可显式运行 `mise run full`（仅 Rust 门禁，Web 另验）。完整 CI 在 tag、手动触发和发版 PR（workspace 版本变化）时运行；普通 PR 自动运行的是轻量检查（[pr.yml](.github/workflows/pr.yml)），不能替代完整门禁；发起 CI 不等于通过。相同代码不重复运行本地和云端全量门禁。
 - 不自动 `cargo clean`、改 profile / features / `RUSTFLAGS` 或共享 target 来“加速”；这些可能使缓存失效。看到构建锁先检查已有进程，不叠加 Cargo 命令。
 
 ## 常用命令
@@ -48,7 +48,7 @@ cargo test -p pobr-build --test skills support_gating::
 cargo bench -p pobr-core --bench mod_db_bench          # ModDB 热查询基准（criterion）
 
 # PoB2 parity 仪表盘：逐 build 打印 PoBR vs PoB2 对照 + 聚合命中率
-./pobr test build parity parity_baseline_report -- --ignored --nocapture
+mise run test build parity parity_baseline_report -- --ignored --nocapture
 # 其中 parity_no_regression 用例是回归门禁（命中率不得低于已记录基线）
 
 # CLI（apps/pobr-cli，二进制名 pobr）
@@ -68,14 +68,14 @@ tools/pob2-oracle/run.sh <build.xml>                    # PoB2 headless oracle�
 
 - Rust **edition 2024**；根 `[workspace.package].version` 是应用/工具发布版本，与 v0.x tag 同步。七个 `crates/` 库使用独立版本，日常应用发版不改库版本，避免仅改发布号就使底层库和所有使用者重新编译。库版本不代表当前应用发布号；将来单独发布库时再按 API 兼容性管理。
 - 根 `Cargo.toml` 的 dev/test 对第三方依赖使用 `opt-level = 3`（测试逐用例加载 JSON 数据快照，未优化的 serde_json / sha2 使一次加载从约 0.65 s 变为约 3.4 s）；workspace crate 保持未优化的快速编译，不要为“统一”去掉这项设置。dev/test 保留 `debug = "line-tables-only"`，默认 `incremental = false`，减少增量中间文件并继续复用未变的 Cargo 产物。修改源码后的重编译可能更慢；长期连续编辑时可显式启用 `CARGO_INCREMENTAL=1`。调试变量时可临时使用 `CARGO_PROFILE_DEV_DEBUG=2`（测试用 `CARGO_PROFILE_TEST_DEBUG=2`）。改变这些设置会生成另一组缓存，不作为日常准备步骤。
-- 完整 CI 以已入库的 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) 为准（PR 轻量检查见 [`pr.yml`](.github/workflows/pr.yml)）：Rust 检查 fmt / Clippy / nextest / doctest，Web 独立检查类型、单测、Worker、WASM 构建与打包。E2E 默认关闭，仅 `./pobr ci <ref> --e2e` 显式请求时运行；不要在未被要求时发起。涉及计算/Modifier/parser 的改动需补对应的集成测试或 golden fixture。
+- 完整 CI 以已入库的 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) 为准（PR 轻量检查见 [`pr.yml`](.github/workflows/pr.yml)）：Rust 检查 fmt / Clippy / nextest / doctest，Web 独立检查类型、单测、Worker、WASM 构建与打包。E2E 默认关闭，仅 `mise run ci <ref> --e2e` 显式请求时运行；不要在未被要求时发起。涉及计算/Modifier/parser 的改动需补对应的集成测试或 golden fixture。
 
 ### 快速检查与发版
 
-`./pobr` 的日常命令、缓存、按需诊断、WASM 打包、Worker 测试和发版步骤统一见
+mise task 的日常命令、缓存、按需诊断、WASM 打包、Worker 测试和发版步骤统一见
 [开发与 CI 工作流](docs/development-workflow.md)；外部 PR 的处理见其中“处理外部 PR”一节。
 
-- `./pobr verify build skills support_gating::` 一次执行定向测试和 lint；`./pobr targets` 列出测试目标，不编译。
+- `mise run verify build skills support_gating::` 一次执行定向测试和 lint；`mise run targets` 列出测试目标，不编译。
 - `bash .claude/skills/run-pobr/driver.sh full` 是完整 Rust 门禁，只用于上面列出的完整门禁场景，不是每次本地提交的收尾动作。
 - PR 自动运行轻量检查（fmt / Clippy / 冒烟 / parity 回归；改动 `web/` 时加类型检查和单测）；完整门禁在 tag、手动触发和发版 PR 时运行。发版 PR 的完整门禁通过后再合并、打 tag。
 
@@ -209,6 +209,7 @@ PoB2 兼容是硬回归基准，三层校验互补：
 - **计算内部只用稳定 ID**（`StatId` / `ModName` / `SourceId`），显示文本走 `pobr-i18n`（`en-US`/`zh-TW`）。
 - **不可变 / 确定性**：calc 函数对 `Env` 的可变写入集中在 `perform`，并行化只在只读快照阶段展开。
 - **Build Code** 走 XML → deflate → URL-safe Base64（`pobr-build::{decode,encode}_pob_code`，已用真实 PoB2 ninja code 验证）；自定义/复制物品需保留原始文本块以便和 PoB2 对比。
+- **发布产物只含游戏计算能力**：`POBR_DBG_*` / `POBR_GATE_DENY` 诊断开关（`dbg_env!`）仅存在于调试构建，发布版 CLI 与 WASM 中恒为关闭；测试辅助（`pobr-core` 的 `test-rules`、`pobr-gamedata` 的 `test-pins`）在 feature 后面，只由 dev-dependencies 启用。新增诊断或测试辅助沿用这两种方式，不进入默认构建。
 - 文档以可执行契约为主；改变 crate 边界、聚合语义、catalog/parity 规则时更新本文件和受影响的已入库契约文档。本地历史审计无需逐项更新。
 
 ## Web 功能契约

@@ -277,14 +277,14 @@ For changes, select checks for the affected behavior. For example, validate
 Build Code changes with:
 
 ```bash
-./pobr verify build codec
-./pobr targets                     # List suites without compiling
-./pobr timings build parity        # Compile one suite and report timings
+mise run verify build codec
+mise run targets                     # List suites without compiling
+mise run timings build parity        # Compile one suite and report timings
 ```
 
 Normal local commits use relevant checks. Full gates run in cloud CI: push a
-release tag, or request a branch run with `./pobr ci <pushed-ref>`. No duplicate
-local full run is required. `./pobr full` remains available for local Rust
+release tag, or request a branch run with `mise run ci <pushed-ref>`. No duplicate
+local full run is required. `mise run full` remains available for local Rust
 validation. Pull requests run lightweight checks automatically; see
 [CONTRIBUTING.md](CONTRIBUTING.md). The live app deploys from `v0.x` release tags after all CI jobs pass.
 See [development workflow](docs/development-workflow.md) for commands, cache reuse,
@@ -365,7 +365,7 @@ layers:
    dumps the Lua-side calculation breakdown straight from the vendored PoB2.
 
 ```bash
-./pobr test build parity parity_baseline_report -- --ignored --nocapture
+mise run test build parity parity_baseline_report -- --ignored --nocapture
 ```
 
 `vendor/PathOfBuilding-PoE2/` is a full checkout; verify formulas by reading

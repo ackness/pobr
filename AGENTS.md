@@ -24,9 +24,9 @@ Run from the repository root, using the configured toolchains:
 
 ```bash
 cargo build -p pobr-cli
-./pobr verify build skills support_gating::
-./pobr targets
-./pobr cache
+mise run verify build skills support_gating::
+mise run targets
+mise run cache
 pnpm --dir web dev
 pnpm --dir web test src/lib/mainSkill.test.ts
 ```
@@ -52,8 +52,8 @@ relevant parity coverage. Specify `--test` or `--lib` to limit compilation.
 Local commits require relevant checks. Pull requests run lightweight checks
 automatically (`.github/workflows/pr.yml`); full merge/release gates run in CI on
 tags, manual dispatch and release PRs (a changed workspace version), so do not
-require a duplicate local full run. Use `./pobr ci <pushed-ref>` for manual
-cloud validation and `./pobr full` for explicit local Rust validation. Reuse
+require a duplicate local full run. Use `mise run ci <pushed-ref>` for manual
+cloud validation and `mise run full` for explicit local Rust validation. Reuse
 passing checks for unchanged inputs. See [workflow commands](docs/development-workflow.md).
 Documentation-only changes need diff/link review, not builds.
 

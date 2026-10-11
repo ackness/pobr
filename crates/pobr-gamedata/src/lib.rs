@@ -23,6 +23,7 @@ pub mod manifest;
 pub mod overlay;
 pub mod paths;
 pub mod ruleset;
+#[cfg(any(test, feature = "test-pins"))]
 pub mod test_pins;
 
 use std::fmt;

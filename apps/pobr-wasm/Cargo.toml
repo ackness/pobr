@@ -22,3 +22,7 @@ wasm-bindgen = { version = "0.2", optional = true }
 [features]
 default = []
 wasm = ["dep:wasm-bindgen"]
+
+[dev-dependencies]
+# Snapshot pins for data-count assertions; test builds only.
+pobr-gamedata = { workspace = true, features = ["test-pins"] }

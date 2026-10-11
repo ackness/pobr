@@ -167,7 +167,7 @@ jobs:
           path: web/dist
           retention-days: 3
       # E2E is opt-in: it runs only for a manual dispatch with `e2e` enabled
-      # (`./pobr ci <ref> --e2e`), never on tags or release PRs.
+      # (`mise run ci <ref> --e2e`), never on tags or release PRs.
       - name: Install Playwright
         if: inputs.e2e
         run: pnpm exec playwright install --with-deps chromium

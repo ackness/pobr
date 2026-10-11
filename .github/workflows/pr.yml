@@ -39,7 +39,7 @@ jobs:
           echo "$files"
           rust=false
           web=false
-          if grep -qE '^(crates|apps|tools|data|examples|devs/scripts|\.claude/skills/run-pobr|\.github/workflows)/|^(Cargo\.(toml|lock)|pobr)$' <<< "$files"; then rust=true; fi
+          if grep -qE '^(crates|apps|tools|data|examples|devs/scripts|\.claude/skills/run-pobr|\.github/workflows)/|^(Cargo\.(toml|lock)|mise\.toml)$' <<< "$files"; then rust=true; fi
           if grep -qE '^(web|\.github/workflows)/' <<< "$files"; then web=true; fi
           echo "rust=$rust" >> "$GITHUB_OUTPUT"
           echo "web=$web" >> "$GITHUB_OUTPUT"
@@ -66,7 +66,7 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Smoke tests
-        run: ./pobr smoke
+        run: bash .claude/skills/run-pobr/driver.sh smoke
       # The parity baseline must not drop; see CLAUDE.md "Parity 体系".
       - name: Parity regression gate
         run: cargo test -p pobr-build --test parity no_regression
