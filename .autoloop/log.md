@@ -30,3 +30,12 @@
 - Observed a concrete UX gap for the next milestone: successful Apply added nodes 42736/4203 and immediately refreshed to a 115-plan baseline, leaving no applied confirmation/status. Next milestone is clear, state-scoped feedback for ordinary and joint passive applications, with existing localization and no new notification infrastructure.
 - Finished browser space 31, removed the screenshot and retained Vite on 5182. No production files or permanent tests changed. Commit: this entry's checkpoint commit (`chore: close passive integrity verification milestone`).
 - Next: implement ordinary passive-route application feedback, then cover the joint planner and verify message lifetime against real state changes.
+
+## 4 — Ordinary passive application feedback
+
+- Added localized live-status confirmation to ordinary passive Apply, with exact node names/IDs and allocation/refund counts. It is scoped to the applied session revision and hidden during pending/failed calculation, so refreshed searches retain it but subsequent edits cannot resurrect an old success.
+- Added a real-WASM browser regression for ID correctness, refresh/navigation retention, edit-and-restore invalidation and copied-stage reset. Updated the web contract.
+- Passed 19 planner tests, production web build/typecheck and the new Playwright case. Corrected a test-only line-break comparison mismatch on the first browser-test run; production code did not change afterward.
+- Live browser verified exact allocated and refunded nodes, automatic refresh, EN/TW/CN copy and 390px layout. Held a real result before delivery to verify pending suppression; injected a rejection after real calculation to verify failure suppression, then reloaded to remove the injection.
+- Independent reviewer approved with no blocking findings. Actual screen-reader speech remains unverified. Browser space 32 finished; temporary screenshots/config removed; no Rust/WASM/data changes.
+- Commit: this entry's checkpoint commit (`feat: confirm applied passive routes`). Next: equivalent feedback for joint jewel/passive plans and cross-planner lifetime verification.
