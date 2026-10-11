@@ -243,6 +243,90 @@ fn supported_levels_stay_in_the_selected_group() {
     assert_eq!(disabled.dps, mastery_out.dps);
 }
 
+const RESOURCE_LOSS_STAT: &str = "lose_%_of_life_es_and_mana_when_skill_is_used";
+const ATZIRI_IMPATIENCE: &str = "SupportAtzirisImpatiencePlayer";
+
+#[test]
+fn support_coverage_resource_loss_is_attributed_without_inventing_costs() {
+    let mut data = load_build_data();
+    let build = coverage_build("FrostBombPlayer", Some(ATZIRI_IMPATIENCE));
+    let supported = coverage_session(&build, &data);
+    let receipts: Vec<_> = supported
+        .unsupported_modifier_texts()
+        .iter()
+        .filter(|text| text.contains(RESOURCE_LOSS_STAT))
+        .collect();
+    assert_eq!(receipts.len(), 1);
+    for token in [
+        format!("Support:{ATZIRI_IMPATIENCE}:"),
+        format!("stat={RESOURCE_LOSS_STAT}:"),
+        "set=1:".into(),
+        "value=25:".into(),
+        "host=FrostBombPlayer:".into(),
+    ] {
+        assert!(receipts[0].contains(&token));
+    }
+    let bare = coverage_session(&coverage_build("FrostBombPlayer", None), &data);
+    assert!(bare.unsupported_modifier_texts().is_empty());
+    assert!(supported.output().dps > bare.output().dps);
+    assert_eq!(supported.output().mana_cost, bare.output().mana_cost);
+    assert_eq!(supported.output().life_cost, bare.output().life_cost);
+
+    // Zero loss keeps the cooldown benefit but no longer needs a loss receipt.
+    data.skill_stat_sets
+        .get_mut(ATZIRI_IMPATIENCE)
+        .unwrap()
+        .sets[0]
+        .constant_stats
+        .iter_mut()
+        .find(|stat| stat.stat == RESOURCE_LOSS_STAT)
+        .unwrap()
+        .value = 0.0;
+    let zero = coverage_session(&build, &data);
+    assert!(zero.unsupported_modifier_texts().is_empty());
+    assert_eq!(zero.output(), supported.output());
+}
+
+#[test]
+fn support_coverage_resource_loss_does_not_leak_from_other_or_incompatible_groups() {
+    let data = load_build_data();
+    let build = coverage_build("FrostBombPlayer", Some(ATZIRI_IMPATIENCE))
+        .add_socket_group(pobr_build::SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+        .with_main_socket_group(2);
+    let other = coverage_session(&build, &data);
+    let mut without_other_support = build.clone();
+    without_other_support.socket_groups[0].gem_skills.remove(1);
+    let other_bare = coverage_session(&without_other_support, &data);
+    let incompatible = coverage_session(
+        &coverage_build("FireballPlayer", Some(ATZIRI_IMPATIENCE)),
+        &data,
+    );
+    let bare = coverage_session(&coverage_build("FireballPlayer", None), &data);
+    assert!(other.unsupported_modifier_texts().is_empty());
+    assert!(incompatible.unsupported_modifier_texts().is_empty());
+    assert_eq!(other.output(), other_bare.output());
+    assert_eq!(incompatible.output(), bare.output());
+}
+
+#[test]
+fn support_coverage_resource_loss_follows_the_stat_not_the_gem_name() {
+    let mut data = load_build_data();
+    let loss = data.skill_stat_sets[ATZIRI_IMPATIENCE].sets[0]
+        .constant_stats
+        .iter()
+        .find(|stat| stat.stat == RESOURCE_LOSS_STAT)
+        .unwrap()
+        .clone();
+    let support = "SupportEfficiencyPlayerTwo";
+    data.skill_stat_sets.get_mut(support).unwrap().sets[0]
+        .constant_stats
+        .push(loss);
+    let session = coverage_session(&coverage_build("FrostBombPlayer", Some(support)), &data);
+    assert!(session.unsupported_modifier_texts().iter().any(|text| {
+        text.contains(RESOURCE_LOSS_STAT) && text.contains(&format!("Support:{support}:"))
+    }));
+}
+
 const FORK: &str = "SupportForkPlayer";
 const FORK_STAT: &str = "support_fork_forked_projectile_damage_+%_final";
 

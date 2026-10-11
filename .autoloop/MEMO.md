@@ -48,10 +48,11 @@ Exit criteria:
 
 ## Current milestone: recommendation modeling-limit fidelity
 Audit whether source-described support costs survive ingestion and reach either
-real consumers or explicit unsupported-effect diagnostics. Start with Atziri's
-Impatience, now present in all eight top recommendations on the fixture.
+real consumers or explicit unsupported-effect diagnostics. Iteration 9 completed
+the bounded maximum-resource-loss disclosure. Next inspect Extraction's distinct
+Life-sacrifice stat; do not assume its semantics match maximum-resource loss.
 Exit criteria:
-1. Reproduce the candidate's effects and resource-cost handling against the pinned source and actual calculated request.
+1. Reproduce the Life-sacrifice candidate's effects against the pinned source and actual calculated request.
 2. Distinguish supported numeric effects from silent input/consumer omissions; do not infer coverage from prose or positive DPS.
 3. Correct a proven omission through existing ingestion/diagnostic or calculation boundaries, with source-backed tests and real-WASM verification. Do not invent a sustain approximation or special-case a support name.
 
@@ -68,6 +69,10 @@ Exit criteria:
 - Both permanent regressions failed before the fix. The pinned PoB2 oracle confirmed crit chance/multiplier zero; after rebuilding WASM, the minimal support fixture reports zero/zero with its noncritical damage benefit retained. Twenty-one crit tests, sixteen support-gating tests, two no-regression parity gates, and scoped fmt/Clippy passed. Independent review approved.
 - The populated fixture's formerly inflated 19799.75 DPS is now 4419.6 with Controlled Destruction equipped. Top eight recommendations omit it. Applied the top replacement (Considered Casting, Concentrated Area, Elemental Focus, Atziri's Impatience): preview 28546.6 became displayed 28547, crit returned to 100%, other twelve groups were unchanged, and reload retained the result.
 - Exact regeneration added only five implicit flag entries: Controlled Destruction and four Elemental Storm stat sets. Storm's raw hit components remain present in sets 2–4 and all four show zero crit; trigger throughput/full-DPS parity was not established by the direct fixture.
+- Iteration 9 proved Atziri's resource-loss input survives extraction but has no upstream or native on-use consumer. Canonical stat prose specifies maximum Life/Mana/Energy Shield. A curated raw-stat classifier now discloses that proven missing mechanic through the existing compatible-host limit observer; costs, recovery and DPS are unchanged.
+- Equipped Atziri now appears among nine baseline limits. After removing it and searching with four slots, top eight plans omit it; two excluded complete sets show attributed loss receipts and no Apply controls. Applied Cooldown Recovery II instead: preview 19670.8 displayed 19671, other twelve groups remained unchanged, and reload retained it.
+- Nineteen support-gating tests, five WASM support contracts, eighteen planner tests and scoped fmt/Clippy passed. Rebuilt WASM and inspected the real warning surface; independent review approved. Tests preserve unknown/control/manual-consumer behavior and verify the raw mechanic under another support name.
+- The temporary numeric oracle probe did not include the lineage support (supports was empty), so it was not used as parity evidence. Source payload/map/consumer inspection establishes the diagnostic, not an inferred sustain model. Maximum-resource-loss disclosure is not exhaustive sacrifice/resource-economy coverage.
 
 ## Verified whole-item evidence
 - Both ring positions were compared without mutating workspace bytes. Ring 2 applied the exact evaluated candidate, preserving all other item slots; preview DPS 6654.85 displayed as 6655 after recalculation.
@@ -104,6 +109,6 @@ Exit criteria:
 - Pinned PoB2 vendor ce566eac45ea8a86477f513c7ee65a1ebe60014e is now cloned inside this worktree. Iteration 7 regenerated trade metadata, repacked the snapshot manifest and synced 67 runtime files; existing release WASM was reused because no engine/API behavior changed.
 
 ## Priority queue
-1. Trace Atziri's Impatience's source-described Life/Mana/Energy Shield loss through input extraction, consumers and diagnostics.
-2. Prefer a generic existing-boundary correction for any proven omission, not a name-based recommendation exclusion or invented resource model.
-3. Keep qualitative descriptions, numeric mechanics and modeled-coverage claims separate.
+1. Trace `sacrifice_%_life_on_skill_use`, starting with Extraction, through canonical descriptions, actual payloads and consumers/diagnostics.
+2. Keep sacrifice semantics distinct from maximum-resource loss; only disclose or implement a proven mechanic through existing boundaries.
+3. Preserve baseline/new-limit distinctions and unchanged unrelated calculation outputs while extending coverage.

@@ -81,3 +81,14 @@
 - Closed the browser and removed temporary XML/oracle/screenshot artifacts. Settled both prior-iteration research agents and this iteration's completed agents.
 - Milestone complete for this mechanic. Next: trace source-described resource costs of Atziri's Impatience into actual consumers/diagnostics; its presence in all top plans is not proof those costs are modeled.
 - Commit: this entry accompanies `fix: enforce canonical never-crit effects`.
+
+## Iteration 9 — 2026-10-12
+- Reproduced Atziri's Impatience doubling minimal Frost Bomb DPS29.40709→58.81418 while ManaCost89/LifeCost0 remained unchanged and no resource-loss output or diagnostic appeared. Captured a failing real-WASM assertion and failing permanent diagnostic regressions.
+- Canonical data retains loss25; pinned stat-description entry618 specifies maximum Life/Mana/Energy Shield. Neither upstream stat mapping nor native costs/recovery implements this on-use loss. Ordinary costs and negative regeneration are not valid substitutes. The numeric oracle fixture omitted the lineage support, so its result was not used as parity evidence.
+- Added a narrow raw-stat modeling-limit classification at the existing compatible-host support observer. It applies to finite nonzero Unknown loss payloads, preserves source/set/stat/value/host identity, and leaves generic Unknown semantics, numerical outputs and planner filtering unchanged. No support-name ban, schema change, data regeneration or invented sustain calculation.
+- Regressions cover real receipt attribution, unchanged ordinary costs, zero payload, unrelated/incompatible groups and the same mechanic transplanted onto another support. Corrected an initial whole-output control fixture to retain the unrelated Frost Bomb group: removing the entire group legitimately changed curse-limit metadata and did not isolate the tested support.
+- Verification:19 support-gating tests,5 WASM support-contract tests,18 frontend planner tests, and scoped fmt/Clippy passed. Rebuilt release WASM. Independent review approved with no findings.
+- Real browser: equipped baseline shows9limits including the resource-loss receipt. Removed Atziri and searched four slots: top8plans exclude it; two excluded complete sets show the loss reason and have no Apply controls. Applied Cooldown RecoveryII: preview19670.8 displayed19671, other12groups stayed identical, reload retained it.
+- Closed the browser and removed temporary XML/oracle/screenshot artifacts. Source disclosure is complete for this proven maximum-resource-loss mechanic, not for all support economics.
+- Next: investigate Extraction's distinct Life-sacrifice payload and diagnostic coverage without assuming maximum/current-resource semantics.
+- Commit: this entry accompanies `fix: disclose unmodeled support resource loss`.

@@ -94,7 +94,7 @@ pub fn support_modifiers(
 }
 
 /// Maps the calculated host's complete compatible support payload and records
-/// confirmed skipped conditional numbers in the existing unsupported-text shape.
+/// confirmed unmodeled effects in the existing unsupported-text shape.
 /// The no-limit entry point remains useful for partial/auxiliary consumers such as
 /// warcry spec assembly; those callers must not disclose whole-host coverage.
 pub fn support_modifiers_with_limits(
@@ -150,33 +150,25 @@ fn support_modifiers_observed(
             |stat, outcome| {
                 if let Some(limits) = limits.as_deref_mut()
                     && let Some(catalog) = catalog
-                    && let Some(condition_reason) = crate::skill_env::stat_map::skipped_support_condition(
+                    && let Some(reason) = crate::skill_env::stat_map::support_stat_limit(
                         catalog,
                         &sup.effect_id,
                         set_key.as_deref(),
                         stat,
                         outcome,
                     )
-                    && let stat_map_engine::MappedOutcome::Unsupported(reason) = outcome
                 {
-                    use std::fmt::Write;
-
                     let host_set_key = host_set_key.get_or_insert_with(|| {
                         data.selected_set_key(active_skill_id, host_stat_set_index)
                     });
-                    let mut limit = format!(
-                        "Support:{}:set={}:stat={}:value={}:host={active_skill_id}:host_set={}: conditional numerical effect not modeled ({condition_reason:?}",
+                    let limit = format!(
+                        "Support:{}:set={}:stat={}:value={}:host={active_skill_id}:host_set={}: {reason}",
                         sup.effect_id,
                         set_key.as_deref().unwrap_or("1"),
                         stat.stat,
                         stat.value,
                         host_set_key.as_deref().unwrap_or("1"),
                     );
-                    if condition_reason != *reason {
-                        write!(limit, "; primary mapping {reason:?}")
-                            .expect("writing to a String cannot fail");
-                    }
-                    limit.push(')');
                     limits.push(limit);
                 }
             },
