@@ -60,7 +60,11 @@ Web 纯 TS/CSS 修改复用 WASM，运行相关 Vitest 与 typecheck；`pnpm --d
 不按会话、测试或门禁创建 `target-gate` 等副本；不同 worktree 不共享可写 target。
 看到 `Blocking waiting for file lock` 时检查已有进程，不再叠加 Cargo。
 
-根 `Cargo.toml` 的 dev/test 使用 `debug = "line-tables-only"` 和 `incremental = false`。
+根 `Cargo.toml` 的 dev/test 对第三方依赖使用 `opt-level = 3`，workspace crate 保持未优化。
+多数集成测试每个用例加载一次游戏数据快照（JSON 解析加 SHA-256 校验）；依赖未优化时一次加载约 3.4 s，
+优化后约 0.65 s。依赖只编译一次并长期缓存，不影响日常修改 workspace 代码后的重编译速度。
+
+根 `Cargo.toml` 的 dev/test 还使用 `debug = "line-tables-only"` 和 `incremental = false`。
 前者保留回溯行号，后者停止积累每个 crate 的增量对象图和中间文件。
 Cargo 仍按输入指纹复用未变的依赖、库和测试程序；重复相同测试无需重新编译。
 修改源码时会重新编译受影响的 crate，关闭增量编译可能增加这一步的耗时。
