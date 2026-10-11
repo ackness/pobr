@@ -57,3 +57,15 @@
 - Next: investigate authoritative support-effect text for recommendation details. Current chips expose names/levels and gains but do not explain effects or downsides. Do not infer descriptions or coverage from names.
 - Removed temporary screenshot and closed the browser. This evidence checkpoint advances the support milestone without claiming the explanatory gap is fixed.
 - Commit: this entry accompanies `chore: verify support exclusion and application continuity`.
+
+## Iteration 7 — 2026-10-11
+- Two read-only investigations established that existing snapshots do not carry a complete level-specific support description renderer. The existing trade catalog extractor already joins the canonical skill definitions, making qualitative source prose the smaller authoritative seam.
+- Cloned pinned PoB2 ce566eac45ea8a86477f513c7ee65a1ebe60014e in this worktree. Added optional support-only `description` metadata and regenerated the catalog: 538/567 supports have source prose. Twenty-eight lack known compatibility; Feeding Frenzy II genuinely lacks a description.
+- Semantic comparison after removing new fields exactly matched the original catalog. Regenerated the companion trade map byte-identically, repacked the manifest and synced 67 runtime files.
+- Added per-plan native effect disclosures with localized names/labels, explicit English-source/qualitative/coverage limits, and visible unavailable fallback. No changes to scoring, compatibility, calculation or application behavior. Updated the existing Web contract.
+- Real-WASM Frost Bomb search completed 931 recalculations. Verified source text for Considered Casting, Concentrated Area, Controlled Destruction and Atziri's Impatience; Enter toggling; 390px screenshot and no disclosure overflow; English/Traditional/Simplified labels.
+- A temporary backend metadata fixture removed every description while retaining real WASM calculations; all recommendation entries showed the unavailable fallback and search still completed. Restored the backend and reloaded afterward.
+- Eighteen support optimizer tests passed; the optional support benchmark was skipped. TypeScript checking passed. Independent review approved with a nonblocking language-annotation finding; fixed it and verified source paragraphs retain lang=en under Simplified Chinese UI.
+- Closed the browser and removed the screenshot. No temporary hooks or scripts remain. The browser fixture's exclusions were restored to all candidates during this iteration; equipped supports were not changed.
+- Support decision-path milestone complete. Next: investigate the observed Controlled Destruction/100%-Crit-Chance discrepancy using effective outputs and pinned mechanics before asserting or fixing a calculation bug.
+- Commit: this entry accompanies `feat: expose sourced support effect descriptions`.
