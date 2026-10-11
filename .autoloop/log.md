@@ -48,3 +48,12 @@
 - Independent review approved with no findings. Updated web contract, finished browser space 33 and removed temporary artifacts. Actual screen-reader speech remains untested; no Rust/WASM/data changes.
 - Closed the application-outcome milestone. Next priority is canonical support fidelity: this branch's targeted extraction/mapping/crit files lack the known never-crit symbols, and prior corrections d7863a1/94392bc/650b70c exist locally. This static lead requires current-branch reproduction and ancestry/content reconciliation before integration, not duplicated implementation.
 - Commit: this entry's checkpoint commit (`feat: confirm applied jewel and passive plans`). Next: reconcile and verify the existing never-crit correction against this branch.
+
+## 6 — Canonical never-crit integration
+
+- Reconciled existing correction `d7863a1` against current ancestry and identical pre-fix inputs, then reused it through surgical edits and pinned-vendor regeneration. Preserved current UI/data/loop work; generated delta is exactly five implicit-stat entries and the corresponding manifest hash.
+- Reproduced the missing downside in real WASM and a failing core regression before implementation. Shared crit resolution now honors `NeverCrit` before bonuses and preserves source attribution; compatible support scope remains group-local.
+- Passed 21 crit, 16 support and two parity no-regression tests, scoped fmt/Clippy, release WASM build and data sync. Rebuilt WASM gave supported crit/multiplier 0 and DPS 32.529970128 instead of 36.758866244; the bare group stayed unchanged.
+- Live populated Invoker UI showed 0% crit/0 multiplier with Controlled Destruction and restored 100%/4.59 after removal. The 953-recalculation support search returned eight plans without that support; removal invalidated stale results. Four Elemental Storm sets returned zero crit/multiplier, but the triggerless fixture does not prove their full DPS behavior.
+- Independent review approved with no findings. Updated the web contract, closed browser space 34 and removed the temporary screenshot. No full-suite or fresh Lua-oracle claim.
+- Commit: this entry's checkpoint commit (`fix: enforce canonical never-crit effects`). Next: reconcile the existing resource-loss and life-sacrifice diagnostic corrections; Atziri's Impatience still appears in the live top recommendation.

@@ -127,6 +127,46 @@ fn non_effective_skips_hit_downgrade() {
     approx(crit.chance, 0.50);
 }
 
+/// PoB2 CalcOffence.lua checks NeverCrit before lucky/inevitable crits and
+/// NoCritMultiplier. The disabling source must remain visible in attribution.
+#[test]
+fn never_crit_overrides_crit_bonuses_and_preserves_its_source() {
+    let mut db = player_with_base_crit(50.0);
+    for flag in [
+        "CritChanceLucky",
+        "BifurcateCrit",
+        "InevitableCriticalHits",
+        "NoCritMultiplier",
+    ] {
+        db.add_mod(Modifier::flag(flag));
+    }
+    db.add_mod(
+        Modifier::flag("NeverCrit").with_origin(ModifierSource::new(SourceId::new(
+            SourceKind::SupportGem,
+            "support.never_crit",
+        ))),
+    );
+    let enemy = ModDb::new();
+    let cfg = CalcConfig::attack();
+    for effective in [false, true] {
+        let plain = resolve_crit(&db, &enemy, &cfg, 0.6, 0.13, effective);
+        approx(plain.chance, 0.0);
+        approx(plain.pre_effective_chance, 0.0);
+        approx(plain.multiplier, 0.0);
+        approx(plain.effect, 1.0);
+        let mut trace = TraceGraph::new();
+        let (traced, node) =
+            resolve_crit_traced(&db, &enemy, &cfg, 0.6, 0.13, effective, &mut trace);
+        assert_eq!(traced, plain);
+        let sources: Vec<_> = trace
+            .source_ancestors(node)
+            .iter()
+            .map(|source| source.id.clone())
+            .collect();
+        assert_eq!(sources, vec!["support.never_crit"]);
+    }
+}
+
 // NoCritMultiplier
 
 /// NoCritMultiplier flag -> crit damage = 1.0, so crit_effect = 1 regardless of crit

@@ -132,4 +132,15 @@ Exit criteria:
 3. Verify canonical crit precedence and host scope, accurate source-attributed resource limitations, and actual recommendation consequences with required targeted/parity checks and rebuilt WASM.
 4. Keep unmodeled resource loss distinct from ordinary costs; do not invent maximum/current-pool semantics or claim complete mechanic coverage.
 
-Next iteration: begin with the never-crit lead and prior commit reconciliation, then choose the smallest verified integration. Work and commits remain exclusively in this worktree; no publishing or changes to other branches.
+## Iteration 6: Reconciled never-crit correction
+
+- Confirmed `d7863a1` is absent from current ancestry and the six relevant source/test/override files still matched its parent exactly. No PR was returned for the prior loop head. Reused that correction through surgical edits, not an independent redesign; regenerated overrides and manifest from pinned vendor `ce566eac45ea8a86477f513c7ee65a1ebe60014e`. Preserved this loop's UI, notes and other data.
+- Workspace policy blocked an attempted `git restore` before any file mutation or chained test. No bypass was attempted; subsequent integration used forward edits and the normal generator.
+- Reproduced before fixing: a minimal Frost Bomb 19 / Controlled Destruction 1 request retained 13% crit and multiplier 2, DPS 36.758866244, without a diagnostic. The imported core regression failed with expected 0, actual 0.63.
+- Added canonical highest-precedence `NeverCrit` resolution, including trace attribution; declared the implemented flag consumable and retained `global_cannot_crit` during implicit extraction. Regeneration added only Controlled Destruction and four Elemental Storm stat sets; only the override hash changed in the manifest.
+- Passed 21 core crit tests, 16 support-gating tests, two parity no-regression tests and scoped core/build fmt/Clippy. Rebuilt release WASM and synced runtime data. No full-suite or fresh Lua-oracle claim.
+- Actual rebuilt WASM: supported crit/multiplier 0, DPS 32.529970128; another bare group remained 13% crit, multiplier 2, DPS 29.407092995. All four Elemental Storm requests returned zero crit/multiplier; their triggerless fixture also returned zero DPS, so this is not full trigger-mechanic verification.
+- Populated Invoker browser smoke: adding Controlled Destruction changed displayed crit from 100%/4.59 to 0%/0 and DPS from 6,265 to 1,706. Support search completed 953 recalculations and returned eight plans, none retaining Controlled Destruction. Removing it restored the original displayed stats and invalidated stale plans. Top recommendation still included Atziri's Impatience, reinforcing the next resource-limit investigation; no recommendation was applied.
+- `ReviewNeverCritReconcile` approved with no findings. Inspected the real UI screenshot, finished browser space 34 and removed the temporary image. Vite remains on 5182; pinned vendor and rebuilt WASM are ready for the next integration.
+
+Next iteration: reconcile `94392bc` and `650b70c` with the current source, reproduce resource-loss/sacrifice diagnostic gaps, then integrate relevant existing corrections. Keep pool semantics and ordinary costs distinct. Work and commits remain exclusively in this worktree; no publishing or changes to other branches.

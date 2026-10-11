@@ -291,6 +291,7 @@ local IMPLICIT_STAT_KEYS = {
 	"base_modifiers_to_projectile_count_do_not_apply",
 	"attack_damage_is_lucky_if_surrounded",
 	"attacks_roll_crits_twice",
+	"global_cannot_crit",
 	"no_critical_strike_multiplier",
 	"projectile_speed_additive_modifiers_also_apply_to_projectile_damage",
 }
