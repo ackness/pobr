@@ -64,6 +64,10 @@ export function packageWasm({ root = repoRoot, outDir = join(root, '.cache/wasm-
   const schemaVersion = build.schemaVersion;
   const baseline = json(join(root, 'devs/ci/pob-web-wasm-size-baseline.json'));
   const baselineBytes = baseline.files.reduce((sum, file) => sum + file.bytes, 0);
+  const baselineGzipBytes = baseline.files.reduce((sum, file) => sum + file.gzipBytes, 0);
+  if (![baselineBytes, baselineGzipBytes].every(bytes => Number.isSafeInteger(bytes) && bytes > 0)) {
+    throw new Error('Invalid measured reference sizes');
+  }
   const temp = mkdtempSync(join(tmpdir(), 'pobr-wasm-release-'));
   try {
     const stage = join(temp, name);
@@ -103,8 +107,9 @@ export function packageWasm({ root = repoRoot, outDir = join(root, '.cache/wasm-
     const report = { ...manifest, archive: { name: `${name}.tar.gz`, bytes: archiveBytes.length, sha256: sha256(archiveBytes) },
       data: { bytes: data.length, gzipBytes: compressedData.length },
       totals: { wasmJsCompressedDataBytes: hybridBytes, gzipTransferEstimateBytes: gzipBytes },
-      reference: { ...baseline, totalBytes: baselineBytes },
-      ratioToApproximateReference: hybridBytes / baselineBytes };
+      reference: { ...baseline, totalBytes: baselineBytes, gzipTransferEstimateBytes: baselineGzipBytes },
+      ratioToReference: hybridBytes / baselineBytes,
+      gzipRatioToReference: gzipBytes / baselineGzipBytes };
     const markdown = [
       `# PoBR WASM v${pkg.version}`, '',
       `Data: ${version}; JSON schema: ${schemaVersion}; source commit: ${commit}${build.dirty ? ' (with local changes)' : ''}.`,
@@ -114,10 +119,11 @@ export function packageWasm({ root = repoRoot, outDir = join(root, '.cache/wasm-
       `| Data bundle (${dataManifest.files.length} files) | ${data.length} | ${compressedData.length} |`, '',
       '| Disk / transfer comparison | MiB |', '| --- | ---: |',
       `| PoBR WASM + JS + compressed data | ${mib(hybridBytes)} |`,
-      `| pob-web approximate reference (same compression convention) | ${mib(baselineBytes)} |`,
+      `| pob-web measured reference (same compression convention) | ${mib(baselineBytes)} |`,
       `| PoBR gzip transfer estimate (WASM + JS + data) | ${mib(gzipBytes)} |`,
+      `| pob-web gzip transfer estimate (WASM + JS + data) | ${mib(baselineGzipBytes)} |`,
       `| Complete release archive (also includes types, docs, example) | ${mib(archiveBytes.length)} |`, '',
-      `PoBR / approximate reference: ${(hybridBytes / baselineBytes).toFixed(2)}x.`, '',
+      `PoBR / measured reference: ${(hybridBytes / baselineBytes).toFixed(2)}x; gzip transfer: ${(gzipBytes / baselineGzipBytes).toFixed(2)}x.`, '',
       `Reference: [${baseline.project}](${baseline.source}). ${baseline.provenance}`, '',
       'The reference is Lua WASM + JS + compressed PoB Lua code/data; PoBR compiles calculation code into WASM.',
       'PoBR includes every JSON from the Web data manifest, including catalogs, localization and derived data.',

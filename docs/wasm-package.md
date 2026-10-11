@@ -90,12 +90,28 @@ when attaching assets. Tags must match the Cargo workspace version. A tag with
 a version suffix such as `-rc.1` creates a prerelease. No npm publication occurs.
 
 `wasm-size.json` / `wasm-size.md` report raw byte counts, gzip level-9 estimates,
-the actual archive size, and a comparison with the user-provided **approximate**
-pob-web baseline: `lua.wasm` 256 KiB, `lua.mjs` 67.5 KiB and
-`pob-lua.json.gz` 4.65 MiB (about 4.97 MiB combined). The baseline's revision and
-measurement date are unknown; CI does not download a moving upstream target.
-Update `devs/ci/pob-web-wasm-size-baseline.json` with measured bytes and provenance
-when a pinned reference is available.
+the actual archive size, and a **measured, hash-identified** pob-web reference.
+`devs/ci/pob-web-wasm-size-baseline.json` records the acquisition/measurement dates,
+raw and gzip bytes, artifact hashes and compression runtime. CI uses that
+committed snapshot and does not download a moving upstream target. The deployed
+binary/data source revision remains unknown; the pinned wrapper/shims commit
+does not identify those artifacts.
+
+To acquire and measure a reference, then package and exercise PoBR:
+
+```bash
+node web/scripts/benchmark-pob-web.mjs --prepare
+node web/scripts/measure-pob-web-size.mjs --output devs/ci/pob-web-wasm-size-baseline.json
+pnpm --dir web package-wasm
+pnpm --dir web smoke-wasm-package
+node --test web/scripts/measure-pob-web-size.test.mjs web/scripts/package-wasm.test.mjs
+```
+
+The reference data bundle is compressed once with gzip level 9; transfer estimates
+also gzip WASM and JS, without compressing the stored data gzip again. The complete
+PoBR release archive additionally contains types, docs, a demo and the agent skill.
+pob-web does not provide an equivalent release archive in this snapshot, so its
+runtime components—not an invented release archive—are the comparison scope.
 
 [pob-web's Lua bundler](https://github.com/krauthaufen/pob-web/blob/master/packages/pob-data/bundle-lua.mjs)
 packages PoB Lua source, game data and runtime libraries; its
@@ -105,3 +121,43 @@ The report compares WASM + JS + compressed data and separately estimates all-gzi
 transfer. Dataset contents, supported mechanics and compression differ; neither
 the comparison nor a passing package smoke test establishes numerical parity.
 These are disk/transfer sizes, not runtime memory measurements.
+
+## Runtime performance comparison
+
+The root [README](../README.md#wasm-performance-pobr-vs-pob-web) and
+[Chinese README](../README.zh-CN.md#wasm-性能pobr-与-pob-web) record an opt-in
+PoBR Rust WASM versus pob-web Lua WASM **code-import + calculation** benchmark.
+The [baseline](../devs/ci/pob-web-performance-baseline.json) preserves the measured
+samples, host, artifact hashes, selected outputs and failed fixtures. It is
+separate from the measured size baseline above.
+
+`node web/scripts/benchmark-pob-web.mjs --prepare` acquires a hash-verified local
+reference snapshot, preserving the upstream license and pinning its wrapper,
+shims and loading patches. The downloaded deployment's binary/data revision
+is unknown; the wrapper commit must not be used to label those artifacts.
+Run `node web/scripts/bench-pob-web.mjs --iterations 9 --warmup 2` from the root
+after building WASM and syncing data. Full output is written to
+`.cache/pob-web-performance.json`; failed fixtures are retained without speed
+ratios and cause exit status 1. Subsequent preparation verifies the existing
+snapshot offline; use a new directory to measure a changed deployment.
+The runner uses an explicit seven-build historical cohort from the shared parity
+fixtures and discovers all fixtures in `examples/wasm-benchmark/builds/`.
+Eleven previously failing/unstable historical builds were removed from this
+performance cohort at the user's request; their parity fixtures remain intact.
+The historical cohort is post-selected and is not an unbiased sample. New poe.ninja
+captures retain their actual league, snapshot, character URL, fetch date and code
+hash; they do not silently become parity goldens. README tables distinguish
+latest-season captures from historical inputs. To preserve a compact baseline
+with raw samples/diagnostics but without full breakdown responses, run
+`node web/scripts/snapshot-pob-web-benchmark.mjs` after the benchmark report exists.
+
+Regression checks:
+
+```bash
+node --test web/scripts/benchmark-comparison.test.mjs web/scripts/benchmark-builds.test.mjs web/scripts/benchmark-pob-web.test.mjs
+```
+
+Lua measurements include the Node Worker host, adapter checks and upstream
+headless UI-state setup. Implementations, JSON responses and supported mechanics
+differ. These observations do not establish a kernel-speed advantage,
+incremental-edit latency, browser performance, memory usage or numerical parity.
