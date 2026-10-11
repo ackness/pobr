@@ -47,3 +47,13 @@
 - Updated the Web guide, removed temporary screenshots and closed the browser. No permanent wording-only test added.
 - Whole-item milestone complete; next is support recommendation trust, exclusions and apply continuity. Commit-only scope means no milestone tag.
 - Commit: this entry accompanies `feat: confirm applied item comparisons`.
+
+## Iteration 6 — 2026-10-11
+- Ran real-WASM support search on the populated Frost Bomb group, four support slots. Initial search displayed 824 complete recalculations with 8 current-build limits and 8 excluded complete edits.
+- Excluded Atziri's Impatience from a recommendation and equipped Efficiency II from the pool. Both disappeared from subsequent recommendations; equipped groups remained unchanged and baseline DPS stayed 7347.1. Reload retained both exclusions and the unchecked Efficiency II control.
+- Applied the top remaining four-support set. Other 12 groups were deep-equal, main group stayed index 4, and Frost Bomb stayed level 19/quality 20. Preview DPS 19799.8 became displayed hit DPS 19800. Screenshot inspected.
+- Corrected two throwaway automation assumptions: ego-browser requires terminal nth selectors, and saved GemInput has no is_support flag. Neither was an application defect.
+- Investigation only; no runtime code, permanent tests or dependencies changed. Existing WASM reused; no duplicate build/test run.
+- Next: investigate authoritative support-effect text for recommendation details. Current chips expose names/levels and gains but do not explain effects or downsides. Do not infer descriptions or coverage from names.
+- Removed temporary screenshot and closed the browser. This evidence checkpoint advances the support milestone without claiming the explanatory gap is fixed.
+- Commit: this entry accompanies `chore: verify support exclusion and application continuity`.

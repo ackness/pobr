@@ -36,6 +36,14 @@ Exit criteria:
 3. Applying a selected result preserves the intended skill group and agrees with previewed output.
 4. Fix evidenced player-facing defects; do not widen support mechanic coverage without parity evidence.
 
+## Verified support evidence
+- Iteration 6 searched the populated Frost Bomb group (index 4, level 19/quality 20, four support slots). The initial result reported 824 complete recalculations, 8 baseline limits and 8 excluded complete edits.
+- Excluded Atziri's Impatience from a recommendation, then excluded equipped Efficiency II through the checklist. Neither altered equipped socket groups or baseline DPS 7347.1; subsequent recommendations contained neither support.
+- Applied Considered Casting, Concentrated Area, Controlled Destruction and Elemental Focus. The preview's 19799.8 DPS became displayed hit DPS 19800. Other 12 groups were deep-equal; Frost Bomb remained level 19/quality 20 with main group index 4.
+- Reload retained both exclusion IDs under the FrostBombPlayer preference key; Efficiency II remained visibly unchecked.
+- No search/application defect surfaced. Recommendation chips currently expose names, level/quality and exclusion actions but no effect descriptions. Investigate authoritative metadata for explaining recommended support downsides before adding UI; never manufacture effects from names or numerical gains.
+- A throwaway assertion incorrectly assumed GemInput carries is_support; corrected the verification to inspect the actual ID/level/quality contract. This was a smoke-script error, not an application failure.
+
 ## Verified whole-item evidence
 - Both ring positions were compared without mutating workspace bytes. Ring 2 applied the exact evaluated candidate, preserving all other item slots; preview DPS 6654.85 displayed as 6655 after recalculation.
 - A synthetic unmodeled line remained in diagnostics (11 versus baseline 10) and no recommended badge appeared. Manual application remains available under explicit partial-calculation warnings.
@@ -70,6 +78,6 @@ Exit criteria:
 - Browser confirmation handling worked when upload and acceptDialog occurred in one ego-browser invocation; splitting across rounds did not restore. Reported tooling discrepancy, not an application defect.
 
 ## Priority queue
-1. Inspect Skills recommendations on the populated Frost Bomb example and choose a concrete support-exclusion/application scenario.
-2. Verify selection continuity and preview/apply agreement while retaining unsupported-effect limits.
-3. Prioritize observed behavior gaps rather than speculative mechanic or architecture changes.
+1. Investigate available canonical support-effect descriptions and existing localization/display APIs before designing recommendation details.
+2. If authoritative descriptions can be exposed, let players inspect support tradeoffs before applying; keep the bounded-search and incomplete-coverage warnings.
+3. Prioritize a concrete, source-backed improvement; do not infer mechanics from support names or silently expand calculation coverage.
