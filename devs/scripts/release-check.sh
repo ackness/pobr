@@ -3,13 +3,19 @@
 # and validates its release metadata. Prints `release=true|false`; when
 # GITHUB_OUTPUT is set, also writes it there.
 #
-# Usage: devs/scripts/release-check.sh <base-rev>
+# Usage: devs/scripts/release-check.sh [--detect-only] <base-rev>
 #
-# A release PR must not reuse an existing tag, and Cargo.lock must already
-# carry the new version for the application packages.
+# A release PR must raise the version, must not reuse an existing tag, and
+# Cargo.lock must already carry the new version for the application packages.
+# `--detect-only` reports whether the version changed without validating it.
 set -euo pipefail
 
-base="${1:?usage: release-check.sh <base-rev>}"
+detect_only=false
+if [ "${1:-}" = "--detect-only" ]; then
+  detect_only=true
+  shift
+fi
+base="${1:?usage: release-check.sh [--detect-only] <base-rev>}"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root"
 
@@ -35,8 +41,17 @@ if [ "$new" = "$old" ]; then
   exit 0
 fi
 echo "Release PR: $old -> $new"
+if [ "$detect_only" = true ]; then
+  emit true
+  exit 0
+fi
 
 failed=0
+# Version sort handles multi-digit components (0.0.9 < 0.0.10).
+if [ "$(printf '%s\n%s\n' "$old" "$new" | sort -V | tail -n 1)" != "$new" ]; then
+  echo "error: version $new is lower than the base version $old" >&2
+  failed=1
+fi
 if git ls-remote --exit-code --tags origin "refs/tags/v$new" > /dev/null 2>&1; then
   echo "error: tag v$new already exists; choose a new version" >&2
   failed=1

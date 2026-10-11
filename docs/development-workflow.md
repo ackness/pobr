@@ -120,7 +120,7 @@ WASM 构建凭据校验 Rust 源码、嵌入语言文件、manifest/lockfile、J
 | Rust 源码、`data/`、`examples/`、脚本或工作流 | fmt、workspace Clippy、脚本测试、`./pobr smoke`、`parity no_regression` |
 | `web/` | `pnpm typecheck` 与 Vitest 单测（不构建 WASM，不跑 E2E） |
 | 仅文档 | 不运行 |
-| 发版 PR（根 `Cargo.toml` 的 workspace 版本变化） | 上述检查，外加版本元数据校验和 [ci.yml](../.github/workflows/ci.yml) 的完整 Rust / Web 门禁 |
+| 发版 PR（根 `Cargo.toml` 的 workspace 版本变化） | 版本元数据校验和 [ci.yml](../.github/workflows/ci.yml) 的完整 Rust / Web 门禁；它已覆盖上面的轻量检查，后者不再重复运行 |
 
 fork PR 使用只读令牌且读不到仓库密钥；首次贡献者的运行需要维护者在 Actions 页批准。
 轻量检查通过不代表完整门禁通过：定向套件、Worker、真实 WASM 和 E2E 仍按改动在本地或手动 CI 验证。
@@ -135,7 +135,7 @@ Rust 检查 fmt/Clippy/nextest/doctest/i18n 与数据兼容；Web 检查脚本�
 与应用版本分开。版本更新仍需对应检查，但不因应用版本或活动数据标记变化使所有基础库失去缓存。
 
 发版 PR 在合并前就运行完整门禁：`devs/scripts/release-check.sh <base>` 比较 workspace 版本，
-版本变化时要求 `v<版本>` tag 尚不存在、`Cargo.lock` 已带新版本，然后启动与 tag 相同的 Rust / Web 门禁
+版本变化时要求新版本高于基线版本、`v<版本>` tag 尚不存在、`Cargo.lock` 已带新版本，然后启动与 tag 相同的 Rust / Web 门禁
 （不发布资产、不部署）。等这些检查通过再合并、打 tag，避免门禁在 tag 上失败而浪费版本号。
 修改根 `Cargo.toml` 但版本不变的 PR 只运行这一步校验，随后跳过完整门禁。
 
