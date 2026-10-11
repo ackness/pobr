@@ -65,6 +65,14 @@ does not establish DoT/minion relevance, mechanic coverage or a guaranteed gain;
 configured does not mean effective. Reset restores the imported value, or the
 catalog default when no value was imported.
 
+The Power/Frenzy/Endurance count controls distinguish **Player** from **Minions**
+in visible labels, accessible input/reset names and localized search. This is
+actor identity, not a claim that all minion charge effects are calculated.
+Both actors remain available in the full catalog with their original save/export
+keys. An untouched imported numeric string remains a string; a deliberate numeric
+edit changes only the selected actor's setting, and Reset restores its imported
+value without resetting the other actor.
+
 ## Quick start
 
 Run these commands from the repository root. Use the pnpm version pinned in

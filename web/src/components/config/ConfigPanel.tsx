@@ -4,7 +4,7 @@ import { getBackend } from '../../api/backend';
 import type { ConfigInputValue, ConfigOption, CustomModifierBlock, EnemyTier } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useSkillName } from '../../hooks/useSkillName';
-import { bindT, configSectionLabel, damageTypeLabel, enemyTierLabel, type Lang } from '../../lib/i18n';
+import { bindT, configSectionLabel, damageTypeLabel, enemyTierLabel, t, type Lang } from '../../lib/i18n';
 import { CONFIG_LABEL_ZH, LIST_OPTION_ZH } from '../../lib/configLabels';
 import { configDefaultValue } from '../../lib/configDefaults';
 import './config.css';
@@ -26,6 +26,17 @@ const QUICK_OPTIONS = [
   { key: 'enemyChaosResist', damageType: 'Chaos' },
 ] as const;
 
+// These catalog count effects target either the player or a nested MinionModifier.
+// Keep this display distinction bounded; other controls retain their catalog labels.
+const CHARGE_ACTORS: Record<string, 'config.player' | 'config.minions'> = {
+  overridePowerCharges: 'config.player',
+  overrideFrenzyCharges: 'config.player',
+  overrideEnduranceCharges: 'config.player',
+  minionsOverridePowerCharges: 'config.minions',
+  minionsOverrideFrenzyCharges: 'config.minions',
+  minionsOverrideEnduranceCharges: 'config.minions',
+};
+
 /** PoB2 Config 页分区展示顺序（目录里的 section 原名）。 */
 const SECTION_ORDER = [
   'General',
@@ -44,10 +55,9 @@ function stripColorCodes(text: string): string {
 /** 本地化配置标签：中文界面查汉化表（缺条目回退英文原文）。 */
 function optionLabel(lang: Lang, option: ConfigOption): string {
   const en = stripColorCodes(option.label ?? option.var);
-  if (lang !== 'en-US') {
-    return CONFIG_LABEL_ZH[option.var] ?? en;
-  }
-  return en;
+  const label = lang === 'en-US' ? en : CONFIG_LABEL_ZH[option.var] ?? en;
+  const actor = Object.hasOwn(CHARGE_ACTORS, option.var) ? CHARGE_ACTORS[option.var] : undefined;
+  return actor ? `${t(lang, actor)}: ${label}` : label;
 }
 
 function OptionRow({
@@ -236,6 +246,7 @@ export function ConfigPanel({ session, lang }: Props) {
         (!configuredOnly || effective(o.var) !== undefined) && (q === '' ||
         (o.label ?? '').toLowerCase().includes(q) ||
         o.var.toLowerCase().includes(q) ||
+        optionLabel(lang, o).toLowerCase().includes(q) ||
         (CONFIG_LABEL_ZH[o.var] ?? '').includes(query.trim())),
     );
     const bySection = new Map<string, ConfigOption[]>();
@@ -247,7 +258,7 @@ export function ConfigPanel({ session, lang }: Props) {
     const known = SECTION_ORDER.filter((s) => bySection.has(s));
     const rest = [...bySection.keys()].filter((s) => !SECTION_ORDER.includes(s)).sort();
     return [...known, ...rest].map((name) => ({ name, options: bySection.get(name)! }));
-  }, [options, query, configuredOnly, overrides, buildInputs]);
+  }, [options, query, configuredOnly, overrides, buildInputs, lang]);
 
   useEffect(() => {
     if (!focusTarget || session.busy) return;
