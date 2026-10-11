@@ -31,6 +31,11 @@ and joint-jewel planning; compatible completed plans and their settings remain
 usable. Import feedback does not clear a genuine calculation failure: failed or
 pending calculations still block fresh passive planning, even when older stats
 remain visible. Use **Import from file…** for PoBR build files and backups.
+After a rejected paste, localized recovery advice appears beside the input while
+the original error remains available. Recognized PoBR save/backup envelopes point
+to file import and warn about full-workspace replacement; other inputs point back
+to the complete supported source. Editing the input or starting another import
+clears the advice. This guidance does not broaden accepted formats.
 
 **Share this build · all stages** downloads a PoBR JSON file with every stage and
 its notes. Importing it adds an independent build without replacing existing ones.

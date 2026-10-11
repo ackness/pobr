@@ -28,3 +28,12 @@
 - Tool limits: ego-browser auto-scroll failed on the below-fold planner button; explicit scrollIntoView followed by a real click worked. Reported the discrepancy. A canvas wait was an incorrect smoke selector for the SVG tree, not an app failure.
 - Investigation only: no product code, permanent tests or runtime dependencies changed. Reused iteration-2 WASM; no duplicate build/test run. Removed temporary shared file and screenshot; closed browser space.
 - Commit: this entry accompanies `chore: record populated workspace lifecycle verification`.
+
+## Iteration 4 — 2026-10-11
+- Added small panel-local recovery advice after rejected pasted imports. Reused buildFileKind for PoBR-envelope ownership; accepted formats, confirmation paths, original diagnostics and calculation state are unchanged.
+- All three locales now direct recognizable saves/backups to file import with a whole-workspace warning; other failed inputs direct players to complete supported sources. Advice clears on input edits and new import attempts and is connected to the textarea with aria-describedby.
+- Verification: existing import boundary tests passed (17); TypeScript check passed. Real-WASM browser verified both advice branches, original error retention, exact workspace-byte preservation for a rejected backup paste, edit clearing, translated advice and successful populated PoB-code retry with no stale error/advice. English screenshot inspected.
+- Updated the Web guide. No wording-only permanent test added; removed temporary screenshot and closed the browser.
+- Lifecycle milestone exit criteria now have runtime evidence across iterations 2–4. Closed that milestone without a tag under the explicit commit-only scope.
+- Next milestone: trustworthy whole-item comparison decisions. Start with a populated build and both ring slots, inspect unsupported effects and augment assumptions, then verify explicit apply agrees with preview.
+- Commit: this entry accompanies `fix: guide players after rejected build imports`.

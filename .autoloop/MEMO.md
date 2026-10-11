@@ -8,11 +8,23 @@
 Make PoBR a trustworthy browser workspace for comparing PoE2 upgrades: preserve player work across imports and stages, keep recommendation limitations visible, and make the next action understandable.
 
 ## First milestone: trustworthy build-workspace lifecycle
+Status: completed in iteration 4, with the runtime evidence below. No release tag
+created because this loop is explicitly commit-only.
 Exit criteria:
 1. Player-facing English and Chinese onboarding accurately distinguishes adding builds, replacing a stage, sharing a build and restoring a workspace backup.
 2. Exercise actual import, stage switching, reload and backup/restore with real WASM; investigate any observed loss of notes, drafts, selection or planning context.
 3. Address evidenced lifecycle defects with focused regressions, retaining existing calculation and unsupported-effect boundaries.
 4. Review import/planning feedback for actionable errors without discarding prior results.
+
+## Current milestone: trustworthy whole-item comparison decisions
+Exercise the primary README promise on a populated character: compare a complete
+item before changing equipment, inspect assumptions and limitations, then apply
+only the evaluated candidate.
+Exit criteria:
+1. Real-WASM comparison across compatible positions preserves the current build until explicit application.
+2. Applied item text and displayed recalculation agree with the selected preview, including augment assumptions.
+3. Baseline limits and new unsupported effects remain visible and are not mistaken for guaranteed gains.
+4. Address only evidenced defects in this path and verify the corrected player-facing surface.
 
 ## Initial survey, 2026-10-11
 - README positions the product around comparing gear, supports and passive upgrades; incomplete mechanics are explicitly disclosed.
@@ -33,12 +45,14 @@ Exit criteria:
 - Iteration 3 used the committed monk-invoker-frost-bomb code: level 98, 13 socket groups, 10 equipped items, 131 passives. Replacement cancellation preserved exact workspace bytes. Confirmed replacement changed only its copied target stage to level 45; the original populated stage remained intact.
 - Sharing and reimporting the two-stage build added an independent build with fresh build/stage IDs and semantically equal saved stages. An initial JSON-string comparison failed only because property order changed; deepStrictEqual passed.
 - A one-point passive search produced a 6265.34 → 6488.01 DPS recommendation. Rejecting arbitrary JSON preserved the workspace bytes, displayed stats and completed plan text. Applying the retained recommendation gave 132 allocated nodes and displayed hit DPS 6488.
+- Iteration 4 added recovery advice after rejected pastes in all three languages. Recognized PoBR envelopes point to file import with a restore warning; other inputs point to complete supported sources. The original diagnostic remains intact.
+- Browser checks verified file/source advice, unchanged workspace bytes after rejected backup paste, advice clearing on edit, language switching and successful populated-code retry with no remaining error or advice. Existing import tests (17) and typecheck passed. No decoder or calculation contract changed.
 
 ## Operational notes
 - Driver state reports PR publication failure resolving base branch `autoloop-base`. No publishing commands were run; repair remains outside commit-only scope.
 - Browser confirmation handling worked when upload and acceptDialog occurred in one ego-browser invocation; splitting across rounds did not restore. Reported tooling discrepancy, not an application defect.
 
 ## Priority queue
-1. Improve the observed raw import-error feedback with localized, actionable recovery guidance while retaining the original engine diagnostic and preserving valid plans.
-2. Verify that feedback for pasted PoBR saves versus external build input explains the correct import path without changing accepted formats.
-3. Then close the lifecycle milestone and select the next product gap from actual upgrade-comparison use.
+1. Use Upgrades on the committed populated Frost Bomb example to compare a complete item across both ring slots.
+2. Inspect augment assumptions, unsupported-effect treatment and explicit apply/recalculate equality.
+3. Rank any observed defect against the primary upgrade-comparison promise before changing code.
