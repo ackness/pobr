@@ -56,6 +56,8 @@
 //! - A missing `Implicits: N` header degrades to "no implicits" (PoB exports usually include this header).
 
 use pobr_data::prelude::*;
+use regex::Regex;
+use std::sync::LazyLock;
 
 mod selection;
 use selection::ItemSelection;
@@ -509,7 +511,8 @@ fn is_metadata_line(line: &str) -> bool {
 /// 4. `[word]` bracketed annotations (` [augmented]`, `[crafted]`).
 /// 5. `value(min-max)` displayed-roll ranges, retaining the displayed value.
 ///
-/// Source: PoB2 `src/Classes/Item.lua`'s `BuildAndParseRaw` function, lines 708-734 and 926.
+/// Source: PoB2 `src/Classes/Item.lua`'s `BuildAndParseRaw` function, lines 708-734, 926 and
+/// 1179-1232.
 pub fn strip_pob_annotations(text: &str) -> String {
     let mut s = text.to_string();
 
@@ -589,18 +592,17 @@ pub fn strip_pob_annotations(text: &str) -> String {
         s = format!("{}{}", &s[..strip_start], &s[close + 1..]);
     }
 
-    // Advanced clipboard text includes the actual roll immediately before its
-    // tier range. Remove only that annotation before XML range substitution,
-    // otherwise `4(2-4)` becomes `44`. Bare ranges such as `+(40-60)` must remain
-    // available to the caller's `{range:...}` selection.
-    static DISPLAYED_ROLL: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-    let pattern = DISPLAYED_ROLL.get_or_init(|| {
-        regex::Regex::new(
-            r"([+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+))\([+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)-[+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)\)",
-        )
-        .expect("constant displayed-roll pattern")
+    // 5. Advanced clipboard text includes the actual roll immediately before
+    //    its tier range. Remove only that annotation before XML range
+    //    substitution, otherwise `4(2-4)` becomes `44`. Bare ranges such as
+    //    `+(40-60)` must remain available to the caller's `{range:...}`
+    //    selection. Corresponds to PoB2 Lua
+    //    `(%-?%d+%.?%d*)%(%-?%d+%.?%d*%-%-?%d+%.?%d*%)` → `"%1"` (Item.lua:1232).
+    static DISPLAYED_ROLL: LazyLock<Regex> = LazyLock::new(|| {
+        const NUM: &str = r"[+-]?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)";
+        Regex::new(&format!(r"({NUM})\({NUM}-{NUM}\)")).expect("constant displayed-roll pattern")
     });
-    pattern.replace_all(s.trim(), "$1").into_owned()
+    DISPLAYED_ROLL.replace_all(s.trim(), "$1").into_owned()
 }
 
 /// Recognizes section markers anywhere in the leading annotation sequence.
