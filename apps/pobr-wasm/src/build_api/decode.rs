@@ -406,11 +406,9 @@ struct CnBuildFile {
     name: String,
     #[serde(default)]
     ascendancy: Option<String>,
-    #[serde(default)]
+    // Required collections identify a legacy export; empty arrays are valid.
     passives: Vec<CnPassive>,
-    #[serde(default)]
     items: Vec<CnItem>,
-    #[serde(default)]
     skills: Vec<CnSkill>,
 }
 
@@ -479,10 +477,15 @@ pub fn decode_build_file_json(content: &str) -> Result<String, String> {
 fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
     let value: serde_json::Value = serde_json::from_str(content)
         .map_err(|e| super::ApiError::decode_error(format!("invalid build json: {e}")))?;
+    if !value.is_object() {
+        return Err(super::ApiError::decode_error(
+            "build json must be an object",
+        ));
+    }
     if value.get("format").is_some() {
         return wegame::decode(value);
     }
-    let file: CnBuildFile = serde_json::from_str(content)
+    let file: CnBuildFile = serde_json::from_value(value)
         .map_err(|e| super::ApiError::decode_error(format!("invalid .build json: {e}")))?;
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let game = state::game_data().map_err(super::ApiError::not_initialized)?;

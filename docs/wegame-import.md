@@ -28,6 +28,14 @@ tree jewels. Chinese text is canonicalized using the existing dictionary.
 Actual quest rewards replace the default campaign rewards to avoid double
 counting. Unknown gems, passives and unsupported slots appear in import notes.
 
+Legacy China-server `.build` JSON requires `passives`, `items` and `skills`
+arrays; all three may be empty. Optional names and extra metadata are accepted,
+but unrelated JSON and incomplete or wrongly typed collections fail before
+changing the selected build or stage. An explicit `format` still selects the
+WeGame decoder and its existing version/role checks.
+PoBR session files, all-stage build files and workspace backups belong in
+**Import from file…**, not the pasted `.build` input.
+
 Review the main skill, resistance penalty and combat configuration before
 comparing upgrades. The share does not contain PoB combat configuration.
 Only the first weapon set is used; inactive specialisations and weapon-swap

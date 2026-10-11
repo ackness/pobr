@@ -22,6 +22,12 @@ select **Replace current stage** and confirm. **Imported PoB loadouts** live ins
 the current build's stage section; switching them reloads the source file into
 that stage, with a warning before discarding edits.
 
+The pasted JSON input accepts recognized China-server `.build` and WeGame
+sources, not arbitrary JSON or PoBR saved-session envelopes. A legacy `.build`
+must include typed `passives`, `items` and `skills` arrays, even when empty.
+Rejected imports report an error without changing saved builds, stages or the
+item library. Use **Import from file…** for PoBR build files and backups.
+
 **Share this build · all stages** downloads a PoBR JSON file with every stage and
 its notes. Importing it adds an independent build without replacing existing ones.
 Unapplied drafts stay private to local storage and full backups. PoB share codes
