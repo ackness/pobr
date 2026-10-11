@@ -31,6 +31,15 @@ restoring a full backup replaces it after confirmation. Saves are local to this
 browser; use files to share or move devices. Storage failures appear beside the
 current-build strip so you can download a backup before closing the page.
 
+Imported gem slots without a stable skill ID remain in local saves, all-stage
+build files and backups, including imported level-zero slots. Skills shows their
+raw source name with **Unresolved gem**; they are excluded from the stage calculation.
+PoB share codes retain named unresolved slots at their current positions and
+preserve their edited level, quality and stat set. Legacy saves recover a missing
+source name only when the original slot can be matched unambiguously. If no name
+can be recovered safely, PoB export reports an error rather than dropping the
+slot or inventing its identity; PoBR JSON sharing and backups remain lossless.
+
 Custom modifiers keep ordered groups, titles, raw text and enabled state in saves
 and PoB exports. Only enabled groups affect calculations. Unchanged legacy saves
 recover groups from their source code; edited flat legacy modifiers keep their

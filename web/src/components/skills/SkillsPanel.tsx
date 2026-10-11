@@ -45,6 +45,8 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
   const supports = useMemo(() => catalog.filter((e) => e.is_support), [catalog]);
   const tradeById = useMemo(() => new Map(tradeGems.map(gem => [gem.skill_id, gem])), [tradeGems]);
   const gemName = (skillId: string) => skillDisplayName(skillId, lang, byId);
+  const gemLabel = (gem: SocketGroupInput['gems'][number]) => gem.skill_id ? gemName(gem.skill_id)
+    : gem.name_spec ? `${gem.name_spec} · ${tt('skills.unresolved')}` : tt('skills.unresolved');
 
   const groups = session.socketGroups;
   const mainIndex = session.calcParams.main_socket_group ?? session.build?.main_socket_group ?? 0;
@@ -131,7 +133,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
         {groups.map((group, idx) => {
           const isMain = idx === mainIndex;
           const isOpen = idx === openIdx;
-          const activeGems = group.gems.filter(gem => !byId.get(gem.skill_id)?.is_support);
+          const activeGems = group.gems.filter(gem => gem.skill_id !== '' && !byId.get(gem.skill_id)?.is_support);
           const selectedActive = activeGems[Math.min(Math.max((group.main_active_skill ?? 1) - 1, 0), activeGems.length - 1)];
           const activeGem = session.calc?.main_skill?.group_index === idx
             ? group.gems.find(gem => gem.skill_id === session.calc?.main_skill?.skill_id) ?? selectedActive
@@ -167,7 +169,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                     ▸
                   </span>
                   <span className="skill-group-name">
-                    {activeGem ? gemName(activeGem.skill_id) : tt('skills.emptyGroup')}
+                    {activeGem ? gemLabel(activeGem) : tt('skills.emptyGroup')}
                     {Boolean(session.annotations[`skill:${idx}`]?.trim()) && (
                       <span className="note-dot" aria-hidden />
                     )}
@@ -181,7 +183,7 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                   )}
                   {!isOpen && supportGems.length > 0 && (
                     <span className="skill-group-supports">
-                      {supportGems.map((g) => `${gemName(g.skill_id)}${byId.get(g.skill_id)?.is_lineage ? ` [${tt('picker.lineage')}]` : ''}`).join(' · ')}
+                      {supportGems.map((g) => `${gemLabel(g)}${byId.get(g.skill_id)?.is_lineage ? ` [${tt('picker.lineage')}]` : ''}`).join(' · ')}
                     </span>
                   )}
                 </button>
@@ -217,7 +219,8 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
               <ul className="skill-gems">
                 {group.gems.map((gem, gemIdx) => (
                   <li key={gemIdx} className={`skill-gem${gemIdx === 0 ? ' is-active' : ''}`}>
-                    <span className="gem-name">{gemName(gem.skill_id)}
+                    <span className="gem-name" title={gem.skill_id === '' ? tt('skills.unresolvedHint') : undefined}>
+                      {gemLabel(gem)}
                       {byId.get(gem.skill_id)?.is_lineage && <span className="gem-lineage-badge">{tt('picker.lineage')}</span>}
                     </span>
                     <span className="gem-controls">
@@ -256,13 +259,17 @@ export function SkillsPanel({ session, lang, active, focusOptimizer }: Props) {
                         disabled={session.busy}
                         title={tt('skills.removeGem')}
                         onClick={() => {
-                          const removedActive = activeGems.indexOf(gem);
-                          const selected = Math.min(Math.max((group.main_active_skill ?? 1) - 1, 0), activeGems.length - 1);
-                          const nextSelected = removedActive >= 0 && removedActive <= selected
-                            ? Math.max(0, selected - 1) : selected;
+                          let mainActiveSkill = group.main_active_skill ?? undefined;
+                          if (mainActiveSkill !== undefined && activeGems.length > 0) {
+                            const removedActive = activeGems.indexOf(gem);
+                            const selected = Math.min(Math.max(mainActiveSkill - 1, 0), activeGems.length - 1);
+                            const nextSelected = removedActive >= 0 && removedActive <= selected
+                              ? Math.max(0, selected - 1) : selected;
+                            mainActiveSkill = nextSelected + 1;
+                          }
                           updateGroup(idx, {
                             gems: group.gems.filter((_, i) => i !== gemIdx),
-                            main_active_skill: group.main_active_skill == null ? undefined : nextSelected + 1,
+                            main_active_skill: mainActiveSkill,
                           });
                         }}
                       >

@@ -98,6 +98,8 @@ export interface ItemsJson {
 
 export interface GemJson {
   stat_set_index?: number | null;
+  /** Raw PoB name for an unresolved slot; display/export metadata, never calculation identity. */
+  name_spec?: string | null;
   skill_id: string;
   level: number;
   quality: number;
@@ -183,6 +185,8 @@ export interface CharacterOverride {
 /** 手动技能组宝石条目（gem id 由后端按 skill_id 反查）。 */
 export interface GemInput {
   stat_set_index?: number | null;
+  /** Raw PoB name for an unresolved slot; display/export metadata, never calculation identity. */
+  name_spec?: string | null;
   skill_id: string;
   level: number;
   quality: number;

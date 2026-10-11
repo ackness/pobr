@@ -69,6 +69,8 @@ pub struct GemInput {
     pub(crate) quality: u32,
     /// PoB stat-set selection (1-based); omitted selects the primary form.
     pub(crate) stat_set_index: Option<u32>,
+    /// Source display metadata for unresolved slots; never used to resolve calculation effects.
+    pub(crate) name_spec: Option<String>,
 }
 
 impl Default for GemInput {
@@ -78,6 +80,7 @@ impl Default for GemInput {
             level: 20,
             quality: 0,
             stat_set_index: None,
+            name_spec: None,
         }
     }
 }

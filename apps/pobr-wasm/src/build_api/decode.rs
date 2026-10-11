@@ -73,6 +73,8 @@ struct GemJson {
     quality: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     stat_set_index: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name_spec: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -220,6 +222,11 @@ fn build_to_json(build: &Build, xml: &str) -> Result<BuildJson, String> {
                         level: gem.gem_level,
                         quality: gem.quality,
                         stat_set_index: gem.stat_set_index,
+                        name_spec: if gem.skill_id.is_empty() {
+                            gem.name_spec.clone()
+                        } else {
+                            None
+                        },
                     })
                     .collect(),
             })
@@ -569,6 +576,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                 level: 20,
                 quality: 0,
                 stat_set_index: None,
+                name_spec: None,
             }];
             for support in &group.support_skills {
                 match cn_gem_effect_id(&data, &support.id) {
@@ -577,6 +585,7 @@ fn decode_build_file_impl(content: &str) -> Result<String, super::ApiError> {
                         level: 20,
                         quality: 0,
                         stat_set_index: None,
+                        name_spec: None,
                     }),
                     None => unknown_gems += 1,
                 }

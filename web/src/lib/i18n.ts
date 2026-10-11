@@ -164,6 +164,12 @@ const DICT = {
     'zh-CN': '尚无技能组——用上方搜索框添加，或导入 build code。',
   },
   'skills.emptyGroup': { 'en-US': '(empty)', 'zh-TW': '（空組）', 'zh-CN': '（空组）' },
+  'skills.unresolved': { 'en-US': 'Unresolved gem', 'zh-TW': '未解析寶石', 'zh-CN': '未解析宝石' },
+  'skills.unresolvedHint': {
+    'en-US': 'Imported slot preserved for sharing. No stable skill ID; not included in this calculation.',
+    'zh-TW': '保留匯入插槽以供分享。缺少穩定技能 ID，不納入本次計算。',
+    'zh-CN': '保留导入插槽以供分享。缺少稳定技能 ID，不纳入本次计算。',
+  },
   'skills.main': { 'en-US': 'MAIN', 'zh-TW': '主技能', 'zh-CN': '主技能' },
   'skills.setMain': { 'en-US': 'Set as main skill', 'zh-TW': '設為主技能', 'zh-CN': '设为主技能' },
   'skills.enabled': { 'en-US': 'on', 'zh-TW': '啟用', 'zh-CN': '启用' },

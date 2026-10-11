@@ -83,6 +83,18 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     {
         return Err(super::ApiError::bad_request("weapon set must be 1 or 2"));
     }
+    if req
+        .socket_groups
+        .as_deref()
+        .unwrap_or_default()
+        .iter()
+        .flat_map(|group| &group.gems)
+        .any(|gem| gem.skill_id.is_empty() && gem.name_spec.as_deref().is_none_or(str::is_empty))
+    {
+        return Err(super::ApiError::bad_request(
+            "unresolved gem slots require a non-empty name_spec to export",
+        ));
+    }
     let mut items: Vec<(String, String)> = Vec::new();
     for item in req.items.as_deref().unwrap_or_default() {
         let slot = slot_from_id(&item.slot)?;
@@ -147,37 +159,43 @@ fn encode_build_impl(request_json: &str) -> Result<String, super::ApiError> {
         .unwrap_or_default()
         .iter()
         .map(|g| {
-            let mut gems: Vec<(String, String, u32, u32, Option<u32>)> = g
+            let mut gems: Vec<crate::xml_write::XmlGem> = g
                 .gems
                 .iter()
-                .filter(|gem| !gem.skill_id.is_empty())
                 .map(|gem| {
                     let gem_id = data
                         .gem_effects
                         .get(&gem.skill_id)
                         .map(|e| e.gem_id.clone())
                         .unwrap_or_default();
-                    (
+                    crate::xml_write::XmlGem {
                         gem_id,
-                        gem.skill_id.clone(),
-                        gem.level,
-                        gem.quality,
-                        gem.stat_set_index,
-                    )
+                        skill_id: gem.skill_id.clone(),
+                        level: gem.level,
+                        quality: gem.quality,
+                        stat_set_index: gem.stat_set_index,
+                        name_spec: if gem.skill_id.is_empty() {
+                            gem.name_spec.clone()
+                        } else {
+                            None
+                        },
+                    }
                 })
                 .collect();
-            // The XML parse path determines the active skill as "the first
-            // gem in the group"; the calc path determines it as "the first
-            // non-support" (via a data-table lookup). Moving the first
-            // non-support gem to the front makes both determinations
-            // converge, guaranteeing the active skill doesn't drift after an encode -> decode round trip.
-            if let Some(active_pos) = gems.iter().position(|(gem_id, _, _, _, _)| {
-                // A gem with an empty gemId gets dropped by XML parsing, so it can't be an active candidate.
-                !gem_id.is_empty() && !data.is_support_gem(gem_id).unwrap_or(false)
+            // Put the first linked active before other identified rows, matching
+            // the calculation view, without moving unresolved source slots.
+            if let Some(active_pos) = gems.iter().position(|gem| {
+                // Only a linked, identified gem can establish the active candidate.
+                !gem.gem_id.is_empty() && !data.is_support_gem(&gem.gem_id).unwrap_or(false)
             }) && active_pos > 0
             {
-                let active = gems.remove(active_pos);
-                gems.insert(0, active);
+                let mut current_pos = active_pos;
+                for previous_pos in (0..active_pos).rev() {
+                    if !gems[previous_pos].skill_id.is_empty() {
+                        gems.swap(current_pos, previous_pos);
+                        current_pos = previous_pos;
+                    }
+                }
             }
             crate::xml_write::XmlSkillGroup {
                 weapon_set: g.weapon_set,

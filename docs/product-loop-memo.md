@@ -64,6 +64,19 @@
   pause absent before/after atomic acquisition, recurring automation enabled.
   Continue active M4. Exact eight-request real-WASM/final-import controls failed
   three transitions; evidence `.cache/product-loop-I9-before.json`.
+- 2026-10-11 I10 trigger: reaffirm tool-only scope, pause precedence on manual/
+  reused entry, atomic single ownership, supervised disjoint parallel work,
+  real-WASM/browser proof, independent review and main-only integration/Git.
+  Continue M5; preserve M1–M4's bounded closures without widening evidence.
+  No push/publication/deployment. Entry checkpoint
+  `ffc882ddacfaea9ba28d0db59f56bcdf3ac5cb7d`; existing branch clean, pause absent
+  before and after atomic acquisition, recurring automation observed enabled.
+- 2026-10-11 03:01 UTC overlapping trigger: the same user steering was relayed
+  through the owner Run. Another coordinator read both documents, observed no
+  pause and failed the atomic claim; it made no product/memo edits or duplicate
+  dispatches and preserved I10 ownership. Main re-read the protocol/steering,
+  rechecked absent pause and exact own owner.json, and continues this iteration
+  to its verified checkpoint, not a second iteration. No resume was requested.
 
 ## Completed milestone M1: trustworthy, continuous upgrade decisions
 
@@ -205,7 +218,7 @@ Scope: condition-state precedence only; no raw-type/default/placeholder,
 enemy-tier/formula/data/schema change. Numeric charge overrides are separately
 confirmed ineffective for tested values 1/2 and remain outside this repair.
 
-## Active milestone M5: restorable imports with unresolved gem slots
+## Completed milestone M5: restorable imports with unresolved gem slots
 
 Outcome: importing and saving a supported build with an unresolved gem slot
 must not make the entire browser workspace unusable after reload. Preserve the
@@ -224,7 +237,7 @@ I9's own import. Original bytes and the error surface were retained, not cleared
 or silently repaired. Evidence: `.cache/product-loop-I9-browser-before.json`,
 `-browser-reload-error.json`, and `-reload-provenance.json`.
 
-Exit scenarios:
+Exit scenarios (all passed at I10; bounded proof and limits in its ledger below):
 
 1. Fresh committed-Comet import → saved storage → actual reload reproduces before
    repair, with the unresolved slot traced through native import, frontend
@@ -242,12 +255,48 @@ Exit scenarios:
    relevant native/JSON/parity checks if touched, rebuilt real WASM if needed,
    and actual desktop/narrow/English/Chinese browser interaction pass.
 
-Precise next slice I10: reproduce the committed Comet import on a fresh origin;
-map the unresolved-slot contract and existing validation before choosing the
-smallest repair. Parallelize disjoint import/representation research and
-saved-state/reload evidence; main owns integration and runtime gates. Preserve
-the existing p1 failure and raw backups. Numeric charge override consumers rank
-next; touch-tree usability remains source-inferred, not a runtime-proven defect.
+I10 closes all four bounded exits. Named unresolved slots survive save/reload,
+PoB and JSON roundtrips and deliberate edits without gaining direct calculation
+effects. The original four-build/seven-stage workspace is recovered with all
+original fields and library entries intact, plus one safely recovered source
+name. Complete serialized calculation/diagnostic responses agree for all seven
+stages. The I10 ledger records the final runtime, independent review and limits.
+
+## Active milestone M6: trustworthy explicit charge counts
+
+Outcome: explicit Power/Frenzy/Endurance count inputs must agree with reported
+current counts and existing charge-dependent consumers, under the reference
+tool's charge-use and boundary semantics. Do not invent inherent PoE2 charge
+bonuses or imply that the entire Config catalog is modeled.
+
+Priority evidence: I9's actual Config stored `overridePowerCharges=1`, yet all
+three charge kinds returned current count 3 for override absent/1/2 in both
+source-code and materialized lanes. I10 reran those exact 18 requests with the
+final rebuilt WASM: all complete responses still match, and all reported counts
+remain 3. Receipts `.cache/product-loop-I9-charge-count-probe.json` and
+`.cache/product-loop-I10-charge-count-probe.json`. No count repair is included
+in M5; zero, upper-bound and invalid-type semantics still need reference research.
+
+Exit scenarios:
+
+1. Reproduce explicit-count failures with source and direct requests and actual
+   Config interaction; establish the three keys' reference semantics before
+   choosing a correction.
+2. Repair the bounded shared count consumer, preserving charge-use precedence,
+   absent/default behavior, raw imported types and unrelated conditions. Derive
+   boundary behavior from current code/PoB2 rather than adding new validation.
+3. Independently controlled counts and existing per-charge item/skill consumers
+   agree across supported count/use transitions, source/direct lanes, reset,
+   stage switching, export/reimport and reload. Existing diagnostics remain.
+4. Independent Spec/Standards review, relevant native/JSON/parity gates, rebuilt
+   real WASM and actual English/Chinese desktop/narrow keyboard interaction pass.
+
+Precise next slice I11: read current steering/pause/ownership first, reproduce
+the 18 retained requests and map the count-setting/charge-dependent consumer
+seams against PoB2. Parallelize disjoint consumer/reference research and
+regressions; main captures failing-before proof and owns the bounded integration.
+Touch-tree usability remains source-inferred and ranks below this confirmed
+calculation discrepancy. M1–M5 retain only their recorded scoped closures.
 
 
 
@@ -1389,3 +1438,172 @@ continuity, real runtime proof, independent review and no external publication.
   entry/final check; release only this exact owner's claim after the verified
   commit. Local product checkpoint, not release: retain `0.0.33`/`v0.0.33`,
   no new tag/version, push, external publication or deployment.
+
+### I10 — restorable unresolved imported gem slots
+
+Starting checkpoint: `ffc882ddacfaea9ba28d0db59f56bcdf3ac5cb7d`
+(`fix: honor imported condition edits`), clean existing
+`multi-agent-self-improvement` branch; application `0.0.33`, data `4.5.5.3`.
+Current steering reaffirmed tool-only scope, durable pause on manual/reused
+entry, atomic single ownership, supervised parallel work, runtime proof,
+independent review, main-only Git and no external publication.
+
+**Outcome and bounded implementation**
+
+- M5's four exits are complete. Fresh committed Comet imported successfully but
+  reload rejected the whole browser save before repair. The group-8 Unleash slot
+  has no stable ID and level 0; `parseSaved` formerly required every level ≥1.
+  Main's first validator repair restored reload, but actual generated PoB code
+  still dropped the slot. Acceptance therefore required the full preservation
+  path, not the validator-only patch.
+- Saved-state validation now allows zero only for an exactly empty stable ID;
+  uint32, quality/stat-set/name types and unrelated nested validation remain.
+  Optional `name_spec` preserves raw source-name provenance in DTOs and saves.
+  Known-gem JSON shapes remain unchanged; schema 7 stays in place.
+- Direct calculation conversion still excludes empty-ID rows and does not pass
+  name metadata into native identity resolution. Names are display/export data,
+  not a fabricated modeled skill. The existing raw PoB/core name resolver is
+  distinct and unchanged.
+- Export emits current unresolved names, level/quality/stat-set and group
+  metadata without resurrecting deleted rows from `base_code`. Missing/null/
+  empty names cause explicit `bad_request`, not silent dropping or invented
+  metadata. Legacy recovery requires exactly one unresolved row across the
+  whole source, matching full per-group ID order and slot/source/weapon binding;
+  ambiguous multi-unknown old saves remain lossless in JSON but cannot be safely
+  converted to PoB names, including indistinguishable reordered/compacted groups.
+- Review found active-first export moving unresolved leading/interleaved slots.
+  Allocation-free backward swaps now rotate only identified indices, keeping
+  every empty-ID position fixed and retaining the old all-identified ordering.
+  Native parsing also retains gem-skill-only groups, preventing loss of an
+  unresolved-only leading group and drift of later main-group selection.
+- Review found empty IDs counted as active ordinals on removal. Actual synthetic
+  `[Fireball, unresolved Unleash, Spark]` selected Spark, then removing Unleash
+  selected Fireball before repair. The UI now excludes empty IDs from the active
+  list; selected Spark and its DPS/ordinal remain after removal.
+- Final review caught an introduced zero-active edge: removing an unknown row
+  from an explicit-selector unresolved-only group synthesized ordinal 0, which
+  strict reload validation rejects. Both one-row →empty and two-row →remaining
+  unknown real-WASM cases reproduced the fatal invalid-save alert. The handler
+  now computes/remaps only with an explicit selector and identified actives;
+  otherwise it preserves the positive/absent selector without needless work.
+- Skills shows the raw name plus localized unresolved status in collapsed and
+  expanded views, with an honest exclusion hint. No data, formula, condition
+  default, version, tag or unrelated feature changes.
+
+**Runtime and gate evidence**
+
+- Fresh actual Ego import/reload failed before; validator-only reload preserved
+  the exact envelope after. Actual PoB export then exposed missing Unleash.
+  Receipts `.cache/product-loop-I10-fresh-before.json`, `-fresh-reload-before.json`,
+  `-fresh-after.json`, and `-share-before.xml`.
+- Failing-before regressions captured zero-level rejection, ambiguous two-empty
+  legacy name recovery, unknown-only group loss, export position drift and the
+  actual two-active deletion error. Each corrected path has passing-after proof.
+- Final frontend session/workspace/weapon-set suites: 91 passed. Native build library:
+  222 passed; 12 existing codec cases passed, and the new group case passed after
+  correcting its test-only native one-based selector expectation. Both panel
+  and effective `no_regression` parity cases passed.
+- WASM JSON contracts: 39 golden, 11 unresolved-slot and 10 WeGame cases passed
+  across the scoped run and new unknown-only-group rerun; one preexisting WeGame
+  case ignored. Scoped build/WASM fmt and Clippy passed. Cargo stayed sequential
+  in the worktree's normal target; no data/golden mutation or fresh vendor oracle.
+- Rebuilt real WASM and TypeScript/Vite production build passed. WASM
+  `5,125.28 kB`, main JS `519.26 kB`; existing >500 kB warning remains. No loading
+  performance improvement or full-release-gate claim.
+- All 25 affected production browser scenarios passed: eight new unresolved
+  persistence cases plus 17 existing roundtrip/workspace/persistence/import/
+  WeGame cases. First 23-case run passed 22; PoB sharing failed an incidental
+  exact allocated-node order assertion. The targeted rerun exposed preexisting
+  item-text whitespace normalization too. Those byte/order assertions were
+  removed, preserving exact unknown metadata, logical allocated-node equality,
+  current-state reload, existing builds, raw config inputs and numerical proof;
+  the affected case then passed. No production behavior was weakened.
+  After the final cross-group name guard, all six then-existing cases passed.
+  Both new zero-active cases failed before at actual reload; after the handler
+  correction, the final TypeScript/Vite build and all eight M5 cases passed.
+  Reuse the unchanged 17 existing passes; no duplicate full local gate.
+- Main removed an incidental escaped-XML spelling assertion; semantic decoded
+  name equality proves escaping. Other harness corrections: remove buttons have
+  text `×` and a title, header group removal and gem-row removal share a class,
+  native main-group indices are one-based, saved JSON compares parsed data rather
+  than incidental property order, and serialized response comparison normalizes
+  signed zero without dropping any fields. No production weakening for harnesses.
+- Final actual isolated recovery preserved all original fields in four builds/
+  seven stages, plus one additive safely recovered name in the Comet stage and
+  its active envelope. All 58 items/five skill sets were byte-exact. After own
+  later UI imports, the final isolated origin was restored to those original
+  four builds/seven stages/58 items/five skill sets with that one additive name.
+  All seven complete serialized calculation/diagnostic
+  responses equal pre-recovery controls with the final rebuilt WASM:
+  `-recovery-proof.json`, `-recovered-storage.json`,
+  `-responses-before.json` and `-responses-after.json`.
+- Actual Ego 5/p3, production port 4192: unresolved quality 0 →4, reload retained
+  the named empty-ID slot, displayed complete stats stayed exact, and editing
+  back to 0 restored the entire saved envelope exactly. Generated code retained
+  `nameSpec="Unleash"`, empty ID, level/quality 0; actual reimport retained that
+  slot and every displayed stat. All four preexisting builds and every original
+  library entry stayed exact; the own reimport added one build/13 item entries
+  (at that receipt: five builds/71 items/five skill sets). Receipts `-ego-edits.json`,
+  `-ego-roundtrip.json` and `-share-after.xml`.
+- Final actual Ego removed both rows of an explicit-selector unknown-only group:
+  two →one →empty. Each reload preserved the complete parsed saved envelope,
+  selector 1, later Fireball selection and every displayed stat. Receipt
+  `-ego-unknown-removal.json`. This proves the final zero-active handler beyond
+  the eight passing real-WASM browser contracts; final recovery then restored
+  the original bounded workspace above.
+- EN/zh-TW/zh-CN at both 1440/390px: actual focus/Tab preserved complete saves,
+  localized raw-name/status remained visible, document overflow was zero and
+  all six screenshots were visually inspected. English/1440px restored.
+  Receipts `-locales.json`, `-locales-extra.json` and corresponding PNGs.
+- Independent Spec and Standards full-source closure reviews approved the
+  whole-source name guard and found the zero-active persistence blocker. Both
+  applied-handler followups now report no remaining actionable source blocker;
+  main owns all runtime execution. Reports `-closure-spec.md`,
+  `-closure-standards.md`, `-closure-spec-final.md`,
+  `-closure-standards-final.md`; prior reports retain historical findings.
+
+**M5 exit disposition and refinement**
+
+1. Fresh failing-before import/reload and native → frontend → validation trace:
+   proven, with valid build controls and original p1/raw bytes untouched.
+2. Bounded representation/validation and original preservation: proven by
+   strict malformed inactive-stage refusal, typed boundary regressions, exact
+   recovery and no direct effects from arbitrary provenance names.
+3. Save/reload, PoB/JSON sharing, stage/build switching and deliberate edits:
+   proven by native/full-response comparisons, real-WASM browser contracts and
+   actual Ego; the original multi-build workspace is recoverable without loss.
+4. Independent reviews, scoped native/JSON/parity/lint, rebuilt WASM and actual
+   English/Chinese desktop/narrow keyboard surfaces: passed under stated limits.
+
+Limits: no touch-device/screen-reader/live WeGame service or performance proof;
+no broad mechanics/full-catalog audit or full-release qualification. Existing
+PoB serialization still normalizes known active order, allocated-node order and
+item-text whitespace; original saved raw text and PoBR JSON remain preserved.
+Truly empty native PoB groups retain their prior exclusion; the empty-group
+deletion boundary above guarantees saved-state/reload validity, not a new PoB
+empty-group export contract. Legacy multi-unknown nameless rows are not assigned
+guessed source names.
+
+M6 is selected over inferred touch-tree work: the final WASM still reproduces
+all 18 absent/1/2 numeric charge-count controls with count 3 and exact prior
+responses. I11 starts with reference/consumer research and failing-before
+regressions; no charge-count fix or new inherent charge effects are claimed here.
+
+**Ownership, review and checkpoint**
+
+- Run `run_a096bb08e179`, coordinator
+  `term_a7723bbb-bcde-4bc0-8baa-c2f125732b28`, iteration I10. Pause absent before
+  atomic claim, after acquisition and during integration; no marker cleared
+  and no foreign claim stolen. All research/development/review slices used
+  disjoint edit ownership; accepted settlements were released/reused before
+  ack, with no reclaimable worker left. Main alone integrated and ran gates.
+- Exact Conventional Commit: `fix: preserve unresolved imported gem slots`.
+  Main records verified hash/time, evidence, limits and I11 in
+  `.cache/product-loop-checkpoint.json` immediately after commit.
+- Owned throwaway scripts/tests/preview runner removed; ignored JSON/XML/review/
+  image evidence retained. Owned 4192 preview/p3 close at checkpoint; existing
+  5173 and p1 were not operated; original error/raw-storage backups are retained.
+- Recurring automation `0f3538b3-37df-44be-b888-d085f05d6e8d` remains enabled;
+  release only this exact owner's claim after verified commit. Local product
+  checkpoint, not application release: retain `0.0.33`/`v0.0.33`; no new
+  tag/version, push, external publication or deployment.

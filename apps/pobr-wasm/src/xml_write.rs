@@ -27,6 +27,16 @@ macro_rules! wln {
     ($w:expr, $($arg:tt)*) => { let _ = writeln!($w, $($arg)*); };
 }
 
+/// A gem's current values plus source display metadata for an unresolved slot.
+pub(crate) struct XmlGem {
+    pub gem_id: String,
+    pub skill_id: String,
+    pub level: u32,
+    pub quality: u32,
+    pub stat_set_index: Option<u32>,
+    pub name_spec: Option<String>,
+}
+
 /// A socket group ready to write out (gem_id already reverse-looked-up).
 pub(crate) struct XmlSkillGroup {
     pub weapon_set: Option<u8>,
@@ -36,9 +46,8 @@ pub(crate) struct XmlSkillGroup {
     /// The source marker for a group granted by equipment (written back as
     /// `<Skill source>`, so round-tripping can tell it apart).
     pub source: Option<String>,
-    /// `(gem_id, skill_id, level, quality, stat_set_index)`; `gem_id` is an empty string
-    /// when the reverse lookup fails (the attribute is then omitted).
-    pub gems: Vec<(String, String, u32, u32, Option<u32>)>,
+    /// `gem_id` is empty when the reverse lookup fails; that attribute is omitted.
+    pub gems: Vec<XmlGem>,
 }
 
 /// The write-out input (all sourced from the calculation request — the web
@@ -207,17 +216,24 @@ pub(crate) fn write_build_xml(input: &XmlInput<'_>) -> String {
             w!(w, r#" mainActiveSkill="{main}""#);
         }
         wln!(w, ">");
-        for (gem_id, skill_id, level, quality, stat_set_index) in &group.gems {
-            w!(w, r#"        <Gem skillId="{}""#, esc_attr(skill_id));
-            if !gem_id.is_empty() {
-                w!(w, r#" gemId="{}""#, esc_attr(gem_id));
+        for gem in &group.gems {
+            w!(w, r#"        <Gem skillId="{}""#, esc_attr(&gem.skill_id));
+            if !gem.gem_id.is_empty() {
+                w!(w, r#" gemId="{}""#, esc_attr(&gem.gem_id));
             }
-            if let Some(index) = stat_set_index {
+            if gem.skill_id.is_empty()
+                && let Some(name) = &gem.name_spec
+            {
+                w!(w, r#" nameSpec="{}""#, esc_attr(name));
+            }
+            if let Some(index) = gem.stat_set_index {
                 w!(w, r#" statSetIndex="{index}""#);
             }
             wln!(
                 w,
-                r#" level="{level}" quality="{quality}" enabled="true"/>"#
+                r#" level="{}" quality="{}" enabled="true"/>"#,
+                gem.level,
+                gem.quality
             );
         }
         wln!(w, "      </Skill>");

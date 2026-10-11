@@ -213,3 +213,159 @@ test('restores source groups from unchanged legacy lines without overwriting edi
   expect(backfillFromDecoded(cleared, decoded).params.custom_modifier_blocks).toEqual([]);
   expect(backfillFromDecoded(cleared, decoded).params.extra_modifiers).toBeUndefined();
 });
+
+describe('unresolved imported gem persistence', () => {
+  const unresolved: SavedSession = {
+    ...saved,
+    notes: 'Imported Firestorm with an unresolved Unleash slot',
+    state: {
+      ...saved.state,
+      character: { class_name: 'Sorceress', ascendancy_name: 'Stormweaver', level: 98 },
+      socketGroups: [{
+        enabled: true, slot: null, source: null, main_active_skill: 1,
+        gems: [
+          { skill_id: 'FirestormPlayer', level: 19, quality: 20 },
+          { skill_id: '', level: 0, quality: 0, name_spec: 'Unleash' },
+          { skill_id: 'SupportSpellCascadePlayer', level: 1, quality: 0, stat_set_index: 2 },
+        ],
+      }],
+      annotations: { 'skill:0': 'Do not discard the unresolved middle slot' },
+      params: {
+        main_socket_group: 0, enemy_tier: 'boss',
+        config_inputs: { conditionEnemyColdExposure: true, conditionFullLife: false, rawNumber: '23', multiplier: 0 },
+        custom_modifier_blocks: [{ title: 'Paused', enabled: false, text: '\n+10 to maximum Life\n' }],
+      },
+      weaponSwap: { active: 1, alternate_items: [], exclusive_nodes: [[], []] },
+    },
+  };
+  const workspace = {
+    version: 1 as const, activeBuild: 'other-build', builds: [
+      {
+        id: 'imported-build', name: 'Comet', activeStage: 'edited-stage',
+        stages: [
+          { id: 'imported-stage', name: 'Imported', saved: unresolved, drafts: { ring1: 'Unapplied draft' } },
+          { id: 'edited-stage', name: 'Edited', saved: {
+            ...unresolved, notes: 'Deliberately edited notes',
+            state: { ...unresolved.state, character: { ...unresolved.state.character, level: 99 } },
+          }, drafts: {} },
+        ],
+      },
+      {
+        id: 'other-build', name: 'Other build', activeStage: 'other-stage',
+        stages: [{ id: 'other-stage', name: 'Starter', saved, drafts: {} }],
+      },
+    ],
+  };
+
+  test('preserves an empty-ID level-zero middle slot and the complete saved stage without coercion', () => {
+    const raw = JSON.stringify(unresolved);
+    const restored = parseSaved(raw);
+    expect(restored).toEqual(unresolved);
+  });
+
+  test('preserves inactive unresolved stages, deliberate edits and unrelated builds in a workspace', () => {
+    const raw = JSON.stringify(workspace);
+    expect(parseWorkspace(JSON.parse(raw), parseSaved)).toEqual(workspace);
+  });
+
+  test.each([
+    { skill_id: 'FirestormPlayer', level: 0 },
+    { skill_id: ' ', level: 0 },
+    ...[-1, 0.5, '0', 0x100000000].map(level => ({ skill_id: '', level })),
+    ...[-1, 0.5, '20', 0x100000000].map(level => ({ skill_id: 'FirestormPlayer', level })),
+    ...[-1, 0.5, '0', 0x100000000].map(quality => ({ quality })),
+    ...[0, -1, 0.5, '1', 0x100000000].map(stat_set_index => ({ stat_set_index })),
+    ...[1, true, [], {}].map(name_spec => ({ name_spec })),
+  ])('rejects malformed gem values in standalone and inactive workspace stages: %j', patch => {
+    const invalid = structuredClone(unresolved);
+    Object.assign(invalid.state.socketGroups[0].gems[1], patch);
+    expect(parseSaved(JSON.stringify(invalid))).toBeNull();
+    const invalidWorkspace = structuredClone(workspace);
+    invalidWorkspace.builds[0].stages[0].saved = invalid;
+    expect(parseWorkspace(invalidWorkspace, parseSaved)).toBeNull();
+  });
+
+  test.each([
+    { items: [{ slot: 'ring1', text: {} }] },
+    { flasks: {} },
+    { jewels: [{ socket_node: -1, text: 'Invalid socket' }] },
+    { params: { config_inputs: { conditionFullLife: {} } } },
+    { annotations: { 'skill:0': [] } },
+  ])('does not excuse malformed unrelated state when an unresolved gem is present: %j', patch => {
+    const invalid = { ...unresolved, state: { ...unresolved.state, ...patch } };
+    expect(parseSaved(JSON.stringify(invalid))).toBeNull();
+    const invalidWorkspace = structuredClone(workspace);
+    Object.assign(invalidWorkspace.builds[0].stages[0].saved.state, patch);
+    expect(parseWorkspace(invalidWorkspace, parseSaved)).toBeNull();
+  });
+
+  test('keeps positive unresolved levels and uint32 gem metadata without adding game-level caps', () => {
+    const session = structuredClone(unresolved);
+    session.state.socketGroups[0].gems[1] = {
+      skill_id: '', level: 0xffffffff, quality: 0xffffffff, stat_set_index: 0xffffffff,
+    };
+    expect(parseSaved(JSON.stringify(session))).toEqual(session);
+    const restoredWorkspace = structuredClone(workspace);
+    restoredWorkspace.builds[0].stages[0].saved = session;
+    expect(parseWorkspace(restoredWorkspace, parseSaved)).toEqual(restoredWorkspace);
+  });
+
+  test.each([undefined, null, '', 'Unleash'])('preserves optional source name metadata %j', name_spec => {
+    const session = structuredClone(unresolved);
+    session.state.socketGroups[0].gems[1].name_spec = name_spec;
+    expect(parseSaved(JSON.stringify(session))).toEqual(session);
+  });
+
+  test('backfills an old unnamed slot only for intact gem order and keeps deliberate name edits', () => {
+    const decoded = {
+      config_inputs: {}, tree: {}, socket_groups: unresolved.state.socketGroups,
+    } as unknown as BuildJson;
+    const legacy = structuredClone(unresolved.state);
+    delete legacy.socketGroups[0].gems[1].name_spec;
+    expect(backfillFromDecoded(legacy, decoded).socketGroups[0].gems[1])
+      .toEqual(unresolved.state.socketGroups[0].gems[1]);
+    const edited = structuredClone(unresolved.state);
+    edited.socketGroups[0].gems[1].name_spec = 'Deliberately edited source name';
+    expect(backfillFromDecoded(edited, decoded).socketGroups[0].gems[1].name_spec)
+      .toBe('Deliberately edited source name');
+  });
+
+  test.each(['shifted', 'removed', 'cleared'] as const)('does not resurrect source names or removed gems after %s gem edits', edit => {
+    const decoded = {
+      config_inputs: {}, tree: {}, socket_groups: unresolved.state.socketGroups,
+    } as unknown as BuildJson;
+    const state = structuredClone(unresolved.state);
+    const gems = state.socketGroups[0].gems;
+    delete gems[1].name_spec;
+    state.socketGroups[0].gems = edit === 'shifted' ? [gems[1], gems[0], gems[2]]
+      : edit === 'removed' ? [gems[0], gems[2]] : [];
+    const expected = structuredClone(state.socketGroups[0].gems);
+    expect(backfillFromDecoded(state, decoded).socketGroups[0].gems).toEqual(expected);
+  });
+  test('does not infer names for multiple legacy empty-ID slots after an ambiguous reorder', () => {
+    const state = structuredClone(unresolved.state);
+    state.socketGroups[0].gems.push({ skill_id: '', level: 2, quality: 7 });
+    delete state.socketGroups[0].gems[1].name_spec;
+    const original = structuredClone(state.socketGroups);
+    original[0].gems[1].name_spec = 'Unleash';
+    original[0].gems[3].name_spec = 'Other source';
+    [state.socketGroups[0].gems[1], state.socketGroups[0].gems[3]] =
+      [state.socketGroups[0].gems[3], state.socketGroups[0].gems[1]];
+    const decoded = { config_inputs: {}, tree: {}, socket_groups: original } as unknown as BuildJson;
+    expect(backfillFromDecoded(state, decoded).socketGroups[0].gems)
+      .toEqual(state.socketGroups[0].gems);
+  });
+  test.each(['reordered', 'removed'] as const)('does not infer names across indistinguishable source groups after %s groups', edit => {
+    const original = structuredClone(unresolved.state.socketGroups);
+    const other = structuredClone(original[0]);
+    other.gems[1] = { skill_id: '', level: 2, quality: 7, name_spec: 'Other source' };
+    original.push(other);
+    const state = structuredClone(unresolved.state);
+    state.socketGroups = structuredClone(original).reverse();
+    for (const group of state.socketGroups) delete group.gems[1].name_spec;
+    if (edit === 'removed') state.socketGroups.pop();
+    const expected = structuredClone(state.socketGroups);
+    const decoded = { config_inputs: {}, tree: {}, socket_groups: original } as unknown as BuildJson;
+    expect(backfillFromDecoded(state, decoded).socketGroups).toEqual(expected);
+  });
+});
