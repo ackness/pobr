@@ -185,6 +185,10 @@ fn translate_player_buff_mod_name(name: &str) -> Result<Vec<&'static str>, Unsup
         // into cfg.multipliers -- see the buff-specs injection point in
         // calc_orchestrator).
         "Multiplier:SigilOfPowerMaxStages" => Ok(vec!["Multiplier:SigilOfPowerMaxStages"]),
+        // Wind Dancer's stage cap uses the same buff-spec multiplier injection.
+        // Dropping it leaves the Evasion MORE tag's limitVar at zero, suppressing
+        // the buff even when windDancerStacks is configured.
+        "Multiplier:WindDancerStacksLimit" => Ok(vec!["Multiplier:WindDancerStacksLimit"]),
         // (0.5.4b #5) Blazing Critical support (sup_int.lua:959): 0.22.0 added
         // a GlobalEffect/Buff tag to
         // `support_blazing_crits_gain_%_fire_damage_with_attacks_on_critical_hit`
