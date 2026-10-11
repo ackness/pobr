@@ -222,16 +222,21 @@ pub(super) fn support_stat_limit<'a>(
     outcome: &'a MappedOutcome,
 ) -> Option<SupportStatLimit<'a>> {
     match outcome {
-        MappedOutcome::Unknown
-            if stat.value.is_finite()
-                && stat.value != 0.0
-                && stat.stat == "lose_%_of_life_es_and_mana_when_skill_is_used" =>
-        {
-            // Pinned gem_stat_descriptions.lua entry 618 specifies maximum
-            // pools. No on-use loss consumer exists; this is not a skill cost.
-            Some(SupportStatLimit::Unmodeled(
-                "on-use loss of maximum Life, Mana and Energy Shield not modeled",
-            ))
+        MappedOutcome::Unknown if stat.value.is_finite() && stat.value != 0.0 => {
+            match stat.stat.as_str() {
+                // Pinned gem_stat_descriptions.lua entry 618 specifies maximum
+                // pools. No on-use loss consumer exists; this is not a skill cost.
+                "lose_%_of_life_es_and_mana_when_skill_is_used" => {
+                    Some(SupportStatLimit::Unmodeled(
+                        "on-use loss of maximum Life, Mana and Energy Shield not modeled",
+                    ))
+                }
+                // Entry 764 calls this Life sacrifice, not maximum-pool loss.
+                "sacrifice_%_life_on_skill_use" => Some(SupportStatLimit::Unmodeled(
+                    "on-use Life sacrifice not modeled",
+                )),
+                _ => None,
+            }
         }
         MappedOutcome::Unsupported(primary) => {
             skipped_support_condition(catalog, effect_id, set_key, stat)

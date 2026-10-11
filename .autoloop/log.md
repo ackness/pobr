@@ -92,3 +92,13 @@
 - Closed the browser and removed temporary XML/oracle/screenshot artifacts. Source disclosure is complete for this proven maximum-resource-loss mechanic, not for all support economics.
 - Next: investigate Extraction's distinct Life-sacrifice payload and diagnostic coverage without assuming maximum/current-resource semantics.
 - Commit: this entry accompanies `fix: disclose unmodeled support resource loss`.
+
+## Iteration 10 — 2026-10-12
+- Reproduced Extraction's silent Life sacrifice in real WASM: DPS29.40709→46.561230576 with ManaCost89/LifeCost0 and no diagnostic. Canonical raw payload retains sacrifice10 plus35gain-as-chaos; pinned stat-description entry764 says Life sacrifice without maximum/current qualification. No exact stat mapper/consumer exists.
+- Added the distinct sacrifice key to the existing finite/nonzero Unknown-mechanic classifier. The warning names on-use Life sacrifice, not maximum-resource loss or ordinary cost. No numerical, data, schema or support-name filtering changes.
+- Extended the existing three resource-effect regression tests to preserve all Atziri cases and cover Extraction's source identity, zero payload, unchanged whole output, sibling/incompatible-group boundaries and stat transplantation. Two assertions failed before the production change.
+- Verification:19support-gating tests,5WASM support contracts,18planner tests and scoped fmt/Clippy passed. Rebuilt release WASM. Independent review approved with no findings.
+- Browser: the exact value10 sacrifice receipt now appears while DPS/costs remain unchanged. The populated search displays two excluded Extraction complete sets with no Apply controls and no better modeled recommendation. Expanded the actual exclusion reason and inspected its screenshot. No build edits were applied.
+- Closed the browser and removed the screenshot. This completes the bounded two-mechanic disclosure milestone, not exhaustive support economics or the long-term product goal.
+- Next handoff: exercise realistic multi-point passive routes/refunds, preview agreement and unrelated-state preservation; earlier loop evidence covered only a one-point passive application.
+- Commit: this entry accompanies `fix: disclose unmodeled support life sacrifice`.

@@ -46,15 +46,23 @@ Exit criteria:
 2. Trace pinned PoB2 behavior through exported data and the Rust consumer; distinguish a calculation defect from a display-only statistic or source-text mismatch.
 3. If a defect is proven, fix the actual consumer with source-backed parity/regression coverage and real-WASM verification. Do not infer mechanics from prose alone or silently suppress unsupported effects.
 
-## Current milestone: recommendation modeling-limit fidelity
-Audit whether source-described support costs survive ingestion and reach either
-real consumers or explicit unsupported-effect diagnostics. Iteration 9 completed
-the bounded maximum-resource-loss disclosure. Next inspect Extraction's distinct
-Life-sacrifice stat; do not assume its semantics match maximum-resource loss.
+## Completed milestone: recommendation modeling-limit fidelity
+Status: completed in iteration 10 for the two audited resource mechanics, not
+exhaustive support-economy coverage. Maximum-resource loss and Life sacrifice
+now have distinct source-attributed limits; no sustain formula was invented.
 Exit criteria:
 1. Reproduce the Life-sacrifice candidate's effects against the pinned source and actual calculated request.
 2. Distinguish supported numeric effects from silent input/consumer omissions; do not infer coverage from prose or positive DPS.
 3. Correct a proven omission through existing ingestion/diagnostic or calculation boundaries, with source-backed tests and real-WASM verification. Do not invent a sustain approximation or special-case a support name.
+
+## Current milestone: trustworthy passive reallocation decisions
+Extend the earlier one-point passive smoke to realistic multi-point routes and
+refunds on the populated build. This is the next core upgrade workflow whose
+preview/application boundaries have not been exercised deeply in this loop.
+Exit criteria:
+1. Real-WASM route/refund search respects the requested point budget and preserves the current build before explicit application.
+2. Applying a selected plan agrees with its preview and preserves unrelated equipment, gems and workspace stages.
+3. Existing/new modeling limits remain visible and distinguishable; fix only evidenced defects rather than inferring complete passive coverage.
 
 ## Verified support evidence
 - Iteration 6 searched the populated Frost Bomb group (index 4, level 19/quality 20, four support slots). The initial result reported 824 complete recalculations, 8 baseline limits and 8 excluded complete edits.
@@ -73,6 +81,9 @@ Exit criteria:
 - Equipped Atziri now appears among nine baseline limits. After removing it and searching with four slots, top eight plans omit it; two excluded complete sets show attributed loss receipts and no Apply controls. Applied Cooldown Recovery II instead: preview 19670.8 displayed 19671, other twelve groups remained unchanged, and reload retained it.
 - Nineteen support-gating tests, five WASM support contracts, eighteen planner tests and scoped fmt/Clippy passed. Rebuilt WASM and inspected the real warning surface; independent review approved. Tests preserve unknown/control/manual-consumer behavior and verify the raw mechanic under another support name.
 - The temporary numeric oracle probe did not include the lineage support (supports was empty), so it was not used as parity evidence. Source payload/map/consumer inspection establishes the diagnostic, not an inferred sustain model. Maximum-resource-loss disclosure is not exhaustive sacrifice/resource-economy coverage.
+- Iteration 10 reproduced Extraction's 10% Life sacrifice missing from diagnostics while its damage benefit applied. Pinned description entry 764 says Life sacrifice without maximum/current semantics. Added a separate raw-stat classification; the same stat is retained for Guatelitzi's Ablation (25) and Sacrificial Offering (15), without support-name filtering.
+- Extended the existing three resource-effect regressions to both canonical mechanics, preserving all previous assertions. Two failed before the addition; all nineteen support-gating tests, five WASM support contracts, eighteen planner tests and scoped fmt/Clippy passed afterward. Independent review approved without findings.
+- Rebuilt WASM: the minimal Extraction fixture now reports a precise value-10 sacrifice receipt, with DPS46.561230576 and ordinary costs unchanged. Populated search shows two excluded Extraction complete sets with no Apply controls; it finds no better modeled plan than the current Cooldown Recovery II setup. Screenshot inspected; no build edits were applied this iteration.
 
 ## Verified whole-item evidence
 - Both ring positions were compared without mutating workspace bytes. Ring 2 applied the exact evaluated candidate, preserving all other item slots; preview DPS 6654.85 displayed as 6655 after recalculation.
@@ -109,6 +120,6 @@ Exit criteria:
 - Pinned PoB2 vendor ce566eac45ea8a86477f513c7ee65a1ebe60014e is now cloned inside this worktree. Iteration 7 regenerated trade metadata, repacked the snapshot manifest and synced 67 runtime files; existing release WASM was reused because no engine/API behavior changed.
 
 ## Priority queue
-1. Trace `sacrifice_%_life_on_skill_use`, starting with Extraction, through canonical descriptions, actual payloads and consumers/diagnostics.
-2. Keep sacrifice semantics distinct from maximum-resource loss; only disclose or implement a proven mechanic through existing boundaries.
-3. Preserve baseline/new-limit distinctions and unchanged unrelated calculation outputs while extending coverage.
+1. Exercise multi-point passive routes/refunds and preview/application integrity on the populated fixture.
+2. Keep resource-loss/sacrifice warnings visible; complete support economics and other unknown stat families remain unclaimed.
+3. Any further mechanic coverage needs canonical input/consumer evidence and a failing-before regression, not prose or oracle DPS alone.
