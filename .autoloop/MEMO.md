@@ -22,7 +22,7 @@ Survey sources: README product promise; CLAUDE architecture/validation table; `d
 
 Make PoBR a trustworthy decision workspace for real PoE2 builds: comparisons must show their assumptions and limits, preserve player work, and produce the same result when applied as when previewed.
 
-## First milestone: Trustworthy passive reallocation decisions
+## Completed milestone: Trustworthy passive reallocation decisions
 
 Prioritize passive planning because it combines topology, scarce point budgets, travel attributes, refunds, calculation limits and persisted state in one player decision. This is a complementary scope to recent import work and prior-loop support-mechanic investigation.
 
@@ -72,4 +72,26 @@ Establish this branch's runnable browser surface and inspect the passive plannin
 - Browser space 30 finished; temporary screenshot removed. Port 5182 remains available. Saved synthetic Witch build has Current (13 nodes) and Refund verification copy (14 nodes), alongside the earlier imported builds.
 - No production defect was found in these exercised paths. No permanent tests or production code changed; do not infer complete passive-mechanic coverage from these calculations.
 
-Next iteration: verify a real excluded passive-edit receipt and baseline limitations, and invalidate a completed plan with a relevant build edit (not only a budget change). Reuse the existing diagnostics fixture pattern rather than inventing unsupported raw-stat semantics. Once those checks are complete, close this bounded milestone and select the next evidenced product gap rather than extending verification indefinitely.
+## Iteration 3 evidence and milestone closure
+
+- Reused the existing real-WASM fixture pattern from `web/e2e/passive-diagnostics.spec.ts`, but created its build through the real encoder and normal UI import rather than replacing browser storage. Witch level 90, Fireball level 16, the ten-node socket path from iteration 2, and Heroic Tragedy with Vorana seed 1234 at socket 61419.
+- Two-point Max Life search evaluated 151 plans. Baseline limits included `Tree:46819: missing timeless jewel seed data` and the raw Remembrancing line. There were 26 excluded complete edits; searching left the saved envelope unchanged.
+- Expanded the exact route `Attribute #49512 · Elemental Damage #5936`. It contained precisely the two new seed-data reasons for those IDs, not the baseline node's reason, and no buttons. Visually inspected the receipt. Navigation to Calcs and back preserved all baseline/excluded associations and build state.
+- Selected Strength travel attributes to produce ten actionable plans before testing invalidation. After navigation paused tracking, replaced the timeless jewel with a Ruby granting +20 maximum Life using the socket editor and Save & recalculate. Only `jewels` changed; every old receipt and plan action disappeared, with no automatic search.
+- Explicit fresh search evaluated 101 plans and returned ten recommendations against the new baseline. No baseline/exclusion disclosure or stale seed-data text remained. This proves invalidation by an actual calculation input change, not only by planner controls.
+- Closed the bounded milestone: populated multi-point routes, conservative import refund guard, connected positive refunds, atomic travel attributes, protected sockets, exact preview/application agreement, stage isolation/reload, baseline/new diagnostic separation, and stale-result invalidation were exercised across iterations 1–3. This is not a claim of complete passive mechanics, exhaustive graph search, all languages or all device sizes.
+- Browser space 31 finished and temporary screenshot removed. No production defect was found in the checked correctness paths; no production files or permanent tests were changed. Do not extend verification indefinitely.
+
+## Current milestone: Clear passive-plan application outcomes
+
+Observed gap: after applying two nodes `[42736,4203]` in iteration 3, automatic search replaced the selected result with a new 115-plan baseline. The planner had no status message or applied confirmation. Iterations 1–2 similarly required inspecting stored state and sidebar numbers to establish what Apply did.
+
+Exit criteria:
+
+1. Successful ordinary passive-route application gives a concise, accessible confirmation identifying the applied allocation/refund, without presenting an old preview as a current recommendation.
+2. Joint jewel/passive application has equivalent explicit feedback for its relevant edits.
+3. Automatic recommendation refresh does not erase the acknowledgment; unrelated build changes and stage changes cannot leave a misleading success message. Failed/stale/no-op application does not claim success.
+4. Use existing English, Simplified Chinese and Traditional Chinese copy/style conventions. No persisted history, undo subsystem, calculation changes or new diagnostics are required.
+5. Exercise both changed UI paths with real WASM, navigation and stale-state boundaries, plus targeted checks and independent review for non-trivial implementation.
+
+Next iteration: implement the ordinary route confirmation first, keeping its lifetime tied to the actual applied build. Reuse existing state/feedback patterns rather than adding a general notification subsystem. Then handle the joint planner consistently and close the milestone.

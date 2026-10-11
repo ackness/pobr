@@ -20,3 +20,13 @@
 - One smoke wait assumed a recommendation would exist after copying. The reset Intelligence travel choice legitimately produced no improving Max Life routes in 512 evaluations. Inspected completion, selected Strength explicitly and continued; no product fix was warranted.
 - No production code or permanent tests changed. These live checks advance the milestone but do not prove all passive mechanics. Browser space 30 finished; Vite remains on 5182. Commit: this entry's checkpoint commit (`chore: verify passive refunds and stage isolation`).
 - Next: real excluded-edit diagnostics and completed-plan invalidation after a build edit, then conclude the bounded milestone.
+
+## 3 — Diagnostic trust closure and next product gap
+
+- Imported the real timeless-jewel diagnostic fixture via the normal encoder/import UI. A two-point search evaluated 151 plans and excluded 26 complete edits without mutating saved state.
+- Confirmed the baseline node 46819 reason stayed separate from the exact `[49512,5936]` excluded route's two new reasons. That receipt had no actions; navigation retained its associations. Visually inspected the expanded diagnostic.
+- Produced ten actionable Strength-travel plans, then replaced the jewel through the socket editor after navigation paused tracking. Only the jewel changed; all old receipts and Apply controls disappeared. A new 101-plan search had ten recommendations and no stale seed-data warnings.
+- Completed the bounded passive-integrity milestone using evidence from iterations 1–3. No calculation-completeness or full-suite claim; no production defect was observed and no speculative fix was added.
+- Observed a concrete UX gap for the next milestone: successful Apply added nodes 42736/4203 and immediately refreshed to a 115-plan baseline, leaving no applied confirmation/status. Next milestone is clear, state-scoped feedback for ordinary and joint passive applications, with existing localization and no new notification infrastructure.
+- Finished browser space 31, removed the screenshot and retained Vite on 5182. No production files or permanent tests changed. Commit: this entry's checkpoint commit (`chore: close passive integrity verification milestone`).
+- Next: implement ordinary passive-route application feedback, then cover the joint planner and verify message lifetime against real state changes.
