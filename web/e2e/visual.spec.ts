@@ -31,7 +31,7 @@ for (const width of BREAKPOINTS) {
       expect(overflow.body, `${tab}: document must fit the viewport`).toBeLessThanOrEqual(1);
       expect(overflow.main, `${tab}: main content must not overflow horizontally`).toBeLessThanOrEqual(1);
       if (width >= 1920 && tab !== 'Tree') {
-        const bounds = await page.locator('.ui-page').boundingBox();
+        const bounds = await page.locator('.ui-page:visible').boundingBox();
         expect(bounds!.width, `${tab}: use the available wide workspace`).toBeGreaterThan(1400);
       }
       await page.screenshot({ path: `e2e/screenshots/${tab.toLowerCase()}-${width}.png` });

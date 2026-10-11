@@ -26,6 +26,8 @@
 /audits/
 /devs/docs/
 /devs/tools/
+/docs/product-loop.md
+/docs/product-loop-memo.md
 # 无测试引用的示例 build 文件（召唤奥黛丽黑本.build 被 contract_golden 引用，仍入库）
 /examples/build-file/万兽御主.build
 /examples/build-file/重生之古灵高手.build
