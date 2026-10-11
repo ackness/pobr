@@ -74,7 +74,6 @@ test('archive preserves complete data, bindings and skill; hashes and size arith
   }
   assert.throws(() => readFileSync(join(packageRoot, 'unrelated.txt')), { code: 'ENOENT' });
   assert.equal(report.totals.wasmJsCompressedDataBytes, report.files.reduce((sum, file) => sum + file.bytes, 0));
-  assert.equal(report.reference.totalBytes, 262144 + 69120 + 4875878);
   for (const line of readFileSync(join(root, '.cache/wasm-release/SHA256SUMS'), 'utf8').trim().split('\n')) {
     const [expected, name] = line.split('  ');
     assert.equal(createHash('sha256').update(readFileSync(join(root, '.cache/wasm-release', name))).digest('hex'), expected);
@@ -244,4 +243,26 @@ test('build wrapper reuses verified inputs and rebuilds only changed build input
   assert.throws(() => run());
   assert.equal(count(), beforeMissing + 2);
   assert.equal(existsSync(receiptPath), false);
+});
+
+test('size ratios use separate measured runtime and gzip totals, including already-compressed data once', t => {
+  const { root, write } = fixture(t);
+  write('devs/ci/pob-web-wasm-size-baseline.json', {
+    project: 'reference', source: 'https://example.invalid', provenance: 'Controlled measured byte counts',
+    files: [
+      { name: 'lua.wasm', bytes: 1000, gzipBytes: 100 },
+      { name: 'lua.mjs', bytes: 200, gzipBytes: 50 },
+      { name: 'pob-lua.json.gz', bytes: 300, gzipBytes: 300 },
+    ],
+  });
+  const { report } = packageWasm({ root });
+  assert.equal(report.reference.totalBytes, 1500);
+  assert.equal(report.reference.gzipTransferEstimateBytes, 450);
+  assert.equal(report.ratioToReference, report.totals.wasmJsCompressedDataBytes / 1500);
+  assert.equal(report.gzipRatioToReference, report.totals.gzipTransferEstimateBytes / 450);
+  assert.notEqual(report.ratioToReference, report.gzipRatioToReference);
+  write('devs/ci/pob-web-wasm-size-baseline.json', {
+    files: [{ name: 'invalid', bytes: 100, gzipBytes: null }],
+  });
+  assert.throws(() => packageWasm({ root }), /Invalid measured reference sizes/);
 });

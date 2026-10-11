@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-11-sorceress-stormweaver-comet-f085a4410120",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/2736045458-2703/%E4%B8%8D%E8%89%AF%E4%BA%BA",
+    "account": "2736045458-2703",
+    "character": "不良人",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-11T07:04:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=2736045458-2703&name=%E4%B8%8D%E8%89%AF%E4%BA%BA&overview=forbidden-rites",
+    "snapshot": "0632-20261011-47556",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Stormweaver",
+    "selection": "base-class-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Sorceress",
+    "ascendancy": "Stormweaver",
+    "level": 100,
+    "main_skill": "Comet"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 12,
+    "code_sha256": "957efc2a05cbfedd1a480e6e882befa9a547cd8eb3e8333d1d363323af82630f",
+    "code_chars": 12976,
+    "decoded_bytes": 49646
+  }
+}

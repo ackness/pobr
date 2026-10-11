@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-11-monk-martial-artist-ice-shot-71a879f43f2f",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1184519336-2377/%E6%88%91%E5%B0%B1%E6%98%AF%E9%98%BF%E6%AC%A3",
+    "account": "1184519336-2377",
+    "character": "我就是阿欣",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-11T07:04:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1184519336-2377&name=%E6%88%91%E5%B0%B1%E6%98%AF%E9%98%BF%E6%AC%A3&overview=forbidden-rites",
+    "snapshot": "0632-20261011-47556",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Martial+Artist",
+    "selection": "base-class-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Monk",
+    "ascendancy": "Martial Artist",
+    "level": 99,
+    "main_skill": "Ice Shot"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "0a7cae32696701597ef92b9131f15776e52e49eac6477b4fee888a5ebb56db4e",
+    "code_chars": 12324,
+    "decoded_bytes": 45140
+  }
+}

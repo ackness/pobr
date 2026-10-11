@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-11-warrior-titan-his-scattering-calamity-a46026af415f",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/3640233073-1554/%E9%97%AA%E5%9B%9E%E8%8F%9C%E5%9B%B0%E5%9B%B0",
+    "account": "3640233073-1554",
+    "character": "闪回菜困困",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-11T07:04:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=3640233073-1554&name=%E9%97%AA%E5%9B%9E%E8%8F%9C%E5%9B%B0%E5%9B%B0&overview=forbidden-rites",
+    "snapshot": "0632-20261011-47556",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Titan",
+    "selection": "base-class-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Warrior",
+    "ascendancy": "Titan",
+    "level": 98,
+    "main_skill": "His Scattering Calamity"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 2,
+    "code_sha256": "da661ef8971a007101364acc8074c5199585488a4765413d7c4d1a639b97a2db",
+    "code_chars": 11652,
+    "decoded_bytes": 39922
+  }
+}

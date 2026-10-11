@@ -1,0 +1,1287 @@
+{
+  "selection": "base-class-first-v1",
+  "league": {
+    "name": "Forbidden Rites",
+    "url": "forbiddenrites",
+    "displayName": "Forbidden Rites",
+    "hardcore": false,
+    "indexed": false
+  },
+  "snapshot": {
+    "url": "forbiddenrites",
+    "name": "Forbidden Rites",
+    "timeMachineLabels": [
+      "hour-6",
+      "hour-18",
+      "week-3",
+      "week-2",
+      "week-4",
+      "week-1",
+      "day-6",
+      "hour-3",
+      "week-5",
+      "day-4",
+      "hour-12",
+      "day-2",
+      "day-5",
+      "day-3",
+      "day-1"
+    ],
+    "version": "0632-20261011-47556",
+    "snapshotName": "forbidden-rites",
+    "overviewType": 0,
+    "passiveTree": "PassiveTree-0.5"
+  },
+  "index_url": "https://poe.ninja/poe2/api/data/build-index-state",
+  "snapshot_url": "https://poe.ninja/poe2/api/data/index-state",
+  "public_index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites",
+  "public_index_sha256": "c3cd4f61fc0cb8e580fb66d31c97913009b853f29635eab927dfd7653f4cb292",
+  "class_dictionary_url": "https://poe.ninja/poe2/api/builds/dictionary/4b3dfeccb2f4aa52ccc458925cd87f4575a4c25b",
+  "available_classes": [
+    "Abyssal Lich",
+    "Acolyte of Chayula",
+    "Amazon",
+    "Blood Mage",
+    "Chronomancer",
+    "Deadeye",
+    "Disciple of Varashta",
+    "Druid",
+    "Gemling Legionnaire",
+    "Huntress",
+    "Infernalist",
+    "Invoker",
+    "Lich",
+    "Martial Artist",
+    "Mercenary",
+    "Monk",
+    "Oracle",
+    "Pathfinder",
+    "Ranger",
+    "Ritualist",
+    "Shaman",
+    "Smith of Kitava",
+    "Sorceress",
+    "Spirit Walker",
+    "Stormweaver",
+    "Tactician",
+    "Titan",
+    "Warbringer",
+    "Warrior",
+    "Witch",
+    "Witchhunter"
+  ],
+  "discovery": {
+    "buildLeagues": [
+      {
+        "name": "Forbidden Rites",
+        "url": "forbiddenrites",
+        "displayName": "Forbidden Rites",
+        "hardcore": false,
+        "indexed": false
+      },
+      {
+        "name": "Runes of Aldur",
+        "url": "runesofaldur",
+        "displayName": "Runes of Aldur",
+        "hardcore": false,
+        "indexed": true
+      },
+      {
+        "name": "HC Forbidden Rites",
+        "url": "forbiddenriteshc",
+        "displayName": "HC Forbidden Rites",
+        "hardcore": true,
+        "indexed": false
+      },
+      {
+        "name": "HC Runes of Aldur",
+        "url": "runesofaldurhc",
+        "displayName": "HC Runes of Aldur",
+        "hardcore": true,
+        "indexed": false
+      },
+      {
+        "name": "SSF Forbidden Rites",
+        "url": "forbiddenritesssf",
+        "displayName": "SSF Forbidden Rites",
+        "hardcore": false,
+        "indexed": false
+      },
+      {
+        "name": "SSF Runes of Aldur",
+        "url": "runesofaldurssf",
+        "displayName": "SSF Runes of Aldur",
+        "hardcore": false,
+        "indexed": false
+      },
+      {
+        "name": "HC SSF Forbidden Rites",
+        "url": "forbiddenriteshcssf",
+        "displayName": "HC SSF Forbidden Rites",
+        "hardcore": true,
+        "indexed": false
+      },
+      {
+        "name": "HC SSF Runes of Aldur",
+        "url": "runesofaldurhcssf",
+        "displayName": "HC SSF Runes of Aldur",
+        "hardcore": true,
+        "indexed": false
+      },
+      {
+        "name": "Standard",
+        "url": "standard",
+        "displayName": "Standard",
+        "hardcore": false,
+        "indexed": false
+      },
+      {
+        "name": "Paszowce (PL87103)",
+        "url": "pl87103",
+        "displayName": "Paszowce",
+        "hardcore": false,
+        "indexed": false
+      },
+      {
+        "name": "The Unchosen Ones suikunlergue (PL87051)",
+        "url": "pl87051",
+        "displayName": "The Unchosen Ones suikunlergue",
+        "hardcore": false,
+        "indexed": false
+      },
+      {
+        "name": "The Dyck Bois (PL86814)",
+        "url": "pl86814",
+        "displayName": "The Dyck Bois",
+        "hardcore": false,
+        "indexed": false
+      },
+      {
+        "name": "ZERO RNG (PL86917)",
+        "url": "pl86917",
+        "displayName": "ZERO RNG",
+        "hardcore": false,
+        "indexed": false
+      },
+      {
+        "name": "Ritual dos Macacos (PL86909)",
+        "url": "pl86909",
+        "displayName": "Ritual dos Macacos",
+        "hardcore": false,
+        "indexed": false
+      },
+      {
+        "name": "THC IV Forbidden Rites (PL86433)",
+        "url": "pl86433",
+        "displayName": "THC IV Forbidden Rites",
+        "hardcore": true,
+        "indexed": false
+      },
+      {
+        "name": "SSnF Part One (PL86688)",
+        "url": "pl86688",
+        "displayName": "SSnF Part One",
+        "hardcore": false,
+        "indexed": false
+      },
+      {
+        "name": "Eldrehjemmet (PL86656)",
+        "url": "pl86656",
+        "displayName": "Eldrehjemmet",
+        "hardcore": false,
+        "indexed": false
+      },
+      {
+        "name": "trying our best (PL86662)",
+        "url": "pl86662",
+        "displayName": "trying our best",
+        "hardcore": false,
+        "indexed": false
+      },
+      {
+        "name": "Snail moo moo (PL86418)",
+        "url": "pl86418",
+        "displayName": "Snail moo moo",
+        "hardcore": false,
+        "indexed": false
+      },
+      {
+        "name": "GPL Forbidden Rites (PL86573)",
+        "url": "pl86573",
+        "displayName": "GPL Forbidden Rites",
+        "hardcore": true,
+        "indexed": false
+      },
+      {
+        "name": "Die Doppelten EinundDreißiger (PL81612)",
+        "url": "pl81612",
+        "displayName": "Die Doppelten EinundDreißiger",
+        "hardcore": false,
+        "indexed": false
+      }
+    ],
+    "leagueBuilds": [
+      {
+        "leagueName": "Forbidden Rites",
+        "leagueUrl": "forbiddenrites",
+        "total": 124091,
+        "status": 0,
+        "category": 0,
+        "hardcore": false,
+        "statistics": [
+          {
+            "class": "Gemling Legionnaire",
+            "percentage": 35.15939786609935,
+            "trend": -1
+          },
+          {
+            "class": "Martial Artist",
+            "percentage": 10.292363730135706,
+            "trend": 1
+          },
+          {
+            "class": "Disciple of Varashta",
+            "percentage": 7.674144989201561,
+            "trend": -1
+          },
+          {
+            "class": "Spirit Walker",
+            "percentage": 7.230925442413694,
+            "trend": -1
+          },
+          {
+            "class": "Oracle",
+            "percentage": 7.163233729813364,
+            "trend": 1
+          },
+          {
+            "class": "Deadeye",
+            "percentage": 6.02375656770783,
+            "trend": -1
+          },
+          {
+            "class": "Infernalist",
+            "percentage": 4.447506688585888,
+            "trend": 1
+          },
+          {
+            "class": "Stormweaver",
+            "percentage": 3.1774812236082908,
+            "trend": 1
+          },
+          {
+            "class": "Titan",
+            "percentage": 2.438513361054701,
+            "trend": 1
+          },
+          {
+            "class": "Blood Mage",
+            "percentage": 2.3893562840473197,
+            "trend": 1
+          }
+        ]
+      },
+      {
+        "leagueName": "Runes of Aldur",
+        "leagueUrl": "runesofaldur",
+        "total": 124249,
+        "status": 0,
+        "category": 0,
+        "hardcore": false,
+        "statistics": [
+          {
+            "class": "Spirit Walker",
+            "percentage": 29.565630306883754,
+            "trend": -1
+          },
+          {
+            "class": "Martial Artist",
+            "percentage": 19.41424075847693,
+            "trend": -1
+          },
+          {
+            "class": "Gemling Legionnaire",
+            "percentage": 9.425427971251278,
+            "trend": 1
+          },
+          {
+            "class": "Deadeye",
+            "percentage": 5.30949947283278,
+            "trend": 0
+          },
+          {
+            "class": "Infernalist",
+            "percentage": 5.08414554644303,
+            "trend": 1
+          },
+          {
+            "class": "Disciple of Varashta",
+            "percentage": 4.769454884948772,
+            "trend": -1
+          },
+          {
+            "class": "Oracle",
+            "percentage": 4.156975106439488,
+            "trend": 1
+          },
+          {
+            "class": "Stormweaver",
+            "percentage": 2.6680295213643572,
+            "trend": 1
+          },
+          {
+            "class": "Titan",
+            "percentage": 2.5698395962945373,
+            "trend": 1
+          },
+          {
+            "class": "Blood Mage",
+            "percentage": 2.153739667924893,
+            "trend": 1
+          }
+        ]
+      },
+      {
+        "leagueName": "HC Forbidden Rites",
+        "leagueUrl": "forbiddenriteshc",
+        "total": 5087,
+        "status": 0,
+        "category": 0,
+        "hardcore": true,
+        "statistics": [
+          {
+            "class": "Gemling Legionnaire",
+            "percentage": 20.984968354430382,
+            "trend": 1
+          },
+          {
+            "class": "Disciple of Varashta",
+            "percentage": 17.246835443037973,
+            "trend": 1
+          },
+          {
+            "class": "Martial Artist",
+            "percentage": 12.203322784810126,
+            "trend": 1
+          },
+          {
+            "class": "Spirit Walker",
+            "percentage": 10.81882911392405,
+            "trend": 1
+          },
+          {
+            "class": "Oracle",
+            "percentage": 4.173259493670886,
+            "trend": 1
+          },
+          {
+            "class": "Deadeye",
+            "percentage": 3.995253164556962,
+            "trend": 1
+          },
+          {
+            "class": "Titan",
+            "percentage": 3.9161392405063293,
+            "trend": 1
+          },
+          {
+            "class": "Lich",
+            "percentage": 3.8568037974683542,
+            "trend": 1
+          },
+          {
+            "class": "Chronomancer",
+            "percentage": 2.8085443037974684,
+            "trend": 1
+          },
+          {
+            "class": "Infernalist",
+            "percentage": 2.274525316455696,
+            "trend": 1
+          }
+        ]
+      },
+      {
+        "leagueName": "HC Runes of Aldur",
+        "leagueUrl": "runesofaldurhc",
+        "total": 12495,
+        "status": 0,
+        "category": 0,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "SSF Forbidden Rites",
+        "leagueUrl": "forbiddenritesssf",
+        "total": 5781,
+        "status": 0,
+        "category": 0,
+        "hardcore": false,
+        "statistics": [
+          {
+            "class": "Gemling Legionnaire",
+            "percentage": 21.557719054242003,
+            "trend": 1
+          },
+          {
+            "class": "Disciple of Varashta",
+            "percentage": 14.986091794158554,
+            "trend": 1
+          },
+          {
+            "class": "Martial Artist",
+            "percentage": 11.595966620305981,
+            "trend": 1
+          },
+          {
+            "class": "Spirit Walker",
+            "percentage": 9.78789986091794,
+            "trend": 1
+          },
+          {
+            "class": "Deadeye",
+            "percentage": 6.988873435326842,
+            "trend": 1
+          },
+          {
+            "class": "Oracle",
+            "percentage": 5.406815020862308,
+            "trend": 1
+          },
+          {
+            "class": "Titan",
+            "percentage": 4.433240611961057,
+            "trend": 1
+          },
+          {
+            "class": "Lich",
+            "percentage": 3.14673157162726,
+            "trend": 1
+          },
+          {
+            "class": "Acolyte of Chayula",
+            "percentage": 2.364394993045897,
+            "trend": 1
+          },
+          {
+            "class": "Smith of Kitava",
+            "percentage": 2.347009735744089,
+            "trend": 1
+          }
+        ]
+      },
+      {
+        "leagueName": "SSF Runes of Aldur",
+        "leagueUrl": "runesofaldurssf",
+        "total": 26749,
+        "status": 0,
+        "category": 0,
+        "hardcore": false,
+        "statistics": [
+          {
+            "class": "Martial Artist",
+            "percentage": 16.60746999663514,
+            "trend": 1
+          },
+          {
+            "class": "Spirit Walker",
+            "percentage": 14.323101656260514,
+            "trend": 1
+          },
+          {
+            "class": "Gemling Legionnaire",
+            "percentage": 9.204770628481699,
+            "trend": 1
+          },
+          {
+            "class": "Disciple of Varashta",
+            "percentage": 8.520581747485698,
+            "trend": 1
+          },
+          {
+            "class": "Deadeye",
+            "percentage": 7.477474109245897,
+            "trend": 0
+          },
+          {
+            "class": "Oracle",
+            "percentage": 6.714771750102816,
+            "trend": 1
+          },
+          {
+            "class": "Titan",
+            "percentage": 4.520133099039144,
+            "trend": 1
+          },
+          {
+            "class": "Lich",
+            "percentage": 4.105133285975997,
+            "trend": 0
+          },
+          {
+            "class": "Witchhunter",
+            "percentage": 3.858376640370883,
+            "trend": 0
+          },
+          {
+            "class": "Tactician",
+            "percentage": 3.484502934908588,
+            "trend": 0
+          }
+        ]
+      },
+      {
+        "leagueName": "HC SSF Forbidden Rites",
+        "leagueUrl": "forbiddenriteshcssf",
+        "total": 2685,
+        "status": 0,
+        "category": 0,
+        "hardcore": true,
+        "statistics": [
+          {
+            "class": "Gemling Legionnaire",
+            "percentage": 14.096651293362743,
+            "trend": 1
+          },
+          {
+            "class": "Disciple of Varashta",
+            "percentage": 13.916182073390814,
+            "trend": 1
+          },
+          {
+            "class": "Martial Artist",
+            "percentage": 11.509925807098456,
+            "trend": 1
+          },
+          {
+            "class": "Spirit Walker",
+            "percentage": 8.000802085422096,
+            "trend": 1
+          },
+          {
+            "class": "Lich",
+            "percentage": 4.712251854822538,
+            "trend": 1
+          },
+          {
+            "class": "Smith of Kitava",
+            "percentage": 4.6520954481652295,
+            "trend": 1
+          },
+          {
+            "class": "Oracle",
+            "percentage": 4.371365550431121,
+            "trend": 1
+          },
+          {
+            "class": "Titan",
+            "percentage": 4.231000601564067,
+            "trend": 1
+          },
+          {
+            "class": "Deadeye",
+            "percentage": 3.9502707038299576,
+            "trend": 1
+          },
+          {
+            "class": "Tactician",
+            "percentage": 2.6268297573691597,
+            "trend": 1
+          }
+        ]
+      },
+      {
+        "leagueName": "HC SSF Runes of Aldur",
+        "leagueUrl": "runesofaldurhcssf",
+        "total": 8540,
+        "status": 0,
+        "category": 0,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "Standard",
+        "leagueUrl": "standard",
+        "total": 95883,
+        "status": 0,
+        "category": 1,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Paszowce (PL87103)",
+        "leagueUrl": "pl87103",
+        "total": 5,
+        "status": 0,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "The Unchosen Ones suikunlergue (PL87051)",
+        "leagueUrl": "pl87051",
+        "total": 243,
+        "status": 0,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "The Dyck Bois (PL86814)",
+        "leagueUrl": "pl86814",
+        "total": 4,
+        "status": 0,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "ZERO RNG (PL86917)",
+        "leagueUrl": "pl86917",
+        "total": 8,
+        "status": 0,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Ritual dos Macacos (PL86909)",
+        "leagueUrl": "pl86909",
+        "total": 13,
+        "status": 0,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "THC IV Forbidden Rites (PL86433)",
+        "leagueUrl": "pl86433",
+        "total": 1137,
+        "status": 0,
+        "category": 2,
+        "hardcore": true,
+        "statistics": [
+          {
+            "class": "Martial Artist",
+            "percentage": 14.298561151079136,
+            "trend": 1
+          },
+          {
+            "class": "Gemling Legionnaire",
+            "percentage": 13.93884892086331,
+            "trend": 1
+          },
+          {
+            "class": "Disciple of Varashta",
+            "percentage": 10.161870503597124,
+            "trend": 1
+          },
+          {
+            "class": "Spirit Walker",
+            "percentage": 6.83453237410072,
+            "trend": 0
+          },
+          {
+            "class": "Oracle",
+            "percentage": 4.946043165467626,
+            "trend": 0
+          },
+          {
+            "class": "Lich",
+            "percentage": 4.226618705035971,
+            "trend": 1
+          },
+          {
+            "class": "Titan",
+            "percentage": 4.226618705035971,
+            "trend": 1
+          },
+          {
+            "class": "Deadeye",
+            "percentage": 4.136690647482014,
+            "trend": 0
+          },
+          {
+            "class": "Infernalist",
+            "percentage": 3.6870503597122304,
+            "trend": 1
+          },
+          {
+            "class": "Tactician",
+            "percentage": 3.237410071942446,
+            "trend": -1
+          }
+        ]
+      },
+      {
+        "leagueName": "SSnF Part One (PL86688)",
+        "leagueUrl": "pl86688",
+        "total": 10,
+        "status": 0,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Eldrehjemmet (PL86656)",
+        "leagueUrl": "pl86656",
+        "total": 8,
+        "status": 0,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "trying our best (PL86662)",
+        "leagueUrl": "pl86662",
+        "total": 3,
+        "status": 0,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Snail moo moo (PL86418)",
+        "leagueUrl": "pl86418",
+        "total": 26,
+        "status": 0,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "GPL Forbidden Rites (PL86573)",
+        "leagueUrl": "pl86573",
+        "total": 34,
+        "status": 0,
+        "category": 2,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "Die Doppelten EinundDreißiger (PL81612)",
+        "leagueUrl": "pl81612",
+        "total": 213,
+        "status": 0,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Fate of the Vaal",
+        "leagueUrl": "vaal",
+        "total": 124057,
+        "status": 2,
+        "category": 0,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "HC Fate of the Vaal",
+        "leagueUrl": "vaalhc",
+        "total": 3738,
+        "status": 2,
+        "category": 0,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "SSF Fate of the Vaal",
+        "leagueUrl": "vaalssf",
+        "total": 14914,
+        "status": 2,
+        "category": 0,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "HC SSF Fate of the Vaal",
+        "leagueUrl": "vaalhcssf",
+        "total": 2447,
+        "status": 2,
+        "category": 0,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "Exilecon 2026 PoE2 Qualifier #4",
+        "leagueUrl": "exilecon2026poe2qualifier4ssf",
+        "total": 296,
+        "status": 2,
+        "category": 0,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Exilecon 2026 PoE2 Qualifier #3",
+        "leagueUrl": "exilecon2026poe2qualifier3ssf",
+        "total": 104,
+        "status": 2,
+        "category": 0,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Exilecon 2026 PoE2 Qualifier #2",
+        "leagueUrl": "exilecon2026poe2qualifier2ssf",
+        "total": 124,
+        "status": 2,
+        "category": 0,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Exilecon 2026 PoE2 Qualifier #1",
+        "leagueUrl": "exilecon2026poe2qualifier1ssf",
+        "total": 236,
+        "status": 2,
+        "category": 0,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Zielsko Biala (PL86974)",
+        "leagueUrl": "pl86974",
+        "total": 10,
+        "status": 1,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Delirious Deliriums (PL86944)",
+        "leagueUrl": "pl86944",
+        "total": 6,
+        "status": 1,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Jonathans Toes (PL86443)",
+        "leagueUrl": "pl86443",
+        "total": 5,
+        "status": 1,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "The Forbidden Rites of Conflux (PL86619)",
+        "leagueUrl": "pl86619",
+        "total": 113,
+        "status": 1,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "CITADEL RUN (PL86429)",
+        "leagueUrl": "pl86429",
+        "total": 26,
+        "status": 1,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "JeetTTV PL Runes of Aldur (PL83142)",
+        "leagueUrl": "pl83142",
+        "status": 2,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Wheel of Wraeclast (PL85817)",
+        "leagueUrl": "pl85817",
+        "total": 21,
+        "status": 2,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Skladic Rune Recipe League (PL85477)",
+        "leagueUrl": "pl85477",
+        "total": 1281,
+        "status": 1,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Take It All suikun league (PL83280)",
+        "leagueUrl": "pl83280",
+        "total": 714,
+        "status": 2,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "TAWERNA Runes of Aldur (PL83006)",
+        "leagueUrl": "pl83006",
+        "total": 1129,
+        "status": 2,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Poppas Loot Goobers II (PL81742)",
+        "leagueUrl": "pl81742",
+        "total": 12,
+        "status": 2,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Loot Goblin League Two (PL81609)",
+        "leagueUrl": "pl81609",
+        "total": 15,
+        "status": 2,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Ethically Sourced Brain Damage (PL82175)",
+        "leagueUrl": "pl82175",
+        "total": 7,
+        "status": 2,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Verisium RotA (PL81544)",
+        "leagueUrl": "pl81544",
+        "total": 178,
+        "status": 2,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Suttarne (PL81834)",
+        "leagueUrl": "pl81834",
+        "total": 7,
+        "status": 2,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Jagodki Nadina (PL81655)",
+        "leagueUrl": "pl81655",
+        "total": 662,
+        "status": 2,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "Stallathon League (PL81355)",
+        "leagueUrl": "pl81355",
+        "total": 2328,
+        "status": 2,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "suikun league overcome despair (PL81066)",
+        "leagueUrl": "pl81066",
+        "total": 508,
+        "status": 2,
+        "category": 2,
+        "hardcore": false,
+        "statistics": []
+      },
+      {
+        "leagueName": "HC FRites League by Cardiff (PL86503)",
+        "leagueUrl": "pl86503",
+        "total": 928,
+        "status": 1,
+        "category": 2,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "A chorus of the damned suileague (PL85428)",
+        "leagueUrl": "pl85428",
+        "total": 228,
+        "status": 1,
+        "category": 2,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "THC League IV (PL83388)",
+        "leagueUrl": "pl83388",
+        "total": 1758,
+        "status": 1,
+        "category": 2,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "River of the Ancients (PL83181)",
+        "leagueUrl": "pl83181",
+        "total": 504,
+        "status": 2,
+        "category": 2,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "KG Return of the Ancients HC (PL83123)",
+        "leagueUrl": "pl83123",
+        "total": 773,
+        "status": 2,
+        "category": 2,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "AwTysm (PL82906)",
+        "leagueUrl": "pl82906",
+        "total": 22,
+        "status": 2,
+        "category": 2,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "HAN NAM HC (PL82824)",
+        "leagueUrl": "pl82824",
+        "total": 535,
+        "status": 2,
+        "category": 2,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "Requiem HC V (PL81683)",
+        "leagueUrl": "pl81683",
+        "total": 36,
+        "status": 2,
+        "category": 2,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "Hate of the Vaal (PL81261)",
+        "leagueUrl": "pl81261",
+        "total": 298,
+        "status": 2,
+        "category": 2,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "YunWarriorsVI (PL87061)",
+        "leagueUrl": "pl87061",
+        "total": 107,
+        "status": 1,
+        "category": 2,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "DDO League S II (PL86886)",
+        "leagueUrl": "pl86886",
+        "total": 231,
+        "status": 1,
+        "category": 2,
+        "hardcore": true,
+        "statistics": []
+      },
+      {
+        "leagueName": "Not For All League (PL82677)",
+        "leagueUrl": "pl82677",
+        "total": 336,
+        "status": 2,
+        "category": 2,
+        "hardcore": true,
+        "statistics": []
+      }
+    ]
+  },
+  "candidates": [
+    {
+      "account": "0bibea-1410",
+      "character": "FR_obi",
+      "base_class": "Druid",
+      "index_ascendancy": "Oracle",
+      "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Oracle",
+      "index_sha256": "8204178d656490b1cb79b592fa19c80b29ccd3713d90658a955ce6ccbe48db94",
+      "index_rows": 100,
+      "selection_reason": "lexicographically first account/character in index response"
+    },
+    {
+      "account": "1031-5196",
+      "character": "JOJOTENF",
+      "base_class": "Huntress",
+      "index_ascendancy": "Amazon",
+      "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Amazon",
+      "index_sha256": "3512120e9a43dd226aba530450eddd124e65725c30790731c4377e1f50435e1c",
+      "index_rows": 100,
+      "selection_reason": "lexicographically first account/character in index response"
+    },
+    {
+      "account": "1056758881-1572",
+      "character": "北极星神化身",
+      "base_class": "Mercenary",
+      "index_ascendancy": "Gemling Legionnaire",
+      "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+      "index_sha256": "40be97e3e54ec8754005a3ac5efa01e18ec613bd034d86eed4148c23ca7184e5",
+      "index_rows": 100,
+      "selection_reason": "lexicographically first account/character in index response"
+    },
+    {
+      "account": "1184519336-2377",
+      "character": "我就是阿欣",
+      "base_class": "Monk",
+      "index_ascendancy": "Martial Artist",
+      "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Martial+Artist",
+      "index_sha256": "ed0b5a4f4787ec9bc9487158381b0c50be206bbccfa12cab94f6c4aca2fef813",
+      "index_rows": 100,
+      "selection_reason": "lexicographically first account/character in index response"
+    },
+    {
+      "account": "1242treasure0826-3306",
+      "character": "サンサ_ミニリーグ",
+      "base_class": "Ranger",
+      "index_ascendancy": "Deadeye",
+      "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Deadeye",
+      "index_sha256": "61a63137f84b1b895656d65b6f43258434be7766a87416a0c74df7ee73e50eef",
+      "index_rows": 100,
+      "selection_reason": "lexicographically first account/character in index response"
+    },
+    {
+      "account": "2736045458-2703",
+      "character": "不良人",
+      "base_class": "Sorceress",
+      "index_ascendancy": "Stormweaver",
+      "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Stormweaver",
+      "index_sha256": "0eaf9e6a91a38e2cbc7a4709b681684be0956be60058e42a2ec305371ab1d71e",
+      "index_rows": 100,
+      "selection_reason": "lexicographically first account/character in index response"
+    },
+    {
+      "account": "3640233073-1554",
+      "character": "闪回菜困困",
+      "base_class": "Warrior",
+      "index_ascendancy": "Titan",
+      "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Titan",
+      "index_sha256": "005a5ffcb5f12338709ff1942322814fa9c5ce3c0de95c4ece2ac02ee2e5f875",
+      "index_rows": 100,
+      "selection_reason": "lexicographically first account/character in index response"
+    },
+    {
+      "account": "2669291331-5245",
+      "character": "Twistcc",
+      "base_class": "Witch",
+      "index_ascendancy": "Blood Mage",
+      "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Blood+Mage",
+      "index_sha256": "ecf6b405987a058fcf0e20770c889533fae85ce0f91528c31c4eec068e8cdf7d",
+      "index_rows": 100,
+      "selection_reason": "lexicographically first account/character in index response"
+    }
+  ],
+  "failures": [],
+  "fetched_at": "2026-10-11T07:04:01+00:00",
+  "fixtures": [
+    {
+      "fixture": "ninja-2026-10-11-druid-oracle-lightning-bolt-950c9ad4451d",
+      "character": {
+        "class": "Druid",
+        "ascendancy": "Oracle",
+        "level": 100,
+        "main_skill": "Lightning Bolt"
+      },
+      "code_sha256": "67de41f7047f833bf2313623d3b586504de07fb62085670b0e8dba43f3bab7f1",
+      "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=0bibea-1410&name=FR_obi&overview=forbidden-rites"
+    },
+    {
+      "fixture": "ninja-2026-10-11-huntress-amazon-ice-shot-182e794cb5d9",
+      "character": {
+        "class": "Huntress",
+        "ascendancy": "Amazon",
+        "level": 97,
+        "main_skill": "Ice Shot"
+      },
+      "code_sha256": "903cacc9c3266e31b0a50ef5b4b52522a96d1e2804cf1e69d2205ec002b1e63b",
+      "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1031-5196&name=JOJOTENF&overview=forbidden-rites"
+    },
+    {
+      "fixture": "ninja-2026-10-11-mercenary-gemling-legionnaire-comet-c60ba778fabb",
+      "character": {
+        "class": "Mercenary",
+        "ascendancy": "Gemling Legionnaire",
+        "level": 100,
+        "main_skill": "Comet"
+      },
+      "code_sha256": "531dd37484a358bf6d78be5b8ab7f5a25dba2af237c7138c5aae08feb65484f1",
+      "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1056758881-1572&name=%E5%8C%97%E6%9E%81%E6%98%9F%E7%A5%9E%E5%8C%96%E8%BA%AB&overview=forbidden-rites"
+    },
+    {
+      "fixture": "ninja-2026-10-11-monk-martial-artist-ice-shot-71a879f43f2f",
+      "character": {
+        "class": "Monk",
+        "ascendancy": "Martial Artist",
+        "level": 99,
+        "main_skill": "Ice Shot"
+      },
+      "code_sha256": "0a7cae32696701597ef92b9131f15776e52e49eac6477b4fee888a5ebb56db4e",
+      "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1184519336-2377&name=%E6%88%91%E5%B0%B1%E6%98%AF%E9%98%BF%E6%AC%A3&overview=forbidden-rites"
+    },
+    {
+      "fixture": "ninja-2026-10-11-ranger-deadeye-ice-shot-b6ce7b3a4329",
+      "character": {
+        "class": "Ranger",
+        "ascendancy": "Deadeye",
+        "level": 99,
+        "main_skill": "Ice Shot"
+      },
+      "code_sha256": "8aa4a8854da9acca30551fa852b6bbfa4d3cc2c3f3e22f08e83466b88a320e6b",
+      "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1242treasure0826-3306&name=%E3%82%B5%E3%83%B3%E3%82%B5_%E3%83%9F%E3%83%8B%E3%83%AA%E3%83%BC%E3%82%B0&overview=forbidden-rites"
+    },
+    {
+      "fixture": "ninja-2026-10-11-sorceress-stormweaver-comet-f085a4410120",
+      "character": {
+        "class": "Sorceress",
+        "ascendancy": "Stormweaver",
+        "level": 100,
+        "main_skill": "Comet"
+      },
+      "code_sha256": "957efc2a05cbfedd1a480e6e882befa9a547cd8eb3e8333d1d363323af82630f",
+      "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=2736045458-2703&name=%E4%B8%8D%E8%89%AF%E4%BA%BA&overview=forbidden-rites"
+    },
+    {
+      "fixture": "ninja-2026-10-11-warrior-titan-his-scattering-calamity-a46026af415f",
+      "character": {
+        "class": "Warrior",
+        "ascendancy": "Titan",
+        "level": 98,
+        "main_skill": "His Scattering Calamity"
+      },
+      "code_sha256": "da661ef8971a007101364acc8074c5199585488a4765413d7c4d1a639b97a2db",
+      "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=3640233073-1554&name=%E9%97%AA%E5%9B%9E%E8%8F%9C%E5%9B%B0%E5%9B%B0&overview=forbidden-rites"
+    },
+    {
+      "fixture": "ninja-2026-10-11-witch-blood-mage-impending-doom-add19135df93",
+      "character": {
+        "class": "Witch",
+        "ascendancy": "Blood Mage",
+        "level": 99,
+        "main_skill": "Impending Doom"
+      },
+      "code_sha256": "437934443f64e975bd458f1051124d9f78c50a5d49bd36fc84c6396c1ba270ba",
+      "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=2669291331-5245&name=Twistcc&overview=forbidden-rites"
+    }
+  ]
+}

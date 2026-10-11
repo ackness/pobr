@@ -1,0 +1,34 @@
+{
+  "name": "ninja-2026-10-11-witch-blood-mage-impending-doom-add19135df93",
+  "source": {
+    "site": "poe.ninja",
+    "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/2669291331-5245/Twistcc",
+    "account": "2669291331-5245",
+    "character": "Twistcc",
+    "league": "Forbidden Rites",
+    "game_version": "0.5",
+    "fetched_at": "2026-10-11T07:04:01+00:00",
+    "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=2669291331-5245&name=Twistcc&overview=forbidden-rites",
+    "snapshot": "0632-20261011-47556",
+    "snapshot_name": "forbidden-rites",
+    "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Blood+Mage",
+    "selection": "base-class-first-v1",
+    "game_version_evidence": {
+      "xml_tree_version": "0_5",
+      "api_passive_tree": "PassiveTree-0.5"
+    }
+  },
+  "character": {
+    "class": "Witch",
+    "ascendancy": "Blood Mage",
+    "level": 99,
+    "main_skill": "Impending Doom"
+  },
+  "pob": {
+    "target_version": "0_1",
+    "main_socket_group": 5,
+    "code_sha256": "437934443f64e975bd458f1051124d9f78c50a5d49bd36fc84c6396c1ba270ba",
+    "code_chars": 11864,
+    "decoded_bytes": 44827
+  }
+}
