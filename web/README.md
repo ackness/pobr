@@ -184,7 +184,12 @@ web/src/
 - **Skills**: socket-group editing (gems, levels, quality, supports),
   main-skill selection with a live damage breakdown.
 - **Tree**: allocation, attribute picks, jewel sockets, search, and a
-  node-power heatmap.
+  node-power heatmap. Search and choose **Next** to focus a node-details panel
+  with its current modifiers and allocation state. Searching, cycling, closing
+  details and changing an Attribute draft do not edit the build. Use **Allocate**,
+  **Refund** or **Apply choice** explicitly; jewel sockets open the existing editor.
+  Ordinary allocation follows the existing shortest path and leaves travel
+  Attributes unassigned. Escape closes details and returns focus to search controls.
 - **Optimizers & trade**: objective-driven gem/item/tree suggestions and a
   category-constrained official market links with local affix scores and budget filters.
 

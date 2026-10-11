@@ -134,7 +134,11 @@ function EditableTreePanel({ session, lang, active, focusPlanner, onJewelSearch 
     return () => { cancelled = true; };
   }, []);
   if (!active) return null;
-  return <TreeCanvas session={session} lang={lang} onJewelSearch={onJewelSearch}
+  const activeBuild = session.workspace?.builds.find(build => build.id === session.workspace?.activeBuild);
+  const canvasContext = JSON.stringify([activeBuild?.id, activeBuild?.activeStage,
+    session.activeLoadout, session.activeWeaponSet, session.socketGroupRevision,
+    session.character?.class_name, session.character?.ascendancy_name]);
+  return <TreeCanvas key={canvasContext} session={session} lang={lang} onJewelSearch={onJewelSearch}
     nodes={rawNodes ? nodes : null} art={art} error={error} plannedNodes={plannedNodes} planner={planner} />;
 }
 
@@ -164,6 +168,14 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
   const [search, setSearch] = useState('');
   /** 「下一个命中」轮转下标（搜索串变化时归零）。 */
   const [hitIndex, setHitIndex] = useState(0);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const nextHitRef = useRef<HTMLButtonElement>(null);
+  const detailsRef = useRef<HTMLDivElement>(null);
+  const focusDetailsRef = useRef(false);
+  const [selectedSkill, setSelectedSkill] = useState<number | null>(null);
+  const [attributeDraft, setAttributeDraft] = useState<{
+    skill: number; saved?: AttributeChoice; choice: AttributeChoice;
+  } | null>(null);
   /** 属性小点三选一弹窗（node + 屏幕坐标）。 */
   const [attrPicker, setAttrPicker] = useState<{ node: PassiveNode; x: number; y: number } | null>(
     null,
@@ -353,6 +365,59 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
     }
     return hits;
   }, [placed, search]);
+  const selectedNode = selectedSkill === null ? null : byId.get(selectedSkill) ?? null;
+  const selectedAllocated = selectedSkill !== null && allocated.has(selectedSkill);
+  const selectedPath = useMemo(() => selectedNode && !selectedAllocated
+    ? shortestAllocationPath(graph, allocated, startSkill, selectedNode.skill, grants) : [],
+  [selectedNode, selectedAllocated, graph, allocated, startSkill, grants]);
+  const selectedNeedsAttribute = Boolean(selectedNode && !selectedAllocated
+    && isAttrNode(selectedNode) && selectedPath.length === 1);
+  const selectedChoice = selectedSkill === null ? undefined : session.attributeChoices[String(selectedSkill)];
+  const pendingAttribute = attributeDraft && attributeDraft.skill === selectedSkill && attributeDraft.saved === selectedChoice
+    ? attributeDraft.choice : undefined;
+  const selectedRefundCount = useMemo(() => selectedNode && selectedAllocated
+    ? allocated.size - deallocateNode(graph, allocated, startSkill, selectedNode.skill, grants).size : 0,
+  [selectedNode, selectedAllocated, graph, allocated, startSkill, grants]);
+  const detailsLines = useMemo(() => selectedNode ? [
+    selectedNode.name ?? selectedNode.id,
+    ...(selectedNode.stats ?? []).map(line =>
+      line.replace(/\[([^\]|]*)\|([^\]]*)\]/g, '$2').replace(/\[([^\]]*)\]/g, '$1')),
+  ] : [], [selectedNode]);
+  const detailsTextKey = JSON.stringify([selectedSkill, lang, detailsLines]);
+  const [translatedDetails, setTranslatedDetails] = useState<{ key: string; lines: string[] } | null>(null);
+  const displayedDetails = lang !== 'en-US' && translatedDetails?.key === detailsTextKey
+    ? translatedDetails.lines : detailsLines;
+
+  useEffect(() => {
+    if (!selectedNode || lang === 'en-US') return;
+    let cancelled = false;
+    const generation = canvasGeneration.current;
+    getBackend()
+      .then(backend => !cancelled && generation === canvasGeneration.current
+        ? backend.translateLines(detailsLines) : null)
+      .then(translated => {
+        if (!translated || cancelled || generation !== canvasGeneration.current) return;
+        setTranslatedDetails({ key: detailsTextKey,
+          lines: detailsLines.map((line, index) => translated[index] ?? line) });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedNode, lang, detailsLines, detailsTextKey]);
+
+  useLayoutEffect(() => {
+    if (!focusDetailsRef.current || !selectedNode) return;
+    focusDetailsRef.current = false;
+    detailsRef.current?.focus({ preventScroll: true });
+    detailsRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [selectedNode, hitIndex]);
+
+  const closeDetails = () => {
+    setSelectedSkill(null);
+    setAttributeDraft(null);
+    setHover(null);
+    focusDetailsRef.current = false;
+    (nextHitRef.current ?? searchRef.current)?.focus({ preventScroll: true });
+  };
 
   /** 已加点的属性小点（升序，批量调配的确定性分配序）。 */
   const allocatedAttrNodes = useMemo(
@@ -424,54 +489,68 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
-  /**
-   * 点选加点/取消（拖拽平移不触发）；属性小点弹三选一；珠宝插槽开编辑器。
-   *
-   * 加点走最短路径：点一个未加点的远端节点会把沿途节点一并点亮（PoB2 语义）。
-   * 相邻节点的路径长度为 1，交互与寻路接入前逐字一致。取消加点走级联清理——
-   * `deallocateNode` 在图模型解释不了当前加点全集时自动退化为单点取消，
-   * 导入的真实 build 常含模型外连接，不会被误删整棵树。
+  /** One manual edit seam for canvas clicks, attribute choices and node details.
+   * Physical paths, radius grants and refund fallback stay in passiveGraph.
    */
-  const handleNodeClick = useCallback(
-    (node: PassiveNode, e: React.MouseEvent) => {
-      if (suppressClickRef.current || dragRef.current?.moved) return;
-      const s = sessionRef.current;
-      if (s.busy) return;
-      const allocated = new Set(s.allocatedNodes);
-      const isAlloc = allocated.has(node.skill);
-
-      // 珠宝插槽：点击恒为「（必要时先接上）开编辑器」，不走取消分支。
-      if (node.kind === 'jewel_socket') {
-        if (!isAlloc) {
-          s.setAllocatedNodes([
-            ...s.allocatedNodes,
-            ...shortestAllocationPath(graph, allocated, startSkill, node.skill, grants),
-          ]);
-        }
-        setJewelSocket(node.skill);
-        return;
-      }
-
+  const actOnNode = useCallback((skill: number,
+    action: 'allocate' | 'refund' | 'attribute' | 'jewel', choice?: AttributeChoice) => {
+    const s = sessionRef.current;
+    const node = byId.get(skill);
+    if (s.busy || !node) return;
+    const allocated = new Set(s.allocatedNodes);
+    const isAlloc = allocated.has(skill);
+    if (action === 'attribute') {
+      if (!isAttrNode(node) || !choice) return;
       if (isAlloc) {
-        setAttrPicker(null);
-        s.setAllocatedNodes([...deallocateNode(graph, allocated, startSkill, node.skill, grants)]);
-        return;
+        if (s.attributeChoices[String(skill)] === choice) return;
+        s.setAttributeChoices({ ...s.attributeChoices, [String(skill)]: choice });
+      } else {
+        // Hover shortcuts deliberately assign this one node, not a travel route.
+        s.toggleNode(skill, choice);
       }
-
-      const path = shortestAllocationPath(graph, allocated, startSkill, node.skill, grants);
-      if (path.length === 0) return;
-      // 相邻单点仍弹三选一（原行为）；多步路径穿过的属性小点只点亮、不定选择，
-      // 比例交给工具栏的批量调配面板（choice 留空＝引擎语义无贡献）。
-      if (path.length <= 1 && isAttrNode(node)) {
-        const rect = svgRef.current!.getBoundingClientRect();
-        setAttrPicker({ node, x: e.clientX - rect.left, y: e.clientY - rect.top });
-        return;
+      setAttributeDraft(null);
+      return;
+    }
+    if (action === 'refund') {
+      if (!isAlloc && node.kind !== 'jewel_socket') return;
+      const remaining = [...deallocateNode(graph, allocated, startSkill, skill, grants)];
+      if (node.kind === 'jewel_socket') {
+        s.removeJewelSocket(skill, remaining);
+        if (jewelSocket === skill) {
+          s.setEditorDraft(`jewel:${skill}`, null);
+          setJewelSocket(null);
+        }
+      } else {
+        s.setAllocatedNodes(remaining);
       }
       setAttrPicker(null);
-      s.setAllocatedNodes([...s.allocatedNodes, ...path]);
-    },
-    [graph, startSkill, grants],
-  );
+      setAttributeDraft(null);
+      return;
+    }
+    if (action === 'jewel' && node.kind !== 'jewel_socket') return;
+    if (action === 'allocate' && isAlloc) return;
+    const path = isAlloc ? [] : shortestAllocationPath(graph, allocated, startSkill, skill, grants);
+    if (!isAlloc) {
+      if (path.length === 0 && action !== 'jewel') return;
+      // Adjacent Attribute points require an explicit choice. Multi-step paths
+      // retain the pointer route's unassigned travel-attribute semantics.
+      if (path.length === 1 && isAttrNode(node) && !choice) return 'chooseAttribute';
+      if (path.length === 1 && isAttrNode(node) && choice) s.toggleNode(skill, choice);
+      else s.setAllocatedNodes([...s.allocatedNodes, ...path]);
+    }
+    setAttrPicker(null);
+    setAttributeDraft(null);
+    if (node.kind === 'jewel_socket') setJewelSocket(skill);
+  }, [byId, graph, startSkill, grants, jewelSocket]);
+
+  const handleNodeClick = useCallback((node: PassiveNode, e: React.MouseEvent) => {
+    if (suppressClickRef.current || dragRef.current?.moved) return;
+    const action = node.kind === 'jewel_socket' ? 'jewel'
+      : sessionRef.current.allocatedNodes.includes(node.skill) ? 'refund' : 'allocate';
+    if (actOnNode(node.skill, action) !== 'chooseAttribute') return;
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (rect) setAttrPicker({ node, x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }, [actOnNode]);
 
   const edgesEl = useMemo(
     () => (
@@ -554,7 +633,7 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
                 cy={node.y}
                 r={r}
                 style={heat ? { fill: heat } : undefined}
-                className={`node node-${node.kind}${icon || frame ? ' node-art' : ''}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${freeNodes.has(node.skill) ? ' node-jewel-allocatable' : ''}${treeEffects?.nodes[String(node.skill)] ? ' node-transformed' : ''}${plannedNodes?.allocate.includes(node.skill) ? ' node-planned-add' : ''}${plannedNodes?.deallocate.includes(node.skill) ? ' node-planned-remove' : ''}`}
+                className={`node node-${node.kind}${icon || frame ? ' node-art' : ''}${node.ascendancy_id ? ' node-asc' : ''}${isAlloc ? ' node-allocated' : ''}${node.kind === 'jewel_socket' && filledJewelSockets.has(node.skill) ? ' node-jewel-filled' : ''}${searchHits?.has(node.skill) ? ' node-search-hit' : ''}${selectedSkill === node.skill ? ' node-selected' : ''}${freeNodes.has(node.skill) ? ' node-jewel-allocatable' : ''}${treeEffects?.nodes[String(node.skill)] ? ' node-transformed' : ''}${plannedNodes?.allocate.includes(node.skill) ? ' node-planned-add' : ''}${plannedNodes?.deallocate.includes(node.skill) ? ' node-planned-remove' : ''}`}
                 onPointerEnter={(e) => {
                   if (dragRef.current?.moved) return;
                   setHover(node);
@@ -573,7 +652,7 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
         })}
       </g>
     );
-  }, [placed, allocated, filledJewelSockets, searchHits, heatStat, heatData, heatMax, handleNodeClick, art, plannedNodes, freeNodes, treeEffects]);
+  }, [placed, allocated, filledJewelSockets, searchHits, selectedSkill, heatStat, heatData, heatMax, handleNodeClick, art, plannedNodes, freeNodes, treeEffects]);
 
   const fullExtent = useMemo((): ViewBox | null => {
     if (placed.length === 0) return null;
@@ -707,24 +786,17 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+      // Hover shortcuts belong to the canvas (or its legacy body focus), not tools.
+      if (target && target !== document.body && !target.closest('.tree-canvas')) return;
       const choice = KEYMAP[e.key.toLowerCase()];
       if (!choice) return;
       if (attrPicker) {
-        session.toggleNode(attrPicker.node.skill, choice);
-        setAttrPicker(null);
+        actOnNode(attrPicker.node.skill, 'allocate', choice);
         e.preventDefault();
         return;
       }
       if (hover && isAttrNode(hover)) {
-        if (allocated.has(hover.skill)) {
-          // 已加点：仅改选（不取消）。
-          session.setAttributeChoices({
-            ...session.attributeChoices,
-            [String(hover.skill)]: choice,
-          });
-        } else {
-          session.toggleNode(hover.skill, choice);
-        }
+        actOnNode(hover.skill, 'attribute', choice);
         e.preventDefault();
       }
     };
@@ -847,7 +919,12 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
   };
 
   return (
-    <section className="ui-page tree-panel" aria-labelledby="tree-heading">
+    <section className="ui-page tree-panel" aria-labelledby="tree-heading" onKeyDown={e => {
+      if (e.key !== 'Escape' || (selectedSkill === null && !attrPicker)) return;
+      e.preventDefault();
+      setAttrPicker(null);
+      closeDetails();
+    }}>
       <PageHeader id="tree-heading" title={tt('tree.title')} description={tt('tree.hint')}>
         <button onClick={() => {
           toolsRef.current?.focus({ preventScroll: true });
@@ -858,12 +935,15 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
       <div className="tree-toolbar">
         <span className="tree-search">
           <input
+            ref={searchRef}
             type="search"
             placeholder={tt('tree.search')}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setHitIndex(0);
+              setSelectedSkill(null);
+              setAttributeDraft(null);
             }}
             aria-label={tt('tree.search')}
           />
@@ -874,11 +954,16 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
           )}
           {searchHits && searchHits.size > 0 && (
             <button
+              ref={nextHitRef}
               onClick={() => {
                 const sorted = [...searchHits].sort((a, b) => a - b);
                 const node = byId.get(sorted[hitIndex % sorted.length]);
                 setHitIndex((i) => i + 1);
                 if (!node) return;
+                setSelectedSkill(node.skill);
+                setAttributeDraft(null);
+                setAttrPicker(null);
+                focusDetailsRef.current = true;
                 // 保持当前缩放（过远时收到能看清节点簇的档位）平移到命中节点。
                 const w = Math.min(view.w, 14000);
                 const h = (w / view.w) * view.h;
@@ -1042,16 +1127,15 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
                 key={choice}
                 role="menuitem"
                 className={`attr-choice attr-${choice}`}
-                onClick={() => {
-                  session.toggleNode(attrPicker.node.skill, choice);
-                  setAttrPicker(null);
-                }}
+                disabled={session.busy}
+                onClick={() => actOnNode(attrPicker.node.skill, 'allocate', choice)}
               >
                 {tt(`tree.attr.${choice}` as Parameters<typeof tt>[0])}
                 <kbd>{choice === 'str' ? 'S' : choice === 'dex' ? 'D' : 'I'}</kbd>
               </button>
             ))}
-            <button className="attr-cancel" onClick={() => setAttrPicker(null)}>
+            <button className="attr-cancel" aria-label={tt('tree.closeDetails')}
+              onClick={() => setAttrPicker(null)}>
               ×
             </button>
           </div>
@@ -1064,6 +1148,76 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
           )}
       </div>
       <div className="tree-edit-tools" ref={toolsRef} tabIndex={-1}>
+      {selectedNode && (
+        <div className="tree-node-details" ref={detailsRef} tabIndex={-1}
+          role="group" aria-label={tt('tree.nodeDetails')} data-skill-id={selectedNode.skill}>
+          <header className="tree-node-details-header">
+            <h2>{displayedDetails[0]}</h2>
+            <button onClick={closeDetails}>{tt('tree.closeDetails')}</button>
+          </header>
+          <p className="tree-node-details-state">
+            #{selectedNode.skill} · {tt(selectedAllocated ? 'tree.allocated' : 'tree.notAllocated')}
+          </p>
+          <ul className="tree-node-details-stats">
+            {displayedDetails.slice(1).map((line, index) => <li key={index}>{line}</li>)}
+          </ul>
+          {isAttrNode(selectedNode) && (selectedAllocated || selectedNeedsAttribute) && (
+            <label className="tree-node-attribute">
+              {tt('tree.attributeChoice')}
+              <select aria-label={tt('tree.attributeChoice')} disabled={session.busy}
+                value={pendingAttribute ?? selectedChoice ?? ''}
+                onChange={e => setAttributeDraft({ skill: selectedNode.skill,
+                  saved: selectedChoice, choice: e.target.value as AttributeChoice })}>
+                <option value="" disabled>{tt('tree.attrUnassigned')}</option>
+                {(['str', 'dex', 'int'] as AttributeChoice[]).map(choice => (
+                  <option key={choice} value={choice}>
+                    {tt(`tree.attr.${choice}` as Parameters<typeof tt>[0])}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {!selectedAllocated && selectedPath.length === 0 && (
+            <p className="tree-hint">{tt(selectedNode.skill === startSkill ? 'tree.currentStart' : 'tree.unallocatable')}</p>
+          )}
+          {!selectedAllocated && selectedPath.length > 1 && (
+            <p className="tree-hint">{tt('tree.allocatePath')} · {selectedPath.length}</p>
+          )}
+          {selectedAllocated && selectedNode.kind !== 'jewel_socket' && selectedRefundCount > 1 && (
+            <p className="tree-hint">{tt('tree.refundPath')} · {selectedRefundCount}</p>
+          )}
+          {selectedAllocated && selectedNode.kind === 'jewel_socket' && (
+            <p className="tree-hint">{tt('tree.refundSocket')}</p>
+          )}
+          <div className="tree-node-details-actions">
+            {selectedAllocated && isAttrNode(selectedNode) && (
+              <button disabled={session.busy || !pendingAttribute || pendingAttribute === selectedChoice}
+                onClick={() => {
+                  actOnNode(selectedNode.skill, 'attribute', pendingAttribute);
+                  setAttributeDraft(null);
+                }}>
+                {tt('tree.applyAttribute')}
+              </button>
+            )}
+            {selectedAllocated ? (
+              <button disabled={session.busy} onClick={() => actOnNode(selectedNode.skill, 'refund')}>
+                {tt('tree.refund')}
+              </button>
+            ) : (
+              <button disabled={session.busy || selectedPath.length === 0
+                || (selectedNeedsAttribute && !pendingAttribute)}
+                onClick={() => actOnNode(selectedNode.skill, 'allocate', pendingAttribute || undefined)}>
+                {tt('tree.allocate')}
+              </button>
+            )}
+            {selectedAllocated && selectedNode.kind === 'jewel_socket' && (
+              <button disabled={session.busy} onClick={() => actOnNode(selectedNode.skill, 'jewel')}>
+                {tt('tree.editJewel')}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       <div className="attr-distribute" role="group" aria-label={tt('tree.attrDistribute')}>
         {allocatedAttrNodes.length > 0 && (
         <>
@@ -1184,8 +1338,7 @@ function TreeCanvas({ session, lang, onJewelSearch, nodes, art, error, plannedNo
               <button
                 disabled={session.busy}
                 onClick={() => {
-                  session.removeJewelSocket(jewelEdit.socket,
-                    [...deallocateNode(graph, allocated, startSkill, jewelEdit.socket, grants)]);
+                  actOnNode(jewelEdit.socket, 'refund');
                   closeJewelEditor();
                 }}
               >
