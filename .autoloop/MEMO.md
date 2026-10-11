@@ -155,9 +155,9 @@ Exit criteria:
 - Inspected the 390px exclusion view: raw identity/reason wrapped without horizontal overflow. Finished browser space 35 and removed the temporary screenshot. `ReviewResourceReconcile` approved; its one low coverage finding is resolved. Vite remains on 5182.
 - Milestone exit criteria met across canonical never-crit precedence/host scope, distinct resource-limit semantics, attributed receipts and actual recommendation consequences. No claim of complete support mechanics, resource sustain, or Elemental Storm trigger-DPS coverage. Commit-only scope means no release tag.
 
-## Current milestone: Explain support recommendations with canonical effects
+## Completed milestone: Explain support recommendations with canonical effects
 
-The live recommendation cards still show names, levels, quality and predicted gains rather than the support's intended effects; raw exclusion receipts are useful evidence but not a substitute for mechanic explanations. Prior commit `22b9a63` (`feat: expose sourced support effect descriptions`) is a lead to reconcile, not proof of current integration.
+At milestone start, recommendation cards showed names, levels, quality and predicted gains rather than intended effects; raw exclusion receipts were not a substitute for mechanic explanations. Prior commit `22b9a63` (`feat: expose sourced support effect descriptions`) required current-branch reconciliation before reuse.
 
 Exit criteria:
 
@@ -166,4 +166,27 @@ Exit criteria:
 3. Provide accessible localized disclosure controls and an explicit missing-description state, including older catalogs, without changing planning or Apply semantics.
 4. Verify the real recommendation surface, keyboard operation, EN/TW/CN and narrow layouts with appropriate targeted checks and reproducible data generation.
 
-Next iteration: reconcile `22b9a63`, inspect current support-card/data seams and integrate the smallest useful source-description slice. Work and commits remain exclusively in this worktree; no publishing or changes to other branches.
+## Iteration 8: Sourced support explanations
+
+- All five source files and the trade catalog matched `22b9a63^` exactly. Reused that feature through surgical edits, preserving current diagnostic/passive work. Added optional support-only qualitative English descriptions to the existing catalog and native `details` disclosures to recommendation cards.
+- Regenerated from the pinned vendor plus current crafting inputs: 538 of 567 support records carry descriptions. Removing only the new description fields reproduces the previous parsed catalog exactly; all other data/provenance fields are unchanged. The full artifact is byte-identical to the prior generated `22b9a63` artifact. Manifest changes only the trade-catalog hash, preserving the earlier never-crit override hash.
+- Passed 35 support-optimizer/trade-catalog/trade-market tests and production build/typecheck. Synced data; reused iteration 7's unchanged release WASM. Existing bundle-size advisory remains; no Rust/parity rerun for display-only metadata.
+- Real populated Invoker search retained the same 987 recalculations, 12 complete-edit exclusions and top DPS 20,129.5. Enter opened the disclosure, Space closed it, and Enter reopened it. Localized labels/names changed across EN/TW/CN while all English prose and `lang=en` annotations stayed unchanged; toggling/localization did not mutate the build or scores.
+- Inspected desktop and 390px screenshots: source/coverage disclaimer, readable tradeoffs and no horizontal overflow. No actual screen-reader speech claim.
+- Legacy-data smoke removed descriptions only from the real backend's returned catalog before SkillsPanel mounted. All eight plans and displayed metrics stayed identical; all five top-plan supports showed explicit localized unavailable text, with locale-correct `lang` attributes.
+- Fixture setup initially waited for a hidden responsive stats panel, then imported a bare Vite backend URL that created a separate singleton and failed to affect the UI. Used the actual query-bearing backend module from resource entries; the corrected legacy check passed. Reload removed the injection and restored all 538 descriptions.
+- Applied the top legacy-catalog plan: exact selected gems/groups and every recalculated stat matched the preview, DPS 20129.498504087; unrelated state remained unchanged. The saved test Invoker now has Considered Casting, Concentrated Area, Elemental Focus, Cooldown Recovery II and Deliberation in main group 4. Other saved builds remain intact.
+- `ReviewSupportDescriptions-2` approved with no findings. Updated the web contract, finished browser space 36 and removed both temporary screenshots. Explanation milestone exit criteria met; no release tag under commit-only scope.
+
+## Current milestone: Verify source-stated support tradeoffs
+
+The explained-and-applied Elemental Focus plan returned `IgniteDPS=38.352778282`, while its pinned source prose says supported hits cannot inflict elemental ailments. This is a concrete current-engine lead, not yet proof of a bug: the stat might represent potential damage independently of ailment eligibility.
+
+Exit criteria:
+
+1. Trace the actual pinned Elemental Focus payload and current ailment eligibility/output semantics; distinguish potential damage from an incorrectly allowed ailment.
+2. Reproduce any confirmed discrepancy in a minimal native/runtime fixture before changing code, checking previous work and existing consumers first.
+3. If a correction is warranted, keep its effects support/host-local, preserve unrelated numerical behavior and source attribution, and verify with targeted regressions, relevant parity and rebuilt real WASM.
+4. Keep unsupported semantics explicit rather than guessing. If the reported stat is correct by contract, record that evidence and choose the next concrete gap instead of changing a correct calculation.
+
+Next iteration: investigate the Elemental Focus / Ignite lead on the now-applied test Invoker, then minimize it. Work and commits remain exclusively in this worktree; no publishing or changes to other branches.

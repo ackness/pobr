@@ -67,3 +67,13 @@
 - Independent review approved, low boundary-coverage finding resolved. Verified 390px receipt wrapping without horizontal overflow, finished browser space 35 and removed the screenshot. Updated web contract. No numeric/data changes, fresh parity/oracle or full-suite claim.
 - Closed canonical support-fidelity milestone. Next: source-based support effect explanations; reconcile existing `22b9a63` before integration. No release tag under commit-only scope.
 - Commit: this entry's checkpoint commit (`fix: disclose unmodeled support resource downsides`).
+
+## 8 — Sourced support explanations
+
+- Reconciled and reused `22b9a63` against identical source/catalog inputs. Added optional pinned English support prose and native localized recommendation disclosures, with explicit missing-description and modeled-coverage boundaries.
+- Regeneration added descriptions to 538 support records only. Other parsed catalog fields stayed identical, the artifact byte-matched the prior generation, and only its manifest hash changed.
+- Passed 35 affected frontend tests and production build/typecheck; synced data and reused unchanged WASM. Independent review approved without findings. Existing chunk-size advisory remains.
+- Live browser verified Enter/Space controls, EN/TW/CN labels/names, unchanged English source text and scores, and desktop/390px layout. A catalog with all descriptions omitted produced the same eight recommendations with localized missing-source messages. Corrected two probe setup mistakes (hidden panel wait and wrong Vite module identity); final legacy smoke used the app's actual backend.
+- Applied the top plan: exact gem groups, all preview stats and unrelated state preservation passed, DPS 20129.498504087. Reload removed the metadata injection and restored canonical descriptions. Finished browser space 36 and removed screenshots; the applied synthetic test build remains available.
+- Closed the explanation milestone. New lead: Elemental Focus's source prohibits elemental ailments, but that applied plan reports IgniteDPS 38.352778282. Next iteration must check canonical eligibility versus potential-DPS semantics before assuming a defect.
+- Commit: this entry's checkpoint commit (`feat: expose sourced support effect descriptions`).

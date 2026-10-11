@@ -250,6 +250,17 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
                 {stat === 'TotalDPS' ? 'DPS' : 'EHP'} {number(after)} <strong>{change(before, after)}</strong>
               </span>;
             })}</div>
+            {plan.supports.length > 0 && <details className="support-diagnostics support-descriptions">
+              <summary>{st('descriptions')}</summary>
+              <p className="skills-hint">{st('descriptionsHint')}</p>
+              <ul>{plan.supports.map(gem => {
+                const description = byId.get(gem.skill_id)?.description;
+                return <li key={gem.skill_id}>
+                  <strong>{gemName(gem.skill_id)}</strong>
+                  <p lang={description ? 'en' : lang}>{description || st('descriptionUnavailable')}</p>
+                </li>;
+              })}</ul>
+            </details>}
             <button disabled={session.busy} onClick={() => apply(index)}>{tt('opt.apply')}</button>
           </article>)}
           <p className="skills-hint">{st('keepActive')}</p>
