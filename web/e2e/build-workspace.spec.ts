@@ -252,3 +252,41 @@ test('new imports keep the current build and replacement requires an explicit de
   expect(replaced.notes).toBe('Replacement');
   expect(replaced.workspace.builds[1]).toEqual(imported.workspace.builds[1]);
 });
+
+test('automatic import collection deduplicates raw text without losing equipped copies or distinct rolls', async ({ page }) => {
+  const ring = 'Rarity: RARE\nTwin Ring\nSapphire Ring\nImplicits: 0\n+50 to maximum Life';
+  const rolledRing = ring.replace('+50', '+51');
+  const ringCode = (second: string) => deflateSync(`<PathOfBuilding2>
+    <Build level="80" className="Ranger"/>
+    <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree><Skills/>
+    <Items activeItemSet="1"><Item id="1">${ring}</Item><Item id="2">${second}</Item>
+      <ItemSet id="1"><Slot name="Ring 1" itemId="1"/><Slot name="Ring 2" itemId="2"/></ItemSet>
+    </Items></PathOfBuilding2>`).toString('base64url');
+  const library = () => page.evaluate(() =>
+    JSON.parse(localStorage.getItem('pobr-library')!).items as { id: string; text: string }[]);
+  await page.goto('/');
+  await ready(page);
+  await importCode(page, ringCode(ring));
+  expect((await snapshot(page)).state.items).toEqual([
+    { slot: 'ring1', text: ring }, { slot: 'ring2', text: ring },
+  ]);
+  const collected = await library();
+  expect(collected.map(item => item.text)).toEqual([ring]);
+  await importCode(page, ringCode(ring));
+  expect(await library()).toEqual(collected);
+  await importCode(page, ringCode(rolledRing));
+  expect((await library()).map(item => item.text)).toEqual([ring, rolledRing]);
+  expect((await snapshot(page)).state.items).toEqual([
+    { slot: 'ring1', text: ring }, { slot: 'ring2', text: rolledRing },
+  ]);
+  await page.getByRole('button', { name: 'Items', exact: true }).click();
+  for (const slot of ['Ring 1', 'Ring 2']) {
+    await page.locator('.paper-doll').getByRole('button', { name: slot, exact: true }).click();
+    await expect(page.locator('.items-library').getByRole('button', { name: 'Equip', exact: true })).toHaveCount(2);
+    await expect(page.locator('.items-library').getByRole('button', { name: 'Equip', exact: true }).first()).toBeEnabled();
+  }
+  const beforeReload = await library();
+  await page.reload();
+  await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 90_000 });
+  expect(await library()).toEqual(beforeReload);
+});

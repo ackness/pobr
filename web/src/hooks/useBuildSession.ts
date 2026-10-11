@@ -754,7 +754,11 @@ export function useBuildSession(): BuildSession {
         return i;
       });
       const seen = new Set(existing.map((i) => i.text));
-      const newItems = imported.filter((i) => !seen.has(i.text));
+      const newItems = imported.filter((i) => {
+        if (seen.has(i.text)) return false;
+        seen.add(i.text);
+        return true;
+      });
       const skillSets =
         skillSet && !prev.skillSets.some((s) => s.name === skillSet.name)
           ? [...prev.skillSets, skillSet]
