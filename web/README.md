@@ -72,6 +72,11 @@ Complete-item text, selected position, augment choices, completed comparisons an
 equipment candidates also survive same-stage navigation. Leaving cancels their
 work and paste debounce; returning does not restart scoring. Changed calculation
 inputs invalidate evaluated results; switching stages resets the workspace.
+Applying a complete-item comparison shows a localized confirmation naming the
+item and destination after that evaluated text is present in the active weapon
+set and pending work has settled. This confirms the equipment edit, not complete
+mechanic coverage. Editing or repasting the candidate, starting a new comparison
+or leaving the panel clears the confirmation.
 
 On Config, **Quick access** explains optional shock state/magnitude assumptions and
 links to enemy mitigation settings matching the calculated main skill's non-zero

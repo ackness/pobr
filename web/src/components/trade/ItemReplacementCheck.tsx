@@ -36,6 +36,10 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
   const [text, setText] = useState(initialItemText ?? '');
   const [snapshot, setSnapshot] = useState<ComparisonSnapshot | null>(null);
   const [chosenSlot, setChosenSlot] = useState<string | null>(null);
+  const [applied, setApplied] = useState<{ slot: string; name: string; text: string; weaponSet: 1 | 2 } | null>(null);
+  const appliedText = applied?.slot.startsWith('Jewel@')
+    ? session.jewels.find(jewel => `Jewel@${jewel.socket_node}` === applied.slot)?.text
+    : session.items.find(item => item.slot === applied?.slot)?.text ?? session.flasks.find(item => item.slot === applied?.slot)?.text;
   const [pendingPaste, setPendingPaste] = useState<{ input: string } | null>(initialItemText ? { input: initialItemText } : null);
   const [affixDirty, setAffixDirty] = useState(false);
   const [error, setError] = useState('');
@@ -89,7 +93,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     previousContext.current = { key: contextKey, catalog };
     stop(); setSnapshot(null); setError(''); setAffixDirty(false);
   }, [contextKey, catalog, stop]);
-  useLayoutEffect(() => { if (!active) stop(); }, [active, stop]);
+  useLayoutEffect(() => { if (!active) { stop(); setApplied(null); } }, [active, stop]);
   useEffect(() => { if (report && inputRef.current) inputRef.current.scrollTop = 0; }, [report?.text]);
   useLayoutEffect(() => () => stop(), [stop]);
 
@@ -99,6 +103,7 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
     if (!active || !latest.current.active || session.busy || !request || !catalog
       || latest.current.contextKey !== context || latest.current.catalog !== catalog) return;
     stop();
+    setApplied(null);
     const abort = new AbortController(); controller.current = abort;
     const nextKey = JSON.stringify([context, input, plans]);
     const current = () => !abort.signal.aborted && controller.current === abort && latest.current.active
@@ -139,6 +144,10 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
 
   const apply = () => {
     if (!active || !latest.current.active || busy || affixDirty || session.busy || !report || !selected || !receiptCurrent()) return;
+    const itemText = selected.variant.set_items?.find(item => item.slot === selected.slot)?.text
+      ?? selected.variant.flasks?.find(item => item.slot === selected.slot)?.text
+      ?? selected.variant.jewels?.find(jewel => `Jewel@${jewel.socket_node}` === selected.slot)?.text;
+    if (itemText === undefined) return;
     // Apply the evaluated per-position payload, preserving all unrelated sources.
     if (selected.variant.jewels) session.setJewels(selected.variant.jewels);
     else if (selected.variant.flasks) session.setFlasks(selected.variant.flasks);
@@ -146,6 +155,9 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       const replacements = selected.variant.set_items;
       session.setItems([...session.items.filter(item => !replacements.some(row => row.slot === item.slot)), ...replacements]);
     }
+    else return;
+    setApplied({ slot: selected.slot, name: nameLine || translated[0] || report.base.name,
+      text: itemText, weaponSet: session.activeWeaponSet });
     stop(); setSnapshot(null); setChosenSlot(null); setAffixDirty(false);
   };
   const addCandidate = () => {
@@ -161,9 +173,9 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
       <button className="replacement-goal" aria-label={`${ut('comparisonGoal')}: ${goalLabel}`} onClick={onEditGoal}>{goalLabel} <span aria-hidden>↗</span></button></div></header>
     <div className="replacement-input"><label htmlFor="replacement-text">{ut('itemText')}</label>
       <textarea ref={inputRef} id="replacement-text" rows={report ? 3 : 5} value={text} placeholder={ut('pastePlaceholder')}
-        onChange={event => { if (!latest.current.active) return; stop(); setSnapshot(null); setChosenSlot(null); setAffixDirty(false); setAugmentPlans({}); setText(event.target.value); }}
+        onChange={event => { if (!latest.current.active) return; stop(); setApplied(null); setSnapshot(null); setChosenSlot(null); setAffixDirty(false); setAugmentPlans({}); setText(event.target.value); }}
         onPaste={event => { if (!latest.current.active) return; const copied = event.clipboardData.getData('text/plain'); if (!copied) return;
-          event.preventDefault(); stop(); setSnapshot(null); setAugmentPlans({}); setChosenSlot(null); setAffixDirty(false); setText(copied); setPendingPaste({ input: copied }); }} />
+          event.preventDefault(); stop(); setApplied(null); setSnapshot(null); setAugmentPlans({}); setChosenSlot(null); setAffixDirty(false); setText(copied); setPendingPaste({ input: copied }); }} />
       <div className="replacement-actions"><button className="trade-primary" disabled={!active || busy || affixDirty || session.busy || !catalog || !text.trim()} onClick={() => void run(text, augmentPlans, chosenSlot ?? undefined)}>
         {busy ? ut('comparingPositions') : ut('compare')}</button>
         {busy && <button onClick={stop}>{ut('cancelCompare')}</button>}
@@ -172,6 +184,9 @@ export function ItemReplacementCheck({ session, lang, active, objective, catalog
         <a href="/userscripts/index.html" target="_blank" rel="noreferrer">{ut('copyScriptHelp')}</a></p>
     </div>
     {error && <p role="alert" className="trade-error">{error}</p>}
+    {active && applied && !session.busy && applied.weaponSet === session.activeWeaponSet && appliedText === applied.text && <p role="status" className="trade-notice replacement-applied">
+      {ut('applied')} · {applied.name} · {positionLabel(applied.slot)}
+    </p>}
     {report && selected && <div className="replacement-content" aria-busy={busy}>
       <div className="replacement-candidate">
       <aside className="replacement-parsed" aria-label={ut('parsedItem')}>

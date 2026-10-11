@@ -88,6 +88,7 @@ const labels = {
   replacementOutcome: ['Replacement impact', '換裝收益', '换装收益'],
   compare: ['Calculate replacement', '重算換裝', '重算换装'],
   apply: ['Apply to build', '套用到構築', '应用到构筑'],
+  applied: ['Applied evaluated item', '已套用比較中的物品', '已应用比较中的物品'],
   before: ['Current', '目前', '当前'],
   after: ['Replacement', '換裝後', '换装后'],
   change: ['Change', '變化', '变化'],

@@ -37,3 +37,13 @@
 - Lifecycle milestone exit criteria now have runtime evidence across iterations 2–4. Closed that milestone without a tag under the explicit commit-only scope.
 - Next milestone: trustworthy whole-item comparison decisions. Start with a populated build and both ring slots, inspect unsupported effects and augment assumptions, then verify explicit apply agrees with preview.
 - Commit: this entry accompanies `fix: guide players after rejected build imports`.
+
+## Iteration 5 — 2026-10-11
+- Exercised complete-item comparisons on the populated Frost Bomb build. Both rings compared without saved-state mutation; Ring 2 applied exact candidate text and preserved unrelated equipment. Predicted 6654.85 DPS became displayed 6655.
+- An unmodeled candidate line remained visible and prevented a recommendation badge. Baseline partial-calculation limits remained visible; no new scoring or exclusion policy introduced.
+- Helmet comparison inherited Perfect Iron Rune and disclosed an added socket/cost assumptions. As-listed EHP 24099.31 differed from inherited EHP 24699.76; inherited apply stored the evaluated rune/socket text and displayed 24700.
+- Fixed the observed lack of post-apply feedback with a three-language item/destination confirmation. It appears only after pending work settles and the evaluated text is present in the active weapon context, including asynchronous jewel application; edits, new comparisons and navigation clear it.
+- Verification: comparison/augment tests passed (39) and typecheck passed. Actual browser verified equipment, jewel and flask messages, all three locales, no message before application, and removal on edit/navigation. Before/after screenshots inspected.
+- Updated the Web guide, removed temporary screenshots and closed the browser. No permanent wording-only test added.
+- Whole-item milestone complete; next is support recommendation trust, exclusions and apply continuity. Commit-only scope means no milestone tag.
+- Commit: this entry accompanies `feat: confirm applied item comparisons`.

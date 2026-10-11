@@ -16,7 +16,8 @@ Exit criteria:
 3. Address evidenced lifecycle defects with focused regressions, retaining existing calculation and unsupported-effect boundaries.
 4. Review import/planning feedback for actionable errors without discarding prior results.
 
-## Current milestone: trustworthy whole-item comparison decisions
+## Completed milestone: trustworthy whole-item comparison decisions
+Status: completed in iteration 5. No tag under commit-only scope.
 Exercise the primary README promise on a populated character: compare a complete
 item before changing equipment, inspect assumptions and limitations, then apply
 only the evaluated candidate.
@@ -25,6 +26,22 @@ Exit criteria:
 2. Applied item text and displayed recalculation agree with the selected preview, including augment assumptions.
 3. Baseline limits and new unsupported effects remain visible and are not mistaken for guaranteed gains.
 4. Address only evidenced defects in this path and verify the corrected player-facing surface.
+
+## Current milestone: trustworthy support recommendation decisions
+Use a populated skill group to verify eligible support comparisons, player
+exclusions and explicit application without changing other skill groups.
+Exit criteria:
+1. Run real-WASM support search and inspect modeled-effect and bounded-search limits.
+2. Excluding a support changes the candidate pool without removing the equipped baseline.
+3. Applying a selected result preserves the intended skill group and agrees with previewed output.
+4. Fix evidenced player-facing defects; do not widen support mechanic coverage without parity evidence.
+
+## Verified whole-item evidence
+- Both ring positions were compared without mutating workspace bytes. Ring 2 applied the exact evaluated candidate, preserving all other item slots; preview DPS 6654.85 displayed as 6655 after recalculation.
+- A synthetic unmodeled line remained in diagnostics (11 versus baseline 10) and no recommended badge appeared. Manual application remains available under explicit partial-calculation warnings.
+- A bare Ancestral Tiara comparison inherited Perfect Iron Rune and disclosed one assumed socket plus excluded costs. As-listed EHP was 24099.31; inherited setup was 24699.76. Applying inherited setup stored the named rune/socket payload and displayed EHP 24700, preserving other slots.
+- Identified missing post-apply feedback. Added a localized status naming the evaluated item and destination, gated on matching equipped text/weapon set and settled session work. It does not claim complete mechanic modeling.
+- Real browser verified equipment, jewel and flask confirmations; English/Traditional/Simplified messages; absence before apply; clearing on text edit and navigation. Comparison/augment unit tests (39) and typecheck passed.
 
 ## Initial survey, 2026-10-11
 - README positions the product around comparing gear, supports and passive upgrades; incomplete mechanics are explicitly disclosed.
@@ -53,6 +70,6 @@ Exit criteria:
 - Browser confirmation handling worked when upload and acceptDialog occurred in one ego-browser invocation; splitting across rounds did not restore. Reported tooling discrepancy, not an application defect.
 
 ## Priority queue
-1. Use Upgrades on the committed populated Frost Bomb example to compare a complete item across both ring slots.
-2. Inspect augment assumptions, unsupported-effect treatment and explicit apply/recalculate equality.
-3. Rank any observed defect against the primary upgrade-comparison promise before changing code.
+1. Inspect Skills recommendations on the populated Frost Bomb example and choose a concrete support-exclusion/application scenario.
+2. Verify selection continuity and preview/apply agreement while retaining unsupported-effect limits.
+3. Prioritize observed behavior gaps rather than speculative mechanic or architecture changes.
