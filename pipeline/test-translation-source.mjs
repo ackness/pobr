@@ -40,7 +40,7 @@ test('a failed export does not masquerade as a complete translation snapshot', a
     ? { ok: true, text: async () => snapshot } : { ok: false, status: 503 } }), /503/);
   assert.deepEqual(await fs.readdir(path.join(cacheRoot, 'exports')), []);
   const recovered = await translationSource({ cacheRoot, ref, fetcher: async url => {
-    assert.ok(url.endsWith('/generated/pobr.json'));
+    assert.ok(url.endsWith('/generated/templates.json'));
     return { ok: true, text: async () => JSON.stringify(bundle([life])) };
   } });
   assert.equal(recovered.bundle.templates[0].src, life.src);
