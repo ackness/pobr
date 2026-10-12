@@ -80,6 +80,12 @@ pub struct HitDamageMods<'a> {
     pub by_type: Vec<(DamageType, Vec<crate::ModEvaluation<'a>>)>,
 }
 
+/// See [`CalculationSession::skill_dot_mods`].
+#[derive(Debug, Clone)]
+pub struct SkillDotMods<'a> {
+    pub by_type: Vec<(DamageType, Vec<crate::ModEvaluation<'a>>)>,
+}
+
 #[derive(Debug, Clone)]
 pub struct CalculationSession {
     env: Env,
@@ -771,6 +777,14 @@ impl CalculationSession {
                 offence::hit_pass(db, &env.enemy.mod_db, cfg, hand_input).dps_formula(),
                 output.dps,
             ),
+            "TotalDotDPS" => (
+                perform::skill_dot_terms(env).dot_formula(),
+                output.total_dot_dps,
+            ),
+            "CombinedDPS" => (
+                perform::skill_dot_terms(env).combined_formula(),
+                output.combined_dps,
+            ),
             "CritChance" | "CritMultiplier" => {
                 let enemy = &env.enemy.mod_db;
                 let effective = cfg.mode_effective;
@@ -877,6 +891,43 @@ impl CalculationSession {
         ((pass.dps - env.player.output.dps).abs() <= 1e-6)
             .then(|| pass.mitigation_terms(db, enemy, cfg))
             .flatten()
+    }
+
+    /// The per-damage-type table behind the skill's own damage over time
+    /// (the `skill_dot` step of `TotalDotDPS`). Empty when the skill deals
+    /// none; `None` when the parts do not add up to that step (stacking
+    /// instances, the cap).
+    pub fn skill_dot_parts(&self) -> Option<Vec<super::SkillDotPart>> {
+        let terms = perform::skill_dot_terms(&self.env);
+        let sum: f64 = terms.parts.iter().map(|part| part.total).sum();
+        ((sum - terms.total_dot).abs() <= 1e-6).then_some(terms.parts)
+    }
+
+    /// The lines behind each of `types`' rows in [`skill_dot_parts`](Self::skill_dot_parts),
+    /// as the skill DoT stage reads them: the INC / MORE damage lines
+    /// (`damage::aggregate_inc_more` in that type's damage over time config)
+    /// and the BASE damage over time multiplier lines.
+    pub fn skill_dot_mods(&self, types: &[DamageType]) -> SkillDotMods<'_> {
+        use super::{damage, skill_dot};
+        let env = &self.env;
+        let db = &env.player.mod_db;
+        let dot_cfg = skill_dot::dot_config(&env.cfg, skill_dot::DotIsFlags::from_db(db, &env.cfg));
+        SkillDotMods {
+            by_type: types
+                .iter()
+                .map(|ty| {
+                    let cfg = skill_dot::dot_type_config(&dot_cfg, *ty);
+                    let mut rows = damage::evaluate_generic_scaling(db, &cfg);
+                    rows.extend(damage::evaluate_type_scaling(db, &cfg, *ty));
+                    rows.extend(
+                        db.evaluate_names(&cfg, &skill_dot::dot_multiplier_names(*ty))
+                            .into_iter()
+                            .filter(|row| row.modifier.mod_type == ModType::Base),
+                    );
+                    (*ty, rows)
+                })
+                .collect(),
+        }
     }
 
     /// The config `stat`'s stage evaluates modifiers in: the main-hand pass

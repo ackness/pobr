@@ -2,7 +2,7 @@
 //! value it outputs. The stages return the terms they aggregated
 //! (`PoolTerms`, `ResistanceResolution`, `ActionRateTerms`, `CritChanceTerms`,
 //! `CritMultiplierTerms`, `DefenceTerms`, `SpiritTerms`, `AccuracyTerms`,
-//! `HitChanceTerms`, `HitPass`) and those terms are turned into steps here, so a
+//! `HitChanceTerms`, `HitPass`, `SkillDotTerms`) and those terms are turned into steps here, so a
 //! displayed formula reads the same numbers the stage computed with.
 
 /// What one step does to the running value.
@@ -88,6 +88,16 @@ pub enum FormulaOp {
     /// Multiplies by `operand`: repeats, extra detonations and other
     /// multipliers to damage per second.
     DpsMultiplier,
+    /// Starts from the skill's own damage over time per second, `operand`.
+    SkillDot,
+    /// Adds `operand` poison / ignite / bleed damage per second.
+    PoisonDps,
+    IgniteDps,
+    BleedDps,
+    /// Starts from the hit damage per second, `operand`.
+    HitDps,
+    /// Adds `operand` damage over time per second.
+    DotDps,
 }
 
 impl FormulaOp {
@@ -131,6 +141,12 @@ impl FormulaOp {
             Self::UsesPerSecond => "uses_per_second",
             Self::ChanceToHit => "chance_to_hit",
             Self::DpsMultiplier => "dps_multiplier",
+            Self::SkillDot => "skill_dot",
+            Self::PoisonDps => "poison_dps",
+            Self::IgniteDps => "ignite_dps",
+            Self::BleedDps => "bleed_dps",
+            Self::HitDps => "hit_dps",
+            Self::DotDps => "dot_dps",
         }
     }
 }

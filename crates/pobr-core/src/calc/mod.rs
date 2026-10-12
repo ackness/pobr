@@ -101,10 +101,11 @@ pub use pool_setup::{
 pub use scaled_damage::{
     AllMultExtras, DpsEndFactors, ScaledDamage, all_mult, dps_end_factors, scaled_damage_effect,
 };
-pub use session::{BuffKind, BuffSpec, CalculationSession, HitDamageMods};
+pub use session::{BuffKind, BuffSpec, CalculationSession, HitDamageMods, SkillDotMods};
 pub use setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
 pub use skill_dot::{
-    DotIsFlags, SkillDotInputs, SkillDotOutput, calc_skill_dot, dot_config, fill_skill_dot,
+    DotIsFlags, SkillDotInputs, SkillDotOutput, SkillDotPart, SkillDotTerms, calc_skill_dot,
+    dot_config, fill_skill_dot, skill_dot_terms,
 };
 pub use skill_use_time::{
     CrossbowReload, SkillUseTime, apply_crossbow_reload, calc_skill_use_time, crossbow_reload_time,

@@ -34,6 +34,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         // Offence
         computed("TotalDPS", Cat::Offence, Vt::Number, "TotalDPS"),
         computed("TotalHitAvg", Cat::HitDamage, Vt::Number, "AverageHit"),
+        computed("CombinedDPS", Cat::Offence, Vt::Number, "CombinedDPS"),
         computed("Accuracy", Cat::Offence, Vt::Number, "Accuracy"),
         computed("HitChance", Cat::Offence, Vt::Percent, "HitChance"),
         computed("ActionRate", Cat::SkillMechanics, Vt::Number, "Speed"),
@@ -46,6 +47,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         computed("CritChance", Cat::Offence, Vt::Percent, "CritChance"),
         computed("CritMultiplier", Cat::Offence, Vt::Number, "CritMultiplier"),
         // DoT / Ailment
+        computed("TotalDotDPS", Cat::DotDamage, Vt::Number, "TotalDotDPS"),
         computed("BleedDPS", Cat::DotDamage, Vt::Number, "BleedDPS"),
         computed("IgniteDPS", Cat::DotDamage, Vt::Number, "IgniteDPS"),
         computed("PoisonDPS", Cat::DotDamage, Vt::Number, "PoisonDPS"),
@@ -532,6 +534,8 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "EffectiveActionRate" => output.effective_action_rate,
         "CritChance" => output.crit_chance * 100.0,
         "CritMultiplier" => output.crit_multiplier,
+        "CombinedDPS" => output.combined_dps,
+        "TotalDotDPS" => output.total_dot_dps,
         "BleedDPS" => output.bleed_dps,
         "IgniteDPS" => output.ignite_dps,
         "PoisonDPS" => output.poison_dps,

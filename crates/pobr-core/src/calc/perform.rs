@@ -784,6 +784,12 @@ fn fill_crossbow_reload(env: &mut Env) {
 /// present) is preferred, otherwise the single-stack expected DPS. With no skill DoT and no
 /// ailment DoT, the output is all zero and the contract fields stay at their neutral Default.
 fn fill_skill_dot_stage(env: &mut Env) {
+    let dot = skill_dot_terms(env).output();
+    super::skill_dot::fill_skill_dot(&mut env.player.output, &dot);
+}
+
+/// The skill DoT stage's terms, from the hit and ailment values already in the output.
+pub(super) fn skill_dot_terms(env: &Env) -> super::skill_dot::SkillDotTerms {
     let out = &env.player.output;
     let pick = |stacked: f64, single: f64| if stacked > 0.0 { stacked } else { single };
     let inputs = super::skill_dot::SkillDotInputs {
@@ -797,9 +803,7 @@ fn fill_skill_dot_stage(env: &mut Env) {
         poison_dps: pick(out.poison_stacked_dps, out.poison_dps),
         ignite_dps: pick(out.ignite_stacked_dps, out.ignite_dps),
     };
-    let dot =
-        super::skill_dot::calc_skill_dot(&env.player.mod_db, &env.enemy.mod_db, &env.cfg, &inputs);
-    super::skill_dot::fill_skill_dot(&mut env.player.output, &dot);
+    super::skill_dot::skill_dot_terms(&env.player.mod_db, &env.enemy.mod_db, &env.cfg, &inputs)
 }
 
 /// Trigger rate fill (Lane B): reads cooldown-gated / CWC trigger mods, writes `trigger_rate_cap` /

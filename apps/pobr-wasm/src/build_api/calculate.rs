@@ -19,10 +19,14 @@ use crate::state;
 /// stats). Each stat is evaluated over the modifier names its calculation
 /// stage aggregates (`CalculationSession::stat_mod_names`). `TotalDPS` and
 /// `TotalHitAvg` have no single aggregation: they carry steps only, and the
-/// average hit a per-damage-type table (`damage`).
+/// average hit a per-damage-type table (`damage`). `CombinedDPS` and
+/// `TotalDotDPS` likewise carry steps only, the latter with the skill's own
+/// damage over time per type (`skill_dot`).
 const BREAKDOWN_MOD_NAMES: &[&str] = &[
+    "CombinedDPS",
     "TotalDPS",
     "TotalHitAvg",
+    "TotalDotDPS",
     "Life",
     "Mana",
     "EnergyShield",
@@ -80,6 +84,9 @@ struct BreakdownJson {
     /// `TotalDPS` only: the `enemy_mitigation` step per damage type.
     #[serde(skip_serializing_if = "Option::is_none")]
     mitigation: Option<Vec<HitMitigationRowJson>>,
+    /// `TotalDotDPS` only: the `skill_dot` step per damage type.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    skill_dot: Option<Vec<SkillDotRowJson>>,
 }
 
 fn mod_entries(rows: &[pobr_core::ModEvaluation<'_>]) -> Vec<BreakdownModJson> {
@@ -181,6 +188,33 @@ struct HitMitigationRowJson {
     mitigated: f64,
 }
 
+/// One damage type of the skill's own damage over time (not an ailment).
+#[derive(Debug, Serialize)]
+struct SkillDotRowJson {
+    /// `Physical` / `Fire` / `Cold` / `Lightning` / `Chaos`.
+    damage_type: String,
+    /// Damage per second before scaling, from the skill gem.
+    base: f64,
+    /// The INC total (in percentage points).
+    increased: f64,
+    /// The MORE product, as a multiplier.
+    more: f64,
+    /// The damage over time multiplier (in percentage points).
+    dot_multiplier: f64,
+    /// The aura effect multiplier (`1.0` unless the skill is an aura).
+    aura: f64,
+    /// The enemy's resistance and damage taken as one multiplier.
+    enemy: f64,
+    /// `base × (1 + increased / 100) × more × (1 + dot_multiplier / 100) × aura × enemy`.
+    /// The rows add up to the operand of the `skill_dot` step.
+    total: f64,
+    /// The INC / MORE damage lines and the BASE damage over time multiplier
+    /// lines this type reads, inactive lines included. The active INC values
+    /// add up to `increased`, the active MORE values multiply to `more`
+    /// (rounded to two decimals per modifier name by the calculation).
+    mods: Vec<BreakdownModJson>,
+}
+
 #[derive(Debug, Serialize)]
 struct FormulaStepJson {
     /// `base` / `flat` / `enemy_flat` / `converted` / `increased` / `more` / `added_time` /
@@ -191,7 +225,8 @@ struct FormulaStepJson {
     /// `bifurcate_bonus` / `enemy_increased` / `accuracy_rating` /
     /// `vs_evasion` / `always_hits` / `enemy_block` / `non_crit_hit` /
     /// `crit_hits` / `average_hit` / `enemy_mitigation` / `uses_per_second` /
-    /// `chance_to_hit` / `dps_multiplier`.
+    /// `chance_to_hit` / `dps_multiplier` / `skill_dot` / `poison_dps` /
+    /// `ignite_dps` / `bleed_dps` / `hit_dps` / `dot_dps`.
     op: &'static str,
     /// The amount the step applies (percentage points for `increased`,
     /// `converted`, `hit_chance`, `enemy_block`, `inevitable_penalty`,
@@ -200,7 +235,8 @@ struct FormulaStepJson {
     /// for `added_time`, the limit for caps and the floor, the number of
     /// rolls for `lucky` and `bifurcate`, the percentage of hits that crit
     /// for `crit_hits`, the chance to hit for `chance_to_hit`, a multiplier for `enemy_mitigation`,
-    /// `uses_per_second` and `dps_multiplier`, the amount added otherwise).
+    /// `uses_per_second` and `dps_multiplier`, the starting damage per second for
+    /// `skill_dot` and `hit_dps`, the amount added otherwise).
     operand: f64,
     /// The running value after the step.
     result: f64,
@@ -285,6 +321,29 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
                 })
                 .collect()
         });
+    let skill_dot = (stat == "TotalDotDPS")
+        .then(|| session.skill_dot_parts())
+        .flatten()
+        .filter(|parts| !parts.is_empty())
+        .map(|parts| {
+            let types: Vec<_> = parts.iter().map(|part| part.damage_type).collect();
+            let lines = session.skill_dot_mods(&types);
+            parts
+                .iter()
+                .zip(&lines.by_type)
+                .map(|(part, (_, mods))| SkillDotRowJson {
+                    damage_type: format!("{:?}", part.damage_type),
+                    base: part.base,
+                    increased: part.inc + 0.0,
+                    more: part.more,
+                    dot_multiplier: part.dot_multiplier + 0.0,
+                    aura: part.aura,
+                    enemy: part.enemy,
+                    total: part.total,
+                    mods: mod_entries(mods),
+                })
+                .collect()
+        });
     let entries = mod_entries(&rows);
     let (base_total, inc_total, more_total) = session.stat_totals(stat);
     Some(BreakdownJson {
@@ -296,6 +355,7 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
         formula,
         damage,
         mitigation,
+        skill_dot,
     })
 }
 

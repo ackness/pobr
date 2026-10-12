@@ -8,6 +8,7 @@ import type {
   FormulaStep,
   HitDamageTable,
   HitMitigationRow,
+  SkillDotRow,
   DisplayStatCategory,
   SkillMetricsResponse,
 } from '../../api/types';
@@ -64,6 +65,8 @@ function formulaOperand(step: FormulaStep): string {
     case 'always_hits':
     case 'non_crit_hit':
     case 'average_hit':
+    case 'skill_dot':
+    case 'hit_dps':
       return '';
     case 'crit_hits':
       return `${n}%`;
@@ -81,6 +84,10 @@ function formulaOperand(step: FormulaStep): string {
     case 'gained':
     case 'slot_scaled':
     case 'flat_after':
+    case 'poison_dps':
+    case 'ignite_dps':
+    case 'bleed_dps':
+    case 'dot_dps':
       return signed;
     case 'increased':
     case 'enemy_increased':
@@ -244,6 +251,60 @@ function MitigationView({ rows, lang }: { rows: HitMitigationRow[]; lang: Lang }
   );
 }
 
+/** The skill's own damage over time per type, with the lines that scale each type. */
+function SkillDotView({ rows, lang }: { rows: SkillDotRow[]; lang: Lang }) {
+  const tt = bindT(lang);
+  const showAura = rows.some((row) => row.aura !== 1);
+  return (
+    <>
+      <div className="breakdown-scroll">
+        <table className="breakdown-table hit-damage-table skill-dot-table" aria-label={tt('calcs.skillDot.title')}>
+          <caption>{tt('calcs.skillDot.title')}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{tt('calcs.damage.type')}</th>
+              <th scope="col">{tt('calcs.skillDot.base')}</th>
+              <th scope="col">{tt('calcs.damage.increased')}</th>
+              <th scope="col">{tt('calcs.damage.more')}</th>
+              <th scope="col">{tt('calcs.skillDot.multiplier')}</th>
+              {showAura && <th scope="col">{tt('calcs.skillDot.aura')}</th>}
+              <th scope="col">{tt('calcs.skillDot.enemy')}</th>
+              <th scope="col">{tt('calcs.skillDot.total')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.damage_type} className={`damage-${row.damage_type.toLowerCase()}`}>
+                <th scope="row">{damageTypeLabel(lang, row.damage_type)}</th>
+                <td className="mod-value">{fmtNum(row.base)}</td>
+                <td className="mod-value">{fmtNum(row.increased)}%</td>
+                <td className="mod-value">×{fmtNum(row.more)}</td>
+                <td className="mod-value">{fmtNum(row.dot_multiplier)}%</td>
+                {showAura && <td className="mod-value">×{fmtNum(row.aura)}</td>}
+                <td className="mod-value">×{fmtNum(row.enemy)}</td>
+                <td className="mod-value">{fmtNum(row.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="damage-lines">
+        {rows.filter((row) => row.mods.length > 0).map((row) => (
+          <details key={row.damage_type} className={`damage-lines-group damage-lines-${row.damage_type.toLowerCase()}`}>
+            <summary>
+              {damageTypeLabel(lang, row.damage_type)} · {tt('calcs.skillDot.lines')}
+              <span className="breakdown-count">
+                {row.mods.filter((m) => m.active).length} {tt('calcs.mods')}
+              </span>
+            </summary>
+            <ModLines mods={row.mods} lang={lang} />
+          </details>
+        ))}
+      </div>
+    </>
+  );
+}
+
 /** Modifier lines with type, applied value, text and source; lines the calculation skips are dimmed. */
 function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   const tt = bindT(lang);
@@ -325,12 +386,14 @@ function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
 
 function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang }) {
   const tt = bindT(lang);
-  const damageLines = breakdown.damage
-    ? [breakdown.damage.shared_mods, ...breakdown.damage.rows.map((row) => row.mods)].flat()
-    : [];
+  const damageLines = [
+    ...(breakdown.damage ? [breakdown.damage.shared_mods, ...breakdown.damage.rows.map((row) => row.mods)] : []),
+    ...(breakdown.skill_dot ?? []).map((row) => row.mods),
+  ].flat();
   return (
     <div className="breakdown-detail">
       {breakdown.damage && <HitDamageView damage={breakdown.damage} lang={lang} />}
+      {breakdown.skill_dot && <SkillDotView rows={breakdown.skill_dot} lang={lang} />}
       {breakdown.formula ? (
         <table className="breakdown-formula" aria-label={tt('calcs.formula')}>
           <caption>{tt('calcs.formula')}</caption>

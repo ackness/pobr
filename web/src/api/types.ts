@@ -453,11 +453,17 @@ export type FormulaOp =
   | 'enemy_mitigation'
   | 'uses_per_second'
   | 'chance_to_hit'
-  | 'dps_multiplier';
+  | 'dps_multiplier'
+  | 'skill_dot'
+  | 'poison_dps'
+  | 'ignite_dps'
+  | 'bleed_dps'
+  | 'hit_dps'
+  | 'dot_dps';
 
 export interface FormulaStep {
   op: FormulaOp;
-  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier), seconds (added_time), the limit, the number of rolls (lucky, bifurcate) or the amount added. */
+  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier), seconds (added_time), the limit, the number of rolls (lucky, bifurcate), the starting damage per second (skill_dot, hit_dps) or the amount added. */
   operand: number;
   /** Running value after the step. */
   result: number;
@@ -482,6 +488,29 @@ export interface Breakdown {
   damage?: HitDamageTable;
   /** TotalDPS only: the `enemy_mitigation` step per damage type. */
   mitigation?: HitMitigationRow[];
+  /** TotalDotDPS only: the `skill_dot` step per damage type. */
+  skill_dot?: SkillDotRow[];
+}
+
+/** One damage type of the skill's own damage over time (not an ailment). */
+export interface SkillDotRow {
+  damage_type: string;
+  /** Damage per second before scaling, from the skill gem. */
+  base: number;
+  /** INC total in percentage points. */
+  increased: number;
+  /** MORE product as a multiplier. */
+  more: number;
+  /** Damage over time multiplier in percentage points. */
+  dot_multiplier: number;
+  /** Aura effect multiplier (1 unless the skill is an aura). */
+  aura: number;
+  /** The enemy's resistance and damage taken as one multiplier. */
+  enemy: number;
+  /** `base × (1 + increased / 100) × more × (1 + dot_multiplier / 100) × aura × enemy`; the rows add up to the `skill_dot` step. */
+  total: number;
+  /** INC / MORE damage lines and BASE damage over time multiplier lines this type reads. */
+  mods: BreakdownMod[];
 }
 
 /** One damage type of the main skill's hit, before the enemy's mitigation. */

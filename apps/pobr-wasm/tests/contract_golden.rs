@@ -262,6 +262,7 @@ fn breakdown_formulas_end_at_the_displayed_value() {
     let mut ops = std::collections::BTreeSet::<String>::new();
     let mut unexplained = std::collections::BTreeMap::<String, usize>::new();
     let (mut damage_lines, mut penetrated) = (0usize, 0usize);
+    let mut skill_dot_lines = 0usize;
     for dir in &dirs {
         let code = std::fs::read_to_string(dir.join("code.txt")).unwrap();
         let request = serde_json::json!({ "pob_code": code.trim() }).to_string();
@@ -365,6 +366,33 @@ fn breakdown_formulas_end_at_the_displayed_value() {
                         previous * operand / 100.0
                     }
                     "enemy_mitigation" | "dps_multiplier" => previous * operand,
+                    // Damage over time: the skill's own rows, then each
+                    // displayed ailment value; combined adds it to the hits.
+                    "skill_dot" => {
+                        let rows = breakdown["skill_dot"]
+                            .as_array()
+                            .unwrap_or_else(|| panic!("{at}: no skill dot rows"));
+                        let sum: f64 = rows.iter().map(|r| r["total"].as_f64().unwrap()).sum();
+                        assert!(close(operand, sum), "{at}: skill dot rows {sum}");
+                        operand
+                    }
+                    "poison_dps" | "ignite_dps" | "bleed_dps" => {
+                        let id = match op {
+                            "poison_dps" => "PoisonDPS",
+                            "ignite_dps" => "IgniteDPS",
+                            _ => "BleedDPS",
+                        };
+                        assert!(close(operand, shown_stat(id)), "{at}: {id} {operand}");
+                        previous + operand
+                    }
+                    "hit_dps" => {
+                        assert!(close(operand, shown_stat("TotalDPS")), "{at}: hit dps");
+                        operand
+                    }
+                    "dot_dps" => {
+                        assert!(close(operand, shown_stat("TotalDotDPS")), "{at}: dot dps");
+                        previous + operand
+                    }
                     other => panic!("{at}: unknown op {other}"),
                 };
                 assert!(
@@ -459,6 +487,34 @@ fn breakdown_formulas_end_at_the_displayed_value() {
                     damage_lines += lines().count();
                 }
             }
+            // Each type of the skill's own damage over time follows from its
+            // listed terms, and its lines add up to its increase.
+            for row in breakdown["skill_dot"].as_array().into_iter().flatten() {
+                let n = |key: &str| row[key].as_f64().unwrap();
+                let expected = n("base")
+                    * (1.0 + n("increased") / 100.0)
+                    * n("more")
+                    * (1.0 + n("dot_multiplier") / 100.0)
+                    * n("aura")
+                    * n("enemy");
+                assert!(close(n("total"), expected), "{at}: skill dot {expected}");
+                let lines = |mod_type: &'static str| {
+                    row["mods"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .filter(move |line| line["active"] == true && line["mod_type"] == mod_type)
+                        .map(|line| line["value"].as_f64().unwrap())
+                };
+                let inc: f64 = lines("INC").sum();
+                assert!(close(inc, n("increased")), "{at}: skill dot lines {inc}");
+                let more: f64 = lines("MORE").map(|value| 1.0 + value / 100.0).product();
+                assert!(
+                    (more - n("more")).abs() <= 0.02 * n("more").abs().max(1.0),
+                    "{at}: skill dot lines multiply to {more}"
+                );
+                skill_dot_lines += lines("INC").count() + lines("MORE").count();
+            }
             // The per-type mitigation recombines into the DPS steps: the
             // averages are the average hit, the mitigated values its result
             // after the enemy.
@@ -524,6 +580,8 @@ fn breakdown_formulas_end_at_the_displayed_value() {
             "CritChance",
             "CritMultiplier",
             "Accuracy",
+            "TotalDotDPS",
+            "CombinedDPS",
         ] {
             if let Some(breakdown) = breakdowns.get(stat) {
                 assert!(
@@ -552,6 +610,8 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         "HitChance",
         "TotalHitAvg",
         "TotalDPS",
+        "TotalDotDPS",
+        "CombinedDPS",
     ] {
         assert!(covered.contains_key(stat), "no build explains {stat}");
     }
@@ -569,12 +629,25 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         "crit_hits",
         "enemy_mitigation",
         "dps_multiplier",
+        "skill_dot",
+        "ignite_dps",
+        "bleed_dps",
+        "poison_dps",
+        "hit_dps",
+        "dot_dps",
     ] {
         assert!(ops.contains(op), "no fixture build shows a {op} step");
     }
     println!("damage lines {damage_lines}; types with penetration {penetrated}");
     assert!(damage_lines > 0, "no fixture build lists damage lines");
     assert!(penetrated > 0, "no fixture build shows penetration");
+    println!("skill dot lines {skill_dot_lines}");
+    assert!(
+        skill_dot_lines > 0,
+        "no fixture build lists skill dot lines"
+    );
+    // Every build that deals damage has its combined DPS explained.
+    assert!(covered["CombinedDPS"] >= 17 && covered["TotalDotDPS"] >= 17);
 }
 
 #[test]

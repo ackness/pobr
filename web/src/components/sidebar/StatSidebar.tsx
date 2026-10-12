@@ -28,7 +28,7 @@ const DAMAGE_COLOR: Record<string, string> = {
  * Inspected calculation skill and damage breakdown.
  * 数值随每次重算的 calc.main_skill 刷新——装备/天赋一变即时更新。
  */
-function MainSkillSection({ session, lang }: { session: BuildSession; lang: Lang }) {
+function MainSkillSection({ session, lang, onStatClick }: Props) {
   const tt = bindT(lang);
   const catalog = useSkillCatalog();
   const skillName = (skillId: string) => skillDisplayName(skillId, lang, catalog);
@@ -40,6 +40,23 @@ function MainSkillSection({ session, lang }: { session: BuildSession; lang: Lang
   const selected = session.calcParams.main_socket_group;
 
   if (groups.length === 0) return null;
+
+  // A DPS row opens its steps on the Calcs page when the calculation explains it.
+  const dpsRow = (id: string, label: string, value: number, color?: string) => {
+    const inner = (
+      <>
+        <dt>{label}</dt>
+        <dd style={color ? { color } : undefined}>{formatStatValue(value, 'float2')}</dd>
+      </>
+    );
+    return onStatClick && session.calc?.breakdowns[id] ? (
+      <button type="button" className="stat-row stat-row--link" key={id} onClick={() => onStatClick(id)}>
+        {inner}
+      </button>
+    ) : (
+      <div className="stat-row" key={id}>{inner}</div>
+    );
+  };
 
   const totalAvg = mainSkill?.hit_damage.reduce((sum, part) => sum + part.avg, 0) ?? 0;
 
@@ -68,22 +85,9 @@ function MainSkillSection({ session, lang }: { session: BuildSession; lang: Lang
       {mainSkill && (
         <>
           <dl>
-            <div className="stat-row">
-              <dt>{tt('sidebar.hitDps')}</dt>
-              <dd>{formatStatValue(mainSkill.hit_dps, 'float2')}</dd>
-            </div>
-            {mainSkill.dot_dps > 0 && (
-              <div className="stat-row">
-                <dt>{tt('sidebar.dotDps')}</dt>
-                <dd>{formatStatValue(mainSkill.dot_dps, 'float2')}</dd>
-              </div>
-            )}
-            <div className="stat-row">
-              <dt>{tt('sidebar.combinedDps')}</dt>
-              <dd style={{ color: 'var(--accent-gold-bright)' }}>
-                {formatStatValue(mainSkill.combined_dps, 'float2')}
-              </dd>
-            </div>
+            {dpsRow('TotalDPS', tt('sidebar.hitDps'), mainSkill.hit_dps)}
+            {mainSkill.dot_dps > 0 && dpsRow('TotalDotDPS', tt('sidebar.dotDps'), mainSkill.dot_dps)}
+            {dpsRow('CombinedDPS', tt('sidebar.combinedDps'), mainSkill.combined_dps, 'var(--accent-gold-bright)')}
           </dl>
           {totalAvg > 0 && (
             <div className="damage-share" role="list" aria-label={tt('sidebar.damageShare')}>
@@ -134,7 +138,7 @@ export function StatSidebar({ session, lang, onStatClick }: Props) {
 
   return (
     <aside id="character-stats" className="stat-sidebar" aria-label="Character stats">
-      <MainSkillSection session={session} lang={lang} />
+      <MainSkillSection session={session} lang={lang} onStatClick={onStatClick} />
       {onStatClick && <button className="stat-row stat-row--link" onClick={() => onStatClick('skill-metrics')}>
         {bindT(lang)('calcs.skillMetrics')} →
       </button>}

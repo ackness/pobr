@@ -30,11 +30,13 @@ total_dps = "總 DPS"
 # --- Offence ---
 TotalDPS = "總 DPS"
 TotalHitAvg = "平均命中"
+CombinedDPS = "綜合 DPS"
 Accuracy = "命中值"
 HitChance = "命中率"
 CritChance = "暴擊率"
 CritMultiplier = "暴擊加成"
 # --- DoT / Ailment ---
+TotalDotDPS = "持續傷害 DPS"
 BleedDPS = "流血 DPS"
 IgniteDPS = "點燃 DPS"
 PoisonDPS = "中毒 DPS"

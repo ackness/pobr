@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -184,4 +184,53 @@ test('average hit and total DPS show how they are built', async ({ page }) => {
   );
   const shownDps = num(await dps.locator('.breakdown-value').textContent());
   expect(Math.abs(num(await dps.locator('tr.formula-final .formula-result').textContent()) - shownDps)).toBeLessThanOrEqual(0.5);
+});
+
+const loadBuild = async (page: Page, build: string) => {
+  const text = readFileSync(
+    fileURLToPath(new URL(`../../examples/demo-bd-test/builds/${build}/code.txt`, import.meta.url)),
+    'utf8',
+  ).trim();
+  await page.goto('/');
+  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(text);
+  await page.locator('.import-submit').click();
+};
+const stepResult = async (row: Locator) => num(await row.locator('.formula-result').textContent());
+
+test('combined DPS adds the damage over time to the hits', async ({ page }) => {
+  // A hit build with two ailments: the sidebar's combined DPS opens steps that start at the
+  // hit DPS and add the damage over time, which itself lists each ailment.
+  await loadBuild(page, 'warrior-titan-shield-wall');
+  await page.locator('.main-skill-section').getByRole('button', { name: /^Combined DPS/ }).click();
+  const combined = page.locator('#breakdown-CombinedDPS');
+  await expect(combined).toHaveClass(/is-open/);
+  const hit = await stepResult(combined.locator('tr.formula-hit_dps'));
+  const total = await stepResult(combined.locator('tr.formula-dot_dps'));
+  expect(hit).toBeGreaterThan(0);
+  expect(total).toBeGreaterThan(hit);
+  expect(Math.abs(total - num(await combined.locator('.breakdown-value').textContent()))).toBeLessThanOrEqual(0.5);
+
+  const dot = page.locator('#breakdown-TotalDotDPS');
+  await dot.locator('.breakdown-toggle').click();
+  await expect(dot.locator('tr.formula-ignite_dps th')).toHaveText('Ignite DPS');
+  await expect(dot.locator('tr.formula-bleed_dps')).toHaveCount(1);
+  expect(await stepResult(dot.locator('tr.formula-final'))).toBeCloseTo(total - hit, 0);
+});
+
+test("a skill's own damage over time is listed per type", async ({ page }) => {
+  // One row per type with its scaling and the enemy's multiplier, adding up to the first step.
+  await loadBuild(page, 'sorceress-chronomancer-essence-drain');
+  await page.locator('.main-skill-section').getByRole('button', { name: /^DoT DPS/ }).click();
+  const own = page.locator('#breakdown-TotalDotDPS');
+  await expect(own).toHaveClass(/is-open/);
+  const table = own.locator('.skill-dot-table');
+  await expect(table.locator('tbody tr')).toHaveCount(1);
+  await expect(table.locator('tbody tr.damage-chaos th')).toHaveText('Chaos');
+  expect(num(await table.locator('tbody tr td').last().textContent())).toBeCloseTo(
+    await stepResult(own.locator('tr.formula-skill_dot')),
+    1,
+  );
+  await own.locator('.damage-lines-chaos summary').click();
+  await expect(own.locator('.damage-lines-chaos tbody tr')).not.toHaveCount(0);
 });

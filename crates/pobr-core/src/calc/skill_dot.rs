@@ -51,6 +51,7 @@ use pobr_data::prelude::*;
 use crate::{CalcConfig, ModDb};
 
 use super::damage::{DAMAGE_TYPES, aggregate_inc_more};
+use super::formula::{FormulaBuilder, FormulaOp, StatFormula};
 use super::output::OutputTable;
 use super::round;
 use super::scaled_damage::dps_end_factors;
@@ -71,6 +72,79 @@ pub struct SkillDotOutput {
     pub with_dot_dps: f64,
     /// Combined DPS (PoB2 `CombinedDPS`).
     pub combined_dps: f64,
+}
+
+/// One damage type of the skill's own damage over time, as the stage computed it:
+/// `total = base × (1 + inc / 100) × more × (1 + dot_multiplier / 100) × aura × enemy`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SkillDotPart {
+    pub damage_type: DamageType,
+    /// Damage per second before scaling (the `<Type>Dot` BASE total).
+    pub base: f64,
+    /// The INC total (percentage points) and MORE product of the damage names.
+    pub inc: f64,
+    pub more: f64,
+    /// The damage over time multiplier, in percentage points.
+    pub dot_multiplier: f64,
+    /// The aura effect factor (`1.0` unless the skill is an aura).
+    pub aura: f64,
+    /// The enemy's resistance and damage taken, as one multiplier.
+    pub enemy: f64,
+    pub total: f64,
+}
+
+/// What the skill DoT stage computed with, before rounding: the per-type
+/// parts of the skill's own damage over time and the sums of the merge family.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct SkillDotTerms {
+    pub parts: Vec<SkillDotPart>,
+    /// The parts' totals added up, limited to the cap.
+    pub instance: f64,
+    /// `instance`, or its stacked value under `DotCanStack`.
+    pub total_dot: f64,
+    pub base_dps: f64,
+    pub bleed_dps: f64,
+    pub poison_dps: f64,
+    pub ignite_dps: f64,
+    pub cap: f64,
+    pub total_dot_dps: f64,
+    pub with_dot_dps: f64,
+    pub combined_dps: f64,
+}
+
+impl SkillDotTerms {
+    pub fn output(&self) -> SkillDotOutput {
+        SkillDotOutput {
+            skill_dot_instance: round(self.instance),
+            skill_total_dot: round(self.total_dot),
+            total_dot_dps: round(self.total_dot_dps),
+            with_dot_dps: round(self.with_dot_dps),
+            combined_dps: round(self.combined_dps),
+        }
+    }
+
+    /// The skill's own damage over time plus each damaging ailment, up to the cap.
+    pub fn dot_formula(&self) -> StatFormula {
+        let mut steps = FormulaBuilder::default();
+        if self.total_dot != 0.0 {
+            steps.set(FormulaOp::SkillDot, self.total_dot, self.total_dot);
+        }
+        steps.add(FormulaOp::PoisonDps, self.poison_dps);
+        steps.add(FormulaOp::IgniteDps, self.ignite_dps);
+        steps.add(FormulaOp::BleedDps, self.bleed_dps);
+        steps.at_most(FormulaOp::Cap, self.cap);
+        steps.finish(round(self.total_dot_dps))
+    }
+
+    /// Hit damage per second plus all damage over time.
+    pub fn combined_formula(&self) -> StatFormula {
+        let mut steps = FormulaBuilder::default();
+        if self.base_dps != 0.0 {
+            steps.set(FormulaOp::HitDps, self.base_dps, self.base_dps);
+        }
+        steps.add(FormulaOp::DotDps, self.total_dot_dps);
+        steps.finish(round(self.combined_dps))
+    }
 }
 
 /// Panel inputs for skill DoT calculation (read from the existing [`OutputTable`] by perform's fill section).
@@ -238,6 +312,32 @@ pub fn calc_skill_dot(
     cfg: &CalcConfig,
     inputs: &SkillDotInputs,
 ) -> SkillDotOutput {
+    skill_dot_terms(db, enemy, cfg, inputs).output()
+}
+
+/// The config the stage reads `damage_type`'s damage over time lines in.
+pub(crate) fn dot_type_config(dot_cfg: &CalcConfig, damage_type: DamageType) -> CalcConfig {
+    dot_cfg
+        .clone()
+        .with_damage_type(damage_type)
+        .with_keyword_flags(dot_cfg.keyword_flags | dot_keyword(damage_type))
+}
+
+/// The names of `damage_type`'s damage over time multiplier lines.
+pub(crate) fn dot_multiplier_names(damage_type: DamageType) -> [ModName; 2] {
+    [
+        ModName::from("DotMultiplier"),
+        ModName::from(format!("{}DotMultiplier", type_prefix(damage_type))),
+    ]
+}
+
+/// [`calc_skill_dot`] with the terms it computed with.
+pub fn skill_dot_terms(
+    db: &ModDb,
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    inputs: &SkillDotInputs,
+) -> SkillDotTerms {
     let cap = cfg.constants.game().dot_dps_cap;
     let dot_is = DotIsFlags::from_db(db, cfg);
     let dot_cfg = dot_config(cfg, dot_is);
@@ -262,12 +362,10 @@ pub fn calc_skill_dot(
     let deal_no_damage = db.flag(&dot_cfg, "DealNoDamage");
     let mut instance = 0.0_f64;
     let mut dot_active = false;
+    let mut parts = Vec::new();
     for damage_type in DAMAGE_TYPES {
         let prefix = type_prefix(damage_type);
-        let dot_type_cfg = dot_cfg
-            .clone()
-            .with_damage_type(damage_type)
-            .with_keyword_flags(dot_cfg.keyword_flags | dot_keyword(damage_type));
+        let dot_type_cfg = dot_type_config(&dot_cfg, damage_type);
         // canDeal gate (same-source flags: `DealNoDamage` / `DealNo<Type>`).
         let can_deal = !deal_no_damage && !db.flag(&dot_type_cfg, &format!("DealNo{prefix}"));
         if !can_deal {
@@ -316,6 +414,16 @@ pub fn calc_skill_dot(
         };
         let total = base_val * (1.0 + inc / 100.0) * more * (1.0 + mult / 100.0) * aura * eff_mult;
         instance = (instance + total).min(cap);
+        parts.push(SkillDotPart {
+            damage_type,
+            base: base_val,
+            inc,
+            more,
+            dot_multiplier: mult,
+            aura,
+            enemy: eff_mult,
+            total,
+        });
     }
 
     // TotalDot (`:5931-5973`): under DotCanStack, instance × speed × duration
@@ -345,12 +453,18 @@ pub fn calc_skill_dot(
     };
     let combined_dps = inputs.base_dps + total_dot_dps;
 
-    SkillDotOutput {
-        skill_dot_instance: round(instance),
-        skill_total_dot: round(total_dot),
-        total_dot_dps: round(total_dot_dps),
-        with_dot_dps: round(with_dot_dps),
-        combined_dps: round(combined_dps),
+    SkillDotTerms {
+        parts,
+        instance,
+        total_dot,
+        base_dps: inputs.base_dps,
+        bleed_dps: inputs.bleed_dps,
+        poison_dps: inputs.poison_dps,
+        ignite_dps: inputs.ignite_dps,
+        cap,
+        total_dot_dps,
+        with_dot_dps,
+        combined_dps,
     }
 }
 
