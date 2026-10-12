@@ -8,5 +8,7 @@
   "dependencies": {
     "pathofexile-dat": "15.2.0"
   },
-  "packageManager": "pnpm@11.10.0"
+  "engines": {
+    "pnpm": "12"
+  }
 }

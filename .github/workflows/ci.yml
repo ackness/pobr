@@ -129,11 +129,10 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: wasm-pack
-      # pnpm version comes from web/package.json "packageManager" — the action
-      # only auto-reads the repo-root package.json (which does not exist here).
+      # Follow the stable pnpm 12.x line, matching mise.toml.
       - uses: pnpm/action-setup@v6
         with:
-          package_json_file: web/package.json
+          version: 12
       - uses: actions/setup-node@v7
         with:
           node-version: 22

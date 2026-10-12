@@ -13,7 +13,7 @@ Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/R
 |------|----------|
 | Rust | edition 2024，CI 使用 stable；仓库未钉定 Rust 版本。复用本机可用工具链，lint 需要 rustfmt/Clippy |
 | Node | 本地 `mise.toml` 指定 Node 26；CI 指定 Node 22 |
-| pnpm | 使用 `web/package.json` 的 `packageManager` 版本 |
+| pnpm | 本地 mise 与 CI 仅固定稳定主版本 `12`；运行 `mise install` 配置。依赖 lockfile 固定解析结果，更新直接依赖时保持原主版本，不采用预发布版本 |
 | WASM | `wasm32-unknown-unknown` target + wasm-pack，仅构建 Web 引擎时需要 |
 | cargo-nextest | 本地可选，CI 安装；完整门禁另跑 doctest |
 | LuaJIT | vendor 抽取、oracle 及相关工具测试需要；普通计算使用已入库数据 |
