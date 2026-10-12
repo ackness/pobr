@@ -21,12 +21,16 @@ use crate::state;
 /// `TotalHitAvg` have no single aggregation: they carry steps only, and the
 /// average hit a per-damage-type table (`damage`). `CombinedDPS` and
 /// `TotalDotDPS` likewise carry steps only, the latter with the skill's own
-/// damage over time per type (`skill_dot`).
+/// damage over time per type (`skill_dot`). The three ailment stats list the
+/// ailment magnitude lines and carry what the steps are built from (`ailment`).
 const BREAKDOWN_MOD_NAMES: &[&str] = &[
     "CombinedDPS",
     "TotalDPS",
     "TotalHitAvg",
     "TotalDotDPS",
+    "IgniteDPS",
+    "BleedDPS",
+    "PoisonDPS",
     "Life",
     "Mana",
     "EnergyShield",
@@ -87,6 +91,10 @@ struct BreakdownJson {
     /// `TotalDotDPS` only: the `skill_dot` step per damage type.
     #[serde(skip_serializing_if = "Option::is_none")]
     skill_dot: Option<Vec<SkillDotRowJson>>,
+    /// `IgniteDPS` / `BleedDPS` / `PoisonDPS` only: the hit the ailment comes
+    /// from and how many instances are active.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ailment: Option<AilmentJson>,
 }
 
 fn mod_entries(rows: &[pobr_core::ModEvaluation<'_>]) -> Vec<BreakdownModJson> {
@@ -215,6 +223,37 @@ struct SkillDotRowJson {
     mods: Vec<BreakdownModJson>,
 }
 
+/// What a damaging ailment's steps are built from.
+#[derive(Debug, Serialize)]
+struct AilmentJson {
+    /// The non-critical and critical hit the ailment is applied by (the
+    /// damage types that can apply it, before the enemy's mitigation), taken
+    /// at `damage_roll` percent of the damage range.
+    source_hit: f64,
+    source_crit: f64,
+    /// 50 = the average hit. Higher when more instances are applied than can
+    /// be active, because only the strongest ones count.
+    damage_roll: f64,
+    /// The percentage of instances applied by a critical hit: the step's
+    /// starting hit is `source_hit` and `source_crit` averaged with this share.
+    crit_share: f64,
+    /// The chance for a hit to apply the ailment, in percent.
+    apply_chance: f64,
+    /// The chance to hit, in percent.
+    hit_chance: f64,
+    /// How long one instance lasts, in seconds.
+    duration: f64,
+    /// Hits per second (uses per second and the skill's damage per second multiplier).
+    hits_per_second: f64,
+    /// `hit_chance × apply_chance × duration × hits_per_second`: the average
+    /// number of instances on the enemy. `0` when the skill has no hit rate;
+    /// the steps then use `chance_to_apply` instead of `active_stacks`.
+    stacks: f64,
+    /// The most instances that deal damage at once. The `active_stacks` step
+    /// multiplies by the smaller of `stacks` and this.
+    max_stacks: f64,
+}
+
 #[derive(Debug, Serialize)]
 struct FormulaStepJson {
     /// `base` / `flat` / `enemy_flat` / `converted` / `increased` / `more` / `added_time` /
@@ -226,7 +265,9 @@ struct FormulaStepJson {
     /// `vs_evasion` / `always_hits` / `enemy_block` / `non_crit_hit` /
     /// `crit_hits` / `average_hit` / `enemy_mitigation` / `uses_per_second` /
     /// `chance_to_hit` / `dps_multiplier` / `skill_dot` / `poison_dps` /
-    /// `ignite_dps` / `bleed_dps` / `hit_dps` / `dot_dps`.
+    /// `ignite_dps` / `bleed_dps` / `hit_dps` / `dot_dps` / `ailment_source` /
+    /// `per_second` / `active_stacks` / `chance_to_apply` / `ailment_effect` /
+    /// `ailment_rate`.
     op: &'static str,
     /// The amount the step applies (percentage points for `increased`,
     /// `converted`, `hit_chance`, `enemy_block`, `inevitable_penalty`,
@@ -235,8 +276,11 @@ struct FormulaStepJson {
     /// for `added_time`, the limit for caps and the floor, the number of
     /// rolls for `lucky` and `bifurcate`, the percentage of hits that crit
     /// for `crit_hits`, the chance to hit for `chance_to_hit`, a multiplier for `enemy_mitigation`,
-    /// `uses_per_second` and `dps_multiplier`, the starting damage per second for
-    /// `skill_dot` and `hit_dps`, the amount added otherwise).
+    /// `uses_per_second`, `dps_multiplier`, `ailment_effect` and `ailment_rate`,
+    /// the starting damage per second for `skill_dot` and `hit_dps`, the hit the
+    /// ailment starts from for `ailment_source`, the percentage of it dealt per
+    /// second for `per_second`, the number of instances for `active_stacks`, the
+    /// chance in percent for `chance_to_apply`, the amount added otherwise).
     operand: f64,
     /// The running value after the step.
     result: f64,
@@ -268,6 +312,32 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
     if rows.is_empty() && formula.as_ref().is_none_or(|formula| formula.value == 0.0) {
         return None;
     }
+    let output = session.output();
+    let ailment_dps = match stat {
+        "IgniteDPS" => Some(output.ignite_dps),
+        "BleedDPS" => Some(output.bleed_dps),
+        "PoisonDPS" => Some(output.poison_dps),
+        _ => None,
+    };
+    // An ailment the skill does not apply has nothing to explain.
+    if ailment_dps == Some(0.0) {
+        return None;
+    }
+    let ailment = formula
+        .as_ref()
+        .and_then(|_| session.ailment_terms(stat))
+        .map(|terms| AilmentJson {
+            source_hit: terms.source_hit,
+            source_crit: terms.source_crit,
+            damage_roll: terms.damage_roll,
+            crit_share: terms.crit_weight() * 100.0,
+            apply_chance: terms.apply_chance * 100.0,
+            hit_chance: terms.hit_chance * 100.0,
+            duration: terms.duration,
+            hits_per_second: terms.hits_per_second,
+            stacks: terms.stacks,
+            max_stacks: terms.max_stacks,
+        });
     let damage = (stat == "TotalHitAvg")
         .then(|| session.hit_damage_terms())
         .flatten()
@@ -356,6 +426,7 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
         damage,
         mitigation,
         skill_dot,
+        ailment,
     })
 }
 

@@ -234,3 +234,23 @@ test("a skill's own damage over time is listed per type", async ({ page }) => {
   await own.locator('.damage-lines-chaos summary').click();
   await expect(own.locator('.damage-lines-chaos tbody tr')).not.toHaveCount(0);
 });
+
+test('an ailment shows the hit it comes from and how many are active', async ({ page }) => {
+  // Ignite on a hit build: the steps run from the hit to the shown DPS, and the table below
+  // gives the numbers behind the hit and the active instance count.
+  await loadBuild(page, 'warrior-titan-shield-wall');
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Calcs', exact: true }).click();
+  const ignite = page.locator('#breakdown-IgniteDPS');
+  await ignite.locator('.breakdown-toggle').click();
+  const source = await stepResult(ignite.locator('tr.formula-ailment_source'));
+  expect(source).toBeGreaterThan(0);
+  expect(await stepResult(ignite.locator('tr.formula-per_second'))).toBeLessThan(source);
+  await expect(ignite.locator('tr.formula-active_stacks')).toHaveCount(1);
+  expect(
+    Math.abs(await stepResult(ignite.locator('tr.formula-final')) - num(await ignite.locator('.breakdown-value').textContent())),
+  ).toBeLessThanOrEqual(0.5);
+  const detail = ignite.locator('.ailment-table');
+  await expect(detail.locator('tr.ailment-applyChance th')).toHaveText('Chance for a hit to apply it');
+  expect(num(await detail.locator('tr.ailment-sourceHit td').textContent())).toBeGreaterThan(0);
+  expect(num(await detail.locator('tr.ailment-maxStacks td').textContent())).toBeGreaterThanOrEqual(1);
+});

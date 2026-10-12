@@ -9,6 +9,7 @@ import type {
   HitDamageTable,
   HitMitigationRow,
   SkillDotRow,
+  AilmentDetail,
   DisplayStatCategory,
   SkillMetricsResponse,
 } from '../../api/types';
@@ -67,11 +68,17 @@ function formulaOperand(step: FormulaStep): string {
     case 'average_hit':
     case 'skill_dot':
     case 'hit_dps':
+    case 'ailment_source':
       return '';
     case 'crit_hits':
       return `${n}%`;
     case 'chance_to_hit':
+    case 'per_second':
+    case 'chance_to_apply':
       return `×${n}%`;
+    case 'active_stacks':
+    case 'ailment_effect':
+    case 'ailment_rate':
     case 'enemy_mitigation':
     case 'uses_per_second':
     case 'dps_multiplier':
@@ -305,6 +312,44 @@ function SkillDotView({ rows, lang }: { rows: SkillDotRow[]; lang: Lang }) {
   );
 }
 
+/** The hit a damaging ailment comes from and the estimate of how many instances are active. */
+function AilmentView({ ailment, lang }: { ailment: AilmentDetail; lang: Lang }) {
+  const tt = bindT(lang);
+  type Key = 'sourceHit' | 'sourceCrit' | 'critShare' | 'hitChance' | 'applyChance' | 'duration' | 'hitsPerSecond' | 'stacks' | 'maxStacks';
+  const rows: [Key, string][] = [
+    ['sourceHit', fmtNum(ailment.source_hit)],
+    ['sourceCrit', fmtNum(ailment.source_crit)],
+    ['critShare', `${fmtNum(ailment.crit_share)}%`],
+    ['hitChance', `${fmtNum(ailment.hit_chance)}%`],
+    ['applyChance', `${fmtNum(ailment.apply_chance)}%`],
+    ['duration', `${fmtNum(ailment.duration)}${tt('calcs.ailment.seconds')}`],
+    ['hitsPerSecond', fmtNum(ailment.hits_per_second)],
+    ...(ailment.stacks > 0 ? [['stacks', fmtNum(ailment.stacks)] as [Key, string]] : []),
+    ['maxStacks', fmtNum(ailment.max_stacks)],
+  ];
+  return (
+    <div className="breakdown-scroll">
+      <table className="breakdown-formula ailment-table" aria-label={tt('calcs.ailment.title')}>
+        <caption>{tt('calcs.ailment.title')}</caption>
+        <tbody>
+          {rows.map(([key, value]) => (
+            <tr key={key} className={`ailment-${key}`}>
+              <th scope="row">{tt(`calcs.ailment.${key}`)}</th>
+              <td className="formula-result">{value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {ailment.damage_roll !== 50 && (
+        <p className="breakdown-note">
+          {tt('calcs.ailment.rollNote').replace('{roll}', fmtNum(ailment.damage_roll))}
+        </p>
+      )}
+      {ailment.stacks === 0 && <p className="breakdown-note">{tt('calcs.ailment.noRateNote')}</p>}
+    </div>
+  );
+}
+
 /** Modifier lines with type, applied value, text and source; lines the calculation skips are dimmed. */
 function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   const tt = bindT(lang);
@@ -433,6 +478,7 @@ function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang 
       {breakdown.mitigation && breakdown.mitigation.length > 0 && (
         <MitigationView rows={breakdown.mitigation} lang={lang} />
       )}
+      {breakdown.ailment && <AilmentView ailment={breakdown.ailment} lang={lang} />}
       {[...breakdown.mods, ...damageLines].some((m) => !m.active) && (
         <p className="breakdown-note">{tt('calcs.inactiveNote')}</p>
       )}

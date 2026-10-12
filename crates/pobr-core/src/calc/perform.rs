@@ -3,11 +3,11 @@ use pobr_data::prelude::*;
 use crate::{CalcConfig, ModDb};
 
 use super::ailment::{
-    AilmentSource, StackConfig, ailment_crit_chance, ailment_duration, ailment_effect_mod,
-    ailment_rate_mod, apply_dot_dps_cap, bleed_traced, chill_traced, cross_type_source_hit,
-    debuff_duration_mult, electrocute_poise_buildup_traced, estimate_active_stacks,
-    freeze_poise_buildup_traced, ignite_traced, merge_hand_ailment_dps, poison_traced,
-    roll_average, shock_traced, stack_potential, stacking_ailment_dps_traced,
+    AilmentSource, AilmentTerms, StackConfig, ailment_crit_chance, ailment_duration,
+    ailment_effect_mod, ailment_rate_mod, apply_dot_dps_cap, bleed_traced, chill_traced,
+    cross_type_source_hit, debuff_duration_mult, electrocute_poise_buildup_traced,
+    estimate_active_stacks, freeze_poise_buildup_traced, ignite_traced, merge_hand_ailment_dps,
+    poison_traced, roll_average, shock_traced, stack_potential, stacking_ailment_dps_traced,
     stored_source_at_roll,
 };
 use super::output::StoredDamageRange;
@@ -1138,6 +1138,8 @@ struct AilmentPassResult {
     /// The raw stacking estimate (0 = signal missing); CHANCE_AILMENT's `stacks` input.
     stacks_estimate: f64,
     max_stacks: f64,
+    /// What this pass computed with, for the displayed steps.
+    terms: AilmentTerms,
 }
 
 /// The complete vendor pipeline for a single ailment on a single pass:
@@ -1245,6 +1247,33 @@ fn damaging_ailment_for_pass(
         );
     }
 
+    let (per_second_pct, magnitude_inc, magnitude_more) =
+        super::ailment::magnitude_scaling(kind, player, cfg);
+    let terms = AilmentTerms {
+        source_hit: source.hit_avg,
+        source_crit: source.crit_avg,
+        damage_roll: roll,
+        crit_share: source.crit_chance,
+        source_damage: out.source_damage,
+        per_second_pct,
+        magnitude_inc,
+        magnitude_more,
+        enemy: out.eff_mult,
+        magnitude_dps: out.magnitude_dps,
+        expected_dps: out.expected_dps,
+        apply_chance: probe_out.chance,
+        apply_chance_rolled: out.chance,
+        hit_chance: ctx.hit_chance,
+        duration: ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg),
+        hits_per_second: ctx.speed,
+        stacks: stack.active_stacks,
+        max_stacks: stack.max_stacks as f64,
+        effect: ailment_effect_mod(player, cfg),
+        rate: ailment_rate_mod(player, enemy, cfg, name),
+        cap: cfg.constants.game().dot_dps_cap,
+        dps: 0.0,
+    };
+
     if stack.active_stacks > 0.0 {
         // vendor's uptime convention (`:5189-5193`): activeAilments = min(stacks, max).
         // magnitude_dps already includes percentBase × AilmentMagnitude × effMult;
@@ -1265,6 +1294,7 @@ fn damaging_ailment_for_pass(
             active_stacks_panel: stack.active_stacks,
             stacks_estimate: stack.active_stacks,
             max_stacks: stack.max_stacks as f64,
+            terms: AilmentTerms { dps, ..terms },
         })
     } else {
         // Fallback when the signal is missing (the old convention): `chance × magnitude`,
@@ -1277,6 +1307,7 @@ fn damaging_ailment_for_pass(
             active_stacks_panel: active_stacks_of(&stack),
             stacks_estimate: 0.0,
             max_stacks: stack.max_stacks as f64,
+            terms: AilmentTerms { dps, ..terms },
         })
     }
 }
@@ -1474,6 +1505,7 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
     // consolidated by the traced offence/attribution path (this function builds and retains the
     // contribution-node topology).
     let mut trace = TraceGraph::new();
+    let mut ailment_terms = Vec::new();
 
     // Damaging ailments: bleed / ignite / poison (Stored-family per-pass + CHANCE_AILMENT merge)
     for kind in [AilmentType::Bleed, AilmentType::Ignite, AilmentType::Poison] {
@@ -1495,6 +1527,9 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
         let Some((dps, stacked, active, max_stacks)) = merge_ailment_passes(&results) else {
             continue;
         };
+        if let [only] = results.as_slice() {
+            ailment_terms.push((kind, only.terms));
+        }
         let out = &mut env.player.output;
         match kind {
             AilmentType::Bleed => {
@@ -1548,6 +1583,7 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
             electrocute_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
         env.player.output.electrocute_buildup_pct = electrocute_buildup;
     }
+    env.ailment_terms = ailment_terms;
 }
 
 /// Lane C: applies `AilmentEffect` (MORE) × `rateMod` (Faster/Slower) to a damaging ailment's

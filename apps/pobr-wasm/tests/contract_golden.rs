@@ -365,7 +365,40 @@ fn breakdown_formulas_end_at_the_displayed_value() {
                         assert!(close(operand, shown_stat("HitChance")), "{at}: hit chance");
                         previous * operand / 100.0
                     }
-                    "enemy_mitigation" | "dps_multiplier" => previous * operand,
+                    "enemy_mitigation" | "dps_multiplier" | "ailment_effect" | "ailment_rate" => {
+                        previous * operand
+                    }
+                    // An ailment starts from the hit that applies it, between
+                    // the non-critical and the critical source hit.
+                    "ailment_source" => {
+                        let n = |key: &str| breakdown["ailment"][key].as_f64().unwrap();
+                        let (hit, crit) = (n("source_hit"), n("source_crit"));
+                        assert!(
+                            operand >= hit.min(crit) - 1e-6 && operand <= hit.max(crit) + 1e-6,
+                            "{at}: source {operand} outside {hit}..{crit}"
+                        );
+                        let share = n("crit_share") / 100.0;
+                        assert!(
+                            close(operand, hit * (1.0 - share) + crit * share),
+                            "{at}: source {operand} is not the listed hits at {share}"
+                        );
+                        operand
+                    }
+                    "per_second" | "chance_to_apply" => previous * operand / 100.0,
+                    // The active instances are the estimate from the listed
+                    // inputs, limited to the maximum.
+                    "active_stacks" => {
+                        let n = |key: &str| breakdown["ailment"][key].as_f64().unwrap();
+                        let estimate = n("hit_chance") / 100.0 * n("apply_chance") / 100.0
+                            * n("duration")
+                            * n("hits_per_second");
+                        assert!(close(n("stacks"), estimate), "{at}: stacks {estimate}");
+                        assert!(
+                            close(operand, n("stacks").min(n("max_stacks"))),
+                            "{at}: active {operand}"
+                        );
+                        previous * operand
+                    }
                     // Damage over time: the skill's own rows, then each
                     // displayed ailment value; combined adds it to the hits.
                     "skill_dot" => {
@@ -612,6 +645,9 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         "TotalDPS",
         "TotalDotDPS",
         "CombinedDPS",
+        "IgniteDPS",
+        "BleedDPS",
+        "PoisonDPS",
     ] {
         assert!(covered.contains_key(stat), "no build explains {stat}");
     }
@@ -635,6 +671,9 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         "poison_dps",
         "hit_dps",
         "dot_dps",
+        "ailment_source",
+        "per_second",
+        "active_stacks",
     ] {
         assert!(ops.contains(op), "no fixture build shows a {op} step");
     }

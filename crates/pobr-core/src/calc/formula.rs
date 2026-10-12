@@ -2,7 +2,7 @@
 //! value it outputs. The stages return the terms they aggregated
 //! (`PoolTerms`, `ResistanceResolution`, `ActionRateTerms`, `CritChanceTerms`,
 //! `CritMultiplierTerms`, `DefenceTerms`, `SpiritTerms`, `AccuracyTerms`,
-//! `HitChanceTerms`, `HitPass`, `SkillDotTerms`) and those terms are turned into steps here, so a
+//! `HitChanceTerms`, `HitPass`, `SkillDotTerms`, `AilmentTerms`) and those terms are turned into steps here, so a
 //! displayed formula reads the same numbers the stage computed with.
 
 /// What one step does to the running value.
@@ -98,6 +98,18 @@ pub enum FormulaOp {
     HitDps,
     /// Adds `operand` damage over time per second.
     DotDps,
+    /// Starts from the hit that applies the ailment, `operand`.
+    AilmentSource,
+    /// One instance deals `operand` percent of that hit per second.
+    PerSecond,
+    /// Multiplies by `operand` instances active at once.
+    ActiveStacks,
+    /// Multiplies by the `operand` percent chance to apply the ailment.
+    ChanceToApply,
+    /// Multiplies by `operand`, the ailment effect multiplier.
+    AilmentEffect,
+    /// Multiplies by `operand`: the ailment deals its damage faster or slower.
+    AilmentRate,
 }
 
 impl FormulaOp {
@@ -147,6 +159,12 @@ impl FormulaOp {
             Self::BleedDps => "bleed_dps",
             Self::HitDps => "hit_dps",
             Self::DotDps => "dot_dps",
+            Self::AilmentSource => "ailment_source",
+            Self::PerSecond => "per_second",
+            Self::ActiveStacks => "active_stacks",
+            Self::ChanceToApply => "chance_to_apply",
+            Self::AilmentEffect => "ailment_effect",
+            Self::AilmentRate => "ailment_rate",
         }
     }
 }

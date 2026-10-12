@@ -707,6 +707,7 @@ impl CalculationSession {
             "CritChance" => &["CriticalStrikeChance"],
             "CritMultiplier" => &["CriticalStrikeMultiplier"],
             "HitChance" => &["Accuracy"],
+            "BleedDPS" | "IgniteDPS" | "PoisonDPS" => &["AilmentMagnitude"],
             "Armour" | "Evasion" | "EnergyShield" => {
                 return super::defence::defence_scaling_names(stat);
             }
@@ -785,6 +786,9 @@ impl CalculationSession {
                 perform::skill_dot_terms(env).combined_formula(),
                 output.combined_dps,
             ),
+            "BleedDPS" => (self.ailment_terms(stat)?.formula(), output.bleed_dps),
+            "IgniteDPS" => (self.ailment_terms(stat)?.formula(), output.ignite_dps),
+            "PoisonDPS" => (self.ailment_terms(stat)?.formula(), output.poison_dps),
             "CritChance" | "CritMultiplier" => {
                 let enemy = &env.enemy.mod_db;
                 let effective = cfg.mode_effective;
@@ -930,11 +934,28 @@ impl CalculationSession {
         }
     }
 
+    /// What the ailment stage computed `stat` (`BleedDPS` / `IgniteDPS` /
+    /// `PoisonDPS`) with: the source hit, the chance to apply, the active
+    /// instance estimate and the multipliers. `None` when the ailment is not
+    /// applied, or its DPS blends two weapon passes.
+    pub fn ailment_terms(&self, stat: &str) -> Option<super::AilmentTerms> {
+        let kind = ailment_of(stat)?;
+        self.env
+            .ailment_terms
+            .iter()
+            .find(|(ailment, _)| *ailment == kind)
+            .map(|(_, terms)| *terms)
+    }
+
     /// The config `stat`'s stage evaluates modifiers in: the main-hand pass
     /// for the per-hand stats (which also counts that weapon's own lines),
-    /// the session config otherwise.
+    /// the ailment's own config for a damaging ailment, the session config
+    /// otherwise.
     fn stat_cfg(&self, stat: &str) -> std::borrow::Cow<'_, CalcConfig> {
         use std::borrow::Cow;
+        if let Some(kind) = ailment_of(stat) {
+            return Cow::Owned(super::ailment::ailment_scoped_cfg(&self.env.cfg, kind));
+        }
         if matches!(
             stat,
             "ActionRate" | "CritChance" | "CritMultiplier" | "Accuracy" | "HitChance"
@@ -973,5 +994,15 @@ impl CalculationSession {
     /// vs legacy ingest paths (fork(a) locating ingest divergence).
     pub fn all_mods(&self) -> Vec<&Modifier> {
         self.env.player.mod_db.iter_mods().collect()
+    }
+}
+
+/// The damaging ailment a display stat id (`BleedDPS` / `IgniteDPS` / `PoisonDPS`) belongs to.
+fn ailment_of(stat: &str) -> Option<AilmentType> {
+    match stat {
+        "BleedDPS" => Some(AilmentType::Bleed),
+        "IgniteDPS" => Some(AilmentType::Ignite),
+        "PoisonDPS" => Some(AilmentType::Poison),
+        _ => None,
     }
 }

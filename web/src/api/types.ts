@@ -459,11 +459,17 @@ export type FormulaOp =
   | 'ignite_dps'
   | 'bleed_dps'
   | 'hit_dps'
-  | 'dot_dps';
+  | 'dot_dps'
+  | 'ailment_source'
+  | 'per_second'
+  | 'active_stacks'
+  | 'chance_to_apply'
+  | 'ailment_effect'
+  | 'ailment_rate';
 
 export interface FormulaStep {
   op: FormulaOp;
-  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier), seconds (added_time), the limit, the number of rolls (lucky, bifurcate), the starting damage per second (skill_dot, hit_dps) or the amount added. */
+  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier, ailment_effect, ailment_rate), seconds (added_time), the limit, the number of rolls (lucky, bifurcate), the starting damage per second (skill_dot, hit_dps), the hit an ailment starts from (ailment_source), the percentage of it dealt per second (per_second), the number of instances (active_stacks), the chance in percent (chance_to_apply) or the amount added. */
   operand: number;
   /** Running value after the step. */
   result: number;
@@ -490,6 +496,30 @@ export interface Breakdown {
   mitigation?: HitMitigationRow[];
   /** TotalDotDPS only: the `skill_dot` step per damage type. */
   skill_dot?: SkillDotRow[];
+  /** IgniteDPS / BleedDPS / PoisonDPS only: the hit the ailment comes from and how many instances are active. */
+  ailment?: AilmentDetail;
+}
+
+/** What a damaging ailment's steps are built from. */
+export interface AilmentDetail {
+  /** Non-critical and critical hit that applies the ailment, before the enemy's mitigation, at `damage_roll` percent of the damage range. */
+  source_hit: number;
+  source_crit: number;
+  /** 50 = the average hit; higher when more instances are applied than can be active. */
+  damage_roll: number;
+  /** Percentage of instances applied by a critical hit; the starting hit is the two hits averaged with this share. */
+  crit_share: number;
+  /** Chance for a hit to apply the ailment, in percent. */
+  apply_chance: number;
+  /** Chance to hit, in percent. */
+  hit_chance: number;
+  /** Seconds one instance lasts. */
+  duration: number;
+  hits_per_second: number;
+  /** `hit_chance × apply_chance × duration × hits_per_second`; 0 when the skill has no hit rate. */
+  stacks: number;
+  /** Most instances that deal damage at once; the `active_stacks` step uses the smaller of the two. */
+  max_stacks: number;
 }
 
 /** One damage type of the skill's own damage over time (not an ailment). */
