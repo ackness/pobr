@@ -151,6 +151,10 @@ function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang })
   const tt = bindT(lang);
   const range = (min: number, max: number) => `${fmtNum(min)} – ${fmtNum(max)}`;
   const sum = (key: 'avg' | 'crit_avg') => damage.rows.reduce((total, row) => total + row[key], 0);
+  // Without conversion or gain the base column already is the range before them.
+  const moved = damage.sources.some((source) =>
+    [...source.convert_mods, ...source.gain_mods].some((m) => m.active && (m.value ?? 0) > 0),
+  );
   return (
     <div className="breakdown-scroll">
       <table className="breakdown-table hit-damage-table" aria-label={tt('calcs.damage.title')}>
@@ -194,6 +198,32 @@ function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang })
       {damage.damage_effect !== 1 && (
         <p className="breakdown-note">{tt('calcs.damage.effect')}: ×{fmtNum(damage.damage_effect)}</p>
       )}
+      {moved && (
+        <>
+          <table className="breakdown-table hit-damage-table damage-source-table" aria-label={tt('calcs.damage.sourceTitle')}>
+            <caption>{tt('calcs.damage.sourceTitle')}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{tt('calcs.damage.type')}</th>
+                <th scope="col">{tt('calcs.damage.sourceAdded')}</th>
+                <th scope="col">{tt('calcs.damage.sourceEffect')}</th>
+                <th scope="col">{tt('calcs.damage.sourceRange')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {damage.sources.map((source) => (
+                <tr key={source.damage_type} className={`damage-${source.damage_type.toLowerCase()}`}>
+                  <th scope="row">{damageTypeLabel(lang, source.damage_type)}</th>
+                  <td className="mod-value">{range(source.added_min, source.added_max)}</td>
+                  <td className="mod-value">×{fmtNum(source.added_effect)}</td>
+                  <td className="mod-value">{range(source.min, source.max)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="breakdown-note">{tt('calcs.damage.sourceNote')}</p>
+        </>
+      )}
     </div>
   );
 }
@@ -201,13 +231,25 @@ function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang })
 /** The lines behind each damage type's increased and more totals: shared ones first, then per type. */
 function DamageLinesView({ damage, lang }: { damage: HitDamageTable; lang: Lang }) {
   const tt = bindT(lang);
+  const typed = (type: string, kind: string, label: string, mods: BreakdownMod[]) => ({
+    key: `${type}-${kind}`,
+    label: `${damageTypeLabel(lang, type)} · ${label}`,
+    mods,
+  });
   const groups = [
+    ...damage.sources.flatMap((source) => [
+      typed(source.damage_type, 'added-min', tt('calcs.damage.addedMinLines'), source.added_min_mods),
+      typed(source.damage_type, 'added-max', tt('calcs.damage.addedMaxLines'), source.added_max_mods),
+      typed(source.damage_type, 'added-effect', tt('calcs.damage.addedEffectLines'), source.added_effect_mods),
+      typed(source.damage_type, 'convert', tt('calcs.damage.convertLines'), source.convert_mods),
+      typed(source.damage_type, 'gain', tt('calcs.damage.gainLines'), source.gain_mods),
+    ]),
     { key: 'shared', label: tt('calcs.damage.sharedLines'), mods: damage.shared_mods },
-    ...damage.rows.map((row) => ({
-      key: row.damage_type,
-      label: `${damageTypeLabel(lang, row.damage_type)} · ${tt('calcs.damage.typeLines')}`,
-      mods: row.mods,
-    })),
+    ...damage.rows.flatMap((row) => [
+      { key: row.damage_type, label: `${damageTypeLabel(lang, row.damage_type)} · ${tt('calcs.damage.typeLines')}`, mods: row.mods },
+      typed(row.damage_type, 'min', tt('calcs.damage.minLines'), row.min_mods),
+      typed(row.damage_type, 'max', tt('calcs.damage.maxLines'), row.max_mods),
+    ]),
   ].filter((group) => group.mods.length > 0);
   if (groups.length === 0) return null;
   return (

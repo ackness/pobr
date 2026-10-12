@@ -255,6 +255,8 @@ struct FormulaTally {
     ailment_lines: usize,
     ailment_source_types: usize,
     enemy_lines: usize,
+    source_lines: usize,
+    converted: usize,
 }
 
 /// Checks that the steps of `breakdown` are the calculation: each step
@@ -583,6 +585,107 @@ fn check_formula(
             );
             tally.damage_lines += lines().count();
         }
+        // Before conversion each type's range is its added damage lines
+        // times their effectiveness; only physical starts from the weapon.
+        let active = |from: &'static str, entry: &Value, mod_type: &'static str| -> Vec<f64> {
+            entry[from]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|line| line["active"] == true && line["mod_type"] == mod_type)
+                .map(|line| line["value"].as_f64().unwrap())
+                .collect()
+        };
+        let near = |a: f64, b: f64| (a - b).abs() <= 0.02 * a.abs().max(b.abs()).max(1.0);
+        let sources = breakdown["damage"]["sources"].as_array().unwrap();
+        let mut moved = false;
+        for source in sources {
+            let n = |key: &str| source[key].as_f64().unwrap();
+            let effect = (1.0
+                + active("added_effect_mods", source, "INC")
+                    .iter()
+                    .sum::<f64>()
+                    / 100.0)
+                * active("added_effect_mods", source, "MORE")
+                    .iter()
+                    .map(|value| 1.0 + value / 100.0)
+                    .product::<f64>();
+            assert!(
+                near(n("added_effect"), effect),
+                "{at}: {} added damage effectiveness {} != its lines {effect}",
+                source["damage_type"],
+                n("added_effect")
+            );
+            for (end, mods) in [("min", "added_min_mods"), ("max", "added_max_mods")] {
+                let added: f64 = active(mods, source, "BASE").iter().sum();
+                assert!(
+                    close(added, n(&format!("added_{end}"))),
+                    "{at}: {} added {end} lines add up to {added}",
+                    source["damage_type"]
+                );
+                let from_added = added * n("added_effect");
+                if source["damage_type"] == "Physical" {
+                    assert!(
+                        n(end) >= from_added - 1e-6,
+                        "{at}: physical {end} below its added damage"
+                    );
+                } else {
+                    assert!(
+                        close(n(end), from_added),
+                        "{at}: {} {end} {} != added {from_added}",
+                        source["damage_type"],
+                        n(end)
+                    );
+                }
+            }
+            for key in ["convert_mods", "gain_mods"] {
+                moved |= active(key, source, "BASE").iter().any(|value| *value > 0.0);
+            }
+            for key in [
+                "added_min_mods",
+                "added_max_mods",
+                "added_effect_mods",
+                "convert_mods",
+                "gain_mods",
+            ] {
+                tally.source_lines += source[key]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|line| line["active"] == true)
+                    .count();
+            }
+        }
+        tally.converted += usize::from(moved);
+        for row in rows.unwrap() {
+            let n = |key: &str| row[key].as_f64().unwrap();
+            // Nothing converted or gained: the rows start from the sources.
+            if !moved {
+                let source = sources
+                    .iter()
+                    .find(|source| source["damage_type"] == row["damage_type"]);
+                for end in ["min", "max"] {
+                    let start = source.map_or(0.0, |source| source[end].as_f64().unwrap());
+                    assert!(
+                        close(n(&format!("base_{end}")), start),
+                        "{at}: {} base {end} != its range before conversion {start}",
+                        row["damage_type"]
+                    );
+                }
+            }
+            for (factor, mods) in [("more_min", "min_mods"), ("more_max", "max_mods")] {
+                let more: f64 = active(mods, row, "MORE")
+                    .iter()
+                    .map(|value| 1.0 + value / 100.0)
+                    .product();
+                assert!(
+                    near(n(factor), more),
+                    "{at}: {} {factor} {} != its lines {more}",
+                    row["damage_type"],
+                    n(factor)
+                );
+            }
+        }
     }
     // Each type of the skill's own damage over time follows from its
     // listed terms, and its lines add up to its increase.
@@ -869,6 +972,8 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         ailment_lines,
         ailment_source_types,
         enemy_lines,
+        source_lines,
+        converted,
     } = tally;
     println!(
         "formula coverage over {} builds: {covered:?}; without formula {unexplained:?}; ops {ops:?}",
@@ -932,6 +1037,8 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         skill_dot_lines > 0,
         "no fixture build lists skill dot lines"
     );
+    println!("source lines {source_lines}; builds that convert or gain damage {converted}");
+    assert!(source_lines > 0 && converted > 0);
     println!("enemy lines {enemy_lines}");
     assert!(enemy_lines > 0, "no fixture build lists enemy lines");
     println!("ailment lines {ailment_lines}; ailment source types {ailment_source_types}");

@@ -201,11 +201,44 @@ struct HitDamageRowJson {
     /// the active MORE values multiply to `more` (which the calculation
     /// rounds to two decimals per modifier name).
     mods: Vec<BreakdownModJson>,
+    /// The MORE lines behind `more_min` and `more_max`.
+    min_mods: Vec<BreakdownModJson>,
+    max_mods: Vec<BreakdownModJson>,
+}
+
+/// One damage type of the hit before conversion and gain.
+#[derive(Debug, Serialize)]
+struct HitDamageSourceJson {
+    /// `Physical` / `Fire` / `Cold` / `Lightning` / `Chaos`.
+    damage_type: String,
+    /// The range before conversion: for physical the weapon's or skill's
+    /// own hit plus `added × added_effect`, otherwise `added × added_effect`.
+    min: f64,
+    max: f64,
+    /// The totals of the added damage lines, before `added_effect`.
+    added_min: f64,
+    added_max: f64,
+    /// The added damage effectiveness, `(1 + INC / 100) × MORE` of `added_effect_mods`.
+    added_effect: f64,
+    /// The BASE lines of added minimum and maximum damage (a skill's own
+    /// damage of a non-physical type is one of them), inactive lines included.
+    added_min_mods: Vec<BreakdownModJson>,
+    added_max_mods: Vec<BreakdownModJson>,
+    added_effect_mods: Vec<BreakdownModJson>,
+    /// The lines that convert this type to another (the skill's own
+    /// conversion, then global conversion) and the lines that add a share
+    /// of it as another type. How much each one moves is not listed: with
+    /// either list active, `rows[].base_min|max` differ from these ranges.
+    convert_mods: Vec<BreakdownModJson>,
+    gain_mods: Vec<BreakdownModJson>,
 }
 
 #[derive(Debug, Serialize)]
 struct HitDamageTableJson {
     rows: Vec<HitDamageRowJson>,
+    /// Each damage type the hit starts with, before conversion and gain
+    /// move it into the `rows` ranges. Types without damage are left out.
+    sources: Vec<HitDamageSourceJson>,
     /// The INC / MORE lines that scale every damage type of the hit
     /// (damage, attack / spell / projectile / area / melee damage and the
     /// skill's keyword damage names), inactive lines included.
@@ -431,24 +464,53 @@ fn damage_json(session: &CalculationSession, pass: usize) -> Option<HitDamageTab
         .collect();
     let types: Vec<_> = parts.iter().map(|part| part.damage_type).collect();
     let lines = session.hit_damage_mods(pass, &types);
+    let sources: Vec<_> = terms
+        .sources
+        .iter()
+        .filter(|source| source.min != 0.0 || source.max != 0.0)
+        .collect();
+    let source_types: Vec<_> = sources.iter().map(|source| source.damage_type).collect();
+    let source_lines = session.hit_source_mods(pass, &source_types);
     Some(HitDamageTableJson {
+        sources: sources
+            .iter()
+            .zip(&source_lines)
+            .map(|(source, lines)| HitDamageSourceJson {
+                damage_type: format!("{:?}", source.damage_type),
+                min: source.min,
+                max: source.max,
+                added_min: source.added_min,
+                added_max: source.added_max,
+                added_effect: source.added_effect,
+                added_min_mods: mod_entries(&lines.added_min),
+                added_max_mods: mod_entries(&lines.added_max),
+                added_effect_mods: mod_entries(&lines.added_effect),
+                convert_mods: mod_entries(&lines.convert),
+                gain_mods: mod_entries(&lines.gain),
+            })
+            .collect(),
         rows: parts
             .iter()
             .zip(&lines.by_type)
-            .map(|(part, (_, mods))| HitDamageRowJson {
-                damage_type: format!("{:?}", part.damage_type),
-                base_min: part.base_min,
-                base_max: part.base_max,
-                increased: part.inc + 0.0,
-                more: part.more,
-                more_min: part.more_min,
-                more_max: part.more_max,
-                min: part.min,
-                max: part.max,
-                avg: part.avg,
-                crit_avg: part.crit_avg,
-                mods: mod_entries(mods),
-            })
+            .zip(&lines.range_more)
+            .map(
+                |((part, (_, mods)), (min_mods, max_mods))| HitDamageRowJson {
+                    damage_type: format!("{:?}", part.damage_type),
+                    base_min: part.base_min,
+                    base_max: part.base_max,
+                    increased: part.inc + 0.0,
+                    more: part.more,
+                    more_min: part.more_min,
+                    more_max: part.more_max,
+                    min: part.min,
+                    max: part.max,
+                    avg: part.avg,
+                    crit_avg: part.crit_avg,
+                    mods: mod_entries(mods),
+                    min_mods: mod_entries(min_mods),
+                    max_mods: mod_entries(max_mods),
+                },
+            )
             .collect(),
         shared_mods: mod_entries(&lines.shared),
         damage_effect: terms.damage_effect,

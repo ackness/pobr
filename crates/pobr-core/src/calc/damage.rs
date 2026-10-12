@@ -262,23 +262,18 @@ fn base_flat(
     damage_type: DamageType,
     base_hit_min: f64,
     base_hit_max: f64,
-) -> (f64, f64) {
-    let prefix = type_prefix(damage_type);
-    let min_name = ModName::from(format!("{prefix}DamageMin"));
-    let max_name = ModName::from(format!("{prefix}DamageMax"));
+) -> SourceTerms {
+    let (min_name, max_name) = added_damage_names(damage_type);
     let added_min = db.sum(ModType::Base, cfg, &[min_name]);
     let added_max = db.sum(ModType::Base, cfg, &[max_name]);
 
     // Added damage effectiveness (addedMult = (1 + ΣINC/100) × ΠMORE): only
     // applies to external flat added damage, never the skill/weapon's own
     // base. Name set = `Added<Type>Damage` + `AddedDamage` (vendor's order).
-    let eff_names = [
-        ModName::from(format!("Added{prefix}Damage")),
-        ModName::from("AddedDamage"),
-    ];
+    let eff_names = added_effect_names(damage_type);
     let eff = (1.0 + db.sum(ModType::Inc, cfg, &eff_names) / 100.0) * db.more(cfg, &eff_names);
 
-    match damage_type {
+    let (min, max) = match damage_type {
         DamageType::Physical => {
             // The weapon/skill's own base is unaffected by effectiveness; flat added is affected
             (
@@ -287,7 +282,140 @@ fn base_flat(
             )
         }
         _ => (added_min * eff, added_max * eff),
+    };
+    SourceTerms {
+        damage_type,
+        added_min,
+        added_max,
+        added_effect: eff,
+        min,
+        max,
     }
+}
+
+/// One damage type's range before conversion and gain, as [`base_flat`]
+/// builds it: the weapon hit (physical only) plus the added damage lines
+/// times their effectiveness.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SourceTerms {
+    pub damage_type: DamageType,
+    /// The added damage lines' totals, before effectiveness.
+    pub added_min: f64,
+    pub added_max: f64,
+    /// The added damage effectiveness, `(1 + INC / 100) × MORE`.
+    pub added_effect: f64,
+    pub min: f64,
+    pub max: f64,
+}
+
+/// The BASE names of `damage_type`'s added damage: `(minimum, maximum)`.
+fn added_damage_names(damage_type: DamageType) -> (ModName, ModName) {
+    let prefix = type_prefix(damage_type);
+    (
+        ModName::from(format!("{prefix}DamageMin")),
+        ModName::from(format!("{prefix}DamageMax")),
+    )
+}
+
+/// The INC / MORE names of `damage_type`'s added damage effectiveness.
+fn added_effect_names(damage_type: DamageType) -> [ModName; 2] {
+    [
+        ModName::from(format!("Added{}Damage", type_prefix(damage_type))),
+        ModName::from("AddedDamage"),
+    ]
+}
+
+/// The MORE names that scale one end of `damage_type`'s range: `(minimum, maximum)`.
+fn range_more_names(damage_type: DamageType) -> (ModName, ModName) {
+    let prefix = type_prefix(damage_type);
+    (
+        ModName::from(format!("Min{prefix}Damage")),
+        ModName::from(format!("Max{prefix}Damage")),
+    )
+}
+
+/// Every damage type's [`SourceTerms`] in the non-typed hit config `cfg`,
+/// in [`DAMAGE_TYPES`] order: step 1 of [`calculate_component_terms`].
+pub(crate) fn source_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base_hit_min: f64,
+    base_hit_max: f64,
+) -> Vec<SourceTerms> {
+    DAMAGE_TYPES
+        .iter()
+        .map(|&damage_type| {
+            let type_cfg = cfg.clone().with_damage_type(damage_type);
+            base_flat(db, &type_cfg, damage_type, base_hit_min, base_hit_max)
+        })
+        .collect()
+}
+
+/// The lines behind one damage type's [`SourceTerms`] and what conversion
+/// and gain then do with that type.
+#[derive(Debug, Clone)]
+pub struct SourceLines<'a> {
+    /// BASE lines of added minimum and maximum damage.
+    pub added_min: Vec<crate::ModEvaluation<'a>>,
+    pub added_max: Vec<crate::ModEvaluation<'a>>,
+    /// INC / MORE lines of the added damage effectiveness.
+    pub added_effect: Vec<crate::ModEvaluation<'a>>,
+    /// BASE lines that convert this type to another, skill and global.
+    pub convert: Vec<crate::ModEvaluation<'a>>,
+    /// BASE lines that add a share of this type as another.
+    pub gain: Vec<crate::ModEvaluation<'a>>,
+}
+
+/// The lines [`base_flat`] and [`ConversionRules::from_mod_db`] read for
+/// `damage_type` as the source, in the non-typed hit config `cfg`.
+pub(crate) fn evaluate_source_lines<'a>(
+    db: &'a ModDb,
+    cfg: &CalcConfig,
+    damage_type: DamageType,
+) -> SourceLines<'a> {
+    let type_cfg = cfg.clone().with_damage_type(damage_type);
+    let (min_name, max_name) = added_damage_names(damage_type);
+    let base_rows = |rows: Vec<crate::ModEvaluation<'a>>| -> Vec<crate::ModEvaluation<'a>> {
+        rows.into_iter()
+            .filter(|row| row.modifier.mod_type == ModType::Base)
+            .collect()
+    };
+    let mut convert_names = Vec::new();
+    let mut gain = Vec::new();
+    for &to in DAMAGE_TYPES.iter() {
+        convert_names.extend(conversion_names(damage_type, to, true));
+        convert_names.extend(conversion_names(damage_type, to, false));
+        gain.extend(gain_names(damage_type, to));
+    }
+    gain.push(ModName::from("DamageGainAsRandom"));
+    if damage_type == DamageType::Physical {
+        convert_names.push(ModName::from("PhysicalDamageConvertToRandom"));
+        gain.push(ModName::from("PhysicalDamageGainAsRandom"));
+    }
+    SourceLines {
+        added_min: base_rows(db.evaluate_named(&type_cfg, &min_name)),
+        added_max: base_rows(db.evaluate_named(&type_cfg, &max_name)),
+        added_effect: scaling_rows(db.evaluate_names(&type_cfg, &added_effect_names(damage_type))),
+        convert: base_rows(db.evaluate_names(cfg, &convert_names)),
+        gain: base_rows(db.evaluate_names(cfg, &gain)),
+    }
+}
+
+/// The MORE lines that scale only the minimum or only the maximum of
+/// `damage_type`'s range, as [`scale_with_path`] reads them.
+pub(crate) fn evaluate_range_more<'a>(
+    db: &'a ModDb,
+    cfg: &CalcConfig,
+    damage_type: DamageType,
+) -> (Vec<crate::ModEvaluation<'a>>, Vec<crate::ModEvaluation<'a>>) {
+    let (min_name, max_name) = range_more_names(damage_type);
+    let more_rows = |name: &ModName| -> Vec<crate::ModEvaluation<'a>> {
+        db.evaluate_named(cfg, name)
+            .into_iter()
+            .filter(|row| row.modifier.mod_type == ModType::More)
+            .collect()
+    };
+    (more_rows(&min_name), more_rows(&max_name))
 }
 
 /// Calculates the hit component vector across every damage type (including
@@ -348,12 +476,10 @@ pub(crate) fn calculate_component_terms(
     base_hit_max: f64,
 ) -> Vec<ComponentTerms> {
     // Step 1: each type's flat base.
-    let mut base: Vec<(DamageType, f64, f64)> = Vec::with_capacity(DAMAGE_TYPES.len());
-    for &damage_type in DAMAGE_TYPES.iter() {
-        let type_cfg = cfg.clone().with_damage_type(damage_type);
-        let (min, max) = base_flat(db, &type_cfg, damage_type, base_hit_min, base_hit_max);
-        base.push((damage_type, min, max));
-    }
+    let base: Vec<(DamageType, f64, f64)> = source_terms(db, cfg, base_hit_min, base_hit_max)
+        .iter()
+        .map(|source| (source.damage_type, source.min, source.max))
+        .collect();
 
     // Step 2: conversion rules. No conversion/gain at all → the fast path (backward compatible, byte for byte).
     let rules = ConversionRules::from_mod_db(db, cfg);
@@ -429,9 +555,9 @@ fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> Compo
     // of the range. These ModNames encode the type in the name itself and
     // carry no DamageType tag, matched by name against cfg (which carries
     // skill flags); with no such mod, more returns 1.0 and output is unchanged.
-    let prefix = type_prefix(comp.damage_type);
-    let more_min = db.more(cfg, &[ModName::from(format!("Min{prefix}Damage"))]);
-    let more_max = db.more(cfg, &[ModName::from(format!("Max{prefix}Damage"))]);
+    let (min_name, max_name) = range_more_names(comp.damage_type);
+    let more_min = db.more(cfg, &[min_name]);
+    let more_max = db.more(cfg, &[max_name]);
     ComponentTerms {
         base_min: comp.min,
         base_max: comp.max,
@@ -623,30 +749,9 @@ impl ConversionRules {
 fn build_conversion_matrix(db: &ModDb, cfg: &CalcConfig, skill: bool) -> [[f64; 5]; 5] {
     let mut matrix = [[0.0_f64; 5]; 5];
     for (fi, &from) in DAMAGE_TYPES.iter().enumerate() {
-        let from_prefix = type_prefix(from);
         let mut total = 0.0;
         for (ti, &to) in DAMAGE_TYPES.iter().enumerate() {
-            let to_prefix = type_prefix(to);
-            let mut names = Vec::new();
-            if skill {
-                names.push(ModName::from(format!("SkillDamageConvertTo{to_prefix}")));
-                names.push(ModName::from(format!(
-                    "Skill{from_prefix}DamageConvertTo{to_prefix}"
-                )));
-            } else {
-                names.push(ModName::from(format!("DamageConvertTo{to_prefix}")));
-                names.push(ModName::from(format!(
-                    "{from_prefix}DamageConvertTo{to_prefix}"
-                )));
-                if from.is_elemental() {
-                    names.push(ModName::from(format!(
-                        "ElementalDamageConvertTo{to_prefix}"
-                    )));
-                }
-                if from != DamageType::Chaos {
-                    names.push(ModName::from(format!("NonChaosDamageConvertTo{to_prefix}")));
-                }
-            }
+            let names = conversion_names(from, to, skill);
             let pct = db.sum(ModType::Base, cfg, &names).max(0.0);
             matrix[fi][ti] = pct / 100.0;
             total += pct;
@@ -682,6 +787,58 @@ fn build_conversion_matrix(db: &ModDb, cfg: &CalcConfig, skill: bool) -> [[f64; 
     matrix
 }
 
+/// The BASE names of one stage's (skill or global) conversion of `from` to `to`.
+fn conversion_names(from: DamageType, to: DamageType, skill: bool) -> Vec<ModName> {
+    let from_prefix = type_prefix(from);
+    let to_prefix = type_prefix(to);
+    let mut names = Vec::new();
+    if skill {
+        names.push(ModName::from(format!("SkillDamageConvertTo{to_prefix}")));
+        names.push(ModName::from(format!(
+            "Skill{from_prefix}DamageConvertTo{to_prefix}"
+        )));
+    } else {
+        names.push(ModName::from(format!("DamageConvertTo{to_prefix}")));
+        names.push(ModName::from(format!(
+            "{from_prefix}DamageConvertTo{to_prefix}"
+        )));
+        if from.is_elemental() {
+            names.push(ModName::from(format!(
+                "ElementalDamageConvertTo{to_prefix}"
+            )));
+        }
+        if from != DamageType::Chaos {
+            names.push(ModName::from(format!("NonChaosDamageConvertTo{to_prefix}")));
+        }
+    }
+    names
+}
+
+/// The BASE names that add a share of `from` as extra `to`.
+fn gain_names(from: DamageType, to: DamageType) -> Vec<ModName> {
+    let from_prefix = type_prefix(from);
+    let to_prefix = type_prefix(to);
+    let mut names = vec![
+        ModName::from(format!("DamageGainAs{to_prefix}")),
+        ModName::from(format!("{from_prefix}DamageGainAs{to_prefix}")),
+        ModName::from(format!("SkillDamageGainAs{to_prefix}")),
+        ModName::from(format!("Skill{from_prefix}DamageGainAs{to_prefix}")),
+    ];
+    if from.is_elemental() {
+        names.push(ModName::from(format!("ElementalDamageGainAs{to_prefix}")));
+        names.push(ModName::from(format!(
+            "SkillElementalDamageGainAs{to_prefix}"
+        )));
+    }
+    if from != DamageType::Chaos {
+        names.push(ModName::from(format!("NonChaosDamageGainAs{to_prefix}")));
+        names.push(ModName::from(format!(
+            "SkillNonChaosDamageGainAs{to_prefix}"
+        )));
+    }
+    names
+}
+
 /// Reads the gain-as-extra ratio matrix `g[from][to]` (not normalized, doesn't deduct from the source).
 ///
 /// Source: PoB2 `buildGainTable` (`DamageGainAs<To>` / `<From>DamageGainAs<To>` /
@@ -689,28 +846,8 @@ fn build_conversion_matrix(db: &ModDb, cfg: &CalcConfig, skill: bool) -> [[f64; 
 fn build_gain_matrix(db: &ModDb, cfg: &CalcConfig) -> [[f64; 5]; 5] {
     let mut matrix = [[0.0_f64; 5]; 5];
     for (fi, &from) in DAMAGE_TYPES.iter().enumerate() {
-        let from_prefix = type_prefix(from);
         for (ti, &to) in DAMAGE_TYPES.iter().enumerate() {
-            let to_prefix = type_prefix(to);
-            let mut names = vec![
-                ModName::from(format!("DamageGainAs{to_prefix}")),
-                ModName::from(format!("{from_prefix}DamageGainAs{to_prefix}")),
-                ModName::from(format!("SkillDamageGainAs{to_prefix}")),
-                ModName::from(format!("Skill{from_prefix}DamageGainAs{to_prefix}")),
-            ];
-            if from.is_elemental() {
-                names.push(ModName::from(format!("ElementalDamageGainAs{to_prefix}")));
-                names.push(ModName::from(format!(
-                    "SkillElementalDamageGainAs{to_prefix}"
-                )));
-            }
-            if from != DamageType::Chaos {
-                names.push(ModName::from(format!("NonChaosDamageGainAs{to_prefix}")));
-                names.push(ModName::from(format!(
-                    "SkillNonChaosDamageGainAs{to_prefix}"
-                )));
-            }
-            let pct = db.sum(ModType::Base, cfg, &names).max(0.0);
+            let pct = db.sum(ModType::Base, cfg, &gain_names(from, to)).max(0.0);
             matrix[fi][ti] = pct / 100.0;
         }
     }

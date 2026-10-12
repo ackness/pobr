@@ -617,6 +617,29 @@ export interface HitDamageRow {
   crit_avg: number;
   /** INC / MORE lines that scale this type only. With `shared_mods`, active INC values add up to `increased` and active MORE values multiply to `more` (rounded to two decimals per modifier name). */
   mods: BreakdownMod[];
+  /** MORE lines behind `more_min` and `more_max`. */
+  min_mods: BreakdownMod[];
+  max_mods: BreakdownMod[];
+}
+
+/** One damage type of the hit before conversion and gain. */
+export interface HitDamageSource {
+  damage_type: string;
+  /** Range before conversion: for physical the weapon's or skill's own hit plus `added × added_effect`, otherwise `added × added_effect`. */
+  min: number;
+  max: number;
+  /** Totals of the added damage lines, before `added_effect`. */
+  added_min: number;
+  added_max: number;
+  /** Added damage effectiveness, a multiplier. */
+  added_effect: number;
+  /** BASE lines of added minimum / maximum damage (a skill's own non-physical damage is one of them). */
+  added_min_mods: BreakdownMod[];
+  added_max_mods: BreakdownMod[];
+  added_effect_mods: BreakdownMod[];
+  /** Lines that convert this type to another, and lines that add a share of it as another. How much each moves is not listed. */
+  convert_mods: BreakdownMod[];
+  gain_mods: BreakdownMod[];
 }
 
 /** One damage type of the average hit against the configured enemy. */
@@ -644,6 +667,8 @@ export interface HitMitigationRow {
 
 export interface HitDamageTable {
   rows: HitDamageRow[];
+  /** Each damage type the hit starts with, before conversion and gain move it into the `rows` ranges. */
+  sources: HitDamageSource[];
   /** INC / MORE lines that scale every damage type of the hit. */
   shared_mods: BreakdownMod[];
   /** Double / triple damage multiplier every range includes (1 without one). */

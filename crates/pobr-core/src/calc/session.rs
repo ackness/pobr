@@ -78,7 +78,11 @@ pub struct BuffSpec {
 pub struct HitDamageMods<'a> {
     pub shared: Vec<crate::ModEvaluation<'a>>,
     pub by_type: Vec<(DamageType, Vec<crate::ModEvaluation<'a>>)>,
+    /// Per type, the MORE lines that scale only its minimum and only its maximum.
+    pub range_more: Vec<RangeMoreLines<'a>>,
 }
+
+pub type RangeMoreLines<'a> = (Vec<crate::ModEvaluation<'a>>, Vec<crate::ModEvaluation<'a>>);
 
 /// See [`CalculationSession::ailment_lines`].
 #[derive(Debug, Clone)]
@@ -977,7 +981,31 @@ impl CalculationSession {
                 .iter()
                 .map(|ty| (*ty, super::damage::evaluate_type_scaling(db, &cfg_hit, *ty)))
                 .collect(),
+            range_more: types
+                .iter()
+                .map(|ty| super::damage::evaluate_range_more(db, &cfg_hit, *ty))
+                .collect(),
         }
+    }
+
+    /// The lines behind each of `types`' ranges before conversion
+    /// (`HitDamageTerms::sources`), as the damage stage reads them for
+    /// offence pass `pass`: added damage and its effectiveness, and the
+    /// lines that convert that type or add a share of it as another.
+    pub fn hit_source_mods(
+        &self,
+        pass: usize,
+        types: &[DamageType],
+    ) -> Vec<super::damage::SourceLines<'_>> {
+        let env = &self.env;
+        let scopes = perform::pass_scopes(env);
+        let cfg = scopes.get(pass).map_or(&env.cfg, |(_, cfg, _)| cfg);
+        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
+        let db = &env.player.mod_db;
+        types
+            .iter()
+            .map(|ty| super::damage::evaluate_source_lines(db, &cfg_hit, *ty))
+            .collect()
     }
 
     /// How the enemy changes each damage type of the average hit of offence

@@ -535,6 +535,9 @@ pub struct HitDamagePart {
 #[derive(Debug, Clone, PartialEq)]
 pub struct HitDamageTerms {
     pub parts: Vec<HitDamagePart>,
+    /// Every damage type's range before conversion and gain move it into
+    /// the `parts` ranges. Without conversion or gain the two are the same.
+    pub sources: Vec<super::damage::SourceTerms>,
     /// The double / triple damage factor every range is multiplied by.
     pub damage_effect: f64,
 }
@@ -697,6 +700,12 @@ impl HitPass {
             .collect();
         Some(HitDamageTerms {
             parts,
+            sources: super::damage::source_terms(
+                db,
+                &super::crit_pass::non_crit_cfg(cfg),
+                input.base_hit_min,
+                input.base_hit_max,
+            ),
             damage_effect: self.damage_effect,
         })
     }
