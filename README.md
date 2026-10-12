@@ -2,6 +2,8 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
+[![PoBR: lightweight, fast Path of Exile 2 build planning in your browser. Compare gear and support gems, and plan passive upgrades. Open source, powered by Rust and WebAssembly.](.assets/pobr-preview-en.jpg)](https://pobr-web.pages.dev)
+
 **Compare gear, support gems and passive upgrades before changing your build.**
 
 PoBR (Path of Building in Rust) is an open-source **Path of Exile 2 build planner

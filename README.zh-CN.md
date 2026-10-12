@@ -2,6 +2,8 @@
 
 [English](README.md) | **简体中文**
 
+[![PoBR：轻量、快速的流放之路 2 在线 BD 规划工具。浏览器即开即用，比较装备与辅助宝石，规划天赋升级。基于 Rust 与 WebAssembly，开源免费。](.assets/pobr-preview-zh-CN.jpg)](https://pobr-web.pages.dev)
+
 **换装备、搭辅助宝石、点天赋之前，先看看你的 BD 会提升多少。**
 
 PoBR（Path of Building in Rust）是一款开源的 **流放之路 2（Path of Exile 2 / PoE2）
