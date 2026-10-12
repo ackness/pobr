@@ -11,6 +11,720 @@
   "curated_templates": 11,
   "added_curated": 11,
   "added_trade": 1822,
+  "replaced_legacy": [
+    {
+      "en": "Idols socketed in this item gain the benefits of their Bonded modifiers",
+      "legacy": "镶嵌在该物品上的雕像获得其自身的绑定词缀的强化效果",
+      "official": "镶嵌在该物品上的雕像获得其自身的羁绊词缀的强化效果",
+      "provenance": {
+        "entries": [
+          {
+            "id": "rune.stat_726496846",
+            "english": "Idols socketed in this item gain the benefits of their Bonded modifiers",
+            "chinese": "镶嵌在该物品上的雕像获得其自身的羁绊词缀的强化效果",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "rune.stat_726496846",
+                "text": "镶嵌在该物品上的雕像获得其自身的羁绊词缀的强化效果"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "Mark Skills have {0}% increased Skill Effect Duration",
+      "legacy": "印记技能的技能效果持续时间提高 {0}%",
+      "official": "印记技能的技能效果持续时间延长 {0}%",
+      "provenance": {
+        "entries": [
+          {
+            "id": "desecrated.stat_2594634307",
+            "english": "Mark Skills have #% increased Skill Effect Duration",
+            "chinese": "印记技能的技能效果持续时间延长 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "desecrated.stat_2594634307",
+                "text": "印记技能的技能效果持续时间延长 #%"
+              }
+            ]
+          },
+          {
+            "id": "explicit.stat_2594634307",
+            "english": "Mark Skills have #% increased Skill Effect Duration",
+            "chinese": "印记技能的技能效果持续时间延长 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_2594634307",
+                "text": "印记技能的技能效果持续时间延长 #%"
+              }
+            ]
+          },
+          {
+            "id": "fractured.stat_2594634307",
+            "english": "Mark Skills have #% increased Skill Effect Duration",
+            "chinese": "印记技能的技能效果持续时间延长 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "fractured.stat_2594634307",
+                "text": "印记技能的技能效果持续时间延长 #%"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "Notable Passive Skills in Radius also grant {0}% increased Area of Effect",
+      "legacy": "范围内的核心天赋还会使效果范围提高 {0}%",
+      "official": "范围内的核心天赋同时提供 效果区域提高 {0}%",
+      "provenance": {
+        "entries": [
+          {
+            "id": "crafted.stat_3391917254",
+            "english": "Notable Passive Skills in Radius also grant #% increased Area of Effect",
+            "chinese": "范围内的核心天赋同时提供 效果区域提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "crafted.stat_3391917254",
+                "text": "范围内的核心天赋同时提供 效果区域提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "desecrated.stat_3391917254",
+            "english": "Notable Passive Skills in Radius also grant #% increased Area of Effect",
+            "chinese": "范围内的核心天赋同时提供 效果区域提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "desecrated.stat_3391917254",
+                "text": "范围内的核心天赋同时提供 效果区域提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "explicit.stat_3391917254",
+            "english": "Notable Passive Skills in Radius also grant #% increased Area of Effect",
+            "chinese": "范围内的核心天赋同时提供 效果区域提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_3391917254",
+                "text": "范围内的核心天赋同时提供 效果区域提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "fractured.stat_3391917254",
+            "english": "Notable Passive Skills in Radius also grant #% increased Area of Effect",
+            "chinese": "范围内的核心天赋同时提供 效果区域提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "fractured.stat_3391917254",
+                "text": "范围内的核心天赋同时提供 效果区域提高 #%"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "Notable Passive Skills in Radius also grant {0}% increased Curse Magnitudes",
+      "legacy": "范围内的核心天赋还会使诅咒强度提高 {0}%",
+      "official": "范围内的核心天赋同时提供 诅咒强度提高 {0}%",
+      "provenance": {
+        "entries": [
+          {
+            "id": "desecrated.stat_2770044702",
+            "english": "Notable Passive Skills in Radius also grant #% increased Curse Magnitudes",
+            "chinese": "范围内的核心天赋同时提供 诅咒强度提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "desecrated.stat_2770044702",
+                "text": "范围内的核心天赋同时提供 诅咒强度提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "explicit.stat_2770044702",
+            "english": "Notable Passive Skills in Radius also grant #% increased Curse Magnitudes",
+            "chinese": "范围内的核心天赋同时提供 诅咒强度提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_2770044702",
+                "text": "范围内的核心天赋同时提供 诅咒强度提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "fractured.stat_2770044702",
+            "english": "Notable Passive Skills in Radius also grant #% increased Curse Magnitudes",
+            "chinese": "范围内的核心天赋同时提供 诅咒强度提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "fractured.stat_2770044702",
+                "text": "范围内的核心天赋同时提供 诅咒强度提高 #%"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "Notable Passive Skills in Radius also grant {0}% increased Projectile Speed",
+      "legacy": "范围内的核心天赋还会使投射物速度提高 {0}%",
+      "official": "范围内的核心天赋同时提供 投射物速度提高 {0}%",
+      "provenance": {
+        "entries": [
+          {
+            "id": "desecrated.stat_1777421941",
+            "english": "Notable Passive Skills in Radius also grant #% increased Projectile Speed",
+            "chinese": "范围内的核心天赋同时提供 投射物速度提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "desecrated.stat_1777421941",
+                "text": "范围内的核心天赋同时提供 投射物速度提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "explicit.stat_1777421941",
+            "english": "Notable Passive Skills in Radius also grant #% increased Projectile Speed",
+            "chinese": "范围内的核心天赋同时提供 投射物速度提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_1777421941",
+                "text": "范围内的核心天赋同时提供 投射物速度提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "fractured.stat_1777421941",
+            "english": "Notable Passive Skills in Radius also grant #% increased Projectile Speed",
+            "chinese": "范围内的核心天赋同时提供 投射物速度提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "fractured.stat_1777421941",
+                "text": "范围内的核心天赋同时提供 投射物速度提高 #%"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "Plants have a {0}% chance to immediately Overgrow when they enter your Presence for the first time",
+      "legacy": "植物首次进入在场范围时，有 {0}% 的几率立即过度生长",
+      "official": "植物首次进入在场范围时，有 {0}% 的几率立即蔓生",
+      "provenance": {
+        "entries": [
+          {
+            "id": "rune.stat_2681952497",
+            "english": "Plants have a #% chance to immediately Overgrow when they enter your Presence for the first time",
+            "chinese": "植物首次进入在场范围时，有 #% 的几率立即蔓生",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "rune.stat_2681952497",
+                "text": "植物首次进入在场范围时，有 #% 的几率立即蔓生"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "Players steal the Eaten Souls of Slain Rare Monsters in Area",
+      "legacy": "玩家窃取区域内被击败稀有怪物吞噬的灵魂",
+      "official": "玩家窃取区域内被击杀稀有怪物的被吞噬灵魂",
+      "provenance": {
+        "entries": [
+          {
+            "id": "desecrated.stat_1365079333",
+            "english": "Players steal the Eaten Souls of Slain Rare Monsters in Area",
+            "chinese": "玩家窃取区域内被击杀稀有怪物的被吞噬灵魂",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "desecrated.stat_1365079333",
+                "text": "玩家窃取区域内被击杀稀有怪物的被吞噬灵魂"
+              }
+            ]
+          },
+          {
+            "id": "explicit.stat_1365079333",
+            "english": "Players steal the Eaten Souls of Slain Rare Monsters in Area",
+            "chinese": "玩家窃取区域内被击杀稀有怪物的被吞噬灵魂",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_1365079333",
+                "text": "玩家窃取区域内被击杀稀有怪物的被吞噬灵魂"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "Ritual Cadence",
+      "legacy": "祭祀节律",
+      "official": "仪式节律",
+      "provenance": {
+        "entries": [
+          {
+            "id": "explicit.stat_3831171903|29",
+            "english": "Ritual Cadence",
+            "chinese": "仪式节律",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_3831171903|29",
+                "text": "仪式节律"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "Scarred Faith",
+      "legacy": "伤痕信念",
+      "official": "创痛信仰",
+      "provenance": {
+        "entries": [
+          {
+            "id": "explicit.stat_3831171903|30",
+            "english": "Scarred Faith",
+            "chinese": "创痛信仰",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_3831171903|30",
+                "text": "创痛信仰"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "Small Passive Skills in Radius also grant {0}% increased Armour",
+      "legacy": "范围内的小型天赋还会使护甲提高 {0}%",
+      "official": "范围内的小型天赋同时提供 护甲提高 {0}%",
+      "provenance": {
+        "entries": [
+          {
+            "id": "crafted.stat_3858398337",
+            "english": "Small Passive Skills in Radius also grant #% increased Armour",
+            "chinese": "范围内的小型天赋同时提供 护甲提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "crafted.stat_3858398337",
+                "text": "范围内的小型天赋同时提供 护甲提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "desecrated.stat_3858398337",
+            "english": "Small Passive Skills in Radius also grant #% increased Armour",
+            "chinese": "范围内的小型天赋同时提供 护甲提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "desecrated.stat_3858398337",
+                "text": "范围内的小型天赋同时提供 护甲提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "explicit.stat_3858398337",
+            "english": "Small Passive Skills in Radius also grant #% increased Armour",
+            "chinese": "范围内的小型天赋同时提供 护甲提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_3858398337",
+                "text": "范围内的小型天赋同时提供 护甲提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "fractured.stat_3858398337",
+            "english": "Small Passive Skills in Radius also grant #% increased Armour",
+            "chinese": "范围内的小型天赋同时提供 护甲提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "fractured.stat_3858398337",
+                "text": "范围内的小型天赋同时提供 护甲提高 #%"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "Small Passive Skills in Radius also grant {0}% increased Evasion Rating",
+      "legacy": "范围内的小型天赋还会使闪避值提高 {0}%",
+      "official": "范围内的小型天赋同时提供 闪避值提高 {0}%",
+      "provenance": {
+        "entries": [
+          {
+            "id": "crafted.stat_1994296038",
+            "english": "Small Passive Skills in Radius also grant #% increased Evasion Rating",
+            "chinese": "范围内的小型天赋同时提供 闪避值提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "crafted.stat_1994296038",
+                "text": "范围内的小型天赋同时提供 闪避值提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "desecrated.stat_1994296038",
+            "english": "Small Passive Skills in Radius also grant #% increased Evasion Rating",
+            "chinese": "范围内的小型天赋同时提供 闪避值提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "desecrated.stat_1994296038",
+                "text": "范围内的小型天赋同时提供 闪避值提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "explicit.stat_1994296038",
+            "english": "Small Passive Skills in Radius also grant #% increased Evasion Rating",
+            "chinese": "范围内的小型天赋同时提供 闪避值提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_1994296038",
+                "text": "范围内的小型天赋同时提供 闪避值提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "fractured.stat_1994296038",
+            "english": "Small Passive Skills in Radius also grant #% increased Evasion Rating",
+            "chinese": "范围内的小型天赋同时提供 闪避值提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "fractured.stat_1994296038",
+                "text": "范围内的小型天赋同时提供 闪避值提高 #%"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "Small Passive Skills in Radius also grant {0}% increased maximum Energy Shield",
+      "legacy": "范围内的小型天赋还会使能量护盾上限提高 {0}%",
+      "official": "范围内的小型天赋同时提供 能量护盾上限提高 {0}%",
+      "provenance": {
+        "entries": [
+          {
+            "id": "crafted.stat_3665922113",
+            "english": "Small Passive Skills in Radius also grant #% increased maximum Energy Shield",
+            "chinese": "范围内的小型天赋同时提供 能量护盾上限提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "crafted.stat_3665922113",
+                "text": "范围内的小型天赋同时提供 能量护盾上限提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "desecrated.stat_3665922113",
+            "english": "Small Passive Skills in Radius also grant #% increased maximum Energy Shield",
+            "chinese": "范围内的小型天赋同时提供 能量护盾上限提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "desecrated.stat_3665922113",
+                "text": "范围内的小型天赋同时提供 能量护盾上限提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "explicit.stat_3665922113",
+            "english": "Small Passive Skills in Radius also grant #% increased maximum Energy Shield",
+            "chinese": "范围内的小型天赋同时提供 能量护盾上限提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_3665922113",
+                "text": "范围内的小型天赋同时提供 能量护盾上限提高 #%"
+              }
+            ]
+          },
+          {
+            "id": "fractured.stat_3665922113",
+            "english": "Small Passive Skills in Radius also grant #% increased maximum Energy Shield",
+            "chinese": "范围内的小型天赋同时提供 能量护盾上限提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "fractured.stat_3665922113",
+                "text": "范围内的小型天赋同时提供 能量护盾上限提高 #%"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "Wildsurge Incantation",
+      "legacy": "狂野涌动咒语",
+      "official": "野性涌动咒言",
+      "provenance": {
+        "entries": [
+          {
+            "id": "explicit.stat_3831171903|32",
+            "english": "Wildsurge Incantation",
+            "chinese": "野性涌动咒言",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_3831171903|32",
+                "text": "野性涌动咒言"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "{0}% chance to gain Nature's Archon when your Plants Overgrow",
+      "legacy": "植物过度生长时，有 {0}% 的几率获得自然执政官",
+      "official": "植物蔓生时，有 {0}% 的几率获得自然执政官",
+      "provenance": {
+        "entries": [
+          {
+            "id": "crafted.stat_3518449420",
+            "english": "#% chance to gain Nature's Archon when your Plants Overgrow",
+            "chinese": "植物蔓生时，有 #% 的几率获得自然执政官",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "crafted.stat_3518449420",
+                "text": "植物蔓生时，有 #% 的几率获得自然执政官"
+              }
+            ]
+          },
+          {
+            "id": "explicit.stat_3518449420",
+            "english": "#% chance to gain Nature's Archon when your Plants Overgrow",
+            "chinese": "植物蔓生时，有 #% 的几率获得自然执政官",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_3518449420",
+                "text": "植物蔓生时，有 #% 的几率获得自然执政官"
+              }
+            ]
+          },
+          {
+            "id": "fractured.stat_3518449420",
+            "english": "#% chance to gain Nature's Archon when your Plants Overgrow",
+            "chinese": "植物蔓生时，有 #% 的几率获得自然执政官",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "fractured.stat_3518449420",
+                "text": "植物蔓生时，有 #% 的几率获得自然执政官"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "{0}% increased Global Armour, Evasion and Energy Shield per Socket filled",
+      "legacy": "每个镶嵌的插槽全局护甲，闪避与能量护盾提高 {0}%",
+      "official": "每个镶嵌的插槽使全局护甲，闪避与能量护盾提高 {0}%",
+      "provenance": {
+        "entries": [
+          {
+            "id": "explicit.stat_933768533",
+            "english": "#% increased Global Armour, Evasion and Energy Shield per Socket filled",
+            "chinese": "每个镶嵌的插槽使全局护甲，闪避与能量护盾提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_933768533",
+                "text": "每个镶嵌的插槽使全局护甲，闪避与能量护盾提高 #%"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "{0}% increased Skill Effect Duration",
+      "legacy": "技能效果持续时间提高 {0}%",
+      "official": "技能效果持续时间延长 {0}%",
+      "provenance": {
+        "entries": [
+          {
+            "id": "crafted.stat_3377888098",
+            "english": "#% increased Skill Effect Duration",
+            "chinese": "技能效果持续时间延长 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "crafted.stat_3377888098",
+                "text": "技能效果持续时间延长 #%"
+              }
+            ]
+          },
+          {
+            "id": "desecrated.stat_3377888098",
+            "english": "#% increased Skill Effect Duration",
+            "chinese": "技能效果持续时间延长 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "desecrated.stat_3377888098",
+                "text": "技能效果持续时间延长 #%"
+              }
+            ]
+          },
+          {
+            "id": "enchant.stat_3377888098",
+            "english": "#% increased Skill Effect Duration",
+            "chinese": "技能效果持续时间延长 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "enchant.stat_3377888098",
+                "text": "技能效果持续时间延长 #%"
+              }
+            ]
+          },
+          {
+            "id": "explicit.stat_3377888098",
+            "english": "#% increased Skill Effect Duration",
+            "chinese": "技能效果持续时间延长 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "explicit.stat_3377888098",
+                "text": "技能效果持续时间延长 #%"
+              }
+            ]
+          },
+          {
+            "id": "fractured.stat_3377888098",
+            "english": "#% increased Skill Effect Duration",
+            "chinese": "技能效果持续时间延长 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "fractured.stat_3377888098",
+                "text": "技能效果持续时间延长 #%"
+              }
+            ]
+          },
+          {
+            "id": "rune.stat_3377888098",
+            "english": "#% increased Skill Effect Duration",
+            "chinese": "技能效果持续时间延长 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "rune.stat_3377888098",
+                "text": "技能效果持续时间延长 #%"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "en": "{0}% increased chance to avoid Honour loss from Enemy Melee Hits",
+      "legacy": "被敌人近战击中时避免失去荣誉的几率提高 {0}%",
+      "official": "被敌人近战击中时避免失去坚毅的几率提高 {0}%",
+      "provenance": {
+        "entries": [
+          {
+            "id": "sanctum.stat_3134588943",
+            "english": "#% increased chance to avoid Honour loss from Enemy Melee Hits",
+            "chinese": "被敌人近战击中时避免失去坚毅的几率提高 #%",
+            "method": "trade",
+            "evidence": [
+              {
+                "source": "trade-cn",
+                "id": "sanctum.stat_3134588943",
+                "text": "被敌人近战击中时避免失去坚毅的几率提高 #%"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
   "duplicates": 461,
   "excluded": [
     {
@@ -4168,29 +4882,6 @@
                 "source": "trade-cn",
                 "id": "explicit.stat_546201303",
                 "text": "从受到深渊损耗影响的目标偷取魔力的 #% 立即生效"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
-      "src": "仪式节律",
-      "en": "Ritual Cadence",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "explicit.stat_3831171903|29",
-            "english": "Ritual Cadence",
-            "chinese": "仪式节律",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_3831171903|29",
-                "text": "仪式节律"
               }
             ]
           }
@@ -11267,29 +11958,6 @@
     },
     {
       "reason": "existing-english-template",
-      "src": "创痛信仰",
-      "en": "Scarred Faith",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "explicit.stat_3831171903|30",
-            "english": "Scarred Faith",
-            "chinese": "创痛信仰",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_3831171903|30",
-                "text": "创痛信仰"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
       "src": "创造亡灵召唤生物技能的保留效能提高 {0:d}%",
       "en": "{0:d}% increased Reservation Efficiency of Skills which create Undead Minions",
       "kind": "trade",
@@ -11950,55 +12618,6 @@
                 "source": "trade-cn",
                 "id": "enchant.stat_1715784068",
                 "text": "区域里的玩家 #% 亢奋"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
-      "src": "印记技能的技能效果持续时间延长 {0:d}%",
-      "en": "Mark Skills have {0:d}% increased Skill Effect Duration",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "desecrated.stat_2594634307",
-            "english": "Mark Skills have #% increased Skill Effect Duration",
-            "chinese": "印记技能的技能效果持续时间延长 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "desecrated.stat_2594634307",
-                "text": "印记技能的技能效果持续时间延长 #%"
-              }
-            ]
-          },
-          {
-            "id": "explicit.stat_2594634307",
-            "english": "Mark Skills have #% increased Skill Effect Duration",
-            "chinese": "印记技能的技能效果持续时间延长 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_2594634307",
-                "text": "印记技能的技能效果持续时间延长 #%"
-              }
-            ]
-          },
-          {
-            "id": "fractured.stat_2594634307",
-            "english": "Mark Skills have #% increased Skill Effect Duration",
-            "chinese": "印记技能的技能效果持续时间延长 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "fractured.stat_2594634307",
-                "text": "印记技能的技能效果持续时间延长 #%"
               }
             ]
           }
@@ -31141,94 +31760,6 @@
     },
     {
       "reason": "existing-english-template",
-      "src": "技能效果持续时间延长 {0:d}%",
-      "en": "{0:d}% increased Skill Effect Duration",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "crafted.stat_3377888098",
-            "english": "#% increased Skill Effect Duration",
-            "chinese": "技能效果持续时间延长 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "crafted.stat_3377888098",
-                "text": "技能效果持续时间延长 #%"
-              }
-            ]
-          },
-          {
-            "id": "desecrated.stat_3377888098",
-            "english": "#% increased Skill Effect Duration",
-            "chinese": "技能效果持续时间延长 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "desecrated.stat_3377888098",
-                "text": "技能效果持续时间延长 #%"
-              }
-            ]
-          },
-          {
-            "id": "enchant.stat_3377888098",
-            "english": "#% increased Skill Effect Duration",
-            "chinese": "技能效果持续时间延长 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "enchant.stat_3377888098",
-                "text": "技能效果持续时间延长 #%"
-              }
-            ]
-          },
-          {
-            "id": "explicit.stat_3377888098",
-            "english": "#% increased Skill Effect Duration",
-            "chinese": "技能效果持续时间延长 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_3377888098",
-                "text": "技能效果持续时间延长 #%"
-              }
-            ]
-          },
-          {
-            "id": "fractured.stat_3377888098",
-            "english": "#% increased Skill Effect Duration",
-            "chinese": "技能效果持续时间延长 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "fractured.stat_3377888098",
-                "text": "技能效果持续时间延长 #%"
-              }
-            ]
-          },
-          {
-            "id": "rune.stat_3377888098",
-            "english": "#% increased Skill Effect Duration",
-            "chinese": "技能效果持续时间延长 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "rune.stat_3377888098",
-                "text": "技能效果持续时间延长 #%"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
       "src": "技能有 {0:d}% 的几率不消耗荣耀",
       "en": "Skills have a {0:d}% chance to not consume Glory",
       "kind": "trade",
@@ -36455,78 +36986,6 @@
     },
     {
       "reason": "existing-english-template",
-      "src": "植物蔓生时，有 {0:d}% 的几率获得自然执政官",
-      "en": "{0:d}% chance to gain Nature's Archon when your Plants Overgrow",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "crafted.stat_3518449420",
-            "english": "#% chance to gain Nature's Archon when your Plants Overgrow",
-            "chinese": "植物蔓生时，有 #% 的几率获得自然执政官",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "crafted.stat_3518449420",
-                "text": "植物蔓生时，有 #% 的几率获得自然执政官"
-              }
-            ]
-          },
-          {
-            "id": "explicit.stat_3518449420",
-            "english": "#% chance to gain Nature's Archon when your Plants Overgrow",
-            "chinese": "植物蔓生时，有 #% 的几率获得自然执政官",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_3518449420",
-                "text": "植物蔓生时，有 #% 的几率获得自然执政官"
-              }
-            ]
-          },
-          {
-            "id": "fractured.stat_3518449420",
-            "english": "#% chance to gain Nature's Archon when your Plants Overgrow",
-            "chinese": "植物蔓生时，有 #% 的几率获得自然执政官",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "fractured.stat_3518449420",
-                "text": "植物蔓生时，有 #% 的几率获得自然执政官"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
-      "src": "植物首次进入在场范围时，有 {0:d}% 的几率立即蔓生",
-      "en": "Plants have a {0:d}% chance to immediately Overgrow when they enter your Presence for the first time",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "rune.stat_2681952497",
-            "english": "Plants have a #% chance to immediately Overgrow when they enter your Presence for the first time",
-            "chinese": "植物首次进入在场范围时，有 #% 的几率立即蔓生",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "rune.stat_2681952497",
-                "text": "植物首次进入在场范围时，有 #% 的几率立即蔓生"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
       "src": "榴弹伤害提高 {0:d}%",
       "en": "{0:d}% increased Grenade Damage",
       "kind": "trade",
@@ -37997,29 +38456,6 @@
                 "source": "trade-cn",
                 "id": "explicit.stat_3164544692",
                 "text": "每个耐力球每秒受到 # 点混沌伤害"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
-      "src": "每个镶嵌的插槽使全局护甲，闪避与能量护盾提高 {0:d}%",
-      "en": "{0:d}% increased Global Armour, Evasion and Energy Shield per Socket filled",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "explicit.stat_933768533",
-            "english": "#% increased Global Armour, Evasion and Energy Shield per Socket filled",
-            "chinese": "每个镶嵌的插槽使全局护甲，闪避与能量护盾提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_933768533",
-                "text": "每个镶嵌的插槽使全局护甲，闪避与能量护盾提高 #%"
               }
             ]
           }
@@ -46457,42 +46893,6 @@
     },
     {
       "reason": "existing-english-template",
-      "src": "玩家窃取区域内被击杀稀有怪物的被吞噬灵魂",
-      "en": "Players steal the Eaten Souls of Slain Rare Monsters in Area",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "desecrated.stat_1365079333",
-            "english": "Players steal the Eaten Souls of Slain Rare Monsters in Area",
-            "chinese": "玩家窃取区域内被击杀稀有怪物的被吞噬灵魂",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "desecrated.stat_1365079333",
-                "text": "玩家窃取区域内被击杀稀有怪物的被吞噬灵魂"
-              }
-            ]
-          },
-          {
-            "id": "explicit.stat_1365079333",
-            "english": "Players steal the Eaten Souls of Slain Rare Monsters in Area",
-            "chinese": "玩家窃取区域内被击杀稀有怪物的被吞噬灵魂",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_1365079333",
-                "text": "玩家窃取区域内被击杀稀有怪物的被吞噬灵魂"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
       "src": "玩家获得的药剂充能降低 {0:d}%",
       "en": "Players gain {0:d}% reduced Flask Charges",
       "kind": "trade",
@@ -51250,192 +51650,6 @@
     },
     {
       "reason": "existing-english-template",
-      "src": "范围内的小型天赋同时提供 护甲提高 {0:d}%",
-      "en": "Small Passive Skills in Radius also grant {0:d}% increased Armour",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "crafted.stat_3858398337",
-            "english": "Small Passive Skills in Radius also grant #% increased Armour",
-            "chinese": "范围内的小型天赋同时提供 护甲提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "crafted.stat_3858398337",
-                "text": "范围内的小型天赋同时提供 护甲提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "desecrated.stat_3858398337",
-            "english": "Small Passive Skills in Radius also grant #% increased Armour",
-            "chinese": "范围内的小型天赋同时提供 护甲提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "desecrated.stat_3858398337",
-                "text": "范围内的小型天赋同时提供 护甲提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "explicit.stat_3858398337",
-            "english": "Small Passive Skills in Radius also grant #% increased Armour",
-            "chinese": "范围内的小型天赋同时提供 护甲提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_3858398337",
-                "text": "范围内的小型天赋同时提供 护甲提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "fractured.stat_3858398337",
-            "english": "Small Passive Skills in Radius also grant #% increased Armour",
-            "chinese": "范围内的小型天赋同时提供 护甲提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "fractured.stat_3858398337",
-                "text": "范围内的小型天赋同时提供 护甲提高 #%"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
-      "src": "范围内的小型天赋同时提供 能量护盾上限提高 {0:d}%",
-      "en": "Small Passive Skills in Radius also grant {0:d}% increased maximum Energy Shield",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "crafted.stat_3665922113",
-            "english": "Small Passive Skills in Radius also grant #% increased maximum Energy Shield",
-            "chinese": "范围内的小型天赋同时提供 能量护盾上限提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "crafted.stat_3665922113",
-                "text": "范围内的小型天赋同时提供 能量护盾上限提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "desecrated.stat_3665922113",
-            "english": "Small Passive Skills in Radius also grant #% increased maximum Energy Shield",
-            "chinese": "范围内的小型天赋同时提供 能量护盾上限提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "desecrated.stat_3665922113",
-                "text": "范围内的小型天赋同时提供 能量护盾上限提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "explicit.stat_3665922113",
-            "english": "Small Passive Skills in Radius also grant #% increased maximum Energy Shield",
-            "chinese": "范围内的小型天赋同时提供 能量护盾上限提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_3665922113",
-                "text": "范围内的小型天赋同时提供 能量护盾上限提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "fractured.stat_3665922113",
-            "english": "Small Passive Skills in Radius also grant #% increased maximum Energy Shield",
-            "chinese": "范围内的小型天赋同时提供 能量护盾上限提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "fractured.stat_3665922113",
-                "text": "范围内的小型天赋同时提供 能量护盾上限提高 #%"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
-      "src": "范围内的小型天赋同时提供 闪避值提高 {0:d}%",
-      "en": "Small Passive Skills in Radius also grant {0:d}% increased Evasion Rating",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "crafted.stat_1994296038",
-            "english": "Small Passive Skills in Radius also grant #% increased Evasion Rating",
-            "chinese": "范围内的小型天赋同时提供 闪避值提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "crafted.stat_1994296038",
-                "text": "范围内的小型天赋同时提供 闪避值提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "desecrated.stat_1994296038",
-            "english": "Small Passive Skills in Radius also grant #% increased Evasion Rating",
-            "chinese": "范围内的小型天赋同时提供 闪避值提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "desecrated.stat_1994296038",
-                "text": "范围内的小型天赋同时提供 闪避值提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "explicit.stat_1994296038",
-            "english": "Small Passive Skills in Radius also grant #% increased Evasion Rating",
-            "chinese": "范围内的小型天赋同时提供 闪避值提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_1994296038",
-                "text": "范围内的小型天赋同时提供 闪避值提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "fractured.stat_1994296038",
-            "english": "Small Passive Skills in Radius also grant #% increased Evasion Rating",
-            "chinese": "范围内的小型天赋同时提供 闪避值提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "fractured.stat_1994296038",
-                "text": "范围内的小型天赋同时提供 闪避值提高 #%"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
       "src": "范围内的小型天赋效果提高 {0:d}%",
       "en": "{0:d}% increased Effect of Small Passive Skills in Radius",
       "kind": "trade",
@@ -51477,166 +51691,6 @@
                 "source": "trade-cn",
                 "id": "fractured.stat_1060572482",
                 "text": "范围内的小型天赋效果提高 #%"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
-      "src": "范围内的核心天赋同时提供 投射物速度提高 {0:d}%",
-      "en": "Notable Passive Skills in Radius also grant {0:d}% increased Projectile Speed",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "desecrated.stat_1777421941",
-            "english": "Notable Passive Skills in Radius also grant #% increased Projectile Speed",
-            "chinese": "范围内的核心天赋同时提供 投射物速度提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "desecrated.stat_1777421941",
-                "text": "范围内的核心天赋同时提供 投射物速度提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "explicit.stat_1777421941",
-            "english": "Notable Passive Skills in Radius also grant #% increased Projectile Speed",
-            "chinese": "范围内的核心天赋同时提供 投射物速度提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_1777421941",
-                "text": "范围内的核心天赋同时提供 投射物速度提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "fractured.stat_1777421941",
-            "english": "Notable Passive Skills in Radius also grant #% increased Projectile Speed",
-            "chinese": "范围内的核心天赋同时提供 投射物速度提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "fractured.stat_1777421941",
-                "text": "范围内的核心天赋同时提供 投射物速度提高 #%"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
-      "src": "范围内的核心天赋同时提供 效果区域提高 {0:d}%",
-      "en": "Notable Passive Skills in Radius also grant {0:d}% increased Area of Effect",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "crafted.stat_3391917254",
-            "english": "Notable Passive Skills in Radius also grant #% increased Area of Effect",
-            "chinese": "范围内的核心天赋同时提供 效果区域提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "crafted.stat_3391917254",
-                "text": "范围内的核心天赋同时提供 效果区域提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "desecrated.stat_3391917254",
-            "english": "Notable Passive Skills in Radius also grant #% increased Area of Effect",
-            "chinese": "范围内的核心天赋同时提供 效果区域提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "desecrated.stat_3391917254",
-                "text": "范围内的核心天赋同时提供 效果区域提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "explicit.stat_3391917254",
-            "english": "Notable Passive Skills in Radius also grant #% increased Area of Effect",
-            "chinese": "范围内的核心天赋同时提供 效果区域提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_3391917254",
-                "text": "范围内的核心天赋同时提供 效果区域提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "fractured.stat_3391917254",
-            "english": "Notable Passive Skills in Radius also grant #% increased Area of Effect",
-            "chinese": "范围内的核心天赋同时提供 效果区域提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "fractured.stat_3391917254",
-                "text": "范围内的核心天赋同时提供 效果区域提高 #%"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
-      "src": "范围内的核心天赋同时提供 诅咒强度提高 {0:d}%",
-      "en": "Notable Passive Skills in Radius also grant {0:d}% increased Curse Magnitudes",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "desecrated.stat_2770044702",
-            "english": "Notable Passive Skills in Radius also grant #% increased Curse Magnitudes",
-            "chinese": "范围内的核心天赋同时提供 诅咒强度提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "desecrated.stat_2770044702",
-                "text": "范围内的核心天赋同时提供 诅咒强度提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "explicit.stat_2770044702",
-            "english": "Notable Passive Skills in Radius also grant #% increased Curse Magnitudes",
-            "chinese": "范围内的核心天赋同时提供 诅咒强度提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_2770044702",
-                "text": "范围内的核心天赋同时提供 诅咒强度提高 #%"
-              }
-            ]
-          },
-          {
-            "id": "fractured.stat_2770044702",
-            "english": "Notable Passive Skills in Radius also grant #% increased Curse Magnitudes",
-            "chinese": "范围内的核心天赋同时提供 诅咒强度提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "fractured.stat_2770044702",
-                "text": "范围内的核心天赋同时提供 诅咒强度提高 #%"
               }
             ]
           }
@@ -55564,29 +55618,6 @@
     },
     {
       "reason": "existing-english-template",
-      "src": "被敌人近战击中时避免失去坚毅的几率提高 {0:d}%",
-      "en": "{0:d}% increased chance to avoid Honour loss from Enemy Melee Hits",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "sanctum.stat_3134588943",
-            "english": "#% increased chance to avoid Honour loss from Enemy Melee Hits",
-            "chinese": "被敌人近战击中时避免失去坚毅的几率提高 #%",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "sanctum.stat_3134588943",
-                "text": "被敌人近战击中时避免失去坚毅的几率提高 #%"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
       "src": "被点燃时，每秒再生生命上限的 {0:d}%",
       "en": "Regenerate {0:d}% of maximum Life per second while Ignited",
       "kind": "trade",
@@ -57443,29 +57474,6 @@
     },
     {
       "reason": "existing-english-template",
-      "src": "野性涌动咒言",
-      "en": "Wildsurge Incantation",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "explicit.stat_3831171903|32",
-            "english": "Wildsurge Incantation",
-            "chinese": "野性涌动咒言",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "explicit.stat_3831171903|32",
-                "text": "野性涌动咒言"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
       "src": "锤类的伤害提高 {0:d}%",
       "en": "{0:d}% increased Damage with Maces",
       "kind": "trade",
@@ -57556,29 +57564,6 @@
                 "source": "trade-cn",
                 "id": "fractured.stat_872504239",
                 "text": "锤类的晕眩积蓄提高 #%"
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "reason": "existing-english-template",
-      "src": "镶嵌在该物品上的雕像获得其自身的羁绊词缀的强化效果",
-      "en": "Idols socketed in this item gain the benefits of their Bonded modifiers",
-      "kind": "trade",
-      "provenance": {
-        "entries": [
-          {
-            "id": "rune.stat_726496846",
-            "english": "Idols socketed in this item gain the benefits of their Bonded modifiers",
-            "chinese": "镶嵌在该物品上的雕像获得其自身的羁绊词缀的强化效果",
-            "method": "trade",
-            "evidence": [
-              {
-                "source": "trade-cn",
-                "id": "rune.stat_726496846",
-                "text": "镶嵌在该物品上的雕像获得其自身的羁绊词缀的强化效果"
               }
             ]
           }
