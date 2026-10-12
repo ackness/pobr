@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# version-bump-drill —— 「版本更新只动 JSON」可执行演练 第一版（M3 T5-F，P18；
-# 蓝图 audits/rearchitecture-2026-06-10/blueprints/m3-orchestration.md §8.3）。
+# version-bump-drill —— 「版本更新只动 JSON」可执行演练 第一版。
 #
 # 覆盖 M3 时点已存在的管线步：
 #   [1] pipeline 下载校验（占位：校验输入目录表清单完整性）
@@ -18,8 +17,7 @@
 #       data/<ver>/generated/{parsed_mods,parse-coverage}.json byte-diff（产物可再生性）。
 #   [5] 校验：A) 上述 byte-diff=0  B) cargo build --workspace 零改动编译
 #       C) ninja_parity 可运行（要求不 crash，不要求达标）
-#   [6] 摘要输出；发现项登记到 audits/rearchitecture-2026-06-10/drill-findings-m3.md
-#       （由演练执行者人工撰写——「必须改 Rust 才能吸收」的每项一条）
+#   [6] 摘要输出；「必须改 Rust 才能吸收」的每项由演练执行者另行记录
 #
 # 缺依赖优雅降级：无 luajit / 无 vendor 检出 / 无 pipeline 输入 → 对应步骤报 SKIP
 # 不报错（退出码 0）；byte-diff 漂移 / 编译失败 → 退出码 1。
@@ -264,7 +262,6 @@ step 6 "摘要"
 echo "版本：$VERSION"
 [[ ${#DIFFED[@]} -gt 0 ]] && { echo "byte-diff 漂移："; printf '  - %s\n' "${DIFFED[@]}"; }
 [[ ${#SKIPPED[@]} -gt 0 ]] && { echo "跳过项："; printf '  - %s\n' "${SKIPPED[@]}"; }
-echo "发现项登记：audits/rearchitecture-2026-06-10/drill-findings-m3.md（人工撰写，"
-echo "「必须改 Rust 才能吸收」的每项一条 → 转入 M5/M6 数据化清单）"
+echo "发现项：「必须改 Rust 才能吸收」的每项请另行记录"
 if [[ "$FAIL" -eq 0 ]]; then echo "version-bump-drill: PASS"; else echo "version-bump-drill: FAIL"; fi
 exit "$FAIL"
