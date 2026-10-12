@@ -140,7 +140,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - name: Dictionary snapshot tests
-        run: node --test ../pipeline/test-dictionary-source.mjs ../pipeline/test-query-patch-version.mjs
+        run: node --test ../pipeline/test-dictionary-source.mjs ../pipeline/test-translation-source.mjs ../pipeline/test-query-patch-version.mjs
       - name: WASM packaging tests
         run: node --test scripts/package-wasm.test.mjs scripts/sync-data.test.mjs
       - name: Install

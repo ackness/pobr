@@ -88,6 +88,7 @@ fetch_tree() {
         if cmp -s "${tmp}" pipeline/tree/data.json; then
             echo "   树导出无变化"
         else
+            mkdir -p pipeline/tree || return 1
             mv "${tmp}" pipeline/tree/data.json
             echo "   树导出已更新"
         fi

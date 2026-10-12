@@ -1,0 +1,41 @@
+{
+  "classes": {
+    "Druid": "德鲁伊",
+    "Duelist": "决斗者",
+    "Huntress": "女猎手",
+    "Marauder": "野蛮人",
+    "Mercenary": "佣兵",
+    "Monk": "行者",
+    "Ranger": "游侠",
+    "Shadow": "暗影",
+    "Sorceress": "魔巫",
+    "Templar": "圣堂武僧",
+    "Warrior": "战士",
+    "Witch": "女巫"
+  },
+  "ascendancies": {
+    "Abyssal Lich": "深渊巫妖",
+    "Acolyte of Chayula": "夏乌拉追随者",
+    "Amazon": "亚马逊",
+    "Blood Mage": "命源法师",
+    "Chronomancer": "塑时术师",
+    "Deadeye": "锐眼",
+    "Disciple of Varashta": "瓦拉煞的门徒",
+    "Gemling Legionnaire": "古灵使徒斗士",
+    "Infernalist": "驱炎使",
+    "Invoker": "祈求者",
+    "Lich": "巫妖",
+    "Martial Artist": "武圣",
+    "Oracle": "神谕者",
+    "Pathfinder": "追猎者",
+    "Ritualist": "仪祭师",
+    "Shaman": "萨满",
+    "Smith of Kitava": "奇塔弗匠师",
+    "Spirit Walker": "灵魂行者",
+    "Stormweaver": "风暴编织者",
+    "Tactician": "战术家",
+    "Titan": "泰坦",
+    "Warbringer": "战争使者",
+    "Witchhunter": "猎巫人"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "base_life_constant": 16.0,
+  "life_per_level": 12.0,
+  "life_per_strength": 2.0,
+  "base_mana_constant": 30.0,
+  "mana_per_level": 4.0,
+  "mana_per_intelligence": 2.0,
+  "base_accuracy_constant": -6.0,
+  "accuracy_per_level": 6.0,
+  "accuracy_per_dexterity": 6.0,
+  "base_evasion": 7.0,
+  "strength_per_level": 0.0,
+  "dexterity_per_level": 0.0,
+  "intelligence_per_level": 0.0
+}

@@ -20,6 +20,7 @@ MAINTENANCE_FILES = {
     "generated/modifier-audit.json", "generated/parsed_mods.json",
     "generated/parse-coverage.json", "generated/test_pins.json",
     "overlay/stat_id_map.json",
+    "generated/translation-audit.json",
 }
 
 
@@ -169,7 +170,8 @@ def export_tables(root):
     with workspace_lock(root):
         config = root / "pipeline/config.json"
         config_hash = digest(config)
-        run(["npx", "-y", "pathofexile-dat@15"], root / "pipeline", os.environ)
+        run(["pnpm", "install", "--frozen-lockfile"], root / "pipeline", os.environ)
+        run(["pnpm", "exec", "pathofexile-dat"], root / "pipeline", os.environ)
         if digest(config) != config_hash:
             raise ValueError("Export configuration changed during download; refusing to record provenance")
         record_export(config, root / "pipeline/tables")
@@ -226,13 +228,15 @@ def _regenerate(root, refresh_dictionary=False, activate=False, base_only=False,
             if refresh_dictionary:
                 dictionary.append("--refresh")
             run(dictionary, root, env)
+        # Auditors use the normal hash-validating loader. Seal changed candidate
+        # runtime bytes before they read them; audit outputs are maintenance-only.
+        manifest(data_root / version)
         audit = ["bash", "pipeline/refresh-modifiers.sh", "--data", str(data_root / version), "--audit-only"]
         baseline = root / "data" / old / "generated/modifier-audit.json"
         if baseline.is_file():
             audit += ["--baseline", str(baseline)]
         if operation != "modifiers":
             run(audit, root, env)
-        manifest(data_root / version)
         run(["bash", ".claude/skills/run-pobr/driver.sh", "versions"], root, env)
         run(["cargo", "test", "--quiet", "-p", "pobr-gamedata"], root, env)
         run(["cargo", "test", "--quiet", "-p", "pobr-build", "--test", "parity", "parity_no_regression"], root, env)

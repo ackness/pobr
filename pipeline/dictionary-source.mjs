@@ -2,10 +2,19 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-export async function dictionarySource({ cacheRoot, files, ref, refresh = false, fetcher = fetch }) {
+export const DICTIONARY_REPOSITORY = 'vagrant-soul/poe2-en-cn-dict';
+
+export async function dictionarySource({ cacheRoot, files, ref, refresh = false, fetcher = fetch,
+  repository = DICTIONARY_REPOSITORY, prefix = 'dictionary' }) {
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)
+      || (prefix && !/^[A-Za-z0-9_-]+$/.test(prefix))
+      || files.some(file => !/^[A-Za-z0-9_./-]+$/.test(file)
+        || file.startsWith('/') || file.split('/').some(part => part === '..' || !part))) {
+    throw new Error('Invalid dictionary repository or source path.');
+  }
   if (ref && !/^[a-f0-9]{40}$/.test(ref)) throw new Error('Dictionary ref must be a full commit SHA.');
   if (refresh || !ref) {
-    const response = await fetcher('https://api.github.com/repos/addohm/poe2-en-cn-dict/commits/HEAD', {
+    const response = await fetcher(`https://api.github.com/repos/${repository}/commits/HEAD`, {
       headers: { accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) throw new Error(`Dictionary commit lookup: HTTP ${response.status}`);
@@ -19,12 +28,12 @@ export async function dictionarySource({ cacheRoot, files, ref, refresh = false,
   const temporary = await fs.mkdtemp(path.join(cacheRoot, '.download-'));
   try {
     for (const file of files) {
-      const response = await fetcher(`https://raw.githubusercontent.com/addohm/poe2-en-cn-dict/${ref}/dictionary/${file}`, {
+      const response = await fetcher(`https://raw.githubusercontent.com/${repository}/${ref}/${prefix ? `${prefix}/` : ''}${file}`, {
         signal: AbortSignal.timeout(30000),
       });
       if (!response.ok) throw new Error(`Dictionary ${file}: HTTP ${response.status}`);
       const text = await response.text();
-      JSON.parse(text);
+      if (file.endsWith('.json')) JSON.parse(text);
       const destination = path.join(temporary, file);
       await fs.mkdir(path.dirname(destination), { recursive: true });
       await fs.writeFile(destination, text, 'utf8');

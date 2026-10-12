@@ -1,5 +1,6 @@
 """Check script failure propagation and working-tree preservation without Cargo."""
 
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -7,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 REPO = Path(__file__).resolve().parents[2]
@@ -369,6 +371,41 @@ sys.exit(int(os.environ.get("AUDIT_EXIT", "0")))
 
 
 class VersionPromotionTests(unittest.TestCase):
+    def test_updated_dictionary_is_sealed_before_audit_reads_candidate(self):
+        spec = importlib.util.spec_from_file_location("snapshot_test", REPO / "pipeline/data_snapshot.py")
+        snapshot = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(snapshot)
+        with tempfile.TemporaryDirectory(prefix="pobr dictionary manifest ") as directory:
+            root = Path(directory)
+            version = "1.2.3"
+            relative = "i18n/zh-CN/stat_lines.json"
+            data = root / "data" / version
+            target = data / relative
+            target.parent.mkdir(parents=True)
+            target.write_text('[{"src":"旧词条","en":"Old line"}]\n', encoding="utf-8")
+            (root / "pipeline").mkdir()
+            (root / "pipeline/config.json").write_text(json.dumps({"patch": version}), encoding="utf-8")
+            (root / "data/CURRENT").write_text(version + "\n", encoding="utf-8")
+            snapshot.manifest(data)
+            updated = '[{"src":"新词条","en":"New line"}]\n'
+            audited = []
+
+            def run(command, cwd, env):
+                candidate = Path(env["POBR_DATA_ROOT"]) / version
+                if command[0] == "node":
+                    (candidate / relative).write_text(updated, encoding="utf-8")
+                elif "pipeline/refresh-modifiers.sh" in command:
+                    manifest = snapshot.read_json(candidate / "manifest.json")
+                    self.assertEqual(manifest["files"][relative], snapshot.digest(candidate / relative))
+                    self.assertEqual((candidate / relative).read_text(encoding="utf-8"), updated)
+                    audited.append(candidate)
+
+            with patch.object(snapshot, "run", run):
+                snapshot.regenerate(root, operation="dictionary")
+            self.assertEqual(len(audited), 1)
+            self.assertEqual(target.read_text(encoding="utf-8"), updated)
+            self.assertEqual(snapshot.read_json(data / "manifest.json")["files"][relative], snapshot.digest(target))
+
     def test_candidate_checks_gate_promotion_without_editing_rust(self):
         for failure in ["dictionary", "audit", "versions", "gamedata", "parity", None]:
             with self.subTest(failure=failure), tempfile.TemporaryDirectory(prefix="pobr version gate ") as directory:

@@ -1,0 +1,24 @@
+{
+  "source": "https://github.com/vagrant-soul/poe2-en-cn-dict",
+  "source_commit": "288d8b9d999c5ea5664149e408847156dbd83ff4",
+  "source_generated_at": "2026-07-06T12:58:11.790959+00:00",
+  "translation_source": {
+    "repository": "https://github.com/ackness/poe2-zh-cn-stats",
+    "commit": "b70024ae512ce667ec5c7ce732cf1719bf491287",
+    "snapshot": "20261012T055659533Z",
+    "sha256": "2a6ab33a23de8276d05488cbe396160fce5ea707536492a5711673be1df2e0d4",
+    "mode": "pinned"
+  },
+  "regen_command": "node pipeline/gen-zh-cn.mjs --version 0.5.5.4.2 --ref 288d8b9d999c5ea5664149e408847156dbd83ff4 --translations-ref b70024ae512ce667ec5c7ce732cf1719bf491287",
+  "counts": {
+    "base_items": 4902,
+    "skills": 854,
+    "stat_lines": 27896,
+    "words": 3914,
+    "passive_names": 3040,
+    "mods": 2536,
+    "rare_words": 4805,
+    "curated_templates": 11,
+    "added_trade_templates": 1822
+  }
+}

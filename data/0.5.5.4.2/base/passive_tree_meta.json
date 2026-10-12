@@ -1,0 +1,185 @@
+{
+  "tree": "Default",
+  "classes": [
+    {
+      "name": "Druid",
+      "base_str": 11,
+      "base_dex": 7,
+      "base_int": 11,
+      "ascendancies": [
+        {
+          "id": "Druid1",
+          "name": "Oracle"
+        },
+        {
+          "id": "Druid2",
+          "name": "Shaman"
+        }
+      ]
+    },
+    {
+      "name": "Duelist",
+      "base_str": 11,
+      "base_dex": 11,
+      "base_int": 7
+    },
+    {
+      "name": "Huntress",
+      "base_str": 7,
+      "base_dex": 15,
+      "base_int": 7,
+      "ascendancies": [
+        {
+          "id": "Huntress1",
+          "name": "Amazon"
+        },
+        {
+          "id": "Huntress2",
+          "name": "Spirit Walker"
+        },
+        {
+          "id": "Huntress3",
+          "name": "Ritualist"
+        }
+      ]
+    },
+    {
+      "name": "Marauder",
+      "base_str": 15,
+      "base_dex": 7,
+      "base_int": 7
+    },
+    {
+      "name": "Mercenary",
+      "base_str": 11,
+      "base_dex": 11,
+      "base_int": 7,
+      "ascendancies": [
+        {
+          "id": "Mercenary1",
+          "name": "Tactician"
+        },
+        {
+          "id": "Mercenary2",
+          "name": "Witchhunter"
+        },
+        {
+          "id": "Mercenary3",
+          "name": "Gemling Legionnaire"
+        }
+      ]
+    },
+    {
+      "name": "Monk",
+      "base_str": 7,
+      "base_dex": 11,
+      "base_int": 11,
+      "ascendancies": [
+        {
+          "id": "Monk1",
+          "name": "Martial Artist"
+        },
+        {
+          "id": "Monk2",
+          "name": "Invoker"
+        },
+        {
+          "id": "Monk3",
+          "name": "Acolyte of Chayula"
+        }
+      ]
+    },
+    {
+      "name": "Ranger",
+      "base_str": 7,
+      "base_dex": 15,
+      "base_int": 7,
+      "ascendancies": [
+        {
+          "id": "Ranger1",
+          "name": "Deadeye"
+        },
+        {
+          "id": "Ranger3",
+          "name": "Pathfinder"
+        }
+      ]
+    },
+    {
+      "name": "Shadow",
+      "base_str": 7,
+      "base_dex": 11,
+      "base_int": 11
+    },
+    {
+      "name": "Sorceress",
+      "base_str": 7,
+      "base_dex": 7,
+      "base_int": 15,
+      "ascendancies": [
+        {
+          "id": "Sorceress1",
+          "name": "Stormweaver"
+        },
+        {
+          "id": "Sorceress2",
+          "name": "Chronomancer"
+        },
+        {
+          "id": "Sorceress3",
+          "name": "Disciple of Varashta"
+        }
+      ]
+    },
+    {
+      "name": "Templar",
+      "base_str": 11,
+      "base_dex": 7,
+      "base_int": 11
+    },
+    {
+      "name": "Warrior",
+      "base_str": 15,
+      "base_dex": 7,
+      "base_int": 7,
+      "ascendancies": [
+        {
+          "id": "Warrior1",
+          "name": "Titan"
+        },
+        {
+          "id": "Warrior2",
+          "name": "Warbringer"
+        },
+        {
+          "id": "Warrior3",
+          "name": "Smith of Kitava"
+        }
+      ]
+    },
+    {
+      "name": "Witch",
+      "base_str": 7,
+      "base_dex": 7,
+      "base_int": 15,
+      "ascendancies": [
+        {
+          "id": "Witch1",
+          "name": "Infernalist"
+        },
+        {
+          "id": "Witch2",
+          "name": "Blood Mage"
+        },
+        {
+          "id": "Witch3",
+          "name": "Lich"
+        },
+        {
+          "id": "Witch3b",
+          "name": "Abyssal Lich"
+        }
+      ]
+    }
+  ]
+}
