@@ -34,6 +34,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         // Offence
         computed("TotalDPS", Cat::Offence, Vt::Number, "TotalDPS"),
         computed("TotalHitAvg", Cat::HitDamage, Vt::Number, "AverageHit"),
+        computed("Accuracy", Cat::Offence, Vt::Number, "Accuracy"),
         computed("HitChance", Cat::Offence, Vt::Percent, "HitChance"),
         computed("ActionRate", Cat::SkillMechanics, Vt::Number, "Speed"),
         computed(
@@ -525,6 +526,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         // hit_chance / crit_chance are fractions (0..1) on the calc side, but
         // the display contract's Vt::Percent expects 0..100 (matching every
         // other Percent field), so we convert here at extraction time.
+        "Accuracy" => output.accuracy,
         "HitChance" => output.hit_chance * 100.0,
         "ActionRate" => output.action_rate,
         "EffectiveActionRate" => output.effective_action_rate,

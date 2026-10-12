@@ -42,6 +42,7 @@ movement_speed = "Movement Speed"
 # --- Offence ---
 TotalDPS = "Total DPS"
 TotalHitAvg = "Average Hit"
+Accuracy = "Accuracy"
 HitChance = "Hit Chance"
 ActionRate = "Action Rate"
 EffectiveActionRate = "Effective Action Rate"

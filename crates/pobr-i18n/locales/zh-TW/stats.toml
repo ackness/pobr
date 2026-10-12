@@ -30,6 +30,7 @@ total_dps = "總 DPS"
 # --- Offence ---
 TotalDPS = "總 DPS"
 TotalHitAvg = "平均命中"
+Accuracy = "命中值"
 HitChance = "命中率"
 CritChance = "暴擊率"
 CritMultiplier = "暴擊加成"

@@ -1,7 +1,8 @@
 //! The steps a calculation stage takes from a stat's starting value to the
 //! value it outputs. The stages return the terms they aggregated
 //! (`PoolTerms`, `ResistanceResolution`, `ActionRateTerms`, `CritChanceTerms`,
-//! `CritMultiplierTerms`, `DefenceTerms`, `SpiritTerms`) and those terms are turned into steps here, so a
+//! `CritMultiplierTerms`, `DefenceTerms`, `SpiritTerms`, `AccuracyTerms`,
+//! `HitChanceTerms`) and those terms are turned into steps here, so a
 //! displayed formula reads the same numbers the stage computed with.
 
 /// What one step does to the running value.
@@ -61,6 +62,15 @@ pub enum FormulaOp {
     BifurcateBonus,
     /// Multiplies by `1 + operand / 100`, an increase from the enemy's own modifiers.
     EnemyIncreased,
+    /// Starts from the accuracy rating, `operand`.
+    AccuracyRating,
+    /// The accuracy check against `operand` enemy evasion:
+    /// `accuracy × 1.25 / (accuracy + evasion × 0.3)`, kept between 5% and 100%.
+    VsEvasion,
+    /// No accuracy check: not an attack, or the hit cannot be evaded.
+    AlwaysHits,
+    /// Removes the enemy's `operand` percent chance to block.
+    EnemyBlock,
 }
 
 impl FormulaOp {
@@ -93,6 +103,10 @@ impl FormulaOp {
             Self::InevitablePenalty => "inevitable_penalty",
             Self::BifurcateBonus => "bifurcate_bonus",
             Self::EnemyIncreased => "enemy_increased",
+            Self::AccuracyRating => "accuracy_rating",
+            Self::VsEvasion => "vs_evasion",
+            Self::AlwaysHits => "always_hits",
+            Self::EnemyBlock => "enemy_block",
         }
     }
 }

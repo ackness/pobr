@@ -304,7 +304,14 @@ fn breakdown_formulas_end_at_the_displayed_value() {
                     }
                     "hit_chance" => previous * operand / 100.0,
                     "lucky" | "bifurcate" => (1.0 - (1.0 - previous / 100.0).powf(operand)) * 100.0,
-                    "inevitable" => operand,
+                    "inevitable" | "always_hits" | "accuracy_rating" => operand,
+                    // PoE2 chance to hit: accuracy × 1.25 / (accuracy + evasion × 0.3),
+                    // between 5% and 100%; no evasion always hits.
+                    "vs_evasion" if operand <= 0.0 => 100.0,
+                    "vs_evasion" => {
+                        (previous * 1.25 / (previous + operand * 0.3)).clamp(0.05, 1.0) * 100.0
+                    }
+                    "enemy_block" => previous * (1.0 - operand / 100.0),
                     "round" => previous.round(),
                     "more" | "action_speed" => previous * operand,
                     "added_time" => 1.0 / (1.0 / previous + operand),
@@ -366,6 +373,7 @@ fn breakdown_formulas_end_at_the_displayed_value() {
             "Spirit",
             "CritChance",
             "CritMultiplier",
+            "Accuracy",
         ] {
             if let Some(breakdown) = breakdowns.get(stat) {
                 assert!(
@@ -390,6 +398,8 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         "Armour",
         "Evasion",
         "Spirit",
+        "Accuracy",
+        "HitChance",
     ] {
         assert!(covered.contains_key(stat), "no build explains {stat}");
     }
@@ -402,6 +412,8 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         "converted",
         "hit_chance",
         "bifurcate",
+        "vs_evasion",
+        "always_hits",
     ] {
         assert!(ops.contains(op), "no fixture build shows a {op} step");
     }

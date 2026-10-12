@@ -33,7 +33,7 @@ fn catalog_entries_have_pob_keys_and_known_status() {
 }
 
 /// Entry count pinned: F-3 flipped all 24 fields in the defense-extension batch to
-/// Computed -> Planned = 0, Computed = 107 (chaos resistance added later); new entries must explicitly update this assertion.
+/// Computed -> Planned = 0, Computed = 108 (chaos resistance and accuracy added later); new entries must explicitly update this assertion.
 #[test]
 fn catalog_entry_counts_locked() {
     let catalog = display_catalog();
@@ -47,7 +47,7 @@ fn catalog_entry_counts_locked() {
     );
     assert_eq!(
         catalog.len() - planned,
-        107,
+        108,
         "a change in Computed entry count needs explicit review"
     );
 }

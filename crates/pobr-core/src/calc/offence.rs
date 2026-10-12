@@ -374,16 +374,94 @@ pub(crate) fn action_rate_terms(
     }
 }
 
-/// The chance (fraction) that the inspected skill's hit passes the accuracy
-/// check, before enemy block.
-pub(crate) fn accuracy_hit_chance(
+/// The terms behind the accuracy rating: `(base + flat) × (1 + inc / 100) × more`,
+/// or the OVERRIDE value when one applies.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct AccuracyTerms {
+    base: f64,
+    flat: f64,
+    inc: f64,
+    more: f64,
+    override_value: Option<f64>,
+    pub(crate) value: f64,
+}
+
+impl AccuracyTerms {
+    pub(crate) fn formula(&self) -> StatFormula {
+        let mut steps = FormulaBuilder::default();
+        match self.override_value {
+            Some(value) => steps.set(FormulaOp::Override, value, value),
+            None => steps.scaled(self.base, self.flat, self.inc, self.more),
+        }
+        steps.finish(self.value)
+    }
+}
+
+/// Accuracy rating of the inspected skill in `cfg` (one hand's pass).
+pub(crate) fn accuracy_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> AccuracyTerms {
+    let names = [ModName::from("Accuracy")];
+    let override_value = db.override_(cfg, "Accuracy");
+    let flat = db.sum(ModType::Base, cfg, &names);
+    let inc = db.sum(ModType::Inc, cfg, &names);
+    let more = db.more(cfg, &names);
+    AccuracyTerms {
+        base: input.base_accuracy,
+        flat,
+        inc,
+        more,
+        override_value,
+        value: scaled_numeric_stat(db, cfg, input.base_accuracy, &names),
+    }
+}
+
+/// The terms behind the chance to hit: the accuracy check against the enemy's
+/// evasion, then the enemy's chance to block.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct HitChanceTerms {
+    accuracy: f64,
+    enemy_evasion: f64,
+    /// Not an attack, or the hit cannot be evaded: no accuracy check.
+    always_hits: bool,
+    /// Chance (fraction) to pass the accuracy check, before enemy block.
+    pub(crate) accuracy_chance: f64,
+    /// Enemy block chance (fraction); zero outside the effective view.
+    enemy_block: f64,
+    /// Chance to hit (fraction).
+    pub(crate) value: f64,
+}
+
+impl HitChanceTerms {
+    /// Steps in percent, ending at the chance to hit.
+    pub(crate) fn formula(&self) -> StatFormula {
+        let mut steps = FormulaBuilder::default();
+        if self.always_hits {
+            steps.set(FormulaOp::AlwaysHits, 100.0, 100.0);
+        } else {
+            steps.set(FormulaOp::AccuracyRating, self.accuracy, self.accuracy);
+            steps.set(
+                FormulaOp::VsEvasion,
+                self.enemy_evasion,
+                self.accuracy_chance * 100.0,
+            );
+        }
+        if self.enemy_block != 0.0 {
+            steps.set(
+                FormulaOp::EnemyBlock,
+                self.enemy_block * 100.0,
+                steps.current() * (1.0 - self.enemy_block),
+            );
+        }
+        steps.finish(self.value * 100.0)
+    }
+}
+
+pub(crate) fn hit_chance_terms(
     db: &ModDb,
     enemy_db: &ModDb,
     cfg: &CalcConfig,
     input: &MinimalInput,
-) -> f64 {
-    let accuracy_names = [ModName::from("Accuracy")];
-    let accuracy = scaled_numeric_stat(db, cfg, input.base_accuracy, &accuracy_names);
+) -> HitChanceTerms {
+    let accuracy = accuracy_terms(db, cfg, input).value;
     // PoE2 hit chance (agent-docs/accuracy-and-enemy.md §2, §3):
     // - Non-attacks always hit (matching vendor CalcOffence.lua:2611-2612's
     //   `if not isAttack then output.AccuracyHitChance = 100`): spells/DoT/
@@ -395,11 +473,37 @@ pub(crate) fn accuracy_hit_chance(
     // - Finally, enemy block is deducted: `HitChance = AccuracyHitChance * (1 - enemyBlockChance/100)`.
     let cannot_be_evaded =
         db.flag(cfg, "CannotBeEvaded") || (cfg.mode_effective && enemy_db.flag(cfg, "CannotEvade"));
-    if !cfg.is_attack() || cannot_be_evaded {
+    let always_hits = !cfg.is_attack() || cannot_be_evaded;
+    let accuracy_chance = if always_hits {
         1.0
     } else {
         hit_chance(input.enemy_evasion, accuracy)
+    };
+    // Enemy block: only deducted from hit chance under the effective view (accuracy-and-enemy.md §2.3).
+    let enemy_block = if cfg.mode_effective {
+        (enemy_db.sum(ModType::Base, cfg, &[ModName::from("BlockChance")]) / 100.0).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    HitChanceTerms {
+        accuracy,
+        enemy_evasion: input.enemy_evasion,
+        always_hits,
+        accuracy_chance,
+        enemy_block,
+        value: round(accuracy_chance * (1.0 - enemy_block)),
     }
+}
+
+/// The chance (fraction) that the inspected skill's hit passes the accuracy
+/// check, before enemy block.
+pub(crate) fn accuracy_hit_chance(
+    db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    input: &MinimalInput,
+) -> f64 {
+    hit_chance_terms(db, enemy_db, cfg, input).accuracy_chance
 }
 
 /// The full entry point: player modDB + enemy modDB. Enemy-side mitigation/
@@ -424,14 +528,9 @@ pub fn calculate_minimal_vs_enemy(
     let lightning_resistance = lightning.final_value;
 
     let action_rate = resolve_action_rate(db, cfg, input);
-    let accuracy_hit_chance = accuracy_hit_chance(db, enemy_db, cfg, input);
-    // Enemy block: only deducted from hit chance under the effective view (accuracy-and-enemy.md §2.3).
-    let enemy_block = if cfg.mode_effective {
-        (enemy_db.sum(ModType::Base, cfg, &[ModName::from("BlockChance")]) / 100.0).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-    let hit_chance = round(accuracy_hit_chance * (1.0 - enemy_block));
+    let hit_terms = hit_chance_terms(db, enemy_db, cfg, input);
+    let accuracy_hit_chance = hit_terms.accuracy_chance;
+    let hit_chance = hit_terms.value;
 
     // The effective crit pipeline (resolve_crit): cap / hit-chance downgrade
     // / Lucky / Bifurcate / Inevitable / enemy SelfCrit* / NoCritMultiplier,
@@ -1893,6 +1992,53 @@ mod speed_tests {
             "got {}",
             out.action_rate
         );
+    }
+
+    #[test]
+    fn hit_chance_steps_follow_accuracy_evasion_and_enemy_block() {
+        // Accuracy (1000 + 200) × 1.5 = 1800 against 6000 evasion:
+        // 1800 × 1.25 / (1800 + 6000 × 0.3) = 62.5%, then 20% enemy block → 50%.
+        let mut db = ModDb::new();
+        db.add_mod(mk("Accuracy", ModType::Base, 200.0));
+        db.add_mod(mk("Accuracy", ModType::Inc, 50.0));
+        let mut enemy = ModDb::new();
+        enemy.add_mod(mk("BlockChance", ModType::Base, 20.0));
+        let cfg = CalcConfig::attack().with_mode_effective(true);
+        let mut input = input(1.0);
+        input.base_accuracy = 1000.0;
+        input.enemy_evasion = 6000.0;
+
+        let accuracy = accuracy_terms(&db, &cfg, &input).formula();
+        assert_eq!(accuracy.value, 1800.0);
+        assert_eq!(
+            accuracy.steps.iter().map(|s| s.op).collect::<Vec<_>>(),
+            [FormulaOp::Base, FormulaOp::Flat, FormulaOp::Increased]
+        );
+
+        let terms = hit_chance_terms(&db, &enemy, &cfg, &input);
+        let out = calculate_minimal_vs_enemy(&db, &enemy, &cfg, &input);
+        assert_eq!(terms.value, out.hit_chance);
+        let formula = terms.formula();
+        let steps: Vec<_> = formula
+            .steps
+            .iter()
+            .map(|s| (s.op, s.operand, s.result))
+            .collect();
+        assert_eq!(
+            steps,
+            [
+                (FormulaOp::AccuracyRating, 1800.0, 1800.0),
+                (FormulaOp::VsEvasion, 6000.0, 62.5),
+                (FormulaOp::EnemyBlock, 20.0, 50.0),
+            ]
+        );
+        assert_eq!(formula.value, 50.0);
+
+        // A spell skips the accuracy check; the enemy can still block.
+        let spell = CalcConfig::spell().with_mode_effective(true);
+        let formula = hit_chance_terms(&db, &enemy, &spell, &input).formula();
+        assert_eq!(formula.steps[0].op, FormulaOp::AlwaysHits);
+        assert_eq!(formula.value, 80.0);
     }
 
     #[test]

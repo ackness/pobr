@@ -46,6 +46,16 @@ pub(crate) fn player_input(env: &Env) -> MinimalInput {
     input
 }
 
+/// The scope the main-hand pass computes in (`None` without weapon passes).
+pub(crate) fn main_hand_scope(env: &Env) -> Option<(CalcConfig, MinimalInput)> {
+    let input = player_input(env);
+    env.hand_sources
+        .iter()
+        .find(|h| matches!(h.label, crate::HandTag::MainHand | crate::HandTag::Single))
+        .or(env.hand_sources.first())
+        .map(|hand| super::hand_pass::hand_scope(hand, &env.cfg, &input))
+}
+
 pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     if env.performed {
         return Err(CalcError::AlreadyPerformed);
@@ -379,6 +389,16 @@ fn fill_mechanics(env: &mut Env) {
     // resistTypeList includes Chaos, and isElemental=false doesn't merge in the shared name).
     env.player.output.chaos_resistance =
         super::offence::resolve_resistance(db, cfg, 0.0, "Chaos", false).final_value;
+    // Accuracy rating as the main-hand pass reads it (the hit chance input).
+    env.player.output.accuracy = {
+        let input = player_input(env);
+        let hand = main_hand_scope(env);
+        let (hand_cfg, hand_input) = match &hand {
+            Some((cfg, input)) => (cfg, input),
+            None => (cfg, &input),
+        };
+        super::offence::accuracy_terms(db, hand_cfg, hand_input).value
+    };
     let resistances = ResistanceSuite {
         physical_pdr: physical_pdr_fraction(db, cfg),
         fire: env.player.output.fire_resistance,

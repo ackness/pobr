@@ -56,7 +56,11 @@ function formulaOperand(step: FormulaStep): string {
     case 'base':
     case 'bonus_to_multiplier':
     case 'round':
+    case 'accuracy_rating':
+    case 'always_hits':
       return '';
+    case 'vs_evasion':
+      return `A × 1.25 ÷ (A + ${n} × 0.3)`;
     case 'flat':
     case 'enemy_flat':
     case 'gear_adjusted':
@@ -77,6 +81,7 @@ function formulaOperand(step: FormulaStep): string {
     case 'inevitable':
       return `= ${n}`;
     case 'converted':
+    case 'enemy_block':
       return `−${n}%`;
     case 'more':
     case 'action_speed':

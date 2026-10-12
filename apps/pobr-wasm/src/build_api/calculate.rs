@@ -35,7 +35,7 @@ const BREAKDOWN_MOD_NAMES: &[&str] = &[
     "CritChance",
     "CritMultiplier",
     "Accuracy",
-    "MovementSpeed",
+    "HitChance",
 ];
 
 #[derive(Debug, Serialize)]
@@ -81,11 +81,13 @@ struct FormulaStepJson {
     /// `server_tick_cap` / `floor` / `bonus_to_multiplier` / `gear_adjusted` /
     /// `gained` / `slot_scaled` / `flat_after` / `round` / `hit_chance` /
     /// `lucky` / `bifurcate` / `inevitable` / `inevitable_penalty` /
-    /// `bifurcate_bonus` / `enemy_increased`.
+    /// `bifurcate_bonus` / `enemy_increased` / `accuracy_rating` /
+    /// `vs_evasion` / `always_hits` / `enemy_block`.
     op: &'static str,
     /// The amount the step applies (percentage points for `increased`,
-    /// `converted`, `hit_chance`, `inevitable_penalty`, `bifurcate_bonus` and
-    /// `enemy_increased`, a multiplier for `more` and `action_speed`, seconds
+    /// `converted`, `hit_chance`, `enemy_block`, `inevitable_penalty`,
+    /// `bifurcate_bonus` and `enemy_increased`, the enemy's evasion for
+    /// `vs_evasion`, a multiplier for `more` and `action_speed`, seconds
     /// for `added_time`, the limit for caps and the floor, the number of
     /// rolls for `lucky` and `bifurcate`, the amount added otherwise).
     operand: f64,

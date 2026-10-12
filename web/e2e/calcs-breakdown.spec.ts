@@ -91,3 +91,35 @@ test('headline sidebar stats open the lines behind them', async ({ page }) => {
     await expect(page.locator(`#breakdown-${id} .breakdown-formula tr.formula-final`)).toHaveCount(1);
   }
 });
+
+test('hit chance shows the accuracy check against enemy evasion', async ({ page }) => {
+  // An attack build whose accuracy does not quite guarantee a hit.
+  const titan = readFileSync(
+    fileURLToPath(new URL('../../examples/demo-bd-test/builds/warrior-titan-shield-wall/code.txt', import.meta.url)),
+    'utf8',
+  ).trim();
+  await page.goto('/');
+  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(titan);
+  await page.locator('.import-submit').click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Calcs', exact: true }).click();
+
+  // Accuracy is a stat of its own, built from its modifier lines.
+  const accuracy = page.locator('#breakdown-Accuracy');
+  await accuracy.locator('.breakdown-toggle').click();
+  const rating = num(await accuracy.locator('.breakdown-value').textContent());
+  expect(rating).toBeGreaterThan(0);
+  await expect(accuracy.locator('.breakdown-table tbody tr:not(.is-inactive)')).not.toHaveCount(0);
+  expect(Math.abs(num(await accuracy.locator('tr.formula-final .formula-result').textContent()) - rating)).toBeLessThanOrEqual(0.5);
+
+  // Hit chance starts from that rating and ends at the value shown, below 100%.
+  const hit = page.locator('#breakdown-HitChance');
+  await hit.locator('.breakdown-toggle').click();
+  await expect(hit.locator('tr.formula-accuracy_rating th')).toContainText('Accuracy rating');
+  expect(Math.abs(num(await hit.locator('tr.formula-accuracy_rating .formula-result').textContent()) - rating)).toBeLessThanOrEqual(0.5);
+  await expect(hit.locator('tr.formula-vs_evasion th')).toContainText('Against enemy evasion');
+  const shown = num(await hit.locator('.breakdown-value').textContent());
+  expect(shown).toBeGreaterThan(90);
+  expect(shown).toBeLessThan(100);
+  expect(num(await hit.locator('tr.formula-final .formula-result').textContent())).toBeCloseTo(shown, 1);
+});

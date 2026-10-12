@@ -678,7 +678,8 @@ impl CalculationSession {
     /// plus the shared elemental name (`offence::resolve_resistance`), speed
     /// reads the buckets the inspected skill uses
     /// (`skill_use_time::speed_names_for`), crit reads the `CriticalStrike*`
-    /// names (`calc::crit`), the three defences read their own name plus the
+    /// names (`calc::crit`), chance to hit reads `Accuracy`
+    /// (`offence::hit_chance_terms`), the three defences read their own name plus the
     /// shared ones (`defence::defence_scaling_names`). Any other stat is
     /// aggregated under its own name.
     pub fn stat_mod_names(&self, stat: &str) -> Vec<ModName> {
@@ -692,6 +693,7 @@ impl CalculationSession {
             "ActionRate" => return super::skill_use_time::speed_names_for(&self.env.cfg),
             "CritChance" => &["CriticalStrikeChance"],
             "CritMultiplier" => &["CriticalStrikeMultiplier"],
+            "HitChance" => &["Accuracy"],
             "Armour" | "Evasion" | "EnergyShield" => {
                 return super::defence::defence_scaling_names(stat);
             }
@@ -712,7 +714,7 @@ impl CalculationSession {
         let db = &env.player.mod_db;
         let output = &env.player.output;
         let input = perform::player_input(env);
-        let hand = self.main_hand_scope();
+        let hand = perform::main_hand_scope(&self.env);
         let (cfg, hand_input) = match &hand {
             Some((cfg, input)) => (cfg, input),
             None => (&env.cfg, &input),
@@ -745,6 +747,14 @@ impl CalculationSession {
             "ActionRate" => (
                 offence::action_rate_terms(db, cfg, hand_input).formula(),
                 output.action_rate,
+            ),
+            "Accuracy" => (
+                offence::accuracy_terms(db, cfg, hand_input).formula(),
+                output.accuracy,
+            ),
+            "HitChance" => (
+                offence::hit_chance_terms(db, &env.enemy.mod_db, cfg, hand_input).formula(),
+                output.hit_chance * 100.0,
             ),
             "CritChance" | "CritMultiplier" => {
                 let enemy = &env.enemy.mod_db;
@@ -793,24 +803,15 @@ impl CalculationSession {
         ((formula.value - displayed).abs() <= 1e-6).then_some(formula)
     }
 
-    /// The scope the main-hand pass computes in (`None` without weapon passes).
-    fn main_hand_scope(&self) -> Option<(CalcConfig, MinimalInput)> {
-        let env = &self.env;
-        let input = perform::player_input(env);
-        env.hand_sources
-            .iter()
-            .find(|h| matches!(h.label, crate::HandTag::MainHand | crate::HandTag::Single))
-            .or(env.hand_sources.first())
-            .map(|hand| super::hand_pass::hand_scope(hand, &env.cfg, &input))
-    }
-
     /// The config `stat`'s stage evaluates modifiers in: the main-hand pass
     /// for the per-hand stats (which also counts that weapon's own lines),
     /// the session config otherwise.
     fn stat_cfg(&self, stat: &str) -> std::borrow::Cow<'_, CalcConfig> {
         use std::borrow::Cow;
-        if matches!(stat, "ActionRate" | "CritChance" | "CritMultiplier")
-            && let Some((cfg, _)) = self.main_hand_scope()
+        if matches!(
+            stat,
+            "ActionRate" | "CritChance" | "CritMultiplier" | "Accuracy" | "HitChance"
+        ) && let Some((cfg, _)) = perform::main_hand_scope(&self.env)
         {
             return Cow::Owned(cfg);
         }

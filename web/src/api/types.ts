@@ -442,11 +442,15 @@ export type FormulaOp =
   | 'inevitable'
   | 'inevitable_penalty'
   | 'bifurcate_bonus'
-  | 'enemy_increased';
+  | 'enemy_increased'
+  | 'accuracy_rating'
+  | 'vs_evasion'
+  | 'always_hits'
+  | 'enemy_block';
 
 export interface FormulaStep {
   op: FormulaOp;
-  /** Amount applied: percentage points (increased, converted, hit_chance, the bonus and penalty steps), a multiplier (more, action_speed), seconds (added_time), the limit, the number of rolls (lucky, bifurcate) or the amount added. */
+  /** Amount applied: percentage points (increased, converted, hit_chance, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed), seconds (added_time), the limit, the number of rolls (lucky, bifurcate) or the amount added. */
   operand: number;
   /** Running value after the step. */
   result: number;
