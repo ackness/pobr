@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 可再生性检查（CI 数据防线 ①，见 devs/docs/architecture/06-development-workflow.md §5.1）
+# 可再生性检查（CI 数据防线 ①）
 #
 # 用 pipeline/ 已有的本地输入重跑 tools/pobr-data-adapter，产物落到临时目录，
 # 与仓库已提交的 data/<patch>/ 入库 JSON 逐文件 byte-diff：

@@ -1,6 +1,6 @@
 //! Integration tests for AttributionReport (the per-source contribution ledger).
 //!
-//! Cross-checked against `devs/docs/architecture/10-pob-parity-and-attribution.md` §6-7:
+//! Covers:
 //! - Direct contribution: read a source's direct contribution to an output straight from the TraceGraph.
 //! - Marginal contribution: `final(build) - final(build_without_source)`.
 //! - Interaction: `final - base - Sum(individual marginal deltas)`.

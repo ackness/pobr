@@ -142,8 +142,6 @@ bash devs/scripts/driver.sh diff <old> <new> --domain tree --limit 40
 
 For the committed data workflow, read [pipeline/README.md](../../../pipeline/README.md)
 and [docs/version-bump-architecture.md](../../../docs/version-bump-architecture.md).
-`devs/docs/architecture/16-data-versioning-and-iteration.md` is optional local
-background; its historical gap list is not a current implementation checklist.
 
 ## Gotchas
 

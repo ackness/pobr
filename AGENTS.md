@@ -73,6 +73,5 @@ and releases follow the user's authorized scope. Contributor requirements are in
 [docs/README.md](docs/README.md) separates current guides and contracts from
 dated records. Web feature contracts are in [docs/web-contracts.md](docs/web-contracts.md).
 
-`agent-docs/` contains mechanics research, not final authority. Older
-`devs/docs/architecture/` notes may exist only locally; they are optional
-historical references, not fresh-checkout prerequisites or current task lists.
+`agent-docs/` contains mechanics research, not final authority.
+`devs/docs/architecture/` holds the feature contracts (documents 18–21).

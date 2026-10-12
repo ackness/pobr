@@ -623,7 +623,7 @@ fn compute_tallies(verbose: bool) -> (Tally, Tally, Tally, Tally, Vec<String>) {
 // 100%)**: abyssal-lich Life (LifeConvertToEnergyShield pool deduction, 0_5
 // tree's Enhanced Barrier) + smith Armour (connected-notable multiplier +
 // StrRequirements snapshot) flip to correct. See #14's individual fix commits
-// and docs/adapting-to-0.5.4b.md §#14 for details.
+// for details.
 const BASELINE_DEF_CORE_HIT5: usize = 144; // After #14's long-tail triage: 144/144 (pre-existing #7-3/4: 142; Communion: 140; ItemES: 138; Barrier-Life: 136; Mageblood: 135; migration baseline: 118; 0.5.0=139)
 // **Re-recorded for the per-socket-filled fix (+1 @5%/@10%)**: gemling-legionnaire's
 // body armour Morior Invictus's `+14 to Spirit per Socket filled` (×5 sockets)

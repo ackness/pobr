@@ -417,8 +417,7 @@ fn inject_ehp_damage_placeholder(
 /// convention-positive (e.g. `20`), negated when written to `*Resist BASE`.
 /// Attributed to an exposure sub-source under `EnemyConfig`.
 ///
-/// Sources: agent-docs/debuffs.md §Exposure; PoB2 CalcPerform.lua:3215-3247;
-///       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2.
+/// Sources: agent-docs/debuffs.md §Exposure; PoB2 CalcPerform.lua:3215-3247.
 pub fn reduce_enemy_exposure(db: &mut ModDb, player_db: &ModDb, cfg: &crate::CalcConfig) {
     // `exposureEffectOnSelf = enemyDB:More(nil, "ExposureEffectOnSelf")` (:3224):
     // a Boss's `MORE -50` → 0.5. This mod is gated by `Condition:Effective`,

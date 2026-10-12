@@ -24,16 +24,12 @@
 # 审计工作产物 / 架构参考文档 / 旧 oracle shim
 # （devs/ci、devs/fixtures、devs/scripts 被测试与 skill 引用，仍入库）
 /audits/
-# devs/docs is local-only except the feature contracts (18–21) and the vendor
-# delta report that committed docs link to.
+# devs/docs is local-only except the feature contracts (18–21).
 /devs/docs/*
 !/devs/docs/architecture/
 /devs/docs/architecture/*
 !/devs/docs/architecture/1[89]-*.md
 !/devs/docs/architecture/2[01]-*.md
-!/devs/docs/audits/
-/devs/docs/audits/*
-!/devs/docs/audits/vendor-delta-ce8bffab.md
 /devs/tools/
 # Agent loop working notes
 /.autoloop/
