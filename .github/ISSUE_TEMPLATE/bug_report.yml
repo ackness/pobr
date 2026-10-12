@@ -1,0 +1,41 @@
+name: Wrong number or bug
+description: A value differs from the game or Path of Building 2, or something is broken. 中文也可以。
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you saw and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: build
+    attributes:
+      label: Build code or link
+      description: >-
+        A PoB2 build code, pobb.in / poe.ninja link or WeGame share, so the
+        problem can be reproduced. Remove anything you do not want public.
+      render: text
+  - type: textarea
+    id: numbers
+    attributes:
+      label: Numbers compared
+      description: >-
+        For a calculation difference: the stat, the PoBR value and the value
+        in game or in PoB2 (with the PoB2 version).
+      placeholder: "Evasion: PoBR 4,210 / PoB2 0.18.0 4,655"
+  - type: input
+    id: version
+    attributes:
+      label: PoBR version and data version
+      description: The release tag or commit, and the contents of `data/CURRENT` for local runs.
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Web app
+        - CLI
+        - WASM package
+        - Other

@@ -78,7 +78,7 @@ Rust 计算引擎由 WebAssembly 应用和 CLI 共用，支持词条离线预编
 ### 本地运行
 
 Web 应用请按 [Web 安装指南](web/README.zh-CN.md)准备 WASM、游戏数据并启动 Vite。
-体验 CLI 时，复用本机 stable Rust 工具链，在仓库根目录运行：
+体验 CLI 时，使用 `rust-toolchain.toml` 钉定的 Rust 工具链，在仓库根目录运行：
 
 ```bash
 # CLI (binary name: pobr)
@@ -165,12 +165,12 @@ mise run test build parity parity_baseline_report -- --ignored --nocapture
 ## 文档
 
 - [`AGENTS.md`](AGENTS.md) — 贡献指南与开发入口。
-- [`CLAUDE.md`](CLAUDE.md) — 验证分层、命令速查、关键约定（贡献前必读）。
+- [Maintainer guide](docs/maintainer-guide.md) — 验证分层、命令速查、关键约定（贡献前必读）。
 - [`agent-docs/`](agent-docs/) — PoE2（0.5.0）机制中文参考（伤害类型 / 抗性 / 护甲闪避 ES / 暴击 / 异常 / 计算顺序等）。
 - [`web/README.md`](web/README.md) — Web 前端。
 
 早期 `devs/docs/architecture/00–16` 设计与审计仅在本机保留；已入库的 18–21 是功能契约。
-历史快照不是当前待办或新检出环境的前置条件，当前结构以代码、CLAUDE.md 和相关测试为准。
+历史快照不是当前待办或新检出环境的前置条件，当前结构以代码、维护者指南和相关测试为准。
 
 ## 约定
 

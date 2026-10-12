@@ -1,6 +1,6 @@
 name: CI
 
-# Gate per CLAUDE.md: fmt + clippy + test.
+# Gate per docs/maintainer-guide.md: fmt + clippy + test.
 #
 # Trigger strategy: this full gate does NOT run on every push/PR (pull requests
 # get the lightweight checks in pr.yml instead). It runs only on:
@@ -8,7 +8,10 @@ name: CI
 #   - a release PR: a pull request that changes the workspace version in the
 #     root Cargo.toml, so gate failures surface before the tag is pushed;
 #   - a manual dispatch (Actions tab "Run workflow", or `gh workflow run ci.yml`),
-#     to validate a branch on demand.
+#     to validate a branch on demand;
+#   - a nightly schedule on master, skipped when master has no commit from the
+#     last 24 hours, so a regression that the lightweight PR checks miss is
+#     found the next morning instead of at release time.
 # The full gate takes about 20 minutes, so it is reserved for releases and requests.
 #
 # Rust lint, Rust tests and Web run in parallel. Release CI owns the complete
@@ -21,6 +24,9 @@ on:
     branches: [master]
     paths:
       - Cargo.toml
+  schedule:
+    # 19:00 UTC, 03:00 in UTC+8.
+    - cron: '0 19 * * *'
   workflow_dispatch:
     inputs:
       e2e:
@@ -39,7 +45,8 @@ env:
 
 jobs:
   # On pull requests, decides whether this is a release PR and validates its
-  # version metadata. Other events always run the full gate.
+  # version metadata. The nightly run is skipped when master is unchanged.
+  # Other events always run the full gate.
   release-check:
     name: release metadata
     runs-on: ubuntu-latest
@@ -54,6 +61,9 @@ jobs:
         run: |
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             devs/scripts/release-check.sh HEAD^1
+          elif [ "$GITHUB_EVENT_NAME" = "schedule" ] && [ -z "$(git log -1 --since='24 hours ago' --format=%H)" ]; then
+            echo "No commit on master in the last 24 hours; skipping the nightly gate."
+            echo "release=false" >> "$GITHUB_OUTPUT"
           else
             echo "release=true" >> "$GITHUB_OUTPUT"
           fi
@@ -65,12 +75,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-      # Best-effort dependency cache. With tag/manual-only triggers runs are
-      # infrequent, so a cache often evicts (7-day idle) before reuse — that is
-      # expected; a release run starting cold is fine.
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+      # Best-effort dependency cache, kept warm by the nightly run on master.
       - uses: Swatinem/rust-cache@v2
       - name: Format
         run: cargo fmt --all --check
@@ -86,14 +93,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
           tool: nextest
       # luajit lets the fixture-based extract-lua tooling tests run instead of
       # self-skipping. Tests that need the gitignored vendor PoB2 checkout still
-      # skip gracefully in CI by design (see CLAUDE.md "Parity 体系").
+      # skip gracefully in CI by design (see docs/maintainer-guide.md "Parity 体系").
       - name: Install luajit
         run: sudo apt-get update && sudo apt-get install -y luajit lua-dkjson
       - name: Data update compatibility tests
@@ -122,9 +130,10 @@ jobs:
         working-directory: web
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
+      - name: Install the pinned Rust toolchain
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
@@ -135,7 +144,7 @@ jobs:
           version: 12
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 26
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - name: Dictionary snapshot tests

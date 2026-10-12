@@ -1,18 +1,18 @@
 # Development and CI workflow
 
 开发命令是根 `mise.toml` 中的 mise task：`mise tasks` 列出全部，`mise run <task> [参数]` 执行，
-任务名之后的参数原样传递。它们转发到 `.claude/skills/run-pobr/driver.sh`；没有安装 mise 时可直接运行
-`bash .claude/skills/run-pobr/driver.sh <命令>`，本机可选的 `.agents` 入口也转发到同一驱动。
+任务名之后的参数原样传递。它们转发到 `devs/scripts/driver.sh`（`.claude/skills/run-pobr/driver.sh` 保留为转发入口）；没有安装 mise 时可直接运行
+`bash devs/scripts/driver.sh <命令>`，本机可选的 `.agents` 入口也转发到同一驱动。
 游戏 CLI（`cargo run -p pobr-cli`，二进制 `pobr`）只提供游戏计算命令，不包含任何开发命令。
-本文维护构建、测试、缓存和 CI 操作；验证范围与计算约定见 [CLAUDE.md](../CLAUDE.md)，
+本文维护构建、测试、缓存和 CI 操作；验证范围与计算约定见 [maintainer-guide.md](maintainer-guide.md)，
 Web 初次准备见 [Web README](../web/README.md)，数据更新见 [pipeline/README.md](../pipeline/README.md)。
 
 ## 工具链来源
 
 | 工具 | 当前配置 |
 |------|----------|
-| Rust | edition 2024，CI 使用 stable；仓库未钉定 Rust 版本。复用本机可用工具链，lint 需要 rustfmt/Clippy |
-| Node | 本地 `mise.toml` 指定 Node 26；CI 指定 Node 22 |
+| Rust | edition 2024；版本由根 `rust-toolchain.toml` 钉定（含 rustfmt/Clippy），本地与 CI 相同，rustup 首次使用时自动安装。升级版本属于工具链变更，需要完整门禁 |
+| Node | 本地 `mise.toml` 与 CI 均指定 Node 26 |
 | pnpm | 本地 mise 与 CI 仅固定稳定主版本 `12`；运行 `mise install` 配置。依赖 lockfile 固定解析结果，更新直接依赖时保持原主版本，不采用预发布版本 |
 | WASM | `wasm32-unknown-unknown` target + wasm-pack，仅构建 Web 引擎时需要 |
 | cargo-nextest | 本地可选，CI 安装；完整门禁另跑 doctest |
@@ -132,6 +132,11 @@ mise run full
 fork PR 使用只读令牌且读不到仓库密钥；首次贡献者的运行需要维护者在 Actions 页批准。
 轻量检查通过不代表完整门禁通过：定向套件、Worker、真实 WASM 和 E2E 仍按改动在本地或手动 CI 验证。
 
+同一套轻量检查在 master 的每次推送后再跑一次：合并后的问题当场暴露，构建缓存也存到 master 名下。
+PR 只能读取自己和 master 的缓存，所以这次运行决定了新 PR 是否从零编译。
+完整门禁另外每晚在 master 上定时运行一次（19:00 UTC；过去 24 小时没有新提交则跳过），
+把轻量检查漏掉的回归提前到第二天发现，而不是攒到发版。
+
 当前 [ci.yml](../.github/workflows/ci.yml) 包含独立的 Rust lint、Rust 测试和 Web 门禁。
 Rust 检查 fmt/Clippy/nextest/doctest/i18n 与数据兼容；Web 检查脚本、类型、单测、Worker、
 真实 WASM 与打包。Playwright E2E 默认不运行：tag、发版 PR 和普通手动触发都跳过，
@@ -159,7 +164,7 @@ Rust 检查 fmt/Clippy/nextest/doctest/i18n 与数据兼容；Web 检查脚本�
 
 1. **先读 diff，再运行。** 外部代码在本机执行前完整读一遍，确认只包含声明的改动。
 2. **在当前 master 上验证。** PR 的基点可能已落后；取回后叠在最新 master 上，按
-   [CLAUDE.md](../CLAUDE.md) 的验证分层运行对应套件，计算类改动加 `parity no_regression`。
+   [maintainer-guide.md](maintainer-guide.md) 的验证分层运行对应套件，计算类改动加 `parity no_regression`。
 
    ```bash
    git fetch origin master pull/<N>/head:pr-<N>
@@ -200,7 +205,7 @@ nextest 按用例启动独立进程，进程间不共享 `OnceLock`；大量游�
 
 ## 其他按需检查
 
-- `bash .claude/skills/run-pobr/driver.sh smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
+- `bash devs/scripts/driver.sh smoke`：聚合、解析、Build Code 的代表测试，不先构建整个工作区；不能替代完整门禁。
 - 本地 `.agents/skills/run-pobr/driver.sh` 转发到同一驱动（`.agents` 按仓库规则不入库）。`smoke` 是环境检查，已有相关测试通过后无需再补一次。
 - `python3 devs/scripts/test_workflows.py`：检查脚本失败传递、临时目录清理与工作区保护，不调用真实 Cargo。
 - `devs/scripts/regen-check.sh` 在临时副本中重生成，保留 `overlay-common` 与 examples 语料，不写入或恢复工作区文件。
