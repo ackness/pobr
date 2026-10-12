@@ -72,6 +72,15 @@ const EXPLICIT_BOOLEAN_CONDITIONS: &[(&str, &str)] = &[
     ("conditionEnemyElectrocuted", "EnemyElectrocuted"),
 ];
 
+/// The enemy conditions for the five PoE2 elemental ailment types.
+pub(crate) const ENEMY_ELEMENTAL_AILMENT_CONDITIONS: [&str; 5] = [
+    "EnemyIgnited",
+    "EnemyChilled",
+    "EnemyFrozen",
+    "EnemyShocked",
+    "EnemyElectrocuted",
+];
+
 /// The config consumption view for `calculate_with_data` (sourced from either the
 /// primary interpreter path or the legacy fallback).
 #[derive(Default)]
@@ -316,7 +325,6 @@ fn reassert_configured_enemy_ailments(
     conditions: &mut HashMap<String, bool>,
     outcome: &ConfigOutcome,
 ) {
-    const AILMENTS: [&str; 5] = ["Ignited", "Chilled", "Frozen", "Shocked", "Electrocuted"];
     for modifier in &outcome.enemy_mods {
         if modifier.mod_type != ModType::Flag
             || !matches!(modifier.value, pobr_core::ModValue::Bool(true))
@@ -326,8 +334,9 @@ fn reassert_configured_enemy_ailments(
         let Some(var) = modifier.name.as_str().strip_prefix("Condition:") else {
             continue;
         };
-        if AILMENTS.contains(&var) {
-            conditions.insert(format!("Enemy{var}"), true);
+        let condition = format!("Enemy{var}");
+        if ENEMY_ELEMENTAL_AILMENT_CONDITIONS.contains(&condition.as_str()) {
+            conditions.insert(condition, true);
         }
     }
 }
@@ -576,6 +585,20 @@ mod tests {
             resolved.config.conditions.get("UsedSkillRecently"),
             Some(&false)
         );
+    }
+
+    /// Pinned ConfigOptions.lua `conditionEnemyFrozen` adds Frozen and Immobilised
+    /// only; a frozen enemy is not treated as Chilled.
+    #[test]
+    fn frozen_enemy_is_immobilised_but_not_chilled() {
+        let catalog = load_catalog();
+        let build = build_with_inputs(
+            RawConfigInputs::new().with("conditionEnemyFrozen", ConfigInputValue::Bool(true)),
+        );
+        let conditions = resolve_config(&build, Some(&catalog)).config.conditions;
+        assert_eq!(conditions.get("EnemyFrozen"), Some(&true));
+        assert_eq!(conditions.get("EnemyImmobilised"), Some(&true));
+        assert_ne!(conditions.get("EnemyChilled"), Some(&true));
     }
 
     /// An unchecked primary ailment input must not hide the same ailment supplied by

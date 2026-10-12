@@ -518,6 +518,54 @@ fn coverage_mapping() -> pobr_data::catalog::stat_map::SkillStatMapDef {
     serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
 }
 
+/// Every catalog stat carrying a crit or ailment prohibition must map to the
+/// consumed flags, not only the supports exercised above.
+#[test]
+fn prohibition_stats_map_to_consumed_flags() {
+    use pobr_core::rules::stat_map_engine::{MappedItem, MappedOutcome, StatMapCatalog, map_stat};
+
+    let catalog = StatMapCatalog::new(coverage_mapping());
+    let cases: [(&str, &[&str]); 9] = [
+        ("global_cannot_crit", &["NeverCrit"]),
+        ("never_ignite", &["CannotIgnite"]),
+        ("never_shock", &["CannotShock"]),
+        ("never_chill", &["CannotChill"]),
+        ("never_freeze", &["CannotFreeze"]),
+        ("never_freeze_or_chill", &["CannotFreeze", "CannotChill"]),
+        (
+            "active_skill_never_freeze_shock_ignite",
+            &["CannotFreeze", "CannotShock", "CannotIgnite"],
+        ),
+        (
+            "cannot_inflict_status_ailments",
+            &["CannotShock", "CannotChill", "CannotFreeze", "CannotIgnite"],
+        ),
+        (
+            "cannot_inflict_elemental_ailments",
+            &[
+                "CannotShock",
+                "CannotChill",
+                "CannotFreeze",
+                "CannotIgnite",
+                "CannotElectrocute",
+            ],
+        ),
+    ];
+    for (stat, flags) in cases {
+        let MappedOutcome::Mapped(items) = map_stat(&catalog, "AnySkill", None, stat, 1.0) else {
+            panic!("{stat} must be consumed");
+        };
+        let names: Vec<_> = items
+            .iter()
+            .filter_map(|item| match item {
+                MappedItem::Modifier(modifier) => Some(modifier.name.as_str()),
+                MappedItem::SkillData { .. } => None,
+            })
+            .collect();
+        assert_eq!(names, flags, "{stat}");
+    }
+}
+
 #[test]
 fn support_coverage_normal_session_discloses_actual_fork_without_changing_numbers() {
     use pobr_core::rules::stat_map_engine::{MappedOutcome, UnsupportedReason, map_stat};

@@ -510,9 +510,7 @@ fn prohibited_ailment_node(
     if !player.flag(cfg, flag) {
         return None;
     }
-    let source = player
-        .flag_origin(cfg, flag)
-        .unwrap_or_else(|| SourceId::new(SourceKind::Derived, format!("{flag}.FLAG")));
+    let source = super::crit::flag_source(player, cfg, flag);
     let flag_node = trace.add_source_node(flag, 1.0, source);
     let node = trace.add_node(output, 0.0, TraceOperation::Chance);
     trace.add_edge(flag_node, node);
