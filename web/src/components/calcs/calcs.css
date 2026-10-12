@@ -163,6 +163,18 @@
   color: var(--text-primary);
 }
 
+.breakdown-hand {
+  margin-bottom: var(--space-3);
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border-subtle);
+}
+
+.breakdown-hand-title {
+  margin: 0 0 var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
 .breakdown-note {
   margin: 0;
   padding-bottom: var(--space-2);

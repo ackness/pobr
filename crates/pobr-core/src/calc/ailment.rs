@@ -228,16 +228,55 @@ fn ailment_keyword(ailment: AilmentType) -> KeywordFlags {
 pub fn ailment_duration(ailment: AilmentType, db: &ModDb, cfg: &CalcConfig) -> f64 {
     // Ailment baseline constants are now read from the injected constant pack (fallback ==
     // the old GameConstants::poe2(), value unchanged).
-    let gc = cfg.constants.game();
-    let (base, specific) = match ailment {
-        AilmentType::Bleed => (gc.bleed_base_duration, "BleedDuration"),
-        AilmentType::Ignite => (gc.ignite_base_duration, "IgniteDuration"),
-        AilmentType::Poison => (gc.poison_base_duration, "PoisonDuration"),
-        _ => return 0.0,
+    let Some(base) = ailment_base_duration(ailment, cfg) else {
+        return 0.0;
     };
     let cfg = ailment_scoped_cfg(cfg, ailment);
-    let names = [ModName::from(specific), ModName::from("AilmentDuration")];
-    round(scale_duration(base, db, &cfg, &names))
+    round(scale_duration(base, db, &cfg, &duration_mod_names(ailment)))
+}
+
+/// A damaging ailment's duration before modifiers, in seconds (`None` for other ailments).
+pub fn ailment_base_duration(ailment: AilmentType, cfg: &CalcConfig) -> Option<f64> {
+    let gc = cfg.constants.game();
+    match ailment {
+        AilmentType::Bleed => Some(gc.bleed_base_duration),
+        AilmentType::Ignite => Some(gc.ignite_base_duration),
+        AilmentType::Poison => Some(gc.poison_base_duration),
+        _ => None,
+    }
+}
+
+/// The modifier names [`ailment_duration`] scales the base duration by.
+pub(crate) fn duration_mod_names(ailment: AilmentType) -> [ModName; 2] {
+    [
+        ModName::from(format!("{}Duration", ailment_mod_name(ailment))),
+        ModName::from("AilmentDuration"),
+    ]
+}
+
+/// The player modifier names behind the chance to apply `ailment` (`"Bleed"`
+/// / `"Poison"` / `"Ignite"` / `"Shock"`): the intrinsic chance of bleed and
+/// poison, or the chance derived from the hit for the others.
+pub(crate) fn chance_mod_names(ailment: &str, from_hit_size: bool) -> [ModName; 2] {
+    let own = if from_hit_size {
+        format!("Enemy{ailment}Chance")
+    } else {
+        format!("{ailment}Chance")
+    };
+    [ModName::from(own), ModName::from("AilmentChance")]
+}
+
+/// The player modifier names [`ailment_rate_mod`] reads: `(faster, slower)`.
+pub(crate) fn rate_mod_names(ailment_name: &str) -> (ModName, ModName) {
+    (
+        ModName::from(format!("{ailment_name}Faster")),
+        ModName::from(format!("{ailment_name}Slower")),
+    )
+}
+
+/// The player modifier name [`ailment_effect_mod`] reads.
+pub(crate) fn effect_mod_names() -> [ModName; 1] {
+    [ModName::from("AilmentEffect")]
 }
 
 /// The debuff/ailment duration factor `debuffDurationMult` (vendor CalcOffence.lua:1833-1835):
@@ -569,6 +608,10 @@ pub struct AilmentTerms {
     pub hit_chance: f64,
     pub duration: f64,
     pub hits_per_second: f64,
+    /// `duration` before modifiers, and the multiplier from how fast effects
+    /// expire on the enemy.
+    pub base_duration: f64,
+    pub enemy_duration: f64,
     /// The estimate (0 = no hit rate to estimate from) and the most that can be active.
     pub stacks: f64,
     pub max_stacks: f64,
@@ -829,10 +872,7 @@ fn flat_chance_traced(
 ) -> (f64, TraceNodeId) {
     // Keyword scope: chance mods with the corresponding KeywordFlag apply only to this ailment.
     let cfg = &ailment_scoped_cfg(cfg, ailment_type_of(ailment));
-    let chance_names = [
-        ModName::from(format!("{ailment}Chance")),
-        ModName::from("AilmentChance"),
-    ];
+    let chance_names = chance_mod_names(ailment, false);
     let self_chance = [ModName::from(format!("Self{ailment}Chance"))];
 
     let base = player.sum_traced(
@@ -878,10 +918,7 @@ fn threshold_chance_traced(
     // Keyword scope: chance mods with the corresponding KeywordFlag apply only to this ailment
     // (non-damaging ailments like shock have no dedicated KeywordFlag → the cfg passes through unchanged).
     let cfg = &ailment_scoped_cfg(cfg, ailment_type_of(ailment));
-    let chance_names = [
-        ModName::from(format!("Enemy{ailment}Chance")),
-        ModName::from("AilmentChance"),
-    ];
+    let chance_names = chance_mod_names(ailment, true);
     let self_chance = [ModName::from(format!("Self{ailment}Chance"))];
 
     let base = player.sum_traced(
@@ -1481,7 +1518,7 @@ pub fn stacking_ailment_dps_traced(
 /// `AilmentEffect` is aggregated as MORE (PoB2's `calcLib.mod`), source:
 /// PoB2 `CalcOffence.lua` l.5190 `local effectMod = calcLib.mod(skillModList, dotCfg, "AilmentEffect")`.
 pub fn ailment_effect_mod(db: &ModDb, cfg: &CalcConfig) -> f64 {
-    db.more(cfg, &[ModName::from("AilmentEffect")])
+    db.more(cfg, &effect_mod_names())
 }
 
 /// The Ailment Rate factor (cadence correction): `mod(Faster) / mod(Slower)`.
@@ -1506,8 +1543,7 @@ pub fn ailment_rate_mod(
     cfg: &CalcConfig,
     ailment_name: &str,
 ) -> f64 {
-    let faster_name = ModName::from(format!("{ailment_name}Faster"));
-    let slower_name = ModName::from(format!("{ailment_name}Slower"));
+    let (faster_name, slower_name) = rate_mod_names(ailment_name);
     let self_faster_name = ModName::from(format!("Self{ailment_name}Faster"));
 
     // faster: the calcLib.mod (INC+MORE two-leg) aggregate (player) + the enemy's INC/100 bonus.
@@ -1683,30 +1719,81 @@ pub fn stored_source_at_roll(
     cfg: &CalcConfig,
     roll_pct: f64,
 ) -> (f64, f64) {
-    let ailment_name = ailment_mod_name(ailment);
     let roll = (roll_pct / 100.0).clamp(0.0, 1.0);
     let (mut hit_min, mut hit_max) = (0.0, 0.0);
     let (mut crit_min, mut crit_max) = (0.0, 0.0);
-    for range in ranges {
-        let dt = range.damage_type;
-        let prefix = type_prefix(dt);
-        if is_default_source(ailment, dt) || player.flag(cfg, &format!("{prefix}Can{ailment_name}"))
-        {
-            // vendor `:4844`: `more = More(damageType .. ailment .. "Buildup")`.
-            let more = player.more(
-                cfg,
-                &[ModName::from(format!("{prefix}{ailment_name}Buildup"))],
-            );
-            hit_min += range.hit_min * more;
-            hit_max += range.hit_max * more;
-            crit_min += range.crit_min * more;
-            crit_max += range.crit_max * more;
-        }
+    for range in stored_source_ranges(ailment, ranges, player, cfg) {
+        hit_min += range.hit_min;
+        hit_max += range.hit_max;
+        crit_min += range.crit_min;
+        crit_max += range.crit_max;
     }
     (
         hit_min + (hit_max - hit_min) * roll,
         crit_min + (crit_max - crit_min) * roll,
     )
+}
+
+/// The damage types that can apply `ailment`, each with its range scaled by
+/// that type's buildup multiplier: what [`stored_source_at_roll`] adds up.
+fn stored_source_ranges(
+    ailment: AilmentType,
+    ranges: &[StoredDamageRange],
+    player: &ModDb,
+    cfg: &CalcConfig,
+) -> Vec<StoredDamageRange> {
+    let ailment_name = ailment_mod_name(ailment);
+    ranges
+        .iter()
+        .filter_map(|range| {
+            let dt = range.damage_type;
+            let prefix = type_prefix(dt);
+            let applies = is_default_source(ailment, dt)
+                || player.flag(cfg, &format!("{prefix}Can{ailment_name}"));
+            applies.then(|| {
+                // vendor `:4844`: `more = More(damageType .. ailment .. "Buildup")`.
+                let more = player.more(
+                    cfg,
+                    &[ModName::from(format!("{prefix}{ailment_name}Buildup"))],
+                );
+                StoredDamageRange {
+                    damage_type: dt,
+                    hit_min: range.hit_min * more,
+                    hit_max: range.hit_max * more,
+                    crit_min: range.crit_min * more,
+                    crit_max: range.crit_max * more,
+                }
+            })
+        })
+        .collect()
+}
+
+/// One damage type's share of the hit that applies an ailment.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AilmentSourcePart {
+    pub damage_type: DamageType,
+    /// The non-critical and the critical hit of this type at the damage roll.
+    pub hit: f64,
+    pub crit: f64,
+}
+
+/// [`stored_source_at_roll`] per damage type: the parts add up to its result.
+pub fn stored_source_parts_at_roll(
+    ailment: AilmentType,
+    ranges: &[StoredDamageRange],
+    player: &ModDb,
+    cfg: &CalcConfig,
+    roll_pct: f64,
+) -> Vec<AilmentSourcePart> {
+    let roll = (roll_pct / 100.0).clamp(0.0, 1.0);
+    stored_source_ranges(ailment, ranges, player, cfg)
+        .iter()
+        .map(|range| AilmentSourcePart {
+            damage_type: range.damage_type,
+            hit: range.hit_min + (range.hit_max - range.hit_min) * roll,
+            crit: range.crit_min + (range.crit_max - range.crit_min) * roll,
+        })
+        .collect()
 }
 
 /// Merges the damaging-ailment DPS from the MH/OH dual pass (vendor's combineStat
@@ -1718,14 +1805,64 @@ pub fn stored_source_at_roll(
 /// estimate is missing (stacks=0, no panel rate signal), s=1 is conservatively assumed (entirely
 /// the max instance — matches vendor's stackName defaulting to 1/1 when there's no estimate).
 pub fn merge_hand_ailment_dps(mh_dps: f64, oh_dps: f64, stacks: f64, max_stacks: f64) -> f64 {
-    let max_instance = mh_dps.max(oh_dps);
-    let min_instance = mh_dps.min(oh_dps);
-    let s = if stacks > 0.0 && max_stacks > 0.0 {
-        (stacks / max_stacks).min(1.0)
-    } else {
-        1.0
-    };
-    round(max_instance * s + min_instance * (1.0 - s))
+    HandAilmentMerge::new(mh_dps, oh_dps, stacks, max_stacks).dps()
+}
+
+/// The terms of [`merge_hand_ailment_dps`]: the stronger and the weaker
+/// hand's DPS and the share of active instances that use the stronger one.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HandAilmentMerge {
+    pub stronger: f64,
+    pub weaker: f64,
+    /// `min(1, stacks / max_stacks)` (fraction).
+    pub stronger_share: f64,
+}
+
+impl HandAilmentMerge {
+    pub fn new(mh_dps: f64, oh_dps: f64, stacks: f64, max_stacks: f64) -> Self {
+        Self {
+            stronger: mh_dps.max(oh_dps),
+            weaker: mh_dps.min(oh_dps),
+            stronger_share: if stacks > 0.0 && max_stacks > 0.0 {
+                (stacks / max_stacks).min(1.0)
+            } else {
+                1.0
+            },
+        }
+    }
+
+    pub fn dps(&self) -> f64 {
+        let s = self.stronger_share;
+        round(self.stronger * s + self.weaker * (1.0 - s))
+    }
+
+    pub(crate) fn formula(&self) -> super::StatFormula {
+        use super::FormulaOp;
+        let s = self.stronger_share;
+        let mut b = super::formula::FormulaBuilder::default();
+        b.set(FormulaOp::StrongerHand, self.stronger, self.stronger);
+        if s != 1.0 {
+            b.set(FormulaOp::StrongerShare, s * 100.0, self.stronger * s);
+            b.set(
+                FormulaOp::WeakerHand,
+                self.weaker,
+                self.stronger * s + self.weaker * (1.0 - s),
+            );
+        }
+        b.finish(self.dps())
+    }
+}
+
+/// What the damaging ailment stage computed one ailment with: the terms of
+/// every pass that applies it (the skill pass, or a weapon hand each) and,
+/// when two passes do, how their DPS was merged.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AilmentStageTerms {
+    pub passes: Vec<(crate::HandTag, AilmentTerms)>,
+    /// Per pass, the source hit by damage type: the parts add up to that
+    /// pass's `source_hit` and `source_crit`.
+    pub sources: Vec<Vec<AilmentSourcePart>>,
+    pub merge: Option<HandAilmentMerge>,
 }
 
 /// Whether this is an ailment's default source damage type (no `Can<Ailment>` flag needed).

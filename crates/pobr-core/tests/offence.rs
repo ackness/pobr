@@ -10,6 +10,8 @@ mod support;
 
 #[path = "offence/crit.rs"]
 mod crit;
+#[path = "offence/crit_formula.rs"]
+mod crit_formula;
 #[path = "offence/crit_pass.rs"]
 mod crit_pass;
 #[path = "offence/crossbow_reload.rs"]

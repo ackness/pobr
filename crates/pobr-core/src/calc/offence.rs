@@ -535,6 +535,9 @@ pub struct HitDamagePart {
 #[derive(Debug, Clone, PartialEq)]
 pub struct HitDamageTerms {
     pub parts: Vec<HitDamagePart>,
+    /// Every damage type's range before conversion and gain move it into
+    /// the `parts` ranges. Without conversion or gain the two are the same.
+    pub sources: Vec<super::damage::SourceTerms>,
     /// The double / triple damage factor every range is multiplied by.
     pub damage_effect: f64,
 }
@@ -555,6 +558,9 @@ pub struct HitMitigationPart {
     pub reduction: f64,
     /// The enemy's damage-taken multiplier.
     pub taken: f64,
+    /// The share of hits (0..1) that treat the resistance as inverted;
+    /// `resist` already includes it.
+    pub invert: f64,
 }
 
 /// What one offence pass computes for the hit: speed, chance to hit, crit,
@@ -694,6 +700,12 @@ impl HitPass {
             .collect();
         Some(HitDamageTerms {
             parts,
+            sources: super::damage::source_terms(
+                db,
+                &super::crit_pass::non_crit_cfg(cfg),
+                input.base_hit_min,
+                input.base_hit_max,
+            ),
             damage_effect: self.damage_effect,
         })
     }
@@ -735,6 +747,7 @@ impl HitPass {
                         resist: terms.resist,
                         reduction: terms.reduction,
                         taken: terms.taken,
+                        invert: terms.invert,
                     }
                 })
                 .collect(),
@@ -1356,6 +1369,9 @@ pub(crate) struct EnemyMitigationTerms {
     pub reduction: f64,
     /// The enemy's damage-taken multiplier, `(1 + INC / 100) × MORE`.
     pub taken: f64,
+    /// The share of hits (0..1) that treat the resistance as inverted;
+    /// `resist` already includes it.
+    pub invert: f64,
 }
 
 impl EnemyMitigationTerms {
@@ -1381,10 +1397,7 @@ fn enemy_mitigation_terms(
     let type_cfg = cfg.clone().with_damage_type(damage_type);
 
     // The damage-taken chain: generic + per-type DamageTaken (INC + MORE)
-    let taken_names = [
-        ModName::from("DamageTaken"),
-        ModName::from(format!("{type_prefix}DamageTaken")),
-    ];
+    let taken_names = enemy_taken_names(damage_type);
     let mut taken_inc = enemy_db.sum(ModType::Inc, &type_cfg, &taken_names);
     // INC-only extra names (vendor only adds these into takenInc, not takenMore):
     // - Elemental types += ElementalDamageTaken (CalcOffence.lua:4141);
@@ -1397,40 +1410,13 @@ fn enemy_mitigation_terms(
     //   `cfg.skill_types` containing Trapped(33)/RemoteMined(36) (the
     //   statSet.baseFlags main channel; the support addFlags grant channel,
     //   e.g. Remote Mine support adding 'mine', isn't modeled by PoBR, kept tracked).
-    if damage_type.is_elemental() {
-        taken_inc += enemy_db.sum(
-            ModType::Inc,
-            &type_cfg,
-            &[ModName::from("ElementalDamageTaken")],
-        );
-    }
-    if type_cfg.flags.intersects(ModFlags::PROJECTILE) {
-        taken_inc += enemy_db.sum(
-            ModType::Inc,
-            &type_cfg,
-            &[ModName::from("ProjectileDamageTaken")],
-        );
-        if type_cfg.is_attack() {
-            taken_inc += enemy_db.sum(
-                ModType::Inc,
-                &type_cfg,
-                &[ModName::from("ProjectileAttackDamageTaken")],
-            );
-        }
-    }
-    if type_cfg
-        .skill_types
-        .intersects(SkillTypes::TRAPPED | SkillTypes::REMOTE_MINED)
-    {
-        taken_inc += enemy_db.sum(
-            ModType::Inc,
-            &type_cfg,
-            &[ModName::from("TrapMineDamageTaken")],
-        );
+    for name in enemy_taken_inc_only_names(&type_cfg, damage_type) {
+        taken_inc += enemy_db.sum(ModType::Inc, &type_cfg, &[name]);
     }
     let taken_more = enemy_db.more(&type_cfg, &taken_names);
     let taken_mult = (1.0 + taken_inc / 100.0) * taken_more;
 
+    let mut invert_share = 0.0;
     // Resistance mitigation (elemental/chaos, including player penetration) / armour mitigation + Overwhelm (physical)
     let (resist, reduction) = if damage_type == DamageType::Physical {
         (
@@ -1456,6 +1442,7 @@ fn enemy_mitigation_terms(
                 .clamp(0.0, 1.0);
             if invert > 0.0 {
                 resist -= 2.0 * invert * resist;
+                invert_share = invert;
             }
         }
         let effective_resist = apply_penetration(player_db, &type_cfg, damage_type, resist);
@@ -1483,6 +1470,90 @@ fn enemy_mitigation_terms(
         resist,
         reduction,
         taken: taken_mult,
+        invert: invert_share,
+    }
+}
+
+/// The enemy's damage-taken names read as INC and MORE for `damage_type`.
+fn enemy_taken_names(damage_type: DamageType) -> [ModName; 2] {
+    [
+        ModName::from("DamageTaken"),
+        ModName::from(format!("{damage_type:?}DamageTaken")),
+    ]
+}
+
+/// The enemy's damage-taken names read as INC only, in the order the stage
+/// adds them: elemental, projectile, projectile attack, trap / mine.
+fn enemy_taken_inc_only_names(type_cfg: &CalcConfig, damage_type: DamageType) -> Vec<ModName> {
+    let mut names = Vec::new();
+    if damage_type.is_elemental() {
+        names.push(ModName::from("ElementalDamageTaken"));
+    }
+    if type_cfg.flags.intersects(ModFlags::PROJECTILE) {
+        names.push(ModName::from("ProjectileDamageTaken"));
+        if type_cfg.is_attack() {
+            names.push(ModName::from("ProjectileAttackDamageTaken"));
+        }
+    }
+    if type_cfg
+        .skill_types
+        .intersects(SkillTypes::TRAPPED | SkillTypes::REMOTE_MINED)
+    {
+        names.push(ModName::from("TrapMineDamageTaken"));
+    }
+    names
+}
+
+/// The names the enemy's resistance to `damage_type` is summed from. The
+/// three elements share `ElementalResist` (vendor's isElemental; chaos excluded).
+fn enemy_resist_names(damage_type: DamageType) -> Vec<ModName> {
+    let own = ModName::from(format!("{damage_type:?}Resist"));
+    if damage_type.is_elemental() {
+        vec![own, ModName::from("ElementalResist")]
+    } else {
+        vec![own]
+    }
+}
+
+/// The enemy's own lines behind one damage type's [`EnemyMitigationTerms`].
+#[derive(Debug, Clone)]
+pub struct EnemyMitigationLines<'a> {
+    /// The resistance lines (exposure and curses included); for physical
+    /// the armour and flat reduction lines.
+    pub defence: Vec<crate::ModEvaluation<'a>>,
+    /// The damage-taken lines. Names the stage reads as INC only are listed
+    /// with their INC lines alone.
+    pub taken: Vec<crate::ModEvaluation<'a>>,
+}
+
+/// The enemy lines [`enemy_mitigation_terms`] reads for `damage_type` in `cfg`.
+pub(crate) fn enemy_mitigation_lines<'a>(
+    enemy_db: &'a ModDb,
+    cfg: &CalcConfig,
+    damage_type: DamageType,
+) -> EnemyMitigationLines<'a> {
+    let type_cfg = cfg.clone().with_damage_type(damage_type);
+    let defence_names = if damage_type == DamageType::Physical {
+        vec![
+            ModName::from("Armour"),
+            ModName::from("PhysicalDamageReduction"),
+        ]
+    } else {
+        enemy_resist_names(damage_type)
+    };
+    let mut taken = enemy_db.evaluate_names(&type_cfg, &enemy_taken_names(damage_type));
+    taken.extend(
+        enemy_db
+            .evaluate_names(
+                &type_cfg,
+                &enemy_taken_inc_only_names(&type_cfg, damage_type),
+            )
+            .into_iter()
+            .filter(|line| line.modifier.mod_type == ModType::Inc),
+    );
+    EnemyMitigationLines {
+        defence: enemy_db.evaluate_names(&type_cfg, &defence_names),
+        taken,
     }
 }
 
@@ -1527,12 +1598,7 @@ pub(crate) fn enemy_resist_final(
     let resist = match enemy_db.override_(type_cfg, resist_name.as_str()) {
         Some(value) => value,
         None => {
-            // Elemental types share the `ElementalResist` name (vendor's isElemental applies to the three elements; chaos excluded).
-            let names: &[ModName] = &if damage_type.is_elemental() {
-                vec![resist_name, ModName::from("ElementalResist")]
-            } else {
-                vec![resist_name]
-            };
+            let names: &[ModName] = &enemy_resist_names(damage_type);
             let base = enemy_db.sum(ModType::Base, type_cfg, names);
             let scale = (1.0 + enemy_db.sum(ModType::Inc, type_cfg, names) / 100.0)
                 * enemy_db.more(type_cfg, names);

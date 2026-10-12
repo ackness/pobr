@@ -36,6 +36,7 @@ use pobr_data::prelude::ModFlags;
 
 use crate::{CalcConfig, CombineMode, HandTag, ModDb};
 
+use super::formula::{FormulaBuilder, FormulaOp};
 use super::offence::{MinimalInput, MinimalOutput, calculate_minimal_vs_enemy};
 use super::output::HandOutput;
 use super::{BreakdownStep, round};
@@ -140,6 +141,35 @@ pub fn combine_mode_for(stat: &str, double_hits: bool) -> Option<CombineMode> {
             CombineMode::Crit { .. } => CombineMode::Crit { double_hits },
             other => *other,
         })
+}
+
+/// The steps that merge the two hands' values of a [`COMBINE_TABLE`] stat:
+/// the main-hand value, then the off-hand value folded in by the stat's
+/// mode. The merged value comes from the same [`CombineMode::combine`] call
+/// as [`combine_legs`]; `None` for a stat or mode without such steps.
+pub(crate) fn combined_steps(
+    stat: &str,
+    main_hand: f64,
+    off_hand: f64,
+    double_hits: bool,
+) -> Option<FormulaBuilder> {
+    let mode = combine_mode_for(stat, double_hits)?;
+    let op = match mode {
+        CombineMode::Average
+        | CombineMode::Crit { double_hits: false }
+        | CombineMode::Dps { double_hits: false } => FormulaOp::OffHandAverage,
+        CombineMode::Add | CombineMode::Dps { double_hits: true } => FormulaOp::OffHandAdded,
+        CombineMode::Crit { double_hits: true } => FormulaOp::OffHandEither,
+        CombineMode::HarmonicMean => FormulaOp::OffHandAlternating,
+        CombineMode::Or
+        | CombineMode::Chance
+        | CombineMode::ChanceAilment
+        | CombineMode::CritBlend => return None,
+    };
+    let mut steps = FormulaBuilder::default();
+    steps.set(FormulaOp::MainHand, main_hand, main_hand);
+    steps.set(op, off_hand, mode.combine(&[main_hand, off_hand])?);
+    Some(steps)
 }
 
 /// Result of running the dual pass: the merged output plus per-hand sub-tables.

@@ -37,8 +37,8 @@ pub mod warcry;
 
 pub use actor::{Actor, ActorBaseStats};
 pub use ailment::{
-    AilmentTerms, bleed_instance, corrupted_blood_instance, ignite_instance, poison_instance,
-    shock_effect,
+    AilmentSourcePart, AilmentStageTerms, AilmentTerms, HandAilmentMerge, bleed_instance,
+    corrupted_blood_instance, ignite_instance, poison_instance, shock_effect,
 };
 pub use breakdown::{BreakdownStep, BreakdownTable};
 pub use buff_pass::{
@@ -53,10 +53,10 @@ pub use damage::{
 };
 pub use defence::{
     ANY_TAKEN_REFLECT_ENABLED, AVOID_AILMENT_CAP, AVOID_HIT_CAP, AvoidanceResult,
-    CritExtraReduction, DefenceOutput, EsRecharge, EvadeSuite, HitSource, TakenMultiSuite,
-    armour_reduction, calc_avoidance, calc_crit_extra_reduction, calc_defence, calc_es_recharge,
-    calc_evade_suite, calc_taken_multi_suite, enemy_crit_effect, es_recharge_per_second,
-    fill_evade_stun, hit_chance, monster_hit_chance, taken_mult_for_type,
+    CritExtraReduction, DefenceOutput, DefenceSlotPart, EsRecharge, EvadeSuite, HitSource,
+    TakenMultiSuite, armour_reduction, calc_avoidance, calc_crit_extra_reduction, calc_defence,
+    calc_es_recharge, calc_evade_suite, calc_taken_multi_suite, enemy_crit_effect,
+    es_recharge_per_second, fill_evade_stun, hit_chance, monster_hit_chance, taken_mult_for_type,
     taken_mult_for_type_default, taken_mult_for_type_with_source, taken_mult_over_time,
 };
 pub use defence_panels::{
@@ -85,8 +85,8 @@ pub use minion::{
     write_summoned_minion_multipliers,
 };
 pub use offence::{
-    HitDamagePart, HitDamageTerms, HitMitigationPart, MinimalInput, MinimalOutput,
-    TracedMinimalOutput, calculate_minimal, calculate_minimal_traced,
+    EnemyMitigationLines, HitDamagePart, HitDamageTerms, HitMitigationPart, MinimalInput,
+    MinimalOutput, TracedMinimalOutput, calculate_minimal, calculate_minimal_traced,
     calculate_minimal_traced_vs_enemy, calculate_minimal_vs_enemy,
 };
 pub use output::{HandOutput, MinionOutput, OutputTable, StoredDamageRange};

@@ -129,7 +129,7 @@ fn resolve_crit_impl(
 ) -> CritOutcome {
     // PoB2 CalcOffence.lua:3818-3823: this prohibition precedes every
     // chance/multiplier bonus, including inevitable critical hits.
-    if player.flag(cfg, "NeverCrit") {
+    if never_crit(player, cfg) {
         if let Some(sink) = sink {
             let source = sink.trace.add_source_node(
                 "NeverCrit flag",
@@ -178,6 +178,19 @@ fn resolve_crit_impl(
         effect: crit_effect,
         pre_effective_chance,
     }
+}
+
+/// Whether the skill cannot deal critical hits at all (`NeverCrit`).
+pub(crate) fn never_crit(player: &ModDb, cfg: &CalcConfig) -> bool {
+    player.flag(cfg, "NeverCrit")
+}
+
+/// The one step behind the crit chance and the crit multiplier of a skill
+/// that cannot crit: [`resolve_crit`] returns zero for both.
+pub(crate) fn never_crit_formula() -> StatFormula {
+    let mut steps = FormulaBuilder::default();
+    steps.set(FormulaOp::NeverCrit, 0.0, 0.0);
+    steps.finish(0.0)
 }
 
 /// What the effective-mode stages (hit chance, lucky, bifurcate, inevitable)
@@ -284,13 +297,10 @@ impl CritChanceTerms {
         }
     }
 
-    /// The steps from the source base to the chance after `adjust`. `None`
-    /// when an enemy-side increase shares the INC step, which the player's
-    /// modifier lines alone would not account for.
-    pub(crate) fn formula(&self, adjust: &CritChanceAdjust) -> Option<StatFormula> {
-        if self.enemy_inc != 0.0 {
-            return None;
-        }
+    /// The steps from the source base to the chance after `adjust`. An
+    /// enemy-side increase shares the INC total with the player's lines, so
+    /// it is shown as its own step on top of the player's `increased` step.
+    pub(crate) fn formula(&self, adjust: &CritChanceAdjust) -> StatFormula {
         let mut steps = FormulaBuilder::default();
         steps.scaled(self.source_base, self.player_flat, 0.0, 1.0);
         if self.enemy_flat != 0.0 {
@@ -300,7 +310,15 @@ impl CritChanceTerms {
                 steps.current() + self.enemy_flat,
             );
         }
+        let before_increases = steps.current();
         steps.increased(self.player_inc);
+        if self.enemy_inc != 0.0 {
+            steps.set(
+                FormulaOp::EnemyIncreaseAdded,
+                self.enemy_inc,
+                before_increases * (1.0 + (self.player_inc + self.enemy_inc) / 100.0),
+            );
+        }
         steps.more(self.more);
         steps.at_most(FormulaOp::Cap, self.cap);
         if self.base_pct() > 0.0 {
@@ -328,7 +346,7 @@ impl CritChanceTerms {
         }
         steps.at_most(FormulaOp::Cap, 100.0);
         steps.at_least(0.0);
-        Some(steps.finish(round((adjust.pct / 100.0).clamp(0.0, 1.0)) * 100.0))
+        steps.finish(round((adjust.pct / 100.0).clamp(0.0, 1.0)) * 100.0)
     }
 }
 
@@ -457,11 +475,12 @@ impl CritMultiplierTerms {
     }
 
     /// The steps from the base bonus to the multiplier.
-    pub(crate) fn formula(&self) -> Option<StatFormula> {
-        if self.disabled {
-            return None;
-        }
+    pub(crate) fn formula(&self) -> StatFormula {
         let mut steps = FormulaBuilder::default();
+        if self.disabled {
+            steps.set(FormulaOp::NoCritBonus, 1.0, 1.0);
+            return steps.finish(self.multiplier());
+        }
         match self.override_bonus {
             Some(bonus) => steps.set(FormulaOp::Override, bonus, bonus),
             None => {
@@ -503,7 +522,7 @@ impl CritMultiplierTerms {
         steps.at_least(0.0);
         let multiplier = 1.0 + steps.current() / 100.0;
         steps.set(FormulaOp::BonusToMultiplier, 100.0, multiplier);
-        Some(steps.finish(self.multiplier()))
+        steps.finish(self.multiplier())
     }
 }
 

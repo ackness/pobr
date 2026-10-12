@@ -465,11 +465,23 @@ export type FormulaOp =
   | 'active_stacks'
   | 'chance_to_apply'
   | 'ailment_effect'
-  | 'ailment_rate';
+  | 'ailment_rate'
+  | 'enemy_increase_added'
+  | 'never_crit'
+  | 'no_crit_bonus'
+  | 'main_hand'
+  | 'off_hand_average'
+  | 'off_hand_added'
+  | 'off_hand_either'
+  | 'off_hand_alternating'
+  | 'reload'
+  | 'stronger_hand'
+  | 'stronger_share'
+  | 'weaker_hand';
 
 export interface FormulaStep {
   op: FormulaOp;
-  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier, ailment_effect, ailment_rate), seconds (added_time), the limit, the number of rolls (lucky, bifurcate), the starting damage per second (skill_dot, hit_dps), the hit an ailment starts from (ailment_source), the percentage of it dealt per second (per_second), the number of instances (active_stacks), the chance in percent (chance_to_apply) or the amount added. */
+  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier, ailment_effect, ailment_rate), seconds (added_time), the limit, the number of rolls (lucky, bifurcate), the starting damage per second (skill_dot, hit_dps), the hit an ailment starts from (ailment_source), the percentage of it dealt per second (per_second), the number of instances (active_stacks), the chance in percent (chance_to_apply), a hand's own value (main_hand, the off_hand steps, stronger_hand, weaker_hand), the percentage of instances from the stronger hand (stronger_share), a multiplier (reload) or the amount added. */
   operand: number;
   /** Running value after the step. */
   result: number;
@@ -498,6 +510,36 @@ export interface Breakdown {
   skill_dot?: SkillDotRow[];
   /** IgniteDPS / BleedDPS / PoisonDPS only: the hit the ailment comes from and how many instances are active. */
   ailment?: AilmentDetail;
+  /** ActionRate / TotalDPS only: the cycle behind the `reload` step. */
+  reload?: ReloadDetail;
+  /** Armour / Evasion / EnergyShield only: the `slot_scaled` step per item slot; the `extra` amounts add up to its operand. */
+  slots?: DefenceSlotRow[];
+  /**
+   * Two weapon passes only, for the stats each pass computes on its own (ActionRate, HitChance,
+   * CritChance, CritMultiplier, TotalHitAvg, TotalDPS and an ailment both hands apply): main hand
+   * then off hand. `formula` then merges the two hands' values, and `damage` / `mitigation` /
+   * `ailment` are listed per hand.
+   */
+  hands?: BreakdownHand[];
+}
+
+/** One weapon pass's own breakdown; its `formula` ends at the value the merge starts from. */
+export interface BreakdownHand extends Breakdown {
+  hand: 'main_hand' | 'off_hand';
+}
+
+/** The crossbow reload cycle: firing a magazine, then reloading. */
+export interface ReloadDetail {
+  /** Uses per second while firing (the value before the `reload` step). */
+  firing_rate: number;
+  /** Bolts fired per magazine, the chance not to consume one included; null when none is ever consumed. */
+  bolts: number | null;
+  /** Seconds to fire the magazine. */
+  firing_time: number;
+  /** Seconds to reload, the chance to reload instantly included. */
+  reload_time: number;
+  /** `bolts / (firing_time + reload_time)`; the `reload` step multiplies by `rate / firing_rate`. */
+  rate: number;
 }
 
 /** What a damaging ailment's steps are built from. */
@@ -520,6 +562,17 @@ export interface AilmentDetail {
   stacks: number;
   /** Most instances that deal damage at once; the `active_stacks` step uses the smaller of the two. */
   max_stacks: number;
+  /** `source_hit` and `source_crit` per damage type that can apply the ailment; the rows add up to the two totals. */
+  source: { damage_type: string; hit: number; crit: number }[];
+  /** `duration` before modifiers, in seconds. */
+  base_duration: number;
+  /** Multiplier from how fast effects expire on the enemy; `duration` is `base_duration` scaled by `duration_mods`, times this. */
+  enemy_duration: number;
+  /** The player's lines behind `apply_chance`, `duration`, the `ailment_effect` step and the `ailment_rate` step. Modifiers on the enemy are not listed. */
+  chance_mods: BreakdownMod[];
+  duration_mods: BreakdownMod[];
+  effect_mods: BreakdownMod[];
+  rate_mods: BreakdownMod[];
 }
 
 /** One damage type of the skill's own damage over time (not an ailment). */
@@ -566,6 +619,42 @@ export interface HitDamageRow {
   crit_avg: number;
   /** INC / MORE lines that scale this type only. With `shared_mods`, active INC values add up to `increased` and active MORE values multiply to `more` (rounded to two decimals per modifier name). */
   mods: BreakdownMod[];
+  /** MORE lines behind `more_min` and `more_max`. */
+  min_mods: BreakdownMod[];
+  max_mods: BreakdownMod[];
+}
+
+/** What the lines scoped to one item slot add to a defence. */
+export interface DefenceSlotRow {
+  /** Slot name, as in `mods[].slot`. */
+  slot: string;
+  /** The amount in that slot the lines scale (the item's value after keystones and conversion; an amount converted in from another defence is its own row). */
+  base: number;
+  /** INC total (percentage points) and MORE product of the lines scoped to this slot; they add to and multiply with the global ones. */
+  increased: number;
+  more: number;
+  /** What those lines add on top of the global increases. */
+  extra: number;
+}
+
+/** One damage type of the hit before conversion and gain. */
+export interface HitDamageSource {
+  damage_type: string;
+  /** Range before conversion: for physical the weapon's or skill's own hit plus `added × added_effect`, otherwise `added × added_effect`. */
+  min: number;
+  max: number;
+  /** Totals of the added damage lines, before `added_effect`. */
+  added_min: number;
+  added_max: number;
+  /** Added damage effectiveness, a multiplier. */
+  added_effect: number;
+  /** BASE lines of added minimum / maximum damage (a skill's own non-physical damage is one of them). */
+  added_min_mods: BreakdownMod[];
+  added_max_mods: BreakdownMod[];
+  added_effect_mods: BreakdownMod[];
+  /** Lines that convert this type to another, and lines that add a share of it as another. How much each moves is not listed. */
+  convert_mods: BreakdownMod[];
+  gain_mods: BreakdownMod[];
 }
 
 /** One damage type of the average hit against the configured enemy. */
@@ -583,10 +672,18 @@ export interface HitMitigationRow {
   multiplier: number;
   /** The share after the enemy; the rows add up to the `enemy_mitigation` step's result. */
   mitigated: number;
+  /** Percentage of hits that treat the resistance as inverted (0 without such a modifier); `resist` already includes it. */
+  resist_inverted: number;
+  /** The enemy's own lines behind `resist` (exposure and curses included; an OVERRIDE line replaces the others, and the total is kept within the resistance limits), or for physical its armour and flat reduction lines. */
+  defence_mods: BreakdownMod[];
+  /** The enemy's own lines behind `taken`. */
+  taken_mods: BreakdownMod[];
 }
 
 export interface HitDamageTable {
   rows: HitDamageRow[];
+  /** Each damage type the hit starts with, before conversion and gain move it into the `rows` ranges. */
+  sources: HitDamageSource[];
   /** INC / MORE lines that scale every damage type of the hit. */
   shared_mods: BreakdownMod[];
   /** Double / triple damage multiplier every range includes (1 without one). */

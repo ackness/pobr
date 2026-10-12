@@ -10,6 +10,8 @@ import type {
   HitMitigationRow,
   SkillDotRow,
   AilmentDetail,
+  DefenceSlotRow,
+  ReloadDetail,
   DisplayStatCategory,
   SkillMetricsResponse,
 } from '../../api/types';
@@ -69,7 +71,19 @@ function formulaOperand(step: FormulaStep): string {
     case 'skill_dot':
     case 'hit_dps':
     case 'ailment_source':
+    case 'main_hand':
+    case 'stronger_hand':
       return '';
+    case 'off_hand_average':
+      return `(M + ${n}) ÷ 2`;
+    case 'off_hand_either':
+      return `M + ${n} − M × ${n} ÷ 100`;
+    case 'off_hand_alternating':
+      return `2 ÷ (1 ÷ M + 1 ÷ ${n})`;
+    case 'stronger_share':
+      return `×${n}%`;
+    case 'weaker_hand':
+      return `+ ${n} × (1 − s)`;
     case 'crit_hits':
       return `${n}%`;
     case 'chance_to_hit':
@@ -82,6 +96,7 @@ function formulaOperand(step: FormulaStep): string {
     case 'enemy_mitigation':
     case 'uses_per_second':
     case 'dps_multiplier':
+    case 'reload':
       return `×${n}`;
     case 'vs_evasion':
       return `A × 1.25 ÷ (A + ${n} × 0.3)`;
@@ -95,6 +110,7 @@ function formulaOperand(step: FormulaStep): string {
     case 'ignite_dps':
     case 'bleed_dps':
     case 'dot_dps':
+    case 'off_hand_added':
       return signed;
     case 'increased':
     case 'enemy_increased':
@@ -107,7 +123,11 @@ function formulaOperand(step: FormulaStep): string {
     case 'bifurcate':
       return '1 − (1 − p)²';
     case 'inevitable':
+    case 'never_crit':
+    case 'no_crit_bonus':
       return `= ${n}`;
+    case 'enemy_increase_added':
+      return `${signed}%`;
     case 'converted':
     case 'enemy_block':
       return `−${n}%`;
@@ -132,9 +152,13 @@ function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang })
   const tt = bindT(lang);
   const range = (min: number, max: number) => `${fmtNum(min)} – ${fmtNum(max)}`;
   const sum = (key: 'avg' | 'crit_avg') => damage.rows.reduce((total, row) => total + row[key], 0);
+  // Without conversion or gain the base column already is the range before them.
+  const moved = damage.sources.some((source) =>
+    [...source.convert_mods, ...source.gain_mods].some((m) => m.active && (m.value ?? 0) > 0),
+  );
   return (
     <div className="breakdown-scroll">
-      <table className="breakdown-table hit-damage-table" aria-label={tt('calcs.damage.title')}>
+      <table className="breakdown-table hit-damage-table damage-type-table" aria-label={tt('calcs.damage.title')}>
         <caption>{tt('calcs.damage.title')}</caption>
         <thead>
           <tr>
@@ -175,6 +199,32 @@ function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang })
       {damage.damage_effect !== 1 && (
         <p className="breakdown-note">{tt('calcs.damage.effect')}: ×{fmtNum(damage.damage_effect)}</p>
       )}
+      {moved && (
+        <>
+          <table className="breakdown-table hit-damage-table damage-source-table" aria-label={tt('calcs.damage.sourceTitle')}>
+            <caption>{tt('calcs.damage.sourceTitle')}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{tt('calcs.damage.type')}</th>
+                <th scope="col">{tt('calcs.damage.sourceAdded')}</th>
+                <th scope="col">{tt('calcs.damage.sourceEffect')}</th>
+                <th scope="col">{tt('calcs.damage.sourceRange')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {damage.sources.map((source) => (
+                <tr key={source.damage_type} className={`damage-${source.damage_type.toLowerCase()}`}>
+                  <th scope="row">{damageTypeLabel(lang, source.damage_type)}</th>
+                  <td className="mod-value">{range(source.added_min, source.added_max)}</td>
+                  <td className="mod-value">×{fmtNum(source.added_effect)}</td>
+                  <td className="mod-value">{range(source.min, source.max)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="breakdown-note">{tt('calcs.damage.sourceNote')}</p>
+        </>
+      )}
     </div>
   );
 }
@@ -182,13 +232,25 @@ function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang })
 /** The lines behind each damage type's increased and more totals: shared ones first, then per type. */
 function DamageLinesView({ damage, lang }: { damage: HitDamageTable; lang: Lang }) {
   const tt = bindT(lang);
+  const typed = (type: string, kind: string, label: string, mods: BreakdownMod[]) => ({
+    key: `${type}-${kind}`,
+    label: `${damageTypeLabel(lang, type)} · ${label}`,
+    mods,
+  });
   const groups = [
+    ...damage.sources.flatMap((source) => [
+      typed(source.damage_type, 'added-min', tt('calcs.damage.addedMinLines'), source.added_min_mods),
+      typed(source.damage_type, 'added-max', tt('calcs.damage.addedMaxLines'), source.added_max_mods),
+      typed(source.damage_type, 'added-effect', tt('calcs.damage.addedEffectLines'), source.added_effect_mods),
+      typed(source.damage_type, 'convert', tt('calcs.damage.convertLines'), source.convert_mods),
+      typed(source.damage_type, 'gain', tt('calcs.damage.gainLines'), source.gain_mods),
+    ]),
     { key: 'shared', label: tt('calcs.damage.sharedLines'), mods: damage.shared_mods },
-    ...damage.rows.map((row) => ({
-      key: row.damage_type,
-      label: `${damageTypeLabel(lang, row.damage_type)} · ${tt('calcs.damage.typeLines')}`,
-      mods: row.mods,
-    })),
+    ...damage.rows.flatMap((row) => [
+      { key: row.damage_type, label: `${damageTypeLabel(lang, row.damage_type)} · ${tt('calcs.damage.typeLines')}`, mods: row.mods },
+      typed(row.damage_type, 'min', tt('calcs.damage.minLines'), row.min_mods),
+      typed(row.damage_type, 'max', tt('calcs.damage.maxLines'), row.max_mods),
+    ]),
   ].filter((group) => group.mods.length > 0);
   if (groups.length === 0) return null;
   return (
@@ -254,6 +316,47 @@ function MitigationView({ rows, lang }: { rows: HitMitigationRow[]; lang: Lang }
         </tfoot>
       </table>
       {critsDiffer && <p className="breakdown-note">{tt('calcs.mitigation.critNote')}</p>}
+      {rows
+        .filter((row) => row.resist_inverted !== 0)
+        .map((row) => (
+          <p key={row.damage_type} className="breakdown-note">
+            {tt('calcs.mitigation.invertedNote')
+              .replace('{chance}', fmtNum(row.resist_inverted))
+              .replace('{type}', damageTypeLabel(lang, row.damage_type))}
+          </p>
+        ))}
+    </div>
+  );
+}
+
+/** The enemy's own lines behind each row of the mitigation table. */
+function EnemyLinesView({ rows, lang }: { rows: HitMitigationRow[]; lang: Lang }) {
+  const tt = bindT(lang);
+  const groups = rows
+    .flatMap((row) => [
+      {
+        key: `${row.damage_type}-defence`,
+        label: tt(row.resist === null ? 'calcs.mitigation.armourLines' : 'calcs.mitigation.resistLines'),
+        type: row.damage_type,
+        mods: row.defence_mods,
+      },
+      { key: `${row.damage_type}-taken`, label: tt('calcs.mitigation.takenLines'), type: row.damage_type, mods: row.taken_mods },
+    ])
+    .filter((group) => group.mods.length > 0);
+  if (groups.length === 0) return null;
+  return (
+    <div className="damage-lines enemy-lines">
+      {groups.map((group) => (
+        <details key={group.key} className={`damage-lines-group enemy-lines-${group.key.toLowerCase()}`}>
+          <summary>
+            {damageTypeLabel(lang, group.type)} · {group.label}
+            <span className="breakdown-count">
+              {group.mods.filter((m) => m.active).length} {tt('calcs.mods')}
+            </span>
+          </summary>
+          <ModLines mods={group.mods} lang={lang} />
+        </details>
+      ))}
     </div>
   );
 }
@@ -315,37 +418,153 @@ function SkillDotView({ rows, lang }: { rows: SkillDotRow[]; lang: Lang }) {
 /** The hit a damaging ailment comes from and the estimate of how many instances are active. */
 function AilmentView({ ailment, lang }: { ailment: AilmentDetail; lang: Lang }) {
   const tt = bindT(lang);
-  type Key = 'sourceHit' | 'sourceCrit' | 'critShare' | 'hitChance' | 'applyChance' | 'duration' | 'hitsPerSecond' | 'stacks' | 'maxStacks';
+  type Key = 'sourceHit' | 'sourceCrit' | 'critShare' | 'hitChance' | 'applyChance' | 'baseDuration' | 'enemyDuration' | 'duration' | 'hitsPerSecond' | 'stacks' | 'maxStacks';
+  const seconds = (value: number) => `${fmtNum(value)}${tt('calcs.ailment.seconds')}`;
   const rows: [Key, string][] = [
     ['sourceHit', fmtNum(ailment.source_hit)],
     ['sourceCrit', fmtNum(ailment.source_crit)],
     ['critShare', `${fmtNum(ailment.crit_share)}%`],
     ['hitChance', `${fmtNum(ailment.hit_chance)}%`],
     ['applyChance', `${fmtNum(ailment.apply_chance)}%`],
-    ['duration', `${fmtNum(ailment.duration)}${tt('calcs.ailment.seconds')}`],
+    ...(ailment.base_duration !== ailment.duration ? [['baseDuration', seconds(ailment.base_duration)] as [Key, string]] : []),
+    ...(ailment.enemy_duration !== 1 ? [['enemyDuration', `×${fmtNum(ailment.enemy_duration)}`] as [Key, string]] : []),
+    ['duration', seconds(ailment.duration)],
     ['hitsPerSecond', fmtNum(ailment.hits_per_second)],
     ...(ailment.stacks > 0 ? [['stacks', fmtNum(ailment.stacks)] as [Key, string]] : []),
     ['maxStacks', fmtNum(ailment.max_stacks)],
   ];
+  const lineGroups = (
+    [
+      ['chance', ailment.chance_mods],
+      ['duration', ailment.duration_mods],
+      ['effect', ailment.effect_mods],
+      ['rate', ailment.rate_mods],
+    ] as const
+  ).filter(([, mods]) => mods.length > 0);
+  return (
+    <>
+      <div className="breakdown-scroll">
+        {ailment.source.length > 1 && (
+          <table className="breakdown-table hit-damage-table ailment-source-table" aria-label={tt('calcs.ailment.sourceTitle')}>
+            <caption>{tt('calcs.ailment.sourceTitle')}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{tt('calcs.damage.type')}</th>
+                <th scope="col">{tt('calcs.ailment.sourceHitShort')}</th>
+                <th scope="col">{tt('calcs.ailment.sourceCritShort')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ailment.source.map((row) => (
+                <tr key={row.damage_type} className={`damage-${row.damage_type.toLowerCase()}`}>
+                  <th scope="row">{damageTypeLabel(lang, row.damage_type)}</th>
+                  <td className="mod-value">{fmtNum(row.hit)}</td>
+                  <td className="mod-value">{fmtNum(row.crit)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <table className="breakdown-formula ailment-table" aria-label={tt('calcs.ailment.title')}>
+          <caption>{tt('calcs.ailment.title')}</caption>
+          <tbody>
+            {rows.map(([key, value]) => (
+              <tr key={key} className={`ailment-${key}`}>
+                <th scope="row">{tt(`calcs.ailment.${key}`)}</th>
+                <td className="formula-result">{value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {ailment.damage_roll !== 50 && (
+          <p className="breakdown-note">
+            {tt('calcs.ailment.rollNote').replace('{roll}', fmtNum(ailment.damage_roll))}
+          </p>
+        )}
+        {ailment.stacks === 0 && <p className="breakdown-note">{tt('calcs.ailment.noRateNote')}</p>}
+      </div>
+      {lineGroups.length > 0 && (
+        <div className="damage-lines ailment-lines">
+          {lineGroups.map(([key, mods]) => (
+            <details key={key} className={`damage-lines-group ailment-lines-${key}`}>
+              <summary>
+                {tt(`calcs.ailment.${key}Lines`)}
+                <span className="breakdown-count">
+                  {mods.filter((m) => m.active).length} {tt('calcs.mods')}
+                </span>
+              </summary>
+              <ModLines mods={mods} lang={lang} />
+            </details>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** The crossbow cycle behind the `reload` step: a magazine fired, then the reload. */
+/** The `slot_scaled` step of a defence, one row per item slot. */
+function DefenceSlotsView({ slots, lang }: { slots: DefenceSlotRow[]; lang: Lang }) {
+  const tt = bindT(lang);
   return (
     <div className="breakdown-scroll">
-      <table className="breakdown-formula ailment-table" aria-label={tt('calcs.ailment.title')}>
-        <caption>{tt('calcs.ailment.title')}</caption>
+      <table className="breakdown-table hit-damage-table defence-slots-table" aria-label={tt('calcs.slots.title')}>
+        <caption>{tt('calcs.slots.title')}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{tt('calcs.slots.slot')}</th>
+            <th scope="col">{tt('calcs.slots.base')}</th>
+            <th scope="col">{tt('calcs.slots.increased')}</th>
+            <th scope="col">{tt('calcs.slots.more')}</th>
+            <th scope="col">{tt('calcs.slots.extra')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {slots.map((row, index) => (
+            <tr key={`${row.slot}-${index}`}>
+              <th scope="row">{slotLabel(lang, row.slot)}</th>
+              <td className="mod-value">{fmtNum(row.base)}</td>
+              <td className="mod-value">{fmtNum(row.increased)}%</td>
+              <td className="mod-value">×{fmtNum(row.more)}</td>
+              <td className="mod-value">{fmtNum(row.extra)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row" colSpan={4}>{tt('calcs.damage.total')}</th>
+            <td className="mod-value">{fmtNum(slots.reduce((total, row) => total + row.extra, 0))}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+function ReloadView({ reload, lang }: { reload: ReloadDetail; lang: Lang }) {
+  const tt = bindT(lang);
+  const seconds = (value: number) => `${fmtNum(value)}${tt('calcs.ailment.seconds')}`;
+  type Key = 'firingRate' | 'bolts' | 'firingTime' | 'reloadTime' | 'rate';
+  const rows: [Key, string][] = [
+    ['firingRate', fmtNum(reload.firing_rate)],
+    ['bolts', reload.bolts === null ? '∞' : fmtNum(reload.bolts)],
+    ['firingTime', seconds(reload.firing_time)],
+    ['reloadTime', seconds(reload.reload_time)],
+    ['rate', fmtNum(reload.rate)],
+  ];
+  return (
+    <div className="breakdown-scroll">
+      <table className="breakdown-formula reload-table" aria-label={tt('calcs.reload.title')}>
+        <caption>{tt('calcs.reload.title')}</caption>
         <tbody>
           {rows.map(([key, value]) => (
-            <tr key={key} className={`ailment-${key}`}>
-              <th scope="row">{tt(`calcs.ailment.${key}`)}</th>
+            <tr key={key} className={`reload-${key}`}>
+              <th scope="row">{tt(`calcs.reload.${key}`)}</th>
               <td className="formula-result">{value}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      {ailment.damage_roll !== 50 && (
-        <p className="breakdown-note">
-          {tt('calcs.ailment.rollNote').replace('{roll}', fmtNum(ailment.damage_roll))}
-        </p>
-      )}
-      {ailment.stacks === 0 && <p className="breakdown-note">{tt('calcs.ailment.noRateNote')}</p>}
     </div>
   );
 }
@@ -435,6 +654,9 @@ function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang 
     ...(breakdown.damage ? [breakdown.damage.shared_mods, ...breakdown.damage.rows.map((row) => row.mods)] : []),
     ...(breakdown.skill_dot ?? []).map((row) => row.mods),
   ].flat();
+  const hands = breakdown.hands ?? [];
+  // Each hand lists the lines its own pass counts; the stat's own list would repeat the main hand's.
+  const linesPerHand = hands.some((hand) => hand.mods.length > 0);
   return (
     <div className="breakdown-detail">
       {breakdown.damage && <HitDamageView damage={breakdown.damage} lang={lang} />}
@@ -476,14 +698,26 @@ function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang 
         </>
       )}
       {breakdown.mitigation && breakdown.mitigation.length > 0 && (
-        <MitigationView rows={breakdown.mitigation} lang={lang} />
+        <>
+          <MitigationView rows={breakdown.mitigation} lang={lang} />
+          <EnemyLinesView rows={breakdown.mitigation} lang={lang} />
+        </>
       )}
       {breakdown.ailment && <AilmentView ailment={breakdown.ailment} lang={lang} />}
-      {[...breakdown.mods, ...damageLines].some((m) => !m.active) && (
+      {breakdown.reload && <ReloadView reload={breakdown.reload} lang={lang} />}
+      {breakdown.slots && breakdown.slots.length > 0 && <DefenceSlotsView slots={breakdown.slots} lang={lang} />}
+      {hands.length > 0 && <p className="breakdown-note breakdown-hands-note">{tt('calcs.hand.note')}</p>}
+      {hands.map((hand) => (
+        <section key={hand.hand} className={`breakdown-hand breakdown-hand-${hand.hand}`} aria-label={tt(`calcs.hand.${hand.hand}`)}>
+          <h4 className="breakdown-hand-title">{tt(`calcs.hand.${hand.hand}`)}</h4>
+          <BreakdownTable breakdown={hand} lang={lang} />
+        </section>
+      ))}
+      {!linesPerHand && [...breakdown.mods, ...damageLines].some((m) => !m.active) && (
         <p className="breakdown-note">{tt('calcs.inactiveNote')}</p>
       )}
       {breakdown.damage && <DamageLinesView damage={breakdown.damage} lang={lang} />}
-      {breakdown.mods.length > 0 && <ModLines mods={breakdown.mods} lang={lang} />}
+      {!linesPerHand && breakdown.mods.length > 0 && <ModLines mods={breakdown.mods} lang={lang} />}
     </div>
   );
 }

@@ -78,6 +78,19 @@ pub struct BuffSpec {
 pub struct HitDamageMods<'a> {
     pub shared: Vec<crate::ModEvaluation<'a>>,
     pub by_type: Vec<(DamageType, Vec<crate::ModEvaluation<'a>>)>,
+    /// Per type, the MORE lines that scale only its minimum and only its maximum.
+    pub range_more: Vec<RangeMoreLines<'a>>,
+}
+
+pub type RangeMoreLines<'a> = (Vec<crate::ModEvaluation<'a>>, Vec<crate::ModEvaluation<'a>>);
+
+/// See [`CalculationSession::ailment_lines`].
+#[derive(Debug, Clone)]
+pub struct AilmentLines<'a> {
+    pub chance: Vec<crate::ModEvaluation<'a>>,
+    pub duration: Vec<crate::ModEvaluation<'a>>,
+    pub effect: Vec<crate::ModEvaluation<'a>>,
+    pub rate: Vec<crate::ModEvaluation<'a>>,
 }
 
 /// See [`CalculationSession::skill_dot_mods`].
@@ -719,14 +732,57 @@ impl CalculationSession {
     /// The steps the calculation took from `stat`'s starting value to its
     /// displayed value (a display stat id), read from the terms the stage
     /// itself aggregates. `None` when the stat has no formula here, or when
-    /// the displayed value includes something the steps do not cover (the two
-    /// hands combined, an enemy-side increase to crit chance), so a formula
-    /// is only returned when it ends at the displayed number.
+    /// the displayed value includes something the steps do not cover, so a
+    /// formula is only returned when it ends at the displayed number.
+    ///
+    /// With two weapon passes, the stats each pass computes on its own
+    /// (speed, chance to hit, crit, average hit, hit DPS and the damaging
+    /// ailments) get the steps that merge both hands' values; each hand's own
+    /// steps are [`hand_stat_formula`](Self::hand_stat_formula).
     pub fn stat_formula(&self, stat: &str) -> Option<super::StatFormula> {
         use super::offence;
         let env = &self.env;
         let db = &env.player.mod_db;
         let output = &env.player.output;
+        if let Some(key) = combine_key(stat) {
+            let displayed = match stat {
+                "ActionRate" => output.action_rate,
+                "HitChance" => output.hit_chance * 100.0,
+                "TotalHitAvg" => output.total_hit_avg,
+                "TotalDPS" => output.dps,
+                "CritChance" => output.crit_chance * 100.0,
+                _ => output.crit_multiplier,
+            };
+            let scopes = perform::pass_scopes(env);
+            let formula = match scopes.as_slice() {
+                [(_, cfg, input)] => self.pass_formula(stat, cfg, input)?,
+                _ => {
+                    let main_hand = self.hand_stat_formula(stat, 0)?.value;
+                    let off_hand = self.hand_stat_formula(stat, 1)?.value;
+                    let steps = super::hand_pass::combined_steps(
+                        key,
+                        main_hand,
+                        off_hand,
+                        env.double_hits_when_dual_wielding,
+                    )?;
+                    let merged = steps.current();
+                    steps.finish(merged)
+                }
+            };
+            // The reload cycle scales the rate and the DPS after the passes.
+            let formula = match env.crossbow_reload {
+                Some(reload) if matches!(stat, "ActionRate" | "TotalDPS") => {
+                    let factor = reload.effective_rate / reload.firing_rate;
+                    let scaled = formula.value * factor;
+                    formula.then(super::FormulaOp::Reload, factor, scaled, scaled)
+                }
+                _ => formula,
+            };
+            return ((formula.value - displayed).abs() <= 1e-6).then_some(super::StatFormula {
+                value: displayed,
+                ..formula
+            });
+        }
         let input = perform::player_input(env);
         let hand = perform::main_hand_scope(&self.env);
         let (cfg, hand_input) = match &hand {
@@ -758,25 +814,9 @@ impl CalculationSession {
                 output.lightning_resistance,
             ),
             "ChaosResist" => (resist(0.0, "Chaos", false), output.chaos_resistance),
-            "ActionRate" => (
-                offence::action_rate_terms(db, cfg, hand_input).formula(),
-                output.action_rate,
-            ),
             "Accuracy" => (
                 offence::accuracy_terms(db, cfg, hand_input).formula(),
                 output.accuracy,
-            ),
-            "HitChance" => (
-                offence::hit_chance_terms(db, &env.enemy.mod_db, cfg, hand_input).formula(),
-                output.hit_chance * 100.0,
-            ),
-            "TotalHitAvg" => (
-                offence::hit_pass(db, &env.enemy.mod_db, cfg, hand_input).average_hit_formula(),
-                output.total_hit_avg,
-            ),
-            "TotalDPS" => (
-                offence::hit_pass(db, &env.enemy.mod_db, cfg, hand_input).dps_formula(),
-                output.dps,
             ),
             "TotalDotDPS" => (
                 perform::skill_dot_terms(env).dot_formula(),
@@ -786,31 +826,19 @@ impl CalculationSession {
                 perform::skill_dot_terms(env).combined_formula(),
                 output.combined_dps,
             ),
-            "BleedDPS" => (self.ailment_terms(stat)?.formula(), output.bleed_dps),
-            "IgniteDPS" => (self.ailment_terms(stat)?.formula(), output.ignite_dps),
-            "PoisonDPS" => (self.ailment_terms(stat)?.formula(), output.poison_dps),
-            "CritChance" | "CritMultiplier" => {
-                let enemy = &env.enemy.mod_db;
-                let effective = cfg.mode_effective;
-                let chance = super::crit::crit_chance_terms(db, enemy, cfg, 0.0, effective);
-                let adjust = super::crit::adjust_crit_chance(
-                    db,
-                    cfg,
-                    chance.capped_pct(),
-                    offence::accuracy_hit_chance(db, enemy, cfg, hand_input),
-                    effective,
-                );
-                if stat == "CritChance" {
-                    (chance.formula(&adjust)?, output.crit_chance * 100.0)
-                } else {
-                    let terms = super::crit::crit_multiplier_terms(
-                        db,
-                        enemy,
-                        cfg,
-                        effective.then_some(&adjust),
-                    );
-                    (terms.formula()?, output.crit_multiplier)
-                }
+            "BleedDPS" | "IgniteDPS" | "PoisonDPS" => {
+                let terms = self.ailment_stage_terms(stat)?;
+                let formula = match (&terms.merge, terms.passes.as_slice()) {
+                    (Some(merge), _) => merge.formula(),
+                    (None, [(_, only)]) => only.formula(),
+                    _ => return None,
+                };
+                let displayed = match stat {
+                    "BleedDPS" => output.bleed_dps,
+                    "IgniteDPS" => output.ignite_dps,
+                    _ => output.poison_dps,
+                };
+                (formula, displayed)
             }
             "Armour" | "Evasion" | "EnergyShield" => {
                 let keystones = crate::rules::DefenceKeystones::from_db(db, &env.cfg);
@@ -836,23 +864,102 @@ impl CalculationSession {
         ((formula.value - displayed).abs() <= 1e-6).then_some(formula)
     }
 
-    /// The per-damage-type table behind the displayed average hit: each
-    /// type's range before scaling, its increases and multipliers, and the
-    /// resulting non-critical and critical averages. `None` when the main-hand
-    /// pass alone does not produce the displayed value (two weapon passes
-    /// that differ).
-    pub fn hit_damage_terms(&self) -> Option<super::HitDamageTerms> {
+    /// The weapon hands whose passes the displayed offence values merge:
+    /// main hand then off hand, or empty when a single pass runs.
+    pub fn combined_hands(&self) -> Vec<crate::HandTag> {
+        let scopes = perform::pass_scopes(&self.env);
+        match scopes.as_slice() {
+            [(first, ..), (second, ..)] => vec![*first, *second],
+            _ => Vec::new(),
+        }
+    }
+
+    /// One weapon pass's own steps for a stat the passes compute separately
+    /// (`pass` indexes [`combined_hands`](Self::combined_hands)). `None` when
+    /// the steps do not end at the value that pass produced.
+    pub fn hand_stat_formula(&self, stat: &str, pass: usize) -> Option<super::StatFormula> {
+        let scopes = perform::pass_scopes(&self.env);
+        let (_, cfg, input) = scopes.get(pass)?;
+        let formula = self.pass_formula(stat, cfg, input)?;
+        let value = self.pass_value(stat, pass)?;
+        ((formula.value - value).abs() <= 1e-6).then_some(formula)
+    }
+
+    /// The steps of one offence pass for a stat every pass computes on its own.
+    fn pass_formula(
+        &self,
+        stat: &str,
+        cfg: &CalcConfig,
+        input: &super::MinimalInput,
+    ) -> Option<super::StatFormula> {
+        use super::offence;
+        let db = &self.env.player.mod_db;
+        let enemy = &self.env.enemy.mod_db;
+        Some(match stat {
+            "ActionRate" => offence::action_rate_terms(db, cfg, input).formula(),
+            "HitChance" => offence::hit_chance_terms(db, enemy, cfg, input).formula(),
+            "TotalHitAvg" => offence::hit_pass(db, enemy, cfg, input).average_hit_formula(),
+            "TotalDPS" => offence::hit_pass(db, enemy, cfg, input).dps_formula(),
+            "CritChance" | "CritMultiplier" if super::crit::never_crit(db, cfg) => {
+                super::crit::never_crit_formula()
+            }
+            "CritChance" | "CritMultiplier" => {
+                let effective = cfg.mode_effective;
+                let chance = super::crit::crit_chance_terms(db, enemy, cfg, 0.0, effective);
+                let adjust = super::crit::adjust_crit_chance(
+                    db,
+                    cfg,
+                    chance.capped_pct(),
+                    offence::accuracy_hit_chance(db, enemy, cfg, input),
+                    effective,
+                );
+                if stat == "CritChance" {
+                    chance.formula(&adjust)
+                } else {
+                    super::crit::crit_multiplier_terms(db, enemy, cfg, effective.then_some(&adjust))
+                        .formula()
+                }
+            }
+            _ => return None,
+        })
+    }
+
+    /// What weapon pass `pass` produced for a stat the passes compute
+    /// separately, in display units and before the reload cycle. `None`
+    /// without weapon passes.
+    fn pass_value(&self, stat: &str, pass: usize) -> Option<f64> {
+        let output = &self.env.player.output;
+        let hand = match pass {
+            0 => output.main_hand.as_ref().or(output.off_hand.as_ref()),
+            _ => output.main_hand.as_ref().and(output.off_hand.as_ref()),
+        }?;
+        Some(match stat {
+            "ActionRate" => hand.speed,
+            "HitChance" => hand.hit_chance * 100.0,
+            "TotalHitAvg" => hand.average_hit,
+            "TotalDPS" => hand.total_dps,
+            "CritChance" => hand.crit_chance * 100.0,
+            "CritMultiplier" => hand.crit_multiplier,
+            _ => return None,
+        })
+    }
+
+    /// The per-damage-type table behind the average hit of offence pass
+    /// `pass` (0 = the main-hand or the single pass): each type's range
+    /// before scaling, its increases and multipliers, and the resulting
+    /// non-critical and critical averages. `None` when the rows do not
+    /// produce that pass's average hit.
+    pub fn hit_damage_terms(&self, pass: usize) -> Option<super::HitDamageTerms> {
         let env = &self.env;
-        let input = perform::player_input(env);
-        let hand = perform::main_hand_scope(env);
-        let (cfg, hand_input) = match &hand {
-            Some((cfg, input)) => (cfg, input),
-            None => (&env.cfg, &input),
-        };
+        let scopes = perform::pass_scopes(env);
+        let (_, cfg, input) = scopes.get(pass)?;
         let db = &env.player.mod_db;
-        let pass = super::offence::hit_pass(db, &env.enemy.mod_db, cfg, hand_input);
-        ((pass.crit_pass.total_hit_avg - env.player.output.total_hit_avg).abs() <= 1e-6)
-            .then(|| pass.damage_terms(db, cfg, hand_input))
+        let hit = super::offence::hit_pass(db, &env.enemy.mod_db, cfg, input);
+        let average = self
+            .pass_value("TotalHitAvg", pass)
+            .unwrap_or(env.player.output.total_hit_avg);
+        ((hit.crit_pass.total_hit_avg - average).abs() <= 1e-6)
+            .then(|| hit.damage_terms(db, cfg, input))
             .flatten()
     }
 
@@ -862,10 +969,10 @@ impl CalculationSession {
     /// the active INC values of both lists add up to that type's increase
     /// in [`hit_damage_terms`](Self::hit_damage_terms), the MORE values
     /// multiply to its multiplier.
-    pub fn hit_damage_mods(&self, types: &[DamageType]) -> HitDamageMods<'_> {
+    pub fn hit_damage_mods(&self, pass: usize, types: &[DamageType]) -> HitDamageMods<'_> {
         let env = &self.env;
-        let hand = perform::main_hand_scope(env);
-        let cfg = hand.as_ref().map_or(&env.cfg, |(cfg, _)| cfg);
+        let scopes = perform::pass_scopes(env);
+        let cfg = scopes.get(pass).map_or(&env.cfg, |(_, cfg, _)| cfg);
         let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
         let db = &env.player.mod_db;
         HitDamageMods {
@@ -874,27 +981,98 @@ impl CalculationSession {
                 .iter()
                 .map(|ty| (*ty, super::damage::evaluate_type_scaling(db, &cfg_hit, *ty)))
                 .collect(),
+            range_more: types
+                .iter()
+                .map(|ty| super::damage::evaluate_range_more(db, &cfg_hit, *ty))
+                .collect(),
         }
     }
 
-    /// How the enemy changes each damage type of the average hit on the way
-    /// to the displayed DPS. `None` when the enemy is not part of the
-    /// calculation, or the main-hand pass alone does not produce the
-    /// displayed DPS.
-    pub fn hit_mitigation_terms(&self) -> Option<Vec<super::HitMitigationPart>> {
+    /// The lines behind each of `types`' ranges before conversion
+    /// (`HitDamageTerms::sources`), as the damage stage reads them for
+    /// offence pass `pass`: added damage and its effectiveness, and the
+    /// lines that convert that type or add a share of it as another.
+    pub fn hit_source_mods(
+        &self,
+        pass: usize,
+        types: &[DamageType],
+    ) -> Vec<super::damage::SourceLines<'_>> {
         let env = &self.env;
-        let input = perform::player_input(env);
-        let hand = perform::main_hand_scope(env);
-        let (cfg, hand_input) = match &hand {
-            Some((cfg, input)) => (cfg, input),
-            None => (&env.cfg, &input),
-        };
+        let scopes = perform::pass_scopes(env);
+        let cfg = scopes.get(pass).map_or(&env.cfg, |(_, cfg, _)| cfg);
+        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
+        let db = &env.player.mod_db;
+        types
+            .iter()
+            .map(|ty| super::damage::evaluate_source_lines(db, &cfg_hit, *ty))
+            .collect()
+    }
+
+    /// How the enemy changes each damage type of the average hit of offence
+    /// pass `pass` on the way to its DPS. `None` when the enemy is not part
+    /// of the calculation, or the pass does not produce the DPS the stage got.
+    pub fn hit_mitigation_terms(&self, pass: usize) -> Option<Vec<super::HitMitigationPart>> {
+        let env = &self.env;
+        let scopes = perform::pass_scopes(env);
+        let (_, cfg, input) = scopes.get(pass)?;
         let db = &env.player.mod_db;
         let enemy = &env.enemy.mod_db;
-        let pass = super::offence::hit_pass(db, enemy, cfg, hand_input);
-        ((pass.dps - env.player.output.dps).abs() <= 1e-6)
-            .then(|| pass.mitigation_terms(db, enemy, cfg))
+        let hit = super::offence::hit_pass(db, enemy, cfg, input);
+        let dps = self
+            .pass_value("TotalDPS", pass)
+            .unwrap_or(env.player.output.dps);
+        ((hit.dps - dps).abs() <= 1e-6)
+            .then(|| hit.mitigation_terms(db, enemy, cfg))
             .flatten()
+    }
+
+    /// The `slot_scaled` step of `Armour` / `Evasion` / `EnergyShield` per
+    /// item slot: the parts add up to that step's amount. Empty for other
+    /// stats and when no line is scoped to a slot that has the defence.
+    pub fn defence_slot_parts(&self, stat: &str) -> Vec<super::DefenceSlotPart> {
+        let index = match stat {
+            "Armour" => 0,
+            "Evasion" => 1,
+            "EnergyShield" => 2,
+            _ => return Vec::new(),
+        };
+        let env = &self.env;
+        let db = &env.player.mod_db;
+        let keystones = crate::rules::DefenceKeystones::from_db(db, &env.cfg);
+        let (_, mut terms) =
+            super::defence::defence_resource_terms(db, &env.cfg, &env.player.base, &keystones);
+        std::mem::take(&mut terms[index].slot_parts)
+    }
+
+    /// The enemy's own lines behind each of `types`' rows in
+    /// [`hit_mitigation_terms`](Self::hit_mitigation_terms), read in the
+    /// config that stage mitigates pass `pass` in.
+    pub fn hit_mitigation_mods(
+        &self,
+        pass: usize,
+        types: &[DamageType],
+    ) -> Vec<(DamageType, super::EnemyMitigationLines<'_>)> {
+        let scopes = perform::pass_scopes(&self.env);
+        let Some((_, cfg, _)) = scopes.get(pass) else {
+            return Vec::new();
+        };
+        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
+        let enemy = &self.env.enemy.mod_db;
+        types
+            .iter()
+            .map(|ty| {
+                (
+                    *ty,
+                    super::offence::enemy_mitigation_lines(enemy, &cfg_hit, *ty),
+                )
+            })
+            .collect()
+    }
+
+    /// The reload cycle behind the `reload` step of `ActionRate` and
+    /// `TotalDPS` (`None` when the skill does not reload).
+    pub fn crossbow_reload(&self) -> Option<super::CrossbowReload> {
+        self.env.crossbow_reload
     }
 
     /// The per-damage-type table behind the skill's own damage over time
@@ -935,23 +1113,49 @@ impl CalculationSession {
     }
 
     /// What the ailment stage computed `stat` (`BleedDPS` / `IgniteDPS` /
-    /// `PoisonDPS`) with: the source hit, the chance to apply, the active
-    /// instance estimate and the multipliers. `None` when the ailment is not
-    /// applied, or its DPS blends two weapon passes.
-    pub fn ailment_terms(&self, stat: &str) -> Option<super::AilmentTerms> {
+    /// `PoisonDPS`) with, per pass that applies it: the source hit, the
+    /// chance to apply, the active instance estimate and the multipliers;
+    /// and how two weapon passes were merged. `None` when the ailment is
+    /// not applied.
+    pub fn ailment_stage_terms(&self, stat: &str) -> Option<&super::AilmentStageTerms> {
         let kind = ailment_of(stat)?;
         self.env
             .ailment_terms
             .iter()
             .find(|(ailment, _)| *ailment == kind)
-            .map(|(_, terms)| *terms)
+            .map(|(_, terms)| terms)
     }
 
-    /// The config `stat`'s stage evaluates modifiers in: the main-hand pass
+    /// The player's lines behind the inputs of a damaging ailment's steps
+    /// (`BleedDPS` / `IgniteDPS` / `PoisonDPS`), as the ailment stage reads
+    /// them: the chance to apply and the duration in the ailment's own
+    /// config, the ailment effect and the faster / slower damage rate in the
+    /// session config. Modifiers on the enemy that add to these are not listed.
+    pub fn ailment_lines(&self, stat: &str) -> Option<AilmentLines<'_>> {
+        use super::ailment;
+        let kind = ailment_of(stat)?;
+        let (name, from_hit_size) = match kind {
+            AilmentType::Bleed => ("Bleed", false),
+            AilmentType::Poison => ("Poison", false),
+            _ => ("Ignite", true),
+        };
+        let db = &self.env.player.mod_db;
+        let cfg = &self.env.cfg;
+        let scoped = ailment::ailment_scoped_cfg(cfg, kind);
+        let (faster, slower) = ailment::rate_mod_names(name);
+        Some(AilmentLines {
+            chance: db.evaluate_names(&scoped, &ailment::chance_mod_names(name, from_hit_size)),
+            duration: db.evaluate_names(&scoped, &ailment::duration_mod_names(kind)),
+            effect: db.evaluate_names(cfg, &ailment::effect_mod_names()),
+            rate: db.evaluate_names(cfg, &[faster, slower]),
+        })
+    }
+
+    /// The config `stat`'s stage evaluates modifiers in: offence pass `pass`
     /// for the per-hand stats (which also counts that weapon's own lines),
     /// the ailment's own config for a damaging ailment, the session config
     /// otherwise.
-    fn stat_cfg(&self, stat: &str) -> std::borrow::Cow<'_, CalcConfig> {
+    fn stat_cfg(&self, stat: &str, pass: usize) -> std::borrow::Cow<'_, CalcConfig> {
         use std::borrow::Cow;
         if let Some(kind) = ailment_of(stat) {
             return Cow::Owned(super::ailment::ailment_scoped_cfg(&self.env.cfg, kind));
@@ -959,7 +1163,8 @@ impl CalculationSession {
         if matches!(
             stat,
             "ActionRate" | "CritChance" | "CritMultiplier" | "Accuracy" | "HitChance"
-        ) && let Some((cfg, _)) = perform::main_hand_scope(&self.env)
+        ) && !self.env.hand_sources.is_empty()
+            && let Some((_, cfg, _)) = perform::pass_scopes(&self.env).into_iter().nth(pass)
         {
             return Cow::Owned(cfg);
         }
@@ -969,18 +1174,29 @@ impl CalculationSession {
     /// The modifiers `stat`'s stage reads ([`stat_mod_names`](Self::stat_mod_names))
     /// as that stage treats them: each row says whether it applies and with
     /// which value. For the per-hand stats the context is the main-hand
-    /// pass; an off-hand pass can match weapon-specific rows differently.
+    /// pass; [`hand_stat_mods`](Self::hand_stat_mods) reads another pass.
     pub fn evaluated_stat_mods(&self, stat: &str) -> Vec<crate::ModEvaluation<'_>> {
+        self.hand_stat_mods(stat, 0)
+    }
+
+    /// [`evaluated_stat_mods`](Self::evaluated_stat_mods) in offence pass
+    /// `pass`: an off-hand pass can match weapon-specific rows differently.
+    pub fn hand_stat_mods(&self, stat: &str, pass: usize) -> Vec<crate::ModEvaluation<'_>> {
         let names = self.stat_mod_names(stat);
-        let cfg = self.stat_cfg(stat);
+        let cfg = self.stat_cfg(stat, pass);
         self.env.player.mod_db.evaluate_names(&*cfg, &names)
     }
 
     /// `(BASE sum, INC sum, MORE product)` of the modifiers `stat`'s stage
     /// reads, through the same queries and in the same context as the stage.
     pub fn stat_totals(&self, stat: &str) -> (f64, f64, f64) {
+        self.hand_stat_totals(stat, 0)
+    }
+
+    /// [`stat_totals`](Self::stat_totals) in offence pass `pass`.
+    pub fn hand_stat_totals(&self, stat: &str, pass: usize) -> (f64, f64, f64) {
         let names = self.stat_mod_names(stat);
-        let cfg = self.stat_cfg(stat);
+        let cfg = self.stat_cfg(stat, pass);
         let db = &self.env.player.mod_db;
         (
             db.sum(ModType::Base, &*cfg, &names),
@@ -995,6 +1211,20 @@ impl CalculationSession {
     pub fn all_mods(&self) -> Vec<&Modifier> {
         self.env.player.mod_db.iter_mods().collect()
     }
+}
+
+/// The `hand_pass::COMBINE_TABLE` name of a displayed stat every offence
+/// pass computes on its own.
+fn combine_key(stat: &str) -> Option<&'static str> {
+    Some(match stat {
+        "ActionRate" => "Speed",
+        "HitChance" => "HitChance",
+        "TotalHitAvg" => "AverageDamage",
+        "TotalDPS" => "TotalDPS",
+        "CritChance" => "CritChance",
+        "CritMultiplier" => "CritMultiplier",
+        _ => return None,
+    })
 }
 
 /// The damaging ailment a display stat id (`BleedDPS` / `IgniteDPS` / `PoisonDPS`) belongs to.
