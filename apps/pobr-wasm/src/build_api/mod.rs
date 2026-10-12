@@ -1,6 +1,6 @@
 //! The web frontend's JSON contract: build decoding / full calculation / breakdown / attribution.
 //!
-//! Contract principle (docs/web-frontend-plan.md P0): the frontend only consumes the JSON
+//! Contract principle: the frontend only consumes the JSON
 //! shapes defined here — it never imports Rust types and never re-implements
 //! any calculation. Every value is computed by this module calling into
 //! existing crate capabilities. JSON shapes are pinned by

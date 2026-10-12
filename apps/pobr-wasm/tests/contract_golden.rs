@@ -1,4 +1,4 @@
-//! Web JSON contract golden (docs/web-frontend-plan.md 0.6): pins the **JSON shape** (key
+//! Web JSON contract golden: pins the **JSON shape** (key
 //! set) of `decode_build_json` / `calculate_build_json` / `attribution_json`,
 //! matching `web/src/api/types.ts`'s hand-written TS types one-to-one.
 //!

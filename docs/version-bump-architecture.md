@@ -1,11 +1,10 @@
 # Why version bumps look like 100k-line changes, and the v0.0.3 plan to fix it
 
-Status: **all five items delivered on v0.0.3-dev** (2026-07-17). Companion to
-`adapting-to-0.5.4b.md` (which tracks the remaining 0.5.4b engine gaps).
+Status: **all five items delivered on v0.0.3-dev** (2026-07-17).
 Delivery map: P0-1 → `pobr_gamedata::test_pins` + `data/<ver>/generated/test_pins.json`
 (historical bless entry: `POBR_BLESS_PINS=1`; no longer run automatically); P0-2 →
-`pipeline/diff-vendor-calcs.sh` (sample report: `devs/docs/audits/vendor-delta-ce8bffab.md`,
-which retro-identifies Mageblood without parity archaeology); P1-3 →
+`pipeline/diff-vendor-calcs.sh` (its report on the 0.5.4b vendor update
+retro-identified Mageblood without parity archaeology); P1-3 →
 `data/overlay-common/special_mods.json` (133 entries) with id-override merge in
 `GameData::special_mods`; P1-4 → `pipeline/bump-version.sh`; P2-5 → `.gitattributes`.
 The acceptance test remains the next real GGG patch (§5).
@@ -142,8 +141,7 @@ tree-snapshot carry-forward, special-mods, precompile, and after P0-1 the pin
 bless) → `gen-zh-cn.mjs` → `web pnpm sync-data` → `recapture_golden.py` →
 targeted test gate (`driver.sh versions` + parity + gamedata). Idempotent,
 resumable per step (reuse `soft_step`), prints a manual-decision summary at
-the end (golden flip is a *decision*, not automated — see
-`adapting-to-0.5.4b.md` for why).
+the end (re-recording reference values is a *decision*, not automated).
 
 ### P2-5: Mark generated files in `.gitattributes`
 
