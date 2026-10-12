@@ -41,6 +41,10 @@ player rankings. This is a future product constraint, not a new backend contract
 
 ## Calculation checks and their limits
 
+> Later change: the separate golden data version was removed. Tests and PoB2
+> reference values now follow the active version, and only the active snapshot
+> plus the two most recent are kept (see the [maintainer guide](maintainer-guide.md)).
+
 The existing targeted checks passed without changing formulas or data:
 
 - `cargo test -p pobr-build --test parity ninja_parity:: -- --nocapture`:

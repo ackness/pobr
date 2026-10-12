@@ -4,8 +4,8 @@ Source review: 2026-09-25. PoB2 reference:
 `ce566eac45ea8a86477f513c7ee65a1ebe60014e`; PoBR active data: `4.5.5.2`.
 
 This is a **source/contract comparison, not a completed GUI walkthrough**.
-No running PoB2 desktop UI was inspected. TODO 4.3 remains open for the
-same-build visual check below; passing calculation tests cannot replace it.
+No running PoB2 desktop UI was inspected. The same-build visual check below
+remains open; passing calculation tests cannot replace it.
 
 ## Observable differences
 
@@ -46,4 +46,4 @@ screens and unrounded corresponding output fields. Check Life/Mana/ES,
 resistances, hit chance, crit, action rate, hit DPS, DoT and combined DPS;
 expand one conditional modifier and one MORE modifier. Classify each difference
 as selection, actor, formula support, raw-versus-evaluated breakdown or display
-rounding. Only after this visual evidence exists should TODO 4.3 be checked off.
+rounding. Only this visual evidence closes the walkthrough.

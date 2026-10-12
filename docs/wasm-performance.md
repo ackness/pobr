@@ -226,7 +226,12 @@ that expansion also only walks non-support gems.
 The actual response selects `ElementalWeaknessPlayer`, group index 4, with
 `TotalDPS: 0`. `fullDpsJson` includes Living Bomb, Spark and Comet but no Doom Blast.
 This is a main-skill selection/secondary-effect enumeration bug, not failed
-Base64, zlib or XML parsing. It remains unfixed by this documentation change.
+Base64, zlib or XML parsing. It was unfixed when this was recorded.
+
+> Later change: fixed. Schema 8 enumerates support-granted effects, replaces
+> `fullDpsJson` with `skillMetricsJson`, and the fixture now resolves effect 2
+> (`ChaosFrogExplosionPlayer`) and effect 3 (`DoomBlastPlayer`) separately; see
+> `crates/pobr-build/tests/skills/skill_metrics.rs` and [web contracts](web-contracts.md).
 
 Other observed gaps include Bonded effects, conditional repeats, constant flask
 effects and additional-projectile mechanics. The historical Pathfinder diagnostic
