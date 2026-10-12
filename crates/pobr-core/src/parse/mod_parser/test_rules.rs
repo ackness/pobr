@@ -4,7 +4,7 @@
 //! CLAUDE.md: I/O is contained to pobr-gamedata alone). This module
 //! **compiles only under the `test-rules` feature**, where it makes an
 //! exception to pull in serde_json + fs and read the parser rule files from
-//! the repo's `data/4.5.0.3.4/`, compiling them into [`CompiledParserRules`]
+//! the repo's `data/<version>/`, compiling them into [`CompiledParserRules`]
 //! — so downstream integration tests (in separate crates) can grab the
 //! rules when threading the A2 engine path, without each test duplicating
 //! its own loading logic. Production builds never enable this feature, so

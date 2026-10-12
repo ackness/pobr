@@ -53,6 +53,7 @@ ManaUnreserved = "可用魔力"
 LifeRegen = "每秒生命恢復"
 ManaRegen = "每秒魔力恢復"
 EnergyShieldRegen = "每秒能量護盾恢復"
+WardRegen = "每秒符文結界恢復"
 EsRechargePerSecond = "每秒護盾充能量"
 # --- Defence / Mitigation ---
 Armour = "護甲"

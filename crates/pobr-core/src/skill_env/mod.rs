@@ -53,7 +53,7 @@ pub use resolve::{
     GemPropertyLookup, GemPropertyScanView, GrantedPassiveLookup, ResolvedCost, ResolvedSkillLevel,
     SkillLevelLookup, additional_gem_levels, gem_property_applies, gem_property_bonuses,
     gemling_quality_flag, granted_passive_stats, resolve_skill_level, support_granted_gem_levels,
-    support_stat_set_index,
+    support_granted_gem_quality, support_stat_set_index,
 };
 pub use stat_map::{
     StatMapCompareRecord, StatMapCtx, StatMapMode, curse_stat_modifiers, debuff_stat_modifiers,

@@ -12,7 +12,7 @@
 //!   the legacy `UsingMace` global-condition approximation, which applied to
 //!   both legs, has been retired along with that feature).
 //!
-//! Base values (`data/4.5.0.3.4/base/base_items.json`):
+//! Base values (`data/<version>/base/base_items.json`):
 //! Wooden Club (One Hand Mace): physical 6-10, 690ms, 5% crit;
 //! Shortsword (One Hand Sword): physical 6-9, 645ms, 5% crit.
 

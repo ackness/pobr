@@ -8,7 +8,7 @@
 //! When the `wasm` feature is enabled, the [`wasm`] module additionally
 //! exposes same-named wrappers via `#[wasm_bindgen]`, bridging to JS.
 //!
-//! Web frontend contract (TODO.md P0): `web/` only consumes this crate's
+//! Web frontend contract (docs/web-frontend-plan.md P0): `web/` only consumes this crate's
 //! JSON shapes — [`decode_build_json`] / [`calculate_build_json`] /
 //! [`attribution_json`] and the data-initialization entry points ([`state`]).
 //! The shapes are pinned by `tests/contract_golden.rs`.

@@ -124,6 +124,12 @@ impl CharacterBase {
                 constants.base_evasion,
                 "character base evasion rating",
             ),
+            // CalcSetup.lua:964 `WardRegenPercent BASE BaseWardRegenerationPercentPerMinute / 60`.
+            base_modifier(
+                "WardRegenPercent",
+                constants.ward_regeneration_per_minute_pct / 60.0,
+                "character base runic ward regeneration",
+            ),
         ]
     }
 }

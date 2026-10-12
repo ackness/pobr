@@ -5,7 +5,7 @@
 //! without vendor doesn't hang). Drift-diff and derived-field cases are pure
 //! Rust (in `src/extract_parser_rules.rs`'s unit tests); this file only
 //! covers end-to-end: byte equivalence between a fresh re-extraction and the
-//! committed `data/4.5.0.3.4/overlay/mod_parser_rules.json` (the
+//! committed `data/<version>/overlay/mod_parser_rules.json` (the
 //! parser-rules segment of the regen-check guard, and also a proof of determinism).
 
 use std::path::{Path, PathBuf};
@@ -59,7 +59,9 @@ fn regenerated_matches_committed_artifact() {
         eprintln!("skip: incomplete vendor checkout (missing ModParser.lua / runtime/lua)");
         return;
     }
-    let committed_path = repo_root().join("data/4.5.0.3.4/overlay/mod_parser_rules.json");
+    let version = pobr_gamedata::data_version();
+    let rel_path = format!("data/{version}/overlay/mod_parser_rules.json");
+    let committed_path = repo_root().join(&rel_path);
     let committed = std::fs::read_to_string(&committed_path)
         .expect("mod_parser_rules.json should already be committed to the repo (tool-generated artifact, do not hand-edit)");
 
@@ -69,7 +71,7 @@ fn regenerated_matches_committed_artifact() {
         files: vec!["ModParser".to_string()],
         version_file: None,
         // Matches the --out recorded in the committed file's _meta.regen_command
-        out_for_meta: Some("data/4.5.0.3.4/overlay/mod_parser_rules.json".to_string()),
+        out_for_meta: Some(rel_path),
     };
     let regenerated = match run_extract_parser_rules(&args) {
         Ok(r) => r,

@@ -167,6 +167,24 @@ pub(crate) fn support_granted_gem_levels(
     pobr_core::skill_env::support_granted_gem_levels(&judgement, &gems, data)
 }
 
+/// The quality half of [`support_granted_gem_levels`] (same scope and compatibility rules).
+pub(crate) fn support_granted_gem_quality(
+    group: &SocketGroup,
+    data: &BuildData,
+    skill_id: &str,
+) -> u32 {
+    if data
+        .granted_effects
+        .get(skill_id)
+        .is_none_or(|e| e.is_support)
+    {
+        return 0;
+    }
+    let judgement = crate::support::judge_group_supports(group, data, skill_id, group.from_gem());
+    let gems = group.gem_inputs();
+    pobr_core::skill_env::support_granted_gem_quality(&judgement, &gems, data)
+}
+
 /// Scans every GemProperty mod source (equipment implicit/explicit/enchant + jewels +
 /// **allocated tree node stats** — vendor's GemProperty LIST goes into the global
 /// modDB, and the tree is one of its main carriers: e.g. the "Skill Gem Quality" small
@@ -249,22 +267,37 @@ pub(crate) fn apply_gem_quality_bonuses(build: &Build, data: &BuildData) -> Opti
         .into_iter()
         .filter(|b| b.kind == GemPropertyKind::Quality)
         .collect();
-    if bonuses.is_empty() {
+    // Per-gem additions are computed against the original build, so a support's
+    // granted quality is judged with the group's unmodified gems.
+    let additions: Vec<Vec<u32>> = build
+        .socket_groups
+        .iter()
+        .map(|group| {
+            group
+                .gem_skills
+                .iter()
+                .map(|gem| {
+                    let skill_types = data
+                        .granted_effects
+                        .get(&gem.skill_id)
+                        .map(|e| e.skill_types.as_slice())
+                        .unwrap_or(&[]);
+                    let from_mods: u32 = bonuses
+                        .iter()
+                        .filter(|b| gem_property_applies(b, data, skill_types, &gem.skill_id))
+                        .map(|b| b.value)
+                        .sum();
+                    from_mods + support_granted_gem_quality(group, data, &gem.skill_id)
+                })
+                .collect()
+        })
+        .collect();
+    if additions.iter().flatten().all(|add| *add == 0) {
         return None;
     }
     let mut adjusted = build.clone();
-    for group in &mut adjusted.socket_groups {
-        for gem in &mut group.gem_skills {
-            let skill_types = data
-                .granted_effects
-                .get(&gem.skill_id)
-                .map(|e| e.skill_types.as_slice())
-                .unwrap_or(&[]);
-            let add: u32 = bonuses
-                .iter()
-                .filter(|b| gem_property_applies(b, data, skill_types, &gem.skill_id))
-                .map(|b| b.value)
-                .sum();
+    for (group, group_additions) in adjusted.socket_groups.iter_mut().zip(&additions) {
+        for (gem, &add) in group.gem_skills.iter_mut().zip(group_additions) {
             if add > 0 {
                 gem.quality += add;
                 if group.active_skill_id.as_deref() == Some(gem.skill_id.as_str()) {

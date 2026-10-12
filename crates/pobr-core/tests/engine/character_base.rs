@@ -49,6 +49,28 @@ fn character_base_derives_life_mana_accuracy_from_level_and_attributes() {
     );
 }
 
+/// Inherent Runic Ward regeneration (vendor CalcSetup.lua:964: 300% per minute =
+/// 5% of ward per second) feeds the shared regen formula. Oracle on the titan
+/// fixture: Ward 563 → WardRegen round(28.15, 1) = 28.2.
+#[test]
+fn character_base_regenerates_ward() {
+    let base = CharacterBase {
+        level: 1,
+        strength: 0.0,
+        dexterity: 0.0,
+        intelligence: 0.0,
+    };
+    let db = db_of(base.modifiers(&constants()));
+    let cfg = CalcConfig::new();
+
+    assert_eq!(
+        db.sum(ModType::Base, &cfg, &[ModName::from("WardRegenPercent")]),
+        5.0
+    );
+    let regen = pobr_core::calc::calc_regen(&db, &cfg, 563.0, "WardRegen");
+    assert!((regen - 28.15).abs() < 1e-9, "regen = {regen}");
+}
+
 #[test]
 fn character_base_scales_with_level() {
     let base = CharacterBase {

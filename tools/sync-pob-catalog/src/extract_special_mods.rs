@@ -1597,8 +1597,7 @@ mod tests {
 
     #[test]
     fn vendor_suppression_patterns_keep_leading_literal_plus() {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../data/4.5.5.2/generated/special_vendor.json");
+        let path = pobr_gamedata::current_data_dir().join("generated/special_vendor.json");
         let raw = std::fs::read_to_string(path).unwrap();
         let golden: SpecialModsDef = serde_json::from_str(&raw).unwrap();
         let cases = [

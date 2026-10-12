@@ -82,6 +82,15 @@ pub struct CharacterConstantsDef {
     /// Intelligence per level (vendor-only: `Data/Misc.lua:159`'s
     /// `intelligence_per_level = 0`).
     pub intelligence_per_level: f64,
+    /// Inherent Runic Ward regeneration rate, % of ward per minute (vendor
+    /// `Data/Misc.lua:129`'s `BaseWardRegenerationPercentPerMinute = 300`).
+    /// Defaulted so snapshots written before the field existed keep loading.
+    #[serde(default = "default_ward_regeneration_per_minute_pct")]
+    pub ward_regeneration_per_minute_pct: f64,
+}
+
+fn default_ward_regeneration_per_minute_pct() -> f64 {
+    300.0
 }
 
 // Default = fallback values
@@ -128,6 +137,8 @@ impl Default for CharacterConstantsDef {
             strength_per_level: 0.0,
             dexterity_per_level: 0.0,
             intelligence_per_level: 0.0,
+            // vendor-only (Misc.lua:129).
+            ward_regeneration_per_minute_pct: default_ward_regeneration_per_minute_pct(),
         }
     }
 }

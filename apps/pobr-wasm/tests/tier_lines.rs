@@ -1,10 +1,8 @@
 //! Integration tests for affix tier annotation (real data).
 //!
-//! - The current data version (`data/CURRENT`, which has mods'
-//!   `group`/`spawn_weights` plus the StatDescriptions overlay): a rare
-//!   item's explicit lines should carry the `tier` field;
-//! - The golden version (4.5.0.3.4, no pool data): the `tier` field is
-//!   omitted entirely (backwards compatible, the contract shape doesn't change).
+//! The active data version has mods' `group`/`spawn_weights` plus the
+//! StatDescriptions overlay, so a rare item's explicit lines carry the `tier`
+//! field.
 
 use pobr_gamedata::repo_data_root;
 use serde_json::Value;
@@ -47,25 +45,4 @@ fn current_data_annotates_explicit_tiers() {
         let affix = l["affix"].as_str().unwrap();
         assert!(affix == "prefix" || affix == "suffix");
     }
-}
-
-/// Graceful degradation: a data pack lacking the tier pool fields
-/// (group/spawn_weights) doesn't get tiers labeled. Explicitly pinned to
-/// 4.5.0.3.4 — this is a fixture pin for "an old-format pack predating the
-/// tier data channel" (not a data-content-count pin, so it doesn't go into
-/// the test_pins snapshot); the golden version (4.5.4.3 onward) already has
-/// pool data and would label tiers, so this degradation test case can't
-/// borrow `GOLDEN_PARITY_DATA_VERSION`. Skipped once the old pack gets cleaned up.
-#[test]
-fn golden_data_without_pool_fields_omits_tiers() {
-    let dir = repo_data_root().join("4.5.0.3.4");
-    if !dir.is_dir() {
-        eprintln!("SKIP: legacy-format fixture data pack 4.5.0.3.4 not in the repo (cleaned up)");
-        return;
-    }
-    let lines = classify(dir.to_str().unwrap());
-    assert!(
-        lines.iter().all(|l| l.get("tier").is_none()),
-        "a data pack without pool fields should not have tiers tagged"
-    );
 }

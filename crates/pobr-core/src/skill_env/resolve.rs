@@ -372,6 +372,35 @@ pub fn support_granted_gem_levels(
     total
 }
 
+/// The +N% gem quality granted by a **compatible** support in the same group (vendor
+/// SkillStatMap.lua:3097 `supported_active_skill_gem_quality_%` → a
+/// `SupportedGemProperty LIST {key=quality}`), the quality half of
+/// [`support_granted_gem_levels`] — e.g. Dialla's Desire's +5% (gemling's Trinity
+/// 34→39, pinned by oracle per-skill quality).
+pub fn support_granted_gem_quality(
+    judgement: &GroupSupportJudgement,
+    gems: &[GemInput],
+    data: &dyn StatSetLookup,
+) -> u32 {
+    let mut total = 0u32;
+    for sup in &judgement.compatible {
+        let host = &gems[sup.gem_index];
+        let set_index = support_stat_set_index(sup, gems);
+        let stats = data.effect_stats(
+            sup.effect_id.as_str(),
+            host.gem_level,
+            host.quality,
+            set_index,
+        );
+        for s in &stats.base {
+            if s.stat == "supported_active_skill_gem_quality_%" && s.value > 0.0 {
+                total += s.value as u32;
+            }
+        }
+    }
+    total
+}
+
 /// This support effect's statSet selection: the gem instance's `statSetIndex` is only
 /// meaningful for the **primary effect**; an additionally-granted support half uses the
 /// default set (vendor's additional effects share the gemInstance but the set selection

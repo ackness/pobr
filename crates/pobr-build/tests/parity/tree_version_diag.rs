@@ -43,9 +43,8 @@ fn captures_tree_version_from_real_build() {
 /// loaded, not a wholesale mismatch); the few unresolved nodes get
 /// **surfaced by diagnosis** rather than silently swallowed.
 ///
-/// Note: the active golden version 4.5.0.3.4's passive_tree is measurably
-/// missing several nodes this build allocates (e.g. skill 35387/17044/6554,
-/// Cold Damage nodes present in 4.5.2.1.3 but missing from 4.5.0.3.4) — this
+/// Note: a data version's passive_tree can lack nodes this build allocates
+/// (older snapshots missed skill 35387/17044/6554, Cold Damage nodes) — this
 /// is exactly the "calc silently drops nodes" behaviour gap B is meant to
 /// surface. So this test asserts "mostly resolves + diagnosis is
 /// self-consistent" rather than pinning exact cleanliness (which would treat

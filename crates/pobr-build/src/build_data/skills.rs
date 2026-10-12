@@ -196,9 +196,8 @@ impl BuildData {
     /// effect", PoB2 `CalcTools.lua:147-152`'s `includeAltQualityStats`) — the consumer
     /// checks the flag and calls this explicitly ([`Self::effect_stats`] never includes
     /// alt rows).
-    // ponytail: currently only Spirit reservation efficiency consumes this channel
-    // (pinned by gemling parity); wire it up on the offence/statmap side once a fixture
-    // forces the deviation (same accessor, zero data changes).
+    // Consumers: Spirit reservation efficiency, buff skill payloads
+    // (`skill_env::buff_skill_specs`) and the main skill's quality segment.
     pub fn alt_quality_stats(&self, skill_id: &str, quality: u32) -> Vec<SkillDamageStat> {
         if quality == 0 {
             return Vec::new();

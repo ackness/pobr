@@ -18,9 +18,7 @@ use pobr_data::catalog::parser_rules::ModParserRulesDoc;
 use pobr_data::catalog::stat_descriptions::StatDescriptionsDef;
 
 fn overlay_path(file: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../data/4.5.0.3.4/overlay")
-        .join(file)
+    pobr_gamedata::current_data_dir().join("overlay").join(file)
 }
 
 fn load_rules() -> CompiledParserRules {

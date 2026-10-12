@@ -80,7 +80,7 @@ impl Corpus {
     }
 }
 
-/// Collect all four corpus layers. `data_dir` is the version directory (e.g. `data/4.5.0.3.4`).
+/// Collect all four corpus layers. `data_dir` is the version directory (e.g. `data/<version>`).
 pub fn collect(data_dir: &Path, corpus_extra: Option<&Path>) -> Result<Corpus, String> {
     // text → source set (BTreeMap gives us dedup and lexicographic order for free).
     let mut map: BTreeMap<String, SourceSet> = BTreeMap::new();

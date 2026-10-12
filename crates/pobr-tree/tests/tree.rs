@@ -275,6 +275,41 @@ fn compute_node_mods_splits_multiline_stats_into_separate_texts() {
 }
 
 #[test]
+fn compute_node_mods_strips_bullets_of_colour_labelled_entries_only() {
+    // Gemling "Gem Studded" lists complete modifiers ("•Blue: ..."); PoB2's tree text
+    // has no bullet. Wildsurge Incantation's entries depend on their heading and
+    // must not turn into unconditional modifiers.
+    let json = r#"[
+      {
+        "skill": 7,
+        "id": "node_gem_studded",
+        "name": "Gem Studded",
+        "kind": "notable",
+        "stats": ["For each colour, gain:\n•Blue: Skills have 30% less cost"],
+        "connections": []
+      },
+      {
+        "skill": 8,
+        "id": "node_wildsurge",
+        "name": "Wildsurge Incantation",
+        "kind": "keystone",
+        "stats": ["Storm and Plant Spells:\n• deal 50% more damage"],
+        "connections": []
+      }
+    ]"#;
+    let tree = PassiveTree::from_json(json).unwrap();
+    let spec = PassiveTreeSpec {
+        allocated_nodes: vec![NodeId(7), NodeId(8)],
+        ..Default::default()
+    };
+
+    let mods = tree.compute_node_mods(&spec);
+
+    assert_eq!(mods[0].modifier_texts[1], "Blue: Skills have 30% less cost");
+    assert_eq!(mods[1].modifier_texts[1], "• deal 50% more damage");
+}
+
+#[test]
 fn from_nodes_round_trips_with_positions() {
     let nodes = vec![
         PassiveNodeDef {

@@ -223,9 +223,10 @@ pub(super) fn inject_buffs_and_heralds(
 /// `gem_colour`) and writing to `env.modDB.multipliers`). Consumed by the pinned entries
 /// in a2-real-gaps's `MultiplierThreshold{<Color>SupportGems, 10}` (produced blind
 /// against the lower bound; a missing key = no effect — activates automatically once
-/// this injection lands). Vendor's same-location `Majority<Color>SocketedSupports`
-/// conditions have no PoBR data consumer yet and aren't injected (YAGNI, add in this
-/// same function when a need arises).
+/// this injection lands). Also sets the `MostNumerous<Color>SocketedSupports`
+/// condition. Vendor's same-location `Majority<Color>SocketedSupports` conditions
+/// have no PoBR data consumer yet and aren't injected (YAGNI, add in this same
+/// function when a need arises).
 pub(super) fn inject_support_gem_counts(
     session: &mut CalculationSession,
     build: &Build,
@@ -251,6 +252,80 @@ pub(super) fn inject_support_gem_counts(
     session.set_multiplier("RedSupportGems", r);
     session.set_multiplier("GreenSupportGems", g);
     session.set_multiplier("BlueSupportGems", b);
+    // Gemling "Gem Studded" (CalcSetup.lua:2594-2601): exactly one colour counts as
+    // most numerous; the vendor's `>=` chain resolves ties in red, green, blue order.
+    let most_numerous = if r >= g && r >= b {
+        "MostNumerousRedSocketedSupports"
+    } else if g >= b {
+        "MostNumerousGreenSocketedSupports"
+    } else {
+        "MostNumerousBlueSocketedSupports"
+    };
+    session.set_condition(most_numerous, true);
+}
+
+/// Gemling "Integrated Efficiency" (CalcOffence.lua:835-873): each flag carries a
+/// percentage that the vendor expands into an INC modifier scaled by the number of
+/// supports of one colour connected to the calculated skill (`activeSkill.supportList`,
+/// `grantedEffect.color`). The first matching modifier supplies value and source, as
+/// the vendor's `Tabulate(...)[1]` does.
+pub(super) fn inject_integrated_efficiency(
+    session: &mut CalculationSession,
+    data: &BuildData,
+    group: &crate::build::SocketGroup,
+    skill_id: &str,
+) {
+    const EFFECTS: [(&str, u32, &[&str]); 3] = [
+        ("SkillDamageIncreasedPerRedSupport", 1, &["Damage"]),
+        (
+            "SkillSpeedIncreasedPerGreenSupport",
+            2,
+            &["Speed", "WarcrySpeed", "TotemPlacementSpeed"],
+        ),
+        ("SkillCritChanceIncreasedPerBlueSupport", 3, &["CritChance"]),
+    ];
+    let flags: Vec<_> = EFFECTS
+        .iter()
+        .filter_map(|(flag, colour, names)| {
+            let found = session
+                .mod_db()
+                .iter_mods()
+                .find(|m| m.name.as_str() == *flag && m.mod_type == ModType::Flag)?;
+            Some((
+                found.value.as_number()?,
+                found.source.clone(),
+                *colour,
+                *names,
+            ))
+        })
+        .collect();
+    if flags.is_empty() {
+        return;
+    }
+    let judgement = crate::support::judge_group_supports(group, data, skill_id, group.from_gem());
+    let connected = |colour: u32| {
+        judgement
+            .compatible
+            .iter()
+            .filter(|support| {
+                data.skill_gems
+                    .values()
+                    .find(|gem| {
+                        gem.granted_effect_id.as_deref() == Some(support.effect_id.as_str())
+                    })
+                    .and_then(|gem| gem.gem_colour)
+                    == Some(colour)
+            })
+            .count() as f64
+    };
+    for (value, source, colour, names) in flags {
+        let total = value * connected(colour);
+        session.add_modifiers(names.iter().map(|name| {
+            let mut modifier = Modifier::number(*name, ModType::Inc, total);
+            modifier.source = source.clone();
+            modifier
+        }));
+    }
 }
 
 /// Build-derived counts and equipment facts; actor-derived values belong to core.
@@ -401,6 +476,13 @@ pub(super) fn inject_enemy(
         config_enemy_level(build).unwrap_or(0)
     };
     session.setup_enemy(enemy_level, enemy_tier);
+    // Config "Disable EHP gain on block/suppress" (vendor CalcDefence.lua:3261).
+    if matches!(
+        build.config.raw_inputs.values.get("DisableEHPGainOnBlock"),
+        Some(pobr_core::rules::config_interpreter::ConfigInputValue::Bool(true))
+    ) {
+        session.set_condition("DisableEHPGainOnBlock", true);
+    }
 
     // 5a'. Output of the config interpreter's enemy bucket: actor-ized enemy condition
     //      entries (matching vendor's `enemyModList:NewMod("Condition:<X>", FLAG, ...)`,
@@ -467,7 +549,13 @@ pub(super) fn inject_main_skill_mods(
         // 1b-i-q. Main skill gem's quality stats (T1.7): the quality segment is
         //         mapped via stat-map and injected with SourceKind::GemQuality
         //         attribution (id prefix gem.<effect id>.q<Q>).
-        session.add_modifiers(main_skill_quality_modifiers(context, group, data, skill_id));
+        session.add_modifiers(main_skill_quality_modifiers(
+            context,
+            group,
+            data,
+            skill_id,
+            super::skill::resolve::gemling_quality_flag(build, data),
+        ));
         // 1b-i-g. Main skill's unselected statSet global-only merge (CalcActiveSkill.lua:124-140).
         session.add_modifiers(unselected_set_global_modifiers(
             context, group, data, skill_id,

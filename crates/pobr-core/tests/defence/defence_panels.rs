@@ -49,9 +49,10 @@ fn block_defaults_without_sources() {
     );
 }
 
-/// Shield base + the inc multiplier: `(26 + 0) x 1.07 = 27.82` (CalcDefence.lua:989-991;
-/// the golden shape from warrior-titan-shield-wall: Tawhoan Tower Shield base 26 +
-/// 7% inc from the tree).
+/// Shield base + the inc multiplier, rounded to a whole percent:
+/// `round((26 + 0) x 1.07) = round(27.82) = 28` (CalcDefence.lua:1033-1036; the
+/// golden shape from warrior-titan-shield-wall: Tawhoan Tower Shield base 26 + 7%
+/// inc from the tree, oracle EffectiveBlockChance 28).
 #[test]
 fn block_shield_base_times_increased() {
     let mut db = db_from_texts(&["7% increased Block chance"]);
@@ -60,13 +61,9 @@ fn block_shield_base_times_increased() {
 
     let block = calc::calc_block(&db, &cfg);
 
-    assert!(
-        (block.block_chance - 27.82).abs() < 1e-9,
-        "(26+0)x1.07 = 27.82, got {}",
-        block.block_chance
-    );
+    assert_eq!(block.block_chance, 28.0, "round(27.82)");
     assert_eq!(
-        block.effective_block_chance, 27.82,
+        block.effective_block_chance, 28.0,
         "without the luck flag, the effective value equals the raw value"
     );
 }

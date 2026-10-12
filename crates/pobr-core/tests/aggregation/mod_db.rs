@@ -484,7 +484,7 @@ fn convert_mod_moves_between_buckets() {
 fn scale_add_mod_rounding_matches_pob2_oracle() {
     use pobr_core::HighPrecisionRules;
     let cfg = CalcConfig::new();
-    // Minimal subset consistent with data/4.5.0.3.4/overlay/high_precision_mods.json
+    // Minimal subset consistent with data/<version>/overlay/high_precision_mods.json
     // (only the entries the samples touch; full-table equivalence is pinned by the gamedata load test).
     let mut mods = std::collections::BTreeMap::new();
     for (name, mod_type, p) in [

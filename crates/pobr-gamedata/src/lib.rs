@@ -106,7 +106,7 @@ pub struct GameData {
 }
 
 impl GameData {
-    /// Points at a version directory, e.g. `data/4.5.0.3.4`.
+    /// Points at a version directory, e.g. `data/<version>`.
     pub fn new(version_dir: impl Into<PathBuf>) -> Self {
         Self {
             root: version_dir.into(),
@@ -668,15 +668,13 @@ pub fn repo_data_root() -> PathBuf {
         .unwrap_or_else(|_| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data"))
 }
 
-/// Stable fallback for legacy standalone callers without a CURRENT marker.
-/// Active snapshots are discovered at runtime, never embedded in domain crates.
-pub const DATA_VERSION: &str = pobr_data::GOLDEN_PARITY_DATA_VERSION;
-
 /// Runtime data version (fully discovered at the I/O layer):
 /// 1. the `POBR_DATA_VERSION` environment variable;
 /// 2. the `data/CURRENT` marker file (first line, trimmed, written by the
 ///    update script);
-/// 3. falls back to the [`DATA_VERSION`] compile-time constant.
+///
+/// No version is compiled in. Without either source this panics, because any
+/// built-in default would go stale with the next data update.
 ///
 /// This is what makes "switch versions after updating data with zero code
 /// changes" work: the update script just writes `data/CURRENT`, and every
@@ -693,7 +691,10 @@ pub fn data_version() -> String {
     {
         return line.trim().to_string();
     }
-    DATA_VERSION.to_string()
+    panic!(
+        "no data version: set POBR_DATA_VERSION or write {}",
+        repo_data_root().join("CURRENT").display()
+    )
 }
 
 /// The currently active version's data directory
@@ -701,7 +702,7 @@ pub fn data_version() -> String {
 ///
 /// The single runtime entry point for "which version to load" — replaces
 /// the scattered `crate::current_data_dir()` calls. The version is
-/// discovered by [`data_version`] (env → `data/CURRENT` → the constant).
+/// discovered by [`data_version`] (env → `data/CURRENT`).
 pub fn current_data_dir() -> PathBuf {
     repo_data_root().join(data_version())
 }

@@ -16,7 +16,7 @@ use pobr_build::{
 };
 use pobr_core::calc::{MinimalInput, OutputTable};
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::{GameData, repo_data_root};
+use pobr_gamedata::GameData;
 use std::collections::HashMap;
 
 const DEADEYE: &str = include_str!("../../../../examples/demo-bd-test/ninja-bd-deadeye.txt");
@@ -45,8 +45,8 @@ fn between<'a>(s: &'a str, start: &str, end: &str) -> Option<&'a str> {
 }
 
 fn load_data() -> BuildData {
-    // Pins the data version being checked against the golden values (decoupled from the active DATA_VERSION); see pobr_data::GOLDEN_PARITY_DATA_VERSION.
-    let data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
+    // PoB2 reference values are recaptured for the active data version on every data update.
+    let data = GameData::new(pobr_gamedata::current_data_dir());
     BuildData::load(&data).expect("load BuildData")
 }
 

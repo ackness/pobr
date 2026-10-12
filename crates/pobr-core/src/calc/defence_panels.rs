@@ -86,8 +86,8 @@ fn luck_transform(chance_pct: f64, lucky: bool, unlucky: bool) -> f64 {
 ///   inherent `BaseBlockChanceMax` of 50 comes from
 ///   `cfg.constants.game().base_block_chance_max` (injected by vendor
 ///   CalcSetup.lua:28, sourced from Misc.lua:147).
-/// - Attack (:989-991): `(ShieldBlockChance + ΣBASE BlockChance) ×
-///   calcLib.mod(BlockChance)`, then min with the ceiling.
+/// - Attack (:1033-1036): `round((ShieldBlockChance + ΣBASE BlockChance) ×
+///   calcLib.mod(BlockChance))`, then min with the ceiling.
 /// - Projectile (:994): `block + ΣBASE ProjectileBlockChance × mod(BlockChance)`, then capped.
 /// - Spell ceiling (:995-998): the `SpellBlockChanceMaxIsBlockChanceMax` flag
 ///   → same as the attack ceiling; otherwise `Override ‖ (ΣBASE
@@ -118,10 +118,12 @@ pub fn calc_block(db: &ModDb, cfg: &CalcConfig) -> BlockResult {
     // :975-980 shield base (injected by the build layer; dual-shield = sum of both slots, matching vendor's addition).
     let shield_base = db.sum(ModType::Base, cfg, &[ModName::from("ShieldBlockChance")]);
 
-    // :989-991 attack block chance.
+    // :1033-1036 attack block chance, rounded to a whole percent before the cap.
     let block_names = [ModName::from("BlockChance")];
-    let total_block = (shield_base + db.sum(ModType::Base, cfg, &block_names))
-        * scaling_mod(db, cfg, &block_names);
+    let total_block = ((shield_base + db.sum(ModType::Base, cfg, &block_names))
+        * scaling_mod(db, cfg, &block_names)
+        + 0.5)
+        .floor();
     let mut block = total_block.min(block_max);
 
     // :994 projectile attack block chance (the incremental BASE also picks up the BlockChance factor).
@@ -398,6 +400,15 @@ pub fn fill_defence_panels(env: &mut Env, keystones: &crate::rules::DefenceKeyst
 
     // Ward pool (CalcDefence.lua:1144-1296; EnergyShieldToWard comes from the C-1 snapshot)
     env.player.output.ward = calc_ward(db, cfg, keystones.energy_shield_to_ward);
+    // Ward regeneration (CalcDefence.lua:1712-1746): the shared regen formula over the
+    // ward pool, `round(regen, 1)`; `NoWardRegen` / `CannotGainWard` zero it (:1722).
+    env.player.output.ward_regen = if db.flag(cfg, "NoWardRegen") || db.flag(cfg, "CannotGainWard")
+    {
+        0.0
+    } else {
+        let regen = super::survivability::calc_regen(db, cfg, env.player.output.ward, "WardRegen");
+        (regen * 10.0 + 0.5).floor() / 10.0
+    };
 
     // Deflection (CalcDefence.lua:48-54 / :1516-1522)
     // Enemy accuracy is read the same way as Track E's evade path (env.enemy.base.accuracy).

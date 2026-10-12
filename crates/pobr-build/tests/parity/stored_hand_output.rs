@@ -23,7 +23,7 @@
 use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::{MinimalInput, OutputTable};
 use pobr_data::monster::EnemyTier;
-use pobr_gamedata::{GameData, repo_data_root};
+use pobr_gamedata::GameData;
 use std::path::{Path, PathBuf};
 
 const BUILDS: &[&str] = &[
@@ -57,8 +57,8 @@ fn run_build(dir: &Path, data: &BuildData) -> OutputTable {
 #[test]
 fn stored_family_holds_vendor_identities_on_three_real_builds() {
     let data = {
-        // Pins the data version being checked against the golden values (decoupled from the active DATA_VERSION); see pobr_data::GOLDEN_PARITY_DATA_VERSION.
-        let game_data = GameData::new(repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION));
+        // PoB2 reference values are recaptured for the active data version on every data update.
+        let game_data = GameData::new(pobr_gamedata::current_data_dir());
         BuildData::load(&game_data).expect("load BuildData")
     };
 

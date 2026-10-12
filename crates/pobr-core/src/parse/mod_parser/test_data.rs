@@ -18,6 +18,6 @@ pub fn test_data_dir() -> PathBuf {
                 .and_then(|text| text.lines().next().map(str::to_owned))
                 .filter(|v| !v.trim().is_empty())
         })
-        .unwrap_or_else(|| pobr_data::GOLDEN_PARITY_DATA_VERSION.to_owned());
+        .unwrap_or_else(|| panic!("no data version: set POBR_DATA_VERSION or write data/CURRENT"));
     root.join(version.trim())
 }

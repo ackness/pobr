@@ -62,7 +62,8 @@ pub(crate) fn buff_skill_specs(
 ) -> Vec<BuffSpec> {
     let bonuses = super::resolve::gem_property_bonuses(build, data);
     let mut ctx = context.stat_map_ctx();
-    pobr_core::skill_env::buff_skill_specs(&mut ctx, build, data, &bonuses)
+    let use_alt_quality = super::resolve::gemling_quality_flag(build, data);
+    pobr_core::skill_env::buff_skill_specs(&mut ctx, build, data, &bonuses, use_alt_quality)
 }
 
 /// The **player-side buff** granted by a support → [`BuffSpec`] (kind =

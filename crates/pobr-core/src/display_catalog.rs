@@ -453,6 +453,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
         .with_higher_is_better(Some(false)),
         // The Ward pool (Track D; CalcDefence.lua:1144-1273).
         computed("Ward", Cat::Resource, Vt::Number, "Ward"),
+        computed("WardRegen", Cat::Recovery, Vt::Number, "WardRegen"),
         // Pool-value semantics (Track F; the pool snapshot values consumed by the EHP loop).
         computed(
             "LifeRecoverable",
@@ -638,6 +639,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "SelfStunChance" => output.self_stun_chance,
         "StunDuration" => output.stun_duration,
         "Ward" => output.ward,
+        "WardRegen" => output.ward_regen,
         "LifeRecoverable" => output.life_recoverable,
         "EnergyShieldRecoveryCap" => output.energy_shield_recovery_cap,
         "PhysicalDamageReduction" => output.physical_damage_reduction,

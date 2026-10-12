@@ -217,7 +217,7 @@ fn temp_data_root(tag: &str) -> (std::path::PathBuf, std::path::PathBuf) {
         std::process::id()
     ));
     let _ = std::fs::remove_dir_all(&root);
-    let ver_dir = root.join("4.5.4.3");
+    let ver_dir = root.join("1.2.3");
     std::fs::create_dir_all(ver_dir.join("overlay")).unwrap();
     (root, ver_dir)
 }

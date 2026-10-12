@@ -13,7 +13,7 @@ use std::time::Instant;
 
 fn ensure_data() {
     if !pobr_wasm::is_data_ready() {
-        let dir = repo_data_root().join(pobr_data::GOLDEN_PARITY_DATA_VERSION);
+        let dir = pobr_gamedata::current_data_dir();
         pobr_wasm::init_data_from_dir(dir.to_str().unwrap()).expect("init data");
     }
 }
