@@ -237,7 +237,7 @@ def _regenerate(root, refresh_dictionary=False, activate=False, base_only=False,
             audit += ["--baseline", str(baseline)]
         if operation != "modifiers":
             run(audit, root, env)
-        run(["bash", ".claude/skills/run-pobr/driver.sh", "versions"], root, env)
+        run(["bash", "devs/scripts/driver.sh", "versions"], root, env)
         run(["cargo", "test", "--quiet", "-p", "pobr-gamedata"], root, env)
         run(["cargo", "test", "--quiet", "-p", "pobr-build", "--test", "parity", "parity_no_regression"], root, env)
         for path, fingerprint in original.items():
