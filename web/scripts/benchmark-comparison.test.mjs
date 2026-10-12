@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseOptions, summarize, speedRatio, validateOutput, normalizeOutput, measureComparison,
+  parseOptions, summarize, speedRatio, validateOutput, normalizeOutput, measureComparison, measureEngine,
 } from './benchmark-comparison.mjs';
 
 const pobrOutput = (life = 1234, unsupported = ['first', 'second']) => ({
@@ -41,6 +41,22 @@ test('options accept inclusive count boundaries and explicit paths', () => {
     assert.equal(result.output, 'result.json');
   }
   assert.equal(parseOptions(['--help']).help, true);
+});
+
+test('--pobr-only is a flag with its own default report path and no reference', () => {
+  const paired = parseOptions([]);
+  assert.equal(paired.pobrOnly, false);
+  assert.equal(paired.output, '.cache/pob-web-performance.json');
+  const only = parseOptions(['--pobr-only', '--iterations', '5']);
+  assert.equal(only.pobrOnly, true);
+  assert.equal(only.iterations, 5);
+  // The default must differ from the paired report, which the snapshot script reads.
+  assert.notEqual(only.output, paired.output);
+  assert.equal(parseOptions(['--pobr-only', '--output', 'mine.json']).output, 'mine.json');
+  for (const args of [['--pobr-only', '--reference-dir', 'reference'], ['--pobr-only', '--pobr-only'],
+    ['--pobr-only', 'extra']]) {
+    assert.throws(() => parseOptions(args), undefined, args.join(' '));
+  }
 });
 
 test('options reject unknown, duplicate, missing and noninteger values even with help', () => {
@@ -181,6 +197,52 @@ test('measurement rejects malformed requests and out-of-range counts before engi
     { engines: [engines[0], engines[0]] },
   ]) {
     await assert.rejects(measureComparison({ engines, builds, ...request }));
+  }
+  assert.equal(calls, 0);
+});
+
+test('single-engine measurement samples every build without a counterpart or speed ratio', async () => {
+  const calls = [];
+  const notified = [];
+  const [engine] = policyEngines((name, request) => calls.push({ name, ...request }));
+  const result = await measureEngine({ engine, builds, iterations: 3, warmup: 1,
+    onMeasurement: entry => notified.push(entry) });
+  assert.equal(calls.length, 8);
+  assert.equal(new Set(calls.map(call => call.nonce)).size, 8);
+  assert.ok(calls.every(call => call.name === 'pobr'));
+  assert.equal(calls[0].code, builds[0].code);
+  assert.equal(calls[4].xml, builds[1].xml);
+  assert.deepEqual(notified, result);
+  assert.equal(result.length, 2);
+  for (const entry of result) {
+    assert.equal(entry.engines.length, 1);
+    assert.equal(Object.hasOwn(entry, 'speedup'), false);
+    assert.equal(entry.engines[0].samplesMs.length, 3);
+    assert.equal(entry.engines[0].selectedStats.Life, 1234);
+    assert.deepEqual(entry.engines[0].diagnostics.item_errors, pobrOutput().item_errors);
+  }
+});
+
+test('single-engine measurement keeps stability and failure rules and validates before calling', async () => {
+  let count = 0;
+  const [engine] = policyEngines();
+  engine.calculate = async () => JSON.stringify(pobrOutput(++count === 1 ? 1234 : 1235));
+  await assert.rejects(measureEngine({ engine, builds, iterations: 3, warmup: 1 }), /output changed/);
+  for (const calculate of [async () => { throw new Error('bridge rejected'); }, async () => '{"error":"failed"}',
+    async () => JSON.stringify(pobrOutput(0))]) {
+    engine.calculate = calculate;
+    let reported = false;
+    await assert.rejects(measureEngine({ engine, builds, iterations: 3, warmup: 1,
+      onMeasurement: () => { reported = true; } }));
+    assert.equal(reported, false);
+  }
+  let calls = 0;
+  const [counted] = policyEngines(() => { calls += 1; });
+  for (const request of [
+    { iterations: 2 }, { warmup: 0 }, { builds: [] }, { builds: [builds[0], builds[0]] },
+    { builds: [{ ...builds[0], sha256: 'bad' }] }, { engine: { name: 'pobr' } }, { engine: null },
+  ]) {
+    await assert.rejects(measureEngine({ engine: counted, builds, ...request }));
   }
   assert.equal(calls, 0);
 });

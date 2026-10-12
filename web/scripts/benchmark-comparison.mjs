@@ -9,11 +9,12 @@ export function parseOptions(args) {
     iterations: 9,
     warmup: 2,
     help: false,
+    pobrOnly: false,
   };
   const flags = new Map([
     ['--reference-dir', 'referenceDir'], ['--wasm-dir', 'wasmDir'],
     ['--output', 'output'], ['--iterations', 'iterations'], ['--warmup', 'warmup'],
-    ['--help', 'help'],
+    ['--help', 'help'], ['--pobr-only', 'pobrOnly'],
   ]);
   const seen = new Set();
   for (let index = 0; index < args.length; index += 1) {
@@ -22,8 +23,8 @@ export function parseOptions(args) {
     if (!key) throw new Error(`Unknown option: ${flag}`);
     if (seen.has(flag)) throw new Error(`Duplicate option: ${flag}`);
     seen.add(flag);
-    if (key === 'help') {
-      options.help = true;
+    if (key === 'help' || key === 'pobrOnly') {
+      options[key] = true;
       continue;
     }
     const value = args[++index];
@@ -38,6 +39,12 @@ export function parseOptions(args) {
     }
   }
   validateCounts(options.iterations, options.warmup);
+  if (options.pobrOnly) {
+    // A PoBR-only report has no reference or speed ratio, and must not replace the paired report
+    // that snapshot-pob-web-benchmark.mjs reads by default.
+    if (seen.has('--reference-dir')) throw new Error('--reference-dir cannot be combined with --pobr-only');
+    if (!seen.has('--output')) options.output = '.cache/pobr-performance.json';
+  }
   return options;
 }
 
@@ -143,15 +150,7 @@ export function speedRatio(numeratorMs, denominatorMs) {
   return numeratorMs / denominatorMs;
 }
 
-export async function measureComparison({
-  engines, builds, iterations = 9, warmup = 2, now = () => performance.now(), onMeasurement,
-}) {
-  validateCounts(iterations, warmup);
-  if (!Array.isArray(engines) || engines.length !== 2
-      || engines.some(engine => !engine || typeof engine.name !== 'string' || !engine.name
-        || typeof engine.calculate !== 'function') || engines[0].name === engines[1].name) {
-    throw new Error('Comparison requires two uniquely named calculation engines');
-  }
+function assertBuilds(builds) {
   if (!Array.isArray(builds) || builds.length === 0) throw new Error('Comparison requires builds');
   const seen = new Set();
   for (const build of builds) {
@@ -163,6 +162,42 @@ export async function measureComparison({
     }
     seen.add(build.fixture);
   }
+}
+
+// One timed call: validation and the repeat-stability check stay outside the timed region.
+async function sampleCall({ engine, build, nonce, now, baselines, record, measured }) {
+  const start = now();
+  let raw;
+  try {
+    raw = await engine.calculate({ code: build.code, xml: build.xml, nonce });
+  } catch (error) {
+    throw new Error(`${build.fixture}/${engine.name}: ${error.message}`, { cause: error });
+  }
+  const elapsed = now() - start;
+  const validated = validateOutput(raw, engine.name);
+  if (baselines.has(engine.name) && baselines.get(engine.name) !== validated.normalized) {
+    throw new Error(`${build.fixture}/${engine.name}: output changed between repeated calculations`);
+  }
+  baselines.set(engine.name, validated.normalized);
+  if (!Number.isFinite(elapsed) || elapsed < 0) throw new Error('Clock produced an invalid elapsed time');
+  if (!Object.hasOwn(record, 'output')) {
+    record.output = validated.output;
+    record.selectedStats = validated.selectedStats;
+    record.diagnostics = validated.diagnostics;
+  }
+  if (measured) record.samplesMs.push(elapsed);
+}
+
+export async function measureComparison({
+  engines, builds, iterations = 9, warmup = 2, now = () => performance.now(), onMeasurement,
+}) {
+  validateCounts(iterations, warmup);
+  if (!Array.isArray(engines) || engines.length !== 2
+      || engines.some(engine => !engine || typeof engine.name !== 'string' || !engine.name
+        || typeof engine.calculate !== 'function') || engines[0].name === engines[1].name) {
+    throw new Error('Comparison requires two uniquely named calculation engines');
+  }
+  assertBuilds(builds);
   const runId = randomUUID();
   let call = 0;
   let round = 0;
@@ -173,28 +208,10 @@ export async function measureComparison({
     for (let iteration = -warmup; iteration < iterations; iteration += 1) {
       const order = round++ % 2 === 0 ? [0, 1] : [1, 0];
       for (const engineIndex of order) {
-        const engine = engines[engineIndex];
-        const start = now();
-        let raw;
-        try {
-          raw = await engine.calculate({ code: build.code, xml: build.xml, nonce: `${runId}:${call++}` });
-        } catch (error) {
-          throw new Error(`${build.fixture}/${engine.name}: ${error.message}`, { cause: error });
-        }
-        const elapsed = now() - start;
-        const validated = validateOutput(raw, engine.name);
-        if (baselines.has(engine.name) && baselines.get(engine.name) !== validated.normalized) {
-          throw new Error(`${build.fixture}/${engine.name}: output changed between repeated calculations`);
-        }
-        baselines.set(engine.name, validated.normalized);
-        if (!Number.isFinite(elapsed) || elapsed < 0) throw new Error('Clock produced an invalid elapsed time');
-        const record = records[engineIndex];
-        if (!Object.hasOwn(record, 'output')) {
-          record.output = validated.output;
-          record.selectedStats = validated.selectedStats;
-          record.diagnostics = validated.diagnostics;
-        }
-        if (iteration >= 0) record.samplesMs.push(elapsed);
+        await sampleCall({
+          engine: engines[engineIndex], build, nonce: `${runId}:${call++}`, now, baselines,
+          record: records[engineIndex], measured: iteration >= 0,
+        });
       }
     }
     for (const record of records) Object.assign(record, summarize(record.samplesMs));
@@ -208,6 +225,35 @@ export async function measureComparison({
         ratio: speedRatio(records[1].medianMs, records[0].medianMs),
       },
     };
+    measurements.push(measurement);
+    if (onMeasurement) await onMeasurement(measurement);
+  }
+  return measurements;
+}
+
+// Single-engine variant for builds the reference cannot calculate. Same sampling, validation and
+// stability rules as the paired run, but there is no counterpart, so no speed ratio is produced.
+export async function measureEngine({
+  engine, builds, iterations = 9, warmup = 2, now = () => performance.now(), onMeasurement,
+}) {
+  validateCounts(iterations, warmup);
+  if (!engine || typeof engine.name !== 'string' || !engine.name || typeof engine.calculate !== 'function') {
+    throw new Error('Measurement requires one named calculation engine');
+  }
+  assertBuilds(builds);
+  const runId = randomUUID();
+  let call = 0;
+  const measurements = [];
+  for (const build of builds) {
+    const record = { name: engine.name, samplesMs: [] };
+    const baselines = new Map();
+    for (let iteration = -warmup; iteration < iterations; iteration += 1) {
+      await sampleCall({
+        engine, build, nonce: `${runId}:${call++}`, now, baselines, record, measured: iteration >= 0,
+      });
+    }
+    Object.assign(record, summarize(record.samplesMs));
+    const measurement = { fixture: build.fixture, sha256: build.sha256, engines: [record] };
     measurements.push(measurement);
     if (onMeasurement) await onMeasurement(measurement);
   }

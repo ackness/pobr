@@ -5,7 +5,7 @@ import { cpus, platform, arch, release } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { inflateSync } from 'node:zlib';
-import { parseOptions, measureComparison } from './benchmark-comparison.mjs';
+import { parseOptions, measureComparison, measureEngine } from './benchmark-comparison.mjs';
 import { discoverBuilds } from './benchmark-builds.mjs';
 import { loadPobWeb } from './benchmark-pob-web.mjs';
 
@@ -63,6 +63,8 @@ async function main() {
   --iterations <3..100>  Measured calls per build/engine (default: 9)
   --warmup <1..20>       Untimed calls per build/engine (default: 2)
   --output <file>        JSON report (default: .cache/pob-web-performance.json)
+  --pobr-only            Measure PoBR alone on every build: no reference snapshot, no speed ratio.
+                         For builds the Lua reference rejects. Default report: .cache/pobr-performance.json
 
 Prepare the reference first with node web/scripts/benchmark-pob-web.mjs --help.
 Selected historical fixtures and all latest-season performance fixtures are measured.
@@ -73,21 +75,24 @@ This measures import + calculation, not cached reads, incremental edits or numer
   const engines = [];
   try {
     engines.push(await loadPobr(resolve(root, options.wasmDir)));
-    const reference = await loadPobWeb({ directory: resolve(root, options.referenceDir) });
-    engines.push({
-      ...reference,
-      calculate(input) {
-        // Match PoBR's code-to-stats boundary; pob-web's worker accepts decoded XML.
-        const xml = inflateSync(Buffer.from(input.code, 'base64url')).toString('utf8');
-        return reference.calculate({ ...input, xml });
-      },
-    });
+    if (!options.pobrOnly) {
+      const reference = await loadPobWeb({ directory: resolve(root, options.referenceDir) });
+      engines.push({
+        ...reference,
+        calculate(input) {
+          // Match PoBR's code-to-stats boundary; pob-web's worker accepts decoded XML.
+          const xml = inflateSync(Buffer.from(input.code, 'base64url')).toString('utf8');
+          return reference.calculate({ ...input, xml });
+        },
+      });
+    }
     const measurements = [];
     for (const build of builds) {
       try {
-        const [measurement] = await measureComparison({
-          engines, builds: [build], iterations: options.iterations, warmup: options.warmup,
-        });
+        const request = { builds: [build], iterations: options.iterations, warmup: options.warmup };
+        const [measurement] = options.pobrOnly
+          ? await measureEngine({ engine: engines[0], ...request })
+          : await measureComparison({ engines, ...request });
         Object.assign(measurement, { character: build.character, source: build.source, corpus: build.corpus });
         measurements.push(measurement);
         console.log(JSON.stringify({
@@ -108,8 +113,14 @@ This measures import + calculation, not cached reads, incremental edits or numer
     const report = {
       measuredAt: new Date().toISOString(),
       host: { node: process.version, platform: platform(), release: release(), arch: arch(), cpu: cpus()[0]?.model },
-      method: {
-        scenario: 'import-and-calculate', iterations: options.iterations, warmup: options.warmup,
+      method: options.pobrOnly ? {
+        scenario: 'import-and-calculate', mode: 'pobr-only', iterations: options.iterations, warmup: options.warmup,
+        timing: 'PoBR calculateBuildJson only: request serialization, unique legal JSON whitespace, code inflation, import, calculation and response serialization. Harness JSON validation and repeat-stability checks outside samples. No reference calls are interleaved.',
+        initialization: 'One observed PoBR initialization, including ES module import I/O, from preloaded WASM/data bytes. Not a startup distribution or network measurement.',
+        parityAsserted: false,
+        limitations: 'Single-engine observation: no cross-engine speedup, numerical parity or correct main-skill selection is asserted, and it is not comparable call-for-call with a paired run on another host or day. No browser rendering, download time, incremental editing or runtime memory measurement.',
+      } : {
+        scenario: 'import-and-calculate', mode: 'paired', iterations: options.iterations, warmup: options.warmup,
         timing: 'PoB code to JSON result. Includes code inflation for both engines (Rust for PoBR; Node zlib before pob-web XML import), adapter validation and Node Worker transport for pob-web. Harness JSON validation outside samples. Alternating engine order; unique PoBR request strings bypass the response cache.',
         initialization: 'One observed initialization per engine, including ES module import I/O, from preloaded WASM/data bytes. Excludes reference worker creation and artifact reads/hash checks. Not a startup distribution or network measurement.',
         parityAsserted: false,

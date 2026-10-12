@@ -23,6 +23,9 @@ try {
     options[key] = resolve(value);
   }
   const report = JSON.parse(readFileSync(options.input, 'utf8'));
+  const pobrOnly = report.method?.mode === 'pobr-only';
+  // The default output is the committed paired baseline; a single-engine report must never replace it.
+  if (pobrOnly && !seen.has('output')) throw new Error('A PoBR-only report requires an explicit --output');
   const baseline = {
     ...report,
     fullLocalReport: relative(root, options.input),
@@ -32,7 +35,9 @@ try {
     }),
     measurements: report.measurements.map(row => row.error ? row : {
       ...row,
-      engines: row.engines.map(({ output, ...measurement }) => measurement),
+      // Keep PoBR's selected main skill: a fast calculation of the wrong skill is not a result.
+      engines: row.engines.map(({ output, ...measurement }) =>
+        output?.main_skill ? { ...measurement, mainSkill: output.main_skill } : measurement),
     }),
   };
   mkdirSync(dirname(options.output), { recursive: true });
@@ -40,12 +45,17 @@ try {
   console.log(`Snapshot: ${options.output}`);
   for (const corpus of ['ninja-latest-season', 'historical']) {
     console.log(`\n${corpus}`);
-    console.log('| Build | PoBR median ms | Lua median ms | Speedup | PoBR p95 ms | Lua p95 ms | p95 ratio |');
-    console.log('| --- | ---: | ---: | ---: | ---: | ---: | ---: |');
+    console.log(pobrOnly
+      ? '| Build | PoBR median ms | PoBR p95 ms | Selected skill |'
+      : '| Build | PoBR median ms | Lua median ms | Speedup | PoBR p95 ms | Lua p95 ms | p95 ratio |');
+    console.log(pobrOnly ? '| --- | ---: | ---: | --- |' : '| --- | ---: | ---: | ---: | ---: | ---: | ---: |');
     for (const row of baseline.measurements.filter(row => row.corpus === corpus)) {
       const name = `${row.character.class} / ${row.character.ascendancy} / ${row.character.main_skill}`;
       if (row.error) console.log(`| ${name} (failed; see report) | — | — | — | — | — | — |`);
-      else {
+      else if (pobrOnly) {
+        const [rust] = row.engines;
+        console.log(`| ${name} | ${rust.medianMs.toFixed(2)} | ${rust.p95Ms.toFixed(2)} | ${rust.mainSkill?.skill_id ?? '—'} |`);
+      } else {
         const [rust, lua] = row.engines;
         console.log(`| ${name} | ${rust.medianMs.toFixed(2)} | ${lua.medianMs.toFixed(2)} | ${row.speedup.ratio.toFixed(2)}× | ${rust.p95Ms.toFixed(2)} | ${lua.p95Ms.toFixed(2)} | ${(lua.p95Ms / rust.p95Ms).toFixed(2)}× |`);
       }
