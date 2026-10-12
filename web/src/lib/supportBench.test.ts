@@ -80,7 +80,10 @@ describe.skipIf(env.POBR_UPGRADE_BENCH !== '1')('real WASM support planner compa
     calculate = request => JSON.parse(wasm.calculateBuildJson(JSON.stringify(request))) as CalculateBuildResponse;
     // Eligibility metadata is regenerated separately from engine assets. Use its tracked source.
     const source = new URL(`../../../data/${version}/overlay/trade_catalog.json`, import.meta.url);
-    catalog = (JSON.parse(await readFile(source, 'utf8')) as TradeCatalog).gems ?? [];
+    const effects = new Map<string, string[]>((JSON.parse(wasm.gemCatalogJson()) as { skill_id: string; active_effect_ids: string[] }[])
+      .map(gem => [gem.skill_id, gem.active_effect_ids]));
+    catalog = ((JSON.parse(await readFile(source, 'utf8')) as TradeCatalog).gems ?? [])
+      .flatMap(gem => effects.has(gem.skill_id) ? [{ ...gem, active_effect_ids: effects.get(gem.skill_id)! }] : []);
     initializationMs = performance.now() - start;
   }, 120000);
 

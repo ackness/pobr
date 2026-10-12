@@ -4,7 +4,7 @@ const text = {
   title: ['Build references', '流派參考', '流派参考'],
   hint: ['Find a related build, understand the differences, then verify an upgrade on your character.', '尋找近似構築、理解差異，再驗證對自己角色的提升。', '寻找近似构筑、理解差异，再验证对自己角色的提升。'],
   identity: ['Your current build', '目前構築', '当前构筑'],
-  noSkill: ['Select a main skill to get meaningful matches.', '先選擇主技能，以取得有意義的配對。', '先选择主技能，以获得有意义的匹配。'],
+  noSkill: ['Select a skill to inspect for meaningful matches.', '先選擇要檢視的技能，以取得有意義的配對。', '先选择要查看的技能，以获得有意义的匹配。'],
   next: ['What to improve next', '下一步如何增強', '下一步如何增强'],
   gaps: ['Check elemental resistance gaps', '檢查元素抗性缺口', '检查元素抗性缺口'],
   target: ['Target', '目標', '目标'],

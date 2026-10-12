@@ -108,7 +108,7 @@ const labels = {
   adjustment: ['Skill adjustment · no market purchase', '技能調整 · 無需市集購買', '技能调整 · 无需市集购买'],
   lineage: ['Lineage support', '血脈輔助', '血脉辅助'],
   autoSupports: ['Find all usable supports', '自動尋找可用輔助', '自动寻找可用辅助'],
-  sharedGoal: ['Your goal follows equipment, skills and passives. Each suggestion uses the current main skill and weapon set.', '裝備、技能與天賦共用目標；每項建議均使用目前主技能和武器組。', '装备、技能与天赋共用目标；每项建议均使用当前主技能和武器组。'],
+  sharedGoal: ['Your goal follows equipment, skills and passives. Each suggestion uses the inspected skill and its weapon set.', '裝備、技能與天賦共用目標；每項建議均使用目前檢視技能和綁定武器組。', '装备、技能与天赋共用目标；每项建议均使用当前查看技能和绑定武器组。'],
 } as const;
 
 export function upgradeT(lang: Lang, key: keyof typeof labels): string {

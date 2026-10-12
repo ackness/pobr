@@ -5,7 +5,7 @@ import { formatApiError } from '../../api/error';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useUpgradeGoal } from '../../hooks/useUpgradeGoal';
 import { useItemDisplayNames, useLocalizedLines } from '../../hooks/useLocalizedLines';
-import { buildProfile, compareGems, keyPassives, mainGem, matchBuild, ninjaSearchUrl, referenceRequest, resistanceGaps, type BuildReference } from '../../lib/buildGuidance';
+import { buildProfile, compareGems, keyPassives, selectedSkillId, matchBuild, ninjaSearchUrl, referenceRequest, resistanceGaps, type BuildReference } from '../../lib/buildGuidance';
 import { guidanceT } from '../../lib/guidanceText';
 import { slotLabel, statNameLabel, type Lang } from '../../lib/i18n';
 import { parsePobColorText } from '../../lib/pobColors';
@@ -73,13 +73,12 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
   const gemName = (id: string) => skillDisplayName(id, lang, byId);
   const className = (name: string) => lang === 'en-US' ? name : session.classNames.ascendancies[name] ?? session.classNames.classes[name] ?? name;
   const request = session.currentRequest() ?? {};
-  const current = buildProfile(request, byId, session.calc?.main_skill?.skill_id);
+  const current = buildProfile(request, byId);
   const groupIndex = request.main_socket_group;
   const currentGroup = groupIndex === undefined ? undefined : request.socket_groups?.[groupIndex];
   const all = pasted ? [pasted, ...references] : references;
   const ranked = all.map(reference => {
-    const profile = buildProfile(referenceRequest(reference.build), byId,
-      reference.build.main_socket_group === null ? null : reference.build.socket_groups[reference.build.main_socket_group]?.active_skill_id);
+    const profile = buildProfile(referenceRequest(reference.build), byId);
     return { reference, profile, match: matchBuild(current, profile) };
   }).filter(({ profile, match }) => (!exact || match.sameSkill) &&
     [profile.className, className(profile.className), profile.ascendancy, className(profile.ascendancy),
@@ -122,8 +121,8 @@ export function BuildGuidancePanel({ session, lang, onSkills, onEquipment, onTre
       <label>{gt('skills')}<select aria-label={gt('skills')} value={groupIndex ?? ''} disabled={session.busy}
         onChange={event => session.updateParams({ main_socket_group: Number(event.target.value) })}>
         {groupIndex === undefined && <option value="">—</option>}
-        {request.socket_groups?.map((group, index) => { const gem = mainGem(group, byId); return gem &&
-          <option value={index} key={index}>{index + 1}. {gemName(gem.skill_id)}</option>; })}
+        {request.socket_groups?.map((group, index) => { const skillId = selectedSkillId(group, byId); return skillId &&
+          <option value={index} key={index}>{index + 1}. {gemName(skillId)}</option>; })}
       </select></label>
     </div>
     <div className="guidance-entry">

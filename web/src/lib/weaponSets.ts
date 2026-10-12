@@ -27,11 +27,11 @@ export function switchWeapons<T extends WeaponSetState>(state: T, target: 1 | 2)
 }
 
 export function skillWeaponSet(state: WeaponSetState, index?: number): 1 | 2 {
-  return state.socketGroups[index ?? 0]?.weapon_set ?? state.weaponSwap?.active ?? 1;
+  return (index === undefined ? undefined : state.socketGroups[index]?.weapon_set) ?? state.weaponSwap?.active ?? 1;
 }
 
 /** A calculation contains only the groups enabled for that weapon set. Keep
- * their indices stable for the sidebar, Full DPS report, and optimizer variants.
+ * their indices stable for the sidebar, skill metrics, and optimizer variants.
  */
 export function groupsForWeaponSet(groups: SocketGroupInput[], active: 1 | 2): SocketGroupInput[] {
   return groups.map(group => ({ ...group, enabled: group.enabled && (!group.weapon_set || group.weapon_set === active) }));

@@ -3,9 +3,9 @@ import type { CalculateBuildResponse, GemCatalogEntry } from '../api/types';
 import { buildProfile, compareGems, keyPassives, matchBuild, ninjaSearchUrl, resistanceGaps, type BuildProfile } from './buildGuidance';
 
 const catalog = new Map([
-  ['FireballPlayer', { skill_id: 'FireballPlayer', name: 'Fireball', name_zh_cn: '火球', is_support: false } as GemCatalogEntry],
-  ['IceShotPlayer', { skill_id: 'IceShotPlayer', name: 'Ice Shot', is_support: false } as GemCatalogEntry],
-  ['SupportA', { skill_id: 'SupportA', name: 'Support A', is_support: true } as GemCatalogEntry],
+  ['FireballPlayer', { skill_id: 'FireballPlayer', active_effect_ids: ['FireballPlayer'], name: 'Fireball', name_zh_cn: '火球', is_support: false } as GemCatalogEntry],
+  ['IceShotPlayer', { skill_id: 'IceShotPlayer', active_effect_ids: ['IceShotPlayer'], name: 'Ice Shot', is_support: false } as GemCatalogEntry],
+  ['SupportA', { skill_id: 'SupportA', active_effect_ids: ['GrantedBlast'], name: 'Support A', is_support: true } as GemCatalogEntry],
 ]);
 const profile: BuildProfile = { className: 'Sorceress', ascendancy: 'Stormweaver', mainSkill: 'FireballPlayer', supports: ['SupportA'], uniques: ['Example Unique'] };
 
@@ -14,7 +14,6 @@ describe('build reference matching', () => {
     const empty = buildProfile({}, catalog);
     expect(matchBuild(empty, empty).score).toBe(0);
     expect(buildProfile({ main_socket_group: 0, socket_groups: [{ enabled: true, gems: [{ skill_id: 'Unknown', level: 1, quality: 0 }] }] }, catalog).mainSkill).toBeNull();
-    expect(buildProfile({ main_socket_group: 0, socket_groups: [{ enabled: true, gems: [{ skill_id: 'Unknown', level: 1, quality: 0 }] }] }, catalog, 'Unknown').mainSkill).toBeNull();
   });
   test('main skill outweighs unrelated signals and supports only count on that skill', () => {
     const sameSkill = matchBuild(profile, { ...profile, className: 'Witch', ascendancy: 'Blood Mage', supports: [], uniques: [] });
@@ -29,11 +28,19 @@ describe('build reference matching', () => {
     expect(match.supportOverlap).toBe(0.5);
     expect(match.score).toBe(83);
   });
-  test('uses edited groups and rejects a stale calculated skill or disabled group', () => {
+  test('uses the selected ordinal in edited groups and rejects disabled or missing groups', () => {
     const request = { main_socket_group: 0, socket_groups: [{ enabled: true, gems: [{ skill_id: 'IceShotPlayer', level: 12, quality: 10 }, { skill_id: 'SupportA', level: 1, quality: 0 }] }] };
-    expect(buildProfile(request, catalog, 'FireballPlayer').mainSkill).toBe('IceShotPlayer');
+    expect(buildProfile(request, catalog).mainSkill).toBe('IceShotPlayer');
     expect(buildProfile({ ...request, socket_groups: [{ ...request.socket_groups[0], enabled: false }] }, catalog).supports).toEqual([]);
     expect(buildProfile({ ...request, main_socket_group: 4 }, catalog).mainSkill).toBeNull();
+  });
+  test('profiles use the exact support-granted effect and leave missing selection unknown', () => {
+    const group = { enabled: true, main_active_skill: 2, gems: [
+      { skill_id: 'FireballPlayer', level: 15, quality: 0 }, { skill_id: 'SupportA', level: 1, quality: 0 },
+    ] };
+    expect(buildProfile({ socket_groups: [group] }, catalog).mainSkill).toBeNull();
+    expect(buildProfile({ socket_groups: [group], main_socket_group: 0 }, catalog).mainSkill).toBe('GrantedBlast');
+    expect(buildProfile({ socket_groups: [{ ...group, main_active_skill: 3 }], main_socket_group: 0 }, catalog).mainSkill).toBeNull();
   });
 });
 

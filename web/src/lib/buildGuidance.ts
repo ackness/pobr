@@ -1,6 +1,7 @@
 import type { BuildJson, CalculateBuildRequest, CalculateBuildResponse, GemCatalogEntry, GemInput, PassiveNode, SocketGroupInput } from '../api/types';
 import { nameParts, rarityOf } from '../hooks/useLocalizedLines';
 import { groupsForWeaponSet } from './weaponSets';
+import { activeSkillEffects } from './skillSelection';
 
 export interface ReferenceSource { url?: string; league?: string; gameVersion?: string; fetchedAt?: string }
 export interface BuildReference { id: string; source: ReferenceSource; build: BuildJson }
@@ -12,14 +13,15 @@ export interface BuildProfile {
   uniques: string[];
 }
 
-export function mainGem(group: SocketGroupInput | undefined, catalog: Map<string, GemCatalogEntry>): GemInput | undefined {
-  return group?.enabled ? group.gems.find(gem => catalog.get(gem.skill_id)?.is_support === false) : undefined;
+export function selectedSkillId(group: SocketGroupInput | undefined, catalog: Map<string, GemCatalogEntry>): string | null {
+  if (!group?.enabled) return null;
+  const effect = activeSkillEffects(group, catalog)[(group.main_active_skill ?? 1) - 1];
+  return effect && catalog.has(group.gems[effect.gemIndex].skill_id) ? effect.skillId : null;
 }
 
-export function buildProfile(request: CalculateBuildRequest, catalog: Map<string, GemCatalogEntry>, mainSkill?: string | null): BuildProfile {
+export function buildProfile(request: CalculateBuildRequest, catalog: Map<string, GemCatalogEntry>): BuildProfile {
   const group = request.main_socket_group === undefined ? undefined : request.socket_groups?.[request.main_socket_group];
-  const selectedSkill = mainSkill && catalog.get(mainSkill)?.is_support === false && group?.gems.some(gem => gem.skill_id === mainSkill)
-    ? mainSkill : mainGem(group, catalog)?.skill_id ?? null;
+  const selectedSkill = selectedSkillId(group, catalog);
   return {
     className: request.character?.class_name ?? '', ascendancy: request.character?.ascendancy_name ?? '',
     mainSkill: group?.enabled ? selectedSkill : null,

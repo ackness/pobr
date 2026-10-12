@@ -55,6 +55,18 @@ and PoB exports. Only enabled groups affect calculations. Unchanged legacy saves
 recover groups from their source code; edited flat legacy modifiers keep their
 saved text because the original grouping cannot be inferred reliably.
 
+**Calcs → Skill metrics** (also linked from the sidebar) lists every enabled active
+effect independently, including support-granted effects and zero-damage utility.
+It works without a selected skill: imports with no selection stay unselected,
+and no highest-DPS choice is invented. Rows show combined DPS, average hit, action
+rate, mana/life costs and cooldown; unavailable rows show errors instead of zero,
+and unsupported modifiers and item issues remain visible. Values are not summed.
+Selecting a row atomically selects its original group and exact 1-based active
+effect ordinal for inspection and upgrade comparisons, using its weapon set.
+The ordinal includes support-granted effects, not display aliases or stat sets.
+Removing a gem preserves any remaining inspected effect; support planning keeps
+the same effect across reordered supports and excludes sets that remove it.
+
 The header shows the app release and successfully loaded data version. On Upgrades,
 completed affix analyses and position selections survive page navigation within
 the current stage. Leaving pauses active scoring; cancelled all-position analysis
@@ -67,7 +79,7 @@ work and paste debounce; returning does not restart scoring. Changed calculation
 inputs invalidate evaluated results; switching stages resets the workspace.
 
 On Config, **Quick access** explains optional shock state/magnitude assumptions and
-links to enemy mitigation settings matching the calculated main skill's non-zero
+links to enemy mitigation settings matching the inspected skill's non-zero
 hit damage. **Open setting** clears catalog filters and focuses the original
 control without changing the build. The full catalog, search, configured-only
 filter and advanced imported inputs remain available. This hit-only shortlist

@@ -1,0 +1,41 @@
+{
+  "skills": [
+    {
+      "group_index": 0,
+      "active_skill_index": 1,
+      "skill_id": "BlasphemyPlayer",
+      "status": "calculated",
+      "metrics": { "hit_dps": 0, "dot_dps": 0, "combined_dps": 0, "average_hit": 0, "action_rate": 0, "mana_cost": 0, "life_cost": 0, "cooldown": 0 },
+      "unsupported_modifiers": [],
+      "error": null
+    },
+    {
+      "group_index": 0,
+      "active_skill_index": 2,
+      "skill_id": "TemporalChainsPlayer",
+      "status": "calculated",
+      "metrics": { "hit_dps": 0, "dot_dps": 0, "combined_dps": 0, "average_hit": 0, "action_rate": 1, "mana_cost": 20, "life_cost": 0, "cooldown": 0 },
+      "unsupported_modifiers": ["Synthetic UI fixture: conditional curse modifier not modeled"],
+      "error": null
+    },
+    {
+      "group_index": 1,
+      "active_skill_index": 1,
+      "skill_id": "SummonMetaTotemSpellTotemPlayer",
+      "status": "unavailable",
+      "metrics": null,
+      "unsupported_modifiers": [],
+      "error": "Synthetic UI fixture: this effect has no calculated output. Inspect the supported effects in this group."
+    },
+    {
+      "group_index": 4,
+      "active_skill_index": 1,
+      "skill_id": "FrostBombPlayer",
+      "status": "calculated",
+      "metrics": { "hit_dps": 2600, "dot_dps": 0, "combined_dps": 2600, "average_hit": 1300, "action_rate": 2, "mana_cost": 35, "life_cost": 0, "cooldown": 2 },
+      "unsupported_modifiers": [],
+      "error": null
+    }
+  ],
+  "item_errors": []
+}

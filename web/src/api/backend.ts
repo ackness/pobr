@@ -15,7 +15,7 @@ import type {
   CalculateBuildRequest,
   CalculateBuildResponse,
   ConfigOption,
-  FullDpsResponse,
+  SkillMetricsResponse,
   GemCatalogEntry,
   ItemLineJson,
   NodePowerResponse,
@@ -70,8 +70,8 @@ export interface PobrBackend {
   encodeBuild(
     request: CalculateBuildRequest & { notes?: string; base_code?: string; weapon_swap?: WeaponSwap | null },
   ): Promise<string>;
-  /** 逐技能组 DPS + FullDPS 汇总（点击触发；计算量 = 1 + 启用伤害组数）。 */
-  fullDps(request: CalculateBuildRequest): Promise<FullDpsResponse>;
+  /** Independent metrics for every active effect, including utility and unavailable skills. */
+  skillMetrics(request: CalculateBuildRequest): Promise<SkillMetricsResponse>;
   attribution(request: AttributionRequest): Promise<AttributionResponse>;
   /** 天赋树静态数据（静态资产，不经 wasm）。 */
   loadPassiveTree(treeVersion?: string | null): Promise<PassiveNode[]>;

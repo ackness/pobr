@@ -210,7 +210,7 @@ pre {
   white-space: nowrap;
 }
 
-.fulldps-row.is-granted td:first-child {
+.skill-metrics-row.is-granted td:first-child {
   color: var(--text-muted);
 }
 

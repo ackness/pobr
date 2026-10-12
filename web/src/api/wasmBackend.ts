@@ -15,7 +15,7 @@ import type {
   CalculateBuildRequest,
   CalculateBuildResponse,
   ConfigCatalogFile,
-  FullDpsResponse,
+  SkillMetricsResponse,
   GemCatalogEntry,
   ItemLineJson,
   NodePowerResponse,
@@ -42,7 +42,7 @@ interface WasmModule {
   importTradeItemsJson(input: string): string;
   calculateBuildJson(requestJson: string): string;
   encodeBuildJson(requestJson: string): string;
-  fullDpsJson(requestJson: string): string;
+  skillMetricsJson(requestJson: string): string;
   attributionJson(requestJson: string): string;
   gemCatalogJson(): string;
   translateLinesToZhCn(linesJson: string): string;
@@ -180,8 +180,8 @@ export async function createWasmBackend(): Promise<PobrBackend> {
     async encodeBuild(request) {
       return wasm.encodeBuildJson(JSON.stringify(request));
     },
-    async fullDps(request) {
-      return JSON.parse(wasm.fullDpsJson(JSON.stringify(request))) as FullDpsResponse;
+    async skillMetrics(request) {
+      return JSON.parse(wasm.skillMetricsJson(JSON.stringify(request))) as SkillMetricsResponse;
     },
     async attribution(request: AttributionRequest) {
       return JSON.parse(wasm.attributionJson(JSON.stringify(request))) as AttributionResponse;

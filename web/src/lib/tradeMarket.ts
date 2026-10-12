@@ -4,6 +4,7 @@ import { compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type Eval
 import type { TradePriceCap, TradeRealm, WeightedStat } from './trade';
 import { tradeItemVariant, type TradeCatalog, type TradeGem } from './tradeOptimizer';
 import { eligibleSupports, lineageAvailable, sameSupportFamily, supportSetsCompatible, type SupportMetadata } from './supportOptimizer';
+import { preserveSkillSelection } from './skillSelection';
 
 export interface MarketItem {
   name?: string; baseType?: string; typeLine?: string;
@@ -71,7 +72,7 @@ export async function evaluateMarket(options: {
 }
 
 export type GemAcquisition = 'skill-adjustment' | 'market-lineage' | 'market-skill';
-export function gemAcquisition(gem: SupportMetadata): GemAcquisition {
+export function gemAcquisition(gem: TradeGem): GemAcquisition {
   return !gem.is_support ? 'market-skill' : gem.is_lineage ? 'market-lineage' : 'skill-adjustment';
 }
 export interface GemPlan { acquisition: GemAcquisition; gem: TradeGem; group: number; position: number; level: number; quality: number; variant: VariantInput; gainPercent?: number; gain?: number; stats?: Record<string, number>; baseline?: Record<string, number> }
@@ -99,7 +100,12 @@ export async function planGemUpgrades(request: CalculateBuildRequest, catalog: T
   evaluate: typeof evaluateVariants = evaluateVariants): Promise<GemPlan[]> {
   const current = request.socket_groups?.[group];
   if (!current?.enabled || current.source || !current.gems.length) return [];
-  const gems: SupportMetadata[] = catalog.gems ?? [];
+  const backend = await getBackend();
+  const effectCatalog = await backend.gemCatalog();
+  signal?.throwIfAborted();
+  const effects = new Map(effectCatalog.map(gem => [gem.skill_id, gem.active_effect_ids]));
+  const gems: SupportMetadata[] = (catalog.gems ?? []).flatMap(gem => effects.has(gem.skill_id)
+    ? [{ ...gem, active_effect_ids: effects.get(gem.skill_id)! }] : []);
   const byId = new Map(gems.map(gem => [gem.skill_id, gem]));
   const plans: GemPlan[] = [];
   const supports = current.gems.flatMap((gem, index) => byId.get(gem.skill_id)?.is_support ? [index] : []);
@@ -109,7 +115,9 @@ export async function planGemUpgrades(request: CalculateBuildRequest, catalog: T
   const characterLevel = request.character?.level ?? 1;
   const add = (gem: SupportMetadata, position: number, level: number, quality: number) => {
     const variant = gemVariant(request, group, position, gem, level, quality);
-    const replacement = variant.socket_groups![group];
+    const replacement = preserveSkillSelection(current, variant.socket_groups![group], byId);
+    if (!replacement) return;
+    variant.socket_groups![group] = replacement;
     const supportInputs = replacement.gems.filter(input => byId.get(input.skill_id)?.is_support);
     if (gem.is_support && supportInputs.some(input => !lineageAvailable(byId.get(input.skill_id)!, request.socket_groups ?? [], group))) return;
     plans.push({ acquisition: gemAcquisition(gem), gem, group, position, level, quality, variant });

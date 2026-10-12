@@ -82,13 +82,13 @@ test('import reminder is inline and imported false values survive review and rel
 test('localized triggered skill uses a readable popup and keyboard selection', async ({ page }) => {
   await ready(page);
   await importBuild(page);
-  const selector = page.locator('.main-skill-select').getByRole('button', { name: '主技能', exact: true });
+  const selector = page.locator('.main-skill-select').getByRole('button', { name: '查看技能', exact: true });
   await expect(selector).toHaveText(/风舞者（触发）/);
   await page.getByRole('navigation').getByRole('button', { name: '技能', exact: true }).click();
   await expect(page.locator('.skills-toolbar')).toContainText('风舞者（触发）');
   await expect(page.locator('.skill-set-chip')).toContainText('锐眼');
   await selector.click();
-  const popup = page.getByRole('listbox', { name: '主技能' });
+  const popup = page.getByRole('listbox', { name: '查看技能' });
   await expect(popup).toBeVisible();
   await expect(popup.getByRole('option', { selected: true })).toContainText('风舞者（触发）');
   const colors = await popup.getByRole('option').first().evaluate(element => ({

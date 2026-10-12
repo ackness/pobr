@@ -4,7 +4,7 @@ import { skillDisplayName } from './skillNames';
 
 const wind: GemCatalogEntry = { skill_id: 'WindDancerPlayer', name: 'Wind Dancer', name_zh_cn: '风舞者',
   name_zh_tw: '風魔舞者', additional_skill_ids: ['TriggeredWindDancerPlayer'], colour: 'dex',
-  is_support: false, is_lineage: false, tags: [] };
+  active_effect_ids: ['WindDancerPlayer', 'TriggeredWindDancerPlayer'], is_support: false, is_lineage: false, tags: [] };
 const catalog = new Map([[wind.skill_id, wind]]);
 
 test('secondary trigger names reuse localized gem names without rewriting IDs', () => {

@@ -4,6 +4,10 @@ import { evaluateMarket, gemAcquisition, gemVariant, planGemUpgrades, rankMarket
 
 vi.mock('../api/backend', () => ({ getBackend: async () => ({
   supportGroupsCompatible: async (groups: unknown[]) => groups.map(() => true),
+  gemCatalog: async () => [
+    { skill_id: 'Fireball', active_effect_ids: ['Fireball'] },
+    ...['Old', 'Ordinary', 'Lineage', 'Attack', 'Unmodeled', 'Unknown'].map(skill_id => ({ skill_id, active_effect_ids: [] })),
+  ],
 }) }));
 
 const market: MarketResponse = { url: 'https://www.pathofexile.com/trade2/search/poe2/Standard/synthetic',

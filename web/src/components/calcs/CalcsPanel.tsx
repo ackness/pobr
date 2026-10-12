@@ -5,7 +5,7 @@ import type {
   AttributionResponse,
   Breakdown,
   DisplayStatCategory,
-  FullDpsResponse,
+  SkillMetricsResponse,
 } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { formatStatValue, statMap } from '../../lib/statDisplay';
@@ -127,30 +127,26 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
   );
 }
 
-/**
- * 逐技能组 DPS（PoB2 侧栏技能列表的 Calcs 版）：每组走完整管线 scoped 重算
- * （品质/升华/装备词条全生效）。挂载与 build 变动时自动刷新（轻度防抖合并
- * 连续编辑）；点击某行把该组设为主技能。
- */
-function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
+/** Every active effect is calculated independently; selection only changes inspection context. */
+function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang }) {
   const tt = bindT(lang);
-  const [completed, setCompleted] = useState<{ version: number; report: FullDpsResponse } | null>(null);
+  const [completed, setCompleted] = useState<{ version: number; report: SkillMetricsResponse } | null>(null);
   const [running, setRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const { stateVersion, runFullDps } = session;
+  const [failure, setFailure] = useState<{ version: number; message: string } | null>(null);
+  const { stateVersion, runSkillMetrics } = session;
   const report = completed?.version === stateVersion ? completed.report : null;
+  const error = failure?.version === stateVersion ? failure.message : null;
   useEffect(() => {
     let cancelled = false;
+    setRunning(true);
     const timer = setTimeout(() => {
-      setRunning(true);
-      setError(null);
-      runFullDps()
+      setFailure(null);
+      runSkillMetrics()
         .then((result) => {
           if (!cancelled) setCompleted({ version: stateVersion, report: result });
         })
         .catch((err) => {
-          if (!cancelled) setError(formatApiError(err));
+          if (!cancelled) setFailure({ version: stateVersion, message: formatApiError(err) });
         })
         .finally(() => {
           if (!cancelled) setRunning(false);
@@ -160,73 +156,79 @@ function FullDpsView({ session, lang }: { session: BuildSession; lang: Lang }) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [stateVersion, runFullDps]);
+  }, [stateVersion, runSkillMetrics]);
 
   const skillName = useSkillName(lang);
-  const mainIndex = session.calc?.main_skill?.group_index;
-  const groupLabel = (index: number, skillId: string) =>
-    `${tt('calcs.group')} ${index + 1} · ${skillName(skillId)}`;
-  // 同名技能可合法出现多次（玩家备用组 + 装备/天赋附赠组）；徽标标出附赠来源，
-  // tooltip 列出整组宝石链帮助区分玩家自己的重复组。
-  const groupMeta = (index: number) => {
-    const group = session.socketGroups[index];
-    return {
-      granted: grantedSourceLabel(lang, group?.source),
-      gems: (group?.gems ?? []).map((g) => skillName(g.skill_id)).join(' + '),
-    };
-  };
+  const mainIndex = session.calcParams.main_socket_group;
+  const columns = [
+    ['combined_dps', 'sidebar.combinedDps'],
+    ['average_hit', 'calcs.averageHit'],
+    ['action_rate', 'calcs.actionRate'],
+    ['mana_cost', 'calcs.manaCost'],
+    ['life_cost', 'calcs.lifeCost'],
+    ['cooldown', 'calcs.cooldown'],
+  ] as const;
 
   return (
-    <section className="ui-card attribution-view" aria-labelledby="fulldps-heading">
-      <h3 id="fulldps-heading" tabIndex={-1}>
-        {tt('calcs.fullDps')}
-        {running && <span className="calcs-hint"> {tt('calcs.running')}</span>}
-      </h3>
-      <p className="calcs-hint">{tt('calcs.fullDpsHint')}</p>
-      {error && <div className="calc-error">{error}</div>}
-      {report &&
-        (report.per_skill.length === 0 ? (
-          <p className="calcs-hint">{tt('calcs.fullDpsEmpty')}</p>
-        ) : (
-          <div className="breakdown-scroll">
-            <table className="breakdown-table">
-              <thead>
-                <tr>
-                  <th>{tt('calcs.skill')}</th>
-                  <th>DPS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...report.per_skill]
-                  .sort((a, b) => b.dps - a.dps)
-                  .map((entry) => {
-                    const meta = groupMeta(entry.group_index);
-                    return (
-                      <tr
-                        key={entry.group_index}
-                        className={`fulldps-row${entry.group_index === mainIndex ? ' is-main' : ''}${meta.granted ? ' is-granted' : ''}`}
-                        title={meta.gems || tt('skills.setMain')}
-                        onClick={() =>
-                          session.updateParams({ main_socket_group: entry.group_index })
-                        }
-                      >
-                        <td>
-                          <button className="calcs-skill-button" aria-pressed={entry.group_index === mainIndex}
-                            onClick={(event) => { event.stopPropagation(); session.updateParams({ main_socket_group: entry.group_index }); }}>
-                            {groupLabel(entry.group_index, entry.skill_id)}
-                          </button>
-                          {meta.granted && (
-                            <span className="granted-badge">{meta.granted}</span>
-                          )}
-                        </td>
-                        <td className="mod-value">{formatStatValue(entry.dps, 'float2')}</td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
-        ))}
+    <section className="ui-card attribution-view" aria-labelledby="skill-metrics-heading" aria-busy={running}>
+      <h3 id="skill-metrics-heading" tabIndex={-1}>{tt('calcs.skillMetrics')}</h3>
+      <p className="calcs-hint">{tt('calcs.skillMetricsHint')}</p>
+      {running && <p className="calcs-hint" role="status">{tt('calcs.running')}</p>}
+      {error && <div className="calc-error" role="alert">{error}</div>}
+      {report?.item_errors.map((issue, index) => (
+        <p className="calc-error" key={`${issue.slot}-${index}`}>{slotLabel(lang, issue.slot)}: {issue.message}</p>
+      ))}
+      {report && (report.skills.length === 0 ? (
+        <p className="calcs-hint">{tt('calcs.skillMetricsEmpty')}</p>
+      ) : (
+        <div className="breakdown-scroll">
+          <table className="breakdown-table skill-metrics-table">
+            <thead>
+              <tr>
+                <th scope="col">{tt('calcs.skill')}</th>
+                {columns.map(([key, label]) => <th scope="col" key={key}>{tt(label)}</th>)}
+                <th scope="col">{tt('calcs.diagnostics')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.skills.map(entry => {
+                const group = session.socketGroups[entry.group_index];
+                const granted = grantedSourceLabel(lang, group?.source);
+                const selected = entry.group_index === mainIndex
+                  && entry.active_skill_index === (group?.main_active_skill ?? 1);
+                const available = entry.status === 'calculated' && entry.metrics !== null;
+                const inspect = () => session.inspectSkill(entry.group_index, entry.active_skill_index, stateVersion);
+                return (
+                  <tr key={`${entry.group_index}-${entry.active_skill_index}`}
+                    className={`skill-metrics-row${selected ? ' is-main' : ''}${granted ? ' is-granted' : ''}`}
+                    title={group?.gems.map(gem => skillName(gem.skill_id)).join(' + ')}
+                    onClick={inspect}>
+                    <td>
+                      <button className="calcs-skill-button" aria-pressed={selected}
+                        disabled={session.busy || !group?.enabled}
+                        onClick={event => { event.stopPropagation(); inspect(); }}>
+                        {tt('calcs.group')} {entry.group_index + 1} · {entry.active_skill_index} · {skillName(entry.skill_id)}
+                      </button>
+                      {granted && <span className="granted-badge">{granted}</span>}
+                    </td>
+                    {columns.map(([key]) => (
+                      <td className="mod-value" key={key}>{available ? formatStatValue(entry.metrics![key], 'float2') : '—'}</td>
+                    ))}
+                    <td className="skill-metrics-diagnostics">
+                      {!available && <p className="calc-error">{tt('calcs.unavailable')}: {entry.error || tt('calcs.unavailableHint')}</p>}
+                      {available && entry.error && <p className="calc-error">{entry.error}</p>}
+                      {entry.unsupported_modifiers.length > 0 && <>
+                        <strong>{tt('calcs.unsupported')}</strong>
+                        <ul>{entry.unsupported_modifiers.map((modifier, index) => <li key={index}>{modifier}</li>)}</ul>
+                      </>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
     </section>
   );
 }
@@ -335,7 +337,7 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
 /** Calcs 页：字段点击展开 breakdown（消费 0.3）+ 归因视图（消费 0.4）。 */
 export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   const tt = bindT(lang);
-  const calc = session.calc;
+  const calc = session.calcError ? null : session.calc;
   const [open, setOpen] = useState<string | null>(null);
 
   // 侧边栏跳转：展开目标 breakdown 并滚动到可视区（渲染提交后再滚）。
@@ -343,13 +345,15 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
   // 挂载，scrollIntoView 再次触发，页面整体错位。
   useEffect(() => {
     if (!focus) return;
-    setOpen(focus.id);
-    requestAnimationFrame(() => {
-      document
-        .getElementById(`breakdown-${focus.id}`)
-        ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    const overview = focus.id === 'skill-metrics';
+    if (!overview) setOpen(focus.id);
+    const frame = requestAnimationFrame(() => {
+      const target = document.getElementById(overview ? 'skill-metrics-heading' : `breakdown-${focus.id}`);
+      if (overview) target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      onFocusConsumed?.();
     });
-    onFocusConsumed?.();
+    return () => cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus]);
 
@@ -391,19 +395,18 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
     }));
   }, [calc, query, lang]);
 
-  if (!calc) return null;
-  const values = statMap(calc.stats);
+  const values = statMap(calc?.stats ?? []);
 
   return (
     <section className="ui-page calcs-page" aria-labelledby="calcs-heading">
       <PageHeader id="calcs-heading" title={tt('calcs.title')} description={tt('calcs.hint')} />
       <div className="calcs-tools">
       <nav className="calcs-navigation" aria-label={tt('calcs.title')}>
-        {['calcs.fullDps', 'calcs.attribution'].map((key, index) => <button key={key} onClick={() => {
-          const section = document.getElementById(index === 0 ? 'fulldps-heading' : 'attribution-heading');
+        {(['calcs.skillMetrics', 'calcs.attribution'] as const).filter(key => key === 'calcs.skillMetrics' || calc).map((key, index) => <button key={key} onClick={() => {
+          const section = document.getElementById(index === 0 ? 'skill-metrics-heading' : 'attribution-heading');
           section?.focus({ preventScroll: true });
           section?.scrollIntoView({ block: 'start' });
-        }}>{tt(key as 'calcs.fullDps' | 'calcs.attribution')} ↓</button>)}
+        }}>{tt(key)} ↓</button>)}
       </nav>
       <input
         className="calcs-search"
@@ -414,6 +417,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
         aria-label={tt('calcs.search')}
       />
       </div>
+      <SkillMetricsView session={session} lang={lang} />
       <div className="calcs-breakdowns">
       {query.trim() && sections.length === 0 && <div className="search-empty" role="status">
         <p>{tt('common.noResults')}</p>
@@ -424,7 +428,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
           <h3 className="calcs-section-title">{statCategoryLabel(lang, category)}</h3>
           <div className="breakdown-list">
             {names.map((name) => {
-              const breakdown = calc.breakdowns[name];
+              const breakdown = calc!.breakdowns[name];
               const isOpen = open === name;
               return (
                 <div
@@ -454,8 +458,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
         </section>
       ))}
       </div>
-      <FullDpsView session={session} lang={lang} />
-      <AttributionView session={session} lang={lang} />
+      {calc && <AttributionView session={session} lang={lang} />}
     </section>
   );
 }
