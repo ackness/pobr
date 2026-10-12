@@ -447,17 +447,8 @@ fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> Compo
     }
 }
 
-/// Aggregates inc (summed) and more (product) across a set of type paths.
-///
-/// Each path type contributes `<Type>Damage` (a type-scoped cfg matches its
-/// `DamageType` tag); elemental types additionally contribute the shared
-/// `ElementalDamage` (deduplicated, counted once even with multiple
-/// elements). The generic `AttackDamage`/`Damage` is only counted once (independent of type-scoping).
-pub(crate) fn aggregate_inc_more(
-    db: &ModDb,
-    cfg: &CalcConfig,
-    final_type: DamageType,
-) -> (f64, f64) {
+/// The damage names every type of the hit is scaled by, whatever its type.
+pub(crate) fn generic_scaling_names(cfg: &CalcConfig) -> Vec<ModName> {
     // The generic bucket (not restricted to a damage type): `Damage` always;
     // attack/spell/skill categories (projectile/area/melee) per the cfg flag
     // -- so `increased <Attack|Spell|Projectile|Area|Melee> Damage` applies to this skill.
@@ -477,6 +468,53 @@ pub(crate) fn aggregate_inc_more(
     for kw in &cfg.damage_keywords {
         generic_names.push(ModName::from(kw.clone()));
     }
+    generic_names
+}
+
+/// The INC / MORE lines [`aggregate_inc_more`] reads for every damage type,
+/// as its generic query treats them.
+pub(crate) fn evaluate_generic_scaling<'a>(
+    db: &'a ModDb,
+    cfg: &CalcConfig,
+) -> Vec<crate::ModEvaluation<'a>> {
+    scaling_rows(db.evaluate_names(cfg, &generic_scaling_names(cfg)))
+}
+
+/// The INC / MORE lines [`aggregate_inc_more`] reads for `final_type` only:
+/// its own name and, for an element, the shared elemental name. Two
+/// queries, like the stage.
+pub(crate) fn evaluate_type_scaling<'a>(
+    db: &'a ModDb,
+    cfg: &CalcConfig,
+    final_type: DamageType,
+) -> Vec<crate::ModEvaluation<'a>> {
+    let type_cfg = cfg.clone().with_damage_type(final_type);
+    let type_name = ModName::from(format!("{}Damage", type_prefix(final_type)));
+    let mut rows = db.evaluate_named(&type_cfg, &type_name);
+    if final_type.is_elemental() {
+        rows.extend(db.evaluate_named(&type_cfg, &ModName::from("ElementalDamage")));
+    }
+    scaling_rows(rows)
+}
+
+fn scaling_rows(rows: Vec<crate::ModEvaluation<'_>>) -> Vec<crate::ModEvaluation<'_>> {
+    rows.into_iter()
+        .filter(|row| matches!(row.modifier.mod_type, ModType::Inc | ModType::More))
+        .collect()
+}
+
+/// Aggregates inc (summed) and more (product) across a set of type paths.
+///
+/// Each path type contributes `<Type>Damage` (a type-scoped cfg matches its
+/// `DamageType` tag); elemental types additionally contribute the shared
+/// `ElementalDamage` (deduplicated, counted once even with multiple
+/// elements). The generic `AttackDamage`/`Damage` is only counted once (independent of type-scoping).
+pub(crate) fn aggregate_inc_more(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    final_type: DamageType,
+) -> (f64, f64) {
+    let generic_names = generic_scaling_names(cfg);
     let elemental_name = ModName::from("ElementalDamage");
 
     // The generic bucket is only counted once (not restricted to a damage type).

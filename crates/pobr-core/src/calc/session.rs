@@ -73,6 +73,13 @@ pub struct BuffSpec {
     pub skill_types: pobr_data::skill::SkillTypes,
 }
 
+/// See [`CalculationSession::hit_damage_mods`].
+#[derive(Debug, Clone)]
+pub struct HitDamageMods<'a> {
+    pub shared: Vec<crate::ModEvaluation<'a>>,
+    pub by_type: Vec<(DamageType, Vec<crate::ModEvaluation<'a>>)>,
+}
+
 #[derive(Debug, Clone)]
 pub struct CalculationSession {
     env: Env,
@@ -828,6 +835,47 @@ impl CalculationSession {
         let pass = super::offence::hit_pass(db, &env.enemy.mod_db, cfg, hand_input);
         ((pass.crit_pass.total_hit_avg - env.player.output.total_hit_avg).abs() <= 1e-6)
             .then(|| pass.damage_terms(db, cfg, hand_input))
+            .flatten()
+    }
+
+    /// The INC / MORE lines behind the scaling of the average hit's damage
+    /// types, as the damage stage reads them (`damage::aggregate_inc_more`):
+    /// the lines every type shares, then each of `types`' own lines. Per type
+    /// the active INC values of both lists add up to that type's increase
+    /// in [`hit_damage_terms`](Self::hit_damage_terms), the MORE values
+    /// multiply to its multiplier.
+    pub fn hit_damage_mods(&self, types: &[DamageType]) -> HitDamageMods<'_> {
+        let env = &self.env;
+        let hand = perform::main_hand_scope(env);
+        let cfg = hand.as_ref().map_or(&env.cfg, |(cfg, _)| cfg);
+        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
+        let db = &env.player.mod_db;
+        HitDamageMods {
+            shared: super::damage::evaluate_generic_scaling(db, &cfg_hit),
+            by_type: types
+                .iter()
+                .map(|ty| (*ty, super::damage::evaluate_type_scaling(db, &cfg_hit, *ty)))
+                .collect(),
+        }
+    }
+
+    /// How the enemy changes each damage type of the average hit on the way
+    /// to the displayed DPS. `None` when the enemy is not part of the
+    /// calculation, or the main-hand pass alone does not produce the
+    /// displayed DPS.
+    pub fn hit_mitigation_terms(&self) -> Option<Vec<super::HitMitigationPart>> {
+        let env = &self.env;
+        let input = perform::player_input(env);
+        let hand = perform::main_hand_scope(env);
+        let (cfg, hand_input) = match &hand {
+            Some((cfg, input)) => (cfg, input),
+            None => (&env.cfg, &input),
+        };
+        let db = &env.player.mod_db;
+        let enemy = &env.enemy.mod_db;
+        let pass = super::offence::hit_pass(db, enemy, cfg, hand_input);
+        ((pass.dps - env.player.output.dps).abs() <= 1e-6)
+            .then(|| pass.mitigation_terms(db, enemy, cfg))
             .flatten()
     }
 

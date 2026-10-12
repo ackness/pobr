@@ -480,6 +480,8 @@ export interface Breakdown {
   formula: BreakdownFormula | null;
   /** TotalHitAvg only: how each damage type of the hit is built. */
   damage?: HitDamageTable;
+  /** TotalDPS only: the `enemy_mitigation` step per damage type. */
+  mitigation?: HitMitigationRow[];
 }
 
 /** One damage type of the main skill's hit, before the enemy's mitigation. */
@@ -503,10 +505,31 @@ export interface HitDamageRow {
   avg: number;
   /** Average critical hit. */
   crit_avg: number;
+  /** INC / MORE lines that scale this type only. With `shared_mods`, active INC values add up to `increased` and active MORE values multiply to `more` (rounded to two decimals per modifier name). */
+  mods: BreakdownMod[];
+}
+
+/** One damage type of the average hit against the configured enemy. */
+export interface HitMitigationRow {
+  damage_type: string;
+  /** The type's share of the average hit (crits included), before the enemy. */
+  average: number;
+  /** Enemy resistance before penetration; null for physical. */
+  resist: number | null;
+  /** What a non-critical hit is reduced by, in percent: resistance after penetration, or for physical the reduction from armour, flat reduction and Overwhelm. Negative means more damage. */
+  reduction: number;
+  /** The enemy's damage-taken multiplier. */
+  taken: number;
+  /** `mitigated / average`. */
+  multiplier: number;
+  /** The share after the enemy; the rows add up to the `enemy_mitigation` step's result. */
+  mitigated: number;
 }
 
 export interface HitDamageTable {
   rows: HitDamageRow[];
+  /** INC / MORE lines that scale every damage type of the hit. */
+  shared_mods: BreakdownMod[];
   /** Double / triple damage multiplier every range includes (1 without one). */
   damage_effect: number;
 }

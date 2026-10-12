@@ -261,6 +261,7 @@ fn breakdown_formulas_end_at_the_displayed_value() {
     let mut covered = std::collections::BTreeMap::<String, usize>::new();
     let mut ops = std::collections::BTreeSet::<String>::new();
     let mut unexplained = std::collections::BTreeMap::<String, usize>::new();
+    let (mut damage_lines, mut penetrated) = (0usize, 0usize);
     for dir in &dirs {
         let code = std::fs::read_to_string(dir.join("code.txt")).unwrap();
         let request = serde_json::json!({ "pob_code": code.trim() }).to_string();
@@ -420,6 +421,92 @@ fn breakdown_formulas_end_at_the_displayed_value() {
                     n("max")
                 );
             }
+            // The listed lines are what scales each damage type: the shared
+            // lines plus the type's own add up to its increase and multiply
+            // to its multiplier.
+            if stat == "TotalHitAvg" {
+                let shared = breakdown["damage"]["shared_mods"].as_array().unwrap();
+                for row in rows.unwrap() {
+                    let lines = || {
+                        shared
+                            .iter()
+                            .chain(row["mods"].as_array().unwrap())
+                            .filter(|line| line["active"] == true)
+                    };
+                    let inc: f64 = lines()
+                        .filter(|line| line["mod_type"] == "INC")
+                        .map(|line| line["value"].as_f64().unwrap())
+                        .sum();
+                    let more: f64 = lines()
+                        .filter(|line| line["mod_type"] == "MORE")
+                        .map(|line| 1.0 + line["value"].as_f64().unwrap() / 100.0)
+                        .product();
+                    let n = |key: &str| row[key].as_f64().unwrap();
+                    assert!(
+                        close(inc, n("increased")),
+                        "{at}: {} lines add up to {inc}, row says {}",
+                        row["damage_type"],
+                        n("increased")
+                    );
+                    // The calculation rounds the product to two decimals
+                    // per modifier name (PoB2's `MoreInternal`).
+                    assert!(
+                        (more - n("more")).abs() <= 0.02 * n("more").abs().max(1.0),
+                        "{at}: {} lines multiply to {more}, row says {}",
+                        row["damage_type"],
+                        n("more")
+                    );
+                    damage_lines += lines().count();
+                }
+            }
+            // The per-type mitigation recombines into the DPS steps: the
+            // averages are the average hit, the mitigated values its result
+            // after the enemy.
+            if stat == "TotalDPS" {
+                let parts = breakdown["mitigation"]
+                    .as_array()
+                    .unwrap_or_else(|| panic!("{at}: no mitigation rows"));
+                let steps = formula["steps"].as_array().unwrap();
+                let step = |op: &str| {
+                    steps
+                        .iter()
+                        .find(|step| step["op"] == op)
+                        .map(|step| step["result"].as_f64().unwrap())
+                };
+                let sum = |key: &str| -> f64 {
+                    parts.iter().map(|part| part[key].as_f64().unwrap()).sum()
+                };
+                let average = step("average_hit").unwrap();
+                assert!(
+                    close(sum("average"), average),
+                    "{at}: mitigation rows start at {}, average hit {average}",
+                    sum("average")
+                );
+                let mitigated = step("enemy_mitigation").unwrap_or(average);
+                assert!(
+                    close(sum("mitigated"), mitigated),
+                    "{at}: mitigation rows end at {}, step says {mitigated}",
+                    sum("mitigated")
+                );
+                for part in parts {
+                    let n = |key: &str| part[key].as_f64().unwrap();
+                    assert!(close(n("average") * n("multiplier"), n("mitigated")));
+                    // Armour depends on the hit size, so a physical crit is
+                    // reduced less than the listed non-crit reduction.
+                    if part["damage_type"] != "Physical" {
+                        let expected = n("taken") * (1.0 - n("reduction") / 100.0);
+                        assert!(
+                            close(n("multiplier"), expected),
+                            "{at}: {} multiplier {} != {expected}",
+                            part["damage_type"],
+                            n("multiplier")
+                        );
+                        if n("reduction") != n("resist") {
+                            penetrated += 1;
+                        }
+                    }
+                }
+            }
             *covered.entry(stat.clone()).or_default() += 1;
         }
         // These are explained on every build that lists them.
@@ -485,6 +572,9 @@ fn breakdown_formulas_end_at_the_displayed_value() {
     ] {
         assert!(ops.contains(op), "no fixture build shows a {op} step");
     }
+    println!("damage lines {damage_lines}; types with penetration {penetrated}");
+    assert!(damage_lines > 0, "no fixture build lists damage lines");
+    assert!(penetrated > 0, "no fixture build shows penetration");
 }
 
 #[test]

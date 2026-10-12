@@ -4,8 +4,10 @@ import { useMemo, useRef, useState } from 'react';
 import type {
   AttributionResponse,
   Breakdown,
+  BreakdownMod,
   FormulaStep,
   HitDamageTable,
+  HitMitigationRow,
   DisplayStatCategory,
   SkillMetricsResponse,
 } from '../../api/types';
@@ -163,7 +165,87 @@ function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang })
   );
 }
 
-function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Breakdown; lang: Lang }) {
+/** The lines behind each damage type's increased and more totals: shared ones first, then per type. */
+function DamageLinesView({ damage, lang }: { damage: HitDamageTable; lang: Lang }) {
+  const tt = bindT(lang);
+  const groups = [
+    { key: 'shared', label: tt('calcs.damage.sharedLines'), mods: damage.shared_mods },
+    ...damage.rows.map((row) => ({
+      key: row.damage_type,
+      label: `${damageTypeLabel(lang, row.damage_type)} · ${tt('calcs.damage.typeLines')}`,
+      mods: row.mods,
+    })),
+  ].filter((group) => group.mods.length > 0);
+  if (groups.length === 0) return null;
+  return (
+    <div className="damage-lines">
+      {groups.map((group) => (
+        <details key={group.key} className={`damage-lines-group damage-lines-${group.key.toLowerCase()}`}>
+          <summary>
+            {group.label}
+            <span className="breakdown-count">
+              {group.mods.filter((m) => m.active).length} {tt('calcs.mods')}
+            </span>
+          </summary>
+          <ModLines mods={group.mods} lang={lang} />
+        </details>
+      ))}
+    </div>
+  );
+}
+
+/** What the enemy does to each damage type of the average hit. */
+function MitigationView({ rows, lang }: { rows: HitMitigationRow[]; lang: Lang }) {
+  const tt = bindT(lang);
+  const sum = (key: 'average' | 'mitigated') => rows.reduce((total, row) => total + row[key], 0);
+  // Armour depends on the hit size, so the listed physical reduction is the non-critical one.
+  const critsDiffer = rows.some(
+    (row) => Math.abs(row.multiplier - row.taken * (1 - row.reduction / 100)) > 1e-6,
+  );
+  return (
+    <div className="breakdown-scroll">
+      <table className="breakdown-table hit-damage-table mitigation-table" aria-label={tt('calcs.mitigation.title')}>
+        <caption>{tt('calcs.mitigation.title')}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{tt('calcs.damage.type')}</th>
+            <th scope="col">{tt('calcs.mitigation.average')}</th>
+            <th scope="col">{tt('calcs.mitigation.resist')}</th>
+            <th scope="col">{tt('calcs.mitigation.reduction')}</th>
+            <th scope="col">{tt('calcs.mitigation.taken')}</th>
+            <th scope="col">{tt('calcs.mitigation.multiplier')}</th>
+            <th scope="col">{tt('calcs.mitigation.after')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.damage_type} className={`damage-${row.damage_type.toLowerCase()}`}>
+              <th scope="row">{damageTypeLabel(lang, row.damage_type)}</th>
+              <td className="mod-value">{fmtNum(row.average)}</td>
+              <td className="mod-value">{row.resist === null ? tt('calcs.mitigation.armour') : `${fmtNum(row.resist)}%`}</td>
+              <td className="mod-value">{fmtNum(row.reduction)}%</td>
+              <td className="mod-value">×{fmtNum(row.taken)}</td>
+              <td className="mod-value">×{fmtNum(row.multiplier)}</td>
+              <td className="mod-value">{fmtNum(row.mitigated)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row">{tt('calcs.damage.total')}</th>
+            <td className="mod-value">{fmtNum(sum('average'))}</td>
+            <td colSpan={4} />
+            <td className="mod-value">{fmtNum(sum('mitigated'))}</td>
+          </tr>
+        </tfoot>
+      </table>
+      {critsDiffer && <p className="breakdown-note">{tt('calcs.mitigation.critNote')}</p>}
+    </div>
+  );
+}
+
+/** Modifier lines with type, applied value, text and source; lines the calculation skips are dimmed. */
+function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   const tt = bindT(lang);
   // 中文界面：词条行批量反查翻译（清洗标注后送翻译器；结果缓存本组件）。
   const [zhLines, setZhLines] = useState<Record<string, string>>({});
@@ -171,7 +253,7 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
     if (lang === 'en-US') return;
     const pending = [
       ...new Set(
-        breakdown.mods
+        mods
           .map((m) => m.source_text)
           .filter((t): t is string => !!t)
           .map(cleanModText),
@@ -193,13 +275,59 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
     return () => {
       cancelled = true;
     };
-  }, [breakdown, lang]);
+  }, [mods, lang]);
 
   const modText = (raw: string | null) => {
     if (!raw) return tt('calcs.baseDerived');
     const cleaned = cleanModText(raw);
     return lang !== 'en-US' ? (zhLines[cleaned] ?? cleaned) : cleaned;
   };
+  return (
+    <div className="breakdown-scroll">
+      <table className="breakdown-table">
+        <thead>
+          <tr>
+            <th>{tt('calcs.type')}</th>
+            <th>{tt('calcs.value')}</th>
+            <th>{tt('calcs.modifier')}</th>
+            <th>{tt('calcs.source')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...mods]
+            .sort(
+              (a, b) =>
+                MOD_TYPE_ORDER.indexOf(a.mod_type) - MOD_TYPE_ORDER.indexOf(b.mod_type) ||
+                Number(b.active) - Number(a.active),
+            )
+            .map((mod, i) => (
+              <tr key={i} className={mod.active ? undefined : 'is-inactive'}>
+                <td className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{mod.mod_type}</td>
+                <td className="mod-value">{mod.value === null ? '—' : fmtNum(mod.value)}</td>
+                <td className="mod-text">
+                  {modText(mod.source_text)}
+                  {!mod.active && <span className="mod-inactive-tag">{tt('calcs.inactive')}</span>}
+                </td>
+                <td className="mod-origin">
+                  {mod.origin_kind
+                    ? `${originKindLabel(lang, mod.origin_kind)}${
+                        mod.slot ? ` · ${slotLabel(lang, mod.slot)}` : ''
+                      }`
+                    : '—'}
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang }) {
+  const tt = bindT(lang);
+  const damageLines = breakdown.damage
+    ? [breakdown.damage.shared_mods, ...breakdown.damage.rows.map((row) => row.mods)].flat()
+    : [];
   return (
     <div className="breakdown-detail">
       {breakdown.damage && <HitDamageView damage={breakdown.damage} lang={lang} />}
@@ -239,46 +367,14 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
           <p className="breakdown-note breakdown-totals-note">{tt('calcs.totalsNote')}</p>
         </>
       )}
-      {breakdown.mods.some((m) => !m.active) && <p className="breakdown-note">{tt('calcs.inactiveNote')}</p>}
-      {breakdown.mods.length > 0 && (
-      <div className="breakdown-scroll">
-        <table className="breakdown-table">
-          <thead>
-            <tr>
-              <th>{tt('calcs.type')}</th>
-              <th>{tt('calcs.value')}</th>
-              <th>{tt('calcs.modifier')}</th>
-              <th>{tt('calcs.source')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...breakdown.mods]
-              .sort(
-                (a, b) =>
-                  MOD_TYPE_ORDER.indexOf(a.mod_type) - MOD_TYPE_ORDER.indexOf(b.mod_type) ||
-                  Number(b.active) - Number(a.active),
-              )
-              .map((mod, i) => (
-                <tr key={`${name}-${i}`} className={mod.active ? undefined : 'is-inactive'}>
-                  <td className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{mod.mod_type}</td>
-                  <td className="mod-value">{mod.value === null ? '—' : fmtNum(mod.value)}</td>
-                  <td className="mod-text">
-                    {modText(mod.source_text)}
-                    {!mod.active && <span className="mod-inactive-tag">{tt('calcs.inactive')}</span>}
-                  </td>
-                  <td className="mod-origin">
-                    {mod.origin_kind
-                      ? `${originKindLabel(lang, mod.origin_kind)}${
-                          mod.slot ? ` · ${slotLabel(lang, mod.slot)}` : ''
-                        }`
-                      : '—'}
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
+      {breakdown.mitigation && breakdown.mitigation.length > 0 && (
+        <MitigationView rows={breakdown.mitigation} lang={lang} />
       )}
+      {[...breakdown.mods, ...damageLines].some((m) => !m.active) && (
+        <p className="breakdown-note">{tt('calcs.inactiveNote')}</p>
+      )}
+      {breakdown.damage && <DamageLinesView damage={breakdown.damage} lang={lang} />}
+      {breakdown.mods.length > 0 && <ModLines mods={breakdown.mods} lang={lang} />}
     </div>
   );
 }
@@ -618,7 +714,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
                       </span>
                     )}
                   </button>
-                  {isOpen && <BreakdownTable name={name} breakdown={breakdown} lang={lang} />}
+                  {isOpen && <BreakdownTable breakdown={breakdown} lang={lang} />}
                 </div>
               );
             })}

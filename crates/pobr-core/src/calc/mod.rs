@@ -84,9 +84,9 @@ pub use minion::{
     write_summoned_minion_multipliers,
 };
 pub use offence::{
-    HitDamagePart, HitDamageTerms, MinimalInput, MinimalOutput, TracedMinimalOutput,
-    calculate_minimal, calculate_minimal_traced, calculate_minimal_traced_vs_enemy,
-    calculate_minimal_vs_enemy,
+    HitDamagePart, HitDamageTerms, HitMitigationPart, MinimalInput, MinimalOutput,
+    TracedMinimalOutput, calculate_minimal, calculate_minimal_traced,
+    calculate_minimal_traced_vs_enemy, calculate_minimal_vs_enemy,
 };
 pub use output::{HandOutput, MinionOutput, OutputTable, StoredDamageRange};
 pub use perform::perform;
@@ -101,7 +101,7 @@ pub use pool_setup::{
 pub use scaled_damage::{
     AllMultExtras, DpsEndFactors, ScaledDamage, all_mult, dps_end_factors, scaled_damage_effect,
 };
-pub use session::{BuffKind, BuffSpec, CalculationSession};
+pub use session::{BuffKind, BuffSpec, CalculationSession, HitDamageMods};
 pub use setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
 pub use skill_dot::{
     DotIsFlags, SkillDotInputs, SkillDotOutput, calc_skill_dot, dot_config, fill_skill_dot,

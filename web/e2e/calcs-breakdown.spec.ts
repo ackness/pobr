@@ -150,12 +150,38 @@ test('average hit and total DPS show how they are built', async ({ page }) => {
   expect(shownAverage).toBeGreaterThan(total);
   expect(Math.abs(num(await average.locator('tr.formula-final .formula-result').textContent()) - shownAverage)).toBeLessThanOrEqual(0.5);
 
+  // The increased column is backed by modifier lines: those shared by every type plus the
+  // type's own add up to the physical row's increase.
+  const incOf = async (group: string) => {
+    const lines = average.locator(`.damage-lines-${group}`);
+    if ((await lines.count()) === 0) return 0;
+    await lines.locator('summary').click();
+    const values = await lines
+      .locator('tbody tr:not(.is-inactive)', { has: page.locator('.mod-type-inc') })
+      .locator('.mod-value')
+      .allTextContents();
+    return values.reduce((sum, text) => sum + num(text), 0);
+  };
+  const listed = (await incOf('shared')) + (await incOf('physical'));
+  expect(listed).toBeGreaterThan(0);
+  expect(listed).toBeCloseTo(num(await table.locator('tbody tr.damage-physical td').nth(1).textContent()), 1);
+
   // Total DPS: starts from that average hit and multiplies in rate and chance to hit.
   const dps = page.locator('#breakdown-TotalDPS');
   await dps.locator('.breakdown-toggle').click();
   expect(Math.abs(num(await dps.locator('tr.formula-average_hit .formula-result').textContent()) - shownAverage)).toBeLessThanOrEqual(0.5);
   await expect(dps.locator('tr.formula-uses_per_second')).toHaveCount(1);
   await expect(dps.locator('tr.formula-chance_to_hit th')).toHaveText('Chance to hit');
+  // The enemy step is split by damage type: the rows start at the average hit and end at
+  // the step's result.
+  const enemy = dps.locator('.mitigation-table');
+  await expect(enemy.locator('tbody tr.damage-physical td').nth(1)).toHaveText('armour');
+  const totals = enemy.locator('tfoot td.mod-value');
+  expect(Math.abs(num(await totals.first().textContent()) - shownAverage)).toBeLessThanOrEqual(0.5);
+  expect(num(await totals.last().textContent())).toBeCloseTo(
+    num(await dps.locator('tr.formula-enemy_mitigation .formula-result').textContent()),
+    1,
+  );
   const shownDps = num(await dps.locator('.breakdown-value').textContent());
   expect(Math.abs(num(await dps.locator('tr.formula-final .formula-result').textContent()) - shownDps)).toBeLessThanOrEqual(0.5);
 });

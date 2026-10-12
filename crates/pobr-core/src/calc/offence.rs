@@ -539,6 +539,24 @@ pub struct HitDamageTerms {
     pub damage_effect: f64,
 }
 
+/// One damage type of the average hit against the enemy.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HitMitigationPart {
+    pub damage_type: DamageType,
+    /// The type's share of the average hit (crits included), before the enemy.
+    pub average: f64,
+    /// The same share after the enemy's mitigation.
+    pub mitigated: f64,
+    /// The enemy's resistance before penetration (`None` for physical).
+    pub resist: Option<f64>,
+    /// What a non-critical hit is reduced by, in percent: the resistance
+    /// after penetration, or for physical the reduction from armour, flat
+    /// reduction and Overwhelm. Negative means more damage.
+    pub reduction: f64,
+    /// The enemy's damage-taken multiplier.
+    pub taken: f64,
+}
+
 /// What one offence pass computes for the hit: speed, chance to hit, crit,
 /// both crit legs and the DPS they combine into. The stage's output and the
 /// displayed steps ([`HitPass::average_hit_formula`], [`HitPass::dps_formula`])
@@ -678,6 +696,49 @@ impl HitPass {
             parts,
             damage_effect: self.damage_effect,
         })
+    }
+
+    /// How the enemy changes each damage type of the average hit. `None`
+    /// when the enemy is not part of the calculation or the per-type values
+    /// cannot be matched to the stage's components.
+    pub(crate) fn mitigation_terms(
+        &self,
+        db: &ModDb,
+        enemy_db: &ModDb,
+        cfg: &CalcConfig,
+    ) -> Option<Vec<HitMitigationPart>> {
+        let pass = &self.crit_pass;
+        if pass.mitigated_avg.is_empty()
+            || pass.mitigated_avg.len() != pass.stored_combined_avg.len()
+            || pass.mitigated_avg.len() != pass.non_crit_components.len()
+        {
+            return None;
+        }
+        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
+        Some(
+            pass.stored_combined_avg
+                .iter()
+                .zip(&pass.mitigated_avg)
+                .zip(&pass.non_crit_components)
+                .map(|(((damage_type, average), (_, mitigated)), component)| {
+                    let terms = enemy_mitigation_terms(
+                        db,
+                        enemy_db,
+                        &cfg_hit,
+                        *damage_type,
+                        component.avg(),
+                    );
+                    HitMitigationPart {
+                        damage_type: *damage_type,
+                        average: *average,
+                        mitigated: *mitigated,
+                        resist: terms.resist,
+                        reduction: terms.reduction,
+                        taken: terms.taken,
+                    }
+                })
+                .collect(),
+        )
     }
 
     /// Non-crit average, then the share of hits that crit, ending at the
@@ -1280,6 +1341,36 @@ fn enemy_damage_multiplier(
     damage_type: DamageType,
     raw_hit: f64,
 ) -> f64 {
+    enemy_mitigation_terms(player_db, enemy_db, cfg, damage_type, raw_hit).multiplier()
+}
+
+/// What the enemy does to one damage type of a hit, as
+/// [`enemy_damage_multiplier`] computes it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EnemyMitigationTerms {
+    /// The enemy's resistance before penetration (`None` for physical).
+    pub resist: Option<f64>,
+    /// What the hit is reduced by, in percent: the resistance after
+    /// penetration, or for physical the reduction from armour, flat
+    /// reduction and Overwhelm at this hit size. Negative means more damage.
+    pub reduction: f64,
+    /// The enemy's damage-taken multiplier, `(1 + INC / 100) × MORE`.
+    pub taken: f64,
+}
+
+impl EnemyMitigationTerms {
+    pub(crate) fn multiplier(&self) -> f64 {
+        self.taken * (1.0 - self.reduction / 100.0)
+    }
+}
+
+fn enemy_mitigation_terms(
+    player_db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    damage_type: DamageType,
+    raw_hit: f64,
+) -> EnemyMitigationTerms {
     let type_prefix = match damage_type {
         DamageType::Physical => "Physical",
         DamageType::Fire => "Fire",
@@ -1341,8 +1432,11 @@ fn enemy_damage_multiplier(
     let taken_mult = (1.0 + taken_inc / 100.0) * taken_more;
 
     // Resistance mitigation (elemental/chaos, including player penetration) / armour mitigation + Overwhelm (physical)
-    let mitigation = if damage_type == DamageType::Physical {
-        enemy_physical_multiplier(player_db, enemy_db, &type_cfg, raw_hit)
+    let (resist, reduction) = if damage_type == DamageType::Physical {
+        (
+            None,
+            enemy_physical_reduction(player_db, enemy_db, &type_cfg, raw_hit),
+        )
     } else {
         let mut resist = enemy_resist_final(enemy_db, &type_cfg, damage_type);
         // A hit treats enemy elemental resistance as inverted (Rakiata's
@@ -1382,10 +1476,14 @@ fn enemy_damage_multiplier(
                 }
             }
         }
-        1.0 - effective_resist / 100.0
+        (Some(resist), effective_resist)
     };
 
-    taken_mult * mitigation
+    EnemyMitigationTerms {
+        resist,
+        reduction,
+        taken: taken_mult,
+    }
 }
 
 /// The enemy's **final resistance** for a damage type (vendor
@@ -1592,7 +1690,18 @@ fn penetration_value(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: Dama
 /// (`:4088-4094`), `PartialIgnoreEnemyPhysicalDamageReduction` (`:4096`).
 ///
 /// Source: agent-docs/damage-scaling.md §Overwhelm; PoB2 CalcOffence.lua:4074-4096.
+#[cfg(test)]
 fn enemy_physical_multiplier(
+    player_db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    raw_hit: f64,
+) -> f64 {
+    1.0 - enemy_physical_reduction(player_db, enemy_db, cfg, raw_hit) / 100.0
+}
+
+/// The reduction (%, signed) behind [`enemy_physical_multiplier`].
+fn enemy_physical_reduction(
     player_db: &ModDb,
     enemy_db: &ModDb,
     cfg: &CalcConfig,
@@ -1636,11 +1745,10 @@ fn enemy_physical_multiplier(
         cfg,
         &[ModName::from("EnemyPhysicalDamageReduction")],
     );
-    let reduction = (flat_pdr + overwhelm + from_armour).clamp(
+    (flat_pdr + overwhelm + from_armour).clamp(
         -cfg.constants.game().neg_armour_dmg_bonus_cap,
         ENEMY_PHYS_DMGRED_CAP,
-    );
-    1.0 - reduction / 100.0
+    )
 }
 
 /// Armour mitigation (%, signed) -- vendor `calcs.armourReductionF`

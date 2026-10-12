@@ -79,6 +79,10 @@ pub struct CritPassOutput {
     pub total_hit_avg: f64,
     /// Effective total average after CritBlend (after enemy mitigation; used for DPS).
     pub total_hit_avg_mitigated: f64,
+    /// Each type's share of `total_hit_avg_mitigated`: both legs after the
+    /// enemy's mitigation, weighted by crit chance. In the order of
+    /// `stored_combined_avg`; empty outside `mode_effective`.
+    pub mitigated_avg: Vec<(DamageType, f64)>,
     /// Whether the equivalence short circuit was taken (both legs'
     /// aggregation inputs bit-identical → old single-factor formula).
     pub short_circuited: bool,
@@ -178,6 +182,9 @@ where
         })
         .collect();
 
+    // Per-type mitigated averages of both legs, filled where the legs are
+    // mitigated below.
+    let mut mitigated_legs: Option<(Vec<f64>, Vec<f64>)> = None;
     let (total_hit_avg, total_hit_avg_mitigated) = if short_circuit {
         // Old single-factor formula (rounding order copied byte-for-byte
         // from the pre-replacement offence.rs implementation):
@@ -195,15 +202,18 @@ where
             // each leg separately first; when mitigation has no dependency
             // on raw (a pure resistance/damage-taken chain), this degenerates
             // mathematically to the old formula with every value unchanged.
-            let hit_leg = leg_total_mitigated(&non_crit, &cfg_hit, &mitigation);
-            let crit_leg_mitigated: f64 = non_crit
+            let hit_parts = leg_mitigated(&non_crit, &cfg_hit, &mitigation);
+            let hit_leg: f64 = hit_parts.iter().sum();
+            let crit_parts: Vec<f64> = non_crit
                 .avgs
                 .iter()
                 .zip(non_crit.raw_avgs.iter())
                 .map(|((ty, avg), raw)| {
                     avg * crit.multiplier * mitigation(&cfg_crit, *ty, raw * crit.multiplier)
                 })
-                .sum();
+                .collect();
+            let crit_leg_mitigated: f64 = crit_parts.iter().sum();
+            mitigated_legs = Some((hit_parts, crit_parts));
             hit_leg * (1.0 - c) + crit_leg_mitigated * c
         } else {
             player_side * crit.effect
@@ -214,14 +224,27 @@ where
         let blend = |hit: f64, crit_v: f64| hit * (1.0 - c) + crit_v * c;
         let player_side = blend(leg_total(&non_crit), leg_total(&crit_leg));
         let mitigated = if mode_effective {
-            blend(
-                leg_total_mitigated(&non_crit, &cfg_hit, &mitigation),
-                leg_total_mitigated(&crit_leg, &cfg_crit, &mitigation),
-            )
+            let hit_parts = leg_mitigated(&non_crit, &cfg_hit, &mitigation);
+            let crit_parts = leg_mitigated(&crit_leg, &cfg_crit, &mitigation);
+            let blended = blend(hit_parts.iter().sum(), crit_parts.iter().sum());
+            mitigated_legs = Some((hit_parts, crit_parts));
+            blended
         } else {
             player_side
         };
         (round(player_side), round(mitigated))
+    };
+
+    // Pairs the legs by position like `stored_combined_avg`; left empty when
+    // the legs hold different components.
+    let mitigated_avg = match mitigated_legs {
+        Some((hit_parts, crit_parts)) if hit_parts.len() == crit_parts.len() => non_crit
+            .avgs
+            .iter()
+            .zip(hit_parts.iter().zip(&crit_parts))
+            .map(|((ty, _), (hit, crit_v))| (*ty, hit * (1.0 - c) + crit_v * c))
+            .collect(),
+        _ => Vec::new(),
     };
 
     CritPassOutput {
@@ -233,6 +256,7 @@ where
         stored_ranges,
         total_hit_avg,
         total_hit_avg_mitigated,
+        mitigated_avg,
         short_circuited: short_circuit,
     }
 }
@@ -246,11 +270,15 @@ pub(crate) fn non_crit_terms(
     base_hit_min: f64,
     base_hit_max: f64,
 ) -> Vec<ComponentTerms> {
-    let cfg_hit = cfg
-        .clone()
+    calculate_component_terms(db, &non_crit_cfg(cfg), base_hit_min, base_hit_max)
+}
+
+/// The config the non-crit leg is aggregated in, from the pass config the
+/// stage starts with (without the hit keyword).
+pub(crate) fn non_crit_cfg(cfg: &CalcConfig) -> CalcConfig {
+    cfg.clone()
         .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT)
-        .with_condition("CriticalStrike", false);
-    calculate_component_terms(db, &cfg_hit, base_hit_min, base_hit_max)
+        .with_condition("CriticalStrike", false)
 }
 
 /// Finishes a leg: ×allMult (`:4033-4034`) → fold lucky into avg (`:4035-4046`).
@@ -286,7 +314,8 @@ fn leg_total(leg: &Leg) -> f64 {
     leg.avgs.iter().map(|(_, avg)| avg).sum()
 }
 
-fn leg_total_mitigated<F>(leg: &Leg, pass_cfg: &CalcConfig, mitigation: &F) -> f64
+/// Each component's average after the enemy's mitigation, in leg order.
+fn leg_mitigated<F>(leg: &Leg, pass_cfg: &CalcConfig, mitigation: &F) -> Vec<f64>
 where
     F: Fn(&CalcConfig, DamageType, f64) -> f64,
 {
@@ -294,5 +323,5 @@ where
         .iter()
         .zip(leg.raw_avgs.iter())
         .map(|((ty, avg), raw)| avg * mitigation(pass_cfg, *ty, *raw))
-        .sum()
+        .collect()
 }

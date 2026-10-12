@@ -77,6 +77,42 @@ struct BreakdownJson {
     /// `TotalHitAvg` only: how each damage type of the hit is built.
     #[serde(skip_serializing_if = "Option::is_none")]
     damage: Option<HitDamageTableJson>,
+    /// `TotalDPS` only: the `enemy_mitigation` step per damage type.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    mitigation: Option<Vec<HitMitigationRowJson>>,
+}
+
+fn mod_entries(rows: &[pobr_core::ModEvaluation<'_>]) -> Vec<BreakdownModJson> {
+    let mut entries: Vec<BreakdownModJson> = rows
+        .iter()
+        .map(|row| {
+            let m = row.modifier;
+            BreakdownModJson {
+                mod_type: m.mod_type.as_trace_label(),
+                value: row.value,
+                active: row.active,
+                source_text: m.source.clone(),
+                origin_kind: m.origin.as_ref().map(|o| format!("{:?}", o.source_id.kind)),
+                origin_id: m.origin.as_ref().map(|o| o.source_id.id.clone()),
+                slot: m.origin.as_ref().and_then(|o| o.slot.clone()),
+            }
+        })
+        .collect();
+    // Establish a fixed order: ModDb iteration order is affected by the
+    // underlying HashMap instance, so different data backends can produce
+    // different orderings; the output is sorted by (type, origin, mod-line
+    // text, value) to keep the contract byte-deterministic and the UI display stable.
+    entries.sort_by(|a, b| {
+        (a.mod_type, &a.origin_kind, &a.origin_id, &a.source_text)
+            .cmp(&(b.mod_type, &b.origin_kind, &b.origin_id, &b.source_text))
+            .then(
+                a.value
+                    .partial_cmp(&b.value)
+                    .unwrap_or(std::cmp::Ordering::Equal),
+            )
+            .then(b.active.cmp(&a.active))
+    });
+    entries
 }
 
 /// One damage type of the main skill's hit, before the enemy's mitigation.
@@ -103,13 +139,46 @@ struct HitDamageRowJson {
     avg: f64,
     /// The average critical hit.
     crit_avg: f64,
+    /// The INC / MORE lines that scale this type only (its own damage name
+    /// and, for an element, elemental damage), inactive lines included.
+    /// With `shared_mods`, the active INC values add up to `increased` and
+    /// the active MORE values multiply to `more` (which the calculation
+    /// rounds to two decimals per modifier name).
+    mods: Vec<BreakdownModJson>,
 }
 
 #[derive(Debug, Serialize)]
 struct HitDamageTableJson {
     rows: Vec<HitDamageRowJson>,
+    /// The INC / MORE lines that scale every damage type of the hit
+    /// (damage, attack / spell / projectile / area / melee damage and the
+    /// skill's keyword damage names), inactive lines included.
+    shared_mods: Vec<BreakdownModJson>,
     /// The double / triple damage multiplier every range includes (`1.0` without one).
     damage_effect: f64,
+}
+
+/// One damage type of the average hit against the configured enemy.
+#[derive(Debug, Serialize)]
+struct HitMitigationRowJson {
+    /// `Physical` / `Fire` / `Cold` / `Lightning` / `Chaos`.
+    damage_type: String,
+    /// The type's share of the average hit (crits included), before the enemy.
+    average: f64,
+    /// The enemy's resistance before penetration (`null` for physical).
+    resist: Option<f64>,
+    /// What a non-critical hit is reduced by, in percent: the resistance
+    /// after penetration, or for physical the reduction from the enemy's
+    /// armour, flat reduction and Overwhelm. Negative means more damage.
+    reduction: f64,
+    /// The enemy's damage-taken multiplier for this type.
+    taken: f64,
+    /// `mitigated / average`. Equals `taken × (1 − reduction / 100)` unless
+    /// critical hits are mitigated differently (armour depends on hit size).
+    multiplier: f64,
+    /// The share after the enemy. The rows add up to the result of the
+    /// `enemy_mitigation` step.
+    mitigated: f64,
 }
 
 #[derive(Debug, Serialize)]
@@ -166,57 +235,57 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
     let damage = (stat == "TotalHitAvg")
         .then(|| session.hit_damage_terms())
         .flatten()
-        .map(|terms| HitDamageTableJson {
-            rows: terms
+        .map(|terms| {
+            // The physical row is always computed; leave it out when empty.
+            let parts: Vec<_> = terms
                 .parts
                 .iter()
-                // The physical row is always computed; leave it out when empty.
                 .filter(|part| part.base_max != 0.0 || part.max != 0.0)
-                .map(|part| HitDamageRowJson {
-                    damage_type: format!("{:?}", part.damage_type),
-                    base_min: part.base_min,
-                    base_max: part.base_max,
-                    increased: part.inc + 0.0,
-                    more: part.more,
-                    more_min: part.more_min,
-                    more_max: part.more_max,
-                    min: part.min,
-                    max: part.max,
-                    avg: part.avg,
-                    crit_avg: part.crit_avg,
-                })
-                .collect(),
-            damage_effect: terms.damage_effect,
-        });
-    let mut entries: Vec<BreakdownModJson> = rows
-        .iter()
-        .map(|row| {
-            let m = row.modifier;
-            BreakdownModJson {
-                mod_type: m.mod_type.as_trace_label(),
-                value: row.value,
-                active: row.active,
-                source_text: m.source.clone(),
-                origin_kind: m.origin.as_ref().map(|o| format!("{:?}", o.source_id.kind)),
-                origin_id: m.origin.as_ref().map(|o| o.source_id.id.clone()),
-                slot: m.origin.as_ref().and_then(|o| o.slot.clone()),
+                .collect();
+            let types: Vec<_> = parts.iter().map(|part| part.damage_type).collect();
+            let lines = session.hit_damage_mods(&types);
+            HitDamageTableJson {
+                rows: parts
+                    .iter()
+                    .zip(&lines.by_type)
+                    .map(|(part, (_, mods))| HitDamageRowJson {
+                        damage_type: format!("{:?}", part.damage_type),
+                        base_min: part.base_min,
+                        base_max: part.base_max,
+                        increased: part.inc + 0.0,
+                        more: part.more,
+                        more_min: part.more_min,
+                        more_max: part.more_max,
+                        min: part.min,
+                        max: part.max,
+                        avg: part.avg,
+                        crit_avg: part.crit_avg,
+                        mods: mod_entries(mods),
+                    })
+                    .collect(),
+                shared_mods: mod_entries(&lines.shared),
+                damage_effect: terms.damage_effect,
             }
-        })
-        .collect();
-    // Establish a fixed order: ModDb iteration order is affected by the
-    // underlying HashMap instance, so different data backends can produce
-    // different orderings; the output is sorted by (type, origin, mod-line
-    // text, value) to keep the contract byte-deterministic and the UI display stable.
-    entries.sort_by(|a, b| {
-        (a.mod_type, &a.origin_kind, &a.origin_id, &a.source_text)
-            .cmp(&(b.mod_type, &b.origin_kind, &b.origin_id, &b.source_text))
-            .then(
-                a.value
-                    .partial_cmp(&b.value)
-                    .unwrap_or(std::cmp::Ordering::Equal),
-            )
-            .then(b.active.cmp(&a.active))
-    });
+        });
+    let mitigation = (stat == "TotalDPS")
+        .then(|| session.hit_mitigation_terms())
+        .flatten()
+        .map(|parts| {
+            parts
+                .iter()
+                .filter(|part| part.average != 0.0)
+                .map(|part| HitMitigationRowJson {
+                    damage_type: format!("{:?}", part.damage_type),
+                    average: part.average,
+                    resist: part.resist.map(|resist| resist + 0.0),
+                    reduction: part.reduction + 0.0,
+                    taken: part.taken,
+                    multiplier: part.mitigated / part.average,
+                    mitigated: part.mitigated,
+                })
+                .collect()
+        });
+    let entries = mod_entries(&rows);
     let (base_total, inc_total, more_total) = session.stat_totals(stat);
     Some(BreakdownJson {
         // An empty float sum is `-0.0`; adding zero keeps it out of the JSON.
@@ -226,6 +295,7 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
         mods: entries,
         formula,
         damage,
+        mitigation,
     })
 }
 
