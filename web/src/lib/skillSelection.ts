@@ -1,4 +1,4 @@
-import type { GemCatalogEntry, SocketGroupInput } from '../api/types';
+import type { GemCatalogEntry, SkillMetricsEntry, SocketGroupInput } from '../api/types';
 
 /** PoB ordinals count all active effects, not gems or display/stat-set aliases. */
 export function activeSkillEffects(group: SocketGroupInput, catalog: ReadonlyMap<string, Pick<GemCatalogEntry, 'active_effect_ids'>>) {
@@ -48,4 +48,21 @@ export function removeSkillGem(group: SocketGroupInput, gemIndex: number, catalo
     }
   }
   return { ...group, gems: group.gems.filter((_, index) => index !== gemIndex), main_active_skill: mainActiveSkill };
+}
+
+/**
+ * The default inspected skill when nothing is selected: the highest combined
+ * (hit + damage over time) DPS among calculated effects of enabled groups.
+ * Ties and all-zero builds keep the earliest row, so the choice is stable.
+ */
+export function highestDpsSkill(
+  skills: SkillMetricsEntry[],
+  groups: ReadonlyArray<{ enabled?: boolean } | undefined>,
+): SkillMetricsEntry | null {
+  let best: SkillMetricsEntry | null = null;
+  for (const entry of skills) {
+    if (entry.status !== 'calculated' || !entry.metrics || !groups[entry.group_index]?.enabled) continue;
+    if (!best || entry.metrics.combined_dps > best.metrics!.combined_dps) best = entry;
+  }
+  return best;
 }

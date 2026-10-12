@@ -2,7 +2,7 @@
  * UI 文案三语字典（en-US / zh-TW / zh-CN）。
  *
  * 只覆盖界面文案；游戏名词（宝石/技能/物品名）走数据包 i18n 边车——当前仅有
- * 繁中（zh-TW），简中游戏数据需国服数据源接入（见 TODO.md），此前简中界面
+ * 繁中（zh-TW），简中游戏数据需国服数据源接入（见 docs/web-frontend-plan.md），此前简中界面
  * 下的游戏名词回退繁中。
  */
 
@@ -469,6 +469,7 @@ const DICT = {
   'calcs.cooldown': { 'en-US': 'Cooldown (s)', 'zh-TW': '冷卻（秒）', 'zh-CN': '冷却（秒）' },
   'calcs.diagnostics': { 'en-US': 'Diagnostics', 'zh-TW': '診斷', 'zh-CN': '诊断' },
   'calcs.unsupported': { 'en-US': 'Unsupported modifiers', 'zh-TW': '未支援詞綴', 'zh-CN': '未支持词缀' },
+  'calcs.highestDps': { 'en-US': 'Highest DPS', 'zh-TW': '最高 DPS', 'zh-CN': '最高 DPS' },
   'calcs.unavailable': { 'en-US': 'Unavailable', 'zh-TW': '無法計算', 'zh-CN': '无法计算' },
   'calcs.unavailableHint': { 'en-US': 'No calculated output. Check this effect’s skill ID and support requirements.', 'zh-TW': '沒有計算結果。請檢查此效果的技能 ID 與輔助需求。', 'zh-CN': '没有计算结果。请检查此效果的技能 ID 与辅助需求。' },
   'calcs.skill': { 'en-US': 'Skill', 'zh-TW': '技能', 'zh-CN': '技能' },
@@ -807,6 +808,7 @@ const STAT_EXTRA_LABELS: Record<string, { 'zh-TW': string; 'zh-CN': string }> = 
   LifeRegen: { 'zh-TW': '生命再生', 'zh-CN': '生命再生' },
   ManaRegen: { 'zh-TW': '魔力再生', 'zh-CN': '魔力再生' },
   EnergyShieldRegen: { 'zh-TW': '能量護盾再生', 'zh-CN': '能量护盾再生' },
+  WardRegen: { 'zh-TW': '符文結界再生', 'zh-CN': '符文结界再生' },
   SpellBlockChance: { 'zh-TW': '法術格擋率', 'zh-CN': '法术格挡率' },
   EsRechargeRate: { 'zh-TW': '護盾充能速率', 'zh-CN': '护盾充能速率' },
   EsRechargeDelay: { 'zh-TW': '護盾充能延遲', 'zh-CN': '护盾充能延迟' },

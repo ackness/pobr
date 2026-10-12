@@ -32,6 +32,7 @@ import type {
   SocketGroupInput,
   WeaponSwap,
 } from '../api/types';
+import { highestDpsSkill } from '../lib/skillSelection';
 
 export interface CharacterState {
   level: number;
@@ -649,9 +650,29 @@ export function useBuildSession(): BuildSession {
       }
       saveToStorage(next, notesRef.current);
       recalc(next);
+      // Nothing selected: default to the highest-DPS skill, once. The choice is
+      // then pinned like an explicit one, so later edits never move it.
+      if (next.params.main_socket_group === undefined && next.socketGroups.some(group => group.enabled)) {
+        const pending = next;
+        const wasClean = cleanVersionRef.current === versionRef.current;
+        skillMetricsForState(pending).then((report) => {
+          const best = highestDpsSkill(report.skills, pending.socketGroups);
+          if (!best || stateRef.current !== pending) return;
+          applyRef.current?.({
+            ...pending,
+            socketGroups: pending.socketGroups.map((group, index) => index === best.group_index
+              ? { ...group, main_active_skill: best.active_skill_index } : group),
+            params: { ...pending.params, main_socket_group: best.group_index },
+          });
+          // A default is not an edit: an untouched import stays clean.
+          if (wasClean) cleanVersionRef.current = versionRef.current;
+        }).catch(() => {});
+      }
     },
     [recalc, saveToStorage],
   );
+  const applyRef = useRef<typeof apply | null>(null);
+  applyRef.current = apply;
 
 
   // 启动：初始化后端 → 加载职业元数据 → 以首个职业开一个空 build（PoB2 新建语义）。

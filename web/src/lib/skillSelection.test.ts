@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
-import type { GemCatalogEntry, SocketGroupInput } from '../api/types';
-import { activeSkillEffects, preserveSkillSelection, removeSkillGem } from './skillSelection';
+import type { GemCatalogEntry, SkillMetricsEntry, SocketGroupInput } from '../api/types';
+import { activeSkillEffects, highestDpsSkill, preserveSkillSelection, removeSkillGem } from './skillSelection';
 
 const gemDefaults = {
   name: 'Fixture', name_zh_tw: null, name_zh_cn: null, colour: null,
@@ -51,4 +51,31 @@ test('level and quality comparisons retain the second copy of a skill rather tha
   const replacement = { ...original, gems: [original.gems[0], { ...original.gems[1], quality: 20 }] };
   expect(preserveSkillSelection(original, replacement, catalog)?.main_active_skill).toBe(2);
   expect(original.gems[1].quality).toBe(0);
+});
+
+function metricsRow(group_index: number, active_skill_index: number, combined_dps: number | null): SkillMetricsEntry {
+  return {
+    group_index, active_skill_index, skill_id: `Skill${group_index}_${active_skill_index}`,
+    status: combined_dps === null ? 'unavailable' : 'calculated',
+    metrics: combined_dps === null ? null : {
+      hit_dps: combined_dps, dot_dps: 0, combined_dps, average_hit: 0, action_rate: 1, mana_cost: 0, life_cost: 0, cooldown: 0,
+    },
+    unsupported_modifiers: [], error: null,
+  };
+}
+const groupStates = [{ enabled: true }, { enabled: true }, { enabled: false }];
+
+test('default skill is the highest combined DPS among enabled, calculated effects', () => {
+  const skills = [metricsRow(0, 1, 100), metricsRow(0, 2, 900), metricsRow(1, 1, 400), metricsRow(2, 1, 5000), metricsRow(1, 2, null)];
+  expect(highestDpsSkill(skills, groupStates)).toBe(skills[1]);
+});
+
+test('default skill keeps the earliest row on ties and utility-only builds', () => {
+  const skills = [metricsRow(1, 1, 0), metricsRow(0, 1, 0)];
+  expect(highestDpsSkill(skills, groupStates)).toBe(skills[0]);
+  expect(highestDpsSkill([metricsRow(0, 1, 50), metricsRow(1, 1, 50)], groupStates)?.group_index).toBe(0);
+});
+
+test('no calculable skill leaves the selection empty', () => {
+  expect(highestDpsSkill([metricsRow(0, 1, null), metricsRow(2, 1, 10)], groupStates)).toBeNull();
 });

@@ -1,5 +1,5 @@
 /**
- * E2E 冒烟（TODO.md 2.4）：真实 demo build 走完「初始化 → 导入 build code →
+ * E2E 冒烟（docs/web-frontend-plan.md 2.4）：真实 demo build 走完「初始化 → 导入 build code →
  * 侧边栏出数 → 页签浏览」主流程。前置：`npm run build-wasm && npm run sync-data
  * && npm run build`（playwright.config 的 preview server 消费 dist/）。
  */

@@ -26,10 +26,10 @@ describe('TopBar versions', () => {
         character={null}
         classNames={{ classes: {}, ascendancies: {} }}
         busy={false}
-        dataVersion="4.5.5.2"
+        dataVersion="1.2.3"
       />,
     );
     expect(html).toContain(`v${__POBR_APP_VERSION__}`);
-    expect(html).toContain(`${dataLabel} 4.5.5.2`);
+    expect(html).toContain(`${dataLabel} 1.2.3`);
   });
 });

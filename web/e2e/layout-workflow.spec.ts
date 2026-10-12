@@ -74,7 +74,7 @@ test('editing and analysis shortcuts reach their target without changing the cur
   expect(await saved(page)).toEqual(before);
 });
 
-test('skill overview works without a main selection and selects an exact secondary effect', async ({ page }) => {
+test('a build without a main selection defaults to its highest-DPS skill and can select an exact secondary effect', async ({ page }) => {
   const code = deflateSync(`<PathOfBuilding2>
     <Build level="80" className="Witch"/>
     <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
@@ -85,10 +85,11 @@ test('skill overview works without a main selection and selects an exact seconda
     </SkillSet></Skills><Items/><Config/>
   </PathOfBuilding2>`).toString('base64url');
   await start(page, code);
-  expect((await saved(page)).params.main_socket_group).toBeUndefined();
-  expect((await saved(page)).weaponSwap?.active ?? 1).toBe(1);
-  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('Not selected');
-  await expect(page.locator('#character-stats').getByRole('heading', { name: 'Offence', exact: true })).toHaveCount(0);
+  // Only the first group deals damage; it is bound to the second weapon set.
+  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText(/^1\. (Fireball|Spark)$/);
+  expect((await saved(page)).params.main_socket_group).toBe(0);
+  expect((await saved(page)).weaponSwap.active).toBe(2);
+  await expect(page.locator('#character-stats').getByRole('heading', { name: 'Offence', exact: true })).toHaveCount(1);
   await page.getByRole('button', { name: 'Skill metrics →', exact: true }).click();
   await expect(page.locator('#skill-metrics-heading')).toBeFocused();
   const rows = page.locator('.skill-metrics-row');
@@ -104,7 +105,8 @@ test('skill overview works without a main selection and selects an exact seconda
   await expect(unavailable).toContainText('Unavailable');
   await expect(unavailable.locator('.mod-value').first()).toHaveText('—');
   await expect(unavailable.locator('.calc-error')).not.toHaveText('Unavailable:');
-  expect((await saved(page)).params.main_socket_group).toBeUndefined();
+  await expect(rows.filter({ hasText: 'Highest DPS' })).toHaveCount(1);
+  expect((await saved(page)).params.main_socket_group).toBe(0);
   await expect(page.locator('.topbar-busy')).toHaveCount(0);
   await spark.getByRole('button').focus();
   await page.keyboard.press('Enter');
@@ -114,14 +116,15 @@ test('skill overview works without a main selection and selects an exact seconda
   await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Spark');
   await expect(spark.getByRole('button')).toHaveAttribute('aria-disabled', 'false');
   await expect(spark.getByRole('button')).toBeFocused();
-  // A failed inspection must not present the previous skill's baseline as current.
+  // An unresolvable inspected skill must not present the previous skill's offence as
+  // current: skill-specific values are hidden, character resources and defence stay.
   await unavailable.getByRole('button').click();
-  await expect(page.locator('.app-main > .calc-error')).toBeVisible();
-  await expect(page.locator('.calcs-breakdowns .breakdown-item')).toHaveCount(0);
-  await expect.poll(async () => {
-    const values = await page.locator('.stat-sidebar .stat-row dd').allTextContents();
-    return values.length > 0 && values.every(value => value.trim() === '—');
-  }).toBe(true);
+  const stats = page.locator('#character-stats');
+  await expect(stats).toContainText('No valid inspected skill');
+  await expect(stats.getByRole('heading', { name: 'Offence', exact: true })).toHaveCount(0);
+  await expect(stats.locator('.stat-row').filter({ hasText: 'Total DPS' })).toHaveCount(0);
+  await expect(stats.getByRole('heading', { name: 'Resources', exact: true })).toHaveCount(1);
+  await expect(stats.locator('.stat-row').filter({ hasText: 'Life' }).locator('dd').first()).not.toHaveText('—');
   await page.getByRole('button', { name: 'Inspected skill', exact: true }).click();
   await page.getByRole('option', { name: '1. Spark', exact: true }).click();
   await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('1. Spark');
@@ -139,7 +142,8 @@ test('opening support planning explicitly selects an imported group without a pr
     <Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="15" quality="0" enabled="true"/></Skill></Skills>
     <Items/><Config/></PathOfBuilding2>`).toString('base64url');
   await start(page, code);
-  expect((await saved(page)).params.main_socket_group).toBeUndefined();
+  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('1. Fireball');
+  expect((await saved(page)).params.main_socket_group).toBe(0);
   await nav(page, 'Skills').click();
   await page.locator('.skill-group-title').first().click();
   await page.locator('.gem-optimizer-toggle').click();
