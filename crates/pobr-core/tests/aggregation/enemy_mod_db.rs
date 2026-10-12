@@ -2,8 +2,7 @@
 //! chain, strongest-of exposure, CannotBeEvaded, enemy block chance, and traceable
 //! enemy contributions.
 //!
-//! Sources: agent-docs/accuracy-and-enemy.md §二,§五,§六,§七; agent-docs/debuffs.md §曝光;
-//!       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2,§5.
+//! Sources: agent-docs/accuracy-and-enemy.md §二,§五,§六,§七; agent-docs/debuffs.md §曝光.
 
 use pobr_core::calc::setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
 use pobr_core::calc::{

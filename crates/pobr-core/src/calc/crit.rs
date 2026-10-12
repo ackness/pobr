@@ -22,7 +22,6 @@
 //! 8. `crit_effect = (1-c) + c × crit_mult`
 //!
 //! Sources: agent-docs/critical-hits.md §PoB2 calculation implementation;
-//!       devs/docs/architecture/12-combat-mechanics-architecture.md §4.3;
 //!       PathOfBuilding-PoE2 `src/Modules/CalcOffence.lua`.
 
 use pobr_data::prelude::*;

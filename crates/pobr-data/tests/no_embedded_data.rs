@@ -1,5 +1,4 @@
-//! Lint against embedded large arrays (CI data guardrail #2, see
-//! devs/docs/architecture/06-development-workflow.md §5.1).
+//! Lint against embedded large arrays (CI data guardrail #2).
 //!
 //! Scans every `.rs` file under `crates/pobr-data/src/`: an array/const
 //! table with a run of consecutive literal-element lines longer than
@@ -102,7 +101,7 @@ fn pobr_data_src_has_no_embedded_data_tables() {
     assert!(
         violations.is_empty(),
         "pobr-data source embeds large array data tables (should migrate to data/<ver>/ via the data pipeline, \
-         see devs/docs/architecture/06-development-workflow.md §5.1):\n{}",
+         see pipeline/README.md):\n{}",
         violations.join("\n")
     );
 }

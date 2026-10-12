@@ -209,7 +209,7 @@ pub fn calculate(build: &Build, options: &OrchestratorOptions) -> Result<OutputT
 /// **Non-fatal / doesn't change calc behavior**: only surfaces a warning for the caller
 /// (CLI / tests / upper layers); "load the matching tree per the build's `treeVersion` +
 /// migrate" is future work (needs a tree-version↔data-version mapping + a multi-tree-
-/// version dataset, see `devs/docs/architecture/16-data-versioning-and-iteration.md` §6 gap B).
+/// version dataset).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TreeVersionReport {
     /// The build's `<Spec treeVersion>` annotation (`None` = an old save with no annotation).

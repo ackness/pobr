@@ -1,8 +1,5 @@
 //! pobr-build: Build state machine / PoB Build Code compatible codec / calculation orchestration.
 //!
-//! For the target design see `devs/docs/architecture/02-crate-design.md` §7 and
-//! `05-compatibility-and-i18n.md`.
-//!
 //! Module overview:
 //! - [`error`] — three error layers ([`BuildCodeError`] / [`XmlError`] / [`BuildError`]).
 //! - [`build_code`] — PoB Build Code codec (URL-safe Base64 + zlib, padding-tolerant + bomb guard).

@@ -169,8 +169,7 @@ mise run test build parity parity_baseline_report -- --ignored --nocapture
 - [`agent-docs/`](agent-docs/) — PoE2（0.5.0）机制中文参考（伤害类型 / 抗性 / 护甲闪避 ES / 暴击 / 异常 / 计算顺序等）。
 - [`web/README.md`](web/README.md) — Web 前端。
 
-早期 `devs/docs/architecture/00–16` 设计与审计仅在本机保留；已入库的 18–21 是功能契约。
-历史快照不是当前待办或新检出环境的前置条件，当前结构以代码、维护者指南和相关测试为准。
+`devs/docs/architecture/` 下的 18–21 是功能契约。当前结构以代码、维护者指南和相关测试为准。
 
 ## 约定
 
