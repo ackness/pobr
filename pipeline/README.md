@@ -59,6 +59,8 @@ PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正
 
 ### 中文词典来源
 
+先运行 `mise install` 安装仓库钉定的 Node 和 pnpm；导出器使用 pnpm 的 frozen lockfile 与仓库内补丁，不依赖未声明的全局包管理器。
+
 基础名词与既有游戏模板使用 [poe2-en-cn-dict 的存档](https://github.com/vagrant-soul/poe2-en-cn-dict)；新增词条与 PoBR 自维护模板使用下面的独立公开词表。
 2026-10-12 原 `addohm/poe2-en-cn-dict` 仓库、API 和固定提交原文件均返回 404；
 公开接口无法区分删除与转私有。存档提交 `288d8b9d999c5ea5664149e408847156dbd83ff4`
