@@ -327,6 +327,105 @@ fn support_coverage_normal_session_discloses_actual_fork_without_changing_number
 }
 
 #[test]
+fn support_coverage_resource_loss_is_disclosed_without_becoming_a_cost() {
+    let data = load_build_data();
+    let support = "SupportAtzirisImpatiencePlayer";
+    let loss_stat = "lose_%_of_life_es_and_mana_when_skill_is_used";
+    let build = coverage_build("FrostBombPlayer", Some(support));
+    let session = coverage_session(&build, &data);
+    let bare = coverage_session(&coverage_build("FrostBombPlayer", None), &data);
+    let limits: Vec<_> = session
+        .unsupported_modifier_texts()
+        .iter()
+        .filter(|text| text.contains(loss_stat))
+        .collect();
+    assert_eq!(
+        limits.len(),
+        1,
+        "Atziri's Impatience loses 25% of maximum Life/Mana/ES per use; \
+         an unmodeled downside must not silently disappear"
+    );
+    for token in [
+        format!("Support:{support}:"),
+        "set=1:".into(),
+        format!("stat={loss_stat}:"),
+        "value=25:".into(),
+        "host=FrostBombPlayer:".into(),
+        "host_set=1:".into(),
+    ] {
+        assert!(limits[0].contains(&token), "{token:?}: {:?}", limits[0]);
+    }
+    assert!(bare.output().cooldown > 0.0);
+    assert_eq!(session.output().cooldown, bare.output().cooldown / 2.0);
+    assert_eq!(session.output().mana_cost, bare.output().mana_cost);
+    assert_eq!(session.output().life_cost, bare.output().life_cost);
+    assert_eq!(session.output().life_regen, bare.output().life_regen);
+    assert_eq!(session.output().mana_regen, bare.output().mana_regen);
+    assert_eq!(
+        session.output().energy_shield_regen,
+        bare.output().energy_shield_regen
+    );
+    let compare = pobr_build::calculate_with_data_report(
+        &build,
+        &data,
+        &DataOrchestratorOptions {
+            stat_map_mode: pobr_build::StatMapMode::Compare,
+            ..panel_opts()
+        },
+    )
+    .unwrap();
+    assert_eq!(session.output(), compare.session.output());
+    assert_eq!(
+        session.unsupported_modifier_texts(),
+        compare.session.unsupported_modifier_texts()
+    );
+}
+
+#[test]
+fn support_coverage_resource_loss_requires_a_nonzero_calculated_compatible_payload() {
+    let mut data = load_build_data();
+    let support = "SupportAtzirisImpatiencePlayer";
+    let loss_stat = "lose_%_of_life_es_and_mana_when_skill_is_used";
+    let assert_no_loss = |build: &pobr_build::Build, data: &BuildData| {
+        assert!(
+            !coverage_session(build, data)
+                .unsupported_modifier_texts()
+                .iter()
+                .any(|text| text.contains(loss_stat))
+        );
+    };
+    assert_no_loss(&coverage_build("FrostBombPlayer", None), &data);
+    assert_no_loss(&coverage_build("FireballPlayer", Some(support)), &data);
+    let mut other_group = coverage_build("FireballPlayer", None);
+    other_group.socket_groups.push(
+        pobr_build::SocketGroup::new()
+            .with_gem_skill("FrostBombPlayer", 20)
+            .with_gem_skill(support, 1),
+    );
+    assert_no_loss(&other_group, &data);
+    other_group.socket_groups[1].enabled = false;
+    assert_no_loss(&other_group, &data);
+
+    // Synthetic zero on the real stat: no loss to disclose, but the independently
+    // modeled cooldown recovery must still apply.
+    data.skill_stat_sets.get_mut(support).unwrap().sets[0]
+        .constant_stats
+        .iter_mut()
+        .find(|stat| stat.stat == loss_stat)
+        .unwrap()
+        .value = 0.0;
+    let build = coverage_build("FrostBombPlayer", Some(support));
+    assert_no_loss(&build, &data);
+    assert_eq!(
+        coverage_session(&build, &data).output().cooldown,
+        coverage_session(&coverage_build("FrostBombPlayer", None), &data)
+            .output()
+            .cooldown
+            / 2.0
+    );
+}
+
+#[test]
 fn support_coverage_removed_disabled_and_incompatible_payloads_do_not_disclose_fork() {
     let data = load_build_data();
     let enabled = fireball_xml(Some(("Metadata/Items/Gem/SupportGemFork", FORK)));

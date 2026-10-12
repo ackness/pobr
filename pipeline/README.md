@@ -59,7 +59,14 @@ PoBR 沿用这个边界：提取器自动吸收可表达的规则，人工修正
 
 ### 中文词典来源
 
-中文导入使用 [poe2-en-cn-dict](https://github.com/addohm/poe2-en-cn-dict) 的游戏文本对照。
+先运行 `mise install` 安装仓库钉定的 Node 和 pnpm；导出器使用 pnpm 的 frozen lockfile 与仓库内补丁，不依赖未声明的全局包管理器。
+
+基础名词与既有游戏模板使用 [poe2-en-cn-dict 的存档](https://github.com/vagrant-soul/poe2-en-cn-dict)；新增词条与 PoBR 自维护模板使用下面的独立公开词表。
+2026-10-12 原 `addohm/poe2-en-cn-dict` 仓库、API 和固定提交原文件均返回 404；
+公开接口无法区分删除与转私有。存档提交 `288d8b9d999c5ea5664149e408847156dbd83ff4`
+与原固定提交 `28d683c99600eb407b4e014ccaf8247532fb4607` 的十个生成输入逐字节一致。
+这是下载来源恢复，不是中文数据升版；`_meta.json` 继续保留真实来源提交和 2026-07-06 的生成时间。
+国际服导出提供繁中；完整游戏表的新版官方简中仍需相应 WeGame 客户端数据，不能用繁转简冒充。独立词表中的腾讯交易文本不等于完整客户端名词表。
 普通再生成复用 `_meta.json` 中的固定提交；主动更新或精确重放：
 
 ```bash
@@ -70,12 +77,48 @@ node pipeline/gen-zh-cn.mjs --version <version> --ref <full-commit-sha>
 所有文件从同一提交下载，下载完整后才启用缓存；失败不会混入半份新版词典。
 离线输入可用 `--dict <directory>`，其元数据明确没有已验证的上游提交。
 `bump-version.sh` 在联网升级时刷新词典，并在词典生成和完整词条审计通过后才推进活动版本标记。
-词典缓存与下载失败测试运行 `node --test pipeline/test-dictionary-source.mjs`，已接入 CI；
+词典缓存与下载失败测试运行 `node --test pipeline/test-dictionary-source.mjs pipeline/test-translation-source.mjs`，已接入 CI；
 升级失败保护由 `python3 devs/scripts/test_workflows.py` 覆盖。
+
+### 独立词表与人工翻译维护
+
+[ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats) 已公开，采集 GGG／腾讯交易词条、复用分裂词缀译文并从 PoE2DB 补缺。PoBR 在构建期读取该库 `data/CURRENT` 指向的 `generated/pobr.json`，运行时不联网获取词典，也不需要访问 Token。
+
+普通再生成优先复用活动数据 `_meta.json.translation_source.commit`；尚无记录时使用 `pipeline/translation-source.json` 的固定提交。指针与导出文件始终来自同一提交，分开完整缓存；导出 schema、快照 ID、模板和参数集合验证失败即终止。元数据保留仓库、commit、snapshot 和导出 SHA-256。更新方式：
+
+```bash
+# 只选择独立词表的新版本；--ref 仍控制旧的基础词典
+node pipeline/gen-zh-cn.mjs --translations-ref <full-commit-sha>
+# 同时刷新两个来源，并记录各自固定提交
+node pipeline/gen-zh-cn.mjs --refresh
+# 离线开发：这里是独立词表仓库的根目录，不是旧 --dict 格式
+node pipeline/gen-zh-cn.mjs --translations-dir /path/to/poe2-zh-cn-stats
+# 两个来源均离线
+node pipeline/gen-zh-cn.mjs --dict /path/to/legacy/dictionary --translations-dir /path/to/poe2-zh-cn-stats
+```
+
+本地输入的来源模式为 `local`、commit 为 `null`，不会冒充固定远端提交。`--refresh` 不与固定 ref 或本地目录混用。
+
+维护职责已迁移：
+
+- 原 `EXTRA_PAIRS` 的 11 条模板及 `Maelstrom → 漩涡` 名字补丁位于独立库的 `curated.json`，保留原词句、字符串／嵌套占位符、参数顺序和不可变出处。PoBR 不再保存第二份硬编码补丁列表。
+- 给已有交易 ID 补译，修改独立库的 `translations.json`；需要明确覆盖现有译文时使用 `overrides.json`；不属于交易目录的模板和已人工核验的多参数模板使用 `curated.json`。
+- 技能标签、物品结构行及导入语法仍由 PoBR 按上下文解释，不把 UI 文案或计算规则混入词条表。
+
+自动模板仅支持已验证的零／单数值槽，以 `{0:d}` 避免误进入字符串捕获；多值参数、双向歧义、数值／符号不符等由独立库列为排除项。PoBR 再按实际翻译器的匹配骨架检查新模板与既有中英文模板、其他新模板的冲突，冲突不按输入顺序选第一条。审核过的迁移模板保留原行为，旧模板与七份名词表不因接入而删除。
+
+`generated/translation-audit.json` 记录新增、重复、排除和稀有名补丁采用情况；它属于维护报告，不进入运行时 manifest 或浏览器包。`i18n/zh-CN/_meta.json.translation_source` 记录实际版本；原 `source` 字段仍指基础名词和模板的真实来源。
+
+首次接入 `0.5.5.4.2` 保留全部 26,074 条原模板和七份原名词表，增加 1,822 条无冲突模板，合计 27,896 条。翻译可用不等于机制已计算：新增英文语料仍由 modifier audit 报告解析缺口，不通过补译掩盖。
+
 
 ## 版本钉定
 
-`config.json` 的 `"patch"` 钉定 PoE2 补丁版本（以 `4.` 开头 → 自动走 `patch-poe2.poecdn.com`）。
+`config.json` 的 `"patch"` 钉定 PoE2 补丁版本。当前官方补丁使用 `0.*`（如 `0.5.5.4.2`），
+历史版本使用 `4.*`；索引下载固定走 `patch-poe2.poecdn.com`，不再由主版本数字猜测游戏。
+表导出通过 `pipeline/pnpm-lock.yaml` 固定 `pathofexile-dat@15.2.0`，附带两处 `0.*` 识别补丁，
+使 bundle CDN 和 PoE2 表结构/语言目录选择一致。`export-tables.sh` 自动执行 frozen-lockfile 安装；
+不要绕过它运行未打补丁的全局/npx 导出器。路由与版本查询回归：`pnpm --dir pipeline test`。
 当前 PoE2 版本可向 GGG patch 协议服务器查询：
 
 ```bash
@@ -101,6 +144,7 @@ mise run data:adapt
 原始表缺失、改变或目标补丁不匹配时，adapter 在写入前失败；旧导出目录应重新执行导出。
 正式再生成强制检查必需列，在独立候选目录完成词典、规则审计、manifest 和回归检查，
 成功后才替换正式快照。同版本刷新使用相同路径，不会原地截断 manifest。
+候选词典修改后先根据候选字节重新封装 manifest，再让使用正常哈希校验加载器的审计读取；审计报告属于维护文件，不会反过来改变运行时校验和。审计与回归全部通过后才发布，不跳过 SHA-256 校验。
 更新锁防止两个生成器同时发布；发布前还会检查原快照是否被其他编辑改动。
 失败回滚若遇到文件系统错误，保留备份并报告位置。
 

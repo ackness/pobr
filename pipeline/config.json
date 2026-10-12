@@ -1,31 +1,266 @@
 {
-  "patch": "4.5.5.3",
-  "translations": ["English", "Traditional Chinese"],
+  "patch": "0.5.5.4.2",
+  "translations": [
+    "English",
+    "Traditional Chinese"
+  ],
   "tables": [
-    { "name": "Essences", "columns": ["BaseItemType"] },
-    { "name": "EssenceMods", "columns": ["Essence","TargetItemCategory","Mod","OutcomeMods"] },
-    { "name": "EssenceTargetItemCategories", "columns": ["Id","ItemClasses"] },
-    { "name": "BaseItemTypes", "columns": ["Id","Name","ItemClass","DropLevel","Width","Height","Tags","Implicit_Mods","ModDomain"] },
-    { "name": "ItemClasses", "columns": ["Id","Name"] },
-    { "name": "Tags", "columns": ["Id","DisplayString"] },
-    { "name": "Mods", "columns": ["Id","Name","ModType","Domain","GenerationType","Level","Stat1","Stat2","Stat3","Stat4","Stat1Value","Stat2Value","Stat3Value","Stat4Value","Tags","SpawnWeight_Tags","SpawnWeight_Values","Families"] },
-    { "name": "ModType", "columns": ["Name"] },
-    { "name": "Stats", "columns": ["Id","IsLocal","Semantic","Category"] },
-    { "name": "SkillGems", "columns": ["BaseItemType","GemType","GemColour","MinLevelReq","StrengthRequirementPercent","DexterityRequirementPercent","IntelligenceRequirementPercent","GemEffects","ItemExperienceType"] },
-    { "name": "GrantedEffects", "columns": ["Id","IsSupport","ActiveSkill","StatSet","CastTime","CostTypes","AllowedActiveSkillTypes","AddedActiveSkillTypes","ExcludedActiveSkillTypes","SupportsGemsOnly","CannotBeSupported","AdditionalStatSets"] },
-    { "name": "GrantedEffectsPerLevel", "columns": ["GrantedEffect","Level","Cooldown","CostAmounts","AttackTime","CostMultiplier","StoredUses","Reservation","EffectOnPlayer","AttackSpeedMultiplier"] },
-    { "name": "GrantedEffectStatSets", "columns": ["Id","BaseEffectiveness","IncrementalEffectiveness","DamageIncrementalEffectiveness","ImplicitStats","ConstantStats","ConstantStatsValues","Label","IgnoredStats"] },
-    { "name": "GrantedEffectStatSetsPerLevel", "columns": ["StatSet","GemLevel","BaseMultiplier","BaseResolvedValues","FloatStats","FloatStatsValues","AdditionalStats","AdditionalStatsValues","SpellCritChance","AttackCritChance"] },
-    { "name": "ActiveSkills", "columns": ["Id","DisplayedName","Description","ActiveSkillTypes","GrantedEffect"] },
-    { "name": "ActiveSkillType", "columns": ["Id"] },
-    { "name": "CostTypes", "columns": ["Id","Stat","FormatText","Divisor","PerMinute"] },
-    { "name": "WeaponTypes", "columns": ["BaseItemType","CritChance","Speed","DamageMin","DamageMax","RangeMax"] },
-    { "name": "ArmourTypes", "columns": ["BaseItemType","Armour","Evasion","EnergyShield","Ward","IncreasedMovementSpeed"] },
-    { "name": "GemEffects", "columns": ["Id","Name","GrantedEffect","SupportName","GemTags","AdditionalGrantedEffects"] },
-    { "name": "GrantedEffectQualityStats", "columns": ["GrantedEffect","Stats","StatsValuesPermille","ApplyToStatSets","AltStats","AltStatValuesPermille","AltApplyToStatSets"] },
-    { "name": "GrantedEffectLabels", "columns": ["Id","Text"] },
-    { "name": "SupportGems", "columns": ["SkillGem","Family"] },
-    { "name": "ItemExperiencePerLevel", "columns": ["ItemExperienceType","ItemCurrentLevel","Level"] }
+    {
+      "name": "Essences",
+      "columns": [
+        "BaseItemType"
+      ]
+    },
+    {
+      "name": "EssenceMods",
+      "columns": [
+        "Essence",
+        "TargetItemCategory",
+        "Mod",
+        "OutcomeMods"
+      ]
+    },
+    {
+      "name": "EssenceTargetItemCategories",
+      "columns": [
+        "Id",
+        "ItemClasses"
+      ]
+    },
+    {
+      "name": "BaseItemTypes",
+      "columns": [
+        "Id",
+        "Name",
+        "ItemClass",
+        "DropLevel",
+        "Width",
+        "Height",
+        "Tags",
+        "Implicit_Mods",
+        "ModDomain"
+      ]
+    },
+    {
+      "name": "ItemClasses",
+      "columns": [
+        "Id",
+        "Name"
+      ]
+    },
+    {
+      "name": "Tags",
+      "columns": [
+        "Id",
+        "DisplayString"
+      ]
+    },
+    {
+      "name": "Mods",
+      "columns": [
+        "Id",
+        "Name",
+        "ModType",
+        "Domain",
+        "GenerationType",
+        "Level",
+        "Stat1",
+        "Stat2",
+        "Stat3",
+        "Stat4",
+        "Stat1Value",
+        "Stat2Value",
+        "Stat3Value",
+        "Stat4Value",
+        "Tags",
+        "SpawnWeight_Tags",
+        "SpawnWeight_Values",
+        "Families"
+      ]
+    },
+    {
+      "name": "ModType",
+      "columns": [
+        "Name"
+      ]
+    },
+    {
+      "name": "Stats",
+      "columns": [
+        "Id",
+        "IsLocal",
+        "Semantic",
+        "Category"
+      ]
+    },
+    {
+      "name": "SkillGems",
+      "columns": [
+        "BaseItemType",
+        "GemType",
+        "GemColour",
+        "MinLevelReq",
+        "StrengthRequirementPercent",
+        "DexterityRequirementPercent",
+        "IntelligenceRequirementPercent",
+        "GemEffects",
+        "ItemExperienceType"
+      ]
+    },
+    {
+      "name": "GrantedEffects",
+      "columns": [
+        "Id",
+        "IsSupport",
+        "ActiveSkill",
+        "StatSet",
+        "CastTime",
+        "CostTypes",
+        "AllowedActiveSkillTypes",
+        "AddedActiveSkillTypes",
+        "ExcludedActiveSkillTypes",
+        "SupportsGemsOnly",
+        "CannotBeSupported",
+        "AdditionalStatSets"
+      ]
+    },
+    {
+      "name": "GrantedEffectsPerLevel",
+      "columns": [
+        "GrantedEffect",
+        "Level",
+        "Cooldown",
+        "CostAmounts",
+        "AttackTime",
+        "CostMultiplier",
+        "StoredUses",
+        "Reservation",
+        "EffectOnPlayer",
+        "AttackSpeedMultiplier"
+      ]
+    },
+    {
+      "name": "GrantedEffectStatSets",
+      "columns": [
+        "Id",
+        "BaseEffectiveness",
+        "IncrementalEffectiveness",
+        "DamageIncrementalEffectiveness",
+        "ImplicitStats",
+        "ConstantStats",
+        "ConstantStatsValues",
+        "Label",
+        "IgnoredStats"
+      ]
+    },
+    {
+      "name": "GrantedEffectStatSetsPerLevel",
+      "columns": [
+        "StatSet",
+        "GemLevel",
+        "BaseMultiplier",
+        "BaseResolvedValues",
+        "FloatStats",
+        "FloatStatsValues",
+        "AdditionalStats",
+        "AdditionalStatsValues",
+        "SpellCritChance",
+        "AttackCritChance"
+      ]
+    },
+    {
+      "name": "ActiveSkills",
+      "columns": [
+        "Id",
+        "DisplayedName",
+        "Description",
+        "ActiveSkillTypes",
+        "GrantedEffect"
+      ]
+    },
+    {
+      "name": "ActiveSkillType",
+      "columns": [
+        "Id"
+      ]
+    },
+    {
+      "name": "CostTypes",
+      "columns": [
+        "Id",
+        "Stat",
+        "FormatText",
+        "Divisor",
+        "PerMinute"
+      ]
+    },
+    {
+      "name": "WeaponTypes",
+      "columns": [
+        "BaseItemType",
+        "CritChance",
+        "Speed",
+        "DamageMin",
+        "DamageMax",
+        "RangeMax"
+      ]
+    },
+    {
+      "name": "ArmourTypes",
+      "columns": [
+        "BaseItemType",
+        "Armour",
+        "Evasion",
+        "EnergyShield",
+        "Ward",
+        "IncreasedMovementSpeed"
+      ]
+    },
+    {
+      "name": "GemEffects",
+      "columns": [
+        "Id",
+        "Name",
+        "GrantedEffect",
+        "SupportName",
+        "GemTags",
+        "AdditionalGrantedEffects"
+      ]
+    },
+    {
+      "name": "GrantedEffectQualityStats",
+      "columns": [
+        "GrantedEffect",
+        "Stats",
+        "StatsValuesPermille",
+        "ApplyToStatSets",
+        "AltStats",
+        "AltStatValuesPermille",
+        "AltApplyToStatSets"
+      ]
+    },
+    {
+      "name": "GrantedEffectLabels",
+      "columns": [
+        "Id",
+        "Text"
+      ]
+    },
+    {
+      "name": "SupportGems",
+      "columns": [
+        "SkillGem",
+        "Family"
+      ]
+    },
+    {
+      "name": "ItemExperiencePerLevel",
+      "columns": [
+        "ItemExperienceType",
+        "ItemCurrentLevel",
+        "Level"
+      ]
+    }
   ],
   "_tablesUnavailableForPinnedPatch": {
     "_note": "占位：当 CDN 下线钉定补丁、且某表 bundle 不在本地 .cache 时，把对应表条目从 tables 移到这里，数据改走 sync-pob-catalog extract-lua 兜底（vendor Lua → overlay/）。版本升级重下新补丁时移回 tables，恢复官方 .dat 通道优先。4.5.2.1.3 升级（2026-06-16）已把 GemEffects/GrantedEffectQualityStats/GrantedEffectLabels/SupportGems/ItemExperiencePerLevel 全部移回 tables。",

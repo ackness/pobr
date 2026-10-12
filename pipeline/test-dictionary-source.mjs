@@ -17,7 +17,6 @@ test('dictionary refresh pins every file to one commit and reuses complete snaps
     const result = await dictionarySource({ cacheRoot, files: ['lookup/lines.json', 'meta.json'], refresh: true, fetcher });
     assert.equal(result.ref, ref);
     assert.equal(urls.length, 3);
-    assert.equal(urls[0], 'https://api.github.com/repos/addohm/poe2-en-cn-dict/commits/HEAD');
     assert.ok(urls.slice(1).every(url => url.includes(`/${ref}/dictionary/`)));
     assert.deepEqual(await dictionarySource({ cacheRoot, files: ['lookup/lines.json', 'meta.json'], ref,
       fetcher: () => { throw new Error('Unexpected network request'); } }), result);
@@ -30,8 +29,7 @@ test('failed or invalid default HEAD lookup does not start a dictionary download
     for (const response of [{ ok: false, status: 422 }, { ok: true, json: async () => ({ sha: 'main' }) }]) {
       let calls = 0;
       await assert.rejects(dictionarySource({ cacheRoot, files: ['meta.json'], refresh: true,
-        fetcher: async url => {
-          assert.equal(url, 'https://api.github.com/repos/addohm/poe2-en-cn-dict/commits/HEAD');
+        fetcher: async () => {
           calls++;
           return response;
         } }), /HTTP 422|Invalid dictionary commit response/);

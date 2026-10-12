@@ -132,7 +132,7 @@ def main():
         if not re.fullmatch(r"\d+(?:\.\d+)+", patch):
             raise ValueError("invalid export patch")
         document = {"schema": "official-table-export/v1", "patch": patch,
-                    "exporter": "pathofexile-dat@15", "config_sha256": digest(args.config),
+                    "exporter": "pathofexile-dat@15.2.0 (PoE2 0.x routing patch)", "config_sha256": digest(args.config),
                     "inputs": fingerprints(args.raw)}
         # This record is written only after a successful export. Atomic replacement
         # prevents an interrupted write from masquerading as a valid source receipt.

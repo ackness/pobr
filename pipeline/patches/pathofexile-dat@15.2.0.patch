@@ -1,0 +1,26 @@
+diff --git a/dist/bundles/load-util.js b/dist/bundles/load-util.js
+index e01f35f85cf56998e449f831e1ab4877a8a76c94..d9079e30f3648187955b61bb0a5cbcf197a8174e 100644
+--- a/dist/bundles/load-util.js
++++ b/dist/bundles/load-util.js
+@@ -44,7 +44,7 @@ export class NoFileInfoError extends Error {
+ }
+ export function toCdnUrl(patchVersion, relPath) {
+     const pathname = `/${patchVersion}/${BUNDLES_DIR}/${relPath}`;
+-    return pathname.startsWith('/4.')
++    return pathname.startsWith('/4.') || pathname.startsWith('/0.')
+         ? `https://patch-poe2.poecdn.com${pathname}`
+         : `https://patch.poecdn.com${pathname}`;
+ }
+diff --git a/dist/cli/export-tables.js b/dist/cli/export-tables.js
+index f5887467f3ad319694654f56f1fbf14ab15db844..8d6ac6b53205ab90e58bf2bfd179c2e142ff39fd 100644
+--- a/dist/cli/export-tables.js
++++ b/dist/cli/export-tables.js
+@@ -29,7 +29,7 @@ const TRANSLATIONS_POE2 = [
+     { name: 'Traditional Chinese', path: 'Data/Balance/Traditional Chinese' }
+ ];
+ function getValidFor(config) {
+-    return (config.patch?.startsWith('4.') || config.steam?.includes('Path of Exile 2'))
++    return (config.patch?.startsWith('4.') || config.patch?.startsWith('0.') || config.steam?.includes('Path of Exile 2'))
+         ? ValidFor.PoE2
+         : ValidFor.PoE1;
+ }

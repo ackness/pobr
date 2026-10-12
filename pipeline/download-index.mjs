@@ -5,9 +5,9 @@
 // 在不稳定网络下单流极易中途断开（UND_ERR_SOCKET），一断即全失败。本脚本用
 // HTTP Range 分块 + 每块重试下载，写入 `.cache/<patch>/_.index.bin`。由于
 // pathofexile-dat 在 `.cache/<patch>/` 已存在时不会重下索引（见其 CdnBundleLoader），
-// 预热缓存后再跑 `npx pathofexile-dat` 即可跳过索引下载、只取体积小的表 bundle。
+// 预热缓存后再跑 `bash pipeline/export-tables.sh` 即可跳过索引下载、只取体积小的表 bundle。
 //
-// 用法：在本目录（含 config.json）运行 `node download-index.mjs`，随后运行 `npx pathofexile-dat`。
+// 用法：在本目录（含 config.json）运行 `node download-index.mjs`，随后从根目录运行 `bash pipeline/export-tables.sh`。
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,8 +21,8 @@ if (!patch) {
   console.error('config.json 缺少 "patch" 版本号；本地 Steam 模式无需预热索引。');
   process.exit(1);
 }
-// 版本号以 "4." 开头走 PoE2 CDN，否则 PoE1，与 pathofexile-dat 的判定一致。
-const cdn = patch.startsWith('4.') ? 'https://patch-poe2.poecdn.com' : 'https://patch.poecdn.com';
+// This pipeline only exports PoE2; current official patches use 0.*, older ones 4.*.
+const cdn = 'https://patch-poe2.poecdn.com';
 const url = `${cdn}/${patch}/Bundles2/_.index.bin`;
 const outDir = path.join(process.cwd(), '.cache', patch);
 const out = path.join(outDir, '_.index.bin');
@@ -78,4 +78,4 @@ if (size !== total) {
   console.error(`大小不符：${size} != ${total}`);
   process.exit(1);
 }
-console.log(`完成：${out}（${(size / 1e6).toFixed(1)} MB）。现在可运行 \`npx pathofexile-dat\`。`);
+console.log(`完成：${out}（${(size / 1e6).toFixed(1)} MB）。从根目录运行 \`bash pipeline/export-tables.sh\` 导出表。`);

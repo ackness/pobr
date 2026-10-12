@@ -721,7 +721,7 @@ export function useBuildSession(): BuildSession {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** 导入时把装备/珠宝/技能组自动收进库（按文本/套装名去重，避免重复导入堆叠）。 */
+  /** Collect imported items by text and observed weapon-hand role; skill sets by name. */
   const mergeImportedIntoLibrary = useCallback((decoded: BuildJson) => {
     const imported: LibraryItem[] = [
       ...[...decoded.items.equipped, ...(decoded.weapon_swap?.alternate_items ?? [])].map((it) => ({
@@ -760,8 +760,18 @@ export function useBuildSession(): BuildSession {
         }
         return i;
       });
-      const seen = new Set(existing.map((i) => i.text));
-      const newItems = imported.filter((i) => !seen.has(i.text));
+      // A library entry has one slot: merging different hands would lose a candidate.
+      const importIdentity = (item: LibraryItem) => {
+        const hand = item.slot === 'weapon1' || item.slot === 'weapon2' ? item.slot : '';
+        return `${hand}\0${item.text}`;
+      };
+      const seen = new Set(existing.map(importIdentity));
+      const newItems = imported.filter((i) => {
+        const identity = importIdentity(i);
+        if (seen.has(identity)) return false;
+        seen.add(identity);
+        return true;
+      });
       const skillSets =
         skillSet && !prev.skillSets.some((s) => s.name === skillSet.name)
           ? [...prev.skillSets, skillSet]

@@ -1,0 +1,110 @@
+[
+  {
+    "id": "charge_duration",
+    "mod_name": "ChargeDuration",
+    "mod_type": "Base",
+    "value": 15.0
+  },
+  {
+    "id": "power_charges_max",
+    "mod_name": "PowerChargesMax",
+    "mod_type": "Base",
+    "value": 3.0
+  },
+  {
+    "id": "frenzy_charges_max",
+    "mod_name": "FrenzyChargesMax",
+    "mod_type": "Base",
+    "value": 3.0
+  },
+  {
+    "id": "endurance_charges_max",
+    "mod_name": "EnduranceChargesMax",
+    "mod_type": "Base",
+    "value": 3.0
+  },
+  {
+    "id": "enemy_curse_limit",
+    "mod_name": "EnemyCurseLimit",
+    "mod_type": "Base",
+    "value": 1.0
+  },
+  {
+    "id": "enemy_mark_limit",
+    "mod_name": "EnemyMarkLimit",
+    "mod_type": "Base",
+    "value": 1.0
+  },
+  {
+    "id": "base_life_per_level",
+    "mod_name": "MaximumLife",
+    "mod_type": "Base",
+    "value": 12.0,
+    "tags": [
+      {
+        "type": "multiplier",
+        "var": "Level",
+        "div": 1.0,
+        "base": 16.0
+      }
+    ]
+  },
+  {
+    "id": "base_mana_per_level",
+    "mod_name": "MaximumMana",
+    "mod_type": "Base",
+    "value": 4.0,
+    "tags": [
+      {
+        "type": "multiplier",
+        "var": "Level",
+        "div": 1.0,
+        "base": 30.0
+      }
+    ]
+  },
+  {
+    "id": "base_evasion",
+    "mod_name": "Evasion",
+    "mod_type": "Base",
+    "value": 7.0
+  },
+  {
+    "id": "base_accuracy_per_level",
+    "mod_name": "Accuracy",
+    "mod_type": "Base",
+    "value": 6.0,
+    "tags": [
+      {
+        "type": "multiplier",
+        "var": "Level",
+        "div": 1.0,
+        "base": -6.0
+      }
+    ]
+  },
+  {
+    "id": "base_crit_multiplier",
+    "mod_name": "CritMultiplier",
+    "mod_type": "Base",
+    "value": 100.0
+  },
+  {
+    "id": "resist_penalty_fire",
+    "mod_name": "FireResistance",
+    "mod_type": "Base",
+    "value": -60.0
+  },
+  {
+    "id": "resist_penalty_cold",
+    "mod_name": "ColdResistance",
+    "mod_type": "Base",
+    "value": -60.0
+  },
+  {
+    "id": "resist_penalty_lightning",
+    "mod_name": "LightningResistance",
+    "mod_type": "Base",
+    "value": -60.0
+  }
+]

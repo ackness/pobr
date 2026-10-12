@@ -1,0 +1,14 @@
+{
+  "name": "pobr-data-pipeline",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test-exporter.mjs test-query-patch-version.mjs"
+  },
+  "dependencies": {
+    "pathofexile-dat": "15.2.0"
+  },
+  "engines": {
+    "pnpm": "12"
+  }
+}

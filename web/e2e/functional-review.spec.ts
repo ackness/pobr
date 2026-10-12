@@ -210,3 +210,23 @@ test('library utilities equip into utility slots and incompatible equipment cann
   await expect(amulet.getByRole('button', { name: 'Equip', exact: true })).toBeDisabled();
   await expect(amulet.getByRole('button', { name: 'Compare', exact: true })).toBeDisabled();
 });
+
+test('attribution identifies the whole removed group when its selected active gem is not first', async ({ page }) => {
+  const code = deflateSync(`<PathOfBuilding2>
+    <Build level="40" className="Witch" mainSocketGroup="1"/>
+    <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+    <Skills><Skill enabled="true" mainActiveSkill="2">
+      <Gem skillId="SparkPlayer" gemId="Metadata/Items/Gems/SkillGemSpark" level="5" quality="0" enabled="true"/>
+      <Gem skillId="FireballPlayer" gemId="Metadata/Items/Gems/SkillGemFireball" level="5" quality="0" enabled="true"/>
+    </Skill></Skills><Items/></PathOfBuilding2>`).toString('base64url');
+  await start(page, code);
+  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Fireball');
+  const before = await saved(page);
+  await nav(page, 'Calcs').click();
+  await page.getByRole('button', { name: 'Run attribution', exact: true }).click();
+  const group = page.locator('.attribution-table tbody tr').filter({ hasText: 'socket_group' });
+  await expect(group).toHaveCount(1);
+  await expect(group.locator('td').first()).toContainText('Spark');
+  await expect(group.locator('td').first()).toContainText('Fireball');
+  expect(await saved(page)).toEqual(before);
+});
