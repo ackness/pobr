@@ -21,13 +21,26 @@ pub(crate) fn group_active_effects<'a>(
     data: &'a BuildData,
     group: &'a SocketGroup,
 ) -> impl Iterator<Item = pobr_core::skill_env::ActiveEffect<'a>> + 'a {
-    let gems = group.gem_skills.iter().map(|gem| (
-        gem.skill_id.as_str(), gem.gem_level, gem.quality, gem.stat_set_index,
-    ));
-    let builder = group.active_skill_id.as_deref()
+    let gems = group.gem_skills.iter().map(|gem| {
+        (
+            gem.skill_id.as_str(),
+            gem.gem_level,
+            gem.quality,
+            gem.stat_set_index,
+        )
+    });
+    let builder = group
+        .active_skill_id
+        .as_deref()
         .filter(|_| group.gem_skills.is_empty())
-        .map(|id| (id, group.active_gem_level.unwrap_or(1),
-            group.active_gem_quality.unwrap_or(0), None));
+        .map(|id| {
+            (
+                id,
+                group.active_gem_level.unwrap_or(1),
+                group.active_gem_quality.unwrap_or(0),
+                None,
+            )
+        });
     pobr_core::skill_env::group_active_effects(gems.chain(builder), data)
 }
 
@@ -35,8 +48,7 @@ pub(crate) fn selected_group_effect<'a>(
     data: &'a BuildData,
     group: &'a SocketGroup,
 ) -> Option<pobr_core::skill_env::ActiveEffect<'a>> {
-    group_active_effects(data, group)
-        .nth(group.main_active_skill.unwrap_or(1).checked_sub(1)?)
+    group_active_effects(data, group).nth(group.main_active_skill.unwrap_or(1).checked_sub(1)?)
 }
 
 /// Exact active-effect selection; never substitutes damage for utility or missing data.
@@ -83,9 +95,15 @@ pub fn resolve_main_skill_selection(
 ) -> Option<(usize, usize, String)> {
     let prepared = super::super::stage_build_view(build, data);
     let (_, group, skill_id, _) = resolve_main_skill(&prepared, data)?;
-    let index = prepared.socket_groups.iter()
+    let index = prepared
+        .socket_groups
+        .iter()
         .position(|candidate| std::ptr::eq(candidate, group))?;
-    Some((index, group.main_active_skill.unwrap_or(1), skill_id.to_string()))
+    Some((
+        index,
+        group.main_active_skill.unwrap_or(1),
+        skill_id.to_string(),
+    ))
 }
 
 /// Level bonuses belong to the originating gem, not the selected additional
@@ -99,7 +117,9 @@ pub(crate) fn resolve_skill_level_with_gem_bonus(
 ) -> Option<ResolvedSkillLevel> {
     let skill_id = effect.skill_id;
     let base_level = effect.gem_level;
-    let gem_id = group.gem_skills.get(effect.gem_index)
+    let gem_id = group
+        .gem_skills
+        .get(effect.gem_index)
         .map(|gem| gem.skill_id.as_str())
         .or(group.active_skill_id.as_deref())
         .unwrap_or(skill_id);

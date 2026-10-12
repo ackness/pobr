@@ -26,9 +26,7 @@
 //! - Mastery effects (masteryEffects) aren't parsed yet -> Mastery node mods
 //!   don't feed into the calculation.
 
-use pobr_build::{
-    BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code,
-};
+use pobr_build::{BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code};
 use pobr_core::calc::MinimalInput;
 use pobr_data::monster::EnemyTier;
 use pobr_data::passive_tree::PassiveTreeSpec;
@@ -297,4 +295,3 @@ fn deadeye_e2e_effective_dps_lower_hit_chance() {
         effective.hit_chance
     );
 }
-

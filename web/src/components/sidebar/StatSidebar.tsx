@@ -138,6 +138,7 @@ export function StatSidebar({ session, lang, onStatClick }: Props) {
         {bindT(lang)('calcs.skillMetrics')} →
       </button>}
       {STAT_SECTIONS.map((section) => {
+        if (section.requiresSkill && (session.calcParams.main_socket_group === undefined || !calc?.main_skill)) return null;
         const rows = section.rows.filter((row) => {
           if (!values) return !row.hideZero;
           const v = values.get(row.id);

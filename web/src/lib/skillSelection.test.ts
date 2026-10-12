@@ -2,11 +2,15 @@ import { expect, test } from 'vitest';
 import type { GemCatalogEntry, SocketGroupInput } from '../api/types';
 import { activeSkillEffects, preserveSkillSelection, removeSkillGem } from './skillSelection';
 
+const gemDefaults = {
+  name: 'Fixture', name_zh_tw: null, name_zh_cn: null, colour: null,
+  is_support: false, is_lineage: false, tags: [],
+};
 const catalog = new Map<string, GemCatalogEntry>([
-  ['Curse', { skill_id: 'Curse', active_effect_ids: ['Curse'], additional_skill_ids: ['DisplayOnlyStatSet'] } as GemCatalogEntry],
-  ['HexSupport', { skill_id: 'HexSupport', active_effect_ids: ['DoomBlast'], is_support: true } as GemCatalogEntry],
-  ['PureSupport', { skill_id: 'PureSupport', active_effect_ids: [], is_support: true } as GemCatalogEntry],
-  ['Wind', { skill_id: 'Wind', active_effect_ids: ['Wind', 'TriggeredWind'] } as GemCatalogEntry],
+  ['Curse', { ...gemDefaults, skill_id: 'Curse', active_effect_ids: ['Curse'], additional_skill_ids: ['DisplayOnlyStatSet'] }],
+  ['HexSupport', { ...gemDefaults, skill_id: 'HexSupport', active_effect_ids: ['DoomBlast'], is_support: true }],
+  ['PureSupport', { ...gemDefaults, skill_id: 'PureSupport', active_effect_ids: [], is_support: true }],
+  ['Wind', { ...gemDefaults, skill_id: 'Wind', active_effect_ids: ['Wind', 'TriggeredWind'] }],
 ]);
 const group: SocketGroupInput = {
   enabled: true, weapon_set: 2, main_active_skill: 4,

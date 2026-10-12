@@ -527,23 +527,24 @@ pub fn group_active_effects<'a>(
     gems: impl Iterator<Item = (&'a str, u32, u32, Option<u32>)> + 'a,
     effects: &'a dyn crate::skill_env::EffectLookup,
 ) -> impl Iterator<Item = ActiveEffect<'a>> + 'a {
-    gems
-        .enumerate()
-        .flat_map(move |(gem_index, (id, gem_level, quality, stat_set_index))| {
-            std::iter::once(id)
-                .chain(effects.additional_effects(id).iter().map(String::as_str))
-                .filter(move |id| {
-                    !id.is_empty() && effects.effect(id).is_none_or(|effect| !effect.is_support)
-                })
-                .map(move |skill_id| ActiveEffect {
-                    active_skill_index: 0,
-                    gem_index,
-                    skill_id,
-                    gem_level,
-                    quality,
-                    stat_set_index,
-                })
-        })
+    gems.enumerate()
+        .flat_map(
+            move |(gem_index, (id, gem_level, quality, stat_set_index))| {
+                std::iter::once(id)
+                    .chain(effects.additional_effects(id).iter().map(String::as_str))
+                    .filter(move |id| {
+                        !id.is_empty() && effects.effect(id).is_none_or(|effect| !effect.is_support)
+                    })
+                    .map(move |skill_id| ActiveEffect {
+                        active_skill_index: 0,
+                        gem_index,
+                        skill_id,
+                        gem_level,
+                        quality,
+                        stat_set_index,
+                    })
+            },
+        )
         .enumerate()
         .map(|(index, mut effect)| {
             effect.active_skill_index = index + 1;
@@ -561,14 +562,20 @@ pub fn pick_group_main_skill<'a>(
     active_gem_level: Option<u32>,
 ) -> Option<(&'a str, u32, Option<u32>)> {
     let index = main_active_skill.unwrap_or(1).checked_sub(1)?;
-    let builder = active_skill_id.filter(|_| gems.is_empty())
+    let builder = active_skill_id
+        .filter(|_| gems.is_empty())
         .map(|id| (id, active_gem_level.unwrap_or(1), 0, None));
-    let gems = gems.iter().map(|gem| (
-        gem.skill_id.as_str(), gem.gem_level, gem.quality, gem.stat_set_index,
-    ));
+    let gems = gems.iter().map(|gem| {
+        (
+            gem.skill_id.as_str(),
+            gem.gem_level,
+            gem.quality,
+            gem.stat_set_index,
+        )
+    });
     group_active_effects(gems.chain(builder), effects)
-    .nth(index)
-    .map(|effect| (effect.skill_id, effect.gem_level, effect.stat_set_index))
+        .nth(index)
+        .map(|effect| (effect.skill_id, effect.gem_level, effect.stat_set_index))
 }
 
 /// Data channel: the statmap data engine. Maps a stat list through

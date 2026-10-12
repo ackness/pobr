@@ -235,12 +235,7 @@ pub(crate) fn main_skill_quality_modifiers(
     if gem.quality == 0 {
         return Vec::new();
     }
-    let stats = data.effect_stats(
-        gem.skill_id,
-        gem.gem_level,
-        gem.quality,
-        gem.stat_set_index,
-    );
+    let stats = data.effect_stats(gem.skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
     // The quality segment belongs to the selected set's stats table (PoB2 stacks then
     // maps), the per-set override key matches the primary path.
     let set_key = data.selected_set_key(gem.skill_id, gem.stat_set_index);
@@ -283,12 +278,8 @@ pub(crate) fn unselected_set_global_modifiers(
     else {
         return Vec::new();
     };
-    let unselected = data.unselected_set_stats(
-        gem.skill_id,
-        gem.gem_level,
-        gem.quality,
-        gem.stat_set_index,
-    );
+    let unselected =
+        data.unselected_set_stats(gem.skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
     if unselected.is_empty() {
         return Vec::new();
     }
@@ -300,12 +291,8 @@ pub(crate) fn unselected_set_global_modifiers(
     // unselected sets (the onlyGlobals stage's accounting is unchanged, the stat-level
     // skip is equivalent to :107).
     let selected_key = data.selected_set_key(gem.skill_id, gem.stat_set_index);
-    let selected_stats = data.effect_stats(
-        gem.skill_id,
-        gem.gem_level,
-        gem.quality,
-        gem.stat_set_index,
-    );
+    let selected_stats =
+        data.effect_stats(gem.skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
     let selected_globals: std::collections::HashSet<&str> = selected_stats
         .all()
         .filter(|ds| {

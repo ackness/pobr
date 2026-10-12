@@ -163,7 +163,7 @@ calculations. Validate Worker changes in the actual workerd runtime.
 | `pnpm --dir web dev` | Vite dev server |
 | `pnpm --dir web build` | tsc + production build (dist/) |
 | `pnpm --dir web typecheck` | type check only |
-| `pnpm --dir web test src/lib/mainSkill.test.ts` | selected Vitest unit tests |
+| `pnpm --dir web test src/lib/skillSelection.test.ts` | selected Vitest unit tests |
 | `pnpm --dir web test:worker` | Worker tests in the actual workerd runtime |
 | `pnpm --dir web exec playwright test e2e/build-roundtrip.spec.ts` | Selected E2E spec; requires current dist and prepared WASM/data |
 | `pnpm --dir web build-wasm` | build or reuse verified WASM; `--force` rebuilds |

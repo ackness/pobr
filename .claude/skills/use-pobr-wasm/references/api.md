@@ -81,7 +81,7 @@ does not estimate peak memory.
 | --- | --- | --- |
 | `decodeBuildJson(code)` | PoB2 build code string | JSON string describing imported build/loadouts |
 | `calculateBuildJson(json)` | `CalculateBuildRequest` serialized as JSON | `CalculateBuildResponse` JSON string |
-| `fullDpsJson(json)` | Calculation request JSON | `FullDpsResponse` JSON string |
+| `skillMetricsJson(json)` | Calculation request JSON; no main selection required | `SkillMetricsResponse` JSON string with independent `skills` and `item_errors` |
 | `attributionJson(json)` | `AttributionRequest` JSON | Source contribution JSON string |
 | `gemCatalogJson()` | No argument; data initialized | Gem catalog JSON string |
 | `encodeBuildJson(json)` | Calculation request with `character.class_name` required | PoB2 code string, not JSON |
@@ -104,6 +104,15 @@ to make its flat-Life delta assertion independent of that reward.
 Use the chosen release's types for slots, gem IDs, skill selection and configuration.
 The low-level calculation consumes one active weapon context; UI-level weapon
 switching/loadout orchestration is not automatically reproduced by this package.
+
+Schema 8 replaces the aggregate Full DPS endpoint with independent skill metrics.
+Identify a row by its original 0-based `group_index` and complete 1-based
+`active_skill_index`. To inspect it, set `main_socket_group` and that group's
+`main_active_skill` together. Catalog `active_effect_ids` supplies the ordinal
+order, including support-granted effects; display aliases are not an ordinal list.
+Calculated rows include DPS, average hit, action rate, mana/life cost and cooldown.
+Zero is a valid utility result; unavailable rows have null metrics and an error.
+Preserve row diagnostics and do not add mutually exclusive skill DPS into a total.
 
 Look up stats by stable `stats[].id` (for example `Life` or `TotalDPS`), not array
 position or translated display labels. `value` can be `null` for unavailable

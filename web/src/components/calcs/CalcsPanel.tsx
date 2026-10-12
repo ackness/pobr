@@ -221,10 +221,12 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
                     <td className="skill-metrics-diagnostics">
                       {report && !available && <p className="calc-error">{tt('calcs.unavailable')}: {entry.error || tt('calcs.unavailableHint')}</p>}
                       {available && entry.error && <p className="calc-error">{entry.error}</p>}
-                      {report && entry.unsupported_modifiers.length > 0 && <>
-                        <strong>{tt('calcs.unsupported')}</strong>
-                        <ul>{entry.unsupported_modifiers.map((modifier, index) => <li key={index}>{modifier}</li>)}</ul>
-                      </>}
+                      {report && entry.unsupported_modifiers.length > 0 && (
+                        <details onClick={event => event.stopPropagation()}>
+                          <summary>{tt('calcs.unsupported')} ({entry.unsupported_modifiers.length})</summary>
+                          <ul>{entry.unsupported_modifiers.map((modifier, index) => <li key={index}>{modifier}</li>)}</ul>
+                        </details>
+                      )}
                     </td>
                   </tr>
                 );

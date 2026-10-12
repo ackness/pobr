@@ -88,6 +88,7 @@ test('skill overview works without a main selection and selects an exact seconda
   expect((await saved(page)).params.main_socket_group).toBeUndefined();
   expect((await saved(page)).weaponSwap?.active ?? 1).toBe(1);
   await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('Not selected');
+  await expect(page.locator('#character-stats').getByRole('heading', { name: 'Offence', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Skill metrics →', exact: true }).click();
   await expect(page.locator('#skill-metrics-heading')).toBeFocused();
   const rows = page.locator('.skill-metrics-row');

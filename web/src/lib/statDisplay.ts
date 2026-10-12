@@ -23,11 +23,13 @@ export interface StatRowDef {
 export interface StatSectionDef {
   title: Record<Lang, string>;
   rows: StatRowDef[];
+  requiresSkill?: boolean;
 }
 
 export const STAT_SECTIONS: StatSectionDef[] = [
   {
     title: { 'en-US': 'Offence', 'zh-TW': '攻擊', 'zh-CN': '攻击' },
+    requiresSkill: true,
     rows: [
       { id: 'TotalDPS', label: { 'en-US': 'Total DPS', 'zh-TW': '總 DPS', 'zh-CN': '总 DPS' }, format: 'float2', colorVar: 'accent-gold-bright' },
       { id: 'TotalHitAvg', label: { 'en-US': 'Average Hit', 'zh-TW': '平均擊中', 'zh-CN': '平均击中' }, format: 'float2' },

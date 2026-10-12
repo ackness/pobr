@@ -289,12 +289,18 @@ pub fn calculate_skill_metrics(
                 error: None,
             };
             if !data.granted_effects.contains_key(effect.skill_id)
-                || data.granted_effect_levels.get(effect.skill_id).is_none_or(Vec::is_empty)
+                || data
+                    .granted_effect_levels
+                    .get(effect.skill_id)
+                    .is_none_or(Vec::is_empty)
             {
                 row.error = Some(format!(
                     "Cannot resolve effect {} at group {} active skill {} (gem level {}, stat set {:?})",
-                    effect.skill_id, group_index + 1, effect.active_skill_index,
-                    effect.gem_level, effect.stat_set_index,
+                    effect.skill_id,
+                    group_index + 1,
+                    effect.active_skill_index,
+                    effect.gem_level,
+                    effect.stat_set_index,
                 ));
             } else {
                 let mut context = CalculationContext::new(data, options);

@@ -96,7 +96,7 @@ WeGame / 市集接口；它不运行 Rust 计算。修改该文件需运行实�
 | `pnpm --dir web dev` | Vite dev server |
 | `pnpm --dir web build` | tsc + 生产构建（dist/） |
 | `pnpm --dir web typecheck` | 仅类型检查 |
-| `pnpm --dir web test src/lib/mainSkill.test.ts` | 指定 Vitest 单元测试 |
+| `pnpm --dir web test src/lib/skillSelection.test.ts` | 指定 Vitest 单元测试 |
 | `pnpm --dir web test:worker` | Worker 的实际 workerd 运行时测试 |
 | `pnpm --dir web exec playwright test e2e/build-roundtrip.spec.ts` | 指定 E2E spec；需要当前 dist 和已准备的 WASM/数据 |
 | `pnpm --dir web build-wasm` | 构建或复用已验证的 WASM；`--force` 重建 |

@@ -28,7 +28,7 @@ mise run verify build skills support_gating::
 mise run targets
 mise run cache
 pnpm --dir web dev
-pnpm --dir web test src/lib/mainSkill.test.ts
+pnpm --dir web test src/lib/skillSelection.test.ts
 ```
 
 These build the CLI, test support behavior, check formatting/Clippy, start Vite,

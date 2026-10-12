@@ -2,7 +2,7 @@
 //!
 //! Simulates what the web frontend does on every edit: repeated
 //! `calculate_build_json` calls with the same `pob_code`, plus one
-//! on-demand `full_dps_json`. Run with `--nocapture` to see numbers:
+//! on-demand `skill_metrics_json`. Run with `--nocapture` to see numbers:
 //!
 //! ```bash
 //! cargo test -p pobr-wasm --test perf_timing -- --ignored --nocapture
@@ -45,16 +45,16 @@ fn recalc_hot_path_timing() {
         let per_calc = start.elapsed() / ITERS;
 
         let start = Instant::now();
-        let full = pobr_wasm::full_dps_json(&request).expect("full dps");
+        let full = pobr_wasm::skill_metrics_json(&request).expect("skill metrics");
         let full_elapsed = start.elapsed();
-        let groups = serde_json::from_str::<serde_json::Value>(&full).unwrap()["per_skill"]
+        let groups = serde_json::from_str::<serde_json::Value>(&full).unwrap()["skills"]
             .as_array()
             .map(|a| a.len())
             .unwrap_or(0);
 
         println!(
             "{build}: calculate_build_json {per_calc:?}/call, \
-             full_dps_json {full_elapsed:?} ({groups} damage groups)"
+             skill_metrics_json {full_elapsed:?} ({groups} active effects)"
         );
     }
 }
