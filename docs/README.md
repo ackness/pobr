@@ -37,13 +37,8 @@ of each before relying on it.
 | [wasm-performance.md](wasm-performance.md) / [中文](wasm-performance.zh-CN.md) | WASM timings and sizes (2026-10-11); supplemental timings, build diagnostics and fresh PoB2 source comparison (2026-10-12) |
 | [adapting-to-0.5.5c.md](adapting-to-0.5.5c.md) | Data update to `4.5.5.3` (2026-09-26) |
 | [adapting-to-0.5.5.md](adapting-to-0.5.5.md) | Data update to `4.5.5.2` (2026-09-11) |
-| [adapting-to-0.5.4b.md](adapting-to-0.5.4b.md) | Engine gap map and plan for game 0.5.4b (2026-07-15) |
-| [backlog-reconciliation.md](backlog-reconciliation.md) | Remaining-work review (2026-09-25) |
-| [pobr-build-optimization-analysis.md](pobr-build-optimization-analysis.md) | `pobr-build` refactor investigation (2026-09-24) |
 | [calcs-display-comparison.md](calcs-display-comparison.md) | Calcs panel source comparison with PoB2 (2026-09-25) |
 | [reference-sources-and-engine-review.md](reference-sources-and-engine-review.md) | Build-reference sources and PoB2 alignment review (2026-09-12) |
-| [frontend-usability-review.md](frontend-usability-review.md) | Frontend interaction and copy review |
-| [web-frontend-plan.md](web-frontend-plan.md) | Original Web frontend task list (completed; formerly the root `TODO.md`) |
 
 These files stay at their current paths because code comments and scripts
 reference them.

@@ -5,11 +5,9 @@
 //! direct / marginal / interaction contribution reports. This is the ledger
 //! layer for "source-level attribution", PoBR's core value-add over PoB.
 //!
-//! Spec: `devs/docs/architecture/10-pob-parity-and-attribution.md` §6-7.
+//! # Differences from the original design (due to current implementation state)
 //!
-//! # Differences from the doc's §7 (due to current implementation state)
-//!
-//! The doc's §7 [`AttributionRequest`] includes `build: BuildSnapshot` and
+//! The original design's [`AttributionRequest`] includes `build: BuildSnapshot` and
 //! `selected_skill: Option<SkillInstanceId>`, but `BuildSnapshot` /
 //! `SkillInstanceId` — these two higher-level types — aren't implemented yet.
 //! Until they land, this module expresses the same semantics with **pure

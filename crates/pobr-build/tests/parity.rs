@@ -1,6 +1,6 @@
 //! PoB2 comparison / regression test aggregate binary.
 //!
-//! Two kinds of contract (see `devs/docs/architecture/16-data-versioning-and-iteration.md` §5):
+//! Two kinds of contract:
 //!   A) **Recorded PoB2 reference** — asserts externally recorded exact values
 //!      (PoB2 `player_stats` / oracle / self-snapshot) against the active data
 //!      version. A data update **re-records the reference values** from the

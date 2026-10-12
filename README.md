@@ -219,10 +219,8 @@ the local Lua directly instead of searching online.
   damage-defence order, …).
 - [`web/README.md`](web/README.md) — web frontend.
 
-Early `devs/docs/architecture/00–16` designs and audits are optional local history;
-committed documents 18–21 cover feature contracts. Historical snapshots are not
-current task lists or fresh-checkout prerequisites. Use code, the maintainer guide, and
-relevant tests for current behavior.
+`devs/docs/architecture/` documents 18–21 cover feature contracts. Use code, the
+maintainer guide, and relevant tests for current behavior.
 
 ## Conventions
 

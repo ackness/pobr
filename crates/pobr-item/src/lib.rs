@@ -1,8 +1,6 @@
 //! pobr-item: **full-fidelity edit-view** parsing and reverse serialization
 //! for raw item text.
 //!
-//! See target design in `devs/docs/architecture/02-crate-design.md` §6.
-//!
 //! Responsibility boundary:
 //! - The **calc view** (strip annotations, gate variants, resolve ranges,
 //!   then feed the calc engine) is still owned by `pobr-core::item_text` +

@@ -117,7 +117,7 @@ pub struct CalcConfig {
     ///   short-circuit.
     ///
     /// Source: agent-docs/accuracy-and-enemy.md §7 (buffMode → mode_effective
-    /// mapping table), devs/docs/architecture/12-combat-mechanics-architecture.md §5.
+    /// mapping table).
     pub mode_effective: bool,
     /// The "buffs" dimension of buffMode's three states (PoB2
     /// CalcSetup.lua:582-605: BUFFED/COMBAT/EFFECTIVE all include buffs).

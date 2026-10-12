@@ -294,7 +294,6 @@ pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalI
 /// (the panel view never introduces enemy interaction, keeping it consistent with historical output).
 ///
 /// Source: agent-docs/accuracy-and-enemy.md §2.2, §2.3, §6, §7;
-///       devs/docs/architecture/12-combat-mechanics-architecture.md §4.2, §5;
 ///       PoB2 `CalcOffence.lua` (`enemyDB:Sum/More DamageTaken`, `enemyBlockChance`, `CannotEvade`).
 pub fn calculate_minimal_vs_enemy(
     db: &ModDb,

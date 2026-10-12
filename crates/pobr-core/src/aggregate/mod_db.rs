@@ -414,8 +414,7 @@ impl ModDb {
     /// strongest source** rather than summing). This method only considers
     /// modifiers passing `matches(cfg)`, returning `0.0` for an empty set.
     ///
-    /// Source: agent-docs/debuffs.md §Exposure;
-    ///         devs/docs/architecture/12-combat-mechanics-architecture.md §4.2 (exposure takes the strongest).
+    /// Source: agent-docs/debuffs.md §Exposure (exposure takes the strongest).
     pub fn max_of(&self, mod_type: ModType, cfg: &CalcConfig, names: &[ModName]) -> f64 {
         names
             .iter()

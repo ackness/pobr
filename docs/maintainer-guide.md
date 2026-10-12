@@ -84,7 +84,7 @@ mise task 的日常命令、缓存、按需诊断、WASM 打包、Worker 测试�
 
 当前结构以根 [Cargo.toml](../Cargo.toml)、各 crate 的 `src/lib.rs` 和契约/回归测试为准。workspace 有 14 个成员：7 个库、3 个应用入口、4 个 Rust 工具；`web/` 与 Lua oracle 独立于 Cargo workspace。桌面入口仍是占位程序。
 
-`devs/docs/architecture/` 中早期 00–16 文档是可选的本地设计/审计资料，不随新检出提供；已入库的 18–21 文档记录具体功能契约。`11-implementation-progress.md` 和 `14-remaining-work-recheck.md` 都是历史快照，不是当前待办或验收依据。缺少本地资料时直接使用本文件、[Web README](../web/README.md)、[数据管线说明](../pipeline/README.md) 和代码。
+`devs/docs/architecture/` 中的 18–21 文档记录具体功能契约。其余以本文件、[Web README](../web/README.md)、[数据管线说明](../pipeline/README.md) 和代码为准。
 
 | Crate | 职责 | 主要依赖 |
 |-------|------|------|
