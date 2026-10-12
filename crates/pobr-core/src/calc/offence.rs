@@ -506,27 +506,60 @@ pub(crate) fn accuracy_hit_chance(
     hit_chance_terms(db, enemy_db, cfg, input).accuracy_chance
 }
 
-/// The full entry point: player modDB + enemy modDB. Enemy-side mitigation/
-/// damage-taken chain/block only take effect under `cfg.mode_effective == true`
-/// (the panel view never introduces enemy interaction, keeping it consistent with historical output).
-///
-/// Source: agent-docs/accuracy-and-enemy.md §2.2, §2.3, §6, §7;
-///       PoB2 `CalcOffence.lua` (`enemyDB:Sum/More DamageTaken`, `enemyBlockChance`, `CannotEvade`).
-pub fn calculate_minimal_vs_enemy(
+/// One damage type of the hit: the range before scaling, what it was scaled
+/// by and the resulting averages of a non-critical and a critical hit.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HitDamagePart {
+    pub damage_type: DamageType,
+    /// The range before increases: the weapon or skill base, added damage
+    /// and whatever conversion and gain moved into this type.
+    pub base_min: f64,
+    pub base_max: f64,
+    /// The INC total, in percentage points.
+    pub inc: f64,
+    /// The MORE product.
+    pub more: f64,
+    /// MORE factors that scale only the minimum or only the maximum.
+    pub more_min: f64,
+    pub more_max: f64,
+    /// The range of a non-critical hit, before the enemy's mitigation.
+    pub min: f64,
+    pub max: f64,
+    /// The average non-critical hit (lucky rolls included).
+    pub avg: f64,
+    /// The average critical hit.
+    pub crit_avg: f64,
+}
+
+/// The per-type table behind the average hit.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HitDamageTerms {
+    pub parts: Vec<HitDamagePart>,
+    /// The double / triple damage factor every range is multiplied by.
+    pub damage_effect: f64,
+}
+
+/// What one offence pass computes for the hit: speed, chance to hit, crit,
+/// both crit legs and the DPS they combine into. The stage's output and the
+/// displayed steps ([`HitPass::average_hit_formula`], [`HitPass::dps_formula`])
+/// read the same numbers.
+pub(crate) struct HitPass {
+    pub action_rate: f64,
+    pub hit: HitChanceTerms,
+    pub crit: super::CritOutcome,
+    /// The double / triple damage factor both crit legs are multiplied by.
+    pub damage_effect: f64,
+    pub crit_pass: super::CritPassOutput,
+    pub end: super::scaled_damage::DpsEndFactors,
+    pub dps: f64,
+}
+
+pub(crate) fn hit_pass(
     db: &ModDb,
     enemy_db: &ModDb,
     cfg: &CalcConfig,
     input: &MinimalInput,
-) -> MinimalOutput {
-    let life = scaled_pool(db, cfg, input.base_life, "MaximumLife");
-    let mana = scaled_pool(db, cfg, input.base_mana, "MaximumMana");
-    let fire = resolve_resistance(db, cfg, input.base_fire_resistance, "Fire", true);
-    let cold = resolve_resistance(db, cfg, input.base_cold_resistance, "Cold", true);
-    let lightning = resolve_resistance(db, cfg, input.base_lightning_resistance, "Lightning", true);
-    let fire_resistance = fire.final_value;
-    let cold_resistance = cold.final_value;
-    let lightning_resistance = lightning.final_value;
-
+) -> HitPass {
     let action_rate = resolve_action_rate(db, cfg, input);
     let hit_terms = hit_chance_terms(db, enemy_db, cfg, input);
     let accuracy_hit_chance = hit_terms.accuracy_chance;
@@ -547,9 +580,6 @@ pub fn calculate_minimal_vs_enemy(
         0.0,
         cfg.mode_effective,
     );
-    let crit_chance = crit.chance;
-    let crit_multiplier = crit.multiplier;
-
     // The damage body: the crit/non-crit dual pass + T3 factor wiring
     // The hit-view cfg: adds `KeywordFlags::HIT` (a hit is inherently a hit)
     // -- so `with Hits`-type keyword mods (kw=HIT) match during hit
@@ -579,10 +609,6 @@ pub fn calculate_minimal_vs_enemy(
             enemy_damage_multiplier(db, enemy_db, pass_cfg, damage_type, raw_hit)
         },
     );
-    // Output field: the player-side total hit (excludes enemy mitigation),
-    // preserving the historical semantics + serving as the ailment magnitude source.
-    let damage_components = crit_pass.non_crit_components.clone();
-    let total_hit_avg = crit_pass.total_hit_avg;
     // For DPS: under the effective view, the total hit including the enemy damage-taken chain/resistance/armour mitigation.
     let total_hit_avg_for_dps = crit_pass.total_hit_avg_mitigated;
 
@@ -598,6 +624,142 @@ pub fn calculate_minimal_vs_enemy(
             * end.dps_multiplier
             * end.quantity_multiplier,
     );
+
+    HitPass {
+        action_rate,
+        hit: hit_terms,
+        crit,
+        damage_effect: scaled.effect,
+        crit_pass,
+        end,
+        dps,
+    }
+}
+
+impl HitPass {
+    /// The per-type rows of the non-crit leg with each type's crit average.
+    /// `None` when the rows cannot be matched to the stage's components.
+    pub(crate) fn damage_terms(
+        &self,
+        db: &ModDb,
+        cfg: &CalcConfig,
+        input: &MinimalInput,
+    ) -> Option<HitDamageTerms> {
+        let terms =
+            super::crit_pass::non_crit_terms(db, cfg, input.base_hit_min, input.base_hit_max);
+        let pass = &self.crit_pass;
+        if terms.len() != pass.non_crit_components.len() || terms.len() != pass.stored_hit_avg.len()
+        {
+            return None;
+        }
+        let parts = terms
+            .iter()
+            .zip(&pass.non_crit_components)
+            .zip(&pass.stored_hit_avg)
+            .map(|((terms, component), (_, avg))| HitDamagePart {
+                damage_type: component.damage_type,
+                base_min: terms.base_min,
+                base_max: terms.base_max,
+                inc: terms.inc,
+                more: terms.more,
+                more_min: terms.more_min,
+                more_max: terms.more_max,
+                min: component.min,
+                max: component.max,
+                avg: *avg,
+                crit_avg: pass
+                    .stored_crit_avg
+                    .iter()
+                    .find(|(ty, _)| *ty == component.damage_type)
+                    .map_or(0.0, |(_, avg)| *avg),
+            })
+            .collect();
+        Some(HitDamageTerms {
+            parts,
+            damage_effect: self.damage_effect,
+        })
+    }
+
+    /// Non-crit average, then the share of hits that crit, ending at the
+    /// player-side average hit.
+    pub(crate) fn average_hit_formula(&self) -> StatFormula {
+        let non_crit: f64 = self.crit_pass.stored_hit_avg.iter().map(|(_, v)| v).sum();
+        let mut steps = FormulaBuilder::default();
+        steps.set(FormulaOp::NonCritHit, non_crit, non_crit);
+        if self.crit.chance != 0.0 {
+            steps.set(
+                FormulaOp::CritHits,
+                self.crit.chance * 100.0,
+                self.crit_pass.total_hit_avg,
+            );
+        }
+        steps.finish(self.crit_pass.total_hit_avg)
+    }
+
+    /// Average hit, the enemy's mitigation, then the factors the stage
+    /// multiplies in, in its order.
+    pub(crate) fn dps_formula(&self) -> StatFormula {
+        let average = self.crit_pass.total_hit_avg;
+        let mitigated = self.crit_pass.total_hit_avg_mitigated;
+        let mut steps = FormulaBuilder::default();
+        steps.set(FormulaOp::AverageHit, average, average);
+        if mitigated != average && average != 0.0 {
+            steps.set(FormulaOp::EnemyMitigation, mitigated / average, mitigated);
+        }
+        steps.set(
+            FormulaOp::UsesPerSecond,
+            self.action_rate,
+            steps.current() * self.action_rate,
+        );
+        steps.set(
+            FormulaOp::ChanceToHit,
+            self.hit.value * 100.0,
+            steps.current() * self.hit.value,
+        );
+        let end = self.end.dps_multiplier * self.end.quantity_multiplier;
+        if end != 1.0 {
+            steps.set(FormulaOp::DpsMultiplier, end, steps.current() * end);
+        }
+        steps.finish(self.dps)
+    }
+}
+
+/// The full entry point: player modDB + enemy modDB. Enemy-side mitigation/
+/// damage-taken chain/block only take effect under `cfg.mode_effective == true`
+/// (the panel view never introduces enemy interaction, keeping it consistent with historical output).
+///
+/// Source: agent-docs/accuracy-and-enemy.md §2.2, §2.3, §6, §7;
+///       PoB2 `CalcOffence.lua` (`enemyDB:Sum/More DamageTaken`, `enemyBlockChance`, `CannotEvade`).
+pub fn calculate_minimal_vs_enemy(
+    db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    input: &MinimalInput,
+) -> MinimalOutput {
+    let life = scaled_pool(db, cfg, input.base_life, "MaximumLife");
+    let mana = scaled_pool(db, cfg, input.base_mana, "MaximumMana");
+    let fire = resolve_resistance(db, cfg, input.base_fire_resistance, "Fire", true);
+    let cold = resolve_resistance(db, cfg, input.base_cold_resistance, "Cold", true);
+    let lightning = resolve_resistance(db, cfg, input.base_lightning_resistance, "Lightning", true);
+    let fire_resistance = fire.final_value;
+    let cold_resistance = cold.final_value;
+    let lightning_resistance = lightning.final_value;
+
+    let HitPass {
+        action_rate,
+        hit: hit_terms,
+        crit,
+        crit_pass,
+        dps,
+        ..
+    } = hit_pass(db, enemy_db, cfg, input);
+    let hit_chance = hit_terms.value;
+    let crit_chance = crit.chance;
+    let crit_multiplier = crit.multiplier;
+    // Output field: the player-side total hit (excludes enemy mitigation),
+    // preserving the historical semantics + serving as the ailment magnitude source.
+    let damage_components = crit_pass.non_crit_components.clone();
+    let total_hit_avg = crit_pass.total_hit_avg;
 
     MinimalOutput {
         life,

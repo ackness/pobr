@@ -123,3 +123,39 @@ test('hit chance shows the accuracy check against enemy evasion', async ({ page 
   expect(shown).toBeLessThan(100);
   expect(num(await hit.locator('tr.formula-final .formula-result').textContent())).toBeCloseTo(shown, 1);
 });
+
+test('average hit and total DPS show how they are built', async ({ page }) => {
+  const titan = readFileSync(
+    fileURLToPath(new URL('../../examples/demo-bd-test/builds/warrior-titan-shield-wall/code.txt', import.meta.url)),
+    'utf8',
+  ).trim();
+  await page.goto('/');
+  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(titan);
+  await page.locator('.import-submit').click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Calcs', exact: true }).click();
+
+  // Average hit: one row per damage type; the averages add up to the non-critical hit the
+  // steps start from, and the steps end at the value shown.
+  const average = page.locator('#breakdown-TotalHitAvg');
+  await average.locator('.breakdown-toggle').click();
+  const table = average.locator('.hit-damage-table');
+  await expect(table.locator('tbody tr')).toHaveCount(5);
+  await expect(table.locator('tbody tr.damage-physical th')).toHaveText('Physical');
+  const total = num(await table.locator('tfoot td').first().textContent());
+  expect(total).toBeGreaterThan(0);
+  expect(num(await average.locator('tr.formula-non_crit_hit .formula-result').textContent())).toBeCloseTo(total, 1);
+  await expect(average.locator('tr.formula-crit_hits th')).toContainText('Averaged with critical hits');
+  const shownAverage = num(await average.locator('.breakdown-value').textContent());
+  expect(shownAverage).toBeGreaterThan(total);
+  expect(Math.abs(num(await average.locator('tr.formula-final .formula-result').textContent()) - shownAverage)).toBeLessThanOrEqual(0.5);
+
+  // Total DPS: starts from that average hit and multiplies in rate and chance to hit.
+  const dps = page.locator('#breakdown-TotalDPS');
+  await dps.locator('.breakdown-toggle').click();
+  expect(Math.abs(num(await dps.locator('tr.formula-average_hit .formula-result').textContent()) - shownAverage)).toBeLessThanOrEqual(0.5);
+  await expect(dps.locator('tr.formula-uses_per_second')).toHaveCount(1);
+  await expect(dps.locator('tr.formula-chance_to_hit th')).toHaveText('Chance to hit');
+  const shownDps = num(await dps.locator('.breakdown-value').textContent());
+  expect(Math.abs(num(await dps.locator('tr.formula-final .formula-result').textContent()) - shownDps)).toBeLessThanOrEqual(0.5);
+});

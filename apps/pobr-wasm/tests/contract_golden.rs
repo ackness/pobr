@@ -289,6 +289,18 @@ fn breakdown_formulas_end_at_the_displayed_value() {
             );
 
             let total = |key: &str| breakdown[key].as_f64().unwrap();
+            let shown_stat = |id: &str| {
+                stats.iter().find(|s| s["id"] == id).unwrap()["value"]
+                    .as_f64()
+                    .unwrap()
+            };
+            let rows = breakdown["damage"]["rows"].as_array();
+            let column = |key: &str| -> f64 {
+                rows.unwrap_or_else(|| panic!("{at}: no damage table"))
+                    .iter()
+                    .map(|row| row[key].as_f64().unwrap())
+                    .sum()
+            };
             let mut previous = 0.0;
             for step in formula["steps"].as_array().unwrap() {
                 let op = step["op"].as_str().unwrap();
@@ -324,6 +336,34 @@ fn breakdown_formulas_end_at_the_displayed_value() {
                         operand
                     }
                     "bonus_to_multiplier" => 1.0 + previous / operand,
+                    // The per-type table adds up to the non-crit hit, and its
+                    // crit column is what the crit share is averaged with.
+                    "non_crit_hit" => {
+                        assert!(close(operand, column("avg")), "{at}: rows != {operand}");
+                        operand
+                    }
+                    "crit_hits" => {
+                        let chance = operand / 100.0;
+                        assert!(
+                            close(operand, shown_stat("CritChance")),
+                            "{at}: crit chance"
+                        );
+                        previous * (1.0 - chance) + column("crit_avg") * chance
+                    }
+                    // Total DPS multiplies the displayed average hit, rate and hit chance.
+                    "average_hit" => {
+                        assert!(close(operand, shown_stat("TotalHitAvg")), "{at}: average");
+                        operand
+                    }
+                    "uses_per_second" => {
+                        assert!(close(operand, shown_stat("ActionRate")), "{at}: rate");
+                        previous * operand
+                    }
+                    "chance_to_hit" => {
+                        assert!(close(operand, shown_stat("HitChance")), "{at}: hit chance");
+                        previous * operand / 100.0
+                    }
+                    "enemy_mitigation" | "dps_multiplier" => previous * operand,
                     other => panic!("{at}: unknown op {other}"),
                 };
                 assert!(
@@ -357,6 +397,29 @@ fn breakdown_formulas_end_at_the_displayed_value() {
                 close(previous, value),
                 "{at}: steps end at {previous}, value {value}"
             );
+            // Each damage type's range follows from its listed terms.
+            for row in rows.into_iter().flatten() {
+                let n = |key: &str| row[key].as_f64().unwrap();
+                let scale = (1.0 + n("increased") / 100.0)
+                    * n("more")
+                    * breakdown["damage"]["damage_effect"].as_f64().unwrap();
+                for (end, more) in [("min", "more_min"), ("max", "more_max")] {
+                    let expected = n(&format!("base_{end}")) * scale * n(more);
+                    assert!(
+                        close(n(end), expected),
+                        "{at}: {} {end} {} != {expected}",
+                        row["damage_type"],
+                        n(end)
+                    );
+                }
+                let mid = (n("min") + n("max")) / 2.0;
+                assert!(
+                    n("avg") >= mid - 1e-6 && n("avg") <= n("max") + 1e-6,
+                    "{at}: average {} outside {mid}..{}",
+                    n("avg"),
+                    n("max")
+                );
+            }
             *covered.entry(stat.clone()).or_default() += 1;
         }
         // These are explained on every build that lists them.
@@ -400,6 +463,8 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         "Spirit",
         "Accuracy",
         "HitChance",
+        "TotalHitAvg",
+        "TotalDPS",
     ] {
         assert!(covered.contains_key(stat), "no build explains {stat}");
     }
@@ -414,6 +479,9 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         "bifurcate",
         "vs_evasion",
         "always_hits",
+        "crit_hits",
+        "enemy_mitigation",
+        "dps_multiplier",
     ] {
         assert!(ops.contains(op), "no fixture build shows a {op} step");
     }

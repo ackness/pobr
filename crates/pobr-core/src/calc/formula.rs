@@ -2,7 +2,7 @@
 //! value it outputs. The stages return the terms they aggregated
 //! (`PoolTerms`, `ResistanceResolution`, `ActionRateTerms`, `CritChanceTerms`,
 //! `CritMultiplierTerms`, `DefenceTerms`, `SpiritTerms`, `AccuracyTerms`,
-//! `HitChanceTerms`) and those terms are turned into steps here, so a
+//! `HitChanceTerms`, `HitPass`) and those terms are turned into steps here, so a
 //! displayed formula reads the same numbers the stage computed with.
 
 /// What one step does to the running value.
@@ -71,6 +71,23 @@ pub enum FormulaOp {
     AlwaysHits,
     /// Removes the enemy's `operand` percent chance to block.
     EnemyBlock,
+    /// Starts from the average of a hit that does not crit, `operand`.
+    NonCritHit,
+    /// `operand` percent of hits are critical hits; the result is the
+    /// average over both kinds of hit.
+    CritHits,
+    /// Starts from the average hit, `operand`.
+    AverageHit,
+    /// Multiplies by `operand`: the enemy's resistances, armour and
+    /// modifiers to damage taken, weighted over the damage types.
+    EnemyMitigation,
+    /// Multiplies by `operand` uses per second.
+    UsesPerSecond,
+    /// Multiplies by the `operand` percent chance to hit.
+    ChanceToHit,
+    /// Multiplies by `operand`: repeats, extra detonations and other
+    /// multipliers to damage per second.
+    DpsMultiplier,
 }
 
 impl FormulaOp {
@@ -107,6 +124,13 @@ impl FormulaOp {
             Self::VsEvasion => "vs_evasion",
             Self::AlwaysHits => "always_hits",
             Self::EnemyBlock => "enemy_block",
+            Self::NonCritHit => "non_crit_hit",
+            Self::CritHits => "crit_hits",
+            Self::AverageHit => "average_hit",
+            Self::EnemyMitigation => "enemy_mitigation",
+            Self::UsesPerSecond => "uses_per_second",
+            Self::ChanceToHit => "chance_to_hit",
+            Self::DpsMultiplier => "dps_multiplier",
         }
     }
 }

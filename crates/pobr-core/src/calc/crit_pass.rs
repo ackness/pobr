@@ -47,7 +47,10 @@ use pobr_data::prelude::*;
 use crate::{CalcConfig, ModDb};
 
 use super::crit::CritOutcome;
-use super::damage::{DamageComponent, apply_can_deal, calculate_components, lucky_hit_chance};
+use super::damage::{
+    ComponentTerms, DamageComponent, apply_can_deal, calculate_component_terms,
+    calculate_components, lucky_hit_chance,
+};
 use super::output::StoredDamageRange;
 use super::round;
 use super::scaled_damage::{AllMultExtras, ScaledDamage, all_mult};
@@ -232,6 +235,22 @@ where
         total_hit_avg_mitigated,
         short_circuited: short_circuit,
     }
+}
+
+/// The non-crit leg's scaling terms, in the order of
+/// [`CritPassOutput::non_crit_components`]. `cfg` is the pass config the
+/// stage hands to [`run_crit_passes`] without the hit keyword.
+pub(crate) fn non_crit_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base_hit_min: f64,
+    base_hit_max: f64,
+) -> Vec<ComponentTerms> {
+    let cfg_hit = cfg
+        .clone()
+        .with_keyword_flags(cfg.keyword_flags | KeywordFlags::HIT)
+        .with_condition("CriticalStrike", false);
+    calculate_component_terms(db, &cfg_hit, base_hit_min, base_hit_max)
 }
 
 /// Finishes a leg: ×allMult (`:4033-4034`) → fold lucky into avg (`:4035-4046`).

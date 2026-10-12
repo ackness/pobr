@@ -5,6 +5,7 @@ import type {
   AttributionResponse,
   Breakdown,
   FormulaStep,
+  HitDamageTable,
   DisplayStatCategory,
   SkillMetricsResponse,
 } from '../../api/types';
@@ -12,6 +13,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { formatStatValue, statMap } from '../../lib/statDisplay';
 import {
   bindT,
+  damageTypeLabel,
   grantedSourceLabel,
   originKindLabel,
   slotLabel,
@@ -58,7 +60,17 @@ function formulaOperand(step: FormulaStep): string {
     case 'round':
     case 'accuracy_rating':
     case 'always_hits':
+    case 'non_crit_hit':
+    case 'average_hit':
       return '';
+    case 'crit_hits':
+      return `${n}%`;
+    case 'chance_to_hit':
+      return `×${n}%`;
+    case 'enemy_mitigation':
+    case 'uses_per_second':
+    case 'dps_multiplier':
+      return `×${n}`;
     case 'vs_evasion':
       return `A × 1.25 ÷ (A + ${n} × 0.3)`;
     case 'flat':
@@ -97,6 +109,58 @@ function formulaOperand(step: FormulaStep): string {
     case 'floor':
       return `≥ ${n}`;
   }
+}
+
+/** The per-type table behind the average hit: base range, scaling, and both averages. */
+function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang }) {
+  const tt = bindT(lang);
+  const range = (min: number, max: number) => `${fmtNum(min)} – ${fmtNum(max)}`;
+  const sum = (key: 'avg' | 'crit_avg') => damage.rows.reduce((total, row) => total + row[key], 0);
+  return (
+    <div className="breakdown-scroll">
+      <table className="breakdown-table hit-damage-table" aria-label={tt('calcs.damage.title')}>
+        <caption>{tt('calcs.damage.title')}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{tt('calcs.damage.type')}</th>
+            <th scope="col">{tt('calcs.damage.base')}</th>
+            <th scope="col">{tt('calcs.damage.increased')}</th>
+            <th scope="col">{tt('calcs.damage.more')}</th>
+            <th scope="col">{tt('calcs.damage.hit')}</th>
+            <th scope="col">{tt('calcs.damage.avg')}</th>
+            <th scope="col">{tt('calcs.damage.critAvg')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {damage.rows.map((row) => (
+            <tr key={row.damage_type} className={`damage-${row.damage_type.toLowerCase()}`}>
+              <th scope="row">{damageTypeLabel(lang, row.damage_type)}</th>
+              <td className="mod-value">{range(row.base_min, row.base_max)}</td>
+              <td className="mod-value">{fmtNum(row.increased)}%</td>
+              <td className="mod-value">
+                ×{fmtNum(row.more)}
+                {row.more_min !== 1 && ` · ${tt('calcs.damage.minOnly')} ×${fmtNum(row.more_min)}`}
+                {row.more_max !== 1 && ` · ${tt('calcs.damage.maxOnly')} ×${fmtNum(row.more_max)}`}
+              </td>
+              <td className="mod-value">{range(row.min, row.max)}</td>
+              <td className="mod-value">{fmtNum(row.avg)}</td>
+              <td className="mod-value">{fmtNum(row.crit_avg)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row" colSpan={5}>{tt('calcs.damage.total')}</th>
+            <td className="mod-value">{fmtNum(sum('avg'))}</td>
+            <td className="mod-value">{fmtNum(sum('crit_avg'))}</td>
+          </tr>
+        </tfoot>
+      </table>
+      {damage.damage_effect !== 1 && (
+        <p className="breakdown-note">{tt('calcs.damage.effect')}: ×{fmtNum(damage.damage_effect)}</p>
+      )}
+    </div>
+  );
 }
 
 function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Breakdown; lang: Lang }) {
@@ -138,6 +202,7 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
   };
   return (
     <div className="breakdown-detail">
+      {breakdown.damage && <HitDamageView damage={breakdown.damage} lang={lang} />}
       {breakdown.formula ? (
         <table className="breakdown-formula" aria-label={tt('calcs.formula')}>
           <caption>{tt('calcs.formula')}</caption>
@@ -547,9 +612,11 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
                     <span className="breakdown-value">
                       {values.has(name) ? formatStatValue(values.get(name) ?? null, 'float2') : ''}
                     </span>
-                    <span className="breakdown-count">
-                      {breakdown.mods.filter((m) => m.active).length} {tt('calcs.mods')}
-                    </span>
+                    {breakdown.mods.length > 0 && (
+                      <span className="breakdown-count">
+                        {breakdown.mods.filter((m) => m.active).length} {tt('calcs.mods')}
+                      </span>
+                    )}
                   </button>
                   {isOpen && <BreakdownTable name={name} breakdown={breakdown} lang={lang} />}
                 </div>

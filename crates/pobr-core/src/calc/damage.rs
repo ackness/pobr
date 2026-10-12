@@ -316,6 +316,37 @@ pub(crate) fn calculate_components(
     base_hit_min: f64,
     base_hit_max: f64,
 ) -> Vec<DamageComponent> {
+    calculate_component_terms(db, cfg, base_hit_min, base_hit_max)
+        .into_iter()
+        .map(|terms| terms.component)
+        .collect()
+}
+
+/// One damage type's range before scaling, the scaling the stage applied and
+/// the resulting component.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ComponentTerms {
+    /// The range before increases: the weapon or skill base, added damage
+    /// and whatever conversion and gain moved into this type.
+    pub base_min: f64,
+    pub base_max: f64,
+    /// The INC total, in percentage points.
+    pub inc: f64,
+    /// The MORE product.
+    pub more: f64,
+    /// MORE factors that scale only the minimum or only the maximum.
+    pub more_min: f64,
+    pub more_max: f64,
+    pub component: DamageComponent,
+}
+
+/// [`calculate_components`] with the terms each component was scaled by.
+pub(crate) fn calculate_component_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base_hit_min: f64,
+    base_hit_max: f64,
+) -> Vec<ComponentTerms> {
     // Step 1: each type's flat base.
     let mut base: Vec<(DamageType, f64, f64)> = Vec::with_capacity(DAMAGE_TYPES.len());
     for &damage_type in DAMAGE_TYPES.iter() {
@@ -362,7 +393,7 @@ fn scale_components_no_conversion(
     db: &ModDb,
     cfg: &CalcConfig,
     base: &[(DamageType, f64, f64)],
-) -> Vec<DamageComponent> {
+) -> Vec<ComponentTerms> {
     base.iter()
         .filter_map(|&(damage_type, base_min, base_max)| {
             let is_physical = damage_type == DamageType::Physical;
@@ -382,7 +413,7 @@ fn scale_components_no_conversion(
 /// both `PhysicalDamage` and `FireDamage` (plus the elemental
 /// `ElementalDamage`) and the generic `AttackDamage`/`Damage` -- a double-dip.
 /// Degenerates to historical per-type aggregation when `type_path` only contains a single type.
-fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> DamageComponent {
+fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> ComponentTerms {
     let (inc, more) = aggregate_inc_more(db, cfg, comp.damage_type);
     let scale = (1.0 + inc / 100.0) * more;
     if dbg_env!("POBR_DBG_BASES").is_some() {
@@ -401,10 +432,18 @@ fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> Damag
     let prefix = type_prefix(comp.damage_type);
     let more_min = db.more(cfg, &[ModName::from(format!("Min{prefix}Damage"))]);
     let more_max = db.more(cfg, &[ModName::from(format!("Max{prefix}Damage"))]);
-    DamageComponent {
-        min: round(comp.min * scale * more_min),
-        max: round(comp.max * scale * more_max),
-        ..comp
+    ComponentTerms {
+        base_min: comp.min,
+        base_max: comp.max,
+        inc,
+        more,
+        more_min,
+        more_max,
+        component: DamageComponent {
+            min: round(comp.min * scale * more_min),
+            max: round(comp.max * scale * more_max),
+            ..comp
+        },
     }
 }
 

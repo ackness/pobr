@@ -84,8 +84,9 @@ pub use minion::{
     write_summoned_minion_multipliers,
 };
 pub use offence::{
-    MinimalInput, MinimalOutput, TracedMinimalOutput, calculate_minimal, calculate_minimal_traced,
-    calculate_minimal_traced_vs_enemy, calculate_minimal_vs_enemy,
+    HitDamagePart, HitDamageTerms, MinimalInput, MinimalOutput, TracedMinimalOutput,
+    calculate_minimal, calculate_minimal_traced, calculate_minimal_traced_vs_enemy,
+    calculate_minimal_vs_enemy,
 };
 pub use output::{HandOutput, MinionOutput, OutputTable, StoredDamageRange};
 pub use perform::perform;

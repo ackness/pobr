@@ -446,11 +446,18 @@ export type FormulaOp =
   | 'accuracy_rating'
   | 'vs_evasion'
   | 'always_hits'
-  | 'enemy_block';
+  | 'enemy_block'
+  | 'non_crit_hit'
+  | 'crit_hits'
+  | 'average_hit'
+  | 'enemy_mitigation'
+  | 'uses_per_second'
+  | 'chance_to_hit'
+  | 'dps_multiplier';
 
 export interface FormulaStep {
   op: FormulaOp;
-  /** Amount applied: percentage points (increased, converted, hit_chance, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed), seconds (added_time), the limit, the number of rolls (lucky, bifurcate) or the amount added. */
+  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier), seconds (added_time), the limit, the number of rolls (lucky, bifurcate) or the amount added. */
   operand: number;
   /** Running value after the step. */
   result: number;
@@ -471,6 +478,37 @@ export interface Breakdown {
   mods: BreakdownMod[];
   /** Steps from the starting value to the displayed stat; null when not available for this stat. */
   formula: BreakdownFormula | null;
+  /** TotalHitAvg only: how each damage type of the hit is built. */
+  damage?: HitDamageTable;
+}
+
+/** One damage type of the main skill's hit, before the enemy's mitigation. */
+export interface HitDamageRow {
+  /** Physical / Fire / Cold / Lightning / Chaos. */
+  damage_type: string;
+  /** Range before increases: weapon or skill base, added damage, and what conversion and gain moved into this type. */
+  base_min: number;
+  base_max: number;
+  /** INC total in percentage points. */
+  increased: number;
+  /** MORE product as a multiplier. */
+  more: number;
+  /** MORE multipliers that apply to the minimum or the maximum only. */
+  more_min: number;
+  more_max: number;
+  /** Range of a non-critical hit. */
+  min: number;
+  max: number;
+  /** Average non-critical hit. */
+  avg: number;
+  /** Average critical hit. */
+  crit_avg: number;
+}
+
+export interface HitDamageTable {
+  rows: HitDamageRow[];
+  /** Double / triple damage multiplier every range includes (1 without one). */
+  damage_effect: number;
 }
 
 /** 主技能击中伤害的单类型分量（非暴击腿、玩家侧敌减伤前；占比用 avg）。 */

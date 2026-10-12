@@ -120,6 +120,31 @@
   font-weight: 600;
 }
 
+.hit-damage-table {
+  margin-bottom: var(--space-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.hit-damage-table caption {
+  padding-bottom: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-align: left;
+}
+
+.hit-damage-table tbody th,
+.hit-damage-table tfoot th {
+  font-weight: normal;
+  text-align: left;
+}
+
+.hit-damage-table tfoot th,
+.hit-damage-table tfoot td {
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 .breakdown-note {
   margin: 0;
   padding-bottom: var(--space-2);

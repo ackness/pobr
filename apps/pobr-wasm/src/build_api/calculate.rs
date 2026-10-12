@@ -16,11 +16,13 @@ use crate::state;
 // 0.2 + 0.3 calculate_build_json (the full display_catalog plus breakdown)
 
 /// The displayed stats the breakdown covers (PoB2's always-present sidebar
-/// stats; derived values like TotalDPS have no single aggregation, so
-/// they're not listed here — see them via the attribution endpoint instead).
-/// Each stat is evaluated over the modifier names its calculation stage
-/// aggregates (`CalculationSession::stat_mod_names`).
+/// stats). Each stat is evaluated over the modifier names its calculation
+/// stage aggregates (`CalculationSession::stat_mod_names`). `TotalDPS` and
+/// `TotalHitAvg` have no single aggregation: they carry steps only, and the
+/// average hit a per-damage-type table (`damage`).
 const BREAKDOWN_MOD_NAMES: &[&str] = &[
+    "TotalDPS",
+    "TotalHitAvg",
     "Life",
     "Mana",
     "EnergyShield",
@@ -72,6 +74,42 @@ struct BreakdownJson {
     /// How the calculation gets from the starting value to the displayed
     /// stat (`null` = the steps are not available for this stat).
     formula: Option<FormulaJson>,
+    /// `TotalHitAvg` only: how each damage type of the hit is built.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    damage: Option<HitDamageTableJson>,
+}
+
+/// One damage type of the main skill's hit, before the enemy's mitigation.
+#[derive(Debug, Serialize)]
+struct HitDamageRowJson {
+    /// `Physical` / `Fire` / `Cold` / `Lightning` / `Chaos`.
+    damage_type: String,
+    /// The range before increases: the weapon or skill base, added damage
+    /// and what conversion and gain moved into this type.
+    base_min: f64,
+    base_max: f64,
+    /// The INC total (in percentage points).
+    increased: f64,
+    /// The MORE product, as a multiplier.
+    more: f64,
+    /// MORE multipliers that apply to the minimum or the maximum only.
+    more_min: f64,
+    more_max: f64,
+    /// The range of a non-critical hit:
+    /// `base × (1 + increased / 100) × more × more_min|max × damage_effect`.
+    min: f64,
+    max: f64,
+    /// The average non-critical hit (`(min + max) / 2` unless rolls are lucky).
+    avg: f64,
+    /// The average critical hit.
+    crit_avg: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct HitDamageTableJson {
+    rows: Vec<HitDamageRowJson>,
+    /// The double / triple damage multiplier every range includes (`1.0` without one).
+    damage_effect: f64,
 }
 
 #[derive(Debug, Serialize)]
@@ -82,14 +120,18 @@ struct FormulaStepJson {
     /// `gained` / `slot_scaled` / `flat_after` / `round` / `hit_chance` /
     /// `lucky` / `bifurcate` / `inevitable` / `inevitable_penalty` /
     /// `bifurcate_bonus` / `enemy_increased` / `accuracy_rating` /
-    /// `vs_evasion` / `always_hits` / `enemy_block`.
+    /// `vs_evasion` / `always_hits` / `enemy_block` / `non_crit_hit` /
+    /// `crit_hits` / `average_hit` / `enemy_mitigation` / `uses_per_second` /
+    /// `chance_to_hit` / `dps_multiplier`.
     op: &'static str,
     /// The amount the step applies (percentage points for `increased`,
     /// `converted`, `hit_chance`, `enemy_block`, `inevitable_penalty`,
     /// `bifurcate_bonus` and `enemy_increased`, the enemy's evasion for
     /// `vs_evasion`, a multiplier for `more` and `action_speed`, seconds
     /// for `added_time`, the limit for caps and the floor, the number of
-    /// rolls for `lucky` and `bifurcate`, the amount added otherwise).
+    /// rolls for `lucky` and `bifurcate`, the percentage of hits that crit
+    /// for `crit_hits`, the chance to hit for `chance_to_hit`, a multiplier for `enemy_mitigation`,
+    /// `uses_per_second` and `dps_multiplier`, the amount added otherwise).
     operand: f64,
     /// The running value after the step.
     result: f64,
@@ -121,6 +163,31 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
     if rows.is_empty() && formula.as_ref().is_none_or(|formula| formula.value == 0.0) {
         return None;
     }
+    let damage = (stat == "TotalHitAvg")
+        .then(|| session.hit_damage_terms())
+        .flatten()
+        .map(|terms| HitDamageTableJson {
+            rows: terms
+                .parts
+                .iter()
+                // The physical row is always computed; leave it out when empty.
+                .filter(|part| part.base_max != 0.0 || part.max != 0.0)
+                .map(|part| HitDamageRowJson {
+                    damage_type: format!("{:?}", part.damage_type),
+                    base_min: part.base_min,
+                    base_max: part.base_max,
+                    increased: part.inc + 0.0,
+                    more: part.more,
+                    more_min: part.more_min,
+                    more_max: part.more_max,
+                    min: part.min,
+                    max: part.max,
+                    avg: part.avg,
+                    crit_avg: part.crit_avg,
+                })
+                .collect(),
+            damage_effect: terms.damage_effect,
+        });
     let mut entries: Vec<BreakdownModJson> = rows
         .iter()
         .map(|row| {
@@ -158,6 +225,7 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
         more_total,
         mods: entries,
         formula,
+        damage,
     })
 }
 
