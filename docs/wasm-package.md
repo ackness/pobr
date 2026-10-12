@@ -124,8 +124,8 @@ These are disk/transfer sizes, not runtime memory measurements.
 
 ## Runtime performance comparison
 
-The root [README](../README.md#wasm-performance-pobr-vs-pob-web) and
-[Chinese README](../README.zh-CN.md#wasm-性能pobr-与-pob-web) record an opt-in
+The [performance and build analysis](wasm-performance.md) document
+([中文](wasm-performance.zh-CN.md)) records an opt-in
 PoBR Rust WASM versus pob-web Lua WASM **code-import + calculation** benchmark.
 The [baseline](../devs/ci/pob-web-performance-baseline.json) preserves the measured
 samples, host, artifact hashes, selected outputs and failed fixtures. It is

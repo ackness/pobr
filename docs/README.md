@@ -33,6 +33,7 @@ of each before relying on it.
 
 | Document | Snapshot |
 |----------|----------|
+| [wasm-performance.md](wasm-performance.md) / [中文](wasm-performance.zh-CN.md) | WASM timings and sizes (2026-10-11); supplemental timings, build diagnostics and fresh PoB2 source comparison (2026-10-12) |
 | [adapting-to-0.5.5c.md](adapting-to-0.5.5c.md) | Data update to `4.5.5.3` (2026-09-26) |
 | [adapting-to-0.5.5.md](adapting-to-0.5.5.md) | Data update to `4.5.5.2` (2026-09-11) |
 | [adapting-to-0.5.4b.md](adapting-to-0.5.4b.md) | Engine gap map and plan for game 0.5.4b (2026-07-15) |
