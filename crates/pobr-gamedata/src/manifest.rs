@@ -8,6 +8,14 @@ use sha2::{Digest, Sha256};
 
 use crate::{GameData, LoadError};
 
+/// Lowercase hex SHA-256 of `bytes`.
+pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
+    Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
 impl GameData {
     /// Loads the data-pack envelope (a v1 flat `domains` is automatically
     /// filed under the `base` section).
@@ -120,7 +128,7 @@ impl GameData {
             let bytes = self
                 .read_bytes(&path)
                 .map_err(|source| LoadError::Io { path, source })?;
-            if format!("{:x}", Sha256::digest(&bytes)) != *digest {
+            if sha256_hex(&bytes) != *digest {
                 return Err(invalid(format!("SHA-256 mismatch: {file}")));
             }
         }
@@ -154,8 +162,8 @@ impl GameData {
 
 #[cfg(test)]
 mod tests {
+    use super::sha256_hex;
     use crate::GameData;
-    use sha2::{Digest, Sha256};
     use std::collections::BTreeMap;
 
     fn strict_files() -> BTreeMap<String, Vec<u8>> {
@@ -163,7 +171,7 @@ mod tests {
         let manifest = serde_json::json!({
             "schema_version": 3, "poe_version": "test", "languages": [],
             "domains": { "base": [], "overlay": ["gem_quality_stats"], "generated": [] },
-            "files": { "overlay/gem_quality_stats.json": format!("{:x}", Sha256::digest(&quality)) }
+            "files": { "overlay/gem_quality_stats.json": sha256_hex(&quality) }
         });
         BTreeMap::from([
             (
@@ -226,8 +234,7 @@ mod tests {
         let mut files = strict_files();
         let mut manifest: serde_json::Value =
             serde_json::from_slice(&files["manifest.json"]).unwrap();
-        manifest["files"]["base/passive_trees/listed.json"] =
-            format!("{:x}", Sha256::digest(b"[]")).into();
+        manifest["files"]["base/passive_trees/listed.json"] = sha256_hex(b"[]").into();
         files.insert(
             "manifest.json".into(),
             serde_json::to_vec(&manifest).unwrap(),
@@ -311,7 +318,7 @@ mod tests {
             let manifest = serde_json::json!({
                 "schema_version": schema, "poe_version": "test", "languages": [],
                 "domains": { "base": ["stats"] },
-                "files": { "base/stats.json": format!("{:x}", Sha256::digest(b"[]")) }
+                "files": { "base/stats.json": sha256_hex(b"[]") }
             });
             files.insert(
                 "manifest.json".into(),

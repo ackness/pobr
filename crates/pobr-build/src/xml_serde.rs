@@ -37,7 +37,7 @@ pub fn parse_build_header(xml: &str) -> Result<ParsedBuildHeader, XmlError> {
         match reader.read_event() {
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
                 let name_bytes = e.name();
-                let name = String::from_utf8_lossy(name_bytes.as_ref()).to_string();
+                let name = name_bytes.as_ref().to_string();
 
                 if !root_seen {
                     root_seen = true;
@@ -81,7 +81,7 @@ fn apply_root_attrs(
 ) -> Result<(), XmlError> {
     for attr in e.attributes().flatten() {
         let key = attr.key;
-        if key.as_ref() == b"viewMode" {
+        if key.as_ref() == "viewMode" {
             let value = decode_attr(&attr)?;
             header.view_mode = parse_view_mode(&value);
         }
@@ -96,15 +96,15 @@ fn apply_build_attrs(
     for attr in e.attributes().flatten() {
         let value = decode_attr(&attr)?;
         match attr.key.as_ref() {
-            b"level" => {
+            "level" => {
                 header.identity.level =
                     value.parse::<u32>().map_err(|_| XmlError::InvalidAttr {
                         attr: "level".into(),
                         value: value.clone(),
                     })?;
             }
-            b"className" => header.identity.class_name = value,
-            b"ascendClassName" => header.identity.ascendancy_name = value,
+            "className" => header.identity.class_name = value,
+            "ascendClassName" => header.identity.ascendancy_name = value,
             _ => {}
         }
     }
@@ -115,8 +115,7 @@ fn decode_attr(attr: &quick_xml::events::attributes::Attribute<'_>) -> Result<St
     // Deliberately avoid normalized_value: whitespace normalization collapses literal
     // newlines into spaces, but PoB stores multi-line mod text in attributes
     // (<Input string="a\nb">), where the newline is a line separator.
-    let raw = String::from_utf8_lossy(&attr.value).into_owned();
-    quick_xml::escape::unescape(&raw)
+    quick_xml::escape::unescape(&attr.value)
         .map(|v| v.into_owned())
         .map_err(|e| XmlError::Parse(e.to_string()))
 }

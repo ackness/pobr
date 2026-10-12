@@ -7,6 +7,14 @@ use std::path::{Component, Path};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
+/// Lowercase hex SHA-256 of `bytes`.
+fn sha256_hex(bytes: &[u8]) -> String {
+    Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
 #[derive(Deserialize)]
 struct ExportSource {
     schema: String,
@@ -35,7 +43,7 @@ pub(crate) fn verify(raw: &Path, patch: &str) -> Result<(), String> {
             return Err(format!("invalid raw source path: {name}"));
         }
         let bytes = fs::read(raw.join(path)).map_err(|e| format!("raw source {name}: {e}"))?;
-        if format!("{:x}", Sha256::digest(&bytes)) != *expected {
+        if sha256_hex(&bytes) != *expected {
             return Err(format!("raw source fingerprint mismatch: {name}"));
         }
     }
@@ -74,7 +82,7 @@ mod tests {
         fs::write(&table, "[]").unwrap();
         let document = serde_json::json!({
             "schema": "official-raw-export/v1", "patch": "9.1",
-            "files": {"English/Stats.json": format!("{:x}", Sha256::digest(b"[]"))}
+            "files": {"English/Stats.json": sha256_hex(b"[]")}
         });
         fs::write(root.join("export-source.json"), document.to_string()).unwrap();
         verify(&root, "9.1").unwrap();

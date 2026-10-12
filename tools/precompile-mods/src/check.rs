@@ -15,6 +15,14 @@ use pobr_core::rules::{HandlerRegistry, SpecialModRules, register_special_handle
 use pobr_data::catalog::parser_rules::{ModParserRulesDoc, SpecialModsDef};
 use pobr_gamedata::GameData;
 
+/// Lowercase hex SHA-256 of `bytes`.
+fn sha256_hex(bytes: &[u8]) -> String {
+    Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RuleOrigin {
     pub id: String,
@@ -209,10 +217,7 @@ fn record_input(
 ) -> Result<(), String> {
     if path.is_file() {
         let bytes = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
-        hashes.insert(
-            relative(path, data_dir),
-            format!("{:x}", Sha256::digest(bytes)),
-        );
+        hashes.insert(relative(path, data_dir), sha256_hex(&bytes));
     }
     Ok(())
 }
