@@ -333,17 +333,13 @@ fn parse_config_document(xml: &str) -> (RawConfigInputs, Vec<CustomModifierBlock
                 }
             }
             Ok(Event::Text(text)) if current_block.is_some() => {
-                if let Ok(decoded) = text.decode() {
-                    current_block.as_mut().unwrap().text.push_str(&decoded);
-                }
+                current_block.as_mut().unwrap().text.push_str(&text);
             }
             Ok(Event::GeneralRef(reference)) if current_block.is_some() => {
                 append_general_ref(&mut current_block.as_mut().unwrap().text, &reference);
             }
             Ok(Event::CData(text)) if current_block.is_some() => {
-                if let Ok(decoded) = text.decode() {
-                    current_block.as_mut().unwrap().text.push_str(&decoded);
-                }
+                current_block.as_mut().unwrap().text.push_str(&text);
             }
             Ok(Event::End(e)) if element_name_end(&e) == "CustomModifierBlock" => {
                 if let Some(block) = current_block.take() {
@@ -932,13 +928,7 @@ fn parse_raw_item_texts(xml: &str) -> Result<std::collections::HashMap<u32, Stri
                     .and_then(|v| v.parse::<u32>().ok())
                     .unwrap_or(0);
             }
-            Ok(Event::Text(t)) if in_item => match t.decode() {
-                Ok(text) => current_text.push_str(&text),
-                // On decode failure, degrade to a lossy decode of the raw bytes rather
-                // than dropping the whole block — otherwise a single mod line would be
-                // silently truncated (PoB raw item text is parsed line by line).
-                Err(_) => current_text.push_str(&String::from_utf8_lossy(&t)),
-            },
+            Ok(Event::Text(t)) if in_item => current_text.push_str(&t),
             Ok(Event::GeneralRef(r)) if in_item => append_general_ref(&mut current_text, &r),
             Ok(Event::End(e)) if element_name_end(&e) == "Item" && in_item => {
                 in_item = false;
@@ -985,10 +975,7 @@ pub fn parse_notes(xml: &str) -> Result<Option<String>, XmlError> {
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) if element_name(&e) == "Notes" => in_notes = true,
-            Ok(Event::Text(t)) if in_notes => match t.decode() {
-                Ok(chunk) => text.push_str(&chunk),
-                Err(_) => text.push_str(&String::from_utf8_lossy(&t)),
-            },
+            Ok(Event::Text(t)) if in_notes => text.push_str(&t),
             Ok(Event::GeneralRef(r)) if in_notes => append_general_ref(&mut text, &r),
             Ok(Event::End(e)) if element_name_end(&e) == "Notes" => break,
             Ok(Event::Eof) => break,
@@ -1227,13 +1214,7 @@ fn parse_item_blocks(xml: &str) -> Result<std::collections::HashMap<u32, Item>, 
                     .and_then(|v| v.parse::<u32>().ok())
                     .unwrap_or(0);
             }
-            Ok(Event::Text(t)) if in_item => match t.decode() {
-                Ok(text) => current_text.push_str(&text),
-                // On decode failure, degrade to a lossy decode of the raw bytes rather
-                // than dropping the whole block — otherwise a mod line would be silently
-                // truncated, causing this item to calculate incorrectly.
-                Err(_) => current_text.push_str(&String::from_utf8_lossy(&t)),
-            },
+            Ok(Event::Text(t)) if in_item => current_text.push_str(&t),
             Ok(Event::GeneralRef(r)) if in_item => append_general_ref(&mut current_text, &r),
             Ok(Event::End(e)) if element_name_end(&e) == "Item" && in_item => {
                 in_item = false;
@@ -1588,23 +1569,22 @@ fn active_skill_set_id(xml: &str) -> Result<Option<String>, XmlError> {
 // quick-xml helpers
 
 fn element_name(e: &BytesStart<'_>) -> String {
-    String::from_utf8_lossy(e.name().as_ref()).into_owned()
+    e.name().as_ref().to_owned()
 }
 
 fn element_name_end(e: &quick_xml::events::BytesEnd<'_>) -> String {
-    String::from_utf8_lossy(e.name().as_ref()).into_owned()
+    e.name().as_ref().to_owned()
 }
 
 fn attr_value(e: &BytesStart<'_>, key: &[u8]) -> Option<String> {
     e.attributes()
         .flatten()
-        .find(|a| a.key.as_ref() == key)
+        .find(|a| a.key.as_ref().as_bytes() == key)
         .and_then(|a| {
             // Deliberately avoid normalized_value: whitespace normalization collapses
             // literal newlines into spaces, but PoB stores multi-line mod text in
             // attributes (<Input string="a\nb">), where the newline is a line separator.
-            let raw = String::from_utf8_lossy(&a.value).into_owned();
-            quick_xml::escape::unescape(&raw)
+            quick_xml::escape::unescape(&a.value)
                 .ok()
                 .map(|v| v.into_owned())
         })
@@ -1620,20 +1600,15 @@ fn append_general_ref(buf: &mut String, r: &BytesRef<'_>) {
         buf.push(ch);
         return;
     }
-    match r.decode().as_deref() {
-        Ok("amp") => buf.push('&'),
-        Ok("lt") => buf.push('<'),
-        Ok("gt") => buf.push('>'),
-        Ok("apos") => buf.push('\''),
-        Ok("quot") => buf.push('"'),
-        Ok(name) => {
+    match &**r {
+        "amp" => buf.push('&'),
+        "lt" => buf.push('<'),
+        "gt" => buf.push('>'),
+        "apos" => buf.push('\''),
+        "quot" => buf.push('"'),
+        name => {
             buf.push('&');
             buf.push_str(name);
-            buf.push(';');
-        }
-        Err(_) => {
-            buf.push('&');
-            buf.push_str(&String::from_utf8_lossy(r));
             buf.push(';');
         }
     }
