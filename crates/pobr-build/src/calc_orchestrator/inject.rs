@@ -450,12 +450,9 @@ pub(super) fn inject_main_skill_mods(
     // chain (charges / support more / skill quality / attackSpeedMultiplier), no more
     // per-skill hardcoding.
     if let Some((skill, group, skill_id)) = main_skill {
-        // The selected statSet's per-set override key (an explicit statSetIndex selection wired into the engine's set_key).
-        let main_set_key = group
-            .gem_skills
-            .iter()
-            .find(|g| g.skill_id == *skill_id)
-            .and_then(|g| data.selected_set_key(skill_id, g.stat_set_index));
+        // Use the resolved instance's set: repeated effect ids can select different
+        // forms, and additional effects need not have their own gem_skills entry.
+        let main_set_key = data.selected_set_key(skill_id, ctx.main.main_stat_set_index);
         session.add_modifiers(skill_base_modifiers(
             context,
             skill,

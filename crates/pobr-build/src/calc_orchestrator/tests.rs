@@ -1112,6 +1112,38 @@ fn additional_effect_preserves_selected_gem_quality_and_level_provenance() {
     assert_eq!(boosted, baseline);
 }
 
+#[test]
+fn builder_additional_effect_keeps_primary_gem_level_bonus_provenance() {
+    let mut data = repo_data();
+    // Make level selection observable even when real Doom Blast level rows have
+    // identical timing. Keep the real support-to-active-effect relationship.
+    for row in data.granted_effect_levels.get_mut("DoomBlastPlayer").unwrap() {
+        row.attack_time_ms = Some(row.level * 100);
+    }
+    let mut gem_build = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("ViciousHexSupportPlayer", 2))
+        .with_main_socket_group(1);
+    let mut item = life_item("0");
+    item.modifier_texts = vec!["+2 to Level of all Spell Skills".into()];
+    gem_build.items.insert(EquipmentSlot::Ring1, item);
+    let mut builder_build = gem_build.clone();
+    builder_build.socket_groups[0] =
+        SocketGroup::new().with_active_skill("ViciousHexSupportPlayer", 2);
+    let gem_skill = super::skill::resolve::resolve_main_skill(&gem_build, &data).unwrap();
+    let builder_skill = super::skill::resolve::resolve_main_skill(&builder_build, &data).unwrap();
+    assert_eq!(gem_skill.2, "DoomBlastPlayer");
+    assert_eq!(builder_skill.2, "DoomBlastPlayer");
+    assert_eq!(gem_skill.0.use_time_s, Some(0.2));
+    assert_eq!(builder_skill.0, gem_skill.0);
+    let options = DataOrchestratorOptions::default();
+    let gem_report = calculate_skill_metrics(&gem_build, &data, &options).unwrap();
+    let builder_report = calculate_skill_metrics(&builder_build, &data, &options).unwrap();
+    assert_eq!(gem_report.skills.len(), 1);
+    assert_eq!(builder_report.skills.len(), 1);
+    assert!(gem_report.skills[0].output.is_some());
+    assert_eq!(builder_report.skills[0].output, gem_report.skills[0].output);
+}
+
 /// The per-set override key of the selected statSet threads through to the
 /// engine's set_key — with statSetIndex=2, the same stat routes to set "2"'s
 /// override entry (a synthetic catalog); by default it routes to set "1"/global.

@@ -34,13 +34,13 @@ fn blood_mage_selects_support_granted_doom_blast() {
     );
     let options = DataOrchestratorOptions::default();
     let panel = calculate_with_data(&build, &data, &options).unwrap();
-    assert!(panel.average_hit > 0.0, "Doom Blast must have a damage payload");
+    assert!(panel.total_hit_avg > 0.0, "Doom Blast must have a damage payload");
     let report = calculate_skill_metrics(&build, &data, &options).unwrap();
     let doom = report.skills.iter()
         .find(|row| row.group_index == 4 && row.active_skill_index == 2).unwrap();
     assert_eq!(doom.skill_id, "DoomBlastPlayer");
     assert!(doom.error.is_none(), "{:?}", doom.error);
-    assert_eq!(doom.output.as_ref().unwrap().average_hit, panel.average_hit);
+    assert_eq!(doom.output.as_ref().unwrap().total_hit_avg, panel.total_hit_avg);
     assert_eq!(doom.output.as_ref().unwrap().combined_dps, panel.combined_dps);
     assert!(report.skills.iter().any(|row|
         row.group_index == 4 && row.active_skill_index == 1
@@ -66,11 +66,43 @@ fn every_gem_instance_calculates_without_a_main_selection() {
         let mut selected = build.clone().with_main_socket_group(1);
         selected.socket_groups[0].main_active_skill = Some(index + 1);
         let single = calculate_with_data(&selected, &data, &options).unwrap();
-        assert_eq!(row.output.as_ref().unwrap().average_hit, single.average_hit);
+        assert_eq!(row.output.as_ref().unwrap().total_hit_avg, single.total_hit_avg);
         assert_eq!(row.output.as_ref().unwrap().combined_dps, single.combined_dps);
     }
-    assert!(report.skills[1].output.as_ref().unwrap().average_hit
-        > report.skills[0].output.as_ref().unwrap().average_hit);
+    assert!(report.skills[1].output.as_ref().unwrap().total_hit_avg
+        > report.skills[0].output.as_ref().unwrap().total_hit_avg);
+}
+
+#[test]
+fn duplicate_effect_instances_keep_the_selected_stat_set_mapping() {
+    let data = data();
+    let duplicate = build().add_socket_group(
+        SocketGroup::new()
+            .with_gem_skill_stat_set("EarthquakePlayer", 20, 1)
+            .with_gem_skill_stat_set("EarthquakePlayer", 20, 2),
+    );
+    let single = build().add_socket_group(
+        SocketGroup::new().with_gem_skill_stat_set("EarthquakePlayer", 20, 2),
+    ).with_main_socket_group(1);
+    let options = DataOrchestratorOptions {
+        base_input: pobr_core::calc::MinimalInput {
+            base_hit_min: 100.0,
+            base_hit_max: 100.0,
+            base_action_rate: 1.0,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let report = calculate_skill_metrics(&duplicate, &data, &options).unwrap();
+    assert_eq!(report.skills.len(), 2);
+    let aftershock = report.skills.iter()
+        .find(|row| row.group_index == 0 && row.active_skill_index == 2).unwrap();
+    let expected = calculate_with_data(&single, &data, &options).unwrap();
+    assert!(expected.total_hit_avg > 0.0);
+    let actual = aftershock.output.as_ref().unwrap();
+    assert_eq!(actual.damage_components, expected.damage_components);
+    assert_eq!(actual.total_hit_avg, expected.total_hit_avg);
+    assert_eq!(actual.combined_dps, expected.combined_dps);
 }
 
 #[test]

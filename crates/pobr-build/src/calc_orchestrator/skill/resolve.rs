@@ -100,7 +100,9 @@ pub(crate) fn resolve_skill_level_with_gem_bonus(
     let skill_id = effect.skill_id;
     let base_level = effect.gem_level;
     let gem_id = group.gem_skills.get(effect.gem_index)
-        .map_or(skill_id, |gem| gem.skill_id.as_str());
+        .map(|gem| gem.skill_id.as_str())
+        .or(group.active_skill_id.as_deref())
+        .unwrap_or(skill_id);
     let bonus = additional_gem_levels(build, data, gem_id)
         .saturating_add(support_granted_gem_levels(group, data, gem_id));
     if pobr_core::dbg_env!("POBR_DBG_GEMLVL").is_some() {
