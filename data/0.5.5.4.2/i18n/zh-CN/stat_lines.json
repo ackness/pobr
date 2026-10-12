@@ -5024,6 +5024,10 @@
     "en": "Ritual duration is {0} seconds"
   },
   {
+    "src": "仪式节律",
+    "en": "Ritual Cadence"
+  },
+  {
     "src": "仪式节律范围内的天赋可以在 未连结至天赋树的情况下配置",
     "en": "Passives in Radius of Ritual Cadence can be Allocated without being connected to your tree"
   },
@@ -5978,10 +5982,6 @@
   {
     "src": "伤害随距离总降上限@{0:d}%",
     "en": "Maximum less Damage penalty from distance@{0:d}%"
-  },
-  {
-    "src": "伤痕信念",
-    "en": "Scarred Faith"
   },
   {
     "src": "位于奉献地面上时，每秒回复 {0} 能量护盾",
@@ -21196,6 +21196,10 @@
     "en": "{0}% reduced effect of Incision"
   },
   {
+    "src": "创痛信仰",
+    "en": "Scarred Faith"
+  },
+  {
     "src": "创痛信仰范围内的天赋可以在 未连结至天赋树的情况下配置",
     "en": "Passives in Radius of Scarred Faith can be Allocated without being connected to your tree"
   },
@@ -23532,7 +23536,7 @@
     "en": "Signet Wombgifts"
   },
   {
-    "src": "印记技能的技能效果持续时间提高 {0}%",
+    "src": "印记技能的技能效果持续时间延长 {0}%",
     "en": "Mark Skills have {0}% increased Skill Effect Duration"
   },
   {
@@ -47652,16 +47656,16 @@
     "en": "Traps from Skills are thrown randomly around targeted location"
   },
   {
+    "src": "技能效果持续时间延长 {0}%",
+    "en": "{0}% increased Skill Effect Duration"
+  },
+  {
     "src": "技能效果持续时间总增 {0}%",
     "en": "{0}% more Skill Effect Duration"
   },
   {
     "src": "技能效果持续时间总降 {0}%",
     "en": "{0}% less Skill Effect Duration"
-  },
-  {
-    "src": "技能效果持续时间提高 {0}%",
-    "en": "{0}% increased Skill Effect Duration"
   },
   {
     "src": "技能效果持续时间的加成也作用于此技能的阻灵术效果",
@@ -58268,6 +58272,10 @@
     "en": "Additional maximum Vines when Overgrown@{0}"
   },
   {
+    "src": "植物蔓生时，有 {0}% 的几率获得自然执政官",
+    "en": "{0}% chance to gain Nature's Archon when your Plants Overgrow"
+  },
+  {
     "src": "植物蔓生藤蔓大小总增 {0}%",
     "en": "Overgrown vines are {0}% larger"
   },
@@ -58296,11 +58304,7 @@
     "en": "Overgrown fissures can attach up to {0} additional Vines"
   },
   {
-    "src": "植物过度生长时，有 {0}% 的几率获得自然执政官",
-    "en": "{0}% chance to gain Nature's Archon when your Plants Overgrow"
-  },
-  {
-    "src": "植物首次进入在场范围时，有 {0}% 的几率立即过度生长",
+    "src": "植物首次进入在场范围时，有 {0}% 的几率立即蔓生",
     "en": "Plants have a {0}% chance to immediately Overgrow when they enter your Presence for the first time"
   },
   {
@@ -62712,6 +62716,10 @@
     "en": "Cost s{0}% less Life per Blood Charge"
   },
   {
+    "src": "每个镶嵌的插槽使全局护甲，闪避与能量护盾提高 {0}%",
+    "en": "{0}% increased Global Armour, Evasion and Energy Shield per Socket filled"
+  },
+  {
     "src": "每个镶嵌的插槽使发现物品的稀有度提高 {0}%",
     "en": "{0}% increased Rarity of Items found per Socket filled"
   },
@@ -62782,10 +62790,6 @@
   {
     "src": "每个镶嵌的插槽使魔力上限降低 {0}%",
     "en": "{0}% reduced Maximum Mana per Socket filled"
-  },
-  {
-    "src": "每个镶嵌的插槽全局护甲，闪避与能量护盾提高 {0}%",
-    "en": "{0}% increased Global Armour, Evasion and Energy Shield per Socket filled"
   },
   {
     "src": "每个镶嵌的插槽全局护甲，闪避与能量护盾降低 {0}%",
@@ -72116,10 +72120,6 @@
     "en": "Blood Rage grants additional {0}% reduced Attack Speed"
   },
   {
-    "src": "狂野涌动咒语",
-    "en": "Wildsurge Incantation"
-  },
-  {
     "src": "狂野鬼灵",
     "en": "Wild Spirits"
   },
@@ -72896,7 +72896,7 @@
     "en": "Players have {0}% reduced Movement Speed"
   },
   {
-    "src": "玩家窃取区域内被击败稀有怪物吞噬的灵魂",
+    "src": "玩家窃取区域内被击杀稀有怪物的被吞噬灵魂",
     "en": "Players steal the Eaten Souls of Slain Rare Monsters in Area"
   },
   {
@@ -76090,10 +76090,6 @@
   {
     "src": "神龛有 {0}% 的几率释放一个阿兹莫里之灵，当它附身怪物时，会再次施加神龛增益",
     "en": "Shrines have a {0}% chance to release an Azmeri Spirit, the Shrine Buff is reapplied when it Possesses a monster"
-  },
-  {
-    "src": "祭祀节律",
-    "en": "Ritual Cadence"
   },
   {
     "src": "祭血术",
@@ -84616,6 +84612,10 @@
     "en": "Small Passive Skills in Radius also grant {0:d}% increased Projectile Damage"
   },
   {
+    "src": "范围内的小型天赋同时提供 护甲提高 {0}%",
+    "en": "Small Passive Skills in Radius also grant {0}% increased Armour"
+  },
+  {
     "src": "范围内的小型天赋同时提供 招架伤害提高 {0:d}%",
     "en": "Small Passive Skills in Radius also grant {0:d}% increased Parry Damage"
   },
@@ -84688,6 +84688,10 @@
     "en": "Small Passive Skills in Radius also grant Break {0:d}% increased Armour"
   },
   {
+    "src": "范围内的小型天赋同时提供 能量护盾上限提高 {0}%",
+    "en": "Small Passive Skills in Radius also grant {0}% increased maximum Energy Shield"
+  },
+  {
     "src": "范围内的小型天赋同时提供 能量护盾充能率提高 {0:d}%",
     "en": "Small Passive Skills in Radius also grant {0:d}% increased Energy Shield Recharge Rate"
   },
@@ -84752,6 +84756,10 @@
     "en": "Small Passive Skills in Radius also grant {0:d}% to Lightning Resistance"
   },
   {
+    "src": "范围内的小型天赋同时提供 闪避值提高 {0}%",
+    "en": "Small Passive Skills in Radius also grant {0}% increased Evasion Rating"
+  },
+  {
     "src": "范围内的小型天赋同时提供 魔力偷取量提高 {0:d}%",
     "en": "Small Passive Skills in Radius also grant {0:d}% increased amount of Mana Leeched"
   },
@@ -84768,24 +84776,12 @@
     "en": "{0}% reduced Effect of Small Passive Skills in Radius"
   },
   {
-    "src": "范围内的小型天赋还会使护甲提高 {0}%",
-    "en": "Small Passive Skills in Radius also grant {0}% increased Armour"
-  },
-  {
     "src": "范围内的小型天赋还会使护甲降低 {0}%",
     "en": "Small Passive Skills in Radius also grant {0}% reduced Armour"
   },
   {
-    "src": "范围内的小型天赋还会使能量护盾上限提高 {0}%",
-    "en": "Small Passive Skills in Radius also grant {0}% increased maximum Energy Shield"
-  },
-  {
     "src": "范围内的小型天赋还会使能量护盾上限降低 {0}%",
     "en": "Small Passive Skills in Radius also grant {0}% reduced maximum Energy Shield"
-  },
-  {
-    "src": "范围内的小型天赋还会使闪避值提高 {0}%",
-    "en": "Small Passive Skills in Radius also grant {0}% increased Evasion Rating"
   },
   {
     "src": "范围内的小型天赋还会使闪避值降低 {0}%",
@@ -84984,6 +84980,10 @@
     "en": "Notable Passive Skills in Radius also grant Projectiles have {0:d}% chance for an additional Projectile when Forking"
   },
   {
+    "src": "范围内的核心天赋同时提供 投射物速度提高 {0}%",
+    "en": "Notable Passive Skills in Radius also grant {0}% increased Projectile Speed"
+  },
+  {
     "src": "范围内的核心天赋同时提供 护甲破损持续时间提高 {0:d}%",
     "en": "Notable Passive Skills in Radius also grant {0:d}% increased Armour Break Duration"
   },
@@ -85002,6 +85002,10 @@
   {
     "src": "范围内的核心天赋同时提供 攻击速度提高 {0:d}%",
     "en": "Notable Passive Skills in Radius also grant {0:d}% increased Attack Speed"
+  },
+  {
+    "src": "范围内的核心天赋同时提供 效果区域提高 {0}%",
+    "en": "Notable Passive Skills in Radius also grant {0}% increased Area of Effect"
   },
   {
     "src": "范围内的核心天赋同时提供 敌人受到伤害性异常状态的持续时间提高 {0:d}%",
@@ -85164,6 +85168,10 @@
     "en": "Notable Passive Skills in Radius also grant {0:d}% increased bonuses gained from Equipped Quiver"
   },
   {
+    "src": "范围内的核心天赋同时提供 诅咒强度提高 {0}%",
+    "en": "Notable Passive Skills in Radius also grant {0}% increased Curse Magnitudes"
+  },
+  {
     "src": "范围内的核心天赋同时提供 诅咒的效果范围提高 {0:d}%",
     "en": "Notable Passive Skills in Radius also grant {0:d}% increased Area of Effect of Curses"
   },
@@ -85232,24 +85240,12 @@
     "en": "Notable Passive Skills in Radius are Transformed to\ninstead grant: {0}% increased Mana Cost of Skills and {1}% increased Spell Damage"
   },
   {
-    "src": "范围内的核心天赋还会使投射物速度提高 {0}%",
-    "en": "Notable Passive Skills in Radius also grant {0}% increased Projectile Speed"
-  },
-  {
     "src": "范围内的核心天赋还会使投射物速度降低 {0}%",
     "en": "Notable Passive Skills in Radius also grant {0}% reduced Projectile Speed"
   },
   {
-    "src": "范围内的核心天赋还会使效果范围提高 {0}%",
-    "en": "Notable Passive Skills in Radius also grant {0}% increased Area of Effect"
-  },
-  {
     "src": "范围内的核心天赋还会使效果范围降低 {0}%",
     "en": "Notable Passive Skills in Radius also grant {0}% reduced Area of Effect"
-  },
-  {
-    "src": "范围内的核心天赋还会使诅咒强度提高 {0}%",
-    "en": "Notable Passive Skills in Radius also grant {0}% increased Curse Magnitudes"
   },
   {
     "src": "范围内的核心天赋还会使诅咒强度降低 {0}%",
@@ -90616,7 +90612,7 @@
     "en": "Gain {0} Rage when Critically Hit by an Enemy"
   },
   {
-    "src": "被敌人近战击中时避免失去荣誉的几率提高 {0}%",
+    "src": "被敌人近战击中时避免失去坚毅的几率提高 {0}%",
     "en": "{0}% increased chance to avoid Honour loss from Enemy Melee Hits"
   },
   {
@@ -106184,6 +106180,10 @@
     "en": "{0}% reduced Wild Strike Area of Effect"
   },
   {
+    "src": "野性涌动咒言",
+    "en": "Wildsurge Incantation"
+  },
+  {
     "src": "野性涌动咒言范围内的天赋可以在 未连结至天赋树的情况下配置",
     "en": "Passives in Radius of Wildsurge Incantation can be Allocated without being connected to your tree"
   },
@@ -106644,7 +106644,7 @@
     "en": "With a Murderous Eye Jewel Socketed, Melee Attacks grant {0} Rage on Hit, no more than once every second"
   },
   {
-    "src": "镶嵌在该物品上的雕像获得其自身的绑定词缀的强化效果",
+    "src": "镶嵌在该物品上的雕像获得其自身的羁绊词缀的强化效果",
     "en": "Idols socketed in this item gain the benefits of their Bonded modifiers"
   },
   {

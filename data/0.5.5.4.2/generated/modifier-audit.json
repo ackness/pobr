@@ -101253,7 +101253,7 @@
     },
     "17% chance to gain Nature's Archon when your Plants Overgrow": {
       "sources": [
-        "translation:植物过度生长时，有 {0}% 的几率获得自然执政官"
+        "translation:植物蔓生时，有 {0}% 的几率获得自然执政官"
       ],
       "status": "unsupported",
       "vendor_status": "unsupported",
@@ -117527,7 +117527,7 @@
     },
     "17% increased Global Armour, Evasion and Energy Shield per Socket filled": {
       "sources": [
-        "translation:每个镶嵌的插槽全局护甲，闪避与能量护盾提高 {0}%"
+        "translation:每个镶嵌的插槽使全局护甲，闪避与能量护盾提高 {0}%"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
@@ -125854,7 +125854,7 @@
     },
     "17% increased Skill Effect Duration": {
       "sources": [
-        "translation:技能效果持续时间提高 {0}%"
+        "translation:技能效果持续时间延长 {0}%"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
@@ -129255,7 +129255,7 @@
     },
     "17% increased chance to avoid Honour loss from Enemy Melee Hits": {
       "sources": [
-        "translation:被敌人近战击中时避免失去荣誉的几率提高 {0}%"
+        "translation:被敌人近战击中时避免失去坚毅的几率提高 {0}%"
       ],
       "status": "partial",
       "vendor_status": "unsupported",
@@ -303497,7 +303497,7 @@
     "Idols socketed in this item gain the benefits of their Bonded modifiers": {
       "sources": [
         "stat:stat_descriptions:local_idols_gain_additional_socketable_mods",
-        "translation:镶嵌在该物品上的雕像获得其自身的绑定词缀的强化效果"
+        "translation:镶嵌在该物品上的雕像获得其自身的羁绊词缀的强化效果"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
@@ -320848,7 +320848,7 @@
     },
     "Mark Skills have 17% increased Skill Effect Duration": {
       "sources": [
-        "translation:印记技能的技能效果持续时间提高 {0}%"
+        "translation:印记技能的技能效果持续时间延长 {0}%"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
@@ -340200,7 +340200,7 @@
     },
     "Notable Passive Skills in Radius also grant 17% increased Area of Effect": {
       "sources": [
-        "translation:范围内的核心天赋还会使效果范围提高 {0}%"
+        "translation:范围内的核心天赋同时提供 效果区域提高 {0}%"
       ],
       "status": "parsed",
       "radius_grant": "17% increased Area of Effect",
@@ -340470,7 +340470,7 @@
     },
     "Notable Passive Skills in Radius also grant 17% increased Curse Magnitudes": {
       "sources": [
-        "translation:范围内的核心天赋还会使诅咒强度提高 {0}%"
+        "translation:范围内的核心天赋同时提供 诅咒强度提高 {0}%"
       ],
       "status": "parsed",
       "radius_grant": "17% increased Curse Magnitudes",
@@ -340786,7 +340786,7 @@
     },
     "Notable Passive Skills in Radius also grant 17% increased Projectile Speed": {
       "sources": [
-        "translation:范围内的核心天赋还会使投射物速度提高 {0}%"
+        "translation:范围内的核心天赋同时提供 投射物速度提高 {0}%"
       ],
       "status": "parsed",
       "radius_grant": "17% increased Projectile Speed",
@@ -346888,7 +346888,7 @@
     },
     "Plants have a 17% chance to immediately Overgrow when they enter your Presence for the first time": {
       "sources": [
-        "translation:植物首次进入在场范围时，有 {0}% 的几率立即过度生长"
+        "translation:植物首次进入在场范围时，有 {0}% 的几率立即蔓生"
       ],
       "status": "unsupported",
       "vendor_status": "unsupported",
@@ -348947,7 +348947,7 @@
     "Players steal the Eaten Souls of Slain Rare Monsters in Area": {
       "sources": [
         "stat:stat_descriptions:map_player_soul_eater_souls_stolen_on_rare_kill",
-        "translation:玩家窃取区域内被击败稀有怪物吞噬的灵魂"
+        "translation:玩家窃取区域内被击杀稀有怪物的被吞噬灵魂"
       ],
       "status": "unsupported",
       "vendor_status": "unsupported",
@@ -365401,7 +365401,7 @@
     "Ritual Cadence": {
       "sources": [
         "stat:stat_descriptions:keystone_auto_invocation",
-        "translation:祭祀节律"
+        "translation:仪式节律"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
@@ -367259,7 +367259,7 @@
     "Scarred Faith": {
       "sources": [
         "stat:stat_descriptions:keystone_alternate_es_recovery",
-        "translation:伤痕信念"
+        "translation:创痛信仰"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
@@ -373447,7 +373447,7 @@
     },
     "Small Passive Skills in Radius also grant 17% increased Armour": {
       "sources": [
-        "translation:范围内的小型天赋还会使护甲提高 {0}%"
+        "translation:范围内的小型天赋同时提供 护甲提高 {0}%"
       ],
       "status": "parsed",
       "radius_grant": "17% increased Armour",
@@ -373682,7 +373682,7 @@
     },
     "Small Passive Skills in Radius also grant 17% increased Evasion Rating": {
       "sources": [
-        "translation:范围内的小型天赋还会使闪避值提高 {0}%"
+        "translation:范围内的小型天赋同时提供 闪避值提高 {0}%"
       ],
       "status": "parsed",
       "radius_grant": "17% increased Evasion Rating",
@@ -373968,7 +373968,7 @@
     },
     "Small Passive Skills in Radius also grant 17% increased maximum Energy Shield": {
       "sources": [
-        "translation:范围内的小型天赋还会使能量护盾上限提高 {0}%"
+        "translation:范围内的小型天赋同时提供 能量护盾上限提高 {0}%"
       ],
       "status": "parsed",
       "radius_grant": "17% increased maximum Energy Shield",
@@ -411465,7 +411465,7 @@
     "Wildsurge Incantation": {
       "sources": [
         "stat:stat_descriptions:keystone_wildsurge_incantation",
-        "translation:狂野涌动咒语"
+        "translation:野性涌动咒言"
       ],
       "status": "parsed",
       "vendor_status": "parsed",
