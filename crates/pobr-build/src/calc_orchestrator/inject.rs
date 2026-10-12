@@ -8,8 +8,9 @@
 //! inline code → zero behavior change (backed by the parity gate's value-for-value check).
 //!
 //! Division of labor with `mod.rs`: `mod.rs` keeps the orchestration backbone (the
-//! `calculate*` entry points + the `stage_*` family); this module carries the
-//! isomorphic work of "pouring mods into the session".
+//! `calculate*` entry points + the non-injection `stage_*` functions); this module
+//! carries the isomorphic work of "pouring mods into the session", including the
+//! `stage_inject_*` functions.
 
 // The orchestration backbone's (`mod.rs`) types and sibling-module helpers are brought
 // in via glob import — matching the style of the rest of the `calc_orchestrator::*` submodules.
@@ -22,7 +23,9 @@ use pobr_data::source::{ModifierSource, SourceId, SourceKind};
 
 use super::EXPOSURE_MAGNITUDE;
 use super::collect::{
-    character_base, engine_ctx, filter_item_parseable, resolve_gems, vendor_scale_mod_value,
+    append_granted_passives, character_base, engine_ctx, filter_item_parseable, filter_parseable,
+    gate_parses, keystone_mod_map, parse_grant_line, passive_effect_copies,
+    radius_jewel_grant_modifiers, resolve_gems, resolve_passive_nodes, vendor_scale_mod_value,
 };
 use super::conditions::grenade_type_count;
 use super::context::CalculationContext;
@@ -49,7 +52,9 @@ use super::skill::resolve::config_enemy_level;
 use super::skill::triggers::trigger_modifiers;
 use super::sources::SourceWriter;
 use super::stat_map::exposure_support_modifiers;
-use super::{DataOrchestratorOptions, StageCtx};
+use super::{
+    DataOrchestratorOptions, StageCtx, adorned_corrupted_magic_jewel_inc, scale_trunc_2dp,
+};
 use crate::build::{Build, SocketGroup};
 use crate::build_data::BuildData;
 use crate::error::BuildError;
@@ -785,4 +790,228 @@ pub(super) fn inject_spirit_reservation(
     //     to avoid a mutable/immutable borrow conflict within the same statement.
     let spirit_mods = spirit_reservation_modifiers(build, data, session.mod_db());
     session.add_modifiers(spirit_mods);
+}
+
+/// 2b. Jewels (passive tree/abyss sockets): mods injected **globally** (most jewels
+///     are global mods; radius jewels are currently approximated as global too). Follows
+///     add_item's skip-and-collect error tolerance.
+pub(super) fn stage_inject_jewels(
+    session: &mut SourceWriter,
+    ctx: &StageCtx<'_>,
+) -> Result<(), BuildError> {
+    let adorned_inc = adorned_corrupted_magic_jewel_inc(&ctx.build.jewels);
+    // Radius directives are consumed by geometry, not the global mod parser.
+    // Exempt only validated directives with available socket geometry; unknown
+    // nested grants must remain visible to the trade optimizer's safety gate.
+    let nodes = ctx
+        .data
+        .passive_nodes_for(ctx.build.tree_version.as_deref());
+    let mut radius_texts = Vec::new();
+    let tree_state = crate::jewel_tree::passive_jewel_state(ctx.build, ctx.data);
+    radius_texts.extend(tree_state.handled_modifiers);
+    for node in &ctx.build.tree.allocated_nodes {
+        if tree_state.unresolved.contains(&node.0) {
+            session.record_unsupported_modifier_text(format!(
+                "Tree:{}: missing timeless jewel seed data",
+                node.0
+            ));
+        }
+        if let Some(change) = tree_state.nodes.get(&node.0) {
+            for text in &change.stats {
+                if !gate_parses(engine_ctx(ctx.data), text) {
+                    session.record_unsupported_modifier_text(format!("Tree:{}: {}", node.0, text));
+                }
+            }
+        }
+    }
+    for radius in &ctx.build.radius_jewels {
+        if !nodes
+            .get(&radius.socket_node)
+            .is_some_and(|n| n.x.is_some() && n.y.is_some())
+        {
+            continue;
+        }
+        radius_texts.extend(
+            radius
+                .grant_lines
+                .iter()
+                .filter(|line| {
+                    parse_grant_line(line)
+                        .is_some_and(|(_, grant)| gate_parses(engine_ctx(ctx.data), &grant))
+                })
+                .cloned(),
+        );
+        for (kind, inc) in [
+            ("Small", radius.small_effect_inc),
+            ("Notable", radius.notable_effect_inc),
+        ] {
+            if inc > 0 {
+                radius_texts.push(format!(
+                    "{inc}% increased Effect of {kind} Passive Skills in Radius"
+                ));
+            }
+        }
+        if let Some(label) = &radius.radius_label {
+            radius_texts.push(format!("Upgrades Radius to {label}"));
+        }
+    }
+    for jewel in &ctx.build.jewels {
+        let filtered = filter_item_parseable(jewel, engine_ctx(ctx.data), session, &radius_texts);
+        let texts: Vec<&str> = filtered
+            .implicit_texts
+            .iter()
+            .chain(&filtered.modifier_texts)
+            .chain(&filtered.enchant_texts)
+            .map(String::as_str)
+            .collect();
+        // The Adorned (matching vendor CalcSetup.lua:944-948 + :1342-1347): every mod
+        // on a **corrupted magic** jewel in a tree socket is scaled by `1 + N/100` on
+        // injection (ScaleAddList semantics, value = trunc(round(v×scale, 2)),
+        // ModStore.lua:70-79).
+        // ponytail: doesn't model vendor's sinister/containJewelSocket slot exemptions
+        // or the unscalable marker (no corpus source for them), wire up when the parity gate flags it.
+        if let Some(inc) = adorned_inc
+            && jewel.rarity == pobr_data::item::ItemRarity::Magic
+            && jewel.corrupted
+        {
+            let scale = 1.0 + inc / 100.0;
+            let parse_ctx = engine_ctx(ctx.data);
+            let mut mods: Vec<pobr_core::Modifier> = Vec::new();
+            for text in texts {
+                let Ok(outcome) = parse_ctx.parse(text) else {
+                    continue;
+                };
+                for mut m in outcome.mods {
+                    if let pobr_core::ModValue::Number(v) = m.value {
+                        m.value = pobr_core::ModValue::Number(scale_trunc_2dp(v, scale));
+                    }
+                    mods.push(m);
+                }
+            }
+            session.add_modifiers(mods);
+        } else {
+            session
+                .add_modifier_texts(texts)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        }
+    }
+    Ok(())
+}
+
+/// Radius grants are parsed and scaled per affected allocated node. Invalid
+/// grant text remains diagnosed by the dedicated item gate above.
+pub(super) fn stage_inject_radius_jewels(
+    session: &mut SourceWriter,
+    ctx: &StageCtx<'_>,
+) -> Result<(), BuildError> {
+    session.add_modifiers(radius_jewel_grant_modifiers(ctx.build, ctx.data));
+    Ok(())
+}
+
+/// 2c/2d/2e. config-derived mod injection: quest reward global text, the config
+/// interpreter's player mods, the customMods line channel — all three share the
+/// [`ResolvedConfig`](crate::config_resolve::ResolvedConfig) output, injected adjacent
+/// to each other per the existing assembly order.
+pub(super) fn stage_inject_config_mods(
+    session: &mut SourceWriter,
+    ctx: &StageCtx<'_>,
+) -> Result<(), BuildError> {
+    let (data, resolved_config) = (ctx.data, &ctx.resolved_config);
+    // 2c. Quest rewards / global config mods (PoB2's `questRewards`): injected as
+    //     **global** modifier text (permanent global boosts to attributes / resistances
+    //     / defence inc etc.). Follows add_modifier_texts's error tolerance. Quest
+    //     still goes through the legacy text channel (not switched to declarative
+    //     mods until vendor/parser naming is unified; `config_resolve` already
+    //     excludes quest-attributed entries from the injection list to avoid
+    //     double-counting).
+    if !resolved_config.config.global_modifier_texts.is_empty() {
+        // Consistent with the equipment/jewel path: hard-failing mods are filtered
+        // first (skip-and-collect), so a single unparseable text doesn't abort the whole batch.
+        let texts = filter_parseable(
+            resolved_config.config.global_modifier_texts.clone(),
+            engine_ctx(data),
+        );
+        if !texts.is_empty() {
+            session
+                .add_modifier_texts(&texts)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        }
+    }
+
+    // 2d. Output of the config interpreter: player modifiers attributed to
+    //     `SourceKind::Config`. Combat-gated entries (`Condition:Combat` tag) are
+    //     naturally inert under mode_combat=false (D5); the list is empty when the
+    //     catalog is missing (tolerant fallback — conditions still go through
+    //     `resolved_config.config` via the legacy channel).
+    if !resolved_config.player_mods.is_empty() {
+        session.add_modifiers(resolved_config.player_mods.clone());
+    }
+
+    // 2e. customMods line channel (commit ④, vendor ConfigOptions.lua:2278-2296:
+    //     line-by-line StripEscapes + parseMod, source=Custom): the interpreter
+    //     strips color codes then feeds lines to add_modifier_texts one at a time —
+    //     unparseable lines naturally fall into the `ParseStatus::Unsupported`
+    //     visibility channel (session.unsupported_modifier_texts); structurally
+    //     hard-failing lines are skipped via filter_parseable (same treatment as
+    //     the 2c quest / equipment text channels).
+    if !resolved_config.custom_mod_lines.is_empty() {
+        let texts = filter_parseable(resolved_config.custom_mod_lines.clone(), engine_ctx(data));
+        if !texts.is_empty() {
+            session
+                .add_modifier_texts(&texts)
+                .map_err(|e| BuildError::Parse(e.to_string()))?;
+        }
+    }
+    Ok(())
+}
+
+/// 3/3a'/3b/3b'/3c. Passive tree injection: node mods (node-level attribution) →
+/// anointed notables → small-passive effect scaling delta → radius-jewel Notable
+/// effect scaling delta → mod-granted keystone mapping. Positioned per the
+/// existing assembly order: after equipment and config injection, before skill gems.
+pub(super) fn stage_inject_passives(
+    session: &mut SourceWriter,
+    ctx: &StageCtx<'_>,
+) -> Result<(), BuildError> {
+    let (build, data) = (ctx.build, ctx.data);
+    // 3. Passive tree: NodeId → node mod text (node-level attribution).
+    let mut passive_nodes = resolve_passive_nodes(build, data);
+    // 3a'. Anointed notables (vendor `Allocates <name>` enchant → `GrantedPassive`
+    //      LIST, ModParser.lua:5809 → CalcSetup.lua:1322-1331 merges notableMap
+    //      into allocNodes): matched by name against Notable nodes and appended as
+    //      an AllocatedNode (same node-level attribution).
+    append_granted_passives(build, data, &mut passive_nodes);
+    let passive_nodes = passive_nodes;
+    if !passive_nodes.is_empty() {
+        session
+            .add_passive_nodes(&passive_nodes)
+            .map_err(|e| BuildError::Parse(e.to_string()))?;
+
+        session.add_modifiers(passive_effect_copies(build, data, &passive_nodes)?);
+    }
+
+    // 3c. Mod-granted keystone mapping: stats on tree keystone nodes (**excluding
+    //     already-allocated ones**) are parsed into a keystone-name → mods map and
+    //     injected via `session.set_keystone_mods`; consumed by merge_keystones in
+    //     env_finalize stage 1/5 based on the player db's `Keystone` LIST entries
+    //     ("You have <X>" / bare-name lines). Mods for already-allocated keystones
+    //     are already injected by add_passive_nodes above, so excluding them from
+    //     the map is PoBR's equivalent of PoB2's `env.keystonesAdded` dedup
+    //     (CalcPerform.lua:66-76; see the keystone_merge.rs module doc for the
+    //     tree-path modelling difference).
+    session.set_keystone_mods(keystone_mod_map(build, data, &passive_nodes));
+    Ok(())
+}
+
+/// 6. Inject extra global texts (campaign rewards / debug overrides).
+pub(super) fn stage_inject_extra_texts(
+    session: &mut SourceWriter,
+    ctx: &StageCtx<'_>,
+) -> Result<(), BuildError> {
+    if !ctx.options.extra_modifier_texts.is_empty() {
+        session
+            .add_modifier_texts(ctx.options.extra_modifier_texts.iter())
+            .map_err(|e| BuildError::Parse(e.to_string()))?;
+    }
+    Ok(())
 }
