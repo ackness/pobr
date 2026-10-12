@@ -2,8 +2,9 @@
 
 ## Sources
 
-The implementation follows the pinned PoB2 commit
-`ce566eac45ea8a86477f513c7ee65a1ebe60014e` for data version `4.5.5.2`:
+The implementation follows these files of the PoB2 commit pinned by the active
+data version (`overlay/mod_parser_rules.json::_meta.vendor_commit`); it was first
+written against `ce566eac45ea8a86477f513c7ee65a1ebe60014e`:
 
 - `src/Classes/TradeQueryGenerator.lua`: `InitMods`, `ProcessMod`,
   `canModSpawnForItemCategory`, and `GenerateModWeights`.

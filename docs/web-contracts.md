@@ -3,7 +3,6 @@
 Behavior contracts for the Web application's upgrade guidance (market, gems,
 passives), build workspace, weapon sets and skill selection. Read the relevant
 section before changing these areas; update it when the behavior changes.
-Moved verbatim from `CLAUDE.md`, which now keeps only repository-wide rules.
 
 ## Upgrade guidance
 

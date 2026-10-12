@@ -124,7 +124,7 @@ node pipeline/gen-zh-cn.mjs --dict /path/to/legacy/dictionary --translations-dir
 当前 PoE2 版本可向 GGG patch 协议服务器查询：
 
 ```bash
-# patch.pathofexile2.com:13060，握手 [0x01,0x07]，返回形如 https://patch-poe2.poecdn.com/4.5.0.3.4/
+# patch.pathofexile2.com:13060，握手 [0x01,0x07]，返回形如 https://patch-poe2.poecdn.com/0.5.5.4.2/
 node query-patch-version.mjs   # 见本目录
 ```
 

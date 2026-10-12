@@ -5,7 +5,7 @@ Delivery map: P0-1 → `pobr_gamedata::test_pins` + `data/<ver>/generated/test_p
 (historical bless entry: `POBR_BLESS_PINS=1`; no longer run automatically); P0-2 →
 `pipeline/diff-vendor-calcs.sh` (its report on the 0.5.4b vendor update
 retro-identified Mageblood without parity archaeology); P1-3 →
-`data/overlay-common/special_mods.json` (133 entries) with id-override merge in
+`data/overlay-common/special_mods.json` with id-override merge in
 `GameData::special_mods`; P1-4 → `pipeline/bump-version.sh`; P2-5 → `.gitattributes`.
 The acceptance test remains the next real GGG patch (§5).
 

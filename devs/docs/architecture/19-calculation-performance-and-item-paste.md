@@ -26,7 +26,7 @@ gem-property scan. Granted-notable resolution now scans only when a grant is
 present, preserving case-insensitive matching, duplicate suppression and the
 lowest-ID notable rule. Common item lines avoid character-by-character cleanup
 when no PoB annotations are present. Sparse display extraction reads the
-requested output directly instead of allocating all 105 display fields for each
+requested output directly instead of allocating every display field for each
 field. Percentage-unit and unknown-ID behavior remain unchanged. No shared
 mutable cache, prepared-build snapshot, or extra dependency was introduced.
 
@@ -73,7 +73,8 @@ These paths follow pinned PoB2 `ModParser.lua`, `Item.lua`, `CalcOffence.lua`,
 recognized modifier has a complete calculation consumer.
 
 Known remaining gaps include active Guard, Meta Skill Energy and Seal event
-models, Ward regeneration, self-debuff expiry and separate Thorns damage.
+models, self-debuff expiry and separate Thorns damage. Ward regeneration is
+calculated (`WardRegen`).
 These effects must not be substituted with invented main-skill DPS or permanent
 life. A zero main-DPS change alone does not prove an effect is unsupported.
 

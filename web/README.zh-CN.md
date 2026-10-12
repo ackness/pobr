@@ -210,4 +210,5 @@ web/src/
    unsupported 词条 + 聚合属性 breakdown。
 4. 归因：`attributionJson(request)` → 逐来源「移除后重算」边际贡献
    （点击触发，计算量 = 1 + 来源数）。
-5. 天赋树：`public/data/<version>/base/passive_tree.json` 静态加载（不经 wasm）。
+5. 天赋树：静态加载 `public/data/<version>/base/passive_tree.json`；使用旧版本树的构筑加载
+   `base/passive_trees/<tree>.json`（不经 wasm）。

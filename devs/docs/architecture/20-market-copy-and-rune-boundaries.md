@@ -101,7 +101,7 @@ augment edits disable application until the new calculation completes.
 
 ## Rune survival audit
 
-The reference is the repository's pinned PoB2 commit `ce566eac`, especially
+The reference is PoB2 commit `ce566eac` (the pin when this audit ran), especially
 `src/Classes/Item.lua` (Bonded activation before local-property calculation,
 augment scaling around lines 2818 onward) and `src/Data/ModCache.lua`
 (Guard wording has a nil parse result). Do not infer that a named parser

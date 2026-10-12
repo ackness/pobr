@@ -216,8 +216,8 @@ web/src/
 - **New build** (PoB2 semantics): a default character exists on startup —
   pick class/ascendancy/level on the Build tab, allocate on the Tree tab,
   everything recalculates live without any code.
-- **One-shot import**: paste a PoB2 build code or a WeGame PoE2 share URL on the Build tab to replace
-  everything (items / skills / tree / config); the editing state can be
+- **One-shot import**: paste a PoB2 build code or a WeGame PoE2 share URL on the Build tab to add
+  a build with its items, skills, tree and config (or replace the current stage on request); the editing state can be
   exported back to a shareable PoB2 code.
   See [WeGame import](../docs/wegame-import.md) for deployment and calculation limits.
 - **Items**: paper-doll slot layout with full PoB-text editing, rune sockets,
@@ -266,7 +266,7 @@ new reasons or errors.
 
 ## Trade upgrade planning
 
-On the Trade tab, choose a position, goal, budget and market. The current item's type is detected automatically; you do not need to select a base. Equipment, accessories, allocated passive jewels, flasks/charms and skill/support gems have dedicated positions.
+On the Upgrades tab, choose a position, goal, budget and market. The current item's type is detected automatically; you do not need to select a base. Equipment, accessories, allocated passive jewels, flasks/charms and skill/support gems have dedicated positions.
 
 1. **Calculate affix scores** to see useful stats, relative priority, estimated contribution and market weights. The visible skill selector determines which skill is scored.
 2. **Browse matching items** opens the official market with category, budget, character level and weights already filled in. CN uses instant-buy stock. Sign in and select items there; no JSON export or import is needed.
@@ -334,7 +334,9 @@ passives, simultaneous multiple-jewel swaps and equipment-plus-tree searches are
 4. Attribution: `attributionJson(request)` → per-source
    remove-and-recalculate marginal contributions (click-triggered; cost =
    1 + number of sources).
-5. Passive tree: `public/data/<version>/base/passive_tree.json` is loaded
+5. Passive tree: `public/data/<version>/base/passive_tree.json`, or
+   `base/passive_trees/<tree>.json` for a build on an older tree, is loaded
    statically (not through wasm).
 
-时迭珠宝搜索的使用方式、PoB2 对照及传奇珠宝支持边界见 [珠宝搜索](../docs/jewel-search.md)。
+For Time-Lost jewel search, the PoB2 comparison and unique jewel limits, see
+[jewel search](../docs/jewel-search.md) (Chinese).

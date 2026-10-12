@@ -31,8 +31,8 @@ pnpm --dir web dev
 pnpm --dir web test src/lib/skillSelection.test.ts
 ```
 
-These build the CLI, test support behavior, check formatting/Clippy, start Vite,
-report cache usage, and run a selected Vitest file. See [Web setup](web/README.md)
+These build the CLI, run selected support tests with formatting and Clippy,
+list test suites, report cache usage, start Vite, and run a selected Vitest file. See [Web setup](web/README.md)
 for initial WASM/data preparation and [development workflow](docs/development-workflow.md)
 for cache policy. Reuse one target per worktree and run Cargo commands sequentially.
 
