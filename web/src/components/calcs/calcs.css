@@ -186,6 +186,7 @@
 .breakdown-table td, .breakdown-table th { padding: var(--space-3) var(--space-2); }
 .calcs-skill-button { background: transparent; border: none; padding: 0; color: inherit; text-align: left; min-height: 28px; }
 .calcs-skill-button:hover { color: var(--accent-gold); }
+.calcs-skill-button[aria-disabled="true"] { opacity: 0.65; cursor: default; }
 .skill-metrics-table th { white-space: nowrap; }
 .skill-metrics-diagnostics { min-width: 220px; text-align: left; white-space: normal; }
 .skill-metrics-diagnostics ul { margin: var(--space-2) 0; padding-left: var(--space-4); }

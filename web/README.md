@@ -66,6 +66,13 @@ effect ordinal for inspection and upgrade comparisons, using its weapon set.
 The ordinal includes support-granted effects, not display aliases or stat sets.
 Removing a gem preserves any remaining inspected effect; support planning keeps
 the same effect across reordered supports and excludes sets that remove it.
+Skill selectors show each group's saved active effect, including secondary effects.
+Damage-based upgrade analysis requires an explicit, valid inspected skill; Life/EHP-only
+analysis remains available without one. Opening support planning explicitly selects
+its group. Applied gem recommendations retain the exact ordinal used for evaluation.
+Baseline stats and breakdowns are published only for the current build revision.
+Overview row controls retain keyboard focus while refreshing; old metric values and
+diagnostics are hidden and selection controls are temporarily unavailable.
 
 The header shows the app release and successfully loaded data version. On Upgrades,
 completed affix analyses and position selections survive page navigation within

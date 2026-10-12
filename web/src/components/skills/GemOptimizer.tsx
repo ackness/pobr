@@ -92,7 +92,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
   };
   const exclude = (id: string) => updateExclusions([...new Set([...excludedIds, id])]);
   const restore = (id: string) => updateExclusions(excludedIds.filter(value => value !== id));
-  const mainIndex = session.calcParams.main_socket_group ?? session.build?.main_socket_group ?? 0;
+  const mainIndex = session.calcParams.main_socket_group;
   const select = () => {
     if (mainIndex !== groupIndex) session.updateParams({ main_socket_group: groupIndex });
   };
@@ -117,7 +117,7 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
     if (!active || session.busy || progress !== null || !group?.enabled) return;
     if (mainIndex !== groupIndex) { select(); return; }
     const request = session.currentRequest();
-    if (!request || !canSearch) return;
+    if (!request || !canSearch || !session.calc?.main_skill || session.calcError) return;
     const objective = objectiveOf(goal, Object.fromEntries([...statMap(session.calc?.stats ?? [])]
       .map(([key, value]) => [key, value ?? 0])));
     invalidate();
@@ -196,13 +196,15 @@ export function GemOptimizer({ session, lang, active, groupIndex, catalog, gemNa
             }
           }} /></label>
           <ObjectiveEditor value={goal} onChange={next => { invalidate(); setGoal(next); }} lang={lang} />
-          <button className="opt-run" disabled={session.busy || progress !== null || !canSearch || !group?.enabled} onClick={run}>
+          <button className="opt-run" disabled={session.busy || progress !== null || !canSearch || !group?.enabled
+            || (mainIndex === groupIndex && !session.calc?.main_skill)} onClick={run}>
             {progress ? tt('opt.running') : mainIndex !== groupIndex ? st('selectMain') : st('run')}
           </button>
         </div>
         <label className="support-lineage-option"><input type="checkbox" checked={includeLineage}
           onChange={event => { invalidate(); setIncludeLineage(event.target.checked); }} />{st('lineage')}</label>
         <p className="skills-hint">{st('capacityHint')}</p>
+        {!session.busy && mainIndex === groupIndex && !session.calc?.main_skill && <p className="skills-hint">{tt('sidebar.noMainSkill')}</p>}
         {progress && <OptimizerProgress {...progress} onCancel={stop} lang={lang} />}
         {!pool.gems.length && <p className="skills-hint">{st('empty')}</p>}
         {pool.gems.length > 0 && !candidateCount && <p className="skills-hint">{st(occupied ? 'removeOnly' : 'allExcluded')}</p>}

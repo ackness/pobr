@@ -531,7 +531,7 @@ export function useBuildSession(): BuildSession {
   const [classNames, setClassNames] = useState<ClassNames>({ classes: {}, ascendancies: {} });
   const [build, setBuild] = useState<BuildJson | null>(null);
   const [state, setState] = useState<BuildState | null>(null);
-  const [calc, setCalc] = useState<CalculateBuildResponse | null>(null);
+  const [calculated, setCalculated] = useState<{ version: number; result: CalculateBuildResponse } | null>(null);
   const [calculating, setCalculating] = useState(false);
   // Source operations can overlap a recalc or nest (manageLoadout imports its result).
   const [pendingOperations, setPendingOperations] = useState(0);
@@ -581,6 +581,7 @@ export function useBuildSession(): BuildSession {
   }, [saveToStorage]);
   const [library, setLibrary] = useState<Library>(loadLibrary);
   const [stateVersion, setStateVersion] = useState(0);
+  const calc = calculated?.version === stateVersion ? calculated.result : null;
   const [socketGroupRevision, setSocketGroupRevision] = useState(0);
   /**
    * 「干净」基线：导入 / 切换 loadout 落地时记下当时的版本号。之后每次编辑
@@ -608,12 +609,13 @@ export function useBuildSession(): BuildSession {
 
   const recalc = useCallback((next: BuildState) => {
     const seq = ++seqRef.current;
+    const version = versionRef.current;
     setCalculating(true);
     setCalcError(null);
     getBackend()
       .then((backend) => backend.calculateBuild(toRequest(next)))
       .then((result) => {
-        if (seqRef.current === seq) setCalc(result);
+        if (seqRef.current === seq) setCalculated({ version, result });
       })
       .catch((err) => {
         if (seqRef.current === seq) setCalcError(formatApiError(err));
@@ -1187,7 +1189,7 @@ export function useBuildSession(): BuildSession {
   const restoreSession = useCallback((saved: SavedSession, drafts: Record<string, string>) => {
     setSocketGroupRevision(value => value + 1);
     setBuild(null);
-    setCalc(null);
+    setCalculated(null);
     notesRef.current = saved.notes;
     setNotesState(saved.notes);
     draftsRef.current = drafts;

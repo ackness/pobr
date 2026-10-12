@@ -135,6 +135,7 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
   const [failure, setFailure] = useState<{ version: number; message: string } | null>(null);
   const { stateVersion, runSkillMetrics } = session;
   const report = completed?.version === stateVersion ? completed.report : null;
+  const displayed = completed?.report;
   const error = failure?.version === stateVersion ? failure.message : null;
   useEffect(() => {
     let cancelled = false;
@@ -178,7 +179,7 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
       {report?.item_errors.map((issue, index) => (
         <p className="calc-error" key={`${issue.slot}-${index}`}>{slotLabel(lang, issue.slot)}: {issue.message}</p>
       ))}
-      {report && (report.skills.length === 0 ? (
+      {displayed && (displayed.skills.length === 0 ? (
         <p className="calcs-hint">{tt('calcs.skillMetricsEmpty')}</p>
       ) : (
         <div className="breakdown-scroll">
@@ -191,13 +192,16 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
               </tr>
             </thead>
             <tbody>
-              {report.skills.map(entry => {
+              {displayed.skills.map(entry => {
                 const group = session.socketGroups[entry.group_index];
                 const granted = grantedSourceLabel(lang, group?.source);
                 const selected = entry.group_index === mainIndex
                   && entry.active_skill_index === (group?.main_active_skill ?? 1);
-                const available = entry.status === 'calculated' && entry.metrics !== null;
-                const inspect = () => session.inspectSkill(entry.group_index, entry.active_skill_index, stateVersion);
+                const available = !!report && entry.status === 'calculated' && entry.metrics !== null;
+                const disabled = !report || session.busy || !group?.enabled;
+                const inspect = () => {
+                  if (!disabled) session.inspectSkill(entry.group_index, entry.active_skill_index, stateVersion);
+                };
                 return (
                   <tr key={`${entry.group_index}-${entry.active_skill_index}`}
                     className={`skill-metrics-row${selected ? ' is-main' : ''}${granted ? ' is-granted' : ''}`}
@@ -205,7 +209,7 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
                     onClick={inspect}>
                     <td>
                       <button className="calcs-skill-button" aria-pressed={selected}
-                        disabled={session.busy || !group?.enabled}
+                        aria-disabled={disabled}
                         onClick={event => { event.stopPropagation(); inspect(); }}>
                         {tt('calcs.group')} {entry.group_index + 1} · {entry.active_skill_index} · {skillName(entry.skill_id)}
                       </button>
@@ -215,9 +219,9 @@ function SkillMetricsView({ session, lang }: { session: BuildSession; lang: Lang
                       <td className="mod-value" key={key}>{available ? formatStatValue(entry.metrics![key], 'float2') : '—'}</td>
                     ))}
                     <td className="skill-metrics-diagnostics">
-                      {!available && <p className="calc-error">{tt('calcs.unavailable')}: {entry.error || tt('calcs.unavailableHint')}</p>}
+                      {report && !available && <p className="calc-error">{tt('calcs.unavailable')}: {entry.error || tt('calcs.unavailableHint')}</p>}
                       {available && entry.error && <p className="calc-error">{entry.error}</p>}
-                      {entry.unsupported_modifiers.length > 0 && <>
+                      {report && entry.unsupported_modifiers.length > 0 && <>
                         <strong>{tt('calcs.unsupported')}</strong>
                         <ul>{entry.unsupported_modifiers.map((modifier, index) => <li key={index}>{modifier}</li>)}</ul>
                       </>}
@@ -249,6 +253,7 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
   }, [session.stateVersion]);
 
   const run = async () => {
+    if (session.busy || !session.calc) return;
     const current = ++sequence.current;
     const version = session.stateVersion;
     setRunning(true);
@@ -281,7 +286,7 @@ function AttributionView({ session, lang }: { session: BuildSession; lang: Lang 
       <p className="calcs-hint">
 {tt('calcs.attributionHint')}
       </p>
-      <button onClick={run} disabled={running || session.busy}>
+      <button onClick={run} disabled={running || session.busy || !session.calc}>
         {running ? tt('calcs.running') : tt('calcs.runAttribution')}
       </button>
       {completed && !report && <p className="calcs-hint" role="status">{tt('calcs.attributionStale')}</p>}
@@ -458,7 +463,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
         </section>
       ))}
       </div>
-      {calc && <AttributionView session={session} lang={lang} />}
+      <AttributionView session={session} lang={lang} />
     </section>
   );
 }

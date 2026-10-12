@@ -275,6 +275,8 @@ for (const [characterLevel, gemLevel] of [[71, 16], [90, 21]]) test(`gem plans a
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await page.getByRole('button', { name: 'Inspected skill', exact: true }).click();
+  await page.getByRole('option', { name: '1. Fireball', exact: true }).click();
   await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
   await page.locator('.trade-position').filter({ hasText: 'Skill and support gems' }).click();
   await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
@@ -298,7 +300,7 @@ for (const [characterLevel, gemLevel] of [[71, 16], [90, 21]]) test(`gem plans a
   expect(state.socketGroups[0].gems).toEqual([{ skill_id: 'FireballPlayer', level: 12, quality: 0 }]);
 });
 
-test('default damage skill, weapon binding and whole-build priority use the same build context', async ({ page }) => {
+test('explicit damage skill selection, weapon binding and whole-build priority share the same context', async ({ page }) => {
   await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
   await installTradeCatalogFixture(page, catalog => {
     // Exercise real calculations with a small legal pool so the integration test stays fast.
@@ -322,6 +324,14 @@ test('default damage skill, weapon binding and whole-build priority use the same
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticShareKey_123456');
   await page.locator('.import-submit').click();
   await expect(page.getByRole('heading', { name: 'Items', exact: true })).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('Not selected');
+  await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
+  const target = page.getByRole('button', { name: 'Skill used for scoring', exact: true });
+  await expect(target).toContainText('Not selected');
+  await expect(page.getByRole('button', { name: 'Analyze all positions', exact: true })).toBeDisabled();
+  await expect(page.locator('.trade-page')).toContainText('Open Skill metrics');
+  await target.click();
+  await page.getByRole('option', { name: '2. Fireball', exact: true }).click();
   await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('2. Fireball');
   await page.getByRole('button', { name: 'Skills', exact: true }).click();
   await page.locator('.skill-group-title').filter({ hasText: 'Fireball' }).click();
@@ -386,4 +396,48 @@ Small Passive Skills in Radius also grant 2% increased Spell Damage</Item><ItemS
     } else expect(weights).toHaveLength(0);
     await page.getByRole('button', { name: 'Build', exact: true }).click();
   }
+});
+
+test('applying a gem replacement preserves the evaluated secondary effect through save and reload', async ({ page }) => {
+  await page.route('**/api/trade/leagues?realm=*', route => route.fulfill({ json: { leagues: ['Standard'] } }));
+  await installTradeCatalogFixture(page, catalog => {
+    catalog.gems = catalog.gems?.filter(gem => [
+      'ElementalWeaknessPlayer', 'ViciousHexSupportPlayer', 'SparkPlayer', 'FireballPlayer',
+      'SupportRapidCastingPlayerTwo',
+    ].includes(gem.skill_id));
+  });
+  const code = deflateSync(`<PathOfBuilding2><Build level="80" className="Witch" mainSocketGroup="1"/>
+    <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+    <Skills><Skill enabled="true" mainActiveSkill="3" set1="false" set2="true">
+      <Gem skillId="ElementalWeaknessPlayer" level="15" quality="20" enabled="true"/>
+      <Gem skillId="ViciousHexSupportPlayer" level="1" quality="20" enabled="true"/>
+      <Gem skillId="SparkPlayer" level="15" quality="20" enabled="true"/>
+      <Gem skillId="FireballPlayer" level="15" quality="20" enabled="true"/>
+    </Skill></Skills><Items/><Config/></PathOfBuilding2>`).toString('base64url');
+  await page.goto('/');
+  await expect(page.getByRole('textbox', { name: 'Build code' })).toBeVisible({ timeout: 90_000 });
+  await page.getByRole('textbox', { name: 'Build code' }).fill(code);
+  await page.locator('.import-submit').click();
+  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('1. Spark');
+  await page.getByRole('button', { name: 'Upgrades', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Skill used for scoring', exact: true })).toContainText('1. Spark');
+  await page.locator('.trade-position').filter({ hasText: 'Skill and support gems' }).click();
+  await page.getByRole('button', { name: 'Calculate affix scores', exact: true }).click();
+  const replacement = page.locator('.trade-gem-card').filter({ hasText: 'Replaces Impending Doom' }).first();
+  await expect(replacement).toBeVisible({ timeout: 90_000 });
+  const predicted = Number((await replacement.locator('.upgrade-gem-stats > span').first().locator('b').last().innerText()).replaceAll(',', ''));
+  await replacement.getByRole('button', { name: 'Apply to build', exact: true }).click();
+  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  const current = await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state);
+  expect(current.params.main_socket_group).toBe(0);
+  expect(current.socketGroups[0].main_active_skill).toBe(2);
+  expect(current.socketGroups[0].weapon_set).toBe(2);
+  expect(current.socketGroups[0].gems[1].skill_id).toBe('SupportRapidCastingPlayerTwo');
+  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('1. Spark');
+  const dps = page.locator('.stat-row').filter({ hasText: 'Total DPS' }).locator('dd');
+  expect(Number((await dps.innerText()).replaceAll(',', ''))).toBeCloseTo(predicted, 0);
+  await page.reload();
+  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('1. Spark', { timeout: 90_000 });
+  expect(Number((await dps.innerText()).replaceAll(',', ''))).toBeCloseTo(predicted, 0);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pobr-build-state')!).state.socketGroups[0].main_active_skill)).toBe(2);
 });

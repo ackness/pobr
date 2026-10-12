@@ -1,6 +1,8 @@
 import type { MainSkillInfo } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { useSkillName } from '../../hooks/useSkillName';
+import { useSkillCatalog } from '../../hooks/useSkillName';
+import { activeSkillEffects } from '../../lib/skillSelection';
+import { skillDisplayName } from '../../lib/skillNames';
 import { STAT_SECTIONS, formatStatValue, statMap, type Lang } from '../../lib/statDisplay';
 import { bindT, damageTypeLabel } from '../../lib/i18n';
 import { AppSelect } from '../shared/AppSelect';
@@ -28,7 +30,8 @@ const DAMAGE_COLOR: Record<string, string> = {
  */
 function MainSkillSection({ session, lang }: { session: BuildSession; lang: Lang }) {
   const tt = bindT(lang);
-  const skillName = useSkillName(lang);
+  const catalog = useSkillCatalog();
+  const skillName = (skillId: string) => skillDisplayName(skillId, lang, catalog);
   const groups = session.socketGroups;
   const mainSkill: MainSkillInfo | null = session.calcError || session.calcParams.main_socket_group === undefined
     ? null : session.calc?.main_skill ?? null;
@@ -49,9 +52,8 @@ function MainSkillSection({ session, lang }: { session: BuildSession; lang: Lang
         disabled={session.busy}
         onChange={(value) => session.updateParams({ main_socket_group: Number(value) })}
         options={groups.map((group, idx) => {
-          const [active] = group.gems;
-          const name = mainSkill?.group_index === idx ? skillName(mainSkill.skill_id)
-            : active ? skillName(active.skill_id) : tt('skills.emptyGroup');
+          const effect = catalog.size ? activeSkillEffects(group, catalog)[(group.main_active_skill ?? 1) - 1] : undefined;
+          const name = effect ? skillName(effect.skillId) : tt('calcs.unavailable');
           return { value: String(idx), label: `${idx + 1}. ${name}${group.enabled ? '' : ` ${tt('sidebar.disabledGroup')}`}` };
         })}
       /></div>
