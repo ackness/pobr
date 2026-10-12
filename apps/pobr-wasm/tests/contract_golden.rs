@@ -195,7 +195,7 @@ fn calculate_build_json_shape() {
     let es_bd = &json["breakdowns"]["EnergyShield"];
     assert_keys(
         es_bd,
-        &["base_total", "inc_total", "mods"],
+        &["base_total", "inc_total", "more_total", "mods"],
         "breakdowns.EnergyShield",
     );
     let mods = es_bd["mods"].as_array().unwrap();
@@ -205,6 +205,7 @@ fn calculate_build_json_shape() {
         &[
             "mod_type",
             "value",
+            "active",
             "source_text",
             "origin_kind",
             "origin_id",
@@ -212,6 +213,31 @@ fn calculate_build_json_shape() {
         ],
         "breakdown mod",
     );
+    // The totals are the engine's own aggregation, so the active rows must
+    // reproduce them and the inactive rows must not be counted.
+    for (name, bd) in json["breakdowns"].as_object().unwrap() {
+        let active_sum = |mod_type: &str| -> f64 {
+            bd["mods"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|m| m["mod_type"] == mod_type && m["active"] == true)
+                .filter_map(|m| m["value"].as_f64())
+                .sum()
+        };
+        for (mod_type, key) in [("BASE", "base_total"), ("INC", "inc_total")] {
+            let total = bd[key].as_f64().unwrap();
+            assert!(
+                (active_sum(mod_type) - total).abs() < 1e-6,
+                "{name}: active {mod_type} rows {} != {key} {total}",
+                active_sum(mod_type)
+            );
+        }
+        assert!(
+            bd["more_total"].as_f64().unwrap() > 0.0,
+            "{name}: more_total"
+        );
+    }
 }
 
 #[test]

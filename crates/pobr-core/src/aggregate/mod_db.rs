@@ -130,6 +130,18 @@ fn apply_global_limits(
     (value, clamped_from)
 }
 
+/// One stored modifier and how a named query treats it (see
+/// [`ModDb::evaluate_named`]).
+#[derive(Debug, Clone, Copy)]
+pub struct ModEvaluation<'a> {
+    pub modifier: &'a Modifier,
+    /// The applied number when `active`, the stored number otherwise
+    /// (`None` for non-numeric values).
+    pub value: Option<f64>,
+    /// Whether the query counts this modifier in the evaluated context.
+    pub active: bool,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModContribution {
     pub name: ModName,
@@ -457,6 +469,66 @@ impl ModDb {
             }
         }
         out
+    }
+
+    /// Every modifier stored under `name`, as a query on that name would see
+    /// it in `ctx`. Unlike [`contributions`](Self::contributions) this keeps
+    /// the modifiers the query skips (`active == false`), so a breakdown can
+    /// list them without counting them.
+    ///
+    /// For BASE/INC/MORE rows `value` is the applied number (per-stat scaling
+    /// and GlobalLimit accounting included, in the same order as
+    /// [`sum`](Self::sum) / [`more`](Self::more)); an inactive row keeps its
+    /// unscaled stored number.
+    pub fn evaluate_named<'a>(
+        &self,
+        ctx: impl Into<EvalContext<'a>>,
+        name: &ModName,
+    ) -> Vec<ModEvaluation<'_>> {
+        let ctx = ctx.into();
+        // One accounting table per aggregated type: a limit shared by a BASE
+        // and an INC row is consumed separately by the two queries.
+        let mut limits: [GlobalLimits; 3] = [None, None, None];
+        self.mods
+            .get(name)
+            .into_iter()
+            .flatten()
+            .map(|modifier| {
+                let stored = modifier.value.as_number();
+                if !modifier.matches(ctx.cfg) {
+                    return ModEvaluation {
+                        modifier,
+                        value: stored,
+                        active: false,
+                    };
+                }
+                let slot = match modifier.mod_type {
+                    ModType::Base => 0,
+                    ModType::Inc => 1,
+                    ModType::More => 2,
+                    // FLAG / OVERRIDE / LIST rows apply as stored.
+                    _ => {
+                        return ModEvaluation {
+                            modifier,
+                            value: stored,
+                            active: true,
+                        };
+                    }
+                };
+                match modifier.effective_number_ref(&ctx) {
+                    Some(raw) => ModEvaluation {
+                        modifier,
+                        value: Some(apply_global_limits(modifier, raw, &mut limits[slot]).0),
+                        active: true,
+                    },
+                    None => ModEvaluation {
+                        modifier,
+                        value: stored,
+                        active: false,
+                    },
+                }
+            })
+            .collect()
     }
 
     pub fn sum_traced<'a>(

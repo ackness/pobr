@@ -406,7 +406,10 @@ export type BreakdownModType = 'BASE' | 'INC' | 'MORE' | 'FLAG' | 'OVERRIDE' | '
 
 export interface BreakdownMod {
   mod_type: BreakdownModType;
+  /** Applied number for an active BASE/INC/MORE line; the stored number when inactive. */
   value: number | null;
+  /** False when the inspected skill's calculation does not count this line. */
+  active: boolean;
   source_text: string | null;
   origin_kind: string | null;
   origin_id: string | null;
@@ -414,8 +417,11 @@ export interface BreakdownMod {
 }
 
 export interface Breakdown {
+  /** Totals cover active lines only. */
   base_total: number;
   inc_total: number;
+  /** Product of the active MORE lines as a multiplier (1 when there are none). */
+  more_total: number;
   mods: BreakdownMod[];
 }
 

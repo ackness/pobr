@@ -40,8 +40,13 @@ const BREAKDOWN_MOD_NAMES: &[&str] = &[
 struct BreakdownModJson {
     /// `BASE` / `INC` / `MORE` / `FLAG` / `OVERRIDE` / `LIST`.
     mod_type: &'static str,
-    /// The numeric view (`null` for Flag/Text mod lines).
+    /// The numeric view (`null` for Flag/Text mod lines). For an active
+    /// BASE/INC/MORE line this is the applied number (per-stat scaling and
+    /// shared caps included); an inactive line keeps its stored number.
     value: Option<f64>,
+    /// Whether the inspected skill's calculation counts this line. `false`
+    /// means its condition, skill type or weapon requirement is not met.
+    active: bool,
     /// The mod line's raw text (the source it was parsed from).
     source_text: Option<String>,
     /// The attribution source category (`SourceKind`'s Debug name, e.g. `PassiveNode` / `ItemAffix`).
@@ -54,33 +59,29 @@ struct BreakdownModJson {
 
 #[derive(Debug, Serialize)]
 struct BreakdownJson {
-    /// The BASE mod-line total (a direct sum, with no expression detail beyond class/base injection).
+    /// The active BASE mod-line total (no class/base injection).
     base_total: f64,
-    /// The INC mod-line total (in percentage points).
+    /// The active INC mod-line total (in percentage points).
     inc_total: f64,
-    /// The per-mod-line source list.
+    /// The product of the active MORE mod lines, as a multiplier (`1.0` when there are none).
+    more_total: f64,
+    /// The per-mod-line source list, inactive lines included.
     mods: Vec<BreakdownModJson>,
 }
 
 fn breakdown_for(session: &CalculationSession, name: &str) -> Option<BreakdownJson> {
-    let mods = session.mods_named(name);
-    if mods.is_empty() {
+    let rows = session.evaluated_mods_named(name);
+    if rows.is_empty() {
         return None;
     }
-    let mut base_total = 0.0;
-    let mut inc_total = 0.0;
-    let mut entries: Vec<BreakdownModJson> = mods
+    let mut entries: Vec<BreakdownModJson> = rows
         .iter()
-        .map(|m| {
-            let value = m.value.as_number();
-            match m.mod_type {
-                pobr_data::modifier::ModType::Base => base_total += value.unwrap_or(0.0),
-                pobr_data::modifier::ModType::Inc => inc_total += value.unwrap_or(0.0),
-                _ => {}
-            }
+        .map(|row| {
+            let m = row.modifier;
             BreakdownModJson {
                 mod_type: m.mod_type.as_trace_label(),
-                value,
+                value: row.value,
+                active: row.active,
                 source_text: m.source.clone(),
                 origin_kind: m.origin.as_ref().map(|o| format!("{:?}", o.source_id.kind)),
                 origin_id: m.origin.as_ref().map(|o| o.source_id.id.clone()),
@@ -100,10 +101,14 @@ fn breakdown_for(session: &CalculationSession, name: &str) -> Option<BreakdownJs
                     .partial_cmp(&b.value)
                     .unwrap_or(std::cmp::Ordering::Equal),
             )
+            .then(b.active.cmp(&a.active))
     });
+    let (base_total, inc_total, more_total) = session.named_totals(name);
     Some(BreakdownJson {
-        base_total,
-        inc_total,
+        // An empty float sum is `-0.0`; adding zero keeps it out of the JSON.
+        base_total: base_total + 0.0,
+        inc_total: inc_total + 0.0,
+        more_total,
         mods: entries,
     })
 }

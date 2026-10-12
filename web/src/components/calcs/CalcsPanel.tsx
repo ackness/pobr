@@ -93,7 +93,13 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
         <span>
           {tt('calcs.incTotal')}: <strong>{fmtNum(breakdown.inc_total)}%</strong>
         </span>
+        {breakdown.more_total !== 1 && (
+          <span>
+            {tt('calcs.moreTotal')}: <strong>×{fmtNum(breakdown.more_total)}</strong>
+          </span>
+        )}
       </div>
+      {breakdown.mods.some((m) => !m.active) && <p className="breakdown-note">{tt('calcs.inactiveNote')}</p>}
       <div className="breakdown-scroll">
         <table className="breakdown-table">
           <thead>
@@ -106,12 +112,19 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
           </thead>
           <tbody>
             {[...breakdown.mods]
-              .sort((a, b) => MOD_TYPE_ORDER.indexOf(a.mod_type) - MOD_TYPE_ORDER.indexOf(b.mod_type))
+              .sort(
+                (a, b) =>
+                  MOD_TYPE_ORDER.indexOf(a.mod_type) - MOD_TYPE_ORDER.indexOf(b.mod_type) ||
+                  Number(b.active) - Number(a.active),
+              )
               .map((mod, i) => (
-                <tr key={`${name}-${i}`}>
+                <tr key={`${name}-${i}`} className={mod.active ? undefined : 'is-inactive'}>
                   <td className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{mod.mod_type}</td>
                   <td className="mod-value">{mod.value === null ? '—' : fmtNum(mod.value)}</td>
-                  <td className="mod-text">{modText(mod.source_text)}</td>
+                  <td className="mod-text">
+                    {modText(mod.source_text)}
+                    {!mod.active && <span className="mod-inactive-tag">{tt('calcs.inactive')}</span>}
+                  </td>
                   <td className="mod-origin">
                     {mod.origin_kind
                       ? `${originKindLabel(lang, mod.origin_kind)}${
@@ -458,7 +471,7 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
                       {values.has(name) ? formatStatValue(values.get(name) ?? null, 'float2') : ''}
                     </span>
                     <span className="breakdown-count">
-                      {breakdown.mods.length} {tt('calcs.mods')}
+                      {breakdown.mods.filter((m) => m.active).length} {tt('calcs.mods')}
                     </span>
                   </button>
                   {isOpen && <BreakdownTable name={name} breakdown={breakdown} lang={lang} />}

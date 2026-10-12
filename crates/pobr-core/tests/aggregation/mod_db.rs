@@ -949,3 +949,64 @@ fn global_limit_traced_inserts_clamp_node() {
         "Clamp node value = the actually counted value"
     );
 }
+
+/// `evaluate_named` is the breakdown view of a name: the active rows carry
+/// the applied numbers and add up to the real queries, the skipped rows stay
+/// listed but uncounted.
+#[test]
+fn evaluate_named_matches_queries_and_keeps_inactive_rows() {
+    let name = ModName::from("MaximumLife");
+    let limit = || ModTag::GlobalLimit {
+        value: 50.0,
+        key: "LifeCap".into(),
+    };
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("MaximumLife", ModType::Base, 30.0).with_tag(limit()));
+    db.add_mod(Modifier::number("MaximumLife", ModType::Base, 35.0).with_tag(limit()));
+    db.add_mod(
+        Modifier::number("MaximumLife", ModType::Base, 8.0)
+            .with_tag(ModTag::multiplier("Strength", 4.0, None)),
+    );
+    db.add_mod(
+        Modifier::number("MaximumLife", ModType::Inc, 15.0)
+            .with_tag(ModTag::condition("LowLife", false)),
+    );
+    db.add_mod(Modifier::number("MaximumLife", ModType::Inc, 10.0));
+    db.add_mod(Modifier::number("MaximumLife", ModType::More, 20.0));
+    db.add_mod(Modifier::number("MaximumLife", ModType::More, 40.0).with_flags(ModFlags::SPELL));
+
+    let cfg = CalcConfig::new().with_multiplier("Strength", 20.0);
+    let rows = db.evaluate_named(&cfg, &name);
+    assert_eq!(rows.len(), 7, "inactive rows stay listed");
+
+    let seen: Vec<(ModType, Option<f64>, bool)> = rows
+        .iter()
+        .map(|r| (r.modifier.mod_type, r.value, r.active))
+        .collect();
+    assert_eq!(
+        seen,
+        vec![
+            (ModType::Base, Some(30.0), true),
+            (ModType::Base, Some(20.0), true), // clipped by the shared limit
+            (ModType::Base, Some(40.0), true), // 8 per 4 Strength at 20
+            (ModType::Inc, Some(15.0), false), // LowLife not set
+            (ModType::Inc, Some(10.0), true),
+            (ModType::More, Some(20.0), true),
+            (ModType::More, Some(40.0), false), // SPELL flag not in cfg
+        ]
+    );
+
+    let active_sum = |mod_type| -> f64 {
+        rows.iter()
+            .filter(|r| r.active && r.modifier.mod_type == mod_type)
+            .filter_map(|r| r.value)
+            .sum()
+    };
+    let names = [name.clone()];
+    assert_eq!(
+        active_sum(ModType::Base),
+        db.sum(ModType::Base, &cfg, &names)
+    );
+    assert_eq!(active_sum(ModType::Inc), db.sum(ModType::Inc, &cfg, &names));
+    assert_eq!(db.more(&cfg, &names), 1.2);
+}

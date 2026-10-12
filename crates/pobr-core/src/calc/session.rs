@@ -672,6 +672,29 @@ impl CalculationSession {
             .collect()
     }
 
+    /// The modifiers named `name` as the calculation context treats them:
+    /// each row says whether it applies and with which value. The context is
+    /// the session config, i.e. the inspected skill with its main-hand
+    /// weapon; an off-hand pass can match weapon-specific rows differently.
+    pub fn evaluated_mods_named(&self, name: &str) -> Vec<crate::ModEvaluation<'_>> {
+        self.env
+            .player
+            .mod_db
+            .evaluate_named(&self.env.cfg, &ModName::from(name))
+    }
+
+    /// `(BASE sum, INC sum, MORE product)` of `name` in the session config,
+    /// read through the same queries the calculation stages use.
+    pub fn named_totals(&self, name: &str) -> (f64, f64, f64) {
+        let db = &self.env.player.mod_db;
+        let names = [ModName::from(name)];
+        (
+            db.sum(ModType::Base, &self.env.cfg, &names),
+            db.sum(ModType::Inc, &self.env.cfg, &names),
+            db.more(&self.env.cfg, &names),
+        )
+    }
+
     /// Every modifier in the player ModDb (for diagnostics,
     /// `POBR_DBG_ALLMODS`): used to diff the full mod set between the engine
     /// vs legacy ingest paths (fork(a) locating ingest divergence).

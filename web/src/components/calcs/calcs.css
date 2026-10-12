@@ -79,6 +79,13 @@
   padding-bottom: var(--space-2);
 }
 
+.breakdown-note {
+  margin: 0;
+  padding-bottom: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
 .breakdown-scroll {
   overflow-x: auto;
 }
@@ -121,6 +128,23 @@
 
 .mod-text {
   color: var(--text-secondary);
+}
+
+.breakdown-table tr.is-inactive td {
+  color: var(--text-muted);
+}
+
+.breakdown-table tr.is-inactive .mod-value {
+  text-decoration: line-through;
+}
+
+.mod-inactive-tag {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  white-space: nowrap;
 }
 
 .mod-origin {
