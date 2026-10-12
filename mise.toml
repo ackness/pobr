@@ -9,7 +9,7 @@
 # 原始 JSON / 索引缓存均在 pipeline/ 下且 gitignore，不入库；入库的只有 data/<version>/。
 
 [tools]
-node = "26"
+node = "latest"
 pnpm = "12"
 
 [tasks."data:version"]
