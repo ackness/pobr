@@ -240,6 +240,434 @@ fn calculate_build_json_shape() {
     }
 }
 
+fn close(a: f64, b: f64) -> bool {
+    (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0)
+}
+
+/// What the checked breakdowns showed, over every build.
+#[derive(Default)]
+struct FormulaTally {
+    ops: std::collections::BTreeSet<String>,
+    damage_lines: usize,
+    penetrated: usize,
+    skill_dot_lines: usize,
+    hands: usize,
+}
+
+/// Checks that the steps of `breakdown` are the calculation: each step
+/// follows from the one before, the modifier totals in the steps are the
+/// totals of the listed lines, the tables add up to the steps, and the
+/// steps end at `shown`. `stats` holds the displayed stats when `breakdown`
+/// is a displayed one; a weapon pass's own breakdown (`hands`) has none,
+/// because a pass's rate, crit chance and average hit are not displayed.
+fn check_formula(
+    at: &str,
+    stat: &str,
+    breakdown: &Value,
+    shown: f64,
+    stats: Option<&[Value]>,
+    tally: &mut FormulaTally,
+) {
+    let formula = &breakdown["formula"];
+    let value = formula["value"].as_f64().unwrap();
+    assert!(
+        close(value, shown),
+        "{at}: formula {value} != shown {shown}"
+    );
+
+    let total = |key: &str| breakdown[key].as_f64().unwrap();
+    let matches_shown = |id: &str, value: f64| {
+        stats.is_none_or(|stats| {
+            close(
+                value,
+                stats.iter().find(|s| s["id"] == id).unwrap()["value"]
+                    .as_f64()
+                    .unwrap(),
+            )
+        })
+    };
+    let hands = breakdown["hands"].as_array().map_or(&[][..], Vec::as_slice);
+    let hand_value = |index: usize| {
+        hands
+            .get(index)
+            .unwrap_or_else(|| panic!("{at}: no hand {index}"))["formula"]["value"]
+            .as_f64()
+            .unwrap_or_else(|| panic!("{at}: hand {index} has no formula"))
+    };
+    // The reload cycle: `rate / firing_rate` of the listed cycle.
+    let reload_factor = || {
+        let n = |key: &str| breakdown["reload"][key].as_f64().unwrap();
+        assert!(
+            close(
+                n("bolts") / (n("firing_time") + n("reload_time")),
+                n("rate")
+            ),
+            "{at}: reload cycle"
+        );
+        n("rate") / n("firing_rate")
+    };
+    let reloads = formula["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|step| step["op"] == "reload");
+    let mut stronger_share = 1.0;
+    let rows = breakdown["damage"]["rows"].as_array();
+    let column = |key: &str| -> f64 {
+        rows.unwrap_or_else(|| panic!("{at}: no damage table"))
+            .iter()
+            .map(|row| row[key].as_f64().unwrap())
+            .sum()
+    };
+    let mut previous = 0.0;
+    for step in formula["steps"].as_array().unwrap() {
+        let op = step["op"].as_str().unwrap();
+        let operand = step["operand"].as_f64().unwrap();
+        let result = step["result"].as_f64().unwrap();
+        let expected = match op {
+            "base" | "override" => operand,
+            "flat" | "enemy_flat" | "gear_adjusted" | "gained" | "slot_scaled" | "flat_after" => {
+                previous + operand
+            }
+            "converted" => previous * (1.0 - operand / 100.0),
+            "increased" | "enemy_increased" | "inevitable_penalty" | "bifurcate_bonus" => {
+                previous * (1.0 + operand / 100.0)
+            }
+            "hit_chance" => previous * operand / 100.0,
+            "lucky" | "bifurcate" => (1.0 - (1.0 - previous / 100.0).powf(operand)) * 100.0,
+            "inevitable" | "always_hits" | "accuracy_rating" => operand,
+            // PoE2 chance to hit: accuracy × 1.25 / (accuracy + evasion × 0.3),
+            // between 5% and 100%; no evasion always hits.
+            "vs_evasion" if operand <= 0.0 => 100.0,
+            "vs_evasion" => (previous * 1.25 / (previous + operand * 0.3)).clamp(0.05, 1.0) * 100.0,
+            "enemy_block" => previous * (1.0 - operand / 100.0),
+            "round" => previous.round(),
+            "more" | "action_speed" => previous * operand,
+            "added_time" => 1.0 / (1.0 / previous + operand),
+            "cap" | "cooldown_cap" | "server_tick_cap" => {
+                assert!(previous > operand, "{at}: {op} {operand} does not limit");
+                operand
+            }
+            "floor" => {
+                assert!(previous < operand, "{at}: floor {operand} does not limit");
+                operand
+            }
+            "bonus_to_multiplier" => 1.0 + previous / operand,
+            // The per-type table adds up to the non-crit hit, and its
+            // crit column is what the crit share is averaged with.
+            "non_crit_hit" => {
+                assert!(close(operand, column("avg")), "{at}: rows != {operand}");
+                operand
+            }
+            "crit_hits" => {
+                let chance = operand / 100.0;
+                assert!(matches_shown("CritChance", operand), "{at}: crit chance");
+                previous * (1.0 - chance) + column("crit_avg") * chance
+            }
+            // Total DPS multiplies the displayed average hit, rate and hit chance.
+            "average_hit" => {
+                assert!(matches_shown("TotalHitAvg", operand), "{at}: average");
+                operand
+            }
+            "uses_per_second" => {
+                // The displayed rate includes the reload step that follows.
+                let rate = if reloads {
+                    operand * reload_factor()
+                } else {
+                    operand
+                };
+                assert!(matches_shown("ActionRate", rate), "{at}: rate");
+                previous * operand
+            }
+            "chance_to_hit" => {
+                assert!(matches_shown("HitChance", operand), "{at}: hit chance");
+                previous * operand / 100.0
+            }
+            "enemy_mitigation" | "dps_multiplier" | "ailment_effect" | "ailment_rate" => {
+                previous * operand
+            }
+            // An ailment starts from the hit that applies it, between
+            // the non-critical and the critical source hit.
+            "ailment_source" => {
+                let n = |key: &str| breakdown["ailment"][key].as_f64().unwrap();
+                let (hit, crit) = (n("source_hit"), n("source_crit"));
+                assert!(
+                    operand >= hit.min(crit) - 1e-6 && operand <= hit.max(crit) + 1e-6,
+                    "{at}: source {operand} outside {hit}..{crit}"
+                );
+                let share = n("crit_share") / 100.0;
+                assert!(
+                    close(operand, hit * (1.0 - share) + crit * share),
+                    "{at}: source {operand} is not the listed hits at {share}"
+                );
+                operand
+            }
+            "per_second" | "chance_to_apply" => previous * operand / 100.0,
+            // The active instances are the estimate from the listed
+            // inputs, limited to the maximum.
+            "active_stacks" => {
+                let n = |key: &str| breakdown["ailment"][key].as_f64().unwrap();
+                let estimate = n("hit_chance") / 100.0 * n("apply_chance") / 100.0
+                    * n("duration")
+                    * n("hits_per_second");
+                assert!(close(n("stacks"), estimate), "{at}: stacks {estimate}");
+                assert!(
+                    close(operand, n("stacks").min(n("max_stacks"))),
+                    "{at}: active {operand}"
+                );
+                previous * operand
+            }
+            // Damage over time: the skill's own rows, then each
+            // displayed ailment value; combined adds it to the hits.
+            "skill_dot" => {
+                let rows = breakdown["skill_dot"]
+                    .as_array()
+                    .unwrap_or_else(|| panic!("{at}: no skill dot rows"));
+                let sum: f64 = rows.iter().map(|r| r["total"].as_f64().unwrap()).sum();
+                assert!(close(operand, sum), "{at}: skill dot rows {sum}");
+                operand
+            }
+            "poison_dps" | "ignite_dps" | "bleed_dps" => {
+                let id = match op {
+                    "poison_dps" => "PoisonDPS",
+                    "ignite_dps" => "IgniteDPS",
+                    _ => "BleedDPS",
+                };
+                assert!(matches_shown(id, operand), "{at}: {id} {operand}");
+                previous + operand
+            }
+            "hit_dps" => {
+                assert!(matches_shown("TotalDPS", operand), "{at}: hit dps");
+                operand
+            }
+            "dot_dps" => {
+                assert!(matches_shown("TotalDotDPS", operand), "{at}: dot dps");
+                previous + operand
+            }
+            // Two weapon passes: each hand's own steps end at the value
+            // merged here.
+            "main_hand" => {
+                assert!(close(operand, hand_value(0)), "{at}: main hand");
+                operand
+            }
+            "off_hand_average" | "off_hand_added" | "off_hand_either" | "off_hand_alternating" => {
+                assert!(close(operand, hand_value(1)), "{at}: off hand");
+                match op {
+                    "off_hand_average" => (previous + operand) / 2.0,
+                    "off_hand_added" => previous + operand,
+                    "off_hand_either" => previous + operand - previous * operand / 100.0,
+                    _ => 2.0 / (1.0 / previous + 1.0 / operand),
+                }
+            }
+            "stronger_hand" => {
+                let best = hand_value(0).max(hand_value(1));
+                assert!(close(operand, best), "{at}: stronger hand {best}");
+                operand
+            }
+            "stronger_share" => {
+                stronger_share = operand / 100.0;
+                assert!(stronger_share < 1.0, "{at}: share {operand}");
+                previous * stronger_share
+            }
+            "weaker_hand" => {
+                let least = hand_value(0).min(hand_value(1));
+                assert!(close(operand, least), "{at}: weaker hand {least}");
+                previous + operand * (1.0 - stronger_share)
+            }
+            "reload" => {
+                assert!(close(operand, reload_factor()), "{at}: reload factor");
+                previous * operand
+            }
+            other => panic!("{at}: unknown op {other}"),
+        };
+        assert!(
+            close(result, expected),
+            "{at}: {op} gives {result}, expected {expected}"
+        );
+        // The modifier totals in the steps are the listed lines' totals.
+        // Lines scoped to one item slot are listed too, but the
+        // defence stages apply them in the `slot_scaled` step.
+        let slot_scoped = formula["steps"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|step| step["op"] == "slot_scaled");
+        let listed = match op {
+            "flat" => Some(total("base_total")),
+            "increased" if !slot_scoped => Some(total("inc_total")),
+            "more" if !slot_scoped => Some(total("more_total")),
+            _ => None,
+        };
+        if let Some(listed) = listed {
+            assert!(
+                close(operand, listed),
+                "{at}: {op} {operand} != listed total {listed}"
+            );
+        }
+        tally.ops.insert(op.to_string());
+        previous = result;
+    }
+    assert!(
+        close(previous, value),
+        "{at}: steps end at {previous}, value {value}"
+    );
+    // Each damage type's range follows from its listed terms.
+    for row in rows.into_iter().flatten() {
+        let n = |key: &str| row[key].as_f64().unwrap();
+        let scale = (1.0 + n("increased") / 100.0)
+            * n("more")
+            * breakdown["damage"]["damage_effect"].as_f64().unwrap();
+        for (end, more) in [("min", "more_min"), ("max", "more_max")] {
+            let expected = n(&format!("base_{end}")) * scale * n(more);
+            assert!(
+                close(n(end), expected),
+                "{at}: {} {end} {} != {expected}",
+                row["damage_type"],
+                n(end)
+            );
+        }
+        let mid = (n("min") + n("max")) / 2.0;
+        assert!(
+            n("avg") >= mid - 1e-6 && n("avg") <= n("max") + 1e-6,
+            "{at}: average {} outside {mid}..{}",
+            n("avg"),
+            n("max")
+        );
+    }
+    // The listed lines are what scales each damage type: the shared
+    // lines plus the type's own add up to its increase and multiply
+    // to its multiplier.
+    if stat == "TotalHitAvg" && hands.is_empty() {
+        let shared = breakdown["damage"]["shared_mods"].as_array().unwrap();
+        for row in rows.unwrap() {
+            let lines = || {
+                shared
+                    .iter()
+                    .chain(row["mods"].as_array().unwrap())
+                    .filter(|line| line["active"] == true)
+            };
+            let inc: f64 = lines()
+                .filter(|line| line["mod_type"] == "INC")
+                .map(|line| line["value"].as_f64().unwrap())
+                .sum();
+            let more: f64 = lines()
+                .filter(|line| line["mod_type"] == "MORE")
+                .map(|line| 1.0 + line["value"].as_f64().unwrap() / 100.0)
+                .product();
+            let n = |key: &str| row[key].as_f64().unwrap();
+            assert!(
+                close(inc, n("increased")),
+                "{at}: {} lines add up to {inc}, row says {}",
+                row["damage_type"],
+                n("increased")
+            );
+            // The calculation rounds the product to two decimals
+            // per modifier name (PoB2's `MoreInternal`).
+            assert!(
+                (more - n("more")).abs() <= 0.02 * n("more").abs().max(1.0),
+                "{at}: {} lines multiply to {more}, row says {}",
+                row["damage_type"],
+                n("more")
+            );
+            tally.damage_lines += lines().count();
+        }
+    }
+    // Each type of the skill's own damage over time follows from its
+    // listed terms, and its lines add up to its increase.
+    for row in breakdown["skill_dot"].as_array().into_iter().flatten() {
+        let n = |key: &str| row[key].as_f64().unwrap();
+        let expected = n("base")
+            * (1.0 + n("increased") / 100.0)
+            * n("more")
+            * (1.0 + n("dot_multiplier") / 100.0)
+            * n("aura")
+            * n("enemy");
+        assert!(close(n("total"), expected), "{at}: skill dot {expected}");
+        let lines = |mod_type: &'static str| {
+            row["mods"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(move |line| line["active"] == true && line["mod_type"] == mod_type)
+                .map(|line| line["value"].as_f64().unwrap())
+        };
+        let inc: f64 = lines("INC").sum();
+        assert!(close(inc, n("increased")), "{at}: skill dot lines {inc}");
+        let more: f64 = lines("MORE").map(|value| 1.0 + value / 100.0).product();
+        assert!(
+            (more - n("more")).abs() <= 0.02 * n("more").abs().max(1.0),
+            "{at}: skill dot lines multiply to {more}"
+        );
+        tally.skill_dot_lines += lines("INC").count() + lines("MORE").count();
+    }
+    // The per-type mitigation recombines into the DPS steps: the
+    // averages are the average hit, the mitigated values its result
+    // after the enemy.
+    if stat == "TotalDPS" && hands.is_empty() {
+        let parts = breakdown["mitigation"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{at}: no mitigation rows"));
+        let steps = formula["steps"].as_array().unwrap();
+        let step = |op: &str| {
+            steps
+                .iter()
+                .find(|step| step["op"] == op)
+                .map(|step| step["result"].as_f64().unwrap())
+        };
+        let sum = |key: &str| -> f64 { parts.iter().map(|part| part[key].as_f64().unwrap()).sum() };
+        let average = step("average_hit").unwrap();
+        assert!(
+            close(sum("average"), average),
+            "{at}: mitigation rows start at {}, average hit {average}",
+            sum("average")
+        );
+        let mitigated = step("enemy_mitigation").unwrap_or(average);
+        assert!(
+            close(sum("mitigated"), mitigated),
+            "{at}: mitigation rows end at {}, step says {mitigated}",
+            sum("mitigated")
+        );
+        for part in parts {
+            let n = |key: &str| part[key].as_f64().unwrap();
+            assert!(close(n("average") * n("multiplier"), n("mitigated")));
+            // Armour depends on the hit size, so a physical crit is
+            // reduced less than the listed non-crit reduction.
+            if part["damage_type"] != "Physical" {
+                let expected = n("taken") * (1.0 - n("reduction") / 100.0);
+                assert!(
+                    close(n("multiplier"), expected),
+                    "{at}: {} multiplier {} != {expected}",
+                    part["damage_type"],
+                    n("multiplier")
+                );
+                if n("reduction") != n("resist") {
+                    tally.penetrated += 1;
+                }
+            }
+        }
+    }
+    // Each weapon pass is checked like a displayed breakdown, against the
+    // value the merge takes from it; the per-pass tables are listed there.
+    if !hands.is_empty() {
+        assert_eq!(hands.len(), 2, "{at}: hands");
+        for key in ["damage", "mitigation", "ailment"] {
+            assert!(breakdown[key].is_null(), "{at}: {key} outside the hands");
+        }
+    }
+    for (hand, label) in hands.iter().zip(["main_hand", "off_hand"]) {
+        assert_eq!(hand["hand"], label, "{at}: hand order");
+        check_formula(
+            &format!("{at} [{label}]"),
+            stat,
+            hand,
+            hand_value(if label == "main_hand" { 0 } else { 1 }),
+            None,
+            tally,
+        );
+        tally.hands += 1;
+    }
+}
+
 /// The sidebar's headline stats are aggregated under other names than their
 /// display id (`MaximumLife`, the shared `ElementalResist`, the skill's speed
 /// buckets, `CriticalStrike*`); the breakdown must follow the calculation
@@ -257,12 +685,9 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         .filter(|dir| dir.join("code.txt").is_file())
         .collect();
     dirs.sort();
-    let close = |a: f64, b: f64| (a - b).abs() <= 1e-6 * a.abs().max(b.abs()).max(1.0);
     let mut covered = std::collections::BTreeMap::<String, usize>::new();
-    let mut ops = std::collections::BTreeSet::<String>::new();
     let mut unexplained = std::collections::BTreeMap::<String, usize>::new();
-    let (mut damage_lines, mut penetrated) = (0usize, 0usize);
-    let mut skill_dot_lines = 0usize;
+    let mut tally = FormulaTally::default();
     for dir in &dirs {
         let code = std::fs::read_to_string(dir.join("code.txt")).unwrap();
         let request = serde_json::json!({ "pob_code": code.trim() }).to_string();
@@ -272,8 +697,7 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         let stats = json["stats"].as_array().unwrap();
         let breakdowns = json["breakdowns"].as_object().unwrap();
         for (stat, breakdown) in breakdowns {
-            let formula = &breakdown["formula"];
-            if formula.is_null() {
+            if breakdown["formula"].is_null() {
                 *unexplained.entry(stat.clone()).or_default() += 1;
                 continue;
             }
@@ -284,318 +708,7 @@ fn breakdown_formulas_end_at_the_displayed_value() {
                 .unwrap_or_else(|| panic!("{at}: no display stat"))["value"]
                 .as_f64()
                 .unwrap();
-            let value = formula["value"].as_f64().unwrap();
-            assert!(
-                close(value, shown),
-                "{at}: formula {value} != shown {shown}"
-            );
-
-            let total = |key: &str| breakdown[key].as_f64().unwrap();
-            let shown_stat = |id: &str| {
-                stats.iter().find(|s| s["id"] == id).unwrap()["value"]
-                    .as_f64()
-                    .unwrap()
-            };
-            let rows = breakdown["damage"]["rows"].as_array();
-            let column = |key: &str| -> f64 {
-                rows.unwrap_or_else(|| panic!("{at}: no damage table"))
-                    .iter()
-                    .map(|row| row[key].as_f64().unwrap())
-                    .sum()
-            };
-            let mut previous = 0.0;
-            for step in formula["steps"].as_array().unwrap() {
-                let op = step["op"].as_str().unwrap();
-                let operand = step["operand"].as_f64().unwrap();
-                let result = step["result"].as_f64().unwrap();
-                let expected = match op {
-                    "base" | "override" => operand,
-                    "flat" | "enemy_flat" | "gear_adjusted" | "gained" | "slot_scaled"
-                    | "flat_after" => previous + operand,
-                    "converted" => previous * (1.0 - operand / 100.0),
-                    "increased" | "enemy_increased" | "inevitable_penalty" | "bifurcate_bonus" => {
-                        previous * (1.0 + operand / 100.0)
-                    }
-                    "hit_chance" => previous * operand / 100.0,
-                    "lucky" | "bifurcate" => (1.0 - (1.0 - previous / 100.0).powf(operand)) * 100.0,
-                    "inevitable" | "always_hits" | "accuracy_rating" => operand,
-                    // PoE2 chance to hit: accuracy × 1.25 / (accuracy + evasion × 0.3),
-                    // between 5% and 100%; no evasion always hits.
-                    "vs_evasion" if operand <= 0.0 => 100.0,
-                    "vs_evasion" => {
-                        (previous * 1.25 / (previous + operand * 0.3)).clamp(0.05, 1.0) * 100.0
-                    }
-                    "enemy_block" => previous * (1.0 - operand / 100.0),
-                    "round" => previous.round(),
-                    "more" | "action_speed" => previous * operand,
-                    "added_time" => 1.0 / (1.0 / previous + operand),
-                    "cap" | "cooldown_cap" | "server_tick_cap" => {
-                        assert!(previous > operand, "{at}: {op} {operand} does not limit");
-                        operand
-                    }
-                    "floor" => {
-                        assert!(previous < operand, "{at}: floor {operand} does not limit");
-                        operand
-                    }
-                    "bonus_to_multiplier" => 1.0 + previous / operand,
-                    // The per-type table adds up to the non-crit hit, and its
-                    // crit column is what the crit share is averaged with.
-                    "non_crit_hit" => {
-                        assert!(close(operand, column("avg")), "{at}: rows != {operand}");
-                        operand
-                    }
-                    "crit_hits" => {
-                        let chance = operand / 100.0;
-                        assert!(
-                            close(operand, shown_stat("CritChance")),
-                            "{at}: crit chance"
-                        );
-                        previous * (1.0 - chance) + column("crit_avg") * chance
-                    }
-                    // Total DPS multiplies the displayed average hit, rate and hit chance.
-                    "average_hit" => {
-                        assert!(close(operand, shown_stat("TotalHitAvg")), "{at}: average");
-                        operand
-                    }
-                    "uses_per_second" => {
-                        assert!(close(operand, shown_stat("ActionRate")), "{at}: rate");
-                        previous * operand
-                    }
-                    "chance_to_hit" => {
-                        assert!(close(operand, shown_stat("HitChance")), "{at}: hit chance");
-                        previous * operand / 100.0
-                    }
-                    "enemy_mitigation" | "dps_multiplier" | "ailment_effect" | "ailment_rate" => {
-                        previous * operand
-                    }
-                    // An ailment starts from the hit that applies it, between
-                    // the non-critical and the critical source hit.
-                    "ailment_source" => {
-                        let n = |key: &str| breakdown["ailment"][key].as_f64().unwrap();
-                        let (hit, crit) = (n("source_hit"), n("source_crit"));
-                        assert!(
-                            operand >= hit.min(crit) - 1e-6 && operand <= hit.max(crit) + 1e-6,
-                            "{at}: source {operand} outside {hit}..{crit}"
-                        );
-                        let share = n("crit_share") / 100.0;
-                        assert!(
-                            close(operand, hit * (1.0 - share) + crit * share),
-                            "{at}: source {operand} is not the listed hits at {share}"
-                        );
-                        operand
-                    }
-                    "per_second" | "chance_to_apply" => previous * operand / 100.0,
-                    // The active instances are the estimate from the listed
-                    // inputs, limited to the maximum.
-                    "active_stacks" => {
-                        let n = |key: &str| breakdown["ailment"][key].as_f64().unwrap();
-                        let estimate = n("hit_chance") / 100.0 * n("apply_chance") / 100.0
-                            * n("duration")
-                            * n("hits_per_second");
-                        assert!(close(n("stacks"), estimate), "{at}: stacks {estimate}");
-                        assert!(
-                            close(operand, n("stacks").min(n("max_stacks"))),
-                            "{at}: active {operand}"
-                        );
-                        previous * operand
-                    }
-                    // Damage over time: the skill's own rows, then each
-                    // displayed ailment value; combined adds it to the hits.
-                    "skill_dot" => {
-                        let rows = breakdown["skill_dot"]
-                            .as_array()
-                            .unwrap_or_else(|| panic!("{at}: no skill dot rows"));
-                        let sum: f64 = rows.iter().map(|r| r["total"].as_f64().unwrap()).sum();
-                        assert!(close(operand, sum), "{at}: skill dot rows {sum}");
-                        operand
-                    }
-                    "poison_dps" | "ignite_dps" | "bleed_dps" => {
-                        let id = match op {
-                            "poison_dps" => "PoisonDPS",
-                            "ignite_dps" => "IgniteDPS",
-                            _ => "BleedDPS",
-                        };
-                        assert!(close(operand, shown_stat(id)), "{at}: {id} {operand}");
-                        previous + operand
-                    }
-                    "hit_dps" => {
-                        assert!(close(operand, shown_stat("TotalDPS")), "{at}: hit dps");
-                        operand
-                    }
-                    "dot_dps" => {
-                        assert!(close(operand, shown_stat("TotalDotDPS")), "{at}: dot dps");
-                        previous + operand
-                    }
-                    other => panic!("{at}: unknown op {other}"),
-                };
-                assert!(
-                    close(result, expected),
-                    "{at}: {op} gives {result}, expected {expected}"
-                );
-                // The modifier totals in the steps are the listed lines' totals.
-                // Lines scoped to one item slot are listed too, but the
-                // defence stages apply them in the `slot_scaled` step.
-                let slot_scoped = formula["steps"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .any(|step| step["op"] == "slot_scaled");
-                let listed = match op {
-                    "flat" => Some(total("base_total")),
-                    "increased" if !slot_scoped => Some(total("inc_total")),
-                    "more" if !slot_scoped => Some(total("more_total")),
-                    _ => None,
-                };
-                if let Some(listed) = listed {
-                    assert!(
-                        close(operand, listed),
-                        "{at}: {op} {operand} != listed total {listed}"
-                    );
-                }
-                ops.insert(op.to_string());
-                previous = result;
-            }
-            assert!(
-                close(previous, value),
-                "{at}: steps end at {previous}, value {value}"
-            );
-            // Each damage type's range follows from its listed terms.
-            for row in rows.into_iter().flatten() {
-                let n = |key: &str| row[key].as_f64().unwrap();
-                let scale = (1.0 + n("increased") / 100.0)
-                    * n("more")
-                    * breakdown["damage"]["damage_effect"].as_f64().unwrap();
-                for (end, more) in [("min", "more_min"), ("max", "more_max")] {
-                    let expected = n(&format!("base_{end}")) * scale * n(more);
-                    assert!(
-                        close(n(end), expected),
-                        "{at}: {} {end} {} != {expected}",
-                        row["damage_type"],
-                        n(end)
-                    );
-                }
-                let mid = (n("min") + n("max")) / 2.0;
-                assert!(
-                    n("avg") >= mid - 1e-6 && n("avg") <= n("max") + 1e-6,
-                    "{at}: average {} outside {mid}..{}",
-                    n("avg"),
-                    n("max")
-                );
-            }
-            // The listed lines are what scales each damage type: the shared
-            // lines plus the type's own add up to its increase and multiply
-            // to its multiplier.
-            if stat == "TotalHitAvg" {
-                let shared = breakdown["damage"]["shared_mods"].as_array().unwrap();
-                for row in rows.unwrap() {
-                    let lines = || {
-                        shared
-                            .iter()
-                            .chain(row["mods"].as_array().unwrap())
-                            .filter(|line| line["active"] == true)
-                    };
-                    let inc: f64 = lines()
-                        .filter(|line| line["mod_type"] == "INC")
-                        .map(|line| line["value"].as_f64().unwrap())
-                        .sum();
-                    let more: f64 = lines()
-                        .filter(|line| line["mod_type"] == "MORE")
-                        .map(|line| 1.0 + line["value"].as_f64().unwrap() / 100.0)
-                        .product();
-                    let n = |key: &str| row[key].as_f64().unwrap();
-                    assert!(
-                        close(inc, n("increased")),
-                        "{at}: {} lines add up to {inc}, row says {}",
-                        row["damage_type"],
-                        n("increased")
-                    );
-                    // The calculation rounds the product to two decimals
-                    // per modifier name (PoB2's `MoreInternal`).
-                    assert!(
-                        (more - n("more")).abs() <= 0.02 * n("more").abs().max(1.0),
-                        "{at}: {} lines multiply to {more}, row says {}",
-                        row["damage_type"],
-                        n("more")
-                    );
-                    damage_lines += lines().count();
-                }
-            }
-            // Each type of the skill's own damage over time follows from its
-            // listed terms, and its lines add up to its increase.
-            for row in breakdown["skill_dot"].as_array().into_iter().flatten() {
-                let n = |key: &str| row[key].as_f64().unwrap();
-                let expected = n("base")
-                    * (1.0 + n("increased") / 100.0)
-                    * n("more")
-                    * (1.0 + n("dot_multiplier") / 100.0)
-                    * n("aura")
-                    * n("enemy");
-                assert!(close(n("total"), expected), "{at}: skill dot {expected}");
-                let lines = |mod_type: &'static str| {
-                    row["mods"]
-                        .as_array()
-                        .unwrap()
-                        .iter()
-                        .filter(move |line| line["active"] == true && line["mod_type"] == mod_type)
-                        .map(|line| line["value"].as_f64().unwrap())
-                };
-                let inc: f64 = lines("INC").sum();
-                assert!(close(inc, n("increased")), "{at}: skill dot lines {inc}");
-                let more: f64 = lines("MORE").map(|value| 1.0 + value / 100.0).product();
-                assert!(
-                    (more - n("more")).abs() <= 0.02 * n("more").abs().max(1.0),
-                    "{at}: skill dot lines multiply to {more}"
-                );
-                skill_dot_lines += lines("INC").count() + lines("MORE").count();
-            }
-            // The per-type mitigation recombines into the DPS steps: the
-            // averages are the average hit, the mitigated values its result
-            // after the enemy.
-            if stat == "TotalDPS" {
-                let parts = breakdown["mitigation"]
-                    .as_array()
-                    .unwrap_or_else(|| panic!("{at}: no mitigation rows"));
-                let steps = formula["steps"].as_array().unwrap();
-                let step = |op: &str| {
-                    steps
-                        .iter()
-                        .find(|step| step["op"] == op)
-                        .map(|step| step["result"].as_f64().unwrap())
-                };
-                let sum = |key: &str| -> f64 {
-                    parts.iter().map(|part| part[key].as_f64().unwrap()).sum()
-                };
-                let average = step("average_hit").unwrap();
-                assert!(
-                    close(sum("average"), average),
-                    "{at}: mitigation rows start at {}, average hit {average}",
-                    sum("average")
-                );
-                let mitigated = step("enemy_mitigation").unwrap_or(average);
-                assert!(
-                    close(sum("mitigated"), mitigated),
-                    "{at}: mitigation rows end at {}, step says {mitigated}",
-                    sum("mitigated")
-                );
-                for part in parts {
-                    let n = |key: &str| part[key].as_f64().unwrap();
-                    assert!(close(n("average") * n("multiplier"), n("mitigated")));
-                    // Armour depends on the hit size, so a physical crit is
-                    // reduced less than the listed non-crit reduction.
-                    if part["damage_type"] != "Physical" {
-                        let expected = n("taken") * (1.0 - n("reduction") / 100.0);
-                        assert!(
-                            close(n("multiplier"), expected),
-                            "{at}: {} multiplier {} != {expected}",
-                            part["damage_type"],
-                            n("multiplier")
-                        );
-                        if n("reduction") != n("resist") {
-                            penetrated += 1;
-                        }
-                    }
-                }
-            }
+            check_formula(&at, stat, breakdown, shown, Some(stats), &mut tally);
             *covered.entry(stat.clone()).or_default() += 1;
         }
         // These are explained on every build that lists them.
@@ -625,10 +738,19 @@ fn breakdown_formulas_end_at_the_displayed_value() {
             }
         }
     }
+    let FormulaTally {
+        ops,
+        damage_lines,
+        penetrated,
+        skill_dot_lines,
+        hands,
+    } = tally;
     println!(
         "formula coverage over {} builds: {covered:?}; without formula {unexplained:?}; ops {ops:?}",
         dirs.len()
     );
+    // No fixture build attacks with two weapons.
+    assert_eq!(hands, 0);
     for stat in [
         "Life",
         "FireResist",
@@ -687,6 +809,127 @@ fn breakdown_formulas_end_at_the_displayed_value() {
     );
     // Every build that deals damage has its combined DPS explained.
     assert!(covered["CombinedDPS"] >= 17 && covered["TotalDotDPS"] >= 17);
+}
+
+/// Cases the fixture builds do not contain: two weapons with different
+/// values, whose passes the displayed stats merge, and a crossbow whose
+/// reload lowers the rate. Their breakdowns go through the same checks, and
+/// each hand's own steps end at the value the merge starts from.
+#[test]
+fn breakdowns_merge_two_weapon_passes_and_show_the_reload() {
+    ensure_data();
+    let calculate = |request: Value| -> Value {
+        serde_json::from_str(
+            &pobr_wasm::calculate_build_json(&request.to_string()).expect("calculate"),
+        )
+        .expect("valid json")
+    };
+    let check = |name: &str, json: &Value, stats_with_formula: &[&str]| -> FormulaTally {
+        let stats = json["stats"].as_array().unwrap();
+        let mut tally = FormulaTally::default();
+        for stat in stats_with_formula {
+            let breakdown = &json["breakdowns"][*stat];
+            let at = format!("{name}: {stat}");
+            assert!(!breakdown["formula"].is_null(), "{at}: no formula");
+            let shown = stats.iter().find(|s| s["id"] == *stat).unwrap()["value"]
+                .as_f64()
+                .unwrap();
+            check_formula(&at, stat, breakdown, shown, Some(stats), &mut tally);
+        }
+        tally
+    };
+
+    // The off hand is faster and crits more often; bleed is applied too
+    // rarely to keep its one instance up, ignite often enough.
+    let dual = calculate(serde_json::json!({
+        "character": { "class_name": "Warrior", "level": 90 },
+        "allocated_nodes": [],
+        "items": [
+            { "slot": "weapon1", "text": "Rarity: MAGIC\nWooden Club\nAdds 10 to 20 Fire Damage" },
+            {
+                "slot": "weapon2",
+                "text": "Rarity: MAGIC\nWooden Club\n20% increased Attack Speed\n+5% to Critical Hit Chance",
+            },
+        ],
+        "socket_groups": [
+            { "gems": [{ "skill_id": "ArmourBreakerPlayer", "level": 20, "quality": 0 }] },
+        ],
+        "extra_modifiers": ["25% chance to Ignite", "2% chance to cause Bleeding on Hit"],
+    }));
+    let per_pass = [
+        "ActionRate",
+        "HitChance",
+        "CritChance",
+        "CritMultiplier",
+        "TotalHitAvg",
+        "TotalDPS",
+        "IgniteDPS",
+        "BleedDPS",
+    ];
+    let tally = check("dual wield", &dual, &per_pass);
+    assert_eq!(tally.hands, 2 * per_pass.len());
+    for op in [
+        "main_hand",
+        "off_hand_average",
+        "off_hand_alternating",
+        "stronger_hand",
+        "stronger_share",
+        "weaker_hand",
+    ] {
+        assert!(tally.ops.contains(op), "dual wield shows no {op} step");
+    }
+    for stat in [
+        "ActionRate",
+        "CritChance",
+        "TotalHitAvg",
+        "TotalDPS",
+        "BleedDPS",
+    ] {
+        let hands = dual["breakdowns"][stat]["hands"].as_array().unwrap();
+        assert_ne!(
+            hands[0]["formula"]["value"], hands[1]["formula"]["value"],
+            "dual wield: both hands have the same {stat}"
+        );
+    }
+    // The values downstream of the merged ones are still explained.
+    check(
+        "dual wield",
+        &dual,
+        &["TotalDotDPS", "CombinedDPS", "Accuracy"],
+    );
+
+    // The grenade build's Crossbow Shot group fires a magazine, then reloads.
+    let code = std::fs::read_to_string(repo_data_root().join(
+        "../examples/demo-bd-test/builds/mercenary-gemling-legionnaire-explosive-grenade/code.txt",
+    ))
+    .unwrap();
+    let crossbow =
+        calculate(serde_json::json!({ "pob_code": code.trim(), "main_socket_group": 0 }));
+    assert_eq!(crossbow["main_skill"]["skill_id"], "MeleeCrossbowPlayer");
+    let tally = check(
+        "crossbow",
+        &crossbow,
+        &[
+            "ActionRate",
+            "TotalHitAvg",
+            "TotalDPS",
+            "TotalDotDPS",
+            "CombinedDPS",
+        ],
+    );
+    assert!(
+        tally.ops.contains("reload"),
+        "crossbow shows no reload step"
+    );
+    assert!(tally.damage_lines > 0 && tally.hands == 0);
+    for stat in ["ActionRate", "TotalDPS"] {
+        assert!(
+            crossbow["breakdowns"][stat]["reload"]["reload_time"]
+                .as_f64()
+                .unwrap()
+                > 0.0
+        );
+    }
 }
 
 #[test]

@@ -23,6 +23,8 @@ use crate::state;
 /// `TotalDotDPS` likewise carry steps only, the latter with the skill's own
 /// damage over time per type (`skill_dot`). The three ailment stats list the
 /// ailment magnitude lines and carry what the steps are built from (`ailment`).
+/// With two weapon passes, the stats each pass computes on its own carry the
+/// steps that merge both hands and each hand's own breakdown (`hands`).
 const BREAKDOWN_MOD_NAMES: &[&str] = &[
     "CombinedDPS",
     "TotalDPS",
@@ -95,6 +97,45 @@ struct BreakdownJson {
     /// from and how many instances are active.
     #[serde(skip_serializing_if = "Option::is_none")]
     ailment: Option<AilmentJson>,
+    /// `ActionRate` / `TotalDPS` only: the cycle behind the `reload` step.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reload: Option<ReloadJson>,
+    /// Two weapon passes only, for the stats each pass computes on its own
+    /// (`ActionRate`, `HitChance`, `CritChance`, `CritMultiplier`,
+    /// `TotalHitAvg`, `TotalDPS` and an ailment both hands apply): main hand
+    /// then off hand. `formula` then holds the steps that merge the two
+    /// hands' values, and `damage` / `mitigation` / `ailment` are per hand.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    hands: Vec<HandBreakdownJson>,
+}
+
+/// One weapon pass's own breakdown of a stat.
+#[derive(Debug, Serialize)]
+struct HandBreakdownJson {
+    /// `main_hand` / `off_hand`.
+    hand: &'static str,
+    /// The totals, lines and steps as that pass evaluates them; `formula`
+    /// ends at the pass's own value (the operand of the matching
+    /// `main_hand` / `off_hand_*` / `stronger_hand` / `weaker_hand` step).
+    #[serde(flatten)]
+    detail: BreakdownJson,
+}
+
+/// The crossbow reload cycle: firing a magazine, then reloading.
+#[derive(Debug, Serialize)]
+struct ReloadJson {
+    /// Uses per second while firing (the value before the `reload` step).
+    firing_rate: f64,
+    /// Bolts fired per magazine, the chance not to consume one included
+    /// (`null` when a bolt is never consumed).
+    bolts: Option<f64>,
+    /// Seconds to fire the magazine: `bolts / firing_rate`.
+    firing_time: f64,
+    /// Seconds to reload, the chance to reload instantly included.
+    reload_time: f64,
+    /// `bolts / (firing_time + reload_time)`: uses per second over the cycle.
+    /// The `reload` step multiplies by `rate / firing_rate`.
+    rate: f64,
 }
 
 fn mod_entries(rows: &[pobr_core::ModEvaluation<'_>]) -> Vec<BreakdownModJson> {
@@ -293,9 +334,8 @@ struct FormulaJson {
     value: f64,
 }
 
-fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJson> {
-    let rows = session.evaluated_stat_mods(stat);
-    let formula = session.stat_formula(stat).map(|formula| FormulaJson {
+fn formula_json(formula: pobr_core::calc::StatFormula) -> FormulaJson {
+    FormulaJson {
         steps: formula
             .steps
             .iter()
@@ -306,7 +346,156 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
             })
             .collect(),
         value: formula.value + 0.0,
-    });
+    }
+}
+
+fn ailment_json(terms: &pobr_core::calc::AilmentTerms) -> AilmentJson {
+    AilmentJson {
+        source_hit: terms.source_hit,
+        source_crit: terms.source_crit,
+        damage_roll: terms.damage_roll,
+        crit_share: terms.crit_weight() * 100.0,
+        apply_chance: terms.apply_chance * 100.0,
+        hit_chance: terms.hit_chance * 100.0,
+        duration: terms.duration,
+        hits_per_second: terms.hits_per_second,
+        stacks: terms.stacks,
+        max_stacks: terms.max_stacks,
+    }
+}
+
+/// The per-type table of offence pass `pass`'s average hit.
+fn damage_json(session: &CalculationSession, pass: usize) -> Option<HitDamageTableJson> {
+    let terms = session.hit_damage_terms(pass)?;
+    // The physical row is always computed; leave it out when empty.
+    let parts: Vec<_> = terms
+        .parts
+        .iter()
+        .filter(|part| part.base_max != 0.0 || part.max != 0.0)
+        .collect();
+    let types: Vec<_> = parts.iter().map(|part| part.damage_type).collect();
+    let lines = session.hit_damage_mods(pass, &types);
+    Some(HitDamageTableJson {
+        rows: parts
+            .iter()
+            .zip(&lines.by_type)
+            .map(|(part, (_, mods))| HitDamageRowJson {
+                damage_type: format!("{:?}", part.damage_type),
+                base_min: part.base_min,
+                base_max: part.base_max,
+                increased: part.inc + 0.0,
+                more: part.more,
+                more_min: part.more_min,
+                more_max: part.more_max,
+                min: part.min,
+                max: part.max,
+                avg: part.avg,
+                crit_avg: part.crit_avg,
+                mods: mod_entries(mods),
+            })
+            .collect(),
+        shared_mods: mod_entries(&lines.shared),
+        damage_effect: terms.damage_effect,
+    })
+}
+
+/// What the enemy does to each damage type of offence pass `pass`'s average hit.
+fn mitigation_json(session: &CalculationSession, pass: usize) -> Option<Vec<HitMitigationRowJson>> {
+    let parts = session.hit_mitigation_terms(pass)?;
+    Some(
+        parts
+            .iter()
+            .filter(|part| part.average != 0.0)
+            .map(|part| HitMitigationRowJson {
+                damage_type: format!("{:?}", part.damage_type),
+                average: part.average,
+                resist: part.resist.map(|resist| resist + 0.0),
+                reduction: part.reduction + 0.0,
+                taken: part.taken,
+                multiplier: part.mitigated / part.average,
+                mitigated: part.mitigated,
+            })
+            .collect(),
+    )
+}
+
+fn hand_label(hand: pobr_core::HandTag) -> &'static str {
+    match hand {
+        pobr_core::HandTag::MainHand => "main_hand",
+        pobr_core::HandTag::OffHand => "off_hand",
+        pobr_core::HandTag::Single => "skill",
+    }
+}
+
+/// Each weapon pass's own breakdown of `stat`, when two passes are merged
+/// into its displayed value.
+fn hand_breakdowns(session: &CalculationSession, stat: &str) -> Vec<HandBreakdownJson> {
+    if let Some(terms) = session.ailment_stage_terms(stat) {
+        if terms.merge.is_none() {
+            return Vec::new();
+        }
+        let (base_total, inc_total, more_total) = session.stat_totals(stat);
+        return terms
+            .passes
+            .iter()
+            .map(|(hand, terms)| HandBreakdownJson {
+                hand: hand_label(*hand),
+                detail: BreakdownJson {
+                    base_total: base_total + 0.0,
+                    inc_total: inc_total + 0.0,
+                    more_total,
+                    // Both hands read the lines listed for the ailment itself.
+                    mods: Vec::new(),
+                    formula: Some(formula_json(terms.formula())),
+                    damage: None,
+                    mitigation: None,
+                    skill_dot: None,
+                    ailment: Some(ailment_json(terms)),
+                    reload: None,
+                    hands: Vec::new(),
+                },
+            })
+            .collect();
+    }
+    if !matches!(
+        stat,
+        "ActionRate" | "HitChance" | "CritChance" | "CritMultiplier" | "TotalHitAvg" | "TotalDPS"
+    ) {
+        return Vec::new();
+    }
+    session
+        .combined_hands()
+        .into_iter()
+        .enumerate()
+        .map(|(pass, hand)| {
+            let (base_total, inc_total, more_total) = session.hand_stat_totals(stat, pass);
+            HandBreakdownJson {
+                hand: hand_label(hand),
+                detail: BreakdownJson {
+                    base_total: base_total + 0.0,
+                    inc_total: inc_total + 0.0,
+                    more_total,
+                    mods: mod_entries(&session.hand_stat_mods(stat, pass)),
+                    formula: session.hand_stat_formula(stat, pass).map(formula_json),
+                    damage: (stat == "TotalHitAvg")
+                        .then(|| damage_json(session, pass))
+                        .flatten(),
+                    mitigation: (stat == "TotalDPS")
+                        .then(|| mitigation_json(session, pass))
+                        .flatten(),
+                    skill_dot: None,
+                    ailment: None,
+                    reload: None,
+                    hands: Vec::new(),
+                },
+            }
+        })
+        .collect()
+}
+
+fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJson> {
+    let rows = session.evaluated_stat_mods(stat);
+    let formula = session.stat_formula(stat).map(formula_json);
     // A stat without modifier lines is still explained by its starting value
     // (a weapon's base crit chance, a skill's base rate).
     if rows.is_empty() && formula.as_ref().is_none_or(|formula| formula.value == 0.0) {
@@ -323,73 +512,35 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
     if ailment_dps == Some(0.0) {
         return None;
     }
+    let hands = hand_breakdowns(session, stat);
+    // With two weapon passes these are per hand.
+    let single_pass = hands.is_empty();
     let ailment = formula
         .as_ref()
-        .and_then(|_| session.ailment_terms(stat))
-        .map(|terms| AilmentJson {
-            source_hit: terms.source_hit,
-            source_crit: terms.source_crit,
-            damage_roll: terms.damage_roll,
-            crit_share: terms.crit_weight() * 100.0,
-            apply_chance: terms.apply_chance * 100.0,
-            hit_chance: terms.hit_chance * 100.0,
-            duration: terms.duration,
-            hits_per_second: terms.hits_per_second,
-            stacks: terms.stacks,
-            max_stacks: terms.max_stacks,
+        .and_then(|_| session.ailment_stage_terms(stat))
+        .and_then(|terms| match terms.passes.as_slice() {
+            [(_, only)] => Some(ailment_json(only)),
+            _ => None,
         });
-    let damage = (stat == "TotalHitAvg")
-        .then(|| session.hit_damage_terms())
-        .flatten()
-        .map(|terms| {
-            // The physical row is always computed; leave it out when empty.
-            let parts: Vec<_> = terms
-                .parts
-                .iter()
-                .filter(|part| part.base_max != 0.0 || part.max != 0.0)
-                .collect();
-            let types: Vec<_> = parts.iter().map(|part| part.damage_type).collect();
-            let lines = session.hit_damage_mods(&types);
-            HitDamageTableJson {
-                rows: parts
-                    .iter()
-                    .zip(&lines.by_type)
-                    .map(|(part, (_, mods))| HitDamageRowJson {
-                        damage_type: format!("{:?}", part.damage_type),
-                        base_min: part.base_min,
-                        base_max: part.base_max,
-                        increased: part.inc + 0.0,
-                        more: part.more,
-                        more_min: part.more_min,
-                        more_max: part.more_max,
-                        min: part.min,
-                        max: part.max,
-                        avg: part.avg,
-                        crit_avg: part.crit_avg,
-                        mods: mod_entries(mods),
-                    })
-                    .collect(),
-                shared_mods: mod_entries(&lines.shared),
-                damage_effect: terms.damage_effect,
-            }
-        });
-    let mitigation = (stat == "TotalDPS")
-        .then(|| session.hit_mitigation_terms())
-        .flatten()
-        .map(|parts| {
-            parts
-                .iter()
-                .filter(|part| part.average != 0.0)
-                .map(|part| HitMitigationRowJson {
-                    damage_type: format!("{:?}", part.damage_type),
-                    average: part.average,
-                    resist: part.resist.map(|resist| resist + 0.0),
-                    reduction: part.reduction + 0.0,
-                    taken: part.taken,
-                    multiplier: part.mitigated / part.average,
-                    mitigated: part.mitigated,
-                })
-                .collect()
+    let damage = (stat == "TotalHitAvg" && single_pass)
+        .then(|| damage_json(session, 0))
+        .flatten();
+    let mitigation = (stat == "TotalDPS" && single_pass)
+        .then(|| mitigation_json(session, 0))
+        .flatten();
+    let reload = formula
+        .as_ref()
+        .filter(|formula| formula.steps.iter().any(|step| step.op == "reload"))
+        .and_then(|_| session.crossbow_reload())
+        .map(|reload| ReloadJson {
+            firing_rate: reload.firing_rate,
+            bolts: reload
+                .effective_bolt_count
+                .is_finite()
+                .then_some(reload.effective_bolt_count),
+            firing_time: reload.total_firing_time,
+            reload_time: reload.effective_reload_time,
+            rate: reload.effective_rate,
         });
     let skill_dot = (stat == "TotalDotDPS")
         .then(|| session.skill_dot_parts())
@@ -427,6 +578,8 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
         mitigation,
         skill_dot,
         ailment,
+        reload,
+        hands,
     })
 }
 

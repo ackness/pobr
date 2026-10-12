@@ -10,6 +10,7 @@ import type {
   HitMitigationRow,
   SkillDotRow,
   AilmentDetail,
+  ReloadDetail,
   DisplayStatCategory,
   SkillMetricsResponse,
 } from '../../api/types';
@@ -69,7 +70,19 @@ function formulaOperand(step: FormulaStep): string {
     case 'skill_dot':
     case 'hit_dps':
     case 'ailment_source':
+    case 'main_hand':
+    case 'stronger_hand':
       return '';
+    case 'off_hand_average':
+      return `(M + ${n}) ÷ 2`;
+    case 'off_hand_either':
+      return `M + ${n} − M × ${n} ÷ 100`;
+    case 'off_hand_alternating':
+      return `2 ÷ (1 ÷ M + 1 ÷ ${n})`;
+    case 'stronger_share':
+      return `×${n}%`;
+    case 'weaker_hand':
+      return `+ ${n} × (1 − s)`;
     case 'crit_hits':
       return `${n}%`;
     case 'chance_to_hit':
@@ -82,6 +95,7 @@ function formulaOperand(step: FormulaStep): string {
     case 'enemy_mitigation':
     case 'uses_per_second':
     case 'dps_multiplier':
+    case 'reload':
       return `×${n}`;
     case 'vs_evasion':
       return `A × 1.25 ÷ (A + ${n} × 0.3)`;
@@ -95,6 +109,7 @@ function formulaOperand(step: FormulaStep): string {
     case 'ignite_dps':
     case 'bleed_dps':
     case 'dot_dps':
+    case 'off_hand_added':
       return signed;
     case 'increased':
     case 'enemy_increased':
@@ -350,6 +365,35 @@ function AilmentView({ ailment, lang }: { ailment: AilmentDetail; lang: Lang }) 
   );
 }
 
+/** The crossbow cycle behind the `reload` step: a magazine fired, then the reload. */
+function ReloadView({ reload, lang }: { reload: ReloadDetail; lang: Lang }) {
+  const tt = bindT(lang);
+  const seconds = (value: number) => `${fmtNum(value)}${tt('calcs.ailment.seconds')}`;
+  type Key = 'firingRate' | 'bolts' | 'firingTime' | 'reloadTime' | 'rate';
+  const rows: [Key, string][] = [
+    ['firingRate', fmtNum(reload.firing_rate)],
+    ['bolts', reload.bolts === null ? '∞' : fmtNum(reload.bolts)],
+    ['firingTime', seconds(reload.firing_time)],
+    ['reloadTime', seconds(reload.reload_time)],
+    ['rate', fmtNum(reload.rate)],
+  ];
+  return (
+    <div className="breakdown-scroll">
+      <table className="breakdown-formula reload-table" aria-label={tt('calcs.reload.title')}>
+        <caption>{tt('calcs.reload.title')}</caption>
+        <tbody>
+          {rows.map(([key, value]) => (
+            <tr key={key} className={`reload-${key}`}>
+              <th scope="row">{tt(`calcs.reload.${key}`)}</th>
+              <td className="formula-result">{value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /** Modifier lines with type, applied value, text and source; lines the calculation skips are dimmed. */
 function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   const tt = bindT(lang);
@@ -435,6 +479,9 @@ function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang 
     ...(breakdown.damage ? [breakdown.damage.shared_mods, ...breakdown.damage.rows.map((row) => row.mods)] : []),
     ...(breakdown.skill_dot ?? []).map((row) => row.mods),
   ].flat();
+  const hands = breakdown.hands ?? [];
+  // Each hand lists the lines its own pass counts; the stat's own list would repeat the main hand's.
+  const linesPerHand = hands.some((hand) => hand.mods.length > 0);
   return (
     <div className="breakdown-detail">
       {breakdown.damage && <HitDamageView damage={breakdown.damage} lang={lang} />}
@@ -479,11 +526,19 @@ function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang 
         <MitigationView rows={breakdown.mitigation} lang={lang} />
       )}
       {breakdown.ailment && <AilmentView ailment={breakdown.ailment} lang={lang} />}
-      {[...breakdown.mods, ...damageLines].some((m) => !m.active) && (
+      {breakdown.reload && <ReloadView reload={breakdown.reload} lang={lang} />}
+      {hands.length > 0 && <p className="breakdown-note breakdown-hands-note">{tt('calcs.hand.note')}</p>}
+      {hands.map((hand) => (
+        <section key={hand.hand} className={`breakdown-hand breakdown-hand-${hand.hand}`} aria-label={tt(`calcs.hand.${hand.hand}`)}>
+          <h4 className="breakdown-hand-title">{tt(`calcs.hand.${hand.hand}`)}</h4>
+          <BreakdownTable breakdown={hand} lang={lang} />
+        </section>
+      ))}
+      {!linesPerHand && [...breakdown.mods, ...damageLines].some((m) => !m.active) && (
         <p className="breakdown-note">{tt('calcs.inactiveNote')}</p>
       )}
       {breakdown.damage && <DamageLinesView damage={breakdown.damage} lang={lang} />}
-      {breakdown.mods.length > 0 && <ModLines mods={breakdown.mods} lang={lang} />}
+      {!linesPerHand && breakdown.mods.length > 0 && <ModLines mods={breakdown.mods} lang={lang} />}
     </div>
   );
 }

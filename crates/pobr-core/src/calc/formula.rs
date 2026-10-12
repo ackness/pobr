@@ -110,6 +110,28 @@ pub enum FormulaOp {
     AilmentEffect,
     /// Multiplies by `operand`: the ailment deals its damage faster or slower.
     AilmentRate,
+    /// Starts from the main-hand pass's value, `operand`.
+    MainHand,
+    /// The skill alternates weapons: the average with the off-hand pass's
+    /// value `operand`, `(value + operand) / 2`.
+    OffHandAverage,
+    /// Both weapons hit at once: adds the off-hand pass's value `operand`.
+    OffHandAdded,
+    /// Both weapons hit at once and either can crit:
+    /// `value + operand − value × operand / 100`.
+    OffHandEither,
+    /// The skill alternates weapons of different speeds:
+    /// `2 / (1 / value + 1 / operand)`.
+    OffHandAlternating,
+    /// Multiplies by `operand`: the share of time not spent reloading.
+    Reload,
+    /// Starts from the stronger hand's ailment damage per second, `operand`.
+    StrongerHand,
+    /// `operand` percent of the active instances come from the stronger hand.
+    StrongerShare,
+    /// The other instances deal the weaker hand's `operand` per second:
+    /// adds `operand × (1 − stronger share)`.
+    WeakerHand,
 }
 
 impl FormulaOp {
@@ -165,6 +187,15 @@ impl FormulaOp {
             Self::ChanceToApply => "chance_to_apply",
             Self::AilmentEffect => "ailment_effect",
             Self::AilmentRate => "ailment_rate",
+            Self::MainHand => "main_hand",
+            Self::OffHandAverage => "off_hand_average",
+            Self::OffHandAdded => "off_hand_added",
+            Self::OffHandEither => "off_hand_either",
+            Self::OffHandAlternating => "off_hand_alternating",
+            Self::Reload => "reload",
+            Self::StrongerHand => "stronger_hand",
+            Self::StrongerShare => "stronger_share",
+            Self::WeakerHand => "weaker_hand",
         }
     }
 }
@@ -183,6 +214,20 @@ pub struct FormulaStep {
 pub struct StatFormula {
     pub steps: Vec<FormulaStep>,
     pub value: f64,
+}
+
+impl StatFormula {
+    /// Continues with a step the stage applies after these; `value` is the
+    /// stage's output after it.
+    pub(crate) fn then(mut self, op: FormulaOp, operand: f64, result: f64, value: f64) -> Self {
+        self.steps.push(FormulaStep {
+            op,
+            operand,
+            result,
+        });
+        self.value = value;
+        self
+    }
 }
 
 /// Collects steps while tracking the running value.

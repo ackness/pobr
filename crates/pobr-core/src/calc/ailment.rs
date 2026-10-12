@@ -1718,14 +1718,61 @@ pub fn stored_source_at_roll(
 /// estimate is missing (stacks=0, no panel rate signal), s=1 is conservatively assumed (entirely
 /// the max instance — matches vendor's stackName defaulting to 1/1 when there's no estimate).
 pub fn merge_hand_ailment_dps(mh_dps: f64, oh_dps: f64, stacks: f64, max_stacks: f64) -> f64 {
-    let max_instance = mh_dps.max(oh_dps);
-    let min_instance = mh_dps.min(oh_dps);
-    let s = if stacks > 0.0 && max_stacks > 0.0 {
-        (stacks / max_stacks).min(1.0)
-    } else {
-        1.0
-    };
-    round(max_instance * s + min_instance * (1.0 - s))
+    HandAilmentMerge::new(mh_dps, oh_dps, stacks, max_stacks).dps()
+}
+
+/// The terms of [`merge_hand_ailment_dps`]: the stronger and the weaker
+/// hand's DPS and the share of active instances that use the stronger one.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HandAilmentMerge {
+    pub stronger: f64,
+    pub weaker: f64,
+    /// `min(1, stacks / max_stacks)` (fraction).
+    pub stronger_share: f64,
+}
+
+impl HandAilmentMerge {
+    pub fn new(mh_dps: f64, oh_dps: f64, stacks: f64, max_stacks: f64) -> Self {
+        Self {
+            stronger: mh_dps.max(oh_dps),
+            weaker: mh_dps.min(oh_dps),
+            stronger_share: if stacks > 0.0 && max_stacks > 0.0 {
+                (stacks / max_stacks).min(1.0)
+            } else {
+                1.0
+            },
+        }
+    }
+
+    pub fn dps(&self) -> f64 {
+        let s = self.stronger_share;
+        round(self.stronger * s + self.weaker * (1.0 - s))
+    }
+
+    pub(crate) fn formula(&self) -> super::StatFormula {
+        use super::FormulaOp;
+        let s = self.stronger_share;
+        let mut b = super::formula::FormulaBuilder::default();
+        b.set(FormulaOp::StrongerHand, self.stronger, self.stronger);
+        if s != 1.0 {
+            b.set(FormulaOp::StrongerShare, s * 100.0, self.stronger * s);
+            b.set(
+                FormulaOp::WeakerHand,
+                self.weaker,
+                self.stronger * s + self.weaker * (1.0 - s),
+            );
+        }
+        b.finish(self.dps())
+    }
+}
+
+/// What the damaging ailment stage computed one ailment with: the terms of
+/// every pass that applies it (the skill pass, or a weapon hand each) and,
+/// when two passes do, how their DPS was merged.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AilmentStageTerms {
+    pub passes: Vec<(crate::HandTag, AilmentTerms)>,
+    pub merge: Option<HandAilmentMerge>,
 }
 
 /// Whether this is an ailment's default source damage type (no `Can<Ailment>` flag needed).

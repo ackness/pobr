@@ -3,12 +3,12 @@ use pobr_data::prelude::*;
 use crate::{CalcConfig, ModDb};
 
 use super::ailment::{
-    AilmentSource, AilmentTerms, StackConfig, ailment_crit_chance, ailment_duration,
-    ailment_effect_mod, ailment_rate_mod, apply_dot_dps_cap, bleed_traced, chill_traced,
-    cross_type_source_hit, debuff_duration_mult, electrocute_poise_buildup_traced,
-    estimate_active_stacks, freeze_poise_buildup_traced, ignite_traced, merge_hand_ailment_dps,
-    poison_traced, roll_average, shock_traced, stack_potential, stacking_ailment_dps_traced,
-    stored_source_at_roll,
+    AilmentSource, AilmentStageTerms, AilmentTerms, HandAilmentMerge, StackConfig,
+    ailment_crit_chance, ailment_duration, ailment_effect_mod, ailment_rate_mod, apply_dot_dps_cap,
+    bleed_traced, chill_traced, cross_type_source_hit, debuff_duration_mult,
+    electrocute_poise_buildup_traced, estimate_active_stacks, freeze_poise_buildup_traced,
+    ignite_traced, merge_hand_ailment_dps, poison_traced, roll_average, shock_traced,
+    stack_potential, stacking_ailment_dps_traced, stored_source_at_roll,
 };
 use super::output::StoredDamageRange;
 use super::skill_mechanics::{
@@ -54,6 +54,23 @@ pub(crate) fn main_hand_scope(env: &Env) -> Option<(CalcConfig, MinimalInput)> {
         .find(|h| matches!(h.label, crate::HandTag::MainHand | crate::HandTag::Single))
         .or(env.hand_sources.first())
         .map(|hand| super::hand_pass::hand_scope(hand, &env.cfg, &input))
+}
+
+/// The scope of every offence pass, in the order `run_hand_passes` runs
+/// them: one per weapon hand (at most two), or the single skill pass.
+pub(crate) fn pass_scopes(env: &Env) -> Vec<(crate::HandTag, CalcConfig, MinimalInput)> {
+    let input = player_input(env);
+    if env.hand_sources.is_empty() {
+        return vec![(crate::HandTag::Single, env.cfg.clone(), input)];
+    }
+    env.hand_sources
+        .iter()
+        .take(2)
+        .map(|hand| {
+            let (cfg, input) = super::hand_pass::hand_scope(hand, &env.cfg, &input);
+            (hand.label, cfg, input)
+        })
+        .collect()
 }
 
 pub fn perform(env: &mut Env) -> Result<(), CalcError> {
@@ -764,6 +781,7 @@ fn fill_crossbow_reload(env: &mut Env) {
     if !(factor.is_finite() && factor > 0.0) || (factor - 1.0).abs() < f64::EPSILON {
         return; // Degenerate case (doesn't consume ammo, etc.): rate unchanged, no-op.
     }
+    env.crossbow_reload = Some(reload);
     let out = &mut env.player.output;
     out.effective_action_rate = round(reload.effective_rate);
     if let Some(sut) = &mut out.skill_use_time {
@@ -1117,6 +1135,8 @@ fn fill_skill_mechanics(env: &mut Env) {
 /// - Spells/old entry points: a single "Skill" pass, with the Stored family coming from
 ///   offence's merged output (captured by perform).
 struct AilmentPassCtx {
+    /// The weapon hand of this pass (`Single` for the skill pass).
+    hand: crate::HandTag,
     ranges: Vec<StoredDamageRange>,
     /// This pass's crit rate (fraction).
     crit_chance: f64,
@@ -1138,6 +1158,7 @@ struct AilmentPassResult {
     /// The raw stacking estimate (0 = signal missing); CHANCE_AILMENT's `stacks` input.
     stacks_estimate: f64,
     max_stacks: f64,
+    hand: crate::HandTag,
     /// What this pass computed with, for the displayed steps.
     terms: AilmentTerms,
 }
@@ -1294,6 +1315,7 @@ fn damaging_ailment_for_pass(
             active_stacks_panel: stack.active_stacks,
             stacks_estimate: stack.active_stacks,
             max_stacks: stack.max_stacks as f64,
+            hand: ctx.hand,
             terms: AilmentTerms { dps, ..terms },
         })
     } else {
@@ -1307,6 +1329,7 @@ fn damaging_ailment_for_pass(
             active_stacks_panel: active_stacks_of(&stack),
             stacks_estimate: 0.0,
             max_stacks: stack.max_stacks as f64,
+            hand: ctx.hand,
             terms: AilmentTerms { dps, ..terms },
         })
     }
@@ -1314,8 +1337,12 @@ fn damaging_ailment_for_pass(
 
 /// Merges the ailment result from the MH/OH dual pass (vendor's combineStat `CHANCE_AILMENT`,
 /// `:2498-2533` + `:5738`). A single pass passes straight through; the dual pass computes
-/// `max×s + min×(1−s)`, `s = min(1, stacks/max)`.
-fn merge_ailment_passes(results: &[AilmentPassResult]) -> Option<(f64, f64, f64, f64)> {
+/// `max×s + min×(1−s)`, `s = min(1, stacks/max)`. The last element is the merge of the two
+/// passes' DPS (`None` for a single pass).
+#[allow(clippy::type_complexity)]
+fn merge_ailment_passes(
+    results: &[AilmentPassResult],
+) -> Option<(f64, f64, f64, f64, Option<HandAilmentMerge>)> {
     match results {
         [] => None,
         [only] => Some((
@@ -1323,15 +1350,18 @@ fn merge_ailment_passes(results: &[AilmentPassResult]) -> Option<(f64, f64, f64,
             only.stacked_dps,
             only.active_stacks_panel,
             only.max_stacks,
+            None,
         )),
         [a, b, ..] => {
             let stacks = a.stacks_estimate.max(b.stacks_estimate);
             let max_stacks = a.max_stacks.max(b.max_stacks);
+            let merge = HandAilmentMerge::new(a.dps, b.dps, stacks, max_stacks);
             Some((
-                merge_hand_ailment_dps(a.dps, b.dps, stacks, max_stacks),
+                merge.dps(),
                 merge_hand_ailment_dps(a.stacked_dps, b.stacked_dps, stacks, max_stacks),
                 a.active_stacks_panel.max(b.active_stacks_panel),
                 max_stacks,
+                Some(merge),
             ))
         }
     }
@@ -1465,6 +1495,7 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
             // `hitRate = HitChance × Speed × dpsMultiplier`; ctx.speed only feeds the stacking
             // estimate).
             0 => vec![AilmentPassCtx {
+                hand: crate::HandTag::Single,
                 ranges: fallback_ranges.to_vec(),
                 crit_chance,
                 hit_chance: hit_chance_frac,
@@ -1473,6 +1504,11 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
             // Single hand (passes straight through via OR): rate/hit use the top-level effective
             // values (includes the tick cap / reload conversion).
             1 => vec![AilmentPassCtx {
+                hand: if out.main_hand.is_some() {
+                    crate::HandTag::MainHand
+                } else {
+                    crate::HandTag::OffHand
+                },
                 ranges: hands[0].stored_ranges.clone(),
                 crit_chance: hands[0].crit_chance,
                 hit_chance: hit_chance_frac,
@@ -1480,7 +1516,9 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
             }],
             _ => hands
                 .iter()
-                .map(|hand| AilmentPassCtx {
+                .zip([crate::HandTag::MainHand, crate::HandTag::OffHand])
+                .map(|(hand, tag)| AilmentPassCtx {
+                    hand: tag,
                     ranges: hand.stored_ranges.clone(),
                     crit_chance: hand.crit_chance,
                     hit_chance: hand.hit_chance.clamp(0.0, 1.0),
@@ -1524,12 +1562,20 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
                 )
             })
             .collect();
-        let Some((dps, stacked, active, max_stacks)) = merge_ailment_passes(&results) else {
+        let Some((dps, stacked, active, max_stacks, merge)) = merge_ailment_passes(&results) else {
             continue;
         };
-        if let [only] = results.as_slice() {
-            ailment_terms.push((kind, only.terms));
-        }
+        ailment_terms.push((
+            kind,
+            AilmentStageTerms {
+                passes: results
+                    .iter()
+                    .take(2)
+                    .map(|pass| (pass.hand, pass.terms))
+                    .collect(),
+                merge,
+            },
+        ));
         let out = &mut env.player.output;
         match kind {
             AilmentType::Bleed => {

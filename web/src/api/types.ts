@@ -465,11 +465,20 @@ export type FormulaOp =
   | 'active_stacks'
   | 'chance_to_apply'
   | 'ailment_effect'
-  | 'ailment_rate';
+  | 'ailment_rate'
+  | 'main_hand'
+  | 'off_hand_average'
+  | 'off_hand_added'
+  | 'off_hand_either'
+  | 'off_hand_alternating'
+  | 'reload'
+  | 'stronger_hand'
+  | 'stronger_share'
+  | 'weaker_hand';
 
 export interface FormulaStep {
   op: FormulaOp;
-  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier, ailment_effect, ailment_rate), seconds (added_time), the limit, the number of rolls (lucky, bifurcate), the starting damage per second (skill_dot, hit_dps), the hit an ailment starts from (ailment_source), the percentage of it dealt per second (per_second), the number of instances (active_stacks), the chance in percent (chance_to_apply) or the amount added. */
+  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier, ailment_effect, ailment_rate), seconds (added_time), the limit, the number of rolls (lucky, bifurcate), the starting damage per second (skill_dot, hit_dps), the hit an ailment starts from (ailment_source), the percentage of it dealt per second (per_second), the number of instances (active_stacks), the chance in percent (chance_to_apply), a hand's own value (main_hand, the off_hand steps, stronger_hand, weaker_hand), the percentage of instances from the stronger hand (stronger_share), a multiplier (reload) or the amount added. */
   operand: number;
   /** Running value after the step. */
   result: number;
@@ -498,6 +507,34 @@ export interface Breakdown {
   skill_dot?: SkillDotRow[];
   /** IgniteDPS / BleedDPS / PoisonDPS only: the hit the ailment comes from and how many instances are active. */
   ailment?: AilmentDetail;
+  /** ActionRate / TotalDPS only: the cycle behind the `reload` step. */
+  reload?: ReloadDetail;
+  /**
+   * Two weapon passes only, for the stats each pass computes on its own (ActionRate, HitChance,
+   * CritChance, CritMultiplier, TotalHitAvg, TotalDPS and an ailment both hands apply): main hand
+   * then off hand. `formula` then merges the two hands' values, and `damage` / `mitigation` /
+   * `ailment` are listed per hand.
+   */
+  hands?: BreakdownHand[];
+}
+
+/** One weapon pass's own breakdown; its `formula` ends at the value the merge starts from. */
+export interface BreakdownHand extends Breakdown {
+  hand: 'main_hand' | 'off_hand';
+}
+
+/** The crossbow reload cycle: firing a magazine, then reloading. */
+export interface ReloadDetail {
+  /** Uses per second while firing (the value before the `reload` step). */
+  firing_rate: number;
+  /** Bolts fired per magazine, the chance not to consume one included; null when none is ever consumed. */
+  bolts: number | null;
+  /** Seconds to fire the magazine. */
+  firing_time: number;
+  /** Seconds to reload, the chance to reload instantly included. */
+  reload_time: number;
+  /** `bolts / (firing_time + reload_time)`; the `reload` step multiplies by `rate / firing_rate`. */
+  rate: number;
 }
 
 /** What a damaging ailment's steps are built from. */
