@@ -116,10 +116,6 @@ pub(crate) fn apply_condition_implications(mut cfg: CalcConfig) -> CalcConfig {
     if cfg.condition("EnemyIgnited") {
         cfg = cfg.with_condition("EnemyBurning", true);
     }
-    // A frozen enemy must also be chilled (PoB2's `conditionEnemyFrozen` implyCond `Chilled`).
-    if cfg.condition("EnemyFrozen") {
-        cfg = cfg.with_condition("EnemyChilled", true);
-    }
     cfg
 }
 

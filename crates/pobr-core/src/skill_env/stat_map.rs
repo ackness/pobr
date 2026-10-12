@@ -235,13 +235,6 @@ pub(super) fn support_stat_limit<'a>(
                 "sacrifice_%_life_on_skill_use" => Some(SupportStatLimit::Unmodeled(
                     "on-use Life sacrifice not modeled",
                 )),
-                // Pinned gem_stat_descriptions.lua entry 954 specifies attack
-                // damage per elemental ailment on the target. No consumer exists.
-                "support_elemental_armament_attack_damage_+%_final_per_elemental_ailment_on_target" => {
-                    Some(SupportStatLimit::Unmodeled(
-                        "attack damage per elemental ailment on the enemy not modeled",
-                    ))
-                }
                 _ => None,
             }
         }

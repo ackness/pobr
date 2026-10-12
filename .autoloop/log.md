@@ -95,3 +95,13 @@
 - Real planner UI proves equipped-baseline disclosure, newly introduced candidate exclusion, no Apply action on the excluded Armament set, and no stale baseline warning after removal. Restored the prior Invoker, closed space 38, removed screenshots; the isolated named test build remains available.
 - Closed the source-tradeoff milestone. Next worthwhile work is authoritative conditional-ailment counting and numerical modeling, with the current diagnostic retained until implemented. No claim of full mechanical coverage or completion of the broad goal; no tag/push/PR, and paused `/goal` unchanged.
 - Commit: this entry's checkpoint commit (`fix: disclose unmodeled Armament damage bonus`).
+
+## Post-loop — Implement Armament III conditional attack damage
+
+- Followed the user's continuation request. Implemented one source-grounded MORE Attack Damage term using the runtime percentage times five independently configured elemental ailment types, Effective-only. Real extracted mappings keep precedence over the exact code-owned missing-entry rule.
+- Corrected stale Frozen→Chilled implication and explicit-false/imported-true precedence. Kept external enemy conditions independent from the support's infliction prohibition; removed the obsolete Armament limitation receipt and migrated its numerical contract.
+- Passed 121 distinct targeted tests: core mapping 77, config resolver 13, support 24, parity 2, WASM support contracts 5. Scoped lint and release WASM build passed. Fixed a test's incorrect linear effective-DPS assumption (positive armour depends on hit size), retaining strict raw-hit/component and ailment assertions.
+- Real WASM verified 16 paired cases, including each singleton 1.12, Frozen+Chilled 1.24, all five 1.60 and neutral/panel 1.00. Real UI showed increased damage and no obsolete baseline or candidate-exclusion receipt. Preserved prohibition and group/source boundaries.
+- Independent production review approved; resolved its pending contract-doc finding. Updated memo/contract, restored prior Invoker, closed space 39 and removed screenshot. The isolated test build retains Armament plus external Chill.
+- This closes the conditional-support milestone, not the broad project goal. No direct Armament Lua-oracle claim, generated-data edit or automatic push.
+- Commit: this entry's checkpoint commit (`feat: model Armament conditional attack damage`).

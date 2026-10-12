@@ -2377,50 +2377,89 @@ mod support_coverage {
     }
 
     #[test]
-    fn armament_conditional_benefit_discloses_only_for_its_compatible_main_group() {
+    fn armament_conditional_attack_damage_is_numerical_and_group_scoped() {
         init();
         let support = "SupportElementalArmamentPlayerThree";
-        let stat =
-            "support_elemental_armament_attack_damage_+%_final_per_elemental_ailment_on_target";
         let groups = vec![
             group("ArmourBreakerPlayer", &[]),
             group("ArmourBreakerPlayer", &[support]),
             group("FireballPlayer", &[support]),
         ];
-        for chilled in [false, true] {
-            let mut input = request(groups.clone(), 1);
-            input["config_inputs"] = json!({"conditionEnemyChilled": chilled});
-            let supported = calc(&input);
-            let limits = supported["unsupported_modifiers"].as_array().unwrap();
-            let receipts: Vec<_> = limits
-                .iter()
-                .filter_map(Value::as_str)
-                .filter(|text| text.contains(stat))
-                .collect();
-            assert_eq!(
-                receipts.len(),
-                1,
-                "missing conditional benefit, chilled={chilled}"
-            );
-            for token in [
-                format!("Support:{support}:"),
-                format!("stat={stat}:"),
-                "set=1:".into(),
-                "value=12:".into(),
-                "host=ArmourBreakerPlayer:".into(),
-            ] {
-                assert!(receipts[0].contains(&token), "missing {token:?}");
-            }
-
-            for main in [0, 2] {
-                input["main_socket_group"] = json!(main);
+        // Source-grounded, not an Armament oracle golden: sup_str.lua:2891-2920
+        // gives 12% MORE Attack Damage; ModParser.lua:3866-3872 names five types.
+        // One final-per-count term gives 1.60, not five compounded 1.12 terms.
+        for (config, factor) in [
+            (json!({}), 1.00),
+            (json!({"conditionEnemyChilled": true}), 1.12),
+            (json!({"conditionEnemyFrozen": true}), 1.12),
+            (
+                json!({"conditionEnemyFrozen": true, "conditionEnemyChilled": true}),
+                1.24,
+            ),
+            (
+                json!({
+                    "conditionEnemyIgnited": true,
+                    "conditionEnemyChilled": true,
+                    "conditionEnemyFrozen": true,
+                    "conditionEnemyShocked": true,
+                    "conditionEnemyElectrocuted": true,
+                }),
+                1.60,
+            ),
+        ] {
+            for effective in [true, false] {
+                let mut input = request(groups.clone(), 0);
+                input["config_inputs"] = config.clone();
+                input["mode_effective"] = json!(effective);
+                input["enemy_tier"] = json!("none");
+                input["extra_modifiers"] =
+                    json!(["Adds 100000 to 100000 Physical Damage to Attacks"]);
+                let bare = calc(&input);
+                input["main_socket_group"] = json!(1);
+                let supported = calc(&input);
+                for id in ["TotalHitAvg", "TotalDPS"] {
+                    let base = stat(&bare, id);
+                    assert!(base > 0.0, "{id} baseline");
+                    let expected = base * if effective { factor } else { 1.00 };
+                    if id == "TotalDPS" && effective && factor > 1.0 {
+                        // The "none" tier still supplies positive monster armour.
+                        // Positive armour mitigates a smaller fraction of the
+                        // larger physical hit; exact raw-hit scaling remains
+                        // asserted by TotalHitAvg, DPS has this lower bound.
+                        assert!(stat(&supported, id) >= expected);
+                    } else {
+                        assert!(
+                            (stat(&supported, id) - expected).abs() < expected * 1e-10,
+                            "{id}, effective={effective}, config={config}: expected {expected}, got {}",
+                            stat(&supported, id)
+                        );
+                    }
+                }
                 assert!(
-                    calc(&input)["unsupported_modifiers"]
+                    supported["unsupported_modifiers"]
                         .as_array()
                         .unwrap()
                         .is_empty(),
-                    "other or incompatible groups must not leak the Armament limit"
+                    "a real numerical benefit replaces the obsolete Armament limit"
                 );
+
+                // Switching the main skill must not leak either the benefit or
+                // the ailment prohibition to another group or an incompatible spell.
+                for main in [0, 2] {
+                    input["main_socket_group"] = json!(main);
+                    let other = calc(&input);
+                    let mut without_armament = input.clone();
+                    without_armament["socket_groups"][1] = group("ArmourBreakerPlayer", &[]);
+                    without_armament["socket_groups"][2] = group("FireballPlayer", &[]);
+                    let plain = calc(&without_armament);
+                    assert_eq!(other["stats"], plain["stats"]);
+                    assert!(
+                        other["unsupported_modifiers"]
+                            .as_array()
+                            .unwrap()
+                            .is_empty()
+                    );
+                }
             }
         }
     }
