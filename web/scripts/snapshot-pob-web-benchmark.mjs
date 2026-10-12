@@ -4,16 +4,13 @@ import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
-const options = {
-  input: resolve(root, '.cache/pob-web-performance.json'),
-  output: resolve(root, 'devs/ci/pob-web-performance-baseline.json'),
-};
+const options = { input: resolve(root, '.cache/pob-web-performance.json') };
 try {
   const seen = new Set();
   for (let index = 2; index < process.argv.length; index++) {
     const flag = process.argv[index];
     if (flag === '--help' && process.argv.length === 3) {
-      console.log('Usage: node web/scripts/snapshot-pob-web-benchmark.mjs [--input REPORT] [--output BASELINE]');
+      console.log('Usage: node web/scripts/snapshot-pob-web-benchmark.mjs [--input REPORT] --output FILE');
       process.exit(0);
     }
     const key = { '--input': 'input', '--output': 'output' }[flag];
@@ -22,10 +19,10 @@ try {
     seen.add(key);
     options[key] = resolve(value);
   }
+  // No default: a snapshot is a dated record, and a default path would silently replace an earlier one.
+  if (!options.output) throw new Error('--output is required');
   const report = JSON.parse(readFileSync(options.input, 'utf8'));
   const pobrOnly = report.method?.mode === 'pobr-only';
-  // The default output is the committed paired baseline; a single-engine report must never replace it.
-  if (pobrOnly && !seen.has('output')) throw new Error('A PoBR-only report requires an explicit --output');
   const baseline = {
     ...report,
     fullLocalReport: relative(root, options.input),

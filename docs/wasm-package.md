@@ -127,11 +127,11 @@ These are disk/transfer sizes, not runtime memory measurements.
 The [performance and build analysis](wasm-performance.md) document
 ([中文](wasm-performance.zh-CN.md)) records an opt-in
 PoBR Rust WASM versus pob-web Lua WASM **code-import + calculation** benchmark.
-The [baseline](../devs/ci/pob-web-performance-baseline.json) preserves the measured
-samples, host, artifact hashes, selected outputs and failed fixtures; later
-observations are kept beside it as dated records (see the analysis document). They are
-separate from the measured size baseline above. `mise run setup` installs the toolchain
-this benchmark needs.
+The [paired record](../devs/ci/pob-web-performance-2026-10-12-m4.json) preserves the measured
+samples, host, artifact hashes, selected outputs and failed fixtures, and the
+[PoBR-only record](../devs/ci/pobr-only-performance-2026-10-12-m4.json) covers the builds the
+Lua reference rejects. They are separate from the measured size baseline above.
+`mise run setup` installs the toolchain this benchmark needs.
 
 `node web/scripts/benchmark-pob-web.mjs --prepare` acquires a hash-verified local
 reference snapshot, preserving the upstream license and pinning its wrapper,
@@ -153,9 +153,8 @@ captures retain their actual league, snapshot, character URL, fetch date and cod
 hash; they do not silently become parity goldens. README tables distinguish
 latest-season captures from historical inputs. To preserve a compact baseline
 with raw samples/diagnostics but without full breakdown responses, run
-`node web/scripts/snapshot-pob-web-benchmark.mjs` after the benchmark report exists.
-Without `--output` it overwrites the baseline above, so pass a dated path to keep earlier
-records; a `--pobr-only` report requires `--output`.
+`node web/scripts/snapshot-pob-web-benchmark.mjs --output <file>` after the benchmark report
+exists; `--output` is required so an earlier record is never replaced by default.
 
 Regression checks:
 
