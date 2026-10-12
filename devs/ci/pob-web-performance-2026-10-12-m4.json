@@ -1,0 +1,2161 @@
+{
+  "measuredAt": "2026-10-12T16:13:28.803Z",
+  "host": {
+    "node": "v26.11.1",
+    "platform": "darwin",
+    "release": "27.0.0",
+    "arch": "arm64",
+    "cpu": "Apple M4"
+  },
+  "method": {
+    "scenario": "import-and-calculate",
+    "iterations": 9,
+    "warmup": 2,
+    "timing": "PoB code to JSON result. Includes code inflation for both engines (Rust for PoBR; Node zlib before pob-web XML import), adapter validation and Node Worker transport for pob-web. Harness JSON validation outside samples. Alternating engine order; unique PoBR request strings bypass the response cache.",
+    "initialization": "One observed initialization per engine, including ES module import I/O, from preloaded WASM/data bytes. Excludes reference worker creation and artifact reads/hash checks. Not a startup distribution or network measurement.",
+    "parityAsserted": false,
+    "limitations": "Different engine implementations, output contracts and game-data/feature coverage. pob-web also constructs headless UI state during import. No browser rendering or browser Worker transport, download time, incremental editing or runtime memory comparison."
+  },
+  "builds": [
+    {
+      "fixture": "huntress-spirit-walker-twister",
+      "sha256": "3277669b69d04a89202be9d0037548609e9f146f1381e68d67af40f7075ccbda",
+      "xmlSha256": "e52db01dd6ad6161fa243a29d812a400c06ecd90a5732257c2c31991f944de37",
+      "character": {
+        "class": "Huntress",
+        "ascendancy": "Spirit Walker",
+        "level": 99,
+        "main_skill": "Twister"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Aeone1-0564/SnusInMyBlood",
+        "account": "Aeone1-0564",
+        "character": "SnusInMyBlood",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    },
+    {
+      "fixture": "mercenary-gemling-legionnaire-explosive-grenade",
+      "sha256": "8f2c3b4c33cdf5aad625ad0b403ac32c35dd7a6425293a1b067067c967e8f7e2",
+      "xmlSha256": "7aa31932447070aa9357a51eaf76e2608ba46992560ab35bd7043ccd0a05cd03",
+      "character": {
+        "class": "Mercenary",
+        "ascendancy": "Gemling Legionnaire",
+        "level": 98,
+        "main_skill": "Explosive Grenade"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Bhongskii-1846/Bhongskiiiii",
+        "account": "Bhongskii-1846",
+        "character": "Bhongskiiiii",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    },
+    {
+      "fixture": "ninja-2026-10-11-druid-oracle-lightning-bolt-950c9ad4451d",
+      "sha256": "67de41f7047f833bf2313623d3b586504de07fb62085670b0e8dba43f3bab7f1",
+      "xmlSha256": "7d695f3fbf95b3559e3afd55d23e0f762a051cb26e440e69619e8d8e30265085",
+      "character": {
+        "class": "Druid",
+        "ascendancy": "Oracle",
+        "level": 100,
+        "main_skill": "Lightning Bolt"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/0bibea-1410/FR_obi",
+        "account": "0bibea-1410",
+        "character": "FR_obi",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=0bibea-1410&name=FR_obi&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Oracle",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season"
+    },
+    {
+      "fixture": "ninja-2026-10-11-huntress-amazon-ice-shot-182e794cb5d9",
+      "sha256": "903cacc9c3266e31b0a50ef5b4b52522a96d1e2804cf1e69d2205ec002b1e63b",
+      "xmlSha256": "62e738795ae7447f21b49334ec5252154316842d1f23dafd629c4b0ef42f2055",
+      "character": {
+        "class": "Huntress",
+        "ascendancy": "Amazon",
+        "level": 97,
+        "main_skill": "Ice Shot"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1031-5196/JOJOTENF",
+        "account": "1031-5196",
+        "character": "JOJOTENF",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1031-5196&name=JOJOTENF&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Amazon",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season"
+    },
+    {
+      "fixture": "ninja-2026-10-11-mercenary-gemling-legionnaire-comet-c60ba778fabb",
+      "sha256": "531dd37484a358bf6d78be5b8ab7f5a25dba2af237c7138c5aae08feb65484f1",
+      "xmlSha256": "544f7c2b1d7524bf4dabbcb0ccc8881de9987720dd89fe97eee7c8d42bf19141",
+      "character": {
+        "class": "Mercenary",
+        "ascendancy": "Gemling Legionnaire",
+        "level": 100,
+        "main_skill": "Comet"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1056758881-1572/%E5%8C%97%E6%9E%81%E6%98%9F%E7%A5%9E%E5%8C%96%E8%BA%AB",
+        "account": "1056758881-1572",
+        "character": "北极星神化身",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1056758881-1572&name=%E5%8C%97%E6%9E%81%E6%98%9F%E7%A5%9E%E5%8C%96%E8%BA%AB&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season"
+    },
+    {
+      "fixture": "ninja-2026-10-11-monk-martial-artist-ice-shot-71a879f43f2f",
+      "sha256": "0a7cae32696701597ef92b9131f15776e52e49eac6477b4fee888a5ebb56db4e",
+      "xmlSha256": "a9858017b60de52b89d2e31298fcb20839c45675160a17aeefe27fe69eeb4f63",
+      "character": {
+        "class": "Monk",
+        "ascendancy": "Martial Artist",
+        "level": 99,
+        "main_skill": "Ice Shot"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1184519336-2377/%E6%88%91%E5%B0%B1%E6%98%AF%E9%98%BF%E6%AC%A3",
+        "account": "1184519336-2377",
+        "character": "我就是阿欣",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1184519336-2377&name=%E6%88%91%E5%B0%B1%E6%98%AF%E9%98%BF%E6%AC%A3&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Martial+Artist",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season"
+    },
+    {
+      "fixture": "ninja-2026-10-11-ranger-deadeye-ice-shot-b6ce7b3a4329",
+      "sha256": "8aa4a8854da9acca30551fa852b6bbfa4d3cc2c3f3e22f08e83466b88a320e6b",
+      "xmlSha256": "a72edd935f72e0548ade0a3d695aafd62f97b3dc9d42a4ed48458ba4b93867a2",
+      "character": {
+        "class": "Ranger",
+        "ascendancy": "Deadeye",
+        "level": 99,
+        "main_skill": "Ice Shot"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1242treasure0826-3306/%E3%82%B5%E3%83%B3%E3%82%B5_%E3%83%9F%E3%83%8B%E3%83%AA%E3%83%BC%E3%82%B0",
+        "account": "1242treasure0826-3306",
+        "character": "サンサ_ミニリーグ",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1242treasure0826-3306&name=%E3%82%B5%E3%83%B3%E3%82%B5_%E3%83%9F%E3%83%8B%E3%83%AA%E3%83%BC%E3%82%B0&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Deadeye",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season"
+    },
+    {
+      "fixture": "ninja-2026-10-11-sorceress-stormweaver-comet-f085a4410120",
+      "sha256": "957efc2a05cbfedd1a480e6e882befa9a547cd8eb3e8333d1d363323af82630f",
+      "xmlSha256": "97ff6edc3496afd80037704ce20769e1b0dc683a4356b1f90b184c522f3cc6dc",
+      "character": {
+        "class": "Sorceress",
+        "ascendancy": "Stormweaver",
+        "level": 100,
+        "main_skill": "Comet"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/2736045458-2703/%E4%B8%8D%E8%89%AF%E4%BA%BA",
+        "account": "2736045458-2703",
+        "character": "不良人",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=2736045458-2703&name=%E4%B8%8D%E8%89%AF%E4%BA%BA&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Stormweaver",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season"
+    },
+    {
+      "fixture": "ninja-2026-10-11-warrior-titan-his-scattering-calamity-a46026af415f",
+      "sha256": "da661ef8971a007101364acc8074c5199585488a4765413d7c4d1a639b97a2db",
+      "xmlSha256": "58299b52c38969c816beed868075bc24421ce21ac57c068decb869eafb54a6e2",
+      "character": {
+        "class": "Warrior",
+        "ascendancy": "Titan",
+        "level": 98,
+        "main_skill": "His Scattering Calamity"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/3640233073-1554/%E9%97%AA%E5%9B%9E%E8%8F%9C%E5%9B%B0%E5%9B%B0",
+        "account": "3640233073-1554",
+        "character": "闪回菜困困",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=3640233073-1554&name=%E9%97%AA%E5%9B%9E%E8%8F%9C%E5%9B%B0%E5%9B%B0&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Titan",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season"
+    },
+    {
+      "fixture": "ninja-2026-10-11-witch-blood-mage-impending-doom-add19135df93",
+      "sha256": "437934443f64e975bd458f1051124d9f78c50a5d49bd36fc84c6396c1ba270ba",
+      "xmlSha256": "3327a2615cd8b4e401ba0c470acf10e953dd7576e9e2345e9240a8b53968cdb1",
+      "character": {
+        "class": "Witch",
+        "ascendancy": "Blood Mage",
+        "level": 99,
+        "main_skill": "Impending Doom"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/2669291331-5245/Twistcc",
+        "account": "2669291331-5245",
+        "character": "Twistcc",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=2669291331-5245&name=Twistcc&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Blood+Mage",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season"
+    },
+    {
+      "fixture": "ranger-deadeye-explosive-grenade",
+      "sha256": "b158bc0d4c12101948bc5c3ca331b3c88754651d491353bbe5c85feb9916e394",
+      "xmlSha256": "b443aaccee4f28985bc27f68b2e607d1ee386919ebc528a696352a766e57089c",
+      "character": {
+        "class": "Ranger",
+        "ascendancy": "Deadeye",
+        "level": 99,
+        "main_skill": "Explosive Grenade"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/lua_dipaa-4786/AESPA_LEMONADE",
+        "account": "lua_dipaa-4786",
+        "character": "AESPA_LEMONADE",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    },
+    {
+      "fixture": "ranger-pathfinder-ice-shot",
+      "sha256": "6f7690a0c3089811221eecc7a663c1e244196ff9e5d7038fe43da049ddcfeb4c",
+      "xmlSha256": "aeaa96735d1910ae3a23800f8e58f88f37b00aca02a75bbeadf30b04e14e4cb7",
+      "character": {
+        "class": "Ranger",
+        "ascendancy": "Pathfinder",
+        "level": 99,
+        "main_skill": "Ice Shot"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Aengus-2685/stillAengus",
+        "account": "Aengus-2685",
+        "character": "stillAengus",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    },
+    {
+      "fixture": "warrior-smith-of-kitava-shield-wall",
+      "sha256": "d713de39a5e06de4c36406190a46e414535930963dc0aea991b61e9ae658bfaf",
+      "xmlSha256": "37c47e219078177c257094c82b71fcd284d03d712623c8497ed10ed03e65f352",
+      "character": {
+        "class": "Warrior",
+        "ascendancy": "Smith of Kitava",
+        "level": 100,
+        "main_skill": "Shield Wall"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Prec0cious-1317/xxTheWizardOfOsu",
+        "account": "Prec0cious-1317",
+        "character": "xxTheWizardOfOsu",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    },
+    {
+      "fixture": "warrior-titan-shield-wall",
+      "sha256": "50a5b890b1926bf4609955b8746c2877049b2de96eb9eb2f5a08a12084254f1c",
+      "xmlSha256": "57c77476995076a0083ae06ff3f66e82c1566c0fa78f12cb13d119c6af6ceb94",
+      "character": {
+        "class": "Warrior",
+        "ascendancy": "Titan",
+        "level": 100,
+        "main_skill": "Shield Wall"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/methanman-2640/goodnerfing",
+        "account": "methanman-2640",
+        "character": "goodnerfing",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    },
+    {
+      "fixture": "witch-abyssal-lich-detonate-dead",
+      "sha256": "fe3ef6f3b2c52a348ecd631da585aadf21cd91fa3c3724fbd20e2455b8ee0374",
+      "xmlSha256": "51a38ba8cf1df903646df340aa0238b59ab23bb7b8ca0d60ff682840dd9b0e94",
+      "character": {
+        "class": "Witch",
+        "ascendancy": "Abyssal Lich",
+        "level": 98,
+        "main_skill": "Detonate Dead"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Kaku167-1951/LeafMeAloneeeee",
+        "account": "Kaku167-1951",
+        "character": "LeafMeAloneeeee",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    }
+  ],
+  "engines": [
+    {
+      "name": "pobr",
+      "initializationMs": 463.10354100000006,
+      "provenance": {
+        "commit": "18b6a03b1b4c49ee322da435429d47869a653f3c",
+        "dirty": true,
+        "sourceFingerprint": "02320289f2a49ce9cd4020b15473d684bb8796146fd84a4b69f54605e071e160",
+        "schemaVersion": 8,
+        "dataVersion": "0.5.5.4.2",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+        "wasmPack": "wasm-pack 0.15.0",
+        "files": [
+          {
+            "name": "pobr_wasm_bg.wasm",
+            "bytes": 5302894,
+            "sha256": "5805f4a4ac841133a94dccf40b42bc0ac997bb02f7031ca5373923437cf58787"
+          },
+          {
+            "name": "pobr_wasm.js",
+            "bytes": 23808,
+            "sha256": "82539b727c180d5fe907ba5a1f6432ef4983d8a37612bedfc63671c07fb02b75"
+          },
+          {
+            "name": "base/base_items.json",
+            "bytes": 1574630,
+            "sha256": "ac652c7948396223fb8a51f30cb85204528926b2e7b57bc6708ab173e96bd3fe"
+          },
+          {
+            "name": "base/base_player_mods.json",
+            "bytes": 2035,
+            "sha256": "5f93bf335cd2dd71ae1ce8bf137a7a0dfe621ee6e3778d0fc6c9f83befc85687"
+          },
+          {
+            "name": "base/character_constants.json",
+            "bytes": 385,
+            "sha256": "e64bd63f5c2288447ff22e878297752aae8ec5ee9a6135e460f514914ed22150"
+          },
+          {
+            "name": "base/cost_types.json",
+            "bytes": 1125,
+            "sha256": "5dac3a7f08d63b8512f1d24870d50f876cf7907c6cc2a405473a4c65926fb88a"
+          },
+          {
+            "name": "base/enemy_presets.json",
+            "bytes": 7973,
+            "sha256": "d8504ef38860682d03872e9b006493cecb91f078650c3f7580d056d34d3cb861"
+          },
+          {
+            "name": "base/game_constants.json",
+            "bytes": 2582,
+            "sha256": "a65a720334360f9d5951e1c69d1db881219ec7a65160d3f69f40ea77adb34e0b"
+          },
+          {
+            "name": "base/granted_effect_levels.json",
+            "bytes": 2927324,
+            "sha256": "3a66d591def23772ff43b3b63ec96e9a12fc4f3c88be40f741681914926f51da"
+          },
+          {
+            "name": "base/granted_effect_stat_sets.json",
+            "bytes": 12203578,
+            "sha256": "8d05d78c9ead3f6a124117d9dc03d4969aec0d3fff7e556ed476425e02961d40"
+          },
+          {
+            "name": "base/granted_effects.json",
+            "bytes": 2355980,
+            "sha256": "892835c521a734073e1ddb61f2e4e83867afdd5264c92553cdf3aaebe1e6c8df"
+          },
+          {
+            "name": "base/jewel_radii.json",
+            "bytes": 1507,
+            "sha256": "00c1e71af6666521c2e1fc3afd7af7f5eb9cb14b1a4537dbb44e8f2de6d7d336"
+          },
+          {
+            "name": "base/mods.json",
+            "bytes": 7760583,
+            "sha256": "a776da514ee5ce151d17b67def3429811a7f78338d68bc0d165f72ee79199b5a"
+          },
+          {
+            "name": "base/monster_scaling.json",
+            "bytes": 9295,
+            "sha256": "7117f594207dcfa249e9ce4accc0de89a3bb32e057bf891d0f5e3ecc2d6f988b"
+          },
+          {
+            "name": "base/non_damaging_ailments.json",
+            "bytes": 1385,
+            "sha256": "8a15a0840b02f76b5b3dbad8474f438e2611252582d2b57a747ec065e0da1291"
+          },
+          {
+            "name": "base/passive_tree.json",
+            "bytes": 1718788,
+            "sha256": "7e021c17f9679b3ff4d72cacdba20ee3d17bf8d0acf7ea02311dd29886996851"
+          },
+          {
+            "name": "base/passive_tree_meta.json",
+            "bytes": 3362,
+            "sha256": "6247ea4b7d75853f3b4947e8946ecf4c7b45450e057dab57516ebe2ec7534ce8"
+          },
+          {
+            "name": "base/passive_trees/0_1.json",
+            "bytes": 552789,
+            "sha256": "861042ea66f2e9252c571192e2b4f7fcbb5e58049344a5cbd20195ca63b76dd7"
+          },
+          {
+            "name": "base/passive_trees/0_2.json",
+            "bytes": 607893,
+            "sha256": "bdf47e023ed4e7b4ebc284e5c426fc8497e2de1e7fc1c9b87ca88dcc0a0c8b43"
+          },
+          {
+            "name": "base/passive_trees/0_3.json",
+            "bytes": 745706,
+            "sha256": "da6ea9249d6a4d84756e3ca7a0abddbce9c87258323fa99c892dc4f0650e63a8"
+          },
+          {
+            "name": "base/passive_trees/0_4.json",
+            "bytes": 862059,
+            "sha256": "798630f4d3c4131a113e9611f509ceb85146a92cba36fea7d9b1780924d77f1a"
+          },
+          {
+            "name": "base/skill_gems.json",
+            "bytes": 232738,
+            "sha256": "32b5efd898e25bcf001e6fb29ee96c94df5d13b1b83b9de6096251a15064b599"
+          },
+          {
+            "name": "base/stats.json",
+            "bytes": 2911521,
+            "sha256": "c006461cf0997b96d24f4aa5112dd03979c3a377ff8a8d4c1d308adad00a8f8d"
+          },
+          {
+            "name": "base/unarmed_data.json",
+            "bytes": 1647,
+            "sha256": "5c363209d25e131ef54f69229252b02e6d99a7178b125537cf0d83bec131e803"
+          },
+          {
+            "name": "base/weapon_types.json",
+            "bytes": 1848,
+            "sha256": "5b15e7302f73422664fee33dde6d24e4868a731510991b7709c4b274a162f214"
+          },
+          {
+            "name": "generated/special_derived.json",
+            "bytes": 11909,
+            "sha256": "d18157d99c7620f096aa485d1f93d33166a578d45a9e4a064817d629e023a105"
+          },
+          {
+            "name": "generated/special_vendor.json",
+            "bytes": 1442154,
+            "sha256": "32375584467211b9e271e6dcd949dab194adc87d3955d7518bb141031054746c"
+          },
+          {
+            "name": "i18n/zh-CN/_meta.json",
+            "bytes": 901,
+            "sha256": "14e0ff55f8dcfab5e91868dc2db56e65fc75551a64c59579d6a75469c98bb68f"
+          },
+          {
+            "name": "i18n/zh-CN/base_items.json",
+            "bytes": 370795,
+            "sha256": "910c5ebb7af9efe976f01414dfae4bda22132c23c5138eb0cbadaeb5e86e4d53"
+          },
+          {
+            "name": "i18n/zh-CN/classes.json",
+            "bytes": 1128,
+            "sha256": "6944676a4fd017fde321ee2758992ee4b18a835ce59ed45e6c9708b01a275bed"
+          },
+          {
+            "name": "i18n/zh-CN/mods.json",
+            "bytes": 93053,
+            "sha256": "8d62bf95d9a54650fff127815580e169f7e83983235a56dc3ed295c9d1a1a76d"
+          },
+          {
+            "name": "i18n/zh-CN/passive_names.json",
+            "bytes": 134582,
+            "sha256": "6becc784be1f24e4b3dbc4ed8a16335c2602b1c90b4e3f73a5c23e5879af26dd"
+          },
+          {
+            "name": "i18n/zh-CN/rare_words.json",
+            "bytes": 124951,
+            "sha256": "ab23836d0f2034914bf799777134cf51482708425c909f7bf713400c67105915"
+          },
+          {
+            "name": "i18n/zh-CN/skills.json",
+            "bytes": 33008,
+            "sha256": "16eb4a451e3472c0b06fd36f21c6f308b2ebca24287d5c240a1345491c91eb77"
+          },
+          {
+            "name": "i18n/zh-CN/stat_lines.json",
+            "bytes": 3857237,
+            "sha256": "28da2be7c44a4d872a94ad653d0002ff798f02de7a2b503d020d318cd170275e"
+          },
+          {
+            "name": "i18n/zh-CN/words.json",
+            "bytes": 132463,
+            "sha256": "7ba0c43e90c3909c725f8a563ab169ccfcbcf3b53c05a2748d17d7508cce58cc"
+          },
+          {
+            "name": "i18n/zh-TW/base_items.json",
+            "bytes": 370188,
+            "sha256": "511ab8228f4a0a26bec004885ad79b1d8215d260b49ca4084d8bcbfa3dc36708"
+          },
+          {
+            "name": "i18n/zh-TW/mods.json",
+            "bytes": 333567,
+            "sha256": "c0212690817a81753a26e078c59c58e71b51c51857084a964dc297ce4237b944"
+          },
+          {
+            "name": "i18n/zh-TW/skills.json",
+            "bytes": 31144,
+            "sha256": "e262bf149b778a7426078fb08ac38903393e1146b7fc1835a1238dca5691e8dd"
+          },
+          {
+            "name": "manifest.json",
+            "bytes": 7453,
+            "sha256": "36d39b3fe22cbb3cd8a96af0a0bf1709cb4f7ddb68cb91996d2f63690883c7d6"
+          },
+          {
+            "name": "overlay-common/buff_definitions.json",
+            "bytes": 14684,
+            "sha256": "5f4368d1645589d96804f984be1a53a11beb449331c3357cf6a4781722d15d69"
+          },
+          {
+            "name": "overlay-common/high_precision_mods.json",
+            "bytes": 2839,
+            "sha256": "e37774b91cc43620ca3411178b3be492cd6f0dc9ed240ec9a12905508528f52d"
+          },
+          {
+            "name": "overlay-common/local_mods.json",
+            "bytes": 1230,
+            "sha256": "6a5d002d0939679fc1da2151bc69245c031920980dc18b4adeb2de8ece10b9a5"
+          },
+          {
+            "name": "overlay-common/special_mods.json",
+            "bytes": 100687,
+            "sha256": "240034443fd6d5c526e8c808e451da13e45dfc5084f48e37978da8b70312d773"
+          },
+          {
+            "name": "overlay-common/vendor_name_aliases.json",
+            "bytes": 14378,
+            "sha256": "af40f1f97ff893b076225fbc5778884d83450f70aa7b99e3fda7461eeb047ba4"
+          },
+          {
+            "name": "overlay/base_item_overrides.json",
+            "bytes": 463930,
+            "sha256": "5f6d40b302444becb5c379fa7bc46728d133461f48fba6d633f7e58f356a362c"
+          },
+          {
+            "name": "overlay/catalysts.json",
+            "bytes": 2207,
+            "sha256": "e177a36dc34c001687c726a0168a0e29b9de8c50629b44fd945f0efa38be5157"
+          },
+          {
+            "name": "overlay/config_options.json",
+            "bytes": 371616,
+            "sha256": "4f086b93a9f83627e37c83343a6761e797b7fbe2fcee8cec2b5f325fbf29453e"
+          },
+          {
+            "name": "overlay/curse_priority.json",
+            "bytes": 1197,
+            "sha256": "0767ba472ecaa863557a0988556000b44183c45a82f7726fa898aae916df721a"
+          },
+          {
+            "name": "overlay/gem_effects.json",
+            "bytes": 187278,
+            "sha256": "0803821824b341a27368ae8e602bbaf90c783e47cfa1a5fc741286c8aee0f2e1"
+          },
+          {
+            "name": "overlay/gem_quality_stats.json",
+            "bytes": 144285,
+            "sha256": "d97dacea54e13a1d38b446b3572cf205b5d1c609b94335ebe16192cc29c1cb5d"
+          },
+          {
+            "name": "overlay/granted_effect_minions.json",
+            "bytes": 4605,
+            "sha256": "34f9e5e434c4b983ebbc784cbef6728969c0153d5dffd09c1cd9413c336b5621"
+          },
+          {
+            "name": "overlay/minions.json",
+            "bytes": 46503,
+            "sha256": "7880fedd84c29b3e318219fac5911b41af982fab552d4d84ec7e3386ed052fe8"
+          },
+          {
+            "name": "overlay/mirage_configs.json",
+            "bytes": 3501,
+            "sha256": "57a0b855062e1ec1a62461c634900fcb0b97e8b634ad0db9e09cc88a70c104c9"
+          },
+          {
+            "name": "overlay/mod_parser_rules.json",
+            "bytes": 399234,
+            "sha256": "a85d60c3c20b8e10e2f0672625d46822c1f27878f59c6171ef42cce21bc4db7b"
+          },
+          {
+            "name": "overlay/mod_scalability.json",
+            "bytes": 2496835,
+            "sha256": "4713a22c2f32dc21fe0c017f6fed792cb799ac449171187fbb2d2b7acd814fc8"
+          },
+          {
+            "name": "overlay/passive_jewels.json",
+            "bytes": 14663,
+            "sha256": "a93b2729bb015f8902a909367e62a1a2abc2787cde0f6d929191222283c33690"
+          },
+          {
+            "name": "overlay/runes.json",
+            "bytes": 341499,
+            "sha256": "cfec5d6eb345045c558b004bc241348378ef5b25f49060c948ac4e6b56f3671d"
+          },
+          {
+            "name": "overlay/skill_overrides.json",
+            "bytes": 376541,
+            "sha256": "02948c49387a0c83fb5bc013552b8bcc1b98edfc1027ceb743de3288d7652397"
+          },
+          {
+            "name": "overlay/skill_stat_map.json",
+            "bytes": 559713,
+            "sha256": "944e86eb729899a547daedc8eab6741d773eb40ec1f64a380a9acd2c20054661"
+          },
+          {
+            "name": "overlay/special_mods.json",
+            "bytes": 10725,
+            "sha256": "1d4ea323c6a980865119dad5e86c05d7097097a055bc026fa16eb52f483f097e"
+          },
+          {
+            "name": "overlay/spectres.json",
+            "bytes": 941816,
+            "sha256": "50b98756c340cadbaba1ff5d503e79cc06e744d5a100719941c6e1fc765fdd94"
+          },
+          {
+            "name": "overlay/stat_descriptions.json",
+            "bytes": 1512201,
+            "sha256": "bed5ed56c8281e0c8ae1da2fb142e0f74ba1a3c79ffcee0011b3fbc3875f9b77"
+          },
+          {
+            "name": "overlay/stat_set_labels.json",
+            "bytes": 207388,
+            "sha256": "825e594f43f07a4115ee29e57622670688e5d1c099f7e11a30ba66b3b80cca06"
+          },
+          {
+            "name": "overlay/trade_catalog.json",
+            "bytes": 3104568,
+            "sha256": "de57e010c8bf93f18bf557c650d6cdc06d98bc3fbde58049227b31feda9deea6"
+          },
+          {
+            "name": "overlay/trade_crafting_sources.json",
+            "bytes": 31192,
+            "sha256": "6153ccd3eee148312fac673c9669896c66c8ab1cf712167a5e836544821a4202"
+          },
+          {
+            "name": "overlay/trade_stat_map.json",
+            "bytes": 124884,
+            "sha256": "b4fcaca76ed5c653e06d3bb2d9e7f146fca4643417d508159de48d9c910ce839"
+          },
+          {
+            "name": "overlay/trigger_configs.json",
+            "bytes": 21125,
+            "sha256": "89634d02d0f25b5c2214e639c3217058e3ad8c0c4f973b242aa05194633a8646"
+          },
+          {
+            "name": "overlay/uniques.json",
+            "bytes": 241759,
+            "sha256": "06dbd5055882cf8d883c94dd56b989fc847d19e9f8da023494178deac7066600"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pob-web",
+      "initializationMs": 1898.1017089999998,
+      "provenance": {
+        "version": 1,
+        "acquiredAt": "2026-10-12T16:10:38.242Z",
+        "source": {
+          "repository": "https://github.com/krauthaufen/pob-web",
+          "commit": "ee33ce63920f23e634cc30e37d8ad339244dbf34"
+        },
+        "deployed": {
+          "baseUrl": "https://pob.awx.at/",
+          "revision": null,
+          "note": "Downloaded deployed artifacts; their build/source revision is unknown. The source commit pins only the wrapper, shims and loading patches, not these binaries or Lua data."
+        },
+        "adapter": {
+          "host": "Node isolated worker; unchanged Emscripten ES module with wasmBinary supplied",
+          "patches": "Original pinned loadPobFiles body, including dkjson and FrostShield patches",
+          "initializationTiming": "Excludes worker startup, artifact reads/hash checks and JSON decoding; includes ES module import I/O, WASM instantiation, upstream MEMFS population and Lua boot",
+          "calculation": "pobWebLoadBuild(XML) then pobWebGetStats; no skill auto-selection or numerical parity assertion"
+        },
+        "files": [
+          {
+            "name": "LICENSE",
+            "url": "https://raw.githubusercontent.com/krauthaufen/pob-web/ee33ce63920f23e634cc30e37d8ad339244dbf34/LICENSE",
+            "bytes": 1069,
+            "sha256": "a6dff6522ae480e4130fe19cd7a7bbd8472825345d75cc8aef613211c628be78",
+            "acquiredFrom": "download",
+            "responseUrl": "https://raw.githubusercontent.com/krauthaufen/pob-web/ee33ce63920f23e634cc30e37d8ad339244dbf34/LICENSE",
+            "etag": "W/\"eeeadee5f0017f91720dbefdc64b58412bf7ad2721df597822155b401944fb44\"",
+            "lastModified": null
+          },
+          {
+            "name": "calc-worker.ts",
+            "url": "https://raw.githubusercontent.com/krauthaufen/pob-web/ee33ce63920f23e634cc30e37d8ad339244dbf34/packages/web/src/worker/calc-worker.ts",
+            "bytes": 125624,
+            "sha256": "c7622d26dfa997355db80f56da91ea4c0372932a3c456b6f45de96f523a338bd",
+            "acquiredFrom": "download",
+            "responseUrl": "https://raw.githubusercontent.com/krauthaufen/pob-web/ee33ce63920f23e634cc30e37d8ad339244dbf34/packages/web/src/worker/calc-worker.ts",
+            "etag": "W/\"c6c59fbdd0346b0cdb858955def504ddc0b0b3d7460a35540f19cdf7cb688fda\"",
+            "lastModified": null
+          },
+          {
+            "name": "lua-shims.ts",
+            "url": "https://raw.githubusercontent.com/krauthaufen/pob-web/ee33ce63920f23e634cc30e37d8ad339244dbf34/packages/web/src/worker/lua-shims.ts",
+            "bytes": 5129,
+            "sha256": "270e27f9520e1f8199e336f7652114681053575f93dbd60df1c7c560cc733d9b",
+            "acquiredFrom": "download",
+            "responseUrl": "https://raw.githubusercontent.com/krauthaufen/pob-web/ee33ce63920f23e634cc30e37d8ad339244dbf34/packages/web/src/worker/lua-shims.ts",
+            "etag": "W/\"7a2f67248eeebb59b9523559173af06e876827c02c21abf8fcac2a4cab73c7ca\"",
+            "lastModified": null
+          },
+          {
+            "name": "lua.mjs",
+            "url": "https://pob.awx.at/wasm/lua.mjs",
+            "bytes": 69105,
+            "sha256": "f6a8df99c68d11c40178f5971bba2e1d51d5414bb864de9a3a5676deb9c85fdc",
+            "acquiredFrom": "download",
+            "responseUrl": "https://pob.awx.at/wasm/lua.mjs",
+            "etag": "\"6a67c75d-10df1\"",
+            "lastModified": "Mon, 27 Jul 2026 21:02:21 GMT"
+          },
+          {
+            "name": "lua.wasm",
+            "url": "https://pob.awx.at/wasm/lua.wasm",
+            "bytes": 262158,
+            "sha256": "3e286259ddd6d66b733222cb6aa86998fdaf11a9ac2743b7967d9432f7bdae25",
+            "acquiredFrom": "download",
+            "responseUrl": "https://pob.awx.at/wasm/lua.wasm",
+            "etag": "W/\"6a67c75d-4000e\"",
+            "lastModified": "Mon, 27 Jul 2026 21:02:21 GMT"
+          },
+          {
+            "name": "pob-lua.json",
+            "url": "https://pob.awx.at/data/pob-lua.json",
+            "bytes": 45082029,
+            "sha256": "a4183b98e08dacb257ab47652d76ff675790e3a287637d4e28119db1589c911e",
+            "acquiredFrom": "download",
+            "responseUrl": "https://pob.awx.at/data/pob-lua.json",
+            "etag": "W/\"6a67c75b-2afe5ad\"",
+            "lastModified": "Mon, 27 Jul 2026 21:02:19 GMT"
+          }
+        ]
+      }
+    }
+  ],
+  "measurements": [
+    {
+      "fixture": "huntress-spirit-walker-twister",
+      "sha256": "3277669b69d04a89202be9d0037548609e9f146f1381e68d67af40f7075ccbda",
+      "engines": [
+        {
+          "name": "pobr",
+          "samplesMs": [
+            10.689457999999831,
+            11.267334000000119,
+            11.093375000000378,
+            10.73187499999949,
+            9.97966600000018,
+            10.80212500000016,
+            10.497833000000355,
+            10.58612499999981,
+            10.317375000000538
+          ],
+          "selectedStats": {
+            "Life": 1830.15,
+            "TotalDPS": 99562.902565238,
+            "CombinedDPS": 99719.373150181,
+            "TotalEHP": 22264.488109418
+          },
+          "diagnostics": {
+            "unsupported_modifiers": [
+              "When you kill a Rare monster, you gain its Modifiers for 60 seconds",
+              "Bonded: 20% reduced Slowing Potency of Debuffs on You",
+              "2% increased Experience gain",
+              "Wind Skills which can be boosted by Elemental Ground Surfaces can be boosted by multiple Elemental Ground Surfaces",
+              "Wind Skills which can be boosted by Elemental Ground Surfaces count",
+              "as being boosted by Ignited, Shocked, and Chilled Ground",
+              "Grants Skill: Level 19 Righteous Descent",
+              "Create a Fragment of Divinity in your Presence every 4 seconds",
+              "50% chance when you gain a Frenzy Charge to gain an additional Frenzy Charge",
+              "Grants Skill: Level 18 Impurity",
+              "Grants effect of Dreaming Gloom Shrine",
+              "Bonded: Allies in your Presence Regenerate 3% of your Maximum Life per second",
+              "Passives in Radius of Wildsurge Incantation can be Allocated",
+              "without being connected to your tree",
+              "25% Chance to gain a Charge when you kill an enemy",
+              "Energy Shield Recharge starts on use",
+              "This Flask cannot be Used but applies its Effect constantly",
+              "20% Chance to gain a Charge when you kill an enemy",
+              "Creates Ignited Ground for 4 seconds when used, Igniting enemies as though dealing Fire damage equal to 500% of your maximum Life"
+            ],
+            "item_errors": []
+          },
+          "medianMs": 10.689457999999831,
+          "p95Ms": 11.267334000000119,
+          "mainSkill": {
+            "group_index": 3,
+            "active_skill_index": 1,
+            "skill_id": "TwisterPlayer",
+            "hit_damage": [
+              {
+                "damage_type": "Physical",
+                "min": 2744.7336,
+                "max": 4179.4704,
+                "avg": 3462.102
+              },
+              {
+                "damage_type": "Lightning",
+                "min": 360.7966656,
+                "max": 5244.2810784,
+                "avg": 2802.538872
+              },
+              {
+                "damage_type": "Fire",
+                "min": 930.20046336,
+                "max": 2739.54278304,
+                "avg": 1834.8716232
+              },
+              {
+                "damage_type": "Chaos",
+                "min": 756.387072,
+                "max": 2227.643208,
+                "avg": 1492.01514
+              }
+            ],
+            "hit_dps": 99562.902565238,
+            "dot_dps": 156.470584943,
+            "combined_dps": 99719.373150181
+          }
+        },
+        {
+          "name": "pob-web",
+          "samplesMs": [
+            499.59208399999943,
+            521.450041,
+            532.8918750000003,
+            531.9239579999994,
+            642.4239590000007,
+            501.92704200000026,
+            492.54699999999957,
+            492.9693750000006,
+            491.2373329999991
+          ],
+          "selectedStats": {
+            "Life": 1830,
+            "TotalDPS": 99589.255961848,
+            "CombinedDPS": 99745.877533021,
+            "TotalEHP": null
+          },
+          "diagnostics": {},
+          "medianMs": 501.92704200000026,
+          "p95Ms": 642.4239590000007
+        }
+      ],
+      "speedup": {
+        "numerator": "pob-web",
+        "denominator": "pobr",
+        "ratio": 46.955331318015205
+      },
+      "character": {
+        "class": "Huntress",
+        "ascendancy": "Spirit Walker",
+        "level": 99,
+        "main_skill": "Twister"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Aeone1-0564/SnusInMyBlood",
+        "account": "Aeone1-0564",
+        "character": "SnusInMyBlood",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    },
+    {
+      "fixture": "mercenary-gemling-legionnaire-explosive-grenade",
+      "sha256": "8f2c3b4c33cdf5aad625ad0b403ac32c35dd7a6425293a1b067067c967e8f7e2",
+      "engines": [
+        {
+          "name": "pobr",
+          "samplesMs": [
+            8.422042000000147,
+            8.616750000001048,
+            8.38420799999949,
+            8.711583000000246,
+            8.489874999999302,
+            8.625582999999097,
+            7.957833000000392,
+            8.950166000000536,
+            8.307165999998688
+          ],
+          "selectedStats": {
+            "Life": 3151,
+            "TotalDPS": 85999.510731701,
+            "CombinedDPS": 87001.847173424,
+            "TotalEHP": 15888.280179564
+          },
+          "diagnostics": {
+            "unsupported_modifiers": [
+              "When you kill a Rare monster, you gain its Modifiers for 60 seconds",
+              "Bonded: 10% increased Quantity of Gold Dropped by Slain Enemies",
+              "Destroys all Augment Sockets on the item to create a Jewel Socket",
+              "21% Chance to gain a Charge when you kill an enemy",
+              "Energy Shield Recharge starts on use",
+              "This Flask cannot be Used but applies its Effect constantly",
+              "Grants Onslaught during effect"
+            ],
+            "item_errors": []
+          },
+          "medianMs": 8.489874999999302,
+          "p95Ms": 8.950166000000536,
+          "mainSkill": {
+            "group_index": 2,
+            "active_skill_index": 1,
+            "skill_id": "ExplosiveGrenadePlayer",
+            "hit_damage": [
+              {
+                "damage_type": "Physical",
+                "min": 1384.494067123,
+                "max": 3467.882164666,
+                "avg": 2426.1881158945
+              },
+              {
+                "damage_type": "Lightning",
+                "min": 8115.60639732,
+                "max": 29739.48400281,
+                "avg": 18927.545200065
+              },
+              {
+                "damage_type": "Cold",
+                "min": 15001.124136432,
+                "max": 35971.340922006,
+                "avg": 25486.232529219
+              },
+              {
+                "damage_type": "Fire",
+                "min": 19554.769217088,
+                "max": 45283.366157904,
+                "avg": 32419.067687495997
+              }
+            ],
+            "hit_dps": 85999.510731701,
+            "dot_dps": 1002.336441723,
+            "combined_dps": 87001.847173424
+          }
+        },
+        {
+          "name": "pob-web",
+          "samplesMs": [
+            537.7107080000005,
+            555.1440839999996,
+            566.429709,
+            562.6397919999999,
+            834.0494579999995,
+            547.2484160000004,
+            539.6770410000008,
+            536.902333,
+            543.1576249999998
+          ],
+          "selectedStats": {
+            "Life": 3151,
+            "TotalDPS": 85948.576056023,
+            "CombinedDPS": 86949.455691252,
+            "TotalEHP": null
+          },
+          "diagnostics": {},
+          "medianMs": 547.2484160000004,
+          "p95Ms": 834.0494579999995
+        }
+      ],
+      "speedup": {
+        "numerator": "pob-web",
+        "denominator": "pobr",
+        "ratio": 64.45894857109738
+      },
+      "character": {
+        "class": "Mercenary",
+        "ascendancy": "Gemling Legionnaire",
+        "level": 98,
+        "main_skill": "Explosive Grenade"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Bhongskii-1846/Bhongskiiiii",
+        "account": "Bhongskii-1846",
+        "character": "Bhongskiiiii",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    },
+    {
+      "fixture": "ninja-2026-10-11-druid-oracle-lightning-bolt-950c9ad4451d",
+      "sha256": "67de41f7047f833bf2313623d3b586504de07fb62085670b0e8dba43f3bab7f1",
+      "character": {
+        "class": "Druid",
+        "ascendancy": "Oracle",
+        "level": 100,
+        "main_skill": "Lightning Bolt"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/0bibea-1410/FR_obi",
+        "account": "0bibea-1410",
+        "character": "FR_obi",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=0bibea-1410&name=FR_obi&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Oracle",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season",
+      "error": "ninja-2026-10-11-druid-oracle-lightning-bolt-950c9ad4451d/pob-web: Error: pob-web swallowed load/calculation error: [Lua] PoB warning: ^1Error:\n\n^0In 'OnFrame': Modules/CalcDefence.lua:2789: bad argument #2 to 's_format' (not a number in proper range)\n^8v0.23.0\n^0Press Enter/Escape to dismiss, F4 to return to build selection, or F5 to restart the application.\nPress CTRL + C to copy error text.\n    at Object.calculate (<repo>/web/scripts/benchmark-pob-web.mjs:252:34)\n    at MessagePort.<anonymous> (<repo>/web/scripts/benchmark-pob-web.mjs:305:54)\n    at [nodejs.internal.kHybridDispatch] (node:internal/event_target:872:20)\n    at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)"
+    },
+    {
+      "fixture": "ninja-2026-10-11-huntress-amazon-ice-shot-182e794cb5d9",
+      "sha256": "903cacc9c3266e31b0a50ef5b4b52522a96d1e2804cf1e69d2205ec002b1e63b",
+      "engines": [
+        {
+          "name": "pobr",
+          "samplesMs": [
+            8.82933299999786,
+            9.232208999997965,
+            8.899083000000246,
+            9.209749999998166,
+            8.599374999997963,
+            9.285374999999476,
+            8.809250000002066,
+            9.239041000000725,
+            8.67870799999946
+          ],
+          "selectedStats": {
+            "Life": 1823.85,
+            "TotalDPS": 88117.543174007,
+            "CombinedDPS": 88118.880092617,
+            "TotalEHP": 9617.625529467
+          },
+          "diagnostics": {
+            "unsupported_modifiers": [
+              "Grants Skill: Level 18 Eternal Rage",
+              "Grants Skill: Level 18 Rite of Restoration",
+              "Cannot use Life Flasks",
+              "Non-Unique Life Flasks apply their Effects constantly",
+              "Recovery from Life Flasks cannot be Instant",
+              "Recovery from your Life Flasks cannot be applied to anything other than you",
+              "40% less Life Flask Recovery",
+              "Twice Corrupted",
+              "Bonded: 20% reduced Slowing Potency of Debuffs on You",
+              "Can roll Marksman modifiers",
+              "Projectiles have 47% chance for an additional Projectile when Forking",
+              "+2 metres to Dodge Roll distance if you haven't Dodge Rolled Recently",
+              "-1 metre to Dodge Roll distance if you've Dodge Rolled Recently",
+              "Repeatable Attacks with this Bow Repeat +2 times if no enemies are in your Presence",
+              "Bonded: +1 to Level of all Attack Skills",
+              "Bonded: 8% chance to gain an additional random Charge when you gain a Charge",
+              "Each Arrow fired is a Crescendo, Splinter, Reversing, Diamond, Covetous, or Blunt Arrow",
+              "Tree:33369: When taking damage from Hits, 20% of Life Loss is prevented, then 150% of Life Loss prevented this way is Lost over 4 seconds",
+              "Glorifying the defilement of 8928 souls in tribute to Amanamu",
+              "Desecration makes this item unstable",
+              "Passives in Radius of Bulwark can be Allocated",
+              "without being connected to your tree",
+              "20% Chance to gain a Charge when you kill an enemy",
+              "Energy Shield Recharge starts on use",
+              "Grants Onslaught during effect",
+              "This Flask cannot be Used but applies its Effect constantly"
+            ],
+            "item_errors": []
+          },
+          "medianMs": 8.899083000000246,
+          "p95Ms": 9.285374999999476,
+          "mainSkill": {
+            "group_index": 8,
+            "active_skill_index": 1,
+            "skill_id": "IceShotPlayer",
+            "hit_damage": [
+              {
+                "damage_type": "Physical",
+                "min": 1032.3464256,
+                "max": 1720.577376,
+                "avg": 1376.4619008
+              },
+              {
+                "damage_type": "Lightning",
+                "min": 1862.19171,
+                "max": 7760.12535,
+                "avg": 4811.158530000001
+              },
+              {
+                "damage_type": "Cold",
+                "min": 12705.9330705,
+                "max": 23875.097805,
+                "avg": 18290.51543775
+              },
+              {
+                "damage_type": "Fire",
+                "min": 421.7291775,
+                "max": 899.336025,
+                "avg": 660.53260125
+              }
+            ],
+            "hit_dps": 88117.543174007,
+            "dot_dps": 1.33691861,
+            "combined_dps": 88118.880092617
+          }
+        },
+        {
+          "name": "pob-web",
+          "samplesMs": [
+            500.7441250000011,
+            498.3893339999995,
+            510.02391700000226,
+            515.9939169999998,
+            517.0518340000017,
+            529.7815410000003,
+            512.304458999999,
+            890.5905830000011,
+            524.9789170000004
+          ],
+          "selectedStats": {
+            "Life": 1824,
+            "TotalDPS": 237926.56764348,
+            "CombinedDPS": 237936.62360001,
+            "TotalEHP": null
+          },
+          "diagnostics": {},
+          "medianMs": 515.9939169999998,
+          "p95Ms": 890.5905830000011
+        }
+      ],
+      "speedup": {
+        "numerator": "pob-web",
+        "denominator": "pobr",
+        "ratio": 57.98281879155251
+      },
+      "character": {
+        "class": "Huntress",
+        "ascendancy": "Amazon",
+        "level": 97,
+        "main_skill": "Ice Shot"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1031-5196/JOJOTENF",
+        "account": "1031-5196",
+        "character": "JOJOTENF",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1031-5196&name=JOJOTENF&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Amazon",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season"
+    },
+    {
+      "fixture": "ninja-2026-10-11-mercenary-gemling-legionnaire-comet-c60ba778fabb",
+      "sha256": "531dd37484a358bf6d78be5b8ab7f5a25dba2af237c7138c5aae08feb65484f1",
+      "character": {
+        "class": "Mercenary",
+        "ascendancy": "Gemling Legionnaire",
+        "level": 100,
+        "main_skill": "Comet"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1056758881-1572/%E5%8C%97%E6%9E%81%E6%98%9F%E7%A5%9E%E5%8C%96%E8%BA%AB",
+        "account": "1056758881-1572",
+        "character": "北极星神化身",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1056758881-1572&name=%E5%8C%97%E6%9E%81%E6%98%9F%E7%A5%9E%E5%8C%96%E8%BA%AB&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Gemling+Legionnaire",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season",
+      "error": "ninja-2026-10-11-mercenary-gemling-legionnaire-comet-c60ba778fabb/pob-web: Error: pob-web swallowed load/calculation error: [Lua] PoB warning: ^1Error:\n\n^0In 'OnFrame': Modules/CalcDefence.lua:2789: bad argument #2 to 's_format' (not a number in proper range)\n^8v0.23.0\n^0Press Enter/Escape to dismiss, F4 to return to build selection, or F5 to restart the application.\nPress CTRL + C to copy error text.\n    at Object.calculate (<repo>/web/scripts/benchmark-pob-web.mjs:252:34)\n    at MessagePort.<anonymous> (<repo>/web/scripts/benchmark-pob-web.mjs:305:54)\n    at [nodejs.internal.kHybridDispatch] (node:internal/event_target:872:20)\n    at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)"
+    },
+    {
+      "fixture": "ninja-2026-10-11-monk-martial-artist-ice-shot-71a879f43f2f",
+      "sha256": "0a7cae32696701597ef92b9131f15776e52e49eac6477b4fee888a5ebb56db4e",
+      "engines": [
+        {
+          "name": "pobr",
+          "samplesMs": [
+            9.11225000000195,
+            10.23066700000345,
+            9.331707999997889,
+            9.68145899999945,
+            9.574334000000817,
+            9.757499999999709,
+            9.13195800000176,
+            9.776958999998897,
+            9.313999999998487
+          ],
+          "selectedStats": {
+            "Life": 1307.3655,
+            "TotalDPS": 2900388.521328873,
+            "CombinedDPS": 2942085.921168234,
+            "TotalEHP": 62253.347023959
+          },
+          "diagnostics": {
+            "unsupported_modifiers": [
+              "Grants Skill: Level 17 Eternal Rage",
+              "Bonded: +5% to Quality of all Skills",
+              "+10% of Armour also applies to Chaos Damage",
+              "Leech Mana 25% slower",
+              "Bonded: 20% reduced Slowing Potency of Debuffs on You",
+              "Can roll Marksman modifiers",
+              "Bonded: 8% chance to gain an additional random Charge when you gain a Charge",
+              "Each Arrow fired is a Crescendo, Splinter, Reversing, Diamond, Covetous, or Blunt Arrow",
+              "Twice Corrupted",
+              "Passives in Radius of Resonance can be Allocated",
+              "without being connected to your tree",
+              "Effect is not removed when Unreserved Life is Filled",
+              "This Flask cannot be Used but applies its Effect constantly"
+            ],
+            "item_errors": []
+          },
+          "medianMs": 9.574334000000817,
+          "p95Ms": 10.23066700000345,
+          "mainSkill": {
+            "group_index": 4,
+            "active_skill_index": 1,
+            "skill_id": "IceShotPlayer",
+            "hit_damage": [
+              {
+                "damage_type": "Physical",
+                "min": 3524.4600768,
+                "max": 5593.316976,
+                "avg": 4558.8885264
+              },
+              {
+                "damage_type": "Lightning",
+                "min": 16398.752662656,
+                "max": 25797.49653312,
+                "avg": 21098.124597888
+              },
+              {
+                "damage_type": "Cold",
+                "min": 37542.924259776,
+                "max": 59430.21488352,
+                "avg": 48486.569571648
+              },
+              {
+                "damage_type": "Fire",
+                "min": 14950.266978816,
+                "max": 23092.77589632,
+                "avg": 19021.521437568
+              }
+            ],
+            "hit_dps": 2900388.521328873,
+            "dot_dps": 41697.399839361,
+            "combined_dps": 2942085.921168234
+          }
+        },
+        {
+          "name": "pob-web",
+          "samplesMs": [
+            529.7393340000017,
+            530.2192079999986,
+            528.2246249999989,
+            547.0830000000024,
+            527.911957999997,
+            530.40625,
+            524.6907920000012,
+            531.6866669999981,
+            529.5113750000019
+          ],
+          "selectedStats": {
+            "Life": 1307,
+            "TotalDPS": 5173634.319791,
+            "CombinedDPS": 5250289.9463608,
+            "TotalEHP": null
+          },
+          "diagnostics": {},
+          "medianMs": 529.7393340000017,
+          "p95Ms": 547.0830000000024
+        }
+      ],
+      "speedup": {
+        "numerator": "pob-web",
+        "denominator": "pobr",
+        "ratio": 55.32910529337669
+      },
+      "character": {
+        "class": "Monk",
+        "ascendancy": "Martial Artist",
+        "level": 99,
+        "main_skill": "Ice Shot"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1184519336-2377/%E6%88%91%E5%B0%B1%E6%98%AF%E9%98%BF%E6%AC%A3",
+        "account": "1184519336-2377",
+        "character": "我就是阿欣",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1184519336-2377&name=%E6%88%91%E5%B0%B1%E6%98%AF%E9%98%BF%E6%AC%A3&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Martial+Artist",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season"
+    },
+    {
+      "fixture": "ninja-2026-10-11-ranger-deadeye-ice-shot-b6ce7b3a4329",
+      "sha256": "8aa4a8854da9acca30551fa852b6bbfa4d3cc2c3f3e22f08e83466b88a320e6b",
+      "character": {
+        "class": "Ranger",
+        "ascendancy": "Deadeye",
+        "level": 99,
+        "main_skill": "Ice Shot"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/1242treasure0826-3306/%E3%82%B5%E3%83%B3%E3%82%B5_%E3%83%9F%E3%83%8B%E3%83%AA%E3%83%BC%E3%82%B0",
+        "account": "1242treasure0826-3306",
+        "character": "サンサ_ミニリーグ",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=1242treasure0826-3306&name=%E3%82%B5%E3%83%B3%E3%82%B5_%E3%83%9F%E3%83%8B%E3%83%AA%E3%83%BC%E3%82%B0&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Deadeye",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season",
+      "error": "ninja-2026-10-11-ranger-deadeye-ice-shot-b6ce7b3a4329/pob-web: Error: pob-web swallowed load/calculation error: [Lua] PoB warning: ^1Error:\n\n^0In 'OnFrame': Modules/CalcDefence.lua:3844: bad argument #2 to 's_format' (not a number in proper range)\n^8v0.23.0\n^0Press Enter/Escape to dismiss, F4 to return to build selection, or F5 to restart the application.\nPress CTRL + C to copy error text.\n    at Object.calculate (<repo>/web/scripts/benchmark-pob-web.mjs:252:34)\n    at MessagePort.<anonymous> (<repo>/web/scripts/benchmark-pob-web.mjs:305:54)\n    at [nodejs.internal.kHybridDispatch] (node:internal/event_target:872:20)\n    at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)"
+    },
+    {
+      "fixture": "ninja-2026-10-11-sorceress-stormweaver-comet-f085a4410120",
+      "sha256": "957efc2a05cbfedd1a480e6e882befa9a547cd8eb3e8333d1d363323af82630f",
+      "character": {
+        "class": "Sorceress",
+        "ascendancy": "Stormweaver",
+        "level": 100,
+        "main_skill": "Comet"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/2736045458-2703/%E4%B8%8D%E8%89%AF%E4%BA%BA",
+        "account": "2736045458-2703",
+        "character": "不良人",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=2736045458-2703&name=%E4%B8%8D%E8%89%AF%E4%BA%BA&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Stormweaver",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season",
+      "error": "ninja-2026-10-11-sorceress-stormweaver-comet-f085a4410120/pob-web: Error: pob-web swallowed load/calculation error: [Lua] PoB warning: ^1Error:\n\n^0In 'OnFrame': Modules/CalcDefence.lua:2789: bad argument #2 to 's_format' (not a number in proper range)\n^8v0.23.0\n^0Press Enter/Escape to dismiss, F4 to return to build selection, or F5 to restart the application.\nPress CTRL + C to copy error text.\n    at Object.calculate (<repo>/web/scripts/benchmark-pob-web.mjs:252:34)\n    at MessagePort.<anonymous> (<repo>/web/scripts/benchmark-pob-web.mjs:305:54)\n    at [nodejs.internal.kHybridDispatch] (node:internal/event_target:872:20)\n    at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)"
+    },
+    {
+      "fixture": "ninja-2026-10-11-warrior-titan-his-scattering-calamity-a46026af415f",
+      "sha256": "da661ef8971a007101364acc8074c5199585488a4765413d7c4d1a639b97a2db",
+      "character": {
+        "class": "Warrior",
+        "ascendancy": "Titan",
+        "level": 98,
+        "main_skill": "His Scattering Calamity"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/3640233073-1554/%E9%97%AA%E5%9B%9E%E8%8F%9C%E5%9B%B0%E5%9B%B0",
+        "account": "3640233073-1554",
+        "character": "闪回菜困困",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=3640233073-1554&name=%E9%97%AA%E5%9B%9E%E8%8F%9C%E5%9B%B0%E5%9B%B0&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Titan",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season",
+      "error": "ninja-2026-10-11-warrior-titan-his-scattering-calamity-a46026af415f/pob-web: Error: pob-web swallowed load/calculation error: [Lua] PoB warning: ^1Error:\n\n^0In 'OnFrame': Modules/CalcDefence.lua:2789: bad argument #2 to 's_format' (not a number in proper range)\n^8v0.23.0\n^0Press Enter/Escape to dismiss, F4 to return to build selection, or F5 to restart the application.\nPress CTRL + C to copy error text.\n    at Object.calculate (<repo>/web/scripts/benchmark-pob-web.mjs:252:34)\n    at MessagePort.<anonymous> (<repo>/web/scripts/benchmark-pob-web.mjs:305:54)\n    at [nodejs.internal.kHybridDispatch] (node:internal/event_target:872:20)\n    at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)"
+    },
+    {
+      "fixture": "ninja-2026-10-11-witch-blood-mage-impending-doom-add19135df93",
+      "sha256": "437934443f64e975bd458f1051124d9f78c50a5d49bd36fc84c6396c1ba270ba",
+      "character": {
+        "class": "Witch",
+        "ascendancy": "Blood Mage",
+        "level": 99,
+        "main_skill": "Impending Doom"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/forbiddenrites/character/2669291331-5245/Twistcc",
+        "account": "2669291331-5245",
+        "character": "Twistcc",
+        "league": "Forbidden Rites",
+        "game_version": "0.5",
+        "fetched_at": "2026-10-11T07:04:01+00:00",
+        "api_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/character?account=2669291331-5245&name=Twistcc&overview=forbidden-rites",
+        "snapshot": "0632-20261011-47556",
+        "snapshot_name": "forbidden-rites",
+        "index_url": "https://poe.ninja/poe2/api/builds/0632-20261011-47556/search?overview=forbidden-rites&class=Blood+Mage",
+        "selection": "base-class-first-v1",
+        "game_version_evidence": {
+          "xml_tree_version": "0_5",
+          "api_passive_tree": "PassiveTree-0.5"
+        }
+      },
+      "corpus": "ninja-latest-season",
+      "error": "ninja-2026-10-11-witch-blood-mage-impending-doom-add19135df93/pob-web: Error: pob-web swallowed load/calculation error: [Lua] PoB warning: ^1Error:\n\n^0In 'OnFrame': Modules/CalcDefence.lua:2789: bad argument #2 to 's_format' (not a number in proper range)\n^8v0.23.0\n^0Press Enter/Escape to dismiss, F4 to return to build selection, or F5 to restart the application.\nPress CTRL + C to copy error text.\n    at Object.calculate (<repo>/web/scripts/benchmark-pob-web.mjs:252:34)\n    at MessagePort.<anonymous> (<repo>/web/scripts/benchmark-pob-web.mjs:305:54)\n    at [nodejs.internal.kHybridDispatch] (node:internal/event_target:872:20)\n    at MessagePort.<anonymous> (node:internal/per_context/messageport:23:28)"
+    },
+    {
+      "fixture": "ranger-deadeye-explosive-grenade",
+      "sha256": "b158bc0d4c12101948bc5c3ca331b3c88754651d491353bbe5c85feb9916e394",
+      "engines": [
+        {
+          "name": "pobr",
+          "samplesMs": [
+            7.379208000005747,
+            7.702082999996492,
+            7.126624999997148,
+            7.786166999998386,
+            7.17149999999674,
+            7.583750000005239,
+            7.110624999993888,
+            7.645791000002646,
+            7.239125000000058
+          ],
+          "selectedStats": {
+            "Life": 2835,
+            "TotalDPS": 50609.40634399,
+            "CombinedDPS": 50660.192966174,
+            "TotalEHP": 42323.469308336
+          },
+          "diagnostics": {
+            "unsupported_modifiers": [
+              "Bonded: 1% more Runic Ward Regeneration rate per 2% of maximum Runic Ward lost from Hits Recently, up to 100% more",
+              "2% increased Experience gain",
+              "Bonded: 8% chance to gain an additional random Charge when you gain a Charge",
+              "Recover 84 Life when Used",
+              "Grants Onslaught during effect"
+            ],
+            "item_errors": []
+          },
+          "medianMs": 7.379208000005747,
+          "p95Ms": 7.786166999998386,
+          "mainSkill": {
+            "group_index": 1,
+            "active_skill_index": 1,
+            "skill_id": "ExplosiveGrenadePlayer",
+            "hit_damage": [
+              {
+                "damage_type": "Physical",
+                "min": 3362.106678336,
+                "max": 8852.128975872,
+                "avg": 6107.117827104
+              },
+              {
+                "damage_type": "Lightning",
+                "min": 64137.94579125,
+                "max": 153595.2509325,
+                "avg": 108866.598361875
+              },
+              {
+                "damage_type": "Cold",
+                "min": 1120.163914125,
+                "max": 2703.07115325,
+                "avg": 1911.6175336874999
+              },
+              {
+                "damage_type": "Fire",
+                "min": 4691.05166124,
+                "max": 11319.99189048,
+                "avg": 8005.521775859999
+              }
+            ],
+            "hit_dps": 50609.40634399,
+            "dot_dps": 50.786622184,
+            "combined_dps": 50660.192966174
+          }
+        },
+        {
+          "name": "pob-web",
+          "samplesMs": [
+            874.9186659999978,
+            457.067833000001,
+            450.7151660000018,
+            440.14154200000485,
+            435.7792499999996,
+            432.4223750000019,
+            433.9653330000001,
+            430.1657919999998,
+            435.12399999999616
+          ],
+          "selectedStats": {
+            "Life": 2835,
+            "TotalDPS": 50630.047782005,
+            "CombinedDPS": 50680.865851956,
+            "TotalEHP": null
+          },
+          "diagnostics": {},
+          "medianMs": 435.7792499999996,
+          "p95Ms": 874.9186659999978
+        }
+      ],
+      "speedup": {
+        "numerator": "pob-web",
+        "denominator": "pobr",
+        "ratio": 59.05501647326654
+      },
+      "character": {
+        "class": "Ranger",
+        "ascendancy": "Deadeye",
+        "level": 99,
+        "main_skill": "Explosive Grenade"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/lua_dipaa-4786/AESPA_LEMONADE",
+        "account": "lua_dipaa-4786",
+        "character": "AESPA_LEMONADE",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    },
+    {
+      "fixture": "ranger-pathfinder-ice-shot",
+      "sha256": "6f7690a0c3089811221eecc7a663c1e244196ff9e5d7038fe43da049ddcfeb4c",
+      "engines": [
+        {
+          "name": "pobr",
+          "samplesMs": [
+            9.014709000002767,
+            9.066624999999476,
+            8.677959000000556,
+            9.187708000004932,
+            8.824082999999519,
+            9.056833999995433,
+            8.649083999996947,
+            9.131666000001132,
+            8.3940419999999
+          ],
+          "selectedStats": {
+            "Life": 1687.35,
+            "TotalDPS": 2032512.525856031,
+            "CombinedDPS": 2039837.815282515,
+            "TotalEHP": 56477.972802269
+          },
+          "diagnostics": {
+            "unsupported_modifiers": [
+              "Gain Onslaught for 6 seconds when your Marks Activate",
+              "Bonded: Buffs on you expire 16% slower",
+              "Can roll Marksman modifiers",
+              "Bonded: 20% reduced Slowing Potency of Debuffs on You",
+              "Bonded: 8% chance to gain an additional random Charge when you gain a Charge",
+              "23% Chance to gain a Charge when you kill an enemy",
+              "Creates Ignited Ground for 4 seconds when used, Igniting enemies as though dealing Fire damage equal to 500% of your maximum Life",
+              "20% Chance to gain a Charge when you kill an enemy",
+              "Energy Shield Recharge starts on use",
+              "Support:SupportForkPlayer:set=1:stat=support_fork_forked_projectile_damage_+%_final:value=-30:host=IceShotPlayer:host_set=1: conditional numerical effect not modeled (UnsupportedTag(\"StatThreshold\"))"
+            ],
+            "item_errors": []
+          },
+          "medianMs": 9.014709000002767,
+          "p95Ms": 9.187708000004932,
+          "mainSkill": {
+            "group_index": 3,
+            "active_skill_index": 1,
+            "skill_id": "IceShotPlayer",
+            "hit_damage": [
+              {
+                "damage_type": "Physical",
+                "min": 3674.4634968,
+                "max": 6039.9020046,
+                "avg": 4857.1827507
+              },
+              {
+                "damage_type": "Lightning",
+                "min": 6016.17154875,
+                "max": 19976.533799063,
+                "avg": 12996.3526739065
+              },
+              {
+                "damage_type": "Cold",
+                "min": 40732.26133425,
+                "max": 71163.126595688,
+                "avg": 55947.693964968996
+              },
+              {
+                "damage_type": "Fire",
+                "min": 4787.79613125,
+                "max": 7793.846723438,
+                "avg": 6290.821427344
+              }
+            ],
+            "hit_dps": 2032512.525856031,
+            "dot_dps": 7325.289426484,
+            "combined_dps": 2039837.815282515
+          }
+        },
+        {
+          "name": "pob-web",
+          "samplesMs": [
+            375.4877919999999,
+            373.46479199999885,
+            375.0596249999944,
+            374.1371250000011,
+            375.5487920000014,
+            373.8785839999982,
+            371.20483299999614,
+            372.0812500000029,
+            369.20929199999955
+          ],
+          "selectedStats": {
+            "Life": 1687,
+            "TotalDPS": 2068230.3171228,
+            "CombinedDPS": 2075626.5365709,
+            "TotalEHP": null
+          },
+          "diagnostics": {},
+          "medianMs": 373.8785839999982,
+          "p95Ms": 375.5487920000014
+        }
+      ],
+      "speedup": {
+        "numerator": "pob-web",
+        "denominator": "pobr",
+        "ratio": 41.47428208718478
+      },
+      "character": {
+        "class": "Ranger",
+        "ascendancy": "Pathfinder",
+        "level": 99,
+        "main_skill": "Ice Shot"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Aengus-2685/stillAengus",
+        "account": "Aengus-2685",
+        "character": "stillAengus",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    },
+    {
+      "fixture": "warrior-smith-of-kitava-shield-wall",
+      "sha256": "d713de39a5e06de4c36406190a46e414535930963dc0aea991b61e9ae658bfaf",
+      "engines": [
+        {
+          "name": "pobr",
+          "samplesMs": [
+            7.862541999995301,
+            8.604707999998936,
+            7.9331249999959255,
+            8.454749999997148,
+            8.084540999996534,
+            8.462832999997772,
+            7.93029199999728,
+            8.554167000002053,
+            7.964749999999185
+          ],
+          "selectedStats": {
+            "Life": 3090.29,
+            "TotalDPS": 147696.160768354,
+            "CombinedDPS": 147884.357655236,
+            "TotalEHP": 98897.191775342
+          },
+          "diagnostics": {
+            "unsupported_modifiers": [
+              "Bonded: 10% increased Quantity of Gold Dropped by Slain Enemies",
+              "Bonded: 20% reduced Slowing Potency of Debuffs on You",
+              "2% increased Experience gain",
+              "Bonded: +1 to Level of all Attack Skills",
+              "Grants Skill: Raise Shield"
+            ],
+            "item_errors": []
+          },
+          "medianMs": 8.084540999996534,
+          "p95Ms": 8.604707999998936,
+          "mainSkill": {
+            "group_index": 2,
+            "active_skill_index": 1,
+            "skill_id": "ShieldWallPlayer",
+            "hit_damage": [
+              {
+                "damage_type": "Physical",
+                "min": 57956.31891,
+                "max": 111196.41180102,
+                "avg": 84576.36535551
+              },
+              {
+                "damage_type": "Lightning",
+                "min": 60.66144,
+                "max": 2972.41056,
+                "avg": 1516.5359999999998
+              },
+              {
+                "damage_type": "Fire",
+                "min": 7685.458111619,
+                "max": 11958.106643934,
+                "avg": 9821.7823777765
+              },
+              {
+                "damage_type": "Chaos",
+                "min": 2160.1538784,
+                "max": 3361.06840608,
+                "avg": 2760.61114224
+              }
+            ],
+            "hit_dps": 147696.160768354,
+            "dot_dps": 188.196886882,
+            "combined_dps": 147884.357655236
+          }
+        },
+        {
+          "name": "pob-web",
+          "samplesMs": [
+            654.6778340000019,
+            658.5493339999957,
+            654.7014169999966,
+            658.9447090000031,
+            660.1130839999969,
+            656.3995840000061,
+            658.020832999995,
+            658.5800830000007,
+            1471.6819590000014
+          ],
+          "selectedStats": {
+            "Life": 3090,
+            "TotalDPS": 147275.69288662,
+            "CombinedDPS": 147462.84569866,
+            "TotalEHP": null
+          },
+          "diagnostics": {},
+          "medianMs": 658.5493339999957,
+          "p95Ms": 1471.6819590000014
+        }
+      ],
+      "speedup": {
+        "numerator": "pob-web",
+        "denominator": "pobr",
+        "ratio": 81.4578507302119
+      },
+      "character": {
+        "class": "Warrior",
+        "ascendancy": "Smith of Kitava",
+        "level": 100,
+        "main_skill": "Shield Wall"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Prec0cious-1317/xxTheWizardOfOsu",
+        "account": "Prec0cious-1317",
+        "character": "xxTheWizardOfOsu",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    },
+    {
+      "fixture": "warrior-titan-shield-wall",
+      "sha256": "50a5b890b1926bf4609955b8746c2877049b2de96eb9eb2f5a08a12084254f1c",
+      "engines": [
+        {
+          "name": "pobr",
+          "samplesMs": [
+            9.182084000000032,
+            10.16837499999383,
+            9.20554099999572,
+            9.653708000005281,
+            9.375374999995984,
+            9.563083999993978,
+            9.138207999996666,
+            9.897249999994528,
+            8.939084000005096
+          ],
+          "selectedStats": {
+            "Life": 2783.8395,
+            "TotalDPS": 83074.842559239,
+            "CombinedDPS": 92505.650711275,
+            "TotalEHP": 65712.551119766
+          },
+          "diagnostics": {
+            "unsupported_modifiers": [
+              "Recover 36% of Missing Life before being Hit by an Enemy",
+              "Deal 10% of Overkill damage to enemies within 2 metres of the enemy killed",
+              "Attacks consume an Endurance Charge to Critically Hit",
+              "Bonded: 8% chance to gain an additional random Charge when you gain a Charge",
+              "Grants Skill: Raise Shield",
+              "15% increased chance to Poison"
+            ],
+            "item_errors": []
+          },
+          "medianMs": 9.375374999995984,
+          "p95Ms": 10.16837499999383,
+          "mainSkill": {
+            "group_index": 4,
+            "active_skill_index": 1,
+            "skill_id": "ShieldWallPlayer",
+            "hit_damage": [
+              {
+                "damage_type": "Physical",
+                "min": 15161.771733331,
+                "max": 21541.889546669,
+                "avg": 18351.83064
+              },
+              {
+                "damage_type": "Lightning",
+                "min": 2730.773407998,
+                "max": 5215.524371202,
+                "avg": 3973.1488896
+              },
+              {
+                "damage_type": "Cold",
+                "min": 2773.157376,
+                "max": 4179.2302464,
+                "avg": 3476.1938112000003
+              },
+              {
+                "damage_type": "Fire",
+                "min": 4134.313008311,
+                "max": 6079.058629175,
+                "avg": 5106.685818743
+              },
+              {
+                "damage_type": "Chaos",
+                "min": 1830.816415998,
+                "max": 2753.687622402,
+                "avg": 2292.2520192
+              }
+            ],
+            "hit_dps": 83074.842559239,
+            "dot_dps": 9430.808152036,
+            "combined_dps": 92505.650711275
+          }
+        },
+        {
+          "name": "pob-web",
+          "samplesMs": [
+            448.0026660000003,
+            444.7580830000006,
+            448.27850000000035,
+            441.0248749999955,
+            450.9451659999977,
+            441.16712499999994,
+            446.3007079999952,
+            442.6075409999976,
+            443.7228749999995
+          ],
+          "selectedStats": {
+            "Life": 2784,
+            "TotalDPS": 82350.316793319,
+            "CombinedDPS": 91711.076097355,
+            "TotalEHP": null
+          },
+          "diagnostics": {},
+          "medianMs": 444.7580830000006,
+          "p95Ms": 450.9451659999977
+        }
+      ],
+      "speedup": {
+        "numerator": "pob-web",
+        "denominator": "pobr",
+        "ratio": 47.438964628101935
+      },
+      "character": {
+        "class": "Warrior",
+        "ascendancy": "Titan",
+        "level": 100,
+        "main_skill": "Shield Wall"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/methanman-2640/goodnerfing",
+        "account": "methanman-2640",
+        "character": "goodnerfing",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    },
+    {
+      "fixture": "witch-abyssal-lich-detonate-dead",
+      "sha256": "fe3ef6f3b2c52a348ecd631da585aadf21cd91fa3c3724fbd20e2455b8ee0374",
+      "engines": [
+        {
+          "name": "pobr",
+          "samplesMs": [
+            13.31308299999364,
+            14.442000000002736,
+            13.357749999995576,
+            13.95499999999447,
+            13.475875000003725,
+            13.6840830000001,
+            13.376624999997148,
+            13.964957999996841,
+            12.984499999998661
+          ],
+          "selectedStats": {
+            "Life": 1693.831,
+            "TotalDPS": 807025.379860211,
+            "CombinedDPS": 828646.736413871,
+            "TotalEHP": 37294.948564045
+          },
+          "diagnostics": {
+            "unsupported_modifiers": [
+              "28% increased Mana Cost Efficiency of Spells",
+              "Remnants can be collected from 20% further away",
+              "Grants Skill: Level 19 Reap",
+              "Bonded: 12% chance when collecting an Elemental Infusion to gain an",
+              "additional Elemental Infusion of the same type",
+              "Bonded: Archon recovery period expires 30% faster",
+              "Grants Onslaught during effect",
+              "24% Chance to gain a Charge when you kill an enemy",
+              "Energy Shield Recharge starts on use"
+            ],
+            "item_errors": []
+          },
+          "medianMs": 13.475875000003725,
+          "p95Ms": 14.442000000002736,
+          "mainSkill": {
+            "group_index": 5,
+            "active_skill_index": 2,
+            "skill_id": "DetonateDeadPlayer",
+            "hit_damage": [
+              {
+                "damage_type": "Physical",
+                "min": 27301.211784,
+                "max": 27301.211784,
+                "avg": 27301.211784
+              },
+              {
+                "damage_type": "Lightning",
+                "min": 1356.6292952,
+                "max": 1404.5762452,
+                "avg": 1380.6027702
+              },
+              {
+                "damage_type": "Cold",
+                "min": 16239.03620336,
+                "max": 16919.88289336,
+                "avg": 16579.45954836
+              },
+              {
+                "damage_type": "Fire",
+                "min": 17931.64668336,
+                "max": 19456.35969336,
+                "avg": 18694.00318836
+              }
+            ],
+            "hit_dps": 807025.379860211,
+            "dot_dps": 21621.35655366,
+            "combined_dps": 828646.736413871
+          }
+        },
+        {
+          "name": "pob-web",
+          "samplesMs": [
+            427.88637500000186,
+            426.55554100000154,
+            424.3891669999939,
+            428.6112920000014,
+            426.1179160000029,
+            423.5535830000008,
+            425.5344170000026,
+            432.28566699999647,
+            445.9265000000014
+          ],
+          "selectedStats": {
+            "Life": 1694,
+            "TotalDPS": 807735.2884403,
+            "CombinedDPS": 829357.60580025,
+            "TotalEHP": null
+          },
+          "diagnostics": {},
+          "medianMs": 426.55554100000154,
+          "p95Ms": 445.9265000000014
+        }
+      ],
+      "speedup": {
+        "numerator": "pob-web",
+        "denominator": "pobr",
+        "ratio": 31.65327231069475
+      },
+      "character": {
+        "class": "Witch",
+        "ascendancy": "Abyssal Lich",
+        "level": 98,
+        "main_skill": "Detonate Dead"
+      },
+      "source": {
+        "site": "poe.ninja",
+        "url": "https://poe.ninja/poe2/builds/runesofaldur/character/Kaku167-1951/LeafMeAloneeeee",
+        "account": "Kaku167-1951",
+        "character": "LeafMeAloneeeee",
+        "league": "Runes of Aldur",
+        "game_version": "0.5.0",
+        "fetched_at": "2026-06-07"
+      },
+      "corpus": "historical"
+    }
+  ],
+  "fullLocalReport": ".cache/pob-web-performance.json"
+}

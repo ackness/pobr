@@ -127,9 +127,11 @@ These are disk/transfer sizes, not runtime memory measurements.
 The [performance and build analysis](wasm-performance.md) document
 ([中文](wasm-performance.zh-CN.md)) records an opt-in
 PoBR Rust WASM versus pob-web Lua WASM **code-import + calculation** benchmark.
-The [baseline](../devs/ci/pob-web-performance-baseline.json) preserves the measured
-samples, host, artifact hashes, selected outputs and failed fixtures. It is
-separate from the measured size baseline above.
+The [paired record](../devs/ci/pob-web-performance-2026-10-12-m4.json) preserves the measured
+samples, host, artifact hashes, selected outputs and failed fixtures, and the
+[PoBR-only record](../devs/ci/pobr-only-performance-2026-10-12-m4.json) covers the builds the
+Lua reference rejects. They are separate from the measured size baseline above.
+`mise run setup` installs the toolchain this benchmark needs.
 
 `node web/scripts/benchmark-pob-web.mjs --prepare` acquires a hash-verified local
 reference snapshot, preserving the upstream license and pinning its wrapper,
@@ -138,8 +140,10 @@ is unknown; the wrapper commit must not be used to label those artifacts.
 Run `node web/scripts/bench-pob-web.mjs --iterations 9 --warmup 2` from the root
 after building WASM and syncing data. Full output is written to
 `.cache/pob-web-performance.json`; failed fixtures are retained without speed
-ratios and cause exit status 1. Subsequent preparation verifies the existing
-snapshot offline; use a new directory to measure a changed deployment.
+ratios and cause exit status 1. Add `--pobr-only` to measure PoBR alone on every build
+without a reference snapshot (for builds the Lua reference rejects); that report goes to
+`.cache/pobr-performance.json` and carries no speed ratio. Subsequent preparation
+verifies the existing snapshot offline; use a new directory to measure a changed deployment.
 The runner uses an explicit seven-build historical cohort from the shared parity
 fixtures and discovers all fixtures in `examples/wasm-benchmark/builds/`.
 Eleven previously failing/unstable historical builds were removed from this
@@ -149,7 +153,8 @@ captures retain their actual league, snapshot, character URL, fetch date and cod
 hash; they do not silently become parity goldens. README tables distinguish
 latest-season captures from historical inputs. To preserve a compact baseline
 with raw samples/diagnostics but without full breakdown responses, run
-`node web/scripts/snapshot-pob-web-benchmark.mjs` after the benchmark report exists.
+`node web/scripts/snapshot-pob-web-benchmark.mjs --output <file>` after the benchmark report
+exists; `--output` is required so an earlier record is never replaced by default.
 
 Regression checks:
 

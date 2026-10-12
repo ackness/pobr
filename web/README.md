@@ -118,15 +118,15 @@ value without resetting the other actor.
 
 Run these commands from the repository root. Use the pnpm version pinned in
 `web/package.json`; local mise and CI both use Node 26. `rust-toolchain.toml` pins the Rust
-version; rustup installs it on first use.
-Skip tool installation when already configured.
+version. Skip tool installation when already configured.
 
 ```bash
-# one-time prerequisites (repo root)
-rustup target add wasm32-unknown-unknown
-cargo install wasm-pack
+# one-time prerequisites (repo root): the pinned Rust + wasm32 target, wasm-pack,
+# Node/pnpm and the Web dependencies (`pnpm --dir web install --frozen-lockfile`)
+mise run setup
+# Without mise: `rustup target add wasm32-unknown-unknown`, install wasm-pack 0.15.0,
+# then `pnpm --dir web install --frozen-lockfile`.
 
-pnpm --dir web install --frozen-lockfile
 pnpm --dir web build-wasm    # build or reuse verified src/wasm/pkg/ (gitignored)
 pnpm --dir web sync-data     # data/<version>/ JSON → public/data/ (gitignored)
 pnpm --dir web dev           # http://localhost:5173
