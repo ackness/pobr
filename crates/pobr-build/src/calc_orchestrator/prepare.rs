@@ -286,16 +286,10 @@ pub(super) fn stage_build_cfg(
     // Frozen does not imply Chilled in the pinned ConfigOptions. Target-state
     // bonuses are Effective-only, even when imported panel conditions are true.
     let elemental_ailment_count = if cfg.mode_effective {
-        [
-            "EnemyIgnited",
-            "EnemyChilled",
-            "EnemyFrozen",
-            "EnemyShocked",
-            "EnemyElectrocuted",
-        ]
-        .into_iter()
-        .filter(|condition| cfg.condition(condition))
-        .count() as f64
+        crate::config_resolve::ENEMY_ELEMENTAL_AILMENT_CONDITIONS
+            .into_iter()
+            .filter(|condition| cfg.condition(condition))
+            .count() as f64
     } else {
         0.0
     };

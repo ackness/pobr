@@ -500,7 +500,7 @@ fn record_trace(
 }
 
 /// Gets the attribution `SourceId` of the modifier that set a given flag (falls back to Derived `<flag>.FLAG` when there's no origin).
-fn flag_source(player: &ModDb, cfg: &CalcConfig, flag: &str) -> SourceId {
+pub(super) fn flag_source(player: &ModDb, cfg: &CalcConfig, flag: &str) -> SourceId {
     player
         .flag_origin(cfg, flag)
         .unwrap_or_else(|| SourceId::new(SourceKind::Derived, format!("{flag}.FLAG")))
