@@ -19,6 +19,8 @@ mod gem_quality;
 mod minions;
 #[path = "skills/skill_damage_dps.rs"]
 mod skill_damage_dps;
+#[path = "skills/skill_metrics.rs"]
+mod skill_metrics;
 #[path = "skills/spirit_reservation.rs"]
 mod spirit_reservation;
 #[path = "skills/support_gating.rs"]

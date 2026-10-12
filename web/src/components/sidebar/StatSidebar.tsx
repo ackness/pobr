@@ -1,6 +1,8 @@
 import type { MainSkillInfo } from '../../api/types';
 import type { BuildSession } from '../../hooks/useBuildSession';
-import { useSkillName } from '../../hooks/useSkillName';
+import { useSkillCatalog } from '../../hooks/useSkillName';
+import { activeSkillEffects } from '../../lib/skillSelection';
+import { skillDisplayName } from '../../lib/skillNames';
 import { STAT_SECTIONS, formatStatValue, statMap, type Lang } from '../../lib/statDisplay';
 import { bindT, damageTypeLabel } from '../../lib/i18n';
 import { AppSelect } from '../shared/AppSelect';
@@ -23,16 +25,18 @@ const DAMAGE_COLOR: Record<string, string> = {
 };
 
 /**
- * 主技能选择 + 伤害分解（PoB2 左侧栏 Main Skill 下拉的对应物）。
+ * Inspected calculation skill and damage breakdown.
  * 数值随每次重算的 calc.main_skill 刷新——装备/天赋一变即时更新。
  */
 function MainSkillSection({ session, lang }: { session: BuildSession; lang: Lang }) {
   const tt = bindT(lang);
-  const skillName = useSkillName(lang);
+  const catalog = useSkillCatalog();
+  const skillName = (skillId: string) => skillDisplayName(skillId, lang, catalog);
   const groups = session.socketGroups;
-  const mainSkill: MainSkillInfo | null = session.calc?.main_skill ?? null;
-  // 下拉保持用户显式选择；未选过时跟随引擎实际选中的组。
-  const selected = session.calcParams.main_socket_group ?? mainSkill?.group_index ?? 0;
+  const mainSkill: MainSkillInfo | null = session.calcError || session.calcParams.main_socket_group === undefined
+    ? null : session.calc?.main_skill ?? null;
+  // Missing imported selection remains unselected; inspection is explicit.
+  const selected = session.calcParams.main_socket_group;
 
   if (groups.length === 0) return null;
 
@@ -43,19 +47,19 @@ function MainSkillSection({ session, lang }: { session: BuildSession; lang: Lang
       <h3>{tt('sidebar.mainSkill')}</h3>
       <div className="main-skill-select"><AppSelect
         ariaLabel={tt('sidebar.mainSkill')}
-        value={String(selected)}
+        value={selected === undefined ? '' : String(selected)}
+        placeholder={tt('sidebar.unselected')}
         disabled={session.busy}
         onChange={(value) => session.updateParams({ main_socket_group: Number(value) })}
         options={groups.map((group, idx) => {
-          const [active] = group.gems;
-          const name = mainSkill?.group_index === idx ? skillName(mainSkill.skill_id)
-            : active ? skillName(active.skill_id) : tt('skills.emptyGroup');
+          const effect = catalog.size ? activeSkillEffects(group, catalog)[(group.main_active_skill ?? 1) - 1] : undefined;
+          const name = effect ? skillName(effect.skillId) : tt('calcs.unavailable');
           return { value: String(idx), label: `${idx + 1}. ${name}${group.enabled ? '' : ` ${tt('sidebar.disabledGroup')}`}` };
         })}
       /></div>
       {!mainSkill && <p className="main-skill-empty">{tt('sidebar.noMainSkill')}</p>}
       {mainSkill && mainSkill.group_index !== selected && (
-        // 选中组无伤害技能时引擎回退到别组（resolve_main_skill 语义）——标明实际计算对象。
+        // Keep the resolved calculation identity visible if it differs from the selection.
         <p className="main-skill-empty">
           {tt('sidebar.computedSkill')}: {skillName(mainSkill.skill_id)}
         </p>
@@ -130,7 +134,11 @@ export function StatSidebar({ session, lang, onStatClick }: Props) {
   return (
     <aside id="character-stats" className="stat-sidebar" aria-label="Character stats">
       <MainSkillSection session={session} lang={lang} />
+      {onStatClick && <button className="stat-row stat-row--link" onClick={() => onStatClick('skill-metrics')}>
+        {bindT(lang)('calcs.skillMetrics')} →
+      </button>}
       {STAT_SECTIONS.map((section) => {
+        if (section.requiresSkill && (session.calcParams.main_socket_group === undefined || !calc?.main_skill)) return null;
         const rows = section.rows.filter((row) => {
           if (!values) return !row.hideZero;
           const v = values.get(row.id);

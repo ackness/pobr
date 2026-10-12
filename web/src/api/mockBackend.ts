@@ -8,6 +8,7 @@ import type { PobrBackend } from './backend';
 import type {
   BuildJson,
   CalculateBuildResponse,
+  SkillMetricsResponse,
   AttributionResponse,
   ConfigOption,
   GemCatalogEntry,
@@ -17,6 +18,7 @@ import type {
 import decodeFixture from '../fixtures/decode.json';
 import calculateFixture from '../fixtures/calculate.json';
 import attributionFixture from '../fixtures/attribution.json';
+import skillMetricsFixture from '../fixtures/skill_metrics.json';
 import treeFixture from '../fixtures/tree.json';
 import treeMetaFixture from '../fixtures/tree_meta.json';
 import gemCatalogFixture from '../fixtures/gem_catalog.json';
@@ -49,8 +51,8 @@ export function createMockBackend(): PobrBackend {
     async encodeBuild() {
       return 'MOCK_POB_CODE';
     },
-    async fullDps() {
-      return { full_dps: 0, per_skill: [] };
+    async skillMetrics() {
+      return skillMetricsFixture as SkillMetricsResponse;
     },
     async attribution() {
       return attributionFixture as unknown as AttributionResponse;

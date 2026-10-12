@@ -9,7 +9,6 @@
 import { activeWorkspaceStage, addWorkspaceBuild, createWorkspace, duplicateWorkspaceStage, parseWorkspace, renameWorkspaceEntry, selectWorkspaceStage, updateWorkspaceStage, workspaceEnvelope, type BuildWorkspace } from '../lib/buildWorkspace';
 import { formatApiError } from '../api/error';
 import { resolveBuildInput } from '../api/import';
-import { defaultMainSkill } from '../lib/mainSkill';
 import { reconcileJewelAllocation } from '../lib/passiveGraph';
 import { groupsForWeaponSet, skillWeaponSet, switchWeapons, validWeaponSwap } from '../lib/weaponSets';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -25,7 +24,7 @@ import type {
   ConfigInputValue,
   CustomModifierBlock,
   EnemyTier,
-  FullDpsResponse,
+  SkillMetricsResponse,
   JewelInput,
   LoadoutJson,
   PassiveTreeMeta,
@@ -173,10 +172,12 @@ export interface BuildSession {
   applyTreePlan: (expectedRequest: CalculateBuildRequest, plan: TreePlan) => boolean;
   removeJewelSocket: (socket: number, allocatedNodes: number[]) => void;
   updateParams: (patch: Partial<CalcParams>) => void;
+  /** Select an exact effect atomically; reject rows from an obsolete overview. */
+  inspectSkill: (groupIndex: number, activeSkillIndex: number, expectedVersion: number) => void;
   setConfigInput: (key: string, value: ConfigInputValue | null) => void;
   runAttribution: (fields: string[]) => Promise<AttributionResponse>;
-  /** 逐技能组 DPS（Calcs 页技能列表消费；每组一次 scoped 完整计算）。 */
-  runFullDps: () => Promise<FullDpsResponse>;
+  /** Independent per-effect metrics across weapon sets, without an aggregate sum. */
+  runSkillMetrics: () => Promise<SkillMetricsResponse>;
 }
 
 // 计算请求不带 pob_code：导入时 XML 内容已全量物化进 state（materialize +
@@ -498,21 +499,25 @@ function materialize(
   };
 }
 
-async function fullDpsForState(state: BuildState): Promise<FullDpsResponse> {
+async function skillMetricsForState(state: BuildState): Promise<SkillMetricsResponse> {
   const backend = await getBackend();
   const active = state.weaponSwap?.active ?? 1;
   const sets = new Set<1 | 2>([active]);
   for (const group of state.socketGroups) if (group.enabled && group.weapon_set) sets.add(group.weapon_set);
-  const per_skill: FullDpsResponse['per_skill'] = [];
+  const skills: SkillMetricsResponse['skills'] = [];
+  const item_errors: SkillMetricsResponse['item_errors'] = [];
   for (const set of sets) {
-    const report = await backend.fullDps(toRequest(switchWeapons(state, set)));
-    per_skill.push(...report.per_skill.filter(entry => {
+    const report = await backend.skillMetrics(toRequest(switchWeapons(state, set)));
+    skills.push(...report.skills.filter(entry => {
       const group = state.socketGroups[entry.group_index];
       return group ? (group.weapon_set ?? active) === set : set === active;
     }));
+    for (const issue of report.item_errors) {
+      if (!item_errors.some(existing => JSON.stringify(existing) === JSON.stringify(issue))) item_errors.push(issue);
+    }
   }
-  per_skill.sort((a, b) => a.group_index - b.group_index);
-  return { full_dps: per_skill.reduce((sum, entry) => sum + entry.dps, 0), per_skill };
+  skills.sort((a, b) => a.group_index - b.group_index || a.active_skill_index - b.active_skill_index);
+  return { skills, item_errors };
 }
 
 export function useBuildSession(): BuildSession {
@@ -526,7 +531,7 @@ export function useBuildSession(): BuildSession {
   const [classNames, setClassNames] = useState<ClassNames>({ classes: {}, ascendancies: {} });
   const [build, setBuild] = useState<BuildJson | null>(null);
   const [state, setState] = useState<BuildState | null>(null);
-  const [calc, setCalc] = useState<CalculateBuildResponse | null>(null);
+  const [calculated, setCalculated] = useState<{ version: number; result: CalculateBuildResponse } | null>(null);
   const [calculating, setCalculating] = useState(false);
   // Source operations can overlap a recalc or nest (manageLoadout imports its result).
   const [pendingOperations, setPendingOperations] = useState(0);
@@ -576,6 +581,7 @@ export function useBuildSession(): BuildSession {
   }, [saveToStorage]);
   const [library, setLibrary] = useState<Library>(loadLibrary);
   const [stateVersion, setStateVersion] = useState(0);
+  const calc = calculated?.version === stateVersion ? calculated.result : null;
   const [socketGroupRevision, setSocketGroupRevision] = useState(0);
   /**
    * 「干净」基线：导入 / 切换 loadout 落地时记下当时的版本号。之后每次编辑
@@ -603,12 +609,13 @@ export function useBuildSession(): BuildSession {
 
   const recalc = useCallback((next: BuildState) => {
     const seq = ++seqRef.current;
+    const version = versionRef.current;
     setCalculating(true);
     setCalcError(null);
     getBackend()
       .then((backend) => backend.calculateBuild(toRequest(next)))
       .then((result) => {
-        if (seqRef.current === seq) setCalc(result);
+        if (seqRef.current === seq) setCalculated({ version, result });
       })
       .catch((err) => {
         if (seqRef.current === seq) setCalcError(formatApiError(err));
@@ -779,19 +786,9 @@ export function useBuildSession(): BuildSession {
         code = await resolveBuildInput(code);
         // JSON includes China-server .build files and WeGame share bundles.
         const isBuildFile = code.trimStart().startsWith('{');
-        let decoded = isBuildFile
+        const decoded = isBuildFile
           ? await backend.decodeBuildFile(code)
           : await backend.decodeBuild(code);
-        if (decoded.main_socket_group == null && decoded.socket_groups.some(group => group.enabled && group.gems.length)) {
-          const materialized = materialize(decoded);
-          const report = await fullDpsForState({
-            ...materialized, pobCode: null, character: decoded.character,
-            allocatedNodes: decoded.tree.allocated_nodes,
-            attributeChoices: decoded.tree.attribute_choices ?? {}, annotations: {},
-            params: paramsFromDecoded(decoded),
-          });
-          decoded = { ...decoded, main_socket_group: defaultMainSkill(materialized.socketGroups, report) ?? null };
-        }
         setBuild(decoded);
         mergeImportedIntoLibrary(decoded);
         // <Notes> 里可能带 PoBR 注释标记段：拆成总览笔记 + 局部注释。
@@ -940,7 +937,7 @@ export function useBuildSession(): BuildSession {
 
   const setWeaponSet = useCallback((set: 1 | 2) => {
     if (!state) return;
-    const main = state.params.main_socket_group ?? 0;
+    const main = state.params.main_socket_group;
     const next = switchWeapons(state, set);
     // Explicitly switching the selected skill changes its exclusive binding too.
     apply({ ...next, socketGroups: next.socketGroups.map((group, i) =>
@@ -1094,6 +1091,19 @@ export function useBuildSession(): BuildSession {
     [apply, state],
   );
 
+  const inspectSkill = useCallback((groupIndex: number, activeSkillIndex: number, expectedVersion: number) => {
+    const current = stateRef.current;
+    if (!current || current !== state || expectedVersion !== stateVersion || busy
+      || !Number.isInteger(activeSkillIndex) || activeSkillIndex < 1
+      || !current.socketGroups[groupIndex]?.enabled) return;
+    apply({
+      ...current,
+      socketGroups: current.socketGroups.map((group, index) => index === groupIndex
+        ? { ...group, main_active_skill: activeSkillIndex } : group),
+      params: { ...current.params, main_socket_group: groupIndex },
+    });
+  }, [apply, state, stateVersion, busy]);
+
   const setConfigInput = useCallback(
     (key: string, value: ConfigInputValue | null) => {
       if (!state) return;
@@ -1132,8 +1142,8 @@ export function useBuildSession(): BuildSession {
       setSocketGroupRevision(value => value + 1);
       const socketGroups = state.socketGroups.filter((_, i) => i !== index);
       // Keep the same selected group after compaction; replace it only if removed.
-      const main = state.params.main_socket_group ?? 0;
-      const nextMain = main === index ? socketGroups.findIndex(group => group.enabled)
+      const main = state.params.main_socket_group;
+      const nextMain = main === undefined ? undefined : main === index ? socketGroups.findIndex(group => group.enabled)
         : main > index ? main - 1 : main;
       // `skill:<index>` 注释键跟随组序号：删除组的注释一并删，后续组的键前移。
       const annotations: Annotations = {};
@@ -1148,7 +1158,7 @@ export function useBuildSession(): BuildSession {
         annotations[i > index ? `skill:${i - 1}` : key] = text;
       }
       apply({ ...state, socketGroups, annotations, params: { ...state.params,
-        main_socket_group: nextMain >= 0 && nextMain < socketGroups.length ? nextMain : undefined } });
+        main_socket_group: nextMain !== undefined && nextMain >= 0 && nextMain < socketGroups.length ? nextMain : undefined } });
     },
     [apply, state],
   );
@@ -1179,7 +1189,7 @@ export function useBuildSession(): BuildSession {
   const restoreSession = useCallback((saved: SavedSession, drafts: Record<string, string>) => {
     setSocketGroupRevision(value => value + 1);
     setBuild(null);
-    setCalc(null);
+    setCalculated(null);
     notesRef.current = saved.notes;
     setNotesState(saved.notes);
     draftsRef.current = drafts;
@@ -1359,9 +1369,9 @@ export function useBuildSession(): BuildSession {
     [state],
   );
 
-  const runFullDps = useCallback(async (): Promise<FullDpsResponse> => {
+  const runSkillMetrics = useCallback(async (): Promise<SkillMetricsResponse> => {
     if (!state) throw new Error('build not ready');
-    return fullDpsForState(state);
+    return skillMetricsForState(state);
   }, [state]);
 
   return {
@@ -1434,8 +1444,9 @@ export function useBuildSession(): BuildSession {
     applySkillSet,
     removeSkillSet,
     updateParams,
+    inspectSkill,
     setConfigInput,
     runAttribution,
-    runFullDps,
+    runSkillMetrics,
   };
 }

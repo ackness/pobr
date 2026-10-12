@@ -1083,6 +1083,79 @@ fn main_skill_quality_modifiers_truncate_and_attribute_gem_quality() {
     );
 }
 
+#[test]
+fn additional_effect_preserves_selected_gem_quality_and_level_provenance() {
+    use pobr_data::catalog::QualityStat;
+    let mut data = repo_data();
+    data.gem_quality_stats.insert(
+        "DoomBlastPlayer".into(),
+        vec![QualityStat {
+            stat: "damage_+%".into(),
+            per_quality_rate: 0.55,
+            alt: false,
+        }],
+    );
+    let group = SocketGroup::new()
+        .with_gem_skill_quality("ViciousHexSupportPlayer", 1, 3)
+        .with_gem_skill_quality("ViciousHexSupportPlayer", 2, 19)
+        .with_main_active_skill(2);
+    let mods =
+        main_skill_quality_modifiers(&mut test_context(&data), &group, &data, "DoomBlastPlayer");
+    assert_eq!(mods.len(), 1);
+    assert_eq!(mods[0].value.as_number(), Some(10.0));
+    let mut build = Build::new()
+        .add_socket_group(group)
+        .with_main_socket_group(1);
+    let baseline = super::skill::resolve::resolve_main_skill(&build, &data)
+        .unwrap()
+        .0;
+    let mut item = life_item("0");
+    item.modifier_texts = vec!["+2 to Level of all Spell Skills".into()];
+    build.items.insert(EquipmentSlot::Ring1, item);
+    let boosted = super::skill::resolve::resolve_main_skill(&build, &data)
+        .unwrap()
+        .0;
+    // The selected spell is granted by a support gem: spell-gem levels do not
+    // change that originating support's level.
+    assert_eq!(boosted, baseline);
+}
+
+#[test]
+fn builder_additional_effect_keeps_primary_gem_level_bonus_provenance() {
+    let mut data = repo_data();
+    // Make level selection observable even when real Doom Blast level rows have
+    // identical timing. Keep the real support-to-active-effect relationship.
+    for row in data
+        .granted_effect_levels
+        .get_mut("DoomBlastPlayer")
+        .unwrap()
+    {
+        row.attack_time_ms = Some(row.level * 100);
+    }
+    let mut gem_build = Build::new()
+        .add_socket_group(SocketGroup::new().with_gem_skill("ViciousHexSupportPlayer", 2))
+        .with_main_socket_group(1);
+    let mut item = life_item("0");
+    item.modifier_texts = vec!["+2 to Level of all Spell Skills".into()];
+    gem_build.items.insert(EquipmentSlot::Ring1, item);
+    let mut builder_build = gem_build.clone();
+    builder_build.socket_groups[0] =
+        SocketGroup::new().with_active_skill("ViciousHexSupportPlayer", 2);
+    let gem_skill = super::skill::resolve::resolve_main_skill(&gem_build, &data).unwrap();
+    let builder_skill = super::skill::resolve::resolve_main_skill(&builder_build, &data).unwrap();
+    assert_eq!(gem_skill.2, "DoomBlastPlayer");
+    assert_eq!(builder_skill.2, "DoomBlastPlayer");
+    assert_eq!(gem_skill.0.use_time_s, Some(0.2));
+    assert_eq!(builder_skill.0, gem_skill.0);
+    let options = DataOrchestratorOptions::default();
+    let gem_report = calculate_skill_metrics(&gem_build, &data, &options).unwrap();
+    let builder_report = calculate_skill_metrics(&builder_build, &data, &options).unwrap();
+    assert_eq!(gem_report.skills.len(), 1);
+    assert_eq!(builder_report.skills.len(), 1);
+    assert!(gem_report.skills[0].output.is_some());
+    assert_eq!(builder_report.skills[0].output, gem_report.skills[0].output);
+}
+
 /// The per-set override key of the selected statSet threads through to the
 /// engine's set_key — with statSetIndex=2, the same stat routes to set "2"'s
 /// override entry (a synthetic catalog); by default it routes to set "1"/global.
@@ -2173,10 +2246,8 @@ fn inbuilt_trigger_skill_fills_trigger_rate_cap() {
     );
 }
 
-/// T5.6 meta/composite gem expansion: when none of the group's own gems are
-/// damage skills, the gem_effects foreign key is used to pick a damage skill
-/// from the additional granted effects as the main skill (PoB2
-/// CalcSetup.lua:1714-1718 adds additionalGrantedEffects into socketGroupSkillList too).
+/// Composite effects occupy explicit ordinals; selecting a utility shell must not
+/// silently switch the calculation to its damaging secondary effect.
 #[test]
 fn meta_gem_expands_additional_granted_effect_as_main_skill() {
     // This test module has no shared effect constructor, so build one inline.
@@ -2226,7 +2297,9 @@ fn meta_gem_expands_additional_granted_effect_as_main_skill() {
         gem_effects,
         ..BuildData::empty()
     };
-    let group = SocketGroup::new().with_gem_skill("SummonShellPlayer", 12);
+    let group = SocketGroup::new()
+        .with_gem_skill("SummonShellPlayer", 12)
+        .with_main_active_skill(2);
     let picked = pick_group_main_skill(&data, &group);
     assert_eq!(
         picked,
@@ -2234,12 +2307,21 @@ fn meta_gem_expands_additional_granted_effect_as_main_skill() {
         "an additional granted effect should be expanded into the main skill (level follows the host gem)"
     );
 
-    // Missing foreign key (an old data pack without the overlay) → stays None (a pure summon group has no main skill, backward compatible).
+    // Missing foreign key makes ordinal 2 invalid, never clamped to the shell.
     let data_no_link = BuildData {
         granted_effects: data.granted_effects.clone(),
         ..BuildData::empty()
     };
     assert_eq!(pick_group_main_skill(&data_no_link, &group), None);
+    let shell = group.clone().with_main_active_skill(1);
+    assert_eq!(
+        pick_group_main_skill(&data, &shell),
+        Some(("SummonShellPlayer", 12, None)),
+    );
+    assert_eq!(
+        pick_group_main_skill(&data, &group.with_main_active_skill(0)),
+        None
+    );
 }
 
 /// A non-triggered main skill (an ordinary spell) → the orchestrator injects no
@@ -2421,6 +2503,44 @@ fn assert_trigger_source_matches_direct(
         [rate, source.hit_chance * 100.0, source.crit_chance * 100.0],
         "trigger source stats must match selecting the source directly"
     );
+}
+
+#[test]
+fn trigger_subcalc_counts_support_granted_effects_before_source() {
+    let data = repo_data();
+    let options = DataOrchestratorOptions::default();
+    let build = Build::new()
+        .add_socket_group(
+            SocketGroup::new()
+                .with_gem_skill("ViciousHexSupportPlayer", 1)
+                .with_gem_skill("ArmourBreakerPlayer", 10)
+                .with_gem_skill("MetaCastOnCritPlayer", 10)
+                .with_gem_skill("FireballPlayer", 10)
+                .with_main_active_skill(4),
+        )
+        .with_main_socket_group(1);
+    let group = &build.socket_groups[0];
+    let stats = trigger_source_stats(
+        &mut test_context(&data),
+        &build,
+        &data,
+        &options,
+        group,
+        &group.gem_skills[1],
+        "FireballPlayer",
+    )
+    .expect("source after a support-granted effect");
+    let mut direct = build.clone();
+    direct.socket_groups[0].main_active_skill = Some(2);
+    let output = calculate_with_data(&direct, &data, &options).unwrap();
+    let rate = if output.effective_action_rate > 0.0 {
+        output.effective_action_rate
+    } else {
+        output.action_rate
+    };
+    assert_eq!(stats.action_rate, rate);
+    assert_eq!(stats.hit_chance, output.hit_chance);
+    assert_eq!(stats.crit_chance, output.crit_chance);
 }
 
 #[test]

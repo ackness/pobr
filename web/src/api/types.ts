@@ -9,7 +9,7 @@
  * JSON 契约版本，与 Rust 侧 `pobr_wasm::SCHEMA_VERSION` 配对。
  * 任何破坏性形状变更两侧同时 +1；boot 时握手校验（见 wasmBackend.ts）。
  */
-export const EXPECTED_SCHEMA_VERSION = 7;
+export const EXPECTED_SCHEMA_VERSION = 8;
 
 // ---------------------------------------------------------------------------
 // 错误契约（所有接口 Err 侧；解析入口见 ./error.ts::parseApiError）
@@ -221,6 +221,8 @@ export interface GemCatalogEntry {
   skill_id: string;
   /** Secondary effects supplied by this gem; display aliases, not picker entries. */
   additional_skill_ids?: string[];
+  /** Canonical ordinal contributors: primary then granted active effects, never stat-set aliases. */
+  active_effect_ids: string[];
   name: string;
   /** 繁中名（数据包 i18n 边车）。 */
   name_zh_tw: string | null;
@@ -426,10 +428,12 @@ export interface HitDamagePart {
   avg: number;
 }
 
-/** 主技能身份 + 伤害分解（PoB2 左侧栏 Main Skill 的对应物；每次重算刷新）。 */
+/** Current inspected skill identity and damage breakdown, refreshed on calculation. */
 export interface MainSkillInfo {
   /** 选中技能组（0-based，与请求 socket_groups 对齐）。 */
   group_index: number;
+  /** PoB's 1-based ordinal among all active effects in the group. */
+  active_skill_index: number;
   /** 该组主技能的授予效果 id。 */
   skill_id: string;
   hit_damage: HitDamagePart[];
@@ -606,19 +610,31 @@ export interface ConfigCatalogFile {
 }
 
 // ---------------------------------------------------------------------------
-// full_dps_json
+// skill_metrics_json
 // ---------------------------------------------------------------------------
 
-export interface SkillDpsEntry {
-  /** 技能组下标（0-based，与 socket_groups 对齐）。 */
+export interface SkillMetricsEntry {
+  /** Original socket group index (0-based). */
   group_index: number;
-  /** 该组主动技能的授予效果 id。 */
+  /** PoB's 1-based ordinal among all active effects, including granted effects. */
+  active_skill_index: number;
   skill_id: string;
-  dps: number;
+  status: 'calculated' | 'unavailable';
+  metrics: {
+    hit_dps: number;
+    dot_dps: number;
+    combined_dps: number;
+    average_hit: number;
+    action_rate: number;
+    mana_cost: number;
+    life_cost: number;
+    cooldown: number;
+  } | null;
+  unsupported_modifiers: string[];
+  error: string | null;
 }
 
-export interface FullDpsResponse {
-  /** 全部启用伤害技能组的 CombinedDPS 之和。 */
-  full_dps: number;
-  per_skill: SkillDpsEntry[];
+export interface SkillMetricsResponse {
+  skills: SkillMetricsEntry[];
+  item_errors: SlotIssue[];
 }

@@ -1,6 +1,5 @@
-//! Full build calculation: `calculate_build_json` (the full display_catalog
-//! plus breakdown plus main-skill damage decomposition) and `full_dps_json`
-//! (per-socket-group DPS plus the FullDPS summary).
+//! Full build calculation and independently evaluated skill metrics.
+//! A selected skill controls the detailed panel, not whether other skills can calculate.
 
 use std::collections::BTreeMap;
 
@@ -130,6 +129,8 @@ struct HitDamagePartJson {
 struct MainSkillJson {
     /// The selected skill group (0-based, aligned with the request's `socket_groups`).
     group_index: usize,
+    /// PoB's 1-based ordinal among all active effects, including support-granted skills.
+    active_skill_index: usize,
     /// That group's main skill's granted effect id.
     skill_id: String,
     /// The hit-damage components, split by damage type.
@@ -147,7 +148,8 @@ fn main_skill_json(
     data: &BuildData,
     output: &pobr_core::calc::OutputTable,
 ) -> Option<MainSkillJson> {
-    let (group_index, skill_id) = pobr_build::resolve_main_skill_selection(build, data)?;
+    let (group_index, active_skill_index, skill_id) =
+        pobr_build::resolve_main_skill_selection(build, data)?;
     let hit_damage = output
         .damage_components
         .iter()
@@ -161,6 +163,7 @@ fn main_skill_json(
         .collect();
     Some(MainSkillJson {
         group_index,
+        active_skill_index,
         skill_id,
         hit_damage,
         hit_dps: output.dps,
@@ -221,57 +224,100 @@ fn calculate_build_impl(request_json: &str) -> Result<String, super::ApiError> {
     Ok(serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))?)
 }
 
-// full_dps_json (per-socket-group DPS plus the FullDPS summary)
+#[derive(Debug, Serialize)]
+struct SkillMetricValues {
+    hit_dps: f64,
+    dot_dps: f64,
+    combined_dps: f64,
+    average_hit: f64,
+    action_rate: f64,
+    mana_cost: f64,
+    life_cost: f64,
+    cooldown: f64,
+}
 
 #[derive(Debug, Serialize)]
-struct SkillDpsJson {
-    /// The skill group's index (0-based, aligned with socket_groups).
+struct SkillMetricsJson {
     group_index: usize,
-    /// That group's active skill's granted effect id.
+    active_skill_index: usize,
     skill_id: String,
-    dps: f64,
+    status: &'static str,
+    metrics: Option<SkillMetricValues>,
+    unsupported_modifiers: Vec<String>,
+    error: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
-struct FullDpsResponse {
-    /// The sum of CombinedDPS across every enabled damage skill group.
-    full_dps: f64,
-    per_skill: Vec<SkillDpsJson>,
+struct SkillMetricsResponse {
+    skills: Vec<SkillMetricsJson>,
+    item_errors: Vec<super::request::SlotIssue>,
 }
 
-/// Per-socket-group DPS (the request shape is the same as [`CalculateBuildRequest`]).
-///
-/// Computation cost = `1 + the number of enabled damage groups` full
-/// orchestration passes; feeds the click-triggered per-skill DPS panel, and
-/// isn't called on every recalculation (the same pattern as attribution).
-pub fn full_dps_json(request_json: &str) -> Result<String, String> {
-    state::cached_response("full_dps", request_json, || {
-        full_dps_impl(request_json).map_err(super::ApiError::into_json)
+/// Evaluate each active effect in its full build context, without requiring a primary
+/// skill or summing mutually exclusive skills into a purported combat DPS total.
+pub fn skill_metrics_json(request_json: &str) -> Result<String, String> {
+    state::cached_response("skill_metrics", request_json, || {
+        skill_metrics_impl(request_json).map_err(super::ApiError::into_json)
     })
 }
 
-fn full_dps_impl(request_json: &str) -> Result<String, super::ApiError> {
+fn skill_metrics_impl(request_json: &str) -> Result<String, super::ApiError> {
     let req: CalculateBuildRequest = serde_json::from_str(request_json)
         .map_err(|e| super::ApiError::bad_request(format!("invalid request json: {e}")))?;
     let data = state::build_data().map_err(super::ApiError::not_initialized)?;
     let mut build = parse_build_from_request(&req)?;
-    // Degraded records don't go into this response — the main panel's
-    // calculate already reports the same item_errors.
-    let _ = apply_request_overrides(&mut build, &req, &data)?;
+    let item_errors = apply_request_overrides(&mut build, &req, &data)?;
     let opts = orchestrator_options(&req)?;
-    let report = pobr_build::calculate_full_dps(&build, &data, &opts)
+    let report = pobr_build::calculate_skill_metrics(&build, &data, &opts)
         .map_err(|e| format!("calculate: {e}"))?;
-    let response = FullDpsResponse {
-        full_dps: report.full_dps,
-        per_skill: report
-            .per_skill
+    let response = SkillMetricsResponse {
+        skills: report
+            .skills
             .into_iter()
-            .map(|s| SkillDpsJson {
-                group_index: s.group_index,
-                skill_id: s.skill_id,
-                dps: s.combined_dps,
+            .map(|skill| {
+                let mut error = skill.error;
+                let metrics = skill.output.and_then(|output| {
+                    let values = [
+                        output.dps,
+                        output.total_dot_dps,
+                        output.combined_dps,
+                        output.total_hit_avg,
+                        output.effective_action_rate,
+                        output.mana_cost,
+                        output.life_cost,
+                        output.cooldown,
+                    ];
+                    if values.iter().any(|value| !value.is_finite()) {
+                        error = Some("Skill calculation produced non-finite metrics".to_string());
+                        return None;
+                    }
+                    Some(SkillMetricValues {
+                        hit_dps: output.dps,
+                        dot_dps: output.total_dot_dps,
+                        combined_dps: output.combined_dps,
+                        average_hit: output.total_hit_avg,
+                        action_rate: output.effective_action_rate,
+                        mana_cost: output.mana_cost,
+                        life_cost: output.life_cost,
+                        cooldown: output.cooldown,
+                    })
+                });
+                SkillMetricsJson {
+                    group_index: skill.group_index,
+                    active_skill_index: skill.active_skill_index,
+                    skill_id: skill.skill_id,
+                    status: if metrics.is_some() {
+                        "calculated"
+                    } else {
+                        "unavailable"
+                    },
+                    metrics,
+                    unsupported_modifiers: skill.unsupported_modifiers,
+                    error,
+                }
             })
             .collect(),
+        item_errors,
     };
     Ok(serde_json::to_string(&response).map_err(|e| format!("serialize: {e}"))?)
 }

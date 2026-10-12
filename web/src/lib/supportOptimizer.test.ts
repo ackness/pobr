@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest';
 import type { CalculateBuildRequest, GemInput, SocketGroupInput } from '../api/types';
 import type { EvaluateOptions } from './optimize';
-import { eligibleSupports, lineageAvailable, optimizeSupports, sameSupportFamily, supportSetCompatible, supportSetsCompatible, supportVariant,
+import { applySupportPlan, eligibleSupports, lineageAvailable, optimizeSupports, sameSupportFamily, supportSetCompatible, supportSetsCompatible, supportVariant,
   type SupportMetadata } from './supportOptimizer';
 
 // Canned engine decisions for the synthetic search fixtures. Rule semantics and
@@ -19,6 +19,7 @@ vi.mock('../api/backend', () => ({ getBackend: async () => ({ supportGroupsCompa
 const gem = (id: string, extra: Partial<SupportMetadata> = {}): SupportMetadata => ({
   skill_id: id, name: id, family: id, max_level: 1, level_requirements: [0], is_support: true,
   compatibility_known: true, require_skill_types: ['Spell'], exclude_skill_types: [], add_skill_types: [],
+  active_effect_ids: extra.is_support === false ? [id] : [],
   ...extra,
 });
 const active = gem('Fireball', { is_support: false, skill_types: ['Spell', 'Projectile'], max_level: 20 });
@@ -57,6 +58,23 @@ test('a support replacement preserves active gems and every other group, includi
   expect(variant.socket_groups![0].gems.map(gem => gem.skill_id)).toEqual(['Fireball', 'New']);
   expect(variant.socket_groups![1]).toEqual(request.socket_groups[1]);
   expect(request.socket_groups[0].gems[1].skill_id).toBe('Old');
+});
+
+test('support plans preserve the inspected granted effect across reordering and cannot replace it with another skill', async () => {
+  const catalog = [active, gem('Hex', { active_effect_ids: ['DoomBlast'] }), gem('New')];
+  const original: SocketGroupInput = { enabled: true, weapon_set: 2, main_active_skill: 2,
+    gems: [input('Fireball'), input('Hex'), input('Fireball')] };
+  const request = { socket_groups: [original] };
+  const variant = supportVariant(request, 0, [input('New'), input('Hex')], catalog);
+  expect(variant.socket_groups![0].main_active_skill).toBe(3);
+  expect(variant.socket_groups![0].gems.map(gem => gem.skill_id)).toEqual(['Fireball', 'Fireball', 'New', 'Hex']);
+  expect(applySupportPlan([original], 0, { variant })[0]).toEqual(variant.socket_groups![0]);
+  expect(applySupportPlan([original], 0, { variant })[0].weapon_set).toBe(2);
+  expect(await supportSetCompatible(original, [input('New')], catalog)).toBe(false);
+  expect(() => supportVariant(request, 0, [input('New')], catalog)).toThrow('removes the inspected active effect');
+  const duplicate = supportVariant({ socket_groups: [{ ...original, main_active_skill: 3 }] }, 0, [input('New')], catalog);
+  expect(duplicate.socket_groups![0].main_active_skill).toBe(2);
+  expect(original.main_active_skill).toBe(2);
 });
 
 function evaluator(score: (ids: string[]) => number, options: { unsupported?: string; abort?: boolean } = {}) {

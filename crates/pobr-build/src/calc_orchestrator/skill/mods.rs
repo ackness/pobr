@@ -73,11 +73,9 @@ pub(crate) fn dot_flag_modifiers(
     data: &BuildData,
     skill_id: &str,
 ) -> Vec<Modifier> {
-    let set_index = group
-        .gem_skills
-        .iter()
-        .find(|g| g.skill_id == skill_id)
-        .and_then(|g| g.stat_set_index);
+    let set_index = super::resolve::selected_group_effect(data, group)
+        .filter(|effect| effect.skill_id == skill_id)
+        .and_then(|effect| effect.stat_set_index);
     let flags = data.selected_set_dot_flags(skill_id, set_index);
     pobr_core::skill_env::dot_flag_modifiers(flags, skill_id)
 }
@@ -116,11 +114,9 @@ pub(crate) fn corpse_explosion_modifiers(
     skill: &ResolvedSkillLevel,
     skill_id: &str,
 ) -> Vec<Modifier> {
-    let set_index = group
-        .gem_skills
-        .iter()
-        .find(|g| g.skill_id == skill_id)
-        .and_then(|g| g.stat_set_index);
+    let set_index = super::resolve::selected_group_effect(data, group)
+        .filter(|effect| effect.skill_id == skill_id)
+        .and_then(|effect| effect.stat_set_index);
     if !data.selected_set_explode_corpse(skill_id, set_index) {
         return Vec::new();
     }
@@ -219,8 +215,8 @@ pub(crate) fn crossbow_reload_modifiers(
 /// `buildSkillInstanceStats` up-front quality stacking, CalcTools.lua:140-145:
 /// `stats[stat] += math.modf(rate × quality)`).
 ///
-/// The main skill's quality is looked up from this group's `gem_skills` by effect id
-/// (the result of `resolve_main_skill`'s selection is one of these entries). The
+/// Quality and stat-set provenance follow the exact selected active effect,
+/// including additional effects granted by support gems. The
 /// attribution id prefix is `gem.<effect id>.q<Q>`, matching `skill_source.rs`'s
 /// existing convention (`quality_source_id`); [`mapped_stat_modifiers`] appends
 /// `.<stat>` to further split it to a single stat. Returns empty for quality 0 / no
@@ -231,21 +227,18 @@ pub(crate) fn main_skill_quality_modifiers(
     data: &BuildData,
     skill_id: &str,
 ) -> Vec<Modifier> {
-    let Some(gem) = group.gem_skills.iter().find(|g| g.skill_id == skill_id) else {
-        return Vec::new(); // The builder path (with_active_skill) has no gem_skills: no quality source.
+    let Some(gem) = super::resolve::selected_group_effect(data, group)
+        .filter(|effect| effect.skill_id == skill_id)
+    else {
+        return Vec::new();
     };
     if gem.quality == 0 {
         return Vec::new();
     }
-    let stats = data.effect_stats(
-        &gem.skill_id,
-        gem.gem_level,
-        gem.quality,
-        gem.stat_set_index,
-    );
+    let stats = data.effect_stats(gem.skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
     // The quality segment belongs to the selected set's stats table (PoB2 stacks then
     // maps), the per-set override key matches the primary path.
-    let set_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
+    let set_key = data.selected_set_key(gem.skill_id, gem.stat_set_index);
     mapped_stat_modifiers(
         context,
         &stats.quality,
@@ -280,15 +273,13 @@ pub(crate) fn unselected_set_global_modifiers(
     data: &BuildData,
     skill_id: &str,
 ) -> Vec<Modifier> {
-    let Some(gem) = group.gem_skills.iter().find(|g| g.skill_id == skill_id) else {
-        return Vec::new(); // The builder path (with_active_skill) has no gem_skills: no statSet context.
+    let Some(gem) = super::resolve::selected_group_effect(data, group)
+        .filter(|effect| effect.skill_id == skill_id)
+    else {
+        return Vec::new();
     };
-    let unselected = data.unselected_set_stats(
-        &gem.skill_id,
-        gem.gem_level,
-        gem.quality,
-        gem.stat_set_index,
-    );
+    let unselected =
+        data.unselected_set_stats(gem.skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
     if unselected.is_empty() {
         return Vec::new();
     }
@@ -299,13 +290,9 @@ pub(crate) fn unselected_set_global_modifiers(
     // table that's already accounted for globally isn't re-injected from the
     // unselected sets (the onlyGlobals stage's accounting is unchanged, the stat-level
     // skip is equivalent to :107).
-    let selected_key = data.selected_set_key(&gem.skill_id, gem.stat_set_index);
-    let selected_stats = data.effect_stats(
-        &gem.skill_id,
-        gem.gem_level,
-        gem.quality,
-        gem.stat_set_index,
-    );
+    let selected_key = data.selected_set_key(gem.skill_id, gem.stat_set_index);
+    let selected_stats =
+        data.effect_stats(gem.skill_id, gem.gem_level, gem.quality, gem.stat_set_index);
     let selected_globals: std::collections::HashSet<&str> = selected_stats
         .all()
         .filter(|ds| {

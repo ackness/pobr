@@ -8,7 +8,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getBackend } from '../../api/backend';
 import type { BuildSession } from '../../hooks/useBuildSession';
 import { useItemDisplayNames, useLocalizedLines } from '../../hooks/useLocalizedLines';
-import { useSkillName } from '../../hooks/useSkillName';
+import { useSkillCatalog } from '../../hooks/useSkillName';
+import { activeSkillEffects } from '../../lib/skillSelection';
+import { skillDisplayName } from '../../lib/skillNames';
 import { bindT, slotLabel, statNameLabel, type Lang, type UiKey } from '../../lib/i18n';
 import { OBJECTIVE_PRESETS, scoreOf, type Objective } from '../../lib/optimize';
 import { REALM_DEFAULT_LEAGUE, REALM_LEAGUES, TRADE_CURRENCIES, buildTradeUrl, gemTradeUrl, loadTradeLeagues, type TradeCurrency, type TradePriceCap, type TradeRealm } from '../../lib/trade';
@@ -40,8 +42,9 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   const tt = bindT(lang);
   const ut = (key: Parameters<typeof upgradeT>[1]) => upgradeT(lang, key);
   const { goal, setGoal } = useUpgradeGoal();
-  const skillName = useSkillName(lang);
-  const cnSkillName = useSkillName('zh-CN');
+  const skillCatalog = useSkillCatalog();
+  const skillName = (skillId: string) => skillDisplayName(skillId, lang, skillCatalog);
+  const cnSkillName = (skillId: string) => skillDisplayName(skillId, 'zh-CN', skillCatalog);
   const [catalog, setCatalog] = useState<TradeCatalog | null>(null);
   const [catalogError, setCatalogError] = useState(false);
   const [jewelSockets, setJewelSockets] = useState<number[]>([]);
@@ -83,7 +86,15 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     setSelected(focus.slot);
     if (focus.jewelType) setJewelTypes(prev => ({ ...prev, [focus.slot]: focus.jewelType! }));
   } }, [focus]);
-  const mainGroup = session.calcParams.main_socket_group ?? session.calc?.main_skill?.group_index ?? 0;
+  const mainGroup = session.calcParams.main_socket_group;
+  const selectedGroup = mainGroup === undefined ? undefined : session.socketGroups[mainGroup];
+  const selectedEffect = selectedGroup && skillCatalog.size
+    ? activeSkillEffects(selectedGroup, skillCatalog)[(selectedGroup.main_active_skill ?? 1) - 1] : undefined;
+  const inspectedName = selectedEffect ? skillName(selectedEffect.skillId) : tt('sidebar.unselected');
+  const calculatedSkill = session.calc?.main_skill;
+  const hasSkillTarget = mainGroup !== undefined && !!selectedGroup?.enabled && !!calculatedSkill
+    && calculatedSkill.group_index === mainGroup
+    && calculatedSkill.active_skill_index === (selectedGroup?.main_active_skill ?? 1);
 
   useEffect(() => {
     loadTradeCatalog().then(setCatalog).catch(() => setCatalogError(true));
@@ -135,12 +146,15 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
   }, [budget, currency]);
   const objective = useMemo<Objective>(() => objectiveOf(goal,
     Object.fromEntries([...statMap(session.calc?.stats ?? [])].filter((entry): entry is [string, number] => entry[1] !== null))), [goal, session.calc]);
+  const needsSkill = objective.stat === 'TotalDPS' || !!objective.per
+    || objective.constraints.some(constraint => ['ActionRate', 'ManaCost', 'TotalDPS', 'CritChance'].includes(constraint.stat));
+  const canAnalyze = !!session.calc && !session.calcError && (!needsSkill || hasSkillTarget);
   const result = results[selected];
   const weights = result?.weights;
   const localized = useLocalizedLines(weights?.weighted.map(weight => weight.line) ?? [], lang);
   const situationalLines = useLocalizedLines(weights?.situational?.map(stat => stat.line) ?? [], lang);
   const selectedBase = selected === 'gems' ? undefined : baseOf(selected);
-  const selectedName = selected === 'gems' ? skillName(session.socketGroups[mainGroup]?.gems[0]?.skill_id ?? '')
+  const selectedName = selected === 'gems' ? inspectedName
     : slotNames[slots.indexOf(selected)] || tt('trade.slotEmpty');
   const choices = catalog ? [...new Set(basesForSlot(catalog, selected).map(base => base.category))] : [];
   const searchUrl = result?.category && weights ? buildTradeUrl(league, weights.weighted, {
@@ -149,12 +163,12 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     requiredStats: requiredStats[selected],
   }) : null;
   const maxGain = Math.max(...(weights?.weighted.map(weight => weight.gain) ?? []), 1e-9);
-  const disabled = !active || running !== null || session.busy || !catalog;
+  const disabled = !active || running !== null || session.busy || !catalog || !canAnalyze;
   const number = (value: number, digits = 2) => value.toLocaleString(lang, { maximumFractionDigits: digits });
 
   const priorities = rankUpgradePositions(results, objective);
   const fullTargets = [...slots.filter(slot => (bySlot.has(slot) || slot.startsWith('Jewel@')) && baseOf(slot)),
-    ...(session.socketGroups[mainGroup]?.enabled && !session.socketGroups[mainGroup]?.source ? ['gems'] : [])];
+    ...(hasSkillTarget && !selectedGroup?.source ? ['gems'] : [])];
   const reusableAllCount = reusableTradeCount(fullTargets, cacheRef.current, 'all');
   const allComplete = fullTargets.length > 0 && reusableAllCount === fullTargets.length;
   const cancelAnalysis = () => {
@@ -163,7 +177,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     setRunning(null); setProgress(null); setInterrupted(true);
   };
   const analyze = async (targets: string[], all = false, force = false) => {
-    if (!active) return;
+    if (!active || !canAnalyze || session.busy) return;
     const request = session.currentRequest();
     if (!request || !catalog) return;
     const controller = new AbortController(); abortRef.current = controller;
@@ -183,6 +197,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
         try {
           let next: SlotResult;
           if (slot === 'gems') {
+            if (mainGroup === undefined || !hasSkillTarget) continue;
             next = { gems: await planGemUpgrades(request, catalog, mainGroup, objective, options.signal, options.onProgress) };
           } else {
             const base = baseOf(slot);
@@ -226,10 +241,16 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           onClick={() => setPreset(entry.id)}>{tt(entry.labelKey as UiKey)}</button>)}</div>
       </div>
         {session.socketGroups.length > 0 && <div className="trade-skill-context"><span>{tt('sidebar.mainSkill')}</span>
-          <AppSelect value={String(mainGroup)} ariaLabel={tt('trade.analysisSkill')} disabled={session.busy}
-            options={session.socketGroups.flatMap((group, index) => group.enabled && group.gems.length ? [{ value: String(index), label: skillName(group.gems[0].skill_id) }] : [])}
+          <AppSelect value={mainGroup === undefined ? '' : String(mainGroup)} ariaLabel={tt('trade.analysisSkill')} disabled={session.busy}
+            placeholder={tt('sidebar.unselected')}
+            options={session.socketGroups.flatMap((group, index) => {
+              if (!group.enabled || !group.gems.length) return [];
+              const effect = skillCatalog.size ? activeSkillEffects(group, skillCatalog)[(group.main_active_skill ?? 1) - 1] : undefined;
+              return [{ value: String(index), label: `${index + 1}. ${effect ? skillName(effect.skillId) : tt('calcs.unavailable')}` }];
+            })}
             onChange={value => session.updateParams({ main_socket_group: Number(value) })} />
           <span className="trade-skill-hint">{tt('trade.skillContext')}</span></div>}
+    {!session.busy && !hasSkillTarget && <p className="trade-notice" role="status">{tt('sidebar.noMainSkill')}</p>}
     <WeaponSetControl session={session} lang={lang} />
     <div className="trade-safety-settings">
       {preset === 'balanced' && <label><input type="checkbox" checked={keepEhp} onChange={event => setKeepEhp(event.target.checked)} />{tt('trade.keepEhp')}</label>}
@@ -242,11 +263,11 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
     </div>
     <div className="upgrade-paths">
       <button onClick={() => analysisRef.current?.scrollIntoView({block:'start'})}><SlotSymbol slot="helmet" /><strong>{ut('equipment')}</strong><span>{ut('equipmentHint')}</span></button>
-      <button disabled={!onSkills || !session.socketGroups[mainGroup]} onClick={() => onSkills?.(mainGroup)}><SlotSymbol slot="gems" /><strong>{ut('supports')}</strong><span>{ut('supportsHint')}</span></button>
+      <button disabled={!onSkills || !selectedGroup} onClick={() => { if (mainGroup !== undefined) onSkills?.(mainGroup); }}><SlotSymbol slot="gems" /><strong>{ut('supports')}</strong><span>{ut('supportsHint')}</span></button>
       <button disabled={!onTree} onClick={onTree}><SlotSymbol slot="Jewel@" /><strong>{ut('tree')}</strong><span>{ut('treeHint')}</span></button>
     </div>
     <p className="upgrade-shared-goal">{ut('sharedGoal')}</p>
-    <ItemReplacementCheck session={session} lang={lang} active={active} objective={objective} catalog={catalog} jewelSockets={jewelSockets} initialItemText={initialItemText}
+    <ItemReplacementCheck session={session} lang={lang} active={active && canAnalyze} objective={objective} catalog={catalog} jewelSockets={jewelSockets} initialItemText={initialItemText}
       goalLabel={tt(TRADE_OBJECTIVES.find(entry => entry.id === preset)!.labelKey as UiKey)}
       onEditGoal={() => { goalRef.current?.scrollIntoView({ block: 'start' }); goalRef.current?.focus({ preventScroll: true }); }} />
     <div className="trade-setup">
@@ -289,7 +310,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
           }}>
             <span className="trade-rank">{String(index + 1).padStart(2, '0')}</span>
             <span className="trade-position-symbol"><SlotSymbol slot={entry.slot} /></span>
-            <span className="trade-priority-name"><strong>{labelOf(entry.slot)}</strong><small>{entry.slot === 'gems' ? skillName(session.socketGroups[mainGroup]?.gems[0]?.skill_id ?? '') : slotNames[slots.indexOf(entry.slot)]}</small></span>
+            <span className="trade-priority-name"><strong>{labelOf(entry.slot)}</strong><small>{entry.slot === 'gems' ? inspectedName : slotNames[slots.indexOf(entry.slot)]}</small></span>
             <span className="trade-priority-delta"><strong className={entry.gain < 0 ? 'delta-neg' : 'trade-gain'}>{entry.gain >= 0 ? '+' : ''}{number(entry.gainPercent ?? entry.gain)}{entry.gainPercent === undefined ? '' : '%'}</strong><small>{tt('trade.referencePotential')}</small></span>
             <span aria-hidden>→</span>
           </button>
@@ -321,7 +342,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
             <div className="trade-scope"><span>{selectedBase ? tt(`trade.category.${selectedBase.category}` as UiKey) : tt('trade.gems')}</span>
               {selected !== 'gems' && <><span>{tt('trade.allBases')}</span>{!includeUnique && <span>{tt('trade.nonUnique')}</span>}</>}<span>{tt('trade.levelLimit')} {session.character?.level ?? 1}</span></div>
           </div>
-          <div className="trade-header-actions"><button className={weights || result?.gems ? 'trade-secondary' : 'trade-primary'} disabled={disabled || (selected !== 'gems' && !selectedBase) || (selected === 'gems' && (!session.socketGroups[mainGroup]?.enabled || !!session.socketGroups[mainGroup]?.source))}
+          <div className="trade-header-actions"><button className={weights || result?.gems ? 'trade-secondary' : 'trade-primary'} disabled={disabled || (selected !== 'gems' && !selectedBase) || (selected === 'gems' && (!hasSkillTarget || !!selectedGroup?.source))}
             onClick={() => void analyze([selected])}>{tt(running === selected ? 'opt.running' : weights || result?.gems ? 'trade.recalculate' : 'trade.analyze')}</button>
           {searchUrl && league.trim() && <a className="trade-primary trade-market-link" href={searchUrl} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}<span aria-hidden>↗</span></a>}</div>
         </header>
@@ -388,7 +409,7 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
               <CopyButton text={searchUrl} label={tt('trade.copySearch')} lang={lang} /></div>
           </div>}
         </>}
-        {result?.gems && <div className="trade-gems"><div className="trade-results-heading"><div><h4>{tt('trade.gemCandidates')}</h4>{onSkills && <button onClick={() => onSkills(mainGroup)}>{ut('autoSupports')} ↗</button>}<p>{tt('trade.gemHint')}</p></div></div>
+        {result?.gems && <div className="trade-gems"><div className="trade-results-heading"><div><h4>{tt('trade.gemCandidates')}</h4>{onSkills && mainGroup !== undefined && <button onClick={() => onSkills(mainGroup)}>{ut('autoSupports')} ↗</button>}<p>{tt('trade.gemHint')}</p></div></div>
           {result.gems.length === 0 && <p className="trade-notice">{tt('trade.noGemUpgrade')}</p>}
           {result.gems.map(plan => <article className="trade-gem-card" key={`${plan.gem.skill_id}:${plan.position}:${plan.level}:${plan.quality}`}>
             <span className="trade-position-symbol" aria-hidden><SlotSymbol slot="gems" /></span>
@@ -401,8 +422,9 @@ export function TradePanel({ session, lang, active, focus, onSkills, onTree, ini
             {plan.acquisition !== 'skill-adjustment' && league.trim() && <a className="trade-secondary" href={gemTradeUrl({ realm, league, category: 'gem', price: priceCap, maxLevel: session.character?.level,
               gem: { name: realm === 'cn' ? cnSkillName(plan.gem.skill_id) : plan.gem.name, level: plan.level, quality: plan.quality } })} target="_blank" rel="noreferrer">{tt('trade.browseMarket')}</a>}
             <button disabled={session.busy} onClick={() => {
-              const gems = plan.variant.socket_groups?.[plan.group]?.gems;
-              if (gems) session.setSocketGroups(session.socketGroups.map((group,index) => index === plan.group ? {...group,gems} : group));
+              const candidate = plan.variant.socket_groups?.[plan.group];
+              if (candidate) session.setSocketGroups(session.socketGroups.map((group,index) => index === plan.group
+                ? { ...group, gems: candidate.gems, main_active_skill: candidate.main_active_skill } : group));
             }}>{ut('apply')}</button>
           </article>)}
         </div>}

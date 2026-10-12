@@ -88,7 +88,7 @@ for (const width of [390, 1440, 2560]) {
     for (const tab of ['Build', 'Items', 'Skills', 'Tree', 'Calcs', 'Config', 'Upgrades']) {
       await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: tab, exact: true }).click();
       if (tab === 'Items') await page.getByRole('button', { name: 'Body Armour', exact: true }).click();
-      if (tab === 'Calcs') await expect(page.locator('.fulldps-row').first()).toBeVisible();
+      if (tab === 'Calcs') await expect(page.locator('.skill-metrics-row').first()).toBeVisible();
       if (tab === 'Skills') await page.locator('.skill-group-title').nth(4).click();
       if (width >= 1920 && tab === 'Skills') {
         const first = await page.locator('.skill-group').nth(0).boundingBox();

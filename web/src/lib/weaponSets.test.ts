@@ -16,6 +16,8 @@ test('swapping preserves shared gear/passives but removes the other pair and exc
 test('skill bindings choose their set, while shared skills follow the active set', () => {
   expect(skillWeaponSet(state, 0)).toBe(2);
   expect(skillWeaponSet(state, 1)).toBe(1);
+  expect(skillWeaponSet(state)).toBe(1);
+  expect(skillWeaponSet(switchWeapons(state, 2))).toBe(2);
   const groups = [...state.socketGroups, { enabled: true, gems: [] }, { enabled: false, gems: [] }];
   expect(groupsForWeaponSet(groups, 1).map(g => g.enabled)).toEqual([false, true, false]);
   expect(groupsForWeaponSet(groups, 2).map(g => g.enabled)).toEqual([true, true, false]);

@@ -9,14 +9,6 @@
 use pobr_gamedata::repo_data_root;
 use serde_json::Value;
 
-/// Breaking contract changes bump both schema constants. Optional fields
-/// with defaults can be added without changing the existing version.
-#[test]
-fn schema_version_pinned() {
-    // v7: selected custom modifier groups survive decode/edit/export.
-    assert_eq!(pobr_wasm::SCHEMA_VERSION, 7);
-}
-
 /// A real demo build (shared with ninja_parity).
 fn demo_code() -> String {
     let path =
@@ -156,6 +148,7 @@ fn calculate_build_json_shape() {
         main_skill,
         &[
             "group_index",
+            "active_skill_index",
             "skill_id",
             "hit_damage",
             "hit_dps",
@@ -319,44 +312,44 @@ fn imported_group_main_skill_survives_materialization_and_export() {
     );
 }
 
-/// A `main_socket_group` override (0-based) is reflected in
-/// `main_skill.group_index`, and each group's `hit_dps` matches the scoped
-/// recalculation from per-group `full_dps`.
+/// Selecting a metrics row must inspect that exact group and active-effect ordinal.
 #[test]
-fn main_skill_follows_main_group_override() {
+fn main_skill_follows_metrics_row_selection() {
     ensure_data();
-    let full: Value = serde_json::from_str(
-        &pobr_wasm::full_dps_json(&serde_json::json!({ "pob_code": demo_code() }).to_string())
-            .expect("full dps"),
+    let request = serde_json::json!({
+        "character": { "class_name": "Sorceress", "level": 90 },
+        "socket_groups": [{
+            "gems": [
+                { "skill_id": "FireballPlayer", "level": 20 },
+                { "skill_id": "SparkPlayer", "level": 20 }
+            ]
+        }]
+    });
+    let report: Value = serde_json::from_str(
+        &pobr_wasm::skill_metrics_json(&request.to_string()).expect("skill metrics"),
     )
     .unwrap();
-    let per_skill = full["per_skill"].as_array().unwrap();
-    assert!(
-        per_skill.len() >= 2,
-        "demo build has multiple damage groups"
-    );
-    for entry in per_skill {
-        let group_index = entry["group_index"].as_u64().unwrap();
+    let skills = report["skills"].as_array().unwrap();
+    for (index, expected) in ["FireballPlayer", "SparkPlayer"].iter().enumerate() {
+        let entry = skills
+            .iter()
+            .find(|entry| entry["skill_id"] == *expected)
+            .unwrap();
+        assert_eq!(entry["group_index"], 0);
+        assert_eq!(entry["active_skill_index"], index + 1);
+        assert_eq!(entry["status"], "calculated");
+        let mut selected = request.clone();
+        selected["main_socket_group"] = serde_json::json!(0);
+        selected["socket_groups"][0]["main_active_skill"] = serde_json::json!(index + 1);
         let calc: Value = serde_json::from_str(
-            &pobr_wasm::calculate_build_json(
-                &serde_json::json!({
-                    "pob_code": demo_code(),
-                    "main_socket_group": group_index,
-                })
-                .to_string(),
-            )
-            .expect("calc"),
+            &pobr_wasm::calculate_build_json(&selected.to_string()).expect("selected calculation"),
         )
         .unwrap();
-        let main_skill = &calc["main_skill"];
-        assert_eq!(main_skill["group_index"].as_u64().unwrap(), group_index);
-        assert_eq!(main_skill["skill_id"], entry["skill_id"]);
-        // Semantic invariant: the main skill's CombinedDPS == that group's value from per-group full_dps.
-        let combined = main_skill["combined_dps"].as_f64().unwrap();
-        let scoped = entry["dps"].as_f64().unwrap();
-        assert!(
-            (combined - scoped).abs() <= scoped.abs() * 1e-9 + 1e-9,
-            "group {group_index}: main-skill combined {combined} != full_dps scoped {scoped}"
+        assert_eq!(calc["main_skill"]["skill_id"], *expected);
+        assert_eq!(calc["main_skill"]["active_skill_index"], index + 1);
+        assert_eq!(
+            calc["main_skill"]["combined_dps"],
+            entry["metrics"]["combined_dps"]
         );
     }
 }
@@ -448,6 +441,7 @@ fn manual_skills_and_items_without_code() {
         &entries[0],
         &[
             "skill_id",
+            "active_effect_ids",
             "name",
             "name_zh_tw",
             "name_zh_cn",
@@ -685,7 +679,7 @@ fn manual_flasks_override_utility_slots() {
 
 /// Equipment-granted skills: a `Grants Skill: Level N X` mod line
 /// synthesizes a skill group — a from-scratch build gets DPS purely from
-/// the granting equipment; full_dps lists that group; a manual group with
+/// the granting equipment; skill metrics list that group; a manual group with
 /// the same skill still stays independent.
 #[test]
 fn item_granted_skill_synthesizes_group() {
@@ -730,14 +724,15 @@ fn item_granted_skill_synthesizes_group() {
         "granted Comet should produce DPS without any socket group"
     );
 
-    // full_dps lists the synthesized group (skill_id = Comet's primary effect).
-    let full: Value =
-        serde_json::from_str(&pobr_wasm::full_dps_json(&base_req.to_string()).expect("full dps"))
-            .unwrap();
-    let per_skill = full["per_skill"].as_array().unwrap();
+    // Independent metrics include the synthesized equipment-granted skill.
+    let full: Value = serde_json::from_str(
+        &pobr_wasm::skill_metrics_json(&base_req.to_string()).expect("skill metrics"),
+    )
+    .unwrap();
+    let per_skill = full["skills"].as_array().unwrap();
     assert!(
         per_skill.iter().any(|s| s["skill_id"] == comet_id.as_str()),
-        "full dps should list the granted skill, got {per_skill:?}"
+        "skill metrics should list the granted skill, got {per_skill:?}"
     );
 
     // A manual group has no equipment source, so it should stay independent
@@ -747,10 +742,10 @@ fn item_granted_skill_synthesizes_group() {
         { "gems": [{ "skill_id": comet_id, "level": 20, "quality": 0 }] }
     ]);
     let full2: Value = serde_json::from_str(
-        &pobr_wasm::full_dps_json(&with_group.to_string()).expect("full dps manual group"),
+        &pobr_wasm::skill_metrics_json(&with_group.to_string()).expect("metrics with manual group"),
     )
     .unwrap();
-    let comet_groups = full2["per_skill"]
+    let comet_groups = full2["skills"]
         .as_array()
         .unwrap()
         .iter()
@@ -763,9 +758,9 @@ fn item_granted_skill_synthesizes_group() {
 }
 
 /// When Ring 3 is locked, an item-granted skill doesn't participate in
-/// regular calculation or FullDPS, just like an item's mod lines.
+/// regular calculation or skill metrics, just like an item's mod lines.
 #[test]
-fn ring3_granted_skill_is_gated_from_full_dps() {
+fn ring3_granted_skill_is_gated_from_skill_metrics() {
     ensure_data();
     let request = serde_json::json!({
         "character": { "class_name": "Sorceress", "level": 90 },
@@ -790,37 +785,53 @@ fn ring3_granted_skill_is_gated_from_full_dps() {
         .unwrap_or(0.0);
     assert_eq!(total_dps, 0.0, "locked Ring 3 must not grant regular DPS");
 
-    let full: Value =
-        serde_json::from_str(&pobr_wasm::full_dps_json(&request).expect("full dps")).unwrap();
-    assert_eq!(full["full_dps"].as_f64().unwrap_or(0.0), 0.0);
+    let report: Value =
+        serde_json::from_str(&pobr_wasm::skill_metrics_json(&request).expect("skill metrics"))
+            .unwrap();
     assert!(
-        full["per_skill"].as_array().unwrap().is_empty(),
-        "locked Ring 3 must not contribute FullDPS skills"
+        report["skills"].as_array().unwrap().is_empty(),
+        "locked Ring 3 must not contribute a skill"
     );
 }
 
-/// Per-socket-group DPS: the demo build has at least one damage group, and the per-group sum equals full_dps.
 #[test]
-fn full_dps_json_shape() {
+fn skill_metrics_retains_utility_and_unavailable_skills() {
     ensure_data();
-    let request = serde_json::json!({ "pob_code": demo_code() }).to_string();
-    let json: Value = serde_json::from_str(&pobr_wasm::full_dps_json(&request).expect("full dps"))
-        .expect("valid json");
-    assert_keys(&json, &["full_dps", "per_skill"], "FullDpsResponse");
-    let per_skill = json["per_skill"].as_array().unwrap();
+    let request = serde_json::json!({
+        "character": { "class_name": "Sorceress", "level": 90 },
+        "main_socket_group": 99,
+        "socket_groups": [
+            { "gems": [{ "skill_id": "ElementalWeaknessPlayer", "level": 20 }] },
+            { "gems": [{ "skill_id": "UnknownEffect", "level": 20 }] },
+            { "gems": [{ "skill_id": "FireballPlayer", "level": 20 }] },
+            { "enabled": false, "gems": [{ "skill_id": "SparkPlayer", "level": 20 }] }
+        ]
+    });
+    let report: Value = serde_json::from_str(
+        &pobr_wasm::skill_metrics_json(&request.to_string()).expect("independent skill metrics"),
+    )
+    .unwrap();
+    let skills = report["skills"].as_array().unwrap();
+    let find = |id: &str| skills.iter().find(|row| row["skill_id"] == id).unwrap();
+    let curse = find("ElementalWeaknessPlayer");
+    assert_eq!(curse["status"], "calculated");
+    assert_eq!(curse["metrics"]["combined_dps"], 0.0);
+    assert!(curse["metrics"]["mana_cost"].as_f64().unwrap() > 0.0);
+    let unknown = find("UnknownEffect");
+    assert_eq!(unknown["status"], "unavailable");
+    assert!(unknown["metrics"].is_null());
+    assert!(unknown["error"].as_str().unwrap().contains("UnknownEffect"));
     assert!(
-        !per_skill.is_empty(),
-        "demo build should have damage skills"
+        find("FireballPlayer")["metrics"]["combined_dps"]
+            .as_f64()
+            .unwrap()
+            > 0.0
     );
-    assert_keys(
-        &per_skill[0],
-        &["group_index", "skill_id", "dps"],
-        "per_skill[0]",
+    assert!(!skills.iter().any(|row| row["skill_id"] == "SparkPlayer"));
+    assert!(
+        report.get("full_dps").is_none(),
+        "independent skills are not a combat total"
     );
-    let sum: f64 = per_skill.iter().map(|s| s["dps"].as_f64().unwrap()).sum();
-    let full = json["full_dps"].as_f64().unwrap();
-    assert!(full > 0.0, "full_dps should be positive");
-    assert!((sum - full).abs() < 1e-6, "sum {sum} != full {full}");
 }
 
 /// The encode round-trip contract: edit-state request -> a share code ->

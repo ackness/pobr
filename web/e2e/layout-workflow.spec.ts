@@ -63,13 +63,87 @@ test('editing and analysis shortcuts reach their target without changing the cur
   await start(page, monk);
   const before = await saved(page);
   await nav(page, 'Skills').click();
-  await page.getByRole('button', { name: /^Edit main skill/ }).click();
+  await page.getByRole('button', { name: /^Edit inspected skill/ }).click();
   await expect(page.locator('.skill-group.is-main .skill-group-title')).toHaveAttribute('aria-expanded', 'true');
   await nav(page, 'Tree').click();
   await page.getByRole('button', { name: 'Attributes & planning', exact: true }).click();
   await expect(page.locator('.tree-edit-tools')).toBeFocused();
   await nav(page, 'Calcs').click();
-  await page.getByRole('button', { name: 'Skill DPS ↓', exact: true }).click();
-  await expect(page.locator('#fulldps-heading')).toBeFocused();
+  await page.getByRole('button', { name: 'Skill metrics ↓', exact: true }).click();
+  await expect(page.locator('#skill-metrics-heading')).toBeFocused();
   expect(await saved(page)).toEqual(before);
+});
+
+test('skill overview works without a main selection and selects an exact secondary effect', async ({ page }) => {
+  const code = deflateSync(`<PathOfBuilding2>
+    <Build level="80" className="Witch"/>
+    <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+    <Skills activeSkillSet="1"><SkillSet id="1">
+      <Skill enabled="true" set1="false" set2="true"><Gem skillId="FireballPlayer" level="15" quality="0" enabled="true"/><Gem skillId="SparkPlayer" level="15" quality="0" enabled="true"/></Skill>
+      <Skill enabled="true"><Gem skillId="ElementalWeaknessPlayer" level="15" quality="0" enabled="true"/><Gem skillId="ViciousHexSupportPlayer" level="1" quality="0" enabled="true"/></Skill>
+      <Skill enabled="true"><Gem skillId="UnknownOverviewSkillPlayer" level="1" quality="0" enabled="true"/></Skill>
+    </SkillSet></Skills><Items/><Config/>
+  </PathOfBuilding2>`).toString('base64url');
+  await start(page, code);
+  expect((await saved(page)).params.main_socket_group).toBeUndefined();
+  expect((await saved(page)).weaponSwap?.active ?? 1).toBe(1);
+  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('Not selected');
+  await expect(page.locator('#character-stats').getByRole('heading', { name: 'Offence', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Skill metrics →', exact: true }).click();
+  await expect(page.locator('#skill-metrics-heading')).toBeFocused();
+  const rows = page.locator('.skill-metrics-row');
+  await expect(rows).toHaveCount(5);
+  await expect(rows.filter({ hasText: 'Fireball' })).toBeVisible();
+  const spark = rows.filter({ hasText: 'Spark' });
+  await expect(spark).toBeVisible();
+  const curse = rows.filter({ hasText: 'Elemental Weakness' });
+  await expect(curse.locator('.mod-value').first()).toHaveText('0');
+  await expect(curse).not.toContainText('Unavailable');
+  await expect(rows.filter({ hasText: /Doom Blast|DoomBlast/ })).toBeVisible();
+  const unavailable = rows.filter({ hasText: /Unknown Overview Skill|UnknownOverviewSkill/ });
+  await expect(unavailable).toContainText('Unavailable');
+  await expect(unavailable.locator('.mod-value').first()).toHaveText('—');
+  await expect(unavailable.locator('.calc-error')).not.toHaveText('Unavailable:');
+  expect((await saved(page)).params.main_socket_group).toBeUndefined();
+  await expect(page.locator('.topbar-busy')).toHaveCount(0);
+  await spark.getByRole('button').focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await saved(page)).socketGroups[0].main_active_skill).toBe(2);
+  expect((await saved(page)).params.main_socket_group).toBe(0);
+  expect((await saved(page)).weaponSwap.active).toBe(2);
+  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Spark');
+  await expect(spark.getByRole('button')).toHaveAttribute('aria-disabled', 'false');
+  await expect(spark.getByRole('button')).toBeFocused();
+  // A failed inspection must not present the previous skill's baseline as current.
+  await unavailable.getByRole('button').click();
+  await expect(page.locator('.app-main > .calc-error')).toBeVisible();
+  await expect(page.locator('.calcs-breakdowns .breakdown-item')).toHaveCount(0);
+  await expect.poll(async () => {
+    const values = await page.locator('.stat-sidebar .stat-row dd').allTextContents();
+    return values.length > 0 && values.every(value => value.trim() === '—');
+  }).toBe(true);
+  await page.getByRole('button', { name: 'Inspected skill', exact: true }).click();
+  await page.getByRole('option', { name: '1. Spark', exact: true }).click();
+  await expect(page.locator('.main-skill-select .app-select-value')).toHaveText('1. Spark');
+  await nav(page, 'Upgrades').click();
+  await expect(page.getByRole('button', { name: 'Skill used for scoring', exact: true })).toContainText('1. Spark');
+  await page.reload();
+  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Spark', { timeout: 90_000 });
+  expect((await saved(page)).socketGroups[0].main_active_skill).toBe(2);
+  expect((await saved(page)).weaponSwap.active).toBe(2);
+});
+
+test('opening support planning explicitly selects an imported group without a primary', async ({ page }) => {
+  const code = deflateSync(`<PathOfBuilding2><Build level="80" className="Witch"/>
+    <Tree activeSpec="1"><Spec nodes="" treeVersion="0_5"/></Tree>
+    <Skills><Skill enabled="true"><Gem skillId="FireballPlayer" level="15" quality="0" enabled="true"/></Skill></Skills>
+    <Items/><Config/></PathOfBuilding2>`).toString('base64url');
+  await start(page, code);
+  expect((await saved(page)).params.main_socket_group).toBeUndefined();
+  await nav(page, 'Skills').click();
+  await page.locator('.skill-group-title').first().click();
+  await page.locator('.gem-optimizer-toggle').click();
+  await expect.poll(async () => (await saved(page)).params.main_socket_group).toBe(0);
+  await expect(page.locator('.main-skill-select .app-select-value')).toContainText('Fireball');
+  await expect(page.getByRole('button', { name: 'Calculate support combinations', exact: true })).toBeEnabled();
 });

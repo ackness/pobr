@@ -73,8 +73,8 @@ pub trait TriggerSubCalc {
     /// Runs the source skill's sub-calculation, returning its effective action rate +
     /// hit/crit chances. `group_index` = the source group's index in the enabled-group
     /// enumeration; `gem_index` = the source gem's index in the group's gem list (the
-    /// implementor maps it back to the concrete group + derives the non-support
-    /// ordinal `pick_group_main_skill` selects by). Returns `None` when the
+    /// implementor maps it back to the concrete group and the complete active-effect
+    /// ordinal, including preceding additional effects). Returns `None` when the
     /// sub-calculation is unavailable (cycle / recursion guard / data gap) — the
     /// caller falls back to the base `1/use_time`.
     fn source_stats(&mut self, group_index: usize, gem_index: usize) -> Option<TriggerSourceStats>;
@@ -573,7 +573,7 @@ fn source_stats_for<S: TriggerSubCalc>(
     // falls back to the base `1/use_time`).
     let group_index = group_index?;
     // The implementor maps `source_idx` back to the concrete group's gem and derives
-    // the non-support ordinal `pick_group_main_skill` selects by (it owns `BuildData`).
+    // its complete active-effect ordinal, including preceding additional effects.
     ctx.sub_calc.source_stats(group_index, source_idx)
 }
 

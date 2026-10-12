@@ -2,9 +2,11 @@ import { getBackend } from '../api/backend';
 import type { CalculateBuildRequest, GemInput, SocketGroupInput, VariantInput } from '../api/types';
 import { compareObjectiveStats, evaluateVariants, feasibleOf, scoreOf, type EvaluateOptions, type Objective } from './optimize';
 import type { TradeGem } from './tradeOptimizer';
+import { preserveSkillSelection } from './skillSelection';
 
 /** Exact postfix expressions and type additions come from the pinned PoB catalog. */
 export interface SupportMetadata extends TradeGem {
+  active_effect_ids: string[];
   is_lineage?: boolean;
   compatibility_known?: boolean;
   skill_types?: string[];
@@ -38,19 +40,29 @@ function supportSetAllowed(gems: GemInput[], catalog: SupportMetadata[]): boolea
   return !entries.some((gem, index) => entries.slice(0, index).some(other => sameSupportFamily(gem!, other!)));
 }
 
+/** Reordering supports must not silently select a different active effect. */
+function groupWithSupports(group: SocketGroupInput, supports: GemInput[], catalog: ReadonlyMap<string, SupportMetadata>): SocketGroupInput | null {
+  const gems = [...group.gems.filter(gem => !catalog.get(gem.skill_id)?.is_support), ...supports];
+  return preserveSkillSelection(group, { ...group, gems }, catalog);
+}
+
 /** Batch the authoritative group judgement before scoring, preserving candidate order. */
 export async function supportSetsCompatible(group: SocketGroupInput, sets: GemInput[][],
   catalog: SupportMetadata[], signal?: AbortSignal): Promise<boolean[]> {
   signal?.throwIfAborted();
   const result = sets.map(() => false);
-  const eligible = sets.flatMap((gems, index) => supportSetAllowed(gems, catalog) ? [{ gems, index }] : []);
+  const byId = new Map(catalog.map(gem => [gem.skill_id, gem]));
+  const eligible = sets.flatMap((gems, index) => {
+    if (!supportSetAllowed(gems, catalog)) return [];
+    const candidate = groupWithSupports(group, gems, byId);
+    return candidate ? [{ candidate, index }] : [];
+  });
   if (!eligible.length) return result;
-  const active = group.gems.filter(input => !catalog.find(gem => gem.skill_id === input.skill_id)?.is_support);
   const backend = await getBackend();
   for (let start = 0; start < eligible.length; start += 512) {
     signal?.throwIfAborted();
     const batch = eligible.slice(start, start + 512);
-    const compatible = await backend.supportGroupsCompatible(batch.map(({ gems }) => ({ ...group, gems: [...active, ...gems] })));
+    const compatible = await backend.supportGroupsCompatible(batch.map(({ candidate }) => candidate));
     signal?.throwIfAborted();
     if (compatible.length !== batch.length) throw new Error('Invalid support compatibility response.');
     batch.forEach(({ index }, i) => { result[index] = compatible[i]; });
@@ -143,15 +155,18 @@ export interface SupportOptimization {
 
 export function supportVariant(request: CalculateBuildRequest, groupIndex: number,
   supports: GemInput[], catalog: SupportMetadata[]): VariantInput {
-  const supportIds = new Set(catalog.filter(gem => gem.is_support).map(gem => gem.skill_id));
-  return { socket_groups: (request.socket_groups ?? []).map((group, index) => index === groupIndex
-    ? { ...group, gems: [...group.gems.filter(gem => !supportIds.has(gem.skill_id)), ...supports] } : group) };
+  const byId = new Map(catalog.map(gem => [gem.skill_id, gem]));
+  const source = request.socket_groups?.[groupIndex];
+  const candidate = source ? groupWithSupports(source, supports, byId) : null;
+  if (!candidate) throw new Error('The support plan removes the inspected active effect. Select another skill before optimizing.');
+  return { socket_groups: (request.socket_groups ?? []).map((group, index) => index === groupIndex ? candidate : group) };
 }
 
-/** Apply only the evaluated gem array, retaining editor metadata for inactive weapon groups. */
+/** Apply the evaluated gems and exact ordinal, retaining inactive weapon-group metadata. */
 export function applySupportPlan(groups: SocketGroupInput[], groupIndex: number, plan: Pick<SupportPlan, 'variant'>): SocketGroupInput[] {
-  const gems = plan.variant.socket_groups?.[groupIndex]?.gems;
-  return gems ? groups.map((group, index) => index === groupIndex ? { ...group, gems } : group) : groups;
+  const candidate = plan.variant.socket_groups?.[groupIndex];
+  return candidate ? groups.map((group, index) => index === groupIndex
+    ? { ...group, gems: candidate.gems, main_active_skill: candidate.main_active_skill } : group) : groups;
 }
 
 const keyOf = (supports: GemInput[]) => supports.map(gem => `${gem.skill_id}:${gem.level}:${gem.quality}:${gem.stat_set_index ?? 1}`).sort().join('|');
@@ -262,7 +277,7 @@ export async function optimizeSupports(options: {
   for (const gem of pool.filter(gem => gem.add_skill_types?.length).slice(0, 12)) shortlistIds.add(gem.skill_id);
   for (const gem of pool) if (shortlistIds.size < 32) shortlistIds.add(gem.skill_id);
   const shortlist = pool.filter(gem => shortlistIds.has(gem.skill_id));
-  let beam: SupportPlan[] = [{ supports: [], variant: supportVariant(request, groupIndex, [], catalog), stats: baseline }];
+  let beam: SupportPlan[] = [{ supports: [], variant: {}, stats: baseline }];
   let remaining = refinementBudget;
   for (let depth = 1; depth <= capacity && remaining > 0; depth++) {
     const proposals = beam.flatMap(state => shortlist

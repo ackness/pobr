@@ -23,9 +23,9 @@ pub mod zh;
 pub use build_api::support_groups_compatible_json;
 pub use build_api::{
     attribution_json, calculate_build_json, classify_item_lines_json, decode_build_file_json,
-    decode_build_json, decode_build_loadout_json, encode_build_json, full_dps_json,
-    gem_catalog_json, import_trade_items_json, item_augment_info_json, manage_loadout_json,
-    node_power_json, optimize_variants_json, reforge_runes_json, rune_catalog_json,
+    decode_build_json, decode_build_loadout_json, encode_build_json, gem_catalog_json,
+    import_trade_items_json, item_augment_info_json, manage_loadout_json, node_power_json,
+    optimize_variants_json, reforge_runes_json, rune_catalog_json, skill_metrics_json,
     translate_lines_to_zh_cn_json,
 };
 pub use i18n::translate;
@@ -38,7 +38,7 @@ pub use state::{init_data_from_dir, init_staged_data, is_data_ready, stage_data_
 /// compares them at boot (see [`wasm::schema_version`]); a mismatch prompts
 /// a hard refresh — closing the door on "stale frontend cache + new wasm
 /// assets" silently breaking.
-pub const SCHEMA_VERSION: u32 = 7;
+pub const SCHEMA_VERSION: u32 = 8;
 
 /// wasm-bindgen bindings: compiled only under the `wasm` feature, exposing
 /// functions with the same names as the host API to JS.
@@ -101,10 +101,10 @@ pub mod wasm {
         crate::support_groups_compatible_json(input).map_err(|err| JsError::new(&err))
     }
 
-    /// JS entry point: `fullDpsJson(requestJson) -> string` (per-socket-group DPS plus the FullDPS summary).
-    #[wasm_bindgen(js_name = fullDpsJson)]
-    pub fn full_dps_json(request_json: &str) -> Result<String, JsError> {
-        crate::build_api::full_dps_json(request_json).map_err(|err| JsError::new(&err))
+    /// JS entry point: `skillMetricsJson(requestJson) -> string` (independent active-effect metrics).
+    #[wasm_bindgen(js_name = skillMetricsJson)]
+    pub fn skill_metrics_json(request_json: &str) -> Result<String, JsError> {
+        crate::build_api::skill_metrics_json(request_json).map_err(|err| JsError::new(&err))
     }
 
     /// JS entry point: `encodeBuildJson(requestJson) -> string` (edit state -> a PoB2 share code).

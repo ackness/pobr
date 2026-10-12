@@ -49,7 +49,7 @@ use pobr_gamedata::{GameData, repo_data_root};
 /// CoC build fixture: Weapon 1 = Wooden Club (the source attack's weapon
 /// base), no passives; group = [Armour Breaker (attack source), Cast on
 /// Critical (trigger), Fireball (triggered)], main skill = Fireball
-/// (mainActiveSkill=3, the non-support ordinal within the group).
+/// (mainActiveSkill=3, the complete active-effect ordinal within the group).
 const COC_XML: &str = include_str!("../fixtures/coc_cast_on_crit.xml");
 
 // Golden baseline (established when this suite first landed, worktree baseline 761ebb5)

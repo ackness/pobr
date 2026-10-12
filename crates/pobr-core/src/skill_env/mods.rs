@@ -507,20 +507,53 @@ pub fn is_damage_skill(effect: &pobr_data::catalog::GrantedEffectDef) -> bool {
     (effect.is_attack() || effect.is_spell()) && !effect.skill_types.iter().any(|t| t == "Meta")
 }
 
-/// Selects the main skill `(skill_id, gem_level, stat_set_index)` within a single gem
-/// group (matching PoB's `socketGroupSkillList` + `mainActiveSkill` semantics):
-///
-/// 1. Collects **non-support** gems (order preserved, includes meta shells);
-/// 2. Selects the Nth one using `main_active_skill` (1-based, defaults to 1, clamped);
-/// 3. If the selected entry is a damaging skill → uses it directly; otherwise (a meta
-///    shell / non-damaging) pierces through to the group's first damaging skill;
-/// 4. When every gem is non-damaging, expands via `gem_effects`'s additional granted
-///    effects (the meta/composite gem foreign key) — takes the first additional
-///    damaging effect (e.g. ShockwaveTotem → ShockwaveTotemQuakePlayer);
-/// 5. Fallback: when `gems` is empty (constructed by the builder's `with_active_skill`),
-///    uses `active_skill_id` (the builder path has no statSetIndex concept).
-///
-/// Returns `None` when the group has no damaging skill candidate at all.
+/// One non-support effect in PoB's complete, 1-based `socketGroupSkillList`.
+/// Additional effects retain the originating gem's level, quality and stat set.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ActiveEffect<'a> {
+    pub active_skill_index: usize,
+    pub gem_index: usize,
+    pub skill_id: &'a str,
+    pub gem_level: u32,
+    pub quality: u32,
+    pub stat_set_index: Option<u32>,
+}
+
+/// Enumerates each gem's primary effect followed by its additional active effects.
+/// Support primaries are omitted, but their granted active effects are not.
+/// Unknown effects remain visible so callers can report missing data, not silently
+/// renumber or substitute a different skill.
+pub fn group_active_effects<'a>(
+    gems: impl Iterator<Item = (&'a str, u32, u32, Option<u32>)> + 'a,
+    effects: &'a dyn crate::skill_env::EffectLookup,
+) -> impl Iterator<Item = ActiveEffect<'a>> + 'a {
+    gems.enumerate()
+        .flat_map(
+            move |(gem_index, (id, gem_level, quality, stat_set_index))| {
+                std::iter::once(id)
+                    .chain(effects.additional_effects(id).iter().map(String::as_str))
+                    .filter(move |id| {
+                        !id.is_empty() && effects.effect(id).is_none_or(|effect| !effect.is_support)
+                    })
+                    .map(move |skill_id| ActiveEffect {
+                        active_skill_index: 0,
+                        gem_index,
+                        skill_id,
+                        gem_level,
+                        quality,
+                        stat_set_index,
+                    })
+            },
+        )
+        .enumerate()
+        .map(|(index, mut effect)| {
+            effect.active_skill_index = index + 1;
+            effect
+        })
+}
+
+/// Selects an exact complete active-effect ordinal, defaulting to the first.
+/// Invalid ordinals are not clamped and utility effects are not pierced.
 pub fn pick_group_main_skill<'a>(
     gems: &'a [GemInput],
     effects: &'a (dyn crate::skill_env::EffectLookup + 'a),
@@ -528,50 +561,21 @@ pub fn pick_group_main_skill<'a>(
     active_skill_id: Option<&'a str>,
     active_gem_level: Option<u32>,
 ) -> Option<(&'a str, u32, Option<u32>)> {
-    // The group's non-support gem list (meta shells count).
-    let actives: Vec<&GemInput> = gems
-        .iter()
-        .filter(|g| {
-            effects
-                .effect(&g.skill_id)
-                .map(|e| !e.is_support)
-                .unwrap_or(true)
-        })
-        .collect();
-
-    if !actives.is_empty() {
-        let idx = main_active_skill
-            .unwrap_or(1)
-            .saturating_sub(1)
-            .min(actives.len() - 1);
-        let chosen = actives[idx];
-
-        if effects
-            .effect(&chosen.skill_id)
-            .is_some_and(is_damage_skill)
-        {
-            return Some((&chosen.skill_id, chosen.gem_level, chosen.stat_set_index));
-        }
-        if let Some(dmg) = actives
-            .iter()
-            .find(|g| effects.effect(&g.skill_id).is_some_and(is_damage_skill))
-        {
-            return Some((&dmg.skill_id, dmg.gem_level, dmg.stat_set_index));
-        }
-        // T5.6: every gem is non-damaging → expand additional granted effects.
-        if let Some(expanded) = actives.iter().find_map(|g| {
-            effects
-                .additional_effects(&g.skill_id)
-                .iter()
-                .find(|eid| effects.effect(eid).is_some_and(is_damage_skill))
-                .map(|eid| (eid.as_str(), g.gem_level, g.stat_set_index))
-        }) {
-            return Some(expanded);
-        }
-        return None;
-    }
-
-    active_skill_id.map(|id| (id, active_gem_level.unwrap_or(1), None))
+    let index = main_active_skill.unwrap_or(1).checked_sub(1)?;
+    let builder = active_skill_id
+        .filter(|_| gems.is_empty())
+        .map(|id| (id, active_gem_level.unwrap_or(1), 0, None));
+    let gems = gems.iter().map(|gem| {
+        (
+            gem.skill_id.as_str(),
+            gem.gem_level,
+            gem.quality,
+            gem.stat_set_index,
+        )
+    });
+    group_active_effects(gems.chain(builder), effects)
+        .nth(index)
+        .map(|effect| (effect.skill_id, effect.gem_level, effect.stat_set_index))
 }
 
 /// Data channel: the statmap data engine. Maps a stat list through

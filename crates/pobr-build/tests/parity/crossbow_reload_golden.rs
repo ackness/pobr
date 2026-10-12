@@ -13,12 +13,11 @@
 //!   `CrossbowSkill` + ammo effect `ArmourPiercingBoltsAmmoPlayer`, magazine
 //!   `base_number_of_crossbow_bolts` L1 = 12).
 //!
-//! Registered gap: under the real import path, an ammo gem's XML `skillId` is
-//! the ammo effect's id, and step 3 of `pick_group_main_skill` will pick the
-//! ammo effect itself (which has an Attack type) as the main skill — in that
-//! case the reload gate conservatively rejects it (`CrossbowAmmoSkill`), a
-//! zero-behaviour outcome. Fixing main-skill resolution's handling of the ammo
-//! gem is deferred until a real crossbow-build fixture is added to the corpus.
+//! Import coverage boundary: an ammo gem's XML `skillId` names the ammo
+//! effect. Exact active-effect selection must select the firing effect's ordinal
+//! to exercise reload; selecting the ammo effect itself is conservatively rejected
+//! by the `CrossbowAmmoSkill` reload gate. This constructed fixture covers the
+//! firing calculation, not a real crossbow build's imported selection.
 
 use pobr_build::{
     Build, BuildData, CharacterIdentity, DataOrchestratorOptions, SocketGroup, calculate_with_data,

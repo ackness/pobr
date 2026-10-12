@@ -14,6 +14,9 @@ async function caster(page: Page) {
   await page.getByRole('textbox', { name: 'Build code' }).fill('https://www.wegame.com.cn/helper/poe2/#/share/SyntheticGuidanceFixture');
   await page.locator('.import-submit').click();
   await expect(page.locator('.paper-doll')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'Inspected skill', exact: true }).click();
+  await page.getByRole('option', { name: '1. Fireball', exact: true }).click();
+  await expect(page.locator('.topbar-busy')).toHaveCount(0);
 }
 const nav = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name, exact: true });
 const dps = (page: Page) => page.locator('.stat-row').filter({ hasText: 'Total DPS' }).locator('dd');

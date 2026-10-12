@@ -915,6 +915,7 @@
   ],
   "main_skill": {
     "group_index": 0,
+    "active_skill_index": 1,
     "skill_id": "FireballPlayer",
     "hit_damage": [
       {

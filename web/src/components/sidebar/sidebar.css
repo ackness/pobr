@@ -65,7 +65,7 @@ button.stat-row--link:hover dt {
   color: var(--accent-gold-bright);
 }
 
-/* 主技能选择 + 伤害分解（PoB2 Main Skill 下拉对应物） */
+/* Inspected skill selection and damage breakdown. */
 .main-skill-select {
   width: 100%;
   margin: var(--space-1) 0 var(--space-2);
