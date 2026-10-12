@@ -406,17 +406,191 @@ export type BreakdownModType = 'BASE' | 'INC' | 'MORE' | 'FLAG' | 'OVERRIDE' | '
 
 export interface BreakdownMod {
   mod_type: BreakdownModType;
+  /** Applied number for an active BASE/INC/MORE line; the stored number when inactive. */
   value: number | null;
+  /** False when the inspected skill's calculation does not count this line. */
+  active: boolean;
   source_text: string | null;
   origin_kind: string | null;
   origin_id: string | null;
   slot: string | null;
 }
 
+export type FormulaOp =
+  | 'base'
+  | 'flat'
+  | 'enemy_flat'
+  | 'converted'
+  | 'increased'
+  | 'more'
+  | 'added_time'
+  | 'action_speed'
+  | 'override'
+  | 'cap'
+  | 'cooldown_cap'
+  | 'server_tick_cap'
+  | 'floor'
+  | 'bonus_to_multiplier'
+  | 'gear_adjusted'
+  | 'gained'
+  | 'slot_scaled'
+  | 'flat_after'
+  | 'round'
+  | 'hit_chance'
+  | 'lucky'
+  | 'bifurcate'
+  | 'inevitable'
+  | 'inevitable_penalty'
+  | 'bifurcate_bonus'
+  | 'enemy_increased'
+  | 'accuracy_rating'
+  | 'vs_evasion'
+  | 'always_hits'
+  | 'enemy_block'
+  | 'non_crit_hit'
+  | 'crit_hits'
+  | 'average_hit'
+  | 'enemy_mitigation'
+  | 'uses_per_second'
+  | 'chance_to_hit'
+  | 'dps_multiplier'
+  | 'skill_dot'
+  | 'poison_dps'
+  | 'ignite_dps'
+  | 'bleed_dps'
+  | 'hit_dps'
+  | 'dot_dps'
+  | 'ailment_source'
+  | 'per_second'
+  | 'active_stacks'
+  | 'chance_to_apply'
+  | 'ailment_effect'
+  | 'ailment_rate';
+
+export interface FormulaStep {
+  op: FormulaOp;
+  /** Amount applied: percentage points (increased, converted, hit_chance, chance_to_hit, crit_hits, enemy_block, the bonus and penalty steps), the enemy's evasion (vs_evasion), a multiplier (more, action_speed, enemy_mitigation, uses_per_second, dps_multiplier, ailment_effect, ailment_rate), seconds (added_time), the limit, the number of rolls (lucky, bifurcate), the starting damage per second (skill_dot, hit_dps), the hit an ailment starts from (ailment_source), the percentage of it dealt per second (per_second), the number of instances (active_stacks), the chance in percent (chance_to_apply) or the amount added. */
+  operand: number;
+  /** Running value after the step. */
+  result: number;
+}
+
+export interface BreakdownFormula {
+  steps: FormulaStep[];
+  /** The displayed stat value the steps end at. */
+  value: number;
+}
+
 export interface Breakdown {
+  /** Totals cover active lines only. */
   base_total: number;
   inc_total: number;
+  /** Product of the active MORE lines as a multiplier (1 when there are none). */
+  more_total: number;
   mods: BreakdownMod[];
+  /** Steps from the starting value to the displayed stat; null when not available for this stat. */
+  formula: BreakdownFormula | null;
+  /** TotalHitAvg only: how each damage type of the hit is built. */
+  damage?: HitDamageTable;
+  /** TotalDPS only: the `enemy_mitigation` step per damage type. */
+  mitigation?: HitMitigationRow[];
+  /** TotalDotDPS only: the `skill_dot` step per damage type. */
+  skill_dot?: SkillDotRow[];
+  /** IgniteDPS / BleedDPS / PoisonDPS only: the hit the ailment comes from and how many instances are active. */
+  ailment?: AilmentDetail;
+}
+
+/** What a damaging ailment's steps are built from. */
+export interface AilmentDetail {
+  /** Non-critical and critical hit that applies the ailment, before the enemy's mitigation, at `damage_roll` percent of the damage range. */
+  source_hit: number;
+  source_crit: number;
+  /** 50 = the average hit; higher when more instances are applied than can be active. */
+  damage_roll: number;
+  /** Percentage of instances applied by a critical hit; the starting hit is the two hits averaged with this share. */
+  crit_share: number;
+  /** Chance for a hit to apply the ailment, in percent. */
+  apply_chance: number;
+  /** Chance to hit, in percent. */
+  hit_chance: number;
+  /** Seconds one instance lasts. */
+  duration: number;
+  hits_per_second: number;
+  /** `hit_chance × apply_chance × duration × hits_per_second`; 0 when the skill has no hit rate. */
+  stacks: number;
+  /** Most instances that deal damage at once; the `active_stacks` step uses the smaller of the two. */
+  max_stacks: number;
+}
+
+/** One damage type of the skill's own damage over time (not an ailment). */
+export interface SkillDotRow {
+  damage_type: string;
+  /** Damage per second before scaling, from the skill gem. */
+  base: number;
+  /** INC total in percentage points. */
+  increased: number;
+  /** MORE product as a multiplier. */
+  more: number;
+  /** Damage over time multiplier in percentage points. */
+  dot_multiplier: number;
+  /** Aura effect multiplier (1 unless the skill is an aura). */
+  aura: number;
+  /** The enemy's resistance and damage taken as one multiplier. */
+  enemy: number;
+  /** `base × (1 + increased / 100) × more × (1 + dot_multiplier / 100) × aura × enemy`; the rows add up to the `skill_dot` step. */
+  total: number;
+  /** INC / MORE damage lines and BASE damage over time multiplier lines this type reads. */
+  mods: BreakdownMod[];
+}
+
+/** One damage type of the main skill's hit, before the enemy's mitigation. */
+export interface HitDamageRow {
+  /** Physical / Fire / Cold / Lightning / Chaos. */
+  damage_type: string;
+  /** Range before increases: weapon or skill base, added damage, and what conversion and gain moved into this type. */
+  base_min: number;
+  base_max: number;
+  /** INC total in percentage points. */
+  increased: number;
+  /** MORE product as a multiplier. */
+  more: number;
+  /** MORE multipliers that apply to the minimum or the maximum only. */
+  more_min: number;
+  more_max: number;
+  /** Range of a non-critical hit. */
+  min: number;
+  max: number;
+  /** Average non-critical hit. */
+  avg: number;
+  /** Average critical hit. */
+  crit_avg: number;
+  /** INC / MORE lines that scale this type only. With `shared_mods`, active INC values add up to `increased` and active MORE values multiply to `more` (rounded to two decimals per modifier name). */
+  mods: BreakdownMod[];
+}
+
+/** One damage type of the average hit against the configured enemy. */
+export interface HitMitigationRow {
+  damage_type: string;
+  /** The type's share of the average hit (crits included), before the enemy. */
+  average: number;
+  /** Enemy resistance before penetration; null for physical. */
+  resist: number | null;
+  /** What a non-critical hit is reduced by, in percent: resistance after penetration, or for physical the reduction from armour, flat reduction and Overwhelm. Negative means more damage. */
+  reduction: number;
+  /** The enemy's damage-taken multiplier. */
+  taken: number;
+  /** `mitigated / average`. */
+  multiplier: number;
+  /** The share after the enemy; the rows add up to the `enemy_mitigation` step's result. */
+  mitigated: number;
+}
+
+export interface HitDamageTable {
+  rows: HitDamageRow[];
+  /** INC / MORE lines that scale every damage type of the hit. */
+  shared_mods: BreakdownMod[];
+  /** Double / triple damage multiplier every range includes (1 without one). */
+  damage_effect: number;
 }
 
 /** 主技能击中伤害的单类型分量（非暴击腿、玩家侧敌减伤前；占比用 avg）。 */

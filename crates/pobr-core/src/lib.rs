@@ -58,7 +58,7 @@ pub use model::{config, modifier};
 pub use parse::{apply_range, mod_cache, mod_parser};
 
 // Public API re-exports (names match the pre-reorg layout; paths point into the new layers)
-pub use aggregate::mod_db::{HighPrecisionRules, ModContribution, ModDb, ModList};
+pub use aggregate::mod_db::{HighPrecisionRules, ModContribution, ModDb, ModEvaluation, ModList};
 pub use attribute::attribution::{
     AttributionEntry, AttributionGroup, AttributionMode, AttributionReport, AttributionRequest,
     attribute,

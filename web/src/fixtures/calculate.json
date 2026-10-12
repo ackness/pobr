@@ -5,6 +5,7 @@
       "inc_total": 0.0,
       "mods": [
         {
+          "active": true,
           "mod_type": "BASE",
           "origin_id": "base.Accuracy",
           "origin_kind": "CharacterBase",
@@ -13,6 +14,7 @@
           "value": 648.0
         },
         {
+          "active": true,
           "mod_type": "BASE",
           "origin_id": "base.attr_derived",
           "origin_kind": "CharacterBase",
@@ -20,13 +22,16 @@
           "source_text": null,
           "value": 270.0
         }
-      ]
+      ],
+      "more_total": 1.0,
+      "formula": null
     },
     "EnergyShield": {
       "base_total": 1730.0,
       "inc_total": 457.0,
       "mods": [
         {
+          "active": true,
           "mod_type": "BASE",
           "origin_id": "base.EnergyShield",
           "origin_kind": "Item",
@@ -35,6 +40,7 @@
           "value": 162.0
         },
         {
+          "active": true,
           "mod_type": "BASE",
           "origin_id": "base.EnergyShield",
           "origin_kind": "Item",
@@ -43,6 +49,7 @@
           "value": 195.0
         },
         {
+          "active": true,
           "mod_type": "BASE",
           "origin_id": "base.EnergyShield",
           "origin_kind": "Item",
@@ -51,6 +58,7 @@
           "value": 536.0
         },
         {
+          "active": true,
           "mod_type": "BASE",
           "origin_id": "base.EnergyShield",
           "origin_kind": "Item",
@@ -59,6 +67,7 @@
           "value": 760.0
         },
         {
+          "active": true,
           "mod_type": "BASE",
           "origin_id": "item.belt.explicit",
           "origin_kind": "ItemAffix",
@@ -67,6 +76,7 @@
           "value": 77.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": null,
           "origin_kind": null,
@@ -75,6 +85,7 @@
           "value": 10.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": null,
           "origin_kind": null,
@@ -83,6 +94,7 @@
           "value": 15.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": null,
           "origin_kind": null,
@@ -91,6 +103,7 @@
           "value": 15.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": null,
           "origin_kind": null,
@@ -99,6 +112,7 @@
           "value": 17.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "item.amulet.explicit",
           "origin_kind": "ItemAffix",
@@ -107,6 +121,7 @@
           "value": 33.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "item.amulet.implicit",
           "origin_kind": "ItemImplicit",
@@ -115,6 +130,7 @@
           "value": 58.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.116",
           "origin_kind": "PassiveNode",
@@ -123,6 +139,7 @@
           "value": 18.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.13537",
           "origin_kind": "PassiveNode",
@@ -131,6 +148,7 @@
           "value": 15.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.15975",
           "origin_kind": "PassiveNode",
@@ -139,6 +157,7 @@
           "value": 12.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.21336",
           "origin_kind": "PassiveNode",
@@ -147,6 +166,7 @@
           "value": 12.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.2254",
           "origin_kind": "PassiveNode",
@@ -155,6 +175,7 @@
           "value": 30.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.37974",
           "origin_kind": "PassiveNode",
@@ -163,6 +184,7 @@
           "value": 15.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.38105",
           "origin_kind": "PassiveNode",
@@ -171,6 +193,7 @@
           "value": 15.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.41372",
           "origin_kind": "PassiveNode",
@@ -179,6 +202,7 @@
           "value": 10.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.44299",
           "origin_kind": "PassiveNode",
@@ -187,6 +211,7 @@
           "value": 25.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.48030",
           "origin_kind": "PassiveNode",
@@ -195,6 +220,7 @@
           "value": 15.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.49455",
           "origin_kind": "PassiveNode",
@@ -203,6 +229,7 @@
           "value": 15.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.6006",
           "origin_kind": "PassiveNode",
@@ -211,6 +238,7 @@
           "value": 15.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.62230",
           "origin_kind": "PassiveNode",
@@ -219,6 +247,7 @@
           "value": 50.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.62984",
           "origin_kind": "PassiveNode",
@@ -227,6 +256,7 @@
           "value": 24.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.6715",
           "origin_kind": "PassiveNode",
@@ -235,6 +265,7 @@
           "value": 10.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.9642",
           "origin_kind": "PassiveNode",
@@ -242,13 +273,16 @@
           "source_text": "28% increased maximum [EnergyShield|Energy Shield]",
           "value": 28.0
         }
-      ]
+      ],
+      "more_total": 1.0,
+      "formula": null
     },
     "Evasion": {
       "base_total": 7.0,
       "inc_total": 48.0,
       "mods": [
         {
+          "active": true,
           "mod_type": "BASE",
           "origin_id": "base.Evasion",
           "origin_kind": "CharacterBase",
@@ -257,6 +291,7 @@
           "value": 7.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.15975",
           "origin_kind": "PassiveNode",
@@ -265,6 +300,7 @@
           "value": 12.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.21336",
           "origin_kind": "PassiveNode",
@@ -273,6 +309,7 @@
           "value": 12.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.62984",
           "origin_kind": "PassiveNode",
@@ -280,13 +317,16 @@
           "source_text": "24% increased [Evasion|Evasion Rating]",
           "value": 24.0
         }
-      ]
+      ],
+      "more_total": 1.0,
+      "formula": null
     },
     "MovementSpeed": {
       "base_total": 0.0,
       "inc_total": 67.0,
       "mods": [
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": null,
           "origin_kind": null,
@@ -295,6 +335,7 @@
           "value": 3.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "config.GamblesprintMovementSpeed",
           "origin_kind": "Config",
@@ -303,6 +344,7 @@
           "value": 20.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "item.boots.explicit",
           "origin_kind": "ItemAffix",
@@ -311,6 +353,7 @@
           "value": 35.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "item.boots.enchant",
           "origin_kind": "ItemEnchant",
@@ -319,6 +362,7 @@
           "value": 5.0
         },
         {
+          "active": true,
           "mod_type": "INC",
           "origin_id": "node.48198",
           "origin_kind": "PassiveNode",
@@ -326,13 +370,16 @@
           "source_text": "4% increased Movement Speed",
           "value": 4.0
         }
-      ]
+      ],
+      "more_total": 1.0,
+      "formula": null
     },
     "Spirit": {
       "base_total": 343.0,
       "inc_total": 0.0,
       "mods": [
         {
+          "active": true,
           "mod_type": "BASE",
           "origin_id": null,
           "origin_kind": null,
@@ -341,6 +388,7 @@
           "value": 30.0
         },
         {
+          "active": true,
           "mod_type": "BASE",
           "origin_id": null,
           "origin_kind": null,
@@ -349,6 +397,7 @@
           "value": 30.0
         },
         {
+          "active": true,
           "mod_type": "BASE",
           "origin_id": null,
           "origin_kind": null,
@@ -357,6 +406,7 @@
           "value": 40.0
         },
         {
+          "active": true,
           "mod_type": "BASE",
           "origin_id": "base.Spirit",
           "origin_kind": "Item",
@@ -365,6 +415,7 @@
           "value": 195.0
         },
         {
+          "active": true,
           "mod_type": "BASE",
           "origin_id": "item.amulet.explicit",
           "origin_kind": "ItemAffix",
@@ -372,7 +423,9 @@
           "source_text": "+48 to Spirit",
           "value": 48.0
         }
-      ]
+      ],
+      "more_total": 1.0,
+      "formula": null
     }
   },
   "stats": [

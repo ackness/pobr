@@ -15,10 +15,22 @@ use crate::state;
 
 // 0.2 + 0.3 calculate_build_json (the full display_catalog plus breakdown)
 
-/// The aggregated ModNames the breakdown covers (PoB2's always-present
-/// sidebar stats; derived values like TotalDPS have no single aggregation
-/// name, so they're not listed here — see them via the attribution endpoint instead).
+/// The displayed stats the breakdown covers (PoB2's always-present sidebar
+/// stats). Each stat is evaluated over the modifier names its calculation
+/// stage aggregates (`CalculationSession::stat_mod_names`). `TotalDPS` and
+/// `TotalHitAvg` have no single aggregation: they carry steps only, and the
+/// average hit a per-damage-type table (`damage`). `CombinedDPS` and
+/// `TotalDotDPS` likewise carry steps only, the latter with the skill's own
+/// damage over time per type (`skill_dot`). The three ailment stats list the
+/// ailment magnitude lines and carry what the steps are built from (`ailment`).
 const BREAKDOWN_MOD_NAMES: &[&str] = &[
+    "CombinedDPS",
+    "TotalDPS",
+    "TotalHitAvg",
+    "TotalDotDPS",
+    "IgniteDPS",
+    "BleedDPS",
+    "PoisonDPS",
     "Life",
     "Mana",
     "EnergyShield",
@@ -29,19 +41,24 @@ const BREAKDOWN_MOD_NAMES: &[&str] = &[
     "ColdResist",
     "LightningResist",
     "ChaosResist",
-    "Speed",
+    "ActionRate",
     "CritChance",
     "CritMultiplier",
     "Accuracy",
-    "MovementSpeed",
+    "HitChance",
 ];
 
 #[derive(Debug, Serialize)]
 struct BreakdownModJson {
     /// `BASE` / `INC` / `MORE` / `FLAG` / `OVERRIDE` / `LIST`.
     mod_type: &'static str,
-    /// The numeric view (`null` for Flag/Text mod lines).
+    /// The numeric view (`null` for Flag/Text mod lines). For an active
+    /// BASE/INC/MORE line this is the applied number (per-stat scaling and
+    /// shared caps included); an inactive line keeps its stored number.
     value: Option<f64>,
+    /// Whether the inspected skill's calculation counts this line. `false`
+    /// means its condition, skill type or weapon requirement is not met.
+    active: bool,
     /// The mod line's raw text (the source it was parsed from).
     source_text: Option<String>,
     /// The attribution source category (`SourceKind`'s Debug name, e.g. `PassiveNode` / `ItemAffix`).
@@ -54,33 +71,41 @@ struct BreakdownModJson {
 
 #[derive(Debug, Serialize)]
 struct BreakdownJson {
-    /// The BASE mod-line total (a direct sum, with no expression detail beyond class/base injection).
+    /// The active BASE mod-line total (no class/base injection).
     base_total: f64,
-    /// The INC mod-line total (in percentage points).
+    /// The active INC mod-line total (in percentage points).
     inc_total: f64,
-    /// The per-mod-line source list.
+    /// The product of the active MORE mod lines, as a multiplier (`1.0` when there are none).
+    more_total: f64,
+    /// The per-mod-line source list, inactive lines included.
     mods: Vec<BreakdownModJson>,
+    /// How the calculation gets from the starting value to the displayed
+    /// stat (`null` = the steps are not available for this stat).
+    formula: Option<FormulaJson>,
+    /// `TotalHitAvg` only: how each damage type of the hit is built.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    damage: Option<HitDamageTableJson>,
+    /// `TotalDPS` only: the `enemy_mitigation` step per damage type.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    mitigation: Option<Vec<HitMitigationRowJson>>,
+    /// `TotalDotDPS` only: the `skill_dot` step per damage type.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    skill_dot: Option<Vec<SkillDotRowJson>>,
+    /// `IgniteDPS` / `BleedDPS` / `PoisonDPS` only: the hit the ailment comes
+    /// from and how many instances are active.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ailment: Option<AilmentJson>,
 }
 
-fn breakdown_for(session: &CalculationSession, name: &str) -> Option<BreakdownJson> {
-    let mods = session.mods_named(name);
-    if mods.is_empty() {
-        return None;
-    }
-    let mut base_total = 0.0;
-    let mut inc_total = 0.0;
-    let mut entries: Vec<BreakdownModJson> = mods
+fn mod_entries(rows: &[pobr_core::ModEvaluation<'_>]) -> Vec<BreakdownModJson> {
+    let mut entries: Vec<BreakdownModJson> = rows
         .iter()
-        .map(|m| {
-            let value = m.value.as_number();
-            match m.mod_type {
-                pobr_data::modifier::ModType::Base => base_total += value.unwrap_or(0.0),
-                pobr_data::modifier::ModType::Inc => inc_total += value.unwrap_or(0.0),
-                _ => {}
-            }
+        .map(|row| {
+            let m = row.modifier;
             BreakdownModJson {
                 mod_type: m.mod_type.as_trace_label(),
-                value,
+                value: row.value,
+                active: row.active,
                 source_text: m.source.clone(),
                 origin_kind: m.origin.as_ref().map(|o| format!("{:?}", o.source_id.kind)),
                 origin_id: m.origin.as_ref().map(|o| o.source_id.id.clone()),
@@ -100,11 +125,308 @@ fn breakdown_for(session: &CalculationSession, name: &str) -> Option<BreakdownJs
                     .partial_cmp(&b.value)
                     .unwrap_or(std::cmp::Ordering::Equal),
             )
+            .then(b.active.cmp(&a.active))
     });
+    entries
+}
+
+/// One damage type of the main skill's hit, before the enemy's mitigation.
+#[derive(Debug, Serialize)]
+struct HitDamageRowJson {
+    /// `Physical` / `Fire` / `Cold` / `Lightning` / `Chaos`.
+    damage_type: String,
+    /// The range before increases: the weapon or skill base, added damage
+    /// and what conversion and gain moved into this type.
+    base_min: f64,
+    base_max: f64,
+    /// The INC total (in percentage points).
+    increased: f64,
+    /// The MORE product, as a multiplier.
+    more: f64,
+    /// MORE multipliers that apply to the minimum or the maximum only.
+    more_min: f64,
+    more_max: f64,
+    /// The range of a non-critical hit:
+    /// `base × (1 + increased / 100) × more × more_min|max × damage_effect`.
+    min: f64,
+    max: f64,
+    /// The average non-critical hit (`(min + max) / 2` unless rolls are lucky).
+    avg: f64,
+    /// The average critical hit.
+    crit_avg: f64,
+    /// The INC / MORE lines that scale this type only (its own damage name
+    /// and, for an element, elemental damage), inactive lines included.
+    /// With `shared_mods`, the active INC values add up to `increased` and
+    /// the active MORE values multiply to `more` (which the calculation
+    /// rounds to two decimals per modifier name).
+    mods: Vec<BreakdownModJson>,
+}
+
+#[derive(Debug, Serialize)]
+struct HitDamageTableJson {
+    rows: Vec<HitDamageRowJson>,
+    /// The INC / MORE lines that scale every damage type of the hit
+    /// (damage, attack / spell / projectile / area / melee damage and the
+    /// skill's keyword damage names), inactive lines included.
+    shared_mods: Vec<BreakdownModJson>,
+    /// The double / triple damage multiplier every range includes (`1.0` without one).
+    damage_effect: f64,
+}
+
+/// One damage type of the average hit against the configured enemy.
+#[derive(Debug, Serialize)]
+struct HitMitigationRowJson {
+    /// `Physical` / `Fire` / `Cold` / `Lightning` / `Chaos`.
+    damage_type: String,
+    /// The type's share of the average hit (crits included), before the enemy.
+    average: f64,
+    /// The enemy's resistance before penetration (`null` for physical).
+    resist: Option<f64>,
+    /// What a non-critical hit is reduced by, in percent: the resistance
+    /// after penetration, or for physical the reduction from the enemy's
+    /// armour, flat reduction and Overwhelm. Negative means more damage.
+    reduction: f64,
+    /// The enemy's damage-taken multiplier for this type.
+    taken: f64,
+    /// `mitigated / average`. Equals `taken × (1 − reduction / 100)` unless
+    /// critical hits are mitigated differently (armour depends on hit size).
+    multiplier: f64,
+    /// The share after the enemy. The rows add up to the result of the
+    /// `enemy_mitigation` step.
+    mitigated: f64,
+}
+
+/// One damage type of the skill's own damage over time (not an ailment).
+#[derive(Debug, Serialize)]
+struct SkillDotRowJson {
+    /// `Physical` / `Fire` / `Cold` / `Lightning` / `Chaos`.
+    damage_type: String,
+    /// Damage per second before scaling, from the skill gem.
+    base: f64,
+    /// The INC total (in percentage points).
+    increased: f64,
+    /// The MORE product, as a multiplier.
+    more: f64,
+    /// The damage over time multiplier (in percentage points).
+    dot_multiplier: f64,
+    /// The aura effect multiplier (`1.0` unless the skill is an aura).
+    aura: f64,
+    /// The enemy's resistance and damage taken as one multiplier.
+    enemy: f64,
+    /// `base × (1 + increased / 100) × more × (1 + dot_multiplier / 100) × aura × enemy`.
+    /// The rows add up to the operand of the `skill_dot` step.
+    total: f64,
+    /// The INC / MORE damage lines and the BASE damage over time multiplier
+    /// lines this type reads, inactive lines included. The active INC values
+    /// add up to `increased`, the active MORE values multiply to `more`
+    /// (rounded to two decimals per modifier name by the calculation).
+    mods: Vec<BreakdownModJson>,
+}
+
+/// What a damaging ailment's steps are built from.
+#[derive(Debug, Serialize)]
+struct AilmentJson {
+    /// The non-critical and critical hit the ailment is applied by (the
+    /// damage types that can apply it, before the enemy's mitigation), taken
+    /// at `damage_roll` percent of the damage range.
+    source_hit: f64,
+    source_crit: f64,
+    /// 50 = the average hit. Higher when more instances are applied than can
+    /// be active, because only the strongest ones count.
+    damage_roll: f64,
+    /// The percentage of instances applied by a critical hit: the step's
+    /// starting hit is `source_hit` and `source_crit` averaged with this share.
+    crit_share: f64,
+    /// The chance for a hit to apply the ailment, in percent.
+    apply_chance: f64,
+    /// The chance to hit, in percent.
+    hit_chance: f64,
+    /// How long one instance lasts, in seconds.
+    duration: f64,
+    /// Hits per second (uses per second and the skill's damage per second multiplier).
+    hits_per_second: f64,
+    /// `hit_chance × apply_chance × duration × hits_per_second`: the average
+    /// number of instances on the enemy. `0` when the skill has no hit rate;
+    /// the steps then use `chance_to_apply` instead of `active_stacks`.
+    stacks: f64,
+    /// The most instances that deal damage at once. The `active_stacks` step
+    /// multiplies by the smaller of `stacks` and this.
+    max_stacks: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct FormulaStepJson {
+    /// `base` / `flat` / `enemy_flat` / `converted` / `increased` / `more` / `added_time` /
+    /// `action_speed` / `override` / `cap` / `cooldown_cap` /
+    /// `server_tick_cap` / `floor` / `bonus_to_multiplier` / `gear_adjusted` /
+    /// `gained` / `slot_scaled` / `flat_after` / `round` / `hit_chance` /
+    /// `lucky` / `bifurcate` / `inevitable` / `inevitable_penalty` /
+    /// `bifurcate_bonus` / `enemy_increased` / `accuracy_rating` /
+    /// `vs_evasion` / `always_hits` / `enemy_block` / `non_crit_hit` /
+    /// `crit_hits` / `average_hit` / `enemy_mitigation` / `uses_per_second` /
+    /// `chance_to_hit` / `dps_multiplier` / `skill_dot` / `poison_dps` /
+    /// `ignite_dps` / `bleed_dps` / `hit_dps` / `dot_dps` / `ailment_source` /
+    /// `per_second` / `active_stacks` / `chance_to_apply` / `ailment_effect` /
+    /// `ailment_rate`.
+    op: &'static str,
+    /// The amount the step applies (percentage points for `increased`,
+    /// `converted`, `hit_chance`, `enemy_block`, `inevitable_penalty`,
+    /// `bifurcate_bonus` and `enemy_increased`, the enemy's evasion for
+    /// `vs_evasion`, a multiplier for `more` and `action_speed`, seconds
+    /// for `added_time`, the limit for caps and the floor, the number of
+    /// rolls for `lucky` and `bifurcate`, the percentage of hits that crit
+    /// for `crit_hits`, the chance to hit for `chance_to_hit`, a multiplier for `enemy_mitigation`,
+    /// `uses_per_second`, `dps_multiplier`, `ailment_effect` and `ailment_rate`,
+    /// the starting damage per second for `skill_dot` and `hit_dps`, the hit the
+    /// ailment starts from for `ailment_source`, the percentage of it dealt per
+    /// second for `per_second`, the number of instances for `active_stacks`, the
+    /// chance in percent for `chance_to_apply`, the amount added otherwise).
+    operand: f64,
+    /// The running value after the step.
+    result: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct FormulaJson {
+    steps: Vec<FormulaStepJson>,
+    /// The displayed stat value the steps end at.
+    value: f64,
+}
+
+fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJson> {
+    let rows = session.evaluated_stat_mods(stat);
+    let formula = session.stat_formula(stat).map(|formula| FormulaJson {
+        steps: formula
+            .steps
+            .iter()
+            .map(|step| FormulaStepJson {
+                op: step.op.as_str(),
+                operand: step.operand + 0.0,
+                result: step.result + 0.0,
+            })
+            .collect(),
+        value: formula.value + 0.0,
+    });
+    // A stat without modifier lines is still explained by its starting value
+    // (a weapon's base crit chance, a skill's base rate).
+    if rows.is_empty() && formula.as_ref().is_none_or(|formula| formula.value == 0.0) {
+        return None;
+    }
+    let output = session.output();
+    let ailment_dps = match stat {
+        "IgniteDPS" => Some(output.ignite_dps),
+        "BleedDPS" => Some(output.bleed_dps),
+        "PoisonDPS" => Some(output.poison_dps),
+        _ => None,
+    };
+    // An ailment the skill does not apply has nothing to explain.
+    if ailment_dps == Some(0.0) {
+        return None;
+    }
+    let ailment = formula
+        .as_ref()
+        .and_then(|_| session.ailment_terms(stat))
+        .map(|terms| AilmentJson {
+            source_hit: terms.source_hit,
+            source_crit: terms.source_crit,
+            damage_roll: terms.damage_roll,
+            crit_share: terms.crit_weight() * 100.0,
+            apply_chance: terms.apply_chance * 100.0,
+            hit_chance: terms.hit_chance * 100.0,
+            duration: terms.duration,
+            hits_per_second: terms.hits_per_second,
+            stacks: terms.stacks,
+            max_stacks: terms.max_stacks,
+        });
+    let damage = (stat == "TotalHitAvg")
+        .then(|| session.hit_damage_terms())
+        .flatten()
+        .map(|terms| {
+            // The physical row is always computed; leave it out when empty.
+            let parts: Vec<_> = terms
+                .parts
+                .iter()
+                .filter(|part| part.base_max != 0.0 || part.max != 0.0)
+                .collect();
+            let types: Vec<_> = parts.iter().map(|part| part.damage_type).collect();
+            let lines = session.hit_damage_mods(&types);
+            HitDamageTableJson {
+                rows: parts
+                    .iter()
+                    .zip(&lines.by_type)
+                    .map(|(part, (_, mods))| HitDamageRowJson {
+                        damage_type: format!("{:?}", part.damage_type),
+                        base_min: part.base_min,
+                        base_max: part.base_max,
+                        increased: part.inc + 0.0,
+                        more: part.more,
+                        more_min: part.more_min,
+                        more_max: part.more_max,
+                        min: part.min,
+                        max: part.max,
+                        avg: part.avg,
+                        crit_avg: part.crit_avg,
+                        mods: mod_entries(mods),
+                    })
+                    .collect(),
+                shared_mods: mod_entries(&lines.shared),
+                damage_effect: terms.damage_effect,
+            }
+        });
+    let mitigation = (stat == "TotalDPS")
+        .then(|| session.hit_mitigation_terms())
+        .flatten()
+        .map(|parts| {
+            parts
+                .iter()
+                .filter(|part| part.average != 0.0)
+                .map(|part| HitMitigationRowJson {
+                    damage_type: format!("{:?}", part.damage_type),
+                    average: part.average,
+                    resist: part.resist.map(|resist| resist + 0.0),
+                    reduction: part.reduction + 0.0,
+                    taken: part.taken,
+                    multiplier: part.mitigated / part.average,
+                    mitigated: part.mitigated,
+                })
+                .collect()
+        });
+    let skill_dot = (stat == "TotalDotDPS")
+        .then(|| session.skill_dot_parts())
+        .flatten()
+        .filter(|parts| !parts.is_empty())
+        .map(|parts| {
+            let types: Vec<_> = parts.iter().map(|part| part.damage_type).collect();
+            let lines = session.skill_dot_mods(&types);
+            parts
+                .iter()
+                .zip(&lines.by_type)
+                .map(|(part, (_, mods))| SkillDotRowJson {
+                    damage_type: format!("{:?}", part.damage_type),
+                    base: part.base,
+                    increased: part.inc + 0.0,
+                    more: part.more,
+                    dot_multiplier: part.dot_multiplier + 0.0,
+                    aura: part.aura,
+                    enemy: part.enemy,
+                    total: part.total,
+                    mods: mod_entries(mods),
+                })
+                .collect()
+        });
+    let entries = mod_entries(&rows);
+    let (base_total, inc_total, more_total) = session.stat_totals(stat);
     Some(BreakdownJson {
-        base_total,
-        inc_total,
+        // An empty float sum is `-0.0`; adding zero keeps it out of the JSON.
+        base_total: base_total + 0.0,
+        inc_total: inc_total + 0.0,
+        more_total,
         mods: entries,
+        formula,
+        damage,
+        mitigation,
+        skill_dot,
+        ailment,
     })
 }
 
@@ -179,7 +501,7 @@ struct CalculateBuildResponse {
     /// Unparsed modifier text and confirmed source-specific calculation limits,
     /// preserved verbatim for display and baseline-versus-edit comparison.
     unsupported_modifiers: Vec<String>,
-    /// The mod-line breakdown for aggregated stats (keyed by ModName, see [`BREAKDOWN_MOD_NAMES`]).
+    /// The mod-line breakdown for aggregated stats (keyed by display stat id, see [`BREAKDOWN_MOD_NAMES`]).
     breakdowns: BTreeMap<String, BreakdownJson>,
     /// The main skill's identity plus damage breakdown (`null` = the build has no resolvable damage main skill).
     main_skill: Option<MainSkillJson>,

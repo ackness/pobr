@@ -13,6 +13,8 @@ pub struct OutputTable {
     pub fire_resistance: f64,
     pub cold_resistance: f64,
     pub lightning_resistance: f64,
+    /// Final chaos resistance (filled by `perform`; `0.0` from the minimal entry point).
+    pub chaos_resistance: f64,
     pub max_fire_resistance: f64,
     pub max_cold_resistance: f64,
     pub max_lightning_resistance: f64,
@@ -28,6 +30,8 @@ pub struct OutputTable {
     pub damage_components: Vec<DamageComponent>,
     pub total_hit_avg: f64,
     pub hit_chance: f64,
+    /// Accuracy rating in the main-hand pass (filled by `perform`; `0.0` from the minimal entry point).
+    pub accuracy: f64,
     pub action_rate: f64,
     pub dps: f64,
 
@@ -378,6 +382,8 @@ impl Default for OutputTable {
             fire_resistance: 0.0,
             cold_resistance: 0.0,
             lightning_resistance: 0.0,
+            chaos_resistance: 0.0,
+            accuracy: 0.0,
             max_fire_resistance: 0.0,
             max_cold_resistance: 0.0,
             max_lightning_resistance: 0.0,

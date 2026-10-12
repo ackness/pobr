@@ -5,6 +5,7 @@ use crate::{CalcConfig, ModDb, TraceGraph, TraceNodeId, TraceOperation, TraceOut
 use super::crit::{resolve_crit, resolve_crit_traced};
 use super::crit_pass::run_crit_passes;
 use super::damage::DamageComponent;
+use super::formula::{FormulaBuilder, FormulaOp, StatFormula};
 use super::scaled_damage::{dps_end_factors, scaled_damage_effect};
 use super::{ActorBaseStats, BreakdownStep, BreakdownTable, OutputTable, hit_chance, round};
 
@@ -169,6 +170,27 @@ pub(crate) struct ResistanceResolution {
     pub(crate) final_value: f64,
     max: f64,
     over_cap: f64,
+    /// The terms the total was built from, kept for [`Self::formula`].
+    base: f64,
+    flat: f64,
+    inc: f64,
+    more: f64,
+    override_total: Option<f64>,
+    floor: f64,
+}
+
+impl ResistanceResolution {
+    /// The steps from the starting value to `final_value`.
+    pub(crate) fn formula(&self) -> StatFormula {
+        let mut steps = FormulaBuilder::default();
+        match self.override_total {
+            Some(value) => steps.set(FormulaOp::Override, value, value),
+            None => steps.scaled(self.base, self.flat, self.inc, self.more),
+        }
+        steps.at_most(FormulaOp::Cap, self.max);
+        steps.at_least(self.floor);
+        steps.finish(self.final_value)
+    }
 }
 
 /// Resolves a single resistance (mirrors PoB2's full-channel semantics, CalcDefence.lua:888-930):
@@ -207,16 +229,17 @@ pub(crate) fn resolve_resistance(
         max_names.push(ModName::from("ElementalResistMax"));
     }
 
-    let total = db
+    let flat = db.sum(ModType::Base, cfg, &res_names);
+    let inc = db.sum(ModType::Inc, cfg, &res_names);
+    let more = db.more(cfg, &res_names);
+    let override_total = db
         .override_(cfg, long.as_str())
-        .or_else(|| db.override_(cfg, short.as_str()))
-        .unwrap_or_else(|| {
-            let summed = base + db.sum(ModType::Base, cfg, &res_names);
-            let factor = ((1.0 + db.sum(ModType::Inc, cfg, &res_names) / 100.0)
-                * db.more(cfg, &res_names))
-            .max(0.0);
-            summed * factor
-        });
+        .or_else(|| db.override_(cfg, short.as_str()));
+    let total = override_total.unwrap_or_else(|| {
+        let summed = base + flat;
+        let factor = ((1.0 + inc / 100.0) * more).max(0.0);
+        summed * factor
+    });
     let max = db
         .override_(cfg, max_long.as_str())
         .or_else(|| db.override_(cfg, max_short.as_str()))
@@ -226,10 +249,17 @@ pub(crate) fn resolve_resistance(
                 + db.sum(ModType::Base, cfg, &max_names))
             .min(cfg.constants.game().resist_hard_cap)
         });
+    let floor = cfg.constants.game().resist_floor;
     ResistanceResolution {
-        final_value: round(total.min(max).max(cfg.constants.game().resist_floor)),
+        final_value: round(total.min(max).max(floor)),
         max: round(max),
         over_cap: round((total - max).max(0.0)),
+        base,
+        flat,
+        inc,
+        more,
+        override_total,
+        floor,
     }
 }
 
@@ -259,17 +289,63 @@ pub fn calculate_minimal(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> 
 /// main chain, and the warcry uptime budget (`calc::warcry` -- vendor's
 /// warcry section reads this same `globalOutput.Speed`, CalcOffence.lua:3235).
 pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> f64 {
+    action_rate_terms(db, cfg, input).value
+}
+
+/// The action rate with the intermediate values of each stage of
+/// [`resolve_action_rate`].
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct ActionRateTerms {
+    base: f64,
+    inc: f64,
+    more: f64,
+    /// After the speed inc/more scaling.
+    scaled: f64,
+    /// After the added cast/attack time.
+    timed: f64,
+    action_speed: f64,
+    uncapped: f64,
+    /// After the cooldown cap.
+    cooled: f64,
+    /// After the server tick cap, before rounding.
+    ticked: f64,
+    pub(crate) value: f64,
+}
+
+impl ActionRateTerms {
+    /// The steps from the weapon or skill base rate to `value`.
+    pub(crate) fn formula(&self) -> StatFormula {
+        let mut steps = FormulaBuilder::default();
+        steps.scaled(self.base, 0.0, self.inc, self.more);
+        if self.timed != self.scaled {
+            steps.set(
+                FormulaOp::AddedTime,
+                1.0 / self.timed - 1.0 / self.scaled,
+                self.timed,
+            );
+        }
+        if self.action_speed != 1.0 {
+            steps.set(FormulaOp::ActionSpeed, self.action_speed, self.uncapped);
+        }
+        steps.at_most(FormulaOp::CooldownCap, self.cooled);
+        steps.at_most(FormulaOp::ServerTickCap, self.ticked);
+        steps.finish(self.value)
+    }
+}
+
+pub(crate) fn action_rate_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    input: &MinimalInput,
+) -> ActionRateTerms {
     let speed_names = super::skill_use_time::speed_names_for(cfg);
     let action_speed_names = [ModName::from(super::skill_use_time::ACTION_SPEED)];
     let inc_speed = db.sum(ModType::Inc, cfg, &speed_names);
     let more_speed = db.more(cfg, &speed_names);
     let action_speed_mod = (1.0 + db.sum(ModType::Inc, cfg, &action_speed_names) / 100.0)
         * db.more(cfg, &action_speed_names);
-    let scaled_rate = apply_total_time(
-        db,
-        cfg,
-        input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed,
-    );
+    let inc_more_rate = input.base_action_rate * (1.0 + inc_speed / 100.0) * more_speed;
+    let scaled_rate = apply_total_time(db, cfg, inc_more_rate);
     let uncapped_action_rate = scaled_rate * action_speed_mod;
     if dbg_env!("POBR_DBG_SPEED").is_some() {
         eprintln!(
@@ -282,37 +358,110 @@ pub(crate) fn resolve_action_rate(db: &ModDb, cfg: &CalcConfig, input: &MinimalI
             speed_names
         );
     }
-    round(apply_server_tick_cap(
-        db,
-        cfg,
-        apply_cooldown_cap(db, cfg, uncapped_action_rate),
-    ))
+    let cooled = apply_cooldown_cap(db, cfg, uncapped_action_rate);
+    let ticked = apply_server_tick_cap(db, cfg, cooled);
+    ActionRateTerms {
+        base: input.base_action_rate,
+        inc: inc_speed,
+        more: more_speed,
+        scaled: inc_more_rate,
+        timed: scaled_rate,
+        action_speed: action_speed_mod,
+        uncapped: uncapped_action_rate,
+        cooled,
+        ticked,
+        value: round(ticked),
+    }
 }
 
-/// The full entry point: player modDB + enemy modDB. Enemy-side mitigation/
-/// damage-taken chain/block only take effect under `cfg.mode_effective == true`
-/// (the panel view never introduces enemy interaction, keeping it consistent with historical output).
-///
-/// Source: agent-docs/accuracy-and-enemy.md §2.2, §2.3, §6, §7;
-///       PoB2 `CalcOffence.lua` (`enemyDB:Sum/More DamageTaken`, `enemyBlockChance`, `CannotEvade`).
-pub fn calculate_minimal_vs_enemy(
+/// The terms behind the accuracy rating: `(base + flat) × (1 + inc / 100) × more`,
+/// or the OVERRIDE value when one applies.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct AccuracyTerms {
+    base: f64,
+    flat: f64,
+    inc: f64,
+    more: f64,
+    override_value: Option<f64>,
+    pub(crate) value: f64,
+}
+
+impl AccuracyTerms {
+    pub(crate) fn formula(&self) -> StatFormula {
+        let mut steps = FormulaBuilder::default();
+        match self.override_value {
+            Some(value) => steps.set(FormulaOp::Override, value, value),
+            None => steps.scaled(self.base, self.flat, self.inc, self.more),
+        }
+        steps.finish(self.value)
+    }
+}
+
+/// Accuracy rating of the inspected skill in `cfg` (one hand's pass).
+pub(crate) fn accuracy_terms(db: &ModDb, cfg: &CalcConfig, input: &MinimalInput) -> AccuracyTerms {
+    let names = [ModName::from("Accuracy")];
+    let override_value = db.override_(cfg, "Accuracy");
+    let flat = db.sum(ModType::Base, cfg, &names);
+    let inc = db.sum(ModType::Inc, cfg, &names);
+    let more = db.more(cfg, &names);
+    AccuracyTerms {
+        base: input.base_accuracy,
+        flat,
+        inc,
+        more,
+        override_value,
+        value: scaled_numeric_stat(db, cfg, input.base_accuracy, &names),
+    }
+}
+
+/// The terms behind the chance to hit: the accuracy check against the enemy's
+/// evasion, then the enemy's chance to block.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct HitChanceTerms {
+    accuracy: f64,
+    enemy_evasion: f64,
+    /// Not an attack, or the hit cannot be evaded: no accuracy check.
+    always_hits: bool,
+    /// Chance (fraction) to pass the accuracy check, before enemy block.
+    pub(crate) accuracy_chance: f64,
+    /// Enemy block chance (fraction); zero outside the effective view.
+    enemy_block: f64,
+    /// Chance to hit (fraction).
+    pub(crate) value: f64,
+}
+
+impl HitChanceTerms {
+    /// Steps in percent, ending at the chance to hit.
+    pub(crate) fn formula(&self) -> StatFormula {
+        let mut steps = FormulaBuilder::default();
+        if self.always_hits {
+            steps.set(FormulaOp::AlwaysHits, 100.0, 100.0);
+        } else {
+            steps.set(FormulaOp::AccuracyRating, self.accuracy, self.accuracy);
+            steps.set(
+                FormulaOp::VsEvasion,
+                self.enemy_evasion,
+                self.accuracy_chance * 100.0,
+            );
+        }
+        if self.enemy_block != 0.0 {
+            steps.set(
+                FormulaOp::EnemyBlock,
+                self.enemy_block * 100.0,
+                steps.current() * (1.0 - self.enemy_block),
+            );
+        }
+        steps.finish(self.value * 100.0)
+    }
+}
+
+pub(crate) fn hit_chance_terms(
     db: &ModDb,
     enemy_db: &ModDb,
     cfg: &CalcConfig,
     input: &MinimalInput,
-) -> MinimalOutput {
-    let life = scaled_pool(db, cfg, input.base_life, "MaximumLife");
-    let mana = scaled_pool(db, cfg, input.base_mana, "MaximumMana");
-    let fire = resolve_resistance(db, cfg, input.base_fire_resistance, "Fire", true);
-    let cold = resolve_resistance(db, cfg, input.base_cold_resistance, "Cold", true);
-    let lightning = resolve_resistance(db, cfg, input.base_lightning_resistance, "Lightning", true);
-    let fire_resistance = fire.final_value;
-    let cold_resistance = cold.final_value;
-    let lightning_resistance = lightning.final_value;
-
-    let action_rate = resolve_action_rate(db, cfg, input);
-    let accuracy_names = [ModName::from("Accuracy")];
-    let accuracy = scaled_numeric_stat(db, cfg, input.base_accuracy, &accuracy_names);
+) -> HitChanceTerms {
+    let accuracy = accuracy_terms(db, cfg, input).value;
     // PoE2 hit chance (agent-docs/accuracy-and-enemy.md §2, §3):
     // - Non-attacks always hit (matching vendor CalcOffence.lua:2611-2612's
     //   `if not isAttack then output.AccuracyHitChance = 100`): spells/DoT/
@@ -324,7 +473,8 @@ pub fn calculate_minimal_vs_enemy(
     // - Finally, enemy block is deducted: `HitChance = AccuracyHitChance * (1 - enemyBlockChance/100)`.
     let cannot_be_evaded =
         db.flag(cfg, "CannotBeEvaded") || (cfg.mode_effective && enemy_db.flag(cfg, "CannotEvade"));
-    let accuracy_hit_chance = if !cfg.is_attack() || cannot_be_evaded {
+    let always_hits = !cfg.is_attack() || cannot_be_evaded;
+    let accuracy_chance = if always_hits {
         1.0
     } else {
         hit_chance(input.enemy_evasion, accuracy)
@@ -335,7 +485,103 @@ pub fn calculate_minimal_vs_enemy(
     } else {
         0.0
     };
-    let hit_chance = round(accuracy_hit_chance * (1.0 - enemy_block));
+    HitChanceTerms {
+        accuracy,
+        enemy_evasion: input.enemy_evasion,
+        always_hits,
+        accuracy_chance,
+        enemy_block,
+        value: round(accuracy_chance * (1.0 - enemy_block)),
+    }
+}
+
+/// The chance (fraction) that the inspected skill's hit passes the accuracy
+/// check, before enemy block.
+pub(crate) fn accuracy_hit_chance(
+    db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    input: &MinimalInput,
+) -> f64 {
+    hit_chance_terms(db, enemy_db, cfg, input).accuracy_chance
+}
+
+/// One damage type of the hit: the range before scaling, what it was scaled
+/// by and the resulting averages of a non-critical and a critical hit.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HitDamagePart {
+    pub damage_type: DamageType,
+    /// The range before increases: the weapon or skill base, added damage
+    /// and whatever conversion and gain moved into this type.
+    pub base_min: f64,
+    pub base_max: f64,
+    /// The INC total, in percentage points.
+    pub inc: f64,
+    /// The MORE product.
+    pub more: f64,
+    /// MORE factors that scale only the minimum or only the maximum.
+    pub more_min: f64,
+    pub more_max: f64,
+    /// The range of a non-critical hit, before the enemy's mitigation.
+    pub min: f64,
+    pub max: f64,
+    /// The average non-critical hit (lucky rolls included).
+    pub avg: f64,
+    /// The average critical hit.
+    pub crit_avg: f64,
+}
+
+/// The per-type table behind the average hit.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HitDamageTerms {
+    pub parts: Vec<HitDamagePart>,
+    /// The double / triple damage factor every range is multiplied by.
+    pub damage_effect: f64,
+}
+
+/// One damage type of the average hit against the enemy.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HitMitigationPart {
+    pub damage_type: DamageType,
+    /// The type's share of the average hit (crits included), before the enemy.
+    pub average: f64,
+    /// The same share after the enemy's mitigation.
+    pub mitigated: f64,
+    /// The enemy's resistance before penetration (`None` for physical).
+    pub resist: Option<f64>,
+    /// What a non-critical hit is reduced by, in percent: the resistance
+    /// after penetration, or for physical the reduction from armour, flat
+    /// reduction and Overwhelm. Negative means more damage.
+    pub reduction: f64,
+    /// The enemy's damage-taken multiplier.
+    pub taken: f64,
+}
+
+/// What one offence pass computes for the hit: speed, chance to hit, crit,
+/// both crit legs and the DPS they combine into. The stage's output and the
+/// displayed steps ([`HitPass::average_hit_formula`], [`HitPass::dps_formula`])
+/// read the same numbers.
+pub(crate) struct HitPass {
+    pub action_rate: f64,
+    pub hit: HitChanceTerms,
+    pub crit: super::CritOutcome,
+    /// The double / triple damage factor both crit legs are multiplied by.
+    pub damage_effect: f64,
+    pub crit_pass: super::CritPassOutput,
+    pub end: super::scaled_damage::DpsEndFactors,
+    pub dps: f64,
+}
+
+pub(crate) fn hit_pass(
+    db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    input: &MinimalInput,
+) -> HitPass {
+    let action_rate = resolve_action_rate(db, cfg, input);
+    let hit_terms = hit_chance_terms(db, enemy_db, cfg, input);
+    let accuracy_hit_chance = hit_terms.accuracy_chance;
+    let hit_chance = hit_terms.value;
 
     // The effective crit pipeline (resolve_crit): cap / hit-chance downgrade
     // / Lucky / Bifurcate / Inevitable / enemy SelfCrit* / NoCritMultiplier,
@@ -352,9 +598,6 @@ pub fn calculate_minimal_vs_enemy(
         0.0,
         cfg.mode_effective,
     );
-    let crit_chance = crit.chance;
-    let crit_multiplier = crit.multiplier;
-
     // The damage body: the crit/non-crit dual pass + T3 factor wiring
     // The hit-view cfg: adds `KeywordFlags::HIT` (a hit is inherently a hit)
     // -- so `with Hits`-type keyword mods (kw=HIT) match during hit
@@ -384,10 +627,6 @@ pub fn calculate_minimal_vs_enemy(
             enemy_damage_multiplier(db, enemy_db, pass_cfg, damage_type, raw_hit)
         },
     );
-    // Output field: the player-side total hit (excludes enemy mitigation),
-    // preserving the historical semantics + serving as the ailment magnitude source.
-    let damage_components = crit_pass.non_crit_components.clone();
-    let total_hit_avg = crit_pass.total_hit_avg;
     // For DPS: under the effective view, the total hit including the enemy damage-taken chain/resistance/armour mitigation.
     let total_hit_avg_for_dps = crit_pass.total_hit_avg_mitigated;
 
@@ -403,6 +642,185 @@ pub fn calculate_minimal_vs_enemy(
             * end.dps_multiplier
             * end.quantity_multiplier,
     );
+
+    HitPass {
+        action_rate,
+        hit: hit_terms,
+        crit,
+        damage_effect: scaled.effect,
+        crit_pass,
+        end,
+        dps,
+    }
+}
+
+impl HitPass {
+    /// The per-type rows of the non-crit leg with each type's crit average.
+    /// `None` when the rows cannot be matched to the stage's components.
+    pub(crate) fn damage_terms(
+        &self,
+        db: &ModDb,
+        cfg: &CalcConfig,
+        input: &MinimalInput,
+    ) -> Option<HitDamageTerms> {
+        let terms =
+            super::crit_pass::non_crit_terms(db, cfg, input.base_hit_min, input.base_hit_max);
+        let pass = &self.crit_pass;
+        if terms.len() != pass.non_crit_components.len() || terms.len() != pass.stored_hit_avg.len()
+        {
+            return None;
+        }
+        let parts = terms
+            .iter()
+            .zip(&pass.non_crit_components)
+            .zip(&pass.stored_hit_avg)
+            .map(|((terms, component), (_, avg))| HitDamagePart {
+                damage_type: component.damage_type,
+                base_min: terms.base_min,
+                base_max: terms.base_max,
+                inc: terms.inc,
+                more: terms.more,
+                more_min: terms.more_min,
+                more_max: terms.more_max,
+                min: component.min,
+                max: component.max,
+                avg: *avg,
+                crit_avg: pass
+                    .stored_crit_avg
+                    .iter()
+                    .find(|(ty, _)| *ty == component.damage_type)
+                    .map_or(0.0, |(_, avg)| *avg),
+            })
+            .collect();
+        Some(HitDamageTerms {
+            parts,
+            damage_effect: self.damage_effect,
+        })
+    }
+
+    /// How the enemy changes each damage type of the average hit. `None`
+    /// when the enemy is not part of the calculation or the per-type values
+    /// cannot be matched to the stage's components.
+    pub(crate) fn mitigation_terms(
+        &self,
+        db: &ModDb,
+        enemy_db: &ModDb,
+        cfg: &CalcConfig,
+    ) -> Option<Vec<HitMitigationPart>> {
+        let pass = &self.crit_pass;
+        if pass.mitigated_avg.is_empty()
+            || pass.mitigated_avg.len() != pass.stored_combined_avg.len()
+            || pass.mitigated_avg.len() != pass.non_crit_components.len()
+        {
+            return None;
+        }
+        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
+        Some(
+            pass.stored_combined_avg
+                .iter()
+                .zip(&pass.mitigated_avg)
+                .zip(&pass.non_crit_components)
+                .map(|(((damage_type, average), (_, mitigated)), component)| {
+                    let terms = enemy_mitigation_terms(
+                        db,
+                        enemy_db,
+                        &cfg_hit,
+                        *damage_type,
+                        component.avg(),
+                    );
+                    HitMitigationPart {
+                        damage_type: *damage_type,
+                        average: *average,
+                        mitigated: *mitigated,
+                        resist: terms.resist,
+                        reduction: terms.reduction,
+                        taken: terms.taken,
+                    }
+                })
+                .collect(),
+        )
+    }
+
+    /// Non-crit average, then the share of hits that crit, ending at the
+    /// player-side average hit.
+    pub(crate) fn average_hit_formula(&self) -> StatFormula {
+        let non_crit: f64 = self.crit_pass.stored_hit_avg.iter().map(|(_, v)| v).sum();
+        let mut steps = FormulaBuilder::default();
+        steps.set(FormulaOp::NonCritHit, non_crit, non_crit);
+        if self.crit.chance != 0.0 {
+            steps.set(
+                FormulaOp::CritHits,
+                self.crit.chance * 100.0,
+                self.crit_pass.total_hit_avg,
+            );
+        }
+        steps.finish(self.crit_pass.total_hit_avg)
+    }
+
+    /// Average hit, the enemy's mitigation, then the factors the stage
+    /// multiplies in, in its order.
+    pub(crate) fn dps_formula(&self) -> StatFormula {
+        let average = self.crit_pass.total_hit_avg;
+        let mitigated = self.crit_pass.total_hit_avg_mitigated;
+        let mut steps = FormulaBuilder::default();
+        steps.set(FormulaOp::AverageHit, average, average);
+        if mitigated != average && average != 0.0 {
+            steps.set(FormulaOp::EnemyMitigation, mitigated / average, mitigated);
+        }
+        steps.set(
+            FormulaOp::UsesPerSecond,
+            self.action_rate,
+            steps.current() * self.action_rate,
+        );
+        steps.set(
+            FormulaOp::ChanceToHit,
+            self.hit.value * 100.0,
+            steps.current() * self.hit.value,
+        );
+        let end = self.end.dps_multiplier * self.end.quantity_multiplier;
+        if end != 1.0 {
+            steps.set(FormulaOp::DpsMultiplier, end, steps.current() * end);
+        }
+        steps.finish(self.dps)
+    }
+}
+
+/// The full entry point: player modDB + enemy modDB. Enemy-side mitigation/
+/// damage-taken chain/block only take effect under `cfg.mode_effective == true`
+/// (the panel view never introduces enemy interaction, keeping it consistent with historical output).
+///
+/// Source: agent-docs/accuracy-and-enemy.md §2.2, §2.3, §6, §7;
+///       PoB2 `CalcOffence.lua` (`enemyDB:Sum/More DamageTaken`, `enemyBlockChance`, `CannotEvade`).
+pub fn calculate_minimal_vs_enemy(
+    db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    input: &MinimalInput,
+) -> MinimalOutput {
+    let life = scaled_pool(db, cfg, input.base_life, "MaximumLife");
+    let mana = scaled_pool(db, cfg, input.base_mana, "MaximumMana");
+    let fire = resolve_resistance(db, cfg, input.base_fire_resistance, "Fire", true);
+    let cold = resolve_resistance(db, cfg, input.base_cold_resistance, "Cold", true);
+    let lightning = resolve_resistance(db, cfg, input.base_lightning_resistance, "Lightning", true);
+    let fire_resistance = fire.final_value;
+    let cold_resistance = cold.final_value;
+    let lightning_resistance = lightning.final_value;
+
+    let HitPass {
+        action_rate,
+        hit: hit_terms,
+        crit,
+        crit_pass,
+        dps,
+        ..
+    } = hit_pass(db, enemy_db, cfg, input);
+    let hit_chance = hit_terms.value;
+    let crit_chance = crit.chance;
+    let crit_multiplier = crit.multiplier;
+    // Output field: the player-side total hit (excludes enemy mitigation),
+    // preserving the historical semantics + serving as the ailment magnitude source.
+    let damage_components = crit_pass.non_crit_components.clone();
+    let total_hit_avg = crit_pass.total_hit_avg;
 
     MinimalOutput {
         life,
@@ -923,6 +1341,36 @@ fn enemy_damage_multiplier(
     damage_type: DamageType,
     raw_hit: f64,
 ) -> f64 {
+    enemy_mitigation_terms(player_db, enemy_db, cfg, damage_type, raw_hit).multiplier()
+}
+
+/// What the enemy does to one damage type of a hit, as
+/// [`enemy_damage_multiplier`] computes it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct EnemyMitigationTerms {
+    /// The enemy's resistance before penetration (`None` for physical).
+    pub resist: Option<f64>,
+    /// What the hit is reduced by, in percent: the resistance after
+    /// penetration, or for physical the reduction from armour, flat
+    /// reduction and Overwhelm at this hit size. Negative means more damage.
+    pub reduction: f64,
+    /// The enemy's damage-taken multiplier, `(1 + INC / 100) × MORE`.
+    pub taken: f64,
+}
+
+impl EnemyMitigationTerms {
+    pub(crate) fn multiplier(&self) -> f64 {
+        self.taken * (1.0 - self.reduction / 100.0)
+    }
+}
+
+fn enemy_mitigation_terms(
+    player_db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    damage_type: DamageType,
+    raw_hit: f64,
+) -> EnemyMitigationTerms {
     let type_prefix = match damage_type {
         DamageType::Physical => "Physical",
         DamageType::Fire => "Fire",
@@ -984,8 +1432,11 @@ fn enemy_damage_multiplier(
     let taken_mult = (1.0 + taken_inc / 100.0) * taken_more;
 
     // Resistance mitigation (elemental/chaos, including player penetration) / armour mitigation + Overwhelm (physical)
-    let mitigation = if damage_type == DamageType::Physical {
-        enemy_physical_multiplier(player_db, enemy_db, &type_cfg, raw_hit)
+    let (resist, reduction) = if damage_type == DamageType::Physical {
+        (
+            None,
+            enemy_physical_reduction(player_db, enemy_db, &type_cfg, raw_hit),
+        )
     } else {
         let mut resist = enemy_resist_final(enemy_db, &type_cfg, damage_type);
         // A hit treats enemy elemental resistance as inverted (Rakiata's
@@ -1025,10 +1476,14 @@ fn enemy_damage_multiplier(
                 }
             }
         }
-        1.0 - effective_resist / 100.0
+        (Some(resist), effective_resist)
     };
 
-    taken_mult * mitigation
+    EnemyMitigationTerms {
+        resist,
+        reduction,
+        taken: taken_mult,
+    }
 }
 
 /// The enemy's **final resistance** for a damage type (vendor
@@ -1235,7 +1690,18 @@ fn penetration_value(player_db: &ModDb, type_cfg: &CalcConfig, damage_type: Dama
 /// (`:4088-4094`), `PartialIgnoreEnemyPhysicalDamageReduction` (`:4096`).
 ///
 /// Source: agent-docs/damage-scaling.md §Overwhelm; PoB2 CalcOffence.lua:4074-4096.
+#[cfg(test)]
 fn enemy_physical_multiplier(
+    player_db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    raw_hit: f64,
+) -> f64 {
+    1.0 - enemy_physical_reduction(player_db, enemy_db, cfg, raw_hit) / 100.0
+}
+
+/// The reduction (%, signed) behind [`enemy_physical_multiplier`].
+fn enemy_physical_reduction(
     player_db: &ModDb,
     enemy_db: &ModDb,
     cfg: &CalcConfig,
@@ -1279,11 +1745,10 @@ fn enemy_physical_multiplier(
         cfg,
         &[ModName::from("EnemyPhysicalDamageReduction")],
     );
-    let reduction = (flat_pdr + overwhelm + from_armour).clamp(
+    (flat_pdr + overwhelm + from_armour).clamp(
         -cfg.constants.game().neg_armour_dmg_bonus_cap,
         ENEMY_PHYS_DMGRED_CAP,
-    );
-    1.0 - reduction / 100.0
+    )
 }
 
 /// Armour mitigation (%, signed) -- vendor `calcs.armourReductionF`
@@ -1449,22 +1914,69 @@ fn apply_server_tick_cap(db: &ModDb, cfg: &CalcConfig, rate: f64) -> f64 {
 }
 
 pub(crate) fn scaled_pool(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> f64 {
-    let names = [ModName::from(name)];
-    let conv = pool_conversion_pct(db, cfg, name);
-    if conv == 0.0 {
-        return scaled_numeric_stat(db, cfg, base, &names);
-    }
-    // vendor CalcDefence.lua:92-95: `(base × (1 − conv/100) + extra) × (1+inc) × more`.
-    // OVERRIDE still wins over everything (ChaosInoculation etc. pool clamping).
-    for n in &names {
-        if let Some(value) = db.override_(cfg, n.as_str()) {
-            return round(value);
+    pool_terms(db, cfg, base, name).value
+}
+
+/// A Life/Mana pool with the terms it was built from.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct PoolTerms {
+    base: f64,
+    flat: f64,
+    converted_pct: f64,
+    inc: f64,
+    more: f64,
+    override_value: Option<f64>,
+    pub(crate) value: f64,
+}
+
+impl PoolTerms {
+    /// The steps from the starting value to `value`.
+    pub(crate) fn formula(&self) -> StatFormula {
+        let mut steps = FormulaBuilder::default();
+        if let Some(value) = self.override_value {
+            steps.set(FormulaOp::Override, value, value);
+            return steps.finish(self.value);
         }
+        if self.base != 0.0 {
+            steps.set(FormulaOp::Base, self.base, self.base);
+        }
+        if self.flat != 0.0 {
+            steps.set(FormulaOp::Flat, self.flat, steps.current() + self.flat);
+        }
+        if self.converted_pct != 0.0 {
+            steps.set(
+                FormulaOp::Converted,
+                self.converted_pct,
+                steps.current() * (1.0 - self.converted_pct / 100.0),
+            );
+        }
+        steps.increased(self.inc);
+        steps.more(self.more);
+        steps.finish(self.value)
     }
-    let base_value = base + db.sum(ModType::Base, cfg, &names);
+}
+
+pub(crate) fn pool_terms(db: &ModDb, cfg: &CalcConfig, base: f64, name: &str) -> PoolTerms {
+    let names = [ModName::from(name)];
+    let converted_pct = pool_conversion_pct(db, cfg, name);
+    let flat = db.sum(ModType::Base, cfg, &names);
     let inc = db.sum(ModType::Inc, cfg, &names);
     let more = db.more(cfg, &names);
-    round(base_value * (1.0 - conv / 100.0) * (1.0 + inc / 100.0) * more)
+    // OVERRIDE wins over everything (ChaosInoculation etc. pool clamping).
+    let override_value = db.override_(cfg, name);
+    // vendor CalcDefence.lua:92-95: `(base × (1 − conv/100) + extra) × (1+inc) × more`.
+    let value = override_value.unwrap_or_else(|| {
+        (base + flat) * (1.0 - converted_pct / 100.0) * (1.0 + inc / 100.0) * more
+    });
+    PoolTerms {
+        base,
+        flat,
+        converted_pct,
+        inc,
+        more,
+        override_value,
+        value: round(value),
+    }
 }
 
 /// The Life/Mana pool's "N% of Maximum X Converted to <defence>" deduction
@@ -1750,6 +2262,53 @@ mod speed_tests {
             "got {}",
             out.action_rate
         );
+    }
+
+    #[test]
+    fn hit_chance_steps_follow_accuracy_evasion_and_enemy_block() {
+        // Accuracy (1000 + 200) × 1.5 = 1800 against 6000 evasion:
+        // 1800 × 1.25 / (1800 + 6000 × 0.3) = 62.5%, then 20% enemy block → 50%.
+        let mut db = ModDb::new();
+        db.add_mod(mk("Accuracy", ModType::Base, 200.0));
+        db.add_mod(mk("Accuracy", ModType::Inc, 50.0));
+        let mut enemy = ModDb::new();
+        enemy.add_mod(mk("BlockChance", ModType::Base, 20.0));
+        let cfg = CalcConfig::attack().with_mode_effective(true);
+        let mut input = input(1.0);
+        input.base_accuracy = 1000.0;
+        input.enemy_evasion = 6000.0;
+
+        let accuracy = accuracy_terms(&db, &cfg, &input).formula();
+        assert_eq!(accuracy.value, 1800.0);
+        assert_eq!(
+            accuracy.steps.iter().map(|s| s.op).collect::<Vec<_>>(),
+            [FormulaOp::Base, FormulaOp::Flat, FormulaOp::Increased]
+        );
+
+        let terms = hit_chance_terms(&db, &enemy, &cfg, &input);
+        let out = calculate_minimal_vs_enemy(&db, &enemy, &cfg, &input);
+        assert_eq!(terms.value, out.hit_chance);
+        let formula = terms.formula();
+        let steps: Vec<_> = formula
+            .steps
+            .iter()
+            .map(|s| (s.op, s.operand, s.result))
+            .collect();
+        assert_eq!(
+            steps,
+            [
+                (FormulaOp::AccuracyRating, 1800.0, 1800.0),
+                (FormulaOp::VsEvasion, 6000.0, 62.5),
+                (FormulaOp::EnemyBlock, 20.0, 50.0),
+            ]
+        );
+        assert_eq!(formula.value, 50.0);
+
+        // A spell skips the accuracy check; the enemy can still block.
+        let spell = CalcConfig::spell().with_mode_effective(true);
+        let formula = hit_chance_terms(&db, &enemy, &spell, &input).formula();
+        assert_eq!(formula.steps[0].op, FormulaOp::AlwaysHits);
+        assert_eq!(formula.value, 80.0);
     }
 
     #[test]

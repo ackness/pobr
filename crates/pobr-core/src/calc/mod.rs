@@ -12,6 +12,7 @@ pub mod ehp;
 pub mod env;
 pub mod env_finalize;
 pub mod error;
+pub mod formula;
 pub mod hand_pass;
 pub mod keystone_merge;
 pub mod mageblood;
@@ -36,7 +37,8 @@ pub mod warcry;
 
 pub use actor::{Actor, ActorBaseStats};
 pub use ailment::{
-    bleed_instance, corrupted_blood_instance, ignite_instance, poison_instance, shock_effect,
+    AilmentTerms, bleed_instance, corrupted_blood_instance, ignite_instance, poison_instance,
+    shock_effect,
 };
 pub use breakdown::{BreakdownStep, BreakdownTable};
 pub use buff_pass::{
@@ -70,6 +72,7 @@ pub use ehp::{
 };
 pub use env::Env;
 pub use error::CalcError;
+pub use formula::{FormulaOp, FormulaStep, StatFormula};
 pub use hand_pass::{
     COMBINE_TABLE, HandCfg, HandPassOutput, HandSource, WeaponBase, combine_mode_for,
     run_hand_passes,
@@ -82,7 +85,8 @@ pub use minion::{
     write_summoned_minion_multipliers,
 };
 pub use offence::{
-    MinimalInput, MinimalOutput, TracedMinimalOutput, calculate_minimal, calculate_minimal_traced,
+    HitDamagePart, HitDamageTerms, HitMitigationPart, MinimalInput, MinimalOutput,
+    TracedMinimalOutput, calculate_minimal, calculate_minimal_traced,
     calculate_minimal_traced_vs_enemy, calculate_minimal_vs_enemy,
 };
 pub use output::{HandOutput, MinionOutput, OutputTable, StoredDamageRange};
@@ -98,10 +102,11 @@ pub use pool_setup::{
 pub use scaled_damage::{
     AllMultExtras, DpsEndFactors, ScaledDamage, all_mult, dps_end_factors, scaled_damage_effect,
 };
-pub use session::{BuffKind, BuffSpec, CalculationSession};
+pub use session::{BuffKind, BuffSpec, CalculationSession, HitDamageMods, SkillDotMods};
 pub use setup_env::{env_with_enemy, reduce_enemy_exposure, setup_enemy};
 pub use skill_dot::{
-    DotIsFlags, SkillDotInputs, SkillDotOutput, calc_skill_dot, dot_config, fill_skill_dot,
+    DotIsFlags, SkillDotInputs, SkillDotOutput, SkillDotPart, SkillDotTerms, calc_skill_dot,
+    dot_config, fill_skill_dot, skill_dot_terms,
 };
 pub use skill_use_time::{
     CrossbowReload, SkillUseTime, apply_crossbow_reload, calc_skill_use_time, crossbow_reload_time,

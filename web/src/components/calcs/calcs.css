@@ -79,6 +79,97 @@
   padding-bottom: var(--space-2);
 }
 
+.breakdown-formula {
+  border-collapse: collapse;
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown-formula caption {
+  padding-bottom: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-align: left;
+}
+
+.breakdown-formula th,
+.breakdown-formula td {
+  padding: var(--space-1) var(--space-4) var(--space-1) 0;
+}
+
+.breakdown-formula th {
+  color: var(--text-secondary);
+  font-weight: normal;
+  text-align: left;
+}
+
+.breakdown-formula td {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.breakdown-formula .formula-operand {
+  color: var(--text-muted);
+}
+
+.breakdown-formula .formula-final th,
+.breakdown-formula .formula-final td {
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.hit-damage-table {
+  margin-bottom: var(--space-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.hit-damage-table caption {
+  padding-bottom: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-align: left;
+}
+
+.hit-damage-table tbody th,
+.hit-damage-table tfoot th {
+  font-weight: normal;
+  text-align: left;
+}
+
+.hit-damage-table tfoot th,
+.hit-damage-table tfoot td {
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.damage-lines {
+  margin-bottom: var(--space-3);
+}
+
+.damage-lines-group summary {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-1) 0;
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.damage-lines-group[open] summary {
+  color: var(--text-primary);
+}
+
+.breakdown-note {
+  margin: 0;
+  padding-bottom: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
 .breakdown-scroll {
   overflow-x: auto;
 }
@@ -121,6 +212,23 @@
 
 .mod-text {
   color: var(--text-secondary);
+}
+
+.breakdown-table tr.is-inactive td {
+  color: var(--text-muted);
+}
+
+.breakdown-table tr.is-inactive .mod-value {
+  text-decoration: line-through;
+}
+
+.mod-inactive-tag {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  white-space: nowrap;
 }
 
 .mod-origin {

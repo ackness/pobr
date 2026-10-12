@@ -70,6 +70,10 @@ pub struct Env {
     /// `None` means `buff_pass` didn't run (mode_buffs off / no spec), and
     /// the output fields stay at their Default 0.
     pub curse_pass_output: Option<CursePassOutput>,
+    /// The terms behind each damaging ailment's displayed DPS, written by
+    /// `perform`'s ailment stage. An ailment computed from two weapon passes
+    /// has no entry: its DPS is a blend of both passes.
+    pub ailment_terms: Vec<(AilmentType, super::AilmentTerms)>,
     /// MH/OH hand pass input (contract 1; written by the orchestration
     /// layer's weapon section via `session::set_hand_sources`). Empty means a
     /// non-attack skill / legacy entry point, and `perform` takes the
@@ -108,6 +112,7 @@ impl Env {
             buff_handler_registry: Arc::new(HandlerRegistry::new()),
             curse_priority: None,
             curse_pass_output: None,
+            ailment_terms: Vec::new(),
             hand_sources: Vec::new(),
             double_hits_when_dual_wielding: false,
             high_precision: HighPrecisionRules::default(),

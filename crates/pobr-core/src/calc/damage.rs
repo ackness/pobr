@@ -316,6 +316,37 @@ pub(crate) fn calculate_components(
     base_hit_min: f64,
     base_hit_max: f64,
 ) -> Vec<DamageComponent> {
+    calculate_component_terms(db, cfg, base_hit_min, base_hit_max)
+        .into_iter()
+        .map(|terms| terms.component)
+        .collect()
+}
+
+/// One damage type's range before scaling, the scaling the stage applied and
+/// the resulting component.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ComponentTerms {
+    /// The range before increases: the weapon or skill base, added damage
+    /// and whatever conversion and gain moved into this type.
+    pub base_min: f64,
+    pub base_max: f64,
+    /// The INC total, in percentage points.
+    pub inc: f64,
+    /// The MORE product.
+    pub more: f64,
+    /// MORE factors that scale only the minimum or only the maximum.
+    pub more_min: f64,
+    pub more_max: f64,
+    pub component: DamageComponent,
+}
+
+/// [`calculate_components`] with the terms each component was scaled by.
+pub(crate) fn calculate_component_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base_hit_min: f64,
+    base_hit_max: f64,
+) -> Vec<ComponentTerms> {
     // Step 1: each type's flat base.
     let mut base: Vec<(DamageType, f64, f64)> = Vec::with_capacity(DAMAGE_TYPES.len());
     for &damage_type in DAMAGE_TYPES.iter() {
@@ -362,7 +393,7 @@ fn scale_components_no_conversion(
     db: &ModDb,
     cfg: &CalcConfig,
     base: &[(DamageType, f64, f64)],
-) -> Vec<DamageComponent> {
+) -> Vec<ComponentTerms> {
     base.iter()
         .filter_map(|&(damage_type, base_min, base_max)| {
             let is_physical = damage_type == DamageType::Physical;
@@ -382,7 +413,7 @@ fn scale_components_no_conversion(
 /// both `PhysicalDamage` and `FireDamage` (plus the elemental
 /// `ElementalDamage`) and the generic `AttackDamage`/`Damage` -- a double-dip.
 /// Degenerates to historical per-type aggregation when `type_path` only contains a single type.
-fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> DamageComponent {
+fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> ComponentTerms {
     let (inc, more) = aggregate_inc_more(db, cfg, comp.damage_type);
     let scale = (1.0 + inc / 100.0) * more;
     if dbg_env!("POBR_DBG_BASES").is_some() {
@@ -401,24 +432,23 @@ fn scale_with_path(db: &ModDb, cfg: &CalcConfig, comp: DamageComponent) -> Damag
     let prefix = type_prefix(comp.damage_type);
     let more_min = db.more(cfg, &[ModName::from(format!("Min{prefix}Damage"))]);
     let more_max = db.more(cfg, &[ModName::from(format!("Max{prefix}Damage"))]);
-    DamageComponent {
-        min: round(comp.min * scale * more_min),
-        max: round(comp.max * scale * more_max),
-        ..comp
+    ComponentTerms {
+        base_min: comp.min,
+        base_max: comp.max,
+        inc,
+        more,
+        more_min,
+        more_max,
+        component: DamageComponent {
+            min: round(comp.min * scale * more_min),
+            max: round(comp.max * scale * more_max),
+            ..comp
+        },
     }
 }
 
-/// Aggregates inc (summed) and more (product) across a set of type paths.
-///
-/// Each path type contributes `<Type>Damage` (a type-scoped cfg matches its
-/// `DamageType` tag); elemental types additionally contribute the shared
-/// `ElementalDamage` (deduplicated, counted once even with multiple
-/// elements). The generic `AttackDamage`/`Damage` is only counted once (independent of type-scoping).
-pub(crate) fn aggregate_inc_more(
-    db: &ModDb,
-    cfg: &CalcConfig,
-    final_type: DamageType,
-) -> (f64, f64) {
+/// The damage names every type of the hit is scaled by, whatever its type.
+pub(crate) fn generic_scaling_names(cfg: &CalcConfig) -> Vec<ModName> {
     // The generic bucket (not restricted to a damage type): `Damage` always;
     // attack/spell/skill categories (projectile/area/melee) per the cfg flag
     // -- so `increased <Attack|Spell|Projectile|Area|Melee> Damage` applies to this skill.
@@ -438,6 +468,53 @@ pub(crate) fn aggregate_inc_more(
     for kw in &cfg.damage_keywords {
         generic_names.push(ModName::from(kw.clone()));
     }
+    generic_names
+}
+
+/// The INC / MORE lines [`aggregate_inc_more`] reads for every damage type,
+/// as its generic query treats them.
+pub(crate) fn evaluate_generic_scaling<'a>(
+    db: &'a ModDb,
+    cfg: &CalcConfig,
+) -> Vec<crate::ModEvaluation<'a>> {
+    scaling_rows(db.evaluate_names(cfg, &generic_scaling_names(cfg)))
+}
+
+/// The INC / MORE lines [`aggregate_inc_more`] reads for `final_type` only:
+/// its own name and, for an element, the shared elemental name. Two
+/// queries, like the stage.
+pub(crate) fn evaluate_type_scaling<'a>(
+    db: &'a ModDb,
+    cfg: &CalcConfig,
+    final_type: DamageType,
+) -> Vec<crate::ModEvaluation<'a>> {
+    let type_cfg = cfg.clone().with_damage_type(final_type);
+    let type_name = ModName::from(format!("{}Damage", type_prefix(final_type)));
+    let mut rows = db.evaluate_named(&type_cfg, &type_name);
+    if final_type.is_elemental() {
+        rows.extend(db.evaluate_named(&type_cfg, &ModName::from("ElementalDamage")));
+    }
+    scaling_rows(rows)
+}
+
+fn scaling_rows(rows: Vec<crate::ModEvaluation<'_>>) -> Vec<crate::ModEvaluation<'_>> {
+    rows.into_iter()
+        .filter(|row| matches!(row.modifier.mod_type, ModType::Inc | ModType::More))
+        .collect()
+}
+
+/// Aggregates inc (summed) and more (product) across a set of type paths.
+///
+/// Each path type contributes `<Type>Damage` (a type-scoped cfg matches its
+/// `DamageType` tag); elemental types additionally contribute the shared
+/// `ElementalDamage` (deduplicated, counted once even with multiple
+/// elements). The generic `AttackDamage`/`Damage` is only counted once (independent of type-scoping).
+pub(crate) fn aggregate_inc_more(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    final_type: DamageType,
+) -> (f64, f64) {
+    let generic_names = generic_scaling_names(cfg);
     let elemental_name = ModName::from("ElementalDamage");
 
     // The generic bucket is only counted once (not restricted to a damage type).

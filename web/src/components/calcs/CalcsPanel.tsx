@@ -4,6 +4,12 @@ import { useMemo, useRef, useState } from 'react';
 import type {
   AttributionResponse,
   Breakdown,
+  BreakdownMod,
+  FormulaStep,
+  HitDamageTable,
+  HitMitigationRow,
+  SkillDotRow,
+  AilmentDetail,
   DisplayStatCategory,
   SkillMetricsResponse,
 } from '../../api/types';
@@ -11,6 +17,7 @@ import type { BuildSession } from '../../hooks/useBuildSession';
 import { formatStatValue, statMap } from '../../lib/statDisplay';
 import {
   bindT,
+  damageTypeLabel,
   grantedSourceLabel,
   originKindLabel,
   slotLabel,
@@ -47,7 +54,304 @@ function cleanModText(text: string): string {
     .replace(/\[([^\]]*)\]/g, '$1');
 }
 
-function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Breakdown; lang: Lang }) {
+/** How a formula step changes the running value, e.g. `+120`, `×1.35 (+35%)`, `≤ 75`. */
+function formulaOperand(step: FormulaStep): string {
+  const n = fmtNum(step.operand);
+  const signed = step.operand < 0 ? `−${fmtNum(-step.operand)}` : `+${n}`;
+  switch (step.op) {
+    case 'base':
+    case 'bonus_to_multiplier':
+    case 'round':
+    case 'accuracy_rating':
+    case 'always_hits':
+    case 'non_crit_hit':
+    case 'average_hit':
+    case 'skill_dot':
+    case 'hit_dps':
+    case 'ailment_source':
+      return '';
+    case 'crit_hits':
+      return `${n}%`;
+    case 'chance_to_hit':
+    case 'per_second':
+    case 'chance_to_apply':
+      return `×${n}%`;
+    case 'active_stacks':
+    case 'ailment_effect':
+    case 'ailment_rate':
+    case 'enemy_mitigation':
+    case 'uses_per_second':
+    case 'dps_multiplier':
+      return `×${n}`;
+    case 'vs_evasion':
+      return `A × 1.25 ÷ (A + ${n} × 0.3)`;
+    case 'flat':
+    case 'enemy_flat':
+    case 'gear_adjusted':
+    case 'gained':
+    case 'slot_scaled':
+    case 'flat_after':
+    case 'poison_dps':
+    case 'ignite_dps':
+    case 'bleed_dps':
+    case 'dot_dps':
+      return signed;
+    case 'increased':
+    case 'enemy_increased':
+    case 'inevitable_penalty':
+    case 'bifurcate_bonus':
+      return `×${fmtNum(1 + step.operand / 100)} (${signed}%)`;
+    case 'hit_chance':
+      return `×${n}%`;
+    case 'lucky':
+    case 'bifurcate':
+      return '1 − (1 − p)²';
+    case 'inevitable':
+      return `= ${n}`;
+    case 'converted':
+    case 'enemy_block':
+      return `−${n}%`;
+    case 'more':
+    case 'action_speed':
+      return `×${n}`;
+    case 'added_time':
+      return `${signed}s`;
+    case 'override':
+      return `= ${n}`;
+    case 'cap':
+    case 'cooldown_cap':
+    case 'server_tick_cap':
+      return `≤ ${n}`;
+    case 'floor':
+      return `≥ ${n}`;
+  }
+}
+
+/** The per-type table behind the average hit: base range, scaling, and both averages. */
+function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang }) {
+  const tt = bindT(lang);
+  const range = (min: number, max: number) => `${fmtNum(min)} – ${fmtNum(max)}`;
+  const sum = (key: 'avg' | 'crit_avg') => damage.rows.reduce((total, row) => total + row[key], 0);
+  return (
+    <div className="breakdown-scroll">
+      <table className="breakdown-table hit-damage-table" aria-label={tt('calcs.damage.title')}>
+        <caption>{tt('calcs.damage.title')}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{tt('calcs.damage.type')}</th>
+            <th scope="col">{tt('calcs.damage.base')}</th>
+            <th scope="col">{tt('calcs.damage.increased')}</th>
+            <th scope="col">{tt('calcs.damage.more')}</th>
+            <th scope="col">{tt('calcs.damage.hit')}</th>
+            <th scope="col">{tt('calcs.damage.avg')}</th>
+            <th scope="col">{tt('calcs.damage.critAvg')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {damage.rows.map((row) => (
+            <tr key={row.damage_type} className={`damage-${row.damage_type.toLowerCase()}`}>
+              <th scope="row">{damageTypeLabel(lang, row.damage_type)}</th>
+              <td className="mod-value">{range(row.base_min, row.base_max)}</td>
+              <td className="mod-value">{fmtNum(row.increased)}%</td>
+              <td className="mod-value">
+                ×{fmtNum(row.more)}
+                {row.more_min !== 1 && ` · ${tt('calcs.damage.minOnly')} ×${fmtNum(row.more_min)}`}
+                {row.more_max !== 1 && ` · ${tt('calcs.damage.maxOnly')} ×${fmtNum(row.more_max)}`}
+              </td>
+              <td className="mod-value">{range(row.min, row.max)}</td>
+              <td className="mod-value">{fmtNum(row.avg)}</td>
+              <td className="mod-value">{fmtNum(row.crit_avg)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row" colSpan={5}>{tt('calcs.damage.total')}</th>
+            <td className="mod-value">{fmtNum(sum('avg'))}</td>
+            <td className="mod-value">{fmtNum(sum('crit_avg'))}</td>
+          </tr>
+        </tfoot>
+      </table>
+      {damage.damage_effect !== 1 && (
+        <p className="breakdown-note">{tt('calcs.damage.effect')}: ×{fmtNum(damage.damage_effect)}</p>
+      )}
+    </div>
+  );
+}
+
+/** The lines behind each damage type's increased and more totals: shared ones first, then per type. */
+function DamageLinesView({ damage, lang }: { damage: HitDamageTable; lang: Lang }) {
+  const tt = bindT(lang);
+  const groups = [
+    { key: 'shared', label: tt('calcs.damage.sharedLines'), mods: damage.shared_mods },
+    ...damage.rows.map((row) => ({
+      key: row.damage_type,
+      label: `${damageTypeLabel(lang, row.damage_type)} · ${tt('calcs.damage.typeLines')}`,
+      mods: row.mods,
+    })),
+  ].filter((group) => group.mods.length > 0);
+  if (groups.length === 0) return null;
+  return (
+    <div className="damage-lines">
+      {groups.map((group) => (
+        <details key={group.key} className={`damage-lines-group damage-lines-${group.key.toLowerCase()}`}>
+          <summary>
+            {group.label}
+            <span className="breakdown-count">
+              {group.mods.filter((m) => m.active).length} {tt('calcs.mods')}
+            </span>
+          </summary>
+          <ModLines mods={group.mods} lang={lang} />
+        </details>
+      ))}
+    </div>
+  );
+}
+
+/** What the enemy does to each damage type of the average hit. */
+function MitigationView({ rows, lang }: { rows: HitMitigationRow[]; lang: Lang }) {
+  const tt = bindT(lang);
+  const sum = (key: 'average' | 'mitigated') => rows.reduce((total, row) => total + row[key], 0);
+  // Armour depends on the hit size, so the listed physical reduction is the non-critical one.
+  const critsDiffer = rows.some(
+    (row) => Math.abs(row.multiplier - row.taken * (1 - row.reduction / 100)) > 1e-6,
+  );
+  return (
+    <div className="breakdown-scroll">
+      <table className="breakdown-table hit-damage-table mitigation-table" aria-label={tt('calcs.mitigation.title')}>
+        <caption>{tt('calcs.mitigation.title')}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{tt('calcs.damage.type')}</th>
+            <th scope="col">{tt('calcs.mitigation.average')}</th>
+            <th scope="col">{tt('calcs.mitigation.resist')}</th>
+            <th scope="col">{tt('calcs.mitigation.reduction')}</th>
+            <th scope="col">{tt('calcs.mitigation.taken')}</th>
+            <th scope="col">{tt('calcs.mitigation.multiplier')}</th>
+            <th scope="col">{tt('calcs.mitigation.after')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.damage_type} className={`damage-${row.damage_type.toLowerCase()}`}>
+              <th scope="row">{damageTypeLabel(lang, row.damage_type)}</th>
+              <td className="mod-value">{fmtNum(row.average)}</td>
+              <td className="mod-value">{row.resist === null ? tt('calcs.mitigation.armour') : `${fmtNum(row.resist)}%`}</td>
+              <td className="mod-value">{fmtNum(row.reduction)}%</td>
+              <td className="mod-value">×{fmtNum(row.taken)}</td>
+              <td className="mod-value">×{fmtNum(row.multiplier)}</td>
+              <td className="mod-value">{fmtNum(row.mitigated)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row">{tt('calcs.damage.total')}</th>
+            <td className="mod-value">{fmtNum(sum('average'))}</td>
+            <td colSpan={4} />
+            <td className="mod-value">{fmtNum(sum('mitigated'))}</td>
+          </tr>
+        </tfoot>
+      </table>
+      {critsDiffer && <p className="breakdown-note">{tt('calcs.mitigation.critNote')}</p>}
+    </div>
+  );
+}
+
+/** The skill's own damage over time per type, with the lines that scale each type. */
+function SkillDotView({ rows, lang }: { rows: SkillDotRow[]; lang: Lang }) {
+  const tt = bindT(lang);
+  const showAura = rows.some((row) => row.aura !== 1);
+  return (
+    <>
+      <div className="breakdown-scroll">
+        <table className="breakdown-table hit-damage-table skill-dot-table" aria-label={tt('calcs.skillDot.title')}>
+          <caption>{tt('calcs.skillDot.title')}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{tt('calcs.damage.type')}</th>
+              <th scope="col">{tt('calcs.skillDot.base')}</th>
+              <th scope="col">{tt('calcs.damage.increased')}</th>
+              <th scope="col">{tt('calcs.damage.more')}</th>
+              <th scope="col">{tt('calcs.skillDot.multiplier')}</th>
+              {showAura && <th scope="col">{tt('calcs.skillDot.aura')}</th>}
+              <th scope="col">{tt('calcs.skillDot.enemy')}</th>
+              <th scope="col">{tt('calcs.skillDot.total')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.damage_type} className={`damage-${row.damage_type.toLowerCase()}`}>
+                <th scope="row">{damageTypeLabel(lang, row.damage_type)}</th>
+                <td className="mod-value">{fmtNum(row.base)}</td>
+                <td className="mod-value">{fmtNum(row.increased)}%</td>
+                <td className="mod-value">×{fmtNum(row.more)}</td>
+                <td className="mod-value">{fmtNum(row.dot_multiplier)}%</td>
+                {showAura && <td className="mod-value">×{fmtNum(row.aura)}</td>}
+                <td className="mod-value">×{fmtNum(row.enemy)}</td>
+                <td className="mod-value">{fmtNum(row.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="damage-lines">
+        {rows.filter((row) => row.mods.length > 0).map((row) => (
+          <details key={row.damage_type} className={`damage-lines-group damage-lines-${row.damage_type.toLowerCase()}`}>
+            <summary>
+              {damageTypeLabel(lang, row.damage_type)} · {tt('calcs.skillDot.lines')}
+              <span className="breakdown-count">
+                {row.mods.filter((m) => m.active).length} {tt('calcs.mods')}
+              </span>
+            </summary>
+            <ModLines mods={row.mods} lang={lang} />
+          </details>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** The hit a damaging ailment comes from and the estimate of how many instances are active. */
+function AilmentView({ ailment, lang }: { ailment: AilmentDetail; lang: Lang }) {
+  const tt = bindT(lang);
+  type Key = 'sourceHit' | 'sourceCrit' | 'critShare' | 'hitChance' | 'applyChance' | 'duration' | 'hitsPerSecond' | 'stacks' | 'maxStacks';
+  const rows: [Key, string][] = [
+    ['sourceHit', fmtNum(ailment.source_hit)],
+    ['sourceCrit', fmtNum(ailment.source_crit)],
+    ['critShare', `${fmtNum(ailment.crit_share)}%`],
+    ['hitChance', `${fmtNum(ailment.hit_chance)}%`],
+    ['applyChance', `${fmtNum(ailment.apply_chance)}%`],
+    ['duration', `${fmtNum(ailment.duration)}${tt('calcs.ailment.seconds')}`],
+    ['hitsPerSecond', fmtNum(ailment.hits_per_second)],
+    ...(ailment.stacks > 0 ? [['stacks', fmtNum(ailment.stacks)] as [Key, string]] : []),
+    ['maxStacks', fmtNum(ailment.max_stacks)],
+  ];
+  return (
+    <div className="breakdown-scroll">
+      <table className="breakdown-formula ailment-table" aria-label={tt('calcs.ailment.title')}>
+        <caption>{tt('calcs.ailment.title')}</caption>
+        <tbody>
+          {rows.map(([key, value]) => (
+            <tr key={key} className={`ailment-${key}`}>
+              <th scope="row">{tt(`calcs.ailment.${key}`)}</th>
+              <td className="formula-result">{value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {ailment.damage_roll !== 50 && (
+        <p className="breakdown-note">
+          {tt('calcs.ailment.rollNote').replace('{roll}', fmtNum(ailment.damage_roll))}
+        </p>
+      )}
+      {ailment.stacks === 0 && <p className="breakdown-note">{tt('calcs.ailment.noRateNote')}</p>}
+    </div>
+  );
+}
+
+/** Modifier lines with type, applied value, text and source; lines the calculation skips are dimmed. */
+function ModLines({ mods, lang }: { mods: BreakdownMod[]; lang: Lang }) {
   const tt = bindT(lang);
   // 中文界面：词条行批量反查翻译（清洗标注后送翻译器；结果缓存本组件）。
   const [zhLines, setZhLines] = useState<Record<string, string>>({});
@@ -55,7 +359,7 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
     if (lang === 'en-US') return;
     const pending = [
       ...new Set(
-        breakdown.mods
+        mods
           .map((m) => m.source_text)
           .filter((t): t is string => !!t)
           .map(cleanModText),
@@ -77,7 +381,7 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
     return () => {
       cancelled = true;
     };
-  }, [breakdown, lang]);
+  }, [mods, lang]);
 
   const modText = (raw: string | null) => {
     if (!raw) return tt('calcs.baseDerived');
@@ -85,45 +389,101 @@ function BreakdownTable({ name, breakdown, lang }: { name: string; breakdown: Br
     return lang !== 'en-US' ? (zhLines[cleaned] ?? cleaned) : cleaned;
   };
   return (
+    <div className="breakdown-scroll">
+      <table className="breakdown-table">
+        <thead>
+          <tr>
+            <th>{tt('calcs.type')}</th>
+            <th>{tt('calcs.value')}</th>
+            <th>{tt('calcs.modifier')}</th>
+            <th>{tt('calcs.source')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...mods]
+            .sort(
+              (a, b) =>
+                MOD_TYPE_ORDER.indexOf(a.mod_type) - MOD_TYPE_ORDER.indexOf(b.mod_type) ||
+                Number(b.active) - Number(a.active),
+            )
+            .map((mod, i) => (
+              <tr key={i} className={mod.active ? undefined : 'is-inactive'}>
+                <td className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{mod.mod_type}</td>
+                <td className="mod-value">{mod.value === null ? '—' : fmtNum(mod.value)}</td>
+                <td className="mod-text">
+                  {modText(mod.source_text)}
+                  {!mod.active && <span className="mod-inactive-tag">{tt('calcs.inactive')}</span>}
+                </td>
+                <td className="mod-origin">
+                  {mod.origin_kind
+                    ? `${originKindLabel(lang, mod.origin_kind)}${
+                        mod.slot ? ` · ${slotLabel(lang, mod.slot)}` : ''
+                      }`
+                    : '—'}
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang }) {
+  const tt = bindT(lang);
+  const damageLines = [
+    ...(breakdown.damage ? [breakdown.damage.shared_mods, ...breakdown.damage.rows.map((row) => row.mods)] : []),
+    ...(breakdown.skill_dot ?? []).map((row) => row.mods),
+  ].flat();
+  return (
     <div className="breakdown-detail">
-      <div className="breakdown-summary">
-        <span>
-          {tt('calcs.baseTotal')}: <strong>{fmtNum(breakdown.base_total)}</strong>
-        </span>
-        <span>
-          {tt('calcs.incTotal')}: <strong>{fmtNum(breakdown.inc_total)}%</strong>
-        </span>
-      </div>
-      <div className="breakdown-scroll">
-        <table className="breakdown-table">
-          <thead>
-            <tr>
-              <th>{tt('calcs.type')}</th>
-              <th>{tt('calcs.value')}</th>
-              <th>{tt('calcs.modifier')}</th>
-              <th>{tt('calcs.source')}</th>
-            </tr>
-          </thead>
+      {breakdown.damage && <HitDamageView damage={breakdown.damage} lang={lang} />}
+      {breakdown.skill_dot && <SkillDotView rows={breakdown.skill_dot} lang={lang} />}
+      {breakdown.formula ? (
+        <table className="breakdown-formula" aria-label={tt('calcs.formula')}>
+          <caption>{tt('calcs.formula')}</caption>
           <tbody>
-            {[...breakdown.mods]
-              .sort((a, b) => MOD_TYPE_ORDER.indexOf(a.mod_type) - MOD_TYPE_ORDER.indexOf(b.mod_type))
-              .map((mod, i) => (
-                <tr key={`${name}-${i}`}>
-                  <td className={`mod-type mod-type-${mod.mod_type.toLowerCase()}`}>{mod.mod_type}</td>
-                  <td className="mod-value">{mod.value === null ? '—' : fmtNum(mod.value)}</td>
-                  <td className="mod-text">{modText(mod.source_text)}</td>
-                  <td className="mod-origin">
-                    {mod.origin_kind
-                      ? `${originKindLabel(lang, mod.origin_kind)}${
-                          mod.slot ? ` · ${slotLabel(lang, mod.slot)}` : ''
-                        }`
-                      : '—'}
-                  </td>
-                </tr>
-              ))}
+            {breakdown.formula.steps.map((step, i) => (
+              <tr key={i} className={`formula-step formula-${step.op}`}>
+                <th scope="row">{tt(`calcs.step.${step.op}`)}</th>
+                <td className="formula-operand">{formulaOperand(step)}</td>
+                <td className="formula-result">{fmtNum(step.result)}</td>
+              </tr>
+            ))}
+            <tr className="formula-final">
+              <th scope="row">{tt('calcs.formulaResult')}</th>
+              <td />
+              <td className="formula-result">{fmtNum(breakdown.formula.value)}</td>
+            </tr>
           </tbody>
         </table>
-      </div>
+      ) : (
+        <>
+          <div className="breakdown-summary">
+            <span>
+              {tt('calcs.baseTotal')}: <strong>{fmtNum(breakdown.base_total)}</strong>
+            </span>
+            <span>
+              {tt('calcs.incTotal')}: <strong>{fmtNum(breakdown.inc_total)}%</strong>
+            </span>
+            {breakdown.more_total !== 1 && (
+              <span>
+                {tt('calcs.moreTotal')}: <strong>×{fmtNum(breakdown.more_total)}</strong>
+              </span>
+            )}
+          </div>
+          <p className="breakdown-note breakdown-totals-note">{tt('calcs.totalsNote')}</p>
+        </>
+      )}
+      {breakdown.mitigation && breakdown.mitigation.length > 0 && (
+        <MitigationView rows={breakdown.mitigation} lang={lang} />
+      )}
+      {breakdown.ailment && <AilmentView ailment={breakdown.ailment} lang={lang} />}
+      {[...breakdown.mods, ...damageLines].some((m) => !m.active) && (
+        <p className="breakdown-note">{tt('calcs.inactiveNote')}</p>
+      )}
+      {breakdown.damage && <DamageLinesView damage={breakdown.damage} lang={lang} />}
+      {breakdown.mods.length > 0 && <ModLines mods={breakdown.mods} lang={lang} />}
     </div>
   );
 }
@@ -457,11 +817,13 @@ export function CalcsPanel({ session, lang, focus, onFocusConsumed }: Props) {
                     <span className="breakdown-value">
                       {values.has(name) ? formatStatValue(values.get(name) ?? null, 'float2') : ''}
                     </span>
-                    <span className="breakdown-count">
-                      {breakdown.mods.length} {tt('calcs.mods')}
-                    </span>
+                    {breakdown.mods.length > 0 && (
+                      <span className="breakdown-count">
+                        {breakdown.mods.filter((m) => m.active).length} {tt('calcs.mods')}
+                      </span>
+                    )}
                   </button>
-                  {isOpen && <BreakdownTable name={name} breakdown={breakdown} lang={lang} />}
+                  {isOpen && <BreakdownTable breakdown={breakdown} lang={lang} />}
                 </div>
               );
             })}

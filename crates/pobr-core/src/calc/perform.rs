@@ -3,11 +3,11 @@ use pobr_data::prelude::*;
 use crate::{CalcConfig, ModDb};
 
 use super::ailment::{
-    AilmentSource, StackConfig, ailment_crit_chance, ailment_duration, ailment_effect_mod,
-    ailment_rate_mod, apply_dot_dps_cap, bleed_traced, chill_traced, cross_type_source_hit,
-    debuff_duration_mult, electrocute_poise_buildup_traced, estimate_active_stacks,
-    freeze_poise_buildup_traced, ignite_traced, merge_hand_ailment_dps, poison_traced,
-    roll_average, shock_traced, stack_potential, stacking_ailment_dps_traced,
+    AilmentSource, AilmentTerms, StackConfig, ailment_crit_chance, ailment_duration,
+    ailment_effect_mod, ailment_rate_mod, apply_dot_dps_cap, bleed_traced, chill_traced,
+    cross_type_source_hit, debuff_duration_mult, electrocute_poise_buildup_traced,
+    estimate_active_stacks, freeze_poise_buildup_traced, ignite_traced, merge_hand_ailment_dps,
+    poison_traced, roll_average, shock_traced, stack_potential, stacking_ailment_dps_traced,
     stored_source_at_roll,
 };
 use super::output::StoredDamageRange;
@@ -27,6 +27,34 @@ use super::{
     reservation, resolve_all_charges, round, taken_mult_for_type_default,
 };
 use crate::{TraceGraph, TraceOperation};
+
+/// The player's input to the offence pass: the actor base plus the enemy's evasion.
+pub(crate) fn player_input(env: &Env) -> MinimalInput {
+    let mut input = MinimalInput::from(env.player.base);
+    // The source of enemy evasion for hit chance: prefers the enemy.mod_db's Evasion BASE
+    // (injected by setup_env, includes tier multipliers), falls back to the enemy.base.evasion
+    // scalar (for compatibility with old entry points that construct Env directly).
+    let enemy_evasion_from_db =
+        env.enemy
+            .mod_db
+            .sum(ModType::Base, &env.cfg, &[ModName::from("Evasion")]);
+    input.enemy_evasion = if enemy_evasion_from_db > 0.0 {
+        enemy_evasion_from_db
+    } else {
+        env.enemy.base.evasion
+    };
+    input
+}
+
+/// The scope the main-hand pass computes in (`None` without weapon passes).
+pub(crate) fn main_hand_scope(env: &Env) -> Option<(CalcConfig, MinimalInput)> {
+    let input = player_input(env);
+    env.hand_sources
+        .iter()
+        .find(|h| matches!(h.label, crate::HandTag::MainHand | crate::HandTag::Single))
+        .or(env.hand_sources.first())
+        .map(|hand| super::hand_pass::hand_scope(hand, &env.cfg, &input))
+}
 
 pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     if env.performed {
@@ -122,19 +150,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // so there's no self-reference).
     super::warcry::apply_warcry_uptime(env);
 
-    let mut input = MinimalInput::from(env.player.base);
-    // The source of enemy evasion for hit chance: prefers the enemy.mod_db's Evasion BASE
-    // (injected by setup_env, includes tier multipliers), falls back to the enemy.base.evasion
-    // scalar (for compatibility with old entry points that construct Env directly).
-    let enemy_evasion_from_db =
-        env.enemy
-            .mod_db
-            .sum(ModType::Base, &env.cfg, &[ModName::from("Evasion")]);
-    input.enemy_evasion = if enemy_evasion_from_db > 0.0 {
-        enemy_evasion_from_db
-    } else {
-        env.enemy.base.evasion
-    };
+    let input = player_input(env);
     // The hand-pass entry point. When `hand_sources` is empty (non-attack skill / old entry
     // point), `run_hand_passes` passes straight through to `calculate_minimal_vs_enemy`, behavior
     // unchanged bit-for-bit; once the orchestration layer assembles a HandSource, it goes through
@@ -368,15 +384,27 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.skill_use_time = Some(skill_use_time);
 
     // EHP / max hit
+    // Chaos resist goes through the same full-channel vendor convention as the three
+    // elements (Override/INC/MORE + the dual-name convention + resist_floor; vendor's
+    // resistTypeList includes Chaos, and isElemental=false doesn't merge in the shared name).
+    env.player.output.chaos_resistance =
+        super::offence::resolve_resistance(db, cfg, 0.0, "Chaos", false).final_value;
+    // Accuracy rating as the main-hand pass reads it (the hit chance input).
+    env.player.output.accuracy = {
+        let input = player_input(env);
+        let hand = main_hand_scope(env);
+        let (hand_cfg, hand_input) = match &hand {
+            Some((cfg, input)) => (cfg, input),
+            None => (cfg, &input),
+        };
+        super::offence::accuracy_terms(db, hand_cfg, hand_input).value
+    };
     let resistances = ResistanceSuite {
         physical_pdr: physical_pdr_fraction(db, cfg),
         fire: env.player.output.fire_resistance,
         cold: env.player.output.cold_resistance,
         lightning: env.player.output.lightning_resistance,
-        // Chaos resist goes through the same full-channel vendor convention as the three
-        // elements (Override/INC/MORE + the dual-name convention + resist_floor; vendor's
-        // resistTypeList includes Chaos, and isElemental=false doesn't merge in the shared name).
-        chaos: super::offence::resolve_resistance(db, cfg, 0.0, "Chaos", false).final_value,
+        chaos: env.player.output.chaos_resistance,
     };
     let reference_hit = (env.player.output.life + env.player.output.energy_shield).max(1.0);
     // -2 (13-G7): unify mitigation-side setup into MitigationCtx — ArmourAppliesTo switches to a
@@ -756,6 +784,12 @@ fn fill_crossbow_reload(env: &mut Env) {
 /// present) is preferred, otherwise the single-stack expected DPS. With no skill DoT and no
 /// ailment DoT, the output is all zero and the contract fields stay at their neutral Default.
 fn fill_skill_dot_stage(env: &mut Env) {
+    let dot = skill_dot_terms(env).output();
+    super::skill_dot::fill_skill_dot(&mut env.player.output, &dot);
+}
+
+/// The skill DoT stage's terms, from the hit and ailment values already in the output.
+pub(super) fn skill_dot_terms(env: &Env) -> super::skill_dot::SkillDotTerms {
     let out = &env.player.output;
     let pick = |stacked: f64, single: f64| if stacked > 0.0 { stacked } else { single };
     let inputs = super::skill_dot::SkillDotInputs {
@@ -769,9 +803,7 @@ fn fill_skill_dot_stage(env: &mut Env) {
         poison_dps: pick(out.poison_stacked_dps, out.poison_dps),
         ignite_dps: pick(out.ignite_stacked_dps, out.ignite_dps),
     };
-    let dot =
-        super::skill_dot::calc_skill_dot(&env.player.mod_db, &env.enemy.mod_db, &env.cfg, &inputs);
-    super::skill_dot::fill_skill_dot(&mut env.player.output, &dot);
+    super::skill_dot::skill_dot_terms(&env.player.mod_db, &env.enemy.mod_db, &env.cfg, &inputs)
 }
 
 /// Trigger rate fill (Lane B): reads cooldown-gated / CWC trigger mods, writes `trigger_rate_cap` /
@@ -1106,6 +1138,8 @@ struct AilmentPassResult {
     /// The raw stacking estimate (0 = signal missing); CHANCE_AILMENT's `stacks` input.
     stacks_estimate: f64,
     max_stacks: f64,
+    /// What this pass computed with, for the displayed steps.
+    terms: AilmentTerms,
 }
 
 /// The complete vendor pipeline for a single ailment on a single pass:
@@ -1213,6 +1247,33 @@ fn damaging_ailment_for_pass(
         );
     }
 
+    let (per_second_pct, magnitude_inc, magnitude_more) =
+        super::ailment::magnitude_scaling(kind, player, cfg);
+    let terms = AilmentTerms {
+        source_hit: source.hit_avg,
+        source_crit: source.crit_avg,
+        damage_roll: roll,
+        crit_share: source.crit_chance,
+        source_damage: out.source_damage,
+        per_second_pct,
+        magnitude_inc,
+        magnitude_more,
+        enemy: out.eff_mult,
+        magnitude_dps: out.magnitude_dps,
+        expected_dps: out.expected_dps,
+        apply_chance: probe_out.chance,
+        apply_chance_rolled: out.chance,
+        hit_chance: ctx.hit_chance,
+        duration: ailment_duration(kind, player, cfg) * debuff_duration_mult(enemy, cfg),
+        hits_per_second: ctx.speed,
+        stacks: stack.active_stacks,
+        max_stacks: stack.max_stacks as f64,
+        effect: ailment_effect_mod(player, cfg),
+        rate: ailment_rate_mod(player, enemy, cfg, name),
+        cap: cfg.constants.game().dot_dps_cap,
+        dps: 0.0,
+    };
+
     if stack.active_stacks > 0.0 {
         // vendor's uptime convention (`:5189-5193`): activeAilments = min(stacks, max).
         // magnitude_dps already includes percentBase × AilmentMagnitude × effMult;
@@ -1233,6 +1294,7 @@ fn damaging_ailment_for_pass(
             active_stacks_panel: stack.active_stacks,
             stacks_estimate: stack.active_stacks,
             max_stacks: stack.max_stacks as f64,
+            terms: AilmentTerms { dps, ..terms },
         })
     } else {
         // Fallback when the signal is missing (the old convention): `chance × magnitude`,
@@ -1245,6 +1307,7 @@ fn damaging_ailment_for_pass(
             active_stacks_panel: active_stacks_of(&stack),
             stacks_estimate: 0.0,
             max_stacks: stack.max_stacks as f64,
+            terms: AilmentTerms { dps, ..terms },
         })
     }
 }
@@ -1442,6 +1505,7 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
     // consolidated by the traced offence/attribution path (this function builds and retains the
     // contribution-node topology).
     let mut trace = TraceGraph::new();
+    let mut ailment_terms = Vec::new();
 
     // Damaging ailments: bleed / ignite / poison (Stored-family per-pass + CHANCE_AILMENT merge)
     for kind in [AilmentType::Bleed, AilmentType::Ignite, AilmentType::Poison] {
@@ -1463,6 +1527,9 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
         let Some((dps, stacked, active, max_stacks)) = merge_ailment_passes(&results) else {
             continue;
         };
+        if let [only] = results.as_slice() {
+            ailment_terms.push((kind, only.terms));
+        }
         let out = &mut env.player.output;
         match kind {
             AilmentType::Bleed => {
@@ -1516,6 +1583,7 @@ fn fill_ailments(env: &mut Env, fallback_ranges: &[StoredDamageRange]) {
             electrocute_poise_buildup_traced(poise_thr, player, cfg, &mut trace);
         env.player.output.electrocute_buildup_pct = electrocute_buildup;
     }
+    env.ailment_terms = ailment_terms;
 }
 
 /// Lane C: applies `AilmentEffect` (MORE) × `rateMod` (Faster/Slower) to a damaging ailment's

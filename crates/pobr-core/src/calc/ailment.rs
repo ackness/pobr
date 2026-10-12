@@ -531,6 +531,134 @@ pub struct DamagingAilmentOutput {
     pub duration_secs: f64,
     /// Panel expected DPS = `chance × magnitude_dps` (pobr's convention while stacking is deferred).
     pub expected_dps: f64,
+    /// The crit-weighted source hit the magnitude starts from ([`weighted_source_damage`]).
+    pub source_damage: f64,
+}
+
+/// The numbers one pass of the damaging ailment stage computed with, kept so
+/// the displayed DPS can be shown step by step ([`AilmentTerms::formula`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AilmentTerms {
+    /// The non-critical and critical source hits at `damage_roll`.
+    pub source_hit: f64,
+    pub source_crit: f64,
+    /// Where in the damage range the source hit is taken (percent; 50 = the
+    /// average hit, higher when more instances are applied than can be active).
+    pub damage_roll: f64,
+    /// The chance that the hit behind an active instance is a critical hit (fraction).
+    pub crit_share: f64,
+    /// The source hit weighted by `crit_share` and the chance to apply on each kind of hit.
+    pub source_damage: f64,
+    /// The percentage of the source hit one instance deals per second.
+    pub per_second_pct: f64,
+    /// The `AilmentMagnitude` INC total and MORE product.
+    pub magnitude_inc: f64,
+    pub magnitude_more: f64,
+    /// The enemy's resistance and damage taken as one multiplier.
+    pub enemy: f64,
+    /// One instance's damage per second against the enemy.
+    pub magnitude_dps: f64,
+    /// `magnitude_dps × apply_chance_rolled`, what the stage uses without a hit rate.
+    pub expected_dps: f64,
+    /// The chance for a hit to apply the ailment at the average hit and at
+    /// `damage_roll` (fractions).
+    pub apply_chance: f64,
+    pub apply_chance_rolled: f64,
+    /// The inputs of the active instance estimate
+    /// `hit_chance × apply_chance × duration × hits_per_second`.
+    pub hit_chance: f64,
+    pub duration: f64,
+    pub hits_per_second: f64,
+    /// The estimate (0 = no hit rate to estimate from) and the most that can be active.
+    pub stacks: f64,
+    pub max_stacks: f64,
+    /// The `AilmentEffect` multiplier and the faster / slower damage rate.
+    pub effect: f64,
+    pub rate: f64,
+    /// The damage over time cap.
+    pub cap: f64,
+    /// The pass's damage per second.
+    pub dps: f64,
+}
+
+impl AilmentTerms {
+    /// The share of `source_damage` that is the critical source hit
+    /// (fraction). Above `crit_share` when a critical hit is more likely to
+    /// apply the ailment than a non-critical one.
+    pub fn crit_weight(&self) -> f64 {
+        let spread = self.source_crit - self.source_hit;
+        if spread == 0.0 {
+            self.crit_share
+        } else {
+            ((self.source_damage - self.source_hit) / spread).clamp(0.0, 1.0)
+        }
+    }
+
+    /// The instances counted as active: the estimate, limited to `max_stacks`.
+    pub fn active(&self) -> f64 {
+        self.stacks.min(self.max_stacks)
+    }
+
+    pub fn formula(&self) -> super::StatFormula {
+        use super::FormulaOp;
+        let mut b = super::formula::FormulaBuilder::default();
+        b.set(
+            FormulaOp::AilmentSource,
+            self.source_damage,
+            self.source_damage,
+        );
+        b.set(
+            FormulaOp::PerSecond,
+            self.per_second_pct,
+            b.current() * self.per_second_pct / 100.0,
+        );
+        b.increased(self.magnitude_inc);
+        b.more(self.magnitude_more);
+        if self.enemy != 1.0 {
+            b.set(FormulaOp::EnemyMitigation, self.enemy, self.magnitude_dps);
+        }
+        if self.stacks > 0.0 {
+            let active = self.active();
+            b.set(FormulaOp::ActiveStacks, active, b.current() * active);
+        } else {
+            b.set(
+                FormulaOp::ChanceToApply,
+                self.apply_chance_rolled * 100.0,
+                self.expected_dps,
+            );
+        }
+        if self.effect != 1.0 {
+            b.set(
+                FormulaOp::AilmentEffect,
+                self.effect,
+                b.current() * self.effect,
+            );
+        }
+        if self.rate != 1.0 {
+            b.set(FormulaOp::AilmentRate, self.rate, b.current() * self.rate);
+        }
+        b.at_most(FormulaOp::Cap, self.cap);
+        b.finish(self.dps)
+    }
+}
+
+/// `(percent of the source hit per second, INC total, MORE product)` of a
+/// damaging ailment's magnitude, as the `*_instance` functions scale it.
+pub fn magnitude_scaling(ailment: AilmentType, db: &ModDb, cfg: &CalcConfig) -> (f64, f64, f64) {
+    let gc = cfg.constants.game();
+    let fraction = match ailment {
+        AilmentType::Bleed => gc.bleed_base_fraction,
+        AilmentType::Ignite => gc.ignite_base_fraction,
+        AilmentType::Poison => gc.poison_base_fraction,
+        _ => 0.0,
+    };
+    let cfg = &ailment_scoped_cfg(cfg, ailment);
+    let names = magnitude_mod_names(ailment);
+    (
+        fraction * 100.0,
+        db.sum(ModType::Inc, cfg, &names),
+        db.more(cfg, &names),
+    )
 }
 
 /// Computes the bleed panel output (chance + crit weighting + magnitude + effMult), and writes
@@ -600,6 +728,7 @@ pub fn ignite_traced(
                 magnitude_dps: 0.0,
                 duration_secs: 0.0,
                 expected_dps: 0.0,
+                source_damage: 0.0,
             },
             node,
         );
@@ -854,6 +983,7 @@ fn compute_damaging_ailment(
             magnitude_dps,
             duration_secs: instance.duration_secs,
             expected_dps,
+            source_damage: base_source,
         },
         dps_node,
     )
@@ -1708,6 +1838,6 @@ pub fn dps_with_effect_rate_cap_traced(
 /// ailmentPercentBase factor, CalcOffence.lua L5145-5146). PoE1's `BleedDamage`/`DamageOverTime`
 /// etc. don't exist in PoE2; the attribution name set must match the actual scaling source, or
 /// trace will show mods that no longer take effect.
-fn magnitude_mod_names(_ailment: AilmentType) -> Vec<ModName> {
+pub(super) fn magnitude_mod_names(_ailment: AilmentType) -> Vec<ModName> {
     vec![ModName::from("AilmentMagnitude")]
 }

@@ -73,6 +73,19 @@ pub struct BuffSpec {
     pub skill_types: pobr_data::skill::SkillTypes,
 }
 
+/// See [`CalculationSession::hit_damage_mods`].
+#[derive(Debug, Clone)]
+pub struct HitDamageMods<'a> {
+    pub shared: Vec<crate::ModEvaluation<'a>>,
+    pub by_type: Vec<(DamageType, Vec<crate::ModEvaluation<'a>>)>,
+}
+
+/// See [`CalculationSession::skill_dot_mods`].
+#[derive(Debug, Clone)]
+pub struct SkillDotMods<'a> {
+    pub by_type: Vec<(DamageType, Vec<crate::ModEvaluation<'a>>)>,
+}
+
 #[derive(Debug, Clone)]
 pub struct CalculationSession {
     env: Env,
@@ -672,10 +685,324 @@ impl CalculationSession {
             .collect()
     }
 
+    /// The modifier names the calculation aggregates for a displayed stat,
+    /// in query order. Mirrors the stage that computes the stat: pools read
+    /// `Maximum*` (`offence::scaled_pool`), resistances read both spellings
+    /// plus the shared elemental name (`offence::resolve_resistance`), speed
+    /// reads the buckets the inspected skill uses
+    /// (`skill_use_time::speed_names_for`), crit reads the `CriticalStrike*`
+    /// names (`calc::crit`), chance to hit reads `Accuracy`
+    /// (`offence::hit_chance_terms`), the three defences read their own name plus the
+    /// shared ones (`defence::defence_scaling_names`). Any other stat is
+    /// aggregated under its own name.
+    pub fn stat_mod_names(&self, stat: &str) -> Vec<ModName> {
+        let names: &[&str] = match stat {
+            "Life" => &["MaximumLife"],
+            "Mana" => &["MaximumMana"],
+            "FireResist" => &["FireResistance", "FireResist", "ElementalResist"],
+            "ColdResist" => &["ColdResistance", "ColdResist", "ElementalResist"],
+            "LightningResist" => &["LightningResistance", "LightningResist", "ElementalResist"],
+            "ChaosResist" => &["ChaosResistance", "ChaosResist"],
+            "ActionRate" => return super::skill_use_time::speed_names_for(&self.env.cfg),
+            "CritChance" => &["CriticalStrikeChance"],
+            "CritMultiplier" => &["CriticalStrikeMultiplier"],
+            "HitChance" => &["Accuracy"],
+            "BleedDPS" | "IgniteDPS" | "PoisonDPS" => &["AilmentMagnitude"],
+            "Armour" | "Evasion" | "EnergyShield" => {
+                return super::defence::defence_scaling_names(stat);
+            }
+            other => return vec![ModName::from(other)],
+        };
+        names.iter().map(|name| ModName::from(*name)).collect()
+    }
+
+    /// The steps the calculation took from `stat`'s starting value to its
+    /// displayed value (a display stat id), read from the terms the stage
+    /// itself aggregates. `None` when the stat has no formula here, or when
+    /// the displayed value includes something the steps do not cover (the two
+    /// hands combined, an enemy-side increase to crit chance), so a formula
+    /// is only returned when it ends at the displayed number.
+    pub fn stat_formula(&self, stat: &str) -> Option<super::StatFormula> {
+        use super::offence;
+        let env = &self.env;
+        let db = &env.player.mod_db;
+        let output = &env.player.output;
+        let input = perform::player_input(env);
+        let hand = perform::main_hand_scope(&self.env);
+        let (cfg, hand_input) = match &hand {
+            Some((cfg, input)) => (cfg, input),
+            None => (&env.cfg, &input),
+        };
+        let resist = |base, element, is_elemental| {
+            offence::resolve_resistance(db, &env.cfg, base, element, is_elemental).formula()
+        };
+        let (formula, displayed) = match stat {
+            "Life" => (
+                offence::pool_terms(db, &env.cfg, input.base_life, "MaximumLife").formula(),
+                output.life,
+            ),
+            "Mana" => (
+                offence::pool_terms(db, &env.cfg, input.base_mana, "MaximumMana").formula(),
+                output.mana,
+            ),
+            "FireResist" => (
+                resist(input.base_fire_resistance, "Fire", true),
+                output.fire_resistance,
+            ),
+            "ColdResist" => (
+                resist(input.base_cold_resistance, "Cold", true),
+                output.cold_resistance,
+            ),
+            "LightningResist" => (
+                resist(input.base_lightning_resistance, "Lightning", true),
+                output.lightning_resistance,
+            ),
+            "ChaosResist" => (resist(0.0, "Chaos", false), output.chaos_resistance),
+            "ActionRate" => (
+                offence::action_rate_terms(db, cfg, hand_input).formula(),
+                output.action_rate,
+            ),
+            "Accuracy" => (
+                offence::accuracy_terms(db, cfg, hand_input).formula(),
+                output.accuracy,
+            ),
+            "HitChance" => (
+                offence::hit_chance_terms(db, &env.enemy.mod_db, cfg, hand_input).formula(),
+                output.hit_chance * 100.0,
+            ),
+            "TotalHitAvg" => (
+                offence::hit_pass(db, &env.enemy.mod_db, cfg, hand_input).average_hit_formula(),
+                output.total_hit_avg,
+            ),
+            "TotalDPS" => (
+                offence::hit_pass(db, &env.enemy.mod_db, cfg, hand_input).dps_formula(),
+                output.dps,
+            ),
+            "TotalDotDPS" => (
+                perform::skill_dot_terms(env).dot_formula(),
+                output.total_dot_dps,
+            ),
+            "CombinedDPS" => (
+                perform::skill_dot_terms(env).combined_formula(),
+                output.combined_dps,
+            ),
+            "BleedDPS" => (self.ailment_terms(stat)?.formula(), output.bleed_dps),
+            "IgniteDPS" => (self.ailment_terms(stat)?.formula(), output.ignite_dps),
+            "PoisonDPS" => (self.ailment_terms(stat)?.formula(), output.poison_dps),
+            "CritChance" | "CritMultiplier" => {
+                let enemy = &env.enemy.mod_db;
+                let effective = cfg.mode_effective;
+                let chance = super::crit::crit_chance_terms(db, enemy, cfg, 0.0, effective);
+                let adjust = super::crit::adjust_crit_chance(
+                    db,
+                    cfg,
+                    chance.capped_pct(),
+                    offence::accuracy_hit_chance(db, enemy, cfg, hand_input),
+                    effective,
+                );
+                if stat == "CritChance" {
+                    (chance.formula(&adjust)?, output.crit_chance * 100.0)
+                } else {
+                    let terms = super::crit::crit_multiplier_terms(
+                        db,
+                        enemy,
+                        cfg,
+                        effective.then_some(&adjust),
+                    );
+                    (terms.formula()?, output.crit_multiplier)
+                }
+            }
+            "Armour" | "Evasion" | "EnergyShield" => {
+                let keystones = crate::rules::DefenceKeystones::from_db(db, &env.cfg);
+                let (_, [armour, evasion, energy_shield]) = super::defence::defence_resource_terms(
+                    db,
+                    &env.cfg,
+                    &env.player.base,
+                    &keystones,
+                );
+                let (terms, displayed) = match stat {
+                    "Armour" => (armour, output.armour),
+                    "Evasion" => (evasion, output.evasion),
+                    _ => (energy_shield, output.energy_shield),
+                };
+                (terms.formula(db, &env.cfg, stat), displayed)
+            }
+            "Spirit" => (
+                super::defence_panels::spirit_terms(db, &env.cfg).formula(),
+                output.spirit,
+            ),
+            _ => return None,
+        };
+        ((formula.value - displayed).abs() <= 1e-6).then_some(formula)
+    }
+
+    /// The per-damage-type table behind the displayed average hit: each
+    /// type's range before scaling, its increases and multipliers, and the
+    /// resulting non-critical and critical averages. `None` when the main-hand
+    /// pass alone does not produce the displayed value (two weapon passes
+    /// that differ).
+    pub fn hit_damage_terms(&self) -> Option<super::HitDamageTerms> {
+        let env = &self.env;
+        let input = perform::player_input(env);
+        let hand = perform::main_hand_scope(env);
+        let (cfg, hand_input) = match &hand {
+            Some((cfg, input)) => (cfg, input),
+            None => (&env.cfg, &input),
+        };
+        let db = &env.player.mod_db;
+        let pass = super::offence::hit_pass(db, &env.enemy.mod_db, cfg, hand_input);
+        ((pass.crit_pass.total_hit_avg - env.player.output.total_hit_avg).abs() <= 1e-6)
+            .then(|| pass.damage_terms(db, cfg, hand_input))
+            .flatten()
+    }
+
+    /// The INC / MORE lines behind the scaling of the average hit's damage
+    /// types, as the damage stage reads them (`damage::aggregate_inc_more`):
+    /// the lines every type shares, then each of `types`' own lines. Per type
+    /// the active INC values of both lists add up to that type's increase
+    /// in [`hit_damage_terms`](Self::hit_damage_terms), the MORE values
+    /// multiply to its multiplier.
+    pub fn hit_damage_mods(&self, types: &[DamageType]) -> HitDamageMods<'_> {
+        let env = &self.env;
+        let hand = perform::main_hand_scope(env);
+        let cfg = hand.as_ref().map_or(&env.cfg, |(cfg, _)| cfg);
+        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
+        let db = &env.player.mod_db;
+        HitDamageMods {
+            shared: super::damage::evaluate_generic_scaling(db, &cfg_hit),
+            by_type: types
+                .iter()
+                .map(|ty| (*ty, super::damage::evaluate_type_scaling(db, &cfg_hit, *ty)))
+                .collect(),
+        }
+    }
+
+    /// How the enemy changes each damage type of the average hit on the way
+    /// to the displayed DPS. `None` when the enemy is not part of the
+    /// calculation, or the main-hand pass alone does not produce the
+    /// displayed DPS.
+    pub fn hit_mitigation_terms(&self) -> Option<Vec<super::HitMitigationPart>> {
+        let env = &self.env;
+        let input = perform::player_input(env);
+        let hand = perform::main_hand_scope(env);
+        let (cfg, hand_input) = match &hand {
+            Some((cfg, input)) => (cfg, input),
+            None => (&env.cfg, &input),
+        };
+        let db = &env.player.mod_db;
+        let enemy = &env.enemy.mod_db;
+        let pass = super::offence::hit_pass(db, enemy, cfg, hand_input);
+        ((pass.dps - env.player.output.dps).abs() <= 1e-6)
+            .then(|| pass.mitigation_terms(db, enemy, cfg))
+            .flatten()
+    }
+
+    /// The per-damage-type table behind the skill's own damage over time
+    /// (the `skill_dot` step of `TotalDotDPS`). Empty when the skill deals
+    /// none; `None` when the parts do not add up to that step (stacking
+    /// instances, the cap).
+    pub fn skill_dot_parts(&self) -> Option<Vec<super::SkillDotPart>> {
+        let terms = perform::skill_dot_terms(&self.env);
+        let sum: f64 = terms.parts.iter().map(|part| part.total).sum();
+        ((sum - terms.total_dot).abs() <= 1e-6).then_some(terms.parts)
+    }
+
+    /// The lines behind each of `types`' rows in [`skill_dot_parts`](Self::skill_dot_parts),
+    /// as the skill DoT stage reads them: the INC / MORE damage lines
+    /// (`damage::aggregate_inc_more` in that type's damage over time config)
+    /// and the BASE damage over time multiplier lines.
+    pub fn skill_dot_mods(&self, types: &[DamageType]) -> SkillDotMods<'_> {
+        use super::{damage, skill_dot};
+        let env = &self.env;
+        let db = &env.player.mod_db;
+        let dot_cfg = skill_dot::dot_config(&env.cfg, skill_dot::DotIsFlags::from_db(db, &env.cfg));
+        SkillDotMods {
+            by_type: types
+                .iter()
+                .map(|ty| {
+                    let cfg = skill_dot::dot_type_config(&dot_cfg, *ty);
+                    let mut rows = damage::evaluate_generic_scaling(db, &cfg);
+                    rows.extend(damage::evaluate_type_scaling(db, &cfg, *ty));
+                    rows.extend(
+                        db.evaluate_names(&cfg, &skill_dot::dot_multiplier_names(*ty))
+                            .into_iter()
+                            .filter(|row| row.modifier.mod_type == ModType::Base),
+                    );
+                    (*ty, rows)
+                })
+                .collect(),
+        }
+    }
+
+    /// What the ailment stage computed `stat` (`BleedDPS` / `IgniteDPS` /
+    /// `PoisonDPS`) with: the source hit, the chance to apply, the active
+    /// instance estimate and the multipliers. `None` when the ailment is not
+    /// applied, or its DPS blends two weapon passes.
+    pub fn ailment_terms(&self, stat: &str) -> Option<super::AilmentTerms> {
+        let kind = ailment_of(stat)?;
+        self.env
+            .ailment_terms
+            .iter()
+            .find(|(ailment, _)| *ailment == kind)
+            .map(|(_, terms)| *terms)
+    }
+
+    /// The config `stat`'s stage evaluates modifiers in: the main-hand pass
+    /// for the per-hand stats (which also counts that weapon's own lines),
+    /// the ailment's own config for a damaging ailment, the session config
+    /// otherwise.
+    fn stat_cfg(&self, stat: &str) -> std::borrow::Cow<'_, CalcConfig> {
+        use std::borrow::Cow;
+        if let Some(kind) = ailment_of(stat) {
+            return Cow::Owned(super::ailment::ailment_scoped_cfg(&self.env.cfg, kind));
+        }
+        if matches!(
+            stat,
+            "ActionRate" | "CritChance" | "CritMultiplier" | "Accuracy" | "HitChance"
+        ) && let Some((cfg, _)) = perform::main_hand_scope(&self.env)
+        {
+            return Cow::Owned(cfg);
+        }
+        Cow::Borrowed(&self.env.cfg)
+    }
+
+    /// The modifiers `stat`'s stage reads ([`stat_mod_names`](Self::stat_mod_names))
+    /// as that stage treats them: each row says whether it applies and with
+    /// which value. For the per-hand stats the context is the main-hand
+    /// pass; an off-hand pass can match weapon-specific rows differently.
+    pub fn evaluated_stat_mods(&self, stat: &str) -> Vec<crate::ModEvaluation<'_>> {
+        let names = self.stat_mod_names(stat);
+        let cfg = self.stat_cfg(stat);
+        self.env.player.mod_db.evaluate_names(&*cfg, &names)
+    }
+
+    /// `(BASE sum, INC sum, MORE product)` of the modifiers `stat`'s stage
+    /// reads, through the same queries and in the same context as the stage.
+    pub fn stat_totals(&self, stat: &str) -> (f64, f64, f64) {
+        let names = self.stat_mod_names(stat);
+        let cfg = self.stat_cfg(stat);
+        let db = &self.env.player.mod_db;
+        (
+            db.sum(ModType::Base, &*cfg, &names),
+            db.sum(ModType::Inc, &*cfg, &names),
+            db.more(&*cfg, &names),
+        )
+    }
+
     /// Every modifier in the player ModDb (for diagnostics,
     /// `POBR_DBG_ALLMODS`): used to diff the full mod set between the engine
     /// vs legacy ingest paths (fork(a) locating ingest divergence).
     pub fn all_mods(&self) -> Vec<&Modifier> {
         self.env.player.mod_db.iter_mods().collect()
+    }
+}
+
+/// The damaging ailment a display stat id (`BleedDPS` / `IgniteDPS` / `PoisonDPS`) belongs to.
+fn ailment_of(stat: &str) -> Option<AilmentType> {
+    match stat {
+        "BleedDPS" => Some(AilmentType::Bleed),
+        "IgniteDPS" => Some(AilmentType::Ignite),
+        "PoisonDPS" => Some(AilmentType::Poison),
+        _ => None,
     }
 }
