@@ -16,235 +16,93 @@ pub(crate) fn config_enemy_level(build: &Build) -> Option<u32> {
     read(&raw.values).or_else(|| read(&raw.placeholders))
 }
 
-/// Selects the main skill `(skill_id, gem_level, stat_set_index)` within a single gem group:
-/// 1. Collects **non-support** gems (order preserved, includes meta shells) = PoB's `socketGroupSkillList`.
-/// 2. Selects the Nth one using `main_active_skill` (1-based, defaults to 1, clamped when out of range).
-/// 3. If the selected entry is a damaging skill → uses it directly; otherwise (a meta
-///    shell / non-damaging) pierces through to the group's first damaging skill candidate.
-/// 4. When `gem_skills` is empty (constructed only by the builder's `with_active_skill`,
-///    with gem_skills unfilled), falls back to `active_skill_id` — preserving backward
-///    compatibility with the public builder/test API.
-///
-/// 5. (T5.6 meta/composite gem expansion) When every gem in the group is itself
-///    non-damaging, resolves forward via `BuildData::gem_effects`'s additional
-///    granted-effect foreign key (`additionalGrantedEffects`; PoB2's
-///    `CalcSetup.lua:1714-1718` also adds these to socketGroupSkillList) — takes the
-///    first additional damaging effect (e.g. ShockwaveTotem → ShockwaveTotemQuakePlayer).
-///    Conservative semantics: only expands when every regular candidate comes up empty
-///    (PoB2 folds additional effects into mainActiveSkill's ordinal space; full
-///    alignment is deferred — no such ordinal case appears across the 18 real builds tested).
-///
-/// Returns `None` when the group has no damaging skill candidate at all (a pure
-/// aura/meta group), leaving it to the caller to fall back and scan other groups.
-pub(crate) fn pick_group_main_skill<'b>(
-    build_data: &'b BuildData,
-    group: &'b SocketGroup,
-) -> Option<(&'b str, u32, Option<u32>)> {
-    let gems = group.gem_inputs();
-    let (skill_id, level, set_index) = pobr_core::skill_env::pick_group_main_skill(
-        &gems,
-        build_data,
-        group.main_active_skill,
-        group.active_skill_id.as_deref(),
-        group.active_gem_level,
-    )?;
-    // Map the returned skill_id back to a reference into group.gem_skills or
-    // build_data's additional effects (the pobr-core function returns &str tied to
-    // the local `gems` Vec, so we re-resolve it here).
-    if let Some(g) = group.gem_skills.iter().find(|g| g.skill_id == skill_id) {
-        return Some((g.skill_id.as_str(), level, set_index));
-    }
-    // Builder path: `gem_skills` is empty and the id came from `active_skill_id`
-    // (a field reference into `group`, same lifetime). `skill_id` here borrows the
-    // local `gems` Vec, so re-borrow the field instead of returning `skill_id`.
-    if let Some(id) = group.active_skill_id.as_deref()
-        && id == skill_id
-    {
-        return Some((id, level, set_index));
-    }
-    // Expanded additional effect: the id isn't in gem_skills, so we return a
-    // reference into the gem_effects table (which lives as long as build_data).
-    build_data
-        .gem_effects
-        .values()
-        .flat_map(|l| l.additional_granted_effect_ids.iter())
-        .find(|eid| eid.as_str() == skill_id)
-        .map(|eid| (eid.as_str(), level, set_index))
+/// Borrows the canonical complete active-effect list without copying gem inputs.
+pub(crate) fn group_active_effects<'a>(
+    data: &'a BuildData,
+    group: &'a SocketGroup,
+) -> impl Iterator<Item = pobr_core::skill_env::ActiveEffect<'a>> + 'a {
+    let gems = group.gem_skills.iter().map(|gem| (
+        gem.skill_id.as_str(), gem.gem_level, gem.quality, gem.stat_set_index,
+    ));
+    let builder = group.active_skill_id.as_deref()
+        .filter(|_| group.gem_skills.is_empty())
+        .map(|id| (id, group.active_gem_level.unwrap_or(1),
+            group.active_gem_quality.unwrap_or(0), None));
+    pobr_core::skill_env::group_active_effects(gems.chain(builder), data)
 }
 
-/// The group's non-support gem list (meta shells count), matching PoB's
-/// `socketGroupSkillList`. `gem_skills` stores granted effect ids, so this is determined
-/// via granted_effects.is_support (an unknown effect is treated as non-support — better
-/// to keep it than drop it).
-fn group_active_gems<'b>(
-    build_data: &BuildData,
-    group: &'b SocketGroup,
-) -> Vec<&'b crate::build::GemSkillRef> {
-    group
-        .gem_skills
-        .iter()
-        .filter(|g| {
-            !build_data
-                .granted_effects
-                .get(&g.skill_id)
-                .map(|e| e.is_support)
-                .unwrap_or(false)
-        })
-        .collect()
+pub(crate) fn selected_group_effect<'a>(
+    data: &'a BuildData,
+    group: &'a SocketGroup,
+) -> Option<pobr_core::skill_env::ActiveEffect<'a>> {
+    group_active_effects(data, group)
+        .nth(group.main_active_skill.unwrap_or(1).checked_sub(1)?)
 }
 
-/// The entry `mainActiveSkill` (1-based, defaults to 1, clamped to the last item when out of range) selects from the non-support gem list.
-fn group_chosen_active<'b>(
-    group: &SocketGroup,
-    actives: &[&'b crate::build::GemSkillRef],
-) -> &'b crate::build::GemSkillRef {
-    let idx = group
-        .main_active_skill
-        .unwrap_or(1)
-        .saturating_sub(1)
-        .min(actives.len() - 1);
-    actives[idx]
+/// Exact active-effect selection; never substitutes damage for utility or missing data.
+#[cfg(test)]
+pub(crate) fn pick_group_main_skill<'a>(
+    data: &'a BuildData,
+    group: &'a SocketGroup,
+) -> Option<(&'a str, u32, Option<u32>)> {
+    selected_group_effect(data, group)
+        .map(|effect| (effect.skill_id, effect.gem_level, effect.stat_set_index))
 }
 
-/// **Any** active skill within a group selected by `mainActiveSkill` (non-support,
-/// non-Meta shell), without requiring an attack/spell tag.
-///
-/// Vendor semantics: `socketGroupSkillList` includes every non-support gem in the
-/// group, and `mainActiveSkill` selects directly among them — **there is no** "must be
-/// a damaging skill" filter (the CalcSetup.lua socketGroupSkillList section). A
-/// companion/summon-type main skill (e.g. the Wolf Pack ascendancy: `Minion`+`Companion`,
-/// neither Attack nor Spell) is still calculated as the mainActiveSkill in vendor as
-/// normal (castTime base, Speed=1/castTime). PoBR's [`pick_group_main_skill`] keeps a
-/// bias toward damaging skills for the sake of meta-shell piercing; this function is a
-/// fallback used after an **explicitly designated main group** (`mainSocketGroup`)
-/// comes up empty, to avoid the fallback scan hijacking the main skill into another
-/// group (confirmed with wolf-pack: it once wrongly landed on Temporal Chains in the
-/// Blasphemy group, Speed 1.43 vs vendor's 1.00). Only consumed by the designated-main-group branch; the fallback scan still only looks for damaging-skill groups.
-pub(crate) fn pick_group_chosen_active<'b>(
-    build_data: &'b BuildData,
-    group: &'b SocketGroup,
-) -> Option<(&'b str, u32, Option<u32>)> {
-    let actives = group_active_gems(build_data, group);
-    if actives.is_empty() {
-        return None;
-    }
-    let chosen = group_chosen_active(group, &actives);
-    // A meta shell has no independent cast parameters, so it's still excluded (piercing-through logic belongs to pick_group_main_skill).
-    let effect = build_data.granted_effects.get(&chosen.skill_id)?;
-    if effect.skill_types.iter().any(|t| t == "Meta") {
-        return None;
-    }
-    Some((
-        chosen.skill_id.as_str(),
-        chosen.gem_level,
-        chosen.stat_set_index,
-    ))
+fn resolved_group_skill<'a>(
+    build: &Build,
+    data: &'a BuildData,
+    group: &'a SocketGroup,
+) -> Option<(ResolvedSkillLevel, pobr_core::skill_env::ActiveEffect<'a>)> {
+    let effect = selected_group_effect(data, group)?;
+    let resolved = resolve_skill_level_with_gem_bonus(build, data, group, effect)?;
+    Some((resolved, effect))
 }
 
-/// Resolves the build's main skill's per-level parameters: prefers PoB's designated
-/// main skill group (`mainSocketGroup`, 1-based) + the group's `mainActiveSkill`
-/// selecting the real damaging skill (skipping supports and meta/trigger shells), then
-/// looks up [`BuildData::resolve_skill_level`] using its granted effect id + gem level.
-///
-/// When not found (no gem group / the designated group has no damaging skill / data
-/// gap), falls back to scanning every enabled group and takes the first one with a
-/// damaging skill candidate; if still none, returns `None`, and the calculation
-/// degrades to no skill base (action rate/cost still comes from base_input).
-///
-/// Genericity: candidate determination is entirely by skill tags
-/// (is_attack/is_spell/is_support + non-Meta), never targeting a specific skill id;
-/// supports multi-active-skill groups (e.g. Cast on Crit + Comet) precisely selecting
-/// the main skill via `mainActiveSkill`.
-pub(crate) fn resolve_main_skill<'b>(
-    build: &'b Build,
-    data: &'b BuildData,
-) -> Option<(ResolvedSkillLevel, &'b SocketGroup, &'b str, Option<u32>)> {
-    // Prefers PoB's designated main skill group (`mainSocketGroup`, 1-based) + the
-    // group's mainActiveSkill. Falls back to whichever active skill is selected when
-    // the group has no damaging skill candidate (vendor's semantics have no damage
-    // filter, see [`pick_group_chosen_active`]; avoids the fallback scan hijacking a
-    // companion/summon main group into a different group).
-    if let Some(n) = build.main_socket_group
-        && let Some(group) = build.socket_groups.get(n.saturating_sub(1))
-        && let Some((skill_id, level, set_index)) =
-            pick_group_main_skill(data, group).or_else(|| pick_group_chosen_active(data, group))
-        && let Some(resolved) =
-            resolve_skill_level_with_gem_bonus(build, data, group, skill_id, level, set_index)
-    {
-        return Some((resolved, group, skill_id, set_index));
+/// Resolves the explicit main context exactly. A missing main group retains the
+/// panel's first-resolvable-group fallback; an invalid explicit choice never does.
+pub(crate) fn resolve_main_skill<'a>(
+    build: &'a Build,
+    data: &'a BuildData,
+) -> Option<(ResolvedSkillLevel, &'a SocketGroup, &'a str, Option<u32>)> {
+    let resolve = |group| {
+        let (resolved, effect) = resolved_group_skill(build, data, group)?;
+        Some((resolved, group, effect.skill_id, effect.stat_set_index))
+    };
+    if let Some(n) = build.main_socket_group {
+        return resolve(build.socket_groups.get(n.checked_sub(1)?)?);
     }
-
-    // Fallback: scans every enabled group, taking the first one with a damaging skill candidate (also selected within the group by mainActiveSkill).
-    for group in build.enabled_socket_groups() {
-        if let Some((skill_id, level, set_index)) = pick_group_main_skill(data, group)
-            && let Some(resolved) =
-                resolve_skill_level_with_gem_bonus(build, data, group, skill_id, level, set_index)
-        {
-            return Some((resolved, group, skill_id, set_index));
-        }
-    }
-    None
+    build.enabled_socket_groups().find_map(resolve)
 }
 
-/// The main skill selection result (for UI display): which skill group/skill the
-/// calculation will actually be built around.
-///
-/// Shares the same selection semantics as [`resolve_main_skill`] (`mainSocketGroup`
-/// first + a fallback scan of enabled groups), but only returns identity without doing
-/// the calculation — used by the wasm/web main skill dropdown to display "which skill
-/// the engine picked" (including the fallback result when `mainSocketGroup` points to a
-/// group with no damaging skill).
-pub fn resolve_main_skill_selection(build: &Build, data: &BuildData) -> Option<(usize, String)> {
-    if let Some(n) = build.main_socket_group
-        && let Some(group) = build.socket_groups.get(n.saturating_sub(1))
-        && let Some((skill_id, level, set_index)) =
-            pick_group_main_skill(data, group).or_else(|| pick_group_chosen_active(data, group))
-        && resolve_skill_level_with_gem_bonus(build, data, group, skill_id, level, set_index)
-            .is_some()
-    {
-        return Some((n.saturating_sub(1), skill_id.to_string()));
-    }
-    build
-        .socket_groups
-        .iter()
-        .enumerate()
-        .filter(|(_, g)| g.enabled)
-        .find_map(|(i, group)| {
-            let (skill_id, level, set_index) = pick_group_main_skill(data, group)?;
-            resolve_skill_level_with_gem_bonus(build, data, group, skill_id, level, set_index)?;
-            Some((i, skill_id.to_string()))
-        })
+/// Returns the same exact group, complete active-effect ordinal and effect id as
+/// the panel calculation. This identity is not required by per-skill calculation.
+pub fn resolve_main_skill_selection(
+    build: &Build,
+    data: &BuildData,
+) -> Option<(usize, usize, String)> {
+    let prepared = super::super::stage_build_view(build, data);
+    let (_, group, skill_id, _) = resolve_main_skill(&prepared, data)?;
+    let index = prepared.socket_groups.iter()
+        .position(|candidate| std::ptr::eq(candidate, group))?;
+    Some((index, group.main_active_skill.unwrap_or(1), skill_id.to_string()))
 }
 
-/// Resolves per-level parameters after layering item-granted "`+N to Level of all <X>
-/// Skills`" bonuses on top of the base gem level.
-///
-/// PoE2's gem level bonus (generic, high-value): a `+N to Level of all <category>
-/// Skills` mod in an item's implicit/explicit/enchant text is added to the gem level
-/// when it **matches the main skill's `skill_types`** (e.g. Explosive Grenade is both
-/// Attack + Projectile, so it picks up both `+N Attack` **and** `+N Projectile`). When
-/// `<category>` is `Skills`/`Skill Gems` (a bare "all skills"), it matches unconditionally.
-///
-/// An out-of-range level is naturally clamped by [`BuildData::resolve_skill_level`]'s
-/// `rfind(level ≤ gem_level)` (per-level data usually covers up to ~level 40). Generic:
-/// matches by `skill_types` tags, never specialized by build/skill id.
-///
-/// History: Wave9 once temporarily disabled this bonus for `skill_types[Grenade]`
-/// (Speed ×1.95 was being double-counted alongside GrenadeActivateTwice at the time,
-/// forming a throughput over-count that the correct +N level would have amplified
-/// further); after the cooldown-scoped rate fix resolved that over-count, per-hit
-/// under-counting surfaced as the main gap, and the gating was removed (vendor's
-/// CalcSetup.lua gem-level segment stacks consistently across every skill, with no grenade special case).
+/// Level bonuses belong to the originating gem, not the selected additional
+/// effect's type or a same-id gem elsewhere in the group/build. The resulting
+/// level is used to resolve this exact effect's own selected stat set.
 pub(crate) fn resolve_skill_level_with_gem_bonus(
     build: &Build,
     data: &BuildData,
     group: &SocketGroup,
-    skill_id: &str,
-    base_level: u32,
-    set_index: Option<u32>,
+    effect: pobr_core::skill_env::ActiveEffect<'_>,
 ) -> Option<ResolvedSkillLevel> {
-    let bonus = additional_gem_levels(build, data, skill_id)
-        .saturating_add(support_granted_gem_levels(group, data, skill_id));
+    let skill_id = effect.skill_id;
+    let base_level = effect.gem_level;
+    let gem_id = group.gem_skills.get(effect.gem_index)
+        .map_or(skill_id, |gem| gem.skill_id.as_str());
+    let bonus = additional_gem_levels(build, data, gem_id)
+        .saturating_add(support_granted_gem_levels(group, data, gem_id));
     if pobr_core::dbg_env!("POBR_DBG_GEMLVL").is_some() {
         eprintln!("[POBR_GEMLVL] {skill_id} base={base_level} bonus={bonus}");
     }
@@ -252,7 +110,7 @@ pub(crate) fn resolve_skill_level_with_gem_bonus(
         data,
         skill_id,
         base_level.saturating_add(bonus),
-        set_index,
+        effect.stat_set_index,
     )
 }
 

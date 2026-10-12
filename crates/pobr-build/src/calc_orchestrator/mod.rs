@@ -58,7 +58,7 @@ use granted_skills::*;
 pub use skill::resolve::resolve_main_skill_selection;
 use skill::{
     minions::spawn_minions,
-    resolve::{additional_ring_slot_allocated, apply_gem_quality_bonuses, pick_group_main_skill},
+    resolve::{additional_ring_slot_allocated, apply_gem_quality_bonuses, group_active_effects},
 };
 mod collect;
 mod conditions;
@@ -242,115 +242,75 @@ pub fn diagnose_tree_version(build: &Build, data: &BuildData) -> TreeVersionRepo
     }
 }
 
-/// A single socket group's DPS contribution (a FullDPS line item).
+/// An independently calculated active effect, identified by its original group
+/// and complete PoB active-effect ordinal. Unavailable is distinct from zero DPS.
 #[derive(Debug, Clone)]
-pub struct SkillDps {
-    /// The 0-based index into `build.socket_groups`.
+pub struct SkillMetrics {
     pub group_index: usize,
-    /// This group's main skill's granted effect id (selected by `pick_group_main_skill`).
+    pub active_skill_index: usize,
     pub skill_id: String,
-    /// This skill's CombinedDPS, calculated independently from the whole build's perspective.
-    pub combined_dps: f64,
+    pub output: Option<OutputTable>,
+    pub unsupported_modifiers: Vec<String>,
+    pub error: Option<String>,
 }
 
-/// A FullDPS report (matching PoB2's `FullDPS`, a multi-skill scaffold).
+/// Independent skill metrics, never a sum of mutually exclusive skills.
 #[derive(Debug, Clone)]
-pub struct FullDpsReport {
-    /// The sum of every enabled damaging skill's CombinedDPS (= the sum of `per_skill`'s entries).
-    pub full_dps: f64,
-    /// Per-skill breakdown (only enabled groups with CombinedDPS>0).
-    pub per_skill: Vec<SkillDps>,
-    /// The full output table of the main skill (selected by `resolve_main_skill`);
-    /// unchanged from the single-skill/panel semantics.
-    pub primary: OutputTable,
+pub struct SkillMetricsReport {
+    pub skills: Vec<SkillMetrics>,
 }
 
-/// Calculates FullDPS (a multi-skill scaffold) — PoB2's "sum of all skills' DPS".
-///
-/// Walks every socket group that's **enabled and has a resolvable damaging main
-/// skill**, calculating each independently via [`calculate_with_data`] (temporarily
-/// setting that group as `mainSocketGroup`, while **every other group stays enabled**
-/// to preserve aura/buff contributions, matching PoB2's "whole-build perspective per
-/// skill"), summing each one's CombinedDPS. `primary` remains the full output of the
-/// main skill selected by [`resolve_main_skill`].
-///
-/// **Scaffold boundaries** (later refinements to PoB2's FullDPS, not handled in this
-/// version):
-/// - doesn't deduplicate DoT/ailments shared across multiple skills (may double-count
-///   ongoing damage);
-/// - doesn't special-case trigger shells / Mirage clone's inner skills;
-/// - recomputes sequentially, not in parallel (parallel multi-skill execution is a
-///   target for later performance work).
-///
-/// Only iterates groups where [`pick_group_main_skill`] is `Some`, avoiding double
-/// counting from `resolve_main_skill` falling back to a different group when
-/// `mainSocketGroup` points to a group with no damaging skill.
-pub fn calculate_full_dps(
+/// Calculates every active effect of every enabled group without requiring a
+/// primary skill. Each calculation keeps the whole build's aura/support context.
+/// Missing effect data and individual calculation failures remain visible rows.
+pub fn calculate_skill_metrics(
     build: &Build,
     data: &BuildData,
     options: &DataOrchestratorOptions,
-) -> Result<FullDpsReport, BuildError> {
-    // FullDPS must synthesize granted skills from the same equipment view as a normal
-    // calculation, otherwise an unlocked Ring 3 item would produce a skill group first,
-    // bypassing the item gate inside calculate_with_data.
-    let ring3_gated;
-    let build = match gate_locked_ring3(build, data) {
-        Some(gated) => {
-            ring3_gated = gated;
-            &ring3_gated
-        }
-        None => build,
-    };
-
-    // Item-granted skill's synthesized group also enters the per-skill list (the
-    // scoped recompute internally synthesizes it again, but the dedup key is the same →
-    // idempotent; synthesizing it here first is so the per_skill iteration can see this group).
-    let granted_augmented;
-    let build = match augment_item_granted_skills(build, data) {
-        Some(augmented) => {
-            granted_augmented = augmented;
-            &granted_augmented
-        }
-        None => build,
-    };
-    let primary = calculate_with_data(build, data, options)?;
-    let primary_group = resolve_main_skill_selection(build, data).map(|(index, _)| index);
-
-    let mut per_skill = Vec::new();
-    let mut full_dps = 0.0;
-    for (i, group) in build.socket_groups.iter().enumerate() {
+) -> Result<SkillMetricsReport, BuildError> {
+    // Share exactly the panel's equipment gates, granted skills, name resolution
+    // and quality preparation. Reusing this view avoids applying quality twice.
+    let prepared = stage_build_view(build, data);
+    let mut scoped = prepared.as_ref().clone();
+    let mut skills = Vec::new();
+    for (group_index, group) in prepared.socket_groups.iter().enumerate() {
         if !group.enabled {
             continue;
         }
-        let Some((skill_id, _level, _set)) = pick_group_main_skill(data, group) else {
-            continue;
-        };
-        let skill_id = skill_id.to_string();
-
-        let mut scoped = build.clone();
-        scoped.main_socket_group = Some(i + 1);
-        // Reuse the primary result when this group is the one actually selected.
-        // This also covers an absent or out-of-range main socket group.
-        let out = if primary_group == Some(i) {
-            primary.clone()
-        } else {
-            calculate_with_data(&scoped, data, options)?
-        };
-        if out.combined_dps > 0.0 {
-            full_dps += out.combined_dps;
-            per_skill.push(SkillDps {
-                group_index: i,
-                skill_id,
-                combined_dps: out.combined_dps,
-            });
+        for effect in group_active_effects(data, group) {
+            scoped.main_socket_group = Some(group_index + 1);
+            scoped.socket_groups[group_index].main_active_skill = Some(effect.active_skill_index);
+            let mut row = SkillMetrics {
+                group_index,
+                active_skill_index: effect.active_skill_index,
+                skill_id: effect.skill_id.to_string(),
+                output: None,
+                unsupported_modifiers: Vec::new(),
+                error: None,
+            };
+            if !data.granted_effects.contains_key(effect.skill_id)
+                || data.granted_effect_levels.get(effect.skill_id).is_none_or(Vec::is_empty)
+            {
+                row.error = Some(format!(
+                    "Cannot resolve effect {} at group {} active skill {} (gem level {}, stat set {:?})",
+                    effect.skill_id, group_index + 1, effect.active_skill_index,
+                    effect.gem_level, effect.stat_set_index,
+                ));
+            } else {
+                let mut context = CalculationContext::new(data, options);
+                match calculate_prepared_with_context(&scoped, data, options, &mut context) {
+                    Ok(session) => {
+                        row.unsupported_modifiers = session.unsupported_modifier_texts().to_vec();
+                        row.output = Some(session.output().clone());
+                    }
+                    Err(error) => row.error = Some(error.to_string()),
+                }
+            }
+            skills.push(row);
         }
+        scoped.socket_groups[group_index].main_active_skill = group.main_active_skill;
     }
-
-    Ok(FullDpsReport {
-        full_dps,
-        per_skill,
-        primary,
-    })
+    Ok(SkillMetricsReport { skills })
 }
 
 /// Runs an **end-to-end attribution** calculation on a [`Build`], returning a scalar

@@ -85,11 +85,10 @@ pub struct SocketGroup {
     /// list order, active and support included); used to resolve support gems' per-level
     /// stats (multipliers/added damage) and inject them into the supported skill.
     pub gem_skills: Vec<GemSkillRef>,
-    /// PoB `<Skill mainActiveSkill="N">` (**1-based**): points to the Nth entry in this
-    /// group's **non-support skill list** (meta/trigger shells count, supports don't).
-    /// Used to pick the correct main skill in groups with multiple active skills (e.g.
-    /// Cast on Crit + Comet); `None` = unspecified (falls back to the group's first
-    /// damaging skill).
+    /// PoB `<Skill mainActiveSkill="N">` (**1-based**): indexes each gem's primary
+    /// non-support effect followed by its additional non-support effects, in order.
+    /// Effects granted by support gems also count. `None` selects the first effect;
+    /// an invalid explicit ordinal is not clamped or replaced with another skill.
     pub main_active_skill: Option<usize>,
 }
 
@@ -213,7 +212,7 @@ impl SocketGroup {
         self
     }
 
-    /// Sets PoB `mainActiveSkill` (1-based, indexing this group's non-support skill list).
+    /// Sets PoB `mainActiveSkill` (1-based, including each gem's additional active effects).
     pub fn with_main_active_skill(mut self, n: usize) -> Self {
         self.main_active_skill = Some(n);
         self

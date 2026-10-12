@@ -60,9 +60,8 @@ pub(super) fn stage_resolve_main_skill<'a>(
     // Main skill type → cfg damage flags (Attack/Spell/Projectile/Area/Melee), making
     // `increased <Projectile|Area|Spell|Melee> Damage` apply to this skill (damage
     // aggregation picks these up by flag name). Main skill's effect definition: uses the
-    // **real main skill id** resolved by resolve_main_skill (meta/trigger shells already
-    // skipped), not the first gem's active_skill_id in the group (which is a meta shell
-    // in a multi-active-skill group, causing flag/damage-type mismatches).
+    // **exact selected effect** resolved by resolve_main_skill, not the first gem's
+    // active_skill_id (which can name a different effect in a multi-effect group).
     let main_effect = main_skill
         .as_ref()
         .and_then(|(_, _, skill_id)| data.granted_effects.get(*skill_id));
@@ -372,8 +371,8 @@ pub(super) fn stage_weapon_bases(
         .unwrap_or(1.0);
 
     // Weapon base contribution (attack skills only): hit physical damage (× skill
-    // multiplier) + attack rate override. Uses the resolved real main skill id (meta
-    // shells skipped), ensuring correct attack/spell determination and weighting.
+    // multiplier) + attack rate override. Uses the exact selected effect id,
+    // ensuring correct attack/spell determination and weighting.
     //
     // Weapon base no longer folds directly into `base_input`; it's now assembled into a
     // `HandSource` and injected via `set_hand_sources`, and `perform`'s internal

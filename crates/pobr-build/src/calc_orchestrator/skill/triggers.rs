@@ -84,21 +84,10 @@ impl pobr_core::skill_env::TriggerSubCalc for OrchestratorSubCalc<'_> {
             .filter(|(_, group)| group.enabled)
             .nth(group_index)?;
         let source_gem = group.gem_skills.get(gem_index)?;
-        // The source gem's 1-based ordinal in the group's **non-support** sequence
-        // (the selection key of pick_group_main_skill).
-        let active_pos = group
-            .gem_skills
-            .iter()
-            .filter(|g| {
-                !self
-                    .data
-                    .granted_effects
-                    .get(&g.skill_id)
-                    .map(|e| e.is_support)
-                    .unwrap_or(false)
-            })
-            .position(|g| std::ptr::eq(g, source_gem))?
-            + 1;
+        // Additional effects from preceding gems occupy ordinals too.
+        let active_pos = super::resolve::group_active_effects(self.data, group)
+            .find(|effect| effect.gem_index == gem_index && effect.skill_id == source_gem.skill_id)?
+            .active_skill_index;
 
         let mut sub_build = self.build.clone();
         sub_build.main_socket_group = Some(group_index + 1);

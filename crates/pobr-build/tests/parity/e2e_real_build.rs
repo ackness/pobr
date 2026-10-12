@@ -27,8 +27,7 @@
 //!   don't feed into the calculation.
 
 use pobr_build::{
-    BuildData, DataOrchestratorOptions, calculate_full_dps, calculate_with_data,
-    parse_build_from_code,
+    BuildData, DataOrchestratorOptions, calculate_with_data, parse_build_from_code,
 };
 use pobr_core::calc::MinimalInput;
 use pobr_data::monster::EnemyTier;
@@ -299,71 +298,3 @@ fn deadeye_e2e_effective_dps_lower_hit_chance() {
     );
 }
 
-/// FullDPS (multi-skill scaffolding): iterates enabled damaging skill groups, recalculates the whole build per group, and sums the CombinedDPS.
-#[test]
-fn deadeye_full_dps_sums_enabled_damaging_skills() {
-    let build_data = load_game_data();
-    let build = parse_build_from_code(DEADEYE_CODE).expect("parse deadeye");
-
-    let opts = DataOrchestratorOptions {
-        base_input: MinimalInput::default(),
-        inject_character_base: true,
-        enemy_level: 80,
-        enemy_tier: EnemyTier::Pinnacle,
-        mode_effective: true,
-        ..Default::default()
-    };
-
-    let report =
-        calculate_full_dps(&build, &build_data, &opts).expect("calculate_full_dps should succeed");
-
-    // Invariant: full_dps == the sum of each entry's CombinedDPS.
-    let sum: f64 = report.per_skill.iter().map(|s| s.combined_dps).sum();
-    assert_eq!(
-        report.full_dps, sum,
-        "full_dps must equal sum of per_skill CombinedDPS"
-    );
-    assert!(
-        report.full_dps.is_finite() && report.full_dps >= 0.0,
-        "full_dps must be finite & non-negative: {}",
-        report.full_dps
-    );
-
-    // Each entry: comes from an enabled group, has CombinedDPS>0, and has a valid index.
-    for s in &report.per_skill {
-        assert!(
-            s.combined_dps > 0.0,
-            "per_skill entries must have CombinedDPS>0: {s:?}"
-        );
-        assert!(
-            s.group_index < build.socket_groups.len(),
-            "group_index out of bounds: {s:?}"
-        );
-        assert!(
-            build.socket_groups[s.group_index].enabled,
-            "per_skill entries must come from an enabled group: {s:?}"
-        );
-    }
-
-    // The primary skill's DPS contribution is included (when it deals damage and its group is enabled) -> full_dps >= primary CombinedDPS.
-    if report.primary.combined_dps > 0.0 {
-        assert!(
-            report.full_dps >= report.primary.combined_dps - 1e-6,
-            "full_dps ({}) should include the primary CombinedDPS ({})",
-            report.full_dps,
-            report.primary.combined_dps
-        );
-    }
-
-    // Determinism: two calls give the same result.
-    let report2 = calculate_full_dps(&build, &build_data, &opts).expect("second full_dps calc");
-    assert_eq!(
-        report.full_dps, report2.full_dps,
-        "full_dps is non-deterministic"
-    );
-    assert_eq!(
-        report.per_skill.len(),
-        report2.per_skill.len(),
-        "per_skill count is non-deterministic"
-    );
-}

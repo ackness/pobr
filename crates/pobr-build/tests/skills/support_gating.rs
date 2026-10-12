@@ -153,7 +153,7 @@ fn compatible_support_still_injects() {
 /// skill id in the build. This also applies to an explicitly selected disabled group.
 #[test]
 fn supported_levels_stay_in_the_selected_group() {
-    use pobr_build::{Build, CharacterIdentity, SocketGroup, calculate_full_dps};
+    use pobr_build::{Build, CharacterIdentity, SocketGroup, calculate_skill_metrics};
     let data = load_build_data();
     let plain = SocketGroup::new().with_gem_skill("FireballPlayer", 20);
     let mastery = plain.clone().with_gem_skill("SupportFireMasteryPlayer", 1);
@@ -197,11 +197,13 @@ fn supported_levels_stay_in_the_selected_group() {
             );
             assert_eq!(out.damage_components, wanted.damage_components);
         }
-        let full = calculate_full_dps(&build, &data, &panel_opts()).unwrap();
-        assert_eq!(
-            full.full_dps,
-            plain_out.combined_dps + mastery_out.combined_dps
-        );
+        let report = calculate_skill_metrics(&build, &data, &panel_opts()).unwrap();
+        for (index, wanted) in expected.iter().enumerate() {
+            let row = report.skills.iter()
+                .find(|row| row.group_index == index && row.active_skill_index == 1)
+                .unwrap();
+            assert_eq!(row.output.as_ref().unwrap().dps, wanted.dps);
+        }
     }
     let disabled = single(mastery.with_enabled(false));
     assert_eq!(disabled.dps, mastery_out.dps);
