@@ -887,6 +887,9 @@ impl CalculationSession {
             "HitChance" => offence::hit_chance_terms(db, enemy, cfg, input).formula(),
             "TotalHitAvg" => offence::hit_pass(db, enemy, cfg, input).average_hit_formula(),
             "TotalDPS" => offence::hit_pass(db, enemy, cfg, input).dps_formula(),
+            "CritChance" | "CritMultiplier" if super::crit::never_crit(db, cfg) => {
+                super::crit::never_crit_formula()
+            }
             "CritChance" | "CritMultiplier" => {
                 let effective = cfg.mode_effective;
                 let chance = super::crit::crit_chance_terms(db, enemy, cfg, 0.0, effective);
@@ -898,10 +901,10 @@ impl CalculationSession {
                     effective,
                 );
                 if stat == "CritChance" {
-                    chance.formula(&adjust)?
+                    chance.formula(&adjust)
                 } else {
                     super::crit::crit_multiplier_terms(db, enemy, cfg, effective.then_some(&adjust))
-                        .formula()?
+                        .formula()
                 }
             }
             _ => return None,

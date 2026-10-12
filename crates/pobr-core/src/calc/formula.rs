@@ -110,6 +110,13 @@ pub enum FormulaOp {
     AilmentEffect,
     /// Multiplies by `operand`: the ailment deals its damage faster or slower.
     AilmentRate,
+    /// An increase from the enemy's own modifiers that adds to the player's
+    /// increases: adds `operand` percent of the value before increases.
+    EnemyIncreaseAdded,
+    /// The skill cannot deal critical hits: the value becomes `operand`.
+    NeverCrit,
+    /// Critical hits deal no extra damage: the multiplier is `operand`.
+    NoCritBonus,
     /// Starts from the main-hand pass's value, `operand`.
     MainHand,
     /// The skill alternates weapons: the average with the off-hand pass's
@@ -187,6 +194,9 @@ impl FormulaOp {
             Self::ChanceToApply => "chance_to_apply",
             Self::AilmentEffect => "ailment_effect",
             Self::AilmentRate => "ailment_rate",
+            Self::EnemyIncreaseAdded => "enemy_increase_added",
+            Self::NeverCrit => "never_crit",
+            Self::NoCritBonus => "no_crit_bonus",
             Self::MainHand => "main_hand",
             Self::OffHandAverage => "off_hand_average",
             Self::OffHandAdded => "off_hand_added",

@@ -312,6 +312,8 @@ fn check_formula(
         .iter()
         .any(|step| step["op"] == "reload");
     let mut stronger_share = 1.0;
+    // The value before the `increased` step and that step's operand.
+    let mut player_increase = None;
     let rows = breakdown["damage"]["rows"].as_array();
     let column = |key: &str| -> f64 {
         rows.unwrap_or_else(|| panic!("{at}: no damage table"))
@@ -478,6 +480,12 @@ fn check_formula(
                 assert!(close(operand, reload_factor()), "{at}: reload factor");
                 previous * operand
             }
+            // The enemy's increase adds to the player's increases.
+            "enemy_increase_added" => {
+                let (before, increase) = player_increase.unwrap_or((previous, 0.0));
+                before * (1.0 + (increase + operand) / 100.0)
+            }
+            "never_crit" | "no_crit_bonus" => operand,
             other => panic!("{at}: unknown op {other}"),
         };
         assert!(
@@ -504,6 +512,7 @@ fn check_formula(
                 "{at}: {op} {operand} != listed total {listed}"
             );
         }
+        player_increase = (op == "increased").then_some((previous, operand));
         tally.ops.insert(op.to_string());
         previous = result;
     }

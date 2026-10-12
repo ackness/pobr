@@ -122,7 +122,11 @@ function formulaOperand(step: FormulaStep): string {
     case 'bifurcate':
       return '1 − (1 − p)²';
     case 'inevitable':
+    case 'never_crit':
+    case 'no_crit_bonus':
       return `= ${n}`;
+    case 'enemy_increase_added':
+      return `${signed}%`;
     case 'converted':
     case 'enemy_block':
       return `−${n}%`;
