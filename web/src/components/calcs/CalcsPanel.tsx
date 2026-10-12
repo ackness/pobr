@@ -158,7 +158,7 @@ function HitDamageView({ damage, lang }: { damage: HitDamageTable; lang: Lang })
   );
   return (
     <div className="breakdown-scroll">
-      <table className="breakdown-table hit-damage-table" aria-label={tt('calcs.damage.title')}>
+      <table className="breakdown-table hit-damage-table damage-type-table" aria-label={tt('calcs.damage.title')}>
         <caption>{tt('calcs.damage.title')}</caption>
         <thead>
           <tr>

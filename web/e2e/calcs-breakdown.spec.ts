@@ -139,7 +139,7 @@ test('average hit and total DPS show how they are built', async ({ page }) => {
   // steps start from, and the steps end at the value shown.
   const average = page.locator('#breakdown-TotalHitAvg');
   await average.locator('.breakdown-toggle').click();
-  const table = average.locator('.hit-damage-table');
+  const table = average.locator('.damage-type-table');
   await expect(table.locator('tbody tr')).toHaveCount(5);
   await expect(table.locator('tbody tr.damage-physical th')).toHaveText('Physical');
   const total = num(await table.locator('tfoot td').first().textContent());
@@ -166,6 +166,12 @@ test('average hit and total DPS show how they are built', async ({ page }) => {
   expect(listed).toBeGreaterThan(0);
   expect(listed).toBeCloseTo(num(await table.locator('tbody tr.damage-physical td').nth(1).textContent()), 1);
 
+  // The build gains extra damage of other types, so the ranges before that are listed with
+  // the lines that move them.
+  const sources = average.locator('.damage-source-table');
+  await expect(sources.locator('tbody tr.damage-physical')).toHaveCount(1);
+  await expect(average.locator('.damage-lines-physical-gain tbody tr:not(.is-inactive)')).not.toHaveCount(0);
+
   // Total DPS: starts from that average hit and multiplies in rate and chance to hit.
   const dps = page.locator('#breakdown-TotalDPS');
   await dps.locator('.breakdown-toggle').click();
@@ -184,6 +190,8 @@ test('average hit and total DPS show how they are built', async ({ page }) => {
   );
   const shownDps = num(await dps.locator('.breakdown-value').textContent());
   expect(Math.abs(num(await dps.locator('tr.formula-final .formula-result').textContent()) - shownDps)).toBeLessThanOrEqual(0.5);
+  // The enemy's own lines are listed per damage type below the table.
+  await expect(dps.locator('.enemy-lines details')).not.toHaveCount(0);
 });
 
 const loadBuild = async (page: Page, build: string) => {
@@ -253,4 +261,20 @@ test('an ailment shows the hit it comes from and how many are active', async ({ 
   await expect(detail.locator('tr.ailment-applyChance th')).toHaveText('Chance for a hit to apply it');
   expect(num(await detail.locator('tr.ailment-sourceHit td').textContent())).toBeGreaterThan(0);
   expect(num(await detail.locator('tr.ailment-maxStacks td').textContent())).toBeGreaterThanOrEqual(1);
+  // The lines behind the inputs of the steps are listed below.
+  await expect(ignite.locator('.ailment-lines details')).not.toHaveCount(0);
+});
+
+test('a defence lists what each item slot adds on its own', async ({ page }) => {
+  // Lines scoped to one item slot: the per-slot rows add up to the step of the formula.
+  await loadBuild(page, 'warrior-titan-shield-wall');
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Calcs', exact: true }).click();
+  const armour = page.locator('#breakdown-Armour');
+  await armour.locator('.breakdown-toggle').click();
+  const slots = armour.locator('.defence-slots-table');
+  await expect(slots.locator('tbody tr')).not.toHaveCount(0);
+  expect(num(await slots.locator('tfoot td').textContent())).toBeCloseTo(
+    num(await armour.locator('tr.formula-slot_scaled .formula-operand').textContent()),
+    1,
+  );
 });

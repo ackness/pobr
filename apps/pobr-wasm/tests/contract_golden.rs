@@ -195,8 +195,20 @@ fn calculate_build_json_shape() {
     let es_bd = &json["breakdowns"]["EnergyShield"];
     assert_keys(
         es_bd,
-        &["base_total", "inc_total", "more_total", "mods", "formula"],
+        &[
+            "base_total",
+            "inc_total",
+            "more_total",
+            "mods",
+            "formula",
+            "slots",
+        ],
         "breakdowns.EnergyShield",
+    );
+    assert_keys(
+        &es_bd["slots"][0],
+        &["slot", "base", "increased", "more", "extra"],
+        "breakdown slot row",
     );
     let mods = es_bd["mods"].as_array().unwrap();
     assert!(!mods.is_empty());
