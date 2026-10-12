@@ -228,6 +228,7 @@ for _, id in ipairs(sorted_keys(raw_gems)) do
         gems[#gems + 1] = { skill_id = gem.grantedEffectId, name = gem.name, family = gem.gemFamily or gem.name,
             is_support = gem.gemType == "Support", max_level = gem.naturalMaxLevel or 20,
             level_requirements = requirements,
+            description = gem.gemType == "Support" and effect and effect.description or nil,
             is_lineage = (gem.tags or {}).lineage == true,
             compatibility_known = effect ~= nil,
             skill_types = sorted_keys((effect or {}).skillTypes or {}),
@@ -256,7 +257,7 @@ local f = assert(io.open(output, "w"))
 f:write(json.encode(result, { indent = true, keyorder = {
     "_meta", "source", "regen_command", "unmapped_crafting_mods", "bases", "mods", "search_mods", "gems", "id", "name", "category", "categories", "jewel_types", "tags",
     "group", "kind", "level", "implicits", "domain", "affix_limit", "radius", "lines", "roll_lines", "weights", "stats", "line", "value", "trade_line", "source_lines", "value_indices",
-    "skill_id", "family", "is_support", "max_level", "level_requirements", "is_lineage",
+    "skill_id", "family", "is_support", "max_level", "level_requirements", "description", "is_lineage",
     "compatibility_known", "skill_types", "require_skill_types", "exclude_skill_types", "add_skill_types",
     "support_gems_only", "cannot_be_supported", "families",
 } }), "\n")

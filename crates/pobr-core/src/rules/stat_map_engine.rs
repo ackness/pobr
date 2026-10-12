@@ -5,8 +5,9 @@
 //! heuristic in `pobr-build::skill_stat_map`.
 //!
 //! Pure functions + zero I/O (injection style): the catalog is loaded by
-//! pobr-gamedata and injected by pobr-build; this layer only does table
-//! lookup, the merge formula, and name/tag translation.
+//! pobr-gamedata and injected by pobr-build; this layer does table lookup,
+//! the merge formula, name/tag translation, and explicitly documented
+//! code-owned missing-entry rules. Extracted catalog entries remain authoritative.
 //!
 //! ## Merge formula (matches vendor `Modules/CalcActiveSkill.lua:112` line for line)
 //!
@@ -260,6 +261,24 @@ pub fn map_stat(
     stat_value: f64,
 ) -> MappedOutcome {
     let Some(entry) = catalog.lookup(effect_id, set_key, stat) else {
+        // Code-owned rule, not a vendor SkillStatMap extraction: pinned
+        // sup_str.lua:2891-2920 / gem_stat_descriptions.lua entry 954 specify
+        // MORE Attack Damage per elemental ailment. Counted types are the five
+        // PoE2 elemental ailments; the "elemental ailment type" list in
+        // ModParser.lua also names Scorched, Brittle and Sapped, which are
+        // deliberately not counted. SkillStatMap.lua:922-924 and
+        // ModStore.lua:550-571 establish one final-per-count MORE term.
+        // The pinned vendor has no consumer for this exact stat, so this is
+        // source-grounded modeling, not oracle-verified Armament parity.
+        if stat
+            == "support_elemental_armament_attack_damage_+%_final_per_elemental_ailment_on_target"
+        {
+            let modifier = Modifier::number("Damage", ModType::More, stat_value)
+                .with_flags(ModFlags::ATTACK)
+                .with_tag(ModTag::condition("Effective", false))
+                .with_tag(ModTag::multiplier("EnemyElementalAilmentCount", 1.0, None));
+            return MappedOutcome::Mapped(vec![MappedItem::Modifier(Box::new(modifier))]);
+        }
         return MappedOutcome::Unknown;
     };
     map_entry(entry, stat_value)
@@ -627,6 +646,12 @@ fn is_consumable_flag(name: &str) -> bool {
             | "CritChanceLucky"
             | "InevitableCriticalHits"
             | "NoCritMultiplier"
+            | "NeverCrit"
+            | "CannotIgnite"
+            | "CannotShock"
+            | "CannotChill"
+            | "CannotFreeze"
+            | "CannotElectrocute"
             | "LuckyHits"
             | "CritLucky"
             | "ElementalLuckHits"
@@ -2051,6 +2076,110 @@ mod tests {
         assert_eq!(mods[0].name.as_str(), "ElementalDamage");
         assert_eq!(mods[0].flags, ModFlags::ATTACK);
         assert_eq!(mods[0].keyword_flags, KeywordFlags::NONE);
+    }
+
+    #[test]
+    fn elemental_armament_fallback_uses_payload_and_attack_effective_scope() {
+        let catalog = catalog_json(r#"{"global": {}, "per_stat_set": {}}"#);
+        let stat =
+            "support_elemental_armament_attack_damage_+%_final_per_elemental_ailment_on_target";
+        // Alternate payloads prevent accidentally hardcoding the current 12.
+        // These arithmetic expectations follow the pinned final-per-count
+        // convention, not a direct Armament Lua-oracle calculation.
+        for (value, count, expected) in [
+            (12.0, 5.0, 1.60),
+            (7.0, 2.0, 1.14),
+            (25.0, 3.0, 1.75),
+            (0.0, 5.0, 1.00),
+        ] {
+            let modifiers = expect_modifiers(map_stat(
+                &catalog,
+                "SupportElementalArmamentPlayerThree",
+                Some("1"),
+                stat,
+                value,
+            ));
+            assert_eq!(modifiers.len(), 1);
+            let mut db = crate::ModDb::new();
+            db.add_list(modifiers);
+            let cfg = crate::CalcConfig::new()
+                .with_flags(ModFlags::ATTACK)
+                .with_mode_effective(true)
+                .with_multiplier("EnemyElementalAilmentCount", count);
+            let names = ["Damage".into()];
+            assert!(
+                (db.more(&cfg, &names) - expected).abs() < 1e-12,
+                "payload={value}, count={count}"
+            );
+            assert_eq!(
+                db.more(&cfg.clone().with_mode_effective(false), &names),
+                1.0
+            );
+            // Direct spell/DoT damage is not attack damage. Hit-derived
+            // bleeding/poison is covered separately by real-build regressions.
+            for flags in [ModFlags::SPELL, ModFlags::DOT, ModFlags::NONE] {
+                assert_eq!(db.more(&cfg.clone().with_flags(flags), &names), 1.0);
+            }
+        }
+        assert!(matches!(
+            map_stat(
+                &catalog,
+                "SupportElementalArmamentPlayerThree",
+                Some("1"),
+                "unrelated_unknown_stat",
+                12.0
+            ),
+            MappedOutcome::Unknown
+        ));
+    }
+
+    #[test]
+    fn elemental_armament_catalog_entries_take_precedence_over_fallback() {
+        let stat =
+            "support_elemental_armament_attack_damage_+%_final_per_elemental_ailment_on_target";
+        let catalog = catalog_json(&format!(
+            r#"{{
+              "global": {{
+                "{stat}": {{ "mods": [
+                  {{ "kind": "mod", "name": "FireDamage", "mod_type": "INC" }}
+                ] }}
+              }},
+              "per_stat_set": {{
+                "SupportElementalArmamentPlayerThree": {{
+                  "1": {{ "{stat}": {{ "mods": [
+                    {{ "kind": "mod", "name": "ColdDamage", "mod_type": "INC" }}
+                  ] }} }},
+                  "2": {{ "{stat}": {{ "mods": [] }} }}
+                }}
+              }}
+            }}"#
+        ));
+        for (effect, set, name) in [
+            (
+                "SupportElementalArmamentPlayerThree",
+                Some("1"),
+                "ColdDamage",
+            ),
+            ("SupportElementalArmamentPlayerThree", None, "ColdDamage"),
+            ("AnotherSupportPlayer", Some("1"), "FireDamage"),
+        ] {
+            let modifiers = expect_modifiers(map_stat(&catalog, effect, set, stat, 7.0));
+            assert_eq!(modifiers.len(), 1);
+            assert_eq!(modifiers[0].name.as_str(), name);
+            assert_eq!(modifiers[0].mod_type, ModType::Inc);
+            assert_eq!(modifiers[0].value.as_number(), Some(7.0));
+        }
+        assert!(
+            expect_modifiers(map_stat(
+                &catalog,
+                "SupportElementalArmamentPlayerThree",
+                Some("2"),
+                stat,
+                12.0
+            ))
+            .is_empty(),
+            "an explicit empty mapping must not reactivate the fallback"
+        );
     }
 
     /// ActorCondition(enemy) -> `Enemy<Var>` Condition (mirrors vendor

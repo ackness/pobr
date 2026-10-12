@@ -12,8 +12,8 @@
 //! - When the catalog is missing (old data pack / [`BuildData::empty`](crate::BuildData::empty))
 //!   → falls back to the legacy `parse_config` output (`build.config`'s existing fields,
 //!   tolerant of a missing table).
-//! - In both paths, explicit booleans for charge use and elemental exposure override
-//!   their legacy conditions. Absent inputs retain the existing fallback behavior.
+//! - In both paths, explicit booleans for charge use, elemental exposure and elemental
+//!   ailments override legacy conditions. Absent inputs retain existing fallback behavior.
 //!
 //! ## Dual-run period semantics (commit cluster opened category by category)
 //!
@@ -51,7 +51,8 @@ use crate::build_config::BuildConfig;
 use crate::handlers::{build_registry, campaign_progress_from_config, enemy_tier_from_config};
 
 /// Explicit raw booleans whose legacy conditions must not defeat a current edit.
-/// Charge-use false emits no interpreter FLAG, so it needs an authoritative override.
+/// False charge-use / elemental-ailment inputs emit no interpreter FLAG, so
+/// they need an authoritative override after bridging imported conditions.
 ///
 /// Exposure still uses the orchestrator's stage 5b `apply_enemy_exposure`: the
 /// interpreter's enemy numeric mod has a `CanApply<X>Exposure` actor tag, but its
@@ -64,6 +65,11 @@ const EXPLICIT_BOOLEAN_CONDITIONS: &[(&str, &str)] = &[
     ("conditionEnemyFireExposure", "EnemyFireExposure"),
     ("conditionEnemyColdExposure", "EnemyColdExposure"),
     ("conditionEnemyLightningExposure", "EnemyLightningExposure"),
+    ("conditionEnemyIgnited", "EnemyIgnited"),
+    ("conditionEnemyChilled", "EnemyChilled"),
+    ("conditionEnemyFrozen", "EnemyFrozen"),
+    ("conditionEnemyShocked", "EnemyShocked"),
+    ("conditionEnemyElectrocuted", "EnemyElectrocuted"),
 ];
 
 /// The config consumption view for `calculate_with_data` (sourced from either the
@@ -122,6 +128,7 @@ pub(crate) fn resolve_config(build: &Build, catalog: Option<&ConfigCatalog>) -> 
     bridge_enemy_conditions(&mut config.conditions, &outcome);
     bridge_combat_player_conditions(&mut config.conditions, &outcome);
     apply_explicit_boolean_conditions(&mut config.conditions, build);
+    reassert_configured_enemy_ailments(&mut config.conditions, &outcome);
 
     // Scalar wrapping (only overrides on explicit input; omitted = keep the existing
     // fallback chain, see module doc).
@@ -296,6 +303,31 @@ fn apply_explicit_boolean_conditions(conditions: &mut HashMap<String, bool>, bui
             } else {
                 conditions.insert((*cond_var).to_string(), *enabled);
             }
+        }
+    }
+}
+
+/// An unchecked primary ailment input only retires its own legacy condition. Other
+/// enabled options still place the same ailment on the enemy (vendor
+/// ConfigOptions.lua: `conditionEnemyChilledByYourHits` and
+/// `conditionEnemyOnChilledGround` both add `Condition:Chilled`), so an active enemy
+/// FLAG restores the condition the explicit false just cleared.
+fn reassert_configured_enemy_ailments(
+    conditions: &mut HashMap<String, bool>,
+    outcome: &ConfigOutcome,
+) {
+    const AILMENTS: [&str; 5] = ["Ignited", "Chilled", "Frozen", "Shocked", "Electrocuted"];
+    for modifier in &outcome.enemy_mods {
+        if modifier.mod_type != ModType::Flag
+            || !matches!(modifier.value, pobr_core::ModValue::Bool(true))
+        {
+            continue;
+        }
+        let Some(var) = modifier.name.as_str().strip_prefix("Condition:") else {
+            continue;
+        };
+        if AILMENTS.contains(&var) {
+            conditions.insert(format!("Enemy{var}"), true);
         }
     }
 }
@@ -544,6 +576,26 @@ mod tests {
             resolved.config.conditions.get("UsedSkillRecently"),
             Some(&false)
         );
+    }
+
+    /// An unchecked primary ailment input must not hide the same ailment supplied by
+    /// another enabled option, but still retires an imported legacy condition.
+    #[test]
+    fn explicit_false_ailment_yields_to_another_enabled_option() {
+        let catalog = load_catalog();
+        let mut build = build_with_inputs(
+            RawConfigInputs::new()
+                .with("conditionEnemyChilled", ConfigInputValue::Bool(false))
+                .with(
+                    "conditionEnemyOnChilledGround",
+                    ConfigInputValue::Bool(true),
+                )
+                .with("conditionEnemyShocked", ConfigInputValue::Bool(false)),
+        );
+        build.config.conditions.insert("EnemyShocked".into(), true);
+        let resolved = resolve_config(&build, Some(&catalog));
+        assert_eq!(resolved.config.conditions.get("EnemyChilled"), Some(&true));
+        assert_eq!(resolved.config.conditions.get("EnemyShocked"), Some(&false));
     }
 
     /// commit ③: enemy numeric overrides (BASE directly injected into the enemy bucket +

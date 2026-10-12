@@ -51,9 +51,14 @@ not a build guide.
 3. Check your main skill, combat configuration and unsupported effects, then use
    **Upgrades**, **Skills** or **Tree** to compare changes.
 
-Edits are saved in your browser. Download a JSON backup to keep a copy or move
-devices, or export a PoB2 build code to share your changes. Importing another
-build replaces the current one, so download a backup first if you want to keep it.
+Edits are saved in your browser, with separate builds and stages. Importing a
+build code adds a new build by default; choose the current stage as the import
+destination only when you want to replace that stage.
+
+Share a build with all its stages as JSON, or export a PoB2 build code. Download
+a workspace backup to keep every build, stage and unapplied editor draft or move
+devices. Restoring that backup replaces the whole local collection after
+confirmation, so back up your current workspace before restoring another one.
 
 PoBR is an independent implementation using
 [Path of Building for PoE2](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2)

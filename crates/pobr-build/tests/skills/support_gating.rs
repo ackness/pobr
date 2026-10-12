@@ -149,6 +149,97 @@ fn compatible_support_still_injects() {
     );
 }
 
+/// Pinned PoB2 Controlled Destruction supplies 25% more hit damage and
+/// global_cannot_crit. The downside belongs only to its supported group.
+#[test]
+fn controlled_destruction_disables_critical_hits_only_in_its_group() {
+    use pobr_build::{Build, CharacterIdentity, SocketGroup};
+    let data = load_build_data();
+    let plain = SocketGroup::new().with_gem_skill("FrostBombPlayer", 19);
+    let supported = plain
+        .clone()
+        .with_gem_skill("SupportControlledDestructionPlayer", 1);
+    let build = Build::new()
+        .with_character(CharacterIdentity {
+            level: 98,
+            class_name: "Monk".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(supported)
+        .add_socket_group(plain);
+    let bare = calculate_with_data(
+        &build.clone().with_main_socket_group(2),
+        &data,
+        &panel_opts(),
+    )
+    .unwrap();
+    let blocked =
+        calculate_with_data(&build.with_main_socket_group(1), &data, &panel_opts()).unwrap();
+    assert!(bare.crit_chance > 0.0);
+    assert_eq!(blocked.crit_chance, 0.0);
+    assert_eq!(blocked.crit_multiplier, 0.0);
+    let non_crit_hit: f64 = bare.damage_components.iter().map(|c| c.avg()).sum();
+    assert!(
+        (blocked.total_hit_avg - non_crit_hit * 1.25).abs() < 1e-8,
+        "retain the damage benefit without multiplying by critical damage"
+    );
+}
+
+#[test]
+fn elemental_focus_disables_elemental_ailments_only_in_its_group() {
+    use pobr_build::{Build, SocketGroup};
+
+    let data = load_build_data();
+    let plain = SocketGroup::new().with_gem_skill("FireballPlayer", 20);
+    let build = Build::new()
+        .add_socket_group(
+            plain
+                .clone()
+                .with_gem_skill("SupportElementalFocusPlayer", 1),
+        )
+        .add_socket_group(plain);
+    for effective in [false, true] {
+        let mut opts = panel_opts();
+        opts.mode_effective = effective;
+        opts.extra_modifier_texts = vec![
+            "Adds 100000 to 100000 Cold Damage to Spells".into(),
+            "Adds 100000 to 100000 Lightning Damage to Spells".into(),
+        ];
+        let bare =
+            calculate_with_data(&build.clone().with_main_socket_group(2), &data, &opts).unwrap();
+        let blocked =
+            calculate_with_data(&build.clone().with_main_socket_group(1), &data, &opts).unwrap();
+        for (name, normal, prohibited) in [
+            ("Ignite", bare.ignite_dps, blocked.ignite_dps),
+            ("Chill", bare.chill_effect, blocked.chill_effect),
+            ("Shock", bare.shock_effect, blocked.shock_effect),
+            (
+                "Freeze",
+                bare.freeze_buildup_pct,
+                blocked.freeze_buildup_pct,
+            ),
+            (
+                "Electrocute",
+                bare.electrocute_buildup_pct,
+                blocked.electrocute_buildup_pct,
+            ),
+        ] {
+            assert!(normal > 0.0, "fixture must inflict {name}");
+            assert_eq!(prohibited, 0.0, "{name}");
+        }
+        assert_eq!(blocked.ignite_stacked_dps, 0.0);
+        assert_eq!(blocked.ignite_active_stacks, 0.0);
+        assert!((blocked.total_hit_avg - bare.total_hit_avg * 1.25).abs() < 1e-6);
+        let mut without_support = build.clone().with_main_socket_group(2);
+        without_support.socket_groups[0].gem_skills.remove(1);
+        assert_eq!(
+            calculate_with_data(&without_support, &data, &opts).unwrap(),
+            bare,
+            "the support must not change another group's output",
+        );
+    }
+}
+
 /// Supported levels belong to a gem instance's group, not the first matching
 /// skill id in the build. This also applies to an explicitly selected disabled group.
 #[test]
@@ -209,6 +300,168 @@ fn supported_levels_stay_in_the_selected_group() {
     }
     let disabled = single(mastery.with_enabled(false));
     assert_eq!(disabled.dps, mastery_out.dps);
+}
+
+// Distinct canonical mechanics: maximum-pool loss versus Life sacrifice.
+const UNMODELED_RESOURCE_EFFECTS: [(&str, &str, f64, &str); 2] = [
+    (
+        "SupportAtzirisImpatiencePlayer",
+        "lose_%_of_life_es_and_mana_when_skill_is_used",
+        25.0,
+        "FireballPlayer",
+    ),
+    (
+        "SupportExtractionPlayer",
+        "sacrifice_%_life_on_skill_use",
+        10.0,
+        "ArmourBreakerPlayer",
+    ),
+];
+
+#[test]
+fn support_coverage_resource_effects_are_attributed_without_inventing_costs() {
+    for (support, stat, value, _) in UNMODELED_RESOURCE_EFFECTS {
+        let mut data = load_build_data();
+        let build = coverage_build("FrostBombPlayer", Some(support));
+        let supported = coverage_session(&build, &data);
+        let receipts: Vec<_> = supported
+            .unsupported_modifier_texts()
+            .iter()
+            .filter(|text| text.contains(stat))
+            .collect();
+        assert_eq!(receipts.len(), 1, "{support}");
+        for token in [
+            format!("Support:{support}:"),
+            format!("stat={stat}:"),
+            "set=1:".into(),
+            format!("value={value}:"),
+            "host=FrostBombPlayer:".into(),
+        ] {
+            assert!(receipts[0].contains(&token));
+        }
+        let bare = coverage_session(&coverage_build("FrostBombPlayer", None), &data);
+        assert!(bare.unsupported_modifier_texts().is_empty());
+        assert!(supported.output().dps > bare.output().dps);
+        assert_eq!(supported.output().mana_cost, bare.output().mana_cost);
+        assert_eq!(supported.output().life_cost, bare.output().life_cost);
+
+        // Zero or invalid downside values must not invent a numeric limit.
+        for downside in [0.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            data.skill_stat_sets.get_mut(support).unwrap().sets[0]
+                .constant_stats
+                .iter_mut()
+                .find(|entry| entry.stat == stat)
+                .unwrap()
+                .value = downside;
+            let ignored = coverage_session(&build, &data);
+            assert!(ignored.unsupported_modifier_texts().is_empty());
+            assert_eq!(ignored.output(), supported.output());
+        }
+    }
+}
+
+#[test]
+fn support_coverage_resource_receipts_stop_when_the_stat_is_recognized() {
+    use pobr_core::rules::stat_map_engine::{MappedOutcome, StatMapCatalog, map_stat};
+    use std::sync::Arc;
+
+    for (support, stat, value, _) in UNMODELED_RESOURCE_EFFECTS {
+        let mut data = load_build_data();
+        let build = coverage_build("FrostBombPlayer", Some(support));
+        // Reuse real empty, numerical and separately-consumed LIST mappings.
+        // A later recognized mapping must not retain an Unknown-only receipt.
+        for (source, source_stat) in [
+            (
+                "SupportHourglassPlayer",
+                "support_hourglass_display_cooldown_time_ms",
+            ),
+            (
+                "SupportExtractionPlayer",
+                "non_skill_base_all_damage_%_to_gain_as_chaos",
+            ),
+            (
+                "SupportFireMasteryPlayer",
+                "supported_fire_skill_gem_level_+",
+            ),
+        ] {
+            let mut mapping = coverage_mapping();
+            let entry = mapping
+                .per_stat_set
+                .get(source)
+                .and_then(|sets| sets.get("1"))
+                .and_then(|stats| stats.get(source_stat))
+                .or_else(|| mapping.global.get(source_stat))
+                .unwrap()
+                .clone();
+            mapping
+                .per_stat_set
+                .entry(support.into())
+                .or_default()
+                .entry("1".into())
+                .or_default()
+                .insert(stat.into(), entry);
+            data.stat_map_catalog = Some(Arc::new(StatMapCatalog::new(mapping)));
+            assert!(!matches!(
+                map_stat(
+                    data.stat_map_catalog.as_deref().unwrap(),
+                    support,
+                    Some("1"),
+                    stat,
+                    value
+                ),
+                MappedOutcome::Unknown
+            ));
+            let recognized = coverage_session(&build, &data);
+            assert!(
+                recognized.unsupported_modifier_texts().is_empty(),
+                "{support}/{source}"
+            );
+        }
+    }
+}
+
+#[test]
+fn support_coverage_resource_effects_do_not_leak_from_other_or_incompatible_groups() {
+    for (support, _, _, incompatible_host) in UNMODELED_RESOURCE_EFFECTS {
+        let data = load_build_data();
+        let build = coverage_build("FrostBombPlayer", Some(support))
+            .add_socket_group(pobr_build::SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+            .with_main_socket_group(2);
+        let other = coverage_session(&build, &data);
+        let mut without_other_support = build.clone();
+        without_other_support.socket_groups[0].gem_skills.remove(1);
+        let other_bare = coverage_session(&without_other_support, &data);
+        let incompatible =
+            coverage_session(&coverage_build(incompatible_host, Some(support)), &data);
+        let bare = coverage_session(&coverage_build(incompatible_host, None), &data);
+        assert!(other.unsupported_modifier_texts().is_empty());
+        assert!(incompatible.unsupported_modifier_texts().is_empty());
+        assert_eq!(other.output(), other_bare.output());
+        assert_eq!(incompatible.output(), bare.output());
+    }
+}
+
+#[test]
+fn support_coverage_resource_effects_follow_the_stat_not_the_gem_name() {
+    for (source, stat, _, _) in UNMODELED_RESOURCE_EFFECTS {
+        let mut data = load_build_data();
+        let effect = data.skill_stat_sets[source].sets[0]
+            .constant_stats
+            .iter()
+            .find(|entry| entry.stat == stat)
+            .unwrap()
+            .clone();
+        let support = "SupportEfficiencyPlayerTwo";
+        data.skill_stat_sets.get_mut(support).unwrap().sets[0]
+            .constant_stats
+            .push(effect);
+        let session = coverage_session(&coverage_build("FrostBombPlayer", Some(support)), &data);
+        assert!(
+            session.unsupported_modifier_texts().iter().any(|text| {
+                text.contains(stat) && text.contains(&format!("Support:{support}:"))
+            })
+        );
+    }
 }
 
 const FORK: &str = "SupportForkPlayer";
@@ -876,5 +1129,323 @@ fn support_coverage_duplicate_active_ids_report_the_calculated_host_form() {
             .with_main_socket_group(1);
         let session = coverage_session(&build, &data);
         assert!(fork_receipt(&session).contains(&format!("host_set={selected}:")));
+    }
+}
+
+mod elemental_armament {
+    use super::*;
+    use pobr_build::{Build, SocketGroup, calculate_with_data_session};
+    use pobr_core::calc::CalculationSession;
+    use pobr_core::rules::config_interpreter::ConfigInputValue;
+    use pobr_data::prelude::{DamageType, ModType, SourceKind};
+    use std::sync::LazyLock;
+
+    const SUPPORT: &str = "SupportElementalArmamentPlayerThree";
+    const STAT: &str =
+        "support_elemental_armament_attack_damage_+%_final_per_elemental_ailment_on_target";
+    const AILMENTS: [&str; 5] = [
+        "EnemyIgnited",
+        "EnemyChilled",
+        "EnemyFrozen",
+        "EnemyShocked",
+        "EnemyElectrocuted",
+    ];
+
+    static DATA: LazyLock<BuildData> = LazyLock::new(load_build_data);
+
+    fn data() -> &'static BuildData {
+        &DATA
+    }
+
+    fn options(effective: bool) -> DataOrchestratorOptions {
+        DataOrchestratorOptions {
+            mode_effective: effective,
+            extra_modifier_texts: [
+                "Adds 100000 to 100000 Physical Damage to Attacks",
+                "Adds 100000 to 100000 Fire Damage to Attacks",
+                "Adds 100000 to 100000 Cold Damage to Attacks",
+                "Adds 100000 to 100000 Lightning Damage to Attacks",
+                "Adds 100000 to 100000 Chaos Damage to Attacks",
+                "100% chance to Poison on Hit",
+                "100% chance to inflict Bleeding on Hit",
+            ]
+            .map(str::to_owned)
+            .into(),
+            ..panel_opts()
+        }
+    }
+
+    fn build(conditions: &[&str]) -> Build {
+        let mut build = coverage_build("ArmourBreakerPlayer", Some(SUPPORT));
+        for condition in conditions {
+            build.config.raw_inputs.values.insert(
+                format!("condition{condition}"),
+                ConfigInputValue::Bool(true),
+            );
+        }
+        build
+    }
+
+    fn close(actual: f64, expected: f64, label: &str) {
+        assert!(
+            (actual - expected).abs() <= expected.abs().max(1.0) * 1e-10,
+            "{label}: expected {expected}, got {actual}"
+        );
+    }
+
+    fn assert_supported_pair(build: &Build, opts: &DataOrchestratorOptions, factor: f64) {
+        let mut bare_build = build.clone();
+        bare_build.socket_groups[0].gem_skills.remove(1);
+        let bare = calculate_with_data_session(&bare_build, data(), opts).unwrap();
+        let supported = calculate_with_data_session(build, data(), opts).unwrap();
+        assert!(bare.output().total_hit_avg > 0.0);
+        close(
+            supported.output().total_hit_avg,
+            bare.output().total_hit_avg * factor,
+            "hit: identical target inputs with and without Armament",
+        );
+        if opts.mode_effective && factor > 1.0 {
+            // EnemyTier::None still supplies positive level-scaled monster armour.
+            // Larger physical hits lose a smaller fraction to the same positive
+            // enemy armour. The exact raw-hit factor above is a lower bound on
+            // effective DPS, not an equality after nonlinear armour mitigation.
+            assert!(supported.output().dps >= bare.output().dps * factor);
+        } else {
+            close(
+                supported.output().dps,
+                bare.output().dps * factor,
+                "neutral or panel hit DPS",
+            );
+        }
+        // Bleeding and poison inherit the increased source hit exactly once;
+        // Attack Damage must not also multiply their ailment-magnitude stage.
+        for (name, normal, boosted) in [
+            (
+                "Bleed",
+                bare.output().bleed_dps,
+                supported.output().bleed_dps,
+            ),
+            (
+                "Poison",
+                bare.output().poison_dps,
+                supported.output().poison_dps,
+            ),
+        ] {
+            assert!(normal > 0.0, "fixture must inflict {name}");
+            close(boosted, normal * factor, name);
+        }
+        // This is Attack Damage, not Elemental Damage. Both non-elemental
+        // components must be nonzero and receive the same MORE term.
+        for kind in [DamageType::Physical, DamageType::Chaos] {
+            let component = |session: &CalculationSession| -> f64 {
+                session
+                    .output()
+                    .damage_components
+                    .iter()
+                    .filter(|component| component.damage_type == kind)
+                    .map(|component| component.avg())
+                    .sum()
+            };
+            assert!(component(&bare) > 0.0, "{kind:?} fixture");
+            close(
+                component(&supported),
+                component(&bare) * factor,
+                "component",
+            );
+        }
+        for (name, normal, prohibited) in [
+            (
+                "Ignite",
+                bare.output().ignite_dps,
+                supported.output().ignite_dps,
+            ),
+            (
+                "Chill",
+                bare.output().chill_effect,
+                supported.output().chill_effect,
+            ),
+            (
+                "Shock",
+                bare.output().shock_effect,
+                supported.output().shock_effect,
+            ),
+            (
+                "Freeze",
+                bare.output().freeze_buildup_pct,
+                supported.output().freeze_buildup_pct,
+            ),
+            (
+                "Electrocute",
+                bare.output().electrocute_buildup_pct,
+                supported.output().electrocute_buildup_pct,
+            ),
+        ] {
+            assert!(normal > 0.0, "bare fixture must inflict {name}");
+            assert_eq!(prohibited, 0.0, "Armament still prohibits {name}");
+        }
+        assert_eq!(supported.output().ignite_stacked_dps, 0.0);
+        assert_eq!(supported.output().ignite_active_stacks, 0.0);
+        assert!(
+            supported
+                .unsupported_modifier_texts()
+                .iter()
+                .all(|text| !text.contains(STAT)),
+            "a modeled numerical benefit must not retain its old limit receipt"
+        );
+        let damage_mods = supported.mods_named("Damage");
+        let source_id = format!("{SUPPORT}.{STAT}");
+        let attributed: Vec<_> = damage_mods
+            .iter()
+            .filter(|modifier| {
+                modifier
+                    .origin
+                    .as_ref()
+                    .is_some_and(|origin| origin.source_id.id == source_id)
+            })
+            .collect();
+        assert_eq!(attributed.len(), 1, "one source-attributed MORE term");
+        assert_eq!(attributed[0].mod_type, ModType::More);
+        assert_eq!(attributed[0].value.as_number(), Some(12.0));
+        assert_eq!(
+            attributed[0].origin.as_ref().unwrap().source_id.kind,
+            SourceKind::SupportGem
+        );
+    }
+
+    // Source-grounded model, NOT an Armament Lua-oracle golden: pinned
+    // sup_str.lua:2891-2920 and gem_stat_descriptions.lua entry 954 give 12%
+    // MORE Attack Damage; the five PoE2 elemental ailment types are counted.
+    // SkillStatMap.lua:922-924 / ModStore.lua:550-571 establish a single
+    // final-per-count term. This support itself has no pinned Lua consumer.
+    #[test]
+    fn conditional_attack_damage_counts_five_independent_ailment_types() {
+        let payload = data().effect_stats(SUPPORT, 1, 0, None);
+        assert_eq!(
+            payload
+                .base
+                .iter()
+                .find(|entry| entry.stat == STAT)
+                .unwrap()
+                .value,
+            12.0
+        );
+        let effective = options(true);
+        assert_supported_pair(&build(&[]), &effective, 1.00);
+        for ailment in AILMENTS {
+            // Frozen alone is one; Ignited's implied Burning and
+            // Electrocuted's implied Immobilised do not add another type.
+            assert_supported_pair(&build(&[ailment]), &effective, 1.12);
+        }
+        for (conditions, factor) in [
+            (&AILMENTS[1..3], 1.24), // explicit Frozen + Chilled
+            (&AILMENTS[..3], 1.36),
+            (&AILMENTS[..4], 1.48),
+            (&AILMENTS[..], 1.60), // NOT 1.12^5
+        ] {
+            assert_supported_pair(&build(conditions), &effective, factor);
+        }
+        for condition in [
+            "EnemyBurning",
+            "EnemyImmobilised",
+            "EnemyPoisoned",
+            "EnemyBleeding",
+            "EnemyScorched",
+            "EnemyBrittle",
+            "EnemySapped",
+        ] {
+            let mut excluded = build(&[condition]);
+            excluded.config.conditions.insert(condition.into(), true);
+            assert_supported_pair(&excluded, &effective, 1.00);
+        }
+        let mut stacked = build(&AILMENTS);
+        for multiplier in ["IgniteStacks", "ChillStacks", "ShockStacks", "PoisonStack"] {
+            stacked.config.multipliers.insert(multiplier.into(), 100.0);
+        }
+        assert_supported_pair(&stacked, &effective, 1.60);
+        let mut counts_only = build(&[]);
+        counts_only.config.multipliers = stacked.config.multipliers.clone();
+        assert_supported_pair(&counts_only, &effective, 1.00);
+        assert_supported_pair(&stacked, &options(false), 1.00);
+    }
+
+    #[test]
+    fn raw_false_edits_override_imported_legacy_ailment_conditions() {
+        let opts = options(true);
+        for ailment in AILMENTS {
+            let xml = format!(
+                r#"<PathOfBuilding2>
+  <Build level="90" className="Warrior" mainSocketGroup="1"/>
+  <Skills><Skill enabled="true">
+    <Gem skillId="ArmourBreakerPlayer" level="20" enabled="true"/>
+    <Gem skillId="{SUPPORT}" level="1" enabled="true"/>
+  </Skill></Skills>
+  <Config><Input name="condition{ailment}" boolean="true"/></Config>
+</PathOfBuilding2>"#
+            );
+            let mut imported = parse_build(&xml).unwrap();
+            // Retain the legacy snapshot even after the live raw-input edit.
+            assert_eq!(imported.config.conditions.get(ailment), Some(&true));
+            assert_supported_pair(&imported, &opts, 1.12);
+            imported
+                .config
+                .raw_inputs
+                .values
+                .insert(format!("condition{ailment}"), ConfigInputValue::Bool(false));
+            assert_supported_pair(&imported, &opts, 1.00);
+            assert_eq!(imported.config.conditions.get(ailment), Some(&true));
+        }
+    }
+
+    #[test]
+    fn benefit_and_prohibition_stay_in_the_enabled_compatible_group() {
+        let opts = options(true);
+        let supported = build(&AILMENTS);
+        let mut disabled = supported.clone();
+        disabled.socket_groups[0] = parse_build(&format!(
+            r#"<PathOfBuilding2><Build level="1" className="Warrior"/>
+<Skills><Skill enabled="true">
+  <Gem skillId="ArmourBreakerPlayer" level="20" enabled="true"/>
+  <Gem skillId="{SUPPORT}" level="1" enabled="false"/>
+</Skill></Skills></PathOfBuilding2>"#
+        ))
+        .unwrap()
+        .socket_groups
+        .remove(0);
+        let mut bare = supported.clone();
+        bare.socket_groups[0].gem_skills.remove(1);
+        let bare_session = calculate_with_data_session(&bare, data(), &opts).unwrap();
+        let disabled_session = calculate_with_data_session(&disabled, data(), &opts).unwrap();
+        assert_eq!(disabled_session.output(), bare_session.output());
+        assert!(disabled_session.unsupported_modifier_texts().is_empty());
+        let source_id = format!("{SUPPORT}.{STAT}");
+
+        for host in ["ArmourBreakerPlayer", "FireballPlayer"] {
+            let other = supported
+                .clone()
+                .add_socket_group(SocketGroup::new().with_gem_skill(host, 20))
+                .with_main_socket_group(2);
+            let mut without_support = other.clone();
+            without_support.socket_groups[0].gem_skills.remove(1);
+            let other_session = calculate_with_data_session(&other, data(), &opts).unwrap();
+            let other_bare = calculate_with_data_session(&without_support, data(), &opts).unwrap();
+            assert_eq!(other_session.output(), other_bare.output(), "{host}");
+            assert!(other_session.unsupported_modifier_texts().is_empty());
+            assert!(other_session.all_mods().iter().all(|modifier| {
+                modifier
+                    .origin
+                    .as_ref()
+                    .is_none_or(|origin| origin.source_id.id != source_id)
+            }));
+        }
+        let mut spell = coverage_build("FireballPlayer", Some(SUPPORT));
+        spell.config = supported.config.clone();
+        let mut bare_spell = spell.clone();
+        bare_spell.socket_groups[0].gem_skills.remove(1);
+        let rejected = calculate_with_data_session(&spell, data(), &opts).unwrap();
+        let plain = calculate_with_data_session(&bare_spell, data(), &opts).unwrap();
+        assert!(plain.output().total_hit_avg > 0.0);
+        assert!(plain.output().ignite_dps > 0.0);
+        assert_eq!(rejected.output(), plain.output());
+        assert!(rejected.unsupported_modifier_texts().is_empty());
     }
 }

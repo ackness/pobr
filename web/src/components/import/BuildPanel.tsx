@@ -27,6 +27,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
     lang !== 'en-US' ? (map[name] ?? name) : name;
   const [code, setCode] = useState('');
   const [fileError, setFileError] = useState<string | null>(null);
+  const [importRecovery, setImportRecovery] = useState<'file' | 'source' | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [share, setShare] = useState<{ code: string; source: BuildSession['exportCode'] } | null>(null);
   const shareCode = share?.source === session.exportCode ? share.code : null;
@@ -59,6 +60,7 @@ export function BuildPanel({ session, lang, onImported }: Props) {
 
   const importFile = async (file: File) => {
     setFileError(null);
+    setImportRecovery(null);
     setImporting(true);
     try {
       const content = await file.text();
@@ -86,8 +88,10 @@ export function BuildPanel({ session, lang, onImported }: Props) {
   const doImport = async () => {
     if (!code.trim() || importing || session.busy || !confirmReplacement()) return;
     setImporting(true);
+    setImportRecovery(null);
     try {
       if (await session.importCode(code.trim(), { destination })) onImported();
+      else setImportRecovery(buildFileKind(code) === 'external' ? 'source' : 'file');
     } finally {
       setImporting(false);
     }
@@ -211,12 +215,17 @@ export function BuildPanel({ session, lang, onImported }: Props) {
             rows={5}
             placeholder={tt('build.importPlaceholder')}
             value={code}
-            onChange={(e) => setCode(e.target.value)}
+            onChange={(e) => { setCode(e.target.value); setImportRecovery(null); }}
             spellCheck={false}
             aria-label={tt('build.code')}
-            aria-describedby="import-hint"
+            aria-describedby={importRecovery ? 'import-hint import-recovery' : 'import-hint'}
             disabled={importing}
           />
+          {importRecovery && (
+            <p id="import-recovery" className="build-card-hint" role="status">
+              {tt(importRecovery === 'file' ? 'build.importRecoveryFile' : 'build.importRecoverySource')}
+            </p>
+          )}
           <div className="build-card-actions">
             <button
               className="import-submit"

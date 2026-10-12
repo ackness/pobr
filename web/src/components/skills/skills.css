@@ -558,6 +558,7 @@
 .support-plan-metrics { display: flex; flex-wrap: wrap; gap: var(--space-4); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 .support-plan-metrics .is-positive { color: var(--color-positive); }
 .support-plan-metrics .is-negative { color: var(--color-negative); }
+.support-descriptions { grid-column: 1 / -1; }
 .support-diagnostics { padding: var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface-page); font-size: var(--text-sm); overflow-wrap: anywhere; min-width: 0; }
 .support-diagnostics summary { cursor: pointer; color: var(--text-secondary); }
 .support-diagnostics summary:focus-visible { outline: 2px solid var(--accent-gold-dim); outline-offset: 2px; }

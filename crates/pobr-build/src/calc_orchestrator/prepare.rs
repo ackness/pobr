@@ -281,6 +281,32 @@ pub(super) fn stage_build_cfg(
     // (already parsed by PoBR as condition tags) wouldn't apply. Generic, independent of build/skill.
     cfg = apply_condition_implications(cfg);
 
+    // The five distinct PoE2 elemental ailment types, not stacks
+    // or infliction capability: another skill/ally may supply each condition.
+    // Frozen does not imply Chilled in the pinned ConfigOptions. Target-state
+    // bonuses are Effective-only, even when imported panel conditions are true.
+    let elemental_ailment_count = if cfg.mode_effective {
+        [
+            "EnemyIgnited",
+            "EnemyChilled",
+            "EnemyFrozen",
+            "EnemyShocked",
+            "EnemyElectrocuted",
+        ]
+        .into_iter()
+        .filter(|condition| cfg.condition(condition))
+        .count() as f64
+    } else {
+        0.0
+    };
+    if elemental_ailment_count > 0.0 {
+        cfg = cfg.with_multiplier("EnemyElementalAilmentCount", elemental_ailment_count);
+    } else {
+        // Missing multipliers evaluate to zero; discard imported counts without
+        // allocating a key for the common neutral / panel calculation.
+        cfg.multipliers.remove("EnemyElementalAilmentCount");
+    }
+
     // PoB2's `Condition:UsingShield` (CalcSetup: set true when the off-hand is a
     // shield). Determined from whether the current active equipment group's off-hand
     // slot has a shield-category base — a build-state default, consistent across the

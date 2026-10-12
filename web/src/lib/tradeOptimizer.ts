@@ -29,6 +29,8 @@ export interface TradeAffix {
 }
 export interface TradeGem {
   skill_id: string; name: string; family: string; is_support: boolean; max_level: number; level_requirements?: number[];
+  /** Qualitative English PoB2 source prose, not level-specific values or modeled coverage. */
+  description?: string;
   is_lineage?: boolean;
   skill_types?: string[];
   require_skill_types?: string[];
