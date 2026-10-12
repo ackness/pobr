@@ -257,6 +257,7 @@ struct FormulaTally {
     enemy_lines: usize,
     source_lines: usize,
     converted: usize,
+    slot_rows: usize,
 }
 
 /// Checks that the steps of `breakdown` are the calculation: each step
@@ -525,6 +526,37 @@ fn check_formula(
         close(previous, value),
         "{at}: steps end at {previous}, value {value}"
     );
+    // The slot-scoped extra of a defence is listed per slot: each row
+    // follows from the global steps, and the rows add up to the step.
+    if let Some(slots) = breakdown.get("slots").and_then(Value::as_array) {
+        let steps = formula["steps"].as_array().unwrap();
+        let operand = |op: &str, default: f64| {
+            steps
+                .iter()
+                .find(|step| step["op"] == op)
+                .map_or(default, |step| step["operand"].as_f64().unwrap())
+        };
+        let global = (1.0 + operand("increased", 0.0) / 100.0) * operand("more", 1.0);
+        let mut sum = 0.0;
+        for slot in slots {
+            let n = |key: &str| slot[key].as_f64().unwrap();
+            let scaled = n("base")
+                * (1.0 + (operand("increased", 0.0) + n("increased")) / 100.0)
+                * (operand("more", 1.0) * n("more"));
+            assert!(
+                close(n("extra"), scaled - n("base") * global),
+                "{at}: slot {} extra {}",
+                slot["slot"],
+                n("extra")
+            );
+            sum += n("extra");
+        }
+        assert!(
+            close(sum, operand("slot_scaled", 0.0)),
+            "{at}: slot rows add up to {sum}"
+        );
+        tally.slot_rows += slots.len();
+    }
     // Each damage type's range follows from its listed terms.
     for row in rows.into_iter().flatten() {
         let n = |key: &str| row[key].as_f64().unwrap();
@@ -974,6 +1006,7 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         enemy_lines,
         source_lines,
         converted,
+        slot_rows,
     } = tally;
     println!(
         "formula coverage over {} builds: {covered:?}; without formula {unexplained:?}; ops {ops:?}",
@@ -1039,6 +1072,8 @@ fn breakdown_formulas_end_at_the_displayed_value() {
     );
     println!("source lines {source_lines}; builds that convert or gain damage {converted}");
     assert!(source_lines > 0 && converted > 0);
+    println!("defence slot rows {slot_rows}");
+    assert!(slot_rows > 0, "no fixture build scales a defence per slot");
     println!("enemy lines {enemy_lines}");
     assert!(enemy_lines > 0, "no fixture build lists enemy lines");
     println!("ailment lines {ailment_lines}; ailment source types {ailment_source_types}");

@@ -1026,6 +1026,24 @@ impl CalculationSession {
             .flatten()
     }
 
+    /// The `slot_scaled` step of `Armour` / `Evasion` / `EnergyShield` per
+    /// item slot: the parts add up to that step's amount. Empty for other
+    /// stats and when no line is scoped to a slot that has the defence.
+    pub fn defence_slot_parts(&self, stat: &str) -> Vec<super::DefenceSlotPart> {
+        let index = match stat {
+            "Armour" => 0,
+            "Evasion" => 1,
+            "EnergyShield" => 2,
+            _ => return Vec::new(),
+        };
+        let env = &self.env;
+        let db = &env.player.mod_db;
+        let keystones = crate::rules::DefenceKeystones::from_db(db, &env.cfg);
+        let (_, mut terms) =
+            super::defence::defence_resource_terms(db, &env.cfg, &env.player.base, &keystones);
+        std::mem::take(&mut terms[index].slot_parts)
+    }
+
     /// The enemy's own lines behind each of `types`' rows in
     /// [`hit_mitigation_terms`](Self::hit_mitigation_terms), read in the
     /// config that stage mitigates pass `pass` in.

@@ -10,6 +10,7 @@ import type {
   HitMitigationRow,
   SkillDotRow,
   AilmentDetail,
+  DefenceSlotRow,
   ReloadDetail,
   DisplayStatCategory,
   SkillMetricsResponse,
@@ -502,6 +503,44 @@ function AilmentView({ ailment, lang }: { ailment: AilmentDetail; lang: Lang }) 
 }
 
 /** The crossbow cycle behind the `reload` step: a magazine fired, then the reload. */
+/** The `slot_scaled` step of a defence, one row per item slot. */
+function DefenceSlotsView({ slots, lang }: { slots: DefenceSlotRow[]; lang: Lang }) {
+  const tt = bindT(lang);
+  return (
+    <div className="breakdown-scroll">
+      <table className="breakdown-table hit-damage-table defence-slots-table" aria-label={tt('calcs.slots.title')}>
+        <caption>{tt('calcs.slots.title')}</caption>
+        <thead>
+          <tr>
+            <th scope="col">{tt('calcs.slots.slot')}</th>
+            <th scope="col">{tt('calcs.slots.base')}</th>
+            <th scope="col">{tt('calcs.slots.increased')}</th>
+            <th scope="col">{tt('calcs.slots.more')}</th>
+            <th scope="col">{tt('calcs.slots.extra')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {slots.map((row, index) => (
+            <tr key={`${row.slot}-${index}`}>
+              <th scope="row">{slotLabel(lang, row.slot)}</th>
+              <td className="mod-value">{fmtNum(row.base)}</td>
+              <td className="mod-value">{fmtNum(row.increased)}%</td>
+              <td className="mod-value">×{fmtNum(row.more)}</td>
+              <td className="mod-value">{fmtNum(row.extra)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row" colSpan={4}>{tt('calcs.damage.total')}</th>
+            <td className="mod-value">{fmtNum(slots.reduce((total, row) => total + row.extra, 0))}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
 function ReloadView({ reload, lang }: { reload: ReloadDetail; lang: Lang }) {
   const tt = bindT(lang);
   const seconds = (value: number) => `${fmtNum(value)}${tt('calcs.ailment.seconds')}`;
@@ -666,6 +705,7 @@ function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang 
       )}
       {breakdown.ailment && <AilmentView ailment={breakdown.ailment} lang={lang} />}
       {breakdown.reload && <ReloadView reload={breakdown.reload} lang={lang} />}
+      {breakdown.slots && breakdown.slots.length > 0 && <DefenceSlotsView slots={breakdown.slots} lang={lang} />}
       {hands.length > 0 && <p className="breakdown-note breakdown-hands-note">{tt('calcs.hand.note')}</p>}
       {hands.map((hand) => (
         <section key={hand.hand} className={`breakdown-hand breakdown-hand-${hand.hand}`} aria-label={tt(`calcs.hand.${hand.hand}`)}>

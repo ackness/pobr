@@ -267,7 +267,24 @@ pub fn calc_defence_resources(
 
 /// One defence value (Armour, Evasion or Energy Shield) with the terms the
 /// matrix built it from.
-#[derive(Debug, Clone, Copy, Default)]
+/// One equipped item's share of a defence's `slot_scaled` step: what the
+/// lines scoped to its slot add on top of the global increases.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DefenceSlotPart {
+    pub slot: String,
+    /// The amount in that slot the lines scale: the item's own value after
+    /// keystones and conversion, or an amount converted in from another
+    /// defence of the same item (its own entry).
+    pub base: f64,
+    /// The INC total and MORE product of the lines scoped to this slot.
+    pub inc: f64,
+    pub more: f64,
+    /// `base × ((1 + (global INC + inc) / 100) × global MORE × more
+    /// − (1 + global INC / 100) × global MORE)`.
+    pub extra: f64,
+}
+
+#[derive(Debug, Clone, Default)]
 pub(crate) struct DefenceTerms {
     /// The actor's own base value.
     base: f64,
@@ -286,6 +303,8 @@ pub(crate) struct DefenceTerms {
     more: f64,
     /// The extra from INC/MORE lines scoped to one item slot.
     slot_scaled: f64,
+    /// `slot_scaled` per slot entry, in the order the stage adds them.
+    pub(crate) slot_parts: Vec<DefenceSlotPart>,
     /// The `<Stat>Total` channel, added after increases.
     flat_after: f64,
     pub(crate) value: f64,
@@ -331,7 +350,7 @@ pub(crate) fn defence_resource_terms(
     base: &super::ActorBaseStats,
     keystones: &crate::rules::DefenceKeystones,
 ) -> (DefenceResources, [DefenceTerms; MATRIX_DEFENCE_COUNT]) {
-    let mut terms = [DefenceTerms::default(); MATRIX_DEFENCE_COUNT];
+    let mut terms: [DefenceTerms; MATRIX_DEFENCE_COUNT] = Default::default();
     let slot_total = |list: &[(String, f64)]| list.iter().map(|(_, value)| value).sum::<f64>();
     // 1) ConvertTo rate matrix: per-pair cap 100 + row normalization (:1311-1320)
     let mut conv = [[0.0_f64; MATRIX_RESOURCES.len()]; MATRIX_RESOURCES.len()];
@@ -517,6 +536,7 @@ pub(crate) fn defence_resource_terms(
         // received after this source was processed are not reconverted by it — serial semantics).
         let mut total = (kept_global[s] + received[s]) * (1.0 + global_inc / 100.0) * global_more;
         let mut slot_scaled = 0.0;
+        let mut slot_parts = Vec::new();
         for (slot, slot_base) in &slots[s] {
             let slot_inc = db.sum_for_slot(ModType::Inc, cfg, &names, slot);
             let slot_more = db.more_for_slot(cfg, &names, slot);
@@ -524,7 +544,15 @@ pub(crate) fn defence_resource_terms(
                 slot_base * (1.0 + (global_inc + slot_inc) / 100.0) * (global_more * slot_more);
             total += scaled;
             if slot_inc != 0.0 || slot_more != 1.0 {
-                slot_scaled += scaled - slot_base * (1.0 + global_inc / 100.0) * global_more;
+                let extra = scaled - slot_base * (1.0 + global_inc / 100.0) * global_more;
+                slot_scaled += extra;
+                slot_parts.push(DefenceSlotPart {
+                    slot: slot.clone(),
+                    base: *slot_base,
+                    inc: slot_inc,
+                    more: slot_more,
+                    extra,
+                });
             }
         }
         // The Total direct-add channel isn't multiplied by inc/more (vendor :1394 `… + res.totalBase`).
@@ -534,6 +562,7 @@ pub(crate) fn defence_resource_terms(
         terms[s].inc = global_inc;
         terms[s].more = global_more;
         terms[s].slot_scaled = slot_scaled;
+        terms[s].slot_parts = slot_parts;
         terms[s].flat_after = kept_total[s] + total_received[s];
         terms[s].value = *value;
         // Diagnostics (POBR_DBG_DEFRES=<idx>): dump a given defence resource's components (armour=0).

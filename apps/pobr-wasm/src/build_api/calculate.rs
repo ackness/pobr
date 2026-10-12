@@ -100,6 +100,10 @@ struct BreakdownJson {
     /// `ActionRate` / `TotalDPS` only: the cycle behind the `reload` step.
     #[serde(skip_serializing_if = "Option::is_none")]
     reload: Option<ReloadJson>,
+    /// `Armour` / `Evasion` / `EnergyShield` only: the `slot_scaled` step
+    /// per item slot. The `extra` amounts add up to that step's operand.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    slots: Vec<DefenceSlotJson>,
     /// Two weapon passes only, for the stats each pass computes on its own
     /// (`ActionRate`, `HitChance`, `CritChance`, `CritMultiplier`,
     /// `TotalHitAvg`, `TotalDPS` and an ailment both hands apply): main hand
@@ -119,6 +123,24 @@ struct HandBreakdownJson {
     /// `main_hand` / `off_hand_*` / `stronger_hand` / `weaker_hand` step).
     #[serde(flatten)]
     detail: BreakdownJson,
+}
+
+/// What the lines scoped to one item slot add to a defence.
+#[derive(Debug, Serialize)]
+struct DefenceSlotJson {
+    /// The slot name, as in `mods[].slot`.
+    slot: String,
+    /// The amount in that slot the lines scale: the item's own value after
+    /// keystones and conversion. An amount converted in from another
+    /// defence of the same item is its own row.
+    base: f64,
+    /// The INC total (percentage points) and MORE product of the lines
+    /// scoped to this slot; they add to and multiply with the global ones.
+    increased: f64,
+    more: f64,
+    /// `base × ((1 + (global increased + increased) / 100) × global more ×
+    /// more − (1 + global increased / 100) × global more)`.
+    extra: f64,
 }
 
 /// The crossbow reload cycle: firing a magazine, then reloading.
@@ -577,6 +599,7 @@ fn hand_breakdowns(session: &CalculationSession, stat: &str) -> Vec<HandBreakdow
                     skill_dot: None,
                     ailment: ailment_json(session, stat, pass),
                     reload: None,
+                    slots: Vec::new(),
                     hands: Vec::new(),
                 },
             })
@@ -611,6 +634,7 @@ fn hand_breakdowns(session: &CalculationSession, stat: &str) -> Vec<HandBreakdow
                     skill_dot: None,
                     ailment: None,
                     reload: None,
+                    slots: Vec::new(),
                     hands: Vec::new(),
                 },
             }
@@ -690,6 +714,19 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
                 })
                 .collect()
         });
+    let slots = formula
+        .as_ref()
+        .map(|_| session.defence_slot_parts(stat))
+        .unwrap_or_default()
+        .into_iter()
+        .map(|part| DefenceSlotJson {
+            slot: part.slot,
+            base: part.base,
+            increased: part.inc + 0.0,
+            more: part.more,
+            extra: part.extra,
+        })
+        .collect();
     let entries = mod_entries(&rows);
     let (base_total, inc_total, more_total) = session.stat_totals(stat);
     Some(BreakdownJson {
@@ -704,6 +741,7 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
         skill_dot,
         ailment,
         reload,
+        slots,
         hands,
     })
 }

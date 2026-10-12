@@ -512,6 +512,8 @@ export interface Breakdown {
   ailment?: AilmentDetail;
   /** ActionRate / TotalDPS only: the cycle behind the `reload` step. */
   reload?: ReloadDetail;
+  /** Armour / Evasion / EnergyShield only: the `slot_scaled` step per item slot; the `extra` amounts add up to its operand. */
+  slots?: DefenceSlotRow[];
   /**
    * Two weapon passes only, for the stats each pass computes on its own (ActionRate, HitChance,
    * CritChance, CritMultiplier, TotalHitAvg, TotalDPS and an ailment both hands apply): main hand
@@ -620,6 +622,19 @@ export interface HitDamageRow {
   /** MORE lines behind `more_min` and `more_max`. */
   min_mods: BreakdownMod[];
   max_mods: BreakdownMod[];
+}
+
+/** What the lines scoped to one item slot add to a defence. */
+export interface DefenceSlotRow {
+  /** Slot name, as in `mods[].slot`. */
+  slot: string;
+  /** The amount in that slot the lines scale (the item's value after keystones and conversion; an amount converted in from another defence is its own row). */
+  base: number;
+  /** INC total (percentage points) and MORE product of the lines scoped to this slot; they add to and multiply with the global ones. */
+  increased: number;
+  more: number;
+  /** What those lines add on top of the global increases. */
+  extra: number;
 }
 
 /** One damage type of the hit before conversion and gain. */
