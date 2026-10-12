@@ -398,7 +398,10 @@ struct FormulaStepJson {
     /// `chance_to_hit` / `dps_multiplier` / `skill_dot` / `poison_dps` /
     /// `ignite_dps` / `bleed_dps` / `hit_dps` / `dot_dps` / `ailment_source` /
     /// `per_second` / `active_stacks` / `chance_to_apply` / `ailment_effect` /
-    /// `ailment_rate`.
+    /// `ailment_rate` / `enemy_increase_added` / `never_crit` /
+    /// `no_crit_bonus` / `main_hand` / `off_hand_average` / `off_hand_added` /
+    /// `off_hand_either` / `off_hand_alternating` / `stronger_hand` /
+    /// `stronger_share` / `weaker_hand` / `reload`.
     op: &'static str,
     /// The amount the step applies (percentage points for `increased`,
     /// `converted`, `hit_chance`, `enemy_block`, `inevitable_penalty`,
@@ -411,7 +414,12 @@ struct FormulaStepJson {
     /// the starting damage per second for `skill_dot` and `hit_dps`, the hit the
     /// ailment starts from for `ailment_source`, the percentage of it dealt per
     /// second for `per_second`, the number of instances for `active_stacks`, the
-    /// chance in percent for `chance_to_apply`, the amount added otherwise).
+    /// chance in percent for `chance_to_apply`, the enemy's increase in
+    /// percentage points for `enemy_increase_added`, the value the step sets
+    /// for `never_crit` and `no_crit_bonus`, a hand's own value for
+    /// `main_hand`, the `off_hand_*` steps, `stronger_hand` and
+    /// `weaker_hand`, the percentage of instances from the stronger hand for
+    /// `stronger_share`, a multiplier for `reload`, the amount added otherwise).
     operand: f64,
     /// The running value after the step.
     result: f64,
