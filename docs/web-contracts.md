@@ -3,7 +3,6 @@
 Behavior contracts for the Web application's upgrade guidance (market, gems,
 passives), build workspace, weapon sets and skill selection. Read the relevant
 section before changing these areas; update it when the behavior changes.
-Moved verbatim from `CLAUDE.md`, which now keeps only repository-wide rules.
 
 ## Upgrade guidance
 
@@ -50,7 +49,7 @@ Moved verbatim from `CLAUDE.md`, which now keeps only repository-wide rules.
 
 - Config controls resolve the typed catalog defaults (`state_bool`, `state_number`, `placeholder_number`, 1-based list `index`) without materializing overrides. Fixed quest rewards default on and choice rewards default to None, matching PoB2; explicit imported false/zero values take priority. Imports show a dismissible inline configuration review note. Gem catalog `additional_skill_ids` is optional display metadata for secondary effects/stat sets, not extra gem-picker entries; shared skill naming uses the parent gem's locale at display boundaries.
 - Player `overridePowerCharges`, `overrideFrenzyCharges` and `overrideEnduranceCharges` feed the shared charge multiplier context as interpreted `*Charges` overrides when their use condition is enabled. Absent/zero count inputs default to maximum; disabled use retains the minimum. Explicit numeric counts floor at the minimum, retain fractions and are not upper-capped, matching the pinned PoB2 reference. Ordinary per-charge multiplier tags independently floor the consumed stack count. Raw imported Bool/Text types remain intact; numeric strings are not silently coerced into number inputs.
-- Current charge fields in native `ChargeState`, `CalcOutput` and display values are `f64`; maximum/minimum fields remain `u32`. The JSON stat contract remains numeric, without a schema/data/version bump. Charge queries locally project `mode_combat` into the override tag context and restore the original condition map; do not activate unrelated Combat-tagged effects globally. This is not exhaustive charge, minion or Config-catalog coverage.
+- Current charge fields in native `ChargeState`, `OutputTable` and display values are `f64`; maximum/minimum fields remain `u32`. The JSON stat contract remains numeric, without a schema/data/version bump. Charge queries locally project `mode_combat` into the override tag context and restore the original condition map; do not activate unrelated Combat-tagged effects globally. This is not exhaustive charge, minion or Config-catalog coverage.
 
 - WeGame and PoB XML decoding preserve the inactive weapon pair and exclusive passive nodes in `weapon_swap`. The web session swaps only the weapon pair and exclusive nodes; shared gear, passives and jewels remain common. Empty offhands stay empty. Skills can bind set 1/2 or follow the active set. Changing the main skill selects its binding before recalculation, comparison or market analysis.
 - `toRequest` sends one materialized weapon context. Groups exclusive to the other set are disabled with stable indices; `runSkillMetrics` evaluates each required set and includes shared groups once. Rows are independent evaluations, not an additive combat DPS total or an alternating-skill rotation. The low-level Rust calculation API still consumes an active equipment snapshot; `weapon_swap` is editable export metadata.

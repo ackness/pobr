@@ -2,8 +2,9 @@
 
 ## Sources
 
-The implementation follows the pinned PoB2 commit
-`ce566eac45ea8a86477f513c7ee65a1ebe60014e` for data version `4.5.5.2`:
+The implementation follows these files of the PoB2 commit pinned by the active
+data version (`overlay/mod_parser_rules.json::_meta.vendor_commit`); it was first
+written against `ce566eac45ea8a86477f513c7ee65a1ebe60014e`:
 
 - `src/Classes/TradeQueryGenerator.lua`: `InitMods`, `ProcessMod`,
   `canModSpawnForItemCategory`, and `GenerateModWeights`.
@@ -108,9 +109,10 @@ items still need whole-build replacement comparison.
 From the repository root, after exporting the same-version GGG tables:
 
 ```sh
-python3 pipeline/extract-trade-crafting.py pipeline/tables/English data/4.5.5.2/overlay/trade_crafting_sources.json
-luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src data/4.5.5.2/overlay/trade_catalog.json data/4.5.5.2/overlay/trade_crafting_sources.json
-luajit pipeline/extract-trade-map.lua vendor/PathOfBuilding-PoE2/src data/4.5.5.2/overlay/trade_stat_map.json
+overlay="data/$(cat data/CURRENT)/overlay"
+python3 pipeline/extract-trade-crafting.py pipeline/tables/English "$overlay/trade_crafting_sources.json"
+luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src "$overlay/trade_catalog.json" "$overlay/trade_crafting_sources.json"
+luajit pipeline/extract-trade-map.lua vendor/PathOfBuilding-PoE2/src "$overlay/trade_stat_map.json"
 python3 pipeline/test-trade-crafting.py
 luajit pipeline/test-trade-stats.lua
 luajit pipeline/test-trade-crafting-fallback.lua

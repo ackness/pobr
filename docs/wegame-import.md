@@ -38,8 +38,9 @@ PoBR session files, all-stage build files and workspace backups belong in
 
 Review the main skill, resistance penalty and combat configuration before
 comparing upgrades. The share does not contain PoB combat configuration.
-Only the first weapon set is used; inactive specialisations and weapon-swap
-equipment are reported. Shaman-only rune bonuses and equipment-socketed
+The second weapon pair and weapon-set-exclusive passives are kept and can be
+switched in the app. The share carries no skill-to-set bindings, so assign them
+on the Skills page. Shaman-only rune bonuses and equipment-socketed
 jewels require manual review. Chinese names absent from the dictionary are
 reported when gem resolution fails; unsupported modifier lines retain the
 existing calculation diagnostics. Imported data does not imply complete
@@ -48,7 +49,7 @@ support for every game mechanic.
 For a quiver upgrade, select the intended bow skill, add candidate quivers
 to the item library under the offhand (`weapon2`) slot, and run the item
 optimizer with DPS as its objective. Every candidate is equipped and fully
-recalculated. The trade page's weighted query is a preliminary search;
+recalculated. The Upgrades page's weighted query is a preliminary search;
 it does not fetch listings or prove a market-wide optimum within a budget.
 Main-hand and offhand library candidates remain separate, so importing a
 bow does not make it a candidate for the quiver slot.

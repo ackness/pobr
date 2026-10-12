@@ -7,8 +7,8 @@
 > `crates/pobr-data/src/catalog/parser_rules.rs` (the `ModParserRulesDoc` and
 > `SpecialModsDef` families). **That file is the authority.** If you change the
 > schema (add/rename a field, add a value-DSL operator, move a table), update
-> this doc in the same PR. Validate the active version from `data/CURRENT` and
-> the separately pinned parity version when changing shared rules.
+> this doc in the same PR. Validate the active version from `data/CURRENT` when
+> changing shared rules.
 
 ---
 
@@ -60,9 +60,10 @@ top of the machine-generated `.dat` import. The two files this guide is about:
 >    the entire entry; this is not a recursive merge.
 >
 > Practically: add your entry to `data/overlay-common/special_mods.json` unless
-> it is a correction that only applies to a single game version. `regen-all.sh`
-> no longer carries `special_mods.json` forward between versions — the common
-> layer replaces that manual step (see `docs/version-bump-architecture.md` P1-3).
+> it is a correction that only applies to a single game version. The common layer
+> is inherited by every version automatically (see
+> `docs/version-bump-architecture.md` P1-3); `regen-all.sh` only copies the previous
+> version's version-specific file forward, for review against the new vendor.
 >
 > The same version-independent common layer now also holds the other four
 > hand-curated overlay domains — `buff_definitions.json`, `high_precision_mods.json`,
@@ -93,7 +94,7 @@ they become a common contribution surface.
 
 > **⚠ Do not hand-edit this file for new modifiers.** It is regenerated from
 > vendor Lua by
-> `cargo run -p sync-pob-catalog -- extract-lua --what parser-rules --vendor-root vendor/PathOfBuilding-PoE2/src --out data/4.5.0.3.4/overlay/mod_parser_rules.json`
+> `cargo run -p sync-pob-catalog -- extract-lua --what parser-rules --vendor-root "$PWD/vendor/PathOfBuilding-PoE2/src" --out "data/$(cat data/CURRENT)/overlay/mod_parser_rules.json"`
 > (see its `_meta.regen_command`). A manual edit is **clobbered** on the next
 > regen. Extending the generic grammar means changing vendor Lua upstream or the
 > extractor — that's a maintainer task. This section is here so you can *read*
@@ -187,7 +188,7 @@ Field summary:
 | `handler_id` | one of `mods`/`handler_id` | Rust handler id for logic JSON can't express (§6) |
 | `handler_args` | with `handler_id` | captures passed through, `["$1","$2"]` |
 | `enums` | optional | `{"<capture#>": {"<word>": "<literal>"}}` closed word→name maps |
-| `vendor_pattern` | optional | original Lua pattern (for `sync-pob-catalog check --special-coverage`) |
+| `vendor_pattern` | optional | original Lua pattern; the vendor extractor uses it to skip lines a curated rule already covers |
 | `verified` | ✔ (`false` ok) | `true` only after an oracle diff confirmed the numbers |
 | `batch` | ✔ | curation batch tag (`S0`/`S1`/`S2`/…) |
 | `source_note` | optional | where it came from (unique name, `ModParser.lua:NNNN`, …) |
@@ -344,8 +345,8 @@ for overrides, but the value is now captured rather than fixed at 100. PoB2's
 the summed bonus reduction to 0..100 and feeds defensive output/EHP. The full
 Build regression in
 [`equipment_affix_effects.rs`](../crates/pobr-build/tests/skills/equipment_affix_effects.rs)
-checks absent/normal/magic/rare/unique chests, six roll values, both active and
-golden data, and item `SourceId`. The precompile check test links the parsed rule
+checks absent/normal/magic/rare/unique chests, six roll values on the active
+data, and item `SourceId`. The precompile check test links the parsed rule
 ID to its common-file hash; the WASM contract and browser roundtrip tests cover
 loading and equipment edits. Parser-oracle agreement and these formula assertions
 do not certify unrelated rules or replace a version-matched full Build oracle.

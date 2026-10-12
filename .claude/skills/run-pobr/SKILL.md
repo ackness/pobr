@@ -145,7 +145,7 @@ and [docs/version-bump-architecture.md](../../../docs/version-bump-architecture.
 
 ## Gotchas
 
-- **vendor commit is per-data-version.** Each `data/<version>/` pins its own PoB2 vendor commit in `overlay/mod_parser_rules.json::_meta.vendor_commit` (e.g. `4.5.4.3` → `29ab8262`, `4.5.0.3.4` → `2df5a74`). The driver reads the commit for `data/CURRENT` and clones that; pass `--version <ver>` to `version-bump-drill.sh` to drill a non-current version.
+- **vendor commit is per-data-version.** Each `data/<version>/` pins its own PoB2 vendor commit in `overlay/mod_parser_rules.json::_meta.vendor_commit` The driver reads the commit for `data/CURRENT` and clones that; pass `--version <ver>` to `version-bump-drill.sh` to drill a non-current version.
 - Use `smoke` for the green signal; `drill` is the niche version-bump-reproducibility check (older pinned versions fail its extract step per above).
 - **extract-lua needs an *absolute* `--vendor-root`.** A relative path + the tool's `cd vendor/src` doubles the `LUA_PATH` and the bundled `runtime/lua/xml.lua` isn't found (`no file '.../xml.lua'`).
 - **GGG patch CDN 404s for old pinned versions**, so the `.dat` download step isn't runnable; the in-tree data is authoritative.

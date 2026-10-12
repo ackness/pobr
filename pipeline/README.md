@@ -124,7 +124,7 @@ node pipeline/gen-zh-cn.mjs --dict /path/to/legacy/dictionary --translations-dir
 当前 PoE2 版本可向 GGG patch 协议服务器查询：
 
 ```bash
-# patch.pathofexile2.com:13060，握手 [0x01,0x07]，返回形如 https://patch-poe2.poecdn.com/4.5.0.3.4/
+# patch.pathofexile2.com:13060，握手 [0x01,0x07]，返回形如 https://patch-poe2.poecdn.com/0.5.5.4.2/
 node query-patch-version.mjs   # 见本目录
 ```
 
@@ -189,16 +189,16 @@ pipeline/diff-vendor-calcs.sh <old-sha> <new-sha> [--out <file>]
 
 - 新 PoE2 版本：**`bash pipeline/bump-version.sh` 一条命令**自动查询最新补丁，已是最新时直接退出；
   有更新则下载 → 树/vendor 对齐 → 品质兼容检查 → 候选目录内 regen-all、zh-CN / 完整词条审计 →
-  manifest 封装、多版本、gamedata 与固定 golden 验证 → 发布目录、推进 `data/CURRENT` → Web 同步。
+  manifest 封装、多版本、gamedata 与 parity 回归验证 → 发布目录、推进 `data/CURRENT` → Web 同步。
   活动版本在运行时读取 `data/CURRENT`，数据更新无需重编译基础 crate；可用 `POBR_DATA_ROOT` / `POBR_DATA_VERSION` 覆盖。
-  不自动修改 count pins 或数值 golden，失败时保留正式快照。
+  不自动修改 count pins 或 PoB2 对照值（升级后用 recapture 脚本重采），失败时保留正式快照。
   vendor 树路径由其 `GameVersions.lua` 选择，升级不再修改 `TreeData/0_5` 字面量。
   品质数值变化和表内索引变动自动继承已验证的稳定 ID / 作用域决定，生成新[来源收据](gem-quality/README.md#更新版本或原始表)。
   新效果、属性身份或作用域变化会输出诊断并中止，核对后用 `--patch <version> --skip-download` 重跑。
   数值 / 词条文本更新复用已实现机制；新的计算语义仍需实现。vendor pin 和数值 golden 保持显式选择，
   脚本不会把最新社区提交自动当作与游戏补丁匹配，也不在应用启动时联网改写数据。
 - 新数据域：在 `config.json` 的 `tables` 增表/列，并在 `pobr-data-adapter` 增对应适配器。
-- **CDN 只保留当前补丁**：GGG patch CDN 会下线旧版本（M1-W0 时 4.5.0.3.4 已 404）。`.cache/`
+- **CDN 只保留当前补丁**：GGG patch CDN 会下线旧版本，旧补丁请求返回 404。`.cache/`
   里已缓存的 bundle 可继续离线导出**既有表的全部列**（整张 `.datc64` 在同一 bundle 里）；
   但**新增整表**若其 bundle 未缓存则无法补下——这类表记录在 `config.json` 的
   `_tablesUnavailableForPinnedPatch`，数据改走 `sync-pob-catalog extract-lua` 兜底

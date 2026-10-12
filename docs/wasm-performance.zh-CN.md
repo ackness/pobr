@@ -206,6 +206,10 @@ Elemental Weakness 带 Spell 标签，因此直接返回，尚未进入附加技
 这是主技能选择／附加效果枚举错误，不是 Base64、zlib 或 XML 解析失败。
 本次仅记录原因，未修改计算逻辑。
 
+> 后续变化：已修复。schema 8 枚举辅助宝石授予的效果，以 `skillMetricsJson` 取代 `fullDpsJson`；
+> 该样例现在分别解析出效果 2（`ChaosFrogExplosionPlayer`）和效果 3（`DoomBlastPlayer`），
+> 见 `crates/pobr-build/tests/skills/skill_metrics.rs` 与 [Web 功能契约](web-contracts.md)。
+
 其他实际诊断包括 Bonded 效果、条件重复攻击、常驻药剂效果与额外投射物机制。
 历史 Pathfinder 样本明确报告 Fork 的
 `support_fork_forked_projectile_damage_+%_final`：

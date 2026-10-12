@@ -1,5 +1,9 @@
 # PoE2 0.5.5c data update
 
+> Later change: the separate golden data version was removed. Tests and PoB2
+> reference values now follow the active version, and only the active snapshot
+> plus the two most recent are kept (see the [maintainer guide](maintainer-guide.md)).
+
 On 2026-09-26, GGG's patch protocol returned `4.5.5.3`, replacing the
 previous active snapshot `4.5.5.2`. The latest
 [official patch notes are 0.5.5c](https://www.pathofexile.com/forum/view-thread/4006357)

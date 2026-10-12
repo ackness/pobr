@@ -13,7 +13,8 @@ PoB2 的完整计算分解（中间值 + 最终值）为 JSON。用于钉死 PoB
 `lua-utf8`（在 `vendor/PathOfBuilding-PoE2/runtime/lua/`），只是不在默认 `package.path` 上。
 PoB 自己的 `.busted` 配置就是靠 `lpath = "../runtime/lua/?.lua"` 解决的。
 
-**解法**：把 `runtime/lua/` 加进 `LUA_PATH` 即可，无需任何 shim、luarocks 或 stub。
+**解法**：把 `runtime/lua/` 加进 `LUA_PATH` 即可，无需 luarocks。`shim/` 只放一个纯 Lua 的
+`lua-utf8`，排在 vendor 运行时之前，替代本平台缺失的原生模块。
 `HeadlessWrapper.lua` 已经把 `lcurl.safe` stub 成 no-op，所以不需要 lcurl。
 
 需要：
@@ -49,7 +50,10 @@ tools/pob2-oracle/run.sh /tmp/x.xml /tmp/x_oracle.json
 - `intermediates` — main skill 的 `skillModList` 聚合查询：分类型 increased / more /
   conversion（`Convert_<From>To<To>`）/ gain-as-extra（`DamageGainAs_<To>` 等）/ 暴击。
 - `components` — `mainOutput[<Type>Min/Max/HitAverage]`（按技能部件可能为空，看 StoredCombinedAvg）。
-- `summedBase` / `damageTypeBreakdown` / `conversionTable` — 转换链中间值（部分仅 CALCS env 可见）。
+- `summedBase` / `conversionTable` / `damageAgg` — 转换链中间值（部分仅 CALCS env 可见）。
+- `mainHandOutput` / `offHandOutput` / `calcsMainHandOutput` / `calcsOffHandOutput` — 分手输出。
+- `damageModList` / `critModList` / `defenceModList` / `auraEffectList` / `enemyMitigation` /
+  `spiritReservations` / `spiritReservedBreakdown` — 逐来源的词条与预留明细，定位偏差用。
 - `skillInfo` — 主技能 active gem 名 / **有效等级** / quality / supports（核对 +N gem level）。
 
 ## 校验
@@ -58,8 +62,18 @@ tools/pob2-oracle/run.sh /tmp/x.xml /tmp/x_oracle.json
 `meta.json::player_stats` golden 完全一致（逐位）：
 
 ```
-AverageDamage  108426.0294   (golden 108426.02939805)
-TotalDPS        26672.80323  (golden  26672.803231921)
+AverageDamage  132887.2645
+TotalDPS        50630.04778
 ```
 
-证明 oracle 引导出的 PoB2 引擎与 PoB2 自己导出的权威值一致。
+（活动数据版本下的取值；数据或 vendor 升级后会随 `recapture_golden.py` 重采而变化。）
+
+## 词条解析对照
+
+`run-parsemod.sh` 把词条文本交给 vendor 的 `parseMod`，逐行输出 JSONL，用于核对
+PoBR 解析结果：
+
+```bash
+echo "20% increased Fire Damage" | tools/pob2-oracle/run-parsemod.sh
+tools/pob2-oracle/run-parsemod.sh --lines-file lines.txt > out.jsonl
+```

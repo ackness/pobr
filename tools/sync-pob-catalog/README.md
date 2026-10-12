@@ -1,6 +1,8 @@
 # sync-pob-catalog
 
-从 vendor PoB2（Lua）抽取数据并做 parity 检查的离线工具。两组子命令：
+从 vendor PoB2（Lua）抽取数据并做 parity 检查的离线工具。下面说明最常用的两组子命令；
+完整列表（`extract-bases`、`check-buff-refs`、`gen-mirage-configs`、`gen-trigger-configs`、
+`gen-stat-id-map`、`gen-skill-types`、`parser-rules-drift`）见不带参数运行时打印的用法。
 
 ## catalog 系（scan / check / diff / fixture-check）
 
@@ -23,12 +25,12 @@ cargo run -p sync-pob-catalog -- diff  --pob-root <PoB2路径> --catalog catalog
 
 ```bash
 # 默认抽取 act_dex/act_int/act_str 三个玩家技能文件，输出到 stdout
-cargo run -p sync-pob-catalog -- extract-lua --vendor-root vendor/PathOfBuilding-PoE2/src
+cargo run -p sync-pob-catalog -- extract-lua --vendor-root "$PWD/vendor/PathOfBuilding-PoE2/src"
 
 # 固化（再生成）入库 overlay 文件
 cargo run -p sync-pob-catalog -- extract-lua \
-    --vendor-root vendor/PathOfBuilding-PoE2/src \
-    --out data/4.5.0.3.4/overlay/skill_overrides.json
+    --vendor-root "$PWD/vendor/PathOfBuilding-PoE2/src" \
+    --out "data/$(cat data/CURRENT)/overlay/skill_overrides.json"
 ```
 
 参数：
@@ -36,6 +38,7 @@ cargo run -p sync-pob-catalog -- extract-lua \
 | 参数 | 说明 |
 |------|------|
 | `--vendor-root <path>` | vendor PoB2 的 `src/` 目录（只读输入，必填） |
+| `--what <kind>` | 抽取哪一类产物；缺省 `skill-overrides`。其余：`gem-quality`、`stat-map`、`stat-descriptions`、`gem-effects`、`stat-set-labels`、`config-options`、`curse-priority`、`minions`、`spectres`、`minion-list`、`mod-scalability`、`runes`、`uniques`、`catalysts`、`parser-rules`、`special-mods` |
 | `--out <path>` | 输出文件；缺省写 stdout |
 | `--files <a,b,c>` | 抽取的 `Data/Skills/<name>.lua` 列表；缺省 `act_dex,act_int,act_str` |
 | `--luajit <path>` | luajit 路径；缺省依次取 `POBR_LUAJIT` 环境变量、`/opt/homebrew/bin/luajit`、PATH |
@@ -59,5 +62,4 @@ vendor commit（读自 `.pob2-version.txt`）与 `regen_command`。
 数字格式与文档序列化统一在 Rust 侧完成——同输入重跑 **byte-stable**，产物禁手改、
 只许工具再生。
 
-注意：overlay 的 merge 消费侧（pobr-gamedata / adapter）由后续 wave 接入；
-本工具只负责抽取与固化。
+运行时由 `pobr-gamedata` 加载技能数据时合并这份 overlay；本工具只负责抽取与固化。

@@ -308,10 +308,10 @@ unsupported effect relative to the baseline are excluded with a visible count.
 
 ## Upstream references
 
-The inspected PoB2 checkout is pinned by
-[`vendor/.pob2-version.txt`](../../../vendor/.pob2-version.txt) to
-`ce566eac45ea8a86477f513c7ee65a1ebe60014e`. The vendored directory is ignored;
-the following links refer to the corresponding immutable upstream source:
+The PoB2 revision inspected for this document is
+`ce566eac45ea8a86477f513c7ee65a1ebe60014e`. The checkout's current pin is in
+`vendor/.pob2-version.txt` and moves with data updates; the vendored directory is
+ignored, so the following links refer to the inspected immutable upstream source:
 
 - [`src/Classes/TradeQueryGenerator.lua`](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/ce566eac45ea8a86477f513c7ee65a1ebe60014e/src/Classes/TradeQueryGenerator.lua): blank-item replacement probes, per-unit stat weights, query complexity, and the approximate historical minimum Sum.
 - [`src/Modules/CalcActiveSkill.lua`](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/blob/ce566eac45ea8a86477f513c7ee65a1ebe60014e/src/Modules/CalcActiveSkill.lua): support applicability and type additions while building active skills.
