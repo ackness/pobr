@@ -174,6 +174,17 @@ fn ingest_section(
     Ok(())
 }
 
+const LOCAL_ADDED_DAMAGE: [&str; 8] = [
+    "FireDamageMin",
+    "FireDamageMax",
+    "ColdDamageMin",
+    "ColdDamageMax",
+    "LightningDamageMin",
+    "LightningDamageMax",
+    "ChaosDamageMin",
+    "ChaosDamageMax",
+];
+
 /// The "convert to local" modifier on weapons: an unflagged
 /// `CriticalStrikeMultiplier` (vendor `CritMultiplier`) gets a
 /// `Condition:{Main,Off}HandAttack` tag so it only applies to the hand pass
@@ -194,6 +205,11 @@ fn ingest_section(
 /// including the current "Leeches ... Physical Damage" spelling without
 /// an explicit Attack flag. Equipment outside weapon slots stays global.
 /// Accuracy/ImpaleChance/OnHit conversion remains outside this function.
+///
+/// A bare "Adds N to M <elemental/chaos> Damage" on a weapon is that weapon's
+/// own damage (vendor `Item.lua:2516` folds every damage type's flagless BASE
+/// into `weaponData`), so it only reaches the hand attacking with it. Local
+/// physical adds never get here: they are folded into the weapon base.
 pub fn apply_weapon_hand_conditions(modifiers: &mut [Modifier], slot: EquipmentSlot) {
     let var = match slot {
         EquipmentSlot::Weapon1 => "MainHandAttack",
@@ -208,7 +224,13 @@ pub fn apply_weapon_hand_conditions(modifiers: &mut [Modifier], slot: EquipmentS
         let local_leech = (m.name == ModName::from("PhysicalDamageLifeLeech")
             || m.name == ModName::from("PhysicalDamageManaLeech"))
             && (m.flags == ModFlags::NONE || m.flags == ModFlags::ATTACK);
-        if (local_crit || local_leech) && keyword_ok && m.tags.is_empty() {
+        let local_adds = m.mod_type == ModType::Base
+            && m.flags == ModFlags::NONE
+            && m.keyword_flags == KeywordFlags::NONE
+            && LOCAL_ADDED_DAMAGE.iter().any(|name| m.name == ModName::from(*name))
+            // The parser marks an added damage line with its damage type.
+            && m.tags.iter().all(|tag| matches!(tag, ModTag::DamageType(_)));
+        if local_adds || ((local_crit || local_leech) && keyword_ok && m.tags.is_empty()) {
             if local_leech {
                 m.flags = ModFlags::ATTACK;
             }

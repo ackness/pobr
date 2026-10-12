@@ -688,9 +688,10 @@ pub(super) fn inject_items(
         // Wall / a spell / an unconsumed off-hand), these mods must not enter the
         // global additive bucket (titan Nebuloch's "Adds 30 to 52 Chaos damage" scaled
         // by added effectiveness → TotalDPS 1.05x otherwise). When this weapon **is**
-        // the damage source, current behavior is kept: bare elemental/chaos adds
-        // approximate through global injection (numerically equivalent to vendor's
-        // weaponData conversion, confirmed pinned at deadeye/twister 1.00x).
+        // the damage source, bare elemental/chaos adds stay modifiers and
+        // add_weapon_item scopes them to the hand attacking with this weapon
+        // (the same result as vendor's weaponData for that hand, confirmed pinned
+        // at deadeye/twister 1.00x).
         let weapon_source_inactive = (slot == EquipmentSlot::Weapon1 && !main_weapon_active)
             || (slot == EquipmentSlot::Weapon2 && !off_weapon_active);
         if weapon_source_inactive && data.weapon_base(&item.base.to_string()).is_some() {
