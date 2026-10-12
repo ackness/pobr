@@ -94,7 +94,7 @@ pub fn support_modifiers(
 }
 
 /// Maps the calculated host's complete compatible support payload and records
-/// confirmed skipped conditional numbers and resource losses in the existing unsupported-text shape.
+/// confirmed unmodeled effects in the existing unsupported-text shape.
 /// The no-limit entry point remains useful for partial/auxiliary consumers such as
 /// warcry spec assembly; those callers must not disclose whole-host coverage.
 pub fn support_modifiers_with_limits(
@@ -148,61 +148,29 @@ fn support_modifiers_observed(
             &sup.effect_id,
             set_key.as_deref(),
             |stat, outcome| {
-                let Some(limits) = limits.as_deref_mut() else {
-                    return;
-                };
-                // This on-use loss has no calculation consumer, including in the
-                // pinned PoB2 stat map. It is not an ordinary cost or regeneration.
-                // Other unknown stats may have manual consumers: do not flag them all.
-                let resource_loss = stat.stat == "lose_%_of_life_es_and_mana_when_skill_is_used"
-                    && stat.value.is_finite();
-                let condition_reason = catalog.and_then(|catalog| {
-                    crate::skill_env::stat_map::skipped_support_condition(
+                if let Some(limits) = limits.as_deref_mut()
+                    && let Some(catalog) = catalog
+                    && let Some(reason) = crate::skill_env::stat_map::support_stat_limit(
                         catalog,
                         &sup.effect_id,
                         set_key.as_deref(),
                         stat,
                         outcome,
                     )
-                });
-                if !resource_loss && condition_reason.is_none() {
-                    return;
-                }
-                use std::fmt::Write;
-
-                let host_set_key = host_set_key.get_or_insert_with(|| {
-                    data.selected_set_key(active_skill_id, host_stat_set_index)
-                });
-                let mut limit = format!(
-                    "Support:{}:set={}:stat={}:value={}:host={active_skill_id}:host_set={}: ",
-                    sup.effect_id,
-                    set_key.as_deref().unwrap_or("1"),
-                    stat.stat,
-                    stat.value,
-                    host_set_key.as_deref().unwrap_or("1"),
-                );
-                if resource_loss {
-                    write!(
-                        limit,
-                        "loss of {}% of maximum Life, Mana, and Energy Shield on skill use not modeled",
-                        stat.value
-                    )
-                    .expect("writing to a String cannot fail");
-                } else if let Some(condition_reason) = condition_reason
-                    && let stat_map_engine::MappedOutcome::Unsupported(reason) = outcome
                 {
-                    write!(
-                        limit,
-                        "conditional numerical effect not modeled ({condition_reason:?}"
-                    )
-                    .expect("writing to a String cannot fail");
-                    if condition_reason != *reason {
-                        write!(limit, "; primary mapping {reason:?}")
-                            .expect("writing to a String cannot fail");
-                    }
-                    limit.push(')');
+                    let host_set_key = host_set_key.get_or_insert_with(|| {
+                        data.selected_set_key(active_skill_id, host_stat_set_index)
+                    });
+                    let limit = format!(
+                        "Support:{}:set={}:stat={}:value={}:host={active_skill_id}:host_set={}: {reason}",
+                        sup.effect_id,
+                        set_key.as_deref().unwrap_or("1"),
+                        stat.stat,
+                        stat.value,
+                        host_set_key.as_deref().unwrap_or("1"),
+                    );
+                    limits.push(limit);
                 }
-                limits.push(limit);
             },
         ));
         // A compatible support's per-level cost multiplier → `SupportManaMultiplier`

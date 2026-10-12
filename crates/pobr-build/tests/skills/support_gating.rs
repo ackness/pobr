@@ -149,6 +149,42 @@ fn compatible_support_still_injects() {
     );
 }
 
+/// Pinned PoB2 Controlled Destruction supplies 25% more hit damage and
+/// global_cannot_crit. The downside belongs only to its supported group.
+#[test]
+fn controlled_destruction_disables_critical_hits_only_in_its_group() {
+    use pobr_build::{Build, CharacterIdentity, SocketGroup};
+    let data = load_build_data();
+    let plain = SocketGroup::new().with_gem_skill("FrostBombPlayer", 19);
+    let supported = plain
+        .clone()
+        .with_gem_skill("SupportControlledDestructionPlayer", 1);
+    let build = Build::new()
+        .with_character(CharacterIdentity {
+            level: 98,
+            class_name: "Monk".into(),
+            ascendancy_name: String::new(),
+        })
+        .add_socket_group(supported)
+        .add_socket_group(plain);
+    let bare = calculate_with_data(
+        &build.clone().with_main_socket_group(2),
+        &data,
+        &panel_opts(),
+    )
+    .unwrap();
+    let blocked =
+        calculate_with_data(&build.with_main_socket_group(1), &data, &panel_opts()).unwrap();
+    assert!(bare.crit_chance > 0.0);
+    assert_eq!(blocked.crit_chance, 0.0);
+    assert_eq!(blocked.crit_multiplier, 0.0);
+    let non_crit_hit: f64 = bare.damage_components.iter().map(|c| c.avg()).sum();
+    assert!(
+        (blocked.total_hit_avg - non_crit_hit * 1.25).abs() < 1e-8,
+        "retain the damage benefit without multiplying by critical damage"
+    );
+}
+
 /// Supported levels belong to a gem instance's group, not the first matching
 /// skill id in the build. This also applies to an explicitly selected disabled group.
 #[test]
@@ -209,6 +245,106 @@ fn supported_levels_stay_in_the_selected_group() {
     }
     let disabled = single(mastery.with_enabled(false));
     assert_eq!(disabled.dps, mastery_out.dps);
+}
+
+// Distinct canonical mechanics: maximum-pool loss versus Life sacrifice.
+const UNMODELED_RESOURCE_EFFECTS: [(&str, &str, f64, &str); 2] = [
+    (
+        "SupportAtzirisImpatiencePlayer",
+        "lose_%_of_life_es_and_mana_when_skill_is_used",
+        25.0,
+        "FireballPlayer",
+    ),
+    (
+        "SupportExtractionPlayer",
+        "sacrifice_%_life_on_skill_use",
+        10.0,
+        "ArmourBreakerPlayer",
+    ),
+];
+
+#[test]
+fn support_coverage_resource_effects_are_attributed_without_inventing_costs() {
+    for (support, stat, value, _) in UNMODELED_RESOURCE_EFFECTS {
+        let mut data = load_build_data();
+        let build = coverage_build("FrostBombPlayer", Some(support));
+        let supported = coverage_session(&build, &data);
+        let receipts: Vec<_> = supported
+            .unsupported_modifier_texts()
+            .iter()
+            .filter(|text| text.contains(stat))
+            .collect();
+        assert_eq!(receipts.len(), 1, "{support}");
+        for token in [
+            format!("Support:{support}:"),
+            format!("stat={stat}:"),
+            "set=1:".into(),
+            format!("value={value}:"),
+            "host=FrostBombPlayer:".into(),
+        ] {
+            assert!(receipts[0].contains(&token));
+        }
+        let bare = coverage_session(&coverage_build("FrostBombPlayer", None), &data);
+        assert!(bare.unsupported_modifier_texts().is_empty());
+        assert!(supported.output().dps > bare.output().dps);
+        assert_eq!(supported.output().mana_cost, bare.output().mana_cost);
+        assert_eq!(supported.output().life_cost, bare.output().life_cost);
+
+        // Zero downside retains the benefit but no longer needs a receipt.
+        data.skill_stat_sets.get_mut(support).unwrap().sets[0]
+            .constant_stats
+            .iter_mut()
+            .find(|entry| entry.stat == stat)
+            .unwrap()
+            .value = 0.0;
+        let zero = coverage_session(&build, &data);
+        assert!(zero.unsupported_modifier_texts().is_empty());
+        assert_eq!(zero.output(), supported.output());
+    }
+}
+
+#[test]
+fn support_coverage_resource_effects_do_not_leak_from_other_or_incompatible_groups() {
+    for (support, _, _, incompatible_host) in UNMODELED_RESOURCE_EFFECTS {
+        let data = load_build_data();
+        let build = coverage_build("FrostBombPlayer", Some(support))
+            .add_socket_group(pobr_build::SocketGroup::new().with_gem_skill("FireballPlayer", 20))
+            .with_main_socket_group(2);
+        let other = coverage_session(&build, &data);
+        let mut without_other_support = build.clone();
+        without_other_support.socket_groups[0].gem_skills.remove(1);
+        let other_bare = coverage_session(&without_other_support, &data);
+        let incompatible =
+            coverage_session(&coverage_build(incompatible_host, Some(support)), &data);
+        let bare = coverage_session(&coverage_build(incompatible_host, None), &data);
+        assert!(other.unsupported_modifier_texts().is_empty());
+        assert!(incompatible.unsupported_modifier_texts().is_empty());
+        assert_eq!(other.output(), other_bare.output());
+        assert_eq!(incompatible.output(), bare.output());
+    }
+}
+
+#[test]
+fn support_coverage_resource_effects_follow_the_stat_not_the_gem_name() {
+    for (source, stat, _, _) in UNMODELED_RESOURCE_EFFECTS {
+        let mut data = load_build_data();
+        let effect = data.skill_stat_sets[source].sets[0]
+            .constant_stats
+            .iter()
+            .find(|entry| entry.stat == stat)
+            .unwrap()
+            .clone();
+        let support = "SupportEfficiencyPlayerTwo";
+        data.skill_stat_sets.get_mut(support).unwrap().sets[0]
+            .constant_stats
+            .push(effect);
+        let session = coverage_session(&coverage_build("FrostBombPlayer", Some(support)), &data);
+        assert!(
+            session.unsupported_modifier_texts().iter().any(|text| {
+                text.contains(stat) && text.contains(&format!("Support:{support}:"))
+            })
+        );
+    }
 }
 
 const FORK: &str = "SupportForkPlayer";

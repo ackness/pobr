@@ -1,54 +1,104 @@
 # Iteration log
 
-## Iteration 1 — import library deduplication
+## Iteration 1 — 2026-10-11
+- Focus question received no selection; recorded auto. Surveyed README, workspace contracts, workspace implementation, lifecycle E2E scenarios, recent history and open issues (none returned).
+- Set long-term direction to trustworthy upgrade comparisons and first milestone to build-workspace lifecycle reliability. Exit criteria and next actions are in MEMO.md.
+- Corrected English and Chinese README onboarding: code imports add builds by default; replacement targets the explicitly selected stage; sharing one build differs from restoring the entire workspace, including drafts.
+- Verification: reviewed changed prose against docs/web-contracts.md workspace and import contracts, buildWorkspace.ts atomic envelope/stage representation, and build-workspace.spec.ts additive-import, explicit-stage, sharing and restoration scenarios. No links changed. Documentation-only change; no runtime behavior changed, no build or test execution claimed.
+- Commit: this entry is included in the iteration's `docs: clarify build imports and workspace backups` commit.
+- Next: establish real-WASM browser execution and exercise lifecycle scenarios, then prioritize observed defects rather than speculative changes. Milestone remains open.
 
-- Baseline: `e791cb1` on `autoloop`; initially clean.
-- Plan: inspect recent import/workspace behavior and make one evidenced, bounded improvement.
-- Reproduction: importing two identical rings produced two library candidates even though automatic collection intends text deduplication.
-- Change: add each accepted text to the existing `seen` set during batch filtering; preserve both equipped slots and distinct rolls. Update the workspace contract.
-- Regression: `automatic import collection deduplicates raw text without losing equipped copies or distinct rolls` failed before the fix at its exact-text library assertion, then passed. Also checks reimport identity, per-slot candidate usability and reload persistence.
-- Verification: 88 focused Vitest tests; production Web build including TypeScript; 10/10 workspace Playwright tests with real WASM. Browser smoke confirmed two equipped copies and one new library entry. Screenshot API and direct CDP capture timed out; DOM/state evidence only.
-- Limits: old/manual duplicates intentionally retained; calculation logic unchanged; existing bundle-size warning not addressed. No controller tool exposed, so no automatic scheduling or checkpoint API call is claimed.
-- Checkpoint: this log and the implementation are committed together as `fix: deduplicate items within build imports`; no push.
-- Next: inspect legacy missing-slot backfill and alternate-weapon candidate collection, requiring reproduction before another fix.
+## Iteration 2 — 2026-10-11
+- Prepared this fresh worktree with frozen pnpm dependencies, a release WASM build and synced data; used the actual Vite application in ego-browser.
+- Exercised stage copy, distinct level/notes, reload, stage switching, additive PoB-code import, workspace backup download and confirmed restore. Rejected arbitrary JSON left the valid build intact.
+- Verified an unapplied ring draft survived reload, remained absent from equipped items, appeared in the downloaded full backup and stayed excluded from the shared-build file.
+- Found and fixed misleading draft persistence copy in English, Simplified Chinese and Traditional Chinese. The prior notice said session-only and incorrectly excluded unapplied drafts from backups. Updated the web guide.
+- Verification: actual before/after editor screenshots inspected; revised English notice visible. `pnpm --dir web test src/lib/buildWorkspace.test.ts` passed 5 tests; `pnpm --dir web typecheck` passed. No permanent wording test added.
+- A cross-round ego-browser confirmation failed to continue restoration; upload and confirmation in one invocation succeeded. Reported the tool discrepancy. No application restore failure established.
+- Driver reports a PR base-ref failure for `autoloop-base`; did not push or change publication configuration.
+- Commit: this entry accompanies `fix: explain persisted editor drafts accurately`.
+- Next: explicit replacement/cancellation, shared-build reimport and non-empty planner continuity; investigate actionable import-error guidance. Lifecycle milestone stays open.
 
-## Iteration 2 — legacy library recovery coverage
+## Iteration 3 — 2026-10-11
+- Used the existing real-WASM Vite server and the committed monk-invoker-frost-bomb example (level 98, 13 groups, 10 items, 131 passives).
+- Copied a stage, cancelled replacement and asserted exact workspace-byte preservation. Confirmed replacement then changed only the copied stage to a synthetic level-45 character.
+- Downloaded and reimported the two-stage shared file. Verified new build/stage identities and deep equality of both saved snapshots. An overly strict initial JSON-string check detected property ordering, not a semantic difference; corrected the throwaway assertion.
+- Ran a one-point passive search. After a rejected arbitrary-JSON import, exact workspace bytes, displayed stats and completed result text remained unchanged. Applied the retained first recommendation: allocation grew 131 → 132 and displayed hit DPS became 6488, matching the preview's 6488.01 rounded display.
+- No application lifecycle defect surfaced in these scenarios. The raw `invalid .build json: missing field passives` error still offers no recovery action. Next iteration should improve localized import guidance without suppressing the diagnostic or changing accepted formats.
+- Tool limits: ego-browser auto-scroll failed on the below-fold planner button; explicit scrollIntoView followed by a real click worked. Reported the discrepancy. A canvas wait was an incorrect smoke selector for the SVG tree, not an app failure.
+- Investigation only: no product code, permanent tests or runtime dependencies changed. Reused iteration-2 WASM; no duplicate build/test run. Removed temporary shared file and screenshot; closed browser space.
+- Commit: this entry accompanies `chore: record populated workspace lifecycle verification`.
 
-- Confirmed iteration 1 is committed as `c9340ed`; worktree started clean.
-- Exercised the next legacy-slot boundary with real WASM: an entry without a slot is initially excluded from slot-filtered candidates; importing matching equipment restores eligibility while preserving its ID and custom name.
-- Added a regression covering recovery, preservation of an existing manual duplicate and its slot, actual Equip into the other ring position, and reload persistence.
-- Result: existing production behavior is correct for this scenario. No runtime change or new bug fix claimed; value is permanent coverage of the player-data preservation boundary.
-- Verification: Web typecheck and the new targeted Playwright scenario passed (1/1). Reused unchanged production dist/WASM from iteration 1.
-- Commit: `test: cover legacy library recovery on import`; no push.
-- Next: alternate-weapon candidate collection remains unexamined. Milestone stays open.
+## Iteration 4 — 2026-10-11
+- Added small panel-local recovery advice after rejected pasted imports. Reused buildFileKind for PoBR-envelope ownership; accepted formats, confirmation paths, original diagnostics and calculation state are unchanged.
+- All three locales now direct recognizable saves/backups to file import with a whole-workspace warning; other failed inputs direct players to complete supported sources. Advice clears on input edits and new import attempts and is connected to the textarea with aria-describedby.
+- Verification: existing import boundary tests passed (17); TypeScript check passed. Real-WASM browser verified both advice branches, original error retention, exact workspace-byte preservation for a rejected backup paste, edit clearing, translated advice and successful populated PoB-code retry with no stale error/advice. English screenshot inspected.
+- Updated the Web guide. No wording-only permanent test added; removed temporary screenshot and closed the browser.
+- Lifecycle milestone exit criteria now have runtime evidence across iterations 2–4. Closed that milestone without a tag under the explicit commit-only scope.
+- Next milestone: trustworthy whole-item comparison decisions. Start with a populated build and both ring slots, inspect unsupported effects and augment assumptions, then verify explicit apply agrees with preview.
+- Commit: this entry accompanies `fix: guide players after rejected build imports`.
 
-## Iteration 3 — alternate weapon candidates
+## Iteration 5 — 2026-10-11
+- Exercised complete-item comparisons on the populated Frost Bomb build. Both rings compared without saved-state mutation; Ring 2 applied exact candidate text and preserved unrelated equipment. Predicted 6654.85 DPS became displayed 6655.
+- An unmodeled candidate line remained visible and prevented a recommendation badge. Baseline partial-calculation limits remained visible; no new scoring or exclusion policy introduced.
+- Helmet comparison inherited Perfect Iron Rune and disclosed an added socket/cost assumptions. As-listed EHP 24099.31 differed from inherited EHP 24699.76; inherited apply stored the evaluated rune/socket text and displayed 24700.
+- Fixed the observed lack of post-apply feedback with a three-language item/destination confirmation. It appears only after pending work settles and the evaluated text is present in the active weapon context, including asynchronous jewel application; edits, new comparisons and navigation clear it.
+- Verification: comparison/augment tests passed (39) and typecheck passed. Actual browser verified equipment, jewel and flask messages, all three locales, no message before application, and removal on edit/navigation. Before/after screenshots inspected.
+- Updated the Web guide, removed temporary screenshots and closed the browser. No permanent wording-only test added.
+- Whole-item milestone complete; next is support recommendation trust, exclusions and apply continuity. Commit-only scope means no milestone tag.
+- Commit: this entry accompanies `feat: confirm applied item comparisons`.
 
-- Started clean at `6bf0d08`. Exercised real PoB XML import containing distinct primary/alternate bows, a primary quiver and an empty alternate offhand.
-- Added behavioral coverage proving both bows are available as main-hand candidates, the quiver is excluded there, and equipping the alternate bow only changes the active pair.
-- Switching to set 2 preserves the empty offhand rather than inheriting set 1's quiver; active set and equipment survive reload.
-- Existing runtime behavior passes this scenario; no production defect or runtime fix claimed.
-- Verification: Web typecheck and targeted real-WASM Playwright scenario passed (1/1), using unchanged production dist.
-- Commit: `test: cover alternate weapon library candidates`; no push.
-- Next: stop adding adjacent coverage without a demonstrated gap. Re-evaluate product priorities through a fresh player workflow; identical dual-wield texts across different hand roles remain outside this scenario's evidence.
+## Iteration 6 — 2026-10-11
+- Ran real-WASM support search on the populated Frost Bomb group, four support slots. Initial search displayed 824 complete recalculations with 8 current-build limits and 8 excluded complete edits.
+- Excluded Atziri's Impatience from a recommendation and equipped Efficiency II from the pool. Both disappeared from subsequent recommendations; equipped groups remained unchanged and baseline DPS stayed 7347.1. Reload retained both exclusions and the unchecked Efficiency II control.
+- Applied the top remaining four-support set. Other 12 groups were deep-equal, main group stayed index 4, and Frost Bomb stayed level 19/quality 20. Preview DPS 19799.8 became displayed hit DPS 19800. Screenshot inspected.
+- Corrected two throwaway automation assumptions: ego-browser requires terminal nth selectors, and saved GemInput has no is_support flag. Neither was an application defect.
+- Investigation only; no runtime code, permanent tests or dependencies changed. Existing WASM reused; no duplicate build/test run.
+- Next: investigate authoritative support-effect text for recommendation details. Current chips expose names/levels and gains but do not explain effects or downsides. Do not infer descriptions or coverage from names.
+- Removed temporary screenshot and closed the browser. This evidence checkpoint advances the support milestone without claiming the explanatory gap is fixed.
+- Commit: this entry accompanies `chore: verify support exclusion and application continuity`.
 
-## Iteration 4 — preserve observed weapon-hand roles
+## Iteration 7 — 2026-10-11
+- Two read-only investigations established that existing snapshots do not carry a complete level-specific support description renderer. The existing trade catalog extractor already joins the canonical skill definitions, making qualitative source prose the smaller authoritative seam.
+- Cloned pinned PoB2 ce566eac45ea8a86477f513c7ee65a1ebe60014e in this worktree. Added optional support-only `description` metadata and regenerated the catalog: 538/567 supports have source prose. Twenty-eight lack known compatibility; Feeding Frenzy II genuinely lacks a description.
+- Semantic comparison after removing new fields exactly matched the original catalog. Regenerated the companion trade map byte-identically, repacked the manifest and synced 67 runtime files.
+- Added per-plan native effect disclosures with localized names/labels, explicit English-source/qualitative/coverage limits, and visible unavailable fallback. No changes to scoring, compatibility, calculation or application behavior. Updated the existing Web contract.
+- Real-WASM Frost Bomb search completed 931 recalculations. Verified source text for Considered Casting, Concentrated Area, Controlled Destruction and Atziri's Impatience; Enter toggling; 390px screenshot and no disclosure overflow; English/Traditional/Simplified labels.
+- A temporary backend metadata fixture removed every description while retaining real WASM calculations; all recommendation entries showed the unavailable fallback and search still completed. Restored the backend and reloaded afterward.
+- Eighteen support optimizer tests passed; the optional support benchmark was skipped. TypeScript checking passed. Independent review approved with a nonblocking language-annotation finding; fixed it and verified source paragraphs retain lang=en under Simplified Chinese UI.
+- Closed the browser and removed the screenshot. No temporary hooks or scripts remain. The browser fixture's exclusions were restored to all candidates during this iteration; equipped supports were not changed.
+- Support decision-path milestone complete. Next: investigate the observed Controlled Destruction/100%-Crit-Chance discrepancy using effective outputs and pinned mechanics before asserting or fixing a calculation bug.
+- Commit: this entry accompanies `feat: expose sourced support effect descriptions`.
 
-- Baseline `a1e4f84`, clean. Reproduced identical text imported first as a main hand and later as an alternate offhand: the offhand library showed only one of two expected candidates.
-- Root cause: raw-text-only identity loses the second role because each library entry stores a single slot.
-- Fix: include main/offhand role in the import identity. Preserve same-hand cross-set deduplication and existing ring behavior; no saved-schema or calculation changes.
-- Regression exercises main-only exclusion, later offhand recovery, actual Equip, unchanged alternate pair, repeat-import identity and reload. Failed before the fix at the missing offhand candidate assertion.
-- Verification: 88 focused Vitest tests, Web build/typecheck, all 13 real-WASM workspace E2E tests passed. Independent Ego browser import and Equip confirmed the visible offhand changed and both weapon pairs retained exact text. Screenshot capture timed out; DOM/state evidence only.
-- Updated contract explicitly distinguishes raw text and observed hand role; previously missing candidates recover on reimport.
-- Commit: `fix: preserve imported weapon hand candidates`; no push.
-- Next: re-evaluate a different player workflow. No broader dual-wield calculation claim or milestone-completion tag.
+## Iteration 8 — 2026-10-11
+- Reproduced Controlled Destruction's missing downside in real WASM. Minimal Frost Bomb retained 13% crit and gained 25% DPS with no unsupported diagnostic; the populated fixture retained 100% crit. Captured a failing browser assertion and failing permanent core/build regressions.
+- Pinned PoB2 oracle ce566eac45ea8a86477f513c7ee65a1ebe60014e confirmed zero crit chance and multiplier. Two read-only traces found three gaps: missing implicit-stat export, rejected NeverCrit flag mapping, and no shared crit consumer.
+- Fixed the existing extraction/mapping/resolver chain. NeverCrit precedes crit bonuses, returns chance/pre-effective chance/multiplier zero and average factor one, and preserves the disabling source in traced attribution. No schema or public API change.
+- Regenerated overrides and manifest. Exactly five canonical implicit entries were added: Controlled Destruction plus four Elemental Storm stat sets; all earlier override content and provenance were unchanged.
+- Verification: 21 critical-pipeline tests, 16 support-gating tests, two no-regression parity tests, and scoped fmt/Clippy passed. Rebuilt release WASM and synced 67 runtime files. Independent review approved with no findings.
+- Browser: minimal fixture now has zero crit/multiplier and DPS32.529970128. Populated baseline changed from inflated19799.75 to4419.6; top eight recommendations omit Controlled Destruction. Applied the top plan: preview28546.6 displayed28547, crit returned to100%, other twelve groups stayed identical, and reload retained it.
+- A throwaway Elemental Storm probe incorrectly required positive DPS in a direct fixture without trigger throughput. Raw inspection showed preserved Fire/Lightning/Cold hits for sets2–4 and zero crit across all four; no claim of full trigger or full-DPS oracle parity. No production workaround was added.
+- Closed the browser and removed temporary XML/oracle/screenshot artifacts. Settled both prior-iteration research agents and this iteration's completed agents.
+- Milestone complete for this mechanic. Next: trace source-described resource costs of Atziri's Impatience into actual consumers/diagnostics; its presence in all top plans is not proof those costs are modeled.
+- Commit: this entry accompanies `fix: enforce canonical never-crit effects`.
 
-## Iteration 5 — attribution source identity
+## Iteration 9 — 2026-10-12
+- Reproduced Atziri's Impatience doubling minimal Frost Bomb DPS29.40709→58.81418 while ManaCost89/LifeCost0 remained unchanged and no resource-loss output or diagnostic appeared. Captured a failing real-WASM assertion and failing permanent diagnostic regressions.
+- Canonical data retains loss25; pinned stat-description entry618 specifies maximum Life/Mana/Energy Shield. Neither upstream stat mapping nor native costs/recovery implements this on-use loss. Ordinary costs and negative regeneration are not valid substitutes. The numeric oracle fixture omitted the lineage support, so its result was not used as parity evidence.
+- Added a narrow raw-stat modeling-limit classification at the existing compatible-host support observer. It applies to finite nonzero Unknown loss payloads, preserves source/set/stat/value/host identity, and leaves generic Unknown semantics, numerical outputs and planner filtering unchanged. No support-name ban, schema change, data regeneration or invented sustain calculation.
+- Regressions cover real receipt attribution, unchanged ordinary costs, zero payload, unrelated/incompatible groups and the same mechanic transplanted onto another support. Corrected an initial whole-output control fixture to retain the unrelated Frost Bomb group: removing the entire group legitimately changed curse-limit metadata and did not isolate the tested support.
+- Verification:19 support-gating tests,5 WASM support-contract tests,18 frontend planner tests, and scoped fmt/Clippy passed. Rebuilt release WASM. Independent review approved with no findings.
+- Real browser: equipped baseline shows9limits including the resource-loss receipt. Removed Atziri and searched four slots: top8plans exclude it; two excluded complete sets show the loss reason and have no Apply controls. Applied Cooldown RecoveryII: preview19670.8 displayed19671, other12groups stayed identical, reload retained it.
+- Closed the browser and removed temporary XML/oracle/screenshot artifacts. Source disclosure is complete for this proven maximum-resource-loss mechanic, not for all support economics.
+- Next: investigate Extraction's distinct Life-sacrifice payload and diagnostic coverage without assuming maximum/current-resource semantics.
+- Commit: this entry accompanies `fix: disclose unmodeled support resource loss`.
 
-- Baseline `281c082`, clean. Moved to the Calcs player workflow. Existing selected-skill stale-result regression already covers invalidation; no stale-result bug claimed.
-- Reproduced a source-label defect with a group containing Spark then selected Fireball: sidebar identified Fireball, while attribution identified only Spark.
-- Fix: list the group's saved gems in source order, including unresolved source-name fallback. Attribution removes a whole group; naming only its first gem misrepresents that scope. No numerical or state changes.
-- New real-WASM regression failed before the fix on missing Fireball, then passed. Existing selected-skill attribution invalidation also passed (2/2 targeted E2E).
-- Web build including typecheck passed. Independent Ego browser smoke showed selected Fireball and attribution source `Group 1 · Spark + Fireball`. DOM evidence; no screenshot captured.
-- Updated calculation display contract. Commit: `fix: identify complete attribution skill groups`; no push.
-- Next: inspect another substantive Calcs interpretation boundary before adding coverage; do not infer numeric correctness from source labels.
+## Iteration 10 — 2026-10-12
+- Reproduced Extraction's silent Life sacrifice in real WASM: DPS29.40709→46.561230576 with ManaCost89/LifeCost0 and no diagnostic. Canonical raw payload retains sacrifice10 plus35gain-as-chaos; pinned stat-description entry764 says Life sacrifice without maximum/current qualification. No exact stat mapper/consumer exists.
+- Added the distinct sacrifice key to the existing finite/nonzero Unknown-mechanic classifier. The warning names on-use Life sacrifice, not maximum-resource loss or ordinary cost. No numerical, data, schema or support-name filtering changes.
+- Extended the existing three resource-effect regression tests to preserve all Atziri cases and cover Extraction's source identity, zero payload, unchanged whole output, sibling/incompatible-group boundaries and stat transplantation. Two assertions failed before the production change.
+- Verification:19support-gating tests,5WASM support contracts,18planner tests and scoped fmt/Clippy passed. Rebuilt release WASM. Independent review approved with no findings.
+- Browser: the exact value10 sacrifice receipt now appears while DPS/costs remain unchanged. The populated search displays two excluded Extraction complete sets with no Apply controls and no better modeled recommendation. Expanded the actual exclusion reason and inspected its screenshot. No build edits were applied.
+- Closed the browser and removed the screenshot. This completes the bounded two-mechanic disclosure milestone, not exhaustive support economics or the long-term product goal.
+- Next handoff: exercise realistic multi-point passive routes/refunds, preview agreement and unrelated-state preservation; earlier loop evidence covered only a one-point passive application.
+- Commit: this entry accompanies `fix: disclose unmodeled support life sacrifice`.

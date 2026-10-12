@@ -189,20 +189,73 @@ pub(super) fn mapped_stat_modifiers_observed(
     mods
 }
 
-/// Confirms a skipped primary conditional number, not an unknown/control stat.
-/// GlobalEffect mods belong to curse/debuff/player-buff consumers; LIST payloads
-/// include supported gem levels and minion Life, and skill_data/flags have their
-/// own consumers. None of those shapes establish a primary numerical limit.
-pub(super) fn skipped_support_condition(
+pub(super) enum SupportStatLimit<'a> {
+    Unmodeled(&'static str),
+    Conditional {
+        skipped: stat_map_engine::UnsupportedReason,
+        primary: &'a stat_map_engine::UnsupportedReason,
+    },
+}
+
+impl std::fmt::Display for SupportStatLimit<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unmodeled(reason) => f.write_str(reason),
+            Self::Conditional { skipped, primary } => {
+                write!(f, "conditional numerical effect not modeled ({skipped:?}")?;
+                if skipped != *primary {
+                    write!(f, "; primary mapping {primary:?}")?;
+                }
+                f.write_str(")")
+            }
+        }
+    }
+}
+
+/// Only established missing mechanics qualify; Unknown also contains controls
+/// and stats consumed outside the primary modifier mapping.
+pub(super) fn support_stat_limit<'a>(
     catalog: &StatMapCatalog,
     effect_id: &str,
     set_key: Option<&str>,
     stat: &pobr_data::catalog::SkillDamageStat,
-    outcome: &MappedOutcome,
-) -> Option<stat_map_engine::UnsupportedReason> {
-    if !matches!(outcome, MappedOutcome::Unsupported(_)) {
-        return None;
+    outcome: &'a MappedOutcome,
+) -> Option<SupportStatLimit<'a>> {
+    match outcome {
+        MappedOutcome::Unknown if stat.value.is_finite() && stat.value != 0.0 => {
+            match stat.stat.as_str() {
+                // Pinned gem_stat_descriptions.lua entry 618 specifies maximum
+                // pools. No on-use loss consumer exists; this is not a skill cost.
+                "lose_%_of_life_es_and_mana_when_skill_is_used" => {
+                    Some(SupportStatLimit::Unmodeled(
+                        "on-use loss of maximum Life, Mana and Energy Shield not modeled",
+                    ))
+                }
+                // Entry 764 calls this Life sacrifice, not maximum-pool loss.
+                "sacrifice_%_life_on_skill_use" => Some(SupportStatLimit::Unmodeled(
+                    "on-use Life sacrifice not modeled",
+                )),
+                _ => None,
+            }
+        }
+        MappedOutcome::Unsupported(primary) => {
+            skipped_support_condition(catalog, effect_id, set_key, stat)
+                .map(|skipped| SupportStatLimit::Conditional { skipped, primary })
+        }
+        _ => None,
     }
+}
+
+/// Confirms a skipped primary conditional number, not an unknown/control stat.
+/// GlobalEffect mods belong to curse/debuff/player-buff consumers; LIST payloads
+/// include supported gem levels and minion Life, and skill_data/flags have their
+/// own consumers. None of those shapes establish a primary numerical limit.
+fn skipped_support_condition(
+    catalog: &StatMapCatalog,
+    effect_id: &str,
+    set_key: Option<&str>,
+    stat: &pobr_data::catalog::SkillDamageStat,
+) -> Option<stat_map_engine::UnsupportedReason> {
     let entry = catalog.lookup(effect_id, set_key, &stat.stat)?;
     if entry.unextractable || entry.skill_flag.is_some() || !stat.value.is_finite() {
         return None;

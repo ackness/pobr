@@ -31,11 +31,18 @@ and joint-jewel planning; compatible completed plans and their settings remain
 usable. Import feedback does not clear a genuine calculation failure: failed or
 pending calculations still block fresh passive planning, even when older stats
 remain visible. Use **Import from file…** for PoBR build files and backups.
+After a rejected paste, localized recovery advice appears beside the input while
+the original error remains available. Recognized PoBR save/backup envelopes point
+to file import and warn about full-workspace replacement; other inputs point back
+to the complete supported source. Editing the input or starting another import
+clears the advice. This guidance does not broaden accepted formats.
 
 **Share this build · all stages** downloads a PoBR JSON file with every stage and
 its notes. Importing it adds an independent build without replacing existing ones.
-Unapplied drafts stay private to local storage and full backups. PoB share codes
-continue to export the current stage and its imported PoB loadouts.
+Unapplied drafts stay private to local storage and full backups. The editor's
+draft notice distinguishes this persistence from applying changes to calculations
+and shared builds. Cancel discards the draft.
+PoB share codes continue to export the current stage and its imported PoB loadouts.
 **Download backup** under **Back up all builds** includes the entire local build library;
 restoring a full backup replaces it after confirmation. Saves are local to this
 browser; use files to share or move devices. Storage failures appear beside the
@@ -84,6 +91,11 @@ Complete-item text, selected position, augment choices, completed comparisons an
 equipment candidates also survive same-stage navigation. Leaving cancels their
 work and paste debounce; returning does not restart scoring. Changed calculation
 inputs invalidate evaluated results; switching stages resets the workspace.
+Applying a complete-item comparison shows a localized confirmation naming the
+item and destination after that evaluated text is present in the active weapon
+set and pending work has settled. This confirms the equipment edit, not complete
+mechanic coverage. Editing or repasting the candidate, starting a new comparison
+or leaving the panel clears the confirmation.
 
 On Config, **Quick access** explains optional shock state/magnitude assumptions and
 links to enemy mitigation settings matching the inspected skill's non-zero
