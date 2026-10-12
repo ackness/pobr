@@ -64,8 +64,8 @@ saved text because the original grouping cannot be inferred reliably.
 
 **Calcs → Skill metrics** (also linked from the sidebar) lists every enabled active
 effect independently, including support-granted effects and zero-damage utility.
-It works without a selected skill: imports with no selection stay unselected,
-and no highest-DPS choice is invented. Rows show combined DPS, average hit, action
+A build without a selected skill defaults, once, to the effect with the highest
+combined DPS; that row is marked, and a selection carried by an import is kept. Rows show combined DPS, average hit, action
 rate, mana/life costs and cooldown; unavailable rows show errors instead of zero,
 and unsupported modifiers and item issues remain visible. Values are not summed.
 Selecting a row atomically selects its original group and exact 1-based active

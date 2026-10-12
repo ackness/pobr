@@ -28,7 +28,7 @@ cargo run -p sync-pob-catalog -- extract-lua --vendor-root vendor/PathOfBuilding
 # 固化（再生成）入库 overlay 文件
 cargo run -p sync-pob-catalog -- extract-lua \
     --vendor-root vendor/PathOfBuilding-PoE2/src \
-    --out data/4.5.0.3.4/overlay/skill_overrides.json
+    --out "data/$(cat data/CURRENT)/overlay/skill_overrides.json"
 ```
 
 参数：

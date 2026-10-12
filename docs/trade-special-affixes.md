@@ -108,9 +108,10 @@ items still need whole-build replacement comparison.
 From the repository root, after exporting the same-version GGG tables:
 
 ```sh
-python3 pipeline/extract-trade-crafting.py pipeline/tables/English data/4.5.5.2/overlay/trade_crafting_sources.json
-luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src data/4.5.5.2/overlay/trade_catalog.json data/4.5.5.2/overlay/trade_crafting_sources.json
-luajit pipeline/extract-trade-map.lua vendor/PathOfBuilding-PoE2/src data/4.5.5.2/overlay/trade_stat_map.json
+overlay="data/$(cat data/CURRENT)/overlay"
+python3 pipeline/extract-trade-crafting.py pipeline/tables/English "$overlay/trade_crafting_sources.json"
+luajit pipeline/extract-trade-catalog.lua vendor/PathOfBuilding-PoE2/src "$overlay/trade_catalog.json" "$overlay/trade_crafting_sources.json"
+luajit pipeline/extract-trade-map.lua vendor/PathOfBuilding-PoE2/src "$overlay/trade_stat_map.json"
 python3 pipeline/test-trade-crafting.py
 luajit pipeline/test-trade-stats.lua
 luajit pipeline/test-trade-crafting-fallback.lua

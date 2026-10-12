@@ -138,7 +138,7 @@ modifier 文本 → 解析 → ModDb → 聚合查询 → calc
 | `crates/pobr-tree` | 天赋树拓扑、allocated node mod 收集、范围珠宝 |
 | `crates/pobr-build` | Build 状态、PoB Build Code 编解码、导入识别、`calc_orchestrator/` + `CalcCache`、Build 对比。**parity 测试主战场** |
 | `crates/pobr-item` | raw item 文本的全保真编辑态解析 + 逆向序列化（BuildRaw 往返） |
-| `apps/pobr-cli` | CLI：`calculate` / `parse-mod` / `decode-code` / `encode-code` |
+| `apps/pobr-cli` | CLI：`calculate` / `calculate-build` / `parse-mod` / `explain-mod` / `decode-code` / `encode-code` |
 | `apps/pobr-wasm` | Web/WASM API：纯 Rust JSON 入出，`wasm` feature 下 wasm-bindgen 绑定 |
 | `apps/pobr-desktop` | 示例计算与文本摘要占位入口，尚未接入 GUI 框架 |
 | `tools/pobr-data-adapter` | 数据管线适配器：GGG `.dat` 导出 → 反范式化为入库 JSON |

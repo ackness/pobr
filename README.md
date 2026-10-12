@@ -176,7 +176,7 @@ and Lua oracle are outside the Cargo workspace.
 | `crates/pobr-tree` | Passive tree topology, allocated-node mod collection, radius jewels |
 | `crates/pobr-build` | Build state, PoB build code encode/decode, import recognition, `calc_orchestrator/` + `CalcCache`, build comparison. **Home of the parity tests** |
 | `crates/pobr-item` | Full-fidelity edit-mode parsing of raw item text + reverse serialization (BuildRaw round-trip) |
-| `apps/pobr-cli` | CLI: `calculate` / `parse-mod` / `decode-code` / `encode-code` |
+| `apps/pobr-cli` | CLI: `calculate` / `calculate-build` / `parse-mod` / `explain-mod` / `decode-code` / `encode-code` |
 | `apps/pobr-wasm` | Web/WASM API: pure-Rust JSON in/out; wasm-bindgen bindings behind the `wasm` feature |
 | `apps/pobr-desktop` | Example calculation and text summary placeholder; no GUI framework yet |
 | `tools/pobr-data-adapter` | Data pipeline adapter: GGG `.dat` export → denormalized committed JSON |

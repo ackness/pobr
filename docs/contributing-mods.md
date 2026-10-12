@@ -93,7 +93,7 @@ they become a common contribution surface.
 
 > **⚠ Do not hand-edit this file for new modifiers.** It is regenerated from
 > vendor Lua by
-> `cargo run -p sync-pob-catalog -- extract-lua --what parser-rules --vendor-root vendor/PathOfBuilding-PoE2/src --out data/4.5.0.3.4/overlay/mod_parser_rules.json`
+> `cargo run -p sync-pob-catalog -- extract-lua --what parser-rules --vendor-root vendor/PathOfBuilding-PoE2/src --out "data/$(cat data/CURRENT)/overlay/mod_parser_rules.json"`
 > (see its `_meta.regen_command`). A manual edit is **clobbered** on the next
 > regen. Extending the generic grammar means changing vendor Lua upstream or the
 > extractor — that's a maintainer task. This section is here so you can *read*
