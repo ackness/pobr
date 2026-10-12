@@ -63,6 +63,7 @@ export interface TreeOptimizerState {
   completed: PassiveReceipt | null;
   evaluated: PassivePlannerResult | null;
   preview: number | null;
+  applied: PassivePlan | null;
   run: () => void;
   cancel: () => void;
   show: (index: number | null) => void;
@@ -76,6 +77,7 @@ const COPY = {
     mode: 'Plan', allocate: 'Spend new points', reallocate: 'Reallocate existing points', points: 'Point budget', refundPoints: 'Maximum refunds',
     attribute: 'New travel attributes', str: 'Strength', dex: 'Dexterity', int: 'Intelligence',
     run: 'Find upgrade routes', preview: 'Show on tree', apply: 'Apply plan', clear: 'Clear preview',
+    applied: 'Passive plan applied',
     scope: 'Plans change the shared main tree. Ascendancy, mastery choices, weapon-set-only nodes and the value of an empty jewel socket are excluded. Attribute travel points use the choice above.',
     refundUnavailable: 'Automatic refunds are unavailable with weapon-set passives, mastery or unknown nodes, or when the imported tree cannot be fully connected to the class start.',
     noResults: 'No improving legal plan was found within this budget and search range.',
@@ -98,6 +100,7 @@ const COPY = {
     mode: '規劃方式', allocate: '投入新天賦點', reallocate: '原點數內洗點', points: '可投入點數', refundPoints: '最多退還點數',
     attribute: '新增過路屬性點', str: '力量', dex: '敏捷', int: '智慧',
     run: '尋找提升路線', preview: '在樹上查看', apply: '套用方案', clear: '清除預覽',
+    applied: '已套用天賦方案',
     scope: '規劃共用主樹，排除昇華、精通選項、武器組專屬點及空珠寶孔的未知收益。新增過路屬性點使用上方選擇。',
     refundUnavailable: '存在武器組專屬點、精通或未知節點，或匯入樹無法完整連接到職業起點時，暫不自動洗點。',
     noResults: '在本次點數預算和搜尋範圍內，未找到合法且優於目前配置的方案。',
@@ -120,6 +123,7 @@ const COPY = {
     mode: '规划方式', allocate: '投入新天赋点', reallocate: '原点数内洗点', points: '可投入点数', refundPoints: '最多退还点数',
     attribute: '新增过路属性点', str: '力量', dex: '敏捷', int: '智慧',
     run: '寻找提升路线', preview: '在树上查看', apply: '应用方案', clear: '清除预览',
+    applied: '已应用天赋方案',
     scope: '规划共用主树，排除升华、精通选项、武器组专属点及空珠宝孔的未知收益。新增过路属性点使用上方选择。',
     refundUnavailable: '存在武器组专属点、精通或未知节点，或导入树无法完整连接到职业起点时，暂不自动洗点。',
     noResults: '在本次点数预算和搜索范围内，未找到合法且优于当前配置的方案。',
@@ -154,6 +158,7 @@ export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPr
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState<PassiveReceipt | null>(null);
+  const [applied, setApplied] = useState<{ version: number; plan: PassivePlan } | null>(null);
   const [tracking, setTracking] = useState(false);
   const [runId, setRunId] = useState(0);
   const [preview, setPreview] = useState<number | null>(null);
@@ -284,17 +289,21 @@ export function useTreeOptimizer({ session, lang, active, nodes, nodeLabel, onPr
     stop();
     setCompleted(null);
     session.setAllocatedNodes(next.allocatedNodes, next.attributeChoices);
+    // A successful atomic session edit increments stateVersion exactly once.
+    // Later edits cannot revive this receipt, even if they restore the same allocation.
+    setApplied({ version: session.stateVersion + 1, plan });
   };
   const jewelPlanner = useJewelPassivePlanner({ session, lang, nodes, nodeLabel, active: active && expanded,
     mode, points, attribute, objective, onPreview, onStart: cancel });
   return { session, lang, nodeLabel, containerRef, expanded, setExpanded, mode, setMode, points, setPoints,
     goal, setGoal, attribute, setAttribute, context, tracking, progress, error, completed, evaluated, preview,
+    applied: applied?.version === session.stateVersion && !session.busy && !session.calcError ? applied.plan : null,
     run, cancel, show, apply, jewelPlanner };
 }
 
 export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
   const { session, lang, nodeLabel, containerRef, expanded, setExpanded, mode, setMode, points, setPoints,
-    goal, setGoal, attribute, setAttribute, context, tracking, progress, error, completed, evaluated, preview,
+    goal, setGoal, attribute, setAttribute, context, tracking, progress, error, completed, evaluated, preview, applied,
     run, cancel, show, apply, jewelPlanner } = planner;
   const text = COPY[lang];
   const tt = bindT(lang);
@@ -311,6 +320,11 @@ export function TreeOptimizer({ planner }: { planner: TreeOptimizerState }) {
       </button>
       {expanded && <div className="tree-planner-body">
         <p className="tree-planner-hint">{text.hint}</p>
+        {applied && <p className="tree-planner-hint tree-planner-applied" role="status">
+          <strong>{text.applied}</strong><br />
+          {text.add} {applied.allocate.length}: {applied.allocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}<br />
+          {text.remove} {applied.deallocate.length}: {applied.deallocate.map(id => `${nodeLabel(id)} #${id}`).join(' · ') || '—'}
+        </p>}
         <WeaponSetControl session={session} lang={lang} />
         <div className="tree-planner-controls">
           <label>{text.mode}<AppSelect value={mode} ariaLabel={text.mode} onChange={value => setMode(value as typeof mode)} options={[

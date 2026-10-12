@@ -15,6 +15,121 @@ use pobr_core::{CalcConfig, ModDb, Modifier, TraceGraph, TraceOperation};
 use pobr_data::prelude::*;
 
 #[test]
+fn zero_chance_ailments_do_not_report_active_stacks() {
+    use pobr_core::calc::{Actor, ActorBaseStats, Env, perform};
+
+    for chance in [0.0, 100.0] {
+        let mut env = Env::new(Actor::new(
+            80,
+            ActorBaseStats {
+                life: 100.0,
+                hit_min: 100.0,
+                hit_max: 200.0,
+                action_rate: 1.0,
+                ..Default::default()
+            },
+        ));
+        env.cfg = CalcConfig::attack().with_damage_type(DamageType::Physical);
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("BleedChance", ModType::Base, chance));
+        env.player
+            .mod_db
+            .add_mod(Modifier::number("PoisonChance", ModType::Base, chance));
+        perform(&mut env).unwrap();
+        let out = &env.player.output;
+        for (dps, stacks) in [
+            (out.bleed_dps, out.bleed_active_stacks),
+            (out.poison_dps, out.poison_active_stacks),
+        ] {
+            if chance == 0.0 {
+                assert_eq!((dps, stacks), (0.0, 0.0));
+            } else {
+                assert!(dps > 0.0 && stacks > 0.0);
+            }
+        }
+    }
+}
+
+#[test]
+fn elemental_prohibitions_override_bonuses_without_disabling_other_ailments() {
+    use pobr_core::calc::ailment::{poison_traced, shock_traced};
+
+    let flags = [
+        "CannotIgnite",
+        "CannotShock",
+        "CannotChill",
+        "CannotFreeze",
+        "CannotElectrocute",
+    ];
+    let source = AilmentSource::new(10_000.0, 2.0, 1.0, false);
+    let enemy = ModDb::new();
+    for flag in flags {
+        for enabled in [false, true] {
+            let cfg = CalcConfig::attack();
+            let mut player = ModDb::new();
+            player.add_mod(Modifier::number("AilmentChance", ModType::Base, 100.0));
+            player.add_mod(Modifier::number("AilmentMagnitude", ModType::Inc, 100.0));
+            if enabled {
+                player.add_mod(Modifier::flag(flag).with_origin(ModifierSource::new(
+                    SourceId::new(SourceKind::SupportGem, "support.elemental_prohibition"),
+                )));
+            }
+            let mut trace = TraceGraph::new();
+            let (ignite, ignite_node) =
+                ignite_traced(&source, &player, &enemy, &cfg, 1000.0, &mut trace);
+            let (shock_chance, shock, shock_node) =
+                shock_traced(&source, &player, &enemy, &cfg, 1000.0, &mut trace);
+            let (chill, chill_node) = chill_traced(10_000.0, 1000.0, &player, &cfg, &mut trace);
+            let (freeze, freeze_node) =
+                freeze_poise_buildup_traced(1000.0, &player, &cfg, &mut trace);
+            let (electrocute, electrocute_node) =
+                electrocute_poise_buildup_traced(1000.0, &player, &cfg, &mut trace);
+            for (name, value, node) in [
+                ("CannotIgnite", ignite.expected_dps, ignite_node),
+                ("CannotShock", shock, shock_node),
+                ("CannotChill", chill, chill_node),
+                ("CannotFreeze", freeze, freeze_node),
+                ("CannotElectrocute", electrocute, electrocute_node),
+            ] {
+                if enabled && name == flag {
+                    assert_eq!(value, 0.0, "{flag}");
+                    assert_eq!(
+                        trace
+                            .source_ancestors(node)
+                            .iter()
+                            .map(|source| source.id.as_str())
+                            .collect::<Vec<_>>(),
+                        ["support.elemental_prohibition"],
+                    );
+                } else {
+                    assert!(value > 0.0, "{flag} must not disable {name}");
+                }
+            }
+            if enabled && flag == "CannotIgnite" {
+                assert_eq!(ignite.chance, 0.0);
+                assert_eq!(ignite.magnitude_dps, 0.0);
+            }
+            if enabled && flag == "CannotShock" {
+                assert_eq!(shock_chance, 0.0);
+            }
+            assert!(
+                bleed_traced(&source, &player, &enemy, &cfg, &mut trace)
+                    .0
+                    .expected_dps
+                    > 0.0
+            );
+            assert!(
+                poison_traced(&source, &player, &enemy, &cfg, &mut trace)
+                    .0
+                    .expected_dps
+                    > 0.0
+            );
+        }
+    }
+}
+
+#[test]
 fn bleed_magnitude_is_15_percent_of_physical_hit_per_second() {
     let gc = GameConstants::poe2();
     let instance = bleed_instance(1000.0, &ModDb::new(), &CalcConfig::attack());

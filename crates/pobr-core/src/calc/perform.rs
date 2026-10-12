@@ -1168,6 +1168,11 @@ fn damaging_ailment_for_pass(
     };
     let probe = make_source(hit50, crit50, ctx.crit_chance);
     let (probe_out, _) = run(&probe, trace);
+    // A prohibited or zero-chance ailment has no active instance. Do not turn
+    // it into the missing-rate fallback's assumed maximum stack count.
+    if probe_out.chance == 0.0 {
+        return None;
+    }
     // Stacking mods use the ailment-scoped cfg (vendor :5024's cfg = that ailment's dotCfg).
     let scoped_cfg = super::ailment::ailment_scoped_cfg(cfg, kind);
     // Ailment duration folds in debuffDurationMult (vendor :5040

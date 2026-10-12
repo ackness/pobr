@@ -498,6 +498,27 @@ fn type_prefix(damage_type: DamageType) -> &'static str {
 
 // High level: chance + crit weighting + magnitude + effMult (with TraceGraph attribution)
 
+/// Canonical Cannot<Ailment> gates precede chance, magnitude and buildup bonuses.
+/// Keep the disabling source on the zero output rather than dropping attribution.
+fn prohibited_ailment_node(
+    player: &ModDb,
+    cfg: &CalcConfig,
+    flag: &str,
+    output: &str,
+    trace: &mut TraceGraph,
+) -> Option<TraceNodeId> {
+    if !player.flag(cfg, flag) {
+        return None;
+    }
+    let source = player
+        .flag_origin(cfg, flag)
+        .unwrap_or_else(|| SourceId::new(SourceKind::Derived, format!("{flag}.FLAG")));
+    let flag_node = trace.add_source_node(flag, 1.0, source);
+    let node = trace.add_node(output, 0.0, TraceOperation::Chance);
+    trace.add_edge(flag_node, node);
+    Some(node)
+}
+
 /// The complete panel result for one damaging ailment type.
 #[derive(Debug, Clone, Copy)]
 pub struct DamagingAilmentOutput {
@@ -573,6 +594,18 @@ pub fn ignite_traced(
     threshold: f64,
     trace: &mut TraceGraph,
 ) -> (DamagingAilmentOutput, TraceNodeId) {
+    if let Some(node) = prohibited_ailment_node(player, cfg, "CannotIgnite", "IgniteDPS", trace) {
+        return (
+            DamagingAilmentOutput {
+                chance: 0.0,
+                eff_mult: 1.0,
+                magnitude_dps: 0.0,
+                duration_secs: 0.0,
+                expected_dps: 0.0,
+            },
+            node,
+        );
+    }
     let (chance_hit, chance_crit, chance_node) = threshold_chance_traced(
         source,
         player,
@@ -611,6 +644,9 @@ pub fn shock_traced(
     threshold: f64,
     trace: &mut TraceGraph,
 ) -> (f64, f64, TraceNodeId) {
+    if let Some(node) = prohibited_ailment_node(player, cfg, "CannotShock", "ShockEffect", trace) {
+        return (0.0, 0.0, node);
+    }
     let (chance_hit, chance_crit, chance_node) = threshold_chance_traced(
         source,
         player,
@@ -945,6 +981,9 @@ pub fn chill_traced(
     cfg: &CalcConfig,
     trace: &mut TraceGraph,
 ) -> (f64, TraceNodeId) {
+    if let Some(node) = prohibited_ailment_node(player, cfg, "CannotChill", "ChillEffect", trace) {
+        return (0.0, node);
+    }
     let mag_names = [
         ModName::from("AilmentMagnitude"),
         ModName::from("EnemyChillMagnitude"),
@@ -1024,6 +1063,11 @@ pub fn freeze_poise_buildup_traced(
     cfg: &CalcConfig,
     trace: &mut TraceGraph,
 ) -> (f64, TraceNodeId) {
+    if let Some(node) =
+        prohibited_ailment_node(player, cfg, "CannotFreeze", "FreezePoiseBuildup", trace)
+    {
+        return (0.0, node);
+    }
     poise_buildup_traced(
         "Freeze",
         FREEZE_DAMAGE_SCALE,
@@ -1042,6 +1086,15 @@ pub fn electrocute_poise_buildup_traced(
     cfg: &CalcConfig,
     trace: &mut TraceGraph,
 ) -> (f64, TraceNodeId) {
+    if let Some(node) = prohibited_ailment_node(
+        player,
+        cfg,
+        "CannotElectrocute",
+        "ElectrocutePoiseBuildup",
+        trace,
+    ) {
+        return (0.0, node);
+    }
     poise_buildup_traced(
         "Electrocute",
         ELECTROCUTE_DAMAGE_SCALE,
