@@ -10,6 +10,86 @@ response**, not a cached stat read or an isolated calculation kernel.
 For the later diagnosis and version check, see
 [Import and calculation investigation](#import-and-calculation-investigation-2026-10-12).
 
+Two observations are recorded. The [current one](#current-observation-apple-m4-2026-10-12)
+re-runs the benchmark with this checkout's WASM (schema 8, data `0.5.5.4.2`) on an Apple M4.
+The [original one](#original-observation-2026-10-11) is kept unchanged. They differ in host,
+PoBR build and data version, so compare ratios within one observation, not milliseconds across them.
+
+## Current observation: Apple M4 (2026-10-12)
+
+Measured at **2026-10-12T16:13Z**, Apple M4 / macOS 27.0 arm64, Node **26.11.1**; PoBR release
+WASM from `18b6a03` (rustc 1.99.0, wasm-pack 0.15.0), schema 8, data `0.5.5.4.2`. When the WASM
+was built the only uncommitted change was `mise.toml` (so the receipt says `dirty: true`); the
+source fingerprint `02320289…` covers the compiled sources. The Lua side is the deployed
+pob-web bundle (PoB2 runtime `v0.23.0`), and its `lua.mjs`, `lua.wasm` and `pob-lua.json`
+SHA-256 values are **identical** to the original observation, so only the PoBR side and the
+host changed. Same method: two warmups, nine alternating samples, nearest-rank p95.
+
+| Class / ascendancy / main skill | PoBR median | Lua median | Speedup | PoBR p95 | Lua p95 | p95 ratio |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Druid / Oracle / Lightning Bolt † | 10.07 | Lua error | — | 10.43 | — | — |
+| Huntress / Amazon / Ice Shot | 8.90 | 515.99 | 57.98× | 9.29 | 890.59 | 95.91× |
+| Mercenary / Gemling Legionnaire / Comet † | 10.86 | Lua error | — | 11.18 | — | — |
+| Monk / Martial Artist / Ice Shot | 9.57 | 529.74 | 55.33× | 10.23 | 547.08 | 53.47× |
+| Ranger / Deadeye / Ice Shot † | 7.85 | Lua error | — | 8.00 | — | — |
+| Sorceress / Stormweaver / Comet † | 9.27 | Lua error | — | 10.19 | — | — |
+| Warrior / Titan / His Scattering Calamity † | 8.07 | Lua error | — | 8.30 | — | — |
+| Witch / Blood Mage / Impending Doom † | 11.86 | Lua error | — | 12.00 | — | — |
+
+† PoBR-only measurement from the same session (`bench-pob-web.mjs --pobr-only`, 2026-10-12T16:15Z),
+with identical warmup, sample count and stability checks. These calls are not interleaved with
+Lua and are not a paired result. The six Lua errors are the same as before: five at
+`CalcDefence.lua:2789` and Deadeye at `:3844`, both `s_format` rejecting infinity.
+No Lua time or ratio is published for them.
+
+<details>
+<summary>Historical comparison cohort: 7 builds</summary>
+
+| Class / ascendancy / main skill | PoBR median | Lua median | Speedup | PoBR p95 | Lua p95 | p95 ratio |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Huntress / Spirit Walker / Twister | 10.69 | 501.93 | 46.96× | 11.27 | 642.42 | 57.02× |
+| Mercenary / Gemling Legionnaire / Explosive Grenade | 8.49 | 547.25 | 64.46× | 8.95 | 834.05 | 93.19× |
+| Ranger / Deadeye / Explosive Grenade | 7.38 | 435.78 | 59.06× | 7.79 | 874.92 | 112.37× |
+| Ranger / Pathfinder / Ice Shot | 9.01 | 373.88 | 41.47× | 9.19 | 375.55 | 40.88× |
+| Warrior / Smith of Kitava / Shield Wall | 8.08 | 658.55 | 81.46× | 8.60 | 1471.68 | 171.03× |
+| Warrior / Titan / Shield Wall | 9.38 | 444.76 | 47.44× | 10.17 | 450.95 | 44.35× |
+| Witch / Abyssal Lich / Detonate Dead | 13.48 | 426.56 | 31.65× | 14.44 | 445.93 | 30.88× |
+
+</details>
+
+| Initialization: single observation | PoBR (ms) | Lua (ms) | Lua / Rust |
+| --- | ---: | ---: | ---: |
+| Engine and data boot | 463.10 | 1898.10 | 4.10× |
+
+Across the nine paired builds the speed ratio is **31.65×–81.46×**; PoBR medians over all 15
+builds are 6.83–13.13 ms. A second complete paired run four minutes later agreed within
+6.8% on every speed ratio and within 11.0% on every PoBR median (Lua: 10.7%), so the
+single recorded run is representative of this host, though it is still one host.
+
+The same output caveats apply. The two completed latest-season builds still differ
+materially from Lua, and PoBR reports unsupported modifiers; the seven historical builds
+agree on `TotalDPS` within 1.8% (largest: Pathfinder, 1.73%). This is a comparison of
+API workloads, not a parity claim:
+
+| Completed latest-season build | PoBR TotalDPS | Lua TotalDPS | PoBR unsupported modifiers |
+| --- | ---: | ---: | ---: |
+| Amazon / Ice Shot | 88,117.54 | 237,926.57 | 26 |
+| Martial Artist / Ice Shot | 2,900,388.52 | 5,173,634.32 | 13 |
+
+All 15 builds report zero item parse errors. The Blood Mage defect described in the
+[investigation](#pobr-import-succeeds-skill-selection-and-coverage-can-still-be-wrong) is
+fixed in schema 8: the response now selects `ChaosFrogExplosionPlayer` (effect 2,
+`TotalDPS` 1,787.28) and no longer `ElementalWeaknessPlayer`. The timing therefore measures a
+real damaging skill, but it does not assert that this is the damage skill the build's owner
+cares about, and the Doom Blast effect is a separate entry in `skillMetricsJson`.
+
+[Paired record](../devs/ci/pob-web-performance-2026-10-12-m4.json) and
+[PoBR-only record](../devs/ci/pobr-only-performance-2026-10-12-m4.json) keep the raw
+samples, selected skills, diagnostics and artifact hashes. Measurement limits below apply
+unchanged.
+
+## Original observation (2026-10-11)
+
 Measured on **2026-10-11**, Apple M1 Pro / macOS arm64, Node **26.10.0**;
 PoBR `d60488f`, release WASM, schema 7, data `4.5.5.3`:
 
@@ -36,7 +116,7 @@ nine measured samples; p95 uses nearest rank (the maximum of nine samples).
 | Ranger / Deadeye / Ice Shot † | 9.75 | Lua error | — | 10.21 | — | — |
 | Sorceress / Stormweaver / Comet † | 11.94 | Lua error | — | 12.20 | — | — |
 | Warrior / Titan / His Scattering Calamity † | 10.15 | Lua error | — | 11.15 | — | — |
-| Witch / Blood Mage / Impending Doom † — PoBR selects wrong skill | 11.08 | Lua error | — | 11.74 | — | — |
+| Witch / Blood Mage / Impending Doom † — PoBR selected the wrong skill (fixed in schema 8) | 11.08 | Lua error | — | 11.74 | — | — |
 
 † PoBR-only supplemental measurement on **2026-10-12**, release WASM `e791cb1`,
 schema 7, data `4.5.5.3`, same host and Node version: two warmups and nine samples,
@@ -46,6 +126,8 @@ from the original paired run.
 [Raw samples, selected skills, diagnostics and hashes](../devs/ci/pobr-unpaired-performance-2026-10-12.json).
 The Blood Mage timing measures the wrong selected skill, **not correct Impending
 Doom calculation**; see the [diagnosis](#import-and-calculation-investigation-2026-10-12).
+That defect has since been fixed; the [current observation](#current-observation-apple-m4-2026-10-12)
+re-measures it.
 
 **The six Lua errors are a pob-web Lua WASM compatibility problem**, not PoBR
 import failures: `CalcDefence.lua` passes infinity to integer `s_format` formatting.
@@ -102,7 +184,7 @@ It exits nonzero if any fixture fails. Performance does **not** prove mechanic
 coverage or numerical parity; unsupported-modifier and item diagnostics are preserved.
 
 [Recorded samples, diagnostics and artifact hashes](../devs/ci/pob-web-performance-baseline.json)
-identify this observation. The deployed Lua/JS/data were downloaded from
+identify the original observation (the current one has its own records, linked above). The deployed Lua/JS/data were downloaded from
 `pob.awx.at`; their source revision is unknown. Wrapper/shims/loading patches
 are pinned separately to upstream `ee33ce6`. Keep the hash-verified reference
 snapshot to rerun the same artifacts; a fresh download may measure a newer deployment.
@@ -111,23 +193,25 @@ snapshot to rerun the same artifacts; a fresh download may measure a newer deplo
 
 Actual byte measurements of the same engine/data artifacts; **MiB = 1,048,576 bytes**.
 Data is gzip level 9. The transfer estimate also gzip-compresses WASM and JS,
-without recompressing the data gzip.
+without recompressing the data gzip. The current column is this checkout's
+`package-wasm` report (v0.0.36, schema 8, data `0.5.5.4.2`, 2026-10-12); the Lua side is
+hash-identical to the original measurement.
 
-| Component / scope (MiB) | PoBR | pob-web | PoBR / Lua size |
-| --- | ---: | ---: | ---: |
-| WASM, raw | 4.891 | 0.250 | 19.56× |
-| JavaScript, raw | 0.023 | 0.066 | 0.34× |
-| Compressed data bundle | 4.286 | 4.633 | 0.93× |
-| WASM + JS + compressed data | 9.200 | 4.949 | 1.86× |
-| gzip transfer estimate | 6.072 | 4.763 | 1.27× |
+| Component / scope (MiB) | PoBR (2026-10-11) | PoBR (current) | pob-web | PoBR current / Lua size |
+| --- | ---: | ---: | ---: | ---: |
+| WASM, raw | 4.891 | 5.057 | 0.250 | 20.23× |
+| JavaScript, raw | 0.023 | 0.023 | 0.066 | 0.34× |
+| Compressed data bundle | 4.286 | 4.340 | 4.633 | 0.94× |
+| WASM + JS + compressed data | 9.200 | 9.420 | 4.949 | 1.90× |
+| gzip transfer estimate | 6.072 | 6.191 | 4.763 | 1.30× |
 
 **PoBR's current runtime bundle is larger, not smaller.** It compiles the Rust
 engine into WASM; Lua's smaller WASM is an interpreter whose calculation code
 travels in the data bundle. Dataset contents, localization and supported
 mechanics differ. These sizes do not measure runtime memory.
-The complete PoBR release archive is approximately **6.058 MiB**, including
-types, docs, a demo and the agent skill; the reference deployment has no matching
-release archive to compare.
+The complete PoBR release archive is approximately **6.182 MiB** now (**6.058 MiB**
+originally), including types, docs, a demo and the agent skill; the reference
+deployment has no matching release archive to compare.
 
 [Measured Lua size baseline](../devs/ci/pob-web-wasm-size-baseline.json) records hashes,
 dates and compression settings. Generate the size reports and exercise the package:
@@ -142,9 +226,14 @@ node --test web/scripts/measure-pob-web-size.test.mjs web/scripts/package-wasm.t
 
 ## Reproduce and test
 
-From the repository root, with Node 22+, stable Rust, wasm-pack and pnpm:
+From the repository root. `mise run setup` installs everything this needs: the Rust version
+pinned by `rust-toolchain.toml` with the `wasm32-unknown-unknown` target, wasm-pack, Node 26,
+pnpm 12 and the Web dependencies. Run the commands below in a shell that has mise activated,
+or prefix each with `mise exec --`. The first `build-wasm` also compiles `wasm-bindgen-cli`
+once (wasm-pack caches it), so expect a few extra minutes.
 
 ```bash
+mise run setup
 pnpm --dir web build-wasm
 pnpm --dir web sync-data
 node web/scripts/benchmark-pob-web.mjs --prepare
@@ -152,8 +241,15 @@ node web/scripts/bench-pob-web.mjs --iterations 9 --warmup 2
 # The recorded run has rejected cases: exit 1, but a complete report is written.
 # Raw samples, full responses, diagnostics, host and provenance:
 # .cache/pob-web-performance.json
-node web/scripts/snapshot-pob-web-benchmark.mjs
-# Compact committed baseline plus Markdown rows printed to stdout.
+node web/scripts/bench-pob-web.mjs --pobr-only --iterations 9 --warmup 2
+# PoBR alone on all 15 builds, no reference snapshot needed (rows marked †).
+# Report: .cache/pobr-performance.json, never the paired report above.
+node web/scripts/snapshot-pob-web-benchmark.mjs --output devs/ci/pob-web-performance-<date>.json
+node web/scripts/snapshot-pob-web-benchmark.mjs --input .cache/pobr-performance.json \
+  --output devs/ci/pobr-only-performance-<date>.json
+# Compact committed records plus Markdown rows printed to stdout. Without --output the
+# paired snapshot overwrites devs/ci/pob-web-performance-baseline.json, so pass one to keep
+# earlier records; a PoBR-only snapshot requires it.
 
 # Network-independent regression tests (no Rust build or downloaded Lua needed):
 node --test web/scripts/benchmark-comparison.test.mjs web/scripts/benchmark-builds.test.mjs web/scripts/benchmark-pob-web.test.mjs

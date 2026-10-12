@@ -8,6 +8,79 @@
 
 后续排查与版本核对见[导入与计算问题排查](#导入与计算问题排查2026-10-12)。
 
+本文记录两次观测。[当前观测](#当前观测apple-m42026-10-12)在 Apple M4 上用本检出的 WASM
+（schema 8，数据 `0.5.5.4.2`）重跑同一基准；[原始观测](#原始观测2026-10-11)保持不变。
+两次的机器、PoBR 构建和数据版本都不同，请在同一次观测内比较倍数，不要跨观测比较毫秒数。
+
+## 当前观测：Apple M4（2026-10-12）
+
+测量时间 **2026-10-12T16:13Z**，Apple M4 / macOS 27.0 arm64，Node **26.11.1**；PoBR release WASM
+来自 `18b6a03`（rustc 1.99.0、wasm-pack 0.15.0），schema 8，数据 `0.5.5.4.2`。构建 WASM 时
+唯一未提交的改动是 `mise.toml`（因此凭据中 `dirty: true`），编译源码指纹为 `02320289…`。
+Lua 侧为线上部署的 pob-web 包（PoB2 运行时 `v0.23.0`），其 `lua.mjs`、`lua.wasm`、
+`pob-lua.json` 的 SHA-256 与原始观测**完全一致**，所以变化的只有 PoBR 和机器。
+方法相同：预热两次，交替采样九次，p95 使用 nearest rank。
+
+| 职业／升华／主技能 | PoBR 中位数 | Lua 中位数 | 加速倍数 | PoBR p95 | Lua p95 | p95 耗时比 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Druid / Oracle / Lightning Bolt † | 10.07 | Lua 报错 | — | 10.43 | — | — |
+| Huntress / Amazon / Ice Shot | 8.90 | 515.99 | 57.98× | 9.29 | 890.59 | 95.91× |
+| Mercenary / Gemling Legionnaire / Comet † | 10.86 | Lua 报错 | — | 11.18 | — | — |
+| Monk / Martial Artist / Ice Shot | 9.57 | 529.74 | 55.33× | 10.23 | 547.08 | 53.47× |
+| Ranger / Deadeye / Ice Shot † | 7.85 | Lua 报错 | — | 8.00 | — | — |
+| Sorceress / Stormweaver / Comet † | 9.27 | Lua 报错 | — | 10.19 | — | — |
+| Warrior / Titan / His Scattering Calamity † | 8.07 | Lua 报错 | — | 8.30 | — | — |
+| Witch / Blood Mage / Impending Doom † | 11.86 | Lua 报错 | — | 12.00 | — | — |
+
+† 为同一次会话中的 PoBR 单独测量（`bench-pob-web.mjs --pobr-only`，2026-10-12T16:15Z），
+预热、采样次数和稳定性校验与配对测试相同；这些调用没有与 Lua 交替执行，不是配对结果。
+六个 Lua 报错与之前相同：五个在 `CalcDefence.lua:2789`，Deadeye 在 `:3844`，
+均为 `s_format` 拒绝无穷大。不为它们发布 Lua 耗时或倍数。
+
+<details>
+<summary>历史对比样本：7 个 BD</summary>
+
+| 职业／升华／主技能 | PoBR 中位数 | Lua 中位数 | 加速倍数 | PoBR p95 | Lua p95 | p95 耗时比 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Huntress / Spirit Walker / Twister | 10.69 | 501.93 | 46.96× | 11.27 | 642.42 | 57.02× |
+| Mercenary / Gemling Legionnaire / Explosive Grenade | 8.49 | 547.25 | 64.46× | 8.95 | 834.05 | 93.19× |
+| Ranger / Deadeye / Explosive Grenade | 7.38 | 435.78 | 59.06× | 7.79 | 874.92 | 112.37× |
+| Ranger / Pathfinder / Ice Shot | 9.01 | 373.88 | 41.47× | 9.19 | 375.55 | 40.88× |
+| Warrior / Smith of Kitava / Shield Wall | 8.08 | 658.55 | 81.46× | 8.60 | 1471.68 | 171.03× |
+| Warrior / Titan / Shield Wall | 9.38 | 444.76 | 47.44× | 10.17 | 450.95 | 44.35× |
+| Witch / Abyssal Lich / Detonate Dead | 13.48 | 426.56 | 31.65× | 14.44 | 445.93 | 30.88× |
+
+</details>
+
+| 初始化：单次观测 | PoBR（ms） | Lua（ms） | Lua / Rust |
+| --- | ---: | ---: | ---: |
+| 引擎与数据启动 | 463.10 | 1898.10 | 4.10× |
+
+九个配对 BD 的加速倍数为 **31.65×–81.46×**；全部 15 个 BD 的 PoBR 中位数为 6.83–13.13 ms。
+四分钟后又完整跑了一次配对测试：每个加速倍数相差不超过 6.8%，每个 PoBR 中位数相差不超过
+11.0%（Lua 为 10.7%），所以记录的这一次对这台机器有代表性，但仍然只是一台机器。
+
+输出方面的限制不变：两个完成的新赛季 BD 与 Lua 仍有明显差异，PoBR 仍报告未支持词条；
+七个历史 BD 的 `TotalDPS` 与 Lua 相差不超过 1.8%（最大为 Pathfinder，1.73%）。
+这是 API 工作负载的比较，不是 parity 结论：
+
+| 完成的新赛季 BD | PoBR TotalDPS | Lua TotalDPS | PoBR 未支持词条数 |
+| --- | ---: | ---: | ---: |
+| Amazon / Ice Shot | 88,117.54 | 237,926.57 | 26 |
+| Martial Artist / Ice Shot | 2,900,388.52 | 5,173,634.32 | 13 |
+
+15 个 BD 均无物品解析错误。[问题排查](#pobr导入成功不代表技能选择与机制完整)中的
+Blood Mage 缺陷已在 schema 8 修复：响应现在选中 `ChaosFrogExplosionPlayer`
+（效果 2，`TotalDPS` 1,787.28），不再是 `ElementalWeaknessPlayer`。因此这条耗时对应一个
+真实的伤害技能，但并不断言它就是该 BD 玩家关心的伤害技能；Doom Blast 效果在
+`skillMetricsJson` 里是单独一项。
+
+[配对记录](../devs/ci/pob-web-performance-2026-10-12-m4.json)与
+[PoBR 单独测量记录](../devs/ci/pobr-only-performance-2026-10-12-m4.json)保留原始采样、
+所选技能、诊断与产物哈希。下文的测量边界同样适用。
+
+## 原始观测（2026-10-11）
+
 实测环境：**2026-10-11**，Apple M1 Pro / macOS arm64，Node **26.10.0**；
 PoBR `d60488f` 的 release WASM，schema 7，数据 `4.5.5.3`。
 
@@ -32,7 +105,7 @@ p95 使用 nearest rank，在九次采样下即最大值。
 | Ranger / Deadeye / Ice Shot † | 9.75 | Lua 报错 | — | 10.21 | — | — |
 | Sorceress / Stormweaver / Comet † | 11.94 | Lua 报错 | — | 12.20 | — | — |
 | Warrior / Titan / His Scattering Calamity † | 10.15 | Lua 报错 | — | 11.15 | — | — |
-| Witch / Blood Mage / Impending Doom † — PoBR 主技能选错 | 11.08 | Lua 报错 | — | 11.74 | — | — |
+| Witch / Blood Mage / Impending Doom † — PoBR 主技能选错（schema 8 已修复） | 11.08 | Lua 报错 | — | 11.74 | — | — |
 
 † 为 **2026-10-12** 单独补测的 PoBR 耗时：release WASM `e791cb1`、schema 7、
 数据 `4.5.5.3`，沿用相同机器和 Node 版本；预热两次、采样九次，
@@ -41,6 +114,7 @@ p95 使用 nearest rank，在九次采样下即最大值。
 [原始采样、实际所选技能、诊断与哈希](../devs/ci/pobr-unpaired-performance-2026-10-12.json)。
 Blood Mage 的耗时对应选错后的技能，**不代表正确计算了 Impending Doom**，
 详见[问题排查](#导入与计算问题排查2026-10-12)。
+该缺陷此后已修复，[当前观测](#当前观测apple-m42026-10-12)重新测量了它。
 
 **六个 Lua 报错属于 pob-web Lua WASM 的兼容问题，不是 PoBR 导入失败**：
 `CalcDefence.lua` 把无穷大传入整数 `s_format` 格式化。
@@ -92,7 +166,7 @@ Lua 错误、不完整结果及重复计算结果不稳定的案例，不把失�
 未支持词条与物品诊断均保留在报告中。
 
 [已记录的采样、诊断与产物哈希](../devs/ci/pob-web-performance-baseline.json)
-提供本次观测的证据。Lua/JS/数据下载自 `pob.awx.at`，部署产物的源码 revision
+提供原始观测的证据（当前观测有各自的记录，见上文链接）。Lua/JS/数据下载自 `pob.awx.at`，部署产物的源码 revision
 未知；包装层、shims 与加载补丁单独固定在上游 `ee33ce6`。
 保留通过哈希校验的本地快照可重跑同一组产物；重新下载可能得到更新的部署。
 
@@ -100,19 +174,21 @@ Lua 错误、不完整结果及重复计算结果不稳定的案例，不把失�
 
 按同一组引擎与数据产物测量实际字节，**1 MiB = 1,048,576 字节**。
 数据包使用 gzip level 9；传输估算同时压缩 WASM 与 JS，不重复压缩已有 gzip 数据包。
+“当前”列来自本检出的 `package-wasm` 报告（v0.0.36，schema 8，数据 `0.5.5.4.2`，2026-10-12）；
+Lua 侧与原始测量哈希一致。
 
-| 组件／口径（MiB） | PoBR | pob-web | PoBR / Lua 体积比 |
-| --- | ---: | ---: | ---: |
-| WASM 原始文件 | 4.891 | 0.250 | 19.56× |
-| JavaScript 原始文件 | 0.023 | 0.066 | 0.34× |
-| 压缩数据包 | 4.286 | 4.633 | 0.93× |
-| WASM＋JS＋压缩数据合计 | 9.200 | 4.949 | 1.86× |
-| gzip 传输估算 | 6.072 | 4.763 | 1.27× |
+| 组件／口径（MiB） | PoBR（2026-10-11） | PoBR（当前） | pob-web | PoBR 当前 / Lua 体积比 |
+| --- | ---: | ---: | ---: | ---: |
+| WASM 原始文件 | 4.891 | 5.057 | 0.250 | 20.23× |
+| JavaScript 原始文件 | 0.023 | 0.023 | 0.066 | 0.34× |
+| 压缩数据包 | 4.286 | 4.340 | 4.633 | 0.94× |
+| WASM＋JS＋压缩数据合计 | 9.200 | 9.420 | 4.949 | 1.90× |
+| gzip 传输估算 | 6.072 | 6.191 | 4.763 | 1.30× |
 
 **当前 PoBR 的运行包更大，不是更小。** Rust 计算引擎编译进 WASM；Lua 侧较小的
 WASM 是解释器，计算代码放在数据包里。两侧数据内容、语言包及机制覆盖不同；
-这些体积不是运行时内存。PoBR 完整发布归档约 **6.058 MiB**，还包含类型声明、
-文档、示例与 agent skill；参考部署没有可按同口径比较的完整发布归档。
+这些体积不是运行时内存。PoBR 完整发布归档现约 **6.182 MiB**（原先 **6.058 MiB**），
+还包含类型声明、文档、示例与 agent skill；参考部署没有可按同口径比较的完整发布归档。
 
 [Lua 实测体积基线](../devs/ci/pob-web-wasm-size-baseline.json)记录哈希、日期及压缩设置。
 生成体积报告并验证实际发布包：
@@ -127,9 +203,13 @@ node --test web/scripts/measure-pob-web-size.test.mjs web/scripts/package-wasm.t
 
 ## 完整脚本与测试
 
-在仓库根目录运行，需要 Node 22+、stable Rust、wasm-pack 与 pnpm：
+在仓库根目录运行。`mise run setup` 会装好所需的全部环境：`rust-toolchain.toml` 钉定的 Rust
+及 `wasm32-unknown-unknown` target、wasm-pack、Node 26、pnpm 12 与 Web 依赖。
+下面的命令需要在已激活 mise 的 shell 中运行，或在每条前加 `mise exec --`。
+首次 `build-wasm` 还会编译一次 `wasm-bindgen-cli`（wasm-pack 会缓存），多花几分钟。
 
 ```bash
+mise run setup
 pnpm --dir web build-wasm
 pnpm --dir web sync-data
 node web/scripts/benchmark-pob-web.mjs --prepare
@@ -137,8 +217,14 @@ node web/scripts/bench-pob-web.mjs --iterations 9 --warmup 2
 # 本次运行存在被拒绝的案例，因此退出码为 1；完整报告仍写入下列文件。
 # 原始采样、完整响应、诊断、宿主环境与来源：
 # .cache/pob-web-performance.json
-node web/scripts/snapshot-pob-web-benchmark.mjs
-# 保存精简实测基线，并在 stdout 输出 Markdown 表格行。
+node web/scripts/bench-pob-web.mjs --pobr-only --iterations 9 --warmup 2
+# 只测 PoBR，覆盖全部 15 个 BD，无需 Lua 参考快照（即标 † 的行）。
+# 报告写入 .cache/pobr-performance.json，不会覆盖上面的配对报告。
+node web/scripts/snapshot-pob-web-benchmark.mjs --output devs/ci/pob-web-performance-<date>.json
+node web/scripts/snapshot-pob-web-benchmark.mjs --input .cache/pobr-performance.json \
+  --output devs/ci/pobr-only-performance-<date>.json
+# 保存精简实测记录，并在 stdout 输出 Markdown 表格行。不带 --output 时配对快照会覆盖
+# devs/ci/pob-web-performance-baseline.json，要保留旧记录请显式指定；PoBR 单独测量必须指定。
 
 # 无需网络、Rust 构建或下载 Lua 的回归测试：
 node --test web/scripts/benchmark-comparison.test.mjs web/scripts/benchmark-builds.test.mjs web/scripts/benchmark-pob-web.test.mjs
