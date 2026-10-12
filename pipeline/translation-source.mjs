@@ -52,7 +52,7 @@ export async function translationSource({ cacheRoot, directory, ref, refresh = f
   }
   const snapshot = (await fs.readFile(path.join(pointerRoot, 'data/CURRENT'), 'utf8')).trim();
   if (!/^[0-9TZ]+$/.test(snapshot)) throw new Error('Invalid translation snapshot pointer');
-  const file = `data/snapshots/${snapshot}/generated/pobr.json`;
+  const file = `data/snapshots/${snapshot}/generated/templates.json`;
   const exportRoot = directory ?? (await dictionarySource({ cacheRoot: path.join(cacheRoot, 'exports'),
     files: [file], ref, repository: TRANSLATION_REPOSITORY, prefix: '', fetcher })).directory;
   const text = await fs.readFile(path.join(exportRoot, file), 'utf8');

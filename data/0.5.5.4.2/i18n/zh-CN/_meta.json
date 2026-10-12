@@ -4,12 +4,12 @@
   "source_generated_at": "2026-07-06T12:58:11.790959+00:00",
   "translation_source": {
     "repository": "https://github.com/ackness/poe2-zh-cn-stats",
-    "commit": "b70024ae512ce667ec5c7ce732cf1719bf491287",
-    "snapshot": "20261012T055659533Z",
-    "sha256": "2a6ab33a23de8276d05488cbe396160fce5ea707536492a5711673be1df2e0d4",
+    "commit": "d67f08f696be6470a5c3837fdd20385976068389",
+    "snapshot": "20261012T081820011Z",
+    "sha256": "5d4363ffd1233b28f52b1f338f386381ad3c63b6e5d9d396fa3d4aad5270788d",
     "mode": "pinned"
   },
-  "regen_command": "node pipeline/gen-zh-cn.mjs --version 0.5.5.4.2 --ref 288d8b9d999c5ea5664149e408847156dbd83ff4 --translations-ref b70024ae512ce667ec5c7ce732cf1719bf491287",
+  "regen_command": "node pipeline/gen-zh-cn.mjs --version 0.5.5.4.2 --ref 288d8b9d999c5ea5664149e408847156dbd83ff4 --translations-ref d67f08f696be6470a5c3837fdd20385976068389",
   "counts": {
     "base_items": 4902,
     "skills": 854,

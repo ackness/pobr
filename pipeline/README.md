@@ -82,7 +82,7 @@ node pipeline/gen-zh-cn.mjs --version <version> --ref <full-commit-sha>
 
 ### 独立词表与人工翻译维护
 
-[ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats) 已公开，采集 GGG／腾讯交易词条、复用分裂词缀译文并从 PoE2DB 补缺。PoBR 在构建期读取该库 `data/CURRENT` 指向的 `generated/pobr.json`，运行时不联网获取词典，也不需要访问 Token。
+[ackness/poe2-zh-cn-stats](https://github.com/ackness/poe2-zh-cn-stats) 已公开，采集 GGG／腾讯交易词条、复用分裂词缀译文并从 PoE2DB 补缺。PoBR 在构建期读取该库 `data/CURRENT` 指向的 `generated/templates.json`，运行时不联网获取词典，也不需要访问 Token。
 
 普通再生成优先复用活动数据 `_meta.json.translation_source.commit`；尚无记录时使用 `pipeline/translation-source.json` 的固定提交。指针与导出文件始终来自同一提交，分开完整缓存；导出 schema、快照 ID、模板和参数集合验证失败即终止。元数据保留仓库、commit、snapshot 和导出 SHA-256。更新方式：
 
