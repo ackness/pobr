@@ -374,6 +374,34 @@ pub(crate) fn action_rate_terms(
     }
 }
 
+/// The chance (fraction) that the inspected skill's hit passes the accuracy
+/// check, before enemy block.
+pub(crate) fn accuracy_hit_chance(
+    db: &ModDb,
+    enemy_db: &ModDb,
+    cfg: &CalcConfig,
+    input: &MinimalInput,
+) -> f64 {
+    let accuracy_names = [ModName::from("Accuracy")];
+    let accuracy = scaled_numeric_stat(db, cfg, input.base_accuracy, &accuracy_names);
+    // PoE2 hit chance (agent-docs/accuracy-and-enemy.md §2, §3):
+    // - Non-attacks always hit (matching vendor CalcOffence.lua:2611-2612's
+    //   `if not isAttack then output.AccuracyHitChance = 100`): spells/DoT/
+    //   minions and every other non-attack skip the accuracy check entirely.
+    //   The old semantics' `is_spell()` would also pull spells into the
+    //   accuracy formula when skill_types lacked the Spell bit.
+    // - `CannotBeEvaded` (a player flag) / under effective view, enemy
+    //   `CannotEvade` → set to 100%, skipping the accuracy formula.
+    // - Finally, enemy block is deducted: `HitChance = AccuracyHitChance * (1 - enemyBlockChance/100)`.
+    let cannot_be_evaded =
+        db.flag(cfg, "CannotBeEvaded") || (cfg.mode_effective && enemy_db.flag(cfg, "CannotEvade"));
+    if !cfg.is_attack() || cannot_be_evaded {
+        1.0
+    } else {
+        hit_chance(input.enemy_evasion, accuracy)
+    }
+}
+
 /// The full entry point: player modDB + enemy modDB. Enemy-side mitigation/
 /// damage-taken chain/block only take effect under `cfg.mode_effective == true`
 /// (the panel view never introduces enemy interaction, keeping it consistent with historical output).
@@ -396,24 +424,7 @@ pub fn calculate_minimal_vs_enemy(
     let lightning_resistance = lightning.final_value;
 
     let action_rate = resolve_action_rate(db, cfg, input);
-    let accuracy_names = [ModName::from("Accuracy")];
-    let accuracy = scaled_numeric_stat(db, cfg, input.base_accuracy, &accuracy_names);
-    // PoE2 hit chance (agent-docs/accuracy-and-enemy.md §2, §3):
-    // - Non-attacks always hit (matching vendor CalcOffence.lua:2611-2612's
-    //   `if not isAttack then output.AccuracyHitChance = 100`): spells/DoT/
-    //   minions and every other non-attack skip the accuracy check entirely.
-    //   The old semantics' `is_spell()` would also pull spells into the
-    //   accuracy formula when skill_types lacked the Spell bit.
-    // - `CannotBeEvaded` (a player flag) / under effective view, enemy
-    //   `CannotEvade` → set to 100%, skipping the accuracy formula.
-    // - Finally, enemy block is deducted: `HitChance = AccuracyHitChance * (1 - enemyBlockChance/100)`.
-    let cannot_be_evaded =
-        db.flag(cfg, "CannotBeEvaded") || (cfg.mode_effective && enemy_db.flag(cfg, "CannotEvade"));
-    let accuracy_hit_chance = if !cfg.is_attack() || cannot_be_evaded {
-        1.0
-    } else {
-        hit_chance(input.enemy_evasion, accuracy)
-    };
+    let accuracy_hit_chance = accuracy_hit_chance(db, enemy_db, cfg, input);
     // Enemy block: only deducted from hit chance under the effective view (accuracy-and-enemy.md §2.3).
     let enemy_block = if cfg.mode_effective {
         (enemy_db.sum(ModType::Base, cfg, &[ModName::from("BlockChance")]) / 100.0).clamp(0.0, 1.0)

@@ -678,7 +678,9 @@ impl CalculationSession {
     /// plus the shared elemental name (`offence::resolve_resistance`), speed
     /// reads the buckets the inspected skill uses
     /// (`skill_use_time::speed_names_for`), crit reads the `CriticalStrike*`
-    /// names (`calc::crit`). Any other stat is aggregated under its own name.
+    /// names (`calc::crit`), the three defences read their own name plus the
+    /// shared ones (`defence::defence_scaling_names`). Any other stat is
+    /// aggregated under its own name.
     pub fn stat_mod_names(&self, stat: &str) -> Vec<ModName> {
         let names: &[&str] = match stat {
             "Life" => &["MaximumLife"],
@@ -690,6 +692,9 @@ impl CalculationSession {
             "ActionRate" => return super::skill_use_time::speed_names_for(&self.env.cfg),
             "CritChance" => &["CriticalStrikeChance"],
             "CritMultiplier" => &["CriticalStrikeMultiplier"],
+            "Armour" | "Evasion" | "EnergyShield" => {
+                return super::defence::defence_scaling_names(stat);
+            }
             other => return vec![ModName::from(other)],
         };
         names.iter().map(|name| ModName::from(*name)).collect()
@@ -699,21 +704,15 @@ impl CalculationSession {
     /// displayed value (a display stat id), read from the terms the stage
     /// itself aggregates. `None` when the stat has no formula here, or when
     /// the displayed value includes something the steps do not cover (the two
-    /// hands combined, hit chance or lucky adjustments to crit), so a formula
+    /// hands combined, an enemy-side increase to crit chance), so a formula
     /// is only returned when it ends at the displayed number.
     pub fn stat_formula(&self, stat: &str) -> Option<super::StatFormula> {
         use super::offence;
         let env = &self.env;
         let db = &env.player.mod_db;
         let output = &env.player.output;
-        let input = MinimalInput::from(env.player.base);
-        // The same scope the main-hand pass computes in.
-        let hand = env
-            .hand_sources
-            .iter()
-            .find(|h| matches!(h.label, crate::HandTag::MainHand | crate::HandTag::Single))
-            .or(env.hand_sources.first())
-            .map(|hand| super::hand_pass::hand_scope(hand, &env.cfg, &input));
+        let input = perform::player_input(env);
+        let hand = self.main_hand_scope();
         let (cfg, hand_input) = match &hand {
             Some((cfg, input)) => (cfg, input),
             None => (&env.cfg, &input),
@@ -747,37 +746,97 @@ impl CalculationSession {
                 offence::action_rate_terms(db, cfg, hand_input).formula(),
                 output.action_rate,
             ),
-            "CritChance" => (
-                super::crit::crit_chance_terms(db, &env.enemy.mod_db, cfg, 0.0, cfg.mode_effective)
-                    .formula()?,
-                output.crit_chance * 100.0,
-            ),
-            "CritMultiplier" => (
-                super::crit::crit_multiplier_terms(db, cfg).formula()?,
-                output.crit_multiplier,
+            "CritChance" | "CritMultiplier" => {
+                let enemy = &env.enemy.mod_db;
+                let effective = cfg.mode_effective;
+                let chance = super::crit::crit_chance_terms(db, enemy, cfg, 0.0, effective);
+                let adjust = super::crit::adjust_crit_chance(
+                    db,
+                    cfg,
+                    chance.capped_pct(),
+                    offence::accuracy_hit_chance(db, enemy, cfg, hand_input),
+                    effective,
+                );
+                if stat == "CritChance" {
+                    (chance.formula(&adjust)?, output.crit_chance * 100.0)
+                } else {
+                    let terms = super::crit::crit_multiplier_terms(
+                        db,
+                        enemy,
+                        cfg,
+                        effective.then_some(&adjust),
+                    );
+                    (terms.formula()?, output.crit_multiplier)
+                }
+            }
+            "Armour" | "Evasion" | "EnergyShield" => {
+                let keystones = crate::rules::DefenceKeystones::from_db(db, &env.cfg);
+                let (_, [armour, evasion, energy_shield]) = super::defence::defence_resource_terms(
+                    db,
+                    &env.cfg,
+                    &env.player.base,
+                    &keystones,
+                );
+                let (terms, displayed) = match stat {
+                    "Armour" => (armour, output.armour),
+                    "Evasion" => (evasion, output.evasion),
+                    _ => (energy_shield, output.energy_shield),
+                };
+                (terms.formula(db, &env.cfg, stat), displayed)
+            }
+            "Spirit" => (
+                super::defence_panels::spirit_terms(db, &env.cfg).formula(),
+                output.spirit,
             ),
             _ => return None,
         };
         ((formula.value - displayed).abs() <= 1e-6).then_some(formula)
     }
 
-    /// The modifiers stored under `names` as the calculation context treats
-    /// them: each row says whether it applies and with which value. The
-    /// context is the session config, i.e. the inspected skill with its
-    /// main-hand weapon; an off-hand pass can match weapon-specific rows
-    /// differently.
-    pub fn evaluated_mods_named(&self, names: &[ModName]) -> Vec<crate::ModEvaluation<'_>> {
-        self.env.player.mod_db.evaluate_names(&self.env.cfg, names)
+    /// The scope the main-hand pass computes in (`None` without weapon passes).
+    fn main_hand_scope(&self) -> Option<(CalcConfig, MinimalInput)> {
+        let env = &self.env;
+        let input = perform::player_input(env);
+        env.hand_sources
+            .iter()
+            .find(|h| matches!(h.label, crate::HandTag::MainHand | crate::HandTag::Single))
+            .or(env.hand_sources.first())
+            .map(|hand| super::hand_pass::hand_scope(hand, &env.cfg, &input))
     }
 
-    /// `(BASE sum, INC sum, MORE product)` of `names` in the session config,
-    /// read through the same queries the calculation stages use.
-    pub fn named_totals(&self, names: &[ModName]) -> (f64, f64, f64) {
+    /// The config `stat`'s stage evaluates modifiers in: the main-hand pass
+    /// for the per-hand stats (which also counts that weapon's own lines),
+    /// the session config otherwise.
+    fn stat_cfg(&self, stat: &str) -> std::borrow::Cow<'_, CalcConfig> {
+        use std::borrow::Cow;
+        if matches!(stat, "ActionRate" | "CritChance" | "CritMultiplier")
+            && let Some((cfg, _)) = self.main_hand_scope()
+        {
+            return Cow::Owned(cfg);
+        }
+        Cow::Borrowed(&self.env.cfg)
+    }
+
+    /// The modifiers `stat`'s stage reads ([`stat_mod_names`](Self::stat_mod_names))
+    /// as that stage treats them: each row says whether it applies and with
+    /// which value. For the per-hand stats the context is the main-hand
+    /// pass; an off-hand pass can match weapon-specific rows differently.
+    pub fn evaluated_stat_mods(&self, stat: &str) -> Vec<crate::ModEvaluation<'_>> {
+        let names = self.stat_mod_names(stat);
+        let cfg = self.stat_cfg(stat);
+        self.env.player.mod_db.evaluate_names(&*cfg, &names)
+    }
+
+    /// `(BASE sum, INC sum, MORE product)` of the modifiers `stat`'s stage
+    /// reads, through the same queries and in the same context as the stage.
+    pub fn stat_totals(&self, stat: &str) -> (f64, f64, f64) {
+        let names = self.stat_mod_names(stat);
+        let cfg = self.stat_cfg(stat);
         let db = &self.env.player.mod_db;
         (
-            db.sum(ModType::Base, &self.env.cfg, names),
-            db.sum(ModType::Inc, &self.env.cfg, names),
-            db.more(&self.env.cfg, names),
+            db.sum(ModType::Base, &*cfg, &names),
+            db.sum(ModType::Inc, &*cfg, &names),
+            db.more(&*cfg, &names),
         )
     }
 

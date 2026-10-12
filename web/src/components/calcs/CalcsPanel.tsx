@@ -55,12 +55,27 @@ function formulaOperand(step: FormulaStep): string {
   switch (step.op) {
     case 'base':
     case 'bonus_to_multiplier':
+    case 'round':
       return '';
     case 'flat':
     case 'enemy_flat':
+    case 'gear_adjusted':
+    case 'gained':
+    case 'slot_scaled':
+    case 'flat_after':
       return signed;
     case 'increased':
+    case 'enemy_increased':
+    case 'inevitable_penalty':
+    case 'bifurcate_bonus':
       return `×${fmtNum(1 + step.operand / 100)} (${signed}%)`;
+    case 'hit_chance':
+      return `×${n}%`;
+    case 'lucky':
+    case 'bifurcate':
+      return '1 − (1 − p)²';
+    case 'inevitable':
+      return `= ${n}`;
     case 'converted':
       return `−${n}%`;
     case 'more':

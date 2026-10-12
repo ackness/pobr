@@ -28,6 +28,24 @@ use super::{
 };
 use crate::{TraceGraph, TraceOperation};
 
+/// The player's input to the offence pass: the actor base plus the enemy's evasion.
+pub(crate) fn player_input(env: &Env) -> MinimalInput {
+    let mut input = MinimalInput::from(env.player.base);
+    // The source of enemy evasion for hit chance: prefers the enemy.mod_db's Evasion BASE
+    // (injected by setup_env, includes tier multipliers), falls back to the enemy.base.evasion
+    // scalar (for compatibility with old entry points that construct Env directly).
+    let enemy_evasion_from_db =
+        env.enemy
+            .mod_db
+            .sum(ModType::Base, &env.cfg, &[ModName::from("Evasion")]);
+    input.enemy_evasion = if enemy_evasion_from_db > 0.0 {
+        enemy_evasion_from_db
+    } else {
+        env.enemy.base.evasion
+    };
+    input
+}
+
 pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     if env.performed {
         return Err(CalcError::AlreadyPerformed);
@@ -122,19 +140,7 @@ pub fn perform(env: &mut Env) -> Result<(), CalcError> {
     // so there's no self-reference).
     super::warcry::apply_warcry_uptime(env);
 
-    let mut input = MinimalInput::from(env.player.base);
-    // The source of enemy evasion for hit chance: prefers the enemy.mod_db's Evasion BASE
-    // (injected by setup_env, includes tier multipliers), falls back to the enemy.base.evasion
-    // scalar (for compatibility with old entry points that construct Env directly).
-    let enemy_evasion_from_db =
-        env.enemy
-            .mod_db
-            .sum(ModType::Base, &env.cfg, &[ModName::from("Evasion")]);
-    input.enemy_evasion = if enemy_evasion_from_db > 0.0 {
-        enemy_evasion_from_db
-    } else {
-        env.enemy.base.evasion
-    };
+    let input = player_input(env);
     // The hand-pass entry point. When `hand_sources` is empty (non-attack skill / old entry
     // point), `run_hand_passes` passes straight through to `calculate_minimal_vs_enemy`, behavior
     // unchanged bit-for-bit; once the orchestration layer assembles a HandSource, it goes through

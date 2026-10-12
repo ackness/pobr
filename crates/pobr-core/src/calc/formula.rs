@@ -1,7 +1,7 @@
 //! The steps a calculation stage takes from a stat's starting value to the
 //! value it outputs. The stages return the terms they aggregated
 //! (`PoolTerms`, `ResistanceResolution`, `ActionRateTerms`, `CritChanceTerms`,
-//! `CritMultiplierTerms`) and those terms are turned into steps here, so a
+//! `CritMultiplierTerms`, `DefenceTerms`, `SpiritTerms`) and those terms are turned into steps here, so a
 //! displayed formula reads the same numbers the stage computed with.
 
 /// What one step does to the running value.
@@ -35,6 +35,32 @@ pub enum FormulaOp {
     Floor,
     /// Turns a bonus percentage into a multiplier: `1 + value / 100`.
     BonusToMultiplier,
+    /// Adds what keystones change about equipped items' defence (a doubled
+    /// body armour, energy shield turned into ward).
+    GearAdjusted,
+    /// Adds an amount converted or gained from another pool.
+    Gained,
+    /// Adds the extra from increases that apply to one item slot only.
+    SlotScaled,
+    /// Adds an amount that increases do not scale.
+    FlatAfter,
+    /// Rounds to a whole number.
+    Round,
+    /// Multiplies by the chance to hit, `operand` percent.
+    HitChance,
+    /// Lucky: the better of `operand` rolls, `1 - (1 - chance)^2`.
+    Lucky,
+    /// Bifurcated: rolled `operand` times, `1 - (1 - chance)^2`.
+    Bifurcate,
+    /// Inevitable critical hits: the chance becomes `operand`.
+    Inevitable,
+    /// Inevitable critical hits: `operand` percent less bonus.
+    InevitablePenalty,
+    /// Bifurcated crits: `operand` percent of the bonus is added again for
+    /// the hits where both rolls crit.
+    BifurcateBonus,
+    /// Multiplies by `1 + operand / 100`, an increase from the enemy's own modifiers.
+    EnemyIncreased,
 }
 
 impl FormulaOp {
@@ -55,6 +81,18 @@ impl FormulaOp {
             Self::ServerTickCap => "server_tick_cap",
             Self::Floor => "floor",
             Self::BonusToMultiplier => "bonus_to_multiplier",
+            Self::GearAdjusted => "gear_adjusted",
+            Self::Gained => "gained",
+            Self::SlotScaled => "slot_scaled",
+            Self::FlatAfter => "flat_after",
+            Self::Round => "round",
+            Self::HitChance => "hit_chance",
+            Self::Lucky => "lucky",
+            Self::Bifurcate => "bifurcate",
+            Self::Inevitable => "inevitable",
+            Self::InevitablePenalty => "inevitable_penalty",
+            Self::BifurcateBonus => "bifurcate_bonus",
+            Self::EnemyIncreased => "enemy_increased",
         }
     }
 }
@@ -118,6 +156,24 @@ impl FormulaBuilder {
     pub(crate) fn more(&mut self, more: f64) {
         if more != 1.0 {
             self.set(FormulaOp::More, more, self.current * more);
+        }
+    }
+
+    /// Adds `amount` under `op`, leaving out an amount of zero.
+    pub(crate) fn add(&mut self, op: FormulaOp, amount: f64) {
+        if amount != 0.0 {
+            self.set(op, amount, self.current + amount);
+        }
+    }
+
+    /// Removes `pct` percent converted to another stat.
+    pub(crate) fn converted(&mut self, pct: f64) {
+        if pct != 0.0 {
+            self.set(
+                FormulaOp::Converted,
+                pct,
+                self.current * (1.0 - pct / 100.0),
+            );
         }
     }
 

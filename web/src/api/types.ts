@@ -430,11 +430,23 @@ export type FormulaOp =
   | 'cooldown_cap'
   | 'server_tick_cap'
   | 'floor'
-  | 'bonus_to_multiplier';
+  | 'bonus_to_multiplier'
+  | 'gear_adjusted'
+  | 'gained'
+  | 'slot_scaled'
+  | 'flat_after'
+  | 'round'
+  | 'hit_chance'
+  | 'lucky'
+  | 'bifurcate'
+  | 'inevitable'
+  | 'inevitable_penalty'
+  | 'bifurcate_bonus'
+  | 'enemy_increased';
 
 export interface FormulaStep {
   op: FormulaOp;
-  /** Amount applied: percentage points (increased, converted), a multiplier (more, action_speed), seconds (added_time) or the limit. */
+  /** Amount applied: percentage points (increased, converted, hit_chance, the bonus and penalty steps), a multiplier (more, action_speed), seconds (added_time), the limit, the number of rolls (lucky, bifurcate) or the amount added. */
   operand: number;
   /** Running value after the step. */
   result: number;

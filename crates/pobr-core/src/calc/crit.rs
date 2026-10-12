@@ -152,8 +152,60 @@ fn resolve_crit_impl(
 
     // 0)-2) Source base, mod totals and the cap.
     let terms = crit_chance_terms(player, enemy, cfg, base_crit, mode_effective);
-    let mut crit_pct = terms.capped_pct();
-    let pre_effective_pct = crit_pct;
+    let pre_effective_pct = terms.capped_pct();
+
+    // 3)-6) Hit chance downgrade, lucky, bifurcate and inevitable.
+    let adjust = adjust_crit_chance(player, cfg, pre_effective_pct, hit_chance, mode_effective);
+    let crit_pct = adjust.pct;
+
+    let crit_chance = round((crit_pct / 100.0).clamp(0.0, 1.0));
+    let pre_effective_chance = round((pre_effective_pct / 100.0).clamp(0.0, 1.0));
+
+    // 7) Crit damage
+    let crit_multiplier =
+        crit_multiplier_terms(player, enemy, cfg, mode_effective.then_some(&adjust)).multiplier();
+
+    // 8) Average crit effect
+    let crit_effect = round(1.0 - crit_chance + crit_chance * crit_multiplier);
+
+    if let Some(sink) = sink {
+        record_trace(sink, player, enemy, cfg, mode_effective, crit_effect);
+    }
+
+    CritOutcome {
+        chance: crit_chance,
+        multiplier: crit_multiplier,
+        effect: crit_effect,
+        pre_effective_chance,
+    }
+}
+
+/// What the effective-mode stages (hit chance, lucky, bifurcate, inevitable)
+/// did to the capped crit chance, in percentage points.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CritChanceAdjust {
+    /// The hit chance (fraction) the capped chance was multiplied by.
+    hit_chance: Option<f64>,
+    lucky: bool,
+    bifurcate: bool,
+    inevitable: bool,
+    /// The chance before the bifurcate re-roll.
+    pre_bifurcate_pct: f64,
+    /// The less crit damage inevitable crits fold into the multiplier.
+    inevitable_less_more: Option<f64>,
+    /// The chance after every adjustment.
+    pct: f64,
+}
+
+/// Steps 3-6 of the pipeline, applied to the capped chance `capped_pct`.
+pub(crate) fn adjust_crit_chance(
+    player: &ModDb,
+    cfg: &CalcConfig,
+    capped_pct: f64,
+    hit_chance: f64,
+    mode_effective: bool,
+) -> CritChanceAdjust {
+    let mut crit_pct = capped_pct;
 
     // 3) mode_effective: hit chance downgrade (the evasion re-roll)
     if mode_effective {
@@ -161,7 +213,8 @@ fn resolve_crit_impl(
     }
 
     // 4) Lucky crit
-    if mode_effective && player.flag(cfg, "CritChanceLucky") {
+    let lucky = mode_effective && player.flag(cfg, "CritChanceLucky");
+    if lucky {
         let c = crit_pct / 100.0;
         crit_pct = (1.0 - (1.0 - c).powi(2)) * 100.0;
     }
@@ -186,34 +239,14 @@ fn resolve_crit_impl(
         crit_pct = 100.0;
     }
 
-    let crit_chance = round((crit_pct / 100.0).clamp(0.0, 1.0));
-    let pre_effective_chance = round((pre_effective_pct / 100.0).clamp(0.0, 1.0));
-
-    // 7) Crit damage
-    let crit_multiplier = resolve_crit_multiplier(
-        player,
-        enemy,
-        cfg,
-        mode_effective,
-        pre_bifurcate_pct,
-        crit_pct,
+    CritChanceAdjust {
+        hit_chance: mode_effective.then_some(hit_chance),
+        lucky,
         bifurcate,
         inevitable,
+        pre_bifurcate_pct,
         inevitable_less_more,
-    );
-
-    // 8) Average crit effect
-    let crit_effect = round(1.0 - crit_chance + crit_chance * crit_multiplier);
-
-    if let Some(sink) = sink {
-        record_trace(sink, player, enemy, cfg, mode_effective, crit_effect);
-    }
-
-    CritOutcome {
-        chance: crit_chance,
-        multiplier: crit_multiplier,
-        effect: crit_effect,
-        pre_effective_chance,
+        pct: crit_pct,
     }
 }
 
@@ -240,7 +273,7 @@ impl CritChanceTerms {
 
     /// The chance after the cap, before hit chance, lucky, bifurcate and
     /// inevitable adjustments.
-    fn capped_pct(&self) -> f64 {
+    pub(crate) fn capped_pct(&self) -> f64 {
         let base_pct = self.base_pct();
         let inc = self.player_inc + self.enemy_inc;
         let crit_pct = (base_pct * (1.0 + inc / 100.0) * self.more).min(self.cap);
@@ -251,10 +284,10 @@ impl CritChanceTerms {
         }
     }
 
-    /// The steps from the source base to the capped chance. `None` when an
-    /// enemy-side increase shares the INC step, which the player's modifier
-    /// lines alone would not account for.
-    pub(crate) fn formula(&self) -> Option<StatFormula> {
+    /// The steps from the source base to the chance after `adjust`. `None`
+    /// when an enemy-side increase shares the INC step, which the player's
+    /// modifier lines alone would not account for.
+    pub(crate) fn formula(&self, adjust: &CritChanceAdjust) -> Option<StatFormula> {
         if self.enemy_inc != 0.0 {
             return None;
         }
@@ -273,7 +306,29 @@ impl CritChanceTerms {
         if self.base_pct() > 0.0 {
             steps.at_least(0.0);
         }
-        Some(steps.finish(round(self.capped_pct().clamp(0.0, 100.0))))
+        if let Some(hit_chance) = adjust.hit_chance
+            && hit_chance != 1.0
+            && steps.current() != 0.0
+        {
+            steps.set(
+                FormulaOp::HitChance,
+                hit_chance * 100.0,
+                steps.current() * hit_chance,
+            );
+        }
+        let rolled_twice = |pct: f64| (1.0 - (1.0 - pct / 100.0).powi(2)) * 100.0;
+        if adjust.lucky {
+            steps.set(FormulaOp::Lucky, 2.0, rolled_twice(steps.current()));
+        }
+        if adjust.bifurcate {
+            steps.set(FormulaOp::Bifurcate, 2.0, rolled_twice(steps.current()));
+        }
+        if adjust.inevitable {
+            steps.set(FormulaOp::Inevitable, 100.0, 100.0);
+        }
+        steps.at_most(FormulaOp::Cap, 100.0);
+        steps.at_least(0.0);
+        Some(steps.finish(round((adjust.pct / 100.0).clamp(0.0, 1.0)) * 100.0))
     }
 }
 
@@ -334,7 +389,7 @@ pub(crate) fn crit_chance_terms(
     }
 }
 
-/// The terms of the crit damage bonus before the effective-mode adjustments.
+/// The terms of the crit damage multiplier.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct CritMultiplierTerms {
     /// The character's base crit damage bonus (percentage points).
@@ -346,11 +401,62 @@ pub(crate) struct CritMultiplierTerms {
     override_bonus: Option<f64>,
     /// `NoCritMultiplier`: crits deal no extra damage.
     disabled: bool,
+    /// Inevitable crits: the less crit damage folded in as one more MORE
+    /// (percentage points, negative).
+    inevitable_less_more: Option<f64>,
+    /// Bifurcate: the chance that both rolls crit given that one did, which
+    /// adds that share of the bonus again.
+    bifurcate_share: Option<f64>,
+    /// Enemy `SelfCritMultiplier` `(BASE, INC)` (effective mode only).
+    enemy: Option<(f64, f64)>,
 }
 
 impl CritMultiplierTerms {
-    /// The steps from the base bonus to the multiplier, as it is without
-    /// effective-mode adjustments.
+    /// `1 + max(0, extra)`, see [`crit_multiplier_terms`].
+    fn multiplier(&self) -> f64 {
+        // NoCritMultiplier: crit damage has no effect (CalcOffence.lua L3782).
+        if self.disabled {
+            return 1.0;
+        }
+        let mut more = self.more;
+
+        // The less-damage penalty folded in by inevitable crit becomes one extra MORE (PoB2 `NewMod("CritMultiplier","MORE",lessCritBonus)`).
+        if let Some(less_more) = self.inevitable_less_more {
+            more *= 1.0 + less_more / 100.0;
+        }
+
+        // An OVERRIDE hard-overrides the crit damage bonus (e.g. `Your Critical
+        // Damage Bonus is 250%`): it wins over base/inc/more (PoB2's OVERRIDE
+        // semantics), applied directly as the bonus percentage. Otherwise use
+        // (100 + ΣBASE)×(1+inc)×more.
+        //
+        // Note: the OVERRIDE branch **deliberately** ignores the
+        // `inevitable_less_more` folded into `more` above — OVERRIDE clamps to a
+        // final value, and the inevitable-crit correction only appears under
+        // `mode_effective` (the effective view); the panel view is unaffected.
+        // The two co-occurring (an inevitable-crit build plus a "crit damage is
+        // N%" keystone) is an edge case, currently resolved as the OVERRIDE final value.
+        let mut extra = if let Some(ov) = self.override_bonus {
+            ov / 100.0
+        } else {
+            (self.base_bonus + self.flat) / 100.0 * (1.0 + self.inc / 100.0) * more
+        };
+
+        if let Some(conditional) = self.bifurcate_share {
+            extra += conditional * extra;
+        }
+
+        // Enemy SelfCritMultiplier (marks, etc.): BASE bonus × (1 + INC/100) (CalcOffence.lua L3814–3825).
+        if let Some((enemy_flat, enemy_inc)) = self.enemy {
+            let enemy_inc = 1.0 + enemy_inc / 100.0;
+            extra += enemy_flat / 100.0;
+            extra *= enemy_inc;
+        }
+
+        round(1.0 + extra.max(0.0))
+    }
+
+    /// The steps from the base bonus to the multiplier.
     pub(crate) fn formula(&self) -> Option<StatFormula> {
         if self.disabled {
             return None;
@@ -358,17 +464,80 @@ impl CritMultiplierTerms {
         let mut steps = FormulaBuilder::default();
         match self.override_bonus {
             Some(bonus) => steps.set(FormulaOp::Override, bonus, bonus),
-            None => steps.scaled(self.base_bonus, self.flat, self.inc, self.more),
+            None => {
+                steps.scaled(self.base_bonus, self.flat, self.inc, self.more);
+                if let Some(less_more) = self.inevitable_less_more {
+                    steps.set(
+                        FormulaOp::InevitablePenalty,
+                        less_more,
+                        steps.current() * (1.0 + less_more / 100.0),
+                    );
+                }
+            }
+        }
+        if let Some(share) = self.bifurcate_share
+            && share != 0.0
+        {
+            steps.set(
+                FormulaOp::BifurcateBonus,
+                share * 100.0,
+                steps.current() * (1.0 + share),
+            );
+        }
+        if let Some((enemy_flat, enemy_inc)) = self.enemy {
+            if enemy_flat != 0.0 {
+                steps.set(
+                    FormulaOp::EnemyFlat,
+                    enemy_flat,
+                    steps.current() + enemy_flat,
+                );
+            }
+            if enemy_inc != 0.0 {
+                steps.set(
+                    FormulaOp::EnemyIncreased,
+                    enemy_inc,
+                    steps.current() * (1.0 + enemy_inc / 100.0),
+                );
+            }
         }
         steps.at_least(0.0);
         let multiplier = 1.0 + steps.current() / 100.0;
         steps.set(FormulaOp::BonusToMultiplier, 100.0, multiplier);
-        Some(steps.finish(round(multiplier)))
+        Some(steps.finish(self.multiplier()))
     }
 }
 
-pub(crate) fn crit_multiplier_terms(player: &ModDb, cfg: &CalcConfig) -> CritMultiplierTerms {
+/// Crit damage multiplier (`1 + max(0, extra)`).
+///
+/// `extra = (BASE_BONUS + ΣCriticalStrikeMultiplier BASE)/100 × (1+Σinc/100) × Πmore`,
+/// then (with `adjust`, i.e. effective mode only) adds bifurcate's extra share, enemy
+/// SelfCritMultiplier, and the inevitable less-damage term.
+///
+/// Source: CalcOffence.lua L3781–3827.
+pub(crate) fn crit_multiplier_terms(
+    player: &ModDb,
+    enemy: &ModDb,
+    cfg: &CalcConfig,
+    adjust: Option<&CritChanceAdjust>,
+) -> CritMultiplierTerms {
     let crit_multiplier_names = [ModName::from("CriticalStrikeMultiplier")];
+    // Bifurcate: the conditional probability "given at least one crit, both
+    // hits crit" adds an extra weighted share of crit damage
+    // (CalcOffence.lua:3823-3846 `conditionalBifurcateChance =
+    // (PreBifurcateCritChance²/100) / CritChance`, matches vendor 0.21/0.22),
+    // mutually exclusive with inevitable (the inevitable path already folds
+    // the 100%-crit case into the less-damage term).
+    let bifurcate_share = adjust
+        .filter(|adjust| adjust.bifurcate && !adjust.inevitable)
+        .map(|adjust| {
+            let bifurcate_multi_chance = adjust.pre_bifurcate_pct.powi(2) / 100.0;
+            if adjust.pct > 0.0 {
+                bifurcate_multi_chance / adjust.pct
+            } else {
+                0.0
+            }
+        });
+    let self_crit_mult = [ModName::from("SelfCritMultiplier")];
     CritMultiplierTerms {
         //  Player's base crit damage bonus reads from the injected constants pack.
         base_bonus: cfg.constants.character().base_critical_hit_damage_bonus,
@@ -377,6 +546,14 @@ pub(crate) fn crit_multiplier_terms(player: &ModDb, cfg: &CalcConfig) -> CritMul
         more: player.more(cfg, &crit_multiplier_names),
         override_bonus: player.override_(cfg, "CriticalStrikeMultiplier"),
         disabled: player.flag(cfg, "NoCritMultiplier"),
+        inevitable_less_more: adjust.and_then(|adjust| adjust.inevitable_less_more),
+        bifurcate_share,
+        enemy: adjust.map(|_| {
+            (
+                enemy.sum(ModType::Base, cfg, &self_crit_mult),
+                enemy.sum(ModType::Inc, cfg, &self_crit_mult),
+            )
+        }),
     }
 }
 
@@ -391,80 +568,6 @@ fn crit_chance_cap(player: &ModDb, cfg: &CalcConfig) -> f64 {
     } else {
         DEFAULT_CRIT_CHANCE_CAP
     }
-}
-
-/// Crit damage multiplier (`1 + max(0, extra)`).
-///
-/// `extra = (BASE_BONUS + ΣCriticalStrikeMultiplier BASE)/100 × (1+Σinc/100) × Πmore`,
-/// then (mode_effective only) adds bifurcate's extra share, enemy SelfCritMultiplier, and the inevitable less-damage term.
-///
-/// Source: CalcOffence.lua L3781–3827.
-#[allow(clippy::too_many_arguments)]
-fn resolve_crit_multiplier(
-    player: &ModDb,
-    enemy: &ModDb,
-    cfg: &CalcConfig,
-    mode_effective: bool,
-    pre_bifurcate_pct: f64,
-    effective_crit_pct: f64,
-    bifurcate: bool,
-    inevitable: bool,
-    inevitable_less_more: Option<f64>,
-) -> f64 {
-    // NoCritMultiplier: crit damage has no effect (CalcOffence.lua L3782).
-    let terms = crit_multiplier_terms(player, cfg);
-    if terms.disabled {
-        return 1.0;
-    }
-    let mut more = terms.more;
-
-    // The less-damage penalty folded in by inevitable crit becomes one extra MORE (PoB2 `NewMod("CritMultiplier","MORE",lessCritBonus)`).
-    if let Some(less_more) = inevitable_less_more {
-        more *= 1.0 + less_more / 100.0;
-    }
-
-    // An OVERRIDE hard-overrides the crit damage bonus (e.g. `Your Critical
-    // Damage Bonus is 250%`): it wins over base/inc/more (PoB2's OVERRIDE
-    // semantics), applied directly as the bonus percentage. Otherwise use
-    // (100 + ΣBASE)×(1+inc)×more.
-    //
-    // Note: the OVERRIDE branch **deliberately** ignores the
-    // `inevitable_less_more` folded into `more` above — OVERRIDE clamps to a
-    // final value, and the inevitable-crit correction only appears under
-    // `mode_effective` (the effective view); the panel view is unaffected.
-    // The two co-occurring (an inevitable-crit build plus a "crit damage is
-    // N%" keystone) is an edge case, currently resolved as the OVERRIDE final value.
-    let mut extra = if let Some(ov) = terms.override_bonus {
-        ov / 100.0
-    } else {
-        (terms.base_bonus + terms.flat) / 100.0 * (1.0 + terms.inc / 100.0) * more
-    };
-
-    // Bifurcate: the conditional probability "given at least one crit, both
-    // hits crit" adds an extra weighted share of crit damage
-    // (CalcOffence.lua:3823-3846 `conditionalBifurcateChance =
-    // (PreBifurcateCritChance²/100) / CritChance`, matches vendor 0.21/0.22),
-    // mutually exclusive with inevitable (the inevitable path already folds
-    // the 100%-crit case into the less-damage term).
-    if mode_effective && bifurcate && !inevitable {
-        let bifurcate_multi_chance = pre_bifurcate_pct.powi(2) / 100.0;
-        let conditional = if effective_crit_pct > 0.0 {
-            bifurcate_multi_chance / effective_crit_pct
-        } else {
-            0.0
-        };
-        extra += conditional * extra;
-    }
-
-    // Enemy SelfCritMultiplier (marks, etc.): BASE bonus × (1 + INC/100) (CalcOffence.lua L3814–3825).
-    if mode_effective {
-        let self_crit_mult = [ModName::from("SelfCritMultiplier")];
-        let enemy_inc = 1.0 + enemy.sum(ModType::Inc, cfg, &self_crit_mult) / 100.0;
-        extra += enemy.sum(ModType::Base, cfg, &self_crit_mult) / 100.0;
-        extra *= enemy_inc;
-    }
-
-    round(1.0 + extra.max(0.0))
 }
 
 /// Inevitable crit's geometric-series less-damage penalty (folded into a

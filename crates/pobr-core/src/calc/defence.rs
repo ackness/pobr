@@ -2,6 +2,7 @@ use pobr_data::prelude::*;
 
 use crate::{CalcConfig, ModDb};
 
+use super::formula::{FormulaBuilder, FormulaOp, StatFormula};
 use super::{Actor, Env, round};
 
 /// Output of the ES recharge rate / delay (ES recharge, gap: es-recharge-missing).
@@ -261,6 +262,77 @@ pub fn calc_defence_resources(
     base: &super::ActorBaseStats,
     keystones: &crate::rules::DefenceKeystones,
 ) -> DefenceResources {
+    defence_resource_terms(db, cfg, base, keystones).0
+}
+
+/// One defence value (Armour, Evasion or Energy Shield) with the terms the
+/// matrix built it from.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct DefenceTerms {
+    /// The actor's own base value.
+    base: f64,
+    /// Flat BASE lines: the slot-less ones plus the equipped items' values as listed.
+    flat: f64,
+    /// What keystones add to or remove from the equipped items' values.
+    gear_adjusted: f64,
+    /// Received from pools processed before this one (reduced by its own conversion).
+    gained_before: f64,
+    /// The share converted away to other pools (percentage points).
+    converted_pct: f64,
+    /// Received from pools processed after this one.
+    gained_after: f64,
+    /// Global INC total and MORE product.
+    inc: f64,
+    more: f64,
+    /// The extra from INC/MORE lines scoped to one item slot.
+    slot_scaled: f64,
+    /// The `<Stat>Total` channel, added after increases.
+    flat_after: f64,
+    pub(crate) value: f64,
+}
+
+impl DefenceTerms {
+    /// The steps from the starting value to `value`. `db` and `cfg` are the
+    /// ones the terms were computed with.
+    pub(crate) fn formula(&self, db: &ModDb, cfg: &CalcConfig, stat: &str) -> StatFormula {
+        // Lines scoped to one item slot get their own step even when that
+        // slot has no such defence and they add nothing.
+        let names = defence_scaling_names(stat);
+        let slot_scoped =
+            db.sum(ModType::Inc, cfg, &names) != self.inc || db.more(cfg, &names) != self.more;
+        let mut steps = FormulaBuilder::default();
+        if self.base != 0.0 {
+            steps.set(FormulaOp::Base, self.base, self.base);
+        }
+        steps.add(FormulaOp::Flat, self.flat);
+        steps.add(FormulaOp::GearAdjusted, self.gear_adjusted);
+        steps.add(FormulaOp::Gained, self.gained_before);
+        steps.converted(self.converted_pct);
+        steps.add(FormulaOp::Gained, self.gained_after);
+        steps.increased(self.inc);
+        steps.more(self.more);
+        if slot_scoped {
+            steps.set(
+                FormulaOp::SlotScaled,
+                self.slot_scaled,
+                steps.current() + self.slot_scaled,
+            );
+        }
+        steps.add(FormulaOp::FlatAfter, self.flat_after);
+        steps.finish(self.value)
+    }
+}
+
+/// [`calc_defence_resources`] together with the terms of the three defence
+/// values, in `MATRIX_RESOURCES` order (Armour, Evasion, Energy Shield).
+pub(crate) fn defence_resource_terms(
+    db: &ModDb,
+    cfg: &CalcConfig,
+    base: &super::ActorBaseStats,
+    keystones: &crate::rules::DefenceKeystones,
+) -> (DefenceResources, [DefenceTerms; MATRIX_DEFENCE_COUNT]) {
+    let mut terms = [DefenceTerms::default(); MATRIX_DEFENCE_COUNT];
+    let slot_total = |list: &[(String, f64)]| list.iter().map(|(_, value)| value).sum::<f64>();
     // 1) ConvertTo rate matrix: per-pair cap 100 + row normalization (:1311-1320)
     let mut conv = [[0.0_f64; MATRIX_RESOURCES.len()]; MATRIX_RESOURCES.len()];
     let mut total_conv = [0.0_f64; MATRIX_RESOURCES.len()];
@@ -295,6 +367,11 @@ pub fn calc_defence_resources(
         },
     ];
     for (idx, slot_list) in slots.iter_mut().enumerate() {
+        terms[idx].flat = if idx == 2 && keystones.energy_shield_to_ward {
+            slot_total(&db.slot_bases(cfg, "EnergyShield"))
+        } else {
+            slot_total(slot_list)
+        };
         for (slot, value) in slot_list.iter_mut() {
             if slot != BODY_ARMOUR_SLOT {
                 continue;
@@ -308,6 +385,7 @@ pub fn calc_defence_resources(
                 _ => {}
             }
         }
+        terms[idx].gear_adjusted = slot_total(slot_list) - terms[idx].flat;
     }
 
     // 3) Per-source serial conversion (:1327-1373)
@@ -344,9 +422,9 @@ pub fn calc_defence_resources(
         // The global base at this source's processing time = the input base stat + the global
         // flat BASE + amounts converted in by earlier sources (serial semantics, :1328-1329
         // `globalBase = Sum(BASE, source.mods) + source.globalBase`).
-        let global_s = base_inputs[s]
-            + db.sum_global_only(ModType::Base, cfg, &[ModName::from(global_base_names[s])])
-            + received[s];
+        let global_flat =
+            db.sum_global_only(ModType::Base, cfg, &[ModName::from(global_base_names[s])]);
+        let global_s = base_inputs[s] + global_flat + received[s];
         // Total channel input = `<Src>Total` BASE + amounts converted in by earlier sources'
         // total (:1331/:1364, serial and structured the same way).
         let total_s =
@@ -354,6 +432,11 @@ pub fn calc_defence_resources(
                 + total_received[s];
         let is_defence_src = s < MATRIX_DEFENCE_COUNT;
         if is_defence_src {
+            let own_gear = terms[s].flat + terms[s].gear_adjusted;
+            terms[s].base = base_inputs[s];
+            terms[s].flat += global_flat;
+            terms[s].gained_before = received[s] + (slot_total(&slots[s]) - own_gear);
+            terms[s].converted_pct = total_conv[s];
             // Defence sources: earlier converted-in amounts get folded into the global base to
             // participate in this source's own conversion/shrinking (goes into kept_global), then
             // zeroed to avoid double-counting; non-defence sources keep `received` as-is (that's
@@ -418,6 +501,8 @@ pub fn calc_defence_resources(
             }
             kept_global[s] = global_s * keep;
             kept_total[s] = total_s * keep;
+            // Slot amounts later sources add are measured against this.
+            terms[s].gained_after = -slot_total(&slots[s]);
         }
     }
 
@@ -431,15 +516,26 @@ pub fn calc_defence_resources(
         // Global base = retained-after-shrinking + amounts converted in by later sources (amounts
         // received after this source was processed are not reconverted by it — serial semantics).
         let mut total = (kept_global[s] + received[s]) * (1.0 + global_inc / 100.0) * global_more;
+        let mut slot_scaled = 0.0;
         for (slot, slot_base) in &slots[s] {
             let slot_inc = db.sum_for_slot(ModType::Inc, cfg, &names, slot);
             let slot_more = db.more_for_slot(cfg, &names, slot);
-            total +=
+            let scaled =
                 slot_base * (1.0 + (global_inc + slot_inc) / 100.0) * (global_more * slot_more);
+            total += scaled;
+            if slot_inc != 0.0 || slot_more != 1.0 {
+                slot_scaled += scaled - slot_base * (1.0 + global_inc / 100.0) * global_more;
+            }
         }
         // The Total direct-add channel isn't multiplied by inc/more (vendor :1394 `… + res.totalBase`).
         total += kept_total[s] + total_received[s];
         *value = round(total);
+        terms[s].gained_after += received[s] + slot_total(&slots[s]);
+        terms[s].inc = global_inc;
+        terms[s].more = global_more;
+        terms[s].slot_scaled = slot_scaled;
+        terms[s].flat_after = kept_total[s] + total_received[s];
+        terms[s].value = *value;
         // Diagnostics (POBR_DBG_DEFRES=<idx>): dump a given defence resource's components (armour=0).
         if dbg_env!("POBR_DBG_DEFRES").and_then(|v| v.parse::<usize>().ok()) == Some(s) {
             let raw_base_ct = db
@@ -471,13 +567,16 @@ pub fn calc_defence_resources(
     // — the only existing Total source in the data is Discipline's EnergyShieldTotal (on the
     // defence side), which is always 0 when there's no defence→Life/Mana conversion mod; wiring
     // it up will need scaled_pool to add a direct-add term (not multiplied by inc).
-    DefenceResources {
-        armour: out[0],
-        evasion: out[1],
-        energy_shield: out[2],
-        extra_life: received[3],
-        extra_mana: received[4],
-    }
+    (
+        DefenceResources {
+            armour: out[0],
+            evasion: out[1],
+            energy_shield: out[2],
+            extra_life: received[3],
+            extra_mana: received[4],
+        },
+        terms,
+    )
 }
 
 /// The global/slot-scoped inc/more scaling name set for a given defence stat (PoB2
@@ -490,7 +589,7 @@ pub fn calc_defence_resources(
 /// Note: `ArmourAndEnergyShield` / `EvasionAndEnergyShield` are **in neither set** — this
 /// matches PoB2 (these combined names only apply to an item's local rolled base value; they have
 /// no effect on the total when they show up globally).
-fn defence_scaling_names(name: &str) -> Vec<ModName> {
+pub(crate) fn defence_scaling_names(name: &str) -> Vec<ModName> {
     match name {
         "Armour" => vec![
             ModName::from("Armour"),

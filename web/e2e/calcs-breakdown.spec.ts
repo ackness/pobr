@@ -25,18 +25,17 @@ test('a stat breakdown counts only the lines the calculation applies', async ({ 
   await expect(inactive).not.toHaveCount(0);
   await expect(inactive.first().locator('.mod-inactive-tag')).toHaveText('not active');
   await expect(armour.locator('.breakdown-note:not(.breakdown-totals-note)')).toBeVisible();
-  await expect(armour.locator('.breakdown-totals-note')).toBeVisible();
 
-  const summary = armour.locator('.breakdown-summary strong');
-  const incTotal = num(await summary.nth(1).textContent());
-  let activeInc = 0;
-  for (const row of await rows.all()) {
-    if ((await row.locator('.mod-type').textContent()) !== 'INC') continue;
-    if (await row.evaluate((el) => el.classList.contains('is-inactive'))) continue;
-    activeInc += num(await row.locator('.mod-value').textContent());
-  }
-  expect(activeInc).toBeCloseTo(incTotal, 6);
-  expect(num(await summary.nth(2).textContent())).toBeGreaterThan(1);
+  // The steps count the equipped items' armour, the increases and the more multiplier, and
+  // end at the value shown.
+  const steps = armour.locator('.breakdown-formula');
+  await expect(steps.locator('tr.formula-flat th')).toHaveText('Flat modifiers (BASE)');
+  await expect(steps.locator('tr.formula-increased')).toHaveCount(1);
+  await expect(steps.locator('tr.formula-more')).toHaveCount(1);
+  const shown = num(await armour.locator('.breakdown-value').textContent());
+  expect(shown).toBeGreaterThan(0);
+  // The header rounds values of 1000 and above to whole numbers.
+  expect(Math.abs(num(await steps.locator('tr.formula-final .formula-result').textContent()) - shown)).toBeLessThanOrEqual(0.5);
 
   const active = (await rows.count()) - (await inactive.count());
   await expect(armour.locator('.breakdown-count')).toHaveText(`${active} mods`);
@@ -82,4 +81,13 @@ test('headline sidebar stats open the lines behind them', async ({ page }) => {
     num(await speed.locator('.breakdown-value').textContent()),
     2,
   );
+
+  // Crit chance: only hits can crit, so the chance to hit is one of the steps.
+  await page.locator('#breakdown-CritChance .breakdown-toggle').click();
+  const crit = page.locator('#breakdown-CritChance');
+  await expect(crit.locator('.breakdown-formula tr.formula-final')).toHaveCount(1);
+  for (const id of ['EnergyShield', 'Evasion', 'Spirit', 'CritMultiplier']) {
+    await page.locator(`#breakdown-${id} .breakdown-toggle`).click();
+    await expect(page.locator(`#breakdown-${id} .breakdown-formula tr.formula-final`)).toHaveCount(1);
+  }
 });

@@ -296,9 +296,16 @@ fn breakdown_formulas_end_at_the_displayed_value() {
                 let result = step["result"].as_f64().unwrap();
                 let expected = match op {
                     "base" | "override" => operand,
-                    "flat" | "enemy_flat" => previous + operand,
+                    "flat" | "enemy_flat" | "gear_adjusted" | "gained" | "slot_scaled"
+                    | "flat_after" => previous + operand,
                     "converted" => previous * (1.0 - operand / 100.0),
-                    "increased" => previous * (1.0 + operand / 100.0),
+                    "increased" | "enemy_increased" | "inevitable_penalty" | "bifurcate_bonus" => {
+                        previous * (1.0 + operand / 100.0)
+                    }
+                    "hit_chance" => previous * operand / 100.0,
+                    "lucky" | "bifurcate" => (1.0 - (1.0 - previous / 100.0).powf(operand)) * 100.0,
+                    "inevitable" => operand,
+                    "round" => previous.round(),
                     "more" | "action_speed" => previous * operand,
                     "added_time" => 1.0 / (1.0 / previous + operand),
                     "cap" | "cooldown_cap" | "server_tick_cap" => {
@@ -317,10 +324,17 @@ fn breakdown_formulas_end_at_the_displayed_value() {
                     "{at}: {op} gives {result}, expected {expected}"
                 );
                 // The modifier totals in the steps are the listed lines' totals.
+                // Lines scoped to one item slot are listed too, but the
+                // defence stages apply them in the `slot_scaled` step.
+                let slot_scoped = formula["steps"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|step| step["op"] == "slot_scaled");
                 let listed = match op {
                     "flat" => Some(total("base_total")),
-                    "increased" => Some(total("inc_total")),
-                    "more" => Some(total("more_total")),
+                    "increased" if !slot_scoped => Some(total("inc_total")),
+                    "more" if !slot_scoped => Some(total("more_total")),
                     _ => None,
                 };
                 if let Some(listed) = listed {
@@ -338,7 +352,7 @@ fn breakdown_formulas_end_at_the_displayed_value() {
             );
             *covered.entry(stat.clone()).or_default() += 1;
         }
-        // Pools and resistances are explained on every build that lists them.
+        // These are explained on every build that lists them.
         for stat in [
             "Life",
             "Mana",
@@ -346,6 +360,12 @@ fn breakdown_formulas_end_at_the_displayed_value() {
             "ColdResist",
             "LightningResist",
             "ChaosResist",
+            "EnergyShield",
+            "Armour",
+            "Evasion",
+            "Spirit",
+            "CritChance",
+            "CritMultiplier",
         ] {
             if let Some(breakdown) = breakdowns.get(stat) {
                 assert!(
@@ -366,11 +386,25 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         "ActionRate",
         "CritChance",
         "CritMultiplier",
+        "EnergyShield",
+        "Armour",
+        "Evasion",
+        "Spirit",
     ] {
         assert!(covered.contains_key(stat), "no build explains {stat}");
     }
-    // A capped resistance says so.
-    assert!(ops.contains("cap"), "no fixture build shows a capped stat");
+    // A capped resistance says so, and so do gear-scoped increases, pool
+    // conversions and the effective-mode crit adjustments.
+    for op in [
+        "cap",
+        "slot_scaled",
+        "gained",
+        "converted",
+        "hit_chance",
+        "bifurcate",
+    ] {
+        assert!(ops.contains(op), "no fixture build shows a {op} step");
+    }
 }
 
 #[test]

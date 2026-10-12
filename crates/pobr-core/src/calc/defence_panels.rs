@@ -17,6 +17,7 @@ use crate::{CalcConfig, ModDb};
 use pobr_data::prelude::*;
 
 use super::env::Env;
+use super::formula::{FormulaBuilder, FormulaOp, StatFormula};
 use super::round;
 
 /// Equivalent to `calcLib.mod`: `(1 + Σinc/100) × Πmore` (vendor CalcTools.lua).
@@ -339,10 +340,47 @@ pub fn calc_deflection(
 /// by the build layer as `Spirit` BASE), plus quest rewards' `+30/+30/+40 to
 /// Spirit` (a global mod from xml_build), plus tree/equipment `+N to Spirit`.
 pub fn calc_spirit_pool(db: &ModDb, cfg: &CalcConfig) -> f64 {
-    let names = [ModName::from("Spirit")];
-    if let Some(v) = db.override_(cfg, "Spirit") {
-        return v;
+    spirit_terms(db, cfg).value
+}
+
+/// The Spirit pool with the terms it was built from.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct SpiritTerms {
+    flat: f64,
+    converted_pct: f64,
+    /// `ExtraSpirit`, which the conversion does not reduce.
+    extra: f64,
+    inc: f64,
+    more: f64,
+    override_value: Option<f64>,
+    pub(crate) value: f64,
+}
+
+impl SpiritTerms {
+    /// The steps from the flat total to `value`.
+    pub(crate) fn formula(&self) -> StatFormula {
+        let mut steps = FormulaBuilder::default();
+        if let Some(value) = self.override_value {
+            steps.set(FormulaOp::Override, value, value);
+            return steps.finish(self.value);
+        }
+        steps.add(FormulaOp::Flat, self.flat);
+        steps.converted(self.converted_pct);
+        steps.add(FormulaOp::Gained, self.extra);
+        steps.increased(self.inc);
+        steps.more(self.more);
+        let rounded = steps.current().round();
+        if rounded != steps.current() {
+            steps.set(FormulaOp::Round, 0.0, rounded);
+        }
+        steps.at_least(1.0);
+        steps.finish(self.value)
     }
+}
+
+pub(crate) fn spirit_terms(db: &ModDb, cfg: &CalcConfig) -> SpiritTerms {
+    let names = [ModName::from("Spirit")];
+    let override_value = db.override_(cfg, "Spirit");
     let base = db.sum(ModType::Base, cfg, &names);
     let extra = db.sum(ModType::Base, cfg, &[ModName::from("ExtraSpirit")]);
     let conv = db
@@ -356,9 +394,23 @@ pub fn calc_spirit_pool(db: &ModDb, cfg: &CalcConfig) -> f64 {
             ],
         )
         .min(100.0);
-    ((base * (1.0 - conv / 100.0) + extra) * scaling_mod(db, cfg, &names))
-        .round()
-        .max(1.0)
+    let inc = db.sum(ModType::Inc, cfg, &names);
+    let more = db.more(cfg, &names);
+    // `(1 + Σinc/100) × Πmore` is vendor's `calcLib.mod`.
+    let value = override_value.unwrap_or_else(|| {
+        ((base * (1.0 - conv / 100.0) + extra) * ((1.0 + inc / 100.0) * more))
+            .round()
+            .max(1.0)
+    });
+    SpiritTerms {
+        flat: base,
+        converted_pct: conv,
+        extra,
+        inc,
+        more,
+        override_value,
+        value,
+    }
 }
 
 // fill orchestration

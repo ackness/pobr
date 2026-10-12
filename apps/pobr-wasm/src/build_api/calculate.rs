@@ -78,11 +78,16 @@ struct BreakdownJson {
 struct FormulaStepJson {
     /// `base` / `flat` / `enemy_flat` / `converted` / `increased` / `more` / `added_time` /
     /// `action_speed` / `override` / `cap` / `cooldown_cap` /
-    /// `server_tick_cap` / `floor` / `bonus_to_multiplier`.
+    /// `server_tick_cap` / `floor` / `bonus_to_multiplier` / `gear_adjusted` /
+    /// `gained` / `slot_scaled` / `flat_after` / `round` / `hit_chance` /
+    /// `lucky` / `bifurcate` / `inevitable` / `inevitable_penalty` /
+    /// `bifurcate_bonus` / `enemy_increased`.
     op: &'static str,
-    /// The amount the step applies (percentage points for `increased` and
-    /// `converted`, a multiplier for `more` and `action_speed`, seconds for
-    /// `added_time`, the limit for caps and the floor).
+    /// The amount the step applies (percentage points for `increased`,
+    /// `converted`, `hit_chance`, `inevitable_penalty`, `bifurcate_bonus` and
+    /// `enemy_increased`, a multiplier for `more` and `action_speed`, seconds
+    /// for `added_time`, the limit for caps and the floor, the number of
+    /// rolls for `lucky` and `bifurcate`, the amount added otherwise).
     operand: f64,
     /// The running value after the step.
     result: f64,
@@ -96,8 +101,7 @@ struct FormulaJson {
 }
 
 fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJson> {
-    let names = session.stat_mod_names(stat);
-    let rows = session.evaluated_mods_named(&names);
+    let rows = session.evaluated_stat_mods(stat);
     let formula = session.stat_formula(stat).map(|formula| FormulaJson {
         steps: formula
             .steps
@@ -144,7 +148,7 @@ fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJs
             )
             .then(b.active.cmp(&a.active))
     });
-    let (base_total, inc_total, more_total) = session.named_totals(&names);
+    let (base_total, inc_total, more_total) = session.stat_totals(stat);
     Some(BreakdownJson {
         // An empty float sum is `-0.0`; adding zero keeps it out of the JSON.
         base_total: base_total + 0.0,
