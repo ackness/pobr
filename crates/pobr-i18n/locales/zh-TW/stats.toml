@@ -61,6 +61,7 @@ Evasion = "閃避值"
 FireResist = "火焰抗性"
 ColdResist = "冰冷抗性"
 LightningResist = "閃電抗性"
+ChaosResist = "混沌抗性"
 BlockChance = "格擋率"
 SpellBlockChance = "法術格擋率"
 # --- Avoidance ---

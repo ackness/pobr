@@ -240,6 +240,93 @@ fn calculate_build_json_shape() {
     }
 }
 
+/// The sidebar's headline stats are aggregated under other names than their
+/// display id (`MaximumLife`, the shared `ElementalResist`, the skill's speed
+/// buckets, `CriticalStrike*`); the breakdown must follow the calculation
+/// there instead of looking up the display id.
+#[test]
+fn breakdowns_cover_stats_aggregated_under_other_names() {
+    ensure_data();
+    let builds = repo_data_root().join("../examples/demo-bd-test/builds");
+    let mut dirs: Vec<_> = std::fs::read_dir(&builds)
+        .expect("fixture builds")
+        .filter_map(|entry| Some(entry.ok()?.path()))
+        .filter(|dir| dir.join("code.txt").is_file())
+        .collect();
+    dirs.sort();
+    assert!(!dirs.is_empty());
+    let expected = [
+        "Life",
+        "Mana",
+        "FireResist",
+        "ColdResist",
+        "LightningResist",
+        "ChaosResist",
+        "ActionRate",
+        "CritChance",
+        "CritMultiplier",
+    ];
+    let mut covered = std::collections::BTreeMap::<&str, usize>::new();
+    for dir in &dirs {
+        let code = std::fs::read_to_string(dir.join("code.txt")).unwrap();
+        let request = serde_json::json!({ "pob_code": code.trim() }).to_string();
+        let json: Value =
+            serde_json::from_str(&pobr_wasm::calculate_build_json(&request).expect("calculate"))
+                .expect("valid json");
+        let stats = json["stats"].as_array().unwrap();
+        let breakdowns = json["breakdowns"].as_object().unwrap();
+        for stat in expected {
+            let Some(breakdown) = breakdowns.get(stat) else {
+                continue;
+            };
+            // The sidebar opens a breakdown by the id of the value clicked.
+            assert!(
+                stats.iter().any(|s| s["id"] == stat),
+                "{}: breakdown {stat} has no display stat",
+                dir.display()
+            );
+            assert!(!breakdown["mods"].as_array().unwrap().is_empty());
+            *covered.entry(stat).or_default() += 1;
+        }
+        // Every real character has life and elemental resistance modifiers.
+        for stat in ["Life", "FireResist", "ColdResist", "LightningResist"] {
+            let mods = breakdowns
+                .get(stat)
+                .unwrap_or_else(|| panic!("{}: no {stat} breakdown", dir.display()))["mods"]
+                .as_array()
+                .unwrap();
+            assert!(
+                mods.iter().any(|m| m["active"] == true),
+                "{}: {stat} breakdown has no applied line",
+                dir.display()
+            );
+        }
+        // Chaos resistance is displayed with PoB2's value.
+        // The PoB2 export contains `Infinity` / `NaN` literals, which are not JSON.
+        let meta = std::fs::read_to_string(dir.join("meta.json"))
+            .unwrap()
+            .replace("-Infinity", "-1e308")
+            .replace("Infinity", "1e308")
+            .replace("NaN", "0");
+        let meta: Value = serde_json::from_str(&meta).unwrap();
+        if let Some(golden) = meta["player_stats"]["ChaosResist"].as_f64() {
+            let shown = stats
+                .iter()
+                .find(|s| s["id"] == "ChaosResist")
+                .unwrap_or_else(|| panic!("{}: ChaosResist not displayed", dir.display()))["value"]
+                .as_f64()
+                .unwrap();
+            assert_eq!(shown, golden, "{}: ChaosResist", dir.display());
+        }
+    }
+    for stat in expected {
+        assert!(
+            covered.get(stat).copied().unwrap_or(0) > 0,
+            "no fixture build has a {stat} breakdown"
+        );
+    }
+}
+
 #[test]
 fn calculate_build_json_main_group_override_changes_output() {
     ensure_data();

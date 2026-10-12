@@ -15,9 +15,11 @@ use crate::state;
 
 // 0.2 + 0.3 calculate_build_json (the full display_catalog plus breakdown)
 
-/// The aggregated ModNames the breakdown covers (PoB2's always-present
-/// sidebar stats; derived values like TotalDPS have no single aggregation
-/// name, so they're not listed here — see them via the attribution endpoint instead).
+/// The displayed stats the breakdown covers (PoB2's always-present sidebar
+/// stats; derived values like TotalDPS have no single aggregation, so
+/// they're not listed here — see them via the attribution endpoint instead).
+/// Each stat is evaluated over the modifier names its calculation stage
+/// aggregates (`CalculationSession::stat_mod_names`).
 const BREAKDOWN_MOD_NAMES: &[&str] = &[
     "Life",
     "Mana",
@@ -29,7 +31,7 @@ const BREAKDOWN_MOD_NAMES: &[&str] = &[
     "ColdResist",
     "LightningResist",
     "ChaosResist",
-    "Speed",
+    "ActionRate",
     "CritChance",
     "CritMultiplier",
     "Accuracy",
@@ -69,8 +71,9 @@ struct BreakdownJson {
     mods: Vec<BreakdownModJson>,
 }
 
-fn breakdown_for(session: &CalculationSession, name: &str) -> Option<BreakdownJson> {
-    let rows = session.evaluated_mods_named(name);
+fn breakdown_for(session: &CalculationSession, stat: &str) -> Option<BreakdownJson> {
+    let names = session.stat_mod_names(stat);
+    let rows = session.evaluated_mods_named(&names);
     if rows.is_empty() {
         return None;
     }
@@ -103,7 +106,7 @@ fn breakdown_for(session: &CalculationSession, name: &str) -> Option<BreakdownJs
             )
             .then(b.active.cmp(&a.active))
     });
-    let (base_total, inc_total, more_total) = session.named_totals(name);
+    let (base_total, inc_total, more_total) = session.named_totals(&names);
     Some(BreakdownJson {
         // An empty float sum is `-0.0`; adding zero keeps it out of the JSON.
         base_total: base_total + 0.0,
@@ -184,7 +187,7 @@ struct CalculateBuildResponse {
     /// Unparsed modifier text and confirmed source-specific calculation limits,
     /// preserved verbatim for display and baseline-versus-edit comparison.
     unsupported_modifiers: Vec<String>,
-    /// The mod-line breakdown for aggregated stats (keyed by ModName, see [`BREAKDOWN_MOD_NAMES`]).
+    /// The mod-line breakdown for aggregated stats (keyed by display stat id, see [`BREAKDOWN_MOD_NAMES`]).
     breakdowns: BTreeMap<String, BreakdownJson>,
     /// The main skill's identity plus damage breakdown (`null` = the build has no resolvable damage main skill).
     main_skill: Option<MainSkillJson>,

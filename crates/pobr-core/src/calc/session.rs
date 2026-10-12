@@ -672,26 +672,46 @@ impl CalculationSession {
             .collect()
     }
 
-    /// The modifiers named `name` as the calculation context treats them:
-    /// each row says whether it applies and with which value. The context is
-    /// the session config, i.e. the inspected skill with its main-hand
-    /// weapon; an off-hand pass can match weapon-specific rows differently.
-    pub fn evaluated_mods_named(&self, name: &str) -> Vec<crate::ModEvaluation<'_>> {
-        self.env
-            .player
-            .mod_db
-            .evaluate_named(&self.env.cfg, &ModName::from(name))
+    /// The modifier names the calculation aggregates for a displayed stat,
+    /// in query order. Mirrors the stage that computes the stat: pools read
+    /// `Maximum*` (`offence::scaled_pool`), resistances read both spellings
+    /// plus the shared elemental name (`offence::resolve_resistance`), speed
+    /// reads the buckets the inspected skill uses
+    /// (`skill_use_time::speed_names_for`), crit reads the `CriticalStrike*`
+    /// names (`calc::crit`). Any other stat is aggregated under its own name.
+    pub fn stat_mod_names(&self, stat: &str) -> Vec<ModName> {
+        let names: &[&str] = match stat {
+            "Life" => &["MaximumLife"],
+            "Mana" => &["MaximumMana"],
+            "FireResist" => &["FireResistance", "FireResist", "ElementalResist"],
+            "ColdResist" => &["ColdResistance", "ColdResist", "ElementalResist"],
+            "LightningResist" => &["LightningResistance", "LightningResist", "ElementalResist"],
+            "ChaosResist" => &["ChaosResistance", "ChaosResist"],
+            "ActionRate" => return super::skill_use_time::speed_names_for(&self.env.cfg),
+            "CritChance" => &["CriticalStrikeChance"],
+            "CritMultiplier" => &["CriticalStrikeMultiplier"],
+            other => return vec![ModName::from(other)],
+        };
+        names.iter().map(|name| ModName::from(*name)).collect()
     }
 
-    /// `(BASE sum, INC sum, MORE product)` of `name` in the session config,
+    /// The modifiers stored under `names` as the calculation context treats
+    /// them: each row says whether it applies and with which value. The
+    /// context is the session config, i.e. the inspected skill with its
+    /// main-hand weapon; an off-hand pass can match weapon-specific rows
+    /// differently.
+    pub fn evaluated_mods_named(&self, names: &[ModName]) -> Vec<crate::ModEvaluation<'_>> {
+        self.env.player.mod_db.evaluate_names(&self.env.cfg, names)
+    }
+
+    /// `(BASE sum, INC sum, MORE product)` of `names` in the session config,
     /// read through the same queries the calculation stages use.
-    pub fn named_totals(&self, name: &str) -> (f64, f64, f64) {
+    pub fn named_totals(&self, names: &[ModName]) -> (f64, f64, f64) {
         let db = &self.env.player.mod_db;
-        let names = [ModName::from(name)];
         (
-            db.sum(ModType::Base, &self.env.cfg, &names),
-            db.sum(ModType::Inc, &self.env.cfg, &names),
-            db.more(&self.env.cfg, &names),
+            db.sum(ModType::Base, &self.env.cfg, names),
+            db.sum(ModType::Inc, &self.env.cfg, names),
+            db.more(&self.env.cfg, names),
         )
     }
 

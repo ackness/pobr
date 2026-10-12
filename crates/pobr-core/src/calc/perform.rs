@@ -368,15 +368,17 @@ fn fill_mechanics(env: &mut Env) {
     env.player.output.skill_use_time = Some(skill_use_time);
 
     // EHP / max hit
+    // Chaos resist goes through the same full-channel vendor convention as the three
+    // elements (Override/INC/MORE + the dual-name convention + resist_floor; vendor's
+    // resistTypeList includes Chaos, and isElemental=false doesn't merge in the shared name).
+    env.player.output.chaos_resistance =
+        super::offence::resolve_resistance(db, cfg, 0.0, "Chaos", false).final_value;
     let resistances = ResistanceSuite {
         physical_pdr: physical_pdr_fraction(db, cfg),
         fire: env.player.output.fire_resistance,
         cold: env.player.output.cold_resistance,
         lightning: env.player.output.lightning_resistance,
-        // Chaos resist goes through the same full-channel vendor convention as the three
-        // elements (Override/INC/MORE + the dual-name convention + resist_floor; vendor's
-        // resistTypeList includes Chaos, and isElemental=false doesn't merge in the shared name).
-        chaos: super::offence::resolve_resistance(db, cfg, 0.0, "Chaos", false).final_value,
+        chaos: env.player.output.chaos_resistance,
     };
     let reference_hit = (env.player.output.life + env.player.output.energy_shield).max(1.0);
     // -2 (13-G7): unify mitigation-side setup into MitigationCtx — ArmourAppliesTo switches to a

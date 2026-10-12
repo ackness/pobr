@@ -13,6 +13,8 @@ pub struct OutputTable {
     pub fire_resistance: f64,
     pub cold_resistance: f64,
     pub lightning_resistance: f64,
+    /// Final chaos resistance (filled by `perform`; `0.0` from the minimal entry point).
+    pub chaos_resistance: f64,
     pub max_fire_resistance: f64,
     pub max_cold_resistance: f64,
     pub max_lightning_resistance: f64,
@@ -378,6 +380,7 @@ impl Default for OutputTable {
             fire_resistance: 0.0,
             cold_resistance: 0.0,
             lightning_resistance: 0.0,
+            chaos_resistance: 0.0,
             max_fire_resistance: 0.0,
             max_cold_resistance: 0.0,
             max_lightning_resistance: 0.0,

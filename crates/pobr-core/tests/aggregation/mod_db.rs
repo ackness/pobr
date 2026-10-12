@@ -1010,3 +1010,40 @@ fn evaluate_named_matches_queries_and_keeps_inactive_rows() {
     assert_eq!(active_sum(ModType::Inc), db.sum(ModType::Inc, &cfg, &names));
     assert_eq!(db.more(&cfg, &names), 1.2);
 }
+
+/// A stat aggregated under several names (a resistance and the shared
+/// elemental name) is one query: a limit shared across the names is consumed
+/// once, in name order, exactly as `sum` over the same names does.
+#[test]
+fn evaluate_names_shares_limits_across_the_name_set() {
+    let limit = || ModTag::GlobalLimit {
+        value: 40.0,
+        key: "ResistCap".into(),
+    };
+    let mut db = ModDb::new();
+    db.add_mod(Modifier::number("ElementalResist", ModType::Base, 30.0).with_tag(limit()));
+    db.add_mod(Modifier::number("FireResist", ModType::Base, 25.0).with_tag(limit()));
+    db.add_mod(Modifier::number("FireResist", ModType::Base, 12.0));
+    db.add_mod(Modifier::number("ColdResist", ModType::Base, 99.0));
+
+    let cfg = CalcConfig::new();
+    let names = [
+        ModName::from("FireResist"),
+        ModName::from("ElementalResist"),
+    ];
+    let rows = db.evaluate_names(&cfg, &names);
+    let seen: Vec<(&str, Option<f64>)> = rows
+        .iter()
+        .map(|r| (r.modifier.name.as_str(), r.value))
+        .collect();
+    assert_eq!(
+        seen,
+        vec![
+            ("FireResist", Some(25.0)),
+            ("FireResist", Some(12.0)),
+            ("ElementalResist", Some(15.0)), // the rest of the shared limit
+        ]
+    );
+    let total: f64 = rows.iter().filter_map(|r| r.value).sum();
+    assert_eq!(total, db.sum(ModType::Base, &cfg, &names));
+}

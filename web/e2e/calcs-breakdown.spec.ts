@@ -40,3 +40,30 @@ test('a stat breakdown counts only the lines the calculation applies', async ({ 
   const active = (await rows.count()) - (await inactive.count());
   await expect(armour.locator('.breakdown-count')).toHaveText(`${active} mods`);
 });
+
+test('headline sidebar stats open the lines behind them', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByLabel('Level', { exact: true })).toBeEnabled({ timeout: 90_000 });
+  await page.getByRole('textbox', { name: 'Build code', exact: true }).fill(code);
+  await page.locator('.import-submit').click();
+
+  // Life is aggregated as MaximumLife and resistances partly under a shared name; each still
+  // expands from the sidebar value.
+  const sidebar = page.locator('#character-stats');
+  for (const [label, id] of [
+    ['Life', 'Life'],
+    ['Fire Res.', 'FireResist'],
+    ['Chaos Res.', 'ChaosResist'],
+  ]) {
+    await sidebar.getByRole('button', { name: new RegExp(`^${label.replace('.', '\\.')}`) }).first().click();
+    const item = page.locator(`#breakdown-${id}`);
+    await expect(item).toHaveClass(/is-open/);
+    await expect(item.locator('.breakdown-table tbody tr:not(.is-inactive)')).not.toHaveCount(0);
+  }
+
+  // Fire resistance: 86% of modifiers, shown capped at 75%.
+  await sidebar.getByRole('button', { name: /^Fire Res\./ }).click();
+  const fire = page.locator('#breakdown-FireResist');
+  expect(num(await fire.locator('.breakdown-summary strong').first().textContent())).toBe(86);
+  expect(num(await fire.locator('.breakdown-value').textContent())).toBe(75);
+});

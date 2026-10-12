@@ -472,26 +472,36 @@ impl ModDb {
     }
 
     /// Every modifier stored under `name`, as a query on that name would see
-    /// it in `ctx`. Unlike [`contributions`](Self::contributions) this keeps
-    /// the modifiers the query skips (`active == false`), so a breakdown can
-    /// list them without counting them.
-    ///
-    /// For BASE/INC/MORE rows `value` is the applied number (per-stat scaling
-    /// and GlobalLimit accounting included, in the same order as
-    /// [`sum`](Self::sum) / [`more`](Self::more)); an inactive row keeps its
-    /// unscaled stored number.
+    /// it in `ctx`. See [`evaluate_names`](Self::evaluate_names).
     pub fn evaluate_named<'a>(
         &self,
         ctx: impl Into<EvalContext<'a>>,
         name: &ModName,
     ) -> Vec<ModEvaluation<'_>> {
+        self.evaluate_names(ctx, std::slice::from_ref(name))
+    }
+
+    /// Every modifier stored under `names`, as one query over that name set
+    /// would see it in `ctx`. Unlike [`contributions`](Self::contributions)
+    /// this keeps the modifiers the query skips (`active == false`), so a
+    /// breakdown can list them without counting them.
+    ///
+    /// For BASE/INC/MORE rows `value` is the applied number (per-stat scaling
+    /// and GlobalLimit accounting included, in the same order as
+    /// [`sum`](Self::sum) / [`more`](Self::more) over the same `names`); an
+    /// inactive row keeps its unscaled stored number.
+    pub fn evaluate_names<'a>(
+        &self,
+        ctx: impl Into<EvalContext<'a>>,
+        names: &[ModName],
+    ) -> Vec<ModEvaluation<'_>> {
         let ctx = ctx.into();
         // One accounting table per aggregated type: a limit shared by a BASE
         // and an INC row is consumed separately by the two queries.
         let mut limits: [GlobalLimits; 3] = [None, None, None];
-        self.mods
-            .get(name)
-            .into_iter()
+        names
+            .iter()
+            .filter_map(|name| self.mods.get(name))
             .flatten()
             .map(|modifier| {
                 let stored = modifier.value.as_number();

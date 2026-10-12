@@ -89,6 +89,7 @@ pub fn display_catalog() -> Vec<DisplayStatDefinition> {
             Vt::Percent,
             "LightningResist",
         ),
+        computed("ChaosResist", Cat::Resistance, Vt::Percent, "ChaosResist"),
         computed("BlockChance", Cat::Avoidance, Vt::Percent, "BlockChance"),
         computed(
             "SpellBlockChance",
@@ -548,6 +549,7 @@ pub fn display_value(output: &OutputTable, id: &str) -> f64 {
         "FireResist" => output.fire_resistance,
         "ColdResist" => output.cold_resistance,
         "LightningResist" => output.lightning_resistance,
+        "ChaosResist" => output.chaos_resistance,
         "BlockChance" => output.block_chance,
         "SpellBlockChance" => output.spell_block_chance,
         "TotalEHP" => output.total_ehp,
