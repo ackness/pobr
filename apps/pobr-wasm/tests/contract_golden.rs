@@ -254,6 +254,7 @@ struct FormulaTally {
     hands: usize,
     ailment_lines: usize,
     ailment_source_types: usize,
+    enemy_lines: usize,
 }
 
 /// Checks that the steps of `breakdown` are the calculation: each step
@@ -641,6 +642,57 @@ fn check_formula(
         for part in parts {
             let n = |key: &str| part[key].as_f64().unwrap();
             assert!(close(n("average") * n("multiplier"), n("mitigated")));
+            // The enemy's lines give the two inputs of the row.
+            let active = |key: &'static str, mod_type: &'static str| {
+                part[key]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(move |line| line["active"] == true && line["mod_type"] == mod_type)
+                    .map(|line| line["value"].as_f64().unwrap())
+            };
+            let scale = |key: &'static str| -> f64 {
+                (1.0 + active(key, "INC").sum::<f64>() / 100.0)
+                    * active(key, "MORE")
+                        .map(|value| 1.0 + value / 100.0)
+                        .product::<f64>()
+            };
+            let near = |a: f64, b: f64| (a - b).abs() <= 0.02 * a.abs().max(b.abs()).max(1.0);
+            assert!(
+                near(n("taken"), scale("taken_mods")),
+                "{at}: {} taken {} != its lines {}",
+                part["damage_type"],
+                n("taken"),
+                scale("taken_mods")
+            );
+            if part["damage_type"] != "Physical" && active("defence_mods", "OVERRIDE").count() == 0
+            {
+                let resist =
+                    active("defence_mods", "BASE").sum::<f64>() * scale("defence_mods").max(0.0);
+                // Outside the limits the lines' total is the limit; hits
+                // that invert the resistance apply after that.
+                let limit = if n("resist_inverted") == 0.0 {
+                    n("resist").max(75.0)
+                } else {
+                    90.0
+                };
+                let resist =
+                    resist.clamp(-200.0, limit) * (1.0 - 2.0 * n("resist_inverted") / 100.0);
+                assert!(
+                    near(n("resist"), resist),
+                    "{at}: {} resistance {} != its lines {resist}",
+                    part["damage_type"],
+                    n("resist")
+                );
+            }
+            for key in ["defence_mods", "taken_mods"] {
+                tally.enemy_lines += part[key]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|line| line["active"] == true)
+                    .count();
+            }
             // Armour depends on the hit size, so a physical crit is
             // reduced less than the listed non-crit reduction.
             if part["damage_type"] != "Physical" {
@@ -816,6 +868,7 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         hands,
         ailment_lines,
         ailment_source_types,
+        enemy_lines,
     } = tally;
     println!(
         "formula coverage over {} builds: {covered:?}; without formula {unexplained:?}; ops {ops:?}",
@@ -879,6 +932,8 @@ fn breakdown_formulas_end_at_the_displayed_value() {
         skill_dot_lines > 0,
         "no fixture build lists skill dot lines"
     );
+    println!("enemy lines {enemy_lines}");
+    assert!(enemy_lines > 0, "no fixture build lists enemy lines");
     println!("ailment lines {ailment_lines}; ailment source types {ailment_source_types}");
     assert!(ailment_lines > 0, "no fixture build lists ailment lines");
     // Some build applies an ailment with more than one damage type.

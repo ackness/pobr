@@ -235,6 +235,17 @@ struct HitMitigationRowJson {
     /// The share after the enemy. The rows add up to the result of the
     /// `enemy_mitigation` step.
     mitigated: f64,
+    /// The percentage of hits that treat the resistance as inverted
+    /// (`0` without such a modifier). `resist` already includes it:
+    /// the lines' total times `1 − 2 × resist_inverted / 100`.
+    resist_inverted: f64,
+    /// The enemy's own lines behind `resist` (exposure and curses included;
+    /// an active OVERRIDE line replaces the others, and the total is kept
+    /// within the resistance limits), or for physical its armour and flat
+    /// reduction lines. Inactive lines included.
+    defence_mods: Vec<BreakdownModJson>,
+    /// The enemy's own lines behind `taken`: `(1 + INC / 100) × MORE`.
+    taken_mods: Vec<BreakdownModJson>,
 }
 
 /// One damage type of the skill's own damage over time (not an ailment).
@@ -447,11 +458,14 @@ fn damage_json(session: &CalculationSession, pass: usize) -> Option<HitDamageTab
 /// What the enemy does to each damage type of offence pass `pass`'s average hit.
 fn mitigation_json(session: &CalculationSession, pass: usize) -> Option<Vec<HitMitigationRowJson>> {
     let parts = session.hit_mitigation_terms(pass)?;
+    let types: Vec<_> = parts.iter().map(|part| part.damage_type).collect();
+    let lines = session.hit_mitigation_mods(pass, &types);
     Some(
         parts
             .iter()
-            .filter(|part| part.average != 0.0)
-            .map(|part| HitMitigationRowJson {
+            .zip(&lines)
+            .filter(|(part, _)| part.average != 0.0)
+            .map(|(part, (_, lines))| HitMitigationRowJson {
                 damage_type: format!("{:?}", part.damage_type),
                 average: part.average,
                 resist: part.resist.map(|resist| resist + 0.0),
@@ -459,6 +473,9 @@ fn mitigation_json(session: &CalculationSession, pass: usize) -> Option<Vec<HitM
                 taken: part.taken,
                 multiplier: part.mitigated / part.average,
                 mitigated: part.mitigated,
+                resist_inverted: part.invert * 100.0,
+                defence_mods: mod_entries(&lines.defence),
+                taken_mods: mod_entries(&lines.taken),
             })
             .collect(),
     )

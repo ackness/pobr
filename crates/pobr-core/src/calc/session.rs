@@ -998,6 +998,31 @@ impl CalculationSession {
             .flatten()
     }
 
+    /// The enemy's own lines behind each of `types`' rows in
+    /// [`hit_mitigation_terms`](Self::hit_mitigation_terms), read in the
+    /// config that stage mitigates pass `pass` in.
+    pub fn hit_mitigation_mods(
+        &self,
+        pass: usize,
+        types: &[DamageType],
+    ) -> Vec<(DamageType, super::EnemyMitigationLines<'_>)> {
+        let scopes = perform::pass_scopes(&self.env);
+        let Some((_, cfg, _)) = scopes.get(pass) else {
+            return Vec::new();
+        };
+        let cfg_hit = super::crit_pass::non_crit_cfg(cfg);
+        let enemy = &self.env.enemy.mod_db;
+        types
+            .iter()
+            .map(|ty| {
+                (
+                    *ty,
+                    super::offence::enemy_mitigation_lines(enemy, &cfg_hit, *ty),
+                )
+            })
+            .collect()
+    }
+
     /// The reload cycle behind the `reload` step of `ActionRate` and
     /// `TotalDPS` (`None` when the skill does not reload).
     pub fn crossbow_reload(&self) -> Option<super::CrossbowReload> {

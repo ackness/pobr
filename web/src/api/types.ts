@@ -634,6 +634,12 @@ export interface HitMitigationRow {
   multiplier: number;
   /** The share after the enemy; the rows add up to the `enemy_mitigation` step's result. */
   mitigated: number;
+  /** Percentage of hits that treat the resistance as inverted (0 without such a modifier); `resist` already includes it. */
+  resist_inverted: number;
+  /** The enemy's own lines behind `resist` (exposure and curses included; an OVERRIDE line replaces the others, and the total is kept within the resistance limits), or for physical its armour and flat reduction lines. */
+  defence_mods: BreakdownMod[];
+  /** The enemy's own lines behind `taken`. */
+  taken_mods: BreakdownMod[];
 }
 
 export interface HitDamageTable {

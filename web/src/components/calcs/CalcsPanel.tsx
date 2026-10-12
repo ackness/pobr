@@ -273,6 +273,47 @@ function MitigationView({ rows, lang }: { rows: HitMitigationRow[]; lang: Lang }
         </tfoot>
       </table>
       {critsDiffer && <p className="breakdown-note">{tt('calcs.mitigation.critNote')}</p>}
+      {rows
+        .filter((row) => row.resist_inverted !== 0)
+        .map((row) => (
+          <p key={row.damage_type} className="breakdown-note">
+            {tt('calcs.mitigation.invertedNote')
+              .replace('{chance}', fmtNum(row.resist_inverted))
+              .replace('{type}', damageTypeLabel(lang, row.damage_type))}
+          </p>
+        ))}
+    </div>
+  );
+}
+
+/** The enemy's own lines behind each row of the mitigation table. */
+function EnemyLinesView({ rows, lang }: { rows: HitMitigationRow[]; lang: Lang }) {
+  const tt = bindT(lang);
+  const groups = rows
+    .flatMap((row) => [
+      {
+        key: `${row.damage_type}-defence`,
+        label: tt(row.resist === null ? 'calcs.mitigation.armourLines' : 'calcs.mitigation.resistLines'),
+        type: row.damage_type,
+        mods: row.defence_mods,
+      },
+      { key: `${row.damage_type}-taken`, label: tt('calcs.mitigation.takenLines'), type: row.damage_type, mods: row.taken_mods },
+    ])
+    .filter((group) => group.mods.length > 0);
+  if (groups.length === 0) return null;
+  return (
+    <div className="damage-lines enemy-lines">
+      {groups.map((group) => (
+        <details key={group.key} className={`damage-lines-group enemy-lines-${group.key.toLowerCase()}`}>
+          <summary>
+            {damageTypeLabel(lang, group.type)} · {group.label}
+            <span className="breakdown-count">
+              {group.mods.filter((m) => m.active).length} {tt('calcs.mods')}
+            </span>
+          </summary>
+          <ModLines mods={group.mods} lang={lang} />
+        </details>
+      ))}
     </div>
   );
 }
@@ -576,7 +617,10 @@ function BreakdownTable({ breakdown, lang }: { breakdown: Breakdown; lang: Lang 
         </>
       )}
       {breakdown.mitigation && breakdown.mitigation.length > 0 && (
-        <MitigationView rows={breakdown.mitigation} lang={lang} />
+        <>
+          <MitigationView rows={breakdown.mitigation} lang={lang} />
+          <EnemyLinesView rows={breakdown.mitigation} lang={lang} />
+        </>
       )}
       {breakdown.ailment && <AilmentView ailment={breakdown.ailment} lang={lang} />}
       {breakdown.reload && <ReloadView reload={breakdown.reload} lang={lang} />}
